@@ -62,4 +62,10 @@ for f in tests/redteam/*.cp; do
     else echo "REDTEAM TEST FAILED: $f"; fail=1; fi
 done
 rm -rf "$tmp"
-echo "redteam tests checked"; exit $fail
+echo "redteam tests checked"
+# The P0 silent-wrong-answer regressions (tests/p0) and the cheat-sheet parity suite (tests/cheatsheet):
+# every construct on docs/one-page-cheat-sheet.md is either a passing case or a listed, still-failing gap.
+# (run with the usual 8 MB stack, like the red-team cases: ASan can't start under an unlimited one)
+(ulimit -s 8192; python3 tests/test_p0_regressions.py) || fail=1
+(ulimit -s 8192; python3 tests/test_cheatsheet_parity.py) || fail=1
+exit $fail

@@ -1,3 +1,4 @@
+// cp: 0.1 bea787c+dirty
 let n: 2..=9 = read()
 domain V = 1..=n
 var a: [V]Int = read()
