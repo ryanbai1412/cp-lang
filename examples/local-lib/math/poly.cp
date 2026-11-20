@@ -24,15 +24,23 @@ fn mred1(x: Int, p: Int, pinv: Int) -> Int:
     let r = mred(x, p, pinv)
     if r >= p: r - p else: r
 
+fn red2(x: Int, p2: Int) -> Int = x + ((x >> 63) & p2)
+
 fn red_p(x: Int, p: Int, p2: Int) -> Int:
-    var v = x - p2
-    v += (v >> 63) & p2
-    v -= p
+    let v = red2(x - p2, p2) - p
     v + ((v >> 63) & p)
 
 fn add_p(a: Int, b: Int, p: Int) -> Int:
     let s = a + b
     if s >= p: s - p else: s
+
+fn sub_p(a: Int, b: Int, p: Int) -> Int:
+    let s = a - b
+    if s < 0: s + p else: s
+
+fn add7(a: Int, b: Int) -> Int:
+    let s = a + b
+    if s >= 7: s - 7 else: s
 
 fn pow_mod_i(base: Int, exp: Int, m: Int) -> Int:
     var res = 1 % m
@@ -46,11 +54,13 @@ fn pow_mod_i(base: Int, exp: Int, m: Int) -> Int:
     res
 
 fn build_facts(n: Int) -> (List<Int>, List<Int>):
-    let p = 998244353
+    let p = Z.MOD
     var f = List.filled(n + 1, 1)
     var fi = List.filled(n + 1, 1)
+    var prod = 1
     for i in 1..=n:
-        f[i] = f[i - 1] * i % p
+        prod = prod * i % p
+        f[i] = prod
     if n > 0:
         fi[n] = pow_mod_i(f[n], p - 2, p)
         var i = n
@@ -71,7 +81,18 @@ fn ilog2_pow2(size: Int) -> Int:
         h += 1
     h
 
-fn build_roots(p: Int) -> (List<Int>, List<Int>, List<Int>, List<Int>, List<Int>, List<Int>):
+struct NttRoots:
+    p: Int
+    pinv: Int
+    one_m: Int
+    rt: List<Int>
+    irt: List<Int>
+    r3: List<Int>
+    ir3: List<Int>
+    sw: List<Int>
+    isw: List<Int>
+
+fn build_roots(p: Int) -> NttRoots:
     let pinv = if p == 998244353: 998244351 elif p == 469762049: 469762047 else: 167772159
     let one_m = if p == 998244353: 301989884 elif p == 469762049: 67108855 else: 100663271
     let max_k = ctz(p - 1)
@@ -102,23 +123,7 @@ fn build_roots(p: Int) -> (List<Int>, List<Int>, List<Int>, List<Int>, List<Int>
     for j in 0..nr:
         sw[j + 1] = mred1(r3[j] * irt[2], p, pinv)
         isw[j + 1] = mred1(ir3[j] * rt[2], p, pinv)
-    (rt, irt, r3, ir3, sw, isw)
-
-fn step_roots(p: Int) -> List<Int>:
-    let (_, _, r3, _, _, _) = build_roots(p)
-    r3
-
-fn inv_step_roots(p: Int) -> List<Int>:
-    let (_, _, _, ir3, _, _) = build_roots(p)
-    ir3
-
-fn pow2_roots(p: Int) -> List<Int>:
-    let (rt, _, _, _, _, _) = build_roots(p)
-    rt
-
-fn inv_pow2_roots(p: Int) -> List<Int>:
-    let (_, irt, _, _, _, _) = build_roots(p)
-    irt
+    NttRoots(p, pinv, one_m, rt, irt, r3, ir3, sw, isw)
 
 fn pow_bits(s_in: Int, shift: Int, one_m: Int, p: Int, pinv: Int, tab: List<Int>) -> Int:
     var r = one_m
@@ -138,19 +143,18 @@ fn dif_stages<D>(
     len_start: Int,
     len_end: Int,
     c_idx: Int,
-    p: Int,
-    pinv: Int,
-    one_m: Int,
-    imag_m: Int,
-    r3: List<Int>,
-    rt: List<Int>
+    roots: NttRoots
 ):
+    let p = roots.p
+    let pinv = roots.pinv
+    let one_m = roots.one_m
+    let imag_m = roots.rt[2]
     let p2 = p + p
     var slen = len_start
     while slen < len_end:
         let step = 1 << (sub_h - slen - 2)
         let blocks = 1 << slen
-        var rot = if c_idx == 0: one_m else: pow_bits(c_idx << slen, 3, one_m, p, pinv, rt)
+        var rot = if c_idx == 0: one_m else: pow_bits(c_idx << slen, 3, one_m, p, pinv, roots.rt)
         for s in 0..blocks:
             let rot2 = mred1(rot * rot, p, pinv)
             let rot3 = mred1(rot2 * rot, p, pinv)
@@ -159,24 +163,20 @@ fn dif_stages<D>(
             let o2 = o1 + step
             let o3 = o2 + step
             for i in 0..step:
-                let w0 = d[off + i] - p2
-                let a0 = w0 + ((w0 >> 63) & p2)
+                let a0 = red2(d[off + i] - p2, p2)
                 let a1 = mred(d[o1 + i] * rot, p, pinv)
                 let a2 = mred(d[o2 + i] * rot2, p, pinv)
                 let a3 = mred(d[o3 + i] * rot3, p, pinv)
                 let a13i = mred((a1 + p2 - a3) * imag_m, p, pinv)
-                let u02 = a0 + a2 - p2
-                let t02 = u02 + ((u02 >> 63) & p2)
-                let u13 = a1 + a3 - p2
-                let t13 = u13 + ((u13 >> 63) & p2)
-                let v02 = a0 - a2
-                let d02 = v02 + ((v02 >> 63) & p2)
+                let t02 = red2(a0 + a2 - p2, p2)
+                let t13 = red2(a1 + a3 - p2, p2)
+                let d02 = red2(a0 - a2, p2)
                 d[off + i] = t02 + t13
                 d[o1 + i] = t02 + p2 - t13
                 d[o2 + i] = d02 + a13i
                 d[o3 + i] = d02 + p2 - a13i
             if s + 1 < blocks:
-                rot = mred1(rot * r3[ctz(s ^ -1)], p, pinv)
+                rot = mred1(rot * roots.r3[ctz(s ^ -1)], p, pinv)
         slen += 2
 
 fn dit_stages<D>(
@@ -186,19 +186,18 @@ fn dit_stages<D>(
     len_start: Int,
     len_end: Int,
     c_idx: Int,
-    p: Int,
-    pinv: Int,
-    one_m: Int,
-    iimag_m: Int,
-    ir3: List<Int>,
-    irt: List<Int>
+    roots: NttRoots
 ):
+    let p = roots.p
+    let pinv = roots.pinv
+    let one_m = roots.one_m
+    let iimag_m = roots.irt[2]
     let p2 = p + p
     var slen = len_start
     while slen >= len_end:
         let step = 1 << (sub_h - slen)
         let blocks = 1 << (slen - 2)
-        var irot = if c_idx == 0: one_m else: pow_bits(c_idx << (slen - 2), 3, one_m, p, pinv, irt)
+        var irot = if c_idx == 0: one_m else: pow_bits(c_idx << (slen - 2), 3, one_m, p, pinv, roots.irt)
         for s in 0..blocks:
             let irot2 = mred1(irot * irot, p, pinv)
             let irot3 = mred1(irot2 * irot, p, pinv)
@@ -212,31 +211,27 @@ fn dit_stages<D>(
                 let a2 = d[o2 + i]
                 let a3 = d[o3 + i]
                 let a23i = mred((a2 + p2 - a3) * iimag_m, p, pinv)
-                let u01 = a0 + a1 - p2
-                let t01 = u01 + ((u01 >> 63) & p2)
-                let u23 = a2 + a3 - p2
-                let t23 = u23 + ((u23 >> 63) & p2)
-                let v01 = a0 - a1
-                let d01 = v01 + ((v01 >> 63) & p2)
-                let w0 = t01 + t23 - p2
-                d[off + i] = w0 + ((w0 >> 63) & p2)
+                let t01 = red2(a0 + a1 - p2, p2)
+                let t23 = red2(a2 + a3 - p2, p2)
+                let d01 = red2(a0 - a1, p2)
+                d[off + i] = red2(t01 + t23 - p2, p2)
                 d[o1 + i] = mred((d01 + a23i) * irot, p, pinv)
                 d[o2 + i] = mred((t01 + p2 - t23) * irot2, p, pinv)
                 d[o3 + i] = mred((d01 + p2 - a23i) * irot3, p, pinv)
             if s + 1 < blocks:
-                irot = mred1(irot * ir3[ctz(s ^ -1)], p, pinv)
+                irot = mred1(irot * roots.ir3[ctz(s ^ -1)], p, pinv)
         slen -= 2
 
 // In-place radix-4 Gentleman-Sande DIF (`op == 0`) and Cooley-Tukey DIT (`op == 1` or `op == 2`
 // for R^2-scaled Montgomery pointwise products) on `a[0..size]`.
-fn ntt_core(mut a: List<Int>, size: Int, op: Int, p: Int):
+fn ntt_core_r(mut a: List<Int>, size: Int, op: Int, roots: NttRoots):
     if size <= 1:
         return
-    let (rt, irt, r3, ir3, _, _) = build_roots(p)
-    let h = ilog2_pow2(size)
-    let pinv = if p == 998244353: 998244351 elif p == 469762049: 469762047 else: 167772159
-    let one_m = if p == 998244353: 301989884 elif p == 469762049: 67108855 else: 100663271
+    let p = roots.p
+    let pinv = roots.pinv
+    let one_m = roots.one_m
     let p2 = p + p
+    let h = ilog2_pow2(size)
     var buf: [0..size]Int
     for i in 0..size: buf[i] = a[i]
     if op == 0:
@@ -249,14 +244,11 @@ fn ntt_core(mut a: List<Int>, size: Int, op: Int, p: Int):
                 buf[i] = l + r
                 buf[i + step] = l + p2 - r
             len = 1
-        dif_stages(mut buf, 0, h, len, h, 0, p, pinv, one_m, rt[2], r3, rt)
+        dif_stages(mut buf, 0, h, len, h, 0, roots)
         for i in 0..size:
-            var v = buf[i]
-            if v >= p2: v -= p2
-            if v >= p: v -= p
-            a[i] = v
+            a[i] = red_p(buf[i], p, p2)
         return
-    dit_stages(mut buf, 0, h, h, 2, 0, p, pinv, one_m, irt[2], ir3, irt)
+    dit_stages(mut buf, 0, h, h, 2, 0, roots)
     let scale_base = if op == 2: pow_mod_i(size, p - 2, p) * ((one_m * one_m) % p) % p else: pow_mod_i(size, p - 2, p) * one_m % p
     if (h & 1) == 1:
         let step = size >> 1
@@ -269,14 +261,16 @@ fn ntt_core(mut a: List<Int>, size: Int, op: Int, p: Int):
         for i in 0..size:
             a[i] = mred1(buf[i] * scale_base, p, pinv)
 
-// Fused size-4 polynomial product `A(x) * B(x) mod (x^4 - w)` for two adjacent blocks
-// `(o1, o1 + 4)` with roots `+w` and `-w` (in Montgomery form).
+fn ntt_core(mut a: List<Int>, size: Int, op: Int, p: Int):
+    ntt_core_r(mut a, size, op, build_roots(p))
+
 // Fused size-4 polynomial product `A(x) * B(x) mod (x^4 - w)` for two adjacent blocks
 // `(o1, o1 + 4)` with roots `+w` and `-w` (in Montgomery form).
 fn mul4_pair<D>(mut d: [D]Int, o1: Int, o2: Int, w: Int, p: Int, pinv: Int, sq: Bool):
     let p2 = p + p
     for sgn in 0..2:
         let oa = o1 + (sgn << 2)
+        let ws = if sgn == 0: w else: p - w
         let a0 = red_p(d[oa], p, p2)
         let a1 = red_p(d[oa + 1], p, p2)
         let a2 = red_p(d[oa + 2], p, p2)
@@ -309,29 +303,10 @@ fn mul4_pair<D>(mut d: [D]Int, o1: Int, o2: Int, w: Int, p: Int, pinv: Int, sq: 
             u2 = a0 * b2 + a1 * b1 + a2 * b0
             v2 = a3 * b3
             u3 = a0 * b3 + a1 * b2 + a2 * b1 + a3 * b0
-        let u0r = mred(u0, p, pinv)
-        let v0w = mred(mred(v0, p, pinv) * w, p, pinv)
-        let u1r = mred(u1, p, pinv)
-        let v1w = mred(mred(v1, p, pinv) * w, p, pinv)
-        let u2r = mred(u2, p, pinv)
-        let v2w = mred(mred(v2, p, pinv) * w, p, pinv)
-        let u3r = mred(u3, p, pinv)
-        if sgn == 0:
-            let t0 = u0r + v0w - p2
-            d[oa] = t0 + ((t0 >> 63) & p2)
-            let t1 = u1r + v1w - p2
-            d[oa + 1] = t1 + ((t1 >> 63) & p2)
-            let t2 = u2r + v2w - p2
-            d[oa + 2] = t2 + ((t2 >> 63) & p2)
-            d[oa + 3] = u3r
-        else:
-            let t0 = u0r - v0w
-            d[oa] = t0 + ((t0 >> 63) & p2)
-            let t1 = u1r - v1w
-            d[oa + 1] = t1 + ((t1 >> 63) & p2)
-            let t2 = u2r - v2w
-            d[oa + 2] = t2 + ((t2 >> 63) & p2)
-            d[oa + 3] = u3r
+        d[oa] = red2(mred(u0, p, pinv) + mred(mred(v0, p, pinv) * ws, p, pinv) - p2, p2)
+        d[oa + 1] = red2(mred(u1, p, pinv) + mred(mred(v1, p, pinv) * ws, p, pinv) - p2, p2)
+        d[oa + 2] = red2(mred(u2, p, pinv) + mred(mred(v2, p, pinv) * ws, p, pinv) - p2, p2)
+        d[oa + 3] = mred(u3, p, pinv)
 
 // Fused size-4 autocorrelation for a pair of partner blocks `(oa, ob)` with roots
 // `w` (for `oa`) and `winv` (for `ob`), both in Montgomery form.
@@ -352,21 +327,15 @@ fn autocorr4_blk<D>(mut d: [D]Int, oa: Int, ob: Int, w: Int, winv: Int, p: Int, 
     let v2r = mred(a0 * b2 + a1 * b3, p, pinv)
     let u3r = mred(a3 * b0, p, pinv)
     let v3r = mred(a0 * b1 + a1 * b2 + a2 * b3, p, pinv)
-    let t1a = u1r + mred(v1r * winv, p, pinv) - p2
-    let t2a = u2r + mred(v2r * winv, p, pinv) - p2
-    let t3a = u3r + mred(v3r * winv, p, pinv) - p2
     d[oa] = c0
-    d[oa + 1] = t1a + ((t1a >> 63) & p2)
-    d[oa + 2] = t2a + ((t2a >> 63) & p2)
-    d[oa + 3] = t3a + ((t3a >> 63) & p2)
+    d[oa + 1] = red2(u1r + mred(v1r * winv, p, pinv) - p2, p2)
+    d[oa + 2] = red2(u2r + mred(v2r * winv, p, pinv) - p2, p2)
+    d[oa + 3] = red2(u3r + mred(v3r * winv, p, pinv) - p2, p2)
     if oa != ob:
-        let t1b = mred(u3r * w, p, pinv) + v3r - p2
-        let t2b = mred(u2r * w, p, pinv) + v2r - p2
-        let t3b = mred(u1r * w, p, pinv) + v1r - p2
         d[ob] = c0
-        d[ob + 1] = t1b + ((t1b >> 63) & p2)
-        d[ob + 2] = t2b + ((t2b >> 63) & p2)
-        d[ob + 3] = t3b + ((t3b >> 63) & p2)
+        d[ob + 1] = red2(mred(u3r * w, p, pinv) + v3r - p2, p2)
+        d[ob + 2] = red2(mred(u2r * w, p, pinv) + v2r - p2, p2)
+        d[ob + 3] = red2(mred(u1r * w, p, pinv) + v1r - p2, p2)
 
 fn autocorr4_range<D>(
     mut d: [D]Int,
@@ -376,16 +345,13 @@ fn autocorr4_range<D>(
     s2_start: Int,
     pairs2: Int,
     w_idx: Int,
-    p: Int,
-    pinv: Int,
-    one_m: Int,
-    rt: List<Int>,
-    irt: List<Int>,
-    sw: List<Int>,
-    isw: List<Int>
+    roots: NttRoots
 ):
-    var w = pow_bits(w_idx, 1, one_m, p, pinv, rt)
-    var winv = pow_bits(w_idx, 1, one_m, p, pinv, irt)
+    let p = roots.p
+    let pinv = roots.pinv
+    let one_m = roots.one_m
+    var w = pow_bits(w_idx, 1, one_m, p, pinv, roots.rt)
+    var winv = pow_bits(w_idx, 1, one_m, p, pinv, roots.irt)
     for k in 0..pairs2:
         let s1 = s1_start + (k << 1)
         let s2 = s2_start - (k << 1)
@@ -393,39 +359,26 @@ fn autocorr4_range<D>(
         autocorr4_blk(mut d, b1 + ((s1 + 1) << 2), b2 + ((s2 - 1) << 2), p - w, p - winv, p, pinv)
         if k + 1 < pairs2:
             let t = ctz(k ^ -1)
-            w = mred1(w * sw[t], p, pinv)
-            winv = mred1(winv * isw[t], p, pinv)
+            w = mred1(w * roots.sw[t], p, pinv)
+            winv = mred1(winv * roots.isw[t], p, pinv)
 
 // Cache-blocked pure radix-4 convolution on an even-height (`h2`) buffer `d` of size
 // `sides * (1 << h2)`. `half_id == 0` computes mod `(x^{2^h2} - 1)`, `half_id == 1`
 // computes mod `(x^{2^h2} + 1)`.
-fn conv_exec_even<D>(
-    mut d: [D]Int,
-    n_buf: Int,
-    h2: Int,
-    mode: Int,
-    p: Int,
-    half_id: Int,
-    rt: List<Int>,
-    irt: List<Int>,
-    r3: List<Int>,
-    ir3: List<Int>,
-    sw: List<Int>,
-    isw: List<Int>
-):
-    let pinv = if p == 998244353: 998244351 elif p == 469762049: 469762047 else: 167772159
-    let one_m = if p == 998244353: 301989884 elif p == 469762049: 67108855 else: 100663271
-    let imag_m = rt[2]
-    let iimag_m = irt[2]
+fn conv_exec_even<D>(mut d: [D]Int, n_buf: Int, h2: Int, mode: Int, half_id: Int, roots: NttRoots):
+    let p = roots.p
+    let pinv = roots.pinv
+    let one_m = roots.one_m
+    let imag_m = roots.rt[2]
+    let iimag_m = roots.irt[2]
     let sides = if mode == 0: 2 else: 1
     let split_len = if h2 <= 12: 0 else: h2 - 12
     let sub_h = h2 - split_len
-    let sub_n = 1 << sub_h
     let num_chunks = 1 << split_len
     let c_off = half_id << split_len
-    let blocks4 = sub_n >> 2
+    let blocks4 = 1 << (sub_h - 2)
     for side in 0..sides:
-        dif_stages(mut d, side * n_buf, h2, 0, split_len, half_id, p, pinv, one_m, imag_m, r3, rt)
+        dif_stages(mut d, side * n_buf, h2, 0, split_len, half_id, roots)
     if mode != 2:
         let sq = mode == 1
         let half_b = blocks4 >> 1
@@ -433,77 +386,55 @@ fn conv_exec_even<D>(
             let c = c_off + lc
             let c0 = lc << sub_h
             for side in 0..sides:
-                dif_stages(mut d, side * n_buf + c0, sub_h, 0, sub_h - 2, c, p, pinv, one_m, imag_m, r3, rt)
-            var w = if c == 0: one_m else: pow_bits(c << (sub_h - 2), 1, one_m, p, pinv, rt)
+                dif_stages(mut d, side * n_buf + c0, sub_h, 0, sub_h - 2, c, roots)
+            var w = if c == 0: one_m else: pow_bits(c << (sub_h - 2), 1, one_m, p, pinv, roots.rt)
             for k in 0..half_b:
                 let off = c0 + (k << 3)
                 mul4_pair(mut d, off, n_buf + off, w, p, pinv, sq)
                 if k + 1 < half_b:
-                    w = mred1(w * sw[ctz(k ^ -1)], p, pinv)
-            dit_stages(mut d, c0, sub_h, sub_h - 2, 2, c, p, pinv, one_m, iimag_m, ir3, irt)
-    elif half_id == 0:
-        var big_b = 0
-        while big_b < num_chunks:
+                    w = mred1(w * roots.sw[ctz(k ^ -1)], p, pinv)
+            dit_stages(mut d, c0, sub_h, sub_h - 2, 2, c, roots)
+    else:
+        var big_b = if half_id == 0: 0 else: num_chunks
+        let big_end = if half_id == 0: num_chunks else: num_chunks + 1
+        while big_b < big_end:
             let pairs = if big_b <= 1: 1 else: big_b >> 1
             for off_c in 0..pairs:
                 let c1 = if big_b == 0: 0 else: big_b + off_c
                 let c2 = if big_b == 0: 0 else: 2 * big_b - 1 - off_c
-                let count = if c1 == c2: 1 else: 2
+                let lc1 = c1 - c_off
+                let lc2 = c2 - c_off
+                let count = if lc1 == lc2: 1 else: 2
                 for side in 0..count:
                     let c = if side == 0: c1 else: c2
-                    dif_stages(mut d, c << sub_h, sub_h, 0, sub_h - 2, c, p, pinv, one_m, imag_m, r3, rt)
-                let base1 = c1 << sub_h
+                    let lc = if side == 0: lc1 else: lc2
+                    dif_stages(mut d, lc << sub_h, sub_h, 0, sub_h - 2, c, roots)
+                let base1 = lc1 << sub_h
                 if big_b == 1:
-                    autocorr4_range(mut d, base1, base1, 0, blocks4 - 1, blocks4 >> 2, 1 << (sub_h - 2), p, pinv, one_m, rt, irt, sw, isw)
-                elif c1 == c2:
+                    autocorr4_range(mut d, base1, base1, 0, blocks4 - 1, blocks4 >> 2, 1 << (sub_h - 2), roots)
+                elif lc1 == lc2:
                     autocorr4_blk(mut d, base1, base1, one_m, one_m, p, pinv)
                     autocorr4_blk(mut d, base1 + 4, base1 + 4, p - one_m, p - one_m, p, pinv)
                     if blocks4 > 2:
                         autocorr4_blk(mut d, base1 + 8, base1 + 12, imag_m, iimag_m, p, pinv)
                     var blk = 4
                     while blk < blocks4:
-                        autocorr4_range(mut d, base1, base1, blk, (blk << 1) - 1, blk >> 2, blk, p, pinv, one_m, rt, irt, sw, isw)
+                        autocorr4_range(mut d, base1, base1, blk, (blk << 1) - 1, blk >> 2, blk, roots)
                         blk = blk << 1
                 else:
-                    autocorr4_range(mut d, base1, c2 << sub_h, 0, blocks4 - 1, blocks4 >> 1, c1 << (sub_h - 2), p, pinv, one_m, rt, irt, sw, isw)
+                    autocorr4_range(mut d, base1, lc2 << sub_h, 0, blocks4 - 1, blocks4 >> 1, c1 << (sub_h - 2), roots)
                 for side in 0..count:
                     let c = if side == 0: c1 else: c2
-                    dit_stages(mut d, c << sub_h, sub_h, sub_h - 2, 2, c, p, pinv, one_m, iimag_m, ir3, irt)
+                    let lc = if side == 0: lc1 else: lc2
+                    dit_stages(mut d, lc << sub_h, sub_h, sub_h - 2, 2, c, roots)
             big_b = if big_b == 0: 1 else: big_b << 1
-    else:
-        if num_chunks == 1:
-            dif_stages(mut d, 0, sub_h, 0, sub_h - 2, 1, p, pinv, one_m, imag_m, r3, rt)
-            autocorr4_range(mut d, 0, 0, 0, blocks4 - 1, blocks4 >> 2, 1 << (sub_h - 2), p, pinv, one_m, rt, irt, sw, isw)
-            dit_stages(mut d, 0, sub_h, sub_h - 2, 2, 1, p, pinv, one_m, iimag_m, ir3, irt)
-        else:
-            let pairs = num_chunks >> 1
-            for off_c in 0..pairs:
-                let lc1 = off_c
-                let lc2 = num_chunks - 1 - off_c
-                let c1 = num_chunks + lc1
-                let c2 = num_chunks + lc2
-                dif_stages(mut d, lc1 << sub_h, sub_h, 0, sub_h - 2, c1, p, pinv, one_m, imag_m, r3, rt)
-                dif_stages(mut d, lc2 << sub_h, sub_h, 0, sub_h - 2, c2, p, pinv, one_m, imag_m, r3, rt)
-                autocorr4_range(mut d, lc1 << sub_h, lc2 << sub_h, 0, blocks4 - 1, blocks4 >> 1, c1 << (sub_h - 2), p, pinv, one_m, rt, irt, sw, isw)
-                dit_stages(mut d, lc1 << sub_h, sub_h, sub_h - 2, 2, c1, p, pinv, one_m, iimag_m, ir3, irt)
-                dit_stages(mut d, lc2 << sub_h, sub_h, sub_h - 2, 2, c2, p, pinv, one_m, iimag_m, ir3, irt)
-    dit_stages(mut d, 0, h2, split_len, 2, half_id, p, pinv, one_m, iimag_m, ir3, irt)
+    dit_stages(mut d, 0, h2, split_len, 2, half_id, roots)
 
 // Mixed-radix `7 * 2^{h2}` autocorrelation mod 998244353 (`998244353 - 1 = 7 * 17 * 2^23`).
 // Conjugate symmetry `C_{7-r}(y) = C_r(y^{-1})` cuts the 7 sub-problems to 11 size-`M`
 // transforms on a single `2 * M` buffer, with `na <= 3.5 * M` (at most 4 chunks).
-fn conv_z_r7_autocorr(
-    a: List<Z>,
-    out_len: Int,
-    h2: Int,
-    rt: List<Int>,
-    irt: List<Int>,
-    r3: List<Int>,
-    ir3: List<Int>,
-    sw: List<Int>,
-    isw: List<Int>
-) -> List<Z>:
-    let p = 998244353
+fn conv_z_r7_autocorr(a: List<Z>, out_len: Int, h2: Int, roots: NttRoots) -> List<Z>:
+    let p = Z.MOD
     let pinv = 998244351
     let m = 1 << h2
     let m2 = m << 1
@@ -512,20 +443,13 @@ fn conv_z_r7_autocorr(
     let sh = na - 1
     let n2 = na - m2
     let n3 = na - m3
-    var z7_m: [0..7]Int
-    z7_m[0] = 301989884
-    z7_m[1] = 968221653
-    z7_m[2] = 154088791
-    z7_m[3] = 457477426
-    z7_m[4] = 459576753
-    z7_m[5] = 411388607
-    z7_m[6] = 241989945
+    let z7_m = [301989884, 968221653, 154088791, 457477426, 459576753, 411388607, 241989945]
     let e_m = if h2 % 3 == 0: 1 elif h2 % 3 == 1: 4 else: 2
     let scale = pow_mod_i(m >> 2, p - 2, p) * 855638017 % p * 932051910 % p
     var g_sc: [0..7]Int
     for j in 0..7:
         g_sc[j] = mred1(z7_m[j] * scale, p, pinv)
-    var out = List.filled(out_len, Z(0))
+    var out = List.filled(out_len, Z.zero)
     var d: [0..m2]Int
     // r = 0: self-paired autocorrelation mod (y^M - 1)
     for i in 0..m:
@@ -533,7 +457,7 @@ fn conv_z_r7_autocorr(
         if i < n2: v = add_p(v, a[i + m2].v, p)
         if i < n3: v = add_p(v, a[i + m3].v, p)
         d[i] = v
-    conv_exec_even(mut d, m, h2, 2, p, 0, rt, irt, r3, ir3, sw, isw)
+    conv_exec_even(mut d, m, h2, 2, 0, roots)
     for k in 0..m:
         let c0 = mred1(d[k] * scale, p, pinv)
         out[sh + k].v = c0
@@ -561,13 +485,10 @@ fn conv_z_r7_autocorr(
             let sr = x0 + mred(x1 * wr1 + x2 * wr2 + x3 * wr3, p, pinv)
             let ss = x0 + mred(x1 * ws1 + x2 * ws2 + x3 * ws3, p, pinv)
             d[i] = mred1(sr * z7_m[tr], p, pinv)
-            let dst = if i == 0: m else: m2 - i
-            d[dst] = mred1(ss * z7_m[ts], p, pinv)
-            tr += step_r
-            if tr >= 7: tr -= 7
-            ts += step_s
-            if ts >= 7: ts -= 7
-        conv_exec_even(mut d, m, h2, 0, p, 0, rt, irt, r3, ir3, sw, isw)
+            d[if i == 0: m else: m2 - i] = mred1(ss * z7_m[ts], p, pinv)
+            tr = add7(tr, step_r)
+            ts = add7(ts, step_s)
+        conv_exec_even(mut d, m, h2, 0, 0, roots)
         // Fused un-twist + 7-point IDFT accumulation directly in registers
         var ti_inv = 0
         var ti_fwd = 0
@@ -581,10 +502,8 @@ fn conv_z_r7_autocorr(
                 out[sh + m2 + k].v = add_p(out[sh + m2 + k].v, mred1(cr * ws2 + cs * wr2, p, pinv), p)
                 if k < n3:
                     out[sh + m3 + k].v = add_p(out[sh + m3 + k].v, mred1(cr * ws3 + cs * wr3, p, pinv), p)
-            ti_inv += step_s
-            if ti_inv >= 7: ti_inv -= 7
-            ti_fwd += step_r
-            if ti_fwd >= 7: ti_fwd -= 7
+            ti_inv = add7(ti_inv, step_s)
+            ti_fwd = add7(ti_fwd, step_r)
     for k in 1..na:
         out[sh - k] = out[sh + k]
     out
@@ -618,12 +537,12 @@ fn conv_core(a: List<Int>, b: List<Int>, out_len: Int, mode: Int, p: Int) -> Lis
                 for j in 0..lim:
                     res[i + j] = (res[i + j] + ai * b[j]) % p
         return [res[i] for i in 0..out_len]
-    let (rt, irt, r3, ir3, sw, isw) = build_roots(p)
+    let roots = build_roots(p)
     let size = next_pow2(out_len)
     let h = ilog2_pow2(size)
     let sides = if mode == 0: 2 else: 1
-    let pinv = if p == 998244353: 998244351 elif p == 469762049: 469762047 else: 167772159
-    let one_m = if p == 998244353: 301989884 elif p == 469762049: 67108855 else: 100663271
+    let pinv = roots.pinv
+    let one_m = roots.one_m
     let p2 = p + p
     let scale = pow_mod_i(size >> 2, p - 2, p) * ((one_m * one_m) % p) % p
     var out = List.filled(out_len, 0)
@@ -632,7 +551,7 @@ fn conv_core(a: List<Int>, b: List<Int>, out_len: Int, mode: Int, p: Int) -> Lis
         for i in 0..na: d[i] = a[i]
         if mode == 0:
             for i in 0..nb: d[size + i] = b[i]
-        conv_exec_even(mut d, size, h, mode, p, 0, rt, irt, r3, ir3, sw, isw)
+        conv_exec_even(mut d, size, h, mode, 0, roots)
         if mode == 2:
             let sh = na - 1
             out[sh] = mred1(d[0] * scale, p, pinv)
@@ -646,43 +565,29 @@ fn conv_core(a: List<Int>, b: List<Int>, out_len: Int, mode: Int, p: Int) -> Lis
         return out
     let half = size >> 1
     let h2 = h - 1
+    let lim0 = min(half, out_len)
     var d: [0..sides * half]Int
-    load_odd_i(mut d, 0, a, half, p2, false)
-    if mode == 0: load_odd_i(mut d, half, b, half, p2, false)
-    conv_exec_even(mut d, half, h2, mode, p, 0, rt, irt, r3, ir3, sw, isw)
+    for pass in 0..2:
+        let neg = pass == 1
+        load_odd_i(mut d, 0, a, half, p2, neg)
+        if mode == 0: load_odd_i(mut d, half, b, half, p2, neg)
+        conv_exec_even(mut d, half, h2, mode, pass, roots)
+        if mode == 2:
+            let sh = na - 1
+            for k in 0..na:
+                let v = mred1(d[k] * scale, p, pinv)
+                out[sh + k] = if neg: add_p(out[sh + k], v, p) else: v
+        elif not neg:
+            for i in 0..lim0: out[i] = mred1(d[i] * scale, p, pinv)
+        else:
+            for i in 0..lim0:
+                let lv = out[i]
+                let rv = mred1(d[i] * scale, p, pinv)
+                out[i] = add_p(lv, rv, p)
+                if i + half < out_len: out[i + half] = sub_p(lv, rv, p)
     if mode == 2:
         let sh = na - 1
-        for k in 0..na:
-            out[sh + k] = mred1(d[k] * scale, p, pinv)
-    else:
-        let lim0 = if half < out_len: half else: out_len
-        for i in 0..lim0:
-            out[i] = mred1(d[i] * scale, p, pinv)
-    load_odd_i(mut d, 0, a, half, p2, true)
-    if mode == 0: load_odd_i(mut d, half, b, half, p2, true)
-    conv_exec_even(mut d, half, h2, mode, p, 1, rt, irt, r3, ir3, sw, isw)
-    if mode == 2:
-        let sh = na - 1
-        let r0 = mred1(d[0] * scale, p, pinv)
-        let s0 = out[sh] + r0
-        out[sh] = if s0 >= p: s0 - p else: s0
-        for k in 1..na:
-            let rk = mred1(d[k] * scale, p, pinv)
-            let sk = out[sh + k] + rk
-            let val = if sk >= p: sk - p else: sk
-            out[sh + k] = val
-            out[sh - k] = val
-    else:
-        let lim0 = if half < out_len: half else: out_len
-        for i in 0..lim0:
-            let lv = out[i]
-            let rv = mred1(d[i] * scale, p, pinv)
-            let s0 = lv + rv
-            out[i] = if s0 >= p: s0 - p else: s0
-            let j = i + half
-            if j < out_len:
-                let s1 = lv - rv
-                out[j] = if s1 < 0: s1 + p else: s1
+        for k in 1..na: out[sh - k] = out[sh + k]
     out
 
 fn conv_z(a: List<Z>, b: List<Z>, mode: Int) -> List<Z>:
@@ -691,85 +596,66 @@ fn conv_z(a: List<Z>, b: List<Z>, mode: Int) -> List<Z>:
     if na == 0 or nb == 0:
         return []
     let out_len = na + nb - 1
-    let min_ab = if na < nb: na else: nb
-    if min_ab <= 60:
+    let p = Z.MOD
+    if min(na, nb) <= 60:
         var res: [0..out_len]Int
         for i in 0..na:
             let ai = a[i].v
             if ai != 0:
                 for j in 0..nb:
-                    res[i + j] = (res[i + j] + ai * b[j].v) % 998244353
-        var out_s = List.filled(out_len, Z(0))
+                    res[i + j] = (res[i + j] + ai * b[j].v) % p
+        var out_s = List.filled(out_len, Z.zero)
         for i in 0..out_len:
             out_s[i].v = res[i]
         return out_s
-    let p = 998244353
     let pinv = 998244351
     let p2 = 1996488706
-    let (rt, irt, r3, ir3, sw, isw) = build_roots(p)
+    let roots = build_roots(p)
     let size = next_pow2(out_len)
     let h = ilog2_pow2(size)
     if mode == 2 and (h & 1) == 1 and h >= 9 and out_len <= 7 * (size >> 3):
-        return conv_z_r7_autocorr(a, out_len, h - 3, rt, irt, r3, ir3, sw, isw)
+        return conv_z_r7_autocorr(a, out_len, h - 3, roots)
     let sides = if mode == 0: 2 else: 1
     let scale = pow_mod_i(size >> 2, p - 2, p) * 932051910 % p
-    var out = List.filled(out_len, Z(0))
+    var out = List.filled(out_len, Z.zero)
     if (h & 1) == 0:
         var d: [0..sides * size]Int
         for i in 0..na: d[i] = a[i].v
         if mode == 0:
             for i in 0..nb: d[size + i] = b[i].v
-        conv_exec_even(mut d, size, h, mode, p, 0, rt, irt, r3, ir3, sw, isw)
+        conv_exec_even(mut d, size, h, mode, 0, roots)
         if mode == 2:
             let sh = na - 1
-            out[sh].v = mred1(d[0] * scale, p, pinv)
-            for k in 1..na:
-                let v = mred1(d[k] * scale, p, pinv)
-                out[sh + k].v = v
-                out[sh - k].v = v
+            for k in 0..na: out[sh + k].v = mred1(d[k] * scale, p, pinv)
+            for k in 1..na: out[sh - k] = out[sh + k]
         else:
-            for i in 0..out_len:
-                out[i].v = mred1(d[i] * scale, p, pinv)
+            for i in 0..out_len: out[i].v = mred1(d[i] * scale, p, pinv)
         return out
     let half = size >> 1
     let h2 = h - 1
+    let lim0 = min(half, out_len)
     var d: [0..sides * half]Int
-    load_odd_z(mut d, 0, a, half, p2, false)
-    if mode == 0: load_odd_z(mut d, half, b, half, p2, false)
-    conv_exec_even(mut d, half, h2, mode, p, 0, rt, irt, r3, ir3, sw, isw)
+    for pass in 0..2:
+        let neg = pass == 1
+        load_odd_z(mut d, 0, a, half, p2, neg)
+        if mode == 0: load_odd_z(mut d, half, b, half, p2, neg)
+        conv_exec_even(mut d, half, h2, mode, pass, roots)
+        if mode == 2:
+            let sh = na - 1
+            for k in 0..na:
+                let v = mred1(d[k] * scale, p, pinv)
+                out[sh + k].v = if neg: add_p(out[sh + k].v, v, p) else: v
+        elif not neg:
+            for i in 0..lim0: out[i].v = mred1(d[i] * scale, p, pinv)
+        else:
+            for i in 0..lim0:
+                let lv = out[i].v
+                let rv = mred1(d[i] * scale, p, pinv)
+                out[i].v = add_p(lv, rv, p)
+                if i + half < out_len: out[i + half].v = sub_p(lv, rv, p)
     if mode == 2:
         let sh = na - 1
-        for k in 0..na:
-            out[sh + k].v = mred1(d[k] * scale, p, pinv)
-    else:
-        let lim0 = if half < out_len: half else: out_len
-        for i in 0..lim0:
-            out[i].v = mred1(d[i] * scale, p, pinv)
-    load_odd_z(mut d, 0, a, half, p2, true)
-    if mode == 0: load_odd_z(mut d, half, b, half, p2, true)
-    conv_exec_even(mut d, half, h2, mode, p, 1, rt, irt, r3, ir3, sw, isw)
-    if mode == 2:
-        let sh = na - 1
-        let r0 = mred1(d[0] * scale, p, pinv)
-        let s0 = out[sh].v + r0
-        out[sh].v = if s0 >= p: s0 - p else: s0
-        for k in 1..na:
-            let rk = mred1(d[k] * scale, p, pinv)
-            let sk = out[sh + k].v + rk
-            let v = if sk >= p: sk - p else: sk
-            out[sh + k].v = v
-            out[sh - k].v = v
-    else:
-        let lim0 = if half < out_len: half else: out_len
-        for i in 0..lim0:
-            let lv = out[i].v
-            let rv = mred1(d[i] * scale, p, pinv)
-            let s0 = lv + rv
-            out[i].v = if s0 >= p: s0 - p else: s0
-            let j = i + half
-            if j < out_len:
-                let s1 = lv - rv
-                out[j].v = if s1 < 0: s1 + p else: s1
+        for k in 1..na: out[sh - k] = out[sh + k]
     out
 
 fn detect_sym_mode(a: List<Int>, b: List<Int>) -> Int:
@@ -846,7 +732,7 @@ pub fn middle_product(a: List<Z>, b: List<Z>) -> List<Z>:
     let out_len = na - nb + 1
     let p = 998244353
     if nb <= 32 or out_len <= 32:
-        var out = List.filled(out_len, Z(0))
+        var out = List.filled(out_len, Z.zero)
         for i in 0..out_len:
             var acc = 0
             for j in 0..nb:
@@ -859,36 +745,36 @@ pub fn middle_product(a: List<Z>, b: List<Z>) -> List<Z>:
     var rb = List.filled(nb, 0)
     for j in 0..nb: rb[j] = b[nb - 1 - j].v
     let rc = conv_core(ra, rb, size, 0, 998244353)
-    var out = List.filled(out_len, Z(0))
+    var out = List.filled(out_len, Z.zero)
     for i in 0..out_len: out[i] = Z(rc[nb - 1 + i])
     out
 
 fn head(p: List<Z>, n: Int) -> List<Z>:
     let m = min(p.len, n)
-    var out = List.filled(m, Z(0))
+    var out = List.filled(m, Z.zero)
     for i in 0..m: out[i] = p[i]
     out
 
 fn pad_to(p: List<Z>, n: Int) -> List<Z>:
-    var out = List.filled(n, Z(0))
+    var out = List.filled(n, Z.zero)
     let m = min(p.len, n)
     for i in 0..m: out[i] = p[i]
     out
 
 fn trim_zeros(p: List<Z>) -> List<Z>:
     var n = p.len
-    while n > 0 and p[n - 1].v == 0: n -= 1
+    while n > 0 and p[n - 1] == 0: n -= 1
     head(p, n)
 
 fn rev_poly(p: List<Z>) -> List<Z>:
     let n = p.len
-    var out = List.filled(n, Z(0))
+    var out = List.filled(n, Z.zero)
     for i in 0..n: out[i] = p[n - 1 - i]
     out
 
 fn add_poly(a: List<Z>, b: List<Z>) -> List<Z>:
     let n = max(a.len, b.len)
-    var out = List.filled(n, Z(0))
+    var out = List.filled(n, Z.zero)
     for i in 0..a.len: out[i] = a[i]
     for i in 0..b.len: out[i] += b[i]
     out
@@ -897,7 +783,7 @@ fn add_poly(a: List<Z>, b: List<Z>) -> List<Z>:
 pub fn derivative(p: List<Z>) -> List<Z>:
     if p.len <= 1: return []
     let n = p.len - 1
-    var out = List.filled(n, Z(0))
+    var out = List.filled(n, Z.zero)
     for i in 0..n: out[i] = p[i + 1] * Z(i + 1)
     out
 
@@ -907,79 +793,48 @@ pub fn integral(p: List<Z>) -> List<Z>:
     if n == 0: return []
     let (fact, ifact) = build_facts(n)
     let mod_p = 998244353
-    var out = List.filled(n + 1, Z(0))
+    var out = List.filled(n + 1, Z.zero)
     for i in 0..n:
         let inv_i = (ifact[i + 1] * fact[i]) % mod_p
         out[i + 1] = Z((p[i].v * inv_i) % mod_p)
     out
 
-// Fast 5-NTT Newton step of size 2m for 1 / p mod x^keep over raw Ints.
-fn inv_trunc_raw(p_in: List<Int>, keep: Int) -> List<Int>:
-    if keep == 0: return []
-    let mod_p = 998244353
-    let inv0 = pow_mod_i(p_in[0], mod_p - 2, mod_p)
-    if keep <= 32:
-        var g = List.filled(keep, 0)
-        g[0] = inv0
-        for i in 1..keep:
-            var s = 0
-            let lim = min(i + 1, p_in.len)
-            for j in 1..lim:
-                s = (s + p_in[j] * g[i - j]) % mod_p
-            g[i] = ((mod_p - s) * inv0) % mod_p
-        return g
-    var g = List.filled(keep, 0)
-    g[0] = inv0
-    var m = 1
-    while m < keep:
-        let size = m << 1
-        var fg = List.filled(size, 0)
-        for i in 0..m: fg[i] = g[i]
-        dif_p1(mut fg)
-        var fp = List.filled(size, 0)
-        let lim = min(p_in.len, size)
-        for i in 0..lim: fp[i] = p_in[i]
-        dif_p1(mut fp)
-        for i in 0..size:
-            let x = fg[i] * fp[i]
-            fp[i] = (x + (((x & 4294967295) * 998244351) & 4294967295) * mod_p) >> 32
-        dit_p1_r2(mut fp)
-        for i in 0..m: fp[i] = 0
-        dif_p1(mut fp)
-        for i in 0..size:
-            let x = fp[i] * fg[i]
-            fp[i] = (x + (((x & 4294967295) * 998244351) & 4294967295) * mod_p) >> 32
-        dit_p1_r2(mut fp)
-        let stop = min(size, keep)
-        for i in m..stop:
-            let v = fp[i]
-            g[i] = if v == 0: 0 else: mod_p - v
-        m = size
-    g
+fn sub_z(p: List<Z>, lo: Int, hi: Int) -> List<Z>:
+    let n = max(hi - lo, 0)
+    var out = List.filled(n, Z.zero)
+    for i in 0..n: out[i] = p[lo + i]
+    out
 
 /// Multiplicative inverse `1 / p mod x^keep`; requires `p[0] != 0`.
 pub fn inv_trunc(p: List<Z>, keep: Int) -> List<Z>:
     if keep == 0: return []
-    assert p.len > 0 and p[0].v != 0
-    let n = min(p.len, keep)
-    var rp = List.filled(n, 0)
-    for i in 0..n: rp[i] = p[i].v
-    let rg = inv_trunc_raw(rp, keep)
-    var out = List.filled(keep, Z(0))
-    for i in 0..keep: out[i] = Z(rg[i])
-    out
+    assert p.len > 0 and p[0] != 0
+    var g = List.filled(keep, Z.zero)
+    g[0] = p[0].inv
+    var m = 1
+    while m < keep:
+        let size = min(m << 1, keep)
+        let gm = sub_z(g, 0, m)
+        let pg = convolve(sub_z(p, 0, min(p.len, size)), gm)
+        let hi_end = min(pg.len, size)
+        if hi_end > m:
+            let rg = convolve(sub_z(pg, m, hi_end), gm)
+            let lim = min(rg.len, size - m)
+            for i in 0..lim: g[m + i] = -rg[i]
+        m = size
+    g
 
 /// Formal logarithm `ln(p) mod x^keep`; requires `p[0] == 1`.
 pub fn log_trunc(p: List<Z>, keep: Int) -> List<Z>:
     if keep == 0: return []
     assert p.len > 0 and p[0].v == 1
-    if keep == 1: return [Z(0)]
+    if keep == 1: return [Z.zero]
     pad_to(integral(head(convolve(derivative(head(p, keep)), inv_trunc(p, keep)), keep - 1)), keep)
 
 /// Formal exponential `exp(p) mod x^keep`; requires `p[0] == 0`.
 pub fn exp_trunc(p: List<Z>, keep: Int) -> List<Z>:
     if keep == 0: return []
-    assert p.len == 0 or p[0].v == 0
+    assert p.len == 0 or p[0] == 0
     if keep <= 32:
         let (fact, ifact) = build_facts(keep)
         let mod_p = 998244353
@@ -992,19 +847,19 @@ pub fn exp_trunc(p: List<Z>, keep: Int) -> List<Z>:
                 s = (s + ((j * p[j].v) % mod_p) * g[k - j]) % mod_p
             let inv_k = (ifact[k] * fact[k - 1]) % mod_p
             g[k] = (s * inv_k) % mod_p
-        var out = List.filled(keep, Z(0))
+        var out = List.filled(keep, Z.zero)
         for i in 0..keep: out[i] = Z(g[i])
         return out
-    var g = [Z(1)]
+    var g = [Z.one]
     var m = 1
     while m < keep:
         let size = min(2 * m, keep)
         let lg = log_trunc(g, size)
-        var diff = List.filled(size, Z(0))
+        var diff = List.filled(size, Z.zero)
         for i in 0..size:
-            let pi = if i < p.len: p[i] else: Z(0)
+            let pi = if i < p.len: p[i] else: Z.zero
             diff[i] = pi - lg[i]
-        diff[0] += Z(1)
+        diff[0] += Z.one
         g = head(convolve(g, diff), size)
         m *= 2
     g
@@ -1014,43 +869,43 @@ pub fn exp_trunc(p: List<Z>, keep: Int) -> List<Z>:
 pub fn pow_trunc(p: List<Z>, e: Int, keep: Int) -> List<Z>:
     if keep == 0: return []
     if e == 0:
-        var out = List.filled(keep, Z(0))
-        out[0] = Z(1)
+        var out = List.filled(keep, Z.zero)
+        out[0] = Z.one
         return out
     if e < 0:
-        assert p.len > 0 and p[0].v != 0
+        assert p.len > 0 and p[0] != 0
         let c = p[0]
         let ic = c.inv
         let n = min(p.len, keep)
-        var q = List.filled(n, Z(0))
+        var q = List.filled(n, Z.zero)
         for i in 0..n: q[i] = p[i] * ic
         let lg = log_trunc(q, keep)
         let ez = Z(e)
-        var scaled = List.filled(keep, Z(0))
+        var scaled = List.filled(keep, Z.zero)
         for i in 0..keep: scaled[i] = lg[i] * ez
         let power = exp_trunc(scaled, keep)
         let scale = c.pow(e)
-        var out = List.filled(keep, Z(0))
+        var out = List.filled(keep, Z.zero)
         for i in 0..keep: out[i] = power[i] * scale
         return out
     var first = 0
-    while first < p.len and p[first].v == 0: first += 1
+    while first < p.len and p[first] == 0: first += 1
     if first == p.len or (first > 0 and e > (keep - 1) / first):
-        return List.filled(keep, Z(0))
+        return List.filled(keep, Z.zero)
     let shift = first * e
     let rem = keep - shift
     let c = p[first]
     let ic = c.inv
     let n = min(p.len - first, rem)
-    var q = List.filled(n, Z(0))
+    var q = List.filled(n, Z.zero)
     for i in 0..n: q[i] = p[first + i] * ic
     let lg = log_trunc(q, rem)
     let ez = Z(e)
-    var scaled = List.filled(rem, Z(0))
+    var scaled = List.filled(rem, Z.zero)
     for i in 0..rem: scaled[i] = lg[i] * ez
     let power = exp_trunc(scaled, rem)
     let scale = c.pow(e)
-    var out = List.filled(keep, Z(0))
+    var out = List.filled(keep, Z.zero)
     for i in 0..rem: out[shift + i] = power[i] * scale
     out
 
@@ -1058,18 +913,18 @@ pub fn pow_trunc(p: List<Z>, e: Int, keep: Int) -> List<Z>:
 pub fn pow_mod_trunc(p: List<Z>, alpha: Z, keep: Int) -> List<Z>:
     if keep == 0: return []
     assert p.len > 0 and p[0].v == 1
-    if alpha.v == 0:
-        var out = List.filled(keep, Z(0))
-        out[0] = Z(1)
+    if alpha == 0:
+        var out = List.filled(keep, Z.zero)
+        out[0] = Z.one
         return out
     let lg = log_trunc(p, keep)
-    var scaled = List.filled(keep, Z(0))
+    var scaled = List.filled(keep, Z.zero)
     for i in 0..keep: scaled[i] = lg[i] * alpha
     exp_trunc(scaled, keep)
 
 // Tonelli-Shanks square root mod P = 998244353 (returns min(r, P - r)).
 fn sqrt_mod_z(a: Z) -> Z:
-    if a.v == 0: return Z(0)
+    if a == 0: return Z.zero
     let p = 998244353
     assert pow_mod_i(a.v, (p - 1) >> 1, p) == 1
     var q = p - 1
@@ -1107,27 +962,27 @@ pub fn pow_rat_trunc(p: List<Z>, num: Int, den: Int, keep: Int) -> List<Z>:
     assert den > 0 and den % 998244353 != 0
     if keep == 0: return []
     if num == 0:
-        var out = List.filled(keep, Z(0))
-        out[0] = Z(1)
+        var out = List.filled(keep, Z.zero)
+        out[0] = Z.one
         return out
     var first = 0
-    while first < p.len and p[first].v == 0: first += 1
+    while first < p.len and p[first] == 0: first += 1
     if first == p.len:
         assert num > 0
-        return List.filled(keep, Z(0))
+        return List.filled(keep, Z.zero)
     if first > 0:
         assert num > 0 and first % den == 0
         let step = first / den
-        if step > (keep - 1) / num: return List.filled(keep, Z(0))
+        if step > (keep - 1) / num: return List.filled(keep, Z.zero)
         let shift = step * num
         let rem = keep - shift
         let sub = pow_rat_trunc([p[first + i] for i in 0..min(p.len - first, rem)], num, den, rem)
-        var out = List.filled(keep, Z(0))
+        var out = List.filled(keep, Z.zero)
         for i in 0..rem: out[shift + i] = sub[i]
         return out
     let c = p[0]
     let c_scale = if c.v == 1:
-        Z(1)
+        Z.one
     elif den == 1:
         c.pow(num)
     elif den == 2:
@@ -1140,11 +995,11 @@ pub fn pow_rat_trunc(p: List<Z>, num: Int, den: Int, keep: Int) -> List<Z>:
         c.pow(e_root).pow(num)
     let ic = c.inv
     let n = min(p.len, keep)
-    var q = List.filled(n, Z(0))
+    var q = List.filled(n, Z.zero)
     for i in 0..n: q[i] = p[i] * ic
     let alpha = Z(num) * Z(den).inv
     let base = pow_mod_trunc(q, alpha, keep)
-    var out = List.filled(keep, Z(0))
+    var out = List.filled(keep, Z.zero)
     for i in 0..keep: out[i] = base[i] * c_scale
     out
 
@@ -1165,16 +1020,16 @@ pub fn div_mod(a: List<Z>, b: List<Z>) -> (List<Z>, List<Z>):
     let q = rev_poly(q_rev)
     let qb = convolve(q, tb)
     let r_len = tb.len - 1
-    var r = List.filled(r_len, Z(0))
+    var r = List.filled(r_len, Z.zero)
     for i in 0..r_len:
-        let ai = if i < ta.len: ta[i] else: Z(0)
-        let qbi = if i < qb.len: qb[i] else: Z(0)
+        let ai = if i < ta.len: ta[i] else: Z.zero
+        let qbi = if i < qb.len: qb[i] else: Z.zero
         r[i] = ai - qbi
     (trim_zeros(q), trim_zeros(r))
 
 /// Product of all polynomials in `polys` in `O(S log^2 S)` where `S` is total degree.
 pub fn prod_polys(polys: List<List<Z>>) -> List<Z>:
-    if polys.len == 0: return [Z(1)]
+    if polys.len == 0: return [Z.one]
     if polys.len == 1: return polys[0]
     // Min-heap by polynomial length so unequal degrees balance optimally.
     var pool: List<List<Z>> = []
@@ -1187,9 +1042,7 @@ pub fn prod_polys(polys: List<List<Z>>) -> List<Z>:
         while cur > 0:
             let par = (cur - 1) >> 1
             if pool[heap[cur]].len < pool[heap[par]].len:
-                let t = heap[cur]
-                heap[cur] = heap[par]
-                heap[par] = t
+                heap.swap(cur, par)
                 cur = par
             else:
                 break
@@ -1207,9 +1060,7 @@ pub fn prod_polys(polys: List<List<Z>>) -> List<Z>:
                 if l < heap.len and pool[heap[l]].len < pool[heap[best]].len: best = l
                 if r < heap.len and pool[heap[r]].len < pool[heap[best]].len: best = r
                 if best == cur: break
-                let t = heap[cur]
-                heap[cur] = heap[best]
-                heap[best] = t
+                heap.swap(cur, best)
                 cur = best
         // pop second smallest
         let b_id = heap[0]
@@ -1224,9 +1075,7 @@ pub fn prod_polys(polys: List<List<Z>>) -> List<Z>:
                 if l < heap.len and pool[heap[l]].len < pool[heap[best]].len: best = l
                 if r < heap.len and pool[heap[r]].len < pool[heap[best]].len: best = r
                 if best == cur: break
-                let t = heap[cur]
-                heap[cur] = heap[best]
-                heap[best] = t
+                heap.swap(cur, best)
                 cur = best
         let prod = convolve(pool[a_id], pool[b_id])
         let new_id = pool.len
@@ -1236,9 +1085,7 @@ pub fn prod_polys(polys: List<List<Z>>) -> List<Z>:
         while cur > 0:
             let par = (cur - 1) >> 1
             if pool[heap[cur]].len < pool[heap[par]].len:
-                let t = heap[cur]
-                heap[cur] = heap[par]
-                heap[par] = t
+                heap.swap(cur, par)
                 cur = par
             else:
                 break
@@ -1246,7 +1093,7 @@ pub fn prod_polys(polys: List<List<Z>>) -> List<Z>:
 
 /// Monic polynomial `prod_{c in pts} (x - c)` in `O(n log^2 n)`.
 pub fn prod_linear(pts: List<Z>) -> List<Z>:
-    if pts.len == 0: return [Z(1)]
+    if pts.len == 0: return [Z.one]
     SubproductTree.new(pts).product()
 
 /// Subproduct tree over points `pts` supporting `O((n + m) log^2 m)` multipoint
@@ -1260,9 +1107,9 @@ impl SubproductTree:
     /// Builds the product tree of `(x - pts[i])` in `O(n log^2 n)`.
     pub fn new(pts: List<Z>) -> SubproductTree:
         let n = pts.len
-        if n == 0: return SubproductTree(n: 0, pts: [], nodes: [[Z(1)]])
+        if n == 0: return SubproductTree(n: 0, pts: [], nodes: [[Z.one]])
         var nodes: List<List<Z>> = List.filled(2 * n, [])
-        for i in 0..n: nodes[n + i] = [-pts[i], Z(1)]
+        for i in 0..n: nodes[n + i] = [-pts[i], Z.one]
         var i = n - 1
         while i >= 1:
             nodes[i] = convolve(nodes[2 * i], nodes[2 * i + 1])
@@ -1271,14 +1118,14 @@ impl SubproductTree:
 
     /// Root polynomial `prod_{i=0}^{n-1} (x - pts[i])`.
     pub fn product(self) -> List<Z>:
-        if self.n == 0: return [Z(1)]
+        if self.n == 0: return [Z.one]
         self.nodes[1]
 
     /// Evaluates `p` at every point in `self.pts` in `O((p.len + n) log^2 n)`.
     pub fn eval(self, p: List<Z>) -> List<Z>:
         let n = self.n
         if n == 0: return []
-        if p.len == 0: return List.filled(n, Z(0))
+        if p.len == 0: return List.filled(n, Z.zero)
         let root = self.nodes[1]
         let reduced = if p.len > n: div_mod(p, root).1 else: p
         let r_pad = pad_to(reduced, n)
@@ -1289,7 +1136,7 @@ impl SubproductTree:
         for i in 1..n:
             down[2 * i] = middle_product(down[i], self.nodes[2 * i + 1])
             down[2 * i + 1] = middle_product(down[i], self.nodes[2 * i])
-        var out = List.filled(n, Z(0))
+        var out = List.filled(n, Z.zero)
         for i in 0..n: out[i] = down[n + i][0]
         out
 
@@ -1301,9 +1148,9 @@ impl SubproductTree:
         if n == 0: return []
         let derivs = self.eval(derivative(self.nodes[1]))
         // Batch-invert derivs[0..n] with Montgomery's trick
-        var pref = List.filled(n + 1, Z(1))
+        var pref = List.filled(n + 1, Z.one)
         for i in 0..n:
-            assert derivs[i].v != 0
+            assert derivs[i] != 0
             pref[i + 1] = pref[i] * derivs[i]
         var inv_all = pref[n].inv
         var up: List<List<Z>> = List.filled(2 * n, [])
@@ -1333,7 +1180,7 @@ pub fn interpolate_fast(xs: List<Z>, ys: List<Z>) -> List<Z>:
 /// Taylor shift `p(x + c)` in `O(n log n)`.
 pub fn taylor_shift(p: List<Z>, c: Z) -> List<Z>:
     let n = p.len
-    if n <= 1 or c.v == 0: return p
+    if n <= 1 or c == 0: return p
     let (fact, ifact) = build_facts(n)
     let mod_p = 998244353
     var a = List.filled(n, 0)
@@ -1344,7 +1191,7 @@ pub fn taylor_shift(p: List<Z>, c: Z) -> List<Z>:
         b[i] = (cp * ifact[i]) % mod_p
         cp = (cp * c.v) % mod_p
     let prod = convolve_p1_raw(a, b)
-    var out = List.filled(n, Z(0))
+    var out = List.filled(n, Z.zero)
     for k in 0..n:
         out[k] = Z((prod[n - 1 - k] * ifact[k]) % mod_p)
     out
@@ -1353,7 +1200,7 @@ pub fn taylor_shift(p: List<Z>, c: Z) -> List<Z>:
 fn shift_eval_disjoint(ys: List<Z>, c: Z, m: Int) -> List<Z>:
     let n = ys.len
     if m == 0: return []
-    if n == 0: return List.filled(m, Z(0))
+    if n == 0: return List.filled(m, Z.zero)
     let (_, ifact) = build_facts(n)
     let mod_p = 998244353
     var a = List.filled(n, 0)
@@ -1387,7 +1234,7 @@ fn shift_eval_disjoint(ys: List<Z>, c: Z, m: Int) -> List<Z>:
             inv_pref_m[j] = inv_p
             if j > 0: inv_p = (inv_p * offsets[j - 1]) % mod_p
             j -= 1
-    var out = List.filled(m, Z(0))
+    var out = List.filled(m, Z.zero)
     for j in 0..m:
         let factor = (pref[j + n] * inv_pref_m[j]) % mod_p
         out[j] = Z((factor * prod[j + n - 1]) % mod_p)
@@ -1399,9 +1246,9 @@ fn shift_eval_disjoint(ys: List<Z>, c: Z, m: Int) -> List<Z>:
 pub fn shift_eval(ys: List<Z>, c: Z, m: Int) -> List<Z>:
     let n = ys.len
     if m == 0: return []
-    if n == 0: return List.filled(m, Z(0))
+    if n == 0: return List.filled(m, Z.zero)
     let mod_p = 998244353
-    var out = List.filled(m, Z(0))
+    var out = List.filled(m, Z.zero)
     // Split 0..m into contiguous non-overlapping runs outside 0..n (mod P)
     var i = 0
     while i < m:
@@ -1422,11 +1269,11 @@ pub fn shift_eval(ys: List<Z>, c: Z, m: Int) -> List<Z>:
 /// Evaluates polynomial `p` at arithmetic progression `start + k * step` for `k = 0..count`.
 pub fn eval_ap(p: List<Z>, start: Z, step: Z, count: Int) -> List<Z>:
     if count == 0: return []
-    if p.len == 0: return List.filled(count, Z(0))
-    if step.v == 0:
+    if p.len == 0: return List.filled(count, Z.zero)
+    if step == 0:
         return List.filled(count, eval_poly(p, start))
     if count <= p.len:
-        var xs = List.filled(count, Z(0))
+        var xs = List.filled(count, Z.zero)
         var cur = start
         for k in 0..count:
             xs[k] = cur
@@ -1434,14 +1281,14 @@ pub fn eval_ap(p: List<Z>, start: Z, step: Z, count: Int) -> List<Z>:
         return multipoint_eval(p, xs)
     // Evaluate at the first p.len points, then extend in O(count log count) via shift_eval
     let d = p.len
-    var xs = List.filled(d, Z(0))
+    var xs = List.filled(d, Z.zero)
     var cur = start
     for k in 0..d:
         xs[k] = cur
         cur += step
     let init = multipoint_eval(p, xs)
     let rest = shift_eval(init, Z(d), count - d)
-    var out = List.filled(count, Z(0))
+    var out = List.filled(count, Z.zero)
     for k in 0..d: out[k] = init[k]
     for k in 0..count - d: out[d + k] = rest[k]
     out
@@ -1450,8 +1297,8 @@ pub fn eval_ap(p: List<Z>, start: Z, step: Z, count: Int) -> List<Z>:
 /// in `O((p.len + count) log (p.len + count))`.
 pub fn eval_gp(p: List<Z>, a: Z, r: Z, count: Int) -> List<Z>:
     if count == 0: return []
-    if p.len == 0: return List.filled(count, Z(0))
-    if r.v == 0:
+    if p.len == 0: return List.filled(count, Z.zero)
+    if r == 0:
         var out = List.filled(count, p[0])
         out[0] = eval_poly(p, a)
         return out
@@ -1484,7 +1331,7 @@ pub fn eval_gp(p: List<Z>, a: Z, r: Z, count: Int) -> List<Z>:
     var v = List.filled(v_len, 0)
     for t in 0..v_len: v[t] = r_tri[t]
     let prod = convolve_p1_raw(u, v)
-    var out = List.filled(count, Z(0))
+    var out = List.filled(count, Z.zero)
     for k in 0..count:
         out[k] = Z((prod[n - 1 + k] * ir_tri[k]) % mod_p)
     out
@@ -1532,11 +1379,11 @@ fn biv_advance(mut c: List<Int>, l_big: Int, l_step: Int) -> List<Int>:
 /// (Kinoshita-Li). Automatically handles `g[0] != 0` via `taylor_shift`.
 pub fn compose_trunc(f: List<Z>, g: List<Z>, keep: Int) -> List<Z>:
     if keep == 0: return []
-    if f.len == 0: return List.filled(keep, Z(0))
-    if g.len > 0 and g[0].v != 0:
+    if f.len == 0: return List.filled(keep, Z.zero)
+    if g.len > 0 and g[0] != 0:
         let f_shifted = taylor_shift(f, g[0])
         var g0 = pad_to(head(g, keep), min(g.len, keep))
-        g0[0] = Z(0)
+        g0[0] = Z.zero
         return compose_trunc(f_shifted, g0, keep)
     if keep == 1: return [f[0]]
     let n = keep
@@ -1556,9 +1403,9 @@ pub fn compose_trunc(f: List<Z>, g: List<Z>, keep: Int) -> List<Z>:
     for l_step in 1..=l_big:
         tneg.push(biv_advance(mut q_arr, l_big, l_step))
     // Base step: P = rev(f[0..m]) / Q_L(0, y) mod y^m
-    var rev_f = List.filled(m, Z(0))
+    var rev_f = List.filled(m, Z.zero)
     for i in 0..m: rev_f[i] = f[m - 1 - i]
-    var ql = List.filled(m, Z(0))
+    var ql = List.filled(m, Z.zero)
     let ql_lim = min(k + 1, m)
     for i in 0..ql_lim: ql[i] = Z(q_arr[2 * i])
     let p_base = head(convolve(rev_f, inv_trunc(ql, m)), m)
@@ -1586,7 +1433,7 @@ pub fn compose_trunc(f: List<Z>, g: List<Z>, keep: Int) -> List<Z>:
             p_arr[j] = p_arr[half_b + j]
             p_arr[half_b + j] = 0
         l_cur -= 1
-    var out = List.filled(n, Z(0))
+    var out = List.filled(n, Z.zero)
     for i in 0..n: out[i] = Z(p_arr[i])
     out
 
@@ -1596,11 +1443,11 @@ pub fn compose_trunc(f: List<Z>, g: List<Z>, keep: Int) -> List<Z>:
 pub fn power_projection(g: List<Z>, w: List<Z>, m: Int) -> List<Z>:
     if m == 0: return []
     let n = w.len
-    if n == 0: return List.filled(m, Z(0))
-    if g.len > 0 and g[0].v != 0:
+    if n == 0: return List.filled(m, Z.zero)
+    if g.len > 0 and g[0] != 0:
         let c = g[0].v
         var g0 = pad_to(head(g, n), min(g.len, n))
-        g0[0] = Z(0)
+        g0[0] = Z.zero
         let base = power_projection(g0, w, m)
         let (fact, ifact) = build_facts(m)
         let mod_p = 998244353
@@ -1612,11 +1459,11 @@ pub fn power_projection(g: List<Z>, w: List<Z>, m: Int) -> List<Z>:
             b[k] = (cp * ifact[k]) % mod_p
             cp = (cp * c) % mod_p
         let prod = convolve_p1_raw(a, b)
-        var out = List.filled(m, Z(0))
+        var out = List.filled(m, Z.zero)
         for k in 0..m: out[k] = Z((prod[k] * fact[k]) % mod_p)
         return out
     if n == 1:
-        var out = List.filled(m, Z(0))
+        var out = List.filled(m, Z.zero)
         out[0] = w[0]
         return out
     let k = next_pow2(n)
@@ -1648,9 +1495,9 @@ pub fn power_projection(g: List<Z>, w: List<Z>, m: Int) -> List<Z>:
         while off < half_b:
             for j in 0..stride: p_arr[off + stride + j] = 0
             off += span
-    var py = List.filled(k, Z(0))
+    var py = List.filled(k, Z.zero)
     for j in 0..k: py[j] = Z(p_arr[2 * j])
-    var qy = List.filled(k + 1, Z(0))
+    var qy = List.filled(k + 1, Z.zero)
     for j in 0..=k: qy[j] = Z(q_arr[2 * j])
     let ans = head(convolve(py, inv_trunc(qy, m)), m)
     pad_to(ans, m)
@@ -1659,39 +1506,39 @@ pub fn power_projection(g: List<Z>, w: List<Z>, m: Int) -> List<Z>:
 /// in `O(keep log^2 keep)` via Lagrange inversion; requires `g[0] == 0` and `g[1] != 0`.
 pub fn compose_inv_trunc(g: List<Z>, keep: Int) -> List<Z>:
     if keep == 0: return []
-    if keep == 1: return [Z(0)]
-    assert g.len >= 2 and g[0].v == 0 and g[1].v != 0
+    if keep == 1: return [Z.zero]
+    assert g.len >= 2 and g[0] == 0 and g[1] != 0
     let n = keep - 1
     let c = g[1]
     let ic = c.inv
     let g_lim = min(g.len, keep)
-    var g_norm = List.filled(g_lim, Z(0))
+    var g_norm = List.filled(g_lim, Z.zero)
     for i in 0..g_lim: g_norm[i] = g[i] * ic
-    var w = List.filled(keep, Z(0))
-    w[n] = Z(1)
+    var w = List.filled(keep, Z.zero)
+    w[n] = Z.one
     let proj = power_projection(g_norm, w, keep)
     let (fact, ifact) = build_facts(n)
     let mod_p = 998244353
-    var f_ser = List.filled(n, Z(0))
-    f_ser[0] = Z(1)
+    var f_ser = List.filled(n, Z.zero)
+    f_ser[0] = Z.one
     for k in 1..n:
         let inv_k = (ifact[k] * fact[k - 1]) % mod_p
         f_ser[n - k] = proj[k] * Z((n * inv_k) % mod_p)
     let alpha = -Z(n).inv
     let h_div_x = pow_mod_trunc(f_ser, alpha, n)
-    var out = List.filled(keep, Z(0))
+    var out = List.filled(keep, Z.zero)
     var ic_pow = ic
-    for k in 1..=n:
-        out[k] = h_div_x[k - 1] * ic_pow
+    for k in 0..n:
+        out[k + 1] = h_div_x[k] * ic_pow
         ic_pow *= ic
     out
 
 /// Bostan-Mori: returns `[x^k] (p(x) / q(x))` in `O(d log d log k)` where
 /// `d = max(p.len, q.len)`; requires `q[0] != 0` and `k >= 0`.
 pub fn kth_term(p: List<Z>, q: List<Z>, k: Int) -> Z:
-    assert q.len > 0 and q[0].v != 0 and k >= 0
-    if p.len == 0: return Z(0)
-    let mod_p = 998244353
+    assert q.len > 0 and q[0] != 0 and k >= 0
+    if p.len == 0: return 0
+    let mod_p = Z.MOD
     var cur_p = [x.v for x in p]
     var cur_q = [x.v for x in q]
     var kk = k
@@ -1704,20 +1551,12 @@ pub fn kth_term(p: List<Z>, q: List<Z>, k: Int) -> Z:
         let num = convolve_p1_raw(cur_p, q_neg)
         let den = convolve_p1_raw(cur_q, q_neg)
         let parity = kk & 1
-        var next_p: List<Int> = []
-        var i = parity
-        while i < num.len:
-            next_p.push(num[i])
-            i += 2
-        var next_q: List<Int> = []
-        var j = 0
-        while j < den.len:
-            next_q.push(den[j])
-            j += 2
-        cur_p = next_p
-        cur_q = next_q
+        let np = (num.len - parity + 1) / 2
+        let nd = (den.len + 1) / 2
+        cur_p = [num[parity + 2 * i] for i in 0..np]
+        cur_q = [den[2 * j] for j in 0..nd]
         kk = kk >> 1
-        if cur_p.len == 0: return Z(0)
+        if cur_p.len == 0: return 0
     Z(cur_p[0]) * Z(cur_q[0]).inv
 
 /// Convolution of arbitrary-modulus integer sequences modulo `m` via 3-prime NTT + Garner CRT.
@@ -1813,7 +1652,7 @@ pub fn convolve_mod(a: List<Int>, b: List<Int>, m: Int) -> List<Int>:
 
 /// Horner evaluation of `p` at `x` over `Mod<P>`.
 pub fn eval_poly<P>(p: List<Mod<P>>, x: Mod<P>) -> Mod<P>:
-    var acc = Mod<P>(0)
+    var acc = Mod<P>.zero
     var i = p.len - 1
     while i >= 0:
         acc = acc * x + p[i]
@@ -1824,23 +1663,23 @@ pub fn eval_poly<P>(p: List<Mod<P>>, x: Mod<P>) -> Mod<P>:
 /// in `O(n^2)` over any prime modulus `P`; requires distinct `x`-coordinates.
 pub fn interpolate<P>(pts: List<(Mod<P>, Mod<P>)>) -> List<Mod<P>>:
     let n = pts.len
-    var ans = List.filled(n, Mod<P>(0))
+    var ans = List.filled(n, Mod<P>.zero)
     // prod(x) = product_{k} (x - x_k)
-    var prod = [Mod<P>(1)]
+    var prod = [Mod<P>.one]
     for (xi, _) in pts:
-        var next = List.filled(prod.len + 1, Mod<P>(0))
+        var next = List.filled(prod.len + 1, Mod<P>.zero)
         for k in 0..prod.len:
             next[k] -= prod[k] * xi
             next[k + 1] += prod[k]
         prod = next
     for i in 0..n:
         let (xi, yi) = pts[i]
-        var denom = Mod<P>(1)
+        var denom = Mod<P>.one
         for j in 0..n:
             if i != j: denom *= xi - pts[j].0
         let scale = yi / denom
         // synthetic division of prod by (x - xi), highest degree first
-        var rem = Mod<P>(0)
+        var rem = Mod<P>.zero
         var k = n - 1
         while k >= 0:
             rem = prod[k + 1] + rem * xi
@@ -1851,22 +1690,22 @@ pub fn interpolate<P>(pts: List<(Mod<P>, Mod<P>)>) -> List<Mod<P>>:
 // ---- tests ----
 
 fn coef(p: List<Z>, i: Int) -> Z:
-    if i < p.len: p[i] else: Z(0)
+    if i < p.len: p[i] else: Z.zero
 
 fn slow_mul(a: List<Z>, b: List<Z>, keep: Int) -> List<Z>:
-    var out = List.filled(keep, Z(0))
+    var out = List.filled(keep, Z.zero)
     for i in 0..min(a.len, keep):
         for j in 0..min(b.len, keep - i):
             out[i + j] += a[i] * b[j]
     out
 
 fn slow_inv(p: List<Z>, keep: Int) -> List<Z>:
-    var g = List.filled(keep, Z(0))
+    var g = List.filled(keep, Z.zero)
     if keep == 0: return g
     let inv0 = p[0].inv
     g[0] = inv0
     for k in 1..keep:
-        var s = Z(0)
+        var s = Z.zero
         for j in 1..=k: s += coef(p, j) * g[k - j]
         g[k] = -s * inv0
     g
@@ -1876,14 +1715,14 @@ fn slow_log(p: List<Z>, keep: Int) -> List<Z>:
     let inv = slow_inv(p, keep)
     let d = [coef(p, k + 1) * Z(k + 1) for k in 0..keep - 1]
     let q = slow_mul(d, inv, keep - 1)
-    [if k == 0: Z(0) else: q[k - 1] / Z(k) for k in 0..keep]
+    [if k == 0: Z.zero else: q[k - 1] / Z(k) for k in 0..keep]
 
 fn slow_exp(p: List<Z>, keep: Int) -> List<Z>:
-    var g = List.filled(keep, Z(0))
+    var g = List.filled(keep, Z.zero)
     if keep == 0: return g
-    g[0] = Z(1)
+    g[0] = Z.one
     for k in 1..keep:
-        var s = Z(0)
+        var s = Z.zero
         for j in 1..=k: s += Z(j) * coef(p, j) * g[k - j]
         g[k] = s / Z(k)
     g
@@ -1891,8 +1730,8 @@ fn slow_exp(p: List<Z>, keep: Int) -> List<Z>:
 fn slow_pow(p: List<Z>, e: Int, keep: Int) -> List<Z>:
     if keep == 0: return []
     if e < 0: return slow_pow(slow_inv(p, keep), -e, keep)
-    var res = List.filled(keep, Z(0))
-    res[0] = Z(1)
+    var res = List.filled(keep, Z.zero)
+    res[0] = Z.one
     var base = head(p, keep)
     var exp = e
     while exp > 0:
@@ -1903,9 +1742,9 @@ fn slow_pow(p: List<Z>, e: Int, keep: Int) -> List<Z>:
 
 fn slow_compose(f: List<Z>, g: List<Z>, keep: Int) -> List<Z>:
     if keep == 0: return []
-    var res = List.filled(keep, Z(0))
-    var g_pow = List.filled(keep, Z(0))
-    g_pow[0] = Z(1)
+    var res = List.filled(keep, Z.zero)
+    var g_pow = List.filled(keep, Z.zero)
+    g_pow[0] = Z.one
     let gt = head(g, keep)
     for k in 0..f.len:
         for i in 0..keep: res[i] += f[k] * g_pow[i]
@@ -1915,13 +1754,13 @@ fn slow_compose(f: List<Z>, g: List<Z>, keep: Int) -> List<Z>:
 fn slow_power_projection(g: List<Z>, w: List<Z>, m: Int) -> List<Z>:
     if m == 0: return []
     let n = w.len
-    var out = List.filled(m, Z(0))
+    var out = List.filled(m, Z.zero)
     if n == 0: return out
-    var g_pow = List.filled(n, Z(0))
-    g_pow[0] = Z(1)
+    var g_pow = List.filled(n, Z.zero)
+    g_pow[0] = Z.one
     let gt = head(g, n)
     for k in 0..m:
-        var acc = Z(0)
+        var acc = Z.zero
         for i in 0..n: acc += w[i] * g_pow[i]
         out[k] = acc
         g_pow = slow_mul(g_pow, gt, n)
@@ -1930,9 +1769,9 @@ fn slow_power_projection(g: List<Z>, w: List<Z>, m: Int) -> List<Z>:
 fn slow_taylor_shift(p: List<Z>, c: Z) -> List<Z>:
     let n = p.len
     if n == 0: return []
-    var res = List.filled(n, Z(0))
-    let xc = [c, Z(1)]
-    var pow = [Z(1)]
+    var res = List.filled(n, Z.zero)
+    let xc = [c, Z.one]
+    var pow = [Z.one]
     for k in 0..n:
         for i in 0..pow.len: res[i] += p[k] * pow[i]
         pow = slow_mul(pow, xc, n)
@@ -1941,9 +1780,9 @@ fn slow_taylor_shift(p: List<Z>, c: Z) -> List<Z>:
 fn slow_middle_product(a: List<Z>, b: List<Z>) -> List<Z>:
     if b.len == 0 or a.len < b.len: return []
     let out_len = a.len - b.len + 1
-    var out = List.filled(out_len, Z(0))
+    var out = List.filled(out_len, Z.zero)
     for i in 0..out_len:
-        var s = Z(0)
+        var s = Z.zero
         for j in 0..b.len: s += a[i + j] * b[j]
         out[i] = s
     out
@@ -1969,7 +1808,8 @@ fn table_matches<P>(rank2: Int) -> Bool:
         iwant.push((((irt[j + 3] * iprod) % P) * r_mod) % P)
         prod = (prod * irt[j + 3]) % P
         iprod = (iprod * rt[j + 3]) % P
-    step_roots(P) == want and inv_step_roots(P) == iwant
+    let roots = build_roots(P)
+    roots.r3 == want and roots.ir3 == iwant
 
 @test fn step_root_tables_match_direct_computation():
     assert table_matches::<998244353>(23)
@@ -1983,7 +1823,7 @@ fn table_matches<P>(rank2: Int) -> Bool:
         for _ in 0..n:
             s = lcg_next(s)
             a.push(Z(s))
-        var b = [x for x in a]
+        var b = a.copy()
         ntt(mut b, false)
         ntt(mut b, true)
         assert a == b
@@ -2006,15 +1846,14 @@ fn table_matches<P>(rank2: Int) -> Bool:
         // Autocorrelation fast path (b == rev(a))
         let ra = rev_poly(a)
         assert convolve(a, ra) == slow_mul(a, ra, 2 * n - 1)
-    assert convolve([], [Z(1)]) == []
+    assert convolve([], [Z.one]) == []
 
 @test fn counting_dice_sums():
-    let die = [Z(0), Z(1), Z(1), Z(1), Z(1), Z(1), Z(1)]
+    let die: List<Z> = [0, 1, 1, 1, 1, 1, 1]
     let ways = pow_trunc(die, 20, 121)
-    assert ways[19] == Z(0) and ways[20] == Z(1) and ways[120] == Z(1)
-    var total = Z(0)
-    for w in ways: total += w
-    assert total == Z(6).pow(20)
+    assert ways[19] == 0 and ways[20] == 1 and ways[120] == 1
+    let six: Z = 6
+    assert eval_poly(ways, 1) == six.pow(20)
 
 @test fn mtt_arbitrary_modulus_and_interpolation():
     var s = 99
@@ -2051,19 +1890,23 @@ fn table_matches<P>(rank2: Int) -> Bool:
                 if want_sq[k] < 0: want_sq[k] += m
                 if want_ac[k] < 0: want_ac[k] += m
             assert got_sq == want_sq and got_ac == want_ac
-    let hidden = [Mod<1000000007>(3), Mod<1000000007>(-2), Mod<1000000007>(5), Mod<1000000007>(1)]
+    let hidden: List<Mod<1000000007>> = [3, -2, 5, 1]
     let pts = [(Mod<1000000007>(x), eval_poly(hidden, Mod<1000000007>(x))) for x in [0, 2, 5, 11]]
     assert interpolate(pts) == hidden
 
 @test fn derivative_and_integral_undo_each_other():
-    let p = [Z(7), Z(3), Z(-5), Z(11), Z(2)]
+    let p: List<Z> = [7, 3, -5, 11, 2]
     assert derivative(integral(p)) == p
-    assert integral(derivative(p)) == [Z(0), Z(3), Z(-5), Z(11), Z(2)]
-    assert derivative([]) == [] and derivative([Z(9)]) == [] and integral([]) == []
+    let want_id: List<Z> = [0, 3, -5, 11, 2]
+    assert integral(derivative(p)) == want_id
+    let p9: List<Z> = [9]
+    assert derivative([]) == [] and derivative(p9) == [] and integral([]) == []
 
 @test fn inverse_matches_the_recurrence():
-    assert inv_trunc([Z(1), Z(-1)], 40) == List.filled(40, Z(1))
-    assert inv_trunc([Z(2)], 3) == [Z(2).inv, Z(0), Z(0)] and inv_trunc([Z(2)], 0) == []
+    let one_minus_x: List<Z> = [1, -1]
+    assert inv_trunc(one_minus_x, 40) == List.filled(40, Z.one)
+    let two: Z = 2
+    assert inv_trunc([two], 3) == [two.inv, 0, 0] and inv_trunc([two], 0) == []
     var s = 123
     for (len, keep) in [(1, 8), (5, 20), (16, 16), (35, 70), (70, 45)]:
         var p: List<Z> = []
@@ -2073,26 +1916,28 @@ fn table_matches<P>(rank2: Int) -> Bool:
         let got = inv_trunc(p, keep)
         assert got == slow_inv(p, keep)
         let prod = slow_mul(p, got, keep)
-        assert prod == [if i == 0: Z(1) else: Z(0) for i in 0..keep]
+        assert prod == [if i == 0: Z.one else: Z.zero for i in 0..keep]
         assert inv_trunc([coef(p, i) for i in 0..len + 5], keep) == got
 
 @test fn log_and_exp_match_their_recurrences():
-    let harmonic = log_trunc(List.filled(40, Z(1)), 40)
-    let e_x = exp_trunc([Z(0), Z(1)], 40)
-    var fact = Z(1)
+    let harmonic = log_trunc(List.filled(40, Z.one), 40)
+    let e_x = exp_trunc([Z.zero, Z.one], 40)
+    var fact = Z.one
     for k in 0..40:
         if k > 0:
             fact *= Z(k)
-            assert harmonic[k] * Z(k) == Z(1)
-        assert e_x[k] * fact == Z(1)
-    assert exp_trunc([], 5) == [Z(1), Z(0), Z(0), Z(0), Z(0)]
-    assert exp_trunc([Z(0), Z(0)], 3) == [Z(1), Z(0), Z(0)]
-    assert log_trunc([Z(1)], 4) == [Z(0), Z(0), Z(0), Z(0)]
-    assert log_trunc([Z(1), Z(5)], 0) == [] and exp_trunc([Z(0), Z(5)], 0) == []
+            assert harmonic[k] * Z(k) == Z.one
+        assert e_x[k] * fact == Z.one
+    assert exp_trunc([], 5) == [Z.one, Z.zero, Z.zero, Z.zero, Z.zero]
+    assert exp_trunc([Z.zero, Z.zero], 3) == [Z.one, Z.zero, Z.zero]
+    assert log_trunc([Z.one], 4) == [Z.zero, Z.zero, Z.zero, Z.zero]
+    let p15: List<Z> = [1, 5]
+    let p05: List<Z> = [0, 5]
+    assert log_trunc(p15, 0) == [] and exp_trunc(p05, 0) == []
     var s = 321
     for keep in [1, 2, 7, 17, 35, 50]:
-        var p = [Z(1)]
-        var q = [Z(0)]
+        var p = [Z.one]
+        var q = [Z.zero]
         for _ in 1..keep:
             s = lcg_next(s)
             p.push(Z(s))
@@ -2107,7 +1952,8 @@ fn table_matches<P>(rank2: Int) -> Bool:
 
 @test fn power_matches_repeated_multiplication_including_negative():
     var s = 555
-    for (p, keep) in [([Z(2), Z(3), Z(-1), Z(5)], 40), ([Z(1), Z(4), Z(7)], 35), ([Z(3)], 10)]:
+    let cases: List<(List<Z>, Int)> = [([2, 3, -1, 5], 40), ([1, 4, 7], 35), ([3], 10)]
+    for (p, keep) in cases:
         for e in [-10, -3, -1, 0, 1, 2, 5, 11]:
             assert pow_trunc(p, e, keep) == slow_pow(p, e, keep)
     // Negative exponent inverse check: p^e * p^{-e} == 1
@@ -2115,32 +1961,35 @@ fn table_matches<P>(rank2: Int) -> Bool:
     for i in 0..45:
         s = lcg_next(s)
         p.push(Z(if i == 0: 7 else: s))
-    assert slow_mul(pow_trunc(p, -13, 45), pow_trunc(p, 13, 45), 45) == [if i == 0: Z(1) else: Z(0) for i in 0..45]
+    assert slow_mul(pow_trunc(p, -13, 45), pow_trunc(p, 13, 45), 45) == [if i == 0: Z.one else: Z.zero for i in 0..45]
     // Large negative exponent: (1 + x)^(-N) mod x^keep
     let big_neg = -1000000007
-    let got_neg = pow_trunc([Z(1), Z(1)], big_neg, 20)
-    var binom = Z(1)
+    let got_neg = pow_trunc([Z.one, Z.one], big_neg, 20)
+    var binom = Z.one
     for k in 0..20:
         assert got_neg[k] == binom
         binom *= Z(big_neg - k) / Z(k + 1)
     // Leading zeros with non-negative exponents
-    assert pow_trunc([Z(0), Z(0), Z(2), Z(1)], 3, 9) == [Z(0), Z(0), Z(0), Z(0), Z(0), Z(0), Z(8), Z(12), Z(6)]
-    assert pow_trunc([], 0, 3) == [Z(1), Z(0), Z(0)] and pow_trunc([], 4, 3) == [Z(0), Z(0), Z(0)]
-    assert pow_trunc([Z(0), Z(0)], 0, 2) == [Z(1), Z(0)] and pow_trunc([Z(0), Z(0)], 1, 2) == [Z(0), Z(0)]
+    let p_lz: List<Z> = [0, 0, 2, 1]
+    let want_lz: List<Z> = [0, 0, 0, 0, 0, 0, 8, 12, 6]
+    assert pow_trunc(p_lz, 3, 9) == want_lz
+    assert pow_trunc([], 0, 3) == [Z.one, Z.zero, Z.zero] and pow_trunc([], 4, 3) == [Z.zero, Z.zero, Z.zero]
+    assert pow_trunc([Z.zero, Z.zero], 0, 2) == [Z.one, Z.zero] and pow_trunc([Z.zero, Z.zero], 1, 2) == [Z.zero, Z.zero]
     let e = 1000000000000
-    let got = pow_trunc([Z(1), Z(1)], e, 20)
-    var b2 = Z(1)
+    let got = pow_trunc([Z.one, Z.one], e, 20)
+    var b2 = Z.one
     for k in 0..20:
         assert got[k] == b2
         b2 *= Z(e - k) / Z(k + 1)
-    assert pow_trunc([Z(0), Z(3)], e, 20) == List.filled(20, Z(0))
-    assert pow_trunc([Z(3)], e, 2) == [Z(3).pow(e), Z(0)]
+    let three: Z = 3
+    assert pow_trunc([0, three], e, 20) == List.filled(20, Z.zero)
+    assert pow_trunc([three], e, 2) == [three.pow(e), 0]
 
 @test fn modular_and_rational_powers_and_sqrt():
     var s = 777
     // Check (p^(num/den))^den == p^num for positive & negative num, den in {1, 2, 3, 5}
     for (num, den) in [(1, 2), (-1, 2), (3, 2), (1, 3), (-2, 3), (2, 5), (-3, 5)]:
-        var p = [Z(1)]
+        var p = [Z.one]
         for _ in 1..40:
             s = lcg_next(s)
             p.push(Z(s))
@@ -2149,15 +1998,15 @@ fn table_matches<P>(rank2: Int) -> Bool:
         // Matches pow_mod_trunc
         assert r == pow_mod_trunc(p, Z(num) / Z(den), 40)
     // Non-monic sqrt_trunc (p[0] = 9 -> root 3, p[0] = 49 -> root 7, and leading zeros!)
-    let p9 = [Z(9), Z(6), Z(7), Z(-2), Z(11), Z(4)]
+    let p9: List<Z> = [9, 6, 7, -2, 11, 4]
     let sq9 = sqrt_trunc(p9, 36)
-    assert sq9[0] == Z(3) and slow_mul(sq9, sq9, 36) == pad_to(p9, 36)
-    let p_shift = [Z(0), Z(0), Z(4), Z(12), Z(9), Z(5)]
+    assert sq9[0] == 3 and slow_mul(sq9, sq9, 36) == pad_to(p9, 36)
+    let p_shift: List<Z> = [0, 0, 4, 12, 9, 5]
     let sq_shift = sqrt_trunc(p_shift, 20)
-    assert sq_shift[0] == Z(0) and sq_shift[1] == Z(2)
+    assert sq_shift[0] == 0 and sq_shift[1] == 2
     assert slow_mul(sq_shift, sq_shift, 20) == pad_to(p_shift, 20)
     // Non-monic cube root (gcd(3, 998244352) == 1)
-    let p8 = [Z(8), Z(12), Z(6), Z(1), Z(5)]
+    let p8: List<Z> = [8, 12, 6, 1, 5]
     let cb = pow_rat_trunc(p8, 1, 3, 25)
     assert slow_pow(cb, 3, 25) == pad_to(p8, 25)
 
@@ -2176,8 +2025,10 @@ fn table_matches<P>(rank2: Int) -> Bool:
         let (q, r) = div_mod(a, b)
         assert r.len < b.len
         assert trim_zeros(add_poly(convolve(q, b), r)) == trim_zeros(a)
-    assert middle_product([Z(1), Z(2)], [Z(1), Z(2), Z(3)]) == []
-    assert middle_product([Z(1)], []) == []
+    let mp_a: List<Z> = [1, 2]
+    let mp_b: List<Z> = [1, 2, 3]
+    assert middle_product(mp_a, mp_b) == []
+    assert middle_product([Z.one], []) == []
 
 @test fn subproduct_tree_eval_interpolate_and_prod_polys():
     var s = 1001
@@ -2191,8 +2042,8 @@ fn table_matches<P>(rank2: Int) -> Bool:
             xs.push(Z(i * 17 + 3))
         let tree = SubproductTree.new(xs)
         // Check root polynomial matches naive product of (x - xs[i])
-        var want_root = [Z(1)]
-        for x in xs: want_root = slow_mul(want_root, [-x, Z(1)], want_root.len + 1)
+        var want_root = [Z.one]
+        for x in xs: want_root = slow_mul(want_root, [-x, Z.one], want_root.len + 1)
         assert tree.product() == want_root
         assert prod_linear(xs) == want_root
         // Check multipoint evaluation matches Horner
@@ -2207,7 +2058,7 @@ fn table_matches<P>(rank2: Int) -> Bool:
             assert interpolate_fast(xs, want_ys) == pad_to(p, n_pts)
     // prod_polys with unbalanced degrees
     var polys: List<List<Z>> = []
-    var want_prod = [Z(1)]
+    var want_prod = [Z.one]
     for sz in [1, 2, 15, 3, 25, 4, 8, 2]:
         var q: List<Z> = []
         for _ in 0..sz:
@@ -2216,7 +2067,7 @@ fn table_matches<P>(rank2: Int) -> Bool:
         polys.push(q)
         want_prod = slow_mul(want_prod, q, want_prod.len + sz - 1)
     assert prod_polys(polys) == want_prod
-    assert prod_polys([]) == [Z(1)]
+    assert prod_polys([]) == [Z.one]
 
 @test fn taylor_shift_matches_naive():
     var s = 2002
@@ -2225,7 +2076,8 @@ fn table_matches<P>(rank2: Int) -> Bool:
         for _ in 0..n:
             s = lcg_next(s)
             p.push(Z(s))
-        for c in [Z(0), Z(1), Z(-5), Z(123456789)]:
+        let shifts: List<Z> = [0, 1, -5, 123456789]
+        for c in shifts:
             let shifted = taylor_shift(p, c)
             assert shifted == slow_taylor_shift(p, c)
             // Inverse shift returns original polynomial
@@ -2240,20 +2092,23 @@ fn table_matches<P>(rank2: Int) -> Bool:
             p.push(Z(s))
         let ys = [eval_poly(p, Z(i)) for i in 0..n]
         // Non-overlapping, overlapping, wrapping, and negative c!
-        for (c, m) in [(Z(n + 5), 45), (Z(0), n + 15), (Z(-5), 25), (Z(n / 2), n), (Z(123456), 35)]:
+        let sh_cases: List<(Z, Int)> = [(Z(n + 5), 45), (0, n + 15), (-5, 25), (Z(n / 2), n), (123456, 35)]
+        for (c, m) in sh_cases:
             let got = shift_eval(ys, c, m)
             let want = [eval_poly(p, c + Z(j)) for j in 0..m]
             assert got == want
         // eval_ap with arbitrary start, step (including 0), count < n and count > n
-        for (st, step, cnt) in [(Z(7), Z(13), 10), (Z(-3), Z(5), n + 20), (Z(42), Z(0), 6)]:
+        let ap_cases: List<(Z, Z, Int)> = [(7, 13, 10), (-3, 5, n + 20), (42, 0, 6)]
+        for (st, step, cnt) in ap_cases:
             let got_ap = eval_ap(p, st, step, cnt)
             let want_ap = [eval_poly(p, st + Z(k) * step) for k in 0..cnt]
             assert got_ap == want_ap
         // eval_gp (Chirp-Z) including r == 0, r == 1, arbitrary r
-        for (a, r, cnt) in [(Z(3), Z(5), 35), (Z(1), Z(1), 10), (Z(7), Z(0), 5), (Z(11), Z(-9), n + 15)]:
+        let gp_cases: List<(Z, Z, Int)> = [(3, 5, 35), (1, 1, 10), (7, 0, 5), (11, -9, n + 15)]
+        for (a, r, cnt) in gp_cases:
             let got_gp = eval_gp(p, a, r, cnt)
             var want_gp: List<Z> = []
-            var rp = Z(1)
+            var rp = Z.one
             for k in 0..cnt:
                 want_gp.push(eval_poly(p, a * rp))
                 rp *= r
@@ -2270,8 +2125,8 @@ fn table_matches<P>(rank2: Int) -> Bool:
             s = lcg_next(s)
             f.push(Z(s))
             s = lcg_next(s)
-            g0.push(if i == 0: Z(0) else: Z(s))
-            g_nz.push(if i == 0: Z(7) else: Z(s))
+            g0.push(if i == 0: Z.zero else: Z(s))
+            g_nz.push(if i == 0: 7 else: Z(s))
             s = lcg_next(s)
             w.push(Z(s))
         // Composition with g[0] == 0 and g[0] != 0
@@ -2287,36 +2142,38 @@ fn table_matches<P>(rank2: Int) -> Bool:
             assert power_projection(g_nz, w, m) == slow_power_projection(g_nz, w, m)
         // Compositional inverse when keep >= 2 and g[1] != 0
         if keep >= 2:
-            var gi = [x for x in g0]
-            if gi[1].v == 0: gi[1] = Z(3)
+            var gi = g0.copy()
+            if gi[1] == 0: gi[1] = 3
             let h = compose_inv_trunc(gi, keep)
-            var want_id = List.filled(keep, Z(0))
-            want_id[1] = Z(1)
+            var want_id = List.filled(keep, Z.zero)
+            want_id[1] = Z.one
             assert compose_trunc(gi, h, keep) == want_id
             assert compose_trunc(h, gi, keep) == want_id
     // Classic Catalan check (CF 2255 F pattern): C(x) = (1 - sqrt(1 - 4x)) / (2x), C(x) = 1 + x C(x)^2
     let keep_c = 25
-    let sq = sqrt_trunc([Z(1), Z(-4)], keep_c + 1)
-    let inv2 = Z(2).inv
-    let cat = [(Z(0) - sq[i + 1]) * inv2 for i in 0..keep_c]
-    let x_cat = [if i == 0: Z(0) else: cat[i - 1] for i in 0..keep_c]
+    let one_m4x: List<Z> = [1, -4]
+    let sq = sqrt_trunc(one_m4x, keep_c + 1)
+    let two_c: Z = 2
+    let inv2 = two_c.inv
+    let cat = [(Z.zero - sq[i + 1]) * inv2 for i in 0..keep_c]
+    let x_cat = [if i == 0: Z.zero else: cat[i - 1] for i in 0..keep_c]
     // Compositional inverse of x * C(x) is x * (1 - x) = [0, 1, -1]!
-    assert compose_inv_trunc(x_cat, keep_c) == [if i == 1: Z(1) elif i == 2: Z(-1) else: Z(0) for i in 0..keep_c]
+    assert compose_inv_trunc(x_cat, keep_c) == [if i == 1: Z.one elif i == 2: -Z.one else: Z.zero for i in 0..keep_c]
 
 @test fn bostan_mori_kth_term_matches_inv_trunc():
     // Fibonacci: F(x) = x / (1 - x - x^2)
-    let p_fib = [Z(0), Z(1)]
-    let q_fib = [Z(1), Z(-1), Z(-1)]
-    var a = Z(0)
-    var b = Z(1)
+    let p_fib: List<Z> = [0, 1]
+    let q_fib: List<Z> = [1, -1, -1]
+    var a = Z.zero
+    var b = Z.one
     for k in 0..25:
         assert kth_term(p_fib, q_fib, k) == a
         let c = a + b
         a = b
         b = c
     // General rational function vs inv_trunc up to k = 50
-    let p = [Z(3), Z(-2), Z(5), Z(1)]
-    let q = [Z(2), Z(1), Z(-3), Z(4), Z(-1)]
+    let p: List<Z> = [3, -2, 5, 1]
+    let q: List<Z> = [2, 1, -3, 4, -1]
     let series = head(convolve(p, inv_trunc(q, 55)), 55)
     for k in [0, 1, 2, 7, 15, 31, 50]:
         assert kth_term(p, q, k) == series[k]
@@ -2347,7 +2204,7 @@ fn table_matches<P>(rank2: Int) -> Bool:
         let a_rev = [a[na - 1 - i] for i in 0..na]
         let got = convolve(a, a_rev)
         for idx in [0, 1, 17, 255, 256, 511, 512, na - 1, na, 2 * na - 2]:
-            var want = Z(0)
+            var want = Z.zero
             let lo = if idx - (na - 1) > 0: idx - (na - 1) else: 0
             let hi = if idx < na - 1: idx else: na - 1
             for i in lo..=hi:
