@@ -31,9 +31,97 @@ options:
                        \"n, q: 1..=2e5; a: [n]0..=1e9\"
   --companion FILE     a Competitive Companion problem (JSON; `-` reads
                        stdin): its title, limits and samples
+  --listen             wait for the Competitive Companion browser extension
+                       to send the problem (or every problem of a contest)
+                       and create it; <name> is optional
+  --port N             the port `--listen` waits on (default 10043, one of
+                       the ports the extension sends to out of the box)
   --time-limit MS      the problem's time limit in milliseconds
   --memory-limit MB    the problem's memory limit in megabytes
 ";
+
+/// One of the ports Competitive Companion posts to by default.
+const COMPANION_PORT: u16 = 10043;
+
+/// The body of one HTTP `POST`, answered with an empty `200`.
+fn read_post(stream: &mut std::net::TcpStream) -> Result<String, String> {
+    stream
+        .set_read_timeout(Some(Duration::from_secs(10)))
+        .map_err(|e| e.to_string())?;
+    let mut bytes = Vec::new();
+    let mut chunk = [0u8; 4096];
+    let (head_end, length) = loop {
+        let n = stream.read(&mut chunk).map_err(|e| format!("the request stopped: {e}"))?;
+        if n == 0 {
+            return Err("the request ended before its headers did".to_string());
+        }
+        bytes.extend_from_slice(&chunk[..n]);
+        if let Some(at) = bytes.windows(4).position(|w| w == b"\r\n\r\n") {
+            let head = String::from_utf8_lossy(&bytes[..at]).to_ascii_lowercase();
+            let length = head
+                .lines()
+                .find_map(|line| line.strip_prefix("content-length:"))
+                .and_then(|value| value.trim().parse::<usize>().ok())
+                .ok_or("the request has no Content-Length")?;
+            break (at + 4, length);
+        }
+        if bytes.len() > 1 << 16 {
+            return Err("the request's headers are too long".to_string());
+        }
+    };
+    if length > 64 << 20 {
+        return Err("the request is too large to be a problem".to_string());
+    }
+    while bytes.len() < head_end + length {
+        let n = stream.read(&mut chunk).map_err(|e| format!("the request stopped: {e}"))?;
+        if n == 0 {
+            return Err("the request ended before its body did".to_string());
+        }
+        bytes.extend_from_slice(&chunk[..n]);
+    }
+    let _ = stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+    String::from_utf8(bytes[head_end..head_end + length].to_vec())
+        .map_err(|_| "the request's body is not UTF-8".to_string())
+}
+
+/// How many problems the extension is sending: one, or a whole contest.
+fn batch_size(text: &str) -> usize {
+    json::parse(text)
+        .ok()
+        .and_then(|problem| problem.get("batch")?.get("size")?.as_u64())
+        .map_or(1, |size| size.max(1) as usize)
+}
+
+/// Waits on localhost for Competitive Companion and gives each problem
+/// it sends to `each`. Only this machine can reach the port.
+pub fn listen(
+    port: u16,
+    stderr: &mut dyn Write,
+    each: &mut dyn FnMut(&str) -> Result<(), String>,
+) -> Result<(), String> {
+    let listener = std::net::TcpListener::bind(("127.0.0.1", port))
+        .map_err(|e| format!("can't listen on 127.0.0.1:{port}: {e}"))?;
+    let _ = writeln!(
+        stderr,
+        "waiting for Competitive Companion on 127.0.0.1:{port}: open the problem and click the extension"
+    );
+    let (mut got, mut want) = (0, 1);
+    while got < want {
+        let (mut stream, _) = listener.accept().map_err(|e| format!("can't accept: {e}"))?;
+        match read_post(&mut stream) {
+            Ok(text) => {
+                want = want.max(batch_size(&text));
+                got += 1;
+                each(&text)?;
+            }
+            // Something else knocked on the port: keep waiting.
+            Err(message) => {
+                let _ = writeln!(stderr, "  ignored a request: {message}");
+            }
+        }
+    }
+    Ok(())
+}
 
 /// What is known about a problem before any code is written.
 #[derive(Clone, PartialEq, Eq, Debug, Default)]
@@ -285,9 +373,15 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             "--companion",
             "--time-limit",
             "--memory-limit",
+            "--port",
         ],
-        &[],
+        &["--listen"],
     );
+    if let Ok(args) = &parsed {
+        if args.has("--listen") {
+            return run_listen(args, stdout, stderr);
+        }
+    }
     let built = parsed.and_then(|args| {
         let mut scaffold = match args.value("--companion") {
             Some(path) => {
@@ -330,7 +424,56 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             return 2;
         }
     };
-    match scaffold.create(&source) {
+    report(&scaffold, &source, stdout, stderr)
+}
+
+/// `cpl new --listen`: every problem the extension sends becomes a file.
+fn run_listen(args: &Args, stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
+    let usage = |stderr: &mut dyn Write, message: String| {
+        let _ = write!(stderr, "error: {message}\n\n{USAGE}");
+        2
+    };
+    if args.value("--companion").is_some() || args.value("--constraints").is_some() {
+        return usage(stderr, "`--listen` gets the problem from the browser: drop `--companion` and `--constraints`".into());
+    }
+    let port = match args.number("--port") {
+        Ok(None) => COMPANION_PORT,
+        Ok(Some(port)) if (1..=u64::from(u16::MAX)).contains(&port) => port as u16,
+        Ok(Some(port)) => return usage(stderr, format!("`--port {port}` is not a port")),
+        Err(message) => return usage(stderr, message),
+    };
+    if args.positional.len() > 1 {
+        return usage(stderr, format!("`new` takes one name; `{}` is a second", args.positional[1]));
+    }
+    let mut named = args.positional.first().cloned();
+    let mut code = 0;
+    let heard = listen(port, stderr, &mut |text| {
+        let scaffold = Scaffold::from_companion(text)?;
+        // The name given is for the first problem; the rest of a contest
+        // are named after their own URLs.
+        let name = named
+            .take()
+            .or_else(|| scaffold.short_name())
+            .ok_or("the problem has no URL to name it after: give a name, `cpl new d --listen`")?;
+        let mut errors = Vec::new();
+        code = code.max(report(&scaffold, &crate::problem::source_path(&name), stdout, &mut errors));
+        if !errors.is_empty() {
+            return Err(String::from_utf8_lossy(&errors).trim_start_matches("error: ").trim_end().to_string());
+        }
+        Ok(())
+    });
+    match heard {
+        Ok(()) => code,
+        Err(message) => {
+            let _ = writeln!(stderr, "error: {message}");
+            1
+        }
+    }
+}
+
+/// Creates the problem and says what was made.
+fn report(scaffold: &Scaffold, source: &Path, stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
+    match scaffold.create(source) {
         Ok(created) => {
             let _ = writeln!(stdout, "  created {}", created[0].display());
             let samples = scaffold.samples.len();

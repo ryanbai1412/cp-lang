@@ -654,3 +654,40 @@ fn a_watch_round_checks_then_tests_and_recovers_after_a_fix() {
     assert!(err.contains("there is no file"), "{err}");
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn listen_takes_a_problem_posted_by_the_extension() {
+    use std::io::{Read, Write};
+    // A free port: bind to 0, read the port, release it.
+    let port = std::net::TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+    let client = std::thread::spawn(move || {
+        let mut stream = loop {
+            match std::net::TcpStream::connect(("127.0.0.1", port)) {
+                Ok(stream) => break stream,
+                Err(_) => std::thread::sleep(std::time::Duration::from_millis(20)),
+            }
+        };
+        // A stray request first: it is ignored, and the listener keeps waiting.
+        stream.write_all(b"GET / HTTP/1.1\r\n\r\n").unwrap();
+        drop(stream);
+        let mut stream = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
+        let head = format!("POST / HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n", COMPANION.len());
+        stream.write_all(head.as_bytes()).unwrap();
+        stream.write_all(COMPANION.as_bytes()).unwrap();
+        let mut answer = String::new();
+        stream.read_to_string(&mut answer).unwrap();
+        answer
+    });
+    let mut got = Vec::new();
+    let mut notes = Vec::new();
+    crate::new::listen(port, &mut notes, &mut |text| {
+        got.push(Scaffold::from_companion(text)?);
+        Ok(())
+    })
+    .unwrap();
+    assert!(client.join().unwrap().starts_with("HTTP/1.1 200"));
+    assert_eq!(got, [Scaffold::from_companion(COMPANION).unwrap()]);
+    let notes = String::from_utf8(notes).unwrap();
+    assert!(notes.contains("waiting for Competitive Companion"), "{notes}");
+    assert!(notes.contains("ignored a request"), "{notes}");
+}
