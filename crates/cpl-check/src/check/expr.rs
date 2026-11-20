@@ -626,7 +626,17 @@ impl<'a> Checker<'a> {
             Some(Def::Enum { methods, .. }) => add(&mut out, methods, &[]),
             _ => return None,
         }
-        for (_, def) in self.env.impls(type_name) {
+        for (trait_name, def) in self.env.impls(type_name) {
+            // Every fn of the trait comes with the impl: the ones the
+            // trait writes a body for, and the ones the impl must write
+            // (one it leaves out is reported once, on the impl).
+            if let Some(Def::Trait { methods, .. }) =
+                trait_name.and_then(|t| self.env.type_def(&t)).as_deref()
+            {
+                for method in methods {
+                    out.members.push((method.name.clone(), method.ty.clone()));
+                }
+            }
             if let Def::Impl {
                 methods,
                 getters,
