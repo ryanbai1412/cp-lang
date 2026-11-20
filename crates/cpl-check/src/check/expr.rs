@@ -1151,6 +1151,24 @@ fn tropical_side(ty: &Ty) -> Option<bool> {
 }
 
 impl Checker<'_> {
+    /// `none` does not pass through `+=` and `-=` (v2.2): a `none` that
+    /// stays `none` hides a table that was never filled in.
+    pub(crate) fn optional_fold(&mut self, target: &Expr, target_ty: &Ty, op: cpl_syntax::ast::AssignOp) {
+        let cpl_syntax::ast::AssignOp::Binary(bin @ (BinOp::Add | BinOp::Sub)) = op else {
+            return;
+        };
+        if !matches!(target_ty, Ty::Optional(inner) if inner.is_numeric()) {
+            return;
+        }
+        let sign = if bin == BinOp::Add { "+" } else { "-" };
+        let message = format!("`{sign}=` can't be applied to {}", target_ty.with_article());
+        if let Some(diag) = self.error(codes::BAD_OPERANDS, target.span, message) {
+            diag.help = Some(format!(
+                "write `x = x {sign} y` when `none` should stay `none`, or `x min= y + w` for a transition"
+            ));
+        }
+    }
+
     fn coalesce_ty(&mut self, left: Ty, right: Ty, rhs: &Expr) -> Ty {
         // `o ?? return`: the right side never gives a value.
         let diverges = matches!(&rhs.kind, ExprKind::Block(block) if matches!(

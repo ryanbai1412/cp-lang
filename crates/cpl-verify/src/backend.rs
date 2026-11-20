@@ -49,6 +49,9 @@ impl ProtoTranspiler {
     }
 }
 
+/// How `cp.py build` words its refusal of C++ over 64 KB.
+const SUBMISSION_LIMIT: &str = "over the 64 KB submission limit";
+
 impl Transpiler for ProtoTranspiler {
     fn name(&self) -> String {
         "proto/cpc".into()
@@ -69,10 +72,16 @@ impl Transpiler for ProtoTranspiler {
             COMPILE_LIMIT,
         )
         .map_err(|e| format!("running python3: {e}"))?;
-        if !out.ok() {
+        let written = copy.with_extension("cpp");
+        // The prototype writes the C++ and then turns it down for being
+        // over a judge's 64 KB source limit. That limit is about what can
+        // be submitted, not about what the program does, so the C++ is
+        // still built and judged.
+        let only_too_long = out.stderr.contains(SUBMISSION_LIMIT) && written.exists();
+        if !out.ok() && !only_too_long {
             return Err(format!("{}{}", out.stdout, out.stderr));
         }
-        std::fs::rename(copy.with_extension("cpp"), cpp).map_err(|e| format!("moving the C++: {e}"))
+        std::fs::rename(written, cpp).map_err(|e| format!("moving the C++: {e}"))
     }
 }
 
@@ -156,7 +165,12 @@ impl Cxx {
     /// build, the one that stops on an overflow the checker could not
     /// rule out; a judge build leaves those checks out.
     pub fn sanitized() -> Self {
-        Self::with_flags(&["-std=c++17", "-O2", "-DLOCAL", "-fsanitize=address,undefined"])
+        Self::with_flags(&[
+            "-std=c++17",
+            "-O2",
+            "-DLOCAL",
+            "-fsanitize=address,undefined",
+        ])
     }
 
     /// `g++ -std=c++17 -O2`: what `cpl run --release` and a judge use.

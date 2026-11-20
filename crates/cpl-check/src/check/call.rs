@@ -61,6 +61,20 @@ impl<'a> Checker<'a> {
             .map(|arg| self.quietly(|c| c.infer(&arg.value)))
             .collect();
         match (name.as_str(), tys.as_slice()) {
+            // `none` is neither skipped nor passed on by `sum` (v2.2).
+            ("sum", [over]) => {
+                let elem = self.element_ty(over);
+                if matches!(elem, Ty::Optional(_)) {
+                    let message = format!("`sum` adds numbers, not {}", elem.with_article());
+                    if let Some(diag) = self.error(codes::BAD_OPERANDS, args[0].value.span, message)
+                    {
+                        diag.help = Some(
+                            "`sum` does not skip or absorb `none`: add `x ?? 0`, or filter with `if let`".into(),
+                        );
+                    }
+                }
+                None
+            }
             ("span", [Ty::Pos(a), Ty::Pos(b)]) => {
                 let (a, b) = (
                     a.strip_suffix(".bounds").unwrap_or(a),
