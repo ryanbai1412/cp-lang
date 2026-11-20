@@ -1,0 +1,6 @@
+# corpus/submissions/4080960.cpp: the lines a perfect C++ contest library would have supplied.
+# Everything else is counted as problem-specific code. Read by loc.py in this directory.
+# lines      facility        what it is
+1-32         template        includes, debug macros, typedefs
+40-65        cycle           scycle: find the cycle of a graph with n edges
+180-193      driver          fast I/O setup and the test-case loop

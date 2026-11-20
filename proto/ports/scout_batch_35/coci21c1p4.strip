@@ -1,0 +1,7 @@
+# corpus/submissions/4106618.cpp: the lines a perfect C++ contest library would have supplied.
+# Everything else is counted as problem-specific code. Read by loc.py in this directory.
+# lines      facility        what it is
+1-34         template        includes, debug macros, typedefs
+35-131       fastio          buffered integer and character I/O
+133-193      eisenstein      cint: numbers a + b*omega with + - * /
+274-288      driver          I/O setup and the test-case loop
