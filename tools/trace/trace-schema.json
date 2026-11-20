@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cp-lang.dev/trace/v1",
+  "title": "CP Lang execution trace, version 1",
+  "description": "Full immutable snapshots. Runs align only at shared semantic checkpoint names, never at equal event offsets. No URLs, executable expressions, or HTML are interpreted from trace data.",
+  "type": "object",
+  "required": ["schemaVersion", "title", "source", "variables", "runs"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "title": {"type": "string", "minLength": 1},
+    "description": {"type": "string"},
+    "source": {
+      "type": "object", "required": ["file", "code"], "additionalProperties": false,
+      "properties": {"file": {"type": "string"}, "code": {"type": "string"}}
+    },
+    "variables": {
+      "type": "object", "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/variable"}
+    },
+    "runs": {
+      "type": "object", "required": ["fast"], "additionalProperties": false,
+      "properties": {"fast": {"$ref": "#/$defs/run"}, "slow": {"$ref": "#/$defs/run"}}
+    },
+    "compare": {
+      "description": "Variable ids to compare. Omit to compare all declared variables, including presence/absence. Do not compare implementation-specific locals.",
+      "type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}
+    }
+  },
+  "$defs": {
+    "labels": {"type": "array", "items": {"type": ["string", "number"]}},
+    "variable": {
+      "type": "object", "required": ["name", "type", "kind"], "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "type": {"type": "string", "description": "Source-language type displayed verbatim; it is not parsed or evaluated"},
+        "kind": {"enum": ["scalar", "array", "grid", "dp", "graph", "tree", "json"]},
+        "labels": {"$ref": "#/$defs/labels"},
+        "rowLabels": {"$ref": "#/$defs/labels"},
+        "colLabels": {"$ref": "#/$defs/labels"},
+        "rowDomain": {"type": "string"},
+        "colDomain": {"type": "string"},
+        "directed": {"type": "boolean"},
+        "root": {"type": ["string", "number"], "description": "Root node id; defaults to the first node. Tree edges point parent to child."}
+      }
+    },
+    "run": {
+      "type": "object", "required": ["label", "steps"], "additionalProperties": false,
+      "properties": {
+        "label": {"type": "string"},
+        "steps": {"type": "array", "minItems": 1, "maxItems": 100000, "items": {"$ref": "#/$defs/step"}}
+      }
+    },
+    "step": {
+      "type": "object", "required": ["id", "line", "label", "stage", "values", "locals"], "additionalProperties": false,
+      "properties": {
+        "id": {"type": "integer", "minimum": 0, "description": "Unique within this run; order is array order, not id order"},
+        "line": {"type": "integer", "minimum": 1, "description": "1-based source line that produced the snapshot"},
+        "label": {"type": "string"},
+        "stage": {"type": "string"},
+        "values": {"type": "object", "description": "Full snapshot keyed by declared variable id. Omission means out of scope, null means source-level none. Matrices are rectangular arrays; graph/tree values follow the graph definition. Integers outside JS safe range must be decimal strings."},
+        "locals": {"type": "object", "description": "Display-only local bindings; not compared across implementations"},
+        "checkpoint": {"type": "string", "minLength": 1, "description": "Unique semantic state name in this run. Shared names align the two runs and must appear in the same order."},
+        "focus": {
+          "type": "object", "required": ["variable", "path"], "additionalProperties": false,
+          "properties": {
+            "variable": {"type": "string"},
+            "path": {"type": "array", "items": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "string"}]}, "description": "Zero-based path into the captured value, not a source domain label. E.g. [1,4] or [\"nodes\",2]. Empty path focuses the whole scalar."}
+          }
+        }
+      }
+    },
+    "graph": {
+      "type": "object", "required": ["nodes", "edges"], "additionalProperties": false,
+      "properties": {
+        "nodes": {
+          "type": "array", "items": {
+            "type": "object", "required": ["id", "label"], "additionalProperties": false,
+            "properties": {
+              "id": {"type": ["string", "number"]}, "label": {"type": "string"},
+              "x": {"type": "number", "minimum": -100000, "maximum": 100000}, "y": {"type": "number", "minimum": -100000, "maximum": 100000},
+              "state": {"enum": ["frontier", "visited"]}
+            }
+          }
+        },
+        "edges": {
+          "type": "array", "items": {
+            "type": "object", "required": ["id", "from", "to"], "additionalProperties": false,
+            "properties": {"id": {"type": ["string", "number"]}, "from": {"type": ["string", "number"]}, "to": {"type": ["string", "number"]}, "weight": {"type": ["number", "string"]}}
+          }
+        }
+      }
+    }
+  }
+}
