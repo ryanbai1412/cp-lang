@@ -13,11 +13,37 @@ impl<'a> Checker<'a> {
         if let Some(known) = self.prelude_call(call, callee, args) {
             ty = known;
         }
+        self.empty_collection(call, callee, args);
         self.lent_together(args);
         self.call_effects(call, callee, args);
         self.no_escape_args(callee, &callee_ty, args);
         self.mutates_view(call, callee);
         receiver.unwrap_or(ty)
+    }
+
+    /// `List<T>()` and `MinHeap<T>()` start empty: they take nothing.
+    fn empty_collection(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) {
+        let ExprKind::Generic { base, .. } = &callee.kind else {
+            return;
+        };
+        let ExprKind::Name(name) = &base.kind else {
+            return;
+        };
+        let prelude = matches!(name.as_str(), "List" | "MinHeap")
+            && self.local(name).is_none()
+            && self.env.global(name).is_none();
+        if !prelude || args.is_empty() {
+            return;
+        }
+        let message = format!("`{name}<T>()` takes no arguments");
+        if let Some(diag) = self.error(codes::WRONG_ARG_COUNT, call.span, message) {
+            if name == "MinHeap" {
+                diag.help = Some(
+                    "it pops the smallest element, so for another order push a key first: `h.push((-x, x))` pops the largest `x`"
+                        .into(),
+                );
+            }
+        }
     }
 
     /// What the checker knows about a prelude fn it otherwise takes on
