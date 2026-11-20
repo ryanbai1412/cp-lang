@@ -296,3 +296,38 @@ fn an_int_table_used_as_a_whole_value_stays_a_std_optional() {
     let cpp = cpp("fn f(n: Int) -> Int:\n    var xs: List<?Int> = []\n    xs.push(n % 2)\n    let get = i => xs[i] ?? 0\n    get(0)\nprint(f(3))\n");
     assert_eq!(decl(&cpp, "xs"), PLAIN, "{cpp}");
 }
+
+#[test]
+fn a_fn_of_the_judges_grader_is_declared_in_its_types() {
+    let cpp = cpp(
+        "@grader fn ask(i: Int) -> List<Int>\n@grader fn mark(ok: Bool, c: Char, label: Str)\n\
+         @grader\nfn best(n: Int) -> (Int, List<Int>):\n    mark(true, 'a', \"x\")\n    (ask(n)[0], ask(0))\n",
+    );
+    // The judge's fns, as its grader writes them, ahead of the program.
+    let runtime = cpp.find("namespace cpl").expect("a runtime");
+    for decl in [
+        "std::vector<int> ask(int i);",
+        "void mark(bool ok, char c, std::string label);",
+    ] {
+        assert!(cpp[..runtime].contains(decl), "{cpp}");
+    }
+    assert!(
+        cpp.contains("return cpl::Judge<std::vector<ll>>::from(::ask(cpl::Judge<ll>::to(i)));"),
+        "{cpp}"
+    );
+    // The fn the grader calls, in its types, and no `main` beside the grader's.
+    assert!(
+        cpp.contains("\nstd::tuple<int, std::vector<int>> best(int n) {\n    cpl_start();"),
+        "{cpp}"
+    );
+    assert!(!cpp.contains("int main()"), "{cpp}");
+}
+
+#[test]
+fn a_program_without_grader_fns_has_a_main_and_no_judge_types() {
+    let cpp = cpp("print(1)\n");
+    assert!(
+        cpp.contains("int main()") && !cpp.contains("Judge"),
+        "{cpp}"
+    );
+}

@@ -1145,6 +1145,9 @@ impl<'p, 'o> Interp<'p, 'o> {
 
     fn call(&mut self, id: FnId, args: &'p [Arg], span: Span) -> Res<Value> {
         let f = &self.program.fns[id];
+        if self.program.judge_fns.contains(&id) {
+            return trap(span, NO_GRADER);
+        }
         let mut values = vec![Value::Unit; args.len()];
         // Evaluate by-value arguments first (two-phase borrowing), so patterns
         // like `a.union(a.shifted(w))` can read `a` while preparing the call.
@@ -2092,6 +2095,8 @@ impl<'p, 'o> Interp<'p, 'o> {
     }
 }
 
+const NO_GRADER: &str =
+    "this fn has no body: the judge's grader supplies it, so there is nothing to run here";
 const OVERFLOW: &str = "integer overflow: the result does not fit in an `Int` (64 bits)";
 const LENT: &str = "this variable is being changed by a call that has not returned yet";
 
