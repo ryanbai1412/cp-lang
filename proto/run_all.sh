@@ -1,6 +1,7 @@
 #!/bin/bash
 # Regression: every port must agree with its original; every tests/bad/*.cp must fail to compile.
 cd "$(dirname "$0")"
+ulimit -s unlimited 2>/dev/null   # some originals keep megabytes of tables on the stack
 fail=0
 for f in ports/*.cp; do
     b=${f%.cp}
