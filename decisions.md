@@ -488,3 +488,49 @@ not state, these calls were made. None is confirmed by Ryan yet.
   `crates/cpl-check/src/prelude.rs` and does not type what goes through
   them. This is a stopgap: the fix is for each port to `use` the `std`
   module, at which point the name leaves the list.
+
+## 15. Calls made fixing the prototype bugs of scout batches 5 to 12 (2026-11-20)
+
+Bug fixes only: no syntax was added. Each rule below is the reading the
+scouts expected and is locked by a test under `proto/tests/`.
+
+- **15.1 `print` evaluates all its arguments before it writes.**
+  Arguments are evaluated left to right, and nothing is written
+  until the last one has its value. A later argument that asks the judge
+  or prints is then on its own line, before this one:
+
+  ```
+  print("!", best(r, c))     // best may `ask`; its question is not written after the "!"
+  ```
+- **15.2 A range is a value: its ends are read once.**
+  `for i in 0..xs.len` goes over the positions `xs` had when the loop
+  started, whatever the body pushes or pops. `proto/cpi` already did
+  this; `proto/cpc` re-read the end at every step.
+- **15.3 `@memo` over a large product stores only what is asked.**
+  A dense table has one slot per point of the parameters' domains. Past
+  2^26 slots at the domains' declared maximum sizes the function is
+  hashed, as `@memo(hash)` is; `into:` and `order:`, which need the
+  table, are then a compile error that gives the size.
+- **15.4 Destructuring owns what it binds.**
+  `let (a, b) = xs[i]`, the value an `if let` unwraps and the subject of
+  a `match` are copies. They were C++ references into the list, so a
+  `xs.push(...)` in the same block read freed memory (scout batch 12).
+  Reading through a view of a container stays the job of `lends`.
+
+  ```
+  let (a, b) = xs[i]
+  xs.push((a + 1, b))        // fine: a and b are values
+  ```
+- **15.5 A record of hashable fields is hashable.**
+  Numbers, positions, `Bool`, `Char` and records of them can key a
+  `HashMap` or `HashSet`; any other key is a compile error.
+- **15.6 A `gen:` function's value is written as `read()` reads it.**
+  One format per type, shared by the default generator and `gen:`: a
+  list after its length, a table row by row.
+- **15.7 A generic function is only called.**
+  `f<P>(x)` parses as two comparisons, so naming a generic function
+  outside a call is an error that says so. How a type argument is written
+  out, `f::<P>(x)` (2.13), is not in the prototype yet.
+- **15.8 `MinHeap<T>()` takes no arguments.**
+  `by:` was accepted and ignored; it is an error until a heap with an
+  order is designed.

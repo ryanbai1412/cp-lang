@@ -129,6 +129,7 @@ CPP_RESERVED = set(CPP_RESERVED) | {
 
 # Library names the prototype has a C++ stand-in for: name -> (module under stdlib/, C++ name). `use std.dsu.{Dsu}`
 # is checked against the real module, so a port can only import what the library really exports.
+MEMO_DENSE_MAX = 1 << 26     # slots of a dense @memo table (at most ~1 GB of optional Ints); larger products are hashed
 LIBS = {"Steps": ("steps", "CpSteps")}
 LIB_FNS = {"Dsu": "dsu", "bfs": "graph", "dijkstra": "graph", "choose": "math", "gcd": "math", "lcm": "math", "scan": "seq",
            "running_sum": "seq", "SegTree": "segtree", "Rooted": "tree", "Fenwick": "fenwick"}
@@ -237,6 +238,8 @@ class Compiler(LendMixin):
             if isinstance(t.key, TDom):
                 return f"DenseMap<{self.cpp_type(t.val)}>"
             if t.hashed:
+                if not self.hashable(t.key):
+                    raise CompileError(f"a HashMap key must be a number, a domain value, a Char, a Bool or a record of those, not {t.key!r}; use Map<...>")
                 return f"unordered_map<{self.cpp_type(t.key)}, {self.cpp_type(t.val)}, CpHash>"
             return f"map<{self.cpp_type(t.key)}, {self.cpp_type(t.val)}>"
         if isinstance(t, TSet):
@@ -278,15 +281,25 @@ class Compiler(LendMixin):
         self.structs[key] = t
         fields = " ".join(f"{'I32' if self.narrow(ft) else self.cpp_type(ft)} {self.field_cpp(fn)};" for fn, ft in zip(names, types))
         tie = ", ".join(self.field_cpp(fn) for fn in names)
+        # a record of hashable fields is a hashable key (HashMap<(Row, Col), V>)
+        t.hashable = all(self.hashable(x) for x in types)
+        hsh = ""
+        if t.hashable:
+            mix = " ".join(f"h = h * 0x9e3779b97f4a7c15ULL + hf({'(ll)' if not isinstance(ft, TTuple) else ''}{self.field_cpp(fn)});" for fn, ft in zip(names, types))
+            hsh = f"    template <class H> size_t cp_hash(const H& hf) const {{ size_t h = 0; {mix} return h; }}\n"
         self.struct_defs.append(
             f"struct {cpp} {{ {fields}\n"
             f"    auto tie() const {{ return std::tie({tie}); }}\n"
+            + hsh
             + (f"    bool operator<(const {cpp}& o) const {{ return tie() < o.tie(); }}\n"
                f"    bool operator>(const {cpp}& o) const {{ return o.tie() < tie(); }}\n"
                if t.ordered else "") +
             f"    bool operator==(const {cpp}& o) const {{ return tie() == o.tie(); }}\n"
             f"    bool operator!=(const {cpp}& o) const {{ return !(*this == o); }} }};")
         return t
+
+    def hashable(self, t):
+        return isinstance(t, (TInt, TDom, TBool, TChar)) or (isinstance(t, TTuple) and getattr(t, "hashable", False))
 
     def field_cpp(self, name):
         return name + "_" if name in CPP_RESERVED else name
@@ -603,6 +616,8 @@ class Compiler(LendMixin):
             self.error(node, f"Int is not a {info.name}; convert with {info.name}(x) or test `x in {info.name}`")
         if isinstance(want, TArr) and isinstance(t, TArr) and len(want.dims) == len(t.dims) and \
            want.dims == t.dims and (want.elem == t.elem or (is_int(want.elem) and is_int(t.elem))):
+            if self.cpp_type(want) != self.cpp_type(t):     # elements stored at another width: copy across
+                return f"([&]{{ auto&& _a = {c}; return {self.cpp_type(want)}(_a.begin(), _a.end()); }}())"
             return c
         if isinstance(want, (TMap, TSet)) and isinstance(t, TList) and t.elem is None:
             return self.set_ctor(want)
@@ -750,6 +765,10 @@ class Compiler(LendMixin):
             return self.construct(s, [], e)
         if s.kind == "fn":
             return s.cpp, s.ty
+        if s.kind == "genfn":
+            tps = ", ".join(s.node.tparams)
+            self.error(e, f"`{e.name}` is a generic fn and is only called, as `{e.name}(...)`: its type parameters come "
+                          f"from its arguments (`{e.name}<{tps}>(...)` would be two comparisons)")
         t = s.ty
         if isinstance(t, TInt) and s.node is not None and id(s.node) in self.var_iv:
             lo, hi = self.var_iv[id(s.node)]
@@ -1781,6 +1800,10 @@ class Compiler(LendMixin):
             a = fn.args[0]
             et = self.resolve_type(a) if a.kind.startswith("t") else self.resolve_type(N("texpr", a.line, expr=a))
             t = TList(et) if fn.name == "List" else THeap(et)
+            if e.args:
+                self.error(e, f"`{fn.name}<T>()` takes no arguments" + (
+                    "; it pops the smallest element, so for another order push a key first: "
+                    "`h.push((-x, x))` pops the largest `x`" if fn.name == "MinHeap" else ""))
             return f"{self.cpp_type(t)}()", t
         if fn.kind == "name" and fn.name in ("Int", "Bool"):
             c, t = self.expr(e.args[0])
@@ -2267,7 +2290,7 @@ class Compiler(LendMixin):
         return oc, el, kc
 
     # ---------- iteration
-    def bind_pattern(self, pat, c, t, node, mut=False):
+    def bind_pattern(self, pat, c, t, node, mut=False, owned=False):
         """Declare pattern names for value c of type t (emits C++ declarations)."""
         if pat.kind == "pname":
             if pat.name == "_":
@@ -2279,14 +2302,15 @@ class Compiler(LendMixin):
         if not isinstance(t, TTuple) or len(t.types) != len(pat.items):
             self.error(node, f"cannot destructure {t!r} into {len(pat.items)} names")
         tmp = self.tmpname("d")
-        self.emit(f"const auto& {tmp} = {c};")
+        # a `let` owns its value: the names must not point into a list that a later push may move
+        self.emit(f"const auto{'' if owned else '&'} {tmp} = {c};")
         for sub, fn, ft in zip(pat.items, t.names, t.types):
             self.bind_pattern(sub, f"{tmp}.{self.field_cpp(fn)}", ft, node)
 
     def loop(self, pat, it, node, body):
         # a read() inside a top-level loop: the input ends where the outermost loop ends
         self.loop_nest = getattr(self, "loop_nest", 0) + 1
-        mark = self.last_read
+        mark, rmark = self.last_read, getattr(self, "read_pos", None)
         held = self.hold_iterated(it, node)
         try:
             self._loop(pat, it, node, body)
@@ -2296,7 +2320,8 @@ class Compiler(LendMixin):
                 self.holds.remove(held)
         if self.loop_nest == 0 and self.last_read != mark and self.out is self.init_lines:
             self.last_read = len(self.init_lines)
-            self.read_pos = (id(self.out), len(self.out))
+        if self.loop_nest == 0 and getattr(self, "read_pos", None) != rmark:
+            self.read_pos = (id(self.out), len(self.out))       # in a fn too: the input ends where the loop ends
 
     def _loop(self, pat, it, node, body):
         """Emit a for-loop over iterable node `it`, binding `pat`; body() emits the loop body."""
@@ -2400,7 +2425,12 @@ class Compiler(LendMixin):
             if rev:
                 self.emit(f"for ({cty} {v} = {hi_x} - 1; {v} >= (ll)({lo}); --{v}) {{")
             else:
-                self.emit(f"for ({cty} {v} = {lo}; {v} < {hi_x}; ++{v}) {{")
+                # a range is a value: its end is read once, before the first step (decisions 13b), so a body
+                # that grows the list the end was computed from does not move the end
+                if re.fullmatch(r"\(ll\)\((\w+|-?\d+LL)\)( \+ 1)?", hi_x):
+                    self.emit(f"for ({cty} {v} = {lo}; {v} < {hi_x}; ++{v}) {{")
+                else:
+                    self.emit(f"for ({cty} {v} = {lo}, {v}_end = {hi_x}; {v} < {v}_end; ++{v}) {{")
             s = Sym("let", et, v, node=pat)
             if is_int(et):
                 s.fact = (lo, hi_x.replace("(ll)", "", 1) if False else (f"({hi}) + 1" if it.incl else hi))
@@ -2744,7 +2774,7 @@ class Compiler(LendMixin):
             if want_el is not None:
                 c = self.coerce(c, t, want_el, e.body)
                 t = want_el
-            box["t"] = TInt() if is_int(t) else t
+            box["t"] = t if want_el is not None else TInt() if is_int(t) else t
             flat = vs[0]
             for v, d in zip(vs[1:], dims[1:]):
                 flat = f"({flat}) * {d.info.len_cpp} + {v}"
@@ -2756,7 +2786,7 @@ class Compiler(LendMixin):
         lines, _ = self.capture(body)
         et = box["t"]
         size = " * ".join(f"(size_t){d.info.len_cpp}" for d in dims)
-        code = (f"([&]() {{ vector<{self.cpp_type(et)}> {tab}({size});\n" + "\n".join(lines) + f"\n return {tab}; }}())")
+        code = (f"([&]() {{ {self.cpp_type(TArr(dims, et))} {tab}({size});\n" + "\n".join(lines) + f"\n return {tab}; }}())")
         return code, TArr(dims, et)
 
     # ---------- statements
@@ -2856,7 +2886,7 @@ class Compiler(LendMixin):
             dn, vn = s.pat.items[0].name, s.pat.items[1].name
             vals = self.fresh(vn)
             self.decl_global_or_local(vals, TList(INT))
-            self.emit(f"{vals}.assign({c}.begin(), {c}.end()); sort({vals}.begin(), {vals}.end()); "
+            self.emit(f"{{ auto&& _src = {c}; {vals}.assign(_src.begin(), _src.end()); }} sort({vals}.begin(), {vals}.end()); "
                       f"{vals}.erase(unique({vals}.begin(), {vals}.end()), {vals}.end());")
             info, _, _ = self.new_domain(dn, "0", f"{vals}.size()", (0, 0), (0, None))
             info.lo_src, info.hi_src = "0", f"{vals}.size()"
@@ -2928,7 +2958,7 @@ class Compiler(LendMixin):
             return
         if s.pat.kind != "pname":
             c, t = self.expr(s.value)
-            self.bind_pattern(s.pat, c, t, s, mut=s.mut)
+            self.bind_pattern(s.pat, c, t, s, mut=s.mut, owned=True)
             return
         name = s.pat.name
         v = s.value
@@ -2962,7 +2992,7 @@ class Compiler(LendMixin):
                 self.emit("if (CP_GEN) {")
                 self.ind += 1
                 self.emit(f"{cpp} = {self.coerce(gc, gt, ty, s)};")
-                self.emit_value(cpp, ty, s)
+                _emit_input(self, cpp, ty, s)
                 self.ind -= 1
                 self.emit("} else {")
                 self.ind += 1
@@ -3745,7 +3775,8 @@ class Compiler(LendMixin):
             self.error(s, f"match needs an enum value, got {t!r}")
         m = self.tmpname("m")
         done = f"{m}_done"
-        self.emit(f"{{ const auto& {m} = {c};")
+        # the subject is owned, as a `let` destructuring is: an arm may grow the list it was read from
+        self.emit(f"{{ const auto {m} = {c};")
         covered, wildcard = set(), False
         for arm in s.arms:
             self.scopes.append({})
@@ -4103,6 +4134,18 @@ class Compiler(LendMixin):
             hashed = any(a.kind == "name" and a.name == "hash" for a in decos["memo"].args) or not all(isinstance(t, TDom) for t in ptypes)
             if local or not all(isinstance(t, (TDom, TInt, TBool)) for t in ptypes) or isinstance(rt, TUnit):
                 self.error(s, "@memo (prototype) needs a fn at top level or directly in a @multitest fn, with domain parameters")
+            if not hashed:
+                # a dense table has one slot per point of the domains' product; past MEMO_DENSE_MAX slots (at the
+                # domains' declared maximum sizes) only the points actually asked for are stored
+                slots = 1
+                for t in ptypes:
+                    n = t.info.len_iv[1]
+                    slots = None if slots is None or n is None else slots * n
+                if slots is not None and slots > MEMO_DENSE_MAX:
+                    if any(a.kind == "kwarg" and a.name in ("into", "order") for a in decos["memo"].args):
+                        self.error(s, f"@memo(into/order) fills a table of up to {slots} slots, one per point of "
+                                      f"{' x '.join(repr(t) for t in ptypes)}; that is past the {MEMO_DENSE_MAX} it allows")
+                    hashed = True
             self.check_memo_reads(s)
             tab = f"_memo_{cpp}"
             if hashed:
@@ -4679,6 +4722,60 @@ def _emit_read(self, target, ty, node, packed=False):
     else:
         self.error(node, f"cannot read {ty!r}")
 
+def _emit_input(self, target, ty, node, packed=False):
+    """Write a value a `gen:` fn made as input text: the format `_emit_read` reads and its generator writes."""
+    if isinstance(ty, (TInt, TBool)):
+        self.emit(f"out_int({target}); out_char(' ');")
+    elif isinstance(ty, TDom):
+        self.emit(f"out_int({self.dom_label(ty.info, target)}); out_char(' ');")
+    elif isinstance(ty, TChar):     # the characters of a table are one word for each row
+        self.emit(f"out_char({target});{'' if packed else ' out_char(' + repr(' ') + ');'}")
+    elif isinstance(ty, TStr):
+        self.emit(f"out_str({target}); out_char(' ');")
+    elif isinstance(ty, TTuple):
+        for fn, ft in zip(ty.names, ty.types):
+            _emit_input(self, f"{target}.{self.field_cpp(fn)}", ft, node)
+    elif isinstance(ty, TEnum) and ty.tags and all(len(t) == 1 for t in ty.tags) and not any(f for _, f, _ in ty.variants):
+        self.emit(f"out_char({json.dumps(''.join(ty.tags))}[{target}.tag]);{'' if packed else ' out_char(' + repr(' ') + ');'}")
+    elif isinstance(ty, TOpt) and isinstance(ty.inner, TDom):
+        self.emit(f"out_int({target}.has() ? {target}.get() + {ty.inner.info.lo_cpp} : -1); out_char(' ');")
+    elif isinstance(ty, TPerm) and ty.elem.info.labels != "char":
+        self.emit(f"for (auto _x : {target}) {{ out_int(_x + {ty.elem.info.lo_cpp}); out_char(' '); }}")
+    elif isinstance(ty, (TList, TArr)) and not isinstance(ty, TPerm):
+        if isinstance(ty, TList):
+            self.emit(f"out_int((ll){target}.size()); out_char(' ');")
+        v = self.tmpname("k")
+        self.emit(f"for (size_t {v} = 0; {v} < {target}.size(); ++{v}) {{")
+        self.ind += 1
+        _emit_input(self, f"{target}[{v}]", ty.elem, node, packed=isinstance(ty, TArr))
+        word = isinstance(ty, TArr) and (isinstance(ty.elem, TChar) or (
+            isinstance(ty.elem, TEnum) and ty.elem.tags and all(len(t) == 1 for t in ty.elem.tags)))
+        if word and len(ty.dims) > 1:
+            self.emit(f"if (({v} + 1) % (size_t){ty.dims[-1].info.len_cpp} == 0) out_char('\\n');")
+        elif isinstance(ty.elem, (TList, TArr)):
+            self.emit("out_char('\\n');")
+        self.ind -= 1
+        self.emit("}")
+        if word:
+            self.emit("out_char(' ');")
+    elif isinstance(ty, TEnum):
+        if ty.tags:
+            names = ", ".join(json.dumps(t) for t in ty.tags)
+            self.emit(f"{{ static const char* _tn[] = {{{names}}}; out_str(_tn[{target}.tag]); out_char(' '); }}")
+        else:
+            self.emit(f"out_int({target}.tag); out_char(' ');")
+        for k, (vn, fns, fts) in enumerate(ty.variants):
+            if not fns:
+                continue
+            self.emit(f"if ({target}.tag == {k}) {{")
+            self.ind += 1
+            for f, ft in zip(fns, fts):
+                _emit_input(self, f"{target}.{vn}_{f}", ft, node)
+            self.ind -= 1
+            self.emit("}")
+    else:       # no input format of its own: written as `print` writes it
+        self.emit_value(target, ty, node)
+
 def _emit_print(self, args, newline, node):
     # in input-generation mode the whole program runs, but only the generated input is printed
     self.emit("if (!CP_GEN) {")
@@ -4689,8 +4786,18 @@ def _emit_print(self, args, newline, node):
 
 def _emit_print_body(self, args, newline, node):
     first = True
+    # every argument is evaluated before anything is written: a later argument that asks a question or
+    # prints must not find the first words of this line already in the output
+    late = any(w or io for w, _, io in (self.effects_in(a) for a in args[1:]))
+    vals = []
     for a in args:
         c, t = self.expr(a)
+        if late and a.kind not in ("num", "char", "bool", "str"):
+            tmp = self.tmpname("pa")
+            self.emit(f"auto&& {tmp} = {c};")
+            c = tmp
+        vals.append((c, t))
+    for a, (c, t) in zip(args, vals):
         if not first:
             self.emit("out_char(' ');")
         first = False

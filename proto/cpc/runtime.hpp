@@ -685,6 +685,8 @@ struct CpHash {
         z = (z ^ (z >> 27)) * 0x94d049bb133111ebULL;
         return (size_t)(z ^ (z >> 31));
     }
+    // a record hashes its fields in order (each record struct has `cp_hash`)
+    template <class T> auto operator()(const T& x) const -> decltype(x.cp_hash(*this)) { return x.cp_hash(*this); }
 };
 // @end
 // @part CpCounter|CpDenseCounter
