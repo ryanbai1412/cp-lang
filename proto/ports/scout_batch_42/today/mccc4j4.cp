@@ -31,5 +31,5 @@ for g in Group:
 var line = ""
 for i in 0..out.len:
     if i > 0: line = line + " "
-    line = line + "{out[i]}"
+    line += "{out[i]}"
 print(line)

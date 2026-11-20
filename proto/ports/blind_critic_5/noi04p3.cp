@@ -25,11 +25,11 @@ let sv: Str = read()
 
 var hori: List<Int> = []
 for i in 0..n:
-    hori.push(if sh[i] == 'E': 1 else: 0)
+    hori.push(Int(sh[i] == 'E'))
 
 var vert: List<Int> = []
 for i in 0..m:
-    vert.push(if sv[i] == 'S': 1 else: 0)
+    vert.push(Int(sv[i] == 'S'))
 
 var costh: List<Int> = []
 for _ in 0..n:
@@ -102,8 +102,8 @@ for bni in 0..num_masks:
                     let y1 = qr.y1
                     let x2 = qr.x2
                     let y2 = qr.y2
-                    let left = if y1 > y2: 1 else: 0
-                    let down = if x1 < x2: 1 else: 0
+                    let left = Int(y1 > y2)
+                    let down = Int(x1 < x2)
                     let bx1 = (bni >> x1) & 1
                     let bx2 = (bni >> x2) & 1
                     if x1 == x2:

@@ -160,16 +160,20 @@ def find_comprehension_copies(code, lines, raw):
 
 
 def find_domain_bounds(code, lines, raw):
+    """Range ends that restate the domain's own: `D.first..x`, `x..=D.last`,
+    `D.first..=D.last`, and `D.first.l` / `D.last.r` boundaries. A bare
+    `D.first` or `D.last` as a position is the plain way to name it."""
     hits = []
     pat = re.compile(r"\b([A-Z]\w*)\.(first|last)\b(\.[lr]\b)?")
     for i, line in enumerate(lines, 1):
         for m in pat.finditer(line):
-            if m.group(3):
-                hits.append((i, f"D.{m.group(2)}{m.group(3)}"))
-            elif line[:m.start()].rstrip().endswith(("..=", "..")):
-                hits.append((i, f"..D.{m.group(2)}"))
-            else:
-                hits.append((i, f"D.{m.group(2)}"))
+            end, cut = m.group(2), m.group(3)
+            if cut:
+                hits.append((i, f"D.{end}{cut}"))
+            elif end == "first" and line[m.end():].lstrip().startswith(".."):
+                hits.append((i, "D.first.."))
+            elif end == "last" and line[:m.start()].rstrip().endswith("..="):
+                hits.append((i, "..=D.last"))
     return hits
 
 

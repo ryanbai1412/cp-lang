@@ -20,12 +20,12 @@ for left in 0..m:
         hi[r] = lo[r]
     for right in left..min(m, left + 100):
         for r in 0..n:
-            lo[r] = min(lo[r], h[r * m + right])
-            hi[r] = max(hi[r], h[r * m + right])
+            lo[r] min= h[r * m + right]
+            hi[r] max= h[r * m + right]
         var (hi_head, hi_tail, lo_head, lo_tail) = (0, 0, 0, 0)
         var bottom = 0                       // one past the last row of the window
         for top in 0..n:
-            bottom = max(bottom, top)
+            bottom max= top
             while bottom < n:
                 let peak = if hi_head < hi_tail: max(hi[q_hi[hi_head]], hi[bottom]) else: hi[bottom]
                 let pit = if lo_head < lo_tail: min(lo[q_lo[lo_head]], lo[bottom]) else: lo[bottom]

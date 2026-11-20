@@ -48,7 +48,7 @@ if n == 100:
         let ty = strat_ty[si]
         let cnt = strat_cnt[si]
         for _ in 0..cnt:
-            if sched.len > 0 and ty == 1 and sched[sched.len - 1] == 0:
+            if sched.len > 0 and ty == 1 and sched.last! == 0:
                 sched[sched.len - 1] = 1
             else:
                 sched.push(1 - ty)

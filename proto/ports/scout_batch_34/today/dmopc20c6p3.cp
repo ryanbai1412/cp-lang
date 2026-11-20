@@ -1,6 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of dmopc20c6p3.cp
 // original: corpus/submissions/3917634.cpp
-use std.graph.{Graph}
 
 let (n, m): (Int, Int) = read()
 domain V = 1..=n
@@ -52,5 +51,5 @@ var out = ""
 for u in V:
     let bit = if (state[u] ?? false): "1" else: "0"
     if u.to_idx > 0: out = out + " "
-    out = out + bit
+    out += bit
 print(out)

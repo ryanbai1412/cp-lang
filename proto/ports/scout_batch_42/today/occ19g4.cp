@@ -1,6 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of occ19g4.cp
 // original: corpus/submissions/3578469.cpp
-use std.fenwick.{Fenwick}
 
 let n: Int = read()
 domain P = 0..(2 * n)
@@ -37,7 +36,7 @@ for k in 0..n:
 let sv = sorted(all_v)
 var ys: List<Int> = []
 for v in sv:
-    if ys.len == 0 or ys[ys.len - 1] != v: ys.push(v)
+    if ys.len == 0 or ys.last! != v: ys.push(v)
 domain Y = 0..ys.len
 
 fn y_at(val: Int) -> Y:

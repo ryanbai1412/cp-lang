@@ -32,7 +32,7 @@ fn power(base: Int, exp: Int) -> Int:
     r
 
 if task == 1:
-    print(if ok: 1 else: 0)
+    print(Int(ok))
 elif task == 2:
     // The slot with the largest number absorbs every replacement nobody else
     // ends on; a slot ending on g takes its final gondola at step g.

@@ -70,16 +70,16 @@ for i in 0..tags.len:
     else:
         let h = ca[i]
         // LazySegTree lacks max_right, so binary search over segment count today:
-        if st.fold(Seg.first..=Seg.last).max_pre <= h:
+        if st.fold(Seg.first..).max_pre <= h:
             print(n)
         else:
             var (lo, hi) = (0, xs.len - 1)
             while lo < hi:
                 let mid = (lo + hi) / 2
-                if st.fold(Seg.first..=Seg(mid)).max_pre > h: hi = mid
+                if st.fold(..=Seg(mid)).max_pre > h: hi = mid
                 else: lo = mid + 1
             let seg_i = Seg(lo)
-            let cur = if lo == 0: 0 else: st.fold(Seg.first..seg_i).total
+            let cur = if lo == 0: 0 else: st.fold(..seg_i).total
             let node = st.get(seg_i)
             let slope = node.total / node.len
             let extra = (h - cur) / slope

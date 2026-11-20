@@ -4,7 +4,7 @@ let s: Str = read()
 
 var pref = List.filled(n + 1, 0)
 for i in 0..n:
-    let add = if s[i] == 'C': 1 else: 0
+    let add = Int(s[i] == 'C')
     pref[i + 1] = pref[i] + add
 let tot = pref[n]
 
@@ -23,7 +23,7 @@ fn win(l: Int, r: Int, my_red: Int) -> Bool:
     let c = cell(l, r, my_red)
     if memo[c] != -1: return memo[c] == 1
     let res = (not win(l + 1, r, opp_red)) or (not win(l, r - 1, opp_red))
-    memo[c] = if res: 1 else: 0
+    memo[c] = Int(res)
     res
 
 print(if win(0, n - 1, 0): "DA" else: "NE")

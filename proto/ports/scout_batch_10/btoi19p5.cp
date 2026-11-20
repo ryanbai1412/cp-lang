@@ -24,7 +24,7 @@ fn longest(s: List<Char>, t: List<Char>) -> (Int, Int, Int):
         let y = overlaps(s[cut..n], t)
         let x = overlaps(s[0..cut].rev, t.rev)
         for j in 0..=m:
-            best = max(best, (x[m - j] + y[j], cut - x[m - j], j - y[j]))
+            best max= (x[m - j] + y[j], cut - x[m - j], j - y[j])
     best
 
 let s: Str = read()

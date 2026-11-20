@@ -15,9 +15,7 @@ fn solve():
         var ca = a[I.from_idx(i)!]
         var cb = a[I.from_idx(i + 1)!]
         if i % 2 == 0:
-            let tmp = ca
-            ca = cb
-            cb = tmp
+            swap(mut ca, mut cb)
         let k = (ca, cb)
         let prev = pen.get(k) ?? 0
         pen[k] = prev + (j - i) / 2

@@ -40,9 +40,7 @@ fn main_solve():
     while idx > 0:
         seed = (seed * 1103515245 + 12345) % 2147483647
         let j = seed % (idx + 1)
-        let tmp = perm[idx]
-        perm[idx] = perm[j]
-        perm[j] = tmp
+        perm.swap(idx, j)
         idx -= 1
 
     var inside: List<Int> = []

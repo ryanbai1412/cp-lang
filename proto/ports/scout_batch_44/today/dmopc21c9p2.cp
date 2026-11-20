@@ -1,7 +1,6 @@
 // DMOPC '21 C9 P2 (CP Lang 0.2.2): merge equal adjacent characters while
 // matching prefix against target `b` using `std.deque.Deque`.
 // original: corpus/submissions/4563973.cpp
-use std.deque.{Deque}
 
 @multitest
 let (a, b): (Str, Str) = read()
@@ -9,7 +8,7 @@ var pending = Deque<Char>.new()
 var matched = 0
 for c in a:
     pending.push(c)
-    while pending.len >= 2 and pending[pending.len - 1] == pending[pending.len - 2] and pending[pending.len - 1] != 'z':
+    while pending.len >= 2 and pending.last! == pending[pending.len - 2] and pending.last! != 'z':
         let x = pending.pop()!
         pending.pop()
         pending.push(Char(Int(x) + 1))

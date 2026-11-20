@@ -19,7 +19,7 @@ domain Lead = -n..=n
 var bad: Z = 0
 for j in Food:
     var ways: [Lead]Z = [Lead] d => Z(0)
-    ways[Lead(0)] = Z(1)
+    ways[Lead(0)] = 1
     for i in Method:
         var next = [Lead] d => ways[d]
         for d in Lead:

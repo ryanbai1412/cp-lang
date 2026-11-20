@@ -34,9 +34,7 @@ fn unite(layer: Int, u: Int, v: Int) -> Bool:
     var b = find(layer * n + v)
     if a == b: return false
     if up[a] > up[b]:
-        let t = a
-        a = b
-        b = t
+        swap(mut a, mut b)
     up[a] += up[b]
     up[b] = a
     true

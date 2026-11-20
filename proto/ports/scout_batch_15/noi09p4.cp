@@ -1,9 +1,6 @@
 // NOI 2009 Plants vs Zombies (CP Lang 0.2.2): reverse Kahn cycle peel via
 // `Deque<Cell>` + `Marks<Cell>` followed by max-weight closure via `FlowGraph`.
 // original: corpus/submissions/5144326.cpp
-use std.deque.{Deque}
-use std.flow.{FlowGraph}
-use std.marks.{Marks}
 
 let (n, m): (Int, Int) = read()
 let total_cells = n * m

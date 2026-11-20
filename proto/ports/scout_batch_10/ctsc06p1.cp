@@ -8,7 +8,6 @@
 // suffix).
 // original: corpus/submissions/4528855.cpp
 use std.strings.{prefix_function}
-use std.mod.{Mod}
 
 let (m, t): (Int, Int) = read()
 type Z = Mod<10000>
@@ -22,7 +21,7 @@ for _ in 0..t:
     let border = prefix_function([name[i] for i in I])
     var (wait, b) = (Z(0), n)
     while b > 0:
-        wait = wait + Z(m).pow(b)
+        wait += Z(m).pow(b)
         b = border[b - 1]
     let w = wait.v
     print(digit(w / 1000) + digit(w / 100) + digit(w / 10) + digit(w))

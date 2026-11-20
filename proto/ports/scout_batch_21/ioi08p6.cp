@@ -10,7 +10,6 @@
 //     many obstacles of the window lie over each y and knows the longest
 //     free run; the window grows while a square of its width still fits.
 // original: corpus/submissions/5637805.cpp
-use std.lazy.{LazySegTree, AddMin}
 
 let m: Int = read()
 let n: Int = read()
@@ -41,7 +40,7 @@ fn cheapest(k: Int) -> Int:
     for x in X:
         for s in stops[x]: cost.apply(s.lo..=s.hi, -s.cost)
         for s in starts[x]: cost.apply(s.lo..=s.hi, s.cost)
-        best min= cost.fold(Y.first..=Y.last)
+        best min= cost.fold(Y.first..)
     best
 
 fn with_budget() -> Int:

@@ -70,7 +70,7 @@ fn main_solve():
             for x in right: full.push(x)
             pairings.push(full)
             i += 2
-        if open.len % 2 == 1: return open[open.len - 1]
+        if open.len % 2 == 1: return open.last!
         return none
 
     for r in roots:

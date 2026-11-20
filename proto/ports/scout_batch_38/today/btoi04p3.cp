@@ -25,9 +25,7 @@ fn merge_heap(a_in: ?V, b_in: ?V) -> ?V:
         v = tmp
     let rc = hrc[u]
     hrc[u] = merge_heap(rc, v)
-    let tmp = hlc[u]
-    hlc[u] = hrc[u]
-    hrc[u] = tmp
+    swap(mut hlc[u], mut hrc[u])
     u
 
 var st_l: List<Int> = []
@@ -41,7 +39,7 @@ for i in 0..n:
     var csz = 1
     var crt = V(i)
     while st_rt.len > 0:
-        let top_rt = st_rt[st_rt.len - 1]
+        let top_rt = st_rt.last!
         if hval[top_rt] <= hval[crt]: break
         cl = st_l.pop()!
         st_r.pop()

@@ -29,9 +29,7 @@ while i < n:
             let to = cursor[car]
             moves.push(from + 1)
             moves.push(to + 1)
-            let evicted = park[to]
-            park[to] = car
-            car = evicted
+            swap(mut park[to], mut car)
             from = to
         moves.push(from + 1)
         moves.push(i + 1)

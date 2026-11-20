@@ -23,11 +23,11 @@ assert s2.len == m
 
 // Reverse if input lists top-to-bottom while balls pop from bottom (checked against C++)
 domain I = 0..=n
-var dp: [I, I]Z = Z(0)
-dp[I(0), I(0)] = Z(1)
+var dp: [I, I]Z = 0
+dp[I(0), I(0)] = 1
 
 for k in 0..(n + m):
-    var nxt: [I, I]Z = Z(0)
+    var nxt: [I, I]Z = 0
     let lo = max(0, k - m)
     let hi = min(n, k)
     for i in lo..=hi:

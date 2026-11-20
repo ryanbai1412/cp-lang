@@ -81,7 +81,7 @@ for _ in 0..q:
     sort(mut touched)
     var cells: List<Int> = []
     for x in touched:
-        if cells.len == 0 or cells[cells.len - 1] != x: cells.push(x)
+        if cells.len == 0 or cells.last! != x: cells.push(x)
     for x in cells: account(x / w, x % w, -1)
     let (ra, ca) = (row[a], col[a])
     row[a] = row[b]

@@ -14,7 +14,7 @@ let code: [0..m]Sym = read()
 var sym: List<Sym> = []
 var len: List<Int> = []
 fn add_run(s: Sym, k: Int):
-    if sym.len > 0 and sym[sym.len - 1] == s: len[len.len - 1] += k
+    if sym.len > 0 and sym.last! == s: len[len.len - 1] += k
     else:
         sym.push(s)
         len.push(k)

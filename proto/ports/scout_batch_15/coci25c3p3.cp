@@ -6,7 +6,6 @@
 // vertices on side 0 to reveal each forced matching edge `(u, partner)` while
 // computing longest-path DP over the resulting DAG of unmatched edges.
 // original: corpus/submissions/7730378.cpp
-use std.graph.{Graph}
 use scout.connectivity.{two_color}
 
 let (n, m): (Int, Int) = read()
@@ -52,6 +51,6 @@ var line = ""
 var cur = start
 while let u = cur:
     if line.len > 0: line = line + " "
-    line = line + "{mate[u]!.label} {u.label}"
+    line += "{mate[u]!.label} {u.label}"
     cur = nxt[u]
 print(line)

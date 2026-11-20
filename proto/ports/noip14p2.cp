@@ -25,8 +25,8 @@ for mid in V:
     var second = 0
     let around = sum(w[u] for u in adj[mid])
     for u in adj[mid]:
-        second = max(second, min(top, w[u]))
-        top = max(top, w[u])
-    best = max(best, top * second)
+        second max= min(top, w[u])
+        top max= w[u]
+    best max= top * second
     total += Z(around) * Z(around) - sum(Z(w[u] * w[u]) for u in adj[mid])
 print(best, total)

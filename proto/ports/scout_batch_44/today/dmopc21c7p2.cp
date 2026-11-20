@@ -31,5 +31,5 @@ var cur = 0
 for i in 0..n:
     cur = next[Node(cur)]
     if i > 0: line = line + " "
-    line = line + "{cur}"
+    line += "{cur}"
 print(line)

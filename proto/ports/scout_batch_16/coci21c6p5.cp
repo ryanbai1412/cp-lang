@@ -1,7 +1,6 @@
 // COCI 2021 #6 P5 (CP Lang 0.2.2): keep one bracket per pair so kept brackets
 // are balanced, greedily flipping the earliest-closing open mixed pair via `MinHeap`.
 // original: corpus/submissions/4531869.cpp
-use std.heap.{MinHeap}
 
 @multitest
 let n: Int = read()
@@ -30,9 +29,7 @@ for i in 0..2 * n:
     if depth >= 0: continue
     if let (_, p) = flippable.pop():
         let (x, y) = pairs[p]
-        let tmp = kept[x]
-        kept[x] = kept[y]
-        kept[y] = tmp
+        kept.swap(x, y)
         depth += if y <= i: 2 else: 1
     else:
         print(-1)

@@ -6,7 +6,7 @@ let n = S.len
 var head: List<Bool> = []
 for i in S: head.push(s[i] == 'H')
 var heads: [0..=n]Int = 0
-for i in 0..n: heads[i + 1] = heads[i] + (if head[i]: 1 else: 0)
+for i in 0..n: heads[i + 1] = heads[i] + Int(head[i])
 
 // clear[l, r]: best score from the block l..r, every pick splitting what is left
 var clear: [0..=n, 0..=n]Int = 0

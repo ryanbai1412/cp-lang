@@ -108,7 +108,7 @@ fn try_color(distr: [K]Bool) -> Bool:
         let ci = aid[i]
         let d = distr[K(inds[par[i]])]
         let bit = if par[i] == i: d else: not d
-        ans[Wire(ci)] = if bit: 1 else: 0
+        ans[Wire(ci)] = Int(bit)
         if bit:
             if l > r:
                 s1.push((l, n - 1))

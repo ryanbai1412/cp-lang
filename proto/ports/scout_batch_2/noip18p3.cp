@@ -5,8 +5,6 @@
 // Binary search the length k. For one k, go up the tree: every junction
 // gets the chains that end at its children, pairs them into tracks of
 // length at least k, and passes the longest chain left over to its parent.
-use std.graph.{Graph}
-use std.tree.{Rooted}
 
 let (n, m): (Int, Int) = read()
 domain Junction = 1..=n

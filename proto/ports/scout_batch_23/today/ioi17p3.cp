@@ -1,8 +1,6 @@
 // IOI '17 P3 — Toy Train (CP Lang 0.2.2): `Marks<V>` (O(1) clear) + `Deque<V>`
 // replace 4x per-iteration `List.filled(n, false)` resets and 2x manual queues.
 // original: corpus/submissions/5656304.cpp
-use std.deque.{Deque}
-use std.marks.{Marks}
 
 let (n, m): (Int, Int) = read()
 domain V = 0..n

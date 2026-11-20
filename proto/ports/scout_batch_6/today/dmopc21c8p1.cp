@@ -23,7 +23,7 @@ while line.len < n and not stuck:
         front += 1
     else: x = partners.pop()!
     line.push(x)
-    while front < small.len and small[small.len - 1] + x >= m: partners.push(small.pop()!)
+    while front < small.len and small.last! + x >= m: partners.push(small.pop()!)
     if line.len < n:
         if let y = partners.pop(): line.push(y)
         else: stuck = true

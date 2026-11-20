@@ -1,7 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of statement-first btoi17p2.cp
 // original: corpus/submissions/4456186.cpp
-use std.segtree.{SegTree}
-use std.algebra.{Monoid}
 
 let (k, n, m, o): (Int, Int, Int, Int) = read()
 domain E = 0..m

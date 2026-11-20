@@ -34,7 +34,7 @@ for p in 0..k:
 seen_red = FAR
 seen_blue = FAR
 for p in (0..k).rev:
-    near[p] = min(near[p], (if sign[p] == 1: seen_blue else: seen_red) - at[p])
+    near[p] min= (if sign[p] == 1: seen_blue else: seen_red) - at[p]
     if sign[p] == 1: seen_red = at[p]
     else: seen_blue = at[p]
 
@@ -55,7 +55,7 @@ for p in 0..k:
     signed += sign[p] * at[p]
     var best = cost[p] + near[p]
     if last[bal] != -1:
-        best = min(best, cost[last[bal]] + abs(signed - signed_at[last[bal]]))
+        best min= cost[last[bal]] + abs(signed - signed_at[last[bal]])
     cost.push(best)
     signed_at.push(signed)
     last[bal] = p + 1

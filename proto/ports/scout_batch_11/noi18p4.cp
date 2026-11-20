@@ -3,7 +3,7 @@
 // weakest) hits for atk. One number of hits x must kill every dragon:
 // atk * x >= a and atk * x = a (mod p). The smallest such x, or -1.
 // original: corpus/submissions/6517796.cpp
-use std.math.{gcd, ext_gcd, crt, mul_mod, ceil_div}
+use std.math.{ext_gcd, crt, mul_mod, ceil_div}
 
 // The solutions of a * x = b (mod m) as one congruence x = r (mod m'), or none.
 fn solve_linear(a: Int, b: Int, m: Int) -> ?(Int, Int):
@@ -34,7 +34,7 @@ for _ in 0..t:
             if swords[i] <= life[d]: pick = i
         let atk = swords[pick]
         swords = sorted([swords[i] for i in 0..swords.len if i != pick] + [reward[d]])
-        at_least = max(at_least, ceil_div(life[d], atk))
+        at_least max= ceil_div(life[d], atk)
         let one = solve_linear(atk, life[d], regrow[d])
         all = if all == none or one == none: none else: crt(all!.0, all!.1, one!.0, one!.1)
     if let (r, md) = all:

@@ -24,7 +24,7 @@ fn fresh() -> Int:
 fn reach(root: Int, x: Int) -> Int:
     var (o, rest) = (root, x)
     while rest > 1:
-        if nodes[o].kid[rest % 2] == none: nodes[o].kid[rest % 2] = fresh()
+        nodes[o].kid[rest % 2] ??= fresh()
         o = nodes[o].kid[rest % 2]!
         rest /= 2
     o
@@ -46,7 +46,7 @@ let xs = fresh()
 for _ in 0..n:
     let (x, y, v): (Int, Int, Int) = read()
     let col = reach(xs, x)
-    if nodes[col].ys == none: nodes[col].ys = fresh()
+    nodes[col].ys ??= fresh()
     nodes[reach(nodes[col].ys!, y)].total += v
 
 for _ in 0..q:

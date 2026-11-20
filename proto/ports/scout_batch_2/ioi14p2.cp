@@ -5,8 +5,6 @@
 // Both operations clamp a height to an interval, and clamps compose into a
 // clamp. So this is a range update with no range query: push the clamps
 // down a lazy tree and read each leaf at the end.
-use std.algebra.{Action}
-use std.lazy.{LazySegTree}
 
 let (n, k): (Int, Int) = read()
 domain Col = 0..n

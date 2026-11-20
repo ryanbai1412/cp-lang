@@ -23,7 +23,7 @@ for p in Pos: all_v.push(a[p])
 let sv = sorted(all_v)
 var vals: List<Int> = []
 for x in sv:
-    if vals.len == 0 or vals[vals.len - 1] != x: vals.push(x)
+    if vals.len == 0 or vals.last! != x: vals.push(x)
 let m = vals.len
 domain U = 0..m
 

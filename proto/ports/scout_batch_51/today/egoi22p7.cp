@@ -25,9 +25,7 @@ fn main_solve():
         var v = g_find(ver, b)
         if u == v: return
         if g_par[ver][u] < g_par[ver][v]:
-            let tmp = u
-            u = v
-            v = tmp
+            swap(mut u, mut v)
         g_par[ver][v] += g_par[ver][u]
         g_par[ver][u] = v
 

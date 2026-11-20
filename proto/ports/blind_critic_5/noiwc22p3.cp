@@ -30,17 +30,17 @@ fn eval_code(guess: Str, ans: Str) -> Int:
                     silver[i] = true
     var code = 0
     for i in 0..5:
-        code = code * 2 + (if gold[i]: 1 else: 0)
+        code = code * 2 + Int(gold[i])
     for i in 0..5:
-        code = code * 2 + (if silver[i]: 1 else: 0)
+        code = code * 2 + Int(silver[i])
     code
 
 fn make_code(gold_str: Str, silver_str: Str) -> Int:
     var code = 0
     for i in 0..5:
-        code = code * 2 + (if gold_str[i] == '1': 1 else: 0)
+        code = code * 2 + Int(gold_str[i] == '1')
     for i in 0..5:
-        code = code * 2 + (if silver_str[i] == '1': 1 else: 0)
+        code = code * 2 + Int(silver_str[i] == '1')
     code
 
 fn guess_step(rem: Int, init_ch: Char, gold_s: Str, silver_s: Str) -> Str:

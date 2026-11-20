@@ -36,11 +36,11 @@ fn delivers(lo: Int, hi: Int) -> Bool:
 
 // Raising the floor never lowers the ceiling it needs, so both only move up.
 let levels = sorted([high[p] for p in cells()])
-var best = levels[levels.len - 1] - levels[0]
+var best = levels.last! - levels[0]
 var top = 0
 for floor in 0..levels.len:                                       // WISH L8: for (lo, hi) in levels.stretches(delivers)
-    top = max(top, floor)                                         // with no house every stretch delivers, the empty ones too
+    top max= floor// with no house every stretch delivers, the empty ones too
     while top < levels.len and not delivers(levels[floor], levels[top]): top += 1
     if top == levels.len: break
-    best = min(best, levels[top] - levels[floor])
+    best min= levels[top] - levels[floor]
 print(best)

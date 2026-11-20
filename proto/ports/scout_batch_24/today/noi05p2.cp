@@ -76,12 +76,8 @@ fn recycle(root: Int):
 fn apply_rev(u: Int):
     if u == 0: return
     rev_f[u] = not rev_f[u]
-    let t1 = lc[u]
-    lc[u] = rc[u]
-    rc[u] = t1
-    let t2 = pre[u]
-    pre[u] = suf[u]
-    suf[u] = t2
+    swap(mut lc[u], mut rc[u])
+    swap(mut pre[u], mut suf[u])
 
 fn apply_same(u: Int, c: Int):
     if u == 0: return

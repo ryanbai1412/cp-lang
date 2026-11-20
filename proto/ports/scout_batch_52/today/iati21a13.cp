@@ -11,9 +11,7 @@ fn insert_sorted(mut a: List<Int>, v: Int):
     a.push(v)
     var i = a.len - 1
     while i > 0 and a[i - 1] > a[i]:
-        let t = a[i - 1]
-        a[i - 1] = a[i]
-        a[i] = t
+        a.swap(i - 1, i)
         i -= 1
 
 fn upper_bound(a: List<Int>, lim: Int) -> Int:

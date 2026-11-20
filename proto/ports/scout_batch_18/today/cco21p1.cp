@@ -1,6 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of statement-first cco21p1.cp
 // original: corpus/submissions/4538969.cpp
-use std.fenwick.{Fenwick}
 
 let (n, k, q): (Int, Int, Int) = read()
 domain Pos = 1..=n
@@ -49,7 +48,5 @@ for qi in Query:
         cache[key] = before_lo_hi
     let before_xy = if x.to_idx < y.to_idx: before_lo_hi else: occ[x].len * occ[y].len - before_lo_hi
     inv += 2 * before_xy - occ[x].len * occ[y].len
-    let tmp = order[j]
-    order[j] = order[j1]
-    order[j1] = tmp
+    order.swap(j, j1)
     print(inv)

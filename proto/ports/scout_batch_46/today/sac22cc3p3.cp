@@ -5,7 +5,7 @@ let a: [0..n]Int = read()
 
 var top = 0
 for i in 0..n:
-    top = max(top, a[i])
+    top max= a[i]
 
 // pass d orders by the last d digits; ties keep input order
 var p = 10
@@ -20,4 +20,4 @@ while going:
         row.push(a[idx[i]])
     print(row)
     going = top >= p
-    p = p * 10
+    p *= 10

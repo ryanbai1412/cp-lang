@@ -12,6 +12,6 @@ let a: [V]Int = read()
 let pre = prefix(a)
 // FRICTION MC10: `Range<I>` lists `..i`, `..=i`, and `i..`, but omits the unbounded
 // full range `..` (`pre.sum(..)` / `st.fold(..)`), forcing `V.first..=V.last`.
-let total = pre.sum(V.first..=V.last)
+let total = pre.sum(V.first..)
 let ans = first(i for i in V if 2 * pre.sum(..=i) == total)
 print(ans, none: "Andrew is sad.")

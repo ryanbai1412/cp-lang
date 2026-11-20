@@ -19,7 +19,7 @@ while next < leaves.len:
     next += 1
     let (p, len) = bridge[v]
     inside[p] = max(inside[p], inside[v], reach[p] + reach[v] + len)
-    reach[p] = max(reach[p], reach[v] + len)
+    reach[p] max= reach[v] + len
     pending[p] -= 1
     if pending[p] == 0: leaves.push(p)
 
@@ -40,7 +40,7 @@ for start in I:
     var at = 0                              // distance from start, going round
     var (short, long): (?Int, ?Int) = (none, none)      // best reach[a] - at, reach[a] + at so far
     for b in ring:
-        best = max(best, inside[b])
+        best max= inside[b]
         if short != none: best = max(best, reach[b] + at + short!, reach[b] + around - at + long!)
         short = max(short ?? Int.MIN, reach[b] - at)
         long = max(long ?? Int.MIN, reach[b] + at)

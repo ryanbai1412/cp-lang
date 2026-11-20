@@ -1,7 +1,6 @@
 // Educational DP Y, Grid 2: count the down/right paths from the top-left to
 // the bottom-right corner of an h x w grid that avoid n walls.
 // original: corpus/submissions/4133511.cpp
-use std.mod.{Mod, Comb}
 
 const P = 1000000007
 type Z = Mod<P>
