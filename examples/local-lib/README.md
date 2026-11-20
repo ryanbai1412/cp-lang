@@ -84,8 +84,10 @@ Numbers, in `math/`:
   tree path.
 - `matrix.cp`: `Mat<P>`, square matrices over `Mod<P>` with `det`, `rank`,
   `solve`, and rectangular `solve_linear`.
-- `poly.cp`: `ntt`, `convolve` and `pow_trunc` modulo 998244353, plus
-  arbitrary-modulus 3-prime MTT `convolve_mod` and Lagrange `interpolate`.
+- `poly.cp`: polynomials and formal power series modulo 998244353: `ntt`
+  and `convolve`, then `inv_trunc`, `log_trunc`, `exp_trunc`, `pow_trunc`,
+  `derivative` and `integral`, each O(n log n); plus arbitrary-modulus
+  3-prime MTT `convolve_mod` and Lagrange `interpolate`.
 - `powers.cp`: `Powers<P>`, the powers of one base in O(1).
 - `sos.cp`: `sos_sub`, `sos_sup` and `sos_sub_inv`, sums over subsets and
   supersets of bitmasks.
@@ -211,6 +213,27 @@ let share = total / Money.of(3)          // 3.33
 let left = total - share.times(3)        // 0.01
 print("{share} each, {left} left over")
 ```
+
+`poly.cp` treats a `List<Z>` of coefficients, lowest degree first, as a
+power series. Every `_trunc` function returns exactly the first `keep`
+coefficients, so results chain without resizing. Set partitions have the
+exponential generating function `e^(e^x - 1)`, which gives the Bell
+number of `n` in O(n log n):
+
+```
+use lib.math.poly.{Z, exp_trunc}
+
+let n: Int = read()
+let e_x = exp_trunc([Z(0), Z(1)], n + 1)
+let bell = exp_trunc([if k == 0: Z(0) else: e_x[k] for k in 0..=n], n + 1)
+var fact = Z(1)
+for k in 1..=n: fact = fact * Z(k)
+print(bell[n] * fact)                    // n = 10: 115975
+```
+
+`inv_trunc` needs a non-zero constant term, `log_trunc` a constant term
+of 1 and `exp_trunc` one of 0; `pow_trunc` takes any series and any
+exponent `e >= 0`, however large.
 
 `Congruence` is one residue class `x = r (mod m)`. `meet` intersects two
 of them and is `none` when they contradict, whatever the moduli have in
