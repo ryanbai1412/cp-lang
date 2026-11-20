@@ -1595,6 +1595,18 @@ impl<'a> Lowerer<'a> {
                             }
                         }
                     }
+                    // A `Bool` picks a cell of a `[Bool]T`: `false` the
+                    // first, `true` the second. The checker has made
+                    // sure the array is one.
+                    if (*dim, &value.ty) == (Dim::Int, &Ty::Bool) {
+                        let (one, zero) = (self.int_lit(1, index.span), self.int_lit(0, index.span));
+                        out.push(self.mk(
+                            ExprKind::If(Box::new(value), Box::new(one), Box::new(zero)),
+                            Ty::Int,
+                            index.span,
+                        ));
+                        continue;
+                    }
                     if value.ty != want && value.ty != Ty::Error {
                         let message = format!(
                             "this is indexed by `{}`, but the index is a `{}`",

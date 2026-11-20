@@ -152,6 +152,9 @@ impl<'a> Lowerer<'a> {
                     let ptr: *const Analysis = &*imported.analysis;
                     self.mods.push(unsafe { &*ptr });
                     self.mod_syms.push(HashMap::new());
+                    if imported.name == "std.mod" {
+                        self.std_mod = Some(id);
+                    }
                     queue.push(id);
                 }
             }
