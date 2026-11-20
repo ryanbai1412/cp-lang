@@ -42,6 +42,22 @@ pub struct Stmt {
     pub kind: StmtKind,
     pub span: Span,
     pub decorators: Vec<Decorator>,
+    /// Declared with `pub`: visible to modules that `use` this one.
+    pub public: bool,
+}
+
+/// `T: Ord + Bounded`, from a type parameter list or a `where` clause.
+#[derive(Clone, PartialEq, Debug)]
+pub struct Bound {
+    pub name: Name,
+    pub traits: Vec<Type>,
+}
+
+/// `lends T` or `lends mut T` in a projection's signature.
+#[derive(Clone, PartialEq, Debug)]
+pub struct Lends {
+    pub mutable: bool,
+    pub ty: Type,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -52,9 +68,16 @@ pub enum StmtKind {
         pat: Pattern,
         ty: Option<Type>,
         init: Option<Expr>,
+        /// `let v = u else: return`: runs when the value is `none`.
+        otherwise: Option<Block>,
+        /// `let k: 0..n = read() where k < n`: a refinement of the input.
+        guard: Option<Expr>,
     },
     Const {
         name: Name,
+        /// `const Sum<T> = ... where T: Add`: one value per choice of `T`.
+        generics: Vec<Name>,
+        bounds: Vec<Bound>,
         ty: Option<Type>,
         /// Absent only in a trait, where the implementor supplies it.
         init: Option<Expr>,
@@ -74,12 +97,27 @@ pub enum StmtKind {
     Trait {
         name: Name,
         generics: Vec<Name>,
+        /// `trait Seq: Index`.
+        supers: Vec<Type>,
         body: Block,
     },
     Impl {
         trait_name: Option<Type>,
         target: Type,
+        bounds: Vec<Bound>,
         body: Block,
+    },
+    /// `law assoc(a: T, b: T) = op(a, b) == op(b, a)` in a struct, or
+    /// `law disjoint(i, j) = i != j` in a projection.
+    Law {
+        name: Name,
+        params: Vec<Param>,
+        body: Expr,
+    },
+    /// `lend place` or `lend mut place`, the last statement of a projection.
+    Lend {
+        mutable: bool,
+        place: Expr,
     },
     Use {
         path: Vec<Name>,
@@ -134,8 +172,11 @@ pub enum AssignOp {
 pub struct FnDecl {
     pub name: Name,
     pub generics: Vec<Name>,
+    pub bounds: Vec<Bound>,
     pub params: Vec<Param>,
     pub ret: Option<Type>,
+    /// `fn at(self, i: V) lends mut Int`: a projection.
+    pub lends: Option<Lends>,
     pub body: FnBody,
     /// From `fn` to the end of the signature.
     pub sig_span: Span,
@@ -166,7 +207,12 @@ pub struct Param {
 pub struct StructDecl {
     pub name: Name,
     pub generics: Vec<Name>,
+    pub bounds: Vec<Bound>,
+    /// Header fields (`struct Monoid<T>(id: T, op: (T, T) -> T)`) first,
+    /// then the fields of the body.
     pub fields: Vec<FieldDecl>,
+    /// Everything in the body that is not a field: fns, laws, owned
+    /// domains, constants.
     pub methods: Vec<Stmt>,
 }
 
@@ -317,7 +363,8 @@ pub enum ExprKind {
 pub struct Clause {
     pub pat: Pattern,
     pub iter: Expr,
-    pub cond: Option<Expr>,
+    /// Each `if cond` or `if let pat = value` after the iterator.
+    pub conds: Vec<Cond>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -452,5 +499,10 @@ pub enum TypeKind {
     },
     /// `yields T`: the return type of a generator.
     Yields(Box<Type>),
+    /// A value in a type argument list: the `7` of `Mod<7>`.
+    Value(Box<Expr>),
+    /// `domain C` in a returned record, `-> (domain C, comp: [V]C)`: the
+    /// fn makes a fresh domain and names it for the caller.
+    NewDomain,
     Error,
 }

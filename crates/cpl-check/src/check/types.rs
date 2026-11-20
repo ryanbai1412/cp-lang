@@ -75,6 +75,7 @@ impl<'a> Checker<'a> {
                 name: "Gen".into(),
                 args: vec![self.resolve_type(elem)],
             },
+            TypeKind::Value(_) | TypeKind::NewDomain => Ty::Unknown,
             TypeKind::Error => Ty::Error,
         }
     }
@@ -266,6 +267,7 @@ impl<'a> Checker<'a> {
                 pat,
                 ty,
                 init,
+                ..
             } => {
                 let keyword = if *mutable { "var" } else { "let" };
                 let value_ty = match (ty, init) {
@@ -298,7 +300,7 @@ impl<'a> Checker<'a> {
                 }
                 out
             }
-            S::Const { name, ty, init } => {
+            S::Const { name, ty, init, .. } => {
                 let ty = match (ty, init) {
                     (Some(ty), _) => self.resolve_type(ty),
                     (None, Some(init)) => self.infer(init),

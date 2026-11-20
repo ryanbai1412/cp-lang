@@ -6,8 +6,12 @@ impl<'a> Parser<'a> {
     pub(super) fn fn_decl(&mut self) -> FnDecl {
         let start = self.start();
         self.bump();
-        let name = self.expect_name("a fn name after `fn`");
-        let generics = self.generic_params();
+        let name = if self.at(T::By) {
+            self.name()
+        } else {
+            self.expect_name("a fn name after `fn`")
+        };
+        let (generics, mut bounds) = self.generic_params();
         let params = if self.eat(T::LParen) {
             self.params()
         } else {
@@ -19,9 +23,20 @@ impl<'a> Parser<'a> {
             Vec::new()
         };
         let ret = self.eat(T::Arrow).then(|| self.ty());
+        // `fn at(self, i: V) lends mut Int`: a projection.
+        let lends =
+            (self.at_ident("lends") && !matches!(self.peek_n(1), T::Colon | T::Eq)).then(|| {
+                self.bump();
+                let mutable = self.eat(T::Mut);
+                Lends {
+                    mutable,
+                    ty: self.ty(),
+                }
+            });
+        self.where_clause(&mut bounds);
         let sig_span = self.span_from(start);
         let body = if self.eat(T::Eq) {
-            FnBody::Expr(self.expr())
+            FnBody::Expr(self.expr_body(&name))
         } else if self.at(T::Colon) {
             self.bump();
             FnBody::Block(self.block(&format!("the signature of `{}`", name.text)))
@@ -51,14 +66,57 @@ impl<'a> Parser<'a> {
         FnDecl {
             name,
             generics,
+            bounds,
             params,
             ret,
+            lends,
             body,
             sig_span,
         }
     }
 
-    fn params(&mut self) -> Vec<Param> {
+    /// The value after `=` in a fn: on the same line, or alone in an
+    /// indented block on the next lines.
+    ///
+    /// ```text
+    /// fn count_brute() -> Int =
+    ///     sum(1 for l in I for r in I if l <= r)
+    /// ```
+    fn expr_body(&mut self, name: &Name) -> Expr {
+        if !(self.at(T::Newline) && self.peek_n(1) == T::Indent) {
+            return self.expr();
+        }
+        self.bump();
+        self.bump();
+        let value = self.expr();
+        self.eat(T::Newline);
+        if !matches!(self.peek(), T::Dedent | T::Eof) {
+            let span = self.span();
+            self.error(
+                Diagnostic::error(
+                    codes::UNEXPECTED_TOKEN,
+                    span,
+                    format!(
+                        "`{}` is defined with `=`, so its body is one expression",
+                        name.text
+                    ),
+                )
+                .with_help("use `:` in place of `=` for a body with several statements"),
+            );
+            let mut extra = Vec::new();
+            while !matches!(self.peek(), T::Dedent | T::Eof) {
+                let before = self.pos;
+                self.stmt_into(&mut extra);
+                if self.pos == before {
+                    self.bump();
+                }
+            }
+        }
+        self.eat(T::Dedent);
+        value
+    }
+
+    pub(super) fn params(&mut self) -> Vec<Param> {
         let mut named_only = false;
         let mut out = Vec::new();
         loop {
@@ -98,7 +156,7 @@ impl<'a> Parser<'a> {
         let start = self.start();
         let variadic = self.eat(T::DotDot);
         let mutable = self.eat(T::Mut);
-        let name = if self.at(T::SelfKw) {
+        let name = if self.at(T::SelfKw) || self.at(T::By) {
             self.name()
         } else {
             self.expect_name("a parameter name")
@@ -144,7 +202,11 @@ impl<'a> Parser<'a> {
         let was_recovering = std::mem::replace(&mut self.recovering, false);
         while !matches!(self.peek(), T::Dedent | T::Eof) {
             let before = self.pos;
-            if matches!(self.peek(), T::Fn | T::At | T::Pub | T::Const) {
+            let declaration = matches!(
+                self.peek(),
+                T::Fn | T::At | T::Pub | T::Const | T::Domain | T::Type | T::Let
+            ) || self.at_ident("law") && self.peek_n(1) == T::Ident;
+            if declaration {
                 self.stmt_into(&mut methods);
             } else if matches!(self.peek(), T::Indent | T::Newline) {
                 let mut stray = Vec::new();
@@ -166,8 +228,29 @@ impl<'a> Parser<'a> {
     pub(super) fn struct_decl(&mut self) -> StmtKind {
         self.bump();
         let name = self.expect_name("a struct name after `struct`");
-        let generics = self.generic_params();
+        let (generics, mut bounds) = self.generic_params();
         let mut fields = Vec::new();
+        // `struct Monoid<T>(id: T, op: (T, T) -> T)`: fields in the header.
+        let header = self.eat(T::LParen);
+        if header {
+            fields = self.comma_list(T::RParen, "the struct's fields", |p| {
+                let name = p.expect_name("a field name");
+                p.expect(T::Colon, "`:` and the field's type");
+                let ty = p.ty();
+                let default = p.eat(T::Eq).then(|| p.expr());
+                FieldDecl { name, ty, default }
+            });
+        }
+        self.where_clause(&mut bounds);
+        if header && self.at_line_end() && self.peek_n(1) != T::Indent {
+            return StmtKind::Struct(StructDecl {
+                name,
+                generics,
+                bounds,
+                fields,
+                methods: Vec::new(),
+            });
+        }
         let methods = self.members(&format!("`struct {}`", name.text), |p| {
             // `u, v: V` declares two fields of one type.
             let mut names = vec![p.expect_name("a field name")];
@@ -188,6 +271,7 @@ impl<'a> Parser<'a> {
         StmtKind::Struct(StructDecl {
             name,
             generics,
+            bounds,
             fields,
             methods,
         })
@@ -196,7 +280,7 @@ impl<'a> Parser<'a> {
     pub(super) fn enum_decl(&mut self) -> StmtKind {
         self.bump();
         let name = self.expect_name("an enum name after `enum`");
-        let generics = self.generic_params();
+        let (generics, _) = self.generic_params();
         let mut variants = Vec::new();
         let mut methods = Vec::new();
         if self.eat(T::Eq) {
@@ -224,13 +308,28 @@ impl<'a> Parser<'a> {
         let name = self.expect_name("a variant name");
         let fields = if self.eat(T::LParen) {
             self.comma_list(T::RParen, "the variant's fields", |p| {
-                let label = (p.at(T::Ident) && p.peek_n(1) == T::Colon).then(|| {
-                    let label = p.name();
+                // `Merge(a, b: Ship)`: several labels share one type.
+                let mut labels = Vec::new();
+                while p.at(T::Ident) && p.peek_n(1) == T::Comma && !p.name_is_type_like() {
+                    labels.push(p.name());
                     p.bump();
-                    label
-                });
-                (label, p.ty())
+                }
+                if p.at(T::Ident) && p.peek_n(1) == T::Colon {
+                    labels.push(p.name());
+                    p.bump();
+                }
+                let ty = p.ty();
+                if labels.is_empty() {
+                    return vec![(None, ty)];
+                }
+                labels
+                    .into_iter()
+                    .map(|label| (Some(label), ty.clone()))
+                    .collect()
             })
+            .into_iter()
+            .flatten()
+            .collect()
         } else {
             Vec::new()
         };
@@ -251,7 +350,15 @@ impl<'a> Parser<'a> {
     pub(super) fn type_alias(&mut self) -> StmtKind {
         self.bump();
         let name = self.expect_name("a type name after `type`");
-        let generics = self.generic_params();
+        let (generics, _) = self.generic_params();
+        // `type Elem` in a trait: the implementor says which type.
+        if self.in_trait && self.at_line_end() {
+            let ty = Type {
+                kind: TypeKind::Error,
+                span: Span::point(self.prev_end()),
+            };
+            return StmtKind::TypeAlias { name, generics, ty };
+        }
         self.expect(T::Eq, "`=` and the type this names");
         let ty = self.ty();
         StmtKind::TypeAlias { name, generics, ty }
@@ -260,31 +367,60 @@ impl<'a> Parser<'a> {
     pub(super) fn trait_decl(&mut self) -> StmtKind {
         self.bump();
         let name = self.expect_name("a trait name after `trait`");
-        let generics = self.generic_params();
+        let (generics, _) = self.generic_params();
+        // `trait Seq: Index + Ord`.
+        let mut supers = Vec::new();
+        if self.at(T::Colon) && self.peek_n(1) == T::Ident {
+            self.bump();
+            supers.push(self.ty());
+            while self.eat(T::Plus) {
+                supers.push(self.ty());
+            }
+        }
         let was_in_trait = std::mem::replace(&mut self.in_trait, true);
-        let body = self.colon_block(&format!("`trait {}`", name.text));
+        let body = self.optional_body(&format!("`trait {}`", name.text));
         self.in_trait = was_in_trait;
         StmtKind::Trait {
             name,
             generics,
+            supers,
             body,
         }
     }
 
     pub(super) fn impl_decl(&mut self) -> StmtKind {
         self.bump();
+        let (_, mut bounds) = self.generic_params();
         let first = self.ty();
         let (trait_name, target) = if self.eat(T::For) {
             (Some(first), self.ty())
         } else {
             (None, first)
         };
-        let body = self.colon_block("the `impl` header");
+        self.where_clause(&mut bounds);
+        let body = self.optional_body("the `impl` header");
         StmtKind::Impl {
             trait_name,
             target,
+            bounds,
             body,
         }
+    }
+
+    /// The body of a trait or impl, which may be left out: `impl Seq for V`
+    /// takes every default method.
+    fn optional_body(&mut self, after: &str) -> Block {
+        if self.at_line_end() && self.peek_n(1) != T::Indent {
+            return Block {
+                stmts: Vec::new(),
+                span: Span::point(self.prev_end()),
+            };
+        }
+        self.colon_block(after)
+    }
+
+    fn name_is_type_like(&self) -> bool {
+        self.text().starts_with(|c: char| c.is_ascii_uppercase())
     }
 
     pub(super) fn use_decl(&mut self) -> StmtKind {

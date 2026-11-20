@@ -304,7 +304,7 @@ fn a_call_takes_a_generator_argument() {
         panic!()
     };
     assert!(
-        matches!(args[0].value.kind, ExprKind::Comprehension { ref clauses, .. } if clauses[0].cond.is_some())
+        matches!(args[0].value.kind, ExprKind::Comprehension { ref clauses, .. } if clauses[0].conds.len() == 1)
     );
 }
 
@@ -390,7 +390,7 @@ fn lambdas_tables_and_comprehensions() {
         matches!(expr("[V] u => deg[u] * 2\n").kind, ExprKind::Table { ref domains, .. } if domains.len() == 1)
     );
     assert!(
-        matches!(expr("[deg[u] * 2 for u in V if deg[u] > 0]\n").kind, ExprKind::Comprehension { ref clauses, .. } if clauses[0].cond.is_some())
+        matches!(expr("[deg[u] * 2 for u in V if deg[u] > 0]\n").kind, ExprKind::Comprehension { ref clauses, .. } if clauses[0].conds.len() == 1)
     );
     let nested = expr("[(i, j) for i in I for j in I if i < j]\n");
     assert!(
@@ -800,4 +800,225 @@ fn a_block_ends_its_expression_so_the_next_line_is_a_new_statement() {
     }
     // On one line the operators still continue the expression.
     assert_eq!(stmts("x = (if c: 1 else: 2) - a\n").len(), 1);
+}
+
+// --- Library syntax: generics, traits, projections --------------------
+
+fn one_stmt(src: &str) -> Stmt {
+    let mut all = stmts(src);
+    assert_eq!(all.len(), 1, "expected one statement for {src:?}");
+    all.pop().unwrap()
+}
+
+fn fn_of(src: &str) -> FnDecl {
+    match one_stmt(src).kind {
+        StmtKind::Fn(f) => f,
+        other => panic!("not a fn: {other:?}"),
+    }
+}
+
+fn struct_of(src: &str) -> StructDecl {
+    match one_stmt(src).kind {
+        StmtKind::Struct(s) => s,
+        other => panic!("not a struct: {other:?}"),
+    }
+}
+
+#[test]
+fn an_expression_body_may_sit_on_the_next_lines() {
+    let f =
+        fn_of("fn count_brute() -> Int =\n    sum(1 for l in I\n        for r in I if l <= r)\n");
+    assert!(matches!(
+        f.body,
+        FnBody::Expr(Expr {
+            kind: ExprKind::Call { .. },
+            ..
+        })
+    ));
+    // The fn ends with its block; the next statement is separate.
+    assert_eq!(stmts("fn f() -> Int =\n    1 + 2\nprint(f())\n").len(), 2);
+    // `=` takes one expression; a second line says to use `:`.
+    let diag = one_diag("fn f() -> Int =\n    let x = 1\n    x\n");
+    assert!(
+        diag.message.contains("expected a value"),
+        "{}",
+        diag.message
+    );
+    let diag = one_diag("fn f() -> Int =\n    1\n    2\n");
+    assert!(
+        diag.message.contains("is one expression"),
+        "{}",
+        diag.message
+    );
+}
+
+#[test]
+fn type_parameters_carry_their_bounds() {
+    let f =
+        fn_of("fn best<T: Ord + Bounded, const N: Int>(xs: List<T>) -> T where T: Show: xs[0]\n");
+    let names: Vec<&str> = f.generics.iter().map(|g| g.text.as_str()).collect();
+    assert_eq!(names, ["T", "N"]);
+    let bounds: Vec<(&str, usize)> = f
+        .bounds
+        .iter()
+        .map(|b| (b.name.text.as_str(), b.traits.len()))
+        .collect();
+    assert_eq!(bounds, [("T", 2), ("T", 1)]);
+    assert!(matches!(
+        one_stmt("pub const Max<T> = Monoid<T>(id: T.MIN, op: (a, b) => max(a, b)) where T: Ord + Bounded\n"),
+        Stmt { public: true, kind: StmtKind::Const { ref generics, ref bounds, .. }, .. }
+            if generics.len() == 1 && bounds[0].traits.len() == 2
+    ));
+}
+
+#[test]
+fn fn_types_value_arguments_and_owned_domains() {
+    let f = fn_of("fn bfs<V, A>(adj: V -> Iter<A>, from: List<V>) -> (domain C, comp: [V]C): x\n");
+    assert!(matches!(
+        f.params[0].ty.as_ref().unwrap().kind,
+        TypeKind::Fn { ref params, .. } if params.len() == 1
+    ));
+    assert!(matches!(
+        f.ret.as_ref().unwrap().kind,
+        TypeKind::Record(ref fields)
+            if fields[0].0.text == "C" && fields[0].1.kind == TypeKind::NewDomain && fields.len() == 2
+    ));
+    assert!(matches!(
+        one_stmt("type M = Mod<998244353>\n").kind,
+        StmtKind::TypeAlias { ty: Type { kind: TypeKind::Named { ref args, .. }, .. }, .. }
+            if matches!(args[0].kind, TypeKind::Value(_))
+    ));
+    assert!(matches!(
+        one_stmt("let down: SegTree<Rooted<V>.Pre, T> = x\n").kind,
+        StmtKind::Let { ty: Some(Type { kind: TypeKind::Named { ref args, .. }, .. }), .. }
+            if matches!(args[0].kind, TypeKind::Named { ref name, ref args } if name.text == "Rooted.Pre" && args.len() == 1)
+    ));
+}
+
+#[test]
+fn type_arguments_close_before_a_comma_or_a_closer() {
+    for src in [
+        "laws_hold(Sum<Int>, xs)\n",
+        "fold(xs, Max<Int>)\n",
+        "let ms = [Mat<7>.of(a), Mat<7>.identity(2)]\n",
+        "sort(mut xs, by: Greater<(Int, Int)>)\n",
+        "let t = Fenwick<V, Mod<P>>(g)\n",
+    ] {
+        stmts(src);
+    }
+    // Comparisons between constants are still comparisons.
+    assert_eq!(
+        show(&expr("f(N < M, K > 2)\n")),
+        "f((cmp N Lt M), (cmp K Gt 2))"
+    );
+    assert!(matches!(
+        expr("[A < B, C]\n").kind,
+        ExprKind::List(ref items) if matches!(items[0].kind, ExprKind::Compare { .. })
+    ));
+}
+
+#[test]
+fn structs_take_fields_in_the_header_and_declarations_in_the_body() {
+    let s = struct_of("pub struct Monoid<T>(id: T, op: (T, T) -> T)\n");
+    assert_eq!((s.fields.len(), s.methods.len()), (2, 0));
+    let s = struct_of(
+        "struct Fenwick<D, T>(g: Group<T>) where T: Add:\n    t: List<T>\n    domain Pre = 0..D.K\n    law assoc(a: T, b: T) = g.op(a, b) == g.op(b, a)\n    pub @get fn count(self) -> Int = t.len\n",
+    );
+    let fields: Vec<&str> = s.fields.iter().map(|f| f.name.text.as_str()).collect();
+    assert_eq!(fields, ["g", "t"]);
+    assert_eq!(s.bounds.len(), 1);
+    assert!(matches!(s.methods[0].kind, StmtKind::Domain { .. }));
+    assert!(matches!(s.methods[1].kind, StmtKind::Law { ref params, .. } if params.len() == 2));
+    assert!(matches!(
+        s.methods[2],
+        Stmt { public: true, kind: StmtKind::Fn(_), ref decorators, .. } if decorators[0].name.text == "get"
+    ));
+    assert!(matches!(
+        one_stmt("enum Op:\n    Merge(a, b: Ship)\n    Ask(Int)\n").kind,
+        StmtKind::Enum(EnumDecl { ref variants, .. })
+            if variants[0].fields.len() == 2 && variants[0].fields[0].0.is_some() && variants[1].fields[0].0.is_none()
+    ));
+}
+
+#[test]
+fn traits_and_impls_have_supertraits_bounds_and_optional_bodies() {
+    assert!(matches!(
+        one_stmt("trait Seq: Index + Ord:\n    type bounds = Bounds<Self>\n    type Elem\n    fn next(self) -> ?Self\n").kind,
+        StmtKind::Trait { ref supers, ref body, .. } if supers.len() == 2 && body.stmts.len() == 3
+    ));
+    assert!(matches!(
+        one_stmt("impl Seq for V\n").kind,
+        StmtKind::Impl { trait_name: Some(_), ref body, .. } if body.stmts.is_empty()
+    ));
+    assert!(matches!(
+        one_stmt("impl Indexed<Range<I>> for Array<I, T> where I: Seq:\n    let K = n\n    fn add(a, b) = a\n").kind,
+        StmtKind::Impl { ref bounds, ref body, .. } if bounds.len() == 1 && body.stmts.len() == 2
+    ));
+    assert!(matches!(
+        one_stmt("impl Show for V: fn show(self) = show(self.label)\n").kind,
+        StmtKind::Impl { ref body, .. } if body.stmts.len() == 1
+    ));
+}
+
+#[test]
+fn projections_lend_and_state_laws() {
+    let s = struct_of(
+        "struct Bag:\n    cnt: [V]Int\n    fn at(self, i: V) lends mut Int:\n        law disjoint(i, j) = i != j\n        lend mut cnt[i]\n    fn peek(self, i: V) lends Int:\n        lend cnt[i]\n",
+    );
+    let StmtKind::Fn(at) = &s.methods[0].kind else {
+        panic!()
+    };
+    assert!(at.lends.as_ref().is_some_and(|l| l.mutable));
+    let FnBody::Block(body) = &at.body else {
+        panic!()
+    };
+    assert!(
+        matches!(body.stmts[0].kind, StmtKind::Law { ref name, .. } if name.text == "disjoint")
+    );
+    assert!(matches!(
+        body.stmts[1].kind,
+        StmtKind::Lend { mutable: true, .. }
+    ));
+    let StmtKind::Fn(peek) = &s.methods[1].kind else {
+        panic!()
+    };
+    assert!(peek.lends.as_ref().is_some_and(|l| !l.mutable));
+    // `lend`, `lends` and `law` stay ordinary names elsewhere.
+    stmts("let lend = 1\nlet law = lend + 1\nlet lends = law\nlend = 2\nprint(lends)\n");
+}
+
+#[test]
+fn bindings_take_else_branches_and_refinements() {
+    assert!(matches!(
+        one_stmt("let v = u else:\n    return\n").kind,
+        StmtKind::Let {
+            otherwise: Some(_),
+            guard: None,
+            ..
+        }
+    ));
+    assert!(matches!(
+        one_stmt("let k: 0..n = read(gen: fewer) where k < n\n").kind,
+        StmtKind::Let {
+            otherwise: None,
+            guard: Some(_),
+            ..
+        }
+    ));
+    assert!(matches!(
+        expr("max(price[s] - price[b] for c in City if let b = buy[c] if let s = sell[c] if b < s)\n").kind,
+        ExprKind::Call { ref args, .. }
+            if matches!(args[0].value.kind, ExprKind::Comprehension { ref clauses, .. } if clauses[0].conds.len() == 3)
+    ));
+}
+
+#[test]
+fn by_is_a_name_except_after_a_range() {
+    stmts("fn shift(c: Letter, by: Int):\n    have[c] += by\n");
+    stmts("let (bx, by) = (1, 2)\nprint(by)\n");
+    stmts("struct Order<T>(lt: (T, T) -> Bool):\n    pub fn by(key: T -> Int) -> Order<T> = Order((a, b) => key(a) < key(b))\n");
+    assert!(matches!(
+        expr("0..n by 2\n").kind,
+        ExprKind::Range { step: Some(_), .. }
+    ));
 }

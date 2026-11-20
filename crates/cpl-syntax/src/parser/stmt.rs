@@ -36,6 +36,11 @@ impl<'a> Parser<'a> {
 
     fn stmt(&mut self) -> Stmt {
         let start = self.start();
+        // `pub @get fn count(self)`: `pub` may come before the decorators.
+        let mut public = self.at(T::Pub) && self.peek_n(1) == T::At;
+        if public {
+            self.bump();
+        }
         let mut decorators = Vec::new();
         while self.at(T::At) {
             decorators.push(self.decorator());
@@ -46,12 +51,16 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
+        if self.eat(T::Pub) {
+            public = true;
+        }
         let kind = self.stmt_kind();
         self.end_stmt(start);
         Stmt {
             kind,
             span: self.span_from(start),
             decorators,
+            public,
         }
     }
 
@@ -120,9 +129,6 @@ impl<'a> Parser<'a> {
     }
 
     fn stmt_kind(&mut self) -> StmtKind {
-        if self.at(T::Pub) {
-            self.bump();
-        }
         match self.peek() {
             T::Let | T::Var => self.let_stmt(),
             T::Const => self.const_stmt(),
@@ -206,6 +212,33 @@ impl<'a> Parser<'a> {
                 }
                 StmtKind::Error
             }
+            T::Ident
+                if self.text() == "law"
+                    && self.peek_n(1) == T::Ident
+                    && self.peek_n(2) == T::LParen =>
+            {
+                self.bump();
+                let name = self.name();
+                self.bump();
+                let params = self.params();
+                self.expect(T::Eq, "`=` and the law's condition");
+                StmtKind::Law {
+                    name,
+                    params,
+                    body: self.expr(),
+                }
+            }
+            T::Ident
+                if self.text() == "lend"
+                    && matches!(self.peek_n(1), T::Mut | T::Ident | T::SelfKw) =>
+            {
+                self.bump();
+                let mutable = self.eat(T::Mut);
+                StmtKind::Lend {
+                    mutable,
+                    place: self.expr(),
+                }
+            }
             T::Ident if self.text() == "pure" && self.peek_n(1) == T::Fn => {
                 let span = self.span();
                 self.error(
@@ -246,17 +279,27 @@ impl<'a> Parser<'a> {
             }
             None
         };
+        // `let v = u else: return`.
+        let otherwise = (init.is_some() && self.at(T::Else)).then(|| {
+            self.bump();
+            self.colon_block("`else`")
+        });
+        // `let k: 0..n = read() where k < n`.
+        let guard = self.eat(T::Where).then(|| self.expr());
         StmtKind::Let {
             mutable,
             pat,
             ty,
             init,
+            otherwise,
+            guard,
         }
     }
 
     fn const_stmt(&mut self) -> StmtKind {
         self.bump();
         let name = self.expect_name("a name after `const`");
+        let (generics, mut bounds) = self.generic_params();
         let ty = self.eat(T::Colon).then(|| self.ty());
         let init = if self.eat(T::Eq) {
             Some(self.expr())
@@ -270,7 +313,14 @@ impl<'a> Parser<'a> {
             }
             None
         };
-        StmtKind::Const { name, ty, init }
+        self.where_clause(&mut bounds);
+        StmtKind::Const {
+            name,
+            generics,
+            bounds,
+            ty,
+            init,
+        }
     }
 
     fn for_stmt(&mut self, label: Option<Name>) -> StmtKind {
@@ -412,6 +462,7 @@ impl<'a> Parser<'a> {
                 kind,
                 span,
                 decorators: Vec::new(),
+                public: false,
             }],
             span,
         }
