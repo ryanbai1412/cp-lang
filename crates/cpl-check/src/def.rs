@@ -16,6 +16,8 @@ pub enum Def {
         ty: Ty,
         mutable: bool,
         keyword: &'static str,
+        /// `const Sum<T> = ...`: one value per choice of `T`.
+        generics: Vec<String>,
     },
     Fn {
         ty: Ty,

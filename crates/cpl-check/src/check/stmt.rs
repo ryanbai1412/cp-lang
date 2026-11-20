@@ -71,11 +71,21 @@ impl<'a> Checker<'a> {
                 pat,
                 ty,
                 init,
-                ..
+                otherwise,
+                guard,
             } => {
                 let keyword = if *mutable { "var" } else { "let" };
                 let declared = ty.as_ref().map(|ty| self.resolve_type(ty));
-                let init_ty = init.as_ref().map(|init| self.infer(init));
+                let mut init_ty = init.as_ref().map(|init| self.infer(init));
+                // `let v = u else: return`: past here `v` is the value in `u`.
+                if let Some(otherwise) = otherwise {
+                    init_ty = init_ty.map(|ty| match ty {
+                        Ty::Optional(inner) => *inner,
+                        Ty::Error => Ty::Error,
+                        _ => Ty::Unknown,
+                    });
+                    self.block(otherwise);
+                }
                 // `var seen: [V]Bool = false` fills the array with the value.
                 // A comprehension builds the array when one is declared.
                 let fills = match (&declared, &init_ty) {
@@ -102,6 +112,10 @@ impl<'a> Checker<'a> {
                 }
                 let ty = declared.or(init_ty).unwrap_or(Ty::Error);
                 self.bind(pat, &ty, *mutable, keyword);
+                if let Some(guard) = guard {
+                    let ty = self.infer(guard);
+                    self.require_bool(&ty, guard, "`where`");
+                }
             }
             StmtKind::Const {
                 name,
@@ -200,9 +214,20 @@ impl<'a> Checker<'a> {
                 let outer = self.generics.len();
                 self.generics
                     .extend(generics.iter().map(|g| g.text.clone()));
-                self.resolve_type(ty);
+                let aliased = self.resolve_type(ty);
                 self.generics.truncate(outer);
                 self.type_hover(name);
+                if !top_level {
+                    self.scopes.last_mut().unwrap().insert(
+                        name.text.clone(),
+                        Local {
+                            ty: aliased,
+                            mutable: false,
+                            span: name.span,
+                            keyword: "type",
+                        },
+                    );
+                }
             }
             StmtKind::Trait {
                 name,
@@ -602,7 +627,14 @@ impl<'a> Checker<'a> {
 fn name_spans(pat: &Pattern, out: &mut Vec<Span>) {
     match &pat.kind {
         PatternKind::Name(_) => out.push(pat.span),
-        PatternKind::Tuple(items) => items.iter().for_each(|i| name_spans(i, out)),
+        PatternKind::Tuple(items) => {
+            for item in items {
+                match super::types::domain_binding(item) {
+                    Some(_) => out.push(item.span),
+                    None => name_spans(item, out),
+                }
+            }
+        }
         _ => {}
     }
 }

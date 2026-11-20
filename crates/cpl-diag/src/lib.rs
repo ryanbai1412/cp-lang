@@ -117,6 +117,8 @@ pub mod codes {
     pub const UNKNOWN_FIELD: Code = Code("E0203");
     pub const UNKNOWN_TYPE: Code = Code("E0204");
     pub const USED_BEFORE_SET: Code = Code("E0205");
+    pub const UNRESOLVED_MODULE: Code = Code("E0206");
+    pub const PRIVATE_NAME: Code = Code("E0207");
 
     pub const WRONG_DOMAIN: Code = Code("E0301");
     pub const TYPE_MISMATCH: Code = Code("E0302");

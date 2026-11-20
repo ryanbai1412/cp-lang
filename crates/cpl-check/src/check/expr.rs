@@ -103,9 +103,43 @@ impl<'a> Checker<'a> {
             ExprKind::Generic { base, args } => {
                 let base_ty = self.infer(base);
                 let args: Vec<Ty> = args.iter().map(|a| self.resolve_type(a)).collect();
-                match base_ty {
-                    Ty::TypeName(name) => Ty::Named { name, args },
-                    other => other,
+                // `Sum<Int>`, `f::<Int>`: the declared type with its
+                // parameters filled in.
+                let declared =
+                    match &base.kind {
+                        ExprKind::Name(name) if self.local(name).is_none() => {
+                            match self.env.global(name).as_deref() {
+                                Some(
+                                    Def::Value { ty, generics, .. } | Def::Fn { ty, generics },
+                                ) if !generics.is_empty() => Some((ty.clone(), generics.clone())),
+                                _ => None,
+                            }
+                        }
+                        _ => None,
+                    };
+                match (base_ty, declared) {
+                    // `scc::<V>(..)`: parameters after the ones given are
+                    // read off the arguments.
+                    (_, Some((ty, generics))) => {
+                        if args.len() > generics.len() {
+                            let message = format!(
+                                "`{}` takes {}, but {} given",
+                                self.quote(base.span),
+                                plural(generics.len(), "type argument", "type arguments"),
+                                if args.len() == 1 {
+                                    "1 was".to_string()
+                                } else {
+                                    format!("{} were", args.len())
+                                }
+                            );
+                            self.error(codes::WRONG_ARG_COUNT, expr.span, message);
+                            return Ty::Error;
+                        }
+                        let bindings = generics.into_iter().zip(args).collect();
+                        ty.subst(&bindings)
+                    }
+                    (Ty::TypeName(name), None) => Ty::Named { name, args },
+                    (other, None) => other,
                 }
             }
             ExprKind::Tuple(items) if items.is_empty() => Ty::Unit,
@@ -253,13 +287,17 @@ impl<'a> Checker<'a> {
             Cond::Const(expr) => {
                 self.infer(expr);
             }
-            Cond::Let { pat, value } => {
+            Cond::Let { pat, value, and } => {
                 let ty = match self.infer(value) {
                     Ty::Optional(inner) => *inner,
                     Ty::Error => Ty::Error,
                     _ => Ty::Unknown,
                 };
                 self.bind(pat, &ty, false, "let");
+                if let Some(and) = and {
+                    let ty = self.infer(and);
+                    self.require_bool(&ty, and, "the condition");
+                }
             }
         }
     }
@@ -412,6 +450,59 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// A struct value seen as a struct with fewer fields, when one is
+    /// wanted: a `Group<Int>` has the `id` and `op` of a `Monoid<Int>`, so
+    /// it is one (decision 10.4). Anything else is returned as it is.
+    pub(crate) fn narrowed(&mut self, got: &Ty, want: &Ty) -> Ty {
+        let (
+            Ty::Named {
+                name: got_name,
+                args: got_args,
+            },
+            Ty::Named {
+                name: want_name, ..
+            },
+        ) = (got, want)
+        else {
+            return got.clone();
+        };
+        if got_name == want_name {
+            return got.clone();
+        }
+        let (Some(got_members), Some(want_members)) =
+            (self.members_of(got_name), self.members_of(want_name))
+        else {
+            return got.clone();
+        };
+        if want_members.fields.is_empty() {
+            return got.clone();
+        }
+        let got_bindings = got_members.bindings(got_args);
+        let mut bindings = crate::ty::Bindings::new();
+        for want_field in &want_members.fields {
+            let Some(got_field) = got_members
+                .fields
+                .iter()
+                .find(|f| f.name == want_field.name)
+            else {
+                return got.clone();
+            };
+            let got_ty = got_field.ty.subst(&got_bindings);
+            if !got_ty.fits(&want_field.ty) {
+                return got.clone();
+            }
+            want_field.ty.unify(&got_ty, &mut bindings);
+        }
+        Ty::Named {
+            name: want_name.clone(),
+            args: want_members
+                .generics
+                .iter()
+                .map(|g| bindings.get(g).cloned().unwrap_or(Ty::Unknown))
+                .collect(),
+        }
+    }
+
     /// Everything `value.name` can reach on a struct or enum: its fields,
     /// its methods (a `@get` method reads as its value), what its body
     /// owns, and the same from each impl for it.
@@ -426,7 +517,7 @@ impl<'a> Checker<'a> {
                 out.members.push((name.clone(), ty));
             }
         };
-        match self.env.global(type_name).as_deref() {
+        match self.env.type_def(type_name).as_deref() {
             Some(Def::Struct {
                 generics,
                 fields,
@@ -458,6 +549,21 @@ impl<'a> Checker<'a> {
     }
 
     fn field(&mut self, base: &Expr, name: &ast::Name) -> Ty {
+        // `treap.merge` after `use lib.treap`: a public name of a module.
+        if let ExprKind::Name(alias) = &base.kind {
+            if self.local(alias).is_none() && self.env.is_module(alias) {
+                return match self.env.global(&format!("{alias}.{}", name.text)) {
+                    Some(def) => def.value_ty(&name.text),
+                    None if name.text.is_empty() => Ty::Error,
+                    None => {
+                        let message =
+                            format!("module `{alias}` has no public name `{}`", name.text);
+                        self.error(codes::UNRESOLVED_NAME, name.span, message);
+                        Ty::Error
+                    }
+                };
+            }
+        }
         let base_ty = self.infer(base);
         if name.text.is_empty() {
             return Ty::Error;
@@ -504,7 +610,7 @@ impl<'a> Checker<'a> {
             Ty::Pos(_) if name.text == "ord" => return Ty::Int,
             // `Dir.L`: a variant named through its enum.
             Ty::TypeName(type_name) => {
-                if let Some(Def::Enum { variants, .. }) = self.env.global(type_name).as_deref() {
+                if let Some(Def::Enum { variants, .. }) = self.env.type_def(type_name).as_deref() {
                     if let Some((_, fields)) = variants.iter().find(|(v, _)| *v == name.text) {
                         let def = Def::Variant {
                             of: type_name.clone(),
@@ -573,6 +679,25 @@ impl<'a> Checker<'a> {
         let base_ty = self.infer(base);
         let index_tys: Vec<Ty> = indices.iter().map(|i| self.infer(i)).collect();
         match &base_ty {
+            // `g[p]` with `p: (Row, Col)`: `a[i, j]` is sugar for `a[(i, j)]`.
+            Ty::Array { index, elem }
+                if index.len() > 1
+                    && indices.len() == 1
+                    && (index_tys[0].is_vague()
+                        || matches!(&index_tys[0], Ty::Tuple(items) if items.len() == index.len())) =>
+            {
+                let want = Ty::Tuple(index.clone());
+                self.expect_fits(&index_tys[0], &want, &indices[0], |c, got, want| {
+                    format!(
+                        "`{}` is indexed by {}, but `{}` is {}",
+                        c.quote(base.span),
+                        want,
+                        c.quote(indices[0].span),
+                        got.with_article()
+                    )
+                });
+                (**elem).clone()
+            }
             Ty::Array { index, elem } => {
                 if index.len() != indices.len() {
                     let wanted: Vec<String> = index.iter().map(Ty::to_string).collect();
@@ -627,6 +752,12 @@ impl<'a> Checker<'a> {
                     (**elem).clone()
                 }
             }
+            // `xs[0..5]`: a part of a list or a string is one too.
+            ty if (*ty == Ty::Str || matches!(ty, Ty::Named { name, .. } if name == "List"))
+                && matches!(index_tys.as_slice(), [Ty::Named { name, .. }] if name == "Range") =>
+            {
+                ty.clone()
+            }
             Ty::Named { name, args } if name == "List" && args.len() == 1 => args[0].clone(),
             Ty::Named { name, args } if name == "Map" && args.len() == 2 => args[1].clone(),
             Ty::Str => Ty::Char,
@@ -654,6 +785,7 @@ impl<'a> Checker<'a> {
     ) -> bool {
         // `none` fills whatever is declared, and code that already has an
         // error is not reported again.
+        let got = &self.narrowed(got, want);
         if got.fits(want)
             || matches!(at.kind, ExprKind::None)
             || got.has_error()

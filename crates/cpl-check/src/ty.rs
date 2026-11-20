@@ -152,12 +152,13 @@ impl Ty {
             (Ty::Tuple(a), Ty::Tuple(b)) => {
                 a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.fits(b))
             }
-            (Ty::Record(a), Ty::Record(b)) => {
-                a.len() == b.len()
-                    && a.iter()
-                        .zip(b)
-                        .all(|((an, at), (bn, bt))| an == bn && at.fits(bt))
-            }
+            // A record with more fields fits where fewer are asked for:
+            // edges `(u, v, w)` are edges `(u, v)`.
+            (Ty::Record(a), Ty::Record(b)) => b.iter().all(|(bn, bt)| {
+                a.iter()
+                    .find(|(an, _)| an == bn)
+                    .is_some_and(|(_, at)| at.fits(bt))
+            }),
             (Ty::Tuple(a), Ty::Record(b)) => {
                 a.len() == b.len() && a.iter().zip(b).all(|(a, (_, b))| a.fits(b))
             }
@@ -172,6 +173,9 @@ impl Ty {
             // `[domain S]Char`, one flat byte array).
             (Ty::Str, Ty::Named { name, args }) if name == "List" => {
                 args.first().is_none_or(|elem| Ty::Char.fits(elem))
+            }
+            (Ty::Named { name, args }, Ty::Str) if name == "List" => {
+                args.first().is_none_or(|elem| elem.fits(&Ty::Char))
             }
             // A record or tuple literal builds a struct with those fields;
             // the fields are checked where the struct is known.
