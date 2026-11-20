@@ -172,7 +172,7 @@ td.cell { display: table-cell; }
 .graph .node { cursor: pointer; }
 
 /* Detail */
-.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 12px; }
 .rows { margin: 0; padding: 0; list-style: none; max-height: 220px; overflow: auto; }
 .row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 8px; width: 100%; padding: 5px 10px; border: 0; border-bottom: 1px solid var(--border); background: none; text-align: left; font: 12px var(--mono); }
 .row:hover { background: var(--hover); }
@@ -266,6 +266,12 @@ kbd { padding: 0 4px; border: 1px solid var(--border); border-bottom-width: 2px;
   .btn { height: 32px; }
   .btn.icon { width: 32px; }
   .tbtn { width: 36px; height: 36px; }
+  .top-actions { gap: 4px; }
+  .top-actions .btn:not(.icon) { padding: 0 8px; }
+  .lane-head { flex-wrap: wrap; row-gap: 2px; }
+  .transport { flex-wrap: wrap; row-gap: 6px; }
+  .transport .seg { margin-left: 0; }
+  main { padding-bottom: 176px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 

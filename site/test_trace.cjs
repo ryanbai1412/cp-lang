@@ -172,6 +172,13 @@ test("manual navigation and speed changes during playback behave predictably", (
   single.play(); assert.equal(single.state().playing, false);
 });
 
+test("phone layout lets the transport wrap and keeps content clear of the taller timeline", () => {
+  const css = fs.readFileSync(path.join(__dirname, "assets/trace.css"), "utf8");
+  const phone = css.slice(css.indexOf("@media (max-width: 560px)"));
+  assert.match(phone, /\.transport \{[^}]*flex-wrap: wrap/);
+  assert.match(phone, /main \{ padding-bottom: 176px; \}/);
+});
+
 test("page UI never writes captured text through innerHTML", () => {
   const ui = fs.readFileSync(path.join(__dirname, "assets/trace.js"), "utf8");
   assert.doesNotMatch(ui, /innerHTML|outerHTML\s*=|insertAdjacentHTML|document\.write/);
