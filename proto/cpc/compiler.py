@@ -1041,6 +1041,10 @@ class Compiler(LendMixin):
             return f"(char)({a} {op} {b})", CHAR
         if isinstance(at, TChar) and isinstance(bt, TChar) and op == "-":
             return f"(ll)({a} - {b})", TInt(-255, 255)
+        if isinstance(at, TStr) and op == "+" and isinstance(bt, (TStr, TChar)):
+            return f"({a} + {b})", STR
+        if isinstance(at, TStr) and op == "*" and is_int(bt):
+            return f"cp_str_repeat({a}, {b}, {e.line})", STR
         if isinstance(at, TList) and isinstance(bt, TList) and op == "+":
             # xs + ys: a new list, xs then ys
             if is_int(at.elem) and is_int(bt.elem):
@@ -1293,6 +1297,19 @@ class Compiler(LendMixin):
             if self.narrow(ot.elem) and not (lv is not None and lv[0] is e):
                 return f"(ll){oc}[cp_lidx({ic}, {oc}.size(), {e.line})]", ot.elem
             return f"{oc}[cp_lidx({ic}, {oc}.size(), {e.line})]", ot.elem
+        if isinstance(ot, TStr):
+            # a Str is a flat run of ASCII bytes at positions 0..len: `s[i]` is a Char, `s[l..r]` a Str
+            if len(e.idx) != 1:
+                self.error(e, "a Str takes one index")
+            ix = e.idx[0]
+            if ix.kind == "range":
+                lo = "0" if ix.lo is None else self.str_pos(ix.lo)
+                hi = "-1" if ix.hi is None else self.str_pos(ix.hi)
+                self.note_check(e, f"`{unparse(e)}` in bounds")
+                return f"cp_str_slice({oc}, {lo}, {hi}, {'true' if ix.incl else 'false'}, {e.line})", STR
+            ic = self.str_pos(ix)
+            self.note_check(e, f"`{unparse(e)}` in bounds")
+            return f"{oc}[cp_lidx({ic}, {oc}.size(), {e.line})]", CHAR
         if not isinstance(ot, TArr):
             self.error(e, f"cannot index {ot!r}")
         view = getattr(ot, "view", None)
@@ -1381,9 +1398,17 @@ class Compiler(LendMixin):
                            f"`if let j = {unparse(ix)}`, give the edge a value with `??`, or assert with `!`")
         self.error(ix, f"cannot index with {it!r}")
 
+    def str_pos(self, x):
+        c, t = self.expr(x)
+        if not is_int(t):
+            self.error(x, f"a Str position is an Int in 0..len, got {t!r}")
+        return c
+
     def x_field(self, e, want):
         oc, ot = self.expr(e.obj)
         f = e.name
+        if isinstance(ot, (TList, TStr)) and f == "is_empty":
+            return f"{oc}.empty()", BOOL
         if isinstance(ot, TTree) and f == "Pre":
             return "", TType(self.tree_pre(ot))
         if isinstance(ot, TTree) and f == "preorder":
@@ -2042,6 +2067,46 @@ class Compiler(LendMixin):
             return f"{fc}({', '.join(args)})", ft.ret
         self.error(e, f"cannot call {ft!r}")
 
+    def str_method(self, e, oc, m, args):
+        """The Str vocabulary of the cheat sheet (section 4); None when `m` is not one of them."""
+        pos = [a for a in args if a.kind != "kwarg"]
+        kw = {a.name: a.value for a in args if a.kind == "kwarg"}
+        def arg(k, want, what):
+            c, t = self.expr(pos[k], want)
+            if not isinstance(t, type(want)):
+                self.error(e, f"`.{m}` takes {what}, got {t!r}")
+            return c
+        if m == "push" and len(pos) == 1:
+            self.require_mut(e.fn.obj, e)
+            return f"{oc}.push_back({arg(0, CHAR, 'a Char')})", UNIT
+        if m == "starts_with" and len(pos) == 1:
+            at = self.str_pos(kw["at"]) if "at" in kw else "0"
+            return f"cp_str_starts({oc}, {arg(0, STR, 'a Str')}, {at})", BOOL
+        if m == "split" and len(pos) == 1:
+            return f"cp_str_split({oc}, {arg(0, CHAR, 'a Char separator')})", TList(STR)
+        if m == "split_once" and len(pos) == 1:
+            pair = self.tuple_type([None, None], [STR, STR])
+            return (f"([&](const string& _s, char _c) {{ size_t _k = _s.find(_c); return _k == string::npos ? Opt<{pair.cpp}>() : "
+                    f"Opt<{pair.cpp}>({pair.cpp}{{_s.substr(0, _k), _s.substr(_k + 1)}}); }}({oc}, {arg(0, CHAR, 'a Char separator')}))"), TOpt(pair)
+        if m == "trim_start" and len(pos) == 1:
+            return f"cp_str_trim_start({oc}, {arg(0, CHAR, 'a Char')})", STR
+        if m == "parse_int" and not pos:
+            return f"cp_parse_int({oc}, {e.line})", TInt()
+        if m == "join" and len(pos) == 1:
+            if pos[0].kind == "gen":
+                acc, first = self.tmpname("j"), self.tmpname("f")
+                lines, _ = self.capture(lambda: self.gen_loops(pos[0].clauses, 0, lambda: self.emit(
+                    f"if (!{first}) {acc} += _sep; {first} = false; {acc} += {self.expr(pos[0].elem, STR)[0]};"), pos[0]))
+                body = " ".join(l.strip() for l in lines)
+                return f"([&](const string& _sep) {{ string {acc}; bool {first} = true; {body} return {acc}; }}({oc}))", STR
+            c, t = self.expr(pos[0])
+            if t != TList(STR):
+                self.error(e, f"`.join` takes Strs (a List<Str> or `\"{{x}}\" for x in xs`), got {t!r}")
+            return f"cp_str_join({oc}, {c})", STR
+        if m == "copy" and not pos:
+            return f"string({oc})", STR
+        return None
+
     def method_call(self, e, want):
         obj, m = e.fn.obj, e.fn.name
         oc, ot = self.expr(obj)
@@ -2050,6 +2115,10 @@ class Compiler(LendMixin):
         key = ot.t.cpp if isinstance(ot, TType) and hasattr(ot.t, "cpp") else getattr(ot, "cpp", None)
         if key in self.projs and m in self.projs[key]:
             return self.call_proj(self.projs[key][m], e, oc, ot)
+        if isinstance(ot, TStr):
+            r = self.str_method(e, oc, m, args)
+            if r is not None:
+                return r
         if isinstance(ot, TType) and isinstance(ot.t, TLib) and m == "new":
             return self.lib_new(ot.t, args, e)
         if isinstance(ot, TType) and isinstance(ot.t, TDsu) and m == "new" and not args:
@@ -2690,6 +2759,15 @@ class Compiler(LendMixin):
                     self.bind_pattern(pat.items[1], f"{v}.second", t.val, node)
                 else:
                     self.bind_pattern(pat, v, t.elem, node)
+                self.ind -= 1
+            elif isinstance(t, TStr):
+                v = self.tmpname("x")
+                r = self.tmpname("r")
+                self.emit(f"const auto& {r} = {c};")
+                self.emit(f"for (auto {r}i = {r}.rbegin(); {r}i != {r}.rend(); ++{r}i) {{ const char {v} = *{r}i;" if rev else
+                          f"for (const char {v} : {r}) {{")
+                self.ind += 1
+                self.bind_pattern(pat, v, CHAR, node)
                 self.ind -= 1
             elif isinstance(t, (TArr, TList)):
                 if isinstance(t, TArr) and len(t.dims) == 1:
@@ -4209,6 +4287,9 @@ class Compiler(LendMixin):
             self.emit(f"{tc} = {op[:3]}({tc}, {self.coerce(vc, vt, tt, s.value)});")
             return
         bop = op[:-1]
+        if isinstance(tt, TStr) and op == "+=" and isinstance(vt, (TStr, TChar)):
+            self.emit(f"{tc} += {vc};")
+            return
         if isinstance(tt, TMod):
             self.emit(f"{tc} {op} {self.coerce(vc, vt, tt, s.value)};")
             return
