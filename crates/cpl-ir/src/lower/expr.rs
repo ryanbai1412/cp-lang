@@ -1000,7 +1000,15 @@ impl<'a> Lowerer<'a> {
                         return self.mk(ExprKind::Unwrap(Box::new(held), false), *inner, span);
                     }
                 }
-                let r = self.expr(rhs, Some(&l.ty));
+                // The default is read as what the optional holds, so that a
+                // plain value stays one when the left side is an optional of
+                // optionals (`xs.last ?? 7` on a `List<?Int>`). Only a bare
+                // `none` needs the optional's own type to be one.
+                let hint = match rhs.kind {
+                    ast::ExprKind::None => &l.ty,
+                    _ => &*inner,
+                };
+                let r = self.expr(rhs, Some(hint));
                 // `a ?? b ?? 0`: an optional default keeps the result optional.
                 let ty = if r.ty == l.ty { l.ty.clone() } else { *inner };
                 let r = self.coerce(r, &ty, rhs.span);
