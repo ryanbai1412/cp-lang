@@ -107,11 +107,6 @@ const NOT_YET: &[&str] = &[
     "rt_hold_captured_write_deep",
     "rt_minassign_twice",
     "rt_mut_arg_captured",
-    // Steps and ranges over a domain.
-    "range_incl_boundary",
-    "range_two_domains",
-    "rt_min_empty_slice",
-    "span_two_domains",
     // `let ... else`, `?` and `m[k] f= x` on a map.
     "let_else_not_optional",
     "map_fold_divide",
@@ -151,6 +146,8 @@ fn each_failing_test_is_rejected_for_its_stated_reason() {
             "lend_outside_projection" => "`lend` is a statement of a projection's body",
             "counter_not_var" => "`seen` is a `let`, so it can't be assigned",
             "use_unknown_name" => "`std.dsu` has no `Union`",
+            "span_two_domains" => "span of an I and a J",
+            "rt_min_empty_slice" => "`k` is declared an Int, but `max(a[f..f])` is an ?Int",
             _ => reason,
         };
         cases += 1;

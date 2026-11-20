@@ -111,6 +111,7 @@ impl<'a> Checker<'a> {
                     (Some(a), None) | (None, Some(a)) if a.is_int() => Ty::Int,
                     _ => Ty::Unknown,
                 };
+                self.range_ends(expr, hi.as_deref(), *inclusive, &lo_ty, &hi_ty);
                 range_of(elem)
             }
             ExprKind::Call { callee, args } => self.call(expr, callee, args),
@@ -478,6 +479,41 @@ impl<'a> Checker<'a> {
                 }
                 Ty::Unknown
             }
+        }
+    }
+
+    /// A range runs between two ends of one domain, and `..=` ends at a
+    /// position, never at a boundary.
+    fn range_ends(
+        &mut self,
+        range: &Expr,
+        hi: Option<&Expr>,
+        inclusive: bool,
+        lo_ty: &Option<Ty>,
+        hi_ty: &Option<Ty>,
+    ) {
+        let domain = |ty: &Option<Ty>| match ty {
+            Some(Ty::Pos(d)) => Some(d.strip_suffix(".bounds").unwrap_or(d).to_string()),
+            _ => None,
+        };
+        if let (Some(a), Some(b)) = (domain(lo_ty), domain(hi_ty)) {
+            if a != b {
+                let message = format!("range between {a} and {b}");
+                if let Some(diag) = self.error(codes::WRONG_DOMAIN, range.span, message) {
+                    diag.help = Some("both ends of a range are in one domain".into());
+                }
+                return;
+            }
+        }
+        let (Some(hi), Some(Ty::Pos(d))) = (hi, hi_ty) else {
+            return;
+        };
+        if inclusive && d.ends_with(".bounds") {
+            let message = format!(
+                "`..=` ends at a position; a range up to the boundary `{}` is written `..`",
+                self.quote(hi.span)
+            );
+            self.error(codes::WRONG_DOMAIN, range.span, message);
         }
     }
 
