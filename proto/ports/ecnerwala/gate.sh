@@ -18,6 +18,7 @@ if ! g++ -std=c++20 -O1 -w $orig -o $T/orig 2>$T/err; then
   mkdir -p $T/inc/bits
   for h in algorithm array bitset cassert chrono climits cmath cstdint cstdio cstdlib cstring deque functional iomanip iostream map numeric optional queue random set sstream stack string tuple unordered_map unordered_set utility vector; do
     echo "#include <$h>"; done > $T/inc/bits/stdc++.h
+  echo 'namespace std::ranges { template<class R, class T> void iota(R&& r, T v) { std::iota(std::begin(r), std::end(r), v); } }' >> $T/inc/bits/stdc++.h
   zig c++ -std=c++23 -O1 -w -I$T/inc $orig -o $T/orig 2>$T/err || { echo "FAIL $n original does not compile"; head $T/err; exit 1; }
 fi
 norm() { tr -s ' \n' '\n\n' < $1 | sed '/^$/d'; }
