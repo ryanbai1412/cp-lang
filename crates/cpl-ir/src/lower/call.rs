@@ -3346,6 +3346,55 @@ impl<'a> Lowerer<'a> {
                 self.seq_search_method(method, value, e, dom, args, span)
             }
             (Ty::Fn(_, _), "out") => self.call_fn_val(value, args, span),
+            // `(lo..hi).step(k)`: lo, lo + k, ... below hi, as a list.
+            (Ty::Range(inner), "step") if **inner == Ty::Int && args.len() == 1 => {
+                let by = self.expr(&args[0].value, Some(&Ty::Int));
+                let by = self.coerce(by, &Ty::Int, span);
+                let list_ty = Ty::list(Ty::Int);
+                self.do_expr(Some(&list_ty.clone()), span, |lw, out| {
+                    let range = lw.new_slot("range", value.ty.clone());
+                    out.push(Stmt::Let(range, Some(value)));
+                    let acc = lw.new_slot("steps", list_ty.clone());
+                    let empty = lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span);
+                    out.push(Stmt::Let(acc, Some(empty)));
+                    let i = lw.new_slot("i", Ty::Int);
+                    let bound = |lw: &mut Self, which| {
+                        let range = lw.local(range, span);
+                        lw.mk(ExprKind::Builtin(which, vec![range]), Ty::Int, span)
+                    };
+                    let (lo, hi) = (bound(lw, Builtin::RangeLo), bound(lw, Builtin::RangeHi));
+                    let item = lw.local(i, span);
+                    let push = lw.mk(
+                        ExprKind::Mutate(
+                            Mutation::Push,
+                            Box::new(Place {
+                                kind: PlaceKind::Local(acc),
+                                ty: list_ty.clone(),
+                                span: lw.span(span),
+                            }),
+                            vec![item],
+                        ),
+                        Ty::Unit,
+                        span,
+                    );
+                    let lid = lw.next_loop;
+                    lw.next_loop += 1;
+                    out.push(Stmt::For(
+                        lid,
+                        i,
+                        Iter::Range {
+                            lo,
+                            hi,
+                            step: Some(by),
+                            rev: false,
+                        },
+                        Block {
+                            stmts: vec![Stmt::Expr(push)],
+                        },
+                    ));
+                    out.push(Stmt::Give(lw.local(acc, span)));
+                })
+            }
             (_, "rev") if args.is_empty() => value,
             _ => {
                 // UFCS free function with `self` first parameter (e.g. `p.step(d)`, `p.ray(d)`).
