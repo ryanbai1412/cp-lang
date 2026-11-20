@@ -68,10 +68,11 @@
     page = page.replace('<link rel="stylesheet" href="assets/style.css">', () => "<style>" + data.css + "</style>");
     page = page.replace('<script src="assets/theme.js"><' + '/script>', () => script(data.theme));
     page = page.replace('<script src="assets/app.js" defer><' + '/script>', "");
+    page = page.replace('<script src="assets/course.js" defer><' + '/script>', "");
     page = page.replace('<script src="assets/playground.js"><' + '/script>', () => script(data.playground));
     if (name !== "trace.html") {
       const index = '<script id="search-index" type="application/json">' + data.search.replace(/</g, "\\u003c") + "<" + "/script>";
-      page = page.replace("</body>", () => index + script(data.app) + "</body>");
+      page = page.replace("</body>", () => index + script(data.app) + script(data.course) + "</body>");
     }
     frame.srcdoc = page;
   }

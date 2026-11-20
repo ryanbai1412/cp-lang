@@ -10,12 +10,13 @@
   <link rel="stylesheet" href="assets/style.css">
   <script src="assets/theme.js"></script>
   <script src="assets/app.js" defer></script>
+  <script src="assets/course.js" defer></script>
 </head>
 <body class="{{page_class}}">
   <a href="#main" class="skip-link">Skip to content</a>
   <header class="topbar">
     <a class="brand" href="index.html" aria-label="CP Lang home"><span class="brand-mark" aria-hidden="true">cp</span><span>CP Lang</span></a>
-    <nav class="product-nav" aria-label="Products"><a href="index.html" {{docs_current}}>Docs</a><a href="playground.html" {{playground_current}}>Playground</a><a href="trace.html">Trace</a></nav>
+    <nav class="product-nav" aria-label="Products"><a href="course.html" {{course_current}}>Course</a><a href="index.html" {{docs_current}}>Docs</a><a href="playground.html" {{playground_current}}>Playground</a><a href="trace.html">Trace</a></nav>
     <div class="top-actions">
       <button class="search-trigger" type="button" aria-label="Search the guide" aria-haspopup="dialog"><span class="search-icon" aria-hidden="true"></span><span>Search documentation</span><kbd>/</kbd></button>
       <a class="github-link" href="{{repo}}">GitHub <span aria-hidden="true">↗</span></a>
@@ -31,11 +32,11 @@
     </aside>
     <main id="main" tabindex="-1">
       <div class="breadcrumb"><span>{{section}}</span><span aria-hidden="true">/</span><span>{{title}}</span></div>
-      <div class="page-meta"><span>THE CP LANG GUIDE</span><span>{{number}} <span aria-hidden="true">/</span> {{duration}} read</span></div>
+      <div class="page-meta"><span>{{series}}</span><span>{{number}} <span aria-hidden="true">/</span> {{duration}}</span></div>
       <div class="chapter-title"><h1>{{heading}}</h1><p>{{description}}</p></div>
       <article>{{content}}</article>
       <nav class="pager" aria-label="Adjacent chapters">{{pager}}</nav>
-      <footer class="page-footer"><span>CP Lang · A language for competitive programming.</span><a href="{{repo}}/blob/main/site/content/{{name}}.md">Edit this page ↗</a></footer>
+      <footer class="page-footer"><span>CP Lang · A language for competitive programming.</span><a href="{{repo}}/blob/main/{{source_path}}">Edit this page ↗</a></footer>
     </main>
     <aside class="right-rail" aria-label="On this page"><div class="toc"><p>On this page</p>{{toc}}<a class="source-link" href="{{repo}}/tree/main/plan">Language design ↗</a></div></aside>
   </div>

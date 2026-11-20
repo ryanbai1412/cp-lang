@@ -49,7 +49,7 @@ const ExampleRunner = (() => {
   }
   return {run, defaults};
 })();
-if (typeof document !== "undefined") {
+if (typeof document !== "undefined" && document.getElementById("playground-examples")) {
   const examples = JSON.parse(document.getElementById("playground-examples").textContent);
   const picker = document.getElementById("example-picker");
   const input = document.getElementById("example-input");

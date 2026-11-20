@@ -179,7 +179,7 @@ Everything used is inlined into the single submitted C++ file and tree-shaken, s
 
 ## Common mistakes
 
-- **Using a non-associative combine.** Averages, "keep the left one if equal", and `a - b` all break regrouping. Carry more fields until the combine is associative.
+- **Using a non-associative combine.** Pairwise averages and `a - b` break regrouping. Carry more fields until the combine is associative.
 - **Choosing the wrong identity.** `0` is not the identity of `Max` when values can be negative; use `Int.MIN`, or wrap values in `?T` with `none` as the identity.
 - **Assuming commutativity.** Composition, matrix products, and string concatenation care about order. Fold left to right, and use `@invariant(rev)` when unsure.
 - **Prefix differences on a monoid.** Subtraction needs an inverse. Range max needs a segment tree or sparse table, not two prefix lookups.

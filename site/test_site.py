@@ -20,6 +20,16 @@ from cpc.compiler import compile_program  # noqa: E402
 from cpc.parser import parse  # noqa: E402
 
 
+def compile_native(source, name, directory):
+    cpp, _ = compile_program(parse(source))
+    path, executable = Path(directory) / f"{name}.cpp", Path(directory) / name
+    path.write_text(cpp)
+    subprocess.run(
+        ["g++", "-std=c++17", "-O2", str(path), "-o", str(executable)],
+        check=True, capture_output=True, timeout=60)
+    return executable
+
+
 class Page(HTMLParser):
     def __init__(self, source):
         super().__init__()
@@ -104,8 +114,75 @@ class SiteTests(unittest.TestCase):
                          | {"playground.html", "trace.html"})
         self.assertNotIn("@font-face", source)
         self.assertNotIn("data:font", source)
-        self.assertLess(path.stat().st_size, 450_000)
+        self.assertLess(path.stat().st_size, 800_000)
         self.assertEqual(len(json.loads(payload["search"])), len(build.PAGES))
+        self.assertIn("course", payload)
+
+    def test_course_has_six_sequenced_lessons_and_real_controls(self):
+        self.assertEqual(len(build.LESSONS), 6)
+        self.assertGreaterEqual(len(build.EXERCISES), 18)
+        for lesson in build.LESSONS:
+            source = (ROOT / "_build" / f'{lesson["slug"]}.html').read_text()
+            page = Page(source)
+            for exercise in lesson["exercises"]:
+                self.assertIn(exercise["id"], page.ids)
+                self.assertIn(f'id="{exercise["id"]}-feedback" role="status"', source)
+            self.assertIn('id="course-data" type="application/json"', source)
+            self.assertIn("Solution and explanation", source)
+        data = build.course_data("course")
+        self.assertEqual(set(data["exercises"]), set(build.EXERCISES))
+        self.assertEqual(set(data["revisions"]), set(build.EXERCISES))
+
+    def test_exercise_prose_and_options_cannot_inject_markup(self):
+        from course import exercise_html
+        question = dict(id="escape-check", kind="choice", title="<script>alert(1)</script>",
+                        prompt="<img src=x>", hint="<svg/onload=alert(1)>", solution="<b>not markup</b>",
+                        options=['<input checked>', '" onclick="alert(1)'], answer=0)
+        source = exercise_html(question, build.highlight)
+        self.assertNotIn("<script>", source)
+        self.assertNotIn("<img", source)
+        self.assertIn("&lt;input checked&gt;", source)
+
+    def test_every_course_page_can_validate_progress_from_every_chapter(self):
+        expected = set(build.EXERCISES)
+        for name in ["course", *[lesson["slug"] for lesson in build.LESSONS]]:
+            with self.subTest(page=name):
+                data = build.course_data(name)
+                self.assertEqual(set(data["exercises"]), expected)
+                for key, exercise in data["exercises"].items():
+                    original = build.EXERCISES[key]
+                    self.assertEqual(exercise["kind"], original["kind"])
+                    if exercise["kind"] == "choice":
+                        self.assertEqual(exercise["answer"], original["answer"])
+                    else:
+                        self.assertEqual([case["expected"] for case in exercise["tests"]],
+                                         [case["expected"] for case in original["tests"]])
+
+    def test_course_worked_programs_run_as_shown(self):
+        cases = {
+            "max-and-evens": [("5\n-3 8 -4 7 8\n", "8 3")],
+            "range-sums": [("5 3\n3 1 4 1 5\n1 5\n2 3\n4 4\n", "14 5 1")],
+            "best-window": [("5 2\n3 -1 4 1 5\n", "6"),
+                            ("5 5\n3 -1 4 1 5\n", "12"),
+                            ("3 1\n-2 -9 -4\n", "-2")],
+            "ordinals": [("5\n", "5 3 2 2 YES")],
+            "user-index": [("2 3\n", "6 23 5 2")],
+            "grid": [("2 3\n", "21 21 YES")],
+            "slices": [("5\n9 2 7 4 5\n", "3 7 3 13\n9 2 4 7 5\n2 4 7 0")],
+        }
+        programs = {}
+        for name in ("first-program", "domains", "index-slices"):
+            source = (ROOT / "content" / f"course-{name}.md").read_text()
+            programs.update(re.findall(r"```cp Prototype tested · ([a-z-]+)\.cp\n(.*?)```", source, re.S))
+        self.assertEqual(set(programs), set(cases))
+        with tempfile.TemporaryDirectory(prefix="cpl-course-") as temporary:
+            for name, source in programs.items():
+                with self.subTest(program=name):
+                    executable = compile_native(source, name, temporary)
+                    for data, expected in cases[name]:
+                        run = subprocess.run([str(executable)], input=data, text=True,
+                                             capture_output=True, check=True, timeout=5)
+                        self.assertEqual(run.stdout.split(), expected.split())
 
     def test_every_prototype_example_runs_as_native_cpp(self):
         fixtures = {
@@ -116,6 +193,13 @@ class SiteTests(unittest.TestCase):
             "ascii": [("5\nabaca\n", "3"), ("1\nz\n", "0")],
             "memo": [("4\n", "45"), ("1\n", "1")],
         }
+        # Course predictions are checked against actual compiled CP source,
+        # not merely against a second copy of their answer key.
+        for lesson in build.LESSONS:
+            for exercise in lesson["exercises"]:
+                if exercise["kind"] == "output":
+                    fixtures[exercise["fixture"]].extend(
+                        (case["input"], case["expected"]) for case in exercise["tests"])
         referenced = set()
         for path in (ROOT / "content").glob("*.md"):
             referenced.update(re.findall(r"```example (\w+)", path.read_text()))
@@ -127,16 +211,7 @@ class SiteTests(unittest.TestCase):
             for name, cases in fixtures.items():
                 with self.subTest(example=name):
                     source = (ROOT / "examples" / f"{name}.cp").read_text()
-                    cpp, _ = compile_program(parse(source))
-                    path = Path(temporary) / f"{name}.cpp"
-                    executable = Path(temporary) / name
-                    path.write_text(cpp)
-                    subprocess.run(
-                        ["g++", "-std=c++17", "-O2", str(path), "-o", str(executable)],
-                        check=True,
-                        capture_output=True,
-                        timeout=60,
-                    )
+                    executable = compile_native(source, name, temporary)
                     for data, expected in cases:
                         run = subprocess.run(
                             [str(executable)],
