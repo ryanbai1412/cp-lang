@@ -1,7 +1,7 @@
 # Scout batch 8
 
-Ten game-theory, counting, modular-arithmetic and bitset submissions from
-the corpus, re-solved in CP Lang. This is a Stage-1 critique pass. Nothing
+Eleven game-theory, counting, modular-arithmetic, bitset and
+meet-in-the-middle submissions from the corpus, re-solved in CP Lang. This is a Stage-1 critique pass. Nothing
 in `proto/cpc/` or `crates/` was changed for it. What the ports taught us
 is in
 [`research/friction-backlog-batch-8.md`](../../../research/friction-backlog-batch-8.md).
@@ -16,13 +16,14 @@ cco16p4: stress OK: 200 tests agree (0 rejected by where)
 dpy: interpreter OK: 200 tests agree
 ```
 
-Seven ports build with `proto/cpc` and are stressed with inputs generated
+Eight ports build with `proto/cpc` and are stressed with inputs generated
 from their own input types. Three (`dpy`, `ioi04p5`, `yac1p4`) import
 `std.mod` or `std.bitset`, which only the reference interpreter
 (`proto/cpi`) accepts, so `check.py` feeds them small hand-written random
 inputs instead. Those three are checked for answers only: the interpreter
-does no static checking and is too slow for full-size inputs. None of the
-ten was run at the problem's largest size.
+does no static checking and is too slow for full-size inputs. Only
+`cco19p3` was also run at full size, by hand: two inputs with 200,000
+cities and a hub of 36 branches gave the original's answers.
 
 `proto/run_all.sh` only looks at `proto/ports/*.cp`, so this folder does
 not affect it.
@@ -43,8 +44,9 @@ first declaration on.
 - `dpy.cp` (17 against 70): Grid 2. Lattice paths around walls with factorial tables.
 - `ioi04p5.cp` (23 against 29): Farmer. Greedy, or a subset-sum bitset.
 - `yac1p4.cp` (19 against 42): reachable signed totals, a bitset per nesting depth.
+- `cco19p3.cp` (48 against 106): Winter Driving. Rerooting on a tree, and a meet-in-the-middle split of up to 36 branches.
 
-Five of them changed shape rather than being translated:
+Six of them changed shape rather than being translated:
 
 - `cco16p4.cp` does not run the original's elimination. A 2 x 2 flip keeps
   the parity of every row and column and nothing else, so the key of a
@@ -60,10 +62,12 @@ Five of them changed shape rather than being translated:
 - `noip14p6.cp` loops over a list of primes instead of instantiating a
   template per modulus.
 
-## What is missing
+- `cco19p3.cp` has no recursion and no second search. The original roots
+  the tree with two DFS passes; the port scans one top-down order in both
+  directions. The original looks up two neighbours of the target for each
+  half-sum; the port asks only for the largest total at most half, which a
+  single sweep over the two sorted halves answers.
 
-The ticket asked for meet-in-the-middle as well. A search of the unported
-accepted submissions for subset enumeration over half the input combined
-with a sort, a binary search or a hash table found none (`noi01p5`, which
-is one, is already in `proto/ports/`). So the
-batch has no meet-in-the-middle port.
+`cco19p3` is one more than the ten this batch set out to port. It is the
+only meet-in-the-middle solution that a search of the unported accepted
+submissions turned up.
