@@ -311,6 +311,17 @@ static inline int cp_getc() {
     if (cp_ipos == cp_ilen) { cp_ilen = (size_t)max<long>(0, read(0, cp_ibuf, sizeof cp_ibuf));  /* read(2), not fread: returns what is there, so `ask` cannot deadlock on a pipe */ cp_ipos = 0; if (!cp_ilen) return -1; }
     return cp_ibuf[cp_ipos++];
 }
+// read_line(): the next line of input. After a token read that stopped inside a line, the blank rest of
+// that line is skipped first, so `let n: Int = read()` then `read_line()` gives the line after n.
+static inline string rd_line() {
+    bool mid = cp_ipos > 0 && cp_ibuf[cp_ipos - 1] != '\n';
+    for (;;) {
+        string s; int c = cp_getc(); bool blank = true;
+        while (c != '\n' && c != -1) { if (c != '\r') { s += (char)c; if (c != ' ' && c != '\t') blank = false; } c = cp_getc(); }
+        if (mid && blank && c != -1) { mid = false; continue; }
+        return s;
+    }
+}
 static inline ll rd_int() {
     int c = cp_getc(); while (c == ' ' || c == '\n' || c == '\r' || c == '\t') c = cp_getc();
     if (c < 0) cp_fail("unexpected end of input", 0);
