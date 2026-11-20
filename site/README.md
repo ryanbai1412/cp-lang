@@ -49,7 +49,7 @@ The full Rust workspace gate remains `cargo test` before a push.
   with an explicit label if a different status applies.
 - `template.html` and `assets/` own the shared layout, colors, behavior, and
   system font stacks. Markdown raw HTML is escaped by default.
-- `course/` stores six progressive lessons' metadata and exercise banks.
+- `course/` stores seven progressive lessons' metadata and exercise banks.
   Lesson prose is in `content/course-*.md`. An empty fenced `exercise ID`
   block renders a checked knowledge or output-prediction exercise with a
   hint and solution. `course.py` validates IDs, references, and answer data
@@ -93,8 +93,12 @@ gzip. Modern browsers need WebAssembly, Workers, and DecompressionStream.
 Conceptual course questions check a selected answer; output checks actually run
 each input through WASM and compare stdout to the prediction, ignoring whitespace
 but not numeric precision or token order. Each output exercise also has an editable
-source sandbox with stdin/stdout, diagnostics, and C++17 preview. `@memo` is still
-prototype-only: the runnable recurrence is explicitly uncached. Solutions
+source sandbox with stdin/stdout, diagnostics, and C++17 preview. `@!multitest`
+with top-level `return`, `@memo` caching, Tropical Optionals (`?Int`, `min=`,
+`max=`, `??=`), `lends mut` projections, and `SegTree`/`LazySegTree` (`AddSum`,
+`Monoid`, `Action`) all run and emit C++17 in real WASM; spec-only forms (such
+as `@checker` `read_output()` and parent-indexed `a[l..=r]` slices) are labeled
+explicitly. Solutions
 are intentionally available without a login. Correct answers and chapter progress
 persist in browser storage; reset clears an exercise, changing an answer requires a
 fresh check, and changed exercise definitions invalidate old completion records.

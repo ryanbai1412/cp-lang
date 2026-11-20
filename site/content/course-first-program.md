@@ -1,6 +1,6 @@
-This chapter writes, reads, and runs complete CP Lang programs. By the end you will know how a program reads typed input, which bindings may change, how a loop accumulates an answer, and exactly which commands produce a native executable today.
+This chapter writes, reads, and runs complete CP Lang 0.2.2 programs. By the end you will know how a program reads typed input, structures single-test and `@!multitest` files symmetrically with top-level `return`, updates state in a loop, and builds a native binary.
 
-> **What runs.** Every block labeled **prototype tested** compiles with the Python prototype in `proto/` and runs as native C++17. Blocks labeled **design** describe the approved language and are not claimed to run. The Rust `cpl` CLI now interprets and builds its supported subset too; [getting started](getting-started.html#what-works-today) has the full status. A prototype-tested label does not promise Rust support for that feature.
+> **What runs.** Every `*.cp · WASM runnable` block compiles and runs in the real Rust `cpl` WebAssembly runtime on this page (and emits C++17). Blocks labeled **spec** or **prototype tested** show approved 0.2.2 forms that are still landing in the WASM frontend; see [getting started](getting-started.html#what-works-today) for full toolchain status.
 
 ## A program is the body of main
 
@@ -9,52 +9,48 @@ Here is a complete solution to "read `n` numbers and print their total":
 ```example sum
 ```
 
-There is no `main`, no include list, and no fast-I/O incantation. The file's top-level statements run from top to bottom, exactly like the body of `main` in a C++ solution. Functions you declare at the top level can see the `let` bindings above them, so helpers do not need long parameter lists of global state.
+There is no `main`, no include list, and no fast-I/O incantation. Top-level statements run from top to bottom, like the body of `main` in C++. Top-level helper functions can read `let` bindings declared above them without threading global state through parameter lists.
 
 Read the four lines as four decisions:
 
 1. `let n: 1..=2e5 = read()` reads one integer and states its legal range.
-2. `domain V = 1..=n` names the positions `1` through `n` as a new type, `V`.
-3. `let a: [V]Int = read()` reads one `Int` for every position in `V`.
+2. `domain V = 1..=n` names the positions `1` through `n` as a nominal type `V`.
+3. `let a: [V]Int = read()` reads one `Int` per position of `V`.
 4. `print(sum(a))` adds the elements and prints the total with a newline.
-
-The next chapter is entirely about the second line. For now, read `[V]Int` as "an array with one `Int` per position of `V`", and notice that the reader knows how many numbers to consume because the array's index type says so.
 
 ```exercise first-program-predict-sum
 ```
 
 ## Input says what is legal
 
-A type such as `1..=2e5` is not just documentation. It is the constraint from the statement, written where the value enters the program. `..=` includes its end and `..` excludes it, so `1..=2e5` and `1..200001` are the same set. `2e5` is an integer literal here, not a float.
+A type such as `1..=2e5` is the constraint from the problem statement, written where the value enters the program. `..=` includes its end and `..` excludes it, so `1..=2e5` and `1..200001` are the same set. `2e5` is an integer literal, not a float.
 
 The constraint does three jobs at once:
 
-- **Validation.** In the approved design, a local build that reads `0` for `n` stops at the read instead of producing a confusing wrong answer later; the judge build skips the check. The prototype does not validate reads yet, so treat this as the target behavior.
-- **Storage.** A range-typed array element uses the smallest width that fits, while arithmetic still happens in 64-bit `Int`.
-- **Generation.** The stress tester uses the same declarations to produce legal random inputs; see [memoization & stress tests](testing.html).
+- **Validation.** In the approved design, local builds trap if `read()` sees a value outside the range; judge builds skip the check. (Prototype builds do not enforce read bounds yet.)
+- **Storage.** Range-typed array elements pack to the smallest integer width that fits while arithmetic stays 64-bit `Int`.
+- **Generation.** `cpl stress` uses these declarations to generate legal random inputs; see [co-located verification](course-verification.html).
 
-A constraint can mention an earlier value. This is the common "`1 <= k <= n`" line from a statement, and it runs in the prototype:
+A constraint can reference an earlier binding:
 
 ```cp Prototype tested · input fragment
 let n: 1..=2e5 = read()
 let k: 1..=n = read()
 ```
 
-Plain `Int` is the default 64-bit signed integer, so a sum of `2e5` values up to `1e9` does not overflow. The habit to drop is choosing between `int` and `long long` by guesswork: state the input range, and compute in `Int`.
+Plain `Int` is 64-bit signed, so summing `2e5` values up to `1e9` never overflows. State the input range and compute in `Int`.
 
 ```exercise first-program-range-meaning
 ```
 
 ## let, var, and a loop
 
-`let` binds a value that is never reassigned. `var` binds one that is. Use `let` by default; a `var` then marks exactly the state that the loop below it updates.
+`let` binds an immutable value; `var` binds one that is reassigned. Default to `let` so every `var` visibly marks mutable loop state.
 
 ```example accumulation
 ```
 
-`for v in V:` visits every position of `V` in order, and `a[v]` is the element at that position. `total` starts at `0`, which the compiler reads as an `Int`, and `+=` updates it. Notice the element type: `[V]0..=1000` promises every element is between `0` and `1000`. That promise sizes the storage and bounds the generator; rejecting an input such as `2000` at the read is the approved local-build behavior, not yet a prototype check.
-
-A loop can update several pieces of state at once. This program prints the largest value and how many values are even:
+`for v in V:` visits every position of `V` in order, and `a[v]` reads the element at `v`. A loop can update several variables at once:
 
 ```cp Prototype tested · max-and-evens.cp
 let n: 1..=2e5 = read()
@@ -70,11 +66,11 @@ for v in V:
 print(best, evens)
 ```
 
-For input `5` / `-3 8 -4 7 8` it prints `8 3`. Three details carry over to every later chapter:
+For `5` / `-3 8 -4 7 8` this prints `8 3`. Three details carry through every chapter:
 
-- `V.first` is the first position, so `best` starts from a real element rather than from a sentinel such as `-1e18`.
-- Blocks are indentation; there are no braces. Logical operators are written `and`, `or`, and `not`.
-- `%` is Euclidean: the remainder is never negative. In C++, `-3 % 2` is `-1`, and an "is odd" test written as `x % 2 == 1` silently misses negative numbers. Here `-3 % 2` is `1`, so either test is correct.
+- `V.first` is the first position, so `best` starts from a real element instead of a sentinel like `-1e18`.
+- Blocks use indentation, not braces; logical operators are `and`, `or`, `not`.
+- `/` and `%` are Euclidean: `-3 % 2` is `1` (never negative), and `-7 / 3` is `-3`. `//` is always a line comment.
 
 ```exercise first-program-predict-accumulation
 ```
@@ -82,21 +78,52 @@ For input `5` / `-3 8 -4 7 8` it prints `8 3`. Three details carry over to every
 ```exercise first-program-let-or-var
 ```
 
+## Top-level return and `@!multitest`
+
+Single-test and multi-test solutions stay structurally symmetric at top level—there is no `fn solve()` wrapper to indent your entire program into.
+
+In a single-test program, a bare top-level `return` exits the program cleanly (returning a value like `return 0` at top level is a compile error):
+
+```example early_return
+```
+
+```exercise first-program-early-return
+```
+
+When a problem starts with a test-case count `t`, place the file-level directive `@!multitest` on its own line (`@!` marks a file-level directive applying from that line down, while `@` always attaches to the single item below it). Here is a complete `@!multitest` program running in WebAssembly—precomputing `tri` once above the divider, exiting a zero-case early with top-level `return`, and resetting a `@memo` cache for each case's `step`:
+
+```example multitest_divider
+```
+
+Use `@!multitest(until_eof)` when the judge gives test cases until EOF instead of a leading count. Code above `@!multitest` runs once for precomputation; code below runs per test case with fresh local bindings and emptied `@memo` caches. A second `@!multitest` divider or a nested `@!multitest` inside a block is a compile error.
+
+```exercise first-program-multitest-output
+```
+
+```exercise first-program-multitest-divider
+```
+
 ## Printing answers
 
-`print` writes its arguments separated by single spaces and ends the line. An array prints as its elements on one line, and a `Bool` prints as `YES` or `NO`, the spelling most judges ask for.
+`print` writes its arguments separated by single spaces and ends the line. Arrays print space-separated on one line, and `Bool` prints `YES` or `NO`:
 
-```cp Prototype tested · fragment
+```cp CP Lang 0.2.2 · fragment
 print(best, evens)      // 8 3
 print(a)                // -3 8 -4 7 8
 print(best > 0)         // YES
 ```
 
-These lines assume the bindings of the previous program. When a problem asks for one answer per line, call `print` once per answer. `//` starts a comment; it is never integer division. Division is `/`, and like `%` it is Euclidean, so `-7 / 3` is `-3`. The [language tour](tour.html#a-few-c-habits-to-leave-behind) lists the other C++ habits to leave behind.
-
 ## Run it natively today
 
-The prototype translates a `.cp` file into one readable C++17 file, which you compile and run with your own compiler. Work in a scratch directory, because the build adds a compiler stamp line to the top of the source file it reads and writes the `.cpp` beside it:
+Both the Rust CLI (`cpl`) and the Python prototype (`proto/cp.py`) emit readable C++17:
+
+```sh
+cpl check site/examples/sum.cp
+cpl run site/examples/sum.cp < input.txt
+cpl build site/examples/sum.cp -o sum.cpp && g++ -std=c++17 -O2 sum.cpp -o sum
+```
+
+When using the Python prototype on a tracked file, copy it to a scratch directory first because `proto/cp.py build` stamps a version header into the source file it reads:
 
 ```sh
 mkdir -p scratch/first && cp site/examples/sum.cp scratch/first/sum.cp
@@ -105,19 +132,7 @@ g++ -std=c++17 -O2 scratch/first/sum.cpp -o scratch/first/sum
 printf '5\n3 1 4 1 5\n' | scratch/first/sum
 ```
 
-The last command prints `14`. The generated `sum.cpp` is the file you would submit to a judge; the `.cp` file is your source. Never build a tracked file such as a corpus port in place: the stamp would show up as a change in Git.
-
-The Rust CLI is real but younger. `cpl check sum.cp` runs the shared frontend, `cpl run sum.cp` executes the supported subset in its debug interpreter, and `cpl build sum.cp` emits C++17 for that same subset. `cpl lsp` serves editor features. Unsupported lowering reports `E0501`; a clean check alone does not promise execution support. The prototype remains useful for advanced features taught later. See [getting started](getting-started.html#what-works-today) for the working Rust commands and [the intended contest loop](getting-started.html#the-intended-contest-loop) for still-planned testing tools.
-
 ```exercise first-program-toolchain
 ```
 
-## Common mistakes
-
-**Reading without a range.** `let n: Int = read()` compiles, but the stress tester then has no idea what a legal `n` is, and once local input validation lands it has nothing to check. Copy the statement's constraint into the type.
-
-**Starting a maximum at a sentinel.** `var best = -1e18` is a guess that a later subtask can break. Start from `a[V.first]`, or reduce with `max(...)`, which returns an optional that is `none` for an empty input.
-
-**Assuming every approved feature runs in Rust.** Its interpreter and C++17 backend work on a supported subset. A clean `cpl check` does not mean every feature in the file can be lowered; advanced examples may still require the prototype.
-
-Next, [domains and boundaries](course-domains.html) explains what `domain V` buys you: indices that cannot be confused with each other, and prefix sums with no `+ 1`.
+Next, [domains and boundaries](course-domains.html) shows how `domain V` prevents index mix-ups and removes `+ 1` shifts from prefix sums and windows.

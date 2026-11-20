@@ -1,63 +1,34 @@
-A clean solution is only half the contest loop. You also want fast binary search without off-by-one guesses, cached recursion with `@memo`, and in-file stress tests (`@brute`, `@checker`, `@interactor`) that shrink counterexamples automatically before you submit.
+A fast algorithm is only half the contest loop. Before submitting, you want a slow brute-force oracle, a validator for constructive problems, or a local interactive judge—all living right beside your solution so they share the same input types and disappear automatically from the submitted C++17.
 
-## Free-function binary search
+## Co-located `@brute`
 
-CP Lang 0.2.2 uses two canonical binary search functions on any ordered range (`bsearch_first`, `bsearch_last`), plus `xs.first_ge(x)` and `xs.last_le(x)` on sorted collections:
+Attach `@brute(main)` (or `@brute(fn_name)` to target one helper) directly inside your `.cp` file. The brute sees the same top-level `let` inputs in both single-test and `@!multitest` files, and `cpl build` strips `@brute` completely from judge submissions:
 
-```cp CP Lang 0.2.2
-let min_cap = bsearch_first(1..=1e9, cap => can_ship(cap))
-let max_k = bsearch_last(0..=n, k => cost(k) <= budget)
+```example colocated_brute
 ```
 
-Both return `?I`, so “no value satisfies the predicate” is `none` rather than a sentinel. On `F64` ranges, pass `steps: 80`. The sorted lookups return what the container holds: a sequence gives the index (`?Int` or `?D`), a `Set` or `SortedBag` gives the key (`?K`), and a `Map` gives the pair (`?(K, V)`).
+Run the fast prefix-minimum solution above in the sandbox, or click **C++17** to verify that `@brute(main)` is stripped from the generated submission code.
 
-## Memoization with `@memo`
-
-Attach `@memo` to a pure recursive function over any `Index` parameters:
-
-```cp CP Lang 0.2.2
-@memo
-fn ways(i: V, rem: 0..=cap) -> Int:
-    ...
-```
-
-When every parameter is an `Index` and the key space fits in `2^24` states (`2^26` for `Bool` results), `@memo` allocates a flat dense table; larger keys automatically switch to a salted hash map. There are no `@memo(...)` parameters, and a `@memo fn` nested in a loop resets on every iteration. In the offline WebAssembly playground below, `@memo` caching is prototype-only, so the worked example runs the same recurrence directly:
-
-```example memo
-```
-
-## Co-located `@brute`, `@checker`, and `@interactor`
-
-Keep your slow oracle, constructive validator, or local interactive judge inside the same `.cp` file—judge builds strip all verification attributes automatically:
-
-```cp CP Lang 0.2.2
-@brute(main)
-fn slow():
-    ...
-
-@checker
-fn check():
-    let out: [V]Int = read_output()
-    assert valid(out)
-
-@interactor
-fn judge(sol: Interactor):
-    let secret: 1..=1000 = read()      // the hidden test
-    while true:
-        let q: Int = sol.recv()         // the solution's stdout
-        sol.send(if q < secret: -1 elif q > secret: 1 else: 0)
-        if q == secret: return
-```
-
-In interactive solutions, call `ask("?", x, limit: 2)` so local runs enforce the query limit. Any program that calls `ask(...)` flushes every `print(...)` automatically. State input preconditions as typed `read()` bounds, use `assert` for invariants (it is always checked, locally and on the judge), and `debug(...)` for side-by-side shrinking traces during `cpl stress`.
-
-## Practice
-
-```exercise verify-memo-output
+```exercise verify-brute-output
 ```
 
 ```exercise verify-brute-part
 ```
+
+## Co-located `@checker` for constructive answers
+
+When a problem accepts any valid coloring, permutation, or construction, character-by-character comparison against a brute fails. Add a `@checker` block in the same file:
+
+```cp CP Lang 0.2.2 · spec (cpl stress harness)
+@checker
+fn check():
+    let out: [V]Color = read_output()
+    assert valid(out)
+```
+
+When paired with `@brute(main)`, the brute settles **existence** (e.g., whether a valid coloring exists or the answer is `-1`), while `@checker` validates any constructive answer your fast solution prints.
+
+> **WASM status.** `@brute(main)` and `@interactor` parse, check, and strip cleanly in WASM `run`/`build` today (`colocated_brute.cp` above). The `read_output()` builtin and the automated `cpl stress` shrinking/comparison runner are part of the approved 0.2.2 verification spec and are not executed inside the browser sandbox.
 
 ```exercise verify-shrink
 ```
@@ -65,5 +36,42 @@ In interactive solutions, call `ask("?", x, limit: 2)` so local runs enforce the
 ```exercise verify-checker
 ```
 
+## Co-located `@interactor` and query budgets
+
+Interactive problems pair `ask("?", x, limit: K)` in your solution with a co-located `@interactor` judge in the same file:
+
+```cp CP Lang 0.2.2 · spec (cpl stress interactive harness)
+@interactor
+fn judge(sol: Interactor):
+    let secret: 1..=1000 = read()      // hidden test case
+    while true:
+        let q: Int = sol.recv()        // reads solution's stdout
+        sol.send(if q < secret: -1 elif q > secret: 1 else: 0)
+        if q == secret: return
+```
+
+Any program that calls `ask(...)` automatically flushes every `print(...)`, so forgetting `endl`/`flush` cannot cause an idleness-limit verdict. Locally, `@interactor` enforces `limit: K` and prints the full query transcript if you exceed the budget.
+
+## Free-function binary search
+
+For answer binary search and interactive halving, CP Lang 0.2.2 provides two canonical functions on any ordered range (`bsearch_first`, `bsearch_last`) returning `?I`:
+
+```cp CP Lang 0.2.2 · spec fragment
+let min_cap = bsearch_first(1..=1e9, cap => can_ship(cap))
+let max_k = bsearch_last(0..=n, k => cost(k) <= budget)
+```
+
+Returning `?I` means "no value satisfies the predicate" is `none` rather than a sentinel. On `F64` ranges, pass `steps: 80`. For cached recurrences with `@memo`, see [Chapter 5](course-dp.html).
+
 ```exercise verify-query-budget
+```
+
+## Recursive baseline reference
+
+Here is a compact linear recurrence (`f(0) = 1`, `f(i) = f(i - 1) * 3 + i`) for tracing small base-case boundaries:
+
+```example memo
+```
+
+```exercise verify-memo-output
 ```

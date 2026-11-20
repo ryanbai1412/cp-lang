@@ -1,0 +1,73 @@
+In C++, dynamic programming and shortest paths constantly fight sentinel constants (`1e18`, `INT_MAX / 2`, `-1`): add two `INF` values and you overflow into negative numbers; forget a base-case check and a dead state leaks into the answer. CP Lang 0.2.2 eliminates sentinels with **Tropical Optionals** (`?T`, `min=`, `max=`, `??=`) and pairs them with **zero-boilerplate `@memo` DP**.
+
+## Tropical Optionals: `?T`, `min=`, and `max=`
+
+An optional `?T` holds either a value of type `T` or `none`. The 0.2.2 target layout specifies niche packing for small/sentinel types (`?V`, `?Bool`, `?Char`, `?Enum`, `?F64`), while the current C++17 codegen (`crates/cpl-cpp/src/niche.rs`) emits `std::optional<int64_t>` for `?Int` so every 64-bit integer value remains representable.
+
+Three rules make DP transitions one line with no `INF` constant:
+
+1. **Additive ops absorb `none`.** On `?Int` and `?F64`, `+`, `-`, and unary `-` return `none` if either operand is `none`.
+2. **`min=` and `max=` skip `none`.** Updating `dp[s] min= cand` does nothing when `cand` is `none`, and stores `cand` when `dp[s]` is `none`. `none` acts as the tropical identity (`+inf` for `min=`, `-inf` for `max=`).
+3. **`??` supplies the final fallback.** `print(dp[x] ?? -1)` prints `-1` when state `x` was never reached.
+
+Here is minimum-coin change in 9 lines—compiling and running directly in WebAssembly:
+
+```example tropical_dp
+```
+
+When `dp[s - c]` is `none`, `dp[s - c] + 1` evaluates to `none`, and `dp[s] min= none` leaves `dp[s]` untouched. No sentinel arithmetic, no `if dp[s - c] != INF` guard.
+
+```exercise dp-tropical-coins
+```
+
+## Lazy initialization with `??=`
+
+Use `x ??= expr` to initialize an optional place only if it is currently `none` (and leave an existing value intact). Combined with `max=`, one pass tracks both the largest even number and the first negative number without boolean flags:
+
+```example optional_coalesce
+```
+
+In arena and adjacency code, `(adj[k] ??= []).push(x)` initializes a missing bucket lazily and lends it mutably in one expression.
+
+```exercise dp-optional-coalesce
+```
+
+## Tropical guardrails: what never lifts
+
+To prevent silent bugs, only `+`, `-`, unary `-`, `min`/`max`, and `min=`/`max=` lift over `?T`:
+
+- `*`, `/`, `%`, bitwise ops, `+=`, `-=`, and `sum(...)` **never** lift over `?T`. Writing `x += 2` on `var x: ?Int` is a compile error (`E0309`)—unwrap or provide a fallback first.
+- `?T` does **not** implement `Ord`, so `<`, `<=`, `>`, `>=` never silently order `none` before or after real values. (`==` and `!=` do auto-lift `T` to `?T`.)
+- When `none` means *failure/poison* and every branch must succeed (not tropical identity), check explicitly with `if let`:
+
+```cp CP Lang 0.2.2 · fragment
+if let hit = solve(child):
+    best min= hit
+else:
+    best = none
+    break
+```
+
+```exercise dp-tropical-guardrails
+```
+
+## Cached recursion with `@memo`
+
+Attach `@memo` to a pure recursive function over `Index` or range parameters to turn an exponential recurrence into a cached DP table automatically:
+
+```example memo_dp
+```
+
+`ways(35)` executes instantaneously in WebAssembly—without `@memo`, naive recursion would perform ~30 million calls. The compiler lowers `@memo` into a real cache (`crates/cpl-ir/src/lower/memo.rs`):
+
+- When parameters are bounded `Index`/range types fitting within `2^24` states (`DENSE_LIMIT = 1 << 24`), `@memo` allocates a flat dense table; larger spaces switch to a salted hash map.
+- A `@memo fn` declared below `@!multitest` or nested inside a loop automatically clears its cache on every test case or iteration—no stale-table WA across test cases.
+- `@memo` functions can capture immutable outer `let` bindings directly.
+
+```exercise dp-memo-ways
+```
+
+```exercise dp-memo-reset
+```
+
+Next, [algebraic segment trees and `Rooted`](course-algebra.html) replaces ad-hoc tree boilerplate with `Monoid(id, op)` and `Action(id, compose, apply, over)`.

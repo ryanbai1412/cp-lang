@@ -120,9 +120,9 @@ class SiteTests(unittest.TestCase):
         self.assertEqual(len(json.loads(payload["search"])), len(build.PAGES))
         self.assertIn("course", payload)
 
-    def test_course_has_six_sequenced_lessons_and_real_controls(self):
-        self.assertEqual(len(build.LESSONS), 6)
-        self.assertGreaterEqual(len(build.EXERCISES), 18)
+    def test_course_has_seven_sequenced_lessons_and_real_controls(self):
+        self.assertEqual(len(build.LESSONS), 7)
+        self.assertGreaterEqual(len(build.EXERCISES), 30)
         for lesson in build.LESSONS:
             source = (ROOT / "_build" / f'{lesson["slug"]}.html').read_text()
             page = Page(source)
@@ -144,6 +144,20 @@ class SiteTests(unittest.TestCase):
         self.assertNotIn("<script>", source)
         self.assertNotIn("<img", source)
         self.assertIn("&lt;input checked&gt;", source)
+
+    def test_safe_json_escapes_script_breakers_and_round_trips_unicode(self):
+        sample = {
+            "close": "</ScRiPt><script>alert(1)</script>",
+            "comment": "<!--<script>bad</script>-->",
+            "angle": "a < b && c > d",
+            "unicode": "π → λ\u2028line\u2029para",
+        }
+        encoded = build.safe_json(sample)
+        self.assertNotIn("</", encoded)
+        self.assertNotIn("<!--", encoded)
+        self.assertNotIn("\u2028", encoded)
+        self.assertNotIn("\u2029", encoded)
+        self.assertEqual(json.loads(encoded), sample)
 
     def test_every_course_page_can_validate_progress_from_every_chapter(self):
         expected = set(build.EXERCISES)
@@ -173,7 +187,13 @@ class SiteTests(unittest.TestCase):
         programs = {}
         for name in ("first-program", "domains", "index-slices"):
             source = (ROOT / "content" / f"course-{name}.md").read_text()
-            programs.update(re.findall(r"```cp Prototype tested · ([a-z-]+)\.cp\n(.*?)```", source, re.S))
+            programs.update(
+                re.findall(
+                    r"```cp Prototype tested · ([a-z-]+)\.cp(?: [^\n]*)?\n(.*?)```",
+                    source,
+                    re.S,
+                )
+            )
         self.assertEqual(set(programs), set(cases))
         with tempfile.TemporaryDirectory(prefix="cpl-course-") as temporary:
             for name, source in programs.items():
@@ -195,19 +215,31 @@ class SiteTests(unittest.TestCase):
             "ascii": [("5\nabaca\n", "3"), ("1\nz\n", "0")],
             "memo": [("4\n", "45"), ("1\n", "1")],
         }
+        # 0.2.2 fixtures that use Rust/WASM stdlib or syntax verified in test_compiler.cjs.
+        wasm_only = {
+            "early_return",
+            "multitest_divider",
+            "lends",
+            "tropical_dp",
+            "optional_coalesce",
+            "memo_dp",
+            "segtree_monoid",
+            "lazy_action",
+            "colocated_brute",
+        }
         # Course predictions are checked against actual compiled CP source,
         # not merely against a second copy of their answer key.
         for lesson in build.LESSONS:
             for exercise in lesson["exercises"]:
-                if exercise["kind"] == "output":
+                if exercise["kind"] == "output" and exercise["fixture"] in fixtures:
                     fixtures[exercise["fixture"]].extend(
                         (case["input"], case["expected"]) for case in exercise["tests"])
         referenced = set()
         for path in (ROOT / "content").glob("*.md"):
             referenced.update(re.findall(r"```example (\w+)", path.read_text()))
-        self.assertEqual(referenced, set(fixtures))
+        self.assertEqual(referenced, set(fixtures) | wasm_only)
         self.assertEqual(
-            {p.stem for p in (ROOT / "examples").glob("*.cp")}, set(fixtures)
+            {p.stem for p in (ROOT / "examples").glob("*.cp")}, set(fixtures) | wasm_only
         )
         with tempfile.TemporaryDirectory(prefix="cpl-docs-") as temporary:
             for name, cases in fixtures.items():

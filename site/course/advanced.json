@@ -2,7 +2,7 @@
   {
     "slug": "course-borrowing",
     "title": "Lends and lexical borrowing",
-    "description": "Ownership, explicit mut, projections as inline callbacks, law disjoint, and why borrows never escape their block.",
+    "description": "Ownership, explicit mut, projections as inline callbacks, @law disjoint, and why borrows never escape their block.",
     "duration": "30 min",
     "exercises": [
       {
@@ -25,9 +25,9 @@
       {
         "id": "borrow-inline-callback",
         "title": "Why a projection cannot dangle",
-        "prompt": "fn at(mut self, i: V) lends mut Int ends with the tail expression mut cnt[i]. Why can the caller never keep a dangling reference to cnt[i]?",
-        "hint": "Think about what b.at(v) += 5 desugars to, and where that code runs.",
-        "solution": "A projection is sugar for fn at(mut self, i: V, use: (mut Int) -> R) -> R = use(mut cnt[i]), with the callback inlined. The rest of the caller's expression is the callback, it runs while at is still on the stack, and nothing reference-like is ever returned.",
+        "prompt": "fn at(mut self, i: V) lends mut Int ends with the tail expression mut self.cnt[i]. Why can the caller never keep a dangling reference to cnt[i]?",
+        "hint": "Think about what c.at(v) += 5 desugars to, and where that code runs.",
+        "solution": "A projection is sugar for fn at(mut self, i: V, use: (mut Int) -> R) -> R = use(mut self.cnt[i]), with the callback inlined. The rest of the caller's expression is the callback, it runs while at is still on the stack, and nothing reference-like is ever returned.",
         "kind": "choice",
         "options": [
           "The caller's expression runs as an inlined callback inside at, so the borrow ends before at returns",
@@ -36,7 +36,7 @@
           "The projection copies cnt[i], so there is no reference at all"
         ],
         "answer": 0,
-        "explanation": "There is no reference counting and no lifetime inference: the design avoids both. A projection does not copy; b.at(v) += 5 really changes cnt[v], which is the point of a mutable projection."
+        "explanation": "There is no reference counting and no lifetime inference: the design avoids both. A projection does not copy; c.at(v) += 5 really changes cnt[v], which is the point of a mutable projection."
       },
       {
         "id": "borrow-disjoint",
@@ -68,44 +68,198 @@
           "Assign a[l..=r] to a var and return the var"
         ],
         "answer": 1,
-        "explanation": "Returning a slice, storing it in a field, or assigning it to a var would each let the borrow outlive its block, and the prototype rejects all three with help to keep the range or call .copy(). A copy compiles too, but sorting a copy would not change a."
+        "explanation": "Returning a slice, storing it in a field, or assigning it to a var would each let the borrow outlive its block, and all three are rejected with help to keep the range or call .copy(). A copy compiles too, but sorting a copy would not change a."
       },
       {
-        "id": "borrow-bounds-output",
-        "title": "Predict the boundary prefix sum",
-        "prompt": "This prototype-tested program builds prefix sums indexed by boundaries: pre[v.r] = pre[v.l] + a[v]. Predict the output for each input.",
-        "hint": "V.last.r is the boundary after the last element, so pre at that boundary covers every element.",
-        "solution": "pre starts at 0 everywhere, and each step adds one element to the previous boundary. The final boundary holds the whole sum: 2 - 1 + 3 + 5 = 9, a single -9 gives -9, and three zeros give 0. No +1 index arithmetic is needed because v.l and v.r are boundary values, not shifted integers.",
+        "id": "borrow-lends-output",
+        "title": "Trace a lends mut projection",
+        "prompt": "lends.cp starts cnt at all zeros, applies q updates through c.at(pos) += delta, then calls add_all(mut c.cnt, 1). Predict the printed array for each input.",
+        "hint": "Apply each (pos, delta) update to 1-based slot pos, then add 1 to every slot.",
+        "solution": "Case 1: [0, 0, 0] -> [5, 0, -2] -> [6, 1, -1]. Case 2: [0, 0] -> [0, 10] -> [1, 11]. Case 3: [0] -> [9] -> [10]. Both c.at(pos) += delta and add_all(mut c.cnt, 1) mutate in place with no copies.",
         "kind": "output",
-        "fixture": "bounds",
+        "fixture": "lends",
         "tests": [
           {
-            "input": "4\n2 -1 3 5\n",
-            "expected": "9"
+            "input": "3 2\n1 5\n3 -2\n",
+            "expected": "6 1 -1"
           },
           {
-            "input": "1\n-9\n",
-            "expected": "-9"
+            "input": "2 3\n2 4\n2 6\n1 0\n",
+            "expected": "1 11"
           },
           {
-            "input": "3\n0 0 0\n",
-            "expected": "0"
+            "input": "1 1\n1 9\n",
+            "expected": "10"
           }
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "course-dp",
+    "title": "Tropical Optionals and @memo DP",
+    "description": "Eliminate INF sentinels with niche-packed ?T, tropical min=/max=, lazy ??=, and cached @memo recurrences.",
+    "duration": "25 min",
+    "exercises": [
+      {
+        "id": "dp-tropical-coins",
+        "title": "Trace tropical coin change",
+        "prompt": "tropical_dp.cp initializes dp: [0..=x]?Int = none, sets dp[0] = 0, relaxes dp[s] min= dp[s - c] + 1, and prints dp[x] ?? -1. Predict the output for each input.",
+        "hint": "If no combination of coins reaches sum x, dp[x] stays none and ?? -1 prints -1.",
+        "solution": "For coins [1, 5, 7] and x = 11: 5 + 5 + 1 uses 3 coins (better than 7 + 1 + 1 + 1 + 1 = 5). For coins [2, 4] and x = 3: odd sum is unreachable, so dp[3] is none and prints -1. For coins [2, 3] and x = 6: 3 + 3 uses 2 coins.",
+        "kind": "output",
+        "fixture": "tropical_dp",
+        "tests": [
+          {
+            "input": "3 11\n1 5 7\n",
+            "expected": "3"
+          },
+          {
+            "input": "2 3\n2 4\n",
+            "expected": "-1"
+          },
+          {
+            "input": "2 6\n2 3\n",
+            "expected": "2"
+          }
+        ]
+      },
+      {
+        "id": "dp-optional-coalesce",
+        "title": "Track max= and ??=",
+        "prompt": "optional_coalesce.cp scans a, updates best_even max= x for even values, and runs first_neg ??= x for negative values. Predict the two printed numbers for each input.",
+        "hint": "max= keeps the largest even number seen; ??= writes only when first_neg is still none, so it keeps the first negative number.",
+        "solution": "Case 1: evens are -4, -2, 6 (max 6); first negative is -4 -> 6 -4. Case 2: no evens and no negatives -> fallbacks -1 0. Case 3: evens -8, -2 (max -2); first negative -8 -> -2 -8.",
+        "kind": "output",
+        "fixture": "optional_coalesce",
+        "tests": [
+          {
+            "input": "5\n3 -4 7 -2 6\n",
+            "expected": "6 -4"
+          },
+          {
+            "input": "3\n1 3 5\n",
+            "expected": "-1 0"
+          },
+          {
+            "input": "2\n-8 -2\n",
+            "expected": "-2 -8"
+          }
+        ]
+      },
+      {
+        "id": "dp-tropical-guardrails",
+        "title": "Which optional operation is rejected?",
+        "prompt": "Given var x: ?Int = 1 and var y: ?Int = none, which statement does CP Lang 0.2.2 reject at compile time?",
+        "hint": "Only additive ops (+, -, unary -) and tropical min/max/min=/max= lift over ?Int.",
+        "solution": "x += 2 is rejected (E0309). Compound +=, -=, *, /, %, and sum(...) never lift over ?Int so silent none-poisoning cannot hide in arithmetic.",
+        "kind": "choice",
+        "options": [
+          "y min= x + 3",
+          "x += 2",
+          "y ??= 5",
+          "let z = x ?? 0"
         ],
-        "code": "let n: 1..=100 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\n\nvar pre: [V.bounds]Int = 0\nfor v in V:\n    pre[v.r] = pre[v.l] + a[v]\nprint(pre[V.last.r])"
+        "answer": 1,
+        "explanation": "y min= x + 3 is valid tropical DP, y ??= 5 lazily initializes y, and x ?? 0 unwraps with a fallback. x += 2 is intentionally rejected with E0309 because += is not a tropical update."
+      },
+      {
+        "id": "dp-memo-ways",
+        "title": "Predict the @memo recurrence",
+        "prompt": "memo_dp.cp caches ways(k) = ways(k - 1) + ways(k - 2) with ways(0) = ways(1) = 1. Predict the output for n = 1, 5, and 10.",
+        "hint": "The sequence starts ways(0)=1, ways(1)=1, ways(2)=2, ways(3)=3, ways(4)=5, ways(5)=8, ...",
+        "solution": "ways(1) = 1, ways(5) = 8, and ways(10) = 89. Because @memo caches every state in a flat table, even ways(35) runs instantaneously in WebAssembly.",
+        "kind": "output",
+        "fixture": "memo_dp",
+        "tests": [
+          {
+            "input": "1\n",
+            "expected": "1"
+          },
+          {
+            "input": "5\n",
+            "expected": "8"
+          },
+          {
+            "input": "10\n",
+            "expected": "89"
+          }
+        ]
+      },
+      {
+        "id": "dp-memo-reset",
+        "title": "When @memo caches reset",
+        "prompt": "A @memo fn dp(i: V) -> Int is declared below @!multitest and reads the per-test array a. What happens when the second test case starts?",
+        "hint": "Think about what @!multitest guarantees for everything below the divider.",
+        "solution": "The @memo cache is cleared automatically at the start of every test case (and every iteration if nested in a loop), so stale answers from test 1 never leak into test 2.",
+        "kind": "choice",
+        "options": [
+          "The cache keeps entries from test 1 unless you call dp.clear()",
+          "The cache resets automatically for every test case below @!multitest",
+          "@memo cannot be used below @!multitest",
+          "You must pass the test case index t as an extra parameter to dp"
+        ],
+        "answer": 1,
+        "explanation": "Automatic per-test and per-loop resets are a core 0.2.2 rule that removes one of the most common multitest WA bugs without manual memset or generation counters."
       }
     ]
   },
   {
     "slug": "course-algebra",
-    "title": "Algebra, data structures, and Rooted",
-    "description": "Bare operators, Monoid(id, op), Action(id, compose, apply, over: op), desc(x), explicit two-pointer windows, and Rooted<V> tree paths.",
+    "title": "Algebraic segment trees and Rooted",
+    "description": "Bare operators, Monoid(id, op), Action(id, compose, apply, over), SegTree, LazySegTree, and Rooted<V> tree paths.",
     "duration": "30 min",
     "exercises": [
       {
+        "id": "algebra-segtree-output",
+        "title": "Trace SegTree with Monoid",
+        "prompt": "segtree_monoid.cp builds SegTree<V, Int> from Monoid<Int>(0, +). Type 1 sets pos to val; type 2 prints the inclusive range sum fold(l..=r). Predict the outputs.",
+        "hint": "Track the array after each type-1 point update, then sum l..=r on each type-2 query.",
+        "solution": "Case 1: initial [2, 5, 1, 4], fold(1..=3) = 8; set pos 2 to 10 -> [2, 10, 1, 4], fold(1..=4) = 17. Case 2: initial [-2, 4, -1], fold(1..=3) = 1; set pos 1 to 5 (no print). Case 3: [7, 3], fold(2..=2) = 3, fold(1..=2) = 10.",
+        "kind": "output",
+        "fixture": "segtree_monoid",
+        "tests": [
+          {
+            "input": "4 3\n2 5 1 4\n2 1 3\n1 2 10\n2 1 4\n",
+            "expected": "8\n17"
+          },
+          {
+            "input": "3 2\n-2 4 -1\n2 1 3\n1 1 5\n",
+            "expected": "1"
+          },
+          {
+            "input": "2 2\n7 3\n2 2 2\n2 1 2\n",
+            "expected": "3\n10"
+          }
+        ]
+      },
+      {
+        "id": "algebra-lazy-output",
+        "title": "Trace LazySegTree with Action",
+        "prompt": "lazy_action.cp uses Action<Int, Int> for range add and range sum. Type 1 adds d to l..=r; type 2 prints fold(l..=r). Predict the outputs.",
+        "hint": "Adding d to a range of length span increases its sum by d * span.",
+        "solution": "Case 1: [1, 2, 3, 4] + 3 on 2..=4 -> [1, 5, 6, 7]; fold(1..=4) = 19, fold(2..=3) = 11. Case 2: [0, 0, 0] + 5 on 1..=3 -> [5, 5, 5], then -2 on 2..=2 -> [5, 3, 5]; fold(1..=3) = 13. Case 3: [10] - 4 on 1..=1 -> [6].",
+        "kind": "output",
+        "fixture": "lazy_action",
+        "tests": [
+          {
+            "input": "4 3\n1 2 3 4\n1 2 4 3\n2 1 4\n2 2 3\n",
+            "expected": "19\n11"
+          },
+          {
+            "input": "3 3\n0 0 0\n1 1 3 5\n1 2 2 -2\n2 1 3\n",
+            "expected": "13"
+          },
+          {
+            "input": "1 2\n10\n1 1 1 -4\n2 1 1\n",
+            "expected": "6"
+          }
+        ]
+      },
+      {
         "id": "algebra-sum-identity",
         "title": "Predict the fold",
-        "prompt": "sum(a) is a fold of + starting from the identity 0. Predict the output of this prototype-tested program for each input.",
+        "prompt": "sum(a) is a fold of + starting from the identity 0. Predict the output of this runnable program for each input.",
         "hint": "Write the fold out as ((0 + x1) + x2) + ..., and remember that adding 0 changes nothing.",
         "solution": "The fold starts at the identity 0 and adds each element: 0 + 5 - 2 + 4 = 7; -3 + 3 = 0; and a single element is just itself, -9, because 0 + x == x.",
         "kind": "output",
@@ -160,20 +314,19 @@
       },
       {
         "id": "algebra-noncommutative",
-        "title": "Order matters",
-        "prompt": "Using the prototype-tested compose_all from this lesson, what does the program print for input 2, then 3 0, then 2 1? Each line is mul add, and the maps apply in order.",
-        "hint": "Apply x => 3x first, then x => 2x + 1, and expand.",
-        "solution": "First x => 3x, then x => 2(3x) + 1 = 6x + 1, so it prints 6 1. In the opposite order (2 1 then 3 0) the result is 6x + 3: same multiplier, different constant, so the operation is associative but not commutative.",
+        "title": "Order matters in Action.compose",
+        "prompt": "An affine Action applies old_f = (3, 0) (x => 3x) first, then new_f = (2, 1) (x => 2x + 1). What is compose(new_f, old_f)?",
+        "hint": "Substitute 3x into 2(...) + 1 and expand.",
+        "solution": "Applying old_f first gives 3x, then new_f gives 2(3x) + 1 = 6x + 1, so compose(new_f, old_f) = (6, 1). Reversing the order gives 3(2x + 1) = 6x + 3.",
         "kind": "choice",
         "options": [
-          "6 3",
-          "5 1",
-          "6 1",
-          "6 2"
+          "(6, 3)",
+          "(5, 1)",
+          "(6, 1)",
+          "(6, 2)"
         ],
         "answer": 2,
-        "explanation": "6 3 is the answer for the reversed order, which is the classic mistake of combining a right-hand accumulator in the wrong order. 5 1 adds the multipliers instead of multiplying them.",
-        "code": "struct Aff:\n    mul: Int\n    add: Int\n\nfn then(f: Aff, g: Aff) -> Aff:\n    Aff(f.mul * g.mul, f.add * g.mul + g.add)\n\nfn compose_all<D>(fs: [D]Aff) -> Aff:\n    var acc = Aff(1, 0)\n    for d in D:\n        acc = then(acc, fs[d])\n    acc"
+        "explanation": "(6, 3) is the reversed order, the classic bug when composing lazy tags backwards. Action.compose(new_f, old_f) always applies old_f first and new_f second."
       },
       {
         "id": "algebra-runtime-op",
@@ -189,7 +342,7 @@
           "Pass a string \"+\" that SegTree parses at runtime"
         ],
         "answer": 0,
-        "explanation": "CP Lang 0.2.2 has no single-purpose operator wrapper types. Built-in associative operators (+, *, ^, &, |, min, max, gcd) pass directly to SegTree and SparseTable, while custom monoids pass Monoid(id, op) and lazy tags pass stock tags like AddSum or Action(id, compose, apply)."
+        "explanation": "CP Lang 0.2.2 has no single-purpose operator wrapper types. Built-in associative operators (+, *, ^, &, |, min, max, gcd) pass directly to SegTree and SparseTable, while custom monoids pass Monoid(id, op) and lazy tags pass stock tags like AddSum or Action(id, compose, apply, over)."
       },
       {
         "id": "algebra-local-library",
@@ -211,33 +364,32 @@
   },
   {
     "slug": "course-verification",
-    "title": "Memo, checkers, interactors, and stress testing",
-    "description": "Recurrences with @memo, slow references with @brute, typed generators and shrinking, multi-answer checkers, query budgets, and first divergence.",
-    "duration": "35 min",
+    "title": "Co-located @brute, @checker, and @interactor",
+    "description": "In-file slow oracles with @brute, constructive validators with @checker, interactive judges with @interactor, shrinking, and binary search.",
+    "duration": "30 min",
     "exercises": [
       {
-        "id": "verify-memo-output",
-        "title": "Predict the recurrence",
-        "prompt": "f(0) = 1 and f(i) = f(i - 1) * 3 + i. Predict the output of this runnable program (which prints f(n - 1)) for each n.",
-        "hint": "0..n is half-open, so the last index is n - 1. Build the values upward from f(0).",
-        "solution": "The sequence is f(0) = 1, f(1) = 4, f(2) = 14, f(3) = 45, f(4) = 139, and the program prints f(n - 1). So n = 1 prints 1, n = 3 prints 14, and n = 5 prints 139. A common mistake is treating 0..n as inclusive and printing f(n).",
+        "id": "verify-brute-output",
+        "title": "Check fast vs. co-located @brute",
+        "prompt": "colocated_brute.cp computes the maximum non-empty subarray sum in O(n) using boundary prefixes, alongside @brute(main) fn slow(). Predict the output for each input.",
+        "hint": "The subarray must be non-empty, so an all-negative array returns its largest (least negative) element.",
+        "solution": "Case 1: [4, -1, 3] sums to 6. Case 2: all negative [-5, -2, -8], best single element is -2. Case 3: all positive [1, 2, 3, 4], whole array sums to 10.",
         "kind": "output",
-        "fixture": "memo",
+        "fixture": "colocated_brute",
         "tests": [
           {
-            "input": "1\n",
-            "expected": "1"
+            "input": "5\n-2 4 -1 3 -5\n",
+            "expected": "6"
           },
           {
-            "input": "3\n",
-            "expected": "14"
+            "input": "3\n-5 -2 -8\n",
+            "expected": "-2"
           },
           {
-            "input": "5\n",
-            "expected": "139"
+            "input": "4\n1 2 3 4\n",
+            "expected": "10"
           }
-        ],
-        "code": "let n: 1..=20 = read()\n\n// @memo caching is prototype-only. This runnable version uses plain recursion.\nfn f(i: Int) -> Int:\n    if i == 0:\n        return 1\n    f(i - 1) * 3 + i\n\nprint(f(n - 1))"
+        ]
       },
       {
         "id": "verify-brute-part",
@@ -302,6 +454,30 @@
         ],
         "answer": 2,
         "explanation": "A linear scan needs up to 10^9 asks. Random asks are not correct. Ternary search with two asks per step needs about 2 * log base 1.5 of 10^9, roughly 100, far more than 30."
+      },
+      {
+        "id": "verify-memo-output",
+        "title": "Predict the linear recurrence",
+        "prompt": "f(0) = 1 and f(i) = f(i - 1) * 3 + i. Predict the output of memo.cp (which prints f(n - 1)) for each n.",
+        "hint": "0..n is half-open, so the last index is n - 1. Build the values upward from f(0).",
+        "solution": "The sequence is f(0) = 1, f(1) = 4, f(2) = 14, f(3) = 45, f(4) = 139, and the program prints f(n - 1). So n = 1 prints 1, n = 3 prints 14, and n = 5 prints 139.",
+        "kind": "output",
+        "fixture": "memo",
+        "tests": [
+          {
+            "input": "1\n",
+            "expected": "1"
+          },
+          {
+            "input": "3\n",
+            "expected": "14"
+          },
+          {
+            "input": "5\n",
+            "expected": "139"
+          }
+        ],
+        "code": "let n: 1..=20 = read()\n\n// Small linear recurrence (see memo_dp.cp for cached @memo DP).\nfn f(i: Int) -> Int:\n    if i == 0:\n        return 1\n    f(i - 1) * 3 + i\n\nprint(f(n - 1))"
       }
     ]
   }

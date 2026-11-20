@@ -76,6 +76,64 @@
         "explanation": "let binds a value that is never reassigned, and the input array is never reassigned here, so it is let. best is reassigned on every iteration, so it must be var. Making everything var compiles but hides which values actually change. A let cannot be reassigned, so a let best could not hold a running maximum."
       },
       {
+        "id": "first-program-early-return",
+        "kind": "output",
+        "fixture": "early_return",
+        "title": "Trace top-level return",
+        "prompt": "early_return.cp exits early with a bare top-level return when n == 1, otherwise prints max(a) - min(a). Predict the output for each input.",
+        "hint": "When n == 1, print(0) and return stop execution before the loop. Otherwise find the difference between the largest and smallest element.",
+        "solution": "For n = 1, the guard prints 0 and returns immediately. For 3 9 -2 5, hi - lo is 9 - (-2) = 11. For 7 7 7, hi - lo is 7 - 7 = 0.",
+        "tests": [
+          {
+            "input": "1\n42\n",
+            "expected": "0\n"
+          },
+          {
+            "input": "4\n3 9 -2 5\n",
+            "expected": "11\n"
+          },
+          {
+            "input": "3\n7 7 7\n",
+            "expected": "0\n"
+          }
+        ]
+      },
+      {
+        "id": "first-program-multitest-output",
+        "kind": "output",
+        "fixture": "multitest_divider",
+        "title": "Trace @!multitest with return and @memo reset",
+        "prompt": "multitest_divider.cp precomputes triangular numbers tri[0..=20] once above @!multitest, then for each test case (n, step) exits early on n == 0 or prints ways(n) (climbing n stairs taking 1..=step steps) and tri[n]. Predict the output for each multi-case input.",
+        "hint": "When n == 0, `return` ends only that test case and prints 0. Because ways() is below @!multitest, its @memo cache resets for each test case even when n repeats with a new step.",
+        "solution": "Case 1 (0, 2) prints 0 and returns to the next case. For n = 4, tri[4] = 10 and ways(4) is 1 (step=1), 5 (step=2), and 7 (step=3). In the second input, n = 3 has tri[3] = 6 and ways(3) is 4 (step=3) then 3 (step=2), with 0 in between.",
+        "tests": [
+          {
+            "input": "4\n0 2\n4 1\n4 2\n4 3\n",
+            "expected": "0\n1 10\n5 10\n7 10\n"
+          },
+          {
+            "input": "3\n3 3\n0 1\n3 2\n",
+            "expected": "4 6\n0\n3 6\n"
+          }
+        ]
+      },
+      {
+        "id": "first-program-multitest-divider",
+        "kind": "choice",
+        "title": "What @!multitest divides",
+        "prompt": "A CP Lang 0.2.2 file builds a sieve above @!multitest, then reads n and has an early `return` below @!multitest. What happens across t test cases?",
+        "options": [
+          "The sieve runs once, each test case gets a fresh scope and reset @memo caches, and top-level `return` ends only the current test case",
+          "The sieve rebuilds on every test case and `return` exits the whole program",
+          "You must wrap the code below @!multitest in `fn solve():`",
+          "Top-level `return 0` is required at the end of every test case"
+        ],
+        "answer": 0,
+        "hint": "Remember why @! is a file-level divider: code above runs once, code below loops t times.",
+        "solution": "Code above @!multitest runs once (for sieves and lookup tables). Code below runs t times in a fresh scope with @memo caches cleared, and a bare top-level `return` ends only the current test case.",
+        "explanation": "Rebuilding a sieve per test case would TLE. There is no `fn solve()` wrapper in 0.2.2, and returning a value like `return 0` at top level is a compile error."
+      },
+      {
         "id": "first-program-toolchain",
         "kind": "choice",
         "title": "Get a native binary today",

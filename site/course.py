@@ -8,7 +8,23 @@ from compiler import editor_html
 
 ROOT = Path(__file__).resolve().parent
 MANIFESTS = ("foundations", "advanced")
-FIXTURES = {"sum", "bounds", "accumulation", "ascii", "optional", "memo"}
+FIXTURES = {
+    "sum",
+    "bounds",
+    "accumulation",
+    "ascii",
+    "optional",
+    "memo",
+    "early_return",
+    "multitest_divider",
+    "lends",
+    "tropical_dp",
+    "optional_coalesce",
+    "memo_dp",
+    "segtree_monoid",
+    "lazy_action",
+    "colocated_brute",
+}
 
 
 def load_lessons():

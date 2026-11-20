@@ -1,6 +1,6 @@
 let n: 1..=20 = read()
 
-// @memo caching is prototype-only. This runnable version uses plain recursion.
+// Small linear recurrence (see memo_dp.cp for cached @memo DP).
 fn f(i: Int) -> Int:
     if i == 0:
         return 1

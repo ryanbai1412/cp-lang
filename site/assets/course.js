@@ -123,7 +123,10 @@ if (typeof document !== "undefined" && document.getElementById("course-data")) {
         section.dataset.state = "checking";
         status.textContent = exercise.kind === "output" ? "Running each case with CP Lang WebAssembly…" : "Checking…";
         try {
-          const result = await CourseChecks.execute(exercise, answer,
+          const runnable = exercise.kind === "output" && !exercise.source
+            ? {...exercise, source: section.querySelector("[data-source]")?.defaultValue ?? ""}
+            : exercise;
+          const result = await CourseChecks.execute(runnable, answer,
             (source, input) => CpCompiler.call("run", source, input));
           if (revision !== current) return;
           feedback(result);

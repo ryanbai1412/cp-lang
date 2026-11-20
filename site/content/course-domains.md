@@ -4,7 +4,7 @@ When an algorithm mixes vertex numbers, item positions, prefix boundaries, and o
 
 A `domain` declaration freezes an integer range into a nominal index type:
 
-```cp CP Lang 0.2.2
+```cp CP Lang 0.2.2 · fragment
 let n: 1..=2e5 = read()
 domain V = 1..=n
 let a: [V]Int = read()
@@ -13,9 +13,12 @@ let a: [V]Int = read()
 Two rules make this pay off in contests:
 
 1. **Nominal identity.** `domain Row = 1..=n` and `domain Col = 1..=n` are distinct types even when `n` is identical. Indexing `g[c, r]` instead of `g[r, c]` fails at compile time.
-2. **Valid by construction.** Every `v: V` is guaranteed to lie inside `1..=n`, so `a[v]` needs no runtime bounds check in release C++17. Stepping `v + k` or `v - k` returns `?V` (`none` if the step leaves the domain), and `v.to_idx` converts to `0..V.K` when you need a zero-based integer.
+2. **Valid by construction.** Every `v: V` lies inside `1..=n`, so `a[v]` needs no runtime bounds check in release C++17. Stepping `v + k` or `v - k` returns `?V` (`none` if the step leaves the domain), and `v.to_idx` converts to `0..V.K` when you need a zero-based integer.
 
-When you only need a scratch array indexed by `Int`—such as a frequency counter—write `[0..=k]Int` directly and clear it with `cnt.fill(0)`.
+When you only need a scratch array indexed by `Int`—such as a frequency counter—write `[0..=k]Int` directly and reset it with `cnt.fill(0)`:
+
+```example range_array
+```
 
 ## Boundaries: `.l` and `.r`
 
@@ -28,7 +31,7 @@ Prefix sums, difference arrays, and DP transitions live on the `n + 1` gaps arou
 ```example bounds
 ```
 
-Notice how `pre[v.r] = pre[v.l] + a[v]` never writes `i - 1`, never guesses whether to allocate `n` or `n + 1`, and prints the total from `pre[V.last.r]`. Answering `q` inclusive range-sum queries and sliding over every length-`k` window both use the same boundary table:
+Notice how `pre[v.r] = pre[v.l] + a[v]` never writes `i - 1`, never guesses whether to allocate `n` or `n + 1`, and prints the total from `pre[V.last.r]`. Answering `q` inclusive range-sum queries and sliding over every length-`k` window both use the same boundary table (both run in real WASM):
 
 ```cp Prototype tested · range-sums.cp
 let n: 1..=2e5 = read()
@@ -62,14 +65,14 @@ for v in V(k)..=V.last:
 print(best)
 ```
 
-## Stepping safely and optionals
+## Stepping safely with `?T`
 
-Because `v + 1` and `v - 1` return `?V`, boundary checks are forced by the type system instead of remembered by hand. The same `?T` type replaces `-1` and `1e18` sentinels across the language:
+Because `v + 1` and `v - 1` return `?V`, boundary checks are enforced by the type system rather than remembered by hand. The same `?T` type replaces `-1` and `1e18` sentinels across the language:
 
 ```example optional
 ```
 
-Use `??` for a fallback, `if let` to bind a present value, and `opt!` when an earlier check already guarantees presence.
+Use `??` for a fallback, `if let` to bind a present value, and `opt!` when an earlier check already guarantees presence. [Chapter 5](course-dp.html) dives deep into Tropical Optionals (`min=`, `max=`, `??=`) and `@memo` DP.
 
 ## Practice
 

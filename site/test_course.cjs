@@ -107,3 +107,37 @@ test("editing a first prediction clears pending feedback even if its run times o
   assert.equal(section.dataset.state, "passed");
   assert.equal(badge.textContent, "Checked");
 });
+
+test("output prediction check falls back to sandbox defaultValue even after the user edits the sandbox", async () => {
+  const handlers = {}, submit = {disabled:false}, status = {}, badge = {};
+  const field = {value:"42", setAttribute(){}, removeAttribute(){}};
+  const sandboxSource = {defaultValue:"print(42)\n", value:"print(999)\n"};
+  const form = {
+    querySelector:() => submit,
+    querySelectorAll:() => [field],
+    addEventListener(name, callback) { handlers[name] = callback; }
+  };
+  const section = {dataset:{exercise:"output"},
+    querySelector:selector => ({
+      form,
+      ".exercise-feedback":status,
+      "[data-badge]":badge,
+      "[data-source]":sandboxSource,
+    })[selector]};
+  const data = {lessons:[], revisions:{output:"current"}, exercises:{output:{kind:"output",
+    tests:[{input:"", expected:"42"}]}}};
+  const calls = [];
+  const context = {
+    document:{getElementById:() => ({textContent:JSON.stringify(data)}),
+      querySelectorAll:selector => selector === "[data-exercise]" ? [section] : []},
+    localStorage:{getItem:() => null, removeItem(){}, setItem(){}},
+    CpCompiler:{call:async (op, source, input) => {
+      calls.push([op, source, input]);
+      return {ok:true, stdout:"42\n"};
+    }}
+  };
+  vm.runInNewContext(fs.readFileSync(require.resolve("./assets/course.js"), "utf8"), context);
+  await handlers.submit({preventDefault(){}});
+  assert.equal(section.dataset.state, "passed");
+  assert.deepEqual(calls, [["run", "print(42)\n", ""]]);
+});

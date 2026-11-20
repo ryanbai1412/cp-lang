@@ -85,7 +85,7 @@ LESSONS = load_lessons()
 EXERCISES = {exercise["id"]: exercise for lesson in LESSONS for exercise in lesson["exercises"]}
 PAGES = [
     ("course", "Interactive course", "Course",
-     "Six progressive chapters. Worked examples, exercises, and checked answers.", "6 chapters"),
+     "Seven progressive chapters. Worked examples, exercises, and checked answers.", "7 chapters"),
     *[(lesson["slug"], lesson["title"], "Course", lesson["description"], lesson["duration"])
       for lesson in LESSONS],
     *REFERENCE_PAGES,
@@ -97,7 +97,7 @@ def slug(text):
 
 
 TOKEN = re.compile(
-    r'(?P<comment>//[^\n]*|\#[^\n]*)|(?P<string>"(?:\\.|[^"\\])*"|\'[^\'\n]*\')|(?P<decorator>@\w+)|(?P<number>\b\d[\de_]*\b)|(?P<keyword>\b(?:let|var|const|fn|struct|enum|domain|type|use|pub|if|elif|else|for|while|in|match|return|break|continue|and|or|not|assert|mut|self|unchecked|true|false|none|trait|impl|lends|yield)\b)|(?P<type>\b[A-Z][A-Za-z0-9_]*\b)'
+    r'(?P<comment>//[^\n]*|\#[^\n]*)|(?P<string>"(?:\\.|[^"\\])*"|\'[^\'\n]*\')|(?P<decorator>@!?\w+)|(?P<number>\b\d[\de_]*\b)|(?P<keyword>\b(?:let|var|const|fn|struct|enum|domain|type|use|pub|if|elif|else|for|while|in|match|return|break|continue|and|or|not|assert|mut|self|unchecked|true|false|none|trait|impl|lends|yield)\b)|(?P<type>\b[A-Z][A-Za-z0-9_]*\b)'
 )
 
 
@@ -150,7 +150,8 @@ class Renderer(mistune.HTMLRenderer):
         if language == "example":
             name = fields[1]
             code = (ROOT / "examples" / f"{name}.cp").read_text()
-            language, label = "cp", f"{name}.cp · prototype tested"
+            extra = " ".join(fields[2:]) or "WASM runnable"
+            language, label = "cp", f"{name}.cp · {extra}"
         return f'<figure class="code-block"><figcaption><span>{html.escape(label)}</span><button class="copy-button" type="button" aria-label="Copy code">Copy</button></figcaption><pre tabindex="0"><code>{highlight(code.rstrip(), language)}</code></pre></figure>\n'
 
 
@@ -250,7 +251,13 @@ def build():
             page = page.replace('</body>', '<script id="course-data" type="application/json">'
                 + safe_json(course_data(name)) + '</script></body>')
         (target / f"{name}.html").write_text(page)
-        plain = html.unescape(re.sub(r"<[^>]*>", " ", body))
+        searchable = re.sub(
+            r'<details class="exercise-help exercise-sandbox">.*?</details>|<noscript>.*?</noscript>',
+            " ",
+            body,
+            flags=re.S,
+        )
+        plain = html.unescape(re.sub(r"<[^>]*>", " ", searchable))
         search.append(
             dict(
                 title=title,
@@ -272,23 +279,33 @@ def build():
 
 
 def safe_json(value):
-    return json.dumps(value, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
+    return (
+        json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+        .replace("</", "<\\/")
+        .replace("<!--", "\\u003c!--")
+        .replace("\u2028", "\\u2028")
+        .replace("\u2029", "\\u2029")
+    )
 
 
 def course_data(name):
     """Ship compact checks for cross-chapter progress; keep feedback local."""
     checks = {}
     for lesson in LESSONS:
+        local = lesson["slug"] == name
         for exercise in lesson["exercises"]:
             check = {"kind": exercise["kind"]}
             if exercise["kind"] == "choice":
                 check["answer"] = exercise["answer"]
-                if lesson["slug"] == name:
+                if local:
                     check["explanation"] = exercise["explanation"]
             else:
-                check["tests"] = exercise["tests"]
-                if lesson["slug"] == name:
-                    check["source"] = (ROOT / "examples" / f'{exercise["fixture"]}.cp').read_text()
+                # Non-local chapters only verify stored predictions; source lives in the local sandbox textarea.
+                check["tests"] = (
+                    exercise["tests"]
+                    if local
+                    else [{"expected": case["expected"]} for case in exercise["tests"]]
+                )
             checks[exercise["id"]] = check
     revisions = {key: hashlib.sha256((safe_json(exercise) + (
                     (ROOT / "examples" / f'{exercise["fixture"]}.cp').read_text()
@@ -311,20 +328,48 @@ print(hits, s.len)
 def build_playground(target, template):
     defaults = dict(
         sum="5\n3 1 4 1 5",
+        early_return="4\n3 9 -2 5",
+        multitest_divider="4\n0 2\n4 1\n4 2\n4 3",
         bounds="5\n3 1 4 1 5",
         knapsack="3 7\n3 4\n4 5\n2 3",
+        range_array="6 4\n0 2 4 2 1 2",
+        lends="3 2\n1 5\n3 -2",
+        tropical_dp="3 11\n1 5 7",
+        optional_coalesce="5\n3 -4 7 -2 6",
+        memo_dp="10",
+        segtree_monoid="4 3\n2 5 1 4\n2 1 3\n1 2 10\n2 1 4",
+        lazy_action="4 3\n1 2 3 4\n1 2 4 3\n2 1 4\n2 2 3",
+        colocated_brute="5\n-2 4 -1 3 -5",
         accumulation="4\n0 1 2 3",
         ascii="5\nabaca",
         optional="5\n3 7 4 1 8",
         memo="4",
     )
-    defaults["range_array"] = "6 4\n0 2 4 2 1 2"
+    order = (
+        "sum",
+        "early_return",
+        "multitest_divider",
+        "bounds",
+        "knapsack",
+        "range_array",
+        "lends",
+        "tropical_dp",
+        "optional_coalesce",
+        "memo_dp",
+        "segtree_monoid",
+        "lazy_action",
+        "colocated_brute",
+        "accumulation",
+        "ascii",
+        "optional",
+        "memo",
+    )
     examples = [
         dict(id=name, source=(ROOT / "examples" / f"{name}.cp").read_text(), stdin=defaults[name])
-        for name in ("sum", "bounds", "knapsack", "range_array", "accumulation", "ascii", "optional", "memo")
+        for name in order
     ]
     examples.insert(
-        4,
+        5,
         dict(id="str-scan", source=STR_SCAN_SOURCE, stdin="abracadabra"),
     )
     values = dict(title="Playground", heading="Example playground", section="Tools",

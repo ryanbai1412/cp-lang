@@ -36,27 +36,78 @@ vm.runInNewContext(fs.readFileSync(path.join(__dirname, "_build/assets/compiler.
 const compiler = context.CpCompiler;
 after(() => compiler.stop());
 
-test("the generated runtime executes all examples, playground presets, and course predictions in real WASM", async () => {
+test("the generated runtime executes and builds all examples, inline course programs, playground presets, and course predictions in real WASM", async () => {
   const manifests = ["foundations", "advanced"].flatMap(name => JSON.parse(fs.readFileSync(path.join(__dirname, `course/${name}.json`))));
+  const builtFixtures = new Set();
   for (const lesson of manifests) for (const exercise of lesson.exercises) {
     if (exercise.kind !== "output") continue;
     const source = fs.readFileSync(path.join(__dirname, `examples/${exercise.fixture}.cp`), "utf8");
+    if (!builtFixtures.has(exercise.fixture)) {
+      const built = await compiler.call("build", source);
+      assert.equal(built.ok, true, `${exercise.fixture} build: ${built.stderr}`);
+      assert.match(built.cpp, /int main\(/, exercise.fixture);
+      builtFixtures.add(exercise.fixture);
+    }
     for (const {input, expected} of exercise.tests) {
       const result = await compiler.call("run", source, input);
-      assert.equal(result.ok, true, result.stderr);
+      assert.equal(result.ok, true, `${exercise.id}: ${result.stderr}`);
       assert.equal(result.stdout.trim(), expected.trim(), exercise.id);
     }
   }
+  // Verify cached @memo executes fast at n=35 (would time out without caching).
+  const memoSource = fs.readFileSync(path.join(__dirname, "examples/memo_dp.cp"), "utf8");
+  const memo35 = await compiler.call("run", memoSource, "35\n");
+  assert.equal(memo35.ok, true, memo35.stderr);
+  assert.equal(memo35.stdout.trim(), "14930352");
+
+  // Verify every complete inline runnable course program (excluding explicit not-yet-in-WASM blocks).
+  const inlineCases = {
+    "max-and-evens": [["5\n-3 8 -4 7 8\n", "8 3"]],
+    "range-sums": [["5 3\n3 1 4 1 5\n1 5\n2 3\n4 4\n", "14\n5\n1"]],
+    "best-window": [
+      ["5 2\n3 -1 4 1 5\n", "6"],
+      ["5 5\n3 -1 4 1 5\n", "12"],
+      ["3 1\n-2 -9 -4\n", "-2"],
+    ],
+    "grid-sum": [["2 3\n", "21 21 YES"]],
+  };
+  const inlineFound = new Map();
+  for (const file of fs.readdirSync(path.join(__dirname, "content")).filter(f => f.startsWith("course-") && f.endsWith(".md"))) {
+    const md = fs.readFileSync(path.join(__dirname, "content", file), "utf8");
+    for (const match of md.matchAll(/```cp Prototype tested · ([a-z-]+)\.cp\n([\s\S]*?)```/g)) {
+      inlineFound.set(match[1], match[2]);
+    }
+  }
+  assert.deepEqual([...inlineFound.keys()].sort(), Object.keys(inlineCases).sort());
+  for (const [name, source] of inlineFound) {
+    const built = await compiler.call("build", source);
+    assert.equal(built.ok, true, `${name} build: ${built.stderr}`);
+    for (const [input, expected] of inlineCases[name]) {
+      const result = await compiler.call("run", source, input);
+      assert.equal(result.ok, true, `${name}: ${result.stderr}`);
+      assert.equal(result.stdout.trim(), expected.trim(), name);
+    }
+  }
+
   const pgHtml = fs.readFileSync(path.join(__dirname, "_build/playground.html"), "utf8");
   const m = pgHtml.match(/<script id="playground-examples" type="application\/json">(.*?)<\/script>/s);
   assert.ok(m, "playground-examples payload missing");
   const presets = JSON.parse(m[1]);
   const expectedOutputs = {
     sum: "14",
+    early_return: "11",
+    multitest_divider: "0\n1 10\n5 10\n7 10",
     bounds: "14",
     knapsack: "9",
     range_array: "1 1 3 0 1",
     "str-scan": "5 11",
+    lends: "6 1 -1",
+    tropical_dp: "3",
+    optional_coalesce: "6 -4",
+    memo_dp: "89",
+    segtree_monoid: "8\n17",
+    lazy_action: "19\n11",
+    colocated_brute: "6",
     accumulation: "6",
     ascii: "3",
     optional: "8",
@@ -64,6 +115,8 @@ test("the generated runtime executes all examples, playground presets, and cours
   };
   assert.equal(presets.length, Object.keys(expectedOutputs).length);
   for (const preset of presets) {
+    const built = await compiler.call("build", preset.source);
+    assert.equal(built.ok, true, `${preset.id} build: ${built.stderr}`);
     const result = await compiler.call("run", preset.source, preset.stdin);
     assert.equal(result.ok, true, `${preset.id}: ${result.stderr}`);
     assert.equal(result.stdout.trim(), expectedOutputs[preset.id], preset.id);

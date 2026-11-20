@@ -54,16 +54,21 @@ For a prediction, set `kind` to `output`, `fixture` to an existing example name,
 and `tests` to an array of `{input, expected}` text objects. Use at least two
 cases when the example has meaningful input. Show the tested source immediately
 before the exercise or in its `code` field so the question stands alone.
-The available fixtures are `sum`, `bounds`, `accumulation`, `ascii`, `optional`,
-and `memo`, corresponding to `../examples/*.cp`.
+The available fixtures are `sum`, `early_return`, `multitest_divider`, `bounds`,
+`accumulation`, `ascii`, `optional`, `lends`, `tropical_dp`, `optional_coalesce`,
+`memo_dp`, `segtree_monoid`, `lazy_action`, `colocated_brute`, and `memo`,
+corresponding to `../examples/*.cp`.
 
-`test_site.py` compiles the real fixture with the Python prototype and C++17,
-runs every case, and compares the result with the answer key. `test_compiler.cjs`
-runs all prediction cases through the generated WASM runtime. Do not hardcode an answer for an untested design fragment.
+`test_site.py` compiles the legacy prototype fixtures with `proto/cpc` and `g++`,
+and verifies every fixture is referenced. `test_compiler.cjs` compiles, runs, and
+generates C++17 for all prediction cases, inline runnable course blocks, and
+playground presets through the real WASM runtime (including cached `@memo` DP and
+`@!multitest`). Do not hardcode an answer for an untested design fragment.
 Output checking ignores whitespace only: token order and full integer precision
 matter. Browser checks execute the real fixture; each output exercise also has
 an editable WASM sandbox. Keep fixtures within the Rust backend's supported
-subset, and explicitly label prototype-only behavior such as `@memo` caching.
+subset, and explicitly label spec-only or prototype-only syntax (such as
+`read_output()` and parent-indexed `a[l..=r]` slices).
 
 ## Status and verification
 

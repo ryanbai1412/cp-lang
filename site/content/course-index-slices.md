@@ -1,44 +1,17 @@
-One general index mechanism—the `Index` trait—powers domains, 2D grids, compressed coordinates, algebraic DP keys, and opt-in nominal string indexing. Instead of memorizing separate rules for each container, you learn one set of rules once.
+One general mechanism—the `Index` trait—powers domains, 2D grids, compressed coordinates, algebraic DP keys, and opt-in nominal string indexing. Instead of memorizing separate rules for each container, you learn one contract once.
+
+## First-principles `Index` and runtime-frozen `let K`
+
+Any finite type `I` can index an array `[I]T` if it provides two things:
+
+1. A **runtime-frozen size** `let K = ...` (computed from immutable `let` bindings—never `const` when it depends on input, and never `var` because array storage cannot resize underneath existing indices).
+2. A bijection `to_idx: I -> 0..K` and `from_idx: Int -> ?I` mapping every valid value densely into `0..K`.
+
+Because every value of `I` is constructed inside `0..K`, `[I]T` lowers to a flat C++ `std::vector<T>` of length `K` with zero bounds checks in release builds. Five algebraic shapes derive `Index` automatically: `Bool` (`K = 2`), unit and payload `enum`, `?T` (`K = T.K + 1`), ranges `lo..=hi` (`Int` or `Char`), tuples/records `(A, B)` (`K = A.K * B.K`, row-major), plus `Subset<D>` (`K = 2^D.K` for `D.K <= 25`).
 
 ## Grids, `Cell = (Row, Col)`, and `p.adj4` / `p.adj8`
 
-A two-dimensional grid `[Row, Col]T` is indexed by the product domain `type Cell = (Row, Col)`. You index with `g[p]` directly without unpacking `(r, c)`, and iterate in-bounds neighbors without writing `dr`/`dc` arrays or bounds checks:
-
-```cp CP Lang 0.2.2
-domain Row = 1..=h
-domain Col = 1..=w
-type Cell = (Row, Col)
-let g: [Row, Col]Char = read()
-
-for p in (Row, Col):
-    for q in p.adj4:            // orthogonal in-bounds neighbors; use p.adj8 for 8-way
-        if g[q] != '#':
-            visit(q)
-```
-
-Because `Cell` implements `Index`, `[Cell]T`, `bfs`, `Dsu<Cell>`, and `@memo` all accept grid cells out of the box.
-
-## Ranges, slices, and `compress(all)`
-
-One `Range<I>` type covers `l..r`, `l..=r`, and open-ended `..i`, `..=i`, `i..`, `i.r..`, and `l.r..r.l`. Sub-ranges index arrays as mutable slices (`sort(mut a[l..=r])`, `reverse(mut a[l..=r])`), and all range structures accept open and empty ranges (`st.fold(..h[i])`, `pre.sum(..i)`).
-
-When values are huge (up to `1e9`) but only their relative order matters, `compress(all)` creates a fresh nominal domain `xs.D` alongside exact lookup `xs.at(val) -> xs.D`, lower-bound lookup `xs.first_ge(val) -> ?xs.D`, and inverse lookup `xs[id]`:
-
-```cp CP Lang 0.2.2
-let xs = compress(all_vals)
-var bit = Fenwick<xs.D, Int>()
-for x in queries:
-    bit.add(xs.at(x), 1)
-```
-
-## Value-semantic `Str` and opt-in `[domain S]Char`
-
-Default `Str` is a flat, value-semantic, `0..s.len`-indexed ASCII byte sequence (zero UTF-8, O(1) indexing `s[i]`, O(1) slicing `s[l..r]`). When a multi-string DP benefits from nominal position types, opt into `[domain S]Char`:
-
-```example ascii
-```
-
-Every `Index` type compiles to a dense `0..D.K` integer offset in C++17, including `Bool`, unit/payload `enum`, `?T`, ranges `lo..=hi`, tuples/records `(A, B)`, and `Subset<D>` (`D.K <= 25`).
+A two-dimensional grid `[Row, Col]T` is indexed by the product domain `type Cell = (Row, Col)`. Every `Cell` implements `Index`, so `[Cell]T`, `bfs`, `Dsu<Cell>`, and `@memo` accept grid cells directly.
 
 ```cp Prototype tested · grid-sum.cp
 let h: 1..=50 = read()
@@ -60,7 +33,24 @@ for r in Row:
 print(total, sum(g), total == sum(g))
 ```
 
-```cp Prototype tested · slices.cp
+In the full 0.2.2 grid API (`std.grid`, spec), `p.adj4` and `p.adj8` yield in-bounds neighbors without `dr`/`dc` arrays:
+
+```cp CP Lang 0.2.2 · spec fragment
+type Cell = (Row, Col)
+let g: [Row, Col]Char = read()
+for p in (Row, Col):
+    for q in p.adj4:
+        if g[q] != '#':
+            visit(q)
+```
+
+## Ranges, slices, and `compress(all)`
+
+One `Range<I>` type covers `l..r`, `l..=r`, and open-ended `..i`, `..=i`, `i..`, `i.r..`, and `l.r..r.l`. A range is plain data: you can store it in a variable or return it from a helper, then apply it to an array at the point of use (`sort(mut a[w])`) to form a temporary slice without changing index numbering.
+
+> **WASM status for slices.** In the approved 0.2.2 design and `proto/cpc`, `a[l..=r]` produces a parent-indexed slice (`mid[V(3)]` keeps parent position `V(3)`) and `sort(mut a[l..=r])` sorts that window in place. The current Rust WASM frontend still types `a[l..=r]` as an integer-indexed sub-list and does not yet lower `a[l..=r].sort()`, so the slice snippet below is **prototype tested only** (not WASM runnable):
+
+```cp Prototype tested · slices.cp (not yet in WASM)
 let n: 3..=50 = read()
 domain V = 1..=n
 var a: [V]Int = read()
@@ -69,6 +59,22 @@ let mid = a[V(2)..=V(4)]
 print(mid.len, mid[V(3)], sum(mid))
 a[V(2)..=V(4)].sort()
 print(a)
+```
+
+When input values reach `1e9` and only relative order matters, `compress(all)` creates a fresh nominal domain `xs.D` with `xs.at(val) -> xs.D`, `xs.first_ge(val) -> ?xs.D`, and inverse lookup `xs[id]` (spec):
+
+```cp CP Lang 0.2.2 · spec fragment
+let xs = compress(all_vals)
+var bit = Fenwick<xs.D, Int>()
+for x in queries:
+    bit.add(xs.at(x), 1)
+```
+
+## Value-semantic `Str` and opt-in `[domain S]Char`
+
+Default `Str` is a flat, value-semantic, `0..s.len`-indexed ASCII byte sequence (zero UTF-8, O(1) indexing `s[i]`, O(1) slicing `s[l..r]`). When a multi-string DP benefits from nominal position types, opt into `[domain S]Char`:
+
+```example ascii
 ```
 
 ## Multi-dimensional boundaries in action
