@@ -39,6 +39,6 @@ The language core stays small. Domains expand to sealed structs implementing `In
 
 ## Know what you can run
 
-> **Development edition.** This guide describes the approved language design, not a finished release. Blocks marked **prototype tested** compile and run in the Python prototype. Blocks marked **design** explain the intended language and are not advertised as runnable. The Rust CLI currently checks a subset and serves the LSP; its run/build backends are not built yet.
+> **Development edition.** This guide describes the approved language design, not a finished release. Blocks marked **prototype tested** compile and run in the Python prototype. Blocks marked **design** explain the intended language and are not advertised as runnable. The Rust CLI checks, interprets, and emits C++17 for its supported subset and serves the LSP; advanced prototype features may still be unsupported in Rust.
 
 The [getting-started chapter](getting-started.html#what-works-today) separates working commands from the target workflow. There is no pretend Run button: examples run locally against the actual prototype. The [design decisions](https://github.com/ryanbai1412/cp-lang/blob/main/decisions.md) and [plan](https://github.com/ryanbai1412/cp-lang/tree/main/plan) explain the rationale and remaining work.

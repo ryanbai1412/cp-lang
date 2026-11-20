@@ -37,33 +37,35 @@ Output:
 
 ## Run it today
 
-The Rust interpreter and C++ backend are not implemented yet. Use the Python prototype to produce a real C++17 program:
+Use the Rust debug interpreter, or emit C++17 and compile a native binary:
 
 ```sh
-python3 proto/cp.py build sum.cp
+printf '5\n3 1 4 1 5\n' | cpl run sum.cp
+cpl build sum.cp
 g++ -std=c++17 -O2 sum.cpp -o sum
 printf '5\n3 1 4 1 5\n' | ./sum
 ```
 
-The prototype writes `sum.cpp` beside the source and adds a compiler stamp to `sum.cp`. Work on your own files, not a tracked corpus port. `sum.cpp` is the file you would submit, not the `.cp` source.
+`cpl build` writes `sum.cpp` without modifying the source. The generated C++ includes the original source in a comment header when it fits the 64 KB submission gate; it omits that header with a message if necessary and refuses an oversized C++ file. Submit `sum.cpp`, not the `.cp` source.
+
+For advanced features that currently run only in the Python prototype, copy the source to a scratch directory first, then use `python3 proto/cp.py build scratch/sum.cp`. That prototype adds a compiler stamp to its input and writes `scratch/sum.cpp`; compile the C++ with the same `g++` command.
 
 ## What works today
 
 `cpl check sum.cp` runs the shared Rust frontend and reports the subset of syntax and type errors it understands. A clean check is not proof that a design-only feature is implemented. `cpl lsp` speaks the language server protocol over stdio for editor integrations.
 
-`cpl run sum.cp` and `cpl build sum.cp` currently check the input and then report that their backends are not built. They do not execute or emit C++ yet. The prototype implements more of the language, but is also partial; use the labeled examples in this guide as a starting point.
+`cpl run sum.cp` executes the debug interpreter; `cpl build sum.cp` emits C++17. They share a typed lowering, which reports `E0501` for unsupported constructs. The interpreter checks input ranges, indexing, arithmetic traps, and failed assertions at runtime. The prototype still implements some advanced features missing from Rust; a prototype-tested label is not a claim of Rust support. See the [Rust workspace README](https://github.com/ryanbai1412/cp-lang/blob/main/crates/README.md) for its current coverage.
 
 ## The intended contest loop
 
-These are **planned Rust CLI workflows**, not commands to rely on today:
+Basic `cpl run` and `cpl build` work today. These additional workflows and flags are **planned**, not commands to rely on yet:
 
 ```sh Planned workflow · not implemented in the Rust CLI
 cpl run d.cp i1
 cpl run d.cp --release
 cpl test d.cp
 cpl stress d.cp
-cpl build d.cp
 cpl doc std
 ```
 
-The target is a fast debug interpreter, stress cases generated from typed input, and one bundled C++17 file with a 64 KB submission-size gate. Local library code should be tested and documented with the same `test` and `doc` commands as the standard library. Until those commands land, follow the [working prototype stress recipe](testing.html#stress-a-real-port-today).
+The remaining testing goal is stress cases generated from typed input, with local library code tested and documented through the same `test` and `doc` commands as the standard library. Until those commands land, follow the [working prototype stress recipe](testing.html#stress-a-real-port-today).
