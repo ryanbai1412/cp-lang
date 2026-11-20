@@ -198,6 +198,7 @@ fn compile(path: &str, stderr: &mut String) -> Result<Compiled, u8> {
         }
     };
     let mut db = cpl_check::Database::new();
+    db.use_std_implicitly();
     db.set_file(path, text.as_str());
     let analysis = db.analyze(path).expect("the file was just set");
     if !analysis.diagnostics.is_empty() {

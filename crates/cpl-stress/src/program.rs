@@ -122,6 +122,7 @@ fn emit_cpp(source: &Path) -> Result<PathBuf, BuildError> {
         ))
     };
     let mut db = cpl_check::Database::new();
+    db.use_std_implicitly();
     db.set_file(&name, text.as_str());
     let analysis = db.analyze(&name).expect("the file was just set");
     let is_error = |d: &cpl_diag::Diagnostic| d.severity == cpl_diag::Severity::Error;
