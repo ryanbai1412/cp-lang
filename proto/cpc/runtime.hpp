@@ -201,6 +201,30 @@ template <class T> struct SegTree {
     }
 };
 
+// AddMax: add to an inclusive range, max of an inclusive range. Prototype stand-in for a lazy std.segtree.
+struct AddMax {
+    int n = 0; vector<ll> v, lz;
+    AddMax() {}
+    AddMax(int n_) : n(max(n_, 1)), v(4 * max(n_, 1)), lz(4 * max(n_, 1)) {}
+    void add(int o, int l, int r, int ql, int qr, ll x) {
+        if (ql <= l && r <= qr) { v[o] += x; lz[o] += x; return; }
+        int m = (l + r) / 2;
+        if (ql <= m) add(2 * o, l, m, ql, qr, x);
+        if (m < qr) add(2 * o + 1, m + 1, r, ql, qr, x);
+        v[o] = max(v[2 * o], v[2 * o + 1]) + lz[o];
+    }
+    ll query(int o, int l, int r, int ql, int qr) const {
+        if (ql <= l && r <= qr) return v[o];
+        int m = (l + r) / 2; ll best = LLONG_MIN;
+        if (ql <= m) best = max(best, query(2 * o, l, m, ql, qr));
+        if (m < qr) best = max(best, query(2 * o + 1, m + 1, r, ql, qr));
+        return best + lz[o];
+    }
+    void add(int l, int r, ll x) { if (l <= r) add(1, 0, n - 1, l, r, x); }
+    ll query(int l, int r) const { return query(1, 0, n - 1, l, r); }
+    ll top() const { return v[1]; }
+};
+
 // StrHash: polynomial hash of every substring, mod 2^61 - 1. Prototype stand-in for std.hash.
 struct StrHash {
     static constexpr unsigned long long M = (1ULL << 61) - 1;
