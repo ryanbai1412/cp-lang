@@ -1,4 +1,31 @@
-# Max-N Judge & Constant-Factor Audit Harness
+# Benchmark harnesses
+
+Two generations live here. The `rust_*` scripts audit the real Rust `cpl`
+binary; `max_n_audit.py` (below) is the older harness for the Python prototype.
+
+## Rust `cpl` audits
+
+```sh
+cargo build --release -p cpl-cli
+
+# Toolchain latency against the P0 budgets: check, lsp, run, build, stress
+python3 bench/rust_latency_audit.py --reps 7
+
+# 40 ports at judge limits against their original C++: output, ASan/UBSan,
+# time ratio, peak RSS ratio, emitted size
+python3 bench/rust_max_n_audit.py --runs 5
+python3 bench/rust_max_n_audit.py --ports dpl,noi22p5 --json /tmp/out.json
+python3 bench/rust_max_n_audit.py --list
+```
+
+Both use `target/release/cpl` (override with `CPL=/path/to/cpl`), work in a
+temp directory and never write to tracked files. `rust_max_n_audit.py` exits
+non-zero if any port fails, so it can gate CI. To add a port, append a row to
+`SPECS` with a generator `gen(path, big, ctx)` that writes the judge-limit
+input when `big` is true and a medium one for the sanitizer run otherwise.
+Results and findings: `research/max-n-judge-audit-2-rust.md`.
+
+## Prototype harness: Max-N Judge & Constant-Factor Audit
 
 This directory holds the Stage-6 worst-case max-N benchmark harness (`max_n_audit.py`) for auditing CP Lang's emitted C++17 against accepted contest C++ originals under judge flags (`g++ -std=c++17 -O2`, no `-DLOCAL`).
 
