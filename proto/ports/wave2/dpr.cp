@@ -19,6 +19,4 @@ while left > 0:
     if left % 2 == 1: walks = mul(walks, step)
     step = mul(step, step)
     left /= 2
-var total: Z = 0
-for ways in walks: total += ways
-print(total)
+print(sum(walks))

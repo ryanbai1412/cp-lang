@@ -10,7 +10,8 @@ let edges: [E](u: V, v: V) = read()
 let w: [V]1..=10000 = read()
 let tree = Graph.undirected(edges)
 
-var (best, total) = (0, Z(0))
+var best = 0
+var total: Z = 0
 for mid in V:
     let around = sorted(w[u] for (u, _) in tree.out(mid)).rev
     if around.len >= 2: best max= around[0] * around[1]

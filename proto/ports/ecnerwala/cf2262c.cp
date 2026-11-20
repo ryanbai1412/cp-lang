@@ -13,12 +13,10 @@ let top = a[n - 1]
 let half = n / 2
 var seconds = sorted([a[n - 2], top - a[n - 2] / (half - 1)])
 dedup(mut seconds)
-var total = Z(0)
+var total: Z = 0
 for second in seconds:
     let d = top - second
-    var merged = [d * i for i in 0..half]
-    for i in 0..n - half: merged.push(top - d * i)
-    merged = sorted(merged)
+    let merged = sorted([d * i for i in 0..half] + [top - d * i for i in 0..n - half])
     if all(merged[i] == a[i] for i in 0..n):
         total += comb.fact(n - half - 2) * comb.fact(half)
 print(total)

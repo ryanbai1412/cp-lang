@@ -16,14 +16,14 @@ let hash = scan(diff[0..n], (a, b) => a ^ b)
 // next[i]: the nearest later position with the same hash as i, else n
 var next = List.filled(n, n)
 var (first_bad, last_bad): (?Int, ?Int) = (none, none)
-let order = sorted([i for i in 0..n], by: i => (hash[i], i))
+let order = sorted(List(0..n), by: i => (hash[i], i))
 for (a, b) in order.adjacent if hash[a] == hash[b]:
     next[a] min= b
-    if first_bad == none or a < first_bad!: first_bad = a
-    if last_bad == none or b > last_bad!: last_bad = b
+    first_bad min= a
+    last_bad max= b
 
 var cuts = List<Int>()
-if first_bad != none and hash[first_bad!] == hash[last_bad!]: cuts.push(0)
+if let f = first_bad and hash[f] == hash[last_bad!]: cuts.push(0)
 for i in 0..n - 1:
     if next[i] == i + 1: cuts.push(i + 1)
     else: next[i + 1] min= next[i]

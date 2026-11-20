@@ -22,10 +22,9 @@ fn product(mut tree: List<List<Z>>, node: Int, lo: Int, hi: Int, roots: List<Z>,
 
 // sum of s^j over the sizes, for j in 0..=n (entry 0 is left at zero)
 fn power_sums(sizes: List<Z>, n: Int) -> List<Z>:
-    var tree = [List<Z>() for _ in 0..4 * sizes.len]
+    var tree = List.filled(4 * sizes.len, List<Z>())
     product(mut tree, 1, 0, sizes.len, sizes, n + 1)
-    var p = tree[1]
-    while p.len < n + 1: p.push(Z(0))
+    let p = tree[1].resized(n + 1, 0)
     // -x p'(x) / p(x)
     let r = convolve([-Z(i) * p[i] for i in 0..=n], inv_trunc(p, n + 1))
     r[..n + 1]
@@ -55,7 +54,7 @@ for i in 0..n:
     let next = if i + 1 < n: lcp[i] else: -1
     var (depth, size) = (n - sa[i], 0)
     while true:
-        let top = if open_depth.len > 0: open_depth[open_depth.len - 1] else: -1
+        let top = open_depth.last ?? -1
         let parent = if top > next: top else: max(next, 0)
         if depth > parent:
             below.push(Z(size))
@@ -77,9 +76,9 @@ for i in 0..n:
 let top = power_sums(above, n)
 let bottom = power_sums(below, n)
 let sums = [top[j] - bottom[j] for j in 0..=n]
-var tree = [List<Z>() for _ in 0..4 * n]
+var tree = List.filled(4 * n, List<Z>())
 product(mut tree, 1, 0, n, [Z(u) for u in 0..n], n + 1)
-var out = [Z(0) for _ in 0..n]
+var out = List.filled(n, Z(0))
 descend(tree, 1, 0, n, sums, mut out)
 // a `List<Z>` prints one value per line; the answers go on one line
 print([(out[i] * comb.inv_fact(i + 1)).v for i in 0..n])

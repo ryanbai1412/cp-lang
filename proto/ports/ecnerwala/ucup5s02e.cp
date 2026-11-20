@@ -12,6 +12,6 @@ for z in 0..3:
         for i in 0..n: place[rank[y][i]] = i
         var reach = 0   // furthest place in y of anyone in z's prefix
         for i in 0..n - 1:
-            reach = max(reach, place[rank[z][i]])
+            reach max= place[rank[z][i]]
             if reach == i: good[i] = true
-print(1 + count(g for g in good))
+print(1 + count(good))

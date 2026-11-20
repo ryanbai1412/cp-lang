@@ -13,16 +13,9 @@ for v in tree.postorder:
     if let p = tree.parent(v): down[p] *= down[v] + 1
 
 // up[v]: 1 for leaving everything outside v's subtree white, plus the sets
-// out there that contain v's parent. m has no inverses, so each child gets
-// the product over its earlier siblings, then over its later ones.
+// out there that contain v's parent. m has no inverses, so `excl_fold` gives
+// each child the product over its siblings without dividing.
 var up: [V]Z = 1
 for v in tree.preorder:
-    var earlier = up[v]
-    for c in tree.children(v):
-        up[c] = earlier
-        earlier *= down[c] + 1
-    var later: Z = 1
-    for c in tree.children(v).rev:
-        up[c] = up[c] * later + 1
-        later *= down[c] + 1
+    for (c, rest) in tree.excl_fold(v, *, c => down[c] + 1): up[c] = up[v] * rest + 1
 for v in V: print(down[v] * up[v])

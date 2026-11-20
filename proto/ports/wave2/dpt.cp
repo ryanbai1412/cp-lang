@@ -20,6 +20,4 @@ for len in 0..n - 1:                    // the prefix has len + 1 values
             acc += ways[j]
             next[j] = acc
     ways = next
-var total: Z = 0
-for w in ways: total += w
-print(total)
+print(sum(ways))

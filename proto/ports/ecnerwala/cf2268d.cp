@@ -11,7 +11,7 @@ var first: [0..n]Int = -1   // leftmost child in the next-greater forest
 var kids: [0..n]Int = 0
 var stk: List<Int> = []
 for i in 0..n:
-    while stk.len > 0 and p[stk.last!] < p[i]:
+    while let t = stk.last and p[t] < p[i]:
         let c = stk.pop()
         up[c] = i
         first[i] = c

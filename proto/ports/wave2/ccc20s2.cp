@@ -2,7 +2,6 @@
 // (r, c) with r * c == x. Can you get from (1, 1) to (rows, cols)? Search over
 // the numbers: x leads to every number written on a cell whose coordinates
 // multiply to x.
-use std.graph.{bfs}
 
 let (rows, cols): (1..=1000, 1..=1000) = read()
 domain Num = 1..=1e6

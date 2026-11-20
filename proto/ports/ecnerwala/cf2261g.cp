@@ -12,9 +12,8 @@ var nodes = List<Trie>()
 fn merge(x: ?Int, y: ?Int) -> ?Int:
     if x == none: return y
     if y == none: return x
-    let (p, q) = (x!, y!)
-    nodes[p].cnt += nodes[q].cnt
-    nodes[p].kid = (merge(nodes[p].kid.0, nodes[q].kid.0), merge(nodes[p].kid.1, nodes[q].kid.1))
+    nodes[x].cnt += nodes[y].cnt
+    nodes[x].kid = (merge(nodes[x].kid.0, nodes[y].kid.0), merge(nodes[x].kid.1, nodes[y].kid.1))
     x
 
 // A path of L + 1 nodes spelling `x` from the top bit down; returns its root.
@@ -32,7 +31,7 @@ for x in a:
     var kept = List<(mask: Int, root: Int)>()
     for g in groups:
         let v = g.mask & x
-        if kept.len > 0 and kept.last!.mask == v: merge(kept.last!.root, g.root)
+        if let k = kept.last and k.mask == v: merge(k.root, g.root)
         else: kept.push((mask: v, root: g.root))
     groups = kept
     pref ^= x

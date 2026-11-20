@@ -30,12 +30,12 @@ fn feasible(v: Int) -> Bool:
         var cur: Ends = ([INF, INF], [-INF, -INF])
         cur.lo[b.par] = b.pos
         cur.hi[b.par] = b.pos
-        while stk.len > 0 and top >= stk.last!.top:
+        while let s = stk.last and top >= s.top:
             let (m, left) = stk.pop()
             if m & v == v and (cur.hi[1] - left.lo[0] > 1 or cur.hi[0] - left.lo[1] > 1): return true
             for z in 0..2:
-                cur.lo[z] = min(cur.lo[z], left.lo[z])
-                cur.hi[z] = max(cur.hi[z], left.hi[z])
+                cur.lo[z] min= left.lo[z]
+                cur.hi[z] max= left.hi[z]
         if top < INF: stk.push((top, cur))
     false
 

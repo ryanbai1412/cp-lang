@@ -9,17 +9,10 @@ let edges: [E](u: V, v: V) = read()
 let g = Graph.directed(edges)
 
 // Peel vertices of in-degree zero; whatever keeps an incoming edge is free.
-var indeg: [V]Int = 0
-for e in edges: indeg[e.v] += 1
-var peeled = [v for v in V if indeg[v] == 0]
-var head = 0
-while head < peeled.len:
-    for a in g.adj(peeled[head]):
-        indeg[a.to] -= 1
-        if indeg[a.to] == 0: peeled.push(a.to)
-    head += 1
+var peeled: [V]Bool = false
+for v in peel(g): peeled[v] = true
 
 // Walking an edge forwards is free and backwards costs one.
 let both = Graph.undirected(edges)
-let dist = dijkstra(both, [(v, 0) for v in V if indeg[v] > 0], a => if edges[a.e].v == a.to: 0 else: 1)
+let dist = dijkstra(both, [(v, 0) for v in V if not peeled[v]], a => if edges[a.e].v == a.to: 0 else: 1)
 print(if any(d == none for d in dist): -1 else: sum(d! for d in dist))

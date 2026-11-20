@@ -12,7 +12,7 @@ fn untwist(h: Int, s: Str) -> Str:
     for i in 1..=size:
         out[i - 1] = s[from[i] - 1]
         if 2 * i > size: continue
-        let f = if out[i - 1] == '1': 1 else: 0
+        let f = Int(out[i - 1] == '1')
         from[2 * i] = 2 * from[i] + f
         from[2 * i + 1] = 2 * from[i] + 1 - f
     out

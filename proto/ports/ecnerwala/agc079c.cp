@@ -3,7 +3,6 @@
 // keeping the unplaced values as a stack of linked runs and records, for each
 // value, which earlier value it must enter on the same or the opposite side
 // of. Pass 2 replays the deque with those choices and counts the reversals.
-use std.deque.{Deque}
 type Run = (head: Int, tail: Int, neq: Bool)    // neq: must differ from the run below
 @!multitest
 let n: 1..=2e5 = read()
@@ -37,7 +36,7 @@ for i in (0..n).rev:
             rel[i] = (to: succ[top.head], flip: false)
         continue
     var l = runs.pop()!
-    while runs.len > 0 and runs.last!.head != a[i]:
+    while let r = runs.last and r.head != a[i]:
         if l.neq:
             print(-1)
             return
@@ -74,7 +73,7 @@ var q = Deque<Int>()
 var (next, turns) = (n - 1, 0)
 for i in (0..n).rev:
     let s = side[i]
-    if front[s.base] == none: front[s.base] = at_front != s.flip
+    front[s.base] ??= at_front != s.flip
     if at_front != (front[s.base]! != s.flip):
         at_front = not at_front
         if q.len != 1: turns += 1

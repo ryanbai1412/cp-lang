@@ -12,14 +12,14 @@ var freq: [0..=B]Int = 0
 var least: [0..=B]Int = 1 << B
 for x in a:
     freq[level(x)] += 1
-    least[level(x)] = min(least[level(x)], x)
+    least[level(x)] min= x
 
 var ans = 0
 var carry = 0
 for i in 0..=B:
     carry += freq[i]
     if carry > 0:
-        ans = max(ans, carry + i)
+        ans max= carry + i
         carry -= 1
 
 // Can everything be cleared with steps ans-2, ans-3, .., 0?
@@ -35,7 +35,6 @@ fn fewer() -> Bool:
             if freq[l] > 0: return false
             let rest = least[l] - (1 << i)
             freq[level(rest)] += 1
-            least[level(rest)] = min(least[level(rest)], rest)
+            least[level(rest)] min= rest
         i -= 1
-    false
 print(ans - Int(fewer()))

@@ -7,12 +7,12 @@ let comb = Comb<MOD>()
 
 @!multitest
 let n: Int = read()
-let xs: [0..n]Int = read()
+let xs: [1..=n]Int = read()
 let weight = [if d == 0: Z(0) else: comb.catalan(d) * comb.catalan(n - d) for d in 0..n]
 var ans = Z(0)
 for b in 0..18:
     var a = [Z(1) for _ in 0..=n]
-    for i in 1..=n: a[i] = if xs[i - 1] >> b & 1 == 1: -a[i - 1] else: a[i - 1]
+    for i in 1..=n: a[i] = if xs[i] >> b & 1 == 1: -a[i - 1] else: a[i - 1]
     var cur = comb.catalan(n) * Z(n - 1)
     if a[n] == Z(1):
         // corr[n - d] = sum_i a[i] * a[i + d]

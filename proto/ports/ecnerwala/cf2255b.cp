@@ -12,6 +12,6 @@ var blocks = [0, 0]
 for (c, len) in runs(s):
     total[c - '0'] += len
     blocks[c - '0'] += 1
-var ans = Z(1)
+var ans: Z = 1
 for z in 0..2 if blocks[z] > 0: ans *= comb.choose(total[z] - 1, blocks[z] - 1)
 print(ans)
