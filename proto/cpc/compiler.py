@@ -4660,6 +4660,10 @@ def _emit_read(self, target, ty, node, packed=False):
             self.ind -= 1
             self.emit("}")
     elif isinstance(ty, TEnum):
+        if not any(fns for _, fns, _ in ty.variants):
+            names = ", ".join(json.dumps(vn) for vn, _, _ in ty.variants)
+            self.error(node, f"reading a `{ty!r}` needs to know how its variants are written in the input: "
+                             f"put `@tags({names})` above the enum (it is not read as a number or by guessing)")
         self.emit(f"{target}.tag = CP_GEN ? (int)gen_int(0, {len(ty.variants) - 1}) : (int)rd_range(0, {len(ty.variants) - 1}, {ln});")
         self.emit(f"if (CP_GEN) {{ out_int({target}.tag); out_char(' '); }}")
         for k, (vn, fns, fts) in enumerate(ty.variants):

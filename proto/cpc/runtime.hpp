@@ -205,6 +205,7 @@ static inline ll rd_int() {
     int c = cp_getc(); while (c == ' ' || c == '\n' || c == '\r' || c == '\t') c = cp_getc();
     if (c < 0) cp_fail("unexpected end of input", 0);
     bool neg = c == '-'; if (neg) c = cp_getc();
+    CP_ASSERT(c >= '0' && c <= '9', "expected a number in the input", 0);   // never a silent 0 for a word
     unsigned long long x = 0; while (c >= '0' && c <= '9') { x = x * 10 + (c - '0'); c = cp_getc(); }   // unsigned: the minimum Int has no positive twin
     return (ll)(neg ? 0 - x : x);
 }

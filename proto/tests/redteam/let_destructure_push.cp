@@ -26,3 +26,8 @@ var zs: List<?(Int, Int)> = [(1, 2), none]
 if let (a, b) = zs[0]:
     for k in 0..100: zs.push(none)
     print(a, b, zs.len)
+// and a later write to the table does not change what the `let` bound
+var tab: [0..3](Int, Int) = (1, 2)
+let (ta, tb) = tab[0]
+tab[0] = (5, 6)
+print(ta, tb)

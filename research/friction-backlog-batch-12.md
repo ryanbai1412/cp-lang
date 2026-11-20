@@ -62,7 +62,7 @@ memory-safety bug that the hand-written worklists walk straight into.
 
 ## Bugs
 
-### L0. A `let` that takes a pair out of a list is a reference (bug; found porting wossoly21s3)
+### L0. A `let` that takes a pair out of a list is a reference (fixed in Stage-2 sprint #2; found porting wossoly21s3)
 
 *Checked with `proto/cpc`, `g++ -fsanitize=address`:*
 
@@ -101,7 +101,9 @@ destructuring `let` is wrong. Proposal: a destructuring `let` copies,
 the same as a plain one. The differential fuzzer should have a case that
 pushes to a list between a `let` and its use.
 
-### L26. Letters read into an enum without `@tags` are all its first variant (bug; probe for cco19p1)
+*Fixed.* A destructuring `let` copies, as a plain one does, and so does the subject of a `match`, which had the same reference (decision 15.4). Both programs above are in `proto/tests/redteam/let_destructure_push.cp`, built under ASan; `bugs/let_then_push.cp` prints `100` and nothing else.
+
+### L26. Letters read into an enum without `@tags` are all its first variant (fixed in Stage-2 sprint #2; probe for cco19p1)
 
 *Checked with `proto/cpc`:*
 
@@ -123,6 +125,8 @@ variant names, and anything else is an error at the read, never a
 default. Two smaller things from the same probe: the one-line form `enum
 Way: N | E | S | W` of `plan/12` gives `expected NEWLINE (at 'N')`, and
 `[Way]Int` gives `array dimension must be a domain` (batch 4 B11).
+
+*Fixed.* Reading an enum with no fields and no `@tags` is a compile error that gives the `@tags(...)` line to add (`proto/tests/bad/enum_read_no_tags.cp`), and a local run stops on a word where a number is expected instead of reading 0 (`proto/tests/redteam/read_word_as_int.cp`); decision 15.9. Reading variant names without `@tags`, the one-line `enum` and `[Way]Int` are left to the language pass.
 
 ## Grids
 
