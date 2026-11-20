@@ -93,7 +93,7 @@ G7, G8):
 | 3.8 | Associated types, consts and frozen lets | Settled 2026-11-20 | yes. Associated types (`Indexed.Elem`, `Seq.bounds`). An associated size is `const K = 10` when known at compile time and **`let K = n`** when frozen from a run-time value where the impl is declared; **`const K = n` with a run-time `n` is an error**, so `const` stays strictly compile-time (7.10). Sizing by a `var` is an error | 7.10 | plan/19-index-and-lends.md §3.1 |
 | 3.9 | Coherence (who may `impl` what) | Settled 2026-11-19 | orphan rule relaxed inside one program, strict for libraries | 6.4 | §8 |
 | 3.10 | `Mod<P>` (unified moduli) | Revised 2026-11-20 (v2.2) | **One `Mod<P>` type** accepting both `const` and runtime-frozen `let` `Int` moduli via 3.8 (`ModR` retired). Works for any `P >= 1` (incl. composite; `.try_inv() -> ?Z`); 4-byte `uint32_t` when `P <= 2^31 - 1`, `I128` widen above; one-way `Int` reduction; constant-divisor inverse lowering; `T.zero`-seeded `sum`; immutable `let comb = Comb<P>()` with interior-mutability lazy growth | 3.8 | §16, §17.5, §18.7, §19.10 |
-| 3.11 | Decorators (`@`) | Revised 2026-11-20 (v2.2) | User-defined `decorator` macros deleted. **8 contestant decorators** (`@memo`, `@multitest`, `@brute`, `@tags`, `@gen`, `@checker`, `@interactor`, `@grader`) + **3 library-author** (`@get`, `@test`, `@law` replacing hard keyword `law`). Parameter grammars `@memo(flat\|hash)`, `@multitest(count:)`, and `@grader const` deleted | | §16, §19.1, §19.3 |
+| 3.11 | Decorators (`@`) | Revised 2026-11-20 (v2.2) | User-defined `decorator` macros deleted. **8 contestant decorators** (`@memo`, `@multitest`, `@brute`, `@tags`, `@gen`, `@checker`, `@interactor`, `@grader`) + **3 library-author** (`@get`, `@test`, `@law` replacing hard keyword `law`). Parameter grammars `@memo(flat\|hash)`, `@multitest(count:)`, and `@grader const` deleted. **0.2.2:** the test-case divider is the file-level directive `@!multitest` (§20), not a decorator; `@` always decorates the one item below it | | §16, §19.1, §19.3, §20 |
 
 ## 4. Control and iteration
 
@@ -134,7 +134,7 @@ G7, G8):
 |---|---|---|---|---|---|
 | 6.1 | File as function body | Settled | top-level fns see the body's `let`s; calling before the `let`s are set is an error | | plan/15-program-structure.md §2 |
 | 6.2 | Program vs library mode | Settled | decided by contents; `use` accepts only libraries | | plan/15-program-structure.md §2.4 |
-| 6.3 | Multitest | Revised 2026-11-20 (v2.2) | Bare `@multitest`, `@multitest(until_eof)`, and bare `@multitest fn solve():` (`@multitest(count:)` and `static let` deleted; use plain `for _ in 0..tests:` with block-scoped `@memo` when custom counts or precomputation precede cases); `return` ends a test | 6.1 | §16, §19.3 |
+| 6.3 | Multitest | Revised 2026-11-20 (0.2.2) | `@!multitest` is a standalone top-level **divider**: statements above it run once (precomputation), statements below it run once per test case (the count is read automatically; `@!multitest(until_eof)` reads to end of input), each case in a fresh scope with `@memo` caches reset. Single-test and multitest files are both flat top-level statements; no `fn solve()` wrapper. `@!` marks a file-level directive in force from its line down; `@` always decorates the one item below it. Top-level `return` ends the program, or the current test case below the divider. `@spec` / `@checker` read the top-level input `let`s the same way in both modes | 6.1 | §16, §19.3, §20 |
 | 6.4 | Modules beyond `pub` | Open | re-exports, private-to-folder, name clashes | | plan/40-tooling.md |
 | 6.5 | Parts and purity | Settled | any fn is a part; tools record I/O; no `pure` keyword | | plan/15-program-structure.md §4 |
 | 6.6 | Brutes, checkers, interactors | Revised 2026-11-20 (v2.2) | `@brute`, `@checker` (inherits input bindings, uses `read_output()` + `assert`), `@interactor fn judge(sol: Interactor):` (`read()` = hidden test, `sol.recv()` = sol stdout, `sol.send(...)` = sol stdin; paired with `ask(..., limit: K)`, and `print()` auto-flushes whenever `ask()` is used) | 3.11 | §16, §19.8 |
@@ -1106,3 +1106,96 @@ NOI/NOIP, APIO, and EGOI ports) into **CP Lang v2.2**
   sheet; lock declaration-order `Ord` on derived `enum`s and the `else if` ->
   `elif` parser diagnostic.
 
+## 20. Program structure: the `@!multitest` divider and top-level `return` (0.2.2, approved 2026-11-20)
+
+Revises 6.3. A single-test program and a multitest program have the same shape: flat, unindented top-level
+statements, run top to bottom. Neither needs a `fn solve()` wrapper.
+
+- **20.1 `@!multitest` is a divider.** `@!` marks a file-level directive: it stands on a line of its own and
+  is in force from that line down, where `@` always decorates the single item below it (the same split as
+  Rust's `#![...]` and `#[...]`). `@!multitest` is the one directive, and appears once per file. Everything above it
+  runs once, before the test count is read: sieves, `Comb` tables, anything shared. Everything below it runs
+  once per test case. The count `t` is read automatically at the divider (`@!multitest(until_eof)` reads
+  cases until the input ends instead).
+
+  ```cp
+  let sv = Sieve(1e6)                   // above: built once
+
+  @!multitest
+  let n: 2..=1e6 = read()               // below: once per test case
+  print(sv.is_prime(n))
+  ```
+
+  Delete the divider and move the sieve down and what is left is the single-test program for the same problem. That
+  symmetry is the point: turning a solution into a multitest one is adding a line and lifting the shared setup above it, never re-indenting.
+
+- **20.2 Each test case is a fresh scope.** Every `let`, `var`, `domain` and `fn` below the divider is
+  created anew for each case and gone at its end, so nothing leaks from one case to the next. A `@memo fn`
+  below the divider belongs to its case: its cache starts empty every time. State that must outlive a case
+  is declared above the divider, where it is visible to (and, for a `var`, writable from) every case.
+
+  ```cp
+  @!multitest
+  let n: 1..=2e5 = read()
+  domain V = 1..=n
+  let a: [V]Int = read()
+
+  @memo
+  fn best(i: V) -> Int:                 // cache keyed by this case's V, emptied for the next case
+      if let j = i.next:
+          return max(a[i], a[i] + best(j))
+      a[i]
+
+  print(best(V.first))
+  ```
+
+- **20.3 Top-level `return`.** A `return` outside every `fn` takes no value and ends the current unit of
+  work, from any depth of loops: the whole program in a single-test file (and above the divider), the
+  current test case below the divider. Output printed so far is kept and flushed. This is the early exit
+  that `fn solve()` wrappers existed to provide.
+
+  ```cp
+  let n: 0..=2e5 = read()               // single-test: `return` ends the program
+  if n == 0:
+      print("empty")
+      return
+  ```
+
+  ```cp
+  @!multitest
+  let n: 0..=2e5 = read()               // multitest: `return` ends this case, the next one starts
+  if n == 0:
+      print("empty")
+      return
+  ```
+
+  The two bodies are identical. `return x` at top level is an error (there is no caller to receive `x`).
+
+- **20.4 `@spec` and `@checker` see the same inputs in both modes.** They read the top-level input `let`s
+  by name. In a single-test file those are the program's inputs; below the divider they are the current
+  test case's inputs, and the `@spec` / `@checker` runs once per case. The declaration is written the same
+  way in both files.
+
+  ```cp
+  @!multitest
+  let n: 1..=5 = read()
+  print(n * n)
+
+  @checker
+  fn check():
+      let x: Int = read_output()
+      assert x == n * n                 // `n` is this case's `n`
+  ```
+
+- **20.5 What is not kept.** `@multitest fn solve():` is no longer part of the language as taught: the
+  divider covers precomputation (the one reason the wrapper existed) and top-level `return` covers early
+  exit. A second `@!multitest` in one file is an error, as is any other `@!name` and a
+  `@!multitest` that is not at top level. A bare `@multitest` as a divider is the deprecated spelling of
+  `@!multitest`. Problems whose case loop has another shape (a count
+  per group, a sentinel) still write a plain `for _ in 0..tests:` or `read_until` loop.
+
+- **20.6 Prototype status.** `proto/cpc` and `proto/cpi` implement 20.1 to 20.3 and 20.5's errors;
+  `proto/tests/program/` holds the cases, run by both. The prototype still compiles the older
+  `@multitest fn solve():` wrapper and the bare `@multitest` divider, so existing ports keep building until
+  they are migrated; both should then become errors that point to `@!multitest`. `@spec` and
+  `@checker` are not implemented in the prototype, so 20.4 is specified here and not yet tested.

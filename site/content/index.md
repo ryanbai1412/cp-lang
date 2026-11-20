@@ -38,7 +38,7 @@ Across the whole corpus, the [registry](https://github.com/ryanbai1412/cp-lang/b
 
 1. [One-page cheat sheet](cheat-sheet.html) — every CP Lang 0.2.2 construct, collection, and stdlib helper on one page.
 2. [Getting started](getting-started.html) — install `cpl` and run your first native binary.
-3. [A quick tour](tour.html) — values, `?T` optionals, parallel assignment, explicit undo, and `@multitest`.
+3. [A quick tour](tour.html) — values, `?T` optionals, parallel assignment, explicit undo, and `@!multitest`.
 4. [Index spaces & bounds](indices.html) — `[0..n]T`, nominal domains, `.l`/`.r` boundaries, `p.adj4`/`p.adj8`, and `compress(all)`.
 5. [Ownership & borrowing](borrowing.html) — explicit `mut`, `lends`, and `@law disjoint` without lifetime annotations.
 6. [ASCII strings](strings.html) — value-semantic `0..len`-indexed `Str` and opt-in `[domain S]Char`.

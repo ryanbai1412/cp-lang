@@ -4053,6 +4053,8 @@ class Compiler(LendMixin):
         self.emit("});")
         if outer is not None:
             self.emit(f"if ({ctx[1]}) return false;")
+        elif rt is None and ctx[1] in getattr(self, "top_returns", ()):     # a top-level `return` in the body
+            self.emit(f"if ({ctx[1]}) goto {self.program_return()};")
         elif rt is not None:
             if isinstance(rt, TUnit):
                 self.emit(f"if ({ctx[1]}) return;")
@@ -4928,11 +4930,36 @@ class Compiler(LendMixin):
             out.append(self.coerce(c, at, pt, a))
         return out
 
+    def program_return(self):
+        """The C++ label a `return` outside every fn jumps to: the end of the program in a single-test file
+        and above `@!multitest`, the end of the current test case below it (decision 6.3)."""
+        pr = getattr(self, "prog_ret", None)
+        if pr is None or len(self.fn_ret) != pr[0]:
+            return None
+        pr[2] = True
+        return pr[1]
+
+    def s_directive(self, s):
+        self.error(s, f"`@!{s.name}` stands at the top level of the file, on a line of its own")
+
     def s_return(self, s):
-        if not self.fn_ret:
-            self.error(s, "return outside a function")
         if getattr(self, "in_do", 0) and not getattr(s, "synthetic", False):
             self.error(s, "`return` inside `do:` (the block's value is its last expression)")
+        label = self.program_return()
+        if label is not None:
+            if s.value is not None:
+                self.error(s, "a top-level `return` takes no value: it ends the program, or the current test case below `@!multitest`")
+            g = self.gen_ctx()
+            if g is not None:       # inside a `for` over a generator: stop it, and jump once it has returned
+                if not hasattr(self, "top_returns"):
+                    self.top_returns = set()
+                self.top_returns.add(g[1])
+                self.emit(f"{{ {g[1]} = true; return false; }}")
+            else:
+                self.emit(f"goto {label};")
+            return
+        if not self.fn_ret:
+            self.error(s, "return outside a function")
         rt = self.fn_ret[-1]
         g = self.gen_ctx()
         if g is not None:
@@ -6002,7 +6029,7 @@ class Compiler(LendMixin):
         params, ptypes, names = [], [], []
         # a fn declared inside a top-level loop or `if` sees that block's variables, so it is a closure too
         # (a specialization of a generic fn is compiled where it is first called, but belongs to the top level)
-        in_block = len(self.scopes) > 1 and not self.fn_ret and not hoist
+        in_block = len(self.scopes) > getattr(self, "mt_scopes", 1) and not self.fn_ret and not hoist
         self.scopes.append({})
         saved_top = self.at_top
         self.at_top = False
@@ -6576,10 +6603,13 @@ class Compiler(LendMixin):
         self.sol_depth = len(self.fn_ret)
         self.read_pos = None
         holder = {}
+        saved_ret = getattr(self, "prog_ret", None)
+        self.prog_ret = ret = [len(self.fn_ret), self.tmpname("cp_next" if mt else "cp_end"), False]
         def body():
             holder["out"] = self.out
             self.block(s.body, new_scope=False)
         lines, _ = self.capture(body)
+        self.prog_ret = saved_ret
         self.fn_ret.pop()
         self.at_top = saved_top
         self.in_multitest = False
@@ -6587,6 +6617,9 @@ class Compiler(LendMixin):
         if mt:
             pos = self.read_pos[1] if self.read_pos and self.read_pos[0] == id(holder["out"]) else 0
             lines = lines[:pos] + ["    if (!CP_GEN) {"] + ["    " + l for l in lines[pos:]] + ["    }"]
+        if ret[2]:      # a `return` in the body: leave the block, so the jump crosses no declaration
+            lines = ["    {"] + ["    " + l for l in lines] + ["    }", f"    {ret[1]}:;"]
+        if mt:
             lines = (["    ll _T = CP_GEN ? gen_int(1, 3) : rd_int();",
                       "    if (CP_GEN) { out_int(_T); out_char('\\n'); }",
                       "    while (_T--) {"] + ["    " + l for l in lines] + ["    }"])
@@ -6934,17 +6967,34 @@ Compiler.emit_print = _emit_print
 Compiler.emit_value = _emit_value
 
 
+DECL_KINDS = ("fn", "struct", "enum", "typedef", "impl", "trait", "use")
+
+
 def _program(self):
     self.out = self.init_lines
     self.memo_reads, self.writes, self.fn_brutes, self.fn_props = [], [], [], []
     body = self.prog.body
-    mt_idx = next((i for i, st in enumerate(body) if st.kind != "fn" and any(d.name == "multitest" for d in getattr(st, "decos", []))), None)
+    is_mt = lambda st: st.kind == "directive" or any(d.name == "multitest" for d in getattr(st, "decos", []))
+    marks = [i for i, st in enumerate(body) if is_mt(st)]
+    mt_idx = marks[0] if marks else None
+    for i in marks:
+        if body[i].kind == "directive" and body[i].name != "multitest":
+            self.error(body[i], f"unknown directive `@!{body[i].name}` (the one file-level directive is `@!multitest`)")
+    if len(marks) > 1:
+        self.error(body[marks[1]], "a second `@!multitest`: a file has one divider, and everything below it runs once per test case")
+    if mt_idx is not None and body[mt_idx].kind == "fn" and not body[mt_idx].params and not any(
+            st.kind not in DECL_KINDS for st in body[mt_idx + 1:]):
+        mt_idx = None       # `@multitest fn solve():` with only declarations after it: the older wrapper form
+    self.prog_ret = done = [0, "_cp_done", False]
     if mt_idx is not None:
         self.block(body[:mt_idx], new_scope=False)
         st = copy.copy(body[mt_idx])
-        mt_deco = next(d for d in st.decos if d.name == "multitest")
-        st.decos = [d for d in st.decos if d.name != "multitest"]
-        rest = [st] + body[mt_idx + 1:]
+        if st.kind == "directive":
+            mt_deco, rest = st, body[mt_idx + 1:]
+        else:       # deprecated spelling: a bare `@multitest` on the first statement of the test case
+            mt_deco = next(d for d in st.decos if d.name == "multitest")
+            st.decos = [d for d in st.decos if d.name != "multitest"]
+            rest = [st] + body[mt_idx + 1:]
         args = mt_deco.args
         is_eof = any(a.kind == "name" and a.name == "until_eof" for a in args)
         cnt_kw = [a.value for a in args if a.kind == "kwarg" and a.name == "count"]
@@ -6959,13 +7009,23 @@ def _program(self):
         self.ind += 1
         saved_mt = getattr(self, "in_multitest", False)
         self.in_multitest = True
+        self.mt_scopes = len(self.scopes) + 1       # a fn directly below the divider is a top-level fn of its test case
+        self.prog_ret = nxt = [0, "_cp_next", False]
+        start = len(self.out)
         self.block(rest, new_scope=True)
+        if nxt[2]:      # `return` ends this test case: leave the block, so the jump crosses no declaration
+            self.out[start:] = ["    " * self.ind + "{"] + \
+                ["    " + l for l in self.out[start:]] + ["    " * self.ind + "}", "    " * self.ind + "_cp_next:;"]
+        self.prog_ret = done
+        self.mt_scopes = 1
         self.in_multitest = saved_mt
         self.ind -= 1
         self.emit("}")
         self.last_read = len(self.init_lines)
     else:
         self.block(body, new_scope=False)
+    self.returns_at_top = done[2]
+    self.prog_ret = None
     self.check_memo_staleness()
     self.fntest_lines, _ = self.capture(self.emit_fn_tests)
     self.add_swap_hooks()
@@ -7030,6 +7090,8 @@ def _render(comp):
     out.append("int main(int argc, char** argv) {")
     out.append("    if (CP_GEN) { if (argc > 1) cp_rng.seed(atoll(argv[1])); if (argc > 2) cp_size = atoll(argv[2]); }")
     out.append("    const char* cp_sol = getenv(\"CP_SOLUTION\");")
+    if comp.returns_at_top:     # a top-level `return` leaves these blocks, so the jump crosses no declaration
+        init = ["    {"] + ["    " + l for l in init] + ["    }"]
     out += init
     if not any(m for _, m, _ in sols.values()) and not comp.reads_in_fns:
         out.append(gen_exit)
@@ -7045,6 +7107,8 @@ def _render(comp):
     out.append("    {")
     out += ["    " + l for l in sols[main_name][0]]
     out.append("    }")
+    if comp.returns_at_top:
+        out.append("    _cp_done:;")
     if comp.fntest_lines:
         out.append("#ifdef CP_FNTEST\n    {\n    out_flush(); printf(\"@@FNTEST\\n\"); fflush(stdout);")
         out += ["    " + l for l in comp.fntest_lines]

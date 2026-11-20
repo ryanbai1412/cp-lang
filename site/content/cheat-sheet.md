@@ -91,7 +91,7 @@ for i in (0..n).step(2).rev: ...
 while let a = x and let b = y and a > 0:  // chained optional bindings + guard
 'outer: for r in Row:
     for c in Col:
-        if bad(r, c): break 'outer        // labeled break/continue; bare `return` exits top level / @multitest
+        if bad(r, c): break 'outer        // labeled break/continue; top-level `return` ends the program / the current test
 
 let res = match op:                       // exhaustive expression; bare variants, `=>`
     Add(l, r, v) => st.apply(l..=r, v)
@@ -138,10 +138,11 @@ enum Node: Source | Sink | Build(s: Station) | Serve(u: User)   // payload enum 
 
 ---
 
-## 8. I/O, `@multitest`, `@memo`, Interactive & `@grader`
+## 8. I/O, `@!multitest`, `@memo`, Interactive & `@grader`
 
 ```cp CP Lang 0.2.2
-@multitest                                // whole-file, `@multitest(until_eof)`, or `@multitest fn solve():`
+let sv = Sieve(1e6)                       // above `@!multitest`: runs once (sieves, tables)
+@!multitest                               // divider: below runs per test, fresh scope, `@memo` reset; or `@!multitest(until_eof)`
 let (n, m): (1..=2e5, 1..=n) = read()     // dependent bounds on scalars, tuples, record fields
 let g: [Row, Col]?Int = read(none: "X")   // symmetric `none:` on read / print / read_output
 print(ans, none: "IMPOSSIBLE")            // lists space-separated; auto-flushes if program uses `ask(...)`
@@ -222,4 +223,4 @@ Every container uses `.len`, `.is_empty`, `.clear()`, and `.take()` (O(1) move-o
 
 - **Contestant (30, including 3 literals):** `let`, `var`, `const`, `fn`, `struct`, `enum`, `domain`, `type`, `use`, `pub`, `if`, `elif`, `else`, `for`, `while`, `in`, `match`, `return`, `break`, `continue`, `and`, `or`, `not`, `assert`, `mut`, `self`, `unchecked`, `true`, `false`, `none`.
 - **Library-author only (4):** `trait`, `impl`, `lends`, `yield`.
-- **`@` decorators (8 contestant + 3 library-author):** `@memo`, `@multitest`, `@brute`, `@tags`, `@gen`, `@checker`, `@interactor`, `@grader`; library-author `@get`, `@test`, `@law`.
+- **`@` decorators (7 contestant + 3 library-author, plus the `@!multitest` file directive):** `@memo`, `@brute`, `@tags`, `@gen`, `@checker`, `@interactor`, `@grader`; library-author `@get`, `@test`, `@law`.

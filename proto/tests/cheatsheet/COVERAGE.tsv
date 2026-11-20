@@ -52,7 +52,7 @@ b764d698c2	s5_control,s5_if_chain,s5_items,s5_parallel,s5_defer,s5_match_expr,s5
 160530758a	s5_if_chain	while let a = x and let b = y and a > 0: // chained optional bindings + guard
 9c5fd59d13	s5_control,s5_if_chain,s5_items,s5_parallel,s5_defer,s5_match_expr,s5_match_stmt	'outer: for r in Row:
 52f4a17bd4	s5_control,s5_if_chain,s5_items,s5_parallel,s5_defer,s5_match_expr,s5_match_stmt	for c in Col:
-63995007f9	s5_control,s5_defer,s5_if_chain,s5_items,s5_match_expr,s5_match_stmt,s5_parallel	if bad(r, c): break 'outer // labeled break/continue; bare `return` exits top level / @multitest
+f457289cc6	s5_control,s5_return_top_single,s5_return_top_multitest	if bad(r, c): break 'outer // labeled break/continue; top-level `return` ends the program / the current test
 ee79ddd232	s5_match_expr,s5_match_stmt	let res = match op: // exhaustive expression; bare variants, `=>`
 683dad3720	s5_control,s5_if_chain,s5_items,s5_parallel,s5_defer,s5_match_expr,s5_match_stmt	Add(l, r, v) => st.apply(l..=r, v)
 7324420ee6	s5_control,s5_if_chain,s5_items,s5_parallel,s5_defer,s5_match_expr,s5_match_stmt	Query(l, r) => st.fold(l..=r)
@@ -74,7 +74,8 @@ e148231865	s6_generic,s6_mut_param	- **Generics & inference:** Write `<D>` expli
 7c69fd2dff	s7_struct_mut_self	fn reset(mut self): self.best = 0
 487fc0c901	s7_payload_enum,s7_payload_enum_index,s7_unit_enum	enum Dir = N | E | S | W // unit enum (auto Index, K = 4, N < E < S < W)
 8ee2035da6	s7_payload_enum,s7_payload_enum_index,s7_unit_enum	enum Node: Source | Sink | Build(s: Station) | Serve(u: User) // payload enum (auto sum Index)
-ac94388e9f	s8_multitest_count,s8_multitest_eof,s8_multitest_file,s8_read_until	@multitest // whole-file, `@multitest(until_eof)`, or `@multitest fn solve():`
+18e79f7d2d	s8_multitest_divider	let sv = Sieve(1e6) // above `@!multitest`: runs once (sieves, tables)
+ad3e32bdd2	s8_multitest_divider,s8_multitest_eof,s8_multitest_file,s8_memo	@!multitest // divider: below runs per test, fresh scope, `@memo` reset; or `@!multitest(until_eof)`
 79b7ca93cf	s8_read_gen,s8_read_none,s8_read_until	let (n, m): (1..=2e5, 1..=n) = read() // dependent bounds on scalars, tuples, record fields
 6ac5014fb7	s8_read_gen,s8_read_none,s8_read_until	let g: [Row, Col]?Int = read(none: "X") // symmetric `none:` on read / print / read_output
 e810da0566	s8_read_none	print(ans, none: "IMPOSSIBLE") // lists space-separated; auto-flushes if program uses `ask(...)`
@@ -128,4 +129,4 @@ b22afb8d11	s11_suffix_hash,s11_z_prefix	- `z_function(s)`, `prefix_function(s)`,
 37c8b4441a	s11_dsu_components,s11_flow,s11_range_structs,s11_steps,s11_twosat	- *(Opt-in `std.marks.Marks<D>` [32-bit stamps] and advanced structures — `MonoDeque`, `Steps`, `TwoSat`, `Mat
 8925aafbea	s12_keywords_free	- **Contestant (30, including 3 literals):** `let`, `var`, `const`, `fn`, `struct`, `enum`, `domain`, `type`, 
 9fbc9ed8aa	s12_keywords_free	- **Library-author only (4):** `trait`, `impl`, `lends`, `yield`.
-4a86fb7d6b	s12_keywords_free	- **`@` decorators (8 contestant + 3 library-author):** `@memo`, `@multitest`, `@brute`, `@tags`, `@gen`, `@ch
+1af45bcf71	s12_keywords_free	- **`@` decorators (7 contestant + 3 library-author, plus the `@!multitest` file directive):** `@memo`, `@brut

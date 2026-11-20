@@ -99,14 +99,41 @@ match move:
 
 ## Program structure
 
-Top-level statements run in order from top to bottom. A top-level `return` ends the program, or the current test case under `@multitest`:
+A program is its top-level statements, run in order from top to bottom. There is no `fn main()` and no `fn solve()` wrapper, with one test case or with many:
 
 ```cp CP Lang 0.2.2
-@multitest
-let n: 1..=2e5 = read()
+let n: 0..=2e5 = read()
+if n == 0:
+    print("empty")
+    return
 domain V = 1..=n
 let a: [V]Int = read()
 print(sum(a))
 ```
 
-`@multitest` also accepts `@multitest(until_eof)`, and `@multitest fn solve():` when file-top precomputation must run once before the test count is read. For any other shape, write a plain `for _ in 0..tests:` loop; a `@memo fn` nested in it resets on every iteration. Each test case starts with fresh state; shared immutable tables live in `const` or before the case loop. Library modules contain only declarations—importing a helper never reads input or mutates hidden global state.
+A top-level `return` ends the program. It takes no value and works from inside any loop.
+
+When the input holds many test cases, add one line. `@!multitest` is a divider. The `!` marks a directive for the rest of the file, where a plain `@` decorates only the one item below it: everything above it runs once, and everything below it runs once per test case. The number of test cases is read for you at the divider.
+
+```cp CP Lang 0.2.2
+let sv = Sieve(1e6)             // above the divider: built once, shared by every test case
+
+@!multitest
+let n: 0..=2e5 = read()         // below the divider: once per test case
+if n == 0:
+    print("empty")
+    return                      // ends this test case; the next one starts
+domain V = 1..=n
+let a: [V]Int = read()
+print(sum(a))
+```
+
+The code below the divider is the single-test program, unchanged and unindented. Three things follow from the divider:
+
+- Each test case runs in a fresh scope. Its `let`s, `var`s, domains and functions are created anew and are gone when the case ends, so nothing leaks into the next one.
+- A `@memo fn` below the divider belongs to its test case: the cache starts empty every time.
+- Below the divider, `return` ends the current test case only. Above it, `return` still ends the program.
+
+State that must outlive a test case (a sieve, a running total) is declared above the divider. `@spec` and `@checker` read the top-level input `let`s by name in both shapes: the program's inputs in a single-test file, the current test case's inputs below the divider.
+
+`@!multitest(until_eof)` reads test cases until the input ends instead of reading a count. For any other shape, write a plain `for _ in 0..tests:` loop; a `@memo fn` nested in it resets on every iteration. Library modules contain only declarations—importing a helper never reads input or mutates hidden global state.

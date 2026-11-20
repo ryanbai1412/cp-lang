@@ -68,4 +68,6 @@ echo "redteam tests checked"
 # (run with the usual 8 MB stack, like the red-team cases: ASan can't start under an unlimited one)
 (ulimit -s 8192; python3 tests/test_p0_regressions.py) || fail=1
 (ulimit -s 8192; python3 tests/test_cheatsheet_parity.py) || fail=1
+# Program structure (decision 6.3, tests/program): the `@multitest` divider and top-level `return`, in cpc and cpi.
+(ulimit -s 8192; python3 tests/test_program_structure.py) || fail=1
 exit $fail
