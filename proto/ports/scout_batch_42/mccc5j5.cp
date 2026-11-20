@@ -11,7 +11,7 @@ let a: [0..n]Int = read()
 let qs: [0..q](m: Int, k: Int) = read()
 
 let hi = max(n - 1, max(max(m, k) for (m, k) in qs) ?? 0)
-let bits = max(1, bit_len(hi))
+let bits = max(1, bit_width(hi))
 let sz = 1 << bits
 
 // Complete binary tree with leaves at [sz..2*sz); unused tail leaves stay 0.
