@@ -66,7 +66,7 @@ fn cdq_query(l: Int, r: Int):
 cdq_query(0, 2 * n)
 
 // Pass 2 (ascending d): earlier points b have d_b <= d_a; b stamps its box, a queries point (u_a, v_a).
-reverse(mut pts)
+pts.reverse()
 type BoxEv = (u: Int, sgn: Int, lo: ys.D, hi1: ys.D)
 
 fn cdq_cover(l: Int, r: Int):

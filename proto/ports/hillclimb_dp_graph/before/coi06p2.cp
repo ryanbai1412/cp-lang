@@ -6,8 +6,13 @@ let m: n - 1..=5e5 = read()
 domain Town = 1..=n
 domain Road = 0..m
 
-fn connected() -> [Road](u: Town, v: Town):     // generator: a random tree, then extra roads
-    [Road] r => (if r.idx < n - 1: (Town(rand(1, r.idx + 1)), Town(r.idx + 2)) else: (Town(rand(1, n)), Town(rand(1, n))))
+fn connected() -> [Road](u: Town, v: Town):  // generator: a random tree, then extra roads
+    [Road] r => (
+        if r.idx < n - 1: (
+            Town(rand(1, r.idx + 1)),
+            Town(r.idx + 2),
+        ) else: (Town(rand(1, n)), Town(rand(1, n)))
+    )
 
 let roads: [Road](u: Town, v: Town) = read(gen: connected)
 var map: [Town]List<Town> = []
@@ -40,7 +45,7 @@ fn is_anc(a: Town, b: Town) -> Bool: enter[a] <= enter[b] and leave[b] <= leave[
 // With town c closed, the part of c's subtree that x is cut off in, if any.
 fn stranded(c: Town, x: Town) -> ?Town:
     if x == c or not is_anc(c, x): return none
-    var lo = 0                                  // the last child entered no later than x
+    var lo = 0  // the last child entered no later than x
     var hi = kids[c].len - 1
     while lo < hi:
         let mid = (lo + hi + 1) / 2
@@ -61,5 +66,6 @@ for _ in 0..q:
         let ok = low[bottom] <= enter[top] or is_anc(bottom, a) == is_anc(bottom, b)
         print(if ok: "yes" else: "no")
     else:
-        let c: Town = read() where c != a and c != b
+        let c: Town = read()
+        assert c != a and c != b
         print(if stranded(c, a) == stranded(c, b): "yes" else: "no")

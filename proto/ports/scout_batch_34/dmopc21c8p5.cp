@@ -25,11 +25,11 @@ for i in 1..=base:
             sm[i] min= prev + v[j]
 
 // FRICTION UD5: `@memo` in v2 picks either flat (`<= 2^26`) or salted HashMap
-// (`@memo(hash)`). For huge sparse integer DP (`n <= 1e9`), contests often use a
+// (`@memo`). For huge sparse integer DP (`n <= 1e9`), contests often use a
 // hybrid small-prefix array + hash table to avoid hashing hot small keys; here
 // the explicit `if x <= base: return sm[x]!` covers small keys manually, while
-// `@memo(hash)` handles the O(k log n) large states.
-@memo(hash)
+// `@memo` handles the O(k log n) large states.
+@memo
 fn dp(x: Int) -> Int:
     if x <= base: return sm[x]!
     let lo = x / 2 - k / 2 - 1

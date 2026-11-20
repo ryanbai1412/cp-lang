@@ -7,7 +7,8 @@ fn climb() -> [I]1..=1e6:
     var x = 0
     [I] i => { x += rand(1, 3); x }
 
-let h: [I]1..=1e6 = read(gen: climb) where all(h[i] < h[(i + 1)!] for i in I if i != I.last)
+let h: [I]1..=1e6 = read(gen: climb)
+assert all(h[i] < h[(i + 1)!] for i in I if i != I.last)
 
 // dp[i] = h[i]^2 + c + min over j of (-2 h[j]) * h[i] + (dp[j] + h[j]^2): lines with
 // decreasing slope queried at increasing x, so a monotone queue of lines.

@@ -23,7 +23,7 @@ if tally(a) != tally(b):
     return
 
 var ra = a.copy()
-reverse(mut ra)
+ra.reverse()
 
 // Case 1: binary values (all values in 1..=2).
 if max(a[i].to_idx for i in I)! <= 1 and max(b[i].to_idx for i in I)! <= 1:
