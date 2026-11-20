@@ -1,0 +1,58 @@
+// IATI 2021 A2 P3, shots that surely hit a target that flees for s turns then approaches for c (buildable today-form)
+// original: corpus/submissions/5072008.cpp
+let n: 1..=1000 = read()
+let s: 0..=1000 = read()
+let c: 0..=1000 = read()
+let period: 1..=2000 = s + c          // the statement rules out s = c = 0
+var shots: List<Int> = []
+
+if s <= c:
+    // one window l..=r of cells the target may be in; shoot an end and let it shrink
+    var l = 1
+    var r = n
+    while l < r:
+        if shots.len % period < s:
+            shots.push(r)
+            if r - l + 1 == 2:
+                l = max(1, l - 1)
+                r = l
+            else:
+                l = max(1, l - 1)
+                r -= 2
+        else:
+            shots.push(l + 1)
+            if r - l + 1 == 2:
+                l += 1
+            else:
+                l += 1
+                r -= 1
+    if l == r: shots.push(l)
+else:
+    // two windows, one per half, each squeezed against its wall
+    var (l1, r1, l2, r2) = (1, n / 2, n / 2 + 1, n)
+    while l1 <= r1 or l2 <= r2:
+        let left_wider = r1 - l1 >= r2 - l2
+        if shots.len % period < s:
+            if left_wider:
+                shots.push(r1)
+                r1 -= 1
+            else:
+                shots.push(l2)
+                l2 += 1
+            if r1 > 1: r1 -= 1
+            if l2 < n: l2 += 1
+            l1 = max(1, l1 - 1)
+            r2 = min(n, r2 + 1)
+        else:
+            if left_wider:
+                shots.push(l1)
+                r1 -= 1
+                l2 -= 1
+                r2 -= 1
+            else:
+                shots.push(r2)
+                l1 += 1
+                r1 += 1
+                l2 += 1
+print(shots.len)
+print(shots)
