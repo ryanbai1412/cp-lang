@@ -333,7 +333,13 @@ impl<'a> Lowerer<'a> {
     /// Calls a struct `S(...)`: outside `S`'s own body, routes to `S.new(...)` if `new` exists;
     /// inside `S`'s own body, constructs `S` directly from its fields.
     fn construct_or_new(&mut self, id: StructId, args: &[ast::Arg], span: Span) -> Expr {
-        let inside_self = self.self_struct == Some(id);
+        let inside_self = self.self_struct == Some(id)
+            || self.self_struct.is_some_and(|sid| {
+                matches!(
+                    (&self.structs[sid].origin_gen, &self.structs[id].origin_gen),
+                    (Some((a, _)), Some((b, _))) if a == b
+                )
+            });
         if !inside_self {
             if let Some(&new_fn) = self.structs[id].methods.get("new") {
                 return self.user_call(new_fn, None, args, span);
@@ -2129,6 +2135,45 @@ impl<'a> Lowerer<'a> {
                 let o2 = self.mk(ExprKind::Binary(BinOp::Or, Box::new(e3), Box::new(e4)), Ty::Bool, span);
                 self.mk(ExprKind::Binary(BinOp::Or, Box::new(o1), Box::new(o2)), Ty::Bool, span)
             }
+            (Ty::Pos(d), "K" | "len") => self.mk(ExprKind::DomainLen(*d), Ty::Int, span),
+            (Ty::DomainVal, "first") => {
+                let dom_id = match value.kind {
+                    ExprKind::DomainVal(id) => Some(id),
+                    _ => self.gen_env.values().find_map(|ga| match ga {
+                        GenArg::Domain(id) => Some(*id),
+                        _ => None,
+                    }),
+                };
+                if let Some(id) = dom_id {
+                    self.mk(
+                        ExprKind::Cast(Cast::Trust, Box::new(self.int_lit(0, span))),
+                        Ty::Pos(id),
+                        span,
+                    )
+                } else {
+                    self.err_expr(span)
+                }
+            }
+            (Ty::DomainVal, "last") => {
+                let dom_id = match value.kind {
+                    ExprKind::DomainVal(id) => Some(id),
+                    _ => self.gen_env.values().find_map(|ga| match ga {
+                        GenArg::Domain(id) => Some(*id),
+                        _ => None,
+                    }),
+                };
+                if let Some(id) = dom_id {
+                    let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
+                    let last = self.int_add(len, -1);
+                    self.mk(
+                        ExprKind::Cast(Cast::Trust, Box::new(last)),
+                        Ty::Pos(id),
+                        span,
+                    )
+                } else {
+                    self.err_expr(span)
+                }
+            }
             (Ty::Opt(_), "is_some") => self.mk(ExprKind::IsSome(Box::new(value)), Ty::Bool, span),
             (Ty::Opt(_), "is_none") => {
                 let some = self.mk(ExprKind::IsSome(Box::new(value)), Ty::Bool, span);
@@ -2136,6 +2181,19 @@ impl<'a> Lowerer<'a> {
             }
             // Default `Target::to` trait getter on plain values (e.g. vertices yielded by `u => adj[u]`).
             (_, "to") => value,
+            // Default `Hashable::hash_token` trait getter (`Int(self)`).
+            (Ty::Int, "hash_token") => value,
+            (Ty::Char, "hash_token") => self.cast(Cast::CharToInt, value, Ty::Int),
+            (Ty::Bool, "hash_token") => self.mk(
+                ExprKind::If(
+                    Box::new(value),
+                    Box::new(self.int_lit(1, span)),
+                    Box::new(self.int_lit(0, span)),
+                ),
+                Ty::Int,
+                span,
+            ),
+            (Ty::Pos(_), "hash_token") => self.cast(Cast::Ord, value, Ty::Int),
             _ => {
                 // UFCS `@get` free function (e.g. `p.adj4`, `g.transposed`, `g.flipped`).
                 if let Some(res) = self.try_ufcs_call(&name.text, base, &[], span) {
@@ -2162,18 +2220,16 @@ impl<'a> Lowerer<'a> {
         span: Span,
     ) -> Option<Expr> {
         let sym = self.get_sym(name)?;
-        let has_self = match sym {
-            Sym::Fn(fid) => self.sigs[fid]
-                .decl
-                .params
-                .first()
-                .is_some_and(|p| p.name.text == "self"),
-            Sym::GenFn(gfid) => self.gen_fns[gfid]
-                .decl
-                .params
-                .first()
-                .is_some_and(|p| p.name.text == "self"),
-            _ => false,
+        let (has_self, self_mut) = match sym {
+            Sym::Fn(fid) => match self.sigs[fid].decl.params.first() {
+                Some(p) if p.name.text == "self" => (true, p.mutable),
+                _ => (false, false),
+            },
+            Sym::GenFn(gfid) => match self.gen_fns[gfid].decl.params.first() {
+                Some(p) if p.name.text == "self" => (true, p.mutable),
+                _ => (false, false),
+            },
+            _ => (false, false),
         };
         if !has_self {
             return None;
@@ -2181,7 +2237,7 @@ impl<'a> Lowerer<'a> {
         let mut all_args = Vec::with_capacity(args.len() + 1);
         all_args.push(ast::Arg {
             name: None,
-            mutable: false,
+            mutable: self_mut,
             value: base.clone(),
         });
         all_args.extend(args.iter().cloned());
@@ -2438,7 +2494,23 @@ impl<'a> Lowerer<'a> {
         } = &base.kind
         {
             if fname.text == "bounds" && name.text == "nth" {
-                if let Some(Sym::Domain(id)) = self.sym(dbase) {
+                let dom_id = if let Some(Sym::Domain(id)) = self.sym(dbase) {
+                    Some(id)
+                } else {
+                    let dv = self.expr(dbase, None);
+                    match dv.kind {
+                        ExprKind::DomainVal(id) => Some(id),
+                        _ => match dv.ty {
+                            Ty::Pos(id) | Ty::Bound(id) => Some(id),
+                            Ty::DomainVal => self.gen_env.values().find_map(|ga| match ga {
+                                GenArg::Domain(id) => Some(*id),
+                                _ => None,
+                            }),
+                            _ => None,
+                        },
+                    }
+                };
+                if let Some(id) = dom_id {
                     if let Some(val) = self.one_arg("nth", args, &Ty::Int, span) {
                         return self.mk(
                             ExprKind::Cast(Cast::Trust, Box::new(val)),
@@ -2871,6 +2943,29 @@ impl<'a> Lowerer<'a> {
                 }
                 None => self.err_expr(span),
             },
+            (Ty::DomainVal | Ty::Pos(_), "nth" | "at" | "from_idx") => {
+                let Some(idx_expr) = self.one_arg(method, args, &Ty::Int, span) else {
+                    return self.err_expr(span);
+                };
+                let dom_id = match value.kind {
+                    ExprKind::DomainVal(d) => Some(d),
+                    _ => match value.ty {
+                        Ty::Pos(d) => Some(d),
+                        _ => self.gen_env.values().find_map(|ga| match ga {
+                            GenArg::Domain(d) => Some(*d),
+                            _ => None,
+                        }),
+                    },
+                };
+                match dom_id {
+                    Some(d) => self.mk(
+                        ExprKind::Cast(Cast::Trust, Box::new(idx_expr)),
+                        Ty::Pos(d),
+                        span,
+                    ),
+                    None => self.err_expr(span),
+                }
+            }
             (Ty::DomainVal, "windows") => {
                 let Some(k_expr) = self.one_arg(method, args, &Ty::Int, span) else {
                     return self.err_expr(span);

@@ -739,6 +739,22 @@ impl<'a> Lowerer<'a> {
                 ast::ExprKind::List(items) | ast::ExprKind::Tuple(items) => {
                     items.iter().find_map(|x| find_call_in_expr(fn_name, arity, x))
                 }
+                ast::ExprKind::If { branches, otherwise } => {
+                    for (cond, block) in branches {
+                        if let ast::Cond::Expr(ce) = cond {
+                            if let Some(found) = find_call_in_expr(fn_name, arity, ce) {
+                                return Some(found);
+                            }
+                        }
+                        if let Some(found) = find_call(fn_name, arity, &block.stmts) {
+                            return Some(found);
+                        }
+                    }
+                    otherwise
+                        .as_ref()
+                        .and_then(|b| find_call(fn_name, arity, &b.stmts))
+                }
+                ast::ExprKind::Block(b) => find_call(fn_name, arity, &b.stmts),
                 _ => None,
             }
         }
@@ -781,13 +797,97 @@ impl<'a> Lowerer<'a> {
             }
             None
         }
-        let args = find_call(fn_name, arity, rest)?;
-        let mut tys = Vec::with_capacity(args.len());
-        for a in args {
-            let t = self.probe_ty_silent(&a.value)?;
-            tys.push(t);
+        if let Some(args) = find_call(fn_name, arity, rest) {
+            let mut tys = Vec::with_capacity(arity);
+            for a in args {
+                let ty = self.probe_ty_silent(&a.value)?;
+                tys.push(ty);
+            }
+            return Some(tys);
         }
-        Some(tys)
+        // Also check when `fn_name` is passed as a callback argument to a typed function `outer(..., fn_name, ...)`.
+        fn find_passed_in_expr<'a>(
+            fn_name: &str,
+            e: &'a ast::Expr,
+        ) -> Option<(&'a str, usize)> {
+            match &e.kind {
+                ast::ExprKind::Call { callee, args } => {
+                    if let ast::ExprKind::Name(cname) = &callee.kind {
+                        for (idx, a) in args.iter().enumerate() {
+                            if matches!(&a.value.kind, ast::ExprKind::Name(n) if n == fn_name) {
+                                return Some((cname.as_str(), idx));
+                            }
+                            if let ast::ExprKind::Lambda { params, body } = &a.value.kind {
+                                if find_call_in_expr(fn_name, params.len(), body).is_some() {
+                                    return Some((cname.as_str(), idx));
+                                }
+                            }
+                        }
+                    }
+                    find_passed_in_expr(fn_name, callee).or_else(|| {
+                        args.iter()
+                            .find_map(|a| find_passed_in_expr(fn_name, &a.value))
+                    })
+                }
+                ast::ExprKind::Binary { lhs, rhs, .. } => {
+                    find_passed_in_expr(fn_name, lhs).or_else(|| find_passed_in_expr(fn_name, rhs))
+                }
+                ast::ExprKind::Compare { first, rest } => find_passed_in_expr(fn_name, first)
+                    .or_else(|| rest.iter().find_map(|(_, r)| find_passed_in_expr(fn_name, r))),
+                ast::ExprKind::Unary { expr, .. }
+                | ast::ExprKind::Paren(expr)
+                | ast::ExprKind::Try(expr) => find_passed_in_expr(fn_name, expr),
+                ast::ExprKind::Tuple(items) | ast::ExprKind::List(items) => {
+                    items.iter().find_map(|x| find_passed_in_expr(fn_name, x))
+                }
+                _ => None,
+            }
+        }
+        fn find_passed<'a>(fn_name: &str, stmts: &'a [ast::Stmt]) -> Option<(&'a str, usize)> {
+            for s in stmts {
+                match &s.kind {
+                    ast::StmtKind::Let { init: Some(e), .. }
+                    | ast::StmtKind::Expr(e)
+                    | ast::StmtKind::Assign { value: e, .. }
+                    | ast::StmtKind::Return(Some(e))
+                    | ast::StmtKind::Assert { cond: e, .. } => {
+                        if let Some(found) = find_passed_in_expr(fn_name, e) {
+                            return Some(found);
+                        }
+                    }
+                    ast::StmtKind::For { iter, body, .. } => {
+                        if let Some(found) = find_passed_in_expr(fn_name, iter)
+                            .or_else(|| find_passed(fn_name, &body.stmts))
+                        {
+                            return Some(found);
+                        }
+                    }
+                    ast::StmtKind::While { cond, body } => {
+                        if let ast::Cond::Expr(e) = cond {
+                            if let Some(found) = find_passed_in_expr(fn_name, e) {
+                                return Some(found);
+                            }
+                        }
+                        if let Some(found) = find_passed(fn_name, &body.stmts) {
+                            return Some(found);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            None
+        }
+        let (outer_name, arg_idx) = find_passed(fn_name, rest)?;
+        if let Some(Sym::Fn(fid)) = self.get_sym(outer_name) {
+            if let Some(param) = self.sigs[fid].params.get(arg_idx) {
+                if let Ty::Fn(ps, _) = &param.ty {
+                    if ps.len() == arity {
+                        return Some(ps.clone());
+                    }
+                }
+            }
+        }
+        None
     }
 
     fn peek_map_kv_types(&mut self, var_name: &str, rest: &[ast::Stmt]) -> (Ty, Ty) {
