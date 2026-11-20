@@ -1,0 +1,2742 @@
+{
+  "schemaVersion": 1,
+  "title": "Shortest paths",
+  "description": "Follow the frontier as Dijkstra settles a weighted graph.",
+  "source": {
+    "file": "dijkstra.cp",
+    "code": "fn shortest_paths(g, start):\n    var dist = [Vertex]none\n    dist[start] = 0\n    var queue = MinHeap((0, start))\n    while let (d, u) = queue.pop():\n        if d != dist[u]: continue\n        for (v, weight) in g.neighbors(u):\n            if dist[v] == none or d + weight < dist[v]:\n                dist[v] = d + weight\n                queue.push((dist[v], v))\n    dist\n"
+  },
+  "variables": {
+    "graph": {
+      "name": "g",
+      "kind": "graph",
+      "type": "Graph<Vertex, Int>",
+      "directed": false
+    },
+    "dist": {
+      "name": "dist",
+      "kind": "array",
+      "type": "[Vertex]?Int",
+      "labels": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G"
+      ]
+    },
+    "queue": {
+      "name": "frontier",
+      "kind": "array",
+      "type": "MinHeap<(Int, Vertex)>"
+    }
+  },
+  "runs": {
+    "fast": {
+      "label": "Execution",
+      "steps": [
+        {
+          "id": 0,
+          "line": 3,
+          "label": "Start at vertex A",
+          "stage": "Input",
+          "values": {
+            "graph": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "x": 60,
+                  "y": 160
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "x": 195,
+                  "y": 65
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "x": 195,
+                  "y": 255
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "x": 335,
+                  "y": 65
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "x": 335,
+                  "y": 255
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "x": 465,
+                  "y": 125
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "x": 465,
+                  "y": 280
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1,
+                  "weight": 4
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2,
+                  "weight": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 2,
+                  "weight": 1
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 3,
+                  "weight": 5
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 4,
+                  "weight": 3
+                },
+                {
+                  "id": 5,
+                  "from": 3,
+                  "to": 4,
+                  "weight": 2
+                },
+                {
+                  "id": 6,
+                  "from": 3,
+                  "to": 5,
+                  "weight": 3
+                },
+                {
+                  "id": 7,
+                  "from": 4,
+                  "to": 5,
+                  "weight": 6
+                },
+                {
+                  "id": 8,
+                  "from": 4,
+                  "to": 6,
+                  "weight": 4
+                },
+                {
+                  "id": 9,
+                  "from": 5,
+                  "to": 6,
+                  "weight": 1
+                }
+              ]
+            },
+            "dist": [
+              0,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "queue": [
+              [
+                0,
+                "A"
+              ]
+            ]
+          },
+          "locals": {}
+        },
+        {
+          "id": 1,
+          "line": 5,
+          "label": "Settle vertex A at distance 0",
+          "stage": "Compute",
+          "values": {
+            "graph": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "x": 60,
+                  "y": 160,
+                  "state": "visited"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "x": 195,
+                  "y": 65
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "x": 195,
+                  "y": 255
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "x": 335,
+                  "y": 65
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "x": 335,
+                  "y": 255
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "x": 465,
+                  "y": 125
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "x": 465,
+                  "y": 280
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1,
+                  "weight": 4
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2,
+                  "weight": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 2,
+                  "weight": 1
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 3,
+                  "weight": 5
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 4,
+                  "weight": 3
+                },
+                {
+                  "id": 5,
+                  "from": 3,
+                  "to": 4,
+                  "weight": 2
+                },
+                {
+                  "id": 6,
+                  "from": 3,
+                  "to": 5,
+                  "weight": 3
+                },
+                {
+                  "id": 7,
+                  "from": 4,
+                  "to": 5,
+                  "weight": 6
+                },
+                {
+                  "id": 8,
+                  "from": 4,
+                  "to": 6,
+                  "weight": 4
+                },
+                {
+                  "id": 9,
+                  "from": 5,
+                  "to": 6,
+                  "weight": 1
+                }
+              ]
+            },
+            "dist": [
+              0,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "queue": []
+          },
+          "locals": {
+            "u": "A",
+            "d": 0
+          },
+          "focus": {
+            "variable": "graph",
+            "path": [
+              "nodes",
+              0
+            ]
+          }
+        },
+        {
+          "id": 2,
+          "line": 9,
+          "label": "Relax A → B",
+          "stage": "Compute",
+          "values": {
+            "graph": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "x": 60,
+                  "y": 160,
+                  "state": "visited"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "x": 195,
+                  "y": 65,
+                  "state": "frontier"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "x": 195,
+                  "y": 255
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "x": 335,
+                  "y": 65
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "x": 335,
+                  "y": 255
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "x": 465,
+                  "y": 125
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "x": 465,
+                  "y": 280
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1,
+                  "weight": 4
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2,
+                  "weight": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 2,
+                  "weight": 1
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 3,
+                  "weight": 5
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 4,
+                  "weight": 3
+                },
+                {
+                  "id": 5,
+                  "from": 3,
+                  "to": 4,
+                  "weight": 2
+                },
+                {
+                  "id": 6,
+                  "from": 3,
+                  "to": 5,
+                  "weight": 3
+                },
+                {
+                  "id": 7,
+                  "from": 4,
+                  "to": 5,
+                  "weight": 6
+                },
+                {
+                  "id": 8,
+                  "from": 4,
+                  "to": 6,
+                  "weight": 4
+                },
+                {
+                  "id": 9,
+                  "from": 5,
+                  "to": 6,
+                  "weight": 1
+                }
+              ]
+            },
+            "dist": [
+              0,
+              4,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "queue": [
+              [
+                4,
+                "B"
+              ]
+            ]
+          },
+          "locals": {
+            "u": "A",
+            "v": "B",
+            "candidate": 4
+          },
+          "focus": {
+            "variable": "graph",
+            "path": [
+              "edges",
+              0
+            ]
+          }
+        },
+        {
+          "id": 3,
+          "line": 9,
+          "label": "Relax A → C",
+          "stage": "Compute",
+          "values": {
+            "graph": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "x": 60,
+                  "y": 160,
+                  "state": "visited"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "x": 195,
+                  "y": 65,
+                  "state": "frontier"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "x": 195,
+                  "y": 255,
+                  "state": "frontier"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "x": 335,
+                  "y": 65
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "x": 335,
+                  "y": 255
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "x": 465,
+                  "y": 125
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "x": 465,
+                  "y": 280
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1,
+                  "weight": 4
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2,
+                  "weight": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 2,
+                  "weight": 1
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 3,
+                  "weight": 5
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 4,
+                  "weight": 3
+                },
+                {
+                  "id": 5,
+                  "from": 3,
+                  "to": 4,
+                  "weight": 2
+                },
+                {
+                  "id": 6,
+                  "from": 3,
+                  "to": 5,
+                  "weight": 3
+                },
+                {
+                  "id": 7,
+                  "from": 4,
+                  "to": 5,
+                  "weight": 6
+                },
+                {
+                  "id": 8,
+                  "from": 4,
+                  "to": 6,
+                  "weight": 4
+                },
+                {
+                  "id": 9,
+                  "from": 5,
+                  "to": 6,
+                  "weight": 1
+                }
+              ]
+            },
+            "dist": [
+              0,
+              4,
+              2,
+              null,
+              null,
+              null,
+              null
+            ],
+            "queue": [
+              [
+                2,
+                "C"
+              ],
+              [
+                4,
+                "B"
+              ]
+            ]
+          },
+          "locals": {
+            "u": "A",
+            "v": "C",
+            "candidate": 2
+          },
+          "focus": {
+            "variable": "graph",
+            "path": [
+              "edges",
+              1
+            ]
+          }
+        },
+        {
+          "id": 4,
+          "line": 5,
+          "label": "Settle vertex C at distance 2",
+          "stage": "Compute",
+          "values": {
+            "graph": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "x": 60,
+                  "y": 160,
+                  "state": "visited"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "x": 195,
+                  "y": 65,
+                  "state": "frontier"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "x": 195,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "x": 335,
+                  "y": 65
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "x": 335,
+                  "y": 255
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "x": 465,
+                  "y": 125
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "x": 465,
+                  "y": 280
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1,
+                  "weight": 4
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2,
+                  "weight": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 2,
+                  "weight": 1
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 3,
+                  "weight": 5
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 4,
+                  "weight": 3
+                },
+                {
+                  "id": 5,
+                  "from": 3,
+                  "to": 4,
+                  "weight": 2
+                },
+                {
+                  "id": 6,
+                  "from": 3,
+                  "to": 5,
+                  "weight": 3
+                },
+                {
+                  "id": 7,
+                  "from": 4,
+                  "to": 5,
+                  "weight": 6
+                },
+                {
+                  "id": 8,
+                  "from": 4,
+                  "to": 6,
+                  "weight": 4
+                },
+                {
+                  "id": 9,
+                  "from": 5,
+                  "to": 6,
+                  "weight": 1
+                }
+              ]
+            },
+            "dist": [
+              0,
+              4,
+              2,
+              null,
+              null,
+              null,
+              null
+            ],
+            "queue": [
+              [
+                4,
+                "B"
+              ]
+            ]
+          },
+          "locals": {
+            "u": "C",
+            "d": 2
+          },
+          "focus": {
+            "variable": "graph",
+            "path": [
+              "nodes",
+              2
+            ]
+          }
+        },
+        {
+          "id": 5,
+          "line": 9,
+          "label": "Relax C → B",
+          "stage": "Compute",
+          "values": {
+            "graph": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "x": 60,
+                  "y": 160,
+                  "state": "visited"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "x": 195,
+                  "y": 65,
+                  "state": "frontier"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "x": 195,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "x": 335,
+                  "y": 65
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "x": 335,
+                  "y": 255
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "x": 465,
+                  "y": 125
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "x": 465,
+                  "y": 280
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1,
+                  "weight": 4
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2,
+                  "weight": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 2,
+                  "weight": 1
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 3,
+                  "weight": 5
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 4,
+                  "weight": 3
+                },
+                {
+                  "id": 5,
+                  "from": 3,
+                  "to": 4,
+                  "weight": 2
+                },
+                {
+                  "id": 6,
+                  "from": 3,
+                  "to": 5,
+                  "weight": 3
+                },
+                {
+                  "id": 7,
+                  "from": 4,
+                  "to": 5,
+                  "weight": 6
+                },
+                {
+                  "id": 8,
+                  "from": 4,
+                  "to": 6,
+                  "weight": 4
+                },
+                {
+                  "id": 9,
+                  "from": 5,
+                  "to": 6,
+                  "weight": 1
+                }
+              ]
+            },
+            "dist": [
+              0,
+              3,
+              2,
+              null,
+              null,
+              null,
+              null
+            ],
+            "queue": [
+              [
+                3,
+                "B"
+              ],
+              [
+                4,
+                "B"
+              ]
+            ]
+          },
+          "locals": {
+            "u": "C",
+            "v": "B",
+            "candidate": 3
+          },
+          "focus": {
+            "variable": "graph",
+            "path": [
+              "edges",
+              2
+            ]
+          }
+        },
+        {
+          "id": 6,
+          "line": 9,
+          "label": "Relax C → E",
+          "stage": "Compute",
+          "values": {
+            "graph": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "x": 60,
+                  "y": 160,
+                  "state": "visited"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "x": 195,
+                  "y": 65,
+                  "state": "frontier"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "x": 195,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "x": 335,
+                  "y": 65
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "x": 335,
+                  "y": 255,
+                  "state": "frontier"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "x": 465,
+                  "y": 125
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "x": 465,
+                  "y": 280
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1,
+                  "weight": 4
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2,
+                  "weight": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 2,
+                  "weight": 1
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 3,
+                  "weight": 5
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 4,
+                  "weight": 3
+                },
+                {
+                  "id": 5,
+                  "from": 3,
+                  "to": 4,
+                  "weight": 2
+                },
+                {
+                  "id": 6,
+                  "from": 3,
+                  "to": 5,
+                  "weight": 3
+                },
+                {
+                  "id": 7,
+                  "from": 4,
+                  "to": 5,
+                  "weight": 6
+                },
+                {
+                  "id": 8,
+                  "from": 4,
+                  "to": 6,
+                  "weight": 4
+                },
+                {
+                  "id": 9,
+                  "from": 5,
+                  "to": 6,
+                  "weight": 1
+                }
+              ]
+            },
+            "dist": [
+              0,
+              3,
+              2,
+              null,
+              5,
+              null,
+              null
+            ],
+            "queue": [
+              [
+                3,
+                "B"
+              ],
+              [
+                4,
+                "B"
+              ],
+              [
+                5,
+                "E"
+              ]
+            ]
+          },
+          "locals": {
+            "u": "C",
+            "v": "E",
+            "candidate": 5
+          },
+          "focus": {
+            "variable": "graph",
+            "path": [
+              "edges",
+              4
+            ]
+          }
+        },
+        {
+          "id": 7,
+          "line": 5,
+          "label": "Settle vertex B at distance 3",
+          "stage": "Compute",
+          "values": {
+            "graph": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "x": 60,
+                  "y": 160,
+                  "state": "visited"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "x": 195,
+                  "y": 65,
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "x": 195,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "x": 335,
+                  "y": 65
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "x": 335,
+                  "y": 255,
+                  "state": "frontier"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "x": 465,
+                  "y": 125
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "x": 465,
+                  "y": 280
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1,
+                  "weight": 4
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2,
+                  "weight": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 2,
+                  "weight": 1
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 3,
+                  "weight": 5
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 4,
+                  "weight": 3
+                },
+                {
+                  "id": 5,
+                  "from": 3,
+                  "to": 4,
+                  "weight": 2
+                },
+                {
+                  "id": 6,
+                  "from": 3,
+                  "to": 5,
+                  "weight": 3
+                },
+                {
+                  "id": 7,
+                  "from": 4,
+                  "to": 5,
+                  "weight": 6
+                },
+                {
+                  "id": 8,
+                  "from": 4,
+                  "to": 6,
+                  "weight": 4
+                },
+                {
+                  "id": 9,
+                  "from": 5,
+                  "to": 6,
+                  "weight": 1
+                }
+              ]
+            },
+            "dist": [
+              0,
+              3,
+              2,
+              null,
+              5,
+              null,
+              null
+            ],
+            "queue": [
+              [
+                4,
+                "B"
+              ],
+              [
+                5,
+                "E"
+              ]
+            ]
+          },
+          "locals": {
+            "u": "B",
+            "d": 3
+          },
+          "focus": {
+            "variable": "graph",
+            "path": [
+              "nodes",
+              1
+            ]
+          }
+        },
+        {
+          "id": 8,
+          "line": 9,
+          "label": "Relax B → D",
+          "stage": "Compute",
+          "values": {
+            "graph": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "x": 60,
+                  "y": 160,
+                  "state": "visited"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "x": 195,
+                  "y": 65,
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "x": 195,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "x": 335,
+                  "y": 65,
+                  "state": "frontier"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "x": 335,
+                  "y": 255,
+                  "state": "frontier"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "x": 465,
+                  "y": 125
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "x": 465,
+                  "y": 280
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1,
+                  "weight": 4
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2,
+                  "weight": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 2,
+                  "weight": 1
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 3,
+                  "weight": 5
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 4,
+                  "weight": 3
+                },
+                {
+                  "id": 5,
+                  "from": 3,
+                  "to": 4,
+                  "weight": 2
+                },
+                {
+                  "id": 6,
+                  "from": 3,
+                  "to": 5,
+                  "weight": 3
+                },
+                {
+                  "id": 7,
+                  "from": 4,
+                  "to": 5,
+                  "weight": 6
+                },
+                {
+                  "id": 8,
+                  "from": 4,
+                  "to": 6,
+                  "weight": 4
+                },
+                {
+                  "id": 9,
+                  "from": 5,
+                  "to": 6,
+                  "weight": 1
+                }
+              ]
+            },
+            "dist": [
+              0,
+              3,
+              2,
+              8,
+              5,
+              null,
+              null
+            ],
+            "queue": [
+              [
+                4,
+                "B"
+              ],
+              [
+                5,
+                "E"
+              ],
+              [
+                8,
+                "D"
+              ]
+            ]
+          },
+          "locals": {
+            "u": "B",
+            "v": "D",
+            "candidate": 8
+          },
+          "focus": {
+            "variable": "graph",
+            "path": [
+              "edges",
+              3
+            ]
+          }
+        },
+        {
+          "id": 9,
+          "line": 5,
+          "label": "Settle vertex E at distance 5",
+          "stage": "Compute",
+          "values": {
+            "graph": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "x": 60,
+                  "y": 160,
+                  "state": "visited"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "x": 195,
+                  "y": 65,
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "x": 195,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "x": 335,
+                  "y": 65,
+                  "state": "frontier"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "x": 335,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "x": 465,
+                  "y": 125
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "x": 465,
+                  "y": 280
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1,
+                  "weight": 4
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2,
+                  "weight": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 2,
+                  "weight": 1
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 3,
+                  "weight": 5
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 4,
+                  "weight": 3
+                },
+                {
+                  "id": 5,
+                  "from": 3,
+                  "to": 4,
+                  "weight": 2
+                },
+                {
+                  "id": 6,
+                  "from": 3,
+                  "to": 5,
+                  "weight": 3
+                },
+                {
+                  "id": 7,
+                  "from": 4,
+                  "to": 5,
+                  "weight": 6
+                },
+                {
+                  "id": 8,
+                  "from": 4,
+                  "to": 6,
+                  "weight": 4
+                },
+                {
+                  "id": 9,
+                  "from": 5,
+                  "to": 6,
+                  "weight": 1
+                }
+              ]
+            },
+            "dist": [
+              0,
+              3,
+              2,
+              8,
+              5,
+              null,
+              null
+            ],
+            "queue": [
+              [
+                8,
+                "D"
+              ]
+            ]
+          },
+          "locals": {
+            "u": "E",
+            "d": 5
+          },
+          "focus": {
+            "variable": "graph",
+            "path": [
+              "nodes",
+              4
+            ]
+          }
+        },
+        {
+          "id": 10,
+          "line": 9,
+          "label": "Relax E → D",
+          "stage": "Compute",
+          "values": {
+            "graph": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "x": 60,
+                  "y": 160,
+                  "state": "visited"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "x": 195,
+                  "y": 65,
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "x": 195,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "x": 335,
+                  "y": 65,
+                  "state": "frontier"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "x": 335,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "x": 465,
+                  "y": 125
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "x": 465,
+                  "y": 280
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1,
+                  "weight": 4
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2,
+                  "weight": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 2,
+                  "weight": 1
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 3,
+                  "weight": 5
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 4,
+                  "weight": 3
+                },
+                {
+                  "id": 5,
+                  "from": 3,
+                  "to": 4,
+                  "weight": 2
+                },
+                {
+                  "id": 6,
+                  "from": 3,
+                  "to": 5,
+                  "weight": 3
+                },
+                {
+                  "id": 7,
+                  "from": 4,
+                  "to": 5,
+                  "weight": 6
+                },
+                {
+                  "id": 8,
+                  "from": 4,
+                  "to": 6,
+                  "weight": 4
+                },
+                {
+                  "id": 9,
+                  "from": 5,
+                  "to": 6,
+                  "weight": 1
+                }
+              ]
+            },
+            "dist": [
+              0,
+              3,
+              2,
+              7,
+              5,
+              null,
+              null
+            ],
+            "queue": [
+              [
+                7,
+                "D"
+              ],
+              [
+                8,
+                "D"
+              ]
+            ]
+          },
+          "locals": {
+            "u": "E",
+            "v": "D",
+            "candidate": 7
+          },
+          "focus": {
+            "variable": "graph",
+            "path": [
+              "edges",
+              5
+            ]
+          }
+        },
+        {
+          "id": 11,
+          "line": 9,
+          "label": "Relax E → F",
+          "stage": "Compute",
+          "values": {
+            "graph": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "x": 60,
+                  "y": 160,
+                  "state": "visited"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "x": 195,
+                  "y": 65,
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "x": 195,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "x": 335,
+                  "y": 65,
+                  "state": "frontier"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "x": 335,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "x": 465,
+                  "y": 125,
+                  "state": "frontier"
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "x": 465,
+                  "y": 280
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1,
+                  "weight": 4
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2,
+                  "weight": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 2,
+                  "weight": 1
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 3,
+                  "weight": 5
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 4,
+                  "weight": 3
+                },
+                {
+                  "id": 5,
+                  "from": 3,
+                  "to": 4,
+                  "weight": 2
+                },
+                {
+                  "id": 6,
+                  "from": 3,
+                  "to": 5,
+                  "weight": 3
+                },
+                {
+                  "id": 7,
+                  "from": 4,
+                  "to": 5,
+                  "weight": 6
+                },
+                {
+                  "id": 8,
+                  "from": 4,
+                  "to": 6,
+                  "weight": 4
+                },
+                {
+                  "id": 9,
+                  "from": 5,
+                  "to": 6,
+                  "weight": 1
+                }
+              ]
+            },
+            "dist": [
+              0,
+              3,
+              2,
+              7,
+              5,
+              11,
+              null
+            ],
+            "queue": [
+              [
+                7,
+                "D"
+              ],
+              [
+                8,
+                "D"
+              ],
+              [
+                11,
+                "F"
+              ]
+            ]
+          },
+          "locals": {
+            "u": "E",
+            "v": "F",
+            "candidate": 11
+          },
+          "focus": {
+            "variable": "graph",
+            "path": [
+              "edges",
+              7
+            ]
+          }
+        },
+        {
+          "id": 12,
+          "line": 9,
+          "label": "Relax E → G",
+          "stage": "Compute",
+          "values": {
+            "graph": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "x": 60,
+                  "y": 160,
+                  "state": "visited"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "x": 195,
+                  "y": 65,
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "x": 195,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "x": 335,
+                  "y": 65,
+                  "state": "frontier"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "x": 335,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "x": 465,
+                  "y": 125,
+                  "state": "frontier"
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "x": 465,
+                  "y": 280,
+                  "state": "frontier"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1,
+                  "weight": 4
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2,
+                  "weight": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 2,
+                  "weight": 1
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 3,
+                  "weight": 5
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 4,
+                  "weight": 3
+                },
+                {
+                  "id": 5,
+                  "from": 3,
+                  "to": 4,
+                  "weight": 2
+                },
+                {
+                  "id": 6,
+                  "from": 3,
+                  "to": 5,
+                  "weight": 3
+                },
+                {
+                  "id": 7,
+                  "from": 4,
+                  "to": 5,
+                  "weight": 6
+                },
+                {
+                  "id": 8,
+                  "from": 4,
+                  "to": 6,
+                  "weight": 4
+                },
+                {
+                  "id": 9,
+                  "from": 5,
+                  "to": 6,
+                  "weight": 1
+                }
+              ]
+            },
+            "dist": [
+              0,
+              3,
+              2,
+              7,
+              5,
+              11,
+              9
+            ],
+            "queue": [
+              [
+                7,
+                "D"
+              ],
+              [
+                8,
+                "D"
+              ],
+              [
+                9,
+                "G"
+              ],
+              [
+                11,
+                "F"
+              ]
+            ]
+          },
+          "locals": {
+            "u": "E",
+            "v": "G",
+            "candidate": 9
+          },
+          "focus": {
+            "variable": "graph",
+            "path": [
+              "edges",
+              8
+            ]
+          }
+        },
+        {
+          "id": 13,
+          "line": 5,
+          "label": "Settle vertex D at distance 7",
+          "stage": "Compute",
+          "values": {
+            "graph": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "x": 60,
+                  "y": 160,
+                  "state": "visited"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "x": 195,
+                  "y": 65,
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "x": 195,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "x": 335,
+                  "y": 65,
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "x": 335,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "x": 465,
+                  "y": 125,
+                  "state": "frontier"
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "x": 465,
+                  "y": 280,
+                  "state": "frontier"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1,
+                  "weight": 4
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2,
+                  "weight": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 2,
+                  "weight": 1
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 3,
+                  "weight": 5
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 4,
+                  "weight": 3
+                },
+                {
+                  "id": 5,
+                  "from": 3,
+                  "to": 4,
+                  "weight": 2
+                },
+                {
+                  "id": 6,
+                  "from": 3,
+                  "to": 5,
+                  "weight": 3
+                },
+                {
+                  "id": 7,
+                  "from": 4,
+                  "to": 5,
+                  "weight": 6
+                },
+                {
+                  "id": 8,
+                  "from": 4,
+                  "to": 6,
+                  "weight": 4
+                },
+                {
+                  "id": 9,
+                  "from": 5,
+                  "to": 6,
+                  "weight": 1
+                }
+              ]
+            },
+            "dist": [
+              0,
+              3,
+              2,
+              7,
+              5,
+              11,
+              9
+            ],
+            "queue": [
+              [
+                8,
+                "D"
+              ],
+              [
+                9,
+                "G"
+              ],
+              [
+                11,
+                "F"
+              ]
+            ]
+          },
+          "locals": {
+            "u": "D",
+            "d": 7
+          },
+          "focus": {
+            "variable": "graph",
+            "path": [
+              "nodes",
+              3
+            ]
+          }
+        },
+        {
+          "id": 14,
+          "line": 9,
+          "label": "Relax D → F",
+          "stage": "Compute",
+          "values": {
+            "graph": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "x": 60,
+                  "y": 160,
+                  "state": "visited"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "x": 195,
+                  "y": 65,
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "x": 195,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "x": 335,
+                  "y": 65,
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "x": 335,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "x": 465,
+                  "y": 125,
+                  "state": "frontier"
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "x": 465,
+                  "y": 280,
+                  "state": "frontier"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1,
+                  "weight": 4
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2,
+                  "weight": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 2,
+                  "weight": 1
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 3,
+                  "weight": 5
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 4,
+                  "weight": 3
+                },
+                {
+                  "id": 5,
+                  "from": 3,
+                  "to": 4,
+                  "weight": 2
+                },
+                {
+                  "id": 6,
+                  "from": 3,
+                  "to": 5,
+                  "weight": 3
+                },
+                {
+                  "id": 7,
+                  "from": 4,
+                  "to": 5,
+                  "weight": 6
+                },
+                {
+                  "id": 8,
+                  "from": 4,
+                  "to": 6,
+                  "weight": 4
+                },
+                {
+                  "id": 9,
+                  "from": 5,
+                  "to": 6,
+                  "weight": 1
+                }
+              ]
+            },
+            "dist": [
+              0,
+              3,
+              2,
+              7,
+              5,
+              10,
+              9
+            ],
+            "queue": [
+              [
+                8,
+                "D"
+              ],
+              [
+                9,
+                "G"
+              ],
+              [
+                10,
+                "F"
+              ],
+              [
+                11,
+                "F"
+              ]
+            ]
+          },
+          "locals": {
+            "u": "D",
+            "v": "F",
+            "candidate": 10
+          },
+          "focus": {
+            "variable": "graph",
+            "path": [
+              "edges",
+              6
+            ]
+          }
+        },
+        {
+          "id": 15,
+          "line": 5,
+          "label": "Settle vertex G at distance 9",
+          "stage": "Compute",
+          "values": {
+            "graph": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "x": 60,
+                  "y": 160,
+                  "state": "visited"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "x": 195,
+                  "y": 65,
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "x": 195,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "x": 335,
+                  "y": 65,
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "x": 335,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "x": 465,
+                  "y": 125,
+                  "state": "frontier"
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "x": 465,
+                  "y": 280,
+                  "state": "visited"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1,
+                  "weight": 4
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2,
+                  "weight": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 2,
+                  "weight": 1
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 3,
+                  "weight": 5
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 4,
+                  "weight": 3
+                },
+                {
+                  "id": 5,
+                  "from": 3,
+                  "to": 4,
+                  "weight": 2
+                },
+                {
+                  "id": 6,
+                  "from": 3,
+                  "to": 5,
+                  "weight": 3
+                },
+                {
+                  "id": 7,
+                  "from": 4,
+                  "to": 5,
+                  "weight": 6
+                },
+                {
+                  "id": 8,
+                  "from": 4,
+                  "to": 6,
+                  "weight": 4
+                },
+                {
+                  "id": 9,
+                  "from": 5,
+                  "to": 6,
+                  "weight": 1
+                }
+              ]
+            },
+            "dist": [
+              0,
+              3,
+              2,
+              7,
+              5,
+              10,
+              9
+            ],
+            "queue": [
+              [
+                10,
+                "F"
+              ],
+              [
+                11,
+                "F"
+              ]
+            ]
+          },
+          "locals": {
+            "u": "G",
+            "d": 9
+          },
+          "focus": {
+            "variable": "graph",
+            "path": [
+              "nodes",
+              6
+            ]
+          }
+        },
+        {
+          "id": 16,
+          "line": 5,
+          "label": "Settle vertex F at distance 10",
+          "stage": "Compute",
+          "values": {
+            "graph": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "x": 60,
+                  "y": 160,
+                  "state": "visited"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "x": 195,
+                  "y": 65,
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "x": 195,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "x": 335,
+                  "y": 65,
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "x": 335,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "x": 465,
+                  "y": 125,
+                  "state": "visited"
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "x": 465,
+                  "y": 280,
+                  "state": "visited"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1,
+                  "weight": 4
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2,
+                  "weight": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 2,
+                  "weight": 1
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 3,
+                  "weight": 5
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 4,
+                  "weight": 3
+                },
+                {
+                  "id": 5,
+                  "from": 3,
+                  "to": 4,
+                  "weight": 2
+                },
+                {
+                  "id": 6,
+                  "from": 3,
+                  "to": 5,
+                  "weight": 3
+                },
+                {
+                  "id": 7,
+                  "from": 4,
+                  "to": 5,
+                  "weight": 6
+                },
+                {
+                  "id": 8,
+                  "from": 4,
+                  "to": 6,
+                  "weight": 4
+                },
+                {
+                  "id": 9,
+                  "from": 5,
+                  "to": 6,
+                  "weight": 1
+                }
+              ]
+            },
+            "dist": [
+              0,
+              3,
+              2,
+              7,
+              5,
+              10,
+              9
+            ],
+            "queue": [
+              [
+                11,
+                "F"
+              ]
+            ]
+          },
+          "locals": {
+            "u": "F",
+            "d": 10
+          },
+          "focus": {
+            "variable": "graph",
+            "path": [
+              "nodes",
+              5
+            ]
+          }
+        },
+        {
+          "id": 17,
+          "line": 11,
+          "label": "All shortest paths are settled",
+          "stage": "Output",
+          "values": {
+            "graph": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "x": 60,
+                  "y": 160,
+                  "state": "visited"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "x": 195,
+                  "y": 65,
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "x": 195,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "x": 335,
+                  "y": 65,
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "x": 335,
+                  "y": 255,
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "x": 465,
+                  "y": 125,
+                  "state": "visited"
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "x": 465,
+                  "y": 280,
+                  "state": "visited"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1,
+                  "weight": 4
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2,
+                  "weight": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 2,
+                  "weight": 1
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 3,
+                  "weight": 5
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 4,
+                  "weight": 3
+                },
+                {
+                  "id": 5,
+                  "from": 3,
+                  "to": 4,
+                  "weight": 2
+                },
+                {
+                  "id": 6,
+                  "from": 3,
+                  "to": 5,
+                  "weight": 3
+                },
+                {
+                  "id": 7,
+                  "from": 4,
+                  "to": 5,
+                  "weight": 6
+                },
+                {
+                  "id": 8,
+                  "from": 4,
+                  "to": 6,
+                  "weight": 4
+                },
+                {
+                  "id": 9,
+                  "from": 5,
+                  "to": 6,
+                  "weight": 1
+                }
+              ]
+            },
+            "dist": [
+              0,
+              3,
+              2,
+              7,
+              5,
+              10,
+              9
+            ],
+            "queue": [
+              [
+                11,
+                "F"
+              ]
+            ]
+          },
+          "locals": {}
+        }
+      ]
+    }
+  }
+}

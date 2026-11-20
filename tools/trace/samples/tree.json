@@ -1,0 +1,2195 @@
+{
+  "schemaVersion": 1,
+  "title": "Subtree sizes",
+  "description": "A postorder walk turns a rooted tree into subtree counts.",
+  "source": {
+    "file": "subtree.cp",
+    "code": "fn subtree_sizes(tree, root):\n    var size = [Vertex]1\n    fn visit(u, parent):\n        for v in tree.neighbors(u):\n            if v == parent: continue\n            visit(v, u)\n            size[u] += size[v]\n    visit(root, none)\n    size\n"
+  },
+  "variables": {
+    "tree": {
+      "name": "tree",
+      "kind": "tree",
+      "type": "Tree<Vertex>",
+      "root": 0
+    },
+    "size": {
+      "name": "size",
+      "kind": "array",
+      "type": "[Vertex]Int",
+      "labels": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G"
+      ]
+    },
+    "stack": {
+      "name": "call stack",
+      "kind": "array",
+      "type": "[Depth]Vertex"
+    }
+  },
+  "runs": {
+    "fast": {
+      "label": "Execution",
+      "steps": [
+        {
+          "id": 0,
+          "line": 2,
+          "label": "Initialize one vertex per subtree",
+          "stage": "Input",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A"
+                },
+                {
+                  "id": 1,
+                  "label": "B"
+                },
+                {
+                  "id": 2,
+                  "label": "C"
+                },
+                {
+                  "id": 3,
+                  "label": "D"
+                },
+                {
+                  "id": 4,
+                  "label": "E"
+                },
+                {
+                  "id": 5,
+                  "label": "F"
+                },
+                {
+                  "id": 6,
+                  "label": "G"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": []
+          },
+          "locals": {}
+        },
+        {
+          "id": 1,
+          "line": 3,
+          "label": "Enter subtree A",
+          "stage": "Compute",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "frontier"
+                },
+                {
+                  "id": 1,
+                  "label": "B"
+                },
+                {
+                  "id": 2,
+                  "label": "C"
+                },
+                {
+                  "id": 3,
+                  "label": "D"
+                },
+                {
+                  "id": 4,
+                  "label": "E"
+                },
+                {
+                  "id": 5,
+                  "label": "F"
+                },
+                {
+                  "id": 6,
+                  "label": "G"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": [
+              "A"
+            ]
+          },
+          "locals": {
+            "u": "A"
+          },
+          "focus": {
+            "variable": "tree",
+            "path": [
+              "nodes",
+              0
+            ]
+          }
+        },
+        {
+          "id": 2,
+          "line": 3,
+          "label": "Enter subtree B",
+          "stage": "Compute",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "frontier"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "state": "frontier"
+                },
+                {
+                  "id": 2,
+                  "label": "C"
+                },
+                {
+                  "id": 3,
+                  "label": "D"
+                },
+                {
+                  "id": 4,
+                  "label": "E"
+                },
+                {
+                  "id": 5,
+                  "label": "F"
+                },
+                {
+                  "id": 6,
+                  "label": "G"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": [
+              "A",
+              "B"
+            ]
+          },
+          "locals": {
+            "u": "B"
+          },
+          "focus": {
+            "variable": "tree",
+            "path": [
+              "nodes",
+              1
+            ]
+          }
+        },
+        {
+          "id": 3,
+          "line": 3,
+          "label": "Enter subtree D",
+          "stage": "Compute",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "frontier"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "state": "frontier"
+                },
+                {
+                  "id": 2,
+                  "label": "C"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "state": "frontier"
+                },
+                {
+                  "id": 4,
+                  "label": "E"
+                },
+                {
+                  "id": 5,
+                  "label": "F"
+                },
+                {
+                  "id": 6,
+                  "label": "G"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": [
+              "A",
+              "B",
+              "D"
+            ]
+          },
+          "locals": {
+            "u": "D"
+          },
+          "focus": {
+            "variable": "tree",
+            "path": [
+              "nodes",
+              3
+            ]
+          }
+        },
+        {
+          "id": 4,
+          "line": 6,
+          "label": "Finish subtree D",
+          "stage": "Compute",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "frontier"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "state": "frontier"
+                },
+                {
+                  "id": 2,
+                  "label": "C"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E"
+                },
+                {
+                  "id": 5,
+                  "label": "F"
+                },
+                {
+                  "id": 6,
+                  "label": "G"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": [
+              "A",
+              "B"
+            ]
+          },
+          "locals": {},
+          "focus": {
+            "variable": "tree",
+            "path": [
+              "nodes",
+              3
+            ]
+          }
+        },
+        {
+          "id": 5,
+          "line": 7,
+          "label": "Accumulate size[B] += 1",
+          "stage": "Compute",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "frontier"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "state": "frontier"
+                },
+                {
+                  "id": 2,
+                  "label": "C"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E"
+                },
+                {
+                  "id": 5,
+                  "label": "F"
+                },
+                {
+                  "id": 6,
+                  "label": "G"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              1,
+              2,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": [
+              "A",
+              "B"
+            ]
+          },
+          "locals": {
+            "u": "B",
+            "v": "D"
+          },
+          "focus": {
+            "variable": "size",
+            "path": [
+              1
+            ]
+          }
+        },
+        {
+          "id": 6,
+          "line": 3,
+          "label": "Enter subtree E",
+          "stage": "Compute",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "frontier"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "state": "frontier"
+                },
+                {
+                  "id": 2,
+                  "label": "C"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "state": "frontier"
+                },
+                {
+                  "id": 5,
+                  "label": "F"
+                },
+                {
+                  "id": 6,
+                  "label": "G"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              1,
+              2,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": [
+              "A",
+              "B",
+              "E"
+            ]
+          },
+          "locals": {
+            "u": "E"
+          },
+          "focus": {
+            "variable": "tree",
+            "path": [
+              "nodes",
+              4
+            ]
+          }
+        },
+        {
+          "id": 7,
+          "line": 6,
+          "label": "Finish subtree E",
+          "stage": "Compute",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "frontier"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "state": "frontier"
+                },
+                {
+                  "id": 2,
+                  "label": "C"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F"
+                },
+                {
+                  "id": 6,
+                  "label": "G"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              1,
+              2,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": [
+              "A",
+              "B"
+            ]
+          },
+          "locals": {},
+          "focus": {
+            "variable": "tree",
+            "path": [
+              "nodes",
+              4
+            ]
+          }
+        },
+        {
+          "id": 8,
+          "line": 7,
+          "label": "Accumulate size[B] += 1",
+          "stage": "Compute",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "frontier"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "state": "frontier"
+                },
+                {
+                  "id": 2,
+                  "label": "C"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F"
+                },
+                {
+                  "id": 6,
+                  "label": "G"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              1,
+              3,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": [
+              "A",
+              "B"
+            ]
+          },
+          "locals": {
+            "u": "B",
+            "v": "E"
+          },
+          "focus": {
+            "variable": "size",
+            "path": [
+              1
+            ]
+          }
+        },
+        {
+          "id": 9,
+          "line": 6,
+          "label": "Finish subtree B",
+          "stage": "Compute",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "frontier"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F"
+                },
+                {
+                  "id": 6,
+                  "label": "G"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              1,
+              3,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": [
+              "A"
+            ]
+          },
+          "locals": {},
+          "focus": {
+            "variable": "tree",
+            "path": [
+              "nodes",
+              1
+            ]
+          }
+        },
+        {
+          "id": 10,
+          "line": 7,
+          "label": "Accumulate size[A] += 3",
+          "stage": "Compute",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "frontier"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F"
+                },
+                {
+                  "id": 6,
+                  "label": "G"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              4,
+              3,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": [
+              "A"
+            ]
+          },
+          "locals": {
+            "u": "A",
+            "v": "B"
+          },
+          "focus": {
+            "variable": "size",
+            "path": [
+              0
+            ]
+          }
+        },
+        {
+          "id": 11,
+          "line": 3,
+          "label": "Enter subtree C",
+          "stage": "Compute",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "frontier"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "state": "frontier"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F"
+                },
+                {
+                  "id": 6,
+                  "label": "G"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              4,
+              3,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": [
+              "A",
+              "C"
+            ]
+          },
+          "locals": {
+            "u": "C"
+          },
+          "focus": {
+            "variable": "tree",
+            "path": [
+              "nodes",
+              2
+            ]
+          }
+        },
+        {
+          "id": 12,
+          "line": 3,
+          "label": "Enter subtree F",
+          "stage": "Compute",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "frontier"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "state": "frontier"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "state": "frontier"
+                },
+                {
+                  "id": 6,
+                  "label": "G"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              4,
+              3,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": [
+              "A",
+              "C",
+              "F"
+            ]
+          },
+          "locals": {
+            "u": "F"
+          },
+          "focus": {
+            "variable": "tree",
+            "path": [
+              "nodes",
+              5
+            ]
+          }
+        },
+        {
+          "id": 13,
+          "line": 6,
+          "label": "Finish subtree F",
+          "stage": "Compute",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "frontier"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "state": "frontier"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "state": "visited"
+                },
+                {
+                  "id": 6,
+                  "label": "G"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              4,
+              3,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": [
+              "A",
+              "C"
+            ]
+          },
+          "locals": {},
+          "focus": {
+            "variable": "tree",
+            "path": [
+              "nodes",
+              5
+            ]
+          }
+        },
+        {
+          "id": 14,
+          "line": 7,
+          "label": "Accumulate size[C] += 1",
+          "stage": "Compute",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "frontier"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "state": "frontier"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "state": "visited"
+                },
+                {
+                  "id": 6,
+                  "label": "G"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              4,
+              3,
+              2,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": [
+              "A",
+              "C"
+            ]
+          },
+          "locals": {
+            "u": "C",
+            "v": "F"
+          },
+          "focus": {
+            "variable": "size",
+            "path": [
+              2
+            ]
+          }
+        },
+        {
+          "id": 15,
+          "line": 3,
+          "label": "Enter subtree G",
+          "stage": "Compute",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "frontier"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "state": "frontier"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "state": "visited"
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "state": "frontier"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              4,
+              3,
+              2,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": [
+              "A",
+              "C",
+              "G"
+            ]
+          },
+          "locals": {
+            "u": "G"
+          },
+          "focus": {
+            "variable": "tree",
+            "path": [
+              "nodes",
+              6
+            ]
+          }
+        },
+        {
+          "id": 16,
+          "line": 6,
+          "label": "Finish subtree G",
+          "stage": "Compute",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "frontier"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "state": "frontier"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "state": "visited"
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "state": "visited"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              4,
+              3,
+              2,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": [
+              "A",
+              "C"
+            ]
+          },
+          "locals": {},
+          "focus": {
+            "variable": "tree",
+            "path": [
+              "nodes",
+              6
+            ]
+          }
+        },
+        {
+          "id": 17,
+          "line": 7,
+          "label": "Accumulate size[C] += 1",
+          "stage": "Compute",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "frontier"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "state": "frontier"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "state": "visited"
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "state": "visited"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              4,
+              3,
+              3,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": [
+              "A",
+              "C"
+            ]
+          },
+          "locals": {
+            "u": "C",
+            "v": "G"
+          },
+          "focus": {
+            "variable": "size",
+            "path": [
+              2
+            ]
+          }
+        },
+        {
+          "id": 18,
+          "line": 6,
+          "label": "Finish subtree C",
+          "stage": "Compute",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "frontier"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "state": "visited"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "state": "visited"
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "state": "visited"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              4,
+              3,
+              3,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": [
+              "A"
+            ]
+          },
+          "locals": {},
+          "focus": {
+            "variable": "tree",
+            "path": [
+              "nodes",
+              2
+            ]
+          }
+        },
+        {
+          "id": 19,
+          "line": 7,
+          "label": "Accumulate size[A] += 3",
+          "stage": "Compute",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "frontier"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "state": "visited"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "state": "visited"
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "state": "visited"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              7,
+              3,
+              3,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": [
+              "A"
+            ]
+          },
+          "locals": {
+            "u": "A",
+            "v": "C"
+          },
+          "focus": {
+            "variable": "size",
+            "path": [
+              0
+            ]
+          }
+        },
+        {
+          "id": 20,
+          "line": 6,
+          "label": "Finish subtree A",
+          "stage": "Compute",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "visited"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "state": "visited"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "state": "visited"
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "state": "visited"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              7,
+              3,
+              3,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": []
+          },
+          "locals": {},
+          "focus": {
+            "variable": "tree",
+            "path": [
+              "nodes",
+              0
+            ]
+          }
+        },
+        {
+          "id": 21,
+          "line": 9,
+          "label": "Return subtree sizes",
+          "stage": "Output",
+          "values": {
+            "tree": {
+              "nodes": [
+                {
+                  "id": 0,
+                  "label": "A",
+                  "state": "visited"
+                },
+                {
+                  "id": 1,
+                  "label": "B",
+                  "state": "visited"
+                },
+                {
+                  "id": 2,
+                  "label": "C",
+                  "state": "visited"
+                },
+                {
+                  "id": 3,
+                  "label": "D",
+                  "state": "visited"
+                },
+                {
+                  "id": 4,
+                  "label": "E",
+                  "state": "visited"
+                },
+                {
+                  "id": 5,
+                  "label": "F",
+                  "state": "visited"
+                },
+                {
+                  "id": 6,
+                  "label": "G",
+                  "state": "visited"
+                }
+              ],
+              "edges": [
+                {
+                  "id": 0,
+                  "from": 0,
+                  "to": 1
+                },
+                {
+                  "id": 1,
+                  "from": 0,
+                  "to": 2
+                },
+                {
+                  "id": 2,
+                  "from": 1,
+                  "to": 3
+                },
+                {
+                  "id": 3,
+                  "from": 1,
+                  "to": 4
+                },
+                {
+                  "id": 4,
+                  "from": 2,
+                  "to": 5
+                },
+                {
+                  "id": 5,
+                  "from": 2,
+                  "to": 6
+                }
+              ]
+            },
+            "size": [
+              7,
+              3,
+              3,
+              1,
+              1,
+              1,
+              1
+            ],
+            "stack": []
+          },
+          "locals": {}
+        }
+      ]
+    }
+  }
+}

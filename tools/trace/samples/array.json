@@ -1,0 +1,1006 @@
+{
+  "schemaVersion": 1,
+  "title": "Insertion sort",
+  "description": "An in-place array, a moving boundary, and every write made visible.",
+  "source": {
+    "file": "sort.cp",
+    "code": "fn insertion_sort(a):\n    for i in 1..a.len:\n        let key = a[i]\n        var j = i\n        while j > 0 and a[j - 1] > key:\n            a[j] = a[j - 1]\n            j -= 1\n        a[j] = key\n    a\n"
+  },
+  "variables": {
+    "a": {
+      "name": "a",
+      "kind": "array",
+      "type": "[Position]Int",
+      "labels": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    "key": {
+      "name": "key",
+      "kind": "scalar",
+      "type": "?Int"
+    }
+  },
+  "runs": {
+    "fast": {
+      "label": "Execution",
+      "steps": [
+        {
+          "id": 0,
+          "line": 1,
+          "label": "Read eight unsorted values",
+          "stage": "Input",
+          "values": {
+            "a": [
+              7,
+              3,
+              8,
+              2,
+              6,
+              1,
+              5,
+              4
+            ],
+            "key": null
+          },
+          "locals": {}
+        },
+        {
+          "id": 1,
+          "line": 3,
+          "label": "Pick key 3",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              7,
+              3,
+              8,
+              2,
+              6,
+              1,
+              5,
+              4
+            ],
+            "key": 3
+          },
+          "locals": {
+            "i": 1,
+            "j": 1
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              1
+            ]
+          }
+        },
+        {
+          "id": 2,
+          "line": 6,
+          "label": "Shift 7 one place right",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              7,
+              7,
+              8,
+              2,
+              6,
+              1,
+              5,
+              4
+            ],
+            "key": 3
+          },
+          "locals": {
+            "i": 1,
+            "j": 1
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              1
+            ]
+          }
+        },
+        {
+          "id": 3,
+          "line": 8,
+          "label": "Insert 3 at position 0",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              3,
+              7,
+              8,
+              2,
+              6,
+              1,
+              5,
+              4
+            ],
+            "key": 3
+          },
+          "locals": {
+            "i": 1,
+            "j": 0
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              0
+            ]
+          }
+        },
+        {
+          "id": 4,
+          "line": 3,
+          "label": "Pick key 8",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              3,
+              7,
+              8,
+              2,
+              6,
+              1,
+              5,
+              4
+            ],
+            "key": 8
+          },
+          "locals": {
+            "i": 2,
+            "j": 2
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              2
+            ]
+          }
+        },
+        {
+          "id": 5,
+          "line": 8,
+          "label": "Insert 8 at position 2",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              3,
+              7,
+              8,
+              2,
+              6,
+              1,
+              5,
+              4
+            ],
+            "key": 8
+          },
+          "locals": {
+            "i": 2,
+            "j": 2
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              2
+            ]
+          }
+        },
+        {
+          "id": 6,
+          "line": 3,
+          "label": "Pick key 2",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              3,
+              7,
+              8,
+              2,
+              6,
+              1,
+              5,
+              4
+            ],
+            "key": 2
+          },
+          "locals": {
+            "i": 3,
+            "j": 3
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              3
+            ]
+          }
+        },
+        {
+          "id": 7,
+          "line": 6,
+          "label": "Shift 8 one place right",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              3,
+              7,
+              8,
+              8,
+              6,
+              1,
+              5,
+              4
+            ],
+            "key": 2
+          },
+          "locals": {
+            "i": 3,
+            "j": 3
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              3
+            ]
+          }
+        },
+        {
+          "id": 8,
+          "line": 6,
+          "label": "Shift 7 one place right",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              3,
+              7,
+              7,
+              8,
+              6,
+              1,
+              5,
+              4
+            ],
+            "key": 2
+          },
+          "locals": {
+            "i": 3,
+            "j": 2
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              2
+            ]
+          }
+        },
+        {
+          "id": 9,
+          "line": 6,
+          "label": "Shift 3 one place right",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              3,
+              3,
+              7,
+              8,
+              6,
+              1,
+              5,
+              4
+            ],
+            "key": 2
+          },
+          "locals": {
+            "i": 3,
+            "j": 1
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              1
+            ]
+          }
+        },
+        {
+          "id": 10,
+          "line": 8,
+          "label": "Insert 2 at position 0",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              2,
+              3,
+              7,
+              8,
+              6,
+              1,
+              5,
+              4
+            ],
+            "key": 2
+          },
+          "locals": {
+            "i": 3,
+            "j": 0
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              0
+            ]
+          }
+        },
+        {
+          "id": 11,
+          "line": 3,
+          "label": "Pick key 6",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              2,
+              3,
+              7,
+              8,
+              6,
+              1,
+              5,
+              4
+            ],
+            "key": 6
+          },
+          "locals": {
+            "i": 4,
+            "j": 4
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              4
+            ]
+          }
+        },
+        {
+          "id": 12,
+          "line": 6,
+          "label": "Shift 8 one place right",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              2,
+              3,
+              7,
+              8,
+              8,
+              1,
+              5,
+              4
+            ],
+            "key": 6
+          },
+          "locals": {
+            "i": 4,
+            "j": 4
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              4
+            ]
+          }
+        },
+        {
+          "id": 13,
+          "line": 6,
+          "label": "Shift 7 one place right",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              2,
+              3,
+              7,
+              7,
+              8,
+              1,
+              5,
+              4
+            ],
+            "key": 6
+          },
+          "locals": {
+            "i": 4,
+            "j": 3
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              3
+            ]
+          }
+        },
+        {
+          "id": 14,
+          "line": 8,
+          "label": "Insert 6 at position 2",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              2,
+              3,
+              6,
+              7,
+              8,
+              1,
+              5,
+              4
+            ],
+            "key": 6
+          },
+          "locals": {
+            "i": 4,
+            "j": 2
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              2
+            ]
+          }
+        },
+        {
+          "id": 15,
+          "line": 3,
+          "label": "Pick key 1",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              2,
+              3,
+              6,
+              7,
+              8,
+              1,
+              5,
+              4
+            ],
+            "key": 1
+          },
+          "locals": {
+            "i": 5,
+            "j": 5
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              5
+            ]
+          }
+        },
+        {
+          "id": 16,
+          "line": 6,
+          "label": "Shift 8 one place right",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              2,
+              3,
+              6,
+              7,
+              8,
+              8,
+              5,
+              4
+            ],
+            "key": 1
+          },
+          "locals": {
+            "i": 5,
+            "j": 5
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              5
+            ]
+          }
+        },
+        {
+          "id": 17,
+          "line": 6,
+          "label": "Shift 7 one place right",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              2,
+              3,
+              6,
+              7,
+              7,
+              8,
+              5,
+              4
+            ],
+            "key": 1
+          },
+          "locals": {
+            "i": 5,
+            "j": 4
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              4
+            ]
+          }
+        },
+        {
+          "id": 18,
+          "line": 6,
+          "label": "Shift 6 one place right",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              2,
+              3,
+              6,
+              6,
+              7,
+              8,
+              5,
+              4
+            ],
+            "key": 1
+          },
+          "locals": {
+            "i": 5,
+            "j": 3
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              3
+            ]
+          }
+        },
+        {
+          "id": 19,
+          "line": 6,
+          "label": "Shift 3 one place right",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              2,
+              3,
+              3,
+              6,
+              7,
+              8,
+              5,
+              4
+            ],
+            "key": 1
+          },
+          "locals": {
+            "i": 5,
+            "j": 2
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              2
+            ]
+          }
+        },
+        {
+          "id": 20,
+          "line": 6,
+          "label": "Shift 2 one place right",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              2,
+              2,
+              3,
+              6,
+              7,
+              8,
+              5,
+              4
+            ],
+            "key": 1
+          },
+          "locals": {
+            "i": 5,
+            "j": 1
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              1
+            ]
+          }
+        },
+        {
+          "id": 21,
+          "line": 8,
+          "label": "Insert 1 at position 0",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              1,
+              2,
+              3,
+              6,
+              7,
+              8,
+              5,
+              4
+            ],
+            "key": 1
+          },
+          "locals": {
+            "i": 5,
+            "j": 0
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              0
+            ]
+          }
+        },
+        {
+          "id": 22,
+          "line": 3,
+          "label": "Pick key 5",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              1,
+              2,
+              3,
+              6,
+              7,
+              8,
+              5,
+              4
+            ],
+            "key": 5
+          },
+          "locals": {
+            "i": 6,
+            "j": 6
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              6
+            ]
+          }
+        },
+        {
+          "id": 23,
+          "line": 6,
+          "label": "Shift 8 one place right",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              1,
+              2,
+              3,
+              6,
+              7,
+              8,
+              8,
+              4
+            ],
+            "key": 5
+          },
+          "locals": {
+            "i": 6,
+            "j": 6
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              6
+            ]
+          }
+        },
+        {
+          "id": 24,
+          "line": 6,
+          "label": "Shift 7 one place right",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              1,
+              2,
+              3,
+              6,
+              7,
+              7,
+              8,
+              4
+            ],
+            "key": 5
+          },
+          "locals": {
+            "i": 6,
+            "j": 5
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              5
+            ]
+          }
+        },
+        {
+          "id": 25,
+          "line": 6,
+          "label": "Shift 6 one place right",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              1,
+              2,
+              3,
+              6,
+              6,
+              7,
+              8,
+              4
+            ],
+            "key": 5
+          },
+          "locals": {
+            "i": 6,
+            "j": 4
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              4
+            ]
+          }
+        },
+        {
+          "id": 26,
+          "line": 8,
+          "label": "Insert 5 at position 3",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              1,
+              2,
+              3,
+              5,
+              6,
+              7,
+              8,
+              4
+            ],
+            "key": 5
+          },
+          "locals": {
+            "i": 6,
+            "j": 3
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              3
+            ]
+          }
+        },
+        {
+          "id": 27,
+          "line": 3,
+          "label": "Pick key 4",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              1,
+              2,
+              3,
+              5,
+              6,
+              7,
+              8,
+              4
+            ],
+            "key": 4
+          },
+          "locals": {
+            "i": 7,
+            "j": 7
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              7
+            ]
+          }
+        },
+        {
+          "id": 28,
+          "line": 6,
+          "label": "Shift 8 one place right",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              1,
+              2,
+              3,
+              5,
+              6,
+              7,
+              8,
+              8
+            ],
+            "key": 4
+          },
+          "locals": {
+            "i": 7,
+            "j": 7
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              7
+            ]
+          }
+        },
+        {
+          "id": 29,
+          "line": 6,
+          "label": "Shift 7 one place right",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              1,
+              2,
+              3,
+              5,
+              6,
+              7,
+              7,
+              8
+            ],
+            "key": 4
+          },
+          "locals": {
+            "i": 7,
+            "j": 6
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              6
+            ]
+          }
+        },
+        {
+          "id": 30,
+          "line": 6,
+          "label": "Shift 6 one place right",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              1,
+              2,
+              3,
+              5,
+              6,
+              6,
+              7,
+              8
+            ],
+            "key": 4
+          },
+          "locals": {
+            "i": 7,
+            "j": 5
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              5
+            ]
+          }
+        },
+        {
+          "id": 31,
+          "line": 6,
+          "label": "Shift 5 one place right",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              1,
+              2,
+              3,
+              5,
+              5,
+              6,
+              7,
+              8
+            ],
+            "key": 4
+          },
+          "locals": {
+            "i": 7,
+            "j": 4
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              4
+            ]
+          }
+        },
+        {
+          "id": 32,
+          "line": 8,
+          "label": "Insert 4 at position 3",
+          "stage": "Compute",
+          "values": {
+            "a": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8
+            ],
+            "key": 4
+          },
+          "locals": {
+            "i": 7,
+            "j": 3
+          },
+          "focus": {
+            "variable": "a",
+            "path": [
+              3
+            ]
+          }
+        },
+        {
+          "id": 33,
+          "line": 9,
+          "label": "Return the sorted array",
+          "stage": "Output",
+          "values": {
+            "a": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8
+            ],
+            "key": 4
+          },
+          "locals": {}
+        }
+      ]
+    }
+  }
+}
