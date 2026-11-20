@@ -101,7 +101,7 @@ impl<'a> Parser<'a> {
         let removed = match name.text.as_str() {
             "memo" => args.iter().find_map(|arg| match &arg.value.kind {
                 ExprKind::Name(kind) if arg.name.is_none() && (kind == "flat" || kind == "hash") => Some((
-                    format!("`@memo({kind})` was removed in CP Lang v2.2"),
+                    format!("`@memo({kind})` was removed in CP Lang 0.2.2"),
                     "write bare `@memo`: the table is flat when the arguments are small and hashed otherwise",
                 )),
                 _ => None,
@@ -111,12 +111,12 @@ impl<'a> Parser<'a> {
                 .any(|arg| arg.name.as_ref().is_some_and(|n| n.text == "count"))
                 .then(|| {
                     (
-                        "`@multitest(count:)` was removed in CP Lang v2.2".to_string(),
+                        "`@multitest(count:)` was removed in CP Lang 0.2.2".to_string(),
                         "read the count and loop: `for _ in 0..tests:`",
                     )
                 }),
             "grader" if self.at(T::Const) => Some((
-                "`@grader const` was removed in CP Lang v2.2".to_string(),
+                "`@grader const` was removed in CP Lang 0.2.2".to_string(),
                 "take the value as a parameter of the `@grader fn`",
             )),
             _ => None,
@@ -309,7 +309,7 @@ impl<'a> Parser<'a> {
                     Diagnostic::error(
                         codes::REMOVED_SYNTAX,
                         span,
-                        format!("`{word}` was removed in CP Lang v2.2"),
+                        format!("`{word}` was removed in CP Lang 0.2.2"),
                     )
                     .with_help(help),
                 );
@@ -396,7 +396,7 @@ impl<'a> Parser<'a> {
                 Diagnostic::error(
                     codes::REMOVED_SYNTAX,
                     span,
-                    "`where` guards were removed in CP Lang v2.2",
+                    "`where` guards were removed in CP Lang 0.2.2",
                 )
                 .with_help("put the constraint in the type (`let k: 0..n = read()`) or `assert` it on the next line"),
             );
@@ -463,7 +463,7 @@ impl<'a> Parser<'a> {
                 Diagnostic::error(
                     codes::REMOVED_SYNTAX,
                     span,
-                    "`for mut` was removed in CP Lang v2.2",
+                    "`for mut` was removed in CP Lang 0.2.2",
                 )
                 .with_help("loop over the indexes and assign through them: `for i in 0..xs.len: xs[i] += 1`"),
             );

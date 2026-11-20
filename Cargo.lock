@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "cpl-check"
-version = "0.0.0"
+version = "0.2.2"
 dependencies = [
  "cpl-diag",
  "cpl-syntax",
@@ -12,7 +12,7 @@ dependencies = [
 
 [[package]]
 name = "cpl-cli"
-version = "0.0.0"
+version = "0.2.2"
 dependencies = [
  "cpl-check",
  "cpl-codegen",
@@ -30,7 +30,7 @@ dependencies = [
 
 [[package]]
 name = "cpl-codegen"
-version = "0.0.0"
+version = "0.2.2"
 dependencies = [
  "cpl-check",
  "cpl-ir",
@@ -38,7 +38,7 @@ dependencies = [
 
 [[package]]
 name = "cpl-contest"
-version = "0.0.0"
+version = "0.2.2"
 dependencies = [
  "cpl-check",
  "cpl-diag",
@@ -49,11 +49,11 @@ dependencies = [
 
 [[package]]
 name = "cpl-diag"
-version = "0.0.0"
+version = "0.2.2"
 
 [[package]]
 name = "cpl-doc"
-version = "0.0.0"
+version = "0.2.2"
 dependencies = [
  "cpl-diag",
  "cpl-syntax",
@@ -61,7 +61,7 @@ dependencies = [
 
 [[package]]
 name = "cpl-fmt"
-version = "0.0.0"
+version = "0.2.2"
 dependencies = [
  "cpl-diag",
  "cpl-syntax",
@@ -69,7 +69,7 @@ dependencies = [
 
 [[package]]
 name = "cpl-interp"
-version = "0.0.0"
+version = "0.2.2"
 dependencies = [
  "cpl-check",
  "cpl-diag",
@@ -78,7 +78,7 @@ dependencies = [
 
 [[package]]
 name = "cpl-ir"
-version = "0.0.0"
+version = "0.2.2"
 dependencies = [
  "cpl-check",
  "cpl-diag",
@@ -87,7 +87,7 @@ dependencies = [
 
 [[package]]
 name = "cpl-lint"
-version = "0.0.0"
+version = "0.2.2"
 dependencies = [
  "cpl-diag",
  "cpl-syntax",
@@ -95,7 +95,7 @@ dependencies = [
 
 [[package]]
 name = "cpl-lsp"
-version = "0.0.0"
+version = "0.2.2"
 dependencies = [
  "cpl-check",
  "cpl-diag",
@@ -103,11 +103,11 @@ dependencies = [
 
 [[package]]
 name = "cpl-prover"
-version = "0.0.0"
+version = "0.2.2"
 
 [[package]]
 name = "cpl-stress"
-version = "0.0.0"
+version = "0.2.2"
 dependencies = [
  "cpl-check",
  "cpl-codegen",
@@ -118,18 +118,18 @@ dependencies = [
 
 [[package]]
 name = "cpl-syntax"
-version = "0.0.0"
+version = "0.2.2"
 dependencies = [
  "cpl-diag",
 ]
 
 [[package]]
 name = "cpl-verify"
-version = "0.0.0"
+version = "0.2.2"
 
 [[package]]
 name = "cpl-wasm"
-version = "0.0.0"
+version = "0.2.2"
 dependencies = [
  "cpl-check",
  "cpl-cli",

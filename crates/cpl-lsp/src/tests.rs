@@ -609,7 +609,7 @@ fn v22_removed_forms_are_reported_with_what_to_write() {
     let expected = [
         (6, "`+=` can't be applied to an ?Int\nhelp: write `x = x + y` when `none` should stay `none`"),
         (8, "`??` mixed with `+ - * / %` needs parentheses\nhelp: write `(a ?? 0) + b`"),
-        (9, "`defer` was removed in CP Lang v2.2\nhelp: undo by hand after the call"),
+        (9, "`defer` was removed in CP Lang 0.2.2\nhelp: undo by hand after the call"),
         (10, "`sum` adds numbers, not an ?Int\nhelp: `sum` does not skip or absorb `none`"),
     ];
     assert_eq!(found.len(), expected.len(), "{found:?}");
@@ -624,5 +624,5 @@ fn v22_removed_forms_are_reported_with_what_to_write() {
     assert_eq!(found[0].0, 5);
     assert!(found[0]
         .1
-        .starts_with("`for mut` was removed in CP Lang v2.2\nhelp: loop over the indexes"));
+        .starts_with("`for mut` was removed in CP Lang 0.2.2\nhelp: loop over the indexes"));
 }
