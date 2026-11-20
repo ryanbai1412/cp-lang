@@ -38,6 +38,8 @@ cout << (dist[t] == INF ? -1 : dist[t]) << '\n';
 ```
 
 ```cp CP Lang 0.2.2
+domain V = 1..=3
+let (src, u, v, t, w) = (V(1), V(1), V(2), V(2), 7)
 var dist: [V]?Int = none
 dist[src] = 0
 dist[v] min= dist[u] + w
@@ -69,13 +71,18 @@ print(dist[t] ?? -1)
 
 CP Lang is designed so clean high-level code matches hand-written `g++ -O2` C++17 within a narrow margin, while giving you explicit escape hatches whenever a tight time limit demands raw control:
 
-- **`a.raw[i]`:** index any domain-indexed array with a raw 0-based `Int` offset when translating an intricate pointer formula (bounds-checked in local `cpl run`, raw offset in release C++17).
+- **Plain integer indexing:** use structural range arrays such as `[0..n]Int` when an algorithm needs numeric offsets. The specified `a.raw[i]` escape for nominal arrays is not yet supported by the execution backend.
 - **`unchecked:` block:** opt out of local overflow and bounds checks inside an inner hot loop you have already proved safe:
 
 ```cp CP Lang 0.2.2
+let n = 3
+let a: [0..n]Int = 2
+let b: [0..n]Int = 3
+var acc = 0
 unchecked:
     for i in 0..n:
-        acc += a.raw[i] * b.raw[i]
+        acc += a[i] * b[i]
+print(acc)
 ```
 
 - **Touched-list reset instead of full `fill`:** in multi-query algorithms where each query only touches a few indices of a `[D]Int` or `[D]Bool` table, clear only the touched list (or import `std.marks.Marks<D>` for `O(1)` 32-bit generation-stamp resets).

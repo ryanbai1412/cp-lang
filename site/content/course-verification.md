@@ -20,10 +20,14 @@ Run the fast prefix-minimum solution above in the sandbox, inspect **C++17** to 
 When a problem accepts any valid coloring, permutation, or construction, character-by-character comparison against a brute fails. Add a `@checker` block in the same file:
 
 ```cp CP Lang 0.2.2 · local cpl stress
+domain V = 1..=5
+print([V] v => v.to_idx % 2)
+
 @checker
 fn check():
-    let out: [V]Color = read_output()
-    assert valid(out)
+    let out: [V]0..=1 = read_output()
+    for v in V if v != V.last:
+        assert out[v] != out[(v + 1)!]
 ```
 
 When paired with `@brute(main)`, the brute settles **existence** (e.g., whether a valid coloring exists or the answer is `-1`), while `@checker` validates any constructive answer your fast solution prints.
@@ -56,9 +60,26 @@ Any program that calls `ask(...)` automatically flushes every `print(...)`, so f
 
 For answer binary search and interactive halving, CP Lang 0.2.2 provides two canonical functions on any ordered range (`bsearch_first`, `bsearch_last`) returning `?I`:
 
-```cp CP Lang 0.2.2 · spec fragment
+```cp CP Lang 0.2.2
+let weights = [3, 2, 5, 1]
+let days = 2
+fn can_ship(cap: Int) -> Bool:
+    var used = 1
+    var load = 0
+    for w in weights:
+        if w > cap: return false
+        if load + w > cap:
+            used += 1
+            load = 0
+        load += w
+    used <= days
+
+let n = 10
+let budget = 25
+fn cost(k: Int) -> Int: k * k
 let min_cap = bsearch_first(1..=1e9, cap => can_ship(cap))
 let max_k = bsearch_last(0..=n, k => cost(k) <= budget)
+print(min_cap, max_k)
 ```
 
 Returning `?I` means "no value satisfies the predicate" is `none` rather than a sentinel. On `F64` ranges, pass `steps: 80`. For cached recurrences with `@memo`, see [Chapter 5](course-dp.html).

@@ -11,6 +11,8 @@ import tempfile
 import unittest
 from urllib.parse import unquote, urlsplit
 
+import mistune
+
 import build
 
 ROOT = Path(__file__).resolve().parent
@@ -38,6 +40,32 @@ def compile_native(source, name, directory):
     return executable
 
 
+def documentation_paths():
+    return [*sorted((ROOT / "content").glob("*.md")),
+            REPO / "docs/one-page-cheat-sheet.md"]
+
+
+def documented_programs():
+    markdown = mistune.create_markdown(renderer="ast")
+
+    def blocks(tokens):
+        for token in tokens:
+            if token["type"] == "block_code":
+                info = token.get("attrs", {}).get("info", "").split()
+                if info and info[0].lower() == "cp":
+                    yield token["raw"]
+            yield from blocks(token.get("children", []))
+
+    for path in documentation_paths():
+        for number, source in enumerate(blocks(markdown(path.read_text())), 1):
+            yield path, number, source
+
+
+def documentation_workspace(directory):
+    library = REPO / "examples/local-lib"
+    (Path(directory) / "cp.toml").write_text(f'[libs]\nlib = "{library.as_posix()}"\n')
+
+
 class Page(HTMLParser):
     def __init__(self, source):
         super().__init__()
@@ -62,6 +90,25 @@ class SiteTests(unittest.TestCase):
     def setUpClass(cls):
         subprocess.run(["cargo", "build", "-p", "cpl-cli"], cwd=REPO, check=True)
         build.build()
+
+    def test_every_documented_cp_block_checks_builds_and_emits_cpp17(self):
+        programs = list(documented_programs())
+        self.assertTrue(programs)
+        passed = 0
+        with tempfile.TemporaryDirectory(prefix="cpl-docs-") as temporary:
+            documentation_workspace(temporary)
+            for path, number, source in programs:
+                with self.subTest(document=str(path.relative_to(REPO)), block=number):
+                    cp = Path(temporary) / f"{path.stem}-{number}.cp"
+                    cp.write_text(source)
+                    cpl("check", cp)
+                    cpp = cp.with_suffix(".cpp")
+                    cpl("build", cp, "-o", cpp)
+                    result = subprocess.run(["g++", "-std=c++17", "-fsyntax-only", str(cpp)],
+                                            capture_output=True, text=True, timeout=60)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    passed += 1
+        print(f"Documentation CP blocks: {passed}/{len(programs)} pass check/build/C++17", flush=True)
 
     def test_every_showcase_port_checks_builds_and_emits_valid_cpp17(self):
         from showcase import SHOWCASE_ITEMS
@@ -383,8 +430,7 @@ class SiteTests(unittest.TestCase):
             self.assertIsNone(match, f"{path.name} contains internal/stale text: {match.group(0) if match else ''}")
 
     def test_authored_copy_does_not_advertise_unbuilt_collection_apis(self):
-        # The canonical cheat sheet lives outside site/ and has its own owner.
-        for path in (ROOT / "content").glob("*.md"):
+        for path in documentation_paths():
             self.assertNotRegex(path.read_text(),
                                 r"\bHashSet\b|\bpop_(?:first|last)\b|\bSet(?:<[^>]+>)?\.rank\b",
                                 path.name)

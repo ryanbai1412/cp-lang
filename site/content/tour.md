@@ -30,6 +30,8 @@ In CP Lang 0.2.2, `cnt.fill(0)` resets the entire array in place (and `seen.fill
 Parameters borrow read-only by default. A function that mutates an argument marks it `mut`, and the caller writes `mut` too. There is no implicit deep copy of an array.
 
 ```cp CP Lang 0.2.2
+domain V = 1..=3
+var a: [V]Int = 0
 fn add_to(mut a: [V]Int, v: V, delta: Int):
     a[v] += delta
 
@@ -40,11 +42,15 @@ let snapshot = a.copy()
 A plain nested `fn` can read and mutate captured outer `var` bindings directly—ideal for a DFS that updates `vis` and `order` without threading extra parameters:
 
 ```cp CP Lang 0.2.2
+domain V = 1..=4
+let g = Graph.undirected([(V(1), V(2)), (V(2), V(3)), (V(2), V(4))])
 var vis: [V]Bool = false
 fn dfs(u: V):
     vis[u] = true
     for v in g[u] if not vis[v]:
         dfs(v)
+dfs(V.first)
+print(vis)
 ```
 
 Read [ownership & borrowing](borrowing.html) for the lexical rules behind `mut` borrows and `lends` projections.
@@ -54,6 +60,7 @@ Read [ownership & borrowing](borrowing.html) for the lexical rules behind `mut` 
 Swap or step coupled state with parallel tuple assignment—the right-hand side is evaluated completely before any binding is written:
 
 ```cp CP Lang 0.2.2
+let (a, b) = (48, 18)
 var (r0, r1) = (a, b)
 while r1 != 0:
     let q = r0 / r1
@@ -63,18 +70,35 @@ while r1 != 0:
 There is no `defer`. Undo is one explicit line after the work it covers, which also works across sibling branches and early returns:
 
 ```cp CP Lang 0.2.2
+domain V = 1..=3
+var dsu = Dsu<V>()
+fn solve(v: V) -> Bool: dsu.unite(V.first, v)
+let left = V.last
 let snap = dsu.mark()
 solve(left)
 dsu.undo_to(snap)
 
-cur.push(x)
-dfs(step + 1)
-cur.pop()
+print(dsu.components)
+
+var cur: List<Int> = []
+fn dfs(step: Int):
+    if step == 3:
+        print(cur)
+        return
+    for x in 0..2:
+        cur.push(x)
+        dfs(step + 1)
+        cur.pop()
+dfs(0)
 ```
 
 Name record fields instead of remembering `.first.second`, and match enums exhaustively with bare variant names:
 
 ```cp CP Lang 0.2.2
+let n: 1..=100 = read()
+let m: 0..=100 = read()
+domain V = 1..=n
+var a: [V]Int = 0
 type Edge = (u: V, v: V, w: 1..=1e9)
 let edges: [0..m]Edge = read()
 
@@ -82,9 +106,10 @@ enum Move:
     Add(v: V, delta: Int)
     Ask(l: V, r: V)
 
+let move = Add(V.first, 5)
 match move:
-    Add(v, delta) => add_to(mut a, v, delta)
-    Ask(l, r) => print(range_sum(l, r))
+    Add(v, delta) => a[v] += delta
+    Ask(l, r) => print(sum(a[v] for v in l..=r))
 ```
 
 ## A few C++ habits to leave behind

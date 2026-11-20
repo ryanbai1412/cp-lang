@@ -56,12 +56,18 @@ Its key innovation is a **value-owned preorder domain** `t.Pre`:
 use std.tree.{Rooted}
 use std.segtree.{SegTree}
 
+domain V = 1..=4
+let g = Graph.undirected([(V(1), V(2)), (V(2), V(3)), (V(2), V(4))])
+let weight: [V]Int = [V] v => v.to_idx + 1
+let (u, v) = (V(3), V(4))
 let t = Rooted(g, V.first)
-var st = SegTree<t.Pre, Int>(+, [t.Pre] p => weight[t.preorder[p]])
+var st = SegTree<t.Pre, Int>(+)
+for v in V: st.set(t.pos(v), weight[v])
 
 let sub_sum = st.fold(t.sub(u))          // t.sub(u) has type Range<t.Pre>
 let path_sum = t.fold_path(u, v, st)     // HLD path fold in O(log^2 n)
 let anc = t.lca(u, v)                    // O(log n) LCA
+print(sub_sum, path_sum, anc)
 ```
 
 Because `st` is indexed by `t.Pre` and `t.sub(u)` returns `Range<t.Pre>`, the type checker guarantees you can never pass a raw vertex `u: V` to `st.set(...)` without mapping it through `t.pos(u)`.
@@ -69,23 +75,31 @@ Because `st` is indexed by `t.Pre` and `t.sub(u)` returns `Range<t.Pre>`, the ty
 ```exercise graphs-rooted-domain
 ```
 
-## Network flow with payload enums
+## Network flow with typed vertices
 
-In C++, Dinic's algorithm is notorious for off-by-one vertex numbering (`source = 0`, `left = 1..n`, `right = n+1..n+m`, `sink = n+m+1`). In CP Lang, pair `FlowGraph<Node>` with a **payload enum**:
+`FlowGraph<Node>` provides Dinic's algorithm over a vertex domain. Keep the left/right-to-vertex conversions in two helpers so offset arithmetic has one home. Payload enums are intended to replace these conversions, but payload-enum flow indexing is not yet supported by the execution backend:
 
 ```cp CP Lang 0.2.2
 use std.flow.{FlowGraph}
 
-enum Node: Src; Sink; Left(L); Right(R)
+let (n, m) = (2, 2)
+domain L = 0..n
+domain R = 0..m
+domain Node = 0..(n + m + 2)
+let (src, sink) = (Node(0), Node(1))
+fn left(v: L) -> Node: Node(2 + v.to_idx)
+fn right(v: R) -> Node: Node(2 + n + v.to_idx)
+
+let pairs: List<(L, R)> = [(L(0), R(0)), (L(1), R(1))]
 
 var fg = FlowGraph<Node>()
-for a in L: fg.add_edge(Node.Src, Node.Left(a), 1)
-for b in R: fg.add_edge(Node.Right(b), Node.Sink, 1)
-for (a, b) in pairs: fg.add_edge(Node.Left(a), Node.Right(b), 1)
-print(fg.max_flow(Node.Src, Node.Sink))
+for a in L: fg.add(src, left(a), 1)
+for b in R: fg.add(right(b), sink, 1)
+for (a, b) in pairs: fg.add(left(a), right(b), 1)
+print(fg.max_flow(src, sink))
 ```
 
-No manual offset math, no `2 * n + 2` sizing bugs, and the compiler packs `Node` densely into flat indices under the hood.
+This example matches both pairs and prints `2`. The domain gives the network exactly `n + m + 2` vertices; `left` and `right` return checked `Node` values rather than untyped integers.
 
 ## Number theory, string algorithms, and integer geometry
 

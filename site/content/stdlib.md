@@ -9,6 +9,12 @@ Construct empty `List<T>` and `Deque<T>` with `= []`; construct all other contai
 - **`MinHeap<T>()` / `MaxHeap<T>()`:** `.push(x)`, `.pop() -> ?T`, `.peek -> ?T`. For mixed-order keys inside tuples or `sort(..., by:)`, wrap descending fields with `desc(x)` (type `Desc<T>`):
 
 ```cp CP Lang 0.2.2
+use std.algebra.{desc}
+
+domain V = 0..4
+let (dist, u) = (3, V.first)
+type Item = (cost: Int, value: Int)
+var items: List<Item> = [(2, 10), (1, 5)]
 var pq = MinHeap<(Int, Desc<V>)>()
 pq.push((dist, desc(u)))
 sort(mut items, by: x => (x.cost, desc(x.value)))
@@ -23,8 +29,13 @@ sort(mut items, by: x => (x.cost, desc(x.value)))
 Answer-space binary search uses two free functions (`F64` ranges take `steps: 80`), both returning `?I`:
 
 ```cp CP Lang 0.2.2
+let n = 10
+let budget = 25
+fn feasible(x: Int) -> Bool: x >= 42
+fn cost(k: Int) -> Int: k * k
 let ans = bsearch_first(1..=1e9, x => feasible(x))
 let hi = bsearch_last(0..=n, k => cost(k) <= budget)
+print(ans, hi)
 ```
 
 Sorted lookup uses `.first_ge(x)`, `.first_gt(x)`, `.last_le(x)`, `.last_lt(x)` everywhere, with the return type matching the container:
@@ -48,19 +59,32 @@ Other prelude sequence helpers:
 Range structures accept bare associative operators (`+`, `*`, `^`, `&`, `|`, `min`, `max`, `gcd`) directly, or a custom `Monoid(id, op)`. Lazy segment trees accept stock tags (`AddSum`, `AddMin`, `AddMax`, `AssignSum`, `AssignMin`, `AssignMax`) or a custom `Action(id, compose, apply, over: op)`:
 
 ```cp CP Lang 0.2.2
+use std.algebra.{Monoid, Action}
+use std.segtree.{SegTree}
+use std.lazy.{LazySegTree}
+
+domain V = 1..=4
+let a: [V]Int = 3
+struct Node:
+    value: Int
+fn merge(a: Node, b: Node) -> Node: Node(a.value + b.value)
+let nodes: [V]Node = [V] v => Node(a[v])
+
 var bit = Fenwick<V, Int>(a)                        // sum-only: .add(i, d), .sum(l..=r)
 var rmq = SparseTable<V, Int>(min, a)               // O(1) .fold(l..=r) -> Int (non-empty range)
 var st = SegTree<V, Int>(+, a)                      // bare operator
-var mx = SegTree<V, Node>(Monoid(Node.ID, merge), a)// custom monoid
+var mx = SegTree<V, Node>(Monoid<Node>(Node(0), merge), nodes)
 var lz = LazySegTree<V, Int>(AddSum, a)             // range add + range sum
 
-let aff = Action(
+let aff = Action<Int, (Int, Int)>(
     (1, 0),
     (new_f, old_f) => (new_f.0 * old_f.0, new_f.0 * old_f.1 + new_f.1),
     (f, val, span) => f.0 * val + f.1 * span,
-    over: +,
+    over: Monoid<Int>(0, (x, y) => x + y),
 )
-var affine = LazySegTree<V, Int>(aff, a)
+var affine = LazySegTree<V, Int, (Int, Int)>(aff, a)
+affine.apply(V.first..=V.last, (2, 1))
+print(bit.sum(V.first..=V.last), rmq.fold(V.first..=V.last), st.all, mx.all.value, lz.all, affine.all)
 ```
 
 - `SegTree` and `LazySegTree` both provide `.set(pos, val)`, `.fold(l..=r)`, `.all` (`O(1)` root fold), and `O(log n)` binary search on the tree via `.max_right(l, ok)` and `.min_left(r, ok)`. Empty and inverted ranges are valid no-ops (except `SparseTable.fold`, which asserts a non-empty range and returns `T`).

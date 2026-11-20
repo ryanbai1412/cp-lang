@@ -6,8 +6,11 @@ The target type drives `read()`. Reading scalars, tuples, records, fixed-size ar
 
 ```cp CP Lang 0.2.2
 let n: 1..=2e5 = read()
+let m: 0..=2e5 = read()
 let (l, r): (Int, Int) = read()
 domain V = 1..=n
+domain Row = 1..=n
+domain Col = 1..=n
 let a: [V]Int = read()
 let edges: [0..m](u: V, v: V, w: Int) = read()
 let grid: [Row, Col]Char = read()
@@ -17,34 +20,56 @@ let grid: [Row, Col]Char = read()
 
 Range bounds can reference earlier `let` bindings (`let k: 1..=n = read()`), and reading a domain value `let u: V = read()` automatically parses the input integer and checks that it belongs to `V`. In local runs (`cpl run`, `cpl stress`), out-of-range inputs trap immediately; in `cpl build` release C++17, fast buffered parsing eliminates `cin`/`sync_with_stdio` boilerplate.
 
-### Sentinels, EOF loops, and raw lines
+### Sentinels and EOF loops
 
-When a problem uses a sentinel integer like `-1` to mean "no parent" or "missing", decode it directly into `?T` at the boundary:
+When a problem uses a sentinel integer like `-1` to mean "no parent" or "missing", decode it into `?T` at the boundary. The specified `read(none: ...)` shorthand is not yet implemented:
 
 ```cp CP Lang 0.2.2
-let parent: [V]?V = read(none: -1)      // maps -1 directly to none
+let n: 1..=2e5 = read()
+domain V = 1..=n
+var parent: [V]?V = none
+for v in V:
+    let p: Int = read()
+    if p != -1: parent[v] = V(p)
 ```
 
-For problems that terminate on a sentinel value or EOF, or read full lines containing spaces:
+For problems that terminate on a sentinel value, write an ordinary loop:
 
 ```cp CP Lang 0.2.2
 while true:
     let (n, m): (Int, Int) = read()
     if (n, m) == (0, 0): break          // stops when (0, 0) is read
     print(n + m)
-
-let line: Str = read_line()             // reads a full ASCII line (strips trailing \r/\n)
 ```
 
-### Character-encoded grids and queries with `@tags`
+Use `@!multitest(until_eof)` for repeated test cases ending at EOF. `read()` currently reads whitespace-delimited tokens; a full-line `read_line()` API is not implemented.
 
-Attach `@tags("...")` to a unit enum to map single-character tokens straight to enum variants during `read()` and `print()`:
+### Character-encoded grids and state enums
+
+Read a character grid and map its alphabet to enum states with `match`. Automatic `@tags` I/O is specification-only in the current execution backend:
 
 ```cp CP Lang 0.2.2
-@tags(".#SE")
-enum Cell: Empty; Wall; Start; End
+let n: 1..=50 = read()
+let m: 1..=50 = read()
+domain Row = 1..=n
+domain Col = 1..=m
+enum Cell:
+    Empty
+    Wall
+    Start
+    End
 
-let grid: [Row, Col]Cell = read()       // reads n rows of '.', '#', 'S', 'E' directly
+let grid: [Row, Col]Char = read()
+for r in Row:
+    for c in Col:
+        let ch = grid[r, c]
+        assert ch in ".#SE"
+        let cell = match ch:
+            '.' => Empty
+            '#' => Wall
+            'S' => Start
+            _ => End
+        if cell == Start: print(r, c)
 ```
 
 ## Output with `print()` and format strings
@@ -52,11 +77,16 @@ let grid: [Row, Col]Cell = read()       // reads n rows of '.', '#', 'S', 'E' di
 `print(...)` separates arguments with single spaces and writes a trailing newline. Arrays and lists print space-separated on one line, and `Bool` prints `YES` or `NO` (the standard contest convention):
 
 ```cp CP Lang 0.2.2
+let ans = 42
+let (a, b) = (3, 7)
+let arr = [3, 7]
+let dist: List<?Int> = [0, none, 7]
+let ok = true
 print(ans)                              // single value
 print(a, b)                             // space-separated: "3 7"
 print(arr)                              // space-separated elements on one line
 print(arr, sep: "\n")                   // one element per line
-print(dist, none: -1)                   // prints ?Int array, writing -1 for every none
+print(dist, none: "-1")                 // prints ?Int array, writing -1 for every none
 print(ok)                               // YES or NO
 ```
 
@@ -65,6 +95,9 @@ print(ok)                               // YES or NO
 Interpolate any expression inside `"..."` with `{expr}` and optional format specifiers after `:`:
 
 ```cp CP Lang 0.2.2
+let (tc, ans, n) = (1, 42, 42)
+let x = 7.0 / 3.0
+let (num, den) = (1, 7)
 print("Case #{tc}: {ans}")              // string interpolation
 print("{n:5}")                          // width 5, space-padded
 print("{n:05}")                         // width 5, zero-padded ("00042")
@@ -107,10 +140,10 @@ Three rules make `@!multitest` effortless:
 In interactive problems, forgetting `flush` causes Idleness Limit Exceeded. Use `ask(...)` — it prints the query, flushes stdout automatically, and parses the judge's reply into the expected type:
 
 ```cp CP Lang 0.2.2
-let ans = bsearch_first(1..=1_000_000_000, x => {
+fn at_least(x: Int) -> Bool:
     let reply: Str = ask("?", x, limit: 30)
     reply == ">="
-})!
+let ans = bsearch_first(1..=1_000_000_000, at_least)!
 print("!", ans)
 ```
 
@@ -121,12 +154,12 @@ Passing an optional `limit:` lets the co-located `@interactor` enforce your quer
 For IOI-style problems where the judge supplies `main()` and calls your functions (while exposing grader callbacks), mark extern and entry functions with `@grader`:
 
 ```cp CP Lang 0.2.2
-@grader("extern")
+@grader
 fn query(l: Int, r: Int) -> Int
 
-@grader("entry")
+@grader
 fn solve(n: Int) -> Int:
-    ...
+    query(0, n - 1)
 ```
 
 When compiling with `cpl build`, CP Lang emits the exact C++ function signatures expected by the judge header instead of generating a `main()` function.

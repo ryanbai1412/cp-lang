@@ -107,7 +107,10 @@ Use `@!multitest(until_eof)` when the judge gives test cases until EOF instead o
 
 `print` writes its arguments separated by single spaces and ends the line. Arrays print space-separated on one line, and `Bool` prints `YES` or `NO`:
 
-```cp CP Lang 0.2.2 · fragment
+```cp CP Lang 0.2.2
+let a = [-3, 8, -4, 7, 8]
+let best = max(a)!
+let evens = count(x % 2 == 0 for x in a)
 print(best, evens)      // 8 3
 print(a)                // -3 8 -4 7 8
 print(best > 0)         // YES

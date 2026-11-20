@@ -11,7 +11,7 @@ Because every value of `I` is constructed inside `0..K`, `[I]T` lowers to a flat
 
 ## Grids, `Cell = (Row, Col)`, and `p.adj4` / `p.adj8`
 
-A two-dimensional grid `[Row, Col]T` is indexed by the product domain `type Cell = (Row, Col)`. Every `Cell` implements `Index`, so `[Cell]T`, `bfs`, `Dsu<Cell>`, and `@memo` accept grid cells directly.
+A two-dimensional grid `[Row, Col]T` uses row and column domains. Name their pair `type Cell = (Row, Col)` when passing coordinates to a helper. The examples below use supported nested domain loops and direct `g[r, c]` access; fully generic product-domain indexing is still being completed.
 
 ```cp CP Lang · grid-sum.cp
 let h: 1..=50 = read()
@@ -33,20 +33,29 @@ for r in Row:
 print(total, sum(g), total == sum(g))
 ```
 
-In the full 0.2.2 grid API (`std.grid`, spec), `p.adj4` and `p.adj8` yield in-bounds neighbors without `dr`/`dc` arrays:
+Import `adj4` from `std.grid` to visit in-bounds neighbors without writing `dr`/`dc` arrays:
 
-```cp CP Lang 0.2.2 · spec fragment
+```cp CP Lang 0.2.2
+use std.grid.{adj4}
+
+let h: 1..=50 = read()
+let w: 1..=50 = read()
+domain Row = 1..=h
+domain Col = 1..=w
 type Cell = (Row, Col)
 let g: [Row, Col]Char = read()
-for p in (Row, Col):
-    for q in p.adj4:
-        if g[q] != '#':
-            visit(q)
+fn visit(p: Cell): print(p)
+for r in Row:
+    for c in Col:
+        let p: Cell = (r, c)
+        for q in p.adj4:
+            if g[q.0, q.1] != '#':
+                visit(q)
 ```
 
 ## Ranges, slices, and `compress(all)`
 
-One `Range<I>` type covers `l..r`, `l..=r`, and open-ended `..i`, `..=i`, `i..`, `i.r..`, and `l.r..r.l`. A range is plain data: you can store it in a variable or return it from a helper, then apply it to an array at the point of use (`sort(mut a[w])`) to form a temporary slice without changing index numbering.
+One `Range<I>` type covers `l..r`, `l..=r`, and open-ended `..i`, `..=i`, `i..`, `i.r..`, and `l.r..r.l`. A range is plain data: store it in a variable or return it from a helper, then use it to read a slice or query a data structure. The current compiler materializes array slices rather than providing parent-indexed mutable views.
 
 > **Current slice support.** Parent-indexed slicing and in-place slice sorting are not yet complete in the compiler or browser. To sort part of an array today, copy the selected values into a list, sort that list, and write it back explicitly:
 
@@ -64,31 +73,32 @@ for i in 0..mid.len:
 print(a)
 ```
 
-The full 0.2.2 specification retains parent indices in a slice (`mid[V(3)]` means the original position `V(3)`) and permits sorting the window in place. This form is not yet runnable:
+The full slice specification retains parent indices and permits sorting the window in place; that form is not yet implemented. Read-only slice aggregates work today. Keep element access and mutations explicit with the copy-and-writeback technique above:
 
-```cp CP Lang 0.2.2 · spec fragment
+```cp CP Lang 0.2.2
 let n: 4..=50 = read()
 domain V = 1..=n
 var a: [V]Int = read()
 
 let mid = a[V(2)..=V(4)]
-print(mid.len, mid[V(3)], sum(mid))
-sort(mut a[V(2)..=V(4)])
-print(a)
+print(mid.len, sum(mid))
 ```
 
-When input values reach `1e9` and only relative order matters, `compress(all)` creates a fresh nominal domain `xs.D` with `xs.at(val) -> xs.D`, `xs.first_ge(val) -> ?xs.D`, and inverse lookup `xs[id]` (spec):
+When input values reach `1e9` and only relative order matters, `compress(all)` creates a fresh nominal domain `xs.D` with `xs.at(val) -> xs.D`, `xs.first_ge(val) -> ?xs.D`, and inverse lookup `xs[id]`:
 
-```cp CP Lang 0.2.2 · spec fragment
+```cp CP Lang 0.2.2
+let all_vals = [1_000_000_000, 7, 42]
+let queries = [7, 42, 7]
 let xs = compress(all_vals)
 var bit = Fenwick<xs.D, Int>()
 for x in queries:
     bit.add(xs.at(x), 1)
+print(bit.sum(xs.D.first..=xs.D.last))
 ```
 
 ## Value-semantic `Str` and opt-in `[domain S]Char`
 
-Default `Str` is a flat, value-semantic, `0..s.len`-indexed ASCII byte sequence (zero UTF-8, O(1) indexing `s[i]`, O(1) slicing `s[l..r]`). When a multi-string DP benefits from nominal position types, opt into `[domain S]Char`:
+Default `Str` is a flat, value-semantic, `0..s.len`-indexed ASCII byte sequence (zero UTF-8, O(1) indexing `s[i]`). Slicing `s[l..r]` currently creates a copy. When a multi-string DP benefits from nominal position types, opt into `[domain S]Char`:
 
 ```example ascii
 ```

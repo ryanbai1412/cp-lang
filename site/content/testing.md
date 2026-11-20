@@ -5,12 +5,16 @@ Contest bugs rarely come from the algorithm idea — they come from an edge case
 Annotate a pure recursive function with `@memo` to cache its results over any `Index` or range parameter tuple:
 
 ```cp CP Lang 0.2.2
+domain V = 0..20
 @memo
 fn dp(u: V, used: Bool) -> Int:
-    ...
+    if u == V.first: return if used: 1 else: 0
+    let prev = (u - 1)!
+    dp(prev, false) + dp(prev, true)
+print(dp(V.last, true))
 ```
 
-`@memo` takes no parameters and chooses its storage layout automatically:
+Bare `@memo` chooses its storage layout automatically (`@memo(into: table)` exposes a dense table when you want explicit control):
 
 - When every parameter is an algebraic `Index` or range and the total state count is at most `2^24`, `@memo` allocates a flat contiguous dense table with zero hashing overhead.
 - Larger state spaces fall back automatically to a per-process salted open-addressed hash table.
@@ -37,48 +41,47 @@ There is one assertion keyword, so a sanity check is never silently stripped in 
 Write your slow reference, constructive validator, or interactive judge in the same file as your solution:
 
 ```cp CP Lang 0.2.2
+let n: 1..=1000 = read()
+let a: [0..n]Int = read()
+print(sum(a))
+
 @gen
 fn make_case(size: Int):
-    let n = rand(1..=size)
-    emit(n)
-    emit([0..n] _ => rand(-10..=10))
+    let n = rand(1, size)
+    print(n)
+    print([rand(-10, 10) for _ in 0..n])
 
 @brute(main)
 fn slow():
-    ...
+    var total = 0
+    for x in a: total += x
+    print(total)
 
 @checker
 fn check():
-    let ans: [V]Int = read_output()
-    assert is_valid(ans)
-
-@interactor
-fn judge(sol: Interactor):
-    let (n, secret): (1..=1000, 1..=n) = read()   // hidden test input
-    sol.send(n)                                    // send to solution's stdin
-    var qs = 0
-    while true:
-        let kind: Str = sol.recv()                 // read from solution's stdout
-        if kind == "!":
-            let guess: Int = sol.recv()
-            assert guess == secret
-            return
-        qs += 1
-        assert qs <= 12
-        let x: Int = sol.recv()
-        sol.send(if x < secret: "<" else: ">=")
+    let ans: Int = read_output()
+    assert ans == sum(a)
 ```
 
-In interactive problems, pair `@interactor` with `ask("?", x, limit: 12)` so query budgets are enforced locally. Any program that calls `ask(...)` flushes every `print(...)` automatically. Every generator draws from a replayable choice stream, enabling automatic structure-aware shrinking of failing tests without writing a custom shrinker.
+This complete sum program uses `print()` inside `@gen` to produce test input. For an interactive program, use the separate `@interactor` example in [the verification course](course-verification.html#co-located-interactor-and-query-budgets); do not combine its protocol with the sum program. Any program that calls `ask(...)` flushes every `print(...)` automatically. Every generator draws from a replayable choice stream, enabling automatic structure-aware shrinking of failing tests without writing a custom shrinker.
 
 ## Pattern and DP structure discovery (`std.spec`)
 
 When you have a slow `@brute` solution and want to check whether a sequence obeys a linear recurrence or whether a DP transition satisfies monotonicity, convexity (Aliens/WQS), or the quadrangle inequality (Knuth / divide-and-conquer DP), `std.spec` and local spec helpers let you test hypotheses empirically on small inputs before writing the fast algorithm:
 
 ```cp CP Lang 0.2.2
+use lib.spec.recurrence.{integer_recurrence, show_recurrence}
+
+@memo
+fn tilings(n: 0..=12) -> Int:
+    if n == 0: return 1
+    if n % 2 == 1: return 0
+    if n == 2: return 3
+    4 * tilings(n - 2) - tilings(n - 4)
+
 let small = [tilings(n) for n in 0..12]
 let coeffs = integer_recurrence(small)!
-show_recurrence(coeffs)                          // "a[n] = 4 a[n-2] - a[n-4]"
+print(show_recurrence(coeffs)) // "a[n] = 4 a[n-2] - a[n-4]"
 ```
 
 ## Visual debugging with Trace

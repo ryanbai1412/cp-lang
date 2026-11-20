@@ -1,4 +1,4 @@
-In C++, competitive programmers juggle `long long`, `double`, `pair<int, pair<int, int>>`, `std::string`, and tagged unions written by hand with parallel arrays. CP Lang gives you four crisp numeric types, zero-boilerplate records and enums, exhaustive `match`, and an ASCII-only `Str` type where every index and slice is `O(1)`.
+In C++, competitive programmers juggle `long long`, `double`, `pair<int, pair<int, int>>`, `std::string`, and tagged unions written by hand with parallel arrays. CP Lang gives you four numeric types, records and enums, exhaustive `match`, and an ASCII-only `Str` type with O(1) indexing. String slicing currently copies the selected bytes.
 
 ## Numbers, Euclidean division, and floating-point guardrails
 
@@ -60,30 +60,35 @@ CP Lang keeps control flow minimal with one spelling per construct:
 - Inline conditionals use the same syntax as block `if`: `let sign = if x >= 0: 1 else: -1`.
 - Swap or update multiple variables in one step with parallel tuple assignment — the entire right-hand side is evaluated before writing to the left: `(a, b) = (b, a % b)`.
 - Break out of nested loops cleanly with a loop label (`'outer: for r in Row: ... break 'outer`) instead of adding boolean `found` flags.
-- Filter loops directly with `for v in V if ok(v):`, and iterate `(index, value)` pairs uniformly across arrays, lists, maps, and strings with `.items`.
+- Filter loops directly with `for v in V if ok(v):`. For a list or string, iterate `i in 0..a.len` and access `a[i]` when you need both the position and value.
 
 ```cp CP Lang 0.2.2
 var (a, b) = (48, 18)
 while b != 0:
     (a, b) = (b, a % b)
 
+let n = 3
+let grid: [0..n, 0..n]Int = 7
+let target = 7
+var found: ?(Int, Int) = none
 'search: for i in 0..n:
     for j in (i + 1)..n:
         if grid[i, j] == target:
             found = (i, j)
             break 'search
+print(a, found)
 ```
 
-## ASCII strings (`Str`) and `@tags`
+## ASCII strings (`Str`) and tagged states
 
 Contest inputs are ASCII. In CP Lang, `Char` is a single byte (`'a'`), `Str` is a value-semantic `0..s.len` byte array with zero UTF-8 overhead, and both indexing (`s[i]`) and slicing (`s[l..r]`) run in `O(1)`.
 
 ```cp CP Lang 0.2.2
 let s: Str = read()
-let first_digit = s[0] - '0'
-let prefix = s[..3]
-if s.starts_with("abc", at: 0):
-    print(s.split(' ').len)
+if s.len >= 3:
+    let first_digit = s[0] - '0'
+    let prefix = s[..3]
+    print(first_digit, prefix == "abc")
 ```
 
 When a problem has two strings and you want the type checker to stop you from indexing string `a` with a position from string `b` (for example in LCS or edit-distance DP), opt into a nominal character domain with `let word: [domain S]Char = read()`.
@@ -97,13 +102,30 @@ When a problem has two strings and you want the type checker to stop you from in
 ```exercise types-str-vs-domain
 ```
 
-For character-encoded grids or query types, attach `@tags` to a unit enum so `read()` maps characters directly to enum variants without manual `if ch == '#'` ladders:
+For character-encoded grids, read ASCII characters and map them to a state enum explicitly. Automatic `@tags` input is specified but is not yet supported by the execution backend:
 
 ```cp CP Lang 0.2.2
-@tags(".#SE")
-enum Tile: Empty; Wall; Start; End
+let h: 1..=50 = read()
+let w: 1..=50 = read()
+domain Row = 1..=h
+domain Col = 1..=w
+enum Tile:
+    Empty
+    Wall
+    Start
+    End
 
-let grid: [Row, Col]Tile = read()
+let grid: [Row, Col]Char = read()
+for r in Row:
+    for c in Col:
+        let ch = grid[r, c]
+        assert ch in ".#SE"
+        let tile = match ch:
+            '.' => Empty
+            '#' => Wall
+            'S' => Start
+            _ => End
+        if tile == Start: print(r, c)
 ```
 
 ## Write a program

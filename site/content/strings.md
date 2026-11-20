@@ -4,31 +4,32 @@
 
 ## Value-semantic, `0..len`-indexed `Str`
 
-In CP Lang 0.2.2, default `Str` behaves like a flat `0..s.len`-indexed ASCII byte sequence with O(1) indexing, O(1) slicing, and strict value semantics:
+In CP Lang 0.2.2, default `Str` is a flat `0..s.len`-indexed ASCII byte sequence with O(1) indexing and value semantics. Slicing currently materializes a new string rather than a constant-time view:
 
 ```cp CP Lang 0.2.2
 let s: Str = read()
-let ch = s[0]                   // Char (0..s.len); digit: ch - '0', letter: ch - 'a'
-let sub = s[l..r]               // O(1) slice; also s[..k], s[k..], s.len, s.is_empty
+if not s.is_empty:
+    let ch = s[0]               // Char; digit: ch - '0', letter: ch - 'a'
+    let sub = s[..min(3, s.len)]
+    print(ch, sub)
 
 var out = ""
 out.push('a')
-out += "bc" * 3                 // mutable byte buffer when `var`
+for _ in 0..3: out += "bc"      // mutable byte buffer when `var`
 
-if s.starts_with("ab", at: i):
-    print(s.split(' '))
-let joined = " ".join("{x}" for x in ans)
+if s.len >= 2 and s[..2] == "ab":
+    print(out)
 ```
 
 Because `Str` has value semantics, `var t = s` moves or copies cleanly without hidden aliasing; call `s.copy()` when you want an independent mutable copy while keeping `s`. You can run `Str` indexing, slicing, concatenation, and ASCII arithmetic directly in the offline [playground](playground.html) (pick **ASCII string scan**).
 
 ## Common string helpers
 
-Standard text parsing and formatting helpers live on `Str`:
+The current toolchain supports these operations directly:
 
 - Indexing and slices: `s[i]`, `s[l..r]`, `s[..k]`, `s[k..]`, `s.len`, `s.is_empty`.
-- Building: `var out = ""`, `out.push(c)`, `out += t`, `"ab" * k`, `Str(chars)` from `List<Char>`, `sep.join(it)`.
-- Parsing and matching: `s.starts_with(prefix, at: i)`, `s.split(' ')`, `s.split_once(' ')`, `s.trim_start(' ')`, `s.parse_int()`.
+- Building: `var out = ""`, `out.push(c)`, and `out += t`. String repetition with `*` is not yet implemented; append in a loop.
+- Prefix matching: guard the length, then compare `s[..prefix.len] == prefix`. For input, `read()` parses whitespace-delimited typed tokens.
 - Character arithmetic: `c - '0'`, `c - 'a'`, `'A' + (c - 'a')`, and character ranges `'a'..='z'`.
 
 ## Opt-in nominal character domains
@@ -42,8 +43,7 @@ let b: [domain B]Char = read()
 var dp: [A.bounds, B.bounds]Int = 0
 for i in A:
     for j in B:
-        dp[i.r, j.r] = if a[i] == b[j]: dp[i.l, j.l] + 1
-                       else: max(dp[i.l, j.r], dp[i.r, j.l])
+        dp[i.r, j.r] = if a[i] == b[j]: dp[i.l, j.l] + 1 else: max(dp[i.l, j.r], dp[i.r, j.l])
 print(dp[A.last.r, B.last.r])
 ```
 

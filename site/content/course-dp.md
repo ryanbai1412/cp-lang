@@ -40,12 +40,18 @@ To prevent silent bugs, only `+`, `-`, unary `-`, `min`/`max`, and `min=`/`max=`
 - `?T` does **not** implement `Ord`, so `<`, `<=`, `>`, `>=` never silently order `none` before or after real values. (`==` and `!=` do auto-lift `T` to `?T`.)
 - When `none` means *failure/poison* and every branch must succeed (not tropical identity), check explicitly with `if let`:
 
-```cp CP Lang 0.2.2 · fragment
-if let hit = solve(child):
-    best min= hit
-else:
-    best = none
-    break
+```cp CP Lang 0.2.2
+fn solve(child: Int) -> ?Int:
+    if child >= 0: child else: none
+
+var best: ?Int = none
+for child in [3, -1, 4]:
+    if let hit = solve(child):
+        best min= hit
+    else:
+        best = none
+        break
+print(best, none: "-1")
 ```
 
 ```exercise dp-tropical-guardrails
@@ -88,14 +94,18 @@ print(best(0, n), count(dp[l, r] != none for l in 0..=n for r in 0..=n))
 For exponential subset DP (`n <= 25`), `Subset<D>` wraps a bitmask as a typed `Index` so you never write `1 << i` or `(mask >> i) & 1` by hand:
 
 ```cp CP Lang 0.2.2
+let n: 1..=18 = read()
 domain V = 0..n
-var dp: [Subset<V>, V]?Int = none
-dp[Subset<V>.single(V.first), V.first] = 0
+let cost: [V, V]Int = read()
+type Mask = Subset<V>
+var dp: [Mask, V]?Int = none
+dp[Mask.empty.with(V.first), V.first] = 0
 
-for mask in Subset<V>:
+for mask in Mask:
     for u in mask:
-        for v in mask.complement:
-            dp[mask + v, v] min= dp[mask, u] + cost[u, v]
+        for v in V if v not in mask:
+            dp[mask.with(v), v] min= dp[mask, u] + cost[u, v]
+print(dp[Mask.full, V.last], none: "-1")
 ```
 
 Submask iteration is equally direct: `for sub in mask.subsets:` visits every subset of `mask` in `O(3^n)` total across all masks. For larger bit-parallel DP (such as subset-sum reachability up to `10^5`), `Bitset<D>` packs bits into 64-bit machine words with `|`, `&`, `^`, `<<`, `>>`, `.count`, and `.first_set`.

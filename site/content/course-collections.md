@@ -5,6 +5,7 @@ Once you have basic arrays and domains down, most contest solutions live in a ha
 A `List<T>` is a dynamic array (`std::vector<T>` in C++17). A `Deque<T>` supports `O(1)` operations at both ends (`push_back`, `pop_back`, `push_front`, `pop_front`, `.first`, `.last`). Every popping or peeking operation returns `?T` — `none` when empty — so you never trigger undefined behavior by reading `.back()` on an empty stack.
 
 ```cp CP Lang 0.2.2
+let a = [3, 1, 2, 2, 4]
 var st: List<Int> = []
 for x in a:
     while st.last != none and st.last! >= x:
@@ -33,12 +34,14 @@ CP Lang separates unique ordered sets (`Set<T>`, like `std::set`) from ordered m
 - Updating or initializing an entry uses compound operators directly:
 
 ```cp CP Lang 0.2.2
+let a = [2, 1, 2]
 var freq = HashMap<Int, Int>()
 for x in a:
     freq[x] += 1                   // initializes missing key to 0, then adds 1
 
 var buckets = HashMap<Int, List<Int>>()
-for (i, x) in a.items:
+for i in 0..a.len:
+    let x = a[i]
     (buckets[x] ??= []).push(i)    // lazily creates [] if absent, then lends mutably
 ```
 
@@ -50,6 +53,11 @@ for (i, x) in a.items:
 In-place mutation takes `mut` explicitly (`sort(mut a)`, `reverse(mut a)`), while non-mutating `.sorted()` and `.reversed()` return a new sequence. Pass a key projection with `by:` instead of writing a verbose comparator lambda:
 
 ```cp CP Lang 0.2.2
+use std.algebra.{desc}
+
+type Interval = (l: Int, r: Int)
+var intervals: List<Interval> = [(3, 5), (1, 5), (2, 4)]
+let all_coords = [10, 5, 10]
 sort(mut intervals, by: iv => (iv.r, desc(iv.l)))
 let xs = compress(all_coords)      // sorted unique values; xs.at(v) returns its typed index
 ```

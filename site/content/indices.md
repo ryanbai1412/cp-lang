@@ -5,6 +5,9 @@ Most off-by-one bugs come from storing two kinds of numbers in the same `int`: a
 When an array is just a scratch table indexed by plain integers—like a frequency count or digit bucket—you do not need to name a domain:
 
 ```cp CP Lang 0.2.2
+let n: 0..=100 = read()
+let k: 0..=100 = read()
+let a: [0..n]0..=k = read()
 var cnt: [0..=k]Int = 0
 for i in 0..n:
     cnt[a[i]] += 1
@@ -57,45 +60,57 @@ The same `.l`/`.r` notation works directly in multi-dimensional DP tables such a
 
 One `Range<I>` type covers half-open `l..r`, inclusive `l..=r`, and open-ended `..i`, `..=i`, `i..`, `i.r..`, and `l.r..r.l` (strictly between `l` and `r`). Every range provides `.first -> ?I`, `.last -> ?I`, `.mid -> ?I`, `.len`, `.is_empty`, `.rev`, `.step(k)`, and `(lo..=hi).clamp(D)`.
 
-All range data structures accept open and empty ranges directly (`st.fold(..h[i])`, `pre.sum(..i)`). Sub-ranges also index arrays as mutable slices: `sort(mut a[l..=r])` and `reverse(mut a[l..=r])` operate in place without allocating.
+Range data structures accept range arguments such as `st.fold(..h[i])` and `pre.sum(..i)`. Read-only slice aggregates work today. In-place slice mutation and parent-indexed slice access remain specification work; use the explicit [copy-and-writeback example](course-index-slices.html#ranges-slices-and-compress-all) when sorting a window.
 
 ## Grids and `Cell = (Row, Col)`
 
-A 2D array `[Row, Col]T` is indexed directly by a product-domain cell `type Cell = (Row, Col)`. `g[p]` works without unpacking `p`, and `Cell` implements `Index`, so `[Cell]T`, `bfs`, `Dsu<Cell>`, and `@memo` all work on grid coordinates.
+A 2D array `[Row, Col]T` uses row and column domains. The example below names their pair `Cell`, iterates the two domains separately, and indexes `g[r, c]`. Product-domain iteration and fully generic cell-indexed structures are still being completed.
 
 ```cp CP Lang 0.2.2
+use std.grid.{adj4}
+
+let h: 1..=50 = read()
+let w: 1..=50 = read()
 domain Row = 1..=h
 domain Col = 1..=w
 type Cell = (Row, Col)
 let g: [Row, Col]Char = read()
+fn visit(p: Cell): print(p)
 
-for p in (Row, Col):
-    for q in p.adj4:
-        if g[q] != '#':
-            visit(q)
+for r in Row:
+    for c in Col:
+        let p: Cell = (r, c)
+        for q in p.adj4:
+            if g[q.0, q.1] != '#':
+                visit(q)
 ```
 
-`p.adj4` and `p.adj8` yield in-bounds orthogonal and 8-way neighbors with zero manual bounds checks. For directional movement, `std.grid` also provides `Dir4` (`.cw`, `.ccw`, `.back`, `Dir4.from("UDLR", ch)`), `p.step(d)`, `p.ray(d)`, `g.row(r)`, `g.col(c)`, `g.transposed`, and `g.flipped`.
+The imported `p.adj4` yields in-bounds orthogonal neighbors. `std.grid` also declares `adj8`, `step`, `ray`, and `Dir4`. Generic row/column lends and transformed grid views remain specification work rather than runnable APIs.
 
 ## Coordinate compression with `compress(all)`
 
 Coordinate compression produces a fresh nominal domain `xs.D` together with value lookup and inverse mapping:
 
 ```cp CP Lang 0.2.2
+let all_coords = [30, 10, 20]
+let queries = [10, 30]
 let xs = compress(all_coords)
 var bit = Fenwick<xs.D, Int>()
+var ans = 0
 
 for x in queries:
     let id = xs.at(x)           // exact lookup -> xs.D
     let original = xs[id]       // original value at id
+    bit.add(id, 1)
     if let ge = xs.first_ge(x): // lower bound -> ?xs.D
         ans += bit.sum(..ge)
+print(ans)
 ```
 
 You never accidentally pass an uncompressed value into `bit` or mix a compressed index with raw coordinates.
 
 ## Algebraic `Index` and escape hatches
 
-Five O(1) value-copied shapes implement `Index` automatically: `Bool`, unit or payload `enum` (computed on demand), `?T`, integer ranges `lo..=hi`, and tuples/records `(A, B)`, plus `Subset<D>` for bitmask DP (`D.K <= 25`). That means `var dp: [V, Bool]Int = 0`, `FlowGraph<Node>()` over a payload `enum Node`, and `[Subset<V>]Int` all compile to flat contiguous arrays.
+The language's `Index` model covers `Bool`, finite enums, `?T`, integer ranges, tuples/records, and `Subset<D>` for bitmask DP. Support across generic library calls is still being completed: for example, flow over payload-enum vertices is not yet runnable. The [graph course](course-graphs-math.html#network-flow-with-typed-vertices) shows a working flow network over a numeric vertex domain.
 
-When a tight inner loop genuinely needs raw integer indexing or unchecked speed, CP Lang provides explicit contest escape hatches: `a.raw[i]` indexes by 0-based `Int` (bounds-checked in debug), and an `unchecked:` block elides bounds and overflow traps in judge builds.
+For numeric offsets, use a structural range array such as `[0..n]Int`. The specified `a.raw[i]` escape for nominal arrays is not yet supported by the execution backend. `unchecked:` is available for a loop you have already proved safe; see the [C++ guide](cpp-guide.html#performance-controls-and-escape-hatches).

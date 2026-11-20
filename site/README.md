@@ -36,12 +36,17 @@ node --test site/test_trace.cjs
 `test_site.py` builds every page, validates local links and heading fragments, and
 runs the example fixtures, worked programs, and write-code reference solutions with
 the Rust `cpl` binary and `g++` C++17. It also checks and builds every homepage
-showcase port and syntax-checks its emitted C++17. No Python compiler is imported.
+showcase port and syntax-checks its emitted C++17. Every `cp` fence in `content/*.md`
+and `docs/one-page-cheat-sheet.md` must independently pass `cpl check`, `cpl build`,
+and `g++ -std=c++17 -fsyntax-only`: no filename, caption, or fragment allowlist.
+The temporary documentation workspace registers the real `examples/local-lib/`
+as `lib`, matching the local-library setup shown in the reference. No wrappers,
+stubs, or undeclared variables are injected into snippets. No Python compiler is imported.
 `test_compiler.cjs` and `test_course.cjs` run and build every fixture, runnable inline
 course block, playground preset, course prediction, and write-code reference through the real browser WASM
 runtime (including timeout and recovery). Compiler APIs avoid the
-prototype CLI's source-stamping side effect. Design blocks are explicitly
-labeled and are not compiled; they must be reviewed against the design.
+prototype CLI's source-stamping side effect. Unsupported design ideas belong in
+clearly qualified prose, not broken `cp` fences.
 The full Rust workspace gate remains `cargo test` before a push.
 
 For real headless Chrome end-to-end checks, install Playwright into the site
@@ -61,8 +66,8 @@ site/.venv/bin/python site/test_trace_browser.py --chrome "$(command -v google-c
 - `content/` contains the authored Markdown. `build.py` defines chapter order
   and metadata. H2 headings become the page's table of contents.
 - A fenced `example NAME` block embeds `examples/NAME.cp`; add its input and
-  expected output to `test_site.py`. Use `cp` for approved-design fragments,
-  with an explicit label if a different status applies.
+  expected output to `test_site.py`. Every `cp` fence is a complete checked
+  program: include its imports, declarations, and helpers rather than `...`.
 - `template.html` and `assets/` own the shared layout, colors, behavior, and
   system font stacks. Markdown raw HTML is escaped by default.
 - `course/` stores ten progressive lessons' metadata and exercise banks.

@@ -2,6 +2,8 @@
 
 *Canonical minimal reference for the locked **CP Lang 0.2.2** spec (`research/language-architecture-v2.2.md`, `decisions.md` §16–§19). Every construct has one spelling.*
 
+**Execution status:** every CP code block below is a complete program checked and built by `site/test_site.py` with the Rust compiler and C++17. Features still being implemented are called out in prose, not presented as runnable fragments.
+
 ---
 
 ## 1. Bindings, Numbers & Operators
@@ -24,16 +26,21 @@ const MOD = 1_000_000_007       // compile-time constant (inlined)
 No `INF` or `-1` sentinels. `?Int` (`LLONG_MIN`), `?F64` (quiet NaN), `?V`, `?Bool`, `?Char`, and `?Enum` are niche-packed with zero extra memory.
 
 ```cp
-var dist: [V]?Int = none        // none or bare value `dist[src] = 0`
-let d = dist[v] ?? -1           // fallback on none (parens required when mixing `??` with `+ - * / %`)
-let u = opt ?? return (none, none)  // diverging RHS (`return`, `break`, `continue`) supported on `??`
-let best = min(a, b)            // min/max skip none: (T, ?T) -> T, (?T, ?T) -> ?T; 3+ via min([a, b, c])
-dist[v] min= dist[u] + w        // tropical: `+`, `-`, unary `-` on ?Int/?F64 absorb none; min=/max= skip none
-ans min= dist[v]                // skips when dist[v] is none even if `ans` is plain Int
-if dq.last != x: ...            // `==`/`!=` auto-lift T to ?T (never `<`/`<=`/`>`/`>=`)
-let x = opt!                    // unwrap (traps on none; elided when flow-proven); `maybe()?` returns none
-(adj[k] ??= []).push(x)         // initialize place lazily if none, then lend mutably
-if let a = x and let b = y and a > 0: ... // mix optional bindings and bool guards (`if let` / `while let`, expr too)
+domain V = 1..=3
+let (src, u, v, w) = (V(1), V(1), V(2), 7)
+var dist: [V]?Int = none
+dist[src] = 0
+dist[v] min= dist[u] + w        // none absorbs +; min= skips none
+let d = dist[v] ?? -1           // fallback on none
+let best = min(dist[v], 10)     // one definite operand gives a definite result
+if let a = dist[u] and let b = dist[v] and b > 0:
+    print(a + b)
+var adj = Map<Int, List<Int>>()
+(adj[0] ??= []).push(d)         // initialize missing bucket lazily
+fn next_value(opt: ?Int) -> ?Int:
+    let x = opt ?? return none
+    x + 1
+print(best, next_value(dist[v]))
 ```
 
 - **Tropical guardrails:** `*`, `/`, `%`, bitwise ops, `?V + k`, `sum(gen)`, and `+=`/`-=` never lift over `?T`. **`min=`/`max=` skip `none`** (tropical `+inf`/`-inf`); when `none` means *failure/poison* and every branch must succeed, check explicitly (`if let hit = ...: best min= hit else: best = none; break`).
@@ -44,9 +51,13 @@ if let a = x and let b = y and a > 0: ... // mix optional bindings and bool guar
 ## 3. Domains, Indices, Boundaries, Ranges & Grids
 
 ```cp
+let n = 4
+let k = 9
 domain V = 1..=n                // nominal bounded index: 1..=n (0-cost in C++)
+domain Row = 0..2
+domain Col = 0..3
 let a: [V]Int = read()          // dense array indexed by V (zero checks on a[v])
-var dp: [Row, Col]Int = 0       // 2D array indexed by (Row, Col); g[p] works for p: (Row, Col)
+var dp: [Row, Col]Int = 0       // 2D array: index with dp[r, c]
 var cnt: [0..=k]Int = 0         // structural range array (`['a'..='z']Int`; clones fill per slot)
 cnt.fill(0)                     // reset; hot multi-query loops use `[D]Bool` + touched-list reset
 let b: [V]Int = [V] v => a[v] * 2   // domain comprehension (list comprehension: `[x * 2 for x in a if x > 0]`)
@@ -55,7 +66,7 @@ let b: [V]Int = [V] v => a[v] * 2   // domain comprehension (list comprehension:
 - **Anonymous range vs `domain`:** `[0..n]T`, `[0..=n]T`, `['a'..='z']T` are structural (`for i in 0..n` gives `i: Int`). `domain V = 1..=n` is nominal (`for v in V` gives `v: V`, `v + 1 -> ?V`, `v - 1 -> ?V`, `b - a -> Int`, `v.cyc(k) -> V`, `V.K`, `V.first`, `V.last`, `v.to_idx`, `V.from_idx(i) -> V` row-major on tuples).
 - **Boundaries (`V.bounds`, `V.K + 1` gaps):** `v.l`/`v.r`, `v.l(k)`/`v.r(k)` (`v.l == v.l(1)`), `b.left -> ?V`, `b.right -> ?V`.
 - **One `Range<I>` type:** `l..r`, `l..=r`, `..i`, `..=i`, `i..`, `i.r..`, `l.r..r.l`. Properties/methods: `.l`/`.r` (boundary cuts even if empty; canonical segtree split: `let m = r.mid!; (r.l..m.r, m.r..r.r)`), `.first -> ?I`, `.last -> ?I`, `.mid -> ?I`, `.len`, `.is_empty`, `.rev`, `.step(k)`, `(lo..=hi).clamp(D)`.
-- **Slices & grids (`std.grid`):** `a[l..=r]` (mutable slice: `sort(mut a[l..=r])`, `reverse(mut a[l..=r])`, `.sorted()`, `.first_ge`, `.last_le`), `g.row(r)`, `g.col(c)`, `g.transposed` (`[C, R]T`), `swap(mut g.row(r1), mut g.row(r2))`. `[R, C]Char = read()`. `type Cell = (Row, Col)` works with `[Cell]T`, `bfs`, `Dsu<Cell>`, `@memo`, `Dir4` (`.cw`, `.ccw`, `.back`, `Dir4.from("UDLR", ch)`), `p.step(d)`, `p.ray(d)`, `p.adj4`, `p.adj8`.
+- **Slices & grids (`std.grid`):** read `[R, C]Char = read()` and index with `g[r, c]`. Import `std.grid.{adj4}` for `p.adj4` on `p: (R, C)`. Read-only slice aggregates are supported. Parent-indexed and in-place mutable slices, generic row/column lends, and transformed grid views remain specification work; use explicit copy-and-writeback for a sorted window.
 - **Algebraic `Index` (5 O(1) value-copied shapes):** `Bool`, unit/payload `enum` (on demand), `?T`, `lo..=hi` (`Int`/`Char`), tuples/records `(A, B)`, plus `Subset<D>` (`D.K <= 25`). **`for x in T:`** iterates every `Index` type (`V`, `?D`, `Bool`, `Subset<D>`, small `enum`, `(A, B)`). Arenas use `type Id = 0..=MAX` + `List<Node>` + `.push_id(x)` + `.freeze()`.
 - **Escape hatches:** `a.raw[i]` (0-based `Int` index, checked locally) and `unchecked:` block.
 
@@ -63,15 +74,18 @@ let b: [V]Int = [V] v => a[v] * 2   // domain comprehension (list comprehension:
 
 ## 4. Strings (`Str`)
 
-ASCII-only, `0..s.len`-indexed byte array (zero UTF-8, O(1) indexing and slicing).
+ASCII-only, `0..s.len`-indexed byte array (zero UTF-8, O(1) indexing; slices currently create copies).
 
 ```cp
-let s: Str = read()
-let ch = s[i]                   // Char; digit: ch - '0', letter: ch - 'a', s.items
-let sub = s[l..r]               // O(1) slice; s[..k], s[k..], s.len, s.is_empty, match s:
+let s = "123ab"
+let (i, l, r) = (0, 1, 3)
+let ch = s[i]                   // Char; digit: ch - '0', letter: ch - 'a'
+let sub = s[l..r]               // copied slice; also s[..k], s[k..], s.len, s.is_empty
 var out = ""
-out.push('a'); out += "bc" * 3  // mutable when `var`; s + t, s + ch, ch + s, Str(chars)
-if s.starts_with(x, at: i): ... // s.split(' '), s.split_once(' '), s.trim_start(' '), s.parse_int()
+out.push('a')                  // mutable when `var`
+for _ in 0..3: out += "bc"
+if s.len >= 3 and s[..3] == "123": print(out)
+let ans = [3, 7]
 let joined = " ".join("{x}" for x in ans)
 let a: [domain A]Char = read()  // opt-in nominal domain for multi-string DP
 let w: [0..5]Char = [0..5] i => "leant"[i] // fixed <=16 B array copies implicitly (no .copy(); `for s in xs:` borrows `Str` read-only)
@@ -82,25 +96,25 @@ let w: [0..5]Char = [0..5] i => "leant"[i] // fixed <=16 B array copies implicit
 ## 5. Control Flow & Parallel Assignment
 
 ```cp
-if x < 0: neg()
-elif x == 0: zero()                       // always `elif`, never `else if`
-else: pos()
+let x: Int = read()
+if x < 0: print("negative")
+elif x == 0: print("zero")                // always `elif`, never `else if`
+else: print("positive")
+let sign = if x >= 0: 1 else: -1
+var (r0, r1) = (48, 18)
+while r1 != 0:
+    (r0, r1) = (r1, r0 % r1)              // RHS evaluated before either write
+for i in (0..10).step(2).rev: print(i)
+for v in [1, 2, 3] if v % 2 == 1: print(v)
 
-let sign = if x >= 0: 1 else: -1          // ONE inline-if syntax
-var (r0, r1) = (a, b)
-(r0, r1) = (r1, r0 - q * r1)              // parallel tuple assignment (RHS evaluated first)
-
-for v in V if ok(v): ...                  // filtered loop; mutate via `for i in 0..xs.len: xs[i].f()`
-for (i, x) in a.items: ...                // (index/key, value) everywhere
-for i in (0..n).step(2).rev: ...
-while let a = x and let b = y and a > 0:  // chained optional bindings + guard
-'outer: for r in Row:
-    for c in Col:
-        if bad(r, c): break 'outer        // labeled break/continue; top-level `return` ends the program / the current test
-
-let res = match op:                       // exhaustive expression; bare variants, `=>`
-    Add(l, r, v) => st.apply(l..=r, v)
-    Query(l, r) => st.fold(l..=r)
+enum Op:
+    Add(delta: Int)
+    Query
+var total = 0
+let op = Add(7)
+match op:
+    Add(delta) => total += delta
+    Query => print(total)
 ```
 
 ---
@@ -108,14 +122,22 @@ let res = match op:                       // exhaustive expression; bare variant
 ## 6. Functions, Generics, Closures & Ownership
 
 ```cp
+domain V = 1..=4
+var a: [V]Int = 0
 fn swap_adj(mut a: [V]Int, i: V):         // mut on param AND at call site
-    if let j = i + 1: swap(mut a[i], mut a[j])
+    if let j = i + 1:
+        if i != j: swap(mut a[i], mut a[j])
 
+let g = Graph.undirected([(V(1), V(2)), (V(2), V(3)), (V(2), V(4))])
 var vis: [V]Bool = false
 fn dfs(u: V):                             // nested `fn` mutates outer `var` directly
     vis[u] = true
-    for v in g[u]: if not vis[v]: dfs(v)
+    for arc in g[u] if not vis[arc.to]: dfs(arc.to)
+swap_adj(mut a, V.first)
+dfs(V.first)
 
+type Edge = (u: Int, w: Int)
+var es: List<Edge> = [(2, 7), (1, 7)]
 sort(mut es, by: e => (e.w, -e.u))        // ONE lambda syntax: `x => expr`; descending: `by: desc`
 ```
 
@@ -129,16 +151,29 @@ sort(mut es, by: e => (e.w, -e.u))        // ONE lambda syntax: `x => expr`; des
 **7 core traits** derive automatically whenever fields support them: `Index`, `Seq`, `Eq`, `Ord` (enum variants order by declaration order; structs/tuples with `?T` or `Mod<P>` omit `Ord`), `Hash`, `Show`, `Read`. (2 library-author traits: `Indexed`, `Iterable`.)
 
 ```cp
+domain V = 1..=3
 type Edge = (u: V, v: V, w: Int)          // structural record; e.u or let (u, v, w) = e
 
 struct SegNode:
     best: Int = 0
     cnt: Int = 1
-    fn merge(self, o: SegNode) -> SegNode: ...
+    fn merge(self, o: SegNode) -> SegNode:
+        if self.best != o.best: return if self.best > o.best: self else: o
+        SegNode(self.best, self.cnt + o.cnt)
     fn reset(mut self): self.best = 0
 
-enum Dir = N | E | S | W                  // unit enum (auto Index, K = 4, N < E < S < W)
-enum Node: Source | Sink | Build(s: Station) | Serve(u: User)   // payload enum (auto sum Index)
+enum Dir:
+    N
+    E
+    S
+    W
+domain Station = 0..2
+domain User = 0..3
+enum Node:
+    Source
+    Sink
+    Build(s: Station)
+    Serve(u: User)
 ```
 
 ---
@@ -146,38 +181,33 @@ enum Node: Source | Sink | Build(s: Station) | Serve(u: User)   // payload enum 
 ## 8. I/O, `@!multitest`, `@memo`, Interactive & `@grader`
 
 ```cp
-let sv = Sieve(1e6)                       // above `@!multitest`: runs once (sieves, tables)
-@!multitest                               // divider: below runs per test, fresh scope, `@memo` reset; or `@!multitest(until_eof)`
-let (n, m): (1..=2e5, 1..=n) = read()     // dependent bounds on scalars, tuples, record fields
-let g: [Row, Col]?Int = read(none: "X")   // symmetric `none:` on read / print / read_output
-print(ans, none: "IMPOSSIBLE")            // lists space-separated; auto-flushes if program uses `ask(...)`
-print(k); print(colour, sep: "\n")        // `sep:` between arguments and between list items; `" ".join(xs)` is the Str
-print("{n:5} {n:05} {x:.3} {x:8.2f} {n:x} {n:b}")   // width, zero-fill, digits (never `-0.00`), hex, binary
-print(fixed(num, den, 5))                 // exact `num / den` to 5 digits from Ints (`std.math`, in the prelude)
-while true: let (r, c): (Int, Int) = read(); if (r, c) == (0, 0): break   // sentinel: a plain loop; read_line() skips trailing ws after read()
-assert ok                                 // ALWAYS checked (local + judge); feeds range/disjoint proofs
-debug(n, dp)                              // stderr locally (replayed on stress fail); stripped on judge
+let sv = Sieve(100)                     // runs once, above the divider
+@!multitest                            // reads t; fresh scope and memo cache per case
+let n: 1..=20 = read()
+domain V = 1..=n
+let a: [V]Int = read()
+@memo
+fn pref(v: V) -> Int:
+    if v == V.first: return a[v]
+    pref((v - 1)!) + a[v]
+print(pref(V.last))
+debug(n, a)                            // local stderr; stripped on judge
 
-@tags('.', '*', '1'..='9')
-enum Cell: Empty | Wall | Coin(val: 1..=9) // single-char packed tags + char-range payload
-
-@memo                                     // top-level or nested in fn/loop (auto-resets per call/iter; zero-arg = once-cell)
-fn dp(u: V, used: Bool) -> Int: ...       // auto-dispatches flat (<= 2^24; 2^26 for ?Bool) vs salted hash; non-Copy returns ok
-                                          // captures immutable outer `let`s; permits `ask(...)` & extern `@grader fn` (1 call per arg)
-
-let (k, walls) = read(gen: () => gen_walls(pts)) // typed gen: with optional `witness val`
-@gen fn make_case(size: Int): ...         // whole-input generator (choice-stream shrinking)
-@brute(main) fn slow(): ...               // default oracle for `cpl stress` (stripped on judge)
-@checker fn check(): ...                  // reads solution stdout via read_output(), validates with assert
-@interactor fn judge(sol: Interactor):    // read() = hidden test; sol.recv() = sol stdout; sol.send(x) = sol stdin
-    ...                                   // pairs with `ask("?", x, limit: K)` (auto-flushes all print())
-
-// Stateful @grader: top-level `var` (or `@grader struct`); bodyless `@grader fn` = extern oracle
-var state: ?State = none
-@grader fn get_distance(i: Int, j: Int) -> Int
-@grader fn init(n: Int, a: [0..n]Int): state = State(a)
-@grader fn query(x: Int) -> Int: ...
+@brute(main)
+fn slow(): print(sum(a))
+@checker
+fn check():
+    let ans: Int = read_output()
+    assert ans == sum(a)                // assertions remain enabled on judge
+@gen
+fn make_case(size: Int):
+    print(1)                           // one test case
+    let n = rand(1, min(size, 20))
+    print(n)
+    print([rand(-10, 10) for _ in 0..n])
 ```
+
+Use `print(xs, sep: "\n")` for one element per line, `print(answer, none: "IMPOSSIBLE")` for optional output, `print("{x:.3f}")` for floats, and `fixed(num, den, 5)` for exact decimal division. Interactive tasks pair `ask(...)` with a separate co-located `@interactor`; function-only tasks use bodyless `@grader fn` declarations for judge callbacks and `@grader` functions with bodies for entries. These are different judge protocols, not additions to the sum program above.
 
 - **`cpl stress`:** Uses in-file `@brute`/`@checker`/`@interactor`, escalates sizes (`1..=20`; `--max-vals`), diffs line-by-line unless `@checker` (`--close 1e-9` for floats), builds with `-DLOCAL`, shrinks failures via choice streams, and replays `debug(...)`.
 
@@ -190,7 +220,7 @@ Every container uses `.len`, `.is_empty`, `.clear()`, and `.take()` (O(1) move-o
 - **`List<T>`:** `var xs: List<T> = []`, `[expr for x in it if c]`, `List.filled(n, v)`, `.push(x)`, `.push_id(x) -> Int`, `.pop() -> ?T`, `.insert(i, x)`, `.remove(i) -> T`, `.first`, `.last`, `.swap(i, j)`, `xs[l..r]`, `xs + ys`, `xs.freeze() -> (domain D, [D]T)`.
 - **`Deque<T>`:** `var q: Deque<T> = []`, `.push(x)`, `.pop() -> ?T`, `.push_front(x)`, `.pop_front() -> ?T`, `.first`, `.last`, `q[i]`.
 - **`MinHeap<T>()` / `MaxHeap<T>()`:** `.push(x)`, `.pop() -> ?T`, `.peek -> ?T`. Use `desc(x)` inside tuples for mixed order (`MinHeap<(Int, Desc<V>)>`).
-- **`Set<K>()` / `SortedBag<K>()` / `HashSet<K>()`:** `.add(x) -> Bool`, `.remove(x) -> Bool` (removes one copy in `SortedBag`), `x in s`, `x not in s`, `|`, `&`, `-`, `^`. Ordered (`Set`, `SortedBag`) also have `.first`, `.last`, `.pop_first()`, `.pop_last()`, `.first_ge(k)`, `.first_gt(k)`, `.last_le(k)`, `.last_lt(k)` (**all `-> ?K`**), `.rank(k) -> Int` (count `< k`), `.nth(i) -> ?K` (0-indexed; no `.kth`).
+- **`Set<K>()` / `SortedBag<K>()`:** `.add(x)`, `.remove(x)`, `x in s`, `x not in s`, `.first`, `.last`, `.first_ge(k)`, `.first_gt(k)`, `.last_le(k)`, `.last_lt(k)` (neighbor lookups return `?K`). `Set` keeps unique keys; `SortedBag` keeps duplicates and also provides `.count(x)` and `.remove_one(x)`.
 - **`Map<K, V>()` / `HashMap<K, V>()`:** `m[k]` (**traps if missing**), `m[k] = v` (inserts/overwrites), **`m[k] f= x` (auto-inserts from op identity: `0` for `+=`/`-=`, `none` for `min=`/`max=`)**, `m[k] ??= init` (lazy insert + mut lend), `m.get(k) -> ?V`, `m.remove(k) -> ?V`, `k in m`, `k not in m`, `for (k, v) in m.items`. Ordered `Map` also has `.first`, `.last`, `.first_ge(k)`, `.first_gt(k)`, `.last_le(k)`, `.last_lt(k)` (**all `-> ?(K, V)`**). (All hashes are per-process salted flat open-addressed tables.)
 - **`Bitset<D>()` (large `D`) & `Subset<D>` (4-B `Index`, `D.K <= 25`):** `.add(v)`, `.remove(v)`, `.toggle(v)`, `v in s`, `v not in s`, `|`, `&`, `-`, `^`, `.len` (popcount), `s.shifted(k)`. `Subset<D>` constructors & iterations: `Subset<D>.empty`, `Subset<D>.full`, `s.first -> ?D`, `s.with(v)`, `s.without(v)`, **`for mask in Subset<D>`** (all `2^K` subsets), **`for v in mask`** (member elements `v: D`), **`for sub in mask.subsets`** (submasks).
 

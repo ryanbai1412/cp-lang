@@ -4,12 +4,16 @@ Aliasing bugs and accidental O(n) copies cost time in contests: mutating an arra
 
 Parameters are read-only borrows by default. To mutate an argument in place, write `mut` both in the function signature and at the call site so every mutating call is visible when reading top-down:
 
-```cp CP Lang 0.2.2 · fragment
+```cp CP Lang 0.2.2
+domain V = 1..=3
+var a: [V]Int = 0
+
 fn add_all(mut xs: [V]Int, d: Int):
     for v in V:
         xs[v] += d
 
 add_all(mut a, 1)
+print(a)
 ```
 
 Small non-heap values (`<= 16` bytes) copy implicitly. Heap containers (`Array`, `List`, `Map`, `Str`) have strict value semantics: moving on last use, cloning explicitly with `.copy()`, swapping in O(1) with `swap(mut a, mut b)`, or moving out with `.take()`. Destructuring `let (r, c) = q[head]` copies the values, so a later `q.push` cannot dangle. Nested functions (`fn dfs(u: V):`) can mutate captured outer `var` bindings directly.
@@ -37,9 +41,15 @@ A library author annotates a projection with `@law disjoint(i, j) = i != j` (or 
 
 In `a[idx].f = rhs`, `a[idx].f ??= rhs`, and compound `a[idx].f op= rhs`, all index expressions and `rhs` finish before the mutable place in `a` is borrowed. Arena code stays safe even when the right-hand side reallocates the same container:
 
-```cp CP Lang 0.2.2 · spec fragment
-trie[o].next[s] ??= trie.push_id(Node())
-nodes[u].l = merge(nodes[u].l, b)
+```cp CP Lang 0.2.2
+struct Node:
+    next: ?Int
+
+let empty: ?Int = none
+var trie: List<Node> = [Node(empty)]
+let o = 0
+trie[o].next ??= trie.push_id(Node(empty))
+print(trie[o].next!)
 ```
 
 The emitted C++17 evaluates the index and value first, then writes to the slot, so `std::vector` growth cannot leave a dangling reference.

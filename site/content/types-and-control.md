@@ -51,12 +51,19 @@ Range types such as `0..=1_000_000_000` or `-100..=100` check bounds on entry (i
 Optional types replace sentinel constants like `1e18` or `-1` across the entire language and standard library. `?Int`, `?F64`, `?V` (domain indices), `?Bool`, `?Char`, and `?Enum` are niche-packed with zero extra bytes.
 
 ```cp CP Lang 0.2.2
+domain V = 1..=3
+let (src, v) = (V.first, V.last)
 var dist: [V]?Int = none
 dist[src] = 0                       // bare T lifts implicitly into ?T
 let d = dist[v] ?? -1               // fallback; use parens when mixing ?? with + - * / %
-let u = opt ?? return (none, none)  // diverging RHS (return / break / continue) allowed
-let x = opt!                        // unwrap (traps on none; elided when flow-proven)
-let y = maybe()?                    // early-returns none from a fn returning ?U
+fn maybe() -> ?Int: 7
+fn next_value() -> ?Int:
+    let opt = maybe()
+    let u = opt ?? return none      // diverging RHS (return / break / continue) allowed
+    let x = opt!                    // unwrap (traps on none; elided when flow-proven)
+    let y = maybe()?                // early-returns none from a fn returning ?U
+    u + x + y
+print(next_value())
 ```
 
 ### Lifting rules and guardrails
@@ -71,11 +78,17 @@ let y = maybe()?                    // early-returns none from a fn returning ?U
 - When `none` means *invalid/impossible* rather than *+inf/-inf*, check explicitly instead of relying on `min=` skipping it:
 
 ```cp CP Lang 0.2.2
-if let hit = solve(child):
-    best min= hit
-else:
-    best = none
-    break
+fn solve(child: Int) -> ?Int:
+    if child >= 0: child else: none
+
+var best: ?Int = none
+for child in [3, -1, 4]:
+    if let hit = solve(child):
+        best min= hit
+    else:
+        best = none
+        break
+print(best, none: "-1")
 ```
 
 ## Records, structs, enums, and traits
@@ -98,12 +111,17 @@ enum Event:
 
 - **Records (`type`)** are structural and support both field names (`p.x`) and positional indexing (`p.0`).
 - **Structs and enums** are nominal. Seven core traits derive automatically whenever all fields support them: `Index`, `Seq`, `Eq`, `Ord`, `Hash`, `Show`, and `Read`.
-- Unit enums support `@tags("...")` for direct single-character I/O (see [I/O & formatting](io-and-formatting.html)).
+- Automatic tagged-enum input with `@tags("...")` is specified but not yet implemented. Use explicit character matching as shown in [I/O & formatting](io-and-formatting.html).
 - Generic functions and types use angle brackets (`fn swap<T>(mut a: T, mut b: T)`), with explicit turbofish `f::<T>()` at call sites when type arguments cannot be inferred.
 
 ## Control flow, pattern matching, and functions
 
 ```cp CP Lang 0.2.2
+let x: Int = read()
+fn neg(): print("negative")
+fn zero(): print("zero")
+fn pos(): print("positive")
+
 if x < 0:
     neg()
 elif x == 0:
@@ -119,9 +137,18 @@ let sign = if x >= 0: 1 else: -1
 `match` is exhaustive and works as both a statement and an expression. Chain multiple optional bindings and boolean guards in `if let` and `while let`:
 
 ```cp CP Lang 0.2.2
+fn first() -> ?Int: 2
+fn second(a: Int) -> ?Int: a + 1
 if let a = first() and let b = second(a) and a + b > 0:
     print(a + b)
 
+enum Event:
+    Open(x: Int)
+    Close(x: Int)
+    Query(id: Int, x: Int)
+let ev = Query(0, 7)
+var active = 2
+var ans: [0..1]Int = 0
 match ev:
     Event.Open(x) => active += 1
     Event.Close(x) => active -= 1
@@ -132,8 +159,8 @@ match ev:
 ### Loops, parallel assignment, and closures
 
 - **Filtered loops:** `for v in V if ok(v):`
-- **Index-value pairs:** `for (i, x) in a.items:` works uniformly on arrays, lists, maps, and strings.
-- **Any `Index` type:** `for x in T:` iterates every `Index` type (`V`, `?D`, `Bool`, `Subset<D>`, small `enum`, tuples `(A, B)`).
+- **Index-value pairs:** For a list or string, iterate `i in 0..a.len` and access `a[i]` when you need both.
+- **Domains and containers:** `for v in V:` iterates a domain; `for x in a:` visits container elements. For a two-dimensional grid, use nested row/column loops rather than `for p in (Row, Col):`.
 - **Modifiers:** `.rev` and `.step(k)` work on any range (`for i in (0..n).step(2).rev:`).
 - **Labeled exits:** `'outer: for r in Row: ... break 'outer` (or `continue 'outer`).
 - **Parallel assignment:** `(a, b) = (b, a % b)` evaluates the full right-hand side before assigning to the left.
