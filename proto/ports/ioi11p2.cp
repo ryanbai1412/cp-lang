@@ -1,4 +1,3 @@
-// cp: 0.1 c217120+dirty
 // IOI 2011 Race: in a tree of n cities with road lengths, find a path of
 // total length exactly k that uses the fewest roads. Print that count, or -1.
 let n: 1..=2e5 = read()
@@ -10,7 +9,7 @@ fn random_tree() -> [Road](u: City, v: City, len: 0..=1e6):
     [Road] t => (City(rand(0, t.label - 1)), City(t.label), rand(0, 1e6))
 
 let roads: [Road](u: City, v: City, len: 0..=1e6) = read(gen: random_tree)
-let tree = Rooted(roads, City.first, weight: .len)
+let tree = Rooted.weighted(Graph.undirected(roads), City.first, a => roads[a.e].len)
 
 // Small-to-large over the subtrees. reach[v] maps a distance from the root
 // to the fewest roads from the root, over the cities under v. A path that
@@ -20,12 +19,13 @@ var fewest: ?Int = none
 for v in tree.preorder.rev:                 // children before parents, so no recursion
     let (far_v, deep_v) = (tree.dist(tree.root, v), tree.depth(v))
     var here: HashMap<Int, Int> = [far_v: deep_v]
-    for child in tree.kids[v]:
-        var there = take(reach[child])
+    for child in tree.children(v):
+        var there: HashMap<Int, Int> = []
+        swap(mut there, mut reach[child])
         if there.len > here.len: swap(mut here, mut there)
         for (far, hops) in there:
             if let other = here.get(k + 2 * far_v - far):
                 fewest min= hops + other - 2 * deep_v
         for (far, hops) in there: here[far] min= hops
-    reach[v] = take(here)
+    swap(mut reach[v], mut here)
 print(fewest ?? -1)

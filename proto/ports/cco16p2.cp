@@ -1,4 +1,3 @@
-// cp: 0.1 0abd108+dirty
 // CCO 2016 Splitting Hares: weighted points in the plane, no three on a line.
 // Pick a line and take everything on one side of it, plus what you like of
 // the points on the line. Maximise the weight taken. Some best line passes
@@ -18,7 +17,8 @@ fn general_position(hs: [Hare]Spot) -> Bool:
     all(cross((hs[b].x - hs[a].x, hs[b].y - hs[a].y), (hs[c].x - hs[a].x, hs[c].y - hs[a].y)) != 0
         for a in Hare for b in Hare for c in Hare if a < b and b < c)
 
-let hares: [Hare]Spot = read(gen: crowded) where general_position(hares)
+let hares: [Hare]Spot = read(gen: crowded)
+assert general_position(hares)
 
 // A hare seen from the pivot: the line through both, as a direction in the
 // upper half plane, and whether the hare is on that side of the pivot.
@@ -31,7 +31,7 @@ fn best_through(pivot: Hare) -> Int:
         if h != pivot:
             let v: Vec = (hares[h].x - p.x, hares[h].y - p.y)
             seen.push(if upper(v): (v, true, hares[h].w) else: ((-v.x, -v.y), false, hares[h].w))
-    sort(seen, less: (a, b) => cross(a.dir, b.dir) > 0)
+    sort(mut seen, by: s => ByAngle(Pt(s.dir.x, s.dir.y)))
 
     let everyone = sum(s.w for s in seen)
     var right = sum(s.w for s in seen if not s.ahead)   // right of the turning line, or behind the pivot on it

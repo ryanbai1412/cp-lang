@@ -2,28 +2,33 @@
 
 These are the canonical `proto/ports/*.cp` files (outside `ecnerwala/`, `scout_batch_*` and the critic folders) that had stale-port lint hits but failed `cpl check` or `cpl build` on HEAD at the start of stale-port cleanup Batch #12. There were 22 of them. Each entry gives the first compiler error, reproduced with `target/release/cpl check proto/ports/NAME.cp`.
 
-Eight of them use a removed `where` guard. Replacing it with `assert` is all that `noip06p2` and `yac6p3` need: with that change both check, build and compile, and `noip06p2` matches its original C++ on 40/40 random cases. The fix is not applied yet, because both files are listed in `PENDING`/`NOT_BUILT` in `crates/cpl-cli/tests/corpus.rs`, and that test fails once they check clean. Landing them needs the port edit and the removal of those two lines from `corpus.rs` in the same commit. In the other six, converting the guard just exposes a second error, so their entry shows that second error.
+## Batch #13: what is repaired
 
-## Pre-0.2.2 syntax or a renamed API: port cleanup only
+Batch #13, on top of Syntax batch 4 (`bcd873b`), repaired 6 of these ports. Each now passes `cpl check`, `cpl build` and `g++ -std=c++17 -fsyntax-only`, and has been removed from `PENDING`/`NOT_BUILT` in `crates/cpl-cli/tests/corpus.rs`. Five of them also print the same output as their `*_orig.cpp` on 40 random inputs each, from `wave2/gen/NAME.py` where one exists or a small generator written for the port otherwise.
 
-Each of these ports was written against an older surface, and the error goes away by rewriting it to the 0.2.2 form. None of them needs a compiler change.
+- `noip06p2` and `yac6p3`: the removed `where` became `assert`. `yac6p3` is interactive, so it has no output diff.
+- `dpy`: `where` became `assert sorted(walls).deduped().len == n`. The walls are sorted into a `[W]Cell` array.
+- `cco16p2`: `where` became `assert`. The old `sort(seen, less: ...)` became `sort(mut seen, by: s => ByAngle(Pt(..)))`.
+- `ioi11p2`: `Rooted(roads, root, weight: .len)` became `Rooted.weighted(Graph.undirected(roads), root, a => roads[a.e].len)`, and `tree.kids[v]` became `tree.children(v)`. `take(...)`, which `cpl run` can't run, became `swap` with an empty `HashMap`.
+- `yac1p1`: the sorted lists are indexed with `Int` and `.last!` instead of `Rank`.
 
-- `noip06p2`: `where` guards were removed (10:75). `assert` fixes it; see above.
-- `yac6p3`: `where` guards were removed (8:25). `assert` fixes it; see above.
-- `dpy`: `where` guards were removed (14:29). Behind it, `no distinct in scope` (14:8); the 0.2.2 form is `.deduped()`.
-- `cco16p2`: `where` guards were removed (21:44). Behind it, `sort` takes nothing or a key (34:5); the 0.2.2 form is `xs.sort(by: x => x.w)`.
-- `noi16p4`: `where` guards were removed (14:40). Behind it, `AddMax<X>` takes 4 arguments (id, compose, apply, over) (23:13); the 0.2.2 form is a named `Action(id:, compose:, apply:, over:)`.
-- `ioi05p6`: no type or domain named `WithMin` (8:13).
-- `cco18p1`: `read` takes 0 arguments, but 1 was given (14:21). The 0.2.2 form is a typed `read()` into `[n]T`.
-- `ceoi09p3`: a `Compressed<D_1, Int>` can't be taken apart into 2 names (12:5).
-- `ioi11p2`: `Rooted` has no parameter named `weight` (13:38).
-- `ccc03s4`: no `StrHash` in scope (7:16).
-- `ccc20s3`: no `StrHash` in scope (12:12).
-- `ccc23s4`: `dijkstra` takes 3 arguments (next, from, w), but `w` is missing (25:9).
-- `nccc10s2`: no type or domain named `Perm` (5:16).
-- `yac1p1`: expected `Int`, found `Rank` (15:11). Here `sorted(a_in)` returns a plain `List`, and the port still indexes it with `Rank.last`.
+## Still broken: an old API, but the 0.2.2 rewrite hits a real gap
 
-## Real gaps or compiler bugs: need a compiler or stdlib change
+These ports use an API that was removed or renamed, but rewriting them to the 0.2.2 form runs into a missing feature or a compiler bug.
+
+- `ccc03s4`, `ccc20s3`: the old `StrHash` becomes `RollingHash.new(s)`, but on a `[domain S]Char` from `read()`, `hash.get(l..=r)` or `hash.slice(..)` fails inside the stdlib generic with "a `for` can't walk over an `Int`", reported at 1:1.
+- `ccc23s4`: the old `dijkstra(g, from)` becomes `dijkstra(g, [(from, 0)], a => a.1)`. On a growing `[V]List<(V, Int)>` adjacency this fails with "indexed by `V`, but the index is a `(V, Int)`" at 1:1, because a tuple adjacency has no `.to` arc.
+- `ceoi09p3`: `let (H, height) = compress(ys)` becomes `let height = compress(ys)`, but `height.D` is "not a type `cpl run` knows" in a fn signature (`-> height.D`). `domain H = height.D` makes a separate domain that doesn't match `height.D`.
+- `cco18p1`: `read(columns)` is a designed but unbuilt library feature (decisions.md), not a removed one.
+
+## Still broken: an old API, fix not landed
+
+- `noi16p4`: `let coord = compress(ends)` with `LazySegTree<coord.D, Int>(AddMax)`, `.apply(range, times)` and `.all` checks and builds. Its output differs from `noi16p4_orig.cpp` on random inputs, and the original prints nothing on some of them, so the old `add(l, r)` bounds have not been confirmed. Left as it was.
+- `nccc10s2`: `Perm<L>` was removed. A `[n, k]L` read with pairwise loops checks and builds, but matches the original on only 10 of 40 inputs. That's probably the input format, since the original reads one string per order. Left as it was.
+- `ioi05p6`: `WithMin<Village>` was removed, and the port also has a `read(gen:) where` guard. It needs a redesign of its sentinel domain. Not attempted.
+- `ccc21s4`: `where` becomes `assert` and the port checks clean, but the emitted C++ still fails to compile (see below), so it stays in `PENDING`.
+
+### Real gaps or compiler bugs
 
 These still fail when written the 0.2.2 way.
 

@@ -1,4 +1,3 @@
-// cp: 0.1 1f59ac0+dirty
 // AtCoder DP Y Grid 2: count monotone paths from (1,1) to (h,w) avoiding n
 // walls. clean[c] = paths reaching cell c touching no wall before it:
 // all paths minus those whose first wall is an earlier cell.
@@ -11,7 +10,8 @@ type Cell = (r: 1..=h, c: 1..=w)
 let start: Cell = (1, 1)
 let goal: Cell = (h, w)
 domain W = 0..n
-let walls: [W]Cell = read() where distinct(walls) and all(c != start and c != goal for c in walls)
+let walls: [W]Cell = read()
+assert sorted(walls).deduped().len == n and all(c != start and c != goal for c in walls)
 
 domain F = 0..=200000
 var fact: [F]Z = Z(1)
@@ -23,11 +23,12 @@ for f in F.rev:
     if let p = f.prev: inv_fact[p] = inv_fact[f] * Z(f.label)
 
 fn paths(a: Cell, b: Cell) -> Z:
-    if b.r < a.r or b.c < a.c: return Z(0)
+    if b.r < a.r or b.c < a.c: return 0
     let (down, right) = (b.r - a.r, b.c - a.c)
     fact[F(down + right)] * inv_fact[F(down)] * inv_fact[F(right)]
 
-let order = sorted(walls)
+let by_pos = sorted(walls)
+let order: [W]Cell = [W] i => by_pos[i.to_idx]
 var clean: [W]Z = Z(0)
 for i in W:
     clean[i] = paths(start, order[i]) - sum(clean[j] * paths(order[j], order[i]) for j in W.first..i)

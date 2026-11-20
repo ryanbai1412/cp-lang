@@ -1,4 +1,3 @@
-// cp: 0.1 1f59ac0+dirty
 // NOIP 2006 Jinming's Budget: buy items within a budget to maximise the sum
 // of price * importance; an accessory may only be bought with its main item.
 // Each main item becomes a group of bundles (itself plus any set of its
@@ -7,7 +6,8 @@ let budget: 1..=32000 = read()
 let n: 1..=60 = read()
 domain Item = 1..=n
 domain Money = 0..=budget
-let items: [Item](price: 1..=10000, weight: 1..=5, main: 0..=60) = read() where all(it.main <= n for it in items)
+let items: [Item](price: 1..=10000, weight: 1..=5, main: 0..=60) = read()
+assert all(it.main <= n for it in items)
 
 fn worth(i: Item) -> Int: items[i].price * items[i].weight
 

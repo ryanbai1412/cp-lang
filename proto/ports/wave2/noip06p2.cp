@@ -15,7 +15,7 @@ for i in Item if items[i].main == 0:
     var bundles = [(cost: it.price, worth: it.price * it.weight)]
     for e in extras[i]:
         let x = items[e]
-        bundles = bundles + [(b.cost + x.price, b.worth + x.price * x.weight) for b in bundles]
+        bundles += [(b.cost + x.price, b.worth + x.price * x.weight) for b in bundles]
     for j in (0..=budget).rev:
         for b in bundles if b.cost <= j: best[j] max= best[j - b.cost] + b.worth
 print(best[budget])
