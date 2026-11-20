@@ -15,6 +15,9 @@ toolchain. The command is `cpl` (a working name) and source files end in
   for `cpl lsp`, run lenses and inline overlays.
 - `proto/`: the Python prototype compiler (partial; see
   `plan/agent-context.md`). Kept for trying design changes quickly.
+- `stdlib/`: the standard library, written in CP Lang, with its tests.
+  `stdlib/README.md` is the tour.
+- `examples/local-lib/`: a sample personal contest library built on it.
 - `corpus/`, `subs/`: Ryan's accepted submissions, used for ports,
   benchmarks and design mining.
 - `archive/`: superseded design docs.
@@ -25,6 +28,7 @@ toolchain. The command is `cpl` (a working name) and source files end in
 $ cargo test                          # must pass before every push
 $ cargo run -p cpl-cli -- --version
 cpl 0.0.0
+$ python3 proto/cp.py test stdlib examples/local-lib   # library tests
 ```
 
 Work goes straight to `main`; keep it green.

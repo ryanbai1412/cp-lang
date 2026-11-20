@@ -219,3 +219,38 @@ keeps the 30 corpus ports passing; `plan/19-index-and-lends.md` §11 lists
 what it covers and what it leaves out. One call made there and not yet
 confirmed by Ryan: `v.l(k)` and `v.r(k)` count `v` itself, so `v.l` is
 `v.l(1)`.
+
+## 10. Calls made while writing the standard library (2026-11-20)
+
+`stdlib/` and `examples/local-lib/` were written against the approved
+design. Where the plan was silent, these calls were made. None is
+confirmed by Ryan yet; each is small and local to change.
+
+- **`|=`, `&=`, `^=`.** Compound assignment for the bit operators, like
+  `+=`. `Bitset` needs them on every line (`w[i] |= bit(k)`), and their
+  absence was the first friction hit.
+- **A struct may own a domain.** `Rooted<V>` declares `domain Pre = 0..V.K`
+  in its body, and outside it is `Rooted<V>.Pre`. Preorder positions and
+  vertices are then different types, so `tin[v]` cannot be used as a
+  vertex. This is the associated-type half of 3.8 used for a domain.
+- **A function may return a fresh domain.** `scc` returns
+  `(domain C, comp: [V]C)`: the component count is only known at run
+  time, and the caller binds it with `let (C, comp) = scc(...)`. Same
+  mechanism as `let K = n` (3.8).
+- **Graph algorithms take the neighbour function**, `adj: V -> Iter<A>`,
+  not a graph type. `Graph<V, E>` is one provider; a closure over a grid
+  or a number line is another. The vertex domain is given by turbofish
+  when it cannot be inferred: `dijkstra::<V>(...)` (2.13).
+- **String algorithms take `List<T>` and return `Int` positions.** They
+  only compare elements, and their outputs (`z`, the prefix function, a
+  suffix array) are lengths and offsets that get added and subtracted
+  constantly. Typing them over the `[domain]Char` package (1.6, 2.14)
+  is left for when the Rust checker can show whether it reads better.
+- **`Bitset` words are `Int`s using all 64 bits.** The helpers `bit`,
+  `low`, `shl` and `shr` in `bitset.cp` avoid shifts that reach bit 63,
+  so the file obeys the 1.8 lean without `U64`. When `U64` lands, the
+  four helpers collapse to plain shifts.
+- **The library runs on a reference interpreter**, `proto/cpi/`, until
+  the Rust front end accepts generics, traits and modules. It checks at
+  run time and does no static typing; `proto/cpi/README.md` lists what
+  that does and does not prove.
