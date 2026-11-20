@@ -1,9 +1,9 @@
 import re
 
 class Tok:
-    __slots__ = ("kind", "val", "line", "col")
+    __slots__ = ("kind", "val", "line", "col", "is_float")
     def __init__(self, kind, val, line, col):
-        self.kind, self.val, self.line, self.col = kind, val, line, col
+        self.kind, self.val, self.line, self.col, self.is_float = kind, val, line, col, False
     def __repr__(self):
         return f"{self.kind}:{self.val!r}@{self.line}"
 
@@ -84,7 +84,9 @@ def lex(src):
                         val = int(f)
                 else:
                     val = int(t)
-                toks.append(Tok("NUM", val, ln, col))
+                tok = Tok("NUM", val, ln, col)
+                tok.is_float = "." in t          # `.` marks an F64 (`2.0`); `1e18` is an Int
+                toks.append(tok)
                 i += len(txt)
                 continue
             m = NAME_RE.match(line, i)
