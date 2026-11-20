@@ -2,141 +2,130 @@
 73bcb6f670	s1_arith,s1_bindings,s1_const_ops,s1_f64,s1_f64_eq_lint,s1_i128,s1_u64,s1_line_continuation	let n = 10 // immutable binding
 38b7d3b957	s1_arith,s1_bindings,s1_const_ops,s1_f64,s1_f64_eq_lint,s1_i128,s1_u64,s1_line_continuation	var ans = 0 // mutable binding
 146c2a18ac	s1_const_ops,s1_line_continuation	const MOD = 1_000_000_007 // compile-time constant (inlined)
-99363c1e3e	s1_f64,s1_f64_eq_lint,s1_i128,s1_u64	- **4 numeric types:** `Int` (64-bit signed symmetric `-(2^63-1)..=(2^63-1)`), `U64` (wrapping 64-bit unsigned
-99510c682c	s1_f64,s1_f64_eq_lint	- **`F64` rules:** `1e18` is `Int`; `.` marks `F64` (`0.0`). Integer literals unify with `F64`; `Int` variable
-7d58d2c5a7	s1_arith,s1_bindings,s1_const_ops,s1_f64,s1_f64_eq_lint,s1_i128,s1_u64,s1_line_continuation	- **Scalars & casts:** `Bool` (`true`, `false`), `Char` (1 ASCII byte, `'a'`), `Str` (`0..len`-indexed ASCII b
-c6a654599c	s1_const_ops,s1_line_continuation	- **Comments & blocks:** `// line comment` only. Indentation defines blocks; no semicolons. Lines continue aft
-34fef90af1	s1_arith	- **Arithmetic & ranges:** `+`, `-`, `*`, `/` (Euclidean floor division), `%` (Euclidean, always in `0..|b|`),
-b50fe295fc	s1_arith,s1_bindings,s1_const_ops,s1_f64,s1_f64_eq_lint,s1_i128,s1_u64,s1_line_continuation	- **Bitwise:** `&`, `|`, `^` (XOR), `~` (NOT), `<<`, `>>`, plus `&=`, `|=`, `^=`, `<<=`, `>>=`. Helpers: `popc
-1644dba44a	s1_arith,s1_bindings,s1_const_ops,s1_f64,s1_f64_eq_lint,s1_i128,s1_u64,s1_line_continuation	- **Logic & updates:** `and`, `or`, `not`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `x += y`, `x min= y`, `x max= y` 
+927d6cf545	s1_f64,s1_f64_eq_lint,s1_i128,s1_u64	- **4 numeric types:** `Int` (64-bit signed symmetric `-(2^63-1)..=(2^63-1)`), `U64` (wrapping 64-bit unsigned
+ff1e1aa23b	s1_f64,s1_f64_eq_lint	- **`F64` rules:** `1e18` is `Int`; `.` marks `F64` (`0.0`). Integer literals unify with `F64`; `Int` vars nee
+140746af9c	s1_const_ops,s1_line_continuation	- **Scalars, comments & blocks:** `Bool` (`true`, `false`), `Char` (1 ASCII byte, `'a'`), `Str` (`0..len`-inde
+87ee3fca67	s1_arith	- **Arithmetic, bitwise & updates:** `+`, `-`, `*`, `/` (Euclidean floor div), `%` (Euclidean, always in `0..|
 d39fa04093	s2_packed_opt_kinds	No `INF` or `-1` sentinels. `?Int` (`LLONG_MIN`), `?F64` (quiet NaN), `?V`, `?Bool`, `?Char`, and `?Enum` are 
 14d675e55d	s2_sort_none_key	var dist: [V]?Int = none // none or bare value `dist[src] = 0`
-9053aeac44	s2_sort_none_key	let d = dist[v] ?? -1 // fallback on none (mixing `??` with `+ - * / %` without parens is an error)
-97c74e89d3	s2_sort_none_key	let best = min(a, b) // min / max skip none on either side (incl. min(gen)/max(gen) over ?T)
-d44019e3e3	s2_sort_none_key	dist[v] min= dist[u] + w // tropical: `+ - += -=` & `sum` on ?Int/?F64 absorb none; min= skips none
+1910b0733b	s2_sort_none_key	let d = dist[v] ?? -1 // fallback on none (parens required when mixing `??` with `+ - * / %`)
+b01a30dd0a	s2_packed_opt_kinds,s2_question_return,s2_sort_none_key	let u = opt ?? return (none, none) // diverging RHS (`return`, `break`, `continue`) supported on `??`
+d6e23dc774	s2_sort_none_key	let best = min(a, b) // min/max skip none: (T, ?T) -> T, (?T, ?T) -> ?T; 3+ via min([a, b, c])
+a193f74842	s2_sort_none_key	dist[v] min= dist[u] + w // tropical: `+`, `-`, unary `-` on ?Int/?F64 absorb none; min=/max= skip none
 0387c25507	s2_sort_none_key	ans min= dist[v] // skips when dist[v] is none even if `ans` is plain Int
-382d63dac5	s2_no_ord,s2_optionals,s2_packed_opt_kinds,s2_question_return,s2_sort_none_key,s2_coalesce_assign_place	if dq.last != x: ... // `==` / `!=` auto-lift T to ?T (never `<` / `<=` / `>` / `>=`)
-051cc06bf8	s2_packed_opt_kinds,s2_sort_none_key	let x = opt! // unwrap (traps on none; elided when flow-proven)
-8b60b4edd0	s2_question_return,s2_sort_none_key	let y = maybe()? // early-return none from fn returning ?T
+e7eb842321	s2_coalesce_assign_place,s2_no_ord,s2_optionals,s2_packed_opt_kinds,s2_question_return,s2_sort_none_key	if dq.last != x: ... // `==`/`!=` auto-lift T to ?T (never `<`/`<=`/`>`/`>=`)
+3adf049abe	s2_packed_opt_kinds,s2_question_return,s2_sort_none_key	let x = opt! // unwrap (traps on none; elided when flow-proven); `maybe()?` returns none
 e2c9f3ce2d	s2_sort_none_key,s2_coalesce_assign_place	(adj[k] ??= []).push(x) // initialize place lazily if none, then lend mutably
 d402725f00	s2_packed_opt_kinds	if let a = x and let b = y: ... // chained optional bindings (also `if let` as expression)
-298d3e4d14	s2_packed_opt_kinds,s2_question_return	- **Uniform optionality:** `v + k`, `v - k`, `xs.last`, `min(gen)`/`max(gen)`, `min_by`/`max_by`, and `SparseT
-549b4b20bd	s2_no_ord,s2_sort_none_key	- **No implicit `?T` or `Mod<P>` ordering:** `?T` and `Mod<P>` do NOT implement `Ord` (`a < b` is an error, an
+7a19707bbe	s2_sort_none_key	- **Tropical guardrails:** `*`, `/`, `%`, bitwise ops, `?V + k`, `sum(gen)`, and `+=`/`-=` never lift over `?T
+a092c05549	s2_no_ord,s2_optionals,s2_packed_opt_kinds,s2_question_return,s2_sort_none_key	- **Uniform optionality & no `?T` `Ord`:** `v + k`, `v - k`, `xs.last`, `min(gen)`/`max(gen)`, and `min_by`/`m
 00aafc6642	s3_index_ops,s3_subset_index	domain V = 1..=n // nominal bounded index: 1..=n (0-cost in C++)
 7f8b6a180e	s3_grid_read,s3_index_ops,s3_subset_index,s3_cell_array	let a: [V]Int = read() // dense array indexed by V (zero checks on a[v])
 62bf209b48	s3_grid_row,s3_index_ops,s3_subset_index,s3_cell_array,s3_grid_col	var dp: [Row, Col]Int = 0 // 2D array indexed by (Row, Col); g[p] works for p: (Row, Col)
-aa834c5707	s3_range_between,s3_cell_array,s3_range_clamp,s3_range_first_opt,s3_range_mid,s3_range_step_in_generator	var cnt: [0..=k]Int = 0 // structural Int/Char-range array (`['a'..='z']Int`, independent fill per slot)
-28d311f030	s3_cell_array,s3_grid_swap_rows	cnt.fill(0) // whole-array reset (also `seen.fill(none)`, `a.swap(i, j)` safe when i == j)
-d214a582ad	s3_comprehension,s3_list_arena	let b: [V]Int = [V] v => a[v] * 2 // comprehension over domain V (list comprehension: `[x * 2 for x in a if x 
-79bb835a8a	s3_arrays,s3_bounds,s3_range_between,s3_cell_array,s3_list_arena,s3_range_clamp,s3_range_first_opt,s3_range_mid,s3_range_step_in_generator	- **Anonymous range vs. `domain`:** `[0..n]T`, `[0..=n]T`, and `['a'..='z']T` are structural arrays (same writ
-dac8ba83e3	s3_grid_row,s3_index_ops,s3_range_between,s3_subset_index,s3_from_idx_optional,s3_range_clamp,s3_range_first_opt,s3_range_mid,s3_range_step_in_generator	- **Index (`V`) & Seq (`1..=n`):** `V.K` (count), `V.first`, `V.last`, `V[..k]` (first `min(k, V.K)` range), `
-b998030742	s3_bounds	- **Boundaries (`V.bounds`, `V.K + 1` gaps):** `v.l` / `v.r` (gap left/right of `v`), `v.l(k)` / `v.r(k)` (`v.
-75657864a4	s3_range_between,s3_ranges,s3_range_clamp,s3_range_first_opt,s3_range_mid,s3_range_step_in_generator	- **One `Range<I>` type:** `l..r`, `l..=r`, `..i`, `..=i`, `i..`, `i.r..`, `l.r..r.l`. Properties/methods: `.l
-9d08353cc8	s3_adj,s3_grid_read,s3_grid_row,s3_index_ops,s3_subset_index,s3_cell_array,s3_dir4,s3_dir8,s3_from_idx_optional,s3_grid_col,s3_grid_flipped,s3_grid_swap_rows,s3_grid_transposed,s3_range_first_opt,s3_range_step_in_generator,s3_slices	- **Slices & grids (`std.grid`):** `a[l..=r]` (mutable slice; `.sorted()`, `.first_ge`, `.last_le`, `sort(mut 
-4174a707ef	s3_grid_row,s3_index_ops,s3_subset_index,s3_list_arena	- **Algebraic `Index` (5 strictly O(1), `Copy` shapes):** `Bool` (`for b in Bool`, `[V, Bool]T`), unit/payload
-027ba5532c	s3_bounds,s3_index_ops,s3_raw,s3_subset_index,s3_unchecked	- **Escape hatches:** `a.raw[i]` (0-based `Int` indexing, checked in debug) and `unchecked:` block (elides bou
-2749bfe853	s4_str,s4_str_from_chars	Default `Str` is an `Int`-indexed (`0..s.len`, zero `.raw`) ASCII byte sequence (zero UTF-8, O(1) indexing and
+6b55cdb7ed	s3_cell_array,s3_range_between,s3_range_clamp,s3_range_first_opt,s3_range_mid,s3_range_step_in_generator	var cnt: [0..=k]Int = 0 // structural range array (`['a'..='z']Int`; clones fill per slot)
+2b7a194206	s3_index_ops,s3_list_arena	cnt.fill(0) // reset; hot multi-query loops use `[D]Bool` + touched-list reset
+4d442f3aee	s3_comprehension,s3_list_arena	let b: [V]Int = [V] v => a[v] * 2 // domain comprehension (list comprehension: `[x * 2 for x in a if x > 0]`)
+279cf9072e	s3_from_idx_optional,s3_grid_row,s3_range_between,s3_range_clamp,s3_range_first_opt,s3_range_mid,s3_range_step_in_generator	- **Anonymous range vs `domain`:** `[0..n]T`, `[0..=n]T`, `['a'..='z']T` are structural (`for i in 0..n` gives
+c48c1761bc	s3_bounds	- **Boundaries (`V.bounds`, `V.K + 1` gaps):** `v.l`/`v.r`, `v.l(k)`/`v.r(k)` (`v.l == v.l(1)`), `b.left -> ?V
+1bd1ef5d10	s3_range_between,s3_range_clamp,s3_range_first_opt,s3_range_mid,s3_range_step_in_generator	- **One `Range<I>` type:** `l..r`, `l..=r`, `..i`, `..=i`, `i..`, `i.r..`, `l.r..r.l`. Properties/methods: `.l
+d60e28b8dd	s3_adj,s3_cell_array,s3_dir4,s3_from_idx_optional,s3_grid_col,s3_grid_flipped,s3_grid_read,s3_grid_row,s3_grid_swap_rows,s3_grid_transposed,s3_range_first_opt,s3_range_step_in_generator,s3_slices	- **Slices & grids (`std.grid`):** `a[l..=r]` (mutable slice: `sort(mut a[l..=r])`, `reverse(mut a[l..=r])`, `
+ec80e73e9c	s3_index_ops,s3_list_arena,s3_subset_index	- **Algebraic `Index` (5 O(1) value-copied shapes):** `Bool`, unit/payload `enum` (on demand), `?T`, `lo..=hi`
+de92e9b2a9	s3_index_ops,s3_raw,s3_subset_index,s3_unchecked	- **Escape hatches:** `a.raw[i]` (0-based `Int` index, checked locally) and `unchecked:` block.
+dbfe2bceb3	s4_nominal_chars,s4_starts_with_at,s4_str,s4_str_from_chars	ASCII-only, `0..s.len`-indexed byte array (zero UTF-8, O(1) indexing and slicing).
 52a07c6157	s4_str,s4_str_from_chars	let s: Str = read()
-08dc9cdc91	s4_nominal_chars,s4_starts_with_at,s4_str,s4_str_from_chars	let ch = s[i] // Char (0..s.len); digit: ch - '0', letter: ch - 'a', s.items
-2756b3926c	s4_nominal_chars,s4_starts_with_at,s4_str,s4_str_from_chars	let sub = s[l..r] // O(1) slice; also s[..k], s[k..], s.len, s.is_empty, match s:
+973a01e934	s4_nominal_chars,s4_starts_with_at,s4_str,s4_str_from_chars	let ch = s[i] // Char; digit: ch - '0', letter: ch - 'a', s.items
+fb9e82967a	s4_nominal_chars,s4_starts_with_at,s4_str,s4_str_from_chars	let sub = s[l..r] // O(1) slice; s[..k], s[k..], s.len, s.is_empty, match s:
 eca61bdc2f	s4_nominal_chars,s4_starts_with_at,s4_str,s4_str_from_chars	var out = ""
 3188026723	s4_nominal_chars,s4_str,s4_str_from_chars	out.push('a'); out += "bc" * 3 // mutable when `var`; s + t, s + ch, ch + s, Str(chars)
-6ab777dc16	s4_starts_with_at	if s.starts_with(x, at: i): ... // also s.split(' '), s.split_once(' '), s.trim_start(' '), s.parse_int()
+c0cee14657	s4_starts_with_at	if s.starts_with(x, at: i): ... // s.split(' '), s.split_once(' '), s.trim_start(' '), s.parse_int()
 1a7fecacaf	s4_nominal_chars,s4_starts_with_at,s4_str,s4_str_from_chars	let joined = " ".join("{x}" for x in ans)
-0184e63a82	s4_nominal_chars,s4_str,s4_str_from_chars	let a: [domain A]Char = read() // opt-in nominal character domain for multi-string DP
+2abac71a16	s4_nominal_chars,s4_str,s4_str_from_chars	let a: [domain A]Char = read() // opt-in nominal domain for multi-string DP
 e2c1df0bf9	s5_control,s5_if_chain,s5_items,s5_parallel,s5_defer,s5_match_expr,s5_match_stmt	if x < 0: neg()
-e621d28633	s5_control,s5_if_chain,s5_items,s5_parallel,s5_defer,s5_match_expr,s5_match_stmt	elif x == 0: zero()
+10873c28a8	s5_control,s5_defer,s5_if_chain,s5_items,s5_match_expr,s5_match_stmt,s5_parallel	elif x == 0: zero() // always `elif`, never `else if`
 08f2cd68e2	s5_control,s5_if_chain,s5_items,s5_parallel,s5_defer,s5_match_expr,s5_match_stmt	else: pos()
-9629308c7a	s5_control,s5_if_chain,s5_items,s5_parallel,s5_defer,s5_match_expr,s5_match_stmt	let sign = if x >= 0: 1 else: -1 // ONE inline-if syntax (no `then`)
-f2000e7e8f	s5_control,s5_if_chain,s5_items,s5_parallel,s5_defer,s5_match_expr,s5_match_stmt	var (r0, r1) = (a, b) // declares mutable vars
-7eb9a48d86	s5_parallel	(r0, r1) = (r1, r0 - q * r1) // parallel tuple assignment (evaluates RHS first)
-8f362338fc	s5_control,s5_if_chain,s5_items,s5_parallel,s5_defer,s5_match_expr,s5_match_stmt	for v in V if ok(v): ... // filtered loop
-15262c7ffd	s5_control,s5_if_chain,s5_items,s5_parallel,s5_defer,s5_match_expr,s5_match_stmt	for mut b in blocks: b.query() // mutable element iteration (for self-adjusting structs)
+108542b808	s5_control,s5_defer,s5_if_chain,s5_items,s5_match_expr,s5_match_stmt,s5_parallel	let sign = if x >= 0: 1 else: -1 // ONE inline-if syntax
+4c7c596eda	s5_control,s5_defer,s5_if_chain,s5_items,s5_match_expr,s5_match_stmt,s5_parallel	var (r0, r1) = (a, b)
+01009aeef4	s5_parallel	(r0, r1) = (r1, r0 - q * r1) // parallel tuple assignment (RHS evaluated first)
+44b8d55e38	s5_control,s5_defer,s5_if_chain,s5_items,s5_match_expr,s5_match_stmt,s5_parallel	for v in V if ok(v): ... // filtered loop; mutate via `for i in 0..xs.len: xs[i].f()`
 f400bb724a	s5_items	for (i, x) in a.items: ... // (index/key, value) everywhere
 b764d698c2	s5_control,s5_if_chain,s5_items,s5_parallel,s5_defer,s5_match_expr,s5_match_stmt	for i in (0..n).step(2).rev: ...
 160530758a	s5_if_chain	while let a = x and let b = y and a > 0: // chained optional bindings + guard
 9c5fd59d13	s5_control,s5_if_chain,s5_items,s5_parallel,s5_defer,s5_match_expr,s5_match_stmt	'outer: for r in Row:
 52f4a17bd4	s5_control,s5_if_chain,s5_items,s5_parallel,s5_defer,s5_match_expr,s5_match_stmt	for c in Col:
-50246d6d62	s5_control,s5_if_chain,s5_items,s5_parallel,s5_defer,s5_match_expr,s5_match_stmt	if bad(r, c): break 'outer // labeled break / continue; bare `return` exits top level / @multitest
+63995007f9	s5_control,s5_defer,s5_if_chain,s5_items,s5_match_expr,s5_match_stmt,s5_parallel	if bad(r, c): break 'outer // labeled break/continue; bare `return` exits top level / @multitest
 ee79ddd232	s5_match_expr,s5_match_stmt	let res = match op: // exhaustive expression; bare variants, `=>`
 683dad3720	s5_control,s5_if_chain,s5_items,s5_parallel,s5_defer,s5_match_expr,s5_match_stmt	Add(l, r, v) => st.apply(l..=r, v)
 7324420ee6	s5_control,s5_if_chain,s5_items,s5_parallel,s5_defer,s5_match_expr,s5_match_stmt	Query(l, r) => st.fold(l..=r)
-1e13a7d0f6	s5_control,s5_if_chain,s5_items,s5_parallel,s5_defer,s5_match_expr,s5_match_stmt	let snap = dsu.mark()
-530a99ff1d	s5_defer	defer dsu.undo_to(snap) // block-scoped LIFO (runs at end of enclosing loop iteration/block)
 34e3cddd5e	s6_mut_param	fn swap_adj(mut a: [V]Int, i: V): // mut on param AND at call site
 5ba9e1603e	s6_mut_param	if let j = i + 1: swap(mut a[i], mut a[j])
-b4399337a4	s6_mut_param	swap_adj(mut a, v)
 cc96e10c56	s6_copy,s6_generic,s6_nested_fn,s6_sort_by_lambda,s6_mut_param,s6_range_first_optional,s6_turbofish	var vis: [V]Bool = false
-18d4350f3f	s6_nested_fn,s6_mut_param	fn dfs(u: V): // plain nested `fn` mutates outer `var` directly
+164d05f283	s6_mut_param,s6_nested_fn	fn dfs(u: V): // nested `fn` mutates outer `var` directly
 2d23bf1ba7	s6_copy,s6_generic,s6_nested_fn,s6_sort_by_lambda,s6_mut_param,s6_range_first_optional,s6_turbofish	vis[u] = true
 76ac1529bf	s6_copy,s6_generic,s6_nested_fn,s6_sort_by_lambda,s6_mut_param,s6_range_first_optional,s6_turbofish	for v in g[u]: if not vis[v]: dfs(v)
-12dd6435af	s6_sort_by_lambda,s6_mut_param	sort(mut es, by: e => (e.w, -e.u)) // ONE lambda syntax: `x => expr`
-2c47969d00	s6_generic,s6_mut_param	- **Generics & inference:** Always write `<D>` explicitly on generic definitions (`fn f<D>(a: [D]Int)`). Array
-4f4f7b2b8d	s6_copy,s6_mut_param	- **Ownership & evaluation:** Small values (`<= 16 B`, no heap) are `Copy`; reading a `Copy` element releases 
-ea9b5fded0	s7_payload_enum_index	`Eq`, `Ord` (only when every field is `Ord`, never `?T`), `Hash`, `Show`, `Read`, `Gen`, `Copy`, and `Index` d
-4b9152a254	s7_record,s7_record_named_literal,s7_struct,s7_struct_mut_self,s7_struct_defaults	type Edge = (u: V, v: V, w: Int) // structural named record; e.u or let (u, v, w) = e
+30d2c76709	s6_mut_param,s6_sort_by_lambda	sort(mut es, by: e => (e.w, -e.u)) // ONE lambda syntax: `x => expr`; descending: `by: desc`
+e148231865	s6_generic,s6_mut_param	- **Generics & inference:** Write `<D>` explicitly on generic `fn`s (`fn f<D>(a: [D]Int)`). Array params may s
+3739ef557a	s6_copy,s6_mut_param	- **Ownership & evaluation order:** Small non-heap values (`<= 16 B`) copy implicitly; reading a copyable elem
+2006ea4ef9	s7_payload_enum,s7_payload_enum_index,s7_struct,s7_struct_defaults,s7_struct_mut_self,s7_unit_enum	**7 core traits** derive automatically whenever fields support them: `Index`, `Seq`, `Eq`, `Ord` (enum variant
+00fbb1e4c7	s7_record,s7_record_named_literal,s7_struct,s7_struct_defaults,s7_struct_mut_self	type Edge = (u: V, v: V, w: Int) // structural record; e.u or let (u, v, w) = e
 8a97526c8b	s7_struct,s7_struct_mut_self,s7_struct_defaults	struct SegNode:
 929c151f00	s7_record,s7_record_named_literal,s7_struct,s7_struct_mut_self,s7_payload_enum,s7_payload_enum_index,s7_struct_defaults,s7_unit_enum	best: Int = 0
 3310875e97	s7_record,s7_record_named_literal,s7_struct,s7_struct_mut_self,s7_payload_enum,s7_payload_enum_index,s7_struct_defaults,s7_unit_enum	cnt: Int = 1
 148a075726	s7_struct_mut_self	fn merge(self, o: SegNode) -> SegNode: ...
 7c69fd2dff	s7_struct_mut_self	fn reset(mut self): self.best = 0
-654a5773b8	s7_payload_enum,s7_payload_enum_index,s7_unit_enum	enum Dir = N | E | S | W // unit enum (auto Index, K = 4)
-5620a73dba	s7_payload_enum,s7_payload_enum_index,s7_unit_enum	enum Node: // payload enum (auto sum Index on demand)
-6da13addb0	s7_record,s7_record_named_literal,s7_struct,s7_struct_mut_self,s7_payload_enum,s7_payload_enum_index,s7_struct_defaults,s7_unit_enum	Source
-e53e8d5300	s7_record,s7_record_named_literal,s7_struct,s7_struct_mut_self,s7_payload_enum,s7_payload_enum_index,s7_struct_defaults,s7_unit_enum	Sink
-c9c8097d6a	s7_record,s7_record_named_literal,s7_struct,s7_struct_mut_self,s7_payload_enum,s7_payload_enum_index,s7_struct_defaults,s7_unit_enum	Build(s: Station)
-e27a835764	s7_record,s7_record_named_literal,s7_struct,s7_struct_mut_self,s7_payload_enum,s7_payload_enum_index,s7_struct_defaults,s7_unit_enum	Serve(u: User)
-148e60a6ae	s8_multitest_count,s8_multitest_eof,s8_multitest_file	@multitest // whole-file, or `@multitest fn solve():` (code above runs once!)
+487fc0c901	s7_payload_enum,s7_payload_enum_index,s7_unit_enum	enum Dir = N | E | S | W // unit enum (auto Index, K = 4, N < E < S < W)
+8ee2035da6	s7_payload_enum,s7_payload_enum_index,s7_unit_enum	enum Node: Source | Sink | Build(s: Station) | Serve(u: User) // payload enum (auto sum Index)
+ac94388e9f	s8_multitest_count,s8_multitest_eof,s8_multitest_file,s8_read_until	@multitest // whole-file, `@multitest(until_eof)`, or `@multitest fn solve():`
 79b7ca93cf	s8_read_gen,s8_read_none,s8_read_until	let (n, m): (1..=2e5, 1..=n) = read() // dependent bounds on scalars, tuples, record fields
 6ac5014fb7	s8_read_gen,s8_read_none,s8_read_until	let g: [Row, Col]?Int = read(none: "X") // symmetric `none:` on read / print / read_output
-da7ad791d4	s8_brute_main,s8_read_none	print(ans, none: "IMPOSSIBLE") // lists print space-separated; domain v prints label; grids by row
-578f3b3fda	s8_read_gen,s8_read_none,s8_read_until	for (r, c) in read_until((0, 0)): ... // sentinel-terminated stream; read_line() skips trailing ws after read(
-63b9481220	s8_assume_assert_debug	assume n >= 1 and m <= 200_000 // local debug + stress filter/validator (pure; stripped on judge)
-1f32b86894	s8_assume_assert_debug	assert ok // ALWAYS checked (local + judge)
-1f8e8db17d	s8_assume_assert_debug	debug(n, dp) // stderr locally (structured `[1, 2]`, replayed on stress fail); stripped on judge
+e810da0566	s8_read_none	print(ans, none: "IMPOSSIBLE") // lists space-separated; auto-flushes if program uses `ask(...)`
+9d04b158dd	s8_read_gen,s8_read_none,s8_read_until	for (r, c) in read_until((0, 0)): ... // sentinel stream; read_line() skips trailing ws after read()
+42ca8e6d19	s8_assume_assert_debug	assert ok // ALWAYS checked (local + judge); feeds range/disjoint proofs
+03ddd4c594	s8_assume_assert_debug	debug(n, dp) // stderr locally (replayed on stress fail); stripped on judge
 7dd3cb8d42	s8_tags	@tags('.', '*', '1'..='9')
 587997eb4e	s8_tags	enum Cell: Empty | Wall | Coin(val: 1..=9) // single-char packed tags + char-range payload
-404e9c1cde	s8_memo,s8_memo_override	@memo // top-level or nested in loops (block-scoped cache; runtime flat <= 2^24
-dde6a8eb21	s8_memo,s8_memo_override	fn dp(u: V, used: Bool) -> Int: ... // else salted hash; uniform range-param narrowing; @memo(flat|hash))
+8665df9a35	s8_memo,s8_memo_override	@memo // top-level or nested in fn/loop (auto-resets per call/iter)
+472f12ab9e	s8_assume_assert_debug,s8_brute_main,s8_checker,s8_gen_fn,s8_grader,s8_interactor,s8_memo,s8_memo_override,s8_multitest_count,s8_multitest_eof,s8_multitest_file,s8_read_gen,s8_read_none,s8_read_until,s8_tags	fn dp(u: V, used: Bool) -> Int: ... // auto-dispatches flat (<= 2^24; 2^26 for ?Bool) vs salted hash
+ba4ce24856	s8_grader	// permits `ask(...)` & extern `@grader fn` (1 call per arg tuple)
 0a4a4de802	s8_gen_fn,s8_read_gen,s8_read_none,s8_read_until	let (k, walls) = read(gen: () => gen_walls(pts)) // typed gen: with optional `witness val`
-51d98e812e	s8_gen_fn,s8_read_gen	@gen fn make_case(size: Int): ... // whole-input generator (auto choice-stream shrinking)
+0ce48b5678	s8_gen_fn,s8_read_gen	@gen fn make_case(size: Int): ... // whole-input generator (choice-stream shrinking)
 5aa89b1123	s8_brute_main	@brute(main) fn slow(): ... // default oracle for `cpl stress` (stripped on judge)
-740e0b3544	s8_assume_assert_debug,s8_checker,s8_read_gen,s8_read_none,s8_read_until	@checker fn check(): ... // reads solution stdout via read_output(), checks with assert
-076f2b6028	s8_interactor	@interactor fn judge(): ... // local stdio judge paired with `ask("?", x, limit: 2)`
-21f8953178	s8_grader	@grader const N: 0..=2000 // extern const; bodyless `@grader fn` = extern; `@grader struct` = stateful
-98477def5a	s8_brute_main,s8_grader,s8_multitest_file	@grader fn restore(n: Int) -> List<Int>: // file-scope `domain V` binds from grader args for shared callbacks
-e9a6de5ea2	s8_brute_main,s8_assume_assert_debug,s8_checker,s8_interactor,s8_multitest_file	- **Honest `cpl stress`:** Defaults to in-file `@brute`/`@checker`/`@interactor`, escalates sizes (`1..=20`; `
-e2f214c3b3	s9_deque,s9_heap_desc,s9_list,s9_list_first_last,s9_set,s9_set_algebra,s9_set_rank_nth,s9_sortedbag	Every container uses `.len`, `.is_empty`, `.clear()`, `.take()` (O(1) move-out leaving empty), and `.absorb(mu
-b5bd2143c1	s9_list,s9_list_first_last	- **`List<T>`:** `var xs: List<T> = []`, `[expr for x in it if c]`, `List.filled(n, v)`, `.push(x)`, `.push_id
+564ad26273	s8_assume_assert_debug,s8_checker,s8_read_gen,s8_read_none,s8_read_until	@checker fn check(): ... // reads solution stdout via read_output(), validates with assert
+8efbcd08da	s8_interactor,s8_read_gen,s8_read_none,s8_read_until	@interactor fn judge(sol: Interactor): // read() = hidden test; sol.recv() = sol stdout; sol.send(x) = sol std
+e1c4629566	s8_assume_assert_debug,s8_brute_main,s8_checker,s8_gen_fn,s8_grader,s8_interactor,s8_memo,s8_memo_override,s8_multitest_count,s8_multitest_eof,s8_multitest_file,s8_read_gen,s8_read_none,s8_read_until,s8_tags	... // pairs with `ask("?", x, limit: K)` (auto-flushes all print())
+75fd5205ad	s8_grader	// Stateful @grader: top-level `var` (or `@grader struct`); bodyless `@grader fn` = extern oracle
+b7a7ed0e21	s8_read_none	var state: ?State = none
+2e2f435776	s8_grader	@grader fn get_distance(i: Int, j: Int) -> Int
+80eb9335c8	s8_grader	@grader fn init(n: Int, a: [0..n]Int): state = State(a)
+26bec58cb6	s8_grader	@grader fn query(x: Int) -> Int: ...
+0b69152c13	s8_assume_assert_debug,s8_brute_main,s8_checker,s8_interactor,s8_multitest_file	- **`cpl stress`:** Uses in-file `@brute`/`@checker`/`@interactor`, escalates sizes (`1..=20`; `--max-vals`), 
+8330ddaa0b	s9_deque,s9_heap_desc,s9_list,s9_list_first_last,s9_set,s9_set_algebra,s9_set_rank_nth,s9_sortedbag	Every container uses `.len`, `.is_empty`, `.clear()`, and `.take()` (O(1) move-out leaving empty). Discarding 
+41a44753d8	s9_list,s9_list_first_last	- **`List<T>`:** `var xs: List<T> = []`, `[expr for x in it if c]`, `List.filled(n, v)`, `.push(x)`, `.push_id
 6a1373fbb7	s9_deque,s9_list_first_last	- **`Deque<T>`:** `var q: Deque<T> = []`, `.push(x)`, `.pop() -> ?T`, `.push_front(x)`, `.pop_front() -> ?T`, 
-f5837f8ab0	s9_deque,s9_monodeque	- **`MonoDeque<T>(min | max)`:** imperative monotone queue — `.push(at: Int, val: T)`, `.drop_before(min_at: I
-91e9d14464	s9_heap_desc,s9_set,s9_set_algebra,s9_set_rank_nth	- **`MinHeap<T>()` / `MaxHeap<T>()`:** `.push(x)`, `.pop() -> ?T`, `.peek -> ?T`, `.len`, `.is_empty`. Use `de
-65750aca75	s9_hashset,s9_list_first_last,s9_map_ordered,s9_set,s9_set_algebra,s9_set_rank_nth,s9_sortedbag	- **`Set<T>()` / `SortedBag<T>()` / `HashSet<T>()` / `Marks<D>()`:** `.add(x) -> Bool`, `.remove(x)`, `x in s`
-80c62f8485	s9_map,s9_hashmap,s9_list_first_last,s9_map_coalesce,s9_map_ordered	- **`Map<K, V>()` / `HashMap<K, V>()`:** `m[k]` (traps if missing), `m[k] f= x`, `m[k] ??= init`, `m.get(k) ->
-8710b4b68e	s9_bitset,s9_list_first_last,s9_set,s9_set_algebra,s9_set_rank_nth,s9_subset	- **`Bitset<D>()` (large `D`) & `Subset<D>` (`Copy` `Index`, `D.K <= 25`):** `.add(v)`, `.remove(v)`, `.toggle
-61f6380048	s10_search	- **8 canonical search names (plus `r.mid`):**
-0fc98d9e12	s10_search,s10_sorted_first_ge,s10_bsearch_f64	- Binary search (monotone, debug-checked; free fns on ranges, methods on domains; `F64` ranges take `steps: 80
-a93fcb472a	s10_sorted_first_ge,s10_sort_family	- Sorted lookup (uniform on `List`, `[D]T`, slices, `Set`, `Map`, `SortedBag`; `by:` on sequences): **`xs.firs
-fb6adf0c86	s10_search,s10_sorted_first_ge	- Linear search: **`first(it) -> ?T`**, **`a.find(x) -> ?I`**, **`min_by(it, key) -> ?T`** / **`max_by(it, key
-c27d9d37d6	s10_compress,s10_prefix,s10_prefix_2d,s10_slide,s10_sorted_first_ge,s10_windows,s10_adjacent,s10_dedup_rotate_perm,s10_perm,s10_scan_runs,s10_sliding_minmax,s10_sort_family	- **Sliding & sequences:** `D.windows(k)`, `D.chunks(k)` (clamped non-overlapping `Range<D>`), `sliding_min(a,
-0155df4428	s10_comb_mod,s10_mod_const,s10_math,s10_mod_runtime,s10_sieve_factor	- **Math & geometry:** `abs`, `min`, `max`, `gcd`, `lcm`, `isqrt`, `pow_mod(a, e, m)`, `Sieve(n)` (`.is_prime`
-fe0dab3b96	s10_comb_mod,s10_mod_const,s10_mod_runtime	- **`Mod<P>`:** unified for `const` (`type Z = Mod<MOD>`) and runtime `let` (`let M: 1..=1e9 = read(); type Z 
-34f8a42687	s10_comb_mod	- **`Comb<P>()`:** lazily auto-grows across test cases — `.fact(k)`, `.inv_fact(k)`, `.choose(n, k)`, `.arrang
-ed59cade96	s10_matrix	- **`Matrix<R, C, T>`:** `a * b`, `a.pow(e)`, `a.mul_with(b, add:, mul:, zero:)` (tropical `(max, +)`).
-d7c5d403a9	s10_convex_hull	- **`Pt<T = Int>`:** `+`, `-`, `a.dot(b)`, `a.cross(b)`, `a.norm2`, `turn(a, b, c)` (`Int` only), `turn_eps(a,
-55dd0ab8e5	s11_range_structs	- **Range structures** (accept bare operators `+`, `*`, `^`, `&`, `|`, `min`, `max`, `gcd` OR `(id, op)`):
+5b051064bd	s9_heap_desc	- **`MinHeap<T>()` / `MaxHeap<T>()`:** `.push(x)`, `.pop() -> ?T`, `.peek -> ?T`. Use `desc(x)` inside tuples 
+4b6b495561	s9_hashset,s9_list_first_last,s9_map_ordered,s9_set,s9_set_algebra,s9_set_rank_nth,s9_sortedbag	- **`Set<K>()` / `SortedBag<K>()` / `HashSet<K>()`:** `.add(x) -> Bool`, `.remove(x)`, `x in s`, `x not in s`,
+37933e406b	s9_hashmap,s9_list_first_last,s9_map,s9_map_coalesce,s9_map_ordered	- **`Map<K, V>()` / `HashMap<K, V>()`:** `m[k]` (**traps if missing**), `m[k] = v` (inserts/overwrites), **`m[
+8ec41aa51a	s9_bitset,s9_dsu_ctor,s9_list_first_last,s9_set,s9_set_algebra,s9_set_rank_nth,s9_subset	- **`Bitset<D>()` (large `D`) & `Subset<D>` (4-B `Index`, `D.K <= 25`):** `.add(v)`, `.remove(v)`, `.toggle(v)
+37c0171d18	s10_search	- **6 canonical search names (plus `r.mid`):**
+ee0245c198	s10_bsearch_f64,s10_search,s10_sorted_first_ge	- Binary search (monotone, debug-checked; `F64` takes `steps: 80`): `bsearch_first(r, ok) -> ?I`, `bsearch_las
+75b9406dca	s10_sort_family,s10_sorted_first_ge	- **Sorted lookup return types:** sequences (`List`, `[D]T`, slices; optional `by:`) `.first_ge(x)` / `.last_l
+be5602d6b7	s10_search,s10_sorted_first_ge	- Linear search: `first(it) -> ?T`, `a.find(x) -> ?I`, `min_by(it, key) -> ?T` / `max_by(it, key) -> ?T` (firs
+c224de5852	s10_adjacent,s10_compress,s10_dedup_rotate_perm,s10_perm,s10_prefix,s10_prefix_2d,s10_scan_runs,s10_sort_family,s10_sorted_first_ge,s10_windows	- **Sequences & RNG:** `D.windows(k)`, stable `sort(mut a, by:)` / `sorted(it, by:)` (`by: desc` for descendin
+d83204dff9	s10_comb_mod,s10_math,s10_mod_const,s10_mod_runtime,s10_sieve_factor	- **Math & geometry:** `abs`, `min`, `max`, `ceil_div(a, b)`, `gcd`, `lcm`, `isqrt`, `pow_mod(a, e, m)`, `Siev
+b40ddb5e02	s10_comb_mod,s10_mod_const,s10_mod_runtime	- **`Mod<P>`:** unified for `const` (`type Z = Mod<MOD>`) and runtime `let` (`type Z = Mod<M>`). Any `P >= 1` 
+2711ca3a98	s10_comb_mod,s10_mod_const,s10_mod_runtime	- **`Comb<P>()`:** immutable `let comb = Comb<MOD>()` (interior-mutability lazy growth) — `.fact(k)`, `.inv_fa
+d54180df15	s10_adjacent,s10_bsearch_f64,s10_comb_mod,s10_compress,s10_convex_hull,s10_dedup_rotate_perm,s10_folds,s10_math,s10_matrix,s10_mod_const,s10_mod_runtime,s10_perm,s10_prefix,s10_prefix_2d,s10_pt,s10_scan_runs,s10_search,s10_sieve_factor,s10_slide,s10_sliding_minmax,s10_sort_family,s10_sorted_first_ge,s10_windows	- **`Pt<T = Int>`:** `+`, `-`, `a.dot(b)`, `a.cross(b)`, `a.norm2`, `turn(a, b, c)` (`Int`), `turn_eps(a, b, c
+e89106a8e3	s11_range_structs	- **Range structures** (accept bare operators `+`, `*`, `^`, `&`, `|`, `min`, `max`, `gcd` OR `Monoid(id, op)`
 d99d60c509	s11_fenwick2d	- `Fenwick<D, Int>(a)` / `Fenwick2D<R, C, Int>()` — `.add(i, d)`, `.sum(l..=r)`.
-4c2bd35b8f	s11_range_structs	- `SparseTable<D, Int>(min, a)` — `.fold(l..=r) -> ?T` in O(1) (`none` on empty range; no identity needed).
-a4641bf10b	s11_segtree_id_op,s11_segtree_descent	- `SegTree<D, T>(+, a)` or `SegTree<D, T>(Monoid(id, op), a)` — `.set(i, v)`, `.fold(l..=r)`, `.max_right(from
-796fb52cf3	s11_segtree_id_op,s11_dsu_components,s11_lazy_custom,s11_segtree_descent	- `LazySegTree<D, T>(AddSum, a)` (stock tags: `AddSum`, `AddMin`, `AddMax`, `AssignSum`, `AssignMin`, `AssignM
-b4409867ad	s11_lazy_custom,s11_steps	- `Steps<K, V>(init)` — lazy-sorted piecewise-constant intervals (covers interval sets via `Steps<K, Bool>`).
+e45293dcc9	s11_range_structs	- `SparseTable<D, Int>(min, a)` — `.fold(l..=r) -> T` in O(1) (asserts non-empty range; no identity needed).
+27e8390ecf	s11_segtree_descent,s11_segtree_id_op	- `SegTree<D, T>(+, a)` or `SegTree<D, T>(Monoid(id, op), a)` — `.set(i, v)`, `.fold(l..=r)`, **`.all`** (O(1)
+894494af11	s11_dsu_components,s11_lazy_custom,s11_segtree_descent,s11_segtree_id_op	- `LazySegTree<D, T>(act, a)` (infers tag type `F` from `act`; stock tags: `AddSum`, `AddMin`, `AddMax`, `Assi
 7464cba004	s11_dsu_components	- `Dsu<V>()` — `.unite(a, b) -> Bool`, `.find(v) -> V`, `.same(a, b)`, `.size(v)`, `.components`, `.groups() -
-e2596b0dbc	s11_bfs_plain,s11_graph,s11_topo_scc	- **Graphs & trees** (`from:`/`root:`/`g` first for inference; unweighted algorithms accept `Graph<V, E>` or p
-4d092a1e6c	s11_bfs_plain,s11_dijkstra,s11_dsu_components,s11_graph,s11_topo_scc,s11_z_prefix	- `Graph<V>` / `Graph<V, W>` — `Graph.undirected(es)`, `Graph.directed(es)`, `g[u]`, `bfs`, `dijkstra`, `short
-cce0745e66	s11_range_structs,s11_rooted	- `Rooted<V>(g, root)` / `Rooted.from_parents(par)` — value-owned preorder domain `t.Pre`, `t.pos(v) -> t.Pre`
-172ec64ad3	s11_flow,s11_graph	- `FlowGraph<Node>()` / `MinCostFlow<Node>()` / `max_weight_matching<L, R>` — pair with payload-enum `Node`.
-85449961b0	s11_twosat	- `TwoSat<V>()` — `.add_or(a, b)`, `.implies(a, b)`, `.solve() -> ?[V]Bool`.
-ff74de20fa	s11_suffix_hash,s11_z_prefix	- **Strings:** `z_function(s)`, `prefix_function(s)`, `palindromes(s)`, `SuffixArray(s)` (`.sa`, `.lcp`), `Rol
-0745d49219	s11_range_structs,s11_dsu_components	- *(Advanced structures — `Rope`, `RangeKth`, `LiChao`, `PotentialDsu`, `Cover`, `Line`/`Hom`, `TwoStackFold`,
-bf76e3cbb0	s12_keywords_free	- **Contestant (32, including 3 literals):** `let`, `var`, `const`, `fn`, `struct`, `enum`, `domain`, `type`, 
-9b8ed5c1c6	s12_keywords_free	- **Library-author only (8):** `trait`, `impl`, `where`, `lends`, `lend`, `law`, `inline`, `yield`.
+4945cbafdb	s11_graph	- **Graphs, trees & strings:**
+6138300fcd	s11_bfs_plain,s11_dijkstra,s11_dsu_components,s11_graph,s11_topo_scc	- `Graph<V>` / `Graph<V, W>` — `Graph.undirected(es)`, `Graph.directed(es)`, `g[u]`, `bfs`, `dijkstra`, `topo`
+6bcb498cde	s11_range_structs,s11_rooted	- `Rooted<V>(g, root)` / `Rooted.from_parents(par)` — value-owned preorder domain `t.Pre`, `t.pos(v) -> t.Pre`
+19ea410acc	s11_flow,s11_graph	- `FlowGraph<Node>()` / `max_weight_matching<L, R>` — pair with payload-enum `Node`.
+b22afb8d11	s11_suffix_hash,s11_z_prefix	- `z_function(s)`, `prefix_function(s)`, `SuffixArray(s)` (`.sa`, `.lcp`), `RollingHash(seq)` (`Str` or `[D]T`
+37c8b4441a	s11_dsu_components,s11_flow,s11_range_structs,s11_steps,s11_twosat	- *(Opt-in `std.marks.Marks<D>` [32-bit stamps] and advanced structures — `MonoDeque`, `Steps`, `TwoSat`, `Mat
+8925aafbea	s12_keywords_free	- **Contestant (30, including 3 literals):** `let`, `var`, `const`, `fn`, `struct`, `enum`, `domain`, `type`, 
+9fbc9ed8aa	s12_keywords_free	- **Library-author only (4):** `trait`, `impl`, `lends`, `yield`.
+4a86fb7d6b	s12_keywords_free	- **`@` decorators (8 contestant + 3 library-author):** `@memo`, `@multitest`, `@brute`, `@tags`, `@gen`, `@ch

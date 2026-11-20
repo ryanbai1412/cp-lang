@@ -74,7 +74,7 @@ def main():
         if cmd == "doc":
             print(runner.doc(path))
             return
-        runner.run_file(path, sys.stdin.read())
+        runner.run_file(path, stream=sys.stdin)
         return
     if cmd == "explain":
         _, comp = build(path)

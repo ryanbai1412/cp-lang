@@ -47,7 +47,7 @@ def is_gen(fn):
 
 
 class Interp:
-    def __init__(self, stdin_tokens=None, out=None):
+    def __init__(self, stdin_tokens=None, out=None, stdin_stream=None):
         self.modules = {}
         self.trait_defaults = {}
         self.loading = []
@@ -55,8 +55,9 @@ class Interp:
         self.mod = None
         self.depth = 0
         self.rng = random.Random(1)
-        self.tokens = stdin_tokens or []
+        self.tokens = list(stdin_tokens) if stdin_tokens else []
         self.tok_i = 0
+        self.stdin_stream = stdin_stream
         self.out = out if out is not None else []
         self.methods = {}
         self.last_call = None
@@ -279,8 +280,31 @@ class Interp:
                     self.fail(f"unknown name `{nm}`", t)
             return (lambda: self.e_name(t, env)), put
         if k == "field":
-            o = self.ev(t.obj, env)
             nm = t.name
+            if t.obj.kind == "index":
+                oget, _ = self.place(t.obj, env)
+                def fget():
+                    o = oget()
+                    if type(o) is Obj:
+                        if nm not in o.f:
+                            self.fail(f"{o.stype!r} has no field `{nm}`", t)
+                        return o.f[nm]
+                    if type(o) is Tup:
+                        return o.items[self.tup_index(o, nm, t)]
+                    self.fail(f"cannot assign to `.{nm}` of {self.show(o)}", t)
+                def fput(v):
+                    o = oget()
+                    if type(o) is Obj:
+                        if nm not in o.f:
+                            self.fail(f"{o.stype!r} has no field `{nm}`", t)
+                        o.f[nm] = v
+                        return
+                    if type(o) is Tup:
+                        o.items[self.tup_index(o, nm, t)] = v
+                        return
+                    self.fail(f"cannot assign to `.{nm}` of {self.show(o)}", t)
+                return fget, fput
+            o = self.ev(t.obj, env)
             if type(o) is Obj:
                 if nm not in o.f:
                     self.fail(f"{o.stype!r} has no field `{nm}`", t)
@@ -295,9 +319,7 @@ class Interp:
             if type(o) is CMap:
                 key = idx[0]
                 return (lambda: o.items[key]), (lambda v: o.items.__setitem__(key, v))
-            i = self.offset(o, idx, t)
-            items = o.items
-            return (lambda: items[i]), (lambda v: items.__setitem__(i, v))
+            return (lambda: o.items[self.offset(o, idx, t)]), (lambda v: o.items.__setitem__(self.offset(o, idx, t), v))
         if k == "call":
             r = self.e_call(t, env, raw=True)
             if type(r) is not Lent:
@@ -817,6 +839,11 @@ class Interp:
             return CArray(dims, [self.read(t.elem, env) for _ in range(n)])
         if k == "ttuple":
             return Tup([self.read(ft, env) for _, ft in t.fields], [nm for nm, _ in t.fields])
+        while self.tok_i >= len(self.tokens) and self.stdin_stream is not None:
+            line = self.stdin_stream.readline()
+            if not line:
+                break
+            self.tokens.extend(line.split())
         if self.tok_i >= len(self.tokens):
             self.fail("read(): the input ended", t)
         tok = self.tokens[self.tok_i]
@@ -950,6 +977,11 @@ class Interp:
         if type(v) is StructDecl:
             return v.inst(()) if not v.tparams else v.open
         return v
+
+    def e_tapp(self, e, env):
+        if e.obj.kind == "name":
+            return self.e_generic(N("generic", e.line, name=e.obj.name, args=e.targs), env)
+        return self.ev(e.obj, env)
 
     def e_generic(self, e, env):
         try:
