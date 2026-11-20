@@ -277,8 +277,8 @@ class Compiler(LendMixin):
         # whether C++ has a `<` for the type: a record only gets one when all its fields do
         if isinstance(t, TEnum):
             return False
-        if isinstance(t, TOpt):         # none sorts before every value
-            return self.orderable(t.inner)
+        if isinstance(t, (TOpt, TMod)):     # no implicit order: `none` is not "smaller", a residue has no size (v2 O1)
+            return False
         if isinstance(t, (TList, TArr)):
             return self.orderable(t.elem)
         return getattr(t, "ordered", True)
@@ -1200,6 +1200,9 @@ class Compiler(LendMixin):
                 if (isinstance(lt, TOpt) or isinstance(rt, TOpt)) and op not in ("==", "!="):
                     self.error(e, f"`{op}` on an optional ({lt!r} vs {rt!r}): ?T has no ordering; "
                                   f"handle `none` explicitly")
+                if (isinstance(lt, TMod) or isinstance(rt, TMod)) and op not in ("==", "!="):
+                    self.error(e, f"`{op}` on a Mod ({lt!r} vs {rt!r}): a residue has no ordering; "
+                                  f"compare `.val` if you mean the representative in 0..P")
                 if op in ("==", "!=") and isinstance(lt, TOpt) != isinstance(rt, TOpt):
                     # ?T == T: `none` equals no value, so this is "present and equal"
                     o_c, o_t, x_c, x_t = (left_c, lt, rc, rt) if isinstance(lt, TOpt) else (rc, rt, left_c, lt)
@@ -1329,6 +1332,26 @@ class Compiler(LendMixin):
         if is_int(at) and is_int(bt) and want is None:
             t = TInt(*iv_join(at, bt))
         return f"({cc} ? {self.coerce(a, at, t, e.a)} : {self.coerce(b, bt, t, e.b)})", t
+
+    def x_ifletexpr(self, e, want):
+        """`if let p = opt: a else: b` as a value: `a` sees the unwrapped p."""
+        vc, vt = self.expr(e.value)
+        if not isinstance(vt, TOpt):
+            self.error(e, f"`if let` unwraps an optional, got {vt!r}")
+        o = self.tmpname("o")
+        self.scopes.append({})
+        try:
+            (lines, (a, at)) = self.capture(lambda: (self.bind_pattern(e.pat, f"{o}.get()", vt.inner, e), self.expr(e.a, want))[1])
+        finally:
+            self.scopes.pop()
+        b, bt = self.expr(e.b, want or at)
+        t = want or at
+        if is_int(at) and is_int(bt) and want is None:
+            t = TInt(*iv_join(at, bt))
+        binds = " ".join(l.strip() for l in lines)
+        ct = self.cpp_type(t)
+        return (f"([&]() -> {ct} {{ const auto {o} = {vc}; if ({o}.has()) {{ {binds} return {self.coerce(a, at, t, e.a)}; }} "
+                f"return {self.coerce(b, bt, t, e.b)}; }}())"), t
 
     def x_index(self, e, want):
         oc, ot = self.expr(e.obj)
@@ -1601,6 +1624,8 @@ class Compiler(LendMixin):
                     for x, _ in cs[1:]:
                         c = f"{fn.name}<ll>({c}, {x})"
                     return c, TInt(rlo, rhi)
+                if any(not self.orderable(t.inner if isinstance(t, TOpt) else t) for t in ts):
+                    self.error(e, f"{fn.name} needs ordered values, and {ts[0]!r} has no `<`")
                 if all(t == ts[0] for t in ts) and not isinstance(ts[0], TOpt):
                     c = cs[0][0]
                     for x, _ in cs[1:]:
@@ -1962,6 +1987,9 @@ class Compiler(LendMixin):
             ec = self.cpp_type(et)
             by = [a for a in e.args[1:] if a.kind == "kwarg" and a.name == "by"]
             less = [a for a in e.args[1:] if a.kind == "kwarg" and a.name == "less"]
+            if not by and not less and not self.orderable(et):
+                self.error(e, f"{fn.name} needs an order, and {et!r} has none\n"
+                              f"  help: give the key, e.g. `{fn.name}(xs, by: x => (x == none, x ?? 0))`")
             if len(e.args) > 1 and len(by) + len(less) != 1:
                 self.error(e, f"{fn.name}(xs), {fn.name}(xs, by: x => key) or {fn.name}(xs, less: (a, b) => a_first)")
             cmp = ""
@@ -4350,6 +4378,28 @@ class Compiler(LendMixin):
             place = self.tmpname("p")
             self.emit(f"auto&& {place} = {tc};")
             tc = place
+        if op in ("min=", "max="):
+            # `none` is "no value yet" on either side and is skipped: `best min= d` keeps best when d is none,
+            # and takes d when best is none (v2 O2). The value itself must have an order: a Mod<P> has none.
+            base = tt.inner if isinstance(tt, TOpt) else tt
+            if not self.orderable(base):
+                self.error(s, f"`{op}` needs an ordered value, and {base!r} has no `<`")
+            vt0 = self.capture(lambda: self.expr(s.value, base))[1][1]
+            if isinstance(vt0, TOpt) or s.value.kind == "none":
+                if s.value.kind == "none":
+                    return
+                vc, vt = self.expr(s.value)
+                self.check_assign_alias(s)
+                o = self.tmpname("o")
+                x = self.coerce(f"{o}.get()", vt.inner, base, s.value)
+                if isinstance(tt, TOpt):
+                    self.emit(f"{{ const auto {o} = {vc}; if ({o}.has()) opt_{op[:3]}({tc}, {x}); }}")
+                else:
+                    cmp = "<" if op == "min=" else ">"
+                    self.emit(f"{{ const auto {o} = {vc}; if ({o}.has() && {x} {cmp} {tc}) {tc} = {x}; }}")
+                    if isinstance(tt, TInt):
+                        self.track(sym, tgt, TInt(), "=", s)
+                return
         if op in ("min=", "max=") and isinstance(tt, TOpt):
             vc, vt = self.expr(s.value, tt.inner)
             self.check_assign_alias(s)
