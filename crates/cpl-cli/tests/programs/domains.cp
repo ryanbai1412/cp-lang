@@ -5,7 +5,7 @@ domain V = 1..=n
 let a: [V]Int = read()
 var pre: [V.bounds]Int = 0
 for v in V:
-    pre[v.after] = pre[v.before] + a[v]
+    pre[v.r] = pre[v.l] + a[v]
 print(pre)
 print(V.len, V.first, V.last)
 var best = V.first
@@ -14,7 +14,7 @@ for v in V:
         best = v
 print("largest at", best, "=", a[best])
 for v in V.rev:
-    print(v, a[v], v.ord, v.rank)
+    print(v, a[v], v.to_idx, v.rank)
 print(sum(a[v] for v in V), sum(a), max(a), min(a))
 print(count(a[v] > 0 for v in V), any(a[v] == 4 for v in V), all(a[v] > -100 for v in V))
 let m: 1..=20 = read()

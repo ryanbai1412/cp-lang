@@ -7,7 +7,7 @@ Keep the fast solution, a simple trusted alternative, and the input constraints 
 ```example memo
 ```
 
-With input `4`, the states are `1`, `4`, `14`, `45`, so the program prints `45`. The prototype's `i.idx` is a zero-based ordinal helper, not a conversion from an unrelated integer domain.
+With input `4`, the states are `1`, `4`, `14`, `45`, so the program prints `45`. `i.to_idx` is the zero-based ordinal, not a conversion from an unrelated integer domain. The browser's Rust backend does not implement `@memo` yet: this runnable example uses plain recursion, as its comment states. To cache the same recurrence in the Python prototype, add `@memo` above `fn f`.
 
 The cache is not magic algorithm selection. Sparse scalar keys can use a hash-backed cache; finite indexed keys permit dense tables. The prototype also supports `@memo(into: dp)` to name the table and `@memo(order: ascending)` for an explicit ascending evaluation order. Choose an order only when it matches the recurrence's dependencies. Do not read “memoized” as “safe for cycles” or “safe for arbitrarily deep recursion”.
 

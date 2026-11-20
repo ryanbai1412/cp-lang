@@ -58,10 +58,12 @@ The available fixtures are `sum`, `bounds`, `accumulation`, `ascii`, `optional`,
 and `memo`, corresponding to `../examples/*.cp`.
 
 `test_site.py` compiles the real fixture with the Python prototype and C++17,
-runs every case, and compares the result with both the answer key and browser
-example runner. Do not hardcode an answer for an untested design fragment.
+runs every case, and compares the result with the answer key. `test_compiler.cjs`
+runs all prediction cases through the generated WASM runtime. Do not hardcode an answer for an untested design fragment.
 Output checking ignores whitespace only: token order and full integer precision
-matter. Arbitrary browser source execution is not supported.
+matter. Browser checks execute the real fixture; each output exercise also has
+an editable WASM sandbox. Keep fixtures within the Rust backend's supported
+subset, and explicitly label prototype-only behavior such as `@memo` caching.
 
 ## Status and verification
 
@@ -75,6 +77,7 @@ From the repository root:
 ```sh
 python3 site/test_site.py
 node --test site/test_course.cjs
+node --test site/test_compiler.cjs
 python3 site/bundle.py
 ```
 

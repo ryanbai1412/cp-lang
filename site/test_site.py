@@ -114,7 +114,9 @@ class SiteTests(unittest.TestCase):
                          | {"playground.html", "trace.html"})
         self.assertNotIn("@font-face", source)
         self.assertNotIn("data:font", source)
-        self.assertLess(path.stat().st_size, 800_000)
+        self.assertLess(path.stat().st_size, 1_500_000)
+        self.assertEqual(payload["compiler"].count("const packedWasm ="), 1)
+        self.assertNotIn("const packedWasm =", "".join(payload["pages"].values()))
         self.assertEqual(len(json.loads(payload["search"])), len(build.PAGES))
         self.assertIn("course", payload)
 
@@ -222,14 +224,6 @@ class SiteTests(unittest.TestCase):
                             timeout=5,
                         )
                         self.assertEqual(run.stdout.split(), expected.split())
-                        # The explicitly labeled browser runner must agree with
-                        # the real prototype, including ASCII and memo examples.
-                        runner = (ROOT / "assets/playground.js").read_text()
-                        browser = subprocess.run(
-                            ["node", "-e", runner + "\nconsole.log(ExampleRunner.run("
-                             + json.dumps(name) + "," + json.dumps(data) + "))"],
-                            text=True, capture_output=True, check=True, timeout=5)
-                        self.assertEqual(browser.stdout.split(), run.stdout.split())
 
 
 if __name__ == "__main__":

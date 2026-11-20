@@ -237,7 +237,7 @@
             "expected": "139"
           }
         ],
-        "code": "let n: 1..=20 = read()\ndomain I = 0..n\n\n@memo\nfn f(i: I) -> Int:\n    if let p = i.prev:\n        return f(p) * 3 + i.idx\n    1\n\nprint(f(I.last))"
+        "code": "let n: 1..=20 = read()\ndomain I = 0..n\n\n// @memo caching is prototype-only; this version uses plain recursion.\nfn f(i: I) -> Int:\n    if let p = i.prev:\n        return f(p) * 3 + i.to_idx\n    1\n\nprint(f(I.last))"
       },
       {
         "id": "verify-brute-part",

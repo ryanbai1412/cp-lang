@@ -2,7 +2,7 @@ const {test} = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
-const {check} = require("./assets/course.js");
+const {check, execute} = require("./assets/course.js");
 
 test("catalog progress rechecks stored answers even when passed and revision are current", () => {
   const data = {
@@ -58,4 +58,15 @@ test("a blank prediction is not zero and token order matters", () => {
 
 test("unknown check kinds fail closed", () => {
   assert.equal(check({kind:"source"}, "print(42)").passed, false);
+});
+
+test("output predictions execute the source and compare real stdout, not answer fixtures", async () => {
+  const exercise = {kind:"output", source:"print(read() * 2)", tests:[{input:"21", expected:"wrong fixture"}]};
+  const calls = [];
+  const result = await execute(exercise, ["42"], async (source, input) => {
+    calls.push([source, input]); return {ok:true, stdout:"42\n"};
+  });
+  assert.equal(result.passed, true);
+  assert.deepEqual(calls, [[exercise.source, "21"]]);
+  assert.equal((await execute(exercise, ["42"], async () => ({ok:false, stderr:"error[E0301]"}))).passed, false);
 });

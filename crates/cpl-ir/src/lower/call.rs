@@ -868,7 +868,7 @@ impl<'a> Lowerer<'a> {
                 let fn_id = self.structs[*id].methods[method];
                 self.method_call(fn_id, Some((base, value)), &[], span)
             }
-            (Ty::Pos(_) | Ty::Bound(_), "ord") => self.cast(Cast::Ord, value, Ty::Int),
+            (Ty::Pos(_) | Ty::Bound(_), "ord" | "to_idx") => self.cast(Cast::Ord, value, Ty::Int),
             (Ty::Pos(_), "rank") => {
                 let ord = self.cast(Cast::Ord, value, Ty::Int);
                 self.int_add(ord, 1)
@@ -885,8 +885,8 @@ impl<'a> Lowerer<'a> {
             (Ty::Pos(_), "prev") => {
                 builtin(self, Builtin::PosPrev, vec![value], Ty::opt(ty.clone()))
             }
-            (Ty::Pos(d), "before") => self.cast(Cast::Trust, value, Ty::Bound(*d)),
-            (Ty::Pos(d), "after") => {
+            (Ty::Pos(d), "before" | "l") => self.cast(Cast::Trust, value, Ty::Bound(*d)),
+            (Ty::Pos(d), "after" | "r") => {
                 let ord = self.cast(Cast::Ord, value, Ty::Int);
                 let next = self.int_add(ord, 1);
                 self.cast(Cast::Trust, next, Ty::Bound(*d))

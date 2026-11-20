@@ -20,6 +20,10 @@
   "use strict";
   const data = JSON.parse(document.getElementById("offline-data").textContent);
   const frame = document.getElementById("workspace");
+  // Keep the compressed WASM, compiled module and worker once in this window.
+  const compiler = document.createElement("script");
+  compiler.textContent = data.compiler;
+  document.head.append(compiler);
   let activePage;
   function script(source) {
     // Escape closing tags even if future example strings contain HTML.
@@ -69,10 +73,12 @@
     page = page.replace('<script src="assets/theme.js"><' + '/script>', () => script(data.theme));
     page = page.replace('<script src="assets/app.js" defer><' + '/script>', "");
     page = page.replace('<script src="assets/course.js" defer><' + '/script>', "");
-    page = page.replace('<script src="assets/playground.js"><' + '/script>', () => script(data.playground));
+    page = page.replace('<script src="assets/compiler.js" defer><' + '/script>', "");
+    page = page.replace('<script src="assets/playground.js" defer><' + '/script>', "");
     if (name !== "trace.html") {
       const index = '<script id="search-index" type="application/json">' + data.search.replace(/</g, "\\u003c") + "<" + "/script>";
-      page = page.replace("</body>", () => index + script(data.app) + script(data.course) + "</body>");
+      page = page.replace("</body>", () => index + script("window.CpCompiler = parent.CpCompiler;")
+        + script(data.app) + script(data.playground) + script(data.course) + "</body>");
     }
     frame.srcdoc = page;
   }
