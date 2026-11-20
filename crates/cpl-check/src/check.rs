@@ -88,6 +88,8 @@ pub(crate) struct Checker<'a> {
     refs: Vec<GlobalRef>,
     /// Name and return type of each enclosing fn.
     fns: Vec<(String, Ty, bool)>,
+    /// For each of `fns`: whether its body has given a value so far.
+    gives: Vec<bool>,
     /// Inside a fn signature or body, where a single capital letter is a
     /// type parameter without being declared.
     in_fn: u32,
@@ -119,6 +121,7 @@ impl<'a> Checker<'a> {
             hovers: Vec::new(),
             refs: Vec::new(),
             fns: Vec::new(),
+            gives: Vec::new(),
             in_fn: 0,
             branch: 0,
             plain_if: None,

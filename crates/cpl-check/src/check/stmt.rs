@@ -367,7 +367,7 @@ impl<'a> Checker<'a> {
                 self.generics.truncate(outer);
                 self.declare(&name.text, name.span, ty, false, "const");
             }
-            StmtKind::Fn(f) => self.fn_decl(f, None, !top_level),
+            StmtKind::Fn(f) => self.fn_decl(f, None, !top_level, memo_of(stmt)),
             StmtKind::Struct(s) => {
                 let generics: Vec<String> = s.generics.iter().map(|g| g.text.clone()).collect();
                 let self_ty = Ty::Named {
@@ -605,6 +605,13 @@ impl<'a> Checker<'a> {
         let Some((name, ret, declared)) = self.fns.last().cloned() else {
             return;
         };
+        // `print(..)` is checked loosely, as a call of unknown type: it
+        // gives nothing.
+        let prints = matches!(&value.kind, ExprKind::Call { callee, .. }
+            if matches!(&callee.kind, ExprKind::Name(name) if name == "print"));
+        if let (Some(gives), false) = (self.gives.last_mut(), *value_ty == Ty::Unit || prints) {
+            *gives = true;
+        }
         if !declared {
             return;
         }
@@ -640,7 +647,7 @@ impl<'a> Checker<'a> {
         };
         for method in methods {
             match &method.kind {
-                StmtKind::Fn(f) => self.fn_decl(f, Some(self_ty), false),
+                StmtKind::Fn(f) => self.fn_decl(f, Some(self_ty), false, memo_of(method)),
                 StmtKind::Law { name, .. } => {
                     self.push_scope();
                     for field in &fields {
@@ -822,7 +829,51 @@ impl<'a> Checker<'a> {
         }
     }
 
-    fn fn_decl(&mut self, f: &ast::FnDecl, self_ty: Option<&Ty>, local: bool) {
+    /// Reports a `@memo` that would not remember anything. Both back ends
+    /// keep one table of answers per top-level or local fn, keyed by its
+    /// arguments, and run the fn as written when they can't: the program
+    /// would be right and, without a word, as slow as if `@memo` were not
+    /// there.
+    fn memo_fits(&mut self, f: &ast::FnDecl, self_ty: Option<&Ty>, generator: bool, unit: bool, memo: Span) {
+        let name = &f.name.text;
+        let changed = f.params.iter().find(|p| p.mutable && p.name.text != "self");
+        let (message, help) = if let Some(owner) = self_ty {
+            let owner = owner.to_string();
+            (
+                format!("`@memo` can't remember `{name}`: it is a fn of `{owner}`"),
+                format!("only a top-level or local fn keeps a table of its answers: move `{name}` out of `{owner}` and pass it what it reads"),
+            )
+        } else if let Some(param) = changed {
+            let param = &param.name.text;
+            (
+                format!("`@memo` can't remember `{name}`: it changes its argument `{param}`"),
+                format!("a remembered answer is given back without running the fn, so `{param}` would be left as it was: take `{param}` without `mut`, or drop `@memo`"),
+            )
+        } else if generator {
+            (
+                format!("`@memo` can't remember `{name}`: it yields its values one by one"),
+                "collect the values into a list and return that: `-> List<T>`".to_string(),
+            )
+        } else if !f.generics.is_empty() {
+            (
+                format!("`@memo` can't remember the generic fn `{name}`"),
+                format!("there is one table of answers per fn, and `{name}` is a different fn for each type it is called with: write it for the type it is used with"),
+            )
+        } else if unit {
+            (
+                format!("`@memo` has nothing to remember: `{name}` gives no value"),
+                "a fn that only acts has to run every time: drop `@memo`, or return what it computes".to_string(),
+            )
+        } else {
+            return;
+        };
+        if let Some(diag) = self.error(codes::BAD_MEMO, memo, message) {
+            diag.help = Some(help);
+        }
+    }
+
+    /// `memo` is where the fn's `@memo` is written, when it has one.
+    fn fn_decl(&mut self, f: &ast::FnDecl, self_ty: Option<&Ty>, local: bool, memo: Option<Span>) {
         let sig = self.fn_sig(f, self_ty);
         let Ty::Fn { params, ret } = &sig else { return };
         if local {
@@ -907,6 +958,7 @@ impl<'a> Checker<'a> {
             (**ret).clone(),
             f.ret.is_some() && !generator,
         ));
+        self.gives.push(false);
         // A fn body knows nothing of what is lent or known where the fn
         // is written: it runs when it is called.
         self.lend_isolated(|c| {
@@ -948,6 +1000,15 @@ impl<'a> Checker<'a> {
             }
         });
         self.fns.pop();
+        let gives = self.gives.pop().unwrap_or(false);
+        if let Some(memo) = memo {
+            // Written `-> T`, or read off what the body gives.
+            let unit = match &f.ret {
+                Some(_) => **ret == Ty::Unit,
+                None => !gives && !matches!(f.body, FnBody::None),
+            };
+            self.memo_fits(f, self_ty, generator, unit, memo);
+        }
         self.pop_scope();
         if receiver.is_some() && matches!(self_ty, Some(Ty::Named { .. })) {
             self.pop_scope();
@@ -955,6 +1016,12 @@ impl<'a> Checker<'a> {
         self.in_fn -= 1;
         self.generics.truncate(outer);
     }
+}
+
+/// Where a fn's `@memo` is written.
+fn memo_of(stmt: &Stmt) -> Option<Span> {
+    let memo = stmt.decorators.iter().find(|d| d.name.text == "memo")?;
+    Some(memo.span)
 }
 
 /// The span of each name a pattern binds, in the order `pattern_types`

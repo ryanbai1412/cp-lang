@@ -1626,3 +1626,59 @@ fn the_std_name_table_matches_the_standard_library() {
     assert_eq!(table, expected);
     assert_eq!(crate::prelude::std_module("min_by"), Some("seq"));
 }
+
+/// `@memo` on a fn that neither back end keeps a table for is an error,
+/// not a fn that quietly runs every time.
+#[test]
+fn memo_on_a_fn_it_cannot_remember_is_reported() {
+    let memo = |src: &str| {
+        let d = one(src);
+        assert_eq!(d.code.0, "E0311", "{d:?}");
+        // The decorator is what to change.
+        assert_eq!(&src[d.span.start as usize..d.span.end as usize], "@memo", "{d:?}");
+        assert!(d.help.is_some(), "{d:?}");
+        d.message
+    };
+    assert_eq!(
+        memo("@memo\nfn take(mut xs: List<Int>, i: Int) -> Int:\n    xs.push(i)\n    i\n"),
+        "`@memo` can't remember `take`: it changes its argument `xs`"
+    );
+    assert_eq!(
+        memo("struct S:\n    k: Int\n    @memo\n    fn get(self, i: Int) -> Int: self.k + i\n"),
+        "`@memo` can't remember `get`: it is a fn of `S`"
+    );
+    assert_eq!(
+        memo("@memo\nfn upto(n: Int) -> yields Int:\n    for i in 0..n: yield i\n"),
+        "`@memo` can't remember `upto`: it yields its values one by one"
+    );
+    assert_eq!(
+        memo("@memo\nfn same<T>(x: T) -> T: x\n"),
+        "`@memo` can't remember the generic fn `same`"
+    );
+    // No value: written `-> ()`, a body that only acts, a tail `print`.
+    for body in ["fn show(x: Int) -> ():\n    print(x)\n", "fn show(x: Int):\n    var t = x\n    t += 1\n", "fn show(x: Int):\n    print(x)\n"] {
+        assert_eq!(
+            memo(&format!("@memo\n{body}")),
+            "`@memo` has nothing to remember: `show` gives no value"
+        );
+    }
+    // A fn inside a fn is held to the same.
+    assert_eq!(
+        memo("fn outer() -> Int:\n    @memo\n    fn inner(mut ys: List<Int>) -> Int: ys.len\n    var ys: List<Int> = []\n    inner(mut ys)\n"),
+        "`@memo` can't remember `inner`: it changes its argument `ys`"
+    );
+}
+
+#[test]
+fn memo_on_a_fn_with_a_value_and_plain_arguments_is_fine() {
+    for src in [
+        "@memo\nfn fib(n: Int) -> Int:\n    if n < 2: return n\n    fib(n - 1) + fib(n - 2)\nprint(fib(50))\n",
+        // The return type is read off the body.
+        "@memo\nfn twice(n: Int):\n    if n > 3: return 5\n    n * 2\nprint(twice(4))\n",
+        "@memo\nfn sq(x: Int) -> Int = x * x\nprint(sq(3))\n",
+        "let n: 1..=20 = read()\ndomain V = 0..n\n@memo(into: dp)\nfn ways(v: V) -> Int:\n    if let u = v + 1: return ways(u) + 1\n    1\nprint(ways(V.first))\n",
+        "fn outer(k: Int) -> Int:\n    @memo\n    fn inner(i: Int) -> Int:\n        if i == 0: return k\n        inner(i - 1) + 1\n    inner(5)\nprint(outer(2))\n",
+    ] {
+        assert_eq!(check(src), Vec::new(), "{src}");
+    }
+}
