@@ -1,0 +1,151 @@
+#include "bits/extc++.h"
+
+using namespace std;
+
+template <typename T>
+void dbgh(const T& t) {
+    cerr << t << endl;
+}
+
+template <typename T, typename... U>
+void dbgh(const T& t, const U&... u) {
+    cerr << t << " | ";
+    dbgh(u...);
+}
+
+#ifdef DEBUG
+#define dbg(...)                                           \
+    cerr << "L" << __LINE__ << " [" << #__VA_ARGS__ << "]" \
+         << ": ";                                          \
+    dbgh(__VA_ARGS__)
+#else
+#define cerr   \
+    if (false) \
+    cerr
+#define dbg(...)
+#endif
+
+#define endl "\n"
+#define long int64_t
+#define sz(x) int(std::size(x))
+
+void solve() {
+    int n, m, kv;
+    cin >> n >> m >> kv;
+    int arr[m];
+    for (auto& a : arr) {
+        cin >> a;
+        a--;
+    }
+    int touti[m], tout[kv];
+    {
+        memset(touti, -1, sizeof(touti));
+        int st[kv];
+        memset(st, -1, sizeof(st));
+        for (int i = 0; i < m; i++) {
+            int& x = st[arr[i]];
+            if (x != -1) {
+                touti[x] = i;
+                x = -1;
+            } else {
+                x = i;
+            }
+        }
+    }
+    vector<int> sts[n];
+    vector<array<int, 3>> ans;
+    auto op1 = [&](int ind, int x) -> void {
+        dbg(1, ind, x);
+        ans.push_back({1, ind});
+        if (sz(sts[ind]) && sts[ind].back() == x) {
+            sts[ind].pop_back();
+        } else {
+            sts[ind].push_back(x);
+        }
+    };
+    auto op2 = [&](int u, int v) -> void {
+        dbg(2, u, v);
+        ans.push_back({2, u, v});
+        assert(u != v && sz(sts[u]) && sz(sts[v]) && sts[u][0] == sts[v][0]);
+        sts[u].erase(sts[u].begin());
+        sts[v].erase(sts[v].begin());
+    };
+    for (int it = 0; it < m; it++) {
+        int a = arr[it];
+        tout[a] = touti[it];
+        int f2 = -1, cnt2 = 0;
+        for (int i = 0; i < n; i++) {
+            if (!sz(sts[i])) {
+                f2 = i;
+                cnt2++;
+            }
+        }
+        if (tout[a] == -1) {
+            for (int i = 0; i < n; i++) {
+                if (!sz(sts[i])) {
+                    continue;
+                }
+                if (sts[i].back() == a) {
+                    op1(i, a);
+                    goto loop;
+                } else if (sts[i][0] == a) {
+                    assert(f2 != -1);
+                    op1(f2, a);
+                    op2(i, f2);
+                    goto loop;
+                }
+            }
+            assert(false);
+        }
+        if (!cnt2) {
+            pair<int, int> mx {-1, -1};
+            for (int i = 0; i < n; i++) {
+                if (sz(sts[i]) == 1) {
+                    int ctout = tout[sts[i][0]];
+                    mx = max(mx, {ctout, i});
+                }
+            }
+            dbg(it, a, tout[a]);
+            assert(mx.second != -1);
+            op1(mx.second, a);
+            goto loop;
+        }
+        for (int i = 0; i < n; i++) {
+            if ((!sz(sts[i]) && cnt2 > 1) || sz(sts[i]) == 1) {
+                op1(i, a);
+                goto loop;
+            }
+        }
+        for (int i = 0; i < n; i++) {
+            if (sz(sts[i]) == 2) {
+                if (tout[sts[i][0]] < tout[sts[i][1]]) {
+                    op1(i, a);
+                    goto loop;
+                }
+            }
+        }
+        op1(f2, a);
+    loop:;
+    }
+    cout << sz(ans) << endl;
+    for (auto& [t, a, b] : ans) {
+        a++;
+        b++;
+        if (t == 1) {
+            cout << t << " " << a << endl;
+        } else {
+            cout << t << " " << a << " " << b << endl;
+        }
+    }
+}
+
+int main() {
+    cin.tie(nullptr);
+    cin.exceptions(ios::failbit);
+    ios_base::sync_with_stdio(false);
+    int tcs;
+    cin >> tcs;
+    while (tcs--) {
+        solve();
+    }
+}
