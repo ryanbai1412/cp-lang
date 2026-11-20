@@ -1595,6 +1595,8 @@ class Compiler(LendMixin):
                     f"for (auto& _s : _d) {{ ll _r = (ll)_p.{rn} + _s[0], _c = (ll)_p.{cn} + _s[1]; "
                     f"if (_r >= 0 && _r < (ll){r.info.len_cpp} && _c >= 0 && _c < (ll){c.info.len_cpp}) {{ {ot.cpp} _q; _q.{rn} = (int)_r; _q.{cn} = (int)_c; _out.push_back(_q); }} }} "
                     f"return _out; }}({oc}))"), TList(ot)
+        if isinstance(ot, TArr) and getattr(ot, "compressed", False) and f == "D":
+            return "", TType(ot.dims[0])
         if isinstance(ot, TMod) and f == "inv":
             return f"(Mod<{ot.m}>(1) / ({oc}))", ot
         if isinstance(ot, TMod) and f == "val":
@@ -2658,6 +2660,12 @@ class Compiler(LendMixin):
             return (f"([&]{{ auto _key = {key}; vector<{ec}> {tmp}({oc}.begin(), {oc}.end()); "
                     f"stable_sort({tmp}.begin(), {tmp}.end(), [&](const {ec}& A, const {ec}& B) {{ return _key(A) < _key(B); }}); "
                     f"return {tmp}; }}())"), TList(et)
+        if isinstance(ot, TArr) and getattr(ot, "compressed", False) and m == "at" and len(args) == 1:
+            # xs.at(val): the position of a value that was compressed (a value that was not is a bug: it traps)
+            c, t = self.expr(args[0], ot.elem)
+            return (f"([&](const auto& _x) {{ auto _it = lower_bound({oc}.begin(), {oc}.end(), _x); "
+                    f"if (_it == {oc}.end() || !(*_it == _x)) cp_fail(\"compress: `.at` of a value that was not compressed\", {e.line}); "
+                    f"return (int)(_it - {oc}.begin()); }}({self.coerce(c, t, ot.elem, args[0])}))"), ot.dims[0]
         if isinstance(ot, TArr) and len(ot.dims) == 1 and m == "find" and len(args) == 1:
             # a.find(x): the first position holding x (linear), or none
             c, t = self.expr(args[0], ot.elem)
@@ -3596,8 +3604,30 @@ class Compiler(LendMixin):
         """`read(columns)`: an array of records laid out one field after another in the input."""
         return a.kind == "name" and a.name == "columns" and not self.lookup("columns")
 
+    def s_compress(self, s):
+        """`let xs = compress(all)`: the distinct values of `all`, sorted, indexed by a fresh domain `xs.D`."""
+        c, t = self.expr(s.value.args[0])
+        if not isinstance(t, (TList, TArr)) or not self.orderable(t.elem) or s.pat.kind != "pname" or s.mut:
+            self.error(s, "`let xs = compress(values)` takes a list or array of ordered values")
+        name = s.pat.name
+        el = TInt() if is_int(t.elem) else t.elem
+        info, _, _ = self.new_domain(f"{name}_D", "0", "", (0, 0), (0, None))
+        info.name = f"{name}.D"
+        ty = TArr([TDom(info)], el)
+        ty.compressed = True
+        cpp = self.fresh(name)
+        self.decl_global_or_local(cpp, ty)
+        self.emit(f"{{ const auto& _a = {c}; {cpp} = {self.cpp_type(ty)}(_a.begin(), _a.end()); }}")
+        self.emit(f"sort({cpp}.begin(), {cpp}.end()); {cpp}.erase(unique({cpp}.begin(), {cpp}.end()), {cpp}.end());")
+        info.lo_src, info.hi_src = "0", f"(ll){cpp}.size()"
+        self.emit(f"{info.cpp}_lo = 0; {info.cpp}_len = (ll){cpp}.size();")
+        self.declare(name, ty, cpp, False, s)
+
     def s_let(self, s):
         v = s.value
+        if v is not None and v.kind == "call" and v.fn.kind == "name" and v.fn.name == "compress" and len(v.args) == 1 \
+                and s.ty is None and not self.lookup("compress"):
+            return self.s_compress(s)
         if s.pat.kind == "ptuple" and s.ty is not None and s.ty.kind == "ttuple" and self.is_read(v) \
                 and len(s.ty.fields) == len(s.pat.items) and not getattr(s, "orelse", None):
             # `let (n, m): (1..=2e5, 1..=n) = read()`: read left to right, so a later bound may name an earlier value
