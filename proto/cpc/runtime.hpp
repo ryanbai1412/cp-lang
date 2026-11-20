@@ -179,6 +179,23 @@ template <class M, class K> auto& cp_mget(M& m, const K& k, int ln) {
     return it->second;
 }
 
+// SegTree<T>: point update, range fold with a user monoid (id, op). Prototype stand-in for std.segtree.
+template <class T> struct SegTree {
+    int n = 0; T id; std::function<T(const T&, const T&)> op; vector<T> t;
+    SegTree() {}
+    template <class F> SegTree(int n_, T id_, F f) : n(n_), id(id_), op(f), t(2 * max(n_, 1), id_) {}
+    void set(int i, const T& v) { for (t[i += n] = v; i > 1; i >>= 1) t[i >> 1] = op(t[i & ~1], t[i | 1]); }
+    T get(int i) const { return t[i + n]; }
+    T query(int l, int r) const {  // inclusive
+        T a = id, b = id;
+        for (l += n, r += n + 1; l < r; l >>= 1, r >>= 1) {
+            if (l & 1) a = op(a, t[l++]);
+            if (r & 1) b = op(t[--r], b);
+        }
+        return op(a, b);
+    }
+};
+
 static int cp_fn_iters = 1000;
 
 // @part DenseSet

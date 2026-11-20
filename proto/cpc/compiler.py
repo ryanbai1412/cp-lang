@@ -42,6 +42,12 @@ class TEnum(T):
                 return k, v
         return None, None
 
+class TSeg(T):
+    def __init__(self, dom, elem): self.dom, self.elem = dom, elem
+    def __eq__(self, o): return isinstance(o, TSeg) and o.elem == self.elem and o.dom == self.dom
+    def __hash__(self): return hash(("seg", self.dom, self.elem))
+    def __repr__(self): return f"SegTree<{self.dom!r}, {self.elem!r}>"
+
 class THeap(T):
     def __init__(self, elem): self.elem = elem
     def __eq__(self, o): return isinstance(o, THeap) and o.elem == self.elem
@@ -174,6 +180,7 @@ class Compiler:
             return "DenseSet" if self.dense_set(t) else f"set<{self.cpp_type(t.elem)}>"
         if isinstance(t, TArr): return f"vector<{'int' if self.narrow(t.elem) else self.cpp_type(t.elem)}>"
         if isinstance(t, TEnum): return t.cpp
+        if isinstance(t, TSeg): return f"SegTree<{self.cpp_type(t.elem)}>"
         if isinstance(t, THeap):
             e = self.cpp_type(t.elem)
             return f"priority_queue<{e}, vector<{e}>, greater<{e}>>"
@@ -268,6 +275,11 @@ class Compiler:
                 return TPerm([TDom(pos)], d)
             if nm == "MinHeap":
                 return THeap(self.resolve_type(tn.args[0]))
+            if nm == "SegTree":
+                d = self.resolve_type(tn.args[0])
+                if not isinstance(d, TDom):
+                    self.error(tn, "SegTree<D, T> needs a domain D")
+                return TSeg(d, self.resolve_type(tn.args[1]))
             if nm == "Subset":
                 # Subset<D>: the domain of all subsets of a small domain D, stored as a bitmask ordinal
                 d = self.resolve_type(tn.args[0])
@@ -949,6 +961,23 @@ class Compiler:
             ts = [self.resolve_type(a) if a.kind.startswith("t") else self.resolve_type(N("texpr", a.line, expr=a)) for a in fn.args]
             t = TSet(ts[0]) if fn.name == "Set" else TMap(*ts, hashed=fn.name == "HashMap")
             return self.set_ctor(t), t
+        if fn.kind == "generic" and fn.name == "SegTree":
+            # SegTree<D, T>(id, (a, b) => op): a monoid given as two plain values
+            t = self.resolve_type(N("tname", fn.line, name="SegTree", args=fn.args))
+            if len(e.args) != 2 or e.args[1].kind != "lambda" or len(e.args[1].params) != 2:
+                self.error(e, "SegTree<D, T>(identity, (a, b) => combined)")
+            ic, it = self.expr(e.args[0], t.elem)
+            ic = self.coerce(ic, it, t.elem, e.args[0])
+            lam, ec = e.args[1], self.cpp_type(t.elem)
+            self.scopes.append({})
+            pa, pb = self.fresh("a"), self.fresh("b")
+            self.bind_lambda_param(lam.params[0], pa, t.elem, lam)
+            self.bind_lambda_param(lam.params[1], pb, t.elem, lam)
+            bc, bt = self.expr(lam.body, t.elem)
+            bc = self.coerce(bc, bt, t.elem, lam.body)
+            self.scopes.pop()
+            return (f"SegTree<{ec}>({t.dom.info.len_cpp}, {ic}, [&](const {ec}& {pa}, const {ec}& {pb}) -> {ec} "
+                    f"{{ return {bc}; }})"), t
         if fn.kind == "generic" and fn.name in ("List", "MinHeap"):
             a = fn.args[0]
             et = self.resolve_type(a) if a.kind.startswith("t") else self.resolve_type(N("texpr", a.line, expr=a))
@@ -1003,7 +1032,7 @@ class Compiler:
             return self.call_generic(self.lookup(fn.name).node, e)
         fc, ft = self.expr(fn) if fn.kind != "field" else (None, None)
         if fn.kind == "field":
-            if fn.name in ("push", "pop", "sort", "rev", "clear", "insert", "remove", "swap"):
+            if fn.name in ("push", "pop", "sort", "rev", "clear", "insert", "remove", "swap", "set"):
                 self.note_write(fn.obj, e.line)
             return self.method_call(e, want)
         if isinstance(ft, TType):
@@ -1137,6 +1166,20 @@ class Compiler:
                         f"return _k >= 0 ? Opt<int>((int)_k) : Opt<int>(); }}({c}))"), TOpt(ot.dims[0])
             return (f"([&](auto _x){{ ll _k = lower_bound({oc}.begin(), {oc}.end(), _x) - {oc}.begin(); "
                     f"return _k < (ll){oc}.size() ? Opt<int>((int)_k) : Opt<int>(); }}({c}))"), TOpt(ot.dims[0])
+        if isinstance(ot, TSeg):
+            def at(a):
+                c, t = self.expr(a, ot.dom)
+                if t != ot.dom:
+                    self.error(a, f"a {ot!r} is indexed by {ot.dom!r}, got {t!r}")
+                return c
+            if m == "set" and len(args) == 2:
+                vc, vt = self.expr(args[1], ot.elem)
+                return f"{oc}.set({at(args[0])}, {self.coerce(vc, vt, ot.elem, args[1])})", UNIT
+            if m == "get" and len(args) == 1:
+                return f"{oc}.get({at(args[0])})", ot.elem
+            if m == "query" and len(args) == 2:
+                return f"{oc}.query({at(args[0])}, {at(args[1])})", ot.elem
+            self.error(e, f"no method {m} on {ot!r} (set(i, v), get(i), query(l, r))")
         if isinstance(ot, THeap):
             if m == "push":
                 c, t = self.expr(args[0], ot.elem)
