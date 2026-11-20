@@ -176,7 +176,9 @@ fn edits_match_a_plain_list():
                 r.move_to(lo..hi, to)
                 let cut = [plain[j] for j in lo..hi]
                 let rest = [plain[j] for j in 0..n if not (lo <= j < hi)]
-                plain = [if j < to: rest[j] elif j < to + cut.len: cut[j - to] else: rest[j - cut.len] for j in 0..n]
+                plain = [
+                    if j < to: rest[j] elif j < to + cut.len: cut[j - to] else: rest[j - cut.len] for j in 0..n
+                ]
             else:
                 let i = rand(0, n - 1)
                 assert r.get(i) == plain[i]

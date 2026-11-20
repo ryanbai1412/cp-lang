@@ -1,6 +1,6 @@
 //! Minimum-cost flow with Johnson potentials (SPFA init + Dijkstra augmentations).
-use std.flow.{max_weight_matching}
 use std.heap.{MinHeap}
+use std.flow.{max_weight_matching}
 
 /// Handle to a directed arc inside a `MinCostFlow`.
 pub struct CostArc(id: Int):

@@ -24,7 +24,7 @@ pub struct MonoDeque<T>(keep: (T, T) -> Bool):
 
     /// Enter `val` at position `at`; values it beats or ties leave, since they can never win again.
     pub fn push(mut self, at: Int, val: T):
-        while q.len > head and not keep(q[q.len - 1].val, val): q.pop()
+        while q.len > head and not keep(q.last!.val, val): q.pop()
         q.push((at: at, val: val))
 
     /// Forget every position left of `min_at`.

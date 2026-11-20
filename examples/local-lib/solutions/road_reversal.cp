@@ -11,6 +11,6 @@ for _ in 0..k:
     d.add_edge(Road(a), Road(b))
 if d.bipartite:
     print("YES")
-    print([if d.find(r).1: 1 else: 0 for r in Road])
+    print([Int(d.find(r).1) for r in Road])
 else:
     print("NO")

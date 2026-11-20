@@ -29,7 +29,11 @@ pub fn monotone_minima(rows: Int, cols: Int, f: (Int, Int) -> ?Int) -> List<?(In
 /// reachable `j`. O(n log n) calls of `cost`.
 pub fn dnc_layer(prev: List<?Int>, cost: (Int, Int) -> Int) -> List<?Int>:
     let n = prev.len
-    let rows = monotone_minima(n, n, (i, j) => if j < i and prev[j] != none: prev[j]! + cost(j, i) else: none)
+    let rows = monotone_minima(
+        n,
+        n,
+        (i, j) => if j < i and prev[j] != none: prev[j]! + cost(j, i) else: none,
+    )
     [if r == none: none else: r!.0 for r in rows]
 
 @test
@@ -38,7 +42,7 @@ fn layers_match_the_quadratic_dp():
         let n = rand(1, 12)
         let a = [rand(0, 9) for _ in 0..n]
         var pre = [0]
-        for x in a: pre.push(pre[pre.len - 1] + x)
+        for x in a: pre.push(pre.last! + x)
         // cost of a group is the square of its sum: satisfies the quadrangle inequality
         let cost = (j, i) => (pre[i] - pre[j]) * (pre[i] - pre[j])
         var fast: List<?Int> = [if i == 0: 0 else: none for i in 0..=n]

@@ -472,12 +472,21 @@ def rule_table():
            [(k, "metric", src, title, f) for k, src, title, f in METRICS]
 
 
+LIBRARY_DIRS = tuple(os.path.join(ROOT, d) + os.sep for d in ("examples/local-lib", "stdlib"))
+
+
+def is_library_module(path):
+    """Library modules get no implicit prelude, so their std imports are needed."""
+    return os.path.realpath(path).startswith(LIBRARY_DIRS)
+
+
 def scan_file(path):
     """(rule, line, pattern) for every hit in one file."""
     text = open(path, errors="replace").read()
     code = strip_code(text)
     lines, raw = code.split("\n"), text.split("\n")
-    return [(key, line, pattern) for key, _, _, _, find in rule_table()
+    skip = {"prelude_import"} if is_library_module(path) else set()
+    return [(key, line, pattern) for key, _, _, _, find in rule_table() if key not in skip
             for line, pattern in find(code, lines, raw)]
 
 

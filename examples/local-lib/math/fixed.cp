@@ -86,7 +86,7 @@ impl Show for Fixed<D>:
     fn show(a):
         let mag = if a.raw < 0: -a.raw else: a.raw
         var out = if a.raw < 0: "-" else: ""
-        out = out + "{mag / 10 ** D}"
+        out += "{mag / 10 ** D}"
         if D == 0: return out
         let tail = "{mag % 10 ** D}"
         out.push('.')

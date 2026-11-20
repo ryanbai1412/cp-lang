@@ -112,7 +112,9 @@ fn matches_and_counts_agree_with_checking_every_position():
         for i in 0..text.len:
             for w in 0..words.len:
                 let k = words[w].len
-                if i + k <= text.len and all(text[i + j] == words[w][j] for j in 0..k): want.push((i, w))
+                if i + k <= text.len and all(
+                    text[i + j] == words[w][j] for j in 0..k
+                ): want.push((i, w))
         let got = [(m.at, m.word) for m in ac.matches(text)]
         assert sorted(got) == sorted(want)
         assert ac.count_each(text) == [count(p.1 == w for p in want) for w in 0..words.len]
@@ -125,7 +127,7 @@ fn longest_match_first_and_links():
     let ac = AhoCorasick<L>([word("he"), word("she"), word("his"), word("hers"), word("e")])
     var state = ac.root
     for c in word("ushe"): state = ac.step(state, c)
-    assert ac.words_at(state) == [1, 0, 4]            // "she", then "he", then "e"
+    assert ac.words_at(state) == [1, 0, 4]  // "she", then "he", then "e"
     assert ac.link(state) == ac.step(ac.step(ac.root, L('h')), L('e'))
     assert [(m.at, m.word) for m in ac.matches(word("ushers"))] == [(1, 1), (2, 0), (3, 4), (2, 3)]
     assert ac.count_each(word("eehee")) == [1, 0, 0, 0, 4]

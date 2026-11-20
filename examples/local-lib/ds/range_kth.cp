@@ -16,7 +16,7 @@ pub struct RangeKth<D>:
         var vals = sorted([a[i] for i in D])
         var uniq: List<Int> = []
         for v in vals:
-            if uniq.is_empty or uniq[uniq.len - 1] != v: uniq.push(v)
+            if uniq.is_empty or uniq.last! != v: uniq.push(v)
         var t = RangeKth<D>(uniq, [0], [0], [0], [0])
         for i in D:
             let rank = uniq.first_ge(a[i])!

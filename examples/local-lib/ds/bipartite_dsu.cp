@@ -75,7 +75,9 @@ fn agrees_with_colouring_from_scratch():
             // brute force: try every colouring
             var ok = false
             for mask in 0..256:
-                if all((mask >> e.0.to_idx) % 2 != (mask >> e.1.to_idx) % 2 for e in edges): ok = true
+                if all(
+                    (mask >> e.0.to_idx) % 2 != (mask >> e.1.to_idx) % 2 for e in edges
+                ): ok = true
             assert d.bipartite == ok
 
 @test

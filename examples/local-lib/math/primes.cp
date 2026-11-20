@@ -4,6 +4,7 @@
 //! `std.math.Sieve` and `std.math.factor` cover small numbers; these take over when
 //! the square root no longer fits in the time limit.
 use std.math.{gcd, mul_mod}
+use std.math.{mul_mod}
 
 /// The largest `n` the functions here accept: sums of two residues must fit an `Int`.
 pub const LIMIT = 4_000_000_000_000_000_000
@@ -58,7 +59,7 @@ fn split(n: Int) -> Int:
             y = (mul(y, y, n) + c) % n
             d = gcd(abs(x - y), n)
         if d != n: return d
-        c += 1                                       // the walk closed on itself: try another
+        c += 1  // the walk closed on itself: try another
     n
 
 /// The prime factorization of `n >= 1` as `(prime, exponent)` pairs, primes ascending:
@@ -78,7 +79,7 @@ pub fn factorize(n: Int) -> List<(Int, Int)>:
     sort(mut primes)
     var found: List<(Int, Int)> = []
     for p in primes:
-        if not found.is_empty and found[found.len - 1].0 == p: found[found.len - 1] = (p, found[found.len - 1].1 + 1)
+        if not found.is_empty and found.last!.0 == p: found[found.len - 1] = (p, found.last!.1 + 1)
         else: found.push((p, 1))
     found
 

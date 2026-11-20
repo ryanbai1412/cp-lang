@@ -1,8 +1,8 @@
 //! Minimum spanning forest by Kruskal's algorithm.
-use std.dsu.{Dsu}
 
 /// A minimum spanning forest by Kruskal's algorithm: the edges kept, in increasing weight,
 /// and their total. O(m log m).
+use std.dsu.{Dsu}
 pub fn mst<V, E, W>(edges: [E](u: V, v: V, w: W)) -> (total: W, used: List<E>):
     var order = [e for e in E]
     sort(mut order, by: e => edges[e].w)
@@ -12,7 +12,7 @@ pub fn mst<V, E, W>(edges: [E](u: V, v: V, w: W)) -> (total: W, used: List<E>):
     for e in order:
         if d.unite(edges[e].u, edges[e].v):
             used.push(e)
-            total = total + edges[e].w
+            total += edges[e].w
     (total: total, used: used)
 
 @test

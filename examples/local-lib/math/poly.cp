@@ -6,9 +6,8 @@
 //! of coefficients of the answer, so `exp_trunc(log_trunc(p, n), n)` is `p`
 //! truncated to `n` terms.
 
-use std.mod.{Mod}
-
 /// The standard NTT prime `998244353 = 119 * 2^23 + 1`, with primitive root `3`.
+use std.mod.{Mod}
 pub type Z = Mod<998244353>
 
 // The transforms work in Montgomery form with radix 2^32 on the three NTT primes
@@ -143,7 +142,7 @@ fn dif_stages<D>(
     len_start: Int,
     len_end: Int,
     c_idx: Int,
-    roots: NttRoots
+    roots: NttRoots,
 ):
     let p = roots.p
     let pinv = roots.pinv
@@ -186,7 +185,7 @@ fn dit_stages<D>(
     len_start: Int,
     len_end: Int,
     c_idx: Int,
-    roots: NttRoots
+    roots: NttRoots,
 ):
     let p = roots.p
     let pinv = roots.pinv
@@ -197,7 +196,14 @@ fn dit_stages<D>(
     while slen >= len_end:
         let step = 1 << (sub_h - slen)
         let blocks = 1 << (slen - 2)
-        var irot = if c_idx == 0: one_m else: pow_bits(c_idx << (slen - 2), 3, one_m, p, pinv, roots.irt)
+        var irot = if c_idx == 0: one_m else: pow_bits(
+            c_idx << (slen - 2),
+            3,
+            one_m,
+            p,
+            pinv,
+            roots.irt,
+        )
         for s in 0..blocks:
             let irot2 = mred1(irot * irot, p, pinv)
             let irot3 = mred1(irot2 * irot, p, pinv)
@@ -249,7 +255,15 @@ fn ntt_core_r(mut a: List<Int>, size: Int, op: Int, roots: NttRoots):
             a[i] = red_p(buf[i], p, p2)
         return
     dit_stages(mut buf, 0, h, h, 2, 0, roots)
-    let scale_base = if op == 2: pow_mod_i(size, p - 2, p) * ((one_m * one_m) % p) % p else: pow_mod_i(size, p - 2, p) * one_m % p
+    let scale_base = if op == 2: pow_mod_i(
+        size,
+        p - 2,
+        p,
+    ) * ((one_m * one_m) % p) % p else: pow_mod_i(
+        size,
+        p - 2,
+        p,
+    ) * one_m % p
     if (h & 1) == 1:
         let step = size >> 1
         for i in 0..step:
@@ -345,7 +359,7 @@ fn autocorr4_range<D>(
     s2_start: Int,
     pairs2: Int,
     w_idx: Int,
-    roots: NttRoots
+    roots: NttRoots,
 ):
     let p = roots.p
     let pinv = roots.pinv
@@ -411,7 +425,16 @@ fn conv_exec_even<D>(mut d: [D]Int, n_buf: Int, h2: Int, mode: Int, half_id: Int
                     dif_stages(mut d, lc << sub_h, sub_h, 0, sub_h - 2, c, roots)
                 let base1 = lc1 << sub_h
                 if big_b == 1:
-                    autocorr4_range(mut d, base1, base1, 0, blocks4 - 1, blocks4 >> 2, 1 << (sub_h - 2), roots)
+                    autocorr4_range(
+                        mut d,
+                        base1,
+                        base1,
+                        0,
+                        blocks4 - 1,
+                        blocks4 >> 2,
+                        1 << (sub_h - 2),
+                        roots,
+                    )
                 elif lc1 == lc2:
                     autocorr4_blk(mut d, base1, base1, one_m, one_m, p, pinv)
                     autocorr4_blk(mut d, base1 + 4, base1 + 4, p - one_m, p - one_m, p, pinv)
@@ -419,10 +442,28 @@ fn conv_exec_even<D>(mut d: [D]Int, n_buf: Int, h2: Int, mode: Int, half_id: Int
                         autocorr4_blk(mut d, base1 + 8, base1 + 12, imag_m, iimag_m, p, pinv)
                     var blk = 4
                     while blk < blocks4:
-                        autocorr4_range(mut d, base1, base1, blk, (blk << 1) - 1, blk >> 2, blk, roots)
+                        autocorr4_range(
+                            mut d,
+                            base1,
+                            base1,
+                            blk,
+                            (blk << 1) - 1,
+                            blk >> 2,
+                            blk,
+                            roots,
+                        )
                         blk = blk << 1
                 else:
-                    autocorr4_range(mut d, base1, lc2 << sub_h, 0, blocks4 - 1, blocks4 >> 1, c1 << (sub_h - 2), roots)
+                    autocorr4_range(
+                        mut d,
+                        base1,
+                        lc2 << sub_h,
+                        0,
+                        blocks4 - 1,
+                        blocks4 >> 1,
+                        c1 << (sub_h - 2),
+                        roots,
+                    )
                 for side in 0..count:
                     let c = if side == 0: c1 else: c2
                     let lc = if side == 0: lc1 else: lc2
@@ -1858,7 +1899,11 @@ fn table_matches<P>(rank2: Int) -> Bool:
     for i in 0..45:
         s = lcg_next(s)
         p.push(Z(if i == 0: 7 else: s))
-    assert slow_mul(pow_trunc(p, -13, 45), pow_trunc(p, 13, 45), 45) == [if i == 0: Z.one else: Z.zero for i in 0..45]
+    assert slow_mul(
+        pow_trunc(p, -13, 45),
+        pow_trunc(p, 13, 45),
+        45,
+    ) == [if i == 0: Z.one else: Z.zero for i in 0..45]
     // Large negative exponent: (1 + x)^(-N) mod x^keep
     let big_neg = -1000000007
     let got_neg = pow_trunc([Z.one, Z.one], big_neg, 20)
@@ -1870,8 +1915,16 @@ fn table_matches<P>(rank2: Int) -> Bool:
     let p_lz: List<Z> = [0, 0, 2, 1]
     let want_lz: List<Z> = [0, 0, 0, 0, 0, 0, 8, 12, 6]
     assert pow_trunc(p_lz, 3, 9) == want_lz
-    assert pow_trunc([], 0, 3) == [Z.one, Z.zero, Z.zero] and pow_trunc([], 4, 3) == [Z.zero, Z.zero, Z.zero]
-    assert pow_trunc([Z.zero, Z.zero], 0, 2) == [Z.one, Z.zero] and pow_trunc([Z.zero, Z.zero], 1, 2) == [Z.zero, Z.zero]
+    assert pow_trunc([], 0, 3) == [Z.one, Z.zero, Z.zero] and pow_trunc([], 4, 3) == [
+        Z.zero,
+        Z.zero,
+        Z.zero,
+    ]
+    assert pow_trunc([Z.zero, Z.zero], 0, 2) == [Z.one, Z.zero] and pow_trunc(
+        [Z.zero, Z.zero],
+        1,
+        2,
+    ) == [Z.zero, Z.zero]
     let e = 1000000000000
     let got = pow_trunc([Z.one, Z.one], e, 20)
     var b2 = Z.one
@@ -1989,7 +2042,13 @@ fn table_matches<P>(rank2: Int) -> Bool:
             p.push(Z(s))
         let ys = [eval_poly(p, Z(i)) for i in 0..n]
         // Non-overlapping, overlapping, wrapping, and negative c!
-        let sh_cases: List<(Z, Int)> = [(Z(n + 5), 45), (0, n + 15), (-5, 25), (Z(n / 2), n), (123456, 35)]
+        let sh_cases: List<(Z, Int)> = [
+            (Z(n + 5), 45),
+            (0, n + 15),
+            (-5, 25),
+            (Z(n / 2), n),
+            (123456, 35),
+        ]
         for (c, m) in sh_cases:
             let got = shift_eval(ys, c, m)
             let want = [eval_poly(p, c + Z(j)) for j in 0..m]
@@ -2055,7 +2114,9 @@ fn table_matches<P>(rank2: Int) -> Bool:
     let cat = [(Z.zero - sq[i + 1]) * inv2 for i in 0..keep_c]
     let x_cat = [if i == 0: Z.zero else: cat[i - 1] for i in 0..keep_c]
     // Compositional inverse of x * C(x) is x * (1 - x) = [0, 1, -1]!
-    assert compose_inv_trunc(x_cat, keep_c) == [if i == 1: Z.one elif i == 2: -Z.one else: Z.zero for i in 0..keep_c]
+    assert compose_inv_trunc(x_cat, keep_c) == [
+        if i == 1: Z.one elif i == 2: -Z.one else: Z.zero for i in 0..keep_c
+    ]
 
 @test fn bostan_mori_kth_term_matches_inv_trunc():
     // Fibonacci: F(x) = x / (1 - x - x^2)

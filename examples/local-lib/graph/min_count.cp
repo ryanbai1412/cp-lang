@@ -1,8 +1,8 @@
 //! Shortest-path distance + count semiring (`MinCount<P>`) and `floyd_warshall`.
-use std.mod.{Mod}
 
 /// A shortest-path distance paired with the number of shortest paths modulo `P`.
 /// `dist == none` means unreachable (count 0).
+use std.mod.{Mod}
 pub struct MinCount<P>(dist: ?Int, ways: Mod<P>):
     /// Unreachable identity for `combine`.
     pub fn inf() -> MinCount<P> = MinCount(none, Mod<P>(0))
@@ -51,9 +51,9 @@ fn floyd_warshall_min_count_matches_exhaustive_dag_and_positive_graphs():
     // Shortest 0 -> 3 has length 3 with 3 distinct paths: (0-1-3), (0-2-3), (0-3)
     let g = [(V(0), V(1), 2), (V(0), V(2), 1), (V(1), V(3), 1), (V(2), V(3), 2), (V(0), V(3), 3)]
     let res = floyd_warshall::<V, 1000000007>(g)
-    assert res[V(0), V(3)].dist == 3 and res[V(0), V(3)].ways == Z(3)
-    assert res[V(0), V(0)].dist == 0 and res[V(0), V(0)].ways == Z(1)
-    assert res[V(3), V(0)].dist == none and res[V(3), V(0)].ways == Z(0)
+    assert res[V(0), V(3)].dist == 3 and res[V(0), V(3)].ways == 3
+    assert res[V(0), V(0)].dist == 0 and res[V(0), V(0)].ways == 1
+    assert res[V(3), V(0)].dist == none and res[V(3), V(0)].ways == 0
 
     // Differential test on random DAGs against DP path counting
     for _ in 0..15:
@@ -67,7 +67,7 @@ fn floyd_warshall_min_count_matches_exhaustive_dag_and_positive_graphs():
             var best: [V]?Int = none
             var cnt = [V] _ => Z(0)
             best[s] = 0
-            cnt[s] = Z(1)
+            cnt[s] = 1
             for i in s.to_idx..V.K:
                 let u = V(i)
                 if best[u] == none: continue
@@ -78,6 +78,6 @@ fn floyd_warshall_min_count_matches_exhaustive_dag_and_positive_graphs():
                         best[b] = nd
                         cnt[b] = cnt[u]
                     elif nd == best[b]!:
-                        cnt[b] = cnt[b] + cnt[u]
+                        cnt[b] += cnt[u]
             for t in V:
                 assert fw[s, t].dist == best[t] and fw[s, t].ways == cnt[t]

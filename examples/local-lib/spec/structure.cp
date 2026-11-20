@@ -16,7 +16,11 @@ pub fn at(t: List<List<Int>>) -> (Int, Int) -> Int = (i, j) => t[i][j]
 /// boundaries `i..j` costs `cost(i, j)`. Returns `(dp, opt)`: `dp[g][j]` is the least
 /// cost of splitting `0..j` into exactly `g` groups (`none` if impossible, `g` from 0 to
 /// `groups`), and `opt[g][j]` the smallest `i` achieving it. O(groups * n^2) calls.
-pub fn split_dp(cost: (Int, Int) -> Int, n: Int, groups: Int) -> (List<List<?Int>>, List<List<Int>>):
+pub fn split_dp(
+    cost: (Int, Int) -> Int,
+    n: Int,
+    groups: Int,
+) -> (List<List<?Int>>, List<List<Int>>):
     var dp: List<List<?Int>> = [[none for _ in 0..=n] for _ in 0..=groups]
     var opt = [[0 for _ in 0..=n] for _ in 0..=groups]
     dp[0][0] = 0
@@ -130,14 +134,18 @@ pub fn rolling_depth(reads: List<(Int, Int)>) -> ?Int:
     var depth = 0
     for (to, from) in reads:
         if from > to: return none
-        depth = max(depth, to - from)
+        depth max= to - from
     depth
 
 /// The same question asked of the table alone, for a DP whose row `i` is computed by
 /// `step` from the `k` rows before it: the smallest `k <= max_depth` for which
 /// `step(t[i - k .. i]) == t[i]` on every row from `k` on, or `none`. `step` receives
 /// the `k` previous rows, oldest first.
-pub fn rolling_window(t: List<List<Int>>, max_depth: Int, step: (List<List<Int>>) -> List<Int>) -> ?Int:
+pub fn rolling_window(
+    t: List<List<Int>>,
+    max_depth: Int,
+    step: (List<List<Int>>) -> List<Int>,
+) -> ?Int:
     for k in 1..=min(max_depth, t.len - 1):
         if all(step([t[r] for r in i - k..i]) == t[i] for i in k..t.len): return k
     none
@@ -211,7 +219,9 @@ fn squared_group_sums_fit_everything():
         // spot-check the table against a direct minimum
         for g in 1..=k:
             for j in g..=n:
-                assert dp[g][j]! == min(dp[g - 1][i]! + cost(i, j) for i in g - 1..j if dp[g - 1][i] != none)!
+                assert dp[g][j]! == min(
+                    dp[g - 1][i]! + cost(i, j) for i in g - 1..j if dp[g - 1][i] != none
+                )!
                 assert dp[g - 1][opt[g][j]]! + cost(opt[g][j], j) == dp[g][j]!
         assert dp[0][0] == 0 and dp[0][n] == none and dp[1][0] == none
     let pre = [0, 3, 4, 9, 11]
@@ -248,7 +258,10 @@ fn merging_piles_is_knuth_eligible():
     let pre = [0, 4, 5, 6, 10]
     let cost = (i, j) => pre[j] - pre[i]
     assert interval_dp(cost, 4).0[0][4] == 18
-    assert interval_report(cost, 4).len == 3 and interval_report(cost, 4)[2] == "split points are monotone, as the theory promises: Knuth, O(n^2)"
+    assert interval_report(cost, 4).len == 3 and interval_report(
+        cost,
+        4,
+    )[2] == "split points are monotone, as the theory promises: Knuth, O(n^2)"
 
 @test
 fn interval_costs_that_break_knuth():
@@ -285,7 +298,7 @@ fn rolling_buffers():
     // row i = row i-1 + row i-2 elementwise: one row back is not enough
     var fibs = [[1, 2], [3, 5]]
     for i in 2..7: fibs.push([fibs[i - 1][j] + fibs[i - 2][j] for j in 0..2])
-    let add2 = (rows) => [rows[rows.len - 1][j] + rows[rows.len - 2][j] for j in 0..2]
+    let add2 = (rows) => [rows.last![j] + rows[rows.len - 2][j] for j in 0..2]
     let add1 = (rows) => [2 * rows.last[j] for j in 0..2]
     assert rolling_window(fibs, 1, add1) == none
     assert rolling_window(fibs, 3, (rows) => if rows.len < 2: [] else: add2(rows)) == 2

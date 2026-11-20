@@ -1,9 +1,9 @@
 //! Kruskal reconstruction tree (`KruskalTree<V>`) and spanning forest helper (`spanning`).
-use std.dsu.{Dsu}
-use std.graph.{bfs}
 
 /// Pick a spanning forest from unweighted edges `edges: List<(V, V)>`: returns the subset of
 /// edges that connect components without creating cycles. O(m alpha(n)).
+use std.dsu.{Dsu}
+use std.graph.{bfs}
 pub fn spanning<V>(edges: List<(V, V)>) -> List<(V, V)>:
     var dsu = Dsu<V>()
     var out: List<(V, V)> = []
@@ -55,7 +55,7 @@ pub struct KruskalTree<V>:
         var up = [par]
         var step = 1
         while step < tot:
-            let prev = up[up.len - 1]
+            let prev = up.last!
             up.push([prev[prev[i]] for i in 0..tot])
             step *= 2
         // Iterative DFS over every component root to assign contiguous leaf ranges
@@ -66,7 +66,7 @@ pub struct KruskalTree<V>:
             if par[r] != r: continue
             var stack = [(r, 0)]
             while not stack.is_empty:
-                let (u, idx) = stack[stack.len - 1]
+                let (u, idx) = stack.last!
                 if idx == 0: tin[u] = leaf_order.len
                 if idx < children[u].len:
                     stack[stack.len - 1] = (u, idx + 1)

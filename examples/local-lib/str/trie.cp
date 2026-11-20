@@ -86,7 +86,9 @@ fn counts_match_a_list_of_words():
                 if i != none: words = [words[j] for j in 0..words.len if j != i!]
             let q = [A(rand(0, 2)) for _ in 0..rand(0, 3)]
             assert t.count(q) == count(w == q for w in words)
-            assert t.count_prefix(q) == count(w.len >= q.len and all(w[i] == q[i] for i in 0..q.len) for w in words)
+            assert t.count_prefix(q) == count(
+                w.len >= q.len and all(w[i] == q[i] for i in 0..q.len) for w in words
+            )
 
 @test
 fn largest_xor_with_a_set():

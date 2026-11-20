@@ -1,8 +1,8 @@
 //! Hashes of every axis-aligned rectangle of a grid, comparable in O(1): two rectangles
 //! of the same shape with the same contents have the same hash, and different contents
 //! collide with probability about `(rows + cols) / 2^31`.
-use std.mod.{Mod}
 
+use std.mod.{Mod}
 type H = Mod<2147483647>
 
 /// Prefix hashes of a grid with rows `R` and columns `C`. Building is O(R * C);
@@ -24,9 +24,9 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
                 let (i, j) = (r.to_idx, c.to_idx)
                 pre[i + 1][j + 1] = pre[i][j + 1] * H(br) + pre[i + 1][j] * H(bc) - pre[i][j] * H(br) * H(bc) + H(code(r, c))
         var pow_r = [H(1)]
-        for _ in R: pow_r.push(pow_r[pow_r.len - 1] * H(br))
+        for _ in R: pow_r.push(pow_r.last! * H(br))
         var pow_c = [H(1)]
-        for _ in C: pow_c.push(pow_c[pow_c.len - 1] * H(bc))
+        for _ in C: pow_c.push(pow_c.last! * H(bc))
         Hash2D((br, bc), pre, pow_r, pow_c)
 
     /// The hash of the cells in `rows` x `cols`.
@@ -44,8 +44,15 @@ fn equal_hashes_exactly_for_equal_rectangles():
         let h = Hash2D<R, C>((r, c) => g[r, c])
         for _ in 0..150:
             let (hgt, wid) = (rand(1, 3), rand(1, 3))
-            let (r1, c1, r2, c2) = (rand(0, 6 - hgt), rand(0, 7 - wid), rand(0, 6 - hgt), rand(0, 7 - wid))
-            let same = all(g[R(r1 + i), C(c1 + j)] == g[R(r2 + i), C(c2 + j)] for i in 0..hgt for j in 0..wid)
+            let (r1, c1, r2, c2) = (
+                rand(0, 6 - hgt),
+                rand(0, 7 - wid),
+                rand(0, 6 - hgt),
+                rand(0, 7 - wid),
+            )
+            let same = all(
+                g[R(r1 + i), C(c1 + j)] == g[R(r2 + i), C(c2 + j)] for i in 0..hgt for j in 0..wid
+            )
             let a = h.rect(R(r1)..=R(r1 + hgt - 1), C(c1)..=C(c1 + wid - 1))
             let b = h.rect(R(r2)..=R(r2 + hgt - 1), C(c2)..=C(c2 + wid - 1))
             assert (a == b) == same
@@ -60,7 +67,10 @@ fn find_a_pattern_in_a_grid():
     let text = ["abcab", "bcabc", "abbca", "cabab"]
     let pat = ["bc", "ab"]
     let big = Hash2D<R, C>((r, c) => Letter(text[r.to_idx][c.to_idx]).to_idx + 1)
-    let small = Hash2D<PR, PC>((r, c) => Letter(pat[r.to_idx][c.to_idx]).to_idx + 1, bases: big.bases)
+    let small = Hash2D<PR, PC>(
+        (r, c) => Letter(pat[r.to_idx][c.to_idx]).to_idx + 1,
+        bases: big.bases,
+    )
     let want = small.rect(PR(0)..=PR(1), PC(0)..=PC(1))
     var found: List<(Int, Int)> = []
     for r in 0..3:

@@ -66,7 +66,7 @@ pub struct SuffixAutomaton<A>:
 
     /// For every state, at how many positions its substrings end. O(n log n).
     pub fn occurrences(self) -> List<Int>:
-        var occ = [if p: 1 else: 0 for p in prefix]
+        var occ = [Int(p) for p in prefix]
         var order = [v for v in 1..next.len]
         sort(mut order, by: v => -longest[v])
         for v in order: occ[link[v]!] += occ[v]
@@ -120,5 +120,5 @@ fn longest_common_substring():
         if let to = sam.next[at][c]:
             at = to
             run += 1
-        best = max(best, run)
-    assert best == 4                 // "bcab"
+        best max= run
+    assert best == 4  // "bcab"

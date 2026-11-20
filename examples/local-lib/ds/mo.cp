@@ -9,7 +9,13 @@ pub fn mo_order(n: Int, queries: List<(Int, Int)>) -> List<Int>:
     while block * block * max(queries.len, 1) < 3 * n * n: block += 1
     var order = [i for i in 0..queries.len]
     // even blocks sweep the right end up, odd blocks sweep it back down
-    sort(mut order, by: i => (queries[i].0 / block, if (queries[i].0 / block) % 2 == 0: queries[i].1 else: -queries[i].1))
+    sort(
+        mut order,
+        by: i => (
+            queries[i].0 / block,
+            if (queries[i].0 / block) % 2 == 0: queries[i].1 else: -queries[i].1,
+        ),
+    )
     order
 
 /// The window walk itself, for a window described by a state you fold yourself:
@@ -71,4 +77,4 @@ fn the_order_visits_every_query_once_and_stays_cheap():
     for qi in order:
         moves += abs(queries[qi].0 - win.0) + abs(queries[qi].1 - win.1)
         win = queries[qi]
-    assert moves < 400 * 400 / 4       // visiting in input order costs about n * q / 1.5
+    assert moves < 400 * 400 / 4  // visiting in input order costs about n * q / 1.5

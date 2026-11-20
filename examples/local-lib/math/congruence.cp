@@ -1,6 +1,7 @@
 //! Systems of congruences: the Chinese remainder theorem for moduli that need not be
 //! coprime, kept as one value that is folded over the system.
 use std.math.{ext_gcd, mul_mod, ceil_div}
+use std.math.{ext_gcd, mul_mod}
 
 /// All `x` with `x % m == r`, where `m >= 1` and `0 <= r < m`. Combining two is
 /// O(log m); nothing overflows as long as the combined modulus fits in an `Int`.
@@ -52,7 +53,10 @@ pub struct Congruence(r: Int, m: Int):
 @test
 fn meet_matches_scanning_one_period():
     for _ in 0..300:
-        let (a, b) = (Congruence.new(rand(-40, 40), rand(1, 24)), Congruence.new(rand(-40, 40), rand(1, 24)))
+        let (a, b) = (
+            Congruence.new(rand(-40, 40), rand(1, 24)),
+            Congruence.new(rand(-40, 40), rand(1, 24)),
+        )
         let hits = [x for x in 0..a.m * b.m if a.holds(x) and b.holds(x)]
         let got = a.meet(b)
         if hits.is_empty:

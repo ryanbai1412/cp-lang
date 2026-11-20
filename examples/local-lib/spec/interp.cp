@@ -16,7 +16,7 @@ pub fn poly_degree_mod<P>(ys: List<Mod<P>>) -> ?Int:
     var row = [y for y in ys]
     var (degree, depth) = (-1, 0)
     while not row.is_empty:
-        if row[0] != Mod<P>(0): degree = depth
+        if row[0] != 0: degree = depth
         row = [row[i + 1] - row[i] for i in 0..row.len - 1]
         depth += 1
     if degree + 1 < ys.len: degree else: none
@@ -61,9 +61,9 @@ pub fn exact_poly(pts: List<(Int, Int)>) -> List<Frac>:
         let shift = Frac.new(pts[i].0)
         var next = List.filled(coef.len + 1, zero)
         for j in 0..coef.len:
-            next[j + 1] = next[j + 1] + coef[j]
-            next[j] = next[j] - coef[j] * shift
-        next[0] = next[0] + dd[i]
+            next[j + 1] += coef[j]
+            next[j] -= coef[j] * shift
+        next[0] += dd[i]
         coef = next
     while not coef.is_empty and coef.last == zero: coef.pop()
     coef
@@ -86,7 +86,9 @@ pub fn show_poly(coef: List<Frac>) -> Str:
     for i in (0..coef.len).rev:
         let c = coef[i]
         if c.num == 0: continue
-        if out.len > 0: out = out + (if c.num < 0: " - " else: " + ") elif c.num < 0: out = out + "-"
+        if out.len > 0: out = out + (
+            if c.num < 0: " - " else: " + "
+        ) elif c.num < 0: out = out + "-"
         let mag = if c.den == 1: "{abs(c.num)}" else: "{abs(c.num)}/{c.den}"
         let power = if i == 0: "" elif i == 1: "n" else: "n^{i}"
         if i == 0: out = out + mag
@@ -114,10 +116,10 @@ fn lagrange_matches_horner_everywhere():
         let coef = [rand(-9, 9) for _ in 0..=deg]
         let ys = [M(sum(coef[i] * x ** i for i in 0..=deg)) for x in 0..=deg]
         for n in [0, deg, deg + 1, 50, -3, 123456789012]:
-            var want = M(0)
+            var want: M = 0
             for i in (0..=deg).rev: want = want * M(n) + M(coef[i])
             assert lagrange_at(ys, n) == want
-    assert lagrange_at([M(42)], 10 ** 18) == M(42)
+    assert lagrange_at([M(42)], 10 ** 18) == 42
 
 @test
 fn sums_of_powers_far_out():
@@ -127,7 +129,7 @@ fn sums_of_powers_far_out():
         var ys = [M(0)]
         for x in 1..=k + 2: ys.push(ys.last + M(x).pow(k))
         assert poly_degree_mod(ys) == k + 1
-        var want = M(0)
+        var want: M = 0
         for x in 1..=300: want = want + M(x).pow(k)
         assert lagrange_at(ys, 300) == want
     // n = 10^18, k = 1: n * (n + 1) / 2

@@ -19,9 +19,7 @@ pub fn floor_sum(n: Int, m: Int, a: Int, b: Int) -> Int:
         // count the lattice points under the line by columns instead of rows
         count = top / den
         start = top % den
-        let old = den
-        den = slope
-        slope = old
+        swap(mut den, mut slope)
     total
 
 /// `sum((a * i + b) % m for i in 0..n)`: the residues of an arithmetic progression.

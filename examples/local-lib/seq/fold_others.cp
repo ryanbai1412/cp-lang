@@ -1,11 +1,11 @@
 //! For every position, the fold of all the other positions: prefix folds times suffix folds,
 //! for operations with no inverse.
-use std.algebra.{Monoid}
-use std.math.{gcd}
 
 /// `out[i]` is the fold of every element of `xs` except `xs[i]`, in order. O(n).
 /// With `+` this is `total - xs[i]`; the point is `gcd`, `min`, `*` modulo a composite,
 /// or a tree DP that needs "all children but this one" (rerooting).
+use std.algebra.{Monoid}
+use std.math.{gcd}
 pub fn fold_others<T, M>(xs: List<T>, op: M) -> List<T>:
     if xs.is_empty: return []
     let m = Monoid<T>.of(op)
@@ -48,7 +48,7 @@ fn every_position_sees_the_rest():
             for j in 0..xs.len:
                 if j != i:
                     want = gcd(want, xs[j])
-                    text = text + Str(xs[j])
+                    text += Str(xs[j])
             assert g[i] == want and cat[i] == text
             // with nothing else to fold, the answer is the identity: `Int.MAX` for `min`
             assert lo[i] == (min(xs[j] for j in 0..xs.len if j != i) ?? Int.MAX)

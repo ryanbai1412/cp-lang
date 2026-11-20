@@ -1,8 +1,8 @@
 //! Exact fractions of `Int`s, always in lowest terms with a positive denominator.
-use std.math.{gcd}
 
 /// The rational number `num / den`. Arithmetic is exact as long as the cross products
 /// fit in an `Int`; an overflow stops the program rather than rounding.
+use std.math.{gcd}
 pub struct Frac(num: Int, den: Int):
     /// `a / b` in lowest terms. `b` must not be zero.
     pub fn new(a: Int, b: Int = 1) -> Frac:

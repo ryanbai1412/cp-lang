@@ -1,10 +1,10 @@
 //! Centroid decomposition (`Centroids<V>`) and all-roots tree DP (`reroot`).
-use std.tree.{Rooted}
 
 /// Centroid decomposition of a tree over `V`.
 /// Every vertex belongs to at most `ceil(log2 n)` centroid subtrees, so `ancestors(v)` has
 /// length O(log n) and gives `(centroid, dist(v, centroid))` for every centroid ancestor of `v`.
 /// Building takes O(n log n).
+use std.tree.{Rooted}
 pub struct Centroids<V>:
     root: V
     par: [V]?V
@@ -95,7 +95,7 @@ pub fn reroot<V, T>(
     id: T,
     merge: (T, T) -> T,
     lift: (T, V, V) -> T,
-    finish: (T, V) -> T
+    finish: (T, V) -> T,
 ) -> [V]T:
     let r = Rooted(root: V.first, adj: adj)
     var down = [V] _ => id
@@ -177,7 +177,7 @@ fn reroot_computes_eccentricity_and_distance_sums():
             0,
             (a, b) => max(a, b),
             (val, _c, _p) => val + 1,
-            (s, _v) => s
+            (s, _v) => s,
         )
         for v in V:
             assert ecc[v] == max(r.dist(v, u) for u in V)
@@ -187,7 +187,7 @@ fn reroot_computes_eccentricity_and_distance_sums():
             (0, 0),
             (a, b) => (a.0 + b.0, a.1 + b.1),
             (val, _c, _p) => (val.0 + val.1, val.1),
-            (s, _v) => (s.0, s.1 + 1)
+            (s, _v) => (s.0, s.1 + 1),
         )
         for v in V:
             assert sums[v].0 == sum(r.dist(v, u) for u in V)

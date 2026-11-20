@@ -35,14 +35,18 @@ pub struct LiChaoArena(lo: Int, hi: Int):
 
     /// Put `f` into `h` in place and return the handle to keep: `hull = pool.add(hull, f)`.
     /// Older copies of the handle see the new line too.
-    pub fn add(mut self, h: Hull, f: Line) -> Hull = Hull(self.cover(h.node, lo, hi, lo, hi, f, false))
+    pub fn add(mut self, h: Hull, f: Line) -> Hull = Hull(
+        self.cover(h.node, lo, hi, lo, hi, f, false)
+    )
 
     /// `add`, with `f` only counting for `x` in `from..=to`.
     pub fn add_on(mut self, h: Hull, from: Int, to: Int, f: Line) -> Hull:
         Hull(self.cover(h.node, lo, hi, max(from, lo), min(to, hi), f, false))
 
     /// A new hull with the lines of `h` and `f`; `h` itself is left as it was.
-    pub fn added(mut self, h: Hull, f: Line) -> Hull = Hull(self.cover(h.node, lo, hi, lo, hi, f, true))
+    pub fn added(mut self, h: Hull, f: Line) -> Hull = Hull(
+        self.cover(h.node, lo, hi, lo, hi, f, true)
+    )
 
     /// `added`, with `f` only counting for `x` in `from..=to`.
     pub fn added_on(mut self, h: Hull, from: Int, to: Int, f: Line) -> Hull:
@@ -89,7 +93,13 @@ pub struct LiChaoArena(lo: Int, hi: Int):
     /// send the other one to the half where it can still win.
     fn settle(mut self, at: ?Int, l: Int, r: Int, f: Line, copy: Bool) -> ?Int:
         if at == none or line[at!] == none:
-            return self.put(at, f, if at == none: none else: left[at!], if at == none: none else: right[at!], copy)
+            return self.put(
+                at,
+                f,
+                if at == none: none else: left[at!],
+                if at == none: none else: right[at!],
+                copy,
+            )
         let mid = (l + r) / 2
         var (keep, cur) = (line[at!]!, f)
         if cur.at(mid) < keep.at(mid): (keep, cur) = (cur, keep)
@@ -132,7 +142,7 @@ fn every_version_keeps_its_own_lines():
             let f = rand_line(20)
             let (a, b) = (rand(lo - 3, hi + 3), rand(lo - 3, hi + 3))
             let (from, to) = if rand(0, 2) == 0: (lo, hi) else: (min(a, b), max(a, b))
-            versions.push(pool.added_on(versions[versions.len - 1], from, to, f))
+            versions.push(pool.added_on(versions.last!, from, to, f))
             lines.push((f, from, to))
         for v in 0..versions.len:
             let have = [lines[i] for i in 0..v]
@@ -167,7 +177,7 @@ fn a_forest_of_hulls_shares_one_pool():
         for t in T:
             if t == T(0): continue
             all = pool.merge(all, hull[t])
-            every = every + lines[t]
+            every += lines[t]
         for x in lo..=hi: assert pool.min_at(all, x) == slow_min(every, x)
         pool.clear()
         assert pool.nodes == 0 and pool.min_at(pool.empty, lo) == none

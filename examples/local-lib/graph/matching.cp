@@ -12,7 +12,13 @@
 ///   maximum independent set.
 ///
 /// O(E sqrt(V)) time, no recursion.
-pub fn max_matching<L, R>(adj: L -> List<R>) -> (size: Int, mate: [L]?R, back: [R]?L, cover_l: [L]Bool, cover_r: [R]Bool):
+pub fn max_matching<L, R>(adj: L -> List<R>) -> (
+    size: Int,
+    mate: [L]?R,
+    back: [R]?L,
+    cover_l: [L]Bool,
+    cover_r: [R]Bool,
+):
     let nb = [L] u => adj(u)
     var mate: [L]?R = none
     var back: [R]?L = none
@@ -27,9 +33,9 @@ pub fn max_matching<L, R>(adj: L -> List<R>) -> (size: Int, mate: [L]?R, back: [
             // walk the layers depth-first; `path` holds the left vertices of the walk
             var path = [root]
             while not path.is_empty:
-                let u = path[path.len - 1]
+                let u = path.last!
                 if next[u] == nb[u].len:
-                    level[u] = none                  // dead end: never enter it again
+                    level[u] = none  // dead end: never enter it again
                     path.pop()
                     continue
                 let v = nb[u][next[u]]
@@ -111,6 +117,10 @@ fn dominoes_on_a_board_with_holes():
     domain Cell = 0..16
     let open = [Cell] c => board[c.to_idx / 4][c.to_idx % 4] == '.'
     let dark = [Cell] c => (c.to_idx / 4 + c.to_idx % 4) % 2 == 0
-    let m = max_matching::<Cell, Cell>(c => [d for d in Cell if open[c] and dark[c] and open[d] and touching(c.to_idx, d.to_idx)])
-    assert m.size == 6                               // 13 open cells: 6 dark, 7 light
-    assert count(m.cover_l[c] for c in Cell if open[c] and dark[c]) + count(m.cover_r[c] for c in Cell) == 6
+    let m = max_matching::<Cell, Cell>(
+        c => [d for d in Cell if open[c] and dark[c] and open[d] and touching(c.to_idx, d.to_idx)]
+    )
+    assert m.size == 6  // 13 open cells: 6 dark, 7 light
+    assert count(
+        m.cover_l[c] for c in Cell if open[c] and dark[c]
+    ) + count(m.cover_r[c] for c in Cell) == 6

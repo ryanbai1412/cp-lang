@@ -2,11 +2,11 @@
 //!
 //! This is the sliding window for operations with no inverse (gcd, bitwise or, matrix
 //! products). `MonoDeque` (`ds/mono_deque.cp`) covers min and max; a `Fenwick` covers sums.
-use std.algebra.{Monoid}
-use std.math.{gcd}
 
 /// A FIFO queue with `fold` in O(1) and `push` / `pop` in O(1) amortized.
 /// The fold is in queue order, so the operation need not be commutative.
+use std.algebra.{Monoid}
+use std.math.{gcd}
 pub struct TwoStackFold<T>(m: Monoid<T>):
     /// The back half, oldest first, and its fold.
     back: List<T>
@@ -30,7 +30,7 @@ pub struct TwoStackFold<T>(m: Monoid<T>):
         if front.is_empty:
             while not back.is_empty:
                 let x = back.pop()!
-                let under = if front.is_empty: m.id else: front[front.len - 1].1
+                let under = if front.is_empty: m.id else: front.last!.1
                 front.push((x, m.op(x, under)))
             back_fold = m.id
         if front.is_empty: return none
@@ -38,7 +38,7 @@ pub struct TwoStackFold<T>(m: Monoid<T>):
 
     /// The fold of the whole queue, oldest to newest; the identity when empty.
     pub @get fn fold(self) -> T:
-        let head = if front.is_empty: m.id else: front[front.len - 1].1
+        let head = if front.is_empty: m.id else: front.last!.1
         m.op(head, back_fold)
 
 @test
@@ -63,7 +63,7 @@ fn matches_folding_the_window():
             var s = ""
             for x in plain:
                 g = gcd(g, x)
-                s = s + Str(x)
+                s += Str(x)
             assert q.fold == g and cat.fold == s
 
 @test
@@ -76,4 +76,4 @@ fn shortest_window_with_gcd_one():
         while q.len > 1 and q.fold == 1:
             best min= q.len
             q.pop()
-    assert best == 2            // [15, 4]
+    assert best == 2  // [15, 4]

@@ -1,10 +1,10 @@
 //! Shortest paths with predecessor pointers (`shortest`) and path reconstruction (`walk_back`).
-use std.graph.{Graph}
-use std.heap.{MinHeap}
 
 /// `dijkstra` that also records how each vertex was reached: `via[v]` is the
 /// vertex before `v` on a shortest path, `none` at a start. See `walk_back`.
 /// O((n + m) log m) with a binary heap.
+use std.graph.{Graph}
+use std.heap.{MinHeap}
 pub fn shortest<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W) -> (dist: [V]?W, via: [V]?V):
     var dist: [V]?W = none
     var via: [V]?V = none
@@ -26,7 +26,7 @@ pub fn shortest<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W) -> (dist: [V
 /// The vertices from a start to `t`, following `via` backwards. O(path length).
 pub fn walk_back<V>(via: [V]?V, t: V) -> List<V>:
     var path = [t]
-    while let p = via[path[path.len - 1]]: path.push(p)
+    while let p = via[path.last!]: path.push(p)
     path.reverse()
     path
 
@@ -54,4 +54,4 @@ fn shortest_and_walk_back_match_floyd_warshall():
                 assert r.dist[t] == best[s, t]
                 if r.dist[t] != none:
                     let path = walk_back(r.via, t)
-                    assert path[0] == s and path[path.len - 1] == t
+                    assert path[0] == s and path.last! == t

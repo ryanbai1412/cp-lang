@@ -47,7 +47,7 @@ pub struct Functional<V>:
             (ring[v], depth[v], pos[v]) = (ring[to], depth[to] + 1, pos[to])
         var up = [next]
         while (2 << (up.len - 1)) < V.K:
-            let last = up[up.len - 1]
+            let last = up.last!
             up.push([V] v => last[last[v]])
         Functional(up, ring, depth, pos, cycles, order)
 
@@ -119,7 +119,9 @@ fn jumps_and_distances_match_walking():
         let n = rand(1, 14)
         domain V = 0..n
         // a few rounds force long tails by pointing mostly forward
-        let next = [V] v => if round % 3 == 0: V(min(v.to_idx + rand(1, 2), n - 1)) else: V(rand(0, n - 1))
+        let next = [V] v => if round % 3 == 0: V(
+            min(v.to_idx + rand(1, 2), n - 1)
+        ) else: V(rand(0, n - 1))
         let g = Functional<V>(next)
         for a in V:
             let path = walk(next, a)
@@ -134,7 +136,10 @@ fn jumps_and_distances_match_walking():
             // far beyond any table: only the ring matters
             let far = rand(10 ** 12, 10 ** 18)
             let len = g.rings[g.ring_of(a)].len
-            assert g.jump(a, far) == g.jump(a, g.steps_to_ring(a) + (far - g.steps_to_ring(a)) % len)
+            assert g.jump(a, far) == g.jump(
+                a,
+                g.steps_to_ring(a) + (far - g.steps_to_ring(a)) % len,
+            )
 
 @test
 fn rings_and_trees_partition_the_graph():
@@ -161,7 +166,9 @@ fn rings_and_trees_partition_the_graph():
         for v in V:
             let path = walk(next, v)
             let k = g.steps_to_ring(v)
-            assert g.on_ring(path[k]) and g.root(v) == path[k] and (k == 0 or not g.on_ring(path[k - 1]))
+            assert g.on_ring(path[k]) and g.root(v) == path[k] and (
+                k == 0 or not g.on_ring(path[k - 1])
+            )
             assert g.ring_of(v) == g.ring_of(next[v])
 
 @test

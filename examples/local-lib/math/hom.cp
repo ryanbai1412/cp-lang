@@ -3,9 +3,9 @@
 //! The classic non-commutative monoid: a `SegTree` of them answers "apply the maps on
 //! this range, in order", and a path of them on a tree needs the order kept, which is
 //! what `Reversible` is for.
-use std.algebra.{Monoid, Reversible}
 
 /// The map `x -> a * x + b` over any type with `+` and `*` (`Int`, `Mod<P>`).
+use std.algebra.{Monoid, Reversible}
 pub struct Hom<T>(a: T, b: T):
     /// The value of the map at `x`.
     pub fn at(self, x: T) -> T = a * x + b
@@ -45,7 +45,6 @@ fn composition_applies_left_to_right():
 
 @test
 fn a_segment_tree_of_maps():
-    use std.segtree.{SegTree}
     domain I = 0..5
     let fs = [I] i => Hom(i.to_idx + 1, i.to_idx)
     var st = SegTree<I, Hom<Int>>(Hom<Int>.compose(1, 0), fs)

@@ -30,7 +30,7 @@ fn optimal_merge_matches_the_cubic_dp():
         let n = rand(1, 10)
         let a = [rand(0, 20) for _ in 0..n]
         var pre = [0]
-        for x in a: pre.push(pre[pre.len - 1] + x)
+        for x in a: pre.push(pre.last! + x)
         let cost = (i, j) => pre[j] - pre[i]
         let fast = knuth(n, cost)
         var slow = [[0 for _ in 0..=n] for _ in 0..=n]

@@ -3,10 +3,10 @@
 //!
 //! Built on `std.flow.FlowGraph` (Dinic): the lower bounds are paid up front and the
 //! debt they leave at each vertex is settled by one ordinary maximum flow.
-use std.flow.{Arc, FlowGraph}
 
 /// A flow that is conserved at every vertex with `lo <= flow <= hi` on every arc, as
 /// the flow of each arc in the order given, or `none` if the bounds cannot all be met.
+use std.flow.{Arc, FlowGraph}
 pub fn circulation<V>(arcs: List<(u: V, v: V, lo: Int, hi: Int)>) -> ?List<Int>:
     let found = solve::<V>(arcs, none, false)
     if found == none: none else: found!.flow
@@ -14,15 +14,27 @@ pub fn circulation<V>(arcs: List<(u: V, v: V, lo: Int, hi: Int)>) -> ?List<Int>:
 /// The largest flow from `s` to `t` with `lo <= flow <= hi` on every arc, as its value
 /// and the flow of each arc, or `none` if no flow meets the bounds. The value is the net
 /// amount leaving `s`, and is never negative.
-pub fn max_bounded_flow<V>(arcs: List<(u: V, v: V, lo: Int, hi: Int)>, s: V, t: V) -> ?(value: Int, flow: List<Int>):
+pub fn max_bounded_flow<V>(
+    arcs: List<(u: V, v: V, lo: Int, hi: Int)>,
+    s: V,
+    t: V,
+) -> ?(value: Int, flow: List<Int>):
     solve::<V>(arcs, (s, t), false)
 
 /// The smallest flow from `s` to `t` with `lo <= flow <= hi` on every arc: the fewest
 /// paths that cover every required arc, for one. `none` if no flow meets the bounds.
-pub fn min_bounded_flow<V>(arcs: List<(u: V, v: V, lo: Int, hi: Int)>, s: V, t: V) -> ?(value: Int, flow: List<Int>):
+pub fn min_bounded_flow<V>(
+    arcs: List<(u: V, v: V, lo: Int, hi: Int)>,
+    s: V,
+    t: V,
+) -> ?(value: Int, flow: List<Int>):
     solve::<V>(arcs, (s, t), true)
 
-fn solve<V>(arcs: List<(u: V, v: V, lo: Int, hi: Int)>, ends: ?(V, V), smallest: Bool) -> ?(value: Int, flow: List<Int>):
+fn solve<V>(
+    arcs: List<(u: V, v: V, lo: Int, hi: Int)>,
+    ends: ?(V, V),
+    smallest: Bool,
+) -> ?(value: Int, flow: List<Int>):
     // two extra vertices: `pay` hands out what the lower bounds owe, `take` collects it
     domain Node = 0..V.K + 2
     let (pay, take) = (Node.nth(V.K), Node.nth(V.K + 1))
@@ -84,7 +96,14 @@ fn circulation_exists_exactly_when_brute_force_finds_one():
     domain V = 0..4
     var (yes, no) = (0, 0)
     for _ in 0..60:
-        let arcs = [(u: V.nth(rand(0, 3)), v: V.nth(rand(0, 3)), lo: lo, hi: lo + rand(0, 2)) for lo in [rand(0, 1) for _ in 0..rand(1, 6)]]
+        let arcs = [
+            (
+                u: V.nth(rand(0, 3)),
+                v: V.nth(rand(0, 3)),
+                lo: lo,
+                hi: lo + rand(0, 2),
+            ) for lo in [rand(0, 1) for _ in 0..rand(1, 6)]
+        ]
         let got = circulation::<V>(arcs)
         let every = all_flows::<V>(arcs, none, none)
         assert (got == none) == every.is_empty
@@ -100,7 +119,14 @@ fn largest_and_smallest_flow_match_brute_force():
     domain V = 0..4
     var feasible = 0
     for _ in 0..60:
-        let arcs = [(u: V.nth(rand(0, 3)), v: V.nth(rand(0, 3)), lo: lo, hi: lo + rand(0, 2)) for lo in [rand(0, 5) / 5 for _ in 0..rand(1, 6)]]
+        let arcs = [
+            (
+                u: V.nth(rand(0, 3)),
+                v: V.nth(rand(0, 3)),
+                lo: lo,
+                hi: lo + rand(0, 2),
+            ) for lo in [rand(0, 5) / 5 for _ in 0..rand(1, 6)]
+        ]
         let (s, t) = (V.first, V.last)
         // a flow from `s` to `t` never has more coming back into `s` than leaving it
         let every = [e for e in all_flows::<V>(arcs, s, t) if e.0 >= 0]
@@ -119,9 +145,15 @@ fn fewest_paths_through_every_required_arc():
     domain V = 0..6
     let must = [(1, 3), (2, 3), (3, 4)]
     let free = [(0, 1), (0, 2), (4, 5), (1, 4)]
-    let arcs = [(u: V(a), v: V(b), lo: 1, hi: 9) for (a, b) in must] + [(u: V(a), v: V(b), lo: 0, hi: 9) for (a, b) in free]
+    let arcs = [(u: V(a), v: V(b), lo: 1, hi: 9) for (a, b) in must] + [
+        (u: V(a), v: V(b), lo: 0, hi: 9) for (a, b) in free
+    ]
     let plan = min_bounded_flow::<V>(arcs, V(0), V(5))!
     assert plan.value == 2 and plan.flow == [1, 1, 2, 1, 1, 2, 0]
     assert max_bounded_flow::<V>(arcs, V(0), V(5))!.value == 9
     // if every arc holds one walker, 3 -> 4 cannot carry the two that must reach it
-    assert min_bounded_flow::<V>([(u: a.u, v: a.v, lo: a.lo, hi: 1) for a in arcs], V(0), V(5)) == none
+    assert min_bounded_flow::<V>(
+        [(u: a.u, v: a.v, lo: a.lo, hi: 1) for a in arcs],
+        V(0),
+        V(5),
+    ) == none

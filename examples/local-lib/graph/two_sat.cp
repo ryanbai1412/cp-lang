@@ -1,7 +1,7 @@
 //! 2-SAT solver over a typed variable domain `X`, backed by `std.graph.scc`.
-use std.graph.{scc}
 
 /// A variable or its negation: `Lit(x, true)` is "x holds".
+use std.graph.{scc}
 pub struct Lit<X>(x: X, value: Bool):
     /// The opposite literal.
     pub @get fn flip(self) -> Lit<X> = Lit(x, not value)
@@ -37,7 +37,7 @@ pub struct TwoSat<X>:
             if comp[N(2 * x.to_idx)] == comp[N(2 * x.to_idx + 1)]: return none
         [X] x => comp[N(2 * x.to_idx + 1)] > comp[N(2 * x.to_idx)]
 
-fn lit_node<X>(l: Lit<X>) -> Int = 2 * l.x.to_idx + (if l.value: 1 else: 0)
+fn lit_node<X>(l: Lit<X>) -> Int = 2 * l.x.to_idx + Int(l.value)
 
 @test
 fn two_sat_solutions_satisfy_every_clause_and_unsat_is_detected():
@@ -52,7 +52,11 @@ fn two_sat_solutions_satisfy_every_clause_and_unsat_is_detected():
             clauses.push((a, b))
         var possible = false
         for mask in 0..32:
-            if all((((mask >> c.0.x.to_idx) & 1) == 1) == c.0.value or (((mask >> c.1.x.to_idx) & 1) == 1) == c.1.value for c in clauses): possible = true
+            if all(
+                (((mask >> c.0.x.to_idx) & 1) == 1) == c.0.value or (
+                    ((mask >> c.1.x.to_idx) & 1) == 1
+                ) == c.1.value for c in clauses
+            ): possible = true
         let got = sat.solve()
         assert (got != none) == possible
         if got != none:
