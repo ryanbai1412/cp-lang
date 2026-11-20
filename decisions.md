@@ -797,3 +797,40 @@ and Rust compiler sprints.
   `vector`, and tree-shakes all unused runtime/stdlib code (plus stripping
   `CP_GEN`/`assume`/`debug`/`@brute`) so typical judge submissions are 4–10 KB
   with the `.cp` source in a top comment header.
+
+## 17. Stdlib and local-lib aligned with the v2 lock
+
+`stdlib/` and `examples/local-lib/` now follow §16. The calls made while
+writing the library against the spec, where the spec left room:
+
+- **17.1 `(id, op)` is spelled `Monoid(id, op)`.** A structure takes a bare
+  operator (`SegTree<I, Int>(+, a)`) or a `Monoid`; `Monoid<T>.of` turns the
+  first into the second. A bare tuple would need overloading on the
+  argument's shape, which the checker does not have, and the name costs six
+  letters. The cut wrappers (`Sum`, `Max`, `Min`, `Prod`, `Xor`, `Order`,
+  `Less`, `Greater`, `Semigroup`, `Group`, `flip`, `both`, `opt`, `MaxOpt`)
+  are deleted, not deprecated.
+- **17.2 `Fenwick` takes no operation.** It is sums over any `T` with `+`
+  and `-` (`Fenwick<D, T>()`, `f.sum(range)`); an invertible operation of
+  your own goes in a `SegTree`.
+- **17.3 `Rooted` replaces `Hld`.** `fold_path(a, b, ds)` and
+  `apply_path(a, b, mut ds, tag)` take any structure over `Rooted<V>.Pre`,
+  so one `SegTree` or `LazySegTree` serves paths and subtrees. A climbing
+  stretch is folded top-down and turned with `rev()`; `Reversible` defaults
+  to the identity, so only non-commutative values implement it.
+- **17.4 Grid helpers are extension fns on `(R, C)`**, imported by name
+  (`use std.grid.{adj4}`); `Dir4` / `Dir8` are small structs, since an enum
+  cannot carry methods yet.
+- **17.5 `ModR` is gone.** A run-time modulus is `let P = p` then
+  `Mod<P>`, the same type as a constant one.
+- **17.6 Moved out of `std`, into `examples/local-lib/`:** the structures
+  listed in T13 (`Rope`, `RangeKth`, `LiChao`, `PotentialDsu`, `Cover`,
+  `Hom`, `TwoStackFold`, `mo`, NTT, `XorBasis`, `Frac`, `Powers`,
+  `dnc_opt`, `knuth`, `Hash2D`, `Trie`, `SuffixAutomaton`, `fold_others`,
+  `fold_balanced`, `overlaps`, `borders`, `sos_sub` / `sos_sup`), plus
+  `BipartiteDsu`. Moved the other way, into `std`: `TwoSat` (now in
+  `std.graph`) and rollback (now `Dsu.mark` / `undo_to`).
+- **17.7 Not done yet:** `Fixed<D>`, `Tri<D>`, `Functional`, `Congruence`
+  and `LiChaoArena` from the T13 list; the payload-enum `FlowGraph` node
+  and a real-valued `bsearch`, which wait for enums with payloads and
+  `F64` ranges in the reference interpreter.
