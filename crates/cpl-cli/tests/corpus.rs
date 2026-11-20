@@ -102,7 +102,6 @@ const NOT_YET: &[&str] = &[
     // Steps and ranges over a domain.
     "range_incl_boundary",
     "range_two_domains",
-    "rt_domain_too_big",
     "rt_min_empty_slice",
     "span_two_domains",
     "step_as_argument",
