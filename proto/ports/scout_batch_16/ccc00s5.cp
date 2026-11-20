@@ -22,8 +22,8 @@ fn shown(v: Int) -> Str:
 let n: Int = read()
 var sheep: List<(Int, Int)> = []
 for _ in 0..n:
-    let x: Float = read()
-    let y: Float = read()
+    let x: F64 = read()
+    let y: F64 = read()
     sheep.push((Int(x * SCALE), Int(y * SCALE)))
 
 for (px, py) in sheep:

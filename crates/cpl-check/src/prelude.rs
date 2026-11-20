@@ -71,7 +71,7 @@ pub fn value(name: &str) -> Option<Ty> {
             Ty::Unknown
         }
         "popcount" | "ctz" | "bit_width" | "bit_ceil" | "isqrt" => int_fn(1),
-        "sqrt" | "atan2" | "floor" | "ceil" | "round" | "len" => Ty::Unknown,
+        "sqrt" | "atan2" | "floor" | "ceil" | "round" | "trunc" | "len" => Ty::Unknown,
         // `counts(xs)` is a `Counter`, `prefix(a)` the prefix sums of an
         // array, and `span(a, b)` the range between two positions in
         // either order (decisions §11).
@@ -97,13 +97,10 @@ pub fn value(name: &str) -> Option<Ty> {
 pub fn ty(name: &str) -> Option<Ty> {
     Some(match name {
         "Int" => Ty::Int,
-        // `F64` is the v2.2 name; `Float` is still read.
-        "F64" | "Float" => Ty::Float,
+        "F64" => Ty::Float,
         "Bool" => Ty::Bool,
         "Char" => Ty::Char,
         "Str" => Ty::Str,
-        // Fixed-width integers for bit-level work.
-        "I32" | "U8" | "U64" | "I128" => Ty::Int,
         "List" | "Map" | "HashMap" | "Set" | "Iter" | "Opt" | "Range" | "Bounds" | "Counter" => {
             Ty::Named {
                 name: name.into(),
@@ -125,7 +122,7 @@ pub fn is_trait(name: &str) -> bool {
 }
 
 const TYPE_NAMES: &[&str] = &[
-    "List", "Map", "Set", "Int", "Bool", "Char", "Str", "Float", "F64", "Iter", "Opt", "Range", "Bounds",
+    "List", "Map", "Set", "Int", "Bool", "Char", "Str", "F64", "Iter", "Opt", "Range", "Bounds",
     "Counter", "HashMap",
 ];
 
@@ -190,6 +187,7 @@ pub const VALUE_NAMES: &[&str] = &[
     "sqrt",
     "atan2",
     "floor",
+    "trunc",
     "ceil",
     "round",
     "len",
@@ -205,7 +203,6 @@ pub const VALUE_NAMES: &[&str] = &[
     "Bool",
     "Char",
     "Str",
-    "Float",
     "F64",
     "Iter",
     "Opt",
@@ -288,6 +285,8 @@ pub const STD_NAMES: &[(&str, &str)] = &[
     ("desc", "algebra"),
     ("differences", "spec"),
     ("dijkstra", "graph"),
+    ("directed_of_pairs", "graph"),
+    ("directed_of_triples", "graph"),
     ("divisors", "math"),
     ("dnc_break", "spec"),
     ("dot", "geometry"),
@@ -297,6 +296,7 @@ pub const STD_NAMES: &[(&str, &str)] = &[
     ("first_ge", "seq"),
     ("first_ge_by", "seq"),
     ("first_gt", "seq"),
+    ("fixed", "math"),
     ("fold", "algebra"),
     ("gcd", "math"),
     ("guess_at", "spec"),
@@ -342,6 +342,8 @@ pub const STD_NAMES: &[(&str, &str)] = &[
     ("turn", "geometry"),
     ("two_color", "graph"),
     ("two_edge_components", "graph"),
+    ("undirected_of_pairs", "graph"),
+    ("undirected_of_triples", "graph"),
     ("unimodality_break", "spec"),
     ("z_function", "strings"),
 ];

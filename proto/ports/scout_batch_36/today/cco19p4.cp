@@ -1,10 +1,10 @@
-// CCO '19 P4 — Card Scoring (today form for proto/cpi lib-run, which has Float + sqrt)
+// CCO '19 P4 — Card Scoring (today form for proto/cpi lib-run, which has F64 + sqrt)
 // original: corpus/submissions/3617807.cpp
 let k: Int = read()
 let n: Int = read()
 
 if k == 2:
-    print(Float(n))
+    print(F64(n))
 else:
     domain Card = 0..n
     domain Rank = 0..n
@@ -12,13 +12,13 @@ else:
     let raw: [Card]Int = read()
     let a: [Card]Int = [Card] i => raw[i] - 1
 
-    fn score_of(d: Int) -> Float:
+    fn score_of(d: Int) -> F64:
         if k == 4:
-            return Float(d) * Float(d)
-        let s = sqrt(Float(d))
+            return F64(d) * F64(d)
+        let s = sqrt(F64(d))
         s * s * s
 
-    let score: [Diff]Float = [Diff] d => score_of(d.ord)
+    let score: [Diff]F64 = [Diff] d => score_of(d.ord)
 
     var cnt: [Rank]Int = [Rank] _ => 0
     for i in Card: cnt[Rank(a[i])] += 1
@@ -35,16 +35,16 @@ else:
 
     var has_c: List<Bool> = []
     var cm: List<Int> = []
-    var cb: List<Float> = []
+    var cb: List<F64> = []
     for _ in 0..tot:
         has_c.push(false)
         cm.push(0)
         cb.push(0.0)
 
-    fn eval_c(m: Int, b: Float, x: Int) -> Float:
+    fn eval_c(m: Int, b: F64, x: Int) -> F64:
         if x > m: -1e300 else: score[Diff(m - x)] + b
 
-    fn lc_insert(base: Int, o: Int, l: Int, r: Int, m0: Int, b0: Float):
+    fn lc_insert(base: Int, o: Int, l: Int, r: Int, m0: Int, b0: F64):
         let idx = base + o
         if not has_c[idx]:
             has_c[idx] = true
@@ -69,7 +69,7 @@ else:
             else:
                 lc_insert(base, o * 2 + 1, mid + 1, r, nm, nb)
 
-    fn lc_query(base: Int, sz: Int, x: Int) -> Float:
+    fn lc_query(base: Int, sz: Int, x: Int) -> F64:
         var o = 1
         var l = 0
         var r = sz - 1
@@ -88,7 +88,7 @@ else:
                 o = o * 2 + 1
                 l = mid + 1
 
-    var dp: [Diff]Float = [Diff] _ => 0.0
+    var dp: [Diff]F64 = [Diff] _ => 0.0
     var i = n - 1
     while i >= 0:
         let r = Rank(a[Card(i)])

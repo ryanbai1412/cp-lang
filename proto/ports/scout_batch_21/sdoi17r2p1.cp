@@ -15,17 +15,17 @@ for _ in 0..tests:
     let m: Int = read()
     let n: Int = read()
     domain Total = 0..=n * (m - 1)
-    var chance: [Total]Float = 0.0
+    var chance: [Total]F64 = 0.0
     chance[Total(0)] = 1.0
     for die in 1..=n:
-        var next: [Total]Float = 0.0
+        var next: [Total]F64 = 0.0
         var window = 0.0                    // chance[t - m + 1] + ... + chance[t]
         for t in Total.first..=Total(die * (m - 1)):
             window += chance[t]
             if let out = t.offset(-m): window -= chance[out]
             next[t] = window / m
         chance = next
-    var below: List<Float> = [0.0]          // below[k]: the total is less than k
+    var below: List<F64> = [0.0]          // below[k]: the total is less than k
     for t in Total: below.push(below.last + chance[t])
     for _ in 0..10:
         let lo: Int = read()

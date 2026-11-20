@@ -35,10 +35,7 @@ pub struct Wide(hi: Int, lo: Int):
         Wide(hi / k, low / k)
 
     pub fn show(self) -> Str:
-        if hi == 0: return "{lo}"
-        var digits = "{lo}"
-        while digits.len < 18: digits = "0" + digits
-        "{hi}" + digits
+        if hi == 0: "{lo}" else: "{hi}{lo:018}"
 
 @test
 fn carries_between_the_halves():

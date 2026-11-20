@@ -22,7 +22,7 @@ for v in V:
     nxt[v] = v + 1
     ps.push(v)
 print(nxt, nxt[V.first] ?? V.last, nxt[V.last] ?? V.first, nxt[V.last] == none, nxt[V.first] == nxt[V.first], nxt[V.first] == nxt[V.last])
-print(step(V.first) ?? V.last, step(V.last) ?? V.first, step(none) == none, V.try(0) == none, V.try(n) == none, V.try_at(n - 1) ?? V.first)
+print(step(V.first) ?? V.last, step(V.last) ?? V.first, step(none) == none, V.from_idx(0) == none, V.from_idx(n) == none, V.from_idx(n - 1) ?? V.first)
 print(V.first.prev == none, V.last.next == none, V.first.next ?? V.last, V.last.prev ?? V.first)
 print(ps.first ?? V.last, ps.last ?? V.first)
 var seen = 0

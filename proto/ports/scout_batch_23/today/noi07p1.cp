@@ -44,5 +44,5 @@ for v in 1..=n:
             let dvt = dist[cell(v, t)]
             let dst = dist[cell(s, t)]
             if dvt < INF and dsv + dvt == dst:
-                total += Float(ways[cell(s, v)] * ways[cell(v, t)]) / Float(ways[cell(s, t)])
+                total += F64(ways[cell(s, v)] * ways[cell(v, t)]) / F64(ways[cell(s, t)])
     print(total)

@@ -195,6 +195,33 @@ impl<'a> Parser<'a> {
 
     /// `a < b`, and chains such as `lo <= x < hi`.
     fn comparison(&mut self) -> Expr {
+        let stmt_head = std::mem::take(&mut self.stmt_head);
+        let start = self.start();
+        let target = self.chain();
+        // `if dist[v] min= d:` binds like a comparison, and is a `Bool`.
+        let keep = !stmt_head
+            && self.peek() == T::Ident
+            && self.peek_n(1) == T::Eq
+            && matches!(self.text(), "max" | "min")
+            && self.same_line();
+        if !keep {
+            return target;
+        }
+        let max = self.text() == "max";
+        self.bump();
+        self.bump();
+        let value = self.chain();
+        Expr {
+            kind: ExprKind::Keep {
+                target: Box::new(target),
+                max,
+                value: Box::new(value),
+            },
+            span: self.span_from(start),
+        }
+    }
+
+    fn chain(&mut self) -> Expr {
         let start = self.start();
         let first = self.range();
         let mut rest = Vec::new();
@@ -895,14 +922,35 @@ impl<'a> Parser<'a> {
             match part {
                 StrPart::Text(span) => pieces.push(StrPiece::Text(unescape(span.text(text)))),
                 StrPart::Expr(span) => {
-                    let (inner, digits) = fixed_digits(span.text(text));
+                    let inner = span.text(text);
                     let lexed = crate::lexer::lex(inner);
                     // Spans from the inner lexer are relative to `inner`.
                     let delta = token.span.start as i64 + span.start as i64 + self.delta;
                     let mut sub = Parser::new(inner, &lexed.tokens, delta, Sink::new());
                     sub.speculating = self.speculating;
                     let expr = sub.expr();
-                    if !matches!(sub.peek(), T::Newline | T::Eof) {
+                    // The value ends at a `:`; the rest is how to write it.
+                    let colon = (sub.peek() == T::Colon).then(|| sub.tokens[sub.pos].span);
+                    let mut spec = None;
+                    if let Some(colon) = colon {
+                        let written = &inner[colon.end as usize..];
+                        spec = FmtSpec::parse(written);
+                        if spec.is_none() {
+                            let at = Span::new(colon.start, inner.len() as u32);
+                            sub.sink.push(shift_signed(
+                                Diagnostic::error(
+                                    codes::UNEXPECTED_TOKEN,
+                                    at,
+                                    format!("`:{written}` is not a number format"),
+                                )
+                                .with_help(
+                                    "a format is a width (`:5`, `:05`), digits after the point \
+                                     (`:.3`, `:8.3f`), `:x` or `:b`",
+                                ),
+                                delta,
+                            ));
+                        }
+                    } else if !matches!(sub.peek(), T::Newline | T::Eof) {
                         sub.error_expected(
                             codes::UNEXPECTED_TOKEN,
                             "`}` to end the interpolation",
@@ -910,9 +958,12 @@ impl<'a> Parser<'a> {
                         );
                     }
                     let failed = sub.speculation_failed;
+                    // A format is not code: `08b` is no number, and no mistake.
+                    let value_end = colon.map_or(u32::MAX, |c| c.start);
                     let mut diags: Vec<Diagnostic> = lexed
                         .diagnostics
                         .into_iter()
+                        .filter(|d| d.span.start < value_end)
                         .map(|d| shift_signed(d, delta))
                         .collect();
                     diags.extend(sub.sink.finish());
@@ -921,8 +972,8 @@ impl<'a> Parser<'a> {
                         self.error(diag);
                     }
                     self.speculation_failed |= failed;
-                    pieces.push(match digits {
-                        Some(digits) => StrPiece::Fixed(expr, digits),
+                    pieces.push(match spec {
+                        Some(spec) => StrPiece::Spec(expr, spec),
                         None => StrPiece::Expr(expr),
                     });
                 }
@@ -973,18 +1024,4 @@ pub(crate) fn unescape(text: &str) -> String {
         }
     }
     out
-}
-
-/// Splits `x:.2f` into `x` and its 2 digits; anything else is all value.
-fn fixed_digits(inner: &str) -> (&str, Option<u32>) {
-    let split = inner.rsplit_once(":.").and_then(|(value, spec)| {
-        let digits = spec.trim_end().strip_suffix('f')?;
-        let all_digits = !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit());
-        let digits = digits.parse().ok().filter(|d| all_digits && *d <= 18)?;
-        Some((value, digits))
-    });
-    match split {
-        Some((value, digits)) => (value, Some(digits)),
-        None => (inner, None),
-    }
 }

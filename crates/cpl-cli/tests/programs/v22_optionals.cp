@@ -2,7 +2,7 @@
 // `min=`/`max=` skip it, and `??` can leave instead of giving a default.
 let a: ?Int = 3
 let b: ?Int = none
-let half: ?Float = 0.5
+let half: ?F64 = 0.5
 print((a + 1) ?? -1, (b + 1) ?? -1, (a - b) ?? -1, (1 - a) ?? -1, (-a) ?? 0, (-b) ?? 0)
 print((half + 1) ?? -1.0, (half - a) ?? -1.0)
 var best = 10

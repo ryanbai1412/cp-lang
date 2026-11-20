@@ -344,6 +344,59 @@ pub struct DebugArg {
 pub enum FmtPiece {
     Text(Vec<u8>),
     Value(FmtArg),
+    /// `{n:05}`, `{x:.3f}`: an `Int` or an `F64` in a number format.
+    Number(Expr, NumFmt),
+}
+
+/// How `{v:...}` writes a number. A sign comes before the zeros, and a
+/// value that rounds to zero has none: never `-0.000`.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct NumFmt {
+    /// Fill to `width` with zeros after the sign, not spaces before it.
+    pub zero: bool,
+    pub width: u32,
+    pub kind: NumKind,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum NumKind {
+    /// An `Int` in base 10, 16 or 2; the sign is written apart.
+    Dec,
+    Hex,
+    Bin,
+    /// An `F64` with that many digits after the point.
+    Fixed(u32),
+}
+
+impl NumFmt {
+    /// `digits`, the number without its width, padded out to it.
+    pub fn pad(&self, digits: &str) -> String {
+        let width = self.width as usize;
+        match digits.strip_prefix('-') {
+            Some(rest) if self.zero => format!("-{rest:0>w$}", w = width.saturating_sub(1)),
+            None if self.zero => format!("{digits:0>width$}"),
+            _ => format!("{digits:>width$}"),
+        }
+    }
+
+    pub fn int(&self, v: i64) -> String {
+        let sign = if v < 0 { "-" } else { "" };
+        let abs = v.unsigned_abs();
+        self.pad(&match self.kind {
+            NumKind::Hex => format!("{sign}{abs:x}"),
+            NumKind::Bin => format!("{sign}{abs:b}"),
+            NumKind::Dec | NumKind::Fixed(_) => v.to_string(),
+        })
+    }
+
+    pub fn float(&self, v: f64) -> String {
+        let NumKind::Fixed(places) = self.kind else {
+            return String::new();
+        };
+        let text = if v.is_nan() { "nan".to_string() } else { format!("{v:.*}", places as usize) };
+        let zero = text.bytes().all(|b| matches!(b, b'-' | b'0' | b'.'));
+        self.pad(if zero { text.trim_start_matches('-') } else { &text })
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -354,6 +407,8 @@ pub enum Cast {
     CharToInt,
     /// Fails outside `0..=255`.
     IntToChar,
+    /// The result of `Char + Int`. Fails outside ASCII, `0..=127`.
+    StepToChar,
     /// A position or bound as its 0-based ordinal.
     Ord,
     /// A position as the label it was read with: ordinal plus the
@@ -410,6 +465,12 @@ pub enum Builtin {
     ListFilled,
     /// `Str(x)`: format any value as a string.
     ShowStr,
+    /// `sep.join(xs)`: the items of a list or 1-D array as `print` shows
+    /// them, with `sep` between. A third argument is what a `none` item
+    /// is written as.
+    Join,
+    /// `xs.get(i)`: the item at 0-based `i`, or `none` outside the list.
+    SeqGet,
     /// `Int(s)`: parse an integer from a string.
     ParseInt,
     /// `Str` <-> `List<Char>` and `[D]T` -> `List<T>` conversions.
@@ -436,8 +497,7 @@ pub enum Builtin {
     /// `v.next`, `v.prev`: optional position.
     PosNext,
     PosPrev,
-    /// `V.try(label)` / `V.try_at(ord)` -> `?V`.
-    PosTryLabel(DomainId),
+    /// `V.from_idx(ord)` -> `?V`.
     PosTryOrd(DomainId),
     /// `v.offset(k)` / `v + k` -> `?V`, and `v.cyc(k)` -> `V`.
     PosOffset(DomainId),

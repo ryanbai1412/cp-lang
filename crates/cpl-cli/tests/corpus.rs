@@ -159,31 +159,7 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
 /// Failing tests this checker still accepts: each needs a rule it does
 /// not have yet. A name leaves this list when its case is rejected for
 /// its stated reason, and the test below says so.
-///
-/// The `s2_*` cases are the Synthesis #2 kernel rules and format
-/// specifiers, which the prototype has and `crates/` does not yet.
-const NOT_YET: &[&str] = &[
-    "s2_array_default_literal",
-    "s2_char_of_digit",
-    "s2_dom_try",
-    "s2_f64_to_int",
-    "s2_float_name",
-    "s2_fmt_align",
-    "s2_fmt_float_width_only",
-    "s2_fmt_hex_float",
-    "s2_fmt_nested_width",
-    "s2_for_mut",
-    "s2_i32",
-    "s2_int_of_f64",
-    "s2_opt_chain",
-    "s2_opt_plus_eq",
-    "s2_print_yes_no",
-    "s2_read_angle",
-    "s2_read_no_type",
-    "s2_sign",
-    "s2_subdomain_widen",
-    "s2_unwrap_let",
-];
+const NOT_YET: &[&str] = &[];
 
 /// Failing tests that state a limit of the prototype's code generator,
 /// not a rule of the language. `a[nx()] max= 4` evaluates `a[nx()]` once
@@ -234,6 +210,21 @@ fn each_failing_test_is_rejected_for_its_stated_reason() {
             "rt_for_push" => "the `for` loop is going over `xs`",
             // v2.2: the body ends with the place, and `mut` says it is lent to change.
             "proj_no_lend" => "so the body ends with `mut cnt[i]`",
+            // Synthesis #2's rejected spellings, in this checker's words.
+            "s2_array_default_literal" => "expected `:` between a key and its value",
+            "s2_char_of_digit" => "doesn't know the name `Char` here",
+            "s2_f64_to_int" => "`n` is declared an Int, but `x` is an F64",
+            "s2_float_name" => "no type or domain named `Float`",
+            "s2_for_mut" => "expected a value after `in`, found `mut`",
+            "s2_i32" => "no type or domain named `I32`",
+            "s2_opt_chain" => "`??` gives a default for an optional, but the left side is a `Int`",
+            "s2_opt_plus_eq" => "`+=` can't be applied to an ?Int",
+            "s2_print_yes_no" => "`print` has no argument named `yes`",
+            "s2_read_angle" => "doesn't know the name `read` here",
+            "s2_read_no_type" => "can't tell what to read here",
+            "s2_sign" => "no `sign` in scope",
+            "s2_subdomain_widen" => "`a` is indexed by Pkg, but `d` is a Dep",
+            "s2_unwrap_let" => "`o` is a `let`, so it can't be assigned",
             _ => reason,
         };
         cases += 1;

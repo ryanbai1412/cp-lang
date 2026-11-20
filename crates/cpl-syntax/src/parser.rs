@@ -80,6 +80,9 @@ pub(crate) struct Parser<'a> {
     /// Inside a `@grader` statement, where a fn may have no body: the
     /// judge supplies it.
     in_grader: bool,
+    /// The next comparison starts a statement, where `x min= y` is an
+    /// assignment and not a `Bool`.
+    stmt_head: bool,
     /// The first half of a `>>` was used to close a type argument list.
     half_shr: bool,
     /// Statements the one being parsed stands for besides itself: the
@@ -101,6 +104,7 @@ impl<'a> Parser<'a> {
             recovering: false,
             speculating: 0,
             speculation_failed: false,
+            stmt_head: false,
             brace_depth: 0,
             block_depth: 0,
             in_trait: false,

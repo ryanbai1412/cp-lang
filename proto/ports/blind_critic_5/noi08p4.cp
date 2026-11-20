@@ -2,22 +2,22 @@
 // Original C++: corpus/submissions/5144322.cpp
 // Runs directly under the Rust `cpl run` and `cpl build` (c521b2c).
 // Workarounds vs blind first draft (noi08p4_draft.cp):
-// - Rust c521b2c uses `Float` instead of locked v2.2 `F64`, and `print(ans, digits: 2)` instead of `"{ans:.2f}"`
+// - Rust c521b2c uses `F64` instead of locked v2.2 `F64`, and `print(ans, digits: 2)` instead of `"{ans:.2f}"`
 // - No `@memo` on nested closures or `for u in V if cond:` -> explicit memo table & `if`
-// - Uses real v2.2 `swap(mut a, mut b)` and `List<Float>` value semantics
+// - Uses real v2.2 `swap(mut a, mut b)` and `List<F64>` value semantics
 
 struct KS:
     msz: Int
-    v: List<Float>
+    v: List<F64>
 
     fn make(msz: Int) -> KS:
         KS(msz: msz, v: [0.0])
 
-    fn update(mut self, arr: List<Float>):
+    fn update(mut self, arr: List<F64>):
         let n = self.v.len
         let m = arr.len
         let lim = min(self.msz, n + m)
-        var nv: List<Float> = []
+        var nv: List<F64> = []
         for _ in 0..lim:
             nv.push(0.0)
         for i in 0..n:
@@ -28,15 +28,15 @@ struct KS:
             nv[i + 1] = max(nv[i], nv[i + 1])
         self.v = nv
 
-fn shiftr(arr: List<Float>, len: Int) -> List<Float>:
-    var out: List<Float> = []
+fn shiftr(arr: List<F64>, len: Int) -> List<F64>:
+    var out: List<F64> = []
     for _ in 0..len:
         out.push(0.0)
     for x in arr:
         out.push(x)
     out
 
-fn vor(a_in: List<Float>, b_in: List<Float>) -> List<Float>:
+fn vor(a_in: List<F64>, b_in: List<F64>) -> List<F64>:
     var a = a_in
     var b = b_in
     if a.len < b.len:
@@ -47,16 +47,16 @@ fn vor(a_in: List<Float>, b_in: List<Float>) -> List<Float>:
 
 let n: Int = read()
 let m: Int = read()
-let kv: Float = read()
+let kv: F64 = read()
 
 var par: List<Int> = []
 for _ in 0..n:
     let p: Int = read()
     par.push(p - 1)
 
-var arr: List<Float> = []
+var arr: List<F64> = []
 for _ in 0..n:
-    let a: Float = read()
+    let a: F64 = read()
     arr.push(a)
 
 var cyc: List<Int> = []
@@ -67,17 +67,17 @@ while true:
     if cur_u == 0:
         break
 
-var kpow: List<Float> = [1.0]
+var kpow: List<F64> = [1.0]
 for i in 0..(n + 4):
     kpow.push(kpow[i] * kv)
 
 var graph: List<List<Int>> = []
 var memo_done: List<Bool> = []
-var memo_val: List<List<Float>> = []
+var memo_val: List<List<F64>> = []
 var cmul = 1.0
 let stride = n + 2
 
-fn dp(u: Int, cdist: Int) -> List<Float>:
+fn dp(u: Int, cdist: Int) -> List<F64>:
     let slot = u * stride + cdist
     if memo_done[slot]:
         return memo_val[slot]
@@ -113,7 +113,7 @@ for clen in 2..=cyc.len:
     memo_val.clear()
     for _ in 0..(n * stride):
         memo_done.push(false)
-        var empty: List<Float> = []
+        var empty: List<F64> = []
         memo_val.push(empty)
 
     // Reverse ccyc[1..] in place

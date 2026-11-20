@@ -7,8 +7,8 @@ pub struct Pt(x: Int, y: Int):
     /// The squared length.
     pub @get fn norm2(self) -> Int = x * x + y * y
 
-    /// The length, as a `Float`.
-    pub @get fn len(self) -> Float = sqrt(Float(x * x + y * y))
+    /// The length, as a `F64`.
+    pub @get fn len(self) -> F64 = sqrt(F64(x * x + y * y))
 
     /// Rotated a quarter turn counter-clockwise.
     pub @get fn perp(self) -> Pt = Pt(-y, x)

@@ -22,7 +22,7 @@ use std.grid.{Dir4}
 use std.heap.{MaxHeap, MinHeap}
 use std.lazy.{AddMax, AddMin, AddSum, AssignMax, AssignMin, AssignSum, LazySegTree}
 use std.marks.{Marks}
-use std.math.{Sieve, gcd, lcm}
+use std.math.{Sieve, fixed, gcd, lcm}
 use std.mod.{Comb, Mod}
 use std.prefix.{Prefix1, Prefix2}
 use std.segtree.{SegTree}

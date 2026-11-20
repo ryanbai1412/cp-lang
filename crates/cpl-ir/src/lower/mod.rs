@@ -1380,7 +1380,7 @@ impl<'a> Lowerer<'a> {
             // The solution an `@interactor` talks to holds nothing.
             "Interactor" if self.judge => Ty::Unit,
             "Int" | "I64" => Ty::Int,
-            "Float" | "F64" => Ty::Float,
+            "F64" => Ty::Float,
             "Bool" => Ty::Bool,
             "Char" => Ty::Char,
             "Str" => Ty::Str,
@@ -1411,7 +1411,6 @@ impl<'a> Lowerer<'a> {
                 Ty::Pos(d) => Ty::Bound(d),
                 other => other,
             },
-            "I32" | "U8" | "U32" | "U64" | "I128" => Ty::Int,
             _ => match self.get_sym(&name.text) {
                 Some(Sym::Struct(id)) if values => return self.struct_spec(id),
                 Some(Sym::Struct(id)) => Ty::Struct(id),
@@ -2969,8 +2968,10 @@ fn collect_expr_calls(e: &Expr, out: &mut Vec<FnId>) {
         }
         ExprKind::Format(pieces) => {
             for p in pieces {
-                if let FmtPiece::Value(a) = p {
-                    collect_expr_calls(&a.value, out);
+                match p {
+                    FmtPiece::Value(a) => collect_expr_calls(&a.value, out),
+                    FmtPiece::Number(value, _) => collect_expr_calls(value, out),
+                    FmtPiece::Text(_) => {}
                 }
             }
         }

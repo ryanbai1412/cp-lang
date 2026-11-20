@@ -52,6 +52,6 @@ for v in V:
                 if let dvt = dist[v, t]:
                     if let dst = dist[s, t]:
                         if dsv + dvt == dst:
-                            // WISH MG9: exact Int ratio -> Float + `{total:.3f}` formatting
-                            total += Float(ways[s, v] * ways[v, t]) / Float(ways[s, t])
+                            // WISH MG9: exact Int ratio -> F64 + `{total:.3f}` formatting
+                            total += F64(ways[s, v] * ways[v, t]) / F64(ways[s, t])
     print("{total:.3f}")

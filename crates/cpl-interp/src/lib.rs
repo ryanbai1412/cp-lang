@@ -1242,6 +1242,11 @@ impl<'p, 'o> Interp<'p, 'o> {
                             let v = self.eval(value)?;
                             self.show_val(&mut text, &v, &value.ty, *digits, span)?;
                         }
+                        FmtPiece::Number(value, fmt) => match self.eval(value)? {
+                            Value::Int(v) => text.extend(fmt.int(v).bytes()),
+                            Value::Float(v) => text.extend(fmt.float(v).bytes()),
+                            _ => unreachable!("a number format takes an Int or an F64"),
+                        },
                     }
                 }
                 Value::Str(Rc::new(text))
@@ -1372,6 +1377,10 @@ impl<'p, 'o> Interp<'p, 'o> {
             Cast::CharToInt => match value {
                 Value::Char(c) => Value::Int(i64::from(c)),
                 other => other,
+            },
+            Cast::StepToChar => match u8::try_from(value.int()) {
+                Ok(c) if c.is_ascii() => Value::Char(c),
+                _ => return trap(span, "`Char + Int` left ASCII (0..=127)"),
             },
             Cast::IntToChar => match u8::try_from(value.int()) {
                 Ok(c) => Value::Char(c),
@@ -1934,6 +1943,43 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
                 Value::List(Rc::new(vec![val; n as usize]))
             }
+            Builtin::Join => {
+                let text = |value: Value| match value {
+                    Value::Str(bytes) => bytes,
+                    _ => Rc::new(Vec::new()),
+                };
+                let sep = text(first);
+                let seq = values.next().unwrap_or_default();
+                let none_text = values.next().map(text);
+                let elem = match &args[1].ty {
+                    Ty::List(elem) | Ty::Array { elem, .. } => (**elem).clone(),
+                    _ => Ty::Unit,
+                };
+                let items: &[Value] = match &seq {
+                    Value::List(items) => items,
+                    Value::Array(array) => &array.data,
+                    _ => &[],
+                };
+                let mut buf = Vec::new();
+                for (i, item) in items.iter().enumerate() {
+                    if i > 0 {
+                        buf.extend_from_slice(&sep);
+                    }
+                    match (item, &none_text) {
+                        (Value::Opt(None), Some(text)) => buf.extend_from_slice(text),
+                        _ => self.show_val(&mut buf, item, &elem, 6, span)?,
+                    }
+                }
+                Value::Str(Rc::new(buf))
+            }
+            Builtin::SeqGet => {
+                let at = values.next().unwrap_or_default().int();
+                let item = match &first {
+                    Value::List(items) => usize::try_from(at).ok().and_then(|i| items.get(i)).cloned(),
+                    _ => None,
+                };
+                optional(item)
+            }
             Builtin::ShowStr => {
                 let mut buf = Vec::new();
                 let arg_ty = args.first().map(|a| &a.ty).unwrap_or(&Ty::Unit);
@@ -2074,12 +2120,6 @@ impl<'p, 'o> Interp<'p, 'o> {
             Builtin::PosPrev => {
                 let ord = first.int();
                 optional((ord > 0).then_some(Value::Int(ord - 1)))
-            }
-            Builtin::PosTryLabel(d) => {
-                let (lo, len) = self.domains[d];
-                let label = first.int();
-                let ord = label - lo;
-                optional((label >= lo && ord < len).then_some(Value::Int(ord)))
             }
             Builtin::PosTryOrd(d) => {
                 let (_, len) = self.domains[d];

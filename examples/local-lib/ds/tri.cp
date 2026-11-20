@@ -23,11 +23,11 @@ pub struct Tri<D>(l: D, r: D):
     /// Every pair with exactly `len` positions, by increasing `l`: the order an
     /// interval DP fills its table in, one `len` after another.
     pub fn of_len(len: Int) -> List<Tri<D>>:
-        [Tri(D.from_idx(i), D.from_idx(i + len - 1)) for i in 0..=D.K - len]
+        [Tri(D.from_idx(i)!, D.from_idx(i + len - 1)!) for i in 0..=D.K - len]
 
     /// The two parts of every split `l..=m`, `m+1..=r`, by increasing `m`.
     pub @get fn splits(self) -> List<(Tri<D>, Tri<D>)>:
-        [(Tri(l, D.from_idx(m)), Tri(D.from_idx(m + 1), r)) for m in l.to_idx..r.to_idx]
+        [(Tri(l, D.from_idx(m)!), Tri(D.from_idx(m + 1)!, r)) for m in l.to_idx..r.to_idx]
 
 impl Index for Tri<D>:
     let K = D.K * (D.K + 1) / 2
@@ -35,7 +35,7 @@ impl Index for Tri<D>:
     fn from_idx(i: Int) -> Tri<D>:
         // the largest r with r * (r + 1) / 2 <= i
         let r = (isqrt(8 * i + 1) - 1) / 2
-        Tri(D.from_idx(i - r * (r + 1) / 2), D.from_idx(r))
+        Tri(D.from_idx(i - r * (r + 1) / 2)!, D.from_idx(r)!)
 
 @test
 fn every_pair_has_its_own_cell():

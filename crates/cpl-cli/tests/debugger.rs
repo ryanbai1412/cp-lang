@@ -205,7 +205,7 @@ fn check_says_what_run_and_build_would() {
     // What only lowering knew is now an error in `cpl check` as well.
     for (source, message) in [
         ("let n: 1..=9 = read()\ndomain V = 1..=n\nprint(V.from(2))\n", "has no method `from`"),
-        ("let n: 1..=9 = read()\ndomain V = 1..=n\nprint(V.from_idx(0)!)\n", "`!` takes the value out of an optional"),
+        ("let n: 1..=9 = read()\ndomain V = 1..=n\nprint(V(2)!)\n", "`!` takes the value out of an optional"),
         (
             "let n: 1..=9 = read()\nprint(n)\n\n@interactor fn judge(sol: Interactor):\n    sol.send(m)\n",
             "no `m` in scope",

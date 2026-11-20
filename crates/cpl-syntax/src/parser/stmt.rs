@@ -655,7 +655,10 @@ impl<'a> Parser<'a> {
             let place = self.filled_place();
             self.postfix_from(start, place)
         } else {
-            self.expr()
+            self.stmt_head = true;
+            let target = self.expr();
+            self.stmt_head = false;
+            target
         };
         let op = match self.peek() {
             T::Eq => AssignOp::Set,
@@ -732,7 +735,7 @@ impl<'a> Parser<'a> {
     /// rather than starting a line of its own. A target that ends with a
     /// block (`if c:` and its body) is followed by the next statement
     /// with no line break token between them.
-    fn same_line(&self) -> bool {
+    pub(super) fn same_line(&self) -> bool {
         // Token spans index the source; the spans of the tree do not.
         let Some(before) = self
             .tokens

@@ -1,8 +1,8 @@
 let n: Int = read()
 var total = 0.0
-var xs: List<Float> = []
+var xs: List<F64> = []
 for i in 0..n:
-    let x: Float = read()
+    let x: F64 = read()
     xs.push(x)
     total += x
 print(total, total / n)

@@ -167,7 +167,7 @@ fn position_arithmetic_points_at_next_prev_and_offset() {
 
 #[test]
 fn float_equality_follows_floats_through_names() {
-    let found = only("let x: Float = read()\nif x == 0.5:\n    print(1)\n");
+    let found = only("let x: F64 = read()\nif x == 0.5:\n    print(1)\n");
     assert_eq!(found.code, FLOAT_EQUALITY.code);
     assert!(found
         .help
@@ -180,17 +180,17 @@ fn float_equality_follows_floats_through_names() {
         ["L0301"]
     );
     assert_eq!(
-        codes("fn area(r: Int) -> Float = 3.14 * r * r\nprint(area(2) == area(3))\n"),
+        codes("fn area(r: Int) -> F64 = 3.14 * r * r\nprint(area(2) == area(3))\n"),
         ["L0301"]
     );
     assert_eq!(
-        codes("struct P:\n    x: Float\nlet p: P = read()\nprint(p.x == 0)\n"),
+        codes("struct P:\n    x: F64\nlet p: P = read()\nprint(p.x == 0)\n"),
         ["L0301"]
     );
     assert_eq!(codes("let d = sqrt(read())\nprint(d == 2)\n"), ["L0301"]);
     // Ordering floats is fine, and so is `==` on integers.
     assert_eq!(
-        codes("let x: Float = read()\nprint(x < 0.5, 1 == 2)\n"),
+        codes("let x: F64 = read()\nprint(x < 0.5, 1 == 2)\n"),
         Vec::<&str>::new()
     );
 }
@@ -314,7 +314,7 @@ fn an_unknown_lint_name_is_reported_with_the_closest_one() {
 
 #[test]
 fn cp_toml_sets_levels() {
-    let src = "var total = 0\nlet x: Float = read()\nprint(total, x == 1.0)\n";
+    let src = "var total = 0\nlet x: F64 = read()\nprint(total, x == 1.0)\n";
     assert_eq!(codes(src), ["L0201", "L0301"]);
     let toml = "[project]\nname = \"x\"\n\n[lints]\nvar_never_reassigned = \"allow\"  # noisy here\nfloat_equality = \"deny\"\n\n[judge]\nfloat_equality = \"allow\"\n";
     let (config, errors) = Config::from_toml(toml);
@@ -455,14 +455,14 @@ mod cli {
         let file = dir.join("a.cp");
         std::fs::write(
             &file,
-            "var a = 1\nvar b = 2\nlet x: Float = read()\nprint(a, b, x == 1.0)\n",
+            "var a = 1\nvar b = 2\nlet x: F64 = read()\nprint(a, b, x == 1.0)\n",
         )
         .unwrap();
         let (code, out, err) = lint(&["--fix", file.to_str().unwrap()]);
         assert_eq!(code, 0);
         assert_eq!(
             std::fs::read_to_string(&file).unwrap(),
-            "let a = 1\nlet b = 2\nlet x: Float = read()\nprint(a, b, x == 1.0)\n"
+            "let a = 1\nlet b = 2\nlet x: F64 = read()\nprint(a, b, x == 1.0)\n"
         );
         assert!(out.contains("L0301") && !out.contains("L0201"), "{out}");
         assert!(

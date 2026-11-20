@@ -14,7 +14,7 @@ fn samples(ty: Option<&str>) -> Option<String> {
             "[0, 1, -1, 2, -2, 3, 5, -7, 10, 64, 1000, 1000000007, -1000000007]".to_string()
         }
         Some("Bool") => "[false, true]".to_string(),
-        Some("F64" | "Float") => "[0.0, 1.0, -1.0, 0.5, 2.0, -3.25, 1000.0]".to_string(),
+        Some("F64") => "[0.0, 1.0, -1.0, 0.5, 2.0, -3.25, 1000.0]".to_string(),
         Some("Char") => "['a', 'b', 'z', 'A', '0', ' ']".to_string(),
         Some("Str") => "[\"\", \"a\", \"b\", \"ab\", \"ba\", \"abc\"]".to_string(),
         // A domain or an enum is walked whole.

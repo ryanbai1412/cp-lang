@@ -8,12 +8,6 @@
 // it is on ways[s][v] * ways[v][t] of them.
 // original: corpus/submissions/5032737.cpp
 
-// Three decimals, as the judge prints them. The interpreter has no `{x:.3f}`.
-fn fixed3(x: Float) -> Str:
-    let units = Int(x * 1000 + 0.5)
-    let frac = units % 1000
-    "{units / 1000}.{frac / 100}{frac / 10 % 10}{frac % 10}"
-
 let n: Int = read()
 let m: Int = read()
 domain P = 0..n
@@ -47,5 +41,5 @@ for v in P:
         for t in P:
             if s == t or s == v or t == v: continue
             if dist[s, v]! + dist[v, t]! == dist[s, t]!:
-                importance += Float(ways[s, v] * ways[v, t]) / Float(ways[s, t])
-    print(fixed3(importance))
+                importance += F64(ways[s, v] * ways[v, t]) / F64(ways[s, t])
+    print("{importance:.3f}")

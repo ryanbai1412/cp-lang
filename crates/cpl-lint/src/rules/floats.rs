@@ -15,11 +15,11 @@ use std::collections::HashSet;
 /// Prelude fns whose result is a float whatever they are given.
 const FLOAT_FNS: &[&str] = &[
     "sqrt", "cbrt", "sin", "cos", "tan", "asin", "acos", "atan", "atan2", "exp", "ln", "log",
-    "log2", "log10", "hypot", "float", "Float",
+    "log2", "log10", "hypot", "float", "F64",
 ];
 
 fn is_float_type(ty: &Type) -> bool {
-    matches!(&ty.kind, TypeKind::Named { name, args } if name.text == "Float" && args.is_empty())
+    matches!(&ty.kind, TypeKind::Named { name, args } if name.text == "F64" && args.is_empty())
 }
 
 /// The names and fns of a file that are floats.

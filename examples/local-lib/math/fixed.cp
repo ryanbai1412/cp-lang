@@ -1,5 +1,5 @@
 //! Exact decimals: money, and coordinates given with a fixed number of digits after the
-//! point. A `Float` reads `0.1` as something slightly different and makes ties and equal
+//! point. A `F64` reads `0.1` as something slightly different and makes ties and equal
 //! distances a matter of luck; a `Fixed<D>` is an `Int` counting units of `10 ** -D`.
 
 /// A decimal with exactly `D` digits after the point, stored as `raw = value * 10 ** D`.
@@ -54,8 +54,8 @@ pub struct Fixed<D>(raw: Int):
 
     pub @get fn abs(self) -> Fixed<D> = Fixed(if raw < 0: -raw else: raw)
 
-    /// The closest `Float`, for a final `sqrt` or a division that need not be exact.
-    pub @get fn to_float(self) -> Float = raw * 1.0 / unit
+    /// The closest `F64`, for a final `sqrt` or a division that need not be exact.
+    pub @get fn to_float(self) -> F64 = raw * 1.0 / unit
 
     /// `self * k` for a whole `k`: exact, with no rounding and no `raw * raw`.
     pub fn times(self, k: Int) -> Fixed<D> = Fixed(raw * k)

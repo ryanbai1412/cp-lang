@@ -39,6 +39,32 @@ inline void put_float(double x, int digits) { char b[400]; out.append(b, (size_t
 ",
     },
     Piece {
+        name: "put_num",
+        needs: &["out"],
+        code: "\
+// \"{n:05}\", \"{x:8.3f}\": the sign, then zeros or spaces up to the width.
+inline void put_padded(const char* s, size_t n, bool zero, size_t width) {
+    bool neg = n > 0 && s[0] == '-';
+    if (zero) { if (neg) out.push_back('-'); if (n < width) out.append(width - n, '0'); out.append(s + neg, n - neg); }
+    else { if (n < width) out.append(width - n, ' '); out.append(s, n); }
+}
+inline void put_num(ll x, int base, bool zero, int width) {
+    char b[72]; int n = 0; unsigned long long u = x < 0 ? 0ULL - (unsigned long long)x : (unsigned long long)x;
+    do { b[n++] = \"0123456789abcdef\"[u % base]; u /= base; } while (u);
+    if (x < 0) b[n++] = '-';
+    std::reverse(b, b + n); put_padded(b, (size_t)n, zero, (size_t)width);
+}
+inline void put_fixed(double x, int digits, bool zero, int width) {
+    std::string b(32, 0); int n = snprintf(&b[0], b.size(), \"%.*f\", digits, x);
+    if ((size_t)n >= b.size()) { b.assign((size_t)n + 1, 0); snprintf(&b[0], b.size(), \"%.*f\", digits, x); }
+    // A value that rounds to zero has no sign: never -0.000.
+    bool nonzero = false; for (int i = 0; i < n; i++) nonzero |= b[i] >= '1' && b[i] <= '9';
+    bool drop = n > 0 && b[0] == '-' && !nonzero && x == x;
+    put_padded(b.data() + drop, (size_t)(n - drop), zero, (size_t)width);
+}
+",
+    },
+    Piece {
         name: "capture",
         needs: &["out"],
         code: "\
@@ -55,6 +81,13 @@ struct Capture {
         needs: &["out"],
         code: "\
 [[noreturn]] inline void fail(const char* why) { flush(); fputs(why, stderr); fputc('\\n', stderr); exit(3); }
+",
+    },
+    Piece {
+        name: "char_step",
+        needs: &["fail"],
+        code: "\
+inline u8 char_step(ll c) { if (c < 0 || c > 127) fail(\"`Char + Int` left ASCII (0..=127)\"); return (u8)c; }
 ",
     },
     Piece {
@@ -533,7 +566,6 @@ template <class M, class K, class V> void map_and(M& m, const K& k, const V& v) 
         name: "pos_ops",
         needs: &["fail", "niche"],
         code: "\
-inline OptPos pos_try(ll v, ll lo, ll len) { return (v >= lo && v - lo < len) ? OptPos((int)(v - lo)) : OptPos(); }
 inline OptPos pos_try_ord(ll i, ll len) { return (i >= 0 && i < len) ? OptPos((int)i) : OptPos(); }
 inline OptPos pos_offset(ll i, ll d, ll len) { ll t = i + d; return (t >= 0 && t < len) ? OptPos((int)t) : OptPos(); }
 inline int pos_cyc(ll i, ll d, ll len) { ll r = (i + d) % len; return (int)(r < 0 ? r + len : r); }

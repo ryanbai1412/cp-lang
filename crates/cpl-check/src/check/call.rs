@@ -7,7 +7,10 @@ use cpl_syntax::ast::{Arg, Expr, ExprKind};
 
 impl<'a> Checker<'a> {
     pub(crate) fn call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Ty {
-        let callee_ty = self.infer(callee);
+        let callee_ty = match self.list_form(callee, args) {
+            Some(ty) => ty,
+            None => self.infer(callee),
+        };
         let receiver = self.receiver(call, callee);
         let mut ty = self.call_kind(call, callee, callee_ty.clone(), args);
         if let Some(known) = self.prelude_call(call, callee, args) {
@@ -19,6 +22,43 @@ impl<'a> Checker<'a> {
         self.no_escape_args(callee, &callee_ty, args);
         self.mutates_view(call, callee);
         receiver.unwrap_or(ty)
+    }
+
+    /// `Graph.undirected(pairs)`: a static fn given a plain list of pairs
+    /// or triples is the fn its module declares for that, named
+    /// `<fn>_of_pairs` or `<fn>_of_triples`.
+    fn list_form(&mut self, callee: &Expr, args: &[Arg]) -> Option<Ty> {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return None;
+        };
+        let ExprKind::Name(type_name) = &base.kind else {
+            return None;
+        };
+        let [only] = args else {
+            return None;
+        };
+        if self.local(type_name).is_some()
+            || !matches!(self.env.type_def(type_name).as_deref(), Some(Def::Struct { .. }))
+        {
+            return None;
+        }
+        let suffix = match self.quietly(|c| c.infer(&only.value)) {
+            Ty::Named { name: list, args } if list == "List" => match args.as_slice() {
+                [Ty::Tuple(fields)] => fields.len(),
+                [Ty::Record(fields)] => fields.len(),
+                _ => return None,
+            },
+            _ => return None,
+        };
+        let suffix = match suffix {
+            2 => "pairs",
+            3 => "triples",
+            _ => return None,
+        };
+        match self.env.type_def(&format!("{}_of_{suffix}", name.text)).as_deref() {
+            Some(Def::Fn { ty, .. }) => Some(ty.clone()),
+            _ => None,
+        }
     }
 
     /// `List<T>()` and `MinHeap<T>()` start empty: they take nothing.

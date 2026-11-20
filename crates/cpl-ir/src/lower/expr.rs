@@ -13,6 +13,17 @@ pub(super) struct LoopFrame {
     cond: Option<Expr>,
 }
 
+/// True for `read()` and `ask(...)` written with no `::<T>`.
+fn is_bare_read(e: &ast::Expr) -> bool {
+    match &e.kind {
+        ast::ExprKind::Paren(inner) => is_bare_read(inner),
+        ast::ExprKind::Call { callee, .. } => {
+            matches!(&callee.kind, ast::ExprKind::Name(name) if name == "read" || name == "ask")
+        }
+        _ => false,
+    }
+}
+
 impl<'a> Lowerer<'a> {
     /// Lowers `e` where a `want` is needed.
     pub(super) fn expect(&mut self, e: &ast::Expr, want: &Ty) -> Expr {
@@ -256,6 +267,7 @@ impl<'a> Lowerer<'a> {
             ast::ExprKind::Lambda { params, body } => {
                 self.lower_lambda(params, body, inner_hint, span)
             }
+            ast::ExprKind::Keep { target, max, value } => self.keep(target, *max, value, span),
             ast::ExprKind::Block(block) => self.do_expr(hint, span, |lw, out| {
                 out.extend(lw.block(block, Tail::Give).stmts);
             }),
@@ -302,6 +314,80 @@ impl<'a> Lowerer<'a> {
 
     /// A block with a value. The first value given decides the type when
     /// the context doesn't.
+    /// `best min= d` as a `Bool`: the update of the statement, then whether
+    /// the place holds something else than before. It runs where it is
+    /// written, so not at all on the unused side of an `and`.
+    fn keep(&mut self, target: &ast::Expr, max: bool, value: &ast::Expr, span: Span) -> Expr {
+        // `none` on the right is skipped: nothing changes.
+        if matches!(value.kind, ast::ExprKind::None) {
+            return self.mk(ExprKind::Bool(false), Ty::Bool, span);
+        }
+        let op = if max { ast::AssignOp::Max } else { ast::AssignOp::Min };
+        self.do_expr(Some(&Ty::Bool), span, |lw, out| {
+            // What the place needs first (the check of `o! min= d`) runs
+            // here, and not ahead of the whole statement.
+            let outer = std::mem::take(&mut lw.cx.pending);
+            let place = lw.place(target);
+            out.extend(std::mem::replace(&mut lw.cx.pending, outer));
+            let place = lw.settle_indexes(place, out);
+            let rhs = lw.expr(value, Some(&place.ty));
+            if place.ty == Ty::Error {
+                out.push(Stmt::Give(lw.err_expr(span)));
+                return;
+            }
+            let now = place_to_expr(&place);
+            let old = lw.temp(place.ty.clone());
+            // A key the map does not have yet takes the value.
+            let had = match &place.kind {
+                PlaceKind::Index(base, keys) if matches!(base.ty, Ty::Map(..) | Ty::HashMap(..)) => {
+                    let has = lw.mk(
+                        ExprKind::Builtin(Builtin::Contains, vec![place_to_expr(base), keys[0].clone()]),
+                        Ty::Bool,
+                        span,
+                    );
+                    let slot = lw.temp(Ty::Bool);
+                    out.push(Stmt::Let(slot, Some(has)));
+                    Some(lw.local(slot, span))
+                }
+                _ => None,
+            };
+            match &had {
+                Some(had) => {
+                    let held = Place {
+                        kind: PlaceKind::Local(old),
+                        ty: place.ty.clone(),
+                        span,
+                    };
+                    out.push(Stmt::Let(old, None));
+                    out.push(Stmt::If(
+                        had.clone(),
+                        Block {
+                            stmts: vec![Stmt::Assign(held, AssignOp::Set, now.clone())],
+                        },
+                        Block::default(),
+                    ));
+                }
+                None => out.push(Stmt::Let(old, Some(now.clone()))),
+            }
+            lw.emit_assign_place(place, op, rhs, target.span, out);
+            let before = lw.local(old, span);
+            let mut changed = lw.mk(
+                ExprKind::Cmp(CmpOp::Ne, Box::new(now), Box::new(before)),
+                Ty::Bool,
+                span,
+            );
+            if let Some(had) = had {
+                let fresh = lw.mk(ExprKind::Unary(UnOp::Not, Box::new(had)), Ty::Bool, span);
+                changed = lw.mk(
+                    ExprKind::Binary(BinOp::Or, Box::new(fresh), Box::new(changed)),
+                    Ty::Bool,
+                    span,
+                );
+            }
+            out.push(Stmt::Give(changed));
+        })
+    }
+
     pub(super) fn do_expr(
         &mut self,
         hint: Option<&Ty>,
@@ -886,18 +972,49 @@ impl<'a> Lowerer<'a> {
                         out.push(FmtPiece::Value(arg));
                     }
                 }
-                ast::StrPiece::Fixed(e, digits) => {
+                ast::StrPiece::Spec(e, spec) => {
                     let value = self.expr(e, None);
-                    if !matches!(value.ty, Ty::Float | Ty::Error) {
-                        let message = format!(
-                            "`:.{digits}f` sets the digits of an `F64`, but this is a `{}`",
-                            self.show(&value.ty)
-                        );
-                        self.error(codes::TYPE_MISMATCH, e.span, message);
-                    }
-                    if let Some(arg) = self.fmt_arg(value, *digits, e.span) {
-                        out.push(FmtPiece::Value(arg));
-                    }
+                    let fixed = match spec.kind {
+                        ast::FmtKind::Fixed(places) => Some(places),
+                        _ => None,
+                    };
+                    let written = spec.to_string();
+                    let help = "use `:.6f` for an F64, `:04` / `:x` / `:b` for an Int";
+                    let (value, kind) = match (&value.ty, fixed, spec.kind) {
+                        (Ty::Error, _, _) => continue,
+                        (Ty::Float, Some(places), _) => (value, NumKind::Fixed(places)),
+                        (Ty::Int, Some(places), _) => {
+                            let at = value.span;
+                            let cast = ExprKind::Cast(Cast::IntToFloat, Box::new(value));
+                            (self.mk(cast, Ty::Float, at), NumKind::Fixed(places))
+                        }
+                        (Ty::Int, None, ast::FmtKind::Hex) => (value, NumKind::Hex),
+                        (Ty::Int, None, ast::FmtKind::Bin) => (value, NumKind::Bin),
+                        (Ty::Int, None, _) => (value, NumKind::Dec),
+                        (Ty::Float, None, _) => {
+                            let message = format!(
+                                "`{written}` does not say how many decimals an F64 gets"
+                            );
+                            self.error(codes::TYPE_MISMATCH, e.span, message);
+                            self.help(help);
+                            continue;
+                        }
+                        (ty, _, _) => {
+                            let message = format!(
+                                "`{written}` is not a number format this value takes: it is a `{}`",
+                                self.show(ty)
+                            );
+                            self.error(codes::TYPE_MISMATCH, e.span, message);
+                            self.help(help);
+                            continue;
+                        }
+                    };
+                    let fmt = NumFmt {
+                        zero: spec.zero,
+                        width: spec.width,
+                        kind,
+                    };
+                    out.push(FmtPiece::Number(value, fmt));
                 }
             }
         }
@@ -1088,7 +1205,10 @@ impl<'a> Lowerer<'a> {
             }
         };
         let l = unwrap_first_last(self.expr(lhs, None));
-        let r = unwrap_first_last(self.expr(rhs, Some(&l.ty)));
+        // A place, a parameter or a return type says what `read()` reads;
+        // the other side of an operator does not.
+        let r_hint = (!is_bare_read(rhs)).then_some(&l.ty);
+        let r = unwrap_first_last(self.expr(rhs, r_hint));
         // Dispatch operator traits (`impl Add/Sub/Mul/Div for Struct`).
         if let Ty::Struct(sid) = l.ty {
             let mname = match op {
@@ -1194,7 +1314,7 @@ impl<'a> Lowerer<'a> {
                     Ty::Int,
                     span,
                 );
-                return self.cast(Cast::IntToChar, sum, Ty::Char);
+                return self.cast(Cast::StepToChar, sum, Ty::Char);
             }
             (Ty::Pos(a), Ty::Pos(b))
                 if a == b
@@ -2029,6 +2149,52 @@ impl<'a> Lowerer<'a> {
             Some(ty @ (Ty::List(elem) | Ty::Set(elem) | Ty::HashSet(elem))) => {
                 let values = items.iter().map(|item| self.expect(item, elem)).collect();
                 self.mk(ExprKind::Tuple(values), ty.clone(), span)
+            }
+            // `let primes: [Small]Int = [2, 3, 5]`: one value per position,
+            // which is checked when the domain's size is known: at run time.
+            Some(ty @ Ty::Array { dims, elem }) if matches!(dims[..], [Dim::Pos(_) | Dim::Bound(_)]) => {
+                let (dim, len) = match dims[0] {
+                    Dim::Pos(d) => (DimSpec::Pos(d), self.mk(ExprKind::DomainLen(d), Ty::Int, span)),
+                    Dim::Bound(d) => {
+                        let len = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                        let one = self.mk(ExprKind::Int(1), Ty::Int, span);
+                        let gaps = ExprKind::Binary(BinOp::Add, Box::new(len), Box::new(one));
+                        (DimSpec::Bound(d), self.mk(gaps, Ty::Int, span))
+                    }
+                    Dim::Int => unreachable!("matched above"),
+                };
+                let index_ty = match dims[0] {
+                    Dim::Bound(d) => Ty::Bound(d),
+                    Dim::Pos(d) => Ty::Pos(d),
+                    Dim::Int => Ty::Int,
+                };
+                let values: Vec<Expr> = items.iter().map(|item| self.expect(item, elem)).collect();
+                let ty = ty.clone();
+                let elem = (**elem).clone();
+                self.do_expr(Some(&ty), span, |lw, out| {
+                    let count = lw.mk(ExprKind::Int(values.len() as i64), Ty::Int, span);
+                    let wrong = lw.mk(ExprKind::Cmp(CmpOp::Ne, Box::new(len), Box::new(count)), Ty::Bool, span);
+                    let trap = Stmt::Trap("an array literal needs one value per position".to_string(), span);
+                    out.push(Stmt::If(wrong, Block { stmts: vec![trap] }, Block::default()));
+                    let slot = lw.temp(ty.clone());
+                    let blank = lw.mk(ExprKind::Fill(vec![dim], None), ty.clone(), span);
+                    out.push(Stmt::Let(slot, Some(blank)));
+                    for (i, value) in values.into_iter().enumerate() {
+                        let at = lw.mk(ExprKind::Int(i as i64), index_ty.clone(), span);
+                        let whole = Place {
+                            kind: PlaceKind::Local(slot),
+                            ty: ty.clone(),
+                            span,
+                        };
+                        let cell = Place {
+                            kind: PlaceKind::Index(Box::new(whole), vec![at]),
+                            ty: elem.clone(),
+                            span,
+                        };
+                        out.push(Stmt::Assign(cell, AssignOp::Set, value));
+                    }
+                    out.push(Stmt::Give(lw.local(slot, span)));
+                })
             }
             Some(ty @ (Ty::Map(..) | Ty::HashMap(..))) if items.is_empty() => {
                 self.mk(ExprKind::Tuple(Vec::new()), ty.clone(), span)

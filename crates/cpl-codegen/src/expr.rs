@@ -7,7 +7,7 @@ use crate::names::{elem_ty, fn_name, ident, is_plain_enum};
 use crate::ranges::Sign;
 use crate::walk;
 use cpl_ir::{
-    Arg, BinOp, Builtin, Cast, CmpOp, DimSpec, Expr, ExprKind, FmtPiece, Mutation, Place,
+    Arg, BinOp, Builtin, Cast, CmpOp, DimSpec, Expr, ExprKind, FmtPiece, Mutation, NumKind, Place,
     PlaceKind, Stmt, Ty, UnOp,
 };
 
@@ -473,6 +473,10 @@ impl<'p> Emitter<'p> {
                     Cast::IntToFloat => c_cast("double"),
                     Cast::FloatToInt | Cast::CharToInt | Cast::Ord => c_cast("ll"),
                     Cast::IntToChar => c_cast("cpl::u8"),
+                    Cast::StepToChar => {
+                        self.need("char_step");
+                        Code::primary(format!("cpl::char_step({})", code.text))
+                    }
                     Cast::Label(d) => Code::new(
                         format!("{} + {}_lo", code.at(ADD), ident(&program.domains[*d])),
                         ADD,
@@ -765,16 +769,21 @@ impl<'p> Emitter<'p> {
                 // begins, so what they print goes out and not in.
                 let mut values = Vec::new();
                 for piece in pieces {
-                    if let FmtPiece::Value(arg) = piece {
-                        let touch = this.touch(&arg.value);
-                        let code = this.expr(&arg.value);
-                        let calls = !crate::walk::Effects::of_expr(&arg.value).calls.is_empty();
+                    let value = match piece {
+                        FmtPiece::Value(arg) => Some(&arg.value),
+                        FmtPiece::Number(value, _) => Some(value),
+                        FmtPiece::Text(_) => None,
+                    };
+                    if let Some(value) = value {
+                        let touch = this.touch(value);
+                        let code = this.expr(value);
+                        let calls = !crate::walk::Effects::of_expr(value).calls.is_empty();
                         if touch.io || !touch.writes.is_empty() || calls {
                             let name = this.temp();
                             out.push_str(&format!(
                                 "{}{} {name} = {};\n",
                                 pad(this.indent),
-                                this.ty(&arg.value.ty),
+                                this.ty(&value.ty),
                                 code.text
                             ));
                             values.push(Code::primary(name));
@@ -798,6 +807,26 @@ impl<'p> Emitter<'p> {
                                 &arg.value.ty,
                                 &arg.digits.to_string(),
                             ));
+                        }
+                        FmtPiece::Number(_, fmt) => {
+                            let code = values.next().expect("one per value");
+                            this.need("put_num");
+                            let (zero, width) = (fmt.zero, fmt.width);
+                            parts.push(match fmt.kind {
+                                NumKind::Dec => {
+                                    format!("cpl::put_num({}, 10, {zero}, {width});", code.text)
+                                }
+                                NumKind::Hex => {
+                                    format!("cpl::put_num({}, 16, {zero}, {width});", code.text)
+                                }
+                                NumKind::Bin => {
+                                    format!("cpl::put_num({}, 2, {zero}, {width});", code.text)
+                                }
+                                NumKind::Fixed(places) => format!(
+                                    "cpl::put_fixed({}, {places}, {zero}, {width});",
+                                    code.text
+                                ),
+                            });
                         }
                     }
                 }
@@ -1109,6 +1138,43 @@ impl<'p> Emitter<'p> {
                 let lty = self.ty(&e.ty);
                 Code::primary(format!("{lty}((size_t)({}), {})", text(0), text(1)))
             }
+            Builtin::Join => {
+                let elem = match &args[1].ty {
+                    Ty::List(elem) | Ty::Array { elem, .. } => (**elem).clone(),
+                    other => other.clone(),
+                };
+                let (sep, seq) = (codes[0].text.clone(), codes[1].text.clone());
+                let none_text = codes.get(2).map(|c| c.text.clone());
+                self.lambda("std::string", |this, out| {
+                    this.need("capture");
+                    let cap = this.temp();
+                    let lead = pad(this.indent);
+                    out.push_str(&format!("{lead}cpl::Capture {cap};\n"));
+                    out.push_str(&format!("{lead}const auto& sep = {sep};\n"));
+                    out.push_str(&format!("{lead}bool first = true;\n"));
+                    out.push_str(&format!("{lead}for (const auto& item : {seq}) {{\n"));
+                    out.push_str(&format!(
+                        "{lead}    if (!first) cpl::put_str(sep);\n{lead}    first = false;\n"
+                    ));
+                    let item = Code::primary("item".to_string());
+                    let stmt = match (&elem, &none_text) {
+                        (Ty::Opt(inner), Some(text)) => {
+                            let some = this.show_stmt(&Code::new("*item", UNARY), inner, "6");
+                            format!("if (item) {{ {some} }} else cpl::put_str({text});")
+                        }
+                        _ => this.show_stmt(&item, &elem, "6"),
+                    };
+                    out.push_str(&format!("{lead}    {stmt}\n{lead}}}\n"));
+                    out.push_str(&format!("{lead}return {cap}.take();\n"));
+                })
+            }
+            Builtin::SeqGet => {
+                let opt = self.ty(&e.ty);
+                let (seq, at) = (text(0), text(1));
+                Code::primary(format!(
+                    "([&]() -> {opt} {{ const auto& s = {seq}; ll i = {at}; return i < 0 || i >= (ll)s.size() ? {opt}() : {opt}(s[i]); }}())"
+                ))
+            }
             Builtin::ShowStr => {
                 let arg = &args[0];
                 let code = codes[0].clone();
@@ -1207,11 +1273,6 @@ impl<'p> Emitter<'p> {
                 Code::primary(format!("cpl::next_pos({}, {})", text(0), text(1)))
             }
             Builtin::PosPrev => helper(self, "prev_pos"),
-            Builtin::PosTryLabel(d) => {
-                self.need("pos_ops");
-                let dn = ident(&self.program.domains[d]);
-                Code::primary(format!("cpl::pos_try({}, {dn}_lo, {dn}_len)", text(0)))
-            }
             Builtin::PosTryOrd(d) => {
                 self.need("pos_ops");
                 let dn = ident(&self.program.domains[d]);

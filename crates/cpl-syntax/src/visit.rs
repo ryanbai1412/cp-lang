@@ -138,7 +138,7 @@ pub fn walk_expr(expr: &Expr, v: &mut dyn Visitor) {
     match &expr.kind {
         ExprKind::Str(pieces) => {
             for piece in pieces {
-                if let StrPiece::Expr(inner) | StrPiece::Fixed(inner, _) = piece {
+                if let StrPiece::Expr(inner) | StrPiece::Spec(inner, _) = piece {
                     walk_expr(inner, v);
                 }
             }
@@ -149,7 +149,12 @@ pub fn walk_expr(expr: &Expr, v: &mut dyn Visitor) {
         | ExprKind::Unwrap(inner)
         | ExprKind::Generic { base: inner, .. }
         | ExprKind::Field { base: inner, .. } => walk_expr(inner, v),
-        ExprKind::Binary { lhs, rhs, .. } => {
+        ExprKind::Binary { lhs, rhs, .. }
+        | ExprKind::Keep {
+            target: lhs,
+            value: rhs,
+            ..
+        } => {
             walk_expr(lhs, v);
             walk_expr(rhs, v);
         }

@@ -276,7 +276,7 @@ pub(crate) fn walk_expr(v: &mut dyn Visitor, expr: &Expr) {
         | ExprKind::Error => {}
         ExprKind::Str(pieces) => {
             for piece in pieces {
-                if let StrPiece::Expr(expr) | StrPiece::Fixed(expr, _) = piece {
+                if let StrPiece::Expr(expr) | StrPiece::Spec(expr, _) = piece {
                     walk_expr(v, expr);
                 }
             }
@@ -286,7 +286,12 @@ pub(crate) fn walk_expr(v: &mut dyn Visitor, expr: &Expr) {
         | ExprKind::Try(expr)
         | ExprKind::Unwrap(expr)
         | ExprKind::Field { base: expr, .. } => walk_expr(v, expr),
-        ExprKind::Binary { lhs, rhs, .. } => {
+        ExprKind::Binary { lhs, rhs, .. }
+        | ExprKind::Keep {
+            target: lhs,
+            value: rhs,
+            ..
+        } => {
             walk_expr(v, lhs);
             walk_expr(v, rhs);
         }

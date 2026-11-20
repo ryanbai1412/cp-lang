@@ -14,26 +14,26 @@
 use real.float.{fixed}
 
 let n: Int = read()
-let money: Float = read()
+let money: F64 = read()
 domain Day = 0..n
-var a: [Day]Float = 0.0
-var b: [Day]Float = 0.0
-var rate: [Day]Float = 0.0
+var a: [Day]F64 = 0.0
+var b: [Day]F64 = 0.0
+var rate: [Day]F64 = 0.0
 for d in Day:
-    let (pa, pb, r): (Float, Float, Float) = read()
+    let (pa, pb, r): (F64, F64, F64) = read()
     (a[d], b[d], rate[d]) = (pa, pb, r)
 
 let by_ratio = sorted(Day, by: d => a[d] / b[d])
 var rank: [Day]Int = 0                      // a day's place among the ratios
-var ratio: List<Float> = []
+var ratio: List<F64> = []
 for d in by_ratio:
     rank[d] = ratio.len
     ratio.push(a[d] / b[d])
 
 // Li Chao tree for the highest line at ratio[0..n]: node `at` holds the line
 // that wins at the middle of its span.
-struct Line(k: Float, m: Float):
-    fn at(self, x: Float) -> Float = k * x + m
+struct Line(k: F64, m: F64):
+    fn at(self, x: F64) -> F64 = k * x + m
 var held: List<?Line> = List.filled(4 * n, none)
 
 fn add(fresh: Line):
@@ -49,7 +49,7 @@ fn add(fresh: Line):
         elif cur.at(ratio[hi]) > held[at]!.at(ratio[hi]): (at, lo) = (2 * at + 1, mid + 1)
         else: return
 
-fn highest(i: Int) -> Float:
+fn highest(i: Int) -> F64:
     var (at, lo, hi, best) = (1, 0, n - 1, 0.0)
     while true:
         let line = held[at] else: return best

@@ -16,8 +16,8 @@ else:
 
     // dp[i]: probability Josh gets his burger if the chain of forced steals
     // first reaches someone at or after i whose favorite is fav[i].
-    var dp: [Pos]Float = 0.0                                      // WISH P4
-    var suffix_sum: Float = 0.0                                   // WISH P4
+    var dp: [Pos]F64 = 0.0                                      // WISH P4
+    var suffix_sum: F64 = 0.0                                   // WISH P4
     for i in Pos.rev:
         if fav[i] == coach:
             dp[i] = 1.0
@@ -25,9 +25,9 @@ else:
             dp[i] = 0.0
         elif last_of[fav[i]] == i:
             let rem = n - i.idx
-            dp[i] = (1.0 + suffix_sum) / Float(rem)               // WISH P4
+            dp[i] = (1.0 + suffix_sum) / F64(rem)               // WISH P4
         else:
             dp[i] = dp[last_of[fav[i]]!]
         suffix_sum += dp[i]
 
-    print(suffix_sum / Float(n), prec: 8)                         // WISH P4
+    print(suffix_sum / F64(n), prec: 8)                         // WISH P4

@@ -5,7 +5,7 @@
 // Justin, who moves first, wins.
 // original: corpus/submissions/3613457.cpp
 //
-// SKETCH: does not build. `proto/cpc` has no Float, no enum-valued grid
+// SKETCH: does not build. `proto/cpc` has no F64, no enum-valued grid
 // and no @memo keyed by a whole board.
 let n: 1..=13 = read()
 let m: 1..=13 = read()                                    // at most 13 cells in all
@@ -22,7 +22,7 @@ let slack: [Player]Int = read()                           // how many of his bes
 
 // The chance that `who`, about to move, wins from here.
 @memo                                                     // WISH L23: @memo keyed by an array value
-fn wins(board: Board, who: Player) -> Float:
+fn wins(board: Board, who: Player) -> F64:
     let chances = sorted_desc(1.0 - wins(board.with(p: none, q: who), other(who))   // WISH L24: board.with(p: v, q: w), a copy with two cells changed
                               for p in Cell if board[p] == who
                               for q in p.around() if board[q] != none)              // WISH L1: p.around() over Dir4

@@ -13,16 +13,16 @@ let n: Int = read()
 let aim: Int = read()
 
 // the angle between two directions in degrees, 0..=180
-fn gap(a: Float, b: Float) -> Float:
+fn gap(a: F64, b: F64) -> F64:
     var turn = a - b
     while turn < 0.0: turn += 360
     while turn >= 360.0: turn -= 360
     min(turn, 360 - turn)
 
-var best: ?(gap: Float, id: Int) = none
+var best: ?(gap: F64, id: Int) = none
 for id in 1..=n:
-    let x: Float = read()
-    let y: Float = read()
-    let g = gap(Float(aim), atan2(y, x) * 180 / PI)
+    let x: F64 = read()
+    let y: F64 = read()
+    let g = gap(F64(aim), atan2(y, x) * 180 / PI)
     if best == none or g < best!.gap: best = (gap: g, id: id)
 print(best!.id)

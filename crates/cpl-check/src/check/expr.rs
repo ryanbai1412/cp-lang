@@ -32,7 +32,7 @@ impl<'a> Checker<'a> {
             ExprKind::None => Ty::Unknown,
             ExprKind::Str(pieces) => {
                 for piece in pieces {
-                    if let StrPiece::Expr(inner) | StrPiece::Fixed(inner, _) = piece {
+                    if let StrPiece::Expr(inner) | StrPiece::Spec(inner, _) = piece {
                         self.infer(inner);
                     }
                 }
@@ -378,6 +378,11 @@ impl<'a> Checker<'a> {
                 }
                 self.infer(inner);
                 Ty::Error
+            }
+            ExprKind::Keep { target, value, .. } => {
+                self.infer(target);
+                self.infer(value);
+                Ty::Bool
             }
             ExprKind::Try(inner) | ExprKind::Unwrap(inner) => match self.infer(inner) {
                 Ty::Optional(inner) => *inner,

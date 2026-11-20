@@ -178,6 +178,35 @@ pub fn scc<V, N>(next: N) -> (domain C, comp: [V]C):
     domain C = 0..k
     (C: C, comp: [V] v => C(k - 1 - done[v]!))
 
+/// `Graph.directed(pairs)` on a plain list of `(u, v)`: the neighbours of each vertex.
+/// No edge domain, and `for v in g[u]` yields the vertex itself.
+pub fn directed_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>:
+    var g: [V]List<V> = []
+    for (u, v) in edges: g[u].push(v)
+    g
+
+/// `Graph.undirected(pairs)` on a plain list of `(u, v)`: each edge both ways.
+pub fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>:
+    var g: [V]List<V> = []
+    for (u, v) in edges:
+        g[u].push(v)
+        g[v].push(u)
+    g
+
+/// `Graph.directed(triples)` on a list of `(u, v, w)`: `for (v, w) in g[u]`.
+pub fn directed_of_triples<V, W>(edges: List<(V, V, W)>) -> [V]List<(V, W)>:
+    var g: [V]List<(V, W)> = []
+    for (u, v, w) in edges: g[u].push((v, w))
+    g
+
+/// `Graph.undirected(triples)` on a list of `(u, v, w)`: each edge both ways, `w` riding along.
+pub fn undirected_of_triples<V, W>(edges: List<(V, V, W)>) -> [V]List<(V, W)>:
+    var g: [V]List<(V, W)> = []
+    for (u, v, w) in edges:
+        g[u].push((v, w))
+        g[v].push((u, w))
+    g
+
 /// Connected components of an undirected graph, as a fresh domain `C`. O(n + m).
 pub fn components<V, N>(next: N) -> (domain C, comp: [V]C):
     var id: [V]?Int = none
@@ -534,3 +563,12 @@ fn vertexless_closure_graphs_with_turbofish():
     assert SC.K == 4 and scomp[V(0)] == scomp[V(1)]
     let (CC, ccomp) = components::<V>(u => if u == V(0): [V(1)] else: if u == V(1): [V(0)] else: [])
     assert CC.K == 4 and ccomp[V(0)] == ccomp[V(1)]
+
+@test
+fn a_plain_edge_list_needs_no_edge_domain():
+    domain V = 1..=4
+    let g = Graph.undirected([(V(1), V(2)), (V(2), V(3))])
+    assert [[v.to_idx for v in g[u]] for u in V] == [[1], [0, 2], [1], []]
+    let d = Graph.directed([(V(1), V(2), 5), (V(1), V(4), 7)])
+    assert [(v.to_idx, w) for (v, w) in d[V(1)]] == [(1, 5), (3, 7)]
+    assert d[V(2)].is_empty

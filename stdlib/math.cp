@@ -9,6 +9,22 @@ pub fn gcd(a: Int, b: Int) -> Int:
 /// The least common multiple, never negative; stops on overflow.
 pub fn lcm(a: Int, b: Int) -> Int = if a == 0 or b == 0: 0 else: abs(a / gcd(a, b) * b)
 
+/// `num / den` with exactly `k` digits after the point, as text, from
+/// integers alone: no float rounding. Halves round away from zero, and a
+/// result that rounds to zero has no sign: `fixed(-1, 300, 2) == "0.00"`.
+/// `fixed(t, 2, 1)` prints a half-integer. `|num| * 10^k * 2` must fit an `Int`.
+pub fn fixed(num: Int, den: Int, k: Int) -> Str:
+    assert den != 0 and k >= 0
+    let scale = 10 ** k
+    let units = (2 * abs(num) * scale + abs(den)) / (2 * abs(den))
+    var out = if (num < 0) != (den < 0) and units > 0: "-" else: ""
+    out += "{units / scale}"
+    if k == 0: return out
+    let frac = "{units % scale}"
+    out += "."
+    for _ in frac.len..k: out += "0"
+    out + frac
+
 /// The number of ways to pick `k` of `n` things, exactly; 0 when `k` is outside `0..=n`.
 /// O(min(k, n - k)); stops on overflow. For counts modulo a prime use `Comb` in `std.mod`.
 pub fn choose(n: Int, k: Int) -> Int:
@@ -173,3 +189,12 @@ fn crt_combines_or_refuses():
                 if want.is_empty: assert got == none
                 else: assert got == (want[0], lcm(m1, m2))
     assert crt(2, 1000000007, 3, 998244353)!.0 % 998244353 == 3
+
+@test
+fn fixed_rounds_pads_and_drops_a_zero_sign():
+    assert fixed(1, 3, 5) == "0.33333" and fixed(2, 3, 5) == "0.66667"
+    assert fixed(-1, 3, 2) == "-0.33" and fixed(1, -3, 2) == "-0.33"
+    assert fixed(-1, 300, 2) == "0.00" and fixed(0, 7, 3) == "0.000"
+    assert fixed(7, 2, 0) == "4" and fixed(7, 2, 1) == "3.5" and fixed(-7, 2, 0) == "-4"
+    assert fixed(1, 8, 2) == "0.13" and fixed(100, 1, 3) == "100.000"
+    assert fixed(5, 1000, 2) == "0.01" and fixed(123456, 1000, 1) == "123.5"

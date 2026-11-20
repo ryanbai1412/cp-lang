@@ -1,4 +1,4 @@
-//! What the ten ports needed from `Float` and could not get from the
+//! What the ten ports needed from `F64` and could not get from the
 //! reference interpreter: fixed-point printing, comparison with a
 //! tolerance, and sine and cosine. Plain userland code, so it is also the
 //! proposal: see E1 to E4 of research/friction-backlog-batch-21.md.
@@ -9,8 +9,8 @@ pub const PI = 3.141592653589793
 /// `fixed(2.5, 0)` is "3", `fixed(-0.004, 2)` is "-0.00" printed as "0.00".
 /// Never an exponent, never "-0". `x` must be finite and `|x| * 10^digits`
 /// must fit in an `Int`.
-pub fn fixed(x: Float, digits: Int) -> Str:
-    assert x == x and abs(x) < Float.MAX    // not NaN, not infinite
+pub fn fixed(x: F64, digits: Int) -> Str:
+    assert x == x and abs(x) < F64.MAX    // not NaN, not infinite
     var scale = 1
     for _ in 0..digits: scale *= 10
     let units = Int(abs(x) * scale + 0.5)
@@ -27,13 +27,13 @@ pub fn fixed(x: Float, digits: Int) -> Str:
     out
 
 /// -1, 0 or 1: the sign of `x`, where anything within `eps` of zero is zero.
-pub fn sign(x: Float, eps: Float) -> Int = if x > eps: 1 elif x < -eps: -1 else: 0
+pub fn sign(x: F64, eps: F64) -> Int = if x > eps: 1 elif x < -eps: -1 else: 0
 
 /// Whether `a` and `b` differ by at most `eps`. False when either is NaN.
-pub fn close(a: Float, b: Float, eps: Float) -> Bool = abs(a - b) <= eps
+pub fn close(a: F64, b: F64, eps: F64) -> Bool = abs(a - b) <= eps
 
 /// Sine and cosine of `x` radians together, to about 1e-15.
-pub fn sin_cos(x: Float) -> (sin: Float, cos: Float):
+pub fn sin_cos(x: F64) -> (sin: F64, cos: F64):
     // Halve the angle until the series converges in a few terms, then
     // double it back with the double-angle formulas.
     var (t, halvings) = (x, 0)

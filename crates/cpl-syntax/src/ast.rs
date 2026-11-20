@@ -319,6 +319,13 @@ pub enum ExprKind {
         base: Box<Expr>,
         args: Vec<Type>,
     },
+    /// `best min= d` where a value is wanted: a `Bool`, true when the
+    /// place changed. As a statement it is a [`StmtKind::Assign`].
+    Keep {
+        target: Box<Expr>,
+        max: bool,
+        value: Box<Expr>,
+    },
     Paren(Box<Expr>),
     Tuple(Vec<Expr>),
     Record(Vec<(Name, Expr)>),
@@ -380,8 +387,65 @@ pub struct Clause {
 pub enum StrPiece {
     Text(String),
     Expr(Expr),
-    /// `{x:.2f}`: the value with that many digits after the point.
-    Fixed(Expr, u32),
+    /// `{x:.2f}`, `{n:05}`, `{n:x}`: a number in the format after the `:`.
+    Spec(Expr, FmtSpec),
+}
+
+/// A number format: `W` (least width), `0W` (zero-filled), then `.D` or
+/// `.Df` (digits after the point), `x` (hex) or `b` (binary).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct FmtSpec {
+    pub zero: bool,
+    pub width: u32,
+    pub kind: FmtKind,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum FmtKind {
+    Dec,
+    Hex,
+    Bin,
+    Fixed(u32),
+}
+
+impl std::fmt::Display for FmtSpec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(if self.zero { ":0" } else { ":" })?;
+        if self.width > 0 {
+            write!(f, "{}", self.width)?;
+        }
+        match self.kind {
+            FmtKind::Dec => Ok(()),
+            FmtKind::Hex => f.write_str("x"),
+            FmtKind::Bin => f.write_str("b"),
+            FmtKind::Fixed(places) => write!(f, ".{places}f"),
+        }
+    }
+}
+
+impl FmtSpec {
+    /// The format `text` spells (what follows the `:`), if it is one.
+    pub fn parse(text: &str) -> Option<FmtSpec> {
+        let digits = |s: &str| s.len() - s.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+        let zero = text.starts_with('0') && text.len() > 1 && text.as_bytes()[1].is_ascii_digit();
+        let rest = if zero { &text[1..] } else { text };
+        let (width, rest) = rest.split_at(digits(rest));
+        let kind = match rest {
+            "" if !width.is_empty() => FmtKind::Dec,
+            "x" => FmtKind::Hex,
+            "b" => FmtKind::Bin,
+            _ => {
+                let places = rest.strip_prefix('.')?;
+                let places = places.strip_suffix('f').unwrap_or(places);
+                if places.is_empty() || digits(places) != places.len() {
+                    return None;
+                }
+                FmtKind::Fixed(places.parse().ok().filter(|d| *d <= 300)?)
+            }
+        };
+        let width = if width.is_empty() { 0 } else { width.parse().ok().filter(|w| *w <= 4096)? };
+        Some(FmtSpec { zero, width, kind })
+    }
 }
 
 #[derive(Clone, PartialEq, Debug)]

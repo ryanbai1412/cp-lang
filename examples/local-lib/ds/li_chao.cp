@@ -123,16 +123,16 @@ pub struct LiChaoTag<V>(lo: Int, hi: Int):
         line.len - 1
 
 /// A floating-point line `y = k * x + m`.
-pub struct LineF(k: Float, m: Float):
-    pub fn at(self, x: Float) -> Float = k * x + m
+pub struct LineF(k: F64, m: F64):
+    pub fn at(self, x: F64) -> F64 = k * x + m
 
-/// Continuous `Float` (`F64`) Li Chao tree over `[lo, hi]` with `iters` halving levels.
-pub struct LiChaoF(lo: Float, hi: Float, iters: Int):
+/// Continuous `F64` (`F64`) Li Chao tree over `[lo, hi]` with `iters` halving levels.
+pub struct LiChaoF(lo: F64, hi: F64, iters: Int):
     line: List<LineF>
     left: List<?Int>
     right: List<?Int>
 
-    pub fn new(lo: Float, hi: Float, iters: Int = 48) -> LiChaoF:
+    pub fn new(lo: F64, hi: F64, iters: Int = 48) -> LiChaoF:
         LiChaoF(lo, hi, iters, [], [], [])
 
     pub fn add(mut self, fresh: LineF):
@@ -159,7 +159,7 @@ pub struct LiChaoF(lo: Float, hi: Float, iters: Int):
             else:
                 return
 
-    pub fn min_at(self, x: Float) -> ?Float:
+    pub fn min_at(self, x: F64) -> ?F64:
         assert lo <= x and x <= hi
         if line.is_empty: return none
         var (at, l, h) = (0, lo, hi)
@@ -220,15 +220,15 @@ fn tagged_and_float_li_chao_match_brute_force():
         let (y, rec) = tagged.min_at(x)!
         assert y == min(l.at(x) for l in lines)
         assert lines[rec.id].at(x) == y and rec.cost == rec.id * 10
-    // Continuous Float LiChao matches scanning over real points
+    // Continuous F64 LiChao matches scanning over real points
     var flt = LiChaoF(-10.0, 10.0)
     var flines: List<LineF> = []
     for _ in 0..15:
-        let l = LineF(Float(rand(-20, 20)) / 4.0, Float(rand(-40, 40)) / 4.0)
+        let l = LineF(F64(rand(-20, 20)) / 4.0, F64(rand(-40, 40)) / 4.0)
         flines.push(l)
         flt.add(l)
     for k in -20..=20:
-        let x = Float(k) / 2.0
+        let x = F64(k) / 2.0
         let got = flt.min_at(x)!
         let want = min(l.at(x) for l in flines)
         assert abs(got - want) <= 1e-6

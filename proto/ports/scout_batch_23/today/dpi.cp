@@ -1,8 +1,8 @@
 // AtCoder EDPC I - Coins (runnable on proto/cp.py lib-run today)
 let n: Int = read()
-var p: List<Float> = []
+var p: List<F64> = []
 for _ in 0..n:
-    let x: Float = read()
+    let x: F64 = read()
     p.push(x)
 
 var dp = List.filled(n + 1, 0.0)

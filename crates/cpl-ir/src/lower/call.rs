@@ -108,7 +108,7 @@ impl<'a> Lowerer<'a> {
                             return self.construct_or_new(id, args, span);
                         }
                         GenArg::Ty(Ty::Int) => return self.prelude("Int", args, hint, span),
-                        GenArg::Ty(Ty::Float) => return self.prelude("Float", args, hint, span),
+                        GenArg::Ty(Ty::Float) => return self.prelude("F64", args, hint, span),
                         GenArg::Ty(Ty::Char) => return self.prelude("Char", args, hint, span),
                         GenArg::Ty(Ty::Str) => return self.prelude("Str", args, hint, span),
                         GenArg::Ty(Ty::Bool) => return self.prelude("Bool", args, hint, span),
@@ -688,8 +688,19 @@ impl<'a> Lowerer<'a> {
             "print" => {
                 let mut digits = 6;
                 let mut values = Vec::new();
+                let mut sep = None;
+                let mut none_text = None;
                 for arg in args {
                     match &arg.name {
+                        // `sep: "\n"` goes between the arguments and between
+                        // the items of a list; `none: "-1"` is what a `none`
+                        // is written as.
+                        Some(arg_name) if arg_name.text == "sep" => {
+                            sep = Some(self.expect(&arg.value, &Ty::Str));
+                        }
+                        Some(arg_name) if arg_name.text == "none" => {
+                            none_text = Some(self.expect(&arg.value, &Ty::Str));
+                        }
                         Some(arg_name) if arg_name.text == "digits" => match arg.value.kind {
                             ast::ExprKind::Int(d) if (0..=18).contains(&d) => digits = d as u32,
                             _ => self.error(
@@ -706,10 +717,30 @@ impl<'a> Lowerer<'a> {
                         None => values.push((self.expr(&arg.value, None), arg.value.span)),
                     }
                 }
-                let values = values
+                if sep.is_some() || none_text.is_some() {
+                    values = values
+                        .into_iter()
+                        .map(|(value, at)| {
+                            (self.print_piece(value, sep.as_ref(), none_text.as_ref(), at), at)
+                        })
+                        .collect();
+                }
+                let mut values: Vec<FmtArg> = values
                     .into_iter()
                     .filter_map(|(value, at)| self.fmt_arg(value, digits, at))
                     .collect();
+                if let Some(sep) = sep {
+                    // One text, so the separator is the only thing between.
+                    let mut pieces = Vec::new();
+                    for (i, arg) in values.drain(..).enumerate() {
+                        if i > 0 {
+                            pieces.push(FmtPiece::Value(FmtArg { value: sep.clone(), digits }));
+                        }
+                        pieces.push(FmtPiece::Value(arg));
+                    }
+                    let line = self.mk(ExprKind::Format(pieces), Ty::Str, span);
+                    values.push(FmtArg { value: line, digits });
+                }
                 self.mk(ExprKind::Print(values), Ty::Unit, span)
             }
             // `debug(i, best)`: shown on a local run, and a checkpoint
@@ -1011,6 +1042,11 @@ impl<'a> Lowerer<'a> {
                 };
                 self.sort_place(place, &elem, &args[1..], span)
             }
+            // Toward zero: what `Int(x)` used to mean without saying so.
+            "trunc" => match self.one_arg(name, args, &Ty::Float, span) {
+                Some(value) => self.cast(Cast::FloatToInt, value, Ty::Int),
+                None => self.err_expr(span),
+            },
             "floor" | "ceil" | "round" => {
                 let op = match name {
                     "floor" => Builtin::Floor,
@@ -1142,7 +1178,7 @@ impl<'a> Lowerer<'a> {
                 };
                 self.mk(ExprKind::Tuple(Vec::new()), ty, span)
             }
-            "Int" | "Float" | "F64" | "Char" | "Str" | "Bool" => {
+            "Int" | "F64" | "Char" | "Str" | "Bool" => {
                 if name == "Str" && args.is_empty() {
                     return self.mk(ExprKind::Str(Vec::new()), Ty::Str, span);
                 }
@@ -1160,16 +1196,76 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// `sep.join(items)`, with `none` written as `none_text` when given.
+    fn join(&mut self, sep: Expr, items: Expr, none_text: Option<&Expr>, span: Span) -> Expr {
+        let flat = match &items.ty {
+            Ty::List(_) => true,
+            Ty::Array { dims, .. } => dims.len() == 1,
+            Ty::Error => return items,
+            _ => false,
+        };
+        if !flat {
+            let message = format!("`join` takes a list or a 1-D array, not a `{}`", self.show(&items.ty));
+            self.error(codes::TYPE_MISMATCH, span, message);
+            return self.err_expr(span);
+        }
+        let mut args = vec![sep, items];
+        args.extend(none_text.cloned());
+        self.mk(ExprKind::Builtin(Builtin::Join, args), Ty::Str, span)
+    }
+
+    /// One `print` argument under `sep:` / `none:`, as the text it prints.
+    fn print_piece(&mut self, value: Expr, sep: Option<&Expr>, none_text: Option<&Expr>, span: Span) -> Expr {
+        let flat = match &value.ty {
+            Ty::List(_) => true,
+            Ty::Array { dims, .. } => dims.len() == 1,
+            _ => false,
+        };
+        if flat {
+            let sep = match sep {
+                Some(sep) => sep.clone(),
+                None => self.mk(ExprKind::Str(b" ".to_vec()), Ty::Str, span),
+            };
+            return self.join(sep, value, none_text, span);
+        }
+        let (Ty::Opt(inner), Some(none_text)) = (value.ty.clone(), none_text) else {
+            return value;
+        };
+        let none_text = none_text.clone();
+        self.do_expr(Some(&Ty::Str), span, |lw, out| {
+            let slot = lw.temp(value.ty.clone());
+            out.push(Stmt::Let(slot, Some(value)));
+            let held = lw.local(slot, span);
+            let some = lw.mk(ExprKind::IsSome(Box::new(held.clone())), Ty::Bool, span);
+            let inside = lw.mk(ExprKind::Unwrap(Box::new(held), false), *inner, span);
+            let shown = lw.mk(ExprKind::Builtin(Builtin::ShowStr, vec![inside]), Ty::Str, span);
+            let text = lw.mk(
+                ExprKind::If(Box::new(some), Box::new(shown), Box::new(none_text)),
+                Ty::Str,
+                span,
+            );
+            out.push(Stmt::Give(text));
+        })
+    }
+
     fn convert(&mut self, to: &str, value: Expr, span: Span) -> Expr {
         let from = value.ty.clone();
         let (cast, ty) = match (to, &from) {
             (_, Ty::Error) => return value,
             ("Int", Ty::Int)
-            | ("Float" | "F64", Ty::Float)
+            | ("F64", Ty::Float)
             | ("Char", Ty::Char)
             | ("Str", Ty::Str)
             | ("Bool", Ty::Bool) => return value,
-            ("Int", Ty::Float) => (Cast::FloatToInt, Ty::Int),
+            ("Int", Ty::Float) => {
+                self.error(
+                    codes::TYPE_MISMATCH,
+                    span,
+                    "`Int` of an F64 does not say how to round",
+                );
+                self.help("write `floor(x)`, `ceil(x)`, `round(x)` or `trunc(x)`");
+                return self.err_expr(span);
+            }
             ("Int", Ty::Char) => (Cast::CharToInt, Ty::Int),
             ("Int", Ty::Str) => {
                 return self.mk(ExprKind::Builtin(Builtin::ParseInt, vec![value]), Ty::Int, span);
@@ -1185,7 +1281,7 @@ impl<'a> Lowerer<'a> {
                     span,
                 );
             }
-            ("Float" | "F64", Ty::Int) => (Cast::IntToFloat, Ty::Float),
+            ("F64", Ty::Int) => (Cast::IntToFloat, Ty::Float),
             ("Char", Ty::Int) => (Cast::IntToChar, Ty::Char),
             ("Str", Ty::List(elem)) if **elem == Ty::Char => {
                 return self.mk(ExprKind::Builtin(Builtin::ListToStr, vec![value]), Ty::Str, span);
@@ -2190,7 +2286,7 @@ impl<'a> Lowerer<'a> {
                         return self.mk(ExprKind::None, Ty::Opt(inner), span);
                     }
                 }
-                if matches!(type_name.as_str(), "Float" | "F64")
+                if type_name == "F64"
                     || matches!(self.gen_env.get(type_name), Some(GenArg::Ty(Ty::Float)))
                 {
                     match name.text.as_str() {
@@ -3045,6 +3141,28 @@ impl<'a> Lowerer<'a> {
                 let decl = self.gen_structs[gid].decl;
                 let tpl_mod = self.gen_structs[gid].mod_id;
                 let gen_names: Vec<String> = decl.generics.iter().map(|g| g.text.clone()).collect();
+                // A static fn can take a plain list of pairs or triples when
+                // its module declares `<name>_of_pairs` / `<name>_of_triples`:
+                // `Graph.undirected(pairs)` needs no edge domain.
+                if let [only] = args {
+                    let dlen = self.diags.len();
+                    let probed = self.expr(&only.value, None);
+                    self.diags.truncate(dlen);
+                    let arity = match &probed.ty {
+                        Ty::List(elem) => elem.fields().map(|f| f.len()),
+                        _ => None,
+                    };
+                    let suffix = match arity {
+                        Some(2) => Some("pairs"),
+                        Some(3) => Some("triples"),
+                        _ => None,
+                    };
+                    let free = suffix
+                        .and_then(|s| self.mod_syms[tpl_mod].get(&format!("{}_of_{s}", name.text)).copied());
+                    if let Some(Sym::GenFn(gfid)) = free {
+                        return self.call_gen_fn(gfid, Vec::new(), None, args, span);
+                    }
+                }
                 let mut inferred: GenEnv = HashMap::new();
                 if let Some(Ty::Struct(hsid)) = hint {
                     if let Some((hgid, hargs)) = &self.structs[*hsid].origin_gen {
@@ -3130,7 +3248,7 @@ impl<'a> Lowerer<'a> {
                 };
             }
             Some(Sym::Domain(id)) => match name.text.as_str() {
-                "at" | "nth" | "from_idx" => {
+                "at" | "nth" => {
                     return match self.one_arg(&name.text, args, &Ty::Int, span) {
                         Some(value) => self.mk(
                             ExprKind::Cast(Cast::FromOrd(id), Box::new(value)),
@@ -3140,20 +3258,12 @@ impl<'a> Lowerer<'a> {
                         None => self.err_expr(span),
                     };
                 }
-                "try_at" => {
+                // `V.from_idx(i)` is the inverse of `v.to_idx`, and `none`
+                // outside the domain.
+                "try_at" | "from_idx" => {
                     return match self.one_arg(&name.text, args, &Ty::Int, span) {
                         Some(value) => self.mk(
                             ExprKind::Builtin(Builtin::PosTryOrd(id), vec![value]),
-                            Ty::opt(Ty::Pos(id)),
-                            span,
-                        ),
-                        None => self.err_expr(span),
-                    };
-                }
-                "try" => {
-                    return match self.one_arg("try", args, &Ty::Int, span) {
-                        Some(value) => self.mk(
-                            ExprKind::Builtin(Builtin::PosTryLabel(id), vec![value]),
                             Ty::opt(Ty::Pos(id)),
                             span,
                         ),
@@ -3326,6 +3436,20 @@ impl<'a> Lowerer<'a> {
                         Ty::Pos(d),
                         span,
                     ),
+                    None => self.err_expr(span),
+                }
+            }
+            (Ty::Str, "join") => {
+                let Some(exprs) = self.positional_any("join", args, 1, span) else {
+                    return self.err_expr(span);
+                };
+                let items = self.expr(exprs[0], None);
+                self.join(value, items, None, exprs[0].span)
+            }
+            (Ty::List(elem), "get") => {
+                let opt = Ty::opt((**elem).clone());
+                match self.one_arg("get", args, &Ty::Int, span) {
+                    Some(at) => self.mk(ExprKind::Builtin(Builtin::SeqGet, vec![value, at]), opt, span),
                     None => self.err_expr(span),
                 }
             }

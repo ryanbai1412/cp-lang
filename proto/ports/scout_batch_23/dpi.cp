@@ -10,9 +10,9 @@
 let n: 1..=2999 = read() where n % 2 == 1
 domain Coin = 0..n
 // WISH MG11: floating-point range type `0.0..=1.0` for probability input & cpl stress
-let p: [Coin]Float = read()
+let p: [Coin]F64 = read()
 
-// WISH MG6: `Poly<Float>.product([(1.0 - p[i], p[i]) for i in Coin])` (divide-and-conquer
+// WISH MG6: `Poly<F64>.product([(1.0 - p[i], p[i]) for i in Coin])` (divide-and-conquer
 // FFT product in O(N log^2 N)) or linear DP in O(N^2):
 var dp = List.filled(n + 1, 0.0)
 dp[0] = 1.0

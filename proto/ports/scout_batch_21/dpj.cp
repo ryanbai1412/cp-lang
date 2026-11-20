@@ -18,13 +18,13 @@ for _ in 0..n:
     dishes[pieces] += 1
 
 domain Count = 0..=n
-var steps: [Count, Count, Count]Float = 0.0
+var steps: [Count, Count, Count]F64 = 0.0
 for c in Count:
     for b in Count:
         for a in Count:
             let left = a.label + b.label + c.label
             if left == 0 or left > n: continue
-            var after = Float(n)
+            var after = F64(n)
             if let a1 = a.prev: after += a.label * steps[a1, b, c]
             if let b1 = b.prev: after += b.label * steps[a.next!, b1, c]
             if let c1 = c.prev: after += c.label * steps[a, b.next!, c1]

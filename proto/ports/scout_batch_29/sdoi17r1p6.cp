@@ -12,6 +12,7 @@
 // original: corpus/submissions/5461671.cpp
 use std.lazy.{LazySegTree}
 use std.algebra.{Monoid, Action}
+use std.math.{fixed}
 
 type Sums = (xy: Int, x: Int, y: Int, xx: Int, lo: Int, len: Int)
 type Edit = (set: ?(x: Int, y: Int), dx: Int, dy: Int)       // set first, then add
@@ -47,13 +48,6 @@ fn edit(f: Edit, t: Sums, len: Int) -> Sums:
 /// `f` after `g`.
 fn then(f: Edit, g: Edit) -> Edit = if f.set != none: f else: (set: g.set, dx: g.dx + f.dx, dy: g.dy + f.dy)
 
-/// `num / den` rounded to 5 decimals, after cutting it to 6 towards zero.
-fn slope(num: Int, den: Int) -> Str:
-    let cut = abs(num) * 1_000_000 / den
-    let units = (cut + 5) / 10
-    var digits = "{units % 100_000}"
-    while digits.len < 5: digits = "0" + digits
-    (if num < 0 and units > 0: "-" else: "") + "{units / 100_000}." + digits
 
 let (n, q): (Int, Int) = read()
 domain Pos = 1..=n
@@ -68,7 +62,7 @@ for _ in 0..q:
     let (kind, l, r): (Int, Pos, Pos) = read()
     if kind == 1:
         let s = tree.fold(l..=r)
-        print(slope(s.xy * s.len - s.x * s.y, s.len * s.xx - s.x * s.x))
+        print(fixed(s.xy * s.len - s.x * s.y, s.len * s.xx - s.x * s.x, 5))
     else:
         let (a, b): (Int, Int) = read()
         tree.apply(l..=r, if kind == 2: (set: none, dx: a, dy: b) else: (set: (x: a, y: b), dx: 0, dy: 0))

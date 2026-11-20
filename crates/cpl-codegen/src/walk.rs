@@ -99,8 +99,10 @@ pub(crate) fn children<'p>(e: &'p Expr, f: &mut dyn FnMut(&'p Expr)) {
             .for_each(|arg| f(&arg.value)),
         ExprKind::Format(pieces) => {
             for piece in pieces {
-                if let FmtPiece::Value(arg) = piece {
-                    f(&arg.value);
+                match piece {
+                    FmtPiece::Value(arg) => f(&arg.value),
+                    FmtPiece::Number(value, _) => f(value),
+                    FmtPiece::Text(_) => {}
                 }
             }
         }

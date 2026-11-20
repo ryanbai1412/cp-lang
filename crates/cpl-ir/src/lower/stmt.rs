@@ -2,6 +2,9 @@
 
 use super::*;
 
+/// What writing through `x!` says when `x` is `none`; reading it says so too.
+const NO_VALUE: &str = "`!` on `none`: there is no value here";
+
 impl<'a> Lowerer<'a> {
     pub(super) fn block(&mut self, block: &ast::Block, tail: Tail) -> Block {
         self.cx.scopes.push(HashMap::new());
@@ -1576,8 +1579,12 @@ impl<'a> Lowerer<'a> {
         out: &mut Vec<Stmt>,
     ) {
         if let (ast::ExprKind::Tuple(targets), ast::AssignOp::Set) = (&target.kind, op) {
+            // `(a[d], b[d]) = read()`: the places say what is read.
+            let wanted: Option<Vec<Ty>> =
+                targets.iter().map(|t| self.try_place(t).map(|place| place.ty)).collect();
+            let wanted = wanted.map(Ty::Tuple);
             // `(a, b) = (b, a)`: the right side is whole before any store.
-            let value = self.expr(value, None);
+            let value = self.expr(value, wanted.as_ref());
             let Some(fields) = value.ty.fields().filter(|f| f.len() == targets.len()) else {
                 if value.ty != Ty::Error {
                     let message = format!(
@@ -1914,9 +1921,11 @@ impl<'a> Lowerer<'a> {
 
     pub(super) fn try_place(&mut self, e: &ast::Expr) -> Option<Place> {
         let diag_len = self.diags.len();
+        let pending = self.cx.pending.len();
         let p = self.place(e);
         if self.diags.len() > diag_len || p.ty == Ty::Error {
             self.diags.truncate(diag_len);
+            self.cx.pending.truncate(pending);
             None
         } else {
             Some(p)
@@ -2006,6 +2015,42 @@ impl<'a> Lowerer<'a> {
                             e.span,
                             "this name can't be assigned to",
                         );
+                        error
+                    }
+                }
+            }
+            // `state!.k += 4`: the value inside, and the same failure as
+            // reading it when there is none.
+            ast::ExprKind::Unwrap(inner) => {
+                let place = self.place(inner);
+                match place.ty.clone() {
+                    Ty::Opt(held) => {
+                        let mut lead = Vec::new();
+                        let place = self.settle_indexes(place, &mut lead);
+                        let holds = place_to_expr(&place);
+                        let some = self.mk(ExprKind::IsSome(Box::new(holds)), Ty::Bool, span);
+                        let none = self.mk(ExprKind::Unary(UnOp::Not, Box::new(some)), Ty::Bool, span);
+                        lead.push(Stmt::If(
+                            none,
+                            Block {
+                                stmts: vec![Stmt::Trap(NO_VALUE.to_string(), span)],
+                            },
+                            Block::default(),
+                        ));
+                        self.cx.pending.extend(lead);
+                        Place {
+                            ty: *held,
+                            kind: PlaceKind::Some(Box::new(place)),
+                            span,
+                        }
+                    }
+                    Ty::Error => error,
+                    other => {
+                        let message = format!(
+                            "`!` takes the value out of an optional, but this is a `{}`",
+                            self.show(&other)
+                        );
+                        self.error(codes::TYPE_MISMATCH, e.span, message);
                         error
                     }
                 }

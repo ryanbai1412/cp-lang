@@ -24,13 +24,13 @@ var kind: [C]Int = 0
 for c in C:
     let x: Int = read()
     kind[c] = x
-var roads: [C]List<(to: C, time: Float)> = []
+var roads: [C]List<(to: C, time: F64)> = []
 for _ in 0..m:
-    let (u, v, time): (Int, Int, Float) = read()
+    let (u, v, time): (Int, Int, F64) = read()
     if u != h: roads[C(u)].push((to: C(v), time: time))        // nobody leaves h
     if v != h: roads[C(v)].push((to: C(u), time: time))
 
-fn times(starts: List<(C, Float)>) -> [C]?Float = dijkstra(c => roads[c], starts, r => r.time)
+fn times(starts: List<(C, F64)>) -> [C]?F64 = dijkstra(c => roads[c], starts, r => r.time)
 
 let reach = times([(C(0), 0.0)])
 if reach[C(h)] == none:
@@ -38,7 +38,7 @@ if reach[C(h)] == none:
 else:
     var best = times([(c, 0.0) for c in C if reach[c] != none and (c == C(0) or kind[c] == 0)])
     for _ in 0..min(k, 80):
-        var starts: List<(C, Float)> = []
+        var starts: List<(C, F64)> = []
         for c in C:
             let t = best[c] else: continue
             starts.push((c, t))

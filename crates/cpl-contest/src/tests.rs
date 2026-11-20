@@ -101,8 +101,8 @@ fn constraints_become_typed_reads() {
         "`N` is not a name; names look like `n` or `max_w`"
     );
     assert_eq!(
-        reads("n: 1..=5; x: Float").unwrap_err(),
-        "in `let x: Float = read()`: can't generate a `Float` yet; pass a generator with `--gen`"
+        reads("n: 1..=5; x: F64").unwrap_err(),
+        "in `let x: F64 = read()`: can't generate a `F64` yet; pass a generator with `--gen`"
     );
 }
 
@@ -572,9 +572,9 @@ fn the_bench_command_prints_a_report_or_json() {
         err.contains("has no typed `read()` to make inputs from"),
         "{err}"
     );
-    std::fs::write(&source, "let x: Float = read()\n").unwrap();
+    std::fs::write(&source, "let x: F64 = read()\n").unwrap();
     let (_, _, err) = cli(bench::run, &[path, "--fast", &solution]);
-    assert!(err.contains("d.cp:1: can't generate a `Float` yet"), "{err}");
+    assert!(err.contains("d.cp:1: can't generate a `F64` yet"), "{err}");
     let (code, _, err) = cli(bench::run, &[path, "--format", "xml"]);
     assert_eq!(code, 2);
     assert!(

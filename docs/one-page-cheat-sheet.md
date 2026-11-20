@@ -151,6 +151,9 @@ let sv = Sieve(1e6)                       // above `@!multitest`: runs once (sie
 let (n, m): (1..=2e5, 1..=n) = read()     // dependent bounds on scalars, tuples, record fields
 let g: [Row, Col]?Int = read(none: "X")   // symmetric `none:` on read / print / read_output
 print(ans, none: "IMPOSSIBLE")            // lists space-separated; auto-flushes if program uses `ask(...)`
+print(k); print(colour, sep: "\n")        // `sep:` between arguments and between list items; `" ".join(xs)` is the Str
+print("{n:5} {n:05} {x:.3} {x:8.2f} {n:x} {n:b}")   // width, zero-fill, digits (never `-0.00`), hex, binary
+print(fixed(num, den, 5))                 // exact `num / den` to 5 digits from Ints (`std.math`, in the prelude)
 for (r, c) in read_until((0, 0)): ...     // sentinel stream; read_line() skips trailing ws after read()
 assert ok                                 // ALWAYS checked (local + judge); feeds range/disjoint proofs
 debug(n, dp)                              // stderr locally (replayed on stress fail); stripped on judge

@@ -61,12 +61,12 @@ fn the_spec_is_read_from_the_types_of_read() {
 
 #[test]
 fn types_the_generator_cannot_make_are_reported_where_they_are() {
-    let src = "let n: 1..=5 = read()\nlet x: Float = read()\n";
+    let src = "let n: 1..=5 = read()\nlet x: F64 = read()\n";
     let error = InputSpec::from_source(src).unwrap_err();
-    assert_eq!(error.span.text(src), "Float");
+    assert_eq!(error.span.text(src), "F64");
     assert_eq!(
         error.message,
-        "can't generate a `Float` yet; pass a generator with `--gen`"
+        "can't generate a `F64` yet; pass a generator with `--gen`"
     );
     let untyped = InputSpec::from_source("let n = read()\n").unwrap_err();
     assert!(
@@ -627,10 +627,10 @@ mod cli {
         let (code, _, err) = stress(&[path, "--fast", &good]);
         assert_eq!(code, 1);
         assert!(err.contains("there is nothing to compare"), "{err}");
-        std::fs::write(&file, "let x: Float = read()\n").unwrap();
+        std::fs::write(&file, "let x: F64 = read()\n").unwrap();
         let (code, _, err) = stress(&[path, "--fast", &good, "--brute", &good]);
         assert_eq!(code, 1);
-        assert!(err.contains("d.cp:1: can't generate a `Float` yet"), "{err}");
+        assert!(err.contains("d.cp:1: can't generate a `F64` yet"), "{err}");
         std::fs::write(&file, "print(1)\n").unwrap();
         let (_, _, err) = stress(&[path, "--fast", &good, "--brute", &good]);
         assert!(err.contains("has no typed `read()`"), "{err}");
