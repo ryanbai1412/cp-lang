@@ -93,6 +93,12 @@ pub fn partition<T>(self: List<T>, keep: T -> Bool) -> (List<T>, List<T>):
         else: no.push(x)
     (yes, no)
 
+/// The value `m` holds for `k`, after storing `v` there if it held none: `ids.get_or_insert(name, ids.len)`
+/// gives each new name the next id. O(log n).
+pub fn get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V:
+    if not (k in self): self[k] = v
+    self[k]
+
 /// Rotate `a` left by `k` in place: what was at index `k % a.len` comes first.
 /// Signed Euclidean `k`: negative `k` rotates right (`rotate_left(mut a, -r)`).
 pub fn rotate_left<T>(mut a: List<T>, k: Int):
@@ -495,3 +501,9 @@ fn deduped_and_partition_leave_the_list_alone():
         let ys = [rand(0, 5) for _ in 0..rand(0, 12)]
         let (even, odd) = ys.partition(y => y % 2 == 0)
         assert even.len + odd.len == ys.len and all(y % 2 == 0 for y in even) and all(y % 2 == 1 for y in odd)
+
+@test
+fn get_or_insert_stores_only_what_is_missing():
+    var ids = Map<Str, Int>()
+    assert ids.get_or_insert("a", ids.len) == 0 and ids.get_or_insert("b", ids.len) == 1
+    assert ids.get_or_insert("a", 99) == 0 and ids.len == 2

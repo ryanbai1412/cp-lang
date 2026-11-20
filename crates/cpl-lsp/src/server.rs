@@ -283,6 +283,25 @@ impl Server {
                 }
                 Ok(Reply::result(Value::Array(actions)))
             }
+            // `cpl fmt` on the open text: one edit that replaces the file,
+            // or none when it is already formatted or can't be.
+            "textDocument/formatting" => {
+                let uri = uri_of(params)?;
+                let Some(analysis) = self.db.analyze(uri) else {
+                    return Ok(Reply::result(Value::Array(Vec::new())));
+                };
+                let edits = match cpl_fmt::format(&analysis.text) {
+                    Ok(formatted) if formatted != *analysis.text => {
+                        let whole = Span::new(0, analysis.text.len() as u32);
+                        vec![obj([
+                            ("range", range_json(whole, &analysis.text, &analysis.lines)),
+                            ("newText", formatted.into()),
+                        ])]
+                    }
+                    _ => Vec::new(),
+                };
+                Ok(Reply::result(Value::Array(edits)))
+            }
             #[cfg(test)]
             "cpl/testPanic" => panic!("deliberate test panic"),
             _ => Err((METHOD_NOT_FOUND, format!("`{method}` is not supported"))),
@@ -354,6 +373,7 @@ fn capabilities() -> Value {
                 ("hoverProvider", true.into()),
                 ("definitionProvider", true.into()),
                 ("documentSymbolProvider", true.into()),
+                ("documentFormattingProvider", true.into()),
                 (
                     "codeActionProvider",
                     obj([("codeActionKinds", vec!["quickfix".into()].into())]),

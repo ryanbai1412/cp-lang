@@ -1093,6 +1093,9 @@ impl<'a> Lowerer<'a> {
                     self.sorted_by(value, &args[1..], span)
                 }
             }
+            "argmax" | "argmin" if args.len() == 1 && self.lookup(name).is_none() => {
+                self.arg_extreme(name == "argmax", &args[0].value, span)
+            }
             "runs" => self.lower_runs(args, span),
             "span" => self.lower_span(args, span),
             "counts" => self.lower_counts(args, span),
@@ -1976,6 +1979,65 @@ impl<'a> Lowerer<'a> {
     /// the values into one.
     fn reduce(&mut self, kind: Reduce, arg: &ast::Expr, span: Span) -> Expr {
         self.reduce_opt(kind, arg, false, span)
+    }
+
+    /// `argmax(f(v) for v in V)` is the `v` with the largest `f(v)`: `none`
+    /// when there is nothing to pick from, the first one on a tie, and a `none`
+    /// among the values is skipped as `max` skips it. It is `max_by` of
+    /// `std.seq` over the walk, so the two can't drift apart.
+    fn arg_extreme(&mut self, max: bool, arg: &ast::Expr, span: Span) -> Expr {
+        let at = arg.span;
+        let mk = |kind: ast::ExprKind| ast::Expr { kind, span: at };
+        let name = |text: &str| mk(ast::ExprKind::Name(text.to_string()));
+        let (body, clauses) = match &arg.kind {
+            ast::ExprKind::Comprehension { body, clauses } => ((**body).clone(), clauses.clone()),
+            _ => {
+                self.unsupported(span, "`argmax` / `argmin` of a sequence without a `for`");
+                self.help("name the position: `argmax(a[i] for i in D)`");
+                return self.err_expr(span);
+            }
+        };
+        let [clause] = clauses.as_slice() else {
+            self.unsupported(span, "`argmax` / `argmin` over more than one `for`");
+            return self.err_expr(span);
+        };
+        let ast::PatternKind::Name(var) = &clause.pat.kind else {
+            self.unsupported(span, "`argmax` / `argmin` over a pattern");
+            return self.err_expr(span);
+        };
+        // Are the values optionals? Then the ones that are `none` are left out.
+        let values = mk(ast::ExprKind::Comprehension {
+            body: Box::new(body.clone()),
+            clauses: clauses.clone(),
+        });
+        let (diags, pending) = (self.diags.len(), self.cx.pending.len());
+        let optional = matches!(self.expr(&values, None).ty, Ty::List(elem) if matches!(*elem, Ty::Opt(_)));
+        self.diags.truncate(diags);
+        self.cx.pending.truncate(pending);
+        let mut clause = clause.clone();
+        let mut key = body;
+        if optional {
+            let test = mk(ast::ExprKind::Compare {
+                first: Box::new(key.clone()),
+                rest: vec![(CmpOp::Ne, mk(ast::ExprKind::None))],
+            });
+            clause.conds.push(ast::Cond::Expr(test));
+            key = mk(ast::ExprKind::Unwrap(Box::new(key)));
+        }
+        let picks = mk(ast::ExprKind::Comprehension {
+            body: Box::new(name(var)),
+            clauses: vec![clause],
+        });
+        let by = mk(ast::ExprKind::Lambda {
+            params: vec![ast::Pattern { kind: ast::PatternKind::Name(var.clone()), span: at }],
+            body: Box::new(key),
+        });
+        let arg = |value: ast::Expr| ast::Arg { name: None, mutable: false, value };
+        let call = mk(ast::ExprKind::Call {
+            callee: Box::new(name(if max { "max_by" } else { "min_by" })),
+            args: vec![arg(picks), arg(by)],
+        });
+        self.expr(&call, None)
     }
 
     fn reduce_opt(&mut self, kind: Reduce, arg: &ast::Expr, optional: bool, span: Span) -> Expr {

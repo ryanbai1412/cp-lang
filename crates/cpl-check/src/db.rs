@@ -457,7 +457,10 @@ impl Database {
             for (module, name) in crate::prelude::names() {
                 if declared.contains(name.text.as_str())
                     || scope.imports.contains_key(&name.text)
-                    || !uses(&name.text)
+                    || !(uses(&name.text)
+                        || crate::prelude::BUILT_ON
+                            .iter()
+                            .any(|(word, on)| *on == name.text && uses(word)))
                 {
                     continue;
                 }

@@ -626,3 +626,27 @@ fn v22_removed_forms_are_reported_with_what_to_write() {
         .1
         .starts_with("`for mut` was removed in CP Lang 0.2.2\nhelp: loop over the indexes"));
 }
+
+#[test]
+fn formatting_replaces_the_file_with_what_cpl_fmt_writes() {
+    let (mut server, _) = open("let  x=1\nprint( x )\n");
+    let reply = server.handle(&request(
+        9,
+        "textDocument/formatting",
+        obj([("textDocument", doc())]),
+    ));
+    let edits = reply[0].get("result").as_array().to_vec();
+    assert_eq!(edits.len(), 1);
+    assert_eq!(edits[0].get("newText").as_str(), Some("let x = 1\nprint(x)\n"));
+    assert_eq!(edits[0].at(&["range", "start", "line"]).as_u32(), Some(0));
+    assert_eq!(edits[0].at(&["range", "end", "line"]).as_u32(), Some(2));
+
+    // A file that is already formatted has nothing to change.
+    let (mut server, _) = open("let x = 1\nprint(x)\n");
+    let reply = server.handle(&request(
+        9,
+        "textDocument/formatting",
+        obj([("textDocument", doc())]),
+    ));
+    assert!(reply[0].get("result").as_array().is_empty());
+}
