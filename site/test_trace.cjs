@@ -238,3 +238,18 @@ test("page UI never writes captured text through innerHTML", () => {
     assert.doesNotMatch(text, /<\/script|@font-face|@import|https?:\/\//i, file);
   }
 });
+
+test("stdout renders as terminal lines that keep diff marks, not as a JSON array", () => {
+  const ui = section("trace-ui");
+  assert.match(ui, /variable === "stdout" && Array\.isArray\(value\) && value\.every\(x => typeof x === "string"\)\) return output\(value, marks\)/);
+  assert.match(ui, /"out-line", \.\.\.classify\(\[i\], marks\)/);
+  const css = section("trace-style", "style");
+  assert.match(css, /\.stdout \{[^}]*white-space: pre;[^}]*overflow: auto;/);
+  assert.match(css, /\.stdout \.out-line\.mismatch \{/);
+});
+
+test("source lines grow with long code so the current-line highlight spans the scrolled width", () => {
+  const css = section("trace-style", "style");
+  assert.match(css, /\.line \{[^}]*width: max-content; min-width: 100%;/);
+  assert.match(css, /\.code \{[^}]*overflow: auto;/);
+});

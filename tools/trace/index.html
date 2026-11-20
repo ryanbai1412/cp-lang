@@ -166,6 +166,11 @@ td.cell { display: table-cell; }
 .bars i.mismatch { background: var(--bad); }
 .scalar { display: inline-flex; align-items: center; gap: 8px; height: auto; min-height: 48px; margin: 3px; padding: 8px 12px; font: 500 20px/1.2 var(--mono); }
 .json { margin: 0; padding: 10px; border-radius: 4px; background: var(--subtle); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.stdout { margin: 0; padding: 8px 10px; border-radius: 4px; background: var(--subtle); font: 12px/20px var(--mono); white-space: pre; overflow: auto; max-height: 320px; }
+.stdout .out-line { display: block; min-height: 20px; padding: 0 4px; border-radius: 2px; }
+.stdout .out-line.changed { background: var(--accent-bg); }
+.stdout .out-line.mismatch { background: var(--bad-bg); color: var(--bad); font-weight: 600; }
+.stdout .out-line.expected { color: var(--accent); }
 
 /* Graph */
 .graph { display: block; max-width: 100%; height: auto; font-family: var(--mono); }
@@ -199,7 +204,7 @@ td.cell { display: table-cell; }
 
 /* Source + locals */
 .code { margin: 0; padding: 6px 0; overflow: auto; max-height: 320px; font: 12px/20px var(--mono); counter-reset: line; }
-.line { display: grid; grid-template-columns: 44px 1fr; padding-right: 12px; white-space: pre; }
+.line { display: grid; grid-template-columns: 44px 1fr; width: max-content; min-width: 100%; padding-right: 12px; white-space: pre; }
 .line .n { padding-right: 12px; text-align: right; color: var(--ink-4); user-select: none; }
 .line.on { background: var(--accent-bg); box-shadow: inset 2px 0 var(--accent); }
 .line.on .n { color: var(--accent); }
@@ -938,6 +943,12 @@ if (typeof module !== "undefined") module.exports = TraceCore;
     if (cls.includes("focus")) lines.push("current write");
     return lines.join("\n");
   }
+  // What the program printed reads as terminal output, one line per entry, not as a JSON array.
+  function output(lines, marks) {
+    if (!lines.length) return el("p", {class:"empty", text:"Nothing printed yet"});
+    return el("pre", {class:"stdout", "aria-label":"Program output"},
+      ...lines.map((line, i) => el("span", {class:["out-line", ...classify([i], marks)].join(" "), text:line})));
+  }
   function cell(tag, path, value, text, marks, extra = []) {
     const cls = classify(path, marks), label = tip(path, value, marks, cls);
     return el(tag, {class:["cell", ...extra, ...cls].join(" "), "data-path":key(path), "data-tip":label, "aria-label":label.replace(/\n/g, ", "), "aria-pressed":String(cls.includes("selected")), tabindex:"0", role:"button", text});
@@ -948,6 +959,7 @@ if (typeof module !== "undefined") module.exports = TraceCore;
     if (!T.own(step.values, variable)) return el("p", {class:"empty", text:"Not in scope at this step"});
     const value = step.values[variable];
     if ($("renderer").value === "json") return el("pre", {class:"json", text:JSON.stringify(value, null, 2)});
+    if (variable === "stdout" && Array.isArray(value) && value.every(x => typeof x === "string")) return output(value, marks);
     if ((d.kind === "dp" || d.kind === "grid") && Array.isArray(value)) return matrix(value, d, marks);
     if (d.kind === "array" && Array.isArray(value)) return array(value, d, marks);
     if ((d.kind === "graph" || d.kind === "tree") && value && Array.isArray(value.nodes)) return graph(value, d, marks, lane);
