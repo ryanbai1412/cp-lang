@@ -163,7 +163,8 @@ impl Ty {
                 a.len() == b.len() && a.iter().zip(b).all(|(a, (_, b))| a.fits(b))
             }
             (Ty::Named { name: an, args: aa }, Ty::Named { name: bn, args: ba }) => {
-                an == bn
+                // `[k: v]` is written the same for either kind of map.
+                (an == bn || (an == "Map" && bn == "HashMap"))
                     && (aa.is_empty()
                         || ba.is_empty()
                         || (aa.len() == ba.len() && aa.iter().zip(ba).all(|(a, b)| a.fits(b))))

@@ -65,10 +65,12 @@ pub fn ty(name: &str) -> Option<Ty> {
         "Str" => Ty::Str,
         // Fixed-width integers for bit-level work.
         "I32" | "U8" | "U64" | "I128" => Ty::Int,
-        "List" | "Map" | "Set" | "Iter" | "Opt" | "Range" | "Bounds" | "Counter" => Ty::Named {
-            name: name.into(),
-            args: Vec::new(),
-        },
+        "List" | "Map" | "HashMap" | "Set" | "Iter" | "Opt" | "Range" | "Bounds" | "Counter" => {
+            Ty::Named {
+                name: name.into(),
+                args: Vec::new(),
+            }
+        }
         _ if PROTOTYPE_NAMES.contains(&name) => Ty::Unknown,
         _ => return None,
     })

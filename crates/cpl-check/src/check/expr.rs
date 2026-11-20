@@ -203,6 +203,7 @@ impl<'a> Checker<'a> {
             }
             ExprKind::Comprehension { body, clauses } => {
                 self.push_scope();
+                self.branch += 1;
                 for clause in clauses {
                     let iter_ty = self.infer(&clause.iter);
                     let elem = self.element_ty(&iter_ty);
@@ -212,6 +213,7 @@ impl<'a> Checker<'a> {
                     }
                 }
                 let body_ty = self.infer(body).widen();
+                self.branch -= 1;
                 self.pop_scope();
                 Ty::list(body_ty)
             }
@@ -240,7 +242,9 @@ impl<'a> Checker<'a> {
                 }
                 // A lambda's `return` and trailing value belong to the lambda.
                 self.fns.push((String::new(), Ty::Unknown, false));
+                self.branch += 1;
                 self.infer(body);
+                self.branch -= 1;
                 self.fns.pop();
                 self.pop_scope();
                 Ty::Unknown
@@ -251,6 +255,8 @@ impl<'a> Checker<'a> {
                 otherwise,
             } => {
                 let mut result = None;
+                // As a value, each branch is somewhere `e?` can't leave from.
+                let value = u32::from(self.plain_if.take() != Some(expr.span));
                 // Inside a branch its condition holds; after it, in the
                 // branches that follow, it does not.
                 let mark = self.lend_mark();
@@ -259,7 +265,9 @@ impl<'a> Checker<'a> {
                     self.cond(cond);
                     let branch = self.lend_mark();
                     self.add_cond_facts(cond, false);
+                    self.branch += value;
                     let ty = self.block(body);
+                    self.branch -= value;
                     self.lend_reset(branch);
                     self.add_cond_facts(cond, true);
                     self.pop_scope();
@@ -283,7 +291,9 @@ impl<'a> Checker<'a> {
                 };
                 let result_ty = match otherwise {
                     Some(body) => {
+                        self.branch += value;
                         let ty = self.block(body);
+                        self.branch -= value;
                         match result {
                             Some(first) if first.is_vague() => ty,
                             Some(first) => first.widen(),
@@ -299,6 +309,7 @@ impl<'a> Checker<'a> {
                 result_ty
             }
             ExprKind::Match { scrutinee, arms } => {
+                let value = u32::from(self.plain_if.take() != Some(expr.span));
                 let scrutinee_ty = self.infer(scrutinee);
                 let mut result = Ty::Unknown;
                 for (i, arm) in arms.iter().enumerate() {
@@ -308,7 +319,9 @@ impl<'a> Checker<'a> {
                         let ty = self.infer(guard);
                         self.require_bool(&ty, guard, "the guard");
                     }
+                    self.branch += value;
                     let ty = self.block(&arm.body);
+                    self.branch -= value;
                     self.pop_scope();
                     if i == 0 {
                         result = ty.widen();
@@ -333,6 +346,17 @@ impl<'a> Checker<'a> {
                     }
                 }
                 ty
+            }
+            ExprKind::Try(inner) if self.branch > 0 => {
+                let inner_text = self.quote(inner.span);
+                let message = format!(
+                    "`{inner_text}?` is inside a branch, a lambda or a comprehension, and can't leave the fn from there"
+                );
+                if let Some(diag) = self.error(codes::BAD_OPERANDS, expr.span, message) {
+                    diag.help = Some(format!("bind it first: `let x = {inner_text}?`"));
+                }
+                self.infer(inner);
+                Ty::Error
             }
             ExprKind::Try(inner) | ExprKind::Unwrap(inner) => match self.infer(inner) {
                 Ty::Optional(inner) => *inner,
