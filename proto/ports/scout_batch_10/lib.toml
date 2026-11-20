@@ -1,0 +1,3 @@
+# The library these ports wish the standard library had. A port imports it
+# as `use scout.hashing.{Hash, StrHash}`; see research/friction-backlog-batch-10.md.
+name = "scout"
