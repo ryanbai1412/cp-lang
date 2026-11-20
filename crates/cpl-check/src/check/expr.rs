@@ -409,6 +409,27 @@ impl<'a> Checker<'a> {
             // `total + ` mid-edit: the half that is there says what the
             // whole will be.
             _ if matches!(rhs.kind, ExprKind::Missing) && left.is_numeric() => left.widen(),
+            _ if self.operator_trait(op, &left).is_some() => {
+                let (trait_name, owner) = self.operator_trait(op, &left).unwrap();
+                let implemented = self
+                    .env
+                    .impls(&owner)
+                    .iter()
+                    .any(|(implemented, _)| implemented.as_deref() == Some(trait_name));
+                if !implemented {
+                    let message = format!(
+                        "`{}` needs `impl {trait_name} for {owner}`, and there is none",
+                        op.text()
+                    );
+                    if let Some(diag) = self.error(codes::MISSING_IMPL, op_span, message) {
+                        diag.help = Some(format!(
+                            "an operator on a struct is the trait's fn: write `impl {trait_name} for {owner}`"
+                        ));
+                    }
+                    return Ty::Error;
+                }
+                left
+            }
             _ if left == Ty::Error || right == Ty::Error => Ty::Error,
             _ if left.is_vague() || right.is_vague() => Ty::Unknown,
             _ if left.is_int() && right.is_int() => Ty::Int,
@@ -440,6 +461,24 @@ impl<'a> Checker<'a> {
     }
 
     /// Reports a comparison between positions of two different domains.
+    /// The trait an arithmetic operator asks of a struct on its left, and
+    /// the struct's name: `a + b` with `a: Pt` is `Add` for `Pt`.
+    fn operator_trait(&mut self, op: BinOp, left: &Ty) -> Option<(&'static str, String)> {
+        let trait_name = match op {
+            BinOp::Add => "Add",
+            BinOp::Sub => "Sub",
+            BinOp::Mul => "Mul",
+            BinOp::Div => "Div",
+            BinOp::Rem => "Rem",
+            _ => return None,
+        };
+        let Ty::Named { name, .. } = left else {
+            return None;
+        };
+        matches!(self.env.type_def(name).as_deref(), Some(Def::Struct { .. }))
+            .then(|| (trait_name, name.clone()))
+    }
+
     fn comparable(&mut self, left: &Ty, left_expr: &Expr, right: &Ty, right_expr: &Expr) {
         let (Ty::Pos(a), Ty::Pos(b)) = (left, right) else {
             return;
