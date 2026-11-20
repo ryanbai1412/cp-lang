@@ -3,8 +3,6 @@
 //! 2-coloring, rollback bipartite DSU, and virtual trees on `Rooted<V>`.
 //! Proposed additions to `std.graph`, `std.tree`, and `std.dsu`.
 
-use std.tree.{Rooted}
-
 /// Two-edge-connected components (bridge blocks) of an undirected graph.
 /// Each arc in `adj(u)` carries `(to: V, e: E)` so parallel edges are handled
 /// properly (parallel edges are never bridges). Returns a fresh domain `C`
@@ -31,7 +29,7 @@ pub fn two_edge_components<V, A>(adj: V -> Iter<A>) -> (domain C, comp: [V]C):
                 timer += 1
                 stack.push(u)
             if i < out[u].len:
-                frames[frames.len - 1] = (u, i + 1, pe)
+                frames.last! = (u, i + 1, pe)
                 let a = out[u][i]
                 let eid = a.e.to_idx
                 if pe != none and eid == pe!: continue
@@ -75,7 +73,7 @@ pub fn articulation_points<V, A>(adj: V -> Iter<A>) -> [V]Bool:
                 low[u] = timer
                 timer += 1
             if i < out[u].len:
-                frames[frames.len - 1] = (u, i + 1, p)
+                frames.last! = (u, i + 1, p)
                 let v = out[u][i]
                 if p != none and v == p!: continue
                 if tin[v] == none:
@@ -118,7 +116,7 @@ pub fn biconnected_components<V, A>(adj: V -> Iter<A>) -> List<List<V>>:
                 timer += 1
                 stack.push(u)
             if i < out[u].len:
-                frames[frames.len - 1] = (u, i + 1, p)
+                frames.last! = (u, i + 1, p)
                 let v = out[u][i]
                 if p != none and v == p!: continue
                 if tin[v] == none:
@@ -245,7 +243,6 @@ pub struct BipartiteDsu<V>:
 
 @test
 fn bridges_and_parallel_edges():
-    use std.graph.{Graph, condense}
     domain V = 0..5
     domain E = 0..6
     // 0-1-2 triangle, bridge 2-3, double edge 3-4
@@ -261,7 +258,6 @@ fn bridges_and_parallel_edges():
 
 @test
 fn cut_vertices_with_root_and_leaf():
-    use std.graph.{Graph}
     domain V = 0..5
     domain E = 0..6
     // bowtie: 0-1-2-0 and 2-3-4-2; only vertex 2 is an articulation point
@@ -273,7 +269,6 @@ fn cut_vertices_with_root_and_leaf():
 
 @test
 fn coloring_and_bipartite_dsu_rollback():
-    use std.graph.{Graph}
     domain V = 0..4
     domain E = 0..3
     let edges = [E] e => (u: V([(0, 1), (1, 2), (2, 3)][e.to_idx].0), v: V([(0, 1), (1, 2), (2, 3)][e.to_idx].1))
@@ -296,7 +291,6 @@ fn coloring_and_bipartite_dsu_rollback():
 
 @test
 fn bcc_and_virtual_tree():
-    use std.graph.{Graph}
     domain V = 0..6
     domain E = 0..7
     // 0-1-2 triangle, bridge 2-3, triangle 3-4-5

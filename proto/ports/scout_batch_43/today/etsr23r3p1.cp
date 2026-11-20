@@ -1,7 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of etsr23r3p1.cp
 // original: corpus/submissions/5527625.cpp
-use std.algebra.{Monoid, Action}
-use std.lazy.{LazySegTree}
 
 struct Cell:
     lo_orig: Int
@@ -51,7 +49,7 @@ for _ in 0..q:
 let sraw = sorted(arr)
 var uniq: List<Int> = []
 for v in sraw:
-    if uniq.len == 0 or uniq[uniq.len - 1] != v:
+    if uniq.len == 0 or uniq.last! != v:
         uniq.push(v)
 
 let ulen = uniq.len

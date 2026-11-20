@@ -2,8 +2,6 @@
 // original: corpus/submissions/5445685.cpp
 // Note: proto/cpc lacks U64 today, so Int (64-bit signed) is used; exact on all
 // inputs where historical sum < 2^63 (see friction backlog for U64 wrapping gap).
-use std.algebra.{Monoid, Action}
-use std.lazy.{LazySegTree}
 
 let (test_id, n): (Int, Int) = read()
 domain I = 1..=n
@@ -98,15 +96,15 @@ var stk_b: List<Int> = []
 var ans: [Q]Int = [Q] _ => 0
 
 for r in I:
-    while stk_a.len > 0 and a[I.nth(stk_a[stk_a.len - 1])] <= a[r]:
+    while stk_a.len > 0 and a[I.nth(stk_a.last!)] <= a[r]:
         stk_a.pop()
-    let la = if stk_a.len == 0: 0 else: stk_a[stk_a.len - 1] + 1
+    let la = if stk_a.len == 0: 0 else: stk_a.last! + 1
     stk_a.push(r.to_idx)
     st.apply(I.nth(la)..=r, HistTag(true, a[r], false, 0, 0, 0, 0, 0))
 
-    while stk_b.len > 0 and b[I.nth(stk_b[stk_b.len - 1])] <= b[r]:
+    while stk_b.len > 0 and b[I.nth(stk_b.last!)] <= b[r]:
         stk_b.pop()
-    let lb = if stk_b.len == 0: 0 else: stk_b[stk_b.len - 1] + 1
+    let lb = if stk_b.len == 0: 0 else: stk_b.last! + 1
     stk_b.push(r.to_idx)
     st.apply(I.nth(lb)..=r, HistTag(false, 0, true, b[r], 0, 0, 0, 0))
 

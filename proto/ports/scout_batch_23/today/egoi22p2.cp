@@ -1,5 +1,4 @@
 // EGOI '22 P2 - Lego Wall (runnable on proto/cp.py lib-run today)
-use std.mod.{Mod}
 
 type Z = Mod<1000000007>
 

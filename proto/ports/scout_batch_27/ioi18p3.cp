@@ -13,9 +13,6 @@
 // The original is a grader function; this port reads `n m q`, the m roads,
 // then q lines `s e l r`.
 // original: corpus/submissions/4727179.cpp
-use std.dsu.{Dsu}
-use std.tree.{Rooted}
-use std.fenwick.{Fenwick}
 
 let (n, m, q): (Int, Int, Int) = read()
 domain City = 0..n
@@ -39,7 +36,7 @@ fn merge_tree(order: List<City>):
             kids[c].push((to: newest[parts.find(d)]))
             parts.unite(c, d)
             newest[parts.find(c)] = c
-    Rooted(c => kids[c], order[order.len - 1])
+    Rooted(c => kids[c], order.last!)
 
 let human = merge_tree([c for c in City.rev])
 let wolf = merge_tree([c for c in City])
@@ -74,4 +71,4 @@ for a in sorted(asks, by: a => a.at):
         next += 1
     ans[a.q] += a.sign * placed.sum(wolf_range[a.q])
 
-for t in Q: print(if ans[t] > 0: 1 else: 0)
+for t in Q: print(Int(ans[t] > 0))

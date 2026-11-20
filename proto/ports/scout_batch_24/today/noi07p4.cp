@@ -1,7 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of statement-first noi07p4.cp
 // original: corpus/submissions/5032746.cpp
-use std.algebra.{Monoid, Action}
-use std.lazy.{LazySegTree}
 
 let (n, c_max): (Int, Int) = read()
 domain Pos = 0..n
@@ -19,7 +17,7 @@ let run_monoid = Monoid<Run>(
     op: (a, b) =>
         if a.empty: b
         else: if b.empty: a
-        else: Run(false, a.lcol, b.rcol, a.runs + b.runs - (if a.rcol == b.lcol: 1 else: 0))
+        else: Run(false, a.lcol, b.rcol, a.runs + b.runs - (Int(a.rcol == b.lcol)))
 )
 
 let paint_action = Action<Run, ?Int>(

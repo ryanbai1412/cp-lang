@@ -1,7 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of statement-first ioi05p2.cp
 // original: corpus/submissions/5032753.cpp
-use std.algebra.{Monoid, Action}
-use std.lazy.{LazySegTree}
 
 let n: Int = read()
 var tags: List<Int> = []
@@ -50,7 +48,7 @@ for i in 0..tags.len:
 pts = sorted(pts)
 var xs: List<Int> = []
 for x in pts:
-    if xs.len == 0 or xs[xs.len - 1] != x: xs.push(x)
+    if xs.len == 0 or xs.last! != x: xs.push(x)
 
 fn coord(x: Int) -> Int:
     var (lo, hi) = (0, xs.len)

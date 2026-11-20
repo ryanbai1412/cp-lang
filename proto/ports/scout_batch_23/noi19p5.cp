@@ -8,7 +8,6 @@
 // Key invariant: uniform riffle shuffles preserve polynomial degree <= 2!
 // Track f(x) = a*x^2 + b*x + c across every shuffle in O(1) by computing the exact
 // expected values g(1), g(2), g(n) after the shuffle and interpolating the new (a, b, c).
-use std.mod.{Mod}
 
 type Z = Mod<998244353>
 

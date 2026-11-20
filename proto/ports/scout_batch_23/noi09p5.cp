@@ -11,14 +11,15 @@
 // After k steps, schedule 1 has popped i balls from pipe 1 (and k - i from pipe 2),
 // schedule 2 has popped j balls from pipe 1 (and k - j from pipe 2).
 // State dp[i, j] (rolled over k = 0..n+m) counts matching prefix pairs.
-use std.mod.{Mod}
 
 type Z = Mod<1024523>
 
 let (n, m): (1..=500, 1..=500) = read()
 // WISH MG11: exact alphabet {'A', 'B'} and length constraints for cpl stress
-let s1: Str = read() where s1.len == n
-let s2: Str = read() where s2.len == m
+let s1: Str = read()
+assert s1.len == n
+let s2: Str = read()
+assert s2.len == m
 
 // Reverse if input lists top-to-bottom while balls pop from bottom (checked against C++)
 domain I = 0..=n
@@ -33,7 +34,7 @@ for k in 0..(n + m):
         let i2 = k - i
         for j in lo..=hi:
             let cur = dp[I(i), I(j)]
-            if cur == Z(0): continue
+            if cur == 0: continue
             let j2 = k - j
             if i < n and j < n and s1[i] == s1[j]:
                 nxt[I(i + 1), I(j + 1)] += cur

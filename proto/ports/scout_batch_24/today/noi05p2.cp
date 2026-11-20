@@ -33,7 +33,7 @@ fn alloc_node(v: Int) -> Int:
     let p = if v > 0: v else: 0
     let pr = next_prio()
     if free_ids.len > 0:
-        let id = free_ids[free_ids.len - 1]
+        let id = free_ids.last!
         free_ids.pop()
         val[id] = v
         sz[id] = 1
@@ -67,7 +67,7 @@ fn recycle(root: Int):
     if root == 0: return
     var stk: List<Int> = [root]
     while stk.len > 0:
-        let u = stk[stk.len - 1]
+        let u = stk.last!
         stk.pop()
         if lc[u] != 0: stk.push(lc[u])
         if rc[u] != 0: stk.push(rc[u])
@@ -149,17 +149,17 @@ fn build_cartesian(vals: List<Int>) -> Int:
     for i in 0..vals.len:
         let cur = alloc_node(vals[i])
         var last = 0
-        while stk.len > 0 and prio[stk[stk.len - 1]] < prio[cur]:
-            let top = stk[stk.len - 1]
+        while stk.len > 0 and prio[stk.last!] < prio[cur]:
+            let top = stk.last!
             stk.pop()
             pull(top)
             last = top
         lc[cur] = last
         if stk.len > 0:
-            rc[stk[stk.len - 1]] = cur
+            rc[stk.last!] = cur
         stk.push(cur)
     while stk.len > 1:
-        let top = stk[stk.len - 1]
+        let top = stk.last!
         stk.pop()
         pull(top)
     pull(stk[0])

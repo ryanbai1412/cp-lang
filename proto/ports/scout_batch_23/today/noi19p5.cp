@@ -1,5 +1,4 @@
 // NOI '19 P5 - Landlords (runnable on proto/cp.py lib-run today)
-use std.mod.{Mod}
 
 type Z = Mod<998244353>
 
@@ -20,8 +19,7 @@ fn eval(a: Z, b: Z, c: Z, x: Int) -> Z:
 
 var a = if kind == 1: Z(0) else: Z(1)
 var b = if kind == 1: Z(1) else: Z(0)
-var c = Z(0)
-
+var c: Z = 0
 if n == 1:
     for i in 0..q:
         print(Z(1))
@@ -52,7 +50,7 @@ else:
 
         let g1 = p * eval(a, b, c, 1) + q_prob * eval(a, b, c, cut + 1)
 
-        var g2 = Z(0)
+        var g2: Z = 0
         if cut >= 2:
             g2 += p * Z(cut - 1) * inv_n1 * eval(a, b, c, 2)
         if cut >= 1 and r >= 1:

@@ -10,12 +10,12 @@
 // Solid walls S[i] satisfy the formal power series identity:
 //   T(x) = 1 / (1 - S(x))   <=>   S(x) = 1 - T(x)^(-1)
 // i.e. S[i] = T[i] - sum_{j = 1..i-1} S[j] * T[i - j]  (mod 10^9 + 7).
-use std.mod.{Mod}
 
 type Z = Mod<1000000007>
 
 // WISH MG11: product constraint `w * h <= 250000` is non-typeable as independent ranges
-let (w, h): (1..=250000, 1..=250000) = read() where w * h <= 250000
+let (w, h): (1..=250000, 1..=250000) = read()
+assert w * h <= 250000
 
 var row = List.filled(w + 1, Z(0))
 row[0] = Z(1)

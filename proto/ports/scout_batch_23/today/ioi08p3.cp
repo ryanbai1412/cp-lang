@@ -1,6 +1,4 @@
 // IOI '08 P3 - Fish (runnable on proto/cp.py lib-run today)
-use std.mod.{Mod}
-use std.segtree.{SegTree}
 
 let f_cnt: Int = read()
 let k: Int = read()
@@ -42,7 +40,7 @@ var cnt = List.filled(k, 0)
 var seg = SegTree<Gem, Z>.of(*, _ => Z(1))
 
 var p = 0
-var ans = Z(0)
+var ans: Z = 0
 for r in 0..k:
     let lim = max_by_rank[r] / 2
     while p < f_cnt and fish[p].0 <= lim:
@@ -108,6 +106,6 @@ for r in 0..k:
     let ways_hi = if r + 1 <= q_hi: seg.fold(Gem(r + 1)..=Gem(q_hi)) else: Z(1)
     let term1 = ways_small * Z(cnt[r])
     let term2 = ways_small * ways_hi
-    ans = ans + term1 + term2
+    ans += term1 + term2
 
 print(ans)

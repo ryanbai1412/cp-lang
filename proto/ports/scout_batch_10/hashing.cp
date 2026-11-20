@@ -5,7 +5,6 @@
 //! and two different sequences collide with probability about `len / 1e18`
 //! (two residues modulo two primes near 1e9, with bases picked at random at
 //! startup so that no input can be prepared against them).
-use std.mod.{Mod}
 
 type A = Mod<1000000007>
 type B = Mod<998244353>
@@ -32,7 +31,7 @@ pub struct Hash(len: Int, a: A, b: B):
     /// The hash of a whole sequence. O(n).
     pub fn all(xs: List<Int>) -> Hash:
         var h = Hash.empty
-        for x in xs: h = h + Hash.one(x)
+        for x in xs: h += Hash.one(x)
         h
 
     /// `self` without its first `head.len` items, which must hash to `head`.

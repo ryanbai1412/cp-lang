@@ -1,6 +1,4 @@
 // NOI '22 MPTS P4 - Card (runnable on proto/cp.py lib-run today)
-use std.mod.{Mod}
-use std.math.{Sieve}
 
 type Z = Mod<998244353>
 
@@ -108,12 +106,12 @@ for _ in 0..q:
                 if small_p[j] == p:
                     sm_req = sm_req | (1 << j)
 
-    var ans = Z(0)
+    var ans: Z = 0
     var sub = sm_req
     while true:
         let comp = FULL ^ sub
         var free_cnt = total_sub[comp]
-        var prod = Z(1)
+        var prod: Z = 1
         for idx in 0..lg_req.len:
             let b = lg_req[idx]
             var cb = 0

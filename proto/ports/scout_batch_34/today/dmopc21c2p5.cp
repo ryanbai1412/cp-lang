@@ -1,8 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of dmopc21c2p5.cp
 // original: corpus/submissions/3968384.cpp
-use std.graph.{Graph}
-use std.tree.{Rooted}
-use std.mod.{Mod}
 
 const MOD = 998_244_352
 const MAX_DEG = 26
@@ -43,20 +40,20 @@ for u in tree.preorder.rev:
                 for i in 0..=csum:
                     let stay = cur[d][i]
                     let prev_d = if di > 0: cur[Deg(di - 1)][i] else: Z(0)
-                    if stay != Z(0) or prev_d != Z(0):
+                    if stay != 0 or prev_d != 0:
                         let jmax = min(sz_v, sz_u - i)
                         for j in 0..=jmax:
-                            nxt[d][i + j] = nxt[d][i + j] + stay * c0[j]
+                            nxt[d][i + j] += stay * c0[j]
                             if j > 0:
-                                nxt[d][i + j] = nxt[d][i + j] + prev_d * c1[j]
+                                nxt[d][i + j] += prev_d * c1[j]
             csum += sz_v
             cur = nxt
 
         var res: List<Z> = []
         for i in 0..=sz_u:
-            var acc = Z(0)
+            var acc: Z = 0
             for d in Deg:
-                acc = acc + cur[d][i] * fact[d]
+                acc += cur[d][i] * fact[d]
             res.push(acc)
         if par_used == 0:
             memo0[u] = res

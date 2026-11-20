@@ -7,7 +7,6 @@
 // ingredient can be in more than half, so fix it and track, method by
 // method, its lead: dishes with it minus dishes without it.
 // original: corpus/submissions/5147491.cpp
-use std.mod.{Mod}
 type Z = Mod<998244353>
 
 let (n, m): (Int, Int) = read()
@@ -17,7 +16,7 @@ let a: [Method, Food]Int = read()
 let total = [Method] i => sum(a[i, j] for j in Food) % 998244353
 
 domain Lead = -n..=n
-var bad = Z(0)
+var bad: Z = 0
 for j in Food:
     var ways: [Lead]Z = [Lead] d => Z(0)
     ways[Lead(0)] = Z(1)
@@ -30,6 +29,6 @@ for j in Food:
     for d in Lead:
         if d.label > 0: bad += ways[d]
 
-var all = Z(1)
-for i in Method: all = all * Z(total[i] + 1)
+var all: Z = 1
+for i in Method: all *= Z(total[i] + 1)
 print(all - Z(1) - bad)

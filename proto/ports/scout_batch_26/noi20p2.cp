@@ -9,9 +9,6 @@
 // The row of x is the row of its heavy child, edited in place; the light
 // children are multiplied in.
 // original: corpus/submissions/5655455.cpp
-use std.graph.{Graph}
-use std.tree.{Rooted}
-use std.mod.{Mod}
 
 type Z = Mod<998244353>
 
@@ -49,10 +46,10 @@ for x in t.preorder.rev:
         g[h] = []
         let all = row[d]
         row.truncate(d + 1)
-        for i in 0..=d: row[i] = row[i] + all
+        for i in 0..=d: row[i] += all
         for c in t.children(x):
             if c == h: continue
-            for i in 0..=d: row[i] = row[i] * (g[c][i] + g[c][d])
+            for i in 0..=d: row[i] *= (g[c][i] + g[c][d])
             g[c] = []
     else:
         for i in 0..=d: row.push(Z(1))

@@ -2,7 +2,6 @@
 // The children lists are built by hand (no Rooted), and `for x in Bool`
 // is spelled as a list.
 // original: corpus/submissions/4080960.cpp
-use std.dsu.{Dsu}
 
 let n: Int = read()
 domain V = 1..=n
@@ -43,7 +42,7 @@ fn blues(u: V, on: Bool, par_on: Bool, a_on: Bool, b_on: Bool) -> ?Int:
     if (u == a and on != a_on) or (u == b and on != b_on): return none
     let across = (u == a and b_on) or (u == b and a_on)
     if par_on and across: return none
-    var zero: ?Int = if on: 1 else: 0
+    var zero: ?Int = Int(on)
     var one: ?Int = none
     for v in kids[u]:
         let off = blues(v, false, on, a_on, b_on)

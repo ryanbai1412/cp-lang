@@ -4,8 +4,6 @@
 // the answer is the product over T of g(T) ^ ((n / T) * (m / T)), and
 // n / T and m / T are constant on O(sqrt) blocks of T.
 // original: corpus/submissions/5463988.cpp
-use std.mod.{Mod}
-use std.math.{Sieve}
 
 const P = 1000000007
 type Z = Mod<P>

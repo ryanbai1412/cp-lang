@@ -5,7 +5,6 @@
 // its distance to both neighbours. Blocks of magnets packed as tightly as
 // allowed grow and merge; the cells left over are shared out at the end.
 // original: corpus/submissions/4226760.cpp
-use std.mod.{Mod, Comb}
 
 const P = 1000000007
 type Z = Mod<P>
@@ -22,7 +21,7 @@ for r in sorted([r for r in radius]):
     for j in 0..=n:
         for k in 0..=l:
             let w = ways[j][k]
-            if w == Z(0): continue
+            if w == 0: continue
             if k + 1 <= l: next[j + 1][k + 1] += w * Z(j + 1)                           // a block of its own, in any of j + 1 places
             if k + r <= l: next[j][k + r] += w * Z(2 * j)                               // at either end of a block
             if j >= 2 and k + 2 * r - 1 <= l: next[j - 1][k + 2 * r - 1] += w * Z(j - 1) // joining two neighbouring blocks
@@ -30,6 +29,6 @@ for r in sorted([r for r in radius]):
 
 // One block of k cells: the l - k free cells go into the n + 1 gaps around the magnets.
 let comb = Comb<P>.new(l + n)
-var total = Z(0)
+var total: Z = 0
 for k in 1..=l: total += ways[1][k] * comb.choose(l - k + n, n)
 print(total)

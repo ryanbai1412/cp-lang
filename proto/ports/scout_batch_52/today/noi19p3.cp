@@ -13,15 +13,11 @@ fn next_perm(mut a: List<Int>) -> Bool:
     if i < 0: return false
     var j = n - 1
     while a[j] <= a[i]: j -= 1
-    let t = a[i]
-    a[i] = a[j]
-    a[j] = t
+    a.swap(i, j)
     var l = i + 1
     var r = n - 1
     while l < r:
-        let tmp = a[l]
-        a[l] = a[r]
-        a[r] = tmp
+        a.swap(l, r)
         l += 1
         r -= 1
     return true
@@ -147,7 +143,7 @@ fn solve_one():
                     ok = false
                     break
                 prv = nxt
-            if ok and cap[path[path.len - 1]] > 0 and gain > best:
+            if ok and cap[path.last!] > 0 and gain > best:
                 best = gain
                 best_path = path
             if not next_perm(mut perm): break
