@@ -297,6 +297,8 @@ class Compiler:
                 return d.info.withmin
             if nm == "Mod":
                 a = tn.args[0]
+                if a.kind == "tname" and not a.args:
+                    a = N("name", a.line, name=a.name)
                 v = a.value if a.kind == "num" else self.const_value(a)
                 return TMod(v)
             if nm == "Range":
@@ -915,13 +917,13 @@ class Compiler:
             cmp = ""
             if by:
                 pn, kc, kt = self.lambda_key(by[0].value, et)
-                cmp = (f", [&](const {ec}& A, const {ec}& B) {{ auto _key = [&](const {ec}& {pn}) {{ return {kc}; }}; "
+                cmp = (f", [&](const auto& A, const auto& B) {{ auto _key = [&](const auto& {pn}) {{ return {kc}; }}; "
                        f"return _key(A) < _key(B); }}")
             algo = "stable_sort" if by else "sort"
             if fn.name == "sort":
                 return f"{algo}({c}.begin(), {c}.end(){cmp})", UNIT
             tmp = self.tmpname("s")
-            return (f"([&]{{ auto&& _src = {c}; vector<{ec}> {tmp}(_src.begin(), _src.end()); {algo}({tmp}.begin(), {tmp}.end(){cmp}); "
+            return (f"([&]{{ auto {tmp} = {c}; {algo}({tmp}.begin(), {tmp}.end(){cmp}); "
                     f"return {tmp}; }}())"), (t if isinstance(t, TArr) and not by else TList(et))
         if fn.kind == "name" and fn.name == "dijkstra" and not self.lookup("dijkstra"):
             gc, gt = self.expr(e.args[0])
