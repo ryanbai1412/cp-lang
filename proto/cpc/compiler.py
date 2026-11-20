@@ -565,6 +565,15 @@ class Compiler(LendMixin):
             self.imported = getattr(self, "imported", set()) | {nm}
 
     def anon_count_domain(self, name, lo_c, hi_c_excl, lo_iv, hi_iv, node):
+        # `[0..n]T` is structural: the same written bounds are the same type wherever they are written (v2 T3)
+        cache = self.__dict__.setdefault("anon_doms", {})
+        key = (lo_c, hi_c_excl)
+        if key in cache and re.fullmatch(r"[\w() +\-]*", lo_c + hi_c_excl):
+            return cache[key]
+        cache[key] = t = self.anon_count_domain_new(name, lo_c, hi_c_excl, lo_iv, hi_iv, node)
+        return t
+
+    def anon_count_domain_new(self, name, lo_c, hi_c_excl, lo_iv, hi_iv, node):
         info, _, _ = self.new_domain(name, lo_c, f"({hi_c_excl}) - ({lo_c})", lo_iv,
                                      (None if hi_iv[0] is None else hi_iv[0] - (lo_iv[1] or 0),
                                       None if hi_iv[1] is None else hi_iv[1] - (lo_iv[0] or 0)), anon=True)
@@ -3236,6 +3245,14 @@ class Compiler(LendMixin):
 
     def s_let(self, s):
         v = s.value
+        if s.pat.kind == "ptuple" and s.ty is not None and s.ty.kind == "ttuple" and self.is_read(v) \
+                and len(s.ty.fields) == len(s.pat.items) and not getattr(s, "orelse", None):
+            # `let (n, m): (1..=2e5, 1..=n) = read()`: read left to right, so a later bound may name an earlier value
+            for k, (pat, (_, ft)) in enumerate(zip(s.pat.items, s.ty.fields)):
+                last = k == len(s.pat.items) - 1
+                self.s_let(N("let", s.line, pat=pat, ty=ft, value=v, mut=s.mut, const=False,
+                             where=getattr(s, "where", None) if last else None, orelse=None, more=[]))
+            return
         if v is not None and v.kind == "doblock" and s.pat.kind == "pname" and s.ty is not None:
             ty = self.resolve_type(s.ty)
             cpp = self.fresh(s.pat.name)
