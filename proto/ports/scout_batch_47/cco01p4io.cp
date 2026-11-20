@@ -1,6 +1,6 @@
 // CCO '01 P4 — Two-Egg Drop (Interactive) (DMOJ: cco01p4io)
 // original: corpus/submissions/5034487.cpp
-// CP Lang v2 (locked spec, docs/one-page-cheat-sheet.md @ 3723dca)
+// CP Lang 0.2.2 (locked spec, docs/one-page-cheat-sheet.md)
 //
 // Interactive problem: query GetN and GetD to receive building height n <= 100
 // and drop budget d, then identify the critical floor in 1..=n using at most 2
@@ -13,12 +13,14 @@ let d: 1..=100 = ask("GetD")
 @memo
 fn dp(len: 0..=100) -> (drops: Int, step: Int):
     if len <= 1: return (0, 0)
-    var best: ?(Int, Int) = none
+    var best_cost: ?Int = none
+    var best_step = 0
     for i in 0..len:
         let cost = max(i, dp(len - i - 1).drops) + 1
-        if best == none or cost <= best!.0:
-            best = (cost, i)
-    best!
+        if best_cost == none or cost <= best_cost!:
+            best_cost = cost
+            best_step = i
+    (best_cost!, best_step)
 
 assert dp(n).drops <= d
 
@@ -41,24 +43,24 @@ fn search(l: Int, r: Int):
 search(1, n)
 
 @interactor
-fn judge():
+fn judge(mut sol: Interactor):
     let hidden_n: 1..=100 = read()
     let hidden_f: 1..=hidden_n = read()
     let limit = 20
     var drops = 0
     var broken = 0
     while true:
-        let cmd: Str = read_output()
-        if cmd == "GetN": print(hidden_n)
-        elif cmd == "GetD": print(limit)
+        let cmd: Str = sol.recv()
+        if cmd == "GetN": sol.send(hidden_n)
+        elif cmd == "GetD": sol.send(limit)
         elif cmd == "Drop":
-            let x: Int = read_output()
+            let x: Int = sol.recv()
             drops += 1
             assert drops <= limit and broken < 2
             let b = if x >= hidden_f: 1 else: 0
             broken += b
-            print(b)
+            sol.send(b)
         elif cmd == "Decide":
-            let x: Int = read_output()
+            let x: Int = sol.recv()
             assert x == hidden_f
             return
