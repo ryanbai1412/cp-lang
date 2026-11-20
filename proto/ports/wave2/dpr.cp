@@ -20,6 +20,5 @@ while left > 0:
     step = mul(step, step)
     left /= 2
 var total: Z = 0
-for i in V:
-    for j in V: total += walks[i, j]
+for ways in walks: total += ways
 print(total)

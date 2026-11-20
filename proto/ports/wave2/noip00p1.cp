@@ -4,7 +4,6 @@ let (x, base): (-32768..=32767, -20..=-2) = read()
 
 var (digits, left) = ("", x)
 while left != 0:
-    let d = left % base
-    digits = "{if d < 10: '0' + d else: 'A' + (d - 10)}{digits}"
+    digits = "0123456789ABCDEFGHIJ"[left % base] + digits
     left /= base
 print(digits)

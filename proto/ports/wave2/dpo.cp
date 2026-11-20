@@ -12,6 +12,6 @@ let ok: [Man, Woman]0..=1 = read()
 var ways: [Taken]Z = 0
 ways[Taken.empty] = 1
 for s in Taken if not s.is_empty:
-    let man = Man.from_idx(s.len - 1)!
+    let man = Man(s.len - 1)
     for w in s if ok[man, w] == 1: ways[s] += ways[s.without(w)]
 print(ways[Taken.full])

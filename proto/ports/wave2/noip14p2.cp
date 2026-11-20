@@ -12,7 +12,7 @@ let tree = Graph.undirected(edges)
 
 var (best, total) = (0, Z(0))
 for mid in V:
-    let around = sorted([w[u] for (u, _) in tree.out(mid)], by: x => -x)
+    let around = sorted(w[u] for (u, _) in tree.out(mid)).rev
     if around.len >= 2: best max= around[0] * around[1]
     let all = sum(around)
     total += Z(all) * all - sum(x * x for x in around)

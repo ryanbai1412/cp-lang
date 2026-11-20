@@ -11,11 +11,9 @@ let comb = Comb<MOD>()
 
 fn paths(a: Cell, b: Cell) -> Z = comb.choose(b.r - a.r + b.c - a.c, b.r - a.r)
 
-let stops = sorted(walls) + [(h, w)]
-var clean: List<Z> = []
-for i in 0..=n:
-    let cell = stops[i]
+var clean: List<(at: Cell, ways: Z)> = []
+for cell in sorted(walls) + [(h, w)]:
     var ways = paths((1, 1), cell)
-    for j in 0..i if stops[j].c <= cell.c: ways -= clean[j] * paths(stops[j], cell)
-    clean.push(ways)
-print(clean.last!)
+    for (at, before) in clean if at.c <= cell.c: ways -= before * paths(at, cell)
+    clean.push((cell, ways))
+print(clean.last!.ways)

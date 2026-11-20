@@ -52,6 +52,23 @@ the wanted form is on the right.
 `CRITIC.md` is the report of an independent session that saw only the ports
 and the gate, never the author's reasoning.
 
+It found 10 fixable lines (all applied here, in dmopc21c5p1, dpo, dpr, dpv,
+dpy, noip00p1, noip04p1, noip14p2, noip14p5 and yac1p1), 33 blocked spellings
+with the exact `cpl` error for each, and no failing input. Ten ports came out
+clean. The blockers that cost the most, in order: `Mod<P>` is rejected by
+`sum`, `prefix`, `Z(bool)` and `**`; `..i` and `i + 1..` have no `for`
+support and a range over a domain is a range of `?I`; a neighbour the guard
+already proves in range still needs `!`; `Graph` needs a named edge domain,
+`.out(u)` pairs and a `use` for `bfs`; `read()` has no `Bool`, no `?Item` and
+no bare form inside an expression.
+
+Four items in the list above did not hold up: `print(x ?? -1)` replaces
+`none: "-1"`, `sorted(...).rev` replaces `by: x => -x`, the dpy and noip04p1
+index loops needed no index at all, and `[1..=n]T` is rejected only as an
+inline dimension (a named `domain` works). At maximum size the emitted C++ of
+the `@memo` ports runs 2x to 8x slower than the original (ioi04p4: 0.88 s
+against 0.23 s), still correct and inside the limits.
+
 ## Left untested
 
 `ccc18s4`'s generator stops at n = 1e7: at n near 1e9 the emitted C++ is fine

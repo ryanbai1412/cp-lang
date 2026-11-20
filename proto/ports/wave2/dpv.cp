@@ -25,4 +25,4 @@ for v in tree.preorder:
     for c in tree.children(v).rev:
         up[c] = up[c] * later + 1
         later *= down[c] + 1
-print([down[v] * up[v] for v in V], sep: "\n")
+for v in V: print(down[v] * up[v])
