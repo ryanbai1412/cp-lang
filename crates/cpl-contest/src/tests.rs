@@ -1,0 +1,657 @@
+use super::*;
+use crate::bench::{bench, worst_case, WorstShape};
+use crate::json::Json;
+use crate::new::{reads, Scaffold};
+use crate::problem::{cases, source_path, Limits};
+use crate::test::{render, run_cases};
+use crate::watch::{Stamp, Watch};
+use cpl_stress::{InputSpec, Judge, Program, Verdict};
+use std::path::{Path, PathBuf};
+use std::time::Duration;
+
+fn scratch(name: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("cpl-contest-{name}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
+fn sh(script: &str) -> Program {
+    Program::command("script", &["sh", "-c", script])
+}
+
+/// Writes an executable shell script and returns its path.
+fn script(dir: &Path, name: &str, body: &str) -> String {
+    use std::os::unix::fs::PermissionsExt;
+    let path = dir.join(name);
+    std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    path.display().to_string()
+}
+
+type Command = fn(&[String], &mut dyn std::io::Write, &mut dyn std::io::Write) -> u8;
+
+fn cli(command: Command, args: &[&str]) -> (u8, String, String) {
+    let args: Vec<String> = args.iter().map(|a| a.to_string()).collect();
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    let code = command(&args, &mut out, &mut err);
+    (
+        code,
+        String::from_utf8(out).unwrap(),
+        String::from_utf8(err).unwrap(),
+    )
+}
+
+const COMPANION: &str = r#"{
+  "name": "D. Range Max", "group": "Codeforces",
+  "url": "https://codeforces.com/problemset/problem/1/D",
+  "interactive": false, "memoryLimit": 512, "timeLimit": 1500,
+  "tests": [{"input": "3\n1 5 2\n", "output": "5\n"}, {"input": "1\n7\n", "output": "7\n"}]
+}"#;
+
+/// Prints the largest number on the second line.
+const MAX: &str = "awk 'NR==2 { m=$1; for (i=2;i<=NF;i++) if ($i>m) m=$i; print m }'";
+
+#[test]
+fn crate_is_named() {
+    assert_eq!(NAME, "cpl-contest");
+}
+
+#[test]
+fn json_reads_values_escapes_and_nesting() {
+    let value = json::parse(
+        r#" {"a": [1, 2.5, -3e2], "s": "x\n\"y\"\u0041", "t": true, "n": null, "o": {}} "#,
+    )
+    .unwrap();
+    assert_eq!(value.get("a").unwrap().as_array().len(), 3);
+    assert_eq!(value.get("a").unwrap().as_array()[0].as_u64(), Some(1));
+    assert_eq!(value.get("a").unwrap().as_array()[1].as_u64(), None);
+    assert_eq!(value.get("s").unwrap().as_str(), Some("x\n\"y\"A"));
+    assert_eq!(value.get("t"), Some(&Json::Bool(true)));
+    assert_eq!(value.get("n"), Some(&Json::Null));
+    assert_eq!(value.get("o"), Some(&Json::Object(vec![])));
+    assert_eq!(value.get("missing"), None);
+    for bad in ["", "{", "[1,", "{\"a\" 1}", "\"open", "1 2", "tru"] {
+        assert!(json::parse(bad).is_err(), "{bad}");
+    }
+}
+
+#[test]
+fn constraints_become_typed_reads() {
+    assert_eq!(
+        reads("n, q: 1..=2e5; a: [n]0..=1e9; queries: [q](1..=n, 1..=n); g: [0..n, 0..3]0..=1")
+            .unwrap(),
+        [
+            "let (n, q): (1..=2e5, 1..=2e5) = read()",
+            "let a: [0..n]0..=1e9 = read()",
+            "let queries: [0..q](1..=n, 1..=n) = read()",
+            "let g: [0..n, 0..3]0..=1 = read()",
+        ]
+    );
+    assert_eq!(
+        reads("edges: [n - 1](1..=4, 1..=4)").unwrap(),
+        ["let edges: [0..n - 1](1..=4, 1..=4) = read()"]
+    );
+    assert_eq!(
+        reads("n 5").unwrap_err(),
+        "`n 5` has no type; write `n: 1..=2e5`"
+    );
+    assert_eq!(
+        reads("N: 1..=5").unwrap_err(),
+        "`N` is not a name; names look like `n` or `max_w`"
+    );
+    assert_eq!(
+        reads("n: 1..=5; s: Str").unwrap_err(),
+        "in `let s: Str = read()`: can't generate a `Str` yet; pass a generator with `--gen`"
+    );
+}
+
+#[test]
+fn a_companion_problem_gives_the_title_limits_and_samples() {
+    let scaffold = Scaffold::from_companion(COMPANION).unwrap();
+    assert_eq!(scaffold.title.as_deref(), Some("D. Range Max"));
+    assert_eq!(scaffold.short_name().as_deref(), Some("d"));
+    let limits = scaffold.limits.unwrap();
+    assert_eq!(
+        (limits.time, limits.memory_kb),
+        (Duration::from_millis(1500), 512 * 1024)
+    );
+    assert_eq!(scaffold.samples.len(), 2);
+    assert!(!scaffold.interactive);
+    assert_eq!(
+        Scaffold::from_companion("[]").unwrap_err(),
+        "a Competitive Companion problem is a JSON object"
+    );
+    assert!(Scaffold::from_companion("{")
+        .unwrap_err()
+        .starts_with("this is not JSON"));
+}
+
+#[test]
+fn the_new_source_has_a_header_the_reads_and_the_template() {
+    let mut scaffold = Scaffold::from_companion(COMPANION).unwrap();
+    scaffold.reads = reads("n: 1..=2e5; a: [n]0..=1e9").unwrap();
+    let source = scaffold.source(Some("fn solve():\n    0\n\n"));
+    assert_eq!(
+        source,
+        "// D. Range Max\n// https://codeforces.com/problemset/problem/1/D\n// limits: 1500 ms, 512 MB\n\nlet n: 1..=2e5 = read()\nlet a: [0..n]0..=1e9 = read()\n\nfn solve():\n    0\n"
+    );
+    // The limits line is read back by test and bench.
+    assert_eq!(
+        Limits::of(Path::new("d.cp"), &source),
+        scaffold.limits.unwrap()
+    );
+    // With nothing known, there is still a typed read to start from.
+    assert_eq!(
+        Scaffold::default().source(None),
+        "let n: 1..=2e5 = read()\n"
+    );
+    assert!(InputSpec::from_source(&source).is_ok());
+}
+
+#[test]
+fn new_creates_the_file_and_samples_and_never_overwrites() {
+    let dir = scratch("new");
+    let companion = dir.join("problem.json");
+    std::fs::write(&companion, COMPANION).unwrap();
+    let name = dir.join("d");
+    let (code, out, err) = cli(
+        new::run,
+        &[
+            name.to_str().unwrap(),
+            "--companion",
+            companion.to_str().unwrap(),
+            "--constraints",
+            "n: 1..=2e5; a: [n]0..=1e9",
+            "--time-limit",
+            "3000",
+        ],
+    );
+    assert_eq!((code, err.as_str()), (0, ""));
+    assert!(out.contains("d.cp") && out.contains("(2 samples)"), "{out}");
+    let source = std::fs::read_to_string(dir.join("d.cp")).unwrap();
+    assert!(
+        source.contains("// limits: 3000 ms, 512 MB\n\nlet n: 1..=2e5 = read()\n"),
+        "{source}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.join("d.tests/1.in")).unwrap(),
+        "3\n1 5 2\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.join("d.tests/2.out")).unwrap(),
+        "7\n"
+    );
+    let names: Vec<String> = cases(&dir.join("d.cp"))
+        .into_iter()
+        .map(|c| c.name)
+        .collect();
+    assert_eq!(names, ["1", "2"]);
+
+    let (code, _, err) = cli(new::run, &[name.to_str().unwrap()]);
+    assert_eq!(code, 1);
+    assert!(
+        err.contains("already exists; `cpl new` won't overwrite it"),
+        "{err}"
+    );
+    assert_eq!(std::fs::read_to_string(dir.join("d.cp")).unwrap(), source);
+
+    // A project template is used when there is a cp.toml.
+    std::fs::write(dir.join("cp.toml"), "[limits]\ntime_ms = 4000\n").unwrap();
+    std::fs::write(dir.join("template.cp"), "fn solve():\n    0\n").unwrap();
+    let (code, _, err) = cli(new::run, &[dir.join("e").to_str().unwrap()]);
+    assert_eq!((code, err.as_str()), (0, ""));
+    assert_eq!(
+        std::fs::read_to_string(dir.join("e.cp")).unwrap(),
+        "fn solve():\n    0\n"
+    );
+    assert!(dir.join("e.tests").is_dir());
+
+    for (args, message) in [
+        (&[][..], "`new` needs a name"),
+        (&["a", "b"][..], "`new` takes one name; `b` is a second"),
+        (&["a", "--constraints", "n"][..], "`n` has no type"),
+        (&["a", "--loud"][..], "unknown option `--loud`"),
+    ] {
+        let (code, _, err) = cli(new::run, args);
+        assert_eq!(code, 2, "{args:?}");
+        assert!(err.contains(message), "{err}");
+    }
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn limits_come_from_the_header_then_cp_toml_then_defaults() {
+    let dir = scratch("limits");
+    let source = dir.join("d.cp");
+    assert_eq!(Limits::of(&source, ""), Limits::default());
+    assert_eq!(Limits::default().header(), "// limits: 2000 ms, 256 MB");
+    std::fs::write(
+        dir.join("cp.toml"),
+        "[lints]\ntime_ms = 1\n[limits]\ntime_ms = 4000 # slow judge\nmemory_mb = 64\n",
+    )
+    .unwrap();
+    let project = Limits::of(&source, "");
+    assert_eq!(
+        (project.time, project.memory_kb),
+        (Duration::from_millis(4000), 64 * 1024)
+    );
+    let own = Limits::of(&source, "// title\n// limits: 3 s, 1024 MB\n");
+    assert_eq!(
+        (own.time, own.memory_kb),
+        (Duration::from_secs(3), 1024 * 1024)
+    );
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn cases_are_samples_in_order_then_the_rest_by_name() {
+    let dir = scratch("cases");
+    let tests = dir.join("d.tests");
+    std::fs::create_dir_all(&tests).unwrap();
+    for file in [
+        "10.in",
+        "2.in",
+        "2.out",
+        "stress-7.in",
+        "stress-7.out",
+        "hand.in",
+        "notes.txt",
+    ] {
+        std::fs::write(tests.join(file), "").unwrap();
+    }
+    let found = cases(&dir.join("d.cp"));
+    let seen: Vec<(&str, bool)> = found
+        .iter()
+        .map(|c| (c.name.as_str(), c.expected.is_some()))
+        .collect();
+    assert_eq!(
+        seen,
+        [
+            ("2", true),
+            ("10", false),
+            ("hand", false),
+            ("stress-7", true)
+        ]
+    );
+    assert_eq!(cases(&dir.join("none.cp")), []);
+    assert_eq!(source_path("d"), PathBuf::from("d.cp"));
+    assert_eq!(source_path("d.cp"), PathBuf::from("d.cp"));
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+/// A problem with three cases: one right, one wrong, one with no `.out`.
+fn problem(dir: &Path) -> PathBuf {
+    let source = dir.join("d.cp");
+    std::fs::write(
+        &source,
+        "let n: 1..=2e5 = read()\nlet a: [0..n]0..=1e9 = read()\n",
+    )
+    .unwrap();
+    let tests = dir.join("d.tests");
+    std::fs::create_dir_all(&tests).unwrap();
+    for (file, text) in [
+        ("1.in", "3\n1 5 2\n"),
+        ("1.out", "5\n"),
+        ("2.in", "2\n4 4\n"),
+        ("2.out", "9\n"),
+        ("hand.in", "1\n8\n"),
+    ] {
+        std::fs::write(tests.join(file), text).unwrap();
+    }
+    source
+}
+
+#[test]
+fn test_reports_each_case_and_expands_failures() {
+    let dir = scratch("test");
+    let source = problem(&dir);
+    let results = run_cases(
+        &sh(MAX),
+        &Judge::Tokens,
+        &cases(&source),
+        Duration::from_secs(10),
+    )
+    .unwrap();
+    let verdicts: Vec<Option<&str>> = results
+        .iter()
+        .map(|r| r.verdict.as_ref().map(Verdict::code))
+        .collect();
+    assert_eq!(verdicts, [Some("ok"), Some("WA"), None]);
+    assert_eq!(
+        results.iter().map(|r| r.passed()).collect::<Vec<_>>(),
+        [true, false, true]
+    );
+    // Times vary; the rest of the report does not.
+    let report: String = render(&results)
+        .lines()
+        .map(|line| match line.find(" ms") {
+            Some(at) => format!(
+                "{} N ms\n",
+                line[..at]
+                    .trim_end_matches(|c: char| c.is_ascii_digit())
+                    .trim_end()
+            ),
+            None => format!("{line}\n"),
+        })
+        .collect();
+    assert_eq!(
+        report,
+        "  1     ok N ms\n  2     WA N ms\n     expected: 9\n     got:      4\n     first difference at line 1, token 1: expected `9`, got `4`\n  hand  ran N ms\n     output: 8\n  2/3 passed\n"
+    );
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn the_test_command_judges_with_a_checker_or_an_interactor() {
+    let dir = scratch("test-cli");
+    let source = problem(&dir);
+    let path = source.to_str().unwrap();
+    let solution = script(&dir, "max", MAX);
+
+    let (code, out, _) = cli(test::run, &[path, "--fast", &solution]);
+    assert_eq!(code, 1);
+    assert!(out.ends_with("  2/3 passed\n"), "{out}");
+    // `d` names `d.cp`.
+    let (code, _, _) = cli(
+        test::run,
+        &[dir.join("d").to_str().unwrap(), "--fast", &solution],
+    );
+    assert_eq!(code, 1);
+
+    // A checker that accepts any single number: every case is judged.
+    let checker = script(&dir, "checker", "[ \"$(wc -w < \"$2\")\" -eq 1 ]");
+    let (code, out, err) = cli(
+        test::run,
+        &[path, "--fast", &solution, "--checker", &checker],
+    );
+    assert_eq!((code, err.as_str()), (0, ""), "{out}");
+    assert!(
+        out.ends_with("  3/3 passed\n") && !out.contains("ran"),
+        "{out}"
+    );
+
+    // An interactor that sends the input and expects one line back.
+    let interactor = script(
+        &dir,
+        "interactor",
+        "cat \"$1\"; read answer && [ -n \"$answer\" ]",
+    );
+    // An interactive solution answers as soon as it has read enough.
+    let talker = script(&dir, "talker", "read n; read a; echo \"$n\"");
+    let (code, out, _) = cli(
+        test::run,
+        &[path, "--fast", &talker, "--interactor", &interactor],
+    );
+    assert_eq!(code, 0, "{out}");
+    let silent = script(&dir, "silent", "read n; read a");
+    let (code, out, _) = cli(
+        test::run,
+        &[path, "--fast", &silent, "--interactor", &interactor],
+    );
+    assert_eq!(code, 1);
+    assert!(
+        out.contains("WA") && out.contains("the interactor rejected the run"),
+        "{out}"
+    );
+
+    // A declared judge must be passed, never silently replaced.
+    std::fs::write(
+        &source,
+        "let n: 1..=5 = read()\n@checker(output: Int)\nfn valid(out: Int) -> Bool:\n    out > 0\n",
+    )
+    .unwrap();
+    let (code, _, err) = cli(test::run, &[path, "--fast", &solution]);
+    assert_eq!(code, 1);
+    assert!(
+        err.contains("declares the checker `valid` (line 3)"),
+        "{err}"
+    );
+
+    let (code, _, err) = cli(test::run, &[dir.join("empty.cp").to_str().unwrap()]);
+    assert_eq!(code, 1);
+    assert!(err.contains("can't read"), "{err}");
+    let (code, _, err) = cli(test::run, &[]);
+    assert_eq!(code, 2);
+    assert!(
+        err.contains("`test` needs a problem: `cpl test d`"),
+        "{err}"
+    );
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+fn spec(src: &str) -> InputSpec {
+    InputSpec::from_source(src).unwrap()
+}
+
+#[test]
+fn worst_cases_have_every_size_at_its_maximum() {
+    let spec = spec("let n: 1..=6 = read()\nlet a: [0..n]2..=9 = read()\n");
+    let render = |shape| worst_case(&spec, shape, 1).map(|case| case.render());
+    assert_eq!(
+        render(WorstShape::AllMin).as_deref(),
+        Some("6\n2 2 2 2 2 2\n")
+    );
+    assert_eq!(
+        render(WorstShape::AllMax).as_deref(),
+        Some("6\n9 9 9 9 9 9\n")
+    );
+    assert_eq!(
+        render(WorstShape::Ascending).as_deref(),
+        Some("6\n2 3 4 5 6 7\n")
+    );
+    assert_eq!(
+        render(WorstShape::Descending).as_deref(),
+        Some("6\n9 8 7 6 5 4\n")
+    );
+    assert_eq!(
+        render(WorstShape::Alternating).as_deref(),
+        Some("6\n2 9 2 9 2 9\n")
+    );
+    let random = render(WorstShape::Random).unwrap();
+    assert!(
+        random.starts_with("6\n") && random.split_whitespace().count() == 7,
+        "{random}"
+    );
+    assert_eq!(render(WorstShape::Random), Some(random));
+    // No edge list, so no path or star.
+    assert_eq!(
+        (render(WorstShape::Path), render(WorstShape::Star)),
+        (None, None)
+    );
+}
+
+#[test]
+fn edge_lists_are_shaped_as_a_path_and_a_star() {
+    let spec =
+        spec("let n: 2..=5 = read()\ndomain V = 1..=n\nlet edges: [0..n - 1](V, V) = read()\n");
+    let render = |shape| worst_case(&spec, shape, 1).map(|case| case.render());
+    assert_eq!(
+        render(WorstShape::Path).as_deref(),
+        Some("5\n1 2\n2 3\n3 4\n4 5\n")
+    );
+    assert_eq!(
+        render(WorstShape::Star).as_deref(),
+        Some("5\n1 2\n1 3\n1 4\n1 5\n")
+    );
+    // An array too long to make is skipped, not attempted.
+    let huge =
+        InputSpec::from_source("let n: 1..=1e12 = read()\nlet a: [0..n]0..=1 = read()\n").unwrap();
+    assert_eq!(worst_case(&huge, WorstShape::AllMin, 1), None);
+}
+
+#[test]
+fn bench_compares_time_and_memory_with_the_limits() {
+    let spec = spec("let n: 1..=50 = read()\nlet a: [0..n]0..=9 = read()\n");
+    let limits = Limits {
+        time: Duration::from_millis(400),
+        memory_kb: 1024 * 1024,
+    };
+    let fine = bench(&spec, &sh(MAX), limits, 1).unwrap();
+    assert_eq!(fine.len(), 6);
+    assert!(
+        fine.iter()
+            .all(|run| run.status == "ok" && run.numbers == 51),
+        "{fine:?}"
+    );
+    let report = bench::render(&fine, limits);
+    assert!(
+        report.contains("  all smallest         51 numbers  ok "),
+        "{report}"
+    );
+    assert!(
+        report.contains("% of the 400 ms limit\n")
+            && report.ends_with("  within limits on every shape\n"),
+        "{report}"
+    );
+
+    let short = Limits {
+        time: Duration::from_millis(50),
+        ..limits
+    };
+    let slow = bench(&spec, &sh("sleep 5"), short, 1).unwrap();
+    assert!(slow
+        .iter()
+        .all(|run| run.status == "TLE" && run.elapsed < Duration::from_secs(3)));
+    assert!(bench::render(&slow, short).ends_with("  6 shapes are over the limits\n"));
+    let crashing = bench(&spec, &sh("cat > /dev/null; exit 3"), limits, 1).unwrap();
+    assert!(crashing.iter().all(|run| run.status == "RE"));
+    if cfg!(target_os = "linux") {
+        let tight = Limits {
+            memory_kb: 1,
+            ..limits
+        };
+        let hungry = bench(&spec, &sh("cat > /dev/null; sleep 0.05"), tight, 1).unwrap();
+        assert!(hungry.iter().all(|run| run.status == "MLE"), "{hungry:?}");
+    }
+}
+
+#[test]
+fn the_bench_command_prints_a_report_or_json() {
+    let dir = scratch("bench-cli");
+    let source = dir.join("d.cp");
+    std::fs::write(
+        &source,
+        "// limits: 5000 ms, 512 MB\nlet n: 1..=40 = read()\nlet a: [0..n]0..=9 = read()\n",
+    )
+    .unwrap();
+    let path = source.to_str().unwrap();
+    let solution = script(&dir, "max", MAX);
+    let (code, out, err) = cli(bench::run, &[path, "--fast", &solution]);
+    assert_eq!((code, err.as_str()), (0, ""), "{out}");
+    assert!(
+        out.contains("of the 5000 ms limit") && out.contains(" MB of 512 MB\n"),
+        "{out}"
+    );
+    let (code, out, _) = cli(
+        bench::run,
+        &[
+            path,
+            "--fast",
+            &solution,
+            "--format",
+            "json",
+            "--memory-limit",
+            "64",
+        ],
+    );
+    assert_eq!(code, 0);
+    assert!(out.starts_with("{\"status\":\"ok\",\"time_limit_ms\":5000,\"memory_limit_kb\":65536,\"runs\":[{\"shape\":\"random\",\"numbers\":41,\"status\":\"ok\",\"ms\":"), "{out}");
+    let (code, _, _) = cli(
+        bench::run,
+        &[
+            path,
+            "--fast",
+            &script(&dir, "slow", "sleep 5"),
+            "--time-limit",
+            "50",
+        ],
+    );
+    assert_eq!(code, 1);
+
+    std::fs::write(&source, "print(1)\n").unwrap();
+    let (code, _, err) = cli(bench::run, &[path, "--fast", &solution]);
+    assert_eq!(code, 1);
+    assert!(
+        err.contains("has no typed `read()` to make inputs from"),
+        "{err}"
+    );
+    std::fs::write(&source, "let s: Str = read()\n").unwrap();
+    let (_, _, err) = cli(bench::run, &[path, "--fast", &solution]);
+    assert!(err.contains("d.cp:1: can't generate a `Str` yet"), "{err}");
+    let (code, _, err) = cli(bench::run, &[path, "--format", "xml"]);
+    assert_eq!(code, 2);
+    assert!(
+        err.contains("`--format` is text or json, not `xml`"),
+        "{err}"
+    );
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn a_stamp_changes_when_a_file_changes_appears_or_disappears() {
+    let dir = scratch("stamp");
+    let source = problem(&dir);
+    let before = Stamp::of(&source, &[]);
+    assert_eq!(before, Stamp::of(&source, &[]));
+    std::fs::write(dir.join("d.tests/3.in"), "1\n1\n").unwrap();
+    let added = Stamp::of(&source, &[]);
+    assert_ne!(before, added);
+    std::fs::remove_file(dir.join("d.tests/3.in")).unwrap();
+    assert_eq!(before, Stamp::of(&source, &[]));
+    std::fs::write(dir.join("d.cpp"), "int main() {}\n").unwrap();
+    assert_ne!(before, Stamp::of(&source, &[]));
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn a_watch_round_checks_then_tests_and_recovers_after_a_fix() {
+    let dir = scratch("watch");
+    let source = problem(&dir);
+    let solution = script(&dir, "max", MAX);
+    let args = ["--fast".to_string(), solution.clone()];
+    let mut watch = Watch::new(source.clone());
+    let round = |watch: &mut Watch, args: &[String]| {
+        let mut out = Vec::new();
+        let passed = watch.round(args, &mut out);
+        (passed, String::from_utf8(out).unwrap())
+    };
+
+    let (passed, out) = round(&mut watch, &args);
+    assert!(!passed);
+    assert!(
+        out.starts_with("  check: no errors\n") && out.ends_with("  2/3 passed\n"),
+        "{out}"
+    );
+
+    // Fix the wrong expected output: the same watch passes.
+    std::fs::write(dir.join("d.tests/2.out"), "4\n").unwrap();
+    let (passed, out) = round(&mut watch, &args);
+    assert!(passed && out.ends_with("  3/3 passed\n"), "{out}");
+
+    // An error in the source stops the round before the tests.
+    std::fs::write(&source, "let n: 1..=5 = read()\nprint(m)\n").unwrap();
+    let (passed, out) = round(&mut watch, &args);
+    assert!(!passed);
+    assert!(
+        out.ends_with("  check: 1 error to fix\n") && !out.contains("passed"),
+        "{out}"
+    );
+
+    // No built solution is reported, not failed.
+    std::fs::write(&source, "let n: 1..=5 = read()\nprint(n)\n").unwrap();
+    let (passed, out) = round(&mut watch, &[]);
+    assert!(passed || std::env::var_os("CPL_PROTO").is_some(), "{out}");
+    assert!(
+        out.contains("  test: skipped: ") || std::env::var_os("CPL_PROTO").is_some(),
+        "{out}"
+    );
+
+    let path = source.to_str().unwrap();
+    let (code, out, _) = cli(watch::run, &[path, "--once", "--fast", &solution]);
+    assert_eq!(code, 0, "{out}");
+    let (code, _, err) = cli(watch::run, &[dir.join("nope").to_str().unwrap(), "--once"]);
+    assert_eq!(code, 1);
+    assert!(err.contains("there is no file"), "{err}");
+    std::fs::remove_dir_all(dir).unwrap();
+}
