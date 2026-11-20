@@ -19,7 +19,7 @@ A program is a .cpp file (built with g++), a .py file, or an executable.
 
 options:
   --brute PROG       the slow, obviously right solution to compare with
-  --fast PROG        the built solution (default: <file>.cpp next to the source)
+  --fast PROG        run this instead of building the file
   --gen PROG         make inputs with `PROG <seed> <size>` instead of from types
   --checker PROG     judge with `PROG <input> <output> <answer>`; exit 0 accepts
   --interactor PROG  judge by talking to `PROG <input>`; exit 0 accepts
@@ -116,18 +116,10 @@ pub fn select_judge(
     }
 }
 
-/// The program to run for `file`: `fast` when given, else the `.cpp`
-/// built next to it, else the file itself.
+/// The program to run for `file`: `fast` when given, else the file
+/// itself, built.
 pub fn solution(file: &Path, fast: Option<&Path>) -> Result<Program, String> {
-    let path = fast.map(Path::to_path_buf).unwrap_or_else(|| {
-        let built = file.with_extension("cpp");
-        if built.is_file() {
-            built
-        } else {
-            file.to_path_buf()
-        }
-    });
-    Program::resolve(&path).map_err(|e| e.to_string())
+    Program::resolve(fast.unwrap_or(file)).map_err(|e| e.to_string())
 }
 
 /// `text` as a JSON string, quotes included.

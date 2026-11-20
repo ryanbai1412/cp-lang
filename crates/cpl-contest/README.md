@@ -132,18 +132,18 @@ d.cp: 1 error
 
 A round reports errors, then lints, then runs the cases; errors stop the
 round before the tests. It runs again when the source, anything in
-`d.tests/`, or the built solution changes. The checker's database lives
+`d.tests/`, or the `--fast` program changes. The checker's database lives
 across rounds, so a save only re-checks what changed. `--once` runs one
 round and exits with its result, for scripts.
 
 ## Which program runs
 
-The commands run a built solution: `--fast PROG`, else `d.cpp` next to
-`d.cp`. A program is a `.cpp` file (built with `g++ -std=c++17 -O2` and
-cached), a `.py` file, or an executable. Building `d.cp` itself needs the
-compiler's C++ backend, which is not written yet; with `CPL_PROTO` set to
-the prototype's `cp.py`, `.cp` files are built through it. `cpl watch`
-says the tests were skipped when there is nothing to run.
+The commands build and run the problem itself: `d.cp` goes through the
+compiler's C++ back end, the one behind `cpl build`, and the C++ is
+compiled with `g++ -std=c++17 -O2` and cached. `--fast PROG` runs
+something else in its place: a `.cpp` file, a `.py` file, or an
+executable. `cpl watch` says the tests were skipped when the solution
+cannot be run.
 
 ## Layout
 

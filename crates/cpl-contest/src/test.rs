@@ -26,7 +26,7 @@ Runs the solution on every case in <problem>.tests/. A case is N.in with
 an optional N.out; without one, the output is shown instead of judged.
 
 options:
-  --fast PROG        the built solution (default: <problem>.cpp)
+  --fast PROG        run this instead of building the problem
   --checker PROG     judge with `PROG <input> <output> <answer>`; exit 0 accepts
   --interactor PROG  judge by talking to `PROG <input>`; exit 0 accepts
   --time-limit MS    per case (default: the problem's limit)

@@ -84,14 +84,14 @@ stops and asks for it built, instead of calling right answers wrong.
 
 ## Programs
 
-A program is a `.cpp` file (built once with `g++ -std=c++17 -O2` and
-cached by content under `CPL_CACHE`, default the system temp directory),
-a `.py` file, or an executable. The solution defaults to `d.cpp` next to
-`d.cp`.
+A program is a `.cp` file (built through the compiler's C++ back end, the
+one behind `cpl build`), a `.cpp` file, a `.py` file, or an executable.
+C++ is compiled once with `g++ -std=c++17 -O2` and cached by content
+under `CPL_CACHE`, default the system temp directory.
 
-Building `d.cp` itself needs the compiler's C++ backend, which is not
-written yet. With `CPL_PROTO` set to the prototype's `cp.py`, `.cp` files
-are built through it.
+The solution is the file itself; `--fast PROG` runs something else in its
+place. The brute, generator, checker and interactor can each be any kind
+of program, so a brute can be a second `.cp` file.
 
 ## For editors
 

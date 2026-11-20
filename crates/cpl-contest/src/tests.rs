@@ -599,8 +599,11 @@ fn a_stamp_changes_when_a_file_changes_appears_or_disappears() {
     assert_ne!(before, added);
     std::fs::remove_file(dir.join("d.tests/3.in")).unwrap();
     assert_eq!(before, Stamp::of(&source, &[]));
-    std::fs::write(dir.join("d.cpp"), "int main() {}\n").unwrap();
-    assert_ne!(before, Stamp::of(&source, &[]));
+    // A `--fast` program is watched too.
+    let fast = dir.join("d.cpp");
+    let absent = Stamp::of(&source, std::slice::from_ref(&fast));
+    std::fs::write(&fast, "int main() {}\n").unwrap();
+    assert_ne!(absent, Stamp::of(&source, std::slice::from_ref(&fast)));
     std::fs::remove_dir_all(dir).unwrap();
 }
 
@@ -638,12 +641,12 @@ fn a_watch_round_checks_then_tests_and_recovers_after_a_fix() {
         "{out}"
     );
 
-    // No built solution is reported, not failed.
+    // A solution that cannot be run is reported, not failed.
+    let missing = ["--fast".to_string(), dir.join("nope").display().to_string()];
     std::fs::write(&source, "let n: 1..=5 = read()\nprint(n)\n").unwrap();
-    let (passed, out) = round(&mut watch, &[]);
-    assert!(passed || std::env::var_os("CPL_PROTO").is_some(), "{out}");
+    let (passed, out) = round(&mut watch, &missing);
     assert!(
-        out.contains("  test: skipped: ") || std::env::var_os("CPL_PROTO").is_some(),
+        passed && out.contains("  test: skipped: there is no file"),
         "{out}"
     );
 

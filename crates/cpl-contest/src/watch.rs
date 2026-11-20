@@ -10,12 +10,12 @@ use std::time::{Duration, SystemTime};
 pub const USAGE: &str = "\
 usage: cpl watch <problem> [options]
 
-On every save of the problem, its tests, or its built solution: reports
+On every save of the problem, its tests, or the `--fast` program: reports
 errors, then lints, then runs the cases in <problem>.tests/.
 
 options:
   --once             run one round and exit, with the round's exit code
-  --fast PROG        the built solution (default: <problem>.cpp)
+  --fast PROG        run this instead of building the problem
   --checker PROG     judge with `PROG <input> <output> <answer>`; exit 0 accepts
   --interactor PROG  judge by talking to `PROG <input>`; exit 0 accepts
   --time-limit MS    per case (default: the problem's limit)
@@ -26,10 +26,10 @@ options:
 pub struct Stamp(Vec<(PathBuf, Option<SystemTime>)>);
 
 impl Stamp {
-    /// Stamps the source, its built solution, and everything in its
+    /// Stamps the source, the `extra` programs, and everything in its
     /// tests folder. A file that appears or disappears changes the stamp.
     pub fn of(source: &Path, extra: &[PathBuf]) -> Stamp {
-        let mut paths = vec![source.to_path_buf(), source.with_extension("cpp")];
+        let mut paths = vec![source.to_path_buf()];
         paths.extend(extra.iter().cloned());
         if let Ok(entries) = std::fs::read_dir(tests_dir(source)) {
             paths.extend(entries.filter_map(|entry| entry.ok().map(|e| e.path())));
@@ -103,7 +103,8 @@ impl Watch {
         let args = Args::parse(args, VALUED, &["--once"])?;
         let ready = match ready(&self.source, &text, &args) {
             Ok(ready) => ready,
-            // No built solution is a state, not a failure of the source.
+            // A solution that can't be run yet is a state, not a failure
+            // of the source.
             Err(message) => {
                 let _ = writeln!(out, "  test: skipped: {message}");
                 return Ok(true);

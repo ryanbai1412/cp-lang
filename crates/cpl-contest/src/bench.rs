@@ -22,7 +22,7 @@ types, in the shapes that break slow or deep solutions, and compares time
 and memory with the problem's limits.
 
 options:
-  --fast PROG        the built solution (default: <problem>.cpp)
+  --fast PROG        run this instead of building the problem
   --time-limit MS    default: the problem's `// limits:` line, or 2000
   --memory-limit MB  default: the problem's `// limits:` line, or 256
   --seed N           the seed of the random shape (default 1)

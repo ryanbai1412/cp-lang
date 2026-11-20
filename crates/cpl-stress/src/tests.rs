@@ -282,11 +282,27 @@ fn programs_resolve_by_extension() {
         Program::resolve(&dir.join("a.py")).unwrap().argv[0],
         "python3"
     );
-    std::fs::write(dir.join("d.cp"), "print(1)\n").unwrap();
-    if std::env::var_os("CPL_PROTO").is_none() {
-        let error = Program::resolve(&dir.join("d.cp")).unwrap_err().to_string();
-        assert!(error.contains("the C++ backend is not written"), "{error}");
-        assert!(error.contains("d.cpp"), "{error}");
+    // A `.cp` file goes through the compiler; its errors are the reason.
+    std::fs::write(dir.join("bad.cp"), "print(m)\n").unwrap();
+    let error = Program::resolve(&dir.join("bad.cp"))
+        .unwrap_err()
+        .to_string();
+    assert!(
+        error.contains("bad.cp does not build:") && error.contains("no `m` in scope"),
+        "{error}"
+    );
+    if std::process::Command::new("g++")
+        .arg("--version")
+        .output()
+        .is_ok()
+    {
+        std::fs::write(dir.join("d.cp"), "let n: 1..=9 = read()\nprint(n + 1)\n").unwrap();
+        let built = Program::resolve(&dir.join("d.cp")).unwrap();
+        let outcome = built.run("4\n", Duration::from_secs(10)).unwrap();
+        assert_eq!(
+            (outcome.stdout.as_str(), outcome.exit),
+            ("5\n", Exit::Code(0))
+        );
     }
     std::fs::remove_dir_all(dir).unwrap();
 }
@@ -615,14 +631,6 @@ mod cli {
         let (code, _, err) = stress(&[path, "--fast", &good]);
         assert_eq!(code, 1);
         assert!(err.contains("there is nothing to compare"), "{err}");
-        let (code, _, err) = stress(&[path, "--brute", &good]);
-        assert_eq!(code, 1);
-        assert!(
-            err.contains("the C++ backend is not written")
-                || std::env::var_os("CPL_PROTO").is_some(),
-            "{err}"
-        );
-
         std::fs::write(&file, "let s: Str = read()\n").unwrap();
         let (code, _, err) = stress(&[path, "--fast", &good, "--brute", &good]);
         assert_eq!(code, 1);
