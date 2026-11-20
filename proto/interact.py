@@ -43,12 +43,17 @@ def main():
     subprocess.run(["g++", "-std=c++17", "-O2", "-o", base + "_ref", orig], check=True)
     spec = importlib.util.spec_from_file_location("judge", judge_py)
     mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+    rejected = 0
     for seed in range(1, iters + 1):
-        inp = subprocess.run([base + "_gen", str(seed), size], capture_output=True, text=True).stdout
+        gen = subprocess.run([base + "_gen", str(seed), size], capture_output=True, text=True)
+        if gen.returncode == 4:   # the generated input broke a `where` precondition
+            rejected += 1; continue
+        inp = gen.stdout
         for who, exe in (("ours", base + "_bin"), ("ref", base + "_ref")):
             if not talk(exe, mod.Judge(inp, random.Random(seed))):
                 sys.exit(f"WRONG seed={seed} ({who})\ninput:\n{inp}")
-    print(f"interact OK: {iters} conversations accepted for both the port and the original")
+    print(f"interact OK: {iters - rejected} conversations accepted for both the port and the original"
+          + (f" ({rejected} rejected by where)" if rejected else ""))
 
 if __name__ == "__main__":
     main()

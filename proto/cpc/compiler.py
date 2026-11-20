@@ -715,7 +715,8 @@ class Compiler(LendMixin):
             return c, t
         # a scalar result is returned by value (`min(_s1, x)` would otherwise be a reference to the temporary);
         # a place being written through, or a view, keeps its exact type
-        place = getattr(e, "mut", False) or (self.lvalue is not None and self.lvalue[0] is e)
+        lvalue = getattr(self, "lvalue", None)   # unset until the first assignment is compiled
+        place = getattr(e, "mut", False) or (lvalue is not None and lvalue[0] is e)
         ret = "auto" if isinstance(t, SCALARS) and not place else "decltype(auto)"
         return f"([&]() -> {ret} {{ {' '.join(pre)} return {c}; }}())", t
 
@@ -3121,7 +3122,14 @@ class Compiler(LendMixin):
         w = self.tmpname("w")
         lo, span = (letters.lo_cpp, f"{letters.len_cpp} - 1") if letters else ("'a'", "25")
         self.emit(f"string {w};")
-        self.emit(f"if (CP_GEN) {{ int _n = gen_int(1, 1000000); for (int _i = 0; _i < _n; ++_i) {w} += (char)({lo} + gen_int(0, {span})); "
+        # `read(alphabet: "01")`: the characters a generated word of Chars is drawn from (default a-z)
+        alpha = next((a.value for a in getattr(s.value, "args", []) if a.kind == "kwarg" and a.name == "alphabet"), None)
+        if alpha is not None and (alpha.kind != "str" or not alpha.value or letters):
+            self.error(s, "`alphabet:` takes a non-empty string literal, on a word of Chars")
+        table, pick = "", f"(char)({lo} + gen_int(0, {span}))"
+        if alpha is not None:
+            table, pick = f"static const char _al[] = {json.dumps(alpha.value)}; ", f"_al[gen_int(0, {len(alpha.value) - 1})]"
+        self.emit(f"if (CP_GEN) {{ {table}int _n = gen_int(1, 1000000); for (int _i = 0; _i < _n; ++_i) {w} += {pick}; "
                   f"out_str({w}); out_char('\\n'); }} else {w} = rd_word();")
         info, _, _ = self.new_domain(d.name, "0", "", (0, 0), (0, None))
         info.lo_src, info.hi_src = "0", f"(ll){w}.size()"
@@ -3137,6 +3145,8 @@ class Compiler(LendMixin):
         else:
             self.emit(f"{cpp} = {self.cpp_type(ty)}({w}.begin(), {w}.end());")
         self.declare(name, ty, cpp, s.mut, s)
+        if getattr(s, "where", None) is not None:
+            self.emit_where(s.where, s)
         if self.out is self.init_lines:
             self.last_read = len(self.init_lines)
         self.read_pos = (id(self.out), len(self.out))
@@ -3918,6 +3928,17 @@ class Compiler(LendMixin):
             if tt.lo is not None:
                 self.int_result(s, *iv_mul(tt, vt))
             self.track(sym, tgt, None, "*=", s)
+        elif bop in ("/", "%"):
+            # same Euclidean rule as the binary operators: native only when nothing can be negative
+            if vt.lo is not None and vt.hi is not None and vt.lo <= 0 <= vt.hi:
+                self.error(s, f"`{unparse(s.value)}` may be 0 in `{op}`")
+            if not (tt.lo is not None and tt.lo >= 0 and vt.lo is not None and vt.lo > 0):
+                fn = "cp_ediv" if bop == "/" else "cp_emod"
+                if self.has_effects(tgt):   # evaluate the target once
+                    self.emit(f"{{ auto& _t = {tc}; _t = {fn}(_t, {vc}, {s.line}); }}")
+                else:
+                    self.emit(f"{tc} = {fn}({tc}, {vc}, {s.line});")
+                return
         unproven = bop in ("+", "-", "*") and None in (tt.lo, tt.hi, vt.lo, vt.hi) and not self.has_effects(tgt)
         if unproven:
             self.emit(f"{tc} = cp_{ {'+': 'add', '-': 'sub', '*': 'mul'}[bop] }({tc}, {vc}, {s.line});")
