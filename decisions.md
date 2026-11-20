@@ -534,3 +534,9 @@ scouts expected and is locked by a test under `proto/tests/`.
 - **15.8 `MinHeap<T>()` takes no arguments.**
   `by:` was accepted and ignored; it is an error until a heap with an
   order is designed.
+- **15.9 An input that is not what the type says stops the run.**
+  A word where a number is expected stops a local run; it was read as 0.
+  An enum with no fields and no `@tags` has no written form, so reading
+  one is a compile error that gives the `@tags(...)` line to add; it was
+  read as a number, which made every cell the
+  first variant.
