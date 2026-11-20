@@ -483,6 +483,52 @@ inline uint64_t rng_next() {
     z = (z ^ (z >> 27)) * 0x94d049bb133111ebULL;
     return z ^ (z >> 31);
 }
+#ifdef CPL_GEN
+// A `@gen` program built by `cpl stress`: each draw is a choice that is
+// written down, and read back while the failing case is shrunk.
+struct Choices {
+    std::vector<uint64_t> list;
+    size_t at = 0;
+    bool replay = false;
+    FILE* log = nullptr;
+    uint64_t salt = 0;
+    Choices() {
+        if (const char* seed = std::getenv(\"CPL_SEED\")) {
+            salt = std::strtoull(seed, nullptr, 10) * 0x9e3779b97f4a7c15ULL;
+        }
+        if (const char* path = std::getenv(\"CPL_CHOICES\")) {
+            replay = true;
+            unsigned long long x;
+            if (FILE* f = std::fopen(path, \"r\")) {
+                while (std::fscanf(f, \"%llu\", &x) == 1) list.push_back(x);
+                std::fclose(f);
+            }
+        }
+        if (const char* path = std::getenv(\"CPL_CHOICES_OUT\")) log = std::fopen(path, \"w\");
+    }
+    ~Choices() { if (log) std::fclose(log); }
+};
+inline uint64_t rng_below(unsigned __int128 span, int site) {
+    static Choices c;
+    uint64_t pick;
+    if (c.replay) {
+        pick = c.at < c.list.size() ? c.list[c.at++] : 0;
+        if (pick >= span) pick = (uint64_t)(span - 1);
+    } else {
+        pick = (uint64_t)((rng_next() ^ c.salt) % span);
+    }
+    if (c.log) std::fprintf(c.log, \"%d %llu\\n\", site, (unsigned long long)pick);
+    return pick;
+}
+// The line that draws tells the choices of one list from another's.
+inline ll rand_range(ll lo, ll hi, int site = __builtin_LINE()) {
+    unsigned __int128 span = (unsigned __int128)((__int128)hi - (__int128)lo + 1);
+    return (ll)((__int128)lo + (__int128)rng_below(span, site));
+}
+template <class T> void shuffle(std::vector<T>& v, int site = __builtin_LINE()) {
+    for (size_t i = v.size(); i-- > 1;) std::swap(v[i], v[(size_t)rng_below(i + 1, site)]);
+}
+#else
 inline ll rand_range(ll lo, ll hi) {
     unsigned __int128 span = (unsigned __int128)((__int128)hi - (__int128)lo + 1);
     return (ll)((__int128)lo + (__int128)(rng_next() % span));
@@ -490,6 +536,7 @@ inline ll rand_range(ll lo, ll hi) {
 template <class T> void shuffle(std::vector<T>& v) {
     for (size_t i = v.size(); i-- > 1;) std::swap(v[i], v[(size_t)(rng_next() % (i + 1))]);
 }
+#endif
 ",
     },
     Piece {

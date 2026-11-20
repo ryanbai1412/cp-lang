@@ -59,19 +59,23 @@ pub fn versus(path: &str, source: &str, brute_fn: &str, fast: &Recording, slow: 
 
 /// Runs the solution and the `@brute(main)` of the file at `path` on
 /// `input` in the debug interpreter: what `cpl stress` shows of a
-/// failing case.
+/// failing case. A file judged by its `@checker` alone has no brute to
+/// line up with, and its trace is the solution's own run.
 pub fn against_brute(path: &Path, input: &str) -> Result<cpl_stress::cli::Traced, String> {
     let name = path.display().to_string();
     let source = std::fs::read_to_string(path).map_err(|e| format!("can't read {name}: {e}"))?;
     let mut db = cpl_check::Database::new();
     db.set_file(&name, source.as_str());
     let analysis = db.analyze(&name).ok_or("the file can't be checked")?;
-    let (brute_fn, _) = cpl_ir::brute(&analysis).ok_or("the file has no `@brute(main)` fn")?;
+    let brute_fn = cpl_ir::brute(&analysis).map(|(name, _)| name);
     let first = |diagnostics: Vec<cpl_diag::Diagnostic>| {
         diagnostics.first().map_or("the file does not build".to_string(), |d| d.message.clone())
     };
     let fast = cpl_ir::lower(&analysis).map_err(first)?;
-    let slow = cpl_ir::lower_brute(&analysis, &brute_fn).map_err(first)?;
+    let slow = match &brute_fn {
+        Some(brute_fn) => Some(cpl_ir::lower_brute(&analysis, brute_fn).map_err(first)?),
+        None => None,
+    };
     let record = |program: &cpl_ir::Program| {
         let mut sink = Vec::new();
         let io = cpl_interp::Io::fixed(input.as_bytes());
@@ -83,7 +87,14 @@ pub fn against_brute(path: &Path, input: &str) -> Result<cpl_stress::cli::Traced
     if fast.interactive {
         return Err("an interactive solution is traced with `cpl run --trace`".to_string());
     }
-    let (fast, slow) = (record(&fast), record(&slow));
+    let fast = record(&fast);
+    let (Some(brute_fn), Some(slow)) = (brute_fn, slow) else {
+        return Ok(cpl_stress::cli::Traced {
+            stages: Vec::new(),
+            html: html(&single(&name, &source, &fast)),
+        });
+    };
+    let slow = record(&slow);
     let stages = stages(&fast, &slow)
         .into_iter()
         .map(|stage| cpl_stress::cli::Stage {

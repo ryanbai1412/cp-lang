@@ -45,6 +45,8 @@ pub struct Program {
     /// What the user called it: the path they gave.
     pub name: String,
     pub argv: Vec<String>,
+    /// Variables set for it, on top of the ones `cpl` runs with.
+    pub env: Vec<(String, String)>,
 }
 
 /// Why a path could not be made into a program.
@@ -224,9 +226,18 @@ fn compile_cpp(source: &Path, ours: bool) -> Result<String, BuildError> {
     Ok(binary.display().to_string())
 }
 
+/// Which program of a `.cp` file to build.
+#[derive(Clone, Copy)]
+enum Part {
+    Solution,
+    Brute,
+    /// The `@gen` fn, called with this size.
+    Gen(i64),
+}
+
 /// Emits the C++ for a `.cp` file into the cache, through the same front
 /// end and back end as `cpl build`. Returns the path of the C++ file.
-fn emit_cpp(source: &Path, brute: bool) -> Result<PathBuf, BuildError> {
+fn emit_cpp(source: &Path, part: Part) -> Result<PathBuf, BuildError> {
     let name = source.display().to_string();
     let text = std::fs::read_to_string(source)
         .map_err(|e| BuildError(format!("can't read {name}: {e}")))?;
@@ -243,14 +254,25 @@ fn emit_cpp(source: &Path, brute: bool) -> Result<PathBuf, BuildError> {
     if analysis.diagnostics.iter().any(is_error) {
         return Err(errors(&analysis.diagnostics));
     }
-    let lowered = match cpl_ir::brute(&analysis) {
-        Some((brute_fn, _)) if brute => cpl_ir::lower_brute(&analysis, &brute_fn),
-        None if brute => return Err(BuildError(format!("{name} declares no `@brute(main)` fn"))),
-        _ => cpl_ir::lower(&analysis),
+    let missing = |kind: &str| BuildError(format!("{name} declares no `{kind}` fn"));
+    let lowered = match part {
+        Part::Solution => cpl_ir::lower(&analysis),
+        Part::Brute => {
+            let (brute_fn, _) = cpl_ir::brute(&analysis).ok_or_else(|| missing("@brute(main)"))?;
+            cpl_ir::lower_brute(&analysis, &brute_fn)
+        }
+        Part::Gen(size) => {
+            let (gen_fn, _) = cpl_ir::generator(&analysis).ok_or_else(|| missing("@gen"))?;
+            cpl_ir::lower_gen(&analysis, &gen_fn, size)
+        }
     };
     let program = lowered.map_err(|diagnostics| errors(&diagnostics))?;
     let file = source.file_name().unwrap_or_default().to_string_lossy();
-    let cpp = cpl_codegen::emit(&program, &file, None);
+    let mut cpp = cpl_codegen::emit(&program, &file, None);
+    if matches!(part, Part::Gen(_)) {
+        // Its `rand` and `shuffle` draw from the choices `cpl stress` keeps.
+        cpp.insert_str(0, "#define CPL_GEN 1\n");
+    }
     let dir = cache_dir();
     std::fs::create_dir_all(&dir)
         .map_err(|e| BuildError(format!("can't create {}: {e}", dir.display())))?;
@@ -267,6 +289,7 @@ impl Program {
         Program {
             name: name.to_string(),
             argv: argv.iter().map(|arg| arg.to_string()).collect(),
+            env: Vec::new(),
         }
     }
 
@@ -280,7 +303,7 @@ impl Program {
         let argv = match extension {
             "cpp" | "cc" | "cxx" => vec![compile_cpp(path, false)?],
             "py" => vec!["python3".to_string(), name.clone()],
-            "cp" => vec![compile_cpp(&emit_cpp(path, false)?, true)?],
+            "cp" => vec![compile_cpp(&emit_cpp(path, Part::Solution)?, true)?],
             // Relative paths need `./` to be found.
             _ => vec![path
                 .canonicalize()
@@ -288,7 +311,7 @@ impl Program {
                 .display()
                 .to_string()],
         };
-        Ok(Program { name, argv })
+        Ok(Program { name, argv, env: Vec::new() })
     }
 
     /// The `@brute(main)` fn of the `.cp` file `path`, built like the
@@ -296,7 +319,18 @@ impl Program {
     pub fn resolve_brute(path: &Path, fn_name: &str) -> Result<Program, BuildError> {
         Ok(Program {
             name: format!("{} (`{fn_name}`)", path.display()),
-            argv: vec![compile_cpp(&emit_cpp(path, true)?, true)?],
+            argv: vec![compile_cpp(&emit_cpp(path, Part::Brute)?, true)?],
+            env: Vec::new(),
+        })
+    }
+
+    /// The `@gen` fn of the `.cp` file `path`, built as a program that
+    /// prints one input of at most `size`.
+    pub fn resolve_gen(path: &Path, fn_name: &str, size: i64) -> Result<Program, BuildError> {
+        Ok(Program {
+            name: format!("{} (`{fn_name}`)", path.display()),
+            argv: vec![compile_cpp(&emit_cpp(path, Part::Gen(size))?, true)?],
+            env: Vec::new(),
         })
     }
 
@@ -310,6 +344,7 @@ impl Program {
     pub(crate) fn to_command(&self) -> Command {
         let mut command = Command::new(&self.argv[0]);
         command.args(&self.argv[1..]);
+        command.envs(self.env.iter().map(|(key, value)| (key, value)));
         // Its own process group, so a time limit stops what it started too.
         #[cfg(unix)]
         std::os::unix::process::CommandExt::process_group(&mut command, 0);

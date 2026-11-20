@@ -24,6 +24,9 @@ pub struct TraceConfig {
 
 /// The most steps one run keeps; the viewer reads up to 100,000.
 const MAX_STEPS: usize = 20_000;
+/// The most steps kept of what is above `@!multitest`. The test cases
+/// start from the values it ends with, whether or not it fits.
+const SETUP_STEPS: usize = 2_000;
 /// The most snapshot text one run keeps.
 const MAX_BYTES: usize = 48 << 20;
 /// A variable with more cells than this is shown by its size.
@@ -291,6 +294,11 @@ impl Tracer {
         focus: Option<(usize, Vec<usize>)>,
     ) {
         if !self.recording() {
+            return;
+        }
+        // What is above `@!multitest` is the same on every input: it gets
+        // a share of the trace, and the test cases get the rest.
+        if self.case == Some(0) && (self.rec.steps.len() >= SETUP_STEPS || self.bytes >= MAX_BYTES / 16) {
             return;
         }
         if self.rec.steps.len() >= MAX_STEPS || self.bytes >= MAX_BYTES {

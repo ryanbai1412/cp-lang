@@ -32,6 +32,9 @@ pub fn check(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
         if let Some((name, _)) = brute(analysis) {
             results.push(lower_brute(analysis, &name).map(drop));
         }
+        if let Some((name, _)) = generator(analysis) {
+            results.push(lower_gen(analysis, &name, 1).map(drop));
+        }
         if let Some((name, _)) = checker(analysis) {
             results.push(lower_checker(analysis, &name).map(drop));
         }
@@ -47,7 +50,8 @@ pub fn check(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
 }
 
 pub use lower::{
-    brute, checker, interactor, list_tests, lower, lower_brute, lower_checker, lower_judge,
+    brute, checker, generator, interactor, list_tests, lower, lower_brute, lower_checker, lower_gen,
+    lower_judge,
     lower_test,
 };
 pub use show::{sep_of, Sep};

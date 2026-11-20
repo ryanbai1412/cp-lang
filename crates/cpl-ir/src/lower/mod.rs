@@ -103,6 +103,9 @@ pub fn checker(analysis: &Analysis) -> Option<(String, u32)> {
 enum Aside {
     Brute,
     Checker,
+    /// A `@gen` fn: it makes the input, so none of the header runs, and
+    /// it is called with this size.
+    Gen(i64),
 }
 
 /// Lowers the `@brute(main)` fn `name` as a program: the file's input
@@ -117,6 +120,17 @@ pub fn lower_brute(analysis: &Analysis, name: &str) -> Result<Program, Vec<Diagn
 /// printed.
 pub fn lower_checker(analysis: &Analysis, name: &str) -> Result<Program, Vec<Diagnostic>> {
     lower_aside(analysis, name, Aside::Checker)
+}
+
+/// The `@gen` fn a file declares, and the line it is on.
+pub fn generator(analysis: &Analysis) -> Option<(String, u32)> {
+    decorated(analysis, |d| d.name.text == "gen")
+}
+
+/// Lowers the `@gen` fn `name` as a program that prints one input:
+/// the file's constants and fns, then `name(size)`. Nothing is read.
+pub fn lower_gen(analysis: &Analysis, name: &str, size: i64) -> Result<Program, Vec<Diagnostic>> {
+    lower_aside(analysis, name, Aside::Gen(size))
 }
 
 fn lower_aside(analysis: &Analysis, name: &str, aside: Aside) -> Result<Program, Vec<Diagnostic>> {
@@ -2059,7 +2073,11 @@ impl<'a> Lowerer<'a> {
             matches!(&stmt.kind, ast::StmtKind::Fn(decl) if decl.name.text == name)
                 && Self::reads_input(&self.source(stmt.span))
         });
-        let header = if own_reads {
+        let size = match self.aside {
+            Some(Aside::Gen(size)) => Some(size),
+            _ => None,
+        };
+        let header = if own_reads || size.is_some() {
             0
         } else {
             items
@@ -2076,7 +2094,7 @@ impl<'a> Lowerer<'a> {
                 continue;
             }
             for decorator in &stmt.decorators {
-                if decorator.name.text == "multitest" {
+                if decorator.name.text == "multitest" && !matches!(self.aside, Some(Aside::Gen(_))) {
                     self.divide(decorator, &mut out);
                 }
             }
@@ -2095,18 +2113,33 @@ impl<'a> Lowerer<'a> {
         }
         if let Some(Sym::Fn(fn_id)) = self.mod_syms[0].get(name).copied() {
             self.queue_fn(fn_id);
-            if !self.sigs[fn_id].params.is_empty() {
-                let at = self.sigs[fn_id].decl.name.span;
-                let kind = if self.aside == Some(Aside::Brute) { "@brute(main)" } else { "@checker" };
-                self.error(
-                    codes::WRONG_ARG_COUNT,
-                    at,
-                    format!("a `{kind}` fn takes no parameters: it reads the input the file reads"),
-                );
-            }
+            let at = self.sigs[fn_id].decl.name.span;
+            let params: Vec<Ty> = self.sigs[fn_id].params.iter().map(|p| p.ty.clone()).collect();
+            let args = match (size, params.as_slice()) {
+                (_, []) => Vec::new(),
+                (Some(size), [Ty::Int]) => vec![Arg::Value(Expr {
+                    kind: ExprKind::Int(size),
+                    ty: Ty::Int,
+                    span: Span::default(),
+                })],
+                (Some(_), _) => {
+                    let message = "a `@gen` fn takes nothing, or one `size: Int`: how large a case to print";
+                    self.error(codes::WRONG_ARG_COUNT, at, message.to_string());
+                    Vec::new()
+                }
+                (None, _) => {
+                    let kind = if self.aside == Some(Aside::Brute) { "@brute(main)" } else { "@checker" };
+                    self.error(
+                        codes::WRONG_ARG_COUNT,
+                        at,
+                        format!("a `{kind}` fn takes no parameters: it reads the input the file reads"),
+                    );
+                    Vec::new()
+                }
+            };
             let ret = self.ret_of(fn_id, Span::default());
             out.push(Stmt::Expr(Expr {
-                kind: ExprKind::Call(fn_id, Vec::new()),
+                kind: ExprKind::Call(fn_id, args),
                 ty: ret,
                 span: Span::default(),
             }));

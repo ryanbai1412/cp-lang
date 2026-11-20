@@ -1,6 +1,7 @@
 //! The stress loop: make a case, run the solution and the brute, judge,
 //! and on the first failure shrink it and save it.
 
+use crate::choices::{self, Drawn};
 use crate::gen::{generate, Case, Size};
 use crate::judge::{Judge, Verdict};
 use crate::program::Program;
@@ -17,6 +18,9 @@ pub enum Source {
     Typed(InputSpec),
     /// A generator run as `gen <seed> <size>`; its output is the input.
     Generator(Program),
+    /// The file's own `@gen` fn, built for one size. It shrinks through
+    /// the choices its `rand` and `shuffle` made.
+    InFile(Program),
 }
 
 #[derive(Clone, Debug)]
@@ -91,6 +95,14 @@ struct Runner<'a> {
     limit: Duration,
 }
 
+/// What a case was made from, kept to shrink it.
+enum Made {
+    Typed(Case),
+    Drawn(Drawn),
+    /// An outside generator's output: there is nothing to shrink it by.
+    Opaque,
+}
+
 /// One run: `None` when the solution is right.
 type Wrong = Option<(Verdict, String, String)>;
 
@@ -145,13 +157,13 @@ pub fn stress(
         limit: options.limit,
     };
     let size_arg = options.size.to_string();
-    let make = |seed: u64| -> Result<Option<(Option<Case>, String)>, StressError> {
+    let make = |seed: u64| -> Result<Option<(Made, String)>, StressError> {
         match source {
             Source::Typed(spec) => {
                 Ok(
                     generate(spec, &mut Rng::new(seed), Size::Small(options.size)).map(|case| {
                         let input = case.render();
-                        (Some(case), input)
+                        (Made::Typed(case), input)
                     }),
                 )
             }
@@ -166,7 +178,12 @@ pub fn stress(
                         generator.name, outcome.exit
                     )));
                 }
-                Ok(Some((None, outcome.stdout)))
+                Ok(Some((Made::Opaque, outcome.stdout)))
+            }
+            Source::InFile(generator) => {
+                let drawn = choices::draw(generator, seed)?;
+                let input = drawn.input.clone();
+                Ok(Some((Made::Drawn(drawn), input)))
             }
         }
     };
@@ -213,9 +230,10 @@ pub fn stress(
                 verdict,
                 shrunk: None,
             };
-            if let (Source::Typed(spec), Some(case)) = (source, case) {
-                // Same bug only: a candidate must fail the same way.
-                let kind = std::mem::discriminant(&failure.verdict);
+            // Same bug only: a candidate must fail the same way.
+            let kind = std::mem::discriminant(&failure.verdict);
+            if let (Source::Typed(spec), Made::Typed(case)) = (source, &case) {
+                let case = case.clone();
                 let mut error = None;
                 let smallest =
                     shrink(
@@ -241,6 +259,21 @@ pub fn stress(
                 }
                 failure.shrunk = Some((case.weight().0, smallest.weight().0));
                 failure.described = Some(smallest.describe(spec));
+            }
+            if let (Source::InFile(generator), Made::Drawn(drawn)) = (source, &case) {
+                let smallest = choices::shrink(generator, drawn, options.shrink_budget, &mut |input| {
+                    matches!(runner.run(input), Ok(Some((verdict, _, _))) if std::mem::discriminant(&verdict) == kind)
+                });
+                if smallest != *drawn {
+                    if let Some((verdict, expected, got)) = runner.run(&smallest.input)? {
+                        failure.verdict = verdict;
+                        failure.expected = expected;
+                        failure.got = got;
+                        failure.input = smallest.input.clone();
+                    }
+                }
+                let numbers = |input: &str| input.split_whitespace().count();
+                failure.shrunk = Some((numbers(&drawn.input), numbers(&smallest.input)));
             }
             return Ok(Report {
                 cases: index + 1,

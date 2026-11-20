@@ -672,11 +672,18 @@ impl<'a> Lowerer<'a> {
             }
             _ => {
                 if self.tail_names.contains(name) {
-                    let message = format!(
-                        "`{name}` is the solution's own work: a brute or a checker shares only the input"
-                    );
+                    let gen = matches!(self.aside, Some(Aside::Gen(_)));
+                    let message = if gen {
+                        format!("`{name}` is read from the input, which a `@gen` fn is there to make")
+                    } else {
+                        format!("`{name}` is the solution's own work: a brute or a checker shares only the input")
+                    };
                     self.error(codes::UNRESOLVED_NAME, span, message);
-                    self.help("it sees every top-level line down to the last `read()`; compute the rest inside the fn");
+                    self.help(if gen {
+                        "a `@gen` fn shares only `const`s and fns with the file; pick the value with `rand(lo, hi)` and print it"
+                    } else {
+                        "it sees every top-level line down to the last `read()`; compute the rest inside the fn"
+                    });
                 } else if self.judge {
                     let message = format!("an `@interactor` can't see the solution's `{name}`");
                     self.error(codes::UNRESOLVED_NAME, span, message);

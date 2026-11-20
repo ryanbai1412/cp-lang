@@ -22,7 +22,8 @@ file (built with g++), a .py file, or an executable.
 options:
   --brute PROG       the slow, obviously right solution to compare with
   --fast PROG        run this instead of building the file
-  --gen PROG         make inputs with `PROG <seed> <size>` instead of from types
+  --gen PROG         make inputs with `PROG <seed> <size>` instead of from the
+                     file's `@gen fn` or its types; such a case is not shrunk
   --checker PROG     judge with `PROG <input> <output> <answer>`; exit 0 accepts
   --interactor PROG  judge by talking to `PROG <input>`; exit 0 accepts
   --cases N          how many cases to run (default 1000)
@@ -33,6 +34,7 @@ options:
   --trace            on a failure, run the solution and the brute on the
                      shrunk case in the debug interpreter and save the two
                      traces side by side as <file>.tests/stress-<seed>.trace.html
+                     (the solution's alone, when a `@checker` is the judge)
   --format json      print the result as JSON, for an editor
 ";
 
@@ -144,6 +146,7 @@ pub fn select_judge(
             Ok(Judge::Interactor(Program {
                 name: format!("{name} (`{}`)", judge.name),
                 argv: vec![cpl.display().to_string(), "judge".to_string(), name.to_string()],
+                env: Vec::new(),
             }))
         }
         // The checker in the file is run by `cpl judge` too: it is
@@ -154,6 +157,7 @@ pub fn select_judge(
             Ok(Judge::Checker(Program {
                 name: format!("{name} (`{}`)", judge.name),
                 argv: vec![cpl.display().to_string(), "judge".to_string(), name.to_string()],
+                env: Vec::new(),
             }))
         }
         (None, None, None) => Ok(Judge::Tokens),
@@ -306,15 +310,31 @@ pub fn run_with(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write,
             "there is nothing to compare {name} with: write a `@brute(main) fn` in it, pass `--brute <program>`, or give it a `@checker` or an `@interactor` that can judge an output on its own"
         ));
     }
-    let source = match &args.gen {
-        Some(path) => match resolve(path) {
+    // The file's own `@gen` fn, unless `--gen` names another.
+    let own_gen = match (&args.gen, args.file.extension().and_then(|e| e.to_str())) {
+        (None, Some("cp")) => {
+            let mut db = cpl_check::Database::new();
+            db.set_file(&name, src.as_str());
+            db.analyze(&name).and_then(|analysis| cpl_ir::generator(&analysis))
+        }
+        _ => None,
+    };
+    let source = match (&args.gen, &own_gen) {
+        (Some(path), _) => match resolve(path) {
             Ok(program) => Source::Generator(program),
             Err(message) => return fail(message),
         },
-        None => match InputSpec::from_source(&src) {
+        (None, Some((fn_name, _))) => {
+            let size = i64::try_from(args.options.size).unwrap_or(i64::MAX);
+            match Program::resolve_gen(&args.file, fn_name, size) {
+                Ok(program) => Source::InFile(program),
+                Err(e) => return fail(e.to_string()),
+            }
+        }
+        (None, None) => match InputSpec::from_source(&src) {
             Ok(spec) if spec.is_empty() => {
                 return fail(format!(
-                    "{name} has no typed `read()` to make inputs from; write `let n: 1..=100 = read()`, or pass `--gen <program>`"
+                    "{name} has no typed `read()` to make inputs from; write `let n: 1..=100 = read()`, a `@gen fn` that prints an input, or pass `--gen <program>`"
                 ))
             }
             Ok(spec) => Source::Typed(spec),
@@ -356,8 +376,9 @@ pub fn run_with(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write,
         .and_then(|failure| save(&args.file, failure).ok());
     // The failing case again, both sides in the debug interpreter: the
     // `debug(...)`s they share, and with `--trace` the two traces.
-    let traced = match (&report.failure, tracer, &own_brute) {
-        (Some(failure), Some(tracer), Some(_)) if args.fast.is_none() => Some(tracer(&args.file, &failure.input)),
+    let in_file = own_brute.is_some() || (args.brute.is_none() && judge != Judge::Tokens);
+    let traced = match (&report.failure, tracer) {
+        (Some(failure), Some(tracer)) if args.fast.is_none() && in_file => Some(tracer(&args.file, &failure.input)),
         _ => None,
     };
     let (stages, html) = match &traced {
@@ -381,7 +402,7 @@ pub fn run_with(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write,
         (true, Some(_), None) => {
             trace_note = Some(match &traced {
                 Some(Err(why)) => format!("no trace: {why}"),
-                _ => "no trace: `--trace` runs the file against its own `@brute(main)` fn".to_string(),
+                _ => "no trace: `--trace` runs the file itself, against its own `@brute(main)` fn or under its own `@checker`".to_string(),
             });
             None
         }
@@ -427,6 +448,10 @@ pub fn run_with(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write,
         let _ = writeln!(stdout, "  that is: {described}");
     }
     match &failure.verdict {
+        // A checker alone rules on the output: there is no answer to show.
+        crate::Verdict::Wrong(why) if failure.expected.is_empty() => {
+            let _ = writeln!(stdout, "  got:\n{}\n  {why}", indent(&failure.got));
+        }
         crate::Verdict::Wrong(why) => {
             let _ = writeln!(
                 stdout,

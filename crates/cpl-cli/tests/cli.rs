@@ -389,6 +389,55 @@ fn stress_judges_with_the_interactor_in_the_file() {
     assert!(wrong.contains("interactor: assertion failed: x == secret"), "{wrong}");
 }
 
+/// Wrong on a tree with a vertex of degree 3 whose value is above 50.
+const TREE: &str = "\
+let n: 1..=100 = read()
+domain V = 1..=n
+let edges: [n - 1](V, V) = read()
+let a: [V]Int = read()
+
+var deg: [V]Int = 0
+for (u, v) in edges:
+    deg[u] += 1
+    deg[v] += 1
+var bad = false
+for v in V:
+    if deg[v] >= 3 and a[v] > 50: bad = true
+print(if bad: 0 else: sum(a[v] for v in V))
+
+@brute(main)
+fn slow():
+    print(sum(a[v] for v in V))
+
+@gen
+fn make_tree(size: Int):
+    let n = rand(1, size)
+    print(n)
+    for v in 2..=n:
+        print(rand(1, v - 1), v)
+    print([rand(1, 100) for _ in 0..n])
+";
+
+#[test]
+fn stress_makes_inputs_with_the_gen_fn_in_the_file_and_shrinks_them() {
+    let path = scratch("gen-stress", "tree.cp", TREE.as_bytes());
+    let out = cpl(&["stress".as_ref(), path.as_os_str(), "--size".as_ref(), "30".as_ref()], b"");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert_eq!(out.status.code(), Some(1), "{stdout}");
+    // The smallest such tree: a star of four, one value just above 50.
+    assert!(stdout.contains(" numbers to 11:\n    4\n    1 2\n    1 3\n    1 4\n    51 1 1 1\n"), "{stdout}");
+}
+
+#[test]
+fn a_gen_fn_that_uses_the_input_is_an_error() {
+    let source = "let n: 1..=9 = read()\nprint(n)\n\n@gen\nfn make():\n    print(n)\n";
+    let path = scratch("gen-input", "a.cp", source.as_bytes());
+    let out = cpl(&["check".as_ref(), path.as_os_str()], b"");
+    let text = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
+    assert_eq!(out.status.code(), Some(1), "{text}");
+    assert!(text.contains("`n` is read from the input, which a `@gen` fn is there to make"), "{text}");
+}
+
 const LAWS: &str = "\
 fn add(a: Int, b: Int) -> Int = a + b
 fn clamp(x: Int) -> Int:
@@ -429,4 +478,32 @@ fn messages_call_the_float_type_f64() {
     let out = cpl(&["check".as_ref(), path.as_os_str()], b"");
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(stderr.contains("F64") && !stderr.contains("Float"), "{stderr}");
+}
+
+/// A table above `@!multitest` that takes far more steps than a trace
+/// holds, and a `@checker` as the only judge. Wrong from `n = 3` on.
+const TABLE: &str = "\
+var f: [0..3000]Int = 0
+for i in 1..3000: f[i] = f[i - 1] + i
+@!multitest
+let n: 1..=20 = read()
+let a: [n](1..=9) = read()
+print(if n >= 3: 0 else: sum(a))
+
+@checker
+fn check():
+    let got: Int = read_output()
+    assert got == sum(a)
+";
+
+#[test]
+fn stress_traces_the_failing_test_case_of_a_file_judged_by_its_checker() {
+    let path = scratch("checker-trace", "table.cp", TABLE.as_bytes());
+    let out = cpl(&["stress".as_ref(), path.as_os_str(), "--trace".as_ref()], b"");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(stdout.contains("  got:\n    0\n  checker: assertion failed: got == sum(a)"), "{stdout}");
+    assert!(!stdout.contains("expected:"), "{stdout}");
+    let trace = std::fs::read_to_string(path.with_extension("tests").join("stress-1.trace.html")).unwrap();
+    // The steps of the test case are there, past the table's.
+    assert!(trace.contains("\"line\":6"), "the trace stops above `@!multitest`");
 }
