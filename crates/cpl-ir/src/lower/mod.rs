@@ -135,6 +135,7 @@ fn lower_impl(analysis: &Analysis, test_name: Option<&str>) -> Result<Program, V
         structs: lw.structs.iter().map(|s| s.def.clone()).collect(),
         enums: lw.enums,
         domains: lw.domains,
+        subsets: lw.subsets,
         globals: lw.globals,
         fns,
         closures: lw.closures,
@@ -281,6 +282,8 @@ struct Lowerer<'a> {
     enum_insts: HashMap<(GenEnumId, Vec<GenArg>), EnumId>,
 
     domains: Vec<String>,
+    /// `Subset<D>` domains: `(subset, base)`.
+    subsets: Vec<(DomainId, DomainId)>,
     aliases: Vec<(ModId, &'a ast::Type, u32)>,
     gen_aliases: Vec<GenAliasTemplate<'a>>,
 
@@ -313,6 +316,8 @@ struct Lowerer<'a> {
     /// Start of the item being lowered; its spans are relative to it.
     offset: u32,
     next_loop: LoopId,
+    /// The places a `(place ??= init)` filled: module and span.
+    filled: HashSet<(ModId, u32, u32)>,
 }
 
 impl<'a> Lowerer<'a> {
@@ -331,6 +336,7 @@ impl<'a> Lowerer<'a> {
             gen_enums: Vec::new(),
             enum_insts: HashMap::new(),
             domains: Vec::new(),
+            subsets: Vec::new(),
             aliases: Vec::new(),
             gen_aliases: Vec::new(),
             globals: Vec::new(),
@@ -357,6 +363,7 @@ impl<'a> Lowerer<'a> {
             self_struct: None,
             offset: 0,
             next_loop: 0,
+            filled: HashSet::new(),
         }
     }
 
@@ -1106,6 +1113,10 @@ impl<'a> Lowerer<'a> {
                     return Spec::Plain(Ty::Pos(dom_id));
                 }
             }
+            // `xs.D`: the domain a value such as `compress(all)` brought.
+            if let Some(dom_id) = self.domain_of_value(prefix, rest) {
+                return Spec::Plain(Ty::Pos(dom_id));
+            }
         }
 
         let ty = match name.text.as_str() {
@@ -1127,6 +1138,16 @@ impl<'a> Lowerer<'a> {
                 Ty::HashMap(Box::new(key), Box::new(arg(self, 1)))
             }
             "Range" => Ty::Range(Box::new(arg(self, 0))),
+            "Subset" => match arg(self, 0) {
+                Ty::Pos(base) => Ty::Pos(self.subset_domain(base)),
+                Ty::Error => Ty::Error,
+                other => {
+                    let message =
+                        format!("`Subset` takes a domain, and `{}` is not one", self.show(&other));
+                    self.error(codes::TYPE_MISMATCH, name.span, message);
+                    Ty::Error
+                }
+            },
             "Bounds" => match arg(self, 0) {
                 Ty::Pos(d) => Ty::Bound(d),
                 other => other,
@@ -1190,6 +1211,111 @@ impl<'a> Lowerer<'a> {
         Spec::Plain(ty)
     }
 
+    /// The domain of the subsets of `base`, made on first use.
+    fn subset_domain(&mut self, base: DomainId) -> DomainId {
+        if let Some((subset, _)) = self.subsets.iter().find(|(_, b)| *b == base) {
+            return *subset;
+        }
+        let subset = self.domains.len();
+        self.domains.push(format!("Subset<{}>", self.domains[base]));
+        self.subsets.push((subset, base));
+        subset
+    }
+
+    /// The domain whose subsets `subset` holds, when it is a `Subset<D>`.
+    fn subset_base(&self, subset: DomainId) -> Option<DomainId> {
+        self.subsets.iter().find(|(s, _)| *s == subset).map(|(_, base)| *base)
+    }
+
+    /// `v in mask`, both already lowered: bit `v` of the mask.
+    fn subset_has(&mut self, mask: Expr, item: Expr, span: Span) -> Expr {
+        let bits = self.cast(Cast::Ord, mask, Ty::Int);
+        let at = self.cast(Cast::Ord, item, Ty::Int);
+        let shifted = self.mk(ExprKind::Binary(BinOp::Shr, Box::new(bits), Box::new(at)), Ty::Int, span);
+        let one = self.int_lit(1, span);
+        let bit = self.mk(
+            ExprKind::Binary(BinOp::BitAnd, Box::new(shifted), Box::new(one.clone())),
+            Ty::Int,
+            span,
+        );
+        self.mk(ExprKind::Cmp(CmpOp::Eq, Box::new(bit), Box::new(one)), Ty::Bool, span)
+    }
+
+    /// A list built by walking the ordinals of `domain`: `first` goes in
+    /// before the walk, and `each` gives what an ordinal adds, if anything.
+    fn listed(
+        &mut self,
+        domain: DomainId,
+        elem: Ty,
+        first: Option<Expr>,
+        span: Span,
+        each: impl FnOnce(&mut Self, Expr) -> (Option<Expr>, Expr),
+    ) -> Expr {
+        let list_ty = Ty::list(elem);
+        let acc = self.temp(list_ty.clone());
+        let at = self.temp(Ty::Int);
+        let id = self.next_loop;
+        self.next_loop += 1;
+        let push = |lw: &mut Self, value: Expr| {
+            Stmt::Expr(lw.mk(
+                ExprKind::Mutate(
+                    Mutation::Push,
+                    Box::new(Place {
+                        kind: PlaceKind::Local(acc),
+                        ty: list_ty.clone(),
+                        span,
+                    }),
+                    vec![value],
+                ),
+                Ty::Unit,
+                span,
+            ))
+        };
+        let empty = self.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span);
+        let mut stmts = vec![Stmt::Let(acc, Some(empty))];
+        if let Some(first) = first {
+            stmts.push(push(self, first));
+        }
+        let ord = self.local(at, span);
+        let (keep, value) = each(self, ord);
+        let add = push(self, value);
+        let body = match keep {
+            Some(keep) => Stmt::If(keep, Block { stmts: vec![add] }, Block::default()),
+            None => add,
+        };
+        let lo = self.int_lit(0, span);
+        let hi = self.mk(ExprKind::DomainLen(domain), Ty::Int, span);
+        stmts.push(Stmt::For(
+            id,
+            at,
+            Iter::Range {
+                lo,
+                hi,
+                step: None,
+                rev: false,
+            },
+            Block { stmts: vec![body] },
+        ));
+        stmts.push(Stmt::Give(self.local(acc, span)));
+        self.mk(ExprKind::Do(Block { stmts }), list_ty, span)
+    }
+
+    /// The domain `rest` that the variable `prefix` holds: the `D` of
+    /// `let xs = compress(all)`.
+    fn domain_of_value(&mut self, prefix: &str, rest: &str) -> Option<DomainId> {
+        let owner = ast::Expr {
+            kind: ast::ExprKind::Name(prefix.to_string()),
+            span: Span::point(0),
+        };
+        let Some(Ty::Struct(sid)) = self.probe_ty_silent(&owner) else {
+            return None;
+        };
+        match self.structs[sid].env.get(rest) {
+            Some(GenArg::Domain(id)) | Some(GenArg::Ty(Ty::Pos(id))) => Some(*id),
+            _ => self.structs[sid].owned_domains.get(rest).copied(),
+        }
+    }
+
     /// A struct's fields as they are read from input: with their ranges.
     fn struct_spec(&mut self, id: StructId) -> Spec {
         let (decl, m, offset, env) = (
@@ -1227,6 +1353,16 @@ impl<'a> Lowerer<'a> {
                         return Some(DimSpec::Pos(dom_id));
                     }
                 }
+                // `type Val = xs.D`, then `[Val]Int`.
+                if matches!(self.get_sym(&name.text), Some(Sym::Alias(_)))
+                    || self.cx.local_type_aliases.contains_key(&name.text)
+                {
+                    match self.resolve_ty(ty) {
+                        Ty::Pos(id) => return Some(DimSpec::Pos(id)),
+                        Ty::Bound(id) => return Some(DimSpec::Bound(id)),
+                        _ => {}
+                    }
+                }
                 if let Some(domain) = name.text.strip_suffix(".bounds") {
                     if let Some(GenArg::Domain(id)) = self.gen_env.get(domain).cloned() {
                         return Some(DimSpec::Bound(id));
@@ -1234,6 +1370,11 @@ impl<'a> Lowerer<'a> {
                     if let Some(Sym::Domain(id)) = self.get_sym(domain) {
                         return Some(DimSpec::Bound(id));
                     }
+                }
+            } else if name.text == "Subset" && args.len() == 1 {
+                // `[Subset<Row>]Int`: one cell for each subset.
+                if let Ty::Pos(id) = self.resolve_ty(ty) {
+                    return Some(DimSpec::Pos(id));
                 }
             } else if name.text == "Bounds" && args.len() == 1 {
                 if let Ty::Pos(id) = self.resolve_ty(&args[0]) {
@@ -2098,7 +2239,7 @@ fn collect_stmt_calls(stmt: &Stmt, out: &mut Vec<FnId>) {
 fn collect_place_calls(place: &Place, out: &mut Vec<FnId>) {
     match &place.kind {
         PlaceKind::Local(_) | PlaceKind::Global(_) => {}
-        PlaceKind::Field(base, _) => collect_place_calls(base, out),
+        PlaceKind::Field(base, _) | PlaceKind::Some(base) => collect_place_calls(base, out),
         PlaceKind::Index(base, indices) => {
             collect_place_calls(base, out);
             for idx in indices {

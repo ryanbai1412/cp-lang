@@ -91,6 +91,13 @@ impl<'a> Lowerer<'a> {
                 self.error(codes::UNRESOLVED_NAME, span, "`self` outside a method");
                 self.err_expr(span)
             }
+            ast::ExprKind::Paren(inner) if self.is_filled(inner) => {
+                let held = self.expr(inner, None);
+                match held.ty.clone() {
+                    Ty::Opt(ty) => self.mk(ExprKind::Unwrap(Box::new(held), false), *ty, span),
+                    _ => held,
+                }
+            }
             ast::ExprKind::Paren(inner) => self.expr(inner, hint),
             ast::ExprKind::Unary { op, expr } => self.unary(*op, expr, inner_hint, span),
             ast::ExprKind::Binary { op, lhs, rhs, .. } => self.binary(*op, lhs, rhs, span),
@@ -1398,6 +1405,14 @@ impl<'a> Lowerer<'a> {
         while let ast::ExprKind::Paren(e) = &inner.kind {
             inner = e;
         }
+        // `r in mask`, for a `Subset<Row>`.
+        if let Some(Ty::Pos(subset)) = self.probe_ty_silent(inner) {
+            if let Some(base) = self.subset_base(subset) {
+                let mask = self.expr(inner, None);
+                let item = self.expect(item, &Ty::Pos(base));
+                return self.subset_has(mask, item, span);
+            }
+        }
         let between = |lw: &mut Self, value: Expr, lo: Expr, hi: Expr| {
             // `lo <= x and x < hi`, with `x` evaluated once.
             let mut stmts = Vec::new();
@@ -1941,6 +1956,50 @@ impl<'a> Lowerer<'a> {
         };
         match &e.kind {
             ast::ExprKind::Paren(inner) => self.iter(inner),
+            // `for mask in Subset<Row>:` walks every subset, and `for p in
+            // ?Col:` walks `none` and then every `Col`.
+            ast::ExprKind::Generic { base, args }
+                if matches!(&base.kind, ast::ExprKind::Name(n) if n == "Subset" || n == "Opt")
+                    && args.len() == 1 =>
+            {
+                let ast::ExprKind::Name(kind) = &base.kind else {
+                    unreachable!()
+                };
+                let domain = match self.resolve_ty(&args[0]) {
+                    Ty::Pos(domain) => domain,
+                    Ty::Error => return error(self),
+                    other => {
+                        let message = format!(
+                            "a `for` can walk the values of a domain's `?D` or `Subset<D>`, and `{}` is not a domain",
+                            self.show(&other)
+                        );
+                        self.error(codes::TYPE_MISMATCH, span, message);
+                        return error(self);
+                    }
+                };
+                if kind == "Subset" {
+                    let subset = self.subset_domain(domain);
+                    let lo = self.int_lit(0, span);
+                    let hi = self.mk(ExprKind::DomainLen(subset), Ty::Int, span);
+                    return (
+                        Iter::Range {
+                            lo,
+                            hi,
+                            step: None,
+                            rev: false,
+                        },
+                        Ty::Pos(subset),
+                    );
+                }
+                let elem = Ty::opt(Ty::Pos(domain));
+                let none = self.mk(ExprKind::None, elem.clone(), span);
+                let some_ty = elem.clone();
+                let all = self.listed(domain, elem.clone(), Some(none), span, |lw, ord| {
+                    let pos = lw.cast(Cast::Trust, ord, Ty::Pos(domain));
+                    (None, lw.mk(ExprKind::Some(Box::new(pos)), some_ty, span))
+                });
+                (Iter::Seq(all, false), elem)
+            }
             ast::ExprKind::Range {
                 lo: Some(lo),
                 hi: Some(hi),
@@ -2213,6 +2272,20 @@ impl<'a> Lowerer<'a> {
                 }
                 if let Ty::Range(inner) = value.ty.clone() {
                     return (Iter::RangeVal(value, false), *inner);
+                }
+                // `for v in mask`: the members of a `Subset<D>`, in order.
+                if let Ty::Pos(subset) = value.ty {
+                    if let Some(base) = self.subset_base(subset) {
+                        let mut stmts = Vec::new();
+                        let mask = self.hold(value, &mut stmts);
+                        let members = self.listed(base, Ty::Pos(base), None, span, |lw, ord| {
+                            let pos = lw.cast(Cast::Trust, ord, Ty::Pos(base));
+                            (Some(lw.subset_has(mask, pos.clone(), span)), pos)
+                        });
+                        stmts.push(Stmt::Give(members.clone()));
+                        let all = self.mk(ExprKind::Do(Block { stmts }), members.ty, span);
+                        return (Iter::Seq(all, false), Ty::Pos(base));
+                    }
                 }
                 let elem = match &value.ty {
                     Ty::Array { elem, .. } | Ty::List(elem) | Ty::Set(elem) | Ty::HashSet(elem) => {

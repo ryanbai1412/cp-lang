@@ -105,7 +105,7 @@ impl Scopes {
         match &place.kind {
             PlaceKind::Local(slot) => self.uses(*slot),
             PlaceKind::Global(_) => {}
-            PlaceKind::Field(base, _) => self.place(base),
+            PlaceKind::Field(base, _) | PlaceKind::Some(base) => self.place(base),
             PlaceKind::Index(base, indices) => {
                 self.place(base);
                 indices.iter().for_each(|e| self.expr(e));

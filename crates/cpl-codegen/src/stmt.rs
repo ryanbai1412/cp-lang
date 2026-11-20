@@ -21,6 +21,24 @@ fn flat(e: &Expr) -> Option<(&[Stmt], &Expr)> {
 }
 
 impl<'p> Emitter<'p> {
+    /// Sizes each `Subset<D>` of the domain `base`, which was just set.
+    fn size_subsets(&mut self, base: usize, out: &mut String) {
+        let program = self.program;
+        for &(subset, of) in &program.subsets {
+            if of == base {
+                self.need("fail");
+                let (s, b) = (ident(&program.domains[subset]), ident(&program.domains[base]));
+                let limit = cpl_ir::MAX_SUBSET_BITS;
+                self.line(
+                    out,
+                    &format!("if ({b}_len > {limit}) cpl::fail(\"a `Subset` needs a domain of at most {limit} values\");"),
+                );
+                self.line(out, &format!("{s}_lo = 0;"));
+                self.line(out, &format!("{s}_len = 1LL << {b}_len;"));
+            }
+        }
+    }
+
     fn line(&self, out: &mut String, text: &str) {
         out.push_str(&pad(self.indent));
         out.push_str(text);
@@ -617,6 +635,7 @@ impl<'p> Emitter<'p> {
                 let len = self.expr(len).text;
                 self.line(out, &format!("{d}_lo = {lo};"));
                 self.line(out, &format!("{d}_len = std::max<ll>({len}, 0);"));
+                self.size_subsets(*id, out);
             }
             Stmt::DefDomainFromVal { id, val } => {
                 let d = ident(&program.domains[*id]);
@@ -625,6 +644,7 @@ impl<'p> Emitter<'p> {
                 self.line(out, &format!("auto {tmp} = {v};"));
                 self.line(out, &format!("{d}_lo = {tmp}.lo;"));
                 self.line(out, &format!("{d}_len = std::max<ll>({tmp}.len, 0);"));
+                self.size_subsets(*id, out);
             }
             Stmt::Trap(message, _) => {
                 self.need("fail");

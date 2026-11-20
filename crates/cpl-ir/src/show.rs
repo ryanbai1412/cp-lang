@@ -59,7 +59,7 @@ pub(crate) fn ty_name(
     match ty {
         Ty::Unit => "()".into(),
         Ty::Int => "Int".into(),
-        Ty::Float => "Float".into(),
+        Ty::Float => "F64".into(),
         Ty::Bool => "Bool".into(),
         Ty::Char => "Char".into(),
         Ty::Str => "Str".into(),

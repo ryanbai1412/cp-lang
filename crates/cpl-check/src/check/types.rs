@@ -146,6 +146,11 @@ impl<'a> Checker<'a> {
                     }
                 };
             }
+            // `xs.D`: the domain a value brought with it, as `compress`
+            // does. Lowering knows which one it is.
+            if head.starts_with(|c: char| c.is_ascii_lowercase()) {
+                return Ty::Unknown;
+            }
             return match self.named_type(head, head_span, Vec::new()) {
                 Ty::Pos(domain) => Ty::Pos(format!("{domain}.{member}")),
                 Ty::Named { name: owner, .. } => match self.owned_member(&owner, member) {

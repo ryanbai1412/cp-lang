@@ -41,7 +41,9 @@ fn var(fn_id: Option<usize>, kind: &PlaceKind) -> Option<Var> {
     match kind {
         PlaceKind::Local(slot) => Some((fn_id, false, *slot)),
         PlaceKind::Global(id) => Some((None, true, *id)),
-        PlaceKind::Index(base, _) | PlaceKind::Field(base, _) => var(fn_id, &base.kind),
+        PlaceKind::Index(base, _) | PlaceKind::Field(base, _) | PlaceKind::Some(base) => {
+            var(fn_id, &base.kind)
+        }
     }
 }
 
@@ -131,7 +133,7 @@ impl<'p> Facts<'p> {
     fn place(&mut self, fn_id: Option<usize>, place: &'p Place) {
         match &place.kind {
             PlaceKind::Local(_) | PlaceKind::Global(_) => {}
-            PlaceKind::Field(base, _) => self.place(fn_id, base),
+            PlaceKind::Field(base, _) | PlaceKind::Some(base) => self.place(fn_id, base),
             PlaceKind::Index(base, indices) => {
                 self.place(fn_id, base);
                 for index in indices {
