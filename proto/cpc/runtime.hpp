@@ -84,6 +84,8 @@ static inline string cp_fmt_i(ll x, int width, bool zero) {
     return string(buf);
 }
 
+template <class A, class V> static inline void cp_fill(A& a, const V& v) { for (auto&& x : a) x = v; }
+
 // Str: a flat run of ASCII bytes at positions 0..len (cheat sheet section 4)
 static inline string cp_str_slice(const string& s, ll lo, ll hi, bool incl, int line) {
     if (hi < 0 && !incl) hi = (ll)s.size(); else if (incl) hi += 1;
