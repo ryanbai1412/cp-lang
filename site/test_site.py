@@ -2,6 +2,7 @@
 """Build/link checks and native execution of every prototype-tested snippet."""
 
 from html.parser import HTMLParser
+import html as html_lib
 import json
 from pathlib import Path
 import re
@@ -114,15 +115,16 @@ class SiteTests(unittest.TestCase):
                          | {"playground.html", "trace.html"})
         self.assertNotIn("@font-face", source)
         self.assertNotIn("data:font", source)
-        self.assertLess(path.stat().st_size, 2_000_000)
+        self.assertLess(path.stat().st_size, 2_600_000)
         self.assertEqual(payload["compiler"].count("const packedWasm ="), 1)
         self.assertNotIn("const packedWasm =", "".join(payload["pages"].values()))
         self.assertEqual(len(json.loads(payload["search"])), len(build.PAGES))
         self.assertIn("course", payload)
+        self.assertIn("course_data", payload)
 
-    def test_course_has_seven_sequenced_lessons_and_real_controls(self):
-        self.assertEqual(len(build.LESSONS), 7)
-        self.assertGreaterEqual(len(build.EXERCISES), 30)
+    def test_course_has_ten_sequenced_lessons_and_real_controls(self):
+        self.assertEqual(len(build.LESSONS), 10)
+        self.assertGreaterEqual(len(build.EXERCISES), 45)
         for lesson in build.LESSONS:
             source = (ROOT / "_build" / f'{lesson["slug"]}.html').read_text()
             page = Page(source)
@@ -195,7 +197,7 @@ class SiteTests(unittest.TestCase):
             source = (ROOT / "content" / f"course-{name}.md").read_text()
             programs.update(
                 re.findall(
-                    r"```cp Prototype tested · ([a-z-]+)\.cp(?: [^\n]*)?\n(.*?)```",
+                    r"```cp CP Lang(?: 0\.2\.2)? · ([a-z-]+)\.cp(?: [^\n]*)?\n(.*?)```",
                     source,
                     re.S,
                 )
@@ -232,6 +234,11 @@ class SiteTests(unittest.TestCase):
             "segtree_monoid",
             "lazy_action",
             "colocated_brute",
+            "enum_match",
+            "collections_heap",
+            "sort_bsearch",
+            "fenwick_sum",
+            "dsu_mod",
         }
         # Course predictions are checked against actual compiled CP source,
         # not merely against a second copy of their answer key.
@@ -262,6 +269,83 @@ class SiteTests(unittest.TestCase):
                             timeout=5,
                         )
                         self.assertEqual(run.stdout.split(), expected.split())
+
+    def test_no_truncated_showcase_stubs_and_full_highlighting(self):
+        index_html = (ROOT / "_build/index.html").read_text()
+        self.assertNotRegex(index_html, r"//\s*\.\.\.\s*plus\s+\d+\s+lines")
+        self.assertNotIn("plus 100 lines", index_html)
+        self.assertIn('data-lang="cpp"', index_html)
+        self.assertIn('data-lang="cp"', index_html)
+        self.assertIn('class="tok-keyword"', index_html)
+        self.assertIn('class="tok-type"', index_html)
+        self.assertIn('class="code-expand-btn"', index_html)
+        self.assertIn('aria-expanded="false"', index_html)
+
+    def test_syntax_highlighting_for_all_supported_languages(self):
+        cp_html = build.highlight("@memo\nfn dp(u: V) -> Int: // comment\n    return 0", "cp")
+        self.assertIn('class="tok-decorator">@memo', cp_html)
+        self.assertIn('class="tok-keyword">fn', cp_html)
+        self.assertIn('class="tok-type">Int', cp_html)
+        self.assertIn('class="tok-comment">// comment', cp_html)
+
+        cpp_html = build.highlight('#include <vector>\nvector<int> a; // hi\nreturn 0;', "cpp")
+        self.assertIn('class="tok-preproc">#include', cpp_html)
+        self.assertIn('class="tok-type">vector', cpp_html)
+        self.assertIn('class="tok-keyword">return', cpp_html)
+        self.assertIn('class="tok-comment">// hi', cpp_html)
+
+        sh_html = build.highlight('cpl build sum.cp # comment', "sh")
+        self.assertIn('class="tok-keyword">cpl', sh_html)
+        self.assertIn('class="tok-comment"># comment', sh_html)
+
+        toml_html = build.highlight('[libs]\nlib = "../my-lib"', "toml")
+        self.assertIn('class="tok-decorator">[libs]', toml_html)
+        self.assertIn('class="tok-string">&quot;../my-lib&quot;', toml_html)
+
+    def test_cheat_sheet_uses_single_canonical_source(self):
+        self.assertFalse(
+            (ROOT / "content/cheat-sheet.md").exists(),
+            "site/content/cheat-sheet.md must not exist; build.py loads docs/one-page-cheat-sheet.md directly.",
+        )
+        canonical = (REPO / "docs/one-page-cheat-sheet.md").read_text()
+        built = (ROOT / "_build/cheat-sheet.html").read_text()
+        plain = html_lib.unescape(re.sub(r"<[^>]+>", "", built))
+        self.assertIn("docs/one-page-cheat-sheet.md", built)
+        for heading in re.findall(r"^##\s+(.+)$", canonical, re.MULTILINE):
+            clean = re.sub(r"`([^`]+)`", r"\1", heading).strip()
+            self.assertIn(clean.split("(")[0].strip(), plain)
+
+    def test_no_internal_dev_jargon_in_reader_copy(self):
+        forbidden = [
+            r"Prototype tested",
+            r"decisions\.md",
+            r"plan/19-",
+            r"research/language-architecture",
+            r"crates/cpl-ir",
+            r"\bloc\.py\b",
+            r"proto/ports/",
+            r"@spec\b",
+            r"\bv2\.2\b",
+            r"six chapters",
+            r"seven chapters",
+            r"//\s*\.\.\.\s*plus\s+\d+\s+lines",
+        ]
+        pattern = re.compile("|".join(forbidden), re.IGNORECASE)
+        for path in sorted((ROOT / "_build").glob("*.html")):
+            if path.name == "trace.html":
+                continue
+            html = path.read_text()
+            visible = re.sub(r"<script\b[^>]*>.*?</script>", "", html, flags=re.S)
+            visible = re.sub(r"<style\b[^>]*>.*?</style>", "", visible, flags=re.S)
+            visible = re.sub(r'href="[^"]*"', "", visible)
+            match = pattern.search(visible)
+            self.assertIsNone(match, f"{path.name} contains internal/stale text: {match.group(0) if match else ''}")
+
+    def test_sidebar_sections_are_not_duplicated(self):
+        html = (ROOT / "_build/index.html").read_text()
+        sidebar = re.search(r'<aside class="sidebar" id="sidebar">.*?</aside>', html, flags=re.S).group(0)
+        headings = re.findall(r'<p class="nav-heading">([^<]+)</p>', sidebar)
+        self.assertEqual(len(headings), len(set(headings)), f"Duplicate sidebar headings: {headings}")
 
 
 if __name__ == "__main__":

@@ -1,17 +1,12 @@
-This course takes you from your first working program to the full CP Lang 0.2.2 model: `@!multitest` and top-level `return`, nominal domains and `.l`/`.r` boundaries, first-principles `Index` and slices, `lends` and lexical borrowing without lifetimes, Tropical Optionals (`?T`, `min=`, `max=`, `??=`) and cached `@memo` DP, algebraic `Monoid`/`Action` segment trees, and co-located `@brute`/`@checker`/`@interactor` verification.
+This course takes you from your very first program to writing full contest solutions fluently in CP Lang 0.2.2 — covering typed input, `@!multitest`, nominal domains, grids, enums, `Str`, collections, binary search, `Index` and slices, lexical borrowing with `lends`, Tropical Optionals (`?T`), `@memo` DP, bitmasks, Fenwick and segment trees, graphs and rooted trees, modular arithmetic, and co-located `@brute` / `@checker` / `@interactor` verification.
 
-Each chapter teaches one idea from first principles, walks through concrete programs, and checks your understanding with exercises that execute locally in WebAssembly inside this page.
+All {{chapter_count}} chapters combine concise prose, runnable WebAssembly examples, and {{exercise_count}} checked exercises. Output exercises include a live browser sandbox backed by the real CP Lang compiler — run the code, edit it, inspect the emitted C++17, or open it in the [Trace debugger](trace.html). Progress is stored in your browser's local storage with no account required.
 
 ```course
 ```
 
-## How the interactive exercises work
+## How to use this course
 
-Every chapter pairs worked programs with knowledge checks and output-prediction exercises. Output exercises compile and run real CP Lang source through the Rust `cpl` compiler and interpreter bundled as WebAssembly (no network or mock runtime), and include an editable sandbox with C++17 codegen and cursor type hover.
+Work through the chapters in order if you are new to CP Lang, or jump straight to a topic you need for a contest. If you already write competitive programming solutions in C++17, you can also skim the [C++17 migration guide](cpp-guide.html) and keep the [one-page cheat sheet](cheat-sheet.html) open beside your editor.
 
-Progress is stored only in `localStorage` on your device. No account, server, or network access is required.
-
-## Two ways to read
-
-- **Learn end to end:** start at [Chapter 1](course-first-program.html) and work forward. Each chapter builds only on the previous ones.
-- **Look up a single topic:** use the [one-page cheat sheet](cheat-sheet.html), the [reference guide](index.html), or the [offline playground](playground.html) to experiment directly.
+Every chapter mixes two kinds of exercises: **output predictions** (where you trace a real CP Lang program on small inputs and can open a live WebAssembly sandbox to experiment) and **concept checks** (which lock in the rules that prevent contest bugs, like Euclidean modulo, `?T` guardrails, and `lends mut` aliasing).

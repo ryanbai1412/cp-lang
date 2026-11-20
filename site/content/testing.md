@@ -1,8 +1,8 @@
-Contest bugs rarely come from the idea; they come from an edge case you did not construct by hand. CP Lang puts memoization, input generators, brute-force oracles, constructive checkers, and local interactors inside the same `.cp` file, then strips verification code automatically in judge builds.
+Contest bugs rarely come from the algorithm idea — they come from an edge case you did not construct by hand. CP Lang puts memoization, input generators, brute-force oracles, constructive checkers, and local interactors right inside the same `.cp` file, then strips all verification code automatically when `cpl build` emits your submission.
 
 ## Memoization with `@memo`
 
-Annotate a pure recursive function with `@memo` to cache its results over any `Index` parameter tuple:
+Annotate a pure recursive function with `@memo` to cache its results over any `Index` or range parameter tuple:
 
 ```cp CP Lang 0.2.2
 @memo
@@ -10,9 +10,15 @@ fn dp(u: V, used: Bool) -> Int:
     ...
 ```
 
-`@memo` takes no parameters. When every parameter is an algebraic `Index` or range and the product of their sizes is at most `2^24` (`DENSE_LIMIT = 1 << 24`), it emits a flat dense table with zero hash overhead; otherwise it falls back to a per-process salted open-addressed hash table. A `@memo fn` may be top-level or nested in a function or loop, where its table resets on every call or iteration (including per test case below `@!multitest`), and it may wrap `ask(...)` or an extern `@grader fn` so each argument tuple costs one query. If you want explicit hash storage, write `var dp = HashMap<Key, Val>()`.
+`@memo` takes no parameters and chooses its storage layout automatically:
 
-`@memo` caching is implemented in `crates/cpl-ir/src/lower/memo.rs` and runs in WebAssembly (see `memo_dp.cp` in the [DP chapter](course-dp.html#cached-recursion-with-memo) and playground). The smaller uncached recurrence below also runs natively via the prototype:
+- When every parameter is an algebraic `Index` or range and the total state count is at most `2^24`, `@memo` allocates a flat contiguous dense table with zero hashing overhead.
+- Larger state spaces fall back automatically to a per-process salted open-addressed hash table.
+- A `@memo fn` declared inside a function, inside a loop, or below `@!multitest` resets its cache automatically on every call, iteration, or test case — eliminating stale-table Wrong Answers.
+- `@memo` can also wrap `ask(...)` or an extern `@grader fn` so repeated queries with the same arguments cost only one judge query.
+- If you want manual hash storage instead, declare `var dp = HashMap<Key, Val>()`.
+
+Try a live cached `@memo` DP in the [DP course chapter](course-dp.html#cached-recursion-with-memo) or [playground](playground.html). Here is a small recursive recurrence you can run directly:
 
 ```example memo
 ```
@@ -21,14 +27,14 @@ For input `4`, `f(3)` evaluates to `45`.
 
 ## Assertions and `debug`
 
-There is one assertion keyword, so a sanity check can never be stripped by accident:
+There is one assertion keyword, so a sanity check is never silently stripped in release mode:
 
-- `assert cond` — always checked in both local and judge builds, and it feeds the range and disjointness proofs. Input constraints are not assertions: they live in typed `read()` bounds, `read(gen: f)`, `@gen`, and `@checker`.
-- `debug(x, dp)` — checkpoint shown on a local run, recorded in `cpl run --trace` and the playground's **Trace** button, and replayed side-by-side when `cpl stress` finds a failing case; omitted from the executable C++ that `cpl build` writes.
+- `assert cond` — checked in both local runs and compiled C++17, and also informs range and disjointness checks. Input constraints belong in typed `read()` bounds, `read(gen: f)`, `@gen`, and `@checker` rather than assertions.
+- `debug(x, dp)` — prints checkpoints during local runs, records structured snapshots in `cpl run --trace` and the playground's **Trace** button, and replays side by side when stress testing catches a failing case. `cpl build` omits `debug(...)` from the final judge C++17.
 
 ## Co-located `@brute`, `@checker`, `@interactor`, and `@gen`
 
-Write your slow reference, constructive validator, or interactive judge right next to your solution:
+Write your slow reference, constructive validator, or interactive judge in the same file as your solution:
 
 ```cp CP Lang 0.2.2
 @gen
@@ -48,11 +54,11 @@ fn check():
 
 @interactor
 fn judge(sol: Interactor):
-    let (n, secret): (1..=1000, 1..=n) = read()   // the hidden test
-    sol.send(n)                                    // to the solution's stdin
+    let (n, secret): (1..=1000, 1..=n) = read()   // hidden test input
+    sol.send(n)                                    // send to solution's stdin
     var qs = 0
     while true:
-        let kind: Str = sol.recv()                 // from the solution's stdout
+        let kind: Str = sol.recv()                 // read from solution's stdout
         if kind == "!":
             let guess: Int = sol.recv()
             assert guess == secret
@@ -63,14 +69,20 @@ fn judge(sol: Interactor):
         sol.send(if x < secret: "<" else: ">=")
 ```
 
-In interactive problems, pair `@interactor` with `ask("?", x, limit: 2)` so query limits are enforced locally. A program that calls `ask(...)` anywhere flushes every `print(...)` automatically. For IOI-style graders, a bodyless `@grader fn` declares an extern oracle, and a stateful grader keeps its state in a top-level `var` between `init(...)` and `query(...)`. Every generator draws from a replayable choice stream, which lets `cpl stress` shrink any failing test automatically without writing a custom shrinker.
+In interactive problems, pair `@interactor` with `ask("?", x, limit: 12)` so query budgets are enforced locally. Any program that calls `ask(...)` flushes every `print(...)` automatically. Every generator draws from a replayable choice stream, enabling automatic structure-aware shrinking of failing tests without writing a custom shrinker.
 
-## Running `cpl stress`
+## Pattern and DP structure discovery (`std.spec`)
 
-`cpl stress solution.cp` runs locally using the file's own `@brute(main)`, `@checker` (with `read_output()`), or `@interactor`, handles `@!multitest` headers, shrinks failing inputs (including shrinking a multitest input to the one failing case), replays `debug(...)` checkpoints from both sides, and with `--trace` writes a side-by-side HTML trace page. The automated generator, shrinker, and `@checker`/`@interactor` harnesses run locally in `cpl stress`, not in the browser sandbox.
+When you have a slow `@brute` solution and want to check whether a sequence obeys a linear recurrence or whether a DP transition satisfies monotonicity, convexity (Aliens/WQS), or the quadrangle inequality (Knuth / divide-and-conquer DP), `std.spec` and local spec helpers let you test hypotheses empirically on small inputs before writing the fast algorithm:
 
-For a visual side-by-side comparison, run `cpl run --trace` / `cpl stress --trace` locally, press **Trace** in the [playground](playground.html) (which runs `@brute(main)` beside your fast solution in WebAssembly when present), or open the [trace debugger](trace.html) to inspect the sample 0/1 knapsack capture.
+```cp CP Lang 0.2.2
+let small = [tilings(n) for n in 0..12]
+let coeffs = integer_recurrence(small)!
+show_recurrence(coeffs)                          // "a[n] = 4 a[n-2] - a[n-4]"
+```
 
-## How the site stays honest
+## Visual debugging with Trace
 
-Every worked example embedded in these pages is checked by the test suite against both the compiler and the offline WebAssembly runtime. Code blocks marked **CP Lang 0.2.2** show the locked specification; blocks marked **prototype tested** are executed on every build.
+Every run in the [playground](playground.html) has a **Trace** button that records every top-level variable change, every `print`, and every `debug(...)` call — and runs `@brute(main)` side by side when the file defines one — then opens the interactive [Trace debugger](trace.html).
+
+You can inspect arrays, 2D DP tables, grids, trees, and graphs step by step, scrub backward and forward through execution, and pinpoint the exact step where your fast solution diverges from `@brute(main)`.

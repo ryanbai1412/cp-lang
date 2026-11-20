@@ -10,6 +10,14 @@
   --accent-bg: #eff6ff;
   --code: #fafafa;
   --code-ink: #27272a;
+  --tok-comment: #6e7781;
+  --tok-keyword: #cf222e;
+  --tok-decorator: #8250df;
+  --tok-preproc: #8250df;
+  --tok-type: #953800;
+  --tok-string: #0a3069;
+  --tok-number: #0550ae;
+  --tok-function: #6639ba;
   --sans: Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   --mono: "JetBrains Mono","SFMono-Regular",Consolas,"Liberation Mono",monospace;
   color-scheme: light;
@@ -25,6 +33,14 @@
   --accent-bg: #17233b;
   --code: #111113;
   --code-ink: #e4e4e7;
+  --tok-comment: #8b949e;
+  --tok-keyword: #ff7b72;
+  --tok-decorator: #d2a8ff;
+  --tok-preproc: #d2a8ff;
+  --tok-type: #ffa657;
+  --tok-string: #a5d6ff;
+  --tok-number: #79c0ff;
+  --tok-function: #d2a8ff;
   color-scheme: dark;
 }
 * {
@@ -416,22 +432,72 @@ code,pre {
   background: var(--subtle);
   color: var(--ink);
 }
+.code-body {
+  position: relative;
+}
 .code-block pre {
   overflow: auto;
   font-size: 12px;
-  line-height: 1.85;
-  padding: 18px 20px;
+  line-height: 1.75;
+  padding: 16px 20px;
   margin: 0;
   tab-size: 4;
 }
-.tok-comment {
-  color: var(--muted);
+.code-block.is-collapsed pre {
+  max-height: 440px;
+  overflow: hidden;
 }
-.tok-keyword,.tok-decorator,.tok-number {
+.code-fade {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 33px;
+  height: 64px;
+  background: linear-gradient(to bottom, transparent, var(--code) 88%);
+  pointer-events: none;
+}
+.code-block.is-collapsed .code-fade {
+  display: block;
+}
+.code-expand-btn {
+  display: block;
+  width: 100%;
+  padding: 7px 14px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
   color: var(--accent);
+  font: 500 12px/1.4 var(--sans);
+  text-align: center;
 }
-.tok-string,.tok-type {
-  color: var(--ink);
+.code-expand-btn:hover {
+  background: var(--subtle);
+}
+.tok-comment {
+  color: var(--tok-comment);
+  font-style: italic;
+}
+.tok-keyword {
+  color: var(--tok-keyword);
+}
+.tok-decorator {
+  color: var(--tok-decorator);
+}
+.tok-preproc {
+  color: var(--tok-preproc);
+}
+.tok-number {
+  color: var(--tok-number);
+}
+.tok-string {
+  color: var(--tok-string);
+}
+.tok-type {
+  color: var(--tok-type);
+}
+.tok-function {
+  color: var(--tok-function);
 }
 blockquote {
   margin: 22px 0;
@@ -1002,6 +1068,7 @@ article .exercise h3 { margin: 10px 0 12px; font-size: 18px; letter-spacing: -.2
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+  align-items: start;
 }
 .showcase-grid .code-block {
   margin: 0;
@@ -1010,8 +1077,11 @@ article .exercise h3 { margin: 10px 0 12px; font-size: 18px; letter-spacing: -.2
 .showcase-grid .code-block pre {
   font-size: 12px;
   line-height: 1.55;
-  max-height: 360px;
   overflow: auto;
+}
+.showcase-grid .code-block.is-collapsed pre {
+  max-height: 310px;
+  overflow: hidden;
 }
 .showcase-grid figcaption a {
   color: var(--accent);

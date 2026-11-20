@@ -345,20 +345,130 @@
         "explanation": "CP Lang 0.2.2 has no single-purpose operator wrapper types. Built-in associative operators (+, *, ^, &, |, min, max, gcd) pass directly to SegTree and SparseTable, while custom monoids pass Monoid(id, op) and lazy tags pass stock tags like AddSum or Action(id, compose, apply, over)."
       },
       {
+        "id": "algebra-fenwick-output",
+        "title": "Trace Fenwick point updates and range sums",
+        "prompt": "fenwick_sum.cp builds a Fenwick<V, Int> from a, handles type-1 point additions `fw.add(pos, delta)`, and prints type-2 inclusive sums `fw.sum(l..=r)`. Predict the output for each input.",
+        "hint": "Type 1 adds delta to position pos (it does not overwrite). Type 2 prints the sum from l through r inclusive.",
+        "solution": "Case 1: initial [3, 1, 4, 2] -> sum(1..=4)=10; add +5 at pos 2 -> [3, 6, 4, 2] -> sum(1..=3)=13. Case 2: initial [5, -2, 7] -> add +4 at pos 1 -> [9, -2, 7] -> sum(1..=2)=7 -> sum(2..=3)=5.",
+        "kind": "output",
+        "fixture": "fenwick_sum",
+        "tests": [
+          {
+            "input": "4 3\n3 1 4 2\n2 1 4\n1 2 5\n2 1 3\n",
+            "expected": "10\n13"
+          },
+          {
+            "input": "3 3\n5 -2 7\n1 1 4\n2 1 2\n2 2 3\n",
+            "expected": "7\n5"
+          }
+        ]
+      },
+      {
         "id": "algebra-local-library",
         "title": "What a local library costs",
-        "prompt": "A solution uses lib.treap from a large personal library configured in cp.toml (planned). What ends up in the submitted C++?",
-        "hint": "Judges accept one file and know nothing about your folders.",
-        "solution": "Everything used is inlined into the single submitted C++ file and unused code is removed, so a big library does not bloat submissions. Brutes and laws in the library are stripped too.",
+        "prompt": "A solution imports a structure from a large personal local library configured in cp.toml. What ends up in the compiled C++17 file?",
+        "hint": "Judges accept one file and know nothing about your local folders.",
+        "solution": "Only the code reachable from your solution is inlined into the single C++17 file; unused modules, `@brute` blocks, and tests are stripped.",
         "kind": "choice",
         "options": [
           "The whole library folder, concatenated",
-          "An include of the library path on your machine",
+          "An #include pointing to the library path on your machine",
           "Only the code the solution reaches, inlined into one file and tree-shaken",
           "Nothing until the judge downloads the library"
         ],
         "answer": 2,
-        "explanation": "Concatenating the folder would waste size and compile time. An include of a local path fails on the judge. Judges never fetch dependencies."
+        "explanation": "Concatenating the whole folder would blow past judge size limits. Local `#include` paths fail on judges, and judges never fetch dependencies. Tree-shaking keeps every submission compact and self-contained."
+      }
+    ]
+  },
+  {
+    "slug": "course-graphs-math",
+    "title": "Graphs, trees, number theory, and geometry",
+    "description": "Use Dsu, flat CSR Graph, bfs/dijkstra, Rooted<V> LCA and HLD, FlowGraph, Mod<P>, Sieve, string algorithms, and exact Pt geometry.",
+    "duration": "30 min",
+    "exercises": [
+      {
+        "id": "graphs-dsu-mod-output",
+        "title": "Count components and combinations",
+        "prompt": "dsu_mod.cp unites m edges in a Dsu<V>, computes the number of connected components c, and prints c alongside C(n, c) modulo 1_000_000_007. Predict the output for each input.",
+        "hint": "Start with n components; each edge uniting two different components reduces c by 1. Then compute n choose c.",
+        "solution": "Case 1: 5 vertices with edges (1,2), (2,3), (4,5) -> 2 components ({1,2,3} and {4,5}), C(5, 2) = 10. Case 2: 4 vertices with edges (1,2), (2,3), (1,3) -> edge (1,3) is redundant, so 2 components ({1,2,3} and {4}), C(4, 2) = 6.",
+        "kind": "output",
+        "fixture": "dsu_mod",
+        "tests": [
+          {
+            "input": "5 3\n1 2\n2 3\n4 5\n",
+            "expected": "2 10"
+          },
+          {
+            "input": "4 3\n1 2\n2 3\n1 3\n",
+            "expected": "2 6"
+          }
+        ]
+      },
+      {
+        "id": "graphs-mod-ord",
+        "title": "Why Mod<P> does not implement Ord",
+        "prompt": "Which operation on two `Mod<P>` values `a` and `b` is intentionally a compile error?",
+        "hint": "Modular residues wrap around P, so there is no mathematically consistent less-than order.",
+        "solution": "`a < b` is a compile error because `Mod<P>` does not implement `Ord`. Use `.val` explicitly if you truly want to compare raw residues in `0..P`.",
+        "kind": "choice",
+        "options": [
+          "a / b",
+          "a == b",
+          "a < b",
+          "a ** 10"
+        ],
+        "answer": 2,
+        "explanation": "Modular division (`a / b`), equality (`a == b`), and exponentiation (`a ** 10`) are all well-defined on `Mod<P>`. Ordering (`<`, `min`, `sort`) on residues is almost always a bug — such as taking `min` of DP counts after reducing modulo P — so `Mod<P>` omits `Ord`."
+      },
+      {
+        "id": "graphs-bfs-optional",
+        "title": "Unreachable vertices in bfs and dijkstra",
+        "prompt": "After running `let dist = dijkstra(g, [src])`, how do you check whether vertex `t` is reachable and print `-1` if it is not?",
+        "hint": "dijkstra returns `[V]?Int` — no sentinel 1e18 needed.",
+        "solution": "`print(dist[t] ?? -1)` prints the shortest distance if reachable, or `-1` when `dist[t]` is `none`.",
+        "kind": "choice",
+        "options": [
+          "print(if dist[t] >= 1e18: -1 else: dist[t])",
+          "print(dist[t] ?? -1)",
+          "print(dist[t]!)",
+          "print(max(dist[t], -1))"
+        ],
+        "answer": 1,
+        "explanation": "`dist` has type `[V]?Int`, so unreachable vertices hold `none` rather than a sentinel. `dist[t]!` traps if `t` is unreachable, and `max(dist[t], -1)` skips `none` and would print `-1` even when `dist[t]` is a valid distance smaller than `-1` (and misses the intent of fallback)."
+      },
+      {
+        "id": "graphs-rooted-domain",
+        "kind": "choice",
+        "title": "Why Rooted<V> exposes its own domain t.Pre",
+        "prompt": "You build a segment tree `var st = SegTree<t.Pre, Int>(+, init)` over a `Rooted<V>` tree `t`. What happens if you call `st.set(u, 5)` directly with a vertex `u: V`?",
+        "options": [
+          "It automatically converts u to its Euler preorder index",
+          "It compiles and silently updates the wrong position tin[u]",
+          "It is a compile-time type error because st expects t.Pre, not V",
+          "It traps at runtime only when u is not the root"
+        ],
+        "answer": 2,
+        "hint": "Check whether `u` has the index type of `st`.",
+        "solution": "It is a compile-time type error because `st` is indexed by `t.Pre`, not `V`. Write `st.set(t.pos(u), 5)` to map the vertex to its Euler preorder position.",
+        "explanation": "Forgetting to map `u` through `tin[u]` before querying a subtree segment tree is one of the most common tree-DP bugs in C++. Making `t.Pre` a distinct value-owned domain catches that mix-up at compile time with zero runtime cost."
+      },
+      {
+        "id": "graphs-geometry-exact",
+        "kind": "choice",
+        "title": "Exact angular sorting and orientation",
+        "prompt": "You need to sort 2D lattice points `Pt(x, y)` around the origin without floating-point precision errors. What does `std.geometry` provide?",
+        "options": [
+          "atan2(p.y, p.x) on F64",
+          "ByAngle (half-plane + exact integer cross product) and orient(a, b, c)",
+          "Sorting by p.y / p.x with Euclidean integer division",
+          "Converting each Pt to Mod<P>"
+        ],
+        "answer": 1,
+        "hint": "Avoid `atan2` on integers; use exact cross-product predicates.",
+        "solution": "Use `ByAngle` (backed by half-plane + exact `cross` sign) and `orient(a, b, c) -> -1 | 0 | 1`, both computed in exact integer arithmetic.",
+        "explanation": "`atan2` converts coordinates to `F64` and can mis-order nearly collinear points with coordinates up to 1e9. `ByAngle` and `orient` stay completely exact using 64-bit / 128-bit integer cross products."
       }
     ]
   },

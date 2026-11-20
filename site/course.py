@@ -17,12 +17,17 @@ FIXTURES = {
     "memo",
     "early_return",
     "multitest_divider",
+    "enum_match",
+    "collections_heap",
+    "sort_bsearch",
     "lends",
     "tropical_dp",
     "optional_coalesce",
     "memo_dp",
     "segtree_monoid",
     "lazy_action",
+    "fenwick_sum",
+    "dsu_mod",
     "colocated_brute",
 }
 

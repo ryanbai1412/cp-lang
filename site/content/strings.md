@@ -47,7 +47,7 @@ for i in A:
 print(dp[A.last.r, B.last.r])
 ```
 
-Swapping an `A` boundary with a `B` boundary is a compile error, and `.l`/`.r` carry the empty-prefix boundary cleanly. When the length is already read into a domain, the same `[S]Char` form works today in both the prototype and WebAssembly:
+Swapping an `A` boundary with a `B` boundary is a compile error, and `.l`/`.r` carry the empty-prefix boundary cleanly. When the length is already read into a domain, the same `[S]Char` form runs directly in both `cpl` and the browser WebAssembly playground:
 
 ```example ascii
 ```

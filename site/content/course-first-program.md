@@ -27,13 +27,13 @@ A type such as `1..=2e5` is the constraint from the problem statement, written w
 
 The constraint does three jobs at once:
 
-- **Validation.** In the approved design, local builds trap if `read()` sees a value outside the range; judge builds skip the check. (Prototype builds do not enforce read bounds yet.)
+- **Validation.** Local debug builds check that `read()` stays within the declared range; judge builds skip the check for zero overhead.
 - **Storage.** Range-typed array elements pack to the smallest integer width that fits while arithmetic stays 64-bit `Int`.
 - **Generation.** `cpl stress` uses these declarations to generate legal random inputs; see [co-located verification](course-verification.html).
 
 A constraint can reference an earlier binding:
 
-```cp Prototype tested · input fragment
+```cp CP Lang · input fragment
 let n: 1..=2e5 = read()
 let k: 1..=n = read()
 ```
@@ -52,7 +52,7 @@ Plain `Int` is 64-bit signed, so summing `2e5` values up to `1e9` never overflow
 
 `for v in V:` visits every position of `V` in order, and `a[v]` reads the element at `v`. A loop can update several variables at once:
 
-```cp Prototype tested · max-and-evens.cp
+```cp CP Lang · max-and-evens.cp
 let n: 1..=2e5 = read()
 domain V = 1..=n
 let a: [V]-1e9..=1e9 = read()
@@ -113,24 +113,17 @@ print(a)                // -3 8 -4 7 8
 print(best > 0)         // YES
 ```
 
-## Run it natively today
+## Run and compile locally
 
-Both the Rust CLI (`cpl`) and the Python prototype (`proto/cp.py`) emit readable C++17:
-
-```sh
-cpl check site/examples/sum.cp
-cpl run site/examples/sum.cp < input.txt
-cpl build site/examples/sum.cp -o sum.cpp && g++ -std=c++17 -O2 sum.cpp -o sum
-```
-
-When using the Python prototype on a tracked file, copy it to a scratch directory first because `proto/cp.py build` stamps a version header into the source file it reads:
+The `cpl` CLI checks types, runs programs directly on your machine, and compiles standalone C++17 ready to submit to any online judge:
 
 ```sh
-mkdir -p scratch/first && cp site/examples/sum.cp scratch/first/sum.cp
-python3 proto/cp.py build scratch/first/sum.cp
-g++ -std=c++17 -O2 scratch/first/sum.cpp -o scratch/first/sum
-printf '5\n3 1 4 1 5\n' | scratch/first/sum
+cpl check solve.cp
+cpl run solve.cp < input.txt
+cpl build solve.cp -o solve.cpp && g++ -std=c++17 -O2 solve.cpp -o solve
 ```
+
+See [Getting started & CLI](getting-started.html) for installation instructions and editor (`cpl lsp`) setup.
 
 ```exercise first-program-toolchain
 ```

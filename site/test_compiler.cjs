@@ -74,7 +74,7 @@ test("the generated runtime executes and builds all examples, inline course prog
   const inlineFound = new Map();
   for (const file of fs.readdirSync(path.join(__dirname, "content")).filter(f => f.startsWith("course-") && f.endsWith(".md"))) {
     const md = fs.readFileSync(path.join(__dirname, "content", file), "utf8");
-    for (const match of md.matchAll(/```cp Prototype tested · ([a-z-]+)\.cp\n([\s\S]*?)```/g)) {
+    for (const match of md.matchAll(/```cp CP Lang · ([a-z-]+)\.cp\n([\s\S]*?)```/g)) {
       inlineFound.set(match[1], match[2]);
     }
   }
@@ -108,6 +108,11 @@ test("the generated runtime executes and builds all examples, inline course prog
     segtree_monoid: "8\n17",
     lazy_action: "19\n11",
     colocated_brute: "6",
+    enum_match: "12",
+    collections_heap: "7",
+    sort_bsearch: "2",
+    fenwick_sum: "10\n13",
+    dsu_mod: "2 10",
     accumulation: "6",
     ascii: "3",
     optional: "8",

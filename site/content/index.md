@@ -1,52 +1,36 @@
-Start with the [interactive course](course.html) for six progressive chapters with worked examples and checked exercises, keep the [one-page cheat sheet](cheat-sheet.html) open during contests, or run code directly in the [offline playground](playground.html).
+**CP Lang** is a programming language for competitive programming that compiles to fast, human-readable **C++17** you can submit directly to Codeforces, AtCoder, DMOJ, Kattis, and ICPC judges.
 
-CP Lang is a language for competitive programming that compiles to clean, readable C++17. Keep the algorithms you know. Replace index arithmetic, sentinel values, and repeated bookkeeping with types and helpers that say what you mean.
+Keep the algorithms and data structures you already know. Replace index arithmetic, `1e18` sentinels, `((a % m) + m) % m`, and repetitive container boilerplate with typed domains, Tropical Optionals, `@memo` DP, and an algebraic standard library — all compiling down to flat, single-file C++17.
 
-Start with [your first program](getting-started.html), take the [language tour](tour.html), or go straight to [index spaces](indices.html).
+- **Learn from scratch:** work through the [interactive course](course.html) — {{chapter_count}} progressive chapters with {{exercise_count}} checked exercises and live in-browser WebAssembly sandboxes.
+- **Try it in your browser:** open the [playground](playground.html) to run CP Lang, inspect the generated C++17, or press **Trace** to step through variables and `@brute(main)` comparisons visually in the [Trace debugger](trace.html).
+- **Keep a contest reference open:** print or bookmark the [one-page cheat sheet](cheat-sheet.html), browse the [standard & local library reference](stdlib.html), or jump straight in from the [C++17 migration guide](cpp-guide.html).
 
-```cp Prefix sums · CP Lang 0.2.2
-let n: 1..=2e5 = read()
-domain V = 1..=n
-let a: [V]Int = read()
+## Why CP Lang?
 
-var pre: [V.bounds]Int = 0
-for v in V:
-    pre[v.r] = pre[v.l] + a[v]
+Most Wrong Answers in contests do not come from the algorithm idea — they come from off-by-one boundaries, mixing up vertex and edge indices, forgetting to clear a DP table between test cases, overflowing `INF + w`, or erasing every copy from a `std::multiset`. CP Lang catches those bugs at compile time or eliminates the boilerplate that causes them:
 
-fn range_sum(l: V, r: V) -> Int:
-    pre[r.r] - pre[l.l]
-```
+- **Typed domains & boundaries:** declare `domain V = 1..=n` once, read `let a: [V]Int = read()`, and write prefix sums with `pre[v.r] = pre[v.l] + a[v]` — zero off-by-one shifts and zero runtime bounds overhead.
+- **Tropical Optionals (`?T`):** `?Int` uses `LLONG_MIN` as a zero-byte niche tag, `+`/`-` absorb `none`, and `best min= dist[u] + w` skips unreachable states automatically — no `1e18` sentinels.
+- **Symmetric `@!multitest`:** put sieves and factorials above `@!multitest`, put per-case logic below it, use bare `return` to end the current case, and let `@memo` tables reset automatically between cases.
+- **Built-in verification & Trace:** put `@brute(main)`, `@checker`, or `@interactor` right next to your solution in the same file, run `cpl stress` to shrink failing cases automatically, and strip all verification code cleanly on `cpl build`.
 
-An element has a boundary on its left, `.l`, and on its right, `.r`. Prefix sums live on those boundaries. There is no question of whether to allocate `n` or `n + 1`, or whether to subtract at `l - 1`.
+## Real contest solutions: C++17 vs. CP Lang
 
-## One idea, fewer special cases
+Below are five real accepted competitive programming solutions (from COCI, NOIP, NOI, and Cheerio), comparing the original C++17 submission side by side with its idiomatic CP Lang 0.2.2 rewrite.
 
-A vertex, an edge, a grid cell `(Row, Col)`, and an enum variant all share one bounded-index mechanism (`Index`). When you just want a plain integer-indexed array without declaring a domain, write `[0..n]T` or `[0..=k]T` and reset it with `a.fill(x)`. Strings (`Str`) are flat, value-semantic `0..len`-indexed ASCII byte sequences, with `[domain S]Char` available when you want nominal character positions.
-
-The language core stays small: 34 reserved keywords (30 for contestants, 4 for library authors), 4 numeric types, 7 auto-derived core traits, and zero lifetime annotations. Missing values are `?T` rather than sentinels, and `?Int` behaves as a tropical number: `+` absorbs `none`, `min=` skips it. Containers, `lends` projections, `Monoid(id, op)`, `Action`, `compress(all)`, and `Rooted` are ordinary userland code you can read and extend in your own local library.
-
-## CP Lang 0.2.2 Showcase
-
-Five real contest submissions from `corpus/submissions/` rethought idiomatically in CP Lang (`proto/ports/`). Both raw C++17 line counts and library-stripped counts (removing template headers and standard data structures) are reported from each batch's verified `loc.py`.
-
-Across the whole corpus, the [registry](https://github.com/ryanbai1412/cp-lang/blob/main/bench/corpus-500-report.md) counts 573 unique problems ported. 477 of them have a port that a harness differentially checked against the original submission; those 477 ports are 66.4% shorter than the raw originals and 48.4% shorter than the library-stripped originals. Over all 573 the figures are 66.1% and 47.9%.
+Line counts are shown two ways: **raw** (the entire accepted C++17 file) and **stripped** (removing personal `#include` and debug-macro boilerplate so you see the pure algorithm savings). Click **Show all lines** on any C++17 panel to inspect the complete solution body.
 
 ```showcase
 ```
 
-## A path through the language
+Across hundreds of ported competitive programming problems, CP Lang solutions average roughly two-thirds fewer total lines than raw C++17 — and nearly half as many lines even after stripping C++ template and library boilerplate.
 
-1. [One-page cheat sheet](cheat-sheet.html) — every CP Lang 0.2.2 construct, collection, and stdlib helper on one page.
-2. [Getting started](getting-started.html) — install `cpl` and run your first native binary.
-3. [A quick tour](tour.html) — values, `?T` optionals, parallel assignment, explicit undo, and `@!multitest`.
-4. [Index spaces & bounds](indices.html) — `[0..n]T`, nominal domains, `.l`/`.r` boundaries, `p.adj4`/`p.adj8`, and `compress(all)`.
-5. [Ownership & borrowing](borrowing.html) — explicit `mut`, `lends`, and `@law disjoint` without lifetime annotations.
-6. [ASCII strings](strings.html) — value-semantic `0..len`-indexed `Str` and opt-in `[domain S]Char`.
-7. [Memoization & stress tests](testing.html) — `@memo`, `@brute`, `@checker`, `@interactor`, and shrinking.
-8. [The standard library](stdlib.html) — `bsearch_first`, the collections, bare ops / `Monoid(id, op)`, `Action`, `desc(x)`, and `Rooted`.
+## Complete documentation map
 
-## Know what you can run
+Everything you need to learn CP Lang fluently and look up any detail during a contest is organized into two tracks:
 
-> **Development edition.** This guide teaches the locked **CP Lang 0.2.2** specification (`docs/one-page-cheat-sheet.md`, `decisions.md` §16–§19). Blocks marked **prototype tested** compile and run in the Python prototype and in the offline WebAssembly [playground](playground.html). Blocks marked **CP Lang 0.2.2** show the locked language design where the Rust compiler and prototype are still catching up.
+- **Interactive course ({{chapter_count}} chapters):** starts with [Your first program](course-first-program.html) and progresses through [domains & boundaries](course-domains.html), [types, enums & strings](course-types-strings.html), [collections & binary search](course-collections.html), [Index & slices](course-index-slices.html), [ownership & `lends`](course-borrowing.html), [DP, optionals & bitmasks](course-dp.html), [Fenwick & segment trees](course-algebra.html), [graphs, trees, math & geometry](course-graphs-math.html), and [stress testing & Trace](course-verification.html).
+- **Language & library reference:** [Getting started & CLI](getting-started.html), [One-page cheat sheet](cheat-sheet.html), [Language tour](tour.html), [Types, numbers & control flow](types-and-control.html), [I/O, formatting & contest modes](io-and-formatting.html), [Index spaces & slices](indices.html), [Ownership & borrowing](borrowing.html), [Strings & ASCII text](strings.html), [Memoization, stress testing & Trace](testing.html), [Standard & local libraries](stdlib.html), and [From C++17 & performance](cpp-guide.html).
 
-The [getting-started chapter](getting-started.html#what-works-today) separates working commands from planned ones. The [design decisions](https://github.com/ryanbai1412/cp-lang/blob/main/decisions.md) and [0.2.2 architecture](https://github.com/ryanbai1412/cp-lang/blob/main/research/language-architecture-v2.2.md) record the rationale for every feature.
+> **Version 0.2.2 status.** CP Lang 0.2.2 is in active development. The browser WebAssembly [playground](playground.html), interactive course exercises, [Trace debugger](trace.html), and local `cpl` CLI run the core language and emit standalone C++17; see [Getting started & CLI](getting-started.html#what-works-today) for what runs today versus upcoming CLI features.

@@ -2,7 +2,7 @@
   {
     "slug": "course-first-program",
     "title": "Your first program",
-    "description": "Read typed input, update state in a loop, print answers, and build a native binary with today's prototype toolchain.",
+    "description": "Read typed input, update state in a loop, handle multiple test cases, and compile to C++17.",
     "duration": "15 min",
     "exercises": [
       {
@@ -136,18 +136,18 @@
       {
         "id": "first-program-toolchain",
         "kind": "choice",
-        "title": "Get a native binary today",
-        "prompt": "Using the Python prototype, which workflow runs sum.cp as a native binary without modifying the tracked example?",
+        "title": "Compile a submittable C++17 file",
+        "prompt": "You finished writing solve.cp and want to test it on sample.in and produce a single C++17 file ready to upload to a judge. Which commands do you run?",
         "options": [
-          "Run cpl check sum.cp; a clean check produces a binary",
-          "Run python3 proto/cp.py build directly on the tracked file under site/examples",
-          "Copy it to a scratch directory, run python3 proto/cp.py build on the copy, compile the .cpp with g++ -std=c++17 -O2, and pipe the input in",
-          "Run cpl run sum.cp and pipe the input in"
+          "cpl check solve.cp, which writes solve.cpp automatically",
+          "cpl run solve.cp < sample.in to run locally, then cpl build solve.cp -o solve.cpp to emit standalone C++17",
+          "g++ solve.cp directly with -std=c++17",
+          "Upload solve.cp straight to the online judge"
         ],
-        "answer": 2,
-        "hint": "The Python prototype writes a stamp into the source file it builds, so start with an owned scratch copy.",
-        "solution": "Build a scratch copy with the Python prototype, then compile the generated C++17 file with your own compiler and run it.",
-        "explanation": "The prototype emits C++17 that g++ compiles, but also stamps its source, so copy a tracked example first. cpl check produces no binary. The Rust CLI now has its own interpreter (cpl run) and C++17 emitter (cpl build) for a supported subset; cpl run is not the prototype-to-native workflow asked for here."
+        "answer": 1,
+        "hint": "One subcommand executes the program directly; another emits the standalone C++17 translation.",
+        "solution": "Run `cpl run solve.cp < sample.in` to test locally, and `cpl build solve.cp -o solve.cpp` to emit a single self-contained C++17 file ready to compile with g++ or submit.",
+        "explanation": "`cpl check` only type-checks without writing output. `g++` and online judges expect C++17, not `.cp` source directly. `cpl run` runs your program immediately and `cpl build` emits clean, tree-shaken C++17 with your `.cp` source preserved in a header comment."
       }
     ]
   },
@@ -222,7 +222,199 @@
         "answer": 3,
         "hint": "v.l(k) counts v itself. Which is the first position that has k elements ending at it?",
         "solution": "Start at V(k). The window of k elements ending at position k is exactly positions 1 through k, and every later position also has a full window.",
-        "explanation": "v.l(k) is the left edge of the k-element window that ends at v and includes v, so the first valid v is the k-th position. Looping over all of V asks for v.l(k) at early positions where no such window exists, and the prototype stops with a range error. Starting at V(k + 1) skips the first window, the extra one people add when they forget that the window counts v. V.first..=V(k) visits positions where the window does not yet exist."
+        "explanation": "v.l(k) is the left edge of the k-element window that ends at v and includes v, so the first valid v is the k-th position. Looping over all of V asks for v.l(k) at early positions where no such window exists, triggering a range trap. Starting at V(k + 1) skips the first window, the classic off-by-one when forgetting that the window counts v. V.first..=V(k) visits positions where the window does not yet exist."
+      }
+    ]
+  },
+  {
+    "slug": "course-types-strings",
+    "title": "Types, enums, and strings",
+    "description": "Use Euclidean arithmetic, floating-point guardrails, records, payload enums, exhaustive match, and ASCII Str.",
+    "duration": "20 min",
+    "exercises": [
+      {
+        "id": "types-euclidean",
+        "kind": "choice",
+        "title": "Euclidean division and modulo",
+        "prompt": "What are (-7) / 4 and (-7) % 4 in CP Lang?",
+        "options": [
+          "-1 and -3",
+          "-2 and 1",
+          "-2 and -1",
+          "-1 and 1"
+        ],
+        "answer": 1,
+        "hint": "Euclidean modulo is always non-negative (in 0..|b|), and q * b + r always equals a.",
+        "solution": "(-7) / 4 is -2 and (-7) % 4 is 1, because (-2) * 4 + 1 = -7 and 1 is in 0..4.",
+        "explanation": "Unlike C++, where -7 % 4 is -3, CP Lang uses Euclidean division and modulo everywhere so residues always lie in 0..|b|. When the compiler proves a >= 0 and b > 0, it lowers directly to native C++ / and % with zero overhead."
+      },
+      {
+        "id": "types-f64-rules",
+        "kind": "choice",
+        "title": "Convert and print an F64",
+        "prompt": "You have `let x: F64 = F64(a) / F64(b)` and want both its floored integer value and a 6-decimal printed output. Which pair of lines compiles?",
+        "options": [
+          "let k = Int(x); print(x)",
+          "let k = floor(x); print(x)",
+          "let k = floor(x); print(\"{x:.6f}\")",
+          "let k = Int(x); print(\"{x:.6f}\")"
+        ],
+        "answer": 2,
+        "hint": "CP Lang rejects silent float-to-int truncation and bare unformatted float printing.",
+        "solution": "Use `floor(x)` (or `ceil`/`round`/`trunc`) to convert `F64` to `Int`, and `print(\"{x:.6f}\")` to format floats with explicit precision.",
+        "explanation": "`Int(x)` on `F64` is a compile error because rounding direction must be explicit. Bare `print(x)` on `F64` is also rejected so you never lose precision to default 6-significant-digit formatting or print `-0.00`."
+      },
+      {
+        "id": "types-enum-match",
+        "kind": "output",
+        "fixture": "enum_match",
+        "title": "Trace a payload enum and match",
+        "prompt": "enum_match.cp reads n operations (1 x for Add(x), 2 x for Sub(x)), dispatches with exhaustive match, and prints the running total. Predict the output for each input.",
+        "hint": "Start cur at 0. Op.Add(v) adds v; Op.Sub(v) subtracts v.",
+        "solution": "Input 1: 0 + 10 - 3 + 5 = 12. Input 2: 0 - 4 - 6 + 2 = -8.",
+        "tests": [
+          {
+            "input": "3\n1 10\n2 3\n1 5\n",
+            "expected": "12\n"
+          },
+          {
+            "input": "3\n2 4\n2 6\n1 2\n",
+            "expected": "-8\n"
+          }
+        ]
+      },
+      {
+        "id": "types-ascii-count",
+        "kind": "output",
+        "fixture": "ascii",
+        "title": "Count characters in a nominal word",
+        "prompt": "ascii.cp reads n and a word typed as [S]Char, then prints how many positions hold 'a'. Predict the output for each input.",
+        "hint": "Count only lowercase 'a' characters across all n positions of domain S.",
+        "solution": "'abaca' has 3 'a's, and 'zzzz' has 0.",
+        "tests": [
+          {
+            "input": "5\nabaca\n",
+            "expected": "3\n"
+          },
+          {
+            "input": "4\nzzzz\n",
+            "expected": "0\n"
+          }
+        ]
+      },
+      {
+        "id": "types-str-vs-domain",
+        "kind": "choice",
+        "title": "When to use Str vs [domain S]Char",
+        "prompt": "You are solving Longest Common Subsequence on two strings of lengths n and m. Why might you read them as `[domain A]Char` and `[domain B]Char` instead of `Str`?",
+        "options": [
+          "Str does not support O(1) indexing",
+          "Separate domains make it a compile-time error to index string a with a position from string b",
+          "Str uses UTF-8 while [domain S]Char uses ASCII",
+          "[domain S]Char can grow dynamically with .push()"
+        ],
+        "answer": 1,
+        "hint": "Both Str and [domain S]Char are O(1) ASCII byte arrays; the difference is in the index type.",
+        "solution": "Nominal character domains give each string its own index type, preventing transposed DP indices (`a[j]` instead of `a[i]`) at compile time.",
+        "explanation": "Both `Str` and `[domain S]Char` are flat ASCII byte arrays with O(1) indexing and zero UTF-8 overhead. `Str` is the default ergonomic string (with `.push()` when `var`), while `[domain S]Char` opts into nominal index safety for multi-string DP."
+      }
+    ]
+  },
+  {
+    "slug": "course-collections",
+    "title": "Collections, sorting, and binary search",
+    "description": "Master List, Deque, MinHeap/MaxHeap, Set, SortedBag, Map/HashMap, key-based sorting, compression, and binary search.",
+    "duration": "25 min",
+    "exercises": [
+      {
+        "id": "coll-heap-output",
+        "kind": "output",
+        "fixture": "collections_heap",
+        "title": "Sum the k smallest elements with MinHeap",
+        "prompt": "collections_heap.cp pushes n integers into a MinHeap<Int>, pops the smallest min(n, k) values into a List<Int>, and prints their sum. Predict the output for each input.",
+        "hint": "MinHeap pops the smallest element first each time.",
+        "solution": "Case 1: smallest 3 of [9, 2, 7, 4, 1] are 1, 2, 4 -> sum 7. Case 2: smallest 2 of [10, -3, 5, -1] are -3, -1 -> sum -4.",
+        "tests": [
+          {
+            "input": "5 3\n9 2 7 4 1\n",
+            "expected": "7\n"
+          },
+          {
+            "input": "4 2\n10 -3 5 -1\n",
+            "expected": "-4\n"
+          }
+        ]
+      },
+      {
+        "id": "coll-heap-desc",
+        "kind": "choice",
+        "title": "Sort by two keys in opposite directions",
+        "prompt": "You want to sort tasks in place by smallest deadline `t.due` first, breaking ties by largest reward `t.val` first. Which line writes this directly?",
+        "options": [
+          "sort(mut tasks, by: t => (t.due, desc(t.val)))",
+          "sort(tasks, by: t => (t.due, -t.val))",
+          "tasks.sort((a, b) => a.due < b.due)",
+          "sort(mut tasks, by: t => (desc(t.due), t.val))"
+        ],
+        "answer": 0,
+        "hint": "In-place sort requires explicit `mut`, and `desc(...)` flips the ordering of a single tuple component.",
+        "solution": "`sort(mut tasks, by: t => (t.due, desc(t.val)))` mutates `tasks` in place, ordering `t.due` ascending and `t.val` descending.",
+        "explanation": "In-place mutation always marks the container `mut`. Wrapping `t.val` in `desc(...)` flips only that component and works on any `Ord` type (including strings and tuples, not just integers). Flipping `t.due` instead puts the largest deadline first."
+      },
+      {
+        "id": "coll-map-lazy",
+        "kind": "choice",
+        "title": "Append to a HashMap bucket safely",
+        "prompt": "Given `var buckets = HashMap<Int, List<Int>>()`, which line inserts an empty list if key `k` is absent and appends `i` in a single expression?",
+        "options": [
+          "buckets[k].push(i)",
+          "(buckets[k] ??= []).push(i)",
+          "buckets[k] += i",
+          "let b = buckets[k] ?? []; b.push(i)"
+        ],
+        "answer": 1,
+        "hint": "Reading `buckets[k]` returns `?List<Int>`. You need an operator that initializes the entry in place and lends it mutably.",
+        "solution": "`(buckets[k] ??= []).push(i)` initializes `buckets[k]` to `[]` if missing and immediately lends a mutable reference to push `i`.",
+        "explanation": "`buckets[k]` has type `?List<Int>`, so `.push(i)` directly does not compile (and reading a map never silently inserts). `let b = buckets[k] ?? []` copies or creates a temporary list not stored back in the map. `??=` initializes the map place in-place and returns a mutable lend."
+      },
+      {
+        "id": "coll-bsearch-output",
+        "kind": "output",
+        "fixture": "sort_bsearch",
+        "title": "Trace sorting plus lower bound",
+        "prompt": "sort_bsearch.cp sorts a in place and prints the smallest index in 0..=n where a[i] >= target (or n if all elements are smaller). Predict the output for each input.",
+        "hint": "Sort the array in ascending order first, then count how many elements are strictly less than target.",
+        "solution": "Case 1: sorted [2, 4, 7, 7, 9], first element >= 7 is at index 2. Case 2: sorted [1, 3, 5], all elements are < 10 so index is 3. Case 3: sorted [4, 6, 8], 4 >= 1 so index is 0.",
+        "tests": [
+          {
+            "input": "5 7\n9 2 7 4 7\n",
+            "expected": "2\n"
+          },
+          {
+            "input": "3 10\n5 1 3\n",
+            "expected": "3\n"
+          },
+          {
+            "input": "3 1\n8 4 6\n",
+            "expected": "0\n"
+          }
+        ]
+      },
+      {
+        "id": "coll-first-ge-types",
+        "kind": "choice",
+        "title": "What .first_ge returns on a slice vs a Set",
+        "prompt": "You call `a.first_ge(x)` on a sorted array `a: [V]Int` and `s.first_ge(x)` on a `s: Set<Int>`. What are their return types?",
+        "options": [
+          "Both return ?Int (the element value)",
+          "Both return ?V (an index)",
+          "a.first_ge(x) returns ?V (the position in the array), while s.first_ge(x) returns ?Int (the element in the set)",
+          "a.first_ge(x) returns V and traps if missing, while s.first_ge(x) returns ?Int"
+        ],
+        "answer": 2,
+        "hint": "Arrays are indexed by positions; sets hold values without positional indices.",
+        "solution": "On an array or slice `[D]T`, `.first_ge` returns `?D` (an optional index). On a `Set<T>` or `SortedBag<T>`, it returns `?T` (the optional element itself).",
+        "explanation": "Neither ever traps on a miss — both return `none` when no element is `>= x`. Returning `?D` for indexed sequences lets you inspect neighbors or slice directly at that position, while sets return the value itself."
       }
     ]
   },

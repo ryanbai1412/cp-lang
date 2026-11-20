@@ -7,12 +7,17 @@
     <option value="knapsack">0/1 knapsack ([I.bounds, 0..=cap])</option>
     <option value="range_array">Frequency array ([0..=k]Int)</option>
     <option value="str-scan">ASCII string scan (0..s.len Str)</option>
+    <option value="enum_match">Payload enum + exhaustive match</option>
+    <option value="collections_heap">MinHeap + List greedy pick</option>
+    <option value="sort_bsearch">Sorting + lower-bound binary search</option>
     <option value="lends">Mutable projection (lends mut)</option>
     <option value="tropical_dp">Tropical Optionals coin change (?Int, min=)</option>
     <option value="optional_coalesce">Optional coalesce &amp; max= (??=, max=)</option>
     <option value="memo_dp">Cached @memo DP (ways)</option>
     <option value="segtree_monoid">Algebraic SegTree (Monoid)</option>
     <option value="lazy_action">Algebraic LazySegTree (Action)</option>
+    <option value="fenwick_sum">Fenwick tree range sums &amp; updates</option>
+    <option value="dsu_mod">DSU components + Mod&lt;P&gt; combinations</option>
     <option value="colocated_brute">Co-located @brute(main)</option>
     <option value="accumulation">Bounded accumulation</option>
     <option value="ascii">Nominal [S]Char count</option>
@@ -22,6 +27,6 @@
 </div>
 <div id="playground-editor">{{editor}}</div>
 <h2 id="execution">What runs here</h2>
-<p>The real CP Lang compiler and interpreter run locally in WebAssembly. Edit the source and standard input, run your program, or inspect its generated C++17. Diagnostics and cursor type information come from the same frontend as <code>cpl</code>.</p>
-<p>Programs run in a worker with a five-second limit; Stop cancels a run. Browser recursion and memory limits are lower than the local toolchain. Design-only language features may report compiler diagnostics.</p>
-<p>Keep the <a href="cheat-sheet.html">one-page cheat sheet</a> handy, work through the <a href="course.html">interactive course</a>, or press <strong>Trace</strong> to step through your own program in the <a href="trace.html">trace debugger</a>: every change to a top-level variable, every <code>print</code> and every <code>debug(...)</code>, with the <code>@brute(main)</code> run beside it when the file has one.</p>
+<p>The real CP Lang compiler and interpreter run locally in your browser via WebAssembly — nothing is sent to a server. Edit the source and standard input, run your program, inspect the generated C++17 (syntax-highlighted), or click <strong>Trace</strong> to step through execution visually.</p>
+<p>Runs execute in a Web Worker with a five-second timeout; click <strong>Stop</strong> to cancel early. Browser recursion and memory caps are smaller than the local <code>cpl</code> CLI.</p>
+<p>New to CP Lang? Start with the <a href="course.html">interactive course</a>, keep the <a href="cheat-sheet.html">one-page cheat sheet</a> handy while coding, or press <strong>Trace</strong> on any example to watch variables, outputs, and <code>@brute(main)</code> diffs step by step in the <a href="trace.html">Trace debugger</a>.</p>

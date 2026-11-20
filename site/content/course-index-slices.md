@@ -13,7 +13,7 @@ Because every value of `I` is constructed inside `0..K`, `[I]T` lowers to a flat
 
 A two-dimensional grid `[Row, Col]T` is indexed by the product domain `type Cell = (Row, Col)`. Every `Cell` implements `Index`, so `[Cell]T`, `bfs`, `Dsu<Cell>`, and `@memo` accept grid cells directly.
 
-```cp Prototype tested · grid-sum.cp
+```cp CP Lang · grid-sum.cp
 let h: 1..=50 = read()
 let w: 1..=50 = read()
 domain Row = 1..=h
@@ -48,16 +48,16 @@ for p in (Row, Col):
 
 One `Range<I>` type covers `l..r`, `l..=r`, and open-ended `..i`, `..=i`, `i..`, `i.r..`, and `l.r..r.l`. A range is plain data: you can store it in a variable or return it from a helper, then apply it to an array at the point of use (`sort(mut a[w])`) to form a temporary slice without changing index numbering.
 
-> **WASM status for slices.** In the approved 0.2.2 design and `proto/cpc`, `a[l..=r]` produces a parent-indexed slice (`mid[V(3)]` keeps parent position `V(3)`) and `sort(mut a[l..=r])` sorts that window in place. The current Rust WASM frontend still types `a[l..=r]` as an integer-indexed sub-list and does not yet lower `a[l..=r].sort()`, so the slice snippet below is **prototype tested only** (not WASM runnable):
+> **Browser status for parent-indexed slices.** In CP Lang 0.2.2, `a[l..=r]` produces a parent-indexed slice (`mid[V(3)]` keeps parent position `V(3)`) and `sort(mut a[l..=r])` sorts that window in place. The browser WebAssembly build still lowers slices as zero-based sub-lists, so the slice example below illustrates the full 0.2.2 behavior:
 
-```cp Prototype tested · slices.cp (not yet in WASM)
+```cp CP Lang 0.2.2 · slices.cp
 let n: 3..=50 = read()
 domain V = 1..=n
 var a: [V]Int = read()
 
 let mid = a[V(2)..=V(4)]
 print(mid.len, mid[V(3)], sum(mid))
-a[V(2)..=V(4)].sort()
+sort(mut a[V(2)..=V(4)])
 print(a)
 ```
 

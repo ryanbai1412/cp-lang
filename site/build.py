@@ -20,72 +20,98 @@ REFERENCE_PAGES = [
         "index",
         "Overview",
         "Start here",
-        "CP Lang 0.2.2 for competitive programming, targeting clean C++17.",
-        "6 min",
+        "A competitive programming language that compiles to fast, clean C++17.",
+        "5 min",
+    ),
+    (
+        "getting-started",
+        "Getting started & CLI",
+        "Start here",
+        "Install the cpl toolchain, run programs locally, and compile submittable C++17.",
+        "5 min",
+    ),
+    (
+        "tour",
+        "Language tour",
+        "Start here",
+        "A guided walkthrough of syntax, program layout, and everyday contest idioms.",
+        "8 min",
     ),
     (
         "cheat-sheet",
         "One-page cheat sheet",
         "Quick reference",
-        "Every CP Lang 0.2.2 construct, collection, and stdlib helper on one page.",
+        "Every CP Lang 0.2.2 construct, collection, and stdlib helper on one printable page.",
         "1 page",
     ),
     (
-        "getting-started",
-        "Getting started",
-        "Start here",
-        "Install the CLI and run a prototype example.",
-        "5 min",
+        "types-and-control",
+        "Types, numbers & control flow",
+        "Language reference",
+        "Numeric rules, ranges, Tropical Optionals, structs, enums, traits, and loops.",
+        "12 min",
     ),
     (
-        "tour",
-        "A quick language tour",
-        "Start here",
-        "Values, functions, loops, and program structure.",
-        "8 min",
+        "io-and-formatting",
+        "I/O, formatting & contest modes",
+        "Language reference",
+        "Typed read(), print() formatting, @!multitest, interactive ask, and IOI graders.",
+        "9 min",
     ),
     (
         "indices",
-        "Index spaces & bounds",
-        "The language",
-        "Typed positions, boundaries, and indexed containers.",
-        "10 min",
+        "Index spaces, domains & slices",
+        "Language reference",
+        "Typed positions, .l/.r boundaries, grids, slices, arenas, and coordinate compression.",
+        "11 min",
     ),
     (
         "borrowing",
-        "Ownership & borrowing",
-        "The language",
-        "Temporary access, without lifetime annotations.",
+        "Ownership, lends & borrowing",
+        "Language reference",
+        "Value semantics, mut parameters, lends projections, and @law disjoint without lifetimes.",
         "9 min",
     ),
     (
         "strings",
-        "ASCII strings",
-        "The language",
-        "Value-semantic 0..len-indexed Str and opt-in nominal character domains.",
-        "5 min",
+        "Strings & ASCII text",
+        "Language reference",
+        "0..len byte strings, slicing, parsing, nominal character domains, and string algorithms.",
+        "6 min",
     ),
     (
         "testing",
-        "Memoization & stress tests",
+        "Memoization, stress testing & Trace",
         "In practice",
-        "Cache recurrences and compare fast and reference solutions.",
-        "8 min",
+        "@memo caching, @brute/@checker/@interactor verification, and the visual Trace debugger.",
+        "10 min",
     ),
     (
         "stdlib",
-        "The standard library",
+        "Standard & local libraries",
         "In practice",
-        "Containers, algorithms, and local libraries.",
-        "7 min",
+        "Complete API reference for all std modules plus local library packaging and recipes.",
+        "14 min",
+    ),
+    (
+        "cpp-guide",
+        "From C++17 & performance",
+        "In practice",
+        "C++17-to-CP-Lang translation guide, emitted memory layouts, and zero-overhead escape hatches.",
+        "10 min",
     ),
 ]
 
 LESSONS = load_lessons()
 EXERCISES = {exercise["id"]: exercise for lesson in LESSONS for exercise in lesson["exercises"]}
 PAGES = [
-    ("course", "Interactive course", "Course",
-     "Seven progressive chapters. Worked examples, exercises, and checked answers.", "7 chapters"),
+    (
+        "course",
+        "Interactive course",
+        "Course",
+        f"{len(LESSONS)} progressive chapters from your first program to contest fluency, with {len(EXERCISES)} checked exercises.",
+        f"{len(LESSONS)} chapters",
+    ),
     *[(lesson["slug"], lesson["title"], "Course", lesson["description"], lesson["duration"])
       for lesson in LESSONS],
     *REFERENCE_PAGES,
@@ -96,22 +122,109 @@ def slug(text):
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
 
 
-TOKEN = re.compile(
-    r'(?P<comment>//[^\n]*|\#[^\n]*)|(?P<string>"(?:\\.|[^"\\])*"|\'[^\'\n]*\')|(?P<decorator>@!?\w+)|(?P<number>\b\d[\de_]*\b)|(?P<keyword>\b(?:let|var|const|fn|struct|enum|domain|type|use|pub|if|elif|else|for|while|in|match|return|break|continue|and|or|not|assert|mut|self|unchecked|true|false|none|trait|impl|lends|yield)\b)|(?P<type>\b[A-Z][A-Za-z0-9_]*\b)'
+TOKEN_CP = re.compile(
+    r'(?P<comment>//[^\n]*)'
+    r'|(?P<string>"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])\')'
+    r'|(?P<decorator>@!?\w+|\'[a-zA-Z_]\w*)'
+    r'|(?P<number>\b(?:0x[0-9a-fA-F_]+|0b[01_]+|\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d+)?)\b)'
+    r'|(?P<keyword>\b(?:let|var|const|fn|struct|enum|domain|type|use|pub|if|elif|else|for|while|in|match|return|break|continue|and|or|not|assert|mut|self|unchecked|true|false|none|trait|impl|lends|yield)\b)'
+    r'|(?P<type>\b[A-Z][A-Za-z0-9_]*\b)'
+    r'|(?P<function>\b[a-z_][a-zA-Z0-9_]*(?=\s*(?:::<|\()))'
 )
+
+TOKEN_CPP = re.compile(
+    r'(?P<comment>/\*[\s\S]*?\*/|//[^\n]*)'
+    r'|(?P<preproc>^[ \t]*#[ \t]*[a-zA-Z_]\w*)'
+    r'|(?P<string>"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')'
+    r'|(?P<number>\b(?:0x[0-9a-fA-F\']+|\d[\d\']*(?:\.\d[\d\']*)?(?:[eE][+-]?\d+)?(?:ULL|LL|UL|U|L)?)\b)'
+    r'|(?P<keyword>\b(?:alignas|alignof|auto|bool|break|case|catch|char|class|const|constexpr|continue|decltype|default|delete|do|double|else|enum|explicit|extern|false|float|for|friend|goto|if|inline|int|long|mutable|namespace|new|noexcept|nullptr|operator|private|protected|public|return|short|signed|sizeof|static|static_assert|struct|switch|template|this|throw|true|try|typedef|typename|union|unsigned|using|virtual|void|volatile|while)\b)'
+    r'|(?P<type>\b(?:vector|array|string|string_view|pair|tuple|map|multimap|set|multiset|unordered_map|unordered_set|queue|deque|stack|priority_queue|bitset|optional|variant|function|span|int8_t|int16_t|int32_t|int64_t|uint8_t|uint16_t|uint32_t|uint64_t|size_t|ptrdiff_t|istream|ostream|__int128|ll|ld|vi|vll|pii)\b)'
+    r'|(?P<function>\b[a-zA-Z_][a-zA-Z0-9_]*(?=\s*\())',
+    re.MULTILINE,
+)
+
+TOKEN_SH = re.compile(
+    r'(?P<comment>#[^\n]*)'
+    r'|(?P<string>"(?:\\.|[^"\\])*"|\'[^\'\n]*\')'
+    r'|(?P<decorator>(?<!\w)--?[a-zA-Z0-9][a-zA-Z0-9_-]*)'
+    r'|(?P<keyword>\b(?:cpl|g\+\+|clang\+\+|cargo|git|python3|printf|cd|mkdir|node|export)\b)'
+    r'|(?P<number>\b\d+\b)'
+)
+
+TOKEN_TOML = re.compile(
+    r'(?P<comment>#[^\n]*)'
+    r'|(?P<decorator>^\[[^\]]+\])'
+    r'|(?P<string>"(?:\\.|[^"\\])*"|\'[^\'\n]*\')'
+    r'|(?P<keyword>\b(?:true|false)\b)'
+    r'|(?P<number>\b\d[\d_]*\b)',
+    re.MULTILINE,
+)
+
+TOKENIZERS = {
+    "cp": TOKEN_CP,
+    "cpp": TOKEN_CPP,
+    "c++": TOKEN_CPP,
+    "sh": TOKEN_SH,
+    "bash": TOKEN_SH,
+    "shell": TOKEN_SH,
+    "toml": TOKEN_TOML,
+}
 
 
 def highlight(code, language):
-    if language != "cp":
+    lang = (language or "text").lower()
+    pattern = TOKENIZERS.get(lang)
+    if pattern is None:
         return html.escape(code)
     parts, end = [], 0
-    for token in TOKEN.finditer(code):
+    for token in pattern.finditer(code):
         parts += [
             html.escape(code[end : token.start()]),
             f'<span class="tok-{token.lastgroup}">{html.escape(token.group())}</span>',
         ]
         end = token.end()
     return "".join(parts) + html.escape(code[end:])
+
+
+def code_block_html(
+    code,
+    language,
+    label,
+    *,
+    copy=True,
+    collapsible_lines=28,
+    header_html=None,
+    extra_class="",
+):
+    """Render a syntax-highlighted code figure with optional Show more/less expansion."""
+    cleaned = code.rstrip()
+    line_count = cleaned.count("\n") + (1 if cleaned else 0)
+    collapsible = collapsible_lines is not None and line_count > collapsible_lines
+    classes = ["code-block"]
+    if extra_class:
+        classes.append(extra_class)
+    if collapsible:
+        classes.extend(["is-collapsible", "is-collapsed"])
+    lang_attr = html.escape((language or "text").lower())
+    caption_inner = header_html if header_html is not None else f"<span>{html.escape(label)}</span>"
+    copy_btn = (
+        '<button class="copy-button" type="button" aria-label="Copy code">Copy</button>'
+        if copy
+        else ""
+    )
+    fade_and_btn = (
+        f'<div class="code-fade" aria-hidden="true"></div>'
+        f'<button class="code-expand-btn" type="button" aria-expanded="false" '
+        f'data-lines="{line_count}">Show all {line_count} lines</button>'
+        if collapsible
+        else ""
+    )
+    return (
+        f'<figure class="{" ".join(classes)}" data-lang="{lang_attr}" data-lines="{line_count}">'
+        f"<figcaption>{caption_inner}{copy_btn}</figcaption>"
+        f'<div class="code-body"><pre tabindex="0"><code>{highlight(cleaned, language)}</code></pre>'
+        f"{fade_and_btn}</div></figure>\n"
+    )
 
 
 class Renderer(mistune.HTMLRenderer):
@@ -137,14 +250,18 @@ class Renderer(mistune.HTMLRenderer):
         if language == "course":
             return catalog_html(LESSONS)
         if language == "showcase":
-            return showcase_html(highlight)
+            return showcase_html(highlight, code_block_html)
         if language == "exercise":
             if len(fields) != 2 or fields[1] not in EXERCISES:
                 raise ValueError(f"Unknown exercise directive: {info}")
             return exercise_html(EXERCISES[fields[1]], highlight)
         label = " ".join(fields[1:]) or {
             "cp": "CP Lang 0.2.2",
+            "cpp": "C++17",
+            "c++": "C++17",
             "sh": "Terminal",
+            "bash": "Terminal",
+            "toml": "TOML",
             "text": "Output",
         }.get(language, language)
         if language == "example":
@@ -152,7 +269,7 @@ class Renderer(mistune.HTMLRenderer):
             code = (ROOT / "examples" / f"{name}.cp").read_text()
             extra = " ".join(fields[2:]) or "WASM runnable"
             language, label = "cp", f"{name}.cp · {extra}"
-        return f'<figure class="code-block"><figcaption><span>{html.escape(label)}</span><button class="copy-button" type="button" aria-label="Copy code">Copy</button></figcaption><pre tabindex="0"><code>{highlight(code.rstrip(), language)}</code></pre></figure>\n'
+        return code_block_html(code, language, label)
 
 
 def navigation(current):
@@ -168,7 +285,6 @@ def navigation(current):
             f'<a href="{name}.html"{active}><span class="nav-number">{i:02}</span>{html.escape(title)}</a>'
         )
     return "".join(out) + "</div>"
-
 
 
 TRACE_SAMPLES = ["knapsack", "dijkstra", "tree", "grid", "array"]
@@ -194,6 +310,32 @@ def trace_html():
     return page
 
 
+def interpolate_markdown(source):
+    """Replace dynamic site-wide counters so copy never drifts from manifests."""
+    replacements = {
+        "{{chapter_count}}": str(len(LESSONS)),
+        "{{exercise_count}}": str(len(EXERCISES)),
+        "{{reference_count}}": str(len(REFERENCE_PAGES)),
+    }
+    for marker, value in replacements.items():
+        source = source.replace(marker, value)
+    return source
+
+
+def load_page_source(name):
+    """Load markdown source for a page, pulling the cheat sheet from its single canonical file."""
+    if name == "cheat-sheet":
+        raw = (ROOT.parent / "docs" / "one-page-cheat-sheet.md").read_text()
+        body = re.sub(r"\A#[^\n]*\n+(?:\*[^\n]*\*\n+)?(?:---\n+)?", "", raw)
+        intro = (
+            "Every CP Lang 0.2.2 construct, collection, and standard library helper on one printable page. "
+            "Press `Ctrl / ⌘ + P` to print or save as PDF, take the [interactive course](course.html) to learn "
+            "each feature in depth, or try any snippet live in the [playground](playground.html).\n\n---\n\n"
+        )
+        return intro + body, "docs/one-page-cheat-sheet.md"
+    return (ROOT / "content" / f"{name}.md").read_text(), f"site/content/{name}.md"
+
+
 def build():
     target = ROOT / "_build"
     target.mkdir(exist_ok=True)
@@ -202,7 +344,8 @@ def build():
     template = (ROOT / "template.html").read_text()
     search = []
     for i, (name, title, section, description, duration) in enumerate(PAGES):
-        source = (ROOT / "content" / f"{name}.md").read_text()
+        raw_source, source_path = load_page_source(name)
+        source = interpolate_markdown(raw_source)
         renderer = Renderer()
         body = mistune.create_markdown(renderer=renderer)(source)
         is_course = section == "Course"
@@ -214,7 +357,7 @@ def build():
         pager = []
         sequence = ([("course", "Interactive course")]
                     + [(lesson["slug"], lesson["title"]) for lesson in LESSONS]
-                    + [("playground", "Try the examples")]) if is_course else [page[:2] for page in REFERENCE_PAGES]
+                    + [("playground", "Try the playground")]) if is_course else [page[:2] for page in REFERENCE_PAGES]
         position = next(j for j, page in enumerate(sequence) if page[0] == name)
         for index, direction in [(position - 1, "Previous"), (position + 1, "Next")]:
             if 0 <= index < len(sequence):
@@ -222,7 +365,7 @@ def build():
                 pager.append(
                     f'<a class="pager-{direction.lower()}" href="{other}.html"><span>{direction} {"←" if direction == "Previous" else "→"}</span>{label}</a>'
                 )
-        heading = "CP Lang documentation" if name == "index" else html.escape(title)
+        heading = "CP Lang" if name == "index" else html.escape(title)
         values = dict(
             title=html.escape(title),
             heading=heading,
@@ -235,13 +378,13 @@ def build():
             toc=toc,
             pager="".join(pager),
             name=name,
-            source_path=f"site/content/{name}.md",
+            source_path=source_path,
             repo=REPO,
             page_class="overview" if name == "index" else ("cheat-sheet" if name == "cheat-sheet" else "chapter"),
             docs_current='' if (is_course or name == "cheat-sheet") else 'aria-current="page"',
             cheat_sheet_current='aria-current="page"' if name == "cheat-sheet" else '',
             course_current='aria-current="page"' if is_course else '',
-            series="THE CP LANG COURSE" if is_course else ("CP LANG 0.2.2 REFERENCE" if name == "cheat-sheet" else "THE CP LANG GUIDE"),
+            series="THE CP LANG COURSE" if is_course else ("CP LANG 0.2.2 REFERENCE" if name == "cheat-sheet" else "CP LANG DOCUMENTATION"),
             playground_current="",
         )
         page = template
@@ -292,7 +435,7 @@ def course_data(name):
     """Ship compact checks for cross-chapter progress; keep feedback local."""
     checks = {}
     for lesson in LESSONS:
-        local = lesson["slug"] == name
+        local = name == "*" or lesson["slug"] == name
         for exercise in lesson["exercises"]:
             check = {"kind": exercise["kind"]}
             if exercise["kind"] == "choice":
@@ -333,12 +476,17 @@ def build_playground(target, template):
         bounds="5\n3 1 4 1 5",
         knapsack="3 7\n3 4\n4 5\n2 3",
         range_array="6 4\n0 2 4 2 1 2",
+        enum_match="3\n1 10\n2 3\n1 5",
+        collections_heap="5 3\n9 2 7 4 1",
+        sort_bsearch="5 7\n9 2 7 4 7",
         lends="3 2\n1 5\n3 -2",
         tropical_dp="3 11\n1 5 7",
         optional_coalesce="5\n3 -4 7 -2 6",
         memo_dp="10",
         segtree_monoid="4 3\n2 5 1 4\n2 1 3\n1 2 10\n2 1 4",
         lazy_action="4 3\n1 2 3 4\n1 2 4 3\n2 1 4\n2 2 3",
+        fenwick_sum="4 3\n3 1 4 2\n2 1 4\n1 2 5\n2 1 3",
+        dsu_mod="5 3\n1 2\n2 3\n4 5",
         colocated_brute="5\n-2 4 -1 3 -5",
         accumulation="4\n0 1 2 3",
         ascii="5\nabaca",
@@ -352,12 +500,17 @@ def build_playground(target, template):
         "bounds",
         "knapsack",
         "range_array",
+        "enum_match",
+        "collections_heap",
+        "sort_bsearch",
         "lends",
         "tropical_dp",
         "optional_coalesce",
         "memo_dp",
         "segtree_monoid",
         "lazy_action",
+        "fenwick_sum",
+        "dsu_mod",
         "colocated_brute",
         "accumulation",
         "ascii",
@@ -369,11 +522,11 @@ def build_playground(target, template):
         for name in order
     ]
     examples.insert(
-        5,
+        6,
         dict(id="str-scan", source=STR_SCAN_SOURCE, stdin="abracadabra"),
     )
-    values = dict(title="Playground", heading="Example playground", section="Tools",
-        description="Run CP Lang 0.2.2 examples with your own input, entirely offline in WebAssembly.",
+    values = dict(title="Playground", heading="Playground", section="Tools",
+        description="Write, run, inspect C++17 output, and trace CP Lang 0.2.2 programs directly in your browser.",
         duration="", number="", navigation=navigation("playground"),
         content=(ROOT / "playground.html").read_text().replace("{{editor}}", editor_html("playground")), toc="", pager="",
         name="playground", repo=REPO, page_class="playground", source_path="site/playground.html",

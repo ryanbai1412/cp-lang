@@ -1,5 +1,15 @@
 Data structures in CP Lang 0.2.2 do not hide behind wrapper types or class hierarchies. Range structures take either a bare associative operator (`+`, `*`, `^`, `&`, `|`, `min`, `max`, `gcd`) or a lightweight `Monoid(id, op)` value, lazy segment trees take an `Action(id, compose, apply, over)`, and tree path queries live directly on `Rooted<V>`.
 
+## Fenwick trees (`Fenwick`)
+
+For invertible range sums (`+` has inverse `-`), `Fenwick<V, Int>(a)` is lighter and faster than a full segment tree while keeping the same domain-typed interface:
+
+```example fenwick_sum
+```
+
+```exercise algebra-fenwick-output
+```
+
 ## Bare operators and `Monoid(id, op)`
 
 A segment tree only needs two things from your combine operation: an **identity** `id` (so `op(id, x) == x == op(x, id)` and empty ranges return `id`) and **associativity** (`op(op(a, b), c) == op(a, op(b, c))`, so the tree can regroup subranges freely). It does **not** require commutativity.
@@ -12,7 +22,7 @@ For built-in operators, pass the operator directly (`SegTree<V, Int>(+, a)` or `
 ```exercise algebra-segtree-output
 ```
 
-In the full 0.2.2 prelude spec, `Fenwick<V, Int>(a)` is dedicated to invertible sums (`+` has inverse `-`), while `SparseTable<V, Int>(min, a)` handles O(1) static idempotent queries. Custom nodes like `(best, count)` or maximum subarray sum use `Monoid(id, op)` the exact same way:
+For static idempotent queries (`min`, `max`, `gcd`), `SparseTable<V, Int>(min, a)` answers queries in `O(1)`. Custom segment-tree nodes such as `(best, count)` or maximum subarray sum pass `Monoid(id, op)` the exact same way:
 
 ```cp CP Lang 0.2.2 · spec fragment
 let best_op = Monoid(

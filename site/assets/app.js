@@ -66,6 +66,47 @@ document.querySelectorAll(".copy-button").forEach((button) => {
   });
 });
 
+document.querySelectorAll(".code-expand-btn").forEach((button) => {
+  button.addEventListener("click", () => {
+    const figure = button.closest("figure");
+    const collapsed = figure.classList.toggle("is-collapsed");
+    const lines = button.dataset.lines || figure.dataset.lines || "";
+    button.setAttribute("aria-expanded", String(!collapsed));
+    button.textContent = collapsed ? `Show all ${lines} lines` : "Show less";
+  });
+});
+
+const CPP_TOKEN =
+  /(\/\*[\s\S]*?\*\/|\/\/[^\n]*)|(^[ \t]*#[ \t]*[a-zA-Z_]\w*)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|(\b(?:0x[0-9a-fA-F']+|\d[\d']*(?:\.\d[\d']*)?(?:[eE][+-]?\d+)?(?:ULL|LL|UL|U|L)?)\b)|(\b(?:auto|bool|break|case|catch|char|class|const|constexpr|continue|decltype|default|delete|do|double|else|enum|explicit|extern|false|float|for|if|inline|int|long|mutable|namespace|new|noexcept|nullptr|operator|private|protected|public|return|short|signed|sizeof|static|static_assert|struct|switch|template|this|throw|true|try|typedef|typename|union|unsigned|using|virtual|void|volatile|while)\b)|(\b(?:vector|array|string|string_view|pair|tuple|map|multimap|set|multiset|unordered_map|unordered_set|queue|deque|stack|priority_queue|bitset|optional|variant|function|int8_t|int16_t|int32_t|int64_t|uint8_t|uint16_t|uint32_t|uint64_t|size_t|__int128)\b)|(\b[a-zA-Z_][a-zA-Z0-9_]*(?=\s*\())/gm;
+const CPP_GROUPS = [
+  "tok-comment",
+  "tok-preproc",
+  "tok-string",
+  "tok-number",
+  "tok-keyword",
+  "tok-type",
+  "tok-function",
+];
+window.cpHighlightCpp = (element, source) => {
+  element.replaceChildren();
+  let end = 0;
+  CPP_TOKEN.lastIndex = 0;
+  for (const match of source.matchAll(CPP_TOKEN)) {
+    if (match.index > end) {
+      element.append(document.createTextNode(source.slice(end, match.index)));
+    }
+    const groupIdx = CPP_GROUPS.findIndex((_, i) => match[i + 1] !== undefined);
+    const span = document.createElement("span");
+    span.className = CPP_GROUPS[groupIdx];
+    span.textContent = match[0];
+    element.append(span);
+    end = match.index + match[0].length;
+  }
+  if (end < source.length) {
+    element.append(document.createTextNode(source.slice(end)));
+  }
+};
+
 const dialog = document.querySelector(".search-dialog");
 const input = document.querySelector("#search-input");
 const results = document.querySelector("#search-results");

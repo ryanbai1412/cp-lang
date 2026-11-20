@@ -73,7 +73,12 @@
         // A run that failed part-way still has the steps up to the failure.
         if (method === "trace" && result.trace) openTrace(result.trace);
         if (!runs) {
-          find("[data-cpp]").textContent = result.cpp ?? "No C++ generated. Fix the diagnostics above.";
+          const cppEl = find("[data-cpp]");
+          if (result.cpp && typeof window.cpHighlightCpp === "function") {
+            window.cpHighlightCpp(cppEl, result.cpp);
+          } else {
+            cppEl.textContent = result.cpp ?? "No C++ generated. Fix the diagnostics above.";
+          }
           find("[data-cpp-panel]").open = true;
         }
       } catch (error) {

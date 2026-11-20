@@ -58,10 +58,10 @@ Attach `@memo` to a pure recursive function over `Index` or range parameters to 
 ```example memo_dp
 ```
 
-`ways(35)` executes instantaneously in WebAssembly—without `@memo`, naive recursion would perform ~30 million calls. The compiler lowers `@memo` into a real cache (`crates/cpl-ir/src/lower/memo.rs`):
+`ways(35)` executes instantaneously in WebAssembly — without `@memo`, naive recursion would perform tens of millions of calls. The compiler lowers `@memo` into a real cache:
 
-- When parameters are bounded `Index`/range types fitting within `2^24` states (`DENSE_LIMIT = 1 << 24`), `@memo` allocates a flat dense table; larger spaces switch to a salted hash map.
-- A `@memo fn` declared below `@!multitest` or nested inside a loop automatically clears its cache on every test case or iteration—no stale-table WA across test cases.
+- When parameters are bounded `Index` or range types fitting within `2^24` states, `@memo` allocates a flat dense table; larger state spaces switch automatically to a salted hash map.
+- A `@memo fn` declared below `@!multitest` or nested inside a loop automatically clears its cache on every test case or iteration — no stale-table Wrong Answers across test cases.
 - `@memo` functions can capture immutable outer `let` bindings directly.
 
 ```exercise dp-memo-ways
@@ -70,4 +70,21 @@ Attach `@memo` to a pure recursive function over `Index` or range parameters to 
 ```exercise dp-memo-reset
 ```
 
-Next, [algebraic segment trees and `Rooted`](course-algebra.html) replaces ad-hoc tree boilerplate with `Monoid(id, op)` and `Action(id, compose, apply, over)`.
+## Bitmask DP with `Subset<D>` and `Bitset<D>`
+
+For exponential subset DP (`n <= 25`), `Subset<D>` wraps a bitmask as a typed `Index` so you never write `1 << i` or `(mask >> i) & 1` by hand:
+
+```cp CP Lang 0.2.2
+domain V = 0..n
+var dp: [Subset<V>, V]?Int = none
+dp[Subset<V>.single(V.first), V.first] = 0
+
+for mask in Subset<V>:
+    for u in mask:
+        for v in mask.complement:
+            dp[mask + v, v] min= dp[mask, u] + cost[u, v]
+```
+
+Submask iteration is equally direct: `for sub in mask.subsets:` visits every subset of `mask` in `O(3^n)` total across all masks. For larger bit-parallel DP (such as subset-sum reachability up to `10^5`), `Bitset<D>` packs bits into 64-bit machine words with `|`, `&`, `^`, `<<`, `>>`, `.count`, and `.first_set`.
+
+Next, [algebraic segment trees and `Rooted`](course-algebra.html) replaces ad-hoc tree boilerplate with `Fenwick`, `Monoid(id, op)`, and `Action(id, compose, apply, over)`.

@@ -1,6 +1,6 @@
 Variables own their values. Function parameters borrow them for the call. A projection lets a caller work on part of a value—a row, a slice, or an element—without allocating a copy or keeping a reference for later.
 
-> **Approved design, partially prototyped.** The Python prototype implements struct projections with `lends` and a disjointness law (spelled `lend` and `law disjoint` there; 0.2.2 drops the `lend` keyword and writes the law as the `@law` decorator), plus lexical checks for slices and rows. Generic library implementations and the full checker remain work in progress. The fragments below explain the design; [runnable projection tests](https://github.com/ryanbai1412/cp-lang/blob/main/proto/tests/lend/projection.cp) show the supported subset and the [implementation notes](https://github.com/ryanbai1412/cp-lang/blob/main/plan/19-index-and-lends.md#11-what-the-prototype-does-today) state its limits.
+> **Implementation status.** Struct projections with `lends` / `lends mut` and explicit `mut` parameters run directly in `cpl` and the browser WebAssembly playground (try the `lends` example in the [playground](playground.html)). Custom `@law disjoint` proofs and generic library projections are part of the 0.2.2 specification and are rolling out incrementally across the compiler.
 
 ## Own it, borrow it, or copy it
 

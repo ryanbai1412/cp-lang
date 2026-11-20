@@ -76,6 +76,9 @@
     if (data.search_dialog) {
       page = page.replace("<!--search-dialog-->", () => data.search_dialog);
     }
+    if (data.course_data) {
+      page = page.replace("<!--course-data-->", () => '<script id="course-data" type="application/json">' + data.course_data + "<" + "/script>");
+    }
     page = page.replace('<link rel="stylesheet" href="assets/style.css">', () => "<style>" + data.css + "</style>");
     page = page.replace('<script src="assets/theme.js"><' + '/script>', () => script(data.theme));
     page = page.replace('<script src="assets/app.js" defer><' + '/script>', "");

@@ -30,11 +30,16 @@ def bundle():
             if not search_dialog:
                 search_dialog = m_dlg.group(0)
             page = page[:m_dlg.start()] + "<!--search-dialog-->" + page[m_dlg.end():]
+        m_course = re.search(r'<script id="course-data" type="application/json">.*?</script>', page, flags=re.S)
+        if m_course:
+            page = page[:m_course.start()] + "<!--course-data-->" + page[m_course.end():]
         pages[path.name] = page
+    full_course_data = build.safe_json(build.course_data("*"))
     payload = dict(
         pages=pages,
         sidebar=sidebar,
         search_dialog=search_dialog,
+        course_data=full_course_data,
         css=(ROOT / "assets/style.css").read_text(),
         theme=(ROOT / "assets/theme.js").read_text(),
         app=(ROOT / "assets/app.js").read_text(),

@@ -33,7 +33,7 @@ Prefix sums, difference arrays, and DP transitions live on the `n + 1` gaps arou
 
 Notice how `pre[v.r] = pre[v.l] + a[v]` never writes `i - 1`, never guesses whether to allocate `n` or `n + 1`, and prints the total from `pre[V.last.r]`. Answering `q` inclusive range-sum queries and sliding over every length-`k` window both use the same boundary table (both run in real WASM):
 
-```cp Prototype tested · range-sums.cp
+```cp CP Lang · range-sums.cp
 let n: 1..=2e5 = read()
 let q: 1..=2e5 = read()
 domain V = 1..=n
@@ -49,7 +49,7 @@ for _ in 0..q:
     print(pre[r.r] - pre[l.l])
 ```
 
-```cp Prototype tested · best-window.cp
+```cp CP Lang · best-window.cp
 let n: 1..=2e5 = read()
 let k: 1..=n = read()
 domain V = 1..=n
