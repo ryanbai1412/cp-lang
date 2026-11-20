@@ -62,10 +62,24 @@ const STACK_BYTES: usize = 3 << 20;
 /// One compiler session. It keeps the incremental database between calls,
 /// so checking a file again after an edit redoes only the items the edit
 /// touched.
-#[derive(Default)]
 pub struct Playground {
     db: Database,
+    /// The database `run` and `build` use: as in `cpl`, a file gets the
+    /// standard library's types it names without a `use`.
+    runner: Database,
     lsp: cpl_lsp::Server,
+}
+
+impl Default for Playground {
+    fn default() -> Playground {
+        let mut runner = Database::default();
+        runner.use_std_implicitly();
+        Playground {
+            db: Database::default(),
+            runner,
+            lsp: cpl_lsp::Server::default(),
+        }
+    }
 }
 
 /// What a run printed, and the rest of its result as JSON.
@@ -236,8 +250,8 @@ impl Playground {
     /// The gate `run` and `build` both go through, as in `cpl`: check, then
     /// lower. On failure, the finished result.
     fn compile(&mut self, name: &str, source: &str) -> Result<Compiled, Value> {
-        self.db.set_file(name, source);
-        let analysis = self.db.analyze(name).expect("the file was just set");
+        self.runner.set_file(name, source);
+        let analysis = self.runner.analyze(name).expect("the file was just set");
         let mut diagnostics = analysis.diagnostics.clone();
         let mut stderr = rendered(&diagnostics, name, source);
         if analysis.has_errors() {
