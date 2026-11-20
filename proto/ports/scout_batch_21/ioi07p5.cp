@@ -12,7 +12,6 @@
 //         sums. An animal asks every layer how many stand in its box there;
 //         that counts each pair twice and each animal with itself once.
 // original: corpus/submissions/3505539.cpp
-use std.fenwick.{Fenwick}
 
 let dims: Int = read()
 let n: Int = read()

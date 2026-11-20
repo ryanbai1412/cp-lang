@@ -50,7 +50,7 @@ fn union_area(rad: Int) -> Int:
     let sy = sorted(raw_y)
     ys = []
     for y in sy:
-        if ys.len == 0 or ys[ys.len - 1] != y:
+        if ys.len == 0 or ys.last! != y:
             ys.push(y)
     let segs = max(1, ys.len - 1)
     cnt = List.filled(4 * segs + 4, 0)

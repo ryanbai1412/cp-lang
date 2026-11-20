@@ -30,7 +30,7 @@ for s in V:
         edge[s] = head[s]
         stack.push(s.to_idx)
         while stack.len > 0:
-            let u = V(stack[stack.len - 1])
+            let u = V(stack.last!)
             let e = edge[u]
             if e < 0:
                 colour[u] = 2

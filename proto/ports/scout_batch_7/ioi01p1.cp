@@ -5,7 +5,6 @@
 //
 // A Fenwick tree whose slots are Fenwick trees: the outer one walks the
 // x axis, and each slot holds the y axis of the columns it covers.
-use std.fenwick.{Fenwick}
 
 let (_, n): (Int, Int) = read()
 domain X = 0..n

@@ -58,8 +58,8 @@ for t in 0..T:
         var mn = 0
         var mx = 0
         for i in 0..n:
-            mn = min(mn, mn + rem[i] - k)
-            mx = max(mx, mx + rem[i] - k)
+            mn min= mn + rem[i] - k
+            mx max= mx + rem[i] - k
         let W = mx - mn + 1
         var reach: List<Bool> = []
         for o in 0..W:

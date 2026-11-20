@@ -50,7 +50,7 @@ fn spawn(src: Int, keep: Int, extra: Int):
     for j in 0..K:
         var m = 0
         for q in team:
-            m = max(m, score[P(q), Ev(j)])
+            m max= score[P(q), Ev(j)]
         value += m
     for q in team:
         teams.push(q)

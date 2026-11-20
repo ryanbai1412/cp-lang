@@ -5,8 +5,6 @@
 // The best way out of a chamber is always the one blocked, so a chamber is
 // worth its second-best way out. Run Dijkstra from the exits and settle a
 // chamber the second time it comes off the heap.
-use std.graph.{Graph}
-use std.heap.{MinHeap}
 
 let (n, m, k): (Int, Int, Int) = read()
 domain Room = 0..n

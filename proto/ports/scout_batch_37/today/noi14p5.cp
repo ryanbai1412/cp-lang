@@ -21,9 +21,7 @@ for i in 0..cells:
 for _ in 0..q:
     let u: 1..=cells = read()
     let v: 1..=cells = read()
-    let t = board[u - 1]
-    board[u - 1] = board[v - 1]
-    board[v - 1] = t
+    board.swap(u - 1, v - 1)
 var at: [0..cells]Int = 0
 for i in 0..cells: at[board[i]] = i
 

@@ -1,7 +1,6 @@
 // NOIP 2020 String Matching (CP Lang 0.2.2): count the ways to write s as
 // (AB)^k C with A, B, C non-empty and k >= 1, where odd-count letters in A <= C.
 // original: corpus/submissions/5445673.cpp
-use std.marks.{Marks}
 use std.strings.{z_function}
 
 domain Letter = 'a'..='z'

@@ -4,7 +4,6 @@
 // dividends) and Range.clamp to eliminate manual mod() and 4-way bounds clamping.
 // original: corpus/submissions/6067573.cpp
 
-use std.fenwick.{Fenwick2D}
 
 let (q, m): (Int, Int) = read()
 let p = 2 * m

@@ -15,4 +15,4 @@ var edges: List<(Side, Side)> = []
 for u in Side:
     for v in Side if adj[u, v]: edges.push((u, v))
 let g = Graph.directed(edges)
-print(if topo(g) == none: 1 else: 0)
+print(Int(topo(g) == none))

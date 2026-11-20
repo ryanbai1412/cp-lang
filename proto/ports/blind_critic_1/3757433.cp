@@ -16,7 +16,7 @@ enum Op:
     M(u: V, v: V)
 
 fn tdfs(u: V, p: ?V) -> Int:
-    let deg = adj[u].len - (if p != none: 1 else: 0)
+    let deg = adj[u].len - Int(p != none)
     if deg == 1:
         var nxt = adj[u][0]
         if let pv = p:
@@ -48,7 +48,7 @@ fn mv(u: V, v: V):
     ans.push(M(u, v))
 
 fn dfs(u: V, p: ?V):
-    let deg = adj[u].len - (if p != none: 1 else: 0)
+    let deg = adj[u].len - Int(p != none)
     if deg == 1:
         var nxt = adj[u][0]
         if let pv = p:

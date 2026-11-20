@@ -12,7 +12,7 @@ var L = 1
 var leaves = 2
 while leaves < n + 1:
     L += 1
-    leaves = leaves * 2
+    leaves *= 2
 let unused = leaves - (n + 1)
 
 fn bitrev(p: Int) -> Int:

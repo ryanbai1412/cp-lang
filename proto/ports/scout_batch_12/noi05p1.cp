@@ -37,7 +37,7 @@ for (from, to, way) in tilts:
                 head = 0
             else:
                 if let slid = far[p]:
-                    while reach.len > head and reach[reach.len - 1].0 <= slid - i: reach.pop()
+                    while reach.len > head and reach.last!.0 <= slid - i: reach.pop()
                     reach.push((slid - i, i))
                 if head < reach.len and reach[head].1 < i - seconds: head += 1
                 if head < reach.len: next[p] = reach[head].0 + i

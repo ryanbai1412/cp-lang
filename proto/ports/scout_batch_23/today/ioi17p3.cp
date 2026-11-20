@@ -70,4 +70,4 @@ while true:
             if alive[u] and owner[u] == 0:
                 out_alive[u] -= 1
 
-print([if alive[v]: 1 else: 0 for v in V])
+print([Int(alive[v]) for v in V])

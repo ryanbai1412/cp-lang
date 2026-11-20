@@ -4,7 +4,6 @@
 // lowest-numbered free space, or waits in a queue until one frees up.
 // Print the total of rate * weight over all cars parked.
 // original: corpus/submissions/5106592.cpp
-use std.heap.{MinHeap}
 
 let (n, m): (Int, Int) = read()
 domain Space = 1..=n

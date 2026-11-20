@@ -48,9 +48,7 @@ for e in eb:
     var v = rep_b[V(e.v)]
     if u != v:
         if mem_b[u].len > mem_b[v].len:
-            let tmp = u
-            u = v
-            v = tmp
+            swap(mut u, mut v)
         pairs_b -= c2(mem_b[u].len) + c2(mem_b[v].len)
         for idx in 0..mem_b[u].len:
             let x = mem_b[u][idx]
@@ -103,9 +101,7 @@ for e in ea:
     var v = rep_a[V(e.v)]
     if u != v:
         if mem_a[u].len > mem_a[v].len:
-            let tmp = u
-            u = v
-            v = tmp
+            swap(mut u, mut v)
         pairs_a -= c2(mem_a[u].len) + c2(mem_a[v].len)
         for idx in 0..mem_a[u].len:
             let x = mem_a[u][idx]

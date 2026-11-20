@@ -13,7 +13,7 @@ for i in 0..n:
     var h = i
     while h >= 0:
         dp[h + 1] += dp[h] * pi
-        dp[h] = dp[h] * qi
+        dp[h] *= qi
         h -= 1
 
 var ans = 0.0

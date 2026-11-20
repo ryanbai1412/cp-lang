@@ -1,7 +1,6 @@
 // NOI 2006 Profit, as it runs today on the reference interpreter (`cp.py lib-run`):
 // the network's vertices are one numbered domain with offsets kept by hand (K11).
 // original: corpus/submissions/5032812.cpp
-use std.flow.{FlowGraph}
 
 let n: 1..=5000 = read()
 let m: 1..=50000 = read()

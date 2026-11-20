@@ -21,7 +21,7 @@ fn solve_case(rows: Int, cols: Int):
                 if ch >= '0' and ch <= '9':
                     gain += ch - '0'
                 if dp[R(r)] > neg_inf:
-                    nxt[R(start)] = max(nxt[R(start)], gain + dp[R(r)])
+                    nxt[R(start)] max= gain + dp[R(r)]
             gain = 0
             var r = start
             while r >= 0:
@@ -31,7 +31,7 @@ fn solve_case(rows: Int, cols: Int):
                 if ch >= '0' and ch <= '9':
                     gain += ch - '0'
                 if dp[R(r)] > neg_inf:
-                    nxt[R(start)] = max(nxt[R(start)], gain + dp[R(r)])
+                    nxt[R(start)] max= gain + dp[R(r)]
                 r -= 1
         dp = nxt
         c -= 1

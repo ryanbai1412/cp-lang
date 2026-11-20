@@ -33,5 +33,5 @@ for _ in 0..q:
         var out = ""
         for v in Val:
             if v.to_idx > 0: out = out + " "
-            out = out + "{target[inv[v]]}"
+            out += "{target[inv[v]]}"
         print(out)

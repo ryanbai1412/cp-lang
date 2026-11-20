@@ -92,7 +92,7 @@ coords.sort()
 var uniq: List<Int> = []
 var cnts: List<Int> = []
 for x in coords:
-    if uniq.len == 0 or uniq[uniq.len - 1] != x:
+    if uniq.len == 0 or uniq.last! != x:
         uniq.push(x)
         cnts.push(1)
     else:

@@ -12,7 +12,6 @@
 // knights shift by one across the late knight's own position.
 // input: n c r, the n - 1 ranks in order, then c lines `s e` (0-based)
 // original: corpus/submissions/4848321.cpp (the grader function GetBestPosition)
-use std.fenwick.{Fenwick}
 
 let (n, c, r): (Int, Int, Int) = read()
 domain Pos = 0..n
@@ -56,5 +55,5 @@ for v in Node.rev:
     if v.to_idx < n:
         if wins[v] >= best.wins: best = (wins: wins[v], at: v.to_idx)
         continue
-    for k in kids[v]: wins[k] = wins[v] + (if r > inner[v]: 1 else: 0)
+    for k in kids[v]: wins[k] = wins[v] + Int(r > inner[v])
 print(best.at)

@@ -15,7 +15,7 @@ fn reach(dx: Int, dy: Int) -> Int:
     var hi = 1
     while examine(x0 + dx * hi, y0 + dy * hi):
         lo = hi
-        hi = hi * 2
+        hi *= 2
     while lo < hi:
         let mid = (lo + hi + 1) / 2
         if examine(x0 + dx * mid, y0 + dy * mid):

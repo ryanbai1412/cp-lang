@@ -3,7 +3,6 @@
 // Original C++: corpus/submissions/5111683.cpp (157 LOC raw, ~95 LOC stripped)
 // Buildable today-form: proto/ports/scout_batch_19/today/ioi07p1.cp (verified vs orig C++)
 
-use std.seq.{bsearch_last}
 
 let n: 15..=2e9 = read()
 let x0: 1..=n = read()

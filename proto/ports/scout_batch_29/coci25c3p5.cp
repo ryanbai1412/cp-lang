@@ -6,7 +6,6 @@
 // Ported from the formula in the accepted submission, not from the
 // statement, which was not at hand (see the README).
 // original: corpus/submissions/7730259.cpp
-use std.math.{gcd, lcm}
 
 let n: Int = read()
 domain Fan = 1..=n

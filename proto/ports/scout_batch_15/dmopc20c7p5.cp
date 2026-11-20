@@ -8,7 +8,6 @@
 // original's 5000 x 5000 dense matrix and manual capacity-scaling DFS with
 // `std.flow.FlowGraph` (sparse Dinic).
 // original: corpus/submissions/4370353.cpp
-use std.flow.{FlowGraph}
 
 let (n, m): (Int, Int) = read()
 domain Item = 0..n

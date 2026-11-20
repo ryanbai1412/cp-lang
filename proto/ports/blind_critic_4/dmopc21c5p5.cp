@@ -120,9 +120,7 @@ else:
                         var l = i + 1
                         var r = j
                         while l < r:
-                            let t = perm[l]
-                            perm[l] = perm[r]
-                            perm[r] = t
+                            perm.swap(l, r)
                             l += 1
                             r -= 1
                         improved = true

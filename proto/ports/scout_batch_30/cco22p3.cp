@@ -72,7 +72,7 @@ while let top = pq.pop():
         if d + k >= theirs[cand].r: cand += 1
         if cand < theirs.len:
             let t = max(d + k, theirs[cand].l)
-            let keep = if t < mine[mi].r: 1 else: 0
+            let keep = Int(t < mine[mi].r)
             push_state(u + 1, 1 - loc, keep, t)
 
 print(ans)

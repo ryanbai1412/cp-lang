@@ -9,7 +9,6 @@
 // that accept the rate. Sweep the rate upwards and keep those in a
 // max-heap, dropping the largest q while the bill is over budget.
 // original: corpus/submissions/5102705.cpp
-use std.heap.{MaxHeap}
 
 let (n, w): (Int, Int) = read()
 domain Worker = 1..=n

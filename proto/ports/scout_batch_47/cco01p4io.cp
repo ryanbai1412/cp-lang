@@ -57,7 +57,7 @@ fn judge(mut sol: Interactor):
             let x: Int = sol.recv()
             drops += 1
             assert drops <= limit and broken < 2
-            let b = if x >= hidden_f: 1 else: 0
+            let b = Int(x >= hidden_f)
             broken += b
             sol.send(b)
         elif cmd == "Decide":

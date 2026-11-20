@@ -1,6 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of statement-first cco21p4.cp
 // original: corpus/submissions/6419583.cpp
-use std.graph.{Graph}
 
 let (n, m): (Int, Int) = read()
 domain V = 1..=n

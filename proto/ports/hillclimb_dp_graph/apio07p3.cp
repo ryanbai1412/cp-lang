@@ -1,4 +1,3 @@
-// cp: 0.1 0f8d77b+dirty
 // APIO 2007 Zoo: n pens in a ring, one animal each. A child standing at pen
 // p sees pens p..p+4 and is happy if a feared animal in view is removed or a
 // loved one in view stays. Remove animals to make the most children happy.

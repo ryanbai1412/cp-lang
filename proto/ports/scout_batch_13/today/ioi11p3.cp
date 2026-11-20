@@ -24,5 +24,5 @@ var best = 0
 var l = Field.first
 for r in Field:
     while cost(l, r) > budget: l = l.next!
-    best = max(best, r - l + 1)
+    best max= r - l + 1
 print(best)

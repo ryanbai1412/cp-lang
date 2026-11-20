@@ -82,5 +82,5 @@ else:
     var line = ""
     for i in Pos:
         if i.to_idx > 0: line = line + " "
-        line = line + "{ans[i]!.to_idx}"
+        line += "{ans[i]!.to_idx}"
     print(line)

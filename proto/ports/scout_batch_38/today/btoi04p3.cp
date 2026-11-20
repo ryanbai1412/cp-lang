@@ -20,9 +20,7 @@ fn merge_heap(a_in: ?V, b_in: ?V) -> ?V:
     var u = a_in!
     var v = b_in!
     if hval[u] < hval[v]:
-        let tmp = u
-        u = v
-        v = tmp
+        swap(mut u, mut v)
     let rc = hrc[u]
     hrc[u] = merge_heap(rc, v)
     swap(mut hlc[u], mut hrc[u])

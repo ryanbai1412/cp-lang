@@ -1,7 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of statement-first noi18p1.cp
 // original: corpus/submissions/6512702.cpp
-use std.graph.{Graph, dijkstra}
-use std.dsu.{Dsu}
 
 let t_cases: Int = read()
 for _ in 0..t_cases:

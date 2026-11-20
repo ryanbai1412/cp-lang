@@ -7,8 +7,6 @@
 // column plus however far that piece falls. That is a shortest path from
 // the floor, one edge per '#' cell.
 // original: corpus/submissions/3613676.cpp
-use std.dsu.{Dsu}
-use std.graph.{dijkstra}
 
 let (n, m): (Int, Int) = read()
 domain Row = 0..n

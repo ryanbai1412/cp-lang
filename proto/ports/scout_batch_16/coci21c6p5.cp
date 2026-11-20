@@ -37,4 +37,4 @@ for i in 0..2 * n:
 if depth != 0:
     print(-1)
     return
-print([if kept[y]: 1 else: 0 for (_, y) in pairs])
+print([Int(kept[y]) for (_, y) in pairs])

@@ -3,7 +3,6 @@
 // a wall of one pen opens it to the outside. Print the cheapest way to let
 // all the animals meet, inside or out.
 // original: corpus/submissions/7171512.cpp
-use std.dsu.{Dsu}
 
 let pens: 1..=100 = read()
 domain Pen = 1..=pens

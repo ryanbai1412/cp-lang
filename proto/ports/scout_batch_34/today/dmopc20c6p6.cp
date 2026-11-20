@@ -78,5 +78,5 @@ for u in Jug:
 
 var out = "A"
 for u in Jug:
-    out = out + " {cap[u]!}"
+    out += " {cap[u]!}"
 print(out)

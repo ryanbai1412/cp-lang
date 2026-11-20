@@ -45,7 +45,7 @@ if start >= 1 and start <= target:
 
 var escaped = false
 while stk.len > 0:
-    let u = stk[stk.len - 1]
+    let u = stk.last!
     stk.pop()
     if u == target:
         escaped = true

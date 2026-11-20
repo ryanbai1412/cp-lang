@@ -38,7 +38,7 @@ while i < fairs.len:
     var entry: List<Int> = []
     for q in i..j:
         at.push(fairs[q].at)
-        pre.push(pre[pre.len - 1] + fairs[q].gain)
+        pre.push(pre.last! + fairs[q].gain)
         entry.push(arrive(fairs[q].at))
     var opt = List.filled(m, NEG)
     var val = List.filled(m, NEG)

@@ -11,7 +11,7 @@ let grid: [Row, Col]Char = read()
 var ones: [Col, 0..=n]Int = 0
 for c in Col:
     for r in Row:
-        ones[c, r.idx + 1] = ones[c, r.idx] + (if grid[r, c] == '1': 1 else: 0)
+        ones[c, r.idx + 1] = ones[c, r.idx] + Int(grid[r, c] == '1')
 
 fn flip_cost(c: Col, l: Int, r: Int, want_one: Bool) -> Int:
     let cnt = ones[c, r + 1] - ones[c, l]

@@ -5,8 +5,6 @@
 // Fill the days from the last one: any exercise due that day or later can
 // take it, and the one furthest right is the cheapest to bring there. The
 // moves are then the inversions of the order chosen, counted as it is built.
-use std.fenwick.{Fenwick}
-use std.heap.{MaxHeap}
 
 let n: Int = read()
 domain Ex = 1..=n                           // an exercise, by where it starts

@@ -17,7 +17,7 @@ ways[Rank.first] = 1
 for g in Gap:
     let placed = Rank(g.label)          // how many values are placed already
     var next: [Rank]Z = 0
-    var run = Z(0)
+    var run: Z = 0
     if signs[g] == '<':
         for r in ..=placed:
             next[r] = run

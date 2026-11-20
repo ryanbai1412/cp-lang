@@ -8,7 +8,6 @@
 // above j. Everything a vertex needs comes from its parent and from j's
 // parent, so a single preorder pass does it.
 // original: corpus/submissions/5127828.cpp
-use std.tree.{Rooted}
 
 let n: 1..=5e5 = read()
 domain V = 1..=n

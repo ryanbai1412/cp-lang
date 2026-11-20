@@ -149,7 +149,7 @@ fn unique_sorted(xs_in: List<Int>) -> List<Int>:
     let xs = xs_in.sorted()
     var out: List<Int> = []
     for x in xs:
-        if out.len == 0 or out[out.len - 1] != x:
+        if out.len == 0 or out.last! != x:
             out.push(x)
     out
 

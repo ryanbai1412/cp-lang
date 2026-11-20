@@ -18,7 +18,7 @@ fn eval(a: Z, b: Z, c: Z, x: Int) -> Z:
     (a * zx + b) * zx + c
 
 var a: Z = if kind == 1: 0 else: 1
-var b: Z = if kind == 1: 1 else: 0
+var b: Z = Int(kind == 1)
 var c: Z = 0
 if n == 1:
     for i in 0..q:

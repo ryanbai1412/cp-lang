@@ -8,7 +8,7 @@ var out: List<Int> = []
 for i in 0..n:
     let a: Int = read()
     while have < a:
-        let j = spare[spare.len - 1]
+        let j = spare.last!
         spare.pop()
         ans += i - j
         have += 1

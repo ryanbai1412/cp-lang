@@ -1,4 +1,3 @@
-// cp: 0.1 1f59ac0+dirty
 // CCC 2020 S2 Escape Room: from a cell holding x you may jump to any cell
 // (r, c) with r * c == x. Can you get from (1, 1) to the last cell? Search
 // over the numbers: holding x leads to every number written on a cell whose

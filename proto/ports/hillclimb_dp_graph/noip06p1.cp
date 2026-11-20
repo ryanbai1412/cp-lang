@@ -1,4 +1,3 @@
-// cp: 0.1 0f8d77b+dirty
 // NOIP 2006 Energy Necklace: n beads in a ring; bead i has head mark[i] and
 // its tail is the head of the next bead. Merging two neighbouring groups
 // releases head(left) * head(right) * tail(right). Maximise the total

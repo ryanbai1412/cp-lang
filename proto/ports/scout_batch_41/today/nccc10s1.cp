@@ -7,7 +7,7 @@ var masks: [0..n]Int = 0
 for i in 0..n:
     var m = 0
     for j in 0..k:
-        m = m * 2 + (if s[i, j] == 'T': 1 else: 0)
+        m = m * 2 + Int(s[i, j] == 'T')
     masks[i] = m
 
 var lim = 1

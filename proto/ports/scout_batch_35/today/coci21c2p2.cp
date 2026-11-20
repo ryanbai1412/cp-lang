@@ -1,6 +1,5 @@
 // Kutije, in the forms proto/cpc builds today. See ../coci21c2p2.cp.
 // original: corpus/submissions/4143417.cpp
-use std.dsu.{Dsu}
 
 let n: Int = read()
 let m: Int = read()

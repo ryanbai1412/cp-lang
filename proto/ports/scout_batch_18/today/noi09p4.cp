@@ -1,6 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of statement-first noi09p4.cp
 // original: corpus/submissions/5144326.cpp
-use std.flow.{FlowGraph}
 
 let (n, m): (Int, Int) = read()
 domain Row = 0..n

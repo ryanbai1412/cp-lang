@@ -1,7 +1,6 @@
 // 996 Warmup 8 P3 (CP Lang 0.2.2): `bsearch_first` replaces manual `while lo < hi:`
 // binary search and domain-indexed `read()` replaces manual input loops.
 // original: corpus/submissions/5324670.cpp
-use std.seq.{bsearch_first}
 
 const L = 1_000_000_001
 let (n, kl0, kr0): (Int, Int, Int) = read()

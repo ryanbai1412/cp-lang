@@ -1,6 +1,5 @@
 //! Min-cost max-flow and weighted bipartite matching.
 //! Proposed additions to `std.flow` (or `std.matching`).
-use std.heap.{MinHeap}
 
 /// Handle to a directed arc inside a `MinCostFlow`.
 pub struct CostArc(id: Int):

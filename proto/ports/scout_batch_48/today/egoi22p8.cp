@@ -1,7 +1,6 @@
 // EGOI '22 P8 (Rotation-Proof Cards, CP Lang 0.2.2): encode a number as segments
 // on a 3x3 dot grid surviving 90-degree rotations, and decode back.
 // original: corpus/submissions/5202737.cpp
-use std.seq.{bsearch_first}
 
 fn turn(p: Int) -> Int = (2 - p % 3) * 3 + p / 3
 fn seg_key(p: Int, q: Int) -> Int = min(p, q) * 9 + max(p, q)

@@ -5,7 +5,6 @@
 // Inside a strongly connected component everything can be taken, so the
 // components form a DAG with a loot each, and the answer is its best path
 // to a component with a pub.
-use std.graph.{Graph, scc, condense}
 
 let (n, m): (Int, Int) = read()
 domain Spot = 1..=n

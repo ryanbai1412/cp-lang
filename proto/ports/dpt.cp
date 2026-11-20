@@ -1,4 +1,3 @@
-// cp: 0.1 1f59ac0+dirty
 // AtCoder DP T Permutation: count permutations of 1..=n with the given
 // pattern of '<' and '>'. ways[j]: the prefix ends at its (j+1)-th smallest
 // value; each sign turns into a prefix or suffix sum.

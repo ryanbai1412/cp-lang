@@ -1,6 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of dmopc21c4p2.cp
 // original: corpus/submissions/4125290.cpp
-use std.math.{Sieve}
 
 let n: Int = read()
 domain I = 0..n

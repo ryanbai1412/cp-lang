@@ -7,7 +7,6 @@
 // of the current plan as a cheapest plan can. The enhancer saves one more
 // day when the dearest pipe of the plan can be traded for an old pipe that
 // the enhancer makes free.
-use std.dsu.{Dsu}
 
 let (n, m, d): (Int, Int, Int) = read()
 domain House = 1..=n

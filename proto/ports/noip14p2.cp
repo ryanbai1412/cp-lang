@@ -1,4 +1,3 @@
-// cp: 0.1 1f59ac0+dirty
 // NOIP 2014 Joint Weights: over all ordered pairs of vertices at distance 2
 // in a tree, the largest product of weights and the sum of products mod
 // 10007. Such a pair is two neighbours of a middle vertex: the sum is

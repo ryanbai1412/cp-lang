@@ -11,7 +11,7 @@ fn random_grid() -> [Row, Col]Char:
 
 let grid: [Row, Col]Char = read(gen: random_grid)
 
-fn cost(r: Row, c: Col) -> Int: if grid[r, c] == 'C': 1 else: 0
+fn cost(r: Row, c: Col) -> Int: Int(grid[r, c] == 'C')
 
 var best: [Row, Col]Int = 0
 for r in Row:

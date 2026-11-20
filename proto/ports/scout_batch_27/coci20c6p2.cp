@@ -2,7 +2,6 @@
 // named by words, given as m lines `from to time`. For each of q queries
 // `a b` print the shortest time from a to b, or "Roger" if b is unreachable.
 // original: corpus/submissions/4188022.cpp
-use std.graph.{dijkstra}
 
 let n: Int = read()
 let m: Int = read()

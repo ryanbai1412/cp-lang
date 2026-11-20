@@ -4,7 +4,7 @@ let k: 1..=19 = read()
 let r: 0..=1_000_000_000 = read()
 var n = 1
 for _ in 0..k:
-    n = n * 2
+    n *= 2
 
 // each of the n - 1 lines is a fork at u: take a for w, or take b for free
 var to: List<Int> = []

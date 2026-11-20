@@ -80,7 +80,7 @@ fn dp(u: Int, k: Int) -> Int:
     if k > spare[vu]: return 0
     let l0 = lc[vu]
     let r0 = rc[vu]
-    let ccnt = (if l0 != -1: 1 else: 0) + (if r0 != -1: 1 else: 0)
+    let ccnt = Int(l0 != -1) + Int(r0 != -1)
     if ccnt == 0: return 1
     let cached = memo[vu, K(k)]
     if cached != -1: return cached

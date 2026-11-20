@@ -1,6 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of dmopc21c2p6.cp
 // original: corpus/submissions/3968585.cpp
-use std.fenwick.{Fenwick}
 
 let (n, q): (Int, Int) = read()
 domain Pos = 0..n

@@ -13,7 +13,7 @@ for i in 1..n:
     let me = G(i)
     var at = path.len
     if liked[path[0]]: at = 0
-    elif not liked[path[path.len - 1]]:
+    elif not liked[path.last!]:
         for j in (0..path.len - 1).rev:
             if liked[path[j]] and liked[path[j + 1]]: at = j + 1
     var next: List<G> = []

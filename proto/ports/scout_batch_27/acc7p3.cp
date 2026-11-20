@@ -7,7 +7,6 @@
 // neighbouring pairs are candidate edges. Kruskal over those, after the
 // free cables.
 // original: corpus/submissions/3540475.cpp
-use std.dsu.{Dsu}
 
 let n: Int = read()
 let m: Int = read()

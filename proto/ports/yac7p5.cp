@@ -1,4 +1,3 @@
-// cp: 0.1 1f59ac0+dirty
 // Yet Another Contest 7 P5 (interactive): each of n eggs breaks from its own
 // floor of 1..=n upward, all different; "? egg floor" tells whether that egg
 // breaks there. Split the floors in half, sort the eggs by one question each

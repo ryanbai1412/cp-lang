@@ -1,4 +1,3 @@
-// cp: 0.1 0f8d77b+dirty
 // DMOPC '21 Contest 5 P1 Permutations & Primes: arrange 1..=n so that no two
 // neighbours differ by a prime... the odd numbers, then 5 and 4, then the evens.
 let n: 1..=1e6 = read()

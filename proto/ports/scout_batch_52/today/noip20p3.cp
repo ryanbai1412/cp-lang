@@ -83,9 +83,7 @@ fn solve_range(cols: List<Int>, ql: Int, qr: Int):
                     transfer(g_empty, b, rem1)
                 else:
                     transfer(b, g_empty, rem0)
-                    let tmp = cur_cols[j]
-                    cur_cols[j] = g_empty
-                    g_empty = tmp
+                    swap(mut cur_cols[j], mut g_empty)
         if not changed: break
 
     var rest: List<Int> = []

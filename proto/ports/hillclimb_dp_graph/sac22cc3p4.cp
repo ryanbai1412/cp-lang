@@ -1,4 +1,3 @@
-// cp: 0.1 0f8d77b+dirty
 // SAC '22 Code Challenge 3 P4: a tree whose edges get cut one at a time.
 // Between cuts, report the distance from u to v, or -1 once they are apart.
 let n: 2..=2e5 = read()

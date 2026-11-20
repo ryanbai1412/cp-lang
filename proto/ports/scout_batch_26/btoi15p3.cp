@@ -6,8 +6,6 @@
 // the two ends of each new link lie on different sides of every tree edge
 // that has leaves on both halves, which covers every edge.
 // original: corpus/submissions/5640865.cpp
-use std.graph.{Graph}
-use std.tree.{Rooted}
 
 let n: 3..=5e5 = read()
 domain V = 1..=n

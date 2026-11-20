@@ -1,6 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of statement-first ioi07p3.cp
 // original: corpus/submissions/5120005.cpp
-use std.lazy.{LazySegTree, AddMin}
 
 let n: Int = read()
 domain M = 0..n

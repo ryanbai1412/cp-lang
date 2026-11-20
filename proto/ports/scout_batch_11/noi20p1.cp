@@ -44,7 +44,7 @@ for c in City:
 
 // pows[b] is 2^b days
 var pows = [day]
-while 2 ** pows.len <= t: pows.push(mul(pows[pows.len - 1], pows[pows.len - 1]))
+while 2 ** pows.len <= t: pows.push(mul(pows.last!, pows.last!))
 
 var best: Row = [State] i => NONE
 best[at(City(1), 0)] = joy[City(1)]

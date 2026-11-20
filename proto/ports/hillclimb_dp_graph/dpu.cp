@@ -1,4 +1,3 @@
-// cp: 0.1 0f8d77b+dirty
 // AtCoder DP U, Grouping: split n rabbits into groups; every pair inside a
 // group scores like[i, j] (possibly negative). Maximise the total score.
 let n: 1..=16 = read()

@@ -82,7 +82,7 @@ else:
             if l == r: return best
             let mid = (l + r) / 2
             if x <= mid:
-                o = o * 2
+                o *= 2
                 r = mid
             else:
                 o = o * 2 + 1

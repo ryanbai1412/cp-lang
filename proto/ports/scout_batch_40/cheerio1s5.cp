@@ -7,7 +7,7 @@
 let s: Str = read()
 let n = s.len
 let k: 0..=n = read()
-let heads = prefix([0..n] i => if s[i] == 'H': 1 else: 0)
+let heads = prefix([0..n] i => Int(s[i] == 'H'))
 
 // best score from the block l..r, every pick splitting what is left
 @memo

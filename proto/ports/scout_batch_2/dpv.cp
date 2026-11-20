@@ -5,8 +5,6 @@
 // is one more than the count for the rest of the tree as seen from v's
 // parent (the "one more" is leaving that side white). The answer at v is
 // their product.
-use std.graph.{Graph}
-use std.tree.{Rooted}
 
 let (n, m): (Int, Int) = read()
 domain V = 1..=n

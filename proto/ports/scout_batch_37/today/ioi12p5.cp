@@ -34,7 +34,7 @@ for t in 0..n:
         stay[out] = -1
     stay[c] = k + t
     on.insert((next_use[t], c))
-print([if b: 1 else: 0 for b in needed])
+print([Int(b) for b in needed])
 
 // ---- Assist: sees only the bits and one request at a time. Colours whose
 // current stay is not needed again are safe to put back.

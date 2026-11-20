@@ -7,7 +7,6 @@
 // so for each choice of root the best tree is the BFS tree over "boss ->
 // report" arcs; a root that cannot reach everyone is skipped.
 // original: corpus/submissions/5323961.cpp
-use std.graph.{bfs}
 
 let n: Int = read()
 domain P = 1..=n

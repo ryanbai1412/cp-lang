@@ -2,7 +2,7 @@
 // original: corpus/submissions/4051697.cpp
 let n: 1..=1_000_000 = read()
 let s: [0..2 * n]Char = read()
-var uu = if s[0] == 'U': 1 else: 0
+var uu = Int(s[0] == 'U')
 var ii = 0
 for i in 0..(2 * n - 1):
     if s[i] == s[i + 1]:

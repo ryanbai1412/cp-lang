@@ -43,7 +43,7 @@ for d in (0..=m).rev:
                 else:
                     var best: ?Int = none
                     let csz = 1 << (m - d - 1)
-                    let cflag = ((if cnt > csz: 1 else: 0) << d) | par
+                    let cflag = (Int(cnt > csz) << d) | par
                     for acnt in max(0, cnt - csz)..=min(csz, cnt):
                         let bcnt = cnt - acnt
                         best min= dp[u * 2, (acnt << (d + 1)) | cflag] + dp[u * 2 + 1, (bcnt << (d + 1)) | cflag]

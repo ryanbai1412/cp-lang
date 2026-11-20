@@ -17,7 +17,7 @@ var dp: [Subset<I>]Int = 0
 for s in Subset<I>:
     for i in Subset<I>.full - s:
         let ns = s.with(i)
-        let add = if rem[ns] == 0: 1 else: 0
+        let add = Int(rem[ns] == 0)
         dp[ns] max= dp[s] + add
 
 print(m - dp[Subset<I>.full])

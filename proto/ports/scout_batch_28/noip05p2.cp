@@ -26,5 +26,5 @@ for x in spot: stone[x] = true
 // fewest[p]: stones landed on from p onwards, p included
 var fewest: [0..end + t]Int = 0
 for p in (0..end).rev:
-    fewest[p] = min(fewest[p + hop] for hop in s..=t)! + (if stone[p]: 1 else: 0)
+    fewest[p] = min(fewest[p + hop] for hop in s..=t)! + Int(stone[p])
 print(fewest[0])

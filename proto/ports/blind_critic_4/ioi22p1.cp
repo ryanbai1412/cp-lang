@@ -1,7 +1,6 @@
 // IOI '22 P1 — Fish (CP Lang 0.2.2): `bsearch_first`, `max=`, and `max(...)!`
 // replace manual binary search, `list_max`, and `.from_idx(...)!` boilerplate.
 // original: corpus/submissions/4785724.cpp
-use std.seq.{bsearch_first}
 
 let (n, m): (2..=100_000, 1..=300_000) = read()
 domain Col = 0..n

@@ -64,9 +64,7 @@ fn pull(u: Int):
         m10 = p.2
         m11 = p.3
     if g_nodes[u].flip:
-        let t0 = m00
-        m00 = m11
-        m11 = t0
+        swap(mut m00, mut m11)
         swap(mut m01, mut m10)
     if g_nodes[u].rev:
         swap(mut m00, mut m11)

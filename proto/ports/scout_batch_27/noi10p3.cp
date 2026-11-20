@@ -13,7 +13,6 @@
 // Input: n, then the walkers west to east ((n + 1) rows of n), north to
 // south (n rows of n + 1), east to west and south to north.
 // original: corpus/submissions/5672180.cpp
-use std.graph.{dijkstra}
 
 let n: Int = read()
 domain X = 0..=n                    // crossings along one axis

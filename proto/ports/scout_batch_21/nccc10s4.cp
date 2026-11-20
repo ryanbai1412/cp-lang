@@ -13,7 +13,6 @@
 // itself. The first side lies on line 0 and runs forwards, which counts
 // each polygon once.
 // original: corpus/submissions/4225209.cpp
-use std.math.{gcd}
 
 struct Line(a: Int, b: Int, c: Int)         // a x + b y + c = 0
 struct Hom(x: Int, y: Int, w: Int)          // the point (x / w, y / w), w > 0, reduced

@@ -4,7 +4,6 @@
 // soldier below 0 counts as 0.
 //
 // Range add, range min: a lazy tree and two folds per volley.
-use std.lazy.{LazySegTree, AddMin}
 
 let (n, q): (Int, Int) = read()
 domain Soldier = 1..=n

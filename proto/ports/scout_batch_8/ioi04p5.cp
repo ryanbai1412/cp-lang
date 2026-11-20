@@ -2,7 +2,6 @@
 // trees) and strips (paths of b[j] trees). A tree counts when both its
 // neighbours are taken too. Print the most that can count.
 // original: corpus/submissions/4829839.cpp
-use std.bitset.{Bitset}
 
 let q: 1..=150000 = read()
 let n: 0..=2000 = read()

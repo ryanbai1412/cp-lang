@@ -15,7 +15,7 @@ var red: [City, City]Bool = false
 for i in City:
     if i == City.first: continue
     let row: Str = read()
-    for j in City.first..i:
+    for j in ..i:
         red[i, j] = row[j.to_idx] == 'R'
         red[j, i] = red[i, j]
 

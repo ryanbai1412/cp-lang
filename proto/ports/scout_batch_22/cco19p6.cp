@@ -9,7 +9,6 @@
 // short side costs the letters that become common to both. Dijkstra from
 // every pair of codewords where one starts the other, to the empty tail.
 // original: corpus/submissions/3617414.cpp
-use std.heap.{MinHeap}
 
 fn starts_with(s: Str, head: Str) -> Bool = head.len <= s.len and s[0..head.len] == head
 

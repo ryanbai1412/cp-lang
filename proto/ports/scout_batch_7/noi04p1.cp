@@ -10,7 +10,6 @@
 // never changes. The original keeps them in an order-statistics tree. Here
 // the commands are read twice: once to learn every base that will occur,
 // once to count staff per base in a Fenwick tree.
-use std.fenwick.{Fenwick}
 
 let (q, floor): (Int, Int) = read()
 domain Cmd = 0..q

@@ -20,7 +20,7 @@ fn window_mins(xs: List<Int>, k: Int) -> List<Int>:
     var keep: List<Int> = []
     var head = 0
     for i in 0..xs.len:
-        while keep.len > head and xs[keep[keep.len - 1]] >= xs[i]: keep.pop()
+        while keep.len > head and xs[keep.last!] >= xs[i]: keep.pop()
         keep.push(i)
         if keep[head] <= i - k: head += 1
         if i >= k - 1: out.push(xs[keep[head]])

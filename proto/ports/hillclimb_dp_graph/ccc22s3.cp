@@ -1,4 +1,3 @@
-// cp: 0.1 0f8d77b+dirty
 // CCC 2022 S3 Good Samples: write n notes with pitches 1..=m so that exactly
 // k runs of consecutive notes have all pitches different, or report -1.
 let n: 1..=1e6 = read()

@@ -33,9 +33,7 @@ fn add_edge(u: V, v: V):
     var a = ru.root
     var b = rv.root
     if sz[a] < sz[b]:
-        let t = a
-        a = b
-        b = t
+        swap(mut a, mut b)
     hist_child.push(b)
     hist_parent.push(a)
     hist_sz.push(sz[a])

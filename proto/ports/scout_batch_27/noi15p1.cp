@@ -1,8 +1,6 @@
 // NOI 2015 Automated Program Analyzer (CP Lang 0.2.2): check satisfiability of
 // equality and disequality constraints over sparse variable IDs via `compress` + `Dsu`.
 // original: corpus/submissions/3775616.cpp
-use std.dsu.{Dsu}
-use std.seq.{compress}
 
 @multitest
 let q: Int = read()

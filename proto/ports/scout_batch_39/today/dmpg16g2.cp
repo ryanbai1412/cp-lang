@@ -46,9 +46,7 @@ fn dsu_merge(mask: Int, u: Int, v: Int):
     if ru == rv:
         return
     if dsu_p[mask, ru] < dsu_p[mask, rv]:
-        let t = ru
-        ru = rv
-        rv = t
+        swap(mut ru, mut rv)
     dsu_p[mask, rv] += dsu_p[mask, ru]
     dsu_p[mask, ru] = rv
 

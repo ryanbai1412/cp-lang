@@ -18,9 +18,7 @@ fn flip(l0: Int, r0: Int):
     var l = l0
     var r = r0 - 1
     while l < r:
-        let tmp = cur[l]
-        cur[l] = cur[r]
-        cur[r] = tmp
+        cur.swap(l, r)
         ox.push(l)
         oy.push(r)
         l += 1

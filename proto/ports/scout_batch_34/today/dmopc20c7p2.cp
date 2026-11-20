@@ -1,6 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of dmopc20c7p2.cp
 // original: corpus/submissions/3686612.cpp
-use std.geometry.{Pt}
 
 let n: Int = read()
 domain Tile = 0..n

@@ -28,10 +28,10 @@ fn split(a: Costs, b: Costs) -> Costs:
     var j = 1
     while i < a.len or j < b.len:
         if j == b.len or (i < a.len and a[i] - a[i - 1] <= b[j] - b[j - 1]):
-            out.push(out[out.len - 1] + a[i] - a[i - 1])
+            out.push(out.last! + a[i] - a[i - 1])
             i += 1
         else:
-            out.push(out[out.len - 1] + b[j] - b[j - 1])
+            out.push(out.last! + b[j] - b[j - 1])
             j += 1
     out
 

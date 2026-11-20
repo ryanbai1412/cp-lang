@@ -2,7 +2,6 @@
 // a + b = 2n (one exists for every n in the limits); the original prints
 // the pair with the smallest a.
 // original: corpus/submissions/4325077.cpp
-use std.math.{Sieve}
 
 let t: Int = read()
 domain Case = 0..t

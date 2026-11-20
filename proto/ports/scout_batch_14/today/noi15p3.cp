@@ -82,7 +82,7 @@ for m3 in 0..total3:
                 else:
                     if digit != 1: ok_a = false
                     if digit != 2: ok_b = false
-            let factor = 1 + (if ok_a: 1 else: 0) + (if ok_b: 1 else: 0)
+            let factor = 1 + Int(ok_a) + Int(ok_b)
             cur_way = (cur_way * factor) % p
     ways[m3] = cur_way
 

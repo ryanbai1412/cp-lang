@@ -108,7 +108,7 @@ for r in I:
     stk_b.push(r.to_idx)
     st.apply(I.nth(lb)..=r, HistTag(false, 0, true, b[r], 0, 0, 0, 0))
 
-    st.apply(I.first..=r, HistTag(false, 0, false, 0, 1, 0, 0, 0))
+    st.apply(..=r, HistTag(false, 0, false, 0, 1, 0, 0, 0))
 
     for qi in by_r[r]:
         ans[qi] = st.fold(qs[qi].l..=r).hist

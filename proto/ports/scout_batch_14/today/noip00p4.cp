@@ -32,7 +32,7 @@ for r in (0..n).rev:
         let sorted_cur = sorted(cur, by: s => s.idx)
         var uniq: List<Mask> = []
         for s in sorted_cur:
-            if uniq.len == 0 or uniq[uniq.len - 1] != s: uniq.push(s)
+            if uniq.len == 0 or uniq.last! != s: uniq.push(s)
         let id = cell_id[r, c]
         if id != -1:
             let item = Item(id)

@@ -63,4 +63,4 @@ for _ in 0..q:
         if u == w:
             let h = highest_below(d)
             borrow = h >= 0 and up[h] < down[h]
-        print(((up[d] ^ down[d]) >> (k % 30) & 1) ^ (if borrow: 1 else: 0))
+        print(((up[d] ^ down[d]) >> (k % 30) & 1) ^ Int(borrow))

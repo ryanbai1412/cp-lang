@@ -15,7 +15,7 @@ for ii in 0..n:
         let j = m - 1 - jj
         var v = max(dp[R(i + 1), C(j)], dp[R(i), C(j + 1)])
         if a[i] == b[j]:
-            v = max(v, 1 + dp[R(i + 1), C(j + 1)])
+            v max= 1 + dp[R(i + 1), C(j + 1)]
         dp[R(i), C(j)] = v
 
 var out: List<Char> = []

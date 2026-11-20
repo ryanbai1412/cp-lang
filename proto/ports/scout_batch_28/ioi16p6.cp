@@ -14,7 +14,7 @@ let points: [n](r: 0..m, c: 0..m) = read()
 
 var spans: List<(lo: Int, hi: Int)> = []
 for (lo, far) in sorted([(min(r, c), -max(r, c)) for (r, c) in points]):
-    if spans.len == 0 or -far > spans[spans.len - 1].hi: spans.push((lo: lo, hi: -far))
+    if spans.len == 0 or -far > spans.last!.hi: spans.push((lo: lo, hi: -far))
 let cnt = spans.len
 
 type Plan = (cost: Int, photos: Int)                // ordered by cost, then by photos
@@ -42,7 +42,7 @@ fn cover(fee: Int) -> Plan:
         let lo = spans[i].lo
         let shared = if i > 0: max(0, spans[i - 1].hi - lo + 1) else: 0
         let line: Line = (slope: -2 * lo, at0: done.cost + lo * lo - shared * shared + fee, photos: done.photos + 1)
-        while hull.len - head >= 2 and useless(hull[hull.len - 2], hull[hull.len - 1], line): hull.pop()
+        while hull.len - head >= 2 and useless(hull[hull.len - 2], hull.last!, line): hull.pop()
         hull.push(line)
         let x = spans[i].hi + 1                     // the ends only grow, so drop beaten lines
         while hull.len - head >= 2 and not (value(hull[head], x) < value(hull[head + 1], x)): head += 1

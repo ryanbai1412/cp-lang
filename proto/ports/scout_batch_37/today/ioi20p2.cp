@@ -52,4 +52,4 @@ if not ok:
     print(0)
 else:
     print(1)
-    for i in V: print([if bridge[i, j]: 1 else: 0 for j in V])
+    for i in V: print([Int(bridge[i, j]) for j in V])

@@ -1,7 +1,6 @@
 // NOI 2009 Poet (CP Lang 0.2.2): convex 1D DP with monotone decision queue and
 // binary search for transition crossover points.
 // original: corpus/submissions/5108899.cpp
-use std.seq.{bsearch_first}
 
 let dashes = "--------------------"
 
