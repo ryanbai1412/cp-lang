@@ -898,6 +898,15 @@ class Compiler:
             if not (is_int(lt) and is_int(ht)):
                 self.error(e, "rand(lo, hi) needs Ints")
             return f"gen_int({lc}, {hc})", TInt(lt.lo, ht.hi)
+        if fn.kind == "name" and fn.name in ("gcd", "lcm") and len(e.args) == 2 and not self.lookup(fn.name):
+            (ac, at), (bc, bt) = self.expr(e.args[0]), self.expr(e.args[1])
+            if not (is_int(at) and is_int(bt)):
+                self.error(e, f"{fn.name} needs Ints")
+            if fn.name == "gcd":
+                his = [x for x in (at.hi, bt.hi) if x is not None]
+                return f"std::gcd<ll, ll>({ac}, {bc})", TInt(0, max(his) if len(his) == 2 else None)
+            hi = None if None in (at.hi, bt.hi) else at.hi * bt.hi
+            return f"std::lcm<ll, ll>({ac}, {bc})", self.int_result(e, 0, hi)
         if fn.kind == "name" and fn.name == "abs" and not self.lookup("abs"):
             c, t = self.expr(e.args[0])
             if not is_int(t):
@@ -1041,6 +1050,19 @@ class Compiler:
                     recv.mut = True
                 call_args = [recv] + call_args
             return self.expr(N("call", e.line, fn=N("name", e.line, name=fname), args=call_args), want)
+        if isinstance(ot, TType) and isinstance(ot.t, TDom) and m in ("partition_point", "first_where"):
+            # binary search over a domain for a predicate that is false then true (first_where)
+            # or true then false (partition_point, as in plan/12)
+            info = ot.t.info
+            pn, kc, kt = self.lambda_key(args[0], ot.t)
+            if not isinstance(kt, TBool):
+                self.error(e, f"{m} needs a Bool predicate")
+            flip = "!" if m == "first_where" else ""
+            search = (f"([&]{{ int _lo = 0, _hi = {info.len_cpp}; while (_lo < _hi) {{ int {pn} = (_lo + _hi) / 2; "
+                      f"if ({flip}({kc})) _lo = {pn} + 1; else _hi = {pn}; }} return _lo; }}())")
+            if m == "partition_point":
+                return search, TDom(self.bounds_of(info))
+            return f"([&](int _k){{ return _k < {info.len_cpp} ? Opt<int>(_k) : Opt<int>(); }}({search}))", TOpt(ot.t)
         if isinstance(ot, TType) and isinstance(ot.t, TDom) and m in ("at", "try_at", "nth", "try_nth"):
             info = ot.t.info
             c, t = self.expr(args[0])
