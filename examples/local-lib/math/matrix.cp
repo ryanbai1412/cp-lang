@@ -1,0 +1,86 @@
+//! Square matrices over `Mod<P>`, for linear recurrences and counting walks.
+use std.mod.{Mod}
+use std.algebra.{Monoid}
+
+/// An `n` by `n` matrix. Multiplication is O(n^3), `pow` O(n^3 log e).
+pub struct Mat<P>(n: Int, a: List<List<Mod<P>>>):
+    pub fn zero(n: Int) -> Mat<P> = Mat(n, [[Mod<P>(0) for _ in 0..n] for _ in 0..n])
+
+    pub fn identity(n: Int) -> Mat<P> = Mat(n, [[Mod<P>(if i == j: 1 else: 0) for j in 0..n] for i in 0..n])
+
+    /// From rows of plain integers.
+    pub fn of(rows: List<List<Int>>) -> Mat<P> = Mat(rows.len, [[Mod<P>(x) for x in row] for row in rows])
+
+    /// The entry in row `i`, column `j`, lent in place: `m.at(i, j) += x` updates the matrix.
+    pub fn at(self, i: Int, j: Int) lends mut Mod<P>:
+        lend mut a[i][j]
+
+    pub fn pow(self, e: Int) -> Mat<P>:
+        var (base, acc, k) = (self, Mat<P>.identity(n), e)
+        while k > 0:
+            if k % 2 == 1: acc = acc * base
+            base = base * base
+            k /= 2
+        acc
+
+    /// Matrix multiplication as a monoid, so a `SegTree` can hold matrices.
+    pub fn product(n: Int) -> Monoid<Mat<P>> = Monoid(Mat<P>.identity(n), (x, y) => x * y)
+
+    /// The matrix times a column vector.
+    pub fn apply(self, v: List<Mod<P>>) -> List<Mod<P>>:
+        var out = List.filled(n, Mod<P>(0))
+        for i in 0..n:
+            for j in 0..n: out[i] = out[i] + a[i][j] * v[j]
+        out
+
+impl Mul for Mat<P>:
+    fn mul(x, y):
+        var out = Mat<P>.zero(x.n)
+        for i in 0..x.n:
+            for k in 0..x.n:
+                let f = x.a[i][k]
+                for j in 0..x.n: out.at(i, j) += f * y.a[k][j]
+        out
+
+impl Add for Mat<P>:
+    fn add(x, y) = Mat(x.n, [[x.a[i][j] + y.a[i][j] for j in 0..x.n] for i in 0..x.n])
+
+@test
+fn fibonacci_by_matrix_power():
+    type M = Mod<1000000007>
+    let step = Mat<1000000007>.of([[1, 1], [1, 0]])
+    var (a, b) = (M(0), M(1))
+    for n in 0..60:
+        assert step.pow(n).apply([M(1), M(0)])[1] == a
+        (a, b) = (b, a + b)
+    assert step.pow(0) == Mat<1000000007>.identity(2)
+
+@test
+fn counting_walks_matches_dp():
+    type M = Mod<998244353>
+    let n = 5
+    let adj = [[rand(0, 1) for _ in 0..n] for _ in 0..n]
+    let g = Mat<998244353>.of(adj)
+    var ways = [[M(if i == j: 1 else: 0) for j in 0..n] for i in 0..n]
+    for len in 0..12:
+        assert g.pow(len).a == ways
+        ways = [[sum_mod([ways[i][k] * M(adj[k][j]) for k in 0..n]) for j in 0..n] for i in 0..n]
+
+fn sum_mod<P>(xs: List<Mod<P>>) -> Mod<P>:
+    var t = Mod<P>(0)
+    for x in xs: t = t + x
+    t
+
+@test
+fn matrix_product_is_a_lawful_monoid():
+    let ms = [Mat<7>.of([[1, 2], [3, 4]]), Mat<7>.of([[0, 1], [1, 0]]), Mat<7>.identity(2), Mat<7>.of([[5, 0], [6, 6]])]
+    assert laws_hold(Mat<7>.product(2), ms)
+    assert ms[0] + ms[1] == Mat<7>.of([[1, 3], [4, 4]])
+
+@test
+fn entries_are_lent_in_place():
+    var m = Mat<7>.zero(2)
+    m.at(0, 1) = Mod<7>(3)
+    m.at(0, 1) += Mod<7>(5)
+    m.at(1, 0) = m.at(0, 1) * Mod<7>(2)
+    assert m == Mat<7>.of([[0, 1], [2, 0]])
