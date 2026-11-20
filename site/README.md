@@ -33,11 +33,12 @@ node --test site/test_compiler.cjs
 node --test site/test_trace.cjs
 ```
 
-This builds every page, validates local links and heading fragments, and
-compiles all `example` snippets and the foundations' worked programs with the
-Python prototype and `g++` C++17.
-Sample/edge cases and every course prediction check actual native output
-against the real browser WASM runtime (including timeout and recovery). Compiler APIs avoid the
+`test_site.py` builds every page, validates local links and heading fragments, and
+runs the legacy prototype `example` fixtures and foundations worked programs with
+the Python prototype and `g++` C++17.
+`test_compiler.cjs` and `test_course.cjs` run and build every fixture, runnable inline
+course block, playground preset, and course prediction through the real browser WASM
+runtime (including timeout and recovery). Compiler APIs avoid the
 prototype CLI's source-stamping side effect. Design blocks are explicitly
 labeled and are not compiled; they must be reviewed against the design.
 The full Rust workspace gate remains `cargo test` before a push.
@@ -92,7 +93,7 @@ C++17 generation, source-positioned diagnostics, and cursor type inspection from
 bridge without another compiler implementation. A Blob worker keeps execution
 off the UI thread, stops runs after five seconds, and restarts after Stop or a
 timeout. The compiled module is shared across offline page navigation. The
-complete HTML is about 1.6 MiB; the compiler itself adds about 0.8 MiB of base64
+complete HTML is about 1.9 MB; the compiler itself adds about 0.8 MiB of base64
 gzip. Modern browsers need WebAssembly, Workers, and DecompressionStream.
 
 Conceptual course questions check a selected answer; output checks actually run

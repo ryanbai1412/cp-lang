@@ -1,6 +1,6 @@
 This chapter writes, reads, and runs complete CP Lang 0.2.2 programs. By the end you will know how a program reads typed input, structures single-test and `@!multitest` files symmetrically with top-level `return`, updates state in a loop, and builds a native binary.
 
-> **What runs.** Every `*.cp · WASM runnable` block compiles and runs in the real Rust `cpl` WebAssembly runtime on this page (and emits C++17). Blocks labeled **spec** or **prototype tested** show approved 0.2.2 forms that are still landing in the WASM frontend; see [getting started](getting-started.html#what-works-today) for full toolchain status.
+> **What runs.** Every `*.cp · WASM runnable` block compiles and runs in the real Rust `cpl` WebAssembly runtime on this page (and emits C++17). Blocks labeled **spec** or **fragment** are not browser-executed; see [getting started](getting-started.html#what-works-today) for full toolchain status.
 
 ## A program is the body of main
 
