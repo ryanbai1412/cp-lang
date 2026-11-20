@@ -2176,7 +2176,25 @@ impl<'a> Lowerer<'a> {
                     Block { stmts: els },
                 ));
             }
-            ast::Cond::Const(cond) => self.unsupported(cond.span, "`if const`"),
+            // `if const`: the test is settled here, and only the branch
+            // it picks is lowered, so the other costs nothing at run time.
+            ast::Cond::Const(cond) => {
+                match self.eval_const_bool(cond) {
+                    Some(true) => out.extend(self.block(body, tail).stmts),
+                    Some(false) => self.if_chain(rest, otherwise, tail, out),
+                    None => {
+                        self.error(
+                            codes::BAD_NUMBER,
+                            cond.span,
+                            "`if const` needs a test known at compile time",
+                        );
+                        self.help(
+                            "it can compare literals, `const`s and `<const N>` parameters; \
+                             use a plain `if` for a value read at run time",
+                        );
+                    }
+                }
+            }
         }
     }
 
