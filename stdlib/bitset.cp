@@ -46,6 +46,24 @@ pub struct Bitset<D>:
     pub fn symmetric(mut self, o: Bitset<D>):
         for k in 0..w.len: w[k] ^= o.w[k]
 
+    /// `a | b`: the positions in either set.
+    pub fn bitor(self, o: Bitset<D>) -> Bitset<D>:
+        var out = Bitset<D>.new()
+        for k in 0..w.len: out.w[k] = w[k] | o.w[k]
+        out
+
+    /// `a & b`: the positions in both sets.
+    pub fn bitand(self, o: Bitset<D>) -> Bitset<D>:
+        var out = Bitset<D>.new()
+        for k in 0..w.len: out.w[k] = w[k] & o.w[k]
+        out
+
+    /// `a ^ b`: the positions in exactly one of the sets.
+    pub fn bitxor(self, o: Bitset<D>) -> Bitset<D>:
+        var out = Bitset<D>.new()
+        for k in 0..w.len: out.w[k] = w[k] ^ o.w[k]
+        out
+
     /// Do the two sets share a position? Stops at the first shared word.
     pub fn meets(self, o: Bitset<D>) -> Bool:
         for k in 0..w.len:
@@ -94,6 +112,13 @@ pub struct Bitset<D>:
 
 // `Int` is a signed 64-bit word, so the helpers below spell out the three
 // places where bit 63 needs care. They compile to single instructions.
+
+/// `a - b`: the positions in `a` that are not in `b`.
+impl Sub for Bitset<D>:
+    fn sub(a, b):
+        var out = Bitset<D>.new()
+        for k in 0..a.w.len: out.w[k] = a.w[k] & (b.w[k] ^ -1)
+        out
 
 /// The word with only bit `k` set.
 fn bit(k: Int) -> Int = if k == 63: Int.MIN else: 1 << k

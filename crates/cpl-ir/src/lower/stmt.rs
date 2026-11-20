@@ -1796,6 +1796,9 @@ impl<'a> Lowerer<'a> {
                         BinOp::Sub => Some("sub"),
                         BinOp::Mul => Some("mul"),
                         BinOp::Div => Some("div"),
+                        BinOp::BitOr => Some("bitor"),
+                        BinOp::BitAnd => Some("bitand"),
+                        BinOp::BitXor => Some("bitxor"),
                         _ => None,
                     };
                     if let Some(fn_id) = mname.and_then(|m| self.struct_op_fn(sid, m)) {

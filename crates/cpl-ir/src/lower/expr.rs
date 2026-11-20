@@ -1241,6 +1241,9 @@ impl<'a> Lowerer<'a> {
                 Sub => Some("sub"),
                 Mul => Some("mul"),
                 Div => Some("div"),
+                BitOr => Some("bitor"),
+                BitAnd => Some("bitand"),
+                BitXor => Some("bitxor"),
                 _ => None,
             };
             if let Some(fn_id) = mname.and_then(|m| self.struct_op_fn(sid, m)) {
