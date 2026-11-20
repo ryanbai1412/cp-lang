@@ -9,11 +9,12 @@
 // Opponent's red count is determined from prefix sums: opp_red = taken_red - my_red.
 let (n, k): (1..=350, 1..=350) = read()
 // WISH MG11: alphabet constraint {'C', 'P'} + existential count >= 2*k - 1 for cpl stress
-let s: Str = read() where s.len == n and count(c == 'C' for c in s) >= 2 * k - 1
+let s: Str = read()
+assert s.len == n and count(c == 'C' for c in s) >= 2 * k - 1
 
 var pref = List.filled(n + 1, 0)
 for i in 0..n:
-    pref[i + 1] = pref[i] + if s[i] == 'C': 1 else: 0
+    pref[i + 1] = pref[i] + Int(s[i] == 'C')
 let tot = pref[n]
 
 // WISH MG10: @memo over 3D bounded (l, r, my_red) with dense flat table + packed Bool/U8

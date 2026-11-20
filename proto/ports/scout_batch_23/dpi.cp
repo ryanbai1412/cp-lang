@@ -7,7 +7,8 @@
 // Algebraically, the distribution of heads is the polynomial product
 //   P(x) = prod_{i=1..N} ((1 - p_i) + p_i * x)
 // and the answer is sum_{k > N/2} [x^k] P(x).
-let n: 1..=2999 = read() where n % 2 == 1
+let n: 1..=2999 = read()
+assert n % 2 == 1
 domain Coin = 0..n
 // WISH MG11: floating-point range type `0.0..=1.0` for probability input & cpl stress
 let p: [Coin]F64 = read()

@@ -10,7 +10,6 @@
 // a pair across two groups is at one of the four corners.
 // original: corpus/submissions/3927929.cpp
 use std.strings.{suffix_array, lcp_array}
-use std.dsu.{Dsu}
 
 let n: Int = read()
 let s: Str = read()
@@ -25,7 +24,8 @@ let lcp = lcp_array(letters, sa)
 var groups = Dsu<Glass>.new()
 var lo: [Glass]Int = [Glass] j => score[Glass.nth(sa[j.to_idx])]
 var hi: [Glass]Int = [Glass] j => score[Glass.nth(sa[j.to_idx])]
-var (pairs, best) = (0, none)
+var pairs = 0
+var best: ?Int = none
 
 fn join(j: Int):
     let (a, b) = (groups.find(Glass.nth(j)), groups.find(Glass.nth(j + 1)))

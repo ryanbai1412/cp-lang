@@ -6,7 +6,8 @@ let n: 1..=2e5 = read()
 let k: 1..=n = read()
 domain I = 1..=n
 domain V = 1..=k
-let a: [I]V = read() where all(any(a[i] == v for i in I) for v in V)
+let a: [I]V = read()
+assert all(any(a[i] == v for i in I) for v in V)
 
 var last: [V]I = I.first                // where each number occurs for the last time
 for i in I: last[a[i]] = i
@@ -18,7 +19,7 @@ var chosen: [V]Bool = false
 for i in I:
     let x = a[i]
     if chosen[x]: continue
-    while kept.len > 0 and kept[kept.len - 1] > x and last[kept[kept.len - 1]] > i:
+    while let k = kept.last and k > x and last[k] > i:
         chosen[kept.pop()!] = false
     kept.push(x)
     chosen[x] = true

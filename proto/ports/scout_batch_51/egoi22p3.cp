@@ -3,6 +3,7 @@
 // If every component has an even count of special vertices, pair them bottom-up into
 // edge-disjoint tree paths so each opponent move from 1 has a precomputed path back.
 // original: corpus/submissions/5199301.cpp
+use std.seq.{reverse}
 
 @grader fn GetMove() -> Int
 @grader fn MakeMove(v: Int)
@@ -52,9 +53,9 @@ fn SocialEngineering(n: Int, m: Int, edges: List<(Int, Int)>):
         for v in kids[u]:
             if let carry = pair_sub(v): open.push(carry)
         for i in (0..open.len - 1).step(2):
-            var right = climb(open[i], u)
+            var right = climb(mut open[i], u)
             reverse(mut right)
-            let full = climb(open[i + 1], u) + [u] + right
+            let full = climb(mut open[i + 1], u) + [u] + right
             let rev_full = [x for x in full.rev]
             pair_path[full.first!] = full
             pair_path[full.last!] = rev_full

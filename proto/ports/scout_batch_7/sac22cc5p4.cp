@@ -13,8 +13,8 @@ let segs: [Seg](l: Int, r: Int) = read()
 var runs: List<(l: Int, r: Int)> = []
 for s in sorted(Seg, by: s => segs[s].l):
     let (l, r) = segs[s]
-    if runs.len > 0 and l <= runs.last.r + 1:
-        runs[runs.len - 1].r = max(runs.last.r, r)
+    if runs.len > 0 and l <= runs.last!.r + 1:
+        runs.last!.r = max(runs.last!.r, r)
     else:
         runs.push((l: l, r: r))
 

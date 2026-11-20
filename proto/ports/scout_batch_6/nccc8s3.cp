@@ -2,10 +2,12 @@
 // numbers out until each of 1..=k is left exactly once, so that what is left
 // is the smallest possible in dictionary order.
 // original: corpus/submissions/7011313.cpp
-let (n, k): (1..=2e5, 1..=n) = read()                                               // WISH S8
+let n: 1..=2e5 = read()
+let k: 1..=n = read()                                               // WISH S8
 domain I = 1..=n
 domain V = 1..=k
-let a: [I]V = read() where all(v in a for v in V)
+let a: [I]V = read()
+assert all(v in a for v in V)
 
 var last: [V]I                          // where each number occurs for the last time  WISH S10
 for i in I: last[a[i]] = i

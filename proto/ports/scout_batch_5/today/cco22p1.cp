@@ -7,7 +7,8 @@ let q: 1..=1e6 = read()
 domain Spot = 1..=n
 domain Student = 1..=k
 let line: [Spot]Student = read()
-let asks: [q](x: Spot, y: Spot) = read() where all(t.x < t.y for t in asks)
+let asks: [q](x: Spot, y: Spot) = read()
+assert all(t.x < t.y for t in asks)
 
 fn consistent(x: Spot, y: Spot) -> Bool:
     var taller: [Student]List<Student> = []

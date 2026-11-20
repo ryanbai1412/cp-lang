@@ -5,7 +5,8 @@ const P = 998244353
 type Z = Mod<P>
 let n: 1..=30 = read()
 let m: 0..=100 = read()
-let k: 1..=30 = read() where k <= n
+let k: 1..=30 = read()
+assert k <= n
 let val: [m + 1]0..=P - 1 = read()
 
 // Pascal table for binomial coefficients choose(a, b) mod P.
@@ -35,7 +36,7 @@ for w in val:
             for ones in 0..=k:
                 let cur = dp[used, carry, ones]
                 if cur == 0: continue
-                var pw = Z(1)
+                var pw: Z = 1
                 for take in 0..=n - used:
                     let bits = carry + take
                     let n_ones = ones + (bits & 1)
@@ -44,7 +45,7 @@ for w in val:
                     pw *= w
     dp = next
 
-var ans = Z(0)
+var ans: Z = 0
 for carry in 0..=n:
     let extra = popcount(carry)
     for ones in 0..=k:

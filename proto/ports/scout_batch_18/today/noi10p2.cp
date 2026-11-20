@@ -1,7 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of statement-first noi10p2.cp
 // original: corpus/submissions/5670502.cpp
-use std.sparse.{SparseTable}
-use std.heap.{MaxHeap}
 
 let (n, k, lo_len, hi_len): (Int, Int, Int, Int) = read()
 domain I = 1..=n
@@ -30,7 +28,7 @@ impl Ord for Cand:
     fn lt(a, b) = a.score < b.score
 
 fn make_cand(start: Int, lo: Int, hi: Int) -> Cand:
-    let mx = rmq.fold(B(lo)..=B(hi))!
+    let mx = rmq.fold(B(lo)..=B(hi))
     Cand(mx.val - pre[B(start - 1)], start, lo, hi, mx.pos)
 
 var pq = MaxHeap<Cand>()

@@ -24,10 +24,10 @@ var total = 0
 
 fn truncate(cap: Int):
     if total <= cap: return
-    while stack.len > 0 and stack.back()!.pref >= cap:
+    while let top = stack.last and top.pref >= cap:
         stack.pop()
     if stack.len > 0:
-        stack[stack.len - 1].cnt = cap - stack.back()!.pref
+        stack.last!.cnt = cap - stack.last!.pref
     total = cap
 
 var left_bus: [Mkt]Int = 0
@@ -50,15 +50,15 @@ for i in Mkt:
             return
         total -= need
         while need > 0:
-            let top = stack.back()!
+            let top = stack.last!
             let take = min(need, top.cnt)
             need -= take
             rain[top.at] += take
             right_bus[top.at] -= take
             diff[Bus(top.at.idx + 1)] += take
             diff[Bus(i.idx)] -= take
-            stack[stack.len - 1].cnt -= take
-            if stack.back()!.cnt == 0: stack.pop()
+            stack.last!.cnt -= take
+            if stack.last!.cnt == 0: stack.pop()
         x += y - umbr[i]
         y = umbr[i]
     left_bus[i] = x

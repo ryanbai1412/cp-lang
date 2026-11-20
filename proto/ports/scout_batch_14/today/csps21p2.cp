@@ -4,7 +4,8 @@
 const P = 1000000007
 type Z = Mod<P>
 let n: 1..=500 = read()
-let k: 1..=500 = read() where k <= n
+let k: 1..=500 = read()
+assert k <= n
 domain Pos = 0..n
 let s: [Pos]Char = read()
 
@@ -18,7 +19,7 @@ var seq: [Pos, Pos]Z = 0
 var star_seq: [Pos, Pos]Z = 0
 
 for l in Pos.rev:
-    for r in l..=Pos.last:
+    for r in l..:
         if r == l: continue
         if ok(s[l], '(') and ok(s[r], ')'):
             let inner = r.idx - l.idx - 1

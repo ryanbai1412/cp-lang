@@ -39,7 +39,7 @@ fn next_hop(s: Int, t: Int, near: List<Int>) -> Int:
         let kids = if s == 0: near.len else: near.len - 1
         for i in 0..kids:
             if s < t and t <= near[i]: return near[i]
-        near[near.len - 1]
+        near.last!
     else:
         // The mirror image: the parent first, each child opening a stretch.
         for i in (1..near.len).rev:
@@ -49,6 +49,7 @@ fn next_hop(s: Int, t: Int, near: List<Int>) -> Int:
 let q: 1..=1e5 = read()
 for _ in 0..q:
     let s: Station = read()
-    let t: Station = read() where t != s
-    let near = sorted([label[v] for v in net[s]])
+    let t: Station = read()
+    assert t != s
+    let near = sorted([label[x.to] for x in net[s]])
     print(station[Station(next_hop(label[s], label[t], near))])

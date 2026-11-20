@@ -7,7 +7,8 @@
 let n: 3..=1e5 = read()
 let m: n - 1..=2e5 = read()
 let a: 1..=n - 2 = read()
-let b: 1..=n - 2 = read() where a + b < n       // and the third part is the rest
+let b: 1..=n - 2 = read()
+assert a + b < n       // and the third part is the rest
 domain Spot = 0..n
 domain Link = 0..m
 
@@ -55,7 +56,7 @@ fn claim(from: Spot, side: Spot, count: Int, mark: Int):
     part[from] = mark
     var i = 0
     while i < patch.len:
-        for w in land[patch[i]]:
+        for (w, _) in land[patch[i]]:
             if patch.len < count and part[w] == 0 and group.same(w, side) == group.same(from, side):
                 part[w] = mark
                 patch.push(w)

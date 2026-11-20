@@ -14,7 +14,6 @@
 //    - src -> v (cap score[v]) if score[v] > 0; v -> sink (cap -score[v]) if < 0
 //    - for every dep edge u -> v (both reachable), add v -> u with cap INF.
 //    Answer = pos_sum - max_flow(src, sink).
-use std.flow.{FlowGraph}
 
 let (n, m): (1..=20, 1..=30) = read()
 domain Row = 0..n
@@ -84,8 +83,8 @@ fn solve() -> Int:
     pos_sum - fg.max_flow(src, sink)
 
 @brute(solve)
-fn solve_brute() -> Int
-    where n * m <= 12:
+fn solve_brute() -> Int:
+    assert n * m <= 12
     let k = n * m
     var best = 0
     for mask in 0..(1 << k):

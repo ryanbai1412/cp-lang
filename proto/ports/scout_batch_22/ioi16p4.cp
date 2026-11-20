@@ -20,14 +20,14 @@ let n = row.len
 /// How many of the cells before each place are known white.
 fn whites_before(row: Str) -> List<Int>:
     var before = [0]
-    for c in row: before.push(before.last + (if c == '_': 1 else: 0))
+    for c in row: before.push(before.last + Int(c == '_'))
     before
 
 fn fits(row: Str, clues: List<Int>) -> List<List<Bool>>:
     let whites = whites_before(row)
     var ok: List<List<Bool>> = []
     for i in 0..=row.len:
-        var here = List<Bool>.filled(clues.len + 1, false)
+        var here = List.filled(clues.len + 1, false)
         for j in 0..=clues.len:
             if i == 0: here[j] = j == 0
             else:
@@ -46,7 +46,7 @@ let before = fits(row, lens)
 let after = fits(row.rev, lens.rev)     // after[n - i][j]: cells i.. hold the last j blocks
 let whites = whites_before(row)
 
-var black_change = List<Int>.filled(n + 1, 0)
+var black_change = List.filled(n + 1, 0)
 for j in 0..k:
     let len = lens[j]
     for start in 0..=n - len:

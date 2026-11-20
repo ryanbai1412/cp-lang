@@ -10,7 +10,8 @@
 //   best[i] = max( max_j (best[j] + tail[j]),  max_j best[j] + head[i] ).
 // original: corpus/submissions/6032792.cpp
 let n: 1..=1e6 = read()
-let k: 1..=1e6 = read() where k <= n
+let k: 1..=1e6 = read()
+assert k <= n
 domain Spot = 1..=n
 let score: [Spot]1..=1e9 = read()
 

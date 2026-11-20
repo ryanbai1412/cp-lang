@@ -9,7 +9,8 @@ use std.math.{choose}
 const P = 1000003
 type Z = Mod<P>
 let n: 1..=1e6 = read()
-let k: 1..=1e6 = read() where k <= n
+let k: 1..=1e6 = read()
+assert k <= n
 domain Window = 0..n - k + 1
 let total: [Window]0..=1e6 = read()
 
@@ -27,11 +28,11 @@ fn ways(total: [Window]0..=1e6) -> Z:
             lo min= off
             hi max= off
             w += k
-        if hi - lo > 1: return Z(0)
+        if hi - lo > 1: return 0
         if hi == lo: free += 1
         elif lo == -1: forced_ones += 1
     let need = total[Window.first] - forced_ones
-    if need < 0 or need > free: return Z(0)
+    if need < 0 or need > free: return 0
     choose(free, need)
 
 print(ways(total))
