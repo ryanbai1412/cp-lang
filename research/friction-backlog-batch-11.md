@@ -1,24 +1,27 @@
 # Friction backlog, batch 11: number theory and linear algebra
 
-A Stage-1 scout pass over ten submissions: three matrix powers (two
-modular, one max-plus), two determinants, one generalized CRT, two sieves,
-one Mobius sum, one modular counting DP and one polynomial problem. The
+A Stage-1 scout pass over ten submissions: two matrix powers (one
+modular, one max-plus), one power under cyclic convolution, two
+determinants, one generalized CRT, one sieve, one Mobius sum, one modular
+counting DP and one polynomial problem. The
 ports are in
 [`proto/ports/scout_batch_11/`](../proto/ports/scout_batch_11/):
 canada21p5, noi20p1, noi21p2, noi07p5, noi18p4, noip21p1, sdoi17r1p3,
-sdoi17r1p1, noip21p2 and shoi16p3. Nothing in `crates/` or `proto/cpc/`
+sdoi17r1p1, coci21c2p4 and shoi16p3. Nothing in `crates/` or `proto/cpc/`
 was changed. Items are numbered `N1`... so they do not collide with `F`
 (batch 1), `G` (batch 3), `B` (batches 2 and 4), `K` (batch 5), `S`
-(batch 6), `D` (batch 7), `H` (batch 8) or `T` (batch 10).
+(batch 6), `D` (batch 7), `H` (batch 8), `T` (batch 10) or `P` (batch 14).
 
 What was checked: all ten ports agree with their originals on random
 inputs (`proto/ports/scout_batch_11/check.py`, 20 to 200 inputs each) on
-top of commit `fe7ca6d`. Three build with `proto/cpc`; seven run on
-`proto/cpi` with small inputs only, and none of those seven was run at
+top of commit `9f09d6b`. Two build with `proto/cpc`; eight run on
+`proto/cpi` with small inputs only, and none of those eight was run at
 full size. Every "today" snippet is a line a port contains. Every quoted
 message was produced by the prototype named with it. The "wanted" snippets
 do not build. The first count is exact: the ports of this batch that have
-the line. A corpus count is a regular-expression search over the 710
+the line. A "probe" is a line from a port of noip21p2 that was dropped
+from the batch when batch 14 landed the same problem; its messages were
+reproduced on `9f09d6b` with a file of a few lines. A corpus count is a regular-expression search over the 710
 problems with an accepted C++ submission, so it estimates how often the
 pattern is written and is not a list of problems that were read.
 
@@ -31,7 +34,7 @@ beyond N4 (row reduction) and N10 (convolution).
 1. N1, N2, N3: one `Matrix` over a `Semiring`, with `pow`. 4 of 10
    between them, and the three longest hand-written helpers of the batch.
 2. N5, N6, N7: the two prototypes disagree on `Mod` with `Int`, on `sum`
-   over `Mod`, and on bounded values. 6 of 10 hit at least one.
+   over `Mod`, and on bounded values. 7 of 10 hit at least one.
 3. N4: row reduction over a field, 2 of 10.
 4. N8 and N9: stepping through multiples and the sieve's missing tables,
    3 of 10.
@@ -198,16 +201,16 @@ it. Over GF(2) the same module holds `XorBasis` with `insert`, `reduce`
 and `max`; this batch has no problem that needs it, so that half is
 untested here.
 
-## N5. `Mod` and `Int` mix in one prototype and not in the other (5 of 10)
+## N5. `Mod` and `Int` mix in one prototype and not in the other (6 of 10)
 
 *Checked.* `proto/cpc` builds sdoi17r1p3's `all[R(x % k)] += 1` and
-noip21p2's `var weight: Z = 1`. `proto/cpi` stops on the same shape:
+`var c: Vec = 0`. `proto/cpi` stops on the same shape:
 
 ```
 `+` needs two Mod<1000000007> values, got 5
 ```
 
-so five of the interpreter ports wrap their constants, 34 times in total:
+so six of the interpreter ports wrap their constants, 42 times in total:
 
 ```cp
 step[u - 1][v - 1] = Z(1)
@@ -217,10 +220,10 @@ before[i + 1] = before[i] * Z(x - i)
 
 Proposal: one rule in both prototypes and in `decisions.md`: an `Int`
 next to a `Mod<P>` in `+ - * /` and in assignment is reduced into it, and
-a `Mod<P>` never turns back into an `Int` without `.v`. 5 of 10
-(canada21p5, noi21p2, noi07p5, sdoi17r1p1, shoi16p3).
+a `Mod<P>` never turns back into an `Int` without `.v`. 6 of 10
+(canada21p5, noi21p2, noi07p5, sdoi17r1p1, shoi16p3, coci21c2p4).
 
-## N6. `sum` over `Mod` values does not run (3 of 10: canada21p5, noi21p2, shoi16p3)
+## N6. `sum` over `Mod` values does not run (4 of 10: canada21p5, noi21p2, shoi16p3, coci21c2p4)
 
 *Checked with `proto/cpi`:*
 
@@ -242,6 +245,9 @@ for keep in 0..=below:
 still = next
 ```
 
+coci21c2p4's last step is the same: `sum(ways[1][k] * comb.choose(l - k + n, n) for k in 1..=l)`
+is written as `var total = Z(0)` and a loop.
+
 Proposal: `sum` and `product` start from `T.zero` and `T.one` of the
 element type (`Mod` already declares both), in both prototypes. With N5
 this is the single change that lets a counting recurrence be written as
@@ -250,7 +256,7 @@ its formula.
 Also checked: `count(...)` is `unknown name count` in `proto/cpi` and
 works in `proto/cpc`; canada21p5 writes `sum(1 for i in 0..n if s[i] != t[i])`.
 
-## N7. A bounded value is not a number in the interpreter, and its type is misread by the compiler (bug; 2 of 10: noi18p4, noip21p2)
+## N7. A bounded value is not a number in the interpreter, and its type is misread by the compiler (bug; noi18p4 and a probe)
 
 *Checked with `proto/cpi`:* with `let life: [Dragon](1..=1e12) = read()`
 and `let reward: [Dragon](1..=1e6) = read()`,
@@ -262,7 +268,7 @@ at_least = max(at_least, (life[d] + atk - 1) / atk) // no `+` for (29) and (12)
 
 The port reads plain `[Dragon]Int` and the bounds moved into comments.
 
-*Checked with `proto/cpc`:*
+*Checked with `proto/cpc` (probe):*
 
 ```cp
 let v: [0..=m](1..=P - 1) = read()
@@ -454,17 +460,18 @@ line 18: `acc` is not a var
 ```
 
 `proto/cpi` accepts it, and `stdlib/mod.cp` is written this way. The port
-uses three `var` lines. Proposal: `var` with a tuple pattern makes every
+uses three `var` lines. Batch 14 found the same bug as P2. Proposal: `var` with a tuple pattern makes every
 name a `var` in `proto/cpc`.
 
-## N14. Tables with two indices are spelled three ways (3 of 10)
+## N14. Tables with two indices are spelled three ways (3 of 10 and a probe)
 
-*Checked with `proto/cpc`:* `var binom: [0..=n][0..=n]Z = 0` is
+*Checked with `proto/cpc` (probe):* `var binom: [0..=n][0..=n]Z = 0` is
 `expected [range]Mod<998244353>, got Int[0..=0]`, and `[0..=n, 0..=n]Z = 0`
 with `binom[a, b]` builds. *Checked with `proto/cpi`:* `[0..m]Int` is
 `` `Int` is not an index type ``, so every count needs a named `domain`
 (noi18p4 declares `domain Sword = 0..m` to read one line), and a filled
-table is `[Off, Off] (i, j) => Z(0)` because `= 0` does not fill there.
+table is `[Off, Off] (i, j) => Z(0)` because `= 0` does not fill there (canada21p5, noi20p1); coci21c2p4 and
+noi21p2 use lists of lists indexed by `Int` instead.
 `let (n, m, t, k): (Int, Int, Int, Int) = read()` is `unknown name read`
 in `proto/cpc`.
 
@@ -507,14 +514,10 @@ type for input that is then edited. 1 of 10.
 - **Batch 8 H3** (the standard library in `proto/cpc`): *checked on
   `fe7ca6d`:* `use std.mod.{Mod, Comb}` and `use std.math.{Sieve}` are
   both "library code the prototype compiler has no stand-in for yet (it
-  runs on proto/cpi)". So noip21p2 builds Pascal's triangle by hand
-  instead of `Comb`, sdoi17r1p3 its own sieve, and 7 of 10 were not built
-  by `proto/cpc` at all.
-- **Batch 8 H1** (a bound that names an earlier input): noip21p2 reads
-  `let k: 1..=30 = read() where k <= n`, and 72 of 200 generated cases
-  were thrown away.
-- **Batch 8 H12** (`popcount` missing in `proto/cpc`): noip21p2 writes
-  `sum(1 for b in 0..6 if (x >> b) % 2 == 1)`.
+  runs on proto/cpi)". So sdoi17r1p3 has its own sieve, and 8 of 10 were
+  not built by `proto/cpc` at all.
+- **Batch 8 H12**: `popcount` is still `unknown name popcount` in
+  `proto/cpc` (probe).
 - **Batch 3 G13** (`power`): N3.
 - **Batch 8 H7**: `swap(a[pivot], a[c])` on two rows of a list of lists
   works in `proto/cpi` (N4).
@@ -534,7 +537,7 @@ type for input that is then edited. 1 of 10.
   integer to multiply its residues.
 - Euclidean `%`: `x - i` reduced into `Z` and `(carry + c) / 2` need no
   fix-up for negatives.
-- `@memo fn ways(left, bit, carry, fixed)` is the whole of noip21p2: no
-  table declaration, no loop order, no base-case fill over a 4-D array.
+- `Comb<P>.new(l + n)` and one `choose` finish coci21c2p4; the original
+  fills a factorial table of a million entries with a modular power each.
 - `if let j = Off.try(i.to_idx - c + (m - c))` in canada21p5 replaces a
   parity test and two bounds tests on the transition's target.
