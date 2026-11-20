@@ -87,6 +87,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cpl-stress"
+version = "0.0.0"
+dependencies = [
+ "cpl-diag",
+ "cpl-syntax",
+]
+
+[[package]]
 name = "cpl-syntax"
 version = "0.0.0"
 dependencies = [
