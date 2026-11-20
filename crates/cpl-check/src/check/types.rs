@@ -162,6 +162,14 @@ impl<'a> Checker<'a> {
                 _ => Ty::Unknown,
             };
         }
+        // The struct or enum whose body this is, by its own name: its
+        // definition is still being computed, so it is not looked up.
+        if matches!(&self.self_ty, Some(Ty::Named { name: own, .. }) if own == name) {
+            return Ty::Named {
+                name: name.to_string(),
+                args,
+            };
+        }
         if let Some(local) = self.local(name) {
             // `type Len = S.bounds` inside a fn.
             if local.keyword == "type" {

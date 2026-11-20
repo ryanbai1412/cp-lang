@@ -696,3 +696,462 @@ fn the_outline_lists_top_level_declarations() {
             && symbols[8].span.text(ROADS).ends_with("r.len))")
     );
 }
+
+// --- Generics, traits, modules, lends ------------------------------------------
+
+/// Modules held in memory, by dotted name: `("std.algebra", "pub struct ...")`.
+struct Modules(Vec<(&'static str, &'static str)>);
+
+impl crate::Loader for Modules {
+    fn load(&self, _from: &str, module: &[String]) -> Option<(String, String)> {
+        let name = module.join(".");
+        let (_, text) = self.0.iter().find(|(n, _)| *n == name)?;
+        Some((format!("{name}.cp"), text.to_string()))
+    }
+}
+
+fn check_with(modules: &[(&'static str, &'static str)], src: &str) -> Vec<Diagnostic> {
+    let mut db = Database::with_loader(Box::new(Modules(modules.to_vec())));
+    db.set_file("a.cp", src);
+    db.diagnostics("a.cp")
+}
+
+fn messages(diags: &[Diagnostic]) -> Vec<&str> {
+    diags.iter().map(|d| d.message.as_str()).collect()
+}
+
+const DSU: &str = "\
+pub struct Dsu<V>:
+    up: [V]V
+    parts: Int
+
+    pub fn new() -> Dsu<V>:
+        Dsu([V] v => v, V.K)
+
+    pub fn find(mut self, v: V) -> V:
+        if up[v] != v: up[v] = self.find(up[v])
+        up[v]
+
+    pub @get fn count(self) -> Int = parts
+
+fn hidden() -> Int = 1
+";
+
+#[test]
+fn a_generic_struct_is_used_with_the_types_given_there() {
+    let src = "\
+let n: 1..=9 = read()
+domain City = 1..=n
+struct Pair<A, B>(first: A, second: B):
+    fn swap(self) -> Pair<B, A> = Pair(second, first)
+let p = Pair(City.first, 'x')
+let c: City = p.first
+let q = p.swap()
+let d: Char = q.first
+";
+    assert_eq!(check(src), vec![]);
+    // `p.first` is a `City`, not a `Char`: the argument fixed `A`.
+    let diag = one(&src.replace("let c: City = p.first", "let c: Char = p.first"));
+    assert_eq!(
+        diag.message,
+        "`c` is declared a Char, but `p.first` is a City"
+    );
+    // The swapped pair's parameters swapped too.
+    let diag = one(&src.replace("let d: Char = q.first", "let d: City = q.first"));
+    assert_eq!(
+        diag.message,
+        "`d` is declared a City, but `q.first` is a Char"
+    );
+}
+
+#[test]
+fn a_generic_fn_reads_its_type_parameters_off_the_arguments() {
+    let src = "\
+fn pick<T>(a: T, b: T, first: Bool) -> T:
+    if first: a else: b
+let x: Int = pick(1, 2, true)
+let s: Str = pick(\"a\", \"b\", false)
+let y = pick::<Int>(3, 4, true)
+";
+    assert_eq!(check(src), vec![]);
+    let diag = one(&src.replace("pick(1, 2, true)", "pick(1, \"two\", true)"));
+    assert_eq!(
+        diag.message,
+        "`pick` takes an Int for `b`, but `\"two\"` is a Str"
+    );
+    let diag = one(&src.replace(
+        "let x: Int = pick(1, 2, true)",
+        "let x: Str = pick(1, 2, true)",
+    ));
+    assert_eq!(
+        diag.message,
+        "`x` is declared a Str, but `pick(1, 2, true)` is an Int"
+    );
+    let diag = one(&src.replace("pick::<Int>(3", "pick::<Int, Int>(3"));
+    assert_eq!(
+        diag.message,
+        "`pick` takes 1 type argument, but 2 were given"
+    );
+}
+
+#[test]
+fn new_is_the_constructor_and_get_methods_read_as_fields() {
+    let src = format!(
+        "{DSU}let n: 1..=9 = read()\ndomain V = 1..=n\nvar d = Dsu<V>()\nlet r: V = d.find(V.first)\nlet k: Int = d.count\n"
+    );
+    assert_eq!(check(&src), vec![]);
+    // Outside the struct, `Dsu(..)` is `new`, which takes nothing.
+    let diag = one(&src.replace("Dsu<V>()", "Dsu<V>(1, 2)"));
+    assert_eq!(diag.message, "`Dsu<V>` takes 0 arguments, but 2 were given");
+    let diag = one(&src.replace("let k: Int = d.count", "let k: Str = d.count"));
+    assert_eq!(
+        diag.message,
+        "`k` is declared a Str, but `d.count` is an Int"
+    );
+}
+
+#[test]
+fn traits_bounds_and_impls_are_checked() {
+    let src = "\
+trait Shape:
+    fn area(self) -> Int
+    fn name(self) -> Str = \"shape\"
+struct Sq(side: Int)
+impl Shape for Sq:
+    fn area(self) -> Int = side * side
+fn total<T: Shape + Ord>(xs: List<T>) -> Int where T: Show:
+    sum(x.area() for x in xs)
+print(Sq(3).area(), Sq(3).name())
+";
+    assert_eq!(check(src), vec![]);
+    let diag = one(&src.replace(
+        "    fn area(self) -> Int = side * side\n",
+        "    fn name(self) -> Str = \"sq\"\n",
+    ));
+    assert_eq!(diag.message, "`impl Shape for Sq` is missing `area`");
+    let diag = one(&src.replace(
+        "fn area(self) -> Int = side * side",
+        "fn area(self) -> Int = side * side\n    fn perimeter(self) -> Int = 4 * side",
+    ));
+    assert_eq!(diag.message, "`Shape` has no fn `perimeter`");
+    let diag = one(&src.replace("T: Shape + Ord", "T: Shape + Sq"));
+    assert_eq!(diag.message, "`Sq` is not a trait");
+    let diag = one(&src.replace("where T: Show", "where T: Shwo"));
+    assert_eq!(diag.message, "no trait named `Shwo`");
+    let twice = format!("{src}impl Shape for Sq:\n    fn area(self) -> Int = 0\n");
+    assert_eq!(
+        one(&twice).message,
+        "`impl Shape for Sq` is already defined in this file"
+    );
+}
+
+#[test]
+fn an_operator_on_a_struct_is_its_impl() {
+    let src = "\
+struct Pt(x: Int, y: Int)
+impl Add for Pt:
+    fn add(a: Pt, b: Pt) -> Pt = Pt(a.x + b.x, a.y + b.y)
+let p: Pt = Pt(1, 2) + Pt(3, 4)
+";
+    assert_eq!(check(src), vec![]);
+    let diag = one(&src.replace("Pt(1, 2) + Pt(3, 4)", "Pt(1, 2) - Pt(3, 4)"));
+    assert_eq!(diag.code.0, "E0506");
+    assert_eq!(
+        diag.message,
+        "`-` needs `impl Sub for Pt`, and there is none"
+    );
+}
+
+#[test]
+fn imports_bring_public_names_and_their_types() {
+    let src = "\
+use std.dsu.{Dsu}
+let n: 1..=9 = read()
+domain V = 1..=n
+var d = Dsu<V>()
+let r: V = d.find(V.first)
+";
+    let modules = [("std.dsu", DSU)];
+    assert_eq!(check_with(&modules, src), vec![]);
+    let diags = check_with(&modules, &src.replace("let r: V", "let r: Str"));
+    assert_eq!(
+        messages(&diags),
+        ["`r` is declared a Str, but `d.find(V.first)` is a V"]
+    );
+    // Glob, whole-module and aliased imports.
+    for (import, call) in [
+        ("use std.dsu.*", "Dsu<V>()"),
+        ("use std.dsu", "dsu.Dsu<V>()"),
+        ("use std.dsu as sets", "sets.Dsu<V>()"),
+    ] {
+        let src = src
+            .replace("use std.dsu.{Dsu}", import)
+            .replace("Dsu<V>()", call);
+        assert_eq!(check_with(&modules, &src), vec![], "{import}");
+    }
+}
+
+#[test]
+fn a_bad_import_is_one_error_on_the_use() {
+    let modules = [("std.dsu", DSU)];
+    let diags = check_with(&modules, "use std.dsu.{Dsv}\n");
+    assert_eq!(messages(&diags), ["`std.dsu` has no `Dsv`"]);
+    assert_eq!(diags[0].help.as_deref(), Some("did you mean `Dsu`?"));
+    let diags = check_with(&modules, "use std.dsu.{hidden}\n");
+    assert_eq!(messages(&diags), ["`hidden` is private to `std.dsu`"]);
+    assert_eq!(diags[0].code.0, "E0207");
+    let diags = check_with(&modules, "use std.dsv.{Dsu}\nlet d = Dsu()\n");
+    assert_eq!(messages(&diags), ["no module `std.dsv`"]);
+    // A name that was not imported is not in scope, even though the
+    // module that defines it was loaded.
+    let diags = check_with(&modules, "use std.dsu.{Dsu}\nprint(hidden())\n");
+    assert_eq!(messages(&diags), ["no `hidden` in scope"]);
+    let cycle = [
+        ("a.x", "use a.y.{g}\npub fn f() -> Int = 1\n"),
+        ("a.y", "use a.x.{f}\npub fn g() -> Int = 2\n"),
+    ];
+    let diags = check_with(&cycle, "use a.x.{f}\nprint(f())\n");
+    assert_eq!(diags, vec![], "the cycle is reported in the modules");
+}
+
+#[test]
+fn editing_a_module_rechecks_what_uses_it() {
+    let mut db = Database::with_loader(Box::new(Modules(vec![])));
+    db.set_file("lib.m.cp", "pub fn f() -> Int = 1\n");
+    struct Open;
+    impl crate::Loader for Open {
+        fn load(&self, _from: &str, module: &[String]) -> Option<(String, String)> {
+            // The editor holds the module; what the loader reads is stale.
+            (module.join(".") == "lib.m").then(|| ("lib.m.cp".to_string(), "stale".to_string()))
+        }
+    }
+    let mut db2 = Database::with_loader(Box::new(Open));
+    db2.set_file("lib.m.cp", "pub fn f() -> Int = 1\n");
+    db2.set_file("a.cp", "use lib.m.{f}\nlet x: Int = f()\n");
+    assert_eq!(db2.diagnostics("a.cp"), vec![]);
+    db2.set_file("lib.m.cp", "pub fn f() -> Str = \"one\"\n");
+    assert_eq!(
+        messages(&db2.diagnostics("a.cp")),
+        ["`x` is declared an Int, but `f()` is a Str"]
+    );
+    drop(db);
+}
+
+const ARRAY: &str = "\
+let n: 2..=9 = read()
+domain V = 1..=n
+var a: [V]Int = read()
+let l: V = read()
+let r: V = read()
+";
+
+#[test]
+fn two_mut_lends_of_one_array_need_to_be_apart() {
+    let lent = |body: &str| check(&format!("{ARRAY}{body}"));
+    // Known apart: a guard, an assert, an early return, a strict order.
+    for body in [
+        "if l != r:\n    swap(mut a[l], mut a[r])\n",
+        "assert l != r\nswap(mut a[l], mut a[r])\n",
+        "fn go(i: V, j: V):\n    if i == j: return\n    swap(mut a[i], mut a[j])\n",
+        "fn go(i: V, j: V):\n    assert i < j\n    swap(mut a[i], mut a[j])\n",
+        "fn two(mut xs: [V]Int, mut ys: [V]Int):\n    xs[V.first] += 1\ntwo(mut a[l.l..r.l], mut a[r.l..r.r])\n",
+    ] {
+        assert_eq!(lent(body), vec![], "{body}");
+    }
+    let diag = &lent("swap(mut a[l], mut a[r])\n")[0];
+    assert_eq!(diag.code.0, "E0501");
+    assert_eq!(
+        diag.message,
+        "`a[l]` and `a[r]` may be the same storage, and both are lent `mut` to this call: Array.at lends disjoint parts only when `i != j`, and that is not known here"
+    );
+    // The fact is gone once a name in it is assigned.
+    let diags = lent("var i = l\nif i != r:\n    i = r\n    swap(mut a[i], mut a[r])\n");
+    assert_eq!(diags.len(), 1, "{diags:#?}");
+    // And at the top of a loop that assigns it.
+    let diags = lent(
+        "var i = l\nassert i != r\nwhile a[l] < 100:\n    swap(mut a[i], mut a[r])\n    i = r\n",
+    );
+    assert_eq!(diags.len(), 1, "{diags:#?}");
+    let diags = lent(
+        "fn two(mut xs: [V]Int, mut ys: [V]Int):\n    xs[V.first] += 1\ntwo(mut a, mut a[l..=r])\n",
+    );
+    assert!(
+        diags[0].message.ends_with("one contains the other"),
+        "{diags:#?}"
+    );
+}
+
+#[test]
+fn a_let_bound_slice_keeps_its_array_lent_until_its_last_use() {
+    let lent = |body: &str| check(&format!("{ARRAY}{body}"));
+    assert_eq!(
+        lent("let part = a[l..=r]\nprint(sum(part))\na[l] = 0\n"),
+        vec![]
+    );
+    let diags = lent("let part = a[l..=r]\na[l] = 0\nprint(part[l])\n");
+    assert_eq!(diags.len(), 1, "{diags:#?}");
+    assert_eq!(diags[0].code.0, "E0502");
+    assert!(diags[0]
+        .message
+        .starts_with("`a[l]` can't be changed here: `a` is lent to `part`"));
+    // Reading is fine while the slice is only read; not while it changes.
+    assert_eq!(
+        lent("let part = a[l..=r]\nprint(a[l])\nprint(part[l])\n"),
+        vec![]
+    );
+    let diags = lent("let part = a[l..=r]\npart.sort()\nprint(a[l])\npart.rev()\n");
+    assert!(
+        diags[0].message.contains("is mutably lent to `part`"),
+        "{diags:#?}"
+    );
+    // The same inside one block.
+    let diags = lent("fn f():\n    let part = a[l..=r]\n    a[l] = 0\n    print(part[l])\n");
+    assert_eq!(diags.len(), 1, "{diags:#?}");
+}
+
+#[test]
+fn a_lent_slice_is_not_stored_assigned_or_returned() {
+    for (body, what) in [
+        ("var keep = a[l..=r]\n", "`var keep`"),
+        ("var b: [V]Int = 0\nb = a[l..=r]\n", "this assignment"),
+        (
+            "var parts: List<[V]Int> = []\nparts.push(a[l..=r])\n",
+            "`.push(...)`",
+        ),
+        (
+            "fn top(xs: [V]Int) -> [V]Int:\n    xs[l..=r]\n",
+            "returning it",
+        ),
+        (
+            "fn top(xs: [V]Int) -> [V]Int:\n    return xs[l..=r]\n",
+            "`return`",
+        ),
+    ] {
+        let diags = check(&format!("{ARRAY}{body}"));
+        assert_eq!(diags.len(), 1, "{body}: {diags:#?}");
+        assert_eq!(diags[0].code.0, "E0503");
+        assert!(
+            diags[0]
+                .message
+                .starts_with(&format!("{what} would keep the lent slice")),
+            "{}",
+            diags[0].message
+        );
+    }
+    // A copy is an owned value.
+    assert_eq!(
+        check(&format!("{ARRAY}var keep = a[l..=r].copy()\n")),
+        vec![]
+    );
+}
+
+const BAG: &str = "\
+let n: 2..=9 = read()
+domain V = 1..=n
+struct Bag:
+    cnt: [V]Int
+    fn at(self, i: V) lends mut Int:
+        law disjoint(i, j) = i != j
+        lend mut cnt[i]
+    fn other(self, i: V) lends mut Int:
+        lend mut cnt[i]
+    fn peek(self, i: V) lends Int:
+        lend cnt[i]
+fn move(mut from: Int, mut to: Int):
+    to += from
+    from = 0
+let zero: [V]Int = 0
+var b = Bag(zero)
+let i: V = read()
+let j: V = read()
+";
+
+#[test]
+fn a_projection_lends_by_its_law() {
+    let lent = |body: &str| check(&format!("{BAG}{body}"));
+    assert_eq!(lent("if i != j:\n    move(mut b.at(i), mut b.at(j))\nb.at(i) += 1\nlet x: Int = b.peek(i)\n"), vec![]);
+    let diags = lent("move(mut b.at(i), mut b.at(j))\n");
+    assert!(
+        diags[0].message.ends_with(
+            "Bag.at lends disjoint parts only when `(i != j)`, and that is not known here"
+        ),
+        "{diags:#?}"
+    );
+    let diags = lent("if i != j:\n    move(mut b.other(i), mut b.other(j))\n");
+    assert!(
+        diags[0]
+            .message
+            .ends_with("Bag.other declares no `law disjoint`, so two of its lends always conflict"),
+        "{diags:#?}"
+    );
+    let diags = lent("if i != j:\n    move(mut b.at(i), mut b.other(j))\n");
+    assert!(
+        diags[0]
+            .message
+            .contains("different projections of the same value"),
+        "{diags:#?}"
+    );
+    let diags = lent("b.peek(i) = 3\n");
+    assert_eq!(
+        messages(&diags),
+        ["`b.peek(i)` is lent read-only: `Bag.peek` is declared `lends Int`"]
+    );
+}
+
+#[test]
+fn a_projection_ends_in_one_lend_of_a_part_of_self() {
+    let with = |old: &str, new: &str| {
+        assert!(BAG.contains(old));
+        check(&BAG.replacen(old, new, 1))
+    };
+    let diags = with("        lend cnt[i]\n", "        cnt[i]\n");
+    assert_eq!(
+        messages(&diags),
+        ["`peek` is declared `lends`, so every path through it must reach one `lend place`"]
+    );
+    let diags = with("        lend cnt[i]\n", "        lend mut cnt[i]\n");
+    assert_eq!(
+        messages(&diags),
+        ["`peek` is declared `lends` without `mut`, so it can't `lend mut`"]
+    );
+    let diags = with("        lend cnt[i]\n", "        lend zero[i]\n");
+    assert_eq!(
+        messages(&diags),
+        ["a projection may only lend part of `self`; `zero[i]` is not reached through a field"]
+    );
+    let diags = check(&format!("{BAG}fn f(k: V):\n    lend zero[k]\n"));
+    assert_eq!(diags.len(), 1, "{diags:#?}");
+    assert_eq!(diags[0].code.0, "E0504");
+}
+
+#[test]
+fn boundaries_sit_on_either_side_of_a_position() {
+    let src = format!("{ARRAY}var pre: [V.bounds]Int = 0\nprint(pre[r.r] - pre[l.l], pre[r.r] - pre[r.l(2)], sum(a[l.l..r.r]))\n");
+    assert_eq!(check(&src), vec![]);
+    let diag = one(&format!("{ARRAY}print(a[l.r])\n"));
+    assert_eq!(diag.message, "`a` is indexed by V, but `l.r` is a V.bounds");
+    assert!(diag
+        .help
+        .as_deref()
+        .unwrap()
+        .contains("use `.l` / `.r` for the boundaries"));
+}
+
+#[test]
+fn division_and_remainder_are_euclidean() {
+    // `x % 7` is `0..=6` whatever the sign of `x`: it indexes a 7-array.
+    assert_eq!(
+        check("domain D = 0..7\nlet x: -100..=100 = read()\nlet r: 0..=6 = x % 7\nlet q: -15..=14 = x / 7\nprint(D(r), q)\n"),
+        vec![]
+    );
+    let hover = |src: &str, name: &str| {
+        let mut db = Database::new();
+        db.set_file("a.cp", src);
+        let at = src.find(name).unwrap() as u32;
+        db.hover("a.cp", at).map(|h| h.text)
+    };
+    let text = hover("domain D = 0..(-7 % 3)\n", "D").unwrap();
+    assert!(text.contains("2"), "-7 % 3 is 2, not -1: {text}");
+    let text = hover("domain E = 0..(0 - (-7 / 2))\n", "E").unwrap();
+    assert!(text.contains("4"), "-7 / 2 is -4, not -3: {text}");
+}
