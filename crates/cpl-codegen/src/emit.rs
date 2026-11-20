@@ -405,6 +405,14 @@ impl<'p> Emitter<'p> {
         )
     }
 
+    /// The fn as the judge's grader declares it.
+    fn judge_signature(&self, f: &Function) -> String {
+        let params: Vec<String> = (0..f.params.len())
+            .map(|slot| format!("{} {}", judge_ty(&f.locals[slot].ty), self.names[slot]))
+            .collect();
+        format!("{} {}({})", judge_ty(&f.ret), f.name, params.join(", "))
+    }
+
     /// Declarations of the locals that could not be declared where they
     /// are first set.
     fn hoisted_decls(&mut self, out: &mut String, params: usize) {
@@ -637,6 +645,9 @@ impl<'p> Emitter<'p> {
                 }
             });
         };
+        for &entry in &program.entry_fns {
+            enqueue(entry, &mut reachable, &mut work);
+        }
         scan_block(&program.main, &mut reachable, &mut work);
         for c in &program.closures {
             scan_block(&c.body, &mut reachable, &mut work);
@@ -652,6 +663,8 @@ impl<'p> Emitter<'p> {
 
         let mut protos = String::new();
         let mut fns = String::new();
+        let mut judge_decls = String::new();
+        let mut entries = String::new();
         for (id, f) in program.fns.iter().enumerate() {
             if !reachable.contains(&id) {
                 continue;
@@ -659,6 +672,54 @@ impl<'p> Emitter<'p> {
             self.enter(Some(id), &f.body, f.params.len());
             let signature = self.signature(f);
             protos.push_str(&format!("{signature};\n"));
+            if program.judge_fns.contains(&id) {
+                // The judge's fn, declared at the top of the file, behind
+                // a fn of the program's own types.
+                self.need("judge");
+                judge_decls.push_str(&format!("{};\n", self.judge_signature(f)));
+                let args: Vec<String> = (0..f.params.len())
+                    .map(|slot| {
+                        format!(
+                            "cpl::Judge<{}>::to({})",
+                            self.ty(&f.locals[slot].ty),
+                            self.names[slot]
+                        )
+                    })
+                    .collect();
+                let call = format!("::{}({})", f.name, args.join(", "));
+                let body = match f.ret {
+                    Ty::Unit => format!("{call};"),
+                    _ => format!("return cpl::Judge<{}>::from({call});", self.ty(&f.ret)),
+                };
+                fns.push_str(&format!("\n{signature} {{\n    {body}\n}}\n"));
+                continue;
+            }
+            if program.entry_fns.contains(&id) {
+                // What the judge's grader calls: the same fn in its types.
+                self.need("judge");
+                let args: Vec<String> = (0..f.params.len())
+                    .map(|slot| {
+                        format!(
+                            "cpl::Judge<{}>::from({})",
+                            self.ty(&f.locals[slot].ty),
+                            self.names[slot]
+                        )
+                    })
+                    .collect();
+                let call = format!("prog::{}({})", fn_name(&f.name), args.join(", "));
+                // What it printed goes out before the grader runs on.
+                let body = match f.ret {
+                    Ty::Unit => format!("{call};\n    cpl::flush();"),
+                    _ => format!(
+                        "auto result = cpl::Judge<{}>::to({call});\n    cpl::flush();\n    return result;",
+                        self.ty(&f.ret)
+                    ),
+                };
+                entries.push_str(&format!(
+                    "\n{} {{\n    cpl_start();\n    {body}\n}}\n",
+                    self.judge_signature(f)
+                ));
+            }
             fns.push_str(&format!("\n{signature} {{\n"));
             self.indent = 1;
             self.hoisted_decls(&mut fns, f.params.len());
@@ -692,6 +753,12 @@ impl<'p> Emitter<'p> {
             out.push_str("#include <chrono>\n#include <unordered_map>\n#include <unordered_set>\n");
         }
         out.push_str("\nusing ll = long long;\n\n");
+        if !judge_decls.is_empty() {
+            out.push_str("// The judge's grader supplies these.\n");
+            out.push_str(&judge_decls);
+            out.push('\n');
+        }
+
         out.push_str(
             "// What the program below leans on.\nnamespace cpl {\nusing u8 = unsigned char;\n",
         );
@@ -747,6 +814,17 @@ impl<'p> Emitter<'p> {
             out.push('\n');
         }
         out.push_str(&fns);
+        if !program.entry_fns.is_empty() {
+            // No `main`: the judge's grader has it. The file's top-level
+            // code runs once, before the first fn the grader calls.
+            out.push_str(
+                "}  // namespace prog\n\n// The judge's grader calls these.\n\
+                 static void cpl_start() {\n    static bool started = false;\n    if (started) return;\n    started = true;\n",
+            );
+            out.push_str("    cpl::live = true;\n    prog::solve();\n}\n");
+            out.push_str(&entries);
+            return out;
+        }
         out.push_str("}  // namespace prog\n\nint main() {\n");
         out.push_str(if program.interactive {
             "    cpl::live = true;\n"
@@ -821,4 +899,22 @@ fn header(name: &str, source: Option<&str>) -> String {
     }
     out.push('\n');
     out
+}
+
+/// A type as the judge's grader writes it: what `cpl::Judge<T>::type` is.
+fn judge_ty(ty: &Ty) -> String {
+    match ty {
+        Ty::Unit => "void".into(),
+        Ty::Int => "int".into(),
+        Ty::Float => "double".into(),
+        Ty::Bool => "bool".into(),
+        Ty::Char => "char".into(),
+        Ty::Str => "std::string".into(),
+        Ty::List(elem) => format!("std::vector<{}>", judge_ty(elem)),
+        Ty::Tuple(items) => {
+            let items: Vec<String> = items.iter().map(judge_ty).collect();
+            format!("std::tuple<{}>", items.join(", "))
+        }
+        _ => unreachable!("lowering lets only these types cross to the judge"),
+    }
 }

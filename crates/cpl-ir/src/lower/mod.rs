@@ -152,6 +152,10 @@ fn lower_entry(
         lw.diags.dedup();
         return Err(lw.diags);
     }
+    let (judge_fns, entry_fns) = lw.grader_fns(analysis);
+    if !lw.diags.is_empty() {
+        return Err(lw.diags);
+    }
     // Ensure any unlowered non-generic fns from imported modules (unused) don't panic:
     // keep only lowered fns or fill unused bodies with empty blocks, and deduplicate names.
     let mut used_fn_names: HashSet<String> = HashSet::new();
@@ -186,6 +190,8 @@ fn lower_entry(
         main_locals: lw.main_locals,
         multitest: lw.multitest,
         interactive: lw.interactive,
+        judge_fns,
+        entry_fns,
     })
 }
 
@@ -442,6 +448,69 @@ impl<'a> Lowerer<'a> {
     fn error(&mut self, code: cpl_diag::Code, span: Span, message: impl Into<String>) {
         let span = self.span(span);
         self.diags.push(Diagnostic::error(code, span, message));
+    }
+
+    /// The fns that cross to the judge's grader: those it supplies (no
+    /// body) and those it calls (`@grader fn` with a body), each checked
+    /// to take and give only what a grader can.
+    fn grader_fns(&mut self, analysis: &'a Analysis) -> (Vec<FnId>, Vec<FnId>) {
+        let entries: Vec<&ast::FnDecl> = analysis
+            .items
+            .iter()
+            .flat_map(|item| &item.syntax.parsed.stmts)
+            .filter_map(|stmt| match &stmt.kind {
+                ast::StmtKind::Fn(decl)
+                    if stmt.decorators.iter().any(|d| d.name.text == "grader") =>
+                {
+                    Some(decl)
+                }
+                _ => None,
+            })
+            .collect();
+        let (mut judge_fns, mut entry_fns) = (Vec::new(), Vec::new());
+        for id in 0..self.sigs.len() {
+            let Some(f) = &self.bodies[id] else { continue };
+            let decl = self.sigs[id].decl;
+            let top_level = self.sigs[id].mod_id == 0 && self.sigs[id].owner.is_none();
+            if matches!(decl.body, ast::FnBody::None) {
+                judge_fns.push(id);
+            } else if top_level && entries.iter().any(|entry| std::ptr::eq(*entry, decl)) {
+                entry_fns.push(id);
+            } else {
+                continue;
+            }
+            let name = &decl.name.text;
+            let changed = f.params.iter().position(|p| p.mutable);
+            let odd = (f
+                .locals
+                .iter()
+                .take(f.params.len())
+                .map(|l| &l.ty)
+                .chain([&f.ret]))
+            .find(|ty| !ty.crosses_to_judge())
+            .cloned();
+            let saved = (self.cur_mod, self.offset);
+            (self.cur_mod, self.offset) = (self.sigs[id].mod_id, self.sigs[id].offset);
+            if let Some(at) = changed {
+                let param = decl.params[at].name.text.clone();
+                self.error(
+                    codes::UNSUPPORTED,
+                    decl.params[at].name.span,
+                    format!("the judge's grader can't lend `{param}` to `{name}` to change"),
+                );
+                self.help(format!("take `{param}` by value and return what changed"));
+            } else if let Some(ty) = odd {
+                let shown = self.show(&ty);
+                self.error(
+                    codes::UNSUPPORTED,
+                    decl.name.span,
+                    format!("a `{shown}` can't cross to the judge's grader in `{name}`"),
+                );
+                self.help("a `@grader fn` takes and gives `Int`, `F64`, `Bool`, `Char`, `Str`, and lists and tuples of them");
+            }
+            (self.cur_mod, self.offset) = saved;
+        }
+        (judge_fns, entry_fns)
     }
 
     fn help(&mut self, help: impl Into<String>) {
@@ -1877,17 +1946,9 @@ impl<'a> Lowerer<'a> {
                 let tail = if is_gen { Tail::Discard } else { Tail::Return };
                 self.tail(expr, tail, &mut out);
             }
-            ast::FnBody::None => {
-                let name = &decl.name.text;
-                self.error(
-                    codes::UNSUPPORTED,
-                    decl.name.span,
-                    format!("`{name}` has no body: the judge's grader supplies it, so there is nothing to run here"),
-                );
-                self.help(format!(
-                    "give `{name}` a body to try the program locally, and take it out to submit"
-                ));
-            }
+            // The judge's grader supplies the body: the signature is all
+            // there is.
+            ast::FnBody::None => {}
         }
 
         if let Some((acc, _)) = self.cx.yield_slot {

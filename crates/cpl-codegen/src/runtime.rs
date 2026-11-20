@@ -58,6 +58,39 @@ struct Capture {
 ",
     },
     Piece {
+        name: "judge",
+        needs: &["fail"],
+        code: "\
+// A value as the judge's grader holds it, and back: an Int is an `int`
+// there and a Char a `char`. An Int too large for an `int` stops the program.
+template <class T> struct Judge {
+    using type = T;
+    static T to(const T& v) { return v; }
+    static T from(const T& v) { return v; }
+};
+template <> struct Judge<ll> {
+    using type = int;
+    static int to(ll v) { if (v != (int)v) fail(\"an Int given to the judge's grader does not fit in an int\"); return (int)v; }
+    static ll from(int v) { return v; }
+};
+template <> struct Judge<u8> {
+    using type = char;
+    static char to(u8 v) { return (char)v; }
+    static u8 from(char v) { return (u8)v; }
+};
+template <class T> struct Judge<std::vector<T>> {
+    using type = std::vector<typename Judge<T>::type>;
+    static type to(const std::vector<T>& v) { type r; r.reserve(v.size()); for (const T& x : v) r.push_back(Judge<T>::to(x)); return r; }
+    static std::vector<T> from(const type& v) { std::vector<T> r; r.reserve(v.size()); for (const auto& x : v) r.push_back(Judge<T>::from(x)); return r; }
+};
+template <class... T> struct Judge<std::tuple<T...>> {
+    using type = std::tuple<typename Judge<T>::type...>;
+    static type to(const std::tuple<T...>& v) { return std::apply([](const T&... x) { return type(Judge<T>::to(x)...); }, v); }
+    static std::tuple<T...> from(const type& v) { return std::apply([](const typename Judge<T>::type&... x) { return std::tuple<T...>(Judge<T>::from(x)...); }, v); }
+};
+",
+    },
+    Piece {
         name: "in",
         needs: &[],
         code: "\

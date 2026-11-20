@@ -88,6 +88,17 @@ pub enum Dim {
 }
 
 impl Ty {
+    /// True for a type that crosses to the judge's grader: numbers, text,
+    /// and lists and tuples of them.
+    pub fn crosses_to_judge(&self) -> bool {
+        match self {
+            Ty::Unit | Ty::Int | Ty::Float | Ty::Bool | Ty::Char | Ty::Str => true,
+            Ty::List(elem) => **elem != Ty::Unit && elem.crosses_to_judge(),
+            Ty::Tuple(items) => items.iter().all(|t| *t != Ty::Unit && t.crosses_to_judge()),
+            _ => false,
+        }
+    }
+
     pub fn opt(inner: Ty) -> Ty {
         Ty::Opt(Box::new(inner))
     }
@@ -606,6 +617,12 @@ pub struct Program {
     /// The program calls `ask(...)`: every `print` goes out at once, so
     /// the judge sees a query before the answer is read.
     pub interactive: bool,
+    /// `@grader fn name(...)` without a body: the judge's grader supplies
+    /// these fns. Each has its signature and an empty body.
+    pub judge_fns: Vec<FnId>,
+    /// `@grader fn` with a body: the judge's grader calls these. A program
+    /// with one has no `main` of its own in the emitted C++.
+    pub entry_fns: Vec<FnId>,
 }
 
 impl Program {
