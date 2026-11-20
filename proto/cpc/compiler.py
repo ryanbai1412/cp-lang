@@ -1943,6 +1943,8 @@ class Compiler(LendMixin):
             if not is_int(t):
                 self.error(e, f"{fn.name} needs an Int, got {t!r}")
             return f"cp_{fn.name}({c})", TInt(0, 64)
+        if fn.kind == "name" and fn.name == "read_line" and not e.args and not self.lookup("read_line"):
+            return "rd_line()", STR
         if fn.kind == "name" and fn.name == "abs" and not self.lookup("abs"):
             c, t = self.expr(e.args[0])
             if not is_int(t):
