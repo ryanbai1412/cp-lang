@@ -237,7 +237,7 @@ impl<'p> Emitter<'p> {
                 if (0..n).any(|i| (i + 1..n).any(|j| touches[i].conflicts(&touches[j]))) {
                     // The arguments of a call run in no set order: name
                     // the indices one by one.
-                    let cell = format!("{}&", elem_ty(self.program, &place.ty));
+                    let cell = format!("{}&", elem_ty(self.program, self.niches, &place.ty));
                     return self
                         .lambda(&cell, |this, out| {
                             let mut at = Vec::with_capacity(n);
@@ -315,15 +315,52 @@ impl<'p> Emitter<'p> {
     }
 
     /// The arguments of a 1-D vector's constructor: `n, value`.
-    pub fn fill_args(&mut self, dims: &[DimSpec], value: Option<&Expr>) -> String {
+    /// `packed`: the vector is a `?Int` table held as `cpl::OptInt`.
+    pub fn fill_args(&mut self, dims: &[DimSpec], value: Option<&Expr>, packed: bool) -> String {
         let n = self.dim(&dims[0]);
-        match value {
-            Some(value) => format!("{n}, {}", self.expr(value).text),
+        match value.map(|value| (value, self.expr(value).text)) {
+            // `none` is what a new cell is.
+            Some((value, _)) if packed && value.kind == ExprKind::None => n,
+            Some((value, text)) if packed => format!("{n}, {}", self.pack(value, &text)),
+            Some((_, text)) => format!("{n}, {text}"),
             None => n,
         }
     }
 
+    /// What a runtime helper for any element type gave, as the type the
+    /// program holds it in: the helper's `std::optional` is packed when
+    /// `ty` is.
+    fn packed_result(&mut self, ty: &Ty, code: Code) -> Code {
+        let cpp = self.ty(ty);
+        match ty {
+            Ty::Opt(_) if cpp.starts_with("cpl::Opt") => Code::primary(format!("{cpp}({})", code.text)),
+            _ => code,
+        }
+    }
+
+    /// True when `e` reads one cell of a packed `?Int` table.
+    fn packed_cell(&self, e: &Expr) -> bool {
+        match &e.kind {
+            ExprKind::Index(base, _) => match base.kind {
+                ExprKind::Local(slot) => self.is_packed(false, slot),
+                ExprKind::Global(id) => self.is_packed(true, id),
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
+    /// The C++ of an optional that is about to be tested or opened: a
+    /// cell of a packed table is read in place when its indices run no
+    /// code, and as a `std::optional` like any other otherwise.
+    fn opened(&mut self, e: &Expr) -> Code {
+        self.raw_cell = matches!(&e.kind, ExprKind::Index(_, indices) if indices.iter().all(walk::is_simple));
+        self.expr(e)
+    }
+
     pub fn expr(&mut self, e: &Expr) -> Code {
+        let pack_init = std::mem::take(&mut self.pack_init);
+        let raw_cell = std::mem::take(&mut self.raw_cell);
         let program = self.program;
         match &e.kind {
             ExprKind::Unit | ExprKind::Error => Code::primary("(void)0"),
@@ -449,10 +486,13 @@ impl<'p> Emitter<'p> {
                 if matches!(base_ty, Ty::List(_)) {
                     self.need("at");
                 }
+                // A cell of a packed table is a `std::optional` to whatever
+                // reads it, unless it is only being tested or opened.
+                let unpack = self.packed_cell(e) && !raw_cell;
                 self.sequence(&operands, &e.ty, |_, codes| {
                     let b = codes[0].at(PRIMARY);
                     let at: Vec<String> = codes[1..].iter().map(|c| c.text.clone()).collect();
-                    match base_ty {
+                    let cell = match base_ty {
                         Ty::Array { dims, elem } if dims.len() > 1 => {
                             let cell = format!("{b}({})", at.join(", "));
                             if **elem == Ty::Bool {
@@ -476,6 +516,10 @@ impl<'p> Emitter<'p> {
                             Code::primary(format!("{b}.at({})", at[0]))
                         }
                         _ => Code::primary(format!("{b}[{}]", at[0])),
+                    };
+                    match unpack {
+                        true => Code::primary(format!("std::optional<ll>({})", cell.text)),
+                        false => cell,
                     }
                 })
             }
@@ -495,6 +539,9 @@ impl<'p> Emitter<'p> {
                 match &e.ty {
                     Ty::Unit | Ty::Error => Code::primary("(void)0"),
                     Ty::Map(..) | Ty::HashMap(..) => Code::primary(format!("{ty}()")),
+                    _ if items.is_empty() && pack_init => {
+                        Code::primary(format!("{}()", self.packed_ty(&e.ty)))
+                    }
                     _ if items.is_empty() => Code::primary(format!("{ty}()")),
                     _ => {
                         // `{...}` runs its elements left to right.
@@ -542,11 +589,11 @@ impl<'p> Emitter<'p> {
                 Code::primary(format!("{}.{variant}_{index}", code.at(PRIMARY)))
             }
             ExprKind::IsSome(value) => {
-                let code = self.expr(value);
+                let code = self.opened(value);
                 Code::primary(format!("{}.has_value()", code.at(PRIMARY)))
             }
             ExprKind::Unwrap(value, _) => {
-                let code = self.expr(value);
+                let code = self.opened(value);
                 Code::new(format!("*{}", code.at(UNARY)), UNARY)
             }
             ExprKind::If(cond, then, otherwise) => {
@@ -605,14 +652,30 @@ impl<'p> Emitter<'p> {
             ExprKind::Builtin(op, args) => {
                 let operands: Vec<&Expr> = args.iter().collect();
                 self.sequence(&operands, &e.ty, |this, codes| {
-                    this.builtin(e, *op, args, codes)
+                    let code = this.builtin(e, *op, args, codes);
+                    match op {
+                        Builtin::First
+                        | Builtin::Last
+                        | Builtin::MapGet
+                        | Builtin::SetMin
+                        | Builtin::SetMax => this.packed_result(&e.ty, code),
+                        _ => code,
+                    }
                 })
             }
             ExprKind::Mutate(op, place, args) => {
                 let p = self.place(place);
+                let (global, index) = walk::root(place);
+                let packed = self.is_packed(global, index);
                 let arg = args
                     .first()
-                    .map(|arg| self.expr(arg).text)
+                    .map(|arg| {
+                        let text = self.expr(arg).text;
+                        match packed {
+                            true => self.pack(arg, &text),
+                            false => text,
+                        }
+                    })
                     .unwrap_or_default();
                 let arg2 = args
                     .get(1)
@@ -626,7 +689,7 @@ impl<'p> Emitter<'p> {
                     Mutation::Take => Code::primary(format!("std::exchange({p}, {{}})")),
                     Mutation::Pop => {
                         self.need("pop");
-                        Code::primary(format!("cpl::pop({p})"))
+                        self.packed_result(&e.ty, Code::primary(format!("cpl::pop({p})")))
                     }
                     Mutation::PopVal => {
                         self.need("pop_val");
@@ -727,15 +790,24 @@ impl<'p> Emitter<'p> {
                 let Ty::Array { elem, .. } = &e.ty else {
                     return Code::primary("(void)0");
                 };
-                let cell = elem_ty(program, elem);
+                let cell = match pack_init {
+                    true => "cpl::OptInt".to_string(),
+                    false => elem_ty(program, self.niches, elem),
+                };
                 if dims.len() == 1 {
-                    let args = self.fill_args(dims, value.as_deref());
+                    let args = self.fill_args(dims, value.as_deref(), pack_init);
                     Code::primary(format!("std::vector<{cell}>({args})"))
                 } else {
                     self.need("grid");
                     let lens: Vec<String> = dims.iter().map(|d| self.dim(d)).collect();
                     let value = match value {
-                        Some(value) => self.expr(value).text,
+                        Some(value) => {
+                            let text = self.expr(value).text;
+                            match pack_init {
+                                true => self.pack(value, &text),
+                                false => text,
+                            }
+                        }
                         None => format!("{cell}()"),
                     };
                     Code::primary(format!(

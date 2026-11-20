@@ -427,7 +427,13 @@ impl<'p> Emitter<'p> {
                 return;
             }
         }
-        let v = self.expr(value);
+        let (global, index) = walk::root(place);
+        let packed = self.is_packed(global, index);
+        self.pack_init = packed && matches!(place.kind, PlaceKind::Local(_) | PlaceKind::Global(_));
+        let mut v = self.expr(value);
+        if packed && matches!(place.kind, PlaceKind::Index(..)) {
+            v.text = self.pack(value, &v.text);
+        }
         // Handle map/hashmap fold-on-missing-key (`max=`, `min=`, `*=`, `+=`, `-=`, `|=`, `^=`, `&=`).
         if let PlaceKind::Index(base, idx) = &place.kind {
             if matches!(base.ty, Ty::Map(..) | Ty::HashMap(..)) && op != AssignOp::Set {
@@ -540,7 +546,11 @@ impl<'p> Emitter<'p> {
             Stmt::Let(slot, init) => {
                 let ty = self.locals()[*slot].ty.clone();
                 let name = self.names[*slot].clone();
-                let cpp = self.ty(&ty);
+                let packed = self.is_packed(false, *slot);
+                let cpp = match packed {
+                    true => self.packed_ty(&ty),
+                    false => self.ty(&ty),
+                };
                 let hoisted = self.hoisted.contains(slot);
                 let Some(init) = init else {
                     if ty != Ty::Unit {
@@ -565,7 +575,7 @@ impl<'p> Emitter<'p> {
                         }
                     }
                     ExprKind::Fill(dims, value) if !hoisted && dims.len() == 1 => {
-                        let args = self.fill_args(dims, value.as_deref());
+                        let args = self.fill_args(dims, value.as_deref(), packed);
                         self.line(out, &format!("{cpp} {name}({args});"));
                         return;
                     }
@@ -578,7 +588,10 @@ impl<'p> Emitter<'p> {
                         }
                         _ => self.expr(init).text,
                     },
-                    _ => self.expr(init).text,
+                    _ => {
+                        self.pack_init = packed;
+                        self.expr(init).text
+                    }
                 };
                 if hoisted {
                     self.line(out, &format!("{name} = {text};"));

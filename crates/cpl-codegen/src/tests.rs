@@ -183,3 +183,116 @@ print(b.get())
     assert!(cpp.contains("//     struct Box<T>:"), "{cpp}");
     assert!(cpp.len() < 65536, "{} bytes", cpp.len());
 }
+
+/// The C++ type `name` is declared with.
+fn decl(cpp: &str, name: &str) -> String {
+    let needle = format!(" {name}");
+    let program = cpp.find("namespace prog").expect("the program");
+    let line = cpp[program..]
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .find(|l| {
+            l.split(['(', ';', '='])
+                .next()
+                .is_some_and(|head| head.trim_end().ends_with(&needle))
+        })
+        .unwrap_or_else(|| panic!("no declaration of `{name}`:\n{cpp}"));
+    line.trim().split(&needle).next().unwrap_or_default().to_string()
+}
+
+const TABLE: &str = "let n: 1..=100 = read()\ndomain V = 0..n\nlet w: [V]0..=1000 = read()\nlet any: Int = read()\nvar dp: [V]?Int = none\n";
+
+fn table(rest: &str) -> String {
+    let cpp = cpp(&format!("{TABLE}{rest}\nprint(dp[V.first] ?? -1)\n"));
+    decl(&cpp, "dp")
+}
+
+#[test]
+fn an_optional_of_a_position_a_bool_or_a_char_is_one_scalar() {
+    let cpp = cpp(
+        "let n: 1..=9 = read()\ndomain V = 0..n\nvar p: [V]?V = none\nvar b: [V]?Bool = none\nvar c: [V]?Char = none\n\
+         p[V.first] = V.first + 1\nb[V.first] = true\nc[V.first] = 'a'\n\
+         print(p[V.first] ?? V.last, b[V.first] ?? false, c[V.first] ?? '-')\n",
+    );
+    assert_eq!(decl(&cpp, "p"), "std::vector<cpl::OptPos>", "{cpp}");
+    assert_eq!(decl(&cpp, "b"), "std::vector<cpl::OptBool>", "{cpp}");
+    assert_eq!(decl(&cpp, "c"), "std::vector<cpl::OptChar>", "{cpp}");
+    assert!(cpp.contains("using OptPos = Niche<int, int, -1>;"), "{cpp}");
+    assert!(cpp.contains("using OptBool = Niche<bool, u8, 2>;"), "{cpp}");
+    assert!(cpp.contains("using OptChar = Niche<u8, short, -1>;"), "{cpp}");
+    // No Int table was packed, so its alias is not in the file.
+    assert!(!cpp.contains("OptInt"), "{cpp}");
+}
+
+#[test]
+fn a_program_without_optionals_carries_none_of_the_packing() {
+    let cpp = cpp("let n: 1..=9 = read()\nprint(n)\n");
+    assert!(!cpp.contains("Niche"), "{cpp}");
+}
+
+#[test]
+fn the_inside_of_a_small_optional_taken_as_a_place_keeps_it_unpacked() {
+    let cpp = cpp("var f: ?Bool = none\nvar c: ?Char = none\n(f ??= false) = true\nprint(f ?? false, c ?? '-')\n");
+    assert_eq!(decl(&cpp, "f"), "std::optional<bool>", "{cpp}");
+    // A Char is still packed: only the Bool is opened in place.
+    assert_eq!(decl(&cpp, "c"), "cpl::OptChar", "{cpp}");
+}
+
+#[test]
+fn an_int_table_that_provably_never_holds_the_smallest_int_is_packed() {
+    const PACKED: &str = "std::vector<cpl::OptInt>";
+    // Literals, non-negative input, and sums that only grow.
+    assert_eq!(table("dp[V.first] = 0\nfor v in V:\n    if let u = v + 1:\n        if let d = dp[v]: dp[u] max= d + w[v]"), PACKED);
+    assert_eq!(table("dp[V.first] = -1\ndp[V.last] = Int.MAX"), PACKED);
+    assert_eq!(table("for v in V: dp[v] = v.idx - w[v]"), PACKED);
+    assert_eq!(table("for v in V: dp[v] = -(w[v] * 3) % 7"), PACKED);
+    assert_eq!(table("for i in 0..n: dp[V.first] min= i * i"), PACKED);
+    // A list filled by `push`, and a grid.
+    let cpp = cpp("let n: 0..=9 = read()\nvar xs: List<?Int> = []\nvar g: [n, n]?Int = none\nfor i in 0..n:\n    xs.push(none)\n    xs.push(i)\n    g[i, 0] = i\nprint(xs.len, xs[0] ?? -1, g[0, 0] ?? -1)\n");
+    assert_eq!(decl(&cpp, "xs"), "std::vector<cpl::OptInt>", "{cpp}");
+    assert_eq!(decl(&cpp, "g"), "cpl::Grid<cpl::OptInt, 2>", "{cpp}");
+    assert!(cpp.contains("xs.push_back(cpl::OptInt());"), "{cpp}");
+    assert!(cpp.contains("xs.push_back(cpl::OptInt(i));"), "{cpp}");
+    assert!(
+        cpp.contains("using OptInt = Niche<ll, ll, (-0x7fffffffffffffffLL - 1)>;"),
+        "{cpp}"
+    );
+}
+
+#[test]
+fn an_int_table_with_no_proof_stays_a_std_optional() {
+    const PLAIN: &str = "std::vector<std::optional<ll>>";
+    // The value itself.
+    assert_eq!(table("dp[V.first] = Int.MIN"), PLAIN);
+    // Input with no declared low end, and anything computed from it.
+    assert_eq!(table("dp[V.first] = any"), PLAIN);
+    assert_eq!(table("dp[V.first] = 0\ndp[V.last] = (dp[V.first] ?? 0) + any"), PLAIN);
+    assert_eq!(table("let x = any + 1\ndp[V.first] = x"), PLAIN);
+    // Two values above Int.MIN can still add up to it, and a difference
+    // or a product of them can reach it.
+    assert_eq!(table("dp[V.first] = -1\ndp[V.last] = (dp[V.first] ?? 0) + (dp[V.first] ?? 0)"), PLAIN);
+    assert_eq!(table("dp[V.first] = -1\ndp[V.last] = (dp[V.first] ?? 0) - w[V.first]"), PLAIN);
+    assert_eq!(table("dp[V.first] = -1\ndp[V.last] = (dp[V.first] ?? 0) * 2"), PLAIN);
+    // What a fn returns or is handed is not followed.
+    assert_eq!(table("fn f() -> Int: any\ndp[V.first] = f()"), PLAIN);
+    assert_eq!(table("fn f(x: Int) -> Int:\n    dp[V.first] = x\n    0\nprint(f(any))"), PLAIN);
+    // A variable stored twice counts for both stores.
+    assert_eq!(table("var x = 0\nx = any\ndp[V.first] = x"), PLAIN);
+    // Through another table.
+    assert_eq!(table("var other: [V]?Int = none\nother[V.first] = any\ndp[V.first] = other[V.first]\nprint(other[V.first] ?? 0)"), PLAIN);
+}
+
+#[test]
+fn an_int_table_used_as_a_whole_value_stays_a_std_optional() {
+    const PLAIN: &str = "std::vector<std::optional<ll>>";
+    assert_eq!(table("fn f(xs: [V]?Int) -> Int: xs[V.first] ?? 0\nprint(f(dp))"), PLAIN);
+    assert_eq!(table("fn f(mut xs: [V]?Int):\n    xs[V.first] = 1\nf(mut dp)"), PLAIN);
+    assert_eq!(table("for x in dp: print(x ?? 0)"), PLAIN);
+    assert_eq!(table("print(dp)"), PLAIN);
+    // An index that runs code is moved out of line with the table.
+    assert_eq!(table("fn at() -> V: V.first\nprint(dp[at()] ?? 0)"), PLAIN);
+    assert_eq!(table("let copy = dp\nprint(copy[V.first] ?? 0)"), PLAIN);
+    // A closure holds its own copy or a reference.
+    let cpp = cpp("fn f(n: Int) -> Int:\n    var xs: List<?Int> = []\n    xs.push(n % 2)\n    let get = i => xs[i] ?? 0\n    get(0)\nprint(f(3))\n");
+    assert_eq!(decl(&cpp, "xs"), PLAIN, "{cpp}");
+}

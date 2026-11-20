@@ -46,6 +46,35 @@ prototype. `Str` is bytes and `Char` is one byte everywhere: a
 literal must be ASCII (`E0502`), and other bytes pass from input to
 output untouched.
 
+An optional is one scalar in the C++ wherever a value is free to say
+`none`. A position is an ordinal from 0, so `?V` is an `int` with -1 for
+`none`; a `?Bool` is one byte; a `?Char` is sixteen bits, since every byte
+is a `Char`. An `Int` has no value to spare, so `?Int` is a
+`std::optional<ll>`, 16 bytes, unless the program proves one: a table of
+`?Int` is held as 8-byte cells with `Int.MIN` for `none` when nothing
+stored in it can be `Int.MIN`.
+
+```text
+let w: [Item]1..=1e9 = read()
+var best: [Cap]?Int = none            // std::vector<cpl::OptInt>: 8 bytes a cell
+best[Cap.first] = 0
+for i in Item:
+    for c in Cap.rev:
+        if let d = c - w[i]:
+            if let b = best[d]: best[c] max= b + w[i]
+```
+
+Here every value stored is 0 or a stored value plus input declared at
+least 1, so none is `Int.MIN`. Store an `Int` read with no range, a
+difference, or what a fn returned, and the table stays `std::optional`;
+so does one that is passed, returned, compared or looped over as a
+whole. The proof trusts what `cpl run` checks (declared input ranges,
+no overflow), and `crates/cpl-codegen/src/niche.rs` is all of it.
+
+`@memo` on a fn that can't be remembered is an error (`E0311`), not a fn
+that quietly runs every time: one with a `mut` parameter, a method, a
+generator, a generic fn, or one that gives no value.
+
 ## Testing the back ends
 
 `crates/cpl-cli/tests/programs` holds one `.cp` per area of the language,
