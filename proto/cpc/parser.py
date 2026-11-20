@@ -190,7 +190,9 @@ class Parser:
                     guard = None
                     if self.at("if"):
                         self.next()
+                        self.no_lambda = 1
                         guard = self.expr()
+                        self.no_lambda = 0
                     if self.at("=>"):
                         self.t.val = ":"
                     body = self.block()
@@ -415,7 +417,10 @@ class Parser:
             self.next()
             pat = self.pattern()
             self.expect("=")
-            e = self.expr()
+            e = self.not_()
+            if self.at("??"):
+                self.next()
+                e = N("binop", line, op="??", a=e, b=self.not_())
             extra = None
             if self.at("and"):
                 self.next()
@@ -790,9 +795,40 @@ class Parser:
             j += 1
         return False
 
+    def paren_lambda_ahead(self):
+        j, d = self.i, 0
+        while j < len(self.toks):
+            t = self.toks[j]
+            if t.kind == "OP" and t.val in ("(", "[", "{"):
+                d += 1
+            elif t.kind == "OP" and t.val in (")", "]", "}"):
+                d -= 1
+                if d == 0:
+                    nx = self.toks[j + 1]
+                    return nx.kind == "OP" and nx.val == "=>"
+            elif t.kind in ("NEWLINE", "EOF"):
+                return False
+            j += 1
+        return False
+
     def atom(self):
         t = self.t
         line = t.line
+        # lambdas: `x => e` and `(a, b) => e`
+        if not getattr(self, "no_lambda", 0) and ((t.kind == "NAME" and self.peek().kind == "OP" and self.peek().val == "=>") or
+                (self.at("(") and self.paren_lambda_ahead())):
+            if self.at("("):
+                self.next()
+                ps = []
+                while not self.at(")"):
+                    ps.append(self.pattern(False))
+                    if self.at(","):
+                        self.next()
+                self.next()
+            else:
+                ps = [self.pattern(False)]
+            self.expect("=>")
+            return N("lambda", line, params=ps, body=self.expr())
         if t.kind == "NUM":
             self.next()
             return N("num", line, value=t.val)
