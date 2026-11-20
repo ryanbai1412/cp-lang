@@ -1,6 +1,5 @@
 // An Animal Contest 4 P2: for each query x, the first position i such that x
 // is not a multiple of a[1..i] all at once (of their lcm), or -1.
-use std.seq.{bsearch_first}
 
 const CAP = 2e9                         // above every query: nothing divides past it
 let (n, q): (1..=1e6, 1..=1e6) = read()

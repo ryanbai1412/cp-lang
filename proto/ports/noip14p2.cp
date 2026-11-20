@@ -19,7 +19,7 @@ for (u, v) in edges:
     adj[v].push(u)
 
 var best = 0
-var total = Z(0)
+var total: Z = 0
 for mid in V:
     var top = 0
     var second = 0

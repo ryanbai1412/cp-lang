@@ -15,7 +15,7 @@ ways[Rank.first] = Z(1)
 for s in Sign:
     let live = Rank.first..=Rank(s.label)   // ranks the longer prefix can end at
     var next: [Rank]Z = Z(0)
-    var acc = Z(0)
+    var acc: Z = 0
     if signs[s] == '<':
         for r in live:
             next[r] = acc

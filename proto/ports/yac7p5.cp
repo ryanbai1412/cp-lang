@@ -26,7 +26,7 @@ fn place(lo: Int, hi: Int, eggs: List<Egg>):
     var upper: List<Egg> = []
     for i in 0..eggs.len - 1:
         if breaks(eggs[i], mid - 1): lower.push(eggs[i]) else: upper.push(eggs[i])
-    let spare = eggs[eggs.len - 1]
+    let spare = eggs.last!
     if upper.len == hi - mid: lower.push(spare) else: upper.push(spare)
     if upper_first:
         place(mid, hi, upper)

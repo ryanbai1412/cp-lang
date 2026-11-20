@@ -1,7 +1,6 @@
 // cp: 0.1 1f59ac0+dirty
 // NOIP 2014 Finding the Way: shortest path from s to t that only visits
 // vertices all of whose out-neighbours can reach t.
-use std.graph.{bfs}
 
 let n: 1..=10000 = read()
 let m: 0..=200000 = read()

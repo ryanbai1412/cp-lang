@@ -1,6 +1,5 @@
 // IOI 2010 Quality of Living: an r x c grid holds each of 1..r*c once. Print
 // the smallest median of any h x w window (h and w odd).
-use std.seq.{bsearch_first}
 
 let (r, c, h, w): (1..=3000, 1..=3000, 1..=3000, 1..=3000) = read()
 domain Row = 0..r

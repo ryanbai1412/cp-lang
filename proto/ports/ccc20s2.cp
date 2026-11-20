@@ -3,7 +3,6 @@
 // (r, c) with r * c == x. Can you get from (1, 1) to the last cell? Search
 // over the numbers: holding x leads to every number written on a cell whose
 // coordinates multiply to x.
-use std.graph.{bfs}
 
 let rows: 1..=1000 = read()
 let cols: 1..=1000 = read()

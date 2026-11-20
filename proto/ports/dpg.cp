@@ -1,5 +1,4 @@
 // AtCoder DP G Longest Path: the longest path in a DAG, in edges.
-use std.graph.{topo}
 
 let (n, m): (2..=1e5, 1..=1e5) = read()
 domain V = 1..=n
