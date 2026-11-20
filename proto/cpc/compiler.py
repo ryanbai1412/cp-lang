@@ -5476,6 +5476,8 @@ class Compiler(LendMixin):
                 if a.kind == "kwarg" and a.name == "when":
                     when, _ = self.capture(lambda: self.expr(a.value))[1]
         self.solutions[name] = (lines, "multitest" in decos, when)
+        if "brute" in decos:
+            self.__dict__.setdefault("brute_solutions", set()).add(name)
 
 
 def pat_names(p):
@@ -5819,8 +5821,11 @@ def _render(comp):
     sols = comp.solutions
     init = comp.init_lines
     gen_exit = "    if (CP_GEN && !CP_FNTEST_ON) { out_flush(); return 0; }"
-    if not sols:
-        sols = {"main": (init[comp.last_read:], False, None)}
+    brutes = getattr(comp, "brute_solutions", set())
+    if all(n in brutes for n in sols):
+        # the top-level statements are the program; a parameterless @brute is only ever an oracle, picked with
+        # CP_SOLUTION=<name> by `cp.py stress`, and never runs in a judge build (backlog W6)
+        sols = {"main": (init[comp.last_read:], False, None), **sols}
         init = init[:comp.last_read]
     parts = [rt, "#ifndef CP_GEN_MODE\n#define CP_GEN 0\n#else\n#define CP_GEN 1\n#endif",
              "#ifndef CP_FNTEST\n#define CP_FNTEST_ON 0\n#else\n#define CP_FNTEST_ON 1\n#endif"]
@@ -5834,7 +5839,7 @@ def _render(comp):
     if not any(m for _, m, _ in sols.values()) and not comp.reads_in_fns:
         out.append(gen_exit)
     names = list(sols)
-    main_name = next((n for n in names if n == "main"), names[0])
+    main_name = next((n for n in names if n == "main"), None) or next(n for n in names if n not in brutes)
     for n in names:
         lines, mt, when = sols[n]
         if n == main_name:
