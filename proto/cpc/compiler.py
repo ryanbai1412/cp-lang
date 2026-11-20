@@ -5344,6 +5344,13 @@ def _emit_print_body(self, args, newline, node):
     first = True
     # every argument is evaluated before anything is written: a later argument that asks a question or
     # prints must not find the first words of this line already in the output
+    # `print(ans, none: "IMPOSSIBLE")`: what a `none` is written as (the same keyword `read` takes)
+    kws = {a.name: a.value for a in args if a.kind == "kwarg"}
+    args = [a for a in args if a.kind != "kwarg"]
+    for k, v in kws.items():
+        if k != "none" or v.kind != "str":
+            self.error(node, "`print` takes one keyword, `none: \"text\"`")
+    self.print_none = json.dumps(kws["none"].value) if "none" in kws else None
     late = any(w or io for w, _, io in (self.effects_in(a) for a in args[1:]))
     vals = []
     for a in args:
@@ -5377,7 +5384,8 @@ def _emit_value(self, c, t, node):
         self.emit(f"out_int(({c}).v);")
     elif isinstance(t, TOpt):
         o = self.tmpname("o")
-        self.emit(f"{{ auto {o} = {c}; if (!{o}.has()) out_int(-1); else {{")
+        none = f"out_str({self.print_none})" if getattr(self, "print_none", None) else "out_int(-1)"
+        self.emit(f"{{ auto {o} = {c}; if (!{o}.has()) {none}; else {{")
         self.ind += 1
         self.emit_value(f"{o}.get()", t.inner, node)
         self.ind -= 1
