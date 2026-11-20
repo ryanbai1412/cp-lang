@@ -1,0 +1,432 @@
+//! The language server: protocol messages in, protocol messages out.
+//!
+//! `Server` owns the same [`Database`] the command line uses and holds no
+//! analysis of its own, so the editor and `cpl check` cannot disagree.
+//! Each message is handled in isolation: a panic becomes an error response
+//! (or an internal-error diagnostic) and the server keeps running.
+
+use crate::json::{obj, Value};
+use cpl_check::{Database, DeclKind};
+use cpl_diag::{codes, Diagnostic, LineCol, LineIndex, Severity, Span};
+use std::collections::BTreeMap;
+use std::panic::{catch_unwind, AssertUnwindSafe};
+
+const METHOD_NOT_FOUND: i32 = -32601;
+const INVALID_PARAMS: i32 = -32602;
+const INTERNAL_ERROR: i32 = -32603;
+const INVALID_REQUEST: i32 = -32600;
+const SERVER_NOT_INITIALIZED: i32 = -32002;
+
+pub struct Server {
+    db: Database,
+    /// Open documents by URI, with their current text.
+    docs: BTreeMap<String, String>,
+    initialized: bool,
+    shutdown: bool,
+    exit: Option<i32>,
+}
+
+impl Default for Server {
+    fn default() -> Server {
+        Server::new()
+    }
+}
+
+impl Server {
+    pub fn new() -> Server {
+        Server {
+            db: Database::new(),
+            docs: BTreeMap::new(),
+            initialized: false,
+            shutdown: false,
+            exit: None,
+        }
+    }
+
+    /// The process exit code, once the client has sent `exit`.
+    pub fn exit_code(&self) -> Option<i32> {
+        self.exit
+    }
+
+    /// Handles one message from the client and returns the messages to
+    /// send back, in order.
+    pub fn handle(&mut self, message: &Value) -> Vec<Value> {
+        let id = message.get("id").clone();
+        let Some(method) = message.get("method").as_str() else {
+            // A response to a request of ours; the server sends none.
+            return if id.is_null() {
+                vec![error(Value::Null, INVALID_REQUEST, "message has no method")]
+            } else {
+                Vec::new()
+            };
+        };
+        let is_request = !id.is_null();
+        let outcome = catch_unwind(AssertUnwindSafe(|| self.dispatch(method, message.get("params"))));
+        match outcome {
+            Ok(Ok(result)) => {
+                let mut out = Vec::new();
+                if is_request {
+                    out.push(obj([("jsonrpc", "2.0".into()), ("id", id), ("result", result.response)]));
+                }
+                out.extend(result.notifications);
+                out
+            }
+            Ok(Err((code, text))) => {
+                if is_request {
+                    vec![error(id, code, &text)]
+                } else {
+                    Vec::new()
+                }
+            }
+            Err(panic) => self.recover(method, message.get("params"), id, panic_text(&*panic)),
+        }
+    }
+
+    /// After a panic: rebuild the database from the open documents, answer
+    /// the request with an error, and tell the user through a diagnostic.
+    fn recover(&mut self, method: &str, params: &Value, id: Value, what: String) -> Vec<Value> {
+        self.db = Database::new();
+        for (uri, text) in &self.docs {
+            self.db.set_file(uri, text.as_str());
+        }
+        let text = format!("internal error in cpl while handling `{method}`: {what}");
+        let mut out = Vec::new();
+        if !id.is_null() {
+            out.push(error(id, INTERNAL_ERROR, &text));
+        }
+        if let Some(uri) = params.at(&["textDocument", "uri"]).as_str() {
+            let diag = Diagnostic::error(codes::INTERNAL, Span::point(0), text)
+                .with_help("this is a bug in cpl, not in your code; please report it with this file");
+            let source = self.docs.get(uri).map_or("", String::as_str);
+            let lines = LineIndex::new(source);
+            out.push(publish(uri, vec![diagnostic_json(&diag, uri, source, &lines)]));
+        }
+        out
+    }
+
+    fn dispatch(&mut self, method: &str, params: &Value) -> Result<Reply, (i32, String)> {
+        if !self.initialized && !matches!(method, "initialize" | "exit" | "initialized") {
+            return Err((SERVER_NOT_INITIALIZED, "the server has not been initialized".into()));
+        }
+        match method {
+            "initialize" => {
+                self.initialized = true;
+                Ok(Reply::result(capabilities()))
+            }
+            "initialized" | "$/cancelRequest" | "$/setTrace" | "textDocument/didSave" | "workspace/didChangeConfiguration" => {
+                Ok(Reply::default())
+            }
+            "shutdown" => {
+                self.shutdown = true;
+                Ok(Reply::default())
+            }
+            "exit" => {
+                self.exit = Some(if self.shutdown { 0 } else { 1 });
+                Ok(Reply::default())
+            }
+            "textDocument/didOpen" => {
+                let uri = uri_of(params)?;
+                let text = params
+                    .at(&["textDocument", "text"])
+                    .as_str()
+                    .ok_or((INVALID_PARAMS, "didOpen without text".to_string()))?;
+                self.docs.insert(uri.to_string(), text.to_string());
+                self.db.set_file(uri, text);
+                Ok(Reply::notify(self.diagnostics(uri)))
+            }
+            "textDocument/didChange" => {
+                let uri = uri_of(params)?;
+                let mut text = self
+                    .docs
+                    .get(uri)
+                    .cloned()
+                    .ok_or((INVALID_PARAMS, format!("`{uri}` is not open")))?;
+                for change in params.get("contentChanges").as_array() {
+                    apply_change(&mut text, change)?;
+                }
+                self.db.set_file(uri, text.as_str());
+                self.docs.insert(uri.to_string(), text);
+                Ok(Reply::notify(self.diagnostics(uri)))
+            }
+            "textDocument/didClose" => {
+                let uri = uri_of(params)?;
+                self.docs.remove(uri);
+                self.db.remove_file(uri);
+                Ok(Reply::notify(publish(uri, Vec::new())))
+            }
+            "textDocument/hover" => {
+                let (uri, offset) = self.position(params)?;
+                let Some(hover) = self.db.hover(&uri, offset) else { return Ok(Reply::default()) };
+                let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
+                Ok(Reply::result(obj([
+                    (
+                        "contents",
+                        obj([("kind", "markdown".into()), ("value", format!("```cp\n{}\n```", hover.text).into())]),
+                    ),
+                    ("range", range_json(hover.span, &analysis.text, &analysis.lines)),
+                ])))
+            }
+            "textDocument/definition" => {
+                let (uri, offset) = self.position(params)?;
+                let Some(span) = self.db.definition(&uri, offset) else { return Ok(Reply::default()) };
+                let analysis = self.db.analyze(&uri).expect("definition implies an analysis");
+                Ok(Reply::result(obj([
+                    ("uri", uri.as_str().into()),
+                    ("range", range_json(span, &analysis.text, &analysis.lines)),
+                ])))
+            }
+            "textDocument/documentSymbol" => {
+                let uri = uri_of(params)?;
+                let symbols = self.db.symbols(uri);
+                let Some(analysis) = self.db.analyze(uri) else { return Ok(Reply::result(Value::Array(Vec::new()))) };
+                let items = symbols
+                    .iter()
+                    .map(|s| {
+                        obj([
+                            ("name", s.name.as_str().into()),
+                            ("kind", symbol_kind(s.kind).into()),
+                            ("range", range_json(s.span.to(s.name_span), &analysis.text, &analysis.lines)),
+                            ("selectionRange", range_json(s.name_span, &analysis.text, &analysis.lines)),
+                        ])
+                    })
+                    .collect();
+                Ok(Reply::result(Value::Array(items)))
+            }
+            "textDocument/codeAction" => {
+                let uri = uri_of(params)?;
+                let Some(analysis) = self.db.analyze(uri) else { return Ok(Reply::result(Value::Array(Vec::new()))) };
+                let start = position_of(params.at(&["range", "start"]))?;
+                let end = position_of(params.at(&["range", "end"]))?;
+                let wanted = Span::new(
+                    analysis.lines.offset_utf16(start, &analysis.text),
+                    analysis.lines.offset_utf16(end, &analysis.text),
+                );
+                let mut actions = Vec::new();
+                for diag in &analysis.diagnostics {
+                    if diag.span.end < wanted.start || diag.span.start > wanted.end {
+                        continue;
+                    }
+                    for fix in &diag.fixes {
+                        let edits: Vec<Value> = fix
+                            .edits
+                            .iter()
+                            .map(|(span, text)| {
+                                obj([
+                                    ("range", range_json(*span, &analysis.text, &analysis.lines)),
+                                    ("newText", text.as_str().into()),
+                                ])
+                            })
+                            .collect();
+                        actions.push(obj([
+                            ("title", fix.title.as_str().into()),
+                            ("kind", "quickfix".into()),
+                            (
+                                "diagnostics",
+                                vec![diagnostic_json(diag, uri, &analysis.text, &analysis.lines)].into(),
+                            ),
+                            ("edit", obj([("changes", Value::Object(vec![(uri.to_string(), edits.into())]))])),
+                        ]));
+                    }
+                }
+                Ok(Reply::result(Value::Array(actions)))
+            }
+            #[cfg(test)]
+            "cpl/testPanic" => panic!("deliberate test panic"),
+            _ => Err((METHOD_NOT_FOUND, format!("`{method}` is not supported"))),
+        }
+    }
+
+    /// The `publishDiagnostics` notification for a document.
+    fn diagnostics(&mut self, uri: &str) -> Value {
+        let Some(analysis) = self.db.analyze(uri) else { return publish(uri, Vec::new()) };
+        let items = analysis
+            .diagnostics
+            .iter()
+            .map(|d| diagnostic_json(d, uri, &analysis.text, &analysis.lines))
+            .collect();
+        publish(uri, items)
+    }
+
+    /// The document and byte offset a position request refers to.
+    fn position(&mut self, params: &Value) -> Result<(String, u32), (i32, String)> {
+        let uri = uri_of(params)?;
+        let position = position_of(params.get("position"))?;
+        let analysis = self
+            .db
+            .analyze(uri)
+            .ok_or((INVALID_PARAMS, format!("`{uri}` is not open")))?;
+        Ok((uri.to_string(), analysis.lines.offset_utf16(position, &analysis.text)))
+    }
+}
+
+#[derive(Default)]
+struct Reply {
+    response: Value,
+    notifications: Vec<Value>,
+}
+
+impl Reply {
+    fn result(response: Value) -> Reply {
+        Reply {
+            response,
+            notifications: Vec::new(),
+        }
+    }
+
+    fn notify(notification: Value) -> Reply {
+        Reply {
+            response: Value::Null,
+            notifications: vec![notification],
+        }
+    }
+}
+
+fn capabilities() -> Value {
+    obj([
+        (
+            "capabilities",
+            obj([
+                ("positionEncoding", "utf-16".into()),
+                // Open/close notifications, incremental changes.
+                ("textDocumentSync", obj([("openClose", true.into()), ("change", 2.into())])),
+                ("hoverProvider", true.into()),
+                ("definitionProvider", true.into()),
+                ("documentSymbolProvider", true.into()),
+                ("codeActionProvider", obj([("codeActionKinds", vec!["quickfix".into()].into())])),
+            ]),
+        ),
+        (
+            "serverInfo",
+            obj([("name", "cpl".into()), ("version", env!("CARGO_PKG_VERSION").into())]),
+        ),
+    ])
+}
+
+fn error(id: Value, code: i32, message: &str) -> Value {
+    obj([
+        ("jsonrpc", "2.0".into()),
+        ("id", id),
+        (
+            "error",
+            obj([("code", Value::Number(f64::from(code))), ("message", message.into())]),
+        ),
+    ])
+}
+
+fn publish(uri: &str, diagnostics: Vec<Value>) -> Value {
+    obj([
+        ("jsonrpc", "2.0".into()),
+        ("method", "textDocument/publishDiagnostics".into()),
+        ("params", obj([("uri", uri.into()), ("diagnostics", diagnostics.into())])),
+    ])
+}
+
+fn uri_of(params: &Value) -> Result<&str, (i32, String)> {
+    params
+        .at(&["textDocument", "uri"])
+        .as_str()
+        .ok_or((INVALID_PARAMS, "missing textDocument.uri".to_string()))
+}
+
+fn position_of(value: &Value) -> Result<LineCol, (i32, String)> {
+    match (value.get("line").as_u32(), value.get("character").as_u32()) {
+        (Some(line), Some(col)) => Ok(LineCol { line, col }),
+        _ => Err((INVALID_PARAMS, "missing or malformed position".to_string())),
+    }
+}
+
+/// Applies one `contentChanges` entry: a ranged edit, or a full
+/// replacement when it has no range.
+fn apply_change(text: &mut String, change: &Value) -> Result<(), (i32, String)> {
+    let new_text = change
+        .get("text")
+        .as_str()
+        .ok_or((INVALID_PARAMS, "content change without text".to_string()))?;
+    let range = change.get("range");
+    if range.is_null() {
+        *text = new_text.to_string();
+        return Ok(());
+    }
+    let lines = LineIndex::new(text);
+    let start = lines.offset_utf16(position_of(range.get("start"))?, text) as usize;
+    let end = lines.offset_utf16(position_of(range.get("end"))?, text) as usize;
+    if start > end {
+        return Err((INVALID_PARAMS, "content change range ends before it starts".to_string()));
+    }
+    text.replace_range(start..end, new_text);
+    Ok(())
+}
+
+fn position_json(pos: LineCol) -> Value {
+    obj([("line", pos.line.into()), ("character", pos.col.into())])
+}
+
+fn range_json(span: Span, text: &str, lines: &LineIndex) -> Value {
+    obj([
+        ("start", position_json(lines.utf16(span.start, text))),
+        ("end", position_json(lines.utf16(span.end, text))),
+    ])
+}
+
+fn diagnostic_json(diag: &Diagnostic, uri: &str, text: &str, lines: &LineIndex) -> Value {
+    let mut message = diag.message.clone();
+    for note in &diag.notes {
+        message += &format!("\nnote: {note}");
+    }
+    if let Some(help) = &diag.help {
+        message += &format!("\nhelp: {help}");
+    }
+    let severity = match diag.severity {
+        Severity::Error => 1,
+        Severity::Warning => 2,
+        Severity::Note => 3,
+    };
+    let mut members = vec![
+        ("range".to_string(), range_json(diag.span, text, lines)),
+        ("severity".to_string(), Value::from(severity as u32)),
+        ("code".to_string(), diag.code.0.into()),
+        ("source".to_string(), "cpl".into()),
+        ("message".to_string(), message.into()),
+    ];
+    if !diag.labels.is_empty() {
+        let related: Vec<Value> = diag
+            .labels
+            .iter()
+            .map(|label| {
+                obj([
+                    (
+                        "location",
+                        obj([("uri", uri.into()), ("range", range_json(label.span, text, lines))]),
+                    ),
+                    ("message", label.message.as_str().into()),
+                ])
+            })
+            .collect();
+        members.push(("relatedInformation".to_string(), related.into()));
+    }
+    Value::Object(members)
+}
+
+fn symbol_kind(kind: DeclKind) -> u32 {
+    // LSP SymbolKind: Class 5, Enum 10, Interface 11, Function 12,
+    // Variable 13, EnumMember 22, Struct 23, TypeParameter 26.
+    match kind {
+        DeclKind::Value => 13,
+        DeclKind::Fn => 12,
+        DeclKind::Struct => 23,
+        DeclKind::Enum => 10,
+        DeclKind::Variant => 22,
+        DeclKind::Domain | DeclKind::Alias => 26,
+        DeclKind::Trait => 11,
+    }
+}
+
+fn panic_text(panic: &(dyn std::any::Any + Send)) -> String {
+    if let Some(text) = panic.downcast_ref::<&str>() {
+        text.to_string()
+    } else if let Some(text) = panic.downcast_ref::<String>() {
+        text.clone()
+    } else {
+        "unknown panic".to_string()
+    }
+}

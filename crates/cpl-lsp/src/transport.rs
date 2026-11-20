@@ -1,0 +1,78 @@
+//! Reading and writing protocol messages over a byte stream, framed with
+//! `Content-Length` headers.
+
+use crate::json::{self, Value};
+use crate::server::Server;
+use std::io::{self, BufRead, Write};
+
+/// The largest message body accepted. A document sync of a huge file is a
+/// few megabytes; anything past this is a broken client.
+const MAX_BODY: usize = 256 << 20;
+
+/// Reads one message. `Ok(None)` at a clean end of input.
+pub fn read_message(input: &mut impl BufRead) -> io::Result<Option<String>> {
+    let mut length = None;
+    let mut saw_header = false;
+    let mut line = String::new();
+    loop {
+        line.clear();
+        if input.read_line(&mut line)? == 0 {
+            return Ok(None);
+        }
+        let header = line.trim_end_matches(['\r', '\n']);
+        if header.is_empty() {
+            if saw_header {
+                break;
+            }
+            // Stray blank lines between messages are skipped.
+            continue;
+        }
+        saw_header = true;
+        if let Some((name, value)) = header.split_once(':') {
+            if name.eq_ignore_ascii_case("content-length") {
+                length = value.trim().parse::<usize>().ok();
+            }
+        }
+    }
+    let length = length.filter(|n| *n <= MAX_BODY).ok_or_else(|| {
+        io::Error::new(io::ErrorKind::InvalidData, "missing or oversized Content-Length")
+    })?;
+    let mut body = vec![0; length];
+    input.read_exact(&mut body)?;
+    String::from_utf8(body)
+        .map(Some)
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "message body is not UTF-8"))
+}
+
+pub fn write_message(output: &mut impl Write, message: &Value) -> io::Result<()> {
+    let body = message.to_string();
+    write!(output, "Content-Length: {}\r\n\r\n{body}", body.len())?;
+    output.flush()
+}
+
+/// Serves the protocol until the client sends `exit` or closes the input.
+/// Returns the process exit code.
+pub fn serve(mut input: impl BufRead, mut output: impl Write) -> io::Result<i32> {
+    let mut server = Server::new();
+    while let Some(body) = read_message(&mut input)? {
+        let replies = match json::parse(&body) {
+            Ok(message) => server.handle(&message),
+            Err(what) => vec![json::obj([
+                ("jsonrpc", "2.0".into()),
+                ("id", Value::Null),
+                (
+                    "error",
+                    json::obj([("code", Value::Number(-32700.0)), ("message", what.into())]),
+                ),
+            ])],
+        };
+        for reply in &replies {
+            write_message(&mut output, reply)?;
+        }
+        if let Some(code) = server.exit_code() {
+            return Ok(code);
+        }
+    }
+    // The client went away without `exit`.
+    Ok(1)
+}
