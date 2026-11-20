@@ -1,54 +1,59 @@
-`Char` is one ASCII byte. `Str` is a flat array of those bytes. There is no UTF-8 decoding, variable-width character indexing, Unicode normalization, or separate code-point iterator hiding underneath a subscript.
+`Char` is one ASCII byte. `Str` is a flat, value-semantic sequence of those bytes indexed by `0..s.len`. There is no UTF-8 decoding, variable-width character indexing, Unicode normalization, or hidden code-point iterator behind a subscript.
 
-> **Deliberate scope.** Non-ASCII text is outside the `Char`/`Str` contract. A character or string literal must be ASCII, and input for those types must satisfy that constraint. Arbitrary binary data belongs in an explicit byte container, not in a string that silently changes encoding.
+> **Deliberate scope.** Non-ASCII text is outside the `Char`/`Str` contract. Character and string literals must be ASCII. Arbitrary binary bytes belong in an explicit byte container rather than a string that silently changes encoding.
 
-## The familiar array model
+## Value-semantic, `0..len`-indexed `Str`
 
-When the input gives a length, use a domain-indexed character array. This example counts occurrences of a character in a single ASCII token.
+In CP Lang v2, default `Str` behaves like a flat `0..s.len`-indexed ASCII byte sequence with O(1) indexing, O(1) slicing, and strict value semantics:
+
+```cp CP Lang v2
+let s: Str = read()
+let ch = s[0]                   // Char (0..s.len); digit: ch - '0', letter: ch - 'a'
+let sub = s[l..r]               // O(1) slice; also s[..k], s[k..], s.len, s.is_empty
+
+var out = ""
+out.push('a')
+out += "bc" * 3                 // mutable byte buffer when `var`
+
+if s.starts_with("ab", at: i):
+    print(s.split(' '))
+let joined = " ".join("{x}" for x in ans)
+```
+
+Because `Str` has value semantics, `var t = s` moves or copies cleanly without hidden aliasing; call `s.copy()` when you want an independent mutable copy while keeping `s`. You can run `Str` indexing, slicing, concatenation, and ASCII arithmetic directly in the offline [playground](playground.html) (pick **ASCII string scan**).
+
+## Common string helpers
+
+Standard text parsing and formatting helpers live on `Str`:
+
+- Indexing and slices: `s[i]`, `s[l..r]`, `s[..k]`, `s[k..]`, `s.len`, `s.is_empty`.
+- Building: `var out = ""`, `out.push(c)`, `out += t`, `"ab" * k`, `Str(chars)` from `List<Char>`, `sep.join(it)`.
+- Parsing and matching: `s.starts_with(prefix, at: i)`, `s.split(' ')`, `s.split_once(' ')`, `s.trim_start(' ')`, `s.parse_int()`.
+- Character arithmetic: `c - '0'`, `c - 'a'`, `'A' + (c - 'a')`, and character ranges `'a'..='z'`.
+
+## Opt-in nominal character domains
+
+When you are writing a two-string DP (such as LCS or edit distance) and want the compiler to forbid mixing an index into string `a` with an index into string `b`, opt into a nominal character domain `[domain A]Char`:
+
+```cp CP Lang v2
+let a: [domain A]Char = read()
+let b: [domain B]Char = read()
+
+var dp: [A.bounds, B.bounds]Int = 0
+for i in A:
+    for j in B:
+        dp[i.r, j.r] = if a[i] == b[j]: dp[i.l, j.l] + 1
+                       else: max(dp[i.l, j.r], dp[i.r, j.l])
+print(dp[A.last.r, B.last.r])
+```
+
+Swapping an `A` boundary with a `B` boundary is a compile error, and `.l`/`.r` carry the empty-prefix boundary cleanly. When the length is already read into a domain, the same `[S]Char` form works today in both the prototype and WebAssembly:
 
 ```example ascii
 ```
 
-For input `5 abaca`, the result is `3`. Each access selects exactly one byte. The stored character array is contiguous and supports O(1) indexing; there is no walk to the nth UTF-8 code point.
+For input `5` and `abaca`, the result is `3`. Each subscript touches one contiguous byte in O(1).
 
-## A string carries its own index space
+## String algorithms in `std`
 
-In the approved unified design, `Str` is an alias for `[domain]Char`: an owned array packaged with a fresh index type. Opening the package as `s` exposes that type as `s.Idx`. Two independent strings have different position types, even when they have the same length.
-
-The ASCII restriction is implemented in the prototype. The `[domain]Char` package and `s.Idx` interface are still design-only.
-
-```cp CP Lang · design
-let s: Str = read()
-let t: Str = read()
-
-for i in s.Idx:
-    print(s[i])
-```
-
-`t[s.Idx.first!]` is not a shortcut for the first character of `t`; it mixes two index spaces. The `!` would also require that `s` is nonempty. Use positions belonging to the string you actually want.
-
-## Slices and boundaries are shared tools
-
-`s[l..=r]` lends a character slice just as `a[l..=r]` lends an integer slice. It does not allocate a substring. `.copy()` explicitly makes independent storage. Whole-slice operations and iteration can prove membership; an arbitrary parent position needs a window check.
-
-For a two-string DP, put the empty prefix on a boundary rather than inventing an extra numeric row and column:
-
-```cp CP Lang · design fragment
-var dp: [s.Idx.bounds, t.Idx.bounds]Int = 0
-for i in s.Idx:
-    for j in t.Idx:
-        dp[i.r, j.r] = if s[i] == t[j]: dp[i.l, j.l] + 1
-                       else: max(dp[i.l, j.r], dp[i.r, j.l])
-```
-
-This is the LCS recurrence expressed over the two strings' own indices. Swapping an `s` boundary with a `t` boundary is a type error. `.l` and `.r` have the same meaning here as they do in [integer prefix sums](indices.html#prefix-sums-without-shifts).
-
-## Owning collections of strings
-
-`List<Str>` can hold strings of different lengths because each element owns its own package. A string opened while iterating is lent for that iteration. Keep `.copy()` if the result needs independent ownership, rather than storing a borrowed window.
-
-String equality, ordering, and hashing compare contents; sharing an index type is not required to compare two strings. Build growing text with `List<Char>`, then freeze/package it as a `Str`. The library is responsible for these operations, not a second string-only type system.
-
-## String algorithms, not string magic
-
-The standard-library plan includes prefix functions, Z-functions, hashing, and suffix arrays. They should accept the same bounded character arrays as ordinary sequence code. The [Searching for Strings port](https://github.com/ryanbai1412/cp-lang/blob/main/proto/ports/ccc20s3.cp) is a concrete prototype example: character domains for letter counts, a moving window, and substring hashes.
+The standard library provides `z_function(s)`, `prefix_function(s)`, `palindromes(s)`, `SuffixArray(s)` (`.sa`, `.lcp`), and double-salted `RollingHash(s)` (`.get(l..r)`), all operating directly on flat ASCII bytes. For a real multi-DP string port using `0..n`-indexed `Str`, see the [Cheerio '1 S5 showcase](index.html#showcase-cheerio1s5).

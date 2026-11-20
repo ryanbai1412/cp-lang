@@ -1,12 +1,10 @@
-Start with the [interactive course](course.html): six progressive chapters with
-worked examples, hints, solutions, and checked exercises. This guide remains
-the reference for individual language concepts.
+Start with the [interactive course](course.html) for six progressive chapters with worked examples and checked exercises, keep the [one-page cheat sheet](cheat-sheet.html) open during contests, or run code directly in the [offline playground](playground.html).
 
-CP Lang is a language for competitive programming that targets C++17. Keep the algorithms you know. Replace index arithmetic, sentinel values, and repeated bookkeeping with types that say what you mean.
+CP Lang is a language for competitive programming that compiles to clean, readable C++17. Keep the algorithms you know. Replace index arithmetic, sentinel values, and repeated bookkeeping with types and helpers that say what you mean.
 
 Start with [your first program](getting-started.html), take the [language tour](tour.html), or go straight to [index spaces](indices.html).
 
-```cp Prefix sums · the approved design
+```cp Prefix sums · CP Lang v2
 let n: 1..=2e5 = read()
 domain V = 1..=n
 let a: [V]Int = read()
@@ -23,22 +21,30 @@ An element has a boundary on its left, `.l`, and on its right, `.r`. Prefix sums
 
 ## One idea, fewer special cases
 
-A vertex, an edge, and a character position are all bounded indices. Arrays, grids, and strings use the same indexing mechanism. A row or a slice is temporary access to existing storage, not a hidden copy.
+A vertex, an edge, a grid cell `(Row, Col)`, and an enum variant all share one bounded-index mechanism (`Index`). When you just want a plain integer-indexed array without declaring a domain, write `[0..n]T` or `[0..=k]T` and reset it with `a.fill(x)`. Strings (`Str`) are flat, value-semantic `0..len`-indexed ASCII byte sequences, with `[domain S]Char` available when you want nominal character positions.
 
-The language core stays small. Domains expand to sealed structs implementing `Index`. Containers and their projections are library code. You can understand the rules once, then use them in your own library.
+The language core stays small (40 reserved keywords, zero lifetime annotations). Containers, `lends` projections, `Monoid(id, op)`, `Action`, `MonoDeque`, `compress(all)`, and `Rooted` are ordinary userland code you can read and extend in your own local library.
+
+## CP Lang v2 Showcase
+
+Five real contest submissions from `corpus/submissions/` rethought idiomatically in CP Lang v2 (`proto/ports/`). Both raw C++17 line counts and library-stripped counts (removing template headers and standard data structures) are reported from each batch's verified `loc.py`.
+
+```showcase
+```
 
 ## A path through the language
 
-1. [Getting started](getting-started.html) — install the development CLI and run a prototype example.
-2. [A quick tour](tour.html) — values, optional results, loops, functions, and program structure.
-3. [Index spaces & bounds](indices.html) — put positions and the gaps between them in different types.
-4. [Ownership & borrowing](borrowing.html) — use `lends`, not lifetime annotations.
-5. [ASCII strings](strings.html) — flat character arrays with their own index spaces.
-6. [Memoization & stress tests](testing.html) — cache recurrences and compare fast code with a brute.
-7. [The standard library](stdlib.html) — reuse the familiar tools, or write your own.
+1. [One-page cheat sheet](cheat-sheet.html) — every CP Lang v2 construct, collection, and stdlib helper on one page.
+2. [Getting started](getting-started.html) — install `cpl` and run your first native binary.
+3. [A quick tour](tour.html) — values, `?T` optionals, parallel assignment, `defer`, and `@multitest`.
+4. [Index spaces & bounds](indices.html) — `[0..n]T`, nominal domains, `.l`/`.r` boundaries, `p.adj4`/`p.adj8`, and `compress(all)`.
+5. [Ownership & borrowing](borrowing.html) — explicit `mut`, `lends`, and `law disjoint` without lifetime annotations.
+6. [ASCII strings](strings.html) — value-semantic `0..len`-indexed `Str` and opt-in `[domain S]Char`.
+7. [Memoization & stress tests](testing.html) — `@memo`, `@brute`, `@checker`, `@interactor`, and shrinking.
+8. [The standard library](stdlib.html) — `MonoDeque`, `bsearch_first`, bare ops / `Monoid(id, op)`, `Action`, `desc(x)`, and `Rooted`.
 
 ## Know what you can run
 
-> **Development edition.** This guide describes the approved language design, not a finished release. Blocks marked **prototype tested** compile and run in the Python prototype. Blocks marked **design** explain the intended language and are not advertised as runnable. The Rust CLI checks, interprets, and emits C++17 for its supported subset and serves the LSP; advanced prototype features may still be unsupported in Rust.
+> **Development edition.** This guide teaches the locked **CP Lang v2** specification (`docs/one-page-cheat-sheet.md`, `decisions.md` §16–§17). Blocks marked **prototype tested** compile and run in the Python prototype and in the offline WebAssembly [playground](playground.html). Blocks marked **CP Lang v2** show the locked language design where the Rust compiler and prototype are still catching up.
 
-The [getting-started chapter](getting-started.html#what-works-today) separates working commands from the target workflow. There is no pretend Run button: examples run locally against the actual prototype. The [design decisions](https://github.com/ryanbai1412/cp-lang/blob/main/decisions.md) and [plan](https://github.com/ryanbai1412/cp-lang/tree/main/plan) explain the rationale and remaining work.
+The [getting-started chapter](getting-started.html#what-works-today) separates working commands from planned ones. The [design decisions](https://github.com/ryanbai1412/cp-lang/blob/main/decisions.md) and [v2 architecture](https://github.com/ryanbai1412/cp-lang/blob/main/research/language-architecture-v2.md) record the rationale for every feature.

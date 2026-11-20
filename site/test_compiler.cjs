@@ -36,7 +36,7 @@ vm.runInNewContext(fs.readFileSync(path.join(__dirname, "_build/assets/compiler.
 const compiler = context.CpCompiler;
 after(() => compiler.stop());
 
-test("the generated runtime executes all examples and course predictions in real WASM", async () => {
+test("the generated runtime executes all examples, playground presets, and course predictions in real WASM", async () => {
   const manifests = ["foundations", "advanced"].flatMap(name => JSON.parse(fs.readFileSync(path.join(__dirname, `course/${name}.json`))));
   for (const lesson of manifests) for (const exercise of lesson.exercises) {
     if (exercise.kind !== "output") continue;
@@ -46,6 +46,27 @@ test("the generated runtime executes all examples and course predictions in real
       assert.equal(result.ok, true, result.stderr);
       assert.equal(result.stdout.trim(), expected.trim(), exercise.id);
     }
+  }
+  const pgHtml = fs.readFileSync(path.join(__dirname, "_build/playground.html"), "utf8");
+  const m = pgHtml.match(/<script id="playground-examples" type="application\/json">(.*?)<\/script>/s);
+  assert.ok(m, "playground-examples payload missing");
+  const presets = JSON.parse(m[1]);
+  const expectedOutputs = {
+    sum: "14",
+    bounds: "14",
+    knapsack: "9",
+    range_array: "1 1 3 0 1",
+    "str-scan": "5 11",
+    accumulation: "6",
+    ascii: "3",
+    optional: "8",
+    memo: "45",
+  };
+  assert.equal(presets.length, Object.keys(expectedOutputs).length);
+  for (const preset of presets) {
+    const result = await compiler.call("run", preset.source, preset.stdin);
+    assert.equal(result.ok, true, `${preset.id}: ${result.stderr}`);
+    assert.equal(result.stdout.trim(), expectedOutputs[preset.id], preset.id);
   }
 });
 

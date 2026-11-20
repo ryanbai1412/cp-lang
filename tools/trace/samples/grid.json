@@ -4,25 +4,25 @@
   "description": "Watch a wavefront find the shortest route around blocked cells.",
   "source": {
     "file": "maze.cp",
-    "code": "fn shortest_path(maze, start, goal):\n    var distance = Grid(maze.shape, none)\n    var queue = Queue(start)\n    distance[start] = 0\n    while let cell = queue.pop():\n        for next in maze.neighbors4(cell):\n            if maze[next] == '#' or distance[next] != none: continue\n            distance[next] = distance[cell] + 1\n            queue.push(next)\n    distance[goal]\n"
+    "code": "fn shortest_path(maze: [Row, Col]Char, start: Cell, goal: Cell) -> ?Int:\n    var distance: [Row, Col]?Int = none\n    var queue: Deque<Cell> = [start]\n    distance[start] = 0\n    while let cell = queue.pop_front():\n        for next in cell.adj4:\n            if maze[next] == '#' or distance[next].is_some: continue\n            distance[next] = distance[cell]! + 1\n            queue.push(next)\n    distance[goal]\n"
   },
   "variables": {
     "maze": {
       "name": "maze",
       "kind": "grid",
-      "type": "Grid<Char>",
+      "type": "[Row, Col]Char",
       "rowDomain": "Row",
       "colDomain": "Col"
     },
     "distance": {
       "name": "distance",
       "kind": "dp",
-      "type": "Grid<?Int>"
+      "type": "[Row, Col]?Int"
     },
     "queue": {
       "name": "frontier",
       "kind": "array",
-      "type": "Queue<(Row, Col)>"
+      "type": "Deque<Cell>"
     }
   },
   "runs": {

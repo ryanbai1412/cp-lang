@@ -4,7 +4,7 @@ Variables own their values. Function parameters borrow them for the call. A proj
 
 ## Own it, borrow it, or copy it
 
-```cp CP Lang · design fragment
+```cp CP Lang v2
 fn total(a: [V]Int) -> Int:
     sum(a)
 
@@ -22,7 +22,7 @@ While a place is borrowed mutably, other code cannot read or write the same plac
 
 An ordinary function uses `->` to return an owned value. A projection uses `lends` to give temporary access to a place in its receiver, and `lend` in its body to identify that place.
 
-```cp Library implementation · design fragment
+```cp Library implementation · CP Lang v2
 impl Array<(A, B), T>:
     pub fn row(self, r: A) lends mut [B]T:
         law disjoint(r, q) = r != q
@@ -31,12 +31,12 @@ impl Array<(A, B), T>:
 
 This library fragment assumes the array's private buffer `buf` and index types `A` and `B`. It lends a contiguous row; it does not copy the row's elements. `lends T` only permits reading. `lends mut T` permits mutation when the caller holds the receiver mutably and the use asks for mutation. It does not turn a read-only receiver into a mutable one.
 
-```cp CP Lang · design fragment
+```cp CP Lang v2
 let row = grid.row(r)
 print(sum(row))
 ```
 
-The local `row` is temporary access to `grid`, not an owner. A mutating use such as `grid.row(r).sort()` holds the corresponding mutable lend for that statement.
+The local `row` is temporary access to `grid`, not an owner. A mutating use such as `sort(mut grid.row(r))` holds the corresponding mutable lend for that statement.
 
 ## Why there are no lifetime annotations
 
@@ -44,22 +44,22 @@ CP Lang does not ask you to name how long references live. It restricts where a 
 
 The implementation model is an `inline` callback: a projection runs the caller's use of the lent place while the owner is still available. Binding a lend to `let` puts the rest of that block inside the callback. The checker can see the whole use; there is no returned reference whose lifetime must be related to some other reference.
 
-That is the tradeoff, not a promise that arbitrary Rust borrowing works without annotations. Structures that must remember identity use plain indices or pool handles. Functions that find a useful window return a `Range<V>`, then the caller reopens `a[window]` when needed. If you truly want independent storage, ask for `.copy()`.
+That is the tradeoff, not a promise that arbitrary Rust borrowing works without annotations. Structures that must remember identity use plain indices or `List.push_id` handles. Functions that find a useful sub-range return a `Range<V>`, then the caller reopens `a[span]` when needed. If you truly want independent storage, ask for `.copy()`.
 
-```cp CP Lang · design fragment
-let window: Range<V> = find_window(a)  // plain data: two boundaries
-let part = a[window]                   // a lexical lend, used here
+```cp CP Lang v2
+let span: Range<V> = find_span(a)      // plain data: two boundaries
+let part = a[span]                     // a lexical lend, used here
 print(sum(part))
-let saved = part.copy()               // owned data may escape
+let saved = part.copy()                // owned data may escape
 ```
 
-`find_window` above is an ordinary user helper returning a range. It must not return a borrowed slice. Returning the recipe for access is simpler than returning access itself.
+`find_span` above is an ordinary user helper returning a range. It must not return a borrowed slice. Returning the recipe for access is simpler than returning access itself.
 
 ## Prove two accesses do not overlap
 
 The array's element projection declares this law:
 
-```cp Library contract · design fragment
+```cp Library contract · CP Lang v2
 fn at(self, i: I) lends mut T:
     law disjoint(i, j) = i != j
     // implementation lends the element at i
@@ -67,7 +67,7 @@ fn at(self, i: I) lends mut T:
 
 The law says when two lends through that same projection are separate. It does not assert that every call is safe. The checker must prove the condition at the call site.
 
-```cp CP Lang · design fragment
+```cp CP Lang v2
 if i != j:
     merge_into(mut counts[i], counts[j])
 ```
@@ -76,7 +76,7 @@ Without the guard or another proof of `i != j`, the two elements might alias, so
 
 For two ranges, the law is that one ends before the other begins: `s.hi <= t.lo or t.hi <= s.lo`. Adjacent halves can therefore be lent separately:
 
-```cp CP Lang · design fragment
+```cp CP Lang v2
 solve(mut a[l.l..m.l], mut a[m.l..r.r])
 ```
 

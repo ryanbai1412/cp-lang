@@ -4,13 +4,13 @@
   "description": "An in-place array, a moving boundary, and every write made visible.",
   "source": {
     "file": "sort.cp",
-    "code": "fn insertion_sort(a):\n    for i in 1..a.len:\n        let key = a[i]\n        var j = i\n        while j > 0 and a[j - 1] > key:\n            a[j] = a[j - 1]\n            j -= 1\n        a[j] = key\n    a\n"
+    "code": "fn insertion_sort(mut a: [0..n]Int):\n    for i in 1..n:\n        let key = a[i]\n        var j = i\n        while j > 0 and a[j - 1] > key:\n            a[j] = a[j - 1]\n            j -= 1\n        a[j] = key\n"
   },
   "variables": {
     "a": {
       "name": "a",
       "kind": "array",
-      "type": "[Position]Int",
+      "type": "[0..n]Int",
       "labels": [
         0,
         1,
@@ -982,8 +982,8 @@
         },
         {
           "id": 33,
-          "line": 9,
-          "label": "Return the sorted array",
+          "line": 8,
+          "label": "Array is sorted in place",
           "stage": "Output",
           "values": {
             "a": [

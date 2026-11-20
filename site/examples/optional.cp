@@ -1,7 +1,9 @@
-domain V = 1..=3
-let a: [V]Int = [V] v => v.to_idx * 10
+let n: 1..=100 = read()
+domain V = 1..=n
+let a: [V]Int = read()
+
+var best: ?Int = none
 for v in V:
-    if let p = v.prev:
-        print(a[v] - a[p])
-    else:
-        print(0)
+    if a[v] % 2 == 0:
+        best = max(best ?? a[v], a[v])
+print(best ?? -1)

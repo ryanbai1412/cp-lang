@@ -24,23 +24,23 @@ def step(steps, line, label, values, *, checkpoint=None, focus=None, locals=None
 
 def knapsack():
     trace = base("0/1 knapsack", "A reused item hides in a single DP transition. Compare the optimized run with its reference.",
-                 "knapsack.cp", """fn knapsack(weights, values, capacity):
-    var dp = table(5, capacity + 1, 0)
-    for i in 1..=4:
-        for c in 1..=capacity:
-            dp[i][c] = dp[i - 1][c]
-            if c >= weights[i - 1]:
-                let rest = c - weights[i - 1]
-                dp[i][c] = max(dp[i][c],
-                    dp[i][rest] + values[i - 1])
-    dp[4][capacity]
+                 "knapsack.cp", """fn knapsack(w: [I]Int, v: [I]Int, cap: Int) -> Int:
+    var dp: [I.bounds, 0..=cap]Int = 0
+    for i in I:
+        for c in 1..=cap:
+            dp[i.r, c] = dp[i.l, c]
+            if c >= w[i]:
+                let rest = c - w[i]
+                dp[i.r, c] max=
+                    dp[i.r, rest] + v[i]
+    dp[I.last.r, cap]
 
-// spec uses dp[i - 1][rest] on line 9
+// spec uses dp[i.l, rest] on line 9
 // Each item may be chosen at most once.
 """, {
-        "dp": variable("dp", "dp", "[Item][Capacity]Int", rowLabels=["∅", "w=2", "w=3", "w=4", "w=5"], colLabels=list(range(9)), rowDomain="Item", colDomain="Capacity"),
-        "weights": variable("weights", "array", "[Item]Int", labels=list(range(4))),
-        "values": variable("values", "array", "[Item]Int", labels=list(range(4))),
+        "dp": variable("dp", "dp", "[I.bounds, 0..=cap]Int", rowLabels=["∅", "w=2", "w=3", "w=4", "w=5"], colLabels=list(range(9)), rowDomain="I.bounds", colDomain="0..=cap"),
+        "weights": variable("weights", "array", "[I]Int", labels=list(range(4))),
+        "values": variable("values", "array", "[I]Int", labels=list(range(4))),
         "answer": variable("answer", "scalar", "?Int")})
     trace["runs"]["fast"]["label"] = "knapsack"
     trace["runs"]["slow"] = dict(label="knapsack_spec", steps=[])
@@ -69,20 +69,21 @@ def knapsack():
 
 
 def dijkstra():
-    trace = base("Shortest paths", "Follow the frontier as Dijkstra settles a weighted graph.", "dijkstra.cp", """fn shortest_paths(g, start):
-    var dist = [Vertex]none
+    trace = base("Shortest paths", "Follow the frontier as Dijkstra settles a weighted graph.", "dijkstra.cp", """fn shortest_paths(g: Graph<V, Int>, start: V) -> [V]?Int:
+    var dist: [V]?Int = none
     dist[start] = 0
-    var queue = MinHeap((0, start))
+    var queue = MinHeap<(Int, V)>()
+    queue.push((0, start))
     while let (d, u) = queue.pop():
-        if d != dist[u]: continue
-        for (v, weight) in g.neighbors(u):
-            if dist[v] == none or d + weight < dist[v]:
-                dist[v] = d + weight
-                queue.push((dist[v], v))
+        if dist[u] != d: continue
+        for (v, w) in g[u]:
+            if dist[v].is_none or d + w < dist[v]!:
+                dist[v] = d + w
+                queue.push((d + w, v))
     dist
-""", {"graph": variable("g", "graph", "Graph<Vertex, Int>", directed=False),
-        "dist": variable("dist", "array", "[Vertex]?Int", labels=list("ABCDEFG")),
-        "queue": variable("frontier", "array", "MinHeap<(Int, Vertex)>" )})
+""", {"graph": variable("g", "graph", "Graph<V, Int>", directed=False),
+        "dist": variable("dist", "array", "[V]?Int", labels=list("ABCDEFG")),
+        "queue": variable("frontier", "array", "MinHeap<(Int, V)>")})
     nodes = [dict(id=i, label=label, x=x, y=y) for i, (label, x, y) in enumerate(zip("ABCDEFG", [60, 195, 195, 335, 335, 465, 465], [160, 65, 255, 65, 255, 125, 280]))]
     links = [(0, 1, 4), (0, 2, 2), (1, 2, 1), (1, 3, 5), (2, 4, 3), (3, 4, 2), (3, 5, 3), (4, 5, 6), (4, 6, 4), (5, 6, 1)]
     graph = dict(nodes=nodes, edges=[dict(id=i, **{"from": a, "to": b}, weight=w) for i, (a, b, w) in enumerate(links)])
@@ -110,22 +111,21 @@ def dijkstra():
                 heapq.heappush(queue, (candidate, v))
                 nodes[v]["state"] = "frontier"
                 state["queue"] = [[a, chr(65+b)] for a, b in sorted(queue)]
-                step(steps, 9, f"Relax {chr(65+u)} → {chr(65+v)}", state, focus=dict(variable="graph", path=["edges", edge["id"]]), locals=dict(u=chr(65+u), v=chr(65+v), candidate=candidate))
-    step(steps, 11, "All shortest paths are settled", state, stage="Output")
+                step(steps, 10, f"Relax {chr(65+u)} → {chr(65+v)}", state, focus=dict(variable="graph", path=["edges", edge["id"]]), locals=dict(u=chr(65+u), v=chr(65+v), candidate=candidate))
+    step(steps, 12, "All shortest paths are settled", state, stage="Output")
     return trace
 
 
 def tree():
-    trace = base("Subtree sizes", "A postorder walk turns a rooted tree into subtree counts.", "subtree.cp", """fn subtree_sizes(tree, root):
-    var size = [Vertex]1
-    fn visit(u, parent):
-        for v in tree.neighbors(u):
-            if v == parent: continue
-            visit(v, u)
+    trace = base("Subtree sizes", "A postorder walk turns a rooted tree into subtree counts.", "subtree.cp", """fn subtree_sizes(tree: Rooted<V>) -> [V]Int:
+    var size: [V]Int = 1
+    fn visit(u: V):
+        for v in tree.children(u):
+            visit(v)
             size[u] += size[v]
-    visit(root, none)
+    visit(tree.root)
     size
-""", {"tree": variable("tree", "tree", "Tree<Vertex>", root=0), "size": variable("size", "array", "[Vertex]Int", labels=list("ABCDEFG")), "stack": variable("call stack", "array", "[Depth]Vertex")})
+""", {"tree": variable("tree", "tree", "Rooted<V>", root=0), "size": variable("size", "array", "[V]Int", labels=list("ABCDEFG")), "stack": variable("call stack", "array", "List<V>")})
     nodes = [dict(id=i, label=c) for i, c in enumerate("ABCDEFG")]
     edges = [dict(id=i, **{"from": a, "to": b}) for i, (a, b) in enumerate([(0, 1), (0, 2), (1, 3), (1, 4), (2, 5), (2, 6)])]
     state = dict(tree=dict(nodes=nodes, edges=edges), size=[1]*7, stack=[])
@@ -140,27 +140,27 @@ def tree():
                 v = e["to"]
                 visit(v)
                 state["size"][u] += state["size"][v]
-                step(steps, 7, f"Accumulate size[{chr(65+u)}] += {state['size'][v]}", state, focus=dict(variable="size", path=[u]), locals=dict(u=chr(65+u), v=chr(65+v)))
+                step(steps, 6, f"Accumulate size[{chr(65+u)}] += {state['size'][v]}", state, focus=dict(variable="size", path=[u]), locals=dict(u=chr(65+u), v=chr(65+v)))
         nodes[u]["state"] = "visited"
         state["stack"].pop()
-        step(steps, 6, f"Finish subtree {chr(65+u)}", state, focus=dict(variable="tree", path=["nodes", u]))
+        step(steps, 5, f"Finish subtree {chr(65+u)}", state, focus=dict(variable="tree", path=["nodes", u]))
     visit(0)
-    step(steps, 9, "Return subtree sizes", state, stage="Output")
+    step(steps, 8, "Return subtree sizes", state, stage="Output")
     return trace
 
 
 def grid():
-    trace = base("Maze breadth-first search", "Watch a wavefront find the shortest route around blocked cells.", "maze.cp", """fn shortest_path(maze, start, goal):
-    var distance = Grid(maze.shape, none)
-    var queue = Queue(start)
+    trace = base("Maze breadth-first search", "Watch a wavefront find the shortest route around blocked cells.", "maze.cp", """fn shortest_path(maze: [Row, Col]Char, start: Cell, goal: Cell) -> ?Int:
+    var distance: [Row, Col]?Int = none
+    var queue: Deque<Cell> = [start]
     distance[start] = 0
-    while let cell = queue.pop():
-        for next in maze.neighbors4(cell):
-            if maze[next] == '#' or distance[next] != none: continue
-            distance[next] = distance[cell] + 1
+    while let cell = queue.pop_front():
+        for next in cell.adj4:
+            if maze[next] == '#' or distance[next].is_some: continue
+            distance[next] = distance[cell]! + 1
             queue.push(next)
     distance[goal]
-""", {"maze": variable("maze", "grid", "Grid<Char>", rowDomain="Row", colDomain="Col"), "distance": variable("distance", "dp", "Grid<?Int>"), "queue": variable("frontier", "array", "Queue<(Row, Col)>")})
+""", {"maze": variable("maze", "grid", "[Row, Col]Char", rowDomain="Row", colDomain="Col"), "distance": variable("distance", "dp", "[Row, Col]?Int"), "queue": variable("frontier", "array", "Deque<Cell>")})
     maze = [list(s) for s in ["S..#....", ".#.#.##.", ".#......", "...##.#.", ".#....#.", "...#...G"]]
     dist = [[None]*8 for _ in range(6)]
     dist[0][0] = 0
@@ -180,16 +180,15 @@ def grid():
 
 
 def array():
-    trace = base("Insertion sort", "An in-place array, a moving boundary, and every write made visible.", "sort.cp", """fn insertion_sort(a):
-    for i in 1..a.len:
+    trace = base("Insertion sort", "An in-place array, a moving boundary, and every write made visible.", "sort.cp", """fn insertion_sort(mut a: [0..n]Int):
+    for i in 1..n:
         let key = a[i]
         var j = i
         while j > 0 and a[j - 1] > key:
             a[j] = a[j - 1]
             j -= 1
         a[j] = key
-    a
-""", {"a": variable("a", "array", "[Position]Int", labels=list(range(8))), "key": variable("key", "scalar", "?Int")})
+""", {"a": variable("a", "array", "[0..n]Int", labels=list(range(8))), "key": variable("key", "scalar", "?Int")})
     state = dict(a=[7, 3, 8, 2, 6, 1, 5, 4], key=None)
     steps = trace["runs"]["fast"]["steps"]
     step(steps, 1, "Read eight unsorted values", state, stage="Input")
@@ -204,7 +203,7 @@ def array():
             j -= 1
         a[j] = key
         step(steps, 8, f"Insert {key} at position {j}", state, focus=dict(variable="a", path=[j]), locals=dict(i=i,j=j))
-    step(steps, 9, "Return the sorted array", state, stage="Output")
+    step(steps, 8, "Array is sorted in place", state, stage="Output")
     return trace
 
 

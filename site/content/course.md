@@ -1,35 +1,17 @@
-## Learn by solving
+This course takes you from your first working program to the full CP Lang v2 model: structural range arrays, nominal domains, `.l`/`.r` boundaries, grids with `p.adj4`/`p.adj8`, value-semantic `Str`, lexical borrowing with `lends`, bare operators / `Monoid(id, op)` / `Action`, `Rooted<V>`, and `@brute`/`@checker`/`@interactor` verification.
 
-Six chapters take you from a small program to typed indices, lexical borrowing,
-generic algorithms, and testing a contest solution. Read the worked examples,
-try each question before opening its hint, then check your reasoning.
-You can visit chapters in any order; the sequence builds the ideas step by step.
+Each chapter teaches one idea from first principles, walks through a concrete program, and ends with checked exercises whose tests run locally in WebAssembly inside this page.
 
 ```course
 ```
 
-## What you can run
+## How the interactive exercises work
 
-**Prototype-tested examples** run through the real Python-to-C++17 toolchain
-in this site's test suite. In the [example playground](playground.html), you
-can change their input and run equivalent JavaScript implementations offline.
-Prediction exercises check your output against those same tested programs.
-Knowledge checks test your understanding of the approved design, not a compiler.
+Every chapter includes a runnable worked program and two or three exercises. Code exercises compile and execute your edited CP Lang source through the real Rust `cpl` compiler and interpreter bundled as WebAssembly right inside the page (no network required). Conceptual exercises check your prediction about types, bounds, ownership, or runtime behavior with immediate explanations.
 
-**Design fragments** explain where the language is headed. They are labeled,
-not presented as working compiler features. The [implementation status](getting-started.html#what-works-today)
-explains the Rust frontend and Python prototype separately. Arbitrary editable
-CP Lang source still runs in the local toolchain, not in this browser.
+Progress is stored only in `localStorage` on your device. No account, server, or network access is required.
 
-## Keep a local feedback loop
+## Two ways to read
 
-For a runnable example, copy the source into a scratch directory before invoking
-the prototype (its CLI stamps the file). Change one thing, predict the effect,
-then run it. Keep the original input and a tiny counterexample when a prediction
-fails. Later chapters turn that habit into generators, reference solutions,
-and trace comparisons.
-
-Exercises save checked answers locally when browser storage is available.
-Hints and solutions are always available and opening one does not mark a check
-complete. Reset on an exercise clears its answer and progress. For quick lookups,
-the [language guide](index.html) remains available alongside the course.
+- **Learn end to end:** start at [Chapter 1](course-first-program.html) and work forward. Each chapter assumes only the previous ones.
+- **Look up a single topic:** use the [one-page cheat sheet](cheat-sheet.html), the [reference guide](index.html), or the [offline playground](playground.html) to experiment directly.

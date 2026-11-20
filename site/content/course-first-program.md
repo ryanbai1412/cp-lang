@@ -31,7 +31,7 @@ The constraint does three jobs at once:
 
 - **Validation.** In the approved design, a local build that reads `0` for `n` stops at the read instead of producing a confusing wrong answer later; the judge build skips the check. The prototype does not validate reads yet, so treat this as the target behavior.
 - **Storage.** A range-typed array element uses the smallest width that fits, while arithmetic still happens in 64-bit `Int`.
-- **Generation.** The stress tester uses the same declarations to produce legal random inputs; see [memoization & stress tests](testing.html#turn-input-into-a-specification).
+- **Generation.** The stress tester uses the same declarations to produce legal random inputs; see [memoization & stress tests](testing.html).
 
 A constraint can mention an earlier value. This is the common "`1 <= k <= n`" line from a statement, and it runs in the prototype:
 
