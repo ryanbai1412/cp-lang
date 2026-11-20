@@ -40,7 +40,12 @@ fn check(path: &Path) -> cpl_cli::Outcome {
 /// Files written in syntax that reached `main` after this checker did,
 /// which it does not read yet. A file leaves this list when it checks
 /// clean, and the test below says so.
-const PENDING: &[&str] = &[];
+const PENDING: &[&str] = &[
+    // `runs` and `distinct`, which `proto/cpc` has and the prelude here does not.
+    "proto/ports/ccc10s4.cp",
+    "proto/ports/dpy.cp",
+    "proto/ports/noip07p1.cp",
+];
 
 /// Passing tests the language has since moved away from, which the
 /// prototype rejects too: `offset_check` indexes with `i + 1`, and a step
