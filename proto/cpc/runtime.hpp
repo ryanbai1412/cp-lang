@@ -377,6 +377,73 @@ template <class M> struct CpComb {
     M arrange(ll n, ll k, int line) const { if (k < 0 || k > n || n < 0) return M(0); chk(n, line); return f[(size_t)n] * g[(size_t)(n - k)]; }
 };
 
+// Range structures over a domain (cheat sheet section 11). Ranges arrive as half-open Rng of ordinals.
+struct CpFenwick {
+    int n = 0; vector<ll> t;
+    CpFenwick() {}
+    explicit CpFenwick(ll n_) : n((int)n_), t((size_t)n_ + 1, 0) {}
+    template <class A> CpFenwick(ll n_, const A& a) : n((int)n_), t((size_t)n_ + 1, 0) {
+        for (int i = 1; i <= n; ++i) { t[i] += (ll)a[i - 1]; int j = i + (i & -i); if (j <= n) t[j] += t[i]; }
+    }
+    void add(int i, ll d) { for (++i; i <= n; i += i & -i) t[i] += d; }
+    ll pre(ll k) const { ll s = 0; for (; k > 0; k -= k & -k) s += t[k]; return s; }
+    ll sum(Rng r) const { return r.lo < r.hi ? pre(r.hi) - pre(r.lo) : 0; }
+};
+struct CpSparse {
+    vector<vector<ll>> t; ll id = 0; std::function<ll(ll, ll)> op;
+    CpSparse() {}
+    template <class A, class F> CpSparse(const A& a, ll id_, F f) : id(id_), op(f) {
+        t.emplace_back(a.begin(), a.end());
+        for (size_t k = 1; (size_t(1) << k) <= t[0].size(); ++k) {
+            t.emplace_back(t[0].size() - (size_t(1) << k) + 1);
+            for (size_t i = 0; i < t[k].size(); ++i) t[k][i] = op(t[k - 1][i], t[k - 1][i + (size_t(1) << (k - 1))]);
+        }
+    }
+    ll fold(Rng r, int line) const {
+        if (r.lo >= r.hi) cp_fail("SparseTable.fold of an empty range", line);
+        int k = 63 - __builtin_clzll((unsigned long long)(r.hi - r.lo));
+        return op(t[k][(size_t)r.lo], t[k][(size_t)(r.hi - (1LL << k))]);
+    }
+};
+// LazySegTree with a stock tag: range add or range assign, folded by sum, min or max
+struct CpLazy {
+    int n = 0; bool assign = false; int kind = 0; vector<ll> v, lz; vector<char> has;
+    CpLazy() {}
+    CpLazy(ll n_, int assign_, int kind_) : n((int)max<ll>(n_, 1)), assign(assign_), kind(kind_), v(4 * (size_t)n, 0), lz(4 * (size_t)n, 0), has(4 * (size_t)n, 0) { real = (int)n_; }
+    template <class A> CpLazy(ll n_, int assign_, int kind_, const A& a) : CpLazy(n_, assign_, kind_) { if (real) build(1, 0, n - 1, a); }
+    int real = 0;
+    ll join(ll a, ll b) const { return kind == 0 ? a + b : kind == 1 ? min(a, b) : max(a, b); }
+    template <class A> void build(int o, int l, int r, const A& a) {
+        if (l == r) { v[o] = (ll)a[l]; return; }
+        int m = (l + r) / 2; build(2 * o, l, m, a); build(2 * o + 1, m + 1, r, a); v[o] = join(v[2 * o], v[2 * o + 1]);
+    }
+    void put(int o, int l, int r, ll x) {
+        if (assign) { v[o] = kind == 0 ? x * (r - l + 1) : x; lz[o] = x; }
+        else { v[o] += kind == 0 ? x * (r - l + 1) : x; lz[o] = has[o] ? lz[o] + x : x; }
+        has[o] = 1;
+    }
+    void push(int o, int l, int r) {
+        if (!has[o]) return;
+        int m = (l + r) / 2; put(2 * o, l, m, lz[o]); put(2 * o + 1, m + 1, r, lz[o]); has[o] = 0; lz[o] = 0;
+    }
+    void apply(int o, int l, int r, int ql, int qr, ll x) {
+        if (ql <= l && r <= qr) { put(o, l, r, x); return; }
+        push(o, l, r); int m = (l + r) / 2;
+        if (ql <= m) apply(2 * o, l, m, ql, qr, x);
+        if (qr > m) apply(2 * o + 1, m + 1, r, ql, qr, x);
+        v[o] = join(v[2 * o], v[2 * o + 1]);
+    }
+    ll fold(int o, int l, int r, int ql, int qr) {
+        if (ql <= l && r <= qr) return v[o];
+        push(o, l, r); int m = (l + r) / 2;
+        if (qr <= m) return fold(2 * o, l, m, ql, qr);
+        if (ql > m) return fold(2 * o + 1, m + 1, r, ql, qr);
+        return join(fold(2 * o, l, m, ql, qr), fold(2 * o + 1, m + 1, r, ql, qr));
+    }
+    void apply(Rng r, ll x) { if (r.lo < r.hi) apply(1, 0, n - 1, (int)r.lo, (int)r.hi - 1, x); }
+    ll fold(Rng r) { return r.lo < r.hi ? fold(1, 0, n - 1, (int)r.lo, (int)r.hi - 1) : kind == 0 ? 0 : kind == 1 ? LLONG_MAX : LLONG_MIN; }
+};
+
 // ---- input
 static char cp_ibuf[1 << 16]; static size_t cp_ipos = 0, cp_ilen = 0;
 static inline int cp_getc() {
