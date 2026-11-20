@@ -26,9 +26,7 @@ pub struct LiChao(lo: Int, hi: Int):
             let mid = (l + h) / 2
             // keep in this node whichever line is lower at mid; push the other one down
             if cur.at(mid) < line[at].at(mid):
-                let old = line[at]
-                line[at] = cur
-                cur = old
+                swap(mut line[at], mut cur)
             if l == h: return
             if cur.at(l) < line[at].at(l):
                 if left[at] == none:
@@ -84,9 +82,7 @@ pub struct LiChaoTag<V>(lo: Int, hi: Int):
         while true:
             let mid = (l + h) / 2
             if cur.at(mid) < line[at].at(mid):
-                let old = line[at]
-                line[at] = cur
-                cur = old
+                swap(mut line[at], mut cur)
             if l == h: return
             if cur.at(l) < line[at].at(l):
                 if left[at] == none:
@@ -143,9 +139,7 @@ pub struct LiChaoF(lo: F64, hi: F64, iters: Int):
         for _ in 0..iters:
             let mid = (l + h) / 2.0
             if cur.at(mid) < line[at].at(mid):
-                let old = line[at]
-                line[at] = cur
-                cur = old
+                swap(mut line[at], mut cur)
             if cur.at(l) < line[at].at(l):
                 if left[at] == none:
                     left[at] = self.node(cur)
@@ -196,8 +190,8 @@ fn minimum_matches_scanning_every_line():
 fn a_dp_with_the_convex_hull_trick():
     // dp[i] = min over j < i of dp[j] + (h[i] - h[j])^2, the classic frog jump with squared cost
     let h = [rand(0, 30) for _ in 0..40]
-    var slow = [0]
-    for i in 1..h.len: slow.push(min(slow[j] + (h[i] - h[j]) ** 2 for j in 0..i))
+    var slow = List.filled(h.len, 0)
+    for i in 1..h.len: slow[i] = min(slow[j] + (h[i] - h[j]) ** 2 for j in 0..i)
     var tree = LiChao(0, 30)
     var fast = [0]
     for i in 0..h.len:

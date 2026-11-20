@@ -433,81 +433,6 @@ fn conv_exec_even<D>(mut d: [D]Int, n_buf: Int, h2: Int, mode: Int, half_id: Int
 // Mixed-radix `7 * 2^{h2}` autocorrelation mod 998244353 (`998244353 - 1 = 7 * 17 * 2^23`).
 // Conjugate symmetry `C_{7-r}(y) = C_r(y^{-1})` cuts the 7 sub-problems to 11 size-`M`
 // transforms on a single `2 * M` buffer, with `na <= 3.5 * M` (at most 4 chunks).
-fn conv_z_r7_autocorr(a: List<Z>, out_len: Int, h2: Int, roots: NttRoots) -> List<Z>:
-    let p = Z.MOD
-    let pinv = 998244351
-    let m = 1 << h2
-    let m2 = m << 1
-    let m3 = m + m2
-    let na = a.len
-    let sh = na - 1
-    let n2 = na - m2
-    let n3 = na - m3
-    let z7_m = [301989884, 968221653, 154088791, 457477426, 459576753, 411388607, 241989945]
-    let e_m = if h2 % 3 == 0: 1 elif h2 % 3 == 1: 4 else: 2
-    let scale = pow_mod_i(m >> 2, p - 2, p) * 855638017 % p * 932051910 % p
-    var g_sc: [0..7]Int
-    for j in 0..7:
-        g_sc[j] = mred1(z7_m[j] * scale, p, pinv)
-    var out = List.filled(out_len, Z.zero)
-    var d: [0..m2]Int
-    // r = 0: self-paired autocorrelation mod (y^M - 1)
-    for i in 0..m:
-        var v = add_p(a[i].v, a[i + m].v, p)
-        if i < n2: v = add_p(v, a[i + m2].v, p)
-        if i < n3: v = add_p(v, a[i + m3].v, p)
-        d[i] = v
-    conv_exec_even(mut d, m, h2, 2, 0, roots)
-    for k in 0..m:
-        let c0 = mred1(d[k] * scale, p, pinv)
-        out[sh + k].v = c0
-        out[sh + m + k].v = c0
-        if k < n2: out[sh + m2 + k].v = c0
-        if k < n3: out[sh + m3 + k].v = c0
-    // r in 1..4 paired with s = 7 - r: C_s(y) = C_r(y^{-1}) comes free from one inverse NTT
-    for r in 1..4:
-        let s = 7 - r
-        let wr1 = z7_m[r]
-        let wr2 = z7_m[(r << 1) % 7]
-        let wr3 = z7_m[(r * 3) % 7]
-        let ws1 = z7_m[s]
-        let ws2 = z7_m[(s << 1) % 7]
-        let ws3 = z7_m[(s * 3) % 7]
-        let step_r = (r * e_m) % 7
-        let step_s = (s * e_m) % 7
-        var tr = 0
-        var ts = 0
-        for i in 0..m:
-            let x0 = a[i].v
-            let x1 = a[i + m].v
-            let x2 = if i < n2: a[i + m2].v else: 0
-            let x3 = if i < n3: a[i + m3].v else: 0
-            let sr = x0 + mred(x1 * wr1 + x2 * wr2 + x3 * wr3, p, pinv)
-            let ss = x0 + mred(x1 * ws1 + x2 * ws2 + x3 * ws3, p, pinv)
-            d[i] = mred1(sr * z7_m[tr], p, pinv)
-            d[if i == 0: m else: m2 - i] = mred1(ss * z7_m[ts], p, pinv)
-            tr = add7(tr, step_r)
-            ts = add7(ts, step_s)
-        conv_exec_even(mut d, m, h2, 0, 0, roots)
-        // Fused un-twist + 7-point IDFT accumulation directly in registers
-        var ti_inv = 0
-        var ti_fwd = 0
-        for k in 0..m:
-            let km = if k == 0: 0 else: m - k
-            let cr = mred1(d[k] * g_sc[ti_inv], p, pinv)
-            let cs = mred1(d[km] * g_sc[ti_fwd], p, pinv)
-            out[sh + k].v = add_p(out[sh + k].v, add_p(cr, cs, p), p)
-            out[sh + m + k].v = add_p(out[sh + m + k].v, mred1(cr * ws1 + cs * wr1, p, pinv), p)
-            if k < n2:
-                out[sh + m2 + k].v = add_p(out[sh + m2 + k].v, mred1(cr * ws2 + cs * wr2, p, pinv), p)
-                if k < n3:
-                    out[sh + m3 + k].v = add_p(out[sh + m3 + k].v, mred1(cr * ws3 + cs * wr3, p, pinv), p)
-            ti_inv = add7(ti_inv, step_s)
-            ti_fwd = add7(ti_fwd, step_r)
-    for k in 1..na:
-        out[sh - k] = out[sh + k]
-    out
-
 fn load_odd_i<D>(mut d: [D]Int, base: Int, src: List<Int>, half: Int, p2: Int, neg: Bool):
     let n = src.len
     for i in 0..half:
@@ -598,23 +523,16 @@ fn conv_z(a: List<Z>, b: List<Z>, mode: Int) -> List<Z>:
     let out_len = na + nb - 1
     let p = Z.MOD
     if min(na, nb) <= 60:
-        var res: [0..out_len]Int
+        var res = List.filled(out_len, Z.zero)
         for i in 0..na:
-            let ai = a[i].v
-            if ai != 0:
-                for j in 0..nb:
-                    res[i + j] = (res[i + j] + ai * b[j].v) % p
-        var out_s = List.filled(out_len, Z.zero)
-        for i in 0..out_len:
-            out_s[i].v = res[i]
-        return out_s
+            if a[i] != 0:
+                for j in 0..nb: res[i + j] += a[i] * b[j]
+        return res
     let pinv = 998244351
     let p2 = 1996488706
     let roots = build_roots(p)
     let size = next_pow2(out_len)
     let h = ilog2_pow2(size)
-    if mode == 2 and (h & 1) == 1 and h >= 9 and out_len <= 7 * (size >> 3):
-        return conv_z_r7_autocorr(a, out_len, h - 3, roots)
     let sides = if mode == 0: 2 else: 1
     let scale = pow_mod_i(size >> 2, p - 2, p) * 932051910 % p
     var out = List.filled(out_len, Z.zero)
@@ -836,20 +754,13 @@ pub fn exp_trunc(p: List<Z>, keep: Int) -> List<Z>:
     if keep == 0: return []
     assert p.len == 0 or p[0] == 0
     if keep <= 32:
-        let (fact, ifact) = build_facts(keep)
-        let mod_p = 998244353
-        var g = List.filled(keep, 0)
-        g[0] = 1
+        var g = List.filled(keep, Z.zero)
+        g[0] = Z.one
         for k in 1..keep:
-            var s = 0
-            let lim = min(k + 1, p.len)
-            for j in 1..lim:
-                s = (s + ((j * p[j].v) % mod_p) * g[k - j]) % mod_p
-            let inv_k = (ifact[k] * fact[k - 1]) % mod_p
-            g[k] = (s * inv_k) % mod_p
-        var out = List.filled(keep, Z.zero)
-        for i in 0..keep: out[i] = Z(g[i])
-        return out
+            var s = Z.zero
+            for j in 1..min(k + 1, p.len): s += Z(j) * p[j] * g[k - j]
+            g[k] = s / Z(k)
+        return g
     var g = [Z.one]
     var m = 1
     while m < keep:
@@ -872,25 +783,11 @@ pub fn pow_trunc(p: List<Z>, e: Int, keep: Int) -> List<Z>:
         var out = List.filled(keep, Z.zero)
         out[0] = Z.one
         return out
-    if e < 0:
-        assert p.len > 0 and p[0] != 0
-        let c = p[0]
-        let ic = c.inv
-        let n = min(p.len, keep)
-        var q = List.filled(n, Z.zero)
-        for i in 0..n: q[i] = p[i] * ic
-        let lg = log_trunc(q, keep)
-        let ez = Z(e)
-        var scaled = List.filled(keep, Z.zero)
-        for i in 0..keep: scaled[i] = lg[i] * ez
-        let power = exp_trunc(scaled, keep)
-        let scale = c.pow(e)
-        var out = List.filled(keep, Z.zero)
-        for i in 0..keep: out[i] = power[i] * scale
-        return out
     var first = 0
     while first < p.len and p[first] == 0: first += 1
-    if first == p.len or (first > 0 and e > (keep - 1) / first):
+    if e < 0:
+        assert p.len > 0 and first == 0
+    elif first == p.len or (first > 0 and e > (keep - 1) / first):
         return List.filled(keep, Z.zero)
     let shift = first * e
     let rem = keep - shift
