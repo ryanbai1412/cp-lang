@@ -82,14 +82,27 @@ pub fn generate(seed: u64, cfg: &Config) -> Case {
 pub fn with_trap(base: &Case, trap: &Trap, rng: &mut Rng) -> Option<Case> {
     let name = "t0".to_string();
     let (setup, bad) = match trap {
-        Trap::Overflow => (
-            Expr::Int(i64::MAX - rng.range(0, 5)),
-            match rng.below(3) {
-                0 => bin(BinOp::Add, var(&name), Expr::Int(rng.range(6, 9))),
-                1 => bin(BinOp::Mul, var(&name), Expr::Int(rng.range(2, 9))),
-                _ => bin(BinOp::Sub, Expr::Int(-rng.range(7, 99)), var(&name)),
-            },
-        ),
+        Trap::Overflow => {
+            let below_max = rng.range(0, 5);
+            // The minimum Int, which has no positive twin: negating it,
+            // `abs` of it and dividing it by -1 all leave Int.
+            let min = bin(
+                BinOp::Sub,
+                Expr::Neg(Box::new(var(&name))),
+                Expr::Int(below_max + 1),
+            );
+            (
+                Expr::Int(i64::MAX - below_max),
+                match rng.below(6) {
+                    0 => bin(BinOp::Add, var(&name), Expr::Int(rng.range(6, 9))),
+                    1 => bin(BinOp::Mul, var(&name), Expr::Int(rng.range(2, 9))),
+                    2 => bin(BinOp::Sub, Expr::Int(-rng.range(7, 99)), var(&name)),
+                    3 => bin(BinOp::Div, min, Expr::Int(-1)),
+                    4 => Expr::Neg(Box::new(min)),
+                    _ => Expr::Builtin(Builtin::Abs, vec![min]),
+                },
+            )
+        }
         Trap::DivByZero => (
             Expr::Int(rng.range(-5, 5)),
             bin(

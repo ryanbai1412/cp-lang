@@ -151,10 +151,12 @@ impl Cxx {
         }
     }
 
-    /// `g++ -std=c++17 -O2 -fsanitize=address,undefined`: the build every
-    /// fuzzed program runs under.
+    /// `g++ -std=c++17 -O2 -DLOCAL -fsanitize=address,undefined`: the
+    /// build every fuzzed program runs under. `-DLOCAL` is the local
+    /// build, the one that stops on an overflow the checker could not
+    /// rule out; a judge build leaves those checks out.
     pub fn sanitized() -> Self {
-        Self::with_flags(&["-std=c++17", "-O2", "-fsanitize=address,undefined"])
+        Self::with_flags(&["-std=c++17", "-O2", "-DLOCAL", "-fsanitize=address,undefined"])
     }
 
     /// `g++ -std=c++17 -O2`: what `cpl run --release` and a judge use.

@@ -74,7 +74,9 @@ pub fn emod(a: i64, b: i64) -> Result<i64, Trap> {
     if b == 0 {
         return Err(Trap::DivByZero);
     }
-    a.checked_rem_euclid(b).ok_or(Trap::Overflow)
+    // `a % -1` is 0 for every a. `checked_rem_euclid` reports an overflow
+    // for the minimum Int, where only the quotient does not fit.
+    Ok(a.wrapping_rem_euclid(b))
 }
 
 /// The quotient that goes with [`emod`].
@@ -435,6 +437,32 @@ mod tests {
         }
         assert_eq!(ediv(1, 0), Err(Trap::DivByZero));
         assert_eq!(ediv(i64::MIN, -1), Err(Trap::Overflow));
+    }
+
+    #[test]
+    fn division_at_the_ends_of_int() {
+        // 0 <= a % b < |b| and a == (a / b) * b + a % b, where |b| itself
+        // may not fit in an Int.
+        for (a, b, q, r) in [
+            (i64::MIN, 2, i64::MIN / 2, 0),
+            (i64::MIN, 3, -3074457345618258603, 1),
+            (i64::MIN, -3, 3074457345618258603, 1),
+            (i64::MIN, i64::MAX, -2, i64::MAX - 1),
+            (i64::MIN, i64::MIN, 1, 0),
+            (i64::MIN + 1, i64::MIN, 1, 1),
+            (i64::MAX, i64::MIN, 0, i64::MAX),
+            (1, i64::MIN, 0, 1),
+            (-1, i64::MIN, 1, i64::MAX),
+            (i64::MAX, -1, -i64::MAX, 0),
+        ] {
+            assert_eq!(ediv(a, b), Ok(q), "{a} / {b}");
+            assert_eq!(emod(a, b), Ok(r), "{a} % {b}");
+            assert_eq!((b as i128) * (q as i128) + (r as i128), a as i128);
+        }
+        // Only the quotient of the minimum Int by -1 does not fit; the
+        // remainder is 0 like any other `a % -1`.
+        assert_eq!(emod(i64::MIN, -1), Ok(0));
+        assert_eq!(emod(i64::MIN, 0), Err(Trap::DivByZero));
     }
 
     #[test]

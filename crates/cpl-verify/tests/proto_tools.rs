@@ -1,7 +1,7 @@
 //! The audits and the benchmark against the Python prototype, plus the
 //! prototype bugs the fuzzer has found, kept as fixed cases.
 
-use cpl_verify::backend::{repo_root, scratch_dir, Cxx, ProtoTranspiler};
+use cpl_verify::backend::{repo_root, scratch_dir, Cxx, ProtoTranspiler, Transpiler};
 use cpl_verify::diff::{check_source, Expect, FindingKind, Toolchain};
 use cpl_verify::{bench, layout, loc};
 
@@ -62,12 +62,68 @@ fn an_index_out_of_range_stops_cleanly() {
 }
 
 #[test]
-fn undefined_behavior_in_emitted_cxx_is_a_finding() {
-    // The prototype does not trap overflow yet, so UBSan sees it. This
-    // pins that the harness reports it rather than passing it.
-    let source = "let big: Int = 9223372036854775807\nlet one: Int = 1\nprint(big + one)\n";
-    let finding = check_source(&proto(), source, &Expect::Trap(String::new())).unwrap();
-    assert_eq!(finding.kind, FindingKind::Sanitizer, "{finding:?}");
+fn overflow_stops_cleanly_instead_of_reaching_ubsan() {
+    // Each line ends in arithmetic the checker cannot bound. It used to
+    // be signed overflow in the emitted C++, which UBSan reported.
+    for bad in [
+        "big + one",
+        "big * (one + one)",
+        "(0 - big - one) - one",
+        "-(0 - big - one)",
+        "abs(0 - big - one)",
+        "(0 - big - one) / (0 - one)",
+    ] {
+        let source = format!(
+            "var big: Int = 9223372036854775807\nvar one: Int = 1\nprint(one)\nprint({bad})\n"
+        );
+        let finding = check_source(&proto(), &source, &Expect::Trap("1\n".into()));
+        assert!(finding.is_none(), "{bad}: {finding:?}");
+    }
+}
+
+#[test]
+fn division_by_zero_stops_cleanly() {
+    for op in ["/", "%"] {
+        let source = format!("var z: Int = 3\nz -= 3\nprint(7)\nprint(7 {op} z)\n");
+        let finding = check_source(&proto(), &source, &Expect::Trap("7\n".into()));
+        assert!(finding.is_none(), "{op}: {finding:?}");
+    }
+}
+
+#[test]
+fn division_is_euclidean_at_the_ends_of_int() {
+    // The minimum Int is built at run time: its literal has no positive
+    // twin to negate.
+    let source = "var m: Int = 9223372036854775807\nm = 0 - m - 1\nvar d: Int = 3\n\
+                  print(m / d, m % d, m / (0 - d), m % (0 - d))\n\
+                  print(m % (0 - 1), m / m, m % m, (m + 1) % m, 1 / m, 1 % m)\n";
+    assert_prints(
+        source,
+        "-3074457345618258603 1 3074457345618258603 1\n0 1 0 1 0 1\n",
+    );
+}
+
+#[test]
+fn arguments_and_operands_run_left_to_right() {
+    // C++ leaves the order of call arguments open and g++ runs them
+    // right to left; the plan says left to right (plan/19 section 3.4).
+    let source = "var c = 0\nfn nx() -> Int:\n    c += 1\n    return c\n\
+                  fn sub(x: Int, y: Int) -> Int:\n    return x - y\n\
+                  print(sub(nx(), nx()))\nprint(nx() - nx())\nprint(min(nx(), 9) - nx())\n";
+    assert_prints(source, "-1\n-1\n-1\n");
+}
+
+#[test]
+fn a_list_cannot_change_under_the_loop_that_walks_it() {
+    // This was a use-after-free under ASan; it is now a compile error.
+    let source = "var xs: List<Int> = [1, 2]\nfor x in xs:\n    xs.push(x)\nprint(xs.len)\n";
+    let work = scratch_dir("refuse").unwrap();
+    let cp = work.join("p.cp");
+    std::fs::write(&cp, source).unwrap();
+    let refused = ProtoTranspiler::new(&repo_root().unwrap()).transpile(&cp, &work.join("p.cpp"));
+    let _ = std::fs::remove_dir_all(&work);
+    let message = refused.expect_err("the program must be rejected");
+    assert!(message.contains("going over `xs`"), "{message}");
 }
 
 #[test]

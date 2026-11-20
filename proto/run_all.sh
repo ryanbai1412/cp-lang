@@ -30,4 +30,18 @@ for f in tests/lend/*.cp; do
     else echo "LEND TEST FAILED: $f"; fail=1; fi
     rm -f "${b}_bin"
 done
-echo "lend tests checked"; exit $fail
+echo "lend tests checked"
+# Red-team edge cases (plan/19 section 6): the ends of Int, Euclidean / and %, evaluation order, empty and
+# oversized domains. Built the way `cp run` builds locally, under ASan and UBSan, so a case that must stop
+# does so with a `line N: ...` message (kept in x.out) and never with undefined behaviour.
+tmp=$(mktemp -d)
+for f in tests/redteam/*.cp; do
+    b=${f%.cp}
+    cp "$f" "$tmp/t.cp"     # built from a copy: the build stamps its source, and the line numbers in x.out must not move
+    if python3 cp.py build "$tmp/t.cp" >/dev/null 2>&1 \
+        && g++ -std=c++17 -O1 -DLOCAL -fsanitize=address,undefined -fno-sanitize-recover=undefined -o "$tmp/t_bin" "$tmp/t.cpp" 2>/dev/null \
+        && "$tmp/t_bin" < "$b.in" 2>&1 | cmp -s - "$b.out"; then :
+    else echo "REDTEAM TEST FAILED: $f"; fail=1; fi
+done
+rm -rf "$tmp"
+echo "redteam tests checked"; exit $fail

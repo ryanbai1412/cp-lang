@@ -35,7 +35,7 @@ toolchain (fuzz, layout, bench):
                     (default: python3 proto/cp.py build)
   --interp CMD      command that runs {src} (default: none yet)
   --traps LIST      runtime errors the toolchain stops on cleanly, from
-                    overflow,div-by-zero,index (default: index)
+                    overflow,div-by-zero,index (default: all three)
   --repo DIR        repository root (default: found from the current dir)
 ";
 
@@ -104,7 +104,7 @@ fn setup(args: &mut Args) -> Result<Setup, String> {
     });
     let traps = args
         .value("--traps")?
-        .unwrap_or_else(|| "index".into())
+        .unwrap_or_else(|| "overflow,div-by-zero,index".into())
         .split(',')
         .filter(|t| !t.is_empty())
         .map(|t| match t {

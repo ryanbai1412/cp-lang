@@ -1,3 +1,4 @@
+import copy
 from .lexer import lex
 from .ast import N
 
@@ -34,6 +35,15 @@ class Parser:
         if not self.at(val):
             self.err(f"expected {val!r}")
         return self.next()
+    def at_close_angle(self):
+        return self.at(">", ">>")
+    def close_angle(self):
+        """The `>` that ends type arguments; `List<List<Int>>` ends two lists with one `>>` token."""
+        if self.at(">>"):
+            t = copy.copy(self.t)
+            self.t.val, t.val, t.col = ">", ">", t.col + 1
+            self.toks.insert(self.i + 1, t)
+        return self.expect(">")
     def expect_kind(self, kind):
         if self.t.kind != kind:
             self.err(f"expected {kind}")
@@ -402,14 +412,14 @@ class Parser:
         tparams = []
         if self.at("<"):
             self.next()
-            while not self.at(">"):
+            while not self.at_close_angle():
                 tparams.append(self.name())
                 if self.at(":"):
                     self.next()
                     self.type_()
                 if self.at(","):
                     self.next()
-            self.expect(">")
+            self.close_angle()
         ps = self.params()
         ret = None
         lends = None
@@ -566,11 +576,11 @@ class Parser:
             args = []
             if self.at("<"):
                 self.next()
-                while not self.at(">"):
+                while not self.at_close_angle():
                     args.append(self.type_or_expr())
                     if self.at(","):
                         self.next()
-                self.expect(">")
+                self.close_angle()
             return N("tname", line, name=t.val, args=args)
         e = self.range_expr()
         if e.kind != "range":
@@ -821,11 +831,11 @@ class Parser:
             elif self.at("<") and e.kind == "name" and e.name[:1].isupper() and self.looks_generic():
                 self.next()
                 args = []
-                while not self.at(">"):
+                while not self.at_close_angle():
                     args.append(self.type_or_expr())
                     if self.at(","):
                         self.next()
-                self.expect(">")
+                self.close_angle()
                 e = N("generic", e.line, name=e.name, args=args)
             else:
                 return e
@@ -836,9 +846,9 @@ class Parser:
             t = self.toks[j]
             if t.kind == "OP" and t.val == "<":
                 d += 1
-            elif t.kind == "OP" and t.val == ">":
-                d -= 1
-                if d == 0:
+            elif t.kind == "OP" and t.val in (">", ">>"):
+                d -= len(t.val)
+                if d <= 0:
                     nx = self.toks[j + 1]
                     return nx.kind == "OP" and nx.val in ("(", ".")
             elif t.kind in ("NEWLINE", "EOF") or (t.kind == "OP" and t.val in ("=", ":")):

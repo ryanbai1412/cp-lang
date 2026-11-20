@@ -22,7 +22,10 @@ reference evaluator that says what the program must print, and `diff`
 sends the program down every path of the toolchain and compares. A path
 passes when it exits 0, prints exactly the expected text, and neither
 AddressSanitizer nor UndefinedBehaviorSanitizer reports anything. The
-C++ is always built with `g++ -std=c++17 -O2 -fsanitize=address,undefined`.
+C++ is always built with
+`g++ -std=c++17 -O2 -DLOCAL -fsanitize=address,undefined`: `-DLOCAL` is
+the local build, which stops on an overflow the checker could not rule
+out (a judge build leaves that check out).
 
 ```text
 $ cargo run -p cpl-verify -- gen 5 --expect
@@ -58,8 +61,10 @@ reads it.
 
 For each runtime error the toolchain promises to catch, every seed also
 gets a variant that must stop with a nonzero exit code and no sanitizer
-report. The prototype promises only `index` today; pass
-`--traps overflow,div-by-zero,index` for a toolchain that traps all three.
+report. All three kinds are on by default (`overflow`, `div-by-zero`,
+`index`); `--traps index` narrows it for a toolchain that only promises
+some. The overflow variants include the minimum Int, where `-x`,
+`abs(x)` and `x / -1` are the operations that leave `Int`.
 
 ### Plugging in the Rust compiler
 
@@ -125,13 +130,17 @@ when they do.
 
 The harness is configured around these, and each is a finding to settle:
 
-- Overflow and division by zero are undefined behavior in the emitted
-  C++ (UBSan reports them) where the plan says they stop the program.
-- Pushing to a list inside a `for v in xs` over it is a use-after-free;
-  the borrow rules that forbid it are not in the prototype.
 - `for i in 0..xs.len` reads `xs.len` again on every iteration. The plan
   does not say whether a range's bounds are evaluated once.
 - `plan/11-values-and-types.md` says `/` rounds toward negative infinity
   and `%` is never negative. Both cannot hold for a negative divisor
   (`7 / -2`): the prototype and the reference evaluator keep `%`
   non-negative, giving `-3` remainder `1`.
+
+Settled since the first campaign, and now fixed cases in
+`tests/proto_tools.rs` and `proto/tests/redteam/`: overflow and division
+by zero stop the program with a message instead of being undefined
+behavior, pushing to a list inside the `for` over it is a compile error,
+and call arguments run left to right (g++ ran them right to left). The
+reference evaluator had one bug of its own: `a % -1` for the minimum Int
+is 0, not an overflow.

@@ -4,7 +4,7 @@ import json
 """Type checker + C++ emitter (one pass). See PLAN.md for representation decisions."""
 from .ast import N
 from .types import *
-from .lends import LendMixin, Hold, Proj, SCALARS, show, walk, root_name, written_names, names_in
+from .lends import LendMixin, Hold, Proj, SCALARS, IO_FNS, show, walk, root_name, written_names, names_in
 
 class CompileError(Exception):
     pass
@@ -100,6 +100,7 @@ class Sym:
 
 def unparse(e):
     k = e.kind
+    if k == "ctemp": return unparse(e.src)
     if k == "num": return str(e.value)
     if k == "name": return e.name
     if k == "binop": return f"{unparse(e.a)} {e.op} {unparse(e.b)}"
@@ -259,8 +260,24 @@ class Compiler(LendMixin):
                   None if hh is None or lo_iv[0] is None else hh - lo_iv[0] + d)
         info, _, _ = self.new_domain(name, lo_c, len_c, lo_iv, len_iv, anon=anon, labels=labels)
         info.lo_src, info.hi_src = lo_c, f"({hi_c})" + (" + 1" if rng.incl else "")
-        self.emit(f"{info.cpp}_lo = {lo_c}; {info.cpp}_len = max(0LL, (ll)({len_c}));")
+        # A domain value is a 32-bit position (decision 4.3): a domain that cannot fit is an error, never a wrap.
+        if len_iv[0] is not None and len_iv[0] > DOM_MAX:
+            self.error(node, f"domain {name} would have at least {len_iv[0]} values; a domain holds at most 2^31 - 1 "
+                             f"(its values are 32-bit positions)\n  help: to loop over a range this large, "
+                             f"write `for i in {show(rng)}` without naming a domain")
+        if len_iv[1] is None or len_iv[1] > DOM_MAX:
+            # the difference of two Int bounds can itself overflow, so it is computed in 128 bits
+            self.emit(f"{info.cpp}_lo = {lo_c}; {info.cpp}_len = chk_dom_len((__int128)({hi_c}) - (__int128)({lo_c})"
+                      f"{' + 1' if rng.incl else ''}, {node.line});")
+        else:
+            self.emit(f"{info.cpp}_lo = {lo_c}; {info.cpp}_len = max(0LL, (ll)({len_c}));")
         return info
+
+    @staticmethod
+    def step_fn(kt):
+        """The runtime check for a position moved by an Int of type `kt`: plain 64-bit when it can't overflow."""
+        small = None not in (kt.lo, kt.hi) and -2**62 < kt.lo and kt.hi < 2**62
+        return "chk_step" if small else "chk_step_wide"
 
     def bounds_of(self, info):
         if info.bounds is None:
@@ -471,12 +488,79 @@ class Compiler(LendMixin):
             elif e.fn.kind == "name" and getattr(self.lookup(e.fn.name), "kind", None) in ("ctor", "type"):
                 for x in e.args:
                     self.escapes[id(x)] = f"storing it in a `{e.fn.name}`"
-        r = m(e, want)
+        r = self.ordered(e, want, m) if e.kind in ("call", "binop", "cmp") else m(e, want)
+        self.last_type[id(e)] = r[1]
         if getattr(r[1], "view", None):
-            self.last_type[id(e)] = r[1]
             if id(e) in self.escapes:
                 self.no_escape(r[1], e, self.escapes[id(e)])
         return r
+
+    # ---------- evaluation order
+    def operand_slots(self, e):
+        """(get, set) pairs for the operands of `e` that C++ may evaluate in any order."""
+        def attr(name):
+            return (lambda: getattr(e, name)), (lambda v: setattr(e, name, v))
+        def item(lst, k):
+            return (lambda: lst[k]), (lambda v: lst.__setitem__(k, v))
+        if e.kind == "call":
+            if e.fn.kind == "name" and e.fn.name in IO_FNS and not self.lookup(e.fn.name):
+                return []           # print and read emit one statement per argument already
+            return [item(e.args, k) for k in range(len(e.args))]
+        if e.kind == "binop":
+            return [] if e.op in ("and", "or", "??") else [attr("a"), attr("b")]
+        if any(op in ("in", "not in") for op in e.ops):
+            return []
+        return [attr("first")] + [item(e.rest, k) for k in range(len(e.rest))]
+
+    def ordered(self, e, want, m):
+        """Operands and arguments run left to right (plan/19 section 3.7). C++ leaves that order open, so when it
+        can be observed (two operands with effects, or one that changes what another reads), every operand but
+        the last is evaluated into a temporary first."""
+        slots = self.operand_slots(e)
+        if len(slots) < 2:
+            return m(e, want)
+        nodes = [get() for get, _ in slots]
+        fx = [self.effects_in(n.value if n.kind == "kwarg" else n) for n in nodes]
+        acting = [k for k, (w, _, io) in enumerate(fx) if w or io]
+        if not acting:
+            return m(e, want)
+        if len(acting) == 1:
+            w = fx[acting[0]][0]
+            if not any((names_in(n) | fx[k][1]) & w for k, n in enumerate(nodes) if k != acting[0]):
+                return m(e, want)
+        wants = [None] * len(nodes)
+        if e.kind == "call" and e.fn.kind == "name":
+            fsym = self.lookup(e.fn.name)
+            if fsym is not None and fsym.kind == "fn" and isinstance(fsym.ty, TFn):
+                wants = list(fsym.ty.params) + wants
+        pre, restore = [], []
+        try:
+            for k, (n, (get, put)) in enumerate(zip(nodes[:-1], slots)):
+                if getattr(n, "mut", False) or n.kind in ("lambda", "kwarg", "num", "char", "bool", "str", "none", "range", "gen"):
+                    continue
+                if n.kind == "name" and getattr(self.lookup(n.name), "kind", None) not in ("let", "var"):
+                    continue
+                c, t = self.expr(n, wants[k])
+                if isinstance(t, (TType, TFn)) or not c:
+                    continue
+                tmp = self.tmpname("s")
+                pre.append(f"auto{'' if isinstance(t, SCALARS) else '&&'} {tmp} = {c};")
+                put(N("ctemp", n.line, code=tmp, ty=t, src=n))
+                restore.append((put, n))
+            c, t = m(e, want)
+        finally:
+            for put, n in restore:
+                put(n)
+        if not pre:
+            return c, t
+        # a scalar result is returned by value (`min(_s1, x)` would otherwise be a reference to the temporary);
+        # a place being written through, or a view, keeps its exact type
+        place = getattr(e, "mut", False) or (self.lvalue is not None and self.lvalue[0] is e)
+        ret = "auto" if isinstance(t, SCALARS) and not place else "decltype(auto)"
+        return f"([&]() -> {ret} {{ {' '.join(pre)} return {c}; }}())", t
+
+    def x_ctemp(self, e, want):
+        return e.code, e.ty
 
     def x_num(self, e, want):
         v = e.value
@@ -609,6 +693,8 @@ class Compiler(LendMixin):
             return f"!({c})", BOOL
         if isinstance(t, TInt):
             lo, hi = iv_neg(t)
+            if hi is None:              # -x overflows for the minimum Int only
+                return f"cp_sub(0, {c}, {e.line})", self.int_result(e, lo, hi)
             return f"-({c})", self.int_result(e, lo, hi)
         if isinstance(t, TMod):
             return f"-({c})", t
@@ -657,7 +743,8 @@ class Compiler(LendMixin):
         if isinstance(at, TDom):
             info = at.info
             if op in "+-" and isinstance(bt, TInt):
-                c = f"chk_dom((ll)({a}) {op} ({b}), {info.len_cpp}, {e.line})"
+                what = json.dumps(f"`{unparse(e)}` leaves {info.name}")
+                c = f"{self.step_fn(bt)}({a}, 0, {b}, {'true' if op == '-' else 'false'}, {info.len_cpp}, {what}, {e.line})"
                 self.note_check(e, f"`{unparse(e)}` stays in {info.name}")
                 return c, at
             if op == "-" and isinstance(bt, TDom) and bt.info is info:
@@ -679,13 +766,11 @@ class Compiler(LendMixin):
             lo, hi = {"+": iv_add, "*": iv_mul}[op](at, bt) if op != "-" else iv_add(at, TInt(*iv_neg(bt)))
             if small(at) and small(bt) and not small(TInt(lo, hi)):
                 a = f"(ll){a}"
-        if op == "+":
-            return f"({a} + {b})", self.int_result(e, *iv_add(at, bt))
-        if op == "-":
-            nb = TInt(*iv_neg(bt))
-            return f"({a} - {b})", self.int_result(e, *iv_add(at, nb))
-        if op == "*":
-            return f"({a} * {b})", self.int_result(e, *iv_mul(at, bt))
+        if op in "+-*":
+            rt = self.int_result(e, lo, hi)
+            if None in (lo, hi):        # not proven to fit: a local build checks it
+                return f"cp_{ {'+': 'add', '-': 'sub', '*': 'mul'}[op] }({a}, {b}, {e.line})", rt
+            return f"({a} {op} {b})", rt
         if op in ("/", "%"):
             nz = e.b.kind == "name" and getattr(self.lookup(e.b.name), "nonzero", False)
             if not nz and bt.lo is not None and bt.hi is not None and bt.lo <= 0 <= bt.hi:
@@ -693,12 +778,12 @@ class Compiler(LendMixin):
             plain = at.lo is not None and at.lo >= 0 and bt.lo is not None and bt.lo > 0
             pos_b = bt.lo is not None and bt.lo > 0
             if op == "/":
-                c = f"({a} / {b})" if plain else f"cp_ediv({a}, {b})"
+                c = f"({a} / {b})" if plain else f"cp_ediv({a}, {b}, {e.line})"
                 if pos_b and None not in (at.lo, at.hi, bt.hi):
                     qs = [at.lo // bt.lo, at.lo // bt.hi, at.hi // bt.lo, at.hi // bt.hi]
                     return c, TInt(min(qs), max(qs))
                 return c, TInt()
-            c = f"({a} % {b})" if plain else f"cp_emod({a}, {b})"
+            c = f"({a} % {b})" if plain else f"cp_emod({a}, {b}, {e.line})"
             if None not in (bt.lo, bt.hi):
                 m = max(abs(bt.lo), abs(bt.hi))
                 return c, TInt(0, m - 1)
@@ -717,9 +802,12 @@ class Compiler(LendMixin):
         if op == "<<":
             if None not in (at.lo, at.hi, bt.hi) and at.lo >= 0:
                 return f"({a} << {b})", self.int_result(e, 0, at.hi << bt.hi)
-            return f"({a} << {b})", TInt()
+            return f"cp_shl({a}, {b}, {e.line})", TInt()
         if op == ">>":
-            return f"({a} >> {b})", TInt(0 if (at.lo or 0) >= 0 else None, at.hi)
+            rt = TInt(0 if (at.lo or 0) >= 0 else None, at.hi)
+            if bt.lo is None or bt.lo < 0 or bt.hi is None or bt.hi > 63:
+                return f"cp_shr({a}, {b}, {e.line})", rt
+            return f"({a} >> {b})", rt
         self.error(e, f"unknown operator {op}")
 
     def x_cmp(self, e, want):
@@ -950,8 +1038,9 @@ class Compiler(LendMixin):
                 return f"(ll){info.len_cpp}", TInt(*info.len_iv)
             if f in ("first", "last"):
                 self.note_check(e, f"{info.name} is non-empty")
-                return (f"chk_dom(0, {info.len_cpp}, {e.line})" if f == "first"
-                        else f"chk_dom({info.len_cpp} - 1, {info.len_cpp}, {e.line})"), ot.t
+                what = json.dumps(f"`{info.name}.{f}`: {info.name} is empty")
+                return (f"chk_nonempty(0, {info.len_cpp}, {what}, {e.line})" if f == "first"
+                        else f"chk_nonempty({info.len_cpp} - 1, {info.len_cpp}, {what}, {e.line})"), ot.t
             if f == "bounds":
                 return "", TType(TDom(self.bounds_of(info)))
             if f == "bottom" and getattr(info, "base", None) is not None:
@@ -1083,7 +1172,9 @@ class Compiler(LendMixin):
             if not is_int(t):
                 self.error(e, "abs needs Int")
             m = None if None in (t.lo, t.hi) else max(abs(t.lo), abs(t.hi))
-            return f"llabs({c})", TInt(0 if m is not None else None, m)
+            if t.lo is None:            # abs of the minimum Int does not fit
+                return f"cp_abs({c}, {e.line})", TInt(0, None)
+            return f"llabs({c})", TInt(0, m)
         if fn.kind == "name" and fn.name in ("sorted", "sort") and not self.lookup(fn.name):
             # sort(xs) / sort(xs, by: key) in place; sorted(...) returns a sorted copy
             c, t = self.expr(e.args[0])
@@ -1206,6 +1297,8 @@ class Compiler(LendMixin):
                         self.error(a, f"`{p.name}` is not a mut parameter of {fn.name}")
                     if is_mut:
                         self.note_write(a, e.line)
+                if fnode.body is not None:
+                    self.check_call_effects(e, fsym)
         if any(getattr(a, "mut", False) for a in e.args) and not (
                 fn.kind == "name" and getattr(self.lookup(fn.name), "kind", None) in ("fn", "genfn")):
             self.error(e, "`mut` arguments are only for user fns with mut parameters")
@@ -1245,6 +1338,8 @@ class Compiler(LendMixin):
             self.check_args(e, [(a, getattr(a, "mut", False)) for a, at in zip(e.args, ats)
                                 if getattr(a, "mut", False) or not isinstance(at, SCALARS)])
             sym = self.lookup(fn.name) if fn.kind == "name" else None
+            if sym is not None and sym.kind == "fn" and getattr(sym.node, "body", None) is not None:
+                self.check_call_effects(e, sym)
             if any(getattr(at, "view", None) for at in ats):
                 # a lent [B]T is a [B]T to the callee: the fn is specialised for the view (decision 4.8)
                 sym = self.view_spec(sym, ats, e)
@@ -1269,8 +1364,9 @@ class Compiler(LendMixin):
             if not is_int(kt):
                 self.error(args[0], f"`.{m}(k)` takes an Int width, got {kt!r}")
             self.note_check(e, f"`{show(e)}` is a boundary of {ot.info.name}")
-            pos = f"(ll)({oc}) + 1 - ({kc})" if m == "l" else f"(ll)({oc}) + ({kc})"
-            return f"chk_dom({pos}, {b.len_cpp}, {e.line})", TDom(b)
+            what = json.dumps(f"`{show(e)}` leaves {b.name}")
+            step = f"{oc}, 1, {kc}, true" if m == "l" else f"{oc}, 0, {kc}, false"
+            return f"{self.step_fn(kt)}({step}, {b.len_cpp}, {what}, {e.line})", TDom(b)
         if isinstance(ot, TType) and isinstance(ot.t, TDom) and m == "from_idx" and len(args) == 1:
             e2 = copy.copy(e)
             e2.fn = N("field", e.fn.line, obj=obj, name="nth")
@@ -1286,6 +1382,8 @@ class Compiler(LendMixin):
             rt = TArr([ot.dims[1]], ot.elem)
             rt.view = "row"
             return f"cp_row({oc}, {rc}, {ot.dims[1].info.len_cpp})", rt
+        if isinstance(ot, TList) and m == "copy" and not args:
+            return f"{self.cpp_type(ot)}({oc})", ot       # an owned copy: `for x in xs.copy()` may then change xs
         if isinstance(ot, TArr) and len(ot.dims) == 1 and m in ("sort", "rev", "copy") and not args:
             if isinstance(ot.elem, TBool):
                 self.error(e, f"`.{m}()` on a Bool array is not in the prototype")
@@ -1484,10 +1582,13 @@ class Compiler(LendMixin):
         # a read() inside a top-level loop: the input ends where the outermost loop ends
         self.loop_nest = getattr(self, "loop_nest", 0) + 1
         mark = self.last_read
+        held = self.hold_iterated(it, node)
         try:
             self._loop(pat, it, node, body)
         finally:
             self.loop_nest -= 1
+            if held is not None:
+                self.holds.remove(held)
         if self.loop_nest == 0 and self.last_read != mark and self.out is self.init_lines:
             self.last_read = len(self.init_lines)
             self.read_pos = (id(self.out), len(self.out))
@@ -1842,6 +1943,8 @@ class Compiler(LendMixin):
             _, (c, t) = self.capture(lambda: self.expr(it))
             if isinstance(t, TType) and isinstance(t.t, TDom) and (t.t.info.len_iv[0] or 0) >= 1:
                 continue
+            if getattr(t, "view", None):
+                return False    # a slice keeps its parent's index type, but `a[l..l]` is empty
             if isinstance(t, TArr) and len(t.dims) == 1 and (t.dims[0].info.len_iv[0] or 0) >= 1:
                 continue
             return False
@@ -2342,7 +2445,7 @@ class Compiler(LendMixin):
             t = None
         stack.append(stack[-1] * (t if t is not None else 1))
         self.check_cost(s.line, stack[-1])
-        self.drop_facts(written_names(s.body) | {p.name for p in walk(s.pat) if p.kind == "pname"})
+        self.drop_facts(self.block_writes(s.body) | {p.name for p in walk(s.pat) if p.kind == "pname"})
         try:
             self.loop(s.pat, s.iter, s, lambda: self.block(s.body))
         finally:
@@ -2389,6 +2492,7 @@ class Compiler(LendMixin):
             if has_self:
                 fn.self_struct = t
             table[m.name] = (fn.name, has_self, has_self and ps[0].mode == "inout")
+            self.method_nodes.setdefault(t.cpp, {}).setdefault(m.name, []).append(fn)
             self.s_fn(fn)
 
     # ---------- plan/19: projections, lent views, user Index types
@@ -2774,7 +2878,7 @@ class Compiler(LendMixin):
         self.emit("}")
 
     def s_while(self, s):
-        self.drop_facts(written_names(s.body))   # a fact about a var the loop assigns holds only on the first trip
+        self.drop_facts(self.block_writes(s.body))   # a fact about a var the loop assigns holds only on the first trip
         c = self.cond(s.cond)
         self.emit(f"while ({c}) {{")
         self.loop_trips.append(None)
@@ -2804,13 +2908,18 @@ class Compiler(LendMixin):
         else:
             self.require_mut(tgt, s)
             sym = None
+        if op in ("min=", "max=") and self.has_effects(tgt):
+            self.error(s, f"`{unparse(tgt)} {op} ...` would evaluate `{unparse(tgt)}` twice, and it calls a fn\n"
+                          f"  help: bind the position first: `let i = ...`")
         if op in ("min=", "max=") and isinstance(tt, TOpt):
             vc, vt = self.expr(s.value, tt.inner)
+            self.check_assign_alias(s)
             self.emit(f"opt_{op[:3]}({tc}, {self.coerce(vc, vt, tt.inner, s.value)});")
             return
         want = tt.inner if isinstance(tt, TOpt) and op == "=" and s.value.kind != "none" else tt
         self.escapes[id(s.value)] = "this assignment"
         vc, vt = self.expr(s.value, want if not isinstance(tt, TInt) else None)
+        self.check_assign_alias(s)
         if op == "=":
             c = self.coerce(vc, vt, tt, s.value)
             self.emit(f"{tc} = {c};")
@@ -2837,7 +2946,11 @@ class Compiler(LendMixin):
             if tt.lo is not None:
                 self.int_result(s, *iv_mul(tt, vt))
             self.track(sym, tgt, None, "*=", s)
-        self.emit(f"{tc} {op} {vc};")
+        unproven = bop in ("+", "-", "*") and None in (tt.lo, tt.hi, vt.lo, vt.hi) and not self.has_effects(tgt)
+        if unproven:
+            self.emit(f"{tc} = cp_{ {'+': 'add', '-': 'sub', '*': 'mul'}[bop] }({tc}, {vc}, {s.line});")
+        else:
+            self.emit(f"{tc} {op} {vc};")
 
     def track(self, sym, tgt, vt, kind, s):
         """Record a value-range contribution for an Int var (scalar or array element)."""

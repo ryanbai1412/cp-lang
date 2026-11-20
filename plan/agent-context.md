@@ -329,7 +329,10 @@ Tooling:
   Outcomes are in `decisions.md` §9. The prototype implements the surface
   rules (`proto/cpc/lends.py`, `proto/tests/lend/`, the `lend_*`, `proj_*`
   and `index_*` files in `proto/tests/bad/`); 19 §11 lists what it leaves
-  out. The Rust compiler does not have any of it yet.
+  out. The Rust compiler does not have any of it yet. A red-team pass
+  added the cases of 19 §5.6 (11 to 23) as `proto/tests/redteam/` and
+  `proto/tests/bad/rt_*`: calls that write captured variables, loops
+  lending what they walk, left-to-right evaluation, and the ends of `Int`.
 - **Reviewed on 2026-11-19:** the four proposals in
   `plan/18-key-features.md` (folded into the plan as 1.9) and the research
   proposals above; outcomes are in `decisions.md` §8.

@@ -35,6 +35,7 @@ def walk(n):
 def show(e):
     """Source text of an expression, exact enough to compare two expressions for equality."""
     k = e.kind
+    if k == "ctemp": return show(e.src)        # an operand already evaluated into a temporary
     if k == "num": return str(e.value)
     if k == "char": return repr(e.value)
     if k == "bool": return str(e.value).lower()
@@ -89,8 +90,8 @@ def subst(e, env):
 
 
 def root_name(e):
-    while e.kind in ("index", "field", "paren", "unwrap") or (e.kind == "call" and e.fn.kind == "field"):
-        e = e.fn.obj if e.kind == "call" else (e.a if e.kind in ("paren", "unwrap") else e.obj)
+    while e.kind in ("index", "field", "paren", "unwrap", "ctemp") or (e.kind == "call" and e.fn.kind == "field"):
+        e = e.src if e.kind == "ctemp" else e.fn.obj if e.kind == "call" else (e.a if e.kind in ("paren", "unwrap") else e.obj)
     return e.name if e.kind == "name" else None
 
 
@@ -112,10 +113,56 @@ def written_names(stmts):
     return out
 
 
+IO_FNS = {"read", "print", "println", "write", "flush"}
+
+
+def own_effects(fn):
+    """What a fn body touches outside itself, read off its source: (names written, names read, callee names, does I/O).
+
+    A name counts as outer unless the fn declared it earlier (a parameter, `let`, `var`, a loop variable). Nested
+    fns are walked as part of the body, so what they touch is charged to the fn that contains them.
+    """
+    cached = getattr(fn, "_effects", None)
+    if cached is not None:
+        return cached
+    declared = {p.name for p in getattr(fn, "params", None) or []}
+    writes, reads, calls, io = set(), set(), set(), False
+    def write(e):
+        nm = root_name(e)
+        if nm is not None and nm not in declared:
+            writes.add(nm)
+    for n in walk(fn.body):
+        if n.kind == "assign":
+            write(n.target)
+        elif n.kind == "call":
+            for a in n.args:
+                if getattr(a, "mut", False):
+                    write(a)
+            if n.fn.kind == "field":
+                calls.add("." + n.fn.name)
+                if n.fn.name in MUTATORS:
+                    write(n.fn.obj)
+            elif n.fn.kind == "name":
+                calls.add(n.fn.name)
+                io = io or n.fn.name in IO_FNS
+        elif n.kind == "fn":
+            declared |= {p.name for p in getattr(n, "params", None) or []}
+        elif n.kind == "name" and n.name not in declared:
+            reads.add(n.name)
+        if n.kind in ("for", "let", "var", "iflet", "whilelet") and getattr(n, "pat", None) is not None:
+            declared |= {p.name for p in walk(n.pat) if p.kind == "pname"}
+    fn._effects = (writes, reads, calls, io)
+    return fn._effects
+
+
 class Hold:
-    """`let part = a[s]`: `a` stays lent until the last statement that mentions `part`."""
-    def __init__(self, name, sym, root, steps, mut, line, until):
+    """`let part = a[s]`: `a` stays lent until the last statement that mentions `part`.
+
+    `for x in xs` holds `xs` the same way for the whole loop (`loop` is set, `name` is None).
+    """
+    def __init__(self, name, sym, root, steps, mut, line, until, loop=False):
         self.name, self.sym, self.root, self.steps, self.mut, self.line, self.until = name, sym, root, steps, mut, line, until
+        self.loop = loop
 
 
 class Proj:
@@ -148,6 +195,7 @@ class LendMixin:
         self.cur_rest = []
         self.view_specs = {}
         self.escapes = {}        # id(node) -> why a lent value may not be the result of this node
+        self.method_nodes = {}   # struct cpp name -> {method name: [fn nodes]}, for what a method call may touch
         self.last_type = {}      # id(node) -> type of the last evaluation (to see a lent view without re-evaluating)
 
     # ------------------------------------------------------------------ facts
@@ -192,7 +240,8 @@ class LendMixin:
             return -e.a.value
         return None
 
-    def interval(self, e):
+    def peek_type(self, e):
+        """The type `e` would have, without emitting anything or disturbing the lend state."""
         try:
             saved = (list(self.facts), list(self.holds), set(self.covered), len(self.checks) if hasattr(self, "checks") else 0)
             _, (c, t) = self.capture(lambda: self.expr(e))
@@ -202,6 +251,10 @@ class LendMixin:
             self.facts, self.holds, self.covered = saved[0], saved[1], saved[2]
             if hasattr(self, "checks"):
                 del self.checks[saved[3]:]
+        return t
+
+    def interval(self, e):
+        t = self.peek_type(e)
         if isinstance(t, TInt) and t.lo is not None and t.hi is not None:
             return t.lo, t.hi
         return None
@@ -245,7 +298,9 @@ class LendMixin:
         """(root symbol, steps) for a place expression, or None for a plain value."""
         steps = []
         while True:
-            if e.kind in ("paren", "unwrap"):
+            if e.kind == "ctemp":
+                e = e.src
+            elif e.kind in ("paren", "unwrap"):
                 e = e.a
             elif e.kind == "field":
                 steps.append(("field", e.name))
@@ -321,6 +376,117 @@ class LendMixin:
             return "one is a field and the other a projection of the same value"
         return "one contains the other"
 
+    # ------------------------------------------------------------------ what a call touches behind the caller's back
+    def fn_effects(self, fsym):
+        """(writes, reads, io) of calling a user fn: outer names it or anything it calls may touch."""
+        writes, reads, io, seen = set(), set(), False, set()
+        todo = [fsym.node]
+        while todo:
+            fn = todo.pop()
+            if fn is None or id(fn) in seen or getattr(fn, "body", None) is None:
+                continue
+            seen.add(id(fn))
+            w, r, calls, i = own_effects(fn)
+            writes |= w; reads |= r; io = io or i
+            for c in calls:
+                if c.startswith("."):
+                    todo += [m for tbl in getattr(self, "method_nodes", {}).values() for m in tbl.get(c[1:], [])]
+                else:
+                    s = self.lookup(c)
+                    if s is not None and s.kind in ("fn", "genfn"):
+                        todo.append(s.node)
+        return writes, reads, io
+
+    def callee(self, n):
+        """The user fn a call node runs, if it names one."""
+        if n.kind != "call" or n.fn.kind != "name":
+            return None
+        s = self.lookup(n.fn.name)
+        return s if s is not None and s.kind in ("fn", "genfn") and getattr(s.node, "body", None) is not None else None
+
+    def effects_in(self, x):
+        """(writes, reads, io) of evaluating expressions or statements `x`: assignments, mutators, I/O and the fns called."""
+        writes, reads, io = set(written_names(x)), set(), False
+        for n in walk(x):
+            if n.kind != "call":
+                continue
+            if n.fn.kind == "name" and n.fn.name in IO_FNS and self.lookup(n.fn.name) is None:
+                io = True
+            s = self.callee(n)
+            if s is not None:
+                w, r, i = self.fn_effects(s)
+                writes |= w; reads |= r; io = io or i
+        return writes, reads, io
+
+    def has_effects(self, x):
+        w, _, io = self.effects_in(x)
+        return bool(w) or io
+
+    def block_writes(self, stmts):
+        """Names a block may change, counting what the fns it calls change (facts about them do not survive it)."""
+        return self.effects_in(stmts)[0]
+
+    def check_call_effects(self, e, fsym):
+        """A fn that touches a var directly (not through a parameter) is one more user of it for the whole call."""
+        name = e.fn.name
+        writes, reads, _ = self.fn_effects(fsym)
+        self.drop_facts(writes)
+        for h in self.holds:
+            hn = next((nm for nm in writes | reads if self.lookup(nm) is h.root), None)
+            if hn is None or not (hn in writes or h.mut):
+                continue
+            does = "changes" if hn in writes else "reads"
+            if h.loop:
+                self.error(e, f"`{name}` can't be called here: it {does} `{hn}`, and the `for` loop on line {h.line} "
+                              f"is going over `{hn}`\n  help: loop over positions instead (`for i in 0..{hn}.len`), "
+                              f"or over a copy (`for x in {hn}.copy()`)")
+            self.error(e, f"`{name}` can't be called here: it {does} `{hn}`, and `{hn}` is "
+                          f"{'mutably ' if h.mut else ''}lent to `{h.name}` (line {h.line}) until its last use on line "
+                          f"{h.until.line}\n  help: finish with `{h.name}` first, or re-project after the call")
+        for k, a in enumerate(e.args):
+            path = self.place_path(a)
+            if path is None:
+                continue
+            root, an = path[0], root_name(a)
+            is_mut = getattr(a, "mut", False)
+            hn = next((nm for nm in writes | reads if self.lookup(nm) is root), None)
+            if hn is not None and (hn in writes or is_mut):
+                by_value = not is_mut and isinstance(self.last_type.get(id(a)), SCALARS)
+                if not by_value:
+                    does = "changes" if hn in writes else "reads"
+                    self.error(a, f"`{show(a)}` can't be passed to `{name}`: `{name}` also {does} `{an}` directly, so it "
+                                  f"would reach the same storage under two names\n  help: pass everything `{name}` needs "
+                                  f"from `{an}` as parameters, or copy the value out first")
+            # another argument's own calls must not change what this one lends
+            for j, b in enumerate(e.args):
+                if j == k:
+                    continue
+                bw = self.effects_in(b)[0]
+                if an in bw and (is_mut or not isinstance(self.last_type.get(id(a)), SCALARS)):
+                    self.error(b, f"`{show(b)}` changes `{an}` while `{show(a)}` is lent to this call\n"
+                                  f"  help: do it in a statement before the call")
+
+    def check_assign_alias(self, s):
+        """`a[i] += f(mut a[i])`: the right side runs first and changes the very place the statement then updates."""
+        tp = self.place_path(s.target)
+        if tp is None or (s.op == "=" and s.target.kind == "name"):
+            return          # `x = f(mut x)` only overwrites x afterwards
+        for n in walk(s.value):
+            if n.kind != "call":
+                continue
+            places = [a for a in n.args if getattr(a, "mut", False)]
+            if n.fn.kind == "field" and n.fn.name in MUTATORS:
+                places.append(n.fn.obj)
+            for a in places:
+                ap = self.place_path(a)
+                if ap is None or ap[0] is not tp[0]:
+                    continue
+                why = self.overlap(tp[1], ap[1])
+                if why is not None:
+                    self.error(a, f"`{show(a)}` is changed on the right side of an assignment to `{show(s.target)}`, and the "
+                                  f"two may be the same storage: {why}\n  help: compute the right side first "
+                                  f"(`let t = ...`), then assign")
+
     def check_args(self, e, items):
         """Arguments of one call are lent together: `f(mut a[i], mut a[j])` needs `i != j`."""
         paths = [(a, m, self.place_path(a)) for a, m in items]
@@ -355,6 +521,25 @@ class LendMixin:
             self.error(s, f"`{name}` is changed below, but `{root_name(value)}` is not a var, so it can only be lent for reading")
         self.holds.append(Hold(name, sym, root, steps, mut, s.line, last))
 
+    def hold_iterated(self, it, node):
+        """`for x in xs` lends `xs` for reading until the loop ends: growing or shrinking it would move the storage
+        the loop is walking, and a loop whose range changes under it is a puzzle even when it is memory-safe."""
+        while (it.kind == "field" and it.name == "rev") or (it.kind == "call" and it.fn.kind == "field" and not it.args
+                                                           and it.fn.name in ("pairs", "enumerate")):
+            it = it.obj if it.kind == "field" else it.fn.obj
+        if it.kind == "range":
+            return None
+        path = self.place_path(it)
+        if path is None or not path[0].mut:
+            return None
+        t = self.peek_type(it)
+        if not (type(t).__name__ in ("TList", "TArr", "TSet", "TMap") or getattr(t, "view", None)):
+            return None     # `xs.positions`, `xs.len`, a domain: the loop walks values, not the storage
+        root, steps, _ = path
+        h = Hold(None, None, root, steps, False, node.line, node, loop=True)
+        self.holds.append(h)
+        return h
+
     def check_access(self, e, write):
         if not self.holds:
             return
@@ -363,7 +548,7 @@ class LendMixin:
             return
         root, steps, via = path
         for h in self.holds:
-            if h.root is not root or via is h.sym:
+            if h.root is not root or (via is not None and via is h.sym):
                 continue
             if not (write or h.mut):
                 continue
@@ -372,6 +557,11 @@ class LendMixin:
                 continue
             what = "changed" if write else "used"
             kind = "mutably " if h.mut else ""
+            if h.loop:
+                rn = root_name(e)
+                self.error(e, f"`{show(e)}` can't be {what} here: the `for` loop on line {h.line} is going over `{rn}`, "
+                              f"and that lends it for reading until the loop ends\n  help: loop over positions instead "
+                              f"(`for i in 0..{rn}.len`), or over a copy (`for x in {rn}.copy()`)")
             self.error(e, f"`{show(e)}` can't be {what} here: `{root_name(e)}` is {kind}lent to `{h.name}` (line {h.line}) "
                           f"until its last use on line {h.until.line} ({why})\n"
                           f"  help: finish with `{h.name}` first, go through `{h.name}`, or keep the position and "

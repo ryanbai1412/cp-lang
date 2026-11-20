@@ -389,6 +389,12 @@ same rule.
 - Index arguments are evaluated before any lend begins, left to right.
   That is the existing two-phase rule (5.3), and it is why
   `a[i].push(a[j].len)` and `a[a.len - 1] = x` are fine.
+- Left to right holds for every operand, not only indices: in
+  `f(next(), next())`, `next() - next()` and `xs.push(next())` the calls
+  run in the order they are written. An assignment runs its right side
+  first and then the indices of its target, so in `a[next()] = next()`
+  the first call made is the value. A program never has to know which
+  order C++ would have picked.
 
 **The one intrinsic.** `Buffer<T>` (M6) gains a safe projection,
 `buf.part(off, len) lends Buffer<T>`, a sub-block checked once against
@@ -974,6 +980,50 @@ first ones a fresh agent tries to break:
 10. A `disjoint` law that is wrong (`row` declared disjoint from every
     other row but lending overlapping blocks): caught by the debug-run
     overlap check with both call sites.
+11. `for x in xs: xs.push(x)`: rejected, the loop lends `xs` for reading
+    until it ends; the help offers `for i in 0..xs.len` and
+    `for x in xs.copy()`. The same through a fn: `fn grow(): xs.push(7)`
+    called in the loop body is rejected and names `grow`.
+12. `let part = a[l..=r]; clobber(); print(sum(part))` where `clobber`
+    assigns the captured `a`: rejected, "`clobber` can't be called here:
+    it changes `a`, and `a` is lent to `part`". One level of indirection
+    (`outer` calls `clobber`) is rejected the same way.
+13. `fn go(mut x: Int, i: V)` whose body also writes the captured `a`,
+    called as `go(mut a[l], l)`: rejected, the callee would reach the
+    same storage under two names. This is the recursive local `mut fn`
+    case; passing the position (`go(l)`) is the fix.
+14. `if i != r: step(); mv(mut a[i], mut a[r])` where `step` assigns the
+    captured `i`: rejected, the call drops the fact `i != r`.
+15. `a[l] += inc(mut a[l])` and `xs[0] = xs.pop()!`: rejected, the right
+    side changes the place being assigned; bind it first with `let`.
+16. `a[next()] max= 4`: rejected, the target would be evaluated twice.
+17. `f(next(), next())` with a `next` that counts: prints in written
+    order (3.4), also for methods, operators and `min`/`max`.
+18. `let k: Int = max(a[f..f])`: rejected with "expected Int, got ?Int".
+    A slice keeps its parent's index type but can be empty, so its
+    `min`/`max` are optional even when the array's are not.
+19. `domain V = 0..=3000000000`: rejected, a domain holds at most
+    2^31 - 1 values. With bounds read at run time the program stops with
+    "domain has more than 2^31 - 1 values"; an inverted range (`5..=1`)
+    is the empty domain, and the length never wraps, even for
+    `Int.min..=Int.max`.
+20. `/` and `%` at the ends of `Int`: `a % b` is in `0..|b|` for every
+    nonzero `b`, including `b = Int.min`, whose magnitude is not an Int;
+    `a % -1` is 0; `Int.min / -1` stops with "Int overflow"; `a / 0` and
+    `a % 0` stop with "division by zero" when the checker could not rule
+    the zero out. `-9223372036854775808` reads from input as itself.
+21. `a + a`, `a * a`, `-a`, `abs(a)`, `s += a` and `a << k` on values the
+    range checker can't bound: a local build stops with "Int overflow"
+    and the line; a judge build is the plain operator.
+22. `a[z.l..z.r(k)]` with `k` too large, `a[z.l(k)..z.r]` with
+    `k = Int.min`, and `V.first + k` past the end: each stops with the
+    expression, the domain and its size, the position and `k`, as in
+    "`z.r(k)` leaves V.bounds (2 values): from position 0, k = 2". The
+    sum never wraps back into the domain.
+23. `V.first` and `V.last` when `V` is empty stop with "`V.first`: V is
+    empty". A domain with one value has `first == last`, and every window
+    of 5.6 case 22 still works on it; `a[z..=f]` written backwards is the
+    empty slice.
 
 ---------------------------------------------------------------------------
 
@@ -1241,7 +1291,50 @@ not of the design:
   §3.6 is not implemented.
 - The "last use" of a `let`-bound view is found by name, so a second
   variable with the same name in a nested block extends the lend.
-- A local fn that captures a `var` is not followed: calling it while a
-  slice of that `var` is lent, or while a fact about it is in use, is not
-  rejected. The real checker treats the call as a use of everything the
-  fn captures (5.10).
+- Calls are followed by name only. A fn's effects are what its body (and
+  the bodies of the fns it calls) assign, mutate through a method or pass
+  as `mut`; a fn value passed as an argument or stored in a variable is
+  not followed, and a method call is followed when the receiver's type is
+  known at the call.
+
+**Captured variables and calls.** A fn that changes a `var` it captures
+is a use of that `var` wherever it is called (5.10), so the prototype
+works out each fn's effects once and checks every call against them:
+
+```
+var a: [V]Int = read()
+fn clobber():
+    a[V(1)] = 99
+
+let part = a[l..=r]
+clobber()           // error: `clobber` can't be called here: it changes `a`,
+print(sum(part))    //        and `a` is lent to `part` until this line
+```
+
+The same analysis drops a fact when a call may assign a variable in it,
+rejects `go(mut a[l], l)` when `go` also writes `a` itself, and rejects
+`total(xs, grow())` when `grow` changes the `xs` lent to the same call.
+Recursion is handled by taking the effects of the whole call graph, so a
+recursive local fn that writes a captured array is fine on its own and
+an error only while something else holds that array.
+
+**Loops lend what they walk.** `for x in xs` over a `var` list, array,
+set, map or view lends it for reading until the loop ends. Assigning
+elements of a list by position inside its own loop is still the way to
+update in place (`for i in 0..xs.len: xs[i] += 1`); growing, shrinking or
+reassigning the thing being walked is the error. `xs.copy()` gives the
+loop its own list.
+
+**Evaluation order.** The emitted C++ evaluates operands in the order of
+3.4. When two operands have effects, or one changes what another reads,
+every operand but the last is evaluated into a temporary first; code with
+no such operands is emitted exactly as before.
+
+**The ends of `Int`.** `/` and `%` are Euclidean for every pair of
+operands, with the native C++ operators used only when the checker proves
+`a >= 0` and `b > 0`. Division by zero and `Int.min / -1` stop the
+program in every build. Arithmetic the checker could not bound stops a
+local build on overflow (`-DLOCAL`, which `cp run` and the test suites
+use) and is the plain operator on a judge. A domain's length is computed
+in 128 bits and capped at 2^31 - 1. `proto/tests/redteam/` holds one
+program per case of 5.6 that runs, each built under ASan and UBSan.
