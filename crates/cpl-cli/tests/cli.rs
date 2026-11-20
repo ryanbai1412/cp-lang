@@ -223,9 +223,38 @@ fn build_writes_cpp_that_opens_with_the_source() {
 }
 
 #[test]
+fn build_drops_the_source_header_before_it_passes_64_kb() {
+    // 60 KB of source: the C++ fits, the C++ and the source do not.
+    let mut source = String::new();
+    for i in 0..1500 {
+        source += &format!("// {i}: {}\n", "padding ".repeat(4));
+    }
+    source += "print(1 + 1)\n";
+    let path = scratch("build-headerless", "long.cp", source.as_bytes());
+    let out = cpl(
+        &[
+            "build".as_ref(),
+            path.as_os_str(),
+            "-o".as_ref(),
+            "-".as_ref(),
+        ],
+        b"",
+    );
+    assert_eq!(out.status.code(), Some(0));
+    let cpp = String::from_utf8(out.stdout).unwrap();
+    assert!(cpp.starts_with("// long.cp: C++17 written by cpl"), "{cpp}");
+    assert!(
+        !cpp.contains("padding") && cpp.contains("int main()"),
+        "{cpp}"
+    );
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert!(stderr.contains("the header is left out"), "{stderr}");
+}
+
+#[test]
 fn build_refuses_cpp_over_64_kb() {
     let mut source = String::new();
-    for i in 0..4000 {
+    for i in 0..6000 {
         source += &format!("print({i} + {i})\n");
     }
     let path = scratch("build-big", "big.cp", source.as_bytes());

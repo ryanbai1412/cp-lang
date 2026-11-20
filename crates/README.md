@@ -31,9 +31,10 @@ divisor is positive, the C++ is the bare operator (`a % b`); otherwise it
 is a branchless helper (`cpl::modp(a, b)` for a positive divisor,
 `cpl::emod(a, b)` when nothing is known).
 
-The C++ file opens with the `.cp` source as comments, holds only the
-runtime helpers the program calls, and is refused if it would pass the
-64 KB a judge accepts. Building twice gives the same bytes.
+The C++ file opens with the `.cp` source as comments and holds only the
+runtime helpers the program calls. If the source would push the file past
+the 64 KB a judge accepts, `cpl build` leaves the source out and says so;
+if the C++ alone is over, it refuses. Building twice gives the same bytes.
 
 `cpl run` checks what the C++ does not: an index out of range, a division
 by zero, an `Int` overflow, `!` on `none`, input outside its declared

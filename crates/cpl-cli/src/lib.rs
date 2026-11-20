@@ -199,13 +199,23 @@ fn build_file(
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or(path);
-    let cpp = cpl_codegen::emit(&compiled.program, name, &compiled.text);
+    let mut cpp = cpl_codegen::emit(&compiled.program, name, Some(&compiled.text));
     if cpp.len() > MAX_CPP_BYTES {
+        // The source in the header is for the reader; a file the judge
+        // turns away helps nobody.
+        let bytes = cpp.len();
+        cpp = cpl_codegen::emit(&compiled.program, name, None);
+        if cpp.len() > MAX_CPP_BYTES {
+            *stderr += &format!(
+                "cpl: the C++ for `{path}` is {} bytes, over the {MAX_CPP_BYTES}-byte limit judges accept\n",
+                cpp.len()
+            );
+            return EXIT_ERRORS;
+        }
         *stderr += &format!(
-            "cpl: the C++ for `{path}` is {} bytes, over the {MAX_CPP_BYTES}-byte limit judges accept\n",
-            cpp.len()
+            "cpl: with its source in the header the C++ for `{path}` would be {bytes} bytes, over the \
+             {MAX_CPP_BYTES}-byte limit judges accept; the header is left out\n"
         );
-        return EXIT_ERRORS;
     }
     if out == Some("-") {
         let _ = stdout.write_all(cpp.as_bytes());
