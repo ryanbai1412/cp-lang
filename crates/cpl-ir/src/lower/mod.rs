@@ -303,6 +303,8 @@ struct FnCx {
 struct Lowerer<'a> {
     mods: Vec<&'a Analysis>,
     path_to_mod: HashMap<String, ModId>,
+    /// The module `std.mod`, when the program uses it.
+    std_mod: Option<ModId>,
     mod_syms: Vec<HashMap<String, Sym>>,
     cur_mod: ModId,
     diags: Vec<Diagnostic>,
@@ -362,6 +364,7 @@ impl<'a> Lowerer<'a> {
         Lowerer {
             mods: Vec::new(),
             path_to_mod: HashMap::new(),
+            std_mod: None,
             mod_syms: Vec::new(),
             cur_mod: 0,
             diags: Vec::new(),
@@ -1518,6 +1521,12 @@ impl<'a> Lowerer<'a> {
                 }
                 Some(DimSpec::Int(Box::new(len)))
             }
+            // `[Bool]T` has two cells, `false` then `true`.
+            ast::TypeKind::Named { name, args }
+                if args.is_empty() && name.text == "Bool" && self.get_sym(&name.text).is_none() =>
+            {
+                Some(DimSpec::Int(Box::new(self.int_lit(2, ty.span))))
+            }
             ast::TypeKind::Named { name, args } if args.is_empty() => {
                 if !values {
                     return Some(DimSpec::Int(Box::new(self.int_lit(0, ty.span))));
@@ -1977,6 +1986,14 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// Whether a struct is an instance of the standard library's `Mod<P>`.
+    fn is_std_mod(&self, sid: StructId) -> bool {
+        let info = &self.structs[sid];
+        info.origin_gen.is_some()
+            && info.decl.name.text == "Mod"
+            && self.std_mod == Some(info.mod_id)
+    }
+
     fn try_coerce(&mut self, e: Expr, want: &Ty) -> Result<Expr, Expr> {
         if e.ty == *want || e.ty == Ty::Error || *want == Ty::Error {
             return Ok(e);
@@ -1995,6 +2012,21 @@ impl<'a> Lowerer<'a> {
                 ty: Ty::Pos(*d),
                 span,
             }),
+            // An `Int` where a `Mod<P>` is wanted is reduced into it
+            // (decision 3.10): `var ans: Z = 1` is `Z(1)`.
+            (Ty::Struct(sid), Ty::Int) if self.is_std_mod(*sid) => {
+                match self.structs[*sid].methods.get("new").copied() {
+                    Some(new_fn) => {
+                        let ret = self.ret_of(new_fn, span);
+                        Ok(Expr {
+                            kind: ExprKind::Call(new_fn, vec![Arg::Value(e)]),
+                            ty: ret,
+                            span,
+                        })
+                    }
+                    None => Err(e),
+                }
+            }
             (Ty::Float, Ty::Int) => Ok(match e.kind {
                 ExprKind::Int(v) => Expr {
                     kind: ExprKind::Float(v as f64),

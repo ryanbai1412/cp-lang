@@ -138,6 +138,8 @@ impl Ty {
             (Ty::Param(_), _) | (_, Ty::Param(_)) => true,
             (a, b) if a.is_int() && b.is_int() => true,
             (a, Ty::Float) if a.is_int() => true,
+            // An `Int` is reduced into a `Mod<P>` (decision 3.10).
+            (a, Ty::Named { name, .. }) if a.is_int() && name == "Mod" => true,
             (a, Ty::Optional(inner)) => a.fits(inner),
             (
                 Ty::Array {

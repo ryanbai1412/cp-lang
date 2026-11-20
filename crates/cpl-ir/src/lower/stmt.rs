@@ -1114,6 +1114,43 @@ impl<'a> Lowerer<'a> {
             if let Some(table) = self.comprehension_table(init, dims, &elem_ty) {
                 return Some(table);
             }
+            // `var dp: [Bool]Z = [1, 0]`: a list of as many values as the
+            // array has cells, when that count is written as a number.
+            if let (ast::ExprKind::List(items), [DimSpec::Int(len)]) = (&init.kind, dims.as_slice()) {
+                if let (ExprKind::Int(cells), false) = (&len.kind, items.is_empty()) {
+                    if *cells != items.len() as i64 {
+                        let message = format!(
+                            "this array has {}, but the list gives {}",
+                            plural(*cells, "cell"),
+                            plural(items.len() as i64, "value"),
+                        );
+                        self.error(codes::TYPE_MISMATCH, init.span, message);
+                        return Some(self.err_expr(init.span));
+                    }
+                    let dims = dims.clone();
+                    let at = init.span;
+                    return Some(self.do_expr(Some(&want.clone()), at, |lw, out| {
+                        let values: Vec<Expr> =
+                            items.iter().map(|item| lw.expect(item, &elem_ty)).collect();
+                        let mut values = values.into_iter();
+                        let first = values.next().map(Box::new);
+                        let cells = lw.temp(want.clone());
+                        let filled = lw.mk(ExprKind::Fill(dims, first), want.clone(), at);
+                        out.push(Stmt::Let(cells, Some(filled)));
+                        for (i, value) in values.enumerate() {
+                            let index = lw.int_lit(i as i64 + 1, at);
+                            let whole = Place { kind: PlaceKind::Local(cells), ty: want.clone(), span: at };
+                            let cell = Place {
+                                kind: PlaceKind::Index(Box::new(whole), vec![index]),
+                                ty: elem_ty.clone(),
+                                span: at,
+                            };
+                            out.push(Stmt::Assign(cell, AssignOp::Set, value));
+                        }
+                        out.push(Stmt::Give(lw.local(cells, at)));
+                    }));
+                }
+            }
             let value = self.expr(init, Some(&want));
             if value.ty == want || value.ty == Ty::Error {
                 return Some(value);
@@ -2415,4 +2452,8 @@ pub(super) fn diverging_default(e: &ast::Expr) -> Option<&ast::Stmt> {
         },
         _ => None,
     }
+}
+
+fn plural(n: i64, what: &str) -> String {
+    format!("{n} {what}{}", if n == 1 { "" } else { "s" })
 }
