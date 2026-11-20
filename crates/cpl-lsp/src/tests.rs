@@ -650,3 +650,26 @@ fn formatting_replaces_the_file_with_what_cpl_fmt_writes() {
     ));
     assert!(reply[0].get("result").as_array().is_empty());
 }
+
+#[test]
+fn inlay_hints_show_the_types_that_are_not_written() {
+    let (mut server, _) = open("let n = 3\nlet m: Int = 4\nvar xs = [n, m]\nfor x in xs:\n    print(x)\n");
+    let reply = server.handle(&request(
+        9,
+        "textDocument/inlayHint",
+        obj([("textDocument", doc())]),
+    ));
+    let hints = reply[0].get("result").as_array().to_vec();
+    let shown: Vec<(u32, u32, &str)> = hints
+        .iter()
+        .map(|hint| {
+            (
+                hint.at(&["position", "line"]).as_u32().unwrap(),
+                hint.at(&["position", "character"]).as_u32().unwrap(),
+                hint.get("label").as_str().unwrap(),
+            )
+        })
+        .collect();
+    // `m` has its type written, so it gets none.
+    assert_eq!(shown, [(0, 5, ": Int"), (2, 6, ": List<Int>"), (3, 5, ": Int")]);
+}

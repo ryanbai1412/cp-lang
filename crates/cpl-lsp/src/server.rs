@@ -283,6 +283,32 @@ impl Server {
                 }
                 Ok(Reply::result(Value::Array(actions)))
             }
+            // The type of each `let`, `var` and loop variable that is written
+            // without one, shown after its name.
+            "textDocument/inlayHint" => {
+                let uri = uri_of(params)?;
+                let Some(analysis) = self.db.analyze(uri) else {
+                    return Ok(Reply::result(Value::Array(Vec::new())));
+                };
+                let mut hints = Vec::new();
+                for item in &analysis.items {
+                    for entry in &item.check.hovers {
+                        let declares = entry.decl == Some(entry.span)
+                            && matches!(entry.keyword, "let" | "var" | "for");
+                        let at = item.offset + entry.span.end;
+                        let typed = analysis.text[at as usize..].trim_start().starts_with(':');
+                        if !declares || typed || entry.ty.has_vague() {
+                            continue;
+                        }
+                        hints.push(obj([
+                            ("position", position_json(analysis.lines.utf16(at, &analysis.text))),
+                            ("label", format!(": {}", entry.ty).into()),
+                            ("kind", 1.into()),
+                        ]));
+                    }
+                }
+                Ok(Reply::result(Value::Array(hints)))
+            }
             // `cpl fmt` on the open text: one edit that replaces the file,
             // or none when it is already formatted or can't be.
             "textDocument/formatting" => {
@@ -374,6 +400,7 @@ fn capabilities() -> Value {
                 ("definitionProvider", true.into()),
                 ("documentSymbolProvider", true.into()),
                 ("documentFormattingProvider", true.into()),
+                ("inlayHintProvider", true.into()),
                 (
                     "codeActionProvider",
                     obj([("codeActionKinds", vec!["quickfix".into()].into())]),
