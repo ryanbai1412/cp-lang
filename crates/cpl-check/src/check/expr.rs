@@ -541,7 +541,7 @@ impl<'a> Checker<'a> {
 
     /// A struct value seen as a struct with fewer fields, when one is
     /// wanted: a `Group<Int>` has the `id` and `op` of a `Monoid<Int>`, so
-    /// it is one (decision 13.1). Anything else is returned as it is.
+    /// it is one (decision 14.1). Anything else is returned as it is.
     pub(crate) fn narrowed(&mut self, got: &Ty, want: &Ty) -> Ty {
         let (
             Ty::Named {

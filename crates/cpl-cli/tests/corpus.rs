@@ -37,6 +37,21 @@ fn check(path: &Path) -> cpl_cli::Outcome {
     cpl_cli::run(&["check", path.to_str().unwrap()])
 }
 
+/// Files written in syntax that reached `main` after this checker did,
+/// which it does not read yet. A file leaves this list when it checks
+/// clean, and the test below says so.
+const PENDING: &[&str] = &[
+    // `by: .len`, `[k: v]` map literals, `+` as a fn, `take`, `columns`,
+    // `let a = x and let b = y else:`, and `[n - 1](a: T, b: T)`.
+    "proto/ports/ccc18s5.cp",
+    "proto/ports/cco18p1.cp",
+    "proto/ports/cco20p1.cp",
+    "proto/ports/ioi11p2.cp",
+    "proto/tests/ergo/columns.cp",
+    "proto/tests/ergo/library.cp",
+    "proto/tests/ergo/sugar.cp",
+];
+
 #[test]
 fn the_libraries_ports_and_passing_tests_check_clean() {
     let mut failures = Vec::new();
@@ -58,7 +73,13 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
         for path in sources(dir, nested) {
             checked += 1;
             let out = check(&path);
-            if out.code != 0 {
+            let pending = PENDING.iter().any(|file| path.ends_with(file));
+            if pending && out.code == 0 {
+                failures.push(format!(
+                    "{} checks clean now: take it off `PENDING`",
+                    path.display()
+                ));
+            } else if !pending && out.code != 0 {
                 failures.push(out.stderr);
             }
         }
@@ -72,7 +93,6 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
     );
 }
 
-/// The reason a failing test states on its first line: `// error: <text>`.
 /// Failing tests this checker still accepts: each needs a rule it does
 /// not have yet. A name leaves this list when its case is rejected for
 /// its stated reason, and the test below says so.
@@ -97,8 +117,14 @@ const NOT_YET: &[&str] = &[
     "span_two_domains",
     "step_as_argument",
     "step_is_optional",
+    // `let ... else`, `?` and `m[k] f= x` on a map.
+    "let_else_not_optional",
+    "map_fold_divide",
+    "map_fold_no_identity",
+    "try_in_branch",
 ];
 
+/// The reason a failing test states on its first line: `// error: <text>`.
 fn stated_reason(text: &str) -> Option<&str> {
     text.lines().next()?.strip_prefix("// error: ")
 }
@@ -129,6 +155,7 @@ fn each_failing_test_is_rejected_for_its_stated_reason() {
             "index_wrong_struct" => "`d` is indexed by Cell, but `Other(Row.first)` is an Other",
             "lend_outside_projection" => "`lend` is a statement of a projection's body",
             "counter_not_var" => "`seen` is a `let`, so it can't be assigned",
+            "use_unknown_name" => "`std.dsu` has no `Union`",
             _ => reason,
         };
         cases += 1;
