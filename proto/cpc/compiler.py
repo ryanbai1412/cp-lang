@@ -2981,6 +2981,42 @@ class Compiler(LendMixin):
                 self.scopes.pop()
                 self.emit("} }")
                 return
+        if it.kind == "call" and it.fn.kind == "name" and it.fn.name == "slide_until" and len(it.args) == 2 \
+                and not self.lookup("slide_until"):
+            # `for (lo, hi) in slide_until(r, (l, r) => ok)`: for each lo in turn, the first hi (never moving
+            # back) at which ok(lo, hi) holds; it stops when no hi is left. Stateless two pointers.
+            rc, rt = self.expr(it.args[0])
+            lam = it.args[1]
+            if not isinstance(rt, TRange) or lam.kind != "lambda" or len(lam.params) != 2 or pat.kind != "ptuple" or len(pat.items) != 2 or rev:
+                self.error(it, "`for (lo, hi) in slide_until(range, (l, r) => ok)`")
+            el = rt.elem
+            cty = "int" if isinstance(el, TDom) else "ll"
+            r, lo, hi = self.tmpname("r"), self.tmpname("lo"), self.tmpname("hi")
+            self.emit(f"{{ const Rng {r} = {rc}; ll {hi} = {r}.lo;")
+            self.emit(f"for (ll {lo} = {r}.lo; {lo} < {r}.hi; ++{lo}) {{")
+            self.ind += 1
+            self.emit(f"if ({hi} < {lo}) {hi} = {lo};")
+            self.scopes.append({})
+            pa, pb = self.fresh("l"), self.fresh("r")
+            self.bind_lambda_param(lam.params[0], pa, el, lam)
+            self.bind_lambda_param(lam.params[1], pb, el, lam)
+            lines, (bc, bt) = self.capture(lambda: self.expr(lam.body, BOOL))
+            self.scopes.pop()
+            if not isinstance(bt, TBool):
+                self.error(lam, f"slide_until needs a Bool test, got {bt!r}")
+            self.emit(f"auto {r}_ok = [&](const {cty} {pa}, const {cty} {pb}) -> bool {{ {' '.join(l.strip() for l in lines)} return {bc}; }};")
+            self.emit(f"while ({hi} < {r}.hi && !{r}_ok(({cty}){lo}, ({cty}){hi})) ++{hi};")
+            self.emit(f"if ({hi} >= {r}.hi) break;")
+            self.scopes.append({})
+            self.loop_trips.append(None)
+            self.bind_pattern(pat.items[0], f"({cty}){lo}", el, node)
+            self.bind_pattern(pat.items[1], f"({cty}){hi}", el, node)
+            body()
+            self.loop_trips.pop()
+            self.scopes.pop()
+            self.ind -= 1
+            self.emit("} }")
+            return
         if it.kind == "call" and it.fn.kind == "field" and it.fn.name == "step" and len(it.args) == 1:
             # `for i in (0..n).step(2)` and `.step(2).rev`: every k-th value, counted from the low end
             rc, rt = self.expr(it.fn.obj)
