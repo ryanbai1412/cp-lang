@@ -144,6 +144,19 @@ test("hover, definition and symbols answer at an offset", () => {
   );
 });
 
+test("the standard library is inside the module: `use std.*` needs no files", () => {
+  const sorted = cpl.run(
+    "use std.algebra.{desc}\nvar xs: List<Int> = [3, 1, 2]\nsort(mut xs, by: desc)\nprint(xs)\n",
+  );
+  assert.deepEqual([sorted.ok, sorted.stdout, sorted.stderr], [true, "3 2 1\n", ""]);
+  const choose = cpl.run(
+    "use std.mod.{Mod, Comb}\nlet c = Comb<1000000007>()\nprint(c.choose(5, 2))\n",
+  );
+  assert.deepEqual([choose.ok, choose.stdout], [true, "10\n"]);
+  assert.equal(cpl.check("use std.segtree.{SegTree}\nprint(1)\n").ok, true);
+  assert.match(cpl.check("use std.nothing.{X}\n").stderr, /E0206/);
+});
+
 test("lsp is the language server without the stdio framing", () => {
   const [reply] = cpl.lsp({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} });
   assert.equal(reply.id, 1);
