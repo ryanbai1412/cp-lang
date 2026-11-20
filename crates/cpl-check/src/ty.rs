@@ -187,6 +187,10 @@ impl Ty {
             (Ty::Named { name, args }, Ty::Str) if name == "List" => {
                 args.first().is_none_or(|elem| elem.fits(&Ty::Char))
             }
+            // An array is read where a list is asked for: `running_sum(a)`.
+            (Ty::Array { elem, .. }, Ty::Named { name, args }) if name == "List" => {
+                args.first().is_none_or(|want| elem.fits(want))
+            }
             // A record or tuple literal builds a struct with those fields;
             // the fields are checked where the struct is known.
             (Ty::Record(_) | Ty::Tuple(_), Ty::Named { .. }) => true,

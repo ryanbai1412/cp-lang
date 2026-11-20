@@ -76,6 +76,9 @@ pub(crate) struct Parser<'a> {
     in_trait: bool,
     /// The first half of a `>>` was used to close a type argument list.
     half_shr: bool,
+    /// Statements the one being parsed stands for besides itself: the
+    /// later `let`s of `let a = x and let b = y else: ...`.
+    extra_stmts: Vec<crate::ast::Stmt>,
 }
 
 impl<'a> Parser<'a> {
@@ -92,6 +95,7 @@ impl<'a> Parser<'a> {
             brace_depth: 0,
             in_trait: false,
             half_shr: false,
+            extra_stmts: Vec::new(),
         }
     }
 

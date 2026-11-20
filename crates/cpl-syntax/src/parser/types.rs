@@ -176,9 +176,16 @@ impl<'a> Parser<'a> {
     /// One entry of `[...]T`: a domain, or a count as in `[n]Int`, which
     /// is the range `0..n`.
     fn index_ty(&mut self) -> Type {
+        // A count is an `Int` expression, `n` or `n - 1`; a range has
+        // its `..`, and a domain starts with a capital.
+        let entry = self.tokens[self.pos..]
+            .iter()
+            .take_while(|t| !matches!(t.kind, T::RBracket | T::Comma | T::Newline | T::Eof));
         let counted = matches!(self.peek(), T::Ident | T::Int)
-            && matches!(self.peek_n(1), T::RBracket | T::Comma)
-            && !self.text().starts_with(|c: char| c.is_ascii_uppercase());
+            && !self.text().starts_with(|c: char| c.is_ascii_uppercase())
+            && !entry
+                .into_iter()
+                .any(|t| matches!(t.kind, T::DotDot | T::DotDotEq | T::LParen | T::LBracket));
         if !counted {
             return self.ty();
         }

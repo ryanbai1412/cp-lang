@@ -45,6 +45,10 @@ pub fn value(name: &str) -> Option<Ty> {
         // array, and `span(a, b)` the range between two positions in
         // either order (decisions §11).
         "counts" | "prefix" | "span" => Ty::Unknown,
+        // `take(x)` moves a value out and leaves its default behind, and
+        // `read(columns)` reads an array of records a field at a time
+        // (decisions §13).
+        "take" | "columns" => Ty::Unknown,
         _ if TYPE_NAMES.contains(&name) => Ty::TypeName(name.into()),
         _ if PROTOTYPE_NAMES.contains(&name) => Ty::Unknown,
         _ => return None,
@@ -174,6 +178,8 @@ pub const VALUE_NAMES: &[&str] = &[
     "counts",
     "prefix",
     "span",
+    "take",
+    "columns",
     "List",
     "Map",
     "Set",

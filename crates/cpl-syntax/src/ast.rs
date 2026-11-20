@@ -320,6 +320,8 @@ pub enum ExprKind {
     Tuple(Vec<Expr>),
     Record(Vec<(Name, Expr)>),
     List(Vec<Expr>),
+    /// `[3: 4, 5: 6]`.
+    Map(Vec<(Expr, Expr)>),
     /// `[body for pat in iter if cond]`, or the same without brackets as
     /// the only argument of a call: `max(dist[v] for v in V)`.
     Comprehension {

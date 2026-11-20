@@ -32,6 +32,7 @@ impl<'a> Parser<'a> {
             return;
         }
         out.push(self.stmt());
+        out.append(&mut self.extra_stmts);
     }
 
     fn stmt(&mut self) -> Stmt {
@@ -279,11 +280,38 @@ impl<'a> Parser<'a> {
             }
             None
         };
+        // `let a = x and let b = y else: return` is one `let ... else`
+        // after another, with the same `else`.
+        let mut more = Vec::new();
+        while init.is_some() && self.at(T::And) && self.peek_n(1) == T::Let {
+            self.bump();
+            let start = self.start();
+            self.bump();
+            let pat = self.pattern();
+            self.expect(T::Eq, "`=` and a value after the name in `let`");
+            let value = self.expr();
+            more.push((pat, value, self.span_from(start)));
+        }
         // `let v = u else: return`.
         let otherwise = (init.is_some() && self.at(T::Else)).then(|| {
             self.bump();
             self.colon_block("`else`")
         });
+        for (pat, value, span) in more {
+            self.extra_stmts.push(Stmt {
+                kind: StmtKind::Let {
+                    mutable,
+                    pat,
+                    ty: None,
+                    init: Some(value),
+                    otherwise: otherwise.clone(),
+                    guard: None,
+                },
+                span,
+                decorators: Vec::new(),
+                public: false,
+            });
+        }
         // `let k: 0..n = read() where k < n`.
         let guard = self.eat(T::Where).then(|| self.expr());
         StmtKind::Let {
