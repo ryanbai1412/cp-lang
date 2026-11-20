@@ -1842,6 +1842,12 @@ class Compiler(LendMixin):
                 self.error(e, f"span of a {ends[0][1].name} and a {ends[1][1].name}")
             (a, info, wa), (b, _, wb) = ends
             return f"cp_span({a}, {wa}, {b}, {wb})", TRange(TDom(info))
+        if fn.kind == "name" and fn.name in ("popcount", "ctz", "clz", "bit_len") and len(e.args) == 1 and not self.lookup(fn.name):
+            # the bit helpers work on the 64-bit pattern; ctz(0) and clz(0) are 64, never undefined
+            c, t = self.expr(e.args[0])
+            if not is_int(t):
+                self.error(e, f"{fn.name} needs an Int, got {t!r}")
+            return f"cp_{fn.name}({c})", TInt(0, 64)
         if fn.kind == "name" and fn.name == "abs" and not self.lookup("abs"):
             c, t = self.expr(e.args[0])
             if not is_int(t):
@@ -2532,6 +2538,58 @@ class Compiler(LendMixin):
                 w = self.fresh(pat.name)
                 self.emit(f"const Rng {w}{{{v}, {v} + {k}}};")
                 self.scopes[-1][pat.name] = Sym("let", TRange(el), w, node=pat)
+                body()
+                self.ind -= 1
+                self.loop_trips.pop()
+                self.scopes.pop()
+                self.emit("} }")
+                return
+        if it.kind == "call" and it.fn.kind == "field" and it.fn.name == "step" and len(it.args) == 1:
+            # `for i in (0..n).step(2)` and `.step(2).rev`: every k-th value, counted from the low end
+            rc, rt = self.expr(it.fn.obj)
+            if not isinstance(rt, TRange) or pat.kind != "pname":
+                self.error(it, f"`.step(k)` steps through a range and binds one name, got {rt!r}")
+            kc, kt = self.expr(it.args[0])
+            if not is_int(kt) or kt.lo is None or kt.lo < 1:
+                self.error(it, "the step of `.step(k)` must be an Int known to be at least 1")
+            r, k = self.tmpname("r"), self.tmpname("k")
+            v = self.fresh(pat.name)
+            cty = "int" if isinstance(rt.elem, TDom) else "ll"
+            self.emit(f"{{ const Rng {r} = {rc}; const ll {k} = {kc};")
+            if rev:
+                self.emit(f"if ({r}.lo < {r}.hi) for (ll {v}_ = {r}.lo + ({r}.hi - 1 - {r}.lo) / {k} * {k}; {v}_ >= {r}.lo; {v}_ -= {k}) {{ const {cty} {v} = ({cty}){v}_;")
+            else:
+                self.emit(f"for (ll {v}_ = {r}.lo; {v}_ < {r}.hi; {v}_ += {k}) {{ const {cty} {v} = ({cty}){v}_;")
+            self.scopes.append({})
+            self.scopes[-1][pat.name] = Sym("let", rt.elem, v, node=pat)
+            self.loop_trips.append(None)
+            self.ind += 1
+            body()
+            self.ind -= 1
+            self.loop_trips.pop()
+            self.scopes.pop()
+            self.emit("} }")
+            return
+        if it.kind == "field" and it.name == "items" and pat.kind == "ptuple" and len(pat.items) == 2:
+            # `for (i, x) in a.items`: (index, value) of an array or list, (key, value) of a map
+            ot = self.capture(lambda: self.expr(it.obj))[1][1]
+            if isinstance(ot, TMap):
+                it = it.obj
+            elif isinstance(ot, TList) or (isinstance(ot, TArr) and len(ot.dims) == 1):
+                oc, ot = self.expr(it.obj)
+                a, k = self.tmpname("a"), self.tmpname("k")
+                self.emit(f"{{ const auto& {a} = {oc};")
+                self.emit(f"for (ll {k} = (ll){a}.size() - 1; {k} >= 0; --{k}) {{" if rev else
+                          f"for (ll {k} = 0; {k} < (ll){a}.size(); ++{k}) {{")
+                self.scopes.append({})
+                self.loop_trips.append(ot.dims[0].info.len_iv[1] if isinstance(ot, TArr) else None)
+                self.ind += 1
+                if isinstance(ot, TArr) and not ot.dims[0].info.anon:
+                    self.bind_pattern(pat.items[0], f"(int){k}", ot.dims[0], node)
+                else:
+                    lo = ot.dims[0].info.lo_cpp if isinstance(ot, TArr) else "0"
+                    self.bind_pattern(pat.items[0], f"(ll)({k} + {lo})", TInt(), node)
+                self.bind_pattern(pat.items[1], f"{a}[{k}]", ot.elem, node)
                 body()
                 self.ind -= 1
                 self.loop_trips.pop()
@@ -4060,6 +4118,8 @@ class Compiler(LendMixin):
         self.emit(f"if (!{o}.has()) break;")
         self.scopes.append({})
         self.bind_pattern(s.pat, f"{o}.get()", t.inner, s)
+        if getattr(s, "extra", None) is not None:
+            self.emit(f"if (!({self.cond(s.extra)})) break;")
         self.block(s.body)
         self.scopes.pop()
         self.ind -= 1
