@@ -70,13 +70,13 @@ impl Neg for Fixed<D>:
     fn neg(a) = Fixed(-a.raw)
 
 impl Mul for Fixed<D>:
-    fn mul(a, b) = Fixed(a.raw * b.raw / unit)
+    fn mul(a, b) = Fixed(a.raw * b.raw / 10 ** D)
 
 impl Div for Fixed<D>:
     fn div(a, b):
         assert b.raw != 0
         let s = if b.raw < 0: -1 else: 1
-        Fixed(s * a.raw * unit / (s * b.raw))
+        Fixed(s * a.raw * 10 ** D / (s * b.raw))
 
 impl Ord for Fixed<D>:
     fn lt(a, b) = a.raw < b.raw
@@ -86,27 +86,35 @@ impl Show for Fixed<D>:
     fn show(a):
         let mag = if a.raw < 0: -a.raw else: a.raw
         var out = if a.raw < 0: "-" else: ""
-        out = out + "{mag / unit}"
+        out = out + "{mag / 10 ** D}"
         if D == 0: return out
-        let tail = "{mag % unit}"
+        let tail = "{mag % 10 ** D}"
         out.push('.')
         for _ in tail.len..D: out.push('0')
         out + tail
 
+/// Random `Fixed<D>` values survive being shown and parsed back.
+fn check_round_trip<D>():
+    type F = Fixed<D>
+    for _ in 0..100:
+        let x = F(rand(-10 ** 9, 10 ** 9))
+        let text = "{x}"
+        assert F.parse(text) == x
+        // the digits are the raw value with a point put in
+        let plain = [c for c in text if c != '.' and c != '-']
+        var back = 0
+        for c in plain: back = back * 10 + (c.ord - '0'.ord)
+        assert back == x.abs.raw and plain.len >= D + 1
+        assert (text[0] == '-') == (x.raw < 0)
+
 @test
 fn show_and_parse_round_trip():
-    for d in 0..=6:
-        type F = Fixed<d>
-        for _ in 0..100:
-            let x = F(rand(-10 ** 9, 10 ** 9))
-            let text = "{x}"
-            assert F.parse(text) == x
-            // the digits are the raw value with a point put in
-            let plain = [c for c in text if c != '.' and c != '-']
-            var back = 0
-            for c in plain: back = back * 10 + (c.ord - '0'.ord)
-            assert back == x.abs.raw and plain.len >= d + 1
-            assert (text[0] == '-') == (x.raw < 0)
+    // the digit count is a compile-time parameter, so each width is its own call
+    check_round_trip::<0>()
+    check_round_trip::<1>()
+    check_round_trip::<2>()
+    check_round_trip::<3>()
+    check_round_trip::<6>()
 
 @test
 fn parse_accepts_decimals_and_nothing_else():
@@ -119,29 +127,35 @@ fn parse_accepts_decimals_and_nothing_else():
     assert "{F(1250)}" == "12.50" and "{F(-5)}" == "-0.05" and "{F.of(3)}" == "3.00"
     assert "{Fixed<0>.of(-42)}" == "-42" and "{Fixed<4>(1)}" == "0.0001"
 
+/// `+ - * /` and the rounding accessors of `Fixed<D>` agree with exact fractions.
+fn check_arithmetic<D>():
+    // value = raw / 10 ** d as a pair (numerator, denominator); cross-multiply to compare
+    type F = Fixed<D>
+    let u = 10 ** D
+    for _ in 0..300:
+        let (a, b) = (F(rand(-5000, 5000)), F(rand(-5000, 5000)))
+        assert (a + b).raw == a.raw + b.raw and (a - b).raw == a.raw - b.raw and (-a).raw == -a.raw
+        assert (a < b) == (a.raw < b.raw) and a.times(7) == a + a + a + a + a + a + a
+        // a * b is the largest multiple of 1 / u that is <= the exact product
+        let p = (a * b).raw
+        assert p * u <= a.raw * b.raw and a.raw * b.raw < (p + 1) * u
+        if b.raw != 0:
+            // the same for a / b: q / u <= a / b < (q + 1) / u
+            let q = (a / b).raw
+            let s = if b.raw < 0: -1 else: 1
+            assert q * s * b.raw <= s * a.raw * u and s * a.raw * u < (q + 1) * s * b.raw
+            assert F.ratio(a.raw, b.raw) == a / b
+        assert a.floor * u <= a.raw and a.raw < (a.floor + 1) * u
+        assert (a.ceil - 1) * u < a.raw and a.raw <= a.ceil * u
+        assert abs(2 * a.raw - 2 * a.round * u) <= u and F.of(a.floor) + a.frac == a
+        assert abs(a.to_float * u - a.raw) < 0.001
+
 @test
 fn arithmetic_matches_exact_fractions():
-    // value = raw / 10 ** d as a pair (numerator, denominator); cross-multiply to compare
-    for d in 0..=4:
-        type F = Fixed<d>
-        let u = 10 ** d
-        for _ in 0..300:
-            let (a, b) = (F(rand(-5000, 5000)), F(rand(-5000, 5000)))
-            assert (a + b).raw == a.raw + b.raw and (a - b).raw == a.raw - b.raw and (-a).raw == -a.raw
-            assert (a < b) == (a.raw < b.raw) and a.times(7) == a + a + a + a + a + a + a
-            // a * b is the largest multiple of 1 / u that is <= the exact product
-            let p = (a * b).raw
-            assert p * u <= a.raw * b.raw and a.raw * b.raw < (p + 1) * u
-            if b.raw != 0:
-                // the same for a / b: q / u <= a / b < (q + 1) / u
-                let q = (a / b).raw
-                let s = if b.raw < 0: -1 else: 1
-                assert q * s * b.raw <= s * a.raw * u and s * a.raw * u < (q + 1) * s * b.raw
-                assert F.ratio(a.raw, b.raw) == a / b
-            assert a.floor * u <= a.raw and a.raw < (a.floor + 1) * u
-            assert (a.ceil - 1) * u < a.raw and a.raw <= a.ceil * u
-            assert abs(2 * a.raw - 2 * a.round * u) <= u and F.of(a.floor) + a.frac == a
-            assert abs(a.to_float * u - a.raw) < 0.001
+    check_arithmetic::<0>()
+    check_arithmetic::<1>()
+    check_arithmetic::<2>()
+    check_arithmetic::<4>()
 
 @test
 fn splitting_a_bill_loses_no_cent():
