@@ -1,0 +1,4 @@
+# Lines of noi02p1_orig.cpp that a perfect C++ contest library would have supplied.
+# Read by `cpl-verify loc` for the library-stripped line count; argue with it here.
+1-30   template header
+75-77  fast I/O setup
