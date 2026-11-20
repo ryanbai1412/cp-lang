@@ -42,12 +42,32 @@ impl Loader for FsLoader {
         } else {
             library_root(start, root_name).into_iter().collect()
         };
-        roots.iter().find_map(|root| {
+        let on_disk = roots.iter().find_map(|root| {
             let path = root.join(&relative);
             let text = std::fs::read_to_string(&path).ok()?;
             Some((path.to_string_lossy().into_owned(), text))
+        });
+        // No `stdlib/` to read (a browser, a binary on its own): the copy
+        // the compiler was built with.
+        on_disk.or_else(|| {
+            let text = bundled_std(rest).filter(|_| root_name == "std")?;
+            Some((format!("stdlib/{}.cp", rest.join("/")), text.to_string()))
         })
     }
+}
+
+/// The modules of `stdlib/` as they were when the compiler was built, by
+/// their path below it (`"seq"`).
+const BUNDLED_STD: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_modules.rs"));
+
+/// The text of the standard library module `module` (`["segtree"]`) that
+/// is built into the compiler.
+pub fn bundled_std(module: &[String]) -> Option<&'static str> {
+    let name = module.join("/");
+    BUNDLED_STD
+        .binary_search_by(|(known, _)| (*known).cmp(name.as_str()))
+        .ok()
+        .map(|at| BUNDLED_STD[at].1)
 }
 
 /// Folders that may hold the standard library, most specific first:
