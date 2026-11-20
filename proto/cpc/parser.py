@@ -249,7 +249,13 @@ class Parser:
                 pat = self.pattern()
                 self.expect("in")
                 it = self.expr()
-                body = self.block()
+                if self.at("if"):
+                    # `for v in V if ok(v): ...`: a filtered loop
+                    cl = self.next().line
+                    cond = self.expr()
+                    body = [N("if", cl, cond=cond, body=self.block(), orelse=[])]
+                else:
+                    body = self.block()
                 return N("for", line, pat=pat, iter=it, body=body)
             if v == "while":
                 self.next()
@@ -257,9 +263,16 @@ class Parser:
                     self.next()
                     pat = self.pattern()
                     self.expect("=")
-                    e = self.expr()
+                    e = self.not_()
+                    if self.at("??"):
+                        self.next()
+                        e = N("binop", line, op="??", a=e, b=self.not_())
+                    extra = None
+                    if self.at("and"):      # `while let x = q.pop() and x > 0:`
+                        self.next()
+                        extra = self.expr()
                     body = self.block()
-                    return N("whilelet", line, pat=pat, value=e, body=body)
+                    return N("whilelet", line, pat=pat, value=e, extra=extra, body=body)
                 c = self.expr()
                 body = self.block()
                 return N("while", line, cond=c, body=body)
