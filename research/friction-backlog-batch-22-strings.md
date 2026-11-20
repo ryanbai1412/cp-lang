@@ -19,7 +19,7 @@ interpreter at commit `9df888a`). Every "today" snippet is a line a port
 contains, and every error quoted came from a probe on that interpreter.
 "Wanted" snippets do not run. Nothing was run at full input size, and
 nothing was run on the Rust compiler or `proto/cpc/`. The README of
-the batch says how statement-first each port was; the DMOJ API answered
+the batch says how far the work was statement-first (only partly); the DMOJ API answered
 403 for every problem.
 
 ## The headline: `Str` is open in the interpreter, and thin

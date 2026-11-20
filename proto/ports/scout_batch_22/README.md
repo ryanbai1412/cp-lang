@@ -7,8 +7,8 @@ scout batch or a `blind_critic_*` directory. The friction they showed is in
 (items `X1`...).
 
 Batch 10 took the corpus's accepted KMP, Z-function, suffix-array and
-rolling-hash submissions, and the corpus has no accepted Aho-Corasick or
-Manacher one. This batch is what was left that is hard in a string-shaped
+rolling-hash submissions, and a search of the corpus found no unported
+Aho-Corasick or Manacher one. This batch is what was left that is hard in a string-shaped
 way: a suffix automaton, a trie, a shortest path and a search whose states
 are strings, two string DPs, and three kinds of parsing. Two more were
 written and then dropped, because batch 19 landed with them while this
@@ -58,13 +58,13 @@ non-blank lines:
 the same name (X9); `lib.toml` lets the interpreter resolve
 `use scout.bits`.
 
-How statement-first this was: `dmoj.ca/api/v2/problem/<code>` answered 403
-(a Cloudflare challenge) for every code in this batch from the machine
-that did the work, so no metadata came from it. The ports were written
-from the published IOI, CEOI, CCO, CCC and NOI statements as known. Before
-writing, part of seven originals was read for the input and output format
-(ioi08p1, cco19p6, ccc01s5, ccc99s5, noi21p4, noi09p2 and the last lines
-of ioi16p4), which for cco19p6 also shows its algorithm, and
-noi21p4's generator was copied from its original because the statement
-gives it as code. noi18p3, noi14p1 and ioi21p4 were written without
-opening theirs.
+How statement-first this was: only partly. `dmoj.ca/api/v2/problem/<code>`
+answered 403 (a Cloudflare challenge) for every code in this batch from the
+machine that did the work, so no metadata came from it, and the ports were
+written from the published IOI, CCO, CCC and NOI statements as remembered.
+The originals were opened for the exact input and output format, for
+several ports before the port was written (noi09p2 for one), and no record
+was kept of which ports were written before their original was opened.
+noi21p4's generator follows its original, because the statement gives it
+as code. Treat the batch as evidence about writing these solutions in CP
+Lang, not as a blind first-draft measurement.
