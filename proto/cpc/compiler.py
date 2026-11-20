@@ -42,6 +42,12 @@ class TEnum(T):
                 return k, v
         return None, None
 
+class TAddMax(T):
+    def __init__(self, dom): self.dom = dom
+    def __eq__(self, o): return isinstance(o, TAddMax) and o.dom == self.dom
+    def __hash__(self): return hash(("addmax", self.dom))
+    def __repr__(self): return f"AddMax<{self.dom!r}>"
+
 class TSeg(T):
     def __init__(self, dom, elem): self.dom, self.elem = dom, elem
     def __eq__(self, o): return isinstance(o, TSeg) and o.elem == self.elem and o.dom == self.dom
@@ -81,7 +87,7 @@ CPP_RESERVED = set(CPP_RESERVED) | {
     "index", "time", "clock", "rand", "array", "list", "map", "set", "queue", "stack",
     "vector", "string", "pair", "tuple", "greater", "less", "plus", "minus", "function",
     "accumulate", "iota", "unique", "partition", "merge", "remove", "replace", "search",
-    "empty", "ws", "dec", "hex", "fixed", "bitset", "deque", "complex", "ref", "apply",
+    "empty", "ws", "ends", "endl", "flush", "dec", "hex", "fixed", "bitset", "deque", "complex", "ref", "apply",
     "visit", "any", "all", "signal", "div", "ldiv", "exit", "free", "link", "read", "write",
     "select", "stdin", "stdout", "floor", "ceil", "round", "lower_bound", "upper_bound",
 }
@@ -195,6 +201,7 @@ class Compiler:
         if isinstance(t, THash): return "StrHash"
         if isinstance(t, TTree): return "RootedTree"
         if isinstance(t, TSeg): return f"SegTree<{self.cpp_type(t.elem)}>"
+        if isinstance(t, TAddMax): return "AddMax"
         if isinstance(t, THeap):
             e = self.cpp_type(t.elem)
             return f"priority_queue<{e}, vector<{e}>, greater<{e}>>"
@@ -289,6 +296,11 @@ class Compiler:
                 return TPerm([TDom(pos)], d)
             if nm == "MinHeap":
                 return THeap(self.resolve_type(tn.args[0]))
+            if nm == "AddMax":
+                d = self.resolve_type(tn.args[0])
+                if not isinstance(d, TDom):
+                    self.error(tn, "AddMax<D> needs a domain D")
+                return TAddMax(d)
             if nm == "SegTree":
                 d = self.resolve_type(tn.args[0])
                 if not isinstance(d, TDom):
@@ -1037,6 +1049,12 @@ class Compiler:
             ts = [self.resolve_type(a) if a.kind.startswith("t") else self.resolve_type(N("texpr", a.line, expr=a)) for a in fn.args]
             t = TSet(ts[0]) if fn.name == "Set" else TMap(*ts, hashed=fn.name == "HashMap")
             return self.set_ctor(t), t
+        if fn.kind == "generic" and fn.name == "AddMax":
+            # AddMax<D>(): add to a range, max of a range; every cell starts at 0
+            t = self.resolve_type(N("tname", fn.line, name="AddMax", args=fn.args))
+            if e.args:
+                self.error(e, "AddMax<D>() takes no arguments")
+            return f"AddMax({t.dom.info.len_cpp})", t
         if fn.kind == "generic" and fn.name == "SegTree":
             # SegTree<D, T>(id, (a, b) => op): a monoid given as two plain values
             t = self.resolve_type(N("tname", fn.line, name="SegTree", args=fn.args))
@@ -1260,6 +1278,22 @@ class Compiler:
                     self.error(a, f"positions of this string are {ot.dom!r}, got {t!r}")
                 cs.append(c)
             return f"{oc}.of({cs[0]}, {cs[1]})", TInt(0, (1 << 61) - 1)
+        if isinstance(ot, TAddMax):
+            def at(a):
+                c, t = self.expr(a, ot.dom)
+                if t != ot.dom:
+                    self.error(a, f"a {ot!r} is indexed by {ot.dom!r}, got {t!r}")
+                return c
+            if m == "add" and len(args) == 3:
+                vc, vt = self.expr(args[2])
+                if not is_int(vt):
+                    self.error(args[2], f"add(l, r, x) needs an Int x, got {vt!r}")
+                return f"{oc}.add({at(args[0])}, {at(args[1])}, {vc})", UNIT
+            if m == "max" and len(args) == 2:
+                return f"{oc}.query({at(args[0])}, {at(args[1])})", INT
+            if m == "max" and not args:
+                return f"{oc}.top()", INT
+            self.error(e, f"no method {m} on {ot!r} (add(l, r, x), max(l, r), max())")
         if isinstance(ot, TSeg):
             def at(a):
                 c, t = self.expr(a, ot.dom)
