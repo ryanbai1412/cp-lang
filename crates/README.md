@@ -170,11 +170,22 @@ read yet (none now), and `NOT_YET` the failing tests it still accepts.
 
 Not checked yet: value ranges beyond literals and domains, whether a type
 argument satisfies the bounds of the parameter it fills, and laws beyond
-`law disjoint`. The prelude is a table in `cpl-check/src/prelude.rs`. It
-also lists the names the prototype compiler built in (`SegTree`, `Mod`,
-`dijkstra` and others) and accepts them without a type, because the ports
-in `proto/ports/` use them without a `use`; a port that imports the `std`
-module instead gets the real types.
+`law disjoint`.
+
+The prelude is [`stdlib/prelude.cp`](../stdlib/prelude.cp): the one list
+of standard library names a program has without a `use`, as `use` lines.
+
+```cp
+// no `use std.mod.{Mod}` needed: the prelude lists it
+let x = Mod<1_000_000_007>(5)
+```
+
+`cpl check`, `cpl run`, `cpl build`, `cpl lsp` and the playground all read
+that file, and each resolves a name to the cp source of its module, so
+none of them takes a name on trust. `cpl-check/src/prelude.rs` keeps only
+what is not cp source: the core types (`Int`, `List`, ...) and the
+intrinsics the libraries are written on (`print`, `read`, `sort`, ...).
+`Subset<D>` is still lowered by `cpl-ir` rather than declared in `stdlib/`.
 
 The pipeline, in the order the crates will depend on each other (add the
 dependency when the code first needs it):

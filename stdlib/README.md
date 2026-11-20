@@ -17,6 +17,22 @@ A module is one file, and its tests live in the same file as `@test fn`s.
 Most tests compare the structure against a brute force on random inputs.
 Every example below is a test in [`tour.cp`](tour.cp), so it runs.
 
+## The prelude
+
+[`prelude.cp`](prelude.cp) lists the names a program has without a `use`.
+Adding a name to the prelude is adding it to a `use` line there; the
+compiler holds no list of its own.
+
+```cp
+// prelude.cp
+use std.dsu.{Dsu}
+
+// a program: no `use` needed
+var d = Dsu<V>()
+```
+
+A program's own declaration or `use` of the same name wins.
+
 ## How it runs today
 
 The Rust front end checks the library as it is written: generic structs,

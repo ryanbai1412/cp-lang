@@ -1559,7 +1559,8 @@ fn a_generic_fn_takes_its_type_arguments_after_two_colons() {
 #[test]
 fn a_heap_starts_empty() {
     let diag = one("var h = MinHeap<Int>(by: x => -x)\n");
-    assert_eq!(diag.message, "`MinHeap<T>()` takes no arguments");
+    // `MinHeap` is the prelude's: the struct of `stdlib/heap.cp`.
+    assert_eq!(diag.message, "`MinHeap<Int>` has no parameter named `by`");
     let ok = "var h = MinHeap<(Int, Int)>()\nh.push((-3, 3))\nvar xs = List<Int>()\nxs.push(1)\n";
     assert!(codes(ok).is_empty(), "{:?}", check(ok));
 }

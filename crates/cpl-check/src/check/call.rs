@@ -29,21 +29,12 @@ impl<'a> Checker<'a> {
         let ExprKind::Name(name) = &base.kind else {
             return;
         };
-        let prelude = matches!(name.as_str(), "List" | "MinHeap")
-            && self.local(name).is_none()
-            && self.env.global(name).is_none();
+        let prelude = name == "List" && self.local(name).is_none() && self.env.global(name).is_none();
         if !prelude || args.is_empty() {
             return;
         }
         let message = format!("`{name}<T>()` takes no arguments");
-        if let Some(diag) = self.error(codes::WRONG_ARG_COUNT, call.span, message) {
-            if name == "MinHeap" {
-                diag.help = Some(
-                    "it pops the smallest element, so for another order push a key first: `h.push((-x, x))` pops the largest `x`"
-                        .into(),
-                );
-            }
-        }
+        self.error(codes::WRONG_ARG_COUNT, call.span, message);
     }
 
     /// What the checker knows about a prelude fn it otherwise takes on
