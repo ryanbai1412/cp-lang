@@ -13,7 +13,7 @@ fn cpp(source: &str) -> String {
         analysis.diagnostics
     );
     let program = cpl_ir::lower(&analysis).expect("lowers");
-    emit(&program, "t.cp", source)
+    emit(&program, "t.cp", Some(source))
 }
 
 /// The statements of the program: the C++ after the runtime it leans on.
@@ -126,4 +126,27 @@ fn bool_elements_are_bytes_not_vector_bool() {
 fn the_same_source_gives_the_same_bytes() {
     let source = "var m: Map<Str, Int> = []\nm[\"b\"] = 1\nm[\"a\"] = 2\nvar s: Set<Int> = []\ns.insert(3)\nprint(m, s)\n";
     assert_eq!(cpp(source), cpp(source));
+}
+
+#[test]
+fn without_its_source_the_file_says_so_and_is_otherwise_the_same() {
+    let source = "let n: Int = read()\nprint(n + 1)\n";
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", source);
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("the file was just set")).expect("lowers");
+    let (with, without) = (
+        emit(&program, "t.cp", Some(source)),
+        emit(&program, "t.cp", None),
+    );
+    assert!(
+        without.starts_with("// t.cp: C++17 written by cpl "),
+        "{without}"
+    );
+    assert!(
+        without.contains("left out") && !without.contains("print(n + 1)"),
+        "{without}"
+    );
+    let code = |cpp: &str| cpp[cpp.find("#include").expect("includes")..].to_string();
+    assert_eq!(code(&with), code(&without));
 }

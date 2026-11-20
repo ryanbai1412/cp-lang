@@ -446,7 +446,7 @@ impl<'p> Emitter<'p> {
     }
 
     /// The whole file.
-    pub fn file(mut self, name: &str, source: &str) -> String {
+    pub fn file(mut self, name: &str, source: Option<&str>) -> String {
         let program = self.program;
 
         // The program first, since writing it finds out what it needs.
@@ -592,11 +592,16 @@ template <class T> auto operator>=(const T& a, const T& b) -> decltype(a.cpl_tie
 
 /// The comment that opens the file: what it is, and the source it was
 /// built from, so that whoever reads the C++ can read the program.
-fn header(name: &str, source: &str) -> String {
-    let mut out = format!(
-        "// {name}: C++17 written by cpl {} from the CP Lang source below.\n//\n",
-        env!("CARGO_PKG_VERSION")
-    );
+fn header(name: &str, source: Option<&str>) -> String {
+    let version = env!("CARGO_PKG_VERSION");
+    let Some(source) = source else {
+        return format!(
+            "// {name}: C++17 written by cpl {version} from CP Lang source, which is left out\n\
+             // here to keep this file within the size a judge accepts.\n\n"
+        );
+    };
+    let mut out =
+        format!("// {name}: C++17 written by cpl {version} from the CP Lang source below.\n//\n");
     for line in source.lines() {
         let line = line.trim_end();
         if line.is_empty() {
