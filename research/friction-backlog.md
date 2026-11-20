@@ -12,6 +12,8 @@ already fixed is left out.
 
 Batch 3 (strings, number theory, geometry, interactive) has its own file,
 [`friction-backlog-batch-3.md`](friction-backlog-batch-3.md), with items `G1` to `G25`.
+Batch 5 (flow, matching, greedy, binary search, geometry, interactive) is in
+[`friction-backlog-batch-5.md`](friction-backlog-batch-5.md), with items `K1` to `K21`.
 
 ## Batch 1 (2026-11-20)
 
