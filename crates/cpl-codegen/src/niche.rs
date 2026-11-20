@@ -61,7 +61,8 @@ fn small_place(block: &Block, bools: &mut bool, chars: &mut bool) {
 /// Whether `?Bool` and `?Char` are packed in this program.
 pub(crate) fn small(program: &Program) -> Niches {
     let (mut bools, mut chars) = (true, true);
-    let bodies = std::iter::once(&program.main)
+    let bodies = [&program.setup, &program.main]
+        .into_iter()
         .chain(program.fns.iter().map(|f| &f.body))
         .chain(program.closures.iter().map(|c| &c.body));
     for body in bodies {
@@ -544,6 +545,7 @@ pub(crate) fn packed_tables(program: &Program) -> BTreeSet<Var> {
     }
     while tables.changed {
         tables.changed = false;
+        tables.block(Home::Main, &program.setup);
         tables.block(Home::Main, &program.main);
         for (id, f) in program.fns.iter().enumerate() {
             tables.block(Home::Fn(id), &f.body);

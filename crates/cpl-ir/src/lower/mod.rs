@@ -107,6 +107,7 @@ fn lower_entry(
         }
         let mut newly_called = Vec::new();
         collect_block_calls(&lw.main_body, &mut newly_called);
+        collect_block_calls(&lw.setup_body, &mut newly_called);
         for s in &lw.preamble_stmts {
             collect_stmt_calls(s, &mut newly_called);
         }
@@ -132,20 +133,31 @@ fn lower_entry(
             break;
         }
     }
-    // Prepend any lazy imported module const initializers to `main`.
+    // A `@memo` table starts unset, and anew in each test case
+    // (decision 20.2).
     if !lw.memo_resets.is_empty() {
-        let unset = lw.memo_resets.iter().map(|ready| {
-            let no = lw.mk(ExprKind::Bool(false), Ty::Bool, Span::default());
-            Stmt::Assign(ready.clone(), AssignOp::Set, no)
-        });
-        let mut combined: Vec<Stmt> = unset.collect();
-        combined.extend(std::mem::take(&mut lw.main_body.stmts));
-        lw.main_body.stmts = combined;
+        let unset: Vec<Stmt> = lw
+            .memo_resets
+            .iter()
+            .map(|ready| {
+                let no = lw.mk(ExprKind::Bool(false), Ty::Bool, Span::default());
+                Stmt::Assign(ready.clone(), AssignOp::Set, no)
+            })
+            .collect();
+        if lw.multitest {
+            lw.setup_body.stmts.splice(0..0, unset.iter().cloned());
+        }
+        lw.main_body.stmts.splice(0..0, unset);
     }
+    // The initializers of imported modules' consts run first, once.
     if !lw.preamble_stmts.is_empty() {
-        let mut combined = std::mem::take(&mut lw.preamble_stmts);
-        combined.extend(lw.main_body.stmts);
-        lw.main_body.stmts = combined;
+        let preamble = std::mem::take(&mut lw.preamble_stmts);
+        let first = if lw.multitest {
+            &mut lw.setup_body
+        } else {
+            &mut lw.main_body
+        };
+        first.stmts.splice(0..0, preamble);
     }
     if !lw.diags.is_empty() {
         lw.diags.sort_by_key(|d| (d.span.start, d.span.end));
@@ -188,7 +200,9 @@ fn lower_entry(
         closures: lw.closures,
         main: lw.main_body,
         main_locals: lw.main_locals,
+        setup: lw.setup_body,
         multitest: lw.multitest,
+        until_eof: lw.until_eof,
         interactive: lw.interactive,
         judge_fns,
         entry_fns,
@@ -368,7 +382,10 @@ struct Lowerer<'a> {
     memo_resets: Vec<Place>,
     main_body: Block,
     main_locals: Vec<Local>,
+    /// What is above the `@!multitest` divider.
+    setup_body: Block,
     multitest: bool,
+    until_eof: bool,
     interactive: bool,
     /// Lowering an `@interactor` as the program, not the solution.
     judge: bool,
@@ -428,7 +445,9 @@ impl<'a> Lowerer<'a> {
             memo_resets: Vec::new(),
             main_body: Block::default(),
             main_locals: Vec::new(),
+            setup_body: Block::default(),
             multitest: false,
+            until_eof: false,
             interactive: false,
             judge: false,
             cx: FnCx::default(),
@@ -571,7 +590,8 @@ impl<'a> Lowerer<'a> {
                 if m == 0 {
                     for decorator in &stmt.decorators {
                         match decorator.name.text.as_str() {
-                            "multitest" => self.multitest = true,
+                            // The divider: `main` splits the file at it.
+                            "multitest" => {}
                             "get" | "brute" | "test" | "solution" | "tags" | "memo" | "law" | "gen" | "checker"
                             | "interactor" | "grader" | "" => {}
                             other => self.unsupported(
@@ -1771,6 +1791,11 @@ impl<'a> Lowerer<'a> {
             if stmt.decorators.iter().any(|d| d.name.text == "test") {
                 continue;
             }
+            for decorator in &stmt.decorators {
+                if decorator.name.text == "multitest" {
+                    self.divide(decorator, &mut out);
+                }
+            }
             if matches!(stmt.kind, ast::StmtKind::Let { ty: None, .. }) {
                 let rest: Vec<ast::Stmt> = items[idx + 1..]
                     .iter()
@@ -1785,6 +1810,36 @@ impl<'a> Lowerer<'a> {
         let cx = std::mem::take(&mut self.cx);
         self.main_body = Block { stmts: out };
         self.main_locals = cx.locals;
+    }
+
+    /// `@!multitest`: what was lowered so far runs once, and the rest of
+    /// the file once per test case (decision 20.1). A bare `@multitest` is
+    /// the older spelling of the same divider.
+    fn divide(&mut self, decorator: &ast::Decorator, out: &mut Vec<Stmt>) {
+        if self.multitest {
+            self.error(
+                codes::UNEXPECTED_TOKEN,
+                decorator.span,
+                "a second `@!multitest`".to_string(),
+            );
+            return;
+        }
+        self.multitest = true;
+        for arg in &decorator.args {
+            match &arg.value.kind {
+                ast::ExprKind::Name(name) if arg.name.is_none() && name == "until_eof" => {
+                    self.until_eof = true;
+                }
+                _ => self.error(
+                    codes::UNEXPECTED_TOKEN,
+                    arg.value.span,
+                    "`@!multitest` takes nothing, or `until_eof`".to_string(),
+                ),
+            }
+        }
+        self.setup_body = Block {
+            stmts: std::mem::take(out),
+        };
     }
 
     fn main_for_test(&mut self, test_name: &str) {

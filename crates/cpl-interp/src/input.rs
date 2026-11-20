@@ -49,6 +49,12 @@ impl<'a> Input<'a> {
         Some(self.data[pos])
     }
 
+    /// True when only blanks are left to read.
+    pub fn at_eof(&mut self) -> bool {
+        self.skip_space();
+        self.byte(self.pos).is_none()
+    }
+
     fn skip_space(&mut self) {
         while self.byte(self.pos).is_some_and(|b| b.is_ascii_whitespace()) {
             self.pos += 1;

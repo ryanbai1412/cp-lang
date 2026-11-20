@@ -50,6 +50,7 @@ fn var(fn_id: Option<usize>, kind: &PlaceKind) -> Option<Var> {
 impl<'p> Facts<'p> {
     pub fn collect(program: &'p Program) -> Facts<'p> {
         let mut facts = Facts::default();
+        facts.block(None, &program.setup);
         facts.block(None, &program.main);
         for (id, f) in program.fns.iter().enumerate() {
             // A parameter's value comes from each caller: unknown.

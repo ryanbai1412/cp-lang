@@ -1,6 +1,6 @@
 //! The interpreter against the C++ back end, end to end.
 //!
-//! Every program under `tests/programs` is run by `cpl run`, and built by
+//! Every program under `tests/programs` and `proto/tests/program` is run by `cpl run`, and built by
 //! `cpl build`, compiled with `g++ -std=c++17 -fsanitize=address,undefined`
 //! and run. Both must print the bytes in the program's `.out` file and
 //! exit with the same status, and the sanitizers must stay silent: C++
@@ -16,8 +16,15 @@ use std::process::{Command, Stdio};
 
 fn programs() -> Vec<PathBuf> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs");
-    let mut found: Vec<PathBuf> = std::fs::read_dir(&dir)
-        .expect("tests/programs exists")
+    // The prototype's program-structure cases (decision 20: the
+    // `@!multitest` divider and top-level `return`) are held to the same
+    // `.out` files here.
+    let structure = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../proto/tests/program");
+    let mut found: Vec<PathBuf> = [&dir, &structure]
+        .into_iter()
+        .flat_map(|dir| {
+            std::fs::read_dir(dir).unwrap_or_else(|_| panic!("{} exists", dir.display()))
+        })
         .map(|entry| entry.expect("readable entry").path())
         .filter(|path| path.extension().is_some_and(|ext| ext == "cp"))
         .collect();

@@ -997,11 +997,20 @@ impl<'p> Emitter<'p> {
         self.sequence(&operands, &e.ty, |this, codes| {
             let mut codes = codes.into_iter();
             let mut texts = Vec::with_capacity(args.len());
+            // Arguments for parameters that hold no value: they are run
+            // for what they do, ahead of the call, and not passed.
+            let mut ran = Vec::new();
             for (slot, arg) in args.iter().enumerate() {
                 match arg {
                     Arg::Mut(place) => texts.push(this.place(place)),
                     Arg::Value(value) => {
                         let code = codes.next().expect("one per value");
+                        if slot < f.params.len() && f.locals[slot].ty == Ty::Unit {
+                            if code.text != "(void)0" {
+                                ran.push(code.text);
+                            }
+                            continue;
+                        }
                         // A parameter taken by reference must not see the
                         // callee change what it refers to: the language
                         // passes values.
@@ -1022,7 +1031,12 @@ impl<'p> Emitter<'p> {
                     }
                 }
             }
-            Code::primary(format!("{}({})", fn_name(&f.name), texts.join(", ")))
+            let call = format!("{}({})", fn_name(&f.name), texts.join(", "));
+            if ran.is_empty() {
+                Code::primary(call)
+            } else {
+                Code::primary(format!("({}, {call})", ran.join(", ")))
+            }
         })
     }
 
@@ -1323,6 +1337,7 @@ impl<'p> Emitter<'p> {
         let saved_closure = self.closure_id.replace(cid);
         let saved_names = std::mem::replace(&mut self.names, inner_names);
         let saved_hoisted = std::mem::replace(&mut self.hoisted, inner_hoisted);
+        let saved_in_setup = std::mem::replace(&mut self.in_setup, false);
         let inner_spent = crate::scope::spent(self.program, &def.body);
         let saved_spent = std::mem::replace(&mut self.spent, inner_spent);
         let saved_taken = std::mem::replace(&mut self.taken, inner_taken);
@@ -1394,6 +1409,7 @@ impl<'p> Emitter<'p> {
         self.closure_id = saved_closure;
         self.names = saved_names;
         self.hoisted = saved_hoisted;
+        self.in_setup = saved_in_setup;
         self.spent = saved_spent;
         self.taken = saved_taken;
         self.fresh = saved_fresh;

@@ -566,6 +566,23 @@ impl Database {
         for (index, diag) in import_diags {
             sink.push(diag.shift(ranges[index].span.start));
         }
+        // `@!multitest` divides the file once (decision 20.5).
+        let dividers = items.iter().enumerate().flat_map(|(index, item)| {
+            let decorators = item.parsed.stmts.iter().flat_map(|stmt| &stmt.decorators);
+            decorators
+                .filter(|d| d.name.text == "multitest")
+                .map(move |d| (index, d))
+        });
+        for (index, decorator) in dividers.skip(1) {
+            sink.push(
+                Diagnostic::error(
+                    codes::UNEXPECTED_TOKEN,
+                    decorator.span.shift(ranges[index].span.start),
+                    "a second `@!multitest`",
+                )
+                .with_help("the file has one divider: what is below it runs once per test case"),
+            );
+        }
         for (index, decl) in duplicates {
             let offset = ranges[index].span.start;
             let first_index = scope.names[&decl.name];
@@ -929,6 +946,16 @@ fn stmt_decls(stmt: &ast::Stmt, out: &mut Vec<Decl>) {
                 kind: DeclKind::Value,
                 public: false,
             }),
+            // `let LIM = 100`: a capitalized name on its own is a value
+            // (or a domain, when the value is one).
+            ast::PatternKind::Variant { path, args } if path.len() == 1 && args.is_empty() => {
+                out.push(Decl {
+                    name: path[0].text.clone(),
+                    span: pat.span,
+                    kind: DeclKind::Value,
+                    public: false,
+                })
+            }
             ast::PatternKind::Tuple(items) => {
                 for item in items {
                     match crate::check::domain_binding(item) {

@@ -90,13 +90,43 @@ impl<'a> Parser<'a> {
     fn decorator(&mut self) -> Decorator {
         let start = self.start();
         self.bump();
-        let name = self.expect_name("a decorator name after `@`");
+        let directive = self.eat(T::Bang);
+        let name = self.expect_name(if directive {
+            "a directive name after `@!`"
+        } else {
+            "a decorator name after `@`"
+        });
         let args = if self.eat(T::LParen) {
             self.comma_list(T::RParen, "the decorator's arguments", Self::arg)
         } else {
             Vec::new()
         };
         let span = self.span_from(start);
+        if directive && !name.text.is_empty() && self.speculating == 0 {
+            // `@!multitest` is the one directive (decision 20.5).
+            if name.text != "multitest" {
+                self.sink.push(
+                    Diagnostic::error(
+                        codes::UNEXPECTED_TOKEN,
+                        span,
+                        format!("unknown directive `@!{}`", name.text),
+                    )
+                    .with_help(format!(
+                        "`@!multitest` is the only file-level directive; a decorator is `@{}`",
+                        name.text
+                    )),
+                );
+            } else if self.block_depth > 0 {
+                self.sink.push(
+                    Diagnostic::error(
+                        codes::UNEXPECTED_TOKEN,
+                        span,
+                        "`@!multitest` stands at the top level of the file",
+                    )
+                    .with_help("move it out of the block: what is below it runs once per test case"),
+                );
+            }
+        }
         // Decorator arguments v2.2 took away.
         let removed = match name.text.as_str() {
             "memo" => args.iter().find_map(|arg| match &arg.value.kind {
@@ -127,7 +157,12 @@ impl<'a> Parser<'a> {
                     .push(Diagnostic::error(codes::REMOVED_SYNTAX, span, message).with_help(help));
             }
         }
-        Decorator { name, args, span }
+        Decorator {
+            directive,
+            name,
+            args,
+            span,
+        }
     }
 
     /// Ends a statement: expects the end of the line (or `;` in braces).
@@ -762,6 +797,13 @@ impl<'a> Parser<'a> {
     /// Parses the block after a `:`: an indented block on the following
     /// lines, or one statement on the same line.
     pub(super) fn block(&mut self, after: &str) -> Block {
+        self.block_depth += 1;
+        let block = self.block_body(after);
+        self.block_depth -= 1;
+        block
+    }
+
+    fn block_body(&mut self, after: &str) -> Block {
         let header_end = self.prev_end();
         if self.at(T::Newline) && self.peek_n(1) == T::Indent {
             self.bump();
@@ -829,6 +871,7 @@ impl<'a> Parser<'a> {
     /// Parses `{ stmt; stmt; expr }`. The `{` is already consumed.
     pub(super) fn brace_block(&mut self, start: u32) -> Block {
         self.brace_depth += 1;
+        self.block_depth += 1;
         let mut stmts = Vec::new();
         while !matches!(self.peek(), T::RBrace | T::Eof | T::Newline | T::Dedent) {
             let before = self.pos;
@@ -840,6 +883,7 @@ impl<'a> Parser<'a> {
             }
         }
         self.brace_depth -= 1;
+        self.block_depth -= 1;
         self.expect(T::RBrace, "`}` to close the block");
         Block {
             stmts,

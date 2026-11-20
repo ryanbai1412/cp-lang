@@ -32,6 +32,9 @@ pub struct Block {
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Decorator {
+    /// `@!name`: a file-level directive, in force from its line down. A
+    /// plain `@name` decorates the one item below it.
+    pub directive: bool,
     pub name: Name,
     pub args: Vec<Arg>,
     pub span: Span,
