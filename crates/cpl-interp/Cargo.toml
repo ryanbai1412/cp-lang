@@ -1,0 +1,8 @@
+[package]
+name = "cpl-interp"
+description = "Debug interpreter: runs a checked program directly and records the trace."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]

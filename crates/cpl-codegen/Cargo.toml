@@ -1,0 +1,8 @@
+[package]
+name = "cpl-codegen"
+description = "Lowering of a checked program to a single C++17 file."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
