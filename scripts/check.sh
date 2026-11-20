@@ -3,7 +3,7 @@
 # this repository: this script, run on your machine, is the gate.
 #
 #   scripts/check.sh           same as --fast
-#   scripts/check.sh --fast    what the pre-commit hook runs (about 25 s warm)
+#   scripts/check.sh --fast    what the pre-commit hook runs (about 10 s warm)
 #   scripts/check.sh --full    --fast, then the slow suites (15 minutes or more)
 #
 # --fast  1. nothing from dist/ and no secret is staged or in an unpushed commit
@@ -14,7 +14,8 @@
 #         5. cpl fmt --check stdlib (the standard library stays formatted)
 #         6. scripts/friction_lint.py: its rule tests, then no wa_trap hit in
 #            proto/ports or examples, with a one-line severity summary
-# --full  7. proto_fuzz, the shrinker fuzzer and the prover's products fuzzer
+# --full  7. proto_fuzz and proto_tools (the retired prototype), the shrinker
+#            fuzzer and the prover's products fuzzer
 #         8. the budget tests and the front-end latency test, each alone
 #         9. the WebAssembly build and crates/cpl-wasm/tests/smoke.mjs
 #        10. the VS Code extension tests (editors/vscode: npm test)
@@ -79,16 +80,32 @@ step "cargo clippy --workspace --all-targets -- -D warnings"
 cargo clippy --workspace --all-targets -- -D warnings
 
 # The library tests only need the cpl binary, so they run beside the
-# workspace tests and their output is printed after them.
+# workspace tests, one process per library directory, and their output is
+# printed after them. A .cp file directly in examples/local-lib/ would not be
+# in any subdirectory, so then the whole library runs as one process.
 cargo build -q -p cpl-cli
-lib_log="$(mktemp)"
-"${CARGO_TARGET_DIR:-target}/debug/cpl" test stdlib examples/local-lib >"$lib_log" 2>&1 &
-lib_pid=$!
-cleanup() { kill "$lib_pid" 2>/dev/null || true; rm -rf "$lib_log" ${tmp:+"$tmp"}; }
+lib_logs="$(mktemp -d)"
+lib_dirs=(stdlib)
+if compgen -G "examples/local-lib/*.cp" >/dev/null; then
+    lib_dirs+=(examples/local-lib)
+else
+    lib_dirs+=(examples/local-lib/*/)
+fi
+lib_pids=()
+for d in "${lib_dirs[@]}"; do
+    "${CARGO_TARGET_DIR:-target}/debug/cpl" test "$d" >"$lib_logs/$(tr / _ <<<"$d").log" 2>&1 &
+    lib_pids+=($!)
+done
+cleanup() {
+    kill "${lib_pids[@]}" 2>/dev/null || true
+    rm -rf "$lib_logs" ${tmp:+"$tmp"}
+}
 trap cleanup EXIT
 
 # These run in --full instead:
-# - proto_fuzz checks the retired Python prototype and takes over a minute;
+# - proto_fuzz and proto_tools check the retired Python prototype (over a
+#   minute, and 3 to 7 s per proto_tools test; with plain cargo test only
+#   proto_fuzz is left out);
 # - the shrinker and prover fuzzers take 21 s and 7 s, longer than the rest
 #   of the suite together;
 # - budget and the 50 ms front-end latency test measure wall-clock time,
@@ -100,7 +117,7 @@ slow_tests=(
 )
 if cargo nextest --version >/dev/null 2>&1; then
     step "cargo nextest run --workspace (without the --full tests)"
-    filter='binary(proto_fuzz) or binary(budget)'
+    filter='binary(proto_fuzz) or binary(proto_tools) or binary(budget)'
     for t in "${slow_tests[@]}"; do filter+=" or test(/(^|::)$t\$/)"; done
     cargo nextest run --workspace --no-fail-fast -E "not ($filter)"
     step "cargo test --workspace --doc"
@@ -117,9 +134,12 @@ fi
 
 step "cpl test stdlib examples/local-lib"
 lib_status=0
-wait "$lib_pid" || lib_status=$?
-tail -n 1 "$lib_log"
-[ "$lib_status" -eq 0 ] || { cat "$lib_log"; fail "library tests failed; rerun: cargo run -p cpl-cli -- test stdlib examples/local-lib"; }
+for pid in "${lib_pids[@]}"; do
+    wait "$pid" || lib_status=1
+done
+cat "$lib_logs"/*.log | awk '/^[0-9]+ passed, [0-9]+ failed$/ { p += $1; f += $3 }
+    END { printf "%d passed, %d failed\n", p, f }'
+[ "$lib_status" -eq 0 ] || { cat "$lib_logs"/*.log; fail "library tests failed; rerun: cargo run -p cpl-cli -- test stdlib examples/local-lib"; }
 
 step "cpl fmt --check stdlib"
 cargo run -q -p cpl-cli -- fmt --check stdlib || fail "stdlib/ is not formatted; run: cargo run -p cpl-cli -- fmt stdlib"
@@ -139,8 +159,9 @@ if [ "$mode" = full ]; then
 
     tmp="$(mktemp -d)"
 
-    step "cargo test: proto_fuzz and the slow fuzzers"
+    step "cargo test: proto_fuzz, proto_tools and the slow fuzzers"
     cargo test -p cpl-verify --test proto_fuzz
+    cargo test -p cpl-verify --test proto_tools
     cargo test -p cpl-verify --lib -- --exact fuzz::shrink::tests::shrinks_a_failing_program_to_a_few_lines
     cargo test -p cpl-prover --test fuzz -- --exact products_and_variable_divisors_are_never_decided_wrongly
 

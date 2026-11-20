@@ -172,6 +172,33 @@ The longest `--fast` test is now `cpl-verify::proto_tools`
 `proto_tools` tests check the retired `proto/cpc` prototype. Moving them to
 `--full` is the next cut, and it needs a change to `scripts/check.sh`.
 
+## Under 10 s: `proto_tools` out, library tests split
+
+Warm tree, 8 cores, three runs each of `scripts/check.sh --fast`:
+
+```
+                                                     runs (s)               mean
+before (after the differential cache)                15.70  15.32  15.56   15.53
+proto_tools moved to --full                          13.31  12.68  13.28   13.09
+cpl test split into one process per library dir       8.76   9.26  10.21    9.41
+```
+
+- **`proto_tools` moved to `--full`.** Its 13 tests check the retired
+  `proto/cpc` prototype and took 3 to 7 s each. The nextest run went from
+  12.5 s to 6.3 s, and the suite alone is 7.6 s. With plain `cargo test` (no
+  nextest) they still run in `--fast`, because `cargo test` cannot leave out
+  one test binary.
+- **The library tests became the critical path.** `cpl test stdlib
+  examples/local-lib` runs as one process: 1.4 s for `stdlib` and 9.9 s for
+  `examples/local-lib`, so it finished 5.5 s after nextest. It now runs as one
+  process per directory (`stdlib` and each `examples/local-lib/*/`), still
+  beside nextest. The summed count, 275 passed, is the same as one process
+  gives.
+
+The longest piece left is `examples/local-lib/math/poly.cp` (6.7 s alone),
+which holds 135 of the corpus's `Mod` literal wrappings. Next comes the
+nextest run itself (about 6 s, led by `cpl-cli::corpus` at 3 s).
+
 ## Commands
 
 ```
