@@ -12,9 +12,13 @@ path = "src/main.rs"
 [dependencies]
 cpl-check.workspace = true
 cpl-codegen.workspace = true
+cpl-contest.workspace = true
 cpl-diag.workspace = true
+cpl-doc.workspace = true
 cpl-fmt.workspace = true
 cpl-interp.workspace = true
 cpl-ir.workspace = true
+cpl-lint.workspace = true
 cpl-lsp.workspace = true
+cpl-stress.workspace = true
 cpl-syntax.workspace = true
