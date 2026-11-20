@@ -9,11 +9,55 @@ impl<'a> Checker<'a> {
     pub(crate) fn call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Ty {
         let callee_ty = self.infer(callee);
         let receiver = self.receiver(call, callee);
-        let ty = self.call_kind(call, callee, callee_ty.clone(), args);
+        let mut ty = self.call_kind(call, callee, callee_ty.clone(), args);
+        if let Some(known) = self.prelude_call(call, callee, args) {
+            ty = known;
+        }
         self.lent_together(args);
         self.no_escape_args(callee, &callee_ty, args);
         self.mutates_view(call, callee);
         receiver.unwrap_or(ty)
+    }
+
+    /// What the checker knows about a prelude fn it otherwise takes on
+    /// trust: `span(a, b)` covers two ends of one domain, and the `max` or
+    /// `min` of a slice is optional, since `a[l..l]` is empty.
+    fn prelude_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Option<Ty> {
+        let ExprKind::Name(name) = &callee.kind else {
+            return None;
+        };
+        if self.local(name).is_some() || self.env.global(name).is_some() {
+            return None;
+        }
+        let tys: Vec<Ty> = args
+            .iter()
+            .map(|arg| self.quietly(|c| c.infer(&arg.value)))
+            .collect();
+        match (name.as_str(), tys.as_slice()) {
+            ("span", [Ty::Pos(a), Ty::Pos(b)]) => {
+                let (a, b) = (
+                    a.strip_suffix(".bounds").unwrap_or(a),
+                    b.strip_suffix(".bounds").unwrap_or(b),
+                );
+                if a != b {
+                    let message = format!(
+                        "span of {} and {}",
+                        Ty::Pos(a.into()).with_article(),
+                        Ty::Pos(b.into()).with_article()
+                    );
+                    self.error(codes::WRONG_DOMAIN, call.span, message);
+                    return Some(Ty::Error);
+                }
+                Some(Ty::Named {
+                    name: "Range".into(),
+                    args: vec![Ty::Pos(a.into())],
+                })
+            }
+            ("max" | "min", [Ty::Array { elem, .. }]) if is_slice(&args[0].value) => {
+                Some(Ty::Optional(Box::new(elem.widen())))
+            }
+            _ => None,
+        }
     }
 
     /// What a method call means beyond its signature: `g.row(r)` lends a
@@ -353,5 +397,16 @@ impl<'a> Checker<'a> {
             };
             self.error(codes::WRONG_ARG_COUNT, call.span, message);
         }
+    }
+}
+
+/// `a[l..r]`: an array seen through a range.
+fn is_slice(expr: &Expr) -> bool {
+    match &expr.kind {
+        ExprKind::Paren(inner) => is_slice(inner),
+        ExprKind::Index { indices, .. } => indices
+            .iter()
+            .any(|i| matches!(i.kind, ExprKind::Range { .. })),
+        _ => false,
     }
 }

@@ -1216,3 +1216,49 @@ fn a_domain_holds_at_most_an_i32_of_values() {
         .starts_with("a domain holds at most 2^31 - 1 values"));
     assert!(codes("domain V = 0..2147483647\n").is_empty());
 }
+
+#[test]
+fn a_range_or_span_stays_in_one_domain() {
+    let head =
+        "let n: 2..=9 = read()\ndomain I = 1..=n\ndomain J = 1..=n\nlet a: [I]Int = read()\n";
+    let msg = |body: &str| one(&format!("{head}{body}")).message;
+    assert_eq!(
+        msg("print(sum(a[I.first..J.last]))\n"),
+        "range between I and J"
+    );
+    assert_eq!(
+        msg("print(span(I.first, J.last).len)\n"),
+        "span of an I and a J"
+    );
+    assert_eq!(
+        msg("for i in I: print(sum(a[..=i.r]))\n"),
+        "`..=` ends at a position; a range up to the boundary `i.r` is written `..`"
+    );
+    for body in [
+        "print(sum(a[I.first..=I.last]))\n",
+        "for i in I: print(sum(a[..i.r]), sum(a[i.l..]))\n",
+        "print(span(I.last, I.first).len)\n",
+        "for i in I: print(span(i.l, I.last).len)\n",
+    ] {
+        let src = format!("{head}{body}");
+        assert!(codes(&src).is_empty(), "{src}: {:?}", check(&src));
+    }
+}
+
+#[test]
+fn the_max_of_a_slice_is_optional() {
+    let head = "let n: 1..=5 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nlet f = V.first\n";
+    let empty = one(&format!("{head}let k: Int = max(a[f..f])\n"));
+    assert_eq!(
+        empty.message,
+        "`k` is declared an Int, but `max(a[f..f])` is an ?Int"
+    );
+    for body in [
+        "let k: Int = max(a[f..f]) ?? 0\n",
+        "let k: Int = max(a)\n",
+        "let k: Int = min(a[f], 3)\n",
+    ] {
+        let src = format!("{head}{body}print(k)\n");
+        assert!(codes(&src).is_empty(), "{src}: {:?}", check(&src));
+    }
+}
