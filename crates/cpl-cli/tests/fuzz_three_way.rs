@@ -291,6 +291,31 @@ fn a_modulus_whose_square_does_not_fit() {
     }
 }
 
+const INVERSE: &str = "\
+type Z = Mod<998244353>
+let q: Int = read()
+for _ in 0..q:
+    let a: Int = read()
+    print(Z(a).inv(), Z(a).inv, Z(a).inv() * Z(a), Z(a) ** -1)
+";
+
+#[test]
+fn the_inverse_reads_with_and_without_parentheses() {
+    let p = 998_244_353i64;
+    let rows = [1, 2, -1, p - 1, p + 1, i64::MAX, i64::MIN + 1, 123_456_789];
+    let input = rows.iter().fold(format!("{}\n", rows.len()), |s, a| s + &format!("{a}\n"));
+    let out = rows
+        .iter()
+        .map(|a| {
+            let inv = pow_mod(a.rem_euclid(p), p - 2, p);
+            format!("{inv} {inv} 1 {inv}\n")
+        })
+        .collect();
+    assert_agree(three_way("inverse", INVERSE, &[(input, Expect::Prints(out))]));
+    let none = vec![("1\n0\n".to_string(), Expect::Traps), (format!("1\n{p}\n"), Expect::Traps)];
+    assert_agree(three_way("inverse", INVERSE, &none));
+}
+
 const WIDE: &str = "\
 let q: Int = read()
 for _ in 0..q:

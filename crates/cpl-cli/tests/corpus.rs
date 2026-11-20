@@ -77,7 +77,6 @@ const NOT_BUILT: &[&str] = &[
     "proto/ports/noi02p1.cp",
     "proto/tests/ergo/columns.cp",
     "proto/tests/ergo/counter.cp",
-    "proto/tests/ergo/effects_first.cp",
     "proto/tests/ergo/moves.cp",
     "proto/tests/ergo/ranges.cp",
     "proto/tests/ergo/sugar.cp",

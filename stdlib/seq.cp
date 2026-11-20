@@ -95,6 +95,17 @@ pub fn partition<T>(self: List<T>, keep: T -> Bool) -> (List<T>, List<T>):
         else: no.push(x)
     (yes, no)
 
+/// Every run of `k` neighbours, left to right: `[1, 2, 3].windows(2)` gives `[1, 2]` then `[2, 3]`.
+/// Nothing when `k > self.len`. O(k) per window.
+pub fn windows<T>(self: List<T>, k: Int) -> yields List<T>:
+    assert k >= 1, "a window holds at least one element"
+    for i in 0..self.len - k + 1: yield self[i..i + k]
+
+/// The pairs `(a[i], b[i])`, as many as the shorter list has.
+pub fn zip<A, B>(a: List<A>, b: List<B>) -> List<(A, B)> = [
+    (a[i], b[i]) for i in 0..min(a.len, b.len)
+]
+
 /// The value `m` holds for `k`, after storing `v` there if it held none: `ids.get_or_insert(name, ids.len)`
 /// gives each new name the next id. O(log n).
 pub fn get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V:
@@ -558,3 +569,9 @@ fn excl_fold_folds_all_but_one():
         rest for (_, rest) in ["a", "b", "c"].excl_fold(Monoid("", (p, q) => p + q))
     ] == ["bc", "ac", "ab"]
     assert [rest for (_, rest) in [7].excl_fold(+)] == [0]
+
+@test
+fn windows_and_zip_walk_in_step():
+    assert [w for w in [1, 2, 3, 4].windows(2)] == [[1, 2], [2, 3], [3, 4]]
+    assert [w for w in [1, 2].windows(2)] == [[1, 2]] and [w for w in [1, 2].windows(3)].len == 0
+    assert zip([1, 2, 3], ["a", "b"]) == [(1, "a"), (2, "b")] and zip([1], List<Int>()).len == 0

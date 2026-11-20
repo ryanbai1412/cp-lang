@@ -1289,8 +1289,30 @@ impl<'a> Lowerer<'a> {
         match &ty.kind {
             ast::TypeKind::Named { name, args } => self.named(name, args, values),
             ast::TypeKind::Array { index, elem } => {
-                let dims: Vec<Option<DimSpec>> =
-                    index.iter().map(|d| self.dim(d, values)).collect();
+                // `[V]T` where `V` stands for `(R, C)`: one dimension for
+                // each part, as `[R, C]T`.
+                let mut dims: Vec<Option<DimSpec>> = Vec::new();
+                for d in index {
+                    let parts = match &d.kind {
+                        ast::TypeKind::Named { name, args } if args.is_empty() => {
+                            match self.gen_env.get(&name.text) {
+                                Some(GenArg::Ty(Ty::Tuple(items))) => items
+                                    .iter()
+                                    .map(|t| match t {
+                                        Ty::Pos(id) => Some(DimSpec::Pos(*id)),
+                                        _ => None,
+                                    })
+                                    .collect::<Option<Vec<_>>>(),
+                                _ => None,
+                            }
+                        }
+                        _ => None,
+                    };
+                    match parts {
+                        Some(parts) => dims.extend(parts.into_iter().map(Some)),
+                        None => dims.push(self.dim(d, values)),
+                    }
+                }
                 let elem = self.resolve(elem, values);
                 match dims.into_iter().collect::<Option<Vec<_>>>() {
                     Some(dims) => Spec::Array {

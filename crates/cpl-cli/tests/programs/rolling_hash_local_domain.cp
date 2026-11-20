@@ -1,3 +1,4 @@
+use std.strings.{HashVal}
 // A RollingHash over a `[domain S]Char` read inside a loop: `get` takes ranges of `S`,
 // closed, stepped and open-ended.
 let t: 1..=10 = read()

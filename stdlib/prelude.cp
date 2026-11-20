@@ -17,14 +17,14 @@ use std.dsu.{Dsu}
 use std.fenwick.{Fenwick, Fenwick2D}
 use std.flow.{Arc, FlowGraph}
 use std.geometry.{ByAngle, Pt}
-use std.graph.{Graph, Neighbours, Target, bfs, condense, dijkstra, peel, scc, topo}
-use std.grid.{Dir4}
+use std.graph.{Graph, Target, bfs, condense, dijkstra, peel, scc, topo}
+use std.grid.{Dir4, Dir8, step}
 use std.heap.{MaxHeap, MinHeap}
 use std.lazy.{AddMax, AddMin, AddSum, AssignMax, AssignMin, AssignSum, LazySegTree}
 use std.marks.{Marks}
 use std.math.{Sieve, bit, ceil_div, digits, fixed, gcd, lcm}
 use std.mod.{Comb, Mod}
-use std.prefix.{Prefix1, Prefix2, prefix1, prefix2, prefix_n}
+use std.prefix.{Prefix2, prefix1, prefix2, prefix_n}
 use std.segtree.{SegTree}
 use std.seq.{
     Compressed,
@@ -43,7 +43,9 @@ use std.seq.{
     runs,
     runs_by,
     scan,
+    windows,
+    zip,
 }
 use std.sparse.{SparseTable}
-use std.strings.{HashVal, Hashable, RollingHash, ends_with, find, lower, repeat, starts_with, upper}
+use std.strings.{RollingHash, digit, ends_with, find, find_all, lower, repeat, starts_with, upper}
 use std.tree.{Rooted}

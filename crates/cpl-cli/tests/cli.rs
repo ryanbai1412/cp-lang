@@ -90,6 +90,20 @@ fn check_exits_nonzero_and_prints_the_error() {
     assert!(stderr.contains("= help: did you mean `total`?"), "{stderr}");
 }
 
+#[test]
+fn a_read_that_names_a_domain_inside_a_tuple_is_an_error() {
+    let dir = std::env::temp_dir().join(format!("cpl-cli-tuple-read-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    for ty in ["([domain Pos]Char, Int)", "([domain Pos]Int, Int)"] {
+        let path = dir.join("tuple_read.cp");
+        std::fs::write(&path, format!("let (s, k): {ty} = read()\nprint(Pos.K, k)\n")).unwrap();
+        let out = Command::new(env!("CARGO_BIN_EXE_cpl")).arg("check").arg(&path).output().expect("cpl runs");
+        assert_eq!(out.status.code(), Some(1));
+        let stderr = String::from_utf8(out.stderr).unwrap();
+        assert!(stderr.contains("error[E0501]: `read()` can't size a domain named inside"), "{stderr}");
+    }
+}
+
 /// A fresh directory holding `name` with `source` in it.
 fn scratch(test: &str, name: &str, source: &[u8]) -> std::path::PathBuf {
     let dir = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join(test);

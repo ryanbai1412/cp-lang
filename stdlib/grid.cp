@@ -34,7 +34,21 @@ pub struct Dir4(k: Int):
     /// The change in (row, column) of one step.
     pub @get fn delta(self) -> (Int, Int) = (DR[2 * k], DC[2 * k])
 
-/// The cell one step from `self` in direction `d` (such as `Dir4`), or `none` off the grid.
+/// One of the eight directions, clockwise from up: the four of `Dir4` and the diagonals between them.
+pub struct Dir8(k: Int):
+    /// All eight, clockwise from up.
+    pub fn all() -> List<Dir8> = [Dir8(k) for k in 0..8]
+
+    /// An eighth of a turn clockwise.
+    pub @get fn cw(self) -> Dir8 = Dir8((k + 1) % 8)
+    /// An eighth of a turn counter-clockwise.
+    pub @get fn ccw(self) -> Dir8 = Dir8((k + 7) % 8)
+    /// The opposite direction.
+    pub @get fn back(self) -> Dir8 = Dir8((k + 4) % 8)
+    /// The change in (row, column) of one step.
+    pub @get fn delta(self) -> (Int, Int) = (DR[k], DC[k])
+
+/// The cell one step from `self` in direction `d` (a `Dir4` or a `Dir8`), or `none` off the grid.
 pub fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C):
     let (dr, dc) = d.delta
     let r = self.0 + dr
@@ -130,3 +144,12 @@ fn transposed_swaps_axes():
         for c in Col: assert t[c, r] == g[r, c]
     assert grid_sum(g) == grid_sum(t)
     assert g.transposed.transposed == g
+
+@test
+fn dir8_turns_and_steps():
+    domain Row = 0..3
+    domain Col = 0..3
+    let p = (Row(1), Col(1))
+    assert [p.step(d) for d in Dir8.all()].len == 8 and all(p.step(d) != none for d in Dir8.all())
+    assert p.step(Dir8(1)) == (Row(0), Col(2)) and (Row(0), Col(0)).step(Dir8(7)) == none
+    assert all(d.cw.ccw == d and d.back.back == d for d in Dir8.all())

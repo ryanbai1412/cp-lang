@@ -1691,3 +1691,21 @@ fn a_tested_optional_reads_as_its_value() {
     let src = "fn g(x: ?Int) -> Int:\n    var y = x\n    if y == none: return 0\n    y = none\n    y + 1\n";
     assert!(!codes(src).is_empty(), "{:?}", check(src));
 }
+
+#[test]
+fn a_match_on_plain_variants_needs_an_arm_for_each() {
+    let with = |arms: &str| format!("enum C: R | G | B\nfn f(c: C) -> Int:\n    match c:\n{arms}");
+    let d = one(&with("        R: 1\n        G: 2\n"));
+    assert_eq!(d.message, "this `match` has no arm for `B`");
+    let d = one(&with("        R if true: 1\n        G | B: 2\n"));
+    assert_eq!(d.message, "this `match` has no arm for `R`");
+    for arms in ["        R: 1\n        G | B: 2\n", "        R: 1\n        _: 2\n", "        R: 1\n        other: 2\n"] {
+        assert!(check(&with(arms)).is_empty(), "{:?}", check(&with(arms)));
+    }
+}
+
+#[test]
+fn a_getter_reads_the_same_with_empty_parentheses() {
+    let src = "struct P(x: Int):\n    pub @get fn twice(self) -> Int = 2 * x\nfn f(p: P) -> Int = p.twice() + p.twice\n";
+    assert!(check(src).is_empty(), "{:?}", check(src));
+}

@@ -3262,6 +3262,14 @@ impl<'a> Lowerer<'a> {
         hint: Option<&Ty>,
     ) -> Expr {
         let span = whole.span;
+        // `x.inv()`: a `@get` method reads the same with empty parentheses.
+        if args.is_empty() {
+            if let Some(Ty::Struct(id)) = self.probe_ty_silent(base) {
+                if self.structs[id].getters.contains(&name.text) {
+                    return self.field(whole, base, name);
+                }
+            }
+        }
         // `sol.send(x)` and `sol.recv()` in an `@interactor`.
         if self.judge && matches!(name.text.as_str(), "send" | "recv") {
             if let ast::ExprKind::Name(n) = &base.kind {

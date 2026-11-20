@@ -27,6 +27,11 @@ pub @get fn lower(self: Char) -> Char = if 'A' <= self and self <= 'Z': Char(sel
 /// The capital of a small letter, and any other character as it is: `'a'.upper` is `'A'`.
 pub @get fn upper(self: Char) -> Char = if 'a' <= self and self <= 'z': Char(self.ord - 32) else: self
 
+/// The value of a decimal digit: `'7'.digit` is 7. Stops on any other character.
+pub @get fn digit(self: Char) -> Int:
+    assert '0' <= self and self <= '9', "`digit` needs one of '0' to '9'"
+    self.ord - '0'.ord
+
 /// `z[i]` is the length of the longest common prefix of `s` and `s[i..]`; `z[0]` is `s.len`. O(n).
 @allow(unproven_list_index)
 pub fn z_function<T>(s: List<T>) -> List<Int>:
@@ -446,3 +451,7 @@ fn starts_ends_and_find_on_text():
 fn lower_and_upper_change_only_letters():
     assert Str(c.lower for c in "aZ-9") == "az-9"
     assert Str(c.upper for c in "aZ-9") == "AZ-9"
+
+@test
+fn digit_is_the_value_of_a_decimal_character():
+    assert '0'.digit == 0 and '7'.digit == 7 and sum(c.digit for c in "409") == 13

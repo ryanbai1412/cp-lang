@@ -1168,6 +1168,14 @@ impl<'a> Lowerer<'a> {
                                 GenArg::Ty(t) => Some(t.clone()),
                                 _ => None,
                             });
+                        // `peel(v => adj[v])`: with nothing else to say what a
+                        // vertex is, it is what the lambda indexes with `v`.
+                        let dom_ty = dom_ty.or_else(|| self.indexed_by_param(&lparams[0], lbody));
+                        if let (Some(Ty::Pos(d)), false) = (&dom_ty, inferred.contains_key("V")) {
+                            if gen_names.iter().any(|g| g == "V") {
+                                inferred.insert("V".to_string(), GenArg::Domain(*d));
+                            }
+                        }
                         if let Some(vty) = dom_ty {
                             if let Some(ret_ty) = self.probe_lambda_ret(lparams, std::slice::from_ref(&vty), lbody) {
                                 inferred.insert(
@@ -1508,6 +1516,39 @@ impl<'a> Lowerer<'a> {
         self.outer_cxs = saved_outer;
         self.diags.truncate(diag_len);
         (probed.ty != Ty::Error).then_some(probed.ty)
+    }
+
+    /// The domain a one-name lambda parameter indexes an array with, in
+    /// the first `a[v]` of its body: what `v` must be.
+    fn indexed_by_param(&mut self, param: &ast::Pattern, body: &ast::Expr) -> Option<Ty> {
+        struct Uses<'n> {
+            name: &'n str,
+            bases: Vec<(ast::Expr, usize)>,
+        }
+        impl cpl_syntax::visit::Visitor for Uses<'_> {
+            fn expr(&mut self, e: &ast::Expr) {
+                if let ast::ExprKind::Index { base, indices } = &e.kind {
+                    for (k, index) in indices.iter().enumerate() {
+                        if matches!(&index.kind, ast::ExprKind::Name(n) if n == self.name) {
+                            self.bases.push(((**base).clone(), k));
+                        }
+                    }
+                }
+            }
+        }
+        let ast::PatternKind::Name(name) = &param.kind else {
+            return None;
+        };
+        let mut uses = Uses { name, bases: Vec::new() };
+        cpl_syntax::visit::Visitor::expr(&mut uses, body);
+        cpl_syntax::visit::walk_expr(body, &mut uses);
+        uses.bases.iter().find_map(|(base, k)| match self.probe_ty_silent(base)? {
+            Ty::Array { dims, .. } => match dims.get(*k) {
+                Some(Dim::Pos(d)) => Some(Ty::Pos(*d)),
+                _ => None,
+            },
+            _ => None,
+        })
     }
 
     fn ast_ty_has_unbound(&self, ty: &ast::Type, gen_names: &[String], env: &GenEnv) -> bool {

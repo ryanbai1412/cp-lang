@@ -7,6 +7,9 @@ use cpl_syntax::ast::{Arg, Expr, ExprKind};
 
 impl<'a> Checker<'a> {
     pub(crate) fn call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Ty {
+        if let Some(ty) = self.getter_call(callee, args) {
+            return ty;
+        }
         let callee_ty = match self.list_form(callee, args) {
             Some(ty) => ty,
             None => self.infer(callee),
@@ -22,6 +25,34 @@ impl<'a> Checker<'a> {
         self.no_escape_args(callee, &callee_ty, args);
         self.mutates_view(call, callee);
         receiver.unwrap_or(ty)
+    }
+
+    /// `x.inv()`: a `@get` method of a struct reads the same with empty
+    /// parentheses, unless what it gives is itself a fn to call.
+    fn getter_call(&mut self, callee: &Expr, args: &[Arg]) -> Option<Ty> {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return None;
+        };
+        if !args.is_empty() {
+            return None;
+        }
+        let Ty::Named { name: type_name, .. } = self.quietly(|c| c.infer(base)) else {
+            return None;
+        };
+        let is_getter = |getters: &[String]| getters.contains(&name.text);
+        let found = match self.env.type_def(&type_name).as_deref() {
+            Some(Def::Struct { getters, .. }) => is_getter(getters),
+            _ => false,
+        } || self.env.impls(&type_name).into_iter().any(
+            |(_, def)| matches!(&*def, Def::Impl { getters, .. } if is_getter(getters)),
+        );
+        if !found {
+            return None;
+        }
+        match self.infer(callee) {
+            Ty::Fn { .. } => None,
+            ty => Some(ty),
+        }
     }
 
     /// `Graph.undirected(pairs)`: a static fn given a plain list of pairs
