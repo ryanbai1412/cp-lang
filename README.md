@@ -172,8 +172,20 @@ The docs site labels every snippet as either runnable or specification.
 
 ## Contributing
 
+Work goes straight to `main`; keep it green. There is no hosted CI, so
+the checks run on your machine. Turn on the pre-commit hook once per
+clone:
+
 ```text
-$ cargo test                          # must pass before every push
+$ scripts/install-hooks.sh            # git commit now runs scripts/check.sh --fast
 ```
 
-Work goes straight to `main`; keep it green.
+`scripts/check.sh --fast` takes about 2 minutes: it refuses staged
+`dist/` output and secrets, then runs clippy with warnings as errors,
+`cargo test --workspace` and the library tests. Before pushing a change
+to the prototype, the WebAssembly build or the VS Code extension, run the
+slow suites too:
+
+```text
+$ scripts/check.sh --full             # adds the wasm smoke test, the VS Code tests and proto/run_all.sh
+```
