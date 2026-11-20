@@ -206,6 +206,16 @@ const TraceCore = (() => {
       y: Number.isFinite(node.y) ? node.y : radius + radius * Math.sin(2 * Math.PI * i / n - Math.PI / 2)}));
     return positions;
   }
+  // `#live`: the recording the playground just made. The offline bundle hands it over through
+  // its parent page's `cpLiveTrace`; the standalone site uses sessionStorage. Returns JSON text or null.
+  function liveTrace(win, storage) {
+    try {
+      const outer = win.parent && win.parent !== win ? win.parent : win;
+      if (!/#live$/.test(outer.location.hash)) return null;
+      return outer.cpLiveTrace ?? storage?.getItem("cp-live-trace") ?? null;
+    } catch { return null; }
+  }
+
   // Padded SVG viewBox around laid-out vertices; null when there is nothing to draw.
   function viewBox(positions, pad = 32) {
     const points = [...positions.values()];
@@ -258,6 +268,6 @@ const TraceCore = (() => {
     return player;
   }
   return {validate, diff, align, compare, analyze, pathName, own, containsPath, selectDifference,
-    SPEEDS, clamp, format, valueAt, referenceAt, adjacentDivergence, changes, summary, keyAction, layout, viewBox, legend, createPlayer};
+    SPEEDS, clamp, format, valueAt, referenceAt, adjacentDivergence, changes, summary, keyAction, layout, viewBox, legend, liveTrace, createPlayer};
 })();
 if (typeof module !== "undefined") module.exports = TraceCore;

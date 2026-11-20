@@ -103,6 +103,19 @@ test("viewBox pads laid-out vertices and is null for an empty graph or tree", ()
   assert.ok(Object.values(one).every(Number.isFinite) && one.w > 0 && one.h > 0);
 });
 
+test("live handoff reads the offline parent first, then sessionStorage, only under #live", () => {
+  const storage = text => ({getItem:key => key === "cp-live-trace" ? text : null});
+  const page = (hash, extra = {}) => { const w = {location:{hash}, ...extra}; w.parent = w; return w; };
+  assert.equal(T.liveTrace(page("#live"), storage("{\"a\":1}")), '{"a":1}');
+  assert.equal(T.liveTrace(page("#sample=x"), storage("{}")), null);
+  assert.equal(T.liveTrace(page("#live"), storage(null)), null);
+  assert.equal(T.liveTrace(page("#live"), null), null);
+  const shell = {location:{hash:"#trace.html#live"}, cpLiveTrace:"offline"};
+  assert.equal(T.liveTrace({parent:shell, location:{hash:""}}, storage("standalone")), "offline");
+  const blocked = {location:{hash:""}, get parent() { throw new Error("cross-origin"); }};
+  assert.equal(T.liveTrace(blocked, storage("x")), null);
+});
+
 test("legend names every renderer state and adds the mismatch swatch only when comparing", () => {
   for (const kind of ["dp", "grid", "array", "graph", "tree"]) {
     assert.ok(T.legend(kind, false).length >= 2);

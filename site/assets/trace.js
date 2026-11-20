@@ -515,8 +515,11 @@
     try { samples = JSON.parse($("trace-samples").textContent || "[]"); } catch { samples = []; }
     let data = null;
     try { data = JSON.parse($("trace-data").textContent || "null"); } catch (error) { toast(`Embedded trace is not valid JSON: ${error.message}`, true); }
+    const live = T.liveTrace(window, (() => { try { return sessionStorage; } catch { return null; } })());
+    let opened = false;
+    if (live) { try { opened = tryLoad(JSON.parse(live)); } catch (error) { toast(`Live trace is not valid JSON: ${error.message}`, true); } }
     const wanted = Math.max(0, samples.findIndex(s => slugify(s.title) === hashParam("sample")));
-    if (!(data && tryLoad(data)) && samples.length) tryLoad(samples[wanted], wanted);
+    if (!opened && !(data && tryLoad(data)) && samples.length) tryLoad(samples[wanted], wanted);
     if (!trace) return void $("status").replaceChildren(el("div", {class:"status-text"}, el("div", {class:"status-title", text:"No trace loaded"}), el("div", {class:"status-detail", text:"Open a JSON or HTML trace, or drop a file anywhere on this page"})));
     const step = Number(hashParam("step"));
     if (Number.isInteger(step) && step > 0) player.go(step - 1);
