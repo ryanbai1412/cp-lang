@@ -66,6 +66,8 @@ Three prelude sequence helpers replace repetitive contest loops:
 
 - `prefix(a)` builds a `[0..=a.len]Int` prefix sum array (`pre[r] - pre[l]` is the sum on `l..r`).
 - `runs(s)` yields `(value, count)` run-length groups in a single pass.
+- `runs_by(xs, key)` groups neighbours with the same `key` into `(key, items)`, and `xs += ys` appends a whole list.
+- `for b in Bool` visits `false` then `true`, so a two-way choice needs no `[false, true]` list.
 - `distinct(a)` returns the sorted unique elements of `a`.
 
 ## Binary search: answer space vs sorted containers

@@ -57,3 +57,13 @@ For input `5` and `abaca`, the result is `3`. Each subscript touches one contigu
 ## String algorithms in `std`
 
 The standard library provides `z_function(s)`, `prefix_function(s)`, `palindromes(s)`, `SuffixArray(s)` (`.sa`, `.lcp`), and double-salted `RollingHash(s)` (`.get(l..r)`), all operating directly on flat ASCII bytes. For a real multi-DP string port using `0..n`-indexed `Str`, see the [Cheerio '1 S5 showcase](index.html#showcase-cheerio1s5).
+
+## Prefix, suffix, and search helpers
+
+`Str` has `.starts_with(p)`, `.ends_with(p)` and `.find(p) -> ?Int` (the first index where `p` starts), and `Char` has `.lower` and `.upper` for ASCII letters. All of them are in the prelude.
+
+```cp
+let s: Str = "hello"
+print(s.starts_with("he"), s.ends_with("lo"), s.find("ll"))   // YES YES 2
+print('a'.upper, 'Q'.lower)                                  // A q
+```

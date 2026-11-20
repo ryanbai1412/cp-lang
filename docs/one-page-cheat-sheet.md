@@ -137,9 +137,10 @@ var out = ""
 out.push('a')
 for _ in 0..3: out += "bc"
 print(out)
+print(s.starts_with("12"), s.find("ab"), 'a'.upper) // YES 3 A
 ```
 
-`Str` is a flat `0..s.len` byte sequence, never UTF-8. `s[..k]`, `s[k..]`, `.len`, `.is_empty`.
+`Str` is a flat `0..s.len` byte sequence, never UTF-8. `s[..k]`, `s[k..]`, `.len`, `.is_empty`, `.starts_with`, `.ends_with`, `.find -> ?Int`; `Char.lower`/`.upper`.
 For nominal string positions, read `let s: [domain S]Char = read()`.
 
 ## 8. Collections and sequence construction
@@ -157,10 +158,11 @@ print(resized(xs, 1, 0))            // 1; same helper, truncating instead of pad
 - `Deque<T>`: `.push`/`.pop` at back, `.push_front`/`.pop_front` at front, `q[i]` in O(1).
 - `MinHeap<T>`/`MaxHeap<T>`: `.push`, `.pop`, `.peek`; `desc(x)` reverses one tuple-key field.
 - `Set<K>`/`SortedBag<K>`: `.add`, `.remove`, membership, `.first_ge`, `.last_le`; bag keeps duplicates.
-- `Map<K,V>`/`HashMap<K,V>`: direct `m[k]` traps if absent; `.get`, `.remove` return optionals.
+- `Map<K,V>`/`HashMap<K,V>`: direct `m[k]` traps if absent; `.get`, `.remove` return optionals; `.get_or_insert(k, v)` returns the stored value.
 - `Bitset<D>`: `.add`, `.remove`, `.toggle`, set operations, `.len` (popcount), `.shifted(k)`.
-- `Subset<D>`: small bitmask indices; `.empty`, `.full`, `.with(v)`, `.without(v)`, `.subsets`.
-- Comprehensions `[f(x) for x in xs if ok(x)]`; `sort(mut xs)`, `scan`, `runs`, `prefix`, `compress`.
+- `Subset<D>`: small bitmask indices; `.empty`, `.full`, `.with(v)`, `.without(v)`, `s = s.set(v, on)` (returns a new subset), `.subsets`.
+- Comprehensions `[f(x) for x in xs if ok(x)]`; `xs += ys`; `for b in Bool`; `sort(mut xs)`, `sorted(xs, by: desc)`.
+- Folds take a monoid such as `+`: `fold(+, xs)`, `scan(xs, +)`, `xs.excl_fold(+)` yields `(x, rest)`; `runs`, `runs_by(xs, key)` yields `(key, items)`, `prefix`, `compress`.
 
 ## 9. Search and modular arithmetic
 
@@ -179,7 +181,7 @@ print(z, one, Z.P)                  // 4 1 7; numeric type parameter access
 - Binary search returns `?I`; no hit is `none`. Floating ranges take `steps: 80`.
 - Sorted sequence `.first_ge`/`.last_le` return indices; sets return keys; maps return pairs.
 - `Mod<P>` supports `+ - * / **`, `.pow`, `.inv`, `.try_inv`; `P` can be constant or runtime-frozen.
-- `Comb<P>()`: `.fact`, `.inv_fact`, `.choose`, `.arrange`; number theory: `gcd`, `lcm`, `Sieve`.
+- `Comb<P>()`: `.fact`, `.inv_fact`, `.choose`, `.arrange`; number theory: `gcd`, `lcm`, `ceil_div`, `Sieve`.
 - Randomness: `Rng(seed)`, `rand(lo..hi)`, `shuffle(mut xs)`; geometry: `Pt`, dot/cross products.
 
 ## 10. Graphs and rooted trees
@@ -224,7 +226,7 @@ print(st.all)                       // 12
 
 `id` is the identity; `compose(new_f, old_f)` applies the old tag first; `span` counts leaves.
 `SegTree<D,T>(+, a)` accepts operators or a `Monoid`; lazy trees accept `AddSum` and other stock actions.
-`Fenwick`: `.add`/`.sum`; `SparseTable`: nonempty `.fold`; segment trees: `.set`/`.fold`/`.all`.
+`Fenwick`: `.add`/`.sum`/`.kth(k) -> ?D`; `SparseTable`: nonempty `.fold`; segment trees: `.set`/`.fold`/`.all`.
 
 ## 12. Input, memoization, and testing
 

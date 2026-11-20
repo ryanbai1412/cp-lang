@@ -23,8 +23,8 @@ sort(mut items, by: x => (x.cost, desc(x.value)))
 ```
 
 - **`Set<T>()` / `SortedBag<T>()`:** `.add(x)`, `.remove(x)`, `x in s`, `.first`, `.last`, `.first_ge(k)`, `.first_gt(k)`, `.last_le(k)`, `.last_lt(k)`. A `Set` stores unique keys; a `SortedBag` keeps duplicates and provides `.count(x)` and `.remove_one(x)` to delete one copy. Neighbor lookups return `?K`, so an absent key is `none` rather than a sentinel.
-- **`Map<K, V>()` / `HashMap<K, V>()`:** `m[k]` (returns `?V` or traps on direct index depending on lookup; `m.get(k) -> ?V` never inserts), `m[k] = v`, `m[k] f= x` (auto-inserts from the operator identity: `0` for `+=`/`-=`, `none` for `min=`/`max=`), `(m[k] ??= init)` (lazy initialize and lend mutably), `m.remove(k) -> ?V`, `k in m`, `for (k, v) in m.items`. Ordered `Map` lookups (`.first_ge(k)`, `.last_le(k)`) return `?(K, V)`. All hash tables use per-process splitmix64 salting to defeat anti-hash tests.
-- **`Bitset<D>()` & `Subset<D>`:** `Bitset<D>` provides `.add(v)`, `.remove(v)`, `.toggle(v)`, `v in s`, `|`, `&`, `-`, `^`, `.len` (popcount), `.first_set -> ?D`, `s.shifted(k)`. `Subset<D>` (`D.K <= 25`) is a 4-byte `Index` value for bitmask DP: `Subset<D>.empty`, `Subset<D>.full`, `Subset<D>.single(v)`, `s.first -> ?D`, `s.with(v)`, `s.without(v)`, `s.complement`, `for mask in Subset<D>`, `for v in mask`, and `for sub in mask.subsets`.
+- **`Map<K, V>()` / `HashMap<K, V>()`:** `m[k]` (returns `?V` or traps on direct index depending on lookup; `m.get(k) -> ?V` never inserts), `m[k] = v`, `m[k] f= x` (auto-inserts from the operator identity: `0` for `+=`/`-=`, `none` for `min=`/`max=`), `(m[k] ??= init)` (lazy initialize and lend mutably), `m.remove(k) -> ?V`, `k in m`, `for (k, v) in m.items`. Ordered `Map` lookups (`.first_ge(k)`, `.last_le(k)`) return `?(K, V)`. All hash tables use per-process splitmix64 salting to defeat anti-hash tests. `m.get_or_insert(k, v)` stores `v` when `k` is absent and returns the stored value.
+- **`Bitset<D>()` & `Subset<D>`:** `Bitset<D>` provides `.add(v)`, `.remove(v)`, `.toggle(v)`, `v in s`, `|`, `&`, `-`, `^`, `.len` (popcount), `.first_set -> ?D`, `s.shifted(k)`. `Subset<D>` (`D.K <= 25`) is a 4-byte `Index` value for bitmask DP: `Subset<D>.empty`, `Subset<D>.full`, `Subset<D>.single(v)`, `s.first -> ?D`, `s.with(v)`, `s.without(v)`, `s.complement`, `for mask in Subset<D>`, `for v in mask`, and `for sub in mask.subsets`. `s = s.set(v, on)` returns a copy with `v` put in or taken out by a `Bool`; on its own, `s.set(v, on)` leaves `s` unchanged.
 
 ## Search, sorting, and sequence helpers
 
@@ -60,8 +60,8 @@ Other prelude sequence helpers:
 
 - `compress(all)` — coordinate compression producing a nominal domain `xs.D`, inverse `xs[id]`, `xs.at(val) -> xs.D`, and `xs.first_ge(val) -> ?xs.D`.
 - `prefix(a)` — 1D or 2D prefix sums (`pre.sum(l..=r)`).
-- `scan(a, +)` / `scan(a, max)` — inclusive running folds.
-- `runs(a)` — run-length `(value, count)` pairs; `xs.adjacent` — consecutive pairs; `D.windows(k)` — sliding windows.
+- `scan(a, +)` / `scan(a, max)` — inclusive running folds; `fold(+, a)` — the whole fold; `a.excl_fold(+)` — yields `(x, rest)`, the fold of every other element, without division.
+- `runs(a)` — run-length `(value, count)` pairs; `runs_by(a, key)` — groups of equal `key`, each `(key, items)`; `xs.adjacent` — consecutive pairs; `D.windows(k)` — sliding windows.
 - `sort(mut a, by:)`, `sorted(a, by:)` (descending via `by: desc`), `reverse(mut a)`, `dedup(mut a)`, `distinct(a)`, `rotate_left(mut a, k)` (negative rotates right), `next_permutation(mut a)`, `prev_permutation(mut a)`.
 - `sum`, `any`, `all`, `count`, `first(it) -> ?T`, `a.find(x) -> ?I`, `min_by(it, key)`, `max_by(it, key)`.
 - `Perm<V>` (`.inv()`, `.cycles()`), plus deterministic RNG: `Rng(seed)`, `rand(lo..hi)`, `shuffle(mut xs)`.
@@ -100,7 +100,7 @@ print(bit.sum(V.first..=V.last), rmq.fold(V.first..=V.last), st.all, mx.all.valu
 ```
 
 - `SegTree` and `LazySegTree` both provide `.set(pos, val)`, `.fold(l..=r)`, `.all` (`O(1)` root fold), and `O(log n)` binary search on the tree via `.max_right(l, ok)` and `.min_left(r, ok)`. Empty and inverted ranges are valid no-ops (except `SparseTable.fold`, which asserts a non-empty range and returns `T`).
-- `Fenwick2D` handles 2D prefix sums; `Fenwick` stays dedicated to sums (`+`/`-`).
+- `Fenwick2D` handles 2D prefix sums; `Fenwick` stays dedicated to sums (`+`/`-`). `bit.kth(k) -> ?V` finds the first index whose prefix sum reaches `k` (non-negative counts).
 - `Dsu<V>()` provides `.unite(a, b) -> Bool`, `.find(v) -> V`, `.same(a, b)`, `.size(v)`, `.components`, `.groups() -> List<List<V>>`, plus `.mark()` and `.undo_to(snap)` for `O(1)` rollback DSU.
 - `std.marks.Marks<D>` is an opt-in 32-bit generation-stamp visited table (`O(1)` reset); for most problems, `[D]Bool` with a touched-list reset is simpler and equally fast.
 
