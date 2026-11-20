@@ -375,6 +375,15 @@ inline ll isqrt(ll x) { ll r = (ll)std::sqrt((double)x); while ((r + 1) <= 30370
 ",
     },
     Piece {
+        name: "at",
+        needs: &["fail"],
+        code: "\
+// A list is indexed by an `Int`, which nothing has proved in range.
+template <class T> T& at(std::vector<T>& v, ll i) { if ((unsigned long long)i >= v.size()) fail(\"index outside the list\"); return v[(size_t)i]; }
+template <class T> const T& at(const std::vector<T>& v, ll i) { if ((unsigned long long)i >= v.size()) fail(\"index outside the list\"); return v[(size_t)i]; }
+",
+    },
+    Piece {
         name: "pop_val",
         needs: &["fail"],
         code: "\
