@@ -37,6 +37,31 @@ Everything is checked at run time, and a failure names the source line.
 `python3 proto/cpi/checks_test.py` runs one failing program per check and
 compares the message.
 
+## The v2 surface it runs
+
+The locked v2 library surface (`research/language-architecture-v2.md`)
+needs a few things beyond the first design, and the interpreter runs them
+so `stdlib/` can be written against the spec:
+
+- A bare operator as an argument, positional or named:
+  `SegTree<I, Int>(+, a)`, `Action(..., over: min)`. Two bare operators
+  compare equal when they are the same operator, which is how
+  `Monoid<T>.of` picks the identity.
+- Default parameter values (`a: ?[D]T = none`) and trailing type arguments
+  left to inference (`LazySegTree<I, Int>(AddMax, a)`).
+- Trait methods with a default body (`Reversible.rev`), available on every
+  value that has no `impl` of its own.
+- Extension functions: a top-level `fn` whose first parameter is
+  `self: T` is called as `x.f(...)`, and with `@get` as the property
+  `x.f` (`p.adj4` in `std.grid`).
+- `obj[i]` through a struct's `get`, `x in obj` through its `contains`,
+  and a struct's type parameter as a member (`xs.D` after `compress`).
+- Open-ended ranges `..i` and `i..`; `min`, `max`, `min=` and `max=`
+  skipping `none`; `T.MIN` / `T.MAX` of a `?T` being `none`.
+- `count`, `any`, `all`, `first`; `xs.first_ge(v)`, `xs.last_le(v)` and
+  `xs.find(v)` on lists and arrays; `xs.pop()`, `xs.first` and `xs.last`
+  answering `none` on an empty list.
+
 ## What it does not do
 
 It does no static type checking, so a type error on a path no test takes

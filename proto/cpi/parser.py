@@ -5,7 +5,7 @@ Adds what a library module needs and a single solution file does not:
 operation values, fn types, `trait` and `impl` blocks, `where` clauses.
 The cpc parser is subclassed, not edited, so the C++ prototype is untouched.
 """
-from cpc.parser import Parser, ParseError  # noqa: F401 (re-exported)
+from cpc.parser import Parser, ParseError, OP_FNS  # noqa: F401 (re-exported)
 from cpc.ast import N
 
 DECL_KW = {"fn", "struct", "const", "type", "enum", "pure", "domain"}
@@ -58,10 +58,7 @@ class LibParser(Parser):
         if self.at_name("use") and self.peek().kind == "NAME":
             return self.use_stmt()
         if self.at_name("trait") and self.peek().kind == "NAME":
-            self.next()
-            nm = self.name()
-            self.skip_to_block_end()
-            return N("trait", line, name=nm)
+            return self.trait_def()
         if self.at_name("impl") and self.peek().kind == "NAME":
             return self.impl_def()
         if self.at("const") and self.tok_is(2, "OP", "<"):
@@ -77,6 +74,86 @@ class LibParser(Parser):
         if s.kind in ("fn", "struct", "gconst") or (s.kind == "let" and getattr(s, "const", False)):
             s.doc = self.docs.get(line, "")
         return s
+
+    def trait_def(self):
+        """`trait Name:` and its signatures. A method written with a body is the trait's default."""
+        line = self.next().line
+        nm = self.name()
+        defaults = []
+        while not self.at_kind("NEWLINE") and not self.at_kind("EOF"):
+            self.next()
+        if self.at_kind("NEWLINE"):
+            self.next()
+        if self.at_kind("INDENT"):
+            self.next()
+            self.skip_newlines()
+            while not self.at_kind("DEDENT") and not self.at_kind("EOF"):
+                start = self.i
+                try:
+                    m = self.member()
+                    if m is not None and m.kind == "fn":
+                        defaults.append(m)
+                    elif m is None:
+                        raise ParseError("not a member")
+                except ParseError:
+                    # a signature with no body: nothing to run
+                    self.i = start
+                    while not self.at_kind("NEWLINE") and not self.at_kind("EOF"):
+                        self.next()
+                self.skip_newlines()
+            if self.at_kind("DEDENT"):
+                self.next()
+        return N("trait", line, name=nm, defaults=defaults)
+
+    def params(self):
+        """Parameters, with `name: T = default` for a trailing argument the caller may leave out."""
+        self.expect("(")
+        ps = []
+        pending = []
+        while not self.at(")"):
+            mode = None
+            if self.t.kind == "NAME" and self.t.val == "mut" and self.peek().kind == "NAME":
+                self.next()
+                mode = "inout"
+            nm = self.name()
+            if self.at(":"):
+                self.next()
+                ty = self.type_()
+                default = None
+                if self.at("="):
+                    self.next()
+                    default = self.expr()
+                for pn, pm in pending + [(nm, mode)]:
+                    ps.append(N("param", self.t.line, name=pn, ty=ty, mode=pm, default=default if pn == nm else None))
+                pending = []
+            else:
+                pending.append((nm, mode))
+            if self.at(","):
+                self.next()
+        self.expect(")")
+        for pn, pm in pending:
+            ps.append(N("param", self.t.line, name=pn, ty=None, mode=pm, default=None))
+        return ps
+
+    def call_args(self):
+        # `Action(..., over: +)`: a bare operator is also allowed as a named argument
+        j, depth = self.i + 1, 0
+        while j + 2 < len(self.toks) and depth >= 0:
+            t = self.toks[j]
+            if t.kind == "OP" and t.val in ("(", "[", "{"):
+                depth += 1
+            elif t.kind == "OP" and t.val in (")", "]", "}"):
+                depth -= 1
+            elif depth == 0 and t.kind == "NAME" and self.toks[j + 1].kind == "OP" and self.toks[j + 1].val == ":":
+                op, after = self.toks[j + 2], self.toks[j + 3]
+                if op.kind == "OP" and op.val in OP_FNS and after.kind == "OP" and after.val in (",", ")"):
+                    a, b = type(t)("NAME", "_a", op.line, op.col), type(t)("NAME", "_b", op.line, op.col)
+                    wrap = [type(t)("OP", "(", op.line, op.col), a, type(t)("OP", ",", op.line, op.col), b,
+                            type(t)("OP", ")", op.line, op.col), type(t)("OP", "=>", op.line, op.col),
+                            type(t)("NAME", "_a", op.line, op.col), op, type(t)("NAME", "_b", op.line, op.col)]
+                    self.toks[j + 2:j + 3] = wrap
+            j += 1
+        return super().call_args()
 
     def skip_to_block_end(self):
         """Skip a header line and the indented block under it, if any."""
