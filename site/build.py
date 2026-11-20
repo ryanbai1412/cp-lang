@@ -74,10 +74,13 @@ REFERENCE_PAGES = [
 
 LESSONS = load_lessons()
 EXERCISES = {exercise["id"]: exercise for lesson in LESSONS for exercise in lesson["exercises"]}
-PAGES = [REFERENCE_PAGES[0],
-         ("course", "Interactive course", "Course", "Six progressive chapters. Worked examples, exercises, and checked answers.", "6 chapters"),
-         *[(lesson["slug"], lesson["title"], "Course", lesson["description"], lesson["duration"]) for lesson in LESSONS],
-         *REFERENCE_PAGES[1:]]
+PAGES = [
+    ("course", "Interactive course", "Course",
+     "Six progressive chapters. Worked examples, exercises, and checked answers.", "6 chapters"),
+    *[(lesson["slug"], lesson["title"], "Course", lesson["description"], lesson["duration"])
+      for lesson in LESSONS],
+    *REFERENCE_PAGES,
+]
 
 
 def slug(text):
