@@ -89,6 +89,11 @@ Numbers, in `math/`:
 - `powers.cp`: `Powers<P>`, the powers of one base in O(1).
 - `sos.cp`: `sos_sub`, `sos_sup` and `sos_sub_inv`, sums over subsets and
   supersets of bitmasks.
+- `primes.cp`: `is_prime` (deterministic Miller-Rabin), `factorize`
+  (Pollard's rho), `divisors_of` and `primitive_root`, for numbers too
+  large to sieve.
+- `floor_sum.cp`: `floor_sum`, `mod_sum` and `count_residues`, sums of
+  floors and residues of an arithmetic progression in O(log m).
 
 Graphs, in `graph/`:
 
@@ -108,6 +113,11 @@ Graphs, in `graph/`:
   tree) and `spanning` forest selector.
 - `min_count.cp`: `MinCount<P>` shortest-path distance + count semiring and
   `floyd_warshall`.
+- `matching.cp`: `max_matching`, Hopcroft-Karp bipartite matching over two
+  typed sides, with the minimum vertex cover that proves it.
+- `bounded_flow.cp`: `circulation`, `max_bounded_flow` and
+  `min_bounded_flow`, flows whose arcs have lower bounds, on top of
+  `std.flow`.
 
 Geometry and grids, in `geom/` and `grid/`:
 
@@ -155,6 +165,8 @@ Sequences and strings, in `seq/` and `str/`:
 - `borders.cp`: `borders`, `period` and `overlaps`.
 - `trie.cp`: `Trie<A>` over an alphabet that is a domain.
 - `suffix_automaton.cp`: `SuffixAutomaton<A>`, built online.
+- `aho_corasick.cp`: `AhoCorasick<A>`, every dictionary word found in one
+  pass over a text, and the automaton to run DP over.
 - `hash2d.cp`: `Hash2D<R, C>`, the hash of any rectangle of a grid.
 
 Union-find with undo lives in `std.dsu` (`Dsu.mark()` / `Dsu.undo_to(snap)`),
