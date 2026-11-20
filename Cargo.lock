@@ -37,6 +37,14 @@ name = "cpl-diag"
 version = "0.0.0"
 
 [[package]]
+name = "cpl-doc"
+version = "0.0.0"
+dependencies = [
+ "cpl-diag",
+ "cpl-syntax",
+]
+
+[[package]]
 name = "cpl-fmt"
 version = "0.0.0"
 dependencies = [
