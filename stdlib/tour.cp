@@ -144,3 +144,14 @@ fn ask_the_brute_force_what_it_is():
     // is this DP divide-and-conquer friendly? is this answer convex in k?
     assert dnc_break((i, j) => (i - j) * (i - j) + j, 12, 12) == none
     assert convexity_break([9, 4, 1, 0, 1, 4]) == none and convexity_break([0, 5, 6, 9]) == 0
+
+@test
+fn a_fold_on_a_missing_map_key_starts_from_the_identity():
+    var m = Map()
+    m[3] max= -5
+    m[5] min= 5
+    m[5] min= 2
+    m[6] += 2
+    m[7] *= 3
+    m[7] *= 3
+    assert m[3] == -5 and m[5] == 2 and m[6] == 2 and m[7] == 9

@@ -32,6 +32,19 @@ of sketches in this batch that carry the item's marker; an earlier port is
 named only where `friction.md` or the port itself shows the same line. The
 wider corpus was not counted except where a number is given.
 
+### Status after the first Stage-2 sprint (2026-11-20)
+
+Sixteen of the 21 items are resolved in `proto/cpc/` and `stdlib/`, and
+eight of the ten sketches moved to `proto/ports/` and agree with their
+originals under `proto/run_all.sh`: ccc18s5, ccc21s4, ccc22s4, cco18p1,
+cco20p1, ioi04p4, ioi10p3 and ioi11p2. ccc19s5 (F4) and ccc05s5 (F13, F15)
+are still sketches. Each item below starts with its status. `decisions.md`
+§12 has the reasoning for every syntax or typing change.
+
+Stressing found two bugs in the sketches themselves, which is the point of
+running them: cco18p1 treated a tie in points as a rivalry (the original
+needs a strict win), and cco20p1 let a friend sit outside `l..=r`.
+
 ### Suggested order for the Stage-2 sprint
 
 1. F18, because it is a silent wrong answer.
@@ -49,6 +62,8 @@ from it: the checked step (`r + step` is now a `?Row`, used as is by
 ccc19s5) and `prefix(a)` over an `Int` array (used as is by ccc22s4).
 
 ### F18. A compound assignment on a missing map key (bug; ioi11p2)
+
+**Resolved.** A missing key starts from the identity of the operation (`min=` / `max=` store the value); an operation without one is a compile error. `decisions.md` §12, `proto/tests/ergo/mapfold.cp`, `proto/tests/bad/map_fold_*.cp`; `proto/cpi` follows the same rule.
 
 *Checked.* This prints `0 0 2`:
 
@@ -80,6 +95,8 @@ current behaviour is wrong without any message.
 
 ### F1. Ports cannot use the standard library (4 of 10; `friction.md` item 3)
 
+**Resolved for these four, by stand-ins.** `use std.module.{Name}` parses and is checked against `stdlib/module.cp`; `Dsu`, `bfs`, `choose` and `Set(xs)` are compiled in with the library's names and meanings, and a library name without its `use` is an error. `cpc` still cannot compile `stdlib/*.cp` itself: that (structs with methods, generics) is the real fix and stays open as F22.
+
 ccc18s5 (`Dsu`), ccc21s4 (`bfs`), ccc22s4 (`choose`) and ioi04p4 (`Set`).
 *Checked:* `use
 std.dsu.{Dsu}` gives `expected end of line (at 'std')`, and `Set` is an
@@ -109,6 +126,8 @@ builtins with the signatures `stdlib/` already has, as `SegTree` and
 `stdlib/mod.cp`, and there is no plain `Int` one and no `Set`.
 
 ### F2. Prefix counts and running folds (2 of 10, 1 earlier port)
+
+**Resolved.** `prefix` over a `Bool` array or fn counts; `scan(xs, f)` and `running_sum(xs)` are in the new `std.seq`.
 
 ioi10p3 and cco20p1; earlier, aac4p2 (the audit's open "Prefix of
 anything"). The audit added `prefix(a)` with `pre.sum(range)` and
@@ -140,6 +159,8 @@ needs.
 
 ### F5. `let ... else` over two optionals (1 of 10)
 
+**Resolved.** Both spellings: `let (g, h) = (x.right, y.right) else:` and `let g = x.right and let h = y.right else:`.
+
 cco18p1. The audit made a step an optional and added `b.right` for the
 cell after a boundary, so the old item (moving inside a domain) is gone.
 What is left is taking two of them at once and leaving early. *Checked:*
@@ -160,6 +181,8 @@ optionals or `let g = x.right and let h = y.right else: return 0`.
 
 ### F8. `none` does not pass through arithmetic (1 of 10)
 
+**Resolved** for straight-line code: `e?` may sit inside an expression. Inside a branch, a lambda or a comprehension it is still an error that says to bind it first.
+
 ccc21s4. *Checked:* `d[v]? + 1` gives `` `?`
 must be the whole right-hand side of a let (prototype) ``. Today:
 
@@ -175,6 +198,8 @@ optional, not only as a whole `let`.
 
 ### F9. `min` and `max` cannot mix `Int` with `?Int` (1 of 10)
 
+**Resolved.** `min` and `max` skip `none`; the result is a `T` when some argument is a plain `T`.
+
 ioi04p4. *Checked:* `min(a * b, min(... for x in 1..=a / 2), ...)` gives
 `min of [Int[1..=360000], ?Int, ?Int]`, because a reduction over a range
 that may be empty is optional. `min` over optionals already skips `none`,
@@ -184,6 +209,8 @@ which brings back the sentinel. Proposal: `min`/`max` accept any mix of
 
 ### F12. A lambda that only reads a field (2 of 10)
 
+**Resolved.** `.field` where a one-argument fn is expected.
+
 ccc18s5, ioi11p2. *Checked:* `sorted(a,
 by: .cost)` gives `expected an expression (at '.')`. Today: `sorted(flights,
 by: f => f.cost)`. Proposal: `.field` where a function of one argument is
@@ -192,6 +219,8 @@ use a tuple or a call (`by: r => (r.len, r.cost)`), which this does not
 shorten.
 
 ### F3. Input that is laid out differently from the data (1 of 10)
+
+**Resolved.** `read(columns)` for an array of records, and single-character `@tags` read packed.
 
 cco18p1 reads `WLLW` and then a line of points for each team, and the
 program wants one record per game. *Checked:* `[G]Outcome` with
@@ -217,6 +246,8 @@ problems were not counted, but they are a large share of the corpus.
 
 ### F6. Windows of a domain (1 of 10)
 
+**Resolved.** `D.windows(k)` and `r.windows(k)` give the ranges of k consecutive positions.
+
 ioi10p3. *Checked:* `V.windows(2)` gives `type V has no method windows`.
 With the audit's typed step and `span`, today's form builds and is
 already free of raw indices:
@@ -232,6 +263,8 @@ Wanted: `for rows in Row.windows(h)`, each window a range of `Row` that
 lines into one generator.
 
 ### F7. A fold that follows its source (1 of 10, 1 earlier port)
+
+**Resolved.** `SegTree<D, T>.of(op, f)` with `refresh(i)` and `.all`, in `stdlib/segtree.cp` and in the stand-in.
 
 ccc21s4; earlier, ccc21s5 (`for i in I: gcds.set(i, a[i])`). Today the
 formula is written at the build and again after every change:
@@ -258,6 +291,8 @@ those leaves, so the formula exists once. Also take a named operator
 (`min`, `gcd`) where an operation is expected, with its identity.
 
 ### F19. Range updates read back as runs (1 of 10, 1 earlier port)
+
+**Resolved.** `Steps` in the new `std.steps`: `add(range, x)`, then `runs(clip)`.
 
 cco20p1; earlier, ccc21s5, which builds a difference table and then takes
 its prefix. Today
@@ -286,6 +321,8 @@ cco20p1.
 
 ### F11. Ranges that wrap (1 of 10, 1 earlier port)
 
+**Resolved.** `v.cyc(k)` and `pre.sum(from: v, len: k)`, which wraps around the domain.
+
 ccc22s4; earlier, btoi17p3 (`tour[(i + 1) % tour.len]`, open in
 `friction.md`). *Checked:* `p.cyc(3)` gives `V has no method
 cyc`, though `plan/12` specifies it, and `pre.sum(p.., len: 2)` gives
@@ -296,6 +333,8 @@ start and a length that may pass the end.
 
 ### F10. Binary search over a plain range (1 of 10)
 
+**Resolved.** `first_where` and `partition_point` on any range, not only a domain's.
+
 ioi10p3, and any "binary search the answer" problem. *Checked:*
 `(1..=n).first_where(...)` gives `Range<Int> has no method first_where`; it
 exists on domains only, so the port would declare `domain Answer = 1..=r *
@@ -303,6 +342,8 @@ c` for one line. Proposal: `first_where` and `partition_point` on any
 range.
 
 ### F17. Taking a value out of an array slot (1 of 10)
+
+**Resolved.** `take(place)` moves the value out and leaves the empty one. `reach[v] = here` as the last use of `here` still copies: see F23.
 
 ioi11p2. *Checked:* `take` is an unknown name. Small-to-large needs to move
 a child's map out of `reach[child]`, swap it with the local one if it is
@@ -313,6 +354,8 @@ works on two local containers.
 
 ### F16. Lengths on a rooted tree (1 of 10)
 
+**Resolved.** `Rooted(edges, root, weight: .len)`; `tree.dist(a, b)` adds lengths, and `tree.kids` and `tree.root` are readable. In the library: `Rooted.weighted` and the `far` field.
+
 ioi11p2. `Rooted(adj, root)` gives `parent`, `pos`, `depth`, `lca` and
 `preorder`. *Checked:* `tree.children(v)` gives `no method children on
 Rooted<V>`, and there is no weighted distance, so the port would rebuild
@@ -322,6 +365,8 @@ bottom-up loop `for v in tree.preorder.rev` replaces recursion, which also
 avoids the stack depth problem on a path of 2e5 cities.
 
 ### F4. A triangular index (1 of 10, 1 earlier port)
+
+**Open.** Not started; ccc19s5 stays a sketch.
 
 ccc19s5; earlier, coci20c6p3 (`choose[i, j]` with `j <= i`). Today the
 triangle is a square table with half of it unused, the input needs a loop
@@ -340,6 +385,8 @@ same shape.
 
 ### F13. A sorted bag with rank queries (1 of 10)
 
+**Open.** Not started; ccc05s5 stays a sketch (it also needs F15).
+
 ccc05s5 (`seen.count_above(s)`), and ccc21s4's original, which keeps a
 multiset only to read its minimum. Today: `compress` the scores, then a
 `SegTree` of counts, with the `coord.first_ge(s)!` that `friction.md`
@@ -349,6 +396,8 @@ values are known up front and a balanced tree otherwise.
 
 ### F14. Merging two sorted sequences of different types (1 of 10)
 
+**Open.** Not needed in the end: ccc18s5 puts both kinds of link in one `enum Link` list and sorts it by cost, which reads better than a merge.
+
 ccc18s5 has flights between cities and portals between planets, and
 Kruskal wants them in one order by cost. Today that takes a new enum and a
 concatenated list, sorted again. Wanted: `for link in merge(a, b, by:
@@ -356,11 +405,15 @@ concatenated list, sorted again. Wanted: `for link in merge(a, b, by:
 
 ### F15. Floats (1 of 10; decision 1.5 is open)
 
+**Open.** Blocked on decision 1.5.
+
 ccc05s5 prints an average to two decimals. *Checked:* `F64` is an unknown
 name in the prototype. ccc20s5, whose accepted solutions use `long
 double`, was left out of this batch for the same reason. This needs decision 1.5 before a sprint.
 
 ### F20. Grader-style originals (2 of 10; decision 6.8 is open)
+
+**Open** (decision 6.8). Worked around: the two grader-style originals got a small `main` that stands in for the grader, marked as such in the file and counted as driver lines in the `.strip`.
 
 The originals of ioi10p3 and ioi11p2 have no `main`: they are functions
 called by a grader, so `cp.py stress`
@@ -371,12 +424,43 @@ stressed.
 
 ### F21. Two small literals (1 of 10)
 
+**Resolved.** `[k: v]` map literals and `[n - 1]T` counts.
+
 ioi11p2. *Checked:* `let es: [n - 1](a: V, b: V) = read()` gives `expected
 a type`, and `var m: HashMap<Int, Int> = [3: 4]` gives `expected an
 expression (at ':')`. Today the first needs `domain Road = 1..n` for an
 array that is only read and looped over, and the second is an empty map
 plus an assignment. Proposal: any expression as an array count, and `[k:
 v, ...]` as a map literal.
+
+### New friction found while landing the batch
+
+- **F22. `cpc` cannot compile the library.** Every library piece a port
+  uses is a hand-written stand-in in `compiler.py` and `runtime.hpp`,
+  kept in step with the `.cp` definition by hand. Each new structure costs
+  a stand-in, and the two can drift. The fix is structs with methods and
+  generics in `cpc`, or porting through the Rust front end.
+- **F23. A last use is not a move.** ioi11p2 ends its loop with
+  `reach[v] = take(here)`; `reach[v] = here` copies the map although
+  `here` is never read again. Storing the last use of a local should move.
+- **F24. A match arm cannot hold a one-line `if`.** ccc18s5 wanted
+  `Flight(a, b) => if cities.unite(a, b): kept += cost * planets.count`;
+  it parses as an `if` expression and asks for `else`. The arm has to
+  become a block.
+- **F25. A generator fn cannot name an anonymous count.** With
+  `let roads: [n - 1](...) = read(gen: random_tree)` the fn has no way to
+  write its return type, so ioi11p2 declares `domain Road = 1..n` only for
+  that.
+- **F26. Random valid input for a permutation.** ccc21s4 needs "station 1
+  first, then a permutation, and two different stops per swap". With
+  `where` alone 59 of 60 generated cases were rejected; it now has a
+  hand-written `random_line`. `Perm<D>` has no generator hook for "fixed
+  first element", and there is no `shuffle`.
+- **F27. Swapping two cells.** `swap(mut line[x], mut line[y])` is
+  rejected unless `x != y` is known, which is right, but the fix
+  (`line.swap(x, y)`) is not suggested by the error.
+- **F28. The first k positions of a domain** is spelled
+  `Spot.all.prefix(c / 2)` in ccc22s4. `Spot.first(k)` would read better.
 
 ### Already good
 

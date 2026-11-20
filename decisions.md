@@ -358,3 +358,94 @@ read()` and `var (lo, hi) = ...` are not accepted; every tree port writes
 its own two-line random-tree generator; a tree given as a parent array
 needs a three-line loop before `Rooted`; rerooting is still a hand-written
 prefix and suffix pass (a `reroot` combinator is the next candidate).
+
+## 13. Leaning since 2026-11-20: scout batch 1
+
+The first scout batch (`research/friction-backlog.md`) re-solved ten
+corpus problems and listed what the prototype made awkward. The changes
+below are implemented in `proto/cpc/`, eight of the ten sketches now pass
+against their originals as ports, and `proto/tests/ergo/` and
+`proto/tests/bad/` lock them. None is confirmed by Ryan yet, so each is
+**Leaning**, and each says what is library code and what is not.
+
+- **A compound assignment on a missing map key starts from the identity
+  of its operation.** A rule, and a bug fix: `m[k] min= x` on a key that
+  was not there started from 0. Now `m[k] f= x` on a missing key stores
+  `f(id, x)`, where `id` is the identity of `f` in `std.algebra`: 0 for
+  `+`, `-`, `|`, `^` and `gcd`, 1 for `*` and `lcm`. `min` and `max` have
+  no identity over `Int`, so they store `x`, the same "insert if none"
+  that `min=` on a `?Int` already had. An operation with no known identity
+  is a compile error that asks what a missing key means:
+
+      m[d] min= hops                      // first write stores hops
+      m[d] /= 2                           // error: `/` has no identity to start it from
+      m[d] = (m.get(d) ?? 1) / 2          // what the error suggests
+
+  This is the monoid rule the library already uses (`opt` of a semigroup),
+  applied to one place, not a special case for `min`.
+- **`e?` works inside an expression.** Syntax, widening 4.1: `?` was only
+  allowed on a whole `let`. Now `i.ord + on_foot[line[i]]?` leaves the fn
+  with `none` when the operand is `none`. The operands before it are still
+  evaluated first, left to right. Inside a branch, a lambda or a
+  comprehension it stays an error for now, because "leave the fn" from
+  there is not obvious to a reader.
+- **`let a = x and let b = y else:` and `let (a, b) = (x, y) else:`.**
+  Syntax. The same `and` chain `if let` already has, on the early-exit
+  form, so two optional steps need neither nesting nor a second `else`.
+- **`min` and `max` skip `none`.** Typing: with every argument a `T` the
+  result is a `T` as before; with some `?T` the `none`s are skipped, and
+  the result is a `T` when at least one argument is a plain `T`, a `?T`
+  otherwise. It is the `opt` monoid again: `none` is the identity.
+- **`.field` is the fn `x => x.field`.** Syntax, only where a
+  one-argument fn is expected: `sorted(links, by: .cost)`,
+  `Rooted(roads, root, weight: .len)`.
+- **An operator names its two-argument fn.** Syntax, only as a call
+  argument: `scan(a, +)`, `SegTree<V, Int>.of(+, f)`. With it `x f= y`,
+  `scan(a, f)` and `.of(f, ...)` all take the same thing, an operator or a
+  named fn.
+- **`[k: v, ...]` is a map literal** and `[n - 1]T` takes any `Int`
+  expression as a count. Syntax; both were parse errors.
+- **A read range is the range that was written, inside records too.**
+  Section 12 made `let k: 1..=n = read()` check and generate against the
+  value `n` has. The same now holds for a range that is a field or an
+  element: `let friends: [n](x: l..=r, v: 1..=100) = read()`.
+- **`read(columns)`.** Library: an array of records is read one field at
+  a time (all the outcomes, then all the points) instead of one record at
+  a time. The data keeps the shape the solution wants; only the input
+  order differs.
+- **An enum whose `@tags` are single characters reads packed.**
+  `@tags("W", "L")` reads `WLWW` as four values, the way `Char` already
+  does. Library (`read` for such an enum).
+- **`use std.module.{Name}` in a port.** The prototype compiler still
+  cannot compile the library's own `.cp` (that needs structs with
+  methods and generics in `cpc`), so it compiles in a stand-in for each
+  name, as it already did for `SegTree`. The `use` is checked against the
+  real module: the name must be `pub` in `stdlib/module.cp`. The new
+  stand-ins are `bfs`, `choose`, `Steps`, `scan` and `running_sum`, and
+  using one of them without its `use` is an error. Each has the same
+  name, arguments and meaning as the `.cp` definition, which
+  `proto/cp.py test stdlib` runs on the interpreter. The stand-ins that
+  were there before (`SegTree`, `Rooted`, `Dsu`, `Graph`, `scc`) still
+  work without a `use`, because the existing ports use them that way; a port may
+  import them, and `Dsu<V>.new()` and `.count` are accepted as the
+  library spells them.
+- **Library additions.** All plain library code in `stdlib/`:
+  `choose(n, k)` in `std.math`; `scan(xs, f)` and `running_sum(xs)` in
+  the new `std.seq`; `Steps` in the new `std.steps` (`add(range, x)`,
+  then `runs(clip)` gives the maximal runs of equal value, which is the
+  sorted-events sweep); `SegTree.of(m, f)` with `refresh(i)` and `.all`,
+  so a tree over a formula states the formula once; `Rooted.weighted` and
+  a `dist` that adds edge lengths (it still counts edges when none are
+  given). In the prototype compiler only:
+  `Set(xs)`, `take(place)`, `a.swap(i, j)` (plan/19 §4.5),
+  `D.windows(k)`, `first_where` on any range,
+  `pre.sum(from: v, len: k)` wrapping around the domain, `prefix` over a
+  `Bool` array or fn (it counts), and on the `Rooted` stand-in of
+  section 12 `weight:`, with `tree.kids` and `tree.root` as the library
+  names them.
+
+Two things were looked at and not done. `m[k] f= x` could have required
+an explicit start value for every operation; that makes the common
+`m[k] += 1` longer to protect the rare `m[k] /= x`, so only the
+operations without an identity ask. And `?` could have been allowed
+everywhere; see above.

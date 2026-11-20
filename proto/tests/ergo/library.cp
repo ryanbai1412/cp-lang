@@ -1,5 +1,7 @@
 use std.dsu.{Dsu}
 use std.graph.{bfs}
+use std.seq.{scan, running_sum}
+use std.steps.{Steps}
 let n: 2..=8 = read()
 domain V = 1..=n
 let es: [n - 1](u: V, v: V, len: 1..=9) = read()
@@ -12,7 +14,7 @@ var adj: [V]List<V> = []
 for (u, v, len) in es:
     adj[u].push(v)
     adj[v].push(u)
-let hops = bfs(v => adj[v], [V.first])
+let hops = bfs(v => adj[v], from: [V.first])
 print(hops)
 let tree = Rooted(es, V.first, weight: .len)
 print([tree.dist(tree.root, v) for v in V], tree.depth(V.last), tree.kids[V.first])
@@ -20,7 +22,7 @@ let plain = Rooted(adj, V.first)
 print(plain.dist(V.first, V.last), plain.lca(V(2), V(3)))
 let wanted = Set([(e.u.ord, e.len) for e in es])
 print((0, 3) in wanted, (5, 5) in wanted)
-var st = Steps<Int>()
+var st = Steps.new()
 st.add(2..=5, 1)
 st.add(4..=9, 2)
 st.add(-3..0, 7)
