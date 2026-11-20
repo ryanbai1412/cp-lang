@@ -700,6 +700,20 @@ class Compiler:
             left_c, left_t = rc, rt
         return "(" + " && ".join(parts) + ")", BOOL
 
+    def lambda2(self, lam, ta, tb, tr):
+        """Compile `(a, b) => body` to a C++ lambda taking (ta, tb) and returning tr."""
+        if lam.kind != "lambda" or len(lam.params) != 2:
+            self.error(lam, "expected a two-parameter lambda `(a, b) => ...`")
+        self.scopes.append({})
+        pa, pb = self.fresh("a"), self.fresh("b")
+        self.bind_lambda_param(lam.params[0], pa, ta, lam)
+        self.bind_lambda_param(lam.params[1], pb, tb, lam)
+        bc, bt = self.expr(lam.body, tr)
+        bc = self.coerce(bc, bt, tr, lam.body)
+        self.scopes.pop()
+        return (f"[&](const {self.cpp_type(ta)}& {pa}, const {self.cpp_type(tb)}& {pb}) -> {self.cpp_type(tr)} "
+                f"{{ return {bc}; }}")
+
     def membership(self, xc, xt, rn, e):
         rc, rt = self.expr(rn)
         if isinstance(rt, TType) and isinstance(rt.t, TDom):
@@ -946,10 +960,15 @@ class Compiler:
             et = t.elem
             ec = self.cpp_type(et)
             by = [a for a in e.args[1:] if a.kind == "kwarg" and a.name == "by"]
-            if len(e.args) > 1 and len(by) != len(e.args) - 1:
-                self.error(e, f"{fn.name}(xs) or {fn.name}(xs, by: x => key)")
+            less = [a for a in e.args[1:] if a.kind == "kwarg" and a.name == "less"]
+            if len(e.args) > 1 and len(by) + len(less) != 1:
+                self.error(e, f"{fn.name}(xs), {fn.name}(xs, by: x => key) or {fn.name}(xs, less: (a, b) => a_first)")
             cmp = ""
-            if by:
+            if less:
+                # for orders that have no key, e.g. by angle with exact cross products
+                cmp = ", " + self.lambda2(less[0].value, et, et, BOOL)
+                by = less
+            elif by:
                 pn, kc, kt = self.lambda_key(by[0].value, et)
                 cmp = (f", [&](const auto& A, const auto& B) {{ auto _key = [&](const auto& {pn}) {{ return {kc}; }}; "
                        f"return _key(A) < _key(B); }}")
@@ -959,6 +978,24 @@ class Compiler:
             tmp = self.tmpname("s")
             return (f"([&]{{ auto {tmp} = {c}; {algo}({tmp}.begin(), {tmp}.end(){cmp}); "
                     f"return {tmp}; }}())"), (t if isinstance(t, TArr) and not by else TList(et))
+        if fn.kind == "name" and fn.name == "distinct" and len(e.args) == 1 and not self.lookup("distinct"):
+            # distinct(xs): no two elements are equal (mostly for input `where` clauses)
+            c, t = self.expr(e.args[0])
+            if not isinstance(t, (TList, TArr)) or (isinstance(t, TArr) and len(t.dims) != 1):
+                self.error(e, "distinct needs a list or 1-D array")
+            return (f"([&]{{ auto _s = {c}; sort(_s.begin(), _s.end()); "
+                    f"return adjacent_find(_s.begin(), _s.end()) == _s.end(); }}())"), BOOL
+        if fn.kind == "name" and fn.name == "runs" and not self.lookup("runs"):
+            # runs(xs, same: (a, b) => Bool): maximal stretches of neighbours that are `same`
+            c, t = self.expr(e.args[0])
+            same = [a for a in e.args[1:] if a.kind == "kwarg" and a.name == "same"]
+            if not isinstance(t, (TList, TArr)) or (isinstance(t, TArr) and len(t.dims) != 1) or len(same) != 1:
+                self.error(e, "runs(xs, same: (a, b) => Bool) over a list or 1-D array")
+            ec = self.cpp_type(t.elem)
+            eq = self.lambda2(same[0].value, t.elem, t.elem, BOOL)
+            return (f"([&]{{ auto _eq = {eq}; vector<vector<{ec}>> _r; const auto& _xs = {c}; "
+                    f"for (size_t _i = 0; _i < _xs.size(); ++_i) {{ if (_i == 0 || !_eq(_xs[_i - 1], _xs[_i])) _r.emplace_back(); "
+                    f"_r.back().push_back(_xs[_i]); }} return _r; }}())"), TList(TList(t.elem))
         if fn.kind == "name" and fn.name == "dijkstra" and not self.lookup("dijkstra"):
             gc, gt = self.expr(e.args[0])
             ok = (isinstance(gt, TArr) and len(gt.dims) == 1 and isinstance(gt.elem, TList)
@@ -980,16 +1017,8 @@ class Compiler:
                 self.error(e, "SegTree<D, T>(identity, (a, b) => combined)")
             ic, it = self.expr(e.args[0], t.elem)
             ic = self.coerce(ic, it, t.elem, e.args[0])
-            lam, ec = e.args[1], self.cpp_type(t.elem)
-            self.scopes.append({})
-            pa, pb = self.fresh("a"), self.fresh("b")
-            self.bind_lambda_param(lam.params[0], pa, t.elem, lam)
-            self.bind_lambda_param(lam.params[1], pb, t.elem, lam)
-            bc, bt = self.expr(lam.body, t.elem)
-            bc = self.coerce(bc, bt, t.elem, lam.body)
-            self.scopes.pop()
-            return (f"SegTree<{ec}>({t.dom.info.len_cpp}, {ic}, [&](const {ec}& {pa}, const {ec}& {pb}) -> {ec} "
-                    f"{{ return {bc}; }})"), t
+            ec = self.cpp_type(t.elem)
+            return f"SegTree<{ec}>({t.dom.info.len_cpp}, {ic}, {self.lambda2(e.args[1], t.elem, t.elem, t.elem)})", t
         if fn.kind == "generic" and fn.name in ("List", "MinHeap"):
             a = fn.args[0]
             et = self.resolve_type(a) if a.kind.startswith("t") else self.resolve_type(N("texpr", a.line, expr=a))
