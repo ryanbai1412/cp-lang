@@ -30,3 +30,21 @@ python3 bench/max_n_audit.py --list
    - `cp_emod` Euclidean modulo microbenchmark (`5e7` ops).
 
 See [`research/max-n-judge-audit-1.md`](../research/max-n-judge-audit-1.md) for the full audit write-up and optimization roadmap.
+
+## Corpus registry
+
+`corpus_registry.py` is the deduplicated scoreboard over every port in `proto/ports/`: how many
+`.cp` files there are against how many distinct problems they solve, which port is the canonical
+one for each problem, raw and library-stripped line counts, which ports a harness actually
+verified, and which hard corpus problems are still unported.
+
+```
+python3 bench/corpus_registry.py                  # rewrite the registry and the report (about a second)
+python3 bench/corpus_registry.py --run-harnesses  # first re-run every batch harness (about 15 minutes)
+python3 bench/corpus_registry.py --check          # exit 1 if the committed outputs are stale
+```
+
+It writes `corpus-500-report.md` (read this one), `corpus-500-registry.json` (every port, problem
+and aggregate) and, with `--run-harnesses`, `corpus-500-harness-runs.json` (each harness's exit
+code and the line behind every pass or fail). Verification is never inferred: a port added after
+the last recorded harness run shows as `not run` until the harnesses are run again.

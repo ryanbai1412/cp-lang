@@ -1,0 +1,2904 @@
+{
+ "commit": "02f6137",
+ "iters_for_run_all": 60,
+ "runs": {
+  "proto/ports/blind_critic_3/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 62,
+   "ports": {
+    "aac5p5": {
+     "verdict": "pass",
+     "line": "OK aac5p5: 300 tests agree with 4240171.cpp"
+    },
+    "cco16p1": {
+     "verdict": "pass",
+     "line": "OK cco16p1: 300 tests agree with 4583882.cpp"
+    },
+    "cheerio1s4": {
+     "verdict": "pass",
+     "line": "OK cheerio1s4: 300 tests agree with 5339437.cpp"
+    },
+    "cmt21r1xym": {
+     "verdict": "pass",
+     "line": "OK cmt21r1xym: 300 tests agree with 3997206.cpp"
+    },
+    "coci21c2p5": {
+     "verdict": "pass",
+     "line": "OK coci21c2p5: 300 tests agree with 4143748.cpp"
+    },
+    "ioi09p6": {
+     "verdict": "pass",
+     "line": "OK ioi09p6: 300 tests agree with 5106126.cpp"
+    },
+    "noip19p2": {
+     "verdict": "pass",
+     "line": "OK noip19p2: 300 tests agree with 5127828.cpp"
+    },
+    "noip22p1": {
+     "verdict": "pass",
+     "line": "OK noip22p1: 300 tests agree with 5213639.cpp"
+    }
+   },
+   "tail": [
+    "OK cmt21r1xym: 300 tests agree with 3997206.cpp",
+    "OK noip19p2: 300 tests agree with 5127828.cpp",
+    "OK noip22p1: 300 tests agree with 5213639.cpp"
+   ]
+  },
+  "proto/ports/blind_critic_4/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 38,
+   "ports": {
+    "dmopc21c5p5": {
+     "verdict": "pass",
+     "line": "OK dmopc21c5p5: 12 exact Subset-DP cases (n=1..12, >= ref) + 18 heuristic cases (valid perms, score ratio 0.9983 vs 4223999.cpp)"
+    },
+    "ioi11p5": {
+     "verdict": "pass",
+     "line": "OK ioi11p5: 200 tests agree with 3469626.cpp"
+    },
+    "ioi11p6": {
+     "verdict": "pass",
+     "line": "OK ioi11p6: 200 tests agree with 3735613.cpp"
+    },
+    "ioi13p6": {
+     "verdict": "pass",
+     "line": "OK ioi13p6: 200 tests agree with 4688844.cpp"
+    },
+    "ioi15p6": {
+     "verdict": "pass",
+     "line": "OK ioi15p6: 200 tests agree with 5723344.cpp"
+    },
+    "ioi17p6": {
+     "verdict": "pass",
+     "line": "OK ioi17p6: 200 tests agree with 5659304.cpp"
+    },
+    "ioi20p1": {
+     "verdict": "pass",
+     "line": "OK ioi20p1: 200 tests agree with 5725518.cpp"
+    },
+    "ioi22p1": {
+     "verdict": "pass",
+     "line": "OK ioi22p1: 200 tests agree with 4785724.cpp"
+    }
+   },
+   "tail": [
+    "/tmp/corpus-registry-8wnunxod/repo/corpus/submissions/3469626.cpp:231:40: warning: ignoring return value of ‘FILE* freopen(const char*, const char*, FILE*)’ declared with attribute ‘warn_unused_result",
+    "  231 |                                 freopen(test.second.c_str(), \"r\", stdin);",
+    "      |                                 ~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+   ]
+  },
+  "proto/ports/scout_batch_10/check.py": {
+   "exit_code": 1,
+   "timed_out": false,
+   "seconds": 52,
+   "ports": {
+    "btoi19p5": {
+     "verdict": "pass",
+     "line": "btoi19p5: OK (60 inputs)"
+    },
+    "ctsc06p1": {
+     "verdict": "fail",
+     "line": "ctsc06p1: MISMATCH on input 0:",
+     "diagnostic": "std.mod has no 'ModR'"
+    },
+    "nccc10s3": {
+     "verdict": "pass",
+     "line": "nccc10s3: OK (60 inputs)"
+    },
+    "noi15p5": {
+     "verdict": "pass",
+     "line": "noi15p5: OK (60 inputs)"
+    },
+    "noi16p1": {
+     "verdict": "fail",
+     "line": "noi16p1: MISMATCH on input 0:",
+     "diagnostic": "std.seq has no 'running_sum'"
+    },
+    "noi17p2": {
+     "verdict": "pass",
+     "line": "noi17p2: OK (60 inputs)"
+    },
+    "noip20p2": {
+     "verdict": "pass",
+     "line": "noip20p2: OK (60 inputs)"
+    },
+    "sac22cc3p5": {
+     "verdict": "pass",
+     "line": "sac22cc3p5: OK (60 inputs)"
+    },
+    "saspeed": {
+     "verdict": "pass",
+     "line": "saspeed: OK (60 inputs)"
+    },
+    "year2018p7": {
+     "verdict": "pass",
+     "line": "year2018p7: OK (60 inputs)"
+    }
+   },
+   "tail": [
+    "noi17p2: OK (60 inputs)",
+    "year2018p7: OK (60 inputs)",
+    "sac22cc3p5: OK (60 inputs)"
+   ]
+  },
+  "proto/ports/scout_batch_11/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 212,
+   "ports": {
+    "canada21p5": {
+     "verdict": "pass",
+     "line": "canada21p5: interpreter OK: 200 tests agree"
+    },
+    "coci21c2p4": {
+     "verdict": "pass",
+     "line": "coci21c2p4: interpreter OK: 200 tests agree"
+    },
+    "noi07p5": {
+     "verdict": "pass",
+     "line": "noi07p5: interpreter OK: 40 tests agree"
+    },
+    "noi18p4": {
+     "verdict": "pass",
+     "line": "noi18p4: interpreter OK: 200 tests agree"
+    },
+    "noi20p1": {
+     "verdict": "pass",
+     "line": "noi20p1: interpreter OK: 60 tests agree"
+    },
+    "noi21p2": {
+     "verdict": "pass",
+     "line": "noi21p2: interpreter OK: 200 tests agree"
+    },
+    "noip21p1": {
+     "verdict": "pass",
+     "line": "noip21p1: stress OK: 20 tests agree (0 rejected by where)"
+    },
+    "sdoi17r1p1": {
+     "verdict": "pass",
+     "line": "sdoi17r1p1: interpreter OK: 200 tests agree"
+    },
+    "sdoi17r1p3": {
+     "verdict": "pass",
+     "line": "sdoi17r1p3: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "shoi16p3": {
+     "verdict": "pass",
+     "line": "shoi16p3: interpreter OK: 200 tests agree"
+    }
+   },
+   "tail": [
+    "sdoi17r1p1: interpreter OK: 200 tests agree",
+    "sdoi17r1p3: stress OK: 200 tests agree (0 rejected by where)",
+    "shoi16p3: interpreter OK: 200 tests agree"
+   ]
+  },
+  "proto/ports/scout_batch_12/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 31,
+   "ports": {
+    "ccc10s4": {
+     "verdict": "pass",
+     "line": "ccc10s4: stress OK: 200 tests agree"
+    },
+    "ccc18s3": {
+     "verdict": "pass",
+     "line": "ccc18s3: stress OK: 200 tests agree"
+    },
+    "cco02p3": {
+     "verdict": "pass",
+     "line": "cco02p3: judge OK: 200 tests agree"
+    },
+    "coci10c7p4": {
+     "verdict": "pass",
+     "line": "coci10c7p4: stress OK: 200 tests agree"
+    },
+    "dmopc21c6p3": {
+     "verdict": "pass",
+     "line": "dmopc21c6p3: stress OK: 200 tests agree"
+    },
+    "ioi05p1": {
+     "verdict": "pass",
+     "line": "ioi05p1: stress OK: 200 tests agree"
+    },
+    "noi05p1": {
+     "verdict": "pass",
+     "line": "noi05p1: stress OK: 200 tests agree"
+    },
+    "noip09p4": {
+     "verdict": "pass",
+     "line": "noip09p4: stress OK: 200 tests agree"
+    },
+    "wossoly21s3": {
+     "verdict": "pass",
+     "line": "wossoly21s3: stress OK: 200 tests agree"
+    }
+   },
+   "tail": [
+    "noi05p1: stress OK: 200 tests agree",
+    "noip09p4: stress OK: 200 tests agree",
+    "wossoly21s3: stress OK: 200 tests agree"
+   ]
+  },
+  "proto/ports/scout_batch_13/check.sh": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 28,
+   "ports": {
+    "apio07p2": {
+     "verdict": "pass",
+     "line": "apio07p2: stress OK: 100 tests agree (0 rejected by where)"
+    },
+    "coci12c1p4": {
+     "verdict": "pass",
+     "line": "coci12c1p4: stress OK: 71 tests agree (229 rejected by where)"
+    },
+    "coci21c4p4": {
+     "verdict": "pass",
+     "line": "coci21c4p4: OK: 100 tests agree (distance, and the towns as a set)"
+    },
+    "cpc21c1p5": {
+     "verdict": "pass",
+     "line": "cpc21c1p5: interact OK: 100 conversations accepted for both the port and the original"
+    },
+    "ioi05p4": {
+     "verdict": "pass",
+     "line": "ioi05p4: stress OK: 100 tests agree (0 rejected by where)"
+    },
+    "ioi11p3": {
+     "verdict": "pass",
+     "line": "ioi11p3: stress OK: 100 tests agree (0 rejected by where)"
+    },
+    "tle17c5p6": {
+     "verdict": "pass",
+     "line": "tle17c5p6: stress OK: 100 tests agree (0 rejected by where)"
+    }
+   },
+   "tail": [
+    "apio07p2: stress OK: 100 tests agree (0 rejected by where)",
+    "coci21c4p4: OK: 100 tests agree (distance, and the towns as a set)",
+    "cpc21c1p5: interact OK: 100 conversations accepted for both the port and the original"
+   ]
+  },
+  "proto/ports/scout_batch_15/check.py": {
+   "exit_code": 1,
+   "timed_out": false,
+   "seconds": 88,
+   "ports": {
+    "btoi20p3": {
+     "verdict": "pass",
+     "line": "ok   btoi20p3     (40/40 random inputs match corpus/4656866.cpp)"
+    },
+    "cco16p3": {
+     "verdict": "pass",
+     "line": "ok   cco16p3      (40/40 random inputs match corpus/5568296.cpp)"
+    },
+    "cco21p3": {
+     "verdict": "fail",
+     "line": "FAIL cco21p3 trial 0: port cco21p3 failed:",
+     "diagnostic": "std.algebra has no 'Sum'"
+    },
+    "coci25c3p3": {
+     "verdict": "pass",
+     "line": "ok   coci25c3p3   (40/40 random inputs match corpus/7730378.cpp)"
+    },
+    "dmopc20c7p5": {
+     "verdict": "pass",
+     "line": "ok   dmopc20c7p5  (40/40 random inputs match corpus/4370353.cpp)"
+    },
+    "noi09p1": {
+     "verdict": "pass",
+     "line": "ok   noi09p1      (40/40 random inputs match corpus/5102817.cpp)"
+    },
+    "noi09p4": {
+     "verdict": "pass",
+     "line": "ok   noi09p4      (40/40 random inputs match corpus/5144326.cpp)"
+    },
+    "noi16p2": {
+     "verdict": "pass",
+     "line": "ok   noi16p2      (40/40 random inputs match corpus/4798070.cpp)"
+    },
+    "noi21p3": {
+     "verdict": "pass",
+     "line": "ok   noi21p3      (40/40 random inputs match corpus/5669954.cpp)"
+    },
+    "sdoi17r1p4": {
+     "verdict": "fail",
+     "line": "FAIL sdoi17r1p4 trial 0: port sdoi17r1p4 failed:"
+    }
+   },
+   "tail": [
+    "ok   noi21p3      (40/40 random inputs match corpus/5669954.cpp)",
+    "ok   noi16p2      (40/40 random inputs match corpus/4798070.cpp)",
+    "ok   btoi20p3     (40/40 random inputs match corpus/4656866.cpp)"
+   ]
+  },
+  "proto/ports/scout_batch_16/check.py": {
+   "exit_code": 1,
+   "timed_out": false,
+   "seconds": 57,
+   "ports": {
+    "ccc00s5": {
+     "verdict": "pass",
+     "line": "ccc00s5: 60 cases agree"
+    },
+    "ccc19s3": {
+     "verdict": "pass",
+     "line": "ccc19s3: 60 cases agree"
+    },
+    "cco05p4": {
+     "verdict": "pass",
+     "line": "cco05p4: 60 cases agree"
+    },
+    "coci21c6p5": {
+     "verdict": "fail",
+     "line": "coci21c6p5: MISMATCH on case 0",
+     "diagnostic": "std.heap has no 'Heap'"
+    },
+    "ioi00p4": {
+     "verdict": "pass",
+     "line": "ioi00p4: 60 cases agree"
+    },
+    "noi03p1": {
+     "verdict": "pass",
+     "line": "noi03p1: 60 cases agree"
+    },
+    "noip07p2": {
+     "verdict": "pass",
+     "line": "noip07p2: 60 cases agree"
+    }
+   },
+   "tail": [
+    "ccc19s3: 60 cases agree",
+    "noi03p1: 60 cases agree",
+    "ioi00p4: 60 cases agree"
+   ]
+  },
+  "proto/ports/scout_batch_17/stress.sh": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 51,
+   "ports": {
+    "apio07p2": {
+     "verdict": "pass",
+     "line": "apio07p2: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "btoi19p3": {
+     "verdict": "pass",
+     "line": "btoi19p3: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "dpw": {
+     "verdict": "pass",
+     "line": "dpw: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "dpz": {
+     "verdict": "pass",
+     "line": "dpz: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "ioi07p4": {
+     "verdict": "pass",
+     "line": "ioi07p4: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "ioi08p4": {
+     "verdict": "pass",
+     "line": "ioi08p4: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "ioi11p3": {
+     "verdict": "pass",
+     "line": "ioi11p3: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "ioi12p4": {
+     "verdict": "pass",
+     "line": "ioi12p4: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "ioi13p1": {
+     "verdict": "pass",
+     "line": "ioi13p1: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "noi10p2": {
+     "verdict": "pass",
+     "line": "noi10p2: stress OK: 123 tests agree (77 rejected by where)"
+    }
+   },
+   "tail": [
+    "ioi12p4: stress OK: 200 tests agree (0 rejected by where)",
+    "ioi13p1: stress OK: 200 tests agree (0 rejected by where)",
+    "noi10p2: stress OK: 123 tests agree (77 rejected by where)"
+   ]
+  },
+  "proto/ports/scout_batch_18/check.py": {
+   "exit_code": 1,
+   "timed_out": false,
+   "seconds": 22,
+   "ports": {
+    "btoi17p2": {
+     "verdict": "fail",
+     "line": "[FAIL] btoi17p2   lib-run failed on case 0:",
+     "diagnostic": "SegTree<Gap, Array<(Slot, Slot), Opt<Int>>> has no fn 'from'"
+    },
+    "btoi20p3": {
+     "verdict": "pass",
+     "line": "[PASS] btoi20p3   OK (20/20 cases match 4656866.cpp)"
+    },
+    "ccc22s5": {
+     "verdict": "fail",
+     "line": "[FAIL] ccc22s5    lib-run failed on case 0:",
+     "diagnostic": "Rooted<V, None> has no associated 'Pre'"
+    },
+    "cco21p1": {
+     "verdict": "fail",
+     "line": "[FAIL] cco21p1    lib-run failed on case 0:",
+     "diagnostic": "std.algebra has no 'Sum'"
+    },
+    "cco21p4": {
+     "verdict": "pass",
+     "line": "[PASS] cco21p4    OK (20/20 cases match 6419583.cpp)"
+    },
+    "dpw": {
+     "verdict": "fail",
+     "line": "[FAIL] dpw        lib-run failed on case 0:",
+     "diagnostic": "std.lazy has no 'MaxOpt'"
+    },
+    "ioi05p2": {
+     "verdict": "fail",
+     "line": "[FAIL] ioi05p2    lib-run failed on case 0:",
+     "diagnostic": "'new' is missing its argument 'over'"
+    },
+    "noi09p4": {
+     "verdict": "pass",
+     "line": "[PASS] noi09p4    OK (20/20 cases match 5144326.cpp)"
+    },
+    "noi10p2": {
+     "verdict": "fail",
+     "line": "[FAIL] noi10p2    lib-run failed on case 0:",
+     "diagnostic": "std.heap has no 'Heap'"
+    },
+    "noi18p1": {
+     "verdict": "pass",
+     "line": "[PASS] noi18p1    OK (20/20 cases match 6512702.cpp)"
+    }
+   },
+   "tail": [
+    "NYN",
+    "4 3 4",
+    "[PASS] noi18p1    OK (20/20 cases match 6512702.cpp)"
+   ]
+  },
+  "proto/ports/scout_batch_19/verify.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 32,
+   "ports": {
+    "ccc04s5": {
+     "verdict": "pass",
+     "line": "PASS ccc04s5 (40 sentinel-terminated multi-test grids vs orig C++ + ASan/UBSan)"
+    },
+    "ccc23s3": {
+     "verdict": "pass",
+     "line": "PASS ccc23s3 (exhaustive n,m in 2..6 vs orig C++ + checker + ASan/UBSan)"
+    },
+    "ceoi22p2": {
+     "verdict": "pass",
+     "line": "PASS ceoi22p2 (40 random expression trees up to 1000 leaves vs orig C++ + ASan/UBSan)"
+    },
+    "coci21c6p3": {
+     "verdict": "pass",
+     "line": "PASS coci21c6p3 (80 random directed graphs vs orig C++ + op-sim checker + ASan/UBSan)"
+    },
+    "dmopc21c5p4": {
+     "verdict": "pass",
+     "line": "PASS dmopc21c5p4 (106 cases 1..10000 vs orig C++ + checker + ASan/UBSan)"
+    },
+    "egoi23p3": {
+     "verdict": "pass",
+     "line": "PASS egoi23p3 (30 interactive cases vs orig C++ + ASan/UBSan)"
+    },
+    "ioi07p1": {
+     "verdict": "pass",
+     "line": "PASS ioi07p1 (30 interactive cases vs orig C++ + ASan/UBSan)"
+    },
+    "ioi14p3": {
+     "verdict": "pass",
+     "line": "PASS ioi14p3 (20 adaptive game cases + ASan/UBSan)"
+    },
+    "ioi16p5": {
+     "verdict": "pass",
+     "line": "PASS ioi16p5 (30 two-phase interactive cases + ASan/UBSan)"
+    }
+   },
+   "tail": [
+    "PASS coci21c6p3 (80 random directed graphs vs orig C++ + op-sim checker + ASan/UBSan)",
+    "PASS ccc04s5 (40 sentinel-terminated multi-test grids vs orig C++ + ASan/UBSan)",
+    "PASS ceoi22p2 (40 random expression trees up to 1000 leaves vs orig C++ + ASan/UBSan)"
+   ]
+  },
+  "proto/ports/scout_batch_2/check.py": {
+   "exit_code": 1,
+   "timed_out": false,
+   "seconds": 30,
+   "ports": {
+    "apio09p3": {
+     "verdict": "pass",
+     "line": "apio09p3: OK (60 inputs)"
+    },
+    "ccc17s4": {
+     "verdict": "pass",
+     "line": "ccc17s4: OK (60 inputs)"
+    },
+    "cco19p5": {
+     "verdict": "pass",
+     "line": "cco19p5: OK (60 inputs)"
+    },
+    "cco20p2": {
+     "verdict": "fail",
+     "line": "cco20p2: MISMATCH on input 0:",
+     "diagnostic": "std.algebra has no 'Greater'"
+    },
+    "dpv": {
+     "verdict": "fail",
+     "line": "dpv: MISMATCH on input 0:",
+     "diagnostic": "Rooted<V, None> has no associated 'Pre'"
+    },
+    "ioi08p2": {
+     "verdict": "pass",
+     "line": "ioi08p2: OK (60 inputs)"
+    },
+    "ioi11p4": {
+     "verdict": "fail",
+     "line": "ioi11p4: MISMATCH on input 0:",
+     "diagnostic": "std.algebra has no 'Order'"
+    },
+    "ioi14p2": {
+     "verdict": "fail",
+     "line": "ioi14p2: MISMATCH on input 0:",
+     "diagnostic": "std.algebra has no 'Max'"
+    },
+    "noi15p2": {
+     "verdict": "fail",
+     "line": "noi15p2: MISMATCH on input 0:",
+     "diagnostic": "std.lazy has no 'SumLen'"
+    },
+    "noip18p3": {
+     "verdict": "fail",
+     "line": "noip18p3: MISMATCH on input 0:",
+     "diagnostic": "Rooted<Junction, None> has no associated 'Pre'"
+    }
+   },
+   "tail": [
+    "1 2 2 2",
+    "want 0 0 6 6 4 2 5 5 5 5 3",
+    "got   error: proto/ports/scout_batch_2/ioi14p2.cp:8: std.algebra has no `Max`"
+   ]
+  },
+  "proto/ports/scout_batch_20/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 81,
+   "ports": {
+    "btoi17p5": {
+     "verdict": "pass",
+     "line": "btoi17p5   ok   300 inputs; largest: port 0.06s, original 0.04s"
+    },
+    "btoi19p2": {
+     "verdict": "pass",
+     "line": "btoi19p2   ok   300 inputs; largest: port 0.12s, original 0.10s"
+    },
+    "btoi19p4": {
+     "verdict": "pass",
+     "line": "btoi19p4   ok   300 inputs; largest: port 0.01s, original 0.00s"
+    },
+    "ccc19s4": {
+     "verdict": "pass",
+     "line": "ccc19s4    ok   300 inputs; largest: port 0.04s, original 0.13s"
+    },
+    "cco17p4": {
+     "verdict": "pass",
+     "line": "cco17p4    ok   300 inputs; largest: port 0.06s, original 0.61s"
+    },
+    "cco23p1": {
+     "verdict": "pass",
+     "line": "cco23p1    ok   300 inputs; largest: port 0.01s, original 0.11s"
+    },
+    "ceoi18p5": {
+     "verdict": "pass",
+     "line": "ceoi18p5   ok   300 inputs; largest: port 0.18s, original 1.03s"
+    },
+    "ioi09p8": {
+     "verdict": "pass",
+     "line": "ioi09p8    ok   300 inputs; largest: port 0.30s, original 0.40s"
+    },
+    "ioi19p1": {
+     "verdict": "pass",
+     "line": "ioi19p1    ok   300 inputs; largest: port 0.04s, original 0.23s"
+    },
+    "noi02p4": {
+     "verdict": "pass",
+     "line": "noi02p4    ok   300 inputs; largest: port 0.01s, original 0.01s"
+    }
+   },
+   "tail": [
+    "ioi09p8    ok   300 inputs; largest: port 0.30s, original 0.40s",
+    "ioi19p1    ok   300 inputs; largest: port 0.04s, original 0.23s",
+    "noi02p4    ok   300 inputs; largest: port 0.01s, original 0.01s"
+   ]
+  },
+  "proto/ports/scout_batch_21/check.py": {
+   "exit_code": 1,
+   "timed_out": false,
+   "seconds": 59,
+   "ports": {
+    "apio23p1": {
+     "verdict": "pass",
+     "line": "apio23p1: 60 cases agree (reals compared with a tolerance)"
+    },
+    "ccc14s4": {
+     "verdict": "pass",
+     "line": "ccc14s4: 60 cases agree"
+    },
+    "cmt21peter2": {
+     "verdict": "pass",
+     "line": "cmt21peter2: 60 cases agree (reals compared with a tolerance)"
+    },
+    "dpj": {
+     "verdict": "pass",
+     "line": "dpj: 60 cases agree (reals compared with a tolerance)"
+    },
+    "ioi07p5": {
+     "verdict": "fail",
+     "line": "ioi07p5: MISMATCH on case 0",
+     "diagnostic": "std.algebra has no 'Sum'"
+    },
+    "ioi08p6": {
+     "verdict": "fail",
+     "line": "ioi08p6: MISMATCH on case 0",
+     "diagnostic": "'new' is missing its argument 'over'"
+    },
+    "nccc10s4": {
+     "verdict": "fail",
+     "line": "nccc10s4: MISMATCH on case 0",
+     "diagnostic": "std.algebra has no 'Order'"
+    },
+    "noi07p2": {
+     "verdict": "pass",
+     "line": "noi07p2: 60 cases agree (reals compared with a tolerance)"
+    },
+    "sac22cc4jp3": {
+     "verdict": "pass",
+     "line": "sac22cc4jp3: 60 cases agree"
+    },
+    "sdoi17r2p1": {
+     "verdict": "pass",
+     "line": "sdoi17r2p1: 60 cases agree (reals compared with a tolerance)"
+    }
+   },
+   "tail": [
+    "28",
+    "--- port",
+    "<exit 1> error: proto/ports/scout_batch_21/ioi07p5.cp:16: std.algebra has no `Sum`"
+   ]
+  },
+  "proto/ports/scout_batch_22/check.py": {
+   "exit_code": 1,
+   "timed_out": false,
+   "seconds": 64,
+   "ports": {
+    "ccc01s5": {
+     "verdict": "pass",
+     "line": "ok   ccc01s5: 60 inputs"
+    },
+    "ccc99s5": {
+     "verdict": "pass",
+     "line": "ok   ccc99s5: 60 inputs"
+    },
+    "cco19p6": {
+     "verdict": "fail",
+     "line": "FAIL cco19p6 case 0",
+     "diagnostic": "std.heap has no 'Heap'"
+    },
+    "ioi08p1": {
+     "verdict": "pass",
+     "line": "ok   ioi08p1: 60 inputs"
+    },
+    "ioi16p4": {
+     "verdict": "pass",
+     "line": "ok   ioi16p4: 60 inputs"
+    },
+    "ioi21p4": {
+     "verdict": "pass",
+     "line": "ok   ioi21p4: 60 inputs"
+    },
+    "noi09p2": {
+     "verdict": "pass",
+     "line": "ok   noi09p2: 60 inputs"
+    },
+    "noi14p1": {
+     "verdict": "pass",
+     "line": "ok   noi14p1: 60 inputs"
+    },
+    "noi18p3": {
+     "verdict": "pass",
+     "line": "ok   noi18p3: 60 inputs"
+    },
+    "noi21p4": {
+     "verdict": "pass",
+     "line": "ok   noi21p4: 60 inputs"
+    }
+   },
+   "tail": [
+    "ok   ccc99s5: 60 inputs",
+    "ok   ioi16p4: 60 inputs",
+    "ok   noi18p3: 60 inputs"
+   ]
+  },
+  "proto/ports/scout_batch_23/check.py": {
+   "exit_code": 1,
+   "timed_out": false,
+   "seconds": 65,
+   "ports": {
+    "coci21c1p2": {
+     "verdict": "pass",
+     "line": "[PASS] coci21c1p2   20/20 cases"
+    },
+    "dpi": {
+     "verdict": "pass",
+     "line": "[PASS] dpi          20/20 cases"
+    },
+    "egoi22p2": {
+     "verdict": "pass",
+     "line": "[PASS] egoi22p2     20/20 cases"
+    },
+    "ioi08p3": {
+     "verdict": "fail",
+     "line": "[FAIL] ioi08p3 case 0: CP Lang runtime error:",
+     "diagnostic": "std.mod has no 'ModR'"
+    },
+    "ioi17p3": {
+     "verdict": "pass",
+     "line": "[PASS] ioi17p3      20/20 cases"
+    },
+    "noi07p1": {
+     "verdict": "pass",
+     "line": "[PASS] noi07p1      20/20 cases"
+    },
+    "noi09p5": {
+     "verdict": "pass",
+     "line": "[PASS] noi09p5      20/20 cases"
+    },
+    "noi18p2": {
+     "verdict": "pass",
+     "line": "[PASS] noi18p2      20/20 cases"
+    },
+    "noi19p5": {
+     "verdict": "pass",
+     "line": "[PASS] noi19p5      20/20 cases"
+    },
+    "noimps22p4": {
+     "verdict": "pass",
+     "line": "[PASS] noimps22p4   20/20 cases"
+    }
+   },
+   "tail": [
+    "[PASS] egoi22p2     20/20 cases",
+    "[PASS] ioi17p3      20/20 cases",
+    "[PASS] coci21c1p2   20/20 cases"
+   ]
+  },
+  "proto/ports/scout_batch_24/check.py": {
+   "exit_code": 1,
+   "timed_out": false,
+   "seconds": 19,
+   "ports": {
+    "cco16p5": {
+     "verdict": "pass",
+     "line": "[PASS] cco16p5    OK (20/20 cases match 4580695.cpp)"
+    },
+    "cco18p5": {
+     "verdict": "fail",
+     "line": "[FAIL] cco18p5    lib-run failed on case 0:",
+     "diagnostic": "std.algebra has no 'Max'"
+    },
+    "ceoi22p1": {
+     "verdict": "fail",
+     "line": "[FAIL] ceoi22p1   lib-run failed on case 0:",
+     "diagnostic": "std.algebra has no 'Sum'"
+    },
+    "dmpg15g6": {
+     "verdict": "pass",
+     "line": "[PASS] dmpg15g6   OK (20/20 cases match 4253124.cpp)"
+    },
+    "ioi07p3": {
+     "verdict": "fail",
+     "line": "[FAIL] ioi07p3    lib-run failed on case 0:",
+     "diagnostic": "'new' is missing its argument 'over'"
+    },
+    "ioi13p3io": {
+     "verdict": "fail",
+     "line": "[FAIL] ioi13p3io  lib-run failed on case 0:",
+     "diagnostic": "SegTree<Blk, List<Int>> has no fn 'from'"
+    },
+    "noi05p2": {
+     "verdict": "pass",
+     "line": "[PASS] noi05p2    OK (20/20 cases match 7249409.cpp)"
+    },
+    "noi07p4": {
+     "verdict": "fail",
+     "line": "[FAIL] noi07p4    lib-run failed on case 0:",
+     "diagnostic": "'new' is missing its argument 'over'"
+    },
+    "noi20p2": {
+     "verdict": "fail",
+     "line": "[FAIL] noi20p2    lib-run failed on case 0:"
+    },
+    "noip22p4": {
+     "verdict": "fail",
+     "line": "[FAIL] noip22p4   lib-run failed on case 0:",
+     "diagnostic": "'new' is missing its argument 'over'"
+    }
+   },
+   "tail": [
+    "1 3",
+    "5 4",
+    "[PASS] cco16p5    OK (20/20 cases match 4580695.cpp)"
+   ]
+  },
+  "proto/ports/scout_batch_25/verify.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 65,
+   "ports": {
+    "btoi19p6": {
+     "verdict": "pass",
+     "line": "PASS btoi19p6 (200 cases, identical to the original C++, ASan/UBSan clean)"
+    },
+    "dmopc21c7p3": {
+     "verdict": "pass",
+     "line": "PASS dmopc21c7p3 (300 cases, identical to the original C++, ASan/UBSan clean)"
+    },
+    "ioi09p3": {
+     "verdict": "pass",
+     "line": "PASS ioi09p3 (250 cases, identical to the original C++, ASan/UBSan clean)"
+    },
+    "ioi16p1": {
+     "verdict": "pass",
+     "line": "PASS ioi16p1 (up to 300 cases, subset checked, existence equals the original C++)"
+    },
+    "ioi18p4": {
+     "verdict": "pass",
+     "line": "PASS ioi18p4 (150 cases, circuit simulated for cp and the original)"
+    },
+    "ioi20p3": {
+     "verdict": "pass",
+     "line": "PASS ioi20p3 (200 cases, allocation checked, prize equals the original C++)"
+    },
+    "ioi20p4": {
+     "verdict": "pass",
+     "line": "PASS ioi20p4 (200 cases, identical to the original C++, ASan/UBSan clean)"
+    },
+    "ioi22p2": {
+     "verdict": "pass",
+     "line": "PASS ioi22p2 (14 values of N, strategy simulated for cp and the original, x <= 20)"
+    },
+    "noi20p4": {
+     "verdict": "pass",
+     "line": "PASS noi20p4 (250 cases, plans checked, feasibility equals the original C++)"
+    },
+    "noip19p1": {
+     "verdict": "pass",
+     "line": "PASS noip19p1 (300 cases, identical to the original C++, ASan/UBSan clean)"
+    }
+   },
+   "tail": [
+    "PASS ioi22p2 (14 values of N, strategy simulated for cp and the original, x <= 20)",
+    "PASS dmopc21c7p3 (300 cases, identical to the original C++, ASan/UBSan clean)",
+    "ALL 10 PASS"
+   ]
+  },
+  "proto/ports/scout_batch_26/check.py": {
+   "exit_code": 1,
+   "timed_out": false,
+   "seconds": 18,
+   "ports": {
+    "btoi15p3": {
+     "verdict": "fail",
+     "line": "btoi15p3: MISMATCH on case 0",
+     "diagnostic": "Rooted<V, None> has no associated 'Pre'"
+    },
+    "ceoi22p3": {
+     "verdict": "unclear",
+     "line": "ceoi22p3: port asked something invalid on case 0"
+    },
+    "dmopc20c7p4": {
+     "verdict": "fail",
+     "line": "dmopc20c7p4: MISMATCH on case 0",
+     "diagnostic": "std.tree has no 'Hld'"
+    },
+    "ioi09p7": {
+     "verdict": "fail",
+     "line": "ioi09p7: MISMATCH on case 0",
+     "diagnostic": "Rooted<V, None> has no associated 'Pre'"
+    },
+    "ioi18p3": {
+     "verdict": "fail",
+     "line": "ioi18p3: MISMATCH on case 0",
+     "diagnostic": "std.algebra has no 'Sum'"
+    },
+    "mmcc14p3": {
+     "verdict": "fail",
+     "line": "mmcc14p3: MISMATCH on case 0",
+     "diagnostic": "Rooted<V, None> has no associated 'Pre'"
+    },
+    "noi20p2": {
+     "verdict": "fail",
+     "line": "noi20p2: MISMATCH on case 0"
+    },
+    "noip19p2": {
+     "verdict": "fail",
+     "line": "noip19p2: MISMATCH on case 0",
+     "diagnostic": "Rooted<V, None> has no associated 'Pre'"
+    },
+    "noip19p6": {
+     "verdict": "fail",
+     "line": "noip19p6: MISMATCH on case 0",
+     "diagnostic": "std.algebra has no 'Sum'"
+    },
+    "sdoi17r1p2": {
+     "verdict": "fail",
+     "line": "sdoi17r1p2: MISMATCH on case 0",
+     "diagnostic": "std.lazy has no 'MaxOpt'"
+    }
+   },
+   "tail": [
+    "3 4 4 -1",
+    "3 3 -1 1",
+    "--- asked"
+   ]
+  },
+  "proto/ports/scout_batch_27/check.py": {
+   "exit_code": 1,
+   "timed_out": false,
+   "seconds": 81,
+   "ports": {
+    "acc7p3": {
+     "verdict": "pass",
+     "line": "acc7p3: 60 cases agree"
+    },
+    "btoi18p1": {
+     "verdict": "pass",
+     "line": "btoi18p1: 60 cases agree"
+    },
+    "cco19p2": {
+     "verdict": "pass",
+     "line": "cco19p2: 60 cases agree"
+    },
+    "coci20c6p2": {
+     "verdict": "pass",
+     "line": "coci20c6p2: 60 cases agree"
+    },
+    "ioi11p1": {
+     "verdict": "pass",
+     "line": "ioi11p1: 60 cases agree"
+    },
+    "ioi18p3": {
+     "verdict": "fail",
+     "line": "ioi18p3: MISMATCH on case 0",
+     "diagnostic": "std.algebra has no 'Sum'"
+    },
+    "noi07p1": {
+     "verdict": "pass",
+     "line": "noi07p1: 60 cases agree"
+    },
+    "noi10p3": {
+     "verdict": "pass",
+     "line": "noi10p3: 60 cases agree"
+    },
+    "noi10p4": {
+     "verdict": "pass",
+     "line": "noi10p4: 60 cases agree (any valid schedule accepted)"
+    },
+    "noi15p1": {
+     "verdict": "pass",
+     "line": "noi15p1: 60 cases agree"
+    }
+   },
+   "tail": [
+    "<exit 1> error: ../corpus-registry-8wnunxod/repo/proto/ports/scout_batch_27/ioi18p3.cp:19: std.algebra has no `Sum`",
+    "btoi18p1: 60 cases agree",
+    "noi10p4: 60 cases agree (any valid schedule accepted)"
+   ]
+  },
+  "proto/ports/scout_batch_28/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 38,
+   "ports": {
+    "dwite10c3p3": {
+     "verdict": "pass",
+     "line": "ok   dwite10c3p3: 200 inputs"
+    },
+    "ioi00p5": {
+     "verdict": "pass",
+     "line": "ok   ioi00p5: 200 inputs"
+    },
+    "ioi04p2": {
+     "verdict": "pass",
+     "line": "ok   ioi04p2: 200 inputs"
+    },
+    "ioi09p4": {
+     "verdict": "pass",
+     "line": "ok   ioi09p4: 200 inputs"
+    },
+    "ioi16p6": {
+     "verdict": "pass",
+     "line": "ok   ioi16p6: 200 inputs"
+    },
+    "ioi20p4": {
+     "verdict": "pass",
+     "line": "ok   ioi20p4: 200 inputs"
+    },
+    "noip05p2": {
+     "verdict": "pass",
+     "line": "ok   noip05p2: 200 inputs"
+    },
+    "noip08p3": {
+     "verdict": "pass",
+     "line": "ok   noip08p3: 200 inputs"
+    },
+    "noip10p2": {
+     "verdict": "pass",
+     "line": "ok   noip10p2: 200 inputs"
+    },
+    "noip21p3": {
+     "verdict": "pass",
+     "line": "ok   noip21p3: 200 inputs"
+    }
+   },
+   "tail": [
+    "ok   noip05p2: 200 inputs",
+    "ok   ioi20p4: 200 inputs",
+    "ok   ioi16p6: 200 inputs"
+   ]
+  },
+  "proto/ports/scout_batch_29/check.py": {
+   "exit_code": 1,
+   "timed_out": false,
+   "seconds": 48,
+   "ports": {
+    "ccc19s2": {
+     "verdict": "pass",
+     "line": "ok   ccc19s2: 60 inputs"
+    },
+    "coci25c3p5": {
+     "verdict": "pass",
+     "line": "ok   coci25c3p5: 60 inputs"
+    },
+    "ioi09p2": {
+     "verdict": "fail",
+     "line": "FAIL ioi09p2 case 0",
+     "diagnostic": "std.heap has no 'Heap'"
+    },
+    "ioi15p4": {
+     "verdict": "fail",
+     "line": "FAIL ioi15p4 case 0",
+     "diagnostic": "std.algebra has no 'Max'"
+    },
+    "noi20p4": {
+     "verdict": "fail",
+     "line": "FAIL noi20p4 case 3",
+     "diagnostic": "Bitset<Raise> has no method 'insert'"
+    },
+    "noip19p4": {
+     "verdict": "pass",
+     "line": "ok   noip19p4: 60 inputs"
+    },
+    "noip19p5": {
+     "verdict": "pass",
+     "line": "ok   noip19p5: 60 inputs"
+    },
+    "noip20p1": {
+     "verdict": "pass",
+     "line": "ok   noip20p1: 60 inputs"
+    },
+    "sdoi17r1p6": {
+     "verdict": "fail",
+     "line": "FAIL sdoi17r1p6 case 0",
+     "diagnostic": "'new' is missing its argument 'over'"
+    },
+    "shoi16p4": {
+     "verdict": "pass",
+     "line": "ok   shoi16p4: 60 inputs"
+    }
+   },
+   "tail": [
+    "1.00000",
+    "--- port",
+    "<exit 1> error: proto/ports/scout_batch_29/sdoi17r1p6.cp:64: `new` is missing its argument `over`"
+   ]
+  },
+  "proto/ports/scout_batch_30/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 35,
+   "ports": {
+    "cco16p6": {
+     "verdict": "pass",
+     "line": "[PASS] cco16p6      (4849378.cpp): 80 small + 20 medium cases matched in 3.14s"
+    },
+    "cco17p2": {
+     "verdict": "pass",
+     "line": "[PASS] cco17p2      (6416978.cpp): 80 small + 20 medium cases matched in 3.94s"
+    },
+    "cco21p5": {
+     "verdict": "pass",
+     "line": "[PASS] cco21p5      (4554642.cpp): 80 small + 20 medium cases matched in 3.08s"
+    },
+    "cco22p3": {
+     "verdict": "pass",
+     "line": "[PASS] cco22p3      (4801968.cpp): 80 small + 20 medium cases matched in 3.27s"
+    },
+    "coci21c1p5": {
+     "verdict": "pass",
+     "line": "[PASS] coci21c1p5   (4086660.cpp): 80 small + 20 medium cases matched in 3.39s"
+    },
+    "ioi99p2": {
+     "verdict": "pass",
+     "line": "[PASS] ioi99p2      (4896839.cpp): 80 small + 20 medium cases matched in 2.92s"
+    },
+    "noi06p1": {
+     "verdict": "pass",
+     "line": "[PASS] noi06p1      (5032743.cpp): 80 small + 20 medium cases matched in 2.98s"
+    },
+    "noi06p3": {
+     "verdict": "pass",
+     "line": "[PASS] noi06p3      (3868871.cpp): 80 small + 20 medium cases matched in 5.17s"
+    },
+    "noi07p6": {
+     "verdict": "pass",
+     "line": "[PASS] noi07p6      (3756979.cpp): 80 small + 20 medium cases matched in 3.09s"
+    },
+    "noi19p4": {
+     "verdict": "pass",
+     "line": "[PASS] noi19p4      (3800719.cpp): 80 small + 20 medium cases matched in 3.98s"
+    }
+   },
+   "tail": [
+    "[PASS] noi06p3      (3868871.cpp): 80 small + 20 medium cases matched in 5.17s",
+    "[PASS] noi07p6      (3756979.cpp): 80 small + 20 medium cases matched in 3.09s",
+    "[PASS] noi19p4      (3800719.cpp): 80 small + 20 medium cases matched in 3.98s"
+   ]
+  },
+  "proto/ports/scout_batch_31/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 44,
+   "ports": {
+    "cco19p2": {
+     "verdict": "pass",
+     "line": "ok   cco19p2: 150 cases match corpus/submissions/3613676.cpp"
+    },
+    "coci20c6p1": {
+     "verdict": "pass",
+     "line": "ok   coci20c6p1: 150 cases match corpus/submissions/4188008.cpp"
+    },
+    "coci25c3p1": {
+     "verdict": "pass",
+     "line": "ok   coci25c3p1: 150 cases match corpus/submissions/7730233.cpp"
+    },
+    "dmopc19c4p2": {
+     "verdict": "pass",
+     "line": "ok   dmopc19c4p2: 150 cases match corpus/submissions/5323330.cpp"
+    },
+    "dmopc21c6p4": {
+     "verdict": "pass",
+     "line": "ok   dmopc21c6p4: 150 cases match corpus/submissions/4342347.cpp"
+    },
+    "dmopc21c7p1": {
+     "verdict": "pass",
+     "line": "ok   dmopc21c7p1: 150 cases match corpus/submissions/4452959.cpp"
+    },
+    "imo22p6checker": {
+     "verdict": "pass",
+     "line": "ok   imo22p6checker: 150 cases match corpus/submissions/4955728.cpp"
+    },
+    "noi10p3": {
+     "verdict": "pass",
+     "line": "ok   noi10p3: 150 cases match corpus/submissions/5672180.cpp"
+    },
+    "sac22cc1p3": {
+     "verdict": "pass",
+     "line": "ok   sac22cc1p3: 150 cases match corpus/submissions/3992599.cpp"
+    },
+    "ucrpc21d": {
+     "verdict": "pass",
+     "line": "ok   ucrpc21d: 150 cases match corpus/submissions/3944584.cpp"
+    },
+    "ucrpc21f": {
+     "verdict": "pass",
+     "line": "ok   ucrpc21f: 150 cases match corpus/submissions/3944579.cpp"
+    },
+    "ucrpc21g": {
+     "verdict": "pass",
+     "line": "ok   ucrpc21g: 150 cases match corpus/submissions/3944717.cpp"
+    }
+   },
+   "tail": [
+    "ok   dmopc21c7p1: 150 cases match corpus/submissions/4452959.cpp",
+    "ok   cco19p2: 150 cases match corpus/submissions/3613676.cpp",
+    "ok   noi10p3: 150 cases match corpus/submissions/5672180.cpp"
+   ]
+  },
+  "proto/ports/scout_batch_32/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 31,
+   "ports": {
+    "996warmup8p3": {
+     "verdict": "pass",
+     "line": "[PASS] 996warmup8p3 OK (40/40 cases match 5324670.cpp)"
+    },
+    "aac5p3": {
+     "verdict": "pass",
+     "line": "[PASS] aac5p3       OK (40/40 cases match 4239862.cpp)"
+    },
+    "ceoi22p5": {
+     "verdict": "pass",
+     "line": "[PASS] ceoi22p5     OK (40/40 cases match 4733784.cpp)"
+    },
+    "dmopc20c4p4": {
+     "verdict": "pass",
+     "line": "[PASS] dmopc20c4p4  OK (40/40 cases match 3485716.cpp)"
+    },
+    "iati21a22": {
+     "verdict": "pass",
+     "line": "[PASS] iati21a22    OK (40/40 cases match 5053473.cpp)"
+    },
+    "ioi04p2hard": {
+     "verdict": "pass",
+     "line": "[PASS] ioi04p2hard  OK (40/40 cases match 4182973.cpp)"
+    },
+    "noimps23p1": {
+     "verdict": "pass",
+     "line": "[PASS] noimps23p1   OK (40/40 cases match 5556659.cpp)"
+    },
+    "noip10p1": {
+     "verdict": "pass",
+     "line": "[PASS] noip10p1     OK (40/40 cases match 5445654.cpp)"
+    },
+    "rpeng3": {
+     "verdict": "pass",
+     "line": "[PASS] rpeng3       OK (40/40 cases match 4811952.cpp)"
+    },
+    "ucrpc21e": {
+     "verdict": "pass",
+     "line": "[PASS] ucrpc21e     OK (40/40 cases match 3944571.cpp)"
+    }
+   },
+   "tail": [
+    "[PASS] noip10p1     OK (40/40 cases match 5445654.cpp)",
+    "[PASS] dmopc20c4p4  OK (40/40 cases match 3485716.cpp)",
+    "[PASS] 996warmup8p3 OK (40/40 cases match 5324670.cpp)"
+   ]
+  },
+  "proto/ports/scout_batch_33/check.py": {
+   "exit_code": 1,
+   "timed_out": false,
+   "seconds": 34,
+   "ports": {
+    "btoi15p2": {
+     "verdict": "pass",
+     "line": "btoi15p2: 40 cases agree"
+    },
+    "btoi16p1": {
+     "verdict": "pass",
+     "line": "btoi16p1: 40 cases agree"
+    },
+    "btoi18p2": {
+     "verdict": "pass",
+     "line": "btoi18p2: 40 cases agree"
+    },
+    "ccc20s4": {
+     "verdict": "pass",
+     "line": "ccc20s4: 40 cases agree"
+    },
+    "cco05p6": {
+     "verdict": "pass",
+     "line": "cco05p6: 40 cases agree"
+    },
+    "cco20p4": {
+     "verdict": "pass",
+     "line": "cco20p4: 40 cases agree"
+    },
+    "cco21p2": {
+     "verdict": "pass",
+     "line": "cco21p2: 40 cases agree"
+    },
+    "ioi09p5": {
+     "verdict": "fail",
+     "line": "ioi09p5: MISMATCH on case 0",
+     "diagnostic": "std.heap has no 'Heap'"
+    },
+    "ioi12p6": {
+     "verdict": "fail",
+     "line": "ioi12p6: MISMATCH on case 0",
+     "diagnostic": "std.algebra has no 'Sum'"
+    },
+    "ioi14p5": {
+     "verdict": "pass",
+     "line": "ioi14p5: 40 cases agree"
+    }
+   },
+   "tail": [
+    "<exit 1> error: ../corpus-registry-8wnunxod/repo/proto/ports/scout_batch_33/ioi09p5.cp:7: std.heap has no `Heap`",
+    "cco05p6: 40 cases agree",
+    "btoi16p1: 40 cases agree"
+   ]
+  },
+  "proto/ports/scout_batch_34/check.py": {
+   "exit_code": 1,
+   "timed_out": false,
+   "seconds": 24,
+   "ports": {
+    "dmopc20c6p3": {
+     "verdict": "pass",
+     "line": "OK   dmopc20c6p3    (3917634.cpp): 30/30 passed"
+    },
+    "dmopc20c6p6": {
+     "verdict": "pass",
+     "line": "OK   dmopc20c6p6    (5200785.cpp): 30/30 passed"
+    },
+    "dmopc20c7p2": {
+     "verdict": "pass",
+     "line": "OK   dmopc20c7p2    (3686612.cpp): 30/30 passed"
+    },
+    "dmopc21c2p2": {
+     "verdict": "pass",
+     "line": "OK   dmopc21c2p2    (3946515.cpp): 30/30 passed"
+    },
+    "dmopc21c2p4": {
+     "verdict": "pass",
+     "line": "OK   dmopc21c2p4    (3949962.cpp): 30/30 passed"
+    },
+    "dmopc21c2p5": {
+     "verdict": "fail",
+     "line": "CP FAIL dmopc21c2p5 case 0: rc=1"
+    },
+    "dmopc21c2p6": {
+     "verdict": "fail",
+     "line": "CP FAIL dmopc21c2p6 case 0: rc=1",
+     "diagnostic": "std.algebra has no 'Sum'"
+    },
+    "dmopc21c7p4": {
+     "verdict": "fail",
+     "line": "CP FAIL dmopc21c7p4 case 0: rc=1",
+     "diagnostic": "SegTree<Slot, Node> has no fn 'from'"
+    },
+    "dmopc21c8p3": {
+     "verdict": "fail",
+     "line": "CP FAIL dmopc21c8p3 case 0: rc=1",
+     "diagnostic": "std.algebra has no 'Sum'"
+    },
+    "dmopc21c8p5": {
+     "verdict": "pass",
+     "line": "OK   dmopc21c8p5    (4533533.cpp): 30/30 passed"
+    }
+   },
+   "tail": [
+    "stdout=",
+    "inp=5 4",
+    "TOTAL: 180 passed, 4 failed"
+   ]
+  },
+  "proto/ports/scout_batch_35/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 35,
+   "ports": {
+    "coci21c1p1": {
+     "verdict": "pass",
+     "line": "coci21c1p1: ok (built 200)"
+    },
+    "coci21c1p3": {
+     "verdict": "pass",
+     "line": "coci21c1p3: ok (built 200)"
+    },
+    "coci21c1p4": {
+     "verdict": "pass",
+     "line": "coci21c1p4: ok (built 200)"
+    },
+    "coci21c1p5": {
+     "verdict": "pass",
+     "line": "coci21c1p5: ok (built 200)"
+    },
+    "coci21c2p1": {
+     "verdict": "pass",
+     "line": "coci21c2p1: ok (interpreted 60)"
+    },
+    "coci21c2p2": {
+     "verdict": "pass",
+     "line": "coci21c2p2: ok (built 200)"
+    },
+    "coci21c3p1": {
+     "verdict": "pass",
+     "line": "coci21c3p1: ok (built 200)"
+    },
+    "coci21c3p2": {
+     "verdict": "pass",
+     "line": "coci21c3p2: ok (built 200)"
+    },
+    "coci21c6p1": {
+     "verdict": "pass",
+     "line": "coci21c6p1: ok (built 200)"
+    },
+    "coci21c6p2": {
+     "verdict": "pass",
+     "line": "coci21c6p2: ok (built 200)"
+    },
+    "coi07p1": {
+     "verdict": "pass",
+     "line": "coi07p1: ok (interpreted 60)"
+    }
+   },
+   "tail": [
+    "coci21c1p3: ok (built 200)",
+    "coci21c1p4: ok (built 200)",
+    "coci21c1p5: ok (built 200)"
+   ]
+  },
+  "proto/ports/scout_batch_36/verify.py": {
+   "exit_code": 1,
+   "timed_out": false,
+   "seconds": 37,
+   "ports": {
+    "ccc02s4hard": {
+     "verdict": "pass",
+     "line": "PASS ccc02s4hard (120 cases, optimal total + valid grouping checked, ASan/UBSan clean)"
+    },
+    "ccc19s5hard": {
+     "verdict": "pass",
+     "line": "PASS ccc19s5hard (100 cases, identical to original C++, ASan/UBSan clean)"
+    },
+    "cco18p6": {
+     "verdict": "pass",
+     "line": "PASS cco18p6 (100 cases, swap simulation + exact match verified, ASan/UBSan clean)"
+    },
+    "cco19p4": {
+     "verdict": "pass",
+     "line": "PASS cco19p4 (45 cases via proto/cpi lib-run, matches original within 1e-5)"
+    },
+    "cco20p5": {
+     "verdict": "fail",
+     "line": "AssertionError: cpc cco20p5 failed:"
+    }
+   },
+   "tail": [
+    "AssertionError: cpc cco20p5 failed:",
+    "wrote /tmp/scout36_y4m1f1b7/cco20p5.cpp (74936 bytes)",
+    "error: /tmp/scout36_y4m1f1b7/cco20p5.cpp is 74936 bytes, over the 64 KB submission limit"
+   ]
+  },
+  "proto/ports/scout_batch_37/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 47,
+   "ports": {
+    "ioi09p5": {
+     "verdict": "pass",
+     "line": "ioi09p5: 300 cases agree (100 medium)"
+    },
+    "ioi12p5": {
+     "verdict": "pass",
+     "line": "ioi12p5: 300 cases agree (100 medium)"
+    },
+    "ioi15p1": {
+     "verdict": "pass",
+     "line": "ioi15p1: 300 cases agree (100 medium)"
+    },
+    "ioi20p2": {
+     "verdict": "pass",
+     "line": "ioi20p2: 300 cases agree (100 medium)"
+    },
+    "noi10p1": {
+     "verdict": "pass",
+     "line": "noi10p1: 300 cases agree (100 medium)"
+    },
+    "noi14p5": {
+     "verdict": "pass",
+     "line": "noi14p5: 300 cases agree (100 medium)"
+    },
+    "noip04p4": {
+     "verdict": "pass",
+     "line": "noip04p4: 300 cases agree (100 medium)"
+    },
+    "noip06p3": {
+     "verdict": "pass",
+     "line": "noip06p3: 300 cases agree (100 medium)"
+    },
+    "noip10p4": {
+     "verdict": "pass",
+     "line": "noip10p4: 300 cases agree (100 medium)"
+    },
+    "noip18p4": {
+     "verdict": "pass",
+     "line": "noip18p4: 300 cases agree (100 medium)"
+    }
+   },
+   "tail": [
+    "ioi20p2: 300 cases agree (100 medium)",
+    "ioi12p5: 300 cases agree (100 medium)",
+    "noip04p4: 300 cases agree (100 medium)"
+   ]
+  },
+  "proto/ports/scout_batch_38/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 29,
+   "ports": {
+    "apio09p1": {
+     "verdict": "pass",
+     "line": "[PASS] apio09p1   (orig 5536569.cpp, cpc): 41 cases verified"
+    },
+    "apio09p2": {
+     "verdict": "pass",
+     "line": "[PASS] apio09p2   (orig 5536701.cpp, cpc): 40 cases verified"
+    },
+    "btoi04p3": {
+     "verdict": "pass",
+     "line": "[PASS] btoi04p3   (orig 5270736.cpp, cpc): 44 cases verified"
+    },
+    "btoi08p6": {
+     "verdict": "pass",
+     "line": "[PASS] btoi08p6   (orig 5325518.cpp, cpc): 40 cases verified"
+    },
+    "btoi17p4": {
+     "verdict": "pass",
+     "line": "[PASS] btoi17p4   (orig 4523876.cpp, cpc): 40 cases verified"
+    },
+    "btoi18p4": {
+     "verdict": "pass",
+     "line": "[PASS] btoi18p4   (orig 4656863.cpp, cpc): 50 cases verified"
+    },
+    "dpf": {
+     "verdict": "pass",
+     "line": "[PASS] dpf        (orig 4131645.cpp, cpi): 34 cases verified"
+    },
+    "egoi23p2": {
+     "verdict": "pass",
+     "line": "[PASS] egoi23p2   (orig 5678050.cpp, cpc): 40 cases verified"
+    },
+    "egoi23p4": {
+     "verdict": "pass",
+     "line": "[PASS] egoi23p4   (orig 5678052.cpp, cpc): 40 cases verified"
+    },
+    "egoi23p7": {
+     "verdict": "pass",
+     "line": "[PASS] egoi23p7   (orig 5678057.cpp, cpc): 45 cases verified"
+    }
+   },
+   "tail": [
+    "[PASS] egoi23p2   (orig 5678050.cpp, cpc): 40 cases verified",
+    "[PASS] egoi23p4   (orig 5678052.cpp, cpc): 40 cases verified",
+    "[PASS] egoi23p7   (orig 5678057.cpp, cpc): 45 cases verified"
+   ]
+  },
+  "proto/ports/scout_batch_39/check.py": {
+   "exit_code": 1,
+   "timed_out": false,
+   "seconds": 56,
+   "ports": {
+    "aac4p5": {
+     "verdict": "pass",
+     "line": "ok   aac4p5: 150 cases match corpus/submissions/4140767.cpp (ASan+UBSan clean)"
+    },
+    "aac4p6": {
+     "verdict": "pass",
+     "line": "ok   aac4p6: 150 cases match corpus/submissions/4227368.cpp (ASan+UBSan clean)"
+    },
+    "dmpg16g2": {
+     "verdict": "pass",
+     "line": "ok   dmpg16g2: 150 cases match corpus/submissions/4653887.cpp (ASan+UBSan clean)"
+    },
+    "dmpg18s5": {
+     "verdict": "pass",
+     "line": "ok   dmpg18s5: 150 cases match corpus/submissions/3476383.cpp (ASan+UBSan clean)"
+    },
+    "sac22cc4p4": {
+     "verdict": "pass",
+     "line": "ok   sac22cc4p4: 150 cases match corpus/submissions/4411200.cpp (ASan+UBSan clean)"
+    },
+    "sac22cc5p5": {
+     "verdict": "pass",
+     "line": "ok   sac22cc5p5: 150 cases match corpus/submissions/4575631.cpp (ASan+UBSan clean)"
+    },
+    "wac6p6": {
+     "verdict": "fail",
+     "line": "FAIL wac6p6 case 3 (exit 0 vs 1)"
+    },
+    "yac6p6": {
+     "verdict": "fail",
+     "line": "FAIL yac6p6 case 13 (exit 0 vs 1)"
+    },
+    "yac7p3": {
+     "verdict": "pass",
+     "line": "ok   yac7p3: 150 cases match corpus/submissions/5705218.cpp (ASan+UBSan clean)"
+    },
+    "yac7p4": {
+     "verdict": "pass",
+     "line": "ok   yac7p4: 150 cases match corpus/submissions/5705324.cpp (ASan+UBSan clean)"
+    }
+   },
+   "tail": [
+    "ok   sac22cc5p5: 150 cases match corpus/submissions/4575631.cpp (ASan+UBSan clean)",
+    "ok   dmpg16g2: 150 cases match corpus/submissions/4653887.cpp (ASan+UBSan clean)",
+    "ok   dmpg18s5: 150 cases match corpus/submissions/3476383.cpp (ASan+UBSan clean)"
+   ]
+  },
+  "proto/ports/scout_batch_4/stress.sh": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 43,
+   "ports": {
+    "dpm": {
+     "verdict": "pass",
+     "line": "dpm: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "dpn": {
+     "verdict": "pass",
+     "line": "dpn: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "dpo": {
+     "verdict": "pass",
+     "line": "dpo: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "dps": {
+     "verdict": "pass",
+     "line": "dps: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "dpt": {
+     "verdict": "pass",
+     "line": "dpt: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "dpu": {
+     "verdict": "pass",
+     "line": "dpu: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "dpx": {
+     "verdict": "pass",
+     "line": "dpx: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "ioi06p4": {
+     "verdict": "pass",
+     "line": "ioi06p4: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "joi16op3": {
+     "verdict": "pass",
+     "line": "joi16op3: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "noi02p3": {
+     "verdict": "pass",
+     "line": "noi02p3: stress OK: 200 tests agree (0 rejected by where)"
+    }
+   },
+   "tail": [
+    "ioi06p4: stress OK: 200 tests agree (0 rejected by where)",
+    "joi16op3: stress OK: 200 tests agree (0 rejected by where)",
+    "noi02p3: stress OK: 200 tests agree (0 rejected by where)"
+   ]
+  },
+  "proto/ports/scout_batch_40/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 19,
+   "ports": {
+    "cheerio1s1": {
+     "verdict": "pass",
+     "line": "cheerio1s1: 300 cases agree (100 medium)"
+    },
+    "cheerio1s2": {
+     "verdict": "pass",
+     "line": "cheerio1s2: 300 cases agree (100 medium), brute force agrees"
+    },
+    "cheerio1s5": {
+     "verdict": "pass",
+     "line": "cheerio1s5: 300 cases agree (100 medium)"
+    },
+    "tle17c5p1": {
+     "verdict": "pass",
+     "line": "tle17c5p1: 300 cases agree (100 medium)"
+    },
+    "tle18p5": {
+     "verdict": "pass",
+     "line": "tle18p5: 40 cases agree (14 medium), brute force agrees"
+    }
+   },
+   "tail": [
+    "cheerio1s5: 300 cases agree (100 medium)",
+    "tle17c5p1: 300 cases agree (100 medium)",
+    "tle18p5: 40 cases agree (14 medium), brute force agrees"
+   ]
+  },
+  "proto/ports/scout_batch_41/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 66,
+   "ports": {
+    "nccc10s1": {
+     "verdict": "pass",
+     "line": "nccc10s1          : 300 cases agree (100 medium) [cpc+ASan/UBSan]"
+    },
+    "nccc8s1": {
+     "verdict": "pass",
+     "line": "nccc8s1           :  60 cases agree ( 20 medium) [lib-run]"
+    },
+    "nccc8s2": {
+     "verdict": "pass",
+     "line": "nccc8s2           :  60 cases agree ( 20 medium) [lib-run]"
+    },
+    "nccc8s4": {
+     "verdict": "pass",
+     "line": "nccc8s4           : 300 cases agree (100 medium) [cpc+ASan/UBSan]"
+    },
+    "nccc9s1": {
+     "verdict": "pass",
+     "line": "nccc9s1           : 300 cases agree (100 medium) [cpc+ASan/UBSan]"
+    },
+    "nccc9s2": {
+     "verdict": "pass",
+     "line": "nccc9s2           : 300 cases agree (100 medium) [cpc+ASan/UBSan]"
+    },
+    "nccc9s3": {
+     "verdict": "pass",
+     "line": "nccc9s3           : 300 cases agree (100 medium) [cpc+ASan/UBSan]"
+    },
+    "nccc9s4": {
+     "verdict": "pass",
+     "line": "nccc9s4           : 300 cases agree (100 medium) [cpc+ASan/UBSan]"
+    },
+    "oly20practice139": {
+     "verdict": "pass",
+     "line": "oly20practice139  : 300 cases agree (100 medium) [cpc+ASan/UBSan]"
+    },
+    "oly23practice5": {
+     "verdict": "pass",
+     "line": "oly23practice5    : 300 cases agree (100 medium) [cpc+ASan/UBSan]"
+    }
+   },
+   "tail": [
+    "nccc8s1           :  60 cases agree ( 20 medium) [lib-run]",
+    "nccc8s2           :  60 cases agree ( 20 medium) [lib-run]",
+    "nccc8s4           : 300 cases agree (100 medium) [cpc+ASan/UBSan]"
+   ]
+  },
+  "proto/ports/scout_batch_42/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 28,
+   "ports": {
+    "mccc3j3": {
+     "verdict": "pass",
+     "line": "PASS mccc3j3    (30/30 vs 4223424.cpp)"
+    },
+    "mccc3j4": {
+     "verdict": "pass",
+     "line": "PASS mccc3j4    (30/30 vs 4223440.cpp)"
+    },
+    "mccc3j5": {
+     "verdict": "pass",
+     "line": "PASS mccc3j5    (30/30 vs 4223449.cpp)"
+    },
+    "mccc4j3": {
+     "verdict": "pass",
+     "line": "PASS mccc4j3    (30/30 vs 4264907.cpp)"
+    },
+    "mccc4j4": {
+     "verdict": "pass",
+     "line": "PASS mccc4j4    (30/30 vs 4264934.cpp)"
+    },
+    "mccc5j3": {
+     "verdict": "pass",
+     "line": "PASS mccc5j3    (30/30 vs 5333116.cpp)"
+    },
+    "mccc5j4": {
+     "verdict": "pass",
+     "line": "PASS mccc5j4    (30/30 vs 5333145.cpp)"
+    },
+    "mccc5j5": {
+     "verdict": "pass",
+     "line": "PASS mccc5j5    (30/30 vs 5333196.cpp)"
+    },
+    "mccc6s3": {
+     "verdict": "pass",
+     "line": "PASS mccc6s3    (30/30 vs 6103125.cpp (+10 brute-only small-val cases; orig odd-diff tie misses: 1))"
+    },
+    "occ19g4": {
+     "verdict": "pass",
+     "line": "PASS occ19g4    (30/30 vs 3578469.cpp (+10 brute-only extreme/negative-coord cases))"
+    }
+   },
+   "tail": [
+    "PASS mccc3j3    (30/30 vs 4223424.cpp)",
+    "PASS mccc4j3    (30/30 vs 4264907.cpp)",
+    "All 10 port(s) passed (300 differential cases + brute edge suites)."
+   ]
+  },
+  "proto/ports/scout_batch_43/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 51,
+   "ports": {
+    "etsr23r1p3": {
+     "verdict": "pass",
+     "line": "PASS etsr23r1p3: 30/30 cases matched 5494303.cpp"
+    },
+    "etsr23r1p4": {
+     "verdict": "pass",
+     "line": "PASS etsr23r1p4: 30/30 cases matched 5495163.cpp"
+    },
+    "etsr23r2p2": {
+     "verdict": "pass",
+     "line": "PASS etsr23r2p2: 30/30 cases matched 5494433.cpp"
+    },
+    "etsr23r2p3": {
+     "verdict": "pass",
+     "line": "PASS etsr23r2p3: 30/30 cases matched 5494453.cpp"
+    },
+    "etsr23r2p4": {
+     "verdict": "pass",
+     "line": "PASS etsr23r2p4: 30/30 cases matched 5494510.cpp"
+    },
+    "etsr23r3p1": {
+     "verdict": "pass",
+     "line": "PASS etsr23r3p1: 30/30 cases matched 5527625.cpp"
+    },
+    "etsr23r3p3": {
+     "verdict": "pass",
+     "line": "PASS etsr23r3p3: 30/30 cases matched 5521298.cpp"
+    },
+    "etsr23r4p1": {
+     "verdict": "pass",
+     "line": "PASS etsr23r4p1: 30/30 cases matched 5521420.cpp"
+    },
+    "etsr23r4p2": {
+     "verdict": "pass",
+     "line": "PASS etsr23r4p2: 30/30 cases matched 5529698.cpp"
+    },
+    "etsr23r4p3": {
+     "verdict": "pass",
+     "line": "PASS etsr23r4p3: 30/30 cases matched 5635626.cpp"
+    }
+   },
+   "tail": [
+    "PASS etsr23r4p1: 30/30 cases matched 5521420.cpp",
+    "PASS etsr23r4p2: 30/30 cases matched 5529698.cpp",
+    "PASS etsr23r4p3: 30/30 cases matched 5635626.cpp"
+   ]
+  },
+  "proto/ports/scout_batch_44/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 68,
+   "ports": {
+    "dmopc20c5p2": {
+     "verdict": "pass",
+     "line": "dmopc20c5p2    30/30 ok"
+    },
+    "dmopc21c2p3": {
+     "verdict": "pass",
+     "line": "dmopc21c2p3    30/30 ok"
+    },
+    "dmopc21c4p2": {
+     "verdict": "pass",
+     "line": "dmopc21c4p2    30/30 ok"
+    },
+    "dmopc21c4p4": {
+     "verdict": "pass",
+     "line": "dmopc21c4p4    30/30 ok"
+    },
+    "dmopc21c5p3": {
+     "verdict": "pass",
+     "line": "dmopc21c5p3    30/30 ok"
+    },
+    "dmopc21c6p2": {
+     "verdict": "pass",
+     "line": "dmopc21c6p2    30/30 ok"
+    },
+    "dmopc21c7p2": {
+     "verdict": "pass",
+     "line": "dmopc21c7p2    30/30 ok"
+    },
+    "dmopc21c8p2": {
+     "verdict": "pass",
+     "line": "dmopc21c8p2    30/30 ok"
+    },
+    "dmopc21c9p2": {
+     "verdict": "pass",
+     "line": "dmopc21c9p2    30/30 ok"
+    },
+    "dmopc21c9p3": {
+     "verdict": "pass",
+     "line": "dmopc21c9p3    30/30 ok"
+    }
+   },
+   "tail": [
+    "dmopc21c7p2    30/30 ok",
+    "dmopc21c2p3    30/30 ok",
+    "dmopc21c6p2    30/30 ok"
+   ]
+  },
+  "proto/ports/scout_batch_45/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 95,
+   "ports": {
+    "iati21a12": {
+     "verdict": "pass",
+     "line": "iati21a12    150 cases agree"
+    },
+    "iati21a23": {
+     "verdict": "pass",
+     "line": "iati21a23    148 cases validated, 2 rejected by the original"
+    },
+    "neerc10k": {
+     "verdict": "pass",
+     "line": "neerc10k     150 cases validated"
+    },
+    "noimps22p5": {
+     "verdict": "pass",
+     "line": "noimps22p5   150 cases agree"
+    },
+    "rpeng2": {
+     "verdict": "pass",
+     "line": "rpeng2       150 cases agree"
+    },
+    "shoi15p2": {
+     "verdict": "pass",
+     "line": "shoi15p2     150 cases agree"
+    },
+    "shoi16p1": {
+     "verdict": "pass",
+     "line": "shoi16p1     150 cases agree, 75 also exhaustive"
+    },
+    "shoi16p2": {
+     "verdict": "pass",
+     "line": "shoi16p2     150 cases agree, 75 also exhaustive"
+    },
+    "shoi16p5": {
+     "verdict": "pass",
+     "line": "shoi16p5     150 cases agree, 75 also exhaustive"
+    },
+    "ucrpc21h": {
+     "verdict": "pass",
+     "line": "ucrpc21h     150 cases agree, 75 also exhaustive"
+    }
+   },
+   "tail": [
+    "shoi16p5     150 cases agree, 75 also exhaustive",
+    "ucrpc21h     150 cases agree, 75 also exhaustive",
+    "all 1498 cases pass"
+   ]
+  },
+  "proto/ports/scout_batch_46/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 48,
+   "ports": {
+    "aac4p4": {
+     "verdict": "pass",
+     "line": "ok   aac4p4: 150 cases match corpus/submissions/4140376.cpp (ASan+UBSan clean)"
+    },
+    "aac5p4": {
+     "verdict": "pass",
+     "line": "ok   aac5p4: 150 cases match corpus/submissions/4239900.cpp (ASan+UBSan clean)"
+    },
+    "sac22cc2p3": {
+     "verdict": "pass",
+     "line": "ok   sac22cc2p3: 150 cases match corpus/submissions/4121049.cpp (ASan+UBSan clean)"
+    },
+    "sac22cc2p5": {
+     "verdict": "pass",
+     "line": "ok   sac22cc2p5: 150 cases match corpus/submissions/4121099.cpp (ASan+UBSan clean)"
+    },
+    "sac22cc3p3": {
+     "verdict": "pass",
+     "line": "ok   sac22cc3p3: 150 cases match corpus/submissions/4331598.cpp (ASan+UBSan clean)"
+    },
+    "yac1p2": {
+     "verdict": "pass",
+     "line": "ok   yac1p2: 150 cases match corpus/submissions/4376253.cpp (ASan+UBSan clean)"
+    },
+    "yac1p3": {
+     "verdict": "pass",
+     "line": "ok   yac1p3: 150 cases match corpus/submissions/4380584.cpp (ASan+UBSan clean)"
+    },
+    "yac6p4": {
+     "verdict": "pass",
+     "line": "ok   yac6p4: 150 cases match corpus/submissions/5149666.cpp (ASan+UBSan clean)"
+    },
+    "yac6p5": {
+     "verdict": "pass",
+     "line": "ok   yac6p5: 150 cases match corpus/submissions/5149823.cpp (ASan+UBSan clean)"
+    },
+    "yac7p2": {
+     "verdict": "pass",
+     "line": "ok   yac7p2: 150 cases match corpus/submissions/5705152.cpp (ASan+UBSan clean)"
+    }
+   },
+   "tail": [
+    "ok   sac22cc2p3: 150 cases match corpus/submissions/4121049.cpp (ASan+UBSan clean)",
+    "ok   sac22cc2p5: 150 cases match corpus/submissions/4121099.cpp (ASan+UBSan clean)",
+    "ok   sac22cc3p3: 150 cases match corpus/submissions/4331598.cpp (ASan+UBSan clean)"
+   ]
+  },
+  "proto/ports/scout_batch_47/verify.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 40,
+   "ports": {
+    "ccc18s2": {
+     "verdict": "pass",
+     "line": "PASS  ccc18s2       40 rotated grids across all 4 orientations"
+    },
+    "ccc20s2hard": {
+     "verdict": "pass",
+     "line": "PASS  ccc20s2hard   50 random grids up to 200x200 (exact yes/no match)"
+    },
+    "ccc22s2": {
+     "verdict": "pass",
+     "line": "PASS  ccc22s2       40 random student-group constraint instances"
+    },
+    "cco01p4io": {
+     "verdict": "pass",
+     "line": "PASS  cco01p4io     108 live interactive egg-drop games (exhaustive n<=12 + random n<=100)"
+    },
+    "cco04p1": {
+     "verdict": "pass",
+     "line": "PASS  cco04p1       40 random letter-table & dictionary instances"
+    },
+    "cco07p5": {
+     "verdict": "pass",
+     "line": "PASS  cco07p5       40 live interactive ring games up to n=500 (max queries=402)"
+    },
+    "cco23p5": {
+     "verdict": "pass",
+     "line": "PASS  cco23p5       75 random trees across k=1,2,3 (exact opt + walk validity)"
+    },
+    "cco24p2": {
+     "verdict": "pass",
+     "line": "PASS  cco24p2       60 impossible/binary/permutation cases (exact match + stack simulation)"
+    },
+    "cco24p4": {
+     "verdict": "pass",
+     "line": "PASS  cco24p4       12 n=100 trees (exact match + full 100x100 rendezvous check)"
+    },
+    "cco24p5": {
+     "verdict": "pass",
+     "line": "PASS  cco24p5       66 edge/random/medium arrays (exact mod-1000003 DP match)"
+    }
+   },
+   "tail": [
+    "PASS  ccc22s2       40 random student-group constraint instances",
+    "PASS  cco04p1       40 random letter-table & dictionary instances",
+    "ALL 10/10 BATCH 47 PORTS VERIFIED (ASan + UBSan clean)."
+   ]
+  },
+  "proto/ports/scout_batch_48/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 74,
+   "ports": {
+    "btoi06p5": {
+     "verdict": "pass",
+     "line": "ok   btoi06p5"
+    },
+    "ceoi19pp1": {
+     "verdict": "pass",
+     "line": "ok   ceoi19pp1"
+    },
+    "ceoi19pp2": {
+     "verdict": "pass",
+     "line": "ok   ceoi19pp2"
+    },
+    "egoi22p1": {
+     "verdict": "pass",
+     "line": "ok   egoi22p1"
+    },
+    "egoi22p5": {
+     "verdict": "pass",
+     "line": "ok   egoi22p5"
+    },
+    "egoi22p8": {
+     "verdict": "pass",
+     "line": "ok   egoi22p8"
+    },
+    "egoi23p1": {
+     "verdict": "pass",
+     "line": "ok   egoi23p1"
+    },
+    "egoi23p5": {
+     "verdict": "pass",
+     "line": "ok   egoi23p5"
+    },
+    "egoi23p6": {
+     "verdict": "pass",
+     "line": "ok   egoi23p6"
+    },
+    "egoi23p8": {
+     "verdict": "pass",
+     "line": "ok   egoi23p8"
+    }
+   },
+   "tail": [
+    "wrote /tmp/tmp8acvvbko/egoi23p6.cpp (45761 bytes)",
+    "wrote /tmp/tmp8acvvbko/egoi23p8.cpp (49913 bytes)",
+    "warning: /tmp/tmp8acvvbko/egoi23p8.cpp is 49913 bytes, over 48 KB of the 64 KB limit"
+   ]
+  },
+  "proto/ports/scout_batch_49/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 61,
+   "ports": {
+    "ioi00p2": {
+     "verdict": "pass",
+     "line": "ioi00p2: 300 cases agree (100 medium)"
+    },
+    "ioi01p3": {
+     "verdict": "pass",
+     "line": "ioi01p3: 300 cases agree (100 medium)"
+    },
+    "ioi12p2": {
+     "verdict": "pass",
+     "line": "ioi12p2: 300 cases agree (100 medium, 233 also against a brute force)"
+    },
+    "ioi14p4": {
+     "verdict": "pass",
+     "line": "ioi14p4: 300 cases agree (100 medium)"
+    },
+    "ioi15p5": {
+     "verdict": "pass",
+     "line": "ioi15p5: 300 cases agree (100 medium)"
+    },
+    "ioi17p2": {
+     "verdict": "pass",
+     "line": "ioi17p2: 300 cases agree (100 medium, 203 also against a brute force)"
+    },
+    "ioi18p2": {
+     "verdict": "pass",
+     "line": "ioi18p2: 300 cases agree (100 medium, 300 also against a brute force)"
+    },
+    "ioi21p1": {
+     "verdict": "pass",
+     "line": "ioi21p1: 300 cases agree (100 medium, 300 also against a brute force)"
+    },
+    "ioi22p4": {
+     "verdict": "pass",
+     "line": "ioi22p4: 300 cases agree (100 medium)"
+    },
+    "ioi99p6": {
+     "verdict": "pass",
+     "line": "ioi99p6: 300 cases agree (100 medium)"
+    }
+   },
+   "tail": [
+    "ioi22p4: 300 cases agree (100 medium)",
+    "ioi12p2: 300 cases agree (100 medium, 233 also against a brute force)",
+    "ioi18p2: 300 cases agree (100 medium, 300 also against a brute force)"
+   ]
+  },
+  "proto/ports/scout_batch_5/check.sh": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 44,
+   "ports": {
+    "btoi17p1": {
+     "verdict": "pass",
+     "line": "btoi17p1, noi06p4: 100 script-made inputs each agree"
+    },
+    "cco18p4": {
+     "verdict": "pass",
+     "line": "cco18p4: interact OK: 100 conversations accepted for both the port and the original"
+    },
+    "cco22p1": {
+     "verdict": "pass",
+     "line": "cco22p1: stress OK: 129 tests agree (671 rejected by where)"
+    },
+    "cco23p6": {
+     "verdict": "pass",
+     "line": "cco23p6: stress OK: 100 tests agree (0 rejected by where)"
+    },
+    "ioi06p2": {
+     "verdict": "pass",
+     "line": "ioi06p2: stress OK: 100 tests agree (0 rejected by where)"
+    },
+    "ioi13p5": {
+     "verdict": "pass",
+     "line": "ioi13p5: stress OK: 100 tests agree (0 rejected by where)"
+    },
+    "noi06p4": {
+     "verdict": "pass",
+     "line": "btoi17p1, noi06p4: 100 script-made inputs each agree"
+    },
+    "noip10p3": {
+     "verdict": "pass",
+     "line": "noip10p3: stress OK: 100 tests agree (0 rejected by where)"
+    },
+    "yac6p3": {
+     "verdict": "pass",
+     "line": "yac6p3: interact OK: 100 conversations accepted for both the port and the original"
+    }
+   },
+   "tail": [
+    "cco18p4: interact OK: 100 conversations accepted for both the port and the original",
+    "yac6p3: interact OK: 100 conversations accepted for both the port and the original",
+    "btoi17p1, noi06p4: 100 script-made inputs each agree"
+   ]
+  },
+  "proto/ports/scout_batch_50/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 62,
+   "ports": {
+    "noi03p4": {
+     "verdict": "pass",
+     "line": "noi03p4    150 cases pass, 105 distinct outputs, 77 also against an exhaustive solver"
+    },
+    "noi04p5": {
+     "verdict": "pass",
+     "line": "noi04p5    150 cases pass, 149 distinct outputs"
+    },
+    "noi17p1": {
+     "verdict": "pass",
+     "line": "noi17p1    150 cases pass, 91 distinct outputs, 150 also against an exhaustive solver"
+    },
+    "noi20p5": {
+     "verdict": "pass",
+     "line": "noi20p5    150 cases pass, 27 distinct outputs"
+    },
+    "noi22p1": {
+     "verdict": "pass",
+     "line": "noi22p1    150 cases pass, 101 distinct outputs, 150 also against an exhaustive solver"
+    },
+    "noi22p4": {
+     "verdict": "pass",
+     "line": "noi22p4    150 cases pass, 36 distinct outputs, 81 also against an exhaustive solver"
+    },
+    "noi23p1": {
+     "verdict": "pass",
+     "line": "noi23p1    150 cases pass, 105 distinct outputs, 121 also against an exhaustive solver"
+    },
+    "noip02p4": {
+     "verdict": "pass",
+     "line": "noip02p4   150 cases pass, 75 distinct outputs, 92 also against an exhaustive solver"
+    },
+    "noip08p4": {
+     "verdict": "pass",
+     "line": "noip08p4   150 cases pass, 76 distinct outputs, 90 also against an exhaustive solver"
+    },
+    "noip22p2": {
+     "verdict": "pass",
+     "line": "noip22p2   150 cases pass, 149 distinct outputs"
+    }
+   },
+   "tail": [
+    "noi22p4    150 cases pass, 36 distinct outputs, 81 also against an exhaustive solver",
+    "noip22p2   150 cases pass, 149 distinct outputs",
+    "total: 1500 cases pass"
+   ]
+  },
+  "proto/ports/scout_batch_51/check.py": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 30,
+   "ports": {
+    "apio23p2": {
+     "verdict": "pass",
+     "line": "[1/10] apio23p2... OK (40 cases)"
+    },
+    "ccc20s1": {
+     "verdict": "pass",
+     "line": "[10/10] ccc20s1... OK (40 cases)"
+    },
+    "ccc23s1": {
+     "verdict": "pass",
+     "line": "[8/10] ccc23s1... OK (40 cases)"
+    },
+    "ccc23s2": {
+     "verdict": "pass",
+     "line": "[7/10] ccc23s2... OK (40 cases)"
+    },
+    "ccc96s3": {
+     "verdict": "pass",
+     "line": "[9/10] ccc96s3... OK (25 cases)"
+    },
+    "cco03p4": {
+     "verdict": "pass",
+     "line": "[6/10] cco03p4... OK (40 cases)"
+    },
+    "cco18p2": {
+     "verdict": "pass",
+     "line": "[5/10] cco18p2... OK (exact 100x100 matrix match)"
+    },
+    "egoi22p3": {
+     "verdict": "pass",
+     "line": "[2/10] egoi22p3... OK (40 cases, 25 YES / 15 NO)"
+    },
+    "egoi22p4": {
+     "verdict": "pass",
+     "line": "[3/10] egoi22p4... OK (30 cases)"
+    },
+    "egoi22p7": {
+     "verdict": "pass",
+     "line": "[4/10] egoi22p7... OK (30 cases)"
+    }
+   },
+   "tail": [
+    "[9/10] ccc96s3... OK (25 cases)",
+    "[10/10] ccc20s1... OK (40 cases)",
+    "ALL 10 SCOUT BATCH 51 PORTS VERIFIED!"
+   ]
+  },
+  "proto/ports/scout_batch_7/check.py": {
+   "exit_code": 1,
+   "timed_out": false,
+   "seconds": 32,
+   "ports": {
+    "ccc14s4hard": {
+     "verdict": "pass",
+     "line": "ccc14s4hard: OK (60 inputs)"
+    },
+    "cco17p3": {
+     "verdict": "pass",
+     "line": "cco17p3: OK (60 inputs)"
+    },
+    "coci20c6p5": {
+     "verdict": "pass",
+     "line": "coci20c6p5: OK (60 inputs)"
+    },
+    "ioi01p1": {
+     "verdict": "fail",
+     "line": "ioi01p1: MISMATCH on input 0:",
+     "diagnostic": "std.algebra has no 'Sum'"
+    },
+    "ioi12p3": {
+     "verdict": "pass",
+     "line": "ioi12p3: OK (60 inputs)"
+    },
+    "noi01p1": {
+     "verdict": "pass",
+     "line": "noi01p1: OK (60 inputs)"
+    },
+    "noi03p2": {
+     "verdict": "pass",
+     "line": "noi03p2: OK (60 inputs)"
+    },
+    "noi04p1": {
+     "verdict": "fail",
+     "line": "noi04p1: MISMATCH on input 0:",
+     "diagnostic": "std.algebra has no 'Sum'"
+    },
+    "sac22cc5p4": {
+     "verdict": "pass",
+     "line": "sac22cc5p4: OK (60 inputs)"
+    },
+    "tsoc15c2p6": {
+     "verdict": "fail",
+     "line": "tsoc15c2p6: MISMATCH on input 0:",
+     "diagnostic": "std.algebra has no 'Min'"
+    }
+   },
+   "tail": [
+    "ioi12p3: OK (60 inputs)",
+    "coci20c6p5: OK (60 inputs)",
+    "sac22cc5p4: OK (60 inputs)"
+   ]
+  },
+  "proto/ports/scout_batch_8/check.py": {
+   "exit_code": 1,
+   "timed_out": false,
+   "seconds": 66,
+   "ports": {
+    "cco16p4": {
+     "verdict": "pass",
+     "line": "cco16p4: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "cco19p3": {
+     "verdict": "pass",
+     "line": "cco19p3: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "coci21c2p3": {
+     "verdict": "pass",
+     "line": "coci21c2p3: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "coci25c3p2": {
+     "verdict": "pass",
+     "line": "coci25c3p2: stress OK: 135 tests agree (65 rejected by where)"
+    },
+    "dpk": {
+     "verdict": "pass",
+     "line": "dpk: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "dpl": {
+     "verdict": "pass",
+     "line": "dpl: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "dpy": {
+     "verdict": "pass",
+     "line": "dpy: interpreter OK: 200 tests agree"
+    },
+    "ioi04p5": {
+     "verdict": "fail",
+     "line": "ioi04p5: differs on input 0:",
+     "diagnostic": "Bitset<Taken> has no method 'insert'"
+    },
+    "noip14p6": {
+     "verdict": "pass",
+     "line": "noip14p6: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "sac22cc4jp4": {
+     "verdict": "pass",
+     "line": "sac22cc4jp4: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "yac1p4": {
+     "verdict": "fail",
+     "line": "yac1p4: differs on input 0:",
+     "diagnostic": "Bitset<Lifted> has no method 'insert'"
+    }
+   },
+   "tail": [
+    "672",
+    "684",
+    "port: error: proto/ports/scout_batch_8/yac1p4.cp:20: Bitset<Lifted> has no method `insert`"
+   ]
+  },
+  "proto/ports/scout_batch_9/stress.sh": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 74,
+   "ports": {
+    "btoi19p3": {
+     "verdict": "pass",
+     "line": "btoi19p3: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "cmt21r2ztr": {
+     "verdict": "pass",
+     "line": "cmt21r2ztr: stress OK: 200 tests accepted (0 rejected by where)"
+    },
+    "coci25c3p4": {
+     "verdict": "pass",
+     "line": "coci25c3p4: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "ioi10p6": {
+     "verdict": "pass",
+     "line": "ioi10p6: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "ioi19p2": {
+     "verdict": "pass",
+     "line": "ioi19p2: stress OK: 159 tests accepted (41 rejected by where)"
+    },
+    "ioi20p6": {
+     "verdict": "pass",
+     "line": "ioi20p6: stress OK: 85 tests agree (115 rejected by where)"
+    },
+    "noi21p1": {
+     "verdict": "pass",
+     "line": "noi21p1: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "noip22p3": {
+     "verdict": "pass",
+     "line": "noip22p3: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "sdoi17r2p4": {
+     "verdict": "pass",
+     "line": "sdoi17r2p4: stress OK: 200 tests agree (0 rejected by where)"
+    },
+    "utso15p5": {
+     "verdict": "pass",
+     "line": "utso15p5: stress OK: 200 tests agree (0 rejected by where)"
+    }
+   },
+   "tail": [
+    "noip22p3: stress OK: 200 tests agree (0 rejected by where)",
+    "sdoi17r2p4: stress OK: 200 tests agree (0 rejected by where)",
+    "utso15p5: stress OK: 200 tests agree (0 rejected by where)"
+   ]
+  },
+  "proto/run_all.sh": {
+   "exit_code": 0,
+   "timed_out": false,
+   "seconds": 448,
+   "ports": {
+    "aac4p2": {
+     "verdict": "pass",
+     "line": "aac4p2: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "aac5p2": {
+     "verdict": "pass",
+     "line": "aac5p2: interact OK: 60 conversations accepted for both the port and the original"
+    },
+    "apio07p1": {
+     "verdict": "pass",
+     "line": "apio07p1: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "apio07p3": {
+     "verdict": "pass",
+     "line": "apio07p3: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "apio09p3": {
+     "verdict": "pass",
+     "line": "apio09p3: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "btoi17p3": {
+     "verdict": "pass",
+     "line": "btoi17p3: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "btoi17p6": {
+     "verdict": "pass",
+     "line": "btoi17p6: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "btoi18p6": {
+     "verdict": "pass",
+     "line": "btoi18p6: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "ccc03s4": {
+     "verdict": "pass",
+     "line": "ccc03s4: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "ccc10s4": {
+     "verdict": "pass",
+     "line": "ccc10s4: stress OK: 6 tests agree (54 rejected by where)"
+    },
+    "ccc17s4": {
+     "verdict": "pass",
+     "line": "ccc17s4: stress OK: 55 tests agree (5 rejected by where)"
+    },
+    "ccc18s4": {
+     "verdict": "pass",
+     "line": "ccc18s4: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "ccc18s5": {
+     "verdict": "pass",
+     "line": "ccc18s5: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "ccc19s5": {
+     "verdict": "pass",
+     "line": "ccc19s5: stress OK: 40 tests agree (20 rejected by where)"
+    },
+    "ccc20s2": {
+     "verdict": "pass",
+     "line": "ccc20s2: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "ccc20s3": {
+     "verdict": "pass",
+     "line": "ccc20s3: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "ccc21s2": {
+     "verdict": "pass",
+     "line": "ccc21s2: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "ccc21s3": {
+     "verdict": "pass",
+     "line": "ccc21s3: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "ccc21s4": {
+     "verdict": "pass",
+     "line": "ccc21s4: stress OK: 23 tests agree (37 rejected by where)"
+    },
+    "ccc21s5": {
+     "verdict": "pass",
+     "line": "ccc21s5: stress OK: 49 tests agree (11 rejected by where)"
+    },
+    "ccc22s3": {
+     "verdict": "pass",
+     "line": "ccc22s3: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "ccc22s4": {
+     "verdict": "pass",
+     "line": "ccc22s4: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "ccc23s4": {
+     "verdict": "pass",
+     "line": "ccc23s4: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "ccc23s5": {
+     "verdict": "pass",
+     "line": "ccc23s5: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "cco16p2": {
+     "verdict": "pass",
+     "line": "cco16p2: stress OK: 45 tests agree (15 rejected by where)"
+    },
+    "cco17p1": {
+     "verdict": "pass",
+     "line": "cco17p1: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "cco18p1": {
+     "verdict": "pass",
+     "line": "cco18p1: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "cco20p1": {
+     "verdict": "pass",
+     "line": "cco20p1: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "cco24p1": {
+     "verdict": "pass",
+     "line": "cco24p1: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "ceoi09p3": {
+     "verdict": "pass",
+     "line": "ceoi09p3: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "ceoi18p1": {
+     "verdict": "pass",
+     "line": "ceoi18p1: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "cheerio1s3": {
+     "verdict": "pass",
+     "line": "cheerio1s3: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "coci13c1p3": {
+     "verdict": "pass",
+     "line": "coci13c1p3: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "coci20c6p3": {
+     "verdict": "pass",
+     "line": "coci20c6p3: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "coi06p2": {
+     "verdict": "pass",
+     "line": "coi06p2: stress OK: 31 tests agree (29 rejected by where)"
+    },
+    "dmopc21c2p1": {
+     "verdict": "pass",
+     "line": "dmopc21c2p1: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "dmopc21c5p1": {
+     "verdict": "pass",
+     "line": "dmopc21c5p1: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "dmopc21c9p4": {
+     "verdict": "pass",
+     "line": "dmopc21c9p4: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "dmpg16s5": {
+     "verdict": "pass",
+     "line": "dmpg16s5: stress OK: 40 tests agree (20 rejected by where)"
+    },
+    "dpe": {
+     "verdict": "pass",
+     "line": "dpe: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "dpg": {
+     "verdict": "pass",
+     "line": "dpg: stress OK: 49 tests agree (11 rejected by where)"
+    },
+    "dph": {
+     "verdict": "pass",
+     "line": "dph: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "dpk": {
+     "verdict": "pass",
+     "line": "dpk: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "dpl": {
+     "verdict": "pass",
+     "line": "dpl: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "dpm": {
+     "verdict": "pass",
+     "line": "dpm: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "dpn": {
+     "verdict": "pass",
+     "line": "dpn: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "dpo": {
+     "verdict": "pass",
+     "line": "dpo: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "dpp": {
+     "verdict": "pass",
+     "line": "dpp: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "dpr": {
+     "verdict": "pass",
+     "line": "dpr: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "dps": {
+     "verdict": "pass",
+     "line": "dps: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "dpt": {
+     "verdict": "pass",
+     "line": "dpt: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "dpu": {
+     "verdict": "pass",
+     "line": "dpu: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "dpv": {
+     "verdict": "pass",
+     "line": "dpv: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "dpx": {
+     "verdict": "pass",
+     "line": "dpx: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "dpy": {
+     "verdict": "pass",
+     "line": "dpy: stress OK: 35 tests agree (25 rejected by where)"
+    },
+    "dpz": {
+     "verdict": "pass",
+     "line": "dpz: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "ioi00p1": {
+     "verdict": "pass",
+     "line": "ioi00p1: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "ioi04p4": {
+     "verdict": "pass",
+     "line": "ioi04p4: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "ioi05p6": {
+     "verdict": "pass",
+     "line": "ioi05p6: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "ioi10p3": {
+     "verdict": "pass",
+     "line": "ioi10p3: stress OK: 39 tests agree (21 rejected by where)"
+    },
+    "ioi11p2": {
+     "verdict": "pass",
+     "line": "ioi11p2: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "ioi11p4": {
+     "verdict": "pass",
+     "line": "ioi11p4: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "ioi94p1": {
+     "verdict": "pass",
+     "line": "ioi94p1: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "mccc4j5": {
+     "verdict": "pass",
+     "line": "mccc4j5: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "nccc10s2": {
+     "verdict": "pass",
+     "line": "nccc10s2: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "noi01p5": {
+     "verdict": "pass",
+     "line": "noi01p5: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "noi02p1": {
+     "verdict": "pass",
+     "line": "noi02p1: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "noi14p4": {
+     "verdict": "pass",
+     "line": "noi14p4: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "noi15p2": {
+     "verdict": "pass",
+     "line": "noi15p2: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "noi16p4": {
+     "verdict": "pass",
+     "line": "noi16p4: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "noip00p1": {
+     "verdict": "pass",
+     "line": "noip00p1: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "noip01p2": {
+     "verdict": "pass",
+     "line": "noip01p2: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "noip04p1": {
+     "verdict": "pass",
+     "line": "noip04p1: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "noip04p2": {
+     "verdict": "pass",
+     "line": "noip04p2: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "noip04p3": {
+     "verdict": "pass",
+     "line": "noip04p3: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "noip06p1": {
+     "verdict": "pass",
+     "line": "noip06p1: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "noip06p2": {
+     "verdict": "pass",
+     "line": "noip06p2: stress OK: 45 tests agree (15 rejected by where)"
+    },
+    "noip07p1": {
+     "verdict": "pass",
+     "line": "noip07p1: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "noip07p2": {
+     "verdict": "pass",
+     "line": "noip07p2: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "noip09p2": {
+     "verdict": "pass",
+     "line": "noip09p2: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "noip09p3": {
+     "verdict": "pass",
+     "line": "noip09p3: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "noip10p3": {
+     "verdict": "pass",
+     "line": "noip10p3: stress OK: 29 tests agree (31 rejected by where)"
+    },
+    "noip14p2": {
+     "verdict": "pass",
+     "line": "noip14p2: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "noip14p3": {
+     "verdict": "pass",
+     "line": "noip14p3: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "noip14p5": {
+     "verdict": "pass",
+     "line": "noip14p5: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "noip18p2": {
+     "verdict": "pass",
+     "line": "noip18p2: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "sac22cc3p4": {
+     "verdict": "pass",
+     "line": "sac22cc3p4: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "yac1p1": {
+     "verdict": "pass",
+     "line": "yac1p1: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "yac6p2": {
+     "verdict": "pass",
+     "line": "yac6p2: stress OK: 60 tests agree (0 rejected by where)"
+    },
+    "yac6p3": {
+     "verdict": "pass",
+     "line": "yac6p3: interact OK: 52 conversations accepted for both the port and the original (8 rejected by where)"
+    },
+    "yac7p5": {
+     "verdict": "pass",
+     "line": "yac7p5: interact OK: 60 conversations accepted for both the port and the original"
+    }
+   },
+   "tail": [
+    "redteam tests checked",
+    "p0 regressions: all passed",
+    "cheat-sheet parity: 61 cases, 78 known gaps, 141 cheat-sheet lines mapped (37 covered only by gaps)"
+   ]
+  }
+ }
+}
