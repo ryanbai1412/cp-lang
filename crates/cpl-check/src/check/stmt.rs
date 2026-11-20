@@ -333,7 +333,20 @@ impl<'a> Checker<'a> {
                 let mut bound = Vec::new();
                 pattern_types(pat, &ty, &mut |name, _| bound.push(name.to_string()));
                 self.drop_facts(&bound);
-                self.bind(pat, &ty, *mutable, keyword);
+                match super::types::domain_binding(pat) {
+                    // `let LIM = 100`: with no `else` there is no variant
+                    // to match, so a capitalized name is bound to the value.
+                    Some(name)
+                        if otherwise.is_none()
+                            && !matches!(
+                                self.env.global(name).as_deref(),
+                                Some(Def::Variant { .. })
+                            ) =>
+                    {
+                        self.declare(name, pat.span, ty.clone(), *mutable, keyword);
+                    }
+                    _ => self.bind(pat, &ty, *mutable, keyword),
+                }
                 if let Some(guard) = guard {
                     let ty = self.infer(guard);
                     self.require_bool(&ty, guard, "`where`");
@@ -563,6 +576,20 @@ impl<'a> Checker<'a> {
             }
             StmtKind::Return(value) => {
                 let value_ty = value.as_ref().map(|v| self.infer(v));
+                if let (Some(value), true) = (value, self.fns.is_empty()) {
+                    // Decision 20.3: there is no caller to receive it.
+                    let diag = self.error(
+                        codes::UNEXPECTED_TOKEN,
+                        value.span,
+                        "a top-level `return` takes no value".to_string(),
+                    );
+                    if let Some(diag) = diag {
+                        diag.help = Some(
+                            "write a bare `return`: it ends the program, or the test case below `@!multitest`"
+                                .to_string(),
+                        );
+                    }
+                }
                 if let (Some(value), Some(value_ty)) = (value, value_ty) {
                     self.returns(value, &value_ty);
                     self.no_escape(value, "`return`");

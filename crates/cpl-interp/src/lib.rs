@@ -246,9 +246,23 @@ fn splitmix64(state: &mut u64) -> u64 {
 impl<'p, 'o> Interp<'p, 'o> {
     fn main(&mut self) -> Res<()> {
         let program = self.program;
-        let tests = if program.multitest {
+        self.stack.clear();
+        self.stack.resize(program.main_locals.len(), Value::Unit);
+        self.base = 0;
+        if !program.multitest {
+            self.block(&program.main)?;
+            return Ok(());
+        }
+        // Above `@!multitest`: once. A top-level `return` there ends the
+        // program.
+        if let Flow::Return(_) = self.block(&program.setup)? {
+            return Ok(());
+        }
+        let mut left = if program.until_eof {
+            None
+        } else {
             match self.input.int() {
-                Ok((count, _)) => count,
+                Ok((count, _)) => Some(count),
                 Err(error) => {
                     return trap(
                         Span::default(),
@@ -256,13 +270,16 @@ impl<'p, 'o> Interp<'p, 'o> {
                     )
                 }
             }
-        } else {
-            1
         };
-        for _ in 0..tests {
+        loop {
+            match &mut left {
+                Some(left) if *left <= 0 => break,
+                Some(left) => *left -= 1,
+                None if self.input.at_eof() => break,
+                None => {}
+            }
             self.stack.clear();
             self.stack.resize(program.main_locals.len(), Value::Unit);
-            self.base = 0;
             self.block(&program.main)?;
         }
         Ok(())

@@ -631,6 +631,7 @@ impl<'p> Emitter<'p> {
                 self.loop_body(*id, &[], body, out);
             }
             Stmt::For(id, slot, iter, body) => self.for_stmt(*id, *slot, iter, body, out),
+            Stmt::Return(None) if self.in_setup => self.line(out, "return false;"),
             Stmt::Return(None) => self.line(out, "return;"),
             Stmt::Return(Some(value)) | Stmt::Give(value) => {
                 let value = self.flatten(value, out);

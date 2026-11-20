@@ -117,6 +117,9 @@ pub(crate) struct Emitter<'p> {
     pub closure_id: Option<usize>,
     pub names: Vec<String>,
     pub hoisted: BTreeSet<usize>,
+    /// Emitting what is above `@!multitest`, where a top-level `return`
+    /// ends the program.
+    pub in_setup: bool,
     /// Tuple temporaries whose fields are moved out: see [`crate::scope::spent`].
     pub spent: BTreeSet<usize>,
     pub taken: BTreeSet<String>,
@@ -165,6 +168,7 @@ impl<'p> Emitter<'p> {
             closure_id: None,
             names: Vec::new(),
             hoisted: BTreeSet::new(),
+            in_setup: false,
             spent: BTreeSet::new(),
             taken: BTreeSet::new(),
             fresh: 0,
@@ -384,6 +388,9 @@ impl<'p> Emitter<'p> {
             .params
             .iter()
             .enumerate()
+            // A parameter that holds no value (a bare operator the fn was
+            // specialized for) is not a C++ parameter: `void x` is not one.
+            .filter(|(slot, _)| f.locals[*slot].ty != Ty::Unit)
             .map(|(slot, param)| {
                 let ty = &f.locals[slot].ty;
                 let name = &self.names[slot];
@@ -648,6 +655,7 @@ impl<'p> Emitter<'p> {
         for &entry in &program.entry_fns {
             enqueue(entry, &mut reachable, &mut work);
         }
+        scan_block(&program.setup, &mut reachable, &mut work);
         scan_block(&program.main, &mut reachable, &mut work);
         for c in &program.closures {
             scan_block(&c.body, &mut reachable, &mut work);
@@ -726,6 +734,18 @@ impl<'p> Emitter<'p> {
             self.block(&f.body, &mut fns);
             fns.push_str("}\n");
         }
+        if program.multitest {
+            // What is above `@!multitest`. It gives false when a top-level
+            // `return` there ended the program.
+            self.enter(None, &program.setup, 0);
+            fns.push_str("\nbool setup() {\n");
+            self.indent = 1;
+            self.hoisted_decls(&mut fns, 0);
+            self.in_setup = true;
+            self.block(&program.setup, &mut fns);
+            self.in_setup = false;
+            fns.push_str("    return true;\n}\n");
+        }
         self.enter(None, &program.main, 0);
         fns.push_str("\nvoid solve() {\n");
         self.indent = 1;
@@ -737,7 +757,7 @@ impl<'p> Emitter<'p> {
         self.need("in");
         self.need("out");
         if program.multitest {
-            self.need("read_int");
+            self.need(if program.until_eof { "at_eof" } else { "read_int" });
         }
 
         let mut out = String::new();
@@ -831,9 +851,11 @@ impl<'p> Emitter<'p> {
         } else {
             "    cpl::read_all();\n"
         });
-        if program.multitest {
+        if program.until_eof {
+            out.push_str("    if (prog::setup()) while (!cpl::at_eof()) prog::solve();\n");
+        } else if program.multitest {
             out.push_str(
-                "    for (ll tests = cpl::read_int(); tests > 0; tests--) prog::solve();\n",
+                "    if (prog::setup()) for (ll tests = cpl::read_int(); tests > 0; tests--) prog::solve();\n",
             );
         } else {
             out.push_str("    prog::solve();\n");

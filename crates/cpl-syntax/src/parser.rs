@@ -72,6 +72,9 @@ pub(crate) struct Parser<'a> {
     speculation_failed: bool,
     /// Inside `{ ... }`, where `;` separates statements.
     brace_depth: u32,
+    /// How many blocks deep the statement being read is: 0 at the top
+    /// level of the file.
+    block_depth: u32,
     /// Inside a trait body, where fns and consts may lack bodies.
     in_trait: bool,
     /// Inside a `@grader` statement, where a fn may have no body: the
@@ -99,6 +102,7 @@ impl<'a> Parser<'a> {
             speculating: 0,
             speculation_failed: false,
             brace_depth: 0,
+            block_depth: 0,
             in_trait: false,
             in_grader: false,
             half_shr: false,

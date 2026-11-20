@@ -107,6 +107,13 @@ inline void skip_space() { for (;;) { while (in_at < in.size() && is_space(in[in
 ",
     },
     Piece {
+        name: "at_eof",
+        needs: &["in"],
+        code: "\
+inline bool at_eof() { skip_space(); return in_at >= in.size(); }
+",
+    },
+    Piece {
         name: "read_int",
         needs: &["in"],
         code: "\

@@ -610,9 +610,14 @@ pub struct Program {
     /// The file's top-level code and its locals.
     pub main: Block,
     pub main_locals: Vec<Local>,
-    /// `@multitest`: the input starts with a count and the file runs once
-    /// per test.
+    /// What is above `@!multitest`: run once, before the first test case.
+    /// Its temporaries are in `main_locals`. Empty without a divider.
+    pub setup: Block,
+    /// `@!multitest`: `main` runs once per test case, after `setup`.
     pub multitest: bool,
+    /// `@!multitest(until_eof)`: there is no count; cases run until the
+    /// input ends.
+    pub until_eof: bool,
     /// `Subset<D>`: each `(subset, base)` is a domain of the `2^K` subsets
     /// of `base`, a subset held as its bitmask. It is sized when `base` is.
     pub subsets: Vec<(DomainId, DomainId)>,

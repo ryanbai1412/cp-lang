@@ -573,7 +573,7 @@ impl<'a> Checker<'a> {
                     (None, None) => Ty::Error,
                 };
                 let mut out = Vec::new();
-                pattern_types(pat, &value_ty, &mut |name, ty| {
+                let mut value = |name: &str, ty: Ty| {
                     out.push((
                         name.to_string(),
                         Def::Value {
@@ -583,7 +583,12 @@ impl<'a> Checker<'a> {
                             generics: Vec::new(),
                         },
                     ))
-                });
+                };
+                match domain_binding(pat) {
+                    // `let LIM = 100`: a capitalized name bound to a value.
+                    Some(name) => value(name, value_ty.clone()),
+                    None => pattern_types(pat, &value_ty, &mut value),
+                }
                 if let Some(ty) = ty {
                     own_domains(ty, &mut |name| {
                         out.push((
