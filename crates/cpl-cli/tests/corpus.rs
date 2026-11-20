@@ -73,6 +73,69 @@ const PENDING: &[&str] = &[
     "proto/tests/ergo/library.cp",
 ];
 
+/// Files the checker takes and lowering does not: until `cpl check` ran
+/// lowering too, it called these clean while `cpl run` and `cpl build`
+/// rejected them (`research/anti-slop-audit-1.md`, finding 1). Each is a
+/// gap in `cpl-ir` or the standard library, listed so that it is seen. A
+/// file leaves this list when it builds, and the test below says so;
+/// nothing is to be added to it.
+const NOT_BUILT: &[&str] = &[
+    "proto/ports/aac4p2.cp",
+    "proto/ports/btoi17p3.cp",
+    "proto/ports/ccc03s4.cp",
+    "proto/ports/ccc20s3.cp",
+    "proto/ports/ccc21s3.cp",
+    "proto/ports/ccc22s4.cp",
+    "proto/ports/ccc23s4.cp",
+    "proto/ports/cco18p1.cp",
+    "proto/ports/ceoi09p3.cp",
+    "proto/ports/ceoi18p1.cp",
+    "proto/ports/coci20c6p3.cp",
+    "proto/ports/dmopc21c2p1.cp",
+    "proto/ports/dpe.cp",
+    "proto/ports/dpr.cp",
+    "proto/ports/dpt.cp",
+    "proto/ports/hillclimb_dp_graph/apio09p3.cp",
+    "proto/ports/hillclimb_dp_graph/dpo.cp",
+    "proto/ports/hillclimb_dp_graph/dpp.cp",
+    "proto/ports/hillclimb_dp_graph/ioi11p4.cp",
+    "proto/ports/hillclimb_dp_graph/noi15p2.cp",
+    "proto/ports/hillclimb_dp_graph/yac6p2.cp",
+    "proto/ports/ioi11p2.cp",
+    "proto/ports/mccc4j5.cp",
+    "proto/ports/nccc10s2.cp",
+    "proto/ports/noi01p5.cp",
+    "proto/ports/noi02p1.cp",
+    "proto/ports/noi14p4.cp",
+    "proto/ports/noip04p2.cp",
+    "proto/ports/noip07p1.cp",
+    "proto/ports/noip07p2.cp",
+    "proto/ports/noip09p3.cp",
+    "proto/ports/noip14p2.cp",
+    "proto/ports/yac1p1.cp",
+    "proto/tests/ergo/columns.cp",
+    "proto/tests/ergo/counter.cp",
+    "proto/tests/ergo/effects_first.cp",
+    "proto/tests/ergo/mapfold.cp",
+    "proto/tests/ergo/moves.cp",
+    "proto/tests/ergo/prefix.cp",
+    "proto/tests/ergo/ranges.cp",
+    "proto/tests/ergo/sugar.cp",
+    "proto/tests/ergo/update.cp",
+    "proto/tests/fn/invariant.cp",
+    "proto/tests/lend/grid_rows.cp",
+    "proto/tests/lend/projection.cp",
+    "proto/tests/lend/slices.cp",
+    "proto/tests/ok/at1.cp",
+    "proto/tests/ok/do2.cp",
+    "proto/tests/ok/implicit_gen.cp",
+    "proto/tests/ok/memo_into.cp",
+    "proto/tests/ok/subset2.cp",
+    "proto/tests/redteam/empty_slice_reduce.cp",
+    "proto/tests/redteam/hashmap_sentinel.cp",
+    "proto/tests/redteam/list_expr_once.cp",
+];
+
 /// Passing tests the language has since moved away from, which the
 /// prototype rejects too: `offset_check` indexes with `i + 1`, and a step
 /// is a `?V` now.
@@ -102,10 +165,13 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
             }
             checked += 1;
             let out = check(&path);
-            let pending = PENDING.iter().any(|file| path.ends_with(file));
+            let pending = PENDING
+                .iter()
+                .chain(NOT_BUILT)
+                .any(|file| path.ends_with(file));
             if pending && out.code == 0 {
                 failures.push(format!(
-                    "{} checks clean now: take it off `PENDING`",
+                    "{} checks clean now: take it off `PENDING` or `NOT_BUILT`",
                     path.display()
                 ));
             } else if !pending && out.code != 0 {
@@ -164,6 +230,8 @@ fn each_failing_test_is_rejected_for_its_stated_reason() {
             "index_wrong_struct" => "`d` is indexed by Cell, but `Other(Row.first)` is an Other",
             "lend_outside_projection" => "`lend` is a statement of a projection's body",
             "counter_not_var" => "`seen` is a `let`, so it can't be assigned",
+            // The real `MinHeap` of `std.heap` is what is checked.
+            "minheap_by" => "`MinHeap<Int>` has no parameter named `by`",
             "use_unknown_name" => "`std.dsu` has no `Union`",
             "span_two_domains" => "span of an I and a J",
             "rt_min_empty_slice" => "`k` is declared an Int, but `max(a[f..f])` is an ?Int",
