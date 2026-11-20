@@ -27,7 +27,10 @@ impl<'p> Emitter<'p> {
         for &(subset, of) in &program.subsets {
             if of == base {
                 self.need("fail");
-                let (s, b) = (ident(&program.domains[subset]), ident(&program.domains[base]));
+                let (s, b) = (
+                    ident(&program.domains[subset]),
+                    ident(&program.domains[base]),
+                );
                 let limit = cpl_ir::MAX_SUBSET_BITS;
                 self.line(
                     out,
@@ -451,9 +454,7 @@ impl<'p> Emitter<'p> {
                         self.line(out, &format!("cpl::map_and({b}, {k}, {});", v.text));
                         return;
                     }
-                    AssignOp::Binary(
-                        BinOp::Add | BinOp::Sub | BinOp::BitOr | BinOp::BitXor,
-                    ) => {
+                    AssignOp::Binary(BinOp::Add | BinOp::Sub | BinOp::BitOr | BinOp::BitXor) => {
                         let sym = match op {
                             AssignOp::Binary(BinOp::Sub) => "-",
                             AssignOp::Binary(BinOp::BitOr) => "|",
@@ -570,7 +571,15 @@ impl<'p> Emitter<'p> {
                     }
                     _ => {}
                 }
-                let text = self.expr(init).text;
+                let text = match &init.kind {
+                    ExprKind::Field(base, index) => match &base.kind {
+                        ExprKind::Local(of) if self.spent.contains(of) => {
+                            format!("std::get<{index}>(std::move({}))", self.names[*of])
+                        }
+                        _ => self.expr(init).text,
+                    },
+                    _ => self.expr(init).text,
+                };
                 if hoisted {
                     self.line(out, &format!("{name} = {text};"));
                 } else if name.starts_with('_') {

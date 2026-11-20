@@ -8,7 +8,12 @@
 //! Where every argument is a position, a `Bool` or an `Int` of a
 //! declared range, the cache is a flat table with one cell per point,
 //! sized when the fn is first called. Past [`DENSE_LIMIT`] cells, or
-//! for arguments with no bound (`w: Int`, a `Str`), it is a hash map.
+//! for arguments with no bound (a `Str`), it is a hash map.
+//!
+//! A fn of one `Int` too wide for a table (`w: 1..=1e9`, `w: Int`) gets
+//! both: a recursion on a number asks for small ones far more often
+//! than large ones, so the first [`PREFIX`] values have cells, made as
+//! they are reached, and the rest are hashed.
 //!
 //! The cache of a top-level fn lasts for one test: the file's own lines
 //! start it afresh. That of a nested fn belongs to the block the fn is
@@ -18,6 +23,9 @@ use super::*;
 
 /// The largest flat table, in cells.
 const DENSE_LIMIT: i64 = 1 << 24;
+
+/// How many of the smallest values of a wide `Int` get a cell.
+const PREFIX: i64 = 1 << 20;
 
 /// Where the cache of a `@memo` fn is kept.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -94,13 +102,20 @@ impl<'a> Lowerer<'a> {
                 PlaceKind::Global(self.globals.len() - 1)
             }
             MemoHome::Outer => {
-                let outer = self.outer_cxs.last_mut().expect("a nested fn has an enclosing one");
+                let outer = self
+                    .outer_cxs
+                    .last_mut()
+                    .expect("a nested fn has an enclosing one");
                 let slot = outer.locals.len();
                 outer.locals.push(Local {
                     name: name.clone(),
                     ty: ty.clone(),
                 });
-                outer.scopes.last_mut().expect("an open scope").insert(name.clone(), slot);
+                outer
+                    .scopes
+                    .last_mut()
+                    .expect("an open scope")
+                    .insert(name.clone(), slot);
                 outer.mut_slots.insert(slot);
                 memo.lets.push(Stmt::Let(slot, None));
                 PlaceKind::Local(self.capture_from_outer(&name).expect("just declared"))
@@ -156,17 +171,25 @@ impl<'a> Lowerer<'a> {
                 });
                 true
             }
-            Spec::Int {
-                lo: Some(lo),
-                hi: Some(hi),
-                ..
-            } => {
+            Spec::Int { .. } | Spec::Plain(Ty::Int) => {
+                let (lo, hi) = match spec {
+                    Spec::Int { lo, hi, .. } => (lo.as_deref().cloned(), hi.as_deref().cloned()),
+                    _ => (None, None),
+                };
                 let at = memo.parts.len();
                 let first = self.memo_var(memo, &format!("lo{at}"), Ty::Int);
                 let len = self.memo_var(memo, &format!("len{at}"), Ty::Int);
-                memo.inits.push(set(&first, (**lo).clone()));
-                let width = self.memo_bin(BinOp::Sub, (**hi).clone(), read(&first), span);
-                memo.inits.push(set(&len, self.int_add(width, 1)));
+                let lo = lo.unwrap_or_else(|| self.int_lit(0, span));
+                memo.inits.push(set(&first, lo));
+                // With no upper bound: wider than any table.
+                let size = match hi {
+                    Some(hi) => {
+                        let width = self.memo_bin(BinOp::Sub, hi, read(&first), span);
+                        self.int_add(width, 1)
+                    }
+                    None => self.int_lit(DENSE_LIMIT + 1, span),
+                };
+                memo.inits.push(set(&len, size));
                 memo.parts.push(Part {
                     ord: self.memo_bin(BinOp::Sub, value, read(&first), span),
                     len: read(&len),
@@ -177,7 +200,11 @@ impl<'a> Lowerer<'a> {
             Spec::Fields(ty @ (Ty::Tuple(_) | Ty::Record(_)), specs) => {
                 let _ = ty;
                 specs.iter().enumerate().all(|(i, field)| {
-                    let part = self.mk(ExprKind::Field(Box::new(value.clone()), i), field.ty(), span);
+                    let part = self.mk(
+                        ExprKind::Field(Box::new(value.clone()), i),
+                        field.ty(),
+                        span,
+                    );
                     self.memo_parts(memo, part, field)
                 })
             }
@@ -206,7 +233,10 @@ impl<'a> Lowerer<'a> {
             inits: Vec::new(),
             parts: Vec::new(),
         };
-        let args: Vec<Expr> = params.iter().map(|(slot, _)| self.local(*slot, span)).collect();
+        let args: Vec<Expr> = params
+            .iter()
+            .map(|(slot, _)| self.local(*slot, span))
+            .collect();
         let mut dense = !params.is_empty();
         for ((_, written), arg) in params.iter().zip(&args) {
             let spec = match written {
@@ -260,6 +290,19 @@ impl<'a> Lowerer<'a> {
                 ty: Ty::Int,
                 span: self.span(span),
             };
+            // One wide `Int`: cells for its smallest values only, made
+            // as they are reached.
+            let lazy = matches!(
+                &memo.parts[..],
+                [Part {
+                    ranged: true,
+                    len: Expr {
+                        kind: ExprKind::Local(_) | ExprKind::Global(_),
+                        ..
+                    },
+                    ..
+                }]
+            );
             for part in &memo.parts {
                 // cells * len <= DENSE_LIMIT, without the product.
                 let room = self.memo_bin(
@@ -272,11 +315,36 @@ impl<'a> Lowerer<'a> {
                 let fits = self.memo_cmp(CmpOp::Le, part.len.clone(), room, span);
                 let fits = self.memo_bin(BinOp::And, some, fits, span);
                 let fits = self.memo_bin(BinOp::And, read(&flat), fits, span);
-                let grown = self.memo_bin(BinOp::Mul, self.local(cells, span), part.len.clone(), span);
+                let grown =
+                    self.memo_bin(BinOp::Mul, self.local(cells, span), part.len.clone(), span);
+                let wide = if lazy {
+                    let kind = match &part.len.kind {
+                        ExprKind::Local(slot) => PlaceKind::Local(*slot),
+                        ExprKind::Global(id) => PlaceKind::Global(*id),
+                        _ => unreachable!("checked above"),
+                    };
+                    let len = Place {
+                        kind,
+                        ty: Ty::Int,
+                        span: self.span(span),
+                    };
+                    let positive =
+                        self.memo_cmp(CmpOp::Ge, part.len.clone(), self.int_lit(1, span), span);
+                    vec![Stmt::If(
+                        positive,
+                        block(vec![
+                            set(&len, self.int_lit(PREFIX, span)),
+                            set(&cells_place, self.int_lit(0, span)),
+                        ]),
+                        block(vec![set(&flat, no.clone())]),
+                    )]
+                } else {
+                    vec![set(&flat, no.clone())]
+                };
                 start.push(Stmt::If(
                     fits,
                     block(vec![set(&cells_place, grown)]),
-                    block(vec![set(&flat, no.clone())]),
+                    block(wide),
                 ));
             }
             let zero = self.temp(ret.clone());
@@ -302,7 +370,8 @@ impl<'a> Lowerer<'a> {
             let mut index = self.int_lit(0, span);
             for part in &memo.parts {
                 if part.ranged {
-                    let low = self.memo_cmp(CmpOp::Ge, part.ord.clone(), self.int_lit(0, span), span);
+                    let low =
+                        self.memo_cmp(CmpOp::Ge, part.ord.clone(), self.int_lit(0, span), span);
                     let high = self.memo_cmp(CmpOp::Lt, part.ord.clone(), part.len.clone(), span);
                     inside = self.memo_bin(BinOp::And, inside, low, span);
                     inside = self.memo_bin(BinOp::And, inside, high, span);
@@ -324,12 +393,58 @@ impl<'a> Lowerer<'a> {
                 )
             };
             let mut found = vec![Stmt::Let(at, Some(index))];
+            if lazy {
+                let have = |lw: &Self| {
+                    lw.mk(
+                        ExprKind::Builtin(Builtin::Len, vec![read(&seen)]),
+                        Ty::Int,
+                        span,
+                    )
+                };
+                let short = self.memo_cmp(CmpOp::Ge, self.local(at, span), have(self), span);
+                let twice = self.memo_bin(BinOp::Mul, have(self), self.int_lit(2, span), span);
+                let need = self.int_add(self.local(at, span), 1);
+                let more = self.mk(
+                    ExprKind::Builtin(Builtin::Max, vec![twice, need]),
+                    Ty::Int,
+                    span,
+                );
+                let size = self.mk(
+                    ExprKind::Builtin(Builtin::Min, vec![more, memo.parts[0].len.clone()]),
+                    Ty::Int,
+                    span,
+                );
+                let to = self.temp(Ty::Int);
+                let blank = self.temp(ret.clone());
+                let resize = |lw: &Self, list: &Place, fill: Expr| {
+                    Stmt::Expr(lw.mk(
+                        ExprKind::Mutate(
+                            Mutation::Resize,
+                            Box::new(list.clone()),
+                            vec![lw.local(to, span), fill],
+                        ),
+                        Ty::Unit,
+                        span,
+                    ))
+                };
+                found.push(Stmt::If(
+                    short,
+                    block(vec![
+                        Stmt::Let(to, Some(size)),
+                        Stmt::Let(blank, None),
+                        resize(self, &seen, no.clone()),
+                        resize(self, &vals, self.local(blank, span)),
+                    ]),
+                    Block::default(),
+                ));
+            }
             found.push(Stmt::If(
                 cell_of(self, &seen, Ty::Bool),
                 block(vec![Stmt::Return(Some(cell_of(self, &vals, ret.clone())))]),
                 Block::default(),
             ));
-            let (seen_cell, vals_cell) = (cell(self, &seen, Ty::Bool), cell(self, &vals, ret.clone()));
+            let (seen_cell, vals_cell) =
+                (cell(self, &seen, Ty::Bool), cell(self, &vals, ret.clone()));
             found.extend(answer(self, &|value| {
                 vec![set(&vals_cell, value), set(&seen_cell, yes.clone())]
             }));
@@ -343,13 +458,21 @@ impl<'a> Lowerer<'a> {
             start.push(set(&table, empty));
             let k = self.temp(key.ty.clone());
             out.push(Stmt::Let(k, Some(key)));
+            let got_ty = Ty::Opt(Box::new(ret.clone()));
+            let got = self.temp(got_ty.clone());
+            let lookup = self.mk(
+                ExprKind::Builtin(Builtin::MapGet, vec![read(&table), self.local(k, span)]),
+                got_ty.clone(),
+                span,
+            );
+            out.push(Stmt::Let(got, Some(lookup)));
             let known = self.mk(
-                ExprKind::Builtin(Builtin::Contains, vec![read(&table), self.local(k, span)]),
+                ExprKind::IsSome(Box::new(self.local(got, span))),
                 Ty::Bool,
                 span,
             );
             let stored = self.mk(
-                ExprKind::Index(Box::new(read(&table)), vec![self.local(k, span)]),
+                ExprKind::Unwrap(Box::new(self.local(got, span)), false),
                 ret.clone(),
                 span,
             );
@@ -369,7 +492,11 @@ impl<'a> Lowerer<'a> {
             out.push(Stmt::Return(Some(call.clone())));
         }
 
-        let fresh = self.mk(ExprKind::Unary(UnOp::Not, Box::new(read(&ready))), Ty::Bool, span);
+        let fresh = self.mk(
+            ExprKind::Unary(UnOp::Not, Box::new(read(&ready))),
+            Ty::Bool,
+            span,
+        );
         out.insert(0, Stmt::If(fresh, block(start), Block::default()));
         out
     }

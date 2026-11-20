@@ -24,3 +24,5 @@ print(max(collatz(x) for x in 1..=n)!)
 fn word(k: Int, tag: Str) -> Str:
     if k == 0: tag else: word(k - 1, tag) + word(k - 1, tag)
 print(word(3, "ab").len)
+// Past the cells kept for small values, and below them.
+print(collatz(3000001), collatz(3000001), collatz(1))
