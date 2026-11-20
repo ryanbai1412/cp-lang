@@ -174,6 +174,9 @@ reallocates it. With `n = 2` and one trail of length 1 the port printed 2. This
 is undefined behaviour reachable from ordinary code, with no diagnostic. A
 `let` of a list element should copy, or the borrow should forbid the push.
 
+*Fixed.* A destructuring `let` copies (decision 15.4, batch 12 L0;
+`proto/tests/redteam/let_destructure_push.cp`).
+
 **W9. Tuple assignment compiles to nothing.** In `dpz`,
 
 ```
@@ -184,10 +187,18 @@ builds, and assigns nothing (the C++ assigns to a temporary), so the loop
 never ended. Next to it, `var (node, lo, hi) = (...)` declares three
 constants. Both should either work or be errors.
 
+*Fixed.* Assigning to a tuple is a compile error that says to assign each
+part on its own line (`proto/tests/bad/tuple_assign.cp`); whether it should
+assign is left to the language pass. `var (a, b) = ...` declares vars
+(`proto/tests/redteam/var_destructure.cp`). Decision 15.12.
+
 **W10. Programs that pass the front end and fail in `g++`.** A table built
 from `rand` and narrowed to a range element type
 (`let spots: [Field]1..=len = [Field] _ => rand(1, len)`), and a
 `HashMap<(Int, Int), Int>`, both build and then fail to compile as C++.
+
+*Fixed.* Both build and run: batch 6 S5 and batch 5 K1
+(`proto/tests/redteam/rand_table_narrow.cp`, `pair_key_map.cp`).
 
 **W11. Tasks judged through a function.** `ioi13p1` and `ioi12p4` are
 `travelTime(n, m, l, a, b, t)` and `DistanceSum(n, x, y)` on DMOJ; the accepted

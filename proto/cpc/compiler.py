@@ -2325,7 +2325,7 @@ class Compiler(LendMixin):
         # a `let` owns its value: the names must not point into a list that a later push may move
         self.emit(f"const auto{'' if owned else '&'} {tmp} = {c};")
         for sub, fn, ft in zip(pat.items, t.names, t.types):
-            self.bind_pattern(sub, f"{tmp}.{self.field_cpp(fn)}", ft, node)
+            self.bind_pattern(sub, f"{tmp}.{self.field_cpp(fn)}", ft, node, mut=mut)
 
     def loop(self, pat, it, node, body):
         # a read() inside a top-level loop: the input ends where the outermost loop ends
@@ -3893,6 +3893,9 @@ class Compiler(LendMixin):
                 if not self.lookup(fold):
                     return self.s_map_fold(s, mt)
                 self.no_identity(tgt, fold)
+        if tgt.kind == "tuple":         # it built, and assigned to a temporary
+            self.error(s, "a tuple is a value, not a place to assign to\n"
+                          "  help: assign each part on its own line, binding what the later lines need first with a `let`")
         self.lvalue = (tgt, op)
         tc, tt = self.expr(tgt)
         self.lvalue = None

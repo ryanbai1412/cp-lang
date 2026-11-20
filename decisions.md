@@ -550,3 +550,8 @@ scouts expected and is locked by a test under `proto/tests/`.
   optional field be sorted, pushed on a `MinHeap` or used as a `Map` key,
   which did not get past `g++`. `a < b` on two optionals is still not an
   expression.
+- **15.12 `var (a, b) = ...` declares vars; a tuple is not assigned to.**
+  The names of a `var` pattern are vars, as the one name of `var a = ...`
+  is; they were constants. `(a, b) = (b, a + b)` built and assigned to a
+  temporary, so it is a compile error until the language pass decides
+  whether a tuple of places is a place.
