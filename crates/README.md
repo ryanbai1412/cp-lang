@@ -39,7 +39,8 @@ runtime helpers the program calls, and is refused if it would pass the
 by zero, an `Int` overflow, `!` on `none`, input outside its declared
 range, recursion that never ends. Each stops the program with exit
 status 3 and an error that points at the source. A failed `assert` does
-the same in both. `Str` is bytes and `Char` is one byte everywhere: a
+the same in both. A `Bool` prints as `YES` or `NO`, as it does in the
+prototype. `Str` is bytes and `Char` is one byte everywhere: a
 literal must be ASCII (`E0502`), and other bytes pass from input to
 output untouched.
 
@@ -60,6 +61,10 @@ $ CPL_BLESS=1 cargo test -p cpl-cli --test differential
 
 Read the recorded `.out` before committing it: from then on it is what
 both back ends are held to.
+
+`cpl-verify fuzz` adds random programs to the fixed ones: it checks
+`cpl run` and the sanitized C++ against its own reference evaluator
+(`crates/cpl-verify/README.md` has the command).
 
 ## One front end, reused per item
 

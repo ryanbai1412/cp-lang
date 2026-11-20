@@ -48,7 +48,7 @@ impl<'p> Emitter<'p> {
                 self.need("put_float");
                 format!("cpl::put_float({}, {digits});", value.text)
             }
-            Ty::Bool => format!("cpl::put_str({} ? \"true\" : \"false\");", value.at(UNARY)),
+            Ty::Bool => format!("cpl::put_str({} ? \"YES\" : \"NO\");", value.at(UNARY)),
             Ty::Char => format!("cpl::put_char({});", value.text),
             Ty::Str => format!("cpl::put_str({});", value.text),
             Ty::Unit | Ty::Error => format!("{};", value.text),
