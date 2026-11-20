@@ -4,7 +4,7 @@ A language for competitive programming that compiles to one clean C++17
 file you can submit to any judge. The command is `cpl` (a working name)
 and source files end in `.cp`.
 
-The language is locked at **v2.2**. The whole surface fits on
+The language is locked at **0.2.2**. The whole surface fits on
 [one page](docs/one-page-cheat-sheet.md): 34 reserved keywords (30 for
 contestants, 4 for library authors), 4 numeric types and 7 auto-derived
 core traits.
@@ -35,7 +35,7 @@ int main() {
 }
 ```
 
-In CP Lang v2.2 the unreachable state is `none`, and `?Int` does the
+In CP Lang 0.2.2 the unreachable state is `none`, and `?Int` does the
 bookkeeping:
 
 ```cp
@@ -53,10 +53,10 @@ print(dp[x] ?? -1)
 `dp[s - c] + 1` is `none` when `dp[s - c]` is, and `min=` skips `none`, so
 there is no `INF` to pick and no guard to forget. The bounds in the first
 line are the statement's constraints: they size the array and check
-the input. This example is written against the v2.2 specification; see
+the input. This example is written against the 0.2.2 specification; see
 [Status](#status) for what runs today.
 
-## What v2.2 is
+## What 0.2.2 is
 
 - **One index mechanism.** `Bool`, enums, `?T`, `lo..=hi`, tuples, records
   and `Subset<D>` all implement `Index`, so `[V]Int`, `[(V, Bool)]Int` and
@@ -138,17 +138,17 @@ $ site/.venv/bin/python site/bundle.py                       # writes dist/cp-la
 
 ## Status
 
-v2.2 is a locked specification, and the two implementations are still
+0.2.2 is a locked specification, and the two implementations are still
 catching up to it. The Rust compiler (`crates/`) checks, runs and builds a
 growing subset; the playground runs that same compiler. The Python
 prototype (`proto/`) covers more of the library and builds the corpus
-ports, but predates some v2.2 spellings. Neither accepts Tropical
+ports, but predates some 0.2.2 spellings. Neither accepts Tropical
 Optional arithmetic yet, so the example above does not compile today.
 The docs site labels every snippet as either runnable or specification.
 
 ## Repository map
 
-- `docs/one-page-cheat-sheet.md`: the v2.2 language on one page.
+- `docs/one-page-cheat-sheet.md`: the 0.2.2 language on one page.
 - `decisions.md`: every language decision, its status and its reason.
 - `plan/`: what we're building. Start with `plan/agent-context.md`, then
   `plan/README.md` and `plan/00-vision.md`.

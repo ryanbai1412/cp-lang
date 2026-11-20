@@ -1,4 +1,4 @@
-You already know how to solve the problem. This chapter is about expressing the solution in CP Lang v2.2: indentation instead of braces, `?T` instead of sentinels, structural `[0..n]T` arrays alongside nominal domains, and a file that reads like the flow of your algorithm.
+You already know how to solve the problem. This chapter is about expressing the solution in CP Lang 0.2.2: indentation instead of braces, `?T` instead of sentinels, structural `[0..n]T` arrays alongside nominal domains, and a file that reads like the flow of your algorithm.
 
 ## Values, ranges, and mutation
 
@@ -14,7 +14,7 @@ When you want a plain integer-indexed array without introducing a nominal domain
 ```example range_array
 ```
 
-In CP Lang v2.2, `cnt.fill(0)` resets the entire array in place (and `seen.fill(none)` resets a `[D]?T` table between test cases).
+In CP Lang 0.2.2, `cnt.fill(0)` resets the entire array in place (and `seen.fill(none)` resets a `[D]?T` table between test cases).
 
 ## Missing is a value
 
@@ -29,7 +29,7 @@ In CP Lang v2.2, `cnt.fill(0)` resets the entire array in place (and `seen.fill(
 
 Parameters borrow read-only by default. A function that mutates an argument marks it `mut`, and the caller writes `mut` too. There is no implicit deep copy of an array.
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 fn add_to(mut a: [V]Int, v: V, delta: Int):
     a[v] += delta
 
@@ -39,7 +39,7 @@ let snapshot = a.copy()
 
 A plain nested `fn` can read and mutate captured outer `var` bindings directly—ideal for a DFS that updates `vis` and `order` without threading extra parameters:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 var vis: [V]Bool = false
 fn dfs(u: V):
     vis[u] = true
@@ -53,7 +53,7 @@ Read [ownership & borrowing](borrowing.html) for the lexical rules behind `mut` 
 
 Swap or step coupled state with parallel tuple assignment—the right-hand side is evaluated completely before any binding is written:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 var (r0, r1) = (a, b)
 while r1 != 0:
     let q = r0 / r1
@@ -62,7 +62,7 @@ while r1 != 0:
 
 There is no `defer`. Undo is one explicit line after the work it covers, which also works across sibling branches and early returns:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 let snap = dsu.mark()
 solve(left)
 dsu.undo_to(snap)
@@ -74,7 +74,7 @@ cur.pop()
 
 Name record fields instead of remembering `.first.second`, and match enums exhaustively with bare variant names:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 type Edge = (u: V, v: V, w: 1..=1e9)
 let edges: [0..m]Edge = read()
 
@@ -101,7 +101,7 @@ match move:
 
 Top-level statements run in order from top to bottom. A top-level `return` ends the program, or the current test case under `@multitest`:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 @multitest
 let n: 1..=2e5 = read()
 domain V = 1..=n

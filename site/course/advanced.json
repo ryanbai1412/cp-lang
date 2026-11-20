@@ -178,7 +178,7 @@
       {
         "id": "algebra-runtime-op",
         "title": "Bare operators vs. Monoid(id, op)",
-        "prompt": "In CP Lang v2.2, how do you construct a range-sum SegTree and a custom (best, count) SegTree over domain V?",
+        "prompt": "In CP Lang 0.2.2, how do you construct a range-sum SegTree and a custom (best, count) SegTree over domain V?",
         "hint": "Standard associative operators need no wrapper; custom node combines use Monoid(id, op).",
         "solution": "Pass the bare operator + for range sums (SegTree<V, Int>(+, a)) and Monoid(id, op) for a custom combine over a node value.",
         "kind": "choice",
@@ -189,7 +189,7 @@
           "Pass a string \"+\" that SegTree parses at runtime"
         ],
         "answer": 0,
-        "explanation": "CP Lang v2.2 has no single-purpose operator wrapper types. Built-in associative operators (+, *, ^, &, |, min, max, gcd) pass directly to SegTree and SparseTable, while custom monoids pass Monoid(id, op) and lazy tags pass stock tags like AddSum or Action(id, compose, apply)."
+        "explanation": "CP Lang 0.2.2 has no single-purpose operator wrapper types. Built-in associative operators (+, *, ^, &, |, min, max, gcd) pass directly to SegTree and SparseTable, while custom monoids pass Monoid(id, op) and lazy tags pass stock tags like AddSum or Action(id, compose, apply)."
       },
       {
         "id": "algebra-local-library",

@@ -1,4 +1,4 @@
-// SYNTAX TEST "source.cp" "CP Lang v2.2 keywords and operators"
+// SYNTAX TEST "source.cp" "CP Lang 0.2.2 keywords and operators"
 
 let n = read()
 // <--- storage.type.let.cp

@@ -1,4 +1,4 @@
-"""Render the CP Lang v2.2 Showcase from five verified corpus ports."""
+"""Render the CP Lang 0.2.2 Showcase from five verified corpus ports."""
 
 import html
 from pathlib import Path
@@ -160,7 +160,7 @@ def showcase_html(highlight):
             f'<div class="showcase-grid">'
             f'<figure class="code-block"><figcaption><span>Before · C++17 ({item["raw_loc"]} raw / {item["stripped_loc"]} stripped) · <a href="{REPO_URL}/{item["cpp_path"]}">source ↗</a></span></figcaption>'
             f'<pre tabindex="0"><code>{html.escape(item["cpp_excerpt"])}</code></pre></figure>'
-            f'<figure class="code-block"><figcaption><span>After · CP Lang v2.2 ({item["v2_loc"]} lines) · <a href="{REPO_URL}/{item["cp_path"]}">port ↗</a></span>'
+            f'<figure class="code-block"><figcaption><span>After · CP Lang 0.2.2 ({item["v2_loc"]} lines) · <a href="{REPO_URL}/{item["cp_path"]}">port ↗</a></span>'
             f'<button class="copy-button" type="button" aria-label="Copy code">Copy</button></figcaption>'
             f'<pre tabindex="0"><code>{highlight(cp_source, "cp")}</code></pre></figure>'
             f'</div></section>'
@@ -168,7 +168,7 @@ def showcase_html(highlight):
 
     banner = (
         f'<div class="showcase-totals">'
-        f'<span><strong>5 corpus ports:</strong> {total_v2} CP Lang v2.2 lines vs {total_raw} raw C++17 (−{raw_pct}%) and {total_stripped} library-stripped C++17 (−{stripped_pct}%).</span>'
+        f'<span><strong>5 corpus ports:</strong> {total_v2} CP Lang 0.2.2 lines vs {total_raw} raw C++17 (−{raw_pct}%) and {total_stripped} library-stripped C++17 (−{stripped_pct}%).</span>'
         f'<span>Counts exclude blank and comment lines; every port has a verified runnable twin under <code>proto/ports/</code>.</span>'
         f'</div>'
     )

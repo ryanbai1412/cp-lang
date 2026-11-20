@@ -1,5 +1,5 @@
 // The extension's word lists and TextMate grammar must match the locked
-// CP Lang v2.2 surface (`docs/one-page-cheat-sheet.md`,
+// CP Lang 0.2.2 surface (`docs/one-page-cheat-sheet.md`,
 // `research/language-architecture-v2.2.md`) with zero stale v1/v2.1 tokens.
 
 import * as assert from 'node:assert/strict';
@@ -40,7 +40,7 @@ const REMOVED_V21_BUILTINS = [
 
 const STALE_V1_DECORATORS = ['local', 'derive', 'once', 'wire', 'invariant', 'sample'];
 
-test('keyword budget matches CP Lang v2.2 (30 contestant + 4 library = 34)', () => {
+test('keyword budget matches CP Lang 0.2.2 (30 contestant + 4 library = 34)', () => {
     assert.equal(CONTESTANT_KEYWORDS.length, 30);
     assert.equal(LIBRARY_KEYWORDS.length, 4);
     assert.equal(KEYWORDS.length, 34);
@@ -56,7 +56,7 @@ test('contextual keywords are disjoint from reserved keywords', () => {
     assert.deepEqual(CONTEXTUAL_KEYWORDS.filter(word => reserved.has(word)), []);
 });
 
-test('type, constant, function and decorator tables have CP Lang v2.2 parity and zero stale entries', () => {
+test('type, constant, function and decorator tables have CP Lang 0.2.2 parity and zero stale entries', () => {
     for (const stale of STALE_V1_TYPES) {
         assert.ok(!PRELUDE_TYPES.includes(stale), `stale v1 type in PRELUDE_TYPES: ${stale}`);
         assert.ok(!STDLIB_TYPES.includes(stale), `stale v1 type in STDLIB_TYPES: ${stale}`);
@@ -78,7 +78,7 @@ test('type, constant, function and decorator tables have CP Lang v2.2 parity and
         assert.ok(STDLIB_TYPES.includes(requiredStdlib), `missing stdlib type ${requiredStdlib}`);
     }
     for (const requiredBuiltin of ['prev_permutation', 'next_permutation', 'ceil_div', 'rand', 'shuffle']) {
-        assert.ok(PRELUDE_VALUES.includes(requiredBuiltin), `missing v2.2 builtin ${requiredBuiltin}`);
+        assert.ok(PRELUDE_VALUES.includes(requiredBuiltin), `missing 0.2.2 builtin ${requiredBuiltin}`);
     }
     const decoratorNames = DECORATORS.map(d => d.name);
     assert.deepEqual(
@@ -101,7 +101,7 @@ test('the grammar lists the exact same prelude and stdlib tables as languageData
     assert.deepEqual(sorted(alternation('support.function.builtin.cp')), sorted(PRELUDE_VALUES));
 });
 
-test('the grammar gives every v2.2 reserved word a keyword/storage/literal scope', async () => {
+test('the grammar gives every 0.2.2 reserved word a keyword/storage/literal scope', async () => {
     for (const word of KEYWORDS) {
         const scopes = await scopesOf(`x ${word} y`, word);
         assert.ok(

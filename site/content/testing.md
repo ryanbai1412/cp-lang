@@ -4,7 +4,7 @@ Contest bugs rarely come from the idea; they come from an edge case you did not 
 
 Annotate a pure recursive function with `@memo` to cache its results over any `Index` parameter tuple:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 @memo
 fn dp(u: V, used: Bool) -> Int:
     ...
@@ -30,7 +30,7 @@ There is one assertion keyword, so a sanity check can never be stripped by accid
 
 Write your slow reference, constructive validator, or interactive judge right next to your solution:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 @gen
 fn make_case(size: Int):
     let n = rand(1..=size)
@@ -73,4 +73,4 @@ For a visual side-by-side comparison of an optimized DP run against its referenc
 
 ## How the site stays honest
 
-Every worked example embedded in these pages is checked by the test suite against both the compiler and the offline WebAssembly runtime. Code blocks marked **CP Lang v2.2** show the locked specification; blocks marked **prototype tested** are executed on every build.
+Every worked example embedded in these pages is checked by the test suite against both the compiler and the offline WebAssembly runtime. Code blocks marked **CP Lang 0.2.2** show the locked specification; blocks marked **prototype tested** are executed on every build.

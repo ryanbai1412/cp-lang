@@ -1,8 +1,8 @@
-Canonical one-page contest reference for the locked **CP Lang v2.2** specification ([architecture](https://github.com/ryanbai1412/cp-lang/blob/main/research/language-architecture-v2.2.md), [decisions §16–§19](https://github.com/ryanbai1412/cp-lang/blob/main/decisions.md)). Every construct has one spelling: 34 reserved keywords, 4 numeric types, 7 core traits, and 8 contestant decorators. This page mirrors [`docs/one-page-cheat-sheet.md`](https://github.com/ryanbai1412/cp-lang/blob/main/docs/one-page-cheat-sheet.md).
+Canonical one-page contest reference for the locked **CP Lang 0.2.2** specification ([architecture](https://github.com/ryanbai1412/cp-lang/blob/main/research/language-architecture-v2.2.md), [decisions §16–§19](https://github.com/ryanbai1412/cp-lang/blob/main/decisions.md)). Every construct has one spelling: 34 reserved keywords, 4 numeric types, 7 core traits, and 8 contestant decorators. This page mirrors [`docs/one-page-cheat-sheet.md`](https://github.com/ryanbai1412/cp-lang/blob/main/docs/one-page-cheat-sheet.md).
 
 ## 1. Bindings, Numbers & Operators
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 let n = 10                      // immutable binding
 var ans = 0                     // mutable binding
 const MOD = 1_000_000_007       // compile-time constant (inlined)
@@ -19,7 +19,7 @@ const MOD = 1_000_000_007       // compile-time constant (inlined)
 
 No `INF` or `-1` sentinels. `?Int` (`LLONG_MIN`), `?F64` (quiet NaN), `?V`, `?Bool`, `?Char`, and `?Enum` are niche-packed with zero extra memory.
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 var dist: [V]?Int = none        // none or bare value `dist[src] = 0`
 let d = dist[v] ?? -1           // fallback on none (parens required when mixing `??` with `+ - * / %`)
 let u = opt ?? return (none, none)  // diverging RHS (`return`, `break`, `continue`) supported on `??`
@@ -39,7 +39,7 @@ if let a = x and let b = y: ... // chained optional bindings (also `if let` as e
 
 ## 3. Domains, Indices, Boundaries, Ranges & Grids
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 domain V = 1..=n                // nominal bounded index: 1..=n (0-cost in C++)
 let a: [V]Int = read()          // dense array indexed by V (zero checks on a[v])
 var dp: [Row, Col]Int = 0       // 2D array indexed by (Row, Col); g[p] works for p: (Row, Col)
@@ -61,7 +61,7 @@ let b: [V]Int = [V] v => a[v] * 2   // domain comprehension (list comprehension:
 
 ASCII-only, `0..s.len`-indexed byte array (zero UTF-8, O(1) indexing and slicing).
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 let s: Str = read()
 let ch = s[i]                   // Char; digit: ch - '0', letter: ch - 'a', s.items
 let sub = s[l..r]               // O(1) slice; s[..k], s[k..], s.len, s.is_empty, match s:
@@ -76,7 +76,7 @@ let a: [domain A]Char = read()  // opt-in nominal domain for multi-string DP
 
 ## 5. Control Flow & Parallel Assignment
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 if x < 0: neg()
 elif x == 0: zero()                       // always `elif`, never `else if`
 else: pos()
@@ -102,7 +102,7 @@ let res = match op:                       // exhaustive expression; bare variant
 
 ## 6. Functions, Generics, Closures & Ownership
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 fn swap_adj(mut a: [V]Int, i: V):         // mut on param AND at call site
     if let j = i + 1: swap(mut a[i], mut a[j])
 
@@ -123,7 +123,7 @@ sort(mut es, by: e => (e.w, -e.u))        // ONE lambda syntax: `x => expr`; des
 
 **7 core traits** derive automatically whenever fields support them: `Index`, `Seq`, `Eq`, `Ord` (enum variants order by declaration order; structs/tuples with `?T` or `Mod<P>` omit `Ord`), `Hash`, `Show`, `Read`. (2 library-author traits: `Indexed`, `Iterable`.)
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 type Edge = (u: V, v: V, w: Int)          // structural record; e.u or let (u, v, w) = e
 
 struct SegNode:
@@ -140,7 +140,7 @@ enum Node: Source | Sink | Build(s: Station) | Serve(u: User)   // payload enum 
 
 ## 8. I/O, `@multitest`, `@memo`, Interactive & `@grader`
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 @multitest                                // whole-file, `@multitest(until_eof)`, or `@multitest fn solve():`
 let (n, m): (1..=2e5, 1..=n) = read()     // dependent bounds on scalars, tuples, record fields
 let g: [Row, Col]?Int = read(none: "X")   // symmetric `none:` on read / print / read_output

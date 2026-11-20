@@ -4,7 +4,7 @@ One general index mechanism—the `Index` trait—powers domains, 2D grids, comp
 
 A two-dimensional grid `[Row, Col]T` is indexed by the product domain `type Cell = (Row, Col)`. You index with `g[p]` directly without unpacking `(r, c)`, and iterate in-bounds neighbors without writing `dr`/`dc` arrays or bounds checks:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 domain Row = 1..=h
 domain Col = 1..=w
 type Cell = (Row, Col)
@@ -24,7 +24,7 @@ One `Range<I>` type covers `l..r`, `l..=r`, and open-ended `..i`, `..=i`, `i..`,
 
 When values are huge (up to `1e9`) but only their relative order matters, `compress(all)` creates a fresh nominal domain `xs.D` alongside exact lookup `xs.at(val) -> xs.D`, lower-bound lookup `xs.first_ge(val) -> ?xs.D`, and inverse lookup `xs[id]`:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 let xs = compress(all_vals)
 var bit = Fenwick<xs.D, Int>()
 for x in queries:

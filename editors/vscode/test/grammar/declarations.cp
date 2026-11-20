@@ -1,4 +1,4 @@
-// SYNTAX TEST "source.cp" "CP Lang v2.2 declarations, decorators and imports"
+// SYNTAX TEST "source.cp" "CP Lang 0.2.2 declarations, decorators and imports"
 
 use std.graph
 // <--- keyword.control.import.cp

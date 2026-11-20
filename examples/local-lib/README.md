@@ -30,9 +30,9 @@ YES
 ## What is in it, and why it is not in `std`
 
 The standard library holds what most contests need most of the time. The
-locked **CP Lang v2.2** architecture (`research/language-architecture-v2.2.md`)
+locked **CP Lang 0.2.2** architecture (`research/language-architecture-v2.2.md`)
 keeps `std` small enough to know by heart by placing specialized
-structures and algorithms — including the 11 v2.2 relocations (`MonoDeque`,
+structures and algorithms — including the 11 0.2.2 relocations (`MonoDeque`,
 `Steps`, `TwoSat`, `Mat`, `palindromes`, `shortest`/`walk_back`, `mst`,
 `convex_hull`, `Dir8`, and `MinCostFlow`) plus the T13 library structures —
 in a local library like this one. Each module below is one file with its
@@ -158,7 +158,7 @@ Sequences and strings, in `seq/` and `str/`:
 - `hash2d.cp`: `Hash2D<R, C>`, the hash of any rectangle of a grid.
 
 Union-find with undo lives in `std.dsu` (`Dsu.mark()` / `Dsu.undo_to(snap)`),
-while `TwoSat` lives here in `graph/two_sat.cp` per the v2.2 stdlib split.
+while `TwoSat` lives here in `graph/two_sat.cp` per the 0.2.2 stdlib split.
 
 ## The five T13 structures, by example
 

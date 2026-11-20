@@ -1,4 +1,4 @@
-// Fallback completion for when the server offers none: CP Lang v2.1
+// Fallback completion for when the server offers none: CP Lang 0.2.2
 // reserved words, prelude/stdlib types, prelude functions and decorators.
 // Registered only while the server's capabilities have no
 // `completionProvider`, so the two never both answer.

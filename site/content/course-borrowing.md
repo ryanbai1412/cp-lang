@@ -1,10 +1,10 @@
-Aliasing bugs and hidden copies cost time in contests: mutating an array through one alias while iterating through another, or accidentally copying a 200,000-element array inside a helper call. CP Lang v2.2 prevents both with lexical borrowing and explicit `mut`—with zero lifetime annotations.
+Aliasing bugs and hidden copies cost time in contests: mutating an array through one alias while iterating through another, or accidentally copying a 200,000-element array inside a helper call. CP Lang 0.2.2 prevents both with lexical borrowing and explicit `mut`—with zero lifetime annotations.
 
 ## Explicit `mut` at definition and call site
 
 Parameters are read-only borrows by default. To mutate an argument in place, write `mut` in the function signature and at the call site:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 fn bump(mut a: [V]Int, v: V):
     a[v] += 1
 
@@ -25,7 +25,7 @@ What about swapping two elements of the same array, `swap(mut a[i], mut a[j])`, 
 
 In `a[idx].f = rhs`, `a[idx].f ??= rhs`, and every compound `a[idx].f op= rhs`, all index expressions and `rhs` finish before the mutable place in `a` is borrowed. That makes arena code safe even when the right-hand side grows the same container:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 trie[o].next[s] ??= trie.push_id(Node())
 nodes[u].l = merge(nodes[u].l, b)
 ```

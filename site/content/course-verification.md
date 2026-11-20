@@ -2,9 +2,9 @@ A clean solution is only half the contest loop. You also want fast binary search
 
 ## Free-function binary search
 
-CP Lang v2.2 uses two canonical binary search functions on any ordered range (`bsearch_first`, `bsearch_last`), plus `xs.first_ge(x)` and `xs.last_le(x)` on sorted collections:
+CP Lang 0.2.2 uses two canonical binary search functions on any ordered range (`bsearch_first`, `bsearch_last`), plus `xs.first_ge(x)` and `xs.last_le(x)` on sorted collections:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 let min_cap = bsearch_first(1..=1e9, cap => can_ship(cap))
 let max_k = bsearch_last(0..=n, k => cost(k) <= budget)
 ```
@@ -15,7 +15,7 @@ Both return `?I`, so “no value satisfies the predicate” is `none` rather tha
 
 Attach `@memo` to a pure recursive function over any `Index` parameters:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 @memo
 fn ways(i: V, rem: 0..=cap) -> Int:
     ...
@@ -30,7 +30,7 @@ When every parameter is an `Index` and the key space fits in `2^24` states (`2^2
 
 Keep your slow oracle, constructive validator, or local interactive judge inside the same `.cp` file—judge builds strip all verification attributes automatically:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 @brute(main)
 fn slow():
     ...

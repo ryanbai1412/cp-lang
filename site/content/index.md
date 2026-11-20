@@ -4,7 +4,7 @@ CP Lang is a language for competitive programming that compiles to clean, readab
 
 Start with [your first program](getting-started.html), take the [language tour](tour.html), or go straight to [index spaces](indices.html).
 
-```cp Prefix sums · CP Lang v2.2
+```cp Prefix sums · CP Lang 0.2.2
 let n: 1..=2e5 = read()
 domain V = 1..=n
 let a: [V]Int = read()
@@ -25,7 +25,7 @@ A vertex, an edge, a grid cell `(Row, Col)`, and an enum variant all share one b
 
 The language core stays small: 34 reserved keywords (30 for contestants, 4 for library authors), 4 numeric types, 7 auto-derived core traits, and zero lifetime annotations. Missing values are `?T` rather than sentinels, and `?Int` behaves as a tropical number: `+` absorbs `none`, `min=` skips it. Containers, `lends` projections, `Monoid(id, op)`, `Action`, `compress(all)`, and `Rooted` are ordinary userland code you can read and extend in your own local library.
 
-## CP Lang v2.2 Showcase
+## CP Lang 0.2.2 Showcase
 
 Five real contest submissions from `corpus/submissions/` rethought idiomatically in CP Lang (`proto/ports/`). Both raw C++17 line counts and library-stripped counts (removing template headers and standard data structures) are reported from each batch's verified `loc.py`.
 
@@ -36,7 +36,7 @@ Across the whole corpus, the [registry](https://github.com/ryanbai1412/cp-lang/b
 
 ## A path through the language
 
-1. [One-page cheat sheet](cheat-sheet.html) — every CP Lang v2.2 construct, collection, and stdlib helper on one page.
+1. [One-page cheat sheet](cheat-sheet.html) — every CP Lang 0.2.2 construct, collection, and stdlib helper on one page.
 2. [Getting started](getting-started.html) — install `cpl` and run your first native binary.
 3. [A quick tour](tour.html) — values, `?T` optionals, parallel assignment, explicit undo, and `@multitest`.
 4. [Index spaces & bounds](indices.html) — `[0..n]T`, nominal domains, `.l`/`.r` boundaries, `p.adj4`/`p.adj8`, and `compress(all)`.
@@ -47,6 +47,6 @@ Across the whole corpus, the [registry](https://github.com/ryanbai1412/cp-lang/b
 
 ## Know what you can run
 
-> **Development edition.** This guide teaches the locked **CP Lang v2.2** specification (`docs/one-page-cheat-sheet.md`, `decisions.md` §16–§19). Blocks marked **prototype tested** compile and run in the Python prototype and in the offline WebAssembly [playground](playground.html). Blocks marked **CP Lang v2.2** show the locked language design where the Rust compiler and prototype are still catching up.
+> **Development edition.** This guide teaches the locked **CP Lang 0.2.2** specification (`docs/one-page-cheat-sheet.md`, `decisions.md` §16–§19). Blocks marked **prototype tested** compile and run in the Python prototype and in the offline WebAssembly [playground](playground.html). Blocks marked **CP Lang 0.2.2** show the locked language design where the Rust compiler and prototype are still catching up.
 
-The [getting-started chapter](getting-started.html#what-works-today) separates working commands from planned ones. The [design decisions](https://github.com/ryanbai1412/cp-lang/blob/main/decisions.md) and [v2.2 architecture](https://github.com/ryanbai1412/cp-lang/blob/main/research/language-architecture-v2.2.md) record the rationale for every feature.
+The [getting-started chapter](getting-started.html#what-works-today) separates working commands from planned ones. The [design decisions](https://github.com/ryanbai1412/cp-lang/blob/main/decisions.md) and [0.2.2 architecture](https://github.com/ryanbai1412/cp-lang/blob/main/research/language-architecture-v2.2.md) record the rationale for every feature.

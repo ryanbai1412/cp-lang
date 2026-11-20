@@ -1,4 +1,4 @@
-This course takes you from your first working program to the full CP Lang v2.2 model: structural range arrays, nominal domains, `.l`/`.r` boundaries, grids with `p.adj4`/`p.adj8`, value-semantic `Str`, lexical borrowing with `lends`, tropical `?Int`, bare operators / `Monoid(id, op)` / `Action`, `@memo`, `Rooted<V>`, and `@brute`/`@checker`/`@interactor` verification.
+This course takes you from your first working program to the full CP Lang 0.2.2 model: structural range arrays, nominal domains, `.l`/`.r` boundaries, grids with `p.adj4`/`p.adj8`, value-semantic `Str`, lexical borrowing with `lends`, tropical `?Int`, bare operators / `Monoid(id, op)` / `Action`, `@memo`, `Rooted<V>`, and `@brute`/`@checker`/`@interactor` verification.
 
 Each chapter teaches one idea from first principles, walks through a concrete program, and ends with checked exercises whose tests run locally in WebAssembly inside this page.
 

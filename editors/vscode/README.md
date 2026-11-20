@@ -1,6 +1,6 @@
 # CP Lang for VS Code
 
-VS Code support for **CP Lang v2.2** (`.cp` files): an ultra-lean 34-keyword TextMate grammar with zero stale tokens, high-signal contest snippets, `cpl lsp` integration (diagnostics, hover, go-to-definition, document symbols, quick fixes, and inlay hints), CodeLens actions, live inline sample values, counterexample overlays, and `cpl stress` / `cpl trace` commands.
+VS Code support for **CP Lang 0.2.2** (`.cp` files): an ultra-lean 34-keyword TextMate grammar with zero stale tokens, high-signal contest snippets, `cpl lsp` integration (diagnostics, hover, go-to-definition, document symbols, quick fixes, and inlay hints), CodeLens actions, live inline sample values, counterexample overlays, and `cpl stress` / `cpl trace` commands.
 
 The language surface follows `docs/one-page-cheat-sheet.md`, `research/language-architecture-v2.2.md`, and `decisions.md` §16–§19; editor UX follows `plan/60-editor.md`.
 
@@ -36,9 +36,9 @@ npm run test:integration
 
 Set `VSCODE_EXECUTABLE` if you want `test:integration` to use an existing VS Code or VSCodium binary instead of downloading one.
 
-## Syntax highlighting (CP Lang v2.2)
+## Syntax highlighting (CP Lang 0.2.2)
 
-`syntaxes/cp.tmLanguage.json` highlights the locked **CP Lang v2.2** surface with zero stale v1 or removed v2.1 tokens (`defer`, `assume`, `where`, `inline`, `lend`, hard keyword `law`, `for mut`, `Float`, `I32`, `U8`, `ModR`, `INF`, `by`, `with`, `static`, `protocol`, `decorator`, `do`, `yields`, `requires`, `ensures`, and `pure` are removed):
+`syntaxes/cp.tmLanguage.json` highlights the locked **CP Lang 0.2.2** surface with zero stale v1 or removed v2.1 tokens (`defer`, `assume`, `where`, `inline`, `lend`, hard keyword `law`, `for mut`, `Float`, `I32`, `U8`, `ModR`, `INF`, `by`, `with`, `static`, `protocol`, `decorator`, `do`, `yields`, `requires`, `ensures`, and `pure` are removed):
 
 ```cp
 domain V = 1..=n
@@ -70,19 +70,19 @@ print("ans = {best}, avg = {avg:.6f}")           // interpolation + format specs
 
 Highlights worth noting:
 
-- All **34 v2.2 reserved keywords** (30 contestant + 4 library-author: `trait`, `impl`, `lends`, `yield`), contextual `as` / `from` / `invariant`, and all **11 `@` decorators** (8 contestant + 3 library-author `@get`, `@test`, `@law`) stay in lockstep between `src/languageData.ts` and `syntaxes/cp.tmLanguage.json`.
+- All **34 0.2.2 reserved keywords** (30 contestant + 4 library-author: `trait`, `impl`, `lends`, `yield`), contextual `as` / `from` / `invariant`, and all **11 `@` decorators** (8 contestant + 3 library-author `@get`, `@test`, `@law`) stay in lockstep between `src/languageData.ts` and `syntaxes/cp.tmLanguage.json`.
 - Builtin types (`Int`, `U64`, `I128`, `F64`, `Bool`, `Char`, `Str`, `Bitset`, `List`, `Deque`, `Map`, `HashMap`, `Set`, `HashSet`, `SortedBag`, `MinHeap`, `MaxHeap`, `Range`, `Bounds`, `Subset`, `Iter`, `Interactor`, `Rng`) and core standard library contest types (`Mod<P>`, `Comb<P>`, `Marks<D>`, `Compressed`, `SegTree`, `LazySegTree`, `SparseTable`, `Fenwick`, `Fenwick2D`, `Dsu`, `Graph`, `Rooted`, `FlowGraph`, `Perm`, `Sieve`, `Pt`, `Dir4`, `ByAngle`, `SuffixArray`, `RollingHash`, `HashVal`, `Monoid`, `Action`, `Desc`, and built-in lazy actions) receive dedicated scopes, including nested generics and turbofish (`f::<Int>()`).
 - Boundary properties `.l`, `.r`, `.l(k)`, and `.r(k)` use `variable.other.property.boundary.cp`; mutation (`var`, `mut`, `lends mut`) and escape hatches (`.raw`, `unchecked`) carry dedicated scopes so themes can emphasize them.
 - String interpolation `"{expr}"`, format specifiers `"{x:.6f}"`, escaped braces `"{{...}}"`, and raw strings `r"..."` never swallow following lines.
 
 ## Contest snippets
 
-`snippets/cp.json` contributes ready-to-type CP Lang v2.2 templates with zero stale v1/v2.1 constructs:
+`snippets/cp.json` contributes ready-to-type CP Lang 0.2.2 templates with zero stale v1/v2.1 constructs:
 
 - `memo` — bare `@memo` DP template (auto-dispatches flat vs salted hash table)
 - `bsearch_first` / `bsearch_last` — binary search over ranges
 - `compress` — coordinate compression with `xs.D`, `xs[r]`, and `xs.at(v)`
-- `segtree` / `segtree-monoid` / `lazysegtree` / `lazysegtree-action` / `sparsetable` — domain-indexed range structures with built-in operators/actions and v2.2 `Action(id, (new_f, old_f) => ..., (f, val, span) => ..., over: op)`
+- `segtree` / `segtree-monoid` / `lazysegtree` / `lazysegtree-action` / `sparsetable` — domain-indexed range structures with built-in operators/actions and 0.2.2 `Action(id, (new_f, old_f) => ..., (f, val, span) => ..., over: op)`
 - `rooted` / `hld` — `Rooted<V>` with `LazySegTree<t.Pre, ...>` path and subtree queries
 - `dsu` / `touched` / `small-to-large` / `mod` — explicit `dsu.mark()` / `dsu.undo_to(snap)`, 1-byte `[V]Bool` + touched-list reset, `swap` + `.take()` small-to-large merge, and `Mod<MOD>` + immutable `let comb = Comb<MOD>()`
 - `multitest` / `grader` / `checker` / `interactor` / `stress` / `atgen` — multi-test skeletons, stateful IOI `@grader`, `@checker`, explicit `sol: Interactor` `@interactor`, and `read(gen: ...)` + `@brute(main)` stress setups
@@ -92,7 +92,7 @@ Highlights worth noting:
 The extension launches `cpl lsp` over stdio (`cp.server.path`, default `cpl`, searched on `PATH` and then in workspace `target/release` and `target/debug`).
 
 - **From `cpl lsp`:** live diagnostics with error codes and related spans, hover types, go-to-definition, document outline symbols, and diagnostic quick fixes.
-- **Fallback completion and inlay hints:** when `cpl lsp` does not advertise `completionProvider` or `inlayHintProvider` (or before `cpl` is built), the extension supplies v2.2 keyword/type/decorator completions and inferred type inlay hints (`cp.inlayHints.enabled`, default `true`) for unannotated container bindings (`SegTree<V, Int>`, `LazySegTree<V, Int>`, `Rooted<V>`, `Rng`, `compress(...)`) and declared `domain` loops (`for v in V:`). As soon as `cpl lsp` advertises its own provider, the fallback automatically steps aside so hints never duplicate.
+- **Fallback completion and inlay hints:** when `cpl lsp` does not advertise `completionProvider` or `inlayHintProvider` (or before `cpl` is built), the extension supplies 0.2.2 keyword/type/decorator completions and inferred type inlay hints (`cp.inlayHints.enabled`, default `true`) for unannotated container bindings (`SegTree<V, Int>`, `LazySegTree<V, Int>`, `Rooted<V>`, `Rng`, `compress(...)`) and declared `domain` loops (`for v in V:`). As soon as `cpl lsp` advertises its own provider, the fallback automatically steps aside so hints never duplicate.
 
 ## Running, live values, stress testing, and traces
 
@@ -145,5 +145,5 @@ Stage-level diffs (`stages: [{"name": "...", "line": 12, "fast": "...", "brute":
 - `src/languageData.ts`, `src/inlayHintsCore.ts`, `src/samples.ts`, `src/results.ts`, `src/cpl.ts` — pure Node-testable modules (no `vscode` import).
 - `src/extension.ts`, `src/client.ts`, `src/completion.ts`, `src/inlayHints.ts`, `src/lenses.ts`, `src/overlays.ts`, `src/runner.ts` — VS Code wiring.
 - `test/grammar/*.cp` — `vscode-tmgrammar-test` scope assertions (including `test/grammar/v2_2.cp`).
-- `test/unit/*.test.ts` — grammar/v2.2 table parity, corpus tokenization across `proto/`, `stdlib/`, and `examples/local-lib/`, snippet validation, inlay hints, sample/lens planning, stress/run JSON parsing, and real `cpl lsp` stdio protocol checks.
+- `test/unit/*.test.ts` — grammar/0.2.2 table parity, corpus tokenization across `proto/`, `stdlib/`, and `examples/local-lib/`, snippet validation, inlay hints, sample/lens planning, stress/run JSON parsing, and real `cpl lsp` stdio protocol checks.
 - `test/integration/suite.ts` — end-to-end VS Code extension host suite.

@@ -1,10 +1,10 @@
-When an algorithm mixes vertex numbers, item positions, prefix boundaries, and ordinary counts inside plain `int`, every lookup depends on remembering which kind of integer is in which variable. CP Lang v2.2 gives you both **structural range arrays** (`[0..n]T`, `[0..=k]T`) for fast integer-indexed tables and **nominal domains** (`domain V = 1..=n`) when you want the type checker to keep index spaces strictly separate.
+When an algorithm mixes vertex numbers, item positions, prefix boundaries, and ordinary counts inside plain `int`, every lookup depends on remembering which kind of integer is in which variable. CP Lang 0.2.2 gives you both **structural range arrays** (`[0..n]T`, `[0..=k]T`) for fast integer-indexed tables and **nominal domains** (`domain V = 1..=n`) when you want the type checker to keep index spaces strictly separate.
 
 ## From integers to nominal domains
 
 A `domain` declaration freezes an integer range into a nominal index type:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 let n: 1..=2e5 = read()
 domain V = 1..=n
 let a: [V]Int = read()
