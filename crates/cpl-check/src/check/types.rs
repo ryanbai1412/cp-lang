@@ -713,7 +713,13 @@ impl<'a> Checker<'a> {
                         )
                     })
                     .collect();
-                out.insert(0, (e.name.text.clone(), Def::Enum { variants, methods }));
+                let tagged = stmt.decorators.iter().any(|d| d.name.text == "tags");
+                let def = Def::Enum {
+                    variants,
+                    methods,
+                    tagged,
+                };
+                out.insert(0, (e.name.text.clone(), def));
                 out
             }
             S::Domain { name, def } => {
