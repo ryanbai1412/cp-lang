@@ -31,18 +31,28 @@ coci25c3p1       brush walk driven by a Str of commands            29           
 coci20c6p1       2 x 2 stamp with edge clamping                    58            29  11     14
 imo22p6checker   path-count DP in value order over adj4           265            46  11     28
 dmopc21c6p4      BFS over (city, 2-bit visited set)               120            89  18     51
-cco19p2          components, gap graph, Dijkstra, redraw          100            90  25     54
-noi10p3          Dijkstra over (junction, entry direction)        151           125  34     47
-total                                                            1091           649 178    367
+ucrpc21g         reachable (cell, coins) states per tick           95            64  25     37
+dmopc21c7p1      fill blanks so rows and columns increase         103            73  17     31
+total                                                            1038           571 161    334
 ```
 
-The v2 forms are 84% shorter than the full submissions and 73% shorter than
-the stripped ones; the forms that run today are 66% and 43% shorter.
+The v2 forms are 84% shorter than the full submissions and 72% shorter than
+the stripped ones; the forms that run today are 68% and 42% shorter.
+
+Two more ports are kept outside the ten and outside the totals. Scout batch
+27 landed the same two problems while this batch was in progress, so they
+are not new coverage, but they are checked like the rest and three backlog
+items (31.4 to 31.6) come from them:
+
+```
+cco19p2          components, gap graph, Dijkstra, redraw          100            90  25     54
+noi10p3          Dijkstra over (junction, entry direction)        151           125  34     47
+```
 
 ## Running the differential tests
 
 ```
-python3 proto/ports/scout_batch_31/check.py              # all 10, 150 cases each
+python3 proto/ports/scout_batch_31/check.py              # every port, 150 cases each
 python3 proto/ports/scout_batch_31/check.py cco19p2 500  # one port, 500 cases
 ```
 
@@ -52,7 +62,7 @@ output on seeded random inputs: two small cases, then one medium case,
 repeating. `coci25c3p1` walks a `Str`, which `proto/cpc` cannot iterate yet,
 so it runs on the interpreter through `proto/cp.py lib-run`.
 
-All ten ports match their originals on 150 cases each.
+All twelve ports match their originals on 150 cases each.
 
 ## Notes on the originals
 
@@ -62,6 +72,8 @@ All ten ports match their originals on 150 cases each.
 - `coci20c6p1` (4188008) writes the whole 2 x 2 stamp without a bounds check,
   so a `#` in the last row or column is undefined behaviour. The generator
   keeps the last row and column clear; the ports clamp to the picture.
+- `ucrpc21g` (3944717) indexes a fixed table of 105 ticks by event time, so
+  the generator keeps event times in 0..=104.
 - `noi10p3` (5672180) packs a state as `((x + 1) * (n + 1) + (y + 1)) * 8 + dir`
   while `y + 1` reaches `n + 1`, so `(x, -1)` and `(x - 1, n)` share a slot.
   The colliding states never carry the same direction as an exit state, so the
