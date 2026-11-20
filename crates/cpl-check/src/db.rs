@@ -22,6 +22,7 @@
 //! signature, has the same fingerprint, so no caller is touched. Editing
 //! the signature re-checks exactly the items that looked the fn up.
 
+use crate::check::lends::{flow_of, item_names, Flow, Replay};
 use crate::check::{Checker, Env, GlobalRef, HoverEntry};
 use crate::def::{hash_str, impl_name, impl_parts, DeclKind, Def};
 use crate::modules::{FsLoader, Loader};
@@ -53,6 +54,8 @@ pub struct ItemSyntax {
     pub parsed: ParsedItem,
     pub decls: Vec<Decl>,
     pub has_use: bool,
+    /// What the item leaves behind for the top-level statements after it.
+    pub flow: Flow,
 }
 
 /// A top-level name an item declares. The span is relative to the item.
@@ -201,6 +204,8 @@ struct CheckMemo {
 /// Dependency keys that are not top-level names.
 const DEP_NAMES: &str = "\0names";
 const DEP_IMPORTS: &str = "\0imports";
+/// The dependency on the earlier top-level statements that reach an item.
+const DEP_LENT: &str = "\0lent";
 /// Prefix of the dependency on what a type's name resolves to.
 const DEP_TYPE: &str = "\0type:";
 
@@ -338,6 +343,7 @@ impl Database {
                         col,
                         hash,
                         decls: decls_of(&parsed.stmts),
+                        flow: flow_of(&parsed.stmts),
                         has_use: parsed
                             .stmts
                             .iter()
@@ -419,6 +425,8 @@ impl Database {
             scope: scope.clone(),
             frames: Vec::new(),
             in_progress: Vec::new(),
+            current: None,
+            names: None,
         };
         let checks: Vec<Arc<ItemCheck>> = (0..items.len()).map(|i| ctx.check_item(i)).collect();
 
@@ -671,6 +679,8 @@ impl Database {
             scope: analysis.scope.clone(),
             frames: Vec::new(),
             in_progress: Vec::new(),
+            current: None,
+            names: None,
         };
         ctx.def(name).0
     }
@@ -883,6 +893,10 @@ struct FileCtx<'d> {
     frames: Vec<Vec<(String, u64)>>,
     /// Names whose definitions are being computed, to stop cycles.
     in_progress: Vec<String>,
+    /// The item being checked.
+    current: Option<usize>,
+    /// What each item mentions and assigns, once a statement needs it.
+    names: Option<Vec<(Vec<String>, Vec<String>)>>,
 }
 
 impl FileCtx<'_> {
@@ -899,6 +913,7 @@ impl FileCtx<'_> {
         match key {
             DEP_NAMES => self.scope.names_fp,
             DEP_IMPORTS => self.scope.imports_fp,
+            DEP_LENT => self.replays_fingerprint(),
             key => match key.strip_prefix(DEP_TYPE) {
                 Some(name) => self.type_def(name).1,
                 None => self.def(key).1,
@@ -1041,7 +1056,74 @@ impl FileCtx<'_> {
         }
     }
 
+    /// The earlier top-level statements whose effect reaches item
+    /// `current`: views still named at or after it, and asserts none of
+    /// whose names was assigned since. Empty for almost every file.
+    fn replays(&mut self, current: usize) -> Vec<Replay> {
+        let items = self.items.clone();
+        if !items[..current].iter().any(|item| item.flow != Flow::None) {
+            return Vec::new();
+        }
+        let names = self.names.get_or_insert_with(|| {
+            items
+                .iter()
+                .map(|item| item_names(&item.parsed.stmts))
+                .collect()
+        });
+        let mut out = Vec::new();
+        for (index, item) in items[..current].iter().enumerate() {
+            match &item.flow {
+                Flow::None => {}
+                Flow::View(name) => {
+                    let mentioned = |k: usize| names[k].0.contains(name);
+                    let live_after = (current + 1..items.len()).any(mentioned);
+                    if !(live_after || mentioned(current)) {
+                        continue;
+                    }
+                    // A later `let` of the same name is another value.
+                    if (index + 1..current).any(|k| items[k].decls.iter().any(|d| d.name == *name))
+                    {
+                        continue;
+                    }
+                    out.push(Replay {
+                        item: item.clone(),
+                        live_after,
+                        written: (current..items.len()).any(|k| names[k].1.contains(name)),
+                    });
+                }
+                Flow::Assert(about) => {
+                    let assigned = (index + 1..current)
+                        .any(|k| names[k].1.iter().any(|written| about.contains(written)));
+                    if !assigned {
+                        out.push(Replay {
+                            item: item.clone(),
+                            live_after: false,
+                            written: false,
+                        });
+                    }
+                }
+            }
+        }
+        out
+    }
+
+    fn replays_fingerprint(&mut self) -> u64 {
+        let Some(current) = self.current else {
+            return 2;
+        };
+        let replays = self.replays(current);
+        if replays.is_empty() {
+            return 2;
+        }
+        let text: Vec<String> = replays
+            .iter()
+            .map(|r| format!("{}:{}:{}", r.item.hash, r.live_after, r.written))
+            .collect();
+        hash_str(&text.join("\n")) | 2
+    }
+
     fn check_item(&mut self, index: usize) -> Arc<ItemCheck> {
+        self.current = Some(index);
         let item = self.items[index].clone();
         let revision = self.db.revision;
         let key = (self.file, item.hash);
@@ -1089,6 +1171,15 @@ impl Env for FileCtx<'_> {
         let (def, fingerprint) = self.def(name);
         self.record(name, fingerprint);
         def
+    }
+
+    fn lent_before(&mut self) -> Vec<Replay> {
+        let fingerprint = self.replays_fingerprint();
+        self.record(DEP_LENT, fingerprint);
+        match self.current {
+            Some(current) if fingerprint != 2 => self.replays(current),
+            _ => Vec::new(),
+        }
     }
 
     fn type_def(&mut self, name: &str) -> Option<Arc<Def>> {

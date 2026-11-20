@@ -9,6 +9,9 @@ use cpl_syntax::ast::{
 impl<'a> Checker<'a> {
     /// Checks the statements of one top-level item.
     pub(crate) fn item(&mut self, stmts: &[Stmt]) {
+        for replay in self.env.lent_before() {
+            self.replay(&replay, stmts);
+        }
         self.stmts(stmts, true);
     }
 
