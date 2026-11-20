@@ -67,6 +67,10 @@ Data structures, in `ds/`:
 - `mo.cp`: `mo_order` and `steps`, Mo's algorithm as the visiting order
   plus the single moves between two windows.
 - `xor_basis.cp`: `XorBasis`, a linear basis over GF(2).
+- `sparse_segtree.cp`: `SparseSegTree`, point additions and range sums over
+  an integer range too wide to compress, creating nodes only where it is touched.
+- `chmin_segtree.cp`: `ChminSegTree<D>`, segment tree beats: range `min=`
+  with range sums and range maxima in amortized O(log^2 n).
 - `interner.cp`: `Interner<K>`, bidirectional key <-> dense integer id interner.
 - `rollback_array.cp`: `RollbackArray<D, T>`, `[D]T` with O(1) point writes and
   O(changes) snapshot/rollback.
@@ -102,6 +106,8 @@ Graphs, in `graph/`:
 - `shortest.cp`: `shortest` (Dijkstra with predecessor tracking) and
   `walk_back` (path reconstruction).
 - `mst.cp`: `mst`, Kruskal's minimum spanning forest.
+- `euler_path.cp`: `euler_path(edges, directed)`, a walk that uses every
+  edge exactly once (Hierholzer), or `none`.
 - `two_sat.cp`: `TwoSat<X>` and `Lit<X>`, 2-SAT over a typed variable
   domain backed by `std.graph.scc`.
 - `min_cost_flow.cp`: `MinCostFlow<V>` and `CostArc`, successive shortest
