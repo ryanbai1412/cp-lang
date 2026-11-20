@@ -19,7 +19,10 @@ def talk(exe, judge):
             r = judge.reply(line.strip())
             if r is None:
                 break
-            p.stdin.write(r + "\n"); p.stdin.flush()
+            try:
+                p.stdin.write(r + "\n"); p.stdin.flush()
+            except BrokenPipeError:
+                pass    # the solution has stopped reading; what it already printed still counts
     except BrokenPipeError:
         pass
     finally:
