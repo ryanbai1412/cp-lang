@@ -218,6 +218,27 @@ template <class U> static inline void opt_min(OptI32& o, U x) { if (!o.has() || 
 template <class U> static inline void opt_max(OptI32& o, U x) { if (!o.has() || o.get() < (ll)x) o = OptI32((ll)x); }
 // @end
 
+// desc(x): x with its order reversed, so a MinHeap<(Int, Desc<V>)> pops the largest V among equal keys
+template <class T> struct CpDesc {
+    T val;
+    bool operator<(const CpDesc& o) const { return o.val < val; }
+    bool operator>(const CpDesc& o) const { return val < o.val; }
+    bool operator==(const CpDesc& o) const { return val == o.val; }
+    bool operator!=(const CpDesc& o) const { return !(val == o.val); }
+};
+// MonoDeque<T>(min | max): the best value among those pushed at positions >= the last drop_before
+template <class T> struct CpMonoDeque {
+    bool smallest; deque<pair<ll, T>> q;
+    explicit CpMonoDeque(bool smallest_ = true) : smallest(smallest_) {}
+    void push(ll at, const T& v) {
+        while (!q.empty() && (smallest ? !(q.back().second < v) : !(v < q.back().second))) q.pop_back();
+        q.emplace_back(at, v);
+    }
+    void drop_before(ll min_at) { while (!q.empty() && q.front().first < min_at) q.pop_front(); }
+    void clear() { q.clear(); }
+    Opt<T> best() const { return q.empty() ? Opt<T>() : Opt<T>(q.front().second); }
+};
+
 struct Rng {
     ll lo, hi;
     bool operator==(const Rng& o) const { return lo == o.lo && hi == o.hi; }
