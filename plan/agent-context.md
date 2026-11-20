@@ -297,6 +297,15 @@ Tooling:
 
 ## Concerns he raised that the design must keep answering
 
+- **The borrow rules must never be confusing** (2026-11-19). "one worry i
+  have is that with our borrow checker semantics the language ends up being
+  very difficult and unintuitive to understand and there's the 1% of cases
+  where you just don't understand what's going on". His method: repeatedly
+  have fresh agents hunt for the simplest programs where the rules surprise
+  (a rejection that reads as wrong, or an error that doesn't explain
+  itself), fix the rule or the message, and keep every such program in a
+  comprehensive test suite. A case nobody can explain in one sentence is a
+  design bug (G14, G16), not a documentation gap.
 - `@memo` might not give enough control (table layout, clearing, order).
 - `fn foo(a: List<Int>)` borrows while `let a: List<Int>` owns; is that
   confusing? (Answer so far: the call site makes it clear, and `mut` marks

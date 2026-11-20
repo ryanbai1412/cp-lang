@@ -101,6 +101,7 @@ G7, G8):
 | 5.8 | `Rollback`, `Journaled`, `undo`, `scoped` | Leaning | plain arrays not rollback-able; journaling is opt-in by type | 5.4, 5.7 | state-structure-views.md §1 |
 | 5.9 | `@memo` control | Open | table layout from key type; evaluation order; clearing; I/O is an error | | plan/15-program-structure.md §3.3 |
 | 5.10 | `mut fn` | Settled | a statement; captures `var`s above it; can't escape | 5.3 | plan/15-program-structure.md §3.2 |
+| 5.11 | Keeping the borrow rules understandable | Settled 2026-11-19 (the method; the rules stay open to change) | fresh agents repeatedly search for the smallest programs where a borrow rule surprises; each one changes the rule or its error message and is kept as a test | 5.3 | plan/agent-context.md |
 
 ## 6. Program structure
 
