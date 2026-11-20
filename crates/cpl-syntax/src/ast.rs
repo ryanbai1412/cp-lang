@@ -108,7 +108,8 @@ pub enum StmtKind {
     Return(Option<Expr>),
     Break(Option<Name>),
     Continue(Option<Name>),
-    Yield(Expr),
+    /// `yield x`, or `yield from xs` to yield each value of `xs`.
+    Yield { value: Expr, from: bool },
     Assert {
         cond: Expr,
         message: Option<Expr>,
@@ -267,9 +268,8 @@ pub enum ExprKind {
     /// the only argument of a call: `max(dist[v] for v in V)`.
     Comprehension {
         body: Box<Expr>,
-        pat: Pattern,
-        iter: Box<Expr>,
-        cond: Option<Box<Expr>>,
+        /// One per `for`, outermost first.
+        clauses: Vec<Clause>,
     },
     /// `[V] u => deg[u] * 2`.
     Table {
@@ -304,6 +304,14 @@ pub enum ExprKind {
     Missing,
     /// Tokens the parser could not read as an expression. Already reported.
     Error,
+}
+
+/// `for pat in iter [if cond]` in a comprehension.
+#[derive(Clone, PartialEq, Debug)]
+pub struct Clause {
+    pub pat: Pattern,
+    pub iter: Expr,
+    pub cond: Option<Expr>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -375,6 +383,8 @@ pub enum CmpOp {
     Ge,
     In,
     NotIn,
+    /// `a <=> b`: an `Ordering`.
+    Order,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -419,5 +429,7 @@ pub enum TypeKind {
         inclusive: bool,
     },
     Fn { params: Vec<Type>, ret: Box<Type> },
+    /// `yields T`: the return type of a generator.
+    Yields(Box<Type>),
     Error,
 }

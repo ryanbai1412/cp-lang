@@ -196,7 +196,7 @@ fn bang_unwraps_after_a_value_and_is_an_error_before_one() {
 #[test]
 fn a_call_takes_a_generator_argument() {
     let ExprKind::Call { args, .. } = expr("max(dist[v] for v in V if seen[v])\n").kind else { panic!() };
-    assert!(matches!(args[0].value.kind, ExprKind::Comprehension { cond: Some(_), .. }));
+    assert!(matches!(args[0].value.kind, ExprKind::Comprehension { ref clauses, .. } if clauses[0].cond.is_some()));
 }
 
 // --- Items ---------------------------------------------------------------
@@ -264,7 +264,9 @@ fn lambdas_tables_and_comprehensions() {
     assert!(matches!(expr("x => x + 1\n").kind, ExprKind::Lambda { ref params, .. } if params.len() == 1));
     assert!(matches!(expr("(a, b) => a + b\n").kind, ExprKind::Lambda { ref params, .. } if params.len() == 2));
     assert!(matches!(expr("[V] u => deg[u] * 2\n").kind, ExprKind::Table { ref domains, .. } if domains.len() == 1));
-    assert!(matches!(expr("[deg[u] * 2 for u in V if deg[u] > 0]\n").kind, ExprKind::Comprehension { cond: Some(_), .. }));
+    assert!(matches!(expr("[deg[u] * 2 for u in V if deg[u] > 0]\n").kind, ExprKind::Comprehension { ref clauses, .. } if clauses[0].cond.is_some()));
+    let nested = expr("[(i, j) for i in I for j in I if i < j]\n");
+    assert!(matches!(nested.kind, ExprKind::Comprehension { ref clauses, .. } if clauses.len() == 2));
     assert!(matches!(expr("[1, 2, 3]\n").kind, ExprKind::List(ref xs) if xs.len() == 3));
     let call = expr("sort(xs, by: a => { let k = key(a); (k.x, -k.y) })\n");
     let ExprKind::Call { args, .. } = call.kind else { panic!() };
@@ -348,6 +350,18 @@ fn types() {
     assert!(matches!(ty(2), TypeKind::OwnDomain { .. }));
     assert!(matches!(ty(3), TypeKind::Named { ref args, .. } if args.len() == 2));
     assert!(matches!(ty(4), TypeKind::Record(ref f) if f.len() == 2));
+}
+
+#[test]
+fn counted_arrays_derived_domains_generators_and_do_blocks() {
+    let s = stmts("let xs: [q]1..=1e9 = read()\nvar pre: [V.bounds]Int = 0\nfn divisors(n: 1..=1000) -> yields Int:\n    yield 1\nlet ans: ?Int = do:\n    let x = find(xs)?\n    x + 1\n");
+    let StmtKind::Let { ty: Some(Type { kind: TypeKind::Array { index, .. }, .. }), .. } = &s[0].kind else { panic!() };
+    assert!(matches!(index[0].kind, TypeKind::Range { inclusive: false, .. }));
+    let StmtKind::Let { ty: Some(Type { kind: TypeKind::Array { index, .. }, .. }), .. } = &s[1].kind else { panic!() };
+    assert!(matches!(&index[0].kind, TypeKind::Named { name, .. } if name.text == "V.bounds"));
+    let StmtKind::Fn(f) = &s[2].kind else { panic!() };
+    assert!(matches!(f.ret.as_ref().unwrap().kind, TypeKind::Yields(_)));
+    assert!(matches!(&s[3].kind, StmtKind::Let { init: Some(Expr { kind: ExprKind::Block(b), .. }), .. } if b.stmts.len() == 2));
 }
 
 #[test]

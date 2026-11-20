@@ -149,7 +149,14 @@ impl<'a> Parser<'a> {
             }
             T::Yield => {
                 self.bump();
-                StmtKind::Yield(self.expr())
+                let from = self.at_ident("from") && !matches!(self.peek_n(1), T::Newline | T::Dot | T::LParen | T::LBracket);
+                if from {
+                    self.bump();
+                }
+                StmtKind::Yield {
+                    value: self.expr(),
+                    from,
+                }
             }
             T::Assert => {
                 self.bump();

@@ -116,6 +116,7 @@ impl<'a> Parser<'a> {
             T::LtEq => CmpOp::Le,
             T::Gt => CmpOp::Gt,
             T::GtEq => CmpOp::Ge,
+            T::Spaceship => CmpOp::Order,
             T::In => CmpOp::In,
             T::Not if self.peek_n(1) == T::In => CmpOp::NotIn,
             _ => return None,
@@ -307,14 +308,11 @@ impl<'a> Parser<'a> {
         let mut value = self.expr();
         // `max(dist[v] for v in V)`.
         if self.at(T::For) {
-            self.bump();
-            let (pat, iter, cond) = self.comprehension_tail();
+            let clauses = self.clauses();
             value = Expr {
                 kind: ExprKind::Comprehension {
                     body: Box::new(value),
-                    pat,
-                    iter,
-                    cond,
+                    clauses,
                 },
                 span: self.span_from(start),
             };
@@ -438,6 +436,12 @@ impl<'a> Parser<'a> {
                 self.bump();
                 ExprKind::SelfValue
             }
+            // `do:` runs a block for its value; `?` inside exits the block.
+            T::Ident if self.text() == "do" && self.peek_n(1) == T::Colon => {
+                self.bump();
+                self.bump();
+                ExprKind::Block(self.block("`do`"))
+            }
             T::Ident => {
                 let name = self.name();
                 let type_like = name.is_type_like();
@@ -550,14 +554,12 @@ impl<'a> Parser<'a> {
             return ExprKind::List(Vec::new());
         }
         let first = self.expr();
-        if self.eat(T::For) {
-            let (pat, iter, cond) = self.comprehension_tail();
+        if self.at(T::For) {
+            let clauses = self.clauses();
             self.expect(T::RBracket, "`]` to close the comprehension");
             return ExprKind::Comprehension {
                 body: Box::new(first),
-                pat,
-                iter,
-                cond,
+                clauses,
             };
         }
         let mut items = vec![first];
@@ -573,14 +575,18 @@ impl<'a> Parser<'a> {
         ExprKind::List(items)
     }
 
-    /// Parses `pat in iter [if cond]`, after the `for`.
-    fn comprehension_tail(&mut self) -> (Pattern, Box<Expr>, Option<Box<Expr>>) {
-        let pat = self.pattern();
-        self.expect(T::In, "`in` after the comprehension variable");
-        // Stop before `if`, which here is the filter.
-        let iter = Box::new(self.coalesce());
-        let cond = self.eat(T::If).then(|| Box::new(self.expr()));
-        (pat, iter, cond)
+    /// Parses one or more `for pat in iter [if cond]`.
+    fn clauses(&mut self) -> Vec<Clause> {
+        let mut clauses = Vec::new();
+        while self.eat(T::For) {
+            let pat = self.pattern();
+            self.expect(T::In, "`in` after the comprehension variable");
+            // Stop before `if`, which here is the filter.
+            let iter = self.coalesce();
+            let cond = self.eat(T::If).then(|| self.coalesce());
+            clauses.push(Clause { pat, iter, cond });
+        }
+        clauses
     }
 
     fn if_expr(&mut self) -> ExprKind {
