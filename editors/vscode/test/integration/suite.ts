@@ -121,13 +121,39 @@ const tests: [string, () => Promise<void>][] = [
                 return list.items.map(item => (typeof item.label === 'string' ? item.label : item.label.label));
             };
             const decorators = await labels(document.lineCount - 2, 1);
-            assert.ok(decorators.includes('@memo') && decorators.includes('@brute'), decorators.join(', '));
+            assert.ok(
+                decorators.includes('@memo') &&
+                    decorators.includes('@brute') &&
+                    decorators.includes('@grader') &&
+                    decorators.includes('@checker') &&
+                    decorators.includes('@interactor'),
+                decorators.join(', '),
+            );
             assert.ok(!decorators.includes('domain'));
             const words = await labels(document.lineCount - 1, 1);
-            for (const word of ['domain', 'unchecked', 'lends', 'print', 'Int', 'INF']) {
+            for (const word of ['domain', 'unchecked', 'lends', 'defer', 'assume', 'print', 'Int', 'F64', 'Mod', 'SegTree', 'Rooted']) {
                 assert.ok(words.includes(word), `no \`${word}\` among the completions`);
             }
+            for (const stale of ['INF', 'Float', 'I32', 'U8', 'ModR']) {
+                assert.ok(!words.includes(stale), `stale v1 token \`${stale}\` appeared in completions`);
+            }
             await vscode.commands.executeCommand('workbench.action.files.revert');
+        },
+    ],
+    [
+        'inlay hints annotate declared domain loops without duplicating server capabilities',
+        async () => {
+            const document = await open('d.cp');
+            const range = new vscode.Range(0, 0, document.lineCount - 1, 0);
+            const hints = await vscode.commands.executeCommand<vscode.InlayHint[]>(
+                'vscode.executeInlayHintProvider',
+                document.uri,
+                range,
+            );
+            assert.ok(
+                hints.some(hint => (typeof hint.label === 'string' ? hint.label : '') === ': I'),
+                `expected domain loop inlay hint \`: I\`, got ${JSON.stringify(hints.map(h => h.label))}`,
+            );
         },
     ],
     [

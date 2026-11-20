@@ -44,7 +44,7 @@ const PROGRAM = [
     '    inner()',
     '',
     'fn count_brute() -> Int = 0',
-    '@local fn dump(g: Graph<V>) = print(g)',
+    '@grader fn helper(g: Graph<V>) = print(g)',
     '@multitest',
     'let x = 1',
     'pub fn api() = 2',
@@ -54,7 +54,7 @@ test('parts lists top-level fns with their decorators', () => {
     assert.deepEqual(parts(PROGRAM), [
         { name: 'count', line: 3, fnLine: 5, decorators: [{ name: 'memo', args: undefined }, { name: 'brute', args: 'count_brute' }] },
         { name: 'count_brute', line: 9, fnLine: 9, decorators: [] },
-        { name: 'dump', line: 10, fnLine: 10, decorators: [{ name: 'local', args: undefined }] },
+        { name: 'helper', line: 10, fnLine: 10, decorators: [{ name: 'grader', args: undefined }] },
         { name: 'api', line: 13, fnLine: 13, decorators: [] },
     ]);
 });
@@ -71,6 +71,36 @@ test('planLenses puts Run above the file and Stress above each bruted part', () 
         [3, 'Trace', 'cp.trace'],
     ]);
     assert.deepEqual(planLenses(PROGRAM, samples)[4].args, ['count']);
+});
+
+test('planLenses supports v2.1 @brute(main), @checker and @interactor lenses', () => {
+    const v21 = [
+        'let n = read()',
+        '',
+        '@brute(main)',
+        'fn slow():',
+        '    print(n)',
+        '',
+        '@checker',
+        'fn check():',
+        '    assert true',
+        '',
+        '@interactor',
+        'fn judge():',
+        '    print(0)',
+    ].join('\n');
+    assert.deepEqual(
+        planLenses(v21, []).map(l => [l.line, l.title, l.command]),
+        [
+            [0, '$(play) Run', 'cp.runSample'],
+            [0, 'Stress', 'cp.stress'],
+            [0, 'Trace', 'cp.trace'],
+            [2, 'Stress main against slow', 'cp.stress'],
+            [2, 'Trace', 'cp.trace'],
+            [6, 'Stress with checker check', 'cp.stress'],
+            [10, 'Stress with interactor judge', 'cp.stress'],
+        ],
+    );
 });
 
 test('planLenses on a file with no samples and no brute still offers Run and Trace', () => {

@@ -1,7 +1,8 @@
 // The language client: starts `cpl lsp` and hands the editor's requests to
 // it. Diagnostics, hover, go-to-definition, the outline and quick fixes come
-// from the server's capabilities, and completion will too once the server
-// advertises it; until then `completion.ts` fills in.
+// from the server's capabilities, and completion and inlay hints will too
+// once the server advertises them; until then `completion.ts` and
+// `inlayHints.ts` fill in without duplicating server capabilities.
 
 import * as vscode from 'vscode';
 import {
@@ -11,8 +12,9 @@ import {
     ServerOptions,
     State,
 } from 'vscode-languageclient/node';
-import { resolveServer } from './cpl';
 import { registerFallbackCompletion } from './completion';
+import { resolveServer } from './cpl';
+import { registerFallbackInlayHints } from './inlayHints';
 
 export const SELECTOR = [
     { language: 'cp', scheme: 'file' },
@@ -30,7 +32,8 @@ export function serverBinary(): string | undefined {
 
 export class CpClient implements vscode.Disposable {
     private client: LanguageClient | undefined;
-    private fallback: vscode.Disposable | undefined;
+    private fallbackCompletion: vscode.Disposable | undefined;
+    private fallbackInlayHints: vscode.Disposable | undefined;
     private readonly status: vscode.LanguageStatusItem;
     private warnedMissing = false;
 
@@ -45,6 +48,7 @@ export class CpClient implements vscode.Disposable {
         const binary = serverBinary();
         if (!binary) {
             this.missingBinary();
+            this.ensureFallbacks({ completion: true, inlayHints: true });
             return;
         }
         const args = vscode.workspace.getConfiguration('cp').get<string[]>('server.args', ['lsp']);
@@ -76,6 +80,7 @@ export class CpClient implements vscode.Disposable {
         } catch (error) {
             this.setStatus('cpl: failed to start', vscode.LanguageStatusSeverity.Error);
             this.output.appendLine(`could not start \`${binary} ${args.join(' ')}\`: ${error}`);
+            this.ensureFallbacks({ completion: true, inlayHints: true });
             return;
         }
         const info = client.initializeResult?.serverInfo;
@@ -84,14 +89,15 @@ export class CpClient implements vscode.Disposable {
             vscode.LanguageStatusSeverity.Information,
             binary,
         );
-        if (!client.initializeResult?.capabilities.completionProvider) {
-            this.fallback = registerFallbackCompletion(SELECTOR);
-        }
+        const caps = client.initializeResult?.capabilities;
+        this.ensureFallbacks({
+            completion: !caps?.completionProvider,
+            inlayHints: !caps?.inlayHintProvider,
+        });
     }
 
     async stop(): Promise<void> {
-        this.fallback?.dispose();
-        this.fallback = undefined;
+        this.disposeFallbacks();
         const client = this.client;
         this.client = undefined;
         try {
@@ -116,6 +122,28 @@ export class CpClient implements vscode.Disposable {
         this.status.dispose();
     }
 
+    private ensureFallbacks(need: { completion: boolean; inlayHints: boolean }): void {
+        if (need.completion && !this.fallbackCompletion) {
+            this.fallbackCompletion = registerFallbackCompletion(SELECTOR);
+        } else if (!need.completion && this.fallbackCompletion) {
+            this.fallbackCompletion.dispose();
+            this.fallbackCompletion = undefined;
+        }
+        if (need.inlayHints && !this.fallbackInlayHints) {
+            this.fallbackInlayHints = registerFallbackInlayHints(SELECTOR);
+        } else if (!need.inlayHints && this.fallbackInlayHints) {
+            this.fallbackInlayHints.dispose();
+            this.fallbackInlayHints = undefined;
+        }
+    }
+
+    private disposeFallbacks(): void {
+        this.fallbackCompletion?.dispose();
+        this.fallbackCompletion = undefined;
+        this.fallbackInlayHints?.dispose();
+        this.fallbackInlayHints = undefined;
+    }
+
     private setStatus(text: string, severity: vscode.LanguageStatusSeverity, detail?: string): void {
         this.status.busy = false;
         this.status.text = text;
@@ -126,7 +154,7 @@ export class CpClient implements vscode.Disposable {
     private missingBinary(): void {
         const configured = vscode.workspace.getConfiguration('cp').get<string>('server.path', 'cpl');
         this.setStatus('cpl: not found', vscode.LanguageStatusSeverity.Error, `\`${configured}\` is not on PATH`);
-        // Highlighting works without the server, so say it once and stay out of the way.
+        // Highlighting, snippets and fallback completion/inlay hints still work without the server.
         if (this.warnedMissing) {
             return;
         }
@@ -134,7 +162,7 @@ export class CpClient implements vscode.Disposable {
         const choose = 'Set the Path';
         void vscode.window
             .showWarningMessage(
-                `Couldn't find \`${configured}\`, so errors, hover and quick fixes are off. ` +
+                `Couldn't find \`${configured}\`, so live diagnostics, hover and quick fixes are off. ` +
                     'Build it with `cargo build --release -p cpl-cli`, or point `cp.server.path` at the binary.',
                 choose,
             )

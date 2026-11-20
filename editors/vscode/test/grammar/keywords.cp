@@ -1,4 +1,4 @@
-// SYNTAX TEST "source.cp" "keywords and operators"
+// SYNTAX TEST "source.cp" "CP Lang v2.1 keywords and operators"
 
 let n = read()
 // <--- storage.type.let.cp
@@ -28,13 +28,10 @@ else: return none
 //    ^^^^^^ keyword.control.return.cp
 //           ^^^^ constant.language.none.cp
 
-for i in 0..n by 2:
+for mut b in blocks:
 // <--- keyword.control.for.cp
-//    ^^ keyword.control.in.cp
-//       ^ constant.numeric.integer.decimal.cp
-//        ^^ keyword.operator.range.cp
-//            ^^ keyword.operator.word.by.cp
-//               ^ constant.numeric.integer.decimal.cp
+//  ^^^ storage.modifier.mut.cp
+//        ^^ keyword.control.in.cp
 
 for v in 1..=n: total += w[v]
 //       ^ constant.numeric.integer.decimal.cp
@@ -63,6 +60,12 @@ assert lo <= hi, "empty"
 //        ^^ keyword.operator.comparison.cp
 //               ^^^^^^^ string.quoted.double.cp
 
+assume n >= 1 and sum(a) <= 2e5
+// <------ keyword.control.assume.cp
+//       ^^ keyword.operator.comparison.cp
+//            ^^^ keyword.operator.logical.and.cp
+//                ^^^ support.function.builtin.cp
+
 yield from walk(child)
 // <----- keyword.control.yield.cp
 //    ^^^^ keyword.control.yield.from.cp
@@ -71,9 +74,6 @@ yield from walk(child)
 yield from
 // <----- keyword.control.yield.cp
 //    ^^^^ - keyword
-
-let v = do:
-//      ^^ keyword.control.do.cp
 
 best max= x
 //   ^^^^ keyword.operator.assignment.compound.cp
@@ -86,13 +86,6 @@ let m = max(a, b) == min(a, b)
 //                ^^ keyword.operator.comparison.cp
 //                   ^^^ support.function.builtin.cp
 
-let e2 = e with w: 7
-//         ^^^^ keyword.operator.word.with.cp
-//                 ^ constant.numeric.integer.decimal.cp
-
-let c = a <=> b
-//        ^^^ keyword.operator.comparison.cp
-
 let p = x ** 2 ^ y % m
 //        ^^ keyword.operator.arithmetic.cp
 //             ^ keyword.operator.bitwise.cp
@@ -103,6 +96,10 @@ x **= 2
 
 mask <<= 1
 //   ^^^ keyword.operator.assignment.compound.cp
+
+(adj[k] ??= []).push(x)
+//      ^^^ keyword.operator.assignment.compound.cp
+//              ^^^^ entity.name.function.method.cp
 
 let s = a << 3 | b >> 1 & ~c
 //        ^^ keyword.operator.bitwise.shift.cp
@@ -115,12 +112,13 @@ let d = dist[v] ?? -1
 //              ^^ keyword.operator.coalesce.cp
 //                 ^ keyword.operator.arithmetic.cp
 
-let f = first_true(lo, hi)!
-//                        ^ keyword.operator.unwrap.cp
+let f = bsearch_first(0..=hi, ok)!
+//      ^^^^^^^^^^^^^ support.function.builtin.cp
+//                               ^ keyword.operator.unwrap.cp
 
-let g = find(x)?
-//      ^^^^ support.function.builtin.cp
-//             ^ keyword.operator.optional.cp
+let g = a.find(x)?
+//        ^^^^ entity.name.function.method.cp
+//               ^ keyword.operator.optional.cp
 
 if x != y: print(true, false)
 //   ^^ keyword.operator.comparison.cp
@@ -131,20 +129,20 @@ if x != y: print(true, false)
 let t = f::<Int>()
 //      ^ entity.name.function.call.cp
 //       ^^ punctuation.accessor.double-colon.cp
+//         ^ punctuation.definition.generic.begin.cp
 //          ^^^ support.type.builtin.cp
+//             ^ punctuation.definition.generic.end.cp
 
-if const D.max_len <= 64:
+if const D.K <= 64:
 // ^^^^^ storage.modifier.const.cp
 //       ^ entity.name.type.cp
-//         ^^^^^^^ variable.other.property.cp
+//         ^ entity.name.type.cp
 
-// Words that are keywords in one position only stay plain names elsewhere.
-let from = spec + law + as + invariant
+// Words that are contextual keywords stay plain names elsewhere.
+let from = as + invariant
 //  ^^^^ - keyword
-//         ^^^^ - storage
-//                ^^^ - storage
-//                      ^^ - keyword
-//                           ^^^^^^^^^ - keyword
+//         ^^ - keyword
+//              ^^^^^^^^^ - keyword
 
 let first = xs.first
 //  ^^^^^ - support.function

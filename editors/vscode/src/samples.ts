@@ -178,13 +178,16 @@ export interface LensSpec {
 
 /**
  * The lenses for a file (`plan/60-editor.md` section 6.4): a Run row above
- * the file, one above each inline sample, and Stress and Trace above each
- * part that has a brute.
+ * the file, one above each inline sample, and Stress / Trace lenses above
+ * `@brute`, `@checker` and `@interactor` functions.
  */
 export function planLenses(text: string, samples: readonly Sample[]): LensSpec[] {
     const out: LensSpec[] = [];
     const fns = parts(text);
     const bruted = fns.filter(p => p.decorators.some(d => d.name === 'brute'));
+    const checkers = fns.filter(p => p.decorators.some(d => d.name === 'checker'));
+    const interactors = fns.filter(p => p.decorators.some(d => d.name === 'interactor'));
+    const hasStressTarget = bruted.length > 0 || checkers.length > 0 || interactors.length > 0;
     const first = samples[0];
     out.push({
         line: 0,
@@ -195,7 +198,7 @@ export function planLenses(text: string, samples: readonly Sample[]): LensSpec[]
     if (samples.length > 1) {
         out.push({ line: 0, title: `Run on all ${samples.length} samples`, command: 'cp.runAllSamples', args: [] });
     }
-    if (bruted.length > 0) {
+    if (hasStressTarget) {
         out.push({ line: 0, title: 'Stress', command: 'cp.stress', args: [] });
     }
     out.push({ line: 0, title: 'Trace', command: 'cp.trace', args: first ? [first] : [] });
@@ -205,14 +208,40 @@ export function planLenses(text: string, samples: readonly Sample[]): LensSpec[]
         }
     }
     for (const part of bruted) {
-        const brute = part.decorators.find(d => d.name === 'brute')?.args?.trim();
+        const target = part.decorators.find(d => d.name === 'brute')?.args?.trim();
+        if (target === 'main') {
+            out.push({
+                line: part.line,
+                title: `Stress main against ${part.name}`,
+                command: 'cp.stress',
+                args: [],
+            });
+            out.push({ line: part.line, title: 'Trace', command: 'cp.trace', args: [first] });
+        } else {
+            out.push({
+                line: part.line,
+                title: target ? `Stress against ${target}` : 'Stress',
+                command: 'cp.stress',
+                args: [part.name],
+            });
+            out.push({ line: part.line, title: 'Trace', command: 'cp.trace', args: [first, part.name] });
+        }
+    }
+    for (const checker of checkers) {
         out.push({
-            line: part.line,
-            title: brute ? `Stress against ${brute}` : 'Stress',
+            line: checker.line,
+            title: `Stress with checker ${checker.name}`,
             command: 'cp.stress',
-            args: [part.name],
+            args: [],
         });
-        out.push({ line: part.line, title: 'Trace', command: 'cp.trace', args: [first, part.name] });
+    }
+    for (const interactor of interactors) {
+        out.push({
+            line: interactor.line,
+            title: `Stress with interactor ${interactor.name}`,
+            command: 'cp.stress',
+            args: [],
+        });
     }
     return out;
 }

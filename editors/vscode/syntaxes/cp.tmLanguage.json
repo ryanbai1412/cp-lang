@@ -16,6 +16,7 @@
     { "include": "#keywords" },
     { "include": "#lambda-params" },
     { "include": "#compound-assign-words" },
+    { "include": "#turbofish" },
     { "include": "#generics" },
     { "include": "#boundaries" },
     { "include": "#calls" },
@@ -82,6 +83,14 @@
       "endCaptures": { "1": { "name": "punctuation.section.interpolation.end.cp" } },
       "patterns": [
         { "include": "#braces" },
+        {
+          "comment": "Format specifiers such as `:.6f`, `:08x`, `:>10` right before the closing brace.",
+          "match": "(:)((?:[<>=^]?[+-]?#?0?[0-9]*(?:\\.[0-9]+)?[fFeEgGdoxXbBs%])|(?:[<>=^][0-9]+))(?=\\})",
+          "captures": {
+            "1": { "name": "punctuation.separator.format.cp" },
+            "2": { "name": "constant.other.placeholder.format.cp" }
+          }
+        },
         { "include": "$self" }
       ]
     },
@@ -161,7 +170,7 @@
           }
         },
         {
-          "match": "\\b(struct|enum|trait|protocol)\\s+([A-Z][A-Za-z0-9_]*)",
+          "match": "\\b(struct|enum|trait)\\s+([A-Z][A-Za-z0-9_]*)",
           "captures": {
             "1": { "name": "storage.type.$1.cp" },
             "2": { "name": "entity.name.type.$1.cp" }
@@ -194,30 +203,16 @@
             "1": { "name": "storage.type.law.cp" },
             "2": { "name": "entity.name.function.law.cp" }
           }
-        },
-        {
-          "match": "\\b(decorator)\\s+([a-z_][A-Za-z0-9_]*)",
-          "captures": {
-            "1": { "name": "storage.type.decorator.cp" },
-            "2": { "name": "entity.name.function.decorator.cp" }
-          }
-        },
-        {
-          "match": "^\\s*(spec)\\b(?=\\s+[A-Za-z_]|\\s*:)",
-          "captures": { "1": { "name": "storage.type.spec.cp" } }
-        },
-        {
-          "match": "\\b(pure)(?=\\s+fn\\b)",
-          "captures": { "1": { "name": "invalid.deprecated.pure.cp" } }
         }
       ]
     },
     "contracts": {
-      "match": "^\\s*(requires|ensures|invariant)\\b(?=\\s+(?![-+*/%^&|<>]*=)\\S)",
-      "captures": { "1": { "name": "keyword.other.contract.$1.cp" } }
+      "comment": "`invariant` is contextual: highlighted as a statement keyword at line start, plain name elsewhere.",
+      "match": "^\\s*(invariant)\\b(?=\\s+(?![-+*/%^&|<>]*=)\\S)",
+      "captures": { "1": { "name": "keyword.other.contract.invariant.cp" } }
     },
     "labels": {
-      "comment": "A named argument, a parameter or a record field: `(by: min`, `, mut g: Dsu`.",
+      "comment": "A named argument, a parameter or a record field: `(by: min`, `, mut g: Dsu`, `(gen: () => ...)`.",
       "match": "([(,;])\\s*(?:(mut|inline|lends)\\s+)?([a-z_][A-Za-z0-9_]*)\\s*(:)(?!:)",
       "captures": {
         "1": { "patterns": [{ "include": "#punctuation" }] },
@@ -235,24 +230,36 @@
             "2": { "name": "keyword.control.yield.from.cp" }
           }
         },
-        { "name": "keyword.control.do.cp", "match": "\\bdo(?=\\s*:)" },
+        {
+          "comment": "`for mut x in xs:` highlights both `for` and `mut` cleanly.",
+          "match": "\\b(for)\\s+(mut)\\b",
+          "captures": {
+            "1": { "name": "keyword.control.for.cp" },
+            "2": { "name": "storage.modifier.mut.cp" }
+          }
+        },
+        {
+          "comment": "`lends mut Slice<I, T>` highlights both `lends` and `mut` cleanly.",
+          "match": "\\b(lends)\\s+(mut)\\b",
+          "captures": {
+            "1": { "name": "storage.modifier.lends.cp" },
+            "2": { "name": "storage.modifier.mut.cp" }
+          }
+        },
         {
           "name": "keyword.control.$1.cp",
-          "match": "\\b(if|elif|else|for|while|in|match|return|break|continue|yield|where|assert|defer)\\b"
+          "match": "\\b(if|elif|else|for|while|in|match|return|break|continue|defer|assert|assume|yield|lend|where)\\b"
         },
         { "name": "keyword.operator.logical.$1.cp", "match": "\\b(and|or|not)\\b" },
-        { "name": "keyword.operator.word.$1.cp", "match": "\\b(by|with)\\b" },
         { "name": "keyword.other.unsafe.unchecked.cp", "match": "\\bunchecked\\b" },
         { "name": "storage.type.var.cp", "match": "\\bvar\\b" },
         { "name": "storage.type.let.cp", "match": "\\blet\\b" },
         { "name": "storage.type.function.cp", "match": "\\bfn\\b" },
-        { "name": "storage.type.$1.cp", "match": "\\b(struct|enum|domain|type|trait|impl)\\b" },
+        { "name": "storage.type.$1.cp", "match": "\\b(struct|enum|domain|type|trait|impl|law)\\b" },
         { "name": "keyword.control.import.cp", "match": "\\buse\\b" },
         { "name": "storage.modifier.mut.cp", "match": "\\bmut\\b" },
         { "name": "storage.modifier.lends.cp", "match": "\\blends\\b" },
-        { "name": "storage.modifier.$1.cp", "match": "\\b(pub|const)\\b" },
-        { "name": "storage.modifier.$1.cp", "match": "\\b(static|inline)(?=\\s+(?:let|var|fn|[a-z_][A-Za-z0-9_]*\\s*:))" },
-        { "name": "keyword.other.yields.cp", "match": "\\byields\\b(?!\\s*\\.\\.)(?=\\s*[A-Z(\\[?])" },
+        { "name": "storage.modifier.$1.cp", "match": "\\b(pub|const|inline)\\b" },
         { "name": "variable.language.self.cp", "match": "\\bself\\b" },
         { "name": "constant.language.boolean.$1.cp", "match": "\\b(true|false)\\b" },
         { "name": "constant.language.none.cp", "match": "\\bnone\\b" }
@@ -270,6 +277,18 @@
       "match": "\\b(max|min)(=)(?!=)",
       "name": "keyword.operator.assignment.compound.cp"
     },
+    "turbofish": {
+      "comment": "`f::<Int>()` and `topo::<V>(next)`.",
+      "name": "meta.generic.turbofish.cp",
+      "begin": "(::)(<)",
+      "end": "(>)|(?=$)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.accessor.double-colon.cp" },
+        "2": { "name": "punctuation.definition.generic.begin.cp" }
+      },
+      "endCaptures": { "1": { "name": "punctuation.definition.generic.end.cp" } },
+      "patterns": [{ "include": "$self" }]
+    },
     "generics": {
       "comment": "`Name<` starts type arguments only when `Name` is capitalized and `<` touches it.",
       "name": "meta.generic.cp",
@@ -286,7 +305,7 @@
       "patterns": [
         {
           "name": "support.function.builtin.cp",
-          "match": "(?<![.A-Za-z0-9_])(print|read|min|max|abs|sum|count|all|any|find|first|last|argmax|argmin)(?=\\s*\\()"
+          "match": "(?<![.A-Za-z0-9_])(read|read_line|read_until|read_output|print|debug|ask|min|max|sum|prod|any|all|count|first|min_by|max_by|bsearch_first|bsearch_last|bsearch_first_some|sort|sorted|reverse|dedup|rotate_left|rotate_right|next_permutation|compress|prefix|scan|runs|sliding_min|sliding_max|slide_until|swap|abs|gcd|lcm|isqrt|pow_mod|factor|divisors|popcount|ctz|clz|bit_len|sqrt|sin|cos|tan|atan2|exp|ln|hypot|floor|ceil|round|trunc|close|sign|turn|turn_eps|unit|convex_hull|desc|bfs|dijkstra|shortest|topo|topo_prefix|scc|condense|two_edge_components|biconnected_components|articulation_points|two_color|mst|max_weight_matching|z_function|prefix_function|palindromes)(?=\\s*\\(|::<)"
         },
         {
           "match": "(\\.)([a-z_][A-Za-z0-9_]*)(?=\\s*\\(|::<)",
@@ -305,15 +324,19 @@
       "patterns": [
         {
           "name": "support.type.builtin.cp",
-          "match": "\\b(Int|Float|Bool|Char|Str|I32|U8|U64|I128|List|Map|Set)\\b"
+          "match": "\\b(Int|U64|I128|F64|Bool|Char|Str|List|Deque|Map|HashMap|Set|HashSet|SortedBag|MinHeap|MaxHeap|Range|Bounds|Subset|Bitset|Iter)\\b"
         },
-        { "name": "support.constant.inf.cp", "match": "\\bINF\\b" },
+        {
+          "name": "support.type.stdlib.cp",
+          "match": "\\b(Mod|Comb|Marks|Compressed|MonoDeque|SegTree|LazySegTree|SparseTable|Fenwick|Fenwick2D|Steps|Dsu|Graph|Rooted|FlowGraph|MinCostFlow|TwoSat|Perm|Sieve|Matrix|Pt|Dir4|Dir8|ByAngle|SuffixArray|RollingHash|HashVal|Monoid|Action|Desc|Reversible|AddSum|AddMin|AddMax|AssignSum|AssignMin|AssignMax)\\b"
+        },
+        { "name": "support.constant.math.cp", "match": "\\bPI\\b" },
         { "name": "constant.other.caps.cp", "match": "\\b[A-Z][A-Z0-9_]+\\b" },
         { "name": "entity.name.type.cp", "match": "\\b[A-Z][A-Za-z0-9_]*\\b" }
       ]
     },
     "boundaries": {
-      "comment": "`s.l` and `s.r`, or `s.l(k)` and `s.r(k)`: the two boundaries of a slice.",
+      "comment": "`s.l` and `s.r`, or `s.l(k)` and `s.r(k)`: the two boundaries of a position or slice.",
       "match": "(\\.)(l|r)\\b",
       "captures": {
         "1": { "name": "punctuation.accessor.dot.cp" },
@@ -344,8 +367,8 @@
         { "name": "keyword.operator.range.cp", "match": "\\.\\.=|\\.\\." },
         { "name": "keyword.operator.arrow.cp", "match": "->" },
         { "name": "keyword.operator.fat-arrow.cp", "match": "=>" },
-        { "name": "keyword.operator.comparison.cp", "match": "<=>|==|!=" },
-        { "name": "keyword.operator.assignment.compound.cp", "match": "\\*\\*=|<<=|>>=|[-+*/%^&|]=" },
+        { "name": "keyword.operator.comparison.cp", "match": "==|!=" },
+        { "name": "keyword.operator.assignment.compound.cp", "match": "\\?\\?=|\\*\\*=|<<=|>>=|[-+*/%^&|]=" },
         { "name": "keyword.operator.comparison.cp", "match": "<=|>=" },
         { "name": "keyword.operator.bitwise.shift.cp", "match": "<<|>>" },
         { "name": "keyword.operator.comparison.cp", "match": "<|>" },

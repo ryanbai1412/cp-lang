@@ -1,0 +1,188 @@
+{
+  "Memoized DP (@memo)": {
+    "prefix": ["memo", "dp"],
+    "description": "CP Lang v2.1 memoized DP over bounded domains",
+    "body": [
+      "@memo",
+      "fn ${1:dp}(${2:i}: ${3:V}, ${4:state}: ${5:Bool}) -> ${6:Int}:",
+      "    ${0}"
+    ]
+  },
+  "Hash-Memoized DP (@memo(hash))": {
+    "prefix": ["memohash", "dphash"],
+    "description": "CP Lang v2.1 hash-memoized DP for sparse or non-domain states",
+    "body": [
+      "@memo(hash)",
+      "fn ${1:dp}(${2:i}: ${3:Int}, ${4:k}: ${5:Int}) -> ${6:Int}:",
+      "    ${0}"
+    ]
+  },
+  "Binary Search First True (bsearch_first)": {
+    "prefix": ["bsearch_first", "bsearch"],
+    "description": "First value in a range where the predicate holds",
+    "body": [
+      "let ${1:ans} = bsearch_first(${2:0..=hi}, ${3:mid} => ${4:ok(mid)})"
+    ]
+  },
+  "Binary Search Last True (bsearch_last)": {
+    "prefix": ["bsearch_last"],
+    "description": "Last value in a range where the predicate holds",
+    "body": [
+      "let ${1:ans} = bsearch_last(${2:0..=hi}, ${3:mid} => ${4:ok(mid)})"
+    ]
+  },
+  "Coordinate Compression (compress)": {
+    "prefix": ["compress"],
+    "description": "Coordinate-compress values into a dedicated sorted domain",
+    "body": [
+      "let ${1:xs} = compress(${2:all})",
+      "// domain ${1:xs}.D, value ${1:xs}[r], rank ${1:xs}.at(v)",
+      "${0}"
+    ]
+  },
+  "Segment Tree (SegTree)": {
+    "prefix": ["segtree", "SegTree"],
+    "description": "Domain-indexed segment tree over a bare operator",
+    "body": [
+      "var ${1:st} = SegTree<${2:V}, ${3:Int}>(${4|+,*,^,&,|,min,max,gcd|}, ${5:a})",
+      "${0}"
+    ]
+  },
+  "Segment Tree with Custom Monoid": {
+    "prefix": ["segtree-monoid", "monoid"],
+    "description": "Segment tree with a custom Monoid(id, op)",
+    "body": [
+      "let ${1:m} = Monoid<${2:Node}>(${3:id}, (${4:x}, ${5:y}) => ${6:merge(x, y)})",
+      "var ${7:st} = SegTree<${8:V}, ${2:Node}>(${1:m}, ${9:init})",
+      "${0}"
+    ]
+  },
+  "Lazy Segment Tree (LazySegTree)": {
+    "prefix": ["lazysegtree", "lazyseg", "LazySegTree"],
+    "description": "Domain-indexed lazy segment tree with a built-in range action",
+    "body": [
+      "var ${1:st} = LazySegTree<${2:V}, ${3:Int}>(${4|AddSum,AddMin,AddMax,AssignSum,AssignMin,AssignMax|}, ${5:a})",
+      "${0}"
+    ]
+  },
+  "Sparse Table (SparseTable)": {
+    "prefix": ["sparsetable", "sparse", "SparseTable"],
+    "description": "O(1) idempotent range query returning ?T",
+    "body": [
+      "let ${1:st} = SparseTable<${2:V}, ${3:Int}>(${4|min,max,gcd,&,||}, ${5:a})",
+      "${0}"
+    ]
+  },
+  "Rooted Tree & HLD (Rooted)": {
+    "prefix": ["rooted", "hld", "Rooted"],
+    "description": "Rooted tree with HLD preorder domain and LazySegTree over t.Pre",
+    "body": [
+      "let ${1:t} = Rooted<${2:V}>(${3:g}, ${4:V.first})",
+      "var ${5:ds} = LazySegTree<${1:t}.Pre, ${6:Int}>(${7|AddSum,AddMin,AddMax,AssignSum,AssignMin,AssignMax|}, [${1:t}.Pre] p => ${8:a[${1:t}.preorder[p]]})",
+      "// path query:   ${1:t}.fold_path(u, v, ${5:ds})",
+      "// path update:  ${1:t}.apply_path(u, v, mut ${5:ds}, tag)",
+      "// subtree fold: ${5:ds}.fold(${1:t}.sub(u))",
+      "${0}"
+    ]
+  },
+  "Disjoint Set Union with Rollback (Dsu + defer)": {
+    "prefix": ["dsu", "Dsu"],
+    "description": "Domain-indexed DSU with rollback snapshot via defer",
+    "body": [
+      "var ${1:dsu} = Dsu<${2:V}>()",
+      "let ${3:snap} = ${1:dsu}.mark()",
+      "defer ${1:dsu}.undo_to(${3:snap})",
+      "${0}"
+    ]
+  },
+  "Generation-Stamped Visited Marks (Marks<D>)": {
+    "prefix": ["marks", "Marks"],
+    "description": "O(1)-clearable visited table over a domain",
+    "body": [
+      "var ${1:seen} = Marks<${2:V}>()",
+      "${0}"
+    ]
+  },
+  "Monotone Deque (MonoDeque)": {
+    "prefix": ["monodeque", "MonoDeque"],
+    "description": "Sliding-window min/max deque",
+    "body": [
+      "var ${1:dq} = MonoDeque<${2:Int}>(${3|min,max|})",
+      "${1:dq}.push(at: ${4:i}, val: ${5:x})",
+      "${1:dq}.drop_before(${6:i - k + 1})",
+      "${0}"
+    ]
+  },
+  "Modular Arithmetic & Combinatorics (Mod<P> + Comb<P>)": {
+    "prefix": ["mod", "comb", "Mod"],
+    "description": "Mod<P> type alias and lazy factorial table Comb<P>",
+    "body": [
+      "const ${1:MOD} = ${2|1_000_000_007,998_244_353|}",
+      "type ${3:Z} = Mod<${1:MOD}>",
+      "var ${4:comb} = Comb<${1:MOD}>()",
+      "${0}"
+    ]
+  },
+  "Multi-Test Skeleton (@multitest)": {
+    "prefix": ["multitest", "@multitest"],
+    "description": "CP Lang v2.1 multi-test entry point",
+    "body": [
+      "@multitest",
+      "fn solve():",
+      "    let ${1:n}: ${2:1..=2e5} = read()",
+      "    domain ${3:V} = 1..=${1:n}",
+      "    ${0}"
+    ]
+  },
+  "Constructive Checker (@checker)": {
+    "prefix": ["checker", "@checker"],
+    "description": "In-file constructive or multi-answer validator for cpl stress",
+    "body": [
+      "@checker",
+      "fn ${1:check}():",
+      "    let ${2:out}: ${3:Int} = read_output()",
+      "    assert ${4:valid(out)}",
+      "    ${0}"
+    ]
+  },
+  "Interactive Judge (@interactor)": {
+    "prefix": ["interactor", "@interactor"],
+    "description": "In-file local interactive judge for cpl stress and cpl run",
+    "body": [
+      "@interactor",
+      "fn ${1:judge}():",
+      "    ${2:// respond to ask(\"?\", x, limit: ...)}",
+      "    ${0}"
+    ]
+  },
+  "Stress Test with gen: / assume / @brute": {
+    "prefix": ["stress", "gen-assume", "brute"],
+    "description": "Custom read(gen: ...) + assume constraint + @brute(main) for cpl stress",
+    "body": [
+      "let ${1:xs} = read(gen: () => ${2:gen_case()})",
+      "assume ${3:ok(xs)}",
+      "",
+      "@brute(${4:main})",
+      "fn ${5:slow}():",
+      "    ${0}"
+    ]
+  },
+  "Whole-Input Stress Generator (@gen)": {
+    "prefix": ["atgen", "@gen"],
+    "description": "Whole-input generator function for cpl stress",
+    "body": [
+      "@gen",
+      "fn ${1:make_case}(size: Int):",
+      "    ${0}"
+    ]
+  },
+  "IOI Grader Declaration (@grader)": {
+    "prefix": ["grader", "@grader"],
+    "description": "IOI grader-provided function or constant",
+    "body": [
+      "@grader",
+      "fn ${1:solve}(${2:n}: Int) -> ${3:Int}:",
+      "    ${0}"
+    ]
+  }
+}
