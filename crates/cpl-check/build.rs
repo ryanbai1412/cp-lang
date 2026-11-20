@@ -16,8 +16,12 @@ fn main() {
     let mut table = String::from("&[\n");
     for (name, path) in &modules {
         println!("cargo:rerun-if-changed={}", path.display());
-        writeln!(table, "    ({name:?}, include_str!({:?})),", path.display().to_string())
-            .expect("writing to a string");
+        writeln!(
+            table,
+            "    ({name:?}, include_str!({:?})),",
+            path.display().to_string()
+        )
+        .expect("writing to a string");
     }
     table.push_str("]\n");
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("set by cargo"));
@@ -35,7 +39,10 @@ fn collect(root: &Path, dir: &Path, modules: &mut Vec<(String, PathBuf)>) {
         if path.is_dir() {
             collect(root, &path, modules);
         } else if path.extension().is_some_and(|ext| ext == "cp") {
-            let below = path.strip_prefix(root).expect("found under root").with_extension("");
+            let below = path
+                .strip_prefix(root)
+                .expect("found under root")
+                .with_extension("");
             let name = below
                 .components()
                 .map(|part| part.as_os_str().to_string_lossy().into_owned())
