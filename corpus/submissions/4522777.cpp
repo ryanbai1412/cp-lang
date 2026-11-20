@@ -1,0 +1,97 @@
+#include "bits/extc++.h"
+
+using namespace std;
+
+template <typename T>
+void dbgh(const T& t) {
+	cerr << t << endl;
+}
+
+template <typename T, typename... U>
+void dbgh(const T& t, const U&... u) {
+	cerr << t << " | ";
+	dbgh(u...);
+}
+
+#ifdef DEBUG
+#define dbg(...)                                           \
+	cerr << "L" << __LINE__ << " [" << #__VA_ARGS__ << "]" \
+		 << ": ";                                          \
+	dbgh(__VA_ARGS__)
+#else
+#define cerr   \
+	if (false) \
+	cerr
+#define dbg(...)
+#endif
+
+#define endl "\n"
+#define long int64_t
+#define sz(x) int((x).size())
+
+namespace s1 {
+
+void solve(int n, int m, const vector<int> &queries) {
+	int perm[4] {0, 1, 2, 3};
+	for (auto& a : queries) {
+		if (a == 1) {
+			swap(perm[0], perm[1]);
+			swap(perm[2], perm[3]);
+		} else if (a == 3) {
+			swap(perm[0], perm[2]);
+			swap(perm[1], perm[3]);
+		} else if (a == 5) {
+			int prev[4];
+			memcpy(prev, perm, sizeof(prev));
+			perm[0] = prev[2];
+			perm[1] = prev[0];
+			perm[2] = prev[3];
+			perm[3] = prev[1];
+		}
+	}
+	int ans[2 * n][2 * m];
+	for (int i = 0; i < 2 * n; i++) {
+		for (int j = 0; j < 2 * m; j++) {
+			ans[i][j] = i * 2 * m + j + 1;
+		}
+	}
+	for (int i = 0; i < 2 * n; i += 2) {
+		for (int j = 0; j < 2 * m; j += 2) {
+			int cur[4] {ans[i][j], ans[i][j + 1], ans[i + 1][j], ans[i + 1][j + 1]};
+			ans[i][j] = cur[perm[0]];
+			ans[i][j + 1] = cur[perm[1]];
+			ans[i + 1][j] = cur[perm[2]];
+			ans[i + 1][j + 1] = cur[perm[3]];
+		}
+	}
+	for (int i = 0; i < 2 * n; i++) {
+		for (int j = 0; j < 2 * m; j++) {
+			cout << ans[i][j] << " \n"[j == 2 * m - 1];
+		}
+	}
+}
+
+}
+
+void solve() {
+	int n, m, q;
+	cin >> n >> m >> q;
+	vector<int> queries(q);
+	for (auto& a : queries) {
+		cin >> a;
+	}
+	bool occur[6] {};
+	for (auto& a : queries) {
+		occur[a] = true;
+	}
+	if (!occur[2] && !occur[4]) {
+		s1::solve(n, m, queries);
+	}
+}
+
+int main() {
+	cin.tie(nullptr);
+	ios_base::sync_with_stdio(false);
+	cin.exceptions(ios::failbit);
+	solve();
+}

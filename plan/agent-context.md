@@ -1,0 +1,235 @@
+# Agent context
+
+Read this first if you are an agent picking up this project. It holds what
+the plan documents don't: who the user is, how the design came about, and
+above all the user's own feedback, which is the strongest guide to what
+"right" means here.
+
+## The user and the project
+
+Ryan Bai is a strong competitive programmer who writes C++. His accepted submissions are in `corpus/` (3,462 C++ files) and
+`subs/`; `submissions/info.json` has metadata. The project is his personal
+one: design and build the best language for competitive programming. It
+compiles to C++, and it comes with a full toolchain: CLI, debugger, LSP and
+editor plugin, docs site and playground.
+
+The repository is `~/cplang` and stays local: never push it anywhere unless
+he asks. The `plan/` directory is the source of truth. Older root-level docs
+are being folded into it and archived. The `compiler/` course was written for his
+education only; it is not part of the handoff, and how to implement things is
+up to you. The plan describes the maximally ambitious version of what ships.
+
+## How he wants you to work
+
+- **Work autonomously.** "for the most part tho you kinda have everything you
+  need from me to just cook and work autonomously". Make reasonable calls,
+  mark them "proposed", and say so. Ask only about real design decisions.
+- **Answering his questions comes first, everything else second.** "priority
+  1 is answering my questions when they come up but priority 2 is everything
+  else".
+- **Send documents incrementally** as each one is finished.
+- **Prose with example code, not tables.** "not a fan of tables i like
+  writing things out with example code and stuff". A table is fine only
+  when he asks for one (he did ask for the decisions table).
+- **Be concise in chat.** He reads short messages and steers quickly.
+- **Do research and experiments instead of guessing.** "for those key
+  decisions can you try to do some research and experimentation yourself to
+  answer them". Use the corpus and C++ benchmarks (`research/`).
+- **Do second passes.** After a batch of documents, re-read them for
+  consistency, and look for missing features that would change the design.
+
+## Principles he has stated, in his words
+
+**It should just work, like an Apple product.** From his first message:
+"when i use the language it should just feel like the pieces fit together
+beautifully and everything just works ... i never should need to feel like i
+have to hack stuff together". Translating an idea into code should be "super
+easy and natural and quick", and the structure should make it "glaringly
+obvious where issues with the code might lie".
+
+**Indexing safety is a P0, but one of many.** "making it so that it's just
+super easy for me to write about and reason about things like off by one
+errors and weird indexing ... is p0". Later: "when i said index spaces was
+P0, that was just an example. we have lots of other P0s".
+
+**Keep the core general-purpose.** "i generally feel like we shouldn't bake
+stuff way too competitive programming specific into the language". This is
+why per-test scope headers were rejected and multitest became a stdlib
+decorator on the file.
+
+**If the stdlib can do it, the stdlib should do it.** "if it can be made into
+this, you know, the standard library can support it, we should do it". He
+agreed that users should be able to reimplement about 90% of the stdlib
+themselves at full speed: "i think we should use this as a good forcing
+function".
+
+**No secrets under the hood.** "we should be very careful with things we do
+secretly under the hood". He pushed back on a `Set` silently becoming a
+bitset and a `Map` silently becoming a slot array: "i kinda feel like it's
+cool but also feels like you just almost always want to be explicit
+anyways". Dense forms are explicit types.
+
+**Memory matters.** "memory is pretty sensitive. like the diff between 4
+bytes and 8 bytes is sometimes huge esp in data structures for caching
+reasons". Also: "we have a lot of stuff that ends up hurting perf. e.g.
+subsets can we do this in a way where we use compact like u32 or u64".
+
+**Submissions under 64 KB are critical.** "btw under 64kb is critical lmao".
+He also noticed when a port came out *more* bytes than the C++.
+
+**Rewrites must rethink, not translate.** "it's not just about translating
+line to line. it's about thinking about the logic and thinking about how
+you'd actually express what you're trying to do in this new world". He
+doesn't use enums in C++ "cuz c++ enums suck", so ports should use ADTs,
+optionals and domains where they fit.
+
+**Line counts must be honest.** "moving stuff to stdlib code doesn't really
+count as lines of code reductions lmao".
+
+**Errors and debugging are a key goal.** "one key goal is really good error
+and debugging messages ... and ofc everything should feel very nice".
+
+## Decisions he made directly
+
+Syntax: all of `archive/style-decisions.md` (1-33, included in the handoff; plan/17-syntax.md is the current form), including indentation blocks
+with `{}` only for inline expressions, `=>` match arms ("let's use =>"),
+`and`/`or`/`not`, `@memo` decorators, `[V] v => expr` tables, every string
+literal interpolates, no semicolons, `Int` capitalized, floor division ("we
+should just get rid of the negative remainder bug"), and `@get` for getters
+("it feels like it should be an explicit @ annotation").
+
+Semantics:
+
+- **Ownership:** variables own and parameters borrow, with `mut` both at the
+  declaration and at the call site ("yea mut at both fn param time and fn
+  call site seems great"), and no `mut` on method receivers. He likes the
+  model's simplicity and was worried something might be missing; the research
+  says structs that keep borrows are the gap (about 2% of files).
+- **Copies:** big values need an explicit `.copy()` ("altho ofc they can
+  still move").
+- **Records:** anonymous records for one-off shapes ("yea i really want
+  anonymous records").
+- **Grids:** indexed `g[r, c]`.
+- **Monoids:** an operation over a type, not a type: "a monoid is an
+  operation over smth", and "this is broadly true of all segtree stuff".
+- **Purity:** no `pure fn`. "what's the point of knowing whether or not a
+  function is pure?" Instead, tools record I/O as inputs and outputs, and
+  `@memo` rejects fns that do I/O.
+- **Program structure:** a file is a function body, `@multitest` goes on
+  the file, and `static let`, top-level `return`, and program vs library mode
+  follow from that. "we should assume that a ton of problems are multitested
+  so we should make the multitest and single test experience the same ...
+  but yea it is annoying to have to stuff every single thing inside the same
+  function."
+- **`Int.MIN`:** `-(2^63 - 1)`, so `?Int` has a niche.
+- **Maps:** `Map` is ordered; `HashMap` is the opt-in fast one.
+- **Cost estimates** for TLE, MLE and overflow are warnings only.
+- **Domain checks** have explicit, greppable escape hatches.
+
+Tooling:
+
+- **Compiles** under 500 ms ideally; "running in debug mode doesn't even
+  have to go through gcc".
+- **Scratch inputs:** support `cp run d i1 i2`; "i usually just keep my input
+  files in i{1..5}", per problem.
+- **Libraries:** updating a library a file uses must be easy and intuitive,
+  including libraries that are just local paths.
+- **Version stamps** in build outputs, so old code can be rebuilt ("not a
+  huge priority would just be nice to have").
+- **Traces:** debug runs trace each stage. "this --trace feature is going
+  to be key. we just need ways to be able to like, filter it down", "make
+  sure it's not too noisy", and the output should be "a super good well
+  designed html that walks you through the entire execution of the program
+  ... with the program embedded next to it". For now, design the language so
+  everything the renderer needs is captured; the UI comes later.
+- **Snapshots:** save the input of a specific stage and rerun just that stage.
+- **Stress testing** "should be actually smart and intelligently shrink while
+  keeping you updated with the latest smallest test case".
+- **Editor support:** "we definitely need a top notch quality LSP and editor
+  extensions for vscode at least".
+- **Testing parts:** problems with several moving parts must be easy to
+  write and test part by part.
+- **Standard library:** "we should build a good default standard library
+  (doesn't need to get super fancy but should have the basics)".
+- **Validation:** "super important to have good validation as well and mostly
+  ensure performance".
+
+## More of his inputs (from the full message history)
+
+- **Priorities:** clean input reading is nice but "probably a p2". Things
+  like binary search, neighbour helpers, prefix sums and modint are stdlib,
+  not core; the core must make them easy to write. "inf is good and nice
+  builtins are good".
+- **Staged solutions:** make it easy to express the usual flow "first do A,
+  then take that output and do B, then ... run D with C and C reversed", and
+  to test each part on its own. Also "very clean ways to represent things
+  like out of bounds checking and edge cases and returning failures".
+- **Brute force and stress:** "making it super easy to swap in and out brute
+  force and non brute force implementations and super easy to stress test
+  specific implementations with great tooling as well is huge". The input
+  spec idea "would be huge". Running solve on symmetries is good.
+- **Checkers and interactors:** "we should probably have a checker as well",
+  and "a really clean way to do interactors would be great".
+- **State:** "defer, scoped undo, and even being able to abstract over
+  rollbacks somehow would be sick"; the typed pool "could be great";
+  generators wanted; bound checks must not crush perf.
+- **Laws:** algebraic laws should come "naturally as part of the type
+  system".
+- **`#ifdef LOCAL`:** an equivalent should be easy (minor).
+- **Early returns:** he asked about IIFEs and `return` inside `do:` blocks.
+
+## What he wants shipped (his overnight brief)
+
+- A Rust compiler with the full language and standard library, a working
+  type checker, and a very large test suite so correctness is certain.
+- 100-500 of his trickiest submissions ported, with bundling verified, no
+  performance loss measured objectively, and zero cost checked by reasoning
+  too ("is Option costing us extra bytes"). Ports must be "truly nice to
+  code"; "any awkwardness and friction is a sign that we should change the
+  design". Iterate the design on his submissions, tastefully.
+- Crystal-clear error messages and a pleasant experience throughout.
+- Tooling usable for real contests today, respecting output limits, with a
+  local library on disk next to the stdlib that sometimes gets
+  backwards-incompatible changes; formatter, linter, stress; a debug mode
+  that records everything into a beautifully designed HTML trace.
+- Beautiful documentation, learning resources, and a nice way to learn the
+  language.
+
+## Open calls from the overnight handoff
+
+He asked these and hadn't answered the recommendations yet; treat them as
+proposed:
+
+- **CLI name:** `.cp` files are fine, but a `cp` binary clashes with Unix
+  `cp`; pick another binary name (doc 11.1).
+- **Local library:** if `ryanbai1412/cp-library` exists and is his, port
+  it and use it to test library versioning and breaking changes; otherwise
+  build a realistic one.
+- **Editor scope:** the LSP is a stretch goal after the compiler, ports,
+  CLI, HTML trace and docs; the TextMate grammar is part of the core.
+
+## Concerns he raised that the design must keep answering
+
+- `@memo` might not give enough control (table layout, clearing, order).
+- `fn foo(a: List<Int>)` borrows while `let a: List<Int>` owns; is that
+  confusing? (Answer so far: the call site makes it clear, and `mut` marks
+  every mutation.)
+- Whether acyclic imports work for people in practice.
+- Packaging: one config per machine may be wrong; you may want one project
+  per judge, and libraries from elsewhere on the machine, with old solutions
+  still building after a library changes.
+
+## State at the time of writing
+
+- **Prototype:** a Python compiler in `proto/cpc/`. It is partial: no
+  generators and no rollback, it still parses `pure fn`, and it still runs
+  multitest through `fn solve()`.
+- **Research:** `research/NOTES.md` has the data and
+  `research/RECOMMENDATIONS.md` has proposals for borrows, generators, domain
+  strictness and checks.
+- **Pending his review:** the four proposals in `plan/18-key-features.md` (now folded into the plan as 1.9, marked proposed) (input
+  types that drive generation and shrinking, contracts, compile-time `const`,
+  a REPL), and the research proposals above.
+- **Next agreed steps:** finish the `plan/` documents, archive the old
+  docs, package a shareable zip with the corpus, build a working prototype
+  slice, port about 20 submissions, then the Rust compiler.

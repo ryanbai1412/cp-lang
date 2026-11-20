@@ -1,0 +1,106 @@
+#include "bits/extc++.h"
+
+using namespace std;
+
+template <typename T>
+void dbgh(const T& t) {
+	cerr << t << endl;
+}
+
+template <typename T, typename... U>
+void dbgh(const T& t, const U&... u) {
+	cerr << t << " | ";
+	dbgh(u...);
+}
+
+#ifdef DEBUG
+#define dbg(...)                                              \
+	cerr << "L" << __LINE__ << " [" << #__VA_ARGS__ << "]: "; \
+	dbgh(__VA_ARGS__);
+#else
+#define dbg(...)
+#define cerr   \
+	if (false) \
+	cerr
+#endif
+
+using ld = long double;
+
+#define endl "\n"
+#define long int64_t
+#define sz(x) int((x).size())
+
+struct Fract {
+	long num, den;
+
+	Fract(long a, long b) {
+		if (b < 0) {
+			a = -a;
+			b = -b;
+		}
+		num = a;
+		den = b;
+	}
+
+	bool operator<(const Fract& f) const {
+		return num * f.den < den * f.num;
+	}
+
+	bool operator>(const Fract& f) const {
+		return num * f.den > den * f.num;
+	}
+
+	bool operator<=(const Fract& f) const {
+		return num * f.den <= den * f.num;
+	}
+
+	bool operator>=(const Fract& f) const {
+		return num * f.den >= den * f.num;
+	}
+};
+
+void solve() {
+	int n;
+	cin >> n;
+	long arr[n][2];
+	for (auto& [x, y] : arr) {
+		ld a, b;
+		cin >> a >> b;
+		x = long(a * 1000);
+		y = long(b * 1000);
+	}
+	for (auto& [x1, y1] : arr) {
+		Fract mn {0, 1}, mx {1000'000, 1};
+		for (auto& [x2, y2] : arr) {
+			if (x1 == x2) {
+				if (y2 < y1) {
+					mn = {int(1e9), 1};
+					break;
+				}
+				continue;
+			}
+			Fract cur {y1 * y1 - y2 * y2 + x1 * x1 - x2 * x2, 2 * (x1 - x2)};
+			dbg(cur.num, cur.den);
+			if (x1 < x2) {
+				if (cur <= mx) {
+					mx = cur;
+				}
+			} else {
+				if (cur >= mn) {
+					mn = cur;
+				}
+			}
+		}
+		if (mn <= mx) {
+			cout << "The sheep at (" << ld(x1) / 1000 << ", " << ld(y1) / 1000 << ") might be eaten." << endl;
+		}
+	}
+}
+
+int main() {
+	cout << fixed << setprecision(2);
+	cin.tie(nullptr);
+	cin.exceptions(ios::failbit);
+	ios_base::sync_with_stdio(false);
+	solve();
+}
