@@ -189,7 +189,31 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
 /// Failing tests this checker still accepts: each needs a rule it does
 /// not have yet. A name leaves this list when its case is rejected for
 /// its stated reason, and the test below says so.
-const NOT_YET: &[&str] = &[];
+///
+/// The `s2_*` cases are the Synthesis #2 kernel rules and format
+/// specifiers, which the prototype has and `crates/` does not yet.
+const NOT_YET: &[&str] = &[
+    "s2_array_default_literal",
+    "s2_char_of_digit",
+    "s2_dom_try",
+    "s2_f64_to_int",
+    "s2_float_name",
+    "s2_fmt_align",
+    "s2_fmt_float_width_only",
+    "s2_fmt_hex_float",
+    "s2_fmt_nested_width",
+    "s2_for_mut",
+    "s2_i32",
+    "s2_int_of_f64",
+    "s2_opt_chain",
+    "s2_opt_plus_eq",
+    "s2_print_yes_no",
+    "s2_read_angle",
+    "s2_read_no_type",
+    "s2_sign",
+    "s2_subdomain_widen",
+    "s2_unwrap_let",
+];
 
 /// Failing tests that state a limit of the prototype's code generator,
 /// not a rule of the language. `a[nx()] max= 4` evaluates `a[nx()]` once
