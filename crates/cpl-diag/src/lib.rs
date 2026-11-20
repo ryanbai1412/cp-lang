@@ -279,6 +279,11 @@ impl Sink {
         self.diags.len()
     }
 
+    /// The diagnostic pushed last, to add help or labels to.
+    pub fn last_mut(&mut self) -> Option<&mut Diagnostic> {
+        self.diags.last_mut()
+    }
+
     pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diags
     }

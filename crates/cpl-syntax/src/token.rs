@@ -79,6 +79,8 @@ pub enum TokenKind {
     NotEq,
     Lt,
     LtEq,
+    /// `<=>`: three-way comparison.
+    Spaceship,
     Gt,
     GtEq,
     Plus,
@@ -252,6 +254,7 @@ impl TokenKind {
             NotEq => "`!=`",
             Lt => "`<`",
             LtEq => "`<=`",
+            Spaceship => "`<=>`",
             Gt => "`>`",
             GtEq => "`>=`",
             Plus => "`+`",

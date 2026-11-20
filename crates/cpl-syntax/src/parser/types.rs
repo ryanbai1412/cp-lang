@@ -21,7 +21,7 @@ impl<'a> Parser<'a> {
                         elem: Box::new(self.ty()),
                     }
                 } else {
-                    let index = self.comma_list(T::RBracket, "the index list", Self::ty);
+                    let index = self.comma_list(T::RBracket, "the index list", Self::index_ty);
                     TypeKind::Array {
                         index,
                         elem: Box::new(self.ty()),
@@ -68,8 +68,19 @@ impl<'a> Parser<'a> {
                     ret: Box::new(ret),
                 }
             }
+            T::Ident if self.text() == "yields" && !matches!(self.peek_n(1), T::DotDot | T::DotDotEq) => {
+                self.bump();
+                TypeKind::Yields(Box::new(self.ty()))
+            }
             T::Ident if self.text().starts_with(|c: char| c.is_ascii_uppercase()) && !self.range_follows() => {
-                let name = self.name();
+                let mut name = self.name();
+                // `V.bounds`: a domain derived from another.
+                while self.at(T::Dot) && self.peek_n(1) == T::Ident {
+                    self.bump();
+                    let member = self.name();
+                    name.text = format!("{}.{}", name.text, member.text);
+                    name.span = name.span.to(member.span);
+                }
                 let args = if self.at(T::Lt) { self.type_args() } else { Vec::new() };
                 TypeKind::Named { name, args }
             }
@@ -104,6 +115,35 @@ impl<'a> Parser<'a> {
             kind,
             span: self.span_from(start),
         }
+    }
+
+    /// One entry of `[...]T`: a domain, or a count as in `[n]Int`, which
+    /// is the range `0..n`.
+    fn index_ty(&mut self) -> Type {
+        let counted = matches!(self.peek(), T::Ident | T::Int)
+            && matches!(self.peek_n(1), T::RBracket | T::Comma)
+            && !self.text().starts_with(|c: char| c.is_ascii_uppercase());
+        if !counted {
+            return self.ty();
+        }
+        let hi = self.primary_for_count();
+        let span = hi.span;
+        let lo = Expr {
+            kind: ExprKind::Int(0),
+            span: Span::point(span.start),
+        };
+        Type {
+            kind: TypeKind::Range {
+                lo: Box::new(lo),
+                hi: Box::new(hi),
+                inclusive: false,
+            },
+            span,
+        }
+    }
+
+    fn primary_for_count(&mut self) -> Expr {
+        self.additive()
     }
 
     /// True when a capitalized name starts a range bound (`N..=M`, with `N`
