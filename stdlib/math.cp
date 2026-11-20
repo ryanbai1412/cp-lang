@@ -85,6 +85,9 @@ pub struct Sieve:
 /// The number of bits needed to write `x >= 0` (`bit_len(0) == 0`, `bit_len(5) == 3`).
 pub fn bit_len(x: Int) -> Int = bit_width(x)
 
+/// Whether bit `i` of `x` is set: `x.bit(i)`, bit 0 the lowest. No bit from 63 up is set in an `Int` that is not negative.
+pub fn bit(self: Int, i: Int) -> Bool = i < 64 and (self >> i) & 1 == 1
+
 /// The prime factorization of `x >= 1` by trial division. O(sqrt x).
 pub fn factor(x: Int) -> List<(Int, Int)>:
     var out = List<(Int, Int)>()
@@ -201,3 +204,11 @@ fn fixed_rounds_pads_and_drops_a_zero_sign():
     assert fixed(7, 2, 0) == "4" and fixed(7, 2, 1) == "3.5" and fixed(-7, 2, 0) == "-4"
     assert fixed(1, 8, 2) == "0.13" and fixed(100, 1, 3) == "100.000"
     assert fixed(5, 1000, 2) == "0.01" and fixed(123456, 1000, 1) == "123.5"
+
+@test
+fn bit_reads_one_bit():
+    assert 10.bit(1) and 10.bit(3)
+    assert not 10.bit(0) and not 10.bit(2) and not 10.bit(40) and not 10.bit(64)
+    for _ in 0..100:
+        let x = rand(0, 1 << 40)
+        assert sum(1 << i for i in 0..41 if x.bit(i)) == x

@@ -79,6 +79,20 @@ pub fn dedup<T>(mut a: List<T>):
             kept += 1
     a.truncate(kept)
 
+/// `a` without each value equal to the one before it: the value form of `dedup`, as `sorted` is of `sort`.
+pub fn deduped<T>(self: List<T>) -> List<T>:
+    var out = self.copy()
+    dedup(mut out)
+    out
+
+/// The values of `a` that `keep` holds for, then the ones it does not, each in the order they came.
+pub fn partition<T>(self: List<T>, keep: T -> Bool) -> (List<T>, List<T>):
+    var (yes, no): (List<T>, List<T>) = ([], [])
+    for x in self:
+        if keep(x): yes.push(x)
+        else: no.push(x)
+    (yes, no)
+
 /// Rotate `a` left by `k` in place: what was at index `k % a.len` comes first.
 /// Signed Euclidean `k`: negative `k` rotates right (`rotate_left(mut a, -r)`).
 pub fn rotate_left<T>(mut a: List<T>, k: Int):
@@ -468,3 +482,16 @@ fn map_entry_remove_and_four_lookups():
             assert rm.first_gt(q) == want_gt
             assert rm.last_le(q) == want_le
             assert rm.last_lt(q) == want_lt
+
+@test
+fn deduped_and_partition_leave_the_list_alone():
+    let xs = [3, 1, 3, 2, 1]
+    assert sorted(xs).deduped() == [1, 2, 3]
+    assert xs.deduped() == xs
+    let (small, big) = xs.partition(x => x < 3)
+    assert small == [1, 2, 1] and big == [3, 3]
+    assert xs == [3, 1, 3, 2, 1]
+    for _ in 0..50:
+        let ys = [rand(0, 5) for _ in 0..rand(0, 12)]
+        let (even, odd) = ys.partition(y => y % 2 == 0)
+        assert even.len + odd.len == ys.len and all(y % 2 == 0 for y in even) and all(y % 2 == 1 for y in odd)

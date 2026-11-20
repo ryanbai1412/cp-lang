@@ -18,6 +18,7 @@ impl<'a> Parser<'a> {
             );
             Vec::new()
         };
+        let copies = std::mem::take(&mut self.var_params);
         let ret = self.eat(T::Arrow).then(|| self.ty());
         // `fn at(self, i: V) lends mut Int`: a projection.
         let lends =
@@ -72,6 +73,47 @@ impl<'a> Parser<'a> {
                     };
                 }
             }
+        }
+        // `fn grow(var b: Int)`: `b` is the fn's own copy, which it may
+        // assign. It is the body opening with `var b = b`.
+        if !copies.is_empty() {
+            let mut block = match body {
+                FnBody::Block(block) => block,
+                FnBody::Expr(value) => Block {
+                    span: value.span,
+                    stmts: vec![Stmt {
+                        span: value.span,
+                        kind: StmtKind::Expr(value),
+                        decorators: Vec::new(),
+                        public: false,
+                    }],
+                },
+                FnBody::None => Block {
+                    span: sig_span,
+                    stmts: Vec::new(),
+                },
+            };
+            let copy = |name: Name| Stmt {
+                span: name.span,
+                decorators: Vec::new(),
+                public: false,
+                kind: StmtKind::Let {
+                    mutable: true,
+                    pat: Pattern {
+                        kind: PatternKind::Name(name.text.clone()),
+                        span: name.span,
+                    },
+                    ty: None,
+                    init: Some(Expr {
+                        kind: ExprKind::Name(name.text),
+                        span: name.span,
+                    }),
+                    otherwise: None,
+                    guard: None,
+                },
+            };
+            block.stmts.splice(0..0, copies.into_iter().map(copy));
+            body = FnBody::Block(block);
         }
         FnDecl {
             name,
@@ -166,11 +208,15 @@ impl<'a> Parser<'a> {
         let start = self.start();
         let variadic = self.eat(T::DotDot);
         let mutable = self.eat(T::Mut);
+        let copied = !mutable && self.eat(T::Var);
         let name = if self.at(T::SelfKw) {
             self.name()
         } else {
             self.expect_name("a parameter name")
         };
+        if copied {
+            self.var_params.push(name.clone());
+        }
         let ty = self.eat(T::Colon).then(|| self.ty());
         let default = self.eat(T::Eq).then(|| self.expr());
         Param {

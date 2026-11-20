@@ -3056,17 +3056,25 @@ impl<'a> Lowerer<'a> {
             let slot = self.loop_var(param, ty.clone(), &mut pre);
             let id = self.next_loop;
             self.next_loop += 1;
+            // Over `lo..=hi` the builder's `i` runs from `lo`, and cell
+            // `i` is the `i - lo`th.
+            let from = match dim {
+                DimSpec::IntFrom(lo, _) => *lo,
+                _ => 0,
+            };
+            let hi = if from == 0 { hi } else { self.int_add(hi, from) };
             let iter = Iter::Range {
-                lo: self.int_lit(0, span),
+                lo: self.int_lit(from, span),
                 hi,
                 step: None,
                 rev: false,
             };
-            indices.push(Expr {
+            let index = Expr {
                 kind: ExprKind::Local(slot),
                 ty,
                 span: at,
-            });
+            };
+            indices.push(if from == 0 { index } else { self.int_add(index, -from) });
             loops.push((id, slot, iter, pre));
         }
         let value = match elem {

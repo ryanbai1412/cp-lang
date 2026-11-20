@@ -2072,11 +2072,13 @@ impl<'p, 'o> Interp<'p, 'o> {
             }),
             Builtin::First => match &first {
                 Value::List(items) => optional(items.first().cloned()),
+                Value::Array(array) => optional(array.data.first().cloned()),
                 Value::Range(lo, hi) => optional((lo < hi).then_some(Value::Int(*lo))),
                 _ => Value::Opt(None),
             },
             Builtin::Last => match &first {
                 Value::List(items) => optional(items.last().cloned()),
+                Value::Array(array) => optional(array.data.last().cloned()),
                 Value::Range(lo, hi) => optional((lo < hi).then_some(Value::Int(*hi - 1))),
                 _ => Value::Opt(None),
             },

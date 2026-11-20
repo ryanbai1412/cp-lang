@@ -2062,6 +2062,47 @@ impl<'a> Lowerer<'a> {
             }
             // `state!.k += 4`: the value inside, and the same failure as
             // reading it when there is none.
+            // `xs.last!` and `xs.first!` are the cells `xs[xs.len - 1]` and
+            // `xs[0]`: places, as `xs[i]` is.
+            ast::ExprKind::Unwrap(inner)
+                if matches!(
+                    &inner.kind,
+                    ast::ExprKind::Field { name, .. } if matches!(name.text.as_str(), "first" | "last")
+                ) =>
+            {
+                let ast::ExprKind::Field { base, name } = &inner.kind else {
+                    unreachable!("matched above")
+                };
+                let seq = self.place(base);
+                let elem = match &seq.ty {
+                    Ty::List(elem) => (**elem).clone(),
+                    Ty::Array { dims, elem } if matches!(dims.as_slice(), [Dim::Int]) => {
+                        (**elem).clone()
+                    }
+                    Ty::Error => return error,
+                    other => {
+                        let message = format!(
+                            "`.{}!` is a cell of a list or a `[n]T` array, and this is a `{}`",
+                            name.text,
+                            self.show(other)
+                        );
+                        self.error(codes::UNKNOWN_FIELD, name.span, message);
+                        return error;
+                    }
+                };
+                let at = if name.text == "first" {
+                    self.int_lit(0, span)
+                } else {
+                    let len = ExprKind::Builtin(Builtin::Len, vec![place_to_expr(&seq)]);
+                    let len = self.mk(len, Ty::Int, span);
+                    self.int_add(len, -1)
+                };
+                Place {
+                    kind: PlaceKind::Index(Box::new(seq), vec![at]),
+                    ty: elem,
+                    span,
+                }
+            }
             ast::ExprKind::Unwrap(inner) => {
                 let place = self.place(inner);
                 match place.ty.clone() {

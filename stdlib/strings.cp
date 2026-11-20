@@ -3,6 +3,9 @@
 
 use std.seq.{reverse}
 
+/// `s` written `n` times over: `"0".repeat(4)` is `"0000"`.
+pub fn repeat(self: Str, n: Int) -> Str = Str(self[i % self.len] for i in 0..n * self.len)
+
 /// `z[i]` is the length of the longest common prefix of `s` and `s[i..]`; `z[0]` is `s.len`. O(n).
 pub fn z_function<T>(s: List<T>) -> List<Int>:
     let n = s.len
@@ -398,3 +401,9 @@ fn rolling_hash_over_str_list_and_domain_arrays():
     // Same matrix hashes equal under matching row & outer bases
     let row_hashes2 = [R] r => RollingHash.with_bases([g[r, c] for c in C], row_b).all
     assert RollingHash.with_bases(row_hashes2, h_grid.bases).all == h_grid.all
+
+@test
+fn repeat_writes_a_string_over():
+    assert "ab".repeat(3) == "ababab"
+    assert "0".repeat(4) == "0000"
+    assert "ab".repeat(0) == "" and "".repeat(5) == ""

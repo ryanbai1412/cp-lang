@@ -2102,6 +2102,16 @@ impl<'a> Lowerer<'a> {
                     self.close_loops(frames, Vec::new());
                     return self.err_expr(span);
                 }
+                // Over optionals `none` is skipped, as `max=` skips it, and
+                // the answer is `none` when nothing is left.
+                let (ty, held) = match ty {
+                    Ty::Opt(inner) => {
+                        let held = self.temp(Ty::Opt(inner.clone()));
+                        (*inner, Some(held))
+                    }
+                    ty => (ty, None),
+                };
+                let optional = optional || held.is_some();
                 if matches!(ty, Ty::Opt(_)) || !self.ordered(&ty) {
                     let message = format!("a `{}` has no order to compare by", self.show(&ty));
                     self.error(codes::BAD_OPERANDS, arg.span, message);
@@ -2117,6 +2127,14 @@ impl<'a> Lowerer<'a> {
                     AssignOp::Max
                 } else {
                     AssignOp::Min
+                };
+                let (read, value) = match held {
+                    Some(held) => {
+                        let opt = Ty::opt(ty.clone());
+                        let inside = ExprKind::Unwrap(Box::new(local(held, &opt)), false);
+                        (Some((held, value, opt)), lit(inside, ty.clone()))
+                    }
+                    None => (None, value),
                 };
                 let inner = vec![
                     Stmt::Let(cur, Some(value)),
@@ -2137,6 +2155,17 @@ impl<'a> Lowerer<'a> {
                         },
                     ),
                 ];
+                let inner = match read {
+                    Some((held, value, opt)) => vec![
+                        Stmt::Let(held, Some(value)),
+                        Stmt::If(
+                            lit(ExprKind::IsSome(Box::new(local(held, &opt))), Ty::Bool),
+                            Block { stmts: inner },
+                            Block::default(),
+                        ),
+                    ],
+                    None => inner,
+                };
                 if optional {
                     let res_ty = Ty::opt(ty.clone());
                     let out_slot = self.temp(res_ty.clone());
@@ -2554,31 +2583,46 @@ impl<'a> Lowerer<'a> {
                     span,
                 )
             }
-            // `a.first` and `a.last` of an array over domains are `a[D.first]`
-            // and `a[D.last]`: values, since the array is never empty.
+            // The ends of a sequence are optionals, `none` when it is
+            // empty: a list, and an array over one domain or count.
+            (Ty::Array { dims, elem }, "first" | "last") if dims.len() == 1 => {
+                let opt = Ty::opt((**elem).clone());
+                let end = if name.text == "last" { Builtin::Last } else { Builtin::First };
+                builtin(self, end, vec![value], opt)
+            }
+            // Of a grid they are `g[R.first, C.first]` and `g[R.last, C.last]`.
             (Ty::Array { dims, elem }, "first" | "last")
                 if dims.iter().all(|d| matches!(d, Dim::Pos(_) | Dim::Bound(_))) =>
             {
                 let last = name.text == "last";
-                let indices: Vec<Expr> = dims
-                    .iter()
-                    .map(|dim| {
-                        let (d, extra, ty) = match dim {
-                            Dim::Bound(d) => (*d, 0, Ty::Bound(*d)),
-                            Dim::Pos(d) => (*d, -1, Ty::Pos(*d)),
-                            _ => unreachable!("guarded above"),
-                        };
-                        let at = if last {
-                            let len = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
-                            self.int_add(len, extra)
-                        } else {
-                            self.int_lit(0, span)
-                        };
-                        self.mk(ExprKind::Cast(Cast::Trust, Box::new(at)), ty, span)
-                    })
-                    .collect();
-                let elem = (**elem).clone();
-                self.mk(ExprKind::Index(Box::new(value), indices), elem, span)
+                let mut filled = self.mk(ExprKind::Bool(true), Ty::Bool, span);
+                let mut indices = Vec::new();
+                for dim in dims {
+                    let (d, extra, ty) = match dim {
+                        Dim::Bound(d) => (*d, 0, Ty::Bound(*d)),
+                        Dim::Pos(d) => (*d, -1, Ty::Pos(*d)),
+                        _ => unreachable!("guarded above"),
+                    };
+                    let len = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                    let zero = self.int_lit(0, span);
+                    let some = self.mk(
+                        ExprKind::Cmp(CmpOp::Gt, Box::new(len.clone()), Box::new(zero.clone())),
+                        Ty::Bool,
+                        span,
+                    );
+                    filled = self.mk(
+                        ExprKind::Binary(BinOp::And, Box::new(filled), Box::new(some)),
+                        Ty::Bool,
+                        span,
+                    );
+                    let at = if last { self.int_add(len, extra) } else { zero };
+                    indices.push(self.mk(ExprKind::Cast(Cast::Trust, Box::new(at)), ty, span));
+                }
+                let opt = Ty::opt((**elem).clone());
+                let at = self.mk(ExprKind::Index(Box::new(value), indices), (**elem).clone(), span);
+                let some = self.mk(ExprKind::Some(Box::new(at)), opt.clone(), span);
+                let none = self.mk(ExprKind::None, opt.clone(), span);
+                self.mk(ExprKind::If(Box::new(filled), Box::new(some), Box::new(none)), opt, span)
             }
             (Ty::List(elem), "first") => {
                 let opt = Ty::opt((**elem).clone());
