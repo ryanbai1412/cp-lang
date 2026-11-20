@@ -60,7 +60,15 @@ impl<'a> Checker<'a> {
                 op_span,
                 lhs,
                 rhs,
-            } => self.binary(*op, *op_span, lhs, rhs),
+            } => {
+                // `(l + 1)!` and `l + 1 ?? r` ask for the optional.
+                let written = std::mem::take(&mut self.as_written);
+                let ty = self.binary(*op, *op_span, lhs, rhs);
+                match ty {
+                    Ty::Optional(inner) if !written && self.step_stays(expr, &inner) => *inner,
+                    ty => ty,
+                }
+            }
             ExprKind::Compare { first, rest } => {
                 // `f<A>(x)` is two comparisons: a fn's type arguments are
                 // written `f::<A>(x)`.
@@ -703,6 +711,18 @@ impl<'a> Checker<'a> {
             );
             self.error(codes::WRONG_DOMAIN, range.span, message);
         }
+    }
+
+    /// Whether the step `e`, a `?I`, is known to stay inside `I`: a test
+    /// or a loop around it orders the name it steps from against another
+    /// position of `I` ([`cpl_syntax::order`]).
+    fn step_stays(&self, e: &Expr, domain: &Ty) -> bool {
+        matches!(domain, Ty::Pos(_))
+            && self
+                .steps
+                .bounds(e, 0)
+                .into_iter()
+                .any(|name| self.local(name).is_some_and(|local| local.ty == *domain))
     }
 
     /// `i + 1` used where its domain is wanted: the message for indexing

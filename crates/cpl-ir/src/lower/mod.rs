@@ -139,6 +139,7 @@ fn lower_aside(analysis: &Analysis, name: &str, aside: Aside) -> Result<Program,
     lw.aside = Some(aside);
     lw.load_modules(analysis);
     lw.mutators = narrow::Mutators::of(lw.mod_items(0).map(|(_, stmt)| stmt)).into();
+    lw.steps = lw.read_steps().into();
     lw.collect_all(Some(name));
     lw.signatures();
     lw.main_for_aside(name);
@@ -168,6 +169,7 @@ fn lower_entry(
     lw.interactive = judge;
     lw.load_modules(analysis);
     lw.mutators = narrow::Mutators::of(lw.mod_items(0).map(|(_, stmt)| stmt)).into();
+    lw.steps = lw.read_steps().into();
     lw.collect_all(test_name);
     lw.signatures();
     if let Some(tname) = test_name {
@@ -462,6 +464,9 @@ struct Lowerer<'a> {
     /// What the fns of the file assign outside themselves: a call to one
     /// ends what a test showed about an optional it assigns.
     mutators: std::rc::Rc<narrow::Mutators>,
+    /// Where a step along a domain stays inside it, for each module
+    /// ([`cpl_syntax::order`]).
+    steps: std::rc::Rc<Vec<cpl_syntax::order::Steps>>,
     mod_consts: Vec<ModConstInfo<'a>>,
     gen_consts: Vec<GenConstTemplate<'a>>,
 
@@ -546,6 +551,7 @@ impl<'a> Lowerer<'a> {
             const_ints: HashMap::new(),
             const_bools: HashMap::new(),
             mutators: Default::default(),
+            steps: Default::default(),
             mod_consts: Vec::new(),
             gen_consts: Vec::new(),
             traits: Vec::new(),
@@ -1898,6 +1904,20 @@ impl<'a> Lowerer<'a> {
             ty: self.cx.locals[slot].ty.clone(),
             span: self.span(span),
         }
+    }
+
+    /// Reads every module for the steps that stay inside their domain.
+    fn read_steps(&self) -> Vec<cpl_syntax::order::Steps> {
+        let mutators = self.mutators.clone();
+        (0..self.mods.len())
+            .map(|m| {
+                let mut steps = cpl_syntax::order::Steps::default();
+                for (offset, stmt) in self.mod_items(m) {
+                    steps.read(std::slice::from_ref(stmt), offset, &mut |f, x| mutators.writes(f, x));
+                }
+                steps
+            })
+            .collect()
     }
 
     fn lookup(&self, name: &str) -> Option<Slot> {

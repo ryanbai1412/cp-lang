@@ -92,6 +92,9 @@ pub(crate) struct Checker<'a> {
     as_written: bool,
     /// What the fns declared inside the item being checked assign.
     mutators: narrow::Mutators,
+    /// Where a step along a domain stays inside it, in the item being
+    /// checked.
+    steps: cpl_syntax::order::Steps,
     refs: Vec<GlobalRef>,
     /// Name and return type of each enclosing fn.
     fns: Vec<(String, Ty, bool)>,
@@ -129,6 +132,7 @@ impl<'a> Checker<'a> {
             present: Vec::new(),
             as_written: false,
             mutators: narrow::Mutators::default(),
+            steps: Default::default(),
             refs: Vec::new(),
             fns: Vec::new(),
             gives: Vec::new(),

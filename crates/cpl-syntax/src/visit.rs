@@ -11,9 +11,12 @@ pub trait Visitor {
     fn stmt(&mut self, _stmt: &Stmt) {}
     fn expr(&mut self, _expr: &Expr) {}
     fn pattern(&mut self, _pat: &Pattern) {}
+    /// A block, before its statements.
+    fn block(&mut self, _block: &Block) {}
 }
 
 pub fn walk_block(block: &Block, v: &mut dyn Visitor) {
+    v.block(block);
     for stmt in &block.stmts {
         walk_stmt(stmt, v);
     }

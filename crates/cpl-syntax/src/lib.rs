@@ -16,6 +16,7 @@ mod items;
 mod lexer;
 pub mod literal;
 pub mod narrow;
+pub mod order;
 mod parser;
 mod token;
 pub mod visit;

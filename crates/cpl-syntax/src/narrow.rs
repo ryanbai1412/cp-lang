@@ -44,12 +44,12 @@ fn present<'a>(cond: &'a Expr, when: bool, out: &mut Vec<&'a str>) {
     }
 }
 
-/// Whether `e` is a name where an optional is asked for by what is
-/// written around it: `x!`, `x ?? 0`, `x?`, `x == none`, `if let v = x`,
+/// Whether `e` is a name, or a step like `i + 1` ([`crate::order`]),
+/// where an optional is asked for by what is written around it: `x!`, `x ?? 0`, `x?`, `x == none`, `if let v = x`,
 /// `match x`. There a name keeps the type it was declared with, so code
 /// that spells the unwrap out still means what it says.
 pub fn asks_optional(e: &Expr) -> bool {
-    matches!(unparen(e).kind, ExprKind::Name(_))
+    matches!(unparen(e).kind, ExprKind::Name(_)) || crate::order::is_step(e)
 }
 
 /// Whether one side of this comparison is `none`.
@@ -59,7 +59,7 @@ pub fn tests_none(first: &Expr, rest: &[(CmpOp, Expr)]) -> bool {
         .any(|e| matches!(unparen(e).kind, ExprKind::None))
 }
 
-fn unparen(mut e: &Expr) -> &Expr {
+pub(crate) fn unparen(mut e: &Expr) -> &Expr {
     while let ExprKind::Paren(inner) = &e.kind {
         e = inner;
     }
@@ -80,7 +80,7 @@ fn root(mut e: &Expr) -> Option<&str> {
 
 /// Whether some code may give `name` a new value, or declares another
 /// `name`.
-struct Writes<'a, 'c> {
+pub(crate) struct Writes<'a, 'c> {
     name: &'a str,
     found: bool,
     calls: &'c mut Calls<'c>,
@@ -143,7 +143,7 @@ impl Visitor for Writes<'_, '_> {
     }
 }
 
-fn kept<'a>(names: Vec<&'a str>, calls: &mut Calls, walk: impl Fn(&mut Writes)) -> Vec<&'a str> {
+pub(crate) fn kept<'a>(names: Vec<&'a str>, calls: &mut Calls, walk: impl Fn(&mut Writes)) -> Vec<&'a str> {
     names
         .into_iter()
         .filter(|name| {

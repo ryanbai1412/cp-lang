@@ -13,6 +13,9 @@ impl<'a> Checker<'a> {
             self.replay(&replay, stmts);
         }
         self.mutators = narrow::Mutators::of(stmts);
+        let mut steps = cpl_syntax::order::Steps::default();
+        steps.read(stmts, 0, &mut |f, x| self.call_writes(f, x));
+        self.steps = steps;
         self.stmts(stmts, true);
     }
 

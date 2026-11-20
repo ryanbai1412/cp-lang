@@ -117,7 +117,20 @@ impl<'a> Lowerer<'a> {
             }
             ast::ExprKind::Paren(inner) => self.expr(inner, hint),
             ast::ExprKind::Unary { op, expr } => self.unary(*op, expr, inner_hint, span),
-            ast::ExprKind::Binary { op, lhs, rhs, .. } => self.binary(*op, lhs, rhs, hint, span),
+            ast::ExprKind::Binary { op, lhs, rhs, .. } => {
+                // `(l + 1)!` and `l + 1 ?? r` ask for the optional.
+                let written = std::mem::take(&mut self.cx.as_written);
+                let value = self.binary(*op, lhs, rhs, hint, span);
+                match value.ty.clone() {
+                    // A step a test or a loop keeps inside its domain is a
+                    // position. It is still checked, so a proof that is
+                    // wrong stops the program and can't read past an array.
+                    Ty::Opt(inner) if !written && self.step_stays(e, &inner) => {
+                        self.mk(ExprKind::Unwrap(Box::new(value), true), *inner, span)
+                    }
+                    _ => value,
+                }
+            }
             ast::ExprKind::Compare { first, rest } => self.compare(first, rest, span),
             ast::ExprKind::Range {
                 lo,
@@ -542,6 +555,25 @@ impl<'a> Lowerer<'a> {
             };
         }
         Some(result)
+    }
+
+    /// Whether the step `e`, a `?I`, is known to stay inside `I`: the
+    /// same question `cpl check` asks ([`cpl_syntax::order`]).
+    fn step_stays(&mut self, e: &ast::Expr, domain: &Ty) -> bool {
+        if !matches!(domain, Ty::Pos(_)) {
+            return false;
+        }
+        let steps = self.steps.clone();
+        let Some(steps) = steps.get(self.cur_mod) else {
+            return false;
+        };
+        steps.bounds(e, self.offset).into_iter().any(|name| {
+            let (diags, written) = (self.diags.len(), self.cx.as_written);
+            let ty = self.name_as_written(name, None, e.span).ty;
+            self.diags.truncate(diags);
+            self.cx.as_written = written;
+            ty == *domain
+        })
     }
 
     /// A name as a value. One that a test has shown to hold a value is the
