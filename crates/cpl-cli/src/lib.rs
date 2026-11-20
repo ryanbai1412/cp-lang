@@ -34,13 +34,15 @@ commands:
   run <file> [input]    check, then run in the debug interpreter, reading
                         the input file or standard input; a file with an
                         `@interactor` runs against it, on the hidden test
-                        (`cpl run --help` has the options for traces)
+                        (`cpl run --help` has the options for traces);
+                        `--release` runs the C++ that `cpl build` writes
   judge <file> <input> [<output> <answer>]
                         run the file's `@interactor` as a judge program on
                         standard input and output, or with an output its
                         `@checker`; exit status 0 accepts
   build <file> [-o out] check, then write one C++17 file to submit: next to
-                        the source by default, to standard output with `-o -`
+                        the source by default, to standard output with `-o -`;
+                        `--checked` also builds it with sanitizers to run here
   fmt [path]...         format files in the one canonical style
   lint [path]...        warn about code that is legal but probably wrong or slow
   doc [path]...         build HTML documentation from `///` comments
@@ -160,13 +162,21 @@ pub fn exec<S: AsRef<str>>(
             *stderr += &String::from_utf8_lossy(&errors);
             code
         }
-        Some("build") => match rest.as_slice() {
-            [file] => build_file(file, None, stdout, stderr),
-            [file, "-o", out] | ["-o", out, file] => build_file(file, Some(out), stdout, stderr),
-            _ => usage_error(
-                "`build` takes one file: `cpl build a.cp` or `cpl build a.cp -o a.cpp`".into(),
-            ),
-        },
+        Some("build") => {
+            let checked = rest.contains(&"--checked");
+            let rest: Vec<&str> = rest.iter().copied().filter(|arg| *arg != "--checked").collect();
+            match rest.as_slice() {
+                [file] => build_file(file, None, checked, stdout, stderr),
+                [file, "-o", out] | ["-o", out, file] => {
+                    build_file(file, Some(out), checked, stdout, stderr)
+                }
+                _ => usage_error(
+                    "`build` takes one file: `cpl build a.cp`, `cpl build a.cp -o a.cpp` or \
+                     `cpl build a.cp --checked`"
+                        .into(),
+                ),
+            }
+        }
         Some("test") if should_run_unit_tests(&rest) => run_unit_tests(&rest, stdout, stderr),
         Some(command) if tool(command).is_some() => {
             let args: Vec<String> = rest.iter().map(|arg| arg.to_string()).collect();
@@ -197,6 +207,9 @@ options:
   --format html     with --trace: the trace viewer with the trace in it,
                     one self-contained page on standard output
   --brute           run the file's `@brute(main)` fn in place of the solution
+  --release         run what a judge runs: the C++ of `cpl build`, built with
+                    `g++ -std=c++17 -O2` and kept until the file changes.
+                    Fast, and without the interpreter's checks
 ";
 
 /// What `cpl run` was asked for.
@@ -208,6 +221,7 @@ struct RunArgs<'a> {
     only_fn: Option<&'a str>,
     format: Option<&'a str>,
     brute: bool,
+    release: bool,
 }
 
 impl<'a> RunArgs<'a> {
@@ -219,6 +233,7 @@ impl<'a> RunArgs<'a> {
             only_fn: None,
             format: None,
             brute: false,
+            release: false,
         };
         let mut paths = Vec::new();
         let mut iter = rest.iter().copied().peekable();
@@ -236,6 +251,7 @@ impl<'a> RunArgs<'a> {
                     }
                 }
                 "--brute" => args.brute = true,
+                "--release" => args.release = true,
                 "--format" => match iter.next() {
                     Some(format @ ("json" | "html" | "text")) => args.format = Some(format),
                     Some(other) => return Err(format!("`--format` is text, json or html, not `{other}`")),
@@ -255,6 +271,9 @@ impl<'a> RunArgs<'a> {
             [file] => args.file = file,
             [file, input] => (args.file, args.input) = (file, Some(*input)),
             _ => return Err("`run` takes a file and at most one input: `cpl run a.cp in.txt`".into()),
+        }
+        if args.release && (args.trace || args.format.is_some()) {
+            return Err("`--release` runs the built C++, which records no trace: drop `--trace` and `--format`".into());
         }
         if args.format == Some("html") && !args.trace {
             return Err("`--format html` is the trace viewer: add `--trace`".into());
@@ -430,7 +449,52 @@ fn render_trap(path: &str, text: &str, trap: &cpl_interp::Trap) -> String {
 }
 
 /// `cpl run`: the program's output goes straight to `stdout`.
+/// `cpl run --release`: the file's C++, built as a judge builds it.
+fn run_release(args: &RunArgs, input: &[u8], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
+    let path = std::path::Path::new(args.file);
+    let built = if args.brute {
+        cpl_stress::Program::resolve_brute(path, "the brute")
+    } else {
+        cpl_stress::Program::resolve(path)
+    };
+    let program = match built {
+        Ok(program) => program,
+        Err(cpl_stress::BuildError(message)) => {
+            *stderr += &format!("cpl: {message}\n");
+            return EXIT_ERRORS;
+        }
+    };
+    // No time limit: a day is longer than anyone waits.
+    let day = std::time::Duration::from_secs(86_400);
+    let outcome = match program.run(&String::from_utf8_lossy(input), day) {
+        Ok(outcome) => outcome,
+        Err(error) => {
+            *stderr += &format!("cpl: can't run the build of `{}`: {error}\n", args.file);
+            return EXIT_USAGE;
+        }
+    };
+    let _ = stdout.write_all(outcome.stdout.as_bytes());
+    *stderr += &outcome.stderr;
+    match outcome.exit {
+        cpl_stress::Exit::Code(0) => 0,
+        cpl_stress::Exit::Code(code) => {
+            *stderr += &format!("cpl: the program exited with status {code}\n");
+            EXIT_FAILED
+        }
+        cpl_stress::Exit::Signal | cpl_stress::Exit::TimedOut => {
+            *stderr += &format!(
+                "cpl: the program crashed; `cpl run {}` without `--release` says where\n",
+                args.file
+            );
+            EXIT_FAILED
+        }
+    }
+}
+
 fn run_file(args: &RunArgs, input: &[u8], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
+    if args.release {
+        return run_release(args, input, stdout, stderr);
+    }
     let path = args.file;
     let side = if args.brute { Side::Brute } else { Side::Solution };
     let compiled = match compile_side(path, side, stderr) {
@@ -562,9 +626,14 @@ fn observe_file(
 fn build_file(
     path: &str,
     out: Option<&str>,
+    checked: bool,
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
+    if checked && out == Some("-") {
+        *stderr += "cpl: `--checked` builds a program from the C++ file, so it can't go to standard output\n";
+        return EXIT_USAGE;
+    }
     let compiled = match compile(path, stderr) {
         Ok(compiled) => compiled,
         Err(code) => return code,
@@ -602,10 +671,56 @@ fn build_file(
     match std::fs::write(&target, &cpp) {
         Ok(()) => {
             let _ = writeln!(stdout, "wrote {} ({} bytes)", target.display(), cpp.len());
+            if checked {
+                return build_checked(&target, stdout, stderr);
+            }
             0
         }
         Err(error) => {
             *stderr += &format!("cpl: can't write `{}`: {error}\n", target.display());
+            EXIT_USAGE
+        }
+    }
+}
+
+/// `cpl build --checked`: the C++ file built to run here, with the
+/// sanitizers on, so overflow, a bad index or a bad shift stops the
+/// program with a report instead of going on with a wrong value.
+fn build_checked(cpp: &std::path::Path, stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
+    const FLAGS: [&str; 6] = [
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-fsanitize=address,undefined",
+        "-fno-sanitize-recover=all",
+        "-D_GLIBCXX_ASSERTIONS",
+    ];
+    let binary = cpp.with_extension("checked");
+    let compiler = std::env::var("CXX").unwrap_or_else(|_| "g++".into());
+    let built = std::process::Command::new(&compiler)
+        .args(FLAGS)
+        .arg("-o")
+        .arg(&binary)
+        .arg(cpp)
+        .output();
+    match built {
+        Ok(output) if output.status.success() => {
+            let _ = writeln!(
+                stdout,
+                "built {} ({compiler} {})",
+                binary.display(),
+                FLAGS.join(" ")
+            );
+            0
+        }
+        Ok(output) => {
+            let errors = String::from_utf8_lossy(&output.stderr);
+            let shown: Vec<&str> = errors.lines().take(20).collect();
+            *stderr += &format!("cpl: {compiler} could not build `{}`:\n{}\n", cpp.display(), shown.join("\n"));
+            EXIT_ERRORS
+        }
+        Err(error) => {
+            *stderr += &format!("cpl: `--checked` needs a C++ compiler, and `{compiler}` did not start: {error}\n");
             EXIT_USAGE
         }
     }
@@ -981,6 +1096,22 @@ mod tests {
             assert_eq!(out.code, EXIT_ERRORS);
             assert_eq!(out.stderr, run(&["check", &bad]).stderr);
         }
+    }
+
+    #[test]
+    fn release_runs_the_built_cpp_and_checked_builds_a_sanitized_program() {
+        if std::process::Command::new("g++").arg("--version").output().is_err() {
+            return;
+        }
+        let path = temp_file("release.cp", "let n: Int = read()\nprint(n * 2)\n");
+        let out = run_with_input(&["run", &path, "--release"], b"21\n");
+        assert_eq!((out.code, out.stdout.as_slice()), (0, b"42\n".as_slice()), "{}", out.stderr);
+        let out = run(&["run", &path, "--release", "--trace"]);
+        assert_eq!(out.code, EXIT_USAGE);
+        let out = run(&["build", &path, "--checked"]);
+        assert_eq!(out.code, 0, "{}", out.stderr);
+        assert!(std::path::Path::new(&path).with_extension("checked").is_file());
+        assert_eq!(run(&["build", &path, "--checked", "-o", "-"]).code, EXIT_USAGE);
     }
 
     #[test]
