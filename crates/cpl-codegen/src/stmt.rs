@@ -166,11 +166,21 @@ impl<'p> Emitter<'p> {
         out: &mut String,
         lead: &str,
     ) {
-        let c = self.expr(cond).text;
-        out.push_str(&format!("{lead}if ({c}) {{\n"));
+        let fused = found_entry(cond, then);
+        if let Some((map, key)) = fused {
+            let (m, k, it) = (self.expr(map).text, self.expr(key).text, self.temp());
+            out.push_str(&format!("{lead}if (auto {it} = {m}.find({k}); {it} != {m}.end()) {{\n"));
+            self.found.push((map.clone(), key.clone(), it));
+        } else {
+            let c = self.expr(cond).text;
+            out.push_str(&format!("{lead}if ({c}) {{\n"));
+        }
         self.indent += 1;
         self.block(then, out);
         self.indent -= 1;
+        if fused.is_some() {
+            self.found.pop();
+        }
         match otherwise.stmts.as_slice() {
             [] => self.line(out, "}"),
             [Stmt::If(cond, then, otherwise)] => {
@@ -731,4 +741,31 @@ impl<'p> Emitter<'p> {
             }
         }
     }
+}
+
+/// For `if k in m:` whose body reads `m[k]` and can't change `m` or
+/// `k`: the map and the key. The C++ then finds the entry once.
+fn found_entry<'p>(cond: &'p Expr, then: &Block) -> Option<(&'p Expr, &'p Expr)> {
+    let ExprKind::Builtin(cpl_ir::Builtin::Contains, args) = &cond.kind else {
+        return None;
+    };
+    let [map, key] = args.as_slice() else {
+        return None;
+    };
+    let plain = |e: &Expr| matches!(e.kind, ExprKind::Local(_) | ExprKind::Global(_));
+    if !matches!(map.ty, Ty::Map(..) | Ty::HashMap(..)) || !plain(map) || !plain(key) {
+        return None;
+    }
+    let (mut reads, mut quiet) = (false, true);
+    walk::deep_exprs(then, &mut |e| match &e.kind {
+        ExprKind::Index(base, at) if base.kind == map.kind && at.len() == 1 && at[0].kind == key.kind => reads = true,
+        ExprKind::Mutate(..) | ExprKind::Call(..) | ExprKind::CallExpr(..) | ExprKind::Closure(_) => quiet = false,
+        _ => {}
+    });
+    walk::deep_stmts(then, &mut |stmt| {
+        if !matches!(stmt, Stmt::Expr(_) | Stmt::Return(_) | Stmt::Give(_) | Stmt::If(..) | Stmt::Let(..)) {
+            quiet = false;
+        }
+    });
+    (reads && quiet).then_some((map, key))
 }

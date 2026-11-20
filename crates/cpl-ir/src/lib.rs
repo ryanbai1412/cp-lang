@@ -757,6 +757,11 @@ pub struct Program {
     /// What the lowering found that is allowed but almost surely a
     /// mistake, for whoever shows diagnostics.
     pub warnings: Vec<cpl_diag::Diagnostic>,
+    /// Key types whose `Map`s (and `Set`s) the program never walks in
+    /// order: the C++ may keep them in a hash table. Filled in by the
+    /// code generator.
+    pub unordered_maps: Vec<Ty>,
+    pub unordered_sets: Vec<Ty>,
     pub structs: Vec<StructDef>,
     pub enums: Vec<EnumDef>,
     /// Domain names. Sizes are set as the program runs.

@@ -10,6 +10,7 @@ mod runtime;
 mod scope;
 mod show;
 mod stmt;
+mod unordered;
 mod walk;
 
 /// Name of this crate.
@@ -20,7 +21,9 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 /// reads the C++ can read what it was written from. With no `source` the
 /// file opens with a note saying it was left out.
 pub fn emit(program: &cpl_ir::Program, name: &str, source: Option<&str>) -> String {
-    emit::Emitter::new(program).file(name, source)
+    let mut program = program.clone();
+    (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
+    emit::Emitter::new(&program).file(name, source)
 }
 
 #[cfg(test)]

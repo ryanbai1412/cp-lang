@@ -214,6 +214,10 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
             format!("std::tuple<{}>", items.join(", "))
         }
         Ty::List(elem) => format!("std::vector<{}>", elem_ty(program, niches, elem)),
+        Ty::Map(key, value) if program.unordered_maps.contains(key) => {
+            cty(program, niches, &Ty::HashMap(key.clone(), value.clone()))
+        }
+        Ty::Set(elem) if program.unordered_sets.contains(elem) => cty(program, niches, &Ty::HashSet(elem.clone())),
         Ty::Map(key, value) => format!("std::map<{}, {}>", cty(program, niches, key), cty(program, niches, value)),
         Ty::HashMap(key, value) => format!(
             "std::unordered_map<{}, {}, cpl::CpHash>",

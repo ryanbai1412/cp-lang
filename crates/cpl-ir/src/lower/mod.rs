@@ -291,6 +291,8 @@ fn finish(self, analysis: &Analysis, whole: bool) -> Result<Program, Vec<Diagnos
     lw.warnings.dedup();
     Ok(Program {
         warnings: lw.warnings,
+        unordered_maps: Vec::new(),
+        unordered_sets: Vec::new(),
         structs: lw.structs.iter().map(|s| s.def.clone()).collect(),
         enums: lw.enums,
         domains: lw.domains,

@@ -601,7 +601,8 @@ struct CpHash {
         static const uint64_t s = (uint64_t)std::chrono::steady_clock::now().time_since_epoch().count();
         return s;
     }
-    size_t operator()(ll x) const { return (size_t)splitmix64((uint64_t)x + salt()); }
+    // Neighbouring keys share a salted block of 64, so a walk over x, x + 1, ... stays in cache.
+    size_t operator()(ll x) const { return (size_t)((splitmix64(((uint64_t)x >> 6) + salt()) << 6) | ((uint64_t)x & 63)); }
     size_t operator()(int x) const { return (*this)((ll)x); }
     size_t operator()(u8 x) const { return (*this)((ll)x); }
     size_t operator()(bool x) const { return (*this)((ll)x); }

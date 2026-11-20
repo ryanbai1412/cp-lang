@@ -511,6 +511,14 @@ impl<'p> Emitter<'p> {
                     Cast::Trust => c_cast("int"),
                 }
             }
+            ExprKind::Index(base, indices)
+                if !self.packed_cell(e)
+                    && indices.len() == 1
+                    && self.found.iter().any(|(m, k, _)| m.kind == base.kind && k.kind == indices[0].kind) =>
+            {
+                let it = self.found.iter().rev().find(|(m, k, _)| m.kind == base.kind && k.kind == indices[0].kind);
+                Code::primary(format!("{}->second", it.map(|f| f.2.as_str()).unwrap_or_default()))
+            }
             ExprKind::Index(base, indices) => {
                 let mut operands: Vec<&Expr> = vec![base];
                 operands.extend(indices.iter());

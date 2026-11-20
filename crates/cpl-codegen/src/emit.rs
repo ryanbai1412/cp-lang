@@ -130,6 +130,10 @@ pub(crate) struct Emitter<'p> {
     /// Loops that a `break` or `continue` names from an inner loop.
     pub break_targets: BTreeSet<LoopId>,
     pub continue_targets: BTreeSet<LoopId>,
+    /// Inside `if k in m:`, the map, the key and the name of the C++
+    /// iterator that already stands on the entry, so `m[k]` is not
+    /// looked up a second time.
+    pub found: Vec<(Expr, Expr, String)>,
     /// How deep the statement being written is indented.
     pub indent: usize,
 }
@@ -179,6 +183,7 @@ impl<'p> Emitter<'p> {
             fresh: 0,
             break_targets: BTreeSet::new(),
             continue_targets: BTreeSet::new(),
+            found: Vec::new(),
             indent: 0,
         };
         emitter.summaries = emitter.summarize();
@@ -317,6 +322,10 @@ impl<'p> Emitter<'p> {
 
     pub fn need_ty(&mut self, ty: &Ty) {
         match ty {
+            Ty::Map(k, v) if self.program.unordered_maps.contains(k) => {
+                self.need_ty(&Ty::HashMap(k.clone(), v.clone()))
+            }
+            Ty::Set(e) if self.program.unordered_sets.contains(e) => self.need_ty(&Ty::HashSet(e.clone())),
             Ty::HashMap(k, v) => {
                 self.need("cphash");
                 self.need_ty(k);

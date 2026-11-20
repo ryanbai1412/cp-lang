@@ -331,3 +331,34 @@ fn a_program_without_grader_fns_has_a_main_and_no_judge_types() {
         "{cpp}"
     );
 }
+
+#[test]
+fn a_map_whose_order_never_shows_is_a_hash_table() {
+    let blind = cpp("var m = Map<Int, Int>()\nvar s = Set<Int>()\nm[42] = 7\ns.insert(3)\nprint(m.get(42) ?? 0, 3 in s, m.len)\n");
+    assert!(blind.contains("std::unordered_map<ll, ll, cpl::CpHash>"), "{blind}");
+    assert!(blind.contains("std::unordered_set<ll, cpl::CpHash>"), "{blind}");
+    assert!(!blind.contains("std::map<ll, ll>"), "{blind}");
+    for ordered in [
+        "for (k, v) in m: print(k, v)",
+        "print(m)",
+        "print(m.first_ge(3))",
+        "print(m.first)",
+        "print(m.pop_last())",
+        "let ks = sorted(k for (k, _) in m)\nprint(ks)",
+        "var other = Map<Int, Int>()\nprint(m == other)",
+    ] {
+        let seen = cpp(&format!("var m = Map<Int, Int>()\nm[42] = 7\n{ordered}\n"));
+        assert!(seen.contains("std::map<ll, ll>"), "{ordered}: {seen}");
+        assert!(!seen.contains("std::unordered_map<ll, ll"), "{ordered}: {seen}");
+    }
+}
+
+#[test]
+fn a_key_tested_and_then_read_is_looked_up_once() {
+    let once = cpp("var m = Map<Int, Int>()\nm[4] = 7\nlet x: Int = read()\nif x in m: print(m[x] + 1)\n");
+    assert!(once.contains("= m.find(x);") && once.contains("->second"), "{once}");
+    assert!(!once.contains("m.at(x)"), "{once}");
+    // A body that changes the map keeps the two lookups.
+    let twice = cpp("var m = Map<Int, Int>()\nm[4] = 7\nlet x: Int = read()\nif x in m:\n    m.remove(x + 1)\n    print(m[x])\n");
+    assert!(twice.contains("m.at(x)"), "{twice}");
+}
