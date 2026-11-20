@@ -81,14 +81,28 @@ impl<'a> Checker<'a> {
     }
 
     fn named_type(&mut self, name: &str, span: Span, args: Vec<Ty>) -> Ty {
-        if name == "Self" || self.generics.iter().any(|g| g == name) {
-            return Ty::Unknown;
+        if name == "Self" {
+            return self.self_ty.clone().unwrap_or(Ty::Unknown);
         }
-        // `V.bounds` is a domain of its own, derived from `V`.
+        if self.generics.iter().any(|g| g == name) {
+            return Ty::Param(name.to_string());
+        }
+        // `V.bounds` is a domain of its own, derived from `V`, and
+        // `Rooted<V>.Pre` is a domain the struct declares.
         if let Some((head, member)) = name.split_once('.') {
             let head_span = Span::new(span.start, span.start + head.len() as u32);
             return match self.named_type(head, head_span, Vec::new()) {
                 Ty::Pos(domain) => Ty::Pos(format!("{domain}.{member}")),
+                Ty::Named { name: owner, .. } => match self.owned_member(&owner, member) {
+                    Some(Ty::Domain(domain)) => Ty::Pos(domain),
+                    Some(_) => Ty::Unknown,
+                    None => {
+                        let member_span = Span::new(head_span.end + 1, span.end);
+                        let message = format!("`{owner}` declares no domain `{member}`");
+                        self.error(codes::UNKNOWN_TYPE, member_span, message);
+                        Ty::Error
+                    }
+                },
                 Ty::Error => Ty::Error,
                 _ => Ty::Unknown,
             };
@@ -118,8 +132,8 @@ impl<'a> Checker<'a> {
                     name: name.to_string(),
                     args,
                 },
-                Def::Trait => Ty::Unknown,
-                Def::Value { .. } | Def::Fn { .. } | Def::Variant { .. } => {
+                Def::Trait { .. } => Ty::Unknown,
+                Def::Value { .. } | Def::Fn { .. } | Def::Variant { .. } | Def::Impl { .. } => {
                     self.error(
                         codes::UNKNOWN_TYPE,
                         span,
@@ -248,11 +262,141 @@ impl<'a> Checker<'a> {
         }
     }
 
-    fn method_sigs(&mut self, methods: &[ast::Stmt], self_ty: &Ty) -> Vec<(String, Ty)> {
-        methods
+    /// A domain or constant that the struct `owner`, or an impl for it,
+    /// declares in its body.
+    pub(crate) fn owned_member(&mut self, owner: &str, member: &str) -> Option<Ty> {
+        if let Some(Def::Struct { owned, .. }) = self.env.global(owner).as_deref() {
+            if let Some((_, ty)) = owned.iter().find(|(name, _)| name == member) {
+                return Some(ty.clone());
+            }
+        }
+        self.env
+            .impls(owner)
+            .iter()
+            .find_map(|(_, def)| match &**def {
+                Def::Impl { owned, .. } => owned
+                    .iter()
+                    .find(|(name, _)| name == member)
+                    .map(|(_, ty)| ty.clone()),
+                _ => None,
+            })
+    }
+
+    /// Enters the body of a struct, enum, trait or impl: its type
+    /// parameters are in scope and `Self` is `self_ty`. Returns what
+    /// [`Checker::leave_body`] needs to undo it.
+    pub(crate) fn enter_body(&mut self, generics: &[String], self_ty: Ty) -> (usize, Option<Ty>) {
+        let outer = self.generics.len();
+        self.generics.extend(generics.iter().cloned());
+        self.push_scope();
+        (outer, self.self_ty.replace(self_ty))
+    }
+
+    pub(crate) fn leave_body(&mut self, (generics, self_ty): (usize, Option<Ty>)) {
+        self.pop_scope();
+        self.generics.truncate(generics);
+        self.self_ty = self_ty;
+    }
+
+    /// Declares the domains and constants of a body, which the fields and
+    /// methods after them may name: `domain Pre = 0..V.K`, `let K = n`.
+    pub(crate) fn owned(&mut self, owner: &str, body: &[ast::Stmt]) -> Vec<(String, Ty)> {
+        let mut owned = Vec::new();
+        for stmt in body {
+            let (name, ty, keyword) = match &stmt.kind {
+                ast::StmtKind::Domain { name, .. } => {
+                    (name, Ty::Domain(format!("{owner}.{}", name.text)), "domain")
+                }
+                ast::StmtKind::Const { name, ty, init, .. } => {
+                    (name, self.declared_or_inferred(ty, init), "const")
+                }
+                ast::StmtKind::Let {
+                    pat:
+                        ast::Pattern {
+                            kind: ast::PatternKind::Name(text),
+                            span,
+                        },
+                    ty,
+                    init,
+                    ..
+                } => {
+                    let ty = self.declared_or_inferred(ty, init);
+                    self.scopes.last_mut().unwrap().insert(
+                        text.clone(),
+                        Local {
+                            ty: ty.clone(),
+                            mutable: false,
+                            span: *span,
+                            keyword: "let",
+                        },
+                    );
+                    owned.push((text.clone(), ty));
+                    continue;
+                }
+                _ => continue,
+            };
+            self.scopes.last_mut().unwrap().insert(
+                name.text.clone(),
+                Local {
+                    ty: ty.clone(),
+                    mutable: false,
+                    span: name.span,
+                    keyword,
+                },
+            );
+            owned.push((name.text.clone(), ty));
+        }
+        owned
+    }
+
+    fn declared_or_inferred(&mut self, ty: &Option<ast::Type>, init: &Option<ast::Expr>) -> Ty {
+        // Signatures are computed apart from bodies, so what the value's
+        // expression reports is reported where the body is checked.
+        match (ty, init) {
+            (Some(ty), _) => self.resolve_type(ty),
+            (None, Some(init)) => self.quietly(|c| c.infer(init)).widen(),
+            (None, None) => Ty::Error,
+        }
+    }
+
+    /// The signatures of the fns in a body, and which of them are `@get`.
+    pub(crate) fn method_sigs(
+        &mut self,
+        methods: &[ast::Stmt],
+        self_ty: &Ty,
+    ) -> (Vec<(String, Ty)>, Vec<String>) {
+        let mut getters = Vec::new();
+        let sigs = methods
             .iter()
             .filter_map(|m| match &m.kind {
-                ast::StmtKind::Fn(f) => Some((f.name.text.clone(), self.fn_sig(f, Some(self_ty)))),
+                ast::StmtKind::Fn(f) => {
+                    if m.decorators.iter().any(|d| d.name.text == "get") {
+                        getters.push(f.name.text.clone());
+                    }
+                    Some((f.name.text.clone(), self.fn_sig(f, Some(self_ty))))
+                }
+                _ => None,
+            })
+            .collect();
+        (sigs, getters)
+    }
+
+    /// The type an impl is for, with the type parameters its header names:
+    /// `impl Add for Mod<P>` is generic over `P`.
+    pub(crate) fn impl_generics(&mut self, target: &ast::Type) -> Vec<String> {
+        let TypeKind::Named { args, .. } = &target.kind else {
+            return Vec::new();
+        };
+        args.iter()
+            .filter_map(|arg| match &arg.kind {
+                TypeKind::Named { name, args }
+                    if args.is_empty()
+                        && self.local(&name.text).is_none()
+                        && self.env.global(&name.text).is_none()
+                        && prelude::ty(&name.text).is_none() =>
+                {
+                    Some(name.text.clone())
+                }
                 _ => None,
             })
             .collect()
@@ -300,12 +444,22 @@ impl<'a> Checker<'a> {
                 }
                 out
             }
-            S::Const { name, ty, init, .. } => {
+            S::Const {
+                name,
+                generics,
+                ty,
+                init,
+                ..
+            } => {
+                let outer = self.generics.len();
+                self.generics
+                    .extend(generics.iter().map(|g| g.text.clone()));
                 let ty = match (ty, init) {
                     (Some(ty), _) => self.resolve_type(ty),
                     (None, Some(init)) => self.infer(init),
                     (None, None) => Ty::Error,
                 };
+                self.generics.truncate(outer);
                 vec![(
                     name.text.clone(),
                     Def::Value {
@@ -323,13 +477,13 @@ impl<'a> Checker<'a> {
                 },
             )],
             S::Struct(s) => {
+                let generics: Vec<String> = s.generics.iter().map(|g| g.text.clone()).collect();
                 let self_ty = Ty::Named {
                     name: s.name.text.clone(),
-                    args: Vec::new(),
+                    args: generics.iter().cloned().map(Ty::Param).collect(),
                 };
-                let outer = self.generics.len();
-                self.generics
-                    .extend(s.generics.iter().map(|g| g.text.clone()));
+                let body = self.enter_body(&generics, self_ty.clone());
+                let owned = self.owned(&s.name.text, &s.methods);
                 let fields = s
                     .fields
                     .iter()
@@ -342,25 +496,40 @@ impl<'a> Checker<'a> {
                         variadic: false,
                     })
                     .collect();
-                let methods = self.method_sigs(&s.methods, &self_ty);
-                self.generics.truncate(outer);
+                let (methods, getters) = self.method_sigs(&s.methods, &self_ty);
+                self.leave_body(body);
+                // `fn new(..)` without `self` says how the struct is built.
+                let ctor = s.methods.iter().find_map(|m| match &m.kind {
+                    ast::StmtKind::Fn(f)
+                        if f.name.text == "new"
+                            && f.params.iter().all(|p| p.name.text != "self") =>
+                    {
+                        match methods.iter().find(|(name, _)| name == "new") {
+                            Some((_, Ty::Fn { params, .. })) => Some(params.clone()),
+                            _ => None,
+                        }
+                    }
+                    _ => None,
+                });
                 vec![(
                     s.name.text.clone(),
                     Def::Struct {
-                        generics: s.generics.iter().map(|g| g.text.clone()).collect(),
+                        generics,
                         fields,
                         methods,
+                        ctor,
+                        getters,
+                        owned,
                     },
                 )]
             }
             S::Enum(e) => {
+                let generics: Vec<String> = e.generics.iter().map(|g| g.text.clone()).collect();
                 let self_ty = Ty::Named {
                     name: e.name.text.clone(),
-                    args: Vec::new(),
+                    args: generics.iter().cloned().map(Ty::Param).collect(),
                 };
-                let outer = self.generics.len();
-                self.generics
-                    .extend(e.generics.iter().map(|g| g.text.clone()));
+                let body = self.enter_body(&generics, self_ty.clone());
                 let variants: Vec<(String, Vec<Ty>)> = e
                     .variants
                     .iter()
@@ -374,8 +543,8 @@ impl<'a> Checker<'a> {
                         )
                     })
                     .collect();
-                let methods = self.method_sigs(&e.methods, &self_ty);
-                self.generics.truncate(outer);
+                let (methods, _) = self.method_sigs(&e.methods, &self_ty);
+                self.leave_body(body);
                 let mut out: Vec<(String, Def)> = variants
                     .iter()
                     .map(|(name, fields)| {
@@ -402,7 +571,61 @@ impl<'a> Checker<'a> {
                 self.generics.truncate(outer);
                 vec![(name.text.clone(), Def::Alias { ty })]
             }
-            S::Trait { name, .. } => vec![(name.text.clone(), Def::Trait)],
+            S::Trait {
+                name,
+                generics,
+                supers,
+                body,
+            } => {
+                let generics: Vec<String> = generics.iter().map(|g| g.text.clone()).collect();
+                let scope = self.enter_body(&generics, Ty::Param("Self".into()));
+                let methods = body
+                    .stmts
+                    .iter()
+                    .filter_map(|m| match &m.kind {
+                        ast::StmtKind::Fn(f) => Some(crate::def::TraitMethod {
+                            name: f.name.text.clone(),
+                            ty: self.fn_sig(f, Some(&Ty::Param("Self".into()))),
+                            required: matches!(f.body, ast::FnBody::None),
+                        }),
+                        _ => None,
+                    })
+                    .collect();
+                self.leave_body(scope);
+                vec![(
+                    name.text.clone(),
+                    Def::Trait {
+                        supers: supers.iter().filter_map(type_head).collect(),
+                        methods,
+                    },
+                )]
+            }
+            S::Impl {
+                trait_name,
+                target,
+                body,
+                ..
+            } => {
+                let Some(target_name) = type_head(target) else {
+                    return Vec::new();
+                };
+                let generics = self.impl_generics(target);
+                let scope = self.enter_body(&generics, Ty::Unknown);
+                let self_ty = self.quietly(|c| c.resolve_type(target));
+                self.self_ty = Some(self_ty.clone());
+                let owned = self.owned(&target_name, &body.stmts);
+                let (methods, getters) = self.method_sigs(&body.stmts, &self_ty);
+                self.leave_body(scope);
+                let trait_head = trait_name.as_ref().and_then(type_head);
+                vec![(
+                    crate::def::impl_name(trait_head.as_deref(), &target_name),
+                    Def::Impl {
+                        methods,
+                        getters,
+                        owned,
+                    },
+                )]
+            }
             _ => Vec::new(),
         }
     }
@@ -460,6 +683,14 @@ impl<'a> Checker<'a> {
 
 /// Calls `f` with each name a pattern binds and the type it gets from a
 /// value of type `ty`.
+/// The name a type starts with: `Mod` for `Mod<P>`.
+pub(crate) fn type_head(ty: &ast::Type) -> Option<String> {
+    match &ty.kind {
+        TypeKind::Named { name, .. } if !name.text.is_empty() => Some(name.text.clone()),
+        _ => None,
+    }
+}
+
 pub(crate) fn pattern_types(pat: &ast::Pattern, ty: &Ty, f: &mut dyn FnMut(&str, Ty)) {
     use ast::PatternKind as P;
     match &pat.kind {

@@ -23,7 +23,7 @@
 //! the signature re-checks exactly the items that looked the fn up.
 
 use crate::check::{Checker, Env, GlobalRef, HoverEntry};
-use crate::def::{hash_str, DeclKind, Def};
+use crate::def::{hash_str, impl_name, impl_parts, DeclKind, Def};
 use cpl_diag::{codes, Diagnostic, LineIndex, Sink, Span};
 use cpl_syntax::ast::{self, StmtKind};
 use cpl_syntax::ParsedItem;
@@ -522,6 +522,22 @@ fn decls_of(stmts: &[ast::Stmt]) -> Vec<Decl> {
             StmtKind::Domain { name, .. } => push(&mut out, name, DeclKind::Domain),
             StmtKind::TypeAlias { name, .. } => push(&mut out, name, DeclKind::Alias),
             StmtKind::Trait { name, .. } => push(&mut out, name, DeclKind::Trait),
+            // An impl is filed under a name of its own, so it is found,
+            // memoized and reported twice like any other definition.
+            StmtKind::Impl {
+                trait_name, target, ..
+            } => {
+                if let Some(target_name) = crate::check::type_head(target) {
+                    let trait_head = trait_name.as_ref().and_then(crate::check::type_head);
+                    out.push(Decl {
+                        name: impl_name(trait_head.as_deref(), &target_name),
+                        span: trait_name
+                            .as_ref()
+                            .map_or(target.span, |t| t.span.to(target.span)),
+                        kind: DeclKind::Impl,
+                    });
+                }
+            }
             _ => {}
         }
     }
@@ -681,6 +697,26 @@ impl Env for FileCtx<'_> {
         let (def, fingerprint) = self.def(name);
         self.record(name, fingerprint);
         def
+    }
+
+    fn impls(&mut self, target: &str) -> Vec<(Option<String>, Arc<Def>)> {
+        self.record(DEP_NAMES, self.scope.names_fp);
+        let mut names: Vec<(String, Option<String>)> = self
+            .scope
+            .names
+            .keys()
+            .filter_map(|name| match impl_parts(name) {
+                Some((trait_name, of)) if of == target => {
+                    Some((name.clone(), trait_name.map(str::to_string)))
+                }
+                _ => None,
+            })
+            .collect();
+        names.sort();
+        names
+            .into_iter()
+            .filter_map(|(name, trait_name)| Some((trait_name, self.global(&name)?)))
+            .collect()
     }
 
     fn has_imports(&mut self) -> bool {

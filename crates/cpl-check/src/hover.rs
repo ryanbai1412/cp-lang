@@ -178,7 +178,8 @@ fn render_def(name: &str, def: &Def, lookup: &mut Lookup) -> String {
             out += &cost_lines(ty, lookup);
             out
         }
-        Def::Trait => format!("trait {name}"),
+        Def::Trait { .. } => format!("trait {name}"),
+        Def::Impl { .. } => name.to_string(),
     }
 }
 

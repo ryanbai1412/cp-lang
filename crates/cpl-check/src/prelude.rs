@@ -1,32 +1,47 @@
 //! Names every file can use without a `use`: the prelude of
 //! `plan/40-tooling.md` (`print`, `read`, `min`, `max`, `abs`, `List`,
-//! `Map`, `Set`, `Int`, `Bool`, `Char`, `Str`, `INF`) and the reductions
+//! `Map`, `Set`, `Int`, `Bool`, `Char`, `Str`, `INF`), the reductions
 //! over sequences that `plan/12-domains-and-sequences.md` writes bare
 //! (`sum`, `count`, `all`, `any`, `find`, `first`, `last`, `argmax`,
-//! `argmin`), plus the few fns over numbers and sequences that `cpl run`
-//! and `cpl build` implement (`sqrt`, `floor`, `ceil`, `round`, `len`,
-//! `sorted`).
+//! `argmin`), and the intrinsics the libraries are written on top of
+//! (`rand`, `sort`, `swap`, `popcount`, ...; `stdlib/README.md` lists them).
 //!
-//! The standard library is not ported to cp yet, so the prelude is a table
-//! here. Once `std` exists as cp source this file goes away and these names
-//! resolve like any other import.
+//! Everything else, `std` included, is cp source and resolves through `use`.
 
-use crate::ty::Ty;
+use crate::ty::{Param, Ty};
 
-/// The type of a prelude value, or `None` if `name` is not one. Fns whose
-/// types need generics the checker does not model yet are `Unknown`, which
-/// accepts any call.
+fn int_fn(arity: usize) -> Ty {
+    Ty::Fn {
+        params: (0..arity)
+            .map(|_| Param {
+                name: String::new(),
+                ty: Ty::Int,
+                mutable: false,
+                has_default: false,
+                named_only: false,
+                variadic: false,
+            })
+            .collect(),
+        ret: Box::new(Ty::Int),
+    }
+}
+
+/// The type of a prelude value, or `None` if `name` is not one. Fns that
+/// are generic over what they are given are `Unknown`, which accepts any
+/// call.
 pub fn value(name: &str) -> Option<Ty> {
     Some(match name {
         "INF" => Ty::Int,
         "print" | "read" | "min" | "max" | "abs" => Ty::Unknown,
-        "sqrt" | "floor" | "ceil" | "round" | "len" | "sorted" => Ty::Unknown,
         "sum" | "count" | "all" | "any" | "find" | "first" | "last" | "argmax" | "argmin" => {
             Ty::Unknown
         }
-        "List" | "Map" | "Set" | "Int" | "Bool" | "Char" | "Str" | "Float" => {
-            Ty::TypeName(name.into())
+        "sort" | "sorted" | "shuffle" | "swap" | "copy" | "rand" | "some" | "laws_hold" => {
+            Ty::Unknown
         }
+        "popcount" | "ctz" | "bit_width" | "bit_ceil" | "isqrt" => int_fn(1),
+        "sqrt" | "atan2" => Ty::Unknown,
+        _ if TYPE_NAMES.contains(&name) => Ty::TypeName(name.into()),
         _ => return None,
     })
 }
@@ -41,7 +56,7 @@ pub fn ty(name: &str) -> Option<Ty> {
         "Str" => Ty::Str,
         // Fixed-width integers for bit-level work.
         "I32" | "U8" | "U64" | "I128" => Ty::Int,
-        "List" | "Map" | "Set" => Ty::Named {
+        "List" | "Map" | "Set" | "Iter" | "Opt" | "Range" | "Bounds" => Ty::Named {
             name: name.into(),
             args: Vec::new(),
         },
@@ -49,8 +64,83 @@ pub fn ty(name: &str) -> Option<Ty> {
     })
 }
 
+/// A prelude trait: what `T: Ord` and `impl Add for V` may name.
+pub fn is_trait(name: &str) -> bool {
+    TRAIT_NAMES.contains(&name)
+}
+
+const TYPE_NAMES: &[&str] = &[
+    "List", "Map", "Set", "Int", "Bool", "Char", "Str", "Float", "Iter", "Opt", "Range", "Bounds",
+];
+
+/// The traits of `plan/19-index-and-lends.md` and `stdlib/README.md`.
+const TRAIT_NAMES: &[&str] = &[
+    "Index",
+    "Seq",
+    "Indexed",
+    "IndexedMut",
+    "Ord",
+    "Eq",
+    "Hash",
+    "Show",
+    "Read",
+    "Gen",
+    "Shrink",
+    "Add",
+    "Sub",
+    "Mul",
+    "Div",
+    "Neg",
+    "Rem",
+    "Zero",
+    "One",
+    "Bounded",
+    "Num",
+    "Copy",
+    "Bits",
+];
+
 pub const VALUE_NAMES: &[&str] = &[
-    "INF", "print", "read", "min", "max", "abs", "sum", "count", "all", "any", "find", "first",
-    "last", "argmax", "argmin", "sqrt", "floor", "ceil", "round", "len", "sorted", "List", "Map",
-    "Set", "Int", "Bool", "Char", "Str", "Float",
+    "INF",
+    "print",
+    "read",
+    "min",
+    "max",
+    "abs",
+    "sum",
+    "count",
+    "all",
+    "any",
+    "find",
+    "first",
+    "last",
+    "argmax",
+    "argmin",
+    "sort",
+    "sorted",
+    "shuffle",
+    "swap",
+    "copy",
+    "rand",
+    "some",
+    "laws_hold",
+    "popcount",
+    "ctz",
+    "bit_width",
+    "bit_ceil",
+    "isqrt",
+    "sqrt",
+    "atan2",
+    "List",
+    "Map",
+    "Set",
+    "Int",
+    "Bool",
+    "Char",
+    "Str",
+    "Float",
+    "Iter",
+    "Opt",
+    "Range",
+    "Bounds",
 ];

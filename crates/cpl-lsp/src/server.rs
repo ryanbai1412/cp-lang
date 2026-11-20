@@ -480,7 +480,7 @@ fn diagnostic_json(diag: &Diagnostic, uri: &str, text: &str, lines: &LineIndex) 
 
 fn symbol_kind(kind: DeclKind) -> u32 {
     // LSP SymbolKind: Class 5, Enum 10, Interface 11, Function 12,
-    // Variable 13, EnumMember 22, Struct 23, TypeParameter 26.
+    // Variable 13, Object 19, EnumMember 22, Struct 23, TypeParameter 26.
     match kind {
         DeclKind::Value => 13,
         DeclKind::Fn => 12,
@@ -489,6 +489,8 @@ fn symbol_kind(kind: DeclKind) -> u32 {
         DeclKind::Variant => 22,
         DeclKind::Domain | DeclKind::Alias => 26,
         DeclKind::Trait => 11,
+        // Object: an impl groups the fns it gives a type.
+        DeclKind::Impl => 19,
     }
 }
 
