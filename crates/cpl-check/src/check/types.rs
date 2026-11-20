@@ -262,6 +262,29 @@ impl<'a> Checker<'a> {
                         }
                         _ => (None, None),
                     },
+                    // `/` and `%` are Euclidean (decision 9): the
+                    // remainder is never negative, whatever the signs,
+                    // and the quotient is the one that goes with it.
+                    ast::BinOp::Div | ast::BinOp::Rem => match (blo, bhi) {
+                        (Some(d), Some(same)) if d == same && d != 0 => {
+                            if *op == ast::BinOp::Rem {
+                                let exact = match (alo, ahi) {
+                                    (Some(a), Some(same)) if a == same => Some(a.rem_euclid(d)),
+                                    _ => None,
+                                };
+                                (exact.or(Some(0)), exact.or(Some(d.abs() - 1)))
+                            } else {
+                                // Dividing by a positive number keeps the
+                                // order; by a negative one reverses it.
+                                let (lo, hi) = if d > 0 { (alo, ahi) } else { (ahi, alo) };
+                                (
+                                    lo.and_then(|a| a.checked_div_euclid(d)),
+                                    hi.and_then(|a| a.checked_div_euclid(d)),
+                                )
+                            }
+                        }
+                        _ => (None, None),
+                    },
                     _ => (None, None),
                 }
             }
