@@ -25,20 +25,20 @@ pub fn check(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
     if !analysis.has_errors() {
         // The judge's side and the brute are programs of their own, and
         // an error in one is an error in the file.
-        let mut results = vec![lower(analysis).map(drop)];
+        let mut results = vec![lower(analysis).map(|p| p.warnings)];
         if let Some(name) = interactor(analysis) {
-            results.push(lower_judge(analysis, &name).map(drop));
+            results.push(lower_judge(analysis, &name).map(|p| p.warnings));
         }
         if let Some((name, _)) = brute(analysis) {
-            results.push(lower_brute(analysis, &name).map(drop));
+            results.push(lower_brute(analysis, &name).map(|p| p.warnings));
         }
         if let Some((name, _)) = generator(analysis) {
-            results.push(lower_gen(analysis, &name, 1).map(drop));
+            results.push(lower_gen(analysis, &name, 1).map(|p| p.warnings));
         }
         if let Some((name, _)) = checker(analysis) {
-            results.push(lower_checker(analysis, &name).map(drop));
+            results.push(lower_checker(analysis, &name).map(|p| p.warnings));
         }
-        for more in results.into_iter().filter_map(Result::err) {
+        for more in results.into_iter().map(|r| r.unwrap_or_else(|errors| errors)) {
             for diagnostic in more {
                 if !diagnostics.contains(&diagnostic) {
                     diagnostics.push(diagnostic);
@@ -557,6 +557,10 @@ pub enum Mutation {
     Push,
     /// Removes and gives the last element: optional.
     Pop,
+    /// `s.pop_first()`, `s.pop_last()` on a `Set` or `Map`: takes out the
+    /// smallest or largest and gives it, or `none` from an empty one.
+    PopFirst,
+    PopLast,
     /// Removes and gives the last element: value (traps if empty).
     PopVal,
     /// Set insert; gives whether the value was new.
@@ -750,6 +754,9 @@ pub struct Global {
 
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct Program {
+    /// What the lowering found that is allowed but almost surely a
+    /// mistake, for whoever shows diagnostics.
+    pub warnings: Vec<cpl_diag::Diagnostic>,
     pub structs: Vec<StructDef>,
     pub enums: Vec<EnumDef>,
     /// Domain names. Sizes are set as the program runs.

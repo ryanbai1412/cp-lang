@@ -2143,10 +2143,12 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
             Builtin::SetMin => match &first {
                 Value::Set(items) => optional(items.first().cloned()),
+                Value::Map(entries) => optional(entries.iter().next().map(|(k, v)| Value::tuple(vec![k.clone(), v.clone()]))),
                 _ => Value::Opt(None),
             },
             Builtin::SetMax => match &first {
                 Value::Set(items) => optional(items.last().cloned()),
+                Value::Map(entries) => optional(entries.iter().next_back().map(|(k, v)| Value::tuple(vec![k.clone(), v.clone()]))),
                 _ => Value::Opt(None),
             },
             Builtin::Sorted => match first {
@@ -2324,6 +2326,13 @@ impl<'p, 'o> Interp<'p, 'o> {
             (Mutation::Pop, Value::List(items)) => {
                 Value::Opt(Rc::make_mut(items).pop().map(Rc::new))
             }
+            (Mutation::PopFirst, Value::Set(items)) => Value::Opt(Rc::make_mut(items).pop_first().map(Rc::new)),
+            (Mutation::PopLast, Value::Set(items)) => Value::Opt(Rc::make_mut(items).pop_last().map(Rc::new)),
+            (Mutation::PopFirst | Mutation::PopLast, Value::Map(entries)) => {
+                let entries = Rc::make_mut(entries);
+                let found = if op == Mutation::PopFirst { entries.pop_first() } else { entries.pop_last() };
+                Value::Opt(found.map(|(k, v)| Rc::new(Value::tuple(vec![k, v]))))
+            }
             (Mutation::PopVal, Value::List(items)) => match Rc::make_mut(items).pop() {
                 Some(v) => v,
                 None => return trap(span, "pop from an empty list"),
@@ -2388,8 +2397,11 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::Unit
             }
             (Mutation::Truncate, Value::List(items)) => {
-                let n = arg.int().max(0) as usize;
-                Rc::make_mut(items).truncate(n);
+                let n = arg.int();
+                if n < 0 {
+                    return trap(span, format!("truncate to negative length {n}"));
+                }
+                Rc::make_mut(items).truncate(n as usize);
                 Value::Unit
             }
             (Mutation::Extend, Value::List(items)) => {
@@ -2406,6 +2418,10 @@ impl<'p, 'o> Interp<'p, 'o> {
             (Mutation::Fill, Value::Array(arr)) => {
                 let a = Rc::make_mut(arr);
                 a.data.fill(arg);
+                Value::Unit
+            }
+            (Mutation::Fill, Value::List(items)) => {
+                Rc::make_mut(items).fill(arg);
                 Value::Unit
             }
             _ => return trap(span, "internal: this value can't be changed that way"),

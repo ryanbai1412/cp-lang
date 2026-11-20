@@ -414,11 +414,14 @@ fn compile_side(path: &str, side: Side, stderr: &mut String) -> Result<Compiled,
         },
     };
     match lowered {
-        Ok((program, judge)) => Ok(Compiled {
-            text,
-            program,
-            judge,
-        }),
+        Ok((program, judge)) => {
+            *stderr += &cpl_diag::render_all(&program.warnings, path, &text);
+            Ok(Compiled {
+                text,
+                program,
+                judge,
+            })
+        }
         Err(diagnostics) => {
             *stderr += &cpl_diag::render_all(&diagnostics, path, &text);
             Err(EXIT_ERRORS)
@@ -1090,13 +1093,14 @@ fn check(files: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -
         // What `cpl run` and `cpl build` would reject, `cpl check` rejects.
         let analysis = db.analyze(path).expect("the file was just set");
         let diagnostics = cpl_ir::check(&analysis);
-        if diagnostics.is_empty() {
-            let _ = writeln!(stdout, "{path}: no errors");
-        } else {
+        let failed = diagnostics.iter().any(|d| d.severity == cpl_diag::Severity::Error);
+        if !diagnostics.is_empty() {
             *stderr += &cpl_diag::render_all(&diagnostics, path, &text);
-            if code == 0 {
-                code = EXIT_ERRORS;
-            }
+        }
+        if !failed {
+            let _ = writeln!(stdout, "{path}: no errors");
+        } else if code == 0 {
+            code = EXIT_ERRORS;
         }
     }
     code

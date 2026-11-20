@@ -486,6 +486,8 @@ impl<'p> Tables<'p> {
                 let root = self.root(home, place);
                 let level = match op {
                     Mutation::Pop
+                    | Mutation::PopFirst
+                    | Mutation::PopLast
                     | Mutation::PopVal
                     | Mutation::Remove
                     | Mutation::Clear

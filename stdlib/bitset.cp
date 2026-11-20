@@ -32,6 +32,9 @@ pub struct Bitset<D>:
     /// The number of positions in the set.
     pub @get fn len(self) -> Int = sum(popcount(x) for x in w)
 
+    /// The same number as `len`, under the name C++ gives it.
+    pub @get fn count(self) -> Int = self.len
+
     pub @get fn is_empty(self) -> Bool = self.len == 0
 
     pub fn union(mut self, o: Bitset<D>):
@@ -140,7 +143,7 @@ fn single_bits_across_word_borders():
     domain P = 0..200
     var b = Bitset<P>()
     for i in [0, 1, 62, 63, 64, 127, 128, 199]: b.add(P(i))
-    assert b.len == 8
+    assert b.len == 8 and b.count == 8
     assert b.contains(P(63)) and b.contains(P(64)) and not b.contains(P(65))
     b.remove(P(63))
     b.toggle(P(65))

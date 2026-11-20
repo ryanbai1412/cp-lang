@@ -262,6 +262,61 @@ fn a_shift_outside_its_width_or_a_negative_power_stops() {
     assert_agree(three_way("shifts", SHIFTS, &cases));
 }
 
+const LIST_EDITS: &str = "\
+let n: Int = read()
+var xs = [10 * i for i in 0..n]
+let q: Int = read()
+for _ in 0..q:
+    let (op, a, b): (Int, Int, Int) = read()
+    if op == 0: xs.swap(a, b)
+    elif op == 1: xs.truncate(a)
+    elif op == 2: xs.fill(a)
+    else: print(\"ab\".repeat(a), \"|\")
+    print(xs)
+";
+
+/// `LIST_EDITS` on a list of `n` after `ops`: what it prints, or `None` when an edit stops it.
+fn list_edits(n: i64, ops: &[(i64, i64, i64)]) -> Option<String> {
+    let mut xs: Vec<i64> = (0..n).map(|i| 10 * i).collect();
+    let mut out = String::new();
+    for &(op, a, b) in ops {
+        match op {
+            0 => {
+                let inside = |i: i64| (0..xs.len() as i64).contains(&i);
+                if !inside(a) || !inside(b) {
+                    return None;
+                }
+                xs.swap(a as usize, b as usize);
+            }
+            1 if a < 0 => return None,
+            1 => xs.truncate(a as usize),
+            2 => xs.fill(a),
+            _ if a < 0 => return None,
+            _ => out += &format!("{} |\n", "ab".repeat(a as usize)),
+        }
+        let row: Vec<String> = xs.iter().map(|x| x.to_string()).collect();
+        out += &format!("{}\n", row.join(" "));
+    }
+    Some(out)
+}
+
+#[test]
+fn swaps_truncations_fills_and_repeats_at_the_edges() {
+    let mut rng = Rng::new(0x5eed);
+    let mut cases = Vec::new();
+    for n in 0..5i64 {
+        for _ in 0..12 {
+            let ops: Vec<(i64, i64, i64)> = (0..3)
+                .map(|_| (rng.below(4) as i64, rng.below(n as u64 + 3) as i64 - 1, rng.below(n as u64 + 3) as i64 - 1))
+                .collect();
+            let input = ops.iter().fold(format!("{n}\n{}\n", ops.len()), |s, (op, a, b)| s + &format!("{op} {a} {b}\n"));
+            cases.push((input, list_edits(n, &ops).map_or(Expect::Traps, Expect::Prints)));
+        }
+    }
+    assert!(cases.iter().any(|c| matches!(c.1, Expect::Traps)) && cases.iter().any(|c| matches!(c.1, Expect::Prints(_))));
+    assert_agree(three_way("list_edits", LIST_EDITS, &cases));
+}
+
 const BIG_MOD: &str = "\
 type Z = Mod<1000000000000000003>
 let m: Int = read()

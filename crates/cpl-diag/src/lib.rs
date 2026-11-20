@@ -140,6 +140,8 @@ pub mod codes {
     pub const TOP_LEVEL_VAR_IN_FN: Code = Code("E0404");
 
     pub const UNSUPPORTED: Code = Code("E0501");
+    /// A warning: a statement that only works out a value.
+    pub const UNUSED_VALUE: Code = Code("W0101");
     pub const NON_ASCII: Code = Code("E0502");
     /// A spelling an earlier version of the language had and v2.2 removed.
     pub const REMOVED_SYNTAX: Code = Code("E0503");

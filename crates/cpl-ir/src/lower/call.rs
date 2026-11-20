@@ -2873,13 +2873,17 @@ impl<'a> Lowerer<'a> {
             }
             // The smallest and largest key of an ordered set (v2.2; `.min()`
             // and `.max()` are the older spelling).
-            (Ty::Set(elem), "first" | "last") => {
+            (Ty::Set(_) | Ty::Map(..), "first" | "last") => {
                 let op = if name.text == "first" {
                     Builtin::SetMin
                 } else {
                     Builtin::SetMax
                 };
-                let ty = Ty::Opt(elem.clone());
+                let ty = Ty::opt(match &value.ty {
+                    Ty::Map(key, val) => Ty::Tuple(vec![(**key).clone(), (**val).clone()]),
+                    Ty::Set(elem) => (**elem).clone(),
+                    _ => Ty::Error,
+                });
                 self.mk(ExprKind::Builtin(op, vec![value]), ty, span)
             }
             (Ty::Opt(_), "is_some") => self.mk(ExprKind::IsSome(Box::new(value)), Ty::Bool, span),
@@ -3778,6 +3782,17 @@ impl<'a> Lowerer<'a> {
                 Some(_) => mutate(self, Mutation::Take, Vec::new(), ty.clone()),
                 None => self.err_expr(span),
             },
+            (Ty::Set(_) | Ty::Map(..), "pop_first" | "pop_last") => {
+                let found = match &ty {
+                    Ty::Map(key, val) => Ty::Tuple(vec![(**key).clone(), (**val).clone()]),
+                    _ => elem.clone(),
+                };
+                let op = if method == "pop_first" { Mutation::PopFirst } else { Mutation::PopLast };
+                match self.positional_any(method, args, 0, span) {
+                    Some(_) => mutate(self, op, Vec::new(), Ty::opt(found)),
+                    None => self.err_expr(span),
+                }
+            }
             (Ty::List(_), "pop") => match self.positional_any(method, args, 0, span) {
                 Some(_) => {
                     if matches!(elem, Ty::Opt(_)) {

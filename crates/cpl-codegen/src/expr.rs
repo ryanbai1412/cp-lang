@@ -761,6 +761,11 @@ impl<'p> Emitter<'p> {
                         self.need("pop");
                         self.packed_result(&e.ty, Code::primary(format!("cpl::pop({p})")))
                     }
+                    Mutation::PopFirst | Mutation::PopLast => {
+                        self.need("ordered_near");
+                        let f = if *op == Mutation::PopFirst { "pop_first" } else { "pop_last" };
+                        self.packed_result(&e.ty, Code::primary(format!("cpl::{f}({p})")))
+                    }
                     Mutation::PopVal => {
                         self.need("pop_val");
                         Code::primary(format!("cpl::pop_val({p})"))
@@ -779,11 +784,26 @@ impl<'p> Emitter<'p> {
                             pad(this.indent)
                         ));
                     }),
-                    Mutation::Swap => Code::primary(format!("std::swap({p}[{arg}], {p}[{arg2}])")),
+                    // Positions of a domain are already inside; anything
+                    // else is held to the length in every build.
+                    Mutation::Swap
+                        if args
+                            .iter()
+                            .all(|a| matches!(&a.kind, ExprKind::Cast(Cast::Ord, _))) =>
+                    {
+                        Code::primary(format!("std::swap({p}[{arg}], {p}[{arg2}])"))
+                    }
+                    Mutation::Swap => {
+                        self.need("swap_at");
+                        let is_grid = matches!(&place.ty, Ty::Array { dims, .. } if dims.len() > 1);
+                        let seq = if is_grid { format!("{p}.d") } else { p };
+                        Code::primary(format!("cpl::swap_at({seq}, {arg}, {arg2})"))
+                    }
                     Mutation::Resize => Code::primary(format!("{p}.resize((size_t)({arg}), {arg2})")),
-                    Mutation::Truncate => Code::primary(format!(
-                        "({p}.size() > (size_t)std::max<ll>(0, {arg}) ? {p}.resize((size_t)std::max<ll>(0, {arg})) : (void)0)"
-                    )),
+                    Mutation::Truncate => {
+                        self.need("truncate");
+                        Code::primary(format!("cpl::truncate({p}, {arg})"))
+                    }
                     Mutation::Extend => self.lambda("void", |this, out| {
                         let r = this.temp();
                         let src = this.temp();
@@ -1369,6 +1389,11 @@ impl<'p> Emitter<'p> {
                     _ => "last_lt",
                 };
                 Code::primary(format!("cpl::{name}({}, {})", text(0), text(1)))
+            }
+            Builtin::SetMin | Builtin::SetMax if matches!(args[0].ty, Ty::Map(..)) => {
+                self.need("ordered_near");
+                let f = if op == Builtin::SetMin { "first_of" } else { "last_of" };
+                Code::primary(format!("cpl::{f}({})", text(0)))
             }
             Builtin::SetMin => helper(self, "set_min"),
             Builtin::SetMax => helper(self, "set_max"),

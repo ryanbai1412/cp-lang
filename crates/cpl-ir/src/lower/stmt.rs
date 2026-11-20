@@ -46,6 +46,52 @@ impl<'a> Lowerer<'a> {
         Block { stmts: out }
     }
 
+    /// A statement that only works out a value: `xs.sorted()`, `s.with(v)`,
+    /// `a + b`. Nothing reads it and nothing was changed, so it is a
+    /// mistake, most often for the form that changes in place.
+    fn unused_value(&mut self, value: &Expr, span: Span) {
+        if matches!(value.ty, Ty::Unit | Ty::Error) {
+            return;
+        }
+        let only_a_value = match &value.kind {
+            ExprKind::Builtin(b, _) => {
+                !matches!(b, Builtin::Flush | Builtin::CountQuery | Builtin::SwapInput | Builtin::Rand)
+            }
+            // A library fn that takes nothing by `mut`. One of the
+            // file's own may print or change a global.
+            ExprKind::Call(id, args) => {
+                let sig = &self.sigs[*id];
+                sig.mod_id != 0
+                    && sig.receiver != Some(true)
+                    && args.iter().all(|a| matches!(a, Arg::Value(_)))
+            }
+            ExprKind::Binary(..)
+            | ExprKind::Unary(..)
+            | ExprKind::Cmp(..)
+            | ExprKind::Cast(..)
+            | ExprKind::Index(..)
+            | ExprKind::Field(..)
+            | ExprKind::Tuple(..)
+            | ExprKind::Local(..)
+            | ExprKind::Global(..)
+            | ExprKind::Int(..)
+            | ExprKind::Str(..) => true,
+            _ => false,
+        };
+        if only_a_value {
+            let shown = self.show(&value.ty);
+            let span = self.span(span);
+            self.warnings.push(Diagnostic::warning(
+                codes::UNUSED_VALUE,
+                span,
+                format!("this `{shown}` is worked out and then dropped"),
+            ));
+            if let Some(last) = self.warnings.last_mut() {
+                last.help = Some("keep it (`let ys = ...`), or call the form that changes in place".into());
+            }
+        }
+    }
+
     fn needs_value(&mut self, span: Span) {
         self.error(
             codes::TYPE_MISMATCH,
@@ -92,6 +138,7 @@ impl<'a> Lowerer<'a> {
             _ => match tail {
                 Tail::Discard => {
                     let value = self.expr(e, None);
+                    self.unused_value(&value, e.span);
                     out.push(Stmt::Expr(value));
                 }
                 Tail::Return => {

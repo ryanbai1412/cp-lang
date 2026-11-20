@@ -331,6 +331,29 @@ inline ll shamt(ll b, ll w) {
 ",
     },
     Piece {
+        name: "swap_at",
+        needs: &[],
+        code: "\
+// `xs.swap(i, j)`: both inside the sequence, or the program stops.
+template <class S> inline void swap_at(S& s, ll i, ll j) {
+    unsigned long long n = s.size();
+    if (__builtin_expect((unsigned long long)i >= n || (unsigned long long)j >= n, 0)) { fprintf(stderr, \"swap(%lld, %lld) is outside a list of length %llu\\n\", i, j, n); exit(3); }
+    std::swap(s[i], s[j]);
+}
+",
+    },
+    Piece {
+        name: "truncate",
+        needs: &[],
+        code: "\
+// `xs.truncate(n)`: keep the first n, all of them when there are fewer. A negative n stops the program.
+template <class S> inline void truncate(S& s, ll n) {
+    if (__builtin_expect(n < 0, 0)) { fprintf(stderr, \"truncate to negative length %lld\\n\", n); exit(3); }
+    if ((unsigned long long)n < s.size()) s.resize((size_t)n);
+}
+",
+    },
+    Piece {
         name: "have",
         needs: &["fail"],
         code: "\
@@ -513,6 +536,10 @@ template <class C, class Q> auto first_ge(const C& c, const Q& k) { return near_
 template <class C, class Q> auto first_gt(const C& c, const Q& k) { return near_at(c, c.upper_bound(k)); }
 template <class C, class Q> auto last_le(const C& c, const Q& k) { return near_before(c, c.upper_bound(k)); }
 template <class C, class Q> auto last_lt(const C& c, const Q& k) { return near_before(c, c.lower_bound(k)); }
+template <class C> auto first_of(const C& c) { return near_at(c, c.begin()); }
+template <class C> auto last_of(const C& c) { return near_before(c, c.end()); }
+template <class C> auto pop_first(C& c) { auto r = first_of(c); if (r) c.erase(c.begin()); return r; }
+template <class C> auto pop_last(C& c) { auto r = last_of(c); if (r) c.erase(std::prev(c.end())); return r; }
 ",
     },
     Piece {

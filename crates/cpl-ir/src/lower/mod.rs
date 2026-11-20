@@ -287,7 +287,10 @@ fn finish(self, analysis: &Analysis, whole: bool) -> Result<Program, Vec<Diagnos
             f
         })
         .collect();
+    lw.warnings.sort_by_key(|d| (d.span.start, d.span.end));
+    lw.warnings.dedup();
     Ok(Program {
+        warnings: lw.warnings,
         structs: lw.structs.iter().map(|s| s.def.clone()).collect(),
         enums: lw.enums,
         domains: lw.domains,
@@ -443,6 +446,8 @@ struct Lowerer<'a> {
     mod_syms: Vec<HashMap<String, Sym>>,
     cur_mod: ModId,
     diags: Vec<Diagnostic>,
+    /// What is allowed but almost surely a mistake.
+    warnings: Vec<Diagnostic>,
 
     structs: Vec<StructInfo<'a>>,
     gen_structs: Vec<GenStructTemplate<'a>>,
@@ -538,6 +543,7 @@ impl<'a> Lowerer<'a> {
             mod_syms: Vec::new(),
             cur_mod: 0,
             diags: Vec::new(),
+            warnings: Vec::new(),
             structs: Vec::new(),
             gen_structs: Vec::new(),
             struct_insts: HashMap::new(),

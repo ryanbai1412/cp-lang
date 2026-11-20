@@ -104,6 +104,28 @@ fn a_read_that_names_a_domain_inside_a_tuple_is_an_error() {
     }
 }
 
+#[test]
+fn a_statement_that_only_works_out_a_value_is_a_warning() {
+    let dir = std::env::temp_dir().join(format!("cpl-cli-unused-value-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("unused.cp");
+    let check = |body: &str| {
+        let source = format!("domain V = 0..4\nvar xs = [3, 1, 2]\nvar s = Subset<V>.empty\nvar heap = MinHeap<Int>()\nfn loud(v: Int) -> Int:\n    print(v)\n    v + 1\n{body}\nprint(xs, s.len, heap.len)\n");
+        std::fs::write(&path, source).unwrap();
+        let out = Command::new(env!("CARGO_BIN_EXE_cpl")).arg("check").arg(&path).output().expect("cpl runs");
+        assert_eq!(out.status.code(), Some(0), "{body}");
+        String::from_utf8(out.stderr).unwrap()
+    };
+    for dropped in ["xs.rev()", "xs.sorted()", "sorted(xs)", "s.set(V(1), true)", "s.with(V(1))", "xs.deduped()", "xs.len", "xs[0] + 1"] {
+        let stderr = check(dropped);
+        assert!(stderr.contains("warning[W0101]"), "{dropped}: {stderr}");
+    }
+    for kept in ["xs.sort()", "xs.reverse()", "xs.pop()", "heap.push(3)\nheap.pop()", "loud(3)", "xs.swap(0, 1)", "let ys = xs.sorted()"] {
+        let stderr = check(kept);
+        assert_eq!(stderr, "", "{kept}");
+    }
+}
+
 /// A fresh directory holding `name` with `source` in it.
 fn scratch(test: &str, name: &str, source: &[u8]) -> std::path::PathBuf {
     let dir = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join(test);

@@ -4,7 +4,9 @@
 use std.seq.{reverse}
 
 /// `s` written `n` times over: `"0".repeat(4)` is `"0000"`.
-pub fn repeat(self: Str, n: Int) -> Str = Str(self[i % self.len] for i in 0..n * self.len)
+pub fn repeat(self: Str, n: Int) -> Str:
+    assert n >= 0, "`repeat` needs a count of 0 or more"
+    Str(self[i % self.len] for i in 0..n * self.len)
 
 /// True when `s` opens with `p`: `"contest".starts_with("con")`. O(p.len).
 pub fn starts_with(self: Str, p: Str) -> Bool = p.len <= self.len and all(
