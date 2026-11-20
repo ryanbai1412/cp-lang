@@ -66,6 +66,48 @@ pub(super) struct MemoFast {
     vals: Place,
 }
 
+/// The table a `@memo(into: dp)` fn keeps its answers in.
+pub(super) fn into_table(stmt: &ast::Stmt) -> Option<&str> {
+    let memo = stmt.decorators.iter().find(|d| d.name.text == "memo")?;
+    memo.args.iter().find_map(|arg| match (&arg.name, &arg.value.kind) {
+        (Some(label), ast::ExprKind::Name(table)) if label.text == "into" => Some(table.as_str()),
+        _ => None,
+    })
+}
+
+/// The name of a local the wrapper of a `@memo(into:)` fn makes. No
+/// program can write a name with a space in it.
+const HIT: &str = "memo hit";
+const ANSWER: &str = "memo answer";
+
+fn name_expr(text: &str, span: Span) -> ast::Expr {
+    ast::Expr {
+        kind: ast::ExprKind::Name(text.to_string()),
+        span,
+    }
+}
+
+fn plain_stmt(kind: ast::StmtKind, span: Span) -> ast::Stmt {
+    ast::Stmt {
+        kind,
+        span,
+        decorators: Vec::new(),
+        public: false,
+    }
+}
+
+/// `dp[i, j]` for the fn's own parameters.
+fn into_cell(table: &str, decl: &ast::FnDecl) -> ast::Expr {
+    let span = decl.name.span;
+    ast::Expr {
+        kind: ast::ExprKind::Index {
+            base: Box::new(name_expr(table, span)),
+            indices: decl.params.iter().map(|p| name_expr(&p.name.text, span)).collect(),
+        },
+        span,
+    }
+}
+
 fn read(place: &Place) -> Expr {
     let kind = match &place.kind {
         PlaceKind::Local(slot) => ExprKind::Local(*slot),
@@ -136,6 +178,108 @@ impl<'a> Lowerer<'a> {
             ty,
             span: self.span(memo.span),
         }
+    }
+
+    /// `@memo(into: dp)` where the fn stands: `var dp: [I, J]?T = none`,
+    /// one cell for each choice of arguments.
+    pub(super) fn memo_into_table(&mut self, table: &str, decl: &ast::FnDecl, out: &mut Vec<Stmt>) {
+        let span = decl.name.span;
+        let index: Option<Vec<ast::Type>> = decl.params.iter().map(|p| p.ty.clone()).collect();
+        let (Some(index), Some(ret)) = (index, decl.ret.clone()) else {
+            self.unsupported(span, "`@memo(into:)` on a fn whose parameter and return types are not all written");
+            return;
+        };
+        // A table of `0..=9` answers holds `Int`s.
+        let elem = match ret.kind {
+            ast::TypeKind::Range { .. } => ast::Type {
+                kind: ast::TypeKind::Named {
+                    name: ast::Name {
+                        text: "Int".to_string(),
+                        span: ret.span,
+                    },
+                    args: Vec::new(),
+                },
+                span: ret.span,
+            },
+            _ => ret,
+        };
+        let ty = ast::Type {
+            kind: ast::TypeKind::Array {
+                index,
+                elem: Box::new(ast::Type {
+                    span: elem.span,
+                    kind: ast::TypeKind::Optional(Box::new(elem)),
+                }),
+            },
+            span,
+        };
+        let var = ast::StmtKind::Let {
+            mutable: true,
+            pat: ast::Pattern {
+                kind: ast::PatternKind::Name(table.to_string()),
+                span,
+            },
+            ty: Some(ty),
+            init: Some(ast::Expr {
+                kind: ast::ExprKind::None,
+                span,
+            }),
+            otherwise: None,
+            guard: None,
+        };
+        self.stmt(&plain_stmt(var, span), out);
+    }
+
+    /// The wrapper of a `@memo(into: dp)` fn: the answer in `dp` if it
+    /// is there, and otherwise `fill`, kept in `dp`. The table is the
+    /// program's to read, fill ahead of a call, or clear.
+    pub(super) fn memo_into_wrapper(
+        &mut self,
+        table: &str,
+        decl: &ast::FnDecl,
+        fill: Expr,
+        ret: &Ty,
+    ) -> Vec<Stmt> {
+        let span = decl.name.span;
+        let cell = into_cell(table, decl);
+        let mut out = Vec::new();
+        let give = plain_stmt(ast::StmtKind::Return(Some(name_expr(HIT, span))), span);
+        let hit = ast::Expr {
+            kind: ast::ExprKind::If {
+                branches: vec![(
+                    ast::Cond::Let {
+                        pat: ast::Pattern {
+                            kind: ast::PatternKind::Name(HIT.to_string()),
+                            span,
+                        },
+                        value: cell.clone(),
+                        and: None,
+                    },
+                    ast::Block {
+                        stmts: vec![give],
+                        span,
+                    },
+                )],
+                otherwise: None,
+            },
+            span,
+        };
+        self.stmt(&plain_stmt(ast::StmtKind::Expr(hit), span), &mut out);
+        let answer = self.cx.locals.len();
+        self.cx.scopes[0].insert(ANSWER.to_string(), answer);
+        self.cx.locals.push(Local {
+            name: ANSWER.to_string(),
+            ty: ret.clone(),
+        });
+        out.push(Stmt::Let(answer, Some(fill)));
+        let keep = ast::StmtKind::Assign {
+            target: cell,
+            op: ast::AssignOp::Set,
+            value: name_expr(ANSWER, span),
+        };
+        self.stmt(&plain_stmt(keep, span), &mut out);
+        out.push(Stmt::Return(Some(self.local(answer, span))));
+        out
     }
 
     fn memo_cmp(&self, op: CmpOp, a: Expr, b: Expr, span: Span) -> Expr {

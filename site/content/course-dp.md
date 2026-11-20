@@ -63,6 +63,19 @@ Attach `@memo` to a pure recursive function over `Index` or range parameters to 
 - When parameters are bounded `Index` or range types fitting within `2^24` states, `@memo` allocates a flat dense table; larger state spaces switch automatically to a salted hash map.
 - A `@memo fn` declared below `@!multitest` or nested inside a loop automatically clears its cache on every test case or iteration — no stale-table Wrong Answers across test cases.
 - `@memo` functions can capture immutable outer `let` bindings directly.
+- `@memo(into: dp)` keeps the answers in a table you can see: `dp` is a `var dp: [I, J]?T`, one cell per choice of arguments and `none` where the function has not been asked yet. It is always a dense table whatever its size, never a hash map, and you can fill cells ahead of a call, read them afterwards, or clear them:
+
+```cp
+let n: 1..=3000 = read()
+let a: [0..n]1..=1e9 = read()
+
+@memo(into: dp)
+fn best(l: 0..=n, r: 0..=n) -> Int:
+    if l >= r: return 0
+    max(a[l] - best(l + 1, r), a[r - 1] - best(l, r - 1))
+
+print(best(0, n), count(dp[l, r] != none for l in 0..=n for r in 0..=n))
+```
 
 ```exercise dp-memo-ways
 ```

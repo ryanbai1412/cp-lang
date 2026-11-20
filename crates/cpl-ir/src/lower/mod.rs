@@ -463,6 +463,8 @@ struct Lowerer<'a> {
     own_domains: HashSet<DomainId>,
     /// The `ready` flag of each file-level cache: cleared as a test starts.
     memo_resets: Vec<Place>,
+    /// The table of each `@memo(into: dp)` fn, by name.
+    memo_into: HashMap<FnId, String>,
     main_body: Block,
     main_locals: Vec<Local>,
     /// What is above the `@!multitest` divider.
@@ -536,6 +538,7 @@ impl<'a> Lowerer<'a> {
             raw_lists: Vec::new(),
             own_domains: HashSet::new(),
             memo_resets: Vec::new(),
+            memo_into: HashMap::new(),
             main_body: Block::default(),
             main_locals: Vec::new(),
             setup_body: Block::default(),
@@ -909,6 +912,9 @@ impl<'a> Lowerer<'a> {
                             self.mod_syms[m].insert(decl.name.text.clone(), Sym::Fn(id));
                             if stmt.decorators.iter().any(|d| d.name.text == "memo") {
                                 self.memo_fns.insert(id);
+                                if let Some(table) = memo::into_table(stmt) {
+                                    self.memo_into.insert(id, table.to_string());
+                                }
                             }
                         }
                     }
@@ -2316,14 +2322,17 @@ impl<'a> Lowerer<'a> {
                 .map(|(slot, _)| Arg::Value(self.local(*slot, decl.name.span)))
                 .collect();
             let call = self.mk(ExprKind::Call(body_id, args), ret.clone(), decl.name.span);
-            out = self.memo_wrapper(
-                memo::MemoHome::Global,
-                &slots,
-                &ret,
-                call,
-                decl.name.span,
-                &mut Vec::new(),
-            );
+            out = match self.memo_into.get(&id).cloned() {
+                Some(table) => self.memo_into_wrapper(&table, decl, call, &ret),
+                None => self.memo_wrapper(
+                    memo::MemoHome::Global,
+                    &slots,
+                    &ret,
+                    call,
+                    decl.name.span,
+                    &mut Vec::new(),
+                ),
+            };
             // A flat table is read by a short fn the C++ compiler puts
             // inline at each call; filling a cell is a fn of its own.
             if let Some(fast) = self.memo_fast.take() {

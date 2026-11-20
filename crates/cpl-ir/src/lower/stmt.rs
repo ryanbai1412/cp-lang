@@ -400,8 +400,12 @@ impl<'a> Lowerer<'a> {
                 self.lower_local_fn(decl, memo, out);
             }
             // Top-level declarations were handled by `collect_all`.
-            ast::StmtKind::Fn(_)
-            | ast::StmtKind::Struct(_)
+            ast::StmtKind::Fn(decl) => {
+                if let Some(table) = super::memo::into_table(stmt) {
+                    self.memo_into_table(table, decl, out);
+                }
+            }
+            ast::StmtKind::Struct(_)
             | ast::StmtKind::Enum(_)
             | ast::StmtKind::TypeAlias { .. }
             | ast::StmtKind::Trait { .. }

@@ -97,7 +97,6 @@ const NOT_BUILT: &[&str] = &[
     "proto/tests/ok/at1.cp",
     "proto/tests/ok/do2.cp",
     "proto/tests/ok/implicit_gen.cp",
-    "proto/tests/ok/memo_into.cp",
     "proto/tests/ok/subset2.cp",
     "proto/tests/redteam/empty_slice_reduce.cp",
     "proto/tests/redteam/hashmap_sentinel.cp",
