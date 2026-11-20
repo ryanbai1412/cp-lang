@@ -96,6 +96,10 @@ fn division_and_remainder_are_euclidean() {
         (-7, -2, "4 1"),
         (-6, 3, "-2 0"),
         (0, -5, "0 0"),
+        // Int is symmetric (decisions.md 1.1): no quotient leaves it.
+        (-i64::MAX, -1, "9223372036854775807 0"),
+        (i64::MAX, -i64::MAX, "-1 0"),
+        (-1, -i64::MAX, "1 9223372036854775806"),
     ] {
         assert_eq!(
             outcome(source, &format!("{a} {b}")),

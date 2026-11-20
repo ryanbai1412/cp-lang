@@ -414,8 +414,39 @@ fn arithmetic_modulo_a_runtime_modulus() {
 
 #[test]
 fn add_on_max_is_an_action() {
-    // AddMax = Action<Int, Int>(id: 0, compose: (f, g) => f + g,
-    //                           apply: (f, x) => if x == Int.MIN: x else: x + f)
+    // MaxOpt = Monoid<?Int>(id: none, op: (a, b) => if a == none: b else: if b == none: a else: max(a!, b!))
+    // AddMax = Action<?Int, Int>(id: 0, compose: (f, g) => f + g,
+    //                            apply: (f, x) => if x == none: none else: x! + f)
+    let types = [("T", "?Int"), ("F", "Int")];
+    let fields = [
+        ("id", "0"),
+        ("compose", "(f, g) => f + g"),
+        ("apply", "(f, x) => if x == none: none else: x! + f"),
+        (
+            "op",
+            "(a, b) => if a == none: b else: if b == none: a else: max(a!, b!)",
+        ),
+    ];
+    proved(
+        &Structure::action()
+            .distributive()
+            .check(&types, &fields)
+            .unwrap(),
+    );
+    let max_opt = [("id", "none"), fields[3]];
+    proved(
+        &Structure::monoid()
+            .commutative()
+            .idempotent()
+            .check(&types[..1], &max_opt)
+            .unwrap(),
+    );
+}
+
+#[test]
+fn an_empty_marker_inside_int_breaks_composition() {
+    // What AddMax was before: Int.MIN as "empty", over Max<Int>. A sum can
+    // land exactly on the marker, and then the next add is dropped.
     let types = [("T", "Int"), ("F", "Int")];
     let fields = [
         ("id", "0"),
@@ -429,12 +460,23 @@ fn add_on_max_is_an_action() {
         .unwrap();
     assert!(report.verdict("ident").is_proved(), "{report}");
     assert!(report.verdict("distributes").is_proved(), "{report}");
-    // Composition has a corner: x + g can land exactly on Int.MIN, the
-    // marker for "empty", and then f is dropped.
     assert_eq!(
         report.verdict("composes").to_string(),
         "fails for f = 1, g = -1, a = -9223372036854775806"
     );
+    // Clamping the sum above the marker does not repair it: the clamp
+    // forgets how far below the sum went.
+    let clamped = [
+        fields[0],
+        fields[1],
+        (
+            "apply",
+            "(f, x) => if x == Int.MIN: x else: max(Int.MIN + 1, x + f)",
+        ),
+        fields[3],
+    ];
+    let report = Structure::action().check(&types, &clamped).unwrap();
+    assert!(!report.verdict("composes").is_proved(), "{report}");
 }
 
 #[test]

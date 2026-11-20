@@ -99,10 +99,14 @@ assert f.fold(I(1)..=I(3)) == 2 + 3 + 4
 assert f.fold(I(1)..I(3)) == 2 + 3
 assert f.prefix(I(3).l) == 1 + 2 + 3 and f.prefix(I(3).r) == 1 + 2 + 3 + 4
 
-var lz = LazySegTree<I, Int, Int>.from(Max<Int>, AddMax, [I] i => 0)
+var lz = LazySegTree<I, ?Int, Int>.from(MaxOpt, AddMax, [I] i => 0)
 lz.apply(I(2)..=I(4), 10)
 assert lz.fold(I(0)..=I(5)) == 10
 ```
+
+`MaxOpt` is the maximum over `?Int`: the fold of an empty range is
+`none`, and a cell set to `none` stays out of every maximum whatever is
+added to its range. `?Int` is 8 bytes, the same as `Int`.
 
 The binary searches on a tree return boundaries too:
 `t.max_right(i.l, ok)` is the furthest boundary such that the fold from

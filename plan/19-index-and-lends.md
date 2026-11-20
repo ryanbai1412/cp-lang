@@ -1010,10 +1010,15 @@ first ones a fresh agent tries to break:
     is the empty domain, and the length never wraps, even for
     `Int.min..=Int.max`.
 20. `/` and `%` at the ends of `Int`: `a % b` is in `0..|b|` for every
-    nonzero `b`, including `b = Int.min`, whose magnitude is not an Int;
-    `a % -1` is 0; `Int.min / -1` stops with "Int overflow"; `a / 0` and
-    `a % 0` stop with "division by zero" when the checker could not rule
-    the zero out. `-9223372036854775808` reads from input as itself.
+    nonzero `b`, including `b = Int.MIN`; `a % -1` is 0 and
+    `Int.MIN / -1` is `Int.MAX`, because `Int.MIN` is `-(2^63 - 1)`
+    (decisions.md 1.1); `a / 0` and `a % 0` stop with "division by zero"
+    when the checker could not rule the zero out. The pattern
+    `-9223372036854775808` is below `Int.MIN` and is not an `Int`; the
+    division helpers are still correct for it as a divisor, and stop
+    with "Int overflow" when it is divided by `-1`, so a value that got
+    there from input or unchecked arithmetic never reaches the undefined
+    native division.
 21. `a + a`, `a * a`, `-a`, `abs(a)`, `s += a` and `a << k` on values the
     range checker can't bound: a local build stops with "Int overflow"
     and the line; a judge build is the plain operator.
@@ -1338,8 +1343,9 @@ no such operands is emitted exactly as before.
 
 **The ends of `Int`.** `/` and `%` are Euclidean for every pair of
 operands, with the native C++ operators used only when the checker proves
-`a >= 0` and `b > 0`. Division by zero and `Int.min / -1` stop the
-program in every build. Arithmetic the checker could not bound stops a
+`a >= 0` and `b > 0`. Division by zero stops the program in every
+build; `Int.MIN / -1` is `Int.MAX`, since `Int` is symmetric, and only
+the pattern `-2^63`, which is not an `Int`, stops when divided by `-1`. Arithmetic the checker could not bound stops a
 local build on overflow (`-DLOCAL`, which `cp run` and the test suites
 use) and is the plain operator on a judge. A domain's length is computed
 in 128 bits and capped at 2^31 - 1. `proto/tests/redteam/` holds one
