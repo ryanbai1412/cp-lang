@@ -447,6 +447,15 @@ impl<'a> Checker<'a> {
             _ if left.is_int() && right.is_int() => Ty::Int,
             _ if left.is_numeric() && right.is_numeric() => Ty::Float,
             BinOp::Add if left == Ty::Str && right == Ty::Str => Ty::Str,
+            // A step can leave the domain, so `i + k` and `i - k` are a
+            // `?I`: `none` past either end.
+            BinOp::Add | BinOp::Sub
+                if right.is_int() && matches!(&left, Ty::Pos(d) if !d.contains('.')) =>
+            {
+                Ty::Optional(Box::new(left))
+            }
+            // `i - j` is how far apart two positions of one domain are.
+            BinOp::Sub if matches!((&left, &right), (Ty::Pos(a), Ty::Pos(b)) if a == b) => Ty::Int,
             _ => {
                 // Only the clear mistakes are reported: arithmetic on a Bool,
                 // or a Str mixed with a number. Positions, chars and library
@@ -470,6 +479,27 @@ impl<'a> Checker<'a> {
                 Ty::Unknown
             }
         }
+    }
+
+    /// `i + 1` used where its domain is wanted: the message for indexing
+    /// with it. A step is a `?I`, `none` when it leaves `I`.
+    fn unhandled_step(&self, got: &Ty, want: &Ty, at: &Expr) -> Option<String> {
+        let Ty::Optional(inner) = got else {
+            return None;
+        };
+        (matches!(**inner, Ty::Pos(_)) && inner.fits(want)).then(|| {
+            format!(
+                "`{}` is a {got}: it may step outside {inner}",
+                self.quote(at.span)
+            )
+        })
+    }
+
+    fn step_help(&self, at: &Expr) -> String {
+        let text = self.quote(at.span);
+        format!(
+            "bind it with `if let j = {text}`, give the edge a value with `??`, or assert with `({text})!`"
+        )
     }
 
     /// Reports a comparison between positions of two different domains.
@@ -870,7 +900,17 @@ impl<'a> Checker<'a> {
                         }
                         _ => false,
                     };
-                    if let Some(diag) = self.error(codes::WRONG_DOMAIN, index_expr.span, message) {
+                    // A step that was not bound, clamped or asserted.
+                    if let Some(message) = self.unhandled_step(got, want, index_expr) {
+                        let help = self.step_help(index_expr);
+                        if let Some(diag) =
+                            self.error(codes::WRONG_DOMAIN, index_expr.span, message)
+                        {
+                            diag.help = Some(help);
+                        }
+                    } else if let Some(diag) =
+                        self.error(codes::WRONG_DOMAIN, index_expr.span, message)
+                    {
                         diag.help = Some(if boundary {
                             "a position and the boundaries around it are different indices; use `.l` / `.r` for the boundaries on either side of a position".to_string()
                         } else if got.is_int() {
@@ -929,6 +969,17 @@ impl<'a> Checker<'a> {
             || want.has_error()
         {
             return true;
+        }
+        if self.unhandled_step(got, want, at).is_some() {
+            let text = format!(
+                "expected {want}, got {got}: `{}` may step outside {want}",
+                self.quote(at.span)
+            );
+            let help = self.step_help(at);
+            if let Some(diag) = self.error(codes::WRONG_DOMAIN, at.span, text) {
+                diag.help = Some(help);
+            }
+            return false;
         }
         let text = message(self, got, want);
         let code = if matches!((got, want), (Ty::Pos(_), _) | (_, Ty::Pos(_))) {
