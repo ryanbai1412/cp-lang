@@ -759,7 +759,68 @@ class Compiler(LendMixin):
         return repr(e.value).replace('"', '\\"') if e.value != "'" else "'\\''", CHAR
 
     def x_str(self, e, want):
-        return f'string("{e.value}")', STR
+        parts = self.str_parts(e)
+        if all(isinstance(p, str) for p in parts):
+            return f'string("{"".join(parts)}")', STR
+        out = []
+        for p in parts:
+            if isinstance(p, str):
+                if p:
+                    out.append(f'string("{p}")')
+                continue
+            x, spec = p
+            c, t = self.expr(x)
+            out.append(self.show(c, t, spec, e))
+        return "(" + " + ".join(out) + ")", STR
+
+    def str_parts(self, e):
+        """Split a literal at its `{expr}` and `{expr:spec}` holes; `\\{` and `\\}` are plain braces."""
+        from .parser import Parser, ParseError
+        s, parts, buf, i = e.value, [], "", 0
+        while i < len(s):
+            c = s[i]
+            if c == "\\" and i + 1 < len(s):
+                buf += s[i + 1] if s[i + 1] in "{}" else s[i:i + 2]
+                i += 2
+            elif c == "{" and "}" in s[i:]:
+                j = s.index("}", i)
+                body, _, spec = s[i + 1:j].partition(":")
+                try:
+                    p = Parser(body)
+                    x = p.expr()
+                    if not p.at_kind("NEWLINE"):
+                        p.err("expected `}`")
+                except ParseError as err:
+                    self.error(e, f"in `{{{s[i + 1:j]}}}`: {str(err).split(': ', 1)[-1]}")
+                for n in walk(x):
+                    n.line = e.line
+                parts += [buf, (x, spec)]
+                buf, i = "", j + 1
+            else:
+                buf += c
+                i += 1
+        return parts + [buf]
+
+    def show(self, c, t, spec, node):
+        """The text of a value inside `"{x}"`: what `print(x)` writes, or a number under a checked format."""
+        if spec:
+            m = re.fullmatch(r"(0?)(\d*)(?:\.(\d+)f)?", spec)
+            if not m or not (is_int(t) or isinstance(t, TF64)) or (m.group(3) is None and not is_int(t)):
+                self.error(node, f"`:{spec}` is not a number format {t!r} takes (use `:.6f` for an F64, `:04` for an Int)")
+            if m.group(3) is not None:
+                return f"cp_fmt_f((double)({c}), {m.group(3)}, {m.group(2) or 0}, {'true' if m.group(1) else 'false'})"
+            return f"cp_fmt_i({c}, {m.group(2) or 0}, {'true' if m.group(1) else 'false'})"
+        if isinstance(t, TF64):
+            self.error(node, "an F64 has no default format: write `{x:.6f}` with the digits you want")
+        if isinstance(t, TInt): return f"to_string((ll)({c}))"
+        if isinstance(t, TDom):
+            lab = self.dom_label(t.info, c)
+            return f"string(1, (char){lab})" if t.info.labels == "char" else f"to_string((ll)({lab}))"
+        if isinstance(t, TBool): return f'string(({c}) ? "YES" : "NO")'
+        if isinstance(t, TChar): return f"string(1, {c})"
+        if isinstance(t, TStr): return c
+        if isinstance(t, TMod): return f"to_string((ll)({c}).v)"
+        self.error(node, f"a {t!r} cannot be written inside a string; format its parts")
 
     def x_paren(self, e, want):
         c, t = self.expr(e.a, want)

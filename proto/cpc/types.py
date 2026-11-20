@@ -26,6 +26,12 @@ class TChar(T):
     def __repr__(self): return "Char"
 class TStr(T):
     def __repr__(self): return "Str"
+class TF64(T):
+    def __repr__(self): return "F64"
+class TU64(T):
+    def __repr__(self): return "U64"
+class TI128(T):
+    def __repr__(self): return "I128"
 class TUnit(T):
     def __repr__(self): return "()"
 
@@ -125,6 +131,7 @@ class TType(T):
 
 INT = TInt()
 BOOL, CHAR, STR, UNIT = TBool(), TChar(), TStr(), TUnit()
+F64, U64, I128 = TF64(), TU64(), TI128()
 
 def is_int(t):
     return isinstance(t, TInt)
