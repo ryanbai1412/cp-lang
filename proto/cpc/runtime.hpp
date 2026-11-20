@@ -128,6 +128,15 @@ template <class U> static inline void opt_max(OptI32& o, U x) { if (!o.has() || 
 // @end
 
 struct Rng { ll lo, hi; };
+static inline Opt<int> cp_step(ll ord, ll k, bool minus, ll len) {
+    __int128 x = (__int128)ord + (minus ? -(__int128)k : (__int128)k);
+    return x >= 0 && x < len ? Opt<int>((int)x) : Opt<int>();
+}
+// r.prefix(k) / r.suffix(k): the first / last k positions of a range, or all of it when it is shorter
+static inline Rng cp_rprefix(Rng r, ll k) { return Rng{r.lo, max(r.lo, min(r.hi, r.lo + max(k, 0LL)))}; }
+static inline Rng cp_rsuffix(Rng r, ll k) { return Rng{min(r.hi, max(r.lo, r.hi - max(k, 0LL))), max(r.lo, r.hi)}; }
+// span(a, b): wa / wb is 1 for a position (one cell wide) and 0 for a boundary
+static inline Rng cp_span(ll a, ll wa, ll b, ll wb) { return Rng{min(a, b), max(a + wa, b + wb)}; }
 
 // @part CpView|cp_slice|cp_row|cp_win|cp_swap_view
 // A lent window of an array (plan/19 §3.5): where the block is and which positions of it are lent.
@@ -490,6 +499,51 @@ struct CpHash {
         z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ULL;
         z = (z ^ (z >> 27)) * 0x94d049bb133111ebULL;
         return (size_t)(z ^ (z >> 31));
+    }
+};
+// @end
+// @part CpCounter|CpDenseCounter
+// Counter<K>: how many of each key, and how many keys have a count that is not zero. Stand-in for the
+// library struct, whose `at` is a projection with a write-back (see tests/lend/writeback.cp).
+template <class C, class K> struct CpCount {
+    C* c; K k;
+    operator ll() const { return c->get(k); }
+    CpCount& operator=(ll v) { c->set(k, v); return *this; }
+    CpCount& operator+=(ll d) { c->set(k, c->get(k) + d); return *this; }
+    CpCount& operator-=(ll d) { c->set(k, c->get(k) - d); return *this; }
+};
+template <class M, class K> struct CpCounter {
+    M m; ll distinct = 0;
+    ll get(const K& k) const { auto it = m.find(k); return it == m.end() ? 0 : it->second; }
+    void set(const K& k, ll v) {
+        auto it = m.find(k);
+        if (it == m.end()) { if (v != 0) { m.emplace(k, v); ++distinct; } }
+        else if (v == 0) { m.erase(it); --distinct; }
+        else it->second = v;
+    }
+    CpCount<CpCounter, K> at(const K& k) { return {this, k}; }
+};
+struct CpDenseCounter {
+    vector<ll> m; ll distinct = 0;
+    CpDenseCounter() {}
+    explicit CpDenseCounter(ll n) : m(n, 0) {}
+    ll get(int k) const { return m[k]; }
+    void set(int k, ll v) { distinct += (v != 0) - (m[k] != 0); m[k] = v; }
+    CpCount<CpDenseCounter, int> at(int k) { return {this, k}; }
+};
+// @end
+// @part CpPrefix
+// prefix(a): p[r][c] is the sum of the cells before boundary r and before boundary c (a 1-D array is one column)
+struct CpPrefix {
+    vector<ll> p; ll w = 0;
+    CpPrefix() {}
+    template <class A> CpPrefix(const A& a, ll rows, ll cols) : p((rows + 1) * (cols + 1), 0), w(cols + 1) {
+        for (ll r = 0; r < rows; ++r) for (ll c = 0; c < cols; ++c)
+            p[(r + 1) * w + c + 1] = p[r * w + c + 1] + p[(r + 1) * w + c] - p[r * w + c] + a[r * cols + c];
+    }
+    ll sum(Rng rs, Rng cs) const {      // an empty range sums to 0
+        if (rs.lo >= rs.hi || cs.lo >= cs.hi) return 0;
+        return p[rs.hi * w + cs.hi] - p[rs.lo * w + cs.hi] - p[rs.hi * w + cs.lo] + p[rs.lo * w + cs.lo];
     }
 };
 // @end

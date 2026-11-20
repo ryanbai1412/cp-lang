@@ -7,6 +7,6 @@ fn go(mut x: Int, i: V):
     a[i] += x
     x += 1
     if i != V.last:
-        go(mut x, i + 1)
+        go(mut x, (i + 1)!)
 go(mut a[l], l)
 print(a)

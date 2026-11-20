@@ -19,7 +19,7 @@ for x in X:
     var open = 0
     for i in I:
         open += cover[x, i.l]
-        if open > 0: a[i] = lcm(a[i], x.label)
+        if open > 0: a[i] lcm= x.label
 for i in I: gcds.set(i, a[i])
 
 if all(gcds.query(l, r) == x.label for (l, r, x) in reqs):

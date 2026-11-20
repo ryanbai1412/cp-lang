@@ -55,6 +55,20 @@ class TSeg(T):
     def __hash__(self): return hash(("seg", self.dom, self.elem))
     def __repr__(self): return f"SegTree<{self.dom!r}, {self.elem!r}>"
 
+class TCounter(T):
+    """Counter<K>: a count per key (0 for a key never touched) and `distinct`, the number of non-zero counts."""
+    def __init__(self, key): self.key = key
+    def __eq__(self, o): return isinstance(o, TCounter) and o.key == self.key
+    def __hash__(self): return hash(("counter", self.key))
+    def __repr__(self): return f"Counter<{self.key!r}>"
+
+class TPrefix(T):
+    """prefix(a): prefix sums of a 1-D or 2-D array, read with `pre.sum(range)` / `pre.sum(rows, cols)`."""
+    def __init__(self, dims): self.dims = tuple(dims)
+    def __eq__(self, o): return isinstance(o, TPrefix) and o.dims == self.dims
+    def __hash__(self): return hash(("prefix", self.dims))
+    def __repr__(self): return "Prefix<" + ", ".join(map(repr, self.dims)) + ">"
+
 class THash(T):
     def __init__(self, dom): self.dom = dom
     def __eq__(self, o): return isinstance(o, THash) and o.dom == self.dom
@@ -203,6 +217,13 @@ class Compiler(LendMixin):
             el = 'int' if self.narrow(t.elem) else self.cpp_type(t.elem)
             return f"CpView<{el}>" if getattr(t, "view", None) else f"vector<{el}>"
         if isinstance(t, TEnum): return t.cpp
+        if isinstance(t, TCounter):
+            if isinstance(t.key, TDom):
+                return "CpDenseCounter"
+            k = self.cpp_type(t.key)
+            m = f"unordered_map<{k}, ll, CpHash>" if isinstance(t.key, TInt) else f"map<{k}, ll>"
+            return f"CpCounter<{m}, {k}>"
+        if isinstance(t, TPrefix): return "CpPrefix"
         if isinstance(t, THash): return "StrHash"
         if isinstance(t, TTree): return "RootedTree"
         if isinstance(t, TSeg): return f"SegTree<{self.cpp_type(t.elem)}>"
@@ -360,6 +381,8 @@ class Compiler(LendMixin):
                     a = N("name", a.line, name=a.name)
                 v = a.value if a.kind == "num" else self.const_value(a)
                 return TMod(v)
+            if nm == "Counter":
+                return TCounter(self.resolve_type(tn.args[0]))
             if nm == "Range":
                 return TRange(self.resolve_type(tn.args[0]))
             s = self.lookup(nm)
@@ -466,6 +489,9 @@ class Compiler(LendMixin):
             return self.set_ctor(want)
         if isinstance(want, TList) and isinstance(t, TList) and (t.elem == want.elem or t.elem is None):
             return c if t.elem is not None else f"{self.cpp_type(want)}()"
+        if isinstance(t, TOpt) and t.inner == want and isinstance(want, TDom):
+            self.error(node, f"expected {want!r}, got {t!r}: `{unparse(node)}` may step outside {want!r}. Bind it with "
+                             f"`if let`, give the edge a value with `??`, or assert with `!`")
         self.error(node, f"expected {want!r}, got {t!r}")
 
     def expr(self, e, want=None):
@@ -673,6 +699,8 @@ class Compiler(LendMixin):
                 return self.x_table(N("table", e.line, dims=[it], pat=pat, body=g.elem), want)
         if len(e.items) == 1 and e.items[0].kind == "gen":
             return self.reduction("List", e.items[0], e, want)
+        if isinstance(want, TCounter) and not e.items:      # `var c: Counter<K> = []`: every count is 0
+            return f"{self.cpp_type(want)}{self.counter_init(want)}", want
         et = want.elem if isinstance(want, TList) else None
         parts = []
         for it in e.items:
@@ -743,14 +771,13 @@ class Compiler(LendMixin):
         if isinstance(at, TDom):
             info = at.info
             if op in "+-" and isinstance(bt, TInt):
-                what = json.dumps(f"`{unparse(e)}` leaves {info.name}")
-                c = f"{self.step_fn(bt)}({a}, 0, {b}, {'true' if op == '-' else 'false'}, {info.len_cpp}, {what}, {e.line})"
-                self.note_check(e, f"`{unparse(e)}` stays in {info.name}")
-                return c, at
+                # a step that can leave the domain gives an optional (12 §1.3): `if let j = i - k`,
+                # `i + k ?? D.last`, `(i + k)!`. The sum is taken in 128 bits, so a huge k never wraps back in.
+                return f"cp_step({a}, {b}, {'true' if op == '-' else 'false'}, {info.len_cpp})", TOpt(at)
             if op == "-" and isinstance(bt, TDom) and bt.info is info:
                 return f"((ll)({a}) - ({b}))", TInt(None if info.len_iv[1] is None else -info.len_iv[1],
                                                      None if info.len_iv[1] is None else info.len_iv[1])
-            self.error(e, f"`{op}` between {at!r} and {bt!r}; domain values support `i + k`, `i - k` and `i - j`")
+            self.error(e, f"`{op}` between {at!r} and {bt!r}; domain values support `i + k` and `i - k` (a ?{at!r}) and `i - j` (an Int)")
         if isinstance(bt, TDom):
             self.error(e, f"`{op}` between {at!r} and {bt!r}; use `{unparse(e.b)}.ord` for its position")
         if isinstance(at, TChar) and isinstance(bt, TInt) and op in "+-":
@@ -886,16 +913,37 @@ class Compiler(LendMixin):
             return f"(find({rc}.begin(), {rc}.end(), {xc}) != {rc}.end())"
         self.error(e, f"cannot test membership in {rt!r}")
 
+    def counter_init(self, t):
+        return f"({t.key.info.len_cpp})" if isinstance(t.key, TDom) else "()"
+
+    def range_end(self, x, e, hi, incl=False):
+        """One end of a range: (C++ boundary ordinal, the domain the range runs over, or None for Int)."""
+        c, t = self.expr(x)
+        if isinstance(t, TDom):
+            if t.info.of is not None:           # a boundary delimits the positions on either side of it
+                if incl:
+                    self.error(e, f"`..=` ends at a position; a range up to the boundary `{unparse(x)}` is written `..`")
+                return f"(ll)({c})", t.info.of
+            return f"(ll)({c})" + (" + 1" if hi and incl else ""), t.info
+        if isinstance(t, TInt):
+            return f"(ll)({c})" + (" + 1" if hi and incl else ""), None
+        self.error(e, f"a range can't start or end at a {t!r}")
+
     def x_range(self, e, want):
-        lo, lt = self.expr(e.lo)
-        if e.hi is None:
-            self.error(e, "open range needs an upper bound here")
-        hi, ht = self.expr(e.hi)
-        if isinstance(lt, TDom) and isinstance(ht, TDom) and lt.info is ht.info:
-            return f"Rng{{{lo}, (ll)({hi}){' + 1' if e.incl else ''}}}", TRange(lt)
-        if isinstance(lt, TInt) and isinstance(ht, TInt):
-            return f"Rng{{{lo}, (ll)({hi}){' + 1' if e.incl else ''}}}", TRange(INT)
-        self.error(e, f"range between {lt!r} and {ht!r}")
+        """`l..r`, `l..=r`, `..r`, `..=r`, `l..`: a Range<I> is the positions between two boundaries
+        (plan/19 §4.1), so each end may be a position or a boundary of the same domain."""
+        lo = self.range_end(e.lo, e, False) if e.lo is not None else None
+        hi = self.range_end(e.hi, e, True, e.incl) if e.hi is not None else None
+        info = (lo or hi)[1]
+        if lo is not None and hi is not None and lo[1] is not hi[1]:
+            self.error(e, f"range between {self.expr(e.lo)[1]!r} and {self.expr(e.hi)[1]!r}")
+        if info is None:
+            if lo is None:
+                return f"Rng{{0, {hi[0]}}}", TRange(INT)
+            if hi is None:
+                self.error(e, "an open range of Ints needs an upper bound")
+            return f"Rng{{{lo[0]}, {hi[0]}}}", TRange(INT)
+        return f"Rng{{{lo[0] if lo else '0'}, {hi[0] if hi else f'(ll){info.len_cpp}'}}}", TRange(TDom(info))
 
     def x_unwrap(self, e, want):
         c, t = self.expr(e.a)
@@ -926,6 +974,13 @@ class Compiler(LendMixin):
                 return f"{oc}[{kc}]", ot.val
             self.note_check(e, f"key `{unparse(e.idx[0])}` is in the map")
             return f"cp_mget({oc}, {kc}, {e.line})", ot.val
+        if isinstance(ot, TCounter):
+            kc, kt = self.expr(e.idx[0], ot.key)
+            kc = self.coerce(kc, kt, ot.key, e.idx[0])
+            lv = getattr(self, "lvalue", None)
+            if lv is not None and lv[0] is e:
+                return f"{oc}.at({kc})", INT
+            return f"{oc}.get({kc})", INT
         if isinstance(ot, TList):
             if len(e.idx) != 1:
                 self.error(e, "lists take one index")
@@ -947,11 +1002,8 @@ class Compiler(LendMixin):
                 rc, rt = self.expr(e.idx[0])
                 base = ot.dims[0].info
                 # `l..=r` between positions, or `x..y` between boundaries (v.l, v.r): both are stored as two boundaries
-                if not (isinstance(rt, TRange) and isinstance(rt.elem, TDom) and
-                        (rt.elem.info is base or rt.elem.info is self.bounds_of(base))):
+                if not (isinstance(rt, TRange) and isinstance(rt.elem, TDom) and rt.elem.info is base):
                     self.error(e, f"a slice of {ot!r} takes a range of {ot.dims[0]!r}, got {rt!r}")
-                if rt.elem.info is not base and e.idx[0].kind == "range" and e.idx[0].incl:
-                    self.error(e, f"a slice between two boundaries is written `x..y`; `..=` is for positions")
                 if isinstance(ot.elem, TBool):
                     self.error(e, "slices of a Bool array are not in the prototype")
                 self.idx_kind[id(e)] = "slice"
@@ -1023,6 +1075,9 @@ class Compiler(LendMixin):
                 return f"(int)({off})"
             self.note_check(e, f"`{unparse(ix)}` in {info.name}")
             return f"chk_dom({off}, {info.len_cpp}, {e.line})"
+        if isinstance(it, TOpt) and isinstance(it.inner, TDom):
+            self.error(ix, f"`{unparse(ix)}` is a {it!r}: it may step outside {it.inner!r}. Bind it with "
+                           f"`if let j = {unparse(ix)}`, give the edge a value with `??`, or assert with `!`")
         self.error(ix, f"cannot index with {it!r}")
 
     def x_field(self, e, want):
@@ -1068,6 +1123,8 @@ class Compiler(LendMixin):
             if f in ("before", "after", "l", "r"):      # v.l / v.r: the boundary on the left / right of v
                 b = self.bounds_of(info)
                 return (oc if f in ("before", "l") else f"({oc} + 1)"), TDom(b)
+            if f in ("left", "right") and info.of is not None:      # the position on either side of a boundary
+                return f"cp_step({oc}, {1 if f == 'left' else 0}, true, {info.of.len_cpp})", TOpt(TDom(info.of))
             if f in ("next", "prev"):
                 d = "+" if f == "next" else "-"
                 tmp = self.tmpname("i")
@@ -1090,11 +1147,16 @@ class Compiler(LendMixin):
                 el = ot.elem
                 return (f"(int)({c})" if isinstance(el, TDom) else c), (TDom(self.bounds_of(el.info)) if isinstance(el, TDom) else INT)
             if f == "len":
-                return f"max(0LL, {oc}.hi - {oc}.lo)", TInt(0, None)
+                hi = ot.elem.info.len_iv[1] if isinstance(ot.elem, TDom) else None
+                return f"max(0LL, {oc}.hi - {oc}.lo)", TInt(0, hi)
+            if f == "is_empty":
+                return f"({oc}.hi <= {oc}.lo)", BOOL
             if f in ("first", "last"):
                 self.note_check(e, "range is non-empty")
                 c = f"cp_rfirst({oc}, {e.line})" if f == "first" else f"cp_rlast({oc}, {e.line})"
                 return (f"(int){c}" if isinstance(ot.elem, TDom) else c), ot.elem
+        if isinstance(ot, TCounter) and f == "distinct":
+            return f"{oc}.distinct", TInt(0, None)
         if isinstance(ot, (TList, TStr, TMap, TSet)):
             if f == "len":
                 return f"(ll){oc}.size()", TInt(0, None)
@@ -1155,7 +1217,8 @@ class Compiler(LendMixin):
             return f"RootedTree({c}, {rc})", TTree(t.dims[0])
         if fn.kind == "name" and fn.name == "StrHash" and len(e.args) == 1 and not self.lookup(fn.name):
             c, t = self.expr(e.args[0])
-            if not (isinstance(t, TArr) and len(t.dims) == 1 and isinstance(t.elem, TChar)):
+            if not (isinstance(t, TArr) and len(t.dims) == 1 and
+                    (isinstance(t.elem, TChar) or (isinstance(t.elem, TDom) and t.elem.info.labels == "char"))):
                 self.error(e, f"StrHash needs a [S]Char, got {t!r}")
             return f"StrHash({c})", THash(t.dims[0])
         if fn.kind == "name" and fn.name in ("gcd", "lcm") and len(e.args) == 2 and not self.lookup(fn.name):
@@ -1167,6 +1230,36 @@ class Compiler(LendMixin):
                 return f"std::gcd<ll, ll>({ac}, {bc})", TInt(0, max(his) if len(his) == 2 else None)
             hi = None if None in (at.hi, bt.hi) else at.hi * bt.hi
             return f"std::lcm<ll, ll>({ac}, {bc})", self.int_result(e, 0, hi)
+        if fn.kind == "name" and fn.name == "counts" and len(e.args) == 1 and not self.lookup("counts"):
+            # counts(xs): a Counter of the elements of a list, an array or a slice
+            c, t = self.expr(e.args[0])
+            if not isinstance(t, (TList, TArr)):
+                self.error(e, f"counts takes a list or an array, got {t!r}")
+            ct = TCounter(t.elem)
+            x, r = self.tmpname("x"), self.tmpname("c")
+            return (f"([&]{{ auto {r} = {self.cpp_type(ct)}{self.counter_init(ct)}; for (const auto& {x} : {c}) "
+                    f"{r}.set({x}, {r}.get({x}) + 1); return {r}; }}())"), ct
+        if fn.kind == "name" and fn.name == "prefix" and len(e.args) == 1 and not self.lookup("prefix"):
+            # prefix(a): the sum of everything before each boundary, so any block's sum is O(1)
+            c, t = self.expr(e.args[0])
+            if not (isinstance(t, TArr) and len(t.dims) in (1, 2) and is_int(t.elem)):
+                self.error(e, f"prefix takes a 1-D or 2-D array of Int, got {t!r}")
+            rows = t.dims[0].info.len_cpp
+            cols = t.dims[1].info.len_cpp if len(t.dims) == 2 else "1"
+            return f"CpPrefix({c}, {rows}, {cols})", TPrefix(t.dims)
+        if fn.kind == "name" and fn.name == "span" and len(e.args) == 2 and not self.lookup("span"):
+            # span(a, b): the smallest range that covers a and b, given in either order. Each is a
+            # position (covered) or a boundary (the range reaches it) of one domain.
+            ends = []
+            for a in e.args:
+                c, t = self.expr(a)
+                if not isinstance(t, TDom):
+                    self.error(a, f"span takes positions or boundaries of a domain, got {t!r}")
+                ends.append((c, t.info.of or t.info, 0 if t.info.of is not None else 1))
+            if ends[0][1] is not ends[1][1]:
+                self.error(e, f"span of a {ends[0][1].name} and a {ends[1][1].name}")
+            (a, info, wa), (b, _, wb) = ends
+            return f"cp_span({a}, {wa}, {b}, {wb})", TRange(TDom(info))
         if fn.kind == "name" and fn.name == "abs" and not self.lookup("abs"):
             c, t = self.expr(e.args[0])
             if not is_int(t):
@@ -1357,6 +1450,18 @@ class Compiler(LendMixin):
         key = ot.t.cpp if isinstance(ot, TType) and hasattr(ot.t, "cpp") else getattr(ot, "cpp", None)
         if key in self.projs and m in self.projs[key]:
             return self.call_proj(self.projs[key][m], e, oc, ot)
+        if isinstance(ot, TRange) and m in ("prefix", "suffix") and len(args) == 1:
+            # r.prefix(k) / r.suffix(k): the first / last k positions of r (all of r when it is shorter)
+            kc, kt = self.expr(args[0])
+            if not is_int(kt):
+                self.error(e, f"`.{m}(k)` takes an Int count, got {kt!r}")
+            return f"cp_r{m}({oc}, {kc})", ot
+        if isinstance(ot, TDom) and m == "offset" and len(args) == 1:
+            # v.offset(d): the named form of `v + d`
+            kc, kt = self.expr(args[0])
+            if not is_int(kt):
+                self.error(e, f"`.offset(d)` takes an Int, got {kt!r}")
+            return f"cp_step({oc}, {kc}, false, {ot.info.len_cpp})", TOpt(ot)
         if isinstance(ot, TDom) and m in ("l", "r") and len(args) == 1:
             # v.l(k) / v.r(k): the far boundary of the k-wide window that ends / starts at v; v.l == v.l(1)
             b = self.bounds_of(ot.info)
@@ -1505,6 +1610,26 @@ class Compiler(LendMixin):
             if m == "depth" and len(cs) == 1:
                 return f"(ll){oc}.dep[{cs[0]}]", TInt(0, ot.dom.info.len_iv[1])
             self.error(e, f"no method {m} on {ot!r} (lca(u, v), parent(v), pos(v), depth(v), .preorder)")
+        if isinstance(ot, TPrefix) and m == "sum":
+            if len(args) != len(ot.dims):
+                self.error(e, f"`sum` on {ot!r} takes {len(ot.dims)} range(s), one per dimension")
+            cs = []
+            for a, d in zip(args, ot.dims):
+                c, t = self.expr(a)
+                if not (isinstance(t, TRange) and t.elem == d):
+                    self.error(a, f"expected a range of {d!r}, got {t!r}")
+                cs.append(c)
+            if len(cs) == 1:
+                cs.append("Rng{0, 1}")
+            return f"{oc}.sum({cs[0]}, {cs[1]})", TInt()
+        if isinstance(ot, THash) and m == "of" and len(args) == 1:
+            # hash.of(range): the hash of a window, the same value as hash.of(first, last)
+            c, t = self.expr(args[0])
+            if not (isinstance(t, TRange) and t.elem == ot.dom):
+                self.error(args[0], f"hash.of takes a range of {ot.dom!r} (or two positions), got {t!r}")
+            self.note_check(e, f"`{unparse(args[0])}` is not empty")
+            return (f"([&](Rng _r) {{ return {oc}.of((int)cp_rfirst(_r, {e.line}), (int)cp_rlast(_r, {e.line})); }}({c}))",
+                    TInt(0, (1 << 61) - 1))
         if isinstance(ot, THash) and m == "of" and len(args) == 2:
             cs = []
             for a in args:
@@ -1630,7 +1755,11 @@ class Compiler(LendMixin):
             return
         self.scopes.append({})
         trips = None
-        if it.kind == "range":
+        closed = it.kind == "range" and it.lo is not None and it.hi is not None
+        if closed:      # a boundary at either end, or an open end, makes it a Range value: iterate that
+            ends = [self.capture(lambda x=x: self.expr(x))[1][1] for x in (it.lo, it.hi)]
+            closed = not any(isinstance(t, TDom) and t.info.of is not None for t in ends)
+        if closed:
             lo, lt = self.expr(it.lo)
             hi, ht = self.expr(it.hi)
             hi_x = f"(ll)({hi}) + 1" if it.incl else f"(ll)({hi})"
@@ -1827,11 +1956,16 @@ class Compiler(LendMixin):
             t = None
             if it.kind == "field" and it.name == "rev":
                 it = it.obj
-            if it.kind == "range":
+            if it.kind == "range" and (it.lo is None or it.hi is None):
+                rt = self.capture(lambda: self.expr(it))[1][1]
+                t = rt.elem.info.len_iv[1] if isinstance(rt.elem, TDom) else None
+            elif it.kind == "range":
                 lo, lt = self.capture(lambda: self.expr(it.lo))[1]
                 hi, ht = self.capture(lambda: self.expr(it.hi))[1]
                 if isinstance(lt, TDom):
-                    t = lt.info.len_iv[1]
+                    t = (lt.info.of or lt.info).len_iv[1]
+                elif isinstance(ht, TDom):
+                    t = (ht.info.of or ht.info).len_iv[1]
                 elif lt.lo is not None and ht.hi is not None:
                     t = max(0, ht.hi - lt.lo + (1 if it.incl else 0))
             else:
@@ -1933,6 +2067,8 @@ class Compiler(LendMixin):
             it = cl[2]
             if it.kind == "field" and it.name == "rev":
                 it = it.obj
+            if it.kind == "range" and (it.lo is None or it.hi is None):
+                return False
             if it.kind == "range":
                 _, (lc, lt) = self.capture(lambda: self.expr(it.lo))
                 _, (hc, ht) = self.capture(lambda: self.expr(it.hi))
@@ -2020,7 +2156,26 @@ class Compiler(LendMixin):
         m = getattr(self, "s_" + s.kind, None)
         if m is None:
             self.error(s, f"unsupported statement {s.kind}")
-        m(s)
+        saved = getattr(self, "cur_stmt", None), getattr(self, "after_stmt", [])
+        self.cur_stmt, self.after_stmt = s.kind, []
+        start = len(self.out)
+        try:
+            m(s)
+            for mark, line in self.after_stmt:
+                at = [k for k in range(start, len(self.out)) if self.out[k].strip() == mark]
+                if not at:
+                    continue
+                # the write-back goes where the statement's code ends: the end of the C++ block the mark is in
+                k, depth = at[0] + 1, 0
+                while k < len(self.out):
+                    depth += self.out[k].count("{") - self.out[k].count("}")
+                    if depth < 0:
+                        break
+                    k += 1
+                pad = self.out[at[0]][:len(self.out[at[0]]) - len(self.out[at[0]].lstrip())]
+                self.out.insert(k, pad + line)
+        finally:
+            self.cur_stmt, self.after_stmt = saved
 
     def declare(self, name, ty, cpp, mut, node, kind=None):
         if isinstance(ty, (TSet, TMap, TArr, TOpt, TList)) and node is not None:
@@ -2231,11 +2386,14 @@ class Compiler(LendMixin):
         """`let s: [domain S]Char = read()`: a whitespace-delimited word whose positions get the fresh domain S."""
         d = s.ty.dims[0]
         et = self.resolve_type(s.ty.elem)
-        if not isinstance(et, TChar) or d.range is not None:
-            self.error(s, "only `[domain S]Char = read()` (a word) is supported for a fresh domain")
+        # the elements are Chars, or a domain of Chars such as `domain Letter = 'a'..='z'`
+        letters = et.info if isinstance(et, TDom) and et.info.labels == "char" else None
+        if not (isinstance(et, TChar) or letters) or d.range is not None:
+            self.error(s, "only `[domain S]Char = read()` (a word; or a domain of Chars as the element) is supported for a fresh domain")
         w = self.tmpname("w")
+        lo, span = (letters.lo_cpp, f"{letters.len_cpp} - 1") if letters else ("'a'", "25")
         self.emit(f"string {w};")
-        self.emit(f"if (CP_GEN) {{ int _n = gen_int(1, 1000000); for (int _i = 0; _i < _n; ++_i) {w} += (char)('a' + gen_int(0, 25)); "
+        self.emit(f"if (CP_GEN) {{ int _n = gen_int(1, 1000000); for (int _i = 0; _i < _n; ++_i) {w} += (char)({lo} + gen_int(0, {span})); "
                   f"out_str({w}); out_char('\\n'); }} else {w} = rd_word();")
         info, _, _ = self.new_domain(d.name, "0", "", (0, 0), (0, None))
         info.lo_src, info.hi_src = "0", f"(ll){w}.size()"
@@ -2244,7 +2402,12 @@ class Compiler(LendMixin):
         ty = TArr([TDom(info)], et)
         cpp = self.fresh(name)
         self.decl_global_or_local(cpp, ty)
-        self.emit(f"{cpp} = {self.cpp_type(ty)}({w}.begin(), {w}.end());")
+        if letters:
+            self.emit(f"{cpp} = {self.cpp_type(ty)}({w}.size());")
+            self.emit(f"for (size_t _i = 0; _i < {w}.size(); ++_i) "
+                      f"{cpp}[_i] = chk_dom((ll){w}[_i] - {letters.lo_cpp}, {letters.len_cpp}, {s.line});")
+        else:
+            self.emit(f"{cpp} = {self.cpp_type(ty)}({w}.begin(), {w}.end());")
         self.declare(name, ty, cpp, s.mut, s)
         if self.out is self.init_lines:
             self.last_read = len(self.init_lines)
@@ -2407,7 +2570,42 @@ class Compiler(LendMixin):
             sym.nonzero = True
             self.after_if_nonzero = None
 
+    def s_iflet_chain(self, s):
+        """`if let a = x and let b = y [and cond]: ... else: ...`: the body runs when every binding is there."""
+        done = self.tmpname("f")
+        self.emit(f"{{ bool {done} = false;")
+        depth = 0
+        self.scopes.append({})
+        for pat, value in [(s.pat, s.value)] + s.more:
+            c, t = self.expr(value)
+            if not isinstance(t, TOpt):
+                self.error(s, f"`if let` needs a ?T, got {t!r}")
+            o = self.tmpname("o")
+            self.emit(f"{{ auto {o} = {c}; if ({o}.has()) {{")
+            self.ind += 1
+            depth += 1
+            self.bind_pattern(pat, f"{o}.get()", t.inner, s)
+        if s.extra is not None:
+            self.emit(f"if ({self.cond(s.extra)}) {{")
+        self.emit(f"{done} = true;")
+        self.block(s.body)
+        if s.extra is not None:
+            self.emit("}")
+        for _ in range(depth):
+            self.ind -= 1
+            self.emit("} }")
+        self.scopes.pop()
+        if s.orelse:
+            self.emit(f"if (!{done}) {{")
+            self.ind += 1
+            self.block(s.orelse)
+            self.ind -= 1
+            self.emit("}")
+        self.emit("}")
+
     def s_iflet(self, s):
+        if getattr(s, "more", None):
+            return self.s_iflet_chain(s)
         c, t = self.expr(s.value)
         if not isinstance(t, TOpt):
             self.error(s, f"`if let` needs a ?T, got {t!r}")
@@ -2573,7 +2771,7 @@ class Compiler(LendMixin):
             self.scopes, self.at_top, self.fn_ret, self.loop_ctx, self.in_multitest = [self.scopes[0], holder], True, [], [], False
             self.view_specs[key] = None
             try:
-                self.capture(lambda: self.s_fn(clone))
+                self.capture(lambda: self.s_fn(clone, hoist=True))
             finally:
                 self.scopes, self.at_top, self.fn_ret, self.loop_ctx, self.in_multitest = saved
             self.view_specs[key] = holder[clone.name]
@@ -2589,15 +2787,17 @@ class Compiler(LendMixin):
         ps = list(m.params)
         if not ps or ps[0].name != "self":
             self.error(m, f"a projection lends part of its receiver, so `{m.name}` needs `self` as its first parameter")
-        if not m.body or m.body[-1].kind != "lend":
+        at = [k for k, x in enumerate(m.body) if x.kind == "lend"]
+        if len(at) != 1:
             self.error(m, f"`{m.name}` is declared `lends`, so every path through it must reach one `lend place`; "
-                          f"the prototype wants it as the last statement")
-        pre, lend = m.body[:-1], m.body[-1]
+                          f"the prototype wants it as a statement of the body itself, not inside an `if` or a loop")
+        # statements after the `lend` run when the caller is done with the place: the write-back (plan/19 §3.4)
+        pre, lend, post = m.body[:at[0]], m.body[at[0]], m.body[at[0] + 1:]
         laws = [x for x in pre if x.kind == "law"]
         pre = [x for x in pre if x.kind != "law"]
-        for x in walk(pre):
+        for x in walk(pre + post):
             if x.kind in ("lend", "return", "law"):
-                self.error(x, f"`{m.name}` must reach exactly one `lend`, as its last statement (prototype)")
+                self.error(x, f"`{m.name}` must reach exactly one `lend`, and can't `return` (prototype)")
         law = laws[0] if laws else None
         if len(laws) > 1 or (law is not None and law.name != "disjoint"):
             self.error(laws[-1], "a projection states one law, `law disjoint(...)`")
@@ -2642,6 +2842,11 @@ class Compiler(LendMixin):
                 finally:
                     self.lvalue = None
             lines, (c, t) = self.capture(body)
+            # the prototype emits the write-back as a second function, so it sees `self` and the
+            # parameters but not locals declared before the `lend`
+            if post and not mut_self:
+                self.error(post[0], f"code after the `lend` changes `self`, so `{m.name}` takes `mut self`")
+            after = self.capture(lambda: self.block(post, new_scope=True))[0] if post else None
         finally:
             self.fn_ret.pop()
             self.loop_ctx = saved_ctx
@@ -2653,7 +2858,12 @@ class Compiler(LendMixin):
         sig = "".join(", " + x for x in params)
         self.funcs.append(f"template <class S_> decltype(auto) {cpp}(S_& self_{sig}) {{\n" + "\n".join(lines) +
                           f"\n    return ({c});\n}}")
-        self.projs.setdefault(st.cpp, {})[m.name] = Proj(m.name, cpp, pnames, ptypes, t, m.lends == "mut", law, mut_self, sname)
+        proj = Proj(m.name, cpp, pnames, ptypes, t, m.lends == "mut", law, mut_self, sname)
+        proj.after = None
+        if after is not None:
+            proj.after = cpp + "_after"
+            self.funcs.append(f"template <class S_> void {proj.after}(S_& self_{sig}) {{\n" + "\n".join(after) + "\n}")
+        self.projs.setdefault(st.cpp, {})[m.name] = proj
 
     def call_proj(self, p, e, oc, ot):
         if isinstance(ot, TType):
@@ -2671,6 +2881,21 @@ class Compiler(LendMixin):
             if e.fn.obj.kind == "name" and not getattr(self.lookup(e.fn.obj.name), "mut", False):
                 self.error(e, f"`{p.owner}.{p.name}` takes `mut self`, and `{e.fn.obj.name}` is not a var")
             self.note_write(e.fn.obj, e.line)
+        if p.after:
+            # the write-back runs when the statement that used the place is over
+            if getattr(self, "cur_stmt", None) not in ("assign", "exprstmt", "let"):
+                self.error(e, f"`{p.owner}.{p.name}` runs code after its lend; the prototype allows it in an "
+                              f"assignment, a `let` or a call statement, not in a condition or a loop header")
+            held = []
+            for c, pt in zip(args, p.ptypes):
+                t_ = self.tmpname("a")
+                self.emit(f"const {self.cpp_type(pt)} {t_} = {c};")
+                held.append(t_)
+            args = held
+            # an expression may be compiled more than once (to find its type); the mark says which copy was kept
+            mark = f"// lent by {p.owner}.{p.name} until this statement ends ({self.tmpname('w')})"
+            self.emit(mark)
+            self.after_stmt.append((mark, f"{p.after}({', '.join([oc] + args)});"))
         code = f"{p.cpp}({', '.join([oc] + args)})"
         if self.narrow(p.ret) and not (lv is not None and lv[0] is e):
             code = f"(ll){code}"
@@ -2911,6 +3136,11 @@ class Compiler(LendMixin):
         if op in ("min=", "max=") and self.has_effects(tgt):
             self.error(s, f"`{unparse(tgt)} {op} ...` would evaluate `{unparse(tgt)}` twice, and it calls a fn\n"
                           f"  help: bind the position first: `let i = ...`")
+        if op != "=" and any(self.is_proj_call(x) for x in walk([tgt])):
+            # `t.at(v) += 1` reads and writes one lent place: the projection runs once
+            place = self.tmpname("p")
+            self.emit(f"auto&& {place} = {tc};")
+            tc = place
         if op in ("min=", "max=") and isinstance(tt, TOpt):
             vc, vt = self.expr(s.value, tt.inner)
             self.check_assign_alias(s)
@@ -3033,7 +3263,7 @@ class Compiler(LendMixin):
             walk(p.ty)
         return found
 
-    def s_fn(self, s):
+    def s_fn(self, s, hoist=False):
         decos = {d.name: d for d in s.decos}
         if not s.tparams:
             s.tparams = self.implicit_tparams(s)
@@ -3046,6 +3276,9 @@ class Compiler(LendMixin):
             self.solution_fn(s, decos)
             return
         params, ptypes, names = [], [], []
+        # a fn declared inside a top-level loop or `if` sees that block's variables, so it is a closure too
+        # (a specialization of a generic fn is compiled where it is first called, but belongs to the top level)
+        in_block = len(self.scopes) > 1 and not self.fn_ret and not hoist
         self.scopes.append({})
         saved_top = self.at_top
         self.at_top = False
@@ -3058,7 +3291,7 @@ class Compiler(LendMixin):
             self.error(s, f"`{s.name}` is declared `lends`: a projection lends part of its receiver, so it must be a "
                           f"method with `self` (prototype: methods of a struct only)")
         rt = self.resolve_type(s.ret) if s.ret is not None else UNIT
-        local = len(self.fn_ret) > (1 if getattr(self, "in_multitest", False) else 0) or not saved_top
+        local = len(self.fn_ret) > (1 if getattr(self, "in_multitest", False) else 0) or not saved_top or in_block
         pre = getattr(self, "predeclared", {}).get(s.name)
         cpp = pre if pre and not local else self.fresh(s.name)
         if not local:
@@ -3327,7 +3560,7 @@ class Compiler(LendMixin):
             self.scopes, self.at_top, self.fn_ret, self.loop_ctx, self.in_multitest = [self.scopes[0], binds], True, [], [], False
             specs[key] = clone.name
             try:
-                self.capture(lambda: self.s_fn(clone))
+                self.capture(lambda: self.s_fn(clone, hoist=True))
             finally:
                 self.scopes, self.at_top, self.fn_ret, self.loop_ctx, self.in_multitest = saved
             specs[key] = binds[clone.name]
@@ -3709,7 +3942,8 @@ def _emit_value(self, c, t, node):
     if isinstance(t, TInt):
         self.emit(f"out_int({c});")
     elif isinstance(t, TDom):
-        self.emit(f"out_int({self.dom_label(t.info, c)});")
+        lab = self.dom_label(t.info, c)
+        self.emit(f"out_char((char){lab});" if t.info.labels == "char" else f"out_int({lab});")
     elif isinstance(t, TBool):
         self.emit(f"out_str(({c}) ? \"YES\" : \"NO\");")
     elif isinstance(t, TChar):

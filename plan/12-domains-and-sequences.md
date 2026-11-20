@@ -80,11 +80,22 @@ leave the domain returns an optional:
 ```
 v.next          // ?V: none at V.last
 v.prev          // ?V: none at V.first
-v.offset(d)     // ?V
+v + d, v - d    // ?V: none when the step leaves V
+v.offset(d)     // ?V: the same step, named
 v.cyc(k)        // V: wraps around, for cyclic problems
 u - v           // Int: distance between two positions of the same domain
-v + 1           // error: a V plus an Int has no single meaning
-                // help: v.next (?V), v.offset(1) (?V), or v.cyc(1) (wraps)
+```
+
+`v + d` was an error in the first version of this section, with
+`v.offset(d)` as the optional step. The ports did that step on raw
+`.idx` with a hand-written guard instead, so the operator now is the
+optional step (decisions.md 2.9 and §11, leaning):
+
+```
+if let u = v - k: ...       // skip at the edge
+a[v + k ?? V.last]          // clamp
+a[(v + 1)!]                 // assert
+a[v + 1]                    // error: `v + 1` is a ?V
 ```
 
 Because `none` is a value, the end case is handled where it happens:

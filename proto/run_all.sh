@@ -23,24 +23,28 @@ for f in tests/bad/*.cp; do
 done
 echo "bad tests checked"
 # plan/19: Index, lends and lexical borrows. Each tests/lend/x.cp is built, run on x.in and compared with x.out.
-for f in tests/lend/*.cp; do
+# tests/ergo: the vocabulary from research/ergonomics-audit.md (ranges, steps, Counter, prefix, `f=`), run the same way.
+tmp=$(mktemp -d)
+for f in tests/lend/*.cp tests/ergo/*.cp; do
     b=${f%.cp}
-    if python3 cp.py build "$f" >/dev/null 2>&1 && g++ -std=c++17 -O1 -DLOCAL -o "${b}_bin" "$b.cpp" 2>/dev/null \
-        && "./${b}_bin" < "$b.in" 2>&1 | cmp -s - "$b.out"; then :
-    else echo "LEND TEST FAILED: $f"; fail=1; fi
-    rm -f "${b}_bin"
+    cp "$f" "$tmp/t.cp"     # built from a copy: the build stamps its source and writes the C++ beside it
+    if python3 cp.py build "$tmp/t.cp" >/dev/null 2>&1 && g++ -std=c++17 -O1 -DLOCAL -o "$tmp/t_bin" "$tmp/t.cpp" 2>/dev/null \
+        && "$tmp/t_bin" < "$b.in" 2>&1 | cmp -s - "$b.out"; then :
+    else echo "RUN TEST FAILED: $f"; fail=1; fi
 done
-echo "lend tests checked"
+rm -rf "$tmp"
+echo "lend and ergo tests checked"
 # Red-team edge cases (plan/19 section 6): the ends of Int, Euclidean / and %, evaluation order, empty and
 # oversized domains. Built the way `cp run` builds locally, under ASan and UBSan, so a case that must stop
-# does so with a `line N: ...` message (kept in x.out) and never with undefined behaviour.
+# does so with a `line N: ...` message (kept in x.out) and never with undefined behaviour. ASan can't map
+# its shadow memory under the unlimited stack set above, so these run with the usual 8 MB.
 tmp=$(mktemp -d)
 for f in tests/redteam/*.cp; do
     b=${f%.cp}
     cp "$f" "$tmp/t.cp"     # built from a copy: the build stamps its source, and the line numbers in x.out must not move
     if python3 cp.py build "$tmp/t.cp" >/dev/null 2>&1 \
         && g++ -std=c++17 -O1 -DLOCAL -fsanitize=address,undefined -fno-sanitize-recover=undefined -o "$tmp/t_bin" "$tmp/t.cpp" 2>/dev/null \
-        && "$tmp/t_bin" < "$b.in" 2>&1 | cmp -s - "$b.out"; then :
+        && (ulimit -s 8192; "$tmp/t_bin" < "$b.in" 2>&1) | cmp -s - "$b.out"; then :
     else echo "REDTEAM TEST FAILED: $f"; fail=1; fi
 done
 rm -rf "$tmp"

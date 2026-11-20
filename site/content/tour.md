@@ -52,7 +52,7 @@ This is a fragment: it assumes domains `V` and `E`, an array `a`, and the two he
 
 ## A few C++ habits to leave behind
 
-Write `and`, `or`, and `not` for logical operators. `..` excludes the end; `..=` includes it. A position plus an integer is deliberately ambiguous: choose `.next`, `.offset(k)`, or `.cyc(k)` depending on the edge behavior you want.
+Write `and`, `or`, and `not` for logical operators. `..` excludes the end; `..=` includes it. A position plus an integer may leave its domain, so `v + k` is an optional: bind it with `if let`, clamp it with `??`, or assert it with `!`. `.next` and `.prev` are one step, and `.cyc(k)` wraps.
 
 In the approved design, integer division is `/` and remainder is `%`, with Euclidean semantics. The remainder is always non-negative and smaller than the absolute divisor: `-7 / 3` is `-3`, `-7 % 3` is `2`, and `7 / -3` is `-2` with remainder `1`. Division by zero is an error. When operands are proven non-negative, the backend can use native C++ operations. `//` starts a line comment, not a division expression.
 

@@ -1066,8 +1066,12 @@ class Interp:
             return chr(c)
         if ta is CList and tb is CList and op == "+":
             return CList(a.items + b.items, a.is_str and b.is_str)
+        if ta is DomVal and tb is int and op in "+-":
+            # the optional step, the operator form of `v.offset(k)`: none when it leaves the domain (decisions.md 2.9)
+            i = a.ord + (b if op == "+" else -b)
+            return DomVal(a.dom, i) if 0 <= i < a.dom.K else None
         if ta is DomVal:
-            self.fail(f"a {a.dom!r} is a position, not a number: use `v.next`, `v.offset(k)`, `v.cyc(k)` or `v.to_idx`", node)
+            self.fail(f"a {a.dom!r} is a position, not a number: use `v + k` (a ?{a.dom!r}), `v.next`, `v.cyc(k)` or `v.to_idx`", node)
         self.fail(f"no `{op}` for {self.show(a)} and {self.show(b)}", node)
 
     def e_cmp(self, e, env):

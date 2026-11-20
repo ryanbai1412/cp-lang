@@ -21,6 +21,5 @@ best[Spare(0)] = 0
 for d in deals:
     let before = best               // each deal is taken at most once
     for c in Spare:
-        if let b = before[c] and c.idx + d.cores in Spare:
-            best[c + d.cores] max= b + d.gain
+        if let b = before[c] and let left = c + d.cores: best[left] max= b + d.gain
 print(max(best)!)

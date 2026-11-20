@@ -58,7 +58,7 @@ G7, G8):
 | 2.6 | Domains that depend on a value | Open | e.g. "children of `v`" as a domain; candidate: `domain Kids(v: V) = ...` | 3.x | design-v2 C2 |
 | 2.7 | Growable domains | Leaning | pools grow; `freeze()` turns them into ordinary domains | 5.6 | design-v2 |
 | 2.8 | Conversions between related domains | Settled, revised 2026-11-20 | strict, and now **no implicit conversion at all**: `Sub<V>` is gone (2.4), so every conversion is a named method (`v.l`, `pre.vertex`, `V(x)`). Full list for `Rev<V>`, `Pre`, `WithMin<V>` still to write | 2.4 | research/RECOMMENDATIONS.md §3, plan/19-index-and-lends.md §4.2 |
-| 2.9 | `v + 1` on positions | Settled | error; `v.next` / `v.offset(k)` (optional) or `v.cyc(k)` | | plan/12-domains-and-sequences.md §1.3 |
+| 2.9 | `v + 1` on positions | Leaning, revised 2026-11-20 (was Settled: an error) | `v + k` and `v - k` are the optional step, a `?V` that is `none` outside the domain: `if let u = v - k`, `v + k ?? V.last`, `(v + 1)!`. `v.offset(k)` stays as the named form of the same step, `v.next` / `v.prev` for one step, and `v.cyc(k)` wraps. Six ports did the step on raw `.idx` with a hand-written guard | | §11; research/ergonomics-audit.md §3 |
 | 2.10 | Self-reading tables | Leaning | allowed only for cells provably filled already | | plan/12-domains-and-sequences.md §4 |
 | 2.11 | Escape hatch from domain checks | Settled | explicit and greppable: `a.raw[i]` with an `Int` index; never implicit. `a.raw` is a library projection lending the same storage indexed by `0..K`. With `unchecked:` (7.1) and raw intrinsics these are the contest escape hatches of G15 | 2.1 | research/RECOMMENDATIONS.md §3 |
 | 2.12 | `Name<` generics vs less-than | Leaning | capitalized name and a tentative type-argument parse closed by `>`; otherwise a comparison (`INF < x`) | | compiler/03-parsing.md, plan/17-syntax.md |
@@ -254,3 +254,41 @@ confirmed by Ryan yet; each is small and local to change.
   the Rust front end accepts generics, traits and modules. It checks at
   run time and does no static typing; `proto/cpi/README.md` lists what
   that does and does not prove.
+
+## 11. Leaning since 2026-11-20: the ergonomics audit
+
+A read of all 30 ports as code (`research/ergonomics-audit.md`) changed
+the prototype in the ways below. They are implemented in `proto/cpc/`,
+eleven ports use them, and `proto/tests/ergo/` locks them. None is
+confirmed by Ryan yet, so each is **Leaning**. Per the rules at the top of
+this file, each says what is library code and what is not.
+
+- **The optional step (2.9, revised).** `i + k` and `i - k` on a position
+  are a `?I`. In the library this is `impl Add<Int>` on any `Seq`, the
+  body of the `offset` that 12 §1.3 already had. It revises a settled row:
+  `v + 1` was an error. The reason is the six ports that did the step on
+  raw `.idx` with a separate guard; the step can still never produce a
+  position outside the domain.
+- **`if let a = x and let b = y`.** Syntax. It extends the existing
+  `if let a = x and cond`, so two optional steps need no nesting.
+- **Open ranges `..i`, `..=i`, `i..`.** Syntax: a range literal may omit
+  an end, and takes its type from the end it has. `Range<I>` is the
+  library struct of plan/19 §4.1.
+- **A boundary may end a range.** Library: `Range<I>` is two `Bounds<I>`,
+  so `..b` and `b..` are the cells before and after boundary `b`. `..=b`
+  is an error.
+- **`span(a, b)`, `r.prefix(k)`, `r.suffix(k)`, `b.left`, `b.right`.**
+  Library functions and methods on `Range` and `Bounds`; `left` and
+  `right` are already in plan/19 §4.1.
+- **Code after a `lend` (write-back).** Already designed in plan/19 §3.4;
+  now prototyped. It is what lets a container keep a derived value right
+  on every write.
+- **`Counter<K>` and `counts(xs)`.** A library struct whose `at` is a
+  projection with a write-back; `proto/tests/lend/writeback.cp` is that
+  struct in `.cp`. The prototype compiles it in, as it does `SegTree`.
+- **`prefix(a)` with `pre.sum(range)` / `pre.sum(rows, cols)`.** A library
+  struct over `[I.bounds]T`, compiled in for the same reason.
+- **`x f= y` for any two-argument fn.** Syntax, and one rule in place of
+  two: `min=` and `max=` are now instances of it.
+- **`[domain S]Letter = read()`.** Library: `read` for an array whose
+  element is a domain of `Char`.
