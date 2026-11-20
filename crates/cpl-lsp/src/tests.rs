@@ -214,9 +214,18 @@ fn full_document_changes_are_accepted_too() {
 
 #[test]
 fn edits_use_utf16_positions() {
+    // Where `+` can't combine its operands. The literal is also reported
+    // for not being ASCII; that is not what this test is about.
+    fn bad_operands(diagnostics: &[Value]) -> &Value {
+        diagnostics
+            .iter()
+            .find(|d| d.get("code").as_str() == Some("E0309"))
+            .expect("a diagnostic for `+`")
+            .at(&["range", "start"])
+    }
     // '𝄞' is two UTF-16 units: it spans characters 9 to 11.
     let (mut server, diagnostics) = open("let a = \"𝄞\" + 1\n");
-    assert_eq!(diagnostics[0].at(&["range", "start"]), &pos(0, 13));
+    assert_eq!(bad_operands(&diagnostics), &pos(0, 13));
     // Replace exactly the clef with three ASCII letters.
     let published = server.handle(&did_change((0, 9), (0, 11), "abc"));
     let diagnostics = diagnostics_of(&published);
@@ -224,7 +233,7 @@ fn edits_use_utf16_positions() {
     assert_eq!(diagnostics[0].at(&["range", "start"]), &pos(0, 14));
 
     let (_, diagnostics) = open("let s = \"é𝄞\" + 1\n");
-    assert_eq!(diagnostics[0].at(&["range", "start"]), &pos(0, 14));
+    assert_eq!(bad_operands(&diagnostics), &pos(0, 14));
 }
 
 #[test]
