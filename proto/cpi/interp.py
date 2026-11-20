@@ -180,8 +180,8 @@ class Interp:
             v = self.read(s.ty, env)
         else:
             v = self.ev(s.value, env)
-            if type(v) is Tup and s.value.kind in ("name", "field", "index"):
-                v = Tup(list(v.items), v.names)
+            if s.value.kind in ("name", "field", "index"):
+                v = self.own(v)
             if s.ty is not None and s.ty.kind == "tname" and s.value.kind == "list" and not s.value.items:
                 # `var q: Deque<T> = []`: the empty value of a library container
                 d = env.get(s.ty.name) if env.has(s.ty.name) else None
@@ -199,6 +199,12 @@ class Interp:
         n = 1
         for d in dims:
             n *= self.dim_k(d, ty)
+        if value.kind == "list" and value.items and len(dims) == 1 and ty.elem.kind != "tlist" and not (
+                ty.elem.kind == "tname" and ty.elem.name == "List"):
+            # `let a: [D]Int = [2, 3, 5]`: one value per index, in order (not the whole list in every cell)
+            if len(value.items) != n:
+                self.fail(f"an array literal for this type needs {n} values, got {len(value.items)}", value)
+            return CArray(dims, [self.ev(x, env) for x in value.items])
         return CArray(dims, [self.ev(value, env) for _ in range(n)])
 
     def dim_k(self, d, node=None):
@@ -250,9 +256,18 @@ class Interp:
                     v = cur
             else:
                 v = self.binop(op[:-1], cur, v, s)
-        elif type(v) is Tup and s.value.kind in ("name", "field", "index"):
-            v = Tup(list(v.items), v.names)
+        elif s.value.kind in ("name", "field", "index"):
+            v = self.own(v)
         put(v)
+
+    def own(self, v):
+        """A binding or assignment from a place copies: `var t = s` never aliases `s` (value semantics, X4)."""
+        if type(v) in (CList, CArray, CMap, CSet):
+            from .builtins import copyv
+            return copyv(v)
+        if type(v) is Tup:
+            return Tup([self.own(x) for x in v.items], v.names)
+        return v
 
     def place(self, t, env):
         """(get, put) for an assignable expression."""
@@ -885,7 +900,8 @@ class Interp:
                 elif c == "{" and "}" in s[i:]:
                     j = s.index("}", i)
                     parts.append(buf)
-                    parts.append(LibParser(s[i + 1:j]).expr())
+                    body, _, spec = s[i + 1:j].partition(":")
+                    parts.append((LibParser(body).expr(), spec))
                     buf, i = "", j + 1
                 else:
                     buf += c
@@ -894,7 +910,18 @@ class Interp:
             e._parts = parts
         if len(parts) == 1:
             return CList(list(parts[0]), True)
-        return CList(list("".join(p if isinstance(p, str) else self.show(self.ev(p, env)) for p in parts)), True)
+        return CList(list("".join(p if isinstance(p, str) else self.fmt(self.ev(p[0], env), p[1], e) for p in parts)), True)
+
+    def fmt(self, v, spec, node):
+        """`{x}` shows a value; `{x:.3f}` and `{n:04}` format a number (never `-0.000`)."""
+        if not spec:
+            return self.show(v)
+        if not re.fullmatch(r"0?\d*(\.\d+f)?", spec) or isinstance(v, bool) or not isinstance(v, (int, float)):
+            self.fail(f"`:{spec}` is not a number format this value takes (use `:.6f` or `:04`)", node)
+        out = format(v, spec)
+        if out.startswith("-") and float(out) == 0:
+            out = out[1:]
+        return out
 
     def member_const(self, name, env):
         """An associated const or domain of the enclosing struct, by its bare name."""

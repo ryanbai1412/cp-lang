@@ -10,7 +10,7 @@ class Tok:
 class LexError(Exception):
     pass
 
-OPS = ["..=", "..?", "**=", "...", "..", "=>", "->", "==", "!=", "<=", ">=", "+=", "-=", "*=", "/=",
+OPS = ["<<=", ">>=", "??=", "..=", "..?", "**=", "...", "..", "=>", "->", "==", "!=", "<=", ">=", "+=", "-=", "*=", "/=",
        "%=", "|=", "&=", "^=", "**", "??", "<<", ">>", "&&", "||",
        "+", "-", "*", "/", "%", "<", ">", "=", "(", ")", "[", "]", "{", "}", ",", ":", ".",
        "?", "!", "|", "&", "^", "@", ";", "~"]
@@ -106,6 +106,12 @@ def lex(src):
                 ascii_only(buf, "string", ln)
                 toks.append(Tok("STR", buf, ln, col))
                 i = j + 1
+                continue
+            if c == "'" and NAME_RE.match(line, i + 1) and not line.startswith("'", i + 2) and line[i + 1] != "\\":
+                # `'outer: for ...` and `break 'outer`: a loop label
+                m = NAME_RE.match(line, i + 1)
+                toks.append(Tok("LABEL", m.group(0), ln, col))
+                i = m.end()
                 continue
             if c == "'":
                 j = line.index("'", i + 1 if line[i + 1] != "\\" else i + 3)
