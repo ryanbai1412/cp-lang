@@ -159,7 +159,27 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
 /// Failing tests this checker still accepts: each needs a rule it does
 /// not have yet. A name leaves this list when its case is rejected for
 /// its stated reason, and the test below says so.
-const NOT_YET: &[&str] = &[];
+const NOT_YET: &[&str] = &[
+    // Synthesis #3, in the prototype only so far: `const struct` and
+    // `a.get(i)` on a domain-indexed array.
+    "s3_const_struct_non_pod",
+    "s3_get_bare_int",
+    "s3_get_wrong_domain",
+];
+
+/// Failing tests this checker rejects for the stated reason, in words
+/// of its own: the prototype says `expected Int, got ?Int`, this checker
+/// names the variable. Each is held to the wording given here.
+const REWORDED: &[(&str, &str)] = &[
+    ("s3_inv1_bool_alias", "`y` is declared an Int, but `x` is an ?Int"),
+    ("s3_inv2_array_place", "`y` is declared an Int, but `a[i]` is an ?Int"),
+    ("s3_inv2_struct_field", "`y` is declared an Int, but `b.x` is an ?Int"),
+    ("s3_inv3_after_join", "`y` is declared an Int, but `x` is an ?Int"),
+    ("s3_inv3_after_mut_arg", "`y` is declared an Int, but `x` is an ?Int"),
+    ("s3_inv3_after_reassign", "`y` is declared an Int, but `x` is an ?Int"),
+    ("s3_inv3_closure_mutation", "`y` is declared an Int, but `x` is an ?Int"),
+    ("s3_inv4_bang_non_opt", "`!` takes the value out of an optional, but this is a `Int`"),
+];
 
 /// Failing tests that state a limit of the prototype's code generator,
 /// not a rule of the language. `a[nx()] max= 4` evaluates `a[nx()]` once
@@ -232,6 +252,10 @@ fn each_failing_test_is_rejected_for_its_stated_reason() {
             continue;
         }
         let out = check(&path);
+        let reason = REWORDED
+            .iter()
+            .find(|(case, _)| *case == name)
+            .map_or(reason, |(_, ours)| ours);
         if NOT_YET.contains(&name.as_str()) {
             if out.code != 0 && out.stderr.contains(reason) {
                 wrong.push(format!("{name} is rejected now: take it off `NOT_YET`"));

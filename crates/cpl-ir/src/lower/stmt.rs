@@ -2186,7 +2186,7 @@ impl<'a> Lowerer<'a> {
                         self.error(
                             codes::BAD_NUMBER,
                             cond.span,
-                            "`if const` needs a test known at compile time",
+                            "the test of an `if const` must be a compile-time constant",
                         );
                         self.help(
                             "it can compare literals, `const`s and `<const N>` parameters; \
