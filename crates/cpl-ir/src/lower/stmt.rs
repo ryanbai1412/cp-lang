@@ -9,6 +9,7 @@ impl<'a> Lowerer<'a> {
     pub(super) fn block(&mut self, block: &ast::Block, tail: Tail) -> Block {
         self.cx.scopes.push(HashMap::new());
         self.cx.local_syms.push(HashMap::new());
+        let present = self.cx.present.len();
         let mut out = Vec::new();
         match block.stmts.split_last() {
             None if tail == Tail::Give => self.needs_value(block.span),
@@ -16,7 +17,11 @@ impl<'a> Lowerer<'a> {
             Some((last, init)) => {
                 let mut terminated = false;
                 for (idx, stmt) in init.iter().enumerate() {
-                    self.stmt_with_rest(stmt, &block.stmts[idx + 1..], &mut out);
+                    let rest = &block.stmts[idx + 1..];
+                    self.stmt_with_rest(stmt, rest, &mut out);
+                    let mutators = self.mutators.clone();
+                    let held = narrow::after(stmt, rest, &mut |f, x| mutators.writes(f, x));
+                    self.cx.present.extend(held.into_iter().map(String::from));
                     if matches!(out.last(), Some(Stmt::Return(_))) {
                         terminated = true;
                         break;
@@ -35,6 +40,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+        self.cx.present.truncate(present);
         self.cx.local_syms.pop();
         self.cx.scopes.pop();
         Block { stmts: out }
@@ -2175,9 +2181,21 @@ impl<'a> Lowerer<'a> {
                     self.if_chain(rest, otherwise, tail, out);
                     return;
                 }
+                // In the branch the test holds; past it, the test has
+                // failed.
+                let (test, _) = &branches[0];
+                let mark = self.cx.present.len();
+                let mutators = self.mutators.clone();
+                let held = narrow::in_branch(test, body, &mut |f, x| mutators.writes(f, x));
+                self.cx.present.extend(held.into_iter().map(String::from));
                 let then = self.block(body, tail);
+                self.cx.present.truncate(mark);
+                let mutators = self.mutators.clone();
+                let failed = narrow::past(test, rest, otherwise, &mut |f, x| mutators.writes(f, x));
+                self.cx.present.extend(failed.into_iter().map(String::from));
                 let mut els = Vec::new();
                 self.if_chain(rest, otherwise, tail, &mut els);
+                self.cx.present.truncate(mark);
                 out.push(Stmt::If(cond, then, Block { stmts: els }));
             }
             ast::Cond::Let { pat, value, and } => {
@@ -2241,7 +2259,9 @@ impl<'a> Lowerer<'a> {
         what: &str,
         out: &mut Vec<Stmt>,
     ) -> Option<(Expr, Expr)> {
+        self.cx.as_written = narrow::asks_optional(value);
         let value_expr = self.expr(value, None);
+        self.cx.as_written = false;
         let Ty::Opt(inner) = value_expr.ty.clone() else {
             if value_expr.ty != Ty::Error {
                 let message = format!(
@@ -2362,7 +2382,9 @@ impl<'a> Lowerer<'a> {
         tail: Tail,
         out: &mut Vec<Stmt>,
     ) {
+        self.cx.as_written = narrow::asks_optional(scrutinee);
         let value = self.expr(scrutinee, None);
+        self.cx.as_written = false;
         let value = self.hold(value, out);
         let span = self.span(whole.span);
         let trap = Stmt::Trap("no arm of this `match` fits the value".into(), span);

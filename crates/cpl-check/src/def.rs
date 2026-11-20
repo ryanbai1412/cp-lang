@@ -18,6 +18,9 @@ pub enum Def {
         keyword: &'static str,
         /// `const Sum<T> = ...`: one value per choice of `T`.
         generics: Vec<String>,
+        /// `const FAST = true`: the `Bool` it is known to be when
+        /// compiling, for `if const FAST:`.
+        settled: Option<bool>,
     },
     Fn {
         ty: Ty,

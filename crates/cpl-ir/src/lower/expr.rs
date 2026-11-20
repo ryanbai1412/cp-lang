@@ -295,7 +295,9 @@ impl<'a> Lowerer<'a> {
             }
             ast::ExprKind::Try(inner) => self.try_expr(inner, span),
             ast::ExprKind::Unwrap(inner) => {
+                self.cx.as_written = narrow::asks_optional(inner);
                 let value = self.expr_maybe_opt_reduce(inner);
+                self.cx.as_written = false;
                 match value.ty.clone() {
                     Ty::Opt(inside) => {
                         self.mk(ExprKind::Unwrap(Box::new(value), true), *inside, span)
@@ -439,7 +441,8 @@ impl<'a> Lowerer<'a> {
                 _ => None,
             }
         }
-        let otherwise = single(otherwise?)?;
+        let else_block = otherwise?;
+        let otherwise = single(else_block)?;
         let mut arms = Vec::new();
         for (cond, block) in branches {
             let ast::Cond::Expr(cond) = cond else {
@@ -455,8 +458,15 @@ impl<'a> Lowerer<'a> {
                     || matches!(&v.kind, ast::ExprKind::List(items) if items.is_empty())
             });
         let mut pre_otherwise = None;
+        let mark = self.cx.present.len();
         if first_needs_hint {
+            for (at, (cond, _)) in branches.iter().enumerate() {
+                let mutators = self.mutators.clone();
+                let past = narrow::past(cond, &branches[at + 1..], Some(else_block), &mut |f, x| mutators.writes(f, x));
+                self.cx.present.extend(past.into_iter().map(String::from));
+            }
             let other_val = self.expr(otherwise, None);
+            self.cx.present.truncate(mark);
             if other_val.ty != Ty::Error {
                 if matches!(arms[0].1.kind, ast::ExprKind::None) {
                     ty = Some(match &other_val.ty {
@@ -469,9 +479,19 @@ impl<'a> Lowerer<'a> {
             }
             pre_otherwise = Some(other_val);
         }
-        for (cond, value) in arms {
+        // In a branch its test holds; past it, the test has failed.
+        for (at, (cond, value)) in arms.into_iter().enumerate() {
             let cond = self.expect(cond, &Ty::Bool);
+            let (test, body) = &branches[at];
+            let past = self.cx.present.len();
+            let mutators = self.mutators.clone();
+            let held = narrow::in_branch(test, body, &mut |f, x| mutators.writes(f, x));
+            self.cx.present.extend(held.into_iter().map(String::from));
             let value = self.expr(value, ty.as_ref());
+            self.cx.present.truncate(past);
+            let mutators = self.mutators.clone();
+            let failed = narrow::past(test, &branches[at + 1..], Some(else_block), &mut |f, x| mutators.writes(f, x));
+            self.cx.present.extend(failed.into_iter().map(String::from));
             if ty.is_none() {
                 ty = Some(value.ty.clone());
             }
@@ -482,6 +502,7 @@ impl<'a> Lowerer<'a> {
             Some(v) => v,
             None => self.expr(otherwise, ty.as_ref()),
         };
+        self.cx.present.truncate(mark);
         // The branches agree on one type: the hint, or the widest of them.
         let mut ty = ty.unwrap_or(Ty::Error);
         for candidate in lowered.iter().map(|(_, v, _)| &v.ty).chain([&result.ty]) {
@@ -523,7 +544,24 @@ impl<'a> Lowerer<'a> {
         Some(result)
     }
 
+    /// A name as a value. One that a test has shown to hold a value is the
+    /// value it holds (see [`narrow`]).
     pub(super) fn name(&mut self, name: &str, hint: Option<&Ty>, span: Span) -> Expr {
+        // `x!`, `x ?? 0`, `match x`: the optional itself is asked for.
+        let written = std::mem::take(&mut self.cx.as_written);
+        let value = self.name_as_written(name, hint, span);
+        let shown = |cx: &FnCx| cx.present.iter().any(|n| n == name);
+        let present = !written
+            && (shown(&self.cx) || (self.cx.is_closure && self.outer_cxs.iter().any(shown)));
+        match value.ty.clone() {
+            Ty::Opt(inner) if present => {
+                self.mk(ExprKind::Unwrap(Box::new(value), false), *inner, span)
+            }
+            _ => value,
+        }
+    }
+
+    fn name_as_written(&mut self, name: &str, hint: Option<&Ty>, span: Span) -> Expr {
         if let Some(slot) = self.lookup(name) {
             return self.local(slot, span);
         }
@@ -850,7 +888,9 @@ impl<'a> Lowerer<'a> {
     }
 
     fn try_expr(&mut self, inner: &ast::Expr, span: Span) -> Expr {
+        self.cx.as_written = narrow::asks_optional(inner);
         let opt = self.expr(inner, None);
+        self.cx.as_written = false;
         let Ty::Opt(inner_ty) = opt.ty.clone() else {
             if opt.ty != Ty::Error {
                 self.error(
@@ -1140,7 +1180,12 @@ impl<'a> Lowerer<'a> {
         match op {
             And | Or => {
                 let l = self.expect(lhs, &Ty::Bool);
+                let past = self.cx.present.len();
+                let mutators = self.mutators.clone();
+                let held = narrow::in_rhs(op, lhs, rhs, &mut |f, x| mutators.writes(f, x));
+                self.cx.present.extend(held.into_iter().map(String::from));
                 let r = self.expect(rhs, &Ty::Bool);
+                self.cx.present.truncate(past);
                 return self.mk(
                     ExprKind::Binary(op, Box::new(l), Box::new(r)),
                     Ty::Bool,
@@ -1148,7 +1193,9 @@ impl<'a> Lowerer<'a> {
                 );
             }
             Coalesce => {
+                self.cx.as_written = narrow::asks_optional(lhs);
                 let l = self.expr_maybe_opt_reduce(lhs);
+                self.cx.as_written = false;
                 let Ty::Opt(inner) = l.ty.clone() else {
                     if l.ty != Ty::Error {
                         let message = format!(
@@ -1498,7 +1545,19 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// A comparison. One that tests for `none` reads its names as the
+    /// optionals they were declared as.
     fn compare(&mut self, first: &ast::Expr, rest: &[(CmpOp, ast::Expr)], span: Span) -> Expr {
+        if !narrow::tests_none(first, rest) {
+            return self.compare_sides(first, rest, span);
+        }
+        let present = std::mem::take(&mut self.cx.present);
+        let value = self.compare_sides(first, rest, span);
+        self.cx.present = present;
+        value
+    }
+
+    fn compare_sides(&mut self, first: &ast::Expr, rest: &[(CmpOp, ast::Expr)], span: Span) -> Expr {
         if let [(op @ (CmpOp::In | CmpOp::NotIn), container)] = rest {
             let found = self.contains(first, container, span);
             return if *op == CmpOp::In {

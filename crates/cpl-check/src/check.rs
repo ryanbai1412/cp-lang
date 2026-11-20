@@ -17,6 +17,7 @@ use crate::def::Def;
 use crate::prelude;
 use crate::ty::Ty;
 use cpl_diag::{codes, Code, Diagnostic, Sink, Span};
+use cpl_syntax::narrow;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -85,6 +86,12 @@ pub(crate) struct Checker<'a> {
     scopes: Vec<HashMap<String, Local>>,
     generics: Vec<String>,
     hovers: Vec<HoverEntry>,
+    /// The optionals a test has shown to hold a value here, by name.
+    present: Vec<String>,
+    /// The name about to be read stands where an optional is asked for.
+    as_written: bool,
+    /// What the fns declared inside the item being checked assign.
+    mutators: narrow::Mutators,
     refs: Vec<GlobalRef>,
     /// Name and return type of each enclosing fn.
     fns: Vec<(String, Ty, bool)>,
@@ -119,6 +126,9 @@ impl<'a> Checker<'a> {
             scopes: vec![HashMap::new()],
             generics: Vec::new(),
             hovers: Vec::new(),
+            present: Vec::new(),
+            as_written: false,
+            mutators: narrow::Mutators::default(),
             refs: Vec::new(),
             fns: Vec::new(),
             gives: Vec::new(),
@@ -218,7 +228,39 @@ impl<'a> Checker<'a> {
     }
 
     /// The type of a name used as a value.
+    /// The type of a name as a value. One that a test has shown to hold a
+    /// value is the value it holds (see [`cpl_syntax::narrow`]).
     fn name_ty(&mut self, name: &str, span: Span) -> Ty {
+        let hover = self.hovers.len();
+        let written = std::mem::take(&mut self.as_written);
+        match self.name_ty_as_written(name, span) {
+            Ty::Optional(inner) if !written && self.present.iter().any(|n| n == name) => {
+                if let Some(entry) = self.hovers.get_mut(hover) {
+                    entry.ty = (*inner).clone();
+                }
+                *inner
+            }
+            ty => ty,
+        }
+    }
+
+    /// The type of `e`, read as an optional where it is a name: see
+    /// [`narrow::asks_optional`].
+    fn infer_optional(&mut self, e: &cpl_syntax::ast::Expr) -> Ty {
+        self.as_written = narrow::asks_optional(e);
+        let ty = self.infer(e);
+        self.as_written = false;
+        ty
+    }
+
+    /// Whether calling `callee` may assign `name`, which ends what a test
+    /// showed about it.
+    fn call_writes(&mut self, callee: &str, name: &str) -> bool {
+        self.mutators.writes(callee, name)
+            || self.env.effects(callee).writes.iter().any(|n| n == name)
+    }
+
+    fn name_ty_as_written(&mut self, name: &str, span: Span) -> Ty {
         if let Some(local) = self.local(name) {
             let (ty, keyword, decl) = (local.ty.clone(), local.keyword, local.span);
             // A local type alias used as a value names the domain or the

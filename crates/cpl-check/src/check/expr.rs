@@ -82,10 +82,18 @@ impl<'a> Checker<'a> {
                         return Ty::Error;
                     }
                 }
-                let mut left = self.infer(first);
+                let tests_none = narrow::tests_none(first, rest);
+                let side = |this: &mut Self, e: &Expr| {
+                    if tests_none {
+                        this.infer_optional(e)
+                    } else {
+                        this.infer(e)
+                    }
+                };
+                let mut left = side(self, first);
                 let mut left_expr: &Expr = first;
                 for (op, right_expr) in rest {
-                    let right = self.infer(right_expr);
+                    let right = side(self, right_expr);
                     if !matches!(op, ast::CmpOp::In | ast::CmpOp::NotIn) {
                         self.comparable(&left, left_expr, &right, right_expr);
                     }
@@ -281,14 +289,36 @@ impl<'a> Checker<'a> {
                 // Inside a branch its condition holds; after it, in the
                 // branches that follow, it does not.
                 let mark = self.lend_mark();
-                for (cond, body) in branches {
+                let present = self.present.len();
+                // `if const` with a test known here picks its branch now:
+                // the others are not compiled, so they are not checked.
+                let mut picked = false;
+                for (at, (cond, body)) in branches.iter().enumerate() {
+                    if picked {
+                        break;
+                    }
                     self.push_scope();
                     self.cond(cond);
+                    let known = match cond {
+                        Cond::Const(test) => self.const_bool(test),
+                        _ => None,
+                    };
+                    picked = known == Some(true);
+                    if known == Some(false) {
+                        self.pop_scope();
+                        continue;
+                    }
                     let branch = self.lend_mark();
                     self.add_cond_facts(cond, false);
+                    let past = self.present.len();
+                    let held = narrow::in_branch(cond, body, &mut |f, x| self.call_writes(f, x));
+                    self.present.extend(held.into_iter().map(String::from));
                     self.branch += value;
                     let ty = self.block(body);
                     self.branch -= value;
+                    self.present.truncate(past);
+                    let failed = narrow::past(cond, &branches[at + 1..], otherwise.as_ref(), &mut |f, x| self.call_writes(f, x));
+                    self.present.extend(failed.into_iter().map(String::from));
                     self.lend_reset(branch);
                     self.add_cond_facts(cond, true);
                     self.pop_scope();
@@ -311,6 +341,7 @@ impl<'a> Checker<'a> {
                     _ => None,
                 };
                 let result_ty = match otherwise {
+                    Some(_) if picked => result.unwrap_or(Ty::Unit),
                     Some(body) => {
                         self.branch += value;
                         let ty = self.block(body);
@@ -323,6 +354,7 @@ impl<'a> Checker<'a> {
                     }
                     None => Ty::Unit,
                 };
+                self.present.truncate(present);
                 self.lend_reset(mark);
                 if let Some(cond) = after {
                     self.add_cond_facts(cond, true);
@@ -331,7 +363,7 @@ impl<'a> Checker<'a> {
             }
             ExprKind::Match { scrutinee, arms } => {
                 let value = u32::from(self.plain_if.take() != Some(expr.span));
-                let scrutinee_ty = self.infer(scrutinee);
+                let scrutinee_ty = self.infer_optional(scrutinee);
                 let mut result = Ty::Unknown;
                 for (i, arm) in arms.iter().enumerate() {
                     self.push_scope();
@@ -384,12 +416,70 @@ impl<'a> Checker<'a> {
                 self.infer(value);
                 Ty::Bool
             }
-            ExprKind::Try(inner) | ExprKind::Unwrap(inner) => match self.infer(inner) {
+            ExprKind::Try(inner) | ExprKind::Unwrap(inner) => match self.infer_optional(inner) {
                 Ty::Optional(inner) => *inner,
                 Ty::Error => Ty::Error,
                 _ => Ty::Unknown,
             },
             ExprKind::Missing | ExprKind::Error => Ty::Error,
+        }
+    }
+
+    /// The test of an `if const`, where it is known without choosing type
+    /// arguments: `true`, a `const` that is, comparisons of whole numbers,
+    /// and `not`, `and`, `or` of those. `None` leaves both branches to be
+    /// checked.
+    pub(crate) fn const_bool(&mut self, e: &Expr) -> Option<bool> {
+        match &e.kind {
+            ExprKind::Bool(b) => Some(*b),
+            ExprKind::Paren(inner) => self.const_bool(inner),
+            ExprKind::Name(name) if self.local(name).is_none() => {
+                match self.env.global(name).as_deref() {
+                    Some(Def::Value { settled, .. }) => *settled,
+                    _ => None,
+                }
+            }
+            ExprKind::Unary {
+                op: UnOp::Not,
+                expr,
+            } => Some(!self.const_bool(expr)?),
+            ExprKind::Binary {
+                op: BinOp::And,
+                lhs,
+                rhs,
+                ..
+            } => Some(self.const_bool(lhs)? && self.const_bool(rhs)?),
+            ExprKind::Binary {
+                op: BinOp::Or,
+                lhs,
+                rhs,
+                ..
+            } => Some(self.const_bool(lhs)? || self.const_bool(rhs)?),
+            ExprKind::Compare { first, rest } => {
+                let int = |e: &Expr| match e.kind {
+                    ExprKind::Int(n) => Some(n),
+                    _ => None,
+                };
+                let mut left = int(first)?;
+                for (op, next) in rest {
+                    let right = int(next)?;
+                    let holds = match op {
+                        ast::CmpOp::Eq => left == right,
+                        ast::CmpOp::Ne => left != right,
+                        ast::CmpOp::Lt => left < right,
+                        ast::CmpOp::Le => left <= right,
+                        ast::CmpOp::Gt => left > right,
+                        ast::CmpOp::Ge => left >= right,
+                        _ => return None,
+                    };
+                    if !holds {
+                        return Some(false);
+                    }
+                    left = right;
+                }
+                Some(true)
+            }
+            _ => None,
         }
     }
 
@@ -403,7 +493,7 @@ impl<'a> Checker<'a> {
                 self.infer(expr);
             }
             Cond::Let { pat, value, and } => {
-                let ty = match self.infer(value) {
+                let ty = match self.infer_optional(value) {
                     Ty::Optional(inner) => *inner,
                     Ty::Error => Ty::Error,
                     _ => Ty::Unknown,
@@ -455,8 +545,16 @@ impl<'a> Checker<'a> {
     }
 
     fn binary(&mut self, op: BinOp, op_span: Span, lhs: &Expr, rhs: &Expr) -> Ty {
-        let left = self.infer(lhs);
+        let left = if op == BinOp::Coalesce {
+            self.infer_optional(lhs)
+        } else {
+            self.infer(lhs)
+        };
+        let past = self.present.len();
+        let held = narrow::in_rhs(op, lhs, rhs, &mut |f, x| self.call_writes(f, x));
+        self.present.extend(held.into_iter().map(String::from));
         let right = self.infer(rhs);
+        self.present.truncate(past);
         match op {
             BinOp::And | BinOp::Or => {
                 self.require_bool(&left, lhs, &format!("`{}`", op.text()));

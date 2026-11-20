@@ -18,6 +18,7 @@ use crate::*;
 use cpl_check::Analysis;
 use cpl_diag::{codes, Diagnostic, Span};
 use cpl_syntax::ast;
+use cpl_syntax::narrow;
 use mono::*;
 use std::collections::{HashMap, HashSet};
 
@@ -137,6 +138,7 @@ fn lower_aside(analysis: &Analysis, name: &str, aside: Aside) -> Result<Program,
     let mut lw = Lowerer::new(analysis);
     lw.aside = Some(aside);
     lw.load_modules(analysis);
+    lw.mutators = narrow::Mutators::of(lw.mod_items(0).map(|(_, stmt)| stmt)).into();
     lw.collect_all(Some(name));
     lw.signatures();
     lw.main_for_aside(name);
@@ -165,6 +167,7 @@ fn lower_entry(
     // Whatever the judge sends goes out at once.
     lw.interactive = judge;
     lw.load_modules(analysis);
+    lw.mutators = narrow::Mutators::of(lw.mod_items(0).map(|(_, stmt)| stmt)).into();
     lw.collect_all(test_name);
     lw.signatures();
     if let Some(tname) = test_name {
@@ -395,6 +398,10 @@ struct DoFrame {
 #[derive(Clone, Default)]
 struct FnCx {
     locals: Vec<Local>,
+    /// The optionals a test has shown to hold a value here, by name.
+    present: Vec<String>,
+    /// The name about to be lowered stands where an optional is asked for.
+    as_written: bool,
     scopes: Vec<HashMap<String, Slot>>,
     /// Block-scoped type aliases, local domains, etc. (e.g. `domain V = 1..=6`, `type M = Mod<7>`).
     local_syms: Vec<HashMap<String, Sym>>,
@@ -453,6 +460,9 @@ struct Lowerer<'a> {
     const_ints: HashMap<String, i64>,
     /// The `const`s that are a `Bool` known when compiling, for `if const`.
     const_bools: HashMap<String, bool>,
+    /// What the fns of the file assign outside themselves: a call to one
+    /// ends what a test showed about an optional it assigns.
+    mutators: std::rc::Rc<narrow::Mutators>,
     mod_consts: Vec<ModConstInfo<'a>>,
     gen_consts: Vec<GenConstTemplate<'a>>,
 
@@ -537,6 +547,7 @@ impl<'a> Lowerer<'a> {
             globals: Vec::new(),
             const_ints: HashMap::new(),
             const_bools: HashMap::new(),
+            mutators: Default::default(),
             mod_consts: Vec::new(),
             gen_consts: Vec::new(),
             traits: Vec::new(),

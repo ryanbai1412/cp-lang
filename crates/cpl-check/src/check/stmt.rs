@@ -12,6 +12,7 @@ impl<'a> Checker<'a> {
         for replay in self.env.lent_before() {
             self.replay(&replay, stmts);
         }
+        self.mutators = narrow::Mutators::of(stmts);
         self.stmts(stmts, true);
     }
 
@@ -31,8 +32,14 @@ impl<'a> Checker<'a> {
     /// names it.
     fn stmts(&mut self, stmts: &[Stmt], top_level: bool) -> Ty {
         let mut last = Ty::Unit;
+        let present = self.present.len();
         for (k, stmt) in stmts.iter().enumerate() {
             last = self.stmt(stmt, top_level);
+            // `if x == none: return` leaves `x` holding a value.
+            if !top_level {
+                let held = narrow::after(stmt, &stmts[k + 1..], &mut |f, x| self.call_writes(f, x));
+                self.present.extend(held.into_iter().map(String::from));
+            }
             if let StmtKind::Let {
                 mutable: false,
                 pat:
@@ -48,6 +55,7 @@ impl<'a> Checker<'a> {
             }
             self.end_holds(stmt);
         }
+        self.present.truncate(present);
         last
     }
 

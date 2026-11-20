@@ -15,6 +15,7 @@ pub mod ast;
 mod items;
 mod lexer;
 pub mod literal;
+pub mod narrow;
 mod parser;
 mod token;
 pub mod visit;

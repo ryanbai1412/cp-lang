@@ -581,6 +581,7 @@ impl<'a> Checker<'a> {
                             mutable: *mutable,
                             keyword,
                             generics: Vec::new(),
+                            settled: None,
                         },
                     ))
                 };
@@ -619,6 +620,7 @@ impl<'a> Checker<'a> {
                     (None, None) => Ty::Error,
                 };
                 self.generics.truncate(outer);
+                let settled = init.as_ref().and_then(|init| self.const_bool(init));
                 vec![(
                     name.text.clone(),
                     Def::Value {
@@ -626,6 +628,7 @@ impl<'a> Checker<'a> {
                         mutable: false,
                         keyword: "const",
                         generics: generics.iter().map(|g| g.text.clone()).collect(),
+                        settled,
                     },
                 )]
             }
@@ -645,6 +648,7 @@ impl<'a> Checker<'a> {
                             mutable: true,
                             keyword: "var",
                             generics: Vec::new(),
+                            settled: None,
                         },
                     ));
                 }

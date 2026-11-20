@@ -1581,50 +1581,15 @@ fn reading_an_enum_needs_its_tags() {
     assert!(codes(&ok).is_empty(), "{:?}", check(&ok));
 }
 
-/// `STD_NAMES` is what the hint for a missing `use` is read from: it has
-/// every public name of `stdlib/` that one module declares, in order.
+/// `STD_NAMES` is what the hint for a missing `use` is read from. It is
+/// built from `stdlib/` itself, sorted for the binary search, without
+/// the names that more than one module declares.
 #[test]
-fn the_std_name_table_matches_the_standard_library() {
-    let stdlib = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../stdlib");
-    let mut found: std::collections::BTreeMap<String, Vec<String>> = Default::default();
-    for entry in std::fs::read_dir(&stdlib).expect("stdlib/ is beside crates/") {
-        let path = entry.expect("a readable entry").path();
-        if path.extension().and_then(|e| e.to_str()) != Some("cp") {
-            continue;
-        }
-        let module = path.file_stem().unwrap().to_string_lossy().into_owned();
-        let text = std::fs::read_to_string(&path).expect("a readable module");
-        for line in text.lines() {
-            let mut words = line.split_whitespace();
-            if words.next() != Some("pub") {
-                continue;
-            }
-            let declares = matches!(
-                words.next(),
-                Some("fn" | "struct" | "enum" | "trait" | "type" | "const" | "domain")
-            );
-            if !declares || line.starts_with(' ') {
-                continue;
-            }
-            let name: String = words
-                .next()
-                .unwrap_or_default()
-                .chars()
-                .take_while(|c| c.is_alphanumeric() || *c == '_')
-                .collect();
-            found.entry(name).or_default().push(module.clone());
-        }
-    }
-    let expected: Vec<(String, String)> = found
-        .into_iter()
-        .filter(|(_, modules)| modules.len() == 1)
-        .map(|(name, mut modules)| (name, modules.remove(0)))
-        .collect();
-    let table: Vec<(String, String)> = crate::prelude::STD_NAMES
-        .iter()
-        .map(|(name, module)| (name.to_string(), module.to_string()))
-        .collect();
-    assert_eq!(table, expected);
+fn the_std_name_table_is_read_off_the_standard_library() {
+    let names = crate::prelude::STD_NAMES;
+    assert!(names.windows(2).all(|pair| pair[0].0 < pair[1].0));
+    assert_eq!(crate::prelude::std_module("Fenwick"), Some("fenwick"));
+    assert_eq!(crate::prelude::std_module("no_such_name"), None);
     assert_eq!(crate::prelude::std_module("min_by"), Some("seq"));
 }
 
@@ -1682,4 +1647,47 @@ fn memo_on_a_fn_with_a_value_and_plain_arguments_is_fine() {
     ] {
         assert_eq!(check(src), Vec::new(), "{src}");
     }
+}
+
+/// `adj.out(u)` reads a table of neighbour lists. On any other table the
+/// checker says so, as `cpl run` and `cpl build` do.
+#[test]
+fn out_on_a_table_that_holds_no_lists_is_reported() {
+    let rest = "let n = 3\ndomain V = 0..n\n";
+    let d = one(&format!("{rest}let a: [V]Int = [V] v => 0\nprint(a.out(V(1)))\n"));
+    assert_eq!(d.code.0, "E0203", "{d:?}");
+    assert_eq!(d.help.as_deref(), Some("index it: `a[v]`"));
+    let ok = format!("{rest}var adj: [V]List<V> = [V] v => []\nprint(adj.out(V(0)).len)\n");
+    assert!(codes(&ok).is_empty(), "{:?}", check(&ok));
+}
+
+/// The branch an `if const` does not pick is not compiled, so it is not
+/// checked; one whose test waits for a type argument still is.
+#[test]
+fn the_untaken_branch_of_an_if_const_is_not_checked() {
+    let skipped = "const FAST = false\nif const FAST:\n    print(no_such_name)\nelse:\n    print(1)\n";
+    assert!(codes(skipped).is_empty(), "{:?}", check(skipped));
+    let picked = "if const 1 < 2:\n    print(1)\nelse:\n    print(no_such_name)\n";
+    assert!(codes(picked).is_empty(), "{:?}", check(picked));
+    let taken = "const FAST = true\nif const FAST:\n    print(no_such_name)\n";
+    assert_eq!(codes(taken).len(), 1, "{:?}", check(taken));
+}
+
+/// A test for `none` leaves the name holding a value where the test says
+/// so, and nowhere the name is assigned again.
+#[test]
+fn a_tested_optional_reads_as_its_value() {
+    let head = "fn f(x: ?Int) -> Int:\n";
+    for body in [
+        "    if x == none: return 0\n    x + 1\n",
+        "    if x != none: return x + 1\n    0\n",
+        "    if x == none or x < 0: return 0\n    x\n",
+        "    if x != none: return x! + 1\n    x ?? 0\n",
+    ] {
+        let src = format!("{head}{body}");
+        assert!(codes(&src).is_empty(), "{src}\n{:?}", check(&src));
+    }
+    // Assigned in the code the test covers: still an optional there.
+    let src = "fn g(x: ?Int) -> Int:\n    var y = x\n    if y == none: return 0\n    y = none\n    y + 1\n";
+    assert!(!codes(src).is_empty(), "{:?}", check(src));
 }

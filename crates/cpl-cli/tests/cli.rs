@@ -507,3 +507,60 @@ fn stress_traces_the_failing_test_case_of_a_file_judged_by_its_checker() {
     // The steps of the test case are there, past the table's.
     assert!(trace.contains("\"line\":6"), "the trace stops above `@!multitest`");
 }
+
+/// `cpl build --checked` stops on what `cpl run` stops on, where the
+/// sanitizers alone would go on with a wrong value: an `I128` shifted past
+/// its top, a negative power, a `U64` divided by zero.
+#[test]
+fn a_checked_build_stops_on_wide_int_mistakes() {
+    use std::io::Write;
+    use std::process::Stdio;
+
+    if Command::new("g++").arg("--version").output().is_err() {
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("cpl-cli-checked-test-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let cases = [
+        (
+            "shift",
+            "let a: I128 = 1\nlet k: Int = read()\nprint(Int((a << k) >> 100))\n",
+            "127",
+            "does not fit in an `I128`",
+        ),
+        (
+            "power",
+            "let k: Int = read()\nprint(2 ** k)\n",
+            "-1",
+            "needs a power that is not negative",
+        ),
+        (
+            "divide",
+            "let a: U64 = 7\nlet k: Int = read()\nlet z: U64 = k\nprint(a / z)\n",
+            "0",
+            "division by zero",
+        ),
+    ];
+    for (name, source, input, message) in cases {
+        let file = dir.join(format!("{name}.cp"));
+        std::fs::write(&file, source).unwrap();
+        let built = Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .args(["build", "--checked"])
+            .arg(&file)
+            .output()
+            .expect("cpl runs");
+        assert!(built.status.success(), "{name}: {built:?}");
+        let mut child = Command::new(dir.join(format!("{name}.checked")))
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("the checked binary runs");
+        child.stdin.take().unwrap().write_all(input.as_bytes()).unwrap();
+        let out = child.wait_with_output().unwrap();
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        assert!(!out.status.success(), "{name} went on: {out:?}");
+        assert!(stderr.contains(message), "{name}: {stderr}");
+    }
+    std::fs::remove_dir_all(&dir).ok();
+}

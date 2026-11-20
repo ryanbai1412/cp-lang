@@ -732,13 +732,16 @@ fn build_file(
 /// sanitizers on, so overflow, a bad index or a bad shift stops the
 /// program with a report instead of going on with a wrong value.
 fn build_checked(cpp: &std::path::Path, stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
-    const FLAGS: [&str; 6] = [
+    // `LOCAL` turns on the checks the sanitizers have no word for: a
+    // negative power, an `I128` shifted past its top, a `U64` divided by 0.
+    const FLAGS: [&str; 7] = [
         "-std=c++17",
         "-O1",
         "-g",
         "-fsanitize=address,undefined",
         "-fno-sanitize-recover=all",
         "-D_GLIBCXX_ASSERTIONS",
+        "-DLOCAL",
     ];
     let binary = cpp.with_extension("checked");
     let compiler = std::env::var("CXX").unwrap_or_else(|_| "g++".into());

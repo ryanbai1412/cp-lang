@@ -147,6 +147,20 @@ impl<'a> Checker<'a> {
                     elem,
                 })
             }
+            // `adj.out(u)` is `adj[u]` for a table of neighbour lists, and
+            // for no other table.
+            Ty::Array { index, elem }
+                if name.text == "out"
+                    && !elem.is_vague()
+                    && !matches!(&*elem, Ty::Named { name, .. } if name == "List") =>
+            {
+                let shown = Ty::Array { index, elem }.to_string();
+                let message = format!("`.out(v)` reads a table of neighbour lists, not a `{shown}`");
+                if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
+                    diag.help = Some("index it: `a[v]`".to_string());
+                }
+                Some(Ty::Error)
+            }
             // `v.l(k)`, `v.r(k)`: the far end of a window of `k` at `v`.
             Ty::Pos(domain)
                 if matches!(name.text.as_str(), "l" | "r") && !domain.ends_with(".bounds") =>

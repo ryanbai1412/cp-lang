@@ -2018,10 +2018,12 @@ impl<'a> Lowerer<'a> {
         let (acc, ty, inner, after): (Slot, Ty, Vec<Stmt>, Vec<Stmt>) = match kind {
             Reduce::Sum => 'sum: {
                 let ty = value.ty.clone();
-                // A `Mod<P>` adds with its own `+`, from its own zero.
+                // A struct with a `zero` and a `+` adds with its own `+`,
+                // from its own zero: a `Mod<P>`, a matrix, a polynomial.
                 if let Ty::Struct(sid) = ty {
-                    if let (true, Some(add)) = (self.is_number(sid), self.struct_op_fn(sid, "add")) {
-                        let zero = self.int_lit(0, span);
+                    let zero = self.structs[sid].consts.get("zero").cloned();
+                    if let (Some(zero), Some(add)) = (zero, self.struct_op_fn(sid, "add")) {
+                        let zero = self.eval_struct_const(sid, zero, span);
                         let zero = self.coerce(zero, &ty, span);
                         let acc = self.temp(ty.clone());
                         stmts.push(Stmt::Let(acc, Some(zero)));
