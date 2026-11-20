@@ -19,12 +19,21 @@ Every example below is a test in [`tour.cp`](tour.cp), so it runs.
 
 ## How it runs today
 
-The Rust compiler does not yet accept generic structs, traits or modules,
-so the library runs on a reference interpreter, `proto/cpi/`. It executes
+The Rust front end checks the library as it is written: generic structs,
+traits and impls, `use` across modules, strict domain indexing, and the
+exclusivity of lends.
+
+```
+$ cargo run -q -p cpl-cli -- check stdlib/*.cp examples/local-lib/*/*.cp
+```
+
+Checking is not running. The Rust interpreter and code generator are not
+built yet, so the library's tests run on a reference interpreter,
+`proto/cpi/`. It executes
 the planned language directly, slowly and with every check on: an index
 from the wrong domain, an out-of-range value, a broken algebraic law or a
 `none` used as a value stops the test with the source line. The files are
-written for the real compiler; when it catches up they should compile
+written for the real compiler; when it can run them they should compile
 unchanged, and the interpreter stays as the oracle to test it against.
 
 ## Operation values: one structure, many behaviours

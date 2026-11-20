@@ -108,10 +108,39 @@ keystroke, and the language server's diagnostics and hover, on 500-line and
 100 ms for the server).
 
 The checker covers names, the types of bindings, fns, structs, enums and
-domains, strict domain indexing, call arguments, and `mut`. Borrows, value
-ranges, generics and traits are not checked yet, and the standard library
-is not loaded: the prelude is a table in `cpl-check/src/prelude.rs`, and a
-file with a `use` gets no "unknown name" errors.
+domains, strict domain indexing, call arguments, and `mut`. It also covers
+what the libraries are written in:
+
+- **Generics.** A type parameter is filled in where it is used. With
+  `struct Pair<A, B>(first: A, second: B)`, `Pair(City.first, 'x').first`
+  is a `City`, and `pick::<Int>(3, 4)` names the parameter outright.
+- **Traits and impls.** An impl must write every fn its trait leaves
+  without a body and no fn the trait lacks, a bound must name a trait, and
+  `a + b` on a struct needs `impl Add` for it.
+- **Modules.** `use std.dsu.{Dsu}` loads `stdlib/dsu.cp`, and a local
+  library is found through its `lib.toml`. Only `pub` names can be
+  imported, and a missing module or name is one error on the `use`.
+  `cpl-check/src/modules.rs` says where modules are looked for.
+- **Lends.** Two live lends of one value must be provably apart:
+  `swap(mut a[i], mut a[j])` needs `i != j` from a guard, an `assert` or
+  an early `return`. A slice bound by `let` keeps its array lent until its
+  last use, a lent slice can't be stored or returned, and a projection
+  lends by its `law disjoint` (`plan/19-index-and-lends.md`).
+- **Euclidean `/` and `%`.** `x % 7` is known to be in `0..=6` whatever
+  the sign of `x`, so it indexes a `0..7` domain.
+
+`crates/cpl-cli/tests/corpus.rs` holds this to the source in the
+repository: `stdlib/`, `examples/local-lib/`, `proto/ports/` and the
+prototype's passing tests check with no diagnostics, and each file in
+`proto/tests/bad/` is rejected for the reason its first line states.
+
+Not checked yet: value ranges beyond literals and domains, whether a type
+argument satisfies the bounds of the parameter it fills, and laws beyond
+`law disjoint`. The prelude is a table in `cpl-check/src/prelude.rs`. It
+also lists the names the prototype compiler built in (`SegTree`, `Mod`,
+`dijkstra` and others) and accepts them without a type, because the ports
+in `proto/ports/` use them without a `use`; a port that imports the `std`
+module instead gets the real types.
 
 The pipeline, in the order the crates will depend on each other (add the
 dependency when the code first needs it):
