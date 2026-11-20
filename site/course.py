@@ -94,8 +94,12 @@ def exercise_html(exercise, highlight):
         )
         label = "Predict the output"
         source = (ROOT / "examples" / f'{exercise["fixture"]}.cp').read_text()
-        sandbox = '<details class="exercise-help exercise-sandbox"><summary>Edit and run this program</summary>'
-        sandbox += editor_html(key + "-sandbox", source, exercise["tests"][0]["input"]) + '</details>'
+        sandbox = (
+            '<details class="exercise-help exercise-sandbox"><summary>Edit and run this program</summary>'
+            '<p class="exercise-sandbox-note">This sandbox is independent. Check answer uses the original program and the inputs shown above.</p>'
+            + editor_html(key + "-sandbox", source, exercise["tests"][0]["input"])
+            + '</details>'
+        )
     return (
         f'<section class="exercise" id="{key}" data-exercise="{key}" aria-labelledby="{key}-title">'
         f'<div class="exercise-heading"><span>{label}</span><span class="exercise-badge" data-badge>Not checked</span></div>'

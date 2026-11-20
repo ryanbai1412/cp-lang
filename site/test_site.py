@@ -129,6 +129,12 @@ class SiteTests(unittest.TestCase):
             for exercise in lesson["exercises"]:
                 self.assertIn(exercise["id"], page.ids)
                 self.assertIn(f'id="{exercise["id"]}-feedback" role="status"', source)
+                if exercise["kind"] == "output":
+                    self.assertIn(
+                        '<p class="exercise-sandbox-note">This sandbox is independent. '
+                        "Check answer uses the original program and the inputs shown above.</p>",
+                        source,
+                    )
             self.assertIn('id="course-data" type="application/json"', source)
             self.assertIn("Solution and explanation", source)
         data = build.course_data("course")
