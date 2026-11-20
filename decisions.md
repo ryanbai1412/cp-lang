@@ -540,3 +540,13 @@ scouts expected and is locked by a test under `proto/tests/`.
   one is a compile error that gives the `@tags(...)` line to add; it was
   read as a number, which made every cell the
   first variant.
+- **15.10 A declared type takes its name.**
+  `struct SegTree:` or `struct Dsu:` in a program is that program's type
+  from the declaration on; the built-in of the same name is not consulted
+  (it crashed the compiler). A built-in type written without its type
+  arguments, `List` for `List<Int>`, is a compile error that gives the form.
+- **15.11 `?T` is ordered where `T` is, none first.**
+  This is the order of the emitted C++ only: it lets a record with an
+  optional field be sorted, pushed on a `MinHeap` or used as a `Map` key,
+  which did not get past `g++`. `a < b` on two optionals is still not an
+  expression.
