@@ -352,4 +352,50 @@ Before tuning anything, it is worth noting why CP Lang already achieved a **0.92
 - **Interactive port (`aac5p2`):** Excluded from the batch max-N sweep because it requires the interactive judge (`proto/ports/aac5p2_judge.py`) rather than stdin/stdout differential execution.
 - **Fenwick-specific port:** No dedicated Fenwick tree port currently exists in `proto/ports/`; range-structure coverage was measured via `SegTree` (`ccc21s4`, `ccc21s5`), `AddMax` (`noi16p4`), `AssignSum` (`noi15p2`), and `CpSteps` (`cco20p1`).
 - **Rust `cpl build` backend (`crates/cpl-codegen`) end-to-end at max-N:** The Rust compiler does not yet implement the full `proto/cpc` surface (e.g., `@memo`, `RootedTree`, `SegTree`, `Mod<P>`, `Steps`), so all 30 max-N measurements were compiled through `proto/cpc`, while `crates/cpl-codegen` was audited by static inspection (`names.rs`, `runtime.rs`, `ranges.rs`) to carry forward every relevant finding.
-- **ASan/UBSan at max-N:** Not run as part of this timing/RSS sweep (sanitizers distort both wall-clock time and RSS); small-N sanitizer testing remains covered by `proto/run_all.sh`.
+- **ASan/UBSan at max-N:** Not run as part of this timing/RSS sweep (sanitizers distort both wall-clock time and RSS); small-N sanitizer testing remains covered by `proto/run_all.sh` plus standalone ASan/UBSan stress tests for `CpHashMap`, `AddMax`, `AssignSum`, `Mod<M>`, `Opt<Mod<M>>`, `CpSteps`, and `RootedTree`.
+
+---
+
+## Follow-up: Prototype P0/P1 codegen & runtime fixes (after-results)
+
+Pure codegen and runtime optimizations were implemented in `proto/cpc/compiler.py` and `proto/cpc/runtime.hpp` with zero syntax changes and zero edits to `crates/`:
+
+1. **Runtime-salted `CpHash` / `CpArrHash` + compact open-addressed `CpHashMap` + single-lookup `CpCounter::inc`:** Mixed a per-process runtime salt (`steady_clock ^ pid ^ stack address` via `splitmix64`) into `CpHash` and `CpArrHash`, replaced `std::unordered_map` in `HashMap`, `CpCounter`, and sparse `@memo` with a single-allocation linear-probing `CpHashMap` (16 B/slot sentinel-packed specialization for `ll` keys with `LLONG_MIN` side-slot and backward-shift deletion), and added `CpCounter::inc` + `reserve_hint` in `counts(...)`.
+2. **Dense flat-array `@memo` for bounded ranges, `Bool`, and unit `Enum`:** Extended dense `@memo` lowering beyond named domains to `Bool`, unit enums, and bounded `TInt` ranges (`lo..hi`, `lo..=hi`) with exact lower-bound offsetting and product-cap fallback to `CpHashMap`, moving table initialization into a cold `noinline` helper and inlining the wrapper into the memo body.
+3. **Lazy `RootedTree::sp`, CSR `kids`, and fused `Rooted(Graph.undirected(edges), root)`:** Made the LCA sparse table lazy (built on first `lca()`), replaced `vector<vector<int>> kids` with flat `KidsCSR`, replaced `chains()`'s heap `vector` with stack-allocated `ChainList`, eliminated the weighted `plain()` copy, and fused `Rooted(Graph.undirected(edges), root)` into a single CSR pass.
+4. **Compact value types & hot-path primitives:** Narrowed `Mod<M>` and `Opt<Mod<M>>` to 4 bytes (`uint32_t`) when `M <= INT32_MAX` (with `__uint128_t` preserved for 64-bit moduli), added branch-minimized `opt_min`/`opt_max` for 8-byte `Opt<ll>`, switched `AssignSum` and `AddMax` to 2N Euler-tour indexing (halving segment-tree memory), replaced `CpSteps`'s `std::map` with a lazy-sorted flat event vector, lowered `Bool` arrays to `vector<uint8_t>`, fused and narrowed `CpPrefix<int>` for small-sum grids, and added proven-positive `cp_ediv_pos`/`cp_emod_pos` and `cp_cyc_nonneg` fast paths.
+
+### Before vs. after (`python3 bench/max_n_audit.py --runs 3 --adversarial`)
+
+Across all 30 max-N ports (30/30 token-for-token output agreement, all emitted C++17 files 30.7–48.1 KB, median 34.0 KB):
+
+- **Median runtime ratio:** `0.92×` → **`0.70×`** (**25/30** ports faster than accepted contest C++, up from 17/30).
+- **Median peak RSS ratio:** `1.55×` → **`1.00×`** (exact parity with accepted contest C++).
+- **Ports exceeding 1.25× runtime:** `10` → **`4`** (worst cliff `ioi04p4` dropped from **31.86×** to **1.61×**).
+- **Ports exceeding 1.50× RSS:** `16` → **`8`** (zero 128 MB MLEs; `noi01p5` dropped by **105 MB**).
+
+| Port | Before time (ratio) | After time (ratio) | Before RSS (ratio) | After RSS (ratio) |
+| :--- | :--- | :--- | :--- | :--- |
+| `ioi04p4` | 5423 ms (31.86×) | **282.7 ms (1.61×)** | 27.4 MB (5.77×) | **6.0 MB (1.26×)** |
+| `noi01p5` | 924 ms (4.62×) | **377.4 ms (1.66×)** | 198.0 MB (5.60×) | **93.1 MB (2.63×)** |
+| `dpp` | 96.3 ms (3.92×) | **17.0 ms (0.61×)** | 36.7 MB (2.77×) | **11.2 MB (0.85×)** |
+| `cco20p1` | 98.6 ms (2.97×) | **28.9 ms (0.88×)** | 20.4 MB (2.81×) | **13.1 MB (1.80×)** |
+| `dpv` | 57.1 ms (1.91×) | **19.4 ms (0.52×)** | 34.7 MB (2.44×) | **9.8 MB (0.69×)** |
+| `ceoi18p1` | 425 ms (1.47×) | **312.4 ms (1.03×)** | 5.1 MB (1.00×) | **5.1 MB (1.00×)** |
+| `ioi10p3` | 1679 ms (1.46×) | **997.1 ms (0.86×)** | 107.1 MB (1.01×) | **71.8 MB (0.67×)** |
+| `dps` | 55.9 ms (1.26×) | **13.8 ms (0.31×)** | 3.5 MB (0.17×) | **3.5 MB (0.17×)** |
+| `coi06p2` | 157 ms (1.08×) | **123.2 ms (0.83×)** | 64.4 MB (2.68×) | **35.9 MB (1.50×)** |
+| `noi15p2` | 177 ms (0.96×) | **149.1 ms (0.79×)** | 29.9 MB (2.49×) | **14.4 MB (1.20×)** |
+| `btoi17p3` | 62.2 ms (0.82×) | **48.9 ms (0.57×)** | 37.4 MB (1.90×) | **22.8 MB (1.15×)** |
+| `ioi11p2` | 231 ms (1.04×) | **153.0 ms (0.69×)** | 58.8 MB (1.82×) | **46.8 MB (1.44×)** |
+| `dpo` | 61.9 ms (0.52×) | **41.8 ms (0.34×)** | 19.2 MB (1.69×) | **11.2 MB (0.99×)** |
+| `noi16p4` | 855 ms (1.58×) | **895.9 ms (1.53×)** | 70.0 MB (2.41×) | **49.2 MB (1.69×)** |
+| `cco18p1` | 28.4 ms (3.20×) | **31.4 ms (3.52×)** | 11.0 MB (1.52×) | **11.0 MB (1.52×)** |
+
+**Adversarial probes (after):**
+
+- **Anti-hash (`unordered_map<ll, ll, CpHash>`, N = 50,000):** `bucket0_size_killer` dropped from **50,000** to **0**; slowdown dropped from **44.5×** (977.7 ms) to **2.64×** (62.1 ms vs 23.5 ms, driven by parsing 20-digit 64-bit random keys vs 10-digit keys in `std::cin`).
+- **Anti-hash (`CpHashMap<ll, ll, CpHash>`, power-of-2 killer, N = 50,000):** 26.0 ms vs 18.3 ms (**1.42×**), zero collision blowup.
+- **Deep chain `dpp` (`N = 100,000`, unlimited stack):** 16.9 ms vs 23.4 ms (**0.72×**, down from 85.3 ms / 3.86×), 17.0 MB vs 19.2 MB (**0.89×**, down from 47.7 MB / 2.50×). Default 8 MB stack still overflows for both CP Lang and original C++ (recursive DFS; bottom-up `@memo` lowering remains P2).
+- **Differential & sanitizer regression check:** Full `bash proto/run_all.sh` passed with 0 failures across all 91 ports (200 randomized tests each) plus `bad`, `lend`, `ergo`, `gen`, and ASan/UBSan `redteam` suites (including new `memo_bounded_range` and `hashmap_sentinel` redteam tests).
+
