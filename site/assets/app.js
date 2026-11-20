@@ -157,8 +157,11 @@ dialog.addEventListener("keydown", (event) => {
   if (event.key === "ArrowDown" || event.key === "ArrowUp") {
     event.preventDefault();
     selected =
-      (selected + (event.key === "ArrowDown" ? 1 : -1) + links.length) %
-      links.length;
+      event.key === "ArrowDown"
+        ? (selected + 1) % links.length
+        : selected <= 0
+          ? links.length - 1
+          : selected - 1;
     links.forEach((link, i) =>
       link.classList.toggle("selected", i === selected),
     );
