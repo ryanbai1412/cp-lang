@@ -1,7 +1,6 @@
 // Runnable port (proto/cp.py lib-run) of statement-first cco21p1.cp
 // original: corpus/submissions/4538969.cpp
 use std.fenwick.{Fenwick}
-use std.algebra.{Sum}
 
 let (n, k, q): (Int, Int, Int) = read()
 domain Pos = 1..=n
@@ -27,11 +26,11 @@ fn count_before(xs: List<Int>, ys: List<Int>) -> Int:
     else:
         xs.len * ys.len - count_before(ys, xs)
 
-var bit = Fenwick<Val, Int>.new(Sum<Int>)
+var bit = Fenwick<Val, Int>.new()
 var inv = 0
 for i in Pos:
     if a[i] < Val.last:
-        inv += bit.fold(a[i].r..Val.last.r)
+        inv += bit.sum(a[i].r..Val.last.r)
     bit.add(a[i], 1)
 
 var order = [Val] v => v

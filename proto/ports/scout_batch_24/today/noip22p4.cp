@@ -82,7 +82,8 @@ fn apply_tag(f: HistTag, x: HistNode) -> HistNode:
 let hist_action = Action<HistNode, HistTag>(
     id: id_tag,
     compose: (f, g) => compose_tag(f, g),
-    apply: (f, x) => apply_tag(f, x)
+    apply: (f, x, len) => apply_tag(f, x),
+    over: hist_monoid
 )
 
 var by_r: [I]List<Q> = [I] _ => []
@@ -90,7 +91,7 @@ for qi in Q:
     by_r[qs[qi].r].push(qi)
 
 let init = [I] _ => HistNode(1, 0, 0, 0, 0)
-var st = LazySegTree<I, HistNode, HistTag>.from(hist_monoid, hist_action, init)
+var st = LazySegTree<I, HistNode, HistTag>(hist_action, init)
 
 var stk_a: List<Int> = []
 var stk_b: List<Int> = []

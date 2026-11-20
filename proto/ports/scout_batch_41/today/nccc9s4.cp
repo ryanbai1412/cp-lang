@@ -19,12 +19,12 @@ for qi in Q:
 let (V, vals) = compress(a)
 var id: [0..n]Int = 0
 for i in 0..n:
-    let x = a[I.from_idx(i)]
+    let x = a[I.from_idx(i)!]
     var lo = 0
     var hi = V.K
     while lo < hi:
         let mid = (lo + hi) / 2
-        if vals[V.from_idx(mid)] < x: lo = mid + 1
+        if vals[V.from_idx(mid)!] < x: lo = mid + 1
         else: hi = mid
     id[i] = lo
 
@@ -43,7 +43,7 @@ if V.K <= HEAVY:
             if c > best_c[qi] or (c == best_c[qi] and v > best_v[qi]):
                 best_c[qi] = c
                 best_v[qi] = v
-    for qi in Q: ans[qi] = vals[V.from_idx(best_v[qi])]
+    for qi in Q: ans[qi] = vals[V.from_idx(best_v[qi])!]
 else:
     let nb = n / B + 1
     domain Bk = 0..=nb
@@ -62,11 +62,11 @@ else:
                 if c > bc or (c == bc and v > bv):
                     bc = c
                     bv = v
-            ans[qi] = vals[V.from_idx(bv)]
+            ans[qi] = vals[V.from_idx(bv)!]
             for j in l..=r: cnt[id[j]] -= 1
         else:
             let bi = (l + B - 1) / B
-            buckets[Bk.from_idx(bi)].push((r, l, qi.ord))
+            buckets[Bk.from_idx(bi)!].push((r, l, qi.ord))
 
     for bi in Bk:
         if buckets[bi].len == 0: continue
@@ -97,7 +97,7 @@ else:
                 if c > bc or (c == bc and v > bv):
                     bc = c
                     bv = v
-            ans[Q.from_idx(qid)] = vals[V.from_idx(bv)]
+            ans[Q.from_idx(qid)!] = vals[V.from_idx(bv)!]
             for j in l..mid: cnt[id[j]] -= 1
 
 for qi in Q: print(ans[qi])

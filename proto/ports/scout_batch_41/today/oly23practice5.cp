@@ -8,12 +8,12 @@ fn solve():
 
     var pen = Map<(Int, Int), Int>()
     for i in 0..(n - 1):
-        if i > 0 and a[I.from_idx(i + 1)] == a[I.from_idx(i - 1)]: continue
+        if i > 0 and a[I.from_idx(i + 1)!] == a[I.from_idx(i - 1)!]: continue
         var j = i + 2
-        while j < n and a[I.from_idx(j)] == a[I.from_idx(i + (j - i) % 2)]:
+        while j < n and a[I.from_idx(j)!] == a[I.from_idx(i + (j - i) % 2)!]:
             j += 1
-        var ca = a[I.from_idx(i)]
-        var cb = a[I.from_idx(i + 1)]
+        var ca = a[I.from_idx(i)!]
+        var cb = a[I.from_idx(i + 1)!]
         if i % 2 == 0:
             let tmp = ca
             ca = cb
@@ -25,7 +25,7 @@ fn solve():
     var even: [0..=n]Int = 0
     var odd: [0..=n]Int = 0
     for i in 0..n:
-        let x = a[I.from_idx(i)]
+        let x = a[I.from_idx(i)!]
         if i % 2 == 0: even[x] += 1
         else: odd[x] += 1
 

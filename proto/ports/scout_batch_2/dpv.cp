@@ -13,16 +13,16 @@ domain V = 1..=n
 domain E = 1..n
 let edges: [E](u: V, v: V) = read()
 let g = Graph<V, E>.undirected(edges)
-let tree = Rooted<V>(u => g.adj(u), V.first)
-let top_down = [tree.at[p] for p in Rooted<V>.Pre]
+let tree = Rooted(u => g.adj(u), V.first)
+let top_down = tree.preorder
 
 var below: [V]Int = 1 % m
 for v in top_down.rev:
-    for c in tree.kids[v]: below[v] = below[v] * (1 + below[c]) % m
+    for c in tree.children(v): below[v] = below[v] * (1 + below[c]) % m
 
 var beyond: [V]Int = 1 % m
 for v in top_down:
-    let kids = tree.kids[v]
+    let kids = tree.children(v)
     // every child sees the parent's side times all of its siblings: keep the
     // product of the siblings before it, and look up the product of those after
     var after = List.filled(kids.len + 1, 1 % m)

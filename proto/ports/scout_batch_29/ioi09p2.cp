@@ -9,16 +9,19 @@
 // that accept the rate. Sweep the rate upwards and keep those in a
 // max-heap, dropping the largest q while the bill is over budget.
 // original: corpus/submissions/5102705.cpp
-use std.heap.{Heap}
-use std.algebra.{Order}
+use std.heap.{MaxHeap}
 
 let (n, w): (Int, Int) = read()
 domain Worker = 1..=n
 let ask: [Worker](s: Int, q: Int) = read()
 
+struct Rate(w: Worker, s: Int, q: Int)
+impl Ord for Rate:
+    fn lt(a, b) = a.s * b.q < b.s * a.q
+
 // Rates compare exactly by cross-multiplying: s and q are at most 2e4.
-var by_rate = [i for i in Worker]
-sort(mut by_rate, by: Order<Worker>((a, b) => ask[a].s * ask[b].q < ask[b].s * ask[a].q))
+var by_rate = [Rate(i, ask[i].s, ask[i].q) for i in Worker]
+sort(mut by_rate)
 
 type Plan = (setter: Worker, size: Int, points: Int)
 
@@ -30,10 +33,11 @@ fn cheaper(a: Plan, b: Plan) -> Bool:
 /// then the smallest bill. With `stop`, prints the hires once that
 /// worker has set the rate.
 fn sweep(stop: ?Worker) -> ?Plan:
-    var hired = Heap<(Int, Worker)>(Order<(Int, Worker)>((a, b) => a.0 > b.0))
+    var hired = MaxHeap<(Int, Worker)>()
     var points = 0
     var best: ?Plan = none
-    for i in by_rate:
+    for r in by_rate:
+        let i = r.w
         hired.push((ask[i].q, i))
         points += ask[i].q
         while points * ask[i].s > w * ask[i].q:

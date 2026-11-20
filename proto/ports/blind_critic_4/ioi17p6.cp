@@ -12,7 +12,7 @@ var base = 0
 var lo_need = s
 var hi_need = s
 for i in 0..n:
-    let vi = V.from_idx(i)
+    let vi = V.from_idx(i)!
     let diff = p[vi] - i
     base += if diff < 0: -diff else: diff
     if p[vi] != i:
@@ -25,46 +25,46 @@ var cyc_l: [V]Int = 0
 var cyc_r: [V]Int = 0
 var vis: [V]Bool = false
 for i in 0..n:
-    let vi = V.from_idx(i)
+    let vi = V.from_idx(i)!
     if vis[vi]:
         continue
     var nodes: List<Int> = []
     var cur = i
     var mn = i
     var mx = i
-    while not vis[V.from_idx(cur)]:
-        vis[V.from_idx(cur)] = true
+    while not vis[V.from_idx(cur)!]:
+        vis[V.from_idx(cur)!] = true
         nodes.push(cur)
         if cur < mn:
             mn = cur
         if cur > mx:
             mx = cur
-        cur = p[V.from_idx(cur)]
+        cur = p[V.from_idx(cur)!]
     for u in nodes:
-        let vu = V.from_idx(u)
+        let vu = V.from_idx(u)!
         cyc_l[vu] = mn
         cyc_r[vu] = mx
 
 fn expand(init_l: Int, init_r: Int) -> (Int, Int):
     var l = init_l
     var r = init_r
-    var ql = cyc_l[V.from_idx(l)]
-    var qr = cyc_r[V.from_idx(l)]
-    if cyc_l[V.from_idx(r)] < ql:
-        ql = cyc_l[V.from_idx(r)]
-    if cyc_r[V.from_idx(r)] > qr:
-        qr = cyc_r[V.from_idx(r)]
+    var ql = cyc_l[V.from_idx(l)!]
+    var qr = cyc_r[V.from_idx(l)!]
+    if cyc_l[V.from_idx(r)!] < ql:
+        ql = cyc_l[V.from_idx(r)!]
+    if cyc_r[V.from_idx(r)!] > qr:
+        qr = cyc_r[V.from_idx(r)!]
     while ql < l or qr > r:
         if ql < l:
             l -= 1
-            let vl = V.from_idx(l)
+            let vl = V.from_idx(l)!
             if cyc_l[vl] < ql:
                 ql = cyc_l[vl]
             if cyc_r[vl] > qr:
                 qr = cyc_r[vl]
         else:
             r += 1
-            let vr = V.from_idx(r)
+            let vr = V.from_idx(r)!
             if cyc_l[vr] < ql:
                 ql = cyc_l[vr]
             if cyc_r[vr] > qr:

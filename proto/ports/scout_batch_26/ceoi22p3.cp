@@ -21,23 +21,21 @@ domain Pick = 0..k
 domain Ask = 0..(k - 1)
 
 // WISH TR3: `let boss: [V]?V(none: -1) = read()` and `Rooted<V>.from_parents(boss)`
-fn read_tree() -> Rooted<V>:
+fn read_tree():
     let boss: [V]Int = read()
     var kids: [V]List<(to: V)> = [V] _ => []
     var root = V.first
     for v in V:
         if boss[v] == -1: root = v
         else: kids[V(boss[v])].push((to: v))
-    Rooted<V>.new(u => kids[u], root)
+    Rooted(u => kids[u], root)
 
 let one = read_tree()
 let two = read_tree()
 
-// WISH TR14: `two.aux(picked)` giving the auxiliary (virtual) tree: the picked
-// vertices in preorder, the branching points, and each one's parent in it.
-// Here only the preorder of the picked set is needed, which is one sort.
+let one_pre = one.preorder
 var picked: List<V> = []
-for i in Pick: picked.push(one.at[Rooted<V>.Pre.nth(i.ord)])
+for i in Pick: picked.push(one_pre[i.ord])
 // WISH TR15: `print(picked)` should write the list on one line; the interpreter
 // shows `[1, 2]`, so the picks go out one per line (the judge reads tokens).
 for v in picked: print(v)
@@ -48,7 +46,7 @@ for i in Ask: print("?", picked[i.ord], picked[i.ord + 1])
 print("!")
 
 // ties[x]: (y, d) with depth[y] = depth[x] + d
-fn depths(r: Rooted<V>, col: Int, replies: [Ask](Int, Int, Int, Int)) -> [V]Int:
+fn depths<Pre>(r: Rooted<V, Pre>, col: Int, replies: [Ask](Int, Int, Int, Int)) -> [V]Int:
     var ties: [V]List<(to: V, d: Int)> = [V] _ => []
     for i in Ask:
         let (a, b) = (picked[i.ord], picked[i.ord + 1])

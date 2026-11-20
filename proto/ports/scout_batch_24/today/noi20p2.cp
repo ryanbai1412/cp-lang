@@ -16,11 +16,11 @@ domain P = 0..m
 let paths: [P](u: V, v: V) = read()
 
 let g = Graph<V, E>.undirected(edges)
-let tree = Rooted<V>.new(u => g.adj(u), V.first)
+let tree = Rooted(u => g.adj(u), V.first)
 
 var need: [V]Int = [V] _ => 0
 for p in P:
-    let du = tree.depth[paths[p].u] + 1
+    let du = tree.depth(paths[p].u) + 1
     let v = paths[p].v
     if du > need[v]: need[v] = du
 
@@ -93,16 +93,10 @@ fn merge_trees(a: Int, b: Int, lo: Int, hi: Int, pre_a: Int, pre_b: Int) -> Int:
     a
 
 var roots: [V]Int = [V] _ => 0
-var pre_order: List<V> = []
-for pre_pos in tree.sub(V.first):
-    pre_order.push(tree.at[pre_pos])
-var idx = pre_order.len - 1
-while idx >= 0:
-    let u = pre_order[idx]
-    idx -= 1
-    let d_u = tree.depth[u] + 1
+for u in tree.preorder.rev:
+    let d_u = tree.depth(u) + 1
     var rt = set_point(0, 0, n, need[u], 1)
-    for c in tree.kids[u]:
+    for c in tree.children(u):
         let c_rt = roots[c]
         let zero_case = query_sum(c_rt, 0, n, 0, d_u)
         rt = merge_trees(rt, c_rt, 0, n, 0, zero_case)

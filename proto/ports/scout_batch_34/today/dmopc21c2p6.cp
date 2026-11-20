@@ -1,6 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of dmopc21c2p6.cp
 // original: corpus/submissions/3968585.cpp
-use std.algebra.{Sum}
 use std.fenwick.{Fenwick}
 
 let (n, q): (Int, Int) = read()
@@ -31,7 +30,7 @@ var ans: [Q]?Int = [Q] _ => none
 
 // Pass 1: Parallel binary search over values 0..n-1.
 var active: [Pos]Int = [Pos] _ => 1
-var bit = Fenwick<Pos, Int>.from(Sum<Int>, active)
+var bit = Fenwick<Pos, Int>(active)
 
 fn set_active(p: Pos, on: Int):
     let d = on - active[p]
@@ -43,7 +42,7 @@ fn range_sum(f: Fenwick<Pos, Int>, l: Int, r: Int) -> Int:
     if l > r or r < 0 or l >= n: return 0
     let cl = if l < 0: 0 else: l
     let cr = if r >= n: n - 1 else: r
-    f.fold(Pos(cl)..=Pos(cr))
+    f.sum(Pos(cl)..=Pos(cr))
 
 fn solve_s1(lo: Int, hi: Int, qs: List<(passes: Int, pos: Int, qid: Q)>):
     if qs.len == 0: return
@@ -78,8 +77,8 @@ var buckets: [Val]List<(passes: Int, qid: Q)> = [Val] _ => []
 for item in q2:
     buckets[Val(item.val)].push((passes: item.passes, qid: item.qid))
 
-var cnt_bit = Fenwick<Pos, Int>.new(Sum<Int>)
-var idx_bit = Fenwick<Pos, Int>.new(Sum<Int>)
+var cnt_bit = Fenwick<Pos, Int>.new()
+var idx_bit = Fenwick<Pos, Int>.new()
 
 fn set_val(p: Pos, sgn: Int):
     cnt_bit.add(p, sgn)

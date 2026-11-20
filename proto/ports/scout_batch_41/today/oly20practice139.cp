@@ -39,7 +39,7 @@ fn rebuild(bi: Bk):
     var qr = ql + B
     if qr > m: qr = m
     for idx in ql..qr:
-        let sl = yvals[Y.from_idx(idx)]
+        let sl = yvals[Y.from_idx(idx)!]
         let ic = sl * b_v[idx]
         while h_at[bi].len > 0:
             let last = h_at[bi].len - 1
@@ -76,16 +76,16 @@ fn add_y(y: Int):
     var hi = m
     while lo < hi:
         let mid = (lo + hi) / 2
-        if yvals[Y.from_idx(mid)] <= y: lo = mid + 1
+        if yvals[Y.from_idx(mid)!] <= y: lo = mid + 1
         else: hi = mid
     let pos = lo
     let bind = pos / B
-    for i in 0..bind: b_add[Bk.from_idx(i)] += 1
+    for i in 0..bind: b_add[Bk.from_idx(i)!] += 1
     let rem = pos % B
     if rem > 0:
         let base = bind * B
         for i in base..(base + rem): b_v[i] += 1
-        rebuild(Bk.from_idx(bind))
+        rebuild(Bk.from_idx(bind)!)
 
 var rem = n
 var ans = 0

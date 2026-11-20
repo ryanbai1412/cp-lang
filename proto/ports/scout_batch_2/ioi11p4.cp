@@ -5,9 +5,8 @@
 // The best way out of a chamber is always the one blocked, so a chamber is
 // worth its second-best way out. Run Dijkstra from the exits and settle a
 // chamber the second time it comes off the heap.
-use std.algebra.{Order}
 use std.graph.{Graph}
-use std.heap.{Heap}
+use std.heap.{MinHeap}
 
 let (n, m, k): (Int, Int, Int) = read()
 domain Room = 0..n
@@ -18,7 +17,7 @@ let exits: [X]Room = read()
 let g = Graph<Room, Hall>.undirected(halls)
 
 var offers: [Room]Int = 0                   // ways out seen so far, cheapest first
-var heap = Heap<(Int, Room)>(Order<(Int, Room)>((a, b) => a.0 < b.0))
+var heap = MinHeap<(Int, Room)>()
 for x in exits:
     offers[x] = 1                           // an exit needs no second way out
     heap.push((0, x))

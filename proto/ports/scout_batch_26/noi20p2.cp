@@ -24,11 +24,11 @@ domain Path = 0..m
 let paths: [Path](u: V, v: V) = read()
 
 let g0 = Graph<V, E>.undirected(edges)
-let t = Rooted<V>.new(u => g0.adj(u), V.first)
+let t = Rooted(u => g0.adj(u), V.first)
 
 // need[v]: the deepest start (as depth + 1) among the paths that end at v
 var need: [V]Int = 0
-for p in paths: need[p.v] = max(need[p.v], t.depth[p.u] + 1)
+for p in paths: need[p.v] = max(need[p.v], t.depth(p.u) + 1)
 
 // WISH TR10: this row is a dense `List<Z>` of length depth(x) + 1, so a
 // path-shaped tree costs O(n^2). The accepted solution keeps each row as a
@@ -39,9 +39,8 @@ for p in paths: need[p.v] = max(need[p.v], t.depth[p.u] + 1)
 // needs both an owning `take` out of `[V]T` and a library tree whose nodes
 // can change owner.
 var g: [V]List<Z> = [V] _ => []
-for p in Rooted<V>.Pre.rev:
-    let x = t.at[p]
-    let d = t.depth[x] + 1
+for x in t.preorder.rev:
+    let d = t.depth(x) + 1
     // WISH TR11: `var row = take(g[h])` to move the heavy child's row up
     // without a copy; the interpreter aliases here, the compiler would reject it.
     var row: List<Z> = []
@@ -51,7 +50,7 @@ for p in Rooted<V>.Pre.rev:
         let all = row[d]
         row.truncate(d + 1)
         for i in 0..=d: row[i] = row[i] + all
-        for c in t.kids[x]:
+        for c in t.children(x):
             if c == h: continue
             for i in 0..=d: row[i] = row[i] * (g[c][i] + g[c][d])
             g[c] = []

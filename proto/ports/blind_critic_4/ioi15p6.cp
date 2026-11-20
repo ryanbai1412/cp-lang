@@ -12,8 +12,8 @@ for _ in 0..m - 1:
     let u: Int = read()
     let v: Int = read()
     let w: Int = read()
-    adj[T.from_idx(u)].push((v, w))
-    adj[T.from_idx(v)].push((u, w))
+    adj[T.from_idx(u)!].push((v, w))
+    adj[T.from_idx(v)!].push((u, w))
 
 // Oracle: exact shortest-path distances between leaves 0..n-1, cached with query counter.
 domain V = 0..n
@@ -21,19 +21,19 @@ var true_dist: [V, V]Int = 0
 for s in 0..n:
     var dist: [T]Int = -1
     var qn: List<Int> = [s]
-    dist[T.from_idx(s)] = 0
+    dist[T.from_idx(s)!] = 0
     var head = 0
     while head < qn.len:
         let u = qn[head]
         head += 1
-        let du = dist[T.from_idx(u)]
-        for e in adj[T.from_idx(u)]:
-            let tv = T.from_idx(e.0)
+        let du = dist[T.from_idx(u)!]
+        for e in adj[T.from_idx(u)!]:
+            let tv = T.from_idx(e.0)!
             if dist[tv] == -1:
                 dist[tv] = du + e.1
                 qn.push(e.0)
     for t in 0..n:
-        true_dist[V.from_idx(s), V.from_idx(t)] = dist[T.from_idx(t)]
+        true_dist[V.from_idx(s)!, V.from_idx(t)!] = dist[T.from_idx(t)!]
 
 var memo_dist: [V, V]Int = -1
 var queries = 0
@@ -41,8 +41,8 @@ var queries = 0
 fn ask_dist(a: Int, b: Int) -> Int:
     if a == b:
         return 0
-    let va = V.from_idx(a)
-    let vb = V.from_idx(b)
+    let va = V.from_idx(a)!
+    let vb = V.from_idx(b)!
     if memo_dist[va, vb] != -1:
         return memo_dist[va, vb]
     queries += 1
@@ -56,28 +56,28 @@ var d0: [V]Int = 0
 var u = 0
 for i in 1..n:
     let d = ask_dist(0, i)
-    d0[V.from_idx(i)] = d
-    if d > d0[V.from_idx(u)]:
+    d0[V.from_idx(i)!] = d
+    if d > d0[V.from_idx(u)!]:
         u = i
 
 var du: [V]Int = 0
 var w = u
 for i in 0..n:
     let d = ask_dist(u, i)
-    du[V.from_idx(i)] = d
-    if d > du[V.from_idx(w)]:
+    du[V.from_idx(i)!] = d
+    if d > du[V.from_idx(w)!]:
         w = i
 
-let diam = du[V.from_idx(w)]
+let diam = du[V.from_idx(w)!]
 
 // Step 2: Project every vertex onto path (u, 0):
 // dist_from_u[i] = dist(u, lca(0, u, i)) = (du[i] + du0 - d0[i]) / 2,
 // drop[i]        = dist(i, lca(0, u, i)) = (du[i] + d0[i] - du0) / 2.
 var dist_from_u: [V]Int = 0
 var drop: [V]Int = 0
-let du0 = d0[V.from_idx(u)]
+let du0 = d0[V.from_idx(u)!]
 for i in 0..n:
-    let vi = V.from_idx(i)
+    let vi = V.from_idx(i)!
     let d_u = du[vi]
     let d_0 = d0[vi]
     dist_from_u[vi] = (d_u + du0 - d_0) / 2
@@ -86,7 +86,7 @@ for i in 0..n:
 // Group all vertices by their coordinate along the diameter path from u.
 var coords: List<Int> = []
 for i in 0..n:
-    coords.push(dist_from_u[V.from_idx(i)])
+    coords.push(dist_from_u[V.from_idx(i)!])
 coords.sort()
 
 var uniq: List<Int> = []
@@ -131,11 +131,11 @@ else:
         // Boyer-Moore majority vote among vertices attached at hub_x!
         // Two leaves a, b attached at hub_x share a branch iff ask_dist(a, b) < drop[a] + drop[b].
         fn same_branch(a: Int, b: Int) -> Bool:
-            return ask_dist(a, b) < drop[V.from_idx(a)] + drop[V.from_idx(b)]
+            return ask_dist(a, b) < drop[V.from_idx(a)!] + drop[V.from_idx(b)!]
 
         var hub_nodes: List<Int> = []
         for i in 0..n:
-            if dist_from_u[V.from_idx(i)] == hub_x:
+            if dist_from_u[V.from_idx(i)!] == hub_x:
                 hub_nodes.push(i)
 
         // Stack-based Boyer-Moore preserving each candidate's bucket size (<= (7n+1)/2 queries).

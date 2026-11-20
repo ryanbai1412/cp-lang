@@ -1,6 +1,6 @@
 // Runnable port (proto/cp.py lib-run) of statement-first dpw.cp
 // original: corpus/submissions/4133460.cpp
-use std.lazy.{LazySegTree, MaxOpt, AddMax}
+use std.lazy.{LazySegTree, AddMax}
 
 let (n, m): (Int, Int) = read()
 domain Pos = 0..=n
@@ -11,11 +11,11 @@ var by_r: [Pos]List<(l: Pos, a: Int)> = [Pos] _ => []
 for k in Rule:
     by_r[Pos(rules[k].r)].push((l: Pos(rules[k].l), a: rules[k].a))
 
-var st = LazySegTree<Pos, ?Int, Int>.new(MaxOpt, AddMax)
+var st = LazySegTree<Pos, Int, Int>(AddMax)
 st.set(Pos(0), 0)
 for i in Pos(1)..=Pos(n):
-    let best_prev = st.fold(Pos(0)..i)!
+    let best_prev = st.fold(Pos(0)..i)
     st.set(i, best_prev)
     for seg in by_r[i]:
         st.apply(seg.l..=i, seg.a)
-print(st.fold(Pos(0)..=Pos(n))!)
+print(st.fold(Pos(0)..=Pos(n)))

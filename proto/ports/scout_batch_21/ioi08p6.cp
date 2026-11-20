@@ -10,8 +10,7 @@
 //     many obstacles of the window lie over each y and knows the longest
 //     free run; the window grows while a square of its width still fits.
 // original: corpus/submissions/5637805.cpp
-use std.algebra.{Monoid, Action}
-use std.lazy.{LazySegTree}
+use std.lazy.{LazySegTree, AddMin}
 
 let m: Int = read()
 let n: Int = read()
@@ -27,9 +26,6 @@ for _ in 0..p:
     let cost: Int = read()
     boxes.push(Box(x0, y0, x1, y1, cost))
 
-const Cheapest = Monoid<Int>(id: Int.MAX, op: (a, b) => min(a, b))
-const Dearer = Action<Int, Int>(id: 0, compose: (f, g) => f + g, apply: (f, x) => if x == Int.MAX: x else: x + f)
-
 // the cheapest place for a base of side k, or none when the field is too small
 fn cheapest(k: Int) -> Int:
     domain X = 1..=m - k + 1                // where the base's lowest corner can be
@@ -40,7 +36,7 @@ fn cheapest(k: Int) -> Int:
         let span = (lo: Y(max(b.y0 - k + 1, 1)), hi: Y(min(b.y1, n - k + 1)), cost: b.cost)
         starts[X(max(b.x0 - k + 1, 1))].push(span)
         if b.x1 < m - k + 1: stops[X(b.x1 + 1)].push(span)
-    var cost = LazySegTree<Y, Int, Int>.from(Cheapest, Dearer, [Y] _ => 0)
+    var cost = LazySegTree<Y, Int, Int>(AddMin, [Y] _ => 0)
     var best = Int.MAX
     for x in X:
         for s in stops[x]: cost.apply(s.lo..=s.hi, -s.cost)

@@ -13,16 +13,15 @@
 // original: corpus/submissions/5723351.cpp (the three grader functions)
 use std.mod.{Mod}
 use std.segtree.{SegTree}
-use std.algebra.{Max, Prod}
 type Z = Mod<1_000_000_007>
 
 let n: Int = read()
 domain Year = 0..n
 var x: [Year]Int = read()
 let y: [Year]Int = read()
-var growth = SegTree<Year, Z>.of(Prod<Z>, i => Z(x[i]))
-var surge = SegTree<Year, Int>.from(Max<Int>, x)       // to find the years with x > 1
-var price = SegTree<Year, Int>.from(Max<Int>, y)
+var growth = SegTree<Year, Z>.of(*, i => Z(x[i]))
+var surge = SegTree<Year, Int>(max, x)       // to find the years with x > 1
+var price = SegTree<Year, Int>(max, y)
 
 fn best() -> Z:
     var (lead, ans) = (0, Z(0))     // best sale / herd at `end`, and the sale itself

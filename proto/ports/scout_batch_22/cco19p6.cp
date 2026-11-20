@@ -9,8 +9,7 @@
 // short side costs the letters that become common to both. Dijkstra from
 // every pair of codewords where one starts the other, to the empty tail.
 // original: corpus/submissions/3617414.cpp
-use std.heap.{Heap}
-use std.algebra.{Order}
+use std.heap.{MinHeap}
 
 fn starts_with(s: Str, head: Str) -> Bool = head.len <= s.len and s[0..head.len] == head
 
@@ -25,7 +24,7 @@ domain Word = 1..=n
 let words: [Word]Str = read()
 
 var dist = Map<Str, Int>()
-var queue = Heap<(Int, Str)>(Order<(Int, Str)>.by(p => p.0))
+var queue = MinHeap<(Int, Str)>()
 fn reach(tail: Str, d: Int):
     if d < (dist.get(tail) ?? Int.MAX):
         dist[tail] = d

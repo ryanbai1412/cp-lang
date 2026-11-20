@@ -25,11 +25,12 @@ let run_monoid = Monoid<Run>(
 let paint_action = Action<Run, ?Int>(
     id: none,
     compose: (f, g) => if f == none: g else: f,
-    apply: (f, x) => if f == none or x.empty: x else: Run(false, f!, f!, 1)
+    apply: (f, x, len) => if f == none or x.empty: x else: Run(false, f!, f!, 1),
+    over: run_monoid
 )
 
 let init = [Pos] p => Run(false, init_col[p], init_col[p], 1)
-var st = LazySegTree<Pos, Run, ?Int>.from(run_monoid, paint_action, init)
+var st = LazySegTree<Pos, Run, ?Int>(paint_action, init)
 
 var dir = 1
 var off = 0

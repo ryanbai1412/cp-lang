@@ -99,7 +99,7 @@ else:
     for i in 0..c_cnt: id_mat[i * c_cnt + i] = 0
     let mat_monoid = Monoid<List<Int>>(id: id_mat, op: (a, b) => combine_monge(a, b))
     let init = [Blk] b => build_block(blk_lo(b.to_idx), blk_hi(b.to_idx))
-    var st = SegTree<Blk, List<Int>>.from(mat_monoid, init)
+    var st = SegTree<Blk, List<Int>>(mat_monoid, init)
 
     for _ in 0..e_cnt:
         let ev: Int = read()

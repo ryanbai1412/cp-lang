@@ -21,16 +21,14 @@ for v in V:
     // WISH TR3: `let boss: [V]?V = read()` + `Rooted<V>.from_parents(boss)`
     let boss: V = read()
     kids[boss].push((to: v))
-let t = Rooted<V>.new(u => kids[u], V.first)
+let t = Rooted(u => kids[u], V.first)
 
 var open: [V]?V = [V] _ => none
 var ending: [V]Int = 0        // balanced substrings that end exactly at v
 var k: [V]Int = 0
 var ans = 0
-// WISH TR5: `for v in t.top_down:`
-for p in Rooted<V>.Pre:
-    let v = t.at[p]
-    let above = t.up[v]
+for v in t.preorder:
+    let above = t.parent(v)
     if let a = above:
         open[v] = open[a]
         k[v] = k[a]
@@ -39,7 +37,7 @@ for p in Rooted<V>.Pre:
     elif let j = open[v]:
         ending[v] = 1
         open[v] = none
-        if let b = t.up[j]:
+        if let b = t.parent(j):
             ending[v] += ending[b]
             open[v] = open[b]
     k[v] += ending[v]

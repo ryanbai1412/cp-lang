@@ -13,12 +13,12 @@ domain Junction = 1..=n
 domain Road = 1..n
 let roads: [Road](u: Junction, v: Junction, len: Int) = read()
 let g = Graph<Junction, Road>.undirected(roads)
-let tree = Rooted<Junction>(u => g.adj(u), Junction.first)
-let bottom_up = [tree.at[p] for p in Rooted<Junction>.Pre].rev
+let tree = Rooted(u => g.adj(u), Junction.first)
+let bottom_up = tree.preorder.rev
 
 var up_len: [Junction]Int = 0               // the road from v to its parent
 for (u, v, len) in roads:
-    if tree.up[u] == v: up_len[u] = len else: up_len[v] = len
+    if tree.parent(u) == v: up_len[u] = len else: up_len[v] = len
 
 // Pair chains (all shorter than k) into tracks: the shortest chain takes
 // the shortest partner that completes it. Returns the pairs made and the
@@ -54,7 +54,7 @@ fn tracks_of(k: Int) -> Int:
     for v in bottom_up:
         let made = pair_up(chains[v], k)
         tracks += made.tracks
-        if let p = tree.up[v]:
+        if let p = tree.parent(v):
             let chain = made.spare + up_len[v]
             if chain >= k: tracks += 1 else: chains[p].push(chain)
     tracks

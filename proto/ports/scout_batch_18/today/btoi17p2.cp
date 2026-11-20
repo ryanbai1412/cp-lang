@@ -46,7 +46,7 @@ for e in E:
     else:
         step[g][sa, sb] = t
 
-let st = SegTree<Gap, Mat>.from(min_plus, step)
+let st = SegTree<Gap, Mat>(min_plus, step)
 for q in Q:
     let (a, b) = (queries[q].a, queries[q].b)
     let (ga, sa) = (a / k, Slot(a % k))

@@ -10,7 +10,6 @@
 // never changes. The original keeps them in an order-statistics tree. Here
 // the commands are read twice: once to learn every base that will occur,
 // once to count staff per base in a Fenwick tree.
-use std.algebra.{Sum}
 use std.fenwick.{Fenwick}
 
 let (q, floor): (Int, Int) = read()
@@ -30,7 +29,7 @@ domain Slot = 0..bases.len
 var slot = Map<Int, Slot>()
 for s in Slot: slot[bases[s.to_idx]] = s
 
-var staff = Fenwick<Slot, Int>(Sum<Int>)
+var staff = Fenwick<Slot, Int>()
 var (size, left) = (0, 0)
 raise = 0
 for c in Cmd:
@@ -46,7 +45,7 @@ for c in Cmd:
         while size > 0:
             let lowest = staff.lower_bound(1)!.left!
             if bases[lowest.to_idx] + raise >= floor: break
-            let leaving = staff.fold(lowest..=lowest)
+            let leaving = staff.sum(lowest..=lowest)
             staff.add(lowest, -leaving)
             size -= leaving
             left += leaving

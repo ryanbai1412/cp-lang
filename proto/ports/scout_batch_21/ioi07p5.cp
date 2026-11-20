@@ -13,7 +13,6 @@
 //         that counts each pair twice and each animal with itself once.
 // original: corpus/submissions/3505539.cpp
 use std.fenwick.{Fenwick}
-use std.algebra.{Sum}
 
 let dims: Int = read()
 let n: Int = read()
@@ -40,13 +39,13 @@ fn grid() -> Int:
         let y: Int = read()
         at.push((u: x + y, v: x - y))
     at.sort()
-    var near = Fenwick<V, Int>(Sum<Int>)
+    var near = Fenwick<V, Int>()
     var (pairs, from) = (0, 0)
     for a in at:
         while a.u - at[from].u > d:
             near.add(V(at[from].v), -1)
             from += 1
-        pairs += near.fold(V(max(a.v - d, 1 - m))..=V(min(a.v + d, m - 1)))
+        pairs += near.sum(V(max(a.v - d, 1 - m))..=V(min(a.v + d, m - 1)))
         near.add(V(a.v), 1)
     pairs
 

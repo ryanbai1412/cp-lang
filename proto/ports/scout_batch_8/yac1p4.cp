@@ -17,7 +17,7 @@ let whole = sum(worth)
 domain Open = 0..=n
 domain Lifted = 0..=2 * whole
 var reach = [Open] _ => Bitset<Lifted>.new()
-reach[Open.first].insert(Lifted.first)
+reach[Open.first].add(Lifted.first)
 for w in worth.rev:
     var next = [Open] _ => Bitset<Lifted>.new()
     for open in Open:
@@ -27,5 +27,5 @@ for w in worth.rev:
     reach = next
 
 let totals = reach[Open.first]
-print(totals.count)
+print(totals.len)
 for t in totals.each(): print(t.to_idx - whole)

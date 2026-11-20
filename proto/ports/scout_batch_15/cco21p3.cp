@@ -10,7 +10,6 @@
 // step offline uses `std.fenwick.Fenwick.lower_bound`, completely replacing
 // the original's `__gnu_pbds::tree` order-statistics tree (and dead `Bit`).
 // original: corpus/submissions/4552873.cpp
-use std.algebra.{Sum}
 use std.fenwick.{Fenwick}
 
 let (n, q): (Int, Int) = read()
@@ -87,7 +86,7 @@ for qi in 0..q:
 var by_pass: [Pass]List<Step> = [Pass] _ => []
 for s in Step: by_pass[Pass(born[s.to_idx])].push(s)
 
-var bit = Fenwick<Step, Int>.new(Sum<Int>)
+var bit = Fenwick<Step, Int>.new()
 var ans = List.filled(q, 0)
 for p in Pass:
     for s in by_pass[p]: bit.add(s, 1)

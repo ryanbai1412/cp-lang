@@ -1,6 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of dmopc21c8p3.cp
 // original: corpus/submissions/4537755.cpp
-use std.algebra.{Sum}
 use std.fenwick.{Fenwick}
 
 let (n, k): (Int, Int) = read()
@@ -34,7 +33,7 @@ else:
             rem -= l * (tot - l - 1)
 
     // `Set.nth(i)` is not yet on `proto/cpi`; use `Fenwick.lower_bound` on 1s.
-    var bit = Fenwick<Pos, Int>.from(Sum<Int>, [Pos] _ => 1)
+    var bit = Fenwick<Pos, Int>([Pos] _ => 1)
     var perm: [Pos]Int = [Pos] _ => 0
     for v in Val:
         let b = bit.lower_bound(offsets[v] + 1)!

@@ -12,7 +12,7 @@ for _ in 0..m:
         if tile[i] != 0:
             for j in 0..4:
                 if j != i and tile[j] != 0:
-                    adj[Side.from_idx(tile[i] + 26), Side.from_idx(26 - tile[j])] = true
+                    adj[Side.from_idx(tile[i] + 26)!, Side.from_idx(26 - tile[j])!] = true
 
 var state: [Side]Int = 0
 var has_cycle = false

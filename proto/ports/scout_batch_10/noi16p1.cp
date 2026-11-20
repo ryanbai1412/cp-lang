@@ -9,7 +9,7 @@
 // by a square starting at i + 1.
 // original: corpus/submissions/4797772.cpp
 use scout.hashing.{StrHash}
-use std.seq.{running_sum}
+use std.seq.{scan}
 
 let t: Int = read()
 for _ in 0..t:
@@ -29,5 +29,5 @@ for _ in 0..t:
             starts[last + 1] -= 1
             ends[first + 2 * w - 1] += 1
             ends[last + 2 * w] -= 1
-    let (begun, ended) = (running_sum(starts), running_sum(ends))
+    let (begun, ended) = (scan(starts, +), scan(ends, +))
     print(sum(ended[i] * begun[i + 1] for i in 0..n - 1))
