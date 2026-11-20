@@ -1039,7 +1039,7 @@ impl<'a> Lowerer<'a> {
                 };
                 self.mk(ExprKind::Tuple(Vec::new()), ty, span)
             }
-            "Int" | "Float" | "Char" | "Str" | "Bool" => {
+            "Int" | "Float" | "F64" | "Char" | "Str" | "Bool" => {
                 if name == "Str" && args.is_empty() {
                     return self.mk(ExprKind::Str(Vec::new()), Ty::Str, span);
                 }
@@ -1062,7 +1062,7 @@ impl<'a> Lowerer<'a> {
         let (cast, ty) = match (to, &from) {
             (_, Ty::Error) => return value,
             ("Int", Ty::Int)
-            | ("Float", Ty::Float)
+            | ("Float" | "F64", Ty::Float)
             | ("Char", Ty::Char)
             | ("Str", Ty::Str)
             | ("Bool", Ty::Bool) => return value,
@@ -1082,7 +1082,7 @@ impl<'a> Lowerer<'a> {
                     span,
                 );
             }
-            ("Float", Ty::Int) => (Cast::IntToFloat, Ty::Float),
+            ("Float" | "F64", Ty::Int) => (Cast::IntToFloat, Ty::Float),
             ("Char", Ty::Int) => (Cast::IntToChar, Ty::Char),
             ("Str", Ty::List(elem)) if **elem == Ty::Char => {
                 return self.mk(ExprKind::Builtin(Builtin::ListToStr, vec![value]), Ty::Str, span);
@@ -1981,7 +1981,7 @@ impl<'a> Lowerer<'a> {
                         return self.mk(ExprKind::None, Ty::Opt(inner), span);
                     }
                 }
-                if type_name == "Float"
+                if matches!(type_name.as_str(), "Float" | "F64")
                     || matches!(self.gen_env.get(type_name), Some(GenArg::Ty(Ty::Float)))
                 {
                     match name.text.as_str() {
@@ -2289,6 +2289,17 @@ impl<'a> Lowerer<'a> {
                 } else {
                     self.err_expr(span)
                 }
+            }
+            // The smallest and largest key of an ordered set (v2.2; `.min()`
+            // and `.max()` are the older spelling).
+            (Ty::Set(elem), "first" | "last") => {
+                let op = if name.text == "first" {
+                    Builtin::SetMin
+                } else {
+                    Builtin::SetMax
+                };
+                let ty = Ty::Opt(elem.clone());
+                self.mk(ExprKind::Builtin(op, vec![value]), ty, span)
             }
             (Ty::Opt(_), "is_some") => self.mk(ExprKind::IsSome(Box::new(value)), Ty::Bool, span),
             (Ty::Opt(_), "is_none") => {
@@ -3293,6 +3304,52 @@ impl<'a> Lowerer<'a> {
     }
 
     fn sort_place(&mut self, place: Place, elem: &Ty, args: &[ast::Arg], span: Span) -> Expr {
+        // `by: desc`: a fn by its name is the key `x => desc(x)`.
+        if let [ast::Arg {
+            name: Some(by),
+            value:
+                value @ ast::Expr {
+                    kind: ast::ExprKind::Name(key),
+                    ..
+                },
+            mutable,
+        }] = args
+        {
+            if by.text == "by" && self.lookup(key).is_none() {
+                let at = value.span;
+                let name = |text: &str| ast::Expr {
+                    kind: ast::ExprKind::Name(text.to_string()),
+                    span: at,
+                };
+                let call = ast::Expr {
+                    kind: ast::ExprKind::Call {
+                        callee: Box::new(name(key)),
+                        args: vec![ast::Arg {
+                            name: None,
+                            mutable: false,
+                            value: name("x"),
+                        }],
+                    },
+                    span: at,
+                };
+                let lambda = ast::Expr {
+                    kind: ast::ExprKind::Lambda {
+                        params: vec![ast::Pattern {
+                            kind: ast::PatternKind::Name("x".to_string()),
+                            span: at,
+                        }],
+                        body: Box::new(call),
+                    },
+                    span: at,
+                };
+                let keyed = [ast::Arg {
+                    name: Some(by.clone()),
+                    mutable: *mutable,
+                    value: lambda,
+                }];
+                return self.sort_place(place, elem, &keyed, span);
+            }
+        }
         let key = match args {
             [] => {
                 if !self.ordered(elem) {

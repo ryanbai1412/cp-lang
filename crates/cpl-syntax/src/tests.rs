@@ -1193,3 +1193,24 @@ fn a_default_can_be_a_way_out() {
     assert_eq!(codes("print(a ?? 0 + b)\n"), ["E0110"]);
     stmts("print((a ?? 0) + b, (a + b) ?? 0)\nx ??= 3\n");
 }
+
+#[test]
+fn v22_statement_forms_from_the_blind_drafts_parse() {
+    // A filtered loop, `;` between statements, a bodyless `@grader fn`,
+    // a place-yielding `??=` and a digits spec in a string.
+    assert_eq!(
+        codes(
+            "for x in xs if x > 0:\n    print(x)\n\
+             a += 1; b += 1\n\
+             for x in xs: a += x; b += 1\n\
+             @grader fn get_distance(i: Int, j: Int) -> Int\n\
+             (m[f(k)] ??= []).push(1)\n\
+             print(\"{x:.2f}\")\n"
+        ),
+        Vec::<&str>::new()
+    );
+    // Outside `@grader` a fn still needs its body, and a `;` that ends a
+    // line is still a mistake.
+    assert_eq!(codes("fn f(i: Int) -> Int\n"), vec!["E0103"]);
+    assert_eq!(codes("let y = 2;\n"), vec!["E0107"]);
+}

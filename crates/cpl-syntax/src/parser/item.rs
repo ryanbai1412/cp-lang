@@ -36,7 +36,8 @@ impl<'a> Parser<'a> {
         } else if self.at(T::Colon) {
             self.bump();
             FnBody::Block(self.block(&format!("the signature of `{}`", name.text)))
-        } else if self.in_trait && self.at_line_end() && self.peek() != T::Indent {
+        } else if (self.in_trait || self.in_grader) && self.at_line_end() && self.peek() != T::Indent
+        {
             FnBody::None
         } else {
             let at = self.error_span();

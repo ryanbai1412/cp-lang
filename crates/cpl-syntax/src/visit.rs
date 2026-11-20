@@ -138,7 +138,7 @@ pub fn walk_expr(expr: &Expr, v: &mut dyn Visitor) {
     match &expr.kind {
         ExprKind::Str(pieces) => {
             for piece in pieces {
-                if let StrPiece::Expr(inner) = piece {
+                if let StrPiece::Expr(inner) | StrPiece::Fixed(inner, _) = piece {
                     walk_expr(inner, v);
                 }
             }

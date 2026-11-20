@@ -74,11 +74,17 @@ pub(crate) struct Parser<'a> {
     brace_depth: u32,
     /// Inside a trait body, where fns and consts may lack bodies.
     in_trait: bool,
+    /// Inside a `@grader` statement, where a fn may have no body: the
+    /// judge supplies it.
+    in_grader: bool,
     /// The first half of a `>>` was used to close a type argument list.
     half_shr: bool,
     /// Statements the one being parsed stands for besides itself: the
     /// later `let`s of `let a = x and let b = y else: ...`.
     extra_stmts: Vec<crate::ast::Stmt>,
+    /// Statements that run before the one being read: the `m[k] ??= init`
+    /// of `(m[k] ??= init).push(x)`.
+    lead_stmts: Vec<crate::ast::Stmt>,
 }
 
 impl<'a> Parser<'a> {
@@ -94,8 +100,10 @@ impl<'a> Parser<'a> {
             speculation_failed: false,
             brace_depth: 0,
             in_trait: false,
+            in_grader: false,
             half_shr: false,
             extra_stmts: Vec::new(),
+            lead_stmts: Vec::new(),
         }
     }
 

@@ -454,9 +454,14 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn postfix(&mut self) -> Expr {
+    pub(super) fn postfix(&mut self) -> Expr {
         let start = self.start();
-        let mut expr = self.primary();
+        let expr = self.primary();
+        self.postfix_from(start, expr)
+    }
+
+    /// The calls, indexes and fields that follow `expr`.
+    pub(super) fn postfix_from(&mut self, start: u32, mut expr: Expr) -> Expr {
         loop {
             // An expression that ended with a block ended there: a `(` or
             // `[` on the next line starts a new statement.
@@ -884,7 +889,7 @@ impl<'a> Parser<'a> {
             match part {
                 StrPart::Text(span) => pieces.push(StrPiece::Text(unescape(span.text(text)))),
                 StrPart::Expr(span) => {
-                    let inner = span.text(text);
+                    let (inner, digits) = fixed_digits(span.text(text));
                     let lexed = crate::lexer::lex(inner);
                     // Spans from the inner lexer are relative to `inner`.
                     let delta = token.span.start as i64 + span.start as i64 + self.delta;
@@ -910,7 +915,10 @@ impl<'a> Parser<'a> {
                         self.error(diag);
                     }
                     self.speculation_failed |= failed;
-                    pieces.push(StrPiece::Expr(expr));
+                    pieces.push(match digits {
+                        Some(digits) => StrPiece::Fixed(expr, digits),
+                        None => StrPiece::Expr(expr),
+                    });
                 }
             }
         }
@@ -959,4 +967,18 @@ pub(crate) fn unescape(text: &str) -> String {
         }
     }
     out
+}
+
+/// Splits `x:.2f` into `x` and its 2 digits; anything else is all value.
+fn fixed_digits(inner: &str) -> (&str, Option<u32>) {
+    let split = inner.rsplit_once(":.").and_then(|(value, spec)| {
+        let digits = spec.trim_end().strip_suffix('f')?;
+        let all_digits = !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit());
+        let digits = digits.parse().ok().filter(|d| all_digits && *d <= 18)?;
+        Some((value, digits))
+    });
+    match split {
+        Some((value, digits)) => (value, Some(digits)),
+        None => (inner, None),
+    }
 }

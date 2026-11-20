@@ -377,6 +377,8 @@ pub struct Clause {
 pub enum StrPiece {
     Text(String),
     Expr(Expr),
+    /// `{x:.2f}`: the value with that many digits after the point.
+    Fixed(Expr, u32),
 }
 
 #[derive(Clone, PartialEq, Debug)]

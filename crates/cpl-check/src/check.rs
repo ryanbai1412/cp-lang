@@ -292,6 +292,17 @@ impl<'a> Checker<'a> {
                     let fix = cpl_syntax::removed_keyword(name).unwrap_or_default();
                     diag.help = Some(format!("`{name}` was removed in CP Lang v2.2: {fix}"));
                 }
+                _ if prelude::std_module(name).is_some() => {
+                    let module = prelude::std_module(name).unwrap_or_default();
+                    let import = format!("use std.{module}.{{{name}}}");
+                    diag.help = Some(format!(
+                        "`{name}` is in the standard library: add `{import}`"
+                    ));
+                    diag.fixes.push(cpl_diag::Fix {
+                        title: format!("add `{import}`"),
+                        edits: vec![(Span::point(0), format!("{import}\n"))],
+                    });
+                }
                 Some(s) => {
                     diag.help = Some(format!("did you mean `{s}`?"));
                     diag.fixes.push(cpl_diag::Fix {

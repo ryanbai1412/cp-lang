@@ -276,7 +276,7 @@ pub(crate) fn walk_expr(v: &mut dyn Visitor, expr: &Expr) {
         | ExprKind::Error => {}
         ExprKind::Str(pieces) => {
             for piece in pieces {
-                if let StrPiece::Expr(expr) = piece {
+                if let StrPiece::Expr(expr) | StrPiece::Fixed(expr, _) = piece {
                     walk_expr(v, expr);
                 }
             }
