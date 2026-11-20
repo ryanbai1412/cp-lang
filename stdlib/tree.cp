@@ -135,8 +135,12 @@ pub struct Rooted<V, Pre>:
 
     /// Every vertex, each after its descendants: the order to fold children into parents.
     pub @get fn postorder(self) -> List<V>:
+        // v leaves after the sz[v] vertices of its subtree and after every
+        // vertex entered before it, except its dep[v] - dep[root] open ancestors.
         var out = [at[p] for p in Pre]
-        sort(mut out, by: v => (tin[v].ord + sz[v], -dep[v]))
+        for p in Pre:
+            let v = at[p]
+            out[p.ord + sz[v] - 1 - (dep[v] - dep[root])] = v
         out
 
     /// Iterative enter/exit Euler tour: yields `(v, true)` when entering `v` and
