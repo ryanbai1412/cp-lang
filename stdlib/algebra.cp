@@ -51,7 +51,8 @@ fn same<A, B>(a: A, b: B) -> Bool = a == b
 /// `laws_hold(act, T: [...], F: [...])`.
 pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, over: Monoid<T>):
     law ident(a: T) = apply(id, a, 1) == a
-    law composes(new_f: F, old_f: F, a: T) = apply(compose(new_f, old_f), a, 1) == apply(new_f, apply(old_f, a, 1), 1)
+    // `compose(f, g)` applies `g` first, then `f`.
+    law composes(f: F, g: F, a: T) = apply(compose(f, g), a, 1) == apply(f, apply(g, a, 1), 1)
 
     pub fn new<M>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, over: M) -> Action<T, F>:
         Action(id, compose, apply, Monoid<T>.of(over))

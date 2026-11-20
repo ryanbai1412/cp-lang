@@ -82,9 +82,16 @@ fn neighbours_stay_on_the_grid():
     for r in Row:
         for c in Col:
             let p: Cell = (r, c)
-            let near = [(a, b) for a in Row for b in Col if (a, b) != p and abs(a.to_idx - r.to_idx) <= 1 and abs(b.to_idx - c.to_idx) <= 1]
+            let near = [
+                (a, b) for a in Row for b in Col if (
+                    a,
+                    b,
+                ) != p and abs(a.to_idx - r.to_idx) <= 1 and abs(b.to_idx - c.to_idx) <= 1
+            ]
             assert sorted(p.adj8) == near
-            assert sorted(p.adj4) == [q for q in near if abs(q.0.to_idx - r.to_idx) + abs(q.1.to_idx - c.to_idx) == 1]
+            assert sorted(p.adj4) == [
+                q for q in near if abs(q.0.to_idx - r.to_idx) + abs(q.1.to_idx - c.to_idx) == 1
+            ]
 
 @test
 fn directions_turn_and_step():

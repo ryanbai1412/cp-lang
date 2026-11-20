@@ -87,6 +87,15 @@ fn a_var_is_judged_by_its_own_scope() {
         codes("var (a, b) = read()\na += 1\nprint(a, b)\n"),
         Vec::<&str>::new()
     );
+    // So does one assigned as a whole tuple, and a lone `var` assigned inside one.
+    assert_eq!(
+        codes("var (x, y) = read()\nwhile y != 0: (x, y) = (y, x % y)\nprint(x)\n"),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes("var x = 1\nvar y = 2\n(x, y) = (y, x)\nprint(x, y)\n"),
+        Vec::<&str>::new()
+    );
     let both = only("var (a, b) = read()\nprint(a, b)\n");
     assert_eq!(
         both.message,
@@ -280,6 +289,12 @@ fn unproven_list_index_wants_two_loops_and_an_unproven_index() {
     let single = "var ws: List<Int> = []\nws.push(read())\nfor i in 0..3:\n    print(ws[i + 1])\n";
     assert_eq!(codes(single), Vec::<&str>::new());
     assert_eq!(codes(&nest("ws[i..j].len")), Vec::<&str>::new());
+    // A name is judged by its nearest binding: a list in one fn does not make
+    // an array of the same name in another a list.
+    let shadowed = "fn f(seen: List<Bool>) -> Bool = seen[0]\ndomain V = 0..9\nvar seen: [V]Bool = false\nfor u in V:\n    for v in V:\n        seen[v] = seen[u]\nprint(f([true]))\n";
+    assert!(!codes(shadowed).contains(&"L0414"));
+    let inner = "domain V = 0..9\nvar ws: [V]Int = 0\nfn g():\n    var ws: List<Int> = []\n    ws.push(read())\n    for i in 0..3:\n        for j in 0..3:\n            print(ws[i + j])\ng()\nprint(ws)\n";
+    assert!(codes(inner).contains(&"L0414"));
     // A fn starts its own count.
     let in_fn = "var ws: List<Int> = []\nws.push(read())\nfor i in 0..3:\n    for j in 0..3:\n        let f = k => ws[k]\n        print(f(i + j))\n";
     assert_eq!(codes(in_fn), ["L0414"]);

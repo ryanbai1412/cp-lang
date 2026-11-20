@@ -23,7 +23,10 @@ fn one_tree_many_monoids():
     assert sums.fold(I(2)..=I(4)) == 6
     assert highs.fold(I(2)..=I(4)) == 4
     // your own monoid is one line: (best, count of best)
-    let best = Monoid<(Int, Int)>((Int.MIN, 0), (x, y) => if x.0 > y.0: x else: if y.0 > x.0: y else: (x.0, x.1 + y.1))
+    let best = Monoid<(Int, Int)>(
+        (Int.MIN, 0),
+        (x, y) => if x.0 > y.0: x else: if y.0 > x.0: y else: (x.0, x.1 + y.1),
+    )
     let t = SegTree<I, (Int, Int)>(best, [I] i => (a[i], 1))
     assert t.fold(I(1)..=I(4)) == (4, 1) and t.fold(I(1)..=I(2)) == (3, 1) and t.all == (5, 1)
 
@@ -58,7 +61,12 @@ fn ranges_and_boundaries():
 fn graphs_are_functions():
     domain V = 1..=4
     domain E = 0..4
-    let ends = [E] e => [(u: V(1), v: V(2)), (u: V(2), v: V(3)), (u: V(3), v: V(1)), (u: V(3), v: V(4))][e.to_idx]
+    let ends = [E] e => [
+        (u: V(1), v: V(2)),
+        (u: V(2), v: V(3)),
+        (u: V(3), v: V(1)),
+        (u: V(3), v: V(4)),
+    ][e.to_idx]
     let w = [E] e => [5, 1, 1, 7][e.to_idx]
     let g = Graph<V, E>.directed(ends)
     let dist = dijkstra(g, from: [(V(1), 0)], w: a => w[a.e])
@@ -67,7 +75,11 @@ fn graphs_are_functions():
     assert C.K == 2 and comp[V(1)] == comp[V(3)] and comp[V(4)] != comp[V(1)]
     // an implicit graph needs no Graph at all: a grid walk, a number line, a state space
     domain N = 0..10
-    let hops = dijkstra(from: [(N(1), 0)], next: u => [N(x) for x in [u.to_idx * 2, u.to_idx + 1] if x < 10], w: a => 1)
+    let hops = dijkstra(
+        from: [(N(1), 0)],
+        next: u => [N(x) for x in [u.to_idx * 2, u.to_idx + 1] if x < 10],
+        w: a => 1,
+    )
     assert hops[N(9)] == 4
 
 @test

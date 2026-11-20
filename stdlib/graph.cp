@@ -70,7 +70,9 @@ pub struct Graph<V, E>:
             yield arcs[i]
 
     /// `g[u]`: the arcs out of `u`, as a list.
-    pub fn get(self, u: V) -> List<(to: V, e: E)> = [arcs[i] for i in start[u.to_idx]..start[u.to_idx + 1]]
+    pub fn get(self, u: V) -> List<(to: V, e: E)> = [
+        arcs[i] for i in start[u.to_idx]..start[u.to_idx + 1]
+    ]
 
     /// The number of arcs out of `u`. O(1).
     pub fn deg(self, u: V) -> Int = start[u.to_idx + 1] - start[u.to_idx]
@@ -155,17 +157,17 @@ pub fn topo<V, N>(next: N) -> ?List<V>:
 /// one (a topological order of the condensation). O(n + m), no recursion.
 pub fn scc<V, N>(next: N) -> (domain C, comp: [V]C):
     let out = [V] v => [a.to for a in next.out(v)]
-    var seen: [V]?Int = none        // discovery time
+    var seen: [V]?Int = none  // discovery time
     var low: [V]Int = 0
-    var done: [V]?Int = none        // component, in order of completion
+    var done: [V]?Int = none  // component, in order of completion
     var stack = List<V>()
-    var path = List<(V, Int)>()     // the dfs: a vertex and its next arc
+    var path = List<(V, Int)>()  // the dfs: a vertex and its next arc
     var (timer, k) = (0, 0)
     for root in V:
         if seen[root] != none: continue
         path.push((root, 0))
         while not path.is_empty:
-            let (u, i) = path[path.len - 1]
+            let (u, i) = path.last!
             if i == 0:
                 seen[u] = timer
                 low[u] = timer
@@ -184,7 +186,7 @@ pub fn scc<V, N>(next: N) -> (domain C, comp: [V]C):
                         done[v] = k
                         if v == u: break
                     k += 1
-                if not path.is_empty: low[path[path.len - 1].0] min= low[u]
+                if not path.is_empty: low[path.last!.0] min= low[u]
     domain C = 0..k
     (C: C, comp: [V] v => C(k - 1 - done[v]!))
 
@@ -262,7 +264,7 @@ pub fn two_edge_components<V, N>(next: N) -> (domain C, comp: [V]C):
         if tin[root] != none: continue
         frames.push((root, 0, none))
         while not frames.is_empty:
-            let (u, i, pe) = frames[frames.len - 1]
+            let (u, i, pe) = frames.last!
             if i == 0:
                 tin[u] = timer
                 low[u] = timer
@@ -281,7 +283,7 @@ pub fn two_edge_components<V, N>(next: N) -> (domain C, comp: [V]C):
             else:
                 frames.pop()
                 if not frames.is_empty:
-                    let p = frames[frames.len - 1].0
+                    let p = frames.last!.0
                     low[p] min= low[u]
                 if low[u] == tin[u]!:
                     while true:
@@ -308,7 +310,7 @@ pub fn articulation_points<V, N>(next: N) -> [V]Bool:
         if tin[root] != none: continue
         frames.push((root, 0, none))
         while not frames.is_empty:
-            let (u, i, p) = frames[frames.len - 1]
+            let (u, i, p) = frames.last!
             if i == 0:
                 tin[u] = timer
                 low[u] = timer
@@ -351,7 +353,7 @@ pub fn biconnected_components<V, N>(next: N) -> List<List<V>>:
         if tin[root] != none: continue
         frames.push((root, 0, none))
         while not frames.is_empty:
-            let (u, i, p) = frames[frames.len - 1]
+            let (u, i, p) = frames.last!
             if i == 0:
                 tin[u] = timer
                 low[u] = timer
@@ -406,7 +408,12 @@ pub fn two_color<V, N>(next: N) -> ?[V]Bool:
 fn csr_keeps_edge_ids_and_order():
     domain V = 1..=4
     domain E = 1..=4
-    let edges = [E] e => [(u: V(1), v: V(2)), (u: V(1), v: V(3)), (u: V(3), v: V(2)), (u: V(4), v: V(1))][e.to_idx]
+    let edges = [E] e => [
+        (u: V(1), v: V(2)),
+        (u: V(1), v: V(3)),
+        (u: V(3), v: V(2)),
+        (u: V(4), v: V(1)),
+    ][e.to_idx]
     let g = Graph.directed(edges)
     assert [a.to.label for a in g.adj(V(1))] == [2, 3]
     assert [a.e.label for a in g.adj(V(1))] == [1, 2]
@@ -422,7 +429,13 @@ fn csr_keeps_edge_ids_and_order():
 fn bfs_over_a_stored_graph_and_over_a_lambda():
     domain V = 0..6
     domain E = 0..5
-    let edges = [E] e => [(u: V(0), v: V(1)), (u: V(1), v: V(2)), (u: V(0), v: V(3)), (u: V(3), v: V(2)), (u: V(2), v: V(4))][e.to_idx]
+    let edges = [E] e => [
+        (u: V(0), v: V(1)),
+        (u: V(1), v: V(2)),
+        (u: V(0), v: V(3)),
+        (u: V(3), v: V(2)),
+        (u: V(2), v: V(4)),
+    ][e.to_idx]
     let g = Graph.undirected(edges)
     let d = bfs(g, from: [V(0)])
     assert [d[v] for v in V] == [0, 1, 2, 1, 3, none]
@@ -475,7 +488,14 @@ fn peel_leaves_what_a_cycle_reaches():
     let dag = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [], [0]][v.to_idx]]
     assert peel::<V>(v => dag[v]) == topo::<V>(v => dag[v])!
     domain E = 0..6
-    let edges = [E] e => [(u: V(0), v: V(1)), (u: V(1), v: V(2)), (u: V(2), v: V(3)), (u: V(3), v: V(2)), (u: V(3), v: V(4)), (u: V(5), v: V(0))][e.to_idx]
+    let edges = [E] e => [
+        (u: V(0), v: V(1)),
+        (u: V(1), v: V(2)),
+        (u: V(2), v: V(3)),
+        (u: V(3), v: V(2)),
+        (u: V(3), v: V(4)),
+        (u: V(5), v: V(0)),
+    ][e.to_idx]
     assert peel(Graph.directed(edges)) == [V(5), V(0), V(1)]
 
 @test
@@ -530,13 +550,21 @@ fn bridges_and_cut_vertices_match_removing_them():
         for a in V:
             for b in V:
                 // same 2-edge-connected component: no single edge separates them
-                let robust = all(linked(edges, a, b, e, none) for e in E) and linked(edges, a, b, none, none)
+                let robust = all(
+                    linked(edges, a, b, e, none) for e in E
+                ) and linked(edges, a, b, none, none)
                 assert (comp[a] == comp[b]) == robust
         for v in V:
             var splits = false
             for a in V:
                 for b in V:
-                    if a != v and b != v and linked(edges, a, b, none, none) and not linked(edges, a, b, none, v): splits = true
+                    if a != v and b != v and linked(
+                        edges,
+                        a,
+                        b,
+                        none,
+                        none,
+                    ) and not linked(edges, a, b, none, v): splits = true
             assert cut[v] == splits
 
 @test
@@ -544,7 +572,15 @@ fn blocks_of_a_small_graph():
     // two triangles sharing vertex 2, and a pendant edge 4 - 5
     domain V = 0..6
     domain E = 0..7
-    let edges = [E] e => [(u: V(0), v: V(1)), (u: V(1), v: V(2)), (u: V(2), v: V(0)), (u: V(2), v: V(3)), (u: V(3), v: V(4)), (u: V(4), v: V(2)), (u: V(4), v: V(5))][e.to_idx]
+    let edges = [E] e => [
+        (u: V(0), v: V(1)),
+        (u: V(1), v: V(2)),
+        (u: V(2), v: V(0)),
+        (u: V(2), v: V(3)),
+        (u: V(3), v: V(4)),
+        (u: V(4), v: V(2)),
+        (u: V(4), v: V(5)),
+    ][e.to_idx]
     let g = Graph.undirected(edges)
     let blocks = sorted(sorted(v.to_idx for v in b) for b in biconnected_components(g))
     assert blocks == [[0, 1, 2], [2, 3, 4], [4, 5]]
@@ -561,7 +597,9 @@ fn two_color_finds_a_colouring_or_an_odd_cycle():
         // brute force over all 2^7 colourings
         var possible = false
         for mask in 0..128:
-            if all(((mask >> edges[e].u.to_idx) & 1) != ((mask >> edges[e].v.to_idx) & 1) for e in E): possible = true
+            if all(
+                ((mask >> edges[e].u.to_idx) & 1) != ((mask >> edges[e].v.to_idx) & 1) for e in E
+            ): possible = true
         assert (side != none) == possible
         if side != none:
             for e in E: assert side![edges[e].u] != side![edges[e].v]
@@ -570,12 +608,8 @@ fn two_color_finds_a_colouring_or_an_odd_cycle():
 fn vertexless_closure_graphs_with_turbofish():
     domain V = 0..5
     // DAG 0 -> 1 -> 3, 0 -> 2 -> 3, 3 -> 4 via pure closure (no Graph or adj array)
-    let order = topo::<V>(u =>
-        if u == V(0): [V(1), V(2)]
-        else: if u == V(1) or u == V(2): [V(3)]
-        else: if u == V(3): [V(4)]
-        else: []
-    )!
+    let out = [V] u => [V(x) for x in [[1, 2], [3], [3], [4], []][u.to_idx]]
+    let order = topo::<V>(u => out[u])!
     assert order.len == 5 and order[0] == V(0) and order[4] == V(4)
     // Cyclic closure graph returns none for topo
     let cyc = topo::<V>(u => [V((u.to_idx + 1) % 5)])

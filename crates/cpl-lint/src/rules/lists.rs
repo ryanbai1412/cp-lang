@@ -9,7 +9,7 @@ use crate::walk::{unparen, Bind, Scope, Visitor};
 use crate::{File, Finding, UNPROVEN_LIST_INDEX};
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::{Expr, ExprKind, Pattern, PatternKind, Stmt, StmtKind, Type, TypeKind};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 /// How many loops deep an index has to be before it is worth a warning.
 const HOT_DEPTH: usize = 2;
@@ -33,49 +33,25 @@ fn is_list_value(expr: &Expr) -> bool {
     }
 }
 
-/// The names declared as a `List`, by annotation or by what they are set to.
-struct Lists {
-    names: HashSet<String>,
-    binding_list: bool,
-}
-
-impl Visitor for Lists {
-    fn stmt(&mut self, stmt: &Stmt) {
-        self.binding_list = false;
-        match &stmt.kind {
-            StmtKind::Let { pat, ty, init, .. } => {
-                let list = match ty {
-                    Some(ty) => is_list_type(ty),
-                    None => init.as_ref().is_some_and(is_list_value),
-                };
-                self.binding_list = list && matches!(pat.kind, PatternKind::Name(_));
-            }
-            StmtKind::Fn(decl) => {
-                for param in &decl.params {
-                    if param.ty.as_ref().is_some_and(is_list_type) {
-                        self.names.insert(param.name.text.clone());
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-
-    fn bind(&mut self, name: &str, _span: Span, how: Bind) {
-        if self.binding_list && matches!(how, Bind::Let | Bind::Var) {
-            self.names.insert(name.to_string());
-            self.binding_list = false;
-        }
-    }
+/// An open scope.
+struct Open {
+    scope: Scope,
+    /// The `(index variable, list)` pair it proves in range.
+    proves: Option<(String, String)>,
+    /// The names it binds, and whether each is a `List`.
+    names: HashMap<String, bool>,
 }
 
 struct Indexes<'a> {
     src: &'a str,
     base: u32,
-    lists: &'a HashSet<String>,
-    /// One entry per open scope: whether it is a loop, and the
-    /// `(index variable, list)` pair it proves in range.
-    scopes: Vec<(Scope, Option<(String, String)>)>,
+    /// The names bound at the top level, and whether each is a `List`.
+    globals: HashMap<String, bool>,
+    scopes: Vec<Open>,
+    /// Whether the `let` being walked declares a `List`.
+    binding_list: bool,
+    /// The parameters of the `fn` about to be entered that are `List`s.
+    list_params: HashSet<String>,
     findings: Vec<Finding>,
 }
 
@@ -85,15 +61,26 @@ impl Indexes<'_> {
         self.scopes
             .iter()
             .rev()
-            .take_while(|(scope, _)| *scope != Scope::Fn)
-            .filter(|(scope, _)| *scope == Scope::Loop)
+            .take_while(|open| open.scope != Scope::Fn)
+            .filter(|open| open.scope == Scope::Loop)
             .count()
     }
 
     fn proven(&self, index: &str, list: &str) -> bool {
         self.scopes
             .iter()
-            .any(|(_, fact)| matches!(fact, Some((i, xs)) if i == index && xs == list))
+            .any(|open| matches!(&open.proves, Some((i, xs)) if i == index && xs == list))
+    }
+
+    /// Whether `name`, as seen here, is a `List`: the nearest binding decides.
+    fn is_list(&self, name: &str) -> bool {
+        self.scopes
+            .iter()
+            .rev()
+            .find_map(|open| open.names.get(name))
+            .or_else(|| self.globals.get(name))
+            .copied()
+            .unwrap_or(false)
     }
 }
 
@@ -121,8 +108,47 @@ fn indexed_list(iter: &Expr) -> Option<&str> {
 }
 
 impl Visitor for Indexes<'_> {
+    fn stmt(&mut self, stmt: &Stmt) {
+        self.binding_list = false;
+        match &stmt.kind {
+            StmtKind::Let { pat, ty, init, .. } => {
+                let list = match ty {
+                    Some(ty) => is_list_type(ty),
+                    None => init.as_ref().is_some_and(is_list_value),
+                };
+                self.binding_list = list && matches!(pat.kind, PatternKind::Name(_));
+            }
+            StmtKind::Fn(decl) => {
+                self.list_params = decl
+                    .params
+                    .iter()
+                    .filter(|param| param.ty.as_ref().is_some_and(is_list_type))
+                    .map(|param| param.name.text.clone())
+                    .collect();
+            }
+            _ => {}
+        }
+    }
+
+    fn bind(&mut self, name: &str, _span: Span, how: Bind) {
+        let list = match how {
+            Bind::Let | Bind::Var => std::mem::take(&mut self.binding_list),
+            Bind::Param => self.list_params.contains(name),
+            Bind::Const | Bind::Pattern => false,
+        };
+        let names = match self.scopes.last_mut() {
+            Some(open) => &mut open.names,
+            None => &mut self.globals,
+        };
+        names.insert(name.to_string(), list);
+    }
+
     fn enter(&mut self, scope: Scope) {
-        self.scopes.push((scope, None));
+        self.scopes.push(Open {
+            scope,
+            proves: None,
+            names: HashMap::new(),
+        });
     }
 
     fn exit(&mut self, _scope: Scope) {
@@ -132,7 +158,7 @@ impl Visitor for Indexes<'_> {
     fn for_loop(&mut self, pat: &Pattern, iter: &Expr) {
         if let (PatternKind::Name(index), Some(list)) = (&pat.kind, indexed_list(iter)) {
             if let Some(top) = self.scopes.last_mut() {
-                top.1 = Some((index.clone(), list.to_string()));
+                top.proves = Some((index.clone(), list.to_string()));
             }
         }
     }
@@ -144,7 +170,7 @@ impl Visitor for Indexes<'_> {
         let (ExprKind::Name(list), [index]) = (&base.kind, indices.as_slice()) else {
             return;
         };
-        if !self.lists.contains(list) || self.loop_depth() < HOT_DEPTH {
+        if self.loop_depth() < HOT_DEPTH || !self.is_list(list) {
             return;
         }
         match &unparen(index).kind {
@@ -170,16 +196,13 @@ impl Visitor for Indexes<'_> {
 }
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
-    let mut lists = Lists {
-        names: HashSet::new(),
-        binding_list: false,
-    };
-    file.walk(&mut lists, |_, _| {});
     let mut indexes = Indexes {
         src: file.src,
         base: 0,
-        lists: &lists.names,
+        globals: HashMap::new(),
         scopes: Vec::new(),
+        binding_list: false,
+        list_params: HashSet::new(),
         findings: Vec::new(),
     };
     file.walk(&mut indexes, |indexes, base| indexes.base = base);

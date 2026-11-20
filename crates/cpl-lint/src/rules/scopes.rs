@@ -47,6 +47,13 @@ impl Scopes<'_> {
 
     /// Records that the variable `expr` reads through may change.
     fn changes(&mut self, expr: &Expr) {
+        // `(x, y) = (y, x % y)` changes every place it lists.
+        if let ExprKind::Tuple(places) = &expr.kind {
+            for place in places {
+                self.changes(place);
+            }
+            return;
+        }
         let var = root_name(expr).and_then(|name| self.resolve(name)?.var);
         if let Some(var) = var {
             self.vars[var].changed = true;

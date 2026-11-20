@@ -156,7 +156,10 @@ fn division_helpers_round_the_right_way():
     assert -7 / 2 == -4 and -7 % 2 == 1
     assert 7 / -2 == -3 and 7 % -2 == 1
     assert ceil_div(7, -2) == -3 and ceil_div(-7, 2) == -3
-    assert ceil_div(-7, -2) == 4 and ceil_div(6, 3) == 2 and ceil_div(6, -3) == -2 and ceil_div(7, 2) == 4
+    assert ceil_div(
+        -7,
+        -2,
+    ) == 4 and ceil_div(6, 3) == 2 and ceil_div(6, -3) == -2 and ceil_div(7, 2) == 4
     for _ in 0..200:
         let (a, b) = (rand(-50, 50), rand(1, 9) * (rand(0, 1) * 2 - 1))
         assert a == b * (a / b) + a % b and 0 <= a % b < abs(b)

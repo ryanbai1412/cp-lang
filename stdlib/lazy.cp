@@ -162,7 +162,12 @@ pub const AddMin = Action<Int, Int>(0, +, (f, x, len) => x + f, over: min)
 /// Add to every position, fold with `max`.
 pub const AddMax = Action<Int, Int>(0, +, (f, x, len) => x + f, over: max)
 /// Overwrite every position, fold with `+`. The pending update is a `?Int`: `none` is "nothing pending".
-pub const AssignSum = Action<Int, ?Int>(none, (f, g) => f ?? g, (f, x, len) => if f == none: x else: f! * len, over: +)
+pub const AssignSum = Action<Int, ?Int>(
+    none,
+    (f, g) => f ?? g,
+    (f, x, len) => if f == none: x else: f! * len,
+    over: +,
+)
 /// Overwrite every position, fold with `min`.
 pub const AssignMin = Action<Int, ?Int>(none, (f, g) => f ?? g, (f, x, len) => f ?? x, over: min)
 /// Overwrite every position, fold with `max`.
@@ -176,7 +181,14 @@ fn brute<D>(a: [D]Int, r: Range<D>, pick: Int) -> Int:
 @test
 fn the_stock_actions_match_brute_force():
     domain V = 1..=10
-    for (k, act) in [(0, AddSum), (1, AddMin), (2, AddMax), (0, AssignSum), (1, AssignMin), (2, AssignMax)]:
+    for (k, act) in [
+        (0, AddSum),
+        (1, AddMin),
+        (2, AddMax),
+        (0, AssignSum),
+        (1, AssignMin),
+        (2, AssignMax),
+    ]:
         let assign = act.id == none
         var a = [V] v => rand(-9, 9)
         var st = LazySegTree<V, Int>(act, a)
@@ -236,7 +248,10 @@ fn padding_never_takes_an_update():
 @test
 fn an_action_of_your_own():
     // values are (best, how many positions hold it); the update adds to every position
-    let count_max = Monoid<(Int, Int)>((Int.MIN, 0), (a, b) => if a.0 > b.0: a else: if b.0 > a.0: b else: (a.0, a.1 + b.1))
+    let count_max = Monoid<(Int, Int)>(
+        (Int.MIN, 0),
+        (a, b) => if a.0 > b.0: a else: if b.0 > a.0: b else: (a.0, a.1 + b.1),
+    )
     let add = Action<(Int, Int), Int>(0, +, (f, x, len) => (x.0 + f, x.1), over: count_max)
     domain V = 0..8
     var a = [V] v => 0
@@ -292,8 +307,16 @@ fn ccc02s4hard_dual_field_cross_overwrite_and_interleaved_point_set():
     // Conformance test pinned in v2.1: each position holds (a, b) where a range update can
     // overwrite `b` and cross-overwrite `a = b + d` or add to `a`, interleaved with point
     // `.set` calls that must push pending tags root-to-leaf first.
-    let over = Monoid<(Int, Int, Int)>((Int.MAX, Int.MAX, 0), (x, y) => (min(x.0, y.0), min(x.1, y.1), x.2 + y.2))
-    let act = Action<(Int, Int, Int), (?Int, ?Int, Int)>((none, none, 0), ccc_compose, ccc_apply, over: over)
+    let over = Monoid<(Int, Int, Int)>(
+        (Int.MAX, Int.MAX, 0),
+        (x, y) => (min(x.0, y.0), min(x.1, y.1), x.2 + y.2),
+    )
+    let act = Action<(Int, Int, Int), (?Int, ?Int, Int)>(
+        (none, none, 0),
+        ccc_compose,
+        ccc_apply,
+        over: over,
+    )
     domain V = 0..11
     var a = [V] v => rand(-10, 10)
     var b = [V] v => rand(-10, 10)
@@ -328,7 +351,11 @@ fn ccc02s4hard_dual_field_cross_overwrite_and_interleaved_point_set():
         else:
             let l = V.nth(rand(0, 10))
             let r = V.nth(rand(l.to_idx, 10))
-            let want = (min(a[v] for v in l..=r)!, min(b[v] for v in l..=r)!, sum(a[v] for v in l..=r))
+            let want = (
+                min(a[v] for v in l..=r)!,
+                min(b[v] for v in l..=r)!,
+                sum(a[v] for v in l..=r),
+            )
             assert st.fold(l..=r) == want
     for v in V:
         assert st.get(v) == (a[v], b[v], a[v])
@@ -370,7 +397,10 @@ fn custom_clamp_action_with_update():
     // Non-commutative clamp tag `(lo, hi)`: clamps values into `[lo, hi]` over `max`.
     let clamp = Action<Int, (Int, Int)>(
         id: (Int.MIN, Int.MAX),
-        compose: (new_f, old_f) => (min(max(old_f.0, new_f.0), new_f.1), max(min(old_f.1, new_f.1), new_f.0)),
+        compose: (new_f, old_f) => (
+            min(max(old_f.0, new_f.0), new_f.1),
+            max(min(old_f.1, new_f.1), new_f.0),
+        ),
         apply: (f, val, span) => min(max(val, f.0), f.1),
         over: max,
     )

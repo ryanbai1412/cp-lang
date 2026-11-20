@@ -127,6 +127,15 @@ fn handles_calls_fields_ranges_and_postfix() {
         "let s = xs[..k] + xs[k..]\n"
     );
     assert_eq!(fmt("use  lib :: graph :: *\n"), "use lib::graph::*\n");
+    assert_eq!(fmt("use std.seq.{ a,b }\n"), "use std.seq.{a, b}\n");
+    assert_eq!(
+        fmt("fn f() -> yields (v: Int, d: Int):\n    yield (v: 1, d: 2)\n"),
+        "fn f() -> yields (v: Int, d: Int):\n    yield (v: 1, d: 2)\n"
+    );
+    assert_eq!(
+        fmt("use std.seq.{a}\nlet x = {a: 1}\n"),
+        "use std.seq.{a}\nlet x = { a: 1 }\n"
+    );
     assert_eq!(
         fmt("if (a+b)>c: return (a,b)\n"),
         "if (a + b) > c: return (a, b)\n"

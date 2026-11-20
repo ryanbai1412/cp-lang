@@ -21,8 +21,8 @@ pub fn bsearch_first<I>(r: Range<I>, ok: I -> Bool) -> ?I:
     if r.is_empty: return none
     let base = r.first!
     if not ok(r.last!): return none
-    assert not (ok(base) and not ok(r.last!))     // `ok` must not switch back to false
-    var (lo, hi) = (0, r.len - 1)                  // the answer is at an offset in lo..=hi
+    assert not (ok(base) and not ok(r.last!))  // `ok` must not switch back to false
+    var (lo, hi) = (0, r.len - 1)              // the answer is at an offset in lo..=hi
     while lo < hi:
         let mid = (lo + hi) / 2
         if ok((base + mid)!): hi = mid else: lo = mid + 1
@@ -149,7 +149,7 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// The index of `val`, which must be one of the compressed values. O(log n).
     pub fn at(self, val: T) -> D:
         let i = vals.first_ge(val)
-        assert i != none and vals[i!] == val      // `at` is for a value that was compressed
+        assert i != none and vals[i!] == val  // `at` is for a value that was compressed
         i!
 
     /// The first index whose value is `>= val`, or `none`. O(log n).
@@ -202,7 +202,9 @@ pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D):
 
 /// `self` cut or padded with `fill` to length `n`: `a.resized(size, Z(0))` instead of
 /// `[if i < a.len: a[i] else: Z(0) for i in 0..size]`. O(n).
-pub fn resized<T>(self: List<T>, n: Int, fill: T) -> List<T> = [if i < self.len: self[i] else: fill for i in 0..n]
+pub fn resized<T>(self: List<T>, n: Int, fill: T) -> List<T> = [
+    if i < self.len: self[i] else: fill for i in 0..n
+]
 
 /// Move all elements out of `self` in O(1), leaving it empty.
 pub fn take<T>(mut self: List<T>) -> List<T>:
@@ -339,7 +341,14 @@ fn compress_gives_the_values_their_own_domain():
 @test
 fn min_max_by_tie_breaking():
     // First extremum always wins ties; empty input always returns none
-    let items = [(10, "first_min"), (5, "a"), (5, "b"), (20, "first_max"), (20, "second_max"), (5, "c")]
+    let items = [
+        (10, "first_min"),
+        (5, "a"),
+        (5, "b"),
+        (20, "first_max"),
+        (20, "second_max"),
+        (5, "c"),
+    ]
     assert min_by(items, p => p.0) == (5, "a")
     assert max_by(items, p => p.0) == (20, "first_max")
     assert min_by([("x", 1), ("y", 1), ("z", 1)], p => p.1) == ("x", 1)
@@ -414,10 +423,19 @@ fn map_entry_remove_and_four_lookups():
     m[10] = "ten"
     m[20] = "twenty"
     m[30] = "thirty"
-    assert m.first_ge(20) == (20, "twenty") and m.first_ge(21) == (30, "thirty") and m.first_ge(31) == none
-    assert m.first_gt(20) == (30, "thirty") and m.first_gt(10) == (20, "twenty") and m.first_gt(30) == none
+    assert m.first_ge(20) == (20, "twenty") and m.first_ge(21) == (
+        30,
+        "thirty",
+    ) and m.first_ge(31) == none
+    assert m.first_gt(20) == (30, "thirty") and m.first_gt(10) == (
+        20,
+        "twenty",
+    ) and m.first_gt(30) == none
     assert m.last_le(20) == (20, "twenty") and m.last_le(19) == (10, "ten") and m.last_le(5) == none
-    assert m.last_lt(20) == (10, "ten") and m.last_lt(30) == (20, "twenty") and m.last_lt(10) == none
+    assert m.last_lt(20) == (10, "ten") and m.last_lt(30) == (
+        20,
+        "twenty",
+    ) and m.last_lt(10) == none
     // Map.remove returns ?V (the removed value or none)
     assert m.remove(20) == "twenty"
     assert m.remove(20) == none

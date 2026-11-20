@@ -34,7 +34,10 @@ pub struct Fenwick<D, T>:
         acc
 
     /// The sum of a range: `f.sum(l..=r)`, `f.sum(..i)`, `f.sum(i..)`. An empty range is zero.
-    pub fn sum(self, r: Range<D>) -> T = if r.is_empty: T.zero else: self.prefix(r.hi) - self.prefix(r.lo)
+    pub fn sum(
+        self,
+        r: Range<D>,
+    ) -> T = if r.is_empty: T.zero else: self.prefix(r.hi) - self.prefix(r.lo)
 
     /// The first boundary where the prefix sum reaches `target`, for non-negative values:
     /// the smallest `b` with `prefix(b) >= target`, or `none`. O(log n).

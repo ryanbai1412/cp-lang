@@ -192,7 +192,7 @@ fn try_inv_and_modulus_one():
 @test
 fn a_modulus_read_at_run_time():
     for p in [2, 12, 1_000_000_007]:
-        let P = p                   // a modulus is frozen under a capitalized name
+        let P = p  // a modulus is frozen under a capitalized name
         type Z = Mod<P>
         assert Z(p) == Z(0) and Z(-1) + Z(1) == Z(0)
         assert Z(5).pow(3) == Z(125 % p) and Z(7).pow(0) == Z(1)

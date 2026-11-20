@@ -160,7 +160,20 @@ pub fn max_weight_matching<L, R>(weight: (L, R) -> Int) -> (total: Int, mate: [L
 fn textbook_network():
     domain V = 0..6
     var g = FlowGraph<V>()
-    let arcs = [g.add(V(u), V(v), c) for (u, v, c) in [(0, 1, 16), (0, 2, 13), (1, 2, 10), (2, 1, 4), (1, 3, 12), (3, 2, 9), (2, 4, 14), (4, 3, 7), (3, 5, 20), (4, 5, 4)]]
+    let arcs = [
+        g.add(V(u), V(v), c) for (u, v, c) in [
+            (0, 1, 16),
+            (0, 2, 13),
+            (1, 2, 10),
+            (2, 1, 4),
+            (1, 3, 12),
+            (3, 2, 9),
+            (2, 4, 14),
+            (4, 3, 7),
+            (3, 5, 20),
+            (4, 5, 4),
+        ]
+    ]
     assert g.max_flow(V(0), V(5)) == 23
     // conservation at inner vertices, capacity on every arc
     var net: [V]Int = 0
@@ -186,7 +199,9 @@ fn min_cut_equals_max_flow_on_random_networks():
         // brute force: the smallest cut over all 16 source sides
         var best = Int.MAX
         for mask in 0..16:
-            let inside = [V] v => v == V.first or (v != V.last and ((mask >> (v.to_idx - 1)) & 1) == 1)
+            let inside = [V] v => v == V.first or (
+                v != V.last and ((mask >> (v.to_idx - 1)) & 1) == 1
+            )
             best min= sum(c for (u, v, c) in es if inside[u] and not inside[v])
         assert f == best
 

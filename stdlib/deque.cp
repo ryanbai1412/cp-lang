@@ -1,5 +1,7 @@
 //! Double-ended queue: `Deque<T>`.
 
+use std.seq.{remove}
+
 /// A queue with both ends open: `var q: Deque<Int> = []`. `push` / `pop` work at the back,
 /// `push_front` / `pop_front` at the front, all amortized O(1); `q[i]` is the `i`-th element
 /// from the front in O(1). Memory is a ring of at most twice the largest length.
@@ -94,7 +96,7 @@ fn a_deque_matches_a_list():
             assert q.pop() == (if xs.is_empty: none else: xs.pop())
         elif k == 3:
             let want = xs.first
-            if not xs.is_empty: xs = [xs[i] for i in 1..xs.len]
+            if not xs.is_empty: xs.remove(0)
             assert q.pop_front() == want
         else:
             assert q.len == xs.len and q.is_empty == xs.is_empty
@@ -122,17 +124,20 @@ fn a_deque_as_a_bfs_queue():
             q.push(u - 1)
     assert dist == [2, 1, 0, 0, 0]
 
-
 @test
 fn a_deque_of_a_list_is_a_bfs_queue():
     // BFS on a line 0 - 1 - 2 - 3 - 4 from both ends
-    var dist: List<?Int> = [0, none, none, none, 0]
-    var q = Deque.of([0, 4])
-    assert q.len == 2 and q.first == 0 and q.last == 4
+    domain V = 0..5
+    var dist: [V]?Int = none
+    let ends = [V.first, V.last]
+    for v in ends: dist[v] = 0
+    var q = Deque.of(ends)
+    assert q.len == 2 and q.first == V.first and q.last == V.last
     while let u = q.pop_front():
-        for w in [u - 1, u + 1]:
-            if 0 <= w and w < 5 and dist[w] == none:
-                dist[w] = dist[u]! + 1
-                q.push(w)
-    assert dist == [0, 1, 2, 1, 0]
+        for d in [-1, 1]:
+            if let w = u + d:
+                if dist[w] == none:
+                    dist[w] = dist[u]! + 1
+                    q.push(w)
+    assert [dist[v]! for v in V] == [0, 1, 2, 1, 0]
     assert Deque<Int>.of([]).is_empty

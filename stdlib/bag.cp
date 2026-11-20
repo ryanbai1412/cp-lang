@@ -1,5 +1,7 @@
 //! Ordered multiset with order statistics: `SortedBag<K>`.
 
+use std.seq.{remove}
+
 /// An ordered multiset (bag) of `K` backed by a randomized treap over flat arrays.
 /// Keeps one node per distinct key with its multiplicity and subtree element count.
 /// `add`, `remove`, `contains`, `count`, `first`, `last`, `pop_first`, `pop_last`,
@@ -330,21 +332,20 @@ fn sorted_bag_matches_sorted_list_on_random_ops():
                     assert not bag.remove(x)
                 else:
                     assert bag.remove(x)
-                    plain = [plain[j] for j in 0..plain.len if j != idx!]
+                    plain.remove(idx!)
             elif op == 3:
                 let got = bag.pop_first()
                 if plain.is_empty:
                     assert got == none
                 else:
-                    assert got == plain[0]
-                    plain = [plain[j] for j in 1..plain.len]
+                    assert got == plain.first
+                    plain.remove(0)
             elif op == 4:
                 let got = bag.pop_last()
                 if plain.is_empty:
                     assert got == none
                 else:
-                    assert got == plain[plain.len - 1]
-                    plain.pop()
+                    assert got == plain.pop()
             else:
                 let q = rand(-12, 12)
                 assert bag.len == plain.len and bag.is_empty == plain.is_empty

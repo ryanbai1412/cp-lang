@@ -45,7 +45,13 @@ pub fn find_all<T>(text: List<T>, pat: List<T>) -> yields Int:
 /// The length of the shortest period of `s`: the smallest `d >= 1` with `s[i] == s[i + d]` for all `i`. O(n).
 pub fn period<T>(s: List<T>) -> Int = if s.is_empty: 0 else: s.len - prefix_function(s).last
 
-fn induced_sort(vec: List<Int>, counts: List<Int>, is_l: List<Bool>, lms: List<Int>, mut sa: List<Int>):
+fn induced_sort(
+    vec: List<Int>,
+    counts: List<Int>,
+    is_l: List<Bool>,
+    lms: List<Int>,
+    mut sa: List<Int>,
+):
     let n = vec.len
     let alpha = counts.len
     var bkt = List.filled(alpha, 0)
@@ -247,7 +253,10 @@ pub struct RollingHash:
         RollingHash((b1, b2), p1, p2, pow1, pow2)
 
     /// Build a `RollingHash` reusing another instance's salted `bases` so their hashes compare directly.
-    pub fn with_bases<S>(seq: S, bases: (Int, Int)) -> RollingHash = RollingHash.new(seq, bases: bases)
+    pub fn with_bases<S>(
+        seq: S,
+        bases: (Int, Int),
+    ) -> RollingHash = RollingHash.new(seq, bases: bases)
 
     /// Number of hashed elements.
     pub @get fn len(self) -> Int = p1.len - 1
@@ -273,7 +282,9 @@ pub struct RollingHash:
 
 // ---- tests
 
-fn random_word(n: Int, letters: Int) -> List<Char> = [Char(Int('a') + rand(0, letters - 1)) for _ in 0..n]
+fn random_word(n: Int, letters: Int) -> List<Char> = [
+    Char(Int('a') + rand(0, letters - 1)) for _ in 0..n
+]
 
 fn common_prefix<T>(s: List<T>, a: Int, b: Int) -> Int:
     var k = 0
@@ -364,7 +375,7 @@ fn rolling_hash_over_str_list_and_domain_arrays():
     let arr = [D] i => [0, 0, -5, 7, 0, 0, -5, 7][i.to_idx]
     let hd = RollingHash(arr)
     assert hd.get(D(1)..=D(4)) == hd.get(D(5)..=D(8))
-    assert hd.get(D(1)..=D(1)) != hd.get(D(1)..=D(2))   // [0] vs [0, 0] never collide
+    assert hd.get(D(1)..=D(1)) != hd.get(D(1)..=D(2))  // [0] vs [0, 0] never collide
     assert hd.get(D(3)..D(3)) == HashVal(0, 0)
     assert hd.get(..D(5)) == hd.get(D(5)..)
     // 3. Shared bases compare across two distinct sequences

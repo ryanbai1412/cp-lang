@@ -65,7 +65,7 @@ pub struct Rooted<V, Pre>:
         var far: [V]Int = 0
         var kid: [V]List<V> = []
         var seen: [V]Bool = false
-        var order = List<V>()                    // preorder of the depth-first search
+        var order = List<V>()  // preorder of the depth-first search
         var stack = [(root, root, 0)]
         while not stack.is_empty:
             let (u, p, w) = stack[stack.len - 1]
@@ -222,7 +222,12 @@ pub struct Rooted<V, Pre>:
     /// The path from `a` to `b` as O(log n) position ranges. `rising` ranges are walked from
     /// their high end to their low end. With `edges`, the highest vertex of the path is left
     /// out: for a value per edge, stored at the edge's lower end.
-    pub fn chains(self, a: V, b: V, edges: Bool = false) -> yields (range: Range<Pre>, rising: Bool):
+    pub fn chains(
+        self,
+        a: V,
+        b: V,
+        edges: Bool = false,
+    ) -> yields (range: Range<Pre>, rising: Bool):
         var (x, y) = (a, b)
         var falling = List<Range<Pre>>()
         while top[x] != top[y]:
@@ -275,8 +280,8 @@ pub struct Rooted<V, Pre>:
         var st = [nodes[0]]
         for i in 1..nodes.len:
             let u = nodes[i]
-            while not self.is_anc(st[st.len - 1], u): st.pop()
-            edges.push((u: st[st.len - 1], v: u))
+            while not self.is_anc(st.last!, u): st.pop()
+            edges.push((u: st.last!, v: u))
             st.push(u)
         (nodes: nodes, edges: edges)
 
@@ -481,13 +486,24 @@ fn orders_lifting_and_the_virtual_tree():
         for e in vt.edges:
             assert r.is_anc(e.u, e.v) and e.u != e.v
             // nothing kept lies strictly between a node and its parent
-            assert not any(kept[w] and w != e.u and w != e.v and r.is_anc(e.u, w) and r.is_anc(w, e.v) for w in V)
+            assert not any(
+                kept[w] and w != e.u and w != e.v and r.is_anc(e.u, w) and r.is_anc(
+                    w,
+                    e.v,
+                ) for w in V
+            )
 
 @test
 fn a_tree_from_a_stored_graph():
     domain V = 1..=6
     domain E = 1..=5
-    let edges = [E] e => [(u: V(1), v: V(2)), (u: V(1), v: V(3)), (u: V(2), v: V(4)), (u: V(2), v: V(5)), (u: V(5), v: V(6))][e.to_idx]
+    let edges = [E] e => [
+        (u: V(1), v: V(2)),
+        (u: V(1), v: V(3)),
+        (u: V(2), v: V(4)),
+        (u: V(2), v: V(5)),
+        (u: V(5), v: V(6)),
+    ][e.to_idx]
     let g = Graph.undirected(edges)
     let r = Rooted(g, root: V(1))
     assert r.lca(V(4), V(6)) == V(2) and r.dist(V(4), V(6)) == 3 and r.size(V(2)) == 4
@@ -535,7 +551,17 @@ fn from_parents_tour_pos_and_value_owned_pre():
 fn weighted_rooted_dfs_tree_on_cyclic_graph():
     domain V = 0..6
     // Cycle + chords + self-loop: DFS tree must have every non-tree edge connect ancestor/descendant
-    let raw = [(0, 1, 3), (0, 2, 5), (1, 2, 7), (1, 3, 2), (2, 4, 4), (3, 4, 6), (4, 5, 1), (0, 5, 9), (2, 2, 1)]
+    let raw = [
+        (0, 1, 3),
+        (0, 2, 5),
+        (1, 2, 7),
+        (1, 3, 2),
+        (2, 4, 4),
+        (3, 4, 6),
+        (4, 5, 1),
+        (0, 5, 9),
+        (2, 2, 1),
+    ]
     var g: [V]List<(to: V, w: Int)> = []
     for (u, v, w) in raw:
         g[V(u)].push((to: V(v), w: w))

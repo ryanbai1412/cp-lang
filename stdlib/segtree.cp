@@ -33,7 +33,7 @@ pub struct SegTree<D, T>(m: Monoid<T>):
 
     /// Recompute position `i` from the formula given to `of`. O(log n).
     pub fn refresh(mut self, i: D):
-        assert source != none            // only a tree built with `of` has a formula
+        assert source != none  // only a tree built with `of` has a formula
         let f = source!
         self.set(i, f(i))
 

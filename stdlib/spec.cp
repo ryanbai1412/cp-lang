@@ -65,7 +65,11 @@ pub fn argmins(cost: (Int, Int) -> Int, rows: Int, cols: Int) -> List<Int>:
 /// The first row whose best column lies left of the previous row's, or
 /// `none`: then `dp[i] = min over j of cost(i, j)` can be filled by
 /// divide and conquer in O(n log n) instead of O(n^2).
-pub fn dnc_break(cost: (Int, Int) -> Int, rows: Int, cols: Int) -> ?Int = decrease(argmins(cost, rows, cols))
+pub fn dnc_break(
+    cost: (Int, Int) -> Int,
+    rows: Int,
+    cols: Int,
+) -> ?Int = decrease(argmins(cost, rows, cols))
 
 /// Knuth's condition on a table of optimal split points for intervals
 /// `i..=j` (`opt(i, j)` defined for `i < j`): the first `(i, j)` with

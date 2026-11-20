@@ -20,6 +20,10 @@ pub(crate) enum Role {
     GenericOpen,
     /// The `>` or `>>` that closes it.
     GenericClose,
+    /// The `{` of `use std.seq.{a, b}`, written tight.
+    ImportOpen,
+    /// The `}` that closes it.
+    ImportClose,
 }
 
 fn ends_value(kind: K, role: Role) -> bool {
@@ -85,6 +89,8 @@ pub(crate) fn roles(toks: &[Tok]) -> Vec<Role> {
     // own (`[V]Int`, `[1, 2]`); and whether the last `]` closed the second.
     let mut brackets: Vec<bool> = Vec::new();
     let mut closed_standalone = false;
+    // For each open `{`, whether it lists the names of an import path.
+    let mut braces: Vec<bool> = Vec::new();
     for (i, tok) in toks.iter().enumerate() {
         let prev = i.checked_sub(1).map(|p| (toks[p].kind, roles[p]));
         let after_value = prev.is_some_and(|(kind, role)| ends_value(kind, role));
@@ -96,6 +102,16 @@ pub(crate) fn roles(toks: &[Tok]) -> Vec<Role> {
             _ => {}
         }
         let role = match tok.kind {
+            K::LBrace => {
+                let imports = prev.is_some_and(|(kind, _)| kind == K::Dot);
+                braces.push(imports);
+                if imports {
+                    Role::ImportOpen
+                } else {
+                    Role::Plain
+                }
+            }
+            K::RBrace if braces.pop() == Some(true) => Role::ImportClose,
             // `[I]-100..=100`: the element type starts with a sign.
             K::Minus if after_standalone && toks.get(i + 1).is_some_and(|n| !n.space_before) => {
                 Role::Prefix
@@ -142,6 +158,9 @@ pub(crate) fn space_between(prev: &Tok, prev_role: Role, next: &Tok, next_role: 
 
 fn wanted_space(prev: &Tok, prev_role: Role, next: &Tok, next_role: Role) -> bool {
     let after_value = ends_value(prev.kind, prev_role);
+    if prev_role == Role::ImportOpen || next_role == Role::ImportClose {
+        return false;
+    }
     match next.kind {
         K::Comma | K::Semi | K::RParen | K::RBracket | K::Colon => return false,
         K::RBrace => return prev.kind != K::LBrace,
@@ -170,6 +189,8 @@ fn wanted_space(prev: &Tok, prev_role: Role, next: &Tok, next_role: Role) -> boo
         // the way the source had it.
         K::Question if after_value => return next.space_before,
         K::Bang => return false,
+        // `-> yields (v: V, d: Int)` names a type; `yields(x)` would read as a call.
+        K::LParen if prev.kind == K::Ident && prev.text == "yields" => return true,
         K::LParen | K::LBracket if after_value => {
             // `[I] (i, j) => ..` is a table, `fs[i](x)` a call.
             return prev.kind == K::RBracket && next.kind == K::LParen && next.space_before;
@@ -198,7 +219,7 @@ fn wanted_space(prev: &Tok, prev_role: Role, next: &Tok, next_role: Role) -> boo
         Role::Prefix | Role::GenericOpen => return false,
         Role::Postfix => return next.space_before,
         Role::GenericClose => return true,
-        Role::Plain => {}
+        Role::Plain | Role::ImportOpen | Role::ImportClose => {}
     }
     if is_binary(prev.kind) {
         return true;

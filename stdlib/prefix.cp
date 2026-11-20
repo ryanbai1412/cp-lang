@@ -34,7 +34,10 @@ pub struct Prefix2<R, C, T>:
     pub fn sum(self, rows: Range<R>, cols: Range<C>) -> T:
         if rows.is_empty or cols.is_empty: T.zero
         else:
-            self.p[rows.hi, cols.hi] - self.p[rows.lo, cols.hi] - self.p[rows.hi, cols.lo] + self.p[rows.lo, cols.lo]
+            self.p[rows.hi, cols.hi] - self.p[rows.lo, cols.hi] - self.p[rows.hi, cols.lo] + self.p[
+                rows.lo,
+                cols.lo,
+            ]
 
 /// Static prefix sums of a list or an array indexed by plain `Int`s
 /// from 0.

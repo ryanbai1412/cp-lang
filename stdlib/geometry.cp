@@ -73,13 +73,15 @@ pub fn locate(poly: List<Pt>, p: Pt) -> Int:
 
 // ---- tests
 
-fn random_points(n: Int, span: Int) -> List<Pt> = [Pt(rand(-span, span), rand(-span, span)) for _ in 0..n]
+fn random_points(n: Int, span: Int) -> List<Pt> = [
+    Pt(rand(-span, span), rand(-span, span)) for _ in 0..n
+]
 
 @test
 fn vectors_and_turns():
     let (a, b) = (Pt(3, 4), Pt(-1, 2))
     assert a + b == Pt(2, 6) and a - b == Pt(4, 2) and -a == Pt(-3, -4)
-    assert dot(a, b) == 5 and cross(a, b) == 10 and a.norm2 == 25 and a.len == 5.0
+    assert dot(a, b) == 5 and cross(a, b) == 10 and a.norm2 == 25 and abs(a.len - 5.0) < 1e-9
     assert a.perp == Pt(-4, 3) and dot(a, a.perp) == 0
     assert turn(Pt(0, 0), Pt(1, 0), Pt(1, 1)) == 1
     assert turn(Pt(0, 0), Pt(1, 0), Pt(1, -1)) == -1
@@ -87,9 +89,27 @@ fn vectors_and_turns():
 
 @test
 fn angle_order_goes_once_around():
-    var dirs = [Pt(1, -1), Pt(-1, 0), Pt(0, 1), Pt(1, 0), Pt(-2, -2), Pt(0, -3), Pt(1, 1), Pt(-1, 1)]
+    var dirs = [
+        Pt(1, -1),
+        Pt(-1, 0),
+        Pt(0, 1),
+        Pt(1, 0),
+        Pt(-2, -2),
+        Pt(0, -3),
+        Pt(1, 1),
+        Pt(-1, 1),
+    ]
     sort(mut dirs, by: ByAngle)
-    assert dirs == [Pt(1, 0), Pt(1, 1), Pt(0, 1), Pt(-1, 1), Pt(-1, 0), Pt(-2, -2), Pt(0, -3), Pt(1, -1)]
+    assert dirs == [
+        Pt(1, 0),
+        Pt(1, 1),
+        Pt(0, 1),
+        Pt(-1, 1),
+        Pt(-1, 0),
+        Pt(-2, -2),
+        Pt(0, -3),
+        Pt(1, -1),
+    ]
 
 @test
 fn segments_touching_crossing_and_apart():
@@ -103,7 +123,12 @@ fn segments_touching_crossing_and_apart():
     for _ in 0..200:
         let p = random_points(4, 3)
         let m = segments_meet(p[0], p[1], p[2], p[3])
-        assert m == segments_meet(p[2], p[3], p[0], p[1]) and m == segments_meet(p[1], p[0], p[3], p[2])
+        assert m == segments_meet(p[2], p[3], p[0], p[1]) and m == segments_meet(
+            p[1],
+            p[0],
+            p[3],
+            p[2],
+        )
         // brute force on a grid fine enough to hold every intersection of segments in -3..=3
         if p[0] != p[1] and p[2] != p[3] and cross(p[1] - p[0], p[3] - p[2]) != 0:
             // lines cross at p0 + t (p1 - p0), t = num / den
