@@ -3,6 +3,7 @@
 
 mod interact;
 mod laws;
+mod trace;
 
 use std::io::Write;
 
@@ -33,8 +34,11 @@ commands:
   run <file> [input]    check, then run in the debug interpreter, reading
                         the input file or standard input; a file with an
                         `@interactor` runs against it, on the hidden test
-  judge <file> <input>  run the file's `@interactor` as a judge program on
-                        standard input and output
+                        (`cpl run --help` has the options for traces)
+  judge <file> <input> [<output> <answer>]
+                        run the file's `@interactor` as a judge program on
+                        standard input and output, or with an output its
+                        `@checker`; exit status 0 accepts
   build <file> [-o out] check, then write one C++17 file to submit: next to
                         the source by default, to standard output with `-o -`
   fmt [path]...         format files in the one canonical style
@@ -120,25 +124,42 @@ pub fn exec<S: AsRef<str>>(
             usage_error("`check` needs a file: `cpl check a.cp`".into())
         }
         Some("check") => check(&rest, stdout, stderr),
-        Some("run") => match rest.as_slice() {
-            [file] => run_file(file, &stdin(), stdout, stderr),
-            [file, input] => match std::fs::read(input) {
-                Ok(input) => run_file(file, &input, stdout, stderr),
-                Err(error) => {
-                    *stderr += &format!("cpl: can't read `{input}`: {error}\n");
-                    EXIT_USAGE
-                }
-            },
-            _ => usage_error(
-                "`run` takes a file and at most one input: `cpl run a.cp in.txt`".into(),
-            ),
+        Some("run") if rest.iter().any(|arg| matches!(*arg, "-h" | "--help")) => {
+            let _ = stdout.write_all(RUN_USAGE.as_bytes());
+            0
+        }
+        Some("run") => match RunArgs::parse(&rest) {
+            Ok(args) => {
+                let input = match args.input {
+                    None => stdin(),
+                    Some(input) => match std::fs::read(input) {
+                        Ok(input) => input,
+                        Err(error) => {
+                            *stderr += &format!("cpl: can't read `{input}`: {error}\n");
+                            return EXIT_USAGE;
+                        }
+                    },
+                };
+                run_file(&args, &input, stdout, stderr)
+            }
+            Err(message) => usage_error(message),
         },
         Some("judge") => match rest.as_slice() {
             [file, input] => judge_file(file, input, stderr),
+            [file, input, output] | [file, input, output, _] => check_output(file, input, output, stderr),
             _ => usage_error(
                 "`judge` takes a file and the hidden test: `cpl judge a.cp in.txt`".into(),
             ),
         },
+        // `cpl stress` traces a failure in the debug interpreter, which
+        // this crate links and `cpl-stress` does not.
+        Some("stress") => {
+            let args: Vec<String> = rest.iter().map(|arg| arg.to_string()).collect();
+            let mut errors = Vec::new();
+            let code = cpl_stress::cli::run_with(&args, stdout, &mut errors, Some(&trace::against_brute));
+            *stderr += &String::from_utf8_lossy(&errors);
+            code
+        }
         Some("build") => match rest.as_slice() {
             [file] => build_file(file, None, stdout, stderr),
             [file, "-o", out] | ["-o", out, file] => build_file(file, Some(out), stdout, stderr),
@@ -156,6 +177,89 @@ pub fn exec<S: AsRef<str>>(
         }
         Some("lsp") => usage_error("`lsp` talks to an editor over stdio and takes no files".into()),
         Some(other) => usage_error(format!("unknown command `{other}`")),
+    }
+}
+
+const RUN_USAGE: &str = "\
+usage: cpl run <file.cp> [input] [options]
+
+Checks the file, then runs it in the debug interpreter on the input file
+or on standard input. What `debug(...)` shows goes to standard error.
+
+options:
+  --trace [FN]      record the run: every change to a top-level variable,
+                    every print and every debug(...); with FN, only while
+                    that fn runs. Writes <file>.trace.html unless --format
+                    says where the trace goes
+  --format json     without --trace: the value of each top-level variable,
+                    the output and the time, for an editor.
+                    with --trace: the trace as JSON on standard output
+  --format html     with --trace: the trace viewer with the trace in it,
+                    one self-contained page on standard output
+  --brute           run the file's `@brute(main)` fn in place of the solution
+";
+
+/// What `cpl run` was asked for.
+struct RunArgs<'a> {
+    file: &'a str,
+    input: Option<&'a str>,
+    trace: bool,
+    /// `--trace FN`: record only while this fn runs.
+    only_fn: Option<&'a str>,
+    format: Option<&'a str>,
+    brute: bool,
+}
+
+impl<'a> RunArgs<'a> {
+    fn parse(rest: &[&'a str]) -> Result<RunArgs<'a>, String> {
+        let mut args = RunArgs {
+            file: "",
+            input: None,
+            trace: false,
+            only_fn: None,
+            format: None,
+            brute: false,
+        };
+        let mut paths = Vec::new();
+        let mut iter = rest.iter().copied().peekable();
+        while let Some(arg) = iter.next() {
+            match arg {
+                "--trace" => {
+                    args.trace = true;
+                    // A name after it that is no file is the fn to trace.
+                    if let Some(next) = iter.peek().copied() {
+                        let is_name = next.chars().all(|c| c.is_alphanumeric() || c == '_');
+                        if is_name && !next.is_empty() && !std::path::Path::new(next).exists() {
+                            args.only_fn = Some(next);
+                            iter.next();
+                        }
+                    }
+                }
+                "--brute" => args.brute = true,
+                "--format" => match iter.next() {
+                    Some(format @ ("json" | "html" | "text")) => args.format = Some(format),
+                    Some(other) => return Err(format!("`--format` is text, json or html, not `{other}`")),
+                    None => return Err("`--format` needs a value: json or html".into()),
+                },
+                flag if flag.starts_with("--trace=") => {
+                    args.trace = true;
+                    args.only_fn = Some(&flag["--trace=".len()..]);
+                }
+                flag if flag.starts_with('-') && flag.len() > 1 => {
+                    return Err(format!("`run` has no option `{flag}`; `cpl run --help` lists them"))
+                }
+                path => paths.push(path),
+            }
+        }
+        match paths.as_slice() {
+            [file] => args.file = file,
+            [file, input] => (args.file, args.input) = (file, Some(*input)),
+            _ => return Err("`run` takes a file and at most one input: `cpl run a.cp in.txt`".into()),
+        }
+        if args.format == Some("html") && !args.trace {
+            return Err("`--format html` is the trace viewer: add `--trace`".into());
+        }
+        Ok(args)
     }
 }
 
@@ -185,11 +289,25 @@ struct Compiled {
     judge: Option<(String, cpl_ir::Program)>,
 }
 
+/// Which program of a file to lower.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Side {
+    Solution,
+    /// The `@brute(main)` fn in place of the solution.
+    Brute,
+    /// The `@checker` fn.
+    Checker,
+}
+
 /// Reads and checks `path` through the shared front end, then lowers it.
 /// This is the gate `run` and `build` both go through: the same
 /// [`cpl_check::Database`] the language server holds, so a file means the
 /// same thing to every tool.
 fn compile(path: &str, stderr: &mut String) -> Result<Compiled, u8> {
+    compile_side(path, Side::Solution, stderr)
+}
+
+fn compile_side(path: &str, side: Side, stderr: &mut String) -> Result<Compiled, u8> {
     let text = match std::fs::read_to_string(path) {
         Ok(text) => text,
         Err(error) => {
@@ -210,13 +328,27 @@ fn compile(path: &str, stderr: &mut String) -> Result<Compiled, u8> {
             return Err(EXIT_ERRORS);
         }
     }
-    let lowered = cpl_ir::lower(&analysis).and_then(|program| {
-        let judge = match cpl_ir::interactor(&analysis) {
-            Some(name) => Some((name.clone(), cpl_ir::lower_judge(&analysis, &name)?)),
-            None => None,
-        };
-        Ok((program, judge))
-    });
+    let missing = |what: &str, stderr: &mut String| {
+        *stderr += &format!("cpl: `{path}` declares no `{what}` fn\n");
+        EXIT_USAGE
+    };
+    let lowered = match side {
+        Side::Solution => cpl_ir::lower(&analysis).and_then(|program| {
+            let judge = match cpl_ir::interactor(&analysis) {
+                Some(name) => Some((name.clone(), cpl_ir::lower_judge(&analysis, &name)?)),
+                None => None,
+            };
+            Ok((program, judge))
+        }),
+        Side::Brute => match cpl_ir::brute(&analysis) {
+            Some((name, _)) => cpl_ir::lower_brute(&analysis, &name).map(|program| (program, None)),
+            None => return Err(missing("@brute(main)", stderr)),
+        },
+        Side::Checker => match cpl_ir::checker(&analysis) {
+            Some((name, _)) => cpl_ir::lower_checker(&analysis, &name).map(|program| (program, None)),
+            None => return Err(missing("@checker", stderr)),
+        },
+    };
     match lowered {
         Ok((program, judge)) => Ok(Compiled {
             text,
@@ -259,6 +391,37 @@ fn judge_file(path: &str, input: &str, stderr: &mut String) -> u8 {
     }
 }
 
+/// `cpl judge <file> <input> <output>`: the file's `@checker` on what a
+/// solution printed. The first line it says on failure is the reason.
+fn check_output(path: &str, input: &str, output: &str, stderr: &mut String) -> u8 {
+    let read = |file: &str, stderr: &mut String| match std::fs::read(file) {
+        Ok(bytes) => Ok(bytes),
+        Err(error) => {
+            *stderr += &format!("cpl: can't read `{file}`: {error}\n");
+            Err(EXIT_USAGE)
+        }
+    };
+    let (input, output) = match (read(input, stderr), read(output, stderr)) {
+        (Ok(input), Ok(output)) => (input, output),
+        (Err(code), _) | (_, Err(code)) => return code,
+    };
+    let compiled = match compile_side(path, Side::Checker, stderr) {
+        Ok(compiled) => compiled,
+        Err(code) => return code,
+    };
+    let mut printed = Some(output);
+    let io = cpl_interp::Io::judge(&input, Box::new(move || printed.take()));
+    let mut sink = Vec::new();
+    match cpl_interp::run_with(&compiled.program, io, &mut sink) {
+        Ok(()) => 0,
+        Err(trap) => {
+            *stderr += &format!("{}\n", trap.message);
+            *stderr += &render_trap(path, &compiled.text, &trap);
+            EXIT_FAILED
+        }
+    }
+}
+
 fn render_trap(path: &str, text: &str, trap: &cpl_interp::Trap) -> String {
     let lines = cpl_diag::LineIndex::new(text);
     let diagnostic =
@@ -267,11 +430,17 @@ fn render_trap(path: &str, text: &str, trap: &cpl_interp::Trap) -> String {
 }
 
 /// `cpl run`: the program's output goes straight to `stdout`.
-fn run_file(path: &str, input: &[u8], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
-    let compiled = match compile(path, stderr) {
+fn run_file(args: &RunArgs, input: &[u8], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
+    let path = args.file;
+    let side = if args.brute { Side::Brute } else { Side::Solution };
+    let compiled = match compile_side(path, side, stderr) {
         Ok(compiled) => compiled,
         Err(code) => return code,
     };
+    let json = args.format == Some("json");
+    if args.trace || json {
+        return observe_file(args, &compiled, input, stdout, stderr);
+    }
     // An interactive problem with its judge in the file: the input is
     // the hidden test, and the two talk to each other.
     if let Some((name, judge)) = &compiled.judge {
@@ -305,13 +474,87 @@ fn run_file(path: &str, input: &[u8], stdout: &mut (dyn Write + Send), stderr: &
         }
         return EXIT_FAILED;
     }
-    match cpl_interp::run(&compiled.program, input, stdout) {
-        Ok(()) => 0,
-        Err(trap) => {
+    let observed = cpl_interp::run_observed(&compiled.program, cpl_interp::Io::fixed(input), stdout, None);
+    *stderr += &String::from_utf8_lossy(&observed.debug);
+    match observed.trap {
+        None => 0,
+        Some(trap) => {
             *stderr += &render_trap(path, &compiled.text, &trap);
             EXIT_FAILED
         }
     }
+}
+
+/// `cpl run --trace` and `cpl run --format json`: the run, recorded.
+/// An interactive file is recorded on the solution's side, against its
+/// `@interactor`.
+fn observe_file(
+    args: &RunArgs,
+    compiled: &Compiled,
+    input: &[u8],
+    stdout: &mut (dyn Write + Send),
+    stderr: &mut String,
+) -> u8 {
+    let path = args.file;
+    let started = std::time::Instant::now();
+    let config = trace::config(&compiled.text, args.only_fn);
+    // The program's output is kept: with `--format` the report or the
+    // trace is what goes to standard output.
+    let mut printed = Vec::new();
+    let quiet = args.format.is_some_and(|format| format != "text");
+    let observed = match &compiled.judge {
+        Some((_, judge)) => interact::run_traced(&compiled.program, judge, input, &mut printed, config),
+        None => cpl_interp::run_observed(&compiled.program, cpl_interp::Io::fixed(input), &mut printed, Some(config)),
+    };
+    let millis = started.elapsed().as_millis();
+    let recording = observed.recording.unwrap_or_default();
+    *stderr += &String::from_utf8_lossy(&observed.debug);
+    let lines = cpl_diag::LineIndex::new(&compiled.text);
+    let code = match &observed.trap {
+        None => 0,
+        Some(_) => EXIT_FAILED,
+    };
+    if !quiet {
+        let _ = stdout.write_all(&printed);
+    }
+    if let (Some(trap), false) = (&observed.trap, args.format == Some("json") && !args.trace) {
+        *stderr += &render_trap(path, &compiled.text, trap);
+    }
+    if !args.trace {
+        let error = observed
+            .trap
+            .as_ref()
+            .map(|trap| (lines.line_of(trap.span.start) + 1, trap.message.as_str()));
+        let _ = stdout.write_all(trace::run_report(&recording, &printed, millis, error).as_bytes());
+        return code;
+    }
+    let document = trace::single(path, &compiled.text, &recording);
+    match args.format {
+        Some("json") => {
+            let _ = stdout.write_all(document.as_bytes());
+            let _ = stdout.write_all(b"\n");
+        }
+        Some("html") => {
+            let _ = stdout.write_all(trace::html(&document).as_bytes());
+        }
+        _ => {
+            let target = std::path::Path::new(path).with_extension("trace.html");
+            match std::fs::write(&target, trace::html(&document)) {
+                Ok(()) => {
+                    *stderr += &format!(
+                        "cpl: wrote {} ({} steps); open it in a browser\n",
+                        target.display(),
+                        recording.steps.len()
+                    )
+                }
+                Err(error) => {
+                    *stderr += &format!("cpl: can't write `{}`: {error}\n", target.display());
+                    return EXIT_USAGE;
+                }
+            }
+        }
+    }
+    code
 }
 
 /// `cpl build`: one C++17 file, next to the source unless `out` says

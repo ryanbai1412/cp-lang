@@ -585,9 +585,21 @@ impl<'a> Lowerer<'a> {
                 self.error(codes::UNRESOLVED_NAME, span, format!("`cpl run` doesn't know the name `{name}` here"));
             }
             _ => {
-                let message = format!("`cpl run` doesn't know the name `{name}` here");
-                self.error(codes::UNRESOLVED_NAME, span, message);
-                self.help("a top-level `let` is visible only after the line that sets it");
+                if self.tail_names.contains(name) {
+                    let message = format!(
+                        "`{name}` is the solution's own work: a brute or a checker shares only the input"
+                    );
+                    self.error(codes::UNRESOLVED_NAME, span, message);
+                    self.help("it sees every top-level line down to the last `read()`; compute the rest inside the fn");
+                } else if self.judge {
+                    let message = format!("an `@interactor` can't see the solution's `{name}`");
+                    self.error(codes::UNRESOLVED_NAME, span, message);
+                    self.help("the judge is a program of its own: it reads the hidden test with `read()` and shares only `const`s with the solution");
+                } else {
+                    let message = format!("`cpl run` doesn't know the name `{name}` here");
+                    self.error(codes::UNRESOLVED_NAME, span, message);
+                    self.help("a top-level `let` is visible only after the line that sets it");
+                }
             }
         }
         self.err_expr(span)
@@ -1094,6 +1106,29 @@ impl<'a> Lowerer<'a> {
                     ret,
                     span,
                 );
+            }
+        }
+        // `1 - z` with `z: Mod<P>`: the number becomes a `Mod<P>` first,
+        // as it does on the right in `z - 1`.
+        if let (Ty::Int, Ty::Struct(sid)) = (&l.ty, &r.ty) {
+            let sid = *sid;
+            let mname = match op {
+                Add => Some("add"),
+                Sub => Some("sub"),
+                Mul => Some("mul"),
+                Div => Some("div"),
+                _ => None,
+            };
+            if self.is_std_mod(sid) {
+                if let Some(fn_id) = mname.and_then(|m| self.struct_op_fn(sid, m)) {
+                    let l = self.coerce(l, &Ty::Struct(sid), lhs.span);
+                    let ret = self.ret_of(fn_id, span);
+                    return self.mk(
+                        ExprKind::Call(fn_id, vec![Arg::Value(l), Arg::Value(r)]),
+                        ret,
+                        span,
+                    );
+                }
             }
         }
         let arith = matches!(op, Add | Sub | Mul | Div | Pow);

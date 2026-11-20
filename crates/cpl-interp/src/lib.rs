@@ -9,6 +9,7 @@
 //! Strings are byte vectors. Nothing here decodes or validates text.
 
 mod input;
+pub mod trace;
 mod value;
 
 use cpl_diag::Span;
@@ -61,6 +62,17 @@ pub fn run(program: &Program, input: &[u8], output: &mut (dyn Write + Send)) -> 
     run_with(program, Io::fixed(input), output)
 }
 
+/// What a run leaves besides its output.
+#[derive(Debug, Default)]
+pub struct Observed {
+    /// `None` when the program ran to its end.
+    pub trap: Option<Trap>,
+    /// What its `debug(...)`s showed, a line each: `a.cp:6: i = 0, best = 1`.
+    pub debug: Vec<u8>,
+    /// The trace, when one was asked for.
+    pub recording: Option<trace::Recording>,
+}
+
 /// What a program reads.
 pub struct Io<'a> {
     /// What `read()` reads.
@@ -104,17 +116,35 @@ impl<'a> Io<'a> {
 
 /// [`run`] with an input that can arrive while the program runs.
 pub fn run_with(program: &Program, io: Io, output: &mut (dyn Write + Send)) -> Result<(), Trap> {
+    match run_observed(program, io, output, None).trap {
+        Some(trap) => Err(trap),
+        None => Ok(()),
+    }
+}
+
+/// [`run_with`], keeping what the program's `debug(...)`s showed and,
+/// with `trace`, the trace of the run.
+pub fn run_observed(
+    program: &Program,
+    io: Io,
+    output: &mut (dyn Write + Send),
+    trace: Option<trace::TraceConfig>,
+) -> Observed {
     let io = std::sync::Mutex::new(Some(io));
+    let trace = std::sync::Mutex::new(trace);
     // The writer is shared by reference so that a spawn that fails (too
     // little address space for the stack) can be tried again smaller.
     let output = std::sync::Mutex::new(output);
-    let bug = || Trap {
-        message: "the interpreter itself failed; this is a bug in cpl".into(),
-        span: Span::default(),
+    let failed = |message: &str| Observed {
+        trap: Some(Trap {
+            message: message.into(),
+            span: Span::default(),
+        }),
+        ..Observed::default()
     };
     std::thread::scope(|scope| {
         for bytes in [STACK_BYTES, 1 << 28, 1 << 23] {
-            let (output, io) = (&output, &io);
+            let (output, io, trace) = (&output, &io, &trace);
             let limits = Limits {
                 depth: MAX_DEPTH,
                 // The rest is left for the frames under the deepest call.
@@ -132,16 +162,19 @@ pub fn run_with(program: &Program, io: Io, output: &mut (dyn Write + Send)) -> R
                             .unwrap_or_else(|poisoned| poisoned.into_inner())
                             .take()
                             .expect("only the thread that starts takes the input");
-                        run_io(program, io, &mut **output, limits)
+                        let trace = trace
+                            .lock()
+                            .unwrap_or_else(|poisoned| poisoned.into_inner())
+                            .take();
+                        run_io(program, io, &mut **output, limits, trace)
                     });
             if let Ok(handle) = spawned {
-                return handle.join().unwrap_or_else(|_| Err(bug()));
+                return handle
+                    .join()
+                    .unwrap_or_else(|_| failed("the interpreter itself failed; this is a bug in cpl"));
             }
         }
-        Err(Trap {
-            message: "could not start the interpreter thread".into(),
-            span: Span::default(),
-        })
+        failed("could not start the interpreter thread")
     })
 }
 
@@ -154,7 +187,21 @@ pub fn run_on_this_thread(
     output: &mut (dyn Write + Send),
     limits: Limits,
 ) -> Result<(), Trap> {
-    run_io(program, Io::fixed(input), output, limits)
+    match run_io(program, Io::fixed(input), output, limits, None).trap {
+        Some(trap) => Err(trap),
+        None => Ok(()),
+    }
+}
+
+/// [`run_on_this_thread`], keeping what [`run_observed`] keeps.
+pub fn observe_on_this_thread(
+    program: &Program,
+    input: &[u8],
+    output: &mut (dyn Write + Send),
+    limits: Limits,
+    trace: Option<trace::TraceConfig>,
+) -> Observed {
+    run_io(program, Io::fixed(input), output, limits, trace)
 }
 
 fn run_io(
@@ -162,7 +209,8 @@ fn run_io(
     io: Io,
     output: &mut (dyn Write + Send),
     limits: Limits,
-) -> Result<(), Trap> {
+    trace: Option<trace::TraceConfig>,
+) -> Observed {
     let top = 0u8;
     let mut interp = Interp {
         program,
@@ -184,11 +232,23 @@ fn run_io(
         stack_budget: limits.stack_bytes,
         frame_locals: Vec::new(),
         rng_state: 0x9e3779b97f4a7c15u64,
+        tracer: trace.map(|config| Box::new(trace::Tracer::new(config, program))),
+        debug_out: Vec::new(),
     };
     let result = interp.main();
     let _ = interp.sink.write_all(&interp.out);
     let _ = interp.sink.flush();
-    result.map_err(|trap| *trap)
+    let trap = result.err().map(|trap| *trap);
+    let recording = interp.tracer.take().map(|tracer| {
+        let failed = trap.as_ref().map(|trap| (trap.message.as_str(), trap.span));
+        let view = interp.view();
+        tracer.finish(&view, failed)
+    });
+    Observed {
+        trap,
+        debug: std::mem::take(&mut interp.debug_out),
+        recording,
+    }
 }
 
 type Res<T> = Result<T, Box<Trap>>;
@@ -233,6 +293,42 @@ struct Interp<'p, 'o> {
     frame_locals: Vec<&'p [cpl_ir::Local]>,
     /// Deterministic splitmix64 PRNG state (matches `cpl-codegen`).
     rng_state: u64,
+    /// Records the trace of the run, when one was asked for.
+    tracer: Option<Box<trace::Tracer>>,
+    /// What `debug(...)` showed.
+    debug_out: Vec<u8>,
+}
+
+/// The global a place is in, when it is in one.
+fn root_global(place: &Place) -> Option<usize> {
+    match &place.kind {
+        PlaceKind::Global(id) => Some(*id),
+        PlaceKind::Local(_) => None,
+        PlaceKind::Index(base, _) | PlaceKind::Field(base, _) | PlaceKind::Some(base) => root_global(base),
+    }
+}
+
+/// How many indices of `place` lead straight from its variable: `2` in
+/// `dp[i][j]` and in `dp[i, j]`, `1` in `a[i].x`.
+fn leading_indices(place: &Place) -> usize {
+    match &place.kind {
+        PlaceKind::Global(_) | PlaceKind::Local(_) => 0,
+        PlaceKind::Index(base, indices) => match &base.kind {
+            PlaceKind::Global(_) | PlaceKind::Index(..) if leading_indices(base) == index_count(base) => {
+                leading_indices(base) + indices.len()
+            }
+            _ => leading_indices(base),
+        },
+        PlaceKind::Field(base, _) | PlaceKind::Some(base) => leading_indices(base),
+    }
+}
+
+fn index_count(place: &Place) -> usize {
+    match &place.kind {
+        PlaceKind::Global(_) | PlaceKind::Local(_) => 0,
+        PlaceKind::Index(base, indices) => index_count(base) + indices.len(),
+        PlaceKind::Field(base, _) | PlaceKind::Some(base) => index_count(base),
+    }
 }
 
 fn splitmix64(state: &mut u64) -> u64 {
@@ -255,13 +351,28 @@ impl<'p, 'o> Interp<'p, 'o> {
         }
         // Above `@!multitest`: once. A top-level `return` there ends the
         // program.
+        if let Some(tracer) = &mut self.tracer {
+            tracer.case = Some(0);
+        }
         if let Flow::Return(_) = self.block(&program.setup)? {
             return Ok(());
+        }
+        if let Some(tracer) = &mut self.tracer {
+            tracer.divider();
         }
         let mut left = if program.until_eof {
             None
         } else {
             match self.input.int() {
+                // The judge's side of an interactive problem tells the
+                // solution how many test cases there are.
+                Ok((count, _)) if program.announce_tests => {
+                    self.out.extend_from_slice(format!("{count}\n").as_bytes());
+                    let _ = self.sink.write_all(&self.out);
+                    let _ = self.sink.flush();
+                    self.out.clear();
+                    Some(count)
+                }
                 Ok((count, _)) => Some(count),
                 Err(error) => {
                     return trap(
@@ -271,6 +382,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
             }
         };
+        let mut case = 0;
         loop {
             match &mut left {
                 Some(left) if *left <= 0 => break,
@@ -278,11 +390,70 @@ impl<'p, 'o> Interp<'p, 'o> {
                 None if self.input.at_eof() => break,
                 None => {}
             }
+            case += 1;
+            // `ask(.., limit: K)` allows `K` queries in each test case.
+            self.queries = 0;
+            if let Some(tracer) = &mut self.tracer {
+                tracer.start_case(case);
+            }
             self.stack.clear();
             self.stack.resize(program.main_locals.len(), Value::Unit);
             self.block(&program.main)?;
         }
         Ok(())
+    }
+
+    /// What the tracer sees of the program's state right now.
+    fn view(&self) -> trace::View<'_> {
+        let locals = self
+            .locals()
+            .iter()
+            .enumerate()
+            .filter(|(_, local)| !local.name.is_empty() && !local.name.starts_with('_'))
+            .filter_map(|(slot, local)| {
+                let value = self.stack.get(self.base + slot)?;
+                let value = match value {
+                    Value::Alias(true, id) => self.globals.get(*id)?,
+                    Value::Alias(false, at) => self.stack.get(*at)?,
+                    value => value,
+                };
+                Some((local.name.as_str(), &local.ty, value))
+            })
+            .collect();
+        trace::View {
+            program: self.program,
+            globals: &self.globals,
+            domains: &self.domains,
+            locals,
+        }
+    }
+
+    /// Runs `record` on the tracer, when the run is traced.
+    fn traced(&mut self, record: impl FnOnce(&mut trace::Tracer, &trace::View)) {
+        if let Some(mut tracer) = self.tracer.take() {
+            record(&mut tracer, &self.view());
+            self.tracer = Some(tracer);
+        }
+    }
+
+    /// A step for a change to `place`, when it is in a top-level variable.
+    fn trace_change(&mut self, place: &Place, indices: &[Value]) {
+        if self.tracer.is_none() {
+            return;
+        }
+        let Some(global) = root_global(place) else {
+            return;
+        };
+        if let PlaceKind::Global(id) = &place.kind {
+            let id = *id;
+            return self.traced(|tracer, view| tracer.declared(id, view, place.span));
+        }
+        let path: Vec<usize> = indices
+            .iter()
+            .take(leading_indices(place))
+            .map(|index| index.int().max(0) as usize)
+            .collect();
+        self.traced(|tracer, view| tracer.step(view, place.span, None, None, Some((global, path))));
     }
 
     fn flush_if_large(&mut self) {
@@ -314,7 +485,10 @@ impl<'p, 'o> Interp<'p, 'o> {
                 let base = self.base;
                 self.stack[base + slot] = value;
             }
-            Stmt::Assign(place, op, value) => self.assign(place, *op, value)?,
+            Stmt::Assign(place, op, value) => {
+                let indices = self.assign(place, *op, value)?;
+                self.trace_change(place, &indices);
+            }
             Stmt::Expr(e) => {
                 self.eval(e)?;
             }
@@ -638,7 +812,8 @@ impl<'p, 'o> Interp<'p, 'o> {
         }
     }
 
-    fn assign(&mut self, place: &'p Place, op: AssignOp, value: &'p Expr) -> Res<()> {
+    /// Stores into `place`, and gives the indices it was reached by.
+    fn assign(&mut self, place: &'p Place, op: AssignOp, value: &'p Expr) -> Res<Vec<Value>> {
         // As in C++17: the right side first, then the place.
         let value = self.eval(value)?;
         let mut indices = Vec::new();
@@ -665,11 +840,11 @@ impl<'p, 'o> Interp<'p, 'o> {
                         if let Value::Char(c) = new {
                             Rc::make_mut(bytes)[i] = c;
                         }
-                        return Ok(());
+                        return Ok(indices);
                     }
                     Value::Map(entries) if op == AssignOp::Set => {
                         Rc::make_mut(entries).insert(key.clone(), value);
-                        return Ok(());
+                        return Ok(indices);
                     }
                     Value::Map(entries) => {
                         let map = Rc::make_mut(entries);
@@ -698,7 +873,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                             }
                         };
                         map.insert(key.clone(), next);
-                        return Ok(());
+                        return Ok(indices);
                     }
                     Value::Moved => return trap(place.span, LENT),
                     _ => {}
@@ -716,7 +891,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
             *cell = combine(op, old, value, place.span)?;
         }
-        Ok(())
+        Ok(indices)
     }
 
     // ----- expressions -----
@@ -903,7 +1078,17 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::DomainVal(lo, len)
             }
             ExprKind::Builtin(op, args) => self.builtin(*op, args, e)?,
-            ExprKind::Mutate(op, place, args) => self.mutate(*op, place, args, span)?,
+            ExprKind::Mutate(op, place, args) => {
+                let value = self.mutate(*op, place, args, span)?;
+                if self.tracer.is_some() && root_global(place).is_some() {
+                    let global = root_global(place).unwrap_or_default();
+                    self.traced(|tracer, view| {
+                        tracer.visible[global] = true;
+                        tracer.step(view, span, None, None, None)
+                    });
+                }
+                value
+            }
             ExprKind::Sort(place, sort_by) => {
                 let mut indices = Vec::new();
                 self.indices(place, &mut indices)?;
@@ -970,7 +1155,61 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::Unit
             }
             ExprKind::Read(spec) => self.read(spec, span)?,
+            ExprKind::Debug(line, args) => {
+                let mut values = Vec::new();
+                for arg in args {
+                    values.push(self.eval(&arg.value)?);
+                }
+                let view = self.view();
+                // A string literal names the checkpoint; without one the
+                // arguments as written do, and each value is shown by name.
+                let label: Vec<&str> = args
+                    .iter()
+                    .zip(&values)
+                    .filter(|(arg, _)| arg.label)
+                    .filter_map(|(_, value)| match value {
+                        Value::Str(bytes) => std::str::from_utf8(bytes).ok(),
+                        _ => None,
+                    })
+                    .collect();
+                let shown: Vec<(&cpl_ir::DebugArg, &Value)> =
+                    args.iter().zip(&values).filter(|(arg, _)| !arg.label).collect();
+                let name = if label.is_empty() {
+                    shown.iter().map(|(arg, _)| arg.text.as_str()).collect::<Vec<_>>().join(", ")
+                } else {
+                    label.join(" ")
+                };
+                let text = shown
+                    .iter()
+                    .map(|(arg, value)| {
+                        let value = trace::text_of(value, &arg.value.ty, &view);
+                        if label.is_empty() {
+                            format!("{} = {value}", arg.text)
+                        } else {
+                            value
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let json = match shown.as_slice() {
+                    [(arg, value)] => trace::json_of(value, &arg.value.ty, &view),
+                    many => {
+                        let parts: Vec<String> = many
+                            .iter()
+                            .map(|(arg, value)| trace::json_of(value, &arg.value.ty, &view))
+                            .collect();
+                        format!("[{}]", parts.join(","))
+                    }
+                };
+                let prefix = if label.is_empty() { String::new() } else { format!("{name}: ") };
+                self.debug_out
+                    .extend_from_slice(format!("[line {line}] {prefix}{text}\n").as_bytes());
+                let name = name.clone();
+                self.traced(|tracer, view| tracer.debugged(view, span, &name, text, json));
+                Value::Unit
+            }
             ExprKind::Print(args) => {
+                let start = self.out.len();
                 for (i, arg) in args.iter().enumerate() {
                     let value = self.eval(&arg.value)?;
                     if i > 0 {
@@ -981,6 +1220,10 @@ impl<'p, 'o> Interp<'p, 'o> {
                     self.out.extend_from_slice(&buf);
                 }
                 self.out.push(b'\n');
+                if self.tracer.is_some() {
+                    let text = String::from_utf8_lossy(&self.out[start.min(self.out.len())..]).into_owned();
+                    self.traced(|tracer, view| tracer.printed(view, span, &text));
+                }
                 if self.program.interactive {
                     let _ = self.sink.write_all(&self.out);
                     let _ = self.sink.flush();
@@ -1218,7 +1461,14 @@ impl<'p, 'o> Interp<'p, 'o> {
         let saved = std::mem::replace(&mut self.base, base);
         self.frame_locals.push(&f.locals);
         self.depth += 1;
+        let wanted = self.tracer.as_ref().is_some_and(|tracer| tracer.wants_fn(&f.name));
+        if let (true, Some(tracer)) = (wanted, &mut self.tracer) {
+            tracer.inside += 1;
+        }
         let flow = self.block(&f.body);
+        if let (true, Some(tracer)) = (wanted, &mut self.tracer) {
+            tracer.inside -= 1;
+        }
         self.depth -= 1;
         self.frame_locals.pop();
         self.base = saved;

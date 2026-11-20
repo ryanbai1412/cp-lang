@@ -101,8 +101,8 @@ fn constraints_become_typed_reads() {
         "`N` is not a name; names look like `n` or `max_w`"
     );
     assert_eq!(
-        reads("n: 1..=5; s: Str").unwrap_err(),
-        "in `let s: Str = read()`: can't generate a `Str` yet; pass a generator with `--gen`"
+        reads("n: 1..=5; x: Float").unwrap_err(),
+        "in `let x: Float = read()`: can't generate a `Float` yet; pass a generator with `--gen`"
     );
 }
 
@@ -395,18 +395,14 @@ fn the_test_command_judges_with_a_checker_or_an_interactor() {
         "{out}"
     );
 
-    // A declared judge must be passed, never silently replaced.
-    std::fs::write(
-        &source,
-        "let n: 1..=5 = read()\n@checker(output: Int)\nfn valid(out: Int) -> Bool:\n    out > 0\n",
-    )
-    .unwrap();
-    let (code, _, err) = cli(test::run, &[path, "--fast", &solution]);
-    assert_eq!(code, 1);
-    assert!(
-        err.contains("declares the checker `valid` (line 3)"),
-        "{err}"
-    );
+    // A declared judge is the judge: `cpl judge <file>` runs it.
+    let declared = "let n: 1..=5 = read()\n@checker\nfn valid():\n    let out: Int = read_output()\n    assert out > 0\n";
+    match cpl_stress::cli::select_judge(declared, path, None, None).unwrap() {
+        Judge::Checker(program) => {
+            assert_eq!(program.argv[1..], ["judge".to_string(), path.to_string()])
+        }
+        other => panic!("the declared checker was not used: {other:?}"),
+    }
 
     let (code, _, err) = cli(test::run, &[dir.join("empty.cp").to_str().unwrap()]);
     assert_eq!(code, 1);
@@ -576,9 +572,9 @@ fn the_bench_command_prints_a_report_or_json() {
         err.contains("has no typed `read()` to make inputs from"),
         "{err}"
     );
-    std::fs::write(&source, "let s: Str = read()\n").unwrap();
+    std::fs::write(&source, "let x: Float = read()\n").unwrap();
     let (_, _, err) = cli(bench::run, &[path, "--fast", &solution]);
-    assert!(err.contains("d.cp:1: can't generate a `Str` yet"), "{err}");
+    assert!(err.contains("d.cp:1: can't generate a `Float` yet"), "{err}");
     let (code, _, err) = cli(bench::run, &[path, "--format", "xml"]);
     assert_eq!(code, 2);
     assert!(

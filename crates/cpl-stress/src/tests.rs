@@ -61,12 +61,12 @@ fn the_spec_is_read_from_the_types_of_read() {
 
 #[test]
 fn types_the_generator_cannot_make_are_reported_where_they_are() {
-    let src = "let n: 1..=5 = read()\nlet s: Str = read()\n";
+    let src = "let n: 1..=5 = read()\nlet x: Float = read()\n";
     let error = InputSpec::from_source(src).unwrap_err();
-    assert_eq!(error.span.text(src), "Str");
+    assert_eq!(error.span.text(src), "Float");
     assert_eq!(
         error.message,
-        "can't generate a `Str` yet; pass a generator with `--gen`"
+        "can't generate a `Float` yet; pass a generator with `--gen`"
     );
     let untyped = InputSpec::from_source("let n = read()\n").unwrap_err();
     assert!(
@@ -132,16 +132,14 @@ fn an_empty_range_makes_no_case() {
 
 #[test]
 fn a_case_renders_one_row_per_line_and_describes_itself_by_name() {
-    let case = Case {
-        values: vec![
+    let case = Case::of(vec![
             Value::Tuple(vec![Value::Int(3), Value::Int(2)]),
             Value::Seq(vec![Value::Int(1), Value::Int(5), Value::Int(2)]),
             Value::Seq(vec![
                 Value::Tuple(vec![Value::Int(1), Value::Int(3)]),
                 Value::Tuple(vec![Value::Int(2), Value::Int(2)]),
             ]),
-        ],
-    };
+        ]);
     assert_eq!(case.render(), "3 2\n1 5 2\n1 3\n2 2\n");
     assert_eq!(
         case.describe(&spec()),
@@ -163,16 +161,14 @@ fn grids_are_rows_of_columns() {
 #[test]
 fn fitting_cuts_arrays_and_clamps_values_to_the_new_size() {
     let spec = spec();
-    let mut case = Case {
-        values: vec![
+    let mut case = Case::of(vec![
             Value::Tuple(vec![Value::Int(2), Value::Int(1)]),
             Value::Seq(vec![Value::Int(1), Value::Int(5), Value::Int(2)]),
             Value::Seq(vec![
                 Value::Tuple(vec![Value::Int(1), Value::Int(3)]),
                 Value::Tuple(vec![Value::Int(2), Value::Int(2)]),
             ]),
-        ],
-    };
+        ]);
     // `n` was lowered from 3 to 2 and `q` from 2 to 1.
     assert_eq!(fit(&spec, &case).unwrap().render(), "2 1\n1 5\n1 2\n");
     // An array cannot grow.
@@ -205,12 +201,10 @@ fn shrinking_deletes_elements_from_the_middle() {
         "let n: 1..=9 = read()\ndomain V = 1..=n\nlet a: [V]0..=9 = read()\n",
     )
     .unwrap();
-    let start = Case {
-        values: vec![
+    let start = Case::of(vec![
             Value::Int(5),
             Value::Seq([1, 7, 1, 1, 9].map(Value::Int).to_vec()),
-        ],
-    };
+        ]);
     // Fails while a 7 comes somewhere before a 9.
     let mut fails = |case: &Case| {
         let Value::Seq(a) = &case.values[1] else {
@@ -577,7 +571,8 @@ mod cli {
         assert!(out.starts_with("{\"status\":\"fail\",\"cases\":"), "{out}");
         assert!(out.contains("\"input\":\"n = 1  q = 1  a = [1001]  queries = [(1, 1)]\",\"raw_input\":\"1 1\\n1001\\n1 1\\n\""), "{out}");
         assert!(
-            out.contains("\"verdict\":\"WA\",\"stages\":[],\"saved\":\""),
+            // No `debug(...)` ran on both sides: these are scripts.
+            out.contains("\"verdict\":\"WA\",\"stages\":[],\"saved\":\"") && out.contains(",\"trace\":null}"),
             "{out}"
         );
         let (_, out, _) = stress(&[
@@ -598,17 +593,18 @@ mod cli {
         .unwrap();
         let file = file.to_str().unwrap();
         let good = script(&dir, "good", MAX);
-        let (code, _, err) = stress(&[file, "--fast", &good, "--brute", &good]);
-        assert_eq!(code, 1);
-        assert!(
-            err.contains("declares the checker `valid` (line 8)"),
-            "{err}"
-        );
-        assert!(
-            err.contains("pass it built with `--checker <program>`"),
-            "{err}"
-        );
-        // With one, it judges, and no brute is needed.
+        // The file's own checker judges: `cpl judge <file>` is given the
+        // input and the output.
+        let src = std::fs::read_to_string(file).unwrap();
+        match crate::cli::select_judge(&src, file, None, None).unwrap() {
+            crate::Judge::Checker(program) => {
+                assert_eq!(program.name, format!("{file} (`valid`)"));
+                assert_eq!(program.argv[1..], ["judge".to_string(), file.to_string()]);
+            }
+            other => panic!("the declared checker was not used: {other:?}"),
+        }
+        // A program passed with `--checker` judges in its place, and no
+        // brute is needed.
         let accept = script(&dir, "accept", "exit 0");
         let (code, out, err) =
             stress(&[file, "--fast", &good, "--checker", &accept, "--cases", "10"]);
@@ -631,10 +627,10 @@ mod cli {
         let (code, _, err) = stress(&[path, "--fast", &good]);
         assert_eq!(code, 1);
         assert!(err.contains("there is nothing to compare"), "{err}");
-        std::fs::write(&file, "let s: Str = read()\n").unwrap();
+        std::fs::write(&file, "let x: Float = read()\n").unwrap();
         let (code, _, err) = stress(&[path, "--fast", &good, "--brute", &good]);
         assert_eq!(code, 1);
-        assert!(err.contains("d.cp:1: can't generate a `Str` yet"), "{err}");
+        assert!(err.contains("d.cp:1: can't generate a `Float` yet"), "{err}");
         std::fs::write(&file, "print(1)\n").unwrap();
         let (_, _, err) = stress(&[path, "--fast", &good, "--brute", &good]);
         assert!(err.contains("has no typed `read()`"), "{err}");
@@ -665,4 +661,139 @@ mod cli {
         assert!(out.starts_with("usage: cpl stress"));
         std::fs::remove_dir_all(dir).unwrap();
     }
+}
+
+/// Every kind of value a `read()` can ask for.
+const KINDS: &str = "\
+let n: 2..=8 = read()
+domain V = 1..=n
+let flag: Bool = read()
+let c: Char = read()
+let s: Str = read()
+let e: [0..2](u: V, v: V) = read()
+let p: Perm<V> = read()
+let t: Tree<V> = read()
+print(n)
+";
+
+fn is_perm(value: &Value, n: i128) -> bool {
+    let Value::Seq(items) = value else { return false };
+    let mut seen: Vec<i128> = items.iter().filter_map(Value::number).collect();
+    seen.sort();
+    seen == (1..=n).collect::<Vec<_>>()
+}
+
+fn is_tree(value: &Value, n: i128) -> bool {
+    let Value::Seq(edges) = value else { return false };
+    let mut root: Vec<usize> = (0..=n as usize).collect();
+    fn find(root: &mut [usize], v: usize) -> usize {
+        if root[v] == v { v } else { let r = find(root, root[v]); root[v] = r; r }
+    }
+    let mut joined = 0;
+    for edge in edges {
+        let Value::Tuple(ends) = edge else { return false };
+        let (Some(a), Some(b)) = (ends[0].number(), ends[1].number()) else { return false };
+        if !(1..=n).contains(&a) || !(1..=n).contains(&b) {
+            return false;
+        }
+        let (a, b) = (find(&mut root, a as usize), find(&mut root, b as usize));
+        if a == b {
+            return false;
+        }
+        root[a] = b;
+        joined += 1;
+    }
+    joined == n - 1
+}
+
+#[test]
+fn words_letters_flags_records_permutations_and_trees_are_generated_valid() {
+    let spec = InputSpec::from_source(KINDS).unwrap();
+    for seed in 0..200 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).expect("a case");
+        let Some(n) = case.values[0].number() else { panic!("n is a number") };
+        assert!(matches!(case.values[1], Value::Int(0 | 1)));
+        assert!(matches!(case.values[2], Value::Char(c) if (97..=122).contains(&c)));
+        let Value::Seq(word) = &case.values[3] else { panic!("a word") };
+        assert!(!word.is_empty() && word.iter().all(|c| matches!(c, Value::Char(97..=122))));
+        let Value::Seq(pairs) = &case.values[4] else { panic!("records") };
+        assert!(pairs.iter().all(|pair| matches!(pair, Value::Tuple(ends) if ends.iter().all(|end| (1..=n).contains(&end.number().unwrap())))));
+        assert!(is_perm(&case.values[5], n), "{case:?}");
+        assert!(is_tree(&case.values[6], n), "{case:?}");
+        // The lines are what `read()` takes: a word is written together.
+        let text = case.render();
+        let lines: Vec<&str> = text.lines().collect();
+        assert_eq!(lines.len(), 4 + 2 + 1 + (n as usize - 1));
+        assert!(lines[3].bytes().all(|b| b.is_ascii_lowercase()));
+    }
+}
+
+#[test]
+fn shrinking_keeps_permutations_and_trees_valid_and_makes_them_plain() {
+    let spec = InputSpec::from_source(KINDS).unwrap();
+    let start = generate(&spec, &mut Rng::new(7), Size::Small(8)).unwrap();
+    // Fails whenever the word still has an `x`-or-later letter count of
+    // two or more... here: whenever n >= 4. Everything else is noise.
+    let mut seen_invalid = false;
+    let smallest = shrink(&spec, &start, 2000, &mut |case: &Case| {
+        let n = case.values[0].number().unwrap();
+        seen_invalid |= !is_perm(&case.values[5], n) || !is_tree(&case.values[6], n);
+        n >= 4
+    });
+    assert!(!seen_invalid, "a shrink step offered an invalid case");
+    assert_eq!(smallest.values[0], Value::Int(4));
+    assert_eq!(smallest.values[1], Value::Int(0));
+    assert_eq!(smallest.values[2], Value::Char(97));
+    assert_eq!(smallest.values[3], Value::Seq(vec![Value::Char(97)]));
+    // The permutation in order, and a tree of four vertices.
+    assert_eq!(smallest.values[5], Value::Seq((1..=4).map(Value::Int).collect()));
+    assert!(is_tree(&smallest.values[6], 4));
+    assert_eq!(smallest.describe(&spec).split("  ").next(), Some("n = 4"));
+}
+
+#[test]
+fn a_multitest_input_has_a_header_and_shrinks_to_one_failing_test() {
+    let src = "const LIMIT = 9\n@!multitest\nlet n: 1..=5 = read()\nlet a: [0..n]1..=LIMIT = read()\nprint(a.max)\n";
+    let spec = InputSpec::from_source(src).unwrap();
+    assert!(spec.fields.is_empty());
+    let mut many = None;
+    for seed in 0..50 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap();
+        let text = case.render();
+        let mut lines = text.lines();
+        // The count of test cases, then two lines for each.
+        assert_eq!(lines.next().unwrap().parse::<usize>().unwrap(), case.cases.len());
+        assert_eq!(lines.count(), 2 * case.cases.len());
+        if case.cases.len() >= 3 {
+            many = Some(case);
+        }
+    }
+    let start = many.expect("some input has three test cases");
+    let fails = |case: &Case| {
+        case.cases.iter().any(|test| matches!(&test.values[1], Value::Seq(a) if a.len() >= 2))
+    };
+    let mut start = start;
+    start.cases[1].values = vec![Value::Int(3), Value::Seq(vec![Value::Int(4), Value::Int(9), Value::Int(2)])];
+    let smallest = shrink(&spec, &start, 2000, &mut |case: &Case| fails(case));
+    assert_eq!(smallest.render(), "1\n2\n1 1\n");
+    assert_eq!(smallest.describe(&spec), "n = 2  a = [1, 1]");
+}
+
+#[test]
+fn an_interactor_says_what_the_hidden_test_is() {
+    let src = "\
+@!multitest
+let n: 1..=100 = read()
+let r: Int = ask(\"?\", 1, limit: 7)
+print(\"!\", r)
+
+@interactor fn judge(sol: Interactor):
+    let n: 1..=100 = read()
+    let x: 1..=n = read()
+    sol.send(n)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    let inner = spec.cases.as_ref().expect("a multitest input");
+    let names: Vec<_> = inner.fields.iter().map(|field| field.names.clone()).collect();
+    assert_eq!(names, [vec![Some("n".to_string())], vec![Some("x".to_string())]]);
 }

@@ -821,7 +821,9 @@ const TraceCore = (() => {
     if(!Array.isArray(samples))throw new Error("Invalid embedded sample library");
     $("sample-list").innerHTML=samples.map((s,i)=>`<button class="sample" data-sample="${i}" aria-current="false">${icon(["dp","graph","tree","grid","array"][i],"sample-icon")}<span>${esc(s.title)}<span>${esc(categories[i]||"Sample execution")}</span></span></button>`).join("");
     $("sample-list").querySelectorAll("[data-sample]").forEach(el=>el.onclick=()=>{try{load(samples[Number(el.dataset.sample)],Number(el.dataset.sample));}catch(e){error(e.message);}});
-    const embedded=JSON.parse($("trace-data").textContent);
+    // `#live`: a recording the playground just made of the code in its editor.
+    const live=(()=>{try{const outer=window.parent!==window?window.parent:window;if(!/#live$/.test(outer.location.hash))return null;return outer.cpLiveTrace??sessionStorage.getItem("cp-live-trace");}catch(_){return null;}})();
+    const embedded=live?JSON.parse(live):JSON.parse($("trace-data").textContent);
     if(embedded!==null){load(embedded);if(!samples.length){$("sample-list").innerHTML='<div class="sample"><span>Captured execution<span>Open trace to load another file</span></span></div>';}}
     else if(samples.length)load(samples[0],0);
     else error("No trace embedded. Choose Open trace to load a JSON capture.");

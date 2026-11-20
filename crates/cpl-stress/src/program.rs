@@ -226,7 +226,7 @@ fn compile_cpp(source: &Path, ours: bool) -> Result<String, BuildError> {
 
 /// Emits the C++ for a `.cp` file into the cache, through the same front
 /// end and back end as `cpl build`. Returns the path of the C++ file.
-fn emit_cpp(source: &Path) -> Result<PathBuf, BuildError> {
+fn emit_cpp(source: &Path, brute: bool) -> Result<PathBuf, BuildError> {
     let name = source.display().to_string();
     let text = std::fs::read_to_string(source)
         .map_err(|e| BuildError(format!("can't read {name}: {e}")))?;
@@ -243,7 +243,12 @@ fn emit_cpp(source: &Path) -> Result<PathBuf, BuildError> {
     if analysis.diagnostics.iter().any(is_error) {
         return Err(errors(&analysis.diagnostics));
     }
-    let program = cpl_ir::lower(&analysis).map_err(|diagnostics| errors(&diagnostics))?;
+    let lowered = match cpl_ir::brute(&analysis) {
+        Some((brute_fn, _)) if brute => cpl_ir::lower_brute(&analysis, &brute_fn),
+        None if brute => return Err(BuildError(format!("{name} declares no `@brute(main)` fn"))),
+        _ => cpl_ir::lower(&analysis),
+    };
+    let program = lowered.map_err(|diagnostics| errors(&diagnostics))?;
     let file = source.file_name().unwrap_or_default().to_string_lossy();
     let cpp = cpl_codegen::emit(&program, &file, None);
     let dir = cache_dir();
@@ -275,7 +280,7 @@ impl Program {
         let argv = match extension {
             "cpp" | "cc" | "cxx" => vec![compile_cpp(path, false)?],
             "py" => vec!["python3".to_string(), name.clone()],
-            "cp" => vec![compile_cpp(&emit_cpp(path)?, true)?],
+            "cp" => vec![compile_cpp(&emit_cpp(path, false)?, true)?],
             // Relative paths need `./` to be found.
             _ => vec![path
                 .canonicalize()
@@ -284,6 +289,15 @@ impl Program {
                 .to_string()],
         };
         Ok(Program { name, argv })
+    }
+
+    /// The `@brute(main)` fn of the `.cp` file `path`, built like the
+    /// solution: the file's input header, then the fn.
+    pub fn resolve_brute(path: &Path, fn_name: &str) -> Result<Program, BuildError> {
+        Ok(Program {
+            name: format!("{} (`{fn_name}`)", path.display()),
+            argv: vec![compile_cpp(&emit_cpp(path, true)?, true)?],
+        })
     }
 
     /// The command with `extra` arguments added.

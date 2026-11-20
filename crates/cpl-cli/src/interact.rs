@@ -154,6 +154,48 @@ pub fn run(
     })
 }
 
+/// [`run`], recording the solution's side: its trace and what its
+/// `debug(...)`s showed. A failure on either side is the run's.
+pub fn run_traced(
+    solution: &cpl_ir::Program,
+    judge: &cpl_ir::Program,
+    input: &[u8],
+    stdout: &mut (dyn Write + Send),
+    config: cpl_interp::trace::TraceConfig,
+) -> cpl_interp::Observed {
+    let wire = Arc::new(Wire::default());
+    let end = |side| End {
+        wire: Arc::clone(&wire),
+        side,
+    };
+    let (solution_end, judge_end) = (end(0), end(1));
+    std::thread::scope(|scope| {
+        let judging = scope.spawn(|| {
+            let mut says = Speaker {
+                end: &judge_end,
+                echo: None,
+                lines: 0,
+            };
+            let io = cpl_interp::Io::judge(input, Box::new(|| judge_end.recv()));
+            let result = cpl_interp::run_with(judge, io, &mut says);
+            judge_end.close();
+            result.err()
+        });
+        let mut says = Speaker {
+            end: &solution_end,
+            echo: Some(stdout),
+            lines: 0,
+        };
+        let io = cpl_interp::Io::live(Box::new(|| solution_end.recv()));
+        let mut observed = cpl_interp::run_observed(solution, io, &mut says, Some(config));
+        solution_end.close();
+        if let (None, Some(trap)) = (&observed.trap, judging.join().unwrap_or(None)) {
+            observed.trap = Some(trap);
+        }
+        observed
+    })
+}
+
 /// `cpl judge <file> <input>`: the file's `@interactor` as a judge
 /// program. It reads the hidden test from `<input>`, talks to a solution
 /// on standard input and output, and exits 0 to accept.

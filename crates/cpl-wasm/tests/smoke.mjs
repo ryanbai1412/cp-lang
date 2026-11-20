@@ -52,6 +52,49 @@ test("the module says which toolchain it is", () => {
   assert.equal(cpl.version, /^version = "(.+)"$/m.exec(manifest)[1]);
 });
 
+test("trace records a live program for the trace viewer", () => {
+  const source = [
+    "let n: 1..=10 = read()",
+    "let a: [0..n]1..=100 = read()",
+    "var best = 0",
+    "for i in 0..n:",
+    "    if i > 0: best max= a[i]",
+    "    debug(i, best)",
+    "print(best)",
+    "",
+    "@brute(main)",
+    "fn slow():",
+    "    var m = 0",
+    "    for x in a: m = max(m, x)",
+    "    print(m)",
+    "",
+  ].join("\n");
+  const run = cpl.trace(source, "3\n9 5 2\n");
+  assert.equal(run.ok, true);
+  assert.equal(run.stdout, "5\n");
+  assert.equal(run.debug, "[line 6] i = 0, best = 0\n[line 6] i = 1, best = 5\n[line 6] i = 2, best = 5\n");
+  const { trace } = run;
+  assert.equal(trace.schemaVersion, 1);
+  assert.equal(trace.source.code, source);
+  assert.equal(trace.variables.a.kind, "array");
+  // A step is a snapshot of the declared variables in scope at it.
+  for (const side of ["fast", "slow"]) {
+    for (const step of trace.runs[side].steps) {
+      for (const id of Object.keys(step.values)) assert.ok(id in trace.variables, id);
+    }
+    assert.deepEqual(trace.runs[side].steps.at(-1).values.a, [9, 5, 2]);
+  }
+  // The planted bug: the two runs meet at the print and differ there.
+  const printed = (side) => trace.runs[side].steps.find((step) => step.checkpoint === "print 1").values.stdout;
+  assert.deepEqual(printed("fast"), ["5"]);
+  assert.deepEqual(printed("slow"), ["9"]);
+  assert.ok(!JSON.stringify(trace).includes("<"));
+
+  const broken = cpl.trace("print(nope)\n");
+  assert.equal(broken.ok, false);
+  assert.equal(broken.trace, null);
+});
+
 test("run reads stdin and prints", () => {
   const run = cpl.run(DOUBLE, "21\n");
   assert.deepEqual(

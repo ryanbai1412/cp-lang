@@ -135,6 +135,64 @@ impl Playground {
         Run { stdout, result }
     }
 
+    /// `cpl run --trace --format json`: runs `source` like
+    /// [`run_to_depth`](Self::run_to_depth) and records it. The result
+    /// has two more members: `trace`, a document of
+    /// `tools/trace/trace-schema.json` (`null` when the source has
+    /// errors), and `debug`, what the program's `debug(...)`s showed.
+    /// A file with a `@brute(main)` fn is traced through it too, as the
+    /// document's `slow` run, lined up with the solution's.
+    pub fn trace_to_depth(&mut self, name: &str, source: &str, input: &[u8], depth: u32) -> (Vec<u8>, String) {
+        use cpl_interp::trace::{document, TraceConfig};
+        let mut stdout = Vec::new();
+        let (result, trace, debug) = match self.compile(name, source) {
+            Err(errors) => (errors, "null".to_string(), String::new()),
+            Ok(mut compiled) => {
+                let config = || TraceConfig {
+                    source: source.to_string(),
+                    only_fn: None,
+                };
+                let observed = observe(&compiled.program, input, &mut stdout, depth, config());
+                let mut code = 0;
+                if let Some(trap) = observed.trap {
+                    let failure = Diagnostic::error(codes::RUNTIME, trap.span, trap.message);
+                    compiled.stderr +=
+                        &cpl_diag::render(&failure, name, source, &LineIndex::new(source));
+                    compiled.diagnostics.push(failure);
+                    code = EXIT_FAILED;
+                }
+                let fast = observed.recording.unwrap_or_default();
+                // The brute's side, when the file has one that builds.
+                let slow = self.db.analyze(name).and_then(|analysis| {
+                    let (brute_fn, _) = cpl_ir::brute(&analysis)?;
+                    let program = cpl_ir::lower_brute(&analysis, &brute_fn).ok()?;
+                    let mut sink = Vec::new();
+                    let recording = observe(&program, input, &mut sink, depth, config()).recording?;
+                    Some((brute_fn, recording))
+                });
+                let note = match &slow {
+                    Some(_) => "The same input through the solution and through its @brute(main), lined up at each print and each debug(...) both ran.",
+                    None => "Every change to a top-level variable, every print and every debug(...).",
+                };
+                let trace = document(
+                    name,
+                    note,
+                    name,
+                    source,
+                    (if slow.is_some() { "solution" } else { "run" }, &fast),
+                    slow.as_ref().map(|(brute_fn, recording)| (brute_fn.as_str(), recording)),
+                );
+                let debug = String::from_utf8_lossy(&observed.debug).into_owned();
+                (outcome(code, &compiled.diagnostics, source, compiled.stderr, []), trace, debug)
+            }
+        };
+        // The trace is JSON text already: it goes in as it is.
+        let mut json = result.to_string();
+        json.pop();
+        json += &format!(",\"debug\":{},\"trace\":{trace}}}", Value::from(debug));
+        (stdout, json)
+    }
+
     /// `cpl build`: checks `source`, then writes it as one C++17 file.
     /// `cpp` is `null` when there is none to show.
     pub fn build(&mut self, name: &str, source: &str) -> Value {
@@ -290,6 +348,32 @@ fn interpret(
     _depth: u32,
 ) -> Result<(), cpl_interp::Trap> {
     cpl_interp::run(program, input, output)
+}
+
+#[cfg(target_family = "wasm")]
+fn observe(
+    program: &cpl_ir::Program,
+    input: &[u8],
+    output: &mut Vec<u8>,
+    depth: u32,
+    config: cpl_interp::trace::TraceConfig,
+) -> cpl_interp::Observed {
+    let limits = cpl_interp::Limits {
+        depth: depth as usize,
+        stack_bytes: STACK_BYTES,
+    };
+    cpl_interp::observe_on_this_thread(program, input, output, limits, Some(config))
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn observe(
+    program: &cpl_ir::Program,
+    input: &[u8],
+    output: &mut Vec<u8>,
+    _depth: u32,
+    config: cpl_interp::trace::TraceConfig,
+) -> cpl_interp::Observed {
+    cpl_interp::run_observed(program, cpl_interp::Io::fixed(input), output, Some(config))
 }
 
 /// The result every command shares: its exit status as `cpl` would exit,

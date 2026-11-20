@@ -373,7 +373,8 @@ impl<'p> Emitter<'p> {
         let raw_cell = std::mem::take(&mut self.raw_cell);
         let program = self.program;
         match &e.kind {
-            ExprKind::Unit | ExprKind::Error => Code::primary("(void)0"),
+            // `debug(...)` is for local runs: the judge's C++ has none of it.
+            ExprKind::Unit | ExprKind::Error | ExprKind::Debug(..) => Code::primary("(void)0"),
             ExprKind::Int(v) => int_literal(*v),
             ExprKind::Float(v) => float_literal(*v),
             ExprKind::Bool(v) => Code::primary(if *v { "true" } else { "false" }),

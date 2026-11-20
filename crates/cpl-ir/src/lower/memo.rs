@@ -98,6 +98,7 @@ impl<'a> Lowerer<'a> {
                 self.globals.push(Global {
                     name,
                     ty: ty.clone(),
+                    span: Span::default(),
                 });
                 PlaceKind::Global(self.globals.len() - 1)
             }

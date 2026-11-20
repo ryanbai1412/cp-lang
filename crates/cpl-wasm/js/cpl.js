@@ -79,6 +79,20 @@ export class Cpl {
 
   /** `cpl run`: checks `source`, then runs it with `stdin` as its input. */
   run(source, stdin = "", options = {}) {
+    return this.#running("cpl_run", source, stdin, options);
+  }
+
+  /**
+   * `cpl run --trace`: runs `source` and records it. The result of `run`
+   * with `trace`, a document for the trace viewer (`tools/trace`), or null
+   * when the source has errors, and `debug`, what its `debug(...)`s showed.
+   * A file with a `@brute(main)` fn is traced through it too: `runs.slow`.
+   */
+  trace(source, stdin = "", options = {}) {
+    return this.#running("cpl_trace", source, stdin, options);
+  }
+
+  #running(command, source, stdin, options) {
     // The program's calls are the interpreter's, on the browser's stack,
     // and the module cannot see how much of it is left. A run that
     // overflows it is run again with the limit on nested calls halved, until
@@ -86,7 +100,7 @@ export class Cpl {
     // where the overflow is only a trap. `maxDepth` is the limit it ran with.
     for (let maxDepth = this.#maxDepth; ; maxDepth >>= 1) {
       try {
-        return { ...this.#call("cpl_run", { ...options, source, stdin }, maxDepth), maxDepth };
+        return { ...this.#call(command, { ...options, source, stdin }, maxDepth), maxDepth };
       } catch (error) {
         if (error.kind !== "stack" || maxDepth < MIN_DEPTH) throw error;
         // Not the program's calls if the front end overflows by itself:
@@ -134,7 +148,7 @@ export class Cpl {
       this.#write(STDIN, typeof stdin === "string" ? encoder.encode(stdin) : stdin);
       exports[command](...args);
       const result = JSON.parse(decoder.decode(this.#read(JSON_OUT)));
-      if (command === "cpl_run") {
+      if (command === "cpl_run" || command === "cpl_trace") {
         // A program prints bytes. `stdout` is those bytes read as UTF-8.
         result.stdoutBytes = this.#read(STDOUT).slice();
         result.stdout = decoder.decode(result.stdoutBytes);

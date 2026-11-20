@@ -42,6 +42,13 @@ export interface RunOutcome extends Outcome {
   maxDepth: number;
 }
 
+export interface TraceOutcome extends RunOutcome {
+  /** A `tools/trace/trace-schema.json` document, or null. */
+  trace: { schemaVersion: 1; runs: { fast: object; slow?: object }; [key: string]: unknown } | null;
+  /** What the program's `debug(...)`s showed, a line each. */
+  debug: string;
+}
+
 export interface BuildOutcome extends Outcome {
   /** The C++17 file, or null when there is none. */
   cpp: string | null;
@@ -78,6 +85,13 @@ export class Cpl {
   readonly version: string;
   check(source: string, options?: Options): Outcome;
   run(source: string, stdin?: string | Uint8Array, options?: Options): RunOutcome;
+  /**
+   * `cpl run --trace`: the run, recorded. `trace` is a document of
+   * `tools/trace/trace-schema.json` for the trace viewer, null when the
+   * source has errors; with a `@brute(main)` fn in the file it has the
+   * brute's run too, as `runs.slow`. `debug` is what `debug(...)` showed.
+   */
+  trace(source: string, stdin?: string | Uint8Array, options?: Options): TraceOutcome;
   build(source: string, options?: Options): BuildOutcome;
   hover(source: string, offset: number, options?: Options): Hover | null;
   definition(source: string, offset: number, options?: Options): Located | null;
@@ -86,7 +100,7 @@ export class Cpl {
 }
 
 export type Worker = {
-  [Method in "check" | "run" | "build" | "hover" | "definition" | "symbols" | "lsp"]: (
+  [Method in "check" | "run" | "trace" | "build" | "hover" | "definition" | "symbols" | "lsp"]: (
     ...args: Parameters<Cpl[Method]>
   ) => Promise<ReturnType<Cpl[Method]>>;
 } & { terminate(): void };

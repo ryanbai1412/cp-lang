@@ -7,6 +7,7 @@
 //! 1. For each argument, `cpl_input(slot, len)` returns where to write
 //!    `len` bytes: the file name, the source text, the standard input.
 //! 2. One command runs on what was written: `cpl_check()`, `cpl_run(depth)`,
+//!    `cpl_trace(depth)`,
 //!    `cpl_hover(offset)`, ...
 //! 3. `cpl_output_ptr(slot)` and `cpl_output_len(slot)` say where the
 //!    answer is: JSON text, and for a run the bytes the program printed.
@@ -136,6 +137,17 @@ pub extern "C" fn cpl_run(depth: u32) {
         let run = playground.run_to_depth(name, text, stdin, depth);
         *stdout = run.stdout;
         run.result.to_string()
+    });
+}
+
+/// Runs `TEXT` on `STDIN` like `cpl_run` and records it: the result has
+/// the run's `trace` (`tools/trace/trace-schema.json`) and `debug` text.
+#[no_mangle]
+pub extern "C" fn cpl_trace(depth: u32) {
+    command(|playground, name, text, stdin, stdout| {
+        let (printed, json) = playground.trace_to_depth(name, text, stdin, depth);
+        *stdout = printed;
+        json
     });
 }
 

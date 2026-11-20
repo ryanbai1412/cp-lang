@@ -60,6 +60,75 @@ pub fn interactor(analysis: &Analysis) -> Option<String> {
         })
 }
 
+/// The fn a file decorates with `@name` at its top level, if any, and
+/// the 1-based line of its name.
+fn decorated(analysis: &Analysis, wanted: fn(&ast::Decorator) -> bool) -> Option<(String, u32)> {
+    analysis.items.iter().find_map(|item| {
+        item.syntax.parsed.stmts.iter().find_map(|stmt| match &stmt.kind {
+            ast::StmtKind::Fn(decl) if stmt.decorators.iter().any(wanted) => {
+                let at = decl.name.span.shift(item.offset).start;
+                let line = analysis.lines.line_of(at) + 1;
+                Some((decl.name.text.clone(), line))
+            }
+            _ => None,
+        })
+    })
+}
+
+/// `@brute(main)`, or a bare `@brute`: a slow program to compare the
+/// whole file with. `@brute(part)` pairs one fn with another and is not
+/// one of these.
+fn is_whole_brute(decorator: &ast::Decorator) -> bool {
+    decorator.name.text == "brute"
+        && match decorator.args.as_slice() {
+            [] => true,
+            [arg] => matches!(&arg.value.kind, ast::ExprKind::Name(name) if name == "main"),
+            _ => false,
+        }
+}
+
+/// The `@brute(main)` fn a file declares, and the line it is on.
+pub fn brute(analysis: &Analysis) -> Option<(String, u32)> {
+    decorated(analysis, is_whole_brute)
+}
+
+/// The `@checker` fn a file declares, and the line it is on.
+pub fn checker(analysis: &Analysis) -> Option<(String, u32)> {
+    decorated(analysis, |d| d.name.text == "checker")
+}
+
+/// A fn that runs in place of the solution, after the file's input
+/// header: everything down to the last top-level `read()`.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Aside {
+    Brute,
+    Checker,
+}
+
+/// Lowers the `@brute(main)` fn `name` as a program: the file's input
+/// header, then the fn. A brute that calls `read()` itself reads the
+/// whole input, and none of the header runs.
+pub fn lower_brute(analysis: &Analysis, name: &str) -> Result<Program, Vec<Diagnostic>> {
+    lower_aside(analysis, name, Aside::Brute)
+}
+
+/// Lowers the `@checker` fn `name` as a program: the file's input
+/// header, then the fn, whose `read_output()` reads what the solution
+/// printed.
+pub fn lower_checker(analysis: &Analysis, name: &str) -> Result<Program, Vec<Diagnostic>> {
+    lower_aside(analysis, name, Aside::Checker)
+}
+
+fn lower_aside(analysis: &Analysis, name: &str, aside: Aside) -> Result<Program, Vec<Diagnostic>> {
+    let mut lw = Lowerer::new(analysis);
+    lw.aside = Some(aside);
+    lw.load_modules(analysis);
+    lw.collect_all(Some(name));
+    lw.signatures();
+    lw.main_for_aside(name);
+    lw.finish(analysis, false)
+}
+
 /// Lowers the judge's side of an interactive problem: a program that
 /// runs the `@interactor` fn `name`. Its `read()` reads the hidden test,
 /// `sol.recv()` reads what the solution prints, and `sol.send(..)` prints
@@ -89,9 +158,16 @@ fn lower_entry(
     } else {
         lw.main();
     }
-    // Queue root-module top-level functions (for non-test runs) plus any
-    // demand-driven functions referenced from `main`, closures, preamble, or transitive callees.
-    if test_name.is_none() {
+    lw.finish(analysis, test_name.is_none())
+}
+
+impl Lowerer<'_> {
+/// Lowers every fn the program reaches and gathers the [`Program`].
+/// `whole` is a run of the file itself: every fn of the file is lowered,
+/// called or not, so each one's errors are reported.
+fn finish(self, analysis: &Analysis, whole: bool) -> Result<Program, Vec<Diagnostic>> {
+    let mut lw = self;
+    if whole {
         for id in 0..lw.sigs.len() {
             // A fn with no body is the judge's: there is nothing to lower
             // until something calls it.
@@ -204,9 +280,11 @@ fn lower_entry(
         multitest: lw.multitest,
         until_eof: lw.until_eof,
         interactive: lw.interactive,
+        announce_tests: lw.announce_tests,
         judge_fns,
         entry_fns,
     })
+}
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -389,6 +467,14 @@ struct Lowerer<'a> {
     interactive: bool,
     /// Lowering an `@interactor` as the program, not the solution.
     judge: bool,
+    /// Lowering a `@brute(main)` or a `@checker` as the program.
+    aside: Option<Aside>,
+    /// Top-level names set below the input header: the solution's own
+    /// work, which a brute or a checker does not run.
+    tail_names: HashSet<String>,
+    /// The judge's side under `@!multitest`: it tells the solution how
+    /// many test cases there are.
+    announce_tests: bool,
 
     cx: FnCx,
     outer_cxs: Vec<FnCx>,
@@ -450,6 +536,9 @@ impl<'a> Lowerer<'a> {
             until_eof: false,
             interactive: false,
             judge: false,
+            aside: None,
+            tail_names: HashSet::new(),
+            announce_tests: false,
             cx: FnCx::default(),
             outer_cxs: Vec::new(),
             gen_env: HashMap::new(),
@@ -1750,6 +1839,7 @@ impl<'a> Lowerer<'a> {
             self.globals.push(Global {
                 name: name.to_string(),
                 ty: init.ty.clone(),
+                span: init.span,
             });
             self.mod_syms[self.cur_mod].insert(name.to_string(), Sym::Global(id));
             let place = Place {
@@ -1855,6 +1945,16 @@ impl<'a> Lowerer<'a> {
         let items: Vec<(u32, &'a ast::Stmt)> = self.mod_items(0).collect();
         for (offset, stmt) in items {
             self.offset = offset;
+            // Under `@!multitest` the judge runs once per test case, as
+            // the solution does, and tells it how many there are.
+            if self.judge {
+                for decorator in &stmt.decorators {
+                    if decorator.name.text == "multitest" {
+                        self.divide(decorator, &mut out);
+                        self.announce_tests = !self.until_eof;
+                    }
+                }
+            }
             // Run top-level constants/lets/domains/impl Index initializers before the test.
             match &stmt.kind {
                 ast::StmtKind::Const { generics, .. } if generics.is_empty() => {
@@ -1906,6 +2006,111 @@ impl<'a> Lowerer<'a> {
         let cx = std::mem::take(&mut self.cx);
         self.main_body = Block { stmts: out };
         self.main_locals = cx.locals;
+    }
+
+    /// Whether `text` calls `read()`.
+    fn reads_input(text: &str) -> bool {
+        text.match_indices("read(").any(|(at, _)| {
+            !text[..at]
+                .chars()
+                .next_back()
+                .is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '.')
+        })
+    }
+
+    /// A `@brute(main)` or `@checker` fn as the program: the input header
+    /// of the file, then a call of the fn. The header is every top-level
+    /// line down to the last one that calls `read()`, so the fn sees the
+    /// input by the names the solution gave it, in single-test and
+    /// multitest files alike. Below the header only constants are kept:
+    /// the rest is the solution's own work.
+    fn main_for_aside(&mut self, name: &str) {
+        self.cur_mod = 0;
+        self.cx = FnCx {
+            is_main: true,
+            ret: Some(Ty::Unit),
+            scopes: vec![HashMap::new()],
+            local_syms: vec![HashMap::new()],
+            ..FnCx::default()
+        };
+        let mut out = Vec::new();
+        let items: Vec<(u32, &'a ast::Stmt)> = self.mod_items(0).collect();
+        let is_item = |stmt: &ast::Stmt| {
+            matches!(
+                stmt.kind,
+                ast::StmtKind::Fn(_) | ast::StmtKind::Struct(_) | ast::StmtKind::Impl { .. }
+            )
+        };
+        let own_reads = items.iter().any(|(offset, stmt)| {
+            self.offset = *offset;
+            matches!(&stmt.kind, ast::StmtKind::Fn(decl) if decl.name.text == name)
+                && Self::reads_input(&self.source(stmt.span))
+        });
+        let header = if own_reads {
+            0
+        } else {
+            items
+                .iter()
+                .rposition(|(offset, stmt)| {
+                    self.offset = *offset;
+                    !is_item(stmt) && Self::reads_input(&self.source(stmt.span))
+                })
+                .map_or(0, |last| last + 1)
+        };
+        for (idx, &(offset, stmt)) in items.iter().enumerate() {
+            self.offset = offset;
+            if stmt.decorators.iter().any(|d| d.name.text == "test") {
+                continue;
+            }
+            for decorator in &stmt.decorators {
+                if decorator.name.text == "multitest" {
+                    self.divide(decorator, &mut out);
+                }
+            }
+            let constant = matches!(&stmt.kind, ast::StmtKind::Const { generics, .. } if generics.is_empty());
+            if idx < header || constant || is_item(stmt) {
+                self.stmt(stmt, &mut out);
+                continue;
+            }
+            match &stmt.kind {
+                ast::StmtKind::Let { pat, .. } => Self::pattern_names(pat, &mut self.tail_names),
+                ast::StmtKind::Domain { name, .. } => {
+                    self.tail_names.insert(name.text.clone());
+                }
+                _ => {}
+            }
+        }
+        if let Some(Sym::Fn(fn_id)) = self.mod_syms[0].get(name).copied() {
+            self.queue_fn(fn_id);
+            if !self.sigs[fn_id].params.is_empty() {
+                let at = self.sigs[fn_id].decl.name.span;
+                let kind = if self.aside == Some(Aside::Brute) { "@brute(main)" } else { "@checker" };
+                self.error(
+                    codes::WRONG_ARG_COUNT,
+                    at,
+                    format!("a `{kind}` fn takes no parameters: it reads the input the file reads"),
+                );
+            }
+            let ret = self.ret_of(fn_id, Span::default());
+            out.push(Stmt::Expr(Expr {
+                kind: ExprKind::Call(fn_id, Vec::new()),
+                ty: ret,
+                span: Span::default(),
+            }));
+        }
+        let cx = std::mem::take(&mut self.cx);
+        self.main_body = Block { stmts: out };
+        self.main_locals = cx.locals;
+    }
+
+    fn pattern_names(pat: &ast::Pattern, out: &mut HashSet<String>) {
+        match &pat.kind {
+            ast::PatternKind::Name(name) => {
+                out.insert(name.clone());
+            }
+            ast::PatternKind::Tuple(pats) => pats.iter().for_each(|p| Self::pattern_names(p, out)),
+            _ => {}
+        }
     }
 
     pub(super) fn queue_fn(&mut self, id: FnId) {
@@ -2753,6 +2958,11 @@ fn collect_expr_calls(e: &Expr, out: &mut Vec<FnId>) {
         }
         ExprKind::Read(spec) => collect_spec_calls(spec, out),
         ExprKind::Print(args) => {
+            for a in args {
+                collect_expr_calls(&a.value, out);
+            }
+        }
+        ExprKind::Debug(_, args) => {
             for a in args {
                 collect_expr_calls(&a.value, out);
             }

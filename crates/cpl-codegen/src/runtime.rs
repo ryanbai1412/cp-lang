@@ -475,8 +475,9 @@ inline ll isqrt(ll x) { ll r = (ll)std::sqrt((double)x); while ((r + 1) <= 30370
         name: "count_query",
         needs: &["fail"],
         code: "\
-// `ask(.., limit: K)`: the judge allows `K` queries.
-inline void count_query(ll limit) { static ll asked = 0; if (++asked > limit) fail((\"query limit exceeded: the limit is \" + std::to_string(limit)).c_str()); }
+// `ask(.., limit: K)`: the judge allows `K` queries in each test case.
+inline ll asked = 0;
+inline void count_query(ll limit) { if (++asked > limit) fail((\"query limit exceeded: the limit is \" + std::to_string(limit)).c_str()); }
 ",
     },
     Piece {
