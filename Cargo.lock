@@ -122,3 +122,16 @@ dependencies = [
 [[package]]
 name = "cpl-verify"
 version = "0.0.0"
+
+[[package]]
+name = "cpl-wasm"
+version = "0.0.0"
+dependencies = [
+ "cpl-check",
+ "cpl-cli",
+ "cpl-codegen",
+ "cpl-diag",
+ "cpl-interp",
+ "cpl-ir",
+ "cpl-lsp",
+]

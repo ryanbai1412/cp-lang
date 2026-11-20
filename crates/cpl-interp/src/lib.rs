@@ -39,31 +39,24 @@ const MAX_DEPTH: usize = 400_000;
 /// recursion here. Reserved, not committed.
 const STACK_BYTES: usize = 3 << 30;
 
+/// How far a program's calls may nest before the run is stopped as runaway
+/// recursion.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Limits {
+    /// Calls inside calls.
+    pub depth: usize,
+    /// Bytes of the interpreter's own stack those calls may use: the
+    /// program's recursion is the interpreter's.
+    pub stack_bytes: usize,
+}
+
 /// Runs `program` on `input`, writing what it prints to `output`. Output
 /// printed before a failure is still written.
+///
+/// The program runs on a thread of its own with a stack deep enough for
+/// any recursion a contest solution needs. Where no thread can be started
+/// (WebAssembly), use [`run_on_this_thread`].
 pub fn run(program: &Program, input: &[u8], output: &mut (dyn Write + Send)) -> Result<(), Trap> {
-    let body = |output: &mut (dyn Write + Send), stack_bytes: usize| {
-        let top = 0u8;
-        let mut interp = Interp {
-            program,
-            globals: vec![Value::Unit; program.globals.len()],
-            domains: vec![(0, 0); program.domains.len()],
-            stack: Vec::new(),
-            base: 0,
-            input: Input::new(input),
-            out: Vec::with_capacity(1 << 16),
-            sink: output,
-            depth: 0,
-            stack_top: std::ptr::addr_of!(top) as usize,
-            // The rest is left for the frames under the deepest call.
-            stack_budget: stack_bytes - (stack_bytes / 64).max(1 << 20),
-            frame_locals: Vec::new(),
-        };
-        let result = interp.main();
-        let _ = interp.sink.write_all(&interp.out);
-        let _ = interp.sink.flush();
-        result.map_err(|trap| *trap)
-    };
     // The writer is shared by reference so that a spawn that fails (too
     // little address space for the stack) can be tried again smaller.
     let output = std::sync::Mutex::new(output);
@@ -73,7 +66,12 @@ pub fn run(program: &Program, input: &[u8], output: &mut (dyn Write + Send)) -> 
     };
     std::thread::scope(|scope| {
         for bytes in [STACK_BYTES, 1 << 28, 1 << 23] {
-            let (body, output) = (&body, &output);
+            let output = &output;
+            let limits = Limits {
+                depth: MAX_DEPTH,
+                // The rest is left for the frames under the deepest call.
+                stack_bytes: bytes - (bytes / 64).max(1 << 20),
+            };
             let spawned =
                 std::thread::Builder::new()
                     .stack_size(bytes)
@@ -81,7 +79,7 @@ pub fn run(program: &Program, input: &[u8], output: &mut (dyn Write + Send)) -> 
                         let mut output = output
                             .lock()
                             .unwrap_or_else(|poisoned| poisoned.into_inner());
-                        body(&mut **output, bytes)
+                        run_on_this_thread(program, input, &mut **output, limits)
                     });
             if let Ok(handle) = spawned {
                 return handle.join().unwrap_or_else(|_| Err(bug()));
@@ -92,6 +90,37 @@ pub fn run(program: &Program, input: &[u8], output: &mut (dyn Write + Send)) -> 
             span: Span::default(),
         })
     })
+}
+
+/// [`run`] on the calling thread, for a host that cannot start one. The
+/// caller says how much of its stack the program's calls may take, since
+/// only it knows how much there is.
+pub fn run_on_this_thread(
+    program: &Program,
+    input: &[u8],
+    output: &mut (dyn Write + Send),
+    limits: Limits,
+) -> Result<(), Trap> {
+    let top = 0u8;
+    let mut interp = Interp {
+        program,
+        globals: vec![Value::Unit; program.globals.len()],
+        domains: vec![(0, 0); program.domains.len()],
+        stack: Vec::new(),
+        base: 0,
+        input: Input::new(input),
+        out: Vec::with_capacity(1 << 16),
+        sink: output,
+        depth: 0,
+        max_depth: limits.depth,
+        stack_top: std::ptr::addr_of!(top) as usize,
+        stack_budget: limits.stack_bytes,
+        frame_locals: Vec::new(),
+    };
+    let result = interp.main();
+    let _ = interp.sink.write_all(&interp.out);
+    let _ = interp.sink.flush();
+    result.map_err(|trap| *trap)
 }
 
 type Res<T> = Result<T, Box<Trap>>;
@@ -123,6 +152,7 @@ struct Interp<'p, 'o> {
     out: Vec<u8>,
     sink: &'o mut (dyn Write + Send),
     depth: usize,
+    max_depth: usize,
     /// Where the interpreter's own stack began, and how much of it calls
     /// may use: the program's recursion is the interpreter's.
     stack_top: usize,
@@ -874,7 +904,7 @@ impl<'p, 'o> Interp<'p, 'o> {
         }
         let here = 0u8;
         let used = self.stack_top.abs_diff(std::ptr::addr_of!(here) as usize);
-        if self.depth >= MAX_DEPTH || used > self.stack_budget {
+        if self.depth >= self.max_depth || used > self.stack_budget {
             return trap(
                 span,
                 format!(

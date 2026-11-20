@@ -1,0 +1,210 @@
+// Runs the built WebAssembly module through js/cpl.js, in Node: the same
+// two files a page loads. `scripts/build-wasm.sh --smoke` builds and then
+// runs this; on its own it is
+//
+//   node crates/cpl-wasm/tests/smoke.mjs [dist/wasm]
+//
+// What it holds the module to is in the name of each test below. That the
+// module agrees with `cpl` program by program is `tests/parity.rs`; this
+// file is about what only the real module can show: the interface, the
+// limits of a browser's stack, and what happens after a trap.
+
+import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { test } from "node:test";
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+const dist = resolve(process.argv[2] ?? join(root, "dist/wasm"));
+const { load, CplError } = await import(pathToFileURL(join(dist, "cpl.js")));
+const cpl = await load();
+
+const DOUBLE = "let n: Int = read()\nprint(n * 2)\n";
+const recurse = (depth) =>
+  `fn down(n: Int) -> Int:\n    if n == 0:\n        return 0\n    down(n - 1) + 1\nprint(down(${depth}))\n`;
+// A depth-first search down a path of `n` nodes, with the call a few
+// statements deep, so that each call takes more of the engine's stack.
+const search = (n) => `let n: 1..=100000 = ${n}
+domain V = 1..=n
+var adj: [V]List<V> = []
+for i in 1..n:
+    adj[V(i)].push(V(i + 1))
+    adj[V(i + 1)].push(V(i))
+var seen: [V]Bool = false
+var count = 0
+fn visit(u: V):
+    seen[u] = true
+    count += 1
+    for v in adj[u]:
+        if not seen[v]:
+            if count > 0:
+                match count % 1:
+                    0 => visit(v)
+                    _ => print("unreachable")
+print("searching")
+visit(V.first)
+print(count)
+`;
+
+test("the module says which toolchain it is", () => {
+  const manifest = readFileSync(join(root, "Cargo.toml"), "utf8");
+  assert.equal(cpl.version, /^version = "(.+)"$/m.exec(manifest)[1]);
+});
+
+test("run reads stdin and prints", () => {
+  const run = cpl.run(DOUBLE, "21\n");
+  assert.deepEqual(
+    { ok: run.ok, exitCode: run.exitCode, stdout: run.stdout, stderr: run.stderr },
+    { ok: true, exitCode: 0, stdout: "42\n", stderr: "" },
+  );
+  assert.deepEqual([...run.stdoutBytes], [0x34, 0x32, 0x0a]);
+  assert.deepEqual(run.diagnostics, []);
+});
+
+test("run takes stdin as bytes too", () => {
+  assert.equal(cpl.run(DOUBLE, new TextEncoder().encode("4")).stdout, "8\n");
+});
+
+test("every program of cpl's own tests prints what its .out file says", () => {
+  const dir = join(root, "crates/cpl-cli/tests/programs");
+  const programs = readdirSync(dir).filter((file) => file.endsWith(".cp"));
+  assert.ok(programs.length >= 10, `only ${programs.length} programs in ${dir}`);
+  const read = (file) => {
+    try {
+      return readFileSync(join(dir, file));
+    } catch {
+      return new Uint8Array();
+    }
+  };
+  for (const program of programs) {
+    const stem = program.slice(0, -".cp".length);
+    const run = cpl.run(read(program).toString(), read(`${stem}.in`), { name: program });
+    assert.deepEqual(Buffer.from(run.stdoutBytes), read(`${stem}.out`), program);
+  }
+});
+
+test("check reports an error as data and as text", () => {
+  const source = "let n: 1..=9 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nprint(a[n])\n";
+  const check = cpl.check(source, { name: "sum.cp" });
+  assert.equal(check.ok, false);
+  assert.equal(check.exitCode, 1);
+  assert.equal(check.diagnostics.length, 1);
+  const [error] = check.diagnostics;
+  assert.equal(error.code, "E0301");
+  assert.equal(error.severity, "error");
+  assert.equal(source.slice(error.start, error.end), "n");
+  assert.deepEqual(error.range.start, { line: 3, character: 8 });
+  assert.match(error.help, /V\(n\)/);
+  assert.match(check.stderr, /^error\[E0301\]/);
+  assert.match(check.stderr, /--> sum\.cp:4:9/);
+});
+
+test("a program with errors does not run or build", () => {
+  const run = cpl.run("print(total)\n");
+  assert.deepEqual([run.ok, run.exitCode, run.stdout], [false, 1, ""]);
+  const build = cpl.build("print(total)\n");
+  assert.deepEqual([build.ok, build.exitCode, build.cpp, build.bytes], [false, 1, null, 0]);
+});
+
+test("positions index the JavaScript string, not its UTF-8 bytes", () => {
+  const source = "// é😀\nprint(total)\n";
+  const [error] = cpl.check(source).diagnostics;
+  assert.equal(source.slice(error.start, error.end), "total");
+  assert.deepEqual(error.range.start, { line: 1, character: 6 });
+});
+
+test("build writes C++17 with the source in its header", () => {
+  const build = cpl.build(DOUBLE, { name: "double.cp" });
+  assert.equal(build.ok, true);
+  assert.match(build.cpp, /^\/\/ double\.cp: C\+\+17 written by cpl/);
+  assert.match(build.cpp, /\/\/     print\(n \* 2\)/);
+  assert.match(build.cpp, /int main\(/);
+  assert.equal(build.bytes, Buffer.byteLength(build.cpp));
+});
+
+test("a failed run keeps what it printed and says where it failed", () => {
+  const run = cpl.run("print(1)\nlet n: Int = read()\nassert n > 0, \"{n} is not positive\"\n", "-5");
+  assert.deepEqual([run.ok, run.exitCode, run.stdout], [false, 3, "1\n"]);
+  assert.equal(run.diagnostics.length, 1);
+  assert.equal(run.diagnostics[0].code, "R0001");
+  assert.equal(run.diagnostics[0].range.start.line, 2);
+  assert.match(run.stderr, /-5 is not positive/);
+});
+
+test("hover, definition and symbols answer at an offset", () => {
+  const source = "fn double(x: Int) -> Int:\n    x * 2\nlet n: Int = read()\nprint(double(n))\n";
+  const call = source.lastIndexOf("double");
+  assert.match(cpl.hover(source, call).text, /double/);
+  assert.equal(cpl.definition(source, call).start, source.indexOf("double"));
+  assert.equal(cpl.hover(source, 0), null);
+  assert.deepEqual(
+    cpl.symbols(source).map(({ kind, name }) => [kind, name]),
+    [["fn", "double"], ["value", "n"]],
+  );
+});
+
+test("lsp is the language server without the stdio framing", () => {
+  const [reply] = cpl.lsp({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} });
+  assert.equal(reply.id, 1);
+  assert.ok(reply.result.capabilities);
+  const uri = "file:///main.cp";
+  const sent = cpl.lsp({
+    jsonrpc: "2.0",
+    method: "textDocument/didOpen",
+    params: { textDocument: { uri, languageId: "cp", version: 1, text: "print(total)\n" } },
+  });
+  const published = sent.find((message) => message.method === "textDocument/publishDiagnostics");
+  assert.equal(published.params.uri, uri);
+  assert.equal(published.params.diagnostics.length, 1);
+});
+
+test("recursion a browser's stack can hold runs", () => {
+  assert.equal(cpl.run(recurse(300)).stdout, "300\n");
+  assert.equal(cpl.run(search(100)).stdout, "searching\n100\n");
+});
+
+test("recursion that never ends is a diagnostic, not a crash", () => {
+  const run = cpl.run("fn forever(n: Int) -> Int:\n    forever(n + 1)\nprint(forever(0))\n");
+  assert.equal(run.exitCode, 3);
+  assert.match(run.diagnostics[0].message, /`forever` never stops calling itself\?/);
+  assert.equal(run.diagnostics[0].range.start.line, 1);
+});
+
+test("recursion too deep for the engine's stack is that diagnostic too", () => {
+  // Each call here is heavy enough that the engine's stack fills before the
+  // module's limit on nested calls: the run is tried again under a lower one.
+  const source = search(5000);
+  const run = cpl.run(source);
+  assert.deepEqual([run.exitCode, run.stdout], [3, "searching\n"]);
+  const [failure] = run.diagnostics;
+  assert.equal(failure.message, `calls are nested ${run.maxDepth} deep: \`visit\` never stops calling itself?`);
+  assert.equal(source.slice(failure.start, failure.end), "visit(v)");
+  assert.ok(run.maxDepth >= 100 && run.maxDepth <= 1000, `stopped at ${run.maxDepth}`);
+  assert.equal(cpl.run(DOUBLE, "21").stdout, "42\n");
+});
+
+test("a trap is a CplError, and the next call starts clean", () => {
+  // Nesting this deep in one expression overflows the engine's stack inside
+  // the parser, where no limit of the interpreter's applies.
+  const nested = `print(${"(".repeat(200_000)}1${")".repeat(200_000)})\n`;
+  const ranOutOfStack = (error) =>
+    error instanceof CplError && error.kind === "stack" && /ran out of stack/.test(error.message);
+  assert.throws(() => cpl.check(nested), ranOutOfStack);
+  assert.throws(() => cpl.run(nested), ranOutOfStack);
+  assert.equal(cpl.run(DOUBLE, "21").stdout, "42\n");
+});
+
+test("a second edit of the same file is checked again", () => {
+  assert.equal(cpl.check("print(total)\n").ok, false);
+  assert.equal(cpl.check("let total = 1\nprint(total)\n").ok, true);
+  assert.equal(cpl.check("print(total)\n").ok, false);
+});
+
+test("a loop of a few million steps finishes in seconds", () => {
+  const started = performance.now();
+  const run = cpl.run("var s = 0\nfor i in 0..3000000:\n    s += i % 7\nprint(s)\n");
+  assert.equal(run.stdout, "8999994\n");
+  const ms = performance.now() - started;
+  assert.ok(ms < 5_000, `took ${ms.toFixed(0)} ms`);
+});
