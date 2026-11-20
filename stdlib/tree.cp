@@ -64,24 +64,30 @@ pub struct Rooted<V, Pre>:
         var far: [V]Int = 0
         var kid: [V]List<V> = []
         var seen: [V]Bool = false
-        var order = [root]                       // preorder of the depth-first search
-        seen[root] = true
-        var path = [(root, [a for a in adj.out(root)], 0)]
-        while not path.is_empty:
-            let (u, arcs, i) = path[path.len - 1]
-            if i == arcs.len:
-                path.pop()
-                continue
-            path[path.len - 1] = (u, arcs, i + 1)
-            let c = arcs[i].to
-            if not seen[c]:
-                seen[c] = true
-                par[c] = u
-                dep[c] = dep[u] + 1
-                far[c] = far[u] + len(arcs[i])
-                kid[u].push(c)
-                order.push(c)
-                path.push((c, [a for a in adj.out(c)], 0))
+        var order = List<V>()                    // preorder of the depth-first search
+        var stack = [(root, root, 0)]
+        while not stack.is_empty:
+            let (u, p, w) = stack[stack.len - 1]
+            stack.pop()
+            if seen[u]: continue
+            seen[u] = true
+            if u != root:
+                par[u] = p
+                dep[u] = dep[p] + 1
+                far[u] = far[p] + w
+                kid[p].push(u)
+            order.push(u)
+            let base = stack.len
+            for a in adj.out(u):
+                let c = a.to
+                if not seen[c]: stack.push((c, u, len(a)))
+            var (l, r) = (base, stack.len - 1)
+            while l < r:
+                let tmp = stack[l]
+                stack[l] = stack[r]
+                stack[r] = tmp
+                l += 1
+                r -= 1
         assert order.len == V.K
         var sz: [V]Int = 1
         for u in order.rev:
@@ -448,3 +454,19 @@ fn from_parents_tour_pos_and_value_owned_pre():
     for v in V:
         for c in t1.children(v):
             assert ent_pos[v] < ent_pos[c] and ext_pos[c] < ext_pos[v]
+
+@test
+fn weighted_rooted_dfs_tree_on_cyclic_graph():
+    domain V = 0..6
+    // Cycle + chords + self-loop: DFS tree must have every non-tree edge connect ancestor/descendant
+    let raw = [(0, 1, 3), (0, 2, 5), (1, 2, 7), (1, 3, 2), (2, 4, 4), (3, 4, 6), (4, 5, 1), (0, 5, 9), (2, 2, 1)]
+    var g: [V]List<(to: V, w: Int)> = []
+    for (u, v, w) in raw:
+        g[V(u)].push((to: V(v), w: w))
+        if u != v: g[V(v)].push((to: V(u), w: w))
+    let r = Rooted.weighted(u => g[u], root: V(0), len: a => a.w)
+    assert r.parent(V(0)) == none
+    for (u, v, _) in raw:
+        assert r.is_anc(V(u), V(v)) or r.is_anc(V(v), V(u))
+    // DFS explores first neighbor 1 -> 2 -> 4 -> 3, 5; so 0's only tree child is 1
+    assert r.children(V(0)) == [V(1)] and r.dist(V(0), V(2)) == 10 and r.dist(V(0), V(5)) == 15
