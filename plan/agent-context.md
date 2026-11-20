@@ -13,8 +13,20 @@ one: design and build the best language for competitive programming. It
 compiles to C++, and it comes with a full toolchain: CLI, debugger, LSP and
 editor plugin, docs site and playground.
 
-The repository is `~/cplang` and stays local: never push it anywhere unless
-he asks. The `plan/` directory is the source of truth. Older root-level docs
+The repository is `ryanbai1412/cp-lang` on GitHub (private). Ryan owns it
+and asked for work to go **straight to `main`**: no pull requests and no
+review gate, so keep `main` green (`cargo test` passes) on every push, and
+rebase instead of merging when someone else pushed first. Agents push with
+the `a repository token` secret; his personal GitHub account is not
+connected to the organization, on purpose.
+
+The command-line tool is called **`cpl`** for now, because `cp` clashes
+with Unix `cp`; Ryan will pick the final name. Source files end in `.cp`.
+Plan documents written before 2026-11-19 still say `cp run`, `cp build`
+and so on: read those as `cpl run`, `cpl build`, and write `cpl` in
+anything new.
+
+The `plan/` directory is the source of truth. Older root-level docs
 are being folded into it and archived. The `compiler/` course was written for his
 education only; it is not part of the handoff, and how to implement things is
 up to you. The plan describes the maximally ambitious version of what ships.
@@ -88,6 +100,66 @@ count as lines of code reductions lmao".
 
 **Errors and debugging are a key goal.** "one key goal is really good error
 and debugging messages ... and ofc everything should feel very nice".
+
+**Every decision is justified; no one-off special cases.** "i want it to
+feel like it makes sense. i want every decision to be well justified, and i
+don't want syntax that's just one off special cases. like i like the idea
+of general languages". Each row of `decisions.md` should be able to say
+why, and a construct with a single use is a sign the general mechanism is
+missing.
+
+**A small core, with user-facing behaviour buildable in userland.** "i
+don't want a language where we have like 10 random things bolted on top of
+each other and each of which is implemented by bespoke compiler stuff. i
+want to ideally make most of the user facing behavior also stuff someone
+can implement in user land". Earlier, in the same spirit: "we should make
+sure the language is still tastefully and thoughtfully designed and
+decisions make sense and we try to avoid things that are purely built into
+the core and are like special cases".
+
+**Don't be afraid to change things massively.** "we shouldn't be afraid to
+massively change things". Nothing in the plan is protected by being
+written down. When porting shows a cleaner single abstraction, refactor
+the design, update `decisions.md` with the reason, and move on.
+
+**Reduce mental overhead.** "think about the times when code becomes slow
+to write and people need to take time to think about exactly how to write
+the piece of code. we want to reduce this as much as possible by making it
+just obvious how to write the code / making it hard to write wrong code".
+Any hesitation while porting is a signal: simplify the language, or add a
+stdlib helper.
+
+**The corpus is the main tool, and ports are not translations.** "one
+powerful tool we have is the repository of the thousands of submissions i
+have. you don't need to think about just pure translating from c++ to cpl
+one by one btw. probably there's a lot of submissions that could be totally
+implemented in a completely different manner and structure if we do our
+jobs correctly". And: "we should repeatedly iterate against it. and if
+needed we can also e.g. start out with a quick prototype python compiler or
+smth for fast iteration speeds and fine tuning the language to make it very
+good". `proto/cpc/` is that prototype; use it to try a design change
+quickly before it lands in the Rust compiler.
+
+**Performance is key, including the toolchain's.** "oh also performance
+is key. also of the toolchain". Generated code must match hand-written C++
+(G1, G2), and the compiler, the debug runs, the LSP and stress testing must
+feel instant (G10, now P0).
+
+**Things should just work.** "and things should just work. like things
+should just work. it should be a lovely user experience where things just
+work". A workaround anywhere, in the language, the tools, the editor or the
+docs, is a bug to fix, not a tip to document (G17).
+
+**Measure line counts two ways.** "you should both measure % of lines of
+code reduction and also % of lines of code reduction assuming i had a
+perfect c++ cp library (which i don't cuz most of these were written
+without any library at all)". Doc 8.1 has the counting rules.
+
+**The standard library is broad, and full of small helpers.** "i think we
+also want to implement a lot of util functions. just all sorts of functions
+that would make my life and mental load in all the submissions i wrote way
+easier". It must also be easy to test the standard library and generate its
+docs, and to do the same for your own library.
 
 ## Decisions he made directly
 
@@ -195,18 +267,33 @@ Tooling:
 - Beautiful documentation, learning resources, and a nice way to learn the
   language.
 
-## Open calls from the overnight handoff
+## Calls from the overnight handoff, answered 2026-11-19
 
-He asked these and hadn't answered the recommendations yet; treat them as
-proposed:
-
-- **CLI name:** `.cp` files are fine, but a `cp` binary clashes with Unix
-  `cp`; pick another binary name (doc 11.1).
-- **Local library:** if `ryanbai1412/cp-library` exists and is his, port
-  it and use it to test library versioning and breaking changes; otherwise
-  build a realistic one.
-- **Editor scope:** the LSP is a stretch goal after the compiler, ports,
-  CLI, HTML trace and docs; the TextMate grammar is part of the core.
+- **CLI name:** `cpl` for now, `.cp` files. He will pick the final name
+  (doc 11.1).
+- **Local library:** build a fresh sample library. "you should build your
+  own local library. my cp-library is kinda meh but you can use some
+  inspiration from other popular ones". Use it to test library versioning
+  and breaking changes.
+- **Editor scope:** the LSP, the VS Code extension and syntax highlighting
+  are part of the core bar, not a stretch: "LSP, editor extension, and
+  highlighting and stuff should be part of the core overnight bar or else
+  it won't be usable lmao".
+- **Trace UI:** the old `mock/trace-mock.html` is rejected and is not in
+  this repository. "the trace mock is absolutely terrible we should NOT
+  model it off of it and instead design our own experience with our own
+  beautiful design system". Design the trace viewer fresh; doc 5 still
+  holds for what the trace must contain.
+- **Goals:** the additions to doc 0 marked 2026-11-19 (zero-UB trust, zero
+  compiler fights, the editor, pinned local libraries and a fast toolchain
+  as P0, clean escape hatches, low mental overhead, "it just works").
+- **Proposals:** the defaults in `decisions.md` §8: typed input generators
+  and shrinkers, contracts and `const` are in and the REPL is deferred; all
+  four research recommendations are adopted; the leans on strings, modint,
+  explicit type arguments, labeled `break` and the orphan rule are taken.
+- **How to work from here:** "i think really you should just work
+  autonomously and there'll always be more stuff to do and so you should
+  just manage yourself and continue working on more stuff".
 
 ## Concerns he raised that the design must keep answering
 
@@ -227,9 +314,12 @@ proposed:
 - **Research:** `research/NOTES.md` has the data and
   `research/RECOMMENDATIONS.md` has proposals for borrows, generators, domain
   strictness and checks.
-- **Pending his review:** the four proposals in `plan/18-key-features.md` (now folded into the plan as 1.9, marked proposed) (input
-  types that drive generation and shrinking, contracts, compile-time `const`,
-  a REPL), and the research proposals above.
-- **Next agreed steps:** finish the `plan/` documents, archive the old
-  docs, package a shareable zip with the corpus, build a working prototype
-  slice, port about 20 submissions, then the Rust compiler.
+- **Reviewed on 2026-11-19:** the four proposals in
+  `plan/18-key-features.md` (folded into the plan as 1.9) and the research
+  proposals above; outcomes are in `decisions.md` §8.
+- **Rust workspace:** `Cargo.toml` at the root and `crates/` hold the
+  skeleton of the real compiler and tools; `crates/README.md` says which
+  crate owns what. They are empty shells with a passing test each.
+- **Next steps:** the Rust compiler, stdlib, tools, LSP and editor
+  extension, trace viewer, docs, and corpus ports, built in parallel on
+  `main`.

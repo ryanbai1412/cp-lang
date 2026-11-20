@@ -63,9 +63,40 @@ Each port must meet:
   original **not counting code moved into the stdlib** (the user's rule);
   and a review finding no awkward spots (G4, G6).
 
+### Line counts, measured two ways
+
+Decided (Ryan, 2026-11-19): "you should both measure % of lines of code
+reduction and also % of lines of code reduction assuming i had a perfect
+c++ cp library (which i don't cuz most of these were written without any
+library at all)". Every port reports both:
+
+- **Raw.** Lines of the port against lines of the accepted submission.
+- **Library-stripped.** Lines of the port against the submission with
+  everything a perfect C++ contest library would have supplied taken out:
+  the template header (macros, typedefs, fast I/O), and hand-written
+  standard structures and algorithms (segment tree, DSU, modint, binary
+  lifting and the like). What is left is the problem-specific code.
+
+The second percentage is the one that measures the language. A port that
+only wins on the raw number, and ties or loses on the stripped one, counts
+as friction (8.7).
+
+How to count is **proposed**: blank lines and comments never count on
+either side; stdlib code never counts on our side (the user's rule above);
+the stripped regions of each original are recorded next to the port, as
+line ranges with the library facility each one stands for, so the baseline
+can be reviewed and argued with instead of trusted.
+
+Ports are also not translations. Decided (Ryan, 2026-11-19): "you don't
+need to think about just pure translating from c++ to cpl one by one ...
+there's a lot of submissions that could be totally implemented in a
+completely different manner and structure if we do our jobs correctly".
+A port re-solves the problem the way the language wants; the original is
+the oracle for output, time and memory, not the template for structure.
+
 `cp corpus report` tracks every port against the bars on every compiler
 change, and writes a report with the slowest, largest and most awkward
-ports at the top.
+ports at the top, and both line-count reductions per port and overall.
 
 ## 8.2 Proving abstractions are zero cost
 
