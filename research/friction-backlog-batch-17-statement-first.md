@@ -14,7 +14,7 @@ challenge. The ten were therefore chosen among published tasks whose
 statements are well known (IOI, APIO, Baltic OI, NOI, the AtCoder DP contest)
 and written from those. Input formats were guessed from the published tasks
 and confirmed against the C++ afterwards; all ten guesses were right except
-that two tasks are judged through a function on DMOJ (W9).
+that two tasks are judged through a function on DMOJ (W11).
 
 Items are numbered `W1`.. so they can be cited.
 
