@@ -63,6 +63,11 @@ static inline ll cp_abs(ll a, int line) { if (a == LLONG_MIN) cp_fail("Int overf
 #define cp_shl(a, b, line) ((ll)(a) << (b))
 #endif
 
+static inline ll cp_popcount(ll x) { return __builtin_popcountll((unsigned long long)x); }
+static inline ll cp_ctz(ll x) { return x == 0 ? 64 : __builtin_ctzll((unsigned long long)x); }
+static inline ll cp_clz(ll x) { return x == 0 ? 64 : __builtin_clzll((unsigned long long)x); }
+static inline ll cp_bit_len(ll x) { return 64 - cp_clz(x); }
+
 template <class T> struct Opt {
     T v{}; bool h = false;
     Opt() {}
