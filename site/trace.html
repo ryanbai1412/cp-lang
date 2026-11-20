@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Trace debugger · CP Lang 0.2.2</title>
+<script>try{const t=localStorage.getItem("cp-theme")||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=t}catch{}</script>
+<style>
+/*@trace-css*/
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to trace</a>
+<header class="top">
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">cp</span>CP Lang <span class="brand-sep">/</span> <span class="brand-page">Trace</span></a>
+  <nav class="nav" aria-label="Site">
+    <a href="course.html">Course</a><a href="index.html">Docs</a><a href="cheat-sheet.html">Cheat sheet</a><a href="playground.html">Playground</a><a href="trace.html" aria-current="page">Trace</a>
+  </nav>
+  <div class="top-actions">
+    <button class="btn" id="open" type="button" title="Open a JSON or HTML trace (or drop a file anywhere)">Open</button>
+    <button class="btn" id="save-json" type="button" title="Download this trace as JSON">JSON</button>
+    <button class="btn" id="save-html" type="button" title="Download a self-contained HTML viewer for this trace">HTML</button>
+    <button class="btn icon" id="theme" type="button" aria-label="Toggle dark theme" title="Toggle theme"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg></button>
+    <input id="file" type="file" accept=".json,.html,application/json,text/html" hidden>
+  </div>
+</header>
+<div class="shell">
+  <aside class="side" aria-label="Traces and variables">
+    <section><h2 id="samples-h">Example traces</h2><ul class="list" id="samples" aria-labelledby="samples-h"></ul></section>
+    <section><h2 id="vars-h">Variables</h2><ul class="list" id="vars" aria-labelledby="vars-h"></ul></section>
+    <div class="side-foot"><p>Examples are illustrative captures, not runs recorded in the browser.</p><p><span class="dot" aria-hidden="true"></span>Works offline · trace schema v1</p></div>
+  </aside>
+  <main id="main" tabindex="-1">
+    <div class="head">
+      <div><h1 id="title">Trace</h1><p id="desc"></p></div>
+      <dl class="stats" id="stats"></dl>
+    </div>
+    <section class="status" id="status" aria-live="polite"></section>
+    <div class="bar">
+      <div class="tabs" role="tablist" aria-label="View">
+        <button class="tab" role="tab" id="tab-state" aria-controls="view-state" aria-selected="true" type="button">State</button>
+        <button class="tab" role="tab" id="tab-log" aria-controls="view-log" aria-selected="false" tabindex="-1" type="button">Execution log</button>
+      </div>
+      <div class="seg" role="group" aria-label="Comparison mode" id="modes">
+        <button type="button" id="mode-single" aria-pressed="false">Fast only</button>
+        <button type="button" id="mode-compare" aria-pressed="true">Fast vs spec</button>
+      </div>
+    </div>
+    <div id="view-state" role="tabpanel" aria-labelledby="tab-state">
+      <section class="panel" aria-label="State inspector">
+        <div class="panel-head"><span class="panel-title mono" id="var-name"></span><span class="panel-meta" id="var-type"></span></div>
+        <div class="lanes" id="lanes"></div>
+        <div class="legend" id="legend"></div>
+      </section>
+      <div class="split" style="margin-top:12px">
+        <section class="panel" aria-label="Differences at this checkpoint" id="diff-panel">
+          <div class="panel-head"><span class="panel-title">Fast vs spec</span><span class="panel-meta" id="diff-meta"></span></div>
+          <div id="diffs"></div>
+        </section>
+        <section class="panel" aria-label="Writes this step">
+          <div class="panel-head"><span class="panel-title">Changed this step</span><span class="panel-meta" id="change-meta"></span></div>
+          <div id="changes"></div>
+        </section>
+      </div>
+      <div class="split" style="margin-top:12px">
+        <section class="panel" aria-label="Source"><div class="panel-head"><span class="panel-title">Source</span><span class="panel-meta" id="src-meta"></span></div><pre class="code" id="source"></pre></section>
+        <section class="panel" aria-label="Locals"><div class="panel-head"><span class="panel-title">In scope</span><span class="panel-meta" id="locals-meta"></span></div><dl class="kv" id="locals"></dl></section>
+      </div>
+    </div>
+    <div id="view-log" role="tabpanel" aria-labelledby="tab-log" hidden>
+      <section class="panel">
+        <div class="log-tools"><input class="input" id="filter" type="search" placeholder="Filter by label, line, checkpoint or value" aria-label="Filter events"><span class="panel-meta" id="log-meta"></span></div>
+        <ol class="log" id="log"></ol>
+      </section>
+    </div>
+  </main>
+</div>
+<section class="timeline" aria-label="Timeline">
+  <div class="tl-top"><span class="badge" id="tl-kind">STEP</span><span class="tl-label" id="tl-label"></span><span class="tl-pos" id="tl-pos"></span></div>
+  <div class="track"><input id="scrub" type="range" min="0" max="0" value="0" aria-label="Step"><div class="marks" id="marks" aria-hidden="true"></div></div>
+  <div class="transport">
+    <button class="tbtn" id="first" type="button" aria-label="First step" title="First step (Home)" aria-keyshortcuts="Home"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 3h1.5v10H3zM13 3v10L6 8z"/></svg></button>
+    <button class="tbtn" id="prev" type="button" aria-label="Previous step" title="Previous step (←)" aria-keyshortcuts="ArrowLeft"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M11 3v10L4 8z"/></svg></button>
+    <button class="tbtn play" id="play" type="button" aria-label="Play" title="Play / pause (Space)" aria-keyshortcuts="Space"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path id="play-icon" d="M5 3v10l8-5z"/></svg></button>
+    <button class="tbtn" id="next" type="button" aria-label="Next step" title="Next step (→)" aria-keyshortcuts="ArrowRight"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M5 3v10l7-5z"/></svg></button>
+    <button class="tbtn" id="last" type="button" aria-label="Last step" title="Last step (End)" aria-keyshortcuts="End"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M11.5 3H13v10h-1.5zM3 3v10l7-5z"/></svg></button>
+    <div class="seg" role="group" aria-label="Playback speed" id="speeds"></div>
+    <div class="keys" aria-hidden="true"><span><kbd>←</kbd> <kbd>→</kbd> step</span><span><kbd>[</kbd> <kbd>]</kbd> divergence</span><span><kbd>Space</kbd> play</span></div>
+  </div>
+</section>
+<div class="tip" id="tip" role="tooltip" hidden></div>
+<div class="drop" id="drop" hidden>Drop a trace file to open it</div>
+<div class="toast" id="toast" role="status" hidden></div>
+<div class="sr-only" id="announce" aria-live="polite"></div>
+<script id="trace-data" type="application/json">null</script>
+<script id="trace-samples" type="application/json">[]</script>
+<script id="trace-core">
+/*@trace-core*/
+</script>
+<script id="trace-ui">
+/*@trace-ui*/
+</script>
+</body>
+</html>

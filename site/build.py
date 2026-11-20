@@ -169,6 +169,30 @@ def navigation(current):
     return "".join(out) + "</div>"
 
 
+
+TRACE_SAMPLES = ["knapsack", "dijkstra", "tree", "grid", "array"]
+
+
+def trace_html():
+    """Self-contained trace debugger: site/trace.html with its assets and sample traces inlined."""
+    samples = [json.loads((ROOT.parent / f"tools/trace/samples/{name}.json").read_text()) for name in TRACE_SAMPLES]
+    payload = json.dumps(samples, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+    payload = payload.replace("<", "\\u003c").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
+    page = (ROOT / "trace.html").read_text()
+    asset = lambda name: (ROOT / "assets" / name).read_text()
+    parts = {
+        "/*@trace-css*/": asset("trace.css"),
+        "/*@trace-core*/": asset("trace-core.js"),
+        "/*@trace-ui*/": asset("trace.js"),
+        '<script id="trace-samples" type="application/json">[]</script>':
+            f'<script id="trace-samples" type="application/json">{payload}</script>',
+    }
+    for marker, content in parts.items():
+        assert page.count(marker) == 1, marker
+        page = page.replace(marker, content)
+    return page
+
+
 def build():
     target = ROOT / "_build"
     target.mkdir(exist_ok=True)
@@ -243,8 +267,7 @@ def build():
             '<script id="search-index" type="application/json">'
             + safe_json(search) + '</script>\n</head>')
         path.write_text(page)
-    trace = (ROOT.parent / "tools/trace/index.html").read_text()
-    (target / "trace.html").write_text(trace.replace("../../site/_build/", ""))
+    (target / "trace.html").write_text(trace_html())
     print(f"Built {len(PAGES)} chapters + playground + trace → {target}")
 
 
