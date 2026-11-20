@@ -164,6 +164,15 @@ class Parser:
                 return f
             if v == "struct":
                 return self.struct_def()
+        if t.kind == "NAME" and t.val == "assume" and not (self.peek().kind == "OP" and self.peek().val in ASSIGN_OPS | {".", "[", "("}):
+            # `assume cond`: an input promise. Rejects the case when generating, traps in a local run, and is
+            # stripped from a judge build.
+            self.next()
+            return N("assume", line, cond=self.expr())
+        if t.kind == "NAME" and t.val == "unchecked" and self.peek().kind == "OP" and self.peek().val == ":":
+            # `unchecked:` marks a block whose bounds and overflow traps a judge build drops; a local run keeps them
+            self.next()
+            return N("if", line, cond=N("bool", line, value=True), body=self.block(), orelse=None)
         if t.kind == "NAME" and t.val == "use" and self.peek().kind == "NAME":
             return self.use_stmt()
         if t.kind == "NAME" and t.val == "impl" and self.peek().kind == "NAME":
@@ -183,9 +192,15 @@ class Parser:
             if v == "enum":
                 self.next()
                 nm = self.name()
-                self.expect(":")
-                self.expect_kind("NEWLINE")
-                self.expect_kind("INDENT")
+                oneline = self.at("=")
+                if oneline:
+                    self.next()                 # `enum Dir = N | E | S | W`
+                else:
+                    self.expect(":")
+                    oneline = not self.at_kind("NEWLINE")       # `enum Cell: Empty | Wall | Coin(val: 1..=9)`
+                if not oneline:
+                    self.expect_kind("NEWLINE")
+                    self.expect_kind("INDENT")
                 variants = []
                 self.skip_newlines()
                 while not self.at_kind("DEDENT") and not self.at_kind("EOF"):
@@ -205,9 +220,15 @@ class Parser:
                                 self.next()
                         self.expect(")")
                     variants.append((vn, fields))
+                    if oneline:
+                        if self.at("|"):
+                            self.next()
+                            continue
+                        self.end_line()
+                        break
                     self.end_line()
                     self.skip_newlines()
-                if self.at_kind("DEDENT"):
+                if not oneline and self.at_kind("DEDENT"):
                     self.next()
                 return N("enum", line, name=nm, variants=variants, decos=[])
             if v == "match":

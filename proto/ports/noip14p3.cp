@@ -10,7 +10,7 @@ let k: 0..n = read(gen: fewer) where k < n
 domain X = 0..n
 domain H = 1..=m
 type Move = (up: 1..=m, down: 1..=m)
-fn small_moves() -> [X]Move: [X] _ => (rand(1, 3), rand(1, 3))    // so that taps add up
+fn small_moves() -> [X]Move: [X] _ => (rand(1, min(3, m)), rand(1, min(3, m)))    // so that taps add up
 let moves: [X]Move = read(gen: small_moves)
 type Pipe = (at: X, low: 0..=m, high: 0..=m)
 domain K = 0..k

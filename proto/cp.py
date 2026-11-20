@@ -164,8 +164,12 @@ def locate(path, ref_src, seeds=200, max_size=20, tokens=False):
             if why:
                 rej += 1
                 continue
+            mine = run(ours, inp)
+            if "assumption does not hold" in mine:
+                rej += 1
+                continue
             tried, largest = tried + 1, size
-            if not same_output(run(ours, inp), run(ref, inp), tokens):
+            if not same_output(mine, run(ref, inp), tokens):
                 found = inp
                 break
         if found:
@@ -236,6 +240,8 @@ def stress(path, ref_cpp, iters=300, max_size=20, tokens=False):
         if why:
             return None
         a = sh([base + "_bin"], inp)
+        if a.returncode and "assumption does not hold" in a.stderr:
+            return None                                 # an `assume` after the reads refused this input
         b = sh([ref], inp)
         outputs.add(b.stdout)
         if a.returncode:

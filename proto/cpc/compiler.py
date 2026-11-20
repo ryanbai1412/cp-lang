@@ -1437,6 +1437,15 @@ class Compiler(LendMixin):
                 f"return {self.coerce(b, bt, t, e.b)}; }}())"), t
 
     def x_index(self, e, want):
+        if e.obj.kind == "field" and e.obj.name == "raw" and len(e.idx) == 1:
+            # a.raw[i]: 0-based Int indexing of a 1-D array, whatever its domain (checked in a local run)
+            rc, rt = self.expr(e.obj.obj)
+            if isinstance(rt, TArr) and len(rt.dims) == 1:
+                ic, it = self.expr(e.idx[0])
+                if not is_int(it):
+                    self.error(e, f"`.raw[i]` takes an Int position, got {it!r}")
+                self.note_check(e, "raw index in range")
+                return f"{rc}[(size_t)chk_dom({ic}, (ll){rc}.size(), {e.line})]", rt.elem
         oc, ot = self.expr(e.obj)
         if isinstance(ot, TMap):
             kc, kt = self.expr(e.idx[0], ot.key)
@@ -2368,7 +2377,8 @@ class Compiler(LendMixin):
                 if fnode.body is not None:
                     self.check_call_effects(e, fsym)
         if any(getattr(a, "mut", False) for a in e.args) and not (
-                fn.kind == "name" and getattr(self.lookup(fn.name), "kind", None) in ("fn", "genfn")):
+                fn.kind == "name" and (getattr(self.lookup(fn.name), "kind", None) in ("fn", "genfn")
+                                       or fn.name in ("sort", "reverse", "dedup", "swap", "rotate_left", "next_permutation"))):
             self.error(e, "`mut` arguments are only for user fns with mut parameters")
         if fn.kind == "name" and getattr(self.lookup(fn.name), "kind", None) == "genfn":
             return self.call_generic(self.lookup(fn.name).node, e)
@@ -2695,7 +2705,7 @@ class Compiler(LendMixin):
             if isinstance(ot, TMap) and m == "get":
                 ov = self.cpp_type(TOpt(ot.val))
                 return f"([&](auto _it){{ return _it == {oc}.end() ? {ov}() : {ov}(_it->second); }}({oc}.find({key(args[0])})))", TOpt(ot.val)
-            if isinstance(ot, TSet) and m == "insert":
+            if isinstance(ot, TSet) and m in ("insert", "add"):
                 return f"{oc}.insert({key(args[0])}).second", BOOL
             if m == "remove":
                 return f"({oc}.erase({key(args[0])}) > 0)", BOOL
@@ -3722,7 +3732,7 @@ class Compiler(LendMixin):
     def s_let(self, s):
         v = s.value
         if v is not None and v.kind == "call" and v.fn.kind == "name" and v.fn.name == "compress" and len(v.args) == 1 \
-                and s.ty is None and not self.lookup("compress"):
+                and s.ty is None and s.pat.kind == "pname" and not self.lookup("compress"):
             return self.s_compress(s)
         if s.pat.kind == "ptuple" and s.ty is not None and s.ty.kind == "ttuple" and self.is_read(v) \
                 and len(s.ty.fields) == len(s.pat.items) and not getattr(s, "orelse", None):
@@ -4064,7 +4074,16 @@ class Compiler(LendMixin):
         c, t = self.expr(s.cond)
         if not isinstance(t, TBool):
             self.error(s, "assert needs a Bool")
-        self.emit(f"CP_ASSERT({c}, \"assertion failed\", {s.line});")
+        # `assert` is checked everywhere, judge build included: a wrong answer is worse than a runtime error
+        self.emit(f"if (!({c})) cp_fail(\"assertion failed\", {s.line});")
+        self.add_facts(s.cond)
+
+    def s_assume(self, s):
+        c, t = self.expr(s.cond)
+        if not isinstance(t, TBool):
+            self.error(s, "assume needs a Bool")
+        self.emit(f"if (CP_GEN && !({c})) exit(4);")
+        self.emit(f"CP_ASSERT({c}, \"assumption does not hold\", {s.line});")
         self.add_facts(s.cond)
 
     def in_gen_body(self):
