@@ -14,10 +14,10 @@
 <body class="{{page_class}}">
   <a href="#main" class="skip-link">Skip to content</a>
   <header class="topbar">
-    <a class="brand" href="index.html" aria-label="CP Lang home"><span class="brand-mark" aria-hidden="true">c<span>p</span>_</span><span>CP Lang</span></a>
-    <span class="header-divider"></span><span class="header-label">The field guide</span>
+    <a class="brand" href="index.html" aria-label="CP Lang home"><span class="brand-mark" aria-hidden="true">cp</span><span>CP Lang</span></a>
+    <nav class="product-nav" aria-label="Products"><a href="index.html" {{docs_current}}>Docs</a><a href="playground.html" {{playground_current}}>Playground</a><a href="trace.html">Trace</a></nav>
     <div class="top-actions">
-      <button class="search-trigger" type="button" aria-label="Search the guide" aria-haspopup="dialog"><span class="search-icon" aria-hidden="true"></span><span>Search the guide</span><kbd>/</kbd></button>
+      <button class="search-trigger" type="button" aria-label="Search the guide" aria-haspopup="dialog"><span class="search-icon" aria-hidden="true"></span><span>Search documentation</span><kbd>/</kbd></button>
       <a class="github-link" href="{{repo}}">GitHub <span aria-hidden="true">↗</span></a>
       <button class="theme-toggle icon-button" aria-label="Switch to dark theme" type="button">◐</button>
       <button class="menu-toggle icon-button" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar" type="button">☰</button>
@@ -27,7 +27,7 @@
     <aside class="sidebar" id="sidebar">
       <a class="edition" href="getting-started.html#what-works-today"><span class="status-dot"></span> Development edition <span>0.0</span></a>
       <nav aria-label="Guide chapters">{{navigation}}</nav>
-      <div class="sidebar-footer"><span class="tiny-mark">{ }</span><p>Built for the way<br>you solve problems.</p><a href="{{repo}}/blob/main/decisions.md">Follow the language design ↗</a></div>
+      <div class="sidebar-footer">CP Lang · Development<a href="{{repo}}/blob/main/decisions.md">Design decisions ↗</a></div>
     </aside>
     <main id="main" tabindex="-1">
       <div class="breadcrumb"><span>{{section}}</span><span aria-hidden="true">/</span><span>{{title}}</span></div>

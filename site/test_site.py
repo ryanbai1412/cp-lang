@@ -47,7 +47,7 @@ class SiteTests(unittest.TestCase):
     def test_all_local_links_and_fragments_resolve(self):
         target = ROOT / "_build"
         pages = {p.name: Page(p.read_text()) for p in target.glob("*.html")}
-        self.assertEqual(len(pages), len(build.PAGES))
+        self.assertEqual(len(pages), len(build.PAGES) + 2)
         for name, page in pages.items():
             self.assertEqual(page.duplicates, [], name)
             for link in page.links:
@@ -71,6 +71,8 @@ class SiteTests(unittest.TestCase):
     def test_responsive_toolbar_controls_have_accessible_names(self):
         controls = {"search-trigger", "theme-toggle", "menu-toggle"}
         for path in (ROOT / "_build").glob("*.html"):
+            if path.name == "trace.html":
+                continue
             page = Page(path.read_text())
             found = set()
             for button in page.buttons:
@@ -89,6 +91,21 @@ class SiteTests(unittest.TestCase):
     def test_no_unexpanded_template_fields(self):
         for path in (ROOT / "_build").glob("*.html"):
             self.assertNotRegex(path.read_text(), r"\{\{[a-z_]+\}\}")
+
+    def test_offline_bundle_has_all_pages_without_font_blobs(self):
+        import bundle
+        path = bundle.bundle()
+        source = path.read_text()
+        payload = json.loads(re.search(
+            r'<script id="offline-data" type="application/json">(.*?)</script>',
+            source, re.S).group(1))
+        self.assertEqual(set(payload["pages"]),
+                         {name + ".html" for name, *_ in build.PAGES}
+                         | {"playground.html", "trace.html"})
+        self.assertNotIn("@font-face", source)
+        self.assertNotIn("data:font", source)
+        self.assertLess(path.stat().st_size, 450_000)
+        self.assertEqual(len(json.loads(payload["search"])), len(build.PAGES))
 
     def test_every_prototype_example_runs_as_native_cpp(self):
         fixtures = {
@@ -130,6 +147,14 @@ class SiteTests(unittest.TestCase):
                             timeout=5,
                         )
                         self.assertEqual(run.stdout.split(), expected.split())
+                        # The explicitly labeled browser runner must agree with
+                        # the real prototype, including ASCII and memo examples.
+                        runner = (ROOT / "assets/playground.js").read_text()
+                        browser = subprocess.run(
+                            ["node", "-e", runner + "\nconsole.log(ExampleRunner.run("
+                             + json.dumps(name) + "," + json.dumps(data) + "))"],
+                            text=True, capture_output=True, check=True, timeout=5)
+                        self.assertEqual(browser.stdout.split(), run.stdout.split())
 
 
 if __name__ == "__main__":

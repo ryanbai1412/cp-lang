@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>CP Lang · Offline documentation</title>
+  <style>
+    html,body{margin:0;height:100%;background:#fff}
+    iframe{border:0;display:block;width:100%;height:100dvh}
+    @media(prefers-color-scheme:dark){html,body{background:#09090b}}
+  </style>
+</head>
+<body>
+<iframe id="workspace" title="CP Lang documentation, playground, and trace debugger"></iframe>
+<noscript>Enable JavaScript to open this offline edition. No network access is required.</noscript>
+<script id="offline-data" type="application/json">{{payload}}</script>
+<script>
+(() => {
+  "use strict";
+  const data = JSON.parse(document.getElementById("offline-data").textContent);
+  const frame = document.getElementById("workspace");
+  let activePage;
+  function script(source) {
+    // Escape closing tags even if future example strings contain HTML.
+    return "<script>" + source.replace(/<\/script/gi, "<\\/script") + "<" + "/script>";
+  }
+  function route() {
+    const parts = location.hash.slice(1).split("#");
+    const name = Object.hasOwn(data.pages, parts[0]) ? parts[0] : "index.html";
+    return {name, anchor:parts.slice(1).join("#")};
+  }
+  function scrollToAnchor() {
+    const doc = frame.contentDocument, {anchor} = route();
+    let id;
+    try { id = decodeURIComponent(anchor); } catch (_) { return; }
+    if (id) doc.getElementById(id)?.scrollIntoView();
+    else frame.contentWindow.scrollTo(0, 0);
+  }
+  frame.addEventListener("load", () => {
+    const doc = frame.contentDocument;
+    document.title = doc.title + " · Offline";
+    doc.addEventListener("click", event => {
+      const link = event.target.closest("a[href]");
+      if (!link || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || link.download) return;
+      const href = link.getAttribute("href");
+      if (/^https?:/.test(href)) {
+        link.target = "_blank"; link.rel = "noopener";
+        return;
+      }
+      const [path, anchor] = href.split("#");
+      const name = path ? path.split("/").pop() : activePage;
+      if (!Object.hasOwn(data.pages, name)) return;
+      event.preventDefault();
+      doc.querySelector("dialog[open]")?.close();
+      const next = name + (anchor ? "#" + anchor : "");
+      if (location.hash.slice(1) === next) scrollToAnchor();
+      else location.hash = next;
+    });
+    scrollToAnchor();
+    frame.contentWindow.focus();
+  });
+  function render() {
+    const {name} = route();
+    if (name === activePage) { scrollToAnchor(); return; }
+    activePage = name;
+    let page = data.pages[name];
+    page = page.replace('<link rel="stylesheet" href="assets/style.css">', () => "<style>" + data.css + "</style>");
+    page = page.replace('<script src="assets/theme.js"><' + '/script>', () => script(data.theme));
+    page = page.replace('<script src="assets/app.js" defer><' + '/script>', "");
+    page = page.replace('<script src="assets/playground.js"><' + '/script>', () => script(data.playground));
+    if (name !== "trace.html") {
+      const index = '<script id="search-index" type="application/json">' + data.search.replace(/</g, "\\u003c") + "<" + "/script>";
+      page = page.replace("</body>", () => index + script(data.app) + "</body>");
+    }
+    frame.srcdoc = page;
+  }
+  window.addEventListener("hashchange", render);
+  render();
+})();
+</script>
+</body>
+</html>

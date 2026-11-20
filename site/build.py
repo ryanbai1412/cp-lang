@@ -16,28 +16,28 @@ PAGES = [
         "index",
         "Overview",
         "Start here",
-        "The competitive programmer’s field guide.",
+        "A competitive-programming language targeting C++17.",
         "6 min",
     ),
     (
         "getting-started",
         "Getting started",
         "Start here",
-        "From a fresh checkout to your first solution.",
+        "Install the CLI and run a prototype example.",
         "5 min",
     ),
     (
         "tour",
         "A quick language tour",
         "Start here",
-        "The familiar parts, with less ceremony.",
+        "Values, functions, loops, and program structure.",
         "8 min",
     ),
     (
         "indices",
         "Index spaces & bounds",
         "The language",
-        "Give every position a place to belong.",
+        "Typed positions, boundaries, and indexed containers.",
         "10 min",
     ),
     (
@@ -51,21 +51,21 @@ PAGES = [
         "strings",
         "ASCII strings",
         "The language",
-        "One character. One byte. One indexing model.",
+        "Byte arrays with typed character positions.",
         "5 min",
     ),
     (
         "testing",
         "Memoization & stress tests",
         "In practice",
-        "Write the recurrence. Keep a brute beside it.",
+        "Cache recurrences and compare fast and reference solutions.",
         "8 min",
     ),
     (
         "stdlib",
         "The standard library",
         "In practice",
-        "A small core. A library you can understand.",
+        "Containers, algorithms, and local libraries.",
         "7 min",
     ),
 ]
@@ -160,11 +160,7 @@ def build():
                 pager.append(
                     f'<a class="pager-{direction.lower()}" href="{other}.html"><span>{direction} {"←" if direction == "Previous" else "→"}</span>{label}</a>'
                 )
-        heading = (
-            "Less bookkeeping.<br>More problem solving."
-            if name == "index"
-            else html.escape(title)
-        )
+        heading = "CP Lang documentation" if name == "index" else html.escape(title)
         values = dict(
             title=html.escape(title),
             heading=heading,
@@ -179,6 +175,8 @@ def build():
             name=name,
             repo=REPO,
             page_class="overview" if name == "index" else "chapter",
+            docs_current='aria-current="page"',
+            playground_current="",
         )
         page = template
         for key, value in values.items():
@@ -194,7 +192,37 @@ def build():
             )
         )
     (target / "search.json").write_text(json.dumps(search))
-    print(f"Built {len(PAGES)} pages → {target}")
+    build_playground(target, template)
+    # Embed the search index so file:// and the offline bundle need no fetch.
+    for path in target.glob("*.html"):
+        page = path.read_text().replace('</head>',
+            '<script id="search-index" type="application/json">'
+            + safe_json(search) + '</script>\n</head>')
+        path.write_text(page)
+    trace = (ROOT.parent / "tools/trace/index.html").read_text()
+    (target / "trace.html").write_text(trace.replace("../../site/_build/", ""))
+    print(f"Built {len(PAGES)} chapters + playground + trace → {target}")
+
+
+def safe_json(value):
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
+
+
+def build_playground(target, template):
+    examples = [dict(id=name, source=(ROOT / "examples" / f"{name}.cp").read_text())
+                for name in ("sum", "bounds", "accumulation", "ascii", "optional", "memo")]
+    values = dict(title="Playground", heading="Example playground", section="Tools",
+        description="Run documented examples with your own input, entirely offline.",
+        duration="", number="", navigation=navigation("playground"),
+        content=(ROOT / "playground.html").read_text(), toc="", pager="",
+        name="playground", repo=REPO, page_class="playground",
+        docs_current="", playground_current='aria-current="page"')
+    page = template
+    for key, value in values.items():
+        page = page.replace("{{" + key + "}}", value)
+    page = page.replace('</body>', '<script id="playground-examples" type="application/json">'
+        + safe_json(examples) + '</script><script src="assets/playground.js"></script></body>')
+    (target / "playground.html").write_text(page)
 
 
 if __name__ == "__main__":
