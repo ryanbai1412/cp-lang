@@ -1,5 +1,7 @@
 The standard library is written in ordinary CP Lang rather than hardwired into the compiler. Every container shares one uniform vocabulary — `.len`, `.is_empty`, `.clear()`, `.take()` (an `O(1)` move-out leaving the container empty) — and compiles down to flat, tree-shaken C++17.
 
+The prelude auto-imports common types and helpers, including `bsearch_first`, `bsearch_last`, `bfs`, `topo`, `peel`, and `resized`; the examples below need no imports for those names.
+
 ## Prelude collections
 
 Construct empty `List<T>` and `Deque<T>` with `= []`; construct all other containers with `Type()`.
@@ -25,6 +27,16 @@ sort(mut items, by: x => (x.cost, desc(x.value)))
 - **`Bitset<D>()` & `Subset<D>`:** `Bitset<D>` provides `.add(v)`, `.remove(v)`, `.toggle(v)`, `v in s`, `|`, `&`, `-`, `^`, `.len` (popcount), `.first_set -> ?D`, `s.shifted(k)`. `Subset<D>` (`D.K <= 25`) is a 4-byte `Index` value for bitmask DP: `Subset<D>.empty`, `Subset<D>.full`, `Subset<D>.single(v)`, `s.first -> ?D`, `s.with(v)`, `s.without(v)`, `s.complement`, `for mask in Subset<D>`, `for v in mask`, and `for sub in mask.subsets`.
 
 ## Search, sorting, and sequence helpers
+
+`Deque.of(xs)` starts a queue from a list in front-to-back order. `a.resized(n, fill)` returns a new list, truncated or padded to length `n` in O(n); it does not mutate `a`. The same prelude helper can be called as `resized(a, n, fill)`:
+
+```cp CP Lang 0.2.2
+let xs = [1, 2]
+var q = Deque.of(xs)
+print(q.pop_front(), q.pop_front()) // 1 2
+print(xs.resized(4, 0))             // 1 2 0 0
+print(resized(xs, 1, 0), xs)        // 1, then the unchanged 1 2
+```
 
 Answer-space binary search uses two free functions (`F64` ranges take `steps: 80`), both returning `?I`:
 
@@ -56,7 +68,7 @@ Other prelude sequence helpers:
 
 ## Range data structures and union-find
 
-Range structures accept bare associative operators (`+`, `*`, `^`, `&`, `|`, `min`, `max`, `gcd`) directly, or a custom `Monoid(id, op)`. Lazy segment trees accept stock tags (`AddSum`, `AddMin`, `AddMax`, `AssignSum`, `AssignMin`, `AssignMax`) or a custom `Action(id, compose, apply, over: op)`:
+Range structures accept bare associative operators (`+`, `*`, `^`, `&`, `|`, `min`, `max`, `gcd`) directly, or a custom `Monoid(id: identity, op: combine)`. Lazy segment trees accept stock tags (`AddSum`, `AddMin`, `AddMax`, `AssignSum`, `AssignMin`, `AssignMax`) or a custom `Action(id:, compose:, apply:, over:)`. Name the fields to make each callback's role clear:
 
 ```cp CP Lang 0.2.2
 use std.algebra.{Monoid, Action}
@@ -73,14 +85,14 @@ let nodes: [V]Node = [V] v => Node(a[v])
 var bit = Fenwick<V, Int>(a)                        // sum-only: .add(i, d), .sum(l..=r)
 var rmq = SparseTable<V, Int>(min, a)               // O(1) .fold(l..=r) -> Int (non-empty range)
 var st = SegTree<V, Int>(+, a)                      // bare operator
-var mx = SegTree<V, Node>(Monoid<Node>(Node(0), merge), nodes)
+var mx = SegTree<V, Node>(Monoid<Node>(id: Node(0), op: merge), nodes)
 var lz = LazySegTree<V, Int>(AddSum, a)             // range add + range sum
 
 let aff = Action<Int, (Int, Int)>(
-    (1, 0),
-    (new_f, old_f) => (new_f.0 * old_f.0, new_f.0 * old_f.1 + new_f.1),
-    (f, val, span) => f.0 * val + f.1 * span,
-    over: Monoid<Int>(0, (x, y) => x + y),
+    id: (1, 0),
+    compose: (new_f, old_f) => (new_f.0 * old_f.0, new_f.0 * old_f.1 + new_f.1),
+    apply: (f, val, span) => f.0 * val + f.1 * span,
+    over: Monoid<Int>(id: 0, op: (x, y) => x + y),
 )
 var affine = LazySegTree<V, Int, (Int, Int)>(aff, a)
 affine.apply(V.first..=V.last, (2, 1))

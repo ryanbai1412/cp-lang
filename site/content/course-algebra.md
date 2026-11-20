@@ -66,10 +66,10 @@ use std.lazy.{LazySegTree}
 domain V = 1..=4
 let a: [V]Int = 1
 let aff = Action<Int, (Int, Int)>(
-    (1, 0),
-    (new_f, old_f) => (new_f.0 * old_f.0, new_f.0 * old_f.1 + new_f.1),
-    (f, val, span) => f.0 * val + f.1 * span,
-    over: Monoid<Int>(0, (x, y) => x + y),
+    id: (1, 0),
+    compose: (new_f, old_f) => (new_f.0 * old_f.0, new_f.0 * old_f.1 + new_f.1),
+    apply: (f, val, span) => f.0 * val + f.1 * span,
+    over: Monoid<Int>(id: 0, op: (x, y) => x + y),
 )
 var affine = LazySegTree<V, Int, (Int, Int)>(aff, a)
 affine.apply(V.first..=V.last, (2, 3))

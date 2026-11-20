@@ -396,6 +396,8 @@ class SiteTests(unittest.TestCase):
             "site/content/cheat-sheet.md must not exist; build.py loads docs/one-page-cheat-sheet.md directly.",
         )
         canonical = (REPO / "docs/one-page-cheat-sheet.md").read_text()
+        self.assertLessEqual(len(canonical.splitlines()), 250,
+                             "Keep the contest cheat sheet within its one-page concept budget.")
         built = (ROOT / "_build/cheat-sheet.html").read_text()
         plain = html_lib.unescape(re.sub(r"<[^>]+>", "", built))
         self.assertIn("docs/one-page-cheat-sheet.md", built)

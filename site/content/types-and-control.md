@@ -55,6 +55,8 @@ domain V = 1..=3
 let (src, v) = (V.first, V.last)
 var dist: [V]?Int = none
 dist[src] = 0                       // bare T lifts implicitly into ?T
+let via = dist[src] + 7
+if dist[v] min= via: print("improved") // update and test whether the value changed
 let d = dist[v] ?? -1               // fallback; use parens when mixing ?? with + - * / %
 fn maybe() -> ?Int: 7
 fn next_value() -> ?Int:
@@ -71,6 +73,7 @@ print(next_value())
 - `+`, `-`, and unary `-` on `?Int` and `?F64` absorb `none` (tropical arithmetic: `none + w` is `none`).
 - `min(a, b)` and `max(a, b)` skip `none`: `(T, ?T) -> T` and `(?T, ?T) -> ?T`. For three or more values, pass a list (`min([a, b, c])`).
 - `x min= cand` and `x max= cand` skip when `cand` is `none` — even when `x` is a plain `Int`!
+- Both updates return `Bool`: `true` exactly when the destination changes. Use `if best[v] min= via:` to enqueue a graph relaxation or update a DP witness only on improvement. Ties and `none` candidates return `false`; a present candidate improves an empty destination.
 - `==` and `!=` lift `T` to `?T` automatically (`if dq.last != x:`), while `<`, `<=`, `>`, `>=` never lift over `?T`.
 - `p ??= init` initializes `p` lazily when `none` and lends it mutably: `(adj[k] ??= []).push(x)`.
 - `*`, `/`, `%`, bitwise operators, `?V + k`, `sum(gen)`, and `+=`/`-=` **never** lift over `?T`.

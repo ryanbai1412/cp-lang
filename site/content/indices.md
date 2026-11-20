@@ -38,6 +38,15 @@ A domain implements the `Index` and `Seq` traits:
 - `v.to_idx` converts to `0..V.K` and `V.from_idx(i) -> ?V` converts back safely.
 - `v + k -> ?V` and `v - k -> ?V` step by an integer offset and return `none` past the ends; `b - a -> Int` is the signed distance; `v.cyc(k) -> V` wraps cyclically.
 
+Domain-array endpoints are **values**, not indices: `a.first` and `a.last` return `T`, like `a[V.first]` and `a[V.last]`. They require a nonempty domain. In contrast, `List<T>.first` and `.last` return `?T` because a list may be empty:
+
+```cp CP Lang 0.2.2
+domain V = 5..8
+let a: [V]Int = [V] v => 10 + v.to_idx
+let endpoints: (Int, Int) = (a.first, a.last)
+print(V.first, V.last, endpoints.0, endpoints.1) // 5 7 10 12
+```
+
 ## Boundaries: `.l` and `.r`
 
 Prefix sums, difference arrays, and knapsack tables live on the `n + 1` gaps around `n` elements. Every ordered domain `V` has a companion boundary space `V.bounds` with `V.K + 1` positions.
@@ -61,6 +70,15 @@ The same `.l`/`.r` notation works directly in multi-dimensional DP tables such a
 One `Range<I>` type covers half-open `l..r`, inclusive `l..=r`, and open-ended `..i`, `..=i`, `i..`, `i.r..`, and `l.r..r.l` (strictly between `l` and `r`). Every range provides `.first -> ?I`, `.last -> ?I`, `.mid -> ?I`, `.len`, `.is_empty`, `.rev`, `.step(k)`, and `(lo..=hi).clamp(D)`.
 
 Range data structures accept range arguments such as `st.fold(..h[i])` and `pre.sum(..i)`. Read-only slice aggregates work today. In-place slice mutation and parent-indexed slice access remain specification work; use the explicit [copy-and-writeback example](course-index-slices.html#ranges-slices-and-compress-all) when sorting a window.
+
+An open-ended `Int` range `l..` also works in a loop. Unlike an open-ended slice, it has no container to supply its endpoint: stop explicitly rather than trying to collect an unbounded iteration.
+
+```cp CP Lang 0.2.2
+let l = 3
+for i in l..:
+    if i == 6: break
+    print(i) // 3, then 4, then 5
+```
 
 ## Grids and `Cell = (Row, Col)`
 

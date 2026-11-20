@@ -19,13 +19,23 @@ When you need offline dynamic connectivity (divide-and-conquer on time), snapsho
 ```exercise graphs-mod-ord
 ```
 
+Integer literals use the expected `Mod<P>` type, so initialization and compound updates need no `Z(0)` or `Z(1)` wrappers. For an `Int` variable, use an explicit `Z(x)` conversion. Numeric type arguments are available as members of the specialized type: `Z.P` reads its modulus.
+
+```cp CP Lang 0.2.2
+type Z = Mod<7>
+var ways: Z = 0
+let unit: Z = 1
+ways += 1
+ways -= 2
+ways *= 3
+print(ways, unit, Z.P, Mod<11>.P) // 4 1 7 11
+```
+
 ## Graphs, BFS, Dijkstra, and SCC
 
 `std.graph` constructs compact flat CSR (Compressed Sparse Row) graphs — much faster and more cache-friendly than `vector<vector<int>>` in C++:
 
 ```cp CP Lang 0.2.2
-use std.graph.{Graph, bfs, dijkstra, topo, scc, condense}
-
 let (n, m): (1..=2e5, 0..=2e5) = read()
 domain V = 1..=n
 domain E = 0..m
@@ -42,6 +52,19 @@ Notice two contest conveniences:
 
 - Unreachable vertices have distance `none` (`?Int`), not `1e18`. You never accidentally add an edge weight to `INF` and overflow.
 - `bfs` and `dijkstra` also accept an **implicit neighbor function** `v => ...` alongside explicit `Graph` objects, so grid BFS (`p => p.adj4`), state-space graphs `(v, mask)`, and bitmask transitions work with the exact same calls and zero graph construction.
+
+`Graph`, `bfs`, `dijkstra`, `topo`, and `peel` are auto-imported. `peel` runs Kahn's algorithm and returns the vertices it removes; `topo` requires a complete order and returns `none` if a cycle remains. The remaining vertices can be on a cycle **or reachable from one**, so `peel` is not a list of precisely the non-cycle vertices.
+
+The current Rust compiler needs an explicit vertex domain for a named graph: use `peel::<V>(g)` and `topo::<V>(g)` rather than the inferred `peel(g)` and `topo(g)` forms.
+
+```cp CP Lang 0.2.2
+domain V = 0..4
+let edges = [(V(0), V(1)), (V(1), V(2)), (V(2), V(1)), (V(2), V(3))]
+let g = Graph.directed(edges)
+print(bfs(g, from: [V.first])) // 0 1 2 3
+print(peel::<V>(g))           // only 0 is removed; 3 is downstream of the cycle
+print(topo::<V>(g), none: "cycle")
+```
 
 ```exercise graphs-bfs-optional
 ```
@@ -68,9 +91,13 @@ let sub_sum = st.fold(t.sub(u))          // t.sub(u) has type Range<t.Pre>
 let path_sum = t.fold_path(u, v, st)     // HLD path fold in O(log^2 n)
 let anc = t.lca(u, v)                    // O(log n) LCA
 print(sub_sum, path_sum, anc)
+for (c, rest) in t.excl_fold(V(2), +, c => weight[c]):
+    print(c, rest)                      // 3 4, then 4 3: sum of the other children
 ```
 
 Because `st` is indexed by `t.Pre` and `t.sub(u)` returns `Range<t.Pre>`, the type checker guarantees you can never pass a raw vertex `u: V` to `st.set(...)` without mapping it through `t.pos(u)`.
+
+For rerooting DP, `t.excl_fold(v, m, f)` yields `(child, rest)` for every child of `v`, where `rest` folds `f` over all its siblings. It evaluates `f` once per child and takes O(degree(v)) total work using prefix/suffix folds, without requiring division or inverses. Child order is preserved, so a custom `Monoid(id:, op:)` need not be commutative.
 
 ```exercise graphs-rooted-domain
 ```
