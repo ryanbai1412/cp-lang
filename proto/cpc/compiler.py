@@ -140,7 +140,7 @@ CPP_RESERVED = set(CPP_RESERVED) | {
 # is checked against the real module, so a port can only import what the library really exports.
 MEMO_DENSE_MAX = 1 << 26     # slots of a dense @memo table (at most ~1 GB of optional Ints); larger products are hashed
 LIBS = {"Steps": ("steps", "CpSteps")}
-BUILTIN_TYPE_ARGS = {"Deque": 1, "MonoDeque": 1, "Desc": 1, "MaxHeap": 1, "List": 1, "Map": 2, "HashMap": 2, "Set": 1, "Perm": 1, "MinHeap": 1, "Dsu": 1, "AssignSum": 1, "AddMax": 1,
+BUILTIN_TYPE_ARGS = {"Fenwick": 2, "LazySegTree": 2, "SparseTable": 2, "Deque": 1, "MonoDeque": 1, "Desc": 1, "MaxHeap": 1, "List": 1, "Map": 2, "HashMap": 2, "Set": 1, "Perm": 1, "MinHeap": 1, "Dsu": 1, "AssignSum": 1, "AddMax": 1,
                      "SegTree": 2, "Subset": 1, "Counter": 1, "Range": 1}
 LIB_FNS = {"Dsu": "dsu", "bfs": "graph", "dijkstra": "graph", "choose": "math", "gcd": "math", "lcm": "math", "scan": "seq",
            "running_sum": "seq", "SegTree": "segtree", "Rooted": "tree", "Fenwick": "fenwick"}
@@ -283,6 +283,8 @@ class Compiler(LendMixin):
         if isinstance(t, THeap):
             e = self.cpp_type(t.elem)
             return f"priority_queue<{e}, vector<{e}>, {'less' if t.largest else 'greater'}<{e}>>"
+        if isinstance(t, TRt) and t.name in ("Fenwick", "SparseTable", "LazySegTree"):
+            return t.cpp
         if isinstance(t, TRt):
             return f"{t.cpp}<{', '.join(self.cpp_type(a) for a in t.args)}>"
         raise CompileError(f"no C++ type for {t!r}")
@@ -2218,6 +2220,8 @@ class Compiler(LendMixin):
             if e.args:
                 self.error(e, "AddMax<D>() takes no arguments")
             return f"AddMax({t.dom.info.len_cpp})", t
+        if fn.kind == "generic" and fn.name == "SegTree" and e.args and len(e.args) <= 2 and e.args[-1].kind != "lambda":
+            return self.range_struct(e)      # SegTree<D, Int>(+, a): a stock operator and the array
         if fn.kind == "generic" and fn.name == "SegTree":
             # SegTree<D, T>(id, (a, b) => op): a monoid given as two plain values
             t = self.resolve_type(N("tname", fn.line, name="SegTree", args=fn.args))
@@ -2239,6 +2243,9 @@ class Compiler(LendMixin):
                 self.error(e, f"Comb<P>(n) takes an Int bound, got {nt!r}")
             t = TRt("Comb", [mt], "CpComb")
             return f"{self.cpp_type(t)}({nc})", t
+        if fn.kind == "generic" and fn.name in ("Fenwick", "SparseTable", "LazySegTree") and len(fn.args) == 2 \
+                or (fn.kind == "generic" and fn.name == "SegTree" and len(e.args) == 2 and e.args[1].kind != "lambda"):
+            return self.range_struct(e)
         if fn.kind == "generic" and fn.name == "MonoDeque":
             # MonoDeque<T>(min) / MonoDeque<T>(max): which end `.best` reports
             t = self.resolve_type(N("tname", fn.line, name="MonoDeque", args=fn.args))
@@ -2409,6 +2416,70 @@ class Compiler(LendMixin):
                 args = [fc] + args
             return f"{fc}({', '.join(args)})", ft.ret
         self.error(e, f"cannot call {ft!r}")
+
+    RANGE_OPS = {"+": ("0", "_a + _b"), "*": ("1", "_a * _b"), "^": ("0", "_a ^ _b"), "&": ("-1", "_a & _b"),
+                 "|": ("0", "_a | _b"), "min": ("LLONG_MAX", "min(_a, _b)"), "max": ("LLONG_MIN", "max(_a, _b)"),
+                 "gcd": ("0", "std::gcd(_a, _b)")}
+    LAZY_TAGS = {"AddSum": (0, 0), "AddMin": (0, 1), "AddMax": (0, 2), "AssignSum": (1, 0), "AssignMin": (1, 1), "AssignMax": (1, 2)}
+
+    def range_struct(self, e):
+        """Fenwick<D, Int>(a), SparseTable<D, Int>(min, a), SegTree<D, T>(+, a), LazySegTree<D, Int>(AddSum, a):
+        the range structures of cheat sheet section 11, over a domain D, built from an array or empty."""
+        fn = e.fn
+        d = self.resolve_type(fn.args[0])
+        et = self.resolve_type(fn.args[1])
+        if not isinstance(d, TDom):
+            self.error(e, f"{fn.name}<D, T> needs a domain D, got {d!r}")
+        if not is_int(et):
+            self.error(e, f"the prototype's {fn.name}<D, T> with a bare operator holds Ints; give SegTree an (identity, op) pair for another T")
+        args = list(e.args)
+        n = d.info.len_cpp
+        def source():
+            if not args:
+                return None
+            c, t = self.expr(args.pop(0))
+            if not (isinstance(t, TArr) and t.dims == [d] and is_int(t.elem)):
+                self.error(e, f"{fn.name}<{d!r}, Int> is built from a [{d!r}]Int, got {t!r}")
+            return c
+        def op_of(a):
+            name = a.op if a.kind == "lambda" and getattr(a, "op", None) else a.name if a.kind == "name" else None
+            if name not in self.RANGE_OPS:
+                self.error(e, f"{fn.name} takes one of the operators + * ^ & | min max gcd")
+            return name
+        if fn.name == "Fenwick":
+            src = source()
+            t = TRt("Fenwick", [d], "CpFenwick")
+            return (f"CpFenwick({n}, {src})" if src else f"CpFenwick({n})"), t
+        if fn.name == "LazySegTree":
+            tag = args.pop(0) if args else None
+            if tag is None or tag.kind != "name" or tag.name not in self.LAZY_TAGS:
+                self.error(e, f"LazySegTree<D, Int>(Tag, a) takes a stock tag: {', '.join(self.LAZY_TAGS)}")
+            assign, fold = self.LAZY_TAGS[tag.name]
+            src = source()
+            t = TRt("LazySegTree", [d], "CpLazy")
+            return f"CpLazy({n}, {assign}, {fold}{', ' + src if src else ''})", t
+        if not args:
+            self.error(e, f"{fn.name}<D, T>(op, a)")
+        op = op_of(args.pop(0))
+        ident, body = self.RANGE_OPS[op]
+        src = source()
+        lam = f"[](ll _a, ll _b) {{ return {body}; }}"
+        if fn.name == "SparseTable":
+            if op not in ("min", "max", "gcd", "&", "|") or src is None:
+                self.error(e, "SparseTable<D, Int>(op, a) needs an idempotent operator (min, max, gcd, &, |) and the array")
+            t = TRt("SparseTable", [d], "CpSparse")
+            return f"CpSparse({src}, (ll)({ident}), {lam})", t
+        t = TSeg(d, TInt())
+        if src is None:
+            return f"SegTree<ll>({n}, (ll)({ident}), {lam})", t
+        return f"([&]{{ const auto& _src = {src}; return SegTree<ll>({n}, (ll)({ident}), {lam}, [&](int _i) {{ return (ll)_src[_i]; }}); }}())", t
+
+    def dom_range(self, a, d):
+        """The C++ of a range argument over the domain d (`l..=r`, `l..`, `..r`): a half-open Rng of ordinals."""
+        c, t = self.expr(a)
+        if not isinstance(t, TRange) or t.elem != d:
+            self.error(a, f"expected a range of {d!r} (`l..=r`, `l..`, `..=r`), got {t!r}")
+        return c
 
     def str_method(self, e, oc, m, args):
         """The Str vocabulary of the cheat sheet (section 4); None when `m` is not one of them."""
@@ -2791,6 +2862,31 @@ class Compiler(LendMixin):
             if m == "max" and not args:
                 return f"{oc}.top()", INT
             self.error(e, f"no method {m} on {ot!r} (add(l, r, x), max(l, r), max())")
+        if isinstance(ot, TRt) and ot.name in ("Fenwick", "SparseTable", "LazySegTree"):
+            d = ot.args[0]
+            def at(a):
+                c, t = self.expr(a, d)
+                if t != d:
+                    self.error(a, f"a {ot.name} over {d!r} is indexed by {d!r}, got {t!r}")
+                return c
+            if ot.name == "Fenwick" and m == "add" and len(args) == 2:
+                self.require_mut(obj, e)
+                return f"{oc}.add({at(args[0])}, {self.str_pos(args[1])})", UNIT
+            if ot.name == "Fenwick" and m == "sum" and len(args) == 1:
+                return f"{oc}.sum({self.dom_range(args[0], d)})", TInt()
+            if ot.name == "LazySegTree" and m == "apply" and len(args) == 2:
+                self.require_mut(obj, e)
+                return f"{oc}.apply({self.dom_range(args[0], d)}, {self.str_pos(args[1])})", UNIT
+            if ot.name != "Fenwick" and m == "fold" and len(args) == 1:
+                if ot.name == "SparseTable":
+                    self.note_check(e, "range is non-empty")
+                    return f"{oc}.fold({self.dom_range(args[0], d)}, {e.line})", TInt()
+                return f"{oc}.fold({self.dom_range(args[0], d)})", TInt()
+            self.error(e, f"no method `{m}` on {ot.name} (" + {"Fenwick": "add(i, d), sum(l..=r)", "SparseTable": "fold(l..=r)",
+                                                              "LazySegTree": "apply(l..=r, x), fold(l..=r)"}[ot.name] + ")")
+        if isinstance(ot, TSeg) and m == "fold" and len(args) == 1:
+            # st.fold(l..=r): the fold of a range of positions (the identity when it is empty)
+            return f"([&](Rng _r) {{ return _r.lo < _r.hi ? {oc}.query((int)_r.lo, (int)_r.hi - 1) : {oc}.id; }}({self.dom_range(args[0], ot.dom)}))", ot.elem
         if isinstance(ot, TSeg):
             def at(a):
                 c, t = self.expr(a, ot.dom)
