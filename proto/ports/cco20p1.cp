@@ -1,4 +1,3 @@
-// cp: 0.1 c217120+dirty
 // CCO 2020 P1 A Game with Grundy: Grundy stands at an integer x in l..=r
 // at height y. Friend i sits at (x_i, 0) and sees the points with
 // |x - x_i| * v_i < h_i * y. For every k from 0 to n, print how many

@@ -1,4 +1,3 @@
-// cp: 0.1 1f59ac0+dirty
 // NOIP 2004 Chorus Formation: remove the fewest singers so that heights
 // strictly rise to some singer and strictly fall after: longest rising run
 // ending at each singer plus longest falling run starting there.

@@ -1,4 +1,3 @@
-// cp: 0.1 c217120+dirty
 // IOI 2004 Phidias: cut a w x h slab into plates of the wanted sizes with
 // straight edge-to-edge cuts. Print the least area that goes to waste.
 let w: 1..=600 = read()

@@ -1,4 +1,3 @@
-// cp: 0.1 1f59ac0+dirty
 // AtCoder DP N Slimes: merge adjacent slimes, paying the merged size, until
 // one is left. cost(l, r) = best split + total size of a[l..=r].
 let n: 1..=400 = read()

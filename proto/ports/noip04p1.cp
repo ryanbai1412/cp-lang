@@ -1,4 +1,3 @@
-// cp: 0.1 1f59ac0+dirty
 // NOIP 2004 Jinjin's Savings Plan: each month she gets 300, spends her
 // budget and banks every whole hundred left over; the bank pays 20% at the
 // end of the year. Print minus the first month she runs short, or her money

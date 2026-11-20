@@ -1,4 +1,3 @@
-// cp: 0.1 1f59ac0+dirty
 // AtCoder DP L Deque: players alternately take an end of the row; each
 // maximises (own total - opponent's). lead(l, r) is that margin for whoever
 // moves on a[l..=r].

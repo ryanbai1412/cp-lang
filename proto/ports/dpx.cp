@@ -1,4 +1,3 @@
-// cp: 0.1 1f59ac0+dirty
 // AtCoder DP X Tower: stack blocks (weight w, solidness s, value v) so that
 // the weight above each block is at most its s. Some best tower has w + s
 // non-decreasing downwards, so add blocks in that order under the tower.

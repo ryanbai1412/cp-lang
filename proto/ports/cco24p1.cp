@@ -1,4 +1,3 @@
-// cp: 0.1 af7fc88+dirty
 // CCO 2024 Treasure Hunt: starting at v, walk to any u and collect a[u] minus
 // the road tolls paid. Best value at v = max over u of a[u] - dist(u, v):
 // one Dijkstra from every vertex at once, u starting at "distance" -a[u].

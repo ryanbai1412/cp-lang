@@ -1,4 +1,3 @@
-// cp: 0.1 fa9e747
 // DMOPC '21 Contest 9 P4: remove every coin of a grid; removing a heads-up coin
 // flips its neighbours. Rows reduce to a 1-D game on row parities, then each row
 // is the same 1-D game on its own coins.

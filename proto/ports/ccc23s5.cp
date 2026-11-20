@@ -1,4 +1,3 @@
-// cp: 0.1 1f59ac0+dirty
 // CCC 2023 S5 The Filter: list the x in 0..=n for which x / n is in the
 // Cantor set. Walk the Cantor construction: a segment [k / b, (k + 1) / b]
 // keeps its left and right thirds; once a segment holds only a few
@@ -15,7 +14,6 @@ fn in_cantor(x: Int) -> Bool:
         if digit == 1 and rem != 0: return false
         if rem in seen: return true
         seen.insert(rem)
-    true
 
 var kept: List<Int> = []
 fn filter(l: Int, r: Int, k: Int, b: Int):

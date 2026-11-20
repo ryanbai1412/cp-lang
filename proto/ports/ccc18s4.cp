@@ -1,4 +1,3 @@
-// cp: 0.1 1f59ac0+dirty
 // CCC 2018 S4 Balanced Trees: a tree of weight w splits into k >= 2 equal
 // subtrees of weight floor(w / k). Count them, grouping the k that share a
 // quotient.

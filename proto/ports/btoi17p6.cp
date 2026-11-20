@@ -1,4 +1,3 @@
-// cp: 0.1 af7fc88+dirty
 // BOI 2017 Cat in a Tree: mark as many nodes as possible so that every two
 // marked nodes are at least d edges apart. Node 0 is the root and every
 // parent has a smaller label than its child.

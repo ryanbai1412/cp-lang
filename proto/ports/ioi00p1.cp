@@ -1,4 +1,3 @@
-// cp: 0.1 1f59ac0+dirty
 // IOI 2000 Palindrome: the fewest characters to insert into a string to make
 // it a palindrome. need[j] is the answer for s[i..=j]; rows for i and i + 1
 // are all that is ever needed.

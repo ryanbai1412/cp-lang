@@ -1,4 +1,3 @@
-// cp: 0.1 1f59ac0+dirty
 // IOI 1994 The Triangle: the largest sum on a path from the top of a number
 // triangle to its base, each step going down-left or down-right.
 let n: 1..=100 = read()

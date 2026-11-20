@@ -1,4 +1,3 @@
-// cp: 0.1 43daaac+dirty
 // An Animal Contest 5 P2 (interactive): a hidden permutation of 1..n; asking
 // "? i j" returns a[i] * a[j]. Find the permutation.
 let n: 2..=1e5 = read()

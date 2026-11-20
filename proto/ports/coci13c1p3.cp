@@ -1,4 +1,3 @@
-// cp: 0.1 6ac88e2+dirty
 // COCI 2013 Ratar: count pairs of rectangles that touch at exactly one corner
 // point and have equal sums. For every grid point, compare the rectangles on
 // opposite sides of it, one diagonal at a time.

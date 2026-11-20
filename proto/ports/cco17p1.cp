@@ -1,4 +1,3 @@
-// cp: 0.1 1f59ac0+dirty
 // CCO 2017 Vera and Trail Building: build a graph with exactly k "beautiful"
 // pairs (two vertices joined by two edge-disjoint paths). A cycle of c
 // vertices has c (c - 1) / 2 such pairs and bridges add none, so chain

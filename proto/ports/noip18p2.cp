@@ -1,4 +1,3 @@
-// cp: 0.1 629385d
 // NOIP 2018 Currency System: the smallest set of coins that can pay exactly
 // the same amounts. A coin is needed iff smaller coins cannot make it.
 const TOP = 25000

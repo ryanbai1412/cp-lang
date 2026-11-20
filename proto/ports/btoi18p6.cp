@@ -1,4 +1,3 @@
-// cp: 0.1 af7fc88+dirty
 // BOI 2018 Paths: count simple paths of at least two vertices whose colours
 // are all distinct (at most 5 colours, so a path has at most 5 vertices).
 let n: 1..=3e5 = read()
