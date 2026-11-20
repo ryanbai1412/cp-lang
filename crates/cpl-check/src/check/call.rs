@@ -14,6 +14,7 @@ impl<'a> Checker<'a> {
             ty = known;
         }
         self.lent_together(args);
+        self.call_effects(call, callee, args);
         self.no_escape_args(callee, &callee_ty, args);
         self.mutates_view(call, callee);
         receiver.unwrap_or(ty)

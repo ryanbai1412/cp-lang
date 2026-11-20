@@ -1331,3 +1331,208 @@ fn a_fold_into_a_map_needs_an_identity() {
     let array = "domain V = 1..=5\nvar a: [V]Int = 8\na[V(1)] /= 2\n";
     assert!(codes(array).is_empty(), "{:?}", check(array));
 }
+
+/// A list, a fn that grows it, and an array with two positions.
+const GLOBALS: &str = "\
+let n: 2..=9 = read()
+domain V = 1..=n
+var a: [V]Int = read()
+var xs: List<Int> = [1, 2, 3]
+let l = V(1)
+let r = V(2)
+fn grow() -> Int:
+    xs.push(4)
+    return 0
+fn clobber():
+    a[V(1)] = 99
+fn outer():
+    clobber()
+fn peek() -> Int:
+    return a[V(1)]
+fn total(ys: List<Int>, k: Int) -> Int:
+    return sum(ys) + k
+";
+
+fn with_globals(rest: &str) -> String {
+    format!("{GLOBALS}{rest}")
+}
+
+#[test]
+fn a_fn_that_changes_a_var_cant_run_while_it_is_lent() {
+    for (call, name) in [("clobber()", "clobber"), ("outer()", "outer")] {
+        let diag = one(&with_globals(&format!(
+            "let part = a[l..=r]\n{call}\nprint(sum(part))\n"
+        )));
+        assert_eq!(diag.code.0, "E0602");
+        assert_eq!(
+            diag.message,
+            format!("`{name}` can't be called here: it changes `a`, and `a` is lent to `part` until its last use")
+        );
+    }
+    // Reading it is fine, and so is changing it once `part` is done with.
+    for rest in [
+        "let part = a[l..=r]\nprint(peek())\nprint(sum(part))\n",
+        "let part = a[l..=r]\nprint(sum(part))\nclobber()\n",
+        "let part = a[l..=r]\nprint(grow())\nprint(sum(part))\n",
+    ] {
+        let src = with_globals(rest);
+        assert!(codes(&src).is_empty(), "{rest}: {:?}", check(&src));
+    }
+}
+
+#[test]
+fn a_loop_lends_what_it_goes_over() {
+    let pushed = one(&with_globals(
+        "for x in xs:\n    if xs.len < 1000: xs.push(x)\n",
+    ));
+    assert_eq!(
+        pushed.message,
+        "`xs` can't be changed here: the `for` loop is going over `xs`, and that lends it for reading until the loop ends"
+    );
+    assert_eq!(
+        pushed.help.as_deref(),
+        Some("loop over positions instead (`for i in 0..xs.len`), or over a copy (`for x in xs.copy()`)")
+    );
+    let called = one(&with_globals("for x in xs:\n    print(grow() + x)\n"));
+    assert_eq!(
+        called.message,
+        "`grow` can't be called here: it changes `xs`, and the `for` loop is going over `xs`"
+    );
+    // Over positions or a copy, in another list, or after the loop.
+    for rest in [
+        "for i in 0..xs.len:\n    xs.push(i)\n    if xs.len > 9: break\n",
+        "for x in xs.copy():\n    xs.push(x)\n",
+        "var ys: List<Int> = []\nfor x in xs:\n    ys.push(x)\n",
+        "for x in xs:\n    print(x)\nxs.push(1)\nprint(grow())\n",
+        "for x in xs:\n    print(peek() + x)\n",
+    ] {
+        let src = with_globals(rest);
+        assert!(codes(&src).is_empty(), "{rest}: {:?}", check(&src));
+    }
+}
+
+#[test]
+fn an_argument_cant_change_what_another_lends() {
+    let diag = one(&with_globals("print(total(xs, grow()))\n"));
+    assert_eq!(
+        diag.message,
+        "`grow()` changes `xs` while `xs` is lent to this call"
+    );
+    assert_eq!(
+        diag.help.as_deref(),
+        Some("do it in a statement before the call")
+    );
+    // A number is copied before the call, and a statement before it is
+    // the fix.
+    for rest in [
+        "print(total(xs, peek()))\n",
+        "let k = grow()\nprint(total(xs, k))\n",
+        "fn add(x: Int, k: Int) -> Int: x + k\nprint(add(xs[0], grow()))\n",
+    ] {
+        let src = with_globals(rest);
+        assert!(codes(&src).is_empty(), "{rest}: {:?}", check(&src));
+    }
+}
+
+#[test]
+fn a_fn_cant_be_handed_what_it_changes_directly() {
+    let src = with_globals(
+        "fn go(mut x: Int, i: V):\n    a[i] += x\n    x += 1\n    if i != V.last:\n        go(mut x, (i + 1)!)\ngo(mut a[l], l)\n",
+    );
+    let diag = one(&src);
+    assert_eq!(
+        diag.message,
+        "`a[l]` can't be passed to `go`: `go` also changes `a` directly, so it would reach the same storage under two names"
+    );
+    // By value, or a fn that keeps to its parameters. A list handed over
+    // without `mut` is a value too: it does not move when the fn changes
+    // the `var` it came from.
+    for rest in [
+        "fn grow_and_sum(ys: List<Int>) -> Int:\n    xs.push(99)\n    sum(ys)\nprint(grow_and_sum(xs))\n",
+        "fn go(x: Int, i: V):\n    a[i] += x\ngo(a[l], l)\n",
+        "fn go(mut x: Int, y: Int):\n    x += y\ngo(mut a[l], a[r])\n",
+    ] {
+        let src = with_globals(rest);
+        assert!(codes(&src).is_empty(), "{rest}: {:?}", check(&src));
+    }
+}
+
+#[test]
+fn a_call_forgets_what_was_known_about_the_vars_it_changes() {
+    let head = "var i = V(1)\nfn mv(mut x: Int, mut y: Int):\n    y += x\n    x = 0\nfn step():\n    i = V(2)\n";
+    let diag = one(&with_globals(&format!(
+        "{head}if i != r:\n    step()\n    mv(mut a[i], mut a[r])\n"
+    )));
+    assert!(
+        diag.message.ends_with(
+            "Array.at lends disjoint parts only when `i != j`, and that is not known here"
+        ),
+        "{}",
+        diag.message
+    );
+    for body in [
+        "if i != r:\n    mv(mut a[i], mut a[r])\n    step()\n",
+        "if i != r:\n    clobber()\n    mv(mut a[i], mut a[r])\n",
+    ] {
+        let src = with_globals(&format!("{head}{body}"));
+        assert!(codes(&src).is_empty(), "{body}: {:?}", check(&src));
+    }
+}
+
+#[test]
+fn the_right_side_cant_change_the_place_assigned() {
+    let popped = one(&with_globals("xs[0] = xs.pop()!\n"));
+    assert!(
+        popped
+            .message
+            .starts_with("`xs` is changed on the right side of an assignment to `xs[0]`"),
+        "{}",
+        popped.message
+    );
+    let inc = "fn inc(mut x: Int) -> Int:\n    x += 1\n    return x\n";
+    let compound = one(&with_globals(&format!("{inc}a[l] += inc(mut a[l])\n")));
+    assert!(
+        compound
+            .message
+            .starts_with("`a[l]` is changed on the right side of an assignment to `a[l]`"),
+        "{}",
+        compound.message
+    );
+    assert_eq!(
+        compound.help.as_deref(),
+        Some("compute the right side first (`let t = ...`), then assign")
+    );
+    for rest in [
+        format!("{inc}assert l != r\na[l] += inc(mut a[r])\n"),
+        format!("{inc}var t = 0\nt = inc(mut t)\n"),
+        "let last = xs.pop()!\nxs[0] = last\n".to_string(),
+    ] {
+        let src = with_globals(&rest);
+        assert!(codes(&src).is_empty(), "{rest}: {:?}", check(&src));
+    }
+}
+
+#[test]
+fn a_min_assign_evaluates_its_place_once() {
+    // So a place that calls a fn with an effect is fine.
+    let src = "var c = 0\nfn nx() -> Int:\n    c += 1\n    return c\nvar b: [0..9]Int = 0\nb[nx()] max= 4\n";
+    assert!(codes(src).is_empty(), "{:?}", check(src));
+}
+
+#[test]
+fn what_a_fn_changes_is_a_dependency_of_its_callers() {
+    // `clobber` starts changing `a`: the call two statements below it is
+    // checked again, though its own text and `clobber`'s type are the same.
+    let quiet = with_globals("let part = a[l..=r]\nclobber()\nprint(sum(part))\n")
+        .replace("    a[V(1)] = 99\n", "    print(99)\n");
+    let mut db = Database::new();
+    db.set_file("a.cp", quiet.as_str());
+    assert!(db.diagnostics("a.cp").is_empty());
+    let loud = quiet.replace("    print(99)\n", "    a[V(1)] = 99\n");
+    db.set_file("a.cp", loud.as_str());
+    let diags = db.diagnostics("a.cp");
+    assert_eq!(diags.len(), 1, "{diags:#?}");
+    assert_eq!(diags[0].span.text(&loud), "clobber()");
+    db.set_file("a.cp", quiet.as_str());
+    assert!(db.diagnostics("a.cp").is_empty());
+}

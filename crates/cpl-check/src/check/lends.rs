@@ -105,6 +105,9 @@ pub(crate) struct Hold {
     mutable: bool,
     at: Span,
     until: Span,
+    /// `for x in xs`: `xs` is lent to the loop, for reading, until it
+    /// ends.
+    in_loop: bool,
 }
 
 /// What a top-level statement leaves behind for the statements after it.
@@ -424,6 +427,123 @@ impl Visitor for Written {
             }
             _ => {}
         }
+    }
+}
+
+/// What a fn touches outside itself, read off its source: the outer names
+/// it changes and reads, and the fns it calls. A name is outer unless the
+/// fn declares it (a parameter, a `let`, a loop variable); a nested fn is
+/// part of the body, so what it touches is charged to the fn around it.
+#[derive(Default, Clone, PartialEq, Eq, Debug)]
+pub(crate) struct Effects {
+    pub writes: Vec<String>,
+    pub reads: Vec<String>,
+    pub calls: Vec<String>,
+}
+
+impl Effects {
+    /// Adds what a fn this one calls touches.
+    pub(crate) fn absorb(&mut self, other: &Effects) {
+        for (into, from) in [
+            (&mut self.writes, &other.writes),
+            (&mut self.reads, &other.reads),
+        ] {
+            for name in from {
+                if !into.contains(name) {
+                    into.push(name.clone());
+                }
+            }
+        }
+    }
+
+    /// How the fn uses the outer name `name`, if it does: `changes` or
+    /// `reads`.
+    fn does(&self, name: &str) -> Option<&'static str> {
+        if self.writes.iter().any(|n| n == name) {
+            Some("changes")
+        } else if self.reads.iter().any(|n| n == name) {
+            Some("reads")
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Default)]
+struct Touched {
+    declared: HashSet<String>,
+    written: Written,
+    read: Vec<String>,
+    calls: Vec<String>,
+}
+
+impl Visitor for Touched {
+    fn stmt(&mut self, stmt: &Stmt) {
+        match &stmt.kind {
+            StmtKind::Assign { target, .. } => self.written.add(root_name(target)),
+            StmtKind::Fn(f) => {
+                self.declared.insert(f.name.text.clone());
+                self.declared
+                    .extend(f.params.iter().map(|p| p.name.text.clone()));
+            }
+            _ => {}
+        }
+    }
+
+    fn expr(&mut self, e: &Expr) {
+        match &e.kind {
+            ExprKind::Call { callee, args } => {
+                for arg in args.iter().filter(|a| a.mutable) {
+                    self.written.add(root_name(&arg.value));
+                }
+                match &callee.kind {
+                    ExprKind::Field { base, name } if MUTATORS.contains(&name.text.as_str()) => {
+                        self.written.add(root_name(base));
+                    }
+                    ExprKind::Name(name) if !self.calls.contains(name) => {
+                        self.calls.push(name.clone());
+                    }
+                    _ => {}
+                }
+            }
+            ExprKind::Name(name) if !self.read.contains(name) => self.read.push(name.clone()),
+            _ => {}
+        }
+    }
+
+    fn pattern(&mut self, pat: &ast::Pattern) {
+        let mut names = Written::default();
+        names.pattern(pat);
+        self.declared.extend(names.0);
+    }
+}
+
+pub(crate) fn own_effects(f: &ast::FnDecl) -> Effects {
+    let mut touched = Touched::default();
+    touched
+        .declared
+        .extend(f.params.iter().map(|p| p.name.text.clone()));
+    match &f.body {
+        ast::FnBody::Block(block) => walk_block(block, &mut touched),
+        ast::FnBody::Expr(expr) => walk_expr(expr, &mut touched),
+        ast::FnBody::None => {}
+    }
+    let Touched {
+        declared,
+        written,
+        read,
+        calls,
+    } = touched;
+    let outer = |names: Vec<String>| -> Vec<String> {
+        names
+            .into_iter()
+            .filter(|n| !declared.contains(n))
+            .collect()
+    };
+    Effects {
+        writes: outer(written.0),
+        reads: outer(read),
+        calls: outer(calls),
     }
 }
 
@@ -930,17 +1050,8 @@ impl<'a> Checker<'a> {
             let Some(place) = self.place(&arg.value) else {
                 continue;
             };
-            // A number or a position read from a place is copied before
-            // the call; anything bigger is passed by reference.
-            if !arg.mutable {
-                let ty = self.quietly(|c| c.infer(&arg.value));
-                let by_reference = matches!(
-                    ty,
-                    Ty::Array { .. } | Ty::Named { .. } | Ty::Str | Ty::Tuple(_) | Ty::Record(_)
-                );
-                if !by_reference {
-                    continue;
-                }
+            if !self.by_reference(arg) {
+                continue;
             }
             lent.push((arg, place));
         }
@@ -1044,6 +1155,7 @@ impl<'a> Checker<'a> {
                     mutable: replay.written,
                     at: ELSEWHERE,
                     until,
+                    in_loop: false,
                 });
             }
             _ => {}
@@ -1099,7 +1211,267 @@ impl<'a> Checker<'a> {
             mutable,
             at: stmt.span,
             until: last.span,
+            in_loop: false,
         });
+    }
+
+    /// `for x in xs` lends `xs` for reading until the loop ends: growing
+    /// or shrinking it would move the storage the loop is walking, and a
+    /// loop whose range changes under it is a puzzle even when it is
+    /// memory-safe. Looping over a range, a domain or `xs.len` lends
+    /// nothing: the loop walks values, not the storage.
+    pub(crate) fn hold_iterated(&mut self, stmt: &Stmt, iter: &Expr, iter_ty: &Ty) {
+        let mut iter = unparen(iter);
+        loop {
+            iter = match &iter.kind {
+                ExprKind::Field { base, name } if name.text == "rev" => unparen(base),
+                ExprKind::Call { callee, args } if args.is_empty() => match &callee.kind {
+                    ExprKind::Field { base, name }
+                        if matches!(name.text.as_str(), "pairs" | "enumerate") =>
+                    {
+                        unparen(base)
+                    }
+                    _ => break,
+                },
+                _ => break,
+            };
+        }
+        let stored = match iter_ty {
+            Ty::Array { .. } => true,
+            Ty::Named { name, .. } => matches!(name.as_str(), "List" | "Set" | "Map" | "HashMap"),
+            _ => false,
+        };
+        if !stored && self.view_kind(iter).is_none() {
+            return;
+        }
+        let Some(place) = self.place(iter) else {
+            return;
+        };
+        if !place.root_mutable {
+            return;
+        }
+        self.lends.holds.push(Hold {
+            name: String::new(),
+            root: place.root,
+            steps: place.steps,
+            mutable: false,
+            at: iter.span,
+            until: stmt.span,
+            in_loop: true,
+        });
+    }
+
+    /// The outer names evaluating `e` may change: what it assigns through
+    /// `mut` arguments and mutating methods, and what the fns it calls
+    /// change.
+    fn changed_by(&mut self, e: &Expr) -> Vec<String> {
+        let mut touched = Touched::default();
+        walk_expr(e, &mut touched);
+        let mut writes = touched.written.0;
+        for name in touched.calls {
+            if self.local(&name).is_some()
+                || !matches!(self.env.global(&name).as_deref(), Some(Def::Fn { .. }))
+            {
+                continue;
+            }
+            for write in &self.env.effects(&name).writes {
+                if !writes.contains(write) {
+                    writes.push(write.clone());
+                }
+            }
+        }
+        writes
+    }
+
+    /// True if `arg` reaches the callee as the place itself: a number or
+    /// a position read from a place is copied before the call; anything
+    /// bigger, and anything passed `mut`, is passed by reference.
+    fn by_reference(&mut self, arg: &Arg) -> bool {
+        if arg.mutable {
+            return true;
+        }
+        let ty = self.quietly(|c| c.infer(&arg.value));
+        matches!(
+            ty,
+            Ty::Array { .. } | Ty::Named { .. } | Ty::Str | Ty::Tuple(_) | Ty::Record(_)
+        )
+    }
+
+    /// A fn that touches a `var` directly, not through a parameter, is one
+    /// more user of it for the whole call: what is known about the names
+    /// it changes is forgotten, it can't run while one of them is lent,
+    /// and it can't also be handed one of them as an argument.
+    pub(crate) fn call_effects(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) {
+        let ExprKind::Name(name) = &callee.kind else {
+            return;
+        };
+        if self.local(name).is_some()
+            || !matches!(self.env.global(name).as_deref(), Some(Def::Fn { .. }))
+        {
+            return;
+        }
+        let effects = self.env.effects(name);
+        // A local of the same name is another variable.
+        let does = |c: &Self, root: &str| match c.local(root) {
+            Some(_) => None,
+            None => effects.does(root),
+        };
+        let writes: Vec<String> = effects
+            .writes
+            .iter()
+            .filter(|n| self.local(n).is_none())
+            .cloned()
+            .collect();
+        self.drop_facts(&writes);
+
+        for index in 0..self.lends.holds.len() {
+            let hold = &self.lends.holds[index];
+            let Some(what) = does(self, &hold.root) else {
+                continue;
+            };
+            if what == "reads" && !hold.mutable {
+                continue;
+            }
+            let (root, lent_to, mutable, at, until, in_loop) = (
+                hold.root.clone(),
+                hold.name.clone(),
+                hold.mutable,
+                hold.at,
+                hold.until,
+                hold.in_loop,
+            );
+            if in_loop {
+                let message = format!(
+                    "`{name}` can't be called here: it {what} `{root}`, and the `for` loop is going over `{root}`"
+                );
+                if let Some(diag) = self.error(codes::USED_WHILE_LENT, call.span, message) {
+                    diag.labels.push(cpl_diag::Label {
+                        span: at,
+                        message: format!("the loop goes over `{root}`"),
+                    });
+                    diag.help = Some(format!(
+                        "loop over positions instead (`for i in 0..{root}.len`), or over a copy (`for x in {root}.copy()`)"
+                    ));
+                }
+                return;
+            }
+            let message = format!(
+                "`{name}` can't be called here: it {what} `{root}`, and `{root}` is {}lent to `{lent_to}` until its last use",
+                if mutable { "mutably " } else { "" },
+            );
+            if let Some(diag) = self.error(codes::USED_WHILE_LENT, call.span, message) {
+                if at != ELSEWHERE {
+                    diag.labels.push(cpl_diag::Label {
+                        span: at,
+                        message: format!("lent to `{lent_to}` here"),
+                    });
+                }
+                if until != ELSEWHERE {
+                    diag.labels.push(cpl_diag::Label {
+                        span: until,
+                        message: format!("`{lent_to}` is last used here"),
+                    });
+                }
+                diag.help = Some(format!(
+                    "finish with `{lent_to}` first, or re-project after the call"
+                ));
+            }
+            return;
+        }
+
+        for (k, arg) in args.iter().enumerate() {
+            let Some(place) = self.place(&arg.value) else {
+                continue;
+            };
+            if !self.by_reference(arg) {
+                continue;
+            }
+            let root = place.root;
+            // Handed over `mut`, the place is the callee's to change, and
+            // it would also reach it by name. Without `mut` it is handed
+            // a value, which does not move when the callee changes the
+            // `var` it came from.
+            if let Some(what) = does(self, &root) {
+                if arg.mutable {
+                    let message = format!(
+                        "`{}` can't be passed to `{name}`: `{name}` also {what} `{root}` directly, so it would reach the same storage under two names",
+                        show(&arg.value),
+                    );
+                    if let Some(diag) = self.error(codes::LENT_TWICE, arg.value.span, message) {
+                        diag.help = Some(format!(
+                            "pass everything `{name}` needs from `{root}` as parameters, or copy the value out first"
+                        ));
+                    }
+                }
+            }
+            // Another argument's own calls must not change what this one
+            // lends.
+            for (j, other) in args.iter().enumerate() {
+                if j == k || !self.changed_by(&other.value).contains(&root) {
+                    continue;
+                }
+                let message = format!(
+                    "`{}` changes `{root}` while `{}` is lent to this call",
+                    show(&other.value),
+                    show(&arg.value),
+                );
+                if let Some(diag) = self.error(codes::LENT_TWICE, other.value.span, message) {
+                    diag.help = Some("do it in a statement before the call".into());
+                }
+            }
+        }
+    }
+
+    /// `a[i] += f(mut a[i])`: the right side runs first and changes the
+    /// very place the statement then updates.
+    pub(crate) fn assign_alias(&mut self, target: &Expr, op: ast::AssignOp, value: &Expr) {
+        // `x = f(mut x)` only overwrites `x` afterwards.
+        if op == ast::AssignOp::Set && matches!(unparen(target).kind, ExprKind::Name(_)) {
+            return;
+        }
+        struct Changed(Vec<Expr>);
+        impl Visitor for Changed {
+            fn expr(&mut self, e: &Expr) {
+                let ExprKind::Call { callee, args } = &e.kind else {
+                    return;
+                };
+                self.0
+                    .extend(args.iter().filter(|a| a.mutable).map(|a| a.value.clone()));
+                if let ExprKind::Field { base, name } = &callee.kind {
+                    if MUTATORS.contains(&name.text.as_str()) {
+                        self.0.push((**base).clone());
+                    }
+                }
+            }
+        }
+        let mut changed = Changed(Vec::new());
+        walk_expr(value, &mut changed);
+        if changed.0.is_empty() {
+            return;
+        }
+        let Some(target_place) = self.place(target) else {
+            return;
+        };
+        for place in changed.0 {
+            let Some(changed_place) = self.place(&place) else {
+                continue;
+            };
+            if changed_place.root != target_place.root {
+                continue;
+            }
+            let Some(why) = self.overlap(&target_place.steps, &changed_place.steps) else {
+                continue;
+            };
+            let message = format!(
+                "`{}` is changed on the right side of an assignment to `{}`, and the two may be the same storage: {why}",
+                show(&place),
+                show(target),
+            );
+            if let Some(diag) = self.error(codes::LENT_TWICE, place.span, message) {
+                diag.help =
+                    Some("compute the right side first (`let t = ...`), then assign".into());
+            }
+        }
     }
 
     /// A statement is done: the lends last used in it are over.
@@ -1124,16 +1496,35 @@ impl<'a> Checker<'a> {
             if !(write || hold.mutable) {
                 continue;
             }
-            let (steps, name, mutable, at, until) = (
+            let (steps, name, mutable, at, until, in_loop) = (
                 hold.steps.clone(),
                 hold.name.clone(),
                 hold.mutable,
                 hold.at,
                 hold.until,
+                hold.in_loop,
             );
             let Some(why) = self.overlap(&place.steps, &steps) else {
                 continue;
             };
+            if in_loop {
+                let root = place.root;
+                let message = format!(
+                    "`{}` can't be {} here: the `for` loop is going over `{root}`, and that lends it for reading until the loop ends",
+                    show(e),
+                    if write { "changed" } else { "used" },
+                );
+                if let Some(diag) = self.error(codes::USED_WHILE_LENT, e.span, message) {
+                    diag.labels.push(cpl_diag::Label {
+                        span: at,
+                        message: format!("the loop goes over `{root}`"),
+                    });
+                    diag.help = Some(format!(
+                        "loop over positions instead (`for i in 0..{root}.len`), or over a copy (`for x in {root}.copy()`)"
+                    ));
+                }
+                return;
+            }
             let message = format!(
                 "`{}` can't be {} here: `{}` is {}lent to `{name}` until its last use ({why})",
                 show(e),
@@ -1263,7 +1654,12 @@ impl<'a> Checker<'a> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return;
         };
-        if !MUTATORS.contains(&name.text.as_str()) || self.view_kind(base).is_none() {
+        if !MUTATORS.contains(&name.text.as_str()) {
+            return;
+        }
+        // `xs.push(x)` changes `xs` as an assignment to it would.
+        self.check_access(base, true);
+        if self.view_kind(base).is_none() {
             return;
         }
         let Some(place) = self.place(base) else {

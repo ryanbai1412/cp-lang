@@ -41,9 +41,9 @@ for i in 0..limit:
     seen += 1
 print(seen, limit)
 var xs: List<Int> = [1, 2, 3]
-for x in xs:
-    if x < 3:
-        xs.push(x * 10)
+for i in 0..xs.len:
+    if xs[i] < 3:
+        xs.push(xs[i] * 10)
 print(xs)
 let label = if seen > 2: "many" elif seen > 0: "some" else: "none"
 print(label)

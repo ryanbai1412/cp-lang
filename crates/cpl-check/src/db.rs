@@ -22,7 +22,7 @@
 //! signature, has the same fingerprint, so no caller is touched. Editing
 //! the signature re-checks exactly the items that looked the fn up.
 
-use crate::check::lends::{flow_of, item_names, Flow, Replay};
+use crate::check::lends::{flow_of, item_names, own_effects, Effects, Flow, Replay};
 use crate::check::{Checker, Env, GlobalRef, HoverEntry};
 use crate::def::{hash_str, impl_name, impl_parts, DeclKind, Def};
 use crate::modules::{FsLoader, Loader};
@@ -206,6 +206,8 @@ const DEP_NAMES: &str = "\0names";
 const DEP_IMPORTS: &str = "\0imports";
 /// The dependency on the earlier top-level statements that reach an item.
 const DEP_LENT: &str = "\0lent";
+/// Prefix of the dependency on what calling a fn touches outside itself.
+const DEP_EFFECTS: &str = "\0fx:";
 /// Prefix of the dependency on what a type's name resolves to.
 const DEP_TYPE: &str = "\0type:";
 
@@ -427,6 +429,10 @@ impl Database {
             in_progress: Vec::new(),
             current: None,
             names: None,
+            effects: HashMap::new(),
+            own_effects: HashMap::new(),
+            effects_of: Vec::new(),
+            vars: None,
         };
         let checks: Vec<Arc<ItemCheck>> = (0..items.len()).map(|i| ctx.check_item(i)).collect();
 
@@ -681,6 +687,10 @@ impl Database {
             in_progress: Vec::new(),
             current: None,
             names: None,
+            effects: HashMap::new(),
+            own_effects: HashMap::new(),
+            effects_of: Vec::new(),
+            vars: None,
         };
         ctx.def(name).0
     }
@@ -897,6 +907,14 @@ struct FileCtx<'d> {
     current: Option<usize>,
     /// What each item mentions and assigns, once a statement needs it.
     names: Option<Vec<(Vec<String>, Vec<String>)>>,
+    /// What calling each fn touches, once a call needs it.
+    effects: HashMap<String, (Arc<Effects>, u64)>,
+    /// What each fn's own body touches.
+    own_effects: HashMap<String, Option<Arc<Effects>>>,
+    /// The fns whose effects are being worked out, innermost last.
+    effects_of: Vec<String>,
+    /// The top-level `var`s.
+    vars: Option<std::collections::HashSet<String>>,
 }
 
 impl FileCtx<'_> {
@@ -914,9 +932,10 @@ impl FileCtx<'_> {
             DEP_NAMES => self.scope.names_fp,
             DEP_IMPORTS => self.scope.imports_fp,
             DEP_LENT => self.replays_fingerprint(),
-            key => match key.strip_prefix(DEP_TYPE) {
-                Some(name) => self.type_def(name).1,
-                None => self.def(key).1,
+            key => match (key.strip_prefix(DEP_TYPE), key.strip_prefix(DEP_EFFECTS)) {
+                (Some(name), _) => self.type_def(name).1,
+                (_, Some(name)) => self.effects(name).1,
+                _ => self.def(key).1,
             },
         }
     }
@@ -1107,6 +1126,99 @@ impl FileCtx<'_> {
         out
     }
 
+    /// What the body of the fn `name` of this file touches by itself: the
+    /// top-level `var`s it changes and reads, and the fns of this file it
+    /// calls. `None` if this file has no such fn.
+    fn own_effects(&mut self, name: &str) -> Option<Arc<Effects>> {
+        if let Some(known) = self.own_effects.get(name) {
+            return known.clone();
+        }
+        let items = self.items.clone();
+        let vars = self.vars.get_or_insert_with(|| {
+            let mutable = |item: &&Arc<ItemSyntax>| {
+                item.parsed
+                    .stmts
+                    .iter()
+                    .any(|stmt| matches!(stmt.kind, StmtKind::Let { mutable: true, .. }))
+            };
+            items
+                .iter()
+                .filter(mutable)
+                .flat_map(|item| item.decls.iter().map(|decl| decl.name.clone()))
+                .collect()
+        });
+        let own = self.scope.names.get(name).and_then(|&index| {
+            items[index]
+                .parsed
+                .stmts
+                .iter()
+                .find_map(|stmt| match &stmt.kind {
+                    StmtKind::Fn(f) if f.name.text == name => Some(own_effects(f)),
+                    _ => None,
+                })
+        });
+        let own = own.map(|mut own| {
+            own.writes.retain(|n| vars.contains(n));
+            own.reads.retain(|n| vars.contains(n));
+            let scope = &self.scope;
+            own.calls.retain(|n| {
+                scope.names.get(n).is_some_and(|&index| {
+                    items[index]
+                        .decls
+                        .iter()
+                        .any(|d| d.name == *n && d.kind == DeclKind::Fn)
+                })
+            });
+            Arc::new(own)
+        });
+        self.own_effects.insert(name.to_string(), own.clone());
+        own
+    }
+
+    /// What calling the fn `name` of this file touches outside itself,
+    /// counting the fns it calls, and the fingerprint of that. A fn from
+    /// a module touches nothing here.
+    fn effects(&mut self, name: &str) -> (Arc<Effects>, u64) {
+        if let Some(known) = self.effects.get(name) {
+            return known.clone();
+        }
+        let mut all = Effects::default();
+        // Each fn is asked once: a fn it calls answers from what it
+        // already worked out. A fn that calls itself through others, or a
+        // very long chain of calls, is followed with a list instead.
+        let nested = self.effects_of.iter().any(|n| n == name) || self.effects_of.len() > 200;
+        if nested {
+            let mut todo = vec![name.to_string()];
+            let mut seen: Vec<String> = Vec::new();
+            while let Some(next) = todo.pop() {
+                if seen.contains(&next) {
+                    continue;
+                }
+                if let Some((known, _)) = self.effects.get(&next) {
+                    all.absorb(known);
+                } else if let Some(own) = self.own_effects(&next) {
+                    all.absorb(&own);
+                    todo.extend(own.calls.iter().cloned());
+                }
+                seen.push(next);
+            }
+        } else if let Some(own) = self.own_effects(name) {
+            all.absorb(&own);
+            self.effects_of.push(name.to_string());
+            for callee in &own.calls {
+                let (theirs, _) = self.effects(callee);
+                all.absorb(&theirs);
+            }
+            self.effects_of.pop();
+        }
+        all.writes.sort();
+        all.reads.sort();
+        let fingerprint = hash_str(&format!("{:?}{:?}", all.writes, all.reads)) | 2;
+        let out = (Arc::new(all), fingerprint);
+        self.effects.insert(name.to_string(), out.clone());
+        out
+    }
+
     fn replays_fingerprint(&mut self) -> u64 {
         let Some(current) = self.current else {
             return 2;
@@ -1171,6 +1283,12 @@ impl Env for FileCtx<'_> {
         let (def, fingerprint) = self.def(name);
         self.record(name, fingerprint);
         def
+    }
+
+    fn effects(&mut self, name: &str) -> Arc<Effects> {
+        let (effects, fingerprint) = self.effects(name);
+        self.record(&format!("{DEP_EFFECTS}{name}"), fingerprint);
+        effects
     }
 
     fn lent_before(&mut self) -> Vec<Replay> {
