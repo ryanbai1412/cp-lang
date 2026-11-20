@@ -38,8 +38,8 @@ Data structures, in `ds/`:
   any stretch in O(log n) (an implicit treap).
 - `range_kth.cp`: `RangeKth<D>`, the k-th smallest value and
   `count_below` on any range of a fixed array (a persistent segment tree).
-- `li_chao.cp`: `LiChao` and `Line`, the lowest line at a point: the
-  convex hull trick without sorted slopes or queries.
+- `li_chao.cp`: `LiChao` and `Line`, `LiChaoTag<V>` / `TaggedLine<V>` (with
+  record/index payloads), and continuous `Float` `LiChaoF` / `LineF`.
 - `li_chao_arena.cp`: `LiChaoArena` and `Hull`, many Li Chao trees in
   one pool of nodes: a hull per vertex or per DP layer, lines limited to
   a segment, every past version kept, and a range as wide as an `Int`.
@@ -57,6 +57,9 @@ Data structures, in `ds/`:
 - `mo.cp`: `mo_order` and `steps`, Mo's algorithm as the visiting order
   plus the single moves between two windows.
 - `xor_basis.cp`: `XorBasis`, a linear basis over GF(2).
+- `interner.cp`: `Interner<K>`, bidirectional key <-> dense integer id interner.
+- `rollback_array.cp`: `RollbackArray<D, T>`, `[D]T` with O(1) point writes and
+  O(changes) snapshot/rollback.
 
 Numbers, in `math/`:
 
@@ -69,8 +72,10 @@ Numbers, in `math/`:
 - `hom.cp`: `Hom<T>`, affine maps under composition, and `BothWays<T>`,
   the `Reversible` value that lets `Rooted.fold_path` fold them along a
   tree path.
-- `matrix.cp`: `Mat<P>`, square matrices over `Mod<P>`.
-- `poly.cp`: `ntt`, `convolve` and `pow_trunc` modulo 998244353.
+- `matrix.cp`: `Mat<P>`, square matrices over `Mod<P>` with `det`, `rank`,
+  `solve`, and rectangular `solve_linear`.
+- `poly.cp`: `ntt`, `convolve` and `pow_trunc` modulo 998244353, plus
+  arbitrary-modulus 3-prime MTT `convolve_mod` and Lagrange `interpolate`.
 - `powers.cp`: `Powers<P>`, the powers of one base in O(1).
 - `sos.cp`: `sos_sub`, `sos_sup` and `sos_sub_inv`, sums over subsets and
   supersets of bitmasks.
@@ -79,7 +84,13 @@ Graphs, in `graph/`:
 
 - `functional.cp`: `Functional<V>`, the graph where every vertex has one
   way out, split into its rings and the trees draining into them, with
-  the vertex `k` steps ahead for any `k`.
+  `jump`, `dist`, and `jump_while`.
+- `centroids.cp`: `Centroids<V>` centroid decomposition and `reroot` all-roots
+  tree DP (no inverse required).
+- `kruskal_tree.cp`: `KruskalTree<V>` (Kruskal reconstruction / bottleneck
+  tree) and `spanning` forest selector.
+- `min_count.cp`: `MinCount<P>` shortest-path distance + count semiring and
+  `floyd_warshall`.
 
 DP optimizations, in `dp/`:
 
@@ -91,6 +102,8 @@ Sequences and strings, in `seq/` and `str/`:
 
 - `fold_others.cp`: `fold_others` (for every position, the fold of all
   the others, with no inverse needed) and `fold_balanced`.
+- `order_stats.cp`: `ranks`, `lis` (strict and non-decreasing, with index
+  reconstruction), and offline 2D Fenwick `count_in_rects`.
 - `borders.cp`: `borders`, `period` and `overlaps`.
 - `trie.cp`: `Trie<A>` over an alphabet that is a domain.
 - `suffix_automaton.cp`: `SuffixAutomaton<A>`, built online.

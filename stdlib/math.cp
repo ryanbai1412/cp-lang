@@ -67,8 +67,11 @@ pub struct Sieve:
             out.push((p, e))
         out
 
+/// The number of bits needed to write `x >= 0` (`bit_len(0) == 0`, `bit_len(5) == 3`).
+pub fn bit_len(x: Int) -> Int = bit_width(x)
+
 /// The prime factorization of `x >= 1` by trial division. O(sqrt x).
-pub fn factorize(x: Int) -> List<(Int, Int)>:
+pub fn factor(x: Int) -> List<(Int, Int)>:
     var out = List<(Int, Int)>()
     var (rest, p) = (x, 2)
     while p * p <= rest:
@@ -150,7 +153,7 @@ fn sieve_and_factorizations_agree():
     assert s.primes[0..10] == [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
     assert s.primes.len == 46
     for x in 1..=200:
-        assert s.factor(x) == factorize(x)
+        assert s.factor(x) == factor(x)
         var back = 1
         for (p, e) in s.factor(x):
             assert s.is_prime(p)
@@ -158,7 +161,8 @@ fn sieve_and_factorizations_agree():
         assert back == x
         assert divisors(x) == [d for d in 1..=x if x % d == 0]
     assert not s.is_prime(1) and not s.is_prime(0) and s.is_prime(199)
-    assert factorize(1000000007 * 2) == [(2, 1), (1000000007, 1)]
+    assert factor(1000000007 * 2) == [(2, 1), (1000000007, 1)]
+    assert bit_len(0) == 0 and bit_len(1) == 1 and bit_len(8) == 4 and bit_len(15) == 4
 
 @test
 fn crt_combines_or_refuses():

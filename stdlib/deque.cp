@@ -18,6 +18,14 @@ pub struct Deque<T>:
         head = 0
         n = 0
 
+    /// Move the deque's contents out in O(1), leaving `self` empty.
+    pub fn take(mut self) -> Deque<T>:
+        let out = Deque(buf, head, n)
+        buf = [none]
+        head = 0
+        n = 0
+        out
+
     fn grow(mut self):
         if n < buf.len: return
         let old = [buf[(head + i) % buf.len] for i in 0..n]
@@ -124,6 +132,9 @@ fn a_deque_matches_a_list():
             for i in 0..xs.len: assert q[i] == xs[i]
     q.clear()
     assert q.is_empty and q.pop() == none and q.pop_front() == none
+    for x in [10, 20, 30]: q.push(x)
+    var moved = q.take()
+    assert q.is_empty and moved.len == 3 and moved.pop_front() == 10 and moved.pop() == 30
 
 @test
 fn a_deque_as_a_bfs_queue():

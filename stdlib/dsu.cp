@@ -64,6 +64,13 @@ pub struct Dsu<V>:
     /// ports still use.
     pub @get fn count(self) -> Int = parts
 
+    /// Every connected component as a list of its vertices, each vertex appearing once. O(n alpha(n)).
+    pub fn groups(mut self) -> List<List<V>>:
+        let root_of = [V] v => self.find(v)
+        var buckets: [V]List<V> = []
+        for v in V: buckets[root_of[v]].push(v)
+        [buckets[v] for v in V if not buckets[v].is_empty]
+
 @test
 fn unite_and_find():
     domain V = 1..=6
@@ -110,3 +117,29 @@ fn undo_to_returns_to_every_mark():
             for v in V: assert d.size(v) == count(roots[u.to_idx] == roots[v.to_idx] for u in V)
     d.undo_to(0)
     assert d.same(V(0), V(1)) and d.components == 11
+
+@test
+fn groups_partitions_all_vertices_by_component():
+    domain V = 1..=7
+    var d = Dsu<V>()
+    assert d.groups().len == 7
+    assert [g.len for g in d.groups()] == [1, 1, 1, 1, 1, 1, 1]
+    d.unite(V(1), V(3))
+    d.unite(V(3), V(6))
+    let snap = d.mark()
+    d.unite(V(2), V(5))
+    d.unite(V(5), V(7))
+    let gs = d.groups()
+    assert gs.len == d.components and gs.len == 3
+    var flat: List<V> = []
+    for g in gs:
+        assert not g.is_empty
+        for v in g:
+            assert d.same(v, g[0])
+            flat.push(v)
+        assert g.len == d.size(g[0])
+    assert sorted(flat) == [v for v in V]
+    d.undo_to(snap)
+    assert d.groups().len == 5 and d.components == 5
+    for v in V: d.unite(V(1), v)
+    assert d.groups() == [[v for v in V]]

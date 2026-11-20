@@ -80,7 +80,7 @@ associative. The named wrappers of the first design (`Sum`, `Max`, `Min`,
 `both`, `opt`) are gone: the operator is the name.
 
 `Fenwick` is sums: it needs `+` and `-` on `T` and nothing else is passed.
-`SparseTable` takes an idempotent operator (`min`, `max`, `gcd`, `&`, `|`).
+`SparseTable` takes any associative idempotent operator (`min`, `max`, `gcd`, `&`, `|`, or a closure) and returns `?T` (`none` on an empty range — no monoid identity required).
 `LazySegTree` takes an `Action`; the six that cover most problems are
 ready-made: `AddSum`, `AddMin`, `AddMax`, `AssignSum`, `AssignMin`,
 `AssignMax`.
@@ -107,7 +107,11 @@ remember: `Dsu<V>()` has one slot per vertex whether `V` is `0..n` or
 
 `Dsu` also rolls back, for offline dynamic connectivity and divide and
 conquer over time: `let snap = d.mark()`, some `unite`s, then
-`d.undo_to(snap)`.
+`d.undo_to(snap)`. `d.groups()` returns every connected component as
+`List<List<V>>`.
+
+`Marks<D>` in `marks.cp` is a generation-stamped visited table over `D`
+with O(1) `.clear()`, replacing per-round `seen.fill(false)`.
 
 Coordinate compression gives the values their own domain, so a rank cannot
 be mixed up with a value or with an index of another array:
@@ -217,13 +221,15 @@ assert net.flow(a) == 3
 
 ## Trees
 
-`Rooted<V>` is the one tree type. It computes parents, depths, sizes and a
-heavy-first preorder in one pass, and answers `lca`, `dist`, `ancestor`,
-`step`, `lift_while`, `postorder` and `virtual_tree` from it. The preorder
-positions are their own domain, `Rooted<V>.Pre`, so a position cannot be
-used where a vertex is expected.
+`Rooted<V, Pre>` is the one tree type. It computes parents, depths, sizes and a
+heavy-first preorder in one pass (via `Rooted(root:, adj:)`, `Rooted.weighted`,
+or `Rooted.from_parents(par)`), and answers `lca`, `dist`, `ancestor`,
+`step`, `lift_while`, `postorder`, iterative enter/exit `tour`, and
+`virtual_tree` from it. Each tree value owns its own preorder domain
+`r.Pre` (with `r.pos(v) -> r.Pre` and `r.reorder(a) -> [r.Pre]T`), so
+positions from two different trees cannot be mixed by accident.
 
-A value per vertex lives in any structure over `Pre`. `fold_path` and
+A value per vertex lives in any structure over `r.Pre`. `fold_path` and
 `apply_path` walk a path over it, and a subtree is the range `r.sub(v)`,
 so there is no second "tree with values" type and no second copy of the
 data:
@@ -231,9 +237,10 @@ data:
 ```
 let r = Rooted(root: V(1), adj: u => kids[u])
 assert r.lca(V(4), V(6)) == V(2) and r.dist(V(4), V(6)) == 3
-var st = SegTree<Rooted<V>.Pre, Int>(+, [Rooted<V>.Pre] p => r.at[p].to_idx + 1)
+var st = SegTree(+, r.reorder([V] v => v.to_idx + 1))
 assert r.fold_path(V(4), V(6), st) == 4 + 2 + 5 + 6
 assert st.fold(r.sub(V(2))) == 2 + 4 + 5 + 6
+st.set(r.pos(V(2)), 100)
 ```
 
 With a `LazySegTree`, `r.apply_path(a, b, mut st, tag)` updates the path.
@@ -260,21 +267,22 @@ let d = Dir4.from("URDL", ch)!        // or "NESW"
 let q = p.step(d.cw)                  // ?(Row, Col): none off the edge
 ```
 
-`adj8`, `Dir8`, `ray(d)` (the cells up to the edge), `transposed` and
-`flipped` are there too.
+`adj8`, `Dir8`, `ray(d)` (the cells up to the edge), `transposed`,
+`flipped_rows`, and `flipped_cols` are there too.
 
 ## Numbers
 
 `Mod<P>` carries its modulus in the type. It is a number like any other,
-so the generic structures take it as they are. A modulus read from the
+so the generic structures take it as they are (and `.try_inv() -> ?Mod<P>`
+handles non-invertible residues cleanly). A modulus read from the
 input is the same type: freeze it under a capitalized name
-(`let P: Int = read()`, then `type Z = Mod<P>`). `Comb<P>` precomputes
-factorials.
+(`let P: Int = read()`, then `type Z = Mod<P>`). `Comb<P>()` lazily
+auto-grows factorials on demand across test cases.
 
 ```
 type M = Mod<998244353>
 assert M(2).pow(10) == M(1024) and M(3) / M(3) == M(1) and M(-1) + M(1) == M(0)
-let c = Comb<998244353>(100)
+var c = Comb<998244353>()
 assert c.choose(10, 3) == M(120)
 
 var f = Fenwick<I, M>()
@@ -282,8 +290,8 @@ var f = Fenwick<I, M>()
 
 `/` and `%` on `Int` are Euclidean: the remainder is never negative, so
 `x % m` is already the residue you want and `Mod(-1)` needs no fix-up.
-`math.cp` has `gcd`, `ext_gcd`, `floor_div`, `ceil_div`, a linear `Sieve`,
-`factorize`, `divisors` and `crt`.
+`math.cp` has `gcd`, `ext_gcd`, `floor_div`, `ceil_div`, `bit_len`, a linear
+`Sieve`, `factor`, `divisors`, and `crt`.
 
 ## Strings and geometry
 
@@ -351,25 +359,33 @@ is evidence, not a proof.
 ## The modules
 
 - `algebra.cp`: `Monoid`, `Action`, `desc`, `Reversible` and their laws.
-- `dsu.cp` (with rollback), `fenwick.cp` (1D and 2D), `segtree.cp`,
-  `lazy.cp`, `sparse.cp`, `heap.cp` (`MinHeap`, `MaxHeap`), `deque.cp`
-  (`Deque`, `MonoDeque`), `bitset.cp`: the data structures.
-- `seq.cp`: `scan`, `bsearch_first` / `bsearch_last` / `bsearch_first_some`,
-  `slide_until`, `sliding_min` / `sliding_max`, `min_by` / `max_by`,
-  `compress`, `dedup`, `rotate_left`, `next_permutation`, `runs`.
+- `dsu.cp` (with rollback and `groups`), `marks.cp` (`Marks<D>` O(1)-clear
+  generation table), `fenwick.cp` (1D and 2D), `segtree.cp`,
+  `lazy.cp`, `sparse.cp` (`fold -> ?T`), `heap.cp` (`MinHeap`, `MaxHeap`,
+  with `take` / `absorb`), `deque.cp` (`Deque` with `take`, `MonoDeque`),
+  `bitset.cp`: the data structures.
+- `seq.cp`: `prod`, `scan`, `bsearch_first` / `bsearch_last` / `bsearch_first_some`,
+  `slide_until`, `sliding_min` / `sliding_max`, `min_by` / `max_by`
+  (first-extremum tie-breaking, `none` on empty), `compress` (with range
+  slicing), `chunks`, `prefix_range`, `intersect`, `mirror`, `first_ge_by` /
+  `last_le_by`, ordered `Map` 4-lookups (`first_ge`/`ge`, `first_gt`/`gt`,
+  `last_le`/`le`, `last_lt`/`lt`), `swap_at`, `take` / `absorb`, `dedup`,
+  `rotate_left` / `rotate_right`, `next_permutation`, `runs`.
 - `graph.cp`: `Graph`, `bfs`, `dijkstra`, `shortest` (with the path),
-  `topo`, `topo_prefix`, `scc`, `components`, `condense`,
-  `two_edge_components`, `articulation_points`, `biconnected_components`,
-  `two_color`, `mst`, `TwoSat`.
+  `topo` (including vertexless `topo::<V>`), `topo_prefix`, `scc`,
+  `components`, `condense`, `two_edge_components`, `articulation_points`,
+  `biconnected_components`, `two_color`, `mst`, `TwoSat`.
 - `flow.cp`: maximum flow and minimum cut, `MinCostFlow`,
   `max_weight_matching`.
-- `tree.cp`: `Rooted` (with edge lengths through `Rooted.weighted`).
+- `tree.cp`: `Rooted` (value-owned `t.Pre`, `t.pos`, `t.reorder`,
+  `Rooted.from_parents`, `Rooted.weighted`, iterative `t.tour`).
 - `grid.cp`: `Dir4`, `Dir8`, `adj4`, `adj8`, `step`, `ray`, `transposed`,
-  `flipped`.
+  `flipped_rows`, `flipped_cols`.
 - `steps.cp`: `Steps`, range additions read back as runs of equal value.
-- `mod.cp`, `math.cp`: modular arithmetic, counting, number theory.
+- `mod.cp`, `math.cp`: modular arithmetic (`try_inv`), auto-growing `Comb<P>()`,
+  number theory (`factor`, `bit_len`, `Sieve`, `divisors`, `crt`).
 - `strings.cp`: Z, prefix function, KMP search, suffix array, LCP,
-  palindromes.
+  palindromes, generalized `RollingHash` & `HashVal`.
 - `geometry.cp`: integer points.
 - `spec.cp`: structure discovery.
 - `tour.cp`: the examples above, as tests.

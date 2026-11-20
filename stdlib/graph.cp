@@ -139,6 +139,7 @@ pub fn walk_back<V>(via: [V]?V, t: V) -> List<V>:
     path
 
 /// A topological order, or `none` if there is a cycle. O(n + m).
+/// For a vertexless closure graph, pass the vertex domain via turbofish: `topo::<V>(u => ...)`.
 pub fn topo<V, N>(next: N) -> ?List<V>:
     let order = topo_prefix::<V>(next)
     if order.len == V.K: order else: none
@@ -640,3 +641,25 @@ fn two_sat_solutions_satisfy_every_clause_and_unsat_is_detected():
     s.implies(Lit(X(0), true), Lit(X(3), false))
     let fixed = s.solve()!
     assert fixed[X(0)] and not fixed[X(3)]
+
+@test
+fn vertexless_closure_graphs_with_turbofish():
+    domain V = 0..5
+    // DAG 0 -> 1 -> 3, 0 -> 2 -> 3, 3 -> 4 via pure closure (no Graph or adj array)
+    let order = topo::<V>(u =>
+        if u == V(0): [V(1), V(2)]
+        else: if u == V(1) or u == V(2): [V(3)]
+        else: if u == V(3): [V(4)]
+        else: []
+    )!
+    assert order.len == 5 and order[0] == V(0) and order[4] == V(4)
+    // Cyclic closure graph returns none for topo and partial prefix for topo_prefix
+    let cyc = topo::<V>(u => [V((u.to_idx + 1) % 5)])
+    assert cyc == none
+    let pref = topo_prefix::<V>(u => if u == V(0): [V(1)] else: if u == V(1): [V(2)] else: if u == V(2): [V(1)] else: [])
+    assert V(0) in pref and V(1) not in pref and V(2) not in pref
+    // scc and components also work with vertexless closures via turbofish
+    let (SC, scomp) = scc::<V>(u => if u == V(0): [V(1)] else: if u == V(1): [V(0)] else: [])
+    assert SC.K == 4 and scomp[V(0)] == scomp[V(1)]
+    let (CC, ccomp) = components::<V>(u => if u == V(0): [V(1)] else: if u == V(1): [V(0)] else: [])
+    assert CC.K == 4 and ccomp[V(0)] == ccomp[V(1)]

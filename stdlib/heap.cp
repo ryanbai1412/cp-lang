@@ -18,6 +18,18 @@ pub struct MinHeap<T>:
     pub fn clear(mut self):
         xs = []
 
+    /// Move the heap's contents out in O(1), leaving `self` empty.
+    pub fn take(mut self) -> MinHeap<T>:
+        let out = MinHeap(xs)
+        xs = []
+        out
+
+    /// Drain `other` into `self` using small-into-large merging, leaving `other` empty.
+    /// O(min(a, b) log(a + b)): swaps underlying storage in O(1) if `self` is smaller.
+    pub fn absorb(mut self, mut other: MinHeap<T>):
+        if xs.len < other.xs.len: swap(mut xs, mut other.xs)
+        while let x = other.pop(): self.push(x)
+
     pub fn push(mut self, x: T):
         xs.push(x)
         var i = xs.len - 1
@@ -57,6 +69,13 @@ pub struct MaxHeap<T>:
     pub fn clear(mut self):
         h.clear()
 
+    /// Move the heap's contents out in O(1), leaving `self` empty.
+    pub fn take(mut self) -> MaxHeap<T> = MaxHeap(h.take())
+
+    /// Drain `other` into `self` using small-into-large merging, leaving `other` empty.
+    pub fn absorb(mut self, mut other: MaxHeap<T>):
+        h.absorb(mut other.h)
+
     pub fn push(mut self, x: T):
         h.push(desc(x))
 
@@ -95,3 +114,23 @@ fn clear_empties_the_heap():
     assert h.is_empty and h.len == 0
     h.push(7)
     assert h.pop() == 7
+
+@test
+fn take_and_absorb_small_into_large():
+    var a = MinHeap<Int>()
+    var b = MinHeap<Int>()
+    for x in [9, 2]: a.push(x)
+    for x in [5, 1, 8, 3, 7]: b.push(x)
+    a.absorb(mut b)
+    assert b.is_empty and a.len == 7
+    var moved = a.take()
+    assert a.is_empty and moved.len == 7
+    var got: List<Int> = []
+    while let x = moved.pop(): got.push(x)
+    assert got == [1, 2, 3, 5, 7, 8, 9]
+    var hi1 = MaxHeap<Int>()
+    var hi2 = MaxHeap<Int>()
+    for x in [4, 1]: hi1.push(x)
+    for x in [9, 6, 2]: hi2.push(x)
+    hi1.absorb(mut hi2)
+    assert hi2.is_empty and hi1.pop() == 9 and hi1.pop() == 6

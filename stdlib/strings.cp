@@ -100,6 +100,78 @@ pub fn palindromes<T>(s: List<T>) -> (odd: List<Int>, even: List<Int>):
         if i + k - 1 > r: (l, r) = (i - k, i + k - 1)
     (odd: odd, even: even)
 
+// ---- generalized rolling hash
+
+const RH_M1 = 1_000_000_007
+const RH_M2 = 1_000_000_009
+
+/// A 64-bit double-mod polynomial hash value (`Copy + Eq + Ord + Hash`).
+/// Can itself be fed into another `RollingHash` (e.g. hashing rows into a column hash for 2D grids).
+pub struct HashVal(h1: Int, h2: Int):
+    /// Mix both 31-bit halves into one integer token so a `RollingHash` can hash `[D]HashVal`.
+    pub @get fn hash_token(self) -> Int = (h1 << 31) ^ h2
+
+/// Elements accepted by `RollingHash`: `Char`, `Int`, `Bool`, `HashVal`, or any user type
+/// implementing `hash_token`.
+pub trait Hashable:
+    @get fn hash_token(self) -> Int = Int(self)
+
+@get fn ord(self: Int) -> Int = self
+
+/// Generalized double-mod polynomial rolling hash over `Str`, `List<T>`, or any `[D]T`
+/// (`Char`, `Int`, `Bool`, `HashVal`).
+///
+/// Built in O(n); substring queries `.get(l..r)` / `.slice(l, r)` and `.combine(a, b, b_len)`
+/// are O(1). Each constructor draws independent random salted bases unless `bases:` is passed
+/// explicitly, so 2D row and column hashes never collide on transposes.
+pub struct RollingHash:
+    bases: (Int, Int)
+    p1: List<Int>
+    p2: List<Int>
+    pow1: List<Int>
+    pow2: List<Int>
+
+    pub fn new<S>(seq: S, bases: ?(Int, Int) = none) -> RollingHash:
+        let (b1, b2) = bases ?? (rand(1 << 20, 1 << 29), rand(1 << 20, 1 << 29))
+        var p1 = [0]
+        var p2 = [0]
+        var pow1 = [1]
+        var pow2 = [1]
+        for x in seq:
+            let t = x.hash_token
+            let x1 = t % (RH_M1 - 1) + 1
+            let x2 = t % (RH_M2 - 1) + 1
+            p1.push((p1[p1.len - 1] * b1 + x1) % RH_M1)
+            p2.push((p2[p2.len - 1] * b2 + x2) % RH_M2)
+            pow1.push(pow1[pow1.len - 1] * b1 % RH_M1)
+            pow2.push(pow2[pow2.len - 1] * b2 % RH_M2)
+        RollingHash((b1, b2), p1, p2, pow1, pow2)
+
+    /// Build a `RollingHash` reusing another instance's salted `bases` so their hashes compare directly.
+    pub fn with_bases<S>(seq: S, bases: (Int, Int)) -> RollingHash = RollingHash.new(seq, bases: bases)
+
+    /// Number of hashed elements.
+    pub @get fn len(self) -> Int = p1.len - 1
+
+    /// Hash of the entire sequence. O(1).
+    pub @get fn all(self) -> HashVal = self.slice(0, p1.len - 1)
+
+    /// Hash of the half-open 0-based slice `[l, r)`, or `HashVal(0, 0)` when `l >= r`. O(1).
+    pub fn slice(self, l: Int, r: Int) -> HashVal:
+        if l >= r: return HashVal(0, 0)
+        assert 0 <= l and r <= p1.len - 1
+        let d = r - l
+        HashVal((p1[r] - p1[l] * pow1[d]) % RH_M1, (p2[r] - p2[l] * pow2[d]) % RH_M2)
+
+    /// Hash of a range (`Range<Int>` such as `l..r`, `l..=r`, `..k`, or `Range<D>` on `[D]T`). O(1).
+    pub fn get<R>(self, r: R) -> HashVal:
+        if r.is_empty: return HashVal(0, 0)
+        self.slice(r.lo.ord, r.hi.ord)
+
+    /// Concatenate hashes `a` and `b` where `b` has length `b_len`, in O(1).
+    pub fn combine(self, a: HashVal, b: HashVal, b_len: Int) -> HashVal:
+        HashVal((a.h1 * pow1[b_len] + b.h1) % RH_M1, (a.h2 * pow2[b_len] + b.h2) % RH_M2)
+
 // ---- tests
 
 fn random_word(n: Int, letters: Int) -> List<Char> = [Char(Int('a') + rand(0, letters - 1)) for _ in 0..n]
@@ -169,3 +241,52 @@ fn palindromes_match_expanding_from_each_centre():
             k = 0
             while i - k - 1 >= 0 and i + k < n and s[i - k - 1] == s[i + k]: k += 1
             assert p.even[i] == k
+
+@test
+fn rolling_hash_over_str_list_and_domain_arrays():
+    // 1. Str substring hashes match brute-force equality
+    for _ in 0..20:
+        let s = Str(random_word(rand(1, 16), 3))
+        let h = RollingHash(s)
+        assert h.len == s.len
+        for l in 0..s.len:
+            for r in l..=s.len:
+                let hv = h.get(l..r)
+                assert hv == h.slice(l, r)
+                if l < r: assert hv == h.get(l..=r - 1)
+        for _ in 0..30:
+            let len = rand(1, s.len)
+            let a = rand(0, s.len - len)
+            let b = rand(0, s.len - len)
+            assert (h.get(a..a + len) == h.get(b..b + len)) == (s[a..a + len] == s[b..b + len])
+        // combine matches full range for every split
+        for mid in 0..=s.len:
+            assert h.combine(h.get(..mid), h.get(mid..s.len), s.len - mid) == h.all
+    // 2. Domain-indexed [D]Int array (including negative values and zeros)
+    domain D = 1..=8
+    let arr = [D] i => [0, 0, -5, 7, 0, 0, -5, 7][i.to_idx]
+    let hd = RollingHash(arr)
+    assert hd.get(D(1)..=D(4)) == hd.get(D(5)..=D(8))
+    assert hd.get(D(1)..=D(1)) != hd.get(D(1)..=D(2))   // [0] vs [0, 0] never collide
+    assert hd.get(D(3)..D(3)) == HashVal(0, 0)
+    assert hd.get(..D(5)) == hd.get(D(5)..)
+    // 3. Shared bases compare across two distinct sequences
+    let h1 = RollingHash("abacaba")
+    let h2 = RollingHash.with_bases("xxabayy", h1.bases)
+    assert h1.get(0..3) == h2.get(2..5) and h1.get(4..7) == h2.get(2..5)
+    assert h1.get(0..3) != h2.get(0..3)
+    // 4. Nested 2D hashing: [R]HashVal fed into a second RollingHash with independent salted bases
+    domain R = 0..3
+    domain C = 0..3
+    let g = [R, C] (r, c) => [[1, 2, 3], [4, 5, 6], [7, 8, 9]][r.to_idx][c.to_idx]
+    let gt = [C, R] (c, r) => g[r, c]
+    let row_b = RollingHash([g[R(0), c] for c in C]).bases
+    let row_hashes = [R] r => RollingHash.with_bases([g[r, c] for c in C], row_b).all
+    let col_hashes = [C] c => RollingHash.with_bases([gt[c, r] for r in R], row_b).all
+    let h_grid = RollingHash(row_hashes)
+    let h_trans = RollingHash.with_bases(col_hashes, h_grid.bases)
+    assert h_grid.bases != row_b
+    assert h_grid.all != h_trans.all
+    // Same matrix hashes equal under matching row & outer bases
+    let row_hashes2 = [R] r => RollingHash.with_bases([g[r, c] for c in C], row_b).all
+    assert RollingHash.with_bases(row_hashes2, h_grid.bases).all == h_grid.all

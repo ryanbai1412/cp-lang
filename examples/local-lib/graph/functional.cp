@@ -93,6 +93,18 @@ pub struct Functional<V>:
     /// How many different vertices the walk from `v` visits, `v` included.
     pub fn orbit(self, v: V) -> Int = depth[v] + cycles[ring[v]].len
 
+    /// Walk forward from `v` up to `max_steps` while `pred` stays true (`pred` must be true on a
+    /// prefix of the walk from `v` and false afterwards). Returns `(u, steps)` for the farthest
+    /// vertex `u = self.jump(v, steps)` with `pred(u)`, or `none` if `not pred(v)`. O(log^2 n) / O(log n).
+    pub fn jump_while(self, v: V, pred: V -> Bool, max_steps: Int = V.K) -> ?(V, Int):
+        assert max_steps >= 0
+        if not pred(v): return none
+        var (lo, hi) = (0, max_steps)
+        while lo < hi:
+            let mid = (lo + hi + 1) / 2
+            if pred(self.jump(v, mid)): lo = mid else: hi = mid - 1
+        (self.jump(v, lo), lo)
+
 /// The walk from `v`, one step at a time, until it repeats a vertex.
 fn walk<V>(next: [V]V, v: V) -> List<V>:
     var (path, at) = ([], v)
@@ -166,3 +178,22 @@ fn how_many_vertices_drain_into_each_ring_vertex():
     assert load[V(0)] == 4 and load[V(3)] == 3 and load[V(6)] == 1
     assert g.jump(V(4), 10 ** 18) == V(2) and g.dist(V(4), V(2)) == 4 and g.dist(V(2), V(4)) == none
     assert g.dist(V(4), V(5)) == none and g.dist(V(0), V(6)) == none and g.orbit(V(5)) == 5
+
+@test
+fn jump_while_matches_walking():
+    for _ in 0..40:
+        let n = rand(2, 14)
+        domain V = 0..n
+        let next = [V] v => V(rand(0, n - 1))
+        let g = Functional<V>(next)
+        for v in V:
+            let thresh = rand(0, 4)
+            let limit = rand(0, n + 3)
+            let got = g.jump_while(v, u => g.steps_to_ring(u) > thresh, max_steps: limit)
+            var want: ?(V, Int) = none
+            var cur = v
+            for s in 0..=limit:
+                if g.steps_to_ring(cur) > thresh: want = (cur, s)
+                else: break
+                cur = next[cur]
+            assert got == want

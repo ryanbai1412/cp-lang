@@ -4,6 +4,15 @@
 //! a sorted list answers `xs.first_ge(x)` and `xs.last_le(x)`; a linear search is
 //! `first(it)`, `a.find(x)`, `min_by` and `max_by`. Nothing else searches.
 use std.deque.{MonoDeque}
+use std.mod.{Mod}
+
+/// The product of every value in `it`, starting from `T.one` (`1` for `Int`, `1.0` for `Float`,
+/// `Mod<P>.one` for `Mod<P>`). Works on lists, arrays, ranges, and generators. O(n).
+pub fn prod<T, S>(it: S) -> T:
+    var acc: ?T = none
+    for x in it:
+        acc = if acc == none: x else: acc! * x
+    acc ?? T.one
 
 /// Every prefix folded with `f`: `[a0, f(a0, a1), f(f(a0, a1), a2), ...]`, as long as `xs`.
 /// `scan(xs, +)` is the running sum and `scan(xs, max)` the running maximum; no identity
@@ -134,6 +143,9 @@ pub fn rotate_left<T>(mut a: List<T>, k: Int):
     let old = a.copy()
     for i in 0..a.len: a[i] = old[(i + s) % a.len]
 
+/// Rotate `a` right by `k` in place: the last `k` elements move to the front. `k` wraps around.
+pub fn rotate_right<T>(mut a: List<T>, k: Int) = rotate_left(mut a, -k)
+
 /// Step `a` to the next arrangement in sorted order, in place. Returns false, leaving `a`
 /// sorted ascending, when it was the last one. O(n), amortized O(1).
 pub fn next_permutation<T>(mut a: List<T>) -> Bool:
@@ -166,8 +178,11 @@ pub fn runs<T>(a: List<T>) -> List<(val: T, len: Int)>:
 /// own domain `D`. `xs[i]` is the value at index `i`, `xs.at(val)` the index of a value that
 /// was compressed, and `xs.first_ge(val)` / `xs.last_le(val)` the nearest index for any value.
 pub struct Compressed<D, T>(vals: [D]T):
-    /// The value at index `i`. O(1).
-    pub fn get(self, i: D) -> T = vals[i]
+    /// The value at index `i` (or a `List<T>` slice when given a `Range<D>`). O(1) / O(r.len).
+    pub fn get<K>(self, i: K) = vals[i]
+
+    /// The compressed values over a range `r` of `xs.D`, as a list. O(r.len).
+    pub fn slice(self, r: Range<D>) -> List<T> = [vals[i] for i in r]
 
     /// How many distinct values there are.
     pub @get fn len(self) -> Int = D.K
@@ -192,6 +207,122 @@ pub fn compress<T>(all: List<T>):
     dedup(mut sorted_vals)
     domain D = 0..sorted_vals.len
     Compressed<D, T>([D] i => sorted_vals[i.to_idx])
+
+// ---- v2.1 range, domain, sorted-lookup, Map 4-lookup, and container helpers
+
+/// Left boundary cut of a range (valid even when empty).
+pub @get fn l<D>(self: Range<D>) -> Bounds<D> = self.lo
+
+/// Right boundary cut of a range (valid even when empty).
+pub @get fn r<D>(self: Range<D>) -> Bounds<D> = self.hi
+
+/// Reflect a domain position across its domain (`D.nth(D.K - 1 - p.to_idx)`).
+pub @get fn mirror<D>(self: D) -> D = D.nth(D.K - 1 - self.to_idx)
+
+/// Reflect a domain range across its domain, preserving length and emptiness.
+pub fn mirror_range<D>(self: Range<D>) -> Range<D>:
+    if self.is_empty: return self
+    self.last!.mirror..=self.first!.mirror
+
+/// Non-overlapping chunks of `k >= 1` positions of `D`, the last clamped to `D.last`.
+pub fn chunks<D>(self: D, k: Int) -> List<Range<D>>:
+    assert k >= 1
+    var out: List<Range<D>> = []
+    var i = 0
+    while i < self.K:
+        let hi = min(i + k, self.K)
+        out.push(self.nth(i)..=self.nth(hi - 1))
+        i = hi
+    out
+
+/// The first `min(max(k, 0), D.K)` positions of `D` as a `Range<D>` (the userland form of `D[..k]`).
+pub fn prefix_range<D>(self: D, k: Int) -> Range<D>:
+    let n = min(max(k, 0), self.K)
+    self.bounds.nth(0)..self.bounds.nth(n)
+
+/// Intersection of two domain ranges (the userland form of `r1 & r2`); empty when disjoint.
+pub fn intersect<D>(a: Range<D>, b: Range<D>) -> Range<D>:
+    let lo = if a.lo.ord >= b.lo.ord: a.lo else: b.lo
+    let hi = if a.hi.ord <= b.hi.ord: a.hi else: b.hi
+    if lo.ord >= hi.ord: return lo..lo
+    lo..hi
+
+/// Intersection of two integer ranges; empty when disjoint.
+pub fn intersect_int(a: Range<Int>, b: Range<Int>) -> Range<Int>:
+    let lo = max(a.lo, b.lo)
+    let hi = min(a.hi, b.hi)
+    if lo >= hi: return lo..lo
+    lo..hi
+
+/// First index in sorted list `xs` with `key(xs[i]) >= target`, or `none`. O(log n).
+pub fn first_ge_by<T, K>(xs: List<T>, target: K, by: T -> K) -> ?Int:
+    if xs.is_empty or by(xs[xs.len - 1]) < target: return none
+    var (lo, hi) = (0, xs.len - 1)
+    while lo < hi:
+        let mid = (lo + hi) / 2
+        if by(xs[mid]) >= target: hi = mid else: lo = mid + 1
+    lo
+
+/// Last index in sorted list `xs` with `key(xs[i]) <= target`, or `none`. O(log n).
+pub fn last_le_by<T, K>(xs: List<T>, target: K, by: T -> K) -> ?Int:
+    if xs.is_empty or by(xs[0]) > target: return none
+    var (lo, hi) = (0, xs.len - 1)
+    while lo < hi:
+        let mid = (lo + hi + 1) / 2
+        if by(xs[mid]) <= target: lo = mid else: hi = mid - 1
+    lo
+
+/// First `(key, val)` in `Map` with `key >= k`, or `none`.
+pub fn first_ge<K, V>(self: Map<K, V>, k: K) -> ?(K, V):
+    for (key, val) in self:
+        if key >= k: return (key, val)
+    none
+
+/// First `(key, val)` in `Map` with `key > k`, or `none`.
+pub fn first_gt<K, V>(self: Map<K, V>, k: K) -> ?(K, V):
+    for (key, val) in self:
+        if key > k: return (key, val)
+    none
+
+/// Last `(key, val)` in `Map` with `key <= k`, or `none`.
+pub fn last_le<K, V>(self: Map<K, V>, k: K) -> ?(K, V):
+    var best: ?(K, V) = none
+    for (key, val) in self:
+        if key <= k: best = (key, val)
+        else: break
+    best
+
+/// Last `(key, val)` in `Map` with `key < k`, or `none`.
+pub fn last_lt<K, V>(self: Map<K, V>, k: K) -> ?(K, V):
+    var best: ?(K, V) = none
+    for (key, val) in self:
+        if key < k: best = (key, val)
+        else: break
+    best
+
+/// Shorthand aliases for the 4 ordered `Map` lookups (`ge`, `gt`, `le`, `lt`).
+pub fn ge<K, V>(self: Map<K, V>, k: K) -> ?(K, V) = first_ge(self, k)
+pub fn gt<K, V>(self: Map<K, V>, k: K) -> ?(K, V) = first_gt(self, k)
+pub fn le<K, V>(self: Map<K, V>, k: K) -> ?(K, V) = last_le(self, k)
+pub fn lt<K, V>(self: Map<K, V>, k: K) -> ?(K, V) = last_lt(self, k)
+
+/// Swap two positions of a domain array in place; safely a no-op when `i == j`.
+pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D):
+    if i == j: return
+    let t = self[i]
+    self[i] = self[j]
+    self[j] = t
+
+/// Move all elements out of `self`, leaving it empty.
+pub fn take<T>(mut self: List<T>) -> List<T>:
+    let out = self.copy()
+    self.truncate(0)
+    out
+
+/// Drain all elements of `other` into `self`, leaving `other` empty.
+pub fn absorb<T>(mut self: List<T>, mut other: List<T>):
+    for x in other: self.push(x)
+    other.truncate(0)
 
 @test
 fn scan_folds_every_prefix():
@@ -299,3 +430,108 @@ fn compress_gives_the_values_their_own_domain():
     assert xs.last_le(4) == xs.at(3) and xs.last_le(-100) == none
     let other = compress([5, 6])
     assert other.D.K == 2 and xs.D.K == 4
+    // Compressed range slicing
+    let blk = xs.D.first..=xs.D.nth(2)
+    assert xs.slice(blk) == [-7, 3, 40]
+    assert xs[blk] == [-7, 3, 40]
+    assert xs.slice(xs.D.nth(1)..xs.D.nth(1)) == []
+
+@test
+fn prod_and_min_max_by_tie_breaking():
+    assert prod([2, 3, 4]) == 24
+    assert prod(x for x in 1..=5) == 120
+    assert prod::<Int>([]) == 1
+    type Z = Mod<1000000007>
+    assert prod([Z(2), Z(3), Z(5)]) == Z(30)
+    assert prod::<Z>([]) == Z.one
+    // First extremum always wins ties; empty input always returns none
+    let items = [(10, "first_min"), (5, "a"), (5, "b"), (20, "first_max"), (20, "second_max"), (5, "c")]
+    assert min_by(items, p => p.0) == (5, "a")
+    assert max_by(items, p => p.0) == (20, "first_max")
+    assert min_by([("x", 1), ("y", 1), ("z", 1)], p => p.1) == ("x", 1)
+    assert max_by([("x", 1), ("y", 1), ("z", 1)], p => p.1) == ("x", 1)
+    let empty: List<(Int, Str)> = []
+    assert min_by(empty, p => p.0) == none and max_by(empty, p => p.0) == none
+    assert min_by([x for x in items if x.0 < 0], p => p.0) == none
+    assert max_by([x for x in items if x.0 < 0], p => p.0) == none
+
+@test
+fn chunks_prefix_intersect_bounds_mirror_and_rotate_right():
+    domain D = 1..=10
+    let cs = D.chunks(3)
+    assert [c.len for c in cs] == [3, 3, 3, 1]
+    assert cs[0] == (D(1)..=D(3)) and cs[3] == (D(10)..=D(10))
+    assert D.chunks(20) == [D(1)..=D(10)]
+    // Range.l and Range.r boundary cuts even when empty
+    let empty = D(4)..D(4)
+    assert empty.l == D(4).l and empty.r == D(4).l and empty.l == empty.r
+    let seg = D(2)..=D(5)
+    assert seg.l == D(2).l and seg.r == D(5).r
+    // D prefix range (D[..k])
+    assert D.prefix_range(0).is_empty
+    assert D.prefix_range(4) == (D(1)..=D(4))
+    assert D.prefix_range(99) == (D(1)..=D(10))
+    // Range intersection (r1 & r2)
+    assert intersect(D(2)..=D(7), D(5)..=D(9)) == (D(5)..=D(7))
+    assert intersect(D(1)..=D(3), D(6)..=D(8)).is_empty
+    assert intersect_int(2..8, 5..12) == (5..8)
+    assert intersect_int(1..3, 3..6).is_empty
+    // Mirror on positions and ranges
+    assert D(1).mirror == D(10) and D(3).mirror == D(8) and D(3).mirror.mirror == D(3)
+    assert mirror_range(D(1)..=D(3)) == (D(8)..=D(10))
+    assert mirror_range(D(4)..D(4)).is_empty
+    // rotate_right
+    var xs = [1, 2, 3, 4, 5]
+    rotate_right(mut xs, 2)
+    assert xs == [4, 5, 1, 2, 3]
+    rotate_right(mut xs, 7)
+    assert xs == [2, 3, 4, 5, 1]
+    // first_ge_by / last_le_by
+    let pairs = [(1, "a"), (3, "b"), (3, "c"), (7, "d")]
+    assert first_ge_by(pairs, 3, by: p => p.0) == 1
+    assert first_ge_by(pairs, 4, by: p => p.0) == 3
+    assert first_ge_by(pairs, 9, by: p => p.0) == none
+    assert last_le_by(pairs, 3, by: p => p.0) == 2
+    assert last_le_by(pairs, 0, by: p => p.0) == none
+
+@test
+fn map_four_lookups_and_container_helpers():
+    var m = Map<Int, Str>()
+    m[10] = "ten"
+    m[20] = "twenty"
+    m[30] = "thirty"
+    assert m.first_ge(20) == (20, "twenty") and m.ge(21) == (30, "thirty") and m.ge(31) == none
+    assert m.first_gt(20) == (30, "thirty") and m.gt(10) == (20, "twenty") and m.gt(30) == none
+    assert m.last_le(20) == (20, "twenty") and m.le(19) == (10, "ten") and m.le(5) == none
+    assert m.last_lt(20) == (10, "ten") and m.lt(30) == (20, "twenty") and m.lt(10) == none
+    // Differential check against brute-force scans on random maps
+    for _ in 0..25:
+        var rm = Map<Int, Int>()
+        var ks: List<Int> = []
+        for _ in 0..rand(0, 12):
+            let k = rand(-10, 10)
+            let v = rand(0, 99)
+            rm[k] = v
+            if k not in ks: ks.push(k)
+        sort(mut ks)
+        for q in -12..=12:
+            let want_ge = first((k, rm[k]) for k in ks if k >= q)
+            let want_gt = first((k, rm[k]) for k in ks if k > q)
+            let want_le = max_by([(k, rm[k]) for k in ks if k <= q], p => p.0)
+            let want_lt = max_by([(k, rm[k]) for k in ks if k < q], p => p.0)
+            assert rm.first_ge(q) == want_ge and rm.ge(q) == want_ge
+            assert rm.first_gt(q) == want_gt and rm.gt(q) == want_gt
+            assert rm.last_le(q) == want_le and rm.le(q) == want_le
+            assert rm.last_lt(q) == want_lt and rm.lt(q) == want_lt
+    // swap_at (self-swap safe), take, absorb
+    domain I = 0..4
+    var a = [I] i => i.to_idx * 10
+    a.swap_at(I(1), I(3))
+    a.swap_at(I(2), I(2))
+    assert [a[i] for i in I] == [0, 30, 20, 10]
+    var u = [1, 2]
+    var v = [3, 4, 5]
+    u.absorb(mut v)
+    assert v.is_empty and u == [1, 2, 3, 4, 5]
+    let moved = u.take()
+    assert u.is_empty and moved == [1, 2, 3, 4, 5]
