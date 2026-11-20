@@ -65,7 +65,7 @@ count.fill(0)
 - `v + k` / `v - k` return `?V`; `b - a` returns `Int`; `v.cyc(k)` wraps.
 - `V.bounds` contains `V.K + 1` gaps; `v.l`/`v.r`, `v.l(k)`/`v.r(k)` select boundaries.
 - `b.left`/`b.right` return `?V`; range structures accept `..v`, `..=v`, and `v..`.
-- `[Row, Col]T` indexes with `g[r, c]`; import `std.grid.{adj4}` for `(r, c).adj4`.
+- `[Row, Col]T` indexes with `g[r, c]`; `p.step(d)` over `Dir4`/`Dir8` gives `?(Row, Col)`; `use std.grid.{adj4}` for `p.adj4`.
 - Read-only slice aggregates work; mutable slices and `a.raw[i]` remain specification work.
 - Compression: `xs = compress(all)`, fresh domain `xs.D`, `xs.at(x)`, inverse `xs[id]`.
 
@@ -140,7 +140,7 @@ print(out)
 print(s.starts_with("12"), s.find("ab"), 'a'.upper) // YES 3 A
 ```
 
-`Str` is a flat `0..s.len` byte sequence, never UTF-8. `s[..k]`, `s[k..]`, `.len`, `.is_empty`, `.starts_with`, `.ends_with`, `.find -> ?Int`; `Char.lower`/`.upper`.
+`Str` is a flat `0..s.len` byte sequence, never UTF-8. `s[..k]`, `s[k..]`, `.len`, `.is_empty`, `.starts_with`, `.ends_with`, `.find -> ?Int`, `find_all(s, p)`; `Char.lower`/`.upper`/`.digit`.
 For nominal string positions, read `let s: [domain S]Char = read()`.
 
 ## 8. Collections and sequence construction
@@ -162,6 +162,7 @@ print(resized(xs, 1, 0))            // 1; same helper, truncating instead of pad
 - `Bitset<D>`: `.add`, `.remove`, `.toggle`, set operations, `.len` (popcount), `.shifted(k)`.
 - `Subset<D>`: small bitmask indices; `.empty`, `.full`, `.with(v)`, `.without(v)`, `s = s.set(v, on)` (returns a new subset), `.subsets`.
 - Comprehensions `[f(x) for x in xs if ok(x)]`; `xs += ys`; `for b in Bool`; `sort(mut xs)`, `sorted(xs, by: desc)`.
+- `xs.windows(k)` yields each length-`k` window; `zip(xs, ys)` pairs up to the shorter list.
 - Folds take a monoid such as `+`: `fold(+, xs)`, `scan(xs, +)`, `xs.excl_fold(+)` yields `(x, rest)`; `runs`, `runs_by(xs, key)` yields `(key, items)`, `prefix`, `compress`.
 
 ## 9. Search and modular arithmetic
@@ -180,9 +181,9 @@ print(z, one, Z.P)                  // 4 1 7; numeric type parameter access
 
 - Binary search returns `?I`; no hit is `none`. Floating ranges take `steps: 80`.
 - Sorted sequence `.first_ge`/`.last_le` return indices; sets return keys; maps return pairs.
-- `Mod<P>` supports `+ - * / **`, `.pow`, `.inv`, `.try_inv`; `P` can be constant or runtime-frozen.
+- `Mod<P>` supports `+ - * / **`, `.pow`, `.inv` (or `.inv()`), `.try_inv`; `P` can be constant, runtime-frozen or above 2^31.
 - `Comb<P>()`: `.fact`, `.inv_fact`, `.choose`, `.arrange`; number theory: `gcd`, `lcm`, `ceil_div`, `Sieve`.
-- Randomness: `Rng(seed)`, `rand(lo..hi)`, `shuffle(mut xs)`; geometry: `Pt`, dot/cross products.
+- Randomness: `rand(lo, hi)`, `shuffle(mut xs)`, seeded `Rng.new(seed).int(lo, hi)` (`use std.rand.{Rng}`); geometry: `Pt`.
 
 ## 10. Graphs and rooted trees
 
@@ -191,7 +192,7 @@ domain V = 0..4
 let edges = [(V(0), V(1)), (V(1), V(2)), (V(1), V(3))]
 let g = Graph.directed(edges)
 print(bfs(g, from: [V.first]))       // optional distances; multiple sources allowed
-print(peel::<V>(g), topo::<V>(g))
+print(peel(g), topo(g))
 let t = Rooted(Graph.undirected(edges), V.first)
 let down: [V]Int = 1
 for (c, rest) in t.excl_fold(V(1), *, c => down[c] + 1):
@@ -199,7 +200,8 @@ for (c, rest) in t.excl_fold(V(1), *, c => down[c] + 1):
 ```
 
 - `peel` returns Kahn's removal order; `topo` returns a full order or `none` on a cycle.
-- Currently use explicit `::<V>` with named graphs; inferred `peel(g)`/`topo(g)` is not yet runnable.
+- A neighbour lambda works anywhere a graph does; its domain is what it indexes: `peel(v => adj[v])`.
+- Grid cells are vertices: `bfs(p => [q for q in p.adj4 if not wall[q]], [(R(0), C(0))])` (`use std.grid.{adj4}`).
 - Unpeeled vertices can be on a cycle **or reachable from one**; not all are cycle vertices.
 - `t.excl_fold(v, m, f)` yields `(child, fold over other children)`, preserving child order.
 - This rerooting step is O(degree(v)), needs no inverse, and works for noncommutative monoids.

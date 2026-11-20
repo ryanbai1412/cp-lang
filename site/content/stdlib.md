@@ -64,7 +64,8 @@ Other prelude sequence helpers:
 - `runs(a)` — run-length `(value, count)` pairs; `runs_by(a, key)` — groups of equal `key`, each `(key, items)`; `xs.adjacent` — consecutive pairs; `D.windows(k)` — sliding windows.
 - `sort(mut a, by:)`, `sorted(a, by:)` (descending via `by: desc`), `reverse(mut a)`, `dedup(mut a)`, `distinct(a)`, `rotate_left(mut a, k)` (negative rotates right), `next_permutation(mut a)`, `prev_permutation(mut a)`.
 - `sum`, `any`, `all`, `count`, `first(it) -> ?T`, `a.find(x) -> ?I`, `min_by(it, key)`, `max_by(it, key)`.
-- `Perm<V>` (`.inv()`, `.cycles()`), plus deterministic RNG: `Rng(seed)`, `rand(lo..hi)`, `shuffle(mut xs)`.
+- `xs.windows(k)` yields every length-`k` window as a list; `zip(xs, ys)` pairs elements up to the shorter list.
+- Randomness: `rand(lo, hi)` and `shuffle(mut xs)` are in the prelude; `std.rand` adds a seeded `Rng.new(seed)` with `.int(lo, hi)` and `.next()`.
 
 ## Range data structures and union-find
 
@@ -106,7 +107,7 @@ print(bit.sum(V.first..=V.last), rmq.fold(V.first..=V.last), st.all, mx.all.valu
 
 ## Graphs, trees, flows, and strings
 
-- **`Graph<V>` / `Graph<V, W>` (`std.graph`):** flat CSR storage via `Graph.undirected(es)`, `Graph.directed(es)`, and neighbor iteration `g[u]`. Algorithms accept either a `Graph` or an implicit neighbor function `v => ...`: `bfs`, `dijkstra`, `topo`, `scc`, `condense`, `two_edge_components`, `biconnected_components`, `articulation_points`, and `two_color`.
+- **`Graph<V>` / `Graph<V, W>` (`std.graph`):** flat CSR storage via `Graph.undirected(es)`, `Graph.directed(es)`, and neighbor iteration `g[u]`. Algorithms accept either a `Graph` or an implicit neighbor function `v => ...`: `bfs`, `dijkstra`, `topo`, `scc`, `condense`, `two_edge_components`, `biconnected_components`, `articulation_points`, and `two_color`. A lambda's vertex domain is the domain it indexes (`peel(v => adj[v])`), and grid cells `(R, C)` are vertices too: `bfs(p => [q for q in p.adj4 if not wall[q]], [(R(0), C(0))])`.
 - **`Rooted<V>(g, root)` / `Rooted.from_parents(par)` (`std.tree`):** value-owned Euler preorder domain `t.Pre`, `t.pos(v) -> t.Pre`, `t.preorder: [t.Pre]V`, `t.postorder`, `t.tour` (`(v, entering)`), `.parent(v)`, `.children(v)`, `.depth(v)`, `.size(v)`, `.lca(a, b)`, `.dist(a, b)`, `.is_anc(a, b)`, `.ancestor(v, k)`, `.lift_while(v, pred) -> ?V`, `.sub(v) -> Range<t.Pre>`, `.chains(a, b, edges?: Bool)`, `.fold_path(a, b, ds)`, `.apply_path(a, b, mut ds, tag)`, and `.virtual_tree(keys)`.
 - **Network flow (`std.flow`):** `FlowGraph<Node>()` (Dinic) and `max_weight_matching<L, R>` (Hungarian), designed to pair directly with payload enums (`enum Node: Src; Sink; Left(L); Right(R)`).
 - **String algorithms (`std.strings`):** `z_function(s)`, `prefix_function(s)`, `SuffixArray(s)` (`.sa`, `.lcp`), and `RollingHash(seq)` (works on `Str` or any `[D]T`, `.get(l..r) -> HashVal`).
@@ -123,7 +124,7 @@ let p: 1..=1e9 = read()
 type DynamicZ = Mod<p>
 ```
 
-- **`Mod<P>` (`std.mod`):** 4-byte storage when `P <= 2^31 - 1`, `+`, `-`, `*`, `/`, `**`, `.pow(e)`, `.inv`, `.try_inv() -> ?Z` (for composite moduli), `.val -> Int`. Intentionally omits `Ord`.
+- **`Mod<P>` (`std.mod`):** 4-byte storage when `P <= 2^31 - 1`, `+`, `-`, `*`, `/`, `**`, `.pow(e)`, `.inv` (also written `.inv()`), `.try_inv() -> ?Z` (for composite moduli), `.val -> Int`. Intentionally omits `Ord`.
 - **`Comb<P>()` (`std.mod`):** `.fact(n)`, `.inv_fact(n)`, `.choose(n, k)`, `.arrange(n, k)` (an immutable `let comb = Comb<MOD>()` extends its tables lazily).
 - **Number theory (`std.math`):** `gcd`, `lcm`, `ext_gcd`, `isqrt`, `ceil_div`, `pow_mod`, `Sieve(n)` (`.is_prime`, `.spf`, `.primes`), `factor(n)`, `divisors(n)`.
 - **Exact geometry (`std.geometry`):** `Pt<T = Int>` with `.dot`, `.cross`, `.norm2`, `orient(a, b, c)` (`-1 | 0 | 1`), `turn`, `turn_eps`, and `ByAngle` for exact integer angular sorting.

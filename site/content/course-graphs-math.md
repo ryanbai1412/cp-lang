@@ -55,15 +55,15 @@ Notice two contest conveniences:
 
 `Graph`, `bfs`, `dijkstra`, `topo`, and `peel` are auto-imported. `peel` runs Kahn's algorithm and returns the vertices it removes; `topo` requires a complete order and returns `none` if a cycle remains. The remaining vertices can be on a cycle **or reachable from one**, so `peel` is not a list of precisely the non-cycle vertices.
 
-The current Rust compiler needs an explicit vertex domain for a named graph: use `peel::<V>(g)` and `topo::<V>(g)` rather than the inferred `peel(g)` and `topo(g)` forms.
+`peel(g)` and `topo(g)` take the vertex domain from `g`, and a neighbour lambda's domain is the one it indexes, so `peel(v => adj[v])` needs no annotation either.
 
 ```cp CP Lang 0.2.2
 domain V = 0..4
 let edges = [(V(0), V(1)), (V(1), V(2)), (V(2), V(1)), (V(2), V(3))]
 let g = Graph.directed(edges)
 print(bfs(g, from: [V.first])) // 0 1 2 3
-print(peel::<V>(g))           // only 0 is removed; 3 is downstream of the cycle
-print(topo::<V>(g), none: "cycle")
+print(peel(g))                // only 0 is removed; 3 is downstream of the cycle
+print(topo(g), none: "cycle")
 ```
 
 ```exercise graphs-bfs-optional

@@ -60,7 +60,7 @@ The standard library provides `z_function(s)`, `prefix_function(s)`, `palindrome
 
 ## Prefix, suffix, and search helpers
 
-`Str` has `.starts_with(p)`, `.ends_with(p)` and `.find(p) -> ?Int` (the first index where `p` starts), and `Char` has `.lower` and `.upper` for ASCII letters. All of them are in the prelude.
+`Str` has `.starts_with(p)`, `.ends_with(p)` and `.find(p) -> ?Int` (the first index where `p` starts), and `Char` has `.lower` and `.upper` for ASCII letters and `.digit` for `'0'..='9'`. `find_all(s, p)` yields the start of every match. All of them are in the prelude.
 
 ```cp
 let s: Str = "hello"

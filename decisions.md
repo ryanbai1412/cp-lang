@@ -614,9 +614,9 @@ and Rust compiler sprints.
     `close(a, b, eps)` and `sign(x, eps)` (exempting literal `== 0.0`); and
     `sqrt`, `sin`, `cos`, `tan`, `atan2`, `exp`, `ln`, `hypot`, `floor`, `ceil`,
     `round`, `trunc`, `PI` are listed intrinsics.
-  - **8 + 3 language traits**: 8 auto-derived core traits (`Index`, `Seq`,
-    `Copy`, `Eq`, `Ord` only when all fields are `Ord`, `Hash`, `Show`, `Read`)
-    plus 3 library-author traits (`Indexed`/`IndexedMut`, `Iterator`, `Gen`).
+  - **7 + 2 language traits** (the count as revised in 3.5): 7 auto-derived core traits (`Index`, `Seq`,
+    `Eq`, `Ord` only when all fields are `Ord`, `Hash`, `Show`, `Read`)
+    plus 2 library-author traits (`Indexed`, `Iterable`).
     `Small`, `Relocate`, `Zero`, `Bits`, `OrdKey`, `Bounded`, `Niche`
     (internalized), `Shrink` (choice-stream shrinking), `Modulus`, `Handle`,
     `FenwickIndex`, `Window`, and `BagWindow` are deleted (3.5).
@@ -848,7 +848,7 @@ prototype pass (`c8e381f`), and the aligned `stdlib/` + `examples/local-lib/`
 (§17). Full before/after examples and the next-sprint checklist live in
 `research/language-architecture-v2.1.md`; `docs/one-page-cheat-sheet.md`
 is synchronized to match. **Zero keywords (40), zero numeric types (4),
-zero traits (8 + 3), and zero `@` decorators (7 + 2) are added.**
+zero traits (7 + 2, as revised in 3.5), and zero `@` decorators (7 + 2) are added.**
 
 - **18.1 Tropical Optional Rule (`?T`), unparenthesized-`??` guard, and `?T == T` (1.3; Batches 27, 28, 32, 33, 34, 35, 36, 38, 39).**
   Across nine batches, unlifted `+`/`-` on `?Int`/`?F64` forced repeated
@@ -1199,3 +1199,51 @@ statements, run top to bottom. Neither needs a `fn solve()` wrapper.
   `@multitest fn solve():` wrapper and the bare `@multitest` divider, so existing ports keep building until
   they are migrated; both should then become errors that point to `@!multitest`. `@spec` and
   `@checker` are not implemented in the prototype, so 20.4 is specified here and not yet tested.
+
+## 21. Batch 7 calls: graph vertices, getters, randomness, the prelude budget and always-on traps (0.2.2, 2026-11-20)
+
+These came out of the cold-writer benchmark and Friction Hunter waves 5 to 10, where the same few fights kept
+recurring. Each one is implemented in the Rust compiler and covered by a program under
+`crates/cpl-cli/tests/programs/`.
+
+- **21.1 A tuple of domains is a domain for graph search.** `[V]T` where `V` stands for `(R, C)` is the same
+  flat table as `[R, C]T`, so `bfs` and `dijkstra` take grid cells as vertices directly instead of a cell
+  number packed by hand:
+
+  ```cp
+  use std.grid.{adj4}
+  domain R = 0..3
+  domain C = 0..3
+  let wall: [R, C]Bool = [R, C] (r, c) => r.ord == 1 and c.ord < 2
+  let d = bfs(p => [q for q in p.adj4 if not wall[q]], [(R(0), C(0))])
+  print(d[(R(2), C(0))])
+  ```
+
+- **21.2 The vertex domain comes from the neighbour function.** When `peel`, `topo` or `scc` is given a
+  lambda, the vertex domain is the domain the lambda indexes with its parameter, so `peel(v => adj[v])`
+  needs no `::<V>`. A named `Graph` works the same way: `peel(g)` and `topo(g)` take the domain from `g`.
+
+- **21.3 A getter reads the same with or without parentheses.** A `@get` method such as `Mod.inv` can be
+  written `x.inv` or `x.inv()`. Writers coming from other languages reach for the parentheses first, and
+  there is no second meaning they could have, so both spellings are accepted rather than one being an error.
+
+- **21.4 Seeded randomness is a library type.** `std.rand` holds `Rng` (`Rng.new(seed)`, `.int(lo, hi)`,
+  `.next()`), imported explicitly with `use std.rand.{Rng}`. The prelude keeps only `rand(lo, hi)` and
+  `shuffle(mut xs)`, which cover generators and most randomized solutions.
+
+- **21.5 The prelude has a budget of 80 names.** `stdlib/prelude.cp` imports exactly 80 names. Batch 7
+  brought in `Dir8`, `step`, `find_all`, `windows`, `zip` and `digit`, which the benchmarks showed people
+  write without a `use`, and moved `Neighbours`, `Hashable`, `Prefix1` and `HashVal` out, since they are
+  named only by library authors. A name joins the prelude only when another one leaves.
+
+- **21.6 Arithmetic traps run in every build, not only locally.** Division or modulo by zero, a shift
+  outside `0..64`, a negative power and `U64` division by zero stop the program with exit status 3 in the
+  submitted release binary too. A modulus above `3_037_000_499` multiplies in 128 bits, so
+  `Mod<4_000_000_007>` no longer overflows. The release binary is what the judge runs, and a silent wrong
+  answer there is worse than a crash; the perf tail profile (`research/perf-tail-profile-2.md`) measured
+  no cost from the always-on division checks. Unproven `Int` overflow stays a local-only trap (7.x).
+
+- **21.7 Two silent-empty cases are errors.** A domain named inside a tuple `read()`, such as
+  `let (s, k): ([domain Pos]Char, Int) = read()`, used to read no values; it is now a compile error. A
+  `match` on an enum without fields needs an arm for every variant.
+
