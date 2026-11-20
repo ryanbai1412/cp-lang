@@ -76,6 +76,9 @@ impl<'a> Lowerer<'a> {
             },
             ast::ExprKind::Name(name) => self.name(name, inner_hint, span),
             ast::ExprKind::SelfValue => {
+                if let Some(slot) = self.lookup("self") {
+                    return self.local(slot, span);
+                }
                 if let Some((ref recv_place, _)) = self.cx.inline_self {
                     return place_to_expr(recv_place);
                 }
@@ -107,6 +110,19 @@ impl<'a> Lowerer<'a> {
                 let base_expr = self.expr(base, None);
                 if indices.len() == 1 && matches!(indices[0].kind, ast::ExprKind::Range { .. }) {
                     return self.slice_expr(base_expr, &indices[0], span);
+                }
+                if let Ty::Struct(sid) = base_expr.ty {
+                    if let Some(&fn_id) = self.structs[sid].methods.get("get") {
+                        let ast_args: Vec<ast::Arg> = indices
+                            .iter()
+                            .map(|idx| ast::Arg {
+                                name: None,
+                                mutable: false,
+                                value: idx.clone(),
+                            })
+                            .collect();
+                        return self.method_call(fn_id, Some((base, base_expr)), &ast_args, span);
+                    }
                 }
                 let (indices, ty) = self.index_args(&base_expr.ty, indices, span);
                 self.mk(ExprKind::Index(Box::new(base_expr), indices), ty, span)
@@ -192,12 +208,15 @@ impl<'a> Lowerer<'a> {
             }
             ast::ExprKind::Try(inner) => self.try_expr(inner, span),
             ast::ExprKind::Unwrap(inner) => {
-                let value = self.expr(inner, None);
+                let value = self.expr_maybe_opt_reduce(inner);
                 match value.ty.clone() {
                     Ty::Opt(inside) => {
                         self.mk(ExprKind::Unwrap(Box::new(value), true), *inside, span)
                     }
                     Ty::Error => value,
+                    // Inside a generic function (e.g. `bsearch_first<I>` instantiated with `I = Int`),
+                    // `(base + mid)!` is a no-op when `base + mid` is already non-optional `Int`.
+                    _ if !self.gen_env.is_empty() => value,
                     other => {
                         let message = format!(
                             "`!` takes the value out of an optional, but this is a `{}`",
@@ -269,6 +288,26 @@ impl<'a> Lowerer<'a> {
         }
         let mut lowered = Vec::new();
         let mut ty = hint.cloned();
+        let first_needs_hint = ty.is_none()
+            && arms.first().is_some_and(|(_, v)| {
+                matches!(v.kind, ast::ExprKind::None)
+                    || matches!(&v.kind, ast::ExprKind::List(items) if items.is_empty())
+            });
+        let mut pre_otherwise = None;
+        if first_needs_hint {
+            let other_val = self.expr(otherwise, None);
+            if other_val.ty != Ty::Error {
+                if matches!(arms[0].1.kind, ast::ExprKind::None) {
+                    ty = Some(match &other_val.ty {
+                        Ty::Opt(_) => other_val.ty.clone(),
+                        t => Ty::opt(t.clone()),
+                    });
+                } else {
+                    ty = Some(other_val.ty.clone());
+                }
+            }
+            pre_otherwise = Some(other_val);
+        }
         for (cond, value) in arms {
             let cond = self.expect(cond, &Ty::Bool);
             let value = self.expr(value, ty.as_ref());
@@ -278,7 +317,10 @@ impl<'a> Lowerer<'a> {
             let at = value.span;
             lowered.push((cond, value, at));
         }
-        let mut result = self.expr(otherwise, ty.as_ref());
+        let mut result = match pre_otherwise {
+            Some(v) => v,
+            None => self.expr(otherwise, ty.as_ref()),
+        };
         // The branches agree on one type: the hint, or the widest of them.
         let mut ty = ty.unwrap_or(Ty::Error);
         for candidate in lowered.iter().map(|(_, v, _)| &v.ty).chain([&result.ty]) {
@@ -336,6 +378,11 @@ impl<'a> Lowerer<'a> {
                 return self.mk(ExprKind::Field(Box::new(base), index), ty, span);
             }
         }
+        if let Some(sid) = self.self_struct {
+            if let Some(sc) = self.structs[sid].consts.get(name).cloned() {
+                return self.eval_struct_const(sid, sc, span);
+            }
+        }
         if let Some(slot) = self.capture_from_outer(name) {
             return self.local(slot, span);
         }
@@ -349,8 +396,9 @@ impl<'a> Lowerer<'a> {
         if let Some(ga) = self.gen_env.get(name).cloned() {
             match ga {
                 GenArg::Int(v) => return self.mk(ExprKind::Int(v), Ty::Int, span),
+                GenArg::RuntimeInt(gid) => return self.mk(ExprKind::Global(gid), Ty::Int, span),
                 GenArg::Domain(d) => return self.mk(ExprKind::DomainVal(d), Ty::DomainVal, span),
-                GenArg::Ty(_) => {}
+                GenArg::Ty(_) | GenArg::Op(_) => {}
             }
         }
         match self.get_sym(name) {
@@ -367,7 +415,51 @@ impl<'a> Lowerer<'a> {
             }
             Some(Sym::Fn(id)) => return self.fn_as_closure(id, span),
             Some(Sym::Domain(d)) => return self.mk(ExprKind::DomainVal(d), Ty::DomainVal, span),
-            Some(Sym::Struct(_) | Sym::GenStruct(_) | Sym::Enum(_) | Sym::GenEnum(_) | Sym::Alias(_) | Sym::GenAlias(_)) => {
+            Some(Sym::Struct(id)) if self.structs[id].def.fields.is_empty() => {
+                return self.mk(ExprKind::Tuple(Vec::new()), Ty::Struct(id), span);
+            }
+            Some(Sym::Struct(id)) => {
+                // Struct constructor passed as a function value (e.g., `sort(mut pts, by: ByAngle)`).
+                let fields: Vec<Ty> = self.structs[id]
+                    .def
+                    .fields
+                    .iter()
+                    .map(|(_, t)| t.clone())
+                    .collect();
+                let mut locals = Vec::new();
+                let mut params = Vec::new();
+                let mut args_expr = Vec::new();
+                for (i, fty) in fields.iter().enumerate() {
+                    locals.push(Local {
+                        name: format!("_p{i}"),
+                        ty: fty.clone(),
+                    });
+                    params.push(i);
+                    args_expr.push(Expr {
+                        kind: ExprKind::Local(i),
+                        ty: fty.clone(),
+                        span: self.span(span),
+                    });
+                }
+                let body = Block {
+                    stmts: vec![Stmt::Return(Some(Expr {
+                        kind: ExprKind::Tuple(args_expr),
+                        ty: Ty::Struct(id),
+                        span: self.span(span),
+                    }))],
+                };
+                let cid = self.closures.len();
+                self.closures.push(ClosureDef {
+                    params,
+                    captures: Vec::new(),
+                    locals,
+                    ret: Ty::Struct(id),
+                    body,
+                });
+                let fn_ty = Ty::Fn(fields, Box::new(Ty::Struct(id)));
+                return self.mk(ExprKind::Closure(cid), fn_ty, span);
+            }
+            Some(Sym::GenStruct(_) | Sym::Enum(_) | Sym::GenEnum(_) | Sym::Alias(_) | Sym::GenAlias(_)) => {
                 let message = format!("`{name}` is a type, and a value is needed here");
                 self.error(codes::TYPE_MISMATCH, span, message);
             }
@@ -790,7 +882,7 @@ impl<'a> Lowerer<'a> {
                 );
             }
             Coalesce => {
-                let l = self.expr(lhs, None);
+                let l = self.expr_maybe_opt_reduce(lhs);
                 let Ty::Opt(inner) = l.ty.clone() else {
                     if l.ty != Ty::Error {
                         let message = format!(
@@ -810,8 +902,23 @@ impl<'a> Lowerer<'a> {
             }
             _ => {}
         }
-        let l = self.expr(lhs, None);
-        let r = self.expr(rhs, Some(&l.ty));
+        let unwrap_first_last = |e: Expr| -> Expr {
+            match (&e.kind, &e.ty) {
+                (ExprKind::Builtin(Builtin::First, args), Ty::Opt(inner)) => Expr {
+                    kind: ExprKind::Builtin(Builtin::FirstVal, args.clone()),
+                    ty: (**inner).clone(),
+                    span: e.span,
+                },
+                (ExprKind::Builtin(Builtin::Last, args), Ty::Opt(inner)) => Expr {
+                    kind: ExprKind::Builtin(Builtin::LastVal, args.clone()),
+                    ty: (**inner).clone(),
+                    span: e.span,
+                },
+                _ => e,
+            }
+        };
+        let l = unwrap_first_last(self.expr(lhs, None));
+        let r = unwrap_first_last(self.expr(rhs, Some(&l.ty)));
         // Dispatch operator traits (`impl Add/Sub/Mul/Div for Struct`).
         if let Ty::Struct(sid) = l.ty {
             let mname = match op {
@@ -969,15 +1076,27 @@ impl<'a> Lowerer<'a> {
                     }
                     _ => self.expr(e, None),
                 }
-            } else if matches!(&e.kind, ast::ExprKind::List(items) if items.is_empty()) {
+            } else if matches!(&e.kind, ast::ExprKind::List(_)) {
                 match (operands.last(), asts.get(i + 1)) {
-                    (Some((prev, _)), _) => self.expr(e, Some(&prev.ty)),
-                    (None, Some(next)) => {
+                    (Some((prev, _)), _) if matches!(prev.ty, Ty::List(_)) => {
+                        self.expr(e, Some(&prev.ty))
+                    }
+                    (None, Some(next)) if matches!(&e.kind, ast::ExprKind::List(items) if items.is_empty()) => {
                         let next = self.expr(next, None);
                         self.expr(e, Some(&next.ty))
                     }
                     _ => self.expr(e, None),
                 }
+            } else if matches!(
+                &e.kind,
+                ast::ExprKind::If { .. } | ast::ExprKind::Paren(_) | ast::ExprKind::Block(_)
+            ) {
+                match operands.last() {
+                    Some((prev, _)) => self.expr(e, Some(&prev.ty)),
+                    None => self.expr(e, None),
+                }
+            } else if operands.last().is_some_and(|(prev, _)| matches!(prev.ty, Ty::Opt(_))) {
+                self.expr_maybe_opt_reduce(e)
             } else {
                 self.expr(e, None)
             };
@@ -1179,6 +1298,21 @@ impl<'a> Lowerer<'a> {
             }
             _ => {
                 let holder = self.expr(container, None);
+                if let Ty::Struct(sid) = holder.ty {
+                    let has_fn = self.structs[sid]
+                        .methods
+                        .get("has")
+                        .or_else(|| self.structs[sid].methods.get("contains"))
+                        .copied();
+                    if let Some(fn_id) = has_fn {
+                        let ast_arg = ast::Arg {
+                            name: None,
+                            mutable: false,
+                            value: item.clone(),
+                        };
+                        return self.method_call(fn_id, Some((container, holder)), &[ast_arg], span);
+                    }
+                }
                 let elem = match &holder.ty {
                     Ty::List(elem) | Ty::Set(elem) | Ty::HashSet(elem) | Ty::Range(elem) => {
                         (**elem).clone()
@@ -1220,6 +1354,34 @@ impl<'a> Lowerer<'a> {
         };
         match base {
             Ty::Array { dims, elem } => {
+                if dims.len() > 1 && indices.len() == 1 {
+                    // Allow indexing a multi-D array with a single tuple/record coordinate `g[p]` where `p: (Row, Col)`.
+                    let tuple_val = self.expr(&indices[0], None);
+                    let field_tys: Option<Vec<Ty>> = match &tuple_val.ty {
+                        Ty::Tuple(ts) if ts.len() == dims.len() => Some(ts.clone()),
+                        Ty::Record(fs) if fs.len() == dims.len() => {
+                            Some(fs.iter().map(|(_, t)| t.clone()).collect())
+                        }
+                        _ => None,
+                    };
+                    if let Some(ftys) = field_tys {
+                        let mut out = Vec::new();
+                        for (i, (dim, fty)) in dims.iter().zip(ftys).enumerate() {
+                            let want = match dim {
+                                Dim::Pos(d) => Ty::Pos(*d),
+                                Dim::Bound(d) => Ty::Bound(*d),
+                                Dim::Int => Ty::Int,
+                            };
+                            let field_e = self.mk(
+                                ExprKind::Field(Box::new(tuple_val.clone()), i),
+                                fty,
+                                indices[0].span,
+                            );
+                            out.push(self.coerce(field_e, &want, indices[0].span));
+                        }
+                        return (out, (**elem).clone());
+                    }
+                }
                 if dims.len() != indices.len() {
                     let message = format!(
                         "a `{}` takes {} indices, but {} were given",
@@ -1746,6 +1908,19 @@ impl<'a> Lowerer<'a> {
                     }
                 }
                 let value = self.expr(e, None);
+                if let ExprKind::DomainVal(dom_id) = value.kind {
+                    let lo = self.int_lit(0, span);
+                    let hi = self.mk(ExprKind::DomainLen(dom_id), Ty::Int, span);
+                    return (
+                        Iter::Range {
+                            lo,
+                            hi,
+                            step: None,
+                            rev: false,
+                        },
+                        Ty::Pos(dom_id),
+                    );
+                }
                 if let Ty::Range(inner) = value.ty.clone() {
                     return (Iter::RangeVal(value, false), *inner);
                 }
@@ -1983,6 +2158,26 @@ impl<'a> Lowerer<'a> {
         }
         let at = self.span(span);
         let mut stmts = Vec::new();
+        // Ensure any `impl Index` struct dimensions have their backing domain initialized (`let K = ...`).
+        for dim in &dims {
+            if let DimSpec::Pos(dom_id) = dim {
+                if let Some((sid, sc)) = self.structs.iter().enumerate().find_map(|(sid, s)| {
+                    if s.index_domain == Some(*dom_id) {
+                        s.consts.get("K").cloned().map(|sc| (sid, sc))
+                    } else {
+                        None
+                    }
+                }) {
+                    let k_val = self.eval_struct_const(sid, sc, span);
+                    let lo = self.int_lit(0, span);
+                    stmts.push(Stmt::DefDomain {
+                        id: *dom_id,
+                        lo,
+                        len: k_val,
+                    });
+                }
+            }
+        }
         // A length is used to allocate and again to loop: hold it.
         let dims: Vec<DimSpec> = dims
             .into_iter()

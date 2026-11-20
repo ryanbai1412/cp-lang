@@ -644,26 +644,20 @@ impl<'p, 'o> Interp<'p, 'o> {
             ExprKind::Cmp(op, lhs, rhs) => {
                 let l = self.eval(lhs)?;
                 let r = self.eval(rhs)?;
-                if let Ty::Struct(id) = lhs.ty {
-                    let sdef = &self.program.structs[id];
-                    match op {
-                        CmpOp::Eq | CmpOp::Ne if sdef.eq_fn.is_some() => {
-                            let eq = self.call_direct(sdef.eq_fn.unwrap(), vec![l, r], span)?.bool();
-                            return Ok(Value::Bool(if *op == CmpOp::Eq { eq } else { !eq }));
-                        }
-                        CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge if sdef.lt_fn.is_some() => {
-                            let f = sdef.lt_fn.unwrap();
-                            let res = match op {
-                                CmpOp::Lt => self.call_direct(f, vec![l, r], span)?.bool(),
-                                CmpOp::Gt => self.call_direct(f, vec![r, l], span)?.bool(),
-                                CmpOp::Le => !self.call_direct(f, vec![r, l], span)?.bool(),
-                                CmpOp::Ge => !self.call_direct(f, vec![l, r], span)?.bool(),
-                                _ => unreachable!(),
-                            };
-                            return Ok(Value::Bool(res));
-                        }
-                        _ => {}
-                    }
+                if matches!(op, CmpOp::Eq | CmpOp::Ne) {
+                    let eq = self.eq_ty_val(&lhs.ty, &l, &r, span)?;
+                    return Ok(Value::Bool(if *op == CmpOp::Eq { eq } else { !eq }));
+                }
+                if matches!(op, CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge) {
+                    let ord = self.cmp_ty_val(&lhs.ty, &l, &r, span)?;
+                    let res = match op {
+                        CmpOp::Lt => ord.is_lt(),
+                        CmpOp::Le => ord.is_le(),
+                        CmpOp::Gt => ord.is_gt(),
+                        CmpOp::Ge => ord.is_ge(),
+                        _ => unreachable!(),
+                    };
+                    return Ok(Value::Bool(res));
                 }
                 Value::Bool(compare(*op, &l, &r))
             }
@@ -788,8 +782,14 @@ impl<'p, 'o> Interp<'p, 'o> {
                     }
                     _ => return trap(span, LENT),
                 };
+                let elem_ty = match &place.ty {
+                    Ty::List(e) | Ty::Array { elem: e, .. } => (**e).clone(),
+                    _ => Ty::Int,
+                };
                 match sort_by {
-                    SortBy::Natural => items_vec.sort(),
+                    SortBy::Natural => {
+                        items_vec = self.merge_sort_ty(items_vec, &elem_ty, span)?;
+                    }
                     SortBy::Key(slot, key) => {
                         let base = self.base;
                         let mut keyed = Vec::with_capacity(items_vec.len());
@@ -797,7 +797,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                             self.stack[base + slot] = item.clone();
                             keyed.push((self.eval(key)?, item));
                         }
-                        keyed.sort_by(|a, b| a.0.cmp(&b.0));
+                        keyed = self.merge_sort_keyed(keyed, &key.ty, span)?;
                         items_vec = keyed.into_iter().map(|(_, item)| item).collect();
                     }
                     SortBy::Fn { func, is_order } => {
@@ -806,12 +806,16 @@ impl<'p, 'o> Interp<'p, 'o> {
                             // Merge-sort using fallible comparator `fv(a, b) -> Bool`.
                             items_vec = self.merge_sort_by(items_vec, &fv, span)?;
                         } else {
+                            let key_ty = match &func.ty {
+                                Ty::Fn(_, r) => (**r).clone(),
+                                _ => Ty::Int,
+                            };
                             let mut keyed = Vec::with_capacity(items_vec.len());
                             for item in items_vec {
                                 let k = self.call_value(fv.clone(), vec![item.clone()], span)?;
                                 keyed.push((k, item));
                             }
-                            keyed.sort_by(|a, b| a.0.cmp(&b.0));
+                            keyed = self.merge_sort_keyed(keyed, &key_ty, span)?;
                             items_vec = keyed.into_iter().map(|(_, item)| item).collect();
                         }
                     }
@@ -1135,6 +1139,197 @@ impl<'p, 'o> Interp<'p, 'o> {
         })
     }
 
+    fn eq_ty_val(&mut self, ty: &Ty, l: &Value, r: &Value, span: Span) -> Res<bool> {
+        match ty {
+            Ty::Struct(id) => {
+                if let Some(eq_fn) = self.program.structs[*id].eq_fn {
+                    return Ok(self.call_direct(eq_fn, vec![l.clone(), r.clone()], span)?.bool());
+                }
+                let fields = self.program.structs[*id].fields.clone();
+                if let (Value::Tuple(ls), Value::Tuple(rs)) = (l, r) {
+                    for ((_, ft), (lv, rv)) in fields.iter().zip(ls.iter().zip(rs.iter())) {
+                        if !self.eq_ty_val(ft, lv, rv, span)? {
+                            return Ok(false);
+                        }
+                    }
+                    return Ok(true);
+                }
+                Ok(l == r)
+            }
+            Ty::Tuple(ts) => {
+                if let (Value::Tuple(ls), Value::Tuple(rs)) = (l, r) {
+                    for (t, (lv, rv)) in ts.iter().zip(ls.iter().zip(rs.iter())) {
+                        if !self.eq_ty_val(t, lv, rv, span)? {
+                            return Ok(false);
+                        }
+                    }
+                    return Ok(true);
+                }
+                Ok(l == r)
+            }
+            Ty::Record(fs) => {
+                if let (Value::Tuple(ls), Value::Tuple(rs)) = (l, r) {
+                    for ((_, t), (lv, rv)) in fs.iter().zip(ls.iter().zip(rs.iter())) {
+                        if !self.eq_ty_val(t, lv, rv, span)? {
+                            return Ok(false);
+                        }
+                    }
+                    return Ok(true);
+                }
+                Ok(l == r)
+            }
+            Ty::List(elem) => {
+                if let (Value::List(ls), Value::List(rs)) = (l, r) {
+                    if ls.len() != rs.len() {
+                        return Ok(false);
+                    }
+                    for (lv, rv) in ls.iter().zip(rs.iter()) {
+                        if !self.eq_ty_val(elem, lv, rv, span)? {
+                            return Ok(false);
+                        }
+                    }
+                    return Ok(true);
+                }
+                Ok(l == r)
+            }
+            Ty::Opt(inner) => match (l, r) {
+                (Value::Opt(None), Value::Opt(None)) => Ok(true),
+                (Value::Opt(Some(a)), Value::Opt(Some(b))) => self.eq_ty_val(inner, a, b, span),
+                _ => Ok(false),
+            },
+            _ => Ok(l == r),
+        }
+    }
+
+    fn cmp_ty_val(
+        &mut self,
+        ty: &Ty,
+        l: &Value,
+        r: &Value,
+        span: Span,
+    ) -> Res<std::cmp::Ordering> {
+        use std::cmp::Ordering;
+        match ty {
+            Ty::Struct(id) => {
+                if let Some(lt_fn) = self.program.structs[*id].lt_fn {
+                    if self.call_direct(lt_fn, vec![l.clone(), r.clone()], span)?.bool() {
+                        return Ok(Ordering::Less);
+                    }
+                    if self.call_direct(lt_fn, vec![r.clone(), l.clone()], span)?.bool() {
+                        return Ok(Ordering::Greater);
+                    }
+                    return Ok(Ordering::Equal);
+                }
+                let fields = self.program.structs[*id].fields.clone();
+                if let (Value::Tuple(ls), Value::Tuple(rs)) = (l, r) {
+                    for ((_, ft), (lv, rv)) in fields.iter().zip(ls.iter().zip(rs.iter())) {
+                        let o = self.cmp_ty_val(ft, lv, rv, span)?;
+                        if o != Ordering::Equal {
+                            return Ok(o);
+                        }
+                    }
+                    return Ok(Ordering::Equal);
+                }
+                Ok(l.cmp(r))
+            }
+            Ty::Tuple(ts) => {
+                if let (Value::Tuple(ls), Value::Tuple(rs)) = (l, r) {
+                    for (t, (lv, rv)) in ts.iter().zip(ls.iter().zip(rs.iter())) {
+                        let o = self.cmp_ty_val(t, lv, rv, span)?;
+                        if o != Ordering::Equal {
+                            return Ok(o);
+                        }
+                    }
+                    return Ok(Ordering::Equal);
+                }
+                Ok(l.cmp(r))
+            }
+            Ty::Record(fs) => {
+                if let (Value::Tuple(ls), Value::Tuple(rs)) = (l, r) {
+                    for ((_, t), (lv, rv)) in fs.iter().zip(ls.iter().zip(rs.iter())) {
+                        let o = self.cmp_ty_val(t, lv, rv, span)?;
+                        if o != Ordering::Equal {
+                            return Ok(o);
+                        }
+                    }
+                    return Ok(Ordering::Equal);
+                }
+                Ok(l.cmp(r))
+            }
+            Ty::List(elem) => {
+                if let (Value::List(ls), Value::List(rs)) = (l, r) {
+                    for (lv, rv) in ls.iter().zip(rs.iter()) {
+                        let o = self.cmp_ty_val(elem, lv, rv, span)?;
+                        if o != Ordering::Equal {
+                            return Ok(o);
+                        }
+                    }
+                    return Ok(ls.len().cmp(&rs.len()));
+                }
+                Ok(l.cmp(r))
+            }
+            Ty::Opt(inner) => match (l, r) {
+                (Value::Opt(None), Value::Opt(None)) => Ok(Ordering::Equal),
+                (Value::Opt(None), Value::Opt(Some(_))) => Ok(Ordering::Less),
+                (Value::Opt(Some(_)), Value::Opt(None)) => Ok(Ordering::Greater),
+                (Value::Opt(Some(a)), Value::Opt(Some(b))) => self.cmp_ty_val(inner, a, b, span),
+                _ => Ok(l.cmp(r)),
+            },
+            _ => Ok(l.cmp(r)),
+        }
+    }
+
+    fn merge_sort_ty(&mut self, mut xs: Vec<Value>, ty: &Ty, span: Span) -> Res<Vec<Value>> {
+        if xs.len() <= 1 {
+            return Ok(xs);
+        }
+        let mid = xs.len() / 2;
+        let right = self.merge_sort_ty(xs.split_off(mid), ty, span)?;
+        let left = self.merge_sort_ty(xs, ty, span)?;
+        let mut out = Vec::with_capacity(left.len() + right.len());
+        let (mut i, mut j) = (0, 0);
+        while i < left.len() && j < right.len() {
+            if self.cmp_ty_val(ty, &right[j], &left[i], span)?.is_lt() {
+                out.push(right[j].clone());
+                j += 1;
+            } else {
+                out.push(left[i].clone());
+                i += 1;
+            }
+        }
+        out.extend_from_slice(&left[i..]);
+        out.extend_from_slice(&right[j..]);
+        Ok(out)
+    }
+
+    fn merge_sort_keyed(
+        &mut self,
+        mut xs: Vec<(Value, Value)>,
+        key_ty: &Ty,
+        span: Span,
+    ) -> Res<Vec<(Value, Value)>> {
+        if xs.len() <= 1 {
+            return Ok(xs);
+        }
+        let mid = xs.len() / 2;
+        let right = self.merge_sort_keyed(xs.split_off(mid), key_ty, span)?;
+        let left = self.merge_sort_keyed(xs, key_ty, span)?;
+        let mut out = Vec::with_capacity(left.len() + right.len());
+        let (mut i, mut j) = (0, 0);
+        while i < left.len() && j < right.len() {
+            if self.cmp_ty_val(key_ty, &right[j].0, &left[i].0, span)?.is_lt() {
+                out.push(right[j].clone());
+                j += 1;
+            } else {
+                out.push(left[i].clone());
+                i += 1;
+            }
+        }
+        out.extend_from_slice(&left[i..]);
+        out.extend_from_slice(&right[j..]);
+        Ok(out)
+    }
+
     fn merge_sort_by(&mut self, mut xs: Vec<Value>, cmp: &Value, span: Span) -> Res<Vec<Value>> {
         if xs.len() <= 1 {
             return Ok(xs);
@@ -1346,6 +1541,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::Map(entries) => entries.len() as i64,
                 Value::Set(items) => items.len() as i64,
                 Value::Range(lo, hi) => (hi - lo).max(0),
+                Value::DomainVal(_, len) => *len,
                 _ => 0,
             }),
             Builtin::First => match &first {

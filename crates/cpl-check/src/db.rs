@@ -407,6 +407,33 @@ impl Database {
                     import_diags.extend(diags.into_iter().map(|d| (index, d)));
                 }
             }
+            // Also preload modules referenced by block-scoped `use` statements inside functions/tests.
+            for stmt in &item.parsed.stmts {
+                if let StmtKind::Fn(f) = &stmt.kind {
+                    if let cpl_syntax::ast::FnBody::Block(block) = &f.body {
+                        for inner in &block.stmts {
+                            if let StmtKind::Use { path: module, .. } = &inner.kind {
+                                let mut dummy_scope = Scope::default();
+                                let mut dummy_diags = Vec::new();
+                                self.import(
+                                    path,
+                                    module,
+                                    &[],
+                                    false,
+                                    None,
+                                    &mut dummy_scope,
+                                    &mut dummy_diags,
+                                );
+                                for m in dummy_scope.modules {
+                                    if !scope.modules.iter().any(|e| e.path == m.path) {
+                                        scope.modules.push(m);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
         self.analyzing.pop();
         // Loading the modules analyzed them, which moved the revision on.

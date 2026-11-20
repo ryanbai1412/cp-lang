@@ -195,6 +195,22 @@ impl<'a> Checker<'a> {
             return self.def_type(&def, name, span, args);
         }
         if let Some(ty) = prelude::ty(name) {
+            let expected_arity = match name {
+                "List" | "Set" | "HashSet" | "Range" | "Iter" | "Gen" => Some(1),
+                "Map" | "HashMap" => Some(2),
+                _ => None,
+            };
+            if let Some(want) = expected_arity {
+                if args.is_empty() {
+                    let plural = if want == 1 { "" } else { "s" };
+                    self.error(
+                        codes::TYPE_MISMATCH,
+                        span,
+                        format!("`{name}` is a built-in type that takes {want} type argument{plural}"),
+                    );
+                    return Ty::Error;
+                }
+            }
             return match ty {
                 Ty::Named { name, .. } => Ty::Named { name, args },
                 other => other,

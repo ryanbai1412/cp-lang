@@ -484,6 +484,23 @@ impl<'a> Checker<'a> {
                     }
                 }
                 let owner = type_head(target).unwrap_or_default();
+                let owned_from_struct: Vec<(String, Ty)> =
+                    if let Some(Def::Struct { owned, .. }) = self.env.type_def(&owner).as_deref() {
+                        owned.clone()
+                    } else {
+                        Vec::new()
+                    };
+                for (oname, oty) in owned_from_struct {
+                    self.scopes.last_mut().unwrap().insert(
+                        oname,
+                        Local {
+                            ty: oty,
+                            mutable: false,
+                            span: target.span,
+                            keyword: "let",
+                        },
+                    );
+                }
                 self.owned(&owner, &body.stmts);
                 self.methods(&body.stmts, &self_ty);
                 self.leave_body(scope);

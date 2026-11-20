@@ -1004,6 +1004,9 @@ impl<'p> Emitter<'p> {
             Builtin::Len if matches!(first_ty, Some(Ty::Range(_))) => {
                 Code::primary(format!("{}.len()", codes[0].at(PRIMARY)))
             }
+            Builtin::Len if matches!(first_ty, Some(Ty::DomainVal)) => {
+                Code::primary(format!("{}.len", codes[0].at(PRIMARY)))
+            }
             Builtin::Len => Code::new(format!("(ll){}.size()", codes[0].at(PRIMARY)), UNARY),
             Builtin::First if matches!(first_ty, Some(Ty::Range(_))) => {
                 Code::primary(format!("{}.first()", codes[0].at(PRIMARY)))
