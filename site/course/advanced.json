@@ -25,23 +25,23 @@
       {
         "id": "borrow-inline-callback",
         "title": "Why a projection cannot dangle",
-        "prompt": "fn at(self, i: V) lends mut Int ends with lend mut cnt[i]. Why can the caller never keep a dangling reference to cnt[i]?",
+        "prompt": "fn at(mut self, i: V) lends mut Int ends with the tail expression mut cnt[i]. Why can the caller never keep a dangling reference to cnt[i]?",
         "hint": "Think about what b.at(v) += 5 desugars to, and where that code runs.",
-        "solution": "A projection is sugar for fn at(mut self, i: V, inline use: (mut Int) -> R) -> R = use(mut cnt[i]). The rest of the caller's expression is the callback, it runs while at is still on the stack, and nothing reference-like is ever returned.",
+        "solution": "A projection is sugar for fn at(mut self, i: V, use: (mut Int) -> R) -> R = use(mut cnt[i]), with the callback inlined. The rest of the caller's expression is the callback, it runs while at is still on the stack, and nothing reference-like is ever returned.",
         "kind": "choice",
         "options": [
-          "The caller's expression runs as an inline callback inside at, so the borrow ends before at returns",
+          "The caller's expression runs as an inlined callback inside at, so the borrow ends before at returns",
           "The runtime reference-counts every cell of cnt",
           "The checker infers a lifetime parameter for the returned reference",
-          "lend copies cnt[i], so there is no reference at all"
+          "The projection copies cnt[i], so there is no reference at all"
         ],
         "answer": 0,
-        "explanation": "There is no reference counting and no lifetime inference: the design avoids both. lend does not copy; b.at(v) += 5 really changes cnt[v], which is the point of a mutable projection."
+        "explanation": "There is no reference counting and no lifetime inference: the design avoids both. A projection does not copy; b.at(v) += 5 really changes cnt[v], which is the point of a mutable projection."
       },
       {
         "id": "borrow-disjoint",
         "title": "Prove the law at the call",
-        "prompt": "Bag.at declares law disjoint(i, j) = i != j, and Bag.other is a second projection that also lends cnt[i]. Which call does the checker accept?",
+        "prompt": "Bag.at declares @law disjoint(i, j) = i != j, and Bag.other is a second projection that also lends cnt[i]. Which call does the checker accept?",
         "hint": "The law only relates two lends of the same projection, and the fact must be visible before the call.",
         "solution": "The guarded call through the same projection. The enclosing if gives the checker i != j, which is exactly the law of at, so the two mutable lends cannot overlap.",
         "kind": "choice",
@@ -99,7 +99,7 @@
   {
     "slug": "course-algebra",
     "title": "Algebra, data structures, and Rooted",
-    "description": "Bare operators, Monoid(id, op), Action(id, compose, apply), desc(x), MonoDeque, slide_until, and Rooted<V> tree paths.",
+    "description": "Bare operators, Monoid(id, op), Action(id, compose, apply, over: op), desc(x), explicit two-pointer windows, and Rooted<V> tree paths.",
     "duration": "30 min",
     "exercises": [
       {
@@ -178,7 +178,7 @@
       {
         "id": "algebra-runtime-op",
         "title": "Bare operators vs. Monoid(id, op)",
-        "prompt": "In CP Lang v2, how do you construct a range-sum SegTree and a custom (best, count) SegTree over domain V?",
+        "prompt": "In CP Lang v2.2, how do you construct a range-sum SegTree and a custom (best, count) SegTree over domain V?",
         "hint": "Standard associative operators need no wrapper; custom node combines use Monoid(id, op).",
         "solution": "Pass the bare operator + for range sums (SegTree<V, Int>(+, a)) and Monoid(id, op) for a custom combine over a node value.",
         "kind": "choice",
@@ -189,7 +189,7 @@
           "Pass a string \"+\" that SegTree parses at runtime"
         ],
         "answer": 0,
-        "explanation": "CP Lang v2 retired single-purpose operator wrapper types. Built-in associative operators (+, *, ^, &, |, min, max, gcd) pass directly to SegTree and SparseTable, while custom monoids pass Monoid(id, op) and lazy tags pass stock tags like AddSum or Action(id, compose, apply)."
+        "explanation": "CP Lang v2.2 has no single-purpose operator wrapper types. Built-in associative operators (+, *, ^, &, |, min, max, gcd) pass directly to SegTree and SparseTable, while custom monoids pass Monoid(id, op) and lazy tags pass stock tags like AddSum or Action(id, compose, apply)."
       },
       {
         "id": "algebra-local-library",
