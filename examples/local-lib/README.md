@@ -12,6 +12,7 @@ examples/local-lib/
   math/                       numbers, algebra, transforms
   graph/                      graph decompositions
   dp/                         DP optimizations
+  spec/                       guessing structure from a brute force
   seq/                        folds over lists
   str/                        strings
   solutions/road_reversal.cp  a problem solved with the library
@@ -97,6 +98,28 @@ DP optimizations, in `dp/`:
 - `dnc_opt.cp`: `monotone_minima` and `dnc_layer`, divide and conquer
   over a monotone best column.
 - `knuth.cp`: `knuth`, interval DPs in O(n^2).
+
+Guessing structure from a brute force, in `spec/` (on top of `std.spec`):
+
+- `recurrence.cp`: `integer_recurrence` and `rational_recurrence` (exact
+  Berlekamp-Massey over fractions), `mod_recurrence`, `recurrence_break`,
+  `extend`, `nth_term` and `show_recurrence`.
+- `interp.cp`: `poly_degree_mod`, `lagrange_at` (O(k) on consecutive
+  points), `exact_poly` and `closed_form` with fraction coefficients, and
+  `show_poly`.
+- `structure.cp`: brute-force `split_dp` and `interval_dp` with
+  `split_opt_break`, `aliens_break`, `interval_qi_break`, `inclusion_break`
+  and `interval_opt_break`; `split_report` and `interval_report` name the
+  optimization that fits; `rolling_depth`, `rolling_window`, `period` and
+  `periodic_at`.
+- `worked.cp`: five contest problems taken from brute force to structure.
+
+```cp
+let small = [tilings(n) for n in 0..12]      // brute force: 1, 0, 3, 0, 11, ...
+let c = integer_recurrence(small)!
+show_recurrence(c)                           // "a[n] = 4 a[n-2] - a[n-4]"
+nth_term::<1000000007>(c, small, 10 ** 18)   // the answer for the real limits
+```
 
 Sequences and strings, in `seq/` and `str/`:
 
