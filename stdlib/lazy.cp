@@ -217,13 +217,20 @@ fn set_and_an_empty_tree():
 @test
 fn padding_never_takes_an_update():
     // 3 positions in a tree of 4 leaves: the spare leaf holds the identity of max (Int.MIN)
-    // and must stay out of every add, or `Int.MIN - 1` would overflow.
+    // or min (Int.MAX) and must stay out of every add, or `Int.MIN - 1` / `Int.MAX + 1` would overflow.
     domain V = 0..3
     var st = LazySegTree<V, Int>(AddMax, [V] v => 0)
     st.apply(V(0)..=V(2), -1)
     st.apply(V(0)..=V(1), 1)
     assert st.fold(V(0)..=V(2)) == 0 and st.get(V(2)) == -1
     assert st.fold(V(1)..V(1)) == Int.MIN
+
+    var mn = LazySegTree<V, Int>(AddMin, [V] v => 0)
+    mn.apply(V(0)..=V(2), 1)
+    mn.apply(V(0)..=V(1), -1)
+    assert mn.fold(V(0)..=V(2)) == 0 and mn.get(V(2)) == 1
+    assert mn.fold(V(1)..V(1)) == Int.MAX and mn.fold(V(2).r..) == Int.MAX
+    assert mn.fold(V(1)..) == 0 and mn.all == 0
 
 @test
 fn an_action_of_your_own():

@@ -377,7 +377,8 @@ is evidence, not a proof.
   `clear`), `fenwick.cp` (1D and 2D), `segtree.cp`, `lazy.cp` (with
   `update(i, f)` and `all`), `sparse.cp` (`fold -> T`, asserts non-empty),
   `heap.cp` (`MinHeap`, `MaxHeap`, with `take`), `deque.cp` (`Deque` with
-  `take`), `bitset.cp`: the data structures.
+  `take`), `bag.cp` (`SortedBag` ordered multiset with `rank`/`nth` and
+  4-lookups), `bitset.cp`: the data structures.
 - `seq.cp`: `scan`, `bsearch_first` / `bsearch_last`, `min_by` / `max_by`
   (first-extremum tie-breaking, `none` on empty), `compress` (with range
   slicing), `Range.l` / `Range.r`, `first_ge_by` / `last_le_by` (`?Int`),
@@ -432,5 +433,6 @@ library the way your own would be: `MonoDeque`, `Steps`, `TwoSat`, `Mat`,
 `overlaps`, `Trie`, `SuffixAutomaton`, `Hash2D`, `Functional`,
 `Centroids`, `KruskalTree`, `MinCount`.
 
-Not written yet, in either place: ordered sets and maps as library code,
-floating-point geometry, and a real-valued `bsearch`.
+Not written yet, in either place: ordered sets and maps as library code
+(`SortedBag` is in `bag.cp`), floating-point geometry, and a real-valued
+`bsearch`.

@@ -250,6 +250,7 @@ pub const STD_NAMES: &[(&str, &str)] = &[
     ("Rooted", "tree"),
     ("SegTree", "segtree"),
     ("Sieve", "math"),
+    ("SortedBag", "bag"),
     ("SparseTable", "sparse"),
     ("Target", "graph"),
     ("area2", "geometry"),
