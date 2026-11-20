@@ -10,6 +10,9 @@ problems it simplifies. Items already written up in
 are only repeated when a new batch hits them again, and what those two
 already fixed is left out.
 
+Batch 3 (strings, number theory, geometry, interactive) has its own file,
+[`friction-backlog-batch-3.md`](friction-backlog-batch-3.md), with items `G1` to `G25`.
+
 ## Batch 1 (2026-11-20)
 
 Ten problems, sketched in
