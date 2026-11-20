@@ -71,7 +71,12 @@ def gen_shoi16p3():
                  [random.randint(1, m) for _ in range(n)])
 
 
-GENS = {"noi18p4": gen_noi18p4, "noi21p2": gen_noi21p2, "canada21p5": gen_canada21p5, "noi20p1": gen_noi20p1,
+def gen_coci21c2p4():
+    n, l = random.randint(1, 5), random.randint(1, 25)
+    return lines((n, l), [random.randint(1, l) for _ in range(n)])
+
+
+GENS = {"coci21c2p4": gen_coci21c2p4, "noi18p4": gen_noi18p4, "noi21p2": gen_noi21p2, "canada21p5": gen_canada21p5, "noi20p1": gen_noi20p1,
         "noi07p5": gen_noi07p5, "sdoi17r1p1": gen_sdoi17r1p1, "shoi16p3": gen_shoi16p3}
 # Ports that are slow on the interpreter or sieve to 1e7 on every run get fewer inputs.
 AT_MOST = {"noi07p5": 40, "noi20p1": 60, "noip21p1": 20}

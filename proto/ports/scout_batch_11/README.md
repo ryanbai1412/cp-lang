@@ -14,22 +14,22 @@ Every file here runs today and agrees with its original:
 $ python3 proto/ports/scout_batch_11/check.py             # every port, up to 200 random inputs each
 $ python3 proto/ports/scout_batch_11/check.py noi18p4 50  # one port, 50 inputs
 canada21p5: interpreter OK: 200 tests agree
+coci21c2p4: interpreter OK: 200 tests agree
 noi07p5: interpreter OK: 40 tests agree
 noi18p4: interpreter OK: 200 tests agree
 noi20p1: interpreter OK: 60 tests agree
 noi21p2: interpreter OK: 200 tests agree
 noip21p1: stress OK: 20 tests agree (0 rejected by where)
-noip21p2: stress OK: 128 tests agree (72 rejected by where)
 sdoi17r1p1: interpreter OK: 200 tests agree
 sdoi17r1p3: stress OK: 200 tests agree (0 rejected by where)
 shoi16p3: interpreter OK: 200 tests agree
 ```
 
-Three ports (`noip21p1`, `noip21p2`, `sdoi17r1p3`) build with `proto/cpc`
+Two ports (`noip21p1`, `sdoi17r1p3`) build with `proto/cpc`
 and are stressed with inputs generated from their own input types. The
-other seven import `stdlib/` or use two-index tables that only the
+other eight import `stdlib/` or use two-index tables that only the
 reference interpreter (`proto/cpi`) accepts, so `check.py` feeds them small
-hand-written random inputs. Those seven are checked for answers only: the
+hand-written random inputs. Those eight are checked for answers only: the
 interpreter does no static checking and is far too slow for full-size
 inputs, so none of them was run at the statement's limits. `noi07p5`,
 `noi20p1` and `noip21p1` get fewer inputs because one run takes about a
@@ -38,6 +38,13 @@ that the generated inputs stay small.
 
 `proto/run_all.sh` only looks at `proto/ports/*.cp`, so this folder does
 not affect it.
+
+## A port that was dropped
+
+The first version of this batch had `noip21p2` (a carry DP with binomial
+weights). Scout batch 14 landed the same problem while this batch was being
+written, so it was replaced by `coci21c2p4`. The compiler messages it
+produced are still in the backlog, marked as probes.
 
 ## What the corpus did not have
 
@@ -61,7 +68,7 @@ first declaration on.
 - `noip21p1.cp` (22 against 115): Count Off. A sieve over numbers with a digit 7.
 - `sdoi17r1p3.cp` (34 against 114): sequences with a prime and a sum divisible by k. A power under cyclic convolution.
 - `sdoi17r1p1.cp` (34 against 198): product of fib(gcd(i, j)). Mobius inversion and quotient blocks.
-- `noip21p2.cp` (22 against 73): sequences whose sum of powers of two has few one-bits. One `@memo` function over (left, bit, carry, fixed).
+- `coci21c2p4.cp` (22 against 97): Magneti. Blocks of magnets grow and merge by increasing radius; `Comb` shares out the free cells.
 - `shoi16p3.cp` (36 against 202): Class Ranking. The per-course count is brute-forced at small limits and interpolated; the original's `Poly` type is gone.
 
 Two ports changed shape rather than size. `noi07p5` keeps only the
