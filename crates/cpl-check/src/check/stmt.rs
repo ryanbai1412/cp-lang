@@ -89,6 +89,28 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// A domain written with two literal ends holds at most 2^31 - 1
+    /// values: a position is an `i32` in the generated code.
+    fn domain_size(&mut self, def: &ast::Expr) {
+        let ExprKind::Range {
+            lo: Some(lo),
+            hi: Some(hi),
+            inclusive,
+            ..
+        } = &def.kind
+        else {
+            return;
+        };
+        let (ExprKind::Int(lo), ExprKind::Int(hi)) = (&lo.kind, &hi.kind) else {
+            return;
+        };
+        let len = *hi - *lo + i128::from(*inclusive);
+        if len > i128::from(i32::MAX) {
+            let message = format!("a domain holds at most 2^31 - 1 values, and this one has {len}");
+            self.error(codes::TYPE_MISMATCH, def.span, message);
+        }
+    }
+
     fn stmt(&mut self, stmt: &Stmt, top_level: bool) -> Ty {
         match &stmt.kind {
             StmtKind::Let {
@@ -233,6 +255,7 @@ impl<'a> Checker<'a> {
             }
             StmtKind::Domain { name, def } => {
                 self.infer(def);
+                self.domain_size(def);
                 self.type_hover(name);
                 if !top_level {
                     self.declare(
