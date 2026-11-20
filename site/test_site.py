@@ -92,6 +92,7 @@ class SiteTests(unittest.TestCase):
 
     def test_every_prototype_example_runs_as_native_cpp(self):
         fixtures = {
+            "bounds": [("5\n3 1 4 1 5\n", "14"), ("1\n-9\n", "-9")],
             "sum": [("5\n3 1 4 1 5\n", "14"), ("1\n-9\n", "-9")],
             "accumulation": [("4\n0 1 2 3\n", "6"), ("1\n0\n", "0")],
             "optional": [("", "0 10 10")],

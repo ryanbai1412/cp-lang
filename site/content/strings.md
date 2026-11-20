@@ -15,6 +15,8 @@ For input `5 abaca`, the result is `3`. Each access selects exactly one byte. Th
 
 In the approved unified design, `Str` is an alias for `[domain]Char`: an owned array packaged with a fresh index type. Opening the package as `s` exposes that type as `s.Idx`. Two independent strings have different position types, even when they have the same length.
 
+The ASCII restriction is implemented in the prototype. The `[domain]Char` package and `s.Idx` interface are still design-only.
+
 ```cp CP Lang · design
 let s: Str = read()
 let t: Str = read()

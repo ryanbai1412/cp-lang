@@ -27,7 +27,7 @@ site/.venv/bin/python site/test_site.py
 
 This builds every page, validates local links and heading fragments, and
 compiles all `example` snippets with the Python prototype and `g++` C++17.
-Nine sample/edge-case runs check actual output. Compiler APIs avoid the
+Eleven sample/edge-case runs check actual output. Compiler APIs avoid the
 prototype CLI's source-stamping side effect. Design blocks are explicitly
 labeled and are not compiled; they must be reviewed against the design.
 The full Rust workspace gate remains `cargo test` before a push.
@@ -49,8 +49,8 @@ The full Rust workspace gate remains `cargo test` before a push.
 This guide distinguishes the approved language from what is implemented in
 the Rust frontend and Python prototype. Never present a design-only snippet
 or a planned CLI command as a successful run. The unified-index/projection
-design was supplied by the owner alongside the existing `plan/` and
-`decisions.md`; locked updates are `let K = n`, `.l`/`.r`, ASCII-only text,
+design is specified in `plan/19-index-and-lends.md` and `decisions.md`;
+locked updates are `let K = n`, `.l`/`.r`, ASCII-only text,
 Euclidean `/` and `%` (`//` is a comment), and explicit `Bitset<D>`.
 The term input *spec* currently refers to typed reads and constraints, not
 an invented `spec` keyword. Keep these labels current as the compiler lands.

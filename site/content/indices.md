@@ -1,6 +1,6 @@
 An integer tells you a number. An index also tells you what that number belongs to. Vertex `3` and edge `3` may print alike, but they should not be interchangeable when indexing arrays.
 
-> **Approved design, implementation in progress.** This chapter uses unified `Index`, `.l`/`.r` boundaries, and parent-indexed slices. Older prototype code may still use `.before`/`.after` or different index helpers.
+> **Approved design, partially prototyped.** The Python prototype supports user `Index` types, `.l`/`.r` boundaries, and parent-indexed slices. The Rust checker does not yet implement this model. Library-level fragments remain design examples; see the [implementation limits](https://github.com/ryanbai1412/cp-lang/blob/main/plan/19-index-and-lends.md#11-what-the-prototype-does-today).
 
 ## A domain is a fresh type
 
@@ -52,20 +52,23 @@ boundaries      |       |       |       |
                                 c.l     c.r
 ```
 
-`a.r` and `b.l` above are the same boundary. `v.l(k)` and `v.r(k)` are the parameterized left/right boundary shorthands; the no-argument `.l` and `.r` mean the immediately adjacent gaps. Use these instead of inventing numeric `+1` shifts. A requested offset still has to satisfy the boundary range.
+`a.r` and `b.l` above are the same boundary. `v.l(k)` is the left edge of the `k`-element window ending at `v`; `v.r(k)` is the right edge of the `k`-element window starting at `v`. Both windows count `v`. Thus `.l(1)` is `.l`, and `.r(1)` is `.r`. Use these instead of inventing numeric `+1` shifts. A requested window still has to satisfy the boundary range.
 
 ## Prefix sums without shifts
 
-```cp CP Lang · design
-var pre: [V.bounds]Int = 0
-for v in V:
-    pre[v.r] = pre[v.l] + a[v]
+This complete example runs in the Python prototype:
 
+```example bounds
+```
+
+For an inclusive query, subtract its two outer boundaries:
+
+```cp CP Lang · design fragment
 fn range_sum(l: V, r: V) -> Int:
     pre[r.r] - pre[l.l]
 ```
 
-This fragment assumes `a: [V]Int` and an ordered nonempty query `l..=r`. The zero at the initial boundary represents the empty prefix. `pre[v]` is a type error: `v` is an element, not a gap. `a[v.r]` is wrong for the opposite reason. The two arrays express different jobs in their types.
+This helper assumes the prefix array above and an ordered nonempty query `l..=r`. The zero at the initial boundary represents the empty prefix. `pre[v]` is a type error: `v` is an element, not a gap. `a[v.r]` is wrong for the opposite reason. The two arrays express different jobs in their types.
 
 ## A range is a value; a slice is a lend
 
