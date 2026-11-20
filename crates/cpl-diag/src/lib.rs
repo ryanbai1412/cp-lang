@@ -131,6 +131,8 @@ pub mod codes {
     pub const OPTIONAL_COMPARE: Code = Code("E0308");
     pub const BAD_OPERANDS: Code = Code("E0309");
     pub const UNKNOWN_ARG_NAME: Code = Code("E0310");
+    /// `@memo` on a fn whose answers can't be remembered.
+    pub const BAD_MEMO: Code = Code("E0311");
 
     pub const ASSIGN_TO_LET: Code = Code("E0401");
     pub const MISSING_MUT_AT_CALL: Code = Code("E0402");
