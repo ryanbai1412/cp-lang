@@ -31,7 +31,7 @@ Range types such as `0..=1_000_000_000` or `-100..=100` check bounds on entry (i
 - `Int(x)` on an `F64` is a compile error — choose the rounding direction explicitly with `floor(x)`, `ceil(x)`, `round(x)`, or `trunc(x)`.
 - `NaN` and `Inf` trap locally as soon as they are produced, which makes `<` a strict total order on `F64`.
 - Bare `print(x)` on an `F64` is a compile error — specify precision explicitly with `print("{x:.6f}")` (negative zero `-0.0` is normalized to `0.0`).
-- Comparing floats with `==` or `!=` lints toward `close(a, b, eps)` and `sign(x, eps)` (exempting exact `== 0.0`).
+- Compare floats with `abs(a - b) < eps`; `==` and `!=` on `F64` compare exactly (exact `== 0.0` is fine).
 - Built-in math intrinsics: `sqrt`, `sin`, `cos`, `tan`, `atan2`, `exp`, `ln`, `hypot`, `abs`, and `PI`.
 
 ### Scalars and lossless conversions

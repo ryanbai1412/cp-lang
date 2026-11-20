@@ -19,7 +19,7 @@ Three `F64` rules prevent classic contest Wrong Answers:
 
 - `NaN` and `Inf` trap immediately at runtime in local runs, which makes `<` a strict total order on `F64`.
 - Bare `print(x)` on an `F64` is rejected at compile time — write an explicit precision like `print("{x:.9f}")`, and CP Lang normalizes `-0.0` to `0.0` automatically.
-- Comparing floats with `==` or `!=` lints toward `close(a, b, eps)` and `sign(x, eps)` (exact `== 0.0` is allowed).
+- Compare floats with `abs(a - b) < eps`; `==` and `!=` on `F64` compare exactly (exact `== 0.0` is fine).
 
 ```exercise types-euclidean
 ```

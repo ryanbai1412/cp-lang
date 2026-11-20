@@ -20,7 +20,7 @@ print(answer)
 - Power `**`; bitwise `& | ^ ~ << >>`; logic `and or not`; membership `in`, `not in`.
 - Updates `+= -= *= /= %=`; `x min= y`, `x max= y`; any binary function supports `x f= y`.
 - Cast with `F64(x)`, `Int(ch)`, `Char(i)`. For floats choose `floor`, `ceil`, `round`, or `trunc`.
-- Print floats with precision: `print("{x:.6f}")`. NaN/Inf trap locally; use `close(a, b, eps)`.
+- Print floats with precision: `print("{x:.6f}")`. NaN/Inf trap locally; compare floats with `abs(a - b) < eps`.
 - Indentation defines blocks; `//` comments; `;` separates inline statements, never trails a line.
 
 ## 2. Optionals and relaxation
@@ -140,7 +140,7 @@ print(out)
 print(s.starts_with("12"), s.find("ab"), 'a'.upper) // YES 3 A
 ```
 
-`Str` is a flat `0..s.len` byte sequence, never UTF-8. `s[..k]`, `s[k..]`, `.len`, `.is_empty`, `.starts_with`, `.ends_with`, `.find -> ?Int`, `find_all(s, p)`; `Char.lower`/`.upper`/`.digit`.
+`Str` is a flat `0..s.len` byte sequence, never UTF-8. `s[..k]`, `s[k..]`, `.len`, `.is_empty`, `.starts_with`, `.ends_with`, `.find(p) -> ?Int`, free function `find_all(s, p)` (not `s.find_all`); `Char.lower`/`.upper`/`.digit`.
 For nominal string positions, read `let s: [domain S]Char = read()`.
 
 ## 8. Collections and sequence construction
@@ -148,19 +148,19 @@ For nominal string positions, read `let s: [domain S]Char = read()`.
 ```cp
 let xs = [1, 2]
 var q = Deque.of(xs)                // front-to-back, O(n)
-print(q.pop_front())                // 1; amortized O(1) operations at either end
+while let u = q.pop_front(): print(u) // 1, 2; pops return ?T, none when empty
 print(xs.resized(4, 0))             // 1 2 0 0; xs is unchanged
 print(resized(xs, 1, 0))            // 1; same helper, truncating instead of padding
 ```
 
 - Containers share `.len`, `.is_empty`, `.clear()`, `.take()`; `List`/`Deque` can start as `[]`.
-- `List<T>`: `.push`, `.pop -> ?T`, `.insert`, `.remove`, `.swap`, `.first`, `.last`, `xs[l..r]`.
-- `Deque<T>`: `.push`/`.pop` at back, `.push_front`/`.pop_front` at front, `q[i]` in O(1).
-- `MinHeap<T>`/`MaxHeap<T>`: `.push`, `.pop`, `.peek`; `desc(x)` reverses one tuple-key field.
+- `List<T>`: `.push`, `.pop -> ?T`, `.insert`, `.remove`, `.swap`, `.first`/`.last -> ?T`, `xs[l..r]`.
+- `Deque<T>`: `.push`/`.pop -> ?T` at back, `.push_front`/`.pop_front -> ?T` at front, `q[i]`; all O(1).
+- `MinHeap<T>`/`MaxHeap<T>`: `.push`, `.pop -> ?T`, `.peek -> ?T`; `desc(x)` flips one key field: `MinHeap<(Desc<Int>, V)>`.
 - `Set<K>`/`SortedBag<K>`: `.add`, `.remove`, membership, `.first_ge`, `.last_le`; bag keeps duplicates.
 - `Map<K,V>`/`HashMap<K,V>`: direct `m[k]` traps if absent; `.get`, `.remove` return optionals; `.get_or_insert(k, v)` returns the stored value.
 - `Bitset<D>`: `.add`, `.remove`, `.toggle`, set operations, `.len` (popcount), `.shifted(k)`.
-- `Subset<D>`: small bitmask indices; `.empty`, `.full`, `.with(v)`, `.without(v)`, `s = s.set(v, on)` (returns a new subset), `.subsets`.
+- `Subset<D>`: small bitmask indices; `.empty`, `.full`, `.with(v)`, `.without(v)`, `s = s.set(v, on)` (returns a new subset), `for sub in s.subsets`, `for v in s`.
 - Comprehensions `[f(x) for x in xs if ok(x)]`; `xs += ys`; `for b in Bool`; `sort(mut xs)`, `sorted(xs, by: desc)`.
 - `xs.windows(k)` yields each length-`k` window; `zip(xs, ys)` pairs up to the shorter list.
 - Folds take a monoid such as `+`: `fold(+, xs)`, `scan(xs, +)`, `xs.excl_fold(+)` yields `(x, rest)`; `runs`, `runs_by(xs, key)` yields `(key, items)`, `prefix`, `compress`.
@@ -199,14 +199,14 @@ for (c, rest) in t.excl_fold(V(1), *, c => down[c] + 1):
     print(c, rest)                  // sibling product excluding child c
 ```
 
-- `peel` returns Kahn's removal order; `topo` returns a full order or `none` on a cycle.
+- `peel` returns Kahn's removal order; `topo` a full order or `none` on a cycle; also `scc`, `condense`.
 - A neighbour lambda works anywhere a graph does; its domain is what it indexes: `peel(v => adj[v])`.
 - Grid cells are vertices: `bfs(p => [q for q in p.adj4 if not wall[q]], [(R(0), C(0))])` (`use std.grid.{adj4}`).
 - Unpeeled vertices can be on a cycle **or reachable from one**; not all are cycle vertices.
 - `t.excl_fold(v, m, f)` yields `(child, fold over other children)`, preserving child order.
 - This rerooting step is O(degree(v)), needs no inverse, and works for noncommutative monoids.
 - `t.Pre`, `t.pos(v)`, `t.sub(v)` support subtrees; `.lca`, `.dist`, `.fold_path` support paths.
-- Weighted paths: `dijkstra(g, from: [(s, 0)], w: a => weights[a.e])`; components: `scc`, `condense`.
+- `a.e` (edge index) needs a graph built from `[E](u: V, v: V)` records: `dijkstra(g, from: [(s, 0)], w: a => wt[a.e])`.
 - Flow: `FlowGraph<V>()`, `.add(u, v, cap)`, `.max_flow(s, t)` over numeric vertex domains.
 
 ## 11. Range structures and named algebra fields

@@ -2,7 +2,7 @@ Once you have basic arrays and domains down, most contest solutions live in a ha
 
 ## `List`, `Deque`, and priority queues
 
-A `List<T>` is a dynamic array (`std::vector<T>` in C++17). A `Deque<T>` supports `O(1)` operations at both ends (`push_back`, `pop_back`, `push_front`, `pop_front`, `.first`, `.last`). Every popping or peeking operation returns `?T` — `none` when empty — so you never trigger undefined behavior by reading `.back()` on an empty stack.
+A `List<T>` is a dynamic array (`std::vector<T>` in C++17). A `Deque<T>` supports `O(1)` operations at both ends (`push`, `pop`, `push_front`, `pop_front`, `.first`, `.last`). Every popping or peeking operation returns `?T` — `none` when empty — so you never trigger undefined behavior by reading `.back()` on an empty stack.
 
 ```cp CP Lang 0.2.2
 let a = [3, 1, 2, 2, 4]
