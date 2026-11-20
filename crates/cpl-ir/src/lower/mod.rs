@@ -354,6 +354,8 @@ struct Lowerer<'a> {
     /// The top-level fns marked `@memo`.
     memo_fns: HashSet<FnId>,
     memo_count: usize,
+    /// The domains `[domain S]T` declared: each is sized by its array.
+    own_domains: HashSet<DomainId>,
     /// The `ready` flag of each file-level cache: cleared as a test starts.
     memo_resets: Vec<Place>,
     main_body: Block,
@@ -410,6 +412,7 @@ impl<'a> Lowerer<'a> {
             preamble_stmts: Vec::new(),
             memo_fns: HashSet::new(),
             memo_count: 0,
+            own_domains: HashSet::new(),
             memo_resets: Vec::new(),
             main_body: Block::default(),
             main_locals: Vec::new(),
@@ -1078,6 +1081,7 @@ impl<'a> Lowerer<'a> {
             ast::TypeKind::OwnDomain { name, elem } => {
                 let dom_id = self.domains.len();
                 self.domains.push(name.text.clone());
+                self.own_domains.insert(dom_id);
                 if let Some(scope) = self.cx.local_syms.last_mut() {
                     scope.insert(name.text.clone(), Sym::Domain(dom_id));
                 } else {
