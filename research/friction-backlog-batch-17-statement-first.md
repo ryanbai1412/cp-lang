@@ -16,6 +16,11 @@ and written from those. Input formats were guessed from the published tasks
 and confirmed against the C++ afterwards; all ten guesses were right except
 that two tasks are judged through a function on DMOJ (W11).
 
+Overlap: four of the ten were also ported by batches that landed on `main`
+while this one was in progress (`dpz` in `proto/ports/`, `ioi11p3` and
+`apio07p2` in `scout_batch_13/`, `btoi19p3` in `scout_batch_9/`). They were
+written here without sight of those ports, so only six problems are new.
+
 Items are numbered `W1`.. so they can be cited.
 
 ## (a) Where the statement led somewhere else
