@@ -2372,7 +2372,7 @@ class Compiler:
             vc, vt = self.expr(s.value, tt.inner)
             self.emit(f"opt_{op[:3]}({tc}, {self.coerce(vc, vt, tt.inner, s.value)});")
             return
-        want = tt.inner if isinstance(tt, TOpt) and op == "=" else tt
+        want = tt.inner if isinstance(tt, TOpt) and op == "=" and s.value.kind != "none" else tt
         vc, vt = self.expr(s.value, want if not isinstance(tt, TInt) else None)
         if op == "=":
             c = self.coerce(vc, vt, tt, s.value)

@@ -31,6 +31,6 @@ for i in 0..n:
         cover(spans[taken], 1)
         taken += 1
     if depth.max() >= m:
-        best = min(best ?? 2e9, length(spans[taken - 1]) - length(spans[i]))
+        best min= length(spans[taken - 1]) - length(spans[i])
     cover(spans[i], -1)
 print(best ?? -1)
