@@ -1,6 +1,6 @@
 This chapter writes, reads, and runs complete CP Lang programs. By the end you will know how a program reads typed input, which bindings may change, how a loop accumulates an answer, and exactly which commands produce a native executable today.
 
-> **What runs.** Every block labeled **prototype tested** compiles with the Python prototype in `proto/` and runs as native C++17. Blocks labeled **design** describe the approved language and are not claimed to run. The Rust `cpl` CLI checks a subset of the language but cannot run or build programs yet; [getting started](getting-started.html#what-works-today) has the full status.
+> **What runs.** Every block labeled **prototype tested** compiles with the Python prototype in `proto/` and runs as native C++17. Blocks labeled **design** describe the approved language and are not claimed to run. The Rust `cpl` CLI now interprets and builds its supported subset too; [getting started](getting-started.html#what-works-today) has the full status. A prototype-tested label does not promise Rust support for that feature.
 
 ## A program is the body of main
 
@@ -107,7 +107,7 @@ printf '5\n3 1 4 1 5\n' | scratch/first/sum
 
 The last command prints `14`. The generated `sum.cpp` is the file you would submit to a judge; the `.cp` file is your source. Never build a tracked file such as a corpus port in place: the stamp would show up as a change in Git.
 
-The Rust CLI is real but younger. `cpl check sum.cp` runs the shared frontend over the subset it understands, and `cpl lsp` serves editor features. `cpl run` and `cpl build` check the file and then report that their backends are not built; they do not execute it. The planned contest loop of `cpl run`, `cpl test`, `cpl stress`, and `cpl build` is described in [getting started](getting-started.html#the-intended-contest-loop) and is not something to rely on yet.
+The Rust CLI is real but younger. `cpl check sum.cp` runs the shared frontend, `cpl run sum.cp` executes the supported subset in its debug interpreter, and `cpl build sum.cp` emits C++17 for that same subset. `cpl lsp` serves editor features. Unsupported lowering reports `E0501`; a clean check alone does not promise execution support. The prototype remains useful for advanced features taught later. See [getting started](getting-started.html#what-works-today) for the working Rust commands and [the intended contest loop](getting-started.html#the-intended-contest-loop) for still-planned testing tools.
 
 ```exercise first-program-toolchain
 ```
@@ -118,6 +118,6 @@ The Rust CLI is real but younger. `cpl check sum.cp` runs the shared frontend ov
 
 **Starting a maximum at a sentinel.** `var best = -1e18` is a guess that a later subtask can break. Start from `a[V.first]`, or reduce with `max(...)`, which returns an optional that is `none` for an empty input.
 
-**Expecting the Rust CLI to run code.** Until its backends land, the prototype commands above are the honest way to get a binary. A clean `cpl check` does not mean every feature in the file is implemented.
+**Assuming every approved feature runs in Rust.** Its interpreter and C++17 backend work on a supported subset. A clean `cpl check` does not mean every feature in the file can be lowered; advanced examples may still require the prototype.
 
 Next, [domains and boundaries](course-domains.html) explains what `domain V` buys you: indices that cannot be confused with each other, and prefix sums with no `+ 1`.

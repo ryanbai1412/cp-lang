@@ -79,7 +79,7 @@
         "id": "first-program-toolchain",
         "kind": "choice",
         "title": "Get a native binary today",
-        "prompt": "You want to run sum.cp on a sample input as native code today. Which sequence works?",
+        "prompt": "Using the Python prototype, which workflow runs sum.cp as a native binary without modifying the tracked example?",
         "options": [
           "Run cpl check sum.cp; a clean check produces a binary",
           "Run python3 proto/cp.py build directly on the tracked file under site/examples",
@@ -87,9 +87,9 @@
           "Run cpl run sum.cp and pipe the input in"
         ],
         "answer": 2,
-        "hint": "Only one tool can generate C++ right now, and it writes a stamp into the file it builds.",
+        "hint": "The Python prototype writes a stamp into the source file it builds, so start with an owned scratch copy.",
         "solution": "Build a scratch copy with the Python prototype, then compile the generated C++17 file with your own compiler and run it.",
-        "explanation": "The prototype is the only working path to native code: it emits one C++17 file that g++ compiles. cpl run checks the file but its backend is not built, so it does not execute. cpl check only type-checks the subset it understands and produces nothing to run. Building a tracked file in place works, but the stamp line it adds shows up as a change in Git, which is why the copy comes first."
+        "explanation": "The prototype emits C++17 that g++ compiles, but also stamps its source, so copy a tracked example first. cpl check produces no binary. The Rust CLI now has its own interpreter (cpl run) and C++17 emitter (cpl build) for a supported subset; cpl run is not the prototype-to-native workflow asked for here."
       }
     ]
   },
