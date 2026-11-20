@@ -5,6 +5,10 @@ version = 4
 [[package]]
 name = "cpl-check"
 version = "0.0.0"
+dependencies = [
+ "cpl-diag",
+ "cpl-syntax",
+]
 
 [[package]]
 name = "cpl-cli"
@@ -38,7 +42,14 @@ version = "0.0.0"
 [[package]]
 name = "cpl-lsp"
 version = "0.0.0"
+dependencies = [
+ "cpl-check",
+ "cpl-diag",
+]
 
 [[package]]
 name = "cpl-syntax"
 version = "0.0.0"
+dependencies = [
+ "cpl-diag",
+]
