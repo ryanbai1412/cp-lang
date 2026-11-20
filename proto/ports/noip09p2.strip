@@ -1,0 +1,6 @@
+# noip09p2_orig.cpp: the lines a perfect C++ contest library would have supplied.
+# Everything else is counted as problem-specific code. Read by proto/loc.py.
+# lines      facility        what it is
+1-30         template        includes, debug macros, typedefs
+32-66        number-theory   sieve of Eratosthenes and trial-division factorisation
+135-145      driver          fast I/O setup and the test-case loop

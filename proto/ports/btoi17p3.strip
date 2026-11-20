@@ -1,0 +1,7 @@
+# btoi17p3_orig.cpp: the lines a perfect C++ contest library would have supplied.
+# Everything else is counted as problem-specific code. Read by proto/loc.py.
+# lines      facility        what it is
+1-30         template        includes, debug macros, typedefs
+34-34        lca             Euler-tour and binary-lifting tables
+37-63        lca             Euler tour DFS, ancestor test, binary-lifting LCA
+148-153      driver          fast I/O setup and the test-case loop
