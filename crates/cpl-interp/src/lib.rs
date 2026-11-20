@@ -2116,6 +2116,29 @@ impl<'p, 'o> Interp<'p, 'o> {
                     _ => Value::Opt(None),
                 }
             }
+            Builtin::FirstGe | Builtin::FirstGt | Builtin::LastLe | Builtin::LastLt => {
+                use std::ops::Bound::{Excluded, Included, Unbounded};
+                let key = values.next().unwrap_or_default();
+                let range = match op {
+                    Builtin::FirstGe => (Included(key), Unbounded),
+                    Builtin::FirstGt => (Excluded(key), Unbounded),
+                    Builtin::LastLe => (Unbounded, Included(key)),
+                    _ => (Unbounded, Excluded(key)),
+                };
+                let first_in = matches!(op, Builtin::FirstGe | Builtin::FirstGt);
+                match &first {
+                    Value::Set(items) => {
+                        let mut found = items.range(range);
+                        optional(if first_in { found.next() } else { found.next_back() }.cloned())
+                    }
+                    Value::Map(entries) => {
+                        let mut found = entries.range(range);
+                        let entry = if first_in { found.next() } else { found.next_back() };
+                        optional(entry.map(|(key, val)| Value::tuple(vec![key.clone(), val.clone()])))
+                    }
+                    _ => Value::Opt(None),
+                }
+            }
             Builtin::SetMin => match &first {
                 Value::Set(items) => optional(items.first().cloned()),
                 _ => Value::Opt(None),

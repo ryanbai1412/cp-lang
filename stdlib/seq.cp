@@ -193,34 +193,6 @@ pub fn last_le_by<T, K>(xs: List<T>, target: K, by: T -> K) -> ?Int:
         if by(xs[mid]) <= target: lo = mid else: hi = mid - 1
     lo
 
-/// First `(key, val)` pair in ordered `Map` with `key >= k`, or `none`. Returns `?(K, V)`.
-pub fn first_ge<K, V>(self: Map<K, V>, k: K) -> ?(K, V):
-    for (key, val) in self:
-        if key >= k: return (key, val)
-    none
-
-/// First `(key, val)` pair in ordered `Map` with `key > k`, or `none`. Returns `?(K, V)`.
-pub fn first_gt<K, V>(self: Map<K, V>, k: K) -> ?(K, V):
-    for (key, val) in self:
-        if key > k: return (key, val)
-    none
-
-/// Last `(key, val)` pair in ordered `Map` with `key <= k`, or `none`. Returns `?(K, V)`.
-pub fn last_le<K, V>(self: Map<K, V>, k: K) -> ?(K, V):
-    var best: ?(K, V) = none
-    for (key, val) in self:
-        if key <= k: best = (key, val)
-        else: break
-    best
-
-/// Last `(key, val)` pair in ordered `Map` with `key < k`, or `none`. Returns `?(K, V)`.
-pub fn last_lt<K, V>(self: Map<K, V>, k: K) -> ?(K, V):
-    var best: ?(K, V) = none
-    for (key, val) in self:
-        if key < k: best = (key, val)
-        else: break
-    best
-
 /// Swap two positions of a domain array in place; safely a no-op when `i == j`.
 pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D):
     if i == j: return

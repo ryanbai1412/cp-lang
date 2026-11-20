@@ -442,6 +442,27 @@ template <class T> std::optional<T> set_min(const std::set<T>& s) { return s.emp
 ",
     },
     Piece {
+        name: "ordered_near",
+        needs: &[],
+        code: "\
+// The nearest key of an ordered set, or entry of an ordered map, on one side of `k`.
+template <class T> T near_entry(const std::set<T>&, const T& key) { return key; }
+template <class K, class V> std::tuple<K, V> near_entry(const std::map<K, V>&, const std::pair<const K, V>& e) { return std::tuple<K, V>(e.first, e.second); }
+template <class C> auto near_at(const C& c, typename C::const_iterator it) -> std::optional<decltype(near_entry(c, *it))> {
+    if (it == c.end()) return std::nullopt;
+    return near_entry(c, *it);
+}
+template <class C> auto near_before(const C& c, typename C::const_iterator it) -> std::optional<decltype(near_entry(c, *it))> {
+    if (it == c.begin()) return std::nullopt;
+    return near_entry(c, *std::prev(it));
+}
+template <class C, class Q> auto first_ge(const C& c, const Q& k) { return near_at(c, c.lower_bound(k)); }
+template <class C, class Q> auto first_gt(const C& c, const Q& k) { return near_at(c, c.upper_bound(k)); }
+template <class C, class Q> auto last_le(const C& c, const Q& k) { return near_before(c, c.upper_bound(k)); }
+template <class C, class Q> auto last_lt(const C& c, const Q& k) { return near_before(c, c.lower_bound(k)); }
+",
+    },
+    Piece {
         name: "set_max",
         needs: &[],
         code: "\

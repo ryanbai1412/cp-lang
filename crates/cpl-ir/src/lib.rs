@@ -517,6 +517,13 @@ pub enum Builtin {
     /// Smallest and largest element of a set: optional.
     SetMin,
     SetMax,
+    /// `s.first_ge(k)`, `s.first_gt(k)`, `s.last_le(k)`, `s.last_lt(k)` on
+    /// an ordered `Set` (a key) or `Map` (a `(key, value)`): optional,
+    /// O(log n).
+    FirstGe,
+    FirstGt,
+    LastLe,
+    LastLt,
     Sorted,
     Reversed,
     /// `v.next`, `v.prev`: optional position.

@@ -3689,6 +3689,22 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
+            (Ty::Set(key) | Ty::Map(key, _), "first_ge" | "first_gt" | "last_le" | "last_lt") => {
+                let op = match method {
+                    "first_ge" => Builtin::FirstGe,
+                    "first_gt" => Builtin::FirstGt,
+                    "last_le" => Builtin::LastLe,
+                    _ => Builtin::LastLt,
+                };
+                let found = match &ty {
+                    Ty::Map(key, val) => Ty::Tuple(vec![(**key).clone(), (**val).clone()]),
+                    _ => (**key).clone(),
+                };
+                match self.one_arg(method, args, key, span) {
+                    Some(bound) => self.mk(ExprKind::Builtin(op, vec![value, bound]), Ty::opt(found), span),
+                    None => self.err_expr(span),
+                }
+            }
             (Ty::Set(_), "min" | "max") => match self.positional_any(method, args, 0, span) {
                 Some(_) => {
                     let op = if method == "min" {

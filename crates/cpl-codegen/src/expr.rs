@@ -703,6 +703,10 @@ impl<'p> Emitter<'p> {
                         Builtin::First
                         | Builtin::Last
                         | Builtin::MapGet
+                        | Builtin::FirstGe
+                        | Builtin::FirstGt
+                        | Builtin::LastLe
+                        | Builtin::LastLt
                         | Builtin::SetMin
                         | Builtin::SetMax => this.packed_result(&e.ty, code),
                         _ => code,
@@ -1305,6 +1309,16 @@ impl<'p> Emitter<'p> {
             Builtin::MapGet => {
                 self.need("map_get_any");
                 Code::primary(format!("cpl::map_get({}, {})", text(0), text(1)))
+            }
+            Builtin::FirstGe | Builtin::FirstGt | Builtin::LastLe | Builtin::LastLt => {
+                self.need("ordered_near");
+                let name = match op {
+                    Builtin::FirstGe => "first_ge",
+                    Builtin::FirstGt => "first_gt",
+                    Builtin::LastLe => "last_le",
+                    _ => "last_lt",
+                };
+                Code::primary(format!("cpl::{name}({}, {})", text(0), text(1)))
             }
             Builtin::SetMin => helper(self, "set_min"),
             Builtin::SetMax => helper(self, "set_max"),
