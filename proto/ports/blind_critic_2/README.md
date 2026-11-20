@@ -1,16 +1,23 @@
 # Blind critic 2: mid-contest WA debugging and algorithm pivots
 
-Six corpus problems, each written the way a contest goes wrong: a first draft that is too slow
+Six corpus problems that had no port (plus two that turned out to have one), each written the way a contest goes wrong: a first draft that is too slow
 or subtly wrong (`*_draft.cp`, `*_draft2.cp`), then the solution it was debugged or pivoted
 into (`<problem>.cp`). The drafts are kept on purpose and are not accepted solutions. The
 findings are in [`research/blind-critic-2-debug-pivot.md`](../../../research/blind-critic-2-debug-pivot.md).
 
 - `dpq` (Flowers): an O(n²) DP, pivoted to a max `SegTree` over heights. Original 4131861.
-- `dpz` (Frog 3): an O(n²) DP, then a hull with a flipped `bad()`, then the convex hull trick. Original 4133674.
 - `noi15p4` (Homer's Epic): k-ary Huffman without zero padding, then with it. Original 5032756.
-- `dmpg16s5` (Pizza Bag): an O(nk) scan, then a monotone deque with an off-by-one window, then the fix. Original 5323572.
 - `sac22cc2p4`: a right/down grid DP, pivoted to Dijkstra over cells. Original 4121086.
 - `ccc02s4` (Bridge Crossing): greedy full groups, then a DP with the wrong tie-break, then the DP with reconstruction. Original 4157526.
+- `cco07p2` (Snowflakes): canonical form under rotation only, then with reflection. Original 3742713.
+- `sac22cc1p5`: a 1D scan written for k = 1, pivoted to a 2D DP over (position, groups). Original 3992625.
+
+Two more were written the same way before it turned out that `main` already had ports of
+them (`proto/ports/dpz.cp`, `proto/ports/dmpg16s5.cp`, neither of which was read). They stay
+here for their drafts:
+
+- `dpz` (Frog 3): an O(n²) DP, then a hull with a flipped `bad()`, then the convex hull trick. Original 4133674.
+- `dmpg16s5` (Pizza Bag): an O(nk) scan, then a monotone deque with an off-by-one window, then the fix. Original 5323572.
 
 Run from `proto/` (both commands stamp and build next to the port, so use a scratch copy or
 clean up afterwards):
