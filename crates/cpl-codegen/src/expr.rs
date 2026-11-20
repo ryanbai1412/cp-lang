@@ -650,6 +650,19 @@ impl<'p> Emitter<'p> {
             }
             ExprKind::Call(id, args) => self.call(e, *id, args),
             ExprKind::CallExpr(callee, args) => {
+                let home = match self.closure_id {
+                    Some(_) => None,
+                    None => self.fn_id,
+                };
+                let known = self.devirt.target(home, callee);
+                if let Some(cid) = known.filter(|_| crate::devirt::skippable(callee)) {
+                    self.direct.insert(cid);
+                    let operands: Vec<&Expr> = args.iter().collect();
+                    return self.sequence(&operands, &e.ty, |_, codes| {
+                        let ps: Vec<String> = codes.iter().map(|c| c.text.clone()).collect();
+                        Code::primary(format!("{}({})", crate::devirt::name(cid), ps.join(", ")))
+                    });
+                }
                 let mut operands: Vec<&Expr> = vec![callee];
                 operands.extend(args.iter());
                 self.sequence(&operands, &e.ty, |_, codes| {
@@ -1331,7 +1344,7 @@ impl<'p> Emitter<'p> {
         }
     }
 
-    fn emit_closure(&mut self, cid: usize) -> Code {
+    pub(crate) fn emit_closure(&mut self, cid: usize) -> Code {
         let def = &self.program.closures[cid];
         // Prepare inner names for the closure's locals.
         let mut inner_taken = self.taken.clone();

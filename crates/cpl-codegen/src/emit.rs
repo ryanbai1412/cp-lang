@@ -88,6 +88,9 @@ pub(crate) struct Emitter<'p> {
     pub program: &'p Program,
     pub facts: Facts<'p>,
     pub niches: Niches,
+    pub devirt: crate::devirt::Devirt<'p>,
+    /// Closures called by name, each emitted once as a fn of the program.
+    pub direct: BTreeSet<usize>,
     /// The `?Int` tables held as `cpl::OptInt`.
     pub packed: BTreeSet<Var>,
     /// Set for the value a packed table is created from, which is then
@@ -153,6 +156,8 @@ impl<'p> Emitter<'p> {
             program,
             facts: Facts::collect(program),
             niches: crate::niche::small(program),
+            devirt: crate::devirt::Devirt::collect(program),
+            direct: BTreeSet::new(),
             packed: crate::niche::packed_tables(program),
             pack_init: false,
             raw_cell: false,
@@ -395,7 +400,9 @@ impl<'p> Emitter<'p> {
                 let ty = &f.locals[slot].ty;
                 let name = &self.names[slot];
                 let cpp = self.ty(ty);
-                if param.mutable {
+                if self.devirt.param_known(id, slot) {
+                    format!("[[maybe_unused]] const {cpp}& {name}")
+                } else if param.mutable {
                     format!("{cpp}& {name}")
                 } else if ty.is_scalar() || self.facts.stores((Some(id), false, slot)) > 2 {
                     format!("{cpp} {name}")
@@ -762,6 +769,16 @@ impl<'p> Emitter<'p> {
 
         let mut out = String::new();
         out.push_str(&header(name, source));
+        // Closures that are called by name (see `devirt`): one calling
+        // another adds to the set, so emit until it stops growing.
+        let mut direct = String::new();
+        let mut done: Vec<usize> = Vec::new();
+        while let Some(cid) = self.direct.iter().copied().find(|cid| !done.contains(cid)) {
+            done.push(cid);
+            self.enter(None, &program.closures[cid].body, 0);
+            let body = self.emit_closure(cid).text;
+            direct.push_str(&format!("static auto {} = {body};\n", crate::devirt::name(cid)));
+        }
         out.push_str(
             "#include <algorithm>\n#include <array>\n#include <cmath>\n#include <cstdint>\n#include <cstdio>\n#include <cstdlib>\n\
              #include <map>\n#include <optional>\n#include <set>\n#include <string>\n#include <tuple>\n#include <vector>\n",
@@ -805,6 +822,7 @@ impl<'p> Emitter<'p> {
             out.push('\n');
         }
         out.push_str(&protos);
+        out.push_str(&direct);
         // A struct with its own `Ord` is ordered by it everywhere: in a
         // sort, a set, a heap and inside a tuple, not only in `a < b`.
         for (id, s) in program.structs.iter().enumerate() {
