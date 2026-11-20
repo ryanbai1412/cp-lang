@@ -42,6 +42,30 @@ class TEnum(T):
                 return k, v
         return None, None
 
+class TAddMax(T):
+    def __init__(self, dom): self.dom = dom
+    def __eq__(self, o): return isinstance(o, TAddMax) and o.dom == self.dom
+    def __hash__(self): return hash(("addmax", self.dom))
+    def __repr__(self): return f"AddMax<{self.dom!r}>"
+
+class TSeg(T):
+    def __init__(self, dom, elem): self.dom, self.elem = dom, elem
+    def __eq__(self, o): return isinstance(o, TSeg) and o.elem == self.elem and o.dom == self.dom
+    def __hash__(self): return hash(("seg", self.dom, self.elem))
+    def __repr__(self): return f"SegTree<{self.dom!r}, {self.elem!r}>"
+
+class THash(T):
+    def __init__(self, dom): self.dom = dom
+    def __eq__(self, o): return isinstance(o, THash) and o.dom == self.dom
+    def __hash__(self): return hash(("strhash", self.dom))
+    def __repr__(self): return f"StrHash<{self.dom!r}>"
+
+class TTree(T):
+    def __init__(self, dom): self.dom = dom
+    def __eq__(self, o): return isinstance(o, TTree) and o.dom == self.dom
+    def __hash__(self): return hash(("tree", self.dom))
+    def __repr__(self): return f"Rooted<{self.dom!r}>"
+
 class THeap(T):
     def __init__(self, elem): self.elem = elem
     def __eq__(self, o): return isinstance(o, THeap) and o.elem == self.elem
@@ -63,7 +87,7 @@ CPP_RESERVED = set(CPP_RESERVED) | {
     "index", "time", "clock", "rand", "array", "list", "map", "set", "queue", "stack",
     "vector", "string", "pair", "tuple", "greater", "less", "plus", "minus", "function",
     "accumulate", "iota", "unique", "partition", "merge", "remove", "replace", "search",
-    "empty", "ws", "dec", "hex", "fixed", "bitset", "deque", "complex", "ref", "apply",
+    "empty", "ws", "ends", "endl", "flush", "dec", "hex", "fixed", "bitset", "deque", "complex", "ref", "apply",
     "visit", "any", "all", "signal", "div", "ldiv", "exit", "free", "link", "read", "write",
     "select", "stdin", "stdout", "floor", "ceil", "round", "lower_bound", "upper_bound",
 }
@@ -174,6 +198,10 @@ class Compiler:
             return "DenseSet" if self.dense_set(t) else f"set<{self.cpp_type(t.elem)}>"
         if isinstance(t, TArr): return f"vector<{'int' if self.narrow(t.elem) else self.cpp_type(t.elem)}>"
         if isinstance(t, TEnum): return t.cpp
+        if isinstance(t, THash): return "StrHash"
+        if isinstance(t, TTree): return "RootedTree"
+        if isinstance(t, TSeg): return f"SegTree<{self.cpp_type(t.elem)}>"
+        if isinstance(t, TAddMax): return "AddMax"
         if isinstance(t, THeap):
             e = self.cpp_type(t.elem)
             return f"priority_queue<{e}, vector<{e}>, greater<{e}>>"
@@ -268,6 +296,29 @@ class Compiler:
                 return TPerm([TDom(pos)], d)
             if nm == "MinHeap":
                 return THeap(self.resolve_type(tn.args[0]))
+            if nm == "AddMax":
+                d = self.resolve_type(tn.args[0])
+                if not isinstance(d, TDom):
+                    self.error(tn, "AddMax<D> needs a domain D")
+                return TAddMax(d)
+            if nm == "SegTree":
+                d = self.resolve_type(tn.args[0])
+                if not isinstance(d, TDom):
+                    self.error(tn, "SegTree<D, T> needs a domain D")
+                return TSeg(d, self.resolve_type(tn.args[1]))
+            if nm == "Subset":
+                # Subset<D>: the domain of all subsets of a small domain D, stored as a bitmask ordinal
+                d = self.resolve_type(tn.args[0])
+                if not isinstance(d, TDom) or d.info.len_iv[1] is None or d.info.len_iv[1] > 30:
+                    self.error(tn, "Subset<D> needs a domain with at most 30 values")
+                if getattr(d.info, "subsets", None) is None:
+                    b = d.info
+                    w, _, _ = self.new_domain(f"Subset<{b.name}>", "", "", (0, 0), (1, 1 << b.len_iv[1]), anon=True)
+                    w.name, w.subset_of, w.anon = f"Subset<{b.name}>", b, False
+                    w.lo_src, w.hi_src = "0", f"(1LL << {b.len_cpp})"
+                    self.emit(f"{w.cpp}_lo = 0; {w.cpp}_len = 1LL << {b.len_cpp};")
+                    b.subsets = TDom(w)
+                return d.info.subsets
             if nm == "WithMin":
                 d = self.resolve_type(tn.args[0])
                 if not isinstance(d, TDom):
@@ -284,6 +335,8 @@ class Compiler:
                 return d.info.withmin
             if nm == "Mod":
                 a = tn.args[0]
+                if a.kind == "tname" and not a.args:
+                    a = N("name", a.line, name=a.name)
                 v = a.value if a.kind == "num" else self.const_value(a)
                 return TMod(v)
             if nm == "Range":
@@ -662,6 +715,15 @@ class Compiler:
                 if (isinstance(lt, TOpt) or isinstance(rt, TOpt)) and op not in ("==", "!="):
                     self.error(e, f"`{op}` on an optional ({lt!r} vs {rt!r}): ?T has no ordering; "
                                   f"handle `none` explicitly")
+                if op in ("==", "!=") and isinstance(lt, TOpt) != isinstance(rt, TOpt):
+                    # ?T == T: `none` equals no value, so this is "present and equal"
+                    o_c, o_t, x_c, x_t = (left_c, lt, rc, rt) if isinstance(lt, TOpt) else (rc, rt, left_c, lt)
+                    if o_t.inner != x_t and not (is_int(o_t.inner) and is_int(x_t)):
+                        self.error(e, f"comparing {lt!r} with {rt!r}")
+                    eq = f"([&](const auto& _o, const auto& _x) {{ return _o.has() && _o.get() == _x; }}({o_c}, {x_c}))"
+                    parts.append(eq if op == "==" else f"!{eq}")
+                    left_c, left_t = rc, rt
+                    continue
                 if isinstance(lt, TDom) != isinstance(rt, TDom) or (
                         isinstance(lt, TDom) and lt.info is not rt.info):
                     self.error(e, f"comparing {lt!r} with {rt!r}")
@@ -673,6 +735,20 @@ class Compiler:
             left_c, left_t = rc, rt
         return "(" + " && ".join(parts) + ")", BOOL
 
+    def lambda2(self, lam, ta, tb, tr):
+        """Compile `(a, b) => body` to a C++ lambda taking (ta, tb) and returning tr."""
+        if lam.kind != "lambda" or len(lam.params) != 2:
+            self.error(lam, "expected a two-parameter lambda `(a, b) => ...`")
+        self.scopes.append({})
+        pa, pb = self.fresh("a"), self.fresh("b")
+        self.bind_lambda_param(lam.params[0], pa, ta, lam)
+        self.bind_lambda_param(lam.params[1], pb, tb, lam)
+        bc, bt = self.expr(lam.body, tr)
+        bc = self.coerce(bc, bt, tr, lam.body)
+        self.scopes.pop()
+        return (f"[&](const {self.cpp_type(ta)}& {pa}, const {self.cpp_type(tb)}& {pb}) -> {self.cpp_type(tr)} "
+                f"{{ return {bc}; }}")
+
     def membership(self, xc, xt, rn, e):
         rc, rt = self.expr(rn)
         if isinstance(rt, TType) and isinstance(rt.t, TDom):
@@ -682,6 +758,10 @@ class Compiler:
             if not isinstance(xt, TInt):
                 self.error(e, f"`in {info.name}` needs an Int, got {xt!r}")
             return f"((ll)({xc}) - {info.lo_cpp} >= 0 && (ll)({xc}) - {info.lo_cpp} < {info.len_cpp})"
+        if isinstance(rt, TDom) and getattr(rt.info, "subset_of", None) is not None:
+            if not (isinstance(xt, TDom) and xt.info is rt.info.subset_of):
+                self.error(e, f"`in` a {rt.info.name} needs a {rt.info.subset_of.name}, got {xt!r}")
+            return f"((({rc}) >> ({xc})) & 1)"
         if isinstance(rt, TRange):
             return f"([&](ll _x, Rng _r){{ return _r.lo <= _x && _x < _r.hi; }}({xc}, {rc}))"
         if isinstance(rt, (TMap, TSet)):
@@ -726,7 +806,8 @@ class Compiler:
             kc, kt = self.expr(e.idx[0], ot.key)
             kc = self.coerce(kc, kt, ot.key, e.idx[0])
             lv = getattr(self, "lvalue", None)
-            if lv is not None and lv[0] is e and lv[1] == "=":
+            # `m[k] = v` inserts; `m[k] += v` on a missing key starts from the zero value (counting)
+            if lv is not None and lv[0] is e and (lv[1] == "=" or is_int(ot.val) or isinstance(ot.val, TMod)):
                 return f"{oc}[{kc}]", ot.val
             self.note_check(e, f"key `{unparse(e.idx[0])}` is in the map")
             return f"cp_mget({oc}, {kc}, {e.line})", ot.val
@@ -786,6 +867,8 @@ class Compiler:
     def x_field(self, e, want):
         oc, ot = self.expr(e.obj)
         f = e.name
+        if isinstance(ot, TTree) and f == "preorder":
+            return f"{oc}.order", TList(ot.dom)
         if isinstance(ot, TDom) and f == "elem" and getattr(ot.info, "base", None) is not None:
             return f"([&](int _w) {{ return _w == 0 ? Opt<int>() : Opt<int>(_w - 1); }}({oc}))", TOpt(TDom(ot.info.base))
         if isinstance(ot, TType) and isinstance(ot.t, TDom):
@@ -800,11 +883,18 @@ class Compiler:
                 return "", TType(TDom(self.bounds_of(info)))
             if f == "bottom" and getattr(info, "base", None) is not None:
                 return "0", ot.t
+            if f in ("empty", "full") and getattr(info, "subset_of", None) is not None:
+                return ("0" if f == "empty" else f"(int)({info.len_cpp} - 1)"), ot.t
             if f == "all":
                 return f"Rng{{0, (ll){info.len_cpp}}}", TRange(ot.t)
             self.error(e, f"{info.name} has no `.{f}`")
         if isinstance(ot, TDom):
             info = ot.info
+            if getattr(info, "subset_of", None) is not None:
+                if f == "len":
+                    return f"(ll)__builtin_popcount({oc})", TInt(0, info.subset_of.len_iv[1])
+                if f == "is_empty":
+                    return f"(({oc}) == 0)", BOOL
             if f == "mirror":
                 return f"((int)({info.len_cpp}) - 1 - ({oc}))", ot
             if f in ("ord", "idx"):
@@ -879,19 +969,79 @@ class Compiler:
             if not (is_int(lt) and is_int(ht)):
                 self.error(e, "rand(lo, hi) needs Ints")
             return f"gen_int({lc}, {hc})", TInt(lt.lo, ht.hi)
+        if fn.kind == "name" and fn.name == "Rooted" and len(e.args) == 2 and not self.lookup(fn.name):
+            # Rooted(adj, root): a tree given as [V]List<V>, hung from `root`
+            c, t = self.expr(e.args[0])
+            if not (isinstance(t, TArr) and len(t.dims) == 1 and t.elem == TList(t.dims[0])):
+                self.error(e, f"Rooted needs adjacency lists [V]List<V>, got {t!r}")
+            rc, rt = self.expr(e.args[1], t.dims[0])
+            if rt != t.dims[0]:
+                self.error(e, f"the root must be a {t.dims[0]!r}, got {rt!r}")
+            return f"RootedTree({c}, {rc})", TTree(t.dims[0])
+        if fn.kind == "name" and fn.name == "StrHash" and len(e.args) == 1 and not self.lookup(fn.name):
+            c, t = self.expr(e.args[0])
+            if not (isinstance(t, TArr) and len(t.dims) == 1 and isinstance(t.elem, TChar)):
+                self.error(e, f"StrHash needs a [S]Char, got {t!r}")
+            return f"StrHash({c})", THash(t.dims[0])
+        if fn.kind == "name" and fn.name in ("gcd", "lcm") and len(e.args) == 2 and not self.lookup(fn.name):
+            (ac, at), (bc, bt) = self.expr(e.args[0]), self.expr(e.args[1])
+            if not (is_int(at) and is_int(bt)):
+                self.error(e, f"{fn.name} needs Ints")
+            if fn.name == "gcd":
+                his = [x for x in (at.hi, bt.hi) if x is not None]
+                return f"std::gcd<ll, ll>({ac}, {bc})", TInt(0, max(his) if len(his) == 2 else None)
+            hi = None if None in (at.hi, bt.hi) else at.hi * bt.hi
+            return f"std::lcm<ll, ll>({ac}, {bc})", self.int_result(e, 0, hi)
         if fn.kind == "name" and fn.name == "abs" and not self.lookup("abs"):
             c, t = self.expr(e.args[0])
             if not is_int(t):
                 self.error(e, "abs needs Int")
             m = None if None in (t.lo, t.hi) else max(abs(t.lo), abs(t.hi))
             return f"llabs({c})", TInt(0 if m is not None else None, m)
-        if fn.kind == "name" and fn.name == "sorted" and not self.lookup("sorted"):
+        if fn.kind == "name" and fn.name in ("sorted", "sort") and not self.lookup(fn.name):
+            # sort(xs) / sort(xs, by: key) in place; sorted(...) returns a sorted copy
             c, t = self.expr(e.args[0])
             if not isinstance(t, (TList, TArr)) or (isinstance(t, TArr) and len(t.dims) != 1):
-                self.error(e, "sorted needs a list or 1-D array")
+                self.error(e, f"{fn.name} needs a list or 1-D array")
             et = t.elem
+            ec = self.cpp_type(et)
+            by = [a for a in e.args[1:] if a.kind == "kwarg" and a.name == "by"]
+            less = [a for a in e.args[1:] if a.kind == "kwarg" and a.name == "less"]
+            if len(e.args) > 1 and len(by) + len(less) != 1:
+                self.error(e, f"{fn.name}(xs), {fn.name}(xs, by: x => key) or {fn.name}(xs, less: (a, b) => a_first)")
+            cmp = ""
+            if less:
+                # for orders that have no key, e.g. by angle with exact cross products
+                cmp = ", " + self.lambda2(less[0].value, et, et, BOOL)
+                by = less
+            elif by:
+                pn, kc, kt = self.lambda_key(by[0].value, et)
+                cmp = (f", [&](const auto& A, const auto& B) {{ auto _key = [&](const auto& {pn}) {{ return {kc}; }}; "
+                       f"return _key(A) < _key(B); }}")
+            algo = "stable_sort" if by else "sort"
+            if fn.name == "sort":
+                return f"{algo}({c}.begin(), {c}.end(){cmp})", UNIT
             tmp = self.tmpname("s")
-            return f"([&]{{ vector<{self.cpp_type(et)}> {tmp}({c}.begin(), {c}.end()); sort({tmp}.begin(), {tmp}.end()); return {tmp}; }}())", (t if isinstance(t, TArr) else TList(et))
+            return (f"([&]{{ auto {tmp} = {c}; {algo}({tmp}.begin(), {tmp}.end(){cmp}); "
+                    f"return {tmp}; }}())"), (t if isinstance(t, TArr) and not by else TList(et))
+        if fn.kind == "name" and fn.name == "distinct" and len(e.args) == 1 and not self.lookup("distinct"):
+            # distinct(xs): no two elements are equal (mostly for input `where` clauses)
+            c, t = self.expr(e.args[0])
+            if not isinstance(t, (TList, TArr)) or (isinstance(t, TArr) and len(t.dims) != 1):
+                self.error(e, "distinct needs a list or 1-D array")
+            return (f"([&]{{ auto _s = {c}; sort(_s.begin(), _s.end()); "
+                    f"return adjacent_find(_s.begin(), _s.end()) == _s.end(); }}())"), BOOL
+        if fn.kind == "name" and fn.name == "runs" and not self.lookup("runs"):
+            # runs(xs, same: (a, b) => Bool): maximal stretches of neighbours that are `same`
+            c, t = self.expr(e.args[0])
+            same = [a for a in e.args[1:] if a.kind == "kwarg" and a.name == "same"]
+            if not isinstance(t, (TList, TArr)) or (isinstance(t, TArr) and len(t.dims) != 1) or len(same) != 1:
+                self.error(e, "runs(xs, same: (a, b) => Bool) over a list or 1-D array")
+            ec = self.cpp_type(t.elem)
+            eq = self.lambda2(same[0].value, t.elem, t.elem, BOOL)
+            return (f"([&]{{ auto _eq = {eq}; vector<vector<{ec}>> _r; const auto& _xs = {c}; "
+                    f"for (size_t _i = 0; _i < _xs.size(); ++_i) {{ if (_i == 0 || !_eq(_xs[_i - 1], _xs[_i])) _r.emplace_back(); "
+                    f"_r.back().push_back(_xs[_i]); }} return _r; }}())"), TList(TList(t.elem))
         if fn.kind == "name" and fn.name == "dijkstra" and not self.lookup("dijkstra"):
             gc, gt = self.expr(e.args[0])
             ok = (isinstance(gt, TArr) and len(gt.dims) == 1 and isinstance(gt.elem, TList)
@@ -906,6 +1056,21 @@ class Compiler:
             ts = [self.resolve_type(a) if a.kind.startswith("t") else self.resolve_type(N("texpr", a.line, expr=a)) for a in fn.args]
             t = TSet(ts[0]) if fn.name == "Set" else TMap(*ts, hashed=fn.name == "HashMap")
             return self.set_ctor(t), t
+        if fn.kind == "generic" and fn.name == "AddMax":
+            # AddMax<D>(): add to a range, max of a range; every cell starts at 0
+            t = self.resolve_type(N("tname", fn.line, name="AddMax", args=fn.args))
+            if e.args:
+                self.error(e, "AddMax<D>() takes no arguments")
+            return f"AddMax({t.dom.info.len_cpp})", t
+        if fn.kind == "generic" and fn.name == "SegTree":
+            # SegTree<D, T>(id, (a, b) => op): a monoid given as two plain values
+            t = self.resolve_type(N("tname", fn.line, name="SegTree", args=fn.args))
+            if len(e.args) != 2 or e.args[1].kind != "lambda" or len(e.args[1].params) != 2:
+                self.error(e, "SegTree<D, T>(identity, (a, b) => combined)")
+            ic, it = self.expr(e.args[0], t.elem)
+            ic = self.coerce(ic, it, t.elem, e.args[0])
+            ec = self.cpp_type(t.elem)
+            return f"SegTree<{ec}>({t.dom.info.len_cpp}, {ic}, {self.lambda2(e.args[1], t.elem, t.elem, t.elem)})", t
         if fn.kind == "generic" and fn.name in ("List", "MinHeap"):
             a = fn.args[0]
             et = self.resolve_type(a) if a.kind.startswith("t") else self.resolve_type(N("texpr", a.line, expr=a))
@@ -960,7 +1125,7 @@ class Compiler:
             return self.call_generic(self.lookup(fn.name).node, e)
         fc, ft = self.expr(fn) if fn.kind != "field" else (None, None)
         if fn.kind == "field":
-            if fn.name in ("push", "pop", "sort", "rev", "clear", "insert", "remove", "swap"):
+            if fn.name in ("push", "pop", "sort", "rev", "clear", "insert", "remove", "swap", "set"):
                 self.note_write(fn.obj, e.line)
             return self.method_call(e, want)
         if isinstance(ft, TType):
@@ -970,6 +1135,8 @@ class Compiler:
                 c, at = self.expr(e.args[0])
                 if isinstance(at, TDom) and at.info is info:
                     return c, t
+                if isinstance(at, TChar) and info.labels == "char":
+                    c, at = f"(ll)({c})", TInt(0, 255)
                 if not is_int(at):
                     self.error(e, f"{info.name}(x) needs an Int, got {at!r}")
                 self.note_check(e, f"`{unparse(e.args[0])}` in {info.name}")
@@ -1008,6 +1175,19 @@ class Compiler:
                     recv.mut = True
                 call_args = [recv] + call_args
             return self.expr(N("call", e.line, fn=N("name", e.line, name=fname), args=call_args), want)
+        if isinstance(ot, TType) and isinstance(ot.t, TDom) and m in ("partition_point", "first_where"):
+            # binary search over a domain for a predicate that is false then true (first_where)
+            # or true then false (partition_point, as in plan/12)
+            info = ot.t.info
+            pn, kc, kt = self.lambda_key(args[0], ot.t)
+            if not isinstance(kt, TBool):
+                self.error(e, f"{m} needs a Bool predicate")
+            flip = "!" if m == "first_where" else ""
+            search = (f"([&]{{ int _lo = 0, _hi = {info.len_cpp}; while (_lo < _hi) {{ int {pn} = (_lo + _hi) / 2; "
+                      f"if ({flip}({kc})) _lo = {pn} + 1; else _hi = {pn}; }} return _lo; }}())")
+            if m == "partition_point":
+                return search, TDom(self.bounds_of(info))
+            return f"([&](int _k){{ return _k < {info.len_cpp} ? Opt<int>(_k) : Opt<int>(); }}({search}))", TOpt(ot.t)
         if isinstance(ot, TType) and isinstance(ot.t, TDom) and m in ("at", "try_at", "nth", "try_nth"):
             info = ot.t.info
             c, t = self.expr(args[0])
@@ -1021,6 +1201,15 @@ class Compiler:
                 self.note_check(e, f"`{unparse(args[0])}` is {what} of {info.name}")
                 return f"chk_dom({c}, {info.len_cpp}, {e.line})", ot.t
             return f"([&](ll _k){{ return _k >= 0 && _k < {info.len_cpp} ? Opt<int>((int)_k) : Opt<int>(); }}({c}))", TOpt(ot.t)
+        sub = ot.t if isinstance(ot, TType) else ot
+        if isinstance(sub, TDom) and getattr(sub.info, "subset_of", None) is not None and m in ("with", "without", "of"):
+            el = TDom(sub.info.subset_of)
+            c, t = self.expr(args[0], el)
+            if t != el:
+                self.error(e, f"{m} needs a {el!r}, got {t!r}")
+            if m == "of":
+                return f"(1 << ({c}))", sub
+            return (f"(({oc}) | (1 << ({c})))" if m == "with" else f"(({oc}) & ~(1 << ({c})))"), sub
         if isinstance(ot, (TMap, TSet)):
             kt = ot.key if isinstance(ot, TMap) else ot.elem
             def key(a):
@@ -1045,8 +1234,9 @@ class Compiler:
                 c, t = self.expr(args[0], ot.elem)
                 return f"{oc}.push_back({self.coerce(c, t, ot.elem, args[0])})", UNIT
             if m == "pop":
-                self.note_check(e, "pop from a non-empty list")
-                return f"cp_pop({oc}, {e.line})", ot.elem
+                # same shape as heap.pop(): ?T, so `while let u = stack.pop()` drains a list
+                oc_t = self.cpp_type(TOpt(ot.elem))
+                return f"([&]{{ if ({oc}.empty()) return {oc_t}(); auto _v = {oc}.back(); {oc}.pop_back(); return {oc_t}(_v); }}())", TOpt(ot.elem)
             if m == "last":
                 return f"({oc}.empty() ? {self.cpp_type(TOpt(ot.elem))}() : {self.cpp_type(TOpt(ot.elem))}({oc}.back()))", TOpt(ot.elem)
             if m == "sort":
@@ -1071,6 +1261,60 @@ class Compiler:
                         f"return _k >= 0 ? Opt<int>((int)_k) : Opt<int>(); }}({c}))"), TOpt(ot.dims[0])
             return (f"([&](auto _x){{ ll _k = lower_bound({oc}.begin(), {oc}.end(), _x) - {oc}.begin(); "
                     f"return _k < (ll){oc}.size() ? Opt<int>((int)_k) : Opt<int>(); }}({c}))"), TOpt(ot.dims[0])
+        if isinstance(ot, TTree):
+            cs = []
+            for a in args:
+                c, t = self.expr(a, ot.dom)
+                if t != ot.dom:
+                    self.error(a, f"nodes of this tree are {ot.dom!r}, got {t!r}")
+                cs.append(c)
+            if m == "lca" and len(cs) == 2:
+                return f"{oc}.lca({cs[0]}, {cs[1]})", ot.dom
+            if m == "parent" and len(cs) == 1:
+                return f"([&](int _p){{ return _p < 0 ? Opt<int>() : Opt<int>(_p); }}({oc}.par[{cs[0]}]))", TOpt(ot.dom)
+            if m == "pos" and len(cs) == 1:
+                return f"(ll){oc}.tin[{cs[0]}]", TInt(0, ot.dom.info.len_iv[1])
+            if m == "depth" and len(cs) == 1:
+                return f"(ll){oc}.dep[{cs[0]}]", TInt(0, ot.dom.info.len_iv[1])
+            self.error(e, f"no method {m} on {ot!r} (lca(u, v), parent(v), pos(v), depth(v), .preorder)")
+        if isinstance(ot, THash) and m == "of" and len(args) == 2:
+            cs = []
+            for a in args:
+                c, t = self.expr(a, ot.dom)
+                if t != ot.dom:
+                    self.error(a, f"positions of this string are {ot.dom!r}, got {t!r}")
+                cs.append(c)
+            return f"{oc}.of({cs[0]}, {cs[1]})", TInt(0, (1 << 61) - 1)
+        if isinstance(ot, TAddMax):
+            def at(a):
+                c, t = self.expr(a, ot.dom)
+                if t != ot.dom:
+                    self.error(a, f"a {ot!r} is indexed by {ot.dom!r}, got {t!r}")
+                return c
+            if m == "add" and len(args) == 3:
+                vc, vt = self.expr(args[2])
+                if not is_int(vt):
+                    self.error(args[2], f"add(l, r, x) needs an Int x, got {vt!r}")
+                return f"{oc}.add({at(args[0])}, {at(args[1])}, {vc})", UNIT
+            if m == "max" and len(args) == 2:
+                return f"{oc}.query({at(args[0])}, {at(args[1])})", INT
+            if m == "max" and not args:
+                return f"{oc}.top()", INT
+            self.error(e, f"no method {m} on {ot!r} (add(l, r, x), max(l, r), max())")
+        if isinstance(ot, TSeg):
+            def at(a):
+                c, t = self.expr(a, ot.dom)
+                if t != ot.dom:
+                    self.error(a, f"a {ot!r} is indexed by {ot.dom!r}, got {t!r}")
+                return c
+            if m == "set" and len(args) == 2:
+                vc, vt = self.expr(args[1], ot.elem)
+                return f"{oc}.set({at(args[0])}, {self.coerce(vc, vt, ot.elem, args[1])})", UNIT
+            if m == "get" and len(args) == 1:
+                return f"{oc}.get({at(args[0])})", ot.elem
+            if m == "query" and len(args) == 2:
+                return f"{oc}.query({at(args[0])}, {at(args[1])})", ot.elem
+            self.error(e, f"no method {m} on {ot!r} (set(i, v), get(i), query(l, r))")
         if isinstance(ot, THeap):
             if m == "push":
                 c, t = self.expr(args[0], ot.elem)
@@ -1107,6 +1351,18 @@ class Compiler:
             self.bind_pattern(sub, f"{tmp}.{self.field_cpp(fn)}", ft, node)
 
     def loop(self, pat, it, node, body):
+        # a read() inside a top-level loop: the input ends where the outermost loop ends
+        self.loop_nest = getattr(self, "loop_nest", 0) + 1
+        mark = self.last_read
+        try:
+            self._loop(pat, it, node, body)
+        finally:
+            self.loop_nest -= 1
+        if self.loop_nest == 0 and self.last_read != mark and self.out is self.init_lines:
+            self.last_read = len(self.init_lines)
+            self.read_pos = (id(self.out), len(self.out))
+
+    def _loop(self, pat, it, node, body):
         """Emit a for-loop over iterable node `it`, binding `pat`; body() emits the loop body."""
         if not hasattr(self, "loop_ctx"):
             self.loop_ctx = []
@@ -1199,6 +1455,11 @@ class Compiler:
                 self.emit("} }")
                 self.scopes.pop()
                 return
+            elif isinstance(t, TDom) and getattr(t.info, "subset_of", None) is not None:
+                v = self.fresh(pat.name if pat.kind == "pname" else "i")
+                m_ = self.tmpname("m")
+                self.emit(f"for (int {m_} = {c}; {m_}; {m_} &= {m_} - 1) {{ int {v} = __builtin_ctz({m_});")
+                self.scopes[-1][pat.name] = Sym("let", TDom(t.info.subset_of), v, node=pat)
             elif isinstance(t, (TMap, TSet)):
                 v = self.tmpname("x")
                 self.emit(f"for (const auto& {v} : {c}) {{")
@@ -1215,10 +1476,14 @@ class Compiler:
                 if isinstance(t, TArr) and len(t.dims) == 1:
                     trips = t.dims[0].info.len_iv[1]
                 el = t.elem
-                if rev:
-                    self.error(it, ".rev on arrays: iterate the domain in reverse instead")
                 v = self.tmpname("x")
-                self.emit(f"for (const auto& {v} : {c}) {{")
+                if rev:
+                    # lists have no domain to reverse, so `for x in xs.rev` walks back to front
+                    r = self.tmpname("r")
+                    self.emit(f"const auto& {r} = {c};")
+                    self.emit(f"for (auto {r}i = {r}.rbegin(); {r}i != {r}.rend(); ++{r}i) {{ const auto& {v} = *{r}i;")
+                else:
+                    self.emit(f"for (const auto& {v} : {c}) {{")
                 self.ind += 1
                 self.bind_pattern(pat, v, el, node)
                 self.ind -= 1
@@ -1374,9 +1639,12 @@ class Compiler:
                 else:
                     self.emit(f"if ({cond}) return {val};")
             else:
-                if isinstance(t, TOpt):
-                    self.error(e, f"{name} over ?T values; filter with `if let`")
                 cmp = "<" if name == "min" else ">"
+                if isinstance(t, TOpt):
+                    # min/max skip `none` elements (none = "no value here"), result is ?T
+                    box["t"], box["opt"] = t.inner, True
+                    self.emit(f"{{ auto _o = {c}; if (_o.has() && (!{acc}.has() || _o.get() {cmp} {acc}.get())) {acc} = _o; }}")
+                    return
                 self.emit(f"{{ auto _v = {c}; if (!{acc}.has() || _v {cmp} {acc}.get()) {acc} = decltype({acc})(_v); }}")
         early = name in ("any", "all")
         if early:
@@ -1411,7 +1679,7 @@ class Compiler:
             init = "0" if name == "sum" else "1"
             return f"([&]() {{ {self.cpp_type(rt)} {acc} = {init};\n{body}\n return {acc}; }}())", rt
         rt = t if not is_int(t) else TInt(t.lo, t.hi)
-        nonempty = not has_filter and self.nonempty(clauses)
+        nonempty = not has_filter and not box.get("opt") and self.nonempty(clauses)
         ot = TOpt(rt)
         expr = f"([&]() {{ {self.cpp_type(ot)} {acc};\n{body}\n return {acc}; }}())"
         if nonempty:
@@ -1587,6 +1855,23 @@ class Compiler:
             self.bind_pattern(s.pat, c, t, s, mut=s.mut)
             return
         name = s.pat.name
+        v = s.value
+        if (v is not None and v.kind == "call" and v.fn.kind == "name" and v.fn.name == "ask"
+                and not self.lookup("ask")):
+            # interactive: `let x: T = ask("?", i, j)` prints the question, flushes, and reads the judge's reply
+            if s.ty is None:
+                self.error(s, "ask() needs a declared type: `let x: T = ask(...)`")
+            ty = self.resolve_type(s.ty)
+            self.emit_print(v.args, newline=True, node=s)
+            self.emit("out_flush(); fflush(stdout);")
+            cpp = self.fresh(name)
+            self.emit(f"{self.cpp_type(ty)} {cpp};")
+            self.emit_read(cpp, ty, s)
+            self.declare(name, ty, cpp, s.mut, s)
+            return
+        if (s.ty is not None and s.ty.kind == "tarray" and len(s.ty.dims) == 1 and s.ty.dims[0].kind == "tfresh"
+                and self.is_read(s.value)):
+            return self.read_fresh(s, name)
         ty = self.resolve_type(s.ty) if s.ty is not None else None
         if self.is_read(s.value) and len(self.fn_ret) > getattr(self, "sol_depth", 0) and len(self.fn_ret) > (1 if getattr(self, "in_multitest", False) else 0):
             self.reads_in_fns = True
@@ -1682,6 +1967,29 @@ class Compiler:
             size = " * ".join(f"(size_t){d.info.len_cpp}" for d in ty.dims)
             return f"{self.cpp_type(ty)}({size})"
         return f"{self.cpp_type(ty)}()"
+
+    def read_fresh(self, s, name):
+        """`let s: [domain S]Char = read()`: a whitespace-delimited word whose positions get the fresh domain S."""
+        d = s.ty.dims[0]
+        et = self.resolve_type(s.ty.elem)
+        if not isinstance(et, TChar) or d.range is not None:
+            self.error(s, "only `[domain S]Char = read()` (a word) is supported for a fresh domain")
+        w = self.tmpname("w")
+        self.emit(f"string {w};")
+        self.emit(f"if (CP_GEN) {{ int _n = gen_int(1, 1000000); for (int _i = 0; _i < _n; ++_i) {w} += (char)('a' + gen_int(0, 25)); "
+                  f"out_str({w}); out_char('\\n'); }} else {w} = rd_word();")
+        info, _, _ = self.new_domain(d.name, "0", "", (0, 0), (0, None))
+        info.lo_src, info.hi_src = "0", f"(ll){w}.size()"
+        self.emit(f"{info.cpp}_lo = 0; {info.cpp}_len = (ll){w}.size();")
+        self.scopes[-1][d.name] = Sym("type", TDom(info), info.cpp, node=s)
+        ty = TArr([TDom(info)], et)
+        cpp = self.fresh(name)
+        self.decl_global_or_local(cpp, ty)
+        self.emit(f"{cpp} = {self.cpp_type(ty)}({w}.begin(), {w}.end());")
+        self.declare(name, ty, cpp, s.mut, s)
+        if self.out is self.init_lines:
+            self.last_read = len(self.init_lines)
+        self.read_pos = (id(self.out), len(self.out))
 
     def s_domain(self, s):
         if s.range.kind != "range":
@@ -1915,7 +2223,7 @@ class Compiler:
 
     def lambda_key(self, lam, et):
         if lam.kind != "lambda" or len(lam.params) != 1:
-            self.error(lam, "expected a one-parameter lambda `|x| ...`")
+            self.error(lam, "expected a one-parameter lambda `x => ...`")
         self.scopes.append({})
         pn = self.fresh("x")
         self.bind_lambda_param(lam.params[0], pn, et, lam)
@@ -2073,7 +2381,7 @@ class Compiler:
             vc, vt = self.expr(s.value, tt.inner)
             self.emit(f"opt_{op[:3]}({tc}, {self.coerce(vc, vt, tt.inner, s.value)});")
             return
-        want = tt.inner if isinstance(tt, TOpt) and op == "=" else tt
+        want = tt.inner if isinstance(tt, TOpt) and op == "=" and s.value.kind != "none" else tt
         vc, vt = self.expr(s.value, want if not isinstance(tt, TInt) else None)
         if op == "=":
             c = self.coerce(vc, vt, tt, s.value)

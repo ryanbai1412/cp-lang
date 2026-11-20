@@ -1,0 +1,7 @@
+# coci20c6p3_orig.cpp: the lines a perfect C++ contest library would have supplied.
+# Everything else is counted as problem-specific code. Read by proto/loc.py.
+# lines      facility        what it is
+1-30         template        includes, debug macros, typedefs
+37-37        binomial        Pascal table storage
+39-49        binomial        binomial coefficients mod p
+90-102       driver          fast I/O setup and the test-case loop

@@ -1,4 +1,5 @@
-# Lines of apio07p1_orig.cpp that a perfect C++ contest library would have supplied.
-# Read by `cpl-verify loc` for the library-stripped line count; argue with it here.
-1-30   template header
-79-81  fast I/O setup
+# apio07p1_orig.cpp: the lines a perfect C++ contest library would have supplied.
+# Everything else is counted as problem-specific code. Read by proto/loc.py.
+# lines      facility        what it is
+1-30         template        includes, debug macros, typedefs
+78-83        driver          fast I/O setup and the test-case loop
