@@ -1731,6 +1731,18 @@ impl<'a> Lowerer<'a> {
         }
         let span = e.span;
         match (want, &e.ty) {
+            (Ty::Pos(d), Ty::DomainVal) => Ok(Expr {
+                kind: ExprKind::Cast(
+                    Cast::Trust,
+                    Box::new(Expr {
+                        kind: ExprKind::Int(0),
+                        ty: Ty::Int,
+                        span,
+                    }),
+                ),
+                ty: Ty::Pos(*d),
+                span,
+            }),
             (Ty::Float, Ty::Int) => Ok(match e.kind {
                 ExprKind::Int(v) => Expr {
                     kind: ExprKind::Float(v as f64),

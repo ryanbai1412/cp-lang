@@ -924,6 +924,26 @@ impl<'a> Lowerer<'a> {
             }
         }
 
+        // If a UFCS call passes a concrete `DomainVal(d)` as receiver (e.g. `D.prefix_range(4)`),
+        // bind the first param's generic domain name (`self: D`) to `GenArg::Domain(d)`.
+        if let Some(Arg::Value(Expr {
+            kind: ExprKind::DomainVal(d),
+            ..
+        })) = &receiver
+        {
+            if let Some(first_param) = decl.params.first() {
+                if let Some(ast::Type {
+                    kind: ast::TypeKind::Named { name: pname, args: targs },
+                    ..
+                }) = &first_param.ty
+                {
+                    if targs.is_empty() && gen_names.contains(&pname.text) {
+                        inferred.entry(pname.text.clone()).or_insert(GenArg::Domain(*d));
+                    }
+                }
+            }
+        }
+
         // Pass 1: unify from non-lambda arguments (and detect bare operators passed for unbound type params).
         for (param, arg) in ast_params.iter().zip(&matched) {
             let (Some(pty), Some(arg)) = (&param.ty, arg) else {
@@ -938,6 +958,10 @@ impl<'a> Lowerer<'a> {
                         inferred.insert(name.text.clone(), GenArg::Op(op));
                         continue;
                     }
+                    if let Some(Sym::Domain(d)) = self.sym(&arg.value) {
+                        inferred.insert(name.text.clone(), GenArg::Domain(d));
+                        continue;
+                    }
                 }
             }
             if matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
@@ -946,6 +970,19 @@ impl<'a> Lowerer<'a> {
             if let Some(concrete) =
                 self.probe_expr_ty(&arg.value, pty, tpl_mod, tpl_offset, &gen_names, &inferred)
             {
+                if concrete == Ty::DomainVal {
+                    if let ast::TypeKind::Named { name, args: targs } = &pty.kind {
+                        if targs.is_empty() && gen_names.contains(&name.text) {
+                            let saved_err = self.diags.len();
+                            let ev = self.expr(&arg.value, None);
+                            self.diags.truncate(saved_err);
+                            if let ExprKind::DomainVal(d) = ev.kind {
+                                inferred.entry(name.text.clone()).or_insert(GenArg::Domain(d));
+                                continue;
+                            }
+                        }
+                    }
+                }
                 self.unify_ast_ty(pty, &concrete, tpl_mod, &gen_names, &mut inferred);
             }
         }
@@ -1098,6 +1135,52 @@ impl<'a> Lowerer<'a> {
             }
             if inferred.len() == before {
                 break;
+            }
+        }
+
+        // Handle `<T, S>(it: S) -> T` where `T` is the element type of `S` (or `S` is `List<T>` when `it` is `[]`).
+        for (pi, p) in ast_params.iter().enumerate() {
+            if let Some(arg) = args.get(pi) {
+                if matches!(&arg.value.kind, ast::ExprKind::List(items) if items.is_empty()) {
+                    if let Some(pty) = p.ty.as_ref() {
+                        if let ast::TypeKind::Named { name, args: targs } = &pty.kind {
+                            if targs.is_empty()
+                                && gen_names.contains(&name.text)
+                                && !inferred.contains_key(&name.text)
+                            {
+                                if let Some(GenArg::Ty(elem_ty)) = decl
+                                    .ret
+                                    .as_ref()
+                                    .and_then(|r| match &r.kind {
+                                        ast::TypeKind::Named { name: rn, args: ra } if ra.is_empty() => {
+                                            inferred.get(&rn.text)
+                                        }
+                                        _ => None,
+                                    })
+                                    .cloned()
+                                {
+                                    inferred.insert(name.text.clone(), GenArg::Ty(Ty::list(elem_ty)));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if let Some(ret_ast) = decl.ret.as_ref() {
+            if let ast::TypeKind::Named { name: rn, args: ra } = &ret_ast.kind {
+                if ra.is_empty() && gen_names.contains(&rn.text) && !inferred.contains_key(&rn.text) {
+                    let elem_from_container = inferred.values().find_map(|ga| match ga {
+                        GenArg::Ty(Ty::List(e)) => Some((**e).clone()),
+                        GenArg::Ty(Ty::Array { elem, .. }) => Some((**elem).clone()),
+                        GenArg::Ty(Ty::Range(e)) => Some((**e).clone()),
+                        GenArg::Ty(Ty::Str) => Some(Ty::Char),
+                        _ => None,
+                    });
+                    if let Some(elem_ty) = elem_from_container {
+                        inferred.insert(rn.text.clone(), GenArg::Ty(elem_ty));
+                    }
+                }
             }
         }
 

@@ -107,21 +107,55 @@ impl<'a> Lowerer<'a> {
             }
             ast::ExprKind::Call { callee, args } => self.call(e, callee, args, hint),
             ast::ExprKind::Index { base, indices } => {
-                let base_expr = self.expr(base, None);
+                let raw_base = self.expr(base, None);
+                let base_expr = match (&raw_base.kind, &raw_base.ty) {
+                    (ExprKind::Builtin(Builtin::First, args), Ty::Opt(inner)) => Expr {
+                        kind: ExprKind::Builtin(Builtin::FirstVal, args.clone()),
+                        ty: (**inner).clone(),
+                        span: raw_base.span,
+                    },
+                    (ExprKind::Builtin(Builtin::Last, args), Ty::Opt(inner)) => Expr {
+                        kind: ExprKind::Builtin(Builtin::LastVal, args.clone()),
+                        ty: (**inner).clone(),
+                        span: raw_base.span,
+                    },
+                    _ => raw_base,
+                };
+                if let Ty::Struct(sid) = base_expr.ty {
+                    let ast_args: Vec<ast::Arg> = indices
+                        .iter()
+                        .map(|idx| ast::Arg {
+                            name: None,
+                            mutable: false,
+                            value: idx.clone(),
+                        })
+                        .collect();
+                    if let Some(&fn_id) = self.structs[sid].methods.get("get") {
+                        return self.method_call(fn_id, Some((base, base_expr)), &ast_args, span);
+                    }
+                    if let Some(&gfn_id) = self.structs[sid].gen_methods.get("get") {
+                        return self.call_gen_fn(
+                            gfn_id,
+                            Vec::new(),
+                            Some(Arg::Value(base_expr)),
+                            &ast_args,
+                            span,
+                        );
+                    }
+                }
                 if indices.len() == 1 && matches!(indices[0].kind, ast::ExprKind::Range { .. }) {
                     return self.slice_expr(base_expr, &indices[0], span);
                 }
-                if let Ty::Struct(sid) = base_expr.ty {
-                    if let Some(&fn_id) = self.structs[sid].methods.get("get") {
-                        let ast_args: Vec<ast::Arg> = indices
-                            .iter()
-                            .map(|idx| ast::Arg {
-                                name: None,
-                                mutable: false,
-                                value: idx.clone(),
-                            })
-                            .collect();
-                        return self.method_call(fn_id, Some((base, base_expr)), &ast_args, span);
+                // Runtime `Range<T>` value passed as an index (e.g. `vals[r]` inside `Compressed.get<Range<D>>`).
+                if indices.len() == 1
+                    && matches!(
+                        base_expr.ty,
+                        Ty::Array { .. } | Ty::List(_) | Ty::Str
+                    )
+                {
+                    if let Some(Ty::Range(_)) = self.probe_ty_silent(&indices[0]) {
+                        let range_val = self.expr(&indices[0], None);
+                        return self.slice_by_range_val(base_expr, range_val, span);
                     }
                 }
                 let (indices, ty) = self.index_args(&base_expr.ty, indices, span);
@@ -604,6 +638,18 @@ impl<'a> Lowerer<'a> {
                 }
             },
             (None, Some(r)) => match r.ty {
+                Ty::Int => {
+                    let lo = self.int_lit(0, span);
+                    let hi = if inclusive { self.int_add(r, 1) } else { r };
+                    self.mk(
+                        ExprKind::Range {
+                            lo: Box::new(lo),
+                            hi: Box::new(hi),
+                        },
+                        Ty::Range(Box::new(Ty::Int)),
+                        span,
+                    )
+                }
                 Ty::Pos(d) => {
                     let lo_ord = self.int_lit(0, span);
                     let hi_ord = self.cast(Cast::Ord, r, Ty::Int);
@@ -1081,9 +1127,21 @@ impl<'a> Lowerer<'a> {
                     (Some((prev, _)), _) if matches!(prev.ty, Ty::List(_)) => {
                         self.expr(e, Some(&prev.ty))
                     }
+                    (Some((prev, _)), _)
+                        if matches!(&prev.ty, Ty::Opt(inner) if matches!(**inner, Ty::List(_))) =>
+                    {
+                        let Ty::Opt(inner) = &prev.ty else {
+                            unreachable!()
+                        };
+                        self.expr(e, Some(inner))
+                    }
                     (None, Some(next)) if matches!(&e.kind, ast::ExprKind::List(items) if items.is_empty()) => {
                         let next = self.expr(next, None);
-                        self.expr(e, Some(&next.ty))
+                        let hint = match &next.ty {
+                            Ty::Opt(inner) if matches!(**inner, Ty::List(_)) => inner.as_ref(),
+                            other => other,
+                        };
+                        self.expr(e, Some(hint))
                     }
                     _ => self.expr(e, None),
                 }
@@ -1443,6 +1501,132 @@ impl<'a> Lowerer<'a> {
                 (vec![self.err_expr(span)], Ty::Error)
             }
         }
+    }
+
+    /// Lowers a slice by a runtime `Range<T>` value (`base[r]`) into a `List<T>` (or `Str`).
+    fn slice_by_range_val(&mut self, base: Expr, range_val: Expr, span: Span) -> Expr {
+        let is_str = base.ty == Ty::Str;
+        let (elem_ty, dim_dom) = match &base.ty {
+            Ty::List(e) => ((**e).clone(), None),
+            Ty::Str => (Ty::Char, None),
+            Ty::Array { dims, elem } if dims.len() == 1 => {
+                let d = match dims[0] {
+                    Dim::Pos(id) => Some(id),
+                    _ => None,
+                };
+                ((**elem).clone(), d)
+            }
+            _ => return self.err_expr(span),
+        };
+        let result_ty = if is_str {
+            Ty::Str
+        } else {
+            Ty::list(elem_ty.clone())
+        };
+        let base_ty = base.ty.clone();
+        let range_ty = range_val.ty.clone();
+        let range_inner = match &range_ty {
+            Ty::Range(inner) => (**inner).clone(),
+            _ => Ty::Int,
+        };
+        self.do_expr(Some(&result_ty), span, |lw, out| {
+            let b_slot = lw.temp(base_ty.clone());
+            out.push(Stmt::Let(b_slot, Some(base)));
+            let r_slot = lw.temp(range_ty.clone());
+            out.push(Stmt::Let(r_slot, Some(range_val)));
+            let acc_slot = lw.temp(result_ty.clone());
+            let init = if is_str {
+                lw.mk(ExprKind::Str(Vec::new()), Ty::Str, span)
+            } else {
+                lw.mk(ExprKind::Tuple(Vec::new()), result_ty.clone(), span)
+            };
+            out.push(Stmt::Let(acc_slot, Some(init)));
+            let r_ref = lw.local(r_slot, span);
+            let lo_bound = lw.mk(
+                ExprKind::Builtin(Builtin::RangeLo, vec![r_ref.clone()]),
+                range_inner.clone(),
+                span,
+            );
+            let hi_bound = lw.mk(
+                ExprKind::Builtin(Builtin::RangeHi, vec![r_ref]),
+                range_inner.clone(),
+                span,
+            );
+            let lo_ord = if matches!(range_inner, Ty::Pos(_) | Ty::Bound(_)) {
+                lw.cast(Cast::Ord, lo_bound, Ty::Int)
+            } else {
+                lo_bound
+            };
+            let hi_ord = if matches!(range_inner, Ty::Pos(_) | Ty::Bound(_)) {
+                lw.cast(Cast::Ord, hi_bound, Ty::Int)
+            } else {
+                hi_bound
+            };
+            let i_slot = lw.temp(Ty::Int);
+            let i_ref = lw.local(i_slot, span);
+            let idx_expr = match dim_dom {
+                Some(d) => lw.mk(
+                    ExprKind::Cast(Cast::Trust, Box::new(i_ref)),
+                    Ty::Pos(d),
+                    span,
+                ),
+                None => i_ref,
+            };
+            let elem = lw.mk(
+                ExprKind::Index(Box::new(lw.local(b_slot, span)), vec![idx_expr]),
+                elem_ty.clone(),
+                span,
+            );
+            let push_stmt = if is_str {
+                let item_str = lw.as_str(elem, span);
+                let cur = lw.local(acc_slot, span);
+                let joined = lw.mk(
+                    ExprKind::Binary(BinOp::Add, Box::new(cur), Box::new(item_str)),
+                    Ty::Str,
+                    span,
+                );
+                Stmt::Assign(
+                    Place {
+                        kind: PlaceKind::Local(acc_slot),
+                        ty: Ty::Str,
+                        span: lw.span(span),
+                    },
+                    AssignOp::Set,
+                    joined,
+                )
+            } else {
+                Stmt::Expr(lw.mk(
+                    ExprKind::Mutate(
+                        Mutation::Push,
+                        Box::new(Place {
+                            kind: PlaceKind::Local(acc_slot),
+                            ty: result_ty.clone(),
+                            span: lw.span(span),
+                        }),
+                        vec![elem],
+                    ),
+                    Ty::Unit,
+                    span,
+                ))
+            };
+            let lid = lw.next_loop;
+            lw.next_loop += 1;
+            out.push(Stmt::For(
+                lid,
+                i_slot,
+                Iter::Range {
+                    lo: lo_ord,
+                    hi: hi_ord,
+                    step: None,
+                    rev: false,
+                },
+                Block {
+                    stmts: vec![push_stmt],
+                },
+            ));
+            let res = lw.local(acc_slot, span);
+            out.push(Stmt::Give(res));
+        })
     }
 
     /// Lowers a slice expression `base[lo..hi]` / `base[lo..=hi]` / `base[..hi]` / `base[lo..]`
