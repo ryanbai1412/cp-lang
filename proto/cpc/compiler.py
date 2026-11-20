@@ -131,6 +131,8 @@ CPP_RESERVED = set(CPP_RESERVED) | {
 # is checked against the real module, so a port can only import what the library really exports.
 MEMO_DENSE_MAX = 1 << 26     # slots of a dense @memo table (at most ~1 GB of optional Ints); larger products are hashed
 LIBS = {"Steps": ("steps", "CpSteps")}
+BUILTIN_TYPE_ARGS = {"List": 1, "Map": 2, "HashMap": 2, "Set": 1, "Perm": 1, "MinHeap": 1, "Dsu": 1, "AssignSum": 1, "AddMax": 1,
+                     "SegTree": 2, "Subset": 1, "Counter": 1, "Range": 1}
 LIB_FNS = {"Dsu": "dsu", "bfs": "graph", "dijkstra": "graph", "choose": "math", "gcd": "math", "lcm": "math", "scan": "seq",
            "running_sum": "seq", "SegTree": "segtree", "Rooted": "tree", "Fenwick": "fenwick"}
 
@@ -269,6 +271,16 @@ class Compiler(LendMixin):
             return f"priority_queue<{e}, vector<{e}>, greater<{e}>>"
         raise CompileError(f"no C++ type for {t!r}")
 
+    def orderable(self, t):
+        # whether C++ has a `<` for the type: a record only gets one when all its fields do
+        if isinstance(t, TEnum):
+            return False
+        if isinstance(t, TOpt):         # none sorts before every value
+            return self.orderable(t.inner)
+        if isinstance(t, (TList, TArr)):
+            return self.orderable(t.elem)
+        return getattr(t, "ordered", True)
+
     def tuple_type(self, names, types):
         key = (tuple(names), tuple(types))
         if key in self.structs:
@@ -277,7 +289,7 @@ class Compiler(LendMixin):
         names = [n if n else f"f{i}" for i, n in enumerate(names)]
         t = TTuple(names, list(types), cpp)
         # `<` on a record compares field by field, so every field needs one (an optional or an enum has none)
-        t.ordered = not any(isinstance(x, (TOpt, TEnum)) or not getattr(x, "ordered", True) for x in types)
+        t.ordered = all(self.orderable(x) for x in types)
         self.structs[key] = t
         fields = " ".join(f"{'I32' if self.narrow(ft) else self.cpp_type(ft)} {self.field_cpp(fn)};" for fn, ft in zip(names, types))
         tie = ", ".join(self.field_cpp(fn) for fn in names)
@@ -393,6 +405,13 @@ class Compiler(LendMixin):
             prim = {"Int": INT, "Bool": BOOL, "Char": CHAR, "Str": STR}
             if nm in prim:
                 return prim[nm]
+            declared = self.lookup(nm)      # a `struct Dsu` or `enum Set` of the program is that name from there on
+            if declared and declared.kind == "type":
+                return declared.ty
+            need = BUILTIN_TYPE_ARGS.get(nm)
+            if need and len(tn.args) != need:
+                self.error(tn, f"`{nm}` is a built-in type that takes {need} type argument{'s' if need > 1 else ''}: "
+                               f"`{nm}<{', '.join('DKTV'[i] for i in range(need))}>`")
             if nm == "List":
                 return TList(self.resolve_type(tn.args[0]))
             if nm in ("Map", "HashMap"):

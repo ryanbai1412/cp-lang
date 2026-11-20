@@ -36,7 +36,7 @@ def gen_coci10c7p4():
     g = [[random.choice("..K") for _ in range(n)] for _ in range(n)]
     pr, pc = random.randrange(n), random.randrange(n)
     g[pr][pc] = "P"
-    if not any("K" in r for r in g):
+    if not any("K" in r for r in g) and random.random() < 0.5:     # a town with no house is allowed: the answer is 0
         g[(pr + 1) % n][pc] = "K"
     top = random.choice([3, 10, 10 ** 6])
     high = "\n".join(" ".join(str(random.randint(1, top)) for _ in range(n)) for _ in range(n))

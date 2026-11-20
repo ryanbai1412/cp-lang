@@ -151,6 +151,9 @@ line. *Checked:* on the 2 x 2 town `..` / `P.` with heights `2 1` / `2 1`
 it prints `-1` and the original prints `0`. Two sessions wrote the same
 loop and both got it wrong, which is the case for a library function.
 
+*Fixed.* The batch 12 port has the line now, and its check draws towns
+with no house.
+
 Wanted:
 
 ```cp

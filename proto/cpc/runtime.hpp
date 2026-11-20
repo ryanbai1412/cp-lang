@@ -70,6 +70,8 @@ template <class T> struct Opt {
     bool has() const { return h; }
     const T& get() const { return v; }
     bool operator==(const Opt& o) const { return h == o.h && (!h || v == o.v); }
+    bool operator<(const Opt& o) const { return h && o.h ? v < o.v : h < o.h; }   // none sorts before every value
+    bool operator>(const Opt& o) const { return o < *this; }
     bool operator!=(const Opt& o) const { return !(*this == o); }
 };
 template <> struct Opt<int> {
@@ -79,6 +81,8 @@ template <> struct Opt<int> {
     bool has() const { return v >= 0; }
     int get() const { return v; }
     bool operator==(const Opt& o) const { return v == o.v; }
+    bool operator<(const Opt& o) const { return v < o.v; }
+    bool operator>(const Opt& o) const { return v > o.v; }
     bool operator!=(const Opt& o) const { return v != o.v; }
 };
 template <> struct Opt<bool> {
@@ -88,6 +92,8 @@ template <> struct Opt<bool> {
     bool has() const { return v >= 0; }
     bool get() const { return v == 1; }
     bool operator==(const Opt& o) const { return v == o.v; }
+    bool operator<(const Opt& o) const { return v < o.v; }
+    bool operator>(const Opt& o) const { return v > o.v; }
     bool operator!=(const Opt& o) const { return v != o.v; }
 };
 // ?Int stores none as LLONG_MIN, so it costs no more space than Int
@@ -98,6 +104,8 @@ template <> struct Opt<ll> {
     bool has() const { return v != LLONG_MIN; }
     ll get() const { return v; }
     bool operator==(const Opt& o) const { return v == o.v; }
+    bool operator<(const Opt& o) const { return v < o.v; }
+    bool operator>(const Opt& o) const { return v > o.v; }
     bool operator!=(const Opt& o) const { return v != o.v; }
 };
 template <class T> static inline T opt_unwrap(const Opt<T>& o, int line) {
@@ -117,6 +125,8 @@ struct OptI32 {
     bool has() const { return v != INT_MIN; }
     ll get() const { return v; }
     bool operator==(const OptI32& o) const { return v == o.v; }
+    bool operator<(const OptI32& o) const { return v < o.v; }
+    bool operator>(const OptI32& o) const { return v > o.v; }
     bool operator!=(const OptI32& o) const { return v != o.v; }
 };
 static inline ll opt_unwrap(const OptI32& o, int line) {

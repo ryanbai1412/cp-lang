@@ -39,6 +39,7 @@ let levels = sorted([high[p] for p in cells()])
 var best = levels[levels.len - 1] - levels[0]
 var top = 0
 for floor in 0..levels.len:                                       // WISH L8: for (lo, hi) in levels.stretches(delivers)
+    top = max(top, floor)                                         // with no house every stretch delivers, the empty ones too
     while top < levels.len and not delivers(levels[floor], levels[top]): top += 1
     if top == levels.len: break
     best = min(best, levels[top] - levels[floor])
