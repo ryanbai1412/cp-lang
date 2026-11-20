@@ -261,3 +261,18 @@ from corpus (query problems); (3) top-level @memo reading per-test state -> comp
 02:27 wrote abstractions.md. Attach to Ryan.
 02:31 Ryan asked what else like Niche: added abstractions.md M7b representation traits (Niche Index Bits Small Relocate Zero OrdKey Bounded).
 02:36 expanded abstractions.md Part 1: section per M1-M10 (what/syntax/rules/cost/example/errors/open) + SegTree-in-user-code example.
+
+INDEX + LENDS (plan/19-index-and-lends.md, approved 2026-11-20). cpc/lends.py = the checker
+(flow facts, place paths, `law disjoint`, let-bound lends, second-class views); compiler.py calls it.
+- v.l / v.r (= .before / .after), v.l(k) / v.r(k) (k-wide window, counts v), V.K, v.to_idx, V.from_idx(i).
+- `impl Index for Struct: let K = e; fn to_idx(self) -> Int; fn from_idx(i: Int) -> Struct` -> [Struct]T,
+  `for x in Struct`. `const K = <runtime>` and K sized by a var are errors. g[p] with p: (Row, Col).
+- Projections: struct method `fn f(self, ..) lends [mut] T: [law disjoint(..) = ..] ..; lend [mut] place`.
+  Emitted as `template <class S_> decltype(auto) f(S_& self_, ..) { ..; return (place); }`.
+- Views: a[l..=r] / a[x..y] (bounds) -> slice, g.row(r) -> [B]T; C++ CpView<T>{p, lo, hi}. Passed to a
+  top-level fn by specialising it (view_spec); .sort() .rev() .copy() .positions .len; swap(mut x, mut y).
+- Checks: args of one call lent together (check_args); `let part = a[s]` holds `a` until the last
+  statement naming `part`; views can't be var/assigned/pushed/stored/returned.
+- Tests: tests/lend/*.cp + .in + .out (run), tests/bad/*.cp with `// error: text` on line 1 (message locked).
+- Char/Str: ASCII only, lexer rejects non-ASCII in literals. `/` and `%` are Euclidean (cp_ediv/cp_emod,
+  native when a >= 0 and b > 0 are proven).

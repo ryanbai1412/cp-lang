@@ -349,7 +349,8 @@ possible.
 **Syntax.**
 ```
 trait Niche:   const NONE: Self
-trait Index:   const K: Int;  fn to_idx(self) -> 0..K;  fn from_idx(i: 0..K) -> Self
+trait Index:   K: Int;  fn to_idx(self) -> 0..K;  fn from_idx(i: 0..K) -> Self    // an impl writes `const K = 10` or `let K = n` (19 §3.1)
+trait Seq: Index + Ord   // positions in a line: next, prev, offset, cyc, l, r, bounds (19 §3.1)
 trait Bits:    const bits: Int
 trait OrdKey:  fn key(self) -> U64       law order(a, b) = (a < b) == (a.key < b.key)
 ```

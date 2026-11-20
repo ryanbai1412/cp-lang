@@ -3,6 +3,14 @@
 Status: decided unless a section says *proposed*. Folded from `sequences.md`
 (now in `archive/`); this copy is the source of truth.
 
+**Changed on 2026-11-20 by `19-index-and-lends.md`**, which wins where the
+two disagree. What a user writes here is almost unchanged; what changed is
+that domains, slices, grids and strings are now library code over one
+mechanism. The visible differences: boundaries are written `v.l` and `v.r`
+(`v.before` and `v.after` are the long names), a slice is indexed by the
+positions of its array and `Sub<V>` no longer exists, and slices and rows
+are lent values that can't be stored or returned.
+
 
 How positions, ranges, slices, generators and sequence views fit together.
 The aim is G1: indexing the wrong array, or being off by one, is a compile
@@ -94,8 +102,9 @@ own type, `V.bounds`, with `n + 1` values. A position has a bound on each
 side:
 
 ```
-v.before        // V.bounds: the gap just left of v
-v.after         // V.bounds: the gap just right of v
+v.l             // V.bounds: the gap just left of v   (long name: v.before)
+v.r             // V.bounds: the gap just right of v  (long name: v.after)
+v.l(k), v.r(k)  // the far end of the k-wide window that ends / starts at v; v.l == v.l(1)
 V.start, V.end  // the first and last gap
 ```
 
@@ -104,12 +113,13 @@ shifts disappear:
 
 ```
 var pre: [V.bounds]Int = 0
-for v in V: pre[v.after] = pre[v.before] + a[v]
+for v in V: pre[v.r] = pre[v.l] + a[v]
 
-fn sum(l: V, r: V) -> Int = pre[r.after] - pre[l.before]
+fn sum(l: V, r: V) -> Int = pre[r.r] - pre[l.l]
+fn last_k(v: V, k: Int) -> Int = pre[v.r] - pre[v.l(k)]      // the k elements ending at v
 ```
 
-`pre[v]` is a type error, and so is `a[v.after]`. The C++ bug "did I mean
+`pre[v]` is a type error, and so is `a[v.r]`. The C++ bug "did I mean
 `pre[r]` or `pre[r + 1]`" has nowhere to live.
 
 A bound has a position on each side, either of which may be missing:
@@ -188,7 +198,7 @@ let all = V.all
 s.len                         // Int, 0 if empty
 s.is_empty
 s.first, s.last               // ?V
-s.before, s.after             // V.bounds, always defined
+s.lo, s.hi                    // V.bounds, always defined (long names: s.before, s.after)
 s.contains(v)
 s & t                         // intersection, may be empty
 ```
@@ -212,7 +222,7 @@ A `Range1` converts to a `Range` freely; the other direction is
 
 A pair of positions doesn't say whether `r` is inclusive, and `r - l` vs
 `r - l + 1` is a choice you make every time. A range makes the choice
-once: `s.len` is the length, `s.after` is the bound after the last
+once: `s.len` is the length, `s.hi` is the bound after the last
 element.
 
 A computed `l..=r` with `l > r` is the empty range, as in a C++ loop, and
@@ -245,21 +255,25 @@ for v in (l..=r).rev: ...
 A slice is a view of part of an array:
 
 ```
-let part = a[s]               // s: Range<V>; part: [Sub<V>]T
+let part = a[s]               // s: Range<V>; part is a lent slice, indexed by V
 part.len
 part.min()
-for v in part.positions: ...  // positions are Sub<V>, which convert to V
-deg[v]                        // fine: a slice position still indexes [V] arrays
-a[s].sort()                   // in-place sort of just that range (mut borrow of a)
+for v in part.positions: ...  // positions are plain V values
+deg[v]                        // fine: a slice position indexes every [V] array
+a[s].sort()                   // in-place sort of just that range (a is lent mutably for this statement)
 ```
 
-- **No copy.** A slice is a borrow of `a` plus the range. Read-only slices
-  borrow `a` immutably, mutable ones (`a[s].sort()`, `a[s].fill(0)`)
-  borrow it mutably, by the usual rules.
-- **Positions keep their meaning.** A slice's positions are `Sub<V>`, a
-  sub-domain whose values convert to `V`. Indexing the slice with a
-  `Sub<V>` needs no check, and indexing it with a plain `V` is checked
-  against the range (it might be outside the slice). So `argmax(a[s])` returns a
+- **No copy.** A slice is lent by `a` (19 §3.4): `a` plus the range.
+  While `part` is in use `a` can't be changed, and a slice that is written
+  through (`a[s].sort()`, `a[s].fill(0)`) holds `a` exclusively.
+- **A slice can't be kept.** It lives only in the block that made it: it
+  can be passed, bound with `let` and iterated, not stored in a `var` or a
+  container, or returned (19 §3.5). Keep the range, which is a plain
+  value, and write `a[s]` again where it is needed.
+- **Positions keep their meaning.** A slice is indexed by `V` itself.
+  Indexing it with a position that might be outside the window is checked
+  against the range; the loops and reductions over a slice never need
+  that check (19 §4.2). So `argmax(a[s])` returns a
   position you can use in every other `[V]` array, not an offset into the
   slice. This is the most common slice bug in C++ (`max_element(a + l,
   a + r) - a` vs `- (a + l)`), and it can't happen.

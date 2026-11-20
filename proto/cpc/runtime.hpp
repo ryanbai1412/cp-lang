@@ -83,6 +83,38 @@ template <class U> static inline void opt_max(OptI32& o, U x) { if (!o.has() || 
 
 struct Rng { ll lo, hi; };
 
+// @part CpView|cp_slice|cp_row|cp_win|cp_swap_view
+// A lent window of an array (plan/19 §3.5): where the block is and which positions of it are lent.
+// A slice keeps the positions of its base array (lo..hi); a row starts at 0. Whether it may be written
+// through is decided by the checker, so the pointer is never const here.
+template <class T> struct CpView {
+    T* p = nullptr; int lo = 0, hi = 0;
+    CpView() {}
+    CpView(T* p, ll lo, ll hi) : p(p), lo((int)lo), hi((int)(hi < lo ? lo : hi)) {}
+    T& operator[](ll i) const { return p[i]; }
+    T* begin() const { return p + lo; }
+    T* end() const { return p + hi; }
+    size_t size() const { return (size_t)(hi - lo); }
+};
+template <class A> static inline auto cp_slice(const A& a, Rng r, int) {
+    typedef typename A::value_type T;
+    return CpView<T>(const_cast<T*>(a.data()), r.lo, r.hi);
+}
+template <class T> static inline CpView<T> cp_slice(const CpView<T>& v, Rng r, int line) {
+    if (r.lo < r.hi && (r.lo < v.lo || r.hi > v.hi)) cp_fail("range is outside the slice it is taken from", line);
+    return CpView<T>(v.p, r.lo, r.hi);
+}
+template <class A> static inline auto cp_row(const A& g, ll r, ll w) {
+    typedef typename A::value_type T;
+    return CpView<T>(const_cast<T*>(g.data()) + r * w, 0, w);
+}
+static inline ll cp_win(ll i, ll lo, ll hi, int line) {
+    if (i < lo || i >= hi) cp_fail("position is outside the slice", line);
+    return i;
+}
+template <class T> static inline void cp_swap_view(CpView<T> a, CpView<T> b) { swap_ranges(a.begin(), a.end(), b.begin()); }
+// @end
+
 template <ll M> struct Mod {
     ll v;
     Mod(ll x = 0) : v(((x % M) + M) % M) {}

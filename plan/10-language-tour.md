@@ -65,7 +65,7 @@ domain I = 1..=n
 let a: [I]0..=1e9 = read()
 
 var pre: [I.bounds]Int = 0                // n + 1 boundaries between elements
-for i in I: pre[i.after] = pre[i.before] + a[i]
+for i in I: pre[i.r] = pre[i.l] + a[i]
 
 @brute(count_brute)
 fn count() -> Int:
@@ -78,7 +78,7 @@ fn count() -> Int:
     total
 
 fn count_brute() -> Int =
-    sum(1 for l in I for r in I if l <= r and pre[r.after] - pre[l.before] <= k)
+    sum(1 for l in I for r in I if l <= r and pre[r.r] - pre[l.l] <= k)
 
 print(count())
 ```
@@ -86,7 +86,7 @@ print(count())
 What to notice:
 
 - **Positions and bounds are different types.** `pre` is indexed by the
-  boundaries of `I` (`i.before`, `i.after`), so `pre[i]` doesn't compile
+  boundaries of `I` (`i.l`, `i.r`), so `pre[i]` doesn't compile
   and the classic `pre[r] - pre[l - 1]` vs `pre[r + 1] - pre[l]` mix-up
   can't happen.
 - **Sequence views** like `sliding` give each window as a range (with `len`,
