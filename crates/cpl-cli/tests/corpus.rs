@@ -37,10 +37,42 @@ fn check(path: &Path) -> cpl_cli::Outcome {
     cpl_cli::run(&["check", path.to_str().unwrap()])
 }
 
-/// Files written in syntax that reached `main` after this checker did,
-/// which it does not read yet. A file leaves this list when it checks
-/// clean, and the test below says so.
-const PENDING: &[&str] = &[];
+/// Files this checker does not take as they stand. A file leaves this
+/// list when it checks clean, and the test below says so.
+///
+/// These are ports still written in v2.1, which `proto/` migrates in its
+/// own pass: a `read() where` guard, `Dsu.count` and `std.steps` are not
+/// in v2.2, and each is reported with what to write instead.
+const PENDING: &[&str] = &[
+    "proto/ports/apio07p1.cp",
+    "proto/ports/ccc10s4.cp",
+    "proto/ports/ccc17s4.cp",
+    "proto/ports/ccc18s5.cp",
+    "proto/ports/ccc19s5.cp",
+    "proto/ports/ccc21s2.cp",
+    "proto/ports/ccc21s4.cp",
+    "proto/ports/ccc21s5.cp",
+    "proto/ports/cco16p2.cp",
+    "proto/ports/cco20p1.cp",
+    "proto/ports/cheerio1s3.cp",
+    "proto/ports/dmpg16s5.cp",
+    "proto/ports/dpg.cp",
+    "proto/ports/dph.cp",
+    "proto/ports/dpy.cp",
+    "proto/ports/dpz.cp",
+    "proto/ports/hillclimb_dp_graph/coi06p2.cp",
+    "proto/ports/hillclimb_dp_graph/dps.cp",
+    "proto/ports/ioi05p6.cp",
+    "proto/ports/ioi10p3.cp",
+    "proto/ports/noi16p4.cp",
+    "proto/ports/noip06p2.cp",
+    "proto/ports/noip09p2.cp",
+    "proto/ports/noip10p3.cp",
+    "proto/ports/noip14p3.cp",
+    "proto/ports/yac6p3.cp",
+    "proto/tests/ergo/compound_div.cp",
+    "proto/tests/ergo/library.cp",
+];
 
 /// Passing tests the language has since moved away from, which the
 /// prototype rejects too: `offset_check` indexes with `i + 1`, and a step
@@ -141,6 +173,8 @@ fn each_failing_test_is_rejected_for_its_stated_reason() {
                 "`grow` can't be called here: it changes `xs`, and the `for` loop is going over `xs`"
             }
             "rt_for_push" => "the `for` loop is going over `xs`",
+            // v2.2: the body ends with the place, and `mut` says it is lent to change.
+            "proj_no_lend" => "so the body ends with `mut cnt[i]`",
             _ => reason,
         };
         cases += 1;

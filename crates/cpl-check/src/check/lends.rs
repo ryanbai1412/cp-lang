@@ -1737,7 +1737,7 @@ impl<'a> Checker<'a> {
             }
         } else if !mutable && lends.mutable {
             let message = format!(
-                "`{name}` is declared `lends mut`, so say `lend mut {}`",
+                "`{name}` is declared `lends mut`, so the body ends with `mut {}`",
                 show(place)
             );
             self.error(codes::BAD_PROJECTION, stmt.span, message);

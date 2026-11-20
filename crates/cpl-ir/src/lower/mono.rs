@@ -163,7 +163,18 @@ impl<'a> Lowerer<'a> {
         let analysis = self.mods[m];
         analysis.items.iter().flat_map(|item| {
             let offset = item.offset;
-            item.syntax.parsed.stmts.iter().map(move |s| (offset, s))
+            // A `@checker` or `@interactor` is the judge's side of the
+            // problem: it is checked, and is no part of the solution.
+            item.syntax
+                .parsed
+                .stmts
+                .iter()
+                .filter(|s| {
+                    !s.decorators
+                        .iter()
+                        .any(|d| matches!(d.name.text.as_str(), "checker" | "interactor"))
+                })
+                .map(move |s| (offset, s))
         })
     }
 

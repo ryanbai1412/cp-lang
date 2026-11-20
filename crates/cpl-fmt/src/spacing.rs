@@ -232,7 +232,7 @@ fn starts_value(kind: K) -> bool {
 fn is_word_operator(kind: K) -> bool {
     matches!(
         kind,
-        K::And | K::Or | K::In | K::By | K::If | K::Else | K::For | K::Not | K::With | K::Where
+        K::And | K::Or | K::In | K::If | K::Else | K::For | K::Not | K::Lends
     )
 }
 

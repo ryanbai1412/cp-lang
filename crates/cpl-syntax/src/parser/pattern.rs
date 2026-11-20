@@ -44,8 +44,6 @@ impl<'a> Parser<'a> {
                 self.bump();
                 PatternKind::Name("self".into())
             }
-            // `by` is only a keyword after a range.
-            T::By => PatternKind::Name(self.name().text),
             T::LParen => {
                 self.bump();
                 let mut items = self.comma_list(T::RParen, "the pattern", Self::pattern);

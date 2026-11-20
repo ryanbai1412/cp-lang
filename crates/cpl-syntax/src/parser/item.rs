@@ -6,11 +6,7 @@ impl<'a> Parser<'a> {
     pub(super) fn fn_decl(&mut self) -> FnDecl {
         let start = self.start();
         self.bump();
-        let name = if self.at(T::By) {
-            self.name()
-        } else {
-            self.expect_name("a fn name after `fn`")
-        };
+        let name = self.expect_name("a fn name after `fn`");
         let (generics, mut bounds) = self.generic_params();
         let params = if self.eat(T::LParen) {
             self.params()
@@ -25,7 +21,7 @@ impl<'a> Parser<'a> {
         let ret = self.eat(T::Arrow).then(|| self.ty());
         // `fn at(self, i: V) lends mut Int`: a projection.
         let lends =
-            (self.at_ident("lends") && !matches!(self.peek_n(1), T::Colon | T::Eq)).then(|| {
+            self.at(T::Lends).then(|| {
                 self.bump();
                 let mutable = self.eat(T::Mut);
                 Lends {
@@ -63,6 +59,19 @@ impl<'a> Parser<'a> {
                 FnBody::None
             }
         };
+        // A `lends` body ends with the place it hands out.
+        let mut body = body;
+        if let (Some(_), FnBody::Block(block)) = (&lends, &mut body) {
+            let explicit = block.stmts.iter().any(|s| matches!(s.kind, StmtKind::Lend { .. }));
+            if let Some(last) = block.stmts.last_mut().filter(|_| !explicit) {
+                if let StmtKind::Expr(place) = &last.kind {
+                    last.kind = StmtKind::Lend {
+                        mutable: false,
+                        place: place.clone(),
+                    };
+                }
+            }
+        }
         FnDecl {
             name,
             generics,
@@ -156,7 +165,7 @@ impl<'a> Parser<'a> {
         let start = self.start();
         let variadic = self.eat(T::DotDot);
         let mutable = self.eat(T::Mut);
-        let name = if self.at(T::SelfKw) || self.at(T::By) {
+        let name = if self.at(T::SelfKw) {
             self.name()
         } else {
             self.expect_name("a parameter name")

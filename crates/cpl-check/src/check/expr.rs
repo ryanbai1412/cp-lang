@@ -49,6 +49,7 @@ impl<'a> Checker<'a> {
                         Ty::Bool
                     }
                     UnOp::Neg | UnOp::BitNot if ty.is_numeric() => ty.widen(),
+                    UnOp::Neg if matches!(&ty, Ty::Optional(inner) if inner.is_numeric()) => ty,
                     UnOp::Neg | UnOp::BitNot => {
                         self.bad_operand(&ty, inner, if *op == UnOp::Neg { "-" } else { "~" })
                     }
@@ -457,12 +458,30 @@ impl<'a> Checker<'a> {
                 self.require_bool(&right, rhs, &format!("`{}`", op.text()));
                 Ty::Bool
             }
-            BinOp::Coalesce => match left {
-                Ty::Optional(inner) if !inner.is_vague() => *inner,
-                Ty::Error => right,
-                _ if right.is_vague() => Ty::Unknown,
-                _ => right.widen(),
-            },
+            BinOp::Coalesce => {
+                // `a[i] + best ?? 0` reads two ways. A step along a domain
+                // (`i + 1 ?? I.last`) and a way out (`x + 1 ?? continue`)
+                // read one way.
+                if let ExprKind::Binary { op: inner, lhs: first, .. } = &lhs.kind {
+                    let arithmetic = matches!(
+                        inner,
+                        BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem
+                    );
+                    let step = matches!(self.infer(first), Ty::Pos(_)) || left.is_vague();
+                    if arithmetic && !step && !matches!(rhs.kind, ExprKind::Block(_)) {
+                        if let Some(diag) = self.error(
+                            codes::UNPARENTHESIZED_COALESCE,
+                            lhs.span,
+                            "`??` mixed with `+ - * / %` needs parentheses".to_string(),
+                        ) {
+                            diag.help = Some(
+                                "write `(a ?? 0) + b` for a default on `a` alone, or `(a + b) ?? 0` for a default on the sum".into(),
+                            );
+                        }
+                    }
+                }
+                self.coalesce_ty(left, right, rhs)
+            }
             // `total + ` mid-edit: the half that is there says what the
             // whole will be.
             _ if matches!(rhs.kind, ExprKind::Missing) && left.is_numeric() => left.widen(),
@@ -489,6 +508,15 @@ impl<'a> Checker<'a> {
             }
             _ if left == Ty::Error || right == Ty::Error => Ty::Error,
             _ if left.is_vague() || right.is_vague() => Ty::Unknown,
+            // `none` absorbs `+` and `-` on `?Int` and `?F64`.
+            BinOp::Add | BinOp::Sub
+                if tropical_side(&left).is_some()
+                    && tropical_side(&right).is_some()
+                    && (matches!(left, Ty::Optional(_)) || matches!(right, Ty::Optional(_))) =>
+            {
+                let int = tropical_side(&left) == Some(true) && tropical_side(&right) == Some(true);
+                Ty::Optional(Box::new(if int { Ty::Int } else { Ty::Float }))
+            }
             _ if left.is_int() && right.is_int() => Ty::Int,
             _ if left.is_numeric() && right.is_numeric() => Ty::Float,
             BinOp::Add if left == Ty::Str && right == Ty::Str => Ty::Str,
@@ -1110,4 +1138,36 @@ pub(crate) fn list_names(names: &[String]) -> String {
         .map(|n| format!("`{n}`"))
         .collect::<Vec<_>>()
         .join(", ")
+}
+
+/// Whether `ty` can stand on one side of a `none`-absorbing `+` or `-`: a
+/// number or an optional number. `Some(true)` for the integers.
+fn tropical_side(ty: &Ty) -> Option<bool> {
+    let inner = match ty {
+        Ty::Optional(inner) => inner,
+        other => other,
+    };
+    inner.is_numeric().then(|| inner.is_int())
+}
+
+impl Checker<'_> {
+    fn coalesce_ty(&mut self, left: Ty, right: Ty, rhs: &Expr) -> Ty {
+        // `o ?? return`: the right side never gives a value.
+        let diverges = matches!(&rhs.kind, ExprKind::Block(block) if matches!(
+            block.stmts.as_slice(),
+            [cpl_syntax::ast::Stmt {
+                kind: cpl_syntax::ast::StmtKind::Return(_)
+                    | cpl_syntax::ast::StmtKind::Break(_)
+                    | cpl_syntax::ast::StmtKind::Continue(_),
+                ..
+            }]
+        ));
+        match left {
+            Ty::Optional(inner) if !inner.is_vague() || diverges => *inner,
+            Ty::Error => right,
+            _ if diverges => Ty::Unknown,
+            _ if right.is_vague() => Ty::Unknown,
+            _ => right.widen(),
+        }
+    }
 }

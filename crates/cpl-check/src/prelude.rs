@@ -71,6 +71,9 @@ pub fn ty(name: &str) -> Option<Ty> {
                 args: Vec::new(),
             }
         }
+        // The solution as an `@interactor` sees it: `sol.recv()` reads what
+        // it printed, `sol.send(x)` answers it.
+        "Interactor" => Ty::Unknown,
         _ if PROTOTYPE_NAMES.contains(&name) => Ty::Unknown,
         _ => return None,
     })

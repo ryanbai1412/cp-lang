@@ -31,7 +31,7 @@ impl<'a> Parser<'a> {
             };
         }
         let base = self.coalesce();
-        if !self.at(T::With) {
+        if !self.at_ident("with") {
             return base;
         }
         self.bump();
@@ -82,10 +82,65 @@ impl<'a> Parser<'a> {
     fn coalesce(&mut self) -> Expr {
         let start = self.start();
         let lhs = self.or();
-        if self.at(T::QuestionQuestion) {
-            return self.binary(start, BinOp::Coalesce, lhs, Self::coalesce);
+        if !self.at(T::QuestionQuestion) {
+            return lhs;
         }
-        lhs
+        let whole = self.binary(start, BinOp::Coalesce, lhs, Self::coalesce_rhs);
+        if let ExprKind::Binary { lhs, rhs, .. } = &whole.kind {
+            // `a + b ?? 0` reads two ways, so it has to say which. A way
+            // out on the right (`cur + 1 ?? continue`) reads only one way.
+            let diverges = matches!(rhs.kind, ExprKind::Block(_));
+            // The left side is judged by the checker, which knows a step
+            // along a domain (`i + 1 ?? I.last`) from a sum.
+            let _ = lhs;
+            let mixed = [rhs].into_iter().find(|side| {
+                matches!(
+                    side.kind,
+                    ExprKind::Binary {
+                        op: BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem,
+                        ..
+                    }
+                )
+            });
+            if let (Some(side), false) = (mixed, diverges) {
+                let span = side.span;
+                self.error(
+                    Diagnostic::error(
+                        codes::UNPARENTHESIZED_COALESCE,
+                        span,
+                        "`??` mixed with `+ - * / %` needs parentheses",
+                    )
+                    .with_help(
+                        "write `(a ?? 0) + b` for a default on `a` alone, or `(a + b) ?? 0` for a default on the sum",
+                    ),
+                );
+            }
+        }
+        whole
+    }
+
+    /// What follows `??`: a default, or a way out of the fn or the loop
+    /// (`o ?? return -1`, `st.pop() ?? break`, `v + 1 ?? continue`).
+    fn coalesce_rhs(&mut self) -> Expr {
+        if !matches!(self.peek(), T::Return | T::Break | T::Continue) {
+            return self.coalesce();
+        }
+        let start = self.start();
+        let kind = self.stmt_kind();
+        let span = self.span_from(start);
+        let stmt = Stmt {
+            kind,
+            span,
+            decorators: Vec::new(),
+            public: false,
+        };
+        Expr {
+            kind: ExprKind::Block(Block {
+                stmts: vec![stmt],
+                span,
+            }),
+            span,
+        }
     }
 
     fn or(&mut self) -> Expr {
@@ -211,7 +266,7 @@ impl<'a> Parser<'a> {
             }
             None
         };
-        let step = self.eat(T::By).then(|| Box::new(self.bit_or()));
+        let step = self.eat_ident("by").then(|| Box::new(self.bit_or()));
         Expr {
             kind: ExprKind::Range {
                 lo,
@@ -477,7 +532,7 @@ impl<'a> Parser<'a> {
     fn field_keyword(&self) -> bool {
         matches!(
             self.peek(),
-            T::None | T::In | T::By | T::Type | T::Domain | T::Use | T::With
+            T::None | T::In | T::Type | T::Domain | T::Use
         ) && !self.at_line_end()
     }
 
@@ -522,7 +577,6 @@ impl<'a> Parser<'a> {
             }
             // `by` is a keyword only after a range (`0..n by 2`); anywhere
             // a value starts it is an ordinary name.
-            T::By => ExprKind::Name(self.name().text),
             // `do:` runs a block for its value; `?` inside exits the block.
             T::Ident if self.text() == "do" && self.peek_n(1) == T::Colon => {
                 self.bump();
@@ -742,8 +796,17 @@ impl<'a> Parser<'a> {
                 T::Elif => continue,
                 T::Else => {
                     self.bump();
-                    // `else if` reads as `elif`.
+                    // `else if` reads as `elif`, and says so.
                     if self.at(T::If) {
+                        let span = self.span();
+                        self.error(
+                            Diagnostic::error(
+                                codes::REMOVED_SYNTAX,
+                                span,
+                                "use `elif`, not `else if`",
+                            )
+                            .with_help("write `elif cond:`"),
+                        );
                         continue;
                     }
                     otherwise = Some(self.colon_block("`else`"));

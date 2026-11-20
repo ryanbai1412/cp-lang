@@ -297,6 +297,9 @@ impl<'p> Emitter<'p> {
             parts.push(self.show_stmt(&code, &arg.value.ty, &arg.digits.to_string()));
         }
         parts.push("cpl::put_line();".to_string());
+        if self.program.interactive {
+            parts.push("cpl::flush(); fflush(stdout);".to_string());
+        }
         out.push_str(&format!("{}{}\n", pad(self.indent), parts.join(" ")));
     }
 

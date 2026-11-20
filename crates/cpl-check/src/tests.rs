@@ -819,7 +819,7 @@ trait Shape:
 struct Sq(side: Int)
 impl Shape for Sq:
     fn area(self) -> Int = side * side
-fn total<T: Shape + Ord>(xs: List<T>) -> Int where T: Show:
+fn total<T: Shape + Ord>(xs: List<T>) -> Int:
     sum(x.area() for x in xs)
 print(Sq(3).area(), Sq(3).name())
 ";
@@ -836,7 +836,7 @@ print(Sq(3).area(), Sq(3).name())
     assert_eq!(diag.message, "`Shape` has no fn `perimeter`");
     let diag = one(&src.replace("T: Shape + Ord", "T: Shape + Sq"));
     assert_eq!(diag.message, "`Sq` is not a trait");
-    let diag = one(&src.replace("where T: Show", "where T: Shwo"));
+    let diag = one(&src.replace("T: Shape + Ord", "T: Shwo + Ord"));
     assert_eq!(diag.message, "no trait named `Shwo`");
     let twice = format!("{src}impl Shape for Sq:\n    fn area(self) -> Int = 0\n");
     assert_eq!(
@@ -1104,7 +1104,10 @@ fn a_projection_ends_in_one_lend_of_a_part_of_self() {
         assert!(BAG.contains(old));
         check(&BAG.replacen(old, new, 1))
     };
+    // v2.2: the body ends with the place itself.
     let diags = with("        lend cnt[i]\n", "        cnt[i]\n");
+    assert_eq!(messages(&diags), Vec::<&str>::new());
+    let diags = with("        lend cnt[i]\n", "        let c = cnt[i]\n");
     assert_eq!(
         messages(&diags),
         ["`peek` is declared `lends`, so every path through it must reach one `lend place`"]

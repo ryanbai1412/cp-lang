@@ -600,6 +600,7 @@ impl<'p> Emitter<'p> {
                         Code::primary(format!("{p}.push_back((char){arg})"))
                     }
                     Mutation::Push => Code::primary(format!("{p}.push_back({arg})")),
+                    Mutation::Take => Code::primary(format!("std::exchange({p}, {{}})")),
                     Mutation::Pop => {
                         self.need("pop");
                         Code::primary(format!("cpl::pop({p})"))

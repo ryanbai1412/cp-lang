@@ -298,9 +298,19 @@ impl<'a> Parser<'a> {
 
     /// Parses `where T: Ord, U: Add + Mul` if it is here.
     pub(super) fn where_clause(&mut self, bounds: &mut Vec<Bound>) {
-        if !self.eat(T::Where) {
+        if !self.at_ident("where") {
             return;
         }
+        let span = self.span();
+        self.error(
+            Diagnostic::error(
+                codes::REMOVED_SYNTAX,
+                span,
+                "`where` clauses were removed in CP Lang v2.2",
+            )
+            .with_help("write the bound in the angle brackets: `fn f<T: Ord>(...)`"),
+        );
+        self.bump();
         loop {
             let name = self.expect_name("a type parameter name after `where`");
             self.expect(T::Colon, "`:` and the traits the type must have");

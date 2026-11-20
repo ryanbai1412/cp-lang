@@ -698,6 +698,45 @@ impl<'a> Lowerer<'a> {
                     .collect();
                 self.mk(ExprKind::Print(values), Ty::Unit, span)
             }
+            // `let r: Int = ask("?", x)`: the query goes out, the answer
+            // comes back as the type says. `ask("!", x)` only prints.
+            "ask" => {
+                self.interactive = true;
+                let mut values = Vec::new();
+                for arg in args {
+                    match &arg.name {
+                        // The query budget is the judge's to enforce.
+                        Some(name) if name.text == "limit" => {
+                            self.expect(&arg.value, &Ty::Int);
+                        }
+                        Some(name) => {
+                            let message = format!("`ask` has no argument named `{}`", name.text);
+                            self.error(codes::UNKNOWN_ARG_NAME, name.span, message);
+                        }
+                        None => values.push((self.expr(&arg.value, None), arg.value.span)),
+                    }
+                }
+                let values: Vec<FmtArg> = values
+                    .into_iter()
+                    .filter_map(|(value, at)| self.fmt_arg(value, 6, at))
+                    .collect();
+                let query = self.mk(ExprKind::Print(values), Ty::Unit, span);
+                let Some(want) = hint.filter(|want| **want != Ty::Unit) else {
+                    return query;
+                };
+                let Some(spec) = self.spec_of(want) else {
+                    let message = format!("`ask` can't tell how much a `{}` is", self.show(want));
+                    self.error(codes::TYPE_MISMATCH, span, message);
+                    self.help("give the answer its full type: `let r: Int = ask(\"?\", x)`");
+                    return self.err_expr(span);
+                };
+                let want = want.clone();
+                self.do_expr(Some(&want), span, |lw, out| {
+                    out.push(Stmt::Expr(query));
+                    let answer = lw.read(spec, span);
+                    out.push(Stmt::Give(answer));
+                })
+            }
             "read" => {
                 if !args
                     .iter()
@@ -812,13 +851,33 @@ impl<'a> Lowerer<'a> {
                 let pa = self.place(&args[0].value);
                 let pb = self.place(&args[1].value);
                 let ty = pa.ty.clone();
+                if pb.ty != ty && ty != Ty::Error && pb.ty != Ty::Error {
+                    self.mismatch(args[1].value.span, &ty, &pb.ty);
+                    return self.err_expr(span);
+                }
+                // Three moves, so two lists trade places in O(1).
                 self.do_expr(Some(&Ty::Unit), span, |lw, out| {
+                    let pa = lw.settle_indexes(pa, out);
+                    let pb = lw.settle_indexes(pb, out);
                     let tmp = lw.temp(ty.clone());
-                    let a_val = super::stmt::place_to_expr(&pa);
-                    let b_val = super::stmt::place_to_expr(&pb);
-                    out.push(Stmt::Let(tmp, Some(a_val)));
-                    out.push(Stmt::Assign(pa, AssignOp::Set, b_val));
-                    out.push(Stmt::Assign(pb, AssignOp::Set, lw.local(tmp, span)));
+                    let held = Place {
+                        kind: PlaceKind::Local(tmp),
+                        ty: ty.clone(),
+                        span: lw.span(span),
+                    };
+                    let take = |lw: &mut Self, place: &Place| {
+                        lw.mk(
+                            ExprKind::Mutate(Mutation::Take, Box::new(place.clone()), Vec::new()),
+                            ty.clone(),
+                            span,
+                        )
+                    };
+                    let from_a = take(lw, &pa);
+                    out.push(Stmt::Let(tmp, Some(from_a)));
+                    let from_b = take(lw, &pb);
+                    out.push(Stmt::Assign(pa, AssignOp::Set, from_b));
+                    let from_tmp = take(lw, &held);
+                    out.push(Stmt::Assign(pb, AssignOp::Set, from_tmp));
                     out.push(Stmt::Give(lw.mk(ExprKind::Unit, Ty::Unit, span)));
                 })
             }
@@ -1343,6 +1402,60 @@ impl<'a> Lowerer<'a> {
                 if values.iter().any(|v| v.ty == Ty::Error) {
                     return self.err_expr(span);
                 }
+                // `min(5, opt)`: a plain value among optionals makes the
+                // result plain, and each `none` is skipped.
+                let plain = values.iter().find(|v| !matches!(v.ty, Ty::Opt(_))).map(|v| v.ty.clone());
+                if let Some(plain) = plain.filter(|plain| {
+                    self.ordered(plain)
+                        && values.iter().any(|v| matches!(v.ty, Ty::Opt(_)))
+                        && values.iter().all(|v| v.ty == *plain || v.ty == Ty::opt(plain.clone()))
+                }) {
+                    let op = if is_max { Builtin::Max } else { Builtin::Min };
+                    return self.do_expr(Some(&plain), span, |lw, out| {
+                        let mut slots = Vec::with_capacity(values.len());
+                        for value in values {
+                            let slot = lw.temp(value.ty.clone());
+                            slots.push((slot, value.ty.clone()));
+                            out.push(Stmt::Let(slot, Some(value)));
+                        }
+                        let best = lw.temp(plain.clone());
+                        let first = slots
+                            .iter()
+                            .position(|(_, ty)| *ty == plain)
+                            .expect("one value is plain");
+                        let start = lw.local(slots[first].0, span);
+                        out.push(Stmt::Let(best, Some(start)));
+                        for (i, (slot, ty)) in slots.iter().enumerate() {
+                            if i == first {
+                                continue;
+                            }
+                            let held = lw.local(*slot, span);
+                            let place = Place {
+                                kind: PlaceKind::Local(best),
+                                ty: plain.clone(),
+                                span: lw.span(span),
+                            };
+                            let so_far = lw.local(best, span);
+                            if *ty == plain {
+                                let better = lw.mk(ExprKind::Builtin(op, vec![so_far, held]), plain.clone(), span);
+                                out.push(Stmt::Assign(place, AssignOp::Set, better));
+                            } else {
+                                let some = lw.mk(ExprKind::IsSome(Box::new(held.clone())), Ty::Bool, span);
+                                let inside = lw.mk(ExprKind::Unwrap(Box::new(held), false), plain.clone(), span);
+                                let better = lw.mk(ExprKind::Builtin(op, vec![so_far, inside]), plain.clone(), span);
+                                out.push(Stmt::If(
+                                    some,
+                                    Block {
+                                        stmts: vec![Stmt::Assign(place, AssignOp::Set, better)],
+                                    },
+                                    Block::default(),
+                                ));
+                            }
+                        }
+                        let result = lw.local(best, span);
+                        out.push(Stmt::Give(result));
+                    });
+                }
                 let ty = if values.iter().any(|v| v.ty == Ty::Float) {
                     Ty::Float
                 } else {
@@ -1562,6 +1675,9 @@ impl<'a> Lowerer<'a> {
                     _ => {
                         let message = format!("`sum` adds numbers, not `{}`", self.show(&ty));
                         self.error(codes::BAD_OPERANDS, arg.span, message);
+                        if matches!(ty, Ty::Opt(_)) {
+                            self.help("`sum` does not skip or absorb `none`: add `x ?? 0`, or filter with `if let`");
+                        }
                         self.close_loops(frames, Vec::new());
                         return self.err_expr(span);
                     }
@@ -2809,6 +2925,36 @@ impl<'a> Lowerer<'a> {
                 Some(arg) => mutate(self, Mutation::Push, vec![arg], Ty::Unit),
                 None => self.err_expr(span),
             },
+            (Ty::List(_), "push_id") => match self.one_arg(method, args, &elem, span) {
+                // The index the new element lands on.
+                Some(arg) => self.do_expr(Some(&Ty::Int), span, |lw, out| {
+                    let place = lw.place(base);
+                    let place = lw.settle_indexes(place, out);
+                    let held = lw.temp(arg.ty.clone());
+                    out.push(Stmt::Let(held, Some(arg)));
+                    let id = lw.temp(Ty::Int);
+                    let list = super::stmt::place_to_expr(&place);
+                    let len = lw.mk(ExprKind::Builtin(Builtin::Len, vec![list]), Ty::Int, span);
+                    out.push(Stmt::Let(id, Some(len)));
+                    let arg = lw.local(held, span);
+                    let push = lw.mk(
+                        ExprKind::Mutate(Mutation::Push, Box::new(place), vec![arg]),
+                        Ty::Unit,
+                        span,
+                    );
+                    out.push(Stmt::Expr(push));
+                    let id = lw.local(id, span);
+                    out.push(Stmt::Give(id));
+                }),
+                None => self.err_expr(span),
+            },
+            (
+                Ty::List(_) | Ty::Str | Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..),
+                "take",
+            ) => match self.positional_any(method, args, 0, span) {
+                Some(_) => mutate(self, Mutation::Take, Vec::new(), ty.clone()),
+                None => self.err_expr(span),
+            },
             (Ty::List(_), "pop") => match self.positional_any(method, args, 0, span) {
                 Some(_) => {
                     if matches!(elem, Ty::Opt(_)) {
@@ -2872,7 +3018,38 @@ impl<'a> Lowerer<'a> {
                 Some(arg) => mutate(self, Mutation::Insert, vec![arg], Ty::Bool),
                 None => self.err_expr(span),
             },
-            (Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..), "remove") => {
+            // `m.remove(k)` gives the value that was there, or `none`.
+            (Ty::Map(_, val) | Ty::HashMap(_, val), "remove") => {
+                let found_ty = Ty::Opt(val.clone());
+                match self.one_arg(method, args, &elem, span) {
+                    Some(arg) => self.do_expr(Some(&found_ty), span, |lw, out| {
+                        let place = lw.place(base);
+                        let place = lw.settle_indexes(place, out);
+                        let key = lw.temp(arg.ty.clone());
+                        out.push(Stmt::Let(key, Some(arg)));
+                        let map = super::stmt::place_to_expr(&place);
+                        let key_expr = lw.local(key, span);
+                        let found = lw.mk(
+                            ExprKind::Builtin(Builtin::MapGet, vec![map, key_expr.clone()]),
+                            found_ty.clone(),
+                            span,
+                        );
+                        let held = lw.temp(found_ty.clone());
+                        out.push(Stmt::Let(held, Some(found)));
+                        let remove = lw.mk(
+                            ExprKind::Mutate(Mutation::Remove, Box::new(place), vec![key_expr]),
+                            Ty::Bool,
+                            span,
+                        );
+                        // Whether it was there is already known.
+                        out.push(Stmt::If(remove, Block::default(), Block::default()));
+                        let held = lw.local(held, span);
+                        out.push(Stmt::Give(held));
+                    }),
+                    None => self.err_expr(span),
+                }
+            }
+            (Ty::Set(_) | Ty::HashSet(_), "remove") => {
                 match self.one_arg(method, args, &elem, span) {
                     Some(arg) => mutate(self, Mutation::Remove, vec![arg], Ty::Bool),
                     None => self.err_expr(span),
