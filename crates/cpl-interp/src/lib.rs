@@ -929,9 +929,16 @@ impl<'p, 'o> Interp<'p, 'o> {
                         Some(v) => Value::Int(v),
                         None => return trap(span, OVERFLOW),
                     },
+                    (UnOp::Neg, Value::I128(v)) => match v.checked_neg() {
+                        Some(v) => Value::I128(v),
+                        None => return trap(span, OVERFLOW_I128),
+                    },
+                    (UnOp::Neg, Value::U64(v)) => Value::U64(v.wrapping_neg()),
                     (UnOp::Neg, Value::Float(v)) => Value::Float(-v),
                     (UnOp::Not, Value::Bool(v)) => Value::Bool(!v),
                     (UnOp::BitNot, Value::Int(v)) => Value::Int(!v),
+                    (UnOp::BitNot, Value::I128(v)) => Value::I128(!v),
+                    (UnOp::BitNot, Value::U64(v)) => Value::U64(!v),
                     (_, other) => other,
                 }
             }
@@ -1374,6 +1381,23 @@ impl<'p, 'o> Interp<'p, 'o> {
     fn cast(&mut self, cast: Cast, value: Value, span: Span) -> Res<Value> {
         Ok(match cast {
             Cast::IntToFloat => Value::Float(value.int() as f64),
+            Cast::IntToI128 => Value::I128(i128::from(value.int())),
+            Cast::IntToU64 => Value::U64(value.int() as u64),
+            Cast::I128ToInt => match (&value, i64::try_from(value.i128())) {
+                (_, Ok(v)) => Value::Int(v),
+                _ => return trap(span, format!("{} does not fit in an `Int`", value.i128())),
+            },
+            Cast::U64ToInt => match i64::try_from(value.u64()) {
+                Ok(v) => Value::Int(v),
+                Err(_) => return trap(span, format!("{} does not fit in an `Int`", value.u64())),
+            },
+            Cast::I128ToU64 => match u64::try_from(value.i128()) {
+                Ok(v) => Value::U64(v),
+                Err(_) => return trap(span, format!("{} does not fit in a `U64`", value.i128())),
+            },
+            Cast::U64ToI128 => Value::I128(i128::from(value.u64())),
+            Cast::I128ToFloat => Value::Float(value.i128() as f64),
+            Cast::U64ToFloat => Value::Float(value.u64() as f64),
             Cast::FloatToInt => {
                 let v = value.float().trunc();
                 if !(-9.2e18..=9.2e18).contains(&v) {
@@ -1862,6 +1886,10 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::Int(v) => match v.checked_abs() {
                     Some(v) => Value::Int(v),
                     None => return trap(span, OVERFLOW),
+                },
+                Value::I128(v) => match v.checked_abs() {
+                    Some(v) => Value::I128(v),
+                    None => return trap(span, OVERFLOW_I128),
                 },
                 Value::Float(v) => Value::Float(v.abs()),
                 other => other,
@@ -2365,6 +2393,8 @@ impl<'p, 'o> Interp<'p, 'o> {
         Ok(match spec {
             Spec::Plain(ty) => match ty {
                 Ty::Int => Value::Int(self.input.int().map_err(fail)?.0),
+                Ty::I128 => Value::I128(self.input.wide("an `I128`").map_err(fail)?),
+                Ty::U64 => Value::U64(self.input.wide("a `U64`").map_err(fail)?),
                 Ty::Float => Value::Float(self.input.float().map_err(fail)?),
                 Ty::Char => Value::Char(self.input.char().map_err(fail)?),
                 Ty::Str => Value::Str(Rc::new(
@@ -2423,6 +2453,7 @@ impl<'p, 'o> Interp<'p, 'o> {
 const NO_GRADER: &str =
     "this fn has no body: the judge's grader supplies it, so there is nothing to run here";
 const OVERFLOW: &str = "integer overflow: the result does not fit in an `Int` (64 bits)";
+const OVERFLOW_I128: &str = "integer overflow: the result does not fit in an `I128` (128 bits)";
 const LENT: &str = "this variable is being changed by a call that has not returned yet";
 
 /// A domain for a message: `1..=5`, or that it is empty.
@@ -2524,6 +2555,78 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 Some(value) => Value::Int(value),
                 None => return trap(span, OVERFLOW),
             }
+        }
+        (Value::I128(a), Value::I128(b)) => {
+            let result = match op {
+                BinOp::Add => a.checked_add(b),
+                BinOp::Sub => a.checked_sub(b),
+                BinOp::Mul => a.checked_mul(b),
+                BinOp::Div | BinOp::Rem if b == 0 => return trap(span, "division by zero"),
+                BinOp::Div => a.checked_div_euclid(b),
+                BinOp::Rem => a.checked_rem_euclid(b),
+                BinOp::Pow => match u32::try_from(b) {
+                    Ok(exp) => a.checked_pow(exp),
+                    Err(_) if b < 0 => {
+                        return trap(span, format!("`**` needs a power that is not negative, and this is {b}"))
+                    }
+                    Err(_) => match a {
+                        0 | 1 => Some(a),
+                        -1 => Some(if b % 2 == 0 { 1 } else { -1 }),
+                        _ => None,
+                    },
+                },
+                BinOp::BitAnd => Some(a & b),
+                BinOp::BitOr => Some(a | b),
+                BinOp::BitXor => Some(a ^ b),
+                _ => None,
+            };
+            match result {
+                Some(value) => Value::I128(value),
+                None => return trap(span, OVERFLOW_I128),
+            }
+        }
+        (Value::I128(a), Value::Int(b)) => {
+            if !(0..128).contains(&b) {
+                return trap(span, format!("a shift by {b} is outside 0..128"));
+            }
+            match op {
+                BinOp::Shl if a < 0 => return trap(span, format!("`<<` of the negative number {a}")),
+                BinOp::Shl => match Some(a << b).filter(|shifted| *shifted >= 0 && shifted >> b == a) {
+                    Some(value) => Value::I128(value),
+                    None => return trap(span, OVERFLOW_I128),
+                },
+                _ => Value::I128(a >> b),
+            }
+        }
+        // A `U64` is the 64 bits: what does not fit is dropped.
+        (Value::U64(a), Value::U64(b)) => Value::U64(match op {
+            BinOp::Add => a.wrapping_add(b),
+            BinOp::Sub => a.wrapping_sub(b),
+            BinOp::Mul => a.wrapping_mul(b),
+            BinOp::Div | BinOp::Rem if b == 0 => return trap(span, "division by zero"),
+            BinOp::Div => a / b,
+            BinOp::Rem => a % b,
+            BinOp::Pow => {
+                let (mut base, mut exp, mut result) = (a, b, 1u64);
+                while exp > 0 {
+                    if exp & 1 == 1 {
+                        result = result.wrapping_mul(base);
+                    }
+                    base = base.wrapping_mul(base);
+                    exp >>= 1;
+                }
+                result
+            }
+            BinOp::BitAnd => a & b,
+            BinOp::BitOr => a | b,
+            BinOp::BitXor => a ^ b,
+            _ => a,
+        }),
+        (Value::U64(a), Value::Int(b)) => {
+            if !(0..64).contains(&b) {
+                return trap(span, format!("a shift by {b} is outside 0..64"));
+            }
+            Value::U64(if op == BinOp::Shl { a << b } else { a >> b })
         }
         (Value::Float(a), Value::Float(b)) => Value::Float(match op {
             BinOp::Add => a + b,

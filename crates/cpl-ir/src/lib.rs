@@ -83,6 +83,10 @@ pub type LoopId = u32;
 pub enum Ty {
     Unit,
     Int,
+    /// `I128`: 128 bits, signed. An `Int` becomes one where one is wanted.
+    I128,
+    /// `U64`: 64 bits, unsigned. `+`, `-`, `*` and `<<` wrap.
+    U64,
     Float,
     Bool,
     Char,
@@ -150,6 +154,8 @@ impl Ty {
             self,
             Ty::Unit
                 | Ty::Int
+                | Ty::I128
+                | Ty::U64
                 | Ty::Float
                 | Ty::Bool
                 | Ty::Char
@@ -406,6 +412,19 @@ impl NumFmt {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Cast {
     IntToFloat,
+    /// An `Int` as an `I128`.
+    IntToI128,
+    /// Fails when the `I128` is not an `Int`'s size.
+    I128ToInt,
+    /// An `Int` as a `U64` with the same 64 bits: `-1` is `2**64 - 1`.
+    IntToU64,
+    /// Fails when the `U64` is `2**63` or more.
+    U64ToInt,
+    /// Fails when the `I128` is negative or `2**64` or more.
+    I128ToU64,
+    U64ToI128,
+    I128ToFloat,
+    U64ToFloat,
     /// Toward zero. Fails when the float is not an `Int`'s size.
     FloatToInt,
     CharToInt,

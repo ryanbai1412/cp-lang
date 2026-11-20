@@ -22,6 +22,8 @@ pub(crate) enum Value {
     Unit,
     /// Integers, and positions and bounds as their ordinals.
     Int(i64),
+    I128(i128),
+    U64(u64),
     Float(f64),
     Bool(bool),
     Char(u8),
@@ -59,6 +61,20 @@ impl Value {
     pub fn int(&self) -> i64 {
         match self {
             Value::Int(v) => *v,
+            _ => 0,
+        }
+    }
+
+    pub fn i128(&self) -> i128 {
+        match self {
+            Value::I128(v) => *v,
+            _ => 0,
+        }
+    }
+
+    pub fn u64(&self) -> u64 {
+        match self {
+            Value::U64(v) => *v,
             _ => 0,
         }
     }
@@ -101,6 +117,8 @@ impl Value {
             Value::Map(_) => 14,
             Value::Set(_) => 15,
             Value::Moved => 16,
+            Value::I128(_) => 17,
+            Value::U64(_) => 18,
         }
     }
 }
@@ -112,6 +130,8 @@ impl Ord for Value {
     fn cmp(&self, other: &Value) -> Ordering {
         match (self, other) {
             (Value::Int(a), Value::Int(b)) => a.cmp(b),
+            (Value::I128(a), Value::I128(b)) => a.cmp(b),
+            (Value::U64(a), Value::U64(b)) => a.cmp(b),
             (Value::Float(a), Value::Float(b)) => {
                 a.partial_cmp(b).unwrap_or_else(|| a.total_cmp(b))
             }
@@ -151,6 +171,8 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
     match ty {
         Ty::Unit | Ty::Error => Value::Unit,
         Ty::Int | Ty::Pos(_) | Ty::Bound(_) => Value::Int(0),
+        Ty::I128 => Value::I128(0),
+        Ty::U64 => Value::U64(0),
         Ty::Float => Value::Float(0.0),
         Ty::Bool => Value::Bool(false),
         Ty::Char => Value::Char(0),
@@ -218,6 +240,12 @@ pub(crate) fn show(
             let _ = write!(out, "{}", v + domains[*d].0);
         }
         (Value::Int(v), _) => {
+            let _ = write!(out, "{v}");
+        }
+        (Value::I128(v), _) => {
+            let _ = write!(out, "{v}");
+        }
+        (Value::U64(v), _) => {
             let _ = write!(out, "{v}");
         }
         (Value::Float(v), _) => show_float(out, *v, digits),

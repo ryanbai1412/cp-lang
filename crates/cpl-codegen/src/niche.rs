@@ -96,6 +96,8 @@ fn followed(ty: &Ty) -> bool {
     match ty {
         Ty::Unit
         | Ty::Int
+        | Ty::I128
+        | Ty::U64
         | Ty::Float
         | Ty::Bool
         | Ty::Char

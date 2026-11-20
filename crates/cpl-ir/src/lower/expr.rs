@@ -111,7 +111,7 @@ impl<'a> Lowerer<'a> {
             }
             ast::ExprKind::Paren(inner) => self.expr(inner, hint),
             ast::ExprKind::Unary { op, expr } => self.unary(*op, expr, inner_hint, span),
-            ast::ExprKind::Binary { op, lhs, rhs, .. } => self.binary(*op, lhs, rhs, span),
+            ast::ExprKind::Binary { op, lhs, rhs, .. } => self.binary(*op, lhs, rhs, hint, span),
             ast::ExprKind::Compare { first, rest } => self.compare(first, rest, span),
             ast::ExprKind::Range {
                 lo,
@@ -1067,7 +1067,7 @@ impl<'a> Lowerer<'a> {
                 match (&value.kind, &value.ty) {
                     (ExprKind::Int(v), _) => self.mk(ExprKind::Int(-*v), Ty::Int, span),
                     (ExprKind::Float(v), _) => self.mk(ExprKind::Float(-*v), Ty::Float, span),
-                    (_, Ty::Int | Ty::Float) => {
+                    (_, Ty::Int | Ty::I128 | Ty::U64 | Ty::Float) => {
                         let ty = value.ty.clone();
                         self.mk(ExprKind::Unary(op, Box::new(value)), ty, span)
                     }
@@ -1109,8 +1109,13 @@ impl<'a> Lowerer<'a> {
                 self.mk(ExprKind::Unary(op, Box::new(value)), Ty::Bool, span)
             }
             UnOp::BitNot => {
-                let value = self.expect(operand, &Ty::Int);
-                self.mk(ExprKind::Unary(op, Box::new(value)), Ty::Int, span)
+                let value = self.expr(operand, hint.filter(|ty| matches!(ty, Ty::I128 | Ty::U64)));
+                let ty = match value.ty {
+                    Ty::I128 | Ty::U64 | Ty::Error => value.ty.clone(),
+                    _ => Ty::Int,
+                };
+                let value = self.coerce(value, &ty, operand.span);
+                self.mk(ExprKind::Unary(op, Box::new(value)), ty, span)
             }
         }
     }
@@ -1124,7 +1129,7 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    fn binary(&mut self, op: BinOp, lhs: &ast::Expr, rhs: &ast::Expr, span: Span) -> Expr {
+    fn binary(&mut self, op: BinOp, lhs: &ast::Expr, rhs: &ast::Expr, hint: Option<&Ty>, span: Span) -> Expr {
         use BinOp::*;
         match op {
             And | Or => {
@@ -1211,7 +1216,14 @@ impl<'a> Lowerer<'a> {
                 _ => e,
             }
         };
-        let l = unwrap_first_last(self.expr(lhs, None));
+        // Where an `I128` or a `U64` is wanted, the arithmetic is done in
+        // one: `let p: I128 = a * b` and `let top: U64 = 1 << 63` do not
+        // overflow an `Int` on the way.
+        let wide = hint.filter(|ty| matches!(ty, Ty::I128 | Ty::U64));
+        let mut l = unwrap_first_last(self.expr(lhs, wide));
+        if let (Some(wide), Ty::Int) = (wide, &l.ty) {
+            l = self.coerce(l, wide, lhs.span);
+        }
         // A place, a parameter or a return type says what `read()` reads;
         // the other side of an operator does not.
         let r_hint = (!is_bare_read(rhs)).then_some(&l.ty);
@@ -1270,6 +1282,24 @@ impl<'a> Lowerer<'a> {
                 return self.tropical(op, l, r, span);
             }
             (Ty::Int, Ty::Int) => (l, r, Ty::Int),
+            // A shift keeps the type of what is shifted.
+            (Ty::I128 | Ty::U64, Ty::Int) if matches!(op, Shl | Shr) => {
+                let ty = l.ty.clone();
+                (l, r, ty)
+            }
+            // An `Int` beside an `I128` or a `U64` becomes one.
+            (wide @ (Ty::I128 | Ty::U64), Ty::Int) | (Ty::Int, wide @ (Ty::I128 | Ty::U64))
+                if !matches!(op, Shl | Shr) =>
+            {
+                let wide = wide.clone();
+                let l = self.coerce(l, &wide, lhs.span);
+                let r = self.coerce(r, &wide, rhs.span);
+                (l, r, wide)
+            }
+            (Ty::I128, Ty::I128) | (Ty::U64, Ty::U64) if !matches!(op, Shl | Shr) => {
+                let ty = l.ty.clone();
+                (l, r, ty)
+            }
             (Ty::Float, Ty::Float) if arith => (l, r, Ty::Float),
             (Ty::Float, Ty::Int) if arith => {
                 let r = self.coerce(r, &Ty::Float, rhs.span);
@@ -1431,7 +1461,7 @@ impl<'a> Lowerer<'a> {
     /// Whether `<` means something for the type.
     pub(super) fn ordered(&self, ty: &Ty) -> bool {
         match ty {
-            Ty::Int | Ty::Float | Ty::Bool | Ty::Char | Ty::Str | Ty::Pos(_) | Ty::Bound(_) => true,
+            Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Bool | Ty::Char | Ty::Str | Ty::Pos(_) | Ty::Bound(_) => true,
             Ty::Tuple(items) => items.iter().all(|t| self.ordered(t)),
             Ty::Record(fields) => fields.iter().all(|(_, t)| self.ordered(t)),
             Ty::List(elem) => self.ordered(elem),
@@ -1583,6 +1613,7 @@ impl<'a> Lowerer<'a> {
         } else {
             let want = match (&l.ty, &r.ty) {
                 (Ty::Float, Ty::Int) | (Ty::Int, Ty::Float) => Ty::Float,
+                (Ty::Int, wide @ (Ty::I128 | Ty::U64)) => wide.clone(),
                 (Ty::Opt(_), _) => l.ty.clone(),
                 (_, Ty::Opt(_)) => r.ty.clone(),
                 _ => l.ty.clone(),

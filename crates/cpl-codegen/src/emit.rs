@@ -453,7 +453,7 @@ impl<'p> Emitter<'p> {
     /// The initializer that gives a new variable its type's zero.
     pub fn zero_init(&self, ty: &Ty) -> &'static str {
         match ty {
-            Ty::Int | Ty::Float | Ty::Char | Ty::Pos(_) | Ty::Bound(_) => " = 0",
+            Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Char | Ty::Pos(_) | Ty::Bound(_) => " = 0",
             Ty::Bool => " = false",
             Ty::Enum(id) if is_plain_enum(self.program, *id) => "{}",
             _ => "",

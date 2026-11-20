@@ -895,7 +895,7 @@ impl<'a> Lowerer<'a> {
                 };
                 let value = self.expr(exprs[0], None);
                 match value.ty {
-                    Ty::Int | Ty::Float => {
+                    Ty::Int | Ty::I128 | Ty::Float => {
                         let ty = value.ty.clone();
                         self.mk(ExprKind::Builtin(Builtin::Abs, vec![value]), ty, span)
                     }
@@ -1178,7 +1178,7 @@ impl<'a> Lowerer<'a> {
                 };
                 self.mk(ExprKind::Tuple(Vec::new()), ty, span)
             }
-            "Int" | "F64" | "Char" | "Str" | "Bool" => {
+            "Int" | "I128" | "U64" | "F64" | "Char" | "Str" | "Bool" => {
                 if name == "Str" && args.is_empty() {
                     return self.mk(ExprKind::Str(Vec::new()), Ty::Str, span);
                 }
@@ -1253,6 +1253,8 @@ impl<'a> Lowerer<'a> {
         let (cast, ty) = match (to, &from) {
             (_, Ty::Error) => return value,
             ("Int", Ty::Int)
+            | ("I128", Ty::I128)
+            | ("U64", Ty::U64)
             | ("F64", Ty::Float)
             | ("Char", Ty::Char)
             | ("Str", Ty::Str)
@@ -1282,6 +1284,14 @@ impl<'a> Lowerer<'a> {
                 );
             }
             ("F64", Ty::Int) => (Cast::IntToFloat, Ty::Float),
+            ("I128", Ty::Int) => (Cast::IntToI128, Ty::I128),
+            ("Int", Ty::I128) => (Cast::I128ToInt, Ty::Int),
+            ("U64", Ty::Int) => (Cast::IntToU64, Ty::U64),
+            ("Int", Ty::U64) => (Cast::U64ToInt, Ty::Int),
+            ("U64", Ty::I128) => (Cast::I128ToU64, Ty::U64),
+            ("I128", Ty::U64) => (Cast::U64ToI128, Ty::I128),
+            ("F64", Ty::I128) => (Cast::I128ToFloat, Ty::Float),
+            ("F64", Ty::U64) => (Cast::U64ToFloat, Ty::Float),
             ("Char", Ty::Int) => (Cast::IntToChar, Ty::Char),
             ("Str", Ty::List(elem)) if **elem == Ty::Char => {
                 return self.mk(ExprKind::Builtin(Builtin::ListToStr, vec![value]), Ty::Str, span);
@@ -1610,7 +1620,7 @@ impl<'a> Lowerer<'a> {
         fn unreadable(spec: &Spec) -> Option<Ty> {
             match spec {
                 Spec::Plain(ty) => match ty {
-                    Ty::Int | Ty::Float | Ty::Char | Ty::Str | Ty::Pos(_) | Ty::Error => None,
+                    Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Char | Ty::Str | Ty::Pos(_) | Ty::Error => None,
                     other => Some(other.clone()),
                 },
                 Spec::Int { .. } => None,
@@ -1997,6 +2007,8 @@ impl<'a> Lowerer<'a> {
                 let ty = value.ty.clone();
                 let zero = match ty {
                     Ty::Int => ExprKind::Int(0),
+                    Ty::I128 => ExprKind::Cast(Cast::IntToI128, Box::new(lit(ExprKind::Int(0), Ty::Int))),
+                    Ty::U64 => ExprKind::Cast(Cast::IntToU64, Box::new(lit(ExprKind::Int(0), Ty::Int))),
                     Ty::Float => ExprKind::Float(0.0),
                     Ty::Error => {
                         self.close_loops(frames, Vec::new());

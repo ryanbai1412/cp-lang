@@ -559,6 +559,15 @@ impl<'p> Emitter<'p> {
                     self.need("ipow");
                     twice(self, out, &|p, v| format!("{p} = cpl::ipow({p}, {v});"));
                 }
+                (Ty::I128, BinOp::Div | BinOp::Rem) => {
+                    let helper = if bop == BinOp::Div { "ediv128" } else { "emod128" };
+                    self.need(helper);
+                    twice(self, out, &|p, v| format!("{p} = cpl::{helper}({p}, {v});"));
+                }
+                (Ty::I128 | Ty::U64, BinOp::Pow) => {
+                    self.need("wpow");
+                    twice(self, out, &|p, v| format!("{p} = cpl::wpow({p}, {v});"));
+                }
                 (Ty::Float, BinOp::Pow) => {
                     twice(self, out, &|p, v| format!("{p} = std::pow({p}, {v});"))
                 }

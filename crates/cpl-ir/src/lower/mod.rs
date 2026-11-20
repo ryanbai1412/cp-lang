@@ -1438,7 +1438,8 @@ impl<'a> Lowerer<'a> {
                 Ty::Pos(d) => Ty::Bound(d),
                 other => other,
             },
-            "U64" | "I128" => Ty::Int,
+            "I128" => Ty::I128,
+            "U64" => Ty::U64,
             _ => match self.get_sym(&name.text) {
                 Some(Sym::Struct(id)) if values => return self.struct_spec(id),
                 Some(Sym::Struct(id)) => Ty::Struct(id),
@@ -2612,6 +2613,8 @@ impl<'a> Lowerer<'a> {
                     None => Err(e),
                 }
             }
+            (Ty::I128, Ty::Int) => Ok(self.cast(Cast::IntToI128, e, Ty::I128)),
+            (Ty::U64, Ty::Int) => Ok(self.cast(Cast::IntToU64, e, Ty::U64)),
             (Ty::Float, Ty::Int) => Ok(match e.kind {
                 ExprKind::Int(v) => Expr {
                     kind: ExprKind::Float(v as f64),

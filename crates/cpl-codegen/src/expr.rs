@@ -471,7 +471,10 @@ impl<'p> Emitter<'p> {
                 let code = self.expr(inner);
                 let c_cast = |ty: &str| Code::new(format!("({ty}){}", code.at(UNARY)), UNARY);
                 match cast {
-                    Cast::IntToFloat => c_cast("double"),
+                    Cast::IntToFloat | Cast::I128ToFloat | Cast::U64ToFloat => c_cast("double"),
+                    Cast::IntToI128 | Cast::U64ToI128 => c_cast("__int128"),
+                    Cast::IntToU64 | Cast::I128ToU64 => c_cast("unsigned long long"),
+                    Cast::I128ToInt | Cast::U64ToInt => c_cast("ll"),
                     Cast::FloatToInt | Cast::CharToInt | Cast::Ord => c_cast("ll"),
                     Cast::IntToChar => c_cast("cpl::u8"),
                     Cast::StepToChar => {
@@ -1005,6 +1008,27 @@ impl<'p> Emitter<'p> {
                 code.narrow = a.narrow;
                 code
             }
+            (Ty::I128, BinOp::Div | BinOp::Rem) => {
+                let helper = if op == BinOp::Div { "ediv128" } else { "emod128" };
+                self.need(helper);
+                Code::primary(format!("cpl::{helper}({}, {})", a.text, b.text))
+            }
+            (Ty::I128 | Ty::U64, BinOp::Pow) => {
+                self.need("wpow");
+                Code::primary(format!("cpl::wpow({}, {})", a.text, b.text))
+            }
+            (Ty::I128 | Ty::U64, BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor) => {
+                let sym = match op {
+                    BinOp::BitAnd => "&",
+                    BinOp::BitOr => "|",
+                    _ => "^",
+                };
+                Code::new(format!("{} {sym} {}", a.at(BIT + 1), b.at(BIT + 1)), BIT)
+            }
+            (Ty::I128 | Ty::U64, BinOp::Shl | BinOp::Shr) => {
+                let sym = if op == BinOp::Shl { "<<" } else { ">>" };
+                Code::new(format!("{} {sym} {}", a.at(UNARY), b.at(UNARY)), SHIFT)
+            }
             (Ty::Float, BinOp::Pow) => Code::primary(format!("std::pow({}, {})", a.text, b.text)),
             (Ty::Bool, BinOp::BitAnd) => {
                 Code::primary(format!("bool({} & {})", a.at(BIT + 1), b.at(BIT + 1)))
@@ -1109,6 +1133,10 @@ impl<'p> Emitter<'p> {
                 }
             }
             Builtin::Abs if e.ty == Ty::Float => Code::primary(format!("std::fabs({})", text(0))),
+            Builtin::Abs if e.ty == Ty::I128 => {
+                self.need("abs128");
+                Code::primary(format!("cpl::abs128({})", text(0)))
+            }
             Builtin::Abs => Code::primary(format!("std::abs({})", widen(&codes[0]).text)),
             Builtin::Sqrt => Code::primary(format!("std::sqrt({})", text(0))),
             Builtin::Isqrt => {

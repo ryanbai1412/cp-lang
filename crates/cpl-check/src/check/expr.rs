@@ -522,7 +522,13 @@ impl<'a> Checker<'a> {
                 let int = tropical_side(&left) == Some(true) && tropical_side(&right) == Some(true);
                 Ty::Optional(Box::new(if int { Ty::Int } else { Ty::Float }))
             }
-            _ if left.is_int() && right.is_int() => Ty::Int,
+            // A shift keeps the type of what is shifted; otherwise an `Int`
+            // beside an `I128` or a `U64` becomes one.
+            BinOp::Shl | BinOp::Shr if left.is_int() && right.is_int() => left.widen(),
+            _ if left.is_int() && right.is_int() => match (&left, &right) {
+                (wide @ (Ty::I128 | Ty::U64), _) | (_, wide @ (Ty::I128 | Ty::U64)) => wide.clone(),
+                _ => Ty::Int,
+            },
             _ if left.is_numeric() && right.is_numeric() => Ty::Float,
             BinOp::Add if left == Ty::Str && right == Ty::Str => Ty::Str,
             // A step can leave the domain, so `i + k` and `i - k` are a

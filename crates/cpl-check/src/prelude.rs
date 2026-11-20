@@ -101,8 +101,8 @@ pub fn ty(name: &str) -> Option<Ty> {
         "Bool" => Ty::Bool,
         "Char" => Ty::Char,
         "Str" => Ty::Str,
-        // Kept for bit-level work: 64-bit masks and wide products.
-        "U64" | "I128" => Ty::Int,
+        "I128" => Ty::I128,
+        "U64" => Ty::U64,
         "List" | "Map" | "HashMap" | "Set" | "Iter" | "Opt" | "Range" | "Bounds" | "Counter" => {
             Ty::Named {
                 name: name.into(),
@@ -124,7 +124,7 @@ pub fn is_trait(name: &str) -> bool {
 }
 
 const TYPE_NAMES: &[&str] = &[
-    "List", "Map", "Set", "Int", "Bool", "Char", "Str", "F64", "Iter", "Opt", "Range", "Bounds",
+    "List", "Map", "Set", "Int", "I128", "U64", "Bool", "Char", "Str", "F64", "Iter", "Opt", "Range", "Bounds",
     "Counter", "HashMap",
 ];
 
@@ -202,6 +202,8 @@ pub const VALUE_NAMES: &[&str] = &[
     "Map",
     "Set",
     "Int",
+    "I128",
+    "U64",
     "Bool",
     "Char",
     "Str",

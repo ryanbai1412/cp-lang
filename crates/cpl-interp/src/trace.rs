@@ -758,6 +758,9 @@ fn render(out: &mut String, value: &Value, ty: &Ty, view: &View, mode: Mode) {
                 out.push_str(&v.to_string());
             }
         }
+        // Wider than a JSON number holds exactly: as text.
+        (Value::I128(v), _) => string(out, &v.to_string()),
+        (Value::U64(v), _) => string(out, &v.to_string()),
         (Value::Float(v), _) => {
             if v.is_finite() {
                 let text = format!("{v}");

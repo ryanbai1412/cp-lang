@@ -5,6 +5,10 @@ use std::fmt;
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Ty {
     Int,
+    /// 128 bits, signed.
+    I128,
+    /// 64 bits, unsigned, wrapping.
+    U64,
     Float,
     Bool,
     Char,
@@ -107,9 +111,9 @@ impl Ty {
         }
     }
 
-    /// True for `Int` and integer ranges.
+    /// True for `Int`, integer ranges, `I128` and `U64`.
     pub fn is_int(&self) -> bool {
-        matches!(self, Ty::Int | Ty::Range { .. })
+        matches!(self, Ty::Int | Ty::I128 | Ty::U64 | Ty::Range { .. })
     }
 
     pub fn is_numeric(&self) -> bool {
@@ -352,6 +356,8 @@ impl fmt::Display for Ty {
         };
         match self {
             Ty::Int => f.write_str("Int"),
+            Ty::I128 => f.write_str("I128"),
+            Ty::U64 => f.write_str("U64"),
             Ty::Float => f.write_str("F64"),
             Ty::Bool => f.write_str("Bool"),
             Ty::Char => f.write_str("Char"),
@@ -432,7 +438,8 @@ pub fn size_of(
     named_size: &dyn Fn(&str) -> Option<u64>,
 ) -> Option<u64> {
     Some(match ty {
-        Ty::Int | Ty::Float => 8,
+        Ty::Int | Ty::U64 | Ty::Float => 8,
+        Ty::I128 => 16,
         Ty::Bool | Ty::Char => 1,
         Ty::Unit => 0,
         Ty::Range { lo, hi, .. } => match (lo, hi) {

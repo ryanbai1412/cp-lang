@@ -1898,6 +1898,10 @@ impl<'a> Lowerer<'a> {
                         Ty::Int,
                         Add | Sub | Mul | Div | Rem | Pow | BitAnd | BitOr | BitXor | Shl | Shr,
                     ) => self.coerce(value, &Ty::Int, span),
+                    (Ty::I128 | Ty::U64, Shl | Shr) => self.coerce(value, &Ty::Int, span),
+                    (wide @ (Ty::I128 | Ty::U64), Add | Sub | Mul | Div | Rem | Pow | BitAnd | BitOr | BitXor) => {
+                        self.coerce(value, &wide.clone(), span)
+                    }
                     (Ty::Float, Add | Sub | Mul | Div) => self.coerce(value, &Ty::Float, span),
                     (Ty::Bool, BitAnd | BitOr | BitXor) => self.coerce(value, &Ty::Bool, span),
                     (Ty::Str, Add) => self.as_str(value, span),

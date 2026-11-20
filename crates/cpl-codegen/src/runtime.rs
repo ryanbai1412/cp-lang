@@ -32,6 +32,26 @@ inline void put_int(ll x) { char b[24]; out.append(b, (size_t)snprintf(b, sizeof
 ",
     },
     Piece {
+        name: "put_u64",
+        needs: &["out"],
+        code: "\
+inline void put_u64(unsigned long long x) { char b[24]; out.append(b, (size_t)snprintf(b, sizeof b, \"%llu\", x)); }
+",
+    },
+    Piece {
+        name: "put_i128",
+        needs: &["out"],
+        code: "\
+inline void put_i128(__int128 x) {
+    char b[48]; int at = 48; bool negative = x < 0;
+    unsigned __int128 u = negative ? -(unsigned __int128)x : (unsigned __int128)x;
+    do { b[--at] = (char)('0' + (int)(u % 10)); u /= 10; } while (u);
+    if (negative) b[--at] = '-';
+    out.append(b + at, (size_t)(48 - at));
+}
+",
+    },
+    Piece {
         name: "put_float",
         needs: &["out"],
         code: "\
@@ -161,6 +181,33 @@ inline ll read_int() {
 ",
     },
     Piece {
+        name: "read_i128",
+        needs: &["in"],
+        code: "\
+inline __int128 read_i128() {
+    skip_space();
+    bool negative = false;
+    if (in_at < in.size() && (in[in_at] == '-' || in[in_at] == '+')) negative = in[in_at++] == '-';
+    __int128 x = 0;
+    while (in_at < in.size() && in[in_at] >= '0' && in[in_at] <= '9') x = x * 10 - (in[in_at++] - '0');
+    return negative ? x : -x;
+}
+",
+    },
+    Piece {
+        name: "read_u64",
+        needs: &["in"],
+        code: "\
+inline unsigned long long read_u64() {
+    skip_space();
+    if (in_at < in.size() && in[in_at] == '+') in_at++;
+    unsigned long long x = 0;
+    while (in_at < in.size() && in[in_at] >= '0' && in[in_at] <= '9') x = x * 10 + (unsigned long long)(in[in_at++] - '0');
+    return x;
+}
+",
+    },
+    Piece {
         name: "read_float",
         needs: &["in"],
         code: "\
@@ -231,6 +278,44 @@ inline ll modp(ll a, ll b) {
 #endif
     ll r = a % b; return r + ((r >> 63) & b);
 }
+",
+    },
+    Piece {
+        name: "ediv128",
+        needs: &[],
+        code: "\
+inline __int128 ediv128(__int128 a, __int128 b) {
+#ifdef LOCAL
+    if (b == 0) { fputs(\"division by zero\\n\", stderr); exit(3); }
+#endif
+    __int128 q = a / b, r = a % b; return r < 0 ? (b > 0 ? q - 1 : q + 1) : q;
+}
+",
+    },
+    Piece {
+        name: "emod128",
+        needs: &[],
+        code: "\
+inline __int128 emod128(__int128 a, __int128 b) {
+#ifdef LOCAL
+    if (b == 0) { fputs(\"division by zero\\n\", stderr); exit(3); }
+#endif
+    __int128 r = a % b; return r < 0 ? (b > 0 ? r + b : r - b) : r;
+}
+",
+    },
+    Piece {
+        name: "abs128",
+        needs: &[],
+        code: "\
+inline __int128 abs128(__int128 x) { return x < 0 ? -x : x; }
+",
+    },
+    Piece {
+        name: "wpow",
+        needs: &[],
+        code: "\
+template <class T> inline T wpow(T a, T b) { T r = 1; while (b > 0) { if (b & 1) r *= a; b >>= 1; if (b) a *= a; } return r; }
 ",
     },
     Piece {

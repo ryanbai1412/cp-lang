@@ -268,6 +268,8 @@ impl<'a> Lowerer<'a> {
         match ty {
             Ty::Unit => "Unit".into(),
             Ty::Int => "Int".into(),
+            Ty::I128 => "I128".into(),
+            Ty::U64 => "U64".into(),
             Ty::Float => "Float".into(),
             Ty::Bool => "Bool".into(),
             Ty::Char => "Char".into(),

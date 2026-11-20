@@ -36,6 +36,14 @@ impl<'p> Emitter<'p> {
                 self.need("put_int");
                 format!("cpl::put_int({});", value.text)
             }
+            Ty::I128 => {
+                self.need("put_i128");
+                format!("cpl::put_i128({});", value.text)
+            }
+            Ty::U64 => {
+                self.need("put_u64");
+                format!("cpl::put_u64({});", value.text)
+            }
             Ty::Pos(d) | Ty::Bound(d) => {
                 self.need("put_int");
                 format!(
@@ -312,6 +320,8 @@ impl<'p> Emitter<'p> {
         };
         match spec {
             Spec::Int { .. } | Spec::Plain(Ty::Int) => plain(self, "read_int"),
+            Spec::Plain(Ty::I128) => plain(self, "read_i128"),
+            Spec::Plain(Ty::U64) => plain(self, "read_u64"),
             Spec::Plain(Ty::Float) => plain(self, "read_float"),
             Spec::Plain(Ty::Char) => plain(self, "read_char"),
             Spec::Plain(Ty::Str) => plain(self, "read_str"),
