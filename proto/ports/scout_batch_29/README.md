@@ -22,8 +22,7 @@ python3 proto/cp.py lib-run proto/ports/scout_batch_29/ioi15p4.cp < input
 ```
 
 Every port agrees with its original on 60 small random inputs
-(`check.py`, seed 29; 15 for noimps22p4, whose tables take the interpreter
-two seconds to build). The inputs are small, so the check is about
+(`check.py`, seed 29). The inputs are small, so the check is about
 answers, not speed; nothing was run at the real limits, and the ports
 were only run on the reference interpreter, not compiled by `proto/cpc`.
 ioi09p2 and noi20p4 accept any best answer, so both outputs are judged
@@ -43,11 +42,6 @@ What each port does differently from its original:
   cities without the last one, instead of building n by n and deleting a
   row and a column; the determinant tracks the sign of row swaps, which
   the original omits.
-- **noimps22p4** (sieve, 13 small primes as a mask, one big prime per
-  value): the original runs a two-state parity DP over the big query
-  primes; the port multiplies `2^c - 1` per big prime, which is the same
-  sum in closed form, and walks only the submasks of the query's small
-  primes.
 - **noip20p1** (water split over a DAG, exact fractions up to 60^11): the
   original keeps reduced `__int128` fractions and takes a gcd per
   addition. Every denominator is 2^a 3^b 5^c, so the port keeps a wide
@@ -73,6 +67,11 @@ What each port does differently from its original:
   stdlib `LazySegTree` with a six-field value and a three-field edit; the
   node keeps where it starts because the set depends on the position.
 - **coci25c3p5**: gcd and lcm arithmetic, one line of output.
+- **ccc19s2** (two primes that average to n): `Sieve` from `std.math`,
+  sized by the largest query. It is the easy one of the batch: it
+  replaced noimps22p4 (sieve, prime masks, inclusion-exclusion), which
+  was ported and checked here and then dropped because batch 23 landed
+  with it.
 
 `wide.cp` is a non-negative number below 1e36 in two base-1e18 halves,
 with only what noip20p1 and noip19p5 need. It exists because the

@@ -1,8 +1,7 @@
 # Friction backlog, batch 29: number theory, linear algebra and contest classics
 
 A scout pass over ten submissions where the hard part is arithmetic: a
-determinant modulo a prime (shoi16p4), a sieve with inclusion-exclusion
-(noimps22p4), exact fractions and squares past 64 bits (noip20p1,
+determinant modulo a prime (shoi16p4), a Goldbach sieve (ccc19s2), exact fractions and squares past 64 bits (noip20p1,
 noip19p5), gcd and lcm counting (coci25c3p5), a signed-offset modular DP
 (noip19p4), a signed knapsack on a bitset (noi20p4), a product-and-max
 segment tree (ioi15p4), a lazy segment tree of regression sums
@@ -16,7 +15,9 @@ interpreter at commit `d47d7c1`). Every "today" snippet is a line a port
 contains, and every error quoted came from a probe on that interpreter.
 "Wanted" snippets do not run. Nothing was run at full input size, and
 nothing was run on the Rust compiler or `proto/cpc/`. The ports were
-written after reading the accepted C++, not statement-first.
+written after reading the accepted C++, not statement-first. An
+eleventh port, noimps22p4, passed the same check and was dropped because
+batch 23 landed with it; ccc19s2 took its place.
 
 What the corpus no longer has: a search of the unported accepted
 submissions found no Möbius or divisor-sum sieve, no CRT, and no Gaussian
@@ -135,19 +136,18 @@ formatter for an exact ratio, or `{x:.5f}` on the interpreter plus a
 `trunc_div` in `std.math` beside `floor_div` and `ceil_div` for
 matching C++ output.
 
-## O4. `Mod<P>`: no arithmetic friction, some spelling (noip19p4, shoi16p4, noimps22p4, ioi15p4)
+## O4. `Mod<P>`: no arithmetic friction, some spelling (noip19p4, shoi16p4, ioi15p4)
 
-Four ports use `Mod<P>` and none needed `ModR`, `mul_mod` or a
+Three ports use `Mod<P>` and none needed `ModR`, `mul_mod` or a
 modulus above 2^31. What it cost was spelling:
 
 ```cp
 var lap: [Rest, Rest]Z = [Rest, Rest] (i, j) => Z(0)
 lap[u, v] -= Z(1)
 if a[r, i] != Z(0): ...
-ways = ways * (pow2[c] - Z(1))
 ```
 
-`Z(0)` and `Z(1)` are on 19 lines of four ports. Wanted: integer
+`Z(0)` and `Z(1)` are on 15 lines of three ports. Wanted: integer
 literals that take the type of the other operand (`lap[u, v] -= 1`,
 `!= 0`), and `var lap: [Rest, Rest]Z = 0` as the cheat sheet has it.
 `Prod<Z>` worked as the monoid of a segment tree with no ceremony
@@ -341,7 +341,7 @@ and peak RSS at 4e7 need the max-N gate, not this check.
 - **Records in comprehensions** (noi20p4):
   `[(grams: d[i], id: i.label) for i in Item]` fails to parse
   (`expected ']' (at 'for')`); the port pushes in a loop.
-- **`Sieve.factor` and `factorize`** (noimps22p4) are two names one
+- **`Sieve.factor` and `factorize`** (dropped port noimps22p4) are two names one
   letter apart for the sieve method and the trial-division function.
 - **Custom `LazySegTree`** (sdoi17r1p6) took a six-field value, a
   three-field edit and three functions, and worked first time. The

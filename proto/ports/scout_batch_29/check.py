@@ -22,7 +22,7 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 R = random.randint
 
 ORIGINAL = {
-    "coci25c3p5": 7730259, "noip19p4": 5147491, "noimps22p4": 4547602, "shoi16p4": 5635192,
+    "coci25c3p5": 7730259, "noip19p4": 5147491, "ccc19s2": 4325077, "shoi16p4": 5635192,
     "noip20p1": 5445672, "noip19p5": 5148191, "ioi15p4": 5723351, "ioi09p2": 5102705,
     "noi20p4": 3890337, "sdoi17r1p6": 5461671,
 }
@@ -41,10 +41,6 @@ int main() {
 """,
 }
 
-# The interpreter spends about two seconds building this port's tables.
-SLOW = {"noimps22p4": 4}
-
-
 def lines(rows):
     return "".join(" ".join(map(str, r)) + "\n" for r in rows)
 
@@ -59,24 +55,9 @@ def gen_noip19p4():
     return lines([(n, m)] + [[R(0, top) for _ in range(m)] for _ in range(n)])
 
 
-PRIMES = [p for p in range(2, 2001) if all(p % d for d in range(2, int(p ** 0.5) + 1))]
-
-
-def gen_noimps22p4():
-    pool = random.sample(PRIMES[:20], 4) + random.sample(PRIMES, 2)
-    def value():
-        v = 1
-        for _ in range(R(0, 3)):
-            p = random.choice(pool)
-            if v * p <= 2000:
-                v *= p
-        return v
-    n, q = R(1, 9), R(1, 4)
-    rows = [(n,), [value() for _ in range(n)], (q,)]
-    for _ in range(q):
-        ps = [random.choice(pool) for _ in range(R(1, 4))]
-        rows += [(len(ps),), ps]
-    return lines(rows)
+def gen_ccc19s2():
+    t = R(1, 6)
+    return lines([(t,)] + [(R(2, random.choice([20, 3000])),) for _ in range(t)])
 
 
 def gen_shoi16p4():
@@ -231,7 +212,6 @@ def run(cmd, inp):
 
 def check(name, count):
     gen, judge = globals()["gen_" + name], globals().get("judge_" + name)
-    count = max(1, count // SLOW.get(name, 1))
     with tempfile.TemporaryDirectory() as tmp:
         exe, port = compile_original(name, tmp), os.path.join(HERE, name + ".cp")
         for case in range(count):
