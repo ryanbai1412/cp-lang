@@ -354,6 +354,7 @@ impl<'a> Lexer<'a> {
             (b'=', b'=', _) => (EqEq, 2),
             (b'=', _, _) => (Eq, 1),
             (b'!', b'=', _) => (NotEq, 2),
+            (b'!', _, _) => (Bang, 1),
             (b'*', b'*', b'=') => (OpEq, 3),
             (b'<', b'<', b'=') => (OpEq, 3),
             (b'>', b'>', b'=') => (OpEq, 3),
@@ -384,7 +385,6 @@ impl<'a> Lexer<'a> {
                     format!("`{ch}` isn't used in cp"),
                 );
                 diag.help = match ch {
-                    '!' => Some("write `not x` to negate, or `!=` to compare".into()),
                     '#' => Some("comments start with `//`".into()),
                     _ if !ch.is_ascii() => Some("names are ASCII; other characters go in strings and comments".into()),
                     _ => Option::None,

@@ -180,9 +180,23 @@ fn strings_chars_and_labels() {
 
 #[test]
 fn an_unknown_character_says_what_to_write_instead() {
-    let d = one_diag("let a = !b\n");
+    let d = one_diag("let a = b # c\n");
     assert_eq!(d.code.0, "E0004");
-    assert_eq!(d.help.as_deref(), Some("write `not x` to negate, or `!=` to compare"));
+    assert_eq!(d.help.as_deref(), Some("comments start with `//`"));
+}
+
+#[test]
+fn bang_unwraps_after_a_value_and_is_an_error_before_one() {
+    assert!(matches!(expr("first_true(xs)!\n").kind, ExprKind::Unwrap(_)));
+    let d = one_diag("let a = !b\n");
+    assert_eq!(d.code.0, "E0107");
+    assert_eq!(d.fixes[0].edits[0].1, "not ");
+}
+
+#[test]
+fn a_call_takes_a_generator_argument() {
+    let ExprKind::Call { args, .. } = expr("max(dist[v] for v in V if seen[v])\n").kind else { panic!() };
+    assert!(matches!(args[0].value.kind, ExprKind::Comprehension { cond: Some(_), .. }));
 }
 
 // --- Items ---------------------------------------------------------------

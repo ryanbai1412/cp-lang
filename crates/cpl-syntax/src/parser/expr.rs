@@ -303,11 +303,23 @@ impl<'a> Parser<'a> {
             name
         });
         let mutable = self.eat(T::Mut);
-        Arg {
-            name,
-            mutable,
-            value: self.expr(),
+        let start = self.start();
+        let mut value = self.expr();
+        // `max(dist[v] for v in V)`.
+        if self.at(T::For) {
+            self.bump();
+            let (pat, iter, cond) = self.comprehension_tail();
+            value = Expr {
+                kind: ExprKind::Comprehension {
+                    body: Box::new(value),
+                    pat,
+                    iter,
+                    cond,
+                },
+                span: self.span_from(start),
+            };
         }
+        Arg { name, mutable, value }
     }
 
     fn postfix(&mut self) -> Expr {
@@ -359,6 +371,10 @@ impl<'a> Parser<'a> {
                 T::Question => {
                     self.bump();
                     ExprKind::Try(Box::new(expr))
+                }
+                T::Bang => {
+                    self.bump();
+                    ExprKind::Unwrap(Box::new(expr))
                 }
                 T::ColonColon if self.peek_n(1) == T::Lt => {
                     self.bump();
@@ -483,6 +499,16 @@ impl<'a> Parser<'a> {
             }
             T::If => self.if_expr(),
             T::Match => self.match_expr(),
+            T::Bang => {
+                let span = self.span();
+                self.error(
+                    Diagnostic::error(codes::UNEXPECTED_TOKEN, span, "`!` doesn't negate in cp")
+                        .with_help("write `not x` to negate, or `x!` to unwrap an optional")
+                        .with_fix("replace with `not `", span, "not "),
+                );
+                self.bump();
+                return self.unary();
+            }
             _ => {
                 let after = self.prev_kind().map_or("here".to_string(), |k| format!("after {}", k.describe()));
                 self.error_expected(codes::EXPECTED_EXPR, &format!("a value {after}"), None);
@@ -525,11 +551,7 @@ impl<'a> Parser<'a> {
         }
         let first = self.expr();
         if self.eat(T::For) {
-            let pat = self.pattern();
-            self.expect(T::In, "`in` after the comprehension variable");
-            // Stop before `if`, which here is the filter.
-            let iter = Box::new(self.coalesce());
-            let cond = self.eat(T::If).then(|| Box::new(self.expr()));
+            let (pat, iter, cond) = self.comprehension_tail();
             self.expect(T::RBracket, "`]` to close the comprehension");
             return ExprKind::Comprehension {
                 body: Box::new(first),
@@ -549,6 +571,16 @@ impl<'a> Parser<'a> {
             }
         }
         ExprKind::List(items)
+    }
+
+    /// Parses `pat in iter [if cond]`, after the `for`.
+    fn comprehension_tail(&mut self) -> (Pattern, Box<Expr>, Option<Box<Expr>>) {
+        let pat = self.pattern();
+        self.expect(T::In, "`in` after the comprehension variable");
+        // Stop before `if`, which here is the filter.
+        let iter = Box::new(self.coalesce());
+        let cond = self.eat(T::If).then(|| Box::new(self.expr()));
+        (pat, iter, cond)
     }
 
     fn if_expr(&mut self) -> ExprKind {

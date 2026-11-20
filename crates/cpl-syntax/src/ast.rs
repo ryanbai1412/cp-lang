@@ -263,7 +263,8 @@ pub enum ExprKind {
     Tuple(Vec<Expr>),
     Record(Vec<(Name, Expr)>),
     List(Vec<Expr>),
-    /// `[body for pat in iter if cond]`.
+    /// `[body for pat in iter if cond]`, or the same without brackets as
+    /// the only argument of a call: `max(dist[v] for v in V)`.
     Comprehension {
         body: Box<Expr>,
         pat: Pattern,
@@ -297,6 +298,8 @@ pub enum ExprKind {
     },
     /// Postfix `?`.
     Try(Box<Expr>),
+    /// Postfix `!`: the value of an optional that is known to be there.
+    Unwrap(Box<Expr>),
     /// An expression was expected and nothing was there. Already reported.
     Missing,
     /// Tokens the parser could not read as an expression. Already reported.

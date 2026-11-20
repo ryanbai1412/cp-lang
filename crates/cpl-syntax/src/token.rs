@@ -91,6 +91,8 @@ pub enum TokenKind {
     Amp,
     Pipe,
     Tilde,
+    /// Postfix `!`: unwrap an optional.
+    Bang,
     Shl,
     Shr,
     /// `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `^=`, `&=`, `|=`, `<<=`, `>>=`.
@@ -262,6 +264,7 @@ impl TokenKind {
             Amp => "`&`",
             Pipe => "`|`",
             Tilde => "`~`",
+            Bang => "`!`",
             Shl => "`<<`",
             Shr => "`>>`",
             OpEq => "an assignment operator",
