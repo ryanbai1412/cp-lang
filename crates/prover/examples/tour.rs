@@ -111,7 +111,7 @@ fn main() {
     println!("-- laws");
     let int: Pairs = &[("T", "Int")];
     let pre: Pairs = &[("T", "(sum: Int, pre: Int)")];
-    let checks: [(&str, Structure, Pairs, Pairs); 5] = [
+    let checks: [(&str, Structure, Pairs, Pairs); 6] = [
         (
             "Max",
             Structure::monoid(),
@@ -144,6 +144,20 @@ fn main() {
         ),
         (
             "add on max",
+            Structure::action().distributive(),
+            &[("T", "?Int"), ("F", "Int")],
+            &[
+                ("id", "0"),
+                ("compose", "(f, g) => f + g"),
+                ("apply", "(f, x) => if x == none: none else: x! + f"),
+                (
+                    "op",
+                    "(a, b) => if a == none: b else: if b == none: a else: max(a!, b!)",
+                ),
+            ],
+        ),
+        (
+            "add on max, Int.MIN as empty",
             Structure::action().distributive(),
             &[("T", "Int"), ("F", "Int")],
             &[
