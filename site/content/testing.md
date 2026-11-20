@@ -10,9 +10,9 @@ fn dp(u: V, used: Bool) -> Int:
     ...
 ```
 
-`@memo` takes no parameters. When every parameter is an algebraic `Index` and the product of their sizes is at most `2^24` (`2^26` for `Bool` results), it emits a flat niche-packed array with zero hash overhead; otherwise it falls back to a per-process salted open-addressed hash table. A `@memo fn` may be top-level or nested in a function or loop, where its table resets on every call or iteration, and it may wrap `ask(...)` or an extern `@grader fn` so each argument tuple costs one query. If you want explicit hash storage, write `var dp = HashMap<Key, Val>()`.
+`@memo` takes no parameters. When every parameter is an algebraic `Index` or range and the product of their sizes is at most `2^24` (`DENSE_LIMIT = 1 << 24`), it emits a flat dense table with zero hash overhead; otherwise it falls back to a per-process salted open-addressed hash table. A `@memo fn` may be top-level or nested in a function or loop, where its table resets on every call or iteration (including per test case below `@!multitest`), and it may wrap `ask(...)` or an extern `@grader fn` so each argument tuple costs one query. If you want explicit hash storage, write `var dp = HashMap<Key, Val>()`.
 
-In the browser playground and current Rust/WASM interpreter, `@memo` caching is prototype-only, so the runnable example below executes the same recurrence with plain recursion:
+`@memo` caching is implemented in `crates/cpl-ir/src/lower/memo.rs` and runs in WebAssembly (see `memo_dp.cp` in the [DP chapter](course-dp.html#cached-recursion-with-memo) and playground). The smaller uncached recurrence below also runs natively via the prototype:
 
 ```example memo
 ```

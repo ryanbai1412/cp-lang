@@ -1,5 +1,5 @@
 let (n, x): (1..=100, 1..=1000) = read()
-let coins: [0..n]Int = read()
+let coins: [0..n]1..=1000 = read()
 
 var dp: [0..=x]?Int = none
 dp[0] = 0
