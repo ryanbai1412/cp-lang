@@ -93,13 +93,23 @@ def same_tokens(a, b):
 
 
 def hand_generators():
-    """Problem name -> (generator, compare mode, original, grader drivers) from the 40-port audit."""
+    """Return (by_port_rel, by_problem, audit2) from rust_max_n_audit and corpus_generators."""
+    by_rel, by_prob, audit2 = {}, {}, None
+    try:
+        import corpus_generators as cg
+        for s in cg.SPECS:
+            by_rel[s[0]] = s
+            by_prob.setdefault(os.path.basename(s[0]), s)
+    except Exception as e:
+        print(f"note: expanded corpus generators unavailable ({e!r})", file=sys.stderr)
     try:
         import rust_max_n_audit as audit2
+        for s in audit2.SPECS:
+            by_rel[s[0]] = s
+            by_prob[os.path.basename(s[0])] = s
     except Exception as e:                       # the sweep still runs on `cpl bench` inputs alone
         print(f"note: hand-written generators unavailable ({e!r})", file=sys.stderr)
-        return {}, None
-    return {s[0]: s for s in audit2.SPECS}, audit2
+    return by_rel, by_prob, audit2
 
 
 def candidates(only):
@@ -116,7 +126,7 @@ def candidates(only):
     return by_problem
 
 
-def prepare(port, work, timeout, hand, audit2):
+def prepare(port, work, timeout, hand, hand_by_prob, audit2):
     """Build both sides and find the inputs they agree on. Returns the candidate's record."""
     rel = port["path"]
     r = {"problem": port["problem"], "port": rel, "original": port["original"], "form": port["form"]}
@@ -131,7 +141,7 @@ def prepare(port, work, timeout, hand, audit2):
     r["emitted_bytes"] = os.path.getsize(cpp)
 
     orig = os.path.join(ROOT, port["original"])
-    spec = hand.get(rel[len("proto/ports/"):-3])
+    spec = hand.get(rel[len("proto/ports/"):-3]) or hand_by_prob.get(port["problem"])
     osrc = orig
     if spec and audit2 and name in audit2.bc5.DRIVERS:      # grader-style originals need a stdin driver
         if name == "noiwc22p3":
@@ -154,10 +164,9 @@ def prepare(port, work, timeout, hand, audit2):
             r["hand_generator_error"] = repr(e)[:160]
     # `cpl bench` types top-level reads only, so a port that reads inside a loop or function
     # would get a truncated input that a scanf-style original still answers.
-    if re.search(r"^[ \t]+.*\bread\(", open(src).read(), re.M):
-        if not inputs:
+    if not inputs:
+        if re.search(r"^[ \t]+.*\bread\(", open(src).read(), re.M):
             r["skip"] = "needs a hand-written generator: reads inside a loop or function, which `cpl bench` cannot type"; return r
-    else:
         cap = os.path.join(d, "cap"); os.makedirs(cap)
         saver = os.path.join(d, "save.sh")
         with open(saver, "w") as f: f.write('#!/bin/sh\nexec cat > "$CAPDIR/$(date +%s%N).in"\n')
@@ -273,7 +282,7 @@ def report(meta, s, rows):
                 for i, r in enumerate(sorted(done, key=lambda r: -r["rss_ratio"])[:10], 1)]
         hand = sum(r["input"].startswith("judge limits") for r in done)
         out += ["", "## What was measured", "",
-                f"{hand} ports ran on the hand-written judge-limit inputs of `rust_max_n_audit.py`; the other {len(done) - hand} ran on the slowest worst case `cpl bench` derives from the port's `read()` types "
+                f"{hand} ports ran on the hand-written judge-limit inputs of `rust_max_n_audit.py` and `corpus_generators.py`; the other {len(done) - hand} ran on the slowest worst case `cpl bench` derives from the port's `read()` types "
                 "that both programs answer identically. Those inputs put every size at its declared maximum, but they are not judge data: a generated case can miss a problem's structure "
                 "(a tree, a permutation), and such cases are only kept when the original still exits 0 with the same output as the port. "
                 f"The original's median time is at least 100 ms on {sum(r['orig_s'] >= 0.1 for r in done)} ports and at least 1 s on {sum(r['orig_s'] >= 1 for r in done)}."]
@@ -295,8 +304,12 @@ def report(meta, s, rows):
     if len(done) < TARGET_PORTS:
         out += ["", f"{meta['problems'] - reasons.get('cpl build', 0)} problems have a port `cpl build` accepts, so {TARGET_PORTS} measured ports is within reach of inputs alone. "
                 "A port under `needs a hand-written generator` reads inside a loop or function, where `cpl bench` has no types to derive a maximum-size input from: "
-                "give it a generator in `SPECS` in `rust_max_n_audit.py` and the next sweep measures it."]
+                "give it a generator in `SPECS` in `corpus_generators.py` or `rust_max_n_audit.py` and the next sweep measures it."]
     out += ["", "The reason for each file is its `skip` field in the JSON.", ""]
+    triage_path = os.path.join(BENCH, "triage-analysis.md")
+    if len(done) >= 50 and os.path.exists(triage_path):
+        with open(triage_path) as tf:
+            out += ["", tf.read().rstrip(), ""]
     return "\n".join(out)
 
 
@@ -312,14 +325,14 @@ def main():
     a = ap.parse_args()
     if not os.path.exists(CPL): sys.exit(f"{CPL} not found: cargo build --release -p cpl-cli")
     sys.path.insert(0, BENCH)
-    hand, audit2 = hand_generators()
+    hand, hand_by_prob, audit2 = hand_generators()
     by_problem = candidates(set(a.ports.split(",")) if a.ports else None)
     work = a.keep or tempfile.mkdtemp(prefix="cpl-p95-"); os.makedirs(work, exist_ok=True)
 
     flat = [p for ports in by_problem.values() for p in ports]
     print(f"{len(by_problem)} problems, {len(flat)} candidate ports; building with {a.jobs} jobs", flush=True)
     def safe(p):
-        try: return prepare(p, work, a.timeout, hand, audit2)
+        try: return prepare(p, work, a.timeout, hand, hand_by_prob, audit2)
         except Exception as e: return {"problem": p["problem"], "port": p["path"], "skip": f"harness error: {e!r}"}
     with concurrent.futures.ThreadPoolExecutor(a.jobs) as ex:
         prepared = {r["port"]: r for r in ex.map(safe, flat)}

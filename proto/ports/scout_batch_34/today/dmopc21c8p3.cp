@@ -41,8 +41,4 @@ else:
         perm[p] = v.to_idx + 1
         bit.add(p, -1)
 
-    var out = ""
-    for p in Pos:
-        if p.to_idx > 0: out = out + " "
-        out = out + "{perm[p]}"
-    print(out)
+    print(perm, sep: " ")
