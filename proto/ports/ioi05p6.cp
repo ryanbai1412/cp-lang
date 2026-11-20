@@ -8,7 +8,7 @@ domain Village = 1..=n
 type Site = WithMin<Village>                // Site.bottom is Bytetown, label 0
 type Info = (trees: 0..=1e4, down: Site, len: 1..=1e4)
 
-pure fn drains(rows: [Village]Info) -> Bool:
+fn drains(rows: [Village]Info) -> Bool:
     for v in Village:
         var s: Site = v
         var steps = 0

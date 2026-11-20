@@ -71,6 +71,7 @@ impl<'a> Checker<'a> {
                 pat,
                 ty,
                 init,
+                ..
             } => {
                 let keyword = if *mutable { "var" } else { "let" };
                 let declared = ty.as_ref().map(|ty| self.resolve_type(ty));
@@ -102,7 +103,7 @@ impl<'a> Checker<'a> {
                 let ty = declared.or(init_ty).unwrap_or(Ty::Error);
                 self.bind(pat, &ty, *mutable, keyword);
             }
-            StmtKind::Const { name, ty, init } => {
+            StmtKind::Const { name, ty, init, .. } => {
                 let declared = ty.as_ref().map(|ty| self.resolve_type(ty));
                 let init_ty = init.as_ref().map(|init| self.infer(init));
                 if let (Some(declared), Some(init_ty), Some(init)) = (&declared, &init_ty, init) {
@@ -196,6 +197,7 @@ impl<'a> Checker<'a> {
                 name,
                 generics,
                 body,
+                ..
             } => {
                 let outer = self.generics.len();
                 self.generics
@@ -208,6 +210,7 @@ impl<'a> Checker<'a> {
                 trait_name,
                 target,
                 body,
+                ..
             } => {
                 if let Some(trait_name) = trait_name {
                     self.resolve_type(trait_name);
@@ -267,6 +270,21 @@ impl<'a> Checker<'a> {
                 }
             }
             StmtKind::Unchecked(body) => return self.block(body),
+            StmtKind::Law { params, body, .. } => {
+                self.push_scope();
+                for param in params {
+                    let ty = match &param.ty {
+                        Some(ty) => self.resolve_type(ty),
+                        None => Ty::Unknown,
+                    };
+                    self.declare(&param.name.text, param.name.span, ty, false, "param");
+                }
+                self.infer(body);
+                self.pop_scope();
+            }
+            StmtKind::Lend { place, .. } => {
+                self.infer(place);
+            }
         }
         Ty::Unit
     }

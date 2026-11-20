@@ -3,7 +3,7 @@ let n: 1..=1e5 = read()
 domain Bar = 1..=n
 type Kids = (l: ?Bar, r: ?Bar)
 
-pure fn is_forest(k: [Bar]Kids) -> Bool:
+fn is_forest(k: [Bar]Kids) -> Bool:
     var parents: [Bar]Int = 0
     for v in Bar:
         if let c = k[v].l:

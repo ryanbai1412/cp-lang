@@ -136,9 +136,8 @@ impl<'a> Checker<'a> {
                     let iter_ty = self.infer(&clause.iter);
                     let elem = self.element_ty(&iter_ty);
                     self.bind(&clause.pat, &elem, false, "for");
-                    if let Some(cond) = &clause.cond {
-                        let ty = self.infer(cond);
-                        self.require_bool(&ty, cond, "the filter");
+                    for cond in &clause.conds {
+                        self.cond(cond);
                     }
                 }
                 let body_ty = self.infer(body).widen();

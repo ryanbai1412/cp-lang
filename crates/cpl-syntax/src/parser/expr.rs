@@ -464,6 +464,9 @@ impl<'a> Parser<'a> {
                 self.bump();
                 ExprKind::SelfValue
             }
+            // `by` is a keyword only after a range (`0..n by 2`); anywhere
+            // a value starts it is an ordinary name.
+            T::By => ExprKind::Name(self.name().text),
             // `do:` runs a block for its value; `?` inside exits the block.
             T::Ident if self.text() == "do" && self.peek_n(1) == T::Colon => {
                 self.bump();
@@ -484,8 +487,15 @@ impl<'a> Parser<'a> {
                     let args = self.speculate(|p| {
                         let args = p.type_args();
                         if args.is_empty()
-                            || !matches!(p.peek(), T::LParen | T::Dot | T::ColonColon)
-                                && !p.at_line_end()
+                            || !matches!(
+                                p.peek(),
+                                T::LParen
+                                    | T::Dot
+                                    | T::ColonColon
+                                    | T::Comma
+                                    | T::RParen
+                                    | T::RBracket
+                            ) && !p.at_line_end()
                         {
                             p.speculation_failed = true;
                         }
@@ -625,8 +635,21 @@ impl<'a> Parser<'a> {
             self.expect(T::In, "`in` after the comprehension variable");
             // Stop before `if`, which here is the filter.
             let iter = self.coalesce();
-            let cond = self.eat(T::If).then(|| self.coalesce());
-            clauses.push(Clause { pat, iter, cond });
+            // `for c in City if let b = buy[c] if b > 0`.
+            let mut conds = Vec::new();
+            while self.eat(T::If) {
+                conds.push(if self.eat(T::Let) {
+                    let pat = self.pattern();
+                    self.expect(T::Eq, "`=` after the pattern in `if let`");
+                    Cond::Let {
+                        pat,
+                        value: self.coalesce(),
+                    }
+                } else {
+                    Cond::Expr(self.coalesce())
+                });
+            }
+            clauses.push(Clause { pat, iter, conds });
         }
         clauses
     }

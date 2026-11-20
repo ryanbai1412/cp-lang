@@ -3,7 +3,25 @@
 use super::*;
 
 impl<'a> Parser<'a> {
+    /// A type; `A -> B` is a fn type, as in `adj: V -> Iter<A>`.
     pub(super) fn ty(&mut self) -> Type {
+        let start = self.start();
+        let first = self.ty_atom();
+        if !self.at(T::Arrow) || matches!(first.kind, TypeKind::Fn { .. }) {
+            return first;
+        }
+        self.bump();
+        let ret = Box::new(self.ty());
+        Type {
+            kind: TypeKind::Fn {
+                params: vec![first],
+                ret,
+            },
+            span: self.span_from(start),
+        }
+    }
+
+    fn ty_atom(&mut self) -> Type {
         let start = self.start();
         let kind = match self.peek() {
             T::Question => {
@@ -30,8 +48,22 @@ impl<'a> Parser<'a> {
             }
             T::LParen => {
                 self.bump();
-                if self.at(T::Ident) && self.peek_n(1) == T::Colon {
+                if self.at(T::Domain) || self.at(T::Ident) && self.peek_n(1) == T::Colon {
                     let fields = self.comma_list(T::RParen, "the record type", |p| {
+                        // `(domain C, comp: [V]C)`: a fresh domain for the caller.
+                        if p.at(T::Domain) {
+                            let start = p.start();
+                            p.bump();
+                            let name = p.expect_name("a domain name after `domain`");
+                            let span = p.span_from(start);
+                            return (
+                                name,
+                                Type {
+                                    kind: TypeKind::NewDomain,
+                                    span,
+                                },
+                            );
+                        }
                         let name = p.expect_name("a field name");
                         p.expect(T::Colon, "`:` after the field name");
                         (name, p.ty())
@@ -92,6 +124,19 @@ impl<'a> Parser<'a> {
                 } else {
                     Vec::new()
                 };
+                // `Rooted<V>.Pre`: a domain owned by another type.
+                while self.at(T::Dot)
+                    && self.peek_n(1) == T::Ident
+                    && self.tokens[self.pos + 1]
+                        .span
+                        .text(self.src)
+                        .starts_with(|c: char| c.is_ascii_uppercase())
+                {
+                    self.bump();
+                    let member = self.name();
+                    name.text = format!("{}.{}", name.text, member.text);
+                    name.span = name.span.to(member.span);
+                }
                 TypeKind::Named { name, args }
             }
             T::Ident | T::Int | T::Minus | T::Float => {
@@ -171,7 +216,18 @@ impl<'a> Parser<'a> {
             if self.at_type_args_end() || self.at_line_end() {
                 break;
             }
-            args.push(self.ty());
+            // `Mod<7>`: a value argument.
+            let value = matches!(self.peek(), T::Int)
+                && matches!(self.peek_n(1), T::Comma | T::Gt | T::Shr);
+            if value {
+                let expr = self.unary();
+                args.push(Type {
+                    span: expr.span,
+                    kind: TypeKind::Value(Box::new(expr)),
+                });
+            } else {
+                args.push(self.ty());
+            }
             if !self.eat(T::Comma) {
                 break;
             }
@@ -197,18 +253,53 @@ impl<'a> Parser<'a> {
         matches!(self.peek(), T::Gt | T::Shr)
     }
 
-    /// Parses `<D, T>` after a fn or type name. Bounds (`T: Ord`) are read
-    /// and dropped for now.
-    pub(super) fn generic_params(&mut self) -> Vec<Name> {
+    /// Parses `<D, T: Ord + Add, const N: Int>` after a fn or type name:
+    /// the parameter names and the bounds written on them.
+    pub(super) fn generic_params(&mut self) -> (Vec<Name>, Vec<Bound>) {
+        let mut bounds = Vec::new();
         if !self.eat(T::Lt) {
-            return Vec::new();
+            return (Vec::new(), bounds);
         }
-        self.comma_list(T::Gt, "the type parameters", |p| {
+        let names = self.comma_list(T::Gt, "the type parameters", |p| {
+            // `const N: Int` is a value parameter; its type is not a bound.
+            let value = p.eat(T::Const);
             let name = p.expect_name("a type parameter name");
             if p.eat(T::Colon) {
-                p.ty();
+                let traits = p.bound_traits();
+                if !value {
+                    bounds.push(Bound {
+                        name: name.clone(),
+                        traits,
+                    });
+                }
             }
             name
-        })
+        });
+        (names, bounds)
+    }
+
+    /// `Ord + Bounded`.
+    fn bound_traits(&mut self) -> Vec<Type> {
+        let mut traits = vec![self.ty_atom()];
+        while self.eat(T::Plus) {
+            traits.push(self.ty_atom());
+        }
+        traits
+    }
+
+    /// Parses `where T: Ord, U: Add + Mul` if it is here.
+    pub(super) fn where_clause(&mut self, bounds: &mut Vec<Bound>) {
+        if !self.eat(T::Where) {
+            return;
+        }
+        loop {
+            let name = self.expect_name("a type parameter name after `where`");
+            self.expect(T::Colon, "`:` and the traits the type must have");
+            let traits = self.bound_traits();
+            bounds.push(Bound { name, traits });
+            if !self.eat(T::Comma) {
+                break;
+            }
+        }
     }
 }
