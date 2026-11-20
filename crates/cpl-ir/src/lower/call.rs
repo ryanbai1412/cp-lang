@@ -914,8 +914,13 @@ impl<'a> Lowerer<'a> {
                 ),
                 None => self.err_expr(span),
             },
+            // A program that flushes is read by someone who answers: it
+            // reads as it goes.
             "flush" => match self.positional_any(name, args, 0, span) {
-                Some(_) => self.mk(ExprKind::Builtin(Builtin::Flush, Vec::new()), Ty::Unit, span),
+                Some(_) => {
+                    self.interactive = true;
+                    self.mk(ExprKind::Builtin(Builtin::Flush, Vec::new()), Ty::Unit, span)
+                }
                 None => self.err_expr(span),
             },
             "isqrt" => match self.one_arg(name, args, &Ty::Int, span) {
@@ -4299,6 +4304,22 @@ impl<'a> Lowerer<'a> {
 
     fn domain_field(&mut self, id: DomainId, name: &ast::Name, span: Span) -> Expr {
         let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
+        // An empty domain has no first or last position: asking stops the
+        // program in the built C++ as it does in `cpl run`.
+        if matches!(name.text.as_str(), "first" | "last") && self.subset_base(id).is_none() {
+            let zero = self.int_lit(0, span);
+            let empty = self.mk(
+                ExprKind::Cmp(CmpOp::Le, Box::new(len.clone()), Box::new(zero)),
+                Ty::Bool,
+                span,
+            );
+            let message = format!(
+                "`{}` is empty: it has no {} position",
+                self.domains[id], name.text
+            );
+            let trap = Stmt::Trap(message, self.span(span));
+            self.cx.pending.push(Stmt::If(empty, Block { stmts: vec![trap] }, Block::default()));
+        }
         match name.text.as_str() {
             "len" | "size" | "K" => len,
             "empty" if self.subset_base(id).is_some() => {

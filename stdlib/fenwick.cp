@@ -1,4 +1,5 @@
 //! Fenwick tree (binary indexed tree) over a domain: point add, range sum.
+use std.seq.{ends}
 
 /// Point add and range sum over anything with `+` and `-` (`Int`, `Mod<P>`).
 /// `Fenwick<D, Int>()` starts at zero and `Fenwick<D, Int>(a)` from an array, in O(n).
@@ -34,10 +35,9 @@ pub struct Fenwick<D, T>:
         acc
 
     /// The sum of a range: `f.sum(l..=r)`, `f.sum(..i)`, `f.sum(i..)`. An empty range is zero.
-    pub fn sum(
-        self,
-        r: Range<D>,
-    ) -> T = if r.is_empty: T.zero else: self.prefix(r.hi) - self.prefix(r.lo)
+    pub fn sum(self, r: Range<D>) -> T:
+        let (lo, hi) = r.ends
+        if lo == hi: T.zero else: self.prefix(r.hi) - self.prefix(r.lo)
 
     /// The first boundary where the prefix sum reaches `target`, for non-negative values:
     /// the smallest `b` with `prefix(b) >= target`, or `none`. O(log n).
@@ -83,8 +83,8 @@ pub struct Fenwick2D<R, C, T>:
 
     /// The sum of the rectangle `rows` by `cols`.
     pub fn sum(self, rows: Range<R>, cols: Range<C>) -> T:
-        if rows.is_empty or cols.is_empty: return T.zero
-        let (r1, r2, c1, c2) = (rows.lo.ord, rows.hi.ord, cols.lo.ord, cols.hi.ord)
+        let ((r1, r2), (c1, c2)) = (rows.ends, cols.ends)
+        if r1 == r2 or c1 == c2: return T.zero
         self.corner(r2, c2) - self.corner(r1, c2) - self.corner(r2, c1) + self.corner(r1, c1)
 
 @test
@@ -113,7 +113,6 @@ fn empty_and_half_open_ranges():
     assert f.sum(V(0)..=V(4)) == 11
     assert f.sum(V(1)..V(3)) == 6
     assert f.sum(V(2)..V(2)) == 0
-    assert f.sum(V(3)..V(1)) == 0
 
 @test
 fn lower_bound_finds_the_kth():

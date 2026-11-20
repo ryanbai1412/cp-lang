@@ -1,5 +1,6 @@
 //! Segment tree with range updates.
 use std.algebra.{Monoid, Action}
+use std.seq.{ends}
 
 /// Range update, range fold: `LazySegTree<V, Int>(AddMax, a)` (the tag type `F` is inferred
 /// from the `Action`). The stock actions are `AddSum`, `AddMin`, `AddMax`, `AssignSum`,
@@ -76,8 +77,9 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
     /// An empty range gives the identity.
     pub fn fold(mut self, r: Range<D>) -> T:
         let m = act.over
-        if r.is_empty: return m.id
-        var (l, h) = (r.lo.ord + size, r.hi.ord + size)
+        let (lo, hi) = r.ends
+        if lo == hi: return m.id
+        var (l, h) = (lo + size, hi + size)
         self.open(l, h)
         var (a, b) = (m.id, m.id)
         while l < h:
@@ -93,8 +95,9 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
 
     /// Every position in the range takes the update `f`.
     pub fn apply(mut self, r: Range<D>, f: F):
-        if r.is_empty: return
-        let (l0, h0) = (r.lo.ord + size, r.hi.ord + size)
+        let (lo, hi) = r.ends
+        if lo == hi: return
+        let (l0, h0) = (lo + size, hi + size)
         self.open(l0, h0)
         var (l, h) = (l0, h0)
         while l < h:

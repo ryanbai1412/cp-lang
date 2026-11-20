@@ -165,8 +165,10 @@ fn lower_entry(
 ) -> Result<Program, Vec<Diagnostic>> {
     let mut lw = Lowerer::new(analysis);
     lw.judge = judge;
-    // Whatever the judge sends goes out at once.
-    lw.interactive = judge;
+    // Whatever the judge sends goes out at once. A solution with a judge
+    // in its file talks to it, so it reads as it goes and never all the
+    // input at once.
+    lw.interactive = judge || (test_name.is_none() && interactor(analysis).is_some());
     lw.load_modules(analysis);
     lw.mutators = narrow::Mutators::of(lw.mod_items(0).map(|(_, stmt)| stmt)).into();
     lw.steps = lw.read_steps().into();

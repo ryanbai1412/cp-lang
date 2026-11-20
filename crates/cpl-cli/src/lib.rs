@@ -493,6 +493,68 @@ fn render_trap(path: &str, text: &str, trap: &cpl_interp::Trap) -> String {
     cpl_diag::render(&diagnostic, path, text, &lines)
 }
 
+/// The `@interactor` of the file at `path`, lowered, with the file's
+/// text; `None` if the file has none or is not CP source.
+fn release_judge(path: &str, stderr: &mut String) -> Result<Option<(String, cpl_ir::Program, String)>, u8> {
+    if !path.ends_with(".cp") {
+        return Ok(None);
+    }
+    let compiled = compile_side(path, Side::Solution, &mut String::new())
+        .inspect_err(|_| *stderr += &format!("cpl: `{path}` no longer checks\n"))?;
+    Ok(compiled.judge.map(|(name, judge)| (name, judge, compiled.text)))
+}
+
+/// `cpl run --release` on an interactive file: the built solution, as a
+/// process, against the file's `@interactor`.
+#[allow(clippy::too_many_arguments)]
+fn run_release_judged(
+    args: &RunArgs,
+    program: &cpl_stress::Program,
+    name: &str,
+    judge: &cpl_ir::Program,
+    text: &str,
+    input: &[u8],
+    stdout: &mut (dyn Write + Send),
+    stderr: &mut String,
+) -> u8 {
+    let ruling = match interact::run_built(&program.argv, &program.env, judge, input, stdout) {
+        Ok(ruling) => ruling,
+        Err(error) => {
+            *stderr += &format!("cpl: can't run the build of `{}`: {error}\n", args.file);
+            return EXIT_USAGE;
+        }
+    };
+    *stderr += &ruling.stderr;
+    let solved = ruling.status.is_some_and(|status| status.success());
+    if !solved {
+        *stderr += &match ruling.status.and_then(|status| status.code()) {
+            Some(code) => format!("cpl: the solution exited with status {code}\n"),
+            None => format!(
+                "cpl: the solution crashed; `cpl run {}` without `--release` says where\n",
+                args.file
+            ),
+        };
+    }
+    // A judge left with nothing to read after the solution failed only
+    // follows from that failure.
+    let starved = |trap: &cpl_interp::Trap| trap.message.starts_with("the solution's output ended");
+    match &ruling.judge {
+        Some(trap) if solved || !starved(trap) => {
+            *stderr += &format!("cpl: the interactor `{name}` rejected the run\n");
+            *stderr += &render_trap(args.file, text, trap);
+        }
+        _ => {}
+    }
+    if solved && ruling.judge.is_none() {
+        *stderr += &format!(
+            "cpl: the interactor `{name}` accepted the run ({} lines from the solution)\n",
+            ruling.lines
+        );
+        return 0;
+    }
+    EXIT_FAILED
+}
+
 /// `cpl run`: the program's output goes straight to `stdout`.
 /// `cpl run --release`: the file's C++, built as a judge builds it.
 fn run_release(args: &RunArgs, input: &[u8], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
@@ -509,6 +571,17 @@ fn run_release(args: &RunArgs, input: &[u8], stdout: &mut (dyn Write + Send), st
             return EXIT_ERRORS;
         }
     };
+    // An interactive problem with its judge in the file: the input is the
+    // hidden test, which the judge reads, as without `--release`.
+    if !args.brute {
+        match release_judge(args.file, stderr) {
+            Ok(Some((name, judge, text))) => {
+                return run_release_judged(args, &program, &name, &judge, &text, input, stdout, stderr)
+            }
+            Ok(None) => {}
+            Err(code) => return code,
+        }
+    }
     // No time limit: a day is longer than anyone waits.
     let day = std::time::Duration::from_secs(86_400);
     let outcome = match program.run(&String::from_utf8_lossy(input), day) {
@@ -1163,6 +1236,33 @@ mod tests {
         assert_eq!(out.code, 0, "{}", out.stderr);
         assert!(std::path::Path::new(&path).with_extension("checked").is_file());
         assert_eq!(run(&["build", &path, "--checked", "-o", "-"]).code, EXIT_USAGE);
+    }
+
+    /// The input of an interactive file is the hidden test, for the
+    /// judge: the built solution must never read it as the judge's replies.
+    #[test]
+    fn release_runs_the_built_cpp_against_the_interactor() {
+        if std::process::Command::new("g++").arg("--version").output().is_err() {
+            return;
+        }
+        let guesser = |answer: &str| {
+            format!(
+                "let n: Int = read()\nprint(\"?\", n)\nflush()\nlet hidden: Int = read()\nprint(\"!\", {answer})\n\n\
+                 @interactor\nfn judge(mut sol: Interactor):\n    let (n, hidden): (Int, Int) = read()\n    sol.send(n)\n    \
+                 let q: Str = sol.recv()\n    let asked: Int = sol.recv()\n    assert q == \"?\" and asked == n\n    \
+                 sol.send(hidden)\n    let a: Str = sol.recv()\n    let said: Int = sol.recv()\n    assert said == hidden + 1\n"
+            )
+        };
+        let right = temp_file("release_judged.cp", &guesser("hidden + 1"));
+        for flags in [&["run", &right][..], &["run", &right, "--release"][..]] {
+            let out = run_with_input(flags, b"7 41\n");
+            assert_eq!((out.code, out.stdout.as_slice()), (0, b"? 7\n! 42\n".as_slice()), "{}", out.stderr);
+            assert!(out.stderr.contains("accepted the run (2 lines"), "{}", out.stderr);
+        }
+        let wrong = temp_file("release_misjudged.cp", &guesser("hidden"));
+        let out = run_with_input(&["run", &wrong, "--release"], b"7 41\n");
+        assert_eq!(out.code, EXIT_FAILED, "{}", out.stderr);
+        assert!(out.stderr.contains("the interactor `judge` rejected the run"), "{}", out.stderr);
     }
 
     #[test]

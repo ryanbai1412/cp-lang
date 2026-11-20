@@ -14,9 +14,9 @@
 //! sanitized binary is kept under a hash of its C++, the flags and the
 //! compiler, as in `differential.rs`, so a warm run compiles nothing.
 //!
-//! Inputs that fail on HEAD are their own tests, marked
+//! An input that fails on HEAD is its own test, marked
 //! `#[ignore = "KNOWN WA-TRAP: ..."]` and written up in
-//! `research/fuzz-three-way-findings.md`; run them with
+//! `research/fuzz-three-way-findings.md`; run those with
 //! `cargo test -p cpl-cli --test fuzz_three_way -- --ignored`.
 
 use std::hash::{Hash, Hasher};
@@ -215,7 +215,6 @@ fn euclidean_division_on_int_edges() {
 }
 
 #[test]
-#[ignore = "KNOWN WA-TRAP: x % Int.MIN overflows a signed subtraction in the C++ runtime's emod (UBSan), though every answer fits"]
 fn int_mod_by_int_min_is_defined() {
     let pairs = [(-1, i64::MIN), (i64::MAX, i64::MIN), (i64::MIN, i64::MIN), (0, i64::MIN)];
     let input = pairs.iter().fold(format!("{}\n", pairs.len()), |s, (a, b)| s + &format!("{a} {b}\n"));
@@ -224,14 +223,12 @@ fn int_mod_by_int_min_is_defined() {
 }
 
 #[test]
-#[ignore = "KNOWN WA-TRAP: x / 0 and x % 0 stop `cpl run`, but the C++ checks the divisor only under -DLOCAL and divides by zero (UBSan)"]
 fn int_division_by_zero_stops() {
     let cases = vec![("1\n5 0\n".to_string(), Expect::Traps), ("1\n0 0\n".to_string(), Expect::Traps)];
     assert_agree(three_way("int_division", INT_DIVISION, &cases));
 }
 
 #[test]
-#[ignore = "KNOWN WA-TRAP: Int.MIN / -1 stops `cpl run`, but the C++ checks it only under -DLOCAL and overflows (UBSan)"]
 fn int_min_over_minus_one_stops() {
     let cases = vec![
         (format!("1\n{} -1\n", i64::MIN), Expect::Traps),
@@ -277,7 +274,6 @@ fn euclidean_division_on_i128_and_wrapping_u64() {
 }
 
 #[test]
-#[ignore = "KNOWN WA-TRAP: I128.MIN / -1 stops `cpl run`, but the C++ divides with no check and overflows (UBSan)"]
 fn i128_min_over_minus_one_stops() {
     let cases = vec![(format!("1\n{} -1\n1 1\n", i128::MIN), Expect::Traps)];
     assert_agree(three_way("wide", WIDE, &cases));
@@ -382,7 +378,6 @@ fn the_ends_of_a_domain_that_has_some() {
 }
 
 #[test]
-#[ignore = "KNOWN WA-TRAP: D.first / D.last of an empty domain stop `cpl run` but print 0 in the C++"]
 fn the_ends_of_an_empty_domain_stop() {
     assert_agree(three_way("domain_ends", DOMAIN_ENDS, &[("0\n".to_string(), Expect::Traps)]));
 }
@@ -499,11 +494,15 @@ fn structures_case(rng: &mut Rng, n: i64) -> (String, Expect) {
     let mut label: Vec<usize> = (0..n as usize).collect();
     let mut input = format!("{n}\n{q}\n");
     let mut out = format!("{n}\n");
+    let mut stops = false;
     for _ in 0..q {
         let (t, i, j, x) = (rng.range(0, 4), rng.range(0, n - 1), rng.range(0, n - 1), rng.range(-9, 9));
         input += &format!("{t} {i} {j} {x}\n");
         let (iu, ju) = (i as usize, j as usize);
         let span = iu..=ju;
+        // A range query written backwards stops the program. `i..=i - 1`
+        // is in order and empty.
+        stops |= matches!(t, 1..=3) && j + 1 < i;
         match t {
             0 => {
                 fen[iu] += x;
@@ -534,7 +533,7 @@ fn structures_case(rng: &mut Rng, n: i64) -> (String, Expect) {
             }
         }
     }
-    (input, Expect::Prints(out))
+    (input, if stops { Expect::Traps } else { Expect::Prints(out) })
 }
 
 #[test]

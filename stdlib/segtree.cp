@@ -1,6 +1,7 @@
 //! Segment tree over a domain, for any associative operation.
 use std.algebra.{Monoid}
 use std.math.{gcd}
+use std.seq.{ends}
 
 /// Point update and range fold. The operation is a bare operator (`+`, `*`, `^`, `&`, `|`,
 /// `min`, `max`, `gcd`) or your own `Monoid(id, op)`: `SegTree<V, Int>(max, a)`,
@@ -53,7 +54,8 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// The fold of a range, left to right: `st.fold(l..=r)`, `st.fold(..i)`, `st.fold(i..)`.
     /// An empty range gives the identity.
     pub fn fold(self, r: Range<D>) -> T:
-        var (l, h) = (r.lo.ord + size, r.hi.ord + size)
+        let (lo, hi) = r.ends
+        var (l, h) = (lo + size, hi + size)
         var (a, b) = (m.id, m.id)
         while l < h:
             if l % 2 == 1:

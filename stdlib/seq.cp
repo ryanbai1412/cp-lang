@@ -195,6 +195,13 @@ pub @get fn l<D>(self: Range<D>) -> Bounds<D> = self.lo
 /// Right boundary cut of a range (valid even when empty).
 pub @get fn r<D>(self: Range<D>) -> Bounds<D> = self.hi
 
+/// The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.
+/// A range written backwards, `P(3)..P(1)`, stops the program here: no query silently answers
+/// as if it were empty. `l..l` is in order and empty.
+pub @get fn ends<D>(self: Range<D>) -> (Int, Int):
+    assert self.lo.ord <= self.hi.ord, "the range runs backwards: its end is before its start"
+    (self.lo.ord, self.hi.ord)
+
 /// First index in sorted list `xs` with `by(xs[i]) >= target`, or `none`. Returns `?Int`. O(log n).
 pub fn first_ge_by<T, K>(xs: List<T>, target: K, by: T -> K) -> ?Int:
     if xs.is_empty or by(xs[xs.len - 1]) < target: return none

@@ -154,6 +154,92 @@ pub fn run(
     })
 }
 
+/// How a built solution's run against the interactor ended.
+pub struct BuiltRuling {
+    /// Why the judge rejected the run, if it did.
+    pub judge: Option<cpl_interp::Trap>,
+    /// How the solution's process ended; `None` if it could not be
+    /// waited for.
+    pub status: Option<std::process::ExitStatus>,
+    /// What the solution wrote to its standard error.
+    pub stderr: String,
+    /// Lines the solution printed.
+    pub lines: usize,
+}
+
+/// [`run`] for `cpl run --release`: the solution is the built program
+/// `argv`, as a process, and the judge runs here. A solution that says
+/// nothing for `PATIENCE` is taken to be waiting for the judge while the
+/// judge waits for it: its output ended.
+pub fn run_built(
+    argv: &[String],
+    env: &[(String, String)],
+    judge: &cpl_ir::Program,
+    input: &[u8],
+    stdout: &mut (dyn Write + Send),
+) -> std::io::Result<BuiltRuling> {
+    use std::io::Read;
+    use std::process::{Command, Stdio};
+    const PATIENCE: std::time::Duration = std::time::Duration::from_secs(10);
+    let mut child = Command::new(&argv[0])
+        .args(&argv[1..])
+        .envs(env.iter().map(|(k, v)| (k, v)))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    let mut to_solution = child.stdin.take().expect("piped");
+    let mut from_solution = child.stdout.take().expect("piped");
+    let mut errors = child.stderr.take().expect("piped");
+    let (said, heard) = std::sync::mpsc::channel::<Vec<u8>>();
+    let (judge_trap, lines, stderr) = std::thread::scope(|scope| {
+        let listening = scope.spawn(move || {
+            let (mut lines, mut chunk) = (0, [0u8; 4096]);
+            while let Ok(n) = from_solution.read(&mut chunk) {
+                if n == 0 {
+                    break;
+                }
+                let _ = stdout.write_all(&chunk[..n]);
+                lines += chunk[..n].iter().filter(|b| **b == b'\n').count();
+                if said.send(chunk[..n].to_vec()).is_err() {
+                    break;
+                }
+            }
+            lines
+        });
+        let complaints = scope.spawn(move || {
+            let mut text = Vec::new();
+            let _ = errors.read_to_end(&mut text);
+            String::from_utf8_lossy(&text).into_owned()
+        });
+        let io = cpl_interp::Io::judge(input, Box::new(move || heard.recv_timeout(PATIENCE).ok()));
+        // What the judge says goes out at once: the solution waits on it.
+        struct Unbuffered<'a>(&'a mut std::process::ChildStdin);
+        impl Write for Unbuffered<'_> {
+            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+                // A solution that has left hears nothing; the judge finds
+                // out when it next reads.
+                let _ = self.0.write_all(bytes).and_then(|()| self.0.flush());
+                Ok(bytes.len())
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+        let trap = cpl_interp::run_with(judge, io, &mut Unbuffered(&mut to_solution)).err();
+        // The judge is done: the solution reads the end of its input.
+        drop(to_solution);
+        let lines = listening.join().unwrap_or(0);
+        (trap, lines, complaints.join().unwrap_or_default())
+    });
+    Ok(BuiltRuling {
+        judge: judge_trap,
+        status: child.wait().ok(),
+        stderr,
+        lines,
+    })
+}
+
 /// [`run`], recording the solution's side: its trace and what its
 /// `debug(...)`s showed. A failure on either side is the run's.
 pub fn run_traced(

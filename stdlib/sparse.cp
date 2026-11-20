@@ -1,5 +1,6 @@
 //! Sparse table: O(1) range folds of a fixed array.
 use std.math.{gcd}
+use std.seq.{ends}
 
 /// `SparseTable<V, Int>(min, a)`: built in O(n log n) time and memory, `fold` is O(1).
 /// The operation must be associative and idempotent (`op(a, a) == a`): `min`, `max`, `gcd`,
@@ -19,9 +20,10 @@ pub struct SparseTable<D, T>(op: (T, T) -> T):
 
     /// The fold of a non-empty range. O(1). Asserts `not r.is_empty`.
     pub fn fold(self, r: Range<D>) -> T:
-        assert not r.is_empty
-        let k = bit_width(r.len) - 1
-        op(rows[k][r.lo.ord], rows[k][r.hi.ord - (1 << k)])
+        let (lo, hi) = r.ends
+        assert lo < hi
+        let k = bit_width(hi - lo) - 1
+        op(rows[k][lo], rows[k][hi - (1 << k)])
 
 /// Is `op` idempotent on these samples? The law a sparse table needs alongside associativity.
 pub fn idempotent<T>(op: (T, T) -> T, xs: List<T>) -> Bool:

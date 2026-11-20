@@ -41,7 +41,10 @@ pub struct Mod<P>(v: Int):
         Mod(x % P)
 
     /// The multiplicative inverse, by the extended Euclidean algorithm (so `P` need not be prime).
-    pub @get fn inv(self) -> Mod<P> = self.try_inv()!
+    pub @get fn inv(self) -> Mod<P>:
+        let x = self.try_inv()
+        assert x != none, "it has no inverse: 0 never has one, and no value that shares a factor with the modulus"
+        x!
 
 impl Add for Mod<P>:
     fn add(a, b) = Mod(if a.v + b.v >= P: a.v + b.v - P else: a.v + b.v)

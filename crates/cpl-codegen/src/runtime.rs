@@ -233,11 +233,11 @@ inline std::string read_str() { skip_space(); size_t start = in_at; while (in_at
         needs: &[],
         code: "\
 // Euclidean division: the remainder is never negative.
+// A zero divisor and `Int.MIN / -1` stop every build: the judge's too, where
+// they would be undefined and print whatever the machine left.
 inline ll ediv(ll a, ll b) {
-#ifdef LOCAL
-    if (b == 0) { fputs(\"division by zero\\n\", stderr); exit(3); }
-    if (a == (-9223372036854775807LL - 1) && b == -1) { fputs(\"integer overflow\\n\", stderr); exit(3); }
-#endif
+    if (__builtin_expect(b == 0, 0)) { fputs(\"division by zero\\n\", stderr); exit(3); }
+    if (__builtin_expect(a == (-9223372036854775807LL - 1) && b == -1, 0)) { fputs(\"integer overflow\\n\", stderr); exit(3); }
     ll q = a / b, r = a % b; return q - ((r >> 63) & ((b >> 63) | 1));
 }
 ",
@@ -247,11 +247,11 @@ inline ll ediv(ll a, ll b) {
         needs: &[],
         code: "\
 inline ll emod(ll a, ll b) {
-#ifdef LOCAL
-    if (b == 0) { fputs(\"division by zero\\n\", stderr); exit(3); }
-#endif
+    if (__builtin_expect(b == 0, 0)) { fputs(\"division by zero\\n\", stderr); exit(3); }
     if (b == -1) return 0;
-    ll r = a % b, s = b >> 63; return r + ((r >> 63) & ((b ^ s) - s));
+    // `|b|` is 2^63 for `Int.MIN`, so it is added as an unsigned.
+    typedef unsigned long long U;
+    ll r = a % b; U s = (U)(b >> 63); return (ll)((U)r + ((U)(r >> 63) & (((U)b ^ s) - s)));
 }
 ",
     },
@@ -261,9 +261,7 @@ inline ll emod(ll a, ll b) {
         code: "\
 // The same for a divisor known to be positive.
 inline ll divp(ll a, ll b) {
-#ifdef LOCAL
-    if (b == 0) { fputs(\"division by zero\\n\", stderr); exit(3); }
-#endif
+    if (__builtin_expect(b == 0, 0)) { fputs(\"division by zero\\n\", stderr); exit(3); }
     return a / b + ((a % b) >> 63);
 }
 ",
@@ -273,9 +271,7 @@ inline ll divp(ll a, ll b) {
         needs: &[],
         code: "\
 inline ll modp(ll a, ll b) {
-#ifdef LOCAL
-    if (b == 0) { fputs(\"division by zero\\n\", stderr); exit(3); }
-#endif
+    if (__builtin_expect(b == 0, 0)) { fputs(\"division by zero\\n\", stderr); exit(3); }
     ll r = a % b; return r + ((r >> 63) & b);
 }
 ",
@@ -285,9 +281,8 @@ inline ll modp(ll a, ll b) {
         needs: &[],
         code: "\
 inline __int128 ediv128(__int128 a, __int128 b) {
-#ifdef LOCAL
-    if (b == 0) { fputs(\"division by zero\\n\", stderr); exit(3); }
-#endif
+    if (__builtin_expect(b == 0, 0)) { fputs(\"division by zero\\n\", stderr); exit(3); }
+    if (__builtin_expect(b == -1 && a == (__int128)((unsigned __int128)1 << 127), 0)) { fputs(\"integer overflow\\n\", stderr); exit(3); }
     __int128 q = a / b, r = a % b; return r < 0 ? (b > 0 ? q - 1 : q + 1) : q;
 }
 ",
@@ -297,9 +292,8 @@ inline __int128 ediv128(__int128 a, __int128 b) {
         needs: &[],
         code: "\
 inline __int128 emod128(__int128 a, __int128 b) {
-#ifdef LOCAL
-    if (b == 0) { fputs(\"division by zero\\n\", stderr); exit(3); }
-#endif
+    if (__builtin_expect(b == 0, 0)) { fputs(\"division by zero\\n\", stderr); exit(3); }
+    if (b == -1) return 0;
     __int128 r = a % b; return r < 0 ? (b > 0 ? r + b : r - b) : r;
 }
 ",
