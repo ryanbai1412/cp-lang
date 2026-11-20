@@ -134,6 +134,44 @@ parallel; that needs a change in `crates/cpl-cli/tests/differential.rs`.
 After it come the `cpl-verify::proto_tools` tests (5 to 9 s each), which
 test the retired `proto/cpc` prototype.
 
+## The differential test: shards and a binary cache
+
+Measured after the step above, warm tree, 8 cores:
+
+```
+                                              before          after
+differential test, wall (cache empty)          8.6 s (1 test)  9.9 s (8 shards)
+differential test, wall (cache warm)           8.6 s           0.6 s
+differential test, CPU (user + sys)           63.9 s           3.4 s warm
+nextest run for --fast, wall                  21.0 s          11.8 s
+nextest run for --fast, CPU (user + sys)     142.4 s          59.0 s
+scripts/check.sh --fast, whole               22.3 s          14.6 s (14.85, 14.84, 14.21)
+```
+
+Splitting alone could not reach the target. The old test already ran its
+programs on every core, and the `--fast` suite used 142 s of CPU on 8 cores,
+so it could not finish in less than about 18 s. Nearly all of the
+differential test's CPU time was `g++ -fsanitize=address,undefined`
+rebuilding the same C++ on every run.
+
+`crates/cpl-cli/tests/differential.rs` now does two things:
+
+- It splits the 95 programs into 8 tests,
+  `interpreter_and_sanitized_cpp_agree_shard_0` to `_7`, by index in sorted
+  order. Each shard has its own scratch directory, and
+  `the_shards_cover_every_program_once` checks that every program is in
+  exactly one shard.
+- It keeps each sanitized binary in `target/tmp/differential/cache`, under a
+  hash of the C++, the g++ flags and `g++ --version`. A binary is reused only
+  when the C++ kept beside it is byte-for-byte the same, so a change to
+  codegen rebuilds exactly the programs whose C++ changed. Every run still
+  regenerates and compares the C++ and runs the binary under ASan and UBSan.
+
+The longest `--fast` test is now `cpl-verify::proto_tools`
+`overflow_stops_cleanly_instead_of_reaching_ubsan` (6.6 s). The
+`proto_tools` tests check the retired `proto/cpc` prototype. Moving them to
+`--full` is the next cut, and it needs a change to `scripts/check.sh`.
+
 ## Commands
 
 ```

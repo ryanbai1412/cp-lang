@@ -9,10 +9,29 @@
 //! A program reads the `.in` file beside it, if there is one. To record
 //! the `.out` of a new program, run the tests with `CPL_BLESS=1`; the
 //! interpreter writes it, and the C++ is then held to it.
+//!
+//! The programs are split into `SHARDS` tests by their index in sorted
+//! order, so the test runner spreads them over its threads. A sanitized
+//! binary is kept under the C++ it was built from and reused while that
+//! source, the flags and the compiler are unchanged; it is still run every
+//! time.
 
+use std::hash::{Hash, Hasher};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::OnceLock;
+
+const SHARDS: usize = 8;
+
+const GXX_FLAGS: [&str; 6] = [
+    "-std=c++17",
+    "-fsanitize=address,undefined",
+    "-fno-sanitize-recover=all",
+    "-Wall",
+    "-Wextra",
+    "-o",
+];
 
 fn programs() -> Vec<PathBuf> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs");
@@ -42,7 +61,6 @@ fn input_of(program: &Path) -> Vec<u8> {
     std::fs::read(program.with_extension("in")).unwrap_or_default()
 }
 
-/// Compiles `cpp` with the sanitizers on and runs it on `input`.
 /// Runs the built solution against `cpl judge`, the `@interactor` of
 /// `program`: each reads what the other prints, and `input` is the
 /// hidden test. The output is what the solution printed.
@@ -92,37 +110,75 @@ fn against_judge(
     Ok(ran)
 }
 
-fn compile_and_run(
-    name: &str,
-    cpp: &[u8],
-    input: &[u8],
-    interactor: Option<&Path>,
-) -> Result<(Vec<u8>, Option<i32>), String> {
-    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("differential");
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let source = dir.join(format!("{name}.cpp"));
-    let binary = dir.join(name);
-    std::fs::write(&source, cpp).map_err(|e| e.to_string())?;
+/// What `g++ --version` prints, so a compiler upgrade rebuilds every binary.
+fn gxx_version() -> &'static [u8] {
+    static VERSION: OnceLock<Vec<u8>> = OnceLock::new();
+    VERSION.get_or_init(|| {
+        Command::new("g++")
+            .arg("--version")
+            .output()
+            .map(|out| out.stdout)
+            .unwrap_or_default()
+    })
+}
+
+/// The sanitized binary built from `cpp`, compiled now or reused from an
+/// earlier run that compiled the same bytes with the same flags and compiler.
+fn sanitized_binary(cpp: &[u8]) -> Result<PathBuf, String> {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    (gxx_version(), GXX_FLAGS, cpp).hash(&mut hasher);
+    let key = format!("{:016x}", hasher.finish());
+    let cache = Path::new(env!("CARGO_TARGET_TMPDIR")).join("differential/cache");
+    std::fs::create_dir_all(&cache).map_err(|e| e.to_string())?;
+    let source = cache.join(format!("{key}.cpp"));
+    let binary = cache.join(&key);
+    if binary.exists() && std::fs::read(&source).is_ok_and(|kept| kept == cpp) {
+        return Ok(binary);
+    }
+    // Built under a name of its own and renamed, so a shard never runs a
+    // binary another one is still writing.
+    let unique = format!(
+        "{key}.{}.{:?}",
+        std::process::id(),
+        std::thread::current().id()
+    )
+    .replace(|c: char| !c.is_ascii_alphanumeric() && c != '.', "");
+    let (tmp_source, tmp_binary) = (cache.join(format!("{unique}.cpp")), cache.join(&unique));
+    std::fs::write(&tmp_source, cpp).map_err(|e| e.to_string())?;
     let compiled = Command::new("g++")
-        .args([
-            "-std=c++17",
-            "-fsanitize=address,undefined",
-            "-fno-sanitize-recover=all",
-            "-Wall",
-            "-Wextra",
-            "-o",
-        ])
-        .arg(&binary)
-        .arg(&source)
+        .args(GXX_FLAGS)
+        .arg(&tmp_binary)
+        .arg(&tmp_source)
         .output()
         .map_err(|e| format!("g++ did not start ({e}); these tests need it"))?;
     let warnings = String::from_utf8_lossy(&compiled.stderr);
     if !compiled.status.success() || !warnings.is_empty() {
+        let _ = std::fs::remove_file(&tmp_binary);
         return Err(format!(
             "g++ complained about {}:\n{warnings}",
-            source.display()
+            tmp_source.display()
         ));
     }
+    std::fs::rename(&tmp_binary, &binary).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp_source, &source).map_err(|e| e.to_string())?;
+    Ok(binary)
+}
+
+/// Builds `cpp` with the sanitizers on and runs it on `input`, with
+/// `scratch` (a directory of the calling test's own) for the judge's files.
+fn compile_and_run(
+    name: &str,
+    scratch: &str,
+    cpp: &[u8],
+    input: &[u8],
+    interactor: Option<&Path>,
+) -> Result<(Vec<u8>, Option<i32>), String> {
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR"))
+        .join("differential")
+        .join(scratch);
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let binary = sanitized_binary(cpp)?;
+    let source = binary.with_extension("cpp");
     let ran = match interactor {
         None => {
             let mut child = Command::new(&binary)
@@ -148,7 +204,7 @@ fn compile_and_run(
     Ok((ran.stdout, ran.status.code()))
 }
 
-fn check(program: &Path) -> Result<(), String> {
+fn check(program: &Path, shard: usize) -> Result<(), String> {
     let name = program
         .file_stem()
         .expect("a file name")
@@ -207,7 +263,13 @@ fn check(program: &Path) -> Result<(), String> {
 
     // An interactive problem is run against the judge in its file.
     let interactor = source.contains("\n@interactor").then_some(program);
-    let (stdout, code) = compile_and_run(&name, &built.stdout, &input, interactor)?;
+    let (stdout, code) = compile_and_run(
+        &name,
+        &format!("shard-{shard}"),
+        &built.stdout,
+        &input,
+        interactor,
+    )?;
     if stdout != interpreted.stdout {
         return Err(format!(
             "the C++ printed\n{}\nbut the interpreter printed\n{}",
@@ -224,39 +286,60 @@ fn check(program: &Path) -> Result<(), String> {
     Ok(())
 }
 
-#[test]
-fn interpreter_and_sanitized_cpp_agree_on_every_program() {
+/// The programs whose index in sorted order is `shard` modulo `SHARDS`.
+fn shard_of(programs: &[PathBuf], shard: usize) -> Vec<&PathBuf> {
+    programs.iter().skip(shard).step_by(SHARDS).collect()
+}
+
+fn agree_on_shard(shard: usize) {
     let programs = programs();
-    let workers = std::thread::available_parallelism()
-        .map_or(4, |n| n.get())
-        .min(programs.len());
-    let next = std::sync::atomic::AtomicUsize::new(0);
-    let failures = std::sync::Mutex::new(Vec::new());
-    std::thread::scope(|scope| {
-        for _ in 0..workers {
-            scope.spawn(|| loop {
-                let index = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                let Some(program) = programs.get(index) else {
-                    break;
-                };
-                if let Err(why) = check(program) {
-                    failures
-                        .lock()
-                        .expect("no panic while held")
-                        .push(format!("{}: {why}", program.display()));
-                }
-            });
-        }
-    });
-    let mut failures = failures.into_inner().expect("no panic while held");
-    failures.sort();
+    let mine = shard_of(&programs, shard);
+    let failures: Vec<String> = mine
+        .iter()
+        .filter_map(|program| {
+            check(program, shard)
+                .err()
+                .map(|why| format!("{}: {why}", program.display()))
+        })
+        .collect();
     assert!(
         failures.is_empty(),
-        "{} of {} programs failed:\n\n{}",
+        "{} of {} programs in shard {shard} failed:\n\n{}",
         failures.len(),
-        programs.len(),
+        mine.len(),
         failures.join("\n\n")
     );
+}
+
+macro_rules! shards {
+    ($($test:ident = $shard:literal),* $(,)?) => {
+        $(
+            #[test]
+            fn $test() {
+                agree_on_shard($shard);
+            }
+        )*
+        #[test]
+        fn the_shards_cover_every_program_once() {
+            let programs = programs();
+            let mut covered: Vec<&PathBuf> =
+                [$($shard),*].into_iter().flat_map(|k| shard_of(&programs, k)).collect();
+            covered.sort();
+            assert_eq!(covered, programs.iter().collect::<Vec<_>>());
+            assert_eq!([$($shard),*].len(), SHARDS);
+        }
+    };
+}
+
+shards! {
+    interpreter_and_sanitized_cpp_agree_shard_0 = 0,
+    interpreter_and_sanitized_cpp_agree_shard_1 = 1,
+    interpreter_and_sanitized_cpp_agree_shard_2 = 2,
+    interpreter_and_sanitized_cpp_agree_shard_3 = 3,
+    interpreter_and_sanitized_cpp_agree_shard_4 = 4,
+    interpreter_and_sanitized_cpp_agree_shard_5 = 5,
+    interpreter_and_sanitized_cpp_agree_shard_6 = 6,
+    interpreter_and_sanitized_cpp_agree_shard_7 = 7,
 }
 
 #[test]
@@ -353,8 +436,14 @@ print(known[if flag: true else: false][0])
             "{name}: cpl build failed:\n{}",
             built.stderr
         );
-        let (stdout, code) =
-            compile_and_run(&format!("gap_{name}"), &built.stdout, &[], None).expect(name);
+        let (stdout, code) = compile_and_run(
+            &format!("gap_{name}"),
+            "lowering-gaps",
+            &built.stdout,
+            &[],
+            None,
+        )
+        .expect(name);
         assert_eq!(code, Some(0), "{name}: sanitized C++ non-zero exit");
         assert_eq!(
             String::from_utf8_lossy(&stdout),
