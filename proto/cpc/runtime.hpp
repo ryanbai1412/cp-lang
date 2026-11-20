@@ -68,6 +68,48 @@ static inline ll cp_ctz(ll x) { return x == 0 ? 64 : __builtin_ctzll((unsigned l
 static inline ll cp_clz(ll x) { return x == 0 ? 64 : __builtin_clzll((unsigned long long)x); }
 static inline ll cp_bit_len(ll x) { return 64 - cp_clz(x); }
 
+// Str: a flat run of ASCII bytes at positions 0..len (cheat sheet section 4)
+static inline string cp_str_slice(const string& s, ll lo, ll hi, bool incl, int line) {
+    if (hi < 0 && !incl) hi = (ll)s.size(); else if (incl) hi += 1;
+#ifdef LOCAL
+    if (lo < 0 || hi > (ll)s.size() || lo > hi) cp_fail("Str slice out of bounds", line);
+#endif
+    return s.substr((size_t)lo, (size_t)(hi - lo));
+}
+static inline string cp_str_repeat(const string& s, ll k, int line) {
+    if (k < 0) cp_fail("a Str cannot repeat a negative number of times", line);
+    string r; r.reserve(s.size() * (size_t)k);
+    for (ll i = 0; i < k; ++i) r += s;
+    return r;
+}
+static inline bool cp_str_starts(const string& s, const string& x, ll at) {
+    return at >= 0 && at <= (ll)s.size() && s.compare((size_t)at, x.size(), x) == 0;
+}
+static inline vector<string> cp_str_split(const string& s, char c) {
+    vector<string> r; size_t from = 0;
+    for (size_t k = 0; k <= s.size(); ++k) if (k == s.size() || s[k] == c) { r.push_back(s.substr(from, k - from)); from = k + 1; }
+    return r;
+}
+static inline string cp_str_trim_start(const string& s, char c) {
+    size_t k = 0; while (k < s.size() && s[k] == c) ++k;
+    return s.substr(k);
+}
+static inline string cp_str_join(const string& sep, const vector<string>& xs) {
+    string r;
+    for (size_t k = 0; k < xs.size(); ++k) { if (k) r += sep; r += xs[k]; }
+    return r;
+}
+static inline ll cp_parse_int(const string& s, int line) {
+    size_t k = 0; bool neg = false; ll v = 0;
+    if (k < s.size() && (s[k] == '-' || s[k] == '+')) neg = s[k++] == '-';
+    if (k == s.size()) cp_fail("parse_int: not a number", line);
+    for (; k < s.size(); ++k) {
+        if (s[k] < '0' || s[k] > '9') cp_fail("parse_int: not a number", line);
+        if (__builtin_mul_overflow(v, 10LL, &v) || __builtin_add_overflow(v, (ll)(s[k] - '0'), &v)) cp_fail("parse_int: Int overflow", line);
+    }
+    return neg ? -v : v;
+}
+
 template <class T> struct Opt {
     T v{}; bool h = false;
     Opt() {}
