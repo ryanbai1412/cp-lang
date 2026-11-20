@@ -242,6 +242,13 @@ impl<'a> Lowerer<'a> {
             ast::ExprKind::Name(name) => name.as_str(),
             _ => "",
         };
+        // `read::<Int>()`: a read that says its own type.
+        if name == "read" && self.get_sym(name).is_none() {
+            if let [ty] = types {
+                let want = self.resolve_ty(ty);
+                return self.prelude(name, args, Some(&want), span);
+            }
+        }
         if matches!(name, "List" | "Set" | "HashSet" | "Map" | "HashMap") {
             let ty = ast::Type {
                 kind: ast::TypeKind::Named {

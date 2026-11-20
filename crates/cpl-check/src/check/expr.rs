@@ -822,6 +822,18 @@ impl<'a> Checker<'a> {
         if name.text.is_empty() {
             return Ty::Error;
         }
+        // `tree.Pre`: the domain a value owns, named by the type
+        // parameter it fills.
+        if let Ty::Named { name: type_name, args } = &base_ty {
+            if let Some(members) = self.members_of(type_name) {
+                if members.generics.contains(&name.text) {
+                    return match members.bindings(args).get(&name.text) {
+                        Some(Ty::Pos(domain)) => Ty::Domain(domain.clone()),
+                        _ => Ty::Unknown,
+                    };
+                }
+            }
+        }
         let found = match &base_ty {
             Ty::Record(fields) => {
                 let names: Vec<String> = fields.iter().map(|(n, _)| n.clone()).collect();

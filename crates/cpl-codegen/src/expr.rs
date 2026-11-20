@@ -1187,16 +1187,12 @@ impl<'p> Emitter<'p> {
         }
 
         // Parameters.
-        let mut param_parts = Vec::new();
+        let mut params = Vec::new();
         for &slot in &def.params {
             let ty = &def.locals[slot].ty;
             let cpp = self.ty(ty);
-            let pname = &inner_names[slot];
-            if ty.is_scalar() {
-                param_parts.push(format!("{cpp} {pname}"));
-            } else {
-                param_parts.push(format!("const {cpp}& {pname}"));
-            }
+            let cpp = if ty.is_scalar() { cpp } else { format!("const {cpp}&") };
+            params.push((cpp, inner_names[slot].clone()));
         }
 
         let ret_cpp = self.ty(&def.ret);
@@ -1222,11 +1218,7 @@ impl<'p> Emitter<'p> {
             _ => {}
         });
 
-        let mut text = format!(
-            "[{}]({}) mutable -> {ret_cpp} {{\n",
-            cap_parts.join(", "),
-            param_parts.join(", ")
-        );
+        let mut text = String::new();
         self.indent += 1;
         for alias in global_ref_aliases {
             text.push_str(&format!("{}{alias}\n", pad(self.indent)));
@@ -1252,6 +1244,23 @@ impl<'p> Emitter<'p> {
         self.indent -= 1;
         text.push_str(&pad(self.indent));
         text.push('}');
+        // A parameter the body never names is left unnamed, as `_` is
+        // in the source: g++ warns about a named one.
+        let names = |name: &str| {
+            let word = |c: char| c.is_ascii_alphanumeric() || c == '_';
+            text.match_indices(name).any(|(at, _)| {
+                !text[..at].ends_with(word) && !text[at + name.len()..].starts_with(word)
+            })
+        };
+        let param_parts: Vec<String> = params
+            .iter()
+            .map(|(cpp, name)| if names(name) { format!("{cpp} {name}") } else { cpp.clone() })
+            .collect();
+        let text = format!(
+            "[{}]({}) mutable -> {ret_cpp} {{\n{text}",
+            cap_parts.join(", "),
+            param_parts.join(", ")
+        );
 
         // Restore enclosing emitter state.
         self.closure_id = saved_closure;
