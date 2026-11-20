@@ -198,7 +198,6 @@ fn compile(path: &str, stderr: &mut String) -> Result<Compiled, u8> {
         }
     };
     let mut db = cpl_check::Database::new();
-    db.use_std_implicitly();
     db.set_file(path, text.as_str());
     let analysis = db.analyze(path).expect("the file was just set");
     if !analysis.diagnostics.is_empty() {
@@ -596,7 +595,6 @@ fn run_unit_tests(
 /// finds.
 fn check(files: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
     let mut db = cpl_check::Database::new();
-    db.use_std_implicitly();
     let mut code = 0;
     for path in files {
         let text = match std::fs::read_to_string(path) {

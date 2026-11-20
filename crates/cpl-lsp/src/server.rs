@@ -294,8 +294,9 @@ impl Server {
         let Some(analysis) = self.db.analyze(uri) else {
             return publish(uri, Vec::new());
         };
-        let items = analysis
-            .diagnostics
+        // The same answer as `cpl check`: the checker's diagnostics, then
+        // what lowering rejects.
+        let items = cpl_ir::check(&analysis)
             .iter()
             .map(|d| diagnostic_json(d, uri, &analysis.text, &analysis.lines))
             .collect();

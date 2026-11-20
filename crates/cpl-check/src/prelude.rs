@@ -6,9 +6,40 @@
 //! `argmin`), and the intrinsics the libraries are written on top of
 //! (`rand`, `sort`, `swap`, `popcount`, ...; `stdlib/README.md` lists them).
 //!
-//! Everything else, `std` included, is cp source and resolves through `use`.
+//! Everything else, `std` included, is cp source and resolves through
+//! `use`. The `std` names a program has without writing one are listed in
+//! `stdlib/prelude.cp`, which [`names`] reads.
+
+use std::sync::OnceLock;
+
+use cpl_syntax::ast;
 
 use crate::ty::{Param, Ty};
+
+/// What `stdlib/prelude.cp` lists: each name, and the module its `use`
+/// takes it from (`std.mod`, `Mod`). The compiler has no list of its own.
+pub fn names() -> &'static [(Vec<ast::Name>, ast::Name)] {
+    static NAMES: OnceLock<Vec<(Vec<ast::Name>, ast::Name)>> = OnceLock::new();
+    NAMES.get_or_init(|| {
+        let text = crate::modules::bundled_std(&["prelude".to_string()])
+            .expect("stdlib/prelude.cp is built into the compiler");
+        let mut found = Vec::new();
+        for (_, item) in cpl_syntax::parse_file(text).items {
+            for stmt in item.stmts {
+                if let ast::StmtKind::Use { path, names, .. } = stmt.kind {
+                    // The spans are of the prelude's text, not the file's.
+                    let bare = |name: &ast::Name| ast::Name {
+                        text: name.text.clone(),
+                        span: cpl_diag::Span::new(0, 0),
+                    };
+                    let module: Vec<ast::Name> = path.iter().map(bare).collect();
+                    found.extend(names.iter().map(|name| (module.clone(), bare(name))));
+                }
+            }
+        }
+        found
+    })
+}
 
 fn int_fn(arity: usize) -> Ty {
     Ty::Fn {
@@ -49,8 +80,11 @@ pub fn value(name: &str) -> Option<Ty> {
         // `read(columns)` reads an array of records a field at a time
         // (decisions §13).
         "take" | "columns" => Ty::Unknown,
+        // `ask("?", x)` prints a query, flushes, and reads the judge's
+        // answer; `Subset<D>` is the subsets of a domain. Both are lowered
+        // by `cpl-ir`.
+        "ask" | "Subset" => Ty::Unknown,
         _ if TYPE_NAMES.contains(&name) => Ty::TypeName(name.into()),
-        _ if PROTOTYPE_NAMES.contains(&name) => Ty::Unknown,
         _ => return None,
     })
 }
@@ -75,41 +109,11 @@ pub fn ty(name: &str) -> Option<Ty> {
         // The solution as an `@interactor` sees it: `sol.recv()` reads what
         // it printed, `sol.send(x)` answers it.
         "Interactor" => Ty::Unknown,
-        _ if PROTOTYPE_NAMES.contains(&name) => Ty::Unknown,
+        // The subsets of a domain, lowered by `cpl-ir` as a bitmask.
+        "Subset" => Ty::Unknown,
         _ => return None,
     })
 }
-
-/// Names the prototype compiler (`proto/cpc`) builds in, which the ports
-/// in `proto/ports/` were written against before `std` existed as cp
-/// source. They are accepted without a type so those ports still check;
-/// each one goes away when the ports that use it import its `std` module.
-const PROTOTYPE_NAMES: &[&str] = &[
-    "gcd",
-    "lcm",
-    "runs",
-    "distinct",
-    "product",
-    "compress",
-    "inf",
-    "ask",
-    "dijkstra",
-    "Rooted",
-    "SegTree",
-    "StrHash",
-    "MinHeap",
-    "HashMap",
-    "AddMax",
-    "WithMin",
-    "Perm",
-    "Subset",
-    "Mod",
-    "Graph",
-    "Dsu",
-    "AssignSum",
-    "condense",
-    "scc",
-];
 
 /// A prelude trait: what `T: Ord` and `impl Add for V` may name.
 pub fn is_trait(name: &str) -> bool {
@@ -118,7 +122,7 @@ pub fn is_trait(name: &str) -> bool {
 
 const TYPE_NAMES: &[&str] = &[
     "List", "Map", "Set", "Int", "Bool", "Char", "Str", "Float", "F64", "Iter", "Opt", "Range", "Bounds",
-    "Counter",
+    "Counter", "HashMap",
 ];
 
 /// The traits of `plan/19-index-and-lends.md` and `stdlib/README.md`.
