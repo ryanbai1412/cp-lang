@@ -384,3 +384,10 @@ record: `let x = opt else: return 0`, a range bounded by an earlier input
 on a `?Int`, `while let`, `sorted(a, by: e => e.cost)`, and from the audit
 `if let below = r + step and let right = c + step`, `span(i, j)` and
 `prefix(a).sum(range)`.
+
+## Batch 2 (2026-11-20)
+
+Ten graph, tree and range-query problems, ported on top of `stdlib/` and
+run on the reference interpreter. Its items are in
+[`friction-backlog-batch-2.md`](friction-backlog-batch-2.md), numbered B1
+to B12.
