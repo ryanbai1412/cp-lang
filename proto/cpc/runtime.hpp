@@ -132,6 +132,10 @@ static inline int rd_dom(ll lo, ll len, int line) { return chk_dom(rd_int() - lo
 static mt19937_64 cp_rng(1);
 static ll cp_size = 10;
 static inline ll gen_int(ll lo, ll hi) {
+    if (lo < 0 && hi > 0 && cp_size >= 0) {  // a signed range: stay near 0 so both signs show up
+        ll a = max(lo, -cp_size), b = min(hi, cp_size);
+        return a + (ll)(cp_rng() % (unsigned long long)(b - a + 1));
+    }
     ll h = hi; if (cp_size >= 0 && h - lo > cp_size) h = lo + (ll)(cp_rng() % (cp_size + 1));
     if (h < lo) h = lo;
     return lo + (ll)(cp_rng() % (unsigned long long)(h - lo + 1));
@@ -215,6 +219,32 @@ struct StrHash {
     ll of(int l, int r) const {  // inclusive
         unsigned long long x = pre[r + 1] + M - mul(pre[l], pw[r + 1 - l]);
         return (ll)(x >= M ? x - M : x);
+    }
+};
+
+// RootedTree: parent, preorder and O(1) lca of a tree given as adjacency lists. Prototype stand-in for std.tree.
+struct RootedTree {
+    vector<int> par, order, tin, dep; vector<vector<int>> sp;
+    RootedTree() {}
+    RootedTree(const vector<vector<int>>& adj, int root) : par(adj.size(), -1), tin(adj.size(), -1), dep(adj.size(), 0) {
+        vector<int> st{root};
+        while (!st.empty()) {
+            int u = st.back(); st.pop_back();
+            tin[u] = (int)order.size(); order.push_back(u);
+            for (int i = (int)adj[u].size() - 1; i >= 0; --i) { int v = adj[u][i]; if (v != par[u]) { par[v] = u; dep[v] = dep[u] + 1; st.push_back(v); } }
+        }
+        int n = (int)order.size();
+        sp.assign(1, vector<int>(n));
+        for (int i = 0; i < n; ++i) sp[0][i] = par[order[i]] < 0 ? 0 : tin[par[order[i]]];
+        for (int k = 1; (1 << k) <= n; ++k) {
+            sp.emplace_back(n - (1 << k) + 1);
+            for (int i = 0; i + (1 << k) <= n; ++i) sp[k][i] = min(sp[k - 1][i], sp[k - 1][i + (1 << (k - 1))]);
+        }
+    }
+    int lca(int u, int v) const {
+        if (u == v) return u;
+        int l = min(tin[u], tin[v]) + 1, r = max(tin[u], tin[v]) + 1, k = 31 - __builtin_clz(r - l);
+        return order[min(sp[k][l], sp[k][r - (1 << k)])];
     }
 };
 

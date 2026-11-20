@@ -54,6 +54,12 @@ class THash(T):
     def __hash__(self): return hash(("strhash", self.dom))
     def __repr__(self): return f"StrHash<{self.dom!r}>"
 
+class TTree(T):
+    def __init__(self, dom): self.dom = dom
+    def __eq__(self, o): return isinstance(o, TTree) and o.dom == self.dom
+    def __hash__(self): return hash(("tree", self.dom))
+    def __repr__(self): return f"Rooted<{self.dom!r}>"
+
 class THeap(T):
     def __init__(self, elem): self.elem = elem
     def __eq__(self, o): return isinstance(o, THeap) and o.elem == self.elem
@@ -187,6 +193,7 @@ class Compiler:
         if isinstance(t, TArr): return f"vector<{'int' if self.narrow(t.elem) else self.cpp_type(t.elem)}>"
         if isinstance(t, TEnum): return t.cpp
         if isinstance(t, THash): return "StrHash"
+        if isinstance(t, TTree): return "RootedTree"
         if isinstance(t, TSeg): return f"SegTree<{self.cpp_type(t.elem)}>"
         if isinstance(t, THeap):
             e = self.cpp_type(t.elem)
@@ -689,6 +696,15 @@ class Compiler:
                 if (isinstance(lt, TOpt) or isinstance(rt, TOpt)) and op not in ("==", "!="):
                     self.error(e, f"`{op}` on an optional ({lt!r} vs {rt!r}): ?T has no ordering; "
                                   f"handle `none` explicitly")
+                if op in ("==", "!=") and isinstance(lt, TOpt) != isinstance(rt, TOpt):
+                    # ?T == T: `none` equals no value, so this is "present and equal"
+                    o_c, o_t, x_c, x_t = (left_c, lt, rc, rt) if isinstance(lt, TOpt) else (rc, rt, left_c, lt)
+                    if o_t.inner != x_t and not (is_int(o_t.inner) and is_int(x_t)):
+                        self.error(e, f"comparing {lt!r} with {rt!r}")
+                    eq = f"([&](const auto& _o, const auto& _x) {{ return _o.has() && _o.get() == _x; }}({o_c}, {x_c}))"
+                    parts.append(eq if op == "==" else f"!{eq}")
+                    left_c, left_t = rc, rt
+                    continue
                 if isinstance(lt, TDom) != isinstance(rt, TDom) or (
                         isinstance(lt, TDom) and lt.info is not rt.info):
                     self.error(e, f"comparing {lt!r} with {rt!r}")
@@ -832,6 +848,8 @@ class Compiler:
     def x_field(self, e, want):
         oc, ot = self.expr(e.obj)
         f = e.name
+        if isinstance(ot, TTree) and f == "preorder":
+            return f"{oc}.order", TList(ot.dom)
         if isinstance(ot, TDom) and f == "elem" and getattr(ot.info, "base", None) is not None:
             return f"([&](int _w) {{ return _w == 0 ? Opt<int>() : Opt<int>(_w - 1); }}({oc}))", TOpt(TDom(ot.info.base))
         if isinstance(ot, TType) and isinstance(ot.t, TDom):
@@ -932,6 +950,15 @@ class Compiler:
             if not (is_int(lt) and is_int(ht)):
                 self.error(e, "rand(lo, hi) needs Ints")
             return f"gen_int({lc}, {hc})", TInt(lt.lo, ht.hi)
+        if fn.kind == "name" and fn.name == "Rooted" and len(e.args) == 2 and not self.lookup(fn.name):
+            # Rooted(adj, root): a tree given as [V]List<V>, hung from `root`
+            c, t = self.expr(e.args[0])
+            if not (isinstance(t, TArr) and len(t.dims) == 1 and t.elem == TList(t.dims[0])):
+                self.error(e, f"Rooted needs adjacency lists [V]List<V>, got {t!r}")
+            rc, rt = self.expr(e.args[1], t.dims[0])
+            if rt != t.dims[0]:
+                self.error(e, f"the root must be a {t.dims[0]!r}, got {rt!r}")
+            return f"RootedTree({c}, {rc})", TTree(t.dims[0])
         if fn.kind == "name" and fn.name == "StrHash" and len(e.args) == 1 and not self.lookup(fn.name):
             c, t = self.expr(e.args[0])
             if not (isinstance(t, TArr) and len(t.dims) == 1 and isinstance(t.elem, TChar)):
@@ -1209,6 +1236,22 @@ class Compiler:
                         f"return _k >= 0 ? Opt<int>((int)_k) : Opt<int>(); }}({c}))"), TOpt(ot.dims[0])
             return (f"([&](auto _x){{ ll _k = lower_bound({oc}.begin(), {oc}.end(), _x) - {oc}.begin(); "
                     f"return _k < (ll){oc}.size() ? Opt<int>((int)_k) : Opt<int>(); }}({c}))"), TOpt(ot.dims[0])
+        if isinstance(ot, TTree):
+            cs = []
+            for a in args:
+                c, t = self.expr(a, ot.dom)
+                if t != ot.dom:
+                    self.error(a, f"nodes of this tree are {ot.dom!r}, got {t!r}")
+                cs.append(c)
+            if m == "lca" and len(cs) == 2:
+                return f"{oc}.lca({cs[0]}, {cs[1]})", ot.dom
+            if m == "parent" and len(cs) == 1:
+                return f"([&](int _p){{ return _p < 0 ? Opt<int>() : Opt<int>(_p); }}({oc}.par[{cs[0]}]))", TOpt(ot.dom)
+            if m == "pos" and len(cs) == 1:
+                return f"(ll){oc}.tin[{cs[0]}]", TInt(0, ot.dom.info.len_iv[1])
+            if m == "depth" and len(cs) == 1:
+                return f"(ll){oc}.dep[{cs[0]}]", TInt(0, ot.dom.info.len_iv[1])
+            self.error(e, f"no method {m} on {ot!r} (lca(u, v), parent(v), pos(v), depth(v), .preorder)")
         if isinstance(ot, THash) and m == "of" and len(args) == 2:
             cs = []
             for a in args:
@@ -1380,10 +1423,14 @@ class Compiler:
                 if isinstance(t, TArr) and len(t.dims) == 1:
                     trips = t.dims[0].info.len_iv[1]
                 el = t.elem
-                if rev:
-                    self.error(it, ".rev on arrays: iterate the domain in reverse instead")
                 v = self.tmpname("x")
-                self.emit(f"for (const auto& {v} : {c}) {{")
+                if rev:
+                    # lists have no domain to reverse, so `for x in xs.rev` walks back to front
+                    r = self.tmpname("r")
+                    self.emit(f"const auto& {r} = {c};")
+                    self.emit(f"for (auto {r}i = {r}.rbegin(); {r}i != {r}.rend(); ++{r}i) {{ const auto& {v} = *{r}i;")
+                else:
+                    self.emit(f"for (const auto& {v} : {c}) {{")
                 self.ind += 1
                 self.bind_pattern(pat, v, el, node)
                 self.ind -= 1
@@ -3144,7 +3191,8 @@ def render(comp):
     def keep(m):
         name, body = m.group(1), m.group(2)
         rest = code[:m.start()] + code[m.end():]
-        return body if re.search(r"\b" + name + r"\b", rest) else ""
+        names = [name, "cp_emod"] if name == "cp_ediv" else [name]   # the part defines both
+        return body if any(re.search(r"\b" + n + r"\b", rest) for n in names) else ""
     code = re.sub(r"// @part (\w+)\n(.*?)// @end\n", keep, code, flags=re.S)
     return (code,) + tuple(res[1:]) if isinstance(res, tuple) else code
 
