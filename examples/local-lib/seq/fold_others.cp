@@ -58,5 +58,5 @@ fn balanced_fold_keeps_the_order():
     for n in 0..12:
         let xs = [Str(i) for i in 0..n]
         var want = ""
-        for x in xs: want = want + x
+        for x in xs: want += x
         assert fold_balanced(xs, "", (a, b) => a + b) == want

@@ -26,7 +26,7 @@ pub fn poly_degree_mod<P>(ys: List<Mod<P>>) -> ?Int:
 /// O(k) after one modular inverse, for `k = ys.len <= P`.
 pub fn lagrange_at<P>(ys: List<Mod<P>>, n: Int) -> Mod<P>:
     let k = ys.len
-    let one = Mod<P>(1)
+    let one: Mod<P> = 1
     if 0 <= n and n < k: return ys[n]
     // before[i] = (n - 0) * ... * (n - (i - 1)), after[i] = (n - (i + 1)) * ... * (n - (k - 1))
     var before = List.filled(k + 1, one)
@@ -35,13 +35,13 @@ pub fn lagrange_at<P>(ys: List<Mod<P>>, n: Int) -> Mod<P>:
     for i in (0..k).rev: after[i] = after[i + 1] * Mod<P>(n - i)
     var inv_fact = List.filled(k, one)
     var fact = one
-    for i in 1..k: fact = fact * Mod<P>(i)
+    for i in 1..k: fact *= Mod<P>(i)
     inv_fact[k - 1] = fact.inv
     for i in (1..k).rev: inv_fact[i - 1] = inv_fact[i] * Mod<P>(i)
-    var total = Mod<P>(0)
+    var total: Mod<P> = 0
     for i in 0..k:
         let term = ys[i] * before[i] * after[i + 1] * inv_fact[i] * inv_fact[k - 1 - i]
-        if (k - 1 - i) % 2 == 0: total = total + term else: total = total - term
+        if (k - 1 - i) % 2 == 0: total += term else: total = total - term
     total
 
 /// The coefficients, lowest degree first, of the polynomial of least degree through
@@ -86,14 +86,12 @@ pub fn show_poly(coef: List<Frac>) -> Str:
     for i in (0..coef.len).rev:
         let c = coef[i]
         if c.num == 0: continue
-        if out.len > 0: out = out + (
-            if c.num < 0: " - " else: " + "
-        ) elif c.num < 0: out = out + "-"
+        if out.len > 0: out += (if c.num < 0: " - " else: " + ") elif c.num < 0: out += "-"
         let mag = if c.den == 1: "{abs(c.num)}" else: "{abs(c.num)}/{c.den}"
         let power = if i == 0: "" elif i == 1: "n" else: "n^{i}"
-        if i == 0: out = out + mag
-        elif mag == "1": out = out + power
-        else: out = out + mag + " " + power
+        if i == 0: out += mag
+        elif mag == "1": out += power
+        else: out += mag + " " + power
     if out.len == 0: "0" else: out
 
 @test
@@ -130,7 +128,7 @@ fn sums_of_powers_far_out():
         for x in 1..=k + 2: ys.push(ys.last + M(x).pow(k))
         assert poly_degree_mod(ys) == k + 1
         var want: M = 0
-        for x in 1..=300: want = want + M(x).pow(k)
+        for x in 1..=300: want += M(x).pow(k)
         assert lagrange_at(ys, 300) == want
     // n = 10^18, k = 1: n * (n + 1) / 2
     let n = 10 ** 18

@@ -16,7 +16,7 @@ pub fn rational_recurrence(xs: List<Int>) -> List<Frac>:
     var (last_at, last_gap) = (-1, zero)
     for i in 0..xs.len:
         var guess = zero
-        for j in 0..cur.len: guess = guess + cur[j] * Frac.new(xs[i - 1 - j])
+        for j in 0..cur.len: guess += cur[j] * Frac.new(xs[i - 1 - j])
         let gap = Frac.new(xs[i]) - guess
         if gap == zero: continue
         if last_at < 0:
@@ -30,7 +30,7 @@ pub fn rational_recurrence(xs: List<Int>) -> List<Frac>:
         fix.push(k)
         for c in last: fix.push(zero - c * k)
         if fix.len < cur.len: fix.resize(cur.len, zero)
-        for j in 0..cur.len: fix[j] = fix[j] + cur[j]
+        for j in 0..cur.len: fix[j] += cur[j]
         if i - last_at + last.len >= cur.len:
             (last, last_at, last_gap) = (cur, i, gap)
         cur = fix
@@ -75,7 +75,7 @@ pub fn extend(c: List<Int>, init: List<Int>, n: Int) -> List<Int>:
 pub fn nth_term<P>(c: List<Int>, init: List<Int>, n: Int) -> Mod<P>:
     assert init.len >= c.len
     if n < init.len: return Mod<P>(init[n])
-    if c.is_empty: return Mod<P>(0)
+    if c.is_empty: return 0
     recurrence_at([Mod<P>(x) for x in c], [Mod<P>(x) for x in init], n)
 
 /// The recurrence written out, to paste into a comment: `a[n] = 4 a[n-1] - a[n-2]`.
@@ -85,9 +85,9 @@ pub fn show_recurrence(c: List<Int>) -> Str:
     for j in 0..c.len:
         if c[j] == 0: continue
         let mag = abs(c[j])
-        if c[j] < 0: out = out + " -" elif any_term: out = out + " +"
+        if c[j] < 0: out += " -" elif any_term: out = out + " +"
         out += " "
-        if mag != 1: out = out + "{mag} "
+        if mag != 1: out += "{mag} "
         out += "a[n-{j + 1}]"
         any_term = true
     if any_term: out else: out + " 0"
@@ -130,7 +130,7 @@ fn random_recurrences_are_recovered_and_continued():
         // whatever was found reproduces the data, and the mod-P search agrees on the length
         for i in found.len..xs.len:
             var t = Frac.new(0)
-            for j in 0..found.len: t = t + found[j] * Frac.new(xs[i - 1 - j])
+            for j in 0..found.len: t += found[j] * Frac.new(xs[i - 1 - j])
             assert t == Frac.new(xs[i])
         assert mod_recurrence::<1000000007>(xs)!.len == found.len
         if let ints = integer_recurrence(xs):

@@ -7,7 +7,7 @@ pub fn sos_sub<T>(f: List<T>, bits: Int) -> List<T>:
     var g = [x for x in f]
     for b in 0..bits:
         for mask in 0..g.len:
-            if (mask >> b) % 2 == 1: g[mask] = g[mask] + g[mask ^ (1 << b)]
+            if (mask >> b) % 2 == 1: g[mask] += g[mask ^ (1 << b)]
     g
 
 /// `out[mask]` is the sum of `f[sup]` over every `sup` that contains `mask`.
@@ -16,7 +16,7 @@ pub fn sos_sup<T>(f: List<T>, bits: Int) -> List<T>:
     var g = [x for x in f]
     for b in 0..bits:
         for mask in 0..g.len:
-            if (mask >> b) % 2 == 0: g[mask] = g[mask] + g[mask | (1 << b)]
+            if (mask >> b) % 2 == 0: g[mask] += g[mask | (1 << b)]
     g
 
 /// The inverse of `sos_sub`: recover `f` from its subset sums.
@@ -25,7 +25,7 @@ pub fn sos_sub_inv<T>(g: List<T>, bits: Int) -> List<T>:
     var f = [x for x in g]
     for b in 0..bits:
         for mask in 0..f.len:
-            if (mask >> b) % 2 == 1: f[mask] = f[mask] - f[mask ^ (1 << b)]
+            if (mask >> b) % 2 == 1: f[mask] -= f[mask ^ (1 << b)]
     f
 
 @test

@@ -169,7 +169,7 @@ fn splitting_a_bill_loses_no_cent():
         let extra = (total - share.times(n)).raw
         assert 0 <= extra and extra < n
         var paid = Money.of(0)
-        for i in 0..n: paid = paid + (if i < extra: share + Money(1) else: share)
+        for i in 0..n: paid += (if i < extra: share + Money(1) else: share)
         assert paid == total
     let third = Money.parse("10")! / Money.of(3)
     assert "{third}" == "3.33"

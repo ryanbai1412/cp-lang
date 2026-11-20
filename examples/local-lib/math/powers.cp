@@ -18,8 +18,8 @@ pub struct Powers<P>(base: Mod<P>):
     /// `1 + base + ... + base ** (k - 1)`, the geometric sum of `k` terms. O(k) at most once
     /// per call; for one base and many `k`, fold `pw` with `scan` instead.
     pub fn geometric(self, k: Int) -> Mod<P>:
-        var acc = Mod<P>(0)
-        for i in 0..k: acc = acc + pw[i]
+        var acc: Mod<P> = 0
+        for i in 0..k: acc += pw[i]
         acc
 
 @test
@@ -37,7 +37,7 @@ fn subsets_with_a_given_minimum():
     let xs = [1, 3, 4, 9]
     let two = Powers<998244353>(2, xs.len)
     var total: M = 0
-    for i in 0..xs.len: total = total + M(xs[i]) * two[xs.len - 1 - i]
+    for i in 0..xs.len: total += M(xs[i]) * two[xs.len - 1 - i]
     var want = 0
     for mask in 1..16:
         want += min(xs[i] for i in 0..4 if (mask >> i) % 2 == 1)

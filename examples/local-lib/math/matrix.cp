@@ -24,7 +24,7 @@ pub struct Mat<P>(n: Int, a: List<List<Mod<P>>>):
     pub fn pow(self, e: Int) -> Mat<P>:
         var (base, acc, k) = (self, Mat<P>.identity(n), e)
         while k > 0:
-            if k % 2 == 1: acc = acc * base
+            if k % 2 == 1: acc *= base
             base *= base
             k /= 2
         acc
@@ -36,17 +36,17 @@ pub struct Mat<P>(n: Int, a: List<List<Mod<P>>>):
     pub fn apply(self, v: List<Mod<P>>) -> List<Mod<P>>:
         var out = List.filled(n, Mod<P>(0))
         for i in 0..n:
-            for j in 0..n: out[i] = out[i] + a[i][j] * v[j]
+            for j in 0..n: out[i] += a[i][j] * v[j]
         out
 
     /// Determinant modulo prime `P` by Gaussian elimination. O(n^3).
     pub fn det(self) -> Mod<P>:
         var m = [[a[i][j] for j in 0..n] for i in 0..n]
-        var ans = Mod<P>(1)
+        var ans: Mod<P> = 1
         for col in 0..n:
             var piv = col
             while piv < n and m[piv][col] == 0: piv += 1
-            if piv == n: return Mod<P>(0)
+            if piv == n: return 0
             if piv != col:
                 let tmp = m[col]
                 m[col] = m[piv]
@@ -58,7 +58,7 @@ pub struct Mat<P>(n: Int, a: List<List<Mod<P>>>):
             for r in col + 1..n:
                 if m[r][col] == 0: continue
                 let f = m[r][col] * inv_l
-                for c in col..n: m[r][c] = m[r][c] - f * m[col][c]
+                for c in col..n: m[r][c] -= f * m[col][c]
         ans
 
     /// Rank of the matrix modulo prime `P`. O(n^3).
@@ -77,7 +77,7 @@ pub struct Mat<P>(n: Int, a: List<List<Mod<P>>>):
             for i in r + 1..n:
                 if m[i][col] == 0: continue
                 let f = m[i][col] * inv_l
-                for c in col..n: m[i][c] = m[i][c] - f * m[r][c]
+                for c in col..n: m[i][c] -= f * m[r][c]
             r += 1
         r
 
@@ -101,11 +101,11 @@ pub fn solve_linear<P>(rows: List<List<Mod<P>>>, b: List<Mod<P>>) -> ?List<Mod<P
         if piv != r:
             aug.swap(r, piv)
         let inv_l = aug[r][col].inv
-        for c in col..=k: aug[r][c] = aug[r][c] * inv_l
+        for c in col..=k: aug[r][c] *= inv_l
         for i in 0..m:
             if i == r or aug[i][col] == 0: continue
             let f = aug[i][col]
-            for c in col..=k: aug[i][c] = aug[i][c] - f * aug[r][c]
+            for c in col..=k: aug[i][c] -= f * aug[r][c]
         pivot_col[col] = r
         r += 1
     for i in r..m:
@@ -149,8 +149,8 @@ fn counting_walks_matches_dp():
         ways = [[sum_mod([ways[i][k] * M(adj[k][j]) for k in 0..n]) for j in 0..n] for i in 0..n]
 
 fn sum_mod<P>(xs: List<Mod<P>>) -> Mod<P>:
-    var t = Mod<P>(0)
-    for x in xs: t = t + x
+    var t: Mod<P> = 0
+    for x in xs: t += x
     t
 
 @test
