@@ -285,6 +285,9 @@ impl<'a> Lowerer<'a> {
                     if let ExprKind::Int(v) = value.kind {
                         self.const_ints.insert(name.text.clone(), v);
                     }
+                    if let ExprKind::Bool(v) = value.kind {
+                        self.const_bools.insert(name.text.clone(), v);
+                    }
                     self.declare(&name.text, value, false, out);
                 }
             }
@@ -397,7 +400,11 @@ impl<'a> Lowerer<'a> {
             }
             ast::StmtKind::Fn(decl) if !self.at_top_level() => {
                 let memo = stmt.decorators.iter().any(|d| d.name.text == "memo");
-                self.lower_local_fn(decl, memo, out);
+                let into = super::memo::into_table(stmt);
+                if let Some(table) = into {
+                    self.memo_into_table(table, decl, out);
+                }
+                self.lower_local_fn(decl, memo, into, out);
             }
             // Top-level declarations were handled by `collect_all`.
             ast::StmtKind::Fn(decl) => {
@@ -1801,6 +1808,23 @@ impl<'a> Lowerer<'a> {
                         BinOp::BitXor => Some("bitxor"),
                         _ => None,
                     };
+                    // `z **= e` is `z = z.pow(e)`, as `z ** e` is.
+                    let pow = match (bin, &value.ty) {
+                        (BinOp::Pow, Ty::Int) => self.structs[sid].methods.get("pow").copied(),
+                        _ => None,
+                    };
+                    if let Some(fn_id) = pow {
+                        self.queue_fn(fn_id);
+                        let ret = self.ret_of(fn_id, span);
+                        let call = Expr {
+                            kind: ExprKind::Call(fn_id, vec![Arg::Value(place_to_expr(&place)), Arg::Value(value)]),
+                            ty: ret,
+                            span: self.span(span),
+                        };
+                        let call = self.coerce(call, &place.ty, span);
+                        out.push(Stmt::Assign(place, AssignOp::Set, call));
+                        return;
+                    }
                     if let Some(fn_id) = mname.and_then(|m| self.struct_op_fn(sid, m)) {
                         let lhs_expr = place_to_expr(&place);
                         let rhs_val = self.coerce(value, &place.ty, span);

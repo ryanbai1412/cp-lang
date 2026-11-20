@@ -938,10 +938,19 @@ impl<'a> Lowerer<'a> {
                     "bit_width" => Builtin::BitWidth,
                     _ => Builtin::BitCeil,
                 };
-                match self.one_arg(name, args, &Ty::Int, span) {
-                    Some(value) => self.mk(ExprKind::Builtin(op, vec![value]), Ty::Int, span),
-                    None => self.err_expr(span),
-                }
+                // The bits of a `U64` are counted as they are.
+                let value = match self.positional_any(name, args, 1, span) {
+                    Some(exprs) if op != Builtin::BitCeil => {
+                        let value = self.expr(exprs[0], None);
+                        match value.ty {
+                            Ty::U64 => value,
+                            _ => self.coerce(value, &Ty::Int, exprs[0].span),
+                        }
+                    }
+                    Some(exprs) => self.expect(exprs[0], &Ty::Int),
+                    None => return self.err_expr(span),
+                };
+                self.mk(ExprKind::Builtin(op, vec![value]), Ty::Int, span)
             }
             "bit" => match self.one_arg(name, args, &Ty::Int, span) {
                 Some(k) => {
@@ -3836,7 +3845,9 @@ impl<'a> Lowerer<'a> {
             (Ty::Fn(_, _), "out") => self.call_fn_val(value, args, span),
             // `Neighbours` for a table of neighbour lists: `adj.out(u)` is
             // `adj[u]`, as it is `adj(u)` for a fn.
-            (Ty::Array { dims, .. }, "out") if dims.len() == 1 && args.len() == 1 => {
+            (Ty::Array { dims, elem }, "out")
+                if dims.len() == 1 && args.len() == 1 && matches!(**elem, Ty::List(_)) =>
+            {
                 let at = ast::Expr {
                     kind: ast::ExprKind::Index {
                         base: Box::new(base.clone()),

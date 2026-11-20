@@ -451,6 +451,8 @@ struct Lowerer<'a> {
 
     globals: Vec<Global>,
     const_ints: HashMap<String, i64>,
+    /// The `const`s that are a `Bool` known when compiling, for `if const`.
+    const_bools: HashMap<String, bool>,
     mod_consts: Vec<ModConstInfo<'a>>,
     gen_consts: Vec<GenConstTemplate<'a>>,
 
@@ -534,6 +536,7 @@ impl<'a> Lowerer<'a> {
             gen_aliases: Vec::new(),
             globals: Vec::new(),
             const_ints: HashMap::new(),
+            const_bools: HashMap::new(),
             mod_consts: Vec::new(),
             gen_consts: Vec::new(),
             traits: Vec::new(),
@@ -678,7 +681,25 @@ impl<'a> Lowerer<'a> {
     }
 
     fn show(&self, ty: &Ty) -> String {
-        let structs: Vec<StructDef> = self.structs.iter().map(|s| s.def.clone()).collect();
+        // A struct made from a generic one is shown as it is written,
+        // `Mod<998244353>`, not by the name its copy has in the C++.
+        let mut structs: Vec<StructDef> = self.structs.iter().map(|s| s.def.clone()).collect();
+        for sid in 0..structs.len() {
+            let (Some(decl), Some((_, args))) = (self.structs[sid].decl, &self.structs[sid].origin_gen) else {
+                continue;
+            };
+            let args: Vec<String> = args
+                .iter()
+                .map(|arg| match arg {
+                    GenArg::Int(v) => v.to_string(),
+                    GenArg::Domain(d) => self.domains[*d].clone(),
+                    GenArg::Ty(ty) => crate::show::ty_name(ty, &self.domains, &structs, &self.enums),
+                    GenArg::RuntimeInt(_) => "_".to_string(),
+                    GenArg::Op(op) => format!("{op:?}"),
+                })
+                .collect();
+            structs[sid].name = format!("{}<{}>", decl.name.text, args.join(", "));
+        }
         crate::show::ty_name(ty, &self.domains, &structs, &self.enums)
     }
 
@@ -953,6 +974,9 @@ impl<'a> Lowerer<'a> {
                         } else {
                             if let Some(v) = self.eval_const_int(init) {
                                 self.const_ints.insert(name.text.clone(), v);
+                            }
+                            if let Some(v) = self.eval_const_bool(init) {
+                                self.const_bools.insert(name.text.clone(), v);
                             }
                             if m > 0 {
                                 let mcid = self.mod_consts.len();

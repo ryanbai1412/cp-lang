@@ -47,6 +47,12 @@ impl<'a> Lowerer<'a> {
                     self.mk(ExprKind::Float(value as f64), Ty::Float, span)
                 }
                 Ok(value) => self.mk(ExprKind::Int(value), Ty::Int, span),
+                // `2**63` and up fits a `U64` where one is wanted: the
+                // same 64 bits.
+                Err(_) if inner_hint == Some(&Ty::U64) && u64::try_from(*value).is_ok() => {
+                    let bits = self.mk(ExprKind::Int(*value as u64 as i64), Ty::Int, span);
+                    self.cast(Cast::IntToU64, bits, Ty::U64)
+                }
                 Err(_) => {
                     self.error(
                         codes::BAD_NUMBER,
@@ -1226,7 +1232,11 @@ impl<'a> Lowerer<'a> {
         }
         // A place, a parameter or a return type says what `read()` reads;
         // the other side of an operator does not.
-        let r_hint = (!is_bare_read(rhs)).then_some(&l.ty);
+        // A shift is by an `Int`, whatever is shifted.
+        let r_hint = match op {
+            Shl | Shr => Some(&Ty::Int),
+            _ => (!is_bare_read(rhs)).then_some(&l.ty),
+        };
         let r = unwrap_first_last(self.expr(rhs, r_hint));
         // Dispatch operator traits (`impl Add/Sub/Mul/Div for Struct`).
         if let Ty::Struct(sid) = l.ty {
@@ -1549,6 +1559,11 @@ impl<'a> Lowerer<'a> {
                 }
             } else if operands.last().is_some_and(|(prev, _)| matches!(prev.ty, Ty::Opt(_))) {
                 self.expr_maybe_opt_reduce(e)
+            } else if matches!(e.kind, ast::ExprKind::Int(_))
+                && operands.last().is_some_and(|(prev, _)| prev.ty == Ty::U64)
+            {
+                // `x == 0xFFFF_FFFF_FFFF_FFFF` beside a `U64` is one.
+                self.expr(e, Some(&Ty::U64))
             } else {
                 self.expr(e, None)
             };
@@ -1619,6 +1634,21 @@ impl<'a> Lowerer<'a> {
         // Bring both sides to one type.
         let (l, r) = if l.ty == r.ty {
             (l, r)
+        } else if matches!((&l.ty, &r.ty), (Ty::Int, Ty::U64) | (Ty::U64, Ty::Int)) {
+            // An `Int` can be negative and a `U64` past `2**63`, so the
+            // two are compared as the numbers they are, in an `I128`. A
+            // literal that is not negative is a `U64` already.
+            let as_u64 = |e: &Expr| matches!(e.kind, ExprKind::Int(v) if v >= 0) || e.ty == Ty::U64;
+            let (cast_int, cast_u64, ty) = if as_u64(&l) && as_u64(&r) {
+                (Some(Cast::IntToU64), None, Ty::U64)
+            } else {
+                (Some(Cast::IntToI128), Some(Cast::U64ToI128), Ty::I128)
+            };
+            let bring = |lw: &Self, e: Expr| match if e.ty == Ty::Int { cast_int } else { cast_u64 } {
+                Some(cast) => lw.cast(cast, e, ty.clone()),
+                None => e,
+            };
+            (bring(self, l), bring(self, r))
         } else {
             let want = match (&l.ty, &r.ty) {
                 (Ty::Float, Ty::Int) | (Ty::Int, Ty::Float) => Ty::Float,

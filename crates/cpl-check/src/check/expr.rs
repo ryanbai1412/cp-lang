@@ -525,6 +525,13 @@ impl<'a> Checker<'a> {
             // A shift keeps the type of what is shifted; otherwise an `Int`
             // beside an `I128` or a `U64` becomes one.
             BinOp::Shl | BinOp::Shr if left.is_int() && right.is_int() => left.widen(),
+            _ if matches!((&left, &right), (Ty::I128, Ty::U64) | (Ty::U64, Ty::I128)) => {
+                let message = format!("`{}` can't combine an `I128` and a `U64`", op.text());
+                if let Some(diag) = self.error(codes::BAD_OPERANDS, op_span, message) {
+                    diag.help = Some("say which one the result is: `I128(x)` or `U64(x)`".into());
+                }
+                Ty::Error
+            }
             _ if left.is_int() && right.is_int() => match (&left, &right) {
                 (wide @ (Ty::I128 | Ty::U64), _) | (_, wide @ (Ty::I128 | Ty::U64)) => wide.clone(),
                 _ => Ty::Int,

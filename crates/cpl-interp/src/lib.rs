@@ -1948,11 +1948,11 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
                 Value::Unit
             }
-            Builtin::Popcount => Value::Int(i64::from((first.int() as u64).count_ones())),
-            Builtin::Ctz => Value::Int(i64::from((first.int() as u64).trailing_zeros())),
-            Builtin::Clz => Value::Int(i64::from((first.int() as u64).leading_zeros())),
+            Builtin::Popcount => Value::Int(i64::from(bits64(&first).count_ones())),
+            Builtin::Ctz => Value::Int(i64::from(bits64(&first).trailing_zeros())),
+            Builtin::Clz => Value::Int(i64::from(bits64(&first).leading_zeros())),
             Builtin::BitWidth => {
-                let u = first.int() as u64;
+                let u = bits64(&first);
                 Value::Int(i64::from(64 - u.leading_zeros()))
             }
             Builtin::BitCeil => {
@@ -2481,6 +2481,14 @@ impl<'p, 'o> Interp<'p, 'o> {
 
 const NO_GRADER: &str =
     "this fn has no body: the judge's grader supplies it, so there is nothing to run here";
+/// The 64 bits of an `Int` or a `U64`.
+fn bits64(value: &Value) -> u64 {
+    match value {
+        Value::U64(bits) => *bits,
+        other => other.int() as u64,
+    }
+}
+
 const OVERFLOW: &str = "integer overflow: the result does not fit in an `Int` (64 bits)";
 const OVERFLOW_I128: &str = "integer overflow: the result does not fit in an `I128` (128 bits)";
 const LENT: &str = "this variable is being changed by a call that has not returned yet";

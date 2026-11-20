@@ -380,7 +380,20 @@ impl<'a> Checker<'a> {
                 self.generics.truncate(outer);
                 self.declare(&name.text, name.span, ty, false, "const");
             }
-            StmtKind::Fn(f) => self.fn_decl(f, None, !top_level, memo_of(stmt)),
+            StmtKind::Fn(f) => {
+                // `@memo(into: dp)` on a fn inside a fn or a loop: the
+                // table is a `var` where the fn stands.
+                if let (false, Some((table, at))) = (top_level, crate::check::memo_table(stmt)) {
+                    if let Ty::Fn { params, ret } = self.fn_sig(f, None) {
+                        let ty = Ty::Array {
+                            index: params.iter().map(|p| p.ty.clone()).collect(),
+                            elem: Box::new(Ty::Optional(Box::new(ret.widen()))),
+                        };
+                        self.declare(table, at, ty, true, "var");
+                    }
+                }
+                self.fn_decl(f, None, !top_level, memo_of(stmt))
+            }
             StmtKind::Struct(s) => {
                 let generics: Vec<String> = s.generics.iter().map(|g| g.text.clone()).collect();
                 let self_ty = Ty::Named {

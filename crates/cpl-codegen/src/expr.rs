@@ -1017,6 +1017,15 @@ impl<'p> Emitter<'p> {
                 self.need(helper);
                 Code::primary(format!("cpl::{helper}({}, {})", a.text, b.text))
             }
+            (Ty::U64, BinOp::Div | BinOp::Rem) => {
+                let helper = if op == BinOp::Div { "udiv" } else { "umod" };
+                self.need("udiv");
+                Code::primary(format!("cpl::{helper}({}, {})", a.text, b.text))
+            }
+            (Ty::I128, BinOp::Shl) => {
+                self.need("shl128");
+                Code::primary(format!("cpl::shl128({}, {})", a.text, b.text))
+            }
             (Ty::I128 | Ty::U64, BinOp::Pow) => {
                 self.need("wpow");
                 Code::primary(format!("cpl::wpow({}, {})", a.text, b.text))

@@ -343,6 +343,11 @@ impl<'a> Lowerer<'a> {
     pub(super) fn eval_const_bool(&self, e: &ast::Expr) -> Option<bool> {
         match &e.kind {
             ast::ExprKind::Bool(b) => Some(*b),
+            // `const FAST = true`, then `if const FAST:`.
+            ast::ExprKind::Name(name) => match self.get_sym(name) {
+                Some(Sym::ModConst(cid)) => self.eval_const_bool(self.mod_consts[cid].init),
+                _ => self.const_bools.get(name).copied(),
+            },
             ast::ExprKind::Paren(inner) => self.eval_const_bool(inner),
             ast::ExprKind::Unary { op: UnOp::Not, expr } => Some(!self.eval_const_bool(expr)?),
             ast::ExprKind::Binary { op: BinOp::And, lhs, rhs, .. } => {
@@ -1291,7 +1296,15 @@ impl<'a> Lowerer<'a> {
     }
 
     /// Lower a local `fn name(params) -> R: body` inside a block as a closure bound to `name`.
-    pub(super) fn lower_local_fn(&mut self, decl: &ast::FnDecl, memo: bool, out: &mut Vec<Stmt>) {
+    /// A fn written inside another. `into` is the table of a
+    /// `@memo(into: dp)`, which the caller has declared.
+    pub(super) fn lower_local_fn(
+        &mut self,
+        decl: &ast::FnDecl,
+        memo: bool,
+        into: Option<&str>,
+        out: &mut Vec<Stmt>,
+    ) {
         let param_tys: Vec<Ty> = decl
             .params
             .iter()
@@ -1413,7 +1426,10 @@ impl<'a> Lowerer<'a> {
             span,
         );
         let mut lets = Vec::new();
-        let stmts = self.memo_wrapper(memo::MemoHome::Outer, &slots, &ret_ty, call, span, &mut lets);
+        let stmts = match into {
+            Some(table) => self.memo_into_wrapper(table, decl, call, &ret_ty),
+            None => self.memo_wrapper(memo::MemoHome::Outer, &slots, &ret_ty, call, span, &mut lets),
+        };
         let inner_cx = std::mem::replace(&mut self.cx, self.outer_cxs.pop().unwrap());
         out.extend(lets);
         let wrapper = self.closures.len();

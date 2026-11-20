@@ -70,7 +70,9 @@ pub fn value(name: &str) -> Option<Ty> {
         "sort" | "sorted" | "shuffle" | "swap" | "copy" | "rand" | "some" | "laws_hold" => {
             Ty::Unknown
         }
-        "popcount" | "ctz" | "bit_width" | "bit_ceil" | "isqrt" => int_fn(1),
+        // These three count the bits of an `Int` or of a `U64`.
+        "popcount" | "ctz" | "bit_width" => Ty::Unknown,
+        "bit_ceil" | "isqrt" => int_fn(1),
         "flush" | "sqrt" | "atan2" | "floor" | "ceil" | "round" | "trunc" | "len" => Ty::Unknown,
         // `counts(xs)` is a `Counter`, `prefix(a)` the prefix sums of an
         // array, and `span(a, b)` the range between two positions in
