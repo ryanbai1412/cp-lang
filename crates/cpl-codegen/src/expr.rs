@@ -1143,6 +1143,10 @@ impl<'p> Emitter<'p> {
                 self.need("bits");
                 Code::primary(format!("cpl::isqrt({})", text(0)))
             }
+            Builtin::Flush => {
+                self.need("out");
+                Code::primary("(cpl::flush(), fflush(stdout))".to_string())
+            }
             Builtin::Atan2 => Code::primary(format!("std::atan2({}, {})", text(0), text(1))),
             Builtin::Floor => Code::new(format!("(ll)std::floor({})", text(0)), UNARY),
             Builtin::Ceil => Code::new(format!("(ll)std::ceil({})", text(0)), UNARY),

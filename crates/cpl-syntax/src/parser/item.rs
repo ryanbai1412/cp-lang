@@ -293,8 +293,10 @@ impl<'a> Parser<'a> {
         let (generics, _) = self.generic_params();
         let mut variants = Vec::new();
         let mut methods = Vec::new();
-        if self.eat(T::Eq) {
-            // `enum Dir = L | R | U | D`.
+        let one_line = self.at(T::Colon) && self.peek_n(1) != T::Newline;
+        if one_line || self.at(T::Eq) {
+            // `enum Dir = L | R | U | D`, or the same after a `:`.
+            self.bump();
             loop {
                 variants.push(self.variant());
                 if !self.eat(T::Pipe) {

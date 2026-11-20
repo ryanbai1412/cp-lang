@@ -467,6 +467,8 @@ pub enum Builtin {
     Sqrt,
     Isqrt,
     Atan2,
+    /// `flush()`: what was printed so far is written out now.
+    Flush,
     Floor,
     Ceil,
     Round,

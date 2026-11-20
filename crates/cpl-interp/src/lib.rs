@@ -1909,6 +1909,12 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
                 Value::Int(r)
             }
+            Builtin::Flush => {
+                let _ = self.sink.write_all(&self.out);
+                let _ = self.sink.flush();
+                self.out.clear();
+                Value::Unit
+            }
             Builtin::Atan2 => {
                 let x = values.next().unwrap_or_default().float();
                 Value::Float(first.float().atan2(x))

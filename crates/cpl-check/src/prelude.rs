@@ -71,7 +71,7 @@ pub fn value(name: &str) -> Option<Ty> {
             Ty::Unknown
         }
         "popcount" | "ctz" | "bit_width" | "bit_ceil" | "isqrt" => int_fn(1),
-        "sqrt" | "atan2" | "floor" | "ceil" | "round" | "trunc" | "len" => Ty::Unknown,
+        "flush" | "sqrt" | "atan2" | "floor" | "ceil" | "round" | "trunc" | "len" => Ty::Unknown,
         // `counts(xs)` is a `Counter`, `prefix(a)` the prefix sums of an
         // array, and `span(a, b)` the range between two positions in
         // either order (decisions §11).
@@ -188,6 +188,7 @@ pub const VALUE_NAMES: &[&str] = &[
     "isqrt",
     "sqrt",
     "atan2",
+    "flush",
     "floor",
     "trunc",
     "ceil",

@@ -122,6 +122,16 @@ pub fn exec<S: AsRef<str>>(
             let _ = writeln!(stdout, "cpl {VERSION}");
             0
         }
+        Some(command @ ("check" | "build" | "judge" | "lsp")) if rest.iter().any(|arg| matches!(*arg, "-h" | "--help")) => {
+            let help = match command {
+                "check" => CHECK_USAGE,
+                "build" => BUILD_USAGE,
+                "judge" => JUDGE_USAGE,
+                _ => LSP_USAGE,
+            };
+            let _ = stdout.write_all(help.as_bytes());
+            0
+        }
         Some("check") if rest.is_empty() => {
             usage_error("`check` needs a file: `cpl check a.cp`".into())
         }
@@ -189,6 +199,41 @@ pub fn exec<S: AsRef<str>>(
         Some(other) => usage_error(format!("unknown command `{other}`")),
     }
 }
+
+const CHECK_USAGE: &str = "\
+usage: cpl check <file.cp>...
+
+Reports every error in the files: names, types, borrows, input ranges.
+Nothing is run and nothing is written. The exit status is 1 when a file
+has an error.
+";
+
+const BUILD_USAGE: &str = "\
+usage: cpl build <file.cp> [options]
+
+Checks the file, then writes one C++17 file to submit, next to the source.
+
+options:
+  -o <out>     write to <out> instead; `-o -` writes to standard output
+  --checked    also compile it with sanitizers into a program to run here
+";
+
+const JUDGE_USAGE: &str = "\
+usage: cpl judge <file.cp> <input>
+       cpl judge <file.cp> <input> <output> [answer]
+
+With an input alone, runs the file's `@interactor` on it as a judge
+program: it talks to a solution on standard input and output. With an
+output, runs the file's `@checker` on that output. The exit status is 0
+when the judge accepts.
+";
+
+const LSP_USAGE: &str = "\
+usage: cpl lsp
+
+Serves the language server protocol on standard input and output, for an
+editor to start: errors as you type, hover, go to definition.
+";
 
 const RUN_USAGE: &str = "\
 usage: cpl run <file.cp> [input] [options]
@@ -1022,7 +1067,8 @@ mod tests {
     #[test]
     fn tooling_commands_reach_their_crates() {
         for command in [
-            "fmt", "lint", "doc", "stress", "new", "test", "bench", "watch",
+            "check", "run", "build", "judge", "lsp", "fmt", "lint", "doc", "stress", "new", "test", "bench",
+            "watch",
         ] {
             let out = run(&[command, "--help"]);
             assert_eq!(out.code, 0, "{command}");

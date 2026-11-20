@@ -914,6 +914,10 @@ impl<'a> Lowerer<'a> {
                 ),
                 None => self.err_expr(span),
             },
+            "flush" => match self.positional_any(name, args, 0, span) {
+                Some(_) => self.mk(ExprKind::Builtin(Builtin::Flush, Vec::new()), Ty::Unit, span),
+                None => self.err_expr(span),
+            },
             "isqrt" => match self.one_arg(name, args, &Ty::Int, span) {
                 Some(value) => self.mk(ExprKind::Builtin(Builtin::Isqrt, vec![value]), Ty::Int, span),
                 None => self.err_expr(span),
@@ -2686,6 +2690,25 @@ impl<'a> Lowerer<'a> {
                 span,
             ),
             (Ty::Pos(_), "hash_token") => self.cast(Cast::Ord, value, Ty::Int),
+            // A number's math reads either way: `sqrt(x)` or `x.sqrt`.
+            (Ty::Float, "sqrt") => self.mk(ExprKind::Builtin(Builtin::Sqrt, vec![value]), Ty::Float, span),
+            (Ty::Int, "sqrt") => {
+                let value = self.coerce(value, &Ty::Float, span);
+                self.mk(ExprKind::Builtin(Builtin::Sqrt, vec![value]), Ty::Float, span)
+            }
+            (Ty::Int, "isqrt") => self.mk(ExprKind::Builtin(Builtin::Isqrt, vec![value]), Ty::Int, span),
+            (Ty::Float, "floor" | "ceil" | "round") => {
+                let op = match name.text.as_str() {
+                    "floor" => Builtin::Floor,
+                    "ceil" => Builtin::Ceil,
+                    _ => Builtin::Round,
+                };
+                self.mk(ExprKind::Builtin(op, vec![value]), Ty::Int, span)
+            }
+            (Ty::Float, "trunc") => self.cast(Cast::FloatToInt, value, Ty::Int),
+            (Ty::Int | Ty::I128 | Ty::Float, "abs") => {
+                self.mk(ExprKind::Builtin(Builtin::Abs, vec![value]), ty.clone(), span)
+            }
             _ => {
                 // UFCS `@get` free function (e.g. `p.adj4`, `g.transposed`, `g.flipped`).
                 if let Some(res) = self.try_ufcs_call(&name.text, base, &[], span) {
