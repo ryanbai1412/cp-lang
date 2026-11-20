@@ -145,6 +145,10 @@ dependency when the code first needs it):
 - **`cpl-lsp`** is the language server (`plan/60-editor.md`).
 - **`cpl-cli`** builds the `cpl` binary and owns the commands (`plan/40-tooling.md`,
   `plan/45-dev-tools.md`).
+- **`cpl-wasm`** is the same pipeline as a WebAssembly module, for the docs
+  site and the playground: check, run, build and hover in the browser with
+  no server (`plan/90-docs-and-playground.md`, `crates/cpl-wasm/README.md`).
+  `scripts/build-wasm.sh` builds it into `dist/wasm/`.
 
 Beside the pipeline, **`cpl-verify`** is the verification harness: the
 differential fuzzer under ASan and UBSan, the `sizeof` audit, the raw and
