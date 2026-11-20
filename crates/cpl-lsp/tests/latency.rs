@@ -1,0 +1,309 @@
+//! Latency budgets for the shared front end, measured end to end.
+//!
+//! The budgets are the P0 targets: a front-end check in under 50 ms, and
+//! diagnostics and hover from the language server in under 100 ms. They are
+//! asserted on the slowest sample, not the median, and on files larger than
+//! any contest solution (a 500-line file is the plan's reference size; the
+//! 5,000-line file is 10x that).
+//!
+//! The budgets describe the tool people run, which is an optimized build.
+//! `cargo test --release` asserts them at both sizes. A plain `cargo test`
+//! is an unoptimized build, several times slower: it asserts the budgets
+//! at the 500-line reference size, and prints the 5,000-line numbers
+//! without asserting them (a cold check of 5,000 lines takes about 55 ms
+//! unoptimized, against 18 ms optimized). To see the optimized numbers:
+//!
+//! ```text
+//! cargo test --release -p cpl-lsp --test latency -- --nocapture
+//! ```
+
+use cpl_check::Database;
+use cpl_lsp::json::{obj, Value};
+use cpl_lsp::Server;
+use std::time::{Duration, Instant};
+
+const CHECK_BUDGET: Duration = Duration::from_millis(50);
+const LSP_BUDGET: Duration = Duration::from_millis(100);
+const URI: &str = "file:///bench/solution.cp";
+/// The plan's reference file size. Budgets hold here in every profile.
+const REFERENCE_LINES: usize = 500;
+
+/// A program of about `lines` lines shaped like a contest solution: typed
+/// input, domains, a struct, and many small fns that call each other and
+/// index arrays by domain.
+fn program(lines: usize) -> String {
+    let mut src = String::from(
+        "let n: 1..=2e5 = read()\nlet m: 1..=2e5 = read()\ndomain V = 1..=n\ndomain E = 0..m\n\n\
+         struct Road:\n    u, v: V\n    len: 1..=1e9\n    cost: 1..=1e9\n\n\
+         let roads: [E]Road = read()\nvar dist: [V]?Int = none\nvar deg: [V]Int = 0\nvar total = 0\n\n",
+    );
+    let mut i = 0usize;
+    while src.lines().count() + 12 < lines {
+        let prev = if i == 0 {
+            "0".to_string()
+        } else {
+            format!("step_{}(r, acc)", i - 1)
+        };
+        src += &format!(
+            "fn step_{i}(r: Road, acc: Int) -> Int:\n    var best = acc\n    for e in E:\n        let other = roads[e]\n        if other.len > r.len and deg[other.u] > {i}:\n            best max= other.cost + (dist[other.v] ?? 0)\n        deg[r.v] += 1\n    let carry = {prev}\n    \"step {i}: {{best}} {{carry}}\"\n    best + carry\n\n",
+        );
+        i += 1;
+    }
+    src += &format!(
+        "for e in E:\n    let r = roads[e]\n    total += step_{}(r, total)\nprint(total)\n",
+        i.saturating_sub(1)
+    );
+    src
+}
+
+/// Where a keystroke lands: inside the body of a fn in the middle.
+fn edit_point(src: &str) -> usize {
+    let middle = src.len() / 2;
+    middle
+        + src[middle..]
+            .find("best max= ")
+            .expect("a fn body after the middle")
+        + "best max= ".len()
+}
+
+struct Samples(Vec<Duration>);
+
+impl Samples {
+    fn median(&mut self) -> Duration {
+        self.0.sort();
+        self.0[self.0.len() / 2]
+    }
+
+    fn max(&self) -> Duration {
+        *self.0.iter().max().unwrap()
+    }
+}
+
+fn ms(d: Duration) -> String {
+    format!("{:.3} ms", d.as_secs_f64() * 1e3)
+}
+
+fn report(name: &str, lines: usize, samples: &mut Samples, budget: Duration) {
+    let (median, max) = (samples.median(), samples.max());
+    let enforced = !cfg!(debug_assertions) || lines <= REFERENCE_LINES;
+    let note = if enforced {
+        ""
+    } else {
+        "   (unoptimized build: not asserted)"
+    };
+    println!(
+        "{name:<44} {lines:>5} lines   median {:>10}   max {:>10}   budget {}{note}",
+        ms(median),
+        ms(max),
+        ms(budget)
+    );
+    assert!(
+        !enforced || max < budget,
+        "{name} on {lines} lines took {} (budget {})",
+        ms(max),
+        ms(budget)
+    );
+}
+
+/// The text after typing `typed` characters of a new expression at `at`.
+fn typed(src: &str, at: usize, typed: usize) -> String {
+    let insert = "other.len * 2 + deg[other.v] + ";
+    format!(
+        "{}{}{}",
+        &src[..at],
+        &insert[..typed % (insert.len() + 1)],
+        &src[at..]
+    )
+}
+
+fn check_latency(lines: usize) {
+    let src = program(lines);
+    let actual = src.lines().count();
+    let at = edit_point(&src);
+
+    // Cold: a fresh database, as `cpl check` and `cpl run` see the file.
+    let mut cold = Samples(Vec::new());
+    for _ in 0..10 {
+        let mut db = Database::new();
+        db.set_file("a.cp", src.as_str());
+        let start = Instant::now();
+        let analysis = db.analyze("a.cp").unwrap();
+        cold.0.push(start.elapsed());
+        assert!(
+            analysis.diagnostics.is_empty(),
+            "{:#?}",
+            &analysis.diagnostics[..1]
+        );
+    }
+    report("check, cold", actual, &mut cold, CHECK_BUDGET);
+
+    // Warm: one keystroke at a time in a fn body, as the editor sees it.
+    let mut db = Database::new();
+    db.set_file("a.cp", src.as_str());
+    db.analyze("a.cp");
+    let mut warm = Samples(Vec::new());
+    for key in 0..200 {
+        let text = typed(&src, at, key);
+        let start = Instant::now();
+        db.set_file("a.cp", text.as_str());
+        db.analyze("a.cp").unwrap();
+        warm.0.push(start.elapsed());
+    }
+    report("check, after a keystroke", actual, &mut warm, CHECK_BUDGET);
+
+    // The keystrokes re-checked only the fn being typed in.
+    let before = db.stats();
+    let unseen = format!("{}deg[other.u] - {}", &src[..at], &src[at..]);
+    db.set_file("a.cp", unseen.as_str());
+    db.analyze("a.cp");
+    let after = db.stats();
+    assert_eq!(after.items_parsed - before.items_parsed, 1);
+    assert_eq!(after.items_checked - before.items_checked, 1);
+}
+
+fn message(id: Option<u32>, method: &str, params: Value) -> Value {
+    let mut members = vec![("jsonrpc".to_string(), Value::from("2.0"))];
+    if let Some(id) = id {
+        members.push(("id".to_string(), id.into()));
+    }
+    members.push(("method".to_string(), method.into()));
+    members.push(("params".to_string(), params));
+    Value::Object(members)
+}
+
+fn position(src: &str, offset: usize) -> Value {
+    let line = src[..offset].matches('\n').count() as u32;
+    let col = (offset - src[..offset].rfind('\n').map_or(0, |i| i + 1)) as u32;
+    obj([("line", line.into()), ("character", col.into())])
+}
+
+/// Sends a message as text, as it arrives on the wire, and returns the
+/// replies as text, as they leave. Parsing and printing are part of the cost.
+fn round_trip(server: &mut Server, message: &Value) -> (Vec<String>, Duration) {
+    let wire = message.to_string();
+    let start = Instant::now();
+    let parsed = cpl_lsp::json::parse(&wire).unwrap();
+    let replies: Vec<String> = server
+        .handle(&parsed)
+        .iter()
+        .map(Value::to_string)
+        .collect();
+    (replies, start.elapsed())
+}
+
+fn lsp_latency(lines: usize) {
+    let src = program(lines);
+    let actual = src.lines().count();
+    let at = edit_point(&src);
+    let doc = || obj([("uri", URI.into())]);
+
+    let mut server = Server::new();
+    server.handle(&message(Some(1), "initialize", obj([])));
+    let open = message(
+        None,
+        "textDocument/didOpen",
+        obj([(
+            "textDocument",
+            obj([
+                ("uri", URI.into()),
+                ("version", 1.into()),
+                ("text", src.as_str().into()),
+            ]),
+        )]),
+    );
+    let (replies, took) = round_trip(&mut server, &open);
+    assert!(
+        replies[0].ends_with(r#""diagnostics":[]}}"#),
+        "{}",
+        &replies[0][..200.min(replies[0].len())]
+    );
+    report(
+        "lsp: open file, first diagnostics",
+        actual,
+        &mut Samples(vec![took]),
+        LSP_BUDGET,
+    );
+
+    // Type an expression one character at a time, with a hover in between.
+    let insert = "other.len * 2 + deg[other.v] + ";
+    let mut change = Samples(Vec::new());
+    let mut hover = Samples(Vec::new());
+    let mut text = src.clone();
+    for (i, ch) in insert.char_indices() {
+        let cursor = position(&text, at + i);
+        let edit = message(
+            None,
+            "textDocument/didChange",
+            obj([
+                ("textDocument", doc()),
+                (
+                    "contentChanges",
+                    vec![obj([
+                        ("range", obj([("start", cursor.clone()), ("end", cursor)])),
+                        ("text", ch.to_string().into()),
+                    ])]
+                    .into(),
+                ),
+            ]),
+        );
+        text.insert(at + i, ch);
+        let (replies, took) = round_trip(&mut server, &edit);
+        assert_eq!(replies.len(), 1);
+        assert!(replies[0].contains("publishDiagnostics"));
+        change.0.push(took);
+
+        // Hover `roads` on the line above the edit, in the half-typed fn.
+        let target = text[..at].rfind("roads[e]").unwrap();
+        let request = message(
+            Some(100 + i as u32),
+            "textDocument/hover",
+            obj([
+                ("textDocument", doc()),
+                ("position", position(&text, target + 2)),
+            ]),
+        );
+        let (replies, took) = round_trip(&mut server, &request);
+        assert!(replies[0].contains("roads: [E]Road"), "{}", replies[0]);
+        assert!(
+            replies[0].contains("storage: 16 bytes per element, 3.2 MB max"),
+            "{}",
+            replies[0]
+        );
+        hover.0.push(took);
+    }
+    report(
+        "lsp: keystroke to diagnostics",
+        actual,
+        &mut change,
+        LSP_BUDGET,
+    );
+    report(
+        "lsp: hover in the fn being edited",
+        actual,
+        &mut hover,
+        LSP_BUDGET,
+    );
+}
+
+#[test]
+fn front_end_check_is_under_50_ms() {
+    check_latency(500);
+    check_latency(5000);
+}
+
+#[test]
+fn lsp_diagnostics_and_hover_are_under_100_ms() {
+    lsp_latency(500);
+    lsp_latency(5000);
+}
+
+#[test]
+fn the_sample_program_is_the_size_it_claims() {
+    for lines in [500usize, 5000] {
+        let actual = program(lines).lines().count();
+        assert!(
+            actual.abs_diff(lines) <= lines / 20,
+            "asked for {lines} lines, got {actual}"
+        );
+    }
+}

@@ -1,0 +1,380 @@
+//! The checker for one item: names, types, domains, and `mut`.
+//!
+//! It never reports twice for one root cause. Anything it can't type is
+//! `Unknown`, anything already reported is `Error`, and both are compatible
+//! with every type. It also never reports inside a span the parser
+//! poisoned.
+
+mod call;
+mod expr;
+mod stmt;
+mod types;
+
+pub(crate) use types::own_domains;
+
+use crate::def::Def;
+use crate::prelude;
+use crate::ty::Ty;
+use cpl_diag::{codes, Code, Diagnostic, Sink, Span};
+use std::collections::HashMap;
+use std::sync::Arc;
+
+/// How the checker sees the rest of the file. Every answer is recorded as
+/// a dependency of the item being checked.
+pub(crate) trait Env {
+    /// The definition of a top-level name.
+    fn global(&mut self, name: &str) -> Option<Arc<Def>>;
+    /// True if the file imports modules. They are not loaded yet, so names
+    /// that are not found may come from them.
+    fn has_imports(&mut self) -> bool;
+    /// Every top-level name, for "did you mean".
+    fn names(&mut self) -> Vec<String>;
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct Local {
+    pub ty: Ty,
+    pub mutable: bool,
+    pub span: Span,
+    pub keyword: &'static str,
+}
+
+/// What hovering a span shows. Spans are relative to the item.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct HoverEntry {
+    pub span: Span,
+    pub name: String,
+    pub ty: Ty,
+    /// `let`, `var`, `param`, `for`, `fn`, `field`; or `global` / `type`
+    /// for a top-level name, which is looked up again when shown.
+    pub keyword: &'static str,
+    /// Where the name is declared, if that is in this item.
+    pub decl: Option<Span>,
+}
+
+/// A use of a top-level name.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct GlobalRef {
+    pub span: Span,
+    pub name: String,
+    /// True if the use runs as part of the file's top-level code, not
+    /// inside a fn body.
+    pub top_level: bool,
+}
+
+pub(crate) struct Checker<'a> {
+    pub(crate) env: &'a mut dyn Env,
+    /// The item's text; spans index into it.
+    src: &'a str,
+    sink: Sink,
+    scopes: Vec<HashMap<String, Local>>,
+    generics: Vec<String>,
+    hovers: Vec<HoverEntry>,
+    refs: Vec<GlobalRef>,
+    /// Name and return type of each enclosing fn.
+    fns: Vec<(String, Ty, bool)>,
+    /// Inside a fn signature or body, where a single capital letter is a
+    /// type parameter without being declared.
+    in_fn: u32,
+}
+
+pub(crate) struct Checked {
+    pub diagnostics: Vec<Diagnostic>,
+    pub hovers: Vec<HoverEntry>,
+    pub refs: Vec<GlobalRef>,
+}
+
+impl<'a> Checker<'a> {
+    pub(crate) fn new(env: &'a mut dyn Env, src: &'a str, poisoned: Vec<Span>) -> Checker<'a> {
+        Checker {
+            env,
+            src,
+            sink: Sink::with_poisoned(poisoned),
+            scopes: vec![HashMap::new()],
+            generics: Vec::new(),
+            hovers: Vec::new(),
+            refs: Vec::new(),
+            fns: Vec::new(),
+            in_fn: 0,
+        }
+    }
+
+    pub(crate) fn finish(self) -> Checked {
+        Checked {
+            diagnostics: self.sink.finish(),
+            hovers: self.hovers,
+            refs: self.refs,
+        }
+    }
+
+    fn text(&self, span: Span) -> &'a str {
+        self.src
+            .get(span.start as usize..span.end as usize)
+            .unwrap_or("")
+    }
+
+    /// Source text for a message: one line, shortened if long.
+    fn quote(&self, span: Span) -> String {
+        let text = self.text(span);
+        let line = text.lines().next().unwrap_or("").trim();
+        if line.chars().count() > 40 || line.len() < text.trim().len() {
+            let short: String = line.chars().take(37).collect();
+            format!("{short}...")
+        } else {
+            line.to_string()
+        }
+    }
+
+    fn error(&mut self, code: Code, span: Span, message: String) -> Option<&mut Diagnostic> {
+        let before = self.sink.len();
+        self.sink.push(Diagnostic::error(code, span, message));
+        (self.sink.len() > before)
+            .then(|| self.sink.last_mut())
+            .flatten()
+    }
+
+    fn push_scope(&mut self) {
+        self.scopes.push(HashMap::new());
+    }
+
+    fn pop_scope(&mut self) {
+        self.scopes.pop();
+    }
+
+    fn local(&self, name: &str) -> Option<&Local> {
+        self.scopes.iter().rev().find_map(|scope| scope.get(name))
+    }
+
+    fn declare(&mut self, name: &str, span: Span, ty: Ty, mutable: bool, keyword: &'static str) {
+        if name.is_empty() || name == "_" {
+            return;
+        }
+        self.hovers.push(HoverEntry {
+            span,
+            name: name.to_string(),
+            ty: ty.clone(),
+            keyword,
+            decl: Some(span),
+        });
+        self.scopes.last_mut().unwrap().insert(
+            name.to_string(),
+            Local {
+                ty,
+                mutable,
+                span,
+                keyword,
+            },
+        );
+    }
+
+    /// The type of a name used as a value.
+    fn name_ty(&mut self, name: &str, span: Span) -> Ty {
+        if let Some(local) = self.local(name) {
+            let (ty, keyword, decl) = (local.ty.clone(), local.keyword, local.span);
+            self.hovers.push(HoverEntry {
+                span,
+                name: name.to_string(),
+                ty: ty.clone(),
+                keyword,
+                decl: Some(decl),
+            });
+            return ty;
+        }
+        if self.generics.iter().any(|g| g == name) {
+            return Ty::TypeName(name.to_string());
+        }
+        if let Some(def) = self.env.global(name) {
+            let ty = def.value_ty(name);
+            self.refs.push(GlobalRef {
+                span,
+                name: name.to_string(),
+                top_level: self.fns.is_empty(),
+            });
+            self.hovers.push(HoverEntry {
+                span,
+                name: name.to_string(),
+                ty: ty.clone(),
+                keyword: "global",
+                decl: None,
+            });
+            return ty;
+        }
+        if let Some(ty) = prelude::value(name) {
+            return ty;
+        }
+        if self.env.has_imports() || (self.in_fn > 0 && is_implicit_generic(name)) {
+            return Ty::Unknown;
+        }
+        self.unresolved(codes::UNRESOLVED_NAME, name, span, true);
+        Ty::Error
+    }
+
+    /// Reports a name that is not in scope, suggesting the closest one.
+    fn unresolved(&mut self, code: Code, name: &str, span: Span, value: bool) {
+        if name.is_empty() {
+            return;
+        }
+        let mut candidates: Vec<String> = self.env.names();
+        candidates.extend(prelude::VALUE_NAMES.iter().map(|n| n.to_string()));
+        if value {
+            for scope in &self.scopes {
+                candidates.extend(scope.keys().cloned());
+            }
+        }
+        let suggestion = closest(name, candidates.iter().map(String::as_str));
+        let message = if value {
+            format!("no `{name}` in scope")
+        } else {
+            format!("no type or domain named `{name}`")
+        };
+        if let Some(diag) = self.error(code, span, message) {
+            match suggestion {
+                Some(s) => {
+                    diag.help = Some(format!("did you mean `{s}`?"));
+                    diag.fixes.push(cpl_diag::Fix {
+                        title: format!("change to `{s}`"),
+                        edits: vec![(span, s)],
+                    });
+                }
+                None if value => {
+                    diag.help = Some(format!("declare it first: `let {name} = ...`"));
+                }
+                None => {}
+            }
+        }
+    }
+
+    /// The variable an assignment or `mut` argument ultimately changes.
+    fn root_name(expr: &cpl_syntax::ast::Expr) -> Option<(&str, Span)> {
+        use cpl_syntax::ast::ExprKind as E;
+        match &expr.kind {
+            E::Name(name) => Some((name, expr.span)),
+            E::SelfValue => Some(("self", expr.span)),
+            E::Field { base, .. } | E::Index { base, .. } => Self::root_name(base),
+            E::Paren(inner) | E::Unwrap(inner) => Self::root_name(inner),
+            _ => None,
+        }
+    }
+
+    /// Checks that `expr` can be changed. `action` finishes the sentence
+    /// "`x` is a `let`, so it can't be ...".
+    fn require_mutable(&mut self, expr: &cpl_syntax::ast::Expr, action: &str) {
+        let Some((name, span)) = Self::root_name(expr) else {
+            return;
+        };
+        let (mutable, keyword, decl) = match self.local(name) {
+            Some(local) => (local.mutable, local.keyword, Some(local.span)),
+            None => match self.env.global(name).as_deref() {
+                Some(Def::Value {
+                    mutable, keyword, ..
+                }) => (*mutable, *keyword, None),
+                _ => return,
+            },
+        };
+        if mutable {
+            return;
+        }
+        let (what, help) = match keyword {
+            "param" => (
+                "a parameter without `mut`".to_string(),
+                format!("declare it `mut {name}` to change it"),
+            ),
+            "for" => (
+                "a loop variable".to_string(),
+                "copy it into a `var` to change it".to_string(),
+            ),
+            "self" => (
+                "`self` without `mut`".to_string(),
+                "declare the method with `mut self` to change it".to_string(),
+            ),
+            other => (
+                format!("a `{other}`"),
+                format!("declare it with `var {name}` to change it"),
+            ),
+        };
+        let subject = if name == "self" {
+            "`self`".to_string()
+        } else {
+            format!("`{name}`")
+        };
+        let message = if keyword == "self" {
+            format!("this method takes {what}, so `self` can't be {action}")
+        } else {
+            format!("{subject} is {what}, so it can't be {action}")
+        };
+        if let Some(diag) = self.error(codes::ASSIGN_TO_LET, span, message) {
+            diag.help = Some(help);
+            if let Some(decl) = decl {
+                diag.labels.push(cpl_diag::Label {
+                    span: decl,
+                    message: "declared here".into(),
+                });
+            }
+        }
+    }
+}
+
+/// `fn peel(s: [D]Bool)`: a single capital letter is a type parameter
+/// without being declared (`plan/17-syntax.md`).
+pub(crate) fn is_implicit_generic(name: &str) -> bool {
+    name.len() == 1 && name.as_bytes()[0].is_ascii_uppercase()
+}
+
+/// The candidate closest to `name`, if it is close enough to be a typo.
+pub(crate) fn closest<'c>(name: &str, candidates: impl Iterator<Item = &'c str>) -> Option<String> {
+    let limit = match name.chars().count() {
+        0 | 1 => return None,
+        2..=4 => 1,
+        _ => 2,
+    };
+    candidates
+        .filter(|c| *c != name)
+        .map(|c| (edit_distance(name, c), c))
+        .filter(|(d, _)| *d <= limit)
+        .min_by_key(|(d, c)| (*d, c.to_string()))
+        .map(|(_, c)| c.to_string())
+}
+
+/// Edits to turn `a` into `b`, counting a swap of two neighbours as one:
+/// `raods` is one edit from `roads`.
+fn edit_distance(a: &str, b: &str) -> usize {
+    let a: Vec<char> = a.chars().collect();
+    let b: Vec<char> = b.chars().collect();
+    let mut rows = vec![vec![0usize; b.len() + 1]; a.len() + 1];
+    for (i, row) in rows.iter_mut().enumerate() {
+        row[0] = i;
+    }
+    for (j, cell) in rows[0].iter_mut().enumerate() {
+        *cell = j;
+    }
+    for i in 1..=a.len() {
+        for j in 1..=b.len() {
+            let substitute = rows[i - 1][j - 1] + usize::from(a[i - 1] != b[j - 1]);
+            let mut best = substitute.min(rows[i - 1][j] + 1).min(rows[i][j - 1] + 1);
+            if i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1] {
+                best = best.min(rows[i - 2][j - 2] + 1);
+            }
+            rows[i][j] = best;
+        }
+    }
+    rows[a.len()][b.len()]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn suggestions_are_close_names_only() {
+        let names = ["total", "roads", "dist", "n"];
+        assert_eq!(closest("totl", names.iter().copied()), Some("total".into()));
+        assert_eq!(
+            closest("raods", names.iter().copied()),
+            Some("roads".into())
+        );
+        assert_eq!(closest("answer", names.iter().copied()), None);
+        assert_eq!(closest("m", names.iter().copied()), None);
+        assert_eq!(closest("dits", names.iter().copied()), Some("dist".into()));
+        assert_eq!(edit_distance("kitten", "sitting"), 3);
+    }
+}
