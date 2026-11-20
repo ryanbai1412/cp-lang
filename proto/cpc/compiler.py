@@ -3719,6 +3719,17 @@ class Compiler(LendMixin):
         elif isinstance(ty, TArr) and s.value.kind == "list" and len(s.value.items) == 1 and s.value.items[0].kind == "gen":
             c, vt = self.expr(s.value, ty)
             c, vt = self.coerce(c, vt, ty, s.value), ty
+        elif (isinstance(ty, TArr) and len(ty.dims) == 1 and s.value.kind == "list" and s.value.items
+              and not isinstance(ty.elem, (TList, TMap, TSet, TCounter))):
+            # `let a: [D]Int = [2, 3, 5]`: one value per position, in order (never the list in every cell)
+            cs = []
+            for x in s.value.items:
+                xc, xt = self.expr(x, ty.elem)
+                cs.append(self.coerce(xc, xt, ty.elem, x))
+            n = len(cs)
+            c = (f"([&]{{ if ((ll){ty.dims[0].info.len_cpp} != {n}) cp_fail(\"an array literal needs one value per position\", {s.line}); "
+                 f"return {self.cpp_type(ty)}{{{', '.join(cs)}}}; }}())")
+            vt = ty
         elif isinstance(ty, TArr) and s.value.kind != "table":
             fc, ft = self.expr(s.value, ty.elem)
             if isinstance(ft, TArr):
