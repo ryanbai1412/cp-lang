@@ -4,13 +4,13 @@ Contest bugs rarely come from the idea; they come from an edge case you did not 
 
 Annotate a pure recursive function with `@memo` to cache its results over any `Index` parameter tuple:
 
-```cp CP Lang v2
+```cp CP Lang v2.2
 @memo
 fn dp(u: V, used: Bool) -> Int:
     ...
 ```
 
-When the parameter product is an algebraic `Index` with size `<= 2^26`, `@memo` emits a flat dense array (zero hash overhead); otherwise it uses a per-process salted open-addressed hash table. Override explicitly with `@memo(flat)` or `@memo(hash)`.
+`@memo` takes no parameters. When every parameter is an algebraic `Index` and the product of their sizes is at most `2^24` (`2^26` for `Bool` results), it emits a flat niche-packed array with zero hash overhead; otherwise it falls back to a per-process salted open-addressed hash table. A `@memo fn` may be top-level or nested in a function or loop, where its table resets on every call or iteration, and it may wrap `ask(...)` or an extern `@grader fn` so each argument tuple costs one query. If you want explicit hash storage, write `var dp = HashMap<Key, Val>()`.
 
 In the browser playground and current Rust/WASM interpreter, `@memo` caching is prototype-only, so the runnable example below executes the same recurrence with plain recursion:
 
@@ -19,19 +19,18 @@ In the browser playground and current Rust/WASM interpreter, `@memo` caching is 
 
 For input `4`, `f(3)` evaluates to `45`.
 
-## Assertions, assumptions, and `debug`
+## Assertions and `debug`
 
-CP Lang distinguishes three diagnostic tools so local checks stay strict without slowing down judge submissions:
+There is one assertion keyword, so a sanity check can never be stripped by accident:
 
-- `assume cond` — documents an input precondition; checked in local debug builds and used to filter/validate generated stress inputs, then stripped on judge builds.
-- `assert cond` — always checked in both local and judge builds.
+- `assert cond` — always checked in both local and judge builds, and it feeds the range and disjointness proofs. Input constraints are not assertions: they live in typed `read()` bounds, `read(gen: f)`, `@gen`, and `@checker`.
 - `debug(x, dp)` — pretty-prints labeled values to `stderr` locally and replays side-by-side when `cpl stress` finds a failing case; stripped on judge builds.
 
 ## Co-located `@brute`, `@checker`, `@interactor`, and `@gen`
 
 Write your slow reference, constructive validator, or interactive judge right next to your solution:
 
-```cp CP Lang v2
+```cp CP Lang v2.2
 @gen
 fn make_case(size: Int):
     let n = rand(1..=size)
@@ -48,13 +47,23 @@ fn check():
     assert is_valid(ans)
 
 @interactor
-fn judge():
-    let secret = read()
-    while let q = next_query():
-        reply(compare(q, secret))
+fn judge(sol: Interactor):
+    let (n, secret): (1..=1000, 1..=n) = read()   // the hidden test
+    sol.send(n)                                    // to the solution's stdin
+    var qs = 0
+    while true:
+        let kind: Str = sol.recv()                 // from the solution's stdout
+        if kind == "!":
+            let guess: Int = sol.recv()
+            assert guess == secret
+            return
+        qs += 1
+        assert qs <= 12
+        let x: Int = sol.recv()
+        sol.send(if x < secret: "<" else: ">=")
 ```
 
-In interactive problems, pair `@interactor` with `ask("?", x, limit: 2)` so query limits are enforced locally. Every generator draws from a replayable choice stream, which lets `cpl stress` shrink any failing test automatically without writing a custom shrinker.
+In interactive problems, pair `@interactor` with `ask("?", x, limit: 2)` so query limits are enforced locally. A program that calls `ask(...)` anywhere flushes every `print(...)` automatically. For IOI-style graders, a bodyless `@grader fn` declares an extern oracle, and a stateful grader keeps its state in a top-level `var` between `init(...)` and `query(...)`. Every generator draws from a replayable choice stream, which lets `cpl stress` shrink any failing test automatically without writing a custom shrinker.
 
 ## Running `cpl stress`
 
@@ -64,4 +73,4 @@ For a visual side-by-side comparison of an optimized DP run against its referenc
 
 ## How the site stays honest
 
-Every worked example embedded in these pages is checked by the test suite against both the compiler and the offline WebAssembly runtime. Code blocks marked **CP Lang v2** show the locked specification; blocks marked **prototype tested** are executed on every build.
+Every worked example embedded in these pages is checked by the test suite against both the compiler and the offline WebAssembly runtime. Code blocks marked **CP Lang v2.2** show the locked specification; blocks marked **prototype tested** are executed on every build.

@@ -4,9 +4,9 @@
 
 ## Value-semantic, `0..len`-indexed `Str`
 
-In CP Lang v2, default `Str` behaves like a flat `0..s.len`-indexed ASCII byte sequence with O(1) indexing, O(1) slicing, and strict value semantics:
+In CP Lang v2.2, default `Str` behaves like a flat `0..s.len`-indexed ASCII byte sequence with O(1) indexing, O(1) slicing, and strict value semantics:
 
-```cp CP Lang v2
+```cp CP Lang v2.2
 let s: Str = read()
 let ch = s[0]                   // Char (0..s.len); digit: ch - '0', letter: ch - 'a'
 let sub = s[l..r]               // O(1) slice; also s[..k], s[k..], s.len, s.is_empty
@@ -35,7 +35,7 @@ Standard text parsing and formatting helpers live on `Str`:
 
 When you are writing a two-string DP (such as LCS or edit distance) and want the compiler to forbid mixing an index into string `a` with an index into string `b`, opt into a nominal character domain `[domain A]Char`:
 
-```cp CP Lang v2
+```cp CP Lang v2.2
 let a: [domain A]Char = read()
 let b: [domain B]Char = read()
 
