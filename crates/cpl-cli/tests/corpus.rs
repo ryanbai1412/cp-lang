@@ -99,7 +99,13 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
 /// Failing tests this checker still accepts: each needs a rule it does
 /// not have yet. A name leaves this list when its case is rejected for
 /// its stated reason, and the test below says so.
-const NOT_YET: &[&str] = &[];
+const NOT_YET: &[&str] = &[
+    // Reading an enum whose variants have no input spelling, `f<A>(x)`
+    // for a generic fn that is only called, and `MinHeap<T>(by: ..)`.
+    "enum_read_no_tags",
+    "generic_angle_call",
+    "minheap_by",
+];
 
 /// Failing tests that state a limit of the prototype's code generator,
 /// not a rule of the language. `a[nx()] max= 4` evaluates `a[nx()]` once
