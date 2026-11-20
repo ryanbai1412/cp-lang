@@ -78,32 +78,6 @@ class LibParser(Parser):
             s.doc = self.docs.get(line, "")
         return s
 
-    def use_stmt(self):
-        line = self.next().line
-        path = [self.name()]
-        names, alias, glob = None, None, False
-        while self.at("."):
-            self.next()
-            if self.at("{"):
-                self.next()
-                names = []
-                while not self.at("}"):
-                    names.append(self.name())
-                    if self.at(","):
-                        self.next()
-                self.expect("}")
-                break
-            if self.at("*"):
-                self.next()
-                glob = True
-                break
-            path.append(self.name())
-        if self.at_name("as"):
-            self.next()
-            alias = self.name()
-        self.end_line()
-        return N("use", line, path=path, names=names, alias=alias, glob=glob)
-
     def skip_to_block_end(self):
         """Skip a header line and the indented block under it, if any."""
         while not self.at_kind("NEWLINE") and not self.at_kind("EOF"):

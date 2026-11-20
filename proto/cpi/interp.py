@@ -20,6 +20,8 @@ from cpc.lexer import LexError
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 OPS = {"+": "add", "-": "sub", "*": "mul", "/": "div", "%": "rem"}
+# what `m[k] f= x` starts from when k is new: the identity of f (decisions.md section 12)
+FOLD_IDENTITY = {"+": 0, "-": 0, "*": 1, "|": 0, "^": 0, "gcd": 0, "lcm": 1}
 ESC = {"n": "\n", "t": "\t", "\\": "\\", '"': '"', "'": "'", "0": "\0", "{": "{", "}": "}"}
 
 
@@ -201,9 +203,22 @@ class Interp:
             for tt, x in zip(t.items, list(v.items)):
                 self.place(tt, env)[1](x)
             return
+        op = s.op
+        fold = getattr(s, "fold", None)
+        if t.kind == "index" and (op != "=" or fold):
+            # `m[k] f= x` on a key that is not there yet starts from the identity of f; `min=` / `max=` take x
+            o = self.ev(t.obj, env)
+            key = self.ev(t.idx[0], env) if type(o) is CMap else None
+            if type(o) is CMap and key not in o.items:
+                f = fold or op[:-1]
+                if f in ("min", "max"):
+                    o.items[key] = self.ev(s.value, env)
+                    return
+                if f not in FOLD_IDENTITY:
+                    self.fail(f"`{self.src(t)} {f}= ...`: the key is not in the map, and `{f}` has no identity to start from", s)
+                o.items[key] = FOLD_IDENTITY[f]
         get, put = self.place(t, env)
         v = self.ev(s.value, env)
-        op = s.op
         if op != "=":
             cur = get()
             if op == "min=":

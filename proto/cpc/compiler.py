@@ -82,6 +82,7 @@ class THash(T):
     def __repr__(self): return f"StrHash<{self.dom!r}>"
 
 class TTree(T):
+    weighted = False                    # built with `weight:`, so `dist` adds lengths up
     def __init__(self, dom): self.dom = dom
     def __eq__(self, o): return isinstance(o, TTree) and o.dom == self.dom
     def __hash__(self): return hash(("tree", self.dom))
@@ -92,6 +93,13 @@ class TDsu(T):
     def __eq__(self, o): return isinstance(o, TDsu) and o.dom == self.dom
     def __hash__(self): return hash(("dsu", self.dom))
     def __repr__(self): return f"Dsu<{self.dom!r}>"
+
+class TLib(T):
+    """A struct of the standard library that the prototype compiles in (see LIBS): its name and type arguments."""
+    def __init__(self, name, args): self.name, self.args = name, tuple(args)
+    def __eq__(self, o): return isinstance(o, TLib) and (o.name, o.args) == (self.name, self.args)
+    def __hash__(self): return hash(("lib", self.name, self.args))
+    def __repr__(self): return f"{self.name}<{', '.join(map(repr, self.args))}>"
 
 class THeap(T):
     def __init__(self, elem): self.elem = elem
@@ -118,6 +126,16 @@ CPP_RESERVED = set(CPP_RESERVED) | {
     "visit", "any", "all", "signal", "div", "ldiv", "exit", "free", "link", "read", "write",
     "select", "stdin", "stdout", "floor", "ceil", "round", "lower_bound", "upper_bound",
 }
+
+# Library names the prototype has a C++ stand-in for: name -> (module under stdlib/, C++ name). `use std.dsu.{Dsu}`
+# is checked against the real module, so a port can only import what the library really exports.
+LIBS = {"Steps": ("steps", "CpSteps")}
+LIB_FNS = {"Dsu": "dsu", "bfs": "graph", "dijkstra": "graph", "choose": "math", "gcd": "math", "lcm": "math", "scan": "seq",
+           "running_sum": "seq", "SegTree": "segtree", "Rooted": "tree", "Fenwick": "fenwick"}
+
+# The identity each built-in two-argument operation folds from (std.algebra: Sum, Prod, Xor and friends).
+# `min` and `max` have none over Int; their fold starts at the first value (the `opt` monoid).
+FOLD_IDENTITY = {"+": "0", "-": "0", "*": "1", "|": "0", "^": "0", "gcd": "0", "lcm": "1"}
 
 class Sym:
     def __init__(self, kind, ty, cpp, mut=False, node=None):
@@ -235,6 +253,7 @@ class Compiler(LendMixin):
             k = self.cpp_type(t.key)
             m = f"unordered_map<{k}, ll, CpHash>" if isinstance(t.key, TInt) else f"map<{k}, ll>"
             return f"CpCounter<{m}, {k}>"
+        if isinstance(t, TLib): return LIBS[t.name][1]
         if isinstance(t, TPrefix): return "CpPrefix"
         if isinstance(t, THash): return "StrHash"
         if isinstance(t, TTree): return "RootedTree"
@@ -254,6 +273,8 @@ class Compiler(LendMixin):
         cpp = f"Tup{len(self.structs)}"
         names = [n if n else f"f{i}" for i, n in enumerate(names)]
         t = TTuple(names, list(types), cpp)
+        # `<` on a record compares field by field, so every field needs one (an optional or an enum has none)
+        t.ordered = not any(isinstance(x, (TOpt, TEnum)) or not getattr(x, "ordered", True) for x in types)
         self.structs[key] = t
         fields = " ".join(f"{'I32' if self.narrow(ft) else self.cpp_type(ft)} {self.field_cpp(fn)};" for fn, ft in zip(names, types))
         tie = ", ".join(self.field_cpp(fn) for fn in names)
@@ -262,7 +283,7 @@ class Compiler(LendMixin):
             f"    auto tie() const {{ return std::tie({tie}); }}\n"
             + (f"    bool operator<(const {cpp}& o) const {{ return tie() < o.tie(); }}\n"
                f"    bool operator>(const {cpp}& o) const {{ return o.tie() < tie(); }}\n"
-               if not any(isinstance(x, TOpt) for x in types) else "") +
+               if t.ordered else "") +
             f"    bool operator==(const {cpp}& o) const {{ return tie() == o.tie(); }}\n"
             f"    bool operator!=(const {cpp}& o) const {{ return !(*this == o); }} }};")
         return t
@@ -430,6 +451,8 @@ class Compiler(LendMixin):
                 return TMod(v)
             if nm == "Counter":
                 return TCounter(self.resolve_type(tn.args[0]))
+            if nm in LIBS and not self.lookup(nm):
+                return self.lib_type(nm, [self.resolve_type(a) for a in tn.args], tn)
             if nm == "Range":
                 return TRange(self.resolve_type(tn.args[0]))
             s = self.lookup(nm)
@@ -445,7 +468,14 @@ class Compiler(LendMixin):
             hi_v = getattr(hi_t, "hi", None)
             if hi_v is not None and not r.incl:
                 hi_v -= 1
-            return TInt(getattr(lo_t, "lo", None), hi_v)
+            t = TInt(getattr(lo_t, "lo", None), hi_v)
+            # a bound that is a run-time value (`1..=w` with w read earlier): reading checks against it and the
+            # input generator stays inside it, not just inside the widest range the bound could have
+            if r.lo.kind != "num" and is_int(lo_t):
+                t.lo_cpp = f"(ll)({lo_c})"
+            if r.hi is not None and r.hi.kind != "num" and is_int(hi_t):
+                t.hi_cpp = f"(ll)({hi_c})" + ("" if r.incl else " - 1")
+            return t
         if k == "topt":
             return TOpt(self.resolve_type(tn.inner))
         if k == "tlist":
@@ -463,6 +493,34 @@ class Compiler(LendMixin):
                 return t.t
             self.error(tn, "expected a type")
         self.error(tn, f"unsupported type form {k}")
+
+    def lib_type(self, nm, args, node):
+        if nm == "Steps" and not (len(args) == 1 and (is_int(args[0]) or isinstance(args[0], TDom))):
+            self.error(node, "Steps<K> needs Int or a domain as K")
+        return TLib(nm, [INT if is_int(a) else a for a in args])
+
+    def lib_new(self, t, args, node):
+        """`Steps.new()`: the empty value of a compiled-in library struct."""
+        if args:
+            self.error(node, f"{t!r}.new() takes no arguments")
+        return f"{self.cpp_type(t)}()", t
+
+    def s_use(self, s):
+        """`use std.dsu.{Dsu}`: the names must be `pub` in stdlib/dsu.cp, and the prototype must have a stand-in."""
+        import os
+        if s.path[0] != "std" or len(s.path) != 2 or s.names is None:
+            self.error(s, "the prototype compiler imports names from the standard library only: `use std.module.{Name}`")
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "stdlib", s.path[1] + ".cp")
+        if not os.path.exists(path):
+            self.error(s, f"there is no module std.{s.path[1]} (stdlib/{s.path[1]}.cp)")
+        src = open(path).read()
+        for nm in s.names:
+            if not re.search(r"^pub (?:@\w+ )*(?:struct|fn|const|enum) " + re.escape(nm) + r"\b", src, re.M):
+                self.error(s, f"std.{s.path[1]} has no pub `{nm}`")
+            mod = LIBS[nm][0] if nm in LIBS else LIB_FNS.get(nm)
+            if mod != s.path[1]:
+                self.error(s, f"std.{s.path[1]}.{nm} is library code the prototype compiler has no stand-in for yet "
+                              f"(it runs on proto/cpi)")
 
     def anon_count_domain(self, name, lo_c, hi_c_excl, lo_iv, hi_iv, node):
         info, _, _ = self.new_domain(name, lo_c, f"({hi_c_excl}) - ({lo_c})", lo_iv,
@@ -483,6 +541,12 @@ class Compiler(LendMixin):
                 hiv = tuple(None if x is None else x + 1 for x in hiv)
             return self.anon_count_domain(unparse(r), lo_c, hi_excl,
                                           (getattr(lo_t, "lo", None), getattr(lo_t, "hi", None)), hiv, d)
+        if d.kind == "texpr":
+            # `[n - 1]T`: any Int expression is a count, like `[n]T`; the positions are 0..count
+            _, (c, t) = self.capture(lambda: self.expr(d.expr))
+            if is_int(t):
+                c, t = self.expr(d.expr)
+                return self.anon_count_domain(f"0..{unparse(d.expr)}", "0", c, (0, 0), (t.lo, t.hi), d)
         t = self.resolve_type(d)
         if isinstance(t, TTuple) and t.cpp in self.index_impls:
             return TDom(self.index_impls[t.cpp])     # any struct with `impl Index` is a dimension (plan/19 §3.1)
@@ -682,6 +746,9 @@ class Compiler(LendMixin):
             t = TInt(lo, hi)
         return s.cpp, t
 
+    def x_generic(self, e, want):
+        return "", TType(self.resolve_type(N("tname", e.line, name=e.name, args=e.args)))
+
     def x_doblock(self, e, want):
         if want is None:
             want = self.infer_block_type(e)
@@ -718,7 +785,71 @@ class Compiler(LendMixin):
         return TInt() if is_int(t) else t
 
     def x_try(self, e, want):
-        self.error(e, "`?` must be the whole right-hand side of a let (prototype)")
+        self.error(e, f"`{unparse(e.a)}?` is inside a branch, a lambda or a comprehension, where leaving the fn early "
+                      f"is not in the prototype\n  help: bind it first: `let x = {unparse(e.a)}?`")
+
+    def try_exit(self, node):
+        """The C++ that leaves with `none` when a `?` meets one: out of the `do:` block, or out of the fn."""
+        ds = getattr(self, "do_stack", [])
+        if ds and ds[-1][3] == len(self.fn_ret):
+            dcpp, dty, dlabel, _ = ds[-1]
+            if not isinstance(dty, TOpt):
+                self.error(node, "`?` inside `do:` needs the block to have type ?T")
+            return f"{{ {dcpp} = {{}}; goto {dlabel}; }}"
+        if not self.fn_ret or not isinstance(self.fn_ret[-1], TOpt):
+            self.error(node, "`?` is only allowed in a fn returning ?T")
+        return "return {};"
+
+    def lift_tries(self, e, put, undo):
+        """`e?` anywhere in a statement's expression passes `none` along: the fn (or `do:` block) gives `none`
+        as soon as one is met. Every `?` that is always evaluated is taken out, left to right, into a temporary
+        tested before the statement; one under `and` / `or` / `??`, an inline `if` or a lambda is left for x_try."""
+        k = e.kind
+        def attr(n, name):
+            return getattr(n, name), (lambda v: setattr(n, name, v))
+        def item(lst, i):
+            return lst[i], (lambda v: lst.__setitem__(i, v))
+        kids = []
+        if k in ("paren", "unop", "unwrap", "try"):
+            kids = [attr(e, "a")]
+        elif k == "binop" and e.op not in ("and", "or", "??"):
+            kids = [attr(e, "a"), attr(e, "b")]
+        elif k == "cmp" and len(e.ops) == 1:
+            kids = [attr(e, "first"), item(e.rest, 0)]
+        elif k == "field":
+            kids = [attr(e, "obj")]
+        elif k == "index":
+            kids = [attr(e, "obj")] + [item(e.idx, i) for i in range(len(e.idx))]
+        elif k == "tuple":
+            kids = [item(e.items, i) for i in range(len(e.items))]
+        elif k == "kwarg":
+            kids = [attr(e, "value")]
+        elif k == "call":
+            kids = ([attr(e.fn, "obj")] if e.fn.kind == "field" else []) + [item(e.args, i) for i in range(len(e.args))]
+        for child, setter in kids:
+            self.lift_tries(child, setter, undo)
+        if k == "try":
+            c, t = self.expr(e.a)
+            if not isinstance(t, TOpt):
+                self.error(e, f"`?` needs a ?T, got {t!r}")
+            o = self.tmpname("o")
+            self.emit(f"auto {o} = {c};")
+            self.emit(f"if (!{o}.has()) {self.try_exit(e)}")
+            put(N("ctemp", e.line, code=f"{o}.get()", ty=t.inner, src=e))
+            undo.append((put, e))
+
+    def with_tries(self, node, name, run):
+        """Run `run()` with every liftable `?` under `node.<name>` taken out first; the tree is restored after."""
+        e = getattr(node, name, None)
+        if e is None or not any(x.kind == "try" for x in walk([e])):
+            return run()
+        undo = []
+        try:
+            self.lift_tries(e, lambda v: setattr(node, name, v), undo)
+            return run()
+        finally:
+            for put, old in reversed(undo):
+                put(old)
 
     def x_tuple(self, e, want):
         if isinstance(want, TOpt):
@@ -759,6 +890,20 @@ class Compiler(LendMixin):
         if et is None:
             return "{}", TList(None)
         return f"{self.cpp_type(lt)}{{{', '.join(parts)}}}", lt
+
+    def x_maplit(self, e, want):
+        """`[k: v, ...]`: a Map (ordered) unless the declared type says HashMap."""
+        kt, vt = (want.key, want.val) if isinstance(want, TMap) else (None, None)
+        parts = []
+        for k, v in e.pairs:
+            kc, t = self.expr(k, kt)
+            kt = kt or (TInt() if is_int(t) else t)
+            kc = self.coerce(kc, t, kt, k)
+            vc, t = self.expr(v, vt)
+            vt = vt or (TInt() if is_int(t) else t)
+            parts.append(f"_m[{kc}] = {self.coerce(vc, t, vt, v)};")
+        mt = want if isinstance(want, TMap) else TMap(kt, vt)
+        return f"([&]{{ auto _m = {self.set_ctor(mt)}; {' '.join(parts)} return _m; }}())", mt
 
     def x_unop(self, e, want):
         c, t = self.expr(e.a, want)
@@ -899,7 +1044,11 @@ class Compiler(LendMixin):
 
     def x_cmp(self, e, want):
         parts = []
-        left_c, left_t = self.expr(e.first)
+        want_first = None
+        if e.ops[0] in ("in", "not in") and e.first.kind == "tuple":
+            rt0 = self.capture(lambda: self.expr(e.rest[0]))[1][1]
+            want_first = rt0.elem if isinstance(rt0, TSet) else rt0.key if isinstance(rt0, TMap) else None
+        left_c, left_t = self.expr(e.first, want_first)
         for op, rn in zip(e.ops, e.rest):
             if op in ("in", "not in"):
                 c = self.membership(left_c, left_t, rn, e)
@@ -950,6 +1099,30 @@ class Compiler(LendMixin):
         self.scopes.pop()
         return (f"[&](const {self.cpp_type(ta)}& {pa}, const {self.cpp_type(tb)}& {pb}) -> {self.cpp_type(tr)} "
                 f"{{ return {bc}; }}")
+
+    def binary_fn(self, f, t):
+        """C++ for a two-argument operation on `t`: a lambda, an operator (`+`), or a fn by name (`min`, `gcd`)."""
+        if f.kind == "name":
+            a, b = N("name", f.line, name="_a"), N("name", f.line, name="_b")
+            f = N("lambda", f.line, params=[N("pname", f.line, name="_a"), N("pname", f.line, name="_b")],
+                  body=N("call", f.line, fn=f, args=[a, b]), op=f.name)
+        return self.lambda2(f, t, t, t)
+
+    def monoid(self, f, t):
+        """(identity, operation) in C++ for an operation given by name where a Monoid<T> is expected: `+` is
+        Sum, `*` Prod, `min` / `max` over ?T start from none (std.algebra `opt`), over Int from the far end."""
+        name = getattr(f, "op", None) or (f.name if f.kind == "name" else None)
+        ct = self.cpp_type(t)
+        if name in ("min", "max") and isinstance(t, TOpt):
+            ident = f"{ct}()"
+        elif name in ("min", "max") and is_int(t):
+            ident = "LLONG_MAX" if name == "min" else "-LLONG_MAX"
+        elif name in FOLD_IDENTITY and name != "-" and (is_int(t) or isinstance(t, TMod)) and not (f.kind == "name" and self.lookup(name)):
+            ident = f"{ct}({FOLD_IDENTITY[name]})"
+        else:
+            self.error(f, f"`{unparse(f) if f.kind == 'name' else 'this operation'}` has no identity the library knows for {t!r}; "
+                          f"give one: `SegTree<D, T>(identity, (a, b) => ...)`")
+        return ident, self.binary_fn(f, t)
 
     def membership(self, xc, xt, rn, e):
         rc, rt = self.expr(rn)
@@ -1029,9 +1202,17 @@ class Compiler(LendMixin):
             kc, kt = self.expr(e.idx[0], ot.key)
             kc = self.coerce(kc, kt, ot.key, e.idx[0])
             lv = getattr(self, "lvalue", None)
-            # `m[k] = v` inserts; `m[k] += v` on a missing key starts from the zero value (counting)
-            if lv is not None and lv[0] is e and (lv[1] == "=" or is_int(ot.val) or isinstance(ot.val, TMod)):
-                return f"{oc}[{kc}]", ot.val
+            if lv is not None and lv[0] is e:
+                # `m[k] = v` inserts. `m[k] f= v` folds v into the entry, and a missing key starts from the
+                # identity of f (decisions.md section 12): one rule for `+=` (counting), `min=` and the rest.
+                f = lv[1][:-1]
+                if lv[1] == "=" or isinstance(ot.val, TOpt):    # a missing ?T entry starts as `none`
+                    return f"{oc}[{kc}]", ot.val
+                if f not in FOLD_IDENTITY or not (is_int(ot.val) or isinstance(ot.val, TMod)):
+                    self.no_identity(e, f)
+                if FOLD_IDENTITY[f] == "0":
+                    return f"{oc}[{kc}]", ot.val
+                return f"cp_mslot({oc}, {kc}, {self.cpp_type(ot.val)}({FOLD_IDENTITY[f]}))", ot.val
             self.note_check(e, f"key `{unparse(e.idx[0])}` is in the map")
             return f"cp_mget({oc}, {kc}, {e.line})", ot.val
         if isinstance(ot, TCounter):
@@ -1147,6 +1328,14 @@ class Compiler(LendMixin):
             return "", TType(self.tree_pre(ot))
         if isinstance(ot, TTree) and f == "preorder":
             return f"{oc}.order", TList(ot.dom)
+        if isinstance(ot, TTree) and f == "kids":       # kids[v]: the children of v
+            return f"{oc}.kids", TArr([ot.dom], TList(ot.dom))
+        if isinstance(ot, TTree) and f == "root":
+            return f"{oc}.order[0]", ot.dom
+        if isinstance(ot, TDsu) and f == "count":       # the number of sets
+            return f"(ll){oc}.parts", TInt(0, ot.dom.info.len_iv[1])
+        if isinstance(ot, TSeg) and f == "all":         # the fold of every position
+            return f"{oc}.all()", ot.elem
         if isinstance(ot, TDom) and f == "elem" and getattr(ot.info, "base", None) is not None:
             return f"([&](int _w) {{ return _w == 0 ? Opt<int>() : Opt<int>(_w - 1); }}({oc}))", TOpt(TDom(ot.info.base))
         if isinstance(ot, TType) and isinstance(ot.t, TDom):
@@ -1262,6 +1451,43 @@ class Compiler(LendMixin):
                     for x, _ in cs[1:]:
                         c = f"{fn.name}({c}, {x})"
                     return c, ts[0]
+                # a mix of T and ?T: `none` is "no value here" and is skipped, as in a reduction. The result
+                # is a T when at least one argument is, else a ?T.
+                inner = [t.inner if isinstance(t, TOpt) else t for t in ts]
+                if all(is_int(t) for t in inner) or all(t == inner[0] for t in inner):
+                    ints = is_int(inner[0])
+                    plain = [(c, t) for c, t in cs if not isinstance(t, TOpt)]
+                    opts = [(c, t.inner) for c, t in cs if isinstance(t, TOpt)]
+                    if ints:
+                        # the result is one of the arguments; a plain argument also bounds it from its own side
+                        every = lambda xs: None if None in xs else xs
+                        los, his = every([t.lo for t in inner]), every([t.hi for t in inner])
+                        firm = [t for _, t in plain] or inner
+                        if fn.name == "min":
+                            cap = every([t.hi for t in firm])
+                            rt = TInt(los and min(los), cap and (min(cap) if plain else max(cap)))
+                        else:
+                            floor = every([t.lo for t in firm])
+                            rt = TInt(floor and (max(floor) if plain else min(floor)), his and max(his))
+                    else:
+                        rt = inner[0]
+                    ct = self.cpp_type(rt)
+                    better = "<" if fn.name == "min" else ">"
+                    if plain:
+                        c = plain[0][0]
+                        for x, _ in plain[1:]:
+                            c = f"{fn.name}<{ct}>({c}, {x})"
+                        for x, _ in opts:
+                            c = (f"([&]({ct} _a, const auto& _o) -> {ct} {{ return _o.has() && ({ct})_o.get() {better} _a "
+                                 f"? ({ct})_o.get() : _a; }}({c}, {x}))")
+                        return c, rt
+                    ot = TOpt(rt)
+                    oc = self.cpp_type(ot)
+                    c = f"{oc}({opts[0][0]})"
+                    for x, _ in opts[1:]:
+                        c = (f"([&]({oc} _a, const auto& _o) -> {oc} {{ return _o.has() && (!_a.has() || ({ct})_o.get() "
+                             f"{better} _a.get()) ? {oc}(({ct})_o.get()) : _a; }}({c}, {x}))")
+                    return c, ot
                 self.error(e, f"{fn.name} of {ts!r}")
         if fn.kind == "name" and fn.name == "rand" and not self.lookup("rand"):
             (lc, lt), (hc, ht) = self.expr(e.args[0]), self.expr(e.args[1])
@@ -1296,15 +1522,108 @@ class Compiler(LendMixin):
             if not (isinstance(ct, TArr) and ct.dims == [vt] and isinstance(ct.elem, TDom)):
                 self.error(e, f"condense needs the components as a [{vt!r}]C, got {ct!r}")
             return f"cp_condense({c}, {cc}, {ct.elem.info.len_cpp}, {to})", TArr([ct.elem], TList(ct.elem))
-        if fn.kind == "name" and fn.name == "Rooted" and len(e.args) == 2 and not self.lookup(fn.name):
-            # Rooted(adj, root): a tree given as [V]List<V>, hung from `root`
+        if fn.kind == "name" and fn.name == "Rooted" and len(e.args) in (2, 3) and not self.lookup(fn.name):
+            # Rooted(g, root) / Rooted(g, root, weight: e => e.len): a tree hung from `root`. `g` is adjacency
+            # lists ([V]List<V>, or arcs with a `to: V`) or a list of edges (records that start with two V).
             c, t = self.expr(e.args[0])
-            if not (isinstance(t, TArr) and len(t.dims) == 1 and t.elem == TList(t.dims[0])):
-                self.error(e, f"Rooted needs adjacency lists [V]List<V>, got {t!r}")
-            rc, rt = self.expr(e.args[1], t.dims[0])
-            if rt != t.dims[0]:
-                self.error(e, f"the root must be a {t.dims[0]!r}, got {rt!r}")
-            return f"RootedTree({c}, {rc})", TTree(t.dims[0])
+            weight = [a for a in e.args[2:] if a.kind == "kwarg" and a.name == "weight"]
+            if len(e.args) == 3 and not weight:
+                self.error(e, "Rooted(g, root) or Rooted(g, root, weight: e => e.len)")
+            if isinstance(t, TArr) and len(t.dims) == 1 and isinstance(t.elem, TList):
+                V, arc = t.dims[0], t.elem.elem
+                to = "_a" if arc == V else f"_a.{self.field_cpp('to')}" if isinstance(arc, TTuple) and \
+                    arc.field("to") is not None and arc.types[arc.field("to")] == V else None
+                fill = f"for (size_t _u = 0; _u < _g.size(); ++_u) for (const auto& _a : _g[_u]) _adj[_u].emplace_back((int)({to}), {{w}});"
+            elif isinstance(t, (TArr, TList)) and isinstance(t.elem, TTuple) and len(t.elem.types) >= 2 and \
+                    isinstance(t.elem.types[0], TDom) and t.elem.types[0] == t.elem.types[1]:
+                V, arc = t.elem.types[0], t.elem
+                u, v = (f"_a.{self.field_cpp(n)}" for n in arc.names[:2])
+                to = u
+                fill = (f"for (const auto& _a : _g) {{{{ ll _w = {{w}}; _adj[{u}].emplace_back((int)({v}), _w); "
+                        f"_adj[{v}].emplace_back((int)({u}), _w); }}}}")
+            else:
+                to = None
+            if to is None:
+                self.error(e, f"Rooted needs adjacency lists ([V]List<V>, or arcs with a `to: V`) or a list of edges "
+                              f"(records that start with two V), got {t!r}")
+            w = "1"
+            if weight:
+                pn, wc, wt = self.lambda_key(weight[0].value, arc)
+                if not is_int(wt):
+                    self.error(weight[0], f"`weight:` gives each edge an Int length, got {wt!r}")
+                w = f"([&](const {self.cpp_type(arc)}& {pn}) -> ll {{ return {wc}; }}(_a))"
+            rc, rt = self.expr(e.args[1], V)
+            if rt != V:
+                self.error(e, f"the root must be a {V!r}, got {rt!r}")
+            tt = TTree(V)
+            tt.weighted = bool(weight)
+            return (f"([&]{{ const auto& _g = {c}; vector<vector<pair<int, ll>>> _adj({V.info.len_cpp}); "
+                    f"{fill.format(w=w)} return RootedTree(_adj, {rc}); }}())"), tt
+        if fn.kind == "generic" and fn.name in LIBS and not self.lookup(fn.name):
+            return self.lib_new(self.resolve_type(N("tname", fn.line, name=fn.name, args=fn.args)), e.args, e)
+        if fn.kind == "name" and fn.name == "Set" and len(e.args) == 1 and not self.lookup("Set"):
+            # Set(xs): the distinct elements of a list or an array
+            c, t = self.expr(e.args[0])
+            if not isinstance(t, (TList, TArr)):
+                self.error(e, f"Set(xs) takes a list or an array, got {t!r}")
+            st = TSet(TInt() if is_int(t.elem) else t.elem)
+            return f"([&]{{ auto _s = {self.set_ctor(st)}; for (const auto& _x : {c}) _s.insert(_x); return _s; }}())", st
+        if fn.kind == "name" and fn.name == "bfs" and len(e.args) == 2 and not self.lookup("bfs"):
+            # bfs(adj, from): fewest arcs from any of `from` to each vertex, none where there is no way (std.graph)
+            fc, ft = self.expr(e.args[1])
+            if not (isinstance(ft, (TList, TArr)) and isinstance(ft.elem, TDom)):
+                self.error(e.args[1], f"bfs(adj, from) starts from a list of vertices, got {ft!r}")
+            V = ft.elem
+            pn, ac, at = self.lambda_key(e.args[0], V)
+            arc = at.elem if isinstance(at, (TList, TArr)) else None
+            if not (arc == V or (isinstance(arc, TTuple) and arc.field("to") is not None and arc.types[arc.field("to")] == V)):
+                self.error(e.args[0], f"bfs(adj, from): `adj` gives the neighbours of a {V!r} as a list of {V!r} "
+                                      f"(or of arcs with a `to: {V!r}`), got {at!r}")
+            rt = TArr([V], TOpt(TInt(0, V.info.len_iv[1])))
+            return (f"cp_bfs<{self.cpp_type(rt.elem)}>({V.info.len_cpp}, {fc}, [&](int {pn}) -> decltype(auto) "
+                    f"{{ return ({ac}); }})"), rt
+        if fn.kind == "name" and fn.name == "choose" and len(e.args) == 2 and not self.lookup("choose"):
+            # choose(n, k): exact; 0 when k is outside 0..=n (std.math)
+            (nc, nt), (kc, kt) = self.expr(e.args[0]), self.expr(e.args[1])
+            if not (is_int(nt) and is_int(kt)):
+                self.error(e, "choose(n, k) needs Ints")
+            import math
+            hi = None
+            if nt.hi is not None and kt.lo is not None and kt.lo == kt.hi:
+                hi = math.comb(max(nt.hi, 0), kt.lo) if kt.lo >= 0 else 0
+            elif nt.hi is not None and nt.hi <= 62:
+                hi = math.comb(max(nt.hi, 0), max(nt.hi, 0) // 2)
+            return f"cp_choose({nc}, {kc}, {e.line})", TInt(0, hi if hi is not None and hi <= INT_MAX else None)
+        if fn.kind == "name" and fn.name in ("scan", "running_sum") and not self.lookup(fn.name) and \
+                len(e.args) == (2 if fn.name == "scan" else 1):
+            # scan(xs, f): the running fold x0, f(x0, x1), ...; running_sum(xs) is scan(xs, +) (std.seq)
+            c, t = self.expr(e.args[0])
+            if not isinstance(t, (TList, TArr)) or (isinstance(t, TArr) and len(t.dims) != 1):
+                self.error(e, f"{fn.name} takes a list or a 1-D array, got {t!r}")
+            et = TInt() if is_int(t.elem) else t.elem
+            f = e.args[1] if fn.name == "scan" else N("lambda", e.line, op="+",
+                params=[N("pname", e.line, name="_a"), N("pname", e.line, name="_b")],
+                body=N("binop", e.line, op="+", a=N("name", e.line, name="_a"), b=N("name", e.line, name="_b")))
+            ec = self.cpp_type(et)
+            return (f"([&]{{ auto _f = {self.binary_fn(f, et)}; vector<{ec}> _r; const auto& _xs = {c}; _r.reserve(_xs.size()); "
+                    f"for (const auto& _x : _xs) _r.push_back(_r.empty() ? ({ec})_x : _f(_r.back(), ({ec})_x)); return _r; }}())"), TList(et)
+        if fn.kind == "name" and fn.name == "take" and len(e.args) == 1 and not self.lookup("take"):
+            # take(place): moves the value out and leaves the type's empty value, so nothing is copied
+            x = e.args[0]
+            if x.kind == "name":
+                if not getattr(self.lookup(x.name), "mut", False):
+                    self.error(x, f"`{x.name}` is not a var")
+            else:
+                self.require_mut(x, x)
+            self.note_write(x, e.line)
+            self.lvalue = (x, "=")
+            try:
+                c, t = self.expr(x)
+            finally:
+                self.lvalue = None
+            if not isinstance(t, (TList, TMap, TSet, TOpt, TStr)):
+                self.error(e, f"take(place) needs a List, a Map, a Set, a Str or a ?T (types with an empty value), got {t!r}")
+            return f"cp_take({c}, {self.set_ctor(t) if isinstance(t, (TMap, TSet)) else self.cpp_type(t) + '()'})", t
         if fn.kind == "name" and fn.name == "StrHash" and len(e.args) == 1 and not self.lookup(fn.name):
             c, t = self.expr(e.args[0])
             if not (isinstance(t, TArr) and len(t.dims) == 1 and
@@ -1332,8 +1651,9 @@ class Compiler(LendMixin):
         if fn.kind == "name" and fn.name == "prefix" and len(e.args) == 1 and not self.lookup("prefix"):
             # prefix(a): the sum of everything before each boundary, so any block's sum is O(1)
             c, t = self.expr(e.args[0])
-            if not (isinstance(t, TArr) and len(t.dims) in (1, 2) and is_int(t.elem)):
-                self.error(e, f"prefix takes a 1-D or 2-D array of Int, got {t!r}")
+            # a Bool array counts its true cells
+            if not (isinstance(t, TArr) and len(t.dims) in (1, 2) and (is_int(t.elem) or isinstance(t.elem, TBool))):
+                self.error(e, f"prefix takes a 1-D or 2-D array of Int or Bool, got {t!r}")
             rows = t.dims[0].info.len_cpp
             cols = t.dims[1].info.len_cpp if len(t.dims) == 2 else "1"
             return f"CpPrefix({c}, {rows}, {cols})", TPrefix(t.dims)
@@ -1497,7 +1817,7 @@ class Compiler(LendMixin):
             return self.call_generic(self.lookup(fn.name).node, e)
         fc, ft = self.expr(fn) if fn.kind != "field" else (None, None)
         if fn.kind == "field":
-            if fn.name in ("push", "pop", "sort", "rev", "clear", "insert", "remove", "swap", "set"):
+            if fn.name in ("push", "pop", "sort", "rev", "clear", "insert", "remove", "swap", "set", "add", "unite", "refresh"):
                 self.note_write(fn.obj, e.line)
             return self.method_call(e, want)
         if isinstance(ft, TType):
@@ -1548,6 +1868,55 @@ class Compiler(LendMixin):
         key = ot.t.cpp if isinstance(ot, TType) and hasattr(ot.t, "cpp") else getattr(ot, "cpp", None)
         if key in self.projs and m in self.projs[key]:
             return self.call_proj(self.projs[key][m], e, oc, ot)
+        if isinstance(ot, TType) and isinstance(ot.t, TLib) and m == "new":
+            return self.lib_new(ot.t, args, e)
+        if isinstance(ot, TType) and isinstance(ot.t, TDsu) and m == "new" and not args:
+            return f"CpDsu({ot.t.dom.info.len_cpp})", ot.t         # Dsu<V>.new(), as the library spells it
+        if isinstance(ot, TLib) and ot.name == "Steps":
+            K = ot.args[0]
+            def rng(a):
+                c, t = self.expr(a)
+                if not (isinstance(t, TRange) and (t.elem == K or (is_int(K) and is_int(t.elem)))):
+                    self.error(a, f"a {ot!r} takes a range of {K!r}, got {t!r}")
+                return c
+            if m == "add" and len(args) == 2:
+                vc, vt = self.expr(args[1])
+                if not is_int(vt):
+                    self.error(args[1], f"add(range, x) needs an Int x, got {vt!r}")
+                return f"{oc}.add({rng(args[0])}, {vc})", UNIT
+            if m == "runs" and len(args) == 1:
+                tt = self.tuple_type([None, None], [TRange(K), INT])
+                return f"{oc}.runs<{tt.cpp}>({rng(args[0])})", TList(tt)
+            self.error(e, f"no method {m} on {ot!r} (add(range, x), runs(range))")
+        if isinstance(ot, TType) and isinstance(ot.t, TSeg) and m == "of" and len(args) == 2:
+            # SegTree<D, T>.of(op, f): leaf i is f(i); `refresh(i)` recomputes it, so the formula is written once
+            t = ot.t
+            ident, op = self.monoid(args[0], t.elem)
+            pn, fc, ft = self.lambda_key(args[1], t.dom)
+            ec = self.cpp_type(t.elem)
+            return (f"SegTree<{ec}>({t.dom.info.len_cpp}, {ident}, {op}, [&](int {pn}) -> {ec} "
+                    f"{{ return {self.coerce(fc, ft, t.elem, args[1])}; }})"), t
+        if (isinstance(ot, TRange) or (isinstance(ot, TType) and isinstance(ot.t, TDom))) and m == "windows" and len(args) == 1:
+            # r.windows(k) / D.windows(k): every stretch of k positions in a row, each one a Range
+            rc, el, kc = self.windows_of(oc, ot, args[0], e)
+            return (f"([&](Rng _r, ll _k) {{ vector<Rng> _w; for (ll _s = _r.lo; _s + _k <= _r.hi; ++_s) "
+                    f"_w.push_back(Rng{{_s, _s + _k}}); return _w; }}({rc}, {kc}))"), TList(TRange(el))
+        if isinstance(ot, TRange) and m in ("partition_point", "first_where") and len(args) == 1:
+            # binary search over any range, of Ints or of positions: the predicate is false then true
+            # (first_where) or true then false (partition_point)
+            el = ot.elem
+            cty = "int" if isinstance(el, TDom) else "ll"
+            pn, kc, kt = self.lambda_key(args[0], el)
+            if not isinstance(kt, TBool):
+                self.error(e, f"{m} needs a Bool predicate")
+            flip = "!" if m == "first_where" else ""
+            loop = (f"ll _lo = _r.lo, _hi = max(_r.lo, _r.hi); while (_lo < _hi) {{ ll _m = _lo + (_hi - _lo) / 2; "
+                    f"{cty} {pn} = ({cty})_m; if ({flip}({kc})) _lo = _m + 1; else _hi = _m; }}")
+            if m == "partition_point":
+                return (f"([&](Rng _r) {{ {loop} return ({cty})_lo; }}({oc}))",
+                        TDom(self.bounds_of(el.info)) if isinstance(el, TDom) else INT)
+            rt = TOpt(el)
+            return f"([&](Rng _r) {{ {loop} return _lo < _r.hi ? {self.cpp_type(rt)}(({cty})_lo) : {self.cpp_type(rt)}(); }}({oc}))", rt
         if isinstance(ot, TRange) and m in ("prefix", "suffix") and len(args) == 1:
             # r.prefix(k) / r.suffix(k): the first / last k positions of r (all of r when it is shorter)
             kc, kt = self.expr(args[0])
@@ -1585,6 +1954,13 @@ class Compiler(LendMixin):
             rt = TArr([ot.dims[1]], ot.elem)
             rt.view = "row"
             return f"cp_row({oc}, {rc}, {ot.dims[1].info.len_cpp})", rt
+        if isinstance(ot, TArr) and len(ot.dims) == 1 and m == "swap" and len(args) == 2:
+            # a.swap(i, j): exchange two cells; i == j is fine and changes nothing (plan/19 §4.5)
+            if isinstance(ot.elem, TBool):
+                self.error(e, "`.swap(i, j)` on a Bool array is not in the prototype")
+            self.require_mut(obj, e)
+            i, j = (self.index_into(a, ot.dims[0].info, e) for a in args)
+            return f"swap({oc}[{i}], {oc}[{j}])", UNIT
         if isinstance(ot, TList) and m == "copy" and not args:
             return f"{self.cpp_type(ot)}({oc})", ot       # an owned copy: `for x in xs.copy()` may then change xs
         if isinstance(ot, TArr) and len(ot.dims) == 1 and m in ("sort", "rev", "copy") and not args:
@@ -1729,13 +2105,24 @@ class Compiler(LendMixin):
                 return f"{oc}.chains<{span.cpp}>({cs[0]}, {cs[1]})", TList(span)
             if m == "is_anc" and len(cs) == 2:
                 return f"{oc}.is_anc({cs[0]}, {cs[1]})", BOOL
-            if m == "dist" and len(cs) == 2:
-                return f"(ll){oc}.dist({cs[0]}, {cs[1]})", TInt(0, ot.dom.info.len_iv[1])
+            if m == "dist" and len(cs) == 2:     # the length of the path: its edges, or their `weight:` if given
+                return f"{oc}.length({cs[0]}, {cs[1]})", (TInt() if ot.weighted else TInt(0, ot.dom.info.len_iv[1]))
             if m == "children" and len(cs) == 1:
                 return f"{oc}.kids[{cs[0]}]", TList(ot.dom)
             if m == "size" and len(cs) == 1:
                 return f"(ll){oc}.siz[{cs[0]}]", TInt(1, ot.dom.info.len_iv[1])
-            self.error(e, f"no method {m} on {ot!r} (lca, dist, is_anc, parent, ancestor, step, children, size, pos, depth, .preorder)")
+            self.error(e, f"no method {m} on {ot!r} (lca, dist, is_anc, parent, ancestor, step, children, size, pos, depth, .kids, .root, .preorder)")
+        if isinstance(ot, TPrefix) and m == "sum" and len(ot.dims) == 1 and len(args) == 2 and \
+                all(a.kind == "kwarg" for a in args) and [a.name for a in args] == ["from", "len"]:
+            # pre.sum(from: v, len: k): k cells starting at v, going round past the end (a circle)
+            d = ot.dims[0]
+            fc, ft = self.expr(args[0].value, d)
+            if ft != d:
+                self.error(args[0], f"`from:` is a {d!r}, got {ft!r}")
+            kc, kt = self.expr(args[1].value)
+            if not is_int(kt):
+                self.error(args[1], f"`len:` is an Int, got {kt!r}")
+            return f"{oc}.wrap({fc}, {kc}, {d.info.len_cpp}, {e.line})", TInt()
         if isinstance(ot, TPrefix) and m == "sum":
             if len(args) != len(ot.dims):
                 self.error(e, f"`sum` on {ot!r} takes {len(ot.dims)} range(s), one per dimension")
@@ -1807,7 +2194,9 @@ class Compiler(LendMixin):
                 return f"{oc}.get({at(args[0])})", ot.elem
             if m == "query" and len(args) == 2:
                 return f"{oc}.query({at(args[0])}, {at(args[1])})", ot.elem
-            self.error(e, f"no method {m} on {ot!r} (set(i, v), get(i), query(l, r))")
+            if m == "refresh" and len(args) == 1:
+                return f"{oc}.refresh({at(args[0])})", UNIT
+            self.error(e, f"no method {m} on {ot!r} (set(i, v), get(i), query(l, r), refresh(i), .all)")
         if isinstance(ot, TDsu) and m in ("find", "unite", "same", "size"):
             cs = []
             for a in args:
@@ -1844,6 +2233,20 @@ class Compiler(LendMixin):
         if isinstance(ot, TOpt) and m == "map":
             self.error(e, ".map on ?T is not in the prototype yet")
         self.error(e, f"{ot!r} has no method `{m}`")
+
+    def windows_of(self, oc, ot, k, e):
+        """(range C++, element type, k C++) for `r.windows(k)` / `D.windows(k)`."""
+        if isinstance(ot, TType):
+            oc, el = f"Rng{{0, (ll){ot.t.info.len_cpp}}}", ot.t
+        else:
+            el = ot.elem
+        kc, kt = self.expr(k)
+        if not is_int(kt):
+            self.error(e, f"`.windows(k)` takes an Int width, got {kt!r}")
+        if kt.lo is None or kt.lo < 1:
+            self.note_check(e, f"`{unparse(k)}` is at least 1")
+            kc = f"cp_width({kc}, {e.line})"
+        return oc, el, kc
 
     # ---------- iteration
     def bind_pattern(self, pat, c, t, node, mut=False):
@@ -1933,6 +2336,28 @@ class Compiler(LendMixin):
             self.scopes.pop()
             self.emit("}")
             return
+        if it.kind == "call" and it.fn.kind == "field" and it.fn.name == "windows" and len(it.args) == 1 and not rev:
+            oc, ot = self.expr(it.fn.obj)
+            if isinstance(ot, TRange) or (isinstance(ot, TType) and isinstance(ot.t, TDom)):
+                # `for w in D.windows(k)`: no list is built
+                rc, el, kc = self.windows_of(oc, ot, it.args[0], it)
+                r, k, v = self.tmpname("r"), self.tmpname("k"), self.tmpname("s")
+                if pat.kind != "pname":
+                    self.error(it, "a window is one Range: `for w in D.windows(k)`")
+                self.emit(f"{{ const Rng {r} = {rc}; const ll {k} = {kc};")
+                self.emit(f"for (ll {v} = {r}.lo; {v} + {k} <= {r}.hi; ++{v}) {{")
+                self.scopes.append({})
+                self.loop_trips.append(el.info.len_iv[1] if isinstance(el, TDom) else None)
+                self.ind += 1
+                w = self.fresh(pat.name)
+                self.emit(f"const Rng {w}{{{v}, {v} + {k}}};")
+                self.scopes[-1][pat.name] = Sym("let", TRange(el), w, node=pat)
+                body()
+                self.ind -= 1
+                self.loop_trips.pop()
+                self.scopes.pop()
+                self.emit("} }")
+                return
         self.scopes.append({})
         trips = None
         closed = it.kind == "range" and it.lo is not None and it.hi is not None
@@ -2340,7 +2765,12 @@ class Compiler(LendMixin):
         self.cur_stmt, self.after_stmt = s.kind, []
         start = len(self.out)
         try:
-            m(s)
+            # `let x = e?` is the whole-statement form and has its own code in s_let
+            lift = {"let": "value", "return": "value", "exprstmt": "expr", "assign": "value", "doassign": "value"}.get(s.kind)
+            if lift and not (s.kind == "let" and s.value is not None and s.value.kind == "try"):
+                self.with_tries(s, lift, lambda: m(s))
+            else:
+                m(s)
             for mark, line in self.after_stmt:
                 at = [k for k in range(start, len(self.out)) if self.out[k].strip() == mark]
                 if not at:
@@ -2371,7 +2801,11 @@ class Compiler(LendMixin):
 
     def is_read(self, v):
         return v is not None and v.kind == "call" and v.fn.kind == "name" and v.fn.name == "read" \
-            and all(a.kind == "kwarg" for a in v.args) and not self.lookup("read")
+            and all(a.kind == "kwarg" or self.is_columns(a) for a in v.args) and not self.lookup("read")
+
+    def is_columns(self, a):
+        """`read(columns)`: an array of records laid out one field after another in the input."""
+        return a.kind == "name" and a.name == "columns" and not self.lookup("columns")
 
     def s_let(self, s):
         v = s.value
@@ -2428,6 +2862,27 @@ class Compiler(LendMixin):
             self.scopes[-1][dn] = Sym("type", TDom(info), info.cpp, node=s)
             self.declare(vn, ty, comp, False, s)
             return
+        if v is not None and getattr(s, "orelse", None):
+            # `let (a, b) = (x, y) else:` and `let a = x and let b = y else:` take what `if let` takes:
+            # every binding must be there, or the else block runs (and has to leave)
+            parts = [(s.pat, v)] + list(getattr(s, "more", None) or [])
+            if len(parts) == 1 and s.pat.kind == "ptuple" and v.kind == "tuple" and len(v.items) == len(s.pat.items) \
+                    and not any(v.names):
+                parts = list(zip(s.pat.items, v.items))
+            if len(parts) > 1:
+                for pat, value in parts:
+                    c, t = self.expr(value)
+                    if not isinstance(t, TOpt):
+                        self.error(s, f"let-else needs a ?T for `{unparse(value)}`, got {t!r}")
+                    o = self.tmpname("o")
+                    self.emit(f"auto {o} = {c};")
+                    self.emit(f"if (!{o}.has()) {{")
+                    self.ind += 1
+                    self.block(s.orelse)
+                    self.ind -= 1
+                    self.emit("}")
+                    self.bind_pattern(pat, f"{o}.get()", t.inner, s, mut=s.mut)
+                return
         if v is not None and (v.kind == "try" or getattr(s, "orelse", None)):
             inner = v.a if v.kind == "try" else v
             c, t = self.expr(inner)
@@ -2505,6 +2960,8 @@ class Compiler(LendMixin):
                     hi = f"({hi}) - 1"
                 self.emit(f"{cpp} = CP_GEN ? gen_int({lo}, {hi}) : rd_range({lo}, {hi}, {s.line});")
                 self.emit(f"if (CP_GEN) {{ out_int({cpp}); out_char(' '); }}")
+            elif any(self.is_columns(a) for a in s.value.args):
+                self.emit_read_columns(cpp, ty, s)
             else:
                 self.emit_read(cpp, ty, s)
             self.emit("if (CP_GEN) out_char('\\n');")
@@ -2580,6 +3037,22 @@ class Compiler(LendMixin):
             self.error(s, "`where` needs a Bool")
         self.emit(f"if (CP_GEN && !({c})) exit(4);")
         self.emit(f"CP_ASSERT({c}, \"where-clause failed\", {s.line});")
+
+    def emit_read_columns(self, target, ty, node):
+        """`let a: [I](x: A, y: B) = read(columns)`: every x, then every y. The input gives one field for all
+        the records before the next field, and the program still gets one record per position."""
+        if not (isinstance(ty, TArr) and isinstance(ty.elem, TTuple)):
+            self.error(node, f"read(columns) fills an array of records one field at a time, got {ty!r}")
+        size = " * ".join(f"(size_t){d.info.len_cpp}" for d in ty.dims)
+        self.emit(f"{target}.assign({size}, {self.cpp_type(ty.elem)}());")
+        for fn, ft in zip(ty.elem.names, ty.elem.types):
+            v = self.tmpname("k")
+            self.emit(f"for (size_t {v} = 0; {v} < {target}.size(); ++{v}) {{")
+            self.ind += 1
+            self.emit_read(f"{target}[{v}].{self.field_cpp(fn)}", ft, node, packed=True)
+            self.ind -= 1
+            self.emit("}")
+            self.emit("if (CP_GEN) out_char('\\n');")
 
     def default_value(self, ty, s):
         if isinstance(ty, TArr):
@@ -3187,6 +3660,10 @@ class Compiler(LendMixin):
         self.index_impls[st.cpp] = info
 
     def lambda_key(self, lam, et):
+        if lam.kind == "name" and getattr(self.lookup(lam.name), "kind", None) in ("fn", "genfn"):
+            # a fn passed by name: `first_where(ok)` is `first_where(x => ok(x))`
+            lam = N("lambda", lam.line, params=[N("pname", lam.line, name="_it")],
+                    body=N("call", lam.line, fn=lam, args=[N("name", lam.line, name="_it")]))
         if lam.kind != "lambda" or len(lam.params) != 1:
             self.error(lam, "expected a one-parameter lambda `x => ...`")
         self.scopes.append({})
@@ -3329,6 +3806,15 @@ class Compiler(LendMixin):
 
     def s_assign(self, s):
         tgt, op = s.target, s.op
+        fold = getattr(s, "fold", None)         # `x f= y`, parsed as `x = f(x, y)`
+        if tgt.kind == "index" and (fold or op in ("min=", "max=")):
+            mt = self.capture(lambda: self.expr(tgt.obj))[1][1]
+            if isinstance(mt, TMap) and not isinstance(mt.val, TOpt):
+                if not fold:
+                    return self.s_map_keep(s, mt)
+                if not self.lookup(fold):
+                    return self.s_map_fold(s, mt)
+                self.no_identity(tgt, fold)
         self.lvalue = (tgt, op)
         tc, tt = self.expr(tgt)
         self.lvalue = None
@@ -3388,6 +3874,39 @@ class Compiler(LendMixin):
             self.emit(f"{tc} = cp_{ {'+': 'add', '-': 'sub', '*': 'mul'}[bop] }({tc}, {vc}, {s.line});")
         else:
             self.emit(f"{tc} {op} {vc};")
+
+    def no_identity(self, tgt, f):
+        old = f"({unparse(tgt.obj)}.get({unparse(tgt.idx[0])}) ?? start)"
+        self.error(tgt, f"`{unparse(tgt)} {f}= x` may meet a key that is not in the map yet, and `{f}` has no identity "
+                        f"to start it from\n  help: say what a missing key means: `{unparse(tgt)} = "
+                        + (f"{f}({old}, x)`" if f[:1].isalpha() else f"{old} {f} x`"))
+
+    def s_map_keep(self, s, mt):
+        """`m[k] min= x` / `m[k] max= x`: a key that is not there yet takes x, as a `none` variable does."""
+        tgt, f = s.target, s.op[:3]
+        self.require_mut(tgt, s)
+        self.note_write(tgt, s.line)
+        oc, _ = self.expr(tgt.obj)
+        kc, kt = self.expr(tgt.idx[0], mt.key)
+        kc = self.coerce(kc, kt, mt.key, tgt.idx[0])
+        vc, vt = self.expr(s.value, mt.val)
+        vc = self.coerce(vc, vt, mt.val, s.value)
+        vt_c = self.cpp_type(mt.val)
+        self.emit(f"cp_mkeep({oc}, {kc}, {vt_c}({vc}), [](const {vt_c}& a, const {vt_c}& b) {{ return {f}(a, b); }});")
+
+    def s_map_fold(self, s, mt):
+        """`m[k] f= x` for a named operation: the entry is found once, starting from f's identity if it is new."""
+        tgt = s.target
+        self.require_mut(tgt, s)
+        self.note_write(tgt, s.line)
+        self.lvalue = (tgt, s.fold + "=")
+        tc, tt = self.expr(tgt)
+        self.lvalue = None
+        place = self.tmpname("p")
+        self.emit(f"auto& {place} = {tc};")
+        call = N("call", s.line, fn=s.value.fn, args=[N("ctemp", tgt.line, code=place, ty=tt, src=tgt), s.value.args[1]])
+        vc, vt = self.expr(call)
+        self.emit(f"{place} = {self.coerce(vc, vt, tt, s.value)};")
 
     def track(self, sym, tgt, vt, kind, s):
         """Record a value-range contribution for an Int var (scalar or array element)."""
@@ -3712,9 +4231,11 @@ class Compiler(LendMixin):
             body = self.tail_returns(body)
         if body and not isinstance(rt, TUnit) and body[-1].kind == "exprstmt":
             self.block(body[:-1], new_scope=False)
-            self.escapes[id(body[-1].expr)] = "returning it"
-            c, t = self.expr(body[-1].expr, rt)
-            self.emit(f"return {self.coerce(c, t, rt, body[-1])};")
+            def tail():
+                self.escapes[id(body[-1].expr)] = "returning it"
+                c, t = self.expr(body[-1].expr, rt)
+                self.emit(f"return {self.coerce(c, t, rt, body[-1])};")
+            self.with_tries(body[-1], "expr", tail)
         else:
             self.block(body, new_scope=False)
 
@@ -4031,12 +4552,13 @@ def pat_names(p):
     return out
 
 # ---------- I/O emitters and driver (attached to Compiler)
-def _emit_read(self, target, ty, node):
-    """Emit code reading (or, in gen mode, generating) a value of type ty into target."""
+def _emit_read(self, target, ty, node, packed=False):
+    """Emit code reading (or, in gen mode, generating) a value of type ty into target. `packed`: the value is
+    one of a run (an array), so a one-character tag is written without a space after it."""
     ln = node.line
     if isinstance(ty, TInt):
-        lo = "LLONG_MIN" if ty.lo is None else f"{ty.lo}LL"
-        hi = "LLONG_MAX" if ty.hi is None else f"{ty.hi}LL"
+        lo = getattr(ty, "lo_cpp", None) or ("LLONG_MIN" if ty.lo is None else f"{ty.lo}LL")
+        hi = getattr(ty, "hi_cpp", None) or ("LLONG_MAX" if ty.hi is None else f"{ty.hi}LL")
         self.emit(f"{target} = CP_GEN ? gen_int({lo}, {hi}) : rd_range({lo}, {hi}, {ln});")
         self.emit(f"if (CP_GEN) {{ out_int({target}); out_char(' '); }}")
     elif isinstance(ty, TDom):
@@ -4054,6 +4576,14 @@ def _emit_read(self, target, ty, node):
     elif isinstance(ty, TTuple):
         for fn, ft in zip(ty.names, ty.types):
             self.emit_read(f"{target}.{self.field_cpp(fn)}", ft, node)
+    elif isinstance(ty, TEnum) and ty.tags and all(len(t) == 1 for t in ty.tags) and not any(f for _, f, _ in ty.variants):
+        # tags of one character are read a character at a time, so `WLLW` and `W L L W` are the same input
+        # (this is also every `.`/`#` grid); a generated array of them is written packed
+        tags = "".join(ty.tags)
+        chain = " : ".join(f"c == {repr(t)} ? {k}" for k, t in enumerate(ty.tags))
+        self.emit(f"if (CP_GEN) {{ {target}.tag = (int)gen_int(0, {len(tags) - 1}); out_char({json.dumps(tags)}[{target}.tag]);"
+                  f"{'' if packed else chr(32) + 'out_char(' + repr(' ') + ');'} }}")
+        self.emit(f"else {{ char c = rd_char(); {target}.tag = {chain} : (cp_fail(\"unknown tag\", {ln}), 0); }}")
     elif isinstance(ty, TEnum) and ty.tags:
         names = ", ".join(json.dumps(t) for t in ty.tags)
         chain = " : ".join(f'w == {json.dumps(t)} ? {k}' for k, t in enumerate(ty.tags))
@@ -4120,9 +4650,14 @@ def _emit_read(self, target, ty, node):
         v = self.tmpname("k")
         self.emit(f"for (size_t {v} = 0; {v} < {target}.size(); ++{v}) {{")
         self.ind += 1
-        self.emit_read(f"{target}[{v}]", ty.elem, node)
+        self.emit_read(f"{target}[{v}]", ty.elem, node, packed=True)
+        word = isinstance(ty.elem, TEnum) and ty.elem.tags and all(len(t) == 1 for t in ty.elem.tags)
+        if word and len(ty.dims) > 1:       # packed tags: one word of the input for each row
+            self.emit(f"if (CP_GEN && ({v} + 1) % (size_t){ty.dims[-1].info.len_cpp} == 0) out_char('\\n');")
         self.ind -= 1
         self.emit("}")
+        if word:
+            self.emit("if (CP_GEN) out_char(' ');")
     else:
         self.error(node, f"cannot read {ty!r}")
 
