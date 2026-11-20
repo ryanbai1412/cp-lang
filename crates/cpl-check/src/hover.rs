@@ -169,7 +169,7 @@ fn fn_text(name: &str, ty: &Ty) -> String {
 }
 
 fn render_value(name: &str, ty: &Ty, lookup: &mut Lookup) -> String {
-    let shown = if *ty == Ty::Error { "unknown, because of the error above".to_string() } else { ty.to_string() };
+    let shown = if *ty == Ty::Error { "not known until the error in its definition is fixed".to_string() } else { ty.to_string() };
     format!("{name}: {shown}{}", cost_lines(ty, lookup))
 }
 

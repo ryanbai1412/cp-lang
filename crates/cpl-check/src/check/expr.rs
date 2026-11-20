@@ -289,6 +289,9 @@ impl<'a> Checker<'a> {
                 _ if right.is_vague() => Ty::Unknown,
                 _ => right.widen(),
             },
+            // `total + ` mid-edit: the half that is there says what the
+            // whole will be.
+            _ if matches!(rhs.kind, ExprKind::Missing) && left.is_numeric() => left.widen(),
             _ if left == Ty::Error || right == Ty::Error => Ty::Error,
             _ if left.is_vague() || right.is_vague() => Ty::Unknown,
             _ if left.is_int() && right.is_int() => Ty::Int,
