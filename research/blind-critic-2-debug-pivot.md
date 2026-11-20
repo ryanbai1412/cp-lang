@@ -1,25 +1,33 @@
 # Blind critic 2: debugging a WA and pivoting algorithms mid-contest
 
-Six corpus problems that had no port, each written the way a contest actually goes: a first
+Eight corpus problems, each written the way a contest actually goes: a first
 draft that is too slow or quietly wrong, a stress run to find out, then a fix or a change of
 algorithm. Everything was run on the Python prototype (`proto/cp.py build`, `stress`,
 `locate`) against the original accepted C++ and, where the file has one, against an in-file
 `@brute(main)`. The drafts and the finals are in `proto/ports/blind_critic_2/`.
 
-Two things up front, because they change how to read the rest.
+Six of the eight had no port anywhere. The other two, `dpz` and `dmpg16s5`, turned out to
+have ports on `main` already; I had not read them, and they are kept because their drafts
+produced findings, but they do not count toward the six.
+
+Three things up front, because they change how to read the rest.
 
 The prototype has no `spec` block. The nearest thing is `@brute`, so that is what "spec +
 gen" means below. It also has no trace, no `dbg`, and no state diff; `plan/50-debugging.md`
 describes them, the prototype does not run them.
 
-The six finals each agree with the original submission on 400 generated inputs at size 10
+The eight finals each agree with the original submission on 400 generated inputs at size 10
 (`dpq` on 168, because 232 were rejected by its `where`). That is the whole of the
 verification. Nothing was submitted to a judge, and the finals were not timed at the largest
 input except `dpz`, by hand.
 
+The order was draft first, then the fix, for seven of the eight. For `sac22cc1p5` I wrote
+the 2D solution first and cut the k = 1 draft out of it afterwards, so its draft says
+nothing about how the pivot feels, only about what the tools do with it.
+
 ## The short version
 
-Pivoting the data structure was the easy part. Four of the six pivots compiled on the first
+Pivoting the data structure was the easy part. Most of the pivots compiled on the first
 or second try, and domain-typed indices caught real mistakes on the way. What cost time was
 everything around the pivot: optionals that a guard two tokens away had already ruled out,
 a stress tool that twice said "OK" about a wrong program, counterexamples that were not
@@ -231,6 +239,72 @@ run `0..=n`. I gave up typing the positions and wrote `queue[P(j)]` and `queue[P
 casts, which is where an off-by-one would live, with the checker switched off by my own
 hand.
 
+### cco07p2, Snowflakes: a missing symmetry, and a C++ error leaking through
+
+The draft canonicalises each snowflake under rotation and forgets that it can be flipped.
+Three compiles came first, each a different kind of surprise.
+
+```
+fn small_flakes() -> [n][Arm]1..=1e7:
+    [n] _ => [Arm] _ => rand(1, 2)      // table dimension must be a domain or range, got Int[1..=100000]
+```
+
+`[n]T` is a type but `[n] _ => ...` is not a table, so the file gained a `domain Flake = 0..n`
+that exists only for the generator.
+
+```
+min([f[a.cyc(k)] for a in Arm] for k in 0..6)!      // `!` on a non-optional List<Int>
+```
+
+A constant range is known to be non-empty. After a session of being made to write `!` on
+ranges a guard had proved non-empty, I wrote this one by reflex and was told off for it. Both
+rules are defensible; together they mean guessing.
+
+```
+fn canon(f: [Arm]Int) -> List<Int>:     // called with a row of [Arm]1..=1e7
+```
+
+```
+cco07p2_draft.cpp:551:36: error: invalid initialization of reference of type
+  'const std::vector<long long int>&' from expression of type 'const std::vector<int>'
+```
+
+The prototype accepted the call and g++ rejected the generated code: the row is stored
+narrow and the parameter is wide. This is the only place a C++ error reached me, and it is
+the worst kind of diagnostic to get mid-contest. The fix was to repeat the range in the
+parameter type.
+
+Then the bug, caught and shrunk to two snowflakes:
+
+```
+smallest failing input: 2 / 2 1 1 2 2 1 / 2 1 1 2 1 2
+ours: No two snowflakes are alike.    expected: Twin snowflakes found.
+```
+
+That only happened because the generator draws arm lengths from 1 and 2. With the default
+generator for `1..=1e7` twins would be rare and the draft would have passed. `i.cyc(k)` and
+`Arm.rev` made the fix two lines, and `Set<List<Int>>` with `in` just worked.
+
+### sac22cc1p5: a 1D scan to a 2D DP
+
+Written in the wrong order (see the top), so the honest finding is only this: the 2D
+version compiled and passed on the first try, and it reads well.
+
+```
+var best: [0..=n, 0..=k]?Int = none
+best[n, 0] = 0
+for i in (0..n).rev:
+    for g in 1..=k:
+        best[i, g] = min(level[Pile(i), Pile(j - 1)] + rest for j in i + 1..=n if let rest = best[j, g - 1])
+```
+
+`?Int` as "impossible" with `if let rest = ...` inside the comprehension, and `min` of
+nothing being `none`, removes the 4e18 sentinel and its overflow. Here the optional that was
+a nuisance elsewhere is exactly right. The `Pile(i)` and `Pile(j - 1)` casts are the same
+boundary problem as in Bridge Crossing.
+
+The k = 1 draft was caught at once and shrunk to `2 / 2 / 1 1 / 2 1`, 1 against 0.
+
 ## Where the types helped and where they fought
 
 They helped whenever an index crossed from one structure to another. `SegTree<I, Int>` keyed
@@ -241,17 +315,18 @@ Bounds-checked `List` located an off-by-one in one run.
 
 They fought in three recurring ways. First, a guard is not evidence: `if i != I.first`,
 `i != I.last` and `head < window.len` all sit next to an optional they rule out, and the
-answer each time was `!`. Three of the ten compile errors in this session were this, and two more were the same optional refusing a one-line fix. Second,
+answer each time was `!`. It came up in three of the eight files. Second,
 `if let` is not an expression, so "the neighbour's value or a default" takes a `var` and two
 statements. Third, a domain that starts at 1 has no name for the boundaries between its
 elements, so prefix-style DPs fall back to `Int` and casts.
 
-Borrow rules never came up. None of the six pivots held a reference across a mutation.
+Borrow rules never came up. None of the pivots held a reference across a mutation.
 
 How hard were the pivots themselves? `Array` to `SegTree`: two lines, one optional. O(n²) DP
 to a hull over `List<record>`: first try. O(nk) to a deque: one optional, no deque type. 2D
 DP to Dijkstra over cells: first try. Greedy to DP with reconstruction: fine once the domain
-was abandoned. No `Pool` pivot was attempted.
+was abandoned. 1D to 2D DP: first try, but written in the wrong order to count. No `Pool`
+pivot was attempted.
 
 ## Diagnostics that misled or wasted time
 
@@ -266,6 +341,7 @@ was abandoned. No `Pool` pivot was attempted.
 - "no single @brute swap fixes it; the bug is outside the tested parts": printed for files
   with no `@brute` parts.
 - The O(n²) warning on a `@brute` body, on every build.
+- A g++ template error for a narrow table passed to a wide parameter (`cco07p2`).
 
 ## Top five fixes, in order
 
@@ -273,8 +349,8 @@ was abandoned. No `Pool` pivot was attempted.
    with no reference should use the in-file `@brute(main)` (today that needs the
    `selfstress.py` in this directory). It should run sizes ascending, shrink what it finds,
    and on success print the largest input it tried and how outputs were compared. Compare
-   line by line unless the file declares a checker. This alone would have caught both
-   escapes above (the grid DP and the tie-break).
+   line by line unless the file declares a checker. That catches the tie-break escape above
+   and at least shows how small the inputs behind the grid DP's "OK" were.
 
 2. **`dbg(...)` to stderr, and asserts on in stress.** A `dbg(lines, head)` that prints the
    line number and values to stderr and compiles out of `cpl build`, plus `-DLOCAL` in every
