@@ -49,7 +49,7 @@ G7, G8):
 |---|---|---|---|---|---|
 | 1.1 | `Int` width and range | Settled | 64-bit, `MIN = -(2^63-1)`, `LLONG_MIN` is the `?Int` niche | | plan/00-vision.md G9 |
 | 1.2 | Range types pick storage width | Settled | `0..=1e9` stores in 4 bytes; `Packed<...>` only when explicit | | plan/13-abstraction.md M7b |
-| 1.3 | Optionals and niches | Revised 2026-11-20 (v2) | `?T`, niche when the type has a spare value, else a flag; **`?T` does NOT implement `Ord`** (no `a < b`, no implicit `none`-first sort; use `by:`/`??` explicitly; `min`/`max`/`min=`/`max=` skip `none`) | 1.1, 1.5 | §16.9, plan/13-abstraction.md M7b |
+| 1.3 | Optionals and niches | Revised 2026-11-20 (v2.1) | `?T`, niche when the type has a spare value, else a flag; **`?T` does NOT implement `Ord`** (no `a < b`; `==`/`!=` auto-lift `T` to `?T`). **Tropical Optional Rule:** `min`/`max`/`min=`/`max=` skip `none`; `+`/`-`/`+=`/`-=`/unary `-`/`sum` on `?Int`/`?F64` absorb `none`; unparenthesized `??` mixed with arithmetic is a compile error | 1.1, 1.5 | §16.9, §18.1, plan/13-abstraction.md M7b |
 | 1.4 | Structs, records, enums | Revised 2026-11-20 (v2) | auto constructors, payload enums, exhaustive `match`; `with` struct update deleted (use `var` copy + field assign); `Ord` derived only when all fields are `Ord` | | §16, research/language-architecture-v2.md |
 | 1.5 | Float semantics | Locked v2 (2026-11-20) | `F64` (8-B IEEE double, no `long double`); quiet-NaN niche (`?F64` is 8 B; NaN & Inf trap locally, making `<` total in checked runs); `1e18` stays `Int`, `.` marks `F64`; integer literals unify, `Int` vars need `F64(x)`; `Int(x)` refused on `F64` (use `floor`/`ceil`/`round`/`trunc`); bare `print(x)` of `F64` is an error (use `"{x:.6f}"`, never `-0.00`); `==`/`!=` lint toward `close(a, b, eps)`/`sign(x, eps)` (exempting `== 0.0`); intrinsics `sqrt`/`sin`/`cos`/`tan`/`atan2`/`exp`/`ln`/`hypot`/`PI` | 1.3 | §16.1, research/friction-backlog-batch-21.md |
 | 1.6 | Strings | Revised 2026-11-20 (v2) | **ASCII only** (`Char` = 1 byte, zero UTF-8, non-ASCII literal is an error). Default `Str` is a flat `0..len`-indexed ASCII byte sequence (`s[i]`, `s[l..r]`, `s.push`, `s + t`, `s * k`, `s.starts_with(x, at: i)`, `s.split_once`, `s.parse_int`). Opt-in `[domain S]Char = read()` stays for multi-string nominal-domain DP | 2.14 | §16, research/syntax-bakeoff-1.md Fork 4 |
@@ -64,7 +64,7 @@ G7, G8):
 |---|---|---|---|---|---|
 | 2.1 | Domains, `[V]T`, unchecked indexing by `V` | Settled, revised 2026-11-20 | `domain V = 1..=n` is sugar for a sealed nominal struct over a range type with `impl Index` and `impl Seq`; its width follows the range (4 bytes at most for input-sized domains). Checks only where positions are created; the no-check guarantee is now derived from `to_idx: 0..K`, not a rule about domains | | plan/19-index-and-lends.md §3.1 |
 | 2.2 | Bounds (gaps between positions) | Revised 2026-11-20 (v2) | `V.bounds`; **`v.l` / `v.r`** and **`v.l(k)` / `v.r(k)`** (`v.l == v.l(1)`), plus `b.left -> ?V` / `b.right -> ?V`. `v.before` / `v.after` deleted (one spelling). Prefix sums index by bounds or open ranges: `pre.sum(l..=r)` | | §16, research/subtraction-audit-1.md Cut 10 |
-| 2.3 | `Range<I>` | Revised 2026-11-20 (v2) | **One `Range<I>` type everywhere** (`Range1<I>` deleted). Stored as two bounds (`l..r`, `l..=r`, `..i`, `..=i`, `i..`, `i.r..`, `l.r..r.l`); `.first -> ?I`, `.last -> ?I`, `.mid -> ?I`, `.len`, `.is_empty`, `.rev`, `.step(k)` (`by` keyword deleted). All range DS accept open/empty ranges and return identity | | §16, research/subtraction-audit-1.md Cut 7 |
+| 2.3 | `Range<I>` | Revised 2026-11-20 (v2.1) | **One `Range<I>` type everywhere** (`Range1<I>` deleted). Stored as two bounds (`l..r`, `l..=r`, `..i`, `..=i`, `i..`, `i.r..`, `l.r..r.l`); `.l`/`.r` (boundary cuts even if empty), `.first -> ?I`, `.last -> ?I`, `.mid -> ?I`, `.len`, `.is_empty`, `.rev`, `.mirror`, `.step(k)`, `r1 & r2`, `D.chunks(k)`, `D[..k]`. `..`/`..=` bind looser than arithmetic, tighter than comparisons/`in`. All range DS accept open/empty ranges (`SparseTable.fold -> ?T`) | | §16, §18.5, research/subtraction-audit-1.md Cut 7 |
 | 2.4 | Slices | Settled, revised 2026-11-20 | `a[s]` is a library projection that lends a slice. A slice is indexed by the positions of its array (`V`), with a window check unless proven; **`Sub<V>` is removed**. The window is a value, the slice is a lend: fns return ranges, callers apply them | 5.12 | plan/19-index-and-lends.md §4.2 |
 | 2.5 | Product and fresh domains | Settled, revised 2026-11-20 | `(A, B)` is an `Index` everywhere (`for p in Cell`, `[Cell]T`, `Dsu<Cell>`, `bfs`, `@memo`), and `a[i, j]` is sugar for `a[(i, j)]`; `domain D` in a signature or binding introduces a fresh index type that can't leave its block (`compress`, `scc`, `freeze`) | 2.16 | plan/19-index-and-lends.md §3.2, §4.3 |
 | 2.6 | Domains that depend on a value | Open | e.g. "children of `v`" as a domain; deferred — `tree.children(v)` covers the common case without dependent domain syntax | 3.x | design-v2 C2 |
@@ -92,7 +92,7 @@ G7, G8):
 | 3.7 | Structural field bounds | Leaning | `A has to: V` as a general feature, not graph-specific | | plan/13-abstraction.md G9 |
 | 3.8 | Associated types, consts and frozen lets | Settled 2026-11-20 | yes. Associated types (`Indexed.Elem`, `Seq.bounds`). An associated size is `const K = 10` when known at compile time and **`let K = n`** when frozen from a run-time value where the impl is declared; **`const K = n` with a run-time `n` is an error**, so `const` stays strictly compile-time (7.10). Sizing by a `var` is an error | 7.10 | plan/19-index-and-lends.md §3.1 |
 | 3.9 | Coherence (who may `impl` what) | Settled 2026-11-19 | orphan rule relaxed inside one program, strict for libraries | 6.4 | §8 |
-| 3.10 | `Mod<P>` (unified moduli) | Revised 2026-11-20 (v2) | **One `Mod<P>` type** accepting both `const` and runtime-frozen `let` `Int` moduli via 3.8 (`ModR` retired). Stores 4-byte `uint32_t` when `P <= 2^31 - 1`, uses `mul_mod` past `3.03e9`; one-way `Int` reduction next to `Mod<P>` | 3.8 | §16, research/language-architecture-v2.md |
+| 3.10 | `Mod<P>` (unified moduli) | Revised 2026-11-20 (v2.1) | **One `Mod<P>` type** accepting both `const` and runtime-frozen `let` `Int` moduli via 3.8 (`ModR` retired). Works for any `P >= 1` (incl. composite; `.try_inv() -> ?Z`); 4-byte `uint32_t` when `P <= 2^31 - 1`, `I128` widen above; one-way `Int` reduction; constant-divisor inverse lowering; `T.zero`/`T.one`-seeded `sum`/`prod`; auto-growing `Comb<P>()` | 3.8 | §16, §17.5, §18.7, research/language-architecture-v2.1.md |
 | 3.11 | Decorators (`@`) | Revised 2026-11-20 (v2) | User-defined `decorator` macros deleted. **7 contestant decorators** (`@memo`, `@multitest`, `@brute`, `@tags`, `@gen`, `@checker`/`@interactor`, `@grader`) + **2 library-author** (`@get`, `@test`) | | §16, research/subtraction-audit-1.md Cut 11 |
 
 ## 4. Control and iteration
@@ -115,11 +115,11 @@ G7, G8):
 |---|---|---|---|---|---|
 | 5.1 | Ownership model | Settled | variables own, params borrow, no pointers, `mut` at both ends | | plan/17-syntax.md |
 | 5.2 | Copies and moves | Settled | big values need `.copy()`; last-use moves are implicit | | plan/17-syntax.md |
-| 5.3 | Precise borrow rules | Settled 2026-11-19, revised 2026-11-20 | lexical exclusivity: no stored and no returned borrows (so no lifetimes); fields borrow separately; two lends of one projection are separate when its `disjoint` law is proven from flow facts (5.13), which replaces "indices don't borrow separately"; index arguments are evaluated before any lend begins (two-phase); generator-lent values live one iteration | 5.1 | plan/19-index-and-lends.md §3.4 to §3.6, §5 |
+| 5.3 | Precise borrow rules | Settled 2026-11-19, revised 2026-11-20 (v2.1) | lexical exclusivity: no stored and no returned borrows (so no lifetimes); fields borrow separately; two lends of one projection are separate when its `disjoint` law is proven from flow facts (5.13); `Copy` element reads release borrows immediately before enclosing calls; `a[i].f = rhs` evaluates indices and `rhs` before borrowing `a[i]`; `for mut x in xs:` lends elements mutably; `.swap(i, j)`, O(1) `swap`, `.take()`, `.absorb()` handle same-container/small-to-large cleanly | 5.1 | §18.4, plan/19-index-and-lends.md §3.4 to §3.6, §5 |
 | 5.4 | Inline closures reusing a caller's `mut` borrow | Settled 2026-11-19 | yes: a lambda passed to an `inline` parameter is checked as part of the caller's body, so `undo` is an ordinary library fn. Projections (5.12) are its second client | 5.3 | research/RECOMMENDATIONS.md §1 |
 | 5.5 | Moves out of arrays | Settled 2026-11-20 | `swap`, `take` (leaves default) and `pair_mut` are library fns over `at`, allowed by its `disjoint` law; no partial moves | 5.13 | plan/19-index-and-lends.md §3.6 |
 | 5.6 | Pools and handles | Deleted 2026-11-20 (v2) | Replaced by `type Id = 0..=MAX` + `List<Node>` + `.push_id(x)` + `.freeze()` (see 2.7) | 2.7 | §16, research/subtraction-audit-1.md Cut 6 |
-| 5.7 | `defer` | Locked v2 (2026-11-20) | **The one scope-cleanup primitive**: runs on every block exit; no unwinding on crash | | §16, research/subtraction-audit-1.md Cut 1 |
+| 5.7 | `defer` | Locked v2.1 (2026-11-20) | **The one scope-cleanup primitive**: strictly **block-scoped** LIFO (runs at exit of enclosing loop iteration, branch, or `fn`, never Go fn-scoped); no unwinding on crash | | §16, §18.6, research/subtraction-audit-1.md Cut 1 |
 | 5.8 | `Rollback`, `undo`, `with` | Revised 2026-11-20 (v2) | `undo` blocks and `with` scope guards deleted; rollback is a plain 2-method struct API paired with `defer` (`let snap = dsu.mark(); defer dsu.undo_to(snap)`) | 5.7 | §16, research/subtraction-audit-1.md Cut 1 |
 | 5.9 | `@memo` control | Locked v2 (2026-11-20) | Flat `[Params]?R` (niche-packed) for any algebraic `Index` tuple up to `2^26` slots, else salted `HashMap`; `@memo(flat)` / `@memo(hash)` override; `ask` allowed; nested `@memo` scoped to enclosing call; `read()`/`print` remain errors | 2.16 | §16, research/max-n-judge-audit-1.md §1 |
 | 5.10 | Nested `fn` mutation (`mut fn` deleted) | Revised 2026-11-20 (v2) | **`mut fn` deleted.** Any nested `fn` declared after a `var` reads/writes it directly; the compiler tracks captured borrows automatically and forbids escaping | 5.3 | §16, research/subtraction-audit-1.md Cut 3 |
@@ -139,7 +139,7 @@ G7, G8):
 | 6.5 | Parts and purity | Settled | any fn is a part; tools record I/O; no `pure` keyword | | plan/15-program-structure.md §4 |
 | 6.6 | Brutes, checkers, interactors | Revised 2026-11-20 (v2) | `@brute`, `@checker` (inherits input bindings, uses `read_output()` + `assert`), `@interactor` (local stdio judge paired with `ask(..., limit: K)`). Standalone `protocol` DSL and `@solution` deleted | 3.11 | §16, research/subtraction-audit-1.md Cut 11 |
 | 6.7 | Staying under 64 KB | Locked v2 (2026-11-20) | Tree-shake all runtime/stdlib helpers and strip `CP_GEN`/`assume`/`debug` in judge builds (target 4–10 KB typical, always < 64 KB) | 3.2 | §16, research/max-n-judge-audit-1.md |
-| 6.8 | Grader-style (IOI) problems | Locked v2 (2026-11-20) | `@grader` unifies all IOI ABIs without new keywords: bodyless `@grader fn` = extern judge fn, `@grader fn` with body = exported entry, `@grader struct` = stateful multi-callback grader | 3.11, 6.1 | §16, research/language-architecture-v2.md |
+| 6.8 | Grader-style (IOI) problems | Locked v2.1 (2026-11-20) | `@grader` unifies all IOI ABIs without new keywords: `@grader const` = extern const, bodyless `@grader fn` = extern fn, `@grader fn` with body = exported entry, `@grader struct` = stateful grader; file-scope size-less `domain V` binds from grader args; array params may size off sibling `Int` params left or right | 3.11, 6.1 | §16, §18.10, research/language-architecture-v2.1.md |
 | 6.9 | Top-level `var` | Locked v2 (2026-11-20) | allowed; any nested `fn` declared after a `var` reads/writes it directly (5.10) | 5.10 | §16 |
 
 ## 7. Cross-cutting
@@ -149,7 +149,7 @@ G7, G8):
 | 7.1 | Checks & predicates (`assert` vs `assume`) | Revised 2026-11-20 (v2) | **Two predicates only:** `assert` is ALWAYS checked (local + judge; lints on `mut`; feeds proven flow facts); `assume` is local/debug/stress only (stripped on judge; statically rejects `mut`/I/O side effects). Domain indexing never checked; `List`/`Str`/`a.raw` checked unless proven or in `unchecked:` | 7.9 | §16, research/subtraction-audit-1.md Cut 2 |
 | 7.2 | Overflow in release builds | Settled 2026-11-19 | proven safe: no check; provably reachable: a warning with the bound; unknown: trapped in local builds, unchecked in the judge build | 1.1 | research/RECOMMENDATIONS.md §4, plan/30-compiler.md |
 | 7.3 | Trace data contract | Open | spans, typed values, writes old → new, call tree, test and part boundaries | 6.5 | plan/50-debugging.md |
-| 7.4 | Zero-cost & max-N judge guarantees | Locked v2 (2026-11-20) | No `using namespace std;`, 8-B `?Int`/`?F64`, 4-B `Mod<P>` (`P <= 2^31-1`), `vector<uint8_t>` never `vector<bool>`, flat `@memo` over algebraic `Index`, salted flat hash tables, lazy `Rooted` LCA + CSR `kids`, lazy-sorted `Steps` | 1.3, 5.9 | §16, research/max-n-judge-audit-1.md |
+| 7.4 | Zero-cost & max-N judge guarantees | Locked v2.1 (2026-11-20) | No `using namespace std;` + wrap user code in `namespace cp_user { ... }` (prevents POSIX `tm`/`dup`/`arg`/`y0` collisions); 8-B `?Int`/`?F64`, 4-B `Mod<P>` (`P <= 2^31-1`), `vector<uint8_t>` never `vector<bool>`, lexically scoped `@memo` with runtime flat (`<= 2^24`, `2^26` for tri-state `?Bool`) vs salted flat hash dispatch, lazy `Rooted` LCA + CSR `kids`, lazy-sorted `Steps` | 1.3, 5.9 | §16, §18.2, §18.11, research/max-n-judge-audit-1.md |
 | 7.5 | C++ interop | Open | `@cpp` blocks with checks at the boundary | 1.1 | |
 | 7.6 | Remaining syntax | Locked v2 (2026-11-20) | 40 keywords (32 contestant + 8 lib-author); single lambda `x => expr`; single inline-`if` `if c: a else: b`; `"{val:.6f}"` format specifiers | | §16, docs/one-page-cheat-sheet.md |
 | 7.7 | TLE / MLE / overflow estimates | Revised 2026-11-20 (v2) | from typed input bounds and domain sizes; **warnings only**, never errors; suppressed inside `@brute`, `@gen`, `@checker`, `@interactor`, and `assume` | 6.3, 7.2 | §16, research/blind-critic-2-debug-pivot.md |
@@ -164,7 +164,7 @@ G7, G8):
 | 7.16 | `test` and `doc` for libraries | Settled 2026-11-19 | `cpl test` and `cpl doc` work the same on the stdlib and on a user's own library | 6.4 | plan/45-dev-tools.md |
 | 7.17 | How conciseness is measured | Settled 2026-11-19 | two numbers per port: % fewer lines than the original, and % fewer than the original with library-able code stripped | | plan/80-validation.md §8.1 |
 | 7.18 | Honest `cpl stress` & `debug(...)` | Locked v2 (2026-11-20) | One `cpl stress` command defaulting to in-file `@brute`/`@checker`/`@interactor`, escalating sizes (default up to 20), comparing line-by-line unless `@checker` (plus `--close <eps>` for floats), always compiling with `-DLOCAL`, shrinking every failure via choice streams, replaying `debug(...)` side-by-side, and printing max size, rejection rate (>50% warning), diff mode, and output diversity | 6.6, 7.8 | §16, research/blind-critic-2-debug-pivot.md |
-| 7.19 | Grids, trees & collection verbs | Locked v2 (2026-11-20) | `type Cell = (Row, Col)` + `std.grid` (`p.adj4`, `p.adj8`, `Dir4`/`Dir8`, `p.step`, `p.ray`, `g.transposed`); `Rooted<V>` with `.fold_path`/`.apply_path` + `Reversible` (retiring `Hld`/`LazyHld`), `.ancestor`, `.postorder`, `.lift_while`, `.virtual_tree`; unified container verbs (`.len`/`.is_empty` properties, `.add`/`.remove`/`in`/`\| & - ^`) | 2.16, 3.1 | §16, research/syntax-bakeoff-1.md Forks 3 & 7 |
+| 7.19 | Grids, trees & collection verbs | Locked v2.1 (2026-11-20) | `type Cell = (Row, Col)` + `std.grid` (`p.adj4`, `p.adj8`, `Dir4`/`Dir8`, `p.step`, `p.ray`, `g.transposed`, `g.flipped_rows`/`g.flipped_cols`); `Rooted<V>` with value-owned `t.Pre`, `t.pos(v)`, `from_parents`, `t.tour`, `.fold_path`/`.apply_path` + `Reversible`, `.ancestor`, `.postorder`, `.lift_while -> ?V`, `.virtual_tree`; unified container verbs (`.len`/`.is_empty`, `.take()`, `.absorb()`, `.add`/`.remove`/`in`/`\| & - ^`, `Marks<D>`, `Dsu.groups()`, `Map` 4-lookup `?(K, V)`) | 2.16, 3.1 | §16, §18.5, §18.8, §18.9, research/language-architecture-v2.1.md |
 
 ## 8. Approved on 2026-11-19
 
@@ -838,3 +838,144 @@ writing the library against the spec, where the spec left room:
   (`math/congruence.cp`) and `LiChaoArena` (`ds/li_chao_arena.cp`).
   `Fixed<D>` has `parse` and `Show`; a `read()` of one waits for struct
   `Read` in the reference interpreter.
+
+## 18. CP Lang v2.1 Unification & Concept-Budget Guard (2026-11-20 — Language Architect Wave 3)
+
+Wave 3 synthesizes all 21 scout friction backlogs across Batches 21–41
+(`research/friction-backlog-batch-21.md` through `batch-41-oly-icpc.md`,
+covering 200+ hard ported problems) against locked v2 (§16), the max-N
+prototype pass (`c8e381f`), and the aligned `stdlib/` + `examples/local-lib/`
+(§17). Full before/after examples and the next-sprint checklist live in
+`research/language-architecture-v2.1.md`; `docs/one-page-cheat-sheet.md`
+is synchronized to match. **Zero keywords (40), zero numeric types (4),
+zero traits (8 + 3), and zero `@` decorators (7 + 2) are added.**
+
+- **18.1 Tropical Optional Rule (`?T`), unparenthesized-`??` guard, and `?T == T` (1.3; Batches 27, 28, 32, 33, 34, 35, 36, 38, 39).**
+  Across nine batches, unlifted `+`/`-` on `?Int`/`?F64` forced repeated
+  `if let` guards and hand-written `plus`/`shift` helpers that made `?Int`
+  longer than `INF` sentinels. CP Lang v2.1 locks one algebraic rule:
+  `none` is the **identity** of `min`/`max`/`min=`/`max=` (including
+  `min(gen)`/`max(gen)` over `?T` and `ans min= opt` on plain `T`), and
+  `none` is the **absorber** of `+`, `-`, `+=`, `-=`, unary `-`, and
+  `sum(gen)` on numeric optionals `?Int` and `?F64` (never `*`, `/`, `%`,
+  bitwise, or `?V + k`). To prevent the `a[i] + max(...) ?? 0` precedence
+  trap permanently, mixing `??` with binary arithmetic (`+ - * / %`) without
+  parentheses is a **compile error**. Equality `==`/`!=` auto-lifts `T` to
+  `?T` (`if dq.last != x:`), while `<`/`<=`/`>`/`>=` remain compile errors
+  (`?T` still does not implement `Ord`). Chained `if let a = x and let b = y:`
+  and `while let` are surfaced on the cheat sheet; custom `?Struct` merges
+  use `match (a, b):`.
+- **18.2 Lexically scoped `@memo`, runtime flat-vs-hash dispatch, and uniform range narrowing (5.9; Batches 23, 28, 34, 35, 40).**
+  `@memo` is legal on any `fn` — top-level or nested inside a function or
+  loop — capturing immutable outer `let`/loop variables (mutated captured
+  `var` is a compile error). Its cache is scoped to the enclosing block and
+  hoisted into one reusable buffer cleared/stamped on block entry (eliminating
+  the 185 MB 5-arg hash cliff in `coci21c1p3` and supporting scenario loops in
+  `ioi20p4`). Default `@memo` over all-`Index` parameters chooses flat vs.
+  salted open-addressed `CpHashMap` **at runtime** from `prod(K_i)` (`<= 2^24`
+  slots, or `2^26` for tri-state `uint8_t` `?Bool`, fixing `noip21p3`), and
+  reports the chosen mode in `cpl check --verbose` / LSP hover. Range-typed
+  parameters on `@memo` follow the exact same entry-check and flow-narrowing
+  rules as ordinary `fn`s (`cheerio1s5`), and `..`/`..=` bind looser than
+  arithmetic and tighter than comparisons/`in` (`i + 1..=n` is `(i + 1)..=n`).
+- **18.3 Complete algebraic `Index` surface & lossless scalar casts (2.16; Batches 22, 28, 30, 33, 35, 37, 38, 39, 41).**
+  Clarifies all five existing `Index` shapes: `Bool` (`Bool.K == 2`,
+  `for b in Bool`, `[V, Bool]T`), structural `Char` ranges (`['a'..='z']Int`),
+  guaranteed row-major `.to_idx`/`.from_idx` on tuple/record products `(R, C)`,
+  and `Subset<D>` (`for s in Subset<D>` in ascending integer order, `.empty`,
+  `.full`, and O(1) `s.first -> ?D` via `ctz` for bitmask DP peeling).
+  Lossless scalar casts `Int(ch)` (`0..=127`), `Char(i)`, and `Int(b)`
+  (`0 | 1`) are locked; `Int(f)` on `F64` remains a compile error.
+- **18.4 Lexical borrow & evaluation rules: `for mut`, `Copy` release, RHS-before-LHS, `.swap`, `.take()`, `.absorb()` (5.3; Batches 24, 25, 26, 31, 34, 36, 38, 41).**
+  `for mut x in xs:` lends elements mutably for arrays/lists of self-adjusting
+  structs (`Block`, `Dsu`, `MonoDeque`) while keeping generators pure. Reading
+  a `Copy` element releases its borrow immediately before enclosing calls
+  (`merge_heap(hrc[u], v)`). Indexed assignment `a[i].f = rhs` evaluates
+  indices and `rhs` before borrowing `a[i]` (making recursive arena updates
+  `nodes[u].l = merge(nodes[u].l, b)` both borrow-safe and reallocation-safe).
+  `a.swap(i, j)` on `[D]T`/`List<T>` handles `i == j` as a no-op; free-fn
+  `swap(mut a, mut b)` is guaranteed O(1) on every heap container; `.take()`
+  moves a heap container out in O(1) leaving an empty one behind
+  (`for x in mem[u].take(): mem[v].push(x)`); and `.absorb(mut other)` drains
+  small-into-large so it cannot be inverted into O(n^2). `[D]T = expr` clones
+  any `T` expression independently per slot (`[D]List<T> = []` never aliases),
+  and `xs.last` stays by-value (`xs[xs.len - 1]` mutates stack tops).
+- **18.5 Ranges, chunks, boundaries, `SparseTable.fold -> ?T`, and 2D grid flips (2.3, 7.19; Batches 24, 26, 32, 34, 37, 38, 41).**
+  Every `Range<D>` exposes `.l` and `.r` boundary cuts directly (even when
+  empty, eliminating `rw.first!.l` noise in `windows(k)`). Add `D.chunks(k)`
+  (clamped non-overlapping `Range<D>`), `Compressed<T>` range slicing `ys[blk]`,
+  domain prefix `D[..k]`, range intersection `r1 & r2`, and `p.mirror`/`r.mirror`.
+  Replace ambiguous 2D `g.flipped` with `g.flipped_rows` and `g.flipped_cols`
+  (`g.transposed` yields `[C, R]T`). `SparseTable.fold(r)` returns `?T`
+  (`none` on empty ranges; no monoid identity needed).
+- **18.6 Block-scoped `defer` and bare top-level `return` (5.7; Batches 24, 31, 37, 38, 41).**
+  `defer` is explicitly locked as **block-scoped** LIFO (runs at the exit of
+  the immediately enclosing loop iteration, branch, or `fn`, never Go
+  function-scoped), covering Rollback Mo's and backtracking DFS cleanly. Bare
+  top-level `return` exits the program cleanly (or ends the current case in
+  whole-file `@multitest`).
+- **18.7 Unified `Mod<P>`, `Int` promotion, `T.zero`/`T.one`-seeded `sum`/`prod`, and cross-`@multitest` precomputation (3.10; Batches 23, 29, 34, 37, 41).**
+  Confirms `ModR` retirement (§17.5): `let M = ...; type Z = Mod<M>` unifies
+  static and runtime moduli (including composite `P >= 1`, `.try_inv() -> ?Z`,
+  `I128` multiply past `2^31 - 1`, compile-time inverses for constant
+  divisors, and one-way `Int` ops). `sum(it)` seeds from the element type's
+  zero, and `prod(it)` joins the sequence prelude seeded from the element
+  type's one; binary-op diagnostics always print type names. Cross-`@multitest`
+  precomputation needs no `static` or `@once`: `Comb<P>()` auto-grows lazily
+  on demand, and top-level code above `@multitest fn solve():` runs once.
+- **18.8 Value-owned `t.Pre` on `Rooted<V>`, vertexless graph turbofish, and `Dsu.groups()` (7.19; Batches 24, 26, 27, 34, 39, 41).**
+  `Pre` on `Rooted<V>` becomes a value-owned fresh domain `t.Pre` (like
+  `xs.D` on `compress`), preventing cross-tree preorder mix-ups (`ioi18p3`,
+  superseding the type-level `Rooted<V>.Pre` in §17.3). Add `t.pos(v) -> t.Pre`
+  (inverse of `t.preorder: [t.Pre]V`), `Rooted.from_parents(par)`, and
+  iterative `t.tour` yielding `(v, entering)`; pin `t.lift_while(u, pred) -> ?V`
+  to highest ancestor where `pred` holds from `u` up (or `none` if `pred(u)`
+  is false). Document `topo::<V>(next)` for vertexless closure graphs and add
+  `Dsu<V>.groups() -> List<List<V>>`.
+- **18.9 Stamp table `Marks<D>`, generalized `RollingHash`, `Map` 4-lookup `?(K, V)`, `min_by`/`max_by` ties, and container polish (Batches 25, 29, 30, 31, 32, 33, 36, 38, 39, 40, 41).**
+  Add userland `Marks<D>()` (generation-stamped visited set with `.add(v) -> Bool`,
+  `v in m`, and O(1) `.clear()`) alongside `a.fill(x)`. Generalize `RollingHash`
+  over `Str` and `[D]T` returning `HashVal` with independent per-instance
+  salted bases. Give ordered `Map<K, V>` all four lookups (`.first_ge`,
+  `.first_gt`, `.last_le`, `.last_lt`) returning `?(K, V)` (`Set`/`SortedBag`
+  return `?K`); accept optional iterables in container constructors; support
+  `by:` on sequence `first_ge`/`last_le` and `.sorted()`/`.rev` on slices;
+  exempt mutating `.pop*()`/`.add()`/`.unite()` from unused-result warnings;
+  add `rotate_right`. Pin `min_by`/`max_by -> ?T` with first-extremum tie
+  breaking, guaranteed stable `sort`/`sorted`, `bit_len(x)` (retiring
+  `bit_width`), hex/binary literals, and `Sieve(n)` / `factor(x)` /
+  `divisors(x)` (retiring `factorize`).
+- **18.10 `@grader` constants & shared domains, sibling-sized array params, `Int`-indexed `Str`, and judge `print` (1.6, 6.8; Batches 23, 25–27, 30, 33, 36, 37, 40, 41).**
+  Allow `@grader const N: T` (extern judge constant), file-scope size-less
+  `domain V` bound by grader parameters for shared callbacks, and sibling-sized
+  array parameters left or right (`fn Assist(needed: [0..r]Bool, n: Int, k: Int, r: Int)`).
+  Clarify `Str` is `Int`-indexed (`0..s.len`, zero `.raw`) with `s + ch`,
+  `s.items`, and `match s:` on string literals, alongside `[expr for x in it if c]`
+  and `List.filled(n, v)`. Lock judge `print`: domain values print their
+  declared label, lists/1D arrays print space-separated, and `[R, C]Char` grids
+  print row-by-row (`debug(...)` prints structured brackets to stderr).
+- **18.11 Compiler-trust & stress guardrails (7.4, 7.18; Batches 21–30, 34, 36).**
+  Wrap all emitted C++17 user definitions in `namespace cp_user { ... }` with
+  C++/POSIX macro mangling (eliminating `tm`, `dup`, `arg`, `y0` collisions);
+  pin `LazySegTree.set` root-to-leaf pushdown (`ccc02s4hard`); stream stdin
+  incrementally for `@interactor`; add `cpl stress --max-vals` for overflow
+  hunting (`O2`); and place constructive generators (`perm`, `surjection`,
+  `bounded_product`, `tree`, `connected`, `dag`, `functional`, `simple_graph`,
+  `str_of`, `rand_points`, `rand_disjoint_rects`, `rand_convex`) in `std.gen`.
+- **18.12 Concept-budget rejections (permanent; see `research/language-architecture-v2.1.md` §3).**
+  Explicitly rejected to protect the 40-keyword / 4-numeric-type / 1-page
+  budget: `Pool<Node>`/`Node.Id`/`SegPool`, `I32`/`U32`, `undo`/`Journaled`,
+  `static let`/`@once`, `ModR`, `domain A | B` sum-domain syntax, `min=`/`max=`
+  returning `Bool`, dependent `@memo` parameter bounds, rolling-row `step ... into`,
+  variable-length `@tags` DSL, bitwise `|`/`^` on `Bool`, `loop:` keyword,
+  `let` inside generator comprehensions, keyed array literals `[R: 1, G: 2]`,
+  `Rev<T>` (use `Desc<T>`/`desc(x)`), `Heap<T>(by:)`, user operators on
+  structural `type` aliases, runtime-sized `SegTree.from(list)`/`combine_into`
+  in core `std`, and single-problem core helpers (`Pos.window`, `g.lattice`,
+  `cyc_range`, `dag_dp`, `take_except`). Niche structures (`Centroids`,
+  `reroot`, `kruskal_tree`, `linalg` `det`/`rank`/`solve`, `Interner`,
+  `spanning`, `ranks`, `lis`, `count_in_rects`, `MinCount`, `RollbackArray`,
+  `Functional` (already landed in `examples/local-lib/`), arbitrary-prime
+  `Poly` MTT + `.interpolate`, `F64`/record `LiChao`) live in
+  `examples/local-lib/`.
+>>>>>>> 048db18 (Lock CP Lang v2.1 unified architecture (Language Architect Wave 3))
