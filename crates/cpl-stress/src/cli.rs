@@ -93,8 +93,45 @@ fn parse(args: &[String]) -> Result<Args, String> {
     Ok(parsed)
 }
 
+/// The judge for a problem: the checker or interactor passed on the
+/// command line, or token comparison. A file that declares a judge is
+/// never compared token by token: that would call right answers wrong.
+pub fn select_judge(
+    src: &str,
+    name: &str,
+    checker: Option<&Path>,
+    interactor: Option<&Path>,
+) -> Result<Judge, String> {
+    let resolve = |path: &Path| Program::resolve(path).map_err(|e| e.to_string());
+    match (checker, interactor, declared(src).first()) {
+        (Some(path), _, _) => resolve(path).map(Judge::Checker),
+        (_, Some(path), _) => resolve(path).map(Judge::Interactor),
+        (None, None, Some(judge)) => Err(format!(
+            "{name} declares the {kind} `{fn_name}` (line {line}), which cpl can't build yet; pass it built with `--{kind} <program>`",
+            kind = judge.kind,
+            fn_name = judge.name,
+            line = judge.line
+        )),
+        (None, None, None) => Ok(Judge::Tokens),
+    }
+}
+
+/// The program to run for `file`: `fast` when given, else the `.cpp`
+/// built next to it, else the file itself.
+pub fn solution(file: &Path, fast: Option<&Path>) -> Result<Program, String> {
+    let path = fast.map(Path::to_path_buf).unwrap_or_else(|| {
+        let built = file.with_extension("cpp");
+        if built.is_file() {
+            built
+        } else {
+            file.to_path_buf()
+        }
+    });
+    Program::resolve(&path).map_err(|e| e.to_string())
+}
+
 /// `text` as a JSON string, quotes included.
-pub(crate) fn json_string(text: &str) -> String {
+pub fn json_string(text: &str) -> String {
     let mut out = String::from("\"");
     for c in text.chars() {
         match c {
@@ -166,22 +203,13 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         Err(e) => return fail(format!("can't read {name}: {e}")),
     };
 
-    // A file that declares a judge is never compared token by token:
-    // that would call right answers wrong.
-    let declared = declared(&src);
     let resolve = |path: &Path| Program::resolve(path).map_err(|e| e.to_string());
-    let judge = match (&args.checker, &args.interactor, declared.first()) {
-        (Some(path), _, _) => resolve(path).map(Judge::Checker),
-        (_, Some(path), _) => resolve(path).map(Judge::Interactor),
-        (None, None, Some(judge)) => Err(format!(
-            "{name} declares the {kind} `{fn_name}` (line {line}), which cpl can't build yet; pass it built with `--{kind} <program>`",
-            kind = judge.kind,
-            fn_name = judge.name,
-            line = judge.line
-        )),
-        (None, None, None) => Ok(Judge::Tokens),
-    };
-    let judge = match judge {
+    let judge = match select_judge(
+        &src,
+        &name,
+        args.checker.as_deref(),
+        args.interactor.as_deref(),
+    ) {
         Ok(judge) => judge,
         Err(message) => return fail(message),
     };
@@ -208,15 +236,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             }
         },
     };
-    let fast_path = args.fast.clone().unwrap_or_else(|| {
-        let built = args.file.with_extension("cpp");
-        if built.is_file() {
-            built
-        } else {
-            args.file.clone()
-        }
-    });
-    let fast = match resolve(&fast_path) {
+    let fast = match solution(&args.file, args.fast.as_deref()) {
         Ok(program) => program,
         Err(message) => return fail(message),
     };

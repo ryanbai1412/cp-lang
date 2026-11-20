@@ -28,10 +28,16 @@ pub enum Size {
     Full,
 }
 
-/// What an integer of a case is drawn from.
-pub(crate) trait Pick {
+/// What the integers of a case are drawn from. The stress generator
+/// draws at random; `cpl bench` draws the worst cases.
+pub trait Pick {
+    /// A value in `lo..=hi`. `is_size` is true for a number that decides
+    /// how much input follows (`n`, `q`).
     fn pick(&mut self, lo: i128, hi: i128, is_size: bool) -> i128;
 }
+
+/// The most elements one array of a generated case may have.
+pub const MAX_LEN: i128 = 20_000_000;
 
 struct Random<'a> {
     rng: &'a mut Rng,
@@ -68,6 +74,7 @@ fn build(shape: &Shape, env: &Env, is_size: bool, pick: &mut dyn Pick) -> Option
         }
         Shape::Array { len, elem } => {
             let len = eval(len, env)?.max(0);
+            (len <= MAX_LEN).then_some(())?;
             (0..len)
                 .map(|_| build(elem, env, false, pick))
                 .collect::<Option<_>>()
@@ -101,7 +108,10 @@ pub(crate) fn bind(names: &[Option<String>], value: &Value, env: &mut Env) {
     }
 }
 
-pub(crate) fn make(spec: &InputSpec, pick: &mut dyn Pick) -> Option<Case> {
+/// A case whose every integer is chosen by `pick`. `None` when a bound
+/// cannot be evaluated, a range is empty, or an array would be longer
+/// than [`MAX_LEN`].
+pub fn make(spec: &InputSpec, pick: &mut dyn Pick) -> Option<Case> {
     let mut env: Env = spec.consts.clone();
     let mut values = Vec::new();
     for field in &spec.fields {
