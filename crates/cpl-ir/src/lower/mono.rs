@@ -154,8 +154,6 @@ impl<'a> Lowerer<'a> {
                     self.mod_syms.push(HashMap::new());
                     if imported.name == "std.mod" {
                         self.std_mod = Some(id);
-                    } else if imported.name == "std.prefix" {
-                        self.std_prefix = Some(id);
                     }
                     queue.push(id);
                 }

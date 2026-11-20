@@ -8,7 +8,9 @@
 use crate::walk::{unparen, Bind, Scope, Visitor};
 use crate::{File, Finding, UNPROVEN_LIST_INDEX};
 use cpl_diag::{Diagnostic, Span};
-use cpl_syntax::ast::{Expr, ExprKind, Pattern, PatternKind, Stmt, StmtKind, Type, TypeKind};
+use cpl_syntax::ast::{
+    CmpOp, Cond, Expr, ExprKind, Pattern, PatternKind, Stmt, StmtKind, Type, TypeKind,
+};
 use std::collections::{HashMap, HashSet};
 
 /// How many loops deep an index has to be before it is worth a warning.
@@ -50,6 +52,8 @@ struct Indexes<'a> {
     scopes: Vec<Open>,
     /// Whether the `let` being walked declares a `List`.
     binding_list: bool,
+    /// Where in the file the `@test` fn being read ends: nothing before it is hot.
+    test_ends: u32,
     /// The parameters of the `fn` about to be entered that are `List`s.
     list_params: HashSet<String>,
     findings: Vec<Finding>,
@@ -84,18 +88,24 @@ impl Indexes<'_> {
     }
 }
 
+/// `xs` in `xs.field`.
+fn receiver<'a>(expr: &'a Expr, field: &str) -> Option<&'a str> {
+    match &unparen(expr).kind {
+        ExprKind::Field { base, name } if name.text == field => match &base.kind {
+            ExprKind::Name(list) => Some(list),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// `xs` in `xs.len`.
+fn list_of_len(len: &Expr) -> Option<&str> {
+    receiver(len, "len")
+}
+
 /// The list `iter` walks the indices of: `0..xs.len`, `xs.indices`.
 fn indexed_list(iter: &Expr) -> Option<&str> {
-    /// `xs` in `xs.field`.
-    fn receiver<'a>(expr: &'a Expr, field: &str) -> Option<&'a str> {
-        match &unparen(expr).kind {
-            ExprKind::Field { base, name } if name.text == field => match &base.kind {
-                ExprKind::Name(list) => Some(list),
-                _ => None,
-            },
-            _ => None,
-        }
-    }
     match &unparen(iter).kind {
         ExprKind::Range {
             lo: Some(lo),
@@ -119,6 +129,10 @@ impl Visitor for Indexes<'_> {
                 self.binding_list = list && matches!(pat.kind, PatternKind::Name(_));
             }
             StmtKind::Fn(decl) => {
+                // A `@test` is not what a judge times.
+                if stmt.decorators.iter().any(|d| d.name.text == "test") {
+                    self.test_ends = self.base + stmt.span.end;
+                }
                 self.list_params = decl
                     .params
                     .iter()
@@ -163,6 +177,22 @@ impl Visitor for Indexes<'_> {
         }
     }
 
+    /// `while head < q.len:` walks a list that grows as it is read: the
+    /// test is the bounds check.
+    fn while_loop(&mut self, cond: &Cond) {
+        let Cond::Expr(test) = cond else { return };
+        let ExprKind::Compare { first, rest } = &unparen(test).kind else {
+            return;
+        };
+        let (ExprKind::Name(index), [(CmpOp::Lt, len)]) = (&unparen(first).kind, rest.as_slice())
+        else {
+            return;
+        };
+        if let (Some(list), Some(top)) = (list_of_len(len), self.scopes.last_mut()) {
+            top.proves = Some((index.clone(), list.to_string()));
+        }
+    }
+
     fn expr(&mut self, expr: &Expr) {
         let ExprKind::Index { base, indices } = &expr.kind else {
             return;
@@ -170,7 +200,7 @@ impl Visitor for Indexes<'_> {
         let (ExprKind::Name(list), [index]) = (&base.kind, indices.as_slice()) else {
             return;
         };
-        if self.loop_depth() < HOT_DEPTH || !self.is_list(list) {
+        if self.loop_depth() < HOT_DEPTH || !self.is_list(list) || self.base + expr.span.start < self.test_ends {
             return;
         }
         match &unparen(index).kind {
@@ -202,6 +232,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         globals: HashMap::new(),
         scopes: Vec::new(),
         binding_list: false,
+        test_ends: 0,
         list_params: HashSet::new(),
         findings: Vec::new(),
     };

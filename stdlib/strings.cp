@@ -7,6 +7,7 @@ use std.seq.{reverse}
 pub fn repeat(self: Str, n: Int) -> Str = Str(self[i % self.len] for i in 0..n * self.len)
 
 /// `z[i]` is the length of the longest common prefix of `s` and `s[i..]`; `z[0]` is `s.len`. O(n).
+@allow(unproven_list_index)
 pub fn z_function<T>(s: List<T>) -> List<Int>:
     let n = s.len
     var z = List.filled(n, 0)
@@ -21,6 +22,7 @@ pub fn z_function<T>(s: List<T>) -> List<Int>:
     z
 
 /// `p[i]` is the length of the longest proper prefix of `s[..=i]` that is also its suffix. O(n).
+@allow(unproven_list_index)
 pub fn prefix_function<T>(s: List<T>) -> List<Int>:
     var p = List.filled(s.len, 0)
     for i in 1..s.len:
@@ -32,6 +34,7 @@ pub fn prefix_function<T>(s: List<T>) -> List<Int>:
 
 /// The start of every occurrence of `pat` in `text`, in increasing order (Knuth-Morris-Pratt).
 /// O(text.len + pat.len). An empty pattern occurs at every position, including the end.
+@allow(unproven_list_index)
 pub fn find_all<T>(text: List<T>, pat: List<T>) -> yields Int:
     if pat.is_empty:
         for i in 0..=text.len: yield i
@@ -89,6 +92,7 @@ fn induced_sort(
             bkt[c] -= 1
             sa[bkt[c]] = p
 
+@allow(unproven_list_index)
 fn sa_is(vec: List<Int>, alpha: Int) -> List<Int>:
     let n = vec.len
     var sa = List.filled(n, 0)
@@ -140,6 +144,7 @@ fn sa_is(vec: List<Int>, alpha: Int) -> List<Int>:
 
 /// The starts of the suffixes of `s` in sorted order (SA-IS).
 /// O(n) for bounded alphabets (<= 256 distinct values) and O(n log n) for general `T`.
+@allow(unproven_list_index)
 pub fn suffix_array<T>(s: List<T>) -> List<Int>:
     let n = s.len
     if n <= 1: return [i for i in 0..n]
@@ -192,6 +197,7 @@ pub fn suffix_array<T>(s: List<T>) -> List<Int>:
 
 /// `lcp[j]` is the length of the longest common prefix of the suffixes at `sa[j]` and `sa[j + 1]`
 /// (Kasai). O(n); the result has `n - 1` entries.
+@allow(unproven_list_index)
 pub fn lcp_array<T>(s: List<T>, sa: List<Int>) -> List<Int>:
     let n = s.len
     var lcp = List.filled(max(n - 1, 0), 0)

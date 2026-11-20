@@ -24,7 +24,7 @@ use std.lazy.{AddMax, AddMin, AddSum, AssignMax, AssignMin, AssignSum, LazySegTr
 use std.marks.{Marks}
 use std.math.{Sieve, bit, digits, fixed, gcd, lcm}
 use std.mod.{Comb, Mod}
-use std.prefix.{Prefix1, Prefix2}
+use std.prefix.{Prefix1, Prefix2, prefix1, prefix2, prefix_n}
 use std.segtree.{SegTree}
 use std.seq.{
     Compressed,

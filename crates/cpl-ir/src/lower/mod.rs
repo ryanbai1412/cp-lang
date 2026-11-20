@@ -436,7 +436,6 @@ struct Lowerer<'a> {
     /// The module `std.mod`, when the program uses it.
     std_mod: Option<ModId>,
     /// The module `std.prefix`, when the program uses `prefix(...)`.
-    std_prefix: Option<ModId>,
     mod_syms: Vec<HashMap<String, Sym>>,
     cur_mod: ModId,
     diags: Vec<Diagnostic>,
@@ -529,7 +528,6 @@ impl<'a> Lowerer<'a> {
             mods: Vec::new(),
             path_to_mod: HashMap::new(),
             std_mod: None,
-            std_prefix: None,
             mod_syms: Vec::new(),
             cur_mod: 0,
             diags: Vec::new(),
@@ -739,6 +737,8 @@ impl<'a> Lowerer<'a> {
                             "multitest" => {}
                             "get" | "brute" | "test" | "solution" | "tags" | "memo" | "law" | "gen" | "checker"
                             | "interactor" | "grader" | "" => {}
+                            // For `cpl lint` alone: it changes nothing a run does.
+                            "allow" => {}
                             other => self.unsupported(
                                 decorator.span,
                                 &format!("the `@{other}` decorator"),

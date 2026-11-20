@@ -118,6 +118,7 @@ pub fn poly_at(xs: List<Int>, n: Int) -> Int:
 /// The shortest linear recurrence of a sequence (Berlekamp-Massey), for a
 /// prime `P`: coefficients `c` with `xs[i] == sum of c[j] * xs[i - 1 - j]`
 /// for every `i >= c.len`. O(n^2). Trust it when `xs.len >= 2 * c.len + 2`.
+@allow(unproven_list_index)
 pub fn berlekamp_massey<P>(xs: List<Mod<P>>) -> List<Mod<P>>:
     let zero = Mod<P>(0)
     var (cur, last) = (List<Mod<P>>(), List<Mod<P>>())
@@ -166,6 +167,7 @@ pub fn recurrence_at<P>(c: List<Mod<P>>, init: List<Mod<P>>, n: Int) -> Mod<P>:
     total
 
 /// The product of two polynomials of degree below `k`, reduced by `x^k = sum of c[j] * x^(k - 1 - j)`.
+@allow(unproven_list_index)
 fn mul_mod_char<P>(a: List<Mod<P>>, b: List<Mod<P>>, c: List<Mod<P>>) -> List<Mod<P>>:
     let k = c.len
     var prod = List.filled(2 * k - 1, Mod<P>(0))

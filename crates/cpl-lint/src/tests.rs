@@ -298,6 +298,14 @@ fn unproven_list_index_wants_two_loops_and_an_unproven_index() {
     // A fn starts its own count.
     let in_fn = "var ws: List<Int> = []\nws.push(read())\nfor i in 0..3:\n    for j in 0..3:\n        let f = k => ws[k]\n        print(f(i + j))\n";
     assert_eq!(codes(in_fn), ["L0414"]);
+    // `while head < q.len` is the check, for a list that grows as it is read.
+    let worklist = "var q: List<Int> = [0]\nfor root in 0..3:\n    var head = 0\n    while head < q.len:\n        let u = q[head]\n        head += 1\n        if u < 3: q.push(u + 1)\n";
+    assert_eq!(codes(worklist), Vec::<&str>::new());
+    // A `@test` is not what a judge times; the code after it is.
+    let test = "@test\nfn t():\n    let ws = [1, 2, 3]\n    for i in 0..2:\n        for j in 0..2:\n            assert ws[i + j] > 0\n";
+    assert_eq!(codes(test), Vec::<&str>::new());
+    let after = format!("{test}fn f(ws: List<Int>):\n    for i in 0..2:\n        for j in 0..2:\n            print(ws[i + j])\nf([1, 2, 3])\n");
+    assert_eq!(codes(&after), ["L0414"]);
 }
 
 #[test]

@@ -39,6 +39,9 @@ pub(crate) trait Visitor {
     /// A `for` loop, after its scope is entered and before its variable is
     /// bound.
     fn for_loop(&mut self, _pat: &Pattern, _iter: &Expr) {}
+    /// A `while` loop, after its scope is entered and before its test is
+    /// walked.
+    fn while_loop(&mut self, _cond: &Cond) {}
 }
 
 pub(crate) fn walk_stmt(v: &mut dyn Visitor, stmt: &Stmt) {
@@ -122,6 +125,7 @@ pub(crate) fn walk_stmt(v: &mut dyn Visitor, stmt: &Stmt) {
         }
         StmtKind::While { cond, body } => {
             v.enter(Scope::Loop);
+            v.while_loop(cond);
             walk_cond(v, cond);
             walk_stmts(v, &body.stmts);
             v.exit(Scope::Loop);

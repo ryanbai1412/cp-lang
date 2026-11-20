@@ -174,7 +174,7 @@ pub fn scc<V, N>(next: N) -> (domain C, comp: [V]C):
                 timer += 1
                 stack.push(u)
             if i < out[u].len:
-                path[path.len - 1] = (u, i + 1)
+                path.last! = (u, i + 1)
                 let v = out[u][i]
                 if seen[v] == none: path.push((v, 0))
                 elif done[v] == none: low[u] min= seen[v]!
@@ -271,7 +271,7 @@ pub fn two_edge_components<V, N>(next: N) -> (domain C, comp: [V]C):
                 timer += 1
                 stack.push(u)
             if i < out[u].len:
-                frames[frames.len - 1] = (u, i + 1, pe)
+                frames.last! = (u, i + 1, pe)
                 let a = out[u][i]
                 let eid = a.e.to_idx
                 if pe != none and eid == pe!: continue
@@ -316,7 +316,7 @@ pub fn articulation_points<V, N>(next: N) -> [V]Bool:
                 low[u] = timer
                 timer += 1
             if i < out[u].len:
-                frames[frames.len - 1] = (u, i + 1, p)
+                frames.last! = (u, i + 1, p)
                 let v = out[u][i]
                 if p != none and v == p!: continue
                 if tin[v] == none:
@@ -360,7 +360,7 @@ pub fn biconnected_components<V, N>(next: N) -> List<List<V>>:
                 timer += 1
                 stack.push(u)
             if i < out[u].len:
-                frames[frames.len - 1] = (u, i + 1, p)
+                frames.last! = (u, i + 1, p)
                 let v = out[u][i]
                 if p != none and v == p!: continue
                 if tin[v] == none:

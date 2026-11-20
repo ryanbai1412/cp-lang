@@ -79,7 +79,6 @@ const NOT_BUILT: &[&str] = &[
     "proto/tests/ergo/counter.cp",
     "proto/tests/ergo/effects_first.cp",
     "proto/tests/ergo/moves.cp",
-    "proto/tests/ergo/prefix.cp",
     "proto/tests/ergo/ranges.cp",
     "proto/tests/ergo/sugar.cp",
     "proto/tests/fn/invariant.cp",

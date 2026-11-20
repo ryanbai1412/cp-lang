@@ -43,8 +43,15 @@ pub fn names() -> &'static [(Vec<ast::Name>, ast::Name)] {
 
 /// The words of the language that are written with a library fn: a
 /// program that uses the word gets the fn, as if it had named it.
-/// `argmax(f(v) for v in V)` is `max_by` over the walk.
-pub const BUILT_ON: &[(&str, &str)] = &[("argmax", "max_by"), ("argmin", "min_by")];
+/// `argmax(f(v) for v in V)` is `max_by` over the walk, and `prefix(a)` is
+/// one of three fns by what `a` is.
+pub const BUILT_ON: &[(&str, &str)] = &[
+    ("argmax", "max_by"),
+    ("argmin", "min_by"),
+    ("prefix", "prefix_n"),
+    ("prefix", "prefix1"),
+    ("prefix", "prefix2"),
+];
 
 fn int_fn(arity: usize) -> Ty {
     Ty::Fn {

@@ -4594,8 +4594,9 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    /// `prefix(a)`: dispatches to userland `std.prefix.{prefix1, prefix2}`
-    /// (`stdlib/prefix.cp`) so prefix sums stay in userland rather than bespoke IR.
+    /// `prefix(a)` is `prefix_n`, `prefix1` or `prefix2` of `std.prefix`, by
+    /// what `a` is: a list, a `[D]T` or a `[R, C]T`. The three are found by
+    /// name like any fn the program calls (`cpl_check::prelude::BUILT_ON`).
     fn lower_prefix(&mut self, args: &[ast::Arg], span: Span) -> Expr {
         let Some(exprs) = self.positional_any("prefix", args, 1, span) else {
             return self.err_expr(span);
@@ -4631,12 +4632,8 @@ impl<'a> Lowerer<'a> {
             _ => false,
         };
         if counted && adds {
-            let gfid = self.std_prefix.and_then(|mod_id| match self.mod_syms[mod_id].get("prefix_n") {
-                Some(Sym::GenFn(gfid)) => Some(*gfid),
-                _ => None,
-            });
-            let Some(gfid) = gfid else {
-                self.unsupported(span, "`prefix` without `stdlib/prefix.cp`");
+            let Some(Sym::GenFn(gfid)) = self.get_sym("prefix_n") else {
+                self.unsupported(span, "`prefix` without `std.prefix.prefix_n` in scope");
                 return self.err_expr(span);
             };
             let list = Ty::List(Box::new(elem_ty.clone()));
@@ -4653,13 +4650,9 @@ impl<'a> Lowerer<'a> {
             self.error(codes::TYPE_MISMATCH, span, message);
             return self.err_expr(span);
         };
-        let Some(mod_id) = self.std_prefix else {
-            self.unsupported(span, "`prefix` without `stdlib/prefix.cp`");
-            return self.err_expr(span);
-        };
         let fn_name = if doms.len() == 1 { "prefix1" } else { "prefix2" };
-        let Some(Sym::GenFn(gfid)) = self.mod_syms[mod_id].get(fn_name).copied() else {
-            self.unsupported(span, "`prefix` without `stdlib/prefix.cp`");
+        let Some(Sym::GenFn(gfid)) = self.get_sym(fn_name) else {
+            self.unsupported(span, &format!("`prefix` without `std.prefix.{fn_name}` in scope"));
             return self.err_expr(span);
         };
         let mut gargs: Vec<GenArg> = doms.into_iter().map(GenArg::Domain).collect();
