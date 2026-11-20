@@ -66,8 +66,10 @@ prints `3` for the input `3 11` / `1 5 7`.
   borrow a place for one expression. Borrows are never stored or returned,
   so there are no lifetime annotations.
 - **Tropical Optionals.** `?Int` and `?F64` replace `INF` and `-1`: `+`
-  and `-` absorb `none`, `min`, `max`, `min=` and `max=` skip it. They are
-  niche-packed and take no extra memory.
+  and `-` absorb `none`, `min`, `max`, `min=` and `max=` skip it. In the
+  emitted C++ a `?Int` is still a 16-byte `std::optional<long long>`;
+  packing it into 8 bytes is an open item in
+  [the perf tail profile](research/perf-tail-profile-2.md).
 - **`@memo`.** Write the recurrence as a function. The compiler uses a
   flat table when the parameters are small indices and a salted hash table
   otherwise.
@@ -87,15 +89,15 @@ and [`decisions.md`](decisions.md).
 [`bench/corpus-500-report.md`](bench/corpus-500-report.md) tracks ports of
 Ryan's accepted contest submissions:
 
-- **573 unique problems** are ported, out of 747 with an accepted
-  submission in the corpus.
-- **477 of them** have a port that a harness differentially checked
+- **579 unique problems** are ported (971 `.cp` files), out of 747 with
+  an accepted submission in the corpus.
+- **566 of them** have a port that a harness differentially checked
   against the original C++.
-- Those 477 ports are **66.4% shorter** than the raw originals and
-  **48.4% shorter** than the originals with the template, I/O driver and
-  standard data structures stripped out. Over all 573 the figures are
-  66.1% and 47.9%.
-- 27 ports are no shorter than their stripped original, and 62 hard
+- The canonical ports are **65.7% shorter** than the raw originals and
+  **47.4% shorter** than the originals with the template, I/O driver and
+  standard data structures stripped out (23657 CP Lang lines against
+  69041 raw and 45007 stripped).
+- 30 ports are no shorter than their stripped original, and 56 hard
   problems are still unported.
 
 ## Quickstart
@@ -191,7 +193,8 @@ $ scripts/install-hooks.sh            # git commit now runs scripts/check.sh --f
 `scripts/check.sh --fast` takes under a minute on a warm build: it
 refuses staged `dist/` output and secrets, then runs clippy with warnings
 as errors, the workspace tests (with `cargo nextest` when it is
-installed), the library tests and `cpl fmt --check stdlib`. It leaves out
+installed), the library tests, `cpl fmt --check stdlib` and the friction
+lint (its rule tests, and no `wa_trap` hit in the ports). It leaves out
 the slow prototype fuzz test and the timing budget tests. Before pushing
 a change to the prototype, the WebAssembly build or the VS Code
 extension, run the slow suites too:
