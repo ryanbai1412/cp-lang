@@ -89,8 +89,8 @@ pub struct Code(pub &'static str);
 
 /// Every code the front end can report. Syntax is `E00xx`/`E01xx`, names are
 /// `E02xx`, types and domains are `E03xx`, ownership is `E04xx`. The back
-/// ends report `E05xx` for what they can't run, and a program that fails
-/// while it runs is `R0001`.
+/// ends report `E05xx` for what they can't run, lends, projections and
+/// impls are `E06xx`, and a program that fails while it runs is `R0001`.
 pub mod codes {
     use super::Code;
 
@@ -138,6 +138,13 @@ pub mod codes {
 
     pub const UNSUPPORTED: Code = Code("E0501");
     pub const NON_ASCII: Code = Code("E0502");
+
+    pub const LENT_TWICE: Code = Code("E0601");
+    pub const USED_WHILE_LENT: Code = Code("E0602");
+    pub const LENT_ESCAPES: Code = Code("E0603");
+    pub const BAD_PROJECTION: Code = Code("E0604");
+    pub const BAD_INDEX_IMPL: Code = Code("E0605");
+    pub const MISSING_IMPL: Code = Code("E0606");
 
     pub const RUNTIME: Code = Code("R0001");
 

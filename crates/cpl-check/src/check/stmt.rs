@@ -9,20 +9,42 @@ use cpl_syntax::ast::{
 impl<'a> Checker<'a> {
     /// Checks the statements of one top-level item.
     pub(crate) fn item(&mut self, stmts: &[Stmt]) {
-        for stmt in stmts {
-            self.stmt(stmt, true);
-        }
+        self.stmts(stmts, true);
     }
 
     /// Checks a block in its own scope. Its type is that of its last
     /// expression statement.
     pub(crate) fn block(&mut self, block: &Block) -> Ty {
         self.push_scope();
-        let mut last = Ty::Unit;
-        for stmt in &block.stmts {
-            last = self.stmt(stmt, false);
-        }
+        let mark = self.lend_mark();
+        let last = self.stmts(&block.stmts, false);
+        self.lend_reset(mark);
         self.pop_scope();
+        last
+    }
+
+    /// Checks statements that run one after another. A slice or row
+    /// bound by `let` keeps its array lent until the last statement that
+    /// names it.
+    fn stmts(&mut self, stmts: &[Stmt], top_level: bool) -> Ty {
+        let mut last = Ty::Unit;
+        for (k, stmt) in stmts.iter().enumerate() {
+            last = self.stmt(stmt, top_level);
+            if let StmtKind::Let {
+                mutable: false,
+                pat:
+                    Pattern {
+                        kind: PatternKind::Name(name),
+                        ..
+                    },
+                init: Some(init),
+                ..
+            } = &stmt.kind
+            {
+                self.begin_hold(stmt, name, init, &stmts[k + 1..]);
+            }
+            self.end_holds(stmt);
+        }
         last
     }
 
@@ -111,6 +133,15 @@ impl<'a> Checker<'a> {
                     });
                 }
                 let ty = declared.or(init_ty).unwrap_or(Ty::Error);
+                if let (true, Some(init)) = (*mutable, init) {
+                    let what = format!("`var {}`", self.quote(pat.span));
+                    self.no_escape(init, &what);
+                }
+                // A new binding of a name: what was known about the old
+                // one no longer applies.
+                let mut bound = Vec::new();
+                pattern_types(pat, &ty, &mut |name, _| bound.push(name.to_string()));
+                self.drop_facts(&bound);
                 self.bind(pat, &ty, *mutable, keyword);
                 if let Some(guard) = guard {
                     let ty = self.infer(guard);
@@ -259,6 +290,9 @@ impl<'a> Checker<'a> {
                 self.bounds_exist(bounds);
                 if let Some(trait_name) = trait_name {
                     self.impl_matches_trait(trait_name, target, &body.stmts);
+                    if type_head(trait_name).as_deref() == Some("Index") {
+                        self.index_size(&body.stmts);
+                    }
                 }
                 let owner = type_head(target).unwrap_or_default();
                 self.owned(&owner, &body.stmts);
@@ -272,6 +306,13 @@ impl<'a> Checker<'a> {
                 let target_ty = self.infer(target);
                 let value_ty = self.infer(value);
                 self.require_mutable(target, "assigned");
+                self.check_access(target, true);
+                if let Some((root, _)) = Self::root_name(target) {
+                    self.drop_facts(&[root.to_string()]);
+                }
+                if *op == AssignOp::Set {
+                    self.no_escape(value, "this assignment");
+                }
                 if *op == AssignOp::Set {
                     self.expect_fits(&value_ty, &target_ty, value, |c, got, want| {
                         format!(
@@ -286,8 +327,12 @@ impl<'a> Checker<'a> {
             }
             StmtKind::While { cond, body } => {
                 self.push_scope();
+                self.drop_facts_written(body, None);
                 self.cond(cond);
+                let mark = self.lend_mark();
+                self.add_cond_facts(cond, false);
                 self.block(body);
+                self.lend_reset(mark);
                 self.pop_scope();
             }
             StmtKind::For {
@@ -296,6 +341,7 @@ impl<'a> Checker<'a> {
                 let iter_ty = self.infer(iter);
                 let elem = self.element_ty(&iter_ty);
                 self.push_scope();
+                self.drop_facts_written(body, Some(pat));
                 self.bind(pat, &elem, false, "for");
                 self.block(body);
                 self.pop_scope();
@@ -304,6 +350,7 @@ impl<'a> Checker<'a> {
                 let value_ty = value.as_ref().map(|v| self.infer(v));
                 if let (Some(value), Some(value_ty)) = (value, value_ty) {
                     self.returns(value, &value_ty);
+                    self.no_escape(value, "`return`");
                 }
             }
             StmtKind::Yield { value, .. } => {
@@ -312,6 +359,7 @@ impl<'a> Checker<'a> {
             StmtKind::Assert { cond, message } => {
                 let ty = self.infer(cond);
                 self.require_bool(&ty, cond, "`assert`");
+                self.add_facts(cond, false);
                 if let Some(message) = message {
                     self.infer(message);
                 }
@@ -331,6 +379,7 @@ impl<'a> Checker<'a> {
             }
             StmtKind::Lend { place, .. } => {
                 self.infer(place);
+                self.lend_in_place(stmt);
             }
         }
         Ty::Unit
@@ -409,6 +458,61 @@ impl<'a> Checker<'a> {
                 _ => {
                     self.stmt(method, false);
                 }
+            }
+        }
+    }
+
+    /// The `K` of an `impl Index`: how many values the type has. `const K`
+    /// is known at compile time; `let K` is evaluated once, where the
+    /// impl is declared, and frozen, so it can't read a `var`
+    /// (plan/19 §3.1).
+    fn index_size(&mut self, body: &[Stmt]) {
+        for stmt in body {
+            match &stmt.kind {
+                StmtKind::Const {
+                    name,
+                    init: Some(init),
+                    ..
+                } if name.text == "K" => {
+                    let known = matches!(self.bounds(init), (Some(lo), Some(hi)) if lo == hi);
+                    if !known {
+                        let value = self.quote(init.span);
+                        let message = format!(
+                            "`const K = {value}`: `const` is compile-time only, and `{value}` is known only at run time"
+                        );
+                        if let Some(diag) = self.error(codes::BAD_INDEX_IMPL, stmt.span, message) {
+                            diag.help = Some(format!(
+                                "write `let K = {value}`; an associated `let` is evaluated once, where the impl is declared, and is frozen from then on"
+                            ));
+                        }
+                    }
+                }
+                StmtKind::Let {
+                    pat,
+                    init: Some(init),
+                    ..
+                } if super::types::domain_binding(pat) == Some("K") => {
+                    for name in super::lends::names_in(init) {
+                        let mutable = match self.local(&name) {
+                            Some(local) => local.mutable,
+                            None => matches!(
+                                self.env.global(&name).as_deref(),
+                                Some(Def::Value { mutable: true, .. })
+                            ),
+                        };
+                        if mutable {
+                            let message = format!(
+                                "`K` can't be sized by the var `{name}`: it could change after arrays are made"
+                            );
+                            if let Some(diag) =
+                                self.error(codes::BAD_INDEX_IMPL, init.span, message)
+                            {
+                                diag.help = Some(format!("freeze it first: `let n = {name}`"));
+                            }
+                        }
+                    }
+                }
+                _ => {}
             }
         }
     }
@@ -588,30 +692,46 @@ impl<'a> Checker<'a> {
             (**ret).clone(),
             f.ret.is_some() && !generator,
         ));
-        match &f.body {
-            FnBody::Block(block) => {
-                let ty = self.block(block);
-                // The last expression is the fn's value.
-                if let Some(Stmt {
-                    kind: StmtKind::Expr(last),
-                    ..
-                }) = block.stmts.last()
-                {
-                    // An `if` or `match` whose branches all `return` has no
-                    // value; the returns were checked on their own.
-                    let statement_like = ty == Ty::Unit
-                        && matches!(last.kind, ExprKind::If { .. } | ExprKind::Match { .. });
-                    if !statement_like {
-                        self.returns(last, &ty);
+        // A fn body knows nothing of what is lent or known where the fn
+        // is written: it runs when it is called.
+        self.lend_isolated(|c| {
+            if self_ty.is_some() {
+                let fields: Vec<String> = match self_ty {
+                    Some(Ty::Named { name, .. }) => c
+                        .members_of(name)
+                        .map(|m| m.fields.iter().map(|f| f.name.clone()).collect())
+                        .unwrap_or_default(),
+                    _ => Vec::new(),
+                };
+                c.projection_shape(f, &fields);
+            }
+            match &f.body {
+                FnBody::Block(block) => {
+                    let ty = c.block(block);
+                    // The last expression is the fn's value.
+                    if let Some(Stmt {
+                        kind: StmtKind::Expr(last),
+                        ..
+                    }) = block.stmts.last()
+                    {
+                        // An `if` or `match` whose branches all `return` has no
+                        // value; the returns were checked on their own.
+                        let statement_like = ty == Ty::Unit
+                            && matches!(last.kind, ExprKind::If { .. } | ExprKind::Match { .. });
+                        if !statement_like {
+                            c.returns(last, &ty);
+                            c.no_escape(last, "returning it");
+                        }
                     }
                 }
+                FnBody::Expr(expr) => {
+                    let ty = c.infer(expr);
+                    c.returns(expr, &ty);
+                    c.no_escape(expr, "returning it");
+                }
+                FnBody::None => {}
             }
-            FnBody::Expr(expr) => {
-                let ty = self.infer(expr);
-                self.returns(expr, &ty);
-            }
-            FnBody::None => {}
-        }
+        });
         self.fns.pop();
         self.pop_scope();
         if receiver.is_some() && matches!(self_ty, Some(Ty::Named { .. })) {

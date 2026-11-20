@@ -522,6 +522,7 @@ impl<'a> Lexer<'a> {
             );
             self.out.poisoned.push(span);
         }
+        self.ascii_only(start, "Str");
         self.push(
             if raw {
                 TokenKind::RawStr
@@ -529,6 +530,26 @@ impl<'a> Lexer<'a> {
                 TokenKind::Str
             },
             start,
+        );
+    }
+
+    /// `Char` is one byte and `Str` is a flat array of `Char` (decision
+    /// 1.6): a literal from `start` to here holds ASCII only.
+    fn ascii_only(&mut self, start: usize, what: &str) {
+        let text = &self.src[start..self.pos];
+        let Some((at, ch)) = text.char_indices().find(|(_, c)| !c.is_ascii()) else {
+            return;
+        };
+        let span = Span::new((start + at) as u32, (start + at + ch.len_utf8()) as u32);
+        self.out.diagnostics.push(
+            Diagnostic::error(
+                codes::NON_ASCII,
+                span,
+                format!(
+                    "`{ch}` is not ASCII; a {what} literal holds single-byte ASCII characters only"
+                ),
+            )
+            .with_help("Char is one byte and Str is a flat array of Char; there is no UTF-8"),
         );
     }
 
@@ -585,6 +606,7 @@ impl<'a> Lexer<'a> {
         if let Some(len) = char_len {
             if rest.as_bytes().get(len) == Some(&b'\'') {
                 self.pos += len + 1;
+                self.ascii_only(start, "Char");
                 self.push(TokenKind::Char, start);
                 return;
             }

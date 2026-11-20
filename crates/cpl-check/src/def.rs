@@ -35,6 +35,7 @@ pub enum Def {
         getters: Vec<String>,
         /// Domains and constants declared in the body: `Rooted<V>.Pre`.
         owned: Vec<(String, Ty)>,
+        projections: Vec<Projection>,
     },
     Enum {
         variants: Vec<(String, Vec<Ty>)>,
@@ -59,7 +60,22 @@ pub enum Def {
         methods: Vec<(String, Ty)>,
         getters: Vec<String>,
         owned: Vec<(String, Ty)>,
+        projections: Vec<Projection>,
     },
+}
+
+/// `fn at(self, i: V) lends mut Int`: a method that lends part of its
+/// receiver.
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct Projection {
+    pub name: String,
+    /// `lends mut`: the caller may write through it.
+    pub mutable: bool,
+    /// The lent type as written, for messages.
+    pub lent: String,
+    /// Its `law disjoint(..) = ..` as source: when two of its lends are
+    /// apart. Without one they always conflict.
+    pub law: Option<String>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]

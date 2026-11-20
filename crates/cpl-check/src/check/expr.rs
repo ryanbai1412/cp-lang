@@ -12,6 +12,18 @@ fn range_of(elem: Ty) -> Ty {
 
 impl<'a> Checker<'a> {
     pub(crate) fn infer(&mut self, expr: &Expr) -> Ty {
+        // An outermost place expression (`a[i]`, not the `a` inside it)
+        // uses its place: a conflict with a live lend is reported once
+        // its parts are known.
+        let uses_place = self.enter_place(expr);
+        let ty = self.infer_kind(expr);
+        if uses_place {
+            self.check_access(expr, false);
+        }
+        ty
+    }
+
+    fn infer_kind(&mut self, expr: &Expr) -> Ty {
         match &expr.kind {
             ExprKind::Int(_) => Ty::Int,
             ExprKind::Float(_) => Ty::Float,
@@ -76,7 +88,11 @@ impl<'a> Checker<'a> {
                     self.infer(step);
                 }
                 let elem = match (&lo_ty, &hi_ty) {
-                    (Some(Ty::Pos(d)), _) | (_, Some(Ty::Pos(d))) => Ty::Pos(d.clone()),
+                    // Two boundaries enclose positions: `l.l..r.r` is a
+                    // range of `V`, like `l..=r`.
+                    (Some(Ty::Pos(d)), _) | (_, Some(Ty::Pos(d))) => {
+                        Ty::Pos(d.strip_suffix(".bounds").unwrap_or(d).to_string())
+                    }
                     (Some(a), Some(b)) if a.is_int() && b.is_int() => {
                         let lo_min = lo.as_ref().and_then(|e| self.bounds(e).0);
                         let hi_max = hi.as_ref().and_then(|e| self.bounds(e).1).map(|h| {
@@ -143,7 +159,13 @@ impl<'a> Checker<'a> {
                 }
             }
             ExprKind::Tuple(items) if items.is_empty() => Ty::Unit,
-            ExprKind::Tuple(items) => Ty::Tuple(items.iter().map(|i| self.infer(i)).collect()),
+            ExprKind::Tuple(items) => {
+                let tys = items.iter().map(|i| self.infer(i)).collect();
+                for item in items {
+                    self.no_escape(item, "storing it in a list or tuple");
+                }
+                Ty::Tuple(tys)
+            }
             ExprKind::Record(fields) => Ty::Record(
                 fields
                     .iter()
@@ -157,6 +179,7 @@ impl<'a> Checker<'a> {
                     if i == 0 {
                         elem = ty.widen();
                     }
+                    self.no_escape(item, "storing it in a list or tuple");
                 }
                 if items.is_empty() {
                     Ty::Unknown
@@ -214,14 +237,37 @@ impl<'a> Checker<'a> {
                 otherwise,
             } => {
                 let mut result = None;
+                // Inside a branch its condition holds; after it, in the
+                // branches that follow, it does not.
+                let mark = self.lend_mark();
                 for (cond, body) in branches {
                     self.push_scope();
                     self.cond(cond);
+                    let branch = self.lend_mark();
+                    self.add_cond_facts(cond, false);
                     let ty = self.block(body);
+                    self.lend_reset(branch);
+                    self.add_cond_facts(cond, true);
                     self.pop_scope();
                     result.get_or_insert(ty);
                 }
-                match otherwise {
+                let leaves = |body: &ast::Block| {
+                    matches!(
+                        body.stmts.last().map(|s| &s.kind),
+                        Some(
+                            ast::StmtKind::Return(_)
+                                | ast::StmtKind::Break(_)
+                                | ast::StmtKind::Continue(_)
+                        )
+                    )
+                };
+                // `if i == j: return` leaves `i != j` for the rest of the
+                // block.
+                let after = match (branches.as_slice(), otherwise) {
+                    ([(cond, body)], None) if leaves(body) => Some(cond),
+                    _ => None,
+                };
+                let result_ty = match otherwise {
                     Some(body) => {
                         let ty = self.block(body);
                         match result {
@@ -231,7 +277,12 @@ impl<'a> Checker<'a> {
                         }
                     }
                     None => Ty::Unit,
+                };
+                self.lend_reset(mark);
+                if let Some(cond) = after {
+                    self.add_cond_facts(cond, true);
                 }
+                result_ty
             }
             ExprKind::Match { scrutinee, arms } => {
                 let scrutinee_ty = self.infer(scrutinee);
@@ -506,7 +557,7 @@ impl<'a> Checker<'a> {
     /// Everything `value.name` can reach on a struct or enum: its fields,
     /// its methods (a `@get` method reads as its value), what its body
     /// owns, and the same from each impl for it.
-    fn members_of(&mut self, type_name: &str) -> Option<Members> {
+    pub(crate) fn members_of(&mut self, type_name: &str) -> Option<Members> {
         let mut out = Members::default();
         let add = |out: &mut Members, methods: &[(String, Ty)], getters: &[String]| {
             for (name, ty) in methods {
@@ -524,12 +575,14 @@ impl<'a> Checker<'a> {
                 methods,
                 getters,
                 owned,
+                projections,
                 ..
             }) => {
                 out.generics = generics.clone();
                 out.fields = fields.clone();
                 add(&mut out, methods, getters);
                 out.members.extend(owned.iter().cloned());
+                out.projections.extend(projections.iter().cloned());
             }
             Some(Def::Enum { methods, .. }) => add(&mut out, methods, &[]),
             _ => return None,
@@ -539,10 +592,12 @@ impl<'a> Checker<'a> {
                 methods,
                 getters,
                 owned,
+                projections,
             } = &*def
             {
                 add(&mut out, methods, getters);
                 out.members.extend(owned.iter().cloned());
+                out.projections.extend(projections.iter().cloned());
             }
         }
         Some(out)
@@ -607,7 +662,16 @@ impl<'a> Checker<'a> {
                     _ => Ty::Unknown,
                 }
             }
-            Ty::Pos(_) if name.text == "ord" => return Ty::Int,
+            Ty::Pos(domain) => {
+                return match name.text.as_str() {
+                    "ord" | "to_idx" | "idx" | "label" => Ty::Int,
+                    // The boundaries on either side of a position.
+                    "l" | "r" | "before" | "after" if !domain.ends_with(".bounds") => {
+                        Ty::Pos(format!("{domain}.bounds"))
+                    }
+                    _ => Ty::Unknown,
+                };
+            }
             // `Dir.L`: a variant named through its enum.
             Ty::TypeName(type_name) => {
                 if let Some(Def::Enum { variants, .. }) = self.env.type_def(type_name).as_deref() {
@@ -738,8 +802,17 @@ impl<'a> Checker<'a> {
                     );
                     let base_text = self.quote(base.span);
                     let index_text = self.quote(index_expr.span);
+                    let boundary = match (got, want) {
+                        (Ty::Pos(got), Ty::Pos(want)) => {
+                            got.strip_suffix(".bounds") == Some(want)
+                                || want.strip_suffix(".bounds") == Some(got)
+                        }
+                        _ => false,
+                    };
                     if let Some(diag) = self.error(codes::WRONG_DOMAIN, index_expr.span, message) {
-                        diag.help = Some(if got.is_int() {
+                        diag.help = Some(if boundary {
+                            "a position and the boundaries around it are different indices; use `.l` / `.r` for the boundaries on either side of a position".to_string()
+                        } else if got.is_int() {
                             format!("convert it with `{want}({index_text})`, or write `{base_text}.raw[{index_text}]` to index by number")
                         } else {
                             format!("index with {}", want.with_article())
@@ -747,7 +820,10 @@ impl<'a> Checker<'a> {
                     }
                 }
                 if slice {
-                    Ty::Unknown
+                    // A slice is its array seen through a range: lent,
+                    // and indexed by the same positions.
+                    self.note_view(expr, "slice");
+                    base_ty.clone()
                 } else {
                     (**elem).clone()
                 }
@@ -811,10 +887,11 @@ impl<'a> Checker<'a> {
 
 /// What a struct or enum, with its impls, lets a value reach by name.
 #[derive(Default)]
-struct Members {
+pub(crate) struct Members {
     generics: Vec<String>,
-    fields: Vec<crate::ty::Param>,
+    pub(crate) fields: Vec<crate::ty::Param>,
     members: Vec<(String, Ty)>,
+    pub(crate) projections: Vec<crate::def::Projection>,
 }
 
 impl Members {
