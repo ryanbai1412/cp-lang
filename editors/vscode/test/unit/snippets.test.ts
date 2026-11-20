@@ -33,11 +33,19 @@ test('snippets/cp.json includes all required CP Lang 0.2.2 contest snippets', ()
     );
     for (const required of [
         'memo',
+        '@!multitest',
+        'multitest',
+        '@brute',
         'bsearch_first',
         'compress',
         'segtree',
+        'segtree-monoid',
+        'Monoid',
         'lazysegtree',
+        'lazysegtree-action',
+        'Action',
         'rooted',
+        'tropical',
         'checker',
         'interactor',
         'stress',
@@ -48,12 +56,18 @@ test('snippets/cp.json includes all required CP Lang 0.2.2 contest snippets', ()
         .map(entry => expandSnippet(entry.body))
         .join('\n');
     for (const requiredToken of [
+        '@!multitest',
         '@memo',
+        '@brute(',
         'bsearch_first',
         'compress(',
         'SegTree<',
+        'Monoid(',
         'LazySegTree<',
+        'Action(',
         'Rooted<',
+        '?Int = none',
+        'min=',
         '@checker',
         '@interactor',
         'sol: Interactor',

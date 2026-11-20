@@ -35,3 +35,19 @@ test('computeInlayHints skips loops over undeclared capitalized identifiers', ()
     const source = ['for x in Unknown:', '    let n = read()'].join('\n');
     assert.deepEqual(computeInlayHints(source), []);
 });
+
+test('computeInlayHints handles filtered and labeled 0.2.2 domain loops', () => {
+    const source = [
+        'domain V = 1..=n',
+        'for v in V if a[v] > 0:',
+        "    'inner: for u in V:",
+        '        print(u)',
+    ].join('\n');
+    assert.deepEqual(
+        computeInlayHints(source).map(h => [h.line, h.character, h.label]),
+        [
+            [1, 5, ': V'],
+            [2, 17, ': V'],
+        ],
+    );
+});

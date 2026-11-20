@@ -46,6 +46,40 @@ export interface StressReport {
     counterexample?: Counterexample;
 }
 
+/** One diagnostic or runtime trap parsed from `cpl` stderr (`cpl_diag::render`). */
+export interface CliDiagnostic {
+    severity: 'error' | 'warning' | 'info';
+    code?: string;
+    message: string;
+    file?: string;
+    /** 0-based line number when a `--> file:line:col` span is present. */
+    line?: number;
+    /** 0-based column number when a `--> file:line:col` span is present. */
+    col?: number;
+    help?: string;
+}
+
+/** Inline runtime error shown on the line where `cpl run` trapped. */
+export interface RuntimeErrorOverlay {
+    /** 0-based line to decorate. */
+    line: number;
+    /** 0-based column for the Problems diagnostic, if known. */
+    col?: number;
+    code?: string;
+    message: string;
+    sample?: string;
+    help?: string;
+}
+
+/** Compact inline verdict badge shown after running a sample or all samples. */
+export interface SampleStatusOverlay {
+    /** 0-based line to decorate (line 0 for file samples, `@sample` line for inline samples). */
+    line: number;
+    ok: boolean;
+    label: string;
+    detail?: string;
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -259,4 +293,62 @@ export function renderCounterexample(counterexample: Counterexample): string {
         lines.push(`  saved as ${counterexample.saved}`);
     }
     return lines.join('\n');
+}
+
+const DIAG_HEADER = /^(error|warning|note)(?:\[([A-Za-z0-9_]+)\])?:\s*(.+)$/;
+const DIAG_LOC = /^\s*-->\s+(.+):(\d+):(\d+)\s*$/;
+const DIAG_HELP = /^\s*=\s*(?:help|note):\s*(.+)$/;
+
+/**
+ * Parses `cpl_diag::render` diagnostics and runtime traps from `cpl` stderr:
+ *   error[E0301]: `deg` is indexed by V, but `e` is an E
+ *     --> d.cp:7:17
+ *     = help: index with a V
+ */
+export function parseCliDiagnostics(stderr: string): CliDiagnostic[] {
+    const diagnostics: CliDiagnostic[] = [];
+    let current: CliDiagnostic | undefined;
+    for (const raw of stderr.split(/\r?\n/)) {
+        const header = DIAG_HEADER.exec(raw);
+        if (header) {
+            const severity = header[1] === 'error' ? 'error' : header[1] === 'warning' ? 'warning' : 'info';
+            current = { severity, code: header[2], message: header[3].trim() };
+            diagnostics.push(current);
+            continue;
+        }
+        if (!current) {
+            continue;
+        }
+        const loc = DIAG_LOC.exec(raw);
+        if (loc && current.line === undefined) {
+            const lineNum = Number.parseInt(loc[2], 10);
+            const colNum = Number.parseInt(loc[3], 10);
+            current.file = loc[1];
+            if (lineNum >= 1) {
+                current.line = lineNum - 1;
+            }
+            if (colNum >= 1) {
+                current.col = colNum - 1;
+            }
+            continue;
+        }
+        const help = DIAG_HELP.exec(raw);
+        if (help) {
+            current.help = current.help ? `${current.help}; ${help[1].trim()}` : help[1].trim();
+        }
+    }
+    return diagnostics;
+}
+
+/** Inline label shown at the end of a line that trapped at runtime. */
+export function runtimeErrorLabel(error: RuntimeErrorOverlay, max: number): string {
+    const prefix = error.sample ? `${error.sample} error: ` : 'runtime error: ';
+    const code = error.code ? `[${error.code}] ` : '';
+    return `${prefix}${clip(code + error.message, max)}`;
+}
+
+/** Inline label shown beside a sample or file after `cpl run`. */
+export function sampleStatusLabel(status: SampleStatusOverlay, max: number): string {
+    const icon = status.ok ? '\u2713' : '\u2717';
+    return `${icon} ${clip(status.label, max)}`;
 }

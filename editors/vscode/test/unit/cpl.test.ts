@@ -38,10 +38,17 @@ test('runCpl collects output, feeds stdin and reports the exit status', async ()
     assert.equal(result.timedOut, false);
 });
 
-test('runCpl stops a run that takes too long, and reports a binary that is not there', async () => {
+test('runCpl stops a run that takes too long, honours AbortSignal, and reports a missing binary', async () => {
     const slow = await runCpl(process.execPath, ['-e', 'setTimeout(() => {}, 60000)'], { timeoutMs: 200 });
     assert.equal(slow.timedOut, true);
     assert.equal(slow.code, null);
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 50);
+    const cancelled = await runCpl(process.execPath, ['-e', 'setTimeout(() => {}, 60000)'], {
+        signal: controller.signal,
+    });
+    assert.equal(cancelled.cancelled, true);
+    assert.equal(cancelled.timedOut, false);
     const missing = await runCpl('/nonexistent/cpl', ['lsp']);
     assert.ok(missing.spawnError, 'expected a spawn error');
 });

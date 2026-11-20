@@ -41,7 +41,7 @@
     "description": "Domain-indexed SegTree with operator or custom Monoid"
   },
   "Segment tree with custom Monoid": {
-    "prefix": ["segtree-monoid", "monoid"],
+    "prefix": ["segtree-monoid", "monoid", "Monoid"],
     "body": [
       "let ${1:m} = Monoid(${2:id}, (${3:a}, ${4:b}) => ${5:merge(a, b)})",
       "var ${6:st} = SegTree<${7:V}, ${8:Node}>(${1:m}, ${9:a})",
@@ -58,7 +58,7 @@
     "description": "Domain-indexed LazySegTree with built-in range Action"
   },
   "Lazy segment tree with custom Action": {
-    "prefix": ["lazysegtree-action", "action"],
+    "prefix": ["lazysegtree-action", "action", "Action"],
     "body": [
       "let ${1:act} = Action(",
       "    ${2:id},",
@@ -133,16 +133,36 @@
     ],
     "description": "Mod<MOD> type alias and immutable interior-mutable Comb<MOD>()"
   },
-  "Multitest skeleton": {
-    "prefix": ["multitest", "@multitest"],
+  "Multitest skeleton (@!multitest)": {
+    "prefix": ["multitest", "@!multitest", "@multitest"],
     "body": [
-      "@multitest",
+      "@!multitest",
       "let ${1:n}: ${2:1..=2e5} = read()",
       "domain ${3:V} = 1..=${1:n}",
       "let ${4:a}: [${3:V}]Int = read()",
       "${0}"
     ],
-    "description": "Whole-file @multitest solution template"
+    "description": "CP Lang 0.2.2 file-level @!multitest divider (code above precomputes once; code below runs per test case)"
+  },
+  "Tropical optional DP / Dijkstra": {
+    "prefix": ["tropical", "dist", "dijkstra"],
+    "body": [
+      "var ${1:dist}: [${2:V}]?Int = none",
+      "${1:dist}[${3:V.first}] = 0",
+      "${1:dist}[${4:v}] min= ${1:dist}[${5:u}] + ${6:w}",
+      "print(${1:dist}[${7:V.last}] ?? -1)",
+      "${0}"
+    ],
+    "description": "Niche-packed ?Int table with tropical min= updates and ?? fallback"
+  },
+  "Brute-force oracle (@brute)": {
+    "prefix": ["@brute", "brute"],
+    "body": [
+      "@brute(${1:main})",
+      "fn ${2:slow}():",
+      "    ${0}"
+    ],
+    "description": "Co-located @brute oracle for cpl stress (stripped from judge build)"
   },
   "Constructive @checker": {
     "prefix": ["checker", "@checker"],
@@ -178,7 +198,7 @@
     "description": "Co-located @interactor using explicit sol: Interactor (sol.recv / sol.send)"
   },
   "Stress test with gen: and @brute(main)": {
-    "prefix": ["stress", "gen", "brute"],
+    "prefix": ["stress", "gen"],
     "body": [
       "let ${1:n}: ${2:1..=20} = read()",
       "domain ${3:V} = 1..=${1:n}",

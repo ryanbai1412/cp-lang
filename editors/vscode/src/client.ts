@@ -51,6 +51,7 @@ export class CpClient implements vscode.Disposable {
             this.ensureFallbacks({ completion: true, inlayHints: true });
             return;
         }
+        this.status.command = { command: 'cp.restartServer', title: 'Restart' };
         const args = vscode.workspace.getConfiguration('cp').get<string[]>('server.args', ['lsp']);
         const serverOptions: ServerOptions = {
             run: { command: binary, args },
@@ -72,24 +73,33 @@ export class CpClient implements vscode.Disposable {
                 this.setStatus('cpl: starting', vscode.LanguageStatusSeverity.Information);
                 this.status.busy = true;
             } else if (event.newState === State.Stopped) {
-                this.setStatus('cpl: stopped', vscode.LanguageStatusSeverity.Warning);
+                this.setStatus(
+                    'cpl: stopped',
+                    vscode.LanguageStatusSeverity.Warning,
+                    'Language server stopped — click Restart',
+                );
+                this.ensureFallbacks({ completion: true, inlayHints: true });
             }
         });
         try {
             await client.start();
         } catch (error) {
-            this.setStatus('cpl: failed to start', vscode.LanguageStatusSeverity.Error);
+            this.setStatus('cpl: failed to start', vscode.LanguageStatusSeverity.Error, binary);
             this.output.appendLine(`could not start \`${binary} ${args.join(' ')}\`: ${error}`);
             this.ensureFallbacks({ completion: true, inlayHints: true });
             return;
         }
         const info = client.initializeResult?.serverInfo;
+        const caps = client.initializeResult?.capabilities;
+        const fallbacks = [!caps?.completionProvider && 'completion', !caps?.inlayHintProvider && 'inlay hints'].filter(
+            (x): x is string => Boolean(x),
+        );
+        const detail = fallbacks.length > 0 ? `${binary} (local fallback: ${fallbacks.join(', ')})` : binary;
         this.setStatus(
             info ? `${info.name} ${info.version ?? ''}`.trim() : 'cpl',
             vscode.LanguageStatusSeverity.Information,
-            binary,
+            detail,
         );
-        const caps = client.initializeResult?.capabilities;
         this.ensureFallbacks({
             completion: !caps?.completionProvider,
             inlayHints: !caps?.inlayHintProvider,
@@ -153,6 +163,11 @@ export class CpClient implements vscode.Disposable {
 
     private missingBinary(): void {
         const configured = vscode.workspace.getConfiguration('cp').get<string>('server.path', 'cpl');
+        this.status.command = {
+            command: 'workbench.action.openSettings',
+            title: 'Set Path',
+            arguments: ['cp.server.path'],
+        };
         this.setStatus('cpl: not found', vscode.LanguageStatusSeverity.Error, `\`${configured}\` is not on PATH`);
         // Highlighting, snippets and fallback completion/inlay hints still work without the server.
         if (this.warnedMissing) {

@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 import {
     CONTEXTUAL_KEYWORDS,
     DECORATORS,
+    FILE_DIRECTIVES,
     KEYWORDS,
     PRELUDE_CONSTANTS,
     PRELUDE_TYPES,
@@ -31,7 +32,21 @@ export function registerFallbackCompletion(selector: vscode.DocumentSelector): v
         ...items(PRELUDE_VALUES, vscode.CompletionItemKind.Function, 'prelude fn'),
         ...items(PRELUDE_CONSTANTS, vscode.CompletionItemKind.Constant, 'math constant'),
     ];
-    const decorators = DECORATORS.map(decorator => {
+    const directives = FILE_DIRECTIVES.map(directive => {
+        const item = new vscode.CompletionItem('@!' + directive.name, vscode.CompletionItemKind.Keyword);
+        item.detail = directive.detail;
+        item.insertText = new vscode.SnippetString(directive.insert);
+        item.filterText = directive.name;
+        return item;
+    });
+    const directivesFromAt = FILE_DIRECTIVES.map(directive => {
+        const item = new vscode.CompletionItem('@!' + directive.name, vscode.CompletionItemKind.Keyword);
+        item.detail = directive.detail;
+        item.insertText = new vscode.SnippetString('!' + directive.insert);
+        item.filterText = directive.name;
+        return item;
+    });
+    const decorators = DECORATORS.filter(d => d.name !== 'multitest').map(decorator => {
         const item = new vscode.CompletionItem('@' + decorator.name, vscode.CompletionItemKind.Event);
         item.detail = decorator.detail;
         item.insertText = new vscode.SnippetString(decorator.insert);
@@ -41,8 +56,11 @@ export function registerFallbackCompletion(selector: vscode.DocumentSelector): v
     const provider: vscode.CompletionItemProvider = {
         provideCompletionItems(document, position) {
             const before = document.lineAt(position.line).text.slice(0, position.character);
+            if (/@![A-Za-z_]*$/.test(before)) {
+                return directives;
+            }
             if (/@[A-Za-z_]*$/.test(before)) {
-                return decorators;
+                return [...directivesFromAt, ...decorators];
             }
             // Nothing sensible to offer after a dot without types.
             if (/\.[A-Za-z_]*$/.test(before)) {
@@ -51,5 +69,5 @@ export function registerFallbackCompletion(selector: vscode.DocumentSelector): v
             return words;
         },
     };
-    return vscode.languages.registerCompletionItemProvider(selector, provider, '@');
+    return vscode.languages.registerCompletionItemProvider(selector, provider, '@', '!');
 }

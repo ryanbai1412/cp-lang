@@ -65,18 +65,24 @@ export interface CplResult {
     stdout: string;
     stderr: string;
     timedOut: boolean;
+    cancelled?: boolean;
     timeMs: number;
     /** Set when the process could not be started. */
     spawnError?: string;
 }
 
-/** `cpl`'s exit status when the source is fine but the command's back end is not built yet. */
+/** `cpl`'s exit status when compilation failed with source diagnostics. */
+export const EXIT_ERRORS = 1;
+/** `cpl`'s exit status when a run/stress/test failed at runtime (trap or wrong answer). */
+export const EXIT_FAILED = 3;
+/** Legacy alias: `cpl`'s exit status when a command's back end is not built yet. */
 export const EXIT_NOT_BUILT = 3;
 
 export interface RunOptions {
     cwd?: string;
     stdin?: string;
     timeoutMs?: number;
+    signal?: AbortSignal;
 }
 
 /** Runs `cpl` to completion and collects what it printed. Never rejects. */
@@ -84,10 +90,24 @@ export function runCpl(binary: string, args: readonly string[], options: RunOpti
     return new Promise(resolve => {
         const started = Date.now();
         const result: CplResult = { code: null, stdout: '', stderr: '', timedOut: false, timeMs: 0 };
+        if (options.signal?.aborted) {
+            result.cancelled = true;
+            resolve(result);
+            return;
+        }
         let done = false;
+        const onAbort = () => {
+            result.cancelled = true;
+            child.kill();
+        };
+        const cleanup = () => {
+            clearTimeout(timer);
+            options.signal?.removeEventListener('abort', onAbort);
+        };
         const finish = () => {
             if (!done) {
                 done = true;
+                cleanup();
                 result.timeMs = Date.now() - started;
                 resolve(result);
             }
@@ -99,15 +119,14 @@ export function runCpl(binary: string, args: readonly string[], options: RunOpti
                   child.kill();
               }, options.timeoutMs)
             : undefined;
+        options.signal?.addEventListener('abort', onAbort, { once: true });
         child.stdout.setEncoding('utf8').on('data', (chunk: string) => (result.stdout += chunk));
         child.stderr.setEncoding('utf8').on('data', (chunk: string) => (result.stderr += chunk));
         child.on('error', error => {
-            clearTimeout(timer);
             result.spawnError = error.message;
             finish();
         });
         child.on('close', code => {
-            clearTimeout(timer);
             result.code = code;
             finish();
         });

@@ -232,6 +232,26 @@
           "highContrast": "#6fdd8b",
           "highContrastLight": "#116329"
         }
+      },
+      {
+        "id": "cp.runtimeErrorBackground",
+        "description": "Background of the line where a sample run trapped at runtime.",
+        "defaults": {
+          "dark": "#f1707026",
+          "light": "#d73a4920",
+          "highContrast": "#f1707040",
+          "highContrastLight": "#d73a4930"
+        }
+      },
+      {
+        "id": "cp.runtimeErrorForeground",
+        "description": "Text of an inline runtime error or failed sample verdict.",
+        "defaults": {
+          "dark": "#f17070",
+          "light": "#cb2431",
+          "highContrast": "#ff8080",
+          "highContrastLight": "#a40e26"
+        }
       }
     ]
   },

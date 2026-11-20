@@ -70,22 +70,24 @@ print("ans = {best}, avg = {avg:.6f}")           // interpolation + format specs
 
 Highlights worth noting:
 
-- All **34 0.2.2 reserved keywords** (30 contestant + 4 library-author: `trait`, `impl`, `lends`, `yield`), contextual `as` / `from` / `invariant`, and all **11 `@` decorators** (8 contestant + 3 library-author `@get`, `@test`, `@law`) stay in lockstep between `src/languageData.ts` and `syntaxes/cp.tmLanguage.json`.
+- All **34 0.2.2 reserved keywords** (30 contestant + 4 library-author: `trait`, `impl`, `lends`, `yield`), contextual `as` / `from` / `invariant`, file-level directives (`@!multitest`, `@!...`, scoped `keyword.control.directive.cp`), and item attributes (`@memo`, `@brute`, `@checker`, `@interactor`, `@law`, `@grader`, `@tags`, `@gen`, `@get`, `@test`, scoped `entity.name.function.decorator.cp`) stay in lockstep between `src/languageData.ts` and `syntaxes/cp.tmLanguage.json`.
 - Builtin types (`Int`, `U64`, `I128`, `F64`, `Bool`, `Char`, `Str`, `Bitset`, `List`, `Deque`, `Map`, `HashMap`, `Set`, `HashSet`, `SortedBag`, `MinHeap`, `MaxHeap`, `Range`, `Bounds`, `Subset`, `Iter`, `Interactor`, `Rng`) and core standard library contest types (`Mod<P>`, `Comb<P>`, `Marks<D>`, `Compressed`, `SegTree`, `LazySegTree`, `SparseTable`, `Fenwick`, `Fenwick2D`, `Dsu`, `Graph`, `Rooted`, `FlowGraph`, `Perm`, `Sieve`, `Pt`, `Dir4`, `ByAngle`, `SuffixArray`, `RollingHash`, `HashVal`, `Monoid`, `Action`, `Desc`, and built-in lazy actions) receive dedicated scopes, including nested generics and turbofish (`f::<Int>()`).
-- Boundary properties `.l`, `.r`, `.l(k)`, and `.r(k)` use `variable.other.property.boundary.cp`; mutation (`var`, `mut`, `lends mut`) and escape hatches (`.raw`, `unchecked`) carry dedicated scopes so themes can emphasize them.
-- String interpolation `"{expr}"`, format specifiers `"{x:.6f}"`, escaped braces `"{{...}}"`, and raw strings `r"..."` never swallow following lines.
+- Tropical Optionals (`?T`, `??Int`, `?[V]Int`, `min=`, `max=`, `??=`) receive dedicated `meta.type.optional.cp` / `meta.operator.tropical.cp` scopes distinct from postfix `?` and binary `??`.
+- Boundary properties `.l`, `.r`, `.l(k)`, and `.r(k)` use `variable.other.property.boundary.cp` (without misreading open-ended ranges like `..l` / `..r`); mutation (`var`, `mut`, `lends mut`) and escape hatches (`.raw`, `unchecked`) carry dedicated scopes so themes can emphasize them.
+- String interpolation `"{expr}"`, format specifiers (`"{x:.5}"`, `"{n:05}"`, `"{n:x}"`, `"{n:b}"`, `"{x:.6f}"`, `"{best ?? 0.0:.3f}"`), escaped braces `"{{...}}"`, and raw strings `r"..."` never swallow following lines.
 
 ## Contest snippets
 
 `snippets/cp.json` contributes ready-to-type CP Lang 0.2.2 templates with zero stale v1/v2.1 constructs:
 
-- `memo` — bare `@memo` DP template (auto-dispatches flat vs salted hash table)
+- `memo` / `@memo` — bare `@memo` DP template (auto-dispatches flat vs salted hash table)
+- `tropical` / `dist` / `dijkstra` — niche-packed `[V]?Int = none` table with `min=` and `?? -1`
 - `bsearch_first` / `bsearch_last` — binary search over ranges
 - `compress` — coordinate compression with `xs.D`, `xs[r]`, and `xs.at(v)`
-- `segtree` / `segtree-monoid` / `lazysegtree` / `lazysegtree-action` / `sparsetable` — domain-indexed range structures with built-in operators/actions and 0.2.2 `Action(id, (new_f, old_f) => ..., (f, val, span) => ..., over: op)`
+- `segtree` / `segtree-monoid` (`Monoid`) / `lazysegtree` / `lazysegtree-action` (`Action`) / `sparsetable` — domain-indexed range structures with built-in operators/actions and 0.2.2 `Action(id, (new_f, old_f) => ..., (f, val, span) => ..., over: op)`
 - `rooted` / `hld` — `Rooted<V>` with `LazySegTree<t.Pre, ...>` path and subtree queries
 - `dsu` / `touched` / `small-to-large` / `mod` — explicit `dsu.mark()` / `dsu.undo_to(snap)`, 1-byte `[V]Bool` + touched-list reset, `swap` + `.take()` small-to-large merge, and `Mod<MOD>` + immutable `let comb = Comb<MOD>()`
-- `multitest` / `grader` / `checker` / `interactor` / `stress` / `atgen` — multi-test skeletons, stateful IOI `@grader`, `@checker`, explicit `sol: Interactor` `@interactor`, and `read(gen: ...)` + `@brute(main)` stress setups
+- `multitest` / `@!multitest` / `@brute` / `grader` / `checker` / `interactor` / `stress` / `atgen` — file-level `@!multitest` divider, standalone `@brute(main)` oracle, stateful IOI `@grader`, `@checker`, explicit `sol: Interactor` `@interactor`, and `read(gen: ...)` + `@brute(main)` stress setups
 
 ## Language server (`cpl lsp`) and inlay hints
 
@@ -112,7 +114,7 @@ fn slow():
 
 Sample discovery checks scratch files `i1`/`o1`, `<stem>.tests/*.in`, `<stem>.samples/*.in`, and inline `@sample("in", "out")`.
 
-- **Run on a Sample / Run on All Samples (`cp.runSample`, `cp.runAllSamples`):** runs `cpl run <file> --format json` (automatically falling back to plain `cpl run <file>` if the installed `cpl` binary does not accept `--format json` yet) and diffs stdout with judge whitespace normalization.
+- **Run on a Sample / Run on All Samples (`cp.runSample`, `cp.runAllSamples`):** runs `cpl run <file> --format json` (automatically falling back to plain `cpl run <file>` if the installed `cpl` binary does not accept `--format json` yet), diffs stdout with judge whitespace normalization, shows inline pass/fail verdict badges, and highlights runtime traps inline and in the Problems panel (`cpl (runtime)` diagnostics) with cancellable progress.
 - **Live Sample Values (`cp.toggleLiveValues` / `cp.liveValues.enabled`):** re-runs on save against `cp.liveValues.input` (or the first sample) and renders top-level values as end-of-line virtual decorations with full values on hover.
 - **Stress Test (`cp.stress`):** runs `cpl stress <file> --format json` (plus any extra flags in `cp.stress.args`, such as `["--cases", "1000", "--size", "10"]`). Accepts both `"status": "ok"` and `"status": "pass"`, formats counterexamples in the output channel, and paints virtual decorations on line 0 and any differing stages.
 - **Trace a Sample (`cp.trace`):** runs `cpl run <file> --trace [part] --format html` and opens self-contained HTML traces in a side-by-side VS Code webview.

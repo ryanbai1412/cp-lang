@@ -70,10 +70,19 @@ export interface DecoratorInfo {
     detail: string;
 }
 
-/** 8 contestant decorators + 3 library-author decorators in CP Lang 0.2.2. */
+/** File-level directives (`@!...`) in CP Lang 0.2.2; apply from that line down. */
+export const FILE_DIRECTIVES: readonly DecoratorInfo[] = [
+    {
+        name: 'multitest',
+        insert: 'multitest',
+        detail: 'file-level directive: precompute above, loop t test cases below with fresh scope and @memo resets',
+    },
+];
+
+/** Item attributes (`@...`): 8 contestant + 3 library-author decorators in CP Lang 0.2.2. */
 export const DECORATORS: readonly DecoratorInfo[] = [
     { name: 'memo', insert: 'memo', detail: 'memoize a function (auto-dispatches flat vs salted hash table)' },
-    { name: 'multitest', insert: 'multitest', detail: 'run the file or `solve()` once per test case' },
+    { name: 'multitest', insert: 'multitest', detail: 'legacy item-attribute spelling of `@!multitest`' },
     { name: 'brute', insert: 'brute(${1:main})', detail: 'reference brute-force implementation for `cpl stress`' },
     { name: 'tags', insert: "tags('${1:.}', '${2:#}')", detail: 'compact character-set tag for grid cells' },
     { name: 'gen', insert: 'gen', detail: 'custom whole-input generator for `cpl stress`' },
