@@ -1,0 +1,19 @@
+# Dev-loop build settings; numbers in research/build-timings.md.
+#
+# Linker: rustc >= 1.90 already links x86_64 Linux with its bundled rust-lld,
+# so there is no linker override here.
+
+[profile.dev]
+# No DWARF: panics still report file:line, and test binaries link and write
+# about 3x less (target/ is ~0.8 GB instead of ~2.2 GB with stock debuginfo).
+# Switch to `debug = "line-tables-only"` locally if you need symbolized
+# backtraces or a debugger.
+debug = 0
+split-debuginfo = "unpacked"
+
+[profile.dev.build-override]
+debug = 0
+
+[alias]
+# Same tests as `cargo test --workspace`, run in parallel across binaries.
+nt = "nextest run --workspace"
