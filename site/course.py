@@ -4,6 +4,7 @@ import html
 import json
 from pathlib import Path
 import re
+from compiler import editor_html
 
 ROOT = Path(__file__).resolve().parent
 MANIFESTS = ("foundations", "advanced")
@@ -58,7 +59,7 @@ def load_lessons():
 def exercise_html(exercise, highlight):
     e = html.escape
     key, kind = exercise["id"], exercise["kind"]
-    code = ""
+    code, sandbox = "", ""
     if exercise.get("code"):
         code = f'<pre class="exercise-code" tabindex="0"><code>{highlight(exercise["code"], "cp")}</code></pre>'
     if kind == "choice":
@@ -76,6 +77,9 @@ def exercise_html(exercise, highlight):
             for i, case in enumerate(exercise["tests"])
         )
         label = "Predict the output"
+        source = (ROOT / "examples" / f'{exercise["fixture"]}.cp').read_text()
+        sandbox = '<details class="exercise-help exercise-sandbox"><summary>Edit and run this program</summary>'
+        sandbox += editor_html(key + "-sandbox", source, exercise["tests"][0]["input"]) + '</details>'
     return (
         f'<section class="exercise" id="{key}" data-exercise="{key}" aria-labelledby="{key}-title">'
         f'<div class="exercise-heading"><span>{label}</span><span class="exercise-badge" data-badge>Not checked</span></div>'
@@ -85,6 +89,7 @@ def exercise_html(exercise, highlight):
         '<button class="primary-button" type="submit">Check answer</button>'
         '<button class="secondary-button" type="reset">Reset</button></div></form>'
         f'<div class="exercise-feedback" id="{key}-feedback" role="status" aria-live="polite"></div>'
+        f'{sandbox}'
         f'<details class="exercise-help"><summary>Hint</summary><p>{e(exercise["hint"])}</p></details>'
         f'<details class="exercise-help"><summary>Solution and explanation</summary><p>{e(exercise["solution"])}</p></details>'
         '<noscript>Enable JavaScript to check your answer. Hints and solutions work without it.</noscript></section>\n'

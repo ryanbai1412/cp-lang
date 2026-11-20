@@ -10,6 +10,7 @@ import shutil
 
 import mistune
 from course import catalog_html, exercise_html, load_lessons, progress_html
+from compiler import build_compiler, editor_html
 
 ROOT = Path(__file__).resolve().parent
 REPO = "https://github.com/ryanbai1412/cp-lang"
@@ -162,6 +163,7 @@ def build():
     target = ROOT / "_build"
     target.mkdir(exist_ok=True)
     shutil.copytree(ROOT / "assets", target / "assets", dirs_exist_ok=True)
+    build_compiler(target)
     template = (ROOT / "template.html").read_text()
     search = []
     for i, (name, title, section, description, duration) in enumerate(PAGES):
@@ -250,28 +252,34 @@ def course_data(name):
                 if lesson["slug"] == name:
                     check["explanation"] = exercise["explanation"]
             else:
-                check["tests"] = [{"expected": case["expected"]} for case in exercise["tests"]]
+                check["tests"] = exercise["tests"]
+                if lesson["slug"] == name:
+                    check["source"] = (ROOT / "examples" / f'{exercise["fixture"]}.cp').read_text()
             checks[exercise["id"]] = check
-    revisions = {key: hashlib.sha256(safe_json(exercise).encode()).hexdigest()[:16]
+    revisions = {key: hashlib.sha256((safe_json(exercise) + (
+                    (ROOT / "examples" / f'{exercise["fixture"]}.cp').read_text()
+                    if exercise["kind"] == "output" else "")).encode()).hexdigest()[:16]
                  for key, exercise in EXERCISES.items()}
     return dict(lessons=[dict(slug=lesson["slug"], exercises=[exercise["id"] for exercise in lesson["exercises"]])
                          for lesson in LESSONS], exercises=checks, revisions=revisions)
 
 
 def build_playground(target, template):
-    examples = [dict(id=name, source=(ROOT / "examples" / f"{name}.cp").read_text())
+    defaults = dict(sum="5\n3 1 4 1 5", bounds="5\n3 1 4 1 5", accumulation="4\n0 1 2 3",
+                    ascii="5\nabaca", optional="", memo="4")
+    examples = [dict(id=name, source=(ROOT / "examples" / f"{name}.cp").read_text(), stdin=defaults[name])
                 for name in ("sum", "bounds", "accumulation", "ascii", "optional", "memo")]
     values = dict(title="Playground", heading="Example playground", section="Tools",
         description="Run documented examples with your own input, entirely offline.",
         duration="", number="", navigation=navigation("playground"),
-        content=(ROOT / "playground.html").read_text(), toc="", pager="",
+        content=(ROOT / "playground.html").read_text().replace("{{editor}}", editor_html("playground")), toc="", pager="",
         name="playground", repo=REPO, page_class="playground", source_path="site/playground.html",
         docs_current="", course_current="", series="CP LANG TOOLS", playground_current='aria-current="page"')
     page = template
     for key, value in values.items():
         page = page.replace("{{" + key + "}}", value)
     page = page.replace('</body>', '<script id="playground-examples" type="application/json">'
-        + safe_json(examples) + '</script><script src="assets/playground.js"></script></body>')
+        + safe_json(examples) + '</script></body>')
     (target / "playground.html").write_text(page)
 
 

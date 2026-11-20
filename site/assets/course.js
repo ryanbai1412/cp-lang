@@ -1,4 +1,4 @@
-/* Deterministic knowledge/output checks, not a source compiler. No eval/network. */
+/* Knowledge checks plus real WASM execution for output predictions. */
 const CourseChecks = (() => {
   const normalize = value => String(value).trim().split(/\s+/).filter(Boolean).join(" ");
   function check(exercise, answer) {
@@ -15,12 +15,24 @@ const CourseChecks = (() => {
       const matches = exercise.tests.map((test, i) => normalize(answer[i]) === normalize(test.expected));
       const passed = matches.every(Boolean);
       return {passed, matches, message:passed
-        ? `All ${matches.length} cases match the prototype-tested output.`
+        ? `All ${matches.length} cases match.`
         : `${matches.filter(Boolean).length} of ${matches.length} cases match. Check the marked cases or open a hint. Whitespace does not matter.`};
     }
     return {passed:false, message:"This check is unavailable."};
   }
-  return {normalize, check};
+  async function execute(exercise, answer, run) {
+    if (exercise.kind !== "output") return check(exercise, answer);
+    const tests = [];
+    for (const test of exercise.tests) {
+      const result = await run(exercise.source, test.input);
+      if (!result.ok) return {passed:false, message:result.stderr || "The program could not run."};
+      tests.push({expected:result.stdout});
+    }
+    const result = check({...exercise, tests}, answer);
+    if (result.passed) result.message += " Executed locally with CP Lang WebAssembly.";
+    return result;
+  }
+  return {normalize, check, execute};
 })();
 
 if (typeof document !== "undefined" && document.getElementById("course-data")) {
@@ -77,6 +89,7 @@ if (typeof document !== "undefined" && document.getElementById("course-data")) {
       const id = section.dataset.exercise, exercise = data.exercises[id];
       const form = section.querySelector("form"), status = section.querySelector(".exercise-feedback");
       const badge = section.querySelector("[data-badge]");
+      let revision = 0;
       function readAnswer() {
         return exercise.kind === "choice" ? form.querySelector("input:checked")?.value
           : [...form.querySelectorAll("textarea")].map(field => field.value);
@@ -102,13 +115,24 @@ if (typeof document !== "undefined" && document.getElementById("course-data")) {
         if (result.passed) feedback(result);
         else records.delete(id);
       }
-      form.addEventListener("submit", event => {
+      form.addEventListener("submit", async event => {
         event.preventDefault();
-        const answer = readAnswer(), result = CourseChecks.check(exercise, answer);
-        feedback(result);
-        save(id, answer, result.passed);
+        const current = ++revision, answer = readAnswer();
+        const submit = form.querySelector('[type="submit"]');
+        submit.disabled = true;
+        status.textContent = exercise.kind === "output" ? "Running each case with CP Lang WebAssembly…" : "Checking…";
+        try {
+          const result = await CourseChecks.execute(exercise, answer,
+            (source, input) => CpCompiler.call("run", source, input));
+          if (revision !== current) return;
+          feedback(result);
+          save(id, answer, result.passed);
+        } catch (error) {
+          if (revision === current) { feedback({passed:false, message:error.message}); save(id, null, false); }
+        } finally { submit.disabled = false; }
       });
       form.addEventListener("input", () => {
+        revision++;
         if (!section.dataset.state && !records.has(id)) return;
         delete section.dataset.state;
         status.textContent = "Answer changed. Check it again when ready.";
@@ -117,6 +141,7 @@ if (typeof document !== "undefined" && document.getElementById("course-data")) {
         save(id, null, false);
       });
       form.addEventListener("reset", () => {
+        revision++;
         delete section.dataset.state;
         status.textContent = "Answer and progress cleared.";
         badge.textContent = "Not checked";

@@ -2,20 +2,11 @@
   <label for="example-picker"><span class="runner-label">Example </span><select id="example-picker">
     <option value="sum">Array sum</option><option value="bounds">Prefix boundaries</option>
     <option value="accumulation">Accumulation</option><option value="ascii">ASCII character count</option>
-    <option value="optional">Optional predecessor</option><option value="memo">Memoized recurrence</option>
+    <option value="optional">Optional predecessor</option><option value="memo">Recursive recurrence</option>
   </select></label>
-  <button class="primary-button" id="run-example" type="button">Run example</button>
 </div>
-<div class="runner-grid">
-  <figure class="code-block"><figcaption><span id="example-file">sum.cp · read only</span><span>CP Lang</span></figcaption><pre tabindex="0"><code id="example-source"></code></pre></figure>
-  <div class="runner-io">
-    <label for="example-input">Standard input</label><textarea id="example-input" spellcheck="false" aria-describedby="runner-note">5
-3 1 4 1 5</textarea>
-    <h2 id="output-label">Standard output</h2><pre class="runner-output" id="example-output" role="status" aria-labelledby="output-label">Run an example to see its output</pre>
-  </div>
-</div>
-<p class="runner-status" id="runner-status" role="status">Ready · Ctrl / ⌘ + Enter to run</p>
+<div id="playground-editor">{{editor}}</div>
 <h2 id="execution">What runs here</h2>
-<p id="runner-note">This lightweight runner executes JavaScript implementations of the six documented examples, not a CP Lang compiler. The source is read only; inputs are editable and validated against the example’s constraints. The examples are separately compiled and tested with the Python prototype. For arbitrary CP Lang programs, <a href="getting-started.html">run the local toolchain</a>.</p>
-<p>Inspect captured algorithm states in the <a href="trace.html">trace debugger</a>, including a fast-versus-spec comparison.</p>
-<p>New to the language? Follow the <a href="course.html">interactive course</a> for worked examples, hints, and checked exercises.</p>
+<p>The real CP Lang compiler and interpreter run locally in WebAssembly. Edit the source and standard input, run your program, or inspect its generated C++17. Diagnostics and cursor type information come from the same frontend as <code>cpl</code>.</p>
+<p>Programs run in a worker with a five-second limit; Stop cancels a run. Browser recursion and memory limits are lower than the local toolchain. Design-only language features may report compiler diagnostics.</p>
+<p>Explore the <a href="course.html">interactive course</a> or inspect recorded states in the <a href="trace.html">trace debugger</a>.</p>

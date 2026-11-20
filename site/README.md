@@ -3,6 +3,9 @@
 A static, responsive course, reference guide, and example playground. No frontend build chain, CDN,
 analytics, or runtime dependency. Python 3.10+ and Mistune 3 generate plain
 HTML; all links work under a subdirectory as well as at the server root.
+The playground embeds the real Rust compiler as gzipped WebAssembly. Building
+also needs Cargo and the `wasm32-unknown-unknown` Rust target; no wasm-pack or
+JavaScript package installation is needed.
 
 ## Build and preview
 
@@ -11,6 +14,7 @@ From the repository root:
 ```sh
 python3 -m venv site/.venv
 site/.venv/bin/pip install -r site/requirements.txt
+rustup target add wasm32-unknown-unknown  # once
 site/.venv/bin/python site/build.py
 python3 -m http.server 8000 --bind 0.0.0.0 --directory site/_build
 ```
@@ -24,13 +28,14 @@ clipboard support depends on browser permissions.
 ```sh
 site/.venv/bin/python site/test_site.py
 node --test site/test_course.cjs
+node --test site/test_compiler.cjs
 ```
 
 This builds every page, validates local links and heading fragments, and
 compiles all `example` snippets and the foundations' worked programs with the
 Python prototype and `g++` C++17.
 Sample/edge cases and every course prediction check actual native output
-against the browser example runner. Compiler APIs avoid the
+against the real browser WASM runtime (including timeout and recovery). Compiler APIs avoid the
 prototype CLI's source-stamping side effect. Design blocks are explicitly
 labeled and are not compiled; they must be reviewed against the design.
 The full Rust workspace gate remains `cargo test` before a push.
@@ -71,19 +76,25 @@ python3 site/bundle.py
 ```
 
 The single HTML includes the complete course and reference, full-text keyboard search, an
-interactive example playground, and the complete trace debugger. It stores
-shared CSS, scripts, and the search index once, with no inline font blobs
+editable compiler playground, and the complete trace debugger. It stores
+shared CSS, scripts, gzipped/base64 WASM, and the search index once, with no inline font blobs
 or automatic network requests. Hash routes support bookmarks and history.
 External repository links still require a connection.
 
-The playground runs explicit JavaScript implementations of the six
-documented examples, checked against the real Python-to-C++ prototype in
-`test_site.py`. It is not an arbitrary-source compiler: the source is read
-only, input is editable, and the UI states this limitation.
+The playground runs arbitrary editable CP Lang source with standard input/output,
+C++17 generation, source-positioned diagnostics, and cursor type inspection from
+`crates/cpl-wasm`. The build invokes `scripts/build-wasm.sh` and packages its
+bridge without another compiler implementation. A Blob worker keeps execution
+off the UI thread, stops runs after five seconds, and restarts after Stop or a
+timeout. The compiled module is shared across offline page navigation. The
+complete HTML is about 1.3 MiB; the compiler itself adds about 0.5 MiB of base64
+gzip. Modern browsers need WebAssembly, Workers, and DecompressionStream.
 
-Course checks do not pretend to compile arbitrary source: conceptual questions
-check a selected answer, and output exercises compare predictions to native-tested
-fixtures, ignoring whitespace but not numeric precision or token order. Solutions
+Conceptual course questions check a selected answer; output checks actually run
+each input through WASM and compare stdout to the prediction, ignoring whitespace
+but not numeric precision or token order. Each output exercise also has an editable
+source sandbox with stdin/stdout, diagnostics, and C++17 preview. `@memo` is still
+prototype-only: the runnable recurrence is explicitly uncached. Solutions
 are intentionally available without a login. Correct answers and chapter progress
 persist in browser storage; reset clears an exercise, changing an answer requires a
 fresh check, and changed exercise definitions invalidate old completion records.

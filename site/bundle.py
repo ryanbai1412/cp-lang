@@ -26,6 +26,7 @@ def bundle():
         app=(ROOT / "assets/app.js").read_text(),
         playground=(ROOT / "assets/playground.js").read_text(),
         course=(ROOT / "assets/course.js").read_text(),
+        compiler=(target / "assets/compiler.js").read_text(),
         search=(target / "search.json").read_text(),
     )
     shell = (ROOT / "offline.html").read_text()

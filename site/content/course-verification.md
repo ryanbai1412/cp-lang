@@ -9,7 +9,9 @@ A dynamic-programming solution is a recurrence plus a table. `@memo` lets you wr
 ```example memo
 ```
 
-Read it as math: `f(0) = 1`, and `f(i) = 3 * f(i - 1) + i` when `i` has a predecessor. `i.prev` is `none` at the first index, which is the base case, so "forgot the base case" and "read `dp[-1]`" are not expressible. Note that `domain I = 0..n` is half-open: with input `n` the last index is `n - 1`.
+Read it as math: `f(0) = 1`, and `f(i) = 3 * f(i - 1) + i` when `i` has a predecessor. `i.prev` is `none` at the first index, which is the base case. Note that `domain I = 0..n` is half-open: with input `n` the last index is `n - 1`.
+
+The browser uses the Rust backend, where `@memo` is not implemented yet. This executable example uses plain recursion without caching; add `@memo` above `fn f` when running it in the Python prototype. The output exercise runs the uncached version in real WebAssembly, not a simulated cache.
 
 ```exercise verify-memo-output
 ```

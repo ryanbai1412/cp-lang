@@ -646,6 +646,24 @@ th,td {
 .runner-status[data-error=true] {
   color: #dc2626;
 }
+.compiler-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.source-panel { min-width:0; }
+.source-panel>label { display:block; margin-bottom:8px; font-size:12px; font-weight:600; }
+.source-editor {
+  display:block; width:100%; min-height:350px; padding:14px; resize:vertical;
+  border:1px solid var(--line); border-radius:6px; background:var(--surface);
+  color:var(--ink); font:12px/1.8 var(--mono); tab-size:4;
+}
+.compiler-hover { min-height:2.8em; white-space:pre-wrap; font:11px/1.5 var(--mono); color:var(--muted); }
+.compiler-diagnostics button { display:block; text-align:left; padding:6px 0; color:#dc2626; font:12px/1.6 var(--mono); }
+.compiler-diagnostics p { margin:0 0 8px; font-size:12px; }
+.compiler-cpp pre { max-height:480px; overflow:auto; padding:16px; background:var(--surface); border:1px solid var(--line); border-radius:6px; font:12px/1.8 var(--mono); }
+.compiler-cpp summary { cursor:pointer; font-size:13px; font-weight:600; }
+.runner-status { white-space:pre-wrap; overflow-wrap:anywhere; }
+.compiler-editor button:disabled { opacity:.5; cursor:default; }
+.exercise-sandbox .runner-grid { grid-template-columns:minmax(0,1fr); }
+.exercise-sandbox .runner-grid pre { min-height:80px; }
+@media(max-width:600px) { .compiler-editor .playground-toolbar { align-items:flex-start; flex-direction:column; } }
 .course-progress {
   margin: 0 0 28px;
   padding: 16px 0;
