@@ -2,7 +2,6 @@
 // place in the alphabet. Pick disjoint pairs of positions i < k; a pair
 // scores w - worth[k]. Print every total that can be reached.
 // original: corpus/submissions/4376742.cpp
-use std.bitset.{Bitset}
 
 let n: 1..=250 = read()
 let word: Str = read()

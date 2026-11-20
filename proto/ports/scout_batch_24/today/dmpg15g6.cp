@@ -39,12 +39,8 @@ fn add_pos(idx: Int):
     elif f2 == fid:
         c2 = c
         if c2 > c1:
-            let tf = f1
-            f1 = f2
-            f2 = tf
-            let tc = c1
-            c1 = c2
-            c2 = tc
+            swap(mut f1, mut f2)
+            swap(mut c1, mut c2)
     elif c > c1:
         f2 = f1
         c2 = c1
@@ -56,8 +52,8 @@ fn add_pos(idx: Int):
 
 fn rollback(mark: Int, sf1: Int, sc1: Int, sf2: Int, sc2: Int):
     while log_f.len > mark:
-        let fid = log_f[log_f.len - 1]
-        let old = log_v[log_v.len - 1]
+        let fid = log_f.last!
+        let old = log_v.last!
         log_f.pop()
         log_v.pop()
         freq[Flav.nth(fid)] = old

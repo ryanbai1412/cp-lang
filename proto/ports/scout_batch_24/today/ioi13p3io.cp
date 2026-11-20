@@ -1,7 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of statement-first ioi13p3io.cp
 // original: corpus/submissions/4722412.cpp
-use std.algebra.{Monoid}
-use std.segtree.{SegTree}
 
 let (r_cnt, c_cnt): (Int, Int) = read()
 var h_cost: List<List<Int>> = []
@@ -115,5 +113,5 @@ else:
             st.set(Blk(b), build_block(blk_lo(b), blk_hi(b)))
         else:
             let (v1, v2): (Int, Int) = read()
-            let top = st.fold(Blk.first..=Blk.last)
+            let top = st.fold(Blk.first..)
             print(top[v1 * c_cnt + v2])

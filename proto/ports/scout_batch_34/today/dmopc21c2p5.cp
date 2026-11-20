@@ -14,7 +14,7 @@ let edges: [E](u: V, v: V) = read()
 let g = Graph<V, E>.undirected(edges)
 let tree = Rooted(u => g.adj(u), V.first)
 
-var fact: [Deg]Z = [Deg] _ => Z(1)
+var fact: [Deg]Z = 1
 for d in Deg:
     if d.to_idx > 0:
         fact[d] = fact[Deg(d.to_idx - 1)] * Z(d.to_idx)
@@ -27,7 +27,7 @@ for u in tree.preorder.rev:
 
     for par_used in 0..=1:
         var cur: [Deg]List<Z> = [Deg] _ => [Z(0) for _ in 0..=sz_u]
-        cur[Deg(par_used)][par_used] = Z(1)
+        cur[Deg(par_used)][par_used] = 1
         var csum = par_used
 
         for v in tree.children(u):

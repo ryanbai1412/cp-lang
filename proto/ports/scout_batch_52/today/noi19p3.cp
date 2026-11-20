@@ -56,12 +56,8 @@ fn solve_one():
         while i > 0:
             let p = (i - 1) / 2
             if h_val[id][p] >= h_val[id][i]: break
-            let tv = h_val[id][p]
-            h_val[id][p] = h_val[id][i]
-            h_val[id][i] = tv
-            let ti = h_idx[id][p]
-            h_idx[id][p] = h_idx[id][i]
-            h_idx[id][i] = ti
+            h_val[id].swap(p, i)
+            h_idx[id].swap(p, i)
             i = p
 
     fn h_pop(id: Int):
@@ -78,12 +74,8 @@ fn solve_one():
                 if lc < h_val[id].len and h_val[id][lc] > h_val[id][big]: big = lc
                 if rc < h_val[id].len and h_val[id][rc] > h_val[id][big]: big = rc
                 if big == i: break
-                let tv = h_val[id][big]
-                h_val[id][big] = h_val[id][i]
-                h_val[id][i] = tv
-                let ti = h_idx[id][big]
-                h_idx[id][big] = h_idx[id][i]
-                h_idx[id][i] = ti
+                swap(mut h_val[id][big], mut h_val[id][i])
+                swap(mut h_idx[id][big], mut h_idx[id][i])
                 i = big
 
     fn top_pair(s: Int, t: Int) -> (Int, Int):

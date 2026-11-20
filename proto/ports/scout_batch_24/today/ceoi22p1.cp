@@ -1,6 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of statement-first ceoi22p1.cp
 // original: corpus/submissions/4728849.cpp
-use std.fenwick.{Fenwick}
 
 let (n, q): (Int, Int) = read()
 domain Pos = 1..=n
@@ -18,10 +17,10 @@ var stk: List<Int> = []
 var idx = n - 1
 while idx >= 0:
     let p = Pos.nth(idx)
-    while stk.len > 0 and deck[Pos.nth(stk[stk.len - 1])].to_idx < deck[p].to_idx:
+    while stk.len > 0 and deck[Pos.nth(stk.last!)].to_idx < deck[p].to_idx:
         stk.pop()
     if stk.len > 0:
-        nxt_gt[p] = stk[stk.len - 1]
+        nxt_gt[p] = stk.last!
     stk.push(idx)
     idx -= 1
 

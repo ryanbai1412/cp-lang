@@ -10,9 +10,6 @@
 // in one walk. The root is a centroid unless the cut leaves its heaviest
 // remaining child above half.
 // original: corpus/submissions/5148136.cpp
-use std.graph.{Graph}
-use std.tree.{Rooted}
-use std.fenwick.{Fenwick}
 
 let tests: 1..=5 = read()
 for _ in 0..tests:

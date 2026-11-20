@@ -6,7 +6,6 @@
 // Kirchhoff's theorem as written, and `guess_at` finds and applies the
 // linear recurrence they satisfy.
 // original: corpus/submissions/3883675.cpp
-use std.mod.{Mod}
 use std.spec.{guess_at}
 
 const P = 65521
@@ -19,15 +18,15 @@ fn det(m: Mat) -> Z:
     let n = a.len
     for c in 0..n:
         var pivot = c
-        while pivot < n and a[pivot][c] == Z(0): pivot += 1
-        if pivot == n: return Z(0)
+        while pivot < n and a[pivot][c] == 0: pivot += 1
+        if pivot == n: return 0
         if pivot != c:
             swap(a[pivot], a[c])
             d = -d
         d *= a[c][c]
         let inv = a[c][c].inv
         for r in c + 1..n:
-            if a[r][c] != Z(0):
+            if a[r][c] != 0:
                 let f = a[r][c] * inv
                 for j in c..n: a[r][j] -= f * a[c][j]
     d

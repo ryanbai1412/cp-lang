@@ -1,7 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of dmopc21c7p4.cp
 // original: corpus/submissions/4825739.cpp
-use std.algebra.{Monoid}
-use std.segtree.{SegTree}
 
 struct Node(mxa: Int, mxb: Int, lastd: Int, cnt: Int, sm: Int):
     pub fn empty() -> Node = Node(0, 0, 0, 0, 0)

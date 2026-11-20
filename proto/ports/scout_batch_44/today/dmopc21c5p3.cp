@@ -1,6 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of dmopc21c5p3.cp
 // original: corpus/submissions/4218397.cpp
-use std.math.{Sieve}
 
 let t: Int = read()
 var ns: List<Int> = []
@@ -22,8 +21,8 @@ for i in 1..=limit:
 fn show(xs: List<Int>):
     var line = ""
     for x in xs:
-        if line.len > 0: line = line + " "
-        line = line + "{x}"
+        if line.len > 0: line += " "
+        line += "{x}"
     print(line)
 
 for n in ns:

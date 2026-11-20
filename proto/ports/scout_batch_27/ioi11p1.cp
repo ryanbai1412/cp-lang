@@ -14,7 +14,6 @@
 // The original is a grader function; this port reads `n m p q`, the m
 // trails, then the q lengths.
 // original: corpus/submissions/3732440.cpp
-use std.graph.{bfs}
 
 let (n, m, p, q): (Int, Int, Int, Int) = read()
 domain F = 0..n
@@ -30,7 +29,7 @@ for t in Trail:
         if best[f] == none: best[f] = t
         elif second[f] == none: second[f] = t
 
-fn state(f: F, by_best: Bool) -> State = State(2 * f.to_idx + (if by_best: 1 else: 0))
+fn state(f: F, by_best: Bool) -> State = State(2 * f.to_idx + Int(by_best))
 
 fn next(s: State) -> State:
     let f = F(s.to_idx / 2)

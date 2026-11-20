@@ -46,7 +46,7 @@ fn near_half(parts: List<Int>) -> Int:
     for r in rs.rev:
         if 2 * r > whole: continue
         while i + 1 < ls.len and 2 * (ls[i + 1] + r) <= whole: i += 1
-        best = max(best, ls[i] + r)
+        best max= ls[i] + r
     best
 
 // Pick a hub. Some of the branches around it drive towards the hub and the
@@ -63,5 +63,5 @@ for v in V:
     var parts = [below[c] for c in kids[v]]
     if v != V.first: parts.push(everyone - below[v])
     let s = near_half(parts)
-    best = max(best, chain[v] + s * (everyone - a[v] - s))
+    best max= chain[v] + s * (everyone - a[v] - s)
 print(best + sum(x * (x - 1) for x in a))

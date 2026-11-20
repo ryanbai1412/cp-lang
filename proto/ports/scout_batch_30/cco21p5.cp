@@ -1,8 +1,6 @@
 // CCO 2021 P5 (CP Lang 0.2.2): `LazySegTree<Slot, Int>(AddMin)` directly replaces
 // the pre-0.2.2 negated `AddMax` + `INF` sentinel + `set_dp` workaround.
 // original: corpus/submissions/4554642.cpp
-use std.algebra.{Monoid, Action}
-use std.lazy.{LazySegTree}
 
 let (n, m): (2..=200_000, 1..=200_000) = read()
 domain Slot = 0..=n

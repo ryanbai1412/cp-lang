@@ -5,9 +5,6 @@
 // beside the path is a child of a path vertex, except the top of the path
 // and the parent of the top, so the answer is one path sum plus two lookups.
 // original: corpus/submissions/3686586.cpp
-use std.graph.{Graph}
-use std.tree.{Rooted}
-use std.segtree.{SegTree}
 
 let (n, q): (1..=2e5, 1..=2e5) = read()
 domain V = 1..=n

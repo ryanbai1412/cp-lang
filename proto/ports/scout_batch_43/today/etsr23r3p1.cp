@@ -65,7 +65,7 @@ for k in 0..n:
     if t == 1: tag = Op(false, 0, 1, 0, x)
     elif t == 2: tag = Op(false, 0, 1, 0, -x)
     elif t == 3: tag = Op(false, 0, x, 0, 0)
-    st.apply(U.first..=U.last, tag)
+    st.apply(U.first.., tag)
 
     let left_end = st.max_right(U.first.l, c => if c == none: true else: c!.hi_val < ql)
     st.apply(U.first.l..left_end, Op(true, ql, 1, 0, 0))

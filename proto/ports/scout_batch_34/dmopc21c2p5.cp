@@ -33,7 +33,7 @@ var memo: [V, Bool]List<Z> = []
 for u in tree.postorder:
     let sz_u = tree.size(u)
     for par_used in [false, true]:
-        let start = if par_used: 1 else: 0
+        let start = Int(par_used)
         var cur: [Deg, 0..=sz_u]Z = 0
         cur[Deg.from_idx(start)!, start] = 1
         var csum = start

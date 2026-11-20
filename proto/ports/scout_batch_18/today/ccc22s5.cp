@@ -1,7 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of statement-first ccc22s5.cp
 // original: corpus/submissions/4371349.cpp
-use std.graph.{Graph}
-use std.tree.{Rooted}
 
 let n: Int = read()
 domain V = 1..=n

@@ -17,7 +17,7 @@ var ans: [Q]Int = 0
 if vals.D.K <= HEAVY:
     var best: [Q](Int, vals.D) = (0, vals.D.first)
     for v in vals.D:
-        let pre = prefix([0..n] i => if id[i] == v: 1 else: 0)
+        let pre = prefix([0..n] i => Int(id[i] == v))
         for qi in Q:
             let (l, r) = qs[qi]
             best[qi] max= (pre.sum((l - 1)..r), v)

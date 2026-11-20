@@ -95,9 +95,7 @@ fn solve_range(cols: List<Int>, ql: Int, qr: Int):
         var a = rest[0]
         var b = rest[1]
         if g_stks[a][0] > mid:
-            let tmp = a
-            a = b
-            b = tmp
+            swap(mut a, mut b)
         let a1 = g_m - cnt_lo(a, mid)
         transfer(a, g_empty, a1)
         transfer(b, a, cnt_lo(b, mid))

@@ -5,13 +5,13 @@ type Z = Mod<1000000007>
 let (w, h): (Int, Int) = read()
 
 var row = List.filled(w + 1, Z(0))
-row[0] = Z(1)
-row[1] = Z(1)
+row[0] = 1
+row[1] = 1
 for i in 2..=w:
     row[i] = row[i - 1] + row[i - 2]
 
 var total = List.filled(w + 1, Z(0))
-total[0] = Z(1)
+total[0] = 1
 for i in 1..=w:
     total[i] = row[i].pow(h)
 

@@ -63,7 +63,7 @@ fn solve_side(mul: Int, d: Int, a: List<Int>) -> List<Int>:
         for x in s:
             let v = -x
             sp.push(v)
-            ps.push(ps[ps.len - 1] + v)
+            ps.push(ps.last! + v)
         g_sorted_pref.push(sp)
         g_psum.push(ps)
         let hi = min(n, ind + 300)

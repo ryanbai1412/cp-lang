@@ -21,7 +21,7 @@ for x in 2..=top:
     mu[x] = if x / p % p == 0: 0 else: -mu[x / p]
 
 var fib = List.filled(top + 2, Z(1))
-fib[0] = Z(0)
+fib[0] = 0
 for i in 2..=top: fib[i] = fib[i - 1] + fib[i - 2]
 
 // g[T], then its prefix products and their inverses

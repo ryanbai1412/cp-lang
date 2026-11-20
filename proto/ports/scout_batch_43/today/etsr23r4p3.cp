@@ -1,8 +1,6 @@
 // ETSR '23 R4 P3 (CP Lang 0.2.2): tree-to-graph homomorphism inclusion-exclusion
 // over `Subset<V>` with 2D domain-indexed DP tables `[V, V]Int`.
 // original: corpus/submissions/5635626.cpp
-use std.graph.{Graph}
-use std.tree.{Rooted}
 
 let (n, m): (Int, Int) = read()
 domain V = 1..=n

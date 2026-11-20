@@ -2,9 +2,6 @@
 // `SortedBag` (`first`/`last`/`first_gt`) replace manual compression, `% MOD`, and
 // a 30-line hand-rolled segment tree with `INF` sentinel.
 // original: corpus/submissions/5579928.cpp
-use std.bag.{SortedBag}
-use std.mod.{Mod}
-use std.seq.{compress}
 
 type Z = Mod<1_000_003>
 
@@ -35,7 +32,7 @@ fn sum_range(l: Int, r: Int) -> Z = tri(r) - tri(l - 1)
 var pq: [V]List<(Int, Int)> = []
 var sq: [V]List<(Int, Int)> = []
 var active = SortedBag<Int>()
-var ans = Z(0)
+var ans: Z = 0
 var prev_h: ?Int = none
 
 for cid in hs.D:

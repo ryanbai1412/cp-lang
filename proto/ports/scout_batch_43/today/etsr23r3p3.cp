@@ -1,9 +1,6 @@
 // ETSR '23 R3 P3 (CP Lang 0.2.2): Kruskal reconstruction tree + Dijkstra from 1
 // with `@multitest` and Tropical Optionals `?Int` (no `INF` sentinel).
 // original: corpus/submissions/5521298.cpp
-use std.dsu.{Dsu}
-use std.graph.{Graph, dijkstra}
-use std.tree.{Rooted}
 
 @multitest
 let (n, m): (Int, Int) = read()

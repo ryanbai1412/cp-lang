@@ -27,7 +27,7 @@ fn eval(a: Z, b: Z, c: Z, x: Int) -> Z:
     (a * zx + b) * zx + c
 
 if n == 1:
-    for i in Query: print(Z(1))
+    for i in Query: print(1)
     return
 
 let inv_n = Z(n).inv
@@ -68,7 +68,7 @@ for s in Shuffle:
     let d12 = g2 - g1
     let d1n = (gn - g1) * inv_n1
     a = (d1n - d12) * inv_n2
-    b = d12 - Z(3) * a
+    b = d12 - 3 * a
     c = g1 - a - b
 
 for i in Query:

@@ -23,7 +23,7 @@ struct KS:
         for i in 0..n:
             for j in 0..m:
                 if i + j < self.msz:
-                    nv[i + j] = max(nv[i + j], self.v[i] + arr[j])
+                    nv[i + j] max= self.v[i] + arr[j]
         for i in 0..(lim - 1):
             nv[i + 1] = max(nv[i], nv[i + 1])
         self.v = nv
@@ -42,7 +42,7 @@ fn vor(a_in: List<F64>, b_in: List<F64>) -> List<F64>:
     if a.len < b.len:
         swap(mut a, mut b)
     for i in 0..b.len:
-        a[i] = max(a[i], b[i])
+        a[i] max= b[i]
     a
 
 let n: Int = read()
@@ -120,19 +120,17 @@ for clen in 2..=cyc.len:
     var lo = 1
     var hi = clen - 1
     while lo < hi:
-        let tmp = ccyc[lo]
-        ccyc[lo] = ccyc[hi]
-        ccyc[hi] = tmp
+        ccyc.swap(lo, hi)
         lo += 1
         hi -= 1
 
     cmul = 1.0 / (1.0 - kpow[clen])
-    let budget = m + (if clen == cyc.len: 1 else: 0)
+    let budget = m + Int(clen == cyc.len)
     if budget > 0:
         var cans = KS.make(budget)
         for i in 0..clen:
             cans.update(dp(ccyc[i], i))
         if cans.v.len > 0:
-            ans = max(ans, cans.v[cans.v.len - 1])
+            ans max= cans.v[cans.v.len - 1]
 
 print(ans, digits: 2)

@@ -14,7 +14,7 @@ let walls: [W]Cell = read()
 assert sorted(walls).deduped().len == n and all(c != start and c != goal for c in walls)
 
 domain F = 0..=200000
-var fact: [F]Z = Z(1)
+var fact: [F]Z = 1
 for f in F:
     if let p = f.prev: fact[f] = fact[p] * Z(f.label)
 
@@ -29,7 +29,7 @@ fn paths(a: Cell, b: Cell) -> Z:
 
 let by_pos = sorted(walls)
 let order: [W]Cell = [W] i => by_pos[i.to_idx]
-var clean: [W]Z = Z(0)
+var clean: [W]Z = 0
 for i in W:
-    clean[i] = paths(start, order[i]) - sum(clean[j] * paths(order[j], order[i]) for j in W.first..i)
+    clean[i] = paths(start, order[i]) - sum(clean[j] * paths(order[j], order[i]) for j in ..i)
 print(paths(start, goal) - sum(clean[i] * paths(order[i], goal) for i in W))

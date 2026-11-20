@@ -10,9 +10,6 @@
 // (m sum x^2 - (sum x)^2), so a node keeps the four sums; it also keeps
 // where it starts, because "set" writes a different value at each i.
 // original: corpus/submissions/5461671.cpp
-use std.lazy.{LazySegTree}
-use std.algebra.{Monoid, Action}
-use std.math.{fixed}
 
 type Sums = (xy: Int, x: Int, y: Int, xx: Int, lo: Int, len: Int)
 type Edit = (set: ?(x: Int, y: Int), dx: Int, dy: Int)       // set first, then add

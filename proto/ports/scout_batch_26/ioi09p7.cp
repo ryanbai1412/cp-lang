@@ -6,7 +6,6 @@
 // A small r1 walks its own members and counts the r2 members inside each
 // subtree range by binary search over r2's preorder positions.
 // original: corpus/submissions/5032754.cpp
-use std.tree.{Rooted}
 
 let (n, r, q): (1..=2e5, 1..=25000, 1..=2e5) = read()
 domain V = 1..=n
@@ -62,7 +61,7 @@ for _ in 0..q:
     let (r1, r2): (Region, Region) = read()
     var ans = 0
     if members[r1].len * members[r1].len > n:
-        if big[r1] == none: big[r1] = sweep(r1)
+        big[r1] ??= sweep(r1)
         ans = big[r1]![r2]
     elif let hit = seen.get((r1, r2)):
         ans = hit

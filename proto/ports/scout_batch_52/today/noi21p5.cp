@@ -34,7 +34,7 @@ fn mat_mul(a00: Int, a01: Int, a10: Int, a11: Int, b00: Int, b01: Int, b10: Int,
 
 fn make_node(is_e: Bool) -> Int:
     let id = g_nodes.len
-    let m01 = if is_e: 1 else: 0
+    let m01 = Int(is_e)
     let m10 = if is_e: 0 else: 1
     g_nodes.push(Node(is_e, 1, next_rand(), false, false, 1, m01, m10, 1, -1, -1))
     return id
@@ -44,7 +44,7 @@ fn size_of(u: Int) -> Int = if u == -1: 0 else: g_nodes[u].sz
 fn pull(u: Int):
     var sz = 1
     var m00 = 1
-    var m01 = if g_nodes[u].is_e: 1 else: 0
+    var m01 = Int(g_nodes[u].is_e)
     var m10 = if g_nodes[u].is_e: 0 else: 1
     var m11 = 1
     let l = g_nodes[u].lc
@@ -67,13 +67,9 @@ fn pull(u: Int):
         let t0 = m00
         m00 = m11
         m11 = t0
-        let t1 = m01
-        m01 = m10
-        m10 = t1
+        swap(mut m01, mut m10)
     if g_nodes[u].rev:
-        let t0 = m00
-        m00 = m11
-        m11 = t0
+        swap(mut m00, mut m11)
     g_nodes[u].sz = sz
     g_nodes[u].a00 = m00
     g_nodes[u].a01 = m01
@@ -85,9 +81,7 @@ fn push(u: Int):
     let rv = g_nodes[u].rev
     if fl: g_nodes[u].is_e = not g_nodes[u].is_e
     if rv:
-        let tmp = g_nodes[u].lc
-        g_nodes[u].lc = g_nodes[u].rc
-        g_nodes[u].rc = tmp
+        swap(mut g_nodes[u].lc, mut g_nodes[u].rc)
     let lc = g_nodes[u].lc
     if lc != -1:
         g_nodes[lc].flip = g_nodes[lc].flip != fl

@@ -12,7 +12,7 @@ for _ in 0..n:
     times.push(tv)
 
 var sz = 1
-while sz < n + 1: sz = sz * 2
+while sz < n + 1: sz *= 2
 
 let INF = 1_000_000_000_000_000_000
 var arr_v: List<Int> = []
@@ -124,10 +124,10 @@ var stk_i: List<Int> = [n]
 var i = n - 1
 while i >= 0:
     let t = times[i]
-    while stk_v[stk_v.len - 1] < t:
+    while stk_v.last! < t:
         stk_v.pop()
         stk_i.pop()
-    let hi = stk_i[stk_i.len - 1]
+    let hi = stk_i.last!
     st_upd(1, 0, sz - 1, i + 1, hi, t)
     stk_v.push(t)
     stk_i.push(i)

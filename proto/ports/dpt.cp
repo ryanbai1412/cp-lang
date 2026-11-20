@@ -10,11 +10,11 @@ fn random_signs() -> [Sign]Char: [Sign] _ => if rand(0, 1) == 0: '<' else: '>'
 let signs: [Sign]Char = read(gen: random_signs)
 
 domain Rank = 0..n
-var ways: [Rank]Z = Z(0)
-ways[Rank.first] = Z(1)
+var ways: [Rank]Z = 0
+ways[Rank.first] = 1
 for s in Sign:
-    let live = Rank.first..=Rank(s.label)   // ranks the longer prefix can end at
-    var next: [Rank]Z = Z(0)
+    let live = ..=Rank(s.label)   // ranks the longer prefix can end at
+    var next: [Rank]Z = 0
     var acc: Z = 0
     if signs[s] == '<':
         for r in live:

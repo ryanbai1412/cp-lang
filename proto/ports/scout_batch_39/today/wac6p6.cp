@@ -8,17 +8,11 @@ for _ in 0..tcs:
     var c1: 0..=100 = read()
     var c2: 0..=100 = read()
     if c0 > c1:
-        let t = c0
-        c0 = c1
-        c1 = t
+        swap(mut c0, mut c1)
     if c1 > c2:
-        let t = c1
-        c1 = c2
-        c2 = t
+        swap(mut c1, mut c2)
     if c0 > c1:
-        let t = c0
-        c0 = c1
-        c1 = t
+        swap(mut c0, mut c1)
     let a = c0
     let b = c1
     let c = c2
@@ -67,9 +61,7 @@ for _ in 0..tcs:
             let cx = Col(x)
             cnt[cx] += 1
             if cnt[cx] > b and bin[cx] == -1:
-                let tmp = bin[cx]
-                bin[cx] = bin[Col(0)]
-                bin[Col(0)] = tmp
+                bin.swap(cx, Col(0))
                 print("EMPTY", bin[cx])
             if bin[cx] == -1:
                 print("DISCARD")

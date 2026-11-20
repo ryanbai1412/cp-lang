@@ -13,7 +13,7 @@ for e in E:
     adj[edges[e].u].push((edges[e].v, edges[e].w))
 
 var vis: [V]Bool = false
-var ans: [V]Z = Z(0)
+var ans: [V]Z = 0
 vis[V.first] = true
 var groups: List<List<V>> = [[V.first]]
 
@@ -58,7 +58,7 @@ fn slow():
                     best_str[v] = cand
     for v in V:
         if v != V.first:
-            var acc = Z(0)
+            var acc: Z = 0
             for i in 0..best_str[v].len:
                 acc = acc * 10 + (best_str[v][i] - '0')
             print(acc)

@@ -17,12 +17,12 @@ fn eval(a: Z, b: Z, c: Z, x: Int) -> Z:
     let zx = Z(x)
     (a * zx + b) * zx + c
 
-var a = if kind == 1: Z(0) else: Z(1)
-var b = if kind == 1: Z(1) else: Z(0)
+var a: Z = if kind == 1: 0 else: 1
+var b: Z = if kind == 1: 1 else: 0
 var c: Z = 0
 if n == 1:
     for i in 0..q:
-        print(Z(1))
+        print(1)
 elif n == 2:
     let inv2 = Z(2).inv
     for idx in 0..m:
@@ -31,8 +31,8 @@ elif n == 2:
             let f1 = eval(a, b, c, 1)
             let f2 = eval(a, b, c, 2)
             let avg = (f1 + f2) * inv2
-            a = Z(0)
-            b = Z(0)
+            a = 0
+            b = 0
             c = avg
     for i in 0..q:
         print(eval(a, b, c, asks[i]))
@@ -64,7 +64,7 @@ else:
         let d1 = g2 - g1
         let slope = (gn - g1) * inv_n1
         a = (slope - d1) * inv_n2
-        b = d1 - Z(3) * a
+        b = d1 - 3 * a
         c = g1 - a - b
 
     for i in 0..q:

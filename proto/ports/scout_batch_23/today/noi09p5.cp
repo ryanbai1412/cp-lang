@@ -1,5 +1,4 @@
 // NOI '09 P5 - Pipe Marbles (runnable on proto/cp.py lib-run today)
-use std.mod.{Mod}
 
 type Z = Mod<1024523>
 
@@ -9,7 +8,7 @@ let s2: Str = read()
 
 let stride = n + 1
 var dp = List.filled(stride * stride, Z(0))
-dp[0] = Z(1)
+dp[0] = 1
 
 for k in 0..(n + m):
     var nxt = List.filled(stride * stride, Z(0))
@@ -21,7 +20,7 @@ for k in 0..(n + m):
         let row1 = (i + 1) * stride
         for j in lo..=hi:
             let cur = dp[row + j]
-            if cur == Z(0): continue
+            if cur == 0: continue
             let j2 = k - j
             if i < n and j < n and s1[i] == s1[j]:
                 nxt[row1 + j + 1] += cur

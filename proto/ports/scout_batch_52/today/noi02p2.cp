@@ -19,7 +19,7 @@ fn main_solve():
     // 0 = truth, 1 = liar, 2 = wild
     fn ask_ring(i: Int, j: Int) -> Int:
         if kind[i] == 2: return wild_ans[j]
-        if kind[i] == 0: return if kind[j] == 0: 1 else: 0
+        if kind[i] == 0: return Int(kind[j] == 0)
         return if kind[j] == 0: 0 else: 1
 
     var dir_r = [0..n] _ => 0
@@ -38,12 +38,12 @@ fn main_solve():
     ans[wild] = 2
     var p = wild - 1
     while p >= 0:
-        let next_is_zero = if ans[p + 1] == 0: 1 else: 0
-        ans[p] = if dir_r[p] != next_is_zero: 1 else: 0
+        let next_is_zero = Int(ans[p + 1] == 0)
+        ans[p] = Int(dir_r[p] != next_is_zero)
         p -= 1
     for q in wild + 1..n:
-        let prev_is_zero = if ans[q - 1] == 0: 1 else: 0
-        ans[q] = if dir_l[q] != prev_is_zero: 1 else: 0
+        let prev_is_zero = Int(ans[q - 1] == 0)
+        ans[q] = Int(dir_l[q] != prev_is_zero)
 
     for i in 0..n: print(ans[i])
 

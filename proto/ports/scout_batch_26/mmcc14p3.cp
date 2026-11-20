@@ -7,8 +7,6 @@
 // not survive one more edge. The outposts needed fall as the radius grows,
 // so the least radius that needs at most k is found by bisection.
 // original: corpus/submissions/5120083.cpp
-use std.graph.{Graph}
-use std.tree.{Rooted}
 
 let (n, k): (1..=2e5, 1..=2e5) = read()
 domain V = 1..=n
@@ -31,7 +29,7 @@ fn outposts(radius: Int) -> Int:
                     used += 1
                     near = 1
                 else:
-                    far = max(far, d + 1)
+                    far max= d + 1
         post[v] = near
         open[v] = if far + (near ?? n) <= radius: none else: far
     if open[V.first] != none: used += 1

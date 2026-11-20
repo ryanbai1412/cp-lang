@@ -1,5 +1,4 @@
 // NOI '18 P2 - Inverse (runnable on proto/cp.py lib-run today)
-use std.mod.{Mod, Comb}
 
 type Z = Mod<998244353>
 
@@ -18,11 +17,11 @@ for _ in 0..t:
 let comb = Comb<998244353>(2 * max_n + 5)
 
 fn safe_choose(n: Int, k: Int) -> Z:
-    if n < 0 or k < 0 or k > n: return Z(0)
+    if n < 0 or k < 0 or k > n: return 0
     comb.choose(n, k)
 
 fn ballot(n: Int, i: Int, low: Int) -> Z:
-    if low > n: return Z(0)
+    if low > n: return 0
     let steps = 2 * n - i - low
     safe_choose(steps, n - i) - safe_choose(steps, n - low - 2)
 
@@ -32,7 +31,7 @@ for c in 0..t:
     var seen = List.filled(n + 2, false)
     var min_unused = 1
     var mx = 0
-    var ans = Z(0)
+    var ans: Z = 0
 
     for i in 1..=n:
         let v = q[i - 1]

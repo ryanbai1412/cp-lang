@@ -17,7 +17,7 @@ let run_monoid = Monoid<Run>(
     op: (a, b) =>
         if a.empty: b
         else: if b.empty: a
-        else: Run(false, a.lcol, b.rcol, a.runs + b.runs - (Int(a.rcol == b.lcol)))
+        else: Run(false, a.lcol, b.rcol, a.runs + b.runs - Int(a.rcol == b.lcol))
 )
 
 let paint_action = Action<Run, ?Int>(
@@ -59,10 +59,10 @@ for _ in 0..q:
         if l.to_idx <= r.to_idx:
             st.apply(l..=r, x)
         else:
-            st.apply(l..=Pos.last, x)
-            st.apply(Pos.first..=r, x)
+            st.apply(l.., x)
+            st.apply(..=r, x)
     elif op == "C":
-        let all = st.fold(Pos.first..=Pos.last)
+        let all = st.fold(Pos.first..)
         let cyc = if all.runs > 1 and all.lcol == all.rcol: all.runs - 1 else: all.runs
         print(cyc)
     else:
@@ -73,5 +73,5 @@ for _ in 0..q:
         if l.to_idx <= r.to_idx:
             res = st.fold(l..=r)
         else:
-            res = run_monoid.op(st.fold(l..=Pos.last), st.fold(Pos.first..=r))
+            res = run_monoid.op(st.fold(l..), st.fold(..=r))
         print(res.runs)

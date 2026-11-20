@@ -2,8 +2,6 @@
 // original: corpus/submissions/5655455.cpp
 // Note: proto/cpc lacks `Pool<Node>` + `Node.Id` today, so parallel List<Int>
 // arrays model the node pool (exact same O(N log N) implicit segtree merge).
-use std.graph.{Graph}
-use std.tree.{Rooted}
 
 let MOD = 998244353
 

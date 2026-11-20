@@ -8,7 +8,7 @@ let m = T.len
 var a: List<Int> = []
 var ca: List<Int> = []
 for i in S:
-    let b = if s[i] == '1': 1 else: 0
+    let b = Int(s[i] == '1')
     a.push(b)
     ca.push(1 - b)
 
@@ -80,16 +80,16 @@ var ans = 0
 if m == 1:
     ans = if t[T(0)] == '0': solve0(a) else: solve0(ca)
 elif m == 2:
-    let p0 = if t[T(0)] == '1': 1 else: 0
-    let p1 = if t[T(1)] == '1': 1 else: 0
+    let p0 = Int(t[T(0)] == '1')
+    let p1 = Int(t[T(1)] == '1')
     if p0 == 0 and p1 == 0: ans = solve00(a)
     elif p0 == 1 and p1 == 1: ans = solve00(ca)
     elif p0 == 0 and p1 == 1: ans = count2(a, 0, 1)
     else: ans = count2(ca, 0, 1)
 else:
-    let p0 = if t[T(0)] == '1': 1 else: 0
-    let p1 = if t[T(1)] == '1': 1 else: 0
-    let p2 = if t[T(2)] == '1': 1 else: 0
+    let p0 = Int(t[T(0)] == '1')
+    let p1 = Int(t[T(1)] == '1')
+    let p2 = Int(t[T(2)] == '1')
     if p0 == 0 and p1 == 0 and p2 == 0: ans = solve000(a)
     elif p0 == 1 and p1 == 1 and p2 == 1: ans = solve000(ca)
     elif p0 == 0 and p1 == 1 and p2 == 0: ans = (count3(a, 0, 1, 0) + 1) / 2

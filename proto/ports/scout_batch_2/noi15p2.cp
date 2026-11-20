@@ -6,8 +6,6 @@
 // install is "set the path from the root to x", uninstall is "clear the
 // subtree of x". In heavy-first preorder both are a few ranges of one
 // lazy tree that counts installed packages.
-use std.lazy.{LazySegTree, AssignSum}
-use std.tree.{Rooted}
 
 let n: Int = read()
 domain Pkg = 0..n
@@ -21,7 +19,7 @@ var installed = LazySegTree<tree.Pre, Int, ?Int>(AssignSum)
 
 fn switch<P>(r: Range<P>, on: Bool) -> Int:  // returns how many changed
     let had = installed.fold(r)
-    installed.apply(r, if on: 1 else: 0)
+    installed.apply(r, Int(on))
     if on: r.len - had else: had
 
 let q: Int = read()
