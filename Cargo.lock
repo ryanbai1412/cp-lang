@@ -16,11 +16,15 @@ version = "0.0.0"
 dependencies = [
  "cpl-check",
  "cpl-codegen",
+ "cpl-contest",
  "cpl-diag",
+ "cpl-doc",
  "cpl-fmt",
  "cpl-interp",
  "cpl-ir",
+ "cpl-lint",
  "cpl-lsp",
+ "cpl-stress",
  "cpl-syntax",
 ]
 
@@ -30,6 +34,17 @@ version = "0.0.0"
 dependencies = [
  "cpl-check",
  "cpl-ir",
+]
+
+[[package]]
+name = "cpl-contest"
+version = "0.0.0"
+dependencies = [
+ "cpl-check",
+ "cpl-diag",
+ "cpl-lint",
+ "cpl-stress",
+ "cpl-syntax",
 ]
 
 [[package]]

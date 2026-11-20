@@ -15,6 +15,10 @@ pub const COMPONENTS: &[&str] = &[
     cpl_codegen::NAME,
     cpl_interp::NAME,
     cpl_fmt::NAME,
+    cpl_lint::NAME,
+    cpl_doc::NAME,
+    cpl_stress::NAME,
+    cpl_contest::NAME,
     cpl_lsp::NAME,
 ];
 
@@ -27,7 +31,17 @@ commands:
                         the input file or standard input
   build <file> [-o out] check, then write one C++17 file to submit: next to
                         the source by default, to standard output with `-o -`
+  fmt [path]...         format files in the one canonical style
+  lint [path]...        warn about code that is legal but probably wrong or slow
+  doc [path]...         build HTML documentation from `///` comments
+  new <name>            create a problem from its constraints or samples
+  test <problem>        run every case in <problem>.tests/
+  stress <file>         run against a brute on random inputs; shrink the failure
+  bench <problem>       run on maximum-size worst-case inputs against the limits
+  watch <problem>       check, lint and test on every save
   lsp                   serve the language server protocol on stdio
+
+`cpl <command> --help` describes a command's options.
 
 options:
   -V, --version    print the version
@@ -120,9 +134,34 @@ pub fn exec<S: AsRef<str>>(
                 "`build` takes one file: `cpl build a.cp` or `cpl build a.cp -o a.cpp`".into(),
             ),
         },
+        Some(command) if tool(command).is_some() => {
+            let args: Vec<String> = rest.iter().map(|arg| arg.to_string()).collect();
+            let mut errors = Vec::new();
+            let code = tool(command).unwrap()(&args, stdout, &mut errors);
+            *stderr += &String::from_utf8_lossy(&errors);
+            code
+        }
         Some("lsp") => usage_error("`lsp` talks to an editor over stdio and takes no files".into()),
         Some(other) => usage_error(format!("unknown command `{other}`")),
     }
+}
+
+/// A command served by one of the tooling crates.
+pub type Tool = fn(&[String], &mut dyn Write, &mut dyn Write) -> u8;
+
+/// The tooling crate behind `command`, if it is one of theirs.
+pub fn tool(command: &str) -> Option<Tool> {
+    Some(match command {
+        "fmt" => cpl_fmt::cli::run,
+        "lint" => cpl_lint::cli::run,
+        "doc" => cpl_doc::cli::run,
+        "stress" => cpl_stress::cli::run,
+        "new" => cpl_contest::new::run,
+        "test" => cpl_contest::test::run,
+        "bench" => cpl_contest::bench::run,
+        "watch" => cpl_contest::watch::run,
+        _ => return None,
+    })
 }
 
 /// A file that passed the front end, lowered for the back ends.
@@ -305,6 +344,43 @@ mod tests {
         assert!(out.stderr.starts_with("cpl: unknown command `frobnicate`"));
     }
 
+    #[test]
+    fn tooling_commands_reach_their_crates() {
+        for command in [
+            "fmt", "lint", "doc", "stress", "new", "test", "bench", "watch",
+        ] {
+            let out = run(&[command, "--help"]);
+            assert_eq!(out.code, 0, "{command}");
+            let help = String::from_utf8(out.stdout).unwrap();
+            assert!(
+                help.starts_with(&format!("usage: cpl {command}")),
+                "{command}: {help}"
+            );
+            assert!(
+                USAGE.contains(&format!("\n  {command} ")),
+                "{command} is not in the usage"
+            );
+        }
+        assert!(tool("check").is_none());
+        // A tool's own usage errors keep its exit code.
+        let out = run(&["test"]);
+        assert_eq!(out.code, EXIT_USAGE);
+        assert!(
+            out.stderr.contains("`test` needs a problem"),
+            "{}",
+            out.stderr
+        );
+    }
+
+    #[test]
+    fn fmt_and_lint_run_on_a_file() {
+        let path = temp_file("tools.cp", "let n: 1..=9 = read()\nprint(n + 1)\n");
+        let fmt = run(&["fmt", "--check", &path]);
+        assert_eq!(fmt.code, 0, "{}", fmt.stderr);
+        let lint = run(&["lint", &path]);
+        assert_eq!(lint.code, 0, "{}", lint.stderr);
+    }
+
     fn temp_file(name: &str, text: &str) -> String {
         let dir = std::env::temp_dir().join(format!("cpl-cli-test-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
@@ -360,6 +436,6 @@ mod tests {
 
     #[test]
     fn every_pipeline_crate_is_linked() {
-        assert_eq!(COMPONENTS.len(), 8);
+        assert_eq!(COMPONENTS.len(), 12);
     }
 }

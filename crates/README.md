@@ -5,7 +5,8 @@ The front end and both back ends are built: `cpl check`, `cpl run`,
 `cpl run` and `cpl build` share one typed lowering (`cpl-ir`), so the
 interpreter and the C++ cannot disagree about what a program means
 without a test saying so. `cpl-verify`, the verification harness, is
-built too. `cpl-fmt` is still an empty shell with one passing test. The
+built too, and so is the tooling around the compiler: `cpl-fmt`,
+`cpl-lint`, `cpl-doc`, `cpl-stress` and `cpl-contest`. The
 split is a starting point so that work can go on in parallel without two
 people editing the same crate; change it when the code says it is wrong.
 
@@ -130,7 +131,17 @@ dependency when the code first needs it):
 - **`cpl-interp`** runs that tree directly for debug runs, checking
   everything the C++ leaves unchecked (`plan/30-compiler.md` 3.1,
   `plan/50-debugging.md`).
-- **`cpl-fmt`** is the formatter (`plan/45-dev-tools.md`).
+- **`cpl-fmt`** is the formatter behind `cpl fmt`: one canonical style,
+  no options (`plan/45-dev-tools.md`).
+- **`cpl-lint`** is `cpl lint`: code that is legal but probably wrong,
+  slow or unidiomatic, with levels in `cp.toml` and safe fixes.
+- **`cpl-doc`** is `cpl doc`: HTML and JSON documentation from `///`
+  comments, with checked examples.
+- **`cpl-stress`** is `cpl stress`: inputs generated from the `read()`
+  types, a brute to compare with, structural shrinking, and checker and
+  interactor judging (`plan/40-tooling.md` 7b).
+- **`cpl-contest`** is the workflow around one problem: `cpl new`,
+  `cpl test`, `cpl bench` and `cpl watch` (`plan/40-tooling.md`).
 - **`cpl-lsp`** is the language server (`plan/60-editor.md`).
 - **`cpl-cli`** builds the `cpl` binary and owns the commands (`plan/40-tooling.md`,
   `plan/45-dev-tools.md`).
