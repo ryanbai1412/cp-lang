@@ -654,6 +654,13 @@ impl<'p, 'o> Interp<'p, 'o> {
                     g = (g - 1) & mask;
                 }
             }
+            Iter::Members(mask_expr) => {
+                let mut left = self.eval(mask_expr)?.int();
+                while left != 0 {
+                    round!(Value::Int(i64::from(left.trailing_zeros())));
+                    left &= left - 1;
+                }
+            }
             Iter::Seq(seq, rev) => {
                 // The loop walks the value as it was when the loop began.
                 let held = self.eval(seq)?;

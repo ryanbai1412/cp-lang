@@ -2,8 +2,9 @@
 //!
 //! A module is one `.cp` file (`plan/40-tooling.md`). `std` is the
 //! `stdlib/` folder shipped with the compiler; any other first name is a
-//! library: a folder with a `lib.toml` that says `name = "<that name>"`,
-//! found by walking up from the importing file.
+//! library: a folder the nearest `cp.toml` above the importing file names
+//! under `[libs]`, or else a folder with a `lib.toml` that says
+//! `name = "<that name>"`, found by walking up from the importing file.
 
 use std::path::{Path, PathBuf};
 
@@ -96,9 +97,56 @@ fn std_roots(start: &Path) -> Vec<PathBuf> {
     roots
 }
 
-/// The nearest folder above `start` whose `lib.toml` names the library.
+/// The folder of the library `name`: the one a `cp.toml` above `start`
+/// gives it under `[libs]`, or else the nearest folder above `start`
+/// whose `lib.toml` names the library.
 fn library_root(start: &Path, name: &str) -> Option<PathBuf> {
     let start = start.canonicalize().unwrap_or_else(|_| start.to_path_buf());
+    let configured = start.ancestors().find_map(|dir| {
+        let config = std::fs::read_to_string(dir.join("cp.toml")).ok()?;
+        let path = configured_library(&config, name)?;
+        let path = match path.strip_prefix("~/") {
+            Some(below_home) => PathBuf::from(std::env::var_os("HOME")?).join(below_home),
+            None => dir.join(path),
+        };
+        path.is_dir().then_some(path)
+    });
+    configured.or_else(|| library_manifest_root(&start, name))
+}
+
+/// The path `[libs]` of a `cp.toml` gives the library `name`, written as
+/// `name = "path"` or `name = { path = "path" }`.
+fn configured_library<'a>(config: &'a str, name: &str) -> Option<&'a str> {
+    let mut in_libs = false;
+    for line in config.lines() {
+        let line = line.split('#').next().unwrap_or("").trim();
+        if line.starts_with('[') {
+            in_libs = line == "[libs]";
+            continue;
+        }
+        if !in_libs {
+            continue;
+        }
+        let Some((key, value)) = line.split_once('=') else {
+            continue;
+        };
+        if key.trim() != name {
+            continue;
+        }
+        let value = value.trim();
+        let value = match value.strip_prefix('{') {
+            Some(table) => {
+                let (_, path) = table.split_once("path")?;
+                path.trim_start().strip_prefix('=')?.trim()
+            }
+            None => value,
+        };
+        return value.strip_prefix('"')?.split('"').next();
+    }
+    None
+}
+
+fn library_manifest_root(start: &Path, name: &str) -> Option<PathBuf> {
     start.ancestors().find_map(|dir| {
         let manifest = std::fs::read_to_string(dir.join("lib.toml")).ok()?;
         (library_name(&manifest)? == name).then(|| dir.to_path_buf())
@@ -123,5 +171,29 @@ mod tests {
         assert_eq!(library_name("# mine\nname = \"lib\"\n"), Some("lib"));
         assert_eq!(library_name("name=\"kit\" # short\n"), Some("kit"));
         assert_eq!(library_name("version = \"1\"\n"), None);
+    }
+
+    #[test]
+    fn a_project_names_its_libraries_under_libs() {
+        let config = "[target]\nlib = \"no\"\n[libs]\nlib = \"../kit\" # mine\ngeo = { path = \"~/geo\" }\n[new]\n";
+        assert_eq!(configured_library(config, "lib"), Some("../kit"));
+        assert_eq!(configured_library(config, "geo"), Some("~/geo"));
+        assert_eq!(configured_library(config, "team"), None);
+    }
+
+    #[test]
+    fn a_library_named_in_cp_toml_loads_from_another_folder() {
+        let root = std::env::temp_dir().join(format!("cpl-libs-{}", std::process::id()));
+        let contest = root.join("contest");
+        let kit = root.join("kit/math");
+        std::fs::create_dir_all(&contest).unwrap();
+        std::fs::create_dir_all(&kit).unwrap();
+        std::fs::write(contest.join("cp.toml"), "[libs]\nlib = \"../kit\"\n").unwrap();
+        std::fs::write(kit.join("poly.cp"), "fn two() -> Int: 2\n").unwrap();
+        let from = contest.join("a.cp");
+        let module = ["lib", "math", "poly"].map(String::from);
+        let loaded = FsLoader.load(&from.to_string_lossy(), &module);
+        std::fs::remove_dir_all(&root).unwrap();
+        assert_eq!(loaded.map(|(_, text)| text).as_deref(), Some("fn two() -> Int: 2\n"));
     }
 }

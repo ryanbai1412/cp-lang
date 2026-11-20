@@ -416,7 +416,7 @@ impl<'p> Tables<'p> {
                         self.raise(var, self.val(home, e));
                         self.expr(home, e);
                     }
-                    Iter::Subsets(e) => {
+                    Iter::Subsets(e) | Iter::Members(e) => {
                         self.raise(var, NON_NEG);
                         self.expr(home, e);
                     }

@@ -636,6 +636,8 @@ pub enum Iter {
     Seq(Expr, bool),
     /// All subsets of a `Subset<D>` bitmask, from the mask down to `0` inclusive.
     Subsets(Expr),
+    /// The members of a `Subset<D>` bitmask, lowest first.
+    Members(Expr),
 }
 
 #[derive(Clone, PartialEq, Debug)]

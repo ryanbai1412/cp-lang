@@ -2881,7 +2881,7 @@ fn collect_stmt_calls(stmt: &Stmt, out: &mut Vec<FnId>) {
                         collect_expr_calls(s, out);
                     }
                 }
-                Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) => {
+                Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => {
                     collect_expr_calls(e, out)
                 }
             }

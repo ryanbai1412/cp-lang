@@ -693,7 +693,7 @@ impl Database {
                 let help = match first.text.as_str() {
                     "std" => "the standard library's modules are the files of `stdlib/`".to_string(),
                     lib => format!(
-                        "`{lib}` is a library: a folder with a `lib.toml` that says `name = \"{lib}\"`, at or above this file"
+                        "`{lib}` is a library: name its folder under `[libs]` in a `cp.toml` at or above this file (`{lib} = \"path\"`), or put this file below a folder whose `lib.toml` says `name = \"{lib}\"`"
                     ),
                 };
                 diags.push(

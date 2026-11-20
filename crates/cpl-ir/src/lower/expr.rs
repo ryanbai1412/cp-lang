@@ -2480,7 +2480,7 @@ impl<'a> Lowerer<'a> {
                     },
                     Iter::RangeVal(value, rev) => Iter::RangeVal(value, !rev),
                     Iter::Seq(value, rev) => Iter::Seq(value, !rev),
-                    Iter::Subsets(mask) => {
+                    walk @ (Iter::Subsets(_) | Iter::Members(_)) => {
                         let list_ty = Ty::list(ty.clone());
                         let collected = self.do_expr(Some(&list_ty), span, |lw, out| {
                             let acc = lw.temp(list_ty.clone());
@@ -2506,7 +2506,7 @@ impl<'a> Lowerer<'a> {
                             out.push(Stmt::For(
                                 lid,
                                 item,
-                                Iter::Subsets(mask),
+                                walk,
                                 Block {
                                     stmts: vec![Stmt::Expr(push)],
                                 },
@@ -2608,15 +2608,7 @@ impl<'a> Lowerer<'a> {
                 // `for v in mask`: the members of a `Subset<D>`, in order.
                 if let Ty::Pos(subset) = value.ty {
                     if let Some(base) = self.subset_base(subset) {
-                        let mut stmts = Vec::new();
-                        let mask = self.hold(value, &mut stmts);
-                        let members = self.listed(base, Ty::Pos(base), None, span, |lw, ord| {
-                            let pos = lw.cast(Cast::Trust, ord, Ty::Pos(base));
-                            (Some(lw.subset_has(mask, pos.clone(), span)), pos)
-                        });
-                        stmts.push(Stmt::Give(members.clone()));
-                        let all = self.mk(ExprKind::Do(Block { stmts }), members.ty, span);
-                        return (Iter::Seq(all, false), Ty::Pos(base));
+                        return (Iter::Members(value), Ty::Pos(base));
                     }
                 }
                 let elem = match &value.ty {

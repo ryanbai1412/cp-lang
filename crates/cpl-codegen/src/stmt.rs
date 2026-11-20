@@ -1,6 +1,6 @@
 //! Statements as C++.
 
-use crate::emit::{pad, Emitter, ADD, PRIMARY, REL};
+use crate::emit::{pad, Emitter, ADD, PRIMARY, REL, UNARY};
 use crate::expr::string_literal;
 use crate::names::ident;
 use crate::walk::{self, Effects};
@@ -361,6 +361,20 @@ impl<'p> Emitter<'p> {
                 self.loop_body(id, &first, body, out);
                 self.indent -= 1;
                 self.line(out, "}");
+            }
+            Iter::Members(mask_expr) => {
+                let mask = self.expr(mask_expr);
+                let left = self.temp();
+                self.line(
+                    out,
+                    &format!(
+                        "for (unsigned long long {left} = (unsigned long long){}; {left}; {left} &= {left} - 1) {{",
+                        mask.at(UNARY)
+                    ),
+                );
+                let mut first = first;
+                first.insert(0, format!("{cpp} {var} = ({cpp})__builtin_ctzll({left});"));
+                self.loop_body(id, &first, body, out);
             }
             Iter::Seq(seq, rev) => {
                 let effects = Effects::of_block(body);
