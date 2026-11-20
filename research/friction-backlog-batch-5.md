@@ -34,7 +34,7 @@ estimates, and the pattern is named each time.
 5. K7, K10, K11, K12, K15, K18, K19, K21: 1 or 2 of 10 each.
 6. K17 waits for decision 1.5 (floats); K20 for decision 6.8 (graders).
 
-## K1. A map keyed by a pair builds, and the C++ does not (bug; cco18p4)
+## K1. A map keyed by a pair builds, and the C++ does not (fixed in Stage-2 sprint #2; cco18p4)
 
 *Checked.* This is accepted by `cp.py build`:
 
@@ -58,7 +58,9 @@ Proposed: hash any record of hashable fields. 1 of 10; in the corpus, 5
 problems keep a map as a cache (pattern: `static map<`, or a
 `map<pair<int, int>, ...>` named `cache` or `memo`).
 
-## K2. `print` writes its first word before a later argument asks (bug; cco18p4)
+*Fixed.* A record whose fields are numbers, positions, `Bool`, `Char` or such records hashes field by field, so `HashMap<(Int, Int), V>` and `HashSet<(Row, Col)>` build; a key that cannot be hashed is a compile error from `cp.py build`, not from `g++`. Locked by `proto/tests/redteam/pair_key_map.cp`.
+
+## K2. `print` writes its first word before a later argument asks (fixed in Stage-2 sprint #2; cco18p4)
 
 *Checked.* With `fn q(x)` that calls `ask("?", x)`:
 
@@ -73,6 +75,8 @@ every argument before it writes anything. This is the plain reading of
 the line, and the local judge only reports a wrong conversation, with
 nothing that points at the `print`. 1 of 10; any interactive problem
 whose last answer may need one more question.
+
+*Fixed.* `print` evaluates every argument, left to right, before it writes anything (decision 15.1). Locked by `proto/tests/redteam/print_args_first.cp`.
 
 ## K3. A bound that is read is not enforced (fixed in `722c0ea`; ioi06p2)
 
@@ -104,7 +108,7 @@ the generator writes `3 3 1`, `4 4 2` and `6 6 2` for the same seeds, a
 and the `where` has been removed from `today/ioi06p2.cp`. Nothing left
 to do.
 
-## K4. A generated `[P]List<P>` is written without the lengths (bug; btoi17p1)
+## K4. A generated `[P]List<P>` is written without the lengths (fixed in Stage-2 sprint #2; btoi17p1)
 
 *Checked.* `let lists: [P]List<P> = read()` reads a count and then that
 many values for each `P`, and the default generator writes that format.
@@ -116,7 +120,9 @@ input". So a symmetric relation could not be generated, and
 `gen:` function's value is written by the same code as the default
 generator's. 1 of 10.
 
-## K5. `@memo` over two large domains allocates the whole table (bug; cco18p4)
+*Fixed.* The value of a `gen:` function is written in the format `read()` reads for that type: a list after its length, a table row by row. Locked by `proto/tests/gen/gen_fn_lists.cp`, which `proto/run_all.sh` now generates from and reads back.
+
+## K5. `@memo` over two large domains allocates the whole table (fixed in Stage-2 sprint #2; cco18p4)
 
 *Checked.* On a 6311529 x 432463 grid this stops with `std::bad_alloc`:
 
@@ -132,6 +138,8 @@ table when the product of its domains is past a size limit (or when the
 function asks, since the number of questions is bounded), and warns at
 build time otherwise, as the loop-size warning already does. 1 of 10;
 the same 5 corpus problems as K1.
+
+*Fixed.* A `@memo` whose domains multiply to more than 2^26 points at their declared maximum sizes stores only the points asked for, as `@memo(hash)` does (decision 15.3); `into:` and `order:` on such a function are a compile error that gives the size. Locked by `proto/tests/redteam/memo_sparse.cp`.
 
 ## K6. Searching a range of numbers or positions (3 of 10; batch 1 F10)
 

@@ -45,7 +45,7 @@ Where they showed the same friction as a port that stayed, they are named.
 
 ## Bugs
 
-### S1. A word read in a loop of a `@multitest` moves the rest of the test into the loop (bug; cco04p2)
+### S1. A word read in a loop of a `@multitest` moves the rest of the test into the loop (fixed in Stage-2 sprint #2; cco04p2)
 
 *Checked.* This program should print one number for each test:
 
@@ -67,7 +67,9 @@ Today the read is moved into a function of its own (`read_tile`).
 Proposal: a domain introduced by a `read` ends with the block it is
 declared in, in a function as at the top level.
 
-### S2. `compress` of a list expression crashes (bug; dmopc20c4p3)
+*Fixed.* In a function, as at the top level, the input a loop reads ends where the outermost loop ends. Locked by `proto/tests/redteam/multitest_word_loop.cp`.
+
+### S2. `compress` of a list expression crashes (fixed in Stage-2 sprint #2; dmopc20c4p3)
 
 *Checked.*
 
@@ -88,7 +90,9 @@ let (X, col) = compress(xs)
 Proposal: evaluate the argument once. Worth a sweep of the other builtins
 that take a list: `sort`, `sorted`, `runs`, `counts`, `prefix`.
 
-### S3. `MinHeap<T>(by: ...)` takes the argument and ignores it (bug; probe for dmopc20c7p1)
+*Fixed.* `compress` evaluates its argument once. The other builtins that take a list (`sorted`, `x in [...]`, `sorted(..., by:)`) were checked with a list expression under ASan and already did. Locked by `proto/tests/redteam/list_expr_once.cp`.
+
+### S3. `MinHeap<T>(by: ...)` takes the argument and ignores it (fixed in Stage-2 sprint #2; probe for dmopc20c7p1)
 
 *Checked.* plan/10 writes `Heap<(Int, V)>(by: min)`, so the first thing
 tried for a max-heap was:
@@ -104,6 +108,8 @@ It builds and pops the smallest. `MaxHeap<Int>()` gives `unsupported
 expression generic`. Proposal: until S11 lands, any argument to `MinHeap`
 is a compile error that names the negated key as the way to get a
 max-heap today.
+
+*Fixed.* Any argument to `MinHeap<T>()` is a compile error that names the negated key (`proto/tests/bad/minheap_by.cp`). `MaxHeap` waits for S11.
 
 ## What the stress generator can be told
 
@@ -151,7 +157,7 @@ stress` says so, because a run that reports "30 tests agree" looks like a
 pass. Sorted or distinct input is declared in a large share of statements;
 it was not counted.
 
-### S5. A table of `rand` values does not fit a narrow element type (bug; joi16fp2)
+### S5. A table of `rand` values does not fit a narrow element type (fixed in Stage-2 sprint #2; joi16fp2)
 
 *Checked.* In the generator above, the natural first line is
 
@@ -164,6 +170,8 @@ It builds, and `g++` rejects the output: `could not convert ... from
 stations))` fails the same way. Today the table is declared with a value
 and filled by a loop. Proposal: a table generator takes its element type
 from the declaration, and `rand(lo, hi)` has the type `lo..=hi`.
+
+*Fixed.* A table generator takes its element type from the declaration, and a table whose elements are stored at another width is copied across where it is assigned. Locked by `proto/tests/redteam/rand_table_narrow.cp`. `rand(lo, hi)` still has the type `Int`.
 
 ## Language and prelude
 

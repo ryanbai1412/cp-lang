@@ -34,6 +34,20 @@ for f in tests/lend/*.cp tests/ergo/*.cp; do
 done
 rm -rf "$tmp"
 echo "lend and ergo tests checked"
+# tests/gen: what the input generator writes is what the program reads. Each x.cp is built twice, as a generator
+# and as a local (checked) run, and 20 generated inputs must each be read to the end without a trap.
+tmp=$(mktemp -d)
+for f in tests/gen/*.cp; do
+    cp "$f" "$tmp/t.cp"
+    if python3 cp.py build "$tmp/t.cp" >/dev/null 2>&1 && g++ -std=c++17 -O1 -DLOCAL -o "$tmp/t_bin" "$tmp/t.cpp" 2>/dev/null \
+        && g++ -std=c++17 -O1 -DCP_GEN_MODE -o "$tmp/t_gen" "$tmp/t.cpp" 2>/dev/null; then
+        for seed in $(seq 1 20); do
+            "$tmp/t_gen" $seed 6 | "$tmp/t_bin" >/dev/null 2>&1 || { echo "GEN TEST FAILED: $f (seed $seed)"; fail=1; break; }
+        done
+    else echo "GEN TEST FAILED: $f (build)"; fail=1; fi
+done
+rm -rf "$tmp"
+echo "gen tests checked"
 # Red-team edge cases (plan/19 section 6): the ends of Int, Euclidean / and %, evaluation order, empty and
 # oversized domains. Built the way `cp run` builds locally, under ASan and UBSan, so a case that must stop
 # does so with a `line N: ...` message (kept in x.out) and never with undefined behaviour. ASan can't map
