@@ -452,6 +452,17 @@ impl<'p, 'o> Interp<'p, 'o> {
                     }
                 }
             }
+            Iter::Subsets(mask_expr) => {
+                let mask = self.eval(mask_expr)?.int();
+                let mut g = mask;
+                loop {
+                    round!(Value::Int(g));
+                    if g == 0 {
+                        break;
+                    }
+                    g = (g - 1) & mask;
+                }
+            }
             Iter::Seq(seq, rev) => {
                 // The loop walks the value as it was when the loop began.
                 let held = self.eval(seq)?;

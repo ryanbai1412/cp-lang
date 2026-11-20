@@ -484,6 +484,30 @@ impl Database {
                 self.import(path, &module, &[name_of(name)], false, None, &mut scope, &mut diags);
             }
         }
+        // `prefix(a)` is backed by userland `stdlib/prefix.cp`: attach it lazily when
+        // the file calls `prefix(...)` so `cpl-ir` lowers it via ordinary generic structs.
+        if self.analyzing.len() == 1
+            && !path.ends_with("/prefix.cp")
+            && path != "prefix.cp"
+            && !items
+                .iter()
+                .any(|item| item.decls.iter().any(|d| d.name == "prefix"))
+            && !scope.modules.iter().any(|m| m.name == "std.prefix")
+            && items.iter().any(|item| {
+                let word = |c: char| c.is_ascii_alphanumeric() || c == '_';
+                item.text
+                    .match_indices("prefix(")
+                    .any(|(at, _)| !item.text[..at].ends_with(word))
+            })
+        {
+            let mut diags = Vec::new();
+            let parts = ["std".to_string(), "prefix".to_string()];
+            if let Some(loaded) =
+                self.load_module(path, &parts, cpl_diag::Span::new(0, 0), &mut diags)
+            {
+                scope.add_module(loaded);
+            }
+        }
         self.analyzing.pop();
         // Loading the modules analyzed them, which moved the revision on.
         scope.imports_fp = scope.fingerprint_imports();

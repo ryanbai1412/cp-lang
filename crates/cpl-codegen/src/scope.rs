@@ -81,7 +81,7 @@ impl Scopes {
                         self.expr(hi);
                         step.iter().for_each(|e| self.expr(e));
                     }
-                    Iter::RangeVal(e, _) | Iter::Seq(e, _) => self.expr(e),
+                    Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) => self.expr(e),
                 }
                 self.visible.push(BTreeSet::new());
                 self.declare(*slot);

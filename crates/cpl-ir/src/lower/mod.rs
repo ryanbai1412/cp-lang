@@ -216,7 +216,7 @@ enum Sym {
 
 struct StructInfo<'a> {
     def: StructDef,
-    decl: &'a ast::StructDecl,
+    decl: Option<&'a ast::StructDecl>,
     mod_id: ModId,
     offset: u32,
     origin_gen: Option<(GenStructId, Vec<GenArg>)>,
@@ -321,6 +321,8 @@ struct Lowerer<'a> {
     path_to_mod: HashMap<String, ModId>,
     /// The module `std.mod`, when the program uses it.
     std_mod: Option<ModId>,
+    /// The module `std.prefix`, when the program uses `prefix(...)`.
+    std_prefix: Option<ModId>,
     mod_syms: Vec<HashMap<String, Sym>>,
     cur_mod: ModId,
     diags: Vec<Diagnostic>,
@@ -380,6 +382,9 @@ struct Lowerer<'a> {
     next_loop: LoopId,
     /// The places a `(place ??= init)` filled: module and span.
     filled: HashSet<(ModId, u32, u32)>,
+    /// The structs `counts(xs)` makes, by the type counted, and back.
+    counter_structs: HashMap<Ty, StructId>,
+    counter_key: HashMap<StructId, Ty>,
 }
 
 impl<'a> Lowerer<'a> {
@@ -388,6 +393,7 @@ impl<'a> Lowerer<'a> {
             mods: Vec::new(),
             path_to_mod: HashMap::new(),
             std_mod: None,
+            std_prefix: None,
             mod_syms: Vec::new(),
             cur_mod: 0,
             diags: Vec::new(),
@@ -432,6 +438,8 @@ impl<'a> Lowerer<'a> {
             offset: 0,
             next_loop: 0,
             filled: HashSet::new(),
+            counter_structs: HashMap::new(),
+            counter_key: HashMap::new(),
         }
     }
 
@@ -600,7 +608,7 @@ impl<'a> Lowerer<'a> {
                                     eq_fn: None,
                                     lt_fn: None,
                                 },
-                                decl,
+                                decl: Some(decl),
                                 mod_id: m,
                                 offset,
                                 origin_gen: None,
@@ -928,8 +936,10 @@ impl<'a> Lowerer<'a> {
     fn signatures(&mut self) {
         let num_structs = self.structs.len();
         for id in 0..num_structs {
-            let (decl, m, offset) = (
-                self.structs[id].decl,
+            let Some(decl) = self.structs[id].decl else {
+                continue;
+            };
+            let (m, offset) = (
                 self.structs[id].mod_id,
                 self.structs[id].offset,
             );
@@ -987,7 +997,9 @@ impl<'a> Lowerer<'a> {
             if i == 0 && param.name.text == "self" && self.sigs[id].owner.is_some() {
                 // A method that grows a cache works on the caller's struct.
                 let owner = self.sigs[id].owner.expect("checked above");
-                let cached = cache::grows_cache(self.structs[owner].decl, decl);
+                let cached = self.structs[owner]
+                    .decl
+                    .is_some_and(|sd| cache::grows_cache(sd, decl));
                 self.sigs[id].receiver = Some(param.mutable || cached);
                 continue;
             }
@@ -1456,8 +1468,10 @@ impl<'a> Lowerer<'a> {
 
     /// A struct's fields as they are read from input: with their ranges.
     fn struct_spec(&mut self, id: StructId) -> Spec {
-        let (decl, m, offset, env) = (
-            self.structs[id].decl,
+        let Some(decl) = self.structs[id].decl else {
+            return Spec::Fields(Ty::Struct(id), Vec::new());
+        };
+        let (m, offset, env) = (
             self.structs[id].mod_id,
             self.structs[id].offset,
             self.structs[id].env.clone(),
@@ -1751,13 +1765,22 @@ impl<'a> Lowerer<'a> {
         };
         let mut out = Vec::new();
         let items: Vec<(u32, &'a ast::Stmt)> = self.mod_items(0).collect();
-        for (offset, stmt) in items {
+        for (idx, &(offset, stmt)) in items.iter().enumerate() {
             self.offset = offset;
             // Skip `@test` functions in normal `cpl run`/`cpl build`.
             if stmt.decorators.iter().any(|d| d.name.text == "test") {
                 continue;
             }
-            self.stmt(stmt, &mut out);
+            if matches!(stmt.kind, ast::StmtKind::Let { ty: None, .. }) {
+                let rest: Vec<ast::Stmt> = items[idx + 1..]
+                    .iter()
+                    .filter(|(_, s)| !s.decorators.iter().any(|d| d.name.text == "test"))
+                    .map(|(_, s)| (*s).clone())
+                    .collect();
+                self.stmt_with_rest(stmt, &rest, &mut out);
+            } else {
+                self.stmt(stmt, &mut out);
+            }
         }
         let cx = std::mem::take(&mut self.cx);
         self.main_body = Block { stmts: out };
@@ -2136,8 +2159,68 @@ impl<'a> Lowerer<'a> {
     fn is_std_mod(&self, sid: StructId) -> bool {
         let info = &self.structs[sid];
         info.origin_gen.is_some()
-            && info.decl.name.text == "Mod"
+            && info.decl.is_some_and(|d| d.name.text == "Mod")
             && self.std_mod == Some(info.mod_id)
+    }
+
+    /// Resolves a domain or type alias pointing to a domain (e.g. `type Group = Subset<Rabbit>`).
+    pub(super) fn resolve_domain_name(&mut self, name: &str) -> Option<DomainId> {
+        if let Some(GenArg::Domain(id)) = self.gen_env.get(name) {
+            return Some(*id);
+        }
+        if let Some(Ty::Pos(id)) = self.cx.local_type_aliases.get(name) {
+            return Some(*id);
+        }
+        match self.get_sym(name) {
+            Some(Sym::Domain(id)) => Some(id),
+            Some(Sym::Alias(aid)) => {
+                let (m, ty_ast, offset) = self.aliases[aid];
+                let sm = std::mem::replace(&mut self.cur_mod, m);
+                let so = std::mem::replace(&mut self.offset, offset);
+                let resolved = self.resolve_ty(ty_ast);
+                self.cur_mod = sm;
+                self.offset = so;
+                match resolved {
+                    Ty::Pos(id) => Some(id),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
+
+    pub(super) fn fresh_loop(&mut self) -> LoopId {
+        let id = self.next_loop;
+        self.next_loop += 1;
+        id
+    }
+
+    pub(super) fn push_synth_struct(&mut self, name: String, fields: Vec<(String, Ty)>) -> StructId {
+        let id = self.structs.len();
+        self.structs.push(StructInfo {
+            def: StructDef {
+                name,
+                fields,
+                show_fn: None,
+                eq_fn: None,
+                lt_fn: None,
+            },
+            decl: None,
+            mod_id: 0,
+            offset: 0,
+            origin_gen: None,
+            env: HashMap::new(),
+            methods: HashMap::new(),
+            gen_methods: HashMap::new(),
+            getters: HashSet::new(),
+            projections: HashMap::new(),
+            consts: HashMap::new(),
+            owned_domains: HashMap::new(),
+            owned_domain_inits: Vec::new(),
+            laws: Vec::new(),
+            index_domain: None,
+        });
+        id
     }
 
     fn try_coerce(&mut self, e: Expr, want: &Ty) -> Result<Expr, Expr> {
@@ -2475,7 +2558,9 @@ fn collect_stmt_calls(stmt: &Stmt, out: &mut Vec<FnId>) {
                         collect_expr_calls(s, out);
                     }
                 }
-                Iter::RangeVal(e, _) | Iter::Seq(e, _) => collect_expr_calls(e, out),
+                Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) => {
+                    collect_expr_calls(e, out)
+                }
             }
             collect_block_calls(body, out);
         }

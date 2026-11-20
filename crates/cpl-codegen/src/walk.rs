@@ -150,7 +150,7 @@ fn stmt_exprs<'p>(stmt: &'p Stmt, f: &mut dyn FnMut(&'p Expr)) {
                 f(hi);
                 step.iter().for_each(f);
             }
-            Iter::RangeVal(e, _) | Iter::Seq(e, _) => f(e),
+            Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) => f(e),
         },
         Stmt::Assert { cond, message, .. } => {
             f(cond);

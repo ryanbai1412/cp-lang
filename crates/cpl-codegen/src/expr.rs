@@ -259,7 +259,17 @@ impl<'p> Emitter<'p> {
                         })
                         .text;
                 }
-                let at: Vec<String> = indices.iter().map(|e| self.expr(e).text).collect();
+                let at: Vec<String> = indices
+                    .iter()
+                    .map(|e| {
+                        let t = self.expr(e).text;
+                        if t.starts_with('[') {
+                            format!("({t})")
+                        } else {
+                            t
+                        }
+                    })
+                    .collect();
                 match &base.ty {
                     Ty::Array { dims, .. } if dims.len() > 1 => format!("{b}({})", at.join(", ")),
                     Ty::Map(..) | Ty::HashMap(..) if !store => format!("{b}.at({})", at.join(", ")),
@@ -491,7 +501,16 @@ impl<'p> Emitter<'p> {
                 let unpack = self.packed_cell(e) && !raw_cell;
                 self.sequence(&operands, &e.ty, |_, codes| {
                     let b = codes[0].at(PRIMARY);
-                    let at: Vec<String> = codes[1..].iter().map(|c| c.text.clone()).collect();
+                    let at: Vec<String> = codes[1..]
+                        .iter()
+                        .map(|c| {
+                            if c.text.starts_with('[') {
+                                format!("({})", c.text)
+                            } else {
+                                c.text.clone()
+                            }
+                        })
+                        .collect();
                     let cell = match base_ty {
                         Ty::Array { dims, elem } if dims.len() > 1 => {
                             let cell = format!("{b}({})", at.join(", "));

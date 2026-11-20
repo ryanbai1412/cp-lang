@@ -129,7 +129,12 @@ impl<'a> Lowerer<'a> {
         self.stmt_with_rest(stmt, &[], out);
     }
 
-    fn stmt_with_rest(&mut self, stmt: &ast::Stmt, rest: &[ast::Stmt], out: &mut Vec<Stmt>) {
+    pub(super) fn stmt_with_rest(
+        &mut self,
+        stmt: &ast::Stmt,
+        rest: &[ast::Stmt],
+        out: &mut Vec<Stmt>,
+    ) {
         // `let u = o ?? return -1`: the test and the way out go ahead of
         // the statement, which then reads the value that is there.
         let root = match &stmt.kind {
@@ -736,6 +741,169 @@ impl<'a> Lowerer<'a> {
         self.probe_ty_silent(arg)
     }
 
+    /// Infers the full type of `var x = List.filled(..., none)` (or `var x = none`)
+    /// from the enclosing function's return type or subsequent assignments in `rest`.
+    fn peek_filled_none_type(
+        &mut self,
+        var_name: &str,
+        depth: usize,
+        rest: &[ast::Stmt],
+    ) -> Option<Ty> {
+        fn has_depth_opt(ty: &Ty, depth: usize) -> bool {
+            let mut cur = ty;
+            for _ in 0..depth {
+                match cur {
+                    Ty::List(inner) => cur = inner,
+                    _ => return false,
+                }
+            }
+            matches!(cur, Ty::Opt(_))
+        }
+        fn returns_var(var_name: &str, stmts: &[ast::Stmt]) -> bool {
+            if let Some(last) = stmts.last() {
+                if let ast::StmtKind::Expr(e) = &last.kind {
+                    if matches!(&e.kind, ast::ExprKind::Name(n) if n == var_name) {
+                        return true;
+                    }
+                }
+            }
+            for s in stmts {
+                match &s.kind {
+                    ast::StmtKind::Return(Some(e))
+                        if matches!(&e.kind, ast::ExprKind::Name(n) if n == var_name) =>
+                    {
+                        return true;
+                    }
+                    ast::StmtKind::Expr(e) => {
+                        if let ast::ExprKind::If {
+                            branches,
+                            otherwise,
+                        } = &e.kind
+                        {
+                            if branches.iter().any(|(_, b)| returns_var(var_name, &b.stmts))
+                                || otherwise
+                                    .as_ref()
+                                    .is_some_and(|b| returns_var(var_name, &b.stmts))
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                    ast::StmtKind::While { body, .. } | ast::StmtKind::For { body, .. }
+                        if returns_var(var_name, &body.stmts) =>
+                    {
+                        return true;
+                    }
+                    _ => {}
+                }
+            }
+            false
+        }
+        if let Some(ret_ty) = self.cx.ret.clone() {
+            if has_depth_opt(&ret_ty, depth) && returns_var(var_name, rest) {
+                return Some(ret_ty);
+            }
+        }
+        fn index_depth_of(e: &ast::Expr, var_name: &str) -> Option<usize> {
+            match &e.kind {
+                ast::ExprKind::Name(n) if n == var_name => Some(0),
+                ast::ExprKind::Paren(inner) => index_depth_of(inner, var_name),
+                ast::ExprKind::Index { base, indices } if indices.len() == 1 => {
+                    index_depth_of(base, var_name).map(|d| d + 1)
+                }
+                _ => None,
+            }
+        }
+        fn collect_rhs<'a>(
+            var_name: &str,
+            depth: usize,
+            stmts: &'a [ast::Stmt],
+            out: &mut Vec<&'a ast::Expr>,
+            decls: &mut Vec<(&'a str, &'a ast::Type)>,
+        ) {
+            for s in stmts {
+                match &s.kind {
+                    ast::StmtKind::Let {
+                        pat:
+                            ast::Pattern {
+                                kind: ast::PatternKind::Name(n),
+                                ..
+                            },
+                        ty: Some(t),
+                        ..
+                    } => decls.push((n.as_str(), t)),
+                    ast::StmtKind::Assign { target, value, .. } => {
+                        if index_depth_of(target, var_name) == Some(depth)
+                            && !matches!(value.kind, ast::ExprKind::None)
+                        {
+                            out.push(value);
+                        }
+                    }
+                    ast::StmtKind::Expr(e) => {
+                        if depth == 1 {
+                            if let ast::ExprKind::Call { callee, args } = &e.kind {
+                                if let ast::ExprKind::Field { base, name } = &callee.kind {
+                                    if name.text == "push"
+                                        && matches!(&base.kind, ast::ExprKind::Name(n) if n == var_name)
+                                        && args.len() == 1
+                                        && !matches!(args[0].value.kind, ast::ExprKind::None)
+                                    {
+                                        out.push(&args[0].value);
+                                    }
+                                }
+                            }
+                        }
+                        if let ast::ExprKind::If {
+                            branches,
+                            otherwise,
+                        } = &e.kind
+                        {
+                            for (_, b) in branches {
+                                collect_rhs(var_name, depth, &b.stmts, out, decls);
+                            }
+                            if let Some(b) = otherwise {
+                                collect_rhs(var_name, depth, &b.stmts, out, decls);
+                            }
+                        }
+                    }
+                    ast::StmtKind::While { body, .. } | ast::StmtKind::For { body, .. } => {
+                        collect_rhs(var_name, depth, &body.stmts, out, decls);
+                    }
+                    _ => {}
+                }
+            }
+        }
+        let mut candidates = Vec::new();
+        let mut decls = Vec::new();
+        collect_rhs(var_name, depth, rest, &mut candidates, &mut decls);
+        for rhs in candidates {
+            let elem = if let ast::ExprKind::Name(n) = &rhs.kind {
+                if let Some((_, ty_ast)) = decls.iter().find(|(dn, _)| *dn == n.as_str()) {
+                    let t = self.resolve_ty(ty_ast);
+                    (t != Ty::Error).then_some(t)
+                } else {
+                    self.probe_ty_silent(rhs)
+                }
+            } else {
+                self.probe_ty_silent(rhs)
+            };
+            if let Some(t) = elem {
+                if t == Ty::Error || matches!(&t, Ty::Opt(inner) if **inner == Ty::Error) {
+                    continue;
+                }
+                let mut full = match t {
+                    Ty::Opt(_) => t,
+                    other => Ty::opt(other),
+                };
+                for _ in 0..depth {
+                    full = Ty::list(full);
+                }
+                return Some(full);
+            }
+        }
+        None
+    }
+
     fn peek_fn_arg_types(&mut self, fn_name: &str, arity: usize, rest: &[ast::Stmt]) -> Option<Vec<Ty>> {
         fn find_call_in_expr<'a>(
             fn_name: &str,
@@ -1034,6 +1202,13 @@ impl<'a> Lowerer<'a> {
                 if items.is_empty() {
                     if let Some(elem_ty) = self.peek_list_elem_type(vname, rest) {
                         return Some(self.mk(ExprKind::Tuple(Vec::new()), Ty::list(elem_ty), span));
+                    }
+                }
+            }
+            if let (ast::PatternKind::Name(vname), Some(init_expr)) = (&pat.kind, init) {
+                if let Some(depth) = filled_none_depth(init_expr) {
+                    if let Some(hint_ty) = self.peek_filled_none_type(vname, depth, rest) {
+                        return Some(self.expr(init_expr, Some(&hint_ty)));
                     }
                 }
             }
@@ -2467,4 +2642,21 @@ pub(super) fn diverging_default(e: &ast::Expr) -> Option<&ast::Stmt> {
 
 fn plural(n: i64, what: &str) -> String {
     format!("{n} {what}{}", if n == 1 { "" } else { "s" })
+}
+
+/// Depth of nested `List.filled(_, ...)` calls wrapping a bare `none` literal.
+fn filled_none_depth(e: &ast::Expr) -> Option<usize> {
+    match &e.kind {
+        ast::ExprKind::None => Some(0),
+        ast::ExprKind::Paren(inner) => filled_none_depth(inner),
+        ast::ExprKind::Call { callee, args } if args.len() == 2 => {
+            if let ast::ExprKind::Field { base, name } = &callee.kind {
+                if name.text == "filled" && matches!(&base.kind, ast::ExprKind::Name(n) if n == "List") {
+                    return filled_none_depth(&args[1].value).map(|d| d + 1);
+                }
+            }
+            None
+        }
+        _ => None,
+    }
 }
