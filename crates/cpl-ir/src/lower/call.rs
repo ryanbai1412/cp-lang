@@ -3770,6 +3770,18 @@ impl<'a> Lowerer<'a> {
                 self.seq_search_method(method, value, e, dom, args, span)
             }
             (Ty::Fn(_, _), "out") => self.call_fn_val(value, args, span),
+            // `Neighbours` for a table of neighbour lists: `adj.out(u)` is
+            // `adj[u]`, as it is `adj(u)` for a fn.
+            (Ty::Array { dims, .. }, "out") if dims.len() == 1 && args.len() == 1 => {
+                let at = ast::Expr {
+                    kind: ast::ExprKind::Index {
+                        base: Box::new(base.clone()),
+                        indices: vec![args[0].value.clone()],
+                    },
+                    span,
+                };
+                self.expr(&at, None)
+            }
             // `(lo..hi).clamp(D)`: the part of an Int range that lies in
             // `D`, as a range of D's positions; empty when none does.
             (Ty::Range(inner), "clamp") if **inner == Ty::Int && args.len() == 1 => {

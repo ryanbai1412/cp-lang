@@ -36,7 +36,8 @@ pub struct Rooted<V, Pre>:
     at: [Pre]V
 
     /// Root the tree given by `adj` at `root`: `Rooted(g, root: r)` for a `Graph`,
-    /// `Rooted(root: r, adj: u => lists[u])` for anything else. `adj` may list every neighbour
+    /// `Rooted(lists, root: r)` for a table of neighbour lists `[V]List<V>`, and
+    /// `Rooted(root: r, adj: u => ...)` for anything else. `adj` may list every neighbour
     /// (the parent is skipped) or only the children, as vertices or as arcs. The tree is the
     /// depth-first spanning tree, so on a graph with extra edges every other edge joins a
     /// vertex to one of its ancestors. Stops if some vertex is not reachable from the root.
@@ -306,6 +307,13 @@ fn subtrees_and_chains_are_contiguous():
                 assert r.is_anc(v, u) == (x == v)
             if let h = r.heavy[v]:
                 assert r.tin[h].ord == r.tin[v].ord + 1 and r.top[h] == r.top[v]
+
+@test
+fn a_table_of_neighbour_lists_roots_like_the_fn_that_reads_it():
+    domain V = 0..9
+    let adj = random_tree(V.first)
+    let (a, b) = (Rooted(adj, V.first), Rooted(v => adj[v], V.first))
+    assert a.preorder == b.preorder and a.par == b.par and a.sz == b.sz
 
 @test
 fn lca_dist_ancestor_and_step_match_climbing():

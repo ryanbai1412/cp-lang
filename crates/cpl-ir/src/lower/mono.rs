@@ -1124,7 +1124,7 @@ impl<'a> Lowerer<'a> {
                                 None
                             }
                         }
-                        GenArg::Ty(Ty::Fn(_, ret)) => {
+                        GenArg::Ty(Ty::Fn(_, ret) | Ty::Array { elem: ret, .. }) => {
                             if let Ty::List(elem) = ret.as_ref() {
                                 Some((**elem).clone())
                             } else {
