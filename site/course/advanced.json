@@ -1,0 +1,308 @@
+[
+  {
+    "slug": "course-borrowing",
+    "title": "Lends and lexical borrowing",
+    "description": "Ownership, explicit mut, projections as inline callbacks, law disjoint, and why borrows never escape their block.",
+    "duration": "30 min",
+    "exercises": [
+      {
+        "id": "borrow-explicit-mut",
+        "title": "Spell the mutation",
+        "prompt": "Given fn bump(mut xs: [V]Int, by: Int), which call adds 1 to every element of the caller's array a?",
+        "hint": "A mutable borrow is written at both ends: the parameter and the call.",
+        "solution": "bump(mut a, 1). The parameter says mut xs and the call says mut a, so every line that can change a visibly contains mut a.",
+        "kind": "choice",
+        "options": [
+          "bump(a, 1)",
+          "bump(mut a, 1)",
+          "bump(a.copy(), 1)",
+          "bump(&mut a, 1)"
+        ],
+        "answer": 1,
+        "explanation": "bump(a, 1) is rejected because the call does not mark the mutation. bump(a.copy(), 1) changes a temporary copy, so a is unchanged. &mut is Rust syntax; CP Lang has no reference operator.",
+        "code": "fn bump(mut xs: [V]Int, by: Int):\n    for v in xs.positions: xs[v] += by"
+      },
+      {
+        "id": "borrow-inline-callback",
+        "title": "Why a projection cannot dangle",
+        "prompt": "fn at(self, i: V) lends mut Int ends with lend mut cnt[i]. Why can the caller never keep a dangling reference to cnt[i]?",
+        "hint": "Think about what b.at(v) += 5 desugars to, and where that code runs.",
+        "solution": "A projection is sugar for fn at(mut self, i: V, inline use: (mut Int) -> R) -> R = use(mut cnt[i]). The rest of the caller's expression is the callback, it runs while at is still on the stack, and nothing reference-like is ever returned.",
+        "kind": "choice",
+        "options": [
+          "The runtime reference-counts every cell of cnt",
+          "The caller's expression runs as an inline callback inside at, so the borrow ends before at returns",
+          "The checker infers a lifetime parameter for the returned reference",
+          "lend copies cnt[i], so there is no reference at all"
+        ],
+        "answer": 1,
+        "explanation": "There is no reference counting and no lifetime inference: the design avoids both. lend does not copy; b.at(v) += 5 really changes cnt[v], which is the point of a mutable projection."
+      },
+      {
+        "id": "borrow-disjoint",
+        "title": "Prove the law at the call",
+        "prompt": "Bag.at declares law disjoint(i, j) = i != j, and Bag.other is a second projection that also lends cnt[i]. Which call does the checker accept?",
+        "hint": "The law only relates two lends of the same projection, and the fact must be visible before the call.",
+        "solution": "The guarded call through the same projection. The enclosing if gives the checker i != j, which is exactly the law of at, so the two mutable lends cannot overlap.",
+        "kind": "choice",
+        "options": [
+          "move(mut b.at(i), mut b.at(j)) with nothing known about i and j",
+          "if i != j: move(mut b.at(i), mut b.at(j))",
+          "if i != j: move(mut b.at(i), mut b.other(j))",
+          "move(mut b.at(i), mut b.at(i)) followed by assert i != j"
+        ],
+        "answer": 1,
+        "explanation": "Without the guard nothing proves i != j, so the call is rejected with help to guard or assert. Different projections (at and other) are never assumed disjoint, even when i != j. An assert after the call is too late, and lending b.at(i) twice can never satisfy i != j."
+      },
+      {
+        "id": "borrow-escape",
+        "title": "Return the window, not the slice",
+        "prompt": "A helper should find the best segment of a, and the caller then sorts that segment in place. Which design fits CP Lang's borrowing rules?",
+        "hint": "A slice is a borrow; a range is a plain value.",
+        "solution": "Return Range<V> and re-project at the point of use: a[w].sort(). The range can be stored, returned, or pushed anywhere, and the borrow is created only where the caller applies it.",
+        "kind": "choice",
+        "options": [
+          "fn best(a: [V]Int) -> [V]Int returning a[l..=r]",
+          "fn best(a: [V]Int) -> Range<V> returning l..=r, then a[best(a)].sort()",
+          "Store a[l..=r] in a struct field and sort it later",
+          "Assign a[l..=r] to a var and return the var"
+        ],
+        "answer": 1,
+        "explanation": "Returning a slice, storing it in a field, or assigning it to a var would each let the borrow outlive its block, and the prototype rejects all three with help to keep the range or call .copy(). A copy compiles too, but sorting a copy would not change a."
+      },
+      {
+        "id": "borrow-bounds-output",
+        "title": "Predict the boundary prefix sum",
+        "prompt": "This prototype-tested program builds prefix sums indexed by boundaries: pre[v.r] = pre[v.l] + a[v]. Predict the output for each input.",
+        "hint": "V.last.r is the boundary after the last element, so pre at that boundary covers every element.",
+        "solution": "pre starts at 0 everywhere, and each step adds one element to the previous boundary. The final boundary holds the whole sum: 2 - 1 + 3 + 5 = 9, a single -9 gives -9, and three zeros give 0. No +1 index arithmetic is needed because v.l and v.r are boundary values, not shifted integers.",
+        "kind": "output",
+        "fixture": "bounds",
+        "tests": [
+          {
+            "input": "4\n2 -1 3 5\n",
+            "expected": "9"
+          },
+          {
+            "input": "1\n-9\n",
+            "expected": "-9"
+          },
+          {
+            "input": "3\n0 0 0\n",
+            "expected": "0"
+          }
+        ],
+        "code": "let n: 1..=100 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\n\nvar pre: [V.bounds]Int = 0\nfor v in V:\n    pre[v.r] = pre[v.l] + a[v]\nprint(pre[V.last.r])"
+      }
+    ]
+  },
+  {
+    "slug": "course-algebra",
+    "title": "Algebraic traits and the stdlib",
+    "description": "Associativity, identity, and inverses; non-commutative combines; operation values; and a userland standard library you can extend.",
+    "duration": "30 min",
+    "exercises": [
+      {
+        "id": "algebra-sum-identity",
+        "title": "Predict the fold",
+        "prompt": "sum(a) is a fold of + starting from the identity 0. Predict the output of this prototype-tested program for each input.",
+        "hint": "Write the fold out as ((0 + x1) + x2) + ..., and remember that adding 0 changes nothing.",
+        "solution": "The fold starts at the identity 0 and adds each element: 0 + 5 - 2 + 4 = 7; -3 + 3 = 0; and a single element is just itself, -9, because 0 + x == x.",
+        "kind": "output",
+        "fixture": "sum",
+        "tests": [
+          {
+            "input": "3\n5 -2 4\n",
+            "expected": "7"
+          },
+          {
+            "input": "2\n-3 3\n",
+            "expected": "0"
+          },
+          {
+            "input": "1\n-9\n",
+            "expected": "-9"
+          }
+        ],
+        "code": "let n: 1..=2e5 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nprint(sum(a))"
+      },
+      {
+        "id": "algebra-assoc",
+        "title": "Which combine can a segment tree use?",
+        "prompt": "A segment tree regroups pieces freely. Which combine gives correct range answers however the query splits?",
+        "hint": "Check (x op y) op z against x op (y op z) on three small numbers.",
+        "solution": "max is associative, max(max(x, y), z) == max(x, max(y, z)), with identity Int.MIN, so it is a monoid and any grouping gives the same answer.",
+        "kind": "choice",
+        "options": [
+          "(a, b) => (a + b) / 2",
+          "(a, b) => a - b",
+          "(a, b) => max(a, b)",
+          "(a, b) => keep whichever piece was combined first on a tie, else the larger"
+        ],
+        "answer": 2,
+        "explanation": "Averaging is not associative: avg(avg(2, 4), 6) = 4.5 but avg(2, avg(4, 6)) = 3.5; carry (sum, count) instead. Subtraction is not associative either. A rule that depends on combination history gives answers that depend on how the query happens to split across nodes."
+      },
+      {
+        "id": "algebra-inverse",
+        "title": "When two prefix values are enough",
+        "prompt": "Which range query can always be answered from two prefix values, prefix(r) combined with the inverse of prefix(l - 1)?",
+        "hint": "Taking a prefix back out needs an inverse operation.",
+        "solution": "Range sum: + has the inverse -, so sum(l..=r) = pre[r.r] - pre[l.l]. That is why the approved Fenwick takes a Group.",
+        "kind": "choice",
+        "options": [
+          "Range maximum",
+          "Range minimum",
+          "Range sum",
+          "Range gcd"
+        ],
+        "answer": 2,
+        "explanation": "Maximum, minimum, and gcd are monoids without inverses: knowing max(1..=r) and max(1..=l-1) tells you nothing about max(l..=r). Those need a segment tree or a sparse table, and the stdlib makes Fenwick-on-max a type error."
+      },
+      {
+        "id": "algebra-noncommutative",
+        "title": "Order matters",
+        "prompt": "Using the prototype-tested compose_all from this lesson, what does the program print for input 2, then 3 0, then 2 1? Each line is mul add, and the maps apply in order.",
+        "hint": "Apply x => 3x first, then x => 2x + 1, and expand.",
+        "solution": "First x => 3x, then x => 2(3x) + 1 = 6x + 1, so it prints 6 1. In the opposite order (2 1 then 3 0) the result is 6x + 3: same multiplier, different constant, so the operation is associative but not commutative.",
+        "kind": "choice",
+        "options": [
+          "6 3",
+          "6 1",
+          "5 1",
+          "6 2"
+        ],
+        "answer": 1,
+        "explanation": "6 3 is the answer for the reversed order, which is the classic mistake of combining a right-hand accumulator in the wrong order. 5 1 adds the multipliers instead of multiplying them.",
+        "code": "struct Aff:\n    mul: Int\n    add: Int\n\nfn then(f: Aff, g: Aff) -> Aff:\n    Aff(f.mul * g.mul, f.add * g.mul + g.add)\n\nfn compose_all<D>(fs: [D]Aff) -> Aff:\n    var acc = Aff(1, 0)\n    for d in D:\n        acc = then(acc, fs[d])\n    acc"
+      },
+      {
+        "id": "algebra-runtime-op",
+        "title": "Choosing an operation at runtime",
+        "prompt": "In the approved design, what happens with let m = if k: Max<Int> else: Min<Int> followed by SegTree<V, Int>(m)?",
+        "hint": "Every function value has its own compile-time identity, and structures are compiled once per identity.",
+        "solution": "It is a compile error with help: write if k: SegTree(Max<Int>) else: SegTree(Min<Int>), so each branch gets its own inlined copy, or opt into an indirect call with dyn.",
+        "kind": "choice",
+        "options": [
+          "It compiles to one tree that calls max or min through a function pointer",
+          "A compile error: the code of op is not known at compile time; branch outside the structure or declare a dyn function type",
+          "It silently picks Max because it is the first branch",
+          "It compiles, but laws are skipped"
+        ],
+        "answer": 1,
+        "explanation": "Static dispatch is a language guarantee, so the compiler never quietly inserts a function pointer. Nothing is picked silently, and laws are unrelated: they are checked by fntest and debug runs and stripped from release builds."
+      },
+      {
+        "id": "algebra-local-library",
+        "title": "What a local library costs",
+        "prompt": "A solution uses lib.treap from a large personal library configured in cp.toml (planned). What ends up in the submitted C++?",
+        "hint": "Judges accept one file and know nothing about your folders.",
+        "solution": "Everything used is inlined into the single submitted C++ file and unused code is removed, so a big library does not bloat submissions. Brutes and laws in the library are stripped too.",
+        "kind": "choice",
+        "options": [
+          "The whole library folder, concatenated",
+          "Only the code the solution reaches, inlined into one file and tree-shaken",
+          "An include of the library path on your machine",
+          "Nothing until the judge downloads the library"
+        ],
+        "answer": 1,
+        "explanation": "Concatenating the folder would waste size and compile time. An include of a local path fails on the judge. Judges never fetch dependencies."
+      }
+    ]
+  },
+  {
+    "slug": "course-verification",
+    "title": "Memo, checkers, interactors, and stress testing",
+    "description": "Recurrences with @memo, slow references with @brute, typed generators and shrinking, multi-answer checkers, query budgets, and first divergence.",
+    "duration": "35 min",
+    "exercises": [
+      {
+        "id": "verify-memo-output",
+        "title": "Predict the recurrence",
+        "prompt": "f(0) = 1 and f(i) = 3 * f(i - 1) + i, over domain I = 0..n. Predict the output of this prototype-tested program for each n.",
+        "hint": "0..n is half-open, so the last index is n - 1. Build the values upward from f(0).",
+        "solution": "The sequence is f(0) = 1, f(1) = 4, f(2) = 14, f(3) = 45, f(4) = 139, and the program prints f(n - 1). So n = 1 prints 1, n = 3 prints 14, and n = 5 prints 139. A common mistake is treating 0..n as inclusive and printing f(n).",
+        "kind": "output",
+        "fixture": "memo",
+        "tests": [
+          {
+            "input": "1\n",
+            "expected": "1"
+          },
+          {
+            "input": "3\n",
+            "expected": "14"
+          },
+          {
+            "input": "5\n",
+            "expected": "139"
+          }
+        ],
+        "code": "let n: 1..=20 = read()\ndomain I = 0..n\n\n@memo\nfn f(i: I) -> Int:\n    if let p = i.prev:\n        return f(p) * 3 + i.idx\n    1\n\nprint(f(I.last))"
+      },
+      {
+        "id": "verify-brute-part",
+        "title": "What makes a good brute",
+        "prompt": "You suspect range_sum, which uses a prefix table. Which @brute(range_sum) is most useful?",
+        "hint": "A brute should be too simple to share the fast version's bug.",
+        "solution": "The direct loop. It is obviously correct, it checks exactly the suspect function, and fntest reports the first argument pair where they disagree, such as l=1 r=1.",
+        "kind": "choice",
+        "options": [
+          "A copy of range_sum with different variable names",
+          "sum(a[i] for i in l..=r), a direct loop over the range",
+          "A brute for the whole program that also uses the prefix table",
+          "No brute: compare against the sample output only"
+        ],
+        "answer": 1,
+        "explanation": "A renamed copy shares every bug. A whole-program brute built on the same prefix table shares the idea and only says the final answer differs. Samples are a handful of cases, while fntest tries thousands of random calls on generated inputs."
+      },
+      {
+        "id": "verify-shrink",
+        "title": "A good shrink step",
+        "prompt": "A stress failure has n = 37, twelve queries, and the constraint l <= r on each query. Which step does the planned structure-aware shrinker take?",
+        "hint": "Every candidate must stay a valid input and must reproduce the same bug.",
+        "solution": "It deletes a query (or an element, or lowers a value) while keeping every constraint true, and accepts the candidate only if it fails at the same first differing stage or crash line.",
+        "kind": "choice",
+        "options": [
+          "Delete random bytes from the input file",
+          "Remove one query, and keep the smaller case only if it still fails the same way",
+          "Swap l and r in a query to make the first number smaller",
+          "Keep any smaller case that fails for any reason"
+        ],
+        "answer": 1,
+        "explanation": "Byte deletion produces invalid input. Swapping l and r can break l <= r. Accepting any failure lets the shrinker drift to a different bug than the one you are chasing."
+      },
+      {
+        "id": "verify-checker",
+        "title": "Who decides existence",
+        "prompt": "In the approved @checker design for a print-any-valid-coloring problem, the brute prints -1 because no coloring exists. When does your output pass?",
+        "hint": "The checker judges an answer; something else settles whether an answer exists.",
+        "solution": "Only -1 passes. The brute settles existence; when it does find an answer, your output must parse as [V]Color and pass valid. The checker never needs to decide whether a coloring exists, which keeps it short.",
+        "kind": "choice",
+        "options": [
+          "When valid(c) returns true for your coloring",
+          "Only when your output is also -1",
+          "Whenever your output parses as [V]Color",
+          "When your output equals the brute's output character for character"
+        ],
+        "answer": 1,
+        "explanation": "Printing a coloring when none exists is wrong, so valid is not even consulted. Parsing is necessary but not sufficient. Character-for-character comparison is exactly what checkers replace."
+      },
+      {
+        "id": "verify-query-budget",
+        "title": "Fit the query limit",
+        "prompt": "The Guess protocol (approved design) has limit ask: 30 and a secret in 1..=1e9. Which strategy fits the budget for every secret?",
+        "hint": "Count how many halvings it takes to get from 10^9 candidates to one.",
+        "solution": "Binary search needs at most 30 asks, because 2^30 is just over 10^9. Locally, every run counts asks against limit ask: 30 and prints the call log if a 31st is made.",
+        "kind": "choice",
+        "options": [
+          "Ask every value from 1 upward",
+          "Binary search with first_true, about log2(1e9) questions",
+          "Ask 30 random values and answer the closest",
+          "Ternary search with two asks per step"
+        ],
+        "answer": 1,
+        "explanation": "A linear scan needs up to 10^9 asks. Random asks are not correct. Ternary search with two asks per step needs about 2 * log base 1.5 of 10^9, roughly 100, far more than 30."
+      }
+    ]
+  }
+]
