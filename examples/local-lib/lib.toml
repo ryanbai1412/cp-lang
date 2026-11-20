@@ -1,0 +1,3 @@
+# A personal contest library. A solution next to (or below) this file
+# imports its modules as `use lib.ds.rollback_dsu.{RollbackDsu}`.
+name = "lib"
