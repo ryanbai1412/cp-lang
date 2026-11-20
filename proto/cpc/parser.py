@@ -5,7 +5,7 @@ from .ast import N
 class ParseError(Exception):
     pass
 
-ASSIGN_OPS = {"=", "+=", "-=", "*=", "/=", "%=", "|=", "&=", "^="}
+ASSIGN_OPS = {"=", "+=", "-=", "*=", "/=", "%=", "|=", "&=", "^=", "<<=", ">>=", "??="}
 OP_FNS = {"+", "*", "|", "&", "^"}
 CMP_OPS = {"==", "!=", "<", ">", "<=", ">="}
 
@@ -61,8 +61,14 @@ class Parser:
         self.skip_newlines()
         while not self.at_kind("EOF"):
             body.append(self.stmt())
+            body += self.take_extra()
             self.skip_newlines()
         return N("program", 1, body=body)
+
+    def take_extra(self):
+        """The statements that followed the last one on its line: `out.push('a'); out += "bc"`."""
+        extra, self.extra = getattr(self, "extra", []), []
+        return extra
 
     def block(self):
         self.expect(":")
@@ -73,6 +79,7 @@ class Parser:
             self.skip_newlines()
             while not self.at_kind("DEDENT") and not self.at_kind("EOF"):
                 body.append(self.stmt())
+                body += self.take_extra()
                 self.skip_newlines()
             if self.at_kind("DEDENT"):
                 self.next()
@@ -99,6 +106,13 @@ class Parser:
     def stmt(self):
         t = self.t
         line = t.line
+        if t.kind == "LABEL" and self.peek().kind == "OP" and self.peek().val == ":":
+            self.next(); self.next()
+            if not self.at("for", "while"):
+                self.err("a label names a loop: `'outer: for ...`")
+            s = self.stmt()
+            s.label = t.val
+            return s
         if self.at("@"):
             decos = []
             while self.at("@"):
@@ -250,7 +264,12 @@ class Parser:
                 body = self.block()
                 return N("while", line, cond=c, body=body)
         s = self.simple_stmt()
+        extra = []
+        while self.at(";"):
+            self.next()
+            extra.append(self.simple_stmt())
         self.end_line()
+        self.extra = extra
         return s
 
     def use_stmt(self):
@@ -329,12 +348,10 @@ class Parser:
                 if not (self.at_kind("NEWLINE") or self.at_kind("DEDENT") or self.at(";")):
                     e = self.expr()
                 return N("return", line, value=e)
-            if v == "break":
+            if v in ("break", "continue"):
                 self.next()
-                return N("break", line)
-            if v == "continue":
-                self.next()
-                return N("continue", line)
+                label = self.next().val if self.t.kind == "LABEL" else None
+                return N(v, line, label=label)
             if v == "assert":
                 self.next()
                 e = self.expr()
@@ -365,6 +382,10 @@ class Parser:
         if self.t.kind == "OP" and self.t.val in ASSIGN_OPS:
             op = self.next().val
             rhs = self.expr()
+            if op in ("<<=", ">>="):
+                return N("assign", line, target=e, op="=", value=N("binop", line, op=op[:-1], a=e, b=rhs))
+            if op == "??=":
+                return N("coalesce_assign", line, target=e, value=rhs)
             return N("assign", line, target=e, op=op, value=rhs)
         if self.t.kind == "NAME" and self.peek().kind == "OP" and self.peek().val == "=":
             # `x f= y` is `x = f(x, y)` for any two-argument fn: `best min= d`, `a[i] lcm= x`, `g gcd= v`
@@ -653,6 +674,18 @@ class Parser:
     def expr(self):
         t = self.t
         line = t.line
+        if self.at("if") and self.peek().kind == "KW" and self.peek().val == "let":
+            # `let below = if let p = h[i] - 1: st.fold(..=p) else: 0`
+            self.next(); self.next()
+            pat = self.pattern()
+            self.expect("=")
+            v = self.or_()
+            self.expect(":")
+            a = self.expr()
+            self.skip_newlines_before_else()
+            self.expect("else")
+            self.expect(":")
+            return N("ifletexpr", line, pat=pat, value=v, a=a, b=self.expr())
         if self.at("if"):
             self.next()
             c = self.expr()
@@ -803,9 +836,9 @@ class Parser:
         return e
 
     def unary(self):
-        if self.at("-"):
-            line = self.next().line
-            return N("unop", line, op="-", a=self.unary())
+        if self.at("-", "~"):
+            t = self.next()
+            return N("unop", t.line, op=t.val, a=self.unary())
         return self.power()
 
     def power(self):
@@ -820,7 +853,7 @@ class Parser:
         args = []
         while not self.at(")"):
             line = self.t.line
-            if self.t.kind in ("NAME", "KW") and self.peek().kind == "OP" and self.peek().val == ":" and self.t.kind == "NAME":
+            if self.t.kind in ("NAME", "KW") and self.peek().kind == "OP" and self.peek().val == ":" and (self.t.kind == "NAME" or self.t.val == "none"):
                 kw = self.next().val
                 self.next()
                 args.append(N("kwarg", line, name=kw, value=self.expr()))
