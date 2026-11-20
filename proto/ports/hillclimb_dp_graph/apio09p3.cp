@@ -11,7 +11,7 @@ let pubs: [0..p]Junction = read()
 
 // Inside a strongly connected district everything can be robbed, so shrink
 // each district to a point: the rest is a longest path in a DAG.
-let city = Graph<Junction, Road>.directed(roads)
+let city = Graph.directed(roads)
 let (District, of) = scc(city)
 var loot: [District]Int = 0
 for j in Junction: loot[of[j]] += cash[j]

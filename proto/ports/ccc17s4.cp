@@ -8,7 +8,7 @@ domain Pipe = 0..m
 let pipes: [Pipe](u: V, v: V, cost: 1..=1e9) = read()
 
 fn is_new(e: Pipe) -> Bool = Int(e) >= n - 1
-let order = sorted([e for e in Pipe], by: e => (pipes[e].cost, is_new(e)))
+let order = sorted(Pipe, by: e => pipes[e].cost)     // stable: old pipes first among equals
 
 var tree = Dsu<V>()
 var used: [Pipe]Bool = false

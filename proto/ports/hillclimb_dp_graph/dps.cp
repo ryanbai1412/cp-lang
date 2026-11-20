@@ -6,14 +6,14 @@ let d: 1..=100 = read()
 domain Rem = 0..d
 
 // below[r]: numbers strictly below the prefix of K read so far (same length,
-// leading zeros allowed) whose digit sum is r mod d. `prefix` is K's own.
+// leading zeros allowed) whose digit sum is r mod d. `own` is that of K's prefix.
 var below: [Rem]Z = 0
-var prefix = Rem.first
+var own = Rem.first
 for c in k:
     var next: [Rem]Z = 0
     for r in Rem:
         for x in 0..=9: next[r.cyc(x)] += below[r]
-    for x in 0..c - '0': next[prefix.cyc(x)] += 1
+    for x in 0..c - '0': next[own.cyc(x)] += 1
     below = next
-    prefix = prefix.cyc(c - '0')
-print(below[Rem.first] + Z(Int(prefix == Rem.first)) - 1)   // zero is not in 1..=K
+    own = own.cyc(c - '0')
+print(below[Rem.first] - Int(own != Rem.first))    // K itself counts, zero does not

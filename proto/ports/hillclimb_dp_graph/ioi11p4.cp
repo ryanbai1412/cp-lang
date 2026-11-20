@@ -6,7 +6,7 @@ domain Chamber = 0..n
 domain Corridor = 0..m
 let corridors: [Corridor](u: Chamber, v: Chamber, time: 1..=1e9) = read()
 let exits: [0..k]Chamber = read()
-let maze = Graph<Chamber, Corridor>.undirected([Corridor] c => (corridors[c].u, corridors[c].v))
+let maze = Graph.undirected(corridors)
 
 // The best corridor out of a chamber is the one that gets blocked, so a
 // chamber's time is its second-cheapest way out: Dijkstra from the exits,

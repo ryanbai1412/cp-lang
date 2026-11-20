@@ -14,9 +14,9 @@ fn useless(a: Line, b: Line, c: Line) -> Bool =
 var hull = Deque<Line>()
 var cost = 0
 for x in h:
-    while hull.len >= 2 and at(hull.get(1), x) <= at(hull.get(0), x): hull.pop_front()
+    while hull.len >= 2 and at(hull[1], x) <= at(hull[0], x): hull.pop_front()
     if let best = hull.first: cost = at(best, x) + x * x + c
     let line: Line = (-2 * x, cost + x * x)
-    while hull.len >= 2 and useless(hull.get(hull.len - 2), hull.last!, line): hull.pop()
+    while hull.len >= 2 and useless(hull[hull.len - 2], hull.last!, line): hull.pop()
     hull.push(line)
 print(cost)

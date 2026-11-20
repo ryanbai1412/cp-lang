@@ -8,17 +8,17 @@ let map = Graph<Town, Road>.undirected(read())
 // In a depth-first tree every other road joins a town to one of its
 // ancestors. low[v]: the earliest town such a road reaches from v's subtree.
 let tree = Rooted(map, Town.first)
-var low: [Town]Int = [Town] v => Int(tree.pos(v))
+var low = [Town] v => tree.pos(v)
 for v in tree.postorder:
     for (w, _) in map.adj(v):
-        if tree.parent(v) != w: low[v] min= Int(tree.pos(w))
+        if tree.parent(v) != w: low[v] min= tree.pos(w)
     if let p = tree.parent(v): low[p] min= low[v]
 
 // With town c closed, the part of c's subtree that x is cut off in, if any.
 fn stranded(c: Town, x: Town) -> ?Town:
     if not tree.is_anc(c, x): return none
     let child = tree.step(c, x, 1)?
-    if low[child] < Int(tree.pos(c)): none else: child
+    if low[child] < tree.pos(c): none else: child
 
 fn answer(ok: Bool): print(if ok: "yes" else: "no")
 
@@ -29,7 +29,7 @@ for _ in 0..q:
         let (u, v): (Town, Town) = read()
         let (top, bottom) = if tree.is_anc(u, v): (u, v) else: (v, u)
         // closing a road matters only if it is a bridge with a and b on opposite sides
-        answer(low[bottom] <= Int(tree.pos(top)) or tree.is_anc(bottom, a) == tree.is_anc(bottom, b))
+        answer(low[bottom] <= tree.pos(top) or tree.is_anc(bottom, a) == tree.is_anc(bottom, b))
     else:
         let c: Town = read()
         answer(stranded(c, a) == stranded(c, b))

@@ -2,7 +2,7 @@
 // is not a multiple of a[1..i] all at once (of their lcm), or -1.
 use std.seq.{bsearch_first}
 
-const CAP = 2_000_000_000               // above every query: nothing divides past it
+const CAP = 2e9                         // above every query: nothing divides past it
 let (n, q): (1..=1e6, 1..=1e6) = read()
 domain I = 1..=n
 let a: [I]1..=1e9 = read()

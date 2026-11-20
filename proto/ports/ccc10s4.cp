@@ -6,22 +6,19 @@
 let pens: 1..=100 = read()
 domain Pen = 0..=pens                   // pen 0 is the outside
 
-var sides: List<(a: Int, b: Int, cost: Int, pen: Pen)> = []
-for pen in Pen if pen != Pen.first:
+// a fence is one side of two pens, or of one pen and the outside
+var fences: List<(cost: Int, u: Pen, v: Pen)> = []
+var open = Map<(Int, Int), (cost: Int, pen: Pen)>()     // sides seen once so far
+for pen in Pen.first.r..:
     let m: 3..=8 = read()
     let posts: [0..m]1..=1000 = read()
     let costs: [0..m]1..=5000 = read()
     for j in 0..m:
         let (a, b) = (posts[j], posts[(j + 1) % m])
-        sides.push((min(a, b), max(a, b), costs[j], pen))
-sort(mut sides)
-
-// a fence is one side of two pens, or of one pen and the outside
-var fences: List<(cost: Int, u: Pen, v: Pen)> = []
-for j in 0..sides.len:
-    let (a, b, cost, pen) = sides[j]
-    if j + 1 < sides.len and (sides[j + 1].a, sides[j + 1].b) == (a, b): fences.push((cost, pen, sides[j + 1].pen))
-    elif j == 0 or (sides[j - 1].a, sides[j - 1].b) != (a, b): fences.push((cost, pen, Pen.first))
+        let side = (min(a, b), max(a, b))
+        if let other = open.remove(side): fences.push((costs[j], pen, other.pen))
+        else: open[side] = (costs[j], pen)
+for (_, (cost, pen)) in open: fences.push((cost, pen, Pen.first))
 sort(mut fences)
 
 fn spanning(outside: Bool) -> ?Int:

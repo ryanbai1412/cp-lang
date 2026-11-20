@@ -11,8 +11,7 @@ let portals: [0..q](a: Planet, b: Planet, cost: 1..=1e8) = read()   // one copy 
 enum Link:
     Flight(a: City, b: City)
     Portal(a: Planet, b: Planet)
-var links: List<(cost: Int, link: Link)> = [(f.cost, Flight(f.a, f.b)) for f in flights]
-for g in portals: links.push((g.cost, Portal(g.a, g.b)))
+let links: List<(cost: Int, link: Link)> = [(f.cost, Flight(f.a, f.b)) for f in flights] + [(g.cost, Portal(g.a, g.b)) for g in portals]
 
 // Kruskal on the product graph without building it: a flight that joins two
 // groups of cities is kept once for each group of planets, and vice versa.

@@ -22,6 +22,15 @@ noip10p3 noip14p3.
 `ccc10s4`'s generator keeps the pens connected: the original C++ sums a
 spanning forest when they are not, and the port insists on a spanning tree.
 
+## Blind critic
+
+An independent session that never saw the author's reasoning then attacked
+every line. `CRITIC.md` is its report: 30 rewrites that pass the gates, all
+applied here, 39 cleaner spellings the Rust `cpl` or the stdlib does not
+allow yet, each with the exact error, and one bug: the first `dpg` recursed
+with `@memo` and its emitted C++ overflowed the stack on a 100000-vertex
+chain, so it now walks a topological order.
+
 ## Blocked on the Rust compiler
 
 Only ports whose clean 0.2.2 form passes the Rust gates today are in the wave;

@@ -3,23 +3,20 @@
 // of every x that covers it, so take the lcm; then just check the gcds.
 let (n, q): (1..=150000, 1..=100000) = read()
 domain I = 1..=n
-domain X = 1..=16
-let reqs: [0..q](l: I, r: I, x: X) = read()
+let reqs: [0..q](l: I, r: I, x: 1..=16) = read()
 
-// opens[x][i] - closes[x][i]: requirements with value x that start / end at i
-var opens: [X, I]Int = 0
-var closes: [X, I]Int = 0
+// delta[x, b]: change at boundary b in how many requirements with value x are open
+var delta: [0..=16, I.bounds]Int = 0
 for (l, r, x) in reqs:
-    opens[x, l] += 1
-    closes[x, r] += 1
+    delta[x, l.l] += 1
+    delta[x, r.r] -= 1
 
 var a: [I]Int = 1
-for x in X:
+for x in 1..=16:
     var open = 0
     for i in I:
-        open += opens[x, i]
-        if open > 0: a[i] = lcm(a[i], Int(x))
-        open -= closes[x, i]
+        open += delta[x, i.l]
+        if open > 0: a[i] = lcm(a[i], x)
 
 let gcds = SegTree<I, Int>(gcd, a)
-if all(gcds.fold(l..=r) == Int(x) for (l, r, x) in reqs): print(a) else: print("Impossible")
+if all(gcds.fold(l..=r) == x for (l, r, x) in reqs): print(a) else: print("Impossible")

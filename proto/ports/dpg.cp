@@ -1,12 +1,12 @@
 // AtCoder DP G Longest Path: the longest path in a DAG, in edges.
+use std.graph.{topo}
+
 let (n, m): (2..=1e5, 1..=1e5) = read()
 domain V = 1..=n
-let edges: [0..m](u: V, v: V) = read()
+domain E = 0..m
+let dag = Graph<V, E>.directed(read())
 
-var out: [V]List<V> = []
-for (u, v) in edges: out[u].push(v)
-
-@memo
-fn longest(u: V) -> Int:
-    max(longest(v) + 1 for v in out[u]) ?? 0
-print(max(longest(v) for v in V))
+var longest: [V]Int = 0
+for u in topo(dag)!.rev:                // every edge leads to an already finished vertex
+    for (v, _) in dag.out(u): longest[u] max= longest[v] + 1
+print(max(longest))

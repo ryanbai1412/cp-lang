@@ -16,22 +16,22 @@ for (u, v, ways) in roads:
         fwd[v].push(u)
         back[u].push(v)
 
-// For every city `from` reaches along adj: the best price (smallest key) met on the way.
-fn spread(adj: [City]List<City>, from: City, key: Int -> Int) -> [City]?Int:
+// For every city `from` reaches along adj: the best price (by `pick`) met on the way.
+fn spread(adj: [City]List<City>, from: City, pick: (Int, Int) -> Int) -> [City]?Int:
     var best: [City]?Int = none
     var queue = Deque<City>()
-    best[from] = key(price[from])
+    best[from] = price[from]
     queue.push(from)
     while let u = queue.pop_front():
         for v in adj[u]:
-            let via = min(best[u]!, key(price[v]))
-            if best[v] == none or via < best[v]!:
+            let via = pick(best[u]!, price[v])
+            if best[v] != pick(best[v] ?? via, via):
                 best[v] = via
                 queue.push(v)
     best
 
-let cheapest = spread(fwd, City.first, p => p)
-let dearest = spread(back, City.last, p => -p)
+let cheapest = spread(fwd, City.first, min)
+let dearest = spread(back, City.last, max)
 var profit = 0
-for c in City: profit max= -dearest[c] - cheapest[c]
+for c in City: profit max= dearest[c] - cheapest[c]
 print(profit)
