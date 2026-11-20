@@ -1,0 +1,8 @@
+[package]
+name = "cpl-prover"
+description = "Prover for invariants and laws: index bounds, overflow freedom, disjoint lends and algebraic laws, with counterexamples."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
