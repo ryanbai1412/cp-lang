@@ -8,9 +8,9 @@ each one against its original C++ submission. Drafts and final ports are in
 
 The short version: **the language on the sheet is pleasant and I got the algorithms right first
 time on all eight, but the sheet and the prototype are two different dialects.** One draft of
-eight built unchanged. The other seven failed on 17 distinct errors, and every one of them was
-a sheet-vs-prototype mismatch or a hole in the sheet, not an algorithm bug. Once a draft built,
-it passed the differential test on the first run in seven of eight cases (the eighth needed
+eight built unchanged. The other seven failed on the errors logged below, and all but one of those (entry 21) is a
+sheet-vs-prototype mismatch or a hole in the sheet, not an algorithm bug. Once a draft built,
+it passed the differential test on its first run in seven of eight cases (the eighth needed
 the original's `1e9` cap for an unbounded answer).
 
 ## What was tested
@@ -35,8 +35,8 @@ A ninth problem, `btoi19p2` (grid + `Bitset<Col>` shifts), was drafted and porte
 because `scout_batch_20` landed a port of it while this run was in progress. Its two errors are
 still in the log below because they are real cheat-sheet findings.
 
-There is no strings + binary search problem in the set: I could not find an unported AC
-submission in the corpus that combines the two. `ioi09p6` (character grid + binary search on
+There is no strings + binary search problem in the set: a quick filter of the unported AC
+submissions (short files mentioning strings plus hashing, KMP, Z or suffix structures) found none. `ioi09p6` (character grid + binary search on
 the answer) is the closest. So `z_func`, `kmp`, `SuffixArray` and `RollingHash` are untested
 here.
 
@@ -101,13 +101,14 @@ for (r, c) in p.around():
 ```
 
 Related: the sheet does not say whether a `(R, C)` tuple can index a grid (`bee[p]`,
-`seen[start]`). I assumed yes. If the answer is no, `around()` loses half its value.
+`seen[start]`). I assumed yes, and the prototype does accept `g[p]`; the sheet should say so,
+because `around()` loses half its value without it.
 
 **Fenwick and lazy segment tree spellings do not match.** The sheet says
 `LazySegTree<C, Int>(AddMax, a)` with `.apply(l..=r, d)` / `.fold(l..=r)`; the prototype has
 `AddMax<C>()` with `.add(l, r, d)` / `.max()`. The sheet says `Fenwick<D, Int>(a)` with
-`.sum(l..=r)`; I could not get a Fenwick out of `proto/cpc` quickly and hand-rolled one in
-`aac5p5` (20 extra lines, the largest draft-to-final growth).
+`.sum(l..=r)`; `proto/cpc` answers `unknown type Fenwick`, so I hand-rolled one in `aac5p5` (20 extra
+lines).
 
 **`compress` returns three things on the sheet and two in the prototype**, and neither shape
 is the one I wanted. With the 3-tuple I guessed that the middle array maps input position to
@@ -160,7 +161,7 @@ Errors are in the order hit, one build at a time, quoted from `python3 proto/cp.
 `coci21c2p5_draft.cp`
 
 10. `error: line 9: unknown name compress` on `let (C, id, _) = compress(all)` (the prototype only knows the 2-tuple form). Fix: `let (C, coord) = compress(all)` plus `coord.first_ge(x)!`.
-11. `LazySegTree<C, Int>(AddMax, [C] c => 0)`, `.apply(l..=r, d)`, `.fold(C.first..=C.last)` do not exist. Fix: `AddMax<C>()`, `.add(l, r, d)`, `.max()`.
+11. `error: line 3: unknown type LazySegTree` on `LazySegTree<C, Int>(AddMax, [C] c => 0)` (checked in isolation). Fix: `AddMax<C>()`, `.add(l, r, d)`, `.max()`.
 
 `cmt21r1xym_draft.cp`
 
@@ -173,12 +174,12 @@ Errors are in the order hit, one build at a time, quoted from `python3 proto/cp.
 `aac5p5_draft.cp`
 
 17. `error: line 17:29: expected an expression (at '=')` on `(by_y[h.y] ??= []).push((cx(h.x1), cx(h.x2)))`. Fix: compress y and group in a `[Y]List<(Int, Int)>`.
-18. Not built further as drafted: `sort(mut xs)` + `dedup(mut xs)` + `xs.first_ge(x)!` as a hand compression, `Fenwick<0..K, Int>()` with `.sum(l..=r)`, a nested `fn upd` declared inside a `for` body, and `for (y, s) in by_y.items` were all replaced when the port moved to `compress` and a hand-rolled Fenwick. The rewrite then hit error 16 again (`[0..=K]Int` parameter vs global).
+18. The rest of the draft was replaced rather than fixed line by line. Checked in isolation: `sort(mut xs)` gives `error: line 2: \`mut\` arguments are only for user fns with mut parameters` (the prototype wants `xs.sort()`), and `Fenwick<R, Int>()` gives `error: line 3: unknown type Fenwick`. Not checked: a nested `fn upd` declared inside a `for` body and `for (y, s) in by_y.items`. The rewrite to `compress` and a hand-rolled Fenwick then hit error 16 again (`[0..=K]Int` parameter vs global).
 
 `ioi09p6_draft.cp`
 
 19. `error: line 21:47: expected an expression (at 'let')` on `return if let b = bee[p]: b > t else: true`. The sheet has inline `if` and `if let` but does not say they do not combine.
-20. `Deque`, `p.around()`, tuple-indexed grids, `first(... for ...)` and `bsearch_last(0..=hi, t => check(t))` are all absent from the prototype. Fix: see the friction section.
+20. Checked in isolation: `error: line 1: unknown type Deque`, `error: line 4: (f0: R, f1: R) has no method \`around\``, `error: line 2: unknown name first`, `error: line 2: unknown name bsearch_last`. Fix: see the friction section; the binary search is a hand-written loop.
 21. Wrong answer after it built: `4` vs `1000000000` when the bees can never reach the bear. Mine, not the language's: my search range was `n * n`, the original's is `1e9`.
 
 `btoi19p2_draft.cp` (dropped from the set, see above)
@@ -206,7 +207,8 @@ name a `domain` when you want index safety". At minimum fix the diagnostic to pr
 `.sum(l..=r)` / `.apply(l..=r, d)` / `.fold(l..=r)` (sheet) or `.sum(l, r)` / `.add(l, r, d)` /
 `.max()` (prototype) and use it for `Fenwick`, `SegTree` and `LazySegTree` alike. Then make
 `Fenwick<D, Int>()`, `Deque<T>`, `Bitset<D>` and `Comb<P>(n)` exist in `proto/cpc`: those four
-missing tools account for most of the 41 lines the final ports grew over the drafts.
+missing tools, plus `around()`, account for most of the 55 lines the final ports grew over the
+drafts.
 
 **4. Give `compress` a value-to-index lookup.** Both shapes forced a detour. Something like
 
@@ -221,7 +223,7 @@ removes the positional `id[2 * i]` guess and the repeated `coord.first_ge(x)!`.
 they cost me:
 
 - Container construction: say `var h: MinHeap<T> = []` works for every container, or show `MinHeap<T>()`. And either give heaps `.is_empty` or stop saying every container has it.
-- Whole-array reset: `a.fill(x)` or allow `a = x` after declaration.
+- Whole-array reset: `a.fill(x)` or allow `a = x` after declaration (`a = 0` today: `expected [range]Int, got Int[0..=0]`).
 - `x min= y` with an optional right side (skip `none`), since `dist` arrays are `?Int` by design.
 - `if let` as an expression, or a note that it is statement-only.
 - Whether a `(R, C)` tuple indexes a `[R, C]T` grid.
