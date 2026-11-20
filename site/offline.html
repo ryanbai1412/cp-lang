@@ -69,6 +69,13 @@
     if (name === activePage) { scrollToAnchor(); return; }
     activePage = name;
     let page = data.pages[name];
+    if (data.sidebar) {
+      const side = data.sidebar.replace('href="' + name + '"', 'href="' + name + '" aria-current="page"');
+      page = page.replace("<!--sidebar-->", () => side);
+    }
+    if (data.search_dialog) {
+      page = page.replace("<!--search-dialog-->", () => data.search_dialog);
+    }
     page = page.replace('<link rel="stylesheet" href="assets/style.css">', () => "<style>" + data.css + "</style>");
     page = page.replace('<script src="assets/theme.js"><' + '/script>', () => script(data.theme));
     page = page.replace('<script src="assets/app.js" defer><' + '/script>', "");
