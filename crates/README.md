@@ -156,6 +156,12 @@ library-stripped line counts and the latency benchmark
 (`plan/80-validation.md`, `crates/cpl-verify/README.md`). It tests
 `proto/cpc/` today and the crates above as they land.
 
+**`cpl-prover`** (`crates/prover/`) is the prover for `invariant`, `law`
+and the range checker: index bounds, overflow freedom, `law disjoint` and
+the algebraic laws of the standard library, each answered with a proof or
+a concrete counterexample (`crates/prover/README.md`). It stands alone
+until the checker calls it.
+
 ```text
 $ cargo test            # must pass before every push to main
 $ cargo run -p cpl-cli -- --version
