@@ -362,6 +362,21 @@ template <ll M> struct Opt<Mod<M>> {
     bool operator!=(const Opt& o) const { return v != o.v; }
 };
 
+// Comb<P>(n): factorials modulo a prime P up to n; choose and arrange are 0 outside 0 <= k <= n
+template <class M> struct CpComb {
+    vector<M> f, g;
+    explicit CpComb(ll n = 0) : f((size_t)n + 1, M(1)), g((size_t)n + 1, M(1)) {
+        for (ll i = 1; i <= n; ++i) f[(size_t)i] = f[(size_t)i - 1] * M(i);
+        g[(size_t)n] = M(1) / f[(size_t)n];
+        for (ll i = n; i > 0; --i) g[(size_t)i - 1] = g[(size_t)i] * M(i);
+    }
+    void chk(ll k, int line) const { if (k < 0 || k >= (ll)f.size()) cp_fail("Comb: argument beyond the bound it was built with", line); }
+    M fact(ll k, int line) const { chk(k, line); return f[(size_t)k]; }
+    M inv_fact(ll k, int line) const { chk(k, line); return g[(size_t)k]; }
+    M choose(ll n, ll k, int line) const { if (k < 0 || k > n || n < 0) return M(0); chk(n, line); return f[(size_t)n] * g[(size_t)k] * g[(size_t)(n - k)]; }
+    M arrange(ll n, ll k, int line) const { if (k < 0 || k > n || n < 0) return M(0); chk(n, line); return f[(size_t)n] * g[(size_t)(n - k)]; }
+};
+
 // ---- input
 static char cp_ibuf[1 << 16]; static size_t cp_ipos = 0, cp_ilen = 0;
 static inline int cp_getc() {
