@@ -592,6 +592,13 @@ class Compiler:
             return f"(ll)({a} - {b})", TInt(-255, 255)
         if not (isinstance(at, TInt) and isinstance(bt, TInt)):
             self.error(e, f"`{op}` needs Int operands, got {at!r} and {bt!r}")
+        if op in "+-*":
+            # Operands that fit in 32 bits can both be C++ `int` (literals are); when the
+            # result may not fit, compute it in 64 bits.
+            small = lambda t: None not in (t.lo, t.hi) and -2**31 <= t.lo and t.hi < 2**31
+            lo, hi = {"+": iv_add, "*": iv_mul}[op](at, bt) if op != "-" else iv_add(at, TInt(*iv_neg(bt)))
+            if small(at) and small(bt) and not small(TInt(lo, hi)):
+                a = f"(ll){a}"
         if op == "+":
             return f"({a} + {b})", self.int_result(e, *iv_add(at, bt))
         if op == "-":
@@ -1648,9 +1655,11 @@ class Compiler:
             self.emit(f"{'' if s.mut else 'const '}{self.cpp_type(decl_t)} {cpp} = {c};")
         self.declare(name, decl_t, cpp, s.mut, s)
         if isinstance(decl_t, TInt):
-            if s.mut and ty is None:
-                self.contrib.setdefault(id(s), []).append((vt.lo, vt.hi))
-            elif not s.mut and ty is None:
+            if s.mut:
+                # A declared type bounds the variable; without one the initializer starts the range.
+                src = vt if ty is None else decl_t
+                self.contrib.setdefault(id(s), []).append((src.lo, src.hi))
+            elif ty is None:
                 self.var_iv[id(s)] = (vt.lo, vt.hi)
         if getattr(s, "where", None) is not None:
             self.emit_where(s.where, s)
@@ -2943,8 +2952,8 @@ def render(comp):
     def keep(m):
         name, body = m.group(1), m.group(2)
         rest = code[:m.start()] + code[m.end():]
-        return body if re.search(r"\b" + name + r"\b", rest) else ""
-    code = re.sub(r"// @part (\w+)\n(.*?)// @end\n", keep, code, flags=re.S)
+        return body if re.search(r"\b(?:" + name + r")\b", rest) else ""
+    code = re.sub(r"// @part ([\w|]+)\n(.*?)// @end\n", keep, code, flags=re.S)
     return (code,) + tuple(res[1:]) if isinstance(res, tuple) else code
 
 

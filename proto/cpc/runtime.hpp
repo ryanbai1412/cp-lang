@@ -142,7 +142,7 @@ static string cp_obuf;
 static inline void out_int(ll x) { char b[24]; int n = 0; bool neg = x < 0; unsigned long long u = neg ? -(unsigned long long)x : x; do b[n++] = '0' + u % 10; while (u /= 10); if (neg) cp_obuf += '-'; while (n) cp_obuf += b[--n]; }
 static inline void out_str(const string& s) { cp_obuf += s; }
 static inline void out_char(char c) { cp_obuf += c; }
-// @part cp_ediv
+// @part cp_ediv|cp_emod
 static inline ll cp_emod(ll a, ll b) { ll r = a % b; return r < 0 ? r + (b < 0 ? -b : b) : r; }
 static inline ll cp_ediv(ll a, ll b) { return (a - cp_emod(a, b)) / b; }
 // @end
