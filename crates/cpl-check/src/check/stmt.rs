@@ -447,6 +447,7 @@ impl<'a> Checker<'a> {
                 let target_ty = self.infer(target);
                 let value_ty = self.infer(value);
                 self.map_fold(target, *op, value);
+                self.assign_alias(target, *op, value);
                 self.require_mutable(target, "assigned");
                 self.check_access(target, true);
                 if let Some((root, _)) = Self::root_name(target) {
@@ -485,7 +486,10 @@ impl<'a> Checker<'a> {
                 self.push_scope();
                 self.drop_facts_written(body, Some(pat));
                 self.bind(pat, &elem, false, "for");
+                let mark = self.lend_mark();
+                self.hold_iterated(stmt, iter, &iter_ty);
                 self.block(body);
+                self.lend_reset(mark);
                 self.pop_scope();
             }
             StmtKind::Return(value) => {

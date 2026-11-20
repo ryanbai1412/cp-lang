@@ -99,20 +99,12 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
 /// Failing tests this checker still accepts: each needs a rule it does
 /// not have yet. A name leaves this list when its case is rejected for
 /// its stated reason, and the test below says so.
-const NOT_YET: &[&str] = &[
-    // What a fn changes through the globals it names, followed through
-    // the fns it calls.
-    "rt_arg_grows_lent",
-    "rt_assign_pop_alias",
-    "rt_compound_alias",
-    "rt_fact_captured_write",
-    "rt_for_fn_push",
-    "rt_for_push",
-    "rt_hold_captured_write",
-    "rt_hold_captured_write_deep",
-    "rt_minassign_twice",
-    "rt_mut_arg_captured",
-];
+const NOT_YET: &[&str] = &[];
+
+/// Failing tests that state a limit of the prototype's code generator,
+/// not a rule of the language. `a[nx()] max= 4` evaluates `a[nx()]` once
+/// here (`tests/programs/semantics.cp`), so there is nothing to reject.
+const PROTOTYPE_ONLY: &[&str] = &["rt_minassign_twice"];
 
 /// The reason a failing test states on its first line: `// error: <text>`.
 fn stated_reason(text: &str) -> Option<&str> {
@@ -148,9 +140,17 @@ fn each_failing_test_is_rejected_for_its_stated_reason() {
             "use_unknown_name" => "`std.dsu` has no `Union`",
             "span_two_domains" => "span of an I and a J",
             "rt_min_empty_slice" => "`k` is declared an Int, but `max(a[f..f])` is an ?Int",
+            // A message names no line: the loop is pointed at instead.
+            "rt_for_fn_push" => {
+                "`grow` can't be called here: it changes `xs`, and the `for` loop is going over `xs`"
+            }
+            "rt_for_push" => "the `for` loop is going over `xs`",
             _ => reason,
         };
         cases += 1;
+        if PROTOTYPE_ONLY.contains(&name.as_str()) {
+            continue;
+        }
         let out = check(&path);
         if NOT_YET.contains(&name.as_str()) {
             if out.code != 0 && out.stderr.contains(reason) {
