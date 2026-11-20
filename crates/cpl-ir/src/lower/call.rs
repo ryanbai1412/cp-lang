@@ -1665,6 +1665,29 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+        // Deeper in, a domain this `read()` names has no size yet: reading
+        // would take no values at all and go on.
+        fn names_domain(spec: &Spec, own: &std::collections::HashSet<DomainId>) -> bool {
+            match spec {
+                Spec::Fields(_, fields) => fields.iter().any(|f| names_domain(f, own)),
+                Spec::Opt(inner) => names_domain(inner, own),
+                Spec::Array { dims, elem } => {
+                    dims.iter().any(|d| matches!(d, DimSpec::Pos(d) if own.contains(d)))
+                        || names_domain(elem, own)
+                }
+                _ => false,
+            }
+        }
+        if names_domain(&spec, &self.own_domains) {
+            let shown = self.show(&spec.ty());
+            self.error(
+                codes::UNSUPPORTED,
+                span,
+                format!("`read()` can't size a domain named inside a `{shown}`"),
+            );
+            self.help("read it on its own: `let s: [domain S]Char = read()`, then the rest".to_string());
+            return self.err_expr(span);
+        }
         let ty = spec.ty();
         self.mk(ExprKind::Read(Box::new(spec)), ty, span)
     }

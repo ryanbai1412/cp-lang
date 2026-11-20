@@ -310,12 +310,23 @@ inline __int128 abs128(__int128 x) { return x < 0 ? -x : x; }
         needs: &[],
         code: "\
 inline __int128 shl128(__int128 a, ll b) {
-#ifdef LOCAL
     if (b < 0 || b >= 128) { fputs(\"a shift is outside 0..128\\n\", stderr); exit(3); }
+#ifdef LOCAL
     if (a < 0) { fputs(\"`<<` of a negative number\\n\", stderr); exit(3); }
     if (b > 0 && (a >> (127 - b)) != 0) { fputs(\"integer overflow: the result does not fit in an `I128` (128 bits)\\n\", stderr); exit(3); }
 #endif
     return (__int128)((unsigned __int128)a << b);
+}
+",
+    },
+    Piece {
+        name: "shamt",
+        needs: &[],
+        code: "\
+// How far a shift goes: inside 0..w, or the program stops.
+inline ll shamt(ll b, ll w) {
+    if (__builtin_expect((unsigned long long)b >= (unsigned long long)w, 0)) { fprintf(stderr, \"a shift by %lld is outside 0..%lld\\n\", b, w); exit(3); }
+    return b;
 }
 ",
     },
@@ -338,15 +349,11 @@ template <class O, std::enable_if_t<!std::is_lvalue_reference<O>::value, int> = 
         needs: &[],
         code: "\
 inline unsigned long long udiv(unsigned long long a, unsigned long long b) {
-#ifdef LOCAL
     if (b == 0) { fputs(\"division by zero\\n\", stderr); exit(3); }
-#endif
     return a / b;
 }
 inline unsigned long long umod(unsigned long long a, unsigned long long b) {
-#ifdef LOCAL
     if (b == 0) { fputs(\"division by zero\\n\", stderr); exit(3); }
-#endif
     return a % b;
 }
 ",
@@ -356,9 +363,7 @@ inline unsigned long long umod(unsigned long long a, unsigned long long b) {
         needs: &[],
         code: "\
 template <class T> inline T wpow(T a, T b) {
-#ifdef LOCAL
     if (b < 0) { fputs(\"`**` needs a power that is not negative\\n\", stderr); exit(3); }
-#endif
     T r = 1; while (b > 0) { if (b & 1) r *= a; b >>= 1; if (b) a *= a; } return r; }
 ",
     },
@@ -367,9 +372,7 @@ template <class T> inline T wpow(T a, T b) {
         needs: &[],
         code: "\
 inline ll ipow(ll a, ll b) {
-#ifdef LOCAL
     if (b < 0) { fputs(\"`**` needs a power that is not negative\\n\", stderr); exit(3); }
-#endif
     ll r = 1; while (b > 0) { if (b & 1) r *= a; b >>= 1; if (b) a *= a; } return r; }
 ",
     },

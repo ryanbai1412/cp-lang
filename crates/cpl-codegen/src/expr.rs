@@ -917,6 +917,16 @@ impl<'p> Emitter<'p> {
         }
     }
 
+    /// How far a shift goes, held to `0..width` in every build: outside
+    /// it C++ gives garbage. A literal inside the range needs no test.
+    fn shift_amount(&mut self, b: &Code, width: i64) -> Code {
+        if b.text.parse::<i64>().is_ok_and(|n| (0..width).contains(&n)) {
+            return Code::new(b.text.clone(), b.prec);
+        }
+        self.need("shamt");
+        Code::primary(format!("cpl::shamt({}, {width})", b.text))
+    }
+
     fn binary(&mut self, e: &Expr, op: BinOp, l: &Expr, r: &Expr) -> Code {
         match op {
             BinOp::And => {
@@ -1025,9 +1035,11 @@ impl<'p> Emitter<'p> {
                 code
             }
             (Ty::Int, BinOp::Shl) => {
+                let b = self.shift_amount(b, 64);
                 Code::new(format!("{} << {}", widen(a).at(UNARY), b.at(UNARY)), SHIFT)
             }
             (Ty::Int, BinOp::Shr) => {
+                let b = self.shift_amount(b, 64);
                 let mut code = Code::new(format!("{} >> {}", a.at(UNARY), b.at(UNARY)), SHIFT);
                 code.narrow = a.narrow;
                 code
@@ -1060,6 +1072,7 @@ impl<'p> Emitter<'p> {
             }
             (Ty::I128 | Ty::U64, BinOp::Shl | BinOp::Shr) => {
                 let sym = if op == BinOp::Shl { "<<" } else { ">>" };
+                let b = self.shift_amount(b, if l.ty == Ty::I128 { 128 } else { 64 });
                 Code::new(format!("{} {sym} {}", a.at(UNARY), b.at(UNARY)), SHIFT)
             }
             (Ty::Float, BinOp::Pow) => Code::primary(format!("std::pow({}, {})", a.text, b.text)),

@@ -388,6 +388,7 @@ impl<'a> Checker<'a> {
                         result = ty.widen();
                     }
                 }
+                self.require_every_variant(&scrutinee_ty, arms, expr.span);
                 result
             }
             ExprKind::With { base, updates } => {
@@ -430,6 +431,55 @@ impl<'a> Checker<'a> {
                 _ => Ty::Unknown,
             },
             ExprKind::Missing | ExprKind::Error => Ty::Error,
+        }
+    }
+
+    /// A `match` on an enum whose variants hold nothing has an arm for
+    /// each of them, or one that takes whatever is left.
+    fn require_every_variant(&mut self, scrutinee: &Ty, arms: &[cpl_syntax::ast::Arm], span: Span) {
+        use cpl_syntax::ast::{Pattern, PatternKind};
+        let Ty::Named { name, .. } = scrutinee else {
+            return;
+        };
+        let Some(Def::Enum { variants, .. }) = self.env.type_def(name).as_deref().cloned() else {
+            return;
+        };
+        if variants.iter().any(|(_, fields)| !fields.is_empty()) {
+            return;
+        }
+        // `None`: the pattern takes every value.
+        fn named(pat: &Pattern, variants: &[(String, Vec<Ty>)], out: &mut Vec<String>) -> Option<()> {
+            match &pat.kind {
+                PatternKind::Variant { path, args } if args.is_empty() => {
+                    out.push(path.last()?.text.clone());
+                    Some(())
+                }
+                PatternKind::Name(n) if variants.iter().any(|(v, _)| v == n) => {
+                    out.push(n.clone());
+                    Some(())
+                }
+                PatternKind::Or(pats) => pats.iter().try_for_each(|p| named(p, variants, out)),
+                PatternKind::Literal(_) | PatternKind::Tuple(_) | PatternKind::Variant { .. } => Some(()),
+                PatternKind::Wildcard | PatternKind::Name(_) | PatternKind::Error => None,
+            }
+        }
+        let mut seen = Vec::new();
+        for arm in arms.iter().filter(|arm| arm.guard.is_none()) {
+            if named(&arm.pat, &variants, &mut seen).is_none() {
+                return;
+            }
+        }
+        let missing: Vec<String> = variants
+            .iter()
+            .filter(|(v, _)| !seen.contains(v))
+            .map(|(v, _)| format!("`{v}`"))
+            .collect();
+        if missing.is_empty() {
+            return;
+        }
+        let message = format!("this `match` has no arm for {}", missing.join(", "));
+        if let Some(diag) = self.error(codes::BAD_OPERANDS, span, message) {
+            diag.help = Some("add an arm for each, or `_:` for whatever is left".to_string());
         }
     }
 

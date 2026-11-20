@@ -236,6 +236,61 @@ fn int_min_over_minus_one_stops() {
     assert_agree(three_way("int_division", INT_DIVISION, &cases));
 }
 
+const SHIFTS: &str = "\
+let q: Int = read()
+for _ in 0..q:
+    let (op, a, k): (Int, Int, Int) = read()
+    if op == 0: print(a << k)
+    elif op == 1: print(a >> k)
+    elif op == 2: print(a ** k)
+    elif op == 3: print(U64(a) << k, U64(a) >> k)
+    else: print(I128(a) >> k)
+";
+
+#[test]
+fn shifts_and_powers_inside_their_range() {
+    let rows = [(0, 1, 0, "1"), (0, 3, 61, "6917529027641081856"), (1, -8, 63, "-1"), (1, 9, 2, "2"), (2, 2, 0, "1"), (2, -3, 3, "-27"), (3, 1, 63, "9223372036854775808 0"), (4, -8, 127, "-1")];
+    let input = rows.iter().fold(format!("{}\n", rows.len()), |s, (op, a, k, _)| s + &format!("{op} {a} {k}\n"));
+    let out = rows.iter().map(|r| format!("{}\n", r.3)).collect();
+    assert_agree(three_way("shifts", SHIFTS, &[(input, Expect::Prints(out))]));
+}
+
+#[test]
+fn a_shift_outside_its_width_or_a_negative_power_stops() {
+    let rows = [(0, 1, 64), (0, 1, -1), (1, 1, 64), (1, 1, -1), (2, 2, -1), (3, 1, 64), (3, 1, -1), (4, 1, 128), (4, 1, -1)];
+    let cases: Vec<_> = rows.iter().map(|(op, a, k)| (format!("1\n{op} {a} {k}\n"), Expect::Traps)).collect();
+    assert_agree(three_way("shifts", SHIFTS, &cases));
+}
+
+const BIG_MOD: &str = "\
+type Z = Mod<1000000000000000003>
+let m: Int = read()
+type Y = Mod<m>
+let q: Int = read()
+for _ in 0..q:
+    let (a, b, e): (Int, Int, Int) = read()
+    print(Z(a) * Z(b), Z(a).pow(e), Y(a) * Y(b), Y(a).pow(e))
+";
+
+#[test]
+fn a_modulus_whose_square_does_not_fit() {
+    let big = 1_000_000_000_000_000_003i128;
+    let pow = |x: i128, e: i64, p: i128| (0..e).fold(1 % p, |acc, _| acc * x.rem_euclid(p) % p);
+    for m in [4_000_000_007i128, 3_037_000_500, 3_037_000_499, 4_611_686_018_427_387_847] {
+        let rows = [(big as i64 - 1, big as i64 - 2, 5), (i64::MAX, i64::MAX, 3), (-1, i64::MIN + 1, 7), (m as i64 - 1, m as i64 - 1, 2), (0, 5, 0)];
+        let input = rows.iter().fold(format!("{m}\n{}\n", rows.len()), |s, (a, b, e)| s + &format!("{a} {b} {e}\n"));
+        let out = rows
+            .iter()
+            .map(|&(a, b, e)| {
+                let (a, b) = (a as i128, b as i128);
+                let mul = |p: i128| a.rem_euclid(p) * b.rem_euclid(p) % p;
+                format!("{} {} {} {}\n", mul(big), pow(a, e, big), mul(m), pow(a, e, m))
+            })
+            .collect();
+        assert_agree(three_way("big_mod", BIG_MOD, &[(input, Expect::Prints(out))]));
+    }
+}
+
 const WIDE: &str = "\
 let q: Int = read()
 for _ in 0..q:

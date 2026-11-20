@@ -4,7 +4,8 @@
 //! type, takes no memory, and two moduli cannot be mixed by accident.
 //! The modulus may be a constant (`type Z = Mod<998244353>`) or a value read from
 //! the input (`let P: Int = read()`, then `type Z = Mod<P>`): one type serves both.
-//! `P * P` must fit in an `Int`, so `P < 3.03e9`.
+//! `P` may be anything below 2^62 (so `a + b` fits): above 3.03e9, where `P * P` no longer fits
+//! an `Int`, `*` multiplies in 128 bits.
 use std.algebra.{Monoid}
 use std.fenwick.{Fenwick}
 use std.math.{gcd}
@@ -56,7 +57,11 @@ impl Neg for Mod<P>:
     fn neg(a) = Mod(if a.v == 0: 0 else: P - a.v)
 
 impl Mul for Mod<P>:
-    fn mul(a, b) = Mod(a.v * b.v % P)
+    // The product of two residues fits an `Int` only below 3_037_000_500; a larger modulus
+    // multiplies in 128 bits. With a constant `P` the test is settled when the C++ is built.
+    fn mul(a, b) = Mod(
+        if P <= 3_037_000_499: a.v * b.v % P else: Int(I128(a.v) * I128(b.v) % I128(P))
+    )
 
 impl Div for Mod<P>:
     fn div(a, b) = a * b.inv
