@@ -481,3 +481,65 @@ fn bad_frames_and_bad_json_do_not_stop_the_server() {
     )
     .is_err());
 }
+
+#[test]
+fn imported_module_symbols_hover_and_jump_to_definition() {
+    let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let repo_root = manifest_dir
+        .parent()
+        .and_then(|p| p.parent())
+        .expect("workspace root");
+    let file_path = repo_root.join("_lsp_imported_test.cp");
+    let uri = format!("file://{}", file_path.display());
+    let src = "use std.mod.{Mod, Comb}\nlet c = Comb<1000000007>.new(10)\nprint(c.choose(5, 2).v)\n";
+
+    let mut server = Server::new();
+    server.handle(&request(1, "initialize", obj([])));
+    server.handle(&notification("initialized", obj([])));
+    let published = server.handle(&notification(
+        "textDocument/didOpen",
+        obj([(
+            "textDocument",
+            obj([
+                ("uri", uri.as_str().into()),
+                ("languageId", "cp".into()),
+                ("version", Value::Number(1.0)),
+                ("text", src.into()),
+            ]),
+        )]),
+    ));
+    assert_eq!(published.len(), 1);
+    let diags = published[0].at(&["params", "diagnostics"]).as_array();
+    assert!(diags.is_empty(), "unexpected diagnostics: {diags:?}");
+
+    let hover = server.handle(&request(
+        2,
+        "textDocument/hover",
+        obj([
+            ("textDocument", obj([("uri", uri.as_str().into())])),
+            ("position", pos(1, 9)),
+        ]),
+    ));
+    let hover_text = hover[0]
+        .at(&["result", "contents", "value"])
+        .as_str()
+        .unwrap_or("");
+    assert!(
+        hover_text.contains("Comb"),
+        "expected Comb hover, got: {hover_text}"
+    );
+
+    let def = server.handle(&request(
+        3,
+        "textDocument/definition",
+        obj([
+            ("textDocument", obj([("uri", uri.as_str().into())])),
+            ("position", pos(1, 9)),
+        ]),
+    ));
+    let def_uri = def[0].at(&["result", "uri"]).as_str().unwrap_or("");
+    assert!(
+        def_uri.ends_with("/stdlib/mod.cp"),
+        "expected definition in stdlib/mod.cp, got: {def_uri}"
+    );
+}

@@ -4,10 +4,17 @@
 //! behind `Rc` and copied on the first write, so the copy the language
 //! promises costs nothing until someone changes one side.
 
-use cpl_ir::{sep_of, Dim, Program, Sep, Ty};
+use cpl_ir::{sep_of, ClosureId, Dim, Program, Sep, Ty};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
+
+#[derive(Clone, Debug)]
+pub(crate) enum CaptureVal {
+    Val(Value),
+    StackRef(usize),
+    GlobalRef(usize),
+}
 
 #[derive(Clone, Debug, Default)]
 pub(crate) enum Value {
@@ -20,6 +27,12 @@ pub(crate) enum Value {
     Char(u8),
     Str(Rc<Vec<u8>>),
     Opt(Option<Rc<Value>>),
+    /// A half-open range `(lo, hi)`.
+    Range(i64, i64),
+    /// A runtime domain handle `(lo, len)`.
+    DomainVal(i64, i64),
+    /// A closure value referencing `Program::closures[id]` with captured environment.
+    Closure(ClosureId, Rc<Vec<CaptureVal>>),
     /// A tuple, record or struct: its fields.
     Tuple(Rc<Vec<Value>>),
     Enum(u32, Rc<Vec<Value>>),
@@ -75,13 +88,16 @@ impl Value {
             Value::Char(_) => 4,
             Value::Str(_) => 5,
             Value::Opt(_) => 6,
-            Value::Tuple(_) => 7,
-            Value::Enum(..) => 8,
-            Value::Array(_) => 9,
-            Value::List(_) => 10,
-            Value::Map(_) => 11,
-            Value::Set(_) => 12,
-            Value::Moved => 13,
+            Value::Range(..) => 7,
+            Value::DomainVal(..) => 8,
+            Value::Closure(..) => 9,
+            Value::Tuple(_) => 10,
+            Value::Enum(..) => 11,
+            Value::Array(_) => 12,
+            Value::List(_) => 13,
+            Value::Map(_) => 14,
+            Value::Set(_) => 15,
+            Value::Moved => 16,
         }
     }
 }
@@ -100,6 +116,9 @@ impl Ord for Value {
             (Value::Char(a), Value::Char(b)) => a.cmp(b),
             (Value::Str(a), Value::Str(b)) => a.cmp(b),
             (Value::Opt(a), Value::Opt(b)) => a.cmp(b),
+            (Value::Range(a1, a2), Value::Range(b1, b2)) => (a1, a2).cmp(&(b1, b2)),
+            (Value::DomainVal(a1, a2), Value::DomainVal(b1, b2)) => (a1, a2).cmp(&(b1, b2)),
+            (Value::Closure(a, _), Value::Closure(b, _)) => a.cmp(b),
             (Value::Tuple(a), Value::Tuple(b)) | (Value::List(a), Value::List(b)) => a.cmp(b),
             (Value::Enum(ta, a), Value::Enum(tb, b)) => ta.cmp(tb).then_with(|| a.cmp(b)),
             (Value::Array(a), Value::Array(b)) => a.data.cmp(&b.data),
@@ -134,6 +153,9 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
         Ty::Char => Value::Char(0),
         Ty::Str => Value::Str(Rc::new(Vec::new())),
         Ty::Opt(_) => Value::Opt(None),
+        Ty::Range(_) => Value::Range(0, 0),
+        Ty::DomainVal => Value::DomainVal(0, 0),
+        Ty::Fn(..) => Value::Unit,
         Ty::Tuple(items) => Value::tuple(items.iter().map(|t| zero(t, program)).collect()),
         Ty::Record(fields) => Value::tuple(fields.iter().map(|(_, t)| zero(t, program)).collect()),
         Ty::Struct(id) => Value::tuple(
@@ -156,8 +178,8 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
             data: Vec::new(),
         })),
         Ty::List(_) => Value::List(Rc::new(Vec::new())),
-        Ty::Map(..) => Value::Map(Rc::new(BTreeMap::new())),
-        Ty::Set(_) => Value::Set(Rc::new(BTreeSet::new())),
+        Ty::Map(..) | Ty::HashMap(..) => Value::Map(Rc::new(BTreeMap::new())),
+        Ty::Set(_) | Ty::HashSet(_) => Value::Set(Rc::new(BTreeSet::new())),
     }
 }
 
@@ -254,7 +276,7 @@ pub(crate) fn show(
                 rec(out, item, elem);
             }
         }
-        (Value::Set(items), Ty::Set(elem)) => {
+        (Value::Set(items), Ty::Set(elem) | Ty::HashSet(elem)) => {
             let sep = match sep_of(elem) {
                 Sep::None => Sep::Space,
                 sep => sep,
@@ -266,7 +288,7 @@ pub(crate) fn show(
                 rec(out, item, elem);
             }
         }
-        (Value::Map(entries), Ty::Map(key_ty, value_ty)) => {
+        (Value::Map(entries), Ty::Map(key_ty, value_ty) | Ty::HashMap(key_ty, value_ty)) => {
             for (i, (key, value)) in entries.iter().enumerate() {
                 if i > 0 {
                     out.push(b'\n');
@@ -274,6 +296,14 @@ pub(crate) fn show(
                 rec(out, key, key_ty);
                 out.push(b' ');
                 rec(out, value, value_ty);
+            }
+        }
+        (Value::Range(lo, hi), Ty::Range(inner)) => {
+            if let Ty::Pos(d) = **inner {
+                let dlo = domains[d].0;
+                let _ = write!(out, "{}..{}", lo + dlo, hi + dlo);
+            } else {
+                let _ = write!(out, "{lo}..{hi}");
             }
         }
         _ => {}

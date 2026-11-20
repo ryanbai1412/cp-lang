@@ -81,7 +81,7 @@ impl Scopes {
                         self.expr(hi);
                         step.iter().for_each(|e| self.expr(e));
                     }
-                    Iter::Seq(seq, _) => self.expr(seq),
+                    Iter::RangeVal(e, _) | Iter::Seq(e, _) => self.expr(e),
                 }
                 self.visible.push(BTreeSet::new());
                 self.declare(*slot);
@@ -96,6 +96,7 @@ impl Scopes {
                 self.expr(lo);
                 self.expr(len);
             }
+            Stmt::DefDomainFromVal { val, .. } => self.expr(val),
             Stmt::Break(_) | Stmt::Continue(_) | Stmt::Trap(..) => {}
         }
     }
@@ -128,13 +129,17 @@ impl Scopes {
                 self.place(place);
                 args.iter().for_each(|e| self.expr(e));
             }
-            ExprKind::Sort(place, key) => {
+            ExprKind::Sort(place, sort_by) => {
                 self.place(place);
-                if let Some((slot, key)) = key {
-                    self.visible.push(BTreeSet::new());
-                    self.declare(*slot);
-                    self.expr(key);
-                    self.visible.pop();
+                match sort_by {
+                    cpl_ir::SortBy::Natural => {}
+                    cpl_ir::SortBy::Key(slot, key) => {
+                        self.visible.push(BTreeSet::new());
+                        self.declare(*slot);
+                        self.expr(key);
+                        self.visible.pop();
+                    }
+                    cpl_ir::SortBy::Fn { func, .. } => self.expr(func),
                 }
             }
             _ => walk::children(e, &mut |child| self.expr(child)),

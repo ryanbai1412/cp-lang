@@ -47,7 +47,8 @@ fn a_dividend_that_may_be_negative_gets_the_branchless_fix() {
     );
     let cpp = cpp(source);
     assert!(
-        cpp.contains("inline ll modp(ll a, ll b) { ll r = a % b; return r + ((r >> 63) & b); }"),
+        cpp.contains("inline ll modp(ll a, ll b)")
+            && cpp.contains("return r + ((r >> 63) & b);"),
         "{cpp}"
     );
     // The helpers it does not call are not in the file.
@@ -149,4 +150,36 @@ fn without_its_source_the_file_says_so_and_is_otherwise_the_same() {
     );
     let code = |cpp: &str| cpp[cpp.find("#include").expect("includes")..].to_string();
     assert_eq!(code(&with), code(&without));
+}
+
+#[test]
+fn hash_map_uses_salted_splitmix64_cphash() {
+    let cpp = cpp(
+        "var hm: HashMap<Int, Int> = []\nhm[42] = 7\nprint(hm.get(42) ?? 0)\n",
+    );
+    assert!(cpp.contains("struct CpHash"), "{cpp}");
+    assert!(cpp.contains("splitmix64"), "{cpp}");
+    assert!(cpp.contains("steady_clock"), "{cpp}");
+    assert!(cpp.len() < 65536, "{} bytes", cpp.len());
+}
+
+#[test]
+fn generics_and_lends_emit_compact_readable_cpp() {
+    let source = "\
+struct Box<T>:
+    x: T
+
+impl<T> Box<T>:
+    fn get(self) -> T: self.x
+    fn mut_ref(mut self) lends mut T:
+        lend mut self.x
+
+var b = Box(x: 10)
+b.mut_ref() += 5
+print(b.get())
+";
+    let cpp = cpp(source);
+    assert!(cpp.starts_with("// t.cp: C++17 written by cpl "), "{cpp}");
+    assert!(cpp.contains("//     struct Box<T>:"), "{cpp}");
+    assert!(cpp.len() < 65536, "{} bytes", cpp.len());
 }

@@ -5,7 +5,7 @@ use crate::expr::string_literal;
 use crate::names::ident;
 use crate::walk::{self, Effects};
 use cpl_ir::{
-    AssignOp, BinOp, Block, Expr, ExprKind, Iter, LoopId, Place, PlaceKind, Spec, Stmt, Ty,
+    AssignOp, BinOp, Block, Expr, ExprKind, Iter, LoopId, Place, PlaceKind, SortBy, Spec, Stmt, Ty,
 };
 
 /// A block with a value that is statements and then the value, with no
@@ -50,7 +50,7 @@ impl<'p> Emitter<'p> {
         match &e.kind {
             ExprKind::Unit | ExprKind::Error => {}
             ExprKind::Print(args) => self.print_stmts(args, out),
-            ExprKind::Sort(place, key) => self.sort_stmts(place, key.as_ref(), out),
+            ExprKind::Sort(place, sort_by) => self.sort_stmts(place, sort_by, out),
             ExprKind::If(cond, then, otherwise) if e.ty == Ty::Unit => {
                 let cond = self.expr(cond).text;
                 self.line(out, &format!("if ({cond}) {{"));
@@ -72,40 +72,59 @@ impl<'p> Emitter<'p> {
         }
     }
 
-    pub fn sort_stmts(
-        &mut self,
-        place: &Place,
-        key: Option<&(usize, Box<Expr>)>,
-        out: &mut String,
-    ) {
+    pub fn sort_stmts(&mut self, place: &Place, sort_by: &SortBy, out: &mut String) {
         let mut p = self.place(place);
         if !self.place_is_plain(place) {
             let r = self.temp();
             self.line(out, &format!("auto& {r} = {p};"));
             p = r;
         }
-        let Some((slot, key)) = key else {
-            self.line(out, &format!("std::sort({p}.begin(), {p}.end());"));
-            return;
-        };
-        let elem = self.locals()[*slot].ty.clone();
-        let cpp = self.ty(&elem);
-        let param = if elem.is_scalar() {
-            format!("{cpp} {}", self.names[*slot])
+        let seq = if matches!(&place.ty, Ty::Array { dims, .. } if dims.len() > 1) {
+            format!("{p}.d")
         } else {
-            format!("const {cpp}& {}", self.names[*slot])
+            p
         };
-        let key_ty = self.ty(&key.ty);
-        let key_text = self.expr(key).text;
-        let (kf, a, b) = (self.temp(), self.temp(), self.temp());
-        self.line(
-            out,
-            &format!("auto {kf} = [&]({param}) -> {key_ty} {{ return {key_text}; }};"),
-        );
-        self.line(
-            out,
-            &format!("std::stable_sort({p}.begin(), {p}.end(), [&](const auto& {a}, const auto& {b}) {{ return {kf}({a}) < {kf}({b}); }});"),
-        );
+        match sort_by {
+            SortBy::Natural => {
+                self.line(out, &format!("std::sort({seq}.begin(), {seq}.end());"));
+            }
+            SortBy::Key(slot, key) => {
+                let elem = self.locals()[*slot].ty.clone();
+                let cpp = self.ty(&elem);
+                let param = if elem.is_scalar() {
+                    format!("{cpp} {}", self.names[*slot])
+                } else {
+                    format!("const {cpp}& {}", self.names[*slot])
+                };
+                let key_ty = self.ty(&key.ty);
+                let key_text = self.expr(key).text;
+                let (kf, a, b) = (self.temp(), self.temp(), self.temp());
+                self.line(
+                    out,
+                    &format!("auto {kf} = [&]({param}) -> {key_ty} {{ return {key_text}; }};"),
+                );
+                self.line(
+                    out,
+                    &format!("std::stable_sort({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {kf}({a}) < {kf}({b}); }});"),
+                );
+            }
+            SortBy::Fn { func, is_order } => {
+                let f_text = self.expr(func).text;
+                let (kf, a, b) = (self.temp(), self.temp(), self.temp());
+                self.line(out, &format!("auto {kf} = {f_text};"));
+                if *is_order {
+                    self.line(
+                        out,
+                        &format!("std::stable_sort({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {kf}({a}, {b}); }});"),
+                    );
+                } else {
+                    self.line(
+                        out,
+                        &format!("std::stable_sort({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {kf}({a}) < {kf}({b}); }});"),
+                    );
+                }
+            }
+        }
     }
 
     fn if_stmt(
@@ -274,6 +293,27 @@ impl<'p> Emitter<'p> {
                     }
                 }
             }
+            Iter::RangeVal(r_expr, rev) => {
+                let r_code = self.expr(r_expr);
+                let held = self.temp();
+                self.line(out, "{");
+                self.indent += 1;
+                self.line(out, &format!("auto {held} = {};", r_code.text));
+                if *rev {
+                    self.line(
+                        out,
+                        &format!("for ({cpp} {var} = {held}.hi; {var}-- > {held}.lo; ) {{"),
+                    );
+                } else {
+                    self.line(
+                        out,
+                        &format!("for ({cpp} {var} = {held}.lo; {var} < {held}.hi; {var}++) {{"),
+                    );
+                }
+                self.loop_body(id, &first, body, out);
+                self.indent -= 1;
+                self.line(out, "}");
+            }
             Iter::Seq(seq, rev) => {
                 let effects = Effects::of_block(body);
                 // The loop walks the value as it was when the loop began,
@@ -289,7 +329,7 @@ impl<'p> Emitter<'p> {
                     }
                     None => false,
                 };
-                let is_map = matches!(seq.ty, Ty::Map(..));
+                let is_map = matches!(seq.ty, Ty::Map(..) | Ty::HashMap(..));
                 let is_grid = matches!(&seq.ty, Ty::Array { dims, .. } if dims.len() > 1);
                 let seq_code = self.expr(seq);
                 let opened = !(untouched && !rev && !is_map);
@@ -367,8 +407,50 @@ impl<'p> Emitter<'p> {
             }
         }
         let v = self.expr(value);
+        // Handle map/hashmap fold-on-missing-key (`max=`, `min=`, `*=`, `+=`, `-=`, `|=`, `^=`, `&=`).
+        if let PlaceKind::Index(base, idx) = &place.kind {
+            if matches!(base.ty, Ty::Map(..) | Ty::HashMap(..)) && op != AssignOp::Set {
+                let b = self.place(base);
+                let k = self.expr(&idx[0]).text;
+                match op {
+                    AssignOp::Max => {
+                        self.need("map_fold");
+                        self.line(out, &format!("cpl::map_max({b}, {k}, {});", v.text));
+                        return;
+                    }
+                    AssignOp::Min => {
+                        self.need("map_fold");
+                        self.line(out, &format!("cpl::map_min({b}, {k}, {});", v.text));
+                        return;
+                    }
+                    AssignOp::Binary(BinOp::Mul) => {
+                        self.need("map_fold");
+                        self.line(out, &format!("cpl::map_mul({b}, {k}, {});", v.text));
+                        return;
+                    }
+                    AssignOp::Binary(BinOp::BitAnd) => {
+                        self.need("map_fold");
+                        self.line(out, &format!("cpl::map_and({b}, {k}, {});", v.text));
+                        return;
+                    }
+                    AssignOp::Binary(
+                        BinOp::Add | BinOp::Sub | BinOp::BitOr | BinOp::BitXor,
+                    ) => {
+                        let sym = match op {
+                            AssignOp::Binary(BinOp::Sub) => "-",
+                            AssignOp::Binary(BinOp::BitOr) => "|",
+                            AssignOp::Binary(BinOp::BitXor) => "^",
+                            _ => "+",
+                        };
+                        self.line(out, &format!("{b}[{k}] {sym}= {};", v.text));
+                        return;
+                    }
+                    _ => {}
+                }
+            }
+        }
         let into_map = op == AssignOp::Set
-            && matches!(&place.kind, PlaceKind::Index(base, _) if matches!(base.ty, Ty::Map(..)));
+            && matches!(&place.kind, PlaceKind::Index(base, _) if matches!(base.ty, Ty::Map(..) | Ty::HashMap(..)));
         let p = self.place_at(place, into_map);
         let ty = self.ty(&place.ty);
         // `p = f(p, v)` names the place twice.
@@ -535,6 +617,14 @@ impl<'p> Emitter<'p> {
                 let len = self.expr(len).text;
                 self.line(out, &format!("{d}_lo = {lo};"));
                 self.line(out, &format!("{d}_len = std::max<ll>({len}, 0);"));
+            }
+            Stmt::DefDomainFromVal { id, val } => {
+                let d = ident(&program.domains[*id]);
+                let v = self.expr(val).text;
+                let tmp = self.temp();
+                self.line(out, &format!("auto {tmp} = {v};"));
+                self.line(out, &format!("{d}_lo = {tmp}.lo;"));
+                self.line(out, &format!("{d}_len = std::max<ll>({tmp}.len, 0);"));
             }
             Stmt::Trap(message, _) => {
                 self.need("fail");

@@ -110,14 +110,24 @@ impl<'p> Emitter<'p> {
     /// The types a value of the compound type `ty` is made of.
     fn parts(&self, ty: &Ty) -> Vec<Ty> {
         match ty {
-            Ty::Opt(inner) | Ty::List(inner) | Ty::Set(inner) => vec![(**inner).clone()],
+            Ty::Opt(inner) | Ty::List(inner) | Ty::Set(inner) | Ty::HashSet(inner) => {
+                vec![(**inner).clone()]
+            }
             Ty::Array { elem, .. } => vec![(**elem).clone()],
-            Ty::Map(key, value) => vec![(**key).clone(), (**value).clone()],
-            Ty::Struct(id) => self.program.structs[*id]
-                .fields
-                .iter()
-                .map(|(_, t)| t.clone())
-                .collect(),
+            Ty::Map(key, value) | Ty::HashMap(key, value) => {
+                vec![(**key).clone(), (**value).clone()]
+            }
+            Ty::Struct(id) => {
+                if self.program.structs[*id].show_fn.is_some() {
+                    Vec::new()
+                } else {
+                    self.program.structs[*id]
+                        .fields
+                        .iter()
+                        .map(|(_, t)| t.clone())
+                        .collect()
+                }
+            }
             Ty::Enum(id) => self.program.enums[*id]
                 .variants
                 .iter()
@@ -160,12 +170,17 @@ impl<'p> Emitter<'p> {
                 b.push_str(&fields(self, items, "    "));
             }
             Ty::Struct(id) => {
-                let items: Vec<(Code, &Ty)> = program.structs[*id]
-                    .fields
-                    .iter()
-                    .map(|(name, t)| (Code::primary(format!("v.{}", ident(name))), t))
-                    .collect();
-                b.push_str(&fields(self, items, "    "));
+                if let Some(show_fn) = program.structs[*id].show_fn {
+                    let name = crate::names::fn_name(&program.fns[show_fn].name);
+                    b.push_str(&format!("    cpl::put_str({name}(v));\n"));
+                } else {
+                    let items: Vec<(Code, &Ty)> = program.structs[*id]
+                        .fields
+                        .iter()
+                        .map(|(name, t)| (Code::primary(format!("v.{}", ident(name))), t))
+                        .collect();
+                    b.push_str(&fields(self, items, "    "));
+                }
             }
             Ty::Enum(id) if is_plain_enum(program, *id) => {
                 let names: Vec<String> = program.enums[*id]
@@ -228,7 +243,7 @@ impl<'p> Emitter<'p> {
                 }
                 b.push_str(&format!("        {shown}\n    }}\n"));
             }
-            Ty::Set(elem) => {
+            Ty::Set(elem) | Ty::HashSet(elem) => {
                 let shown = self.show_stmt(&Code::primary("x"), elem, "digits");
                 b.push_str("    bool first = true;\n    for (const auto& x : v) {\n");
                 b.push_str(&format!(
@@ -237,12 +252,24 @@ impl<'p> Emitter<'p> {
                 ));
                 b.push_str(&format!("        {shown}\n    }}\n"));
             }
-            Ty::Map(key, value) => {
+            Ty::Map(key, value) | Ty::HashMap(key, value) => {
                 let shown_key = self.show_stmt(&Code::primary("x.first"), key, "digits");
                 let shown_value = self.show_stmt(&Code::primary("x.second"), value, "digits");
                 b.push_str("    bool first = true;\n    for (const auto& x : v) {\n");
                 b.push_str("        if (!first) cpl::put_char('\\n');\n        first = false;\n");
                 b.push_str(&format!("        {shown_key}\n        cpl::put_char(' ');\n        {shown_value}\n    }}\n"));
+            }
+            Ty::Range(inner) => {
+                if let Ty::Pos(d) = **inner {
+                    let dlo = format!("{}_lo", ident(&program.domains[d]));
+                    self.need("put_int");
+                    b.push_str(&format!(
+                        "    cpl::put_int((ll)v.lo + {dlo}); cpl::put_str(\"..\"); cpl::put_int((ll)v.hi + {dlo});\n"
+                    ));
+                } else {
+                    self.need("put_int");
+                    b.push_str("    cpl::put_int(v.lo); cpl::put_str(\"..\"); cpl::put_int(v.hi);\n");
+                }
             }
             _ => {}
         }

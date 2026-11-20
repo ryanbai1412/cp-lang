@@ -191,16 +191,24 @@ impl Server {
             }
             "textDocument/definition" => {
                 let (uri, offset) = self.position(params)?;
-                let Some(span) = self.db.definition(&uri, offset) else {
+                let Some(def) = self.db.definition_location(&uri, offset) else {
                     return Ok(Reply::default());
                 };
                 let analysis = self
                     .db
-                    .analyze(&uri)
+                    .analyze(&def.path)
                     .expect("definition implies an analysis");
+                let target_uri = if def.path.starts_with("file://") || def.path == uri {
+                    def.path.clone()
+                } else {
+                    format!("file://{}", def.path)
+                };
                 Ok(Reply::result(obj([
-                    ("uri", uri.as_str().into()),
-                    ("range", range_json(span, &analysis.text, &analysis.lines)),
+                    ("uri", target_uri.into()),
+                    (
+                        "range",
+                        range_json(def.span, &analysis.text, &analysis.lines),
+                    ),
                 ])))
             }
             "textDocument/documentSymbol" => {

@@ -16,7 +16,7 @@ mod lower;
 mod show;
 
 pub use cpl_syntax::ast::{BinOp, CmpOp, UnOp};
-pub use lower::lower;
+pub use lower::{list_tests, lower, lower_test};
 pub use show::{sep_of, Sep};
 
 use cpl_diag::Span;
@@ -27,13 +27,14 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 /// The value `INF` stands for, as in the prototype: big enough to be
 /// "unreachable", small enough that two of them still add without overflow.
 pub const INF: i64 = 4_000_000_000_000_000_000;
-/// `Int.MIN` is one above the 64-bit minimum, so negating any `Int` is safe.
-pub const INT_MIN: i64 = -i64::MAX;
+/// `Int.MIN`: the smallest 64-bit signed integer (`-(1 << 63)`).
+pub const INT_MIN: i64 = i64::MIN;
 
 pub type DomainId = usize;
 pub type StructId = usize;
 pub type EnumId = usize;
 pub type FnId = usize;
+pub type ClosureId = usize;
 pub type GlobalId = usize;
 pub type Slot = usize;
 pub type LoopId = u32;
@@ -50,6 +51,10 @@ pub enum Ty {
     Pos(DomainId),
     /// A gap between positions of a domain: `0..=len`.
     Bound(DomainId),
+    /// A half-open range value `lo..hi` over `Int` or a domain `Pos(d)`.
+    Range(Box<Ty>),
+    /// A runtime domain handle `(lo, len)` returned by `-> (domain C, ...)`.
+    DomainVal,
     Array {
         dims: Vec<Dim>,
         elem: Box<Ty>,
@@ -59,7 +64,11 @@ pub enum Ty {
     Record(Vec<(String, Ty)>),
     List(Box<Ty>),
     Map(Box<Ty>, Box<Ty>),
+    HashMap(Box<Ty>, Box<Ty>),
     Set(Box<Ty>),
+    HashSet(Box<Ty>),
+    /// A first-class function or closure `(args...) -> ret`.
+    Fn(Vec<Ty>, Box<Ty>),
     Struct(StructId),
     Enum(EnumId),
     /// Already reported. Fits everything, so one mistake is one message.
@@ -95,8 +104,30 @@ impl Ty {
                 | Ty::Char
                 | Ty::Pos(_)
                 | Ty::Bound(_)
+                | Ty::DomainVal
                 | Ty::Error
         )
+    }
+
+    /// True when values of this type can be compared with `==` and `<` in C++.
+    pub fn is_comparable(&self, program: &Program) -> bool {
+        match self {
+            Ty::Fn(..) | Ty::DomainVal | Ty::HashMap(..) | Ty::HashSet(_) => false,
+            Ty::Opt(t) | Ty::List(t) | Ty::Set(t) | Ty::Range(t) => t.is_comparable(program),
+            Ty::Array { elem, .. } => elem.is_comparable(program),
+            Ty::Map(k, v) => k.is_comparable(program) && v.is_comparable(program),
+            Ty::Tuple(ts) => ts.iter().all(|t| t.is_comparable(program)),
+            Ty::Record(fs) => fs.iter().all(|(_, t)| t.is_comparable(program)),
+            Ty::Struct(id) => program.structs[*id]
+                .fields
+                .iter()
+                .all(|(_, t)| t.is_comparable(program)),
+            Ty::Enum(id) => program.enums[*id]
+                .variants
+                .iter()
+                .all(|(_, fs)| fs.iter().all(|t| t.is_comparable(program))),
+            _ => true,
+        }
     }
 
     /// The fields of a tuple or record, in order.
@@ -210,11 +241,22 @@ pub enum ExprKind {
     /// A block with a value: runs until a [`Stmt::Give`].
     Do(Block),
     Call(FnId, Vec<Arg>),
+    /// Calls a first-class function or closure value.
+    CallExpr(Box<Expr>, Vec<Expr>),
+    /// Creates a closure from [`Program::closures`], capturing variables from the enclosing scope.
+    Closure(ClosureId),
+    /// A half-open range value `lo..hi`.
+    Range {
+        lo: Box<Expr>,
+        hi: Box<Expr>,
+    },
+    /// A runtime domain handle `(lo, len)` for `-> (domain C, ...)`.
+    DomainVal(DomainId),
     Builtin(Builtin, Vec<Expr>),
     /// A builtin that changes its receiver: `xs.push(x)`.
     Mutate(Mutation, Box<Place>, Vec<Expr>),
-    /// Sort in place, by a key of each element if one is given.
-    Sort(Box<Place>, Option<(Slot, Box<Expr>)>),
+    /// Sort in place, naturally, by key expression, or by fn/Order value.
+    Sort(Box<Place>, SortBy),
     Read(Box<Spec>),
     /// `print(a, b)`: the values space-separated, then a newline.
     Print(Vec<FmtArg>),
@@ -264,6 +306,18 @@ pub enum Cast {
     Trust,
 }
 
+/// How a `sort` orders elements.
+#[derive(Clone, PartialEq, Debug)]
+pub enum SortBy {
+    Natural,
+    Key(Slot, Box<Expr>),
+    /// A fn value `T -> K` (`is_order = false`) or comparator `(T, T) -> Bool` (`is_order = true`).
+    Fn {
+        func: Box<Expr>,
+        is_order: bool,
+    },
+}
+
 /// Fns the language provides. Arguments are plain values.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Builtin {
@@ -272,15 +326,39 @@ pub enum Builtin {
     Max,
     Abs,
     Sqrt,
+    Isqrt,
+    Atan2,
     Floor,
     Ceil,
     Round,
-    /// Length of an array, list, string, map or set.
+    Popcount,
+    Ctz,
+    Clz,
+    BitWidth,
+    BitCeil,
+    /// `rand(lo, hi)`: inclusive integer in `lo..=hi`.
+    Rand,
+    /// `copy(x)`: explicit deep copy of a value.
+    Copy,
+    /// `List.filled(n, val)`: list of `n` copies of `val`.
+    ListFilled,
+    /// `Str(x)`: format any value as a string.
+    ShowStr,
+    /// `Int(s)`: parse an integer from a string.
+    ParseInt,
+    /// `Str` <-> `List<Char>` and `[D]T` -> `List<T>` conversions.
+    StrToList,
+    ListToStr,
+    ArrayToList,
+    /// Length of an array, list, string, map, set or range.
     Len,
-    /// `xs.first`, `xs.last`: optional.
+    /// `xs.first`, `xs.last`: optional (for `List` or `Range`).
     First,
     Last,
-    /// `x in xs`, for a list, array, set, map (keys) or string.
+    /// `xs.first`, `xs.last`: non-optional element of a non-empty `List` (traps if empty).
+    FirstVal,
+    LastVal,
+    /// `x in xs`, for a list, array, set, map (keys), string or range.
     Contains,
     /// `m.get(k)`: optional.
     MapGet,
@@ -292,6 +370,22 @@ pub enum Builtin {
     /// `v.next`, `v.prev`: optional position.
     PosNext,
     PosPrev,
+    /// `V.try(label)` / `V.try_at(ord)` -> `?V`.
+    PosTryLabel(DomainId),
+    PosTryOrd(DomainId),
+    /// `v.offset(k)` / `v + k` -> `?V`, and `v.cyc(k)` -> `V`.
+    PosOffset(DomainId),
+    PosCyc(DomainId),
+    /// `v.l(k)` / `v.r(k)` -> `Bound(d)` (checked in `0..=K`).
+    BoundStepL(DomainId),
+    BoundStepR(DomainId),
+    /// `b.left` / `b.right` -> `?Pos(d)`.
+    BoundLeft(DomainId),
+    BoundRight(DomainId),
+    /// Range properties: `.lo`, `.hi`, `.rev`.
+    RangeLo,
+    RangeHi,
+    RangeRev,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -299,12 +393,26 @@ pub enum Mutation {
     Push,
     /// Removes and gives the last element: optional.
     Pop,
+    /// Removes and gives the last element: value (traps if empty).
+    PopVal,
     /// Set insert; gives whether the value was new.
     Insert,
     /// Set or map remove; gives whether it was there.
     Remove,
     Clear,
     Reverse,
+    /// `xs.swap(i, j)` on a list or 1-D array.
+    Swap,
+    /// `xs.resize(n, val)` on a list.
+    Resize,
+    /// `xs.truncate(n)` on a list.
+    Truncate,
+    /// `xs.extend(other)` on a list.
+    Extend,
+    /// `shuffle(mut xs)` on a list.
+    Shuffle,
+    /// `a.fill(val)` on an array.
+    Fill,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -372,6 +480,11 @@ pub enum Stmt {
         lo: Expr,
         len: Expr,
     },
+    /// Copies `(lo, len)` from a [`Ty::DomainVal`] into domain `id`.
+    DefDomainFromVal {
+        id: DomainId,
+        val: Expr,
+    },
     /// Control can't get here in a correct program.
     Trap(String, Span),
 }
@@ -385,6 +498,8 @@ pub enum Iter {
         step: Option<Expr>,
         rev: bool,
     },
+    /// A first-class `Range<T>` value.
+    RangeVal(Expr, bool),
     /// The elements of an array, list, set or string, or the `(key,
     /// value)` pairs of a map. `rev` walks backward.
     Seq(Expr, bool),
@@ -412,9 +527,37 @@ pub struct ParamDef {
 }
 
 #[derive(Clone, PartialEq, Debug)]
+pub struct Capture {
+    /// Local slot in the enclosing fn/closure/main (or `GlobalId` if `is_global`).
+    pub outer: Slot,
+    /// Local slot inside this closure.
+    pub inner: Slot,
+    /// True if `outer` refers to a `GlobalId` instead of a local `Slot`.
+    pub is_global: bool,
+    /// True if captured by reference (for mutable `var`s).
+    pub by_ref: bool,
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct ClosureDef {
+    /// Parameter slots inside `locals` (always `0..params.len()`).
+    pub params: Vec<Slot>,
+    pub captures: Vec<Capture>,
+    pub locals: Vec<Local>,
+    pub ret: Ty,
+    pub body: Block,
+}
+
+#[derive(Clone, PartialEq, Debug)]
 pub struct StructDef {
     pub name: String,
     pub fields: Vec<(String, Ty)>,
+    /// From `impl Show for S`: `fn show(a: S) -> Str`.
+    pub show_fn: Option<FnId>,
+    /// From `impl Eq for S`: `fn eq(a: S, b: S) -> Bool`.
+    pub eq_fn: Option<FnId>,
+    /// From `impl Ord for S`: `fn lt(a: S, b: S) -> Bool`.
+    pub lt_fn: Option<FnId>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -437,6 +580,7 @@ pub struct Program {
     pub domains: Vec<String>,
     pub globals: Vec<Global>,
     pub fns: Vec<Function>,
+    pub closures: Vec<ClosureDef>,
     /// The file's top-level code and its locals.
     pub main: Block,
     pub main_locals: Vec<Local>,

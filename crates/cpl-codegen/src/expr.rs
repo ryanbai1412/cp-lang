@@ -119,7 +119,7 @@ impl<'p> Emitter<'p> {
             ExprKind::Global(id) => {
                 touch.reads.insert((true, *id));
             }
-            ExprKind::Read(_) | ExprKind::Print(_) => touch.io = true,
+            ExprKind::Read(_) | ExprKind::Print(_) | ExprKind::CallExpr(..) => touch.io = true,
             ExprKind::Call(id, args) => {
                 let summary = &self.summaries[*id];
                 touch.io |= summary.io;
@@ -258,7 +258,7 @@ impl<'p> Emitter<'p> {
                 let at: Vec<String> = indices.iter().map(|e| self.expr(e).text).collect();
                 match &base.ty {
                     Ty::Array { dims, .. } if dims.len() > 1 => format!("{b}({})", at.join(", ")),
-                    Ty::Map(..) if !store => format!("{b}.at({})", at.join(", ")),
+                    Ty::Map(..) | Ty::HashMap(..) if !store => format!("{b}.at({})", at.join(", ")),
                     _ => format!("{b}[{}]", at.join(", ")),
                 }
             }
@@ -361,6 +361,32 @@ impl<'p> Emitter<'p> {
             }
             ExprKind::Binary(op, l, r) => self.binary(e, *op, l, r),
             ExprKind::Cmp(op, l, r) => self.sequence(&[l, r], &Ty::Bool, |_, codes| {
+                if let Ty::Struct(id) = l.ty {
+                    let sdef = &program.structs[id];
+                    match op {
+                        CmpOp::Eq | CmpOp::Ne if sdef.eq_fn.is_some() => {
+                            let f = fn_name(&program.fns[sdef.eq_fn.unwrap()].name);
+                            let call = format!("{f}({}, {})", codes[0].text, codes[1].text);
+                            return if *op == CmpOp::Eq {
+                                Code::primary(call)
+                            } else {
+                                Code::new(format!("!{call}"), UNARY)
+                            };
+                        }
+                        CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge if sdef.lt_fn.is_some() => {
+                            let f = fn_name(&program.fns[sdef.lt_fn.unwrap()].name);
+                            let (a, b) = (&codes[0].text, &codes[1].text);
+                            return match op {
+                                CmpOp::Lt => Code::primary(format!("{f}({a}, {b})")),
+                                CmpOp::Gt => Code::primary(format!("{f}({b}, {a})")),
+                                CmpOp::Le => Code::new(format!("!{f}({b}, {a})"), UNARY),
+                                CmpOp::Ge => Code::new(format!("!{f}({a}, {b})"), UNARY),
+                                _ => unreachable!(),
+                            };
+                        }
+                        _ => {}
+                    }
+                }
                 let (sym, prec) = match op {
                     CmpOp::Ne => ("!=", EQ),
                     CmpOp::Lt => ("<", REL),
@@ -428,7 +454,7 @@ impl<'p> Emitter<'p> {
                             Code::new(format!("(bool){b}[{}]", at[0]), UNARY)
                         }
                         Ty::Str => Code::new(format!("(cpl::u8){b}[{}]", at[0]), UNARY),
-                        Ty::Map(..) => Code::primary(format!("{b}.at({})", at[0])),
+                        Ty::Map(..) | Ty::HashMap(..) => Code::primary(format!("{b}.at({})", at[0])),
                         _ => Code::primary(format!("{b}[{}]", at[0])),
                     }
                 })
@@ -448,7 +474,7 @@ impl<'p> Emitter<'p> {
                 let ty = self.ty(&e.ty);
                 match &e.ty {
                     Ty::Unit | Ty::Error => Code::primary("(void)0"),
-                    Ty::Map(..) => Code::primary(format!("{ty}()")),
+                    Ty::Map(..) | Ty::HashMap(..) => Code::primary(format!("{ty}()")),
                     _ if items.is_empty() => Code::primary(format!("{ty}()")),
                     _ => {
                         // `{...}` runs its elements left to right.
@@ -526,6 +552,33 @@ impl<'p> Emitter<'p> {
                 self.lambda(&ret, |this, out| this.block(block, out))
             }
             ExprKind::Call(id, args) => self.call(e, *id, args),
+            ExprKind::CallExpr(callee, args) => {
+                let mut operands: Vec<&Expr> = vec![callee];
+                operands.extend(args.iter());
+                self.sequence(&operands, &e.ty, |_, codes| {
+                    let f = codes[0].at(PRIMARY);
+                    let ps: Vec<String> = codes[1..].iter().map(|c| c.text.clone()).collect();
+                    Code::primary(format!("{f}({})", ps.join(", ")))
+                })
+            }
+            ExprKind::Closure(cid) => self.emit_closure(*cid),
+            ExprKind::Range { lo, hi } => {
+                self.need("range");
+                let rty = self.ty(&e.ty);
+                let inner_is_pos = matches!(&e.ty, Ty::Range(inner) if matches!(**inner, Ty::Pos(_) | Ty::Bound(_)));
+                self.sequence(&[lo, hi], &e.ty, |_, codes| {
+                    if inner_is_pos {
+                        Code::primary(format!("{rty}{{(int)({}), (int)({})}}", codes[0].text, codes[1].text))
+                    } else {
+                        Code::primary(format!("{rty}{{{}, {}}}", codes[0].text, codes[1].text))
+                    }
+                })
+            }
+            ExprKind::DomainVal(id) => {
+                self.need("domain_val");
+                let d = ident(&program.domains[*id]);
+                Code::primary(format!("cpl::DomainVal{{{d}_lo, {d}_len}}"))
+            }
             ExprKind::Builtin(op, args) => {
                 let operands: Vec<&Expr> = args.iter().collect();
                 self.sequence(&operands, &e.ty, |this, codes| {
@@ -538,6 +591,10 @@ impl<'p> Emitter<'p> {
                     .first()
                     .map(|arg| self.expr(arg).text)
                     .unwrap_or_default();
+                let arg2 = args
+                    .get(1)
+                    .map(|arg| self.expr(arg).text)
+                    .unwrap_or_default();
                 match op {
                     Mutation::Push if place.ty == Ty::Str => {
                         Code::primary(format!("{p}.push_back((char){arg})"))
@@ -546,6 +603,10 @@ impl<'p> Emitter<'p> {
                     Mutation::Pop => {
                         self.need("pop");
                         Code::primary(format!("cpl::pop({p})"))
+                    }
+                    Mutation::PopVal => {
+                        self.need("pop_val");
+                        Code::primary(format!("cpl::pop_val({p})"))
                     }
                     Mutation::Insert => Code::primary(format!("{p}.insert({arg}).second")),
                     Mutation::Remove => Code::new(format!("{p}.erase({arg}) != 0"), EQ),
@@ -561,10 +622,34 @@ impl<'p> Emitter<'p> {
                             pad(this.indent)
                         ));
                     }),
+                    Mutation::Swap => Code::primary(format!("std::swap({p}[{arg}], {p}[{arg2}])")),
+                    Mutation::Resize => Code::primary(format!("{p}.resize((size_t)({arg}), {arg2})")),
+                    Mutation::Truncate => Code::primary(format!(
+                        "({p}.size() > (size_t)std::max<ll>(0, {arg}) ? {p}.resize((size_t)std::max<ll>(0, {arg})) : (void)0)"
+                    )),
+                    Mutation::Extend => self.lambda("void", |this, out| {
+                        let r = this.temp();
+                        let src = this.temp();
+                        out.push_str(&format!("{}auto& {r} = {p};\n", pad(this.indent)));
+                        out.push_str(&format!("{}auto {src} = {arg};\n", pad(this.indent)));
+                        out.push_str(&format!(
+                            "{}{r}.insert({r}.end(), {src}.begin(), {src}.end());\n",
+                            pad(this.indent)
+                        ));
+                    }),
+                    Mutation::Shuffle => {
+                        self.need("rng");
+                        Code::primary(format!("cpl::shuffle({p})"))
+                    }
+                    Mutation::Fill => {
+                        let is_grid = matches!(&place.ty, Ty::Array { dims, .. } if dims.len() > 1);
+                        let vec_expr = if is_grid { format!("{p}.d") } else { p };
+                        Code::primary(format!("std::fill({vec_expr}.begin(), {vec_expr}.end(), {arg})"))
+                    }
                 }
             }
-            ExprKind::Sort(place, key) => self.lambda("void", |this, out| {
-                this.sort_stmts(place, key.as_ref(), out)
+            ExprKind::Sort(place, sort_by) => self.lambda("void", |this, out| {
+                this.sort_stmts(place, sort_by, out)
             }),
             ExprKind::Read(spec) => self.read(spec),
             ExprKind::Print(args) => self.lambda("void", |this, out| this.print_stmts(args, out)),
@@ -845,19 +930,96 @@ impl<'p> Emitter<'p> {
             Builtin::Abs if e.ty == Ty::Float => Code::primary(format!("std::fabs({})", text(0))),
             Builtin::Abs => Code::primary(format!("std::abs({})", widen(&codes[0]).text)),
             Builtin::Sqrt => Code::primary(format!("std::sqrt({})", text(0))),
+            Builtin::Isqrt => {
+                self.need("bits");
+                Code::primary(format!("cpl::isqrt({})", text(0)))
+            }
+            Builtin::Atan2 => Code::primary(format!("std::atan2({}, {})", text(0), text(1))),
             Builtin::Floor => Code::new(format!("(ll)std::floor({})", text(0)), UNARY),
             Builtin::Ceil => Code::new(format!("(ll)std::ceil({})", text(0)), UNARY),
             Builtin::Round => Code::new(format!("(ll)std::round({})", text(0)), UNARY),
+            Builtin::Popcount => {
+                self.need("bits");
+                Code::primary(format!("cpl::popcount({})", text(0)))
+            }
+            Builtin::Ctz => {
+                self.need("bits");
+                Code::primary(format!("cpl::ctz({})", text(0)))
+            }
+            Builtin::Clz => {
+                self.need("bits");
+                Code::primary(format!("cpl::clz({})", text(0)))
+            }
+            Builtin::BitWidth => {
+                self.need("bits");
+                Code::primary(format!("cpl::bit_width({})", text(0)))
+            }
+            Builtin::BitCeil => {
+                self.need("bits");
+                Code::primary(format!("cpl::bit_ceil({})", text(0)))
+            }
+            Builtin::Rand => {
+                self.need("rng");
+                Code::primary(format!("cpl::rand_range({}, {})", text(0), text(1)))
+            }
+            Builtin::Copy => Code::primary(format!("{}({})", self.ty(&e.ty), text(0))),
+            Builtin::ListFilled => {
+                let lty = self.ty(&e.ty);
+                Code::primary(format!("{lty}((size_t)({}), {})", text(0), text(1)))
+            }
+            Builtin::ShowStr => {
+                let arg = &args[0];
+                let code = codes[0].clone();
+                self.lambda("std::string", |this, out| {
+                    this.need("capture");
+                    let cap = this.temp();
+                    out.push_str(&format!("{}cpl::Capture {cap};\n", pad(this.indent)));
+                    let stmt = this.show_stmt(&code, &arg.ty, "6");
+                    out.push_str(&format!("{}{stmt}\n", pad(this.indent)));
+                    out.push_str(&format!("{}return {cap}.take();\n", pad(this.indent)));
+                })
+            }
+            Builtin::ParseInt => {
+                self.need("str_conv");
+                Code::primary(format!("cpl::parse_int({})", text(0)))
+            }
+            Builtin::StrToList => {
+                self.need("str_conv");
+                Code::primary(format!("cpl::str_to_list({})", text(0)))
+            }
+            Builtin::ListToStr => {
+                self.need("str_conv");
+                Code::primary(format!("cpl::list_to_str({})", text(0)))
+            }
+            Builtin::ArrayToList => {
+                if is_grid {
+                    Code::primary(format!("{}.d", codes[0].at(PRIMARY)))
+                } else {
+                    codes[0].clone()
+                }
+            }
             Builtin::Len if is_grid => {
                 Code::new(format!("(ll){}.d.size()", codes[0].at(PRIMARY)), UNARY)
             }
+            Builtin::Len if matches!(first_ty, Some(Ty::Range(_))) => {
+                Code::primary(format!("{}.len()", codes[0].at(PRIMARY)))
+            }
             Builtin::Len => Code::new(format!("(ll){}.size()", codes[0].at(PRIMARY)), UNARY),
+            Builtin::First if matches!(first_ty, Some(Ty::Range(_))) => {
+                Code::primary(format!("{}.first()", codes[0].at(PRIMARY)))
+            }
+            Builtin::Last if matches!(first_ty, Some(Ty::Range(_))) => {
+                Code::primary(format!("{}.last()", codes[0].at(PRIMARY)))
+            }
             Builtin::First => helper(self, "first"),
             Builtin::Last => helper(self, "last"),
+            Builtin::FirstVal => helper(self, "first_val"),
+            Builtin::LastVal => helper(self, "last_val"),
             Builtin::Contains => {
                 let holder = codes[0].at(PRIMARY);
                 match first_ty {
-                    Some(Ty::Set(_) | Ty::Map(..)) => {
+                    Some(Ty::Range(_)) => Code::primary(format!("{holder}.has({})", text(1))),
+                    Some(Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..)) => {
                         Code::new(format!("{holder}.count({}) != 0", text(1)), EQ)
                     }
                     Some(Ty::Str) => Code::new(
@@ -879,18 +1041,199 @@ impl<'p> Emitter<'p> {
                 }
             }
             Builtin::MapGet => {
-                self.need("get");
-                Code::primary(format!("cpl::get({}, {})", text(0), text(1)))
+                self.need("map_get_any");
+                Code::primary(format!("cpl::map_get({}, {})", text(0), text(1)))
             }
             Builtin::SetMin => helper(self, "set_min"),
             Builtin::SetMax => helper(self, "set_max"),
             Builtin::Sorted => helper(self, "sorted"),
-            Builtin::Reversed => helper(self, "reversed"),
+            Builtin::Reversed => {
+                if matches!(first_ty, Some(Ty::Str)) {
+                    let s = text(0);
+                    Code::primary(format!("([](std::string s){{ std::reverse(s.begin(), s.end()); return s; }}({s}))"))
+                } else {
+                    helper(self, "reversed")
+                }
+            }
             Builtin::PosNext => {
                 self.need("next_pos");
                 Code::primary(format!("cpl::next_pos({}, {})", text(0), text(1)))
             }
             Builtin::PosPrev => helper(self, "prev_pos"),
+            Builtin::PosTryLabel(d) => {
+                self.need("pos_ops");
+                let dn = ident(&self.program.domains[d]);
+                Code::primary(format!("cpl::pos_try({}, {dn}_lo, {dn}_len)", text(0)))
+            }
+            Builtin::PosTryOrd(d) => {
+                self.need("pos_ops");
+                let dn = ident(&self.program.domains[d]);
+                Code::primary(format!("cpl::pos_try_ord({}, {dn}_len)", text(0)))
+            }
+            Builtin::PosOffset(d) => {
+                self.need("pos_ops");
+                let dn = ident(&self.program.domains[d]);
+                Code::primary(format!("cpl::pos_offset({}, {}, {dn}_len)", text(0), text(1)))
+            }
+            Builtin::PosCyc(d) => {
+                self.need("pos_ops");
+                let dn = ident(&self.program.domains[d]);
+                Code::primary(format!("cpl::pos_cyc({}, {}, {dn}_len)", text(0), text(1)))
+            }
+            Builtin::BoundStepL(d) => {
+                self.need("pos_ops");
+                let dn = ident(&self.program.domains[d]);
+                Code::primary(format!("cpl::bound_step((ll)({}) + 1 - ({}), {dn}_len)", text(0), text(1)))
+            }
+            Builtin::BoundStepR(d) => {
+                self.need("pos_ops");
+                let dn = ident(&self.program.domains[d]);
+                Code::primary(format!("cpl::bound_step((ll)({}) + ({}), {dn}_len)", text(0), text(1)))
+            }
+            Builtin::BoundLeft(_d) => {
+                self.need("pos_ops");
+                Code::primary(format!("cpl::bound_left({})", text(0)))
+            }
+            Builtin::BoundRight(d) => {
+                self.need("pos_ops");
+                let dn = ident(&self.program.domains[d]);
+                Code::primary(format!("cpl::bound_right({}, {dn}_len)", text(0)))
+            }
+            Builtin::RangeLo => Code::primary(format!("{}.lo", codes[0].at(PRIMARY))),
+            Builtin::RangeHi => Code::primary(format!("{}.hi", codes[0].at(PRIMARY))),
+            Builtin::RangeRev => Code::primary(format!("{}.rev()", codes[0].at(PRIMARY))),
         }
+    }
+
+    fn emit_closure(&mut self, cid: usize) -> Code {
+        let def = &self.program.closures[cid];
+        // Prepare inner names for the closure's locals.
+        let mut inner_taken = self.taken.clone();
+        let mut inner_names = Vec::with_capacity(def.locals.len());
+        let mut inner_fresh = 0usize;
+        for local in &def.locals {
+            let base = if local.name.is_empty() {
+                let mut n;
+                loop {
+                    n = format!("c{cid}_{inner_fresh}");
+                    inner_fresh += 1;
+                    if !inner_taken.contains(&n) && !self.top_names.contains(&n) {
+                        break;
+                    }
+                }
+                n
+            } else {
+                let b = ident(&local.name);
+                let mut n = b.clone();
+                let mut k = 2;
+                while inner_taken.contains(&n) || self.top_names.contains(&n) {
+                    n = format!("{b}_{k}");
+                    k += 1;
+                }
+                n
+            };
+            inner_taken.insert(base.clone());
+            inner_names.push(base);
+        }
+
+        // Build C++17 capture list from enclosing names/globals.
+        let mut cap_parts = Vec::new();
+        let mut global_ref_aliases = Vec::new();
+        for cap in &def.captures {
+            let inner = &inner_names[cap.inner];
+            if cap.is_global {
+                let gname = ident(&self.program.globals[cap.outer].name);
+                if cap.by_ref {
+                    global_ref_aliases.push(format!("auto& {inner} = {gname};"));
+                } else {
+                    cap_parts.push(format!("{inner} = {gname}"));
+                }
+            } else {
+                let outer = &self.names[cap.outer];
+                if cap.by_ref {
+                    cap_parts.push(format!("&{inner} = {outer}"));
+                } else {
+                    cap_parts.push(format!("{inner} = {outer}"));
+                }
+            }
+        }
+
+        // Parameters.
+        let mut param_parts = Vec::new();
+        for &slot in &def.params {
+            let ty = &def.locals[slot].ty;
+            let cpp = self.ty(ty);
+            let pname = &inner_names[slot];
+            if ty.is_scalar() {
+                param_parts.push(format!("{cpp} {pname}"));
+            } else {
+                param_parts.push(format!("const {cpp}& {pname}"));
+            }
+        }
+
+        let ret_cpp = self.ty(&def.ret);
+        let pre_visible = def.params.len() + def.captures.len();
+        let inner_hoisted = crate::scope::hoisted(&def.body, pre_visible);
+
+        // Save enclosing emitter state and emit body.
+        let saved_closure = self.closure_id.replace(cid);
+        let saved_names = std::mem::replace(&mut self.names, inner_names);
+        let saved_hoisted = std::mem::replace(&mut self.hoisted, inner_hoisted);
+        let saved_taken = std::mem::replace(&mut self.taken, inner_taken);
+        let saved_fresh = std::mem::replace(&mut self.fresh, inner_fresh);
+        let saved_brk = std::mem::take(&mut self.break_targets);
+        let saved_cont = std::mem::take(&mut self.continue_targets);
+
+        walk::deep_stmts(&def.body, &mut |stmt| match stmt {
+            Stmt::Break(Some(id)) => {
+                self.break_targets.insert(*id);
+            }
+            Stmt::Continue(Some(id)) => {
+                self.continue_targets.insert(*id);
+            }
+            _ => {}
+        });
+
+        let mut text = format!(
+            "[{}]({}) mutable -> {ret_cpp} {{\n",
+            cap_parts.join(", "),
+            param_parts.join(", ")
+        );
+        self.indent += 1;
+        for alias in global_ref_aliases {
+            text.push_str(&format!("{}{alias}\n", pad(self.indent)));
+        }
+        // Declare any hoisted locals inside the closure.
+        for slot in self.hoisted.clone() {
+            if def.params.contains(&slot)
+                || def.captures.iter().any(|c| c.inner == slot)
+                || def.locals[slot].ty == Ty::Unit
+            {
+                continue;
+            }
+            let ty = &def.locals[slot].ty;
+            text.push_str(&format!(
+                "{}{} {}{};\n",
+                pad(self.indent),
+                self.ty(ty),
+                self.names[slot],
+                self.zero_init(ty)
+            ));
+        }
+        self.block(&def.body, &mut text);
+        self.indent -= 1;
+        text.push_str(&pad(self.indent));
+        text.push('}');
+
+        // Restore enclosing emitter state.
+        self.closure_id = saved_closure;
+        self.names = saved_names;
+        self.hoisted = saved_hoisted;
+        self.taken = saved_taken;
+        self.fresh = saved_fresh;
+        self.break_targets = saved_brk;
+        self.continue_targets = saved_cont;
+
+        Code::primary(text)
     }
 }

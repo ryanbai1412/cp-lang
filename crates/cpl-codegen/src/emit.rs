@@ -101,6 +101,8 @@ pub(crate) struct Emitter<'p> {
     pub summaries: Vec<FnSummary>,
     /// The fn being emitted (`None` is the top level), and its locals.
     pub fn_id: Option<usize>,
+    /// The closure currently being emitted, if inside a closure body.
+    pub closure_id: Option<usize>,
     pub names: Vec<String>,
     pub hoisted: BTreeSet<usize>,
     pub taken: BTreeSet<String>,
@@ -141,6 +143,7 @@ impl<'p> Emitter<'p> {
             show_cycle: false,
             summaries: Vec::new(),
             fn_id: None,
+            closure_id: None,
             names: Vec::new(),
             hoisted: BTreeSet::new(),
             taken: BTreeSet::new(),
@@ -237,9 +240,51 @@ impl<'p> Emitter<'p> {
     }
 
     pub fn locals(&self) -> &'p [Local] {
+        if let Some(cid) = self.closure_id {
+            return &self.program.closures[cid].locals;
+        }
         match self.fn_id {
             Some(id) => &self.program.fns[id].locals,
             None => &self.program.main_locals,
+        }
+    }
+
+    pub fn need_ty(&mut self, ty: &Ty) {
+        match ty {
+            Ty::HashMap(k, v) => {
+                self.need("cphash");
+                self.need_ty(k);
+                self.need_ty(v);
+            }
+            Ty::HashSet(e) => {
+                self.need("cphash");
+                self.need_ty(e);
+            }
+            Ty::Range(inner) => {
+                self.need("range");
+                self.need_ty(inner);
+            }
+            Ty::DomainVal => self.need("domain_val"),
+            Ty::Array { dims, elem } => {
+                if dims.len() > 1 {
+                    self.need("grid");
+                }
+                self.need_ty(elem);
+            }
+            Ty::Opt(t) | Ty::List(t) | Ty::Set(t) => self.need_ty(t),
+            Ty::Map(k, v) => {
+                self.need_ty(k);
+                self.need_ty(v);
+            }
+            Ty::Fn(args, ret) => {
+                for a in args {
+                    self.need_ty(a);
+                }
+                self.need_ty(ret);
+            }
+            Ty::Tuple(ts) => ts.iter().for_each(|t| self.need_ty(t)),
+            Ty::Record(fs) => fs.iter().for_each(|(_, t)| self.need_ty(t)),
+            _ => {}
         }
     }
 
@@ -335,11 +380,17 @@ impl<'p> Emitter<'p> {
     fn needs_complete(&self, ty: &Ty, out: &mut Vec<Ty>) {
         match ty {
             Ty::Struct(_) | Ty::Enum(_) => out.push(ty.clone()),
-            Ty::Opt(inner) | Ty::List(inner) | Ty::Set(inner) => self.needs_complete(inner, out),
+            Ty::Opt(inner) | Ty::List(inner) | Ty::Set(inner) | Ty::HashSet(inner) | Ty::Range(inner) => {
+                self.needs_complete(inner, out)
+            }
             Ty::Array { elem, .. } => self.needs_complete(elem, out),
-            Ty::Map(key, value) => {
+            Ty::Map(key, value) | Ty::HashMap(key, value) => {
                 self.needs_complete(key, out);
                 self.needs_complete(value, out);
+            }
+            Ty::Fn(args, ret) => {
+                args.iter().for_each(|t| self.needs_complete(t, out));
+                self.needs_complete(ret, out);
             }
             Ty::Tuple(items) => items.iter().for_each(|t| self.needs_complete(t, out)),
             Ty::Record(fields) => fields.iter().for_each(|(_, t)| self.needs_complete(t, out)),
@@ -376,6 +427,7 @@ impl<'p> Emitter<'p> {
                 out.push_str(&format!("struct {} {{\n", ident(&def.name)));
                 let mut names = Vec::new();
                 for (field, field_ty) in &def.fields {
+                    self.need_ty(field_ty);
                     let name = ident(field);
                     out.push_str(&format!(
                         "    {} {}{};\n",
@@ -385,10 +437,13 @@ impl<'p> Emitter<'p> {
                     ));
                     names.push(name);
                 }
-                out.push_str(&format!(
-                    "    auto cpl_tie() const {{ return std::tie({}); }}\n}};\n",
-                    names.join(", ")
-                ));
+                if Ty::Struct(*id).is_comparable(program) {
+                    out.push_str(&format!(
+                        "    auto cpl_tie() const {{ return std::tie({}); }}\n",
+                        names.join(", ")
+                    ));
+                }
+                out.push_str("};\n");
             }
             Ty::Enum(id) if is_plain_enum(program, *id) => {
                 let def = &program.enums[*id];
@@ -449,6 +504,26 @@ impl<'p> Emitter<'p> {
     pub fn file(mut self, name: &str, source: Option<&str>) -> String {
         let program = self.program;
 
+        // Ensure runtime types used by globals, fns, closures, and main are registered.
+        for g in &program.globals {
+            self.need_ty(&g.ty);
+        }
+        for f in &program.fns {
+            self.need_ty(&f.ret);
+            for l in &f.locals {
+                self.need_ty(&l.ty);
+            }
+        }
+        for c in &program.closures {
+            self.need_ty(&c.ret);
+            for l in &c.locals {
+                self.need_ty(&l.ty);
+            }
+        }
+        for l in &program.main_locals {
+            self.need_ty(&l.ty);
+        }
+
         // The program first, since writing it finds out what it needs.
         let mut types = String::new();
         let mut done = BTreeSet::new();
@@ -477,9 +552,42 @@ impl<'p> Emitter<'p> {
             ));
         }
 
+        // Compute reachable fns so uncalled stdlib stubs are omitted from the emitted C++17.
+        let mut reachable: BTreeSet<usize> = BTreeSet::new();
+        let mut work: Vec<usize> = Vec::new();
+        let enqueue = |fid: usize, reachable: &mut BTreeSet<usize>, work: &mut Vec<usize>| {
+            if reachable.insert(fid) {
+                work.push(fid);
+            }
+        };
+        let scan_block = |b: &Block, reachable: &mut BTreeSet<usize>, work: &mut Vec<usize>| {
+            walk::deep_exprs(b, &mut |e| {
+                if let ExprKind::Call(fid, _) = &e.kind {
+                    if reachable.insert(*fid) {
+                        work.push(*fid);
+                    }
+                }
+            });
+        };
+        scan_block(&program.main, &mut reachable, &mut work);
+        for c in &program.closures {
+            scan_block(&c.body, &mut reachable, &mut work);
+        }
+        for s in &program.structs {
+            for hook in [s.eq_fn, s.lt_fn, s.show_fn].into_iter().flatten() {
+                enqueue(hook, &mut reachable, &mut work);
+            }
+        }
+        while let Some(fid) = work.pop() {
+            scan_block(&program.fns[fid].body, &mut reachable, &mut work);
+        }
+
         let mut protos = String::new();
         let mut fns = String::new();
         for (id, f) in program.fns.iter().enumerate() {
+            if !reachable.contains(&id) {
+                continue;
+            }
             self.enter(Some(id), &f.body, f.params.len());
             let signature = self.signature(f);
             protos.push_str(&format!("{signature};\n"));
@@ -506,10 +614,16 @@ impl<'p> Emitter<'p> {
         let mut out = String::new();
         out.push_str(&header(name, source));
         out.push_str(
-            "#include <algorithm>\n#include <array>\n#include <cmath>\n#include <cstdio>\n#include <cstdlib>\n\
-             #include <map>\n#include <optional>\n#include <set>\n#include <string>\n#include <tuple>\n#include <vector>\n\n\
-             using ll = long long;\n\n",
+            "#include <algorithm>\n#include <array>\n#include <cmath>\n#include <cstdint>\n#include <cstdio>\n#include <cstdlib>\n\
+             #include <map>\n#include <optional>\n#include <set>\n#include <string>\n#include <tuple>\n#include <vector>\n",
         );
+        if !program.closures.is_empty() {
+            out.push_str("#include <functional>\n");
+        }
+        if self.used.contains("cphash") {
+            out.push_str("#include <chrono>\n#include <unordered_map>\n#include <unordered_set>\n");
+        }
+        out.push_str("\nusing ll = long long;\n\n");
         out.push_str(
             "// What the program below leans on.\nnamespace cpl {\nusing u8 = unsigned char;\n",
         );
@@ -530,6 +644,7 @@ impl<'p> Emitter<'p> {
         if !vars.is_empty() {
             out.push('\n');
         }
+        out.push_str(&protos);
         if self.show_cycle {
             for show in &self.shows {
                 if let Some(signature) =
@@ -544,7 +659,6 @@ impl<'p> Emitter<'p> {
             out.push_str(show);
             out.push('\n');
         }
-        out.push_str(&protos);
         out.push_str(&fns);
         out.push_str("}  // namespace prog\n\nint main() {\n    cpl::read_all();\n");
         if program.multitest {
