@@ -22,6 +22,13 @@ pub struct Hover {
     pub text: String,
 }
 
+/// Where a symbol is declared, possibly in an imported module.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Definition {
+    pub path: String,
+    pub span: Span,
+}
+
 /// A top-level declaration, for the editor's outline.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Symbol {
@@ -47,15 +54,40 @@ impl Database {
         })
     }
 
-    /// Where the name at `offset` is declared.
+    /// Where the name at `offset` is declared, in the same file.
     pub fn definition(&mut self, path: &str, offset: u32) -> Option<Span> {
+        let def = self.definition_location(path, offset)?;
+        (def.path == path).then_some(def.span)
+    }
+
+    /// Where the name at `offset` is declared, following `use` imports into
+    /// their defining module.
+    pub fn definition_location(&mut self, path: &str, offset: u32) -> Option<Definition> {
         let analysis = self.analyze(path)?;
         let (item, at) = analysis.item_at(offset)?;
         let entry = innermost(&item.check.hovers, at)?;
-        match entry.decl {
-            Some(decl) => Some(decl.shift(item.offset)),
-            None => analysis.decl_span(&entry.name),
+        if let Some(decl) = entry.decl {
+            return Some(Definition {
+                path: path.to_string(),
+                span: decl.shift(item.offset),
+            });
         }
+        if let Some(span) = analysis.decl_span(&entry.name) {
+            return Some(Definition {
+                path: path.to_string(),
+                span,
+            });
+        }
+        if let Some(import) = analysis.imports().get(&entry.name) {
+            let module = &analysis.modules()[import.module];
+            if let Some(span) = module.analysis.decl_span(&import.name) {
+                return Some(Definition {
+                    path: module.path.clone(),
+                    span,
+                });
+            }
+        }
+        None
     }
 
     /// The file's top-level declarations, in source order.
@@ -108,24 +140,44 @@ pub(crate) fn render(entry: &HoverEntry, lookup: &mut Lookup) -> String {
 
 fn render_def(name: &str, def: &Def, lookup: &mut Lookup) -> String {
     match def {
-        Def::Value { ty, .. } => render_value(name, ty, lookup),
-        Def::Fn { ty, .. } => fn_text(name, ty),
+        Def::Value { ty, generics, .. } => {
+            let titled = with_generics(name, generics);
+            render_value(&titled, ty, lookup)
+        }
+        Def::Fn { ty, generics } => fn_text(&with_generics(name, generics), ty),
         Def::Struct {
-            fields, methods, ..
+            generics,
+            fields,
+            methods,
+            projections,
+            ..
         } => {
-            let mut out = format!("struct {name}");
+            let mut out = format!("struct {}", with_generics(name, generics));
             for field in fields {
                 out += &format!("\n  {}: {}", field.name, field.ty);
             }
             for (method, ty) in methods {
-                out += &format!("\n  {}", fn_text(method, ty));
+                let line = match projections.iter().find(|p| p.name == *method) {
+                    Some(proj) => {
+                        let kw = if proj.mutable { "lends mut" } else { "lends" };
+                        let base = fn_text(method, ty);
+                        match base.rsplit_once(" -> ") {
+                            Some((head, _)) => format!("{head} {kw} {}", proj.lent),
+                            None => format!("{base} {kw} {}", proj.lent),
+                        }
+                    }
+                    None => fn_text(method, ty),
+                };
+                out += &format!("\n  {line}");
             }
-            let whole = Ty::Named {
-                name: name.to_string(),
-                args: Vec::new(),
-            };
-            if let Some(total) = size(&whole, lookup) {
-                out += &format!("\n  storage: {}", human_bytes(total.into()));
+            if generics.is_empty() {
+                let whole = Ty::Named {
+                    name: name.to_string(),
+                    args: Vec::new(),
+                };
+                if let Some(total) = size(&whole, lookup) {
+                    out += &format!("\n  storage: {}", human_bytes(total.into()));
+                }
             }
             out
         }
@@ -178,8 +230,26 @@ fn render_def(name: &str, def: &Def, lookup: &mut Lookup) -> String {
             out += &cost_lines(ty, lookup);
             out
         }
-        Def::Trait { .. } => format!("trait {name}"),
+        Def::Trait { supers, methods } => {
+            let mut out = if supers.is_empty() {
+                format!("trait {name}")
+            } else {
+                format!("trait {name}: {}", supers.join(" + "))
+            };
+            for m in methods {
+                out += &format!("\n  {}", fn_text(&m.name, &m.ty));
+            }
+            out
+        }
         Def::Impl { .. } => name.to_string(),
+    }
+}
+
+fn with_generics(name: &str, generics: &[String]) -> String {
+    if generics.is_empty() {
+        name.to_string()
+    } else {
+        format!("{name}<{}>", generics.join(", "))
     }
 }
 

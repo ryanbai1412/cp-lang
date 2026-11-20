@@ -131,19 +131,28 @@ const RESERVED: &[&str] = &[
 ];
 
 /// `name` as a C++ identifier: itself, or with `_` added when C++ has
-/// another use for the word.
+/// another use for the word. Any non-identifier chars are replaced by `_`.
 pub(crate) fn ident(name: &str) -> String {
-    if RESERVED.contains(&name) || name.starts_with("cpl_") {
-        format!("{name}_")
+    let clean: String = name
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() || c == '_' { c } else { '_' })
+        .collect();
+    let clean = if clean.is_empty() || clean.as_bytes()[0].is_ascii_digit() {
+        format!("_{clean}")
     } else {
-        name.to_string()
+        clean
+    };
+    if RESERVED.contains(&clean.as_str()) || clean.starts_with("cpl_") {
+        format!("{clean}_")
+    } else {
+        clean
     }
 }
 
 /// A fn's C++ name. A method `Edge.other` is the free fn `Edge_other`.
 pub(crate) fn fn_name(name: &str) -> String {
     match name.split_once('.') {
-        Some((owner, method)) => format!("{owner}_{method}"),
+        Some((owner, method)) => ident(&format!("{owner}_{method}")),
         None => ident(name),
     }
 }
@@ -167,6 +176,11 @@ pub(crate) fn cty(program: &Program, ty: &Ty) -> String {
         Ty::Char => "cpl::u8".into(),
         Ty::Str => "std::string".into(),
         Ty::Pos(_) | Ty::Bound(_) => "int".into(),
+        Ty::Range(inner) => match **inner {
+            Ty::Pos(_) | Ty::Bound(_) => "cpl::Range<int>".into(),
+            _ => "cpl::Range<ll>".into(),
+        },
+        Ty::DomainVal => "cpl::DomainVal".into(),
         Ty::Array { dims, elem } if dims.len() == 1 => {
             format!("std::vector<{}>", elem_ty(program, elem))
         }
@@ -184,7 +198,17 @@ pub(crate) fn cty(program: &Program, ty: &Ty) -> String {
         }
         Ty::List(elem) => format!("std::vector<{}>", elem_ty(program, elem)),
         Ty::Map(key, value) => format!("std::map<{}, {}>", cty(program, key), cty(program, value)),
+        Ty::HashMap(key, value) => format!(
+            "std::unordered_map<{}, {}, cpl::CpHash>",
+            cty(program, key),
+            cty(program, value)
+        ),
         Ty::Set(elem) => format!("std::set<{}>", cty(program, elem)),
+        Ty::HashSet(elem) => format!("std::unordered_set<{}, cpl::CpHash>", cty(program, elem)),
+        Ty::Fn(args, ret) => {
+            let ps: Vec<String> = args.iter().map(|t| cty(program, t)).collect();
+            format!("std::function<{}({})>", cty(program, ret), ps.join(", "))
+        }
         Ty::Struct(id) => ident(&program.structs[*id].name),
         Ty::Enum(id) => ident(&program.enums[*id].name),
     }

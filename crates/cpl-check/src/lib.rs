@@ -23,9 +23,9 @@ mod prelude;
 mod ty;
 
 pub use check::{GlobalRef, HoverEntry};
-pub use db::{Analysis, AnalyzedItem, Database, Decl, ItemCheck, ItemSyntax, Stats};
+pub use db::{Analysis, AnalyzedItem, Database, Decl, Import, ItemCheck, ItemSyntax, Module, Stats};
 pub use def::{DeclKind, Def, DomainInfo};
-pub use hover::{Hover, Symbol};
+pub use hover::{Definition, Hover, Symbol};
 pub use modules::{FsLoader, Loader};
 pub use ty::{Param, Ty};
 

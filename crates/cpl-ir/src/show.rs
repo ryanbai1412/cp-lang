@@ -41,7 +41,9 @@ pub fn sep_of(elem: &Ty) -> Sep {
         | Ty::Array { .. }
         | Ty::List(_)
         | Ty::Map(..)
-        | Ty::Set(_) => Sep::Line,
+        | Ty::HashMap(..)
+        | Ty::Set(_)
+        | Ty::HashSet(_) => Sep::Line,
         _ => Sep::Space,
     }
 }
@@ -63,6 +65,8 @@ pub(crate) fn ty_name(
         Ty::Str => "Str".into(),
         Ty::Pos(d) => domains[*d].clone(),
         Ty::Bound(d) => format!("{}.bounds", domains[*d]),
+        Ty::Range(inner) => format!("Range<{}>", name(inner)),
+        Ty::DomainVal => "domain".into(),
         Ty::Array { dims, elem } => {
             let dims: Vec<String> = dims
                 .iter()
@@ -85,7 +89,10 @@ pub(crate) fn ty_name(
         }
         Ty::List(elem) => format!("List<{}>", name(elem)),
         Ty::Map(k, v) => format!("Map<{}, {}>", name(k), name(v)),
+        Ty::HashMap(k, v) => format!("HashMap<{}, {}>", name(k), name(v)),
         Ty::Set(elem) => format!("Set<{}>", name(elem)),
+        Ty::HashSet(elem) => format!("HashSet<{}>", name(elem)),
+        Ty::Fn(args, ret) => format!("({}) -> {}", list(args), name(ret)),
         Ty::Struct(id) => structs[*id].name.clone(),
         Ty::Enum(id) => enums[*id].name.clone(),
         Ty::Error => "_".into(),

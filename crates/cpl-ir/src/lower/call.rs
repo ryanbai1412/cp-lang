@@ -15,13 +15,43 @@ enum Reduce {
 
 impl<'a> Lowerer<'a> {
     /// The symbol `e` names, if it is a bare name no local hides.
-    fn sym(&self, e: &ast::Expr) -> Option<Sym> {
+    pub(super) fn sym(&self, e: &ast::Expr) -> Option<Sym> {
         match &e.kind {
             ast::ExprKind::Name(name) if self.lookup(name).is_none() => {
-                self.syms.get(name).copied()
+                if let Some(ga) = self.gen_env.get(name) {
+                    return match ga {
+                        GenArg::Domain(d) => Some(Sym::Domain(*d)),
+                        GenArg::Ty(Ty::Struct(id)) => Some(Sym::Struct(*id)),
+                        GenArg::Ty(Ty::Enum(id)) => Some(Sym::Enum(*id)),
+                        _ => None,
+                    };
+                }
+                self.get_sym(name)
             }
             _ => None,
         }
+    }
+
+    fn call_fn_val(&mut self, callee: Expr, args: &[ast::Arg], span: Span) -> Expr {
+        let Ty::Fn(param_tys, ret_ty) = callee.ty.clone() else {
+            if callee.ty != Ty::Error {
+                self.error(
+                    codes::NOT_CALLABLE,
+                    span,
+                    format!("a `{}` can't be called", self.show(&callee.ty)),
+                );
+            }
+            return self.err_expr(span);
+        };
+        let mut vals = Vec::with_capacity(args.len());
+        for (i, arg) in args.iter().enumerate() {
+            let v = match param_tys.get(i) {
+                Some(want) => self.expect(&arg.value, want),
+                None => self.expr(&arg.value, None),
+            };
+            vals.push(v);
+        }
+        self.mk(ExprKind::CallExpr(Box::new(callee), vals), *ret_ty, span)
     }
 
     pub(super) fn call(
@@ -35,17 +65,61 @@ impl<'a> Lowerer<'a> {
         match &callee.kind {
             ast::ExprKind::Paren(inner) => self.call(whole, inner, args, hint),
             ast::ExprKind::Name(name) => {
+                // Local variable, receiver field, or captured fn value?
                 if self.lookup(name).is_some() {
-                    self.error(
-                        codes::NOT_CALLABLE,
-                        callee.span,
-                        format!("`{name}` is a variable, not a fn"),
-                    );
-                    return self.err_expr(span);
+                    let fv = self.name(name, None, callee.span);
+                    return self.call_fn_val(fv, args, span);
                 }
-                match self.syms.get(name).copied() {
+                if let Some((slot, owner)) = self.cx.receiver {
+                    if let Some((index, ty)) = self.field_of(&Ty::Struct(owner), name) {
+                        if matches!(ty, Ty::Fn(..)) {
+                            let base = self.local(slot, callee.span);
+                            let fv = self.mk(ExprKind::Field(Box::new(base), index), ty, callee.span);
+                            return self.call_fn_val(fv, args, span);
+                        }
+                    }
+                }
+                if let Some(slot) = self.capture_from_outer(name) {
+                    let fv = self.local(slot, callee.span);
+                    return self.call_fn_val(fv, args, span);
+                }
+                if let Some((slot, owner)) = self.capture_self_from_outer() {
+                    if let Some((index, ty)) = self.field_of(&Ty::Struct(owner), name) {
+                        if matches!(ty, Ty::Fn(..)) {
+                            let base = self.local(slot, callee.span);
+                            let fv = self.mk(ExprKind::Field(Box::new(base), index), ty, callee.span);
+                            return self.call_fn_val(fv, args, span);
+                        }
+                    }
+                }
+                if let Some(ga) = self.gen_env.get(name).cloned() {
+                    match ga {
+                        GenArg::Domain(id) => {
+                            let Some(value) = self.one_arg(name, args, &Ty::Int, span) else {
+                                return self.err_expr(span);
+                            };
+                            return self.mk(
+                                ExprKind::Cast(Cast::FromLabel(id), Box::new(value)),
+                                Ty::Pos(id),
+                                span,
+                            );
+                        }
+                        GenArg::Ty(Ty::Struct(id)) => {
+                            return self.construct_or_new(id, args, span);
+                        }
+                        GenArg::Ty(Ty::Int) => return self.prelude("Int", args, hint, span),
+                        GenArg::Ty(Ty::Float) => return self.prelude("Float", args, hint, span),
+                        GenArg::Ty(Ty::Char) => return self.prelude("Char", args, hint, span),
+                        GenArg::Ty(Ty::Str) => return self.prelude("Str", args, hint, span),
+                        GenArg::Ty(Ty::Bool) => return self.prelude("Bool", args, hint, span),
+                        _ => {}
+                    }
+                }
+                match self.get_sym(name) {
                     Some(Sym::Fn(id)) => self.user_call(id, None, args, span),
-                    Some(Sym::Struct(id)) => self.construct(id, args, span),
+                    Some(Sym::GenFn(gfid)) => self.call_gen_fn(gfid, Vec::new(), None, args, span),
+                    Some(Sym::Struct(id)) => self.construct_or_new(id, args, span),
+                    Some(Sym::GenStruct(gid)) => self.call_gen_struct(gid, Vec::new(), args, hint, span),
                     Some(Sym::Variant(id, tag)) => self.variant(id, tag, args, span),
                     Some(Sym::Domain(id)) => {
                         let Some(value) = self.one_arg(name, args, &Ty::Int, span) else {
@@ -57,15 +131,44 @@ impl<'a> Lowerer<'a> {
                             span,
                         )
                     }
-                    Some(Sym::Global(_)) => {
-                        self.error(
-                            codes::NOT_CALLABLE,
-                            callee.span,
-                            format!("`{name}` is a variable, not a fn"),
-                        );
-                        self.err_expr(span)
+                    Some(Sym::Alias(aid)) => {
+                        let (m, ty_ast, offset) = self.aliases[aid];
+                        let sm = std::mem::replace(&mut self.cur_mod, m);
+                        let so = std::mem::replace(&mut self.offset, offset);
+                        let resolved = self.resolve_ty(ty_ast);
+                        self.cur_mod = sm;
+                        self.offset = so;
+                        match resolved {
+                            Ty::Struct(id) => self.construct_or_new(id, args, span),
+                            Ty::Pos(id) => {
+                                let Some(value) = self.one_arg(name, args, &Ty::Int, span) else {
+                                    return self.err_expr(span);
+                                };
+                                self.mk(
+                                    ExprKind::Cast(Cast::FromLabel(id), Box::new(value)),
+                                    Ty::Pos(id),
+                                    span,
+                                )
+                            }
+                            _ => {
+                                self.error(
+                                    codes::NOT_CALLABLE,
+                                    callee.span,
+                                    format!("`{name}` is a type and can't be called"),
+                                );
+                                self.err_expr(span)
+                            }
+                        }
                     }
-                    Some(Sym::Enum(_) | Sym::Alias(_)) => {
+                    Some(Sym::Global(id)) => {
+                        let fv = self.mk(ExprKind::Global(id), self.globals[id].ty.clone(), callee.span);
+                        self.call_fn_val(fv, args, span)
+                    }
+                    Some(Sym::ModConst(mcid)) => {
+                        let fv = self.ensure_mod_const(mcid, callee.span);
+                        self.call_fn_val(fv, args, span)
+                    }
+                    Some(Sym::Enum(_) | Sym::GenEnum(_) | Sym::GenAlias(_) | Sym::Trait(_) | Sym::Mod(_) | Sym::GenConst(_)) => {
                         self.error(
                             codes::NOT_CALLABLE,
                             callee.span,
@@ -77,37 +180,215 @@ impl<'a> Lowerer<'a> {
                 }
             }
             ast::ExprKind::Generic { base, args: types } => {
-                let name = match &base.kind {
-                    ast::ExprKind::Name(name) => name.as_str(),
-                    _ => "",
-                };
-                if !matches!(name, "List" | "Set" | "Map") {
-                    self.unsupported(span, "generic fns and types");
-                    return self.err_expr(span);
-                }
-                if !args.is_empty() {
-                    self.unsupported(span, "arguments when making a collection");
-                    return self.err_expr(span);
-                }
-                let ty = ast::Type {
-                    kind: ast::TypeKind::Named {
-                        name: ast::Name {
-                            text: name.to_string(),
-                            span: base.span,
-                        },
-                        args: types.clone(),
-                    },
-                    span: callee.span,
-                };
-                let ty = self.resolve_ty(&ty);
-                self.mk(ExprKind::Tuple(Vec::new()), ty, span)
+                self.call_generic(base, types, args, hint, span)
             }
             ast::ExprKind::Field { base, name } => self.method(whole, base, name, args, hint),
             _ => {
-                self.unsupported(span, "calling the result of an expression");
+                let fv = self.expr(callee, None);
+                self.call_fn_val(fv, args, span)
+            }
+        }
+    }
+
+    fn call_generic(
+        &mut self,
+        base: &ast::Expr,
+        types: &[ast::Type],
+        args: &[ast::Arg],
+        hint: Option<&Ty>,
+        span: Span,
+    ) -> Expr {
+        // Check `base.method::<T>(...)`.
+        if let ast::ExprKind::Field { base: recv, name } = &base.kind {
+            if let Some(Sym::Mod(target_mod)) = self.sym(recv) {
+                let saved_mod = std::mem::replace(&mut self.cur_mod, target_mod);
+                let sym = self.mod_syms[target_mod].get(&name.text).copied();
+                self.cur_mod = saved_mod;
+                match sym {
+                    Some(Sym::GenFn(gfid)) => {
+                        let gargs = self.resolve_gen_args(types);
+                        return self.call_gen_fn(gfid, gargs, None, args, span);
+                    }
+                    Some(Sym::GenStruct(gid)) => {
+                        let gargs = self.resolve_gen_args(types);
+                        return self.call_gen_struct(gid, gargs, args, hint, span);
+                    }
+                    _ => {}
+                }
+            }
+            let val = self.expr(recv, None);
+            if let Ty::Struct(sid) = val.ty {
+                if let Some(&gfid) = self.structs[sid].gen_methods.get(&name.text) {
+                    let gargs = self.resolve_gen_args(types);
+                    return self.call_gen_fn(gfid, gargs, Some(Arg::Value(val)), args, span);
+                }
+            }
+        }
+
+        let name = match &base.kind {
+            ast::ExprKind::Name(name) => name.as_str(),
+            _ => "",
+        };
+        if matches!(name, "List" | "Set" | "HashSet" | "Map" | "HashMap") {
+            let ty = ast::Type {
+                kind: ast::TypeKind::Named {
+                    name: ast::Name {
+                        text: name.to_string(),
+                        span: base.span,
+                    },
+                    args: types.to_vec(),
+                },
+                span: base.span,
+            };
+            let ty = self.resolve_ty(&ty);
+            if args.is_empty() {
+                return self.mk(ExprKind::Tuple(Vec::new()), ty, span);
+            }
+            if args.len() == 1 && matches!(name, "List" | "Set" | "HashSet") {
+                let seq = self.expr(&args[0].value, None);
+                if seq.ty == ty {
+                    return seq;
+                }
+                if let Ok(c) = self.try_coerce(seq.clone(), &ty) {
+                    return c;
+                }
+                // Copy elements into a fresh List/Set.
+                let is_set = matches!(ty, Ty::Set(_) | Ty::HashSet(_));
+                return self.do_expr(Some(&ty), span, |lw, out| {
+                    let acc = lw.temp(ty.clone());
+                    out.push(Stmt::Let(acc, Some(lw.mk(ExprKind::Tuple(Vec::new()), ty.clone(), span))));
+                    let (iter, elem) = lw.iter(&args[0].value);
+                    let lid = lw.open_loop(None);
+                    let slot = lw.temp(elem);
+                    let op = if is_set { Mutation::Insert } else { Mutation::Push };
+                    let rty = if is_set { Ty::Bool } else { Ty::Unit };
+                    let item = lw.local(slot, span);
+                    let m = lw.mk(
+                        ExprKind::Mutate(
+                            op,
+                            Box::new(Place { kind: PlaceKind::Local(acc), ty: ty.clone(), span: lw.span(span) }),
+                            vec![item],
+                        ),
+                        rty,
+                        span,
+                    );
+                    lw.cx.loops.pop();
+                    out.push(Stmt::For(lid, slot, iter, Block { stmts: vec![Stmt::Expr(m)] }));
+                    let res = lw.local(acc, span);
+                    out.push(Stmt::Give(res));
+                });
+            }
+        }
+        match self.get_sym(name) {
+            Some(Sym::GenStruct(gid)) => {
+                let gargs = self.resolve_gen_args(types);
+                self.call_gen_struct(gid, gargs, args, hint, span)
+            }
+            Some(Sym::GenFn(gfid)) => {
+                let gargs = self.resolve_gen_args(types);
+                self.call_gen_fn(gfid, gargs, None, args, span)
+            }
+            Some(Sym::GenAlias(gaid)) => {
+                let gargs = self.resolve_gen_args(types);
+                let tpl_mod = self.gen_aliases[gaid].mod_id;
+                let tpl_offset = self.gen_aliases[gaid].offset;
+                let generics = self.gen_aliases[gaid].generics;
+                let target_ty = self.gen_aliases[gaid].ty;
+                let mut env = HashMap::new();
+                for (p, a) in generics.iter().zip(gargs) {
+                    env.insert(p.text.clone(), a);
+                }
+                let sm = std::mem::replace(&mut self.cur_mod, tpl_mod);
+                let so = std::mem::replace(&mut self.offset, tpl_offset);
+                let se = std::mem::replace(&mut self.gen_env, env);
+                let resolved = self.resolve_ty(target_ty);
+                self.cur_mod = sm;
+                self.offset = so;
+                self.gen_env = se;
+                if let Ty::Struct(sid) = resolved {
+                    return self.construct_or_new(sid, args, span);
+                }
+                self.err_expr(span)
+            }
+            _ => {
+                self.unsupported(span, "generic fns and types");
                 self.err_expr(span)
             }
         }
+    }
+
+    /// Calls a struct `S(...)`: outside `S`'s own body, routes to `S.new(...)` if `new` exists;
+    /// inside `S`'s own body, constructs `S` directly from its fields.
+    fn construct_or_new(&mut self, id: StructId, args: &[ast::Arg], span: Span) -> Expr {
+        let inside_self = self.self_struct == Some(id);
+        if !inside_self {
+            if let Some(&new_fn) = self.structs[id].methods.get("new") {
+                return self.user_call(new_fn, None, args, span);
+            }
+            if let Some(&new_gfn) = self.structs[id].gen_methods.get("new") {
+                return self.call_gen_fn(new_gfn, Vec::new(), None, args, span);
+            }
+        }
+        self.construct(id, args, span)
+    }
+
+    /// Instantiates a generic struct (inferring omitted type args from `self_struct`, `hint`, or call args)
+    /// and constructs it via `construct_or_new`.
+    fn call_gen_struct(
+        &mut self,
+        gid: GenStructId,
+        explicit: Vec<GenArg>,
+        args: &[ast::Arg],
+        hint: Option<&Ty>,
+        span: Span,
+    ) -> Expr {
+        let decl = self.gen_structs[gid].decl;
+        let tpl_mod = self.gen_structs[gid].mod_id;
+        let gen_names: Vec<String> = decl.generics.iter().map(|g| g.text.clone()).collect();
+        if explicit.len() == gen_names.len() {
+            let sid = self.instantiate_struct(gid, explicit);
+            return self.construct_or_new(sid, args, span);
+        }
+        // Inside the struct's own body (`Mod(x % P)`, `Dsu(...)`, `Order(...)`), reuse `self_struct`!
+        if explicit.is_empty() {
+            if let Some(sid) = self.self_struct {
+                if self.structs[sid].origin_gen.as_ref().is_some_and(|(g, _)| *g == gid) {
+                    return self.construct_or_new(sid, args, span);
+                }
+            }
+        }
+        // Try inferring from `hint` (e.g. `Monoid(m.id, ...)` when return type is `Monoid<T>`).
+        if let Some(Ty::Struct(hsid)) = hint {
+            if let Some((hgid, _)) = &self.structs[*hsid].origin_gen {
+                if *hgid == gid {
+                    return self.construct_or_new(*hsid, args, span);
+                }
+            }
+        }
+        // Otherwise infer generic params from the constructor arguments (`Lit(Road(a), true)`).
+        let mut inferred: GenEnv = HashMap::new();
+        for (n, a) in gen_names.iter().zip(&explicit) {
+            inferred.insert(n.clone(), a.clone());
+        }
+        for (f, arg) in decl.fields.iter().zip(args) {
+            if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
+                let diag_len = self.diags.len();
+                let probed = self.expr(&arg.value, None);
+                self.diags.truncate(diag_len);
+                if probed.ty != Ty::Error {
+                    self.unify_ast_ty(&f.ty, &probed.ty, tpl_mod, &gen_names, &mut inferred);
+                }
+            }
+        }
+        let mut final_args = Vec::with_capacity(gen_names.len());
+        for g in &gen_names {
+            match inferred.get(g) {
+                Some(a) => final_args.push(a.clone()),
+                None => final_args.push(GenArg::Ty(Ty::Int)),
+            }
+        }
+        let sid = self.instantiate_struct(gid, final_args);
+        self.construct_or_new(sid, args, span)
     }
 
     /// Positional arguments only, and exactly `n` of them.
@@ -143,13 +424,14 @@ impl<'a> Lowerer<'a> {
 
     /// Calls the user's fn `id`. Arguments are matched by position, then
     /// by name, then from defaults.
-    fn user_call(
+    pub(super) fn user_call(
         &mut self,
         id: FnId,
         receiver: Option<Arg>,
         args: &[ast::Arg],
         span: Span,
     ) -> Expr {
+        self.queue_fn(id);
         let params = self.sigs[id].params.clone();
         let name = self.sigs[id].decl.name.text.clone();
         let mut given: Vec<Option<&ast::Arg>> = vec![None; params.len()];
@@ -188,6 +470,8 @@ impl<'a> Lowerer<'a> {
             given[index] = Some(arg);
         }
         let mut lowered: Vec<Arg> = receiver.into_iter().collect();
+        let mut pre_stmts: Vec<Stmt> = Vec::new();
+        let mut post_stmts: Vec<Stmt> = Vec::new();
         for (param, arg) in params.iter().zip(given) {
             match arg {
                 Some(arg) if param.mutable => {
@@ -197,10 +481,33 @@ impl<'a> Lowerer<'a> {
                         self.error(codes::MISSING_MUT_AT_CALL, arg.value.span, message);
                         ok = false;
                     }
-                    let place = self.place(&arg.value);
+                    let place = if let ast::ExprKind::Call { callee, args: pargs } = &arg.value.kind {
+                        if let ast::ExprKind::Field { base, name: pname } = &callee.kind {
+                            if let Some(proj) = self.find_projection_on(base, &pname.text) {
+                                self.lower_projection_mut_call(
+                                    proj,
+                                    base,
+                                    pargs,
+                                    arg.value.span,
+                                    &mut pre_stmts,
+                                    &mut post_stmts,
+                                )
+                            } else {
+                                self.place(&arg.value)
+                            }
+                        } else {
+                            self.place(&arg.value)
+                        }
+                    } else {
+                        self.place(&arg.value)
+                    };
+                    if let PlaceKind::Local(s) = match &place.kind {
+                        PlaceKind::Local(s) => PlaceKind::Local(*s),
+                        _ => PlaceKind::Global(usize::MAX),
+                    } {
+                        self.cx.mut_slots.insert(s);
+                    }
                     if place.ty == Ty::Bool && matches!(place.kind, PlaceKind::Index(..)) {
-                        // The C++ back end packs `Bool` elements as bytes,
-                        // which a `bool&` parameter can't refer to.
                         self.unsupported(arg.value.span, "a `Bool` element passed as `mut`");
                         ok = false;
                     }
@@ -213,11 +520,13 @@ impl<'a> Lowerer<'a> {
                 Some(arg) => lowered.push(Arg::Value(self.expect(&arg.value, &param.ty))),
                 None => match param.default {
                     Some(default) if !param.mutable => {
-                        // A default is written next to the fn, so its
-                        // spans are relative to the fn's item.
+                        let sm = std::mem::replace(&mut self.cur_mod, self.sigs[id].mod_id);
                         let saved = std::mem::replace(&mut self.offset, self.sigs[id].offset);
+                        let se = std::mem::replace(&mut self.gen_env, self.sigs[id].env.clone());
                         let value = self.expect(default, &param.ty);
+                        self.cur_mod = sm;
                         self.offset = saved;
+                        self.gen_env = se;
                         lowered.push(Arg::Value(value));
                     }
                     _ => {
@@ -234,7 +543,23 @@ impl<'a> Lowerer<'a> {
         if !ok {
             return self.err_expr(span);
         }
-        self.mk(ExprKind::Call(id, lowered), ret, span)
+        let call_expr = self.mk(ExprKind::Call(id, lowered), ret.clone(), span);
+        if pre_stmts.is_empty() && post_stmts.is_empty() {
+            call_expr
+        } else {
+            let mut stmts = pre_stmts;
+            if ret == Ty::Unit {
+                stmts.push(Stmt::Expr(call_expr));
+                stmts.extend(post_stmts);
+                stmts.push(Stmt::Give(self.mk(ExprKind::Unit, Ty::Unit, span)));
+            } else {
+                let res_slot = self.temp(ret.clone());
+                stmts.push(Stmt::Let(res_slot, Some(call_expr)));
+                stmts.extend(post_stmts);
+                stmts.push(Stmt::Give(self.local(res_slot, span)));
+            }
+            self.mk(ExprKind::Do(Block { stmts }), ret, span)
+        }
     }
 
     /// `Edge(u: a, v: b, w: 5)` or `Edge(a, b, 5)`.
@@ -327,7 +652,11 @@ impl<'a> Lowerer<'a> {
                 self.mk(ExprKind::Print(values), Ty::Unit, span)
             }
             "read" => {
-                if self.positional_any("read", args, 0, span).is_none() {
+                if !args
+                    .iter()
+                    .all(|a| a.name.as_ref().is_some_and(|n| n.text == "gen"))
+                    && self.positional_any("read", args, 0, span).is_none()
+                {
                     return self.err_expr(span);
                 }
                 let Some(want) = hint else {
@@ -386,6 +715,114 @@ impl<'a> Lowerer<'a> {
                 ),
                 None => self.err_expr(span),
             },
+            "isqrt" => match self.one_arg(name, args, &Ty::Int, span) {
+                Some(value) => self.mk(ExprKind::Builtin(Builtin::Isqrt, vec![value]), Ty::Int, span),
+                None => self.err_expr(span),
+            },
+            "atan2" => match self.positional_any(name, args, 2, span) {
+                Some(exprs) => {
+                    let y = self.expect(exprs[0], &Ty::Float);
+                    let x = self.expect(exprs[1], &Ty::Float);
+                    self.mk(ExprKind::Builtin(Builtin::Atan2, vec![y, x]), Ty::Float, span)
+                }
+                None => self.err_expr(span),
+            },
+            "popcount" | "ctz" | "clz" | "bit_width" | "bit_ceil" => {
+                let op = match name {
+                    "popcount" => Builtin::Popcount,
+                    "ctz" => Builtin::Ctz,
+                    "clz" => Builtin::Clz,
+                    "bit_width" => Builtin::BitWidth,
+                    _ => Builtin::BitCeil,
+                };
+                match self.one_arg(name, args, &Ty::Int, span) {
+                    Some(value) => self.mk(ExprKind::Builtin(op, vec![value]), Ty::Int, span),
+                    None => self.err_expr(span),
+                }
+            }
+            "bit" => match self.one_arg(name, args, &Ty::Int, span) {
+                Some(k) => {
+                    let one = self.int_lit(1, span);
+                    self.mk(
+                        ExprKind::Binary(BinOp::Shl, Box::new(one), Box::new(k)),
+                        Ty::Int,
+                        span,
+                    )
+                }
+                None => self.err_expr(span),
+            },
+            "swap" => {
+                if args.len() != 2 {
+                    self.error(codes::WRONG_ARG_COUNT, span, "`swap` takes 2 arguments");
+                    return self.err_expr(span);
+                }
+                let pa = self.place(&args[0].value);
+                let pb = self.place(&args[1].value);
+                let ty = pa.ty.clone();
+                self.do_expr(Some(&Ty::Unit), span, |lw, out| {
+                    let tmp = lw.temp(ty.clone());
+                    let a_val = super::stmt::place_to_expr(&pa);
+                    let b_val = super::stmt::place_to_expr(&pb);
+                    out.push(Stmt::Let(tmp, Some(a_val)));
+                    out.push(Stmt::Assign(pa, AssignOp::Set, b_val));
+                    out.push(Stmt::Assign(pb, AssignOp::Set, lw.local(tmp, span)));
+                    out.push(Stmt::Give(lw.mk(ExprKind::Unit, Ty::Unit, span)));
+                })
+            }
+            "rand" => match self.positional_any(name, args, 2, span) {
+                Some(exprs) => {
+                    let lo = self.expect(exprs[0], &Ty::Int);
+                    let hi = self.expect(exprs[1], &Ty::Int);
+                    self.mk(ExprKind::Builtin(Builtin::Rand, vec![lo, hi]), Ty::Int, span)
+                }
+                None => self.err_expr(span),
+            },
+            "shuffle" => {
+                if args.len() != 1 {
+                    self.error(codes::WRONG_ARG_COUNT, span, "`shuffle` takes 1 list argument");
+                    return self.err_expr(span);
+                }
+                let place = self.place(&args[0].value);
+                self.mk(
+                    ExprKind::Mutate(Mutation::Shuffle, Box::new(place), Vec::new()),
+                    Ty::Unit,
+                    span,
+                )
+            }
+            "copy" => match self.positional_any(name, args, 1, span) {
+                Some(exprs) => {
+                    let val = self.expr(exprs[0], hint);
+                    let ty = val.ty.clone();
+                    self.mk(ExprKind::Builtin(Builtin::Copy, vec![val]), ty, span)
+                }
+                None => self.err_expr(span),
+            },
+            "some" => match self.positional_any(name, args, 1, span) {
+                Some(exprs) => {
+                    let inner_h = match hint {
+                        Some(Ty::Opt(inner)) => Some(&**inner),
+                        _ => None,
+                    };
+                    let val = self.expr(exprs[0], inner_h);
+                    let ty = Ty::opt(val.ty.clone());
+                    self.mk(ExprKind::Some(Box::new(val)), ty, span)
+                }
+                None => self.err_expr(span),
+            },
+            "laws_hold" => self.lower_laws_hold(args, span),
+            "sort" => {
+                if args.is_empty() {
+                    self.error(codes::WRONG_ARG_COUNT, span, "`sort` takes a list or array");
+                    return self.err_expr(span);
+                }
+                let target = &args[0].value;
+                let place = self.place(target);
+                let elem = match &place.ty {
+                    Ty::List(e) | Ty::Array { elem: e, .. } => (**e).clone(),
+                    _ => Ty::Error,
+                };
+                self.sort_place(place, &elem, &args[1..], span)
+            }
             "floor" | "ceil" | "round" => {
                 let op = match name {
                     "floor" => Builtin::Floor,
@@ -405,13 +842,95 @@ impl<'a> Lowerer<'a> {
                 self.len_of(value, span)
             }
             "sorted" => {
-                let Some(exprs) = self.positional_any(name, args, 1, span) else {
+                if args.is_empty() {
+                    self.error(codes::WRONG_ARG_COUNT, span, "`sorted` takes a sequence");
                     return self.err_expr(span);
-                };
-                let value = self.expr(exprs[0], None);
-                self.sorted(value, span)
+                }
+                let value = self.expr(&args[0].value, None);
+                if args.len() == 1 {
+                    self.sorted(value, span)
+                } else {
+                    self.sorted_by(value, &args[1..], span)
+                }
             }
-            "Int" | "Float" | "Char" | "Str" => {
+            "runs" => self.lower_runs(args, span),
+            "List" => {
+                if args.is_empty() {
+                    let ty = match hint {
+                        Some(ty @ Ty::List(_)) => ty.clone(),
+                        _ => Ty::list(Ty::Int),
+                    };
+                    return self.mk(ExprKind::Tuple(Vec::new()), ty, span);
+                }
+                let val = self.expr(&args[0].value, None);
+                match val.ty.clone() {
+                    Ty::List(_) => val,
+                    Ty::Str => self.mk(
+                        ExprKind::Builtin(Builtin::StrToList, vec![val]),
+                        Ty::list(Ty::Char),
+                        span,
+                    ),
+                    Ty::Array { elem, .. } => self.mk(
+                        ExprKind::Builtin(Builtin::ArrayToList, vec![val]),
+                        Ty::List(elem),
+                        span,
+                    ),
+                    Ty::Set(elem) | Ty::HashSet(elem) => {
+                        self.mk(ExprKind::Builtin(Builtin::Sorted, vec![val]), Ty::List(elem), span)
+                    }
+                    _ => val,
+                }
+            }
+            "Set" | "HashSet" => {
+                let hashed = name == "HashSet";
+                if args.is_empty() {
+                    let ty = match hint {
+                        Some(ty @ (Ty::Set(_) | Ty::HashSet(_))) => ty.clone(),
+                        _ if hashed => Ty::HashSet(Box::new(Ty::Int)),
+                        _ => Ty::Set(Box::new(Ty::Int)),
+                    };
+                    return self.mk(ExprKind::Tuple(Vec::new()), ty, span);
+                }
+                let (iter, elem) = self.iter(&args[0].value);
+                let ty = if hashed {
+                    Ty::HashSet(Box::new(elem.clone()))
+                } else {
+                    Ty::Set(Box::new(elem.clone()))
+                };
+                self.do_expr(Some(&ty), span, |lw, out| {
+                    let acc = lw.temp(ty.clone());
+                    out.push(Stmt::Let(acc, Some(lw.mk(ExprKind::Tuple(Vec::new()), ty.clone(), span))));
+                    let lid = lw.open_loop(None);
+                    let slot = lw.temp(elem);
+                    let item = lw.local(slot, span);
+                    let ins = lw.mk(
+                        ExprKind::Mutate(
+                            Mutation::Insert,
+                            Box::new(Place { kind: PlaceKind::Local(acc), ty: ty.clone(), span: lw.span(span) }),
+                            vec![item],
+                        ),
+                        Ty::Bool,
+                        span,
+                    );
+                    lw.cx.loops.pop();
+                    out.push(Stmt::For(lid, slot, iter, Block { stmts: vec![Stmt::Expr(ins)] }));
+                    let res = lw.local(acc, span);
+                    out.push(Stmt::Give(res));
+                })
+            }
+            "Map" | "HashMap" => {
+                let hashed = name == "HashMap";
+                let ty = match hint {
+                    Some(ty @ (Ty::Map(..) | Ty::HashMap(..))) => ty.clone(),
+                    _ if hashed => Ty::HashMap(Box::new(Ty::Int), Box::new(Ty::Int)),
+                    _ => Ty::Map(Box::new(Ty::Int), Box::new(Ty::Int)),
+                };
+                self.mk(ExprKind::Tuple(Vec::new()), ty, span)
+            }
+            "Int" | "Float" | "Char" | "Str" | "Bool" => {
+                if name == "Str" && args.is_empty() {
+                    return self.mk(ExprKind::Str(Vec::new()), Ty::Str, span);
+                }
                 let Some(exprs) = self.positional_any(name, args, 1, span) else {
                     return self.err_expr(span);
                 };
@@ -421,7 +940,6 @@ impl<'a> Lowerer<'a> {
             _ => {
                 let message = format!("`cpl run` doesn't know a fn named `{name}`");
                 self.error(codes::UNRESOLVED_NAME, span, message);
-                self.help("the standard library is not loaded yet; only the built-in fns exist");
                 self.err_expr(span)
             }
         }
@@ -431,11 +949,16 @@ impl<'a> Lowerer<'a> {
         let from = value.ty.clone();
         let (cast, ty) = match (to, &from) {
             (_, Ty::Error) => return value,
-            ("Int", Ty::Int) | ("Float", Ty::Float) | ("Char", Ty::Char) | ("Str", Ty::Str) => {
-                return value
-            }
+            ("Int", Ty::Int)
+            | ("Float", Ty::Float)
+            | ("Char", Ty::Char)
+            | ("Str", Ty::Str)
+            | ("Bool", Ty::Bool) => return value,
             ("Int", Ty::Float) => (Cast::FloatToInt, Ty::Int),
             ("Int", Ty::Char) => (Cast::CharToInt, Ty::Int),
+            ("Int", Ty::Str) => {
+                return self.mk(ExprKind::Builtin(Builtin::ParseInt, vec![value]), Ty::Int, span);
+            }
             ("Int", Ty::Pos(d)) => (Cast::Label(*d), Ty::Int),
             ("Int", Ty::Bound(_)) => (Cast::Ord, Ty::Int),
             ("Int", Ty::Bool) => {
@@ -449,11 +972,19 @@ impl<'a> Lowerer<'a> {
             }
             ("Float", Ty::Int) => (Cast::IntToFloat, Ty::Float),
             ("Char", Ty::Int) => (Cast::IntToChar, Ty::Char),
+            ("Str", Ty::List(elem)) if **elem == Ty::Char => {
+                return self.mk(ExprKind::Builtin(Builtin::ListToStr, vec![value]), Ty::Str, span);
+            }
             ("Str", _) => {
-                let Some(arg) = self.fmt_arg(value, 6, span) else {
-                    return self.err_expr(span);
-                };
-                return self.mk(ExprKind::Format(vec![FmtPiece::Value(arg)]), Ty::Str, span);
+                return self.mk(ExprKind::Builtin(Builtin::ShowStr, vec![value]), Ty::Str, span);
+            }
+            ("Bool", Ty::Int) => {
+                let zero = self.int_lit(0, span);
+                return self.mk(
+                    ExprKind::Cmp(CmpOp::Ne, Box::new(value), Box::new(zero)),
+                    Ty::Bool,
+                    span,
+                );
             }
             _ => {
                 let message = format!("a `{}` can't be turned into a `{to}`", self.show(&from));
@@ -466,7 +997,14 @@ impl<'a> Lowerer<'a> {
 
     fn len_of(&mut self, value: Expr, span: Span) -> Expr {
         match value.ty {
-            Ty::Array { .. } | Ty::List(_) | Ty::Str | Ty::Map(..) | Ty::Set(_) => {
+            Ty::Array { .. }
+            | Ty::List(_)
+            | Ty::Str
+            | Ty::Map(..)
+            | Ty::HashMap(..)
+            | Ty::Set(_)
+            | Ty::HashSet(_)
+            | Ty::Range(_) => {
                 self.mk(ExprKind::Builtin(Builtin::Len, vec![value]), Ty::Int, span)
             }
             Ty::Error => value,
@@ -489,7 +1027,16 @@ impl<'a> Lowerer<'a> {
                 let ty = value.ty.clone();
                 self.mk(ExprKind::Builtin(Builtin::Sorted, vec![value]), ty, span)
             }
-            Ty::Set(elem) => {
+            Ty::Array { elem, .. } => {
+                let elem = elem.clone();
+                let list = self.mk(
+                    ExprKind::Builtin(Builtin::ArrayToList, vec![value]),
+                    Ty::List(elem.clone()),
+                    span,
+                );
+                self.mk(ExprKind::Builtin(Builtin::Sorted, vec![list]), Ty::List(elem), span)
+            }
+            Ty::Set(elem) | Ty::HashSet(elem) => {
                 // A set is walked in order already.
                 let ty = Ty::List(elem.clone());
                 self.mk(ExprKind::Builtin(Builtin::Sorted, vec![value]), ty, span)
@@ -501,6 +1048,168 @@ impl<'a> Lowerer<'a> {
                 self.err_expr(span)
             }
         }
+    }
+
+    /// `sorted(xs, by: ...)`
+    fn sorted_by(&mut self, value: Expr, args: &[ast::Arg], span: Span) -> Expr {
+        let list_ty = match value.ty.clone() {
+            Ty::List(e) => Ty::List(e),
+            Ty::Array { elem, .. } => Ty::List(elem),
+            Ty::Set(e) | Ty::HashSet(e) => Ty::List(e),
+            Ty::Error => return value,
+            other => {
+                self.error(
+                    codes::TYPE_MISMATCH,
+                    span,
+                    format!("`sorted` takes a sequence, not a `{}`", self.show(&other)),
+                );
+                return self.err_expr(span);
+            }
+        };
+        let elem = match &list_ty {
+            Ty::List(e) => (**e).clone(),
+            _ => unreachable!(),
+        };
+        self.do_expr(Some(&list_ty), span, |lw, out| {
+            let init = match value.ty {
+                Ty::List(_) => lw.mk(ExprKind::Builtin(Builtin::Copy, vec![value]), list_ty.clone(), span),
+                Ty::Array { .. } => lw.mk(
+                    ExprKind::Builtin(Builtin::ArrayToList, vec![value]),
+                    list_ty.clone(),
+                    span,
+                ),
+                _ => lw.mk(
+                    ExprKind::Builtin(Builtin::Sorted, vec![value]),
+                    list_ty.clone(),
+                    span,
+                ),
+            };
+            let slot = lw.temp(list_ty.clone());
+            out.push(Stmt::Let(slot, Some(init)));
+            let place = Place {
+                kind: PlaceKind::Local(slot),
+                ty: list_ty.clone(),
+                span: lw.span(span),
+            };
+            let sort_expr = lw.sort_place(place, &elem, args, span);
+            out.push(Stmt::Expr(sort_expr));
+            let res = lw.local(slot, span);
+            out.push(Stmt::Give(res));
+        })
+    }
+
+    /// `runs(seq)` -> `List<(T, Int)>` grouping adjacent equal elements.
+    fn lower_runs(&mut self, args: &[ast::Arg], span: Span) -> Expr {
+        let Some(exprs) = self.positional_any("runs", args, 1, span) else {
+            return self.err_expr(span);
+        };
+        let seq = self.expr(exprs[0], None);
+        let elem = match &seq.ty {
+            Ty::List(e) | Ty::Array { elem: e, .. } => (**e).clone(),
+            Ty::Str => Ty::Char,
+            Ty::Error => return self.err_expr(span),
+            other => {
+                self.error(
+                    codes::TYPE_MISMATCH,
+                    exprs[0].span,
+                    format!("`runs` takes a list, array, or string, not `{}`", self.show(other)),
+                );
+                return self.err_expr(span);
+            }
+        };
+        let pair_ty = Ty::Tuple(vec![elem.clone(), Ty::Int]);
+        let res_ty = Ty::list(pair_ty.clone());
+        self.do_expr(Some(&res_ty), span, |lw, out| {
+            let acc = lw.temp(res_ty.clone());
+            out.push(Stmt::Let(
+                acc,
+                Some(lw.mk(ExprKind::Tuple(Vec::new()), res_ty.clone(), span)),
+            ));
+            let lid = lw.open_loop(None);
+            let item_slot = lw.temp(elem.clone());
+            let acc_expr = lw.local(acc, span);
+            let acc_len = lw.mk(ExprKind::Builtin(Builtin::Len, vec![acc_expr.clone()]), Ty::Int, span);
+            let zero = lw.int_lit(0, span);
+            let nonempty = lw.mk(
+                ExprKind::Cmp(CmpOp::Gt, Box::new(acc_len.clone()), Box::new(zero)),
+                Ty::Bool,
+                span,
+            );
+            let last_idx = lw.int_add(acc_len, -1);
+            let last_elem = lw.mk(
+                ExprKind::Index(Box::new(acc_expr.clone()), vec![last_idx.clone()]),
+                pair_ty.clone(),
+                span,
+            );
+            let last_val = lw.mk(ExprKind::Field(Box::new(last_elem), 0), elem.clone(), span);
+            let eq = lw.mk(
+                ExprKind::Cmp(CmpOp::Eq, Box::new(last_val), Box::new(lw.local(item_slot, span))),
+                Ty::Bool,
+                span,
+            );
+            let cond = lw.mk(
+                ExprKind::Binary(BinOp::And, Box::new(nonempty), Box::new(eq)),
+                Ty::Bool,
+                span,
+            );
+            let count_place = Place {
+                kind: PlaceKind::Field(
+                    Box::new(Place {
+                        kind: PlaceKind::Index(
+                            Box::new(Place {
+                                kind: PlaceKind::Local(acc),
+                                ty: res_ty.clone(),
+                                span: lw.span(span),
+                            }),
+                            vec![last_idx],
+                        ),
+                        ty: pair_ty.clone(),
+                        span: lw.span(span),
+                    }),
+                    1,
+                ),
+                ty: Ty::Int,
+                span: lw.span(span),
+            };
+            let inc = Stmt::Assign(
+                count_place,
+                AssignOp::Binary(BinOp::Add),
+                lw.int_lit(1, span),
+            );
+            let pair = lw.mk(
+                ExprKind::Tuple(vec![lw.local(item_slot, span), lw.int_lit(1, span)]),
+                pair_ty.clone(),
+                span,
+            );
+            let push = Stmt::Expr(lw.mk(
+                ExprKind::Mutate(
+                    Mutation::Push,
+                    Box::new(Place {
+                        kind: PlaceKind::Local(acc),
+                        ty: res_ty.clone(),
+                        span: lw.span(span),
+                    }),
+                    vec![pair],
+                ),
+                Ty::Unit,
+                span,
+            ));
+            lw.cx.loops.pop();
+            out.push(Stmt::For(
+                lid,
+                item_slot,
+                Iter::Seq(seq, false),
+                Block {
+                    stmts: vec![Stmt::If(
+                        cond,
+                        Block { stmts: vec![inc] },
+                        Block { stmts: vec![push] },
+                    )],
+                },
+            ));
+            let res = lw.local(acc, span);
+            out.push(Stmt::Give(res));
+        })
     }
 
     /// The spec of a type that says everything `read()` needs on its own.
@@ -777,11 +1486,78 @@ impl<'a> Lowerer<'a> {
     /// `base.name` that is not being called.
     pub(super) fn field(&mut self, whole: &ast::Expr, base: &ast::Expr, name: &ast::Name) -> Expr {
         let span = whole.span;
+        // Handle `GenericBase<...>.member` (e.g., `Mod<7>.zero`, `Sum<Int>.id`, `Less<Int>.rev`).
+        if let ast::ExprKind::Generic { base: gbase, args: gtypes } = &base.kind {
+            if let ast::ExprKind::Name(gname) = &gbase.kind {
+                if let Some(Sym::GenStruct(gid)) = self.get_sym(gname) {
+                    let gargs = self.resolve_gen_args(gtypes);
+                    let sid = self.instantiate_struct(gid, gargs);
+                    if let Some(sc) = self.structs[sid].consts.get(&name.text).cloned() {
+                        return self.eval_struct_const(sid, sc, span);
+                    }
+                    if let Some(&fn_id) = self.structs[sid].methods.get(&name.text) {
+                        return self.method_call(fn_id, None, &[], span);
+                    }
+                    if name.text == "K" {
+                        if let Some(d) = self.structs[sid].index_domain {
+                            return self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                        }
+                    }
+                }
+            }
+        }
         match self.sym(base) {
+            Some(Sym::Mod(target_mod)) => {
+                let sym = self.mod_syms[target_mod].get(&name.text).copied();
+                match sym {
+                    Some(Sym::ModConst(mcid)) => return self.ensure_mod_const(mcid, span),
+                    Some(Sym::Global(id)) => {
+                        return self.mk(ExprKind::Global(id), self.globals[id].ty.clone(), span);
+                    }
+                    Some(Sym::Fn(id)) => return self.fn_as_closure(id, span),
+                    _ => {
+                        self.error(
+                            codes::UNKNOWN_FIELD,
+                            name.span,
+                            format!("module has no member `{}`", name.text),
+                        );
+                        return self.err_expr(span);
+                    }
+                }
+            }
+            Some(Sym::Struct(id)) => {
+                if name.text == "K" {
+                    if let Some(d) = self.structs[id].index_domain {
+                        return self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                    }
+                }
+                if let Some(sc) = self.structs[id].consts.get(&name.text).cloned() {
+                    return self.eval_struct_const(id, sc, span);
+                }
+                if let Some(&fn_id) = self.structs[id].methods.get(&name.text) {
+                    return self.method_call(fn_id, None, &[], span);
+                }
+            }
+            Some(Sym::Alias(aid)) => {
+                let (m, ty_ast, offset) = self.aliases[aid];
+                let sm = std::mem::replace(&mut self.cur_mod, m);
+                let so = std::mem::replace(&mut self.offset, offset);
+                let resolved = self.resolve_ty(ty_ast);
+                self.cur_mod = sm;
+                self.offset = so;
+                if let Ty::Struct(id) = resolved {
+                    if let Some(sc) = self.structs[id].consts.get(&name.text).cloned() {
+                        return self.eval_struct_const(id, sc, span);
+                    }
+                    if let Some(&fn_id) = self.structs[id].methods.get(&name.text) {
+                        return self.method_call(fn_id, None, &[], span);
+                    }
+                }
+            }
             Some(Sym::Domain(id)) => {
                 let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
                 return match name.text.as_str() {
-                    "len" | "size" => len,
+                    "len" | "size" | "K" => len,
                     "first" => {
                         let zero = self.int_lit(0, span);
                         self.mk(
@@ -809,6 +1585,14 @@ impl<'a> Lowerer<'a> {
                     "end" => self.mk(
                         ExprKind::Cast(Cast::Trust, Box::new(len)),
                         Ty::Bound(id),
+                        span,
+                    ),
+                    "all" => self.mk(
+                        ExprKind::Range {
+                            lo: Box::new(self.int_lit(0, span)),
+                            hi: Box::new(len),
+                        },
+                        Ty::Range(Box::new(Ty::Pos(id))),
                         span,
                     ),
                     other => {
@@ -845,11 +1629,26 @@ impl<'a> Lowerer<'a> {
             _ => {}
         }
         if let ast::ExprKind::Name(type_name) = &base.kind {
-            if type_name == "Int" && self.lookup(type_name).is_none() {
-                match name.text.as_str() {
-                    "MAX" => return self.mk(ExprKind::Int(i64::MAX), Ty::Int, span),
-                    "MIN" => return self.mk(ExprKind::Int(INT_MIN), Ty::Int, span),
-                    _ => {}
+            if self.lookup(type_name).is_none() {
+                if type_name == "Int"
+                    || matches!(self.gen_env.get(type_name), Some(GenArg::Ty(Ty::Int)))
+                {
+                    match name.text.as_str() {
+                        "MAX" => return self.mk(ExprKind::Int(i64::MAX), Ty::Int, span),
+                        "MIN" => return self.mk(ExprKind::Int(INT_MIN), Ty::Int, span),
+                        "zero" => return self.mk(ExprKind::Int(0), Ty::Int, span),
+                        "one" => return self.mk(ExprKind::Int(1), Ty::Int, span),
+                        _ => {}
+                    }
+                }
+                if type_name == "Float"
+                    || matches!(self.gen_env.get(type_name), Some(GenArg::Ty(Ty::Float)))
+                {
+                    match name.text.as_str() {
+                        "zero" => return self.mk(ExprKind::Float(0.0), Ty::Float, span),
+                        "one" => return self.mk(ExprKind::Float(1.0), Ty::Float, span),
+                        _ => {}
+                    }
                 }
             }
         }
@@ -863,12 +1662,20 @@ impl<'a> Lowerer<'a> {
         };
         match (&ty, name.text.as_str()) {
             (Ty::Error, _) => value,
-            // A method without parameters reads like a field.
             (Ty::Struct(id), method) if self.structs[*id].methods.contains_key(method) => {
                 let fn_id = self.structs[*id].methods[method];
-                self.method_call(fn_id, Some((base, value)), &[], span)
+                if self.structs[*id].getters.contains(method)
+                    || self.sigs[fn_id].params.is_empty()
+                {
+                    self.method_call(fn_id, Some((base, value)), &[], span)
+                } else {
+                    self.bind_method_closure(fn_id, value, span)
+                }
             }
-            (Ty::Pos(_) | Ty::Bound(_), "ord" | "to_idx") => self.cast(Cast::Ord, value, Ty::Int),
+            (Ty::Pos(_) | Ty::Bound(_), "ord" | "to_idx" | "idx") => {
+                self.cast(Cast::Ord, value, Ty::Int)
+            }
+            (Ty::Pos(d), "label") => self.cast(Cast::Label(*d), value, Ty::Int),
             (Ty::Pos(_), "rank") => {
                 let ord = self.cast(Cast::Ord, value, Ty::Int);
                 self.int_add(ord, 1)
@@ -895,7 +1702,6 @@ impl<'a> Lowerer<'a> {
                 builtin(self, Builtin::PosPrev, vec![value], Ty::opt(Ty::Pos(*d)))
             }
             (Ty::Bound(d), "right") => {
-                // The position after gap `b` is `b` itself, if there is one.
                 let ord = self.cast(Cast::Ord, value, Ty::Int);
                 let before = self.int_add(ord, -1);
                 let len = self.mk(ExprKind::DomainLen(*d), Ty::Int, span);
@@ -906,10 +1712,55 @@ impl<'a> Lowerer<'a> {
                     Ty::opt(Ty::Pos(*d)),
                 )
             }
-            (Ty::Array { .. } | Ty::List(_) | Ty::Str | Ty::Map(..) | Ty::Set(_), "len") => {
-                self.len_of(value, span)
+            (Ty::Range(inner), "lo") => {
+                let inner = (**inner).clone();
+                let lo = builtin(self, Builtin::RangeLo, vec![value], Ty::Int);
+                match inner {
+                    Ty::Pos(d) => self.cast(Cast::Trust, lo, Ty::Bound(d)),
+                    _ => lo,
+                }
             }
-            (Ty::Array { .. } | Ty::List(_) | Ty::Str | Ty::Map(..) | Ty::Set(_), "is_empty") => {
+            (Ty::Range(inner), "hi") => {
+                let inner = (**inner).clone();
+                let hi = builtin(self, Builtin::RangeHi, vec![value], Ty::Int);
+                match inner {
+                    Ty::Pos(d) => self.cast(Cast::Trust, hi, Ty::Bound(d)),
+                    _ => hi,
+                }
+            }
+            (Ty::Range(inner), "first") => {
+                let inner = (**inner).clone();
+                builtin(self, Builtin::First, vec![value], Ty::opt(inner))
+            }
+            (Ty::Range(inner), "last") => {
+                let inner = (**inner).clone();
+                builtin(self, Builtin::Last, vec![value], Ty::opt(inner))
+            }
+            (Ty::DomainVal, "len" | "size" | "K") => {
+                builtin(self, Builtin::Len, vec![value], Ty::Int)
+            }
+            (
+                Ty::Array { .. }
+                | Ty::List(_)
+                | Ty::Str
+                | Ty::Map(..)
+                | Ty::HashMap(..)
+                | Ty::Set(_)
+                | Ty::HashSet(_)
+                | Ty::Range(_),
+                "len",
+            ) => self.len_of(value, span),
+            (
+                Ty::Array { .. }
+                | Ty::List(_)
+                | Ty::Str
+                | Ty::Map(..)
+                | Ty::HashMap(..)
+                | Ty::Set(_)
+                | Ty::HashSet(_)
+                | Ty::Range(_),
+                "is_empty",
+            ) => {
                 let len = self.len_of(value, span);
                 let zero = self.int_lit(0, span);
                 self.mk(
@@ -919,11 +1770,15 @@ impl<'a> Lowerer<'a> {
                 )
             }
             (Ty::List(elem), "first") => {
-                builtin(self, Builtin::First, vec![value], Ty::Opt(elem.clone()))
+                builtin(self, Builtin::FirstVal, vec![value], (**elem).clone())
             }
             (Ty::List(elem), "last") => {
-                builtin(self, Builtin::Last, vec![value], Ty::Opt(elem.clone()))
+                builtin(self, Builtin::LastVal, vec![value], (**elem).clone())
             }
+            (Ty::List(_) | Ty::Str, "rev") => {
+                builtin(self, Builtin::Reversed, vec![value], ty.clone())
+            }
+            (Ty::Char, "ord") => self.cast(Cast::CharToInt, value, Ty::Int),
             (Ty::Opt(_), "is_some") => self.mk(ExprKind::IsSome(Box::new(value)), Ty::Bool, span),
             (Ty::Opt(_), "is_none") => {
                 let some = self.mk(ExprKind::IsSome(Box::new(value)), Ty::Bool, span);
@@ -979,18 +1834,176 @@ impl<'a> Lowerer<'a> {
         hint: Option<&Ty>,
     ) -> Expr {
         let span = whole.span;
-        let _ = hint;
+        // `List.filled(n, val)`
+        if let ast::ExprKind::Name(n) = &base.kind {
+            if n == "List" && self.lookup(n).is_none() && name.text == "filled" {
+                let Some(exprs) = self.positional_any("filled", args, 2, span) else {
+                    return self.err_expr(span);
+                };
+                let count = self.expect(exprs[0], &Ty::Int);
+                let val_hint = match hint {
+                    Some(Ty::List(e)) => Some(&**e),
+                    _ => None,
+                };
+                let val = self.expr(exprs[1], val_hint);
+                let list_ty = Ty::list(val.ty.clone());
+                return self.mk(
+                    ExprKind::Builtin(Builtin::ListFilled, vec![count, val]),
+                    list_ty,
+                    span,
+                );
+            }
+        }
+        // `D.bounds.nth(k)`
+        if let ast::ExprKind::Field {
+            base: dbase,
+            name: fname,
+        } = &base.kind
+        {
+            if fname.text == "bounds" && name.text == "nth" {
+                if let Some(Sym::Domain(id)) = self.sym(dbase) {
+                    if let Some(val) = self.one_arg("nth", args, &Ty::Int, span) {
+                        return self.mk(
+                            ExprKind::Cast(Cast::Trust, Box::new(val)),
+                            Ty::Bound(id),
+                            span,
+                        );
+                    }
+                    return self.err_expr(span);
+                }
+            }
+        }
+        // `GenericStruct<T>.method(...)` (e.g. `SegTree<V, Int>.from(...)`, `Graph<V, Int>.directed(...)`).
+        if let ast::ExprKind::Generic {
+            base: gbase,
+            args: gtypes,
+        } = &base.kind
+        {
+            if let ast::ExprKind::Name(gname) = &gbase.kind {
+                if let Some(Sym::GenStruct(gid)) = self.get_sym(gname) {
+                    let gargs = self.resolve_gen_args(gtypes);
+                    let sid = self.instantiate_struct(gid, gargs);
+                    if let Some(&fn_id) = self.structs[sid].methods.get(&name.text) {
+                        return self.method_call(fn_id, None, args, span);
+                    }
+                    if let Some(&gfid) = self.structs[sid].gen_methods.get(&name.text) {
+                        return self.call_gen_fn(gfid, Vec::new(), None, args, span);
+                    }
+                    self.error(
+                        codes::UNKNOWN_FIELD,
+                        name.span,
+                        format!("`{}` has no fn `{}`", self.structs[sid].def.name, name.text),
+                    );
+                    return self.err_expr(span);
+                }
+            }
+        }
         match self.sym(base) {
-            Some(Sym::Struct(id)) => {
-                return match self.structs[id].methods.get(&name.text).copied() {
-                    Some(fn_id) => self.method_call(fn_id, None, args, span),
-                    None => {
-                        let message =
-                            format!("`{}` has no fn `{}`", self.structs[id].def.name, name.text);
-                        self.error(codes::UNKNOWN_FIELD, name.span, message);
+            Some(Sym::Mod(target_mod)) => {
+                let sym = self.mod_syms[target_mod].get(&name.text).copied();
+                return match sym {
+                    Some(Sym::Fn(id)) => self.user_call(id, None, args, span),
+                    Some(Sym::GenFn(gfid)) => self.call_gen_fn(gfid, Vec::new(), None, args, span),
+                    Some(Sym::Struct(id)) => self.construct_or_new(id, args, span),
+                    Some(Sym::GenStruct(gid)) => self.call_gen_struct(gid, Vec::new(), args, hint, span),
+                    Some(Sym::Variant(id, tag)) => self.variant(id, tag, args, span),
+                    _ => {
+                        self.error(
+                            codes::UNKNOWN_FIELD,
+                            name.span,
+                            format!("module has no fn `{}`", name.text),
+                        );
                         self.err_expr(span)
                     }
                 };
+            }
+            Some(Sym::Struct(id)) => {
+                if let Some(&fn_id) = self.structs[id].methods.get(&name.text) {
+                    return self.method_call(fn_id, None, args, span);
+                }
+                if let Some(&gfid) = self.structs[id].gen_methods.get(&name.text) {
+                    return self.call_gen_fn(gfid, Vec::new(), None, args, span);
+                }
+                self.error(
+                    codes::UNKNOWN_FIELD,
+                    name.span,
+                    format!("`{}` has no fn `{}`", self.structs[id].def.name, name.text),
+                );
+                return self.err_expr(span);
+            }
+            Some(Sym::GenStruct(gid)) => {
+                // Static method on a generic struct without explicit type args (`Order.by(...)`, `Rooted.weighted(...)`, `Monoid.new(...)`)
+                let decl = self.gen_structs[gid].decl;
+                let tpl_mod = self.gen_structs[gid].mod_id;
+                let gen_names: Vec<String> = decl.generics.iter().map(|g| g.text.clone()).collect();
+                let mut inferred: GenEnv = HashMap::new();
+                if let Some(Ty::Struct(hsid)) = hint {
+                    if let Some((hgid, hargs)) = &self.structs[*hsid].origin_gen {
+                        if *hgid == gid {
+                            for (g, a) in gen_names.iter().zip(hargs) {
+                                inferred.insert(g.clone(), a.clone());
+                            }
+                        }
+                    }
+                }
+                if inferred.len() < gen_names.len() {
+                    if let Some(mdecl) = decl.methods.iter().find_map(|m| match &m.kind {
+                        ast::StmtKind::Fn(f) if f.name.text == name.text => Some(f),
+                        _ => None,
+                    }) {
+                        for (p, arg) in mdecl.params.iter().zip(args) {
+                            if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
+                                if let Some(pty) = &p.ty {
+                                    let dlen = self.diags.len();
+                                    let probed = self.expr(&arg.value, None);
+                                    self.diags.truncate(dlen);
+                                    if probed.ty != Ty::Error {
+                                        self.unify_ast_ty(
+                                            pty,
+                                            &probed.ty,
+                                            tpl_mod,
+                                            &gen_names,
+                                            &mut inferred,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                let final_args: Vec<GenArg> = gen_names
+                    .iter()
+                    .map(|g| inferred.get(g).cloned().unwrap_or(GenArg::Ty(Ty::Int)))
+                    .collect();
+                let sid = self.instantiate_struct(gid, final_args);
+                if let Some(&fn_id) = self.structs[sid].methods.get(&name.text) {
+                    return self.method_call(fn_id, None, args, span);
+                }
+                if let Some(&gfid) = self.structs[sid].gen_methods.get(&name.text) {
+                    return self.call_gen_fn(gfid, Vec::new(), None, args, span);
+                }
+                self.error(
+                    codes::UNKNOWN_FIELD,
+                    name.span,
+                    format!("`{}` has no fn `{}`", decl.name.text, name.text),
+                );
+                return self.err_expr(span);
+            }
+            Some(Sym::Alias(aid)) => {
+                let (m, ty_ast, offset) = self.aliases[aid];
+                let sm = std::mem::replace(&mut self.cur_mod, m);
+                let so = std::mem::replace(&mut self.offset, offset);
+                let resolved = self.resolve_ty(ty_ast);
+                self.cur_mod = sm;
+                self.offset = so;
+                if let Ty::Struct(id) = resolved {
+                    if let Some(&fn_id) = self.structs[id].methods.get(&name.text) {
+                        return self.method_call(fn_id, None, args, span);
+                    }
+                    if let Some(&gfid) = self.structs[id].gen_methods.get(&name.text) {
+                        return self.call_gen_fn(gfid, Vec::new(), None, args, span);
+                    }
+                }
             }
             Some(Sym::Enum(id)) => {
                 return match self.enums[id]
@@ -1007,37 +2020,84 @@ impl<'a> Lowerer<'a> {
                     }
                 };
             }
-            Some(Sym::Domain(id)) if name.text == "at" => {
-                return match self.one_arg("at", args, &Ty::Int, span) {
-                    Some(value) => self.mk(
-                        ExprKind::Cast(Cast::FromOrd(id), Box::new(value)),
-                        Ty::Pos(id),
-                        span,
-                    ),
-                    None => self.err_expr(span),
-                };
-            }
+            Some(Sym::Domain(id)) => match name.text.as_str() {
+                "at" | "nth" | "from_idx" => {
+                    return match self.one_arg(&name.text, args, &Ty::Int, span) {
+                        Some(value) => self.mk(
+                            ExprKind::Cast(Cast::FromOrd(id), Box::new(value)),
+                            Ty::Pos(id),
+                            span,
+                        ),
+                        None => self.err_expr(span),
+                    };
+                }
+                "try_at" => {
+                    return match self.one_arg(&name.text, args, &Ty::Int, span) {
+                        Some(value) => self.mk(
+                            ExprKind::Builtin(Builtin::PosTryOrd(id), vec![value]),
+                            Ty::opt(Ty::Pos(id)),
+                            span,
+                        ),
+                        None => self.err_expr(span),
+                    };
+                }
+                "try" => {
+                    return match self.one_arg("try", args, &Ty::Int, span) {
+                        Some(value) => self.mk(
+                            ExprKind::Builtin(Builtin::PosTryLabel(id), vec![value]),
+                            Ty::opt(Ty::Pos(id)),
+                            span,
+                        ),
+                        None => self.err_expr(span),
+                    };
+                }
+                _ => {}
+            },
             _ => {}
+        }
+        // Check `lends` projection read before lowering `base` as a plain value.
+        if let Some(proj) = self.find_projection_on(base, &name.text) {
+            return self.lower_projection_read(proj, base, args, span);
         }
         let value = self.expr(base, None);
         let ty = value.ty.clone();
         let method = name.text.as_str();
+        // Calling a field of function type (`m.op(a, b)`, `self.lt(a, b)`).
+        if let Some((index, fty)) = self.field_of(&ty, method) {
+            if matches!(fty, Ty::Fn(..)) {
+                let fv = self.mk(ExprKind::Field(Box::new(value), index), fty, span);
+                return self.call_fn_val(fv, args, span);
+            }
+        }
         if let Ty::Struct(id) = &ty {
             if let Some(fn_id) = self.structs[*id].methods.get(method).copied() {
                 return self.method_call(fn_id, Some((base, value)), args, span);
+            }
+            if let Some(gfid) = self.structs[*id].gen_methods.get(method).copied() {
+                let is_mut = self.gen_fns[gfid]
+                    .decl
+                    .params
+                    .first()
+                    .is_some_and(|p| p.name.text == "self" && p.mutable);
+                let recv = if is_mut {
+                    Arg::Mut(self.place(base))
+                } else {
+                    Arg::Value(value)
+                };
+                return self.call_gen_fn(gfid, Vec::new(), Some(recv), args, span);
             }
         }
         // Members that read like fields can be called too: `xs.len()`.
         if args.is_empty()
             && matches!(method, "len" | "is_empty" | "first" | "last")
-            && !matches!(ty, Ty::Set(_) | Ty::Struct(_))
+            && !matches!(ty, Ty::Set(_) | Ty::HashSet(_) | Ty::Struct(_))
         {
             return self.field(whole, base, name);
         }
         let elem = match &ty {
-            Ty::List(elem) | Ty::Set(elem) => (**elem).clone(),
+            Ty::List(elem) | Ty::Set(elem) | Ty::HashSet(elem) | Ty::Range(elem) => (**elem).clone(),
             Ty::Array { elem, .. } => (**elem).clone(),
-            Ty::Map(key, _) => (**key).clone(),
+            Ty::Map(key, _) | Ty::HashMap(key, _) => (**key).clone(),
             Ty::Str => Ty::Char,
             _ => Ty::Error,
         };
@@ -1052,40 +2112,142 @@ impl<'a> Lowerer<'a> {
                 }
                 self.err_expr(span)
             }
+            (Ty::Pos(d), "l") => {
+                let d = *d;
+                match self.one_arg("l", args, &Ty::Int, span) {
+                    Some(k) => self.mk(
+                        ExprKind::Builtin(Builtin::BoundStepL(d), vec![value, k]),
+                        Ty::Bound(d),
+                        span,
+                    ),
+                    None => self.err_expr(span),
+                }
+            }
+            (Ty::Pos(d), "r") => {
+                let d = *d;
+                match self.one_arg("r", args, &Ty::Int, span) {
+                    Some(k) => self.mk(
+                        ExprKind::Builtin(Builtin::BoundStepR(d), vec![value, k]),
+                        Ty::Bound(d),
+                        span,
+                    ),
+                    None => self.err_expr(span),
+                }
+            }
+            (Ty::Pos(d), "offset") => {
+                let d = *d;
+                match self.one_arg("offset", args, &Ty::Int, span) {
+                    Some(k) => self.mk(
+                        ExprKind::Builtin(Builtin::PosOffset(d), vec![value, k]),
+                        Ty::opt(Ty::Pos(d)),
+                        span,
+                    ),
+                    None => self.err_expr(span),
+                }
+            }
+            (Ty::Pos(d), "cyc") => {
+                let d = *d;
+                match self.one_arg("cyc", args, &Ty::Int, span) {
+                    Some(k) => self.mk(
+                        ExprKind::Builtin(Builtin::PosCyc(d), vec![value, k]),
+                        Ty::Pos(d),
+                        span,
+                    ),
+                    None => self.err_expr(span),
+                }
+            }
             (Ty::List(_) | Ty::Str, "push") => match self.one_arg(method, args, &elem, span) {
                 Some(arg) => mutate(self, Mutation::Push, vec![arg], Ty::Unit),
                 None => self.err_expr(span),
             },
             (Ty::List(_), "pop") => match self.positional_any(method, args, 0, span) {
-                Some(_) => mutate(self, Mutation::Pop, Vec::new(), Ty::opt(elem)),
+                Some(_) => {
+                    if matches!(elem, Ty::Opt(_)) {
+                        mutate(self, Mutation::PopVal, Vec::new(), elem)
+                    } else {
+                        mutate(self, Mutation::Pop, Vec::new(), Ty::opt(elem))
+                    }
+                }
                 None => self.err_expr(span),
             },
-            (Ty::Set(_), "insert") => match self.one_arg(method, args, &elem, span) {
+            (Ty::List(_) | Ty::Array { .. }, "swap") => {
+                match self.positional_any(method, args, 2, span) {
+                    Some(exprs) => {
+                        let idx_ty = match &ty {
+                            Ty::Array { dims, .. } if dims.len() == 1 => match dims[0] {
+                                Dim::Pos(d) => Ty::Pos(d),
+                                Dim::Bound(d) => Ty::Bound(d),
+                                Dim::Int => Ty::Int,
+                            },
+                            _ => Ty::Int,
+                        };
+                        let a = self.expect(exprs[0], &idx_ty);
+                        let b = self.expect(exprs[1], &idx_ty);
+                        let a = if matches!(a.ty, Ty::Pos(_)) { self.cast(Cast::Ord, a, Ty::Int) } else { a };
+                        let b = if matches!(b.ty, Ty::Pos(_)) { self.cast(Cast::Ord, b, Ty::Int) } else { b };
+                        mutate(self, Mutation::Swap, vec![a, b], Ty::Unit)
+                    }
+                    None => self.err_expr(span),
+                }
+            }
+            (Ty::List(_), "resize") => match self.positional_any(method, args, 2, span) {
+                Some(exprs) => {
+                    let n = self.expect(exprs[0], &Ty::Int);
+                    let v = self.expect(exprs[1], &elem);
+                    mutate(self, Mutation::Resize, vec![n, v], Ty::Unit)
+                }
+                None => self.err_expr(span),
+            },
+            (Ty::List(_), "truncate") => match self.one_arg(method, args, &Ty::Int, span) {
+                Some(n) => mutate(self, Mutation::Truncate, vec![n], Ty::Unit),
+                None => self.err_expr(span),
+            },
+            (Ty::List(_), "extend") => match self.positional_any(method, args, 1, span) {
+                Some(exprs) => {
+                    let other = self.expect(exprs[0], &ty);
+                    mutate(self, Mutation::Extend, vec![other], Ty::Unit)
+                }
+                None => self.err_expr(span),
+            },
+            (Ty::List(_) | Ty::Array { .. }, "fill") => match self.one_arg(method, args, &elem, span) {
+                Some(v) => mutate(self, Mutation::Fill, vec![v], Ty::Unit),
+                None => self.err_expr(span),
+            },
+            (Ty::List(_) | Ty::Array { .. } | Ty::Map(..) | Ty::HashMap(..) | Ty::Set(_) | Ty::HashSet(_) | Ty::Str, "copy") => {
+                match self.positional_any(method, args, 0, span) {
+                    Some(_) => self.mk(ExprKind::Builtin(Builtin::Copy, vec![value]), ty.clone(), span),
+                    None => self.err_expr(span),
+                }
+            }
+            (Ty::Set(_) | Ty::HashSet(_), "insert" | "add") => match self.one_arg(method, args, &elem, span) {
                 Some(arg) => mutate(self, Mutation::Insert, vec![arg], Ty::Bool),
                 None => self.err_expr(span),
             },
-            (Ty::Set(_) | Ty::Map(..), "remove") => match self.one_arg(method, args, &elem, span) {
-                Some(arg) => mutate(self, Mutation::Remove, vec![arg], Ty::Bool),
-                None => self.err_expr(span),
-            },
-            (Ty::List(_) | Ty::Set(_) | Ty::Map(..), "clear") => {
+            (Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..), "remove") => {
+                match self.one_arg(method, args, &elem, span) {
+                    Some(arg) => mutate(self, Mutation::Remove, vec![arg], Ty::Bool),
+                    None => self.err_expr(span),
+                }
+            }
+            (Ty::List(_) | Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..) | Ty::Str, "clear") => {
                 match self.positional_any(method, args, 0, span) {
                     Some(_) => mutate(self, Mutation::Clear, Vec::new(), Ty::Unit),
                     None => self.err_expr(span),
                 }
             }
-            (Ty::List(_), "reverse") => match self.positional_any(method, args, 0, span) {
+            (Ty::List(_) | Ty::Array { .. }, "reverse") => match self.positional_any(method, args, 0, span) {
                 Some(_) => mutate(self, Mutation::Reverse, Vec::new(), Ty::Unit),
                 None => self.err_expr(span),
             },
-            (Ty::List(_), "sort") => self.sort(base, &elem, args, span),
-            (Ty::List(_) | Ty::Set(_), "sorted") => {
-                match self.positional_any(method, args, 0, span) {
-                    Some(_) => self.sorted(value, span),
-                    None => self.err_expr(span),
+            (Ty::List(_) | Ty::Array { .. }, "sort") => self.sort(base, &elem, args, span),
+            (Ty::List(_) | Ty::Array { .. } | Ty::Set(_) | Ty::HashSet(_), "sorted") => {
+                if args.is_empty() {
+                    self.sorted(value, span)
+                } else {
+                    self.sorted_by(value, args, span)
                 }
             }
-            (Ty::List(_), "reversed") => match self.positional_any(method, args, 0, span) {
+            (Ty::List(_) | Ty::Str, "reversed") => match self.positional_any(method, args, 0, span) {
                 Some(_) => self.mk(
                     ExprKind::Builtin(Builtin::Reversed, vec![value]),
                     ty.clone(),
@@ -1093,24 +2255,34 @@ impl<'a> Lowerer<'a> {
                 ),
                 None => self.err_expr(span),
             },
-            (Ty::List(_) | Ty::Set(_) | Ty::Map(..) | Ty::Array { .. } | Ty::Str, "contains") => {
+            (
+                Ty::List(_)
+                | Ty::Set(_)
+                | Ty::HashSet(_)
+                | Ty::Map(..)
+                | Ty::HashMap(..)
+                | Ty::Array { .. }
+                | Ty::Str
+                | Ty::Range(_),
+                "contains",
+            ) => match self.one_arg(method, args, &elem, span) {
+                Some(arg) => self.mk(
+                    ExprKind::Builtin(Builtin::Contains, vec![value, arg]),
+                    Ty::Bool,
+                    span,
+                ),
+                None => self.err_expr(span),
+            },
+            (Ty::Map(_, val) | Ty::HashMap(_, val), "get") => {
                 match self.one_arg(method, args, &elem, span) {
                     Some(arg) => self.mk(
-                        ExprKind::Builtin(Builtin::Contains, vec![value, arg]),
-                        Ty::Bool,
+                        ExprKind::Builtin(Builtin::MapGet, vec![value, arg]),
+                        Ty::Opt(val.clone()),
                         span,
                     ),
                     None => self.err_expr(span),
                 }
             }
-            (Ty::Map(_, val), "get") => match self.one_arg(method, args, &elem, span) {
-                Some(arg) => self.mk(
-                    ExprKind::Builtin(Builtin::MapGet, vec![value, arg]),
-                    Ty::Opt(val.clone()),
-                    span,
-                ),
-                None => self.err_expr(span),
-            },
             (Ty::Set(_), "min" | "max") => match self.positional_any(method, args, 0, span) {
                 Some(_) => {
                     let op = if method == "min" {
@@ -1136,9 +2308,13 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// `xs.sort()` or `xs.sort(by: x => key)`.
+    /// `xs.sort()`, `xs.sort(by: x => key)`, `xs.sort(by: (a, b) => a < b)`, `xs.sort(by: ord)`.
     fn sort(&mut self, base: &ast::Expr, elem: &Ty, args: &[ast::Arg], span: Span) -> Expr {
         let place = self.place(base);
+        self.sort_place(place, elem, args, span)
+    }
+
+    fn sort_place(&mut self, place: Place, elem: &Ty, args: &[ast::Arg], span: Span) -> Expr {
         let key = match args {
             [] => {
                 if !self.ordered(elem) {
@@ -1147,7 +2323,7 @@ impl<'a> Lowerer<'a> {
                     self.help("sort by a key: `xs.sort(by: x => x.w)`");
                     return self.err_expr(span);
                 }
-                None
+                SortBy::Natural
             }
             [ast::Arg {
                 name: Some(by),
@@ -1172,7 +2348,41 @@ impl<'a> Lowerer<'a> {
                     self.error(codes::BAD_OPERANDS, body.span, message);
                     return self.err_expr(span);
                 }
-                Some((slot, Box::new(key)))
+                SortBy::Key(slot, Box::new(key))
+            }
+            [ast::Arg {
+                name: Some(by),
+                value,
+                ..
+            }] if by.text == "by" => {
+                let cmp_hint = Ty::Fn(vec![elem.clone(), elem.clone()], Box::new(Ty::Bool));
+                let fv = self.expr(value, Some(&cmp_hint));
+                match &fv.ty {
+                    Ty::Fn(ps, _) if ps.len() == 2 => SortBy::Fn {
+                        func: Box::new(fv),
+                        is_order: true,
+                    },
+                    Ty::Fn(ps, _) if ps.len() == 1 => SortBy::Fn {
+                        func: Box::new(fv),
+                        is_order: false,
+                    },
+                    Ty::Struct(sid) => {
+                        if let Some((idx, fty @ Ty::Fn(..))) = self.field_of(&Ty::Struct(*sid), "lt") {
+                            let lt_fn = self.mk(ExprKind::Field(Box::new(fv), idx), fty, value.span);
+                            SortBy::Fn {
+                                func: Box::new(lt_fn),
+                                is_order: true,
+                            }
+                        } else {
+                            self.error(codes::BAD_OPERANDS, value.span, "`by:` expects a key fn or Order");
+                            return self.err_expr(span);
+                        }
+                    }
+                    _ => {
+                        self.error(codes::BAD_OPERANDS, value.span, "`by:` expects a key fn or Order");
+                        return self.err_expr(span);
+                    }
+                }
             }
             _ => {
                 self.error(

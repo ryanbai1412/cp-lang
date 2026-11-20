@@ -108,7 +108,7 @@ impl<'p> Facts<'p> {
                                 self.expr(fn_id, step);
                             }
                         }
-                        Iter::Seq(seq, _) => self.expr(fn_id, seq),
+                        Iter::RangeVal(e, _) | Iter::Seq(e, _) => self.expr(fn_id, e),
                     }
                     self.block(fn_id, body);
                 }
@@ -122,6 +122,7 @@ impl<'p> Facts<'p> {
                     self.expr(fn_id, lo);
                     self.expr(fn_id, len);
                 }
+                Stmt::DefDomainFromVal { val, .. } => self.expr(fn_id, val),
                 Stmt::Return(None) | Stmt::Break(_) | Stmt::Continue(_) | Stmt::Trap(..) => {}
             }
         }
@@ -162,12 +163,16 @@ impl<'p> Facts<'p> {
                     self.expr(fn_id, arg);
                 }
             }
-            ExprKind::Sort(place, key) => {
+            ExprKind::Sort(place, sort_by) => {
                 self.store(fn_id, place);
                 self.place(fn_id, place);
-                if let Some((slot, key)) = key {
-                    *self.stores.entry((fn_id, false, *slot)).or_default() += 2;
-                    self.expr(fn_id, key);
+                match sort_by {
+                    cpl_ir::SortBy::Natural => {}
+                    cpl_ir::SortBy::Key(slot, key) => {
+                        *self.stores.entry((fn_id, false, *slot)).or_default() += 2;
+                        self.expr(fn_id, key);
+                    }
+                    cpl_ir::SortBy::Fn { func, .. } => self.expr(fn_id, func),
                 }
             }
             _ => crate::walk::children(e, &mut |child| self.expr(fn_id, child)),

@@ -108,15 +108,15 @@ pub(crate) struct Scope {
 
 /// One name of `use std.algebra.{Monoid}`.
 #[derive(Debug)]
-pub(crate) struct Import {
-    /// Index into [`Scope::modules`].
+pub struct Import {
+    /// Index into [`Analysis::modules`].
     pub module: usize,
     /// What the module calls it.
     pub name: String,
 }
 
 #[derive(Debug)]
-pub(crate) struct Module {
+pub struct Module {
     /// `std.algebra`.
     pub name: String,
     pub path: String,
@@ -169,6 +169,21 @@ impl Analysis {
         let item = &self.items[*self.scope.names.get(name)?];
         let decl = item.syntax.decls.iter().find(|d| d.name == name)?;
         Some(decl.span.shift(item.offset))
+    }
+
+    /// Every module this file reaches through `use`, its direct imports first.
+    pub fn modules(&self) -> &[Module] {
+        &self.scope.modules
+    }
+
+    /// Names brought in directly by `use`, keyed by their local name.
+    pub fn imports(&self) -> &HashMap<String, Import> {
+        &self.scope.imports
+    }
+
+    /// Modules imported as namespaces (`use lib.treap`, `use lib.flow as fl`).
+    pub fn aliases(&self) -> &HashMap<String, usize> {
+        &self.scope.aliases
     }
 }
 

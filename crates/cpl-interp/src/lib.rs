@@ -14,13 +14,13 @@ mod value;
 use cpl_diag::Span;
 use cpl_ir::{
     Arg, AssignOp, BinOp, Block, Builtin, Cast, CmpOp, DimSpec, Expr, ExprKind, FmtArg, FmtPiece,
-    FnId, Iter, LoopId, Mutation, Place, PlaceKind, Program, Spec, Stmt, Ty, UnOp,
+    FnId, Iter, LoopId, Mutation, Place, PlaceKind, Program, SortBy, Spec, Stmt, Ty, UnOp,
 };
 use input::Input;
 use std::cmp::Ordering;
 use std::io::Write;
 use std::rc::Rc;
-use value::{show, zero, Array, Value};
+use value::{show, zero, Array, CaptureVal, Value};
 
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
@@ -116,6 +116,7 @@ pub fn run_on_this_thread(
         stack_top: std::ptr::addr_of!(top) as usize,
         stack_budget: limits.stack_bytes,
         frame_locals: Vec::new(),
+        rng_state: 0x9e3779b97f4a7c15u64,
     };
     let result = interp.main();
     let _ = interp.sink.write_all(&interp.out);
@@ -159,6 +160,16 @@ struct Interp<'p, 'o> {
     stack_budget: usize,
     /// The locals of each active fn, innermost last; `main` when empty.
     frame_locals: Vec<&'p [cpl_ir::Local]>,
+    /// Deterministic splitmix64 PRNG state (matches `cpl-codegen`).
+    rng_state: u64,
+}
+
+fn splitmix64(state: &mut u64) -> u64 {
+    *state = state.wrapping_add(0x9e37_79b9_7f4a_7c15);
+    let mut z = *state;
+    z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+    z ^ (z >> 31)
 }
 
 impl<'p, 'o> Interp<'p, 'o> {
@@ -272,6 +283,11 @@ impl<'p, 'o> Interp<'p, 'o> {
                 let len = self.eval(len)?.int().max(0);
                 self.domains[*id] = (lo, len);
             }
+            Stmt::DefDomainFromVal { id, val } => {
+                if let Value::DomainVal(lo, len) = self.eval(val)? {
+                    self.domains[*id] = (lo, len.max(0));
+                }
+            }
             Stmt::Trap(message, span) => return trap(*span, message.clone()),
         }
         Ok(Flow::Next)
@@ -337,6 +353,28 @@ impl<'p, 'o> Interp<'p, 'o> {
                         }
                         round!(Value::Int(lo + k * step));
                         k += 1;
+                    }
+                }
+            }
+            Iter::RangeVal(expr, rev) => {
+                if let Value::Range(lo, hi) = self.eval(expr)? {
+                    if lo < hi {
+                        if *rev {
+                            let mut v = hi - 1;
+                            while v >= lo {
+                                round!(Value::Int(v));
+                                if v == lo {
+                                    break;
+                                }
+                                v -= 1;
+                            }
+                        } else {
+                            let mut v = lo;
+                            while v < hi {
+                                round!(Value::Int(v));
+                                v += 1;
+                            }
+                        }
                     }
                 }
             }
@@ -477,8 +515,9 @@ impl<'p, 'o> Interp<'p, 'o> {
         // Storing into a string or under a new map key has no cell to
         // point at, so those two go through their container.
         if let PlaceKind::Index(base, _) = &place.kind {
-            if matches!(base.ty, Ty::Str | Ty::Map(..)) {
+            if matches!(base.ty, Ty::Str | Ty::Map(..) | Ty::HashMap(..)) {
                 let (key, rest) = indices.split_last().expect("an index");
+                let program = self.program;
                 let holder = self.resolve(base, &mut rest.iter())?;
                 match holder {
                     Value::Str(bytes) => {
@@ -499,6 +538,35 @@ impl<'p, 'o> Interp<'p, 'o> {
                     }
                     Value::Map(entries) if op == AssignOp::Set => {
                         Rc::make_mut(entries).insert(key.clone(), value);
+                        return Ok(());
+                    }
+                    Value::Map(entries) => {
+                        let map = Rc::make_mut(entries);
+                        let next = if let Some(old) = map.get(key).cloned() {
+                            combine(op, old, value, place.span)?
+                        } else {
+                            match op {
+                                AssignOp::Max
+                                | AssignOp::Min
+                                | AssignOp::Binary(
+                                    BinOp::Add
+                                    | BinOp::Mul
+                                    | BinOp::BitOr
+                                    | BinOp::BitXor
+                                    | BinOp::BitAnd,
+                                ) => value,
+                                AssignOp::Binary(BinOp::Sub) => {
+                                    combine(op, zero(&place.ty, program), value, place.span)?
+                                }
+                                _ => {
+                                    return trap(
+                                        place.span,
+                                        "this key is not in the map; store with `m[k] = v` first",
+                                    )
+                                }
+                            }
+                        };
+                        map.insert(key.clone(), next);
                         return Ok(());
                     }
                     Value::Moved => return trap(place.span, LENT),
@@ -576,6 +644,27 @@ impl<'p, 'o> Interp<'p, 'o> {
             ExprKind::Cmp(op, lhs, rhs) => {
                 let l = self.eval(lhs)?;
                 let r = self.eval(rhs)?;
+                if let Ty::Struct(id) = lhs.ty {
+                    let sdef = &self.program.structs[id];
+                    match op {
+                        CmpOp::Eq | CmpOp::Ne if sdef.eq_fn.is_some() => {
+                            let eq = self.call_direct(sdef.eq_fn.unwrap(), vec![l, r], span)?.bool();
+                            return Ok(Value::Bool(if *op == CmpOp::Eq { eq } else { !eq }));
+                        }
+                        CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge if sdef.lt_fn.is_some() => {
+                            let f = sdef.lt_fn.unwrap();
+                            let res = match op {
+                                CmpOp::Lt => self.call_direct(f, vec![l, r], span)?.bool(),
+                                CmpOp::Gt => self.call_direct(f, vec![r, l], span)?.bool(),
+                                CmpOp::Le => !self.call_direct(f, vec![r, l], span)?.bool(),
+                                CmpOp::Ge => !self.call_direct(f, vec![l, r], span)?.bool(),
+                                _ => unreachable!(),
+                            };
+                            return Ok(Value::Bool(res));
+                        }
+                        _ => {}
+                    }
+                }
                 Value::Bool(compare(*op, &l, &r))
             }
             ExprKind::Cast(cast, operand) => {
@@ -607,8 +696,8 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
                 match &e.ty {
                     Ty::List(_) => Value::List(Rc::new(values)),
-                    Ty::Set(_) => Value::Set(Rc::new(values.into_iter().collect())),
-                    Ty::Map(..) => Value::Map(Rc::default()),
+                    Ty::Set(_) | Ty::HashSet(_) => Value::Set(Rc::new(values.into_iter().collect())),
+                    Ty::Map(..) | Ty::HashMap(..) => Value::Map(Rc::default()),
                     _ => Value::tuple(values),
                 }
             }
@@ -646,29 +735,96 @@ impl<'p, 'o> Interp<'p, 'o> {
                 _ => return trap(span, "internal: a block ended without its value"),
             },
             ExprKind::Call(id, args) => self.call(*id, args, span)?,
+            ExprKind::CallExpr(callee, args) => {
+                let fv = self.eval(callee)?;
+                let mut vals = Vec::with_capacity(args.len());
+                for a in args {
+                    vals.push(self.eval(a)?);
+                }
+                self.call_value(fv, vals, span)?
+            }
+            ExprKind::Closure(cid) => {
+                let def = &self.program.closures[*cid];
+                let mut caps = Vec::with_capacity(def.captures.len());
+                for cap in &def.captures {
+                    if cap.is_global {
+                        if cap.by_ref {
+                            caps.push(CaptureVal::GlobalRef(cap.outer));
+                        } else {
+                            caps.push(CaptureVal::Val(self.globals[cap.outer].clone()));
+                        }
+                    } else if cap.by_ref {
+                        caps.push(CaptureVal::StackRef(self.base + cap.outer));
+                    } else {
+                        caps.push(CaptureVal::Val(self.stack[self.base + cap.outer].clone()));
+                    }
+                }
+                Value::Closure(*cid, Rc::new(caps))
+            }
+            ExprKind::Range { lo, hi } => {
+                let lo = self.eval(lo)?.int();
+                let hi = self.eval(hi)?.int();
+                Value::Range(lo, hi)
+            }
+            ExprKind::DomainVal(id) => {
+                let (lo, len) = self.domains[*id];
+                Value::DomainVal(lo, len)
+            }
             ExprKind::Builtin(op, args) => self.builtin(*op, args, e)?,
             ExprKind::Mutate(op, place, args) => self.mutate(*op, place, args, span)?,
-            ExprKind::Sort(place, key) => {
+            ExprKind::Sort(place, sort_by) => {
                 let mut indices = Vec::new();
                 self.indices(place, &mut indices)?;
                 let cell = self.resolve(place, &mut indices.iter())?;
-                let Value::List(mut items) = std::mem::replace(cell, Value::Moved) else {
-                    return trap(span, LENT);
+                let taken = std::mem::replace(cell, Value::Moved);
+                let (mut items_vec, is_array, dims) = match taken {
+                    Value::List(items) => {
+                        let v = Rc::try_unwrap(items).unwrap_or_else(|r| (*r).clone());
+                        (v, false, Vec::new())
+                    }
+                    Value::Array(arr) => {
+                        let a = Rc::try_unwrap(arr).unwrap_or_else(|r| (*r).clone());
+                        (a.data, true, a.dims)
+                    }
+                    _ => return trap(span, LENT),
                 };
-                match key {
-                    None => Rc::make_mut(&mut items).sort(),
-                    Some((slot, key)) => {
+                match sort_by {
+                    SortBy::Natural => items_vec.sort(),
+                    SortBy::Key(slot, key) => {
                         let base = self.base;
-                        let mut keyed = Vec::with_capacity(items.len());
-                        for item in items.iter() {
+                        let mut keyed = Vec::with_capacity(items_vec.len());
+                        for item in items_vec {
                             self.stack[base + slot] = item.clone();
-                            keyed.push((self.eval(key)?, item.clone()));
+                            keyed.push((self.eval(key)?, item));
                         }
                         keyed.sort_by(|a, b| a.0.cmp(&b.0));
-                        items = Rc::new(keyed.into_iter().map(|(_, item)| item).collect());
+                        items_vec = keyed.into_iter().map(|(_, item)| item).collect();
+                    }
+                    SortBy::Fn { func, is_order } => {
+                        let fv = self.eval(func)?;
+                        if *is_order {
+                            // Merge-sort using fallible comparator `fv(a, b) -> Bool`.
+                            items_vec = self.merge_sort_by(items_vec, &fv, span)?;
+                        } else {
+                            let mut keyed = Vec::with_capacity(items_vec.len());
+                            for item in items_vec {
+                                let k = self.call_value(fv.clone(), vec![item.clone()], span)?;
+                                keyed.push((k, item));
+                            }
+                            keyed.sort_by(|a, b| a.0.cmp(&b.0));
+                            items_vec = keyed.into_iter().map(|(_, item)| item).collect();
+                        }
                     }
                 }
-                *self.resolve(place, &mut indices.iter())? = Value::List(items);
+                let restored = if is_array {
+                    Value::Array(Rc::new(Array {
+                        dims,
+                        data: items_vec,
+                    }))
+                } else {
+                    Value::List(Rc::new(items_vec))
+                };
+                *self.resolve(place, &mut indices.iter())? = restored;
                 Value::Unit
             }
             ExprKind::Read(spec) => self.read(spec, span)?,
@@ -678,14 +834,9 @@ impl<'p, 'o> Interp<'p, 'o> {
                     if i > 0 {
                         self.out.push(b' ');
                     }
-                    show(
-                        &mut self.out,
-                        &value,
-                        &arg.value.ty,
-                        arg.digits,
-                        self.program,
-                        &self.domains,
-                    );
+                    let mut buf = Vec::new();
+                    self.show_val(&mut buf, &value, &arg.value.ty, arg.digits, span)?;
+                    self.out.extend_from_slice(&buf);
                 }
                 self.out.push(b'\n');
                 self.flush_if_large();
@@ -698,14 +849,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                         FmtPiece::Text(bytes) => text.extend_from_slice(bytes),
                         FmtPiece::Value(FmtArg { value, digits }) => {
                             let v = self.eval(value)?;
-                            show(
-                                &mut text,
-                                &v,
-                                &value.ty,
-                                *digits,
-                                self.program,
-                                &self.domains,
-                            );
+                            self.show_val(&mut text, &v, &value.ty, *digits, span)?;
                         }
                     }
                 }
@@ -881,25 +1025,29 @@ impl<'p, 'o> Interp<'p, 'o> {
 
     fn call(&mut self, id: FnId, args: &'p [Arg], span: Span) -> Res<Value> {
         let f = &self.program.fns[id];
-        let mut values = Vec::with_capacity(args.len());
+        let mut values = vec![Value::Unit; args.len()];
+        // Evaluate by-value arguments first (two-phase borrowing), so patterns
+        // like `a.union(a.shifted(w))` can read `a` while preparing the call.
+        for (i, arg) in args.iter().enumerate() {
+            if let Arg::Value(e) = arg {
+                values[i] = self.eval(e)?;
+            }
+        }
         // `mut` arguments are lent: taken out of the caller's variable for
         // the call and put back after. Touching the variable meanwhile is
         // the aliasing the language forbids, and it traps.
         let mut lent: Vec<(usize, &'p Place, Vec<Value>)> = Vec::new();
         for (i, arg) in args.iter().enumerate() {
-            match arg {
-                Arg::Value(e) => values.push(self.eval(e)?),
-                Arg::Mut(place) => {
-                    let mut indices = Vec::new();
-                    self.indices(place, &mut indices)?;
-                    let cell = self.resolve(place, &mut indices.iter())?;
-                    let value = std::mem::replace(cell, Value::Moved);
-                    if matches!(value, Value::Moved) {
-                        return trap(place.span, LENT);
-                    }
-                    values.push(value);
-                    lent.push((i, place, indices));
+            if let Arg::Mut(place) = arg {
+                let mut indices = Vec::new();
+                self.indices(place, &mut indices)?;
+                let cell = self.resolve(place, &mut indices.iter())?;
+                let value = std::mem::replace(cell, Value::Moved);
+                if matches!(value, Value::Moved) {
+                    return trap(place.span, LENT);
                 }
+                values[i] = value;
+                lent.push((i, place, indices));
             }
         }
         let here = 0u8;
@@ -935,6 +1083,137 @@ impl<'p, 'o> Interp<'p, 'o> {
         })
     }
 
+    fn call_value(&mut self, fv: Value, args: Vec<Value>, span: Span) -> Res<Value> {
+        let Value::Closure(cid, caps) = fv else {
+            return trap(span, "internal: tried to call a non-function value");
+        };
+        let def = &self.program.closures[cid];
+        let here = 0u8;
+        let used = self.stack_top.abs_diff(std::ptr::addr_of!(here) as usize);
+        if self.depth >= self.max_depth || used > self.stack_budget {
+            return trap(
+                span,
+                format!("calls are nested {} deep: runaway recursion?", self.depth),
+            );
+        }
+        let base = self.stack.len();
+        self.stack.resize(base + def.locals.len(), Value::Unit);
+        for (slot, val) in def.params.iter().zip(args) {
+            self.stack[base + slot] = val;
+        }
+        for (cap, cval) in def.captures.iter().zip(caps.iter()) {
+            let v = match cval {
+                CaptureVal::Val(v) => v.clone(),
+                CaptureVal::StackRef(idx) => self.stack[*idx].clone(),
+                CaptureVal::GlobalRef(gid) => self.globals[*gid].clone(),
+            };
+            self.stack[base + cap.inner] = v;
+        }
+        let saved = std::mem::replace(&mut self.base, base);
+        self.frame_locals.push(&def.locals);
+        self.depth += 1;
+        let flow = self.block(&def.body);
+        self.depth -= 1;
+        self.frame_locals.pop();
+        self.base = saved;
+        let flow = flow?;
+        // Write back any by-ref captures.
+        for (cap, cval) in def.captures.iter().zip(caps.iter()) {
+            if cap.by_ref {
+                let updated = std::mem::take(&mut self.stack[base + cap.inner]);
+                match cval {
+                    CaptureVal::StackRef(idx) => self.stack[*idx] = updated,
+                    CaptureVal::GlobalRef(gid) => self.globals[*gid] = updated,
+                    CaptureVal::Val(_) => {}
+                }
+            }
+        }
+        self.stack.truncate(base);
+        Ok(match flow {
+            Flow::Return(v) | Flow::Give(v) => v,
+            _ => Value::Unit,
+        })
+    }
+
+    fn merge_sort_by(&mut self, mut xs: Vec<Value>, cmp: &Value, span: Span) -> Res<Vec<Value>> {
+        if xs.len() <= 1 {
+            return Ok(xs);
+        }
+        let mid = xs.len() / 2;
+        let right = xs.split_off(mid);
+        let left = self.merge_sort_by(xs, cmp, span)?;
+        let right = self.merge_sort_by(right, cmp, span)?;
+        let mut out = Vec::with_capacity(left.len() + right.len());
+        let (mut i, mut j) = (0, 0);
+        while i < left.len() && j < right.len() {
+            let lt = self
+                .call_value(cmp.clone(), vec![right[j].clone(), left[i].clone()], span)?
+                .bool();
+            if lt {
+                out.push(right[j].clone());
+                j += 1;
+            } else {
+                out.push(left[i].clone());
+                i += 1;
+            }
+        }
+        out.extend_from_slice(&left[i..]);
+        out.extend_from_slice(&right[j..]);
+        Ok(out)
+    }
+
+    fn show_val(
+        &mut self,
+        out: &mut Vec<u8>,
+        value: &Value,
+        ty: &Ty,
+        digits: u32,
+        span: Span,
+    ) -> Res<()> {
+        if let Ty::Struct(id) = ty {
+            if let Some(show_fn) = self.program.structs[*id].show_fn {
+                let saved = self.call_direct(show_fn, vec![value.clone()], span)?;
+                if let Value::Str(bytes) = saved {
+                    out.extend_from_slice(&bytes);
+                    return Ok(());
+                }
+            }
+        }
+        show(out, value, ty, digits, self.program, &self.domains);
+        Ok(())
+    }
+
+    fn call_direct(&mut self, id: FnId, values: Vec<Value>, span: Span) -> Res<Value> {
+        let f = &self.program.fns[id];
+        let here = 0u8;
+        let used = self.stack_top.abs_diff(std::ptr::addr_of!(here) as usize);
+        if self.depth >= self.max_depth || used > self.stack_budget {
+            return trap(
+                span,
+                format!(
+                    "calls are nested {} deep: `{}` never stops calling itself?",
+                    self.depth, f.name
+                ),
+            );
+        }
+        let base = self.stack.len();
+        self.stack.extend(values);
+        self.stack.resize(base + f.locals.len(), Value::Unit);
+        let saved = std::mem::replace(&mut self.base, base);
+        self.frame_locals.push(&f.locals);
+        self.depth += 1;
+        let flow = self.block(&f.body);
+        self.depth -= 1;
+        self.frame_locals.pop();
+        self.base = saved;
+        let flow = flow?;
+        self.stack.truncate(base);
+        Ok(match flow {
+            Flow::Return(value) => value,
+            _ => Value::Unit,
+        })
+    }
+
     fn builtin(&mut self, op: Builtin, args: &'p [Expr], e: &'p Expr) -> Res<Value> {
         let span = e.span;
         let mut values = Vec::with_capacity(args.len());
@@ -956,6 +1235,24 @@ impl<'p, 'o> Interp<'p, 'o> {
                 other => other,
             },
             Builtin::Sqrt => Value::Float(first.float().sqrt()),
+            Builtin::Isqrt => {
+                let x = first.int();
+                if x < 0 {
+                    return trap(span, format!("isqrt({x}) of a negative number"));
+                }
+                let mut r = (x as f64).sqrt() as i64;
+                while r.saturating_add(1).saturating_mul(r.saturating_add(1)) <= x {
+                    r += 1;
+                }
+                while r.saturating_mul(r) > x {
+                    r -= 1;
+                }
+                Value::Int(r)
+            }
+            Builtin::Atan2 => {
+                let x = values.next().unwrap_or_default().float();
+                Value::Float(first.float().atan2(x))
+            }
             Builtin::Floor | Builtin::Ceil | Builtin::Round => {
                 let v = match op {
                     Builtin::Floor => first.float().floor(),
@@ -967,21 +1264,113 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
                 Value::Int(v as i64)
             }
+            Builtin::Popcount => Value::Int(i64::from((first.int() as u64).count_ones())),
+            Builtin::Ctz => Value::Int(i64::from((first.int() as u64).trailing_zeros())),
+            Builtin::Clz => Value::Int(i64::from((first.int() as u64).leading_zeros())),
+            Builtin::BitWidth => {
+                let u = first.int() as u64;
+                Value::Int(i64::from(64 - u.leading_zeros()))
+            }
+            Builtin::BitCeil => {
+                let x = first.int();
+                if x <= 1 {
+                    Value::Int(1)
+                } else {
+                    let shift = 64 - ((x - 1) as u64).leading_zeros();
+                    Value::Int(1i64.wrapping_shl(shift))
+                }
+            }
+            Builtin::Rand => {
+                let lo = first.int();
+                let hi = values.next().unwrap_or_default().int();
+                if lo > hi {
+                    return trap(span, format!("rand({lo}, {hi}): lo > hi"));
+                }
+                let span_u = (hi as i128 - lo as i128 + 1) as u128;
+                let r = splitmix64(&mut self.rng_state) as u128;
+                let off = (r % span_u) as i128;
+                Value::Int((lo as i128 + off) as i64)
+            }
+            Builtin::Copy => first,
+            Builtin::ListFilled => {
+                let n = first.int();
+                let val = values.next().unwrap_or_default();
+                if n < 0 {
+                    return trap(span, format!("List.filled with negative length {n}"));
+                }
+                Value::List(Rc::new(vec![val; n as usize]))
+            }
+            Builtin::ShowStr => {
+                let mut buf = Vec::new();
+                let arg_ty = args.first().map(|a| &a.ty).unwrap_or(&Ty::Unit);
+                self.show_val(&mut buf, &first, arg_ty, 6, span)?;
+                Value::Str(Rc::new(buf))
+            }
+            Builtin::ParseInt => match first {
+                Value::Str(bytes) => {
+                    let s = std::str::from_utf8(&bytes).unwrap_or("").trim();
+                    match s.parse::<i64>() {
+                        Ok(v) => Value::Int(v),
+                        Err(_) => return trap(span, format!("`{s}` is not an Int")),
+                    }
+                }
+                other => other,
+            },
+            Builtin::StrToList => match first {
+                Value::Str(bytes) => {
+                    Value::List(Rc::new(bytes.iter().copied().map(Value::Char).collect()))
+                }
+                other => other,
+            },
+            Builtin::ListToStr => match first {
+                Value::List(items) => {
+                    let bytes: Vec<u8> = items
+                        .iter()
+                        .map(|v| match v {
+                            Value::Char(c) => *c,
+                            _ => 0,
+                        })
+                        .collect();
+                    Value::Str(Rc::new(bytes))
+                }
+                other => other,
+            },
+            Builtin::ArrayToList => match first {
+                Value::Array(arr) => Value::List(Rc::new(arr.data.clone())),
+                other => other,
+            },
             Builtin::Len => Value::Int(match &first {
-                Value::Array(array) => array.data.len(),
-                Value::List(items) => items.len(),
-                Value::Str(bytes) => bytes.len(),
-                Value::Map(entries) => entries.len(),
-                Value::Set(items) => items.len(),
+                Value::Array(array) => array.data.len() as i64,
+                Value::List(items) => items.len() as i64,
+                Value::Str(bytes) => bytes.len() as i64,
+                Value::Map(entries) => entries.len() as i64,
+                Value::Set(items) => items.len() as i64,
+                Value::Range(lo, hi) => (hi - lo).max(0),
                 _ => 0,
-            } as i64),
+            }),
             Builtin::First => match &first {
                 Value::List(items) => optional(items.first().cloned()),
+                Value::Range(lo, hi) => optional((lo < hi).then_some(Value::Int(*lo))),
                 _ => Value::Opt(None),
             },
             Builtin::Last => match &first {
                 Value::List(items) => optional(items.last().cloned()),
+                Value::Range(lo, hi) => optional((lo < hi).then_some(Value::Int(*hi - 1))),
                 _ => Value::Opt(None),
+            },
+            Builtin::FirstVal => match &first {
+                Value::List(items) => match items.first() {
+                    Some(v) => v.clone(),
+                    None => return trap(span, "the list is empty"),
+                },
+                _ => return trap(span, "the list is empty"),
+            },
+            Builtin::LastVal => match &first {
+                Value::List(items) => match items.last() {
+                    Some(v) => v.clone(),
+                    None => return trap(span, "the list is empty"),
+                },
+                _ => return trap(span, "the list is empty"),
             },
             Builtin::Contains => {
                 let needle = values.next().unwrap_or_default();
@@ -991,6 +1380,10 @@ impl<'p, 'o> Interp<'p, 'o> {
                     Value::Set(items) => items.contains(&needle),
                     Value::Map(entries) => entries.contains_key(&needle),
                     Value::Str(bytes) => matches!(needle, Value::Char(c) if bytes.contains(&c)),
+                    Value::Range(lo, hi) => {
+                        let x = needle.int();
+                        x >= *lo && x < *hi
+                    }
                     _ => false,
                 })
             }
@@ -1014,6 +1407,11 @@ impl<'p, 'o> Interp<'p, 'o> {
                     Rc::make_mut(&mut items).sort();
                     Value::List(items)
                 }
+                Value::Array(arr) => {
+                    let mut items = arr.data.clone();
+                    items.sort();
+                    Value::List(Rc::new(items))
+                }
                 Value::Set(items) => Value::List(Rc::new(items.iter().cloned().collect())),
                 other => other,
             },
@@ -1021,6 +1419,15 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::List(mut items) => {
                     Rc::make_mut(&mut items).reverse();
                     Value::List(items)
+                }
+                Value::Str(mut bytes) => {
+                    Rc::make_mut(&mut bytes).reverse();
+                    Value::Str(bytes)
+                }
+                Value::Array(arr) => {
+                    let mut items = arr.data.clone();
+                    items.reverse();
+                    Value::List(Rc::new(items))
                 }
                 other => other,
             },
@@ -1033,6 +1440,85 @@ impl<'p, 'o> Interp<'p, 'o> {
                 let ord = first.int();
                 optional((ord > 0).then_some(Value::Int(ord - 1)))
             }
+            Builtin::PosTryLabel(d) => {
+                let (lo, len) = self.domains[d];
+                let label = first.int();
+                let ord = label - lo;
+                optional((label >= lo && ord < len).then_some(Value::Int(ord)))
+            }
+            Builtin::PosTryOrd(d) => {
+                let (_, len) = self.domains[d];
+                let ord = first.int();
+                optional((ord >= 0 && ord < len).then_some(Value::Int(ord)))
+            }
+            Builtin::PosOffset(d) => {
+                let (_, len) = self.domains[d];
+                let ord = first.int();
+                let delta = values.next().unwrap_or_default().int();
+                let target = ord.saturating_add(delta);
+                optional((target >= 0 && target < len).then_some(Value::Int(target)))
+            }
+            Builtin::PosCyc(d) => {
+                let (_, len) = self.domains[d];
+                if len <= 0 {
+                    return trap(span, "cyc on empty domain");
+                }
+                let ord = first.int();
+                let delta = values.next().unwrap_or_default().int();
+                Value::Int((ord + delta).rem_euclid(len))
+            }
+            Builtin::BoundStepL(d) => {
+                let (_, len) = self.domains[d];
+                let ord = first.int();
+                let k = values.next().unwrap_or_default().int();
+                let b = ord + 1 - k;
+                if b < 0 || b > len {
+                    return trap(span, format!("window of {k} leaves domain (0..={len})"));
+                }
+                Value::Int(b)
+            }
+            Builtin::BoundStepR(d) => {
+                let (_, len) = self.domains[d];
+                let ord = first.int();
+                let k = values.next().unwrap_or_default().int();
+                let b = ord + k;
+                if b < 0 || b > len {
+                    return trap(span, format!("window of {k} leaves domain (0..={len})"));
+                }
+                Value::Int(b)
+            }
+            Builtin::BoundLeft(_d) => {
+                let ord = first.int();
+                optional((ord > 0).then_some(Value::Int(ord - 1)))
+            }
+            Builtin::BoundRight(d) => {
+                let (_, len) = self.domains[d];
+                let ord = first.int();
+                optional((ord < len).then_some(Value::Int(ord)))
+            }
+            Builtin::RangeLo => match first {
+                Value::Range(lo, _) => Value::Int(lo),
+                _ => Value::Int(0),
+            },
+            Builtin::RangeHi => match first {
+                Value::Range(_, hi) => Value::Int(hi),
+                _ => Value::Int(0),
+            },
+            Builtin::RangeRev => match first {
+                Value::Range(lo, hi) => {
+                    let mut out = Vec::with_capacity((hi - lo).max(0) as usize);
+                    let mut v = hi - 1;
+                    while v >= lo {
+                        out.push(Value::Int(v));
+                        if v == lo {
+                            break;
+                        }
+                        v -= 1;
+                    }
+                    Value::List(Rc::new(out))
+                }
+                _ => Value::List(Rc::new(Vec::new())),
+            },
         })
     }
 
@@ -1043,13 +1529,33 @@ impl<'p, 'o> Interp<'p, 'o> {
         args: &'p [Expr],
         span: Span,
     ) -> Res<Value> {
-        // As in C++17: what is called on comes before the argument.
+        // As in C++17: what is called on comes before the arguments.
         let mut indices = Vec::new();
         self.indices(place, &mut indices)?;
-        let arg = match args.first() {
-            Some(arg) => self.eval(arg)?,
-            None => Value::Unit,
-        };
+        let mut arg_vals = Vec::with_capacity(args.len());
+        for a in args {
+            arg_vals.push(self.eval(a)?);
+        }
+        let arg = arg_vals.first().cloned().unwrap_or(Value::Unit);
+        let arg2 = arg_vals.get(1).cloned().unwrap_or(Value::Unit);
+        if op == Mutation::Shuffle {
+            let mut rng_state = self.rng_state;
+            let cell = self.resolve(place, &mut indices.iter())?;
+            let res = match cell {
+                Value::Moved => return trap(span, LENT),
+                Value::List(items) => {
+                    let v = Rc::make_mut(items);
+                    for i in (1..v.len()).rev() {
+                        let j = (splitmix64(&mut rng_state) as usize) % (i + 1);
+                        v.swap(i, j);
+                    }
+                    Value::Unit
+                }
+                _ => return trap(span, "internal: this value can't be shuffled"),
+            };
+            self.rng_state = rng_state;
+            return Ok(res);
+        }
         let cell = self.resolve(place, &mut indices.iter())?;
         Ok(match (op, cell) {
             (_, Value::Moved) => return trap(span, LENT),
@@ -1066,6 +1572,10 @@ impl<'p, 'o> Interp<'p, 'o> {
             (Mutation::Pop, Value::List(items)) => {
                 Value::Opt(Rc::make_mut(items).pop().map(Rc::new))
             }
+            (Mutation::PopVal, Value::List(items)) => match Rc::make_mut(items).pop() {
+                Some(v) => v,
+                None => return trap(span, "pop from an empty list"),
+            },
             (Mutation::Insert, Value::Set(items)) => Value::Bool(Rc::make_mut(items).insert(arg)),
             (Mutation::Remove, Value::Set(items)) => Value::Bool(Rc::make_mut(items).remove(&arg)),
             (Mutation::Remove, Value::Map(entries)) => {
@@ -1085,6 +1595,65 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
             (Mutation::Reverse, Value::List(items)) => {
                 Rc::make_mut(items).reverse();
+                Value::Unit
+            }
+            (Mutation::Swap, Value::List(items)) => {
+                let (i, j) = (arg.int(), arg2.int());
+                let v = Rc::make_mut(items);
+                let len = v.len();
+                match (usize::try_from(i).ok(), usize::try_from(j).ok()) {
+                    (Some(i), Some(j)) if i < len && j < len => v.swap(i, j),
+                    _ => {
+                        return trap(
+                            span,
+                            format!("swap({i}, {j}) is outside a list of length {len}"),
+                        )
+                    }
+                }
+                Value::Unit
+            }
+            (Mutation::Swap, Value::Array(arr)) => {
+                let (i, j) = (arg.int(), arg2.int());
+                let a = Rc::make_mut(arr);
+                let len = a.data.len();
+                match (usize::try_from(i).ok(), usize::try_from(j).ok()) {
+                    (Some(i), Some(j)) if i < len && j < len => a.data.swap(i, j),
+                    _ => {
+                        return trap(
+                            span,
+                            format!("swap({i}, {j}) is outside an array of length {len}"),
+                        )
+                    }
+                }
+                Value::Unit
+            }
+            (Mutation::Resize, Value::List(items)) => {
+                let n = arg.int();
+                if n < 0 {
+                    return trap(span, format!("resize to negative length {n}"));
+                }
+                Rc::make_mut(items).resize(n as usize, arg2);
+                Value::Unit
+            }
+            (Mutation::Truncate, Value::List(items)) => {
+                let n = arg.int().max(0) as usize;
+                Rc::make_mut(items).truncate(n);
+                Value::Unit
+            }
+            (Mutation::Extend, Value::List(items)) => {
+                let v = Rc::make_mut(items);
+                match arg {
+                    Value::List(other) => v.extend(other.iter().cloned()),
+                    Value::Array(arr) => v.extend(arr.data.iter().cloned()),
+                    Value::Str(bytes) => v.extend(bytes.iter().copied().map(Value::Char)),
+                    Value::Set(set) => v.extend(set.iter().cloned()),
+                    _ => {}
+                }
+                Value::Unit
+            }
+            (Mutation::Fill, Value::Array(arr)) => {
+                let a = Rc::make_mut(arr);
+                a.data.fill(arg);
                 Value::Unit
             }
             _ => return trap(span, "internal: this value can't be changed that way"),

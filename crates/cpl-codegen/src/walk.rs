@@ -30,6 +30,8 @@ pub(crate) fn children<'p>(e: &'p Expr, f: &mut dyn FnMut(&'p Expr)) {
         | ExprKind::Global(_)
         | ExprKind::DomainLen(_)
         | ExprKind::DomainLo(_)
+        | ExprKind::DomainVal(_)
+        | ExprKind::Closure(_)
         | ExprKind::Do(_)
         | ExprKind::Error => {}
         ExprKind::Some(a)
@@ -64,14 +66,24 @@ pub(crate) fn children<'p>(e: &'p Expr, f: &mut dyn FnMut(&'p Expr)) {
                 }
             }
         }
+        ExprKind::CallExpr(callee, args) => {
+            f(callee);
+            args.iter().for_each(f);
+        }
+        ExprKind::Range { lo, hi } => {
+            f(lo);
+            f(hi);
+        }
         ExprKind::Mutate(_, place, args) => {
             place_exprs(place, f);
             args.iter().for_each(f);
         }
-        ExprKind::Sort(place, key) => {
+        ExprKind::Sort(place, sort_by) => {
             place_exprs(place, f);
-            if let Some((_, key)) = key {
-                f(key);
+            match sort_by {
+                cpl_ir::SortBy::Natural => {}
+                cpl_ir::SortBy::Key(_, key) => f(key),
+                cpl_ir::SortBy::Fn { func, .. } => f(func),
             }
         }
         ExprKind::Read(s) => {
@@ -138,7 +150,7 @@ fn stmt_exprs<'p>(stmt: &'p Stmt, f: &mut dyn FnMut(&'p Expr)) {
                 f(hi);
                 step.iter().for_each(f);
             }
-            Iter::Seq(seq, _) => f(seq),
+            Iter::RangeVal(e, _) | Iter::Seq(e, _) => f(e),
         },
         Stmt::Assert { cond, message, .. } => {
             f(cond);
@@ -148,6 +160,7 @@ fn stmt_exprs<'p>(stmt: &'p Stmt, f: &mut dyn FnMut(&'p Expr)) {
             f(lo);
             f(len);
         }
+        Stmt::DefDomainFromVal { val, .. } => f(val),
         Stmt::Break(_) | Stmt::Continue(_) | Stmt::Trap(..) => {}
     }
 }

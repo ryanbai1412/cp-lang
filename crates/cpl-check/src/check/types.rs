@@ -105,7 +105,7 @@ impl<'a> Checker<'a> {
 
     /// An argument of a generic type: a type, or the name of a number
     /// (`Mod<P>` with `const P = 998244353`).
-    fn type_arg(&mut self, arg: &ast::Type) -> Ty {
+    pub(crate) fn type_arg(&mut self, arg: &ast::Type) -> Ty {
         if let TypeKind::Named { name, args } = &arg.kind {
             if args.is_empty() {
                 let value = match self.local(&name.text) {

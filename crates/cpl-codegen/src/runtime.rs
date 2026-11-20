@@ -109,14 +109,26 @@ inline std::string read_str() { skip_space(); size_t start = in_at; while (in_at
         needs: &[],
         code: "\
 // Euclidean division: the remainder is never negative.
-inline ll ediv(ll a, ll b) { ll q = a / b, r = a % b; return q - ((r >> 63) & ((b >> 63) | 1)); }
+inline ll ediv(ll a, ll b) {
+#ifdef LOCAL
+    if (b == 0) { fputs(\"division by zero\\n\", stderr); exit(3); }
+    if (a == (-9223372036854775807LL - 1) && b == -1) { fputs(\"integer overflow\\n\", stderr); exit(3); }
+#endif
+    ll q = a / b, r = a % b; return q - ((r >> 63) & ((b >> 63) | 1));
+}
 ",
     },
     Piece {
         name: "emod",
         needs: &[],
         code: "\
-inline ll emod(ll a, ll b) { ll r = a % b, s = b >> 63; return r + ((r >> 63) & ((b ^ s) - s)); }
+inline ll emod(ll a, ll b) {
+#ifdef LOCAL
+    if (b == 0) { fputs(\"division by zero\\n\", stderr); exit(3); }
+#endif
+    if (b == -1) return 0;
+    ll r = a % b, s = b >> 63; return r + ((r >> 63) & ((b ^ s) - s));
+}
 ",
     },
     Piece {
@@ -124,14 +136,24 @@ inline ll emod(ll a, ll b) { ll r = a % b, s = b >> 63; return r + ((r >> 63) & 
         needs: &[],
         code: "\
 // The same for a divisor known to be positive.
-inline ll divp(ll a, ll b) { return a / b + ((a % b) >> 63); }
+inline ll divp(ll a, ll b) {
+#ifdef LOCAL
+    if (b == 0) { fputs(\"division by zero\\n\", stderr); exit(3); }
+#endif
+    return a / b + ((a % b) >> 63);
+}
 ",
     },
     Piece {
         name: "modp",
         needs: &[],
         code: "\
-inline ll modp(ll a, ll b) { ll r = a % b; return r + ((r >> 63) & b); }
+inline ll modp(ll a, ll b) {
+#ifdef LOCAL
+    if (b == 0) { fputs(\"division by zero\\n\", stderr); exit(3); }
+#endif
+    ll r = a % b; return r + ((r >> 63) & b);
+}
 ",
     },
     Piece {
@@ -246,6 +268,172 @@ inline std::optional<int> prev_pos(ll v) { return v > 0 ? std::optional<int>((in
         needs: &[],
         code: "\
 template <class T> std::optional<T> either(std::optional<T> a, std::optional<T> b) { return a ? a : b; }
+",
+    },
+    Piece {
+        name: "cphash",
+        needs: &[],
+        code: "\
+// Salted splitmix64 hash for HashMap / HashSet (defeats anti-hash tests).
+struct CpHash {
+    static uint64_t splitmix64(uint64_t x) {
+        x += 0x9e3779b97f4a7c15ULL;
+        x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ULL;
+        x = (x ^ (x >> 27)) * 0x94d049bb133111ebULL;
+        return x ^ (x >> 31);
+    }
+    static uint64_t salt() {
+        static const uint64_t s = (uint64_t)std::chrono::steady_clock::now().time_since_epoch().count();
+        return s;
+    }
+    size_t operator()(ll x) const { return (size_t)splitmix64((uint64_t)x + salt()); }
+    size_t operator()(int x) const { return (*this)((ll)x); }
+    size_t operator()(u8 x) const { return (*this)((ll)x); }
+    size_t operator()(bool x) const { return (*this)((ll)x); }
+    size_t operator()(const std::string& s) const {
+        uint64_t h = salt();
+        for (unsigned char c : s) h = splitmix64(h ^ c);
+        return (size_t)h;
+    }
+    template <class T> size_t operator()(const std::optional<T>& o) const {
+        return o ? (*this)(*o) : (size_t)splitmix64(salt());
+    }
+    template <class T, size_t I = 0> uint64_t hash_tuple(const T& t) const {
+        if constexpr (I == std::tuple_size<T>::value) return salt();
+        else return splitmix64(hash_tuple<T, I + 1>(t) ^ (uint64_t)(*this)(std::get<I>(t)));
+    }
+    template <class... Ts> size_t operator()(const std::tuple<Ts...>& t) const {
+        return (size_t)hash_tuple(t);
+    }
+    template <class T> auto operator()(const T& x) const -> decltype((*this)(x.cpl_tie())) {
+        return (*this)(x.cpl_tie());
+    }
+};
+",
+    },
+    Piece {
+        name: "range",
+        needs: &[],
+        code: "\
+template <class T> struct Range {
+    T lo = 0, hi = 0;
+    ll len() const { return hi > lo ? (ll)hi - (ll)lo : 0; }
+    bool empty() const { return hi <= lo; }
+    bool has(T x) const { return x >= lo && x < hi; }
+    std::optional<T> first() const { return lo < hi ? std::optional<T>(lo) : std::nullopt; }
+    std::optional<T> last() const { return lo < hi ? std::optional<T>((T)(hi - 1)) : std::nullopt; }
+    std::vector<T> rev() const {
+        std::vector<T> out;
+        if (lo < hi) { out.reserve((size_t)((ll)hi - (ll)lo)); for (T x = hi; x-- > lo;) out.push_back(x); }
+        return out;
+    }
+    bool operator==(const Range& o) const { return lo == o.lo && hi == o.hi; }
+    bool operator!=(const Range& o) const { return !(*this == o); }
+    bool operator<(const Range& o) const { return lo != o.lo ? lo < o.lo : hi < o.hi; }
+};
+",
+    },
+    Piece {
+        name: "domain_val",
+        needs: &[],
+        code: "\
+struct DomainVal { ll lo = 0, len = 0; };
+",
+    },
+    Piece {
+        name: "rng",
+        needs: &[],
+        code: "\
+// Deterministic splitmix64 PRNG (matches the debug interpreter).
+inline uint64_t rng_next() {
+    static uint64_t s = 0x9e3779b97f4a7c15ULL;
+    s += 0x9e3779b97f4a7c15ULL;
+    uint64_t z = s;
+    z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ULL;
+    z = (z ^ (z >> 27)) * 0x94d049bb133111ebULL;
+    return z ^ (z >> 31);
+}
+inline ll rand_range(ll lo, ll hi) {
+    unsigned __int128 span = (unsigned __int128)((__int128)hi - (__int128)lo + 1);
+    return (ll)((__int128)lo + (__int128)(rng_next() % span));
+}
+template <class T> void shuffle(std::vector<T>& v) {
+    for (size_t i = v.size(); i-- > 1;) std::swap(v[i], v[(size_t)(rng_next() % (i + 1))]);
+}
+",
+    },
+    Piece {
+        name: "bits",
+        needs: &[],
+        code: "\
+inline ll popcount(ll x) { return (ll)__builtin_popcountll((uint64_t)x); }
+inline ll ctz(ll x) { return x == 0 ? 64 : (ll)__builtin_ctzll((uint64_t)x); }
+inline ll clz(ll x) { return x == 0 ? 64 : (ll)__builtin_clzll((uint64_t)x); }
+inline ll bit_width(ll x) { return x == 0 ? 0 : 64 - (ll)__builtin_clzll((uint64_t)x); }
+inline ll bit_ceil(ll x) { return x <= 1 ? 1 : (1LL << (64 - __builtin_clzll((uint64_t)(x - 1)))); }
+inline ll isqrt(ll x) { ll r = (ll)std::sqrt((double)x); while ((r + 1) <= 3037000499LL && (r + 1) * (r + 1) <= x) r++; while (r * r > x) r--; return r; }
+",
+    },
+    Piece {
+        name: "pop_val",
+        needs: &["fail"],
+        code: "\
+template <class T> T pop_val(std::vector<T>& v) { if (v.empty()) fail(\"pop from an empty list\"); T x = std::move(v.back()); v.pop_back(); return x; }
+",
+    },
+    Piece {
+        name: "first_val",
+        needs: &["fail"],
+        code: "\
+template <class T> T first_val(const std::vector<T>& v) { if (v.empty()) fail(\"the list is empty\"); return v.front(); }
+",
+    },
+    Piece {
+        name: "last_val",
+        needs: &["fail"],
+        code: "\
+template <class T> T last_val(const std::vector<T>& v) { if (v.empty()) fail(\"the list is empty\"); return v.back(); }
+",
+    },
+    Piece {
+        name: "map_get_any",
+        needs: &[],
+        code: "\
+template <class M, class Q> auto map_get(const M& m, const Q& k) -> std::optional<typename M::mapped_type> {
+    auto it = m.find(k); return it == m.end() ? std::nullopt : std::optional<typename M::mapped_type>(it->second);
+}
+",
+    },
+    Piece {
+        name: "map_fold",
+        needs: &[],
+        code: "\
+template <class M, class K, class V> void map_max(M& m, const K& k, const V& v) { auto it = m.find(k); if (it == m.end()) m.emplace(k, v); else if (v > it->second) it->second = v; }
+template <class M, class K, class V> void map_min(M& m, const K& k, const V& v) { auto it = m.find(k); if (it == m.end()) m.emplace(k, v); else if (v < it->second) it->second = v; }
+template <class M, class K, class V> void map_mul(M& m, const K& k, const V& v) { auto it = m.find(k); if (it == m.end()) m.emplace(k, v); else it->second *= v; }
+template <class M, class K, class V> void map_and(M& m, const K& k, const V& v) { auto it = m.find(k); if (it == m.end()) m.emplace(k, v); else it->second &= v; }
+",
+    },
+    Piece {
+        name: "pos_ops",
+        needs: &["fail"],
+        code: "\
+inline std::optional<int> pos_try(ll v, ll lo, ll len) { return (v >= lo && v - lo < len) ? std::optional<int>((int)(v - lo)) : std::nullopt; }
+inline std::optional<int> pos_try_ord(ll i, ll len) { return (i >= 0 && i < len) ? std::optional<int>((int)i) : std::nullopt; }
+inline std::optional<int> pos_offset(ll i, ll d, ll len) { ll t = i + d; return (t >= 0 && t < len) ? std::optional<int>((int)t) : std::nullopt; }
+inline int pos_cyc(ll i, ll d, ll len) { ll r = (i + d) % len; return (int)(r < 0 ? r + len : r); }
+inline int bound_step(ll b, ll len) { if (b < 0 || b > len) fail(\"window leaves domain\"); return (int)b; }
+inline std::optional<int> bound_left(ll b) { return b > 0 ? std::optional<int>((int)(b - 1)) : std::nullopt; }
+inline std::optional<int> bound_right(ll b, ll len) { return b < len ? std::optional<int>((int)b) : std::nullopt; }
+",
+    },
+    Piece {
+        name: "str_conv",
+        needs: &[],
+        code: "\
+inline std::vector<u8> str_to_list(const std::string& s) { return std::vector<u8>(s.begin(), s.end()); }
+inline std::string list_to_str(const std::vector<u8>& v) { return std::string(v.begin(), v.end()); }
+inline ll parse_int(const std::string& s) { return std::stoll(s); }
 ",
     },
 ];

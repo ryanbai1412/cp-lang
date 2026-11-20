@@ -1,5 +1,6 @@
 //! Expressions.
 
+use super::stmt::place_to_expr;
 use super::*;
 
 /// One `for` of a comprehension while its body is being lowered.
@@ -73,33 +74,45 @@ impl<'a> Lowerer<'a> {
                     self.err_expr(span)
                 }
             },
-            ast::ExprKind::Name(name) => self.name(name, span),
-            ast::ExprKind::SelfValue => match self.cx.receiver {
-                Some((slot, _)) => self.local(slot, span),
-                None => {
-                    self.error(codes::UNRESOLVED_NAME, span, "`self` outside a method");
-                    self.err_expr(span)
+            ast::ExprKind::Name(name) => self.name(name, inner_hint, span),
+            ast::ExprKind::SelfValue => {
+                if let Some((ref recv_place, _)) = self.cx.inline_self {
+                    return place_to_expr(recv_place);
                 }
-            },
+                if let Some((slot, _)) = self.cx.receiver {
+                    return self.local(slot, span);
+                }
+                if let Some((slot, _)) = self.capture_self_from_outer() {
+                    return self.local(slot, span);
+                }
+                self.error(codes::UNRESOLVED_NAME, span, "`self` outside a method");
+                self.err_expr(span)
+            }
             ast::ExprKind::Paren(inner) => self.expr(inner, hint),
             ast::ExprKind::Unary { op, expr } => self.unary(*op, expr, inner_hint, span),
             ast::ExprKind::Binary { op, lhs, rhs, .. } => self.binary(*op, lhs, rhs, span),
             ast::ExprKind::Compare { first, rest } => self.compare(first, rest, span),
+            ast::ExprKind::Range {
+                lo,
+                hi,
+                inclusive,
+                step: None,
+            } => self.range_val(lo.as_deref(), hi.as_deref(), *inclusive, span),
             ast::ExprKind::Range { .. } => {
-                self.unsupported(span, "a range kept as a value");
+                self.unsupported(span, "a stepped range kept as a value");
                 self.err_expr(span)
             }
             ast::ExprKind::Call { callee, args } => self.call(e, callee, args, hint),
             ast::ExprKind::Index { base, indices } => {
-                let base = self.expr(base, None);
-                let (indices, ty) = self.index_args(&base.ty, indices, span);
-                self.mk(ExprKind::Index(Box::new(base), indices), ty, span)
+                let base_expr = self.expr(base, None);
+                if indices.len() == 1 && matches!(indices[0].kind, ast::ExprKind::Range { .. }) {
+                    return self.slice_expr(base_expr, &indices[0], span);
+                }
+                let (indices, ty) = self.index_args(&base_expr.ty, indices, span);
+                self.mk(ExprKind::Index(Box::new(base_expr), indices), ty, span)
             }
             ast::ExprKind::Field { base, name } => self.field(e, base, name),
-            ast::ExprKind::Generic { .. } => {
-                self.unsupported(span, "explicit type arguments here");
-                self.err_expr(span)
-            }
+            ast::ExprKind::Generic { base, args } => self.generic_expr(base, args, span),
             ast::ExprKind::Tuple(items) => {
                 let hints = inner_hint
                     .and_then(Ty::fields)
@@ -146,10 +159,7 @@ impl<'a> Lowerer<'a> {
                 self.mk(ExprKind::Tuple(values), ty, span)
             }
             ast::ExprKind::List(items) => self.list(items, inner_hint, span),
-            ast::ExprKind::Map(_) => {
-                self.unsupported(span, "map literals");
-                self.err_expr(span)
-            }
+            ast::ExprKind::Map(entries) => self.map_lit(entries, inner_hint, span),
             ast::ExprKind::Comprehension { body, clauses } => {
                 self.comprehension(body, clauses, inner_hint, span)
             }
@@ -158,9 +168,8 @@ impl<'a> Lowerer<'a> {
                 params,
                 body,
             } => self.table(domains, params, body, inner_hint, span),
-            ast::ExprKind::Lambda { .. } => {
-                self.unsupported(span, "a fn kept as a value");
-                self.err_expr(span)
+            ast::ExprKind::Lambda { params, body } => {
+                self.lower_lambda(params, body, inner_hint, span)
             }
             ast::ExprKind::Block(block) => self.do_expr(hint, span, |lw, out| {
                 out.extend(lw.block(block, Tail::Give).stmts);
@@ -181,10 +190,7 @@ impl<'a> Lowerer<'a> {
                 self.unsupported(span, "`with`");
                 self.err_expr(span)
             }
-            ast::ExprKind::Try(_) => {
-                self.unsupported(span, "postfix `?`");
-                self.err_expr(span)
-            }
+            ast::ExprKind::Try(inner) => self.try_expr(inner, span),
             ast::ExprKind::Unwrap(inner) => {
                 let value = self.expr(inner, None);
                 match value.ty.clone() {
@@ -314,9 +320,15 @@ impl<'a> Lowerer<'a> {
         Some(result)
     }
 
-    fn name(&mut self, name: &str, span: Span) -> Expr {
+    pub(super) fn name(&mut self, name: &str, hint: Option<&Ty>, span: Span) -> Expr {
         if let Some(slot) = self.lookup(name) {
             return self.local(slot, span);
+        }
+        if let Some((ref recv_place, owner)) = self.cx.inline_self.clone() {
+            if let Some((index, ty)) = self.field_of(&Ty::Struct(owner), name) {
+                let base = place_to_expr(recv_place);
+                return self.mk(ExprKind::Field(Box::new(base), index), ty, span);
+            }
         }
         if let Some((slot, owner)) = self.cx.receiver {
             if let Some((index, ty)) = self.field_of(&Ty::Struct(owner), name) {
@@ -324,10 +336,28 @@ impl<'a> Lowerer<'a> {
                 return self.mk(ExprKind::Field(Box::new(base), index), ty, span);
             }
         }
-        match self.syms.get(name).copied() {
+        if let Some(slot) = self.capture_from_outer(name) {
+            return self.local(slot, span);
+        }
+        if let Some((slot, owner)) = self.capture_self_from_outer() {
+            if let Some((index, ty)) = self.field_of(&Ty::Struct(owner), name) {
+                let base = self.local(slot, span);
+                return self.mk(ExprKind::Field(Box::new(base), index), ty, span);
+            }
+        }
+        // Generic value parameter (e.g. `P` in `Mod<P>`) or generic domain parameter (`C` in `(C, comp)`).
+        if let Some(ga) = self.gen_env.get(name).cloned() {
+            match ga {
+                GenArg::Int(v) => return self.mk(ExprKind::Int(v), Ty::Int, span),
+                GenArg::Domain(d) => return self.mk(ExprKind::DomainVal(d), Ty::DomainVal, span),
+                GenArg::Ty(_) => {}
+            }
+        }
+        match self.get_sym(name) {
             Some(Sym::Global(id)) => {
                 return self.mk(ExprKind::Global(id), self.globals[id].ty.clone(), span)
             }
+            Some(Sym::ModConst(mcid)) => return self.ensure_mod_const(mcid, span),
             Some(Sym::Variant(id, tag)) => {
                 if self.enums[id].variants[tag].1.is_empty() {
                     return self.mk(ExprKind::Variant(tag, Vec::new()), Ty::Enum(id), span);
@@ -335,19 +365,281 @@ impl<'a> Lowerer<'a> {
                 let message = format!("the variant `{name}` holds values: write `{name}(...)`");
                 self.error(codes::WRONG_ARG_COUNT, span, message);
             }
-            Some(Sym::Fn(_)) => self.unsupported(span, "a fn kept as a value"),
-            Some(Sym::Struct(_) | Sym::Enum(_) | Sym::Domain(_) | Sym::Alias(_)) => {
+            Some(Sym::Fn(id)) => return self.fn_as_closure(id, span),
+            Some(Sym::Domain(d)) => return self.mk(ExprKind::DomainVal(d), Ty::DomainVal, span),
+            Some(Sym::Struct(_) | Sym::GenStruct(_) | Sym::Enum(_) | Sym::GenEnum(_) | Sym::Alias(_) | Sym::GenAlias(_)) => {
                 let message = format!("`{name}` is a type, and a value is needed here");
                 self.error(codes::TYPE_MISMATCH, span, message);
             }
-            None if name == "INF" => return self.mk(ExprKind::Int(INF), Ty::Int, span),
-            None => {
+            _ if name == "INF" => return self.mk(ExprKind::Int(INF), Ty::Int, span),
+            _ if matches!(name, "min" | "max") => {
+                if let Some(Ty::Fn(ps, r)) = hint {
+                    if ps.len() == 2 {
+                        let a_ty = ps[0].clone();
+                        let op = if name == "min" { Builtin::Min } else { Builtin::Max };
+                        let mut locals = vec![
+                            Local { name: "a".into(), ty: a_ty.clone() },
+                            Local { name: "b".into(), ty: a_ty.clone() },
+                        ];
+                        let body = Block {
+                            stmts: vec![Stmt::Return(Some(Expr {
+                                kind: ExprKind::Builtin(
+                                    op,
+                                    vec![
+                                        Expr { kind: ExprKind::Local(0), ty: a_ty.clone(), span: self.span(span) },
+                                        Expr { kind: ExprKind::Local(1), ty: a_ty.clone(), span: self.span(span) },
+                                    ],
+                                ),
+                                ty: (**r).clone(),
+                                span: self.span(span),
+                            }))],
+                        };
+                        let cid = self.closures.len();
+                        self.closures.push(ClosureDef {
+                            params: vec![0, 1],
+                            captures: Vec::new(),
+                            locals: std::mem::take(&mut locals),
+                            ret: (**r).clone(),
+                            body,
+                        });
+                        return self.mk(ExprKind::Closure(cid), Ty::Fn(ps.clone(), r.clone()), span);
+                    }
+                }
+                self.error(codes::UNRESOLVED_NAME, span, format!("`cpl run` doesn't know the name `{name}` here"));
+            }
+            _ => {
                 let message = format!("`cpl run` doesn't know the name `{name}` here");
                 self.error(codes::UNRESOLVED_NAME, span, message);
                 self.help("a top-level `let` is visible only after the line that sets it");
             }
         }
         self.err_expr(span)
+    }
+
+    fn generic_expr(&mut self, base: &ast::Expr, args: &[ast::Type], span: Span) -> Expr {
+        if let ast::ExprKind::Name(name) = &base.kind {
+            if let Some(Sym::GenConst(gcid)) = self.get_sym(name) {
+                let gargs = self.resolve_gen_args(args);
+                return self.eval_gen_const(gcid, gargs);
+            }
+        }
+        if let ast::ExprKind::Field { base: mbase, name } = &base.kind {
+            if let Some(Sym::Mod(target_mod)) = self.sym(mbase) {
+                let saved_mod = std::mem::replace(&mut self.cur_mod, target_mod);
+                let sym = self.mod_syms[target_mod].get(&name.text).copied();
+                self.cur_mod = saved_mod;
+                if let Some(Sym::GenConst(gcid)) = sym {
+                    let gargs = self.resolve_gen_args(args);
+                    return self.eval_gen_const(gcid, gargs);
+                }
+            }
+        }
+        self.unsupported(span, "explicit type arguments here");
+        self.err_expr(span)
+    }
+
+    fn range_val(
+        &mut self,
+        lo: Option<&ast::Expr>,
+        hi: Option<&ast::Expr>,
+        inclusive: bool,
+        span: Span,
+    ) -> Expr {
+        let lo_e = lo.map(|e| self.expr(e, None));
+        let hi_e = hi.map(|e| self.expr(e, None));
+        match (lo_e, hi_e) {
+            (Some(l), Some(r)) => match (&l.ty, &r.ty) {
+                (Ty::Int, Ty::Int) => {
+                    let hi = if inclusive { self.int_add(r, 1) } else { r };
+                    self.mk(
+                        ExprKind::Range {
+                            lo: Box::new(l),
+                            hi: Box::new(hi),
+                        },
+                        Ty::Range(Box::new(Ty::Int)),
+                        span,
+                    )
+                }
+                (Ty::Pos(d), Ty::Pos(d2)) if d == d2 => {
+                    let d = *d;
+                    let lo_ord = self.cast(Cast::Ord, l, Ty::Int);
+                    let hi_ord = self.cast(Cast::Ord, r, Ty::Int);
+                    let hi_ord = if inclusive { self.int_add(hi_ord, 1) } else { hi_ord };
+                    self.mk(
+                        ExprKind::Range {
+                            lo: Box::new(lo_ord),
+                            hi: Box::new(hi_ord),
+                        },
+                        Ty::Range(Box::new(Ty::Pos(d))),
+                        span,
+                    )
+                }
+                (Ty::Bound(d), Ty::Bound(d2)) if d == d2 => {
+                    let d = *d;
+                    let lo_ord = self.cast(Cast::Ord, l, Ty::Int);
+                    let hi_ord = self.cast(Cast::Ord, r, Ty::Int);
+                    self.mk(
+                        ExprKind::Range {
+                            lo: Box::new(lo_ord),
+                            hi: Box::new(hi_ord),
+                        },
+                        Ty::Range(Box::new(Ty::Pos(d))),
+                        span,
+                    )
+                }
+                (Ty::Error, _) | (_, Ty::Error) => self.err_expr(span),
+                _ => {
+                    self.mismatch(span, &l.ty, &r.ty);
+                    self.err_expr(span)
+                }
+            },
+            (Some(l), None) => match l.ty {
+                Ty::Pos(d) | Ty::Bound(d) => {
+                    let lo_ord = self.cast(Cast::Ord, l, Ty::Int);
+                    let hi_ord = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                    self.mk(
+                        ExprKind::Range {
+                            lo: Box::new(lo_ord),
+                            hi: Box::new(hi_ord),
+                        },
+                        Ty::Range(Box::new(Ty::Pos(d))),
+                        span,
+                    )
+                }
+                _ => {
+                    self.unsupported(span, "an unbounded range value");
+                    self.err_expr(span)
+                }
+            },
+            (None, Some(r)) => match r.ty {
+                Ty::Pos(d) => {
+                    let lo_ord = self.int_lit(0, span);
+                    let hi_ord = self.cast(Cast::Ord, r, Ty::Int);
+                    let hi_ord = if inclusive { self.int_add(hi_ord, 1) } else { hi_ord };
+                    self.mk(
+                        ExprKind::Range {
+                            lo: Box::new(lo_ord),
+                            hi: Box::new(hi_ord),
+                        },
+                        Ty::Range(Box::new(Ty::Pos(d))),
+                        span,
+                    )
+                }
+                Ty::Bound(d) => {
+                    let lo_ord = self.int_lit(0, span);
+                    let hi_ord = self.cast(Cast::Ord, r, Ty::Int);
+                    self.mk(
+                        ExprKind::Range {
+                            lo: Box::new(lo_ord),
+                            hi: Box::new(hi_ord),
+                        },
+                        Ty::Range(Box::new(Ty::Pos(d))),
+                        span,
+                    )
+                }
+                _ => {
+                    self.unsupported(span, "an unbounded range value");
+                    self.err_expr(span)
+                }
+            },
+            (None, None) => {
+                self.unsupported(span, "a range with neither end");
+                self.err_expr(span)
+            }
+        }
+    }
+
+    fn try_expr(&mut self, inner: &ast::Expr, span: Span) -> Expr {
+        let opt = self.expr(inner, None);
+        let Ty::Opt(inner_ty) = opt.ty.clone() else {
+            if opt.ty != Ty::Error {
+                self.error(
+                    codes::TYPE_MISMATCH,
+                    span,
+                    format!("`?` needs an optional, found `{}`", self.show(&opt.ty)),
+                );
+            }
+            return self.err_expr(span);
+        };
+        let ret_ty = self.cx.ret.clone().unwrap_or_else(|| Ty::opt((*inner_ty).clone()));
+        self.do_expr(Some(&inner_ty), span, |lw, out| {
+            let slot = lw.temp(opt.ty.clone());
+            out.push(Stmt::Let(slot, Some(opt)));
+            let held = lw.local(slot, span);
+            let is_some = lw.mk(ExprKind::IsSome(Box::new(held.clone())), Ty::Bool, span);
+            let is_none = lw.mk(ExprKind::Unary(UnOp::Not, Box::new(is_some)), Ty::Bool, span);
+            let ret_none = lw.mk(ExprKind::None, ret_ty.clone(), span);
+            out.push(Stmt::If(
+                is_none,
+                Block {
+                    stmts: vec![Stmt::Return(Some(ret_none))],
+                },
+                Block::default(),
+            ));
+            let val = lw.mk(ExprKind::Unwrap(Box::new(held), false), (*inner_ty).clone(), span);
+            out.push(Stmt::Give(val));
+        })
+    }
+
+    fn map_lit(&mut self, entries: &[(ast::Expr, ast::Expr)], hint: Option<&Ty>, span: Span) -> Expr {
+        let (kh, vh, hashed) = match hint {
+            Some(Ty::Map(k, v)) => (Some((**k).clone()), Some((**v).clone()), false),
+            Some(Ty::HashMap(k, v)) => (Some((**k).clone()), Some((**v).clone()), true),
+            _ => (None, None, false),
+        };
+        let mut pairs = Vec::with_capacity(entries.len());
+        let mut kt = kh;
+        let mut vt = vh;
+        for (k, v) in entries {
+            let ke = match &kt {
+                Some(t) => self.expect(k, t),
+                None => {
+                    let e = self.expr(k, None);
+                    kt = Some(e.ty.clone());
+                    e
+                }
+            };
+            let ve = match &vt {
+                Some(t) => self.expect(v, t),
+                None => {
+                    let e = self.expr(v, None);
+                    vt = Some(e.ty.clone());
+                    e
+                }
+            };
+            pairs.push((ke, ve));
+        }
+        let k_ty = kt.unwrap_or(Ty::Int);
+        let v_ty = vt.unwrap_or(Ty::Int);
+        let map_ty = if hashed {
+            Ty::HashMap(Box::new(k_ty), Box::new(v_ty.clone()))
+        } else {
+            Ty::Map(Box::new(k_ty), Box::new(v_ty.clone()))
+        };
+        self.do_expr(Some(&map_ty), span, |lw, out| {
+            let slot = lw.temp(map_ty.clone());
+            out.push(Stmt::Let(
+                slot,
+                Some(lw.mk(ExprKind::Tuple(Vec::new()), map_ty.clone(), span)),
+            ));
+            for (k, v) in pairs {
+                let place = Place {
+                    kind: PlaceKind::Index(
+                        Box::new(Place {
+                            kind: PlaceKind::Local(slot),
+                            ty: map_ty.clone(),
+                            span: lw.span(span),
+                        }),
+                        vec![k],
+                    ),
+                    ty: v_ty.clone(),
+                    span: lw.span(span),
+                };
+                out.push(Stmt::Assign(place, AssignOp::Set, v));
+            }
+            let res = lw.local(slot, span);
+            out.push(Stmt::Give(res));
+        })
     }
 
     /// The bytes of literal text. `Char` is a byte and `Str` is bytes, so
@@ -441,6 +733,21 @@ impl<'a> Lowerer<'a> {
                         let ty = value.ty.clone();
                         self.mk(ExprKind::Unary(op, Box::new(value)), ty, span)
                     }
+                    (_, Ty::Struct(sid)) => {
+                        let sid = *sid;
+                        if let Some(fn_id) = self.struct_op_fn(sid, "neg") {
+                            let ret = self.ret_of(fn_id, span);
+                            return self.mk(
+                                ExprKind::Call(fn_id, vec![Arg::Value(value)]),
+                                ret,
+                                span,
+                            );
+                        }
+                        let message =
+                            format!("`-` can't be applied to a `{}`", self.show(&value.ty));
+                        self.error(codes::BAD_OPERANDS, span, message);
+                        self.err_expr(span)
+                    }
                     (_, Ty::Error) => value,
                     _ => {
                         let message =
@@ -504,7 +811,26 @@ impl<'a> Lowerer<'a> {
             _ => {}
         }
         let l = self.expr(lhs, None);
-        let r = self.expr(rhs, None);
+        let r = self.expr(rhs, Some(&l.ty));
+        // Dispatch operator traits (`impl Add/Sub/Mul/Div for Struct`).
+        if let Ty::Struct(sid) = l.ty {
+            let mname = match op {
+                Add => Some("add"),
+                Sub => Some("sub"),
+                Mul => Some("mul"),
+                Div => Some("div"),
+                _ => None,
+            };
+            if let Some(fn_id) = mname.and_then(|m| self.struct_op_fn(sid, m)) {
+                let r = self.coerce(r, &Ty::Struct(sid), rhs.span);
+                let ret = self.ret_of(fn_id, span);
+                return self.mk(
+                    ExprKind::Call(fn_id, vec![Arg::Value(l), Arg::Value(r)]),
+                    ret,
+                    span,
+                );
+            }
+        }
         let arith = matches!(op, Add | Sub | Mul | Div | Pow);
         let (l, r, ty) = match (&l.ty, &r.ty) {
             (Ty::Error, _) | (_, Ty::Error) => return self.err_expr(span),
@@ -523,6 +849,30 @@ impl<'a> Lowerer<'a> {
                 let l = self.as_str(l, lhs.span);
                 let r = self.as_str(r, rhs.span);
                 (l, r, Ty::Str)
+            }
+            (Ty::List(a), Ty::List(b)) if a == b && op == Add => {
+                let list_ty = l.ty.clone();
+                return self.do_expr(Some(&list_ty), span, |lw, out| {
+                    let slot = lw.temp(list_ty.clone());
+                    let cloned = lw.mk(ExprKind::Builtin(Builtin::Copy, vec![l]), list_ty.clone(), span);
+                    out.push(Stmt::Let(slot, Some(cloned)));
+                    let ext = lw.mk(
+                        ExprKind::Mutate(
+                            Mutation::Extend,
+                            Box::new(Place {
+                                kind: PlaceKind::Local(slot),
+                                ty: list_ty.clone(),
+                                span: lw.span(span),
+                            }),
+                            vec![r],
+                        ),
+                        Ty::Unit,
+                        span,
+                    );
+                    out.push(Stmt::Expr(ext));
+                    let res = lw.local(slot, span);
+                    out.push(Stmt::Give(res));
+                });
             }
             (Ty::Char, Ty::Char) if op == Sub => {
                 let l = self.cast(Cast::CharToInt, l, Ty::Int);
@@ -543,14 +893,18 @@ impl<'a> Lowerer<'a> {
                 let r = self.cast(Cast::Ord, r, Ty::Int);
                 (l, r, Ty::Int)
             }
-            (Ty::Pos(_), Ty::Int) if matches!(op, Add | Sub) => {
-                self.error(
-                    codes::POSITION_ARITHMETIC,
+            (Ty::Pos(d), Ty::Int) if matches!(op, Add | Sub) => {
+                let d = *d;
+                let step = if op == Sub {
+                    self.mk(ExprKind::Unary(UnOp::Neg, Box::new(r)), Ty::Int, rhs.span)
+                } else {
+                    r
+                };
+                return self.mk(
+                    ExprKind::Builtin(Builtin::PosOffset(d), vec![l, step]),
+                    Ty::opt(Ty::Pos(d)),
                     span,
-                    "a position plus a number has no single meaning",
                 );
-                self.help("`v.next` and `v.prev` step by one and are `none` at the ends");
-                return self.err_expr(span);
             }
             _ => {
                 let message = format!(
@@ -612,6 +966,15 @@ impl<'a> Lowerer<'a> {
                         let next = self.expr(next, None);
                         let hint = Ty::opt(strip_opt(&next.ty));
                         self.expr(e, Some(&hint))
+                    }
+                    _ => self.expr(e, None),
+                }
+            } else if matches!(&e.kind, ast::ExprKind::List(items) if items.is_empty()) {
+                match (operands.last(), asts.get(i + 1)) {
+                    (Some((prev, _)), _) => self.expr(e, Some(&prev.ty)),
+                    (None, Some(next)) => {
+                        let next = self.expr(next, None);
+                        self.expr(e, Some(&next.ty))
                     }
                     _ => self.expr(e, None),
                 }
@@ -794,10 +1157,15 @@ impl<'a> Lowerer<'a> {
             }
             ast::ExprKind::Name(name)
                 if self.lookup(name).is_none()
-                    && matches!(self.syms.get(name), Some(Sym::Domain(_))) =>
+                    && (matches!(self.gen_env.get(name), Some(GenArg::Domain(_)))
+                        || matches!(self.get_sym(name), Some(Sym::Domain(_)))) =>
             {
-                let Some(Sym::Domain(id)) = self.syms.get(name).copied() else {
-                    unreachable!("matched above")
+                let id = match self.gen_env.get(name) {
+                    Some(GenArg::Domain(id)) => *id,
+                    _ => match self.get_sym(name) {
+                        Some(Sym::Domain(id)) => id,
+                        _ => unreachable!(),
+                    },
                 };
                 let value = self.expect(item, &Ty::Int);
                 let lo = self.mk(ExprKind::DomainLo(id), Ty::Int, span);
@@ -812,9 +1180,11 @@ impl<'a> Lowerer<'a> {
             _ => {
                 let holder = self.expr(container, None);
                 let elem = match &holder.ty {
-                    Ty::List(elem) | Ty::Set(elem) => (**elem).clone(),
+                    Ty::List(elem) | Ty::Set(elem) | Ty::HashSet(elem) | Ty::Range(elem) => {
+                        (**elem).clone()
+                    }
                     Ty::Array { elem, .. } => (**elem).clone(),
-                    Ty::Map(key, _) => (**key).clone(),
+                    Ty::Map(key, _) | Ty::HashMap(key, _) => (**key).clone(),
                     Ty::Str => Ty::Char,
                     Ty::Error => return self.err_expr(span),
                     other => {
@@ -871,6 +1241,19 @@ impl<'a> Lowerer<'a> {
                         Dim::Int => Ty::Int,
                     };
                     let value = self.expr(index, Some(&want));
+                    if let (Dim::Pos(d), Ty::Struct(sid)) = (dim, &value.ty) {
+                        if self.structs[*sid].index_domain == Some(*d) {
+                            if let Some(to_idx) = self.structs[*sid].methods.get("to_idx").copied() {
+                                let ord = self.mk(
+                                    ExprKind::Call(to_idx, vec![Arg::Value(value)]),
+                                    Ty::Int,
+                                    index.span,
+                                );
+                                out.push(self.cast(Cast::Trust, ord, Ty::Pos(*d)));
+                                continue;
+                            }
+                        }
+                    }
                     if value.ty != want && value.ty != Ty::Error {
                         let message = format!(
                             "this is indexed by `{}`, but the index is a `{}`",
@@ -885,7 +1268,7 @@ impl<'a> Lowerer<'a> {
             }
             Ty::List(elem) => (one(self, &Ty::Int), (**elem).clone()),
             Ty::Str => (one(self, &Ty::Int), Ty::Char),
-            Ty::Map(key, value) => (one(self, key), (**value).clone()),
+            Ty::Map(key, value) | Ty::HashMap(key, value) => (one(self, key), (**value).clone()),
             Ty::Error => {
                 for index in indices {
                     self.expr(index, None);
@@ -900,13 +1283,159 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// Lowers a slice expression `base[lo..hi]` / `base[lo..=hi]` / `base[..hi]` / `base[lo..]`
+    /// on a `List<T>`, `Str`, or `[D]T` into a `List<T>` (or `Str` for `Str`).
+    fn slice_expr(&mut self, base: Expr, range: &ast::Expr, span: Span) -> Expr {
+        let ast::ExprKind::Range {
+            lo,
+            hi,
+            inclusive,
+            step,
+        } = &range.kind
+        else {
+            return self.err_expr(span);
+        };
+        if step.is_some() {
+            self.unsupported(span, "stepped slice");
+            return self.err_expr(span);
+        }
+        let is_str = base.ty == Ty::Str;
+        let (elem_ty, dim_dom) = match &base.ty {
+            Ty::List(e) => ((**e).clone(), None),
+            Ty::Str => (Ty::Char, None),
+            Ty::Array { dims, elem } if dims.len() == 1 => {
+                let d = match dims[0] {
+                    Dim::Pos(d) => Some(d),
+                    _ => None,
+                };
+                ((**elem).clone(), d)
+            }
+            Ty::Error => return self.err_expr(span),
+            other => {
+                self.error(
+                    codes::BAD_OPERANDS,
+                    span,
+                    format!("can't slice a `{}`", self.show(other)),
+                );
+                return self.err_expr(span);
+            }
+        };
+        let out_ty = if is_str { Ty::Str } else { Ty::list(elem_ty.clone()) };
+        self.do_expr(Some(&out_ty), span, |lw, out| {
+            let base_slot = lw.temp(base.ty.clone());
+            out.push(Stmt::Let(base_slot, Some(base)));
+            let base_ref = lw.local(base_slot, span);
+            let len_expr = match dim_dom {
+                Some(d) => lw.mk(ExprKind::DomainLen(d), Ty::Int, span),
+                None => lw.mk(ExprKind::Builtin(Builtin::Len, vec![base_ref.clone()]), Ty::Int, span),
+            };
+            let to_idx = |lw: &mut Self, e: &ast::Expr, is_end: bool| -> Expr {
+                let v = lw.expr(e, None);
+                match v.ty {
+                    Ty::Int => {
+                        if is_end && *inclusive {
+                            lw.int_add(v, 1)
+                        } else {
+                            v
+                        }
+                    }
+                    Ty::Pos(_) => {
+                        let ord = lw.cast(Cast::Ord, v, Ty::Int);
+                        if is_end && *inclusive {
+                            lw.int_add(ord, 1)
+                        } else {
+                            ord
+                        }
+                    }
+                    Ty::Bound(_) => lw.cast(Cast::Ord, v, Ty::Int),
+                    _ => lw.coerce(v, &Ty::Int, e.span),
+                }
+            };
+            let lo_e = match lo {
+                Some(l) => to_idx(lw, l, false),
+                None => lw.int_lit(0, span),
+            };
+            let hi_e = match hi {
+                Some(h) => to_idx(lw, h, true),
+                None => len_expr,
+            };
+            let acc_slot = lw.temp(out_ty.clone());
+            let empty_init = if is_str {
+                lw.mk(ExprKind::Str(Vec::new()), Ty::Str, span)
+            } else {
+                lw.mk(ExprKind::Tuple(Vec::new()), out_ty.clone(), span)
+            };
+            out.push(Stmt::Let(acc_slot, Some(empty_init)));
+            let idx_slot = lw.temp(Ty::Int);
+            let idx_e = lw.local(idx_slot, span);
+            let index_arg = match dim_dom {
+                Some(d) => lw.mk(ExprKind::Cast(Cast::FromOrd(d), Box::new(idx_e)), Ty::Pos(d), span),
+                None => idx_e,
+            };
+            let item = lw.mk(
+                ExprKind::Index(Box::new(base_ref), vec![index_arg]),
+                elem_ty.clone(),
+                span,
+            );
+            let push_stmt = if is_str {
+                let item_str = lw.as_str(item, span);
+                let cur = lw.local(acc_slot, span);
+                let joined = lw.mk(
+                    ExprKind::Binary(BinOp::Add, Box::new(cur), Box::new(item_str)),
+                    Ty::Str,
+                    span,
+                );
+                Stmt::Assign(
+                    Place {
+                        kind: PlaceKind::Local(acc_slot),
+                        ty: Ty::Str,
+                        span: lw.span(span),
+                    },
+                    AssignOp::Set,
+                    joined,
+                )
+            } else {
+                Stmt::Expr(lw.mk(
+                    ExprKind::Mutate(
+                        Mutation::Push,
+                        Box::new(Place {
+                            kind: PlaceKind::Local(acc_slot),
+                            ty: out_ty.clone(),
+                            span: lw.span(span),
+                        }),
+                        vec![item],
+                    ),
+                    Ty::Unit,
+                    span,
+                ))
+            };
+            let lid = lw.next_loop;
+            lw.next_loop += 1;
+            out.push(Stmt::For(
+                lid,
+                idx_slot,
+                Iter::Range {
+                    lo: lo_e,
+                    hi: hi_e,
+                    step: None,
+                    rev: false,
+                },
+                Block {
+                    stmts: vec![push_stmt],
+                },
+            ));
+            let res = lw.local(acc_slot, span);
+            out.push(Stmt::Give(res));
+        })
+    }
+
     fn list(&mut self, items: &[ast::Expr], hint: Option<&Ty>, span: Span) -> Expr {
         match hint {
-            Some(ty @ (Ty::List(elem) | Ty::Set(elem))) => {
+            Some(ty @ (Ty::List(elem) | Ty::Set(elem) | Ty::HashSet(elem))) => {
                 let values = items.iter().map(|item| self.expect(item, elem)).collect();
                 self.mk(ExprKind::Tuple(values), ty.clone(), span)
             }
-            Some(ty @ Ty::Map(..)) if items.is_empty() => {
+            Some(ty @ (Ty::Map(..) | Ty::HashMap(..))) if items.is_empty() => {
                 self.mk(ExprKind::Tuple(Vec::new()), ty.clone(), span)
             }
             _ => {
@@ -919,6 +1448,19 @@ impl<'a> Lowerer<'a> {
                     self.help("say the type where it is stored: `var xs: List<Int> = []`");
                     return self.err_expr(span);
                 };
+                let has_none = items.iter().any(|it| matches!(it.kind, ast::ExprKind::None));
+                if has_none {
+                    let non_none = items.iter().find(|it| !matches!(it.kind, ast::ExprKind::None));
+                    if let Some(sample) = non_none {
+                        let sample_e = self.expr(sample, None);
+                        let elem = match &sample_e.ty {
+                            Ty::Opt(_) => sample_e.ty.clone(),
+                            other => Ty::opt(other.clone()),
+                        };
+                        let values = items.iter().map(|item| self.expect(item, &elem)).collect();
+                        return self.mk(ExprKind::Tuple(values), Ty::list(elem), span);
+                    }
+                }
                 let first = self.expr(first, None);
                 let elem = first.ty.clone();
                 let mut values = vec![first];
@@ -983,16 +1525,80 @@ impl<'a> Lowerer<'a> {
                     ty,
                 )
             }
+            ast::ExprKind::Range {
+                lo: Some(lo),
+                hi: None,
+                step,
+                ..
+            } => {
+                let lo = self.expr(lo, None);
+                match lo.ty {
+                    Ty::Pos(d) | Ty::Bound(d) => {
+                        let lo_ord = self.cast(Cast::Ord, lo, Ty::Int);
+                        let hi = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                        let step = step.as_ref().map(|s| self.expect(s, &Ty::Int));
+                        (
+                            Iter::Range {
+                                lo: lo_ord,
+                                hi,
+                                step,
+                                rev: false,
+                            },
+                            Ty::Pos(d),
+                        )
+                    }
+                    _ => {
+                        self.unsupported(span, "a range without an end in a `for`");
+                        error(self)
+                    }
+                }
+            }
+            ast::ExprKind::Range {
+                lo: None,
+                hi: Some(hi),
+                inclusive,
+                step,
+            } => {
+                let hi = self.expr(hi, None);
+                match hi.ty {
+                    Ty::Pos(d) | Ty::Bound(d) => {
+                        let lo_ord = self.int_lit(0, span);
+                        let mut hi_ord = self.cast(Cast::Ord, hi, Ty::Int);
+                        if *inclusive {
+                            hi_ord = self.int_add(hi_ord, 1);
+                        }
+                        let step = step.as_ref().map(|s| self.expect(s, &Ty::Int));
+                        (
+                            Iter::Range {
+                                lo: lo_ord,
+                                hi: hi_ord,
+                                step,
+                                rev: false,
+                            },
+                            Ty::Pos(d),
+                        )
+                    }
+                    _ => {
+                        self.unsupported(span, "a range without a start in a `for`");
+                        error(self)
+                    }
+                }
+            }
             ast::ExprKind::Range { .. } => {
                 self.unsupported(span, "a range without both ends in a `for`");
                 error(self)
             }
             ast::ExprKind::Name(name)
                 if self.lookup(name).is_none()
-                    && matches!(self.syms.get(name), Some(Sym::Domain(_))) =>
+                    && (matches!(self.gen_env.get(name), Some(GenArg::Domain(_)))
+                        || matches!(self.get_sym(name), Some(Sym::Domain(_)))) =>
             {
-                let Some(Sym::Domain(id)) = self.syms.get(name).copied() else {
-                    unreachable!("matched above")
+                let id = match self.gen_env.get(name) {
+                    Some(GenArg::Domain(id)) => *id,
+                    _ => match self.get_sym(name) {
+                        Some(Sym::Domain(id)) => id,
+                        _ => unreachable!(),
+                    },
                 };
                 let lo = self.int_lit(0, span);
                 let hi = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
@@ -1006,6 +1612,65 @@ impl<'a> Lowerer<'a> {
                     Ty::Pos(id),
                 )
             }
+            ast::ExprKind::Name(name)
+                if self.lookup(name).is_none()
+                    && matches!(self.get_sym(name), Some(Sym::Struct(sid)) if self.structs[sid].index_domain.is_some()) =>
+            {
+                let Some(Sym::Struct(sid)) = self.get_sym(name) else {
+                    unreachable!()
+                };
+                let dom_id = self.structs[sid].index_domain.unwrap();
+                let from_idx = self.structs[sid].methods.get("from_idx").copied();
+                // Materialize `[S.from_idx(i) for i in 0..S.K]` as a sequence.
+                if let Some(from_fn) = from_idx {
+                    let list_ty = Ty::list(Ty::Struct(sid));
+                    let seq = self.do_expr(Some(&list_ty), span, |lw, out| {
+                        let acc = lw.temp(list_ty.clone());
+                        out.push(Stmt::Let(
+                            acc,
+                            Some(lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span)),
+                        ));
+                        let idx_slot = lw.temp(Ty::Int);
+                        let lid = lw.open_loop(None);
+                        let call = lw.mk(
+                            ExprKind::Call(from_fn, vec![Arg::Value(lw.local(idx_slot, span))]),
+                            Ty::Struct(sid),
+                            span,
+                        );
+                        let push = lw.mk(
+                            ExprKind::Mutate(
+                                Mutation::Push,
+                                Box::new(Place {
+                                    kind: PlaceKind::Local(acc),
+                                    ty: list_ty.clone(),
+                                    span: lw.span(span),
+                                }),
+                                vec![call],
+                            ),
+                            Ty::Unit,
+                            span,
+                        );
+                        lw.cx.loops.pop();
+                        out.push(Stmt::For(
+                            lid,
+                            idx_slot,
+                            Iter::Range {
+                                lo: lw.int_lit(0, span),
+                                hi: lw.mk(ExprKind::DomainLen(dom_id), Ty::Int, span),
+                                step: None,
+                                rev: false,
+                            },
+                            Block {
+                                stmts: vec![Stmt::Expr(push)],
+                            },
+                        ));
+                        let res = lw.local(acc, span);
+                        out.push(Stmt::Give(res));
+                    });
+                    return (Iter::Seq(seq, false), Ty::Struct(sid));
+                }
+                error(self)
+            }
             ast::ExprKind::Field { base, name } if name.text == "rev" => {
                 let (iter, ty) = self.iter(base);
                 let iter = match iter {
@@ -1015,16 +1680,22 @@ impl<'a> Lowerer<'a> {
                         step,
                         rev: !rev,
                     },
+                    Iter::RangeVal(value, rev) => Iter::RangeVal(value, !rev),
                     Iter::Seq(value, rev) => Iter::Seq(value, !rev),
                 };
                 (iter, ty)
             }
             ast::ExprKind::Field { base, name } if name.text == "bounds" => {
                 let domain = match &base.kind {
-                    ast::ExprKind::Name(n) if self.lookup(n).is_none() => match self.syms.get(n) {
-                        Some(Sym::Domain(id)) => Some(*id),
-                        _ => None,
-                    },
+                    ast::ExprKind::Name(n) if self.lookup(n).is_none() => {
+                        if let Some(GenArg::Domain(id)) = self.gen_env.get(n) {
+                            Some(*id)
+                        } else if let Some(Sym::Domain(id)) = self.get_sym(n) {
+                            Some(id)
+                        } else {
+                            None
+                        }
+                    }
                     _ => None,
                 };
                 let Some(id) = domain else {
@@ -1049,11 +1720,43 @@ impl<'a> Lowerer<'a> {
                 )
             }
             _ => {
+                if let ast::ExprKind::Field { base, name } = &e.kind {
+                    if let ast::ExprKind::Generic {
+                        base: gbase,
+                        args: gargs,
+                    } = &base.kind
+                    {
+                        if let Some(Sym::GenStruct(gid)) = self.sym(gbase) {
+                            let resolved = self.resolve_gen_args(gargs);
+                            let sid = self.instantiate_struct(gid, resolved);
+                            if let Some(&dom_id) = self.structs[sid].owned_domains.get(&name.text) {
+                                let lo = self.int_lit(0, span);
+                                let hi = self.mk(ExprKind::DomainLen(dom_id), Ty::Int, span);
+                                return (
+                                    Iter::Range {
+                                        lo,
+                                        hi,
+                                        step: None,
+                                        rev: false,
+                                    },
+                                    Ty::Pos(dom_id),
+                                );
+                            }
+                        }
+                    }
+                }
                 let value = self.expr(e, None);
+                if let Ty::Range(inner) = value.ty.clone() {
+                    return (Iter::RangeVal(value, false), *inner);
+                }
                 let elem = match &value.ty {
-                    Ty::Array { elem, .. } | Ty::List(elem) | Ty::Set(elem) => (**elem).clone(),
+                    Ty::Array { elem, .. } | Ty::List(elem) | Ty::Set(elem) | Ty::HashSet(elem) => {
+                        (**elem).clone()
+                    }
                     Ty::Str => Ty::Char,
-                    Ty::Map(key, val) => Ty::Tuple(vec![(**key).clone(), (**val).clone()]),
+                    Ty::Map(key, val) | Ty::HashMap(key, val) => {
+                        Ty::Tuple(vec![(**key).clone(), (**val).clone()])
+                    }
                     Ty::Error => return error(self),
                     Ty::Int => {
                         self.error(
@@ -1231,9 +1934,12 @@ impl<'a> Lowerer<'a> {
         if !clause.conds.is_empty() || self.lookup(domain).is_some() {
             return None;
         }
-        match self.syms.get(domain) {
-            Some(Sym::Domain(id)) if id == dim => {}
-            _ => return None,
+        let dom_matches = match self.gen_env.get(domain) {
+            Some(GenArg::Domain(id)) => id == dim,
+            _ => matches!(self.get_sym(domain), Some(Sym::Domain(id)) if id == *dim),
+        };
+        if !dom_matches {
+            return None;
         }
         let pats = std::slice::from_ref(&clause.pat);
         Some(self.build_table(dims.to_vec(), pats, body, Some(elem), init.span))
