@@ -1,0 +1,243 @@
+[
+  {
+    "slug": "course-first-program",
+    "title": "Your first program",
+    "description": "Read typed input, update state in a loop, print answers, and build a native binary with today's prototype toolchain.",
+    "duration": "15 min",
+    "exercises": [
+      {
+        "id": "first-program-predict-sum",
+        "kind": "output",
+        "fixture": "sum",
+        "title": "Predict the total",
+        "prompt": "The sum program reads n, then n integers, and prints sum(a). Predict the exact output for each input before you run it.",
+        "hint": "read() for [V]Int consumes exactly n numbers, one per position of V. Add them, keeping the signs.",
+        "solution": "The first input holds 10, 20, 30, and 40, so the total is 100. The second holds -5, 2, and -1, so the total is -4. The reader never needs a loop: the array type [V]Int already says how many numbers to read.",
+        "tests": [
+          {
+            "input": "4\n10 20 30 40\n",
+            "expected": "100\n"
+          },
+          {
+            "input": "3\n-5 2 -1\n",
+            "expected": "-4\n"
+          }
+        ]
+      },
+      {
+        "id": "first-program-range-meaning",
+        "kind": "choice",
+        "title": "What a range type says",
+        "prompt": "A statement says 1 <= k <= n. Which declaration states that constraint correctly, after n has been read?",
+        "options": [
+          "let k: 0..=n = read()",
+          "let k: 1..=n = read()",
+          "let k: 1..n = read()",
+          "let k: Int = read()  // 1 <= k <= n"
+        ],
+        "answer": 1,
+        "hint": "Decide whether the upper end n is a legal value of k, and remember which range operator includes its end.",
+        "solution": "Use let k: 1..=n = read(). The ..= operator includes n, so the type is exactly the statement's set.",
+        "explanation": "1..=n includes both ends, matching 1 <= k <= n. 1..n excludes n, so it silently forbids the largest legal k. A comment on an Int states nothing the compiler, the stress generator, or local input validation can use. 0..=n admits an illegal k = 0, so random tests would include inputs the judge never sends."
+      },
+      {
+        "id": "first-program-predict-accumulation",
+        "kind": "output",
+        "fixture": "accumulation",
+        "title": "Trace the accumulator",
+        "prompt": "The accumulation program reads n values between 0 and 1000 and adds them into var total in a for loop. Predict the exact output for each input.",
+        "hint": "total starts at 0 and the loop visits every position once, in order.",
+        "solution": "5 + 0 + 10 + 2 is 17, and a single value of 1000 gives 1000. The var binding total is the only state the loop changes; the input array stays a let.",
+        "tests": [
+          {
+            "input": "4\n5 0 10 2\n",
+            "expected": "17\n"
+          },
+          {
+            "input": "1\n1000\n",
+            "expected": "1000\n"
+          }
+        ]
+      },
+      {
+        "id": "first-program-let-or-var",
+        "kind": "choice",
+        "title": "Choose let or var",
+        "prompt": "A solution reads the array a, then keeps a running maximum best that a loop updates. Which bindings should be let and which var?",
+        "options": [
+          "both are var",
+          "a is var, best is let",
+          "both are let, and the loop shadows best",
+          "a is let, best is var"
+        ],
+        "answer": 3,
+        "hint": "Ask which binding is ever reassigned after it is created.",
+        "solution": "Read the input with let a and keep the running answer in var best. The single var then marks the state that the loop changes.",
+        "explanation": "let binds a value that is never reassigned, and the input array is never reassigned here, so it is let. best is reassigned on every iteration, so it must be var. Making everything var compiles but hides which values actually change. A let cannot be reassigned, so a let best could not hold a running maximum."
+      },
+      {
+        "id": "first-program-toolchain",
+        "kind": "choice",
+        "title": "Get a native binary today",
+        "prompt": "You want to run sum.cp on a sample input as native code today. Which sequence works?",
+        "options": [
+          "Run cpl check sum.cp; a clean check produces a binary",
+          "Run python3 proto/cp.py build directly on the tracked file under site/examples",
+          "Copy it to a scratch directory, run python3 proto/cp.py build on the copy, compile the .cpp with g++ -std=c++17 -O2, and pipe the input in",
+          "Run cpl run sum.cp and pipe the input in"
+        ],
+        "answer": 2,
+        "hint": "Only one tool can generate C++ right now, and it writes a stamp into the file it builds.",
+        "solution": "Build a scratch copy with the Python prototype, then compile the generated C++17 file with your own compiler and run it.",
+        "explanation": "The prototype is the only working path to native code: it emits one C++17 file that g++ compiles. cpl run checks the file but its backend is not built, so it does not execute. cpl check only type-checks the subset it understands and produces nothing to run. Building a tracked file in place works, but the stamp line it adds shows up as a change in Git, which is why the copy comes first."
+      }
+    ]
+  },
+  {
+    "slug": "course-domains",
+    "title": "Domains and boundaries",
+    "description": "Give elements and the gaps between them different types, then write prefix sums, range queries, and sliding windows with no off-by-one shifts.",
+    "duration": "20 min",
+    "exercises": [
+      {
+        "id": "domains-why-reject",
+        "kind": "choice",
+        "title": "Why the vertex index is rejected",
+        "prompt": "domain Vertex = 1..=n and domain Edge = 1..=n have the same range. Why does deg[e] fail to compile when deg is [Vertex]Int and e is an Edge?",
+        "options": [
+          "Each domain is a fresh nominal type, and deg is indexed by Vertex",
+          "The value of e might be larger than n",
+          "Domains cannot be used as array indices",
+          "Edge must be declared before Vertex"
+        ],
+        "answer": 0,
+        "hint": "Ask whether the compiler compares the ranges or the names of the two types.",
+        "solution": "Domains are nominal: a declaration creates a new type, and [Vertex]Int accepts only Vertex values, even when another domain has the same numbers.",
+        "explanation": "The compiler does not compare ranges; it compares types, and Edge is not Vertex. That is the point: swapping an edge index for a vertex index is a wrong-answer bug in C++ that compiles. The value range is irrelevant here, since both domains cover exactly 1 through n. Domains are the normal way to index arrays, and declaration order does not matter for this error."
+      },
+      {
+        "id": "domains-predict-bounds",
+        "kind": "output",
+        "fixture": "bounds",
+        "title": "Trace a boundary prefix sum",
+        "prompt": "The bounds program builds pre over V.bounds with pre[v.r] = pre[v.l] + a[v] and prints pre[V.last.r]. Predict the exact output for each input.",
+        "hint": "pre at the leftmost boundary is 0. Each element moves the running total one boundary to the right; the last boundary holds everything.",
+        "solution": "The prefix values are 0, 4, 3, 5 for the first input, so the last boundary holds 5. For -3 -3 7 -1 they are 0, -3, -6, 1, 0, so it prints 0. pre[V.last.r] is the total of the whole array.",
+        "tests": [
+          {
+            "input": "3\n4 -1 2\n",
+            "expected": "5\n"
+          },
+          {
+            "input": "4\n-3 -3 7 -1\n",
+            "expected": "0\n"
+          }
+        ]
+      },
+      {
+        "id": "domains-range-formula",
+        "kind": "choice",
+        "title": "The inclusive range formula",
+        "prompt": "pre is a boundary prefix sum over the array a. Which expression is the sum of a[l] through a[r], inclusive, for positions l and r with l before or equal to r?",
+        "options": [
+          "pre[r.r] - pre[l.r]",
+          "pre[r.r] - pre[l.l]",
+          "pre[r] - pre[l]",
+          "pre[r.l] - pre[l.r]"
+        ],
+        "answer": 1,
+        "hint": "The range sits between two boundaries. Which boundary is just outside it on the left, and which on the right?",
+        "solution": "Use pre[r.r] - pre[l.l]. l.l is the boundary just left of the range and r.r the boundary just right of it, so the difference is exactly the elements in between.",
+        "explanation": "pre[r] - pre[l] does not compile, because pre is indexed by boundaries and r and l are elements. pre[r.l] - pre[l.r] leaves out both end elements, and it is negative for a single-element range. pre[r.r] - pre[l.r] leaves out a[l], the classic off-by-one that boundaries are designed to prevent."
+      },
+      {
+        "id": "domains-window-edge",
+        "kind": "choice",
+        "title": "Where a window loop starts",
+        "prompt": "A loop computes pre[v.r] - pre[v.l(k)] for every window of k elements ending at v. Which loop visits exactly the valid windows?",
+        "options": [
+          "for v in V:",
+          "for v in V(k + 1)..=V.last:",
+          "for v in V.first..=V(k):",
+          "for v in V(k)..=V.last:"
+        ],
+        "answer": 3,
+        "hint": "v.l(k) counts v itself. Which is the first position that has k elements ending at it?",
+        "solution": "Start at V(k). The window of k elements ending at position k is exactly positions 1 through k, and every later position also has a full window.",
+        "explanation": "v.l(k) is the left edge of the k-element window that ends at v and includes v, so the first valid v is the k-th position. Looping over all of V asks for v.l(k) at early positions where no such window exists, and the prototype stops with a range error. Starting at V(k + 1) skips the first window, the extra one people add when they forget that the window counts v. V.first..=V(k) visits positions where the window does not yet exist."
+      }
+    ]
+  },
+  {
+    "slug": "course-index-slices",
+    "title": "Index and slices",
+    "description": "See domains as one instance of Index, freeze runtime sizes, index grids by tuples, and take typed windows of arrays with ranges and slices.",
+    "duration": "25 min",
+    "exercises": [
+      {
+        "id": "index-slices-predict-ordinal",
+        "kind": "choice",
+        "title": "Labels and ordinals",
+        "prompt": "With domain V = 1..=n and n = 5, what does print(V.K, V(3).label, V(3).to_idx) print?",
+        "options": [
+          "6 3 2",
+          "5 2 2",
+          "5 3 2",
+          "5 3 3"
+        ],
+        "answer": 2,
+        "hint": "K counts the elements. The label is the statement's number; the ordinal is the zero-based slot.",
+        "solution": "It prints 5 3 2. There are five positions, V(3) is labeled 3, and it occupies ordinal 2 because ordinals start at 0.",
+        "explanation": "V.K is the number of values, 5, not the number of boundaries, which would be 6. The label is the number you wrote, 3, while to_idx is its dense zero-based ordinal, 2, the slot an array uses. Answers that print 3 for to_idx confuse the label with the ordinal; answers that print 2 for the label confuse them the other way."
+      },
+      {
+        "id": "index-slices-frozen-k",
+        "kind": "choice",
+        "title": "Freeze the size",
+        "prompt": "An impl Index for Cell needs a size computed from the input values h and w, both bound with let. Which line is accepted?",
+        "options": [
+          "let K = h * w",
+          "const K = h * w",
+          "var K = h * w",
+          "let K = m, where var m = h * w"
+        ],
+        "answer": 0,
+        "hint": "The size depends on input, so it is not known at compile time, and it must never change once arrays exist.",
+        "solution": "Use let K = h * w. let may hold a runtime value and can never be reassigned, which is exactly what an array size needs.",
+        "explanation": "const means known at compile time, and h * w comes from input, so const K is rejected. A var size could change after arrays were built over it, so var K is not allowed. Copying from a var m is also rejected, because the size would then not describe a value that stays fixed; compute it from immutable lets."
+      },
+      {
+        "id": "index-slices-slice-membership",
+        "kind": "choice",
+        "title": "Index a slice by parent positions",
+        "prompt": "part = a[V(2)..=V(4)] on an array a over V = 1..=5. Which access reads the first element of the window?",
+        "options": [
+          "part[V.first]",
+          "part[V(2)]",
+          "part[V(1)]",
+          "part[0]"
+        ],
+        "answer": 1,
+        "hint": "A slice keeps its parent's index type and its parent's positions.",
+        "solution": "part[V(2)]. A slice is indexed by the parent's positions, so the first element of the window is still position 2.",
+        "explanation": "Slices do not renumber. part[V(1)] and part[V.first] name position 1, which is outside the window; the prototype stops with position is outside the slice. part[0] is an Int, and arrays over V accept only V values. Keeping parent positions means a position found inside the slice is valid in the array too, with no translation."
+      },
+      {
+        "id": "index-slices-range-or-lend",
+        "kind": "choice",
+        "title": "Return a range, not a slice",
+        "prompt": "A helper finds the best window of an array, and the caller later sorts that window in place. What should the helper return?",
+        "options": [
+          "The slice a[lo..=hi]",
+          "A var holding a[lo..=hi]",
+          "A copy a[lo..=hi].copy(), which the caller sorts",
+          "The range lo..=hi, which the caller applies as a[w].sort()"
+        ],
+        "answer": 3,
+        "hint": "One of these is plain data; one is a lexical borrow; one is a separate owned list.",
+        "solution": "Return the range. A range is two positions and can be returned freely; the caller applies it to the array where the sort happens, which creates a short-lived slice in that scope.",
+        "explanation": "A slice is a lend tied to the scope that created it, so returning it or holding it in a var is rejected. Returning a copy compiles, but sorting the copy leaves the original array unchanged, which is not what the caller wanted. A range keeps the window as data and leaves the borrow to the place that uses it."
+      }
+    ]
+  }
+]
