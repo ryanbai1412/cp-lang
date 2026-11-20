@@ -8,7 +8,9 @@
 //! non-commutative value says how it reads backwards with `Reversible`.
 use std.math.{gcd}
 
-/// An associative operation with an identity: the pair `(id, op)`.
+/// An associative operation with an identity: the pair `(id, op)`, written
+/// `Monoid<T>(id, op)` or, naming both, `Monoid<T>(id: e, op: (a, b) => ...)`.
+/// `op(a, b)` folds `a` on the left of `b`, which matters when it does not commute.
 /// The laws are checked by `laws_hold(m, samples)`.
 pub struct Monoid<T>(id: T, op: (T, T) -> T):
     law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
@@ -30,11 +32,23 @@ pub struct Monoid<T>(id: T, op: (T, T) -> T):
 
 fn same<A, B>(a: A, b: B) -> Bool = a == b
 
-/// A lazy update `F` on values `T` folded with `over`:
-/// `Action(id, compose, apply, over: op)`.
+/// A lazy update `F` on values `T` folded with `over`. Name every argument, in any order, so
+/// the roles read at the call site:
+///
+///     Action<Int, (Int, Int)>(
+///         id: (1, 0),
+///         compose: (new_f, old_f) => (new_f.0 * old_f.0, new_f.0 * old_f.1 + new_f.1),
+///         apply: (f, val, span) => f.0 * val + f.1 * span,
+///         over: +,
+///     )
+///
 /// - `id` is the no-op tag (`apply(id, x, len) == x`).
 /// - `compose(new_f, old_f)` applies `old_f` first and then `new_f`.
 /// - `apply(f, val, span)` returns the folded value `val` of `span` covered leaves after applying `f`.
+///
+/// The positional form `Action(id, compose, apply, over: op)` is the same call. A flipped
+/// `compose` still type-checks, so check a hand-written action once with
+/// `laws_hold(act, T: [...], F: [...])`.
 pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, over: Monoid<T>):
     law ident(a: T) = apply(id, a, 1) == a
     law composes(new_f: F, old_f: F, a: T) = apply(compose(new_f, old_f), a, 1) == apply(new_f, apply(old_f, a, 1), 1)
@@ -111,6 +125,29 @@ fn affine_action_laws():
     let combined = act.compose((3, 5), (2, 1))
     assert combined == (6, 8) and act.apply(combined, 4, 1) == 32
     assert act.apply(combined, 10, 3) == 6 * 10 + 8 * 3
+
+@test
+fn named_arguments_build_the_same_monoid_and_action():
+    let cat = Monoid<Str>(op: (a, b) => a + b, id: "")
+    assert cat.id == "" and cat.op("ab", "c") == "abc"
+    let positional = Action<Int, (Int, Int)>(
+        (1, 0),
+        (new_f, old_f) => (new_f.0 * old_f.0, new_f.0 * old_f.1 + new_f.1),
+        (f, val, span) => f.0 * val + f.1 * span,
+        over: +,
+    )
+    let named = Action<Int, (Int, Int)>(
+        apply: (f, val, span) => f.0 * val + f.1 * span,
+        over: +,
+        compose: (new_f, old_f) => (new_f.0 * old_f.0, new_f.0 * old_f.1 + new_f.1),
+        id: (1, 0),
+    )
+    assert laws_hold(named, T: [-3, 0, 4], F: [(1, 0), (2, 3), (-1, 5)])
+    for f in [(1, 0), (2, 3), (-1, 5)]:
+        for g in [(0, 7), (3, -2)]:
+            assert named.compose(f, g) == positional.compose(f, g)
+            assert named.apply(f, 6, 2) == positional.apply(f, 6, 2)
+    assert named.id == positional.id and named.over.id == 0
 
 @test
 fn desc_reverses_one_part_of_a_key():

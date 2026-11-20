@@ -3,9 +3,10 @@ use std.algebra.{Monoid, Action}
 
 /// Range update, range fold: `LazySegTree<V, Int>(AddMax, a)` (the tag type `F` is inferred
 /// from the `Action`). The stock actions are `AddSum`, `AddMin`, `AddMax`, `AssignSum`,
-/// `AssignMin`, and `AssignMax`; a custom action is `Action(id, compose, apply, over: op)`
-/// where `compose(new_f, old_f)` applies `old_f` first then `new_f` and `apply(f, val, span)`
-/// updates a node fold covering `span` leaves.
+/// `AssignMin`, and `AssignMax`; a custom action is
+/// `Action(id: ..., compose: (new_f, old_f) => ..., apply: (f, val, span) => ..., over: op)`
+/// where `compose` applies `old_f` first then `new_f` and `apply` updates a node fold
+/// covering `span` leaves.
 /// `apply`, `set`, `update`, `get`, `fold`, `max_right`, and `min_left` are O(log n); `all` is O(1).
 /// Memory is 2 * bit_ceil(n) values and spans plus bit_ceil(n) pending tags.
 pub struct LazySegTree<D, T, F>(act: Action<T, F>):
@@ -368,9 +369,9 @@ fn update_pushes_modifies_and_pulls_in_one_pass():
 fn custom_clamp_action_with_update():
     // Non-commutative clamp tag `(lo, hi)`: clamps values into `[lo, hi]` over `max`.
     let clamp = Action<Int, (Int, Int)>(
-        (Int.MIN, Int.MAX),
-        (new_f, old_f) => (min(max(old_f.0, new_f.0), new_f.1), max(min(old_f.1, new_f.1), new_f.0)),
-        (f, val, span) => min(max(val, f.0), f.1),
+        id: (Int.MIN, Int.MAX),
+        compose: (new_f, old_f) => (min(max(old_f.0, new_f.0), new_f.1), max(min(old_f.1, new_f.1), new_f.0)),
+        apply: (f, val, span) => min(max(val, f.0), f.1),
         over: max,
     )
     domain V = 0..6

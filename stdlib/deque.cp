@@ -10,6 +10,13 @@ pub struct Deque<T>:
 
     pub fn new() -> Deque<T> = Deque([none], 0, 0)
 
+    /// A deque holding `xs`, front to back: the queue of a search, `var q = Deque.of(sources)`,
+    /// then `while let u = q.pop_front(): ...`. O(n).
+    pub fn of(xs: List<T>) -> Deque<T>:
+        var q = Deque<T>.new()
+        for x in xs: q.push(x)
+        q
+
     pub @get fn len(self) -> Int = n
     pub @get fn is_empty(self) -> Bool = n == 0
 
@@ -115,3 +122,17 @@ fn a_deque_as_a_bfs_queue():
             q.push(u - 1)
     assert dist == [2, 1, 0, 0, 0]
 
+
+@test
+fn a_deque_of_a_list_is_a_bfs_queue():
+    // BFS on a line 0 - 1 - 2 - 3 - 4 from both ends
+    var dist: List<?Int> = [0, none, none, none, 0]
+    var q = Deque.of([0, 4])
+    assert q.len == 2 and q.first == 0 and q.last == 4
+    while let u = q.pop_front():
+        for w in [u - 1, u + 1]:
+            if 0 <= w and w < 5 and dist[w] == none:
+                dist[w] = dist[u]! + 1
+                q.push(w)
+    assert dist == [0, 1, 2, 1, 0]
+    assert Deque<Int>.of([]).is_empty

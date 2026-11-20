@@ -17,7 +17,7 @@ use std.dsu.{Dsu}
 use std.fenwick.{Fenwick, Fenwick2D}
 use std.flow.{Arc, FlowGraph}
 use std.geometry.{ByAngle, Pt}
-use std.graph.{Graph, Neighbours, Target, condense, dijkstra, scc}
+use std.graph.{Graph, Neighbours, Target, bfs, condense, dijkstra, peel, scc, topo}
 use std.grid.{Dir4}
 use std.heap.{MaxHeap, MinHeap}
 use std.lazy.{AddMax, AddMin, AddSum, AssignMax, AssignMin, AssignSum, LazySegTree}
@@ -26,7 +26,7 @@ use std.math.{Sieve, fixed, gcd, lcm}
 use std.mod.{Comb, Mod}
 use std.prefix.{Prefix1, Prefix2}
 use std.segtree.{SegTree}
-use std.seq.{Compressed, compress, runs}
+use std.seq.{Compressed, bsearch_first, bsearch_last, compress, resized, runs}
 use std.sparse.{SparseTable}
 use std.strings.{HashVal, Hashable, RollingHash}
 use std.tree.{Rooted}

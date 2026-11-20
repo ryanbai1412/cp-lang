@@ -200,6 +200,10 @@ pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D):
     self[i] = self[j]
     self[j] = t
 
+/// `self` cut or padded with `fill` to length `n`: `a.resized(size, Z(0))` instead of
+/// `[if i < a.len: a[i] else: Z(0) for i in 0..size]`. O(n).
+pub fn resized<T>(self: List<T>, n: Int, fill: T) -> List<T> = [if i < self.len: self[i] else: fill for i in 0..n]
+
 /// Move all elements out of `self` in O(1), leaving it empty.
 pub fn take<T>(mut self: List<T>) -> List<T>:
     let out = self.copy()
@@ -398,6 +402,10 @@ fn list_insert_remove_take_and_swap_at():
     a.swap_at(I(1), I(3))
     a.swap_at(I(2), I(2))
     assert [a[i] for i in I] == [0, 30, 20, 10]
+    // resized pads with the fill or cuts, and leaves the original alone
+    let p = [1, 2, 3]
+    assert p.resized(5, 0) == [1, 2, 3, 0, 0] and p.resized(2, 0) == [1, 2]
+    assert p.resized(0, 9).is_empty and p == [1, 2, 3]
 
 @test
 fn map_entry_remove_and_four_lookups():

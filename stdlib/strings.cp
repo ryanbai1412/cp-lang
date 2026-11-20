@@ -1,6 +1,8 @@
 //! String algorithms. They only compare elements, so they work on a `Str`
 //! (ASCII bytes) and on any `List<T>` alike. Positions are 0-based.
 
+use std.seq.{reverse}
+
 /// `z[i]` is the length of the longest common prefix of `s` and `s[i..]`; `z[0]` is `s.len`. O(n).
 pub fn z_function<T>(s: List<T>) -> List<Int>:
     let n = s.len
@@ -89,13 +91,7 @@ fn sa_is(vec: List<Int>, alpha: Int) -> List<Int>:
     for i in (0..n - 1).rev:
         is_l[i] = vec[i] > vec[i + 1] or (vec[i] == vec[i + 1] and is_l[i + 1])
         if is_l[i] and not is_l[i + 1]: lms.push(i + 1)
-    var (lo, hi) = (0, lms.len - 1)
-    while lo < hi:
-        let tmp = lms[lo]
-        lms[lo] = lms[hi]
-        lms[hi] = tmp
-        lo += 1
-        hi -= 1
+    reverse(mut lms)
     induced_sort(vec, counts, is_l, lms, mut sa)
     let m = lms.len
     var sorted_lms = List.filled(m, 0)

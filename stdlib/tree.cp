@@ -84,9 +84,7 @@ pub struct Rooted<V, Pre>:
                 if not seen[c]: stack.push((c, u, len(a)))
             var (l, r) = (base, stack.len - 1)
             while l < r:
-                let tmp = stack[l]
-                stack[l] = stack[r]
-                stack[r] = tmp
+                stack.swap(l, r)
                 l += 1
                 r -= 1
         assert order.len == V.K
@@ -124,6 +122,24 @@ pub struct Rooted<V, Pre>:
 
     /// The children of `v`, in the order `adj` listed them.
     pub fn children(self, v: V) -> List<V> = kid[v]
+
+    /// For each child `c` of `v`, in child order, the fold with `m` of `f` over `v`'s other
+    /// children: the step of a rerooting DP, with no division or inverse needed. The fold keeps
+    /// child order (earlier siblings, then later ones), so `m` need not commute. O(k) calls of
+    /// `f` and of `m` for `k` children.
+    ///
+    ///     for (c, rest) in t.excl_fold(v, mul, c => down[c] + 1):
+    ///         up[c] = (up[v] * rest + 1) % m
+    pub fn excl_fold<T, M>(self, v: V, m: M, f: V -> T) -> yields (c: V, rest: T):
+        let k = Monoid<T>.of(m)
+        let cs = kid[v]
+        let vals = [f(c) for c in cs]
+        var after = List.filled(cs.len + 1, k.id)
+        for i in (0..cs.len).rev: after[i] = k.op(vals[i], after[i + 1])
+        var before = k.id
+        for i in 0..cs.len:
+            yield (c: cs[i], rest: k.op(before, after[i + 1]))
+            before = k.op(before, vals[i])
 
     /// The number of edges between `v` and the root.
     pub fn depth(self, v: V) -> Int = dep[v]
@@ -385,6 +401,54 @@ fn path_updates_and_subtree_folds_over_one_lazy_tree():
             let (c, d) = (V.nth(rand(0, 10)), V.nth(rand(0, 10)))
             assert r.fold_path(c, d, st) == max(val[v] for v in slow_path(r, c, d))
             assert st.fold(r.sub(c)) == max(val[v] for v in V if r.is_anc(c, v))
+
+@test
+fn excl_fold_folds_the_other_children():
+    domain V = 0..12
+    for _ in 0..10:
+        let adj = random_tree(V(0))
+        let r = Rooted(root: V(0), adj: v => adj[v])
+        let w = [V] v => rand(0, 9)
+        for v in V:
+            let cs = r.children(v)
+            var seen = List<V>()
+            for (c, rest) in r.excl_fold(v, +, c => w[c]):
+                seen.push(c)
+                assert rest == sum(w[x] for x in cs if x != c)
+            assert seen == cs
+            // order is kept for a non-commutative fold: earlier siblings, then later ones
+            let cat = Monoid<Str>("", (a, b) => a + b)
+            for (c, rest) in r.excl_fold(v, cat, c => "{c.to_idx},"):
+                assert rest == Str(ch for x in cs if x != c for ch in "{x.to_idx},")
+
+@test
+fn rerooting_counts_connected_sets_through_every_vertex():
+    // AtCoder DP V: the connected vertex sets containing v, for every v, against a brute force.
+    domain V = 0..7
+    let mod = 1_000_000_007
+    let mul = Monoid<Int>(1, (a, b) => a * b % mod)
+    for _ in 0..5:
+        let adj = random_tree(V(0))
+        let t = Rooted(root: V(0), adj: v => adj[v])
+        var down: [V]Int = 1
+        for v in t.postorder:
+            for c in t.children(v): down[v] = down[v] * (down[c] + 1) % mod
+        var up: [V]Int = 1
+        for v in t.preorder:
+            for (c, rest) in t.excl_fold(v, mul, c => down[c] + 1):
+                up[c] = (up[v] * rest + 1) % mod
+        for v in V:
+            var brute = 0
+            for mask in 0..(1 << V.K):
+                if (mask >> v.to_idx) & 1 == 0: continue
+                // connected iff every chosen vertex but the top one has a chosen parent
+                var tops = 0
+                for x in V:
+                    if (mask >> x.to_idx) & 1 == 1:
+                        let p = t.parent(x)
+                        if p == none or (mask >> p!.to_idx) & 1 == 0: tops += 1
+                if tops == 1: brute += 1
+            assert down[v] * up[v] % mod == brute
 
 @test
 fn orders_lifting_and_the_virtual_tree():

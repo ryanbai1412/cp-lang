@@ -124,9 +124,12 @@ pub fn dijkstra<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W) -> [V]?W:
                 heap.push((nd, a.to))
     dist
 
-/// A topological order, or `none` if there is a cycle. O(n + m).
-/// For a vertexless closure graph, pass the vertex domain via turbofish: `topo::<V>(u => ...)`.
-pub fn topo<V, N>(next: N) -> ?List<V>:
+/// Kahn's peeling: repeatedly remove a vertex with no arcs left coming in, and return the
+/// vertices in the order they were removed. What stays is every vertex on a cycle or
+/// reachable from one, so the order covers all of `V` exactly when the graph is acyclic.
+/// For a vertexless closure graph, pass the vertex domain via turbofish: `peel::<V>(u => ...)`.
+/// O(n + m).
+pub fn peel<V, N>(next: N) -> List<V>:
     var indeg: [V]Int = 0
     for u in V:
         for a in next.out(u): indeg[a.to] += 1
@@ -138,6 +141,13 @@ pub fn topo<V, N>(next: N) -> ?List<V>:
         for a in next.out(u):
             indeg[a.to] -= 1
             if indeg[a.to] == 0: order.push(a.to)
+    order
+
+/// A topological order, or `none` if there is a cycle: a `peel` that removed every vertex.
+/// O(n + m). For a vertexless closure graph, pass the vertex domain via turbofish:
+/// `topo::<V>(u => ...)`.
+pub fn topo<V, N>(next: N) -> ?List<V>:
+    let order = peel::<V>(next)
     if order.len == V.K: order else: none
 
 /// Strongly connected components. `C` is a fresh domain, numbered so that
@@ -455,6 +465,18 @@ fn topo_orders_a_dag_and_rejects_a_cycle():
     assert topo::<V>(v => [v.cyc(1)]) == none
     let stuck = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [3], [0]][v.to_idx]]
     assert topo::<V>(v => stuck[v]) == none
+
+@test
+fn peel_leaves_what_a_cycle_reaches():
+    // 0 -> 1 -> 2 -> 3 -> 2 (a cycle) -> 4, and 5 -> 0
+    domain V = 0..6
+    let out = [V] v => [V(x) for x in [[1], [2], [3], [2, 4], [], [0]][v.to_idx]]
+    assert peel::<V>(v => out[v]) == [V(5), V(0), V(1)]
+    let dag = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [], [0]][v.to_idx]]
+    assert peel::<V>(v => dag[v]) == topo::<V>(v => dag[v])!
+    domain E = 0..6
+    let edges = [E] e => [(u: V(0), v: V(1)), (u: V(1), v: V(2)), (u: V(2), v: V(3)), (u: V(3), v: V(2)), (u: V(3), v: V(4)), (u: V(5), v: V(0))][e.to_idx]
+    assert peel(Graph.directed(edges)) == [V(5), V(0), V(1)]
 
 @test
 fn scc_agrees_with_reachability():
