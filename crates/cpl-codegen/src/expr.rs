@@ -273,6 +273,7 @@ impl<'p> Emitter<'p> {
                 match &base.ty {
                     Ty::Array { dims, .. } if dims.len() > 1 => format!("{b}({})", at.join(", ")),
                     Ty::Map(..) | Ty::HashMap(..) if !store => format!("{b}.at({})", at.join(", ")),
+                    Ty::List(_) if matches!(base.kind, PlaceKind::Global(id) if self.program.raw_lists.contains(&id)) => format!("{b}[{}]", at[0]),
                     Ty::List(_) => {
                         self.need("at");
                         format!("cpl::at({b}, {})", at.join(", "))
@@ -498,7 +499,8 @@ impl<'p> Emitter<'p> {
                 let mut operands: Vec<&Expr> = vec![base];
                 operands.extend(indices.iter());
                 let base_ty = &base.ty;
-                if matches!(base_ty, Ty::List(_)) {
+                let raw_list = matches!(base.kind, ExprKind::Global(id) if self.program.raw_lists.contains(&id));
+                if matches!(base_ty, Ty::List(_)) && !raw_list {
                     self.need("at");
                 }
                 // A cell of a packed table is a `std::optional` to whatever
@@ -525,6 +527,10 @@ impl<'p> Emitter<'p> {
                                 Code::primary(cell)
                             }
                         }
+                        Ty::List(elem) if raw_list && **elem == Ty::Bool => {
+                            Code::new(format!("(bool){b}[{}]", at[0]), UNARY)
+                        }
+                        Ty::List(_) if raw_list => Code::primary(format!("{b}[{}]", at[0])),
                         Ty::List(elem) if **elem == Ty::Bool => Code::new(
                             format!("(bool)cpl::at({}, {})", codes[0].text, at[0]),
                             UNARY,

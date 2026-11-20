@@ -283,6 +283,7 @@ fn finish(self, analysis: &Analysis, whole: bool) -> Result<Program, Vec<Diagnos
         announce_tests: lw.announce_tests,
         judge_fns,
         entry_fns,
+        raw_lists: lw.raw_lists,
     })
 }
 }
@@ -454,6 +455,10 @@ struct Lowerer<'a> {
     /// The top-level fns marked `@memo`.
     memo_fns: HashSet<FnId>,
     memo_count: usize,
+    /// The lookup of the `@memo` wrapper being built, for a short fn of
+    /// its own (see [`memo::MemoFast`]).
+    memo_fast: Option<memo::MemoFast>,
+    raw_lists: Vec<GlobalId>,
     /// The domains `[domain S]T` declared: each is sized by its array.
     own_domains: HashSet<DomainId>,
     /// The `ready` flag of each file-level cache: cleared as a test starts.
@@ -527,6 +532,8 @@ impl<'a> Lowerer<'a> {
             preamble_stmts: Vec::new(),
             memo_fns: HashSet::new(),
             memo_count: 0,
+            memo_fast: None,
+            raw_lists: Vec::new(),
             own_domains: HashSet::new(),
             memo_resets: Vec::new(),
             main_body: Block::default(),
@@ -2316,6 +2323,53 @@ impl<'a> Lowerer<'a> {
                 decl.name.span,
                 &mut Vec::new(),
             );
+            // A flat table is read by a short fn the C++ compiler puts
+            // inline at each call; filling a cell is a fn of its own.
+            if let Some(fast) = self.memo_fast.take() {
+                let fresh = FnCx {
+                    ret: Some(ret.clone()),
+                    scopes: vec![HashMap::new()],
+                    local_syms: vec![HashMap::new()],
+                    ..FnCx::default()
+                };
+                let slow_cx = std::mem::replace(&mut self.cx, fresh);
+                let slow_id = self.sigs.len();
+                self.sigs.push(FnSig {
+                    name: format!("{}_fill", self.sigs[id].name),
+                    params: Vec::new(),
+                    ret: Some(ret.clone()),
+                    assumed_unit: false,
+                    owner: None,
+                    receiver: None,
+                    mod_id: self.sigs[id].mod_id,
+                    env: self.sigs[id].env.clone(),
+                    decl,
+                    offset: self.sigs[id].offset,
+                    is_generator: false,
+                    new_domain_slot: None,
+                    state: State::Done,
+                });
+                self.bodies.push(Some(Function {
+                    name: format!("{}_fill", self.sigs[id].name),
+                    params: params.clone(),
+                    ret: ret.clone(),
+                    locals: slow_cx.locals,
+                    body: Block {
+                        stmts: std::mem::take(&mut out),
+                    },
+                }));
+                for param in &self.sigs[id].params {
+                    self.cx.locals.push(Local {
+                        name: param.name.clone(),
+                        ty: param.ty.clone(),
+                    });
+                }
+                let args = (0..params.len())
+                    .map(|slot| Arg::Value(self.local(slot, decl.name.span)))
+                    .collect();
+                let fill = self.mk(ExprKind::Call(slow_id, args), ret.clone(), decl.name.span);
+                out = self.memo_lookup(fast, fill, &ret, decl.name.span);
+            }
         }
         let cx = std::mem::replace(&mut self.cx, saved_cx);
         self.cur_mod = saved_mod;

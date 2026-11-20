@@ -57,6 +57,15 @@ struct Memo<'s> {
     parts: Vec<Part>,
 }
 
+/// The lookup in a flat table, kept apart from the code that fills it.
+pub(super) struct MemoFast {
+    /// The table is made, is flat, and the arguments are within it.
+    inside: Expr,
+    index: Expr,
+    seen: Place,
+    vals: Place,
+}
+
 fn read(place: &Place) -> Expr {
     let kind = match &place.kind {
         PlaceKind::Local(slot) => ExprKind::Local(*slot),
@@ -380,6 +389,21 @@ impl<'a> Lowerer<'a> {
                 let scaled = self.memo_bin(BinOp::Mul, index, part.len.clone(), span);
                 index = self.memo_bin(BinOp::Add, scaled, part.ord.clone(), span);
             }
+            if home == MemoHome::Global {
+                for table in [&seen, &vals] {
+                    if let PlaceKind::Global(id) = table.kind {
+                        self.raw_lists.push(id);
+                    }
+                }
+                if !lazy {
+                    self.memo_fast = Some(MemoFast {
+                        inside: self.memo_bin(BinOp::And, read(&ready), inside.clone(), span),
+                        index: index.clone(),
+                        seen: seen.clone(),
+                        vals: vals.clone(),
+                    });
+                }
+            }
             let at = self.temp(Ty::Int);
             let cell = |lw: &Self, of: &Place, ty: Ty| Place {
                 kind: PlaceKind::Index(Box::new(of.clone()), vec![lw.local(at, span)]),
@@ -500,5 +524,35 @@ impl<'a> Lowerer<'a> {
         );
         out.insert(0, Stmt::If(fresh, block(start), Block::default()));
         out
+    }
+
+    /// The wrapper of a `@memo` fn with a flat table: a cell that is
+    /// already filled is answered here, and anything else by `fill`.
+    pub(super) fn memo_lookup(&mut self, fast: MemoFast, fill: Expr, ret: &Ty, span: Span) -> Vec<Stmt> {
+        let at = self.temp(Ty::Int);
+        let cell = |lw: &Self, of: &Place, ty: Ty| {
+            lw.mk(
+                ExprKind::Index(Box::new(read(of)), vec![lw.local(at, span)]),
+                ty,
+                span,
+            )
+        };
+        let known = cell(self, &fast.seen, Ty::Bool);
+        let stored = cell(self, &fast.vals, ret.clone());
+        vec![
+            Stmt::If(
+                fast.inside,
+                block(vec![
+                    Stmt::Let(at, Some(fast.index)),
+                    Stmt::If(
+                        known,
+                        block(vec![Stmt::Return(Some(stored))]),
+                        Block::default(),
+                    ),
+                ]),
+                Block::default(),
+            ),
+            Stmt::Return(Some(fill)),
+        ]
     }
 }

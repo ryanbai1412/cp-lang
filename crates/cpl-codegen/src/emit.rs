@@ -845,7 +845,14 @@ impl<'p> Emitter<'p> {
             out.push_str(&entries);
             return out;
         }
-        out.push_str("}  // namespace prog\n\nint main() {\n");
+        // A fn that calls itself can go deeper than the 8 MB a judge
+        // gives the stack (a chain of 5e4 `@memo` calls does).
+        let deep = recursive(program, &reachable);
+        out.push_str("}  // namespace prog\n\n");
+        if deep {
+            out.push_str(BIG_STACK);
+        }
+        out.push_str(if deep { "static void cpl_main() {\n" } else { "int main() {\n" });
         out.push_str(if program.interactive {
             "    cpl::live = true;\n"
         } else {
@@ -866,7 +873,11 @@ impl<'p> Emitter<'p> {
         } else {
             out.push_str("    prog::solve();\n");
         }
-        out.push_str("    cpl::flush();\n    return 0;\n}\n");
+        out.push_str(if deep {
+            "    cpl::flush();\n}\n\nint main() {\n    cpl_on_big_stack(cpl_main);\n    return 0;\n}\n"
+        } else {
+            "    cpl::flush();\n    return 0;\n}\n"
+        });
         out
     }
 
@@ -889,6 +900,81 @@ impl<'p> Emitter<'p> {
         }
     }
 }
+
+/// Whether some fn of the program can call itself, directly or through
+/// others.
+fn recursive(program: &Program, reachable: &BTreeSet<usize>) -> bool {
+    let calls: Vec<Vec<usize>> = program
+        .fns
+        .iter()
+        .enumerate()
+        .map(|(id, f)| {
+            let mut out = Vec::new();
+            if reachable.contains(&id) {
+                walk::deep_exprs(&f.body, &mut |e| {
+                    if let ExprKind::Call(callee, _) = &e.kind {
+                        out.push(*callee);
+                    }
+                });
+            }
+            out
+        })
+        .collect();
+    // 0: not seen, 1: on the path, 2: done.
+    let mut state = vec![0u8; calls.len()];
+    for root in 0..calls.len() {
+        if state[root] != 0 {
+            continue;
+        }
+        state[root] = 1;
+        let mut path = vec![(root, 0)];
+        while let Some((id, next)) = path.last_mut() {
+            let Some(&callee) = calls[*id].get(*next) else {
+                state[*id] = 2;
+                path.pop();
+                continue;
+            };
+            *next += 1;
+            match state[callee] {
+                0 => {
+                    state[callee] = 1;
+                    path.push((callee, 0));
+                }
+                1 => return true,
+                _ => {}
+            }
+        }
+    }
+    // A closure reaches itself only through a variable: any closure that
+    // calls a closure value may.
+    program.closures.iter().any(|c| {
+        let mut found = false;
+        walk::deep_exprs(&c.body, &mut |e| found |= matches!(e.kind, ExprKind::CallExpr(..)));
+        found
+    })
+}
+
+/// Runs the program on a 256 MB stack of its own where the platform's
+/// calling convention is known; elsewhere on the stack it was given.
+/// Pages are only committed as the recursion reaches them.
+const BIG_STACK: &str = "\
+// Deep recursion: the program runs on a 256 MB stack of its own.
+#if defined(__x86_64__) && defined(__linux__) && !defined(__SANITIZE_ADDRESS__)
+extern \"C\" void cpl_switch_stack(void (*run)(), void* top);
+__asm__(\".text\\n.globl cpl_switch_stack\\n.type cpl_switch_stack,@function\\ncpl_switch_stack:\\n\"
+        \"  pushq %rbp\\n  movq %rsp, %rbp\\n  movq %rsi, %rsp\\n  callq *%rdi\\n\"
+        \"  movq %rbp, %rsp\\n  popq %rbp\\n  ret\\n.size cpl_switch_stack,.-cpl_switch_stack\\n\");
+static void cpl_on_big_stack(void (*run)()) {
+    const size_t size = (size_t)256 << 20;
+    char* stack = (char*)std::malloc(size);
+    if (!stack) return run();
+    cpl_switch_stack(run, stack + size);
+}
+#else
+static void cpl_on_big_stack(void (*run)()) { run(); }
+#endif
+
+";
 
 /// Comparisons for the program's own types, from their fields in order.
 const TIE_OPS: &str = "\

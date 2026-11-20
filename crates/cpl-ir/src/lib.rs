@@ -743,6 +743,9 @@ pub struct Program {
     /// `@grader fn` with a body: the judge's grader calls these. A program
     /// with one has no `main` of its own in the emitted C++.
     pub entry_fns: Vec<FnId>,
+    /// Lists whose every index the lowering has already tested (the flat
+    /// tables of `@memo`): a back end may index them unchecked.
+    pub raw_lists: Vec<GlobalId>,
 }
 
 impl Program {
