@@ -1,0 +1,10 @@
+[package]
+name = "cpl-stress"
+description = "Stress testing: typed input generation, differential runs against a brute, shrinking."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+cpl-diag.workspace = true
+cpl-syntax.workspace = true
