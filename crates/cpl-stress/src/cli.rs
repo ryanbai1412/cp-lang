@@ -237,11 +237,18 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             }
         },
     };
-    let fast = match solution(&args.file, args.fast.as_deref()) {
+    // The two builds are the whole wait before the first case, so they
+    // run side by side.
+    let (fast, brute) = std::thread::scope(|scope| {
+        let brute = scope.spawn(|| args.brute.as_deref().map(resolve).transpose());
+        let fast = solution(&args.file, args.fast.as_deref());
+        (fast, brute.join().expect("a build does not panic"))
+    });
+    let fast = match fast {
         Ok(program) => program,
         Err(message) => return fail(message),
     };
-    let brute = match args.brute.as_deref().map(resolve).transpose() {
+    let brute = match brute {
         Ok(brute) => brute,
         Err(message) => return fail(message),
     };
