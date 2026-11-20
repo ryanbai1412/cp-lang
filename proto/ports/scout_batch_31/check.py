@@ -7,7 +7,7 @@ the tracked source is never stamped) and compares their output on small and
 medium random inputs. coci25c3p1 iterates a Str, which only the interpreter
 supports today, so it runs through `proto/cp.py lib-run` instead.
 
-    python3 proto/ports/scout_batch_31/check.py              # all 10 ports, 150 cases each
+    python3 proto/ports/scout_batch_31/check.py              # every port, 150 cases each
     python3 proto/ports/scout_batch_31/check.py cco19p2 500  # one port, 500 cases
 """
 import os, random, shutil, subprocess, sys, tempfile
@@ -148,6 +148,31 @@ def gen_noi10p3(rng, idx):
     return f"{n}\n" + "\n".join(str(rng.randint(0, hi)) for _ in range(count)) + "\n"
 
 
+def gen_ucrpc21g(rng, idx):
+    n = size(rng, idx, (1, 4), (5, 12))
+    coins, bombs = size(rng, idx, (0, 8), (20, 120)), size(rng, idx, (0, 6), (10, 80))
+    last = rng.choice([3, 20, 104])      # events at ticks 0..=104 only
+    ev = lambda: f"{rng.randrange(n)} {rng.randrange(n)} {rng.randint(0, last)}"
+    rows = [f"{n} {coins} {bombs} {rng.randrange(n)} {rng.randrange(n)}"]
+    return "\n".join(rows + [ev() for _ in range(coins + bombs)]) + "\n"
+
+
+def gen_dmopc21c7p1(rng, idx):
+    n, m = size(rng, idx, (1, 5), (8, 40)), size(rng, idx, (1, 5), (8, 40))
+    kind = rng.randrange(4)
+    step = rng.choice([1, 2, 10**6, 10**15])
+    base = rng.choice([1, 5, 10**18 - (n + m) * step]) if step < 10**15 else 1
+    g = [[max(1, min(10**18, base + (i + j) * step + rng.randint(0, step - 1))) for j in range(m)] for i in range(n)]
+    p = rng.choice([0.1, 0.5, 0.9, 1.0])
+    for i in range(n):
+        for j in range(m):
+            if rng.random() < p:
+                g[i][j] = 0
+            elif kind == 0 and rng.random() < 0.05:   # likely to break monotonicity
+                g[i][j] = rng.randint(1, 10**18)
+    return f"{n} {m}\n" + "\n".join(" ".join(map(str, r)) for r in g) + "\n"
+
+
 PORTS = {
     "ucrpc21f": (3944579, gen_ucrpc21f),
     "ucrpc21d": (3944584, gen_ucrpc21d),
@@ -157,6 +182,8 @@ PORTS = {
     "coci20c6p1": (4188008, gen_coci20c6p1),
     "imo22p6checker": (4955728, gen_imo22p6checker),
     "dmopc21c6p4": (4342347, gen_dmopc21c6p4),
+    "ucrpc21g": (3944717, gen_ucrpc21g),
+    "dmopc21c7p1": (4452959, gen_dmopc21c7p1),
     "cco19p2": (3613676, gen_cco19p2),
     "noi10p3": (5672180, gen_noi10p3),
 }

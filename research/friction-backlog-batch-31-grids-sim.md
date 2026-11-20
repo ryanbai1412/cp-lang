@@ -1,6 +1,6 @@
 # Friction backlog, batch 31: grids, BFS, flood fill and simulation
 
-Batch 31 ports ten grid, state-search and simulation problems against the
+Batch 31 ports twelve grid, state-search and simulation problems against the
 locked v2 spec (`docs/one-page-cheat-sheet.md`). The ports are in
 `proto/ports/scout_batch_31/`: the top-level files are the v2 forms, and
 `today/` holds the forms that run on the prototype and match the original
@@ -9,14 +9,14 @@ C++ on 150 random cases each (`check.py`).
 This note answers one question per locked feature: did it make the messy
 problem easy to write, and what was still awkward? Items are numbered `31.n`
 so they can be cited without colliding with earlier batches' letters. Markers
-in the ports (`// FRICTION D1`, `S2`, `X1`, `N1`-`N3`) point at the items
+in the ports (`// FRICTION D1`, `F1`, `S2`, `X1`, `N1`-`N3`) point at the items
 below.
 
 ## Verdict on the locked features
 
 ### `p.adj4` and `p.adj8`: the biggest win of the batch
 
-Six of the ten problems walk the four neighbours of a cell. Every original
+Six of the twelve problems walk the four neighbours of a cell. Every original
 spells that as two offset arrays, a loop to four, two additions and a bounds
 check. With `p.adj4` the grid Dijkstra of `ucrpc21f` is its statement:
 
@@ -99,13 +99,41 @@ dodge the issue because `[Row, Col]Char` reads the picture directly, which is
 worth knowing: the `0..len` decision is barely exercised by grid work, and
 needs the string batches to judge it.
 
-### `a.fill(x)`: wanted once, and that once it was the wrong tool
+### `a.fill(x)`: reads right, but invites a slow reset (F1)
 
-No port needed a whole-array reset. The simulation that looked like it would
-(`sac22cc1p3`) wants a snapshot instead: water falls on the board as it stood
-before the pass, so the natural code collects the moves first and applies
-them after. `fill` is not in the prototype (`[Row, Col]?Int has no method
-fill`), and nothing in this batch argues for prioritising it.
+One port wanted a whole-table reset. `ucrpc21g` tracks the reachable
+`(cell, coins held)` states tick by tick, and needs a "seen this tick" table:
+
+```cp
+var seen: [Cell, 0..=coins]Bool = false
+for t in Tick:
+    seen.fill(false)
+    ...
+        if not seen[q, have]:
+            seen[q, have] = true
+            next.push((q, have))
+```
+
+That is the obvious code and `fill` makes it one line. It also clears
+`n * n * (coins + 1)` cells on each of 105 ticks, up to 10^9 writes at the
+limits, when only the states touched last tick need clearing. The form that
+runs today avoids it with a stamp table, which is the standard contest trick
+and has no spelling in the spec:
+
+```cp
+var stamp: [Row, Col, 0..=coins]Int = -1
+...
+        if stamp[q.0, q.1, have] != t.idx:
+            stamp[q.0, q.1, have] = t.idx
+```
+
+So `fill` is fine as a primitive, but the pattern "a visited table reused
+across rounds" deserves a stdlib type, for example `Marks<D>()` with
+`.mark(i) -> Bool` (true when newly marked) and an O(1) `.clear()`. The
+other simulation that looked like a `fill` user (`sac22cc1p3`) wants a
+snapshot instead: water falls on the board as it stood before the pass, so
+the natural code collects the moves first and applies them after. `fill` is
+not in the prototype yet (`[Row, Col]?Int has no method fill`).
 
 ### `(a, b) = (x, y)`: reads well for cell swaps
 
@@ -128,8 +156,8 @@ its own words: are `(g[p], g[q]) = ...` targets allowed when `p` may equal
 
 Every port has a `today/` form that uses only domains, `?T`, `List`,
 `MinHeap` and `if let`, and none needed a workaround that changed the
-algorithm. The fallback costs lines, not clarity: 367 lines against 178 for
-the v2 forms, with the `adj4` helper, a hand-rolled queue (`List` plus a
+algorithm. The fallback costs lines, not clarity: 334 lines against 161 for
+the v2 forms of the ten new problems, with the `adj4` helper, a hand-rolled queue (`List` plus a
 `head` index, since `Deque` is missing) and hand-written search loops in
 place of `bfs`/`dijkstra` accounting for most of the difference.
 
