@@ -17,6 +17,8 @@ pub struct Rooted<V>:
     /// The parent; `none` at the root.
     up: [V]?V
     depth: [V]Int
+    /// The total edge length from the root; equal to `depth` when the edges have no lengths.
+    far: [V]Int
     /// The number of vertices in the subtree.
     size: [V]Int
     kids: [V]List<V>
@@ -30,9 +32,14 @@ pub struct Rooted<V>:
 
     /// Root the tree given by `adj` (arcs in both directions, or parent to child) at `root`.
     /// Stops if some vertex is not reachable from the root.
-    pub fn new<A>(adj: V -> Iter<A>, root: V) -> Rooted<V>:
+    pub fn new<A>(adj: V -> Iter<A>, root: V) -> Rooted<V> = Rooted.weighted(adj, root, a => 1)
+
+    /// The same for edges with lengths: `len(arc)` is the length of the edge an arc runs along,
+    /// and `dist` adds lengths up instead of counting edges.
+    pub fn weighted<A>(adj: V -> Iter<A>, root: V, len: A -> Int) -> Rooted<V>:
         var up: [V]?V = none
         var depth: [V]Int = 0
+        var far: [V]Int = 0
         var kids: [V]List<V> = []
         var seen: [V]Bool = false
         var order = [root]
@@ -47,6 +54,7 @@ pub struct Rooted<V>:
                     seen[c] = true
                     up[c] = u
                     depth[c] = depth[u] + 1
+                    far[c] = far[u] + len(a)
                     kids[u].push(c)
                     order.push(c)
         assert order.len == V.K
@@ -71,7 +79,7 @@ pub struct Rooted<V>:
                     next += size[c]
         var at = [Pre] p => root
         for v in V: at[tin[v]] = v
-        Rooted(root, up, depth, size, kids, heavy, top, tin, at)
+        Rooted(root, up, depth, far, size, kids, heavy, top, tin, at)
 
     /// The positions of `v`'s subtree, `v` first.
     pub fn sub(self, v: V) -> Range<Pre> = tin[v].l..tin[v].r(size[v])
@@ -87,8 +95,9 @@ pub struct Rooted<V>:
             x = up[top[x]]!
         if depth[x] < depth[y]: x else: y
 
-    /// The number of edges between `a` and `b`. O(log n).
-    pub fn dist(self, a: V, b: V) -> Int = depth[a] + depth[b] - 2 * depth[self.lca(a, b)]
+    /// The length of the path between `a` and `b`: its number of edges, or their total length in a
+    /// tree built with `weighted`. O(log n).
+    pub fn dist(self, a: V, b: V) -> Int = far[a] + far[b] - 2 * far[self.lca(a, b)]
 
     /// The ancestor `k` edges above `v`, or `none` if that is above the root. O(log n).
     pub fn ancestor(self, v: V, k: Int) -> ?V:
@@ -224,6 +233,21 @@ fn lca_dist_ancestor_and_step_match_climbing():
                 assert r.step(a, b, path.len) == none
             assert r.ancestor(a, r.depth[a]) == r.root
             assert r.ancestor(a, r.depth[a] + 1) == none
+
+@test
+fn weighted_dist_adds_the_lengths_on_the_path():
+    domain V = 0..5
+    // 0 -3- 1 -4- 2, 1 -10- 3, 0 -7- 4
+    let roads = [(V(0), V(1), 3), (V(1), V(2), 4), (V(1), V(3), 10), (V(0), V(4), 7)]
+    var adj: [V]List<(to: V, len: Int)> = []
+    for (u, v, len) in roads:
+        adj[u].push((to: v, len: len))
+        adj[v].push((to: u, len: len))
+    let r = Rooted.weighted(v => adj[v], V(0), a => a.len)
+    assert [r.far[v] for v in V] == [0, 3, 7, 13, 7] and r.depth[V(3)] == 2
+    assert r.dist(V(2), V(3)) == 14 and r.dist(V(4), V(2)) == 14 and r.dist(V(3), V(3)) == 0
+    let plain = Rooted(v => adj[v], V(0))
+    assert plain.dist(V(2), V(3)) == 2 and plain.far[V(3)] == plain.depth[V(3)]
 
 @test
 fn path_folds_keep_the_order_from_a_to_b():

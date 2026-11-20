@@ -7,10 +7,28 @@ use std.algebra.{Monoid, Sum, Max, Min}
 pub struct SegTree<D, T>(m: Monoid<T>):
     t: List<T>
     size: Int
+    /// What each position holds, for a tree built with `of`.
+    source: ?(D -> T)
 
     pub fn new(m: Monoid<T>) -> SegTree<D, T>:
         let size = bit_ceil(D.K)
-        SegTree(m, List.filled(2 * size, m.id), size)
+        SegTree(m, List.filled(2 * size, m.id), size, none)
+
+    /// A tree whose position `i` holds `f(i)`. When something `f` reads changes, `refresh(i)`
+    /// brings position `i` up to date, so the formula is written once, not at every update. O(n).
+    pub fn of(m: Monoid<T>, f: D -> T) -> SegTree<D, T>:
+        var s = SegTree.from(m, [D] i => f(i))
+        s.source = f
+        s
+
+    /// Recompute position `i` from the formula given to `of`. O(log n).
+    pub fn refresh(mut self, i: D):
+        assert source != none            // only a tree built with `of` has a formula
+        let f = source!
+        self.set(i, f(i))
+
+    /// The fold of every position. O(1).
+    pub @get fn all(self) -> T = t[1]
 
     /// Build from an array in O(n).
     pub fn from(m: Monoid<T>, a: [D]T) -> SegTree<D, T>:
@@ -18,7 +36,7 @@ pub struct SegTree<D, T>(m: Monoid<T>):
         var t = List.filled(2 * size, m.id)
         for i in D: t[size + i.to_idx] = a[i]
         for p in (1..size).rev: t[p] = m.op(t[2 * p], t[2 * p + 1])
-        SegTree(m, t, size)
+        SegTree(m, t, size, none)
 
     pub fn get(self, i: D) -> T = t[size + i.to_idx]
 
@@ -104,6 +122,18 @@ fn folds_match_a_plain_array():
         assert st.fold(l..=r) == max(a[v] for v in l..=r)
     assert st.all == max(a[v] for v in V)
     assert st.fold(V(3)..V(3)) == Int.MIN
+
+@test
+fn of_and_refresh_follow_the_formula():
+    domain V = 1..=9
+    var a = [V] v => rand(-20, 20)
+    var st = SegTree<V, Int>.of(Min<Int>, v => a[v] + v.ord)
+    for _ in 0..60:
+        let i = V.nth(rand(0, 8))
+        a[i] = rand(-20, 20)
+        st.refresh(i)
+        assert st.all == min(a[v] + v.ord for v in V)
+        assert st.get(i) == a[i] + i.ord
 
 @test
 fn keeps_the_order_for_non_commutative_monoids():

@@ -238,7 +238,9 @@ is evidence, not a proof.
 - `graph.cp`: `Graph`, `bfs`, `dijkstra`, `shortest` (with the path),
   `topo`, `scc`, `components`, `condense`.
 - `flow.cp`: maximum flow and minimum cut.
-- `tree.cp`: `Rooted` and `Hld`.
+- `tree.cp`: `Rooted` (with edge lengths through `Rooted.weighted`) and `Hld`.
+- `seq.cp`: `scan` and `running_sum`, the running folds of a list.
+- `steps.cp`: `Steps`, range additions read back as runs of equal value.
 - `mod.cp`, `math.cp`: modular arithmetic, counting, number theory.
 - `strings.cp`: Z, prefix function, KMP search, suffix array, LCP,
   palindromes.

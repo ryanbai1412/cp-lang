@@ -495,9 +495,16 @@ class Compiler(LendMixin):
         self.error(tn, f"unsupported type form {k}")
 
     def lib_type(self, nm, args, node):
-        if nm == "Steps" and not (len(args) == 1 and (is_int(args[0]) or isinstance(args[0], TDom))):
-            self.error(node, "Steps<K> needs Int or a domain as K")
-        return TLib(nm, [INT if is_int(a) else a for a in args])
+        if nm == "Steps" and args:
+            self.error(node, "Steps takes no type arguments: its coordinates are Ints (`Steps.new()`)")
+        self.need_use(nm, node)
+        return TLib(nm, [INT] if nm == "Steps" else list(args))
+
+    def need_use(self, nm, node):
+        """Library names are not in scope until a `use` brings them in, the same as in the full language."""
+        if nm not in getattr(self, "imported", ()):
+            mod = LIBS[nm][0] if nm in LIBS else LIB_FNS[nm]
+            self.error(node, f"`{nm}` is in the standard library: add `use std.{mod}.{{{nm}}}` at the top")
 
     def lib_new(self, t, args, node):
         """`Steps.new()`: the empty value of a compiled-in library struct."""
@@ -521,6 +528,7 @@ class Compiler(LendMixin):
             if mod != s.path[1]:
                 self.error(s, f"std.{s.path[1]}.{nm} is library code the prototype compiler has no stand-in for yet "
                               f"(it runs on proto/cpi)")
+            self.imported = getattr(self, "imported", set()) | {nm}
 
     def anon_count_domain(self, name, lo_c, hi_c_excl, lo_iv, hi_iv, node):
         info, _, _ = self.new_domain(name, lo_c, f"({hi_c_excl}) - ({lo_c})", lo_iv,
@@ -733,6 +741,8 @@ class Compiler(LendMixin):
             prim = {"Int": INT, "Bool": BOOL, "Char": CHAR}
             if e.name in prim:
                 return "", TType(prim[e.name])
+            if e.name == "Steps":
+                return "", TType(self.lib_type("Steps", [], e))
             self.error(e, f"unknown name {e.name}")
         if s.kind == "type":
             return "", TType(s.ty)
@@ -1569,8 +1579,14 @@ class Compiler(LendMixin):
             st = TSet(TInt() if is_int(t.elem) else t.elem)
             return f"([&]{{ auto _s = {self.set_ctor(st)}; for (const auto& _x : {c}) _s.insert(_x); return _s; }}())", st
         if fn.kind == "name" and fn.name == "bfs" and len(e.args) == 2 and not self.lookup("bfs"):
+            self.need_use("bfs", e)
             # bfs(adj, from): fewest arcs from any of `from` to each vertex, none where there is no way (std.graph)
-            fc, ft = self.expr(e.args[1])
+            src = e.args[1]
+            if src.kind == "kwarg":
+                if src.name != "from":
+                    self.error(src, f"bfs(adj, from: sources) has no `{src.name}:`")
+                src = src.value
+            fc, ft = self.expr(src)
             if not (isinstance(ft, (TList, TArr)) and isinstance(ft.elem, TDom)):
                 self.error(e.args[1], f"bfs(adj, from) starts from a list of vertices, got {ft!r}")
             V = ft.elem
@@ -1583,6 +1599,7 @@ class Compiler(LendMixin):
             return (f"cp_bfs<{self.cpp_type(rt.elem)}>({V.info.len_cpp}, {fc}, [&](int {pn}) -> decltype(auto) "
                     f"{{ return ({ac}); }})"), rt
         if fn.kind == "name" and fn.name == "choose" and len(e.args) == 2 and not self.lookup("choose"):
+            self.need_use("choose", e)
             # choose(n, k): exact; 0 when k is outside 0..=n (std.math)
             (nc, nt), (kc, kt) = self.expr(e.args[0]), self.expr(e.args[1])
             if not (is_int(nt) and is_int(kt)):
@@ -1596,6 +1613,7 @@ class Compiler(LendMixin):
             return f"cp_choose({nc}, {kc}, {e.line})", TInt(0, hi if hi is not None and hi <= INT_MAX else None)
         if fn.kind == "name" and fn.name in ("scan", "running_sum") and not self.lookup(fn.name) and \
                 len(e.args) == (2 if fn.name == "scan" else 1):
+            self.need_use(fn.name, e)
             # scan(xs, f): the running fold x0, f(x0, x1), ...; running_sum(xs) is scan(xs, +) (std.seq)
             c, t = self.expr(e.args[0])
             if not isinstance(t, (TList, TArr)) or (isinstance(t, TArr) and len(t.dims) != 1):
