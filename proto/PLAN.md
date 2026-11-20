@@ -276,3 +276,14 @@ INDEX + LENDS (plan/19-index-and-lends.md, approved 2026-11-20). cpc/lends.py = 
 - Tests: tests/lend/*.cp + .in + .out (run), tests/bad/*.cp with `// error: text` on line 1 (message locked).
 - Char/Str: ASCII only, lexer rejects non-ASCII in literals. `/` and `%` are Euclidean (cp_ediv/cp_emod,
   native when a >= 0 and b > 0 are proven).
+- Red-team pass (plan/19 section 5.6, cases 11-23; tests/redteam/*.cp + .in + .out, run under ASan/UBSan
+  with -DLOCAL by run_all.sh, and tests/bad/rt_*.cp):
+  - lends.py: fn effects (own_effects / fn_effects): a call is a use of what the callee writes, so it is
+    checked against live lends, drops facts, and can't take a `mut` alias of what it writes itself.
+    `for x in xs` lends xs until the loop ends (hold_iterated). `a[i] += f(mut a[i])` is an error.
+  - compiler.py: operands run left to right (ordered(): temporaries only when the order can be observed);
+    an assignment runs its right side, then its target's indices. Unbounded + - * neg abs << go through
+    cp_add / cp_sub / cp_mul / cp_abs / cp_shl, which stop a -DLOCAL build on overflow. Domain length is
+    computed in __int128 and capped at 2^31 - 1. min/max of a slice is ?T. `List<List<Int>>` parses.
+  - runtime.hpp: cp_ediv / cp_emod are correct for every operand pair, stop on b == 0 and on
+    Int.min / -1; rd_int reads Int.min. List.copy().

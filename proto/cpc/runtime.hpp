@@ -11,10 +11,56 @@ static inline int chk_dom(ll x, ll len, int line) {
     if (x < 0 || x >= len) cp_fail("domain value out of range", line);
     return (int)x;
 }
+// `i + k`, `i - k`, `v.l(k)`, `v.r(k)`: position `ord + shift + k` (or `- k`) of a domain with `len` values.
+[[noreturn]] static void cp_fail_step(ll ord, ll k, ll len, const char* what, int line) {
+    fprintf(stderr, "line %d: %s (%lld values): from position %lld, k = %lld\n", line, what, len, ord, k);
+    exit(3);
+}
+static inline int chk_step(ll ord, ll shift, ll k, bool minus, ll len, const char* what, int line) {
+    ll x = ord + shift + (minus ? -k : k);
+    if (x < 0 || x >= len) cp_fail_step(ord, k, len, what, line);
+    return (int)x;
+}
+// The same when `k` is not known to be small: the sum is taken in 128 bits, so a huge `k` is reported as
+// leaving the domain and never wraps back into it.
+static inline int chk_step_wide(ll ord, ll shift, ll k, bool minus, ll len, const char* what, int line) {
+    __int128 x = (__int128)ord + shift + (minus ? -(__int128)k : (__int128)k);
+    if (x < 0 || x >= len) cp_fail_step(ord, k, len, what, line);
+    return (int)x;
+}
+static inline int chk_nonempty(ll pos, ll len, const char* what, int line) {
+    if (len <= 0) cp_fail(what, line);
+    return (int)pos;
+}
+static inline ll chk_dom_len(__int128 len, int line) {
+    if (len > INT_MAX) cp_fail("domain has more than 2^31 - 1 values", line);
+    return len < 0 ? 0 : (ll)len;
+}
 #ifdef LOCAL
 #define CP_ASSERT(c, msg, line) do { if (!(c)) cp_fail(msg, line); } while (0)
 #else
 #define CP_ASSERT(c, msg, line) do {} while (0)
+#endif
+
+// Arithmetic the range checker could not bound: a local build stops on overflow (decision: unproven overflow
+// traps locally only); a judge build is the plain operator.
+#ifdef LOCAL
+static inline ll cp_add(ll a, ll b, int line) { ll r; if (__builtin_add_overflow(a, b, &r)) cp_fail("Int overflow", line); return r; }
+static inline ll cp_sub(ll a, ll b, int line) { ll r; if (__builtin_sub_overflow(a, b, &r)) cp_fail("Int overflow", line); return r; }
+static inline ll cp_mul(ll a, ll b, int line) { ll r; if (__builtin_mul_overflow(a, b, &r)) cp_fail("Int overflow", line); return r; }
+static inline ll cp_shl(ll a, ll b, int line) {
+    if (b < 0 || b > 62 || a < 0 || a > (LLONG_MAX >> b)) cp_fail("Int overflow", line);
+    return a << b;
+}
+static inline ll cp_shr(ll a, ll b, int line) { if (b < 0 || b > 63) cp_fail("shift amount out of range", line); return a >> b; }
+static inline ll cp_abs(ll a, int line) { if (a == LLONG_MIN) cp_fail("Int overflow", line); return a < 0 ? -a : a; }
+#else
+#define cp_shr(a, b, line) ((ll)(a) >> (b))
+#define cp_abs(a, line) llabs(a)
+#define cp_add(a, b, line) ((ll)(a) + (ll)(b))
+#define cp_sub(a, b, line) ((ll)(a) - (ll)(b))
+#define cp_mul(a, b, line) ((ll)(a) * (ll)(b))
+#define cp_shl(a, b, line) ((ll)(a) << (b))
 #endif
 
 template <class T> struct Opt {
@@ -143,8 +189,8 @@ static inline ll rd_int() {
     int c = cp_getc(); while (c == ' ' || c == '\n' || c == '\r' || c == '\t') c = cp_getc();
     if (c < 0) cp_fail("unexpected end of input", 0);
     bool neg = c == '-'; if (neg) c = cp_getc();
-    ll x = 0; while (c >= '0' && c <= '9') { x = x * 10 + (c - '0'); c = cp_getc(); }
-    return neg ? -x : x;
+    unsigned long long x = 0; while (c >= '0' && c <= '9') { x = x * 10 + (c - '0'); c = cp_getc(); }   // unsigned: the minimum Int has no positive twin
+    return (ll)(neg ? 0 - x : x);
 }
 static inline char rd_char() {
     int c = cp_getc(); while (c == ' ' || c == '\n' || c == '\r' || c == '\t') c = cp_getc();
@@ -180,8 +226,19 @@ static inline void out_int(ll x) { char b[24]; int n = 0; bool neg = x < 0; unsi
 static inline void out_str(const string& s) { cp_obuf += s; }
 static inline void out_char(char c) { cp_obuf += c; }
 // @part cp_ediv|cp_emod
-static inline ll cp_emod(ll a, ll b) { ll r = a % b; return r < 0 ? r + (b < 0 ? -b : b) : r; }
-static inline ll cp_ediv(ll a, ll b) { return (a - cp_emod(a, b)) / b; }
+// Euclidean: a == (a / b) * b + a % b and 0 <= a % b < |b|, for every a and b the native operators would
+// get wrong or leave undefined: b == 0 stops the program, and b == -1 never reaches the native `/` or `%`.
+static inline ll cp_emod(ll a, ll b, int line) {
+    if (b == 0) cp_fail("division by zero", line);
+    if (b == -1) return 0;
+    ll r = a % b;
+    return r < 0 ? (b < 0 ? r - b : r + b) : r;
+}
+static inline ll cp_ediv(ll a, ll b, int line) {
+    if (b == 0) cp_fail("division by zero", line);
+    if (b == -1) { if (a == LLONG_MIN) cp_fail("Int overflow", line); return -a; }
+    return a / b - (a % b < 0 ? (b < 0 ? -1 : 1) : 0);
+}
 // @end
 static inline void out_flush() { fwrite(cp_obuf.data(), 1, cp_obuf.size(), stdout); cp_obuf.clear(); }
 

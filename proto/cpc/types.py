@@ -1,5 +1,6 @@
 INT_MAX = (1 << 63) - 1
 INT_MIN = -(1 << 63)
+DOM_MAX = (1 << 31) - 1    # a domain value is a 32-bit position
 
 class T:
     def __eq__(self, o):

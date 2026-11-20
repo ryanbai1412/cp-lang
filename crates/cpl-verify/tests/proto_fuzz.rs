@@ -1,5 +1,5 @@
 //! The fuzzer against the Python prototype: `proto/cpc/` to C++17, built
-//! with `g++ -std=c++17 -O2 -fsanitize=address,undefined`.
+//! with `g++ -std=c++17 -O2 -DLOCAL -fsanitize=address,undefined`.
 
 use cpl_verify::backend::{repo_root, scratch_dir, Cxx, ProtoTranspiler};
 use cpl_verify::diff::{self, Campaign, Toolchain};
@@ -14,9 +14,8 @@ fn proto() -> Toolchain {
         transpiler: Box::new(ProtoTranspiler::new(&root)),
         cxx,
         interpreter: None,
-        // What the prototype stops on today. Overflow and division by
-        // zero are undefined behavior in its C++; see the README.
-        traps: vec![Trap::IndexOutOfRange],
+        // A local build of the prototype stops on all three.
+        traps: vec![Trap::Overflow, Trap::DivByZero, Trap::IndexOutOfRange],
         static_refusals: vec![
             "beyond Int".into(),
             "over the 64 KB submission limit".into(),
@@ -58,5 +57,6 @@ fn prototype_agrees_with_the_reference_evaluator() {
         report.refused
     );
     assert_eq!(report.programs + report.refused, total);
-    assert_eq!(report.trap_programs, report.programs);
+    // Every program also ran once per trap kind, ending in that error.
+    assert_eq!(report.trap_programs, 3 * report.programs);
 }

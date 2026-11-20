@@ -1,0 +1,7 @@
+// error: expected Int, got ?Int
+let n: 1..=5 = read()
+domain V = 1..=n
+var a: [V]Int = read()
+let f = V.first
+let k: Int = max(a[f..f])
+print(k + 1)
