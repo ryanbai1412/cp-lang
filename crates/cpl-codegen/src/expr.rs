@@ -1108,7 +1108,15 @@ impl<'p> Emitter<'p> {
                     }
                 }
             }
-            let call = format!("{}({})", fn_name(&f.name), texts.join(", "));
+            // An argument of a class type makes C++ look in that class's
+            // namespace too, where `std::apply` or `std::swap` would join
+            // a fn of that name. The qualified name looks only here.
+            let home = if args.iter().all(|arg| matches!(arg, Arg::Value(value) if value.ty.is_scalar())) {
+                ""
+            } else {
+                "::prog::"
+            };
+            let call = format!("{home}{}({})", fn_name(&f.name), texts.join(", "));
             if ran.is_empty() {
                 Code::primary(call)
             } else {

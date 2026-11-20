@@ -359,6 +359,8 @@ template <class T, class S, S NONE> struct Niche {
     Niche() = default;
     explicit Niche(T x) : raw((S)x) {}
     explicit Niche(const std::optional<T>& o) : raw(o ? (S)*o : NONE) {}
+    // A `List<Bool>` keeps a `char` per flag, so what it hands back is a `std::optional<char>`.
+    template <class U> explicit Niche(const std::optional<U>& o) : raw(o ? (S)(T)*o : NONE) {}
     bool has_value() const { return raw != NONE; }
     explicit operator bool() const { return raw != NONE; }
     T operator*() const { return (T)raw; }

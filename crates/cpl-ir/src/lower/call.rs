@@ -3951,6 +3951,26 @@ impl<'a> Lowerer<'a> {
                     out.push(Stmt::Give(lw.local(acc, span)));
                 })
             }
+            (Ty::List(_) | Ty::Str, "rev") if args.is_empty() => {
+                self.mk(ExprKind::Builtin(Builtin::Reversed, vec![value]), ty.clone(), span)
+            }
+            // A sequence walked backwards is something to loop over. As a
+            // value it would be the sequence unchanged, which is not what
+            // `.rev()` says.
+            (
+                Ty::Range(_) | Ty::Array { .. } | Ty::Set(_) | Ty::Map(..) | Ty::HashSet(_) | Ty::HashMap(..),
+                "rev",
+            ) if args.is_empty() => {
+                let message = format!(
+                    "a reversed `{}` is something to loop over, not a value: \
+                     `for x in xs.rev`, or `[x for x in xs.rev]` for the list",
+                    self.show(&ty)
+                );
+                self.error(codes::UNSUPPORTED, name.span, message);
+                self.err_expr(span)
+            }
+            // `Reversible.rev`: a value that is not a sequence and has no
+            // `rev` of its own is its own reverse.
             (_, "rev") if args.is_empty() => value,
             _ => {
                 // UFCS free function with `self` first parameter (e.g. `p.step(d)`, `p.ray(d)`).

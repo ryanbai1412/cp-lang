@@ -2513,6 +2513,13 @@ impl<'a> Lowerer<'a> {
                 }
                 error(self)
             }
+            // `xs.rev()` walks the same way as `xs.rev`.
+            ast::ExprKind::Call { callee, args }
+                if args.is_empty()
+                    && matches!(&callee.kind, ast::ExprKind::Field { name, .. } if name.text == "rev") =>
+            {
+                self.iter(callee)
+            }
             ast::ExprKind::Field { base, name } if name.text == "rev" => {
                 let (iter, ty) = self.iter(base);
                 let iter = match iter {
