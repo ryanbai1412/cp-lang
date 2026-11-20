@@ -913,6 +913,12 @@ impl<'a> Lowerer<'a> {
                 Some(self.resolve_ty(ty))
             }
             (None, ast::FnBody::Block(block)) => match block.stmts.last() {
+                // A body that ends by calling its own fn gives what that
+                // call gives, which is nothing unless a `return` says so.
+                Some(ast::Stmt {
+                    kind: ast::StmtKind::Expr(last),
+                    ..
+                }) if calls_fn(last, &decl.name.text) && !returns_a_value(block) => Some(Ty::Unit),
                 Some(ast::Stmt {
                     kind: ast::StmtKind::Expr(_),
                     ..
@@ -2217,4 +2223,36 @@ fn collect_expr_calls(e: &Expr, out: &mut Vec<FnId>) {
             }
         }
     }
+}
+
+/// Whether `e` is a call of `name`: `name(...)` or `x.name(...)`.
+fn calls_fn(e: &ast::Expr, name: &str) -> bool {
+    let ast::ExprKind::Call { callee, .. } = &e.kind else {
+        return false;
+    };
+    match &callee.kind {
+        ast::ExprKind::Name(called) => called == name,
+        ast::ExprKind::Field { name: called, .. } => called.text == name,
+        _ => false,
+    }
+}
+
+/// Whether a `return` under `block` gives a value. A nested fn's returns
+/// are its own.
+fn returns_a_value(block: &ast::Block) -> bool {
+    struct Returns(bool);
+    impl cpl_syntax::visit::Visitor for Returns {
+        fn stmt(&mut self, stmt: &ast::Stmt) {
+            if matches!(&stmt.kind, ast::StmtKind::Return(Some(_))) {
+                self.0 = true;
+            }
+        }
+    }
+    let mut returns = Returns(false);
+    for stmt in &block.stmts {
+        if !matches!(stmt.kind, ast::StmtKind::Fn(_)) {
+            cpl_syntax::visit::walk_stmt(stmt, &mut returns);
+        }
+    }
+    returns.0
 }

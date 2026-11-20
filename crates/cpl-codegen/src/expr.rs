@@ -259,6 +259,10 @@ impl<'p> Emitter<'p> {
                 match &base.ty {
                     Ty::Array { dims, .. } if dims.len() > 1 => format!("{b}({})", at.join(", ")),
                     Ty::Map(..) | Ty::HashMap(..) if !store => format!("{b}.at({})", at.join(", ")),
+                    Ty::List(_) => {
+                        self.need("at");
+                        format!("cpl::at({b}, {})", at.join(", "))
+                    }
                     _ => format!("{b}[{}]", at.join(", ")),
                 }
             }
@@ -438,6 +442,9 @@ impl<'p> Emitter<'p> {
                 let mut operands: Vec<&Expr> = vec![base];
                 operands.extend(indices.iter());
                 let base_ty = &base.ty;
+                if matches!(base_ty, Ty::List(_)) {
+                    self.need("at");
+                }
                 self.sequence(&operands, &e.ty, |_, codes| {
                     let b = codes[0].at(PRIMARY);
                     let at: Vec<String> = codes[1..].iter().map(|c| c.text.clone()).collect();
@@ -450,7 +457,11 @@ impl<'p> Emitter<'p> {
                                 Code::primary(cell)
                             }
                         }
-                        Ty::Array { elem, .. } | Ty::List(elem) if **elem == Ty::Bool => {
+                        Ty::List(elem) if **elem == Ty::Bool => {
+                            Code::new(format!("(bool)cpl::at({}, {})", codes[0].text, at[0]), UNARY)
+                        }
+                        Ty::List(_) => Code::primary(format!("cpl::at({}, {})", codes[0].text, at[0])),
+                        Ty::Array { elem, .. } if **elem == Ty::Bool => {
                             Code::new(format!("(bool){b}[{}]", at[0]), UNARY)
                         }
                         Ty::Str => Code::new(format!("(cpl::u8){b}[{}]", at[0]), UNARY),
