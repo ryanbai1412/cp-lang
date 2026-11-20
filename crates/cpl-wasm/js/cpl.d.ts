@@ -55,7 +55,7 @@ export interface Hover extends Located {
 
 export interface Symbol extends Located {
   name: string;
-  kind: "value" | "fn" | "struct" | "enum" | "variant" | "domain" | "alias" | "trait";
+  kind: "value" | "fn" | "struct" | "enum" | "variant" | "domain" | "alias" | "trait" | "impl";
   /** The name itself, inside the declaration. */
   selection: Located;
 }

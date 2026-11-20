@@ -118,12 +118,18 @@ impl<'a> Lowerer<'a> {
 
     pub(super) fn stmt(&mut self, stmt: &ast::Stmt, out: &mut Vec<Stmt>) {
         match &stmt.kind {
+            ast::StmtKind::Let {
+                otherwise: Some(_), ..
+            } => self.unsupported(stmt.span, "`let ... else`"),
+            ast::StmtKind::Let {
+                guard: Some(guard), ..
+            } => self.unsupported(guard.span, "a `where` on a `let`"),
             ast::StmtKind::Let { pat, ty, init, .. } => {
                 if let Some(value) = self.let_value(ty.as_ref(), init.as_ref(), stmt.span) {
                     self.bind(pat, value, out);
                 }
             }
-            ast::StmtKind::Const { name, ty, init } => {
+            ast::StmtKind::Const { name, ty, init, .. } => {
                 if let Some(value) = self.let_value(ty.as_ref(), init.as_ref(), stmt.span) {
                     self.declare(&name.text, value, out);
                 }
@@ -148,6 +154,9 @@ impl<'a> Lowerer<'a> {
             | ast::StmtKind::Trait { .. }
             | ast::StmtKind::Impl { .. }
             | ast::StmtKind::Use { .. } => {}
+            ast::StmtKind::Law { .. } | ast::StmtKind::Lend { .. } => {
+                self.unsupported(stmt.span, "projections (`lends`, `lend`, `law`)")
+            }
             ast::StmtKind::Domain { name, def } => self.domain(name, def, out),
             ast::StmtKind::Expr(e) => self.tail(e, Tail::Discard, out),
             ast::StmtKind::Assign { target, op, value } => self.assign(target, *op, value, out),
@@ -680,7 +689,10 @@ impl<'a> Lowerer<'a> {
                 self.if_chain(rest, otherwise, tail, &mut els);
                 out.push(Stmt::If(cond, then, Block { stmts: els }));
             }
-            ast::Cond::Let { pat, value } => {
+            ast::Cond::Let { pat, value, and } => {
+                if and.is_some() {
+                    self.unsupported(value.span, "`if let ... and ...`");
+                }
                 let Some((present, inner)) = self.optional(value, "if let", out) else {
                     return;
                 };
@@ -750,7 +762,10 @@ impl<'a> Lowerer<'a> {
                 self.cx.loops.pop();
                 out.push(Stmt::While(id, cond, body));
             }
-            ast::Cond::Let { pat, value } => {
+            ast::Cond::Let { pat, value, and } => {
+                if and.is_some() {
+                    self.unsupported(value.span, "`while let ... and ...`");
+                }
                 // `while let x = next():` is a loop that leaves when the
                 // optional is empty.
                 let id = self.open_loop(None);

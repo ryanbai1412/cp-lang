@@ -74,7 +74,7 @@ impl Visitor for Collect<'_> {
                 self.binding_float =
                     (annotated || inferred) && matches!(pat.kind, PatternKind::Name(_));
             }
-            StmtKind::Const { name, ty, init } => {
+            StmtKind::Const { name, ty, init, .. } => {
                 let float = match ty {
                     Some(ty) => is_float_type(ty),
                     None => init.as_ref().is_some_and(|init| self.floats.is_float(init)),

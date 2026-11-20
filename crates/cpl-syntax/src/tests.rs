@@ -1022,3 +1022,76 @@ fn by_is_a_name_except_after_a_range() {
         ExprKind::Range { step: Some(_), .. }
     ));
 }
+
+#[test]
+fn any_fn_of_two_values_updates_in_place() {
+    // `l lcm= x` is `l = lcm(l, x)`.
+    let StmtKind::Assign { target, op, value } = one_stmt("each[i] lcm= a[i] * 2\n").kind else {
+        panic!("not an assignment")
+    };
+    assert_eq!(op, AssignOp::Set);
+    let ExprKind::Call { callee, args } = value.kind else {
+        panic!("not a call")
+    };
+    assert_eq!(callee.kind, ExprKind::Name("lcm".into()));
+    assert_eq!(args.len(), 2);
+    assert_eq!(args[0].value, target);
+    // `max=` and `min=` keep their own operators.
+    assert!(matches!(
+        one_stmt("best max= x\n").kind,
+        StmtKind::Assign {
+            op: AssignOp::Max,
+            ..
+        }
+    ));
+    // A name that starts the next line is not an operator of this one.
+    let src = "if c:\n    f()\ncur = fix\n";
+    assert!(codes(src).is_empty());
+    let stmts = stmts(src);
+    assert_eq!(stmts.len(), 2);
+    let StmtKind::Assign { target, value, .. } = &stmts[1].kind else {
+        panic!("not an assignment")
+    };
+    assert_eq!(target.kind, ExprKind::Name("cur".into()));
+    assert_eq!(value.kind, ExprKind::Name("fix".into()));
+}
+
+#[test]
+fn an_if_let_chains_more_lets_and_conditions() {
+    let src = "if let a = i - 1 and let b = j - 1 and a < b:\n    f(a, b)\n";
+    assert!(codes(src).is_empty());
+    let StmtKind::Expr(e) = one_stmt(src).kind else {
+        panic!("not an expression")
+    };
+    let ExprKind::If { branches, .. } = e.kind else {
+        panic!("not an if")
+    };
+    let Cond::Let {
+        and: Some(second), ..
+    } = &branches[0].0
+    else {
+        panic!("no first let")
+    };
+    let Cond::Let {
+        and: Some(last), ..
+    } = &**second
+    else {
+        panic!("no second let")
+    };
+    assert!(matches!(&**last, Cond::Expr(_)));
+}
+
+#[test]
+fn a_match_arm_of_statements_takes_a_colon_and_a_block() {
+    let src = "match cmd:\n    Install(pkg):\n        var fresh = 0\n        print(fresh)\n    Uninstall(pkg) => print(pkg)\n";
+    assert!(codes(src).is_empty());
+    let StmtKind::Expr(e) = one_stmt(src).kind else {
+        panic!("not an expression")
+    };
+    let ExprKind::Match { arms, .. } = e.kind else {
+        panic!("not a match")
+    };
+    assert_eq!(arms.len(), 2);
+    assert_eq!(arms[0].body.stmts.len(), 2);
+    assert_eq!(arms[1].body.stmts.len(), 1);
+}

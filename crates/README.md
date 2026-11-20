@@ -130,9 +130,13 @@ what the libraries are written in:
   the sign of `x`, so it indexes a `0..7` domain.
 
 `crates/cpl-cli/tests/corpus.rs` holds this to the source in the
-repository: `stdlib/`, `examples/local-lib/`, `proto/ports/` and the
-prototype's passing tests check with no diagnostics, and each file in
-`proto/tests/bad/` is rejected for the reason its first line states.
+repository: `stdlib/`, `examples/local-lib/`, the ports in `proto/ports/`
+and `proto/ports/hillclimb_dp_graph/`, and the prototype's passing tests
+check with no diagnostics, and each file in `proto/tests/bad/` is
+rejected for the reason its first line states. The sketches in
+`proto/ports/scout_batch_*/` are left out: they are written in syntax the
+language does not have yet. The failing tests the checker still accepts
+are listed by name in `NOT_YET` at the top of that file.
 
 Not checked yet: value ranges beyond literals and domains, whether a type
 argument satisfies the bounds of the parameter it fills, and laws beyond

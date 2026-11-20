@@ -40,7 +40,11 @@ pub fn value(name: &str) -> Option<Ty> {
             Ty::Unknown
         }
         "popcount" | "ctz" | "bit_width" | "bit_ceil" | "isqrt" => int_fn(1),
-        "sqrt" | "atan2" => Ty::Unknown,
+        "sqrt" | "atan2" | "floor" | "ceil" | "round" | "len" => Ty::Unknown,
+        // `counts(xs)` is a `Counter`, `prefix(a)` the prefix sums of an
+        // array, and `span(a, b)` the range between two positions in
+        // either order (decisions §11).
+        "counts" | "prefix" | "span" => Ty::Unknown,
         _ if TYPE_NAMES.contains(&name) => Ty::TypeName(name.into()),
         _ if PROTOTYPE_NAMES.contains(&name) => Ty::Unknown,
         _ => return None,
@@ -57,7 +61,7 @@ pub fn ty(name: &str) -> Option<Ty> {
         "Str" => Ty::Str,
         // Fixed-width integers for bit-level work.
         "I32" | "U8" | "U64" | "I128" => Ty::Int,
-        "List" | "Map" | "Set" | "Iter" | "Opt" | "Range" | "Bounds" => Ty::Named {
+        "List" | "Map" | "Set" | "Iter" | "Opt" | "Range" | "Bounds" | "Counter" => Ty::Named {
             name: name.into(),
             args: Vec::new(),
         },
@@ -71,8 +75,28 @@ pub fn ty(name: &str) -> Option<Ty> {
 /// source. They are accepted without a type so those ports still check;
 /// each one goes away when the ports that use it import its `std` module.
 const PROTOTYPE_NAMES: &[&str] = &[
-    "gcd", "lcm", "product", "compress", "inf", "ask", "dijkstra", "Rooted", "SegTree", "StrHash",
-    "MinHeap", "HashMap", "AddMax", "WithMin", "Perm", "Subset", "Mod",
+    "gcd",
+    "lcm",
+    "product",
+    "compress",
+    "inf",
+    "ask",
+    "dijkstra",
+    "Rooted",
+    "SegTree",
+    "StrHash",
+    "MinHeap",
+    "HashMap",
+    "AddMax",
+    "WithMin",
+    "Perm",
+    "Subset",
+    "Mod",
+    "Graph",
+    "Dsu",
+    "AssignSum",
+    "condense",
+    "scc",
 ];
 
 /// A prelude trait: what `T: Ord` and `impl Add for V` may name.
@@ -82,6 +106,7 @@ pub fn is_trait(name: &str) -> bool {
 
 const TYPE_NAMES: &[&str] = &[
     "List", "Map", "Set", "Int", "Bool", "Char", "Str", "Float", "Iter", "Opt", "Range", "Bounds",
+    "Counter",
 ];
 
 /// The traits of `plan/19-index-and-lends.md` and `stdlib/README.md`.
@@ -142,6 +167,13 @@ pub const VALUE_NAMES: &[&str] = &[
     "isqrt",
     "sqrt",
     "atan2",
+    "floor",
+    "ceil",
+    "round",
+    "len",
+    "counts",
+    "prefix",
+    "span",
     "List",
     "Map",
     "Set",

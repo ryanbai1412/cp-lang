@@ -1082,7 +1082,21 @@ impl<'a> Lowerer<'a> {
             self.cx.scopes.push(HashMap::new());
             let mut pre = Vec::new();
             let slot = self.loop_var(&clause.pat, elem, &mut pre);
-            let cond = clause.cond.as_ref().map(|c| self.expect(c, &Ty::Bool));
+            let cond = match clause.conds.as_slice() {
+                [] => None,
+                [ast::Cond::Expr(c)] => Some(self.expect(c, &Ty::Bool)),
+                [first, ..] => {
+                    let span = match first {
+                        ast::Cond::Expr(e) | ast::Cond::Const(e) => e.span,
+                        ast::Cond::Let { value, .. } => value.span,
+                    };
+                    self.unsupported(
+                        span,
+                        "more than one `if`, or an `if let`, in a comprehension",
+                    );
+                    None
+                }
+            };
             frames.push(LoopFrame {
                 id,
                 slot,
@@ -1210,7 +1224,7 @@ impl<'a> Lowerer<'a> {
         let ast::ExprKind::Name(domain) = &clause.iter.kind else {
             return None;
         };
-        if clause.cond.is_some() || self.lookup(domain).is_some() {
+        if !clause.conds.is_empty() || self.lookup(domain).is_some() {
             return None;
         }
         match self.syms.get(domain) {

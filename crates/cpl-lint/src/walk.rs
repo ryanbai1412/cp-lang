@@ -52,13 +52,19 @@ pub(crate) fn walk_stmt(v: &mut dyn Visitor, stmt: &Stmt) {
             pat,
             ty,
             init,
+            otherwise,
+            guard,
         } => {
             walk_opt_ty(v, ty);
             walk_opt_expr(v, init);
+            if let Some(block) = otherwise {
+                walk_scoped(v, Scope::Block, &block.stmts);
+            }
             let how = if *mutable { Bind::Var } else { Bind::Let };
             walk_pattern(v, pat, how);
+            walk_opt_expr(v, guard);
         }
-        StmtKind::Const { name, ty, init } => {
+        StmtKind::Const { name, ty, init, .. } => {
             walk_opt_ty(v, ty);
             walk_opt_expr(v, init);
             v.bind(&name.text, name.span, Bind::Const);
@@ -86,6 +92,7 @@ pub(crate) fn walk_stmt(v: &mut dyn Visitor, stmt: &Stmt) {
             trait_name,
             target,
             body,
+            ..
         } => {
             walk_opt_ty(v, trait_name);
             walk_ty(v, target);
@@ -98,7 +105,17 @@ pub(crate) fn walk_stmt(v: &mut dyn Visitor, stmt: &Stmt) {
         | StmtKind::Error => {}
         StmtKind::Expr(expr)
         | StmtKind::Return(Some(expr))
+        | StmtKind::Lend { place: expr, .. }
         | StmtKind::Yield { value: expr, .. } => walk_expr(v, expr),
+        StmtKind::Law { params, body, .. } => {
+            v.enter(Scope::Fn);
+            for param in params {
+                walk_opt_ty(v, &param.ty);
+                v.bind(&param.name.text, param.name.span, Bind::Param);
+            }
+            walk_expr(v, body);
+            v.exit(Scope::Fn);
+        }
         StmtKind::Assign { target, value, .. } => {
             walk_expr(v, target);
             walk_expr(v, value);
@@ -179,9 +196,12 @@ fn walk_args(v: &mut dyn Visitor, args: &[Arg]) {
 fn walk_cond(v: &mut dyn Visitor, cond: &Cond) {
     match cond {
         Cond::Expr(expr) | Cond::Const(expr) => walk_expr(v, expr),
-        Cond::Let { pat, value } => {
+        Cond::Let { pat, value, and } => {
             walk_expr(v, value);
             walk_pattern(v, pat, Bind::Pattern);
+            if let Some(and) = and {
+                walk_cond(v, and);
+            }
         }
     }
 }
@@ -237,7 +257,8 @@ pub(crate) fn walk_ty(v: &mut dyn Visitor, ty: &Type) {
             }
             walk_ty(v, ret);
         }
-        TypeKind::Error => {}
+        TypeKind::Value(expr) => walk_expr(v, expr),
+        TypeKind::NewDomain | TypeKind::Error => {}
     }
 }
 
@@ -311,7 +332,9 @@ pub(crate) fn walk_expr(v: &mut dyn Visitor, expr: &Expr) {
             for clause in clauses {
                 walk_expr(v, &clause.iter);
                 walk_pattern(v, &clause.pat, Bind::Pattern);
-                walk_opt_expr(v, &clause.cond);
+                for cond in &clause.conds {
+                    walk_cond(v, cond);
+                }
             }
             walk_expr(v, body);
             v.exit(Scope::Loop);

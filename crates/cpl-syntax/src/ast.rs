@@ -248,12 +248,14 @@ pub struct Arg {
 #[derive(Clone, PartialEq, Debug)]
 pub enum Cond {
     Expr(Expr),
-    /// `if let v = find():`, `if let b = before[c] and b < d:`.
+    /// `if let v = find():`, `if let b = before[c] and b < d:`,
+    /// `if let a = i - 1 and let b = j - 1:`.
     Let {
         pat: Pattern,
         value: Expr,
-        /// What must also hold, with the pattern's names in scope.
-        and: Option<Expr>,
+        /// What must also hold, with the pattern's names in scope: a
+        /// condition, or another `let`.
+        and: Option<Box<Cond>>,
     },
     /// `if const D.max_len <= 64:`.
     Const(Expr),

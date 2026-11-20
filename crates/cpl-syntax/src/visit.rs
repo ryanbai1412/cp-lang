@@ -26,7 +26,7 @@ fn walk_cond(cond: &Cond, v: &mut dyn Visitor) {
             v.pattern(pat);
             walk_expr(value, v);
             if let Some(and) = and {
-                walk_expr(and, v);
+                walk_cond(and, v);
             }
         }
     }
