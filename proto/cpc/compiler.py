@@ -1121,7 +1121,7 @@ class Compiler(LendMixin):
             tmp = self.tmpname("o")
             return f"([&]{{ auto {tmp} = {a}; return {tmp}.has() ? {tmp}.get() : {self.cpp_type(at.inner)}({b}); }}())", at.inner
         a, at = self.expr(e.a, want if isinstance(want, TMod) else None)
-        b, bt = self.expr(e.b, at if isinstance(at, TMod) else None)
+        b, bt = self.expr(e.b, at if isinstance(at, TMod) and op != "**" else None)      # an exponent is an Int
         if isinstance(at, TOpt) or isinstance(bt, TOpt):
             self.error(e, f"`{op}` on an optional ({at!r}, {bt!r}); unwrap with `!`, `??` or `if let` first")
         WIDE = (TF64, TU64, TI128)
@@ -1595,6 +1595,10 @@ class Compiler(LendMixin):
                     f"for (auto& _s : _d) {{ ll _r = (ll)_p.{rn} + _s[0], _c = (ll)_p.{cn} + _s[1]; "
                     f"if (_r >= 0 && _r < (ll){r.info.len_cpp} && _c >= 0 && _c < (ll){c.info.len_cpp}) {{ {ot.cpp} _q; _q.{rn} = (int)_r; _q.{cn} = (int)_c; _out.push_back(_q); }} }} "
                     f"return _out; }}({oc}))"), TList(ot)
+        if isinstance(ot, TMod) and f == "inv":
+            return f"(Mod<{ot.m}>(1) / ({oc}))", ot
+        if isinstance(ot, TMod) and f == "val":
+            return f"(ll)(({oc}).v)", TInt(0, ot.m - 1)
         if isinstance(ot, (TList, TStr)) and f == "is_empty":
             return f"{oc}.empty()", BOOL
         if isinstance(ot, TTree) and f == "Pre":
@@ -2225,6 +2229,14 @@ class Compiler(LendMixin):
             # Dsu<V>(): disjoint sets over a domain, every value alone to start (stdlib/dsu.cp)
             t = self.resolve_type(N("tname", fn.line, name="Dsu", args=fn.args))
             return f"CpDsu({t.dom.info.len_cpp})", t
+        if fn.kind == "generic" and fn.name == "Comb" and len(fn.args) == 1 and len(e.args) == 1:
+            # Comb<P>(n): factorials and inverse factorials up to n, modulo the prime P
+            mt = self.resolve_type(N("tname", fn.line, name="Mod", args=fn.args))
+            nc, nt = self.expr(e.args[0])
+            if not is_int(nt):
+                self.error(e, f"Comb<P>(n) takes an Int bound, got {nt!r}")
+            t = TRt("Comb", [mt], "CpComb")
+            return f"{self.cpp_type(t)}({nc})", t
         if fn.kind == "generic" and fn.name == "MonoDeque":
             # MonoDeque<T>(min) / MonoDeque<T>(max): which end `.best` reports
             t = self.resolve_type(N("tname", fn.line, name="MonoDeque", args=fn.args))
@@ -2813,6 +2825,13 @@ class Compiler(LendMixin):
                 self.require_mut(obj, e)
                 return f"{oc}.clear()", UNIT
             self.error(e, f"no method `{m}` on {ot!r} (push, pop, push_front, pop_front, clear, .first, .last, .len, q[i])")
+        if isinstance(ot, TMod) and m == "pow" and len(args) == 1:
+            return f"({oc}).pow({self.str_pos(args[0])})", ot
+        if isinstance(ot, TRt) and ot.name == "Comb":
+            want_n = {"fact": 1, "inv_fact": 1, "choose": 2, "arrange": 2}.get(m)
+            if want_n != len(args):
+                self.error(e, f"no method `{m}` on {ot!r} (fact(k), inv_fact(k), choose(n, k), arrange(n, k))")
+            return f"{oc}.{m}({', '.join(self.str_pos(a) for a in args)}, {e.line})", ot.elem
         if isinstance(ot, TRt) and ot.name == "MonoDeque":
             kw = {a.name: a.value for a in args if a.kind == "kwarg"}
             if m == "push" and set(kw) == {"at", "val"} and len(args) == 2:
