@@ -53,7 +53,6 @@ const PENDING: &[&str] = &[
     "proto/ports/ccc21s4.cp",
     "proto/ports/ccc21s5.cp",
     "proto/ports/cco16p2.cp",
-    "proto/ports/cco20p1.cp",
     "proto/ports/cheerio1s3.cp",
     "proto/ports/dmpg16s5.cp",
     "proto/ports/dpg.cp",
