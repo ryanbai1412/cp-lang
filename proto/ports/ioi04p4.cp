@@ -12,7 +12,8 @@ let wanted = Set(plates)
 @memo
 fn waste(a: 1..=w, b: 1..=h) -> Int:
     if (a, b) in wanted: return 0
-    min(a * b,
-        min(waste(x, b) + waste(a - x, b) for x in 1..=a / 2),
-        min(waste(a, y) + waste(a, b - y) for y in 1..=b / 2))
+    var best = a * b
+    for x in 1..=a / 2: best min= waste(x, b) + waste(a - x, b)
+    for y in 1..=b / 2: best min= waste(a, y) + waste(a, b - y)
+    best
 print(waste(w, h))

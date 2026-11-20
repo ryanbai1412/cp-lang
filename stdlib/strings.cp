@@ -43,24 +43,146 @@ pub fn find_all<T>(text: List<T>, pat: List<T>) -> yields Int:
 /// The length of the shortest period of `s`: the smallest `d >= 1` with `s[i] == s[i + d]` for all `i`. O(n).
 pub fn period<T>(s: List<T>) -> Int = if s.is_empty: 0 else: s.len - prefix_function(s).last
 
-/// The starts of the suffixes of `s` in sorted order, by prefix doubling. O(n log^2 n).
+fn induced_sort(vec: List<Int>, counts: List<Int>, is_l: List<Bool>, lms: List<Int>, mut sa: List<Int>):
+    let n = vec.len
+    let alpha = counts.len
+    var bkt = List.filled(alpha, 0)
+    var sum = 0
+    for c in 0..alpha:
+        sum += counts[c]
+        bkt[c] = sum
+    for i in 0..n: sa[i] = -1
+    for k in (0..lms.len).rev:
+        let pos = lms[k]
+        let c = vec[pos]
+        bkt[c] -= 1
+        sa[bkt[c]] = pos
+    sum = 0
+    for c in 0..alpha:
+        bkt[c] = sum
+        sum += counts[c]
+    for k in 0..n:
+        let p = sa[k] - 1
+        if p >= 0 and is_l[p]:
+            let c = vec[p]
+            sa[bkt[c]] = p
+            bkt[c] += 1
+    sum = 0
+    for c in 0..alpha:
+        sum += counts[c]
+        bkt[c] = sum
+    for k in (1..n).rev:
+        let p = sa[k] - 1
+        if p >= 0 and not is_l[p]:
+            let c = vec[p]
+            bkt[c] -= 1
+            sa[bkt[c]] = p
+
+fn sa_is(vec: List<Int>, alpha: Int) -> List<Int>:
+    let n = vec.len
+    var sa = List.filled(n, 0)
+    if n <= 1: return sa
+    var counts = List.filled(alpha, 0)
+    for c in vec: counts[c] += 1
+    var is_l = List.filled(n, false)
+    var lms = List<Int>()
+    for i in (0..n - 1).rev:
+        is_l[i] = vec[i] > vec[i + 1] or (vec[i] == vec[i + 1] and is_l[i + 1])
+        if is_l[i] and not is_l[i + 1]: lms.push(i + 1)
+    var (lo, hi) = (0, lms.len - 1)
+    while lo < hi:
+        let tmp = lms[lo]
+        lms[lo] = lms[hi]
+        lms[hi] = tmp
+        lo += 1
+        hi -= 1
+    induced_sort(vec, counts, is_l, lms, mut sa)
+    let m = lms.len
+    var sorted_lms = List.filled(m, 0)
+    var k_lms = 0
+    for x in sa:
+        if x >= 1 and not is_l[x] and is_l[x - 1]:
+            sorted_lms[k_lms] = x
+            k_lms += 1
+    var name = 0
+    sa[n - 1] = 0
+    for k in 1..m:
+        let i = sorted_lms[k - 1]
+        let j = sorted_lms[k]
+        var diff = vec[i] != vec[j]
+        if not diff:
+            var (a, b) = (i + 1, j + 1)
+            while true:
+                if vec[a] != vec[b]:
+                    diff = true
+                    break
+                let la = not is_l[a] and is_l[a - 1]
+                let lb = not is_l[b] and is_l[b - 1]
+                if la or lb:
+                    diff = not (la and lb)
+                    break
+                a += 1
+                b += 1
+        if diff: name += 1
+        sa[j] = name
+    if name + 1 < m:
+        var lms_vec = List.filled(m, 0)
+        for i in 0..m: lms_vec[i] = sa[lms[i]]
+        let lms_sa = sa_is(lms_vec, name + 1)
+        for i in 0..m: sorted_lms[i] = lms[lms_sa[i]]
+    induced_sort(vec, counts, is_l, sorted_lms, mut sa)
+    sa
+
+/// The starts of the suffixes of `s` in sorted order (SA-IS).
+/// O(n) for bounded alphabets (<= 256 distinct values) and O(n log n) for general `T`.
 pub fn suffix_array<T>(s: List<T>) -> List<Int>:
     let n = s.len
-    var sa = [i for i in 0..n]
-    if n <= 1: return sa
-    // ranks of single elements, by sorting positions on the element
-    sort(mut sa, by: i => s[i])
-    var rank = List.filled(n, 0)
-    for j in 1..n: rank[sa[j]] = rank[sa[j - 1]] + (if s[sa[j - 1]] < s[sa[j]]: 1 else: 0)
-    var k = 1
-    while k < n and rank[sa[n - 1]] < n - 1:
-        // order by (rank[i], rank[i + k]); a suffix shorter than k sorts first
-        let key = [rank[i] * (n + 1) + (if i + k < n: rank[i + k] + 1 else: 0) for i in 0..n]
-        sort(mut sa, by: i => key[i])
-        var next = List.filled(n, 0)
-        for j in 1..n: next[sa[j]] = next[sa[j - 1]] + (if key[sa[j - 1]] < key[sa[j]]: 1 else: 0)
-        rank = next
-        k *= 2
+    if n <= 1: return [i for i in 0..n]
+    var vec = List.filled(n + 1, 0)
+    var alpha = 0
+    // Fast path for bounded alphabets (e.g. ASCII/Str): avoid O(n log n) sort.
+    var uniq = List<T>()
+    var ids = List<Int>()
+    var small = true
+    for i in 0..n:
+        let x = s[i]
+        var (lo, hi) = (0, uniq.len)
+        while lo < hi:
+            let mid = (lo + hi) >> 1
+            if uniq[mid] < x: lo = mid + 1 else: hi = mid
+        if lo < uniq.len and uniq[lo] == x:
+            vec[i] = ids[lo]
+        elif uniq.len == 256:
+            small = false
+            break
+        else:
+            let id = uniq.len
+            uniq.push(x)
+            ids.push(id)
+            for j in (lo + 1..uniq.len).rev:
+                uniq[j] = uniq[j - 1]
+                ids[j] = ids[j - 1]
+            uniq[lo] = x
+            ids[lo] = id
+            vec[i] = id
+    if small:
+        alpha = uniq.len
+        if alpha == 1: return [n - 1 - i for i in 0..n]
+        var remap = List.filled(alpha, 0)
+        for r in 0..alpha: remap[ids[r]] = r + 1
+        for i in 0..n: vec[i] = remap[vec[i]]
+    else:
+        var order = [i for i in 0..n]
+        sort(mut order, by: i => s[i])
+        alpha = 1
+        vec[order[0]] = 1
+        for j in 1..n:
+            if s[order[j - 1]] < s[order[j]]: alpha += 1
+            vec[order[j]] = alpha
+        if alpha == n: return order
+    var sa = sa_is(vec, alpha + 1)
+    for i in 0..n: sa[i] = sa[i + 1]
+    sa.pop()
     sa
 
 /// `lcp[j]` is the length of the longest common prefix of the suffixes at `sa[j]` and `sa[j + 1]`
@@ -200,6 +322,9 @@ fn suffix_array_and_lcp_match_sorting_the_suffixes():
     assert suffix_array("banana") == [5, 3, 1, 0, 4, 2]
     assert lcp_array("banana", suffix_array("banana")) == [1, 3, 0, 0, 2]
     assert suffix_array("") == [] and suffix_array("x") == [0] and lcp_array("x", [0]) == []
+    assert suffix_array("aaaaa") == [4, 3, 2, 1, 0]
+    assert suffix_array("abcdef") == [0, 1, 2, 3, 4, 5]
+    assert suffix_array("fedcba") == [5, 4, 3, 2, 1, 0]
     for _ in 0..40:
         let s = random_word(rand(1, 18), rand(1, 3))
         let sa = suffix_array(s)
@@ -208,6 +333,15 @@ fn suffix_array_and_lcp_match_sorting_the_suffixes():
         assert sa == want
         let lcp = lcp_array(s, sa)
         for j in 0..s.len - 1: assert lcp[j] == common_prefix(s, sa[j], sa[j + 1])
+    // Large alphabet (>256 distinct values) and negative ints exercise the fallback path
+    let big_uniq = [300 - i for i in 0..270]
+    assert suffix_array(big_uniq) == [269 - i for i in 0..270]
+    var big_dup = [i % 260 - 130 for i in 0..280]
+    big_dup.push(-130)
+    big_dup.push(-129)
+    let sa_big = suffix_array(big_dup)
+    assert sa_big.len == big_dup.len
+    for j in 0..sa_big.len - 1: assert suffix_less(big_dup, sa_big[j], sa_big[j + 1])
 
 @test
 fn rolling_hash_over_str_list_and_domain_arrays():
