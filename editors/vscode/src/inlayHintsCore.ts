@@ -18,8 +18,6 @@ const CONSTRUCTOR_FUNCS: Record<string, string> = {
     compress: 'Compressed',
     Sieve: 'Sieve',
     RollingHash: 'RollingHash',
-    SuffixArray: 'SuffixArray',
-    Rng: 'Rng',
 };
 
 function stripComment(line: string): string {

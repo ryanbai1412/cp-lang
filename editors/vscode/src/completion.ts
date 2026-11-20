@@ -13,6 +13,7 @@ import {
     PRELUDE_TYPES,
     PRELUDE_VALUES,
     STDLIB_TYPES,
+    STDLIB_VALUES,
 } from './languageData';
 
 function items(names: readonly string[], kind: vscode.CompletionItemKind, detail: string): vscode.CompletionItem[] {
@@ -30,7 +31,8 @@ export function registerFallbackCompletion(selector: vscode.DocumentSelector): v
         ...items(PRELUDE_TYPES, vscode.CompletionItemKind.Class, 'prelude type'),
         ...items(STDLIB_TYPES, vscode.CompletionItemKind.Class, 'stdlib type'),
         ...items(PRELUDE_VALUES, vscode.CompletionItemKind.Function, 'prelude fn'),
-        ...items(PRELUDE_CONSTANTS, vscode.CompletionItemKind.Constant, 'math constant'),
+        ...items(STDLIB_VALUES, vscode.CompletionItemKind.Function, 'stdlib fn (needs a `use`)'),
+        ...items(PRELUDE_CONSTANTS, vscode.CompletionItemKind.Constant, 'prelude constant'),
     ];
     const directives = FILE_DIRECTIVES.map(directive => {
         const item = new vscode.CompletionItem('@!' + directive.name, vscode.CompletionItemKind.Keyword);

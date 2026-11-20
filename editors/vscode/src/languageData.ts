@@ -1,7 +1,7 @@
-// CP Lang 0.2.2 language tables for fallback completion and grammar checks
-// (`docs/one-page-cheat-sheet.md`, `research/language-architecture-v2.2.md`).
-// `test/unit/languageData.test.ts` checks that these tables and
-// `syntaxes/cp.tmLanguage.json` stay in lockstep with zero stale v1/v2.1 tokens.
+// CP Lang 0.2.2 language tables for fallback completion and grammar checks.
+// `test/unit/languageData.test.ts` checks them against the compiler's prelude
+// (`crates/cpl-check/src/prelude.rs`), `stdlib/*.cp` and `stdlib/prelude.cp`,
+// and keeps `syntaxes/cp.tmLanguage.json` in lockstep with them.
 
 /** 30 contestant keywords (including 3 literals) in CP Lang 0.2.2. */
 export const CONTESTANT_KEYWORDS: readonly string[] = [
@@ -19,49 +19,63 @@ export const LIBRARY_KEYWORDS: readonly string[] = [
 /** All 34 reserved keywords in CP Lang 0.2.2. */
 export const KEYWORDS: readonly string[] = [...CONTESTANT_KEYWORDS, ...LIBRARY_KEYWORDS];
 
-/** Words that are keywords only in one position, so they stay usable as names. */
+/**
+ * Words that are keywords only in one position, so they stay usable as names:
+ * `x as T`, `yield from`, `invariant ...`, `law assoc(a, b) = ...`, `-> yields (v: V)`, `= do:`.
+ */
 export const CONTEXTUAL_KEYWORDS: readonly string[] = [
-    'as', 'from', 'invariant',
+    'as', 'from', 'invariant', 'law', 'yields', 'do',
 ];
 
-/** Core primitive, container, and runtime types built into CP Lang 0.2.2. */
+/**
+ * Types the compiler itself knows (`crates/cpl-check/src/prelude.rs`). `Opt` (spelled `?T`)
+ * and `Counter` (what `counts` returns) are left out: neither is written by name.
+ */
 export const PRELUDE_TYPES: readonly string[] = [
-    'Int', 'U64', 'I128', 'F64', 'Bool', 'Char', 'Str',
-    'List', 'Deque', 'Map', 'HashMap', 'Set', 'HashSet',
-    'SortedBag', 'MinHeap', 'MaxHeap', 'Range', 'Bounds', 'Subset', 'Bitset', 'Iter',
-    'Interactor', 'Rng',
+    'Bool', 'Bounds', 'Char', 'F64', 'HashMap', 'I128', 'Int', 'Interactor', 'Iter', 'List', 'Map',
+    'Range', 'Set', 'Str', 'Subset', 'U64',
 ];
 
-/** Core standard library contest data structures and algebra helpers in CP Lang 0.2.2. */
+/** Every public type and trait declared in `stdlib/*.cp`, whether `stdlib/prelude.cp` imports it or not. */
 export const STDLIB_TYPES: readonly string[] = [
-    'Mod', 'Comb', 'Marks', 'Compressed',
-    'SegTree', 'LazySegTree', 'SparseTable', 'Fenwick', 'Fenwick2D',
-    'Dsu', 'Graph', 'Rooted', 'FlowGraph',
-    'Perm', 'Sieve', 'Pt', 'Dir4', 'ByAngle',
-    'SuffixArray', 'RollingHash', 'HashVal',
-    'Monoid', 'Action', 'Desc',
-    'AddSum', 'AddMin', 'AddMax', 'AssignSum', 'AssignMin', 'AssignMax',
+    'Action', 'Arc', 'Bitset', 'ByAngle', 'Comb', 'Compressed', 'Deque', 'Desc', 'Dir4', 'Dsu',
+    'Fenwick', 'Fenwick2D', 'FlowGraph', 'Graph', 'HashVal', 'Hashable', 'LazySegTree', 'Marks',
+    'MaxHeap', 'MinHeap', 'Mod', 'Monoid', 'Neighbours', 'Prefix1', 'Prefix2', 'PrefixN', 'Pt',
+    'Reversible', 'RollingHash', 'Rooted', 'SegTree', 'Sieve', 'SortedBag', 'SparseTable', 'Target',
 ];
 
-/** Prelude and core standard-library functions highlighted as builtins in CP Lang 0.2.2. */
+/**
+ * Functions a program can call without a `use`: the compiler's own (`prelude.rs`) and the
+ * ones `stdlib/prelude.cp` imports.
+ */
 export const PRELUDE_VALUES: readonly string[] = [
-    'read', 'read_line', 'read_until', 'read_output', 'print', 'debug', 'ask',
-    'min', 'max', 'sum', 'any', 'all', 'count', 'first', 'min_by', 'max_by',
-    'bsearch_first', 'bsearch_last',
-    'sort', 'sorted', 'reverse', 'dedup', 'rotate_left', 'next_permutation', 'prev_permutation',
-    'compress', 'prefix', 'scan', 'runs', 'swap', 'rand', 'shuffle',
-    'abs', 'ceil_div', 'gcd', 'lcm', 'isqrt', 'pow_mod', 'factor', 'divisors',
-    'popcount', 'ctz', 'clz', 'bit_len',
-    'sqrt', 'sin', 'cos', 'tan', 'atan2', 'exp', 'ln', 'hypot', 'floor', 'ceil', 'round', 'trunc',
-    'close', 'sign', 'turn', 'turn_eps', 'unit', 'desc',
-    'bfs', 'dijkstra', 'topo', 'scc', 'condense',
-    'two_edge_components', 'biconnected_components', 'articulation_points', 'two_color',
-    'max_weight_matching',
-    'z_function', 'prefix_function',
+    'abs', 'all', 'any', 'ask', 'atan2', 'bit_ceil', 'bit_width', 'ceil', 'copy', 'count', 'counts',
+    'ctz', 'debug', 'first', 'floor', 'flush', 'isqrt', 'laws_hold', 'len', 'max', 'min',
+    'popcount', 'prefix', 'print', 'rand', 'read', 'read_output', 'round', 'shuffle', 'some',
+    'sort', 'sorted', 'span', 'sqrt', 'sum', 'swap', 'trunc', 'bfs', 'bsearch_first',
+    'bsearch_last', 'compress', 'condense', 'dijkstra', 'fixed', 'gcd', 'lcm', 'peel', 'resized',
+    'runs', 'scc', 'topo',
 ];
 
-/** Built-in math constants in CP Lang 0.2.2 (no INF sentinel; use ?Int / none). */
-export const PRELUDE_CONSTANTS: readonly string[] = ['PI'];
+/** Public `stdlib/*.cp` functions that need a `use` (`use std.strings.{z_function}`). */
+export const STDLIB_VALUES: readonly string[] = [
+    'area2', 'argmins', 'articulation_points', 'berlekamp_massey', 'biconnected_components',
+    'bit_len', 'ceil_div', 'choose', 'components', 'concavity_break', 'convexity_break', 'cross',
+    'crt', 'decrease', 'dedup', 'desc', 'differences', 'directed_of_pairs', 'directed_of_triples',
+    'divisors', 'dnc_break', 'dot', 'ext_gcd', 'factor', 'find_all', 'first_ge_by', 'fold',
+    'guess_at', 'idempotent', 'increase', 'insert', 'knuth_break', 'last_le_by', 'lcp_array',
+    'locate', 'max_by', 'max_weight_matching', 'min_by', 'monge_break', 'mul_mod', 'newton',
+    'next_permutation', 'on_segment', 'period', 'poly_at', 'poly_degree', 'prefix1', 'prefix2',
+    'prefix_function', 'prefix_n', 'prev_permutation', 'ray', 'recurrence_at', 'remove', 'reverse',
+    'rotate_left', 'scan', 'segments_meet', 'step', 'suffix_array', 'swap_at', 'take', 'turn',
+    'two_color', 'two_edge_components', 'undirected_of_pairs', 'undirected_of_triples',
+    'unimodality_break', 'z_function',
+];
+
+/** Public `stdlib/*.cp` constants, all imported by `stdlib/prelude.cp` (no INF sentinel; use ?Int / none). */
+export const PRELUDE_CONSTANTS: readonly string[] = [
+    'AddMax', 'AddMin', 'AddSum', 'AssignMax', 'AssignMin', 'AssignSum',
+];
 
 export interface DecoratorInfo {
     name: string;

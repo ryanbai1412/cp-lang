@@ -8,11 +8,14 @@
 #
 # --fast  1. nothing from dist/ and no secret is staged or in an unpushed commit
 #         2. cargo clippy --workspace --all-targets -- -D warnings
-#         3. cargo test --workspace
+#         3. the workspace tests (cargo nextest when installed, else cargo
+#            test), without the slow proto_fuzz and the timing-based budget
 #         4. cpl test stdlib examples/local-lib
-# --full  5. the WebAssembly build and crates/cpl-wasm/tests/smoke.mjs
-#         6. the VS Code extension tests (editors/vscode: npm test)
-#         7. proto/run_all.sh, in a throwaway clone because it stamps its sources
+#         5. cpl fmt --check stdlib (the standard library stays formatted)
+# --full  6. proto_fuzz, and the budget tests alone so no other load skews them
+#         7. the WebAssembly build and crates/cpl-wasm/tests/smoke.mjs
+#         8. the VS Code extension tests (editors/vscode: npm test)
+#         9. proto/run_all.sh, in a throwaway clone because it stamps its sources
 #
 # Needs cargo with clippy; --full also needs node, npm, python3, g++ and
 # the wasm target (rustup target add wasm32-unknown-unknown).
@@ -26,7 +29,7 @@ for arg in "$@"; do
     case "$arg" in
         --fast) mode=fast ;;
         --full) mode=full ;;
-        -h | --help) sed -n '2,19s/^# \{0,1\}//p' "$0"; exit 0 ;;
+        -h | --help) sed -n '2,22s/^# \{0,1\}//p' "$0"; exit 0 ;;
         *) echo "check: unknown argument \`$arg\`" >&2; exit 2 ;;
     esac
 done
@@ -72,12 +75,28 @@ need cargo "see https://rustup.rs"
 step "cargo clippy --workspace --all-targets -- -D warnings"
 cargo clippy --workspace --all-targets -- -D warnings
 
-step "cargo test --workspace"
-cargo test --workspace
+# proto_fuzz checks the retired Python prototype and takes over a minute;
+# budget measures wall-clock time, which other tests running beside it skew.
+# Both run in --full.
+if cargo nextest --version >/dev/null 2>&1; then
+    step "cargo nextest run --workspace (without proto_fuzz and budget)"
+    cargo nextest run --workspace --no-fail-fast -E 'not (binary(proto_fuzz) or binary(budget))'
+    step "cargo test --workspace --doc"
+    cargo test -q --workspace --doc
+else
+    step "cargo test --workspace (without proto_fuzz and budget)"
+    cargo test --workspace -- \
+        --skip prototype_agrees_with_the_reference_evaluator \
+        --skip run_answers_within_200_ms \
+        --skip build_takes_under_a_second_and_fits_64_kb
+fi
 
 step "cpl test stdlib examples/local-lib"
 cargo run -q -p cpl-cli -- test stdlib examples/local-lib | tail -n 1
 [ "${PIPESTATUS[0]}" -eq 0 ] || fail "library tests failed; rerun: cargo run -p cpl-cli -- test stdlib examples/local-lib"
+
+step "cpl fmt --check stdlib"
+cargo run -q -p cpl-cli -- fmt --check stdlib || fail "stdlib/ is not formatted; run: cargo run -p cpl-cli -- fmt stdlib"
 
 if [ "$mode" = full ]; then
     need node "the wasm smoke test and the VS Code tests run on it"
@@ -87,6 +106,10 @@ if [ "$mode" = full ]; then
 
     tmp="$(mktemp -d)"
     trap 'rm -rf "$tmp"' EXIT
+
+    step "cargo test: proto_fuzz, then budget on its own"
+    cargo test -p cpl-verify --test proto_fuzz
+    cargo test -p cpl-cli --test budget -- --test-threads=1
 
     step "wasm build and crates/cpl-wasm/tests/smoke.mjs"
     scripts/build-wasm.sh --smoke --out "$tmp/wasm"

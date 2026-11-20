@@ -23,11 +23,8 @@ let xs: Compressed<Int> = compress(raw_vals)
 //                 ^^^ support.type.builtin.cp
 //                        ^^^^^^^^ support.function.builtin.cp
 
-var rng = Rng(42)
-//        ^^^ support.type.builtin.cp
-
 var bs = Bitset<D>()
-//       ^^^^^^ support.type.builtin.cp
+//       ^^^^^^ support.type.stdlib.cp
 //             ^ punctuation.definition.generic.begin.cp
 //               ^ punctuation.definition.generic.end.cp
 
@@ -38,7 +35,7 @@ var st = SegTree<V, Int>(+, a)
 var lazy = LazySegTree<t.Pre, Int>(AddSum, init)
 //         ^^^^^^^^^^^ support.type.stdlib.cp
 //                            ^^^ support.type.builtin.cp
-//                                 ^^^^^^ support.type.stdlib.cp
+//                                 ^^^^^^ support.constant.stdlib.cp
 
 let rmq = SparseTable<V, Int>(min, a)
 //        ^^^^^^^^^^^ support.type.stdlib.cp
@@ -75,10 +72,10 @@ for d in D:
 //       ^^^^ keyword.operator.assignment.compound.cp
 
 while prev_permutation(mut perm):
-//    ^^^^^^^^^^^^^^^^ support.function.builtin.cp
+//    ^^^^^^^^^^^^^^^^ support.function.stdlib.cp
 //                     ^^^ storage.modifier.mut.cp
     let k = ceil_div(a, b) + rand(1..=10)
-//          ^^^^^^^^ support.function.builtin.cp
+//          ^^^^^^^^ support.function.stdlib.cp
 //                           ^^^^ support.function.builtin.cp
     shuffle(mut perm)
 //  ^^^^^^^ support.function.builtin.cp

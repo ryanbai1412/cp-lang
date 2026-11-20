@@ -43,7 +43,7 @@ var pre: [V.bounds]Int = 0
 //          ^^^^^^ variable.other.property.cp
 
 var pq = MinHeap<(Int, V)>()
-//       ^^^^^^^ support.type.builtin.cp
+//       ^^^^^^^ support.type.stdlib.cp
 //              ^ punctuation.definition.generic.begin.cp
 //                ^^^ support.type.builtin.cp
 //                       ^ punctuation.definition.generic.end.cp
@@ -62,11 +62,11 @@ var m: Map<Str, List<Set<U64>>> = Map()
 //                              ^ keyword.operator.assignment.cp
 
 // A capitalized name and `<` with a space between is a comparison.
-if PI < x and N > 3:
-// ^^ support.constant.math.cp
-//    ^ keyword.operator.comparison.cp
-//            ^ entity.name.type.cp
-//              ^ keyword.operator.comparison.cp
+if LIM < x and N > 3:
+// ^^^ constant.other.caps.cp
+//     ^ keyword.operator.comparison.cp
+//             ^ entity.name.type.cp
+//               ^ keyword.operator.comparison.cp
 
 let w: F64 = F64(x) + F64(I128.MAX)
 //     ^^^ support.type.builtin.cp
