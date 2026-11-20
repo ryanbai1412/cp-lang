@@ -1,0 +1,8 @@
+# noip04p3_orig.cpp: the lines a perfect C++ contest library would have supplied.
+# Everything else is counted as problem-specific code. Read by proto/loc.py.
+# lines      facility        what it is
+1-30         template        includes, debug macros, typedefs
+32-34        bits            bit test
+36-40        util            reversed copy
+42-53        lis             longest increasing subsequence
+72-77        driver          fast I/O setup and the test-case loop
