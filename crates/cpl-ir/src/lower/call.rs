@@ -1182,8 +1182,48 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// Every position of a domain, first to last, as a list.
+    fn positions(&mut self, d: DomainId, span: Span) -> Expr {
+        let list_ty = Ty::list(Ty::Pos(d));
+        self.do_expr(Some(&list_ty.clone()), span, |lw, out| {
+            let all = lw.temp(list_ty.clone());
+            let empty = lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span);
+            out.push(Stmt::Let(all, Some(empty)));
+            let at = lw.temp(Ty::Pos(d));
+            let item = lw.local(at, span);
+            let push = lw.mk(
+                ExprKind::Mutate(
+                    Mutation::Push,
+                    Box::new(Place {
+                        kind: PlaceKind::Local(all),
+                        ty: list_ty.clone(),
+                        span,
+                    }),
+                    vec![item],
+                ),
+                Ty::Unit,
+                span,
+            );
+            let lid = lw.next_loop;
+            lw.next_loop += 1;
+            let iter = Iter::Range {
+                lo: lw.int_lit(0, span),
+                hi: lw.mk(ExprKind::DomainLen(d), Ty::Int, span),
+                step: None,
+                rev: false,
+            };
+            out.push(Stmt::For(lid, at, iter, Block { stmts: vec![Stmt::Expr(push)] }));
+            out.push(Stmt::Give(lw.local(all, span)));
+        })
+    }
+
     /// `sorted(xs, by: ...)`
     fn sorted_by(&mut self, value: Expr, args: &[ast::Arg], span: Span) -> Expr {
+        // `sorted(V, by: ...)`: the positions of a domain, in another order.
+        let value = match value.kind {
+            ExprKind::DomainVal(d) => self.positions(d, span),
+            _ => value,
+        };
         let list_ty = match value.ty.clone() {
             Ty::List(e) => Ty::List(e),
             Ty::Array { elem, .. } => Ty::List(elem),
