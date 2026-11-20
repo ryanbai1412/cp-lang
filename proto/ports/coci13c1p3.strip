@@ -1,0 +1,7 @@
+# coci13c1p3_orig.cpp: the lines a perfect C++ contest library would have supplied.
+# Everything else is counted as problem-specific code. Read by proto/loc.py.
+# lines      facility        what it is
+1-30         template        includes, debug macros, typedefs
+32-49        prefix-2d       2-D prefix sums with rectangle query
+76-80        util            reversed copy of a container
+94-99        driver          fast I/O setup and the test-case loop

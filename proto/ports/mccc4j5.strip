@@ -1,5 +1,6 @@
-# Lines of mccc4j5_orig.cpp that a perfect C++ contest library would have supplied.
-# Read by `cpl-verify loc` for the library-stripped line count; argue with it here.
-1-30   template header
-32-33  min-heap alias
-73-75  fast I/O setup
+# mccc4j5_orig.cpp: the lines a perfect C++ contest library would have supplied.
+# Everything else is counted as problem-specific code. Read by proto/loc.py.
+# lines      facility        what it is
+1-30         template        includes, debug macros, typedefs
+32-33        alias           min-heap alias
+72-83        driver          fast I/O setup and the test-case loop

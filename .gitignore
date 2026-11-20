@@ -1,3 +1,6 @@
 /target/
 __pycache__/
 *.pyc
+proto/ports/*_bin
+proto/ports/*_gen
+proto/ports/*_ref
