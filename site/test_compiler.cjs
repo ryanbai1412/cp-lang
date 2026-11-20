@@ -81,6 +81,41 @@ test("arbitrary edited programs, stdin, C++17, diagnostics and hover use the rea
   assert.match((await compiler.call("hover", source, source.indexOf("n *"))).text, /Int/);
 });
 
+test("v2.2 Tropical Optionals and deleted-form migration diagnostics run in WASM", async () => {
+  const coinChange = [
+    "let (n, x): (1..=100, 1..=1e6) = read()",
+    "let coins: [0..n]Int = read()",
+    "",
+    "var dp: [0..=x]?Int = none",
+    "dp[0] = 0",
+    "for s in 1..=x:",
+    "    for c in coins:",
+    "        if c <= s: dp[s] min= dp[s - c] + 1",
+    "print(dp[x] ?? -1)",
+    "",
+  ].join("\n");
+  const okRun = await compiler.call("run", coinChange, "3 11\n1 5 7\n");
+  assert.equal(okRun.ok, true, okRun.stderr);
+  assert.equal(okRun.stdout, "3\n");
+  const missRun = await compiler.call("run", coinChange, "2 3\n2 4\n");
+  assert.equal(missRun.ok, true, missRun.stderr);
+  assert.equal(missRun.stdout, "-1\n");
+  const built = await compiler.call("build", coinChange);
+  assert.equal(built.ok, true, built.stderr);
+  assert.match(built.cpp, /std::optional<ll>/);
+  assert.match((await compiler.call("hover", coinChange, coinChange.indexOf("dp[0]"))).text, /\?Int/);
+
+  const deferCheck = await compiler.call("check", "defer print(1)\n");
+  assert.equal(deferCheck.ok, false);
+  assert.equal(deferCheck.diagnostics[0].code, "E0503");
+  assert.match(deferCheck.diagnostics[0].message, /removed in CP Lang v2\.2/);
+
+  const optPlusEq = await compiler.call("check", "var x: ?Int = 1\nx += 2\n");
+  assert.equal(optPlusEq.ok, false);
+  assert.equal(optPlusEq.diagnostics[0].code, "E0309");
+  assert.match(optPlusEq.diagnostics[0].message, /\?Int/);
+});
+
 test("a runaway program times out without poisoning the next run", async () => {
   await assert.rejects(compiler.call("run", "var x = 0\nwhile true:\n    x = 1 - x\n", ""), /Stopped after 5 seconds/);
   assert.equal((await compiler.call("run", "print(43)\n", "")).stdout, "43\n");

@@ -87,7 +87,7 @@ C++17 generation, source-positioned diagnostics, and cursor type inspection from
 bridge without another compiler implementation. A Blob worker keeps execution
 off the UI thread, stops runs after five seconds, and restarts after Stop or a
 timeout. The compiled module is shared across offline page navigation. The
-complete HTML is about 1.3 MiB; the compiler itself adds about 0.5 MiB of base64
+complete HTML is about 1.6 MiB; the compiler itself adds about 0.8 MiB of base64
 gzip. Modern browsers need WebAssembly, Workers, and DecompressionStream.
 
 Conceptual course questions check a selected answer; output checks actually run
