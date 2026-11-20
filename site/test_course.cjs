@@ -70,3 +70,40 @@ test("output predictions execute the source and compare real stdout, not answer 
   assert.deepEqual(calls, [[exercise.source, "21"]]);
   assert.equal((await execute(exercise, ["42"], async () => ({ok:false, stderr:"error[E0301]"}))).passed, false);
 });
+
+test("editing a first prediction clears pending feedback even if its run times out", async () => {
+  const handlers = {}, submit = {disabled:false}, status = {}, badge = {};
+  const field = {value:"14", setAttribute(){}, removeAttribute(){}};
+  const form = {
+    querySelector:() => submit,
+    querySelectorAll:() => [field],
+    addEventListener(name, callback) { handlers[name] = callback; }
+  };
+  const section = {dataset:{exercise:"output"},
+    querySelector:selector => ({form, ".exercise-feedback":status, "[data-badge]":badge})[selector]};
+  const data = {lessons:[], revisions:{output:"current"}, exercises:{output:{kind:"output",
+    source:"print(14)", tests:[{input:"", expected:"14"}]}}};
+  let rejectRun;
+  const context = {
+    document:{getElementById:() => ({textContent:JSON.stringify(data)}),
+      querySelectorAll:selector => selector === "[data-exercise]" ? [section] : []},
+    localStorage:{getItem:() => null, removeItem(){}, setItem(){}},
+    CpCompiler:{call:() => new Promise((resolve, reject) => { rejectRun = reject; })}
+  };
+  vm.runInNewContext(fs.readFileSync(require.resolve("./assets/course.js"), "utf8"), context);
+  const pending = handlers.submit({preventDefault(){}});
+  assert.equal(submit.disabled, true);
+  assert.match(status.textContent, /Running each case/);
+  field.value = "changed";
+  handlers.input();
+  assert.match(status.textContent, /Answer changed/);
+  rejectRun(new Error("Stopped after 5 seconds."));
+  await pending;
+  assert.equal(submit.disabled, false);
+  assert.match(status.textContent, /Answer changed/);
+  field.value = "14";
+  context.CpCompiler.call = async () => ({ok:true, stdout:"14\n"});
+  await handlers.submit({preventDefault(){}});
+  assert.equal(section.dataset.state, "passed");
+  assert.equal(badge.textContent, "Checked");
+});
