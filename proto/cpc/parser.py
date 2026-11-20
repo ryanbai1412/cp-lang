@@ -4,7 +4,7 @@ from .ast import N
 class ParseError(Exception):
     pass
 
-ASSIGN_OPS = {"=", "+=", "-=", "*=", "/=", "%="}
+ASSIGN_OPS = {"=", "+=", "-=", "*=", "/=", "%=", "|=", "&=", "^="}
 CMP_OPS = {"==", "!=", "<", ">", "<=", ">="}
 
 class Parser:
