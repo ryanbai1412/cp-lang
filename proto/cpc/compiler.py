@@ -1326,6 +1326,11 @@ class Compiler(LendMixin):
         cc, ct = self.expr(e.cond)
         if not isinstance(ct, TBool):
             self.error(e, f"condition must be Bool, got {ct!r}")
+        if want is None and "none" in (e.a.kind, e.b.kind) and e.a.kind != e.b.kind:
+            # `if ok: x else: none` is a ?T of the other branch
+            other = e.b if e.a.kind == "none" else e.a
+            ot = self.capture(lambda: self.expr(other))[1][1]
+            want = ot if isinstance(ot, TOpt) else TOpt(TInt() if is_int(ot) else ot)
         a, at = self.expr(e.a, want)
         b, bt = self.expr(e.b, want or at)
         t = want or at
@@ -1968,6 +1973,60 @@ class Compiler(LendMixin):
             if not is_int(t):
                 self.error(e, f"{fn.name} needs an Int, got {t!r}")
             return f"cp_{fn.name}({c})", TInt(0, 64)
+        if fn.kind == "name" and fn.name in ("bsearch_first", "bsearch_last", "bsearch_first_some") and len(e.args) == 2 \
+                and not self.lookup(fn.name):
+            # binary search over a range whose predicate changes once: bsearch_first finds the first true of
+            # false..true, bsearch_last the last true of true..false, bsearch_first_some the first non-none
+            rc, rt = self.expr(e.args[0])
+            if not isinstance(rt, TRange):
+                self.error(e, f"{fn.name}(range, i => ...) searches a range, got {rt!r}")
+            el = rt.elem
+            cty = "int" if isinstance(el, TDom) else "ll"
+            pn, kc, kt = self.lambda_key(e.args[1], el)
+            head = f"ll _lo = _r.lo, _hi = max(_r.lo, _r.hi); while (_lo < _hi) {{ ll _m = _lo + (_hi - _lo) / 2; const {cty} {pn} = ({cty})_m; "
+            if fn.name == "bsearch_first_some":
+                if not isinstance(kt, TOpt):
+                    self.error(e, f"bsearch_first_some needs a fn returning an optional, got {kt!r}")
+                pair = self.tuple_type([None, None], [el, kt.inner])
+                res = self.cpp_type(TOpt(pair))
+                vt = self.cpp_type(kt)
+                return (f"([&](Rng _r) -> {res} {{ {vt} _best; {head}{vt} _v = {kc}; if (_v.has()) {{ _best = _v; _hi = _m; }} else _lo = _m + 1; }} "
+                        f"return _lo < _r.hi ? {res}({pair.cpp}{{({cty})_lo, _best.get()}}) : {res}(); }}({rc}))"), TOpt(pair)
+            if not isinstance(kt, TBool):
+                self.error(e, f"{fn.name} needs a Bool predicate, got {kt!r}")
+            res = self.cpp_type(TOpt(el))
+            if fn.name == "bsearch_first":
+                return (f"([&](Rng _r) -> {res} {{ {head}if ({kc}) _hi = _m; else _lo = _m + 1; }} "
+                        f"return _lo < _r.hi ? {res}(({cty})_lo) : {res}(); }}({rc}))"), TOpt(el)
+            return (f"([&](Rng _r) -> {res} {{ {head}if ({kc}) _lo = _m + 1; else _hi = _m; }} "
+                    f"return _lo > _r.lo ? {res}(({cty})(_lo - 1)) : {res}(); }}({rc}))"), TOpt(el)
+        if fn.kind == "name" and fn.name == "first" and len(e.args) == 1 and e.args[0].kind == "gen" and not self.lookup("first"):
+            # first(x for x in xs if ok(x)): the first value produced, or none (the loop stops there)
+            g = e.args[0]
+            box = {}
+            def inner():
+                c, t = self.expr(g.elem)
+                box["t"] = TInt() if is_int(t) else t
+                self.emit(f"return {self.cpp_type(TOpt(box['t']))}({c});")
+            lines, _ = self.capture(lambda: self.gen_loops(g.clauses, 0, inner, g))
+            rt = TOpt(box["t"])
+            return f"([&]() -> {self.cpp_type(rt)} {{ {' '.join(l.strip() for l in lines)} return {self.cpp_type(rt)}(); }}())", rt
+        if fn.kind == "name" and fn.name in ("min_by", "max_by") and len(e.args) == 2 and not self.lookup(fn.name):
+            # max_by(r, i => key): the element of a range whose key is largest (the first such); traps when empty
+            rc, rt = self.expr(e.args[0])
+            if not isinstance(rt, TRange):
+                self.error(e, f"{fn.name}(range, i => key) takes a range, got {rt!r}")
+            el = rt.elem
+            cty = "int" if isinstance(el, TDom) else "ll"
+            pn, kc, kt = self.lambda_key(e.args[1], el)
+            if not self.orderable(kt):
+                self.error(e, f"{fn.name} needs an ordered key, and {kt!r} has no `<`")
+            cmp = "_k < _bk" if fn.name == "min_by" else "_bk < _k"
+            self.note_check(e, "range is non-empty")
+            return (f"([&](Rng _r) {{ if (_r.lo >= _r.hi) cp_fail(\"{fn.name} of an empty range\", {e.line}); "
+                    f"auto _key = [&](const {cty} {pn}) {{ return {kc}; }}; {cty} _b = ({cty})_r.lo; auto _bk = _key(_b); "
+                    f"for (ll _i = _r.lo + 1; _i < _r.hi; ++_i) {{ auto _k = _key(({cty})_i); if ({cmp}) {{ _b = ({cty})_i; _bk = _k; }} }} "
+                    f"return _b; }}({rc}))"), el
         if fn.kind == "name" and fn.name == "read_line" and not e.args and not self.lookup("read_line"):
             return "rd_line()", STR
         if fn.kind == "name" and fn.name == "abs" and not self.lookup("abs"):
@@ -2417,6 +2476,11 @@ class Compiler(LendMixin):
             return (f"([&]{{ auto _key = {key}; vector<{ec}> {tmp}({oc}.begin(), {oc}.end()); "
                     f"stable_sort({tmp}.begin(), {tmp}.end(), [&](const {ec}& A, const {ec}& B) {{ return _key(A) < _key(B); }}); "
                     f"return {tmp}; }}())"), TList(et)
+        if isinstance(ot, TArr) and len(ot.dims) == 1 and m == "find" and len(args) == 1:
+            # a.find(x): the first position holding x (linear), or none
+            c, t = self.expr(args[0], ot.elem)
+            return (f"([&](const auto& _x){{ ll _k = find({oc}.begin(), {oc}.end(), _x) - {oc}.begin(); "
+                    f"return _k < (ll){oc}.size() ? Opt<int>((int)_k) : Opt<int>(); }}({self.coerce(c, t, ot.elem, args[0])}))"), TOpt(ot.dims[0])
         if isinstance(ot, TArr) and len(ot.dims) == 1 and m in ("last_le", "first_ge"):
             c, t = self.expr(args[0])
             if m == "last_le":
