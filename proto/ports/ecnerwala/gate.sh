@@ -3,6 +3,8 @@
 # `cpl check`, `cpl build` compiled under ASan/UBSan, `cpl run`, then both
 # compared with the original C++ on the committed samples and on CASES random
 # inputs from gen/NAME.py (when there is one).
+# INTERP_TIMEOUT (seconds, default 20) bounds each `cpl run`; a port that needs
+# more than the default is listed with its reason in the README.
 # Needs `cargo build --release -p cpl-cli` first, and `zig` for the C++23 originals.
 D=$(cd "$(dirname "$0")" && pwd); R=$(cd "$D/../../.." && pwd); C=$R/target/release/cpl
 n=$1; N=${2:-100}; T=$(mktemp -d); trap 'rm -rf $T' EXIT
@@ -22,7 +24,7 @@ norm() { tr -s ' \n' '\n\n' < $1 | sed '/^$/d'; }
 one() { # one INPUT LABEL
   timeout 10 $T/orig < $1 > $T/o0 2>/dev/null || { echo "FAIL $n original crashed, $2"; exit 1; }
   timeout 20 $T/san < $1 > $T/o1 2>$T/err || { echo "FAIL $n sanitizer run, $2"; head -8 $T/err; exit 1; }
-  timeout 20 $C run $src < $1 > $T/o2 2>$T/err || { echo "FAIL $n interpreter run, $2"; head -8 $T/err; exit 1; }
+  timeout ${INTERP_TIMEOUT:-20} $C run $src < $1 > $T/o2 2>$T/err || { echo "FAIL $n interpreter run, $2"; head -8 $T/err; exit 1; }
   for o in o1 o2; do
     diff -q <(norm $T/o0) <(norm $T/$o) >/dev/null || { echo "FAIL $n differs ($o), $2"; head -20 $1; exit 1; }
   done

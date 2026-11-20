@@ -1,0 +1,4 @@
+# Lets the ports here import `examples/local-lib` as `use lib.math.poly.{...}`:
+# `cpl` finds a library by walking up from the importing file, so `math` is a
+# link to that folder.
+name = "lib"
