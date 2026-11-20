@@ -20,7 +20,7 @@
         ],
         "answer": 2,
         "explanation": "bump(a, 1) and bump(a.copy(), 1) both omit the required mut and are rejected. An explicit owned copy would not change a anyway. &mut is Rust syntax; CP Lang has no reference operator.",
-        "code": "fn bump(mut xs: [V]Int, by: Int):\n    for v in xs.positions: xs[v] += by"
+        "code": "fn bump(mut xs: [V]Int, by: Int):\n    for v in V: xs[v] += by"
       },
       {
         "id": "borrow-inline-callback",
@@ -59,11 +59,11 @@
         "title": "Return the window, not the slice",
         "prompt": "A helper should find the best segment of a, and the caller then sorts that segment in place. Which design fits CP Lang's borrowing rules?",
         "hint": "A slice is a borrow; a range is a plain value.",
-        "solution": "Return Range<V> and re-project at the point of use: a[w].sort(). The range can be stored, returned, or pushed anywhere, and the borrow is created only where the caller applies it.",
+        "solution": "Return Range<V> and re-project at the point of use: sort(mut a[w]). The range can be stored, returned, or pushed anywhere, and the borrow is created only where the caller applies it.",
         "kind": "choice",
         "options": [
           "fn best(a: [V]Int) -> [V]Int returning a[l..=r]",
-          "fn best(a: [V]Int) -> Range<V> returning l..=r, then a[best(a)].sort()",
+          "fn best(a: [V]Int) -> Range<V> returning l..=r, then sort(mut a[best(a)])",
           "Store a[l..=r] in a struct field and sort it later",
           "Assign a[l..=r] to a var and return the var"
         ],
@@ -98,8 +98,8 @@
   },
   {
     "slug": "course-algebra",
-    "title": "Algebraic traits and the stdlib",
-    "description": "Associativity, identity, and inverses; non-commutative combines; operation values; and a userland standard library you can extend.",
+    "title": "Algebra, data structures, and Rooted",
+    "description": "Bare operators, Monoid(id, op), Action(id, compose, apply), desc(x), MonoDeque, slide_until, and Rooted<V> tree paths.",
     "duration": "30 min",
     "exercises": [
       {
@@ -147,7 +147,7 @@
         "title": "When two prefix values are enough",
         "prompt": "Which range query can always be answered from two prefix values, prefix(r) combined with the inverse of prefix(l - 1)?",
         "hint": "Taking a prefix back out needs an inverse operation.",
-        "solution": "Range sum: + has the inverse -, so sum(l..=r) = pre[r.r] - pre[l.l]. That is why the approved Fenwick takes a Group.",
+        "solution": "Range sum: + has the inverse -, so sum(l..=r) = pre[r.r] - pre[l.l]. That is why Fenwick<D, Int> is sum-only while arbitrary monoids belong in SegTree.",
         "kind": "choice",
         "options": [
           "Range maximum",
@@ -156,7 +156,7 @@
           "Range sum"
         ],
         "answer": 3,
-        "explanation": "Maximum, minimum, and gcd are monoids without inverses: knowing max(1..=r) and max(1..=l-1) tells you nothing about max(l..=r). Those need a segment tree or a sparse table, and the stdlib makes Fenwick-on-max a type error."
+        "explanation": "Maximum, minimum, and gcd have no inverse: knowing max(1..=r) and max(1..=l-1) tells you nothing about max(l..=r). Use SegTree<V, Int>(max, a) or SparseTable<V, Int>(min, a) for those; Fenwick<V, Int>(a) stays dedicated to sums."
       },
       {
         "id": "algebra-noncommutative",
@@ -177,19 +177,19 @@
       },
       {
         "id": "algebra-runtime-op",
-        "title": "Choosing an operation at runtime",
-        "prompt": "In the approved design, what happens with let m = if k: Max<Int> else: Min<Int> followed by SegTree<V, Int>(m)?",
-        "hint": "Every function value has its own compile-time identity, and structures are compiled once per identity.",
-        "solution": "It is a compile error with help: write if k: SegTree(Max<Int>) else: SegTree(Min<Int>), so each branch gets its own inlined copy, or opt into an indirect call with dyn.",
+        "title": "Bare operators vs. Monoid(id, op)",
+        "prompt": "In CP Lang v2, how do you construct a range-sum SegTree and a custom (best, count) SegTree over domain V?",
+        "hint": "Standard associative operators need no wrapper; custom node combines use Monoid(id, op).",
+        "solution": "Pass the bare operator + for range sums (SegTree<V, Int>(+, a)) and Monoid(id, op) for a custom combine over a node value.",
         "kind": "choice",
         "options": [
-          "A compile error: the code of op is not known at compile time; branch outside the structure or declare a dyn function type",
-          "It compiles to one tree that calls max or min through a function pointer",
-          "It silently picks Max because it is the first branch",
-          "It compiles, but laws are skipped"
+          "SegTree<V, Int>(+, a) for sum, and SegTree<V, (Int, Int)>(Monoid(id, op), init) for custom nodes",
+          "Wrap + in a custom wrapper struct before passing it to SegTree",
+          "Sub-class a SegTree base class and override combine()",
+          "Pass a string \"+\" that SegTree parses at runtime"
         ],
         "answer": 0,
-        "explanation": "Static dispatch is a language guarantee, so the compiler never quietly inserts a function pointer. Nothing is picked silently, and laws are unrelated: they are checked by fntest and debug runs and stripped from release builds."
+        "explanation": "CP Lang v2 retired single-purpose operator wrapper types. Built-in associative operators (+, *, ^, &, |, min, max, gcd) pass directly to SegTree and SparseTable, while custom monoids pass Monoid(id, op) and lazy tags pass stock tags like AddSum or Action(id, compose, apply)."
       },
       {
         "id": "algebra-local-library",
@@ -218,7 +218,7 @@
       {
         "id": "verify-memo-output",
         "title": "Predict the recurrence",
-        "prompt": "f(0) = 1 and f(i) = 3 * f(i - 1) + i, over domain I = 0..n. Predict the output of this prototype-tested program for each n.",
+        "prompt": "f(0) = 1 and f(i) = f(i - 1) * 3 + i. Predict the output of this runnable program (which prints f(n - 1)) for each n.",
         "hint": "0..n is half-open, so the last index is n - 1. Build the values upward from f(0).",
         "solution": "The sequence is f(0) = 1, f(1) = 4, f(2) = 14, f(3) = 45, f(4) = 139, and the program prints f(n - 1). So n = 1 prints 1, n = 3 prints 14, and n = 5 prints 139. A common mistake is treating 0..n as inclusive and printing f(n).",
         "kind": "output",
@@ -237,14 +237,14 @@
             "expected": "139"
           }
         ],
-        "code": "let n: 1..=20 = read()\ndomain I = 0..n\n\n// @memo caching is prototype-only; this version uses plain recursion.\nfn f(i: I) -> Int:\n    if let p = i.prev:\n        return f(p) * 3 + i.to_idx\n    1\n\nprint(f(I.last))"
+        "code": "let n: 1..=20 = read()\n\n// @memo caching is prototype-only. This runnable version uses plain recursion.\nfn f(i: Int) -> Int:\n    if i == 0:\n        return 1\n    f(i - 1) * 3 + i\n\nprint(f(n - 1))"
       },
       {
         "id": "verify-brute-part",
         "title": "What makes a good brute",
         "prompt": "You suspect range_sum, which uses a prefix table. Which @brute(range_sum) is most useful?",
         "hint": "A brute should be too simple to share the fast version's bug.",
-        "solution": "The direct loop. It is obviously correct, it checks exactly the suspect function, and fntest reports the first argument pair where they disagree, such as l=1 r=1.",
+        "solution": "The direct loop. It is obviously correct, it checks exactly the suspect function, and cpl stress shrinks to the first failing case, such as l=1 r=1.",
         "kind": "choice",
         "options": [
           "A copy of range_sum with different variable names",
@@ -253,7 +253,7 @@
           "sum(a[i] for i in l..=r), a direct loop over the range"
         ],
         "answer": 3,
-        "explanation": "A renamed copy shares every bug. A whole-program brute built on the same prefix table shares the idea and only says the final answer differs. Samples are a handful of cases, while fntest tries thousands of random calls on generated inputs."
+        "explanation": "A renamed copy shares every bug. A whole-program brute built on the same prefix table shares the idea and only says the final answer differs. Samples are a handful of cases, while cpl stress tries thousands of generated inputs and shrinks the first counterexample."
       },
       {
         "id": "verify-shrink",
@@ -290,14 +290,14 @@
       {
         "id": "verify-query-budget",
         "title": "Fit the query limit",
-        "prompt": "The Guess protocol (approved design) has limit ask: 30 and a secret in 1..=1e9. Which strategy fits the budget for every secret?",
+        "prompt": "An interactive problem has a secret in 1..=1e9 and allows at most 30 queries via ask(\"?\", x, limit: 30) paired with @interactor. Which strategy fits the budget for every secret?",
         "hint": "Count how many halvings it takes to get from 10^9 candidates to one.",
-        "solution": "Binary search needs at most 30 asks, because 2^30 is just over 10^9. Locally, every run counts asks against limit ask: 30 and prints the call log if a 31st is made.",
+        "solution": "Binary search with bsearch_first(1..=1e9, ok) needs at most 30 asks, because 2^30 is just over 10^9. Locally, @interactor enforces limit: 30 and prints the query transcript if a 31st is made.",
         "kind": "choice",
         "options": [
           "Ask every value from 1 upward",
           "Ask 30 random values and answer the closest",
-          "Binary search with first_true, about log2(1e9) questions",
+          "Binary search with bsearch_first(1..=1e9, ok), about log2(1e9) questions",
           "Ternary search with two asks per step"
         ],
         "answer": 2,

@@ -1,12 +1,18 @@
 <div class="playground-toolbar">
   <label for="example-picker"><span class="runner-label">Example </span><select id="example-picker">
-    <option value="sum">Array sum</option><option value="bounds">Prefix boundaries</option>
-    <option value="accumulation">Accumulation</option><option value="ascii">ASCII character count</option>
-    <option value="optional">Optional predecessor</option><option value="memo">Recursive recurrence</option>
+    <option value="sum">Array sum</option>
+    <option value="bounds">Prefix boundaries (.l / .r)</option>
+    <option value="knapsack">0/1 knapsack ([I.bounds, 0..=cap])</option>
+    <option value="range_array">Frequency array ([0..=k]Int)</option>
+    <option value="str-scan">ASCII string scan (0..s.len Str)</option>
+    <option value="accumulation">Bounded accumulation</option>
+    <option value="ascii">Nominal [S]Char count</option>
+    <option value="optional">Optional maximum (?Int)</option>
+    <option value="memo">Recursive recurrence</option>
   </select></label>
 </div>
 <div id="playground-editor">{{editor}}</div>
 <h2 id="execution">What runs here</h2>
 <p>The real CP Lang compiler and interpreter run locally in WebAssembly. Edit the source and standard input, run your program, or inspect its generated C++17. Diagnostics and cursor type information come from the same frontend as <code>cpl</code>.</p>
 <p>Programs run in a worker with a five-second limit; Stop cancels a run. Browser recursion and memory limits are lower than the local toolchain. Design-only language features may report compiler diagnostics.</p>
-<p>Explore the <a href="course.html">interactive course</a> or inspect recorded states in the <a href="trace.html">trace debugger</a>.</p>
+<p>Keep the <a href="cheat-sheet.html">one-page cheat sheet</a> handy, work through the <a href="course.html">interactive course</a>, or inspect recorded states in the <a href="trace.html">trace debugger</a>.</p>

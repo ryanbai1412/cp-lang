@@ -167,10 +167,8 @@ class SiteTests(unittest.TestCase):
             "best-window": [("5 2\n3 -1 4 1 5\n", "6"),
                             ("5 5\n3 -1 4 1 5\n", "12"),
                             ("3 1\n-2 -9 -4\n", "-2")],
-            "ordinals": [("5\n", "5 3 2 2 YES")],
-            "user-index": [("2 3\n", "6 23 5 2")],
-            "grid": [("2 3\n", "21 21 YES")],
-            "slices": [("5\n9 2 7 4 5\n", "3 7 3 13\n9 2 4 7 5\n2 4 7 0")],
+            "grid-sum": [("2 3\n", "21 21 YES")],
+            "slices": [("5\n9 2 7 4 5\n", "3 7 13\n9 2 4 7 5")],
         }
         programs = {}
         for name in ("first-program", "domains", "index-slices"):
@@ -190,8 +188,10 @@ class SiteTests(unittest.TestCase):
         fixtures = {
             "bounds": [("5\n3 1 4 1 5\n", "14"), ("1\n-9\n", "-9")],
             "sum": [("5\n3 1 4 1 5\n", "14"), ("1\n-9\n", "-9")],
+            "knapsack": [("3 7\n3 4\n4 5\n2 3\n", "9"), ("2 3\n4 10\n5 20\n", "0")],
+            "range_array": [("6 4\n0 2 4 2 1 2\n", "1 1 3 0 1")],
             "accumulation": [("4\n0 1 2 3\n", "6"), ("1\n0\n", "0")],
-            "optional": [("", "0 10 10")],
+            "optional": [("5\n3 7 4 1 8\n", "8"), ("3\n1 3 5\n", "-1")],
             "ascii": [("5\nabaca\n", "3"), ("1\nz\n", "0")],
             "memo": [("4\n", "45"), ("1\n", "1")],
         }

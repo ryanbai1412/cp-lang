@@ -4,13 +4,13 @@
   "description": "A reused item hides in a single DP transition. Compare the optimized run with its reference.",
   "source": {
     "file": "knapsack.cp",
-    "code": "fn knapsack(weights, values, capacity):\n    var dp = table(5, capacity + 1, 0)\n    for i in 1..=4:\n        for c in 1..=capacity:\n            dp[i][c] = dp[i - 1][c]\n            if c >= weights[i - 1]:\n                let rest = c - weights[i - 1]\n                dp[i][c] = max(dp[i][c],\n                    dp[i][rest] + values[i - 1])\n    dp[4][capacity]\n\n// spec uses dp[i - 1][rest] on line 9\n// Each item may be chosen at most once.\n"
+    "code": "fn knapsack(w: [I]Int, v: [I]Int, cap: Int) -> Int:\n    var dp: [I.bounds, 0..=cap]Int = 0\n    for i in I:\n        for c in 1..=cap:\n            dp[i.r, c] = dp[i.l, c]\n            if c >= w[i]:\n                let rest = c - w[i]\n                dp[i.r, c] max=\n                    dp[i.r, rest] + v[i]\n    dp[I.last.r, cap]\n\n// spec uses dp[i.l, rest] on line 9\n// Each item may be chosen at most once.\n"
   },
   "variables": {
     "dp": {
       "name": "dp",
       "kind": "dp",
-      "type": "[Item][Capacity]Int",
+      "type": "[I.bounds, 0..=cap]Int",
       "rowLabels": [
         "∅",
         "w=2",
@@ -29,13 +29,13 @@
         7,
         8
       ],
-      "rowDomain": "Item",
-      "colDomain": "Capacity"
+      "rowDomain": "I.bounds",
+      "colDomain": "0..=cap"
     },
     "weights": {
       "name": "weights",
       "kind": "array",
-      "type": "[Item]Int",
+      "type": "[I]Int",
       "labels": [
         0,
         1,
@@ -46,7 +46,7 @@
     "values": {
       "name": "values",
       "kind": "array",
-      "type": "[Item]Int",
+      "type": "[I]Int",
       "labels": [
         0,
         1,

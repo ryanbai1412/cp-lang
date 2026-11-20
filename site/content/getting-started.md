@@ -68,4 +68,4 @@ cpl stress d.cp
 cpl doc std
 ```
 
-The remaining testing goal is stress cases generated from typed input, with local library code tested and documented through the same `test` and `doc` commands as the standard library. Until those commands land, follow the [working prototype stress recipe](testing.html#stress-a-real-port-today).
+The remaining testing goal is stress cases generated from typed input, with local library code tested and documented through the same `test` and `doc` commands as the standard library. See [memoization & stress tests](testing.html#running-cpl-stress) for the verification workflow, or keep the [one-page cheat sheet](cheat-sheet.html) open while coding.

@@ -4,19 +4,19 @@
   "description": "A postorder walk turns a rooted tree into subtree counts.",
   "source": {
     "file": "subtree.cp",
-    "code": "fn subtree_sizes(tree, root):\n    var size = [Vertex]1\n    fn visit(u, parent):\n        for v in tree.neighbors(u):\n            if v == parent: continue\n            visit(v, u)\n            size[u] += size[v]\n    visit(root, none)\n    size\n"
+    "code": "fn subtree_sizes(tree: Rooted<V>) -> [V]Int:\n    var size: [V]Int = 1\n    fn visit(u: V):\n        for v in tree.children(u):\n            visit(v)\n            size[u] += size[v]\n    visit(tree.root)\n    size\n"
   },
   "variables": {
     "tree": {
       "name": "tree",
       "kind": "tree",
-      "type": "Tree<Vertex>",
+      "type": "Rooted<V>",
       "root": 0
     },
     "size": {
       "name": "size",
       "kind": "array",
-      "type": "[Vertex]Int",
+      "type": "[V]Int",
       "labels": [
         "A",
         "B",
@@ -30,7 +30,7 @@
     "stack": {
       "name": "call stack",
       "kind": "array",
-      "type": "[Depth]Vertex"
+      "type": "List<V>"
     }
   },
   "runs": {
@@ -413,7 +413,7 @@
         },
         {
           "id": 4,
-          "line": 6,
+          "line": 5,
           "label": "Finish subtree D",
           "stage": "Compute",
           "values": {
@@ -509,7 +509,7 @@
         },
         {
           "id": 5,
-          "line": 7,
+          "line": 6,
           "label": "Accumulate size[B] += 1",
           "stage": "Compute",
           "values": {
@@ -707,7 +707,7 @@
         },
         {
           "id": 7,
-          "line": 6,
+          "line": 5,
           "label": "Finish subtree E",
           "stage": "Compute",
           "values": {
@@ -804,7 +804,7 @@
         },
         {
           "id": 8,
-          "line": 7,
+          "line": 6,
           "label": "Accumulate size[B] += 1",
           "stage": "Compute",
           "values": {
@@ -903,7 +903,7 @@
         },
         {
           "id": 9,
-          "line": 6,
+          "line": 5,
           "label": "Finish subtree B",
           "stage": "Compute",
           "values": {
@@ -999,7 +999,7 @@
         },
         {
           "id": 10,
-          "line": 7,
+          "line": 6,
           "label": "Accumulate size[A] += 3",
           "stage": "Compute",
           "values": {
@@ -1299,7 +1299,7 @@
         },
         {
           "id": 13,
-          "line": 6,
+          "line": 5,
           "label": "Finish subtree F",
           "stage": "Compute",
           "values": {
@@ -1398,7 +1398,7 @@
         },
         {
           "id": 14,
-          "line": 7,
+          "line": 6,
           "label": "Accumulate size[C] += 1",
           "stage": "Compute",
           "values": {
@@ -1602,7 +1602,7 @@
         },
         {
           "id": 16,
-          "line": 6,
+          "line": 5,
           "label": "Finish subtree G",
           "stage": "Compute",
           "values": {
@@ -1702,7 +1702,7 @@
         },
         {
           "id": 17,
-          "line": 7,
+          "line": 6,
           "label": "Accumulate size[C] += 1",
           "stage": "Compute",
           "values": {
@@ -1804,7 +1804,7 @@
         },
         {
           "id": 18,
-          "line": 6,
+          "line": 5,
           "label": "Finish subtree C",
           "stage": "Compute",
           "values": {
@@ -1903,7 +1903,7 @@
         },
         {
           "id": 19,
-          "line": 7,
+          "line": 6,
           "label": "Accumulate size[A] += 3",
           "stage": "Compute",
           "values": {
@@ -2004,7 +2004,7 @@
         },
         {
           "id": 20,
-          "line": 6,
+          "line": 5,
           "label": "Finish subtree A",
           "stage": "Compute",
           "values": {
@@ -2101,7 +2101,7 @@
         },
         {
           "id": 21,
-          "line": 9,
+          "line": 8,
           "label": "Return subtree sizes",
           "stage": "Output",
           "values": {

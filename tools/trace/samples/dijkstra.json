@@ -4,19 +4,19 @@
   "description": "Follow the frontier as Dijkstra settles a weighted graph.",
   "source": {
     "file": "dijkstra.cp",
-    "code": "fn shortest_paths(g, start):\n    var dist = [Vertex]none\n    dist[start] = 0\n    var queue = MinHeap((0, start))\n    while let (d, u) = queue.pop():\n        if d != dist[u]: continue\n        for (v, weight) in g.neighbors(u):\n            if dist[v] == none or d + weight < dist[v]:\n                dist[v] = d + weight\n                queue.push((dist[v], v))\n    dist\n"
+    "code": "fn shortest_paths(g: Graph<V, Int>, start: V) -> [V]?Int:\n    var dist: [V]?Int = none\n    dist[start] = 0\n    var queue = MinHeap<(Int, V)>()\n    queue.push((0, start))\n    while let (d, u) = queue.pop():\n        if dist[u] != d: continue\n        for (v, w) in g[u]:\n            if dist[v].is_none or d + w < dist[v]!:\n                dist[v] = d + w\n                queue.push((d + w, v))\n    dist\n"
   },
   "variables": {
     "graph": {
       "name": "g",
       "kind": "graph",
-      "type": "Graph<Vertex, Int>",
+      "type": "Graph<V, Int>",
       "directed": false
     },
     "dist": {
       "name": "dist",
       "kind": "array",
-      "type": "[Vertex]?Int",
+      "type": "[V]?Int",
       "labels": [
         "A",
         "B",
@@ -30,7 +30,7 @@
     "queue": {
       "name": "frontier",
       "kind": "array",
-      "type": "MinHeap<(Int, Vertex)>"
+      "type": "MinHeap<(Int, V)>"
     }
   },
   "runs": {
@@ -309,7 +309,7 @@
         },
         {
           "id": 2,
-          "line": 9,
+          "line": 10,
           "label": "Relax A → B",
           "stage": "Compute",
           "values": {
@@ -454,7 +454,7 @@
         },
         {
           "id": 3,
-          "line": 9,
+          "line": 10,
           "label": "Relax A → C",
           "stage": "Compute",
           "values": {
@@ -749,7 +749,7 @@
         },
         {
           "id": 5,
-          "line": 9,
+          "line": 10,
           "label": "Relax C → B",
           "stage": "Compute",
           "values": {
@@ -899,7 +899,7 @@
         },
         {
           "id": 6,
-          "line": 9,
+          "line": 10,
           "label": "Relax C → E",
           "stage": "Compute",
           "values": {
@@ -1204,7 +1204,7 @@
         },
         {
           "id": 8,
-          "line": 9,
+          "line": 10,
           "label": "Relax B → D",
           "stage": "Compute",
           "values": {
@@ -1507,7 +1507,7 @@
         },
         {
           "id": 10,
-          "line": 9,
+          "line": 10,
           "label": "Relax E → D",
           "stage": "Compute",
           "values": {
@@ -1659,7 +1659,7 @@
         },
         {
           "id": 11,
-          "line": 9,
+          "line": 10,
           "label": "Relax E → F",
           "stage": "Compute",
           "values": {
@@ -1816,7 +1816,7 @@
         },
         {
           "id": 12,
-          "line": 9,
+          "line": 10,
           "label": "Relax E → G",
           "stage": "Compute",
           "values": {
@@ -2135,7 +2135,7 @@
         },
         {
           "id": 14,
-          "line": 9,
+          "line": 10,
           "label": "Relax D → F",
           "stage": "Compute",
           "values": {
@@ -2599,7 +2599,7 @@
         },
         {
           "id": 17,
-          "line": 11,
+          "line": 12,
           "label": "All shortest paths are settled",
           "stage": "Output",
           "values": {

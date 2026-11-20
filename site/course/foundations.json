@@ -177,18 +177,18 @@
       {
         "id": "index-slices-predict-ordinal",
         "kind": "choice",
-        "title": "Labels and ordinals",
-        "prompt": "With domain V = 1..=n and n = 5, what does print(V.K, V(3).label, V(3).to_idx) print?",
+        "title": "Size and dense index",
+        "prompt": "With domain V = 1..=n and n = 5, what do V.K and V(3).to_idx evaluate to?",
         "options": [
-          "6 3 2",
-          "5 2 2",
-          "5 3 2",
-          "5 3 3"
+          "6 and 2",
+          "5 and 3",
+          "5 and 2",
+          "6 and 3"
         ],
         "answer": 2,
-        "hint": "K counts the elements. The label is the statement's number; the ordinal is the zero-based slot.",
-        "solution": "It prints 5 3 2. There are five positions, V(3) is labeled 3, and it occupies ordinal 2 because ordinals start at 0.",
-        "explanation": "V.K is the number of values, 5, not the number of boundaries, which would be 6. The label is the number you wrote, 3, while to_idx is its dense zero-based ordinal, 2, the slot an array uses. Answers that print 3 for to_idx confuse the label with the ordinal; answers that print 2 for the label confuse them the other way."
+        "hint": "V.K counts the elements of V; to_idx maps positions densely into 0..V.K.",
+        "solution": "V.K is 5 and V(3).to_idx is 2. There are five positions, and the third element (1-based) occupies zero-based slot 2.",
+        "explanation": "V.K is the number of elements (5), not the number of boundaries (6). to_idx always yields a zero-based offset in 0..V.K, so V(1).to_idx is 0 and V(3).to_idx is 2."
       },
       {
         "id": "index-slices-frozen-k",
@@ -231,7 +231,7 @@
           "The slice a[lo..=hi]",
           "A var holding a[lo..=hi]",
           "A copy a[lo..=hi].copy(), which the caller sorts",
-          "The range lo..=hi, which the caller applies as a[w].sort()"
+          "The range lo..=hi, which the caller applies as sort(mut a[w])"
         ],
         "answer": 3,
         "hint": "One of these is plain data; one is a lexical borrow; one is a separate owned list.",

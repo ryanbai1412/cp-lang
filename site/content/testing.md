@@ -1,67 +1,67 @@
-Keep the fast solution, a simple trusted alternative, and the input constraints close together. A randomized mismatch is useful only if you can turn it into a small input and understand which part disagreed.
+Contest bugs rarely come from the idea; they come from an edge case you did not construct by hand. CP Lang puts memoization, input generators, brute-force oracles, constructive checkers, and local interactors inside the same `.cp` file, then strips verification code automatically in judge builds.
 
-## Memoize the recurrence
+## Memoization with `@memo`
 
-`@memo` caches a function by its arguments. Here the domain bounds the state space; the recurrence asks for the previous state only when it exists.
+Annotate a pure recursive function with `@memo` to cache its results over any `Index` parameter tuple:
+
+```cp CP Lang v2
+@memo
+fn dp(u: V, used: Bool) -> Int:
+    ...
+```
+
+When the parameter product is an algebraic `Index` with size `<= 2^26`, `@memo` emits a flat dense array (zero hash overhead); otherwise it uses a per-process salted open-addressed hash table. Override explicitly with `@memo(flat)` or `@memo(hash)`.
+
+In the browser playground and current Rust/WASM interpreter, `@memo` caching is prototype-only, so the runnable example below executes the same recurrence with plain recursion:
 
 ```example memo
 ```
 
-With input `4`, the states are `1`, `4`, `14`, `45`, so the program prints `45`. `i.to_idx` is the zero-based ordinal, not a conversion from an unrelated integer domain. The browser's Rust backend does not implement `@memo` yet: this runnable example uses plain recursion, as its comment states. To cache the same recurrence in the Python prototype, add `@memo` above `fn f`.
+For input `4`, `f(3)` evaluates to `45`.
 
-The cache is not magic algorithm selection. Sparse scalar keys can use a hash-backed cache; finite indexed keys permit dense tables. The prototype also supports `@memo(into: dp)` to name the table and `@memo(order: ascending)` for an explicit ascending evaluation order. Choose an order only when it matches the recurrence's dependencies. Do not read “memoized” as “safe for cycles” or “safe for arbitrarily deep recursion”.
+## Assertions, assumptions, and `debug`
 
-For a real tree DP, read [IOI 2005 Rivers](https://github.com/ryanbai1412/cp-lang/blob/main/proto/ports/ioi05p6.cp). It memoizes depth and the cost of serving a subtree from a selected mill.
+CP Lang distinguishes three diagnostic tools so local checks stay strict without slowing down judge submissions:
 
-## Turn input into a specification
+- `assume cond` — documents an input precondition; checked in local debug builds and used to filter/validate generated stress inputs, then stripped on judge builds.
+- `assert cond` — always checked in both local and judge builds.
+- `debug(x, dp)` — pretty-prints labeled values to `stderr` locally and replays side-by-side when `cpl stress` finds a failing case; stripped on judge builds.
 
-The input **spec** is the type-and-constraint description of valid cases. In the current prototype that description is written as typed `read()` declarations, not a separate `spec` keyword or block.
+## Co-located `@brute`, `@checker`, `@interactor`, and `@gen`
 
-```cp Input specification · prototype syntax
-let n: 1..=2e5 = read()
-domain V = 1..=n
-let a: [V]0..=1e9 = read()
+Write your slow reference, constructive validator, or interactive judge right next to your solution:
+
+```cp CP Lang v2
+@gen
+fn make_case(size: Int):
+    let n = rand(1..=size)
+    emit(n)
+    emit([0..n] _ => rand(-10..=10))
+
+@brute(main)
+fn slow():
+    ...
+
+@checker
+fn check():
+    let ans: [V]Int = read_output()
+    assert is_valid(ans)
+
+@interactor
+fn judge():
+    let secret = read()
+    while let q = next_query():
+        reply(compare(q, secret))
 ```
 
-These declarations say how to read input, how much storage to allocate, and what values a generator is allowed to produce. A `where` condition adds a relation between values. For structured inputs that are expensive to generate by rejection, the prototype accepts a custom `gen:` helper; [Rivers](https://github.com/ryanbai1412/cp-lang/blob/main/proto/ports/ioi05p6.cp) generates a tree directly and checks its drainage invariant.
+In interactive problems, pair `@interactor` with `ask("?", x, limit: 2)` so query limits are enforced locally. Every generator draws from a replayable choice stream, which lets `cpl stress` shrink any failing test automatically without writing a custom shrinker.
 
-The approved tooling direction extends this to typed generators and structure-aware shrinkers: a failing tree should shrink by removing leaves, not by deleting arbitrary bytes until it stops being a tree. The full automatic shrinking workflow is still planned, not a feature of the Rust CLI today.
+## Running `cpl stress`
 
-## Keep a brute for one part
+`cpl stress solution.cp` defaults to the in-file `@brute`, `@checker`, or `@interactor`, escalates test sizes (`1..=20`), compiles with `-DLOCAL`, shrinks the first failure via choice streams, replays `debug(...)` outputs side-by-side, and reports max size reached, rejection rate (warning above 50%), diff mode (`--close 1e-9` for floats), and output diversity.
 
-The prototype attaches `@brute(fast_name)` to the slow function. This direction matters: name the function being checked, not the brute itself.
+For a visual side-by-side comparison of an optimized DP run against its reference, open the [trace explorer](trace.html) and inspect the 0/1 knapsack capture.
 
-```cp CP Lang · prototype syntax fragment
-fn fast(a: [V]Int) -> Int:
-    sum(a)
+## How the site stays honest
 
-@brute(fast)
-fn slow(a: [V]Int) -> Int:
-    var result = 0
-    for v in V:
-        result += a[v]
-    result
-```
-
-This tiny pair assumes the input and domain from the preceding specification. Real brutes are deliberately slower and simpler. A brute for one stage is often more informative than a second implementation of the whole program: it narrows the disagreement to that stage.
-
-## Stress a real port today
-
-Run the prototype against an original C++ solution. The following recipe copies a port out of the tracked directory because prototype build commands stamp the source and write generated files next to it.
-
-```sh
-mkdir -p scratch/docs-stress
-cp proto/ports/dmopc21c2p1.cp scratch/docs-stress/solution.cp
-python3 proto/cp.py stress scratch/docs-stress/solution.cp \
-  proto/ports/dmopc21c2p1_orig.cpp 100 8
-```
-
-The last two arguments are the number of seeds and the small size bound. The tool compiles the solution, generator, and reference with `g++`, compares tokenized outputs, and prints the seed and input on a mismatch. This is a real local native run, not a simulated example. It does not by itself prove correctness over the full input range.
-
-`python3 proto/cp.py fntest file.cp 20 8` checks the file's `@brute(fast)` and invariant functions on generated calls. `locate` can search small generated inputs and swap a part for its brute to help identify the source of a disagreement. Those prototype tools are separate from the planned polished `cpl stress` command.
-
-## The finished workflow
-
-An input spec describes **legal inputs**. The approved design also calls for co-located `spec` checks that describe **correct behavior**: keep a small trusted implementation beside the fast one, compare intermediate states, and show the first divergence in the trace debugger. That integrated state-diffing experience is planned; today's prototype `@brute` tools are the working starting point, not a claim that the finished `spec` workflow already ships.
-
-The intended `cpl stress d.cp` uses the input spec, checks fast and brute implementations, shrinks a failure while preserving validity, and saves a regression input beside the problem. Tests, brutes, and specification-only machinery must not inflate the submitted C++. The same testing model is intended for standard-library modules and local libraries, not just single solutions.
+Every worked example embedded in these pages is checked by the test suite against both the compiler and the offline WebAssembly runtime. Code blocks marked **CP Lang v2** show the locked specification; blocks marked **prototype tested** are executed on every build.

@@ -1,28 +1,35 @@
-You already know how to solve the problem. This chapter is about expressing the solution: indentation instead of braces, values instead of sentinels, and a file that reads like the main flow of your algorithm.
+You already know how to solve the problem. This chapter is about expressing the solution in CP Lang v2: indentation instead of braces, `?T` instead of sentinels, structural `[0..n]T` arrays alongside nominal domains, and a file that reads like the flow of your algorithm.
 
-## Values and mutation
+## Values, ranges, and mutation
 
-Use `let` by default, and `var` for a binding that changes. `Int` is the default 64-bit integer. A range type states a constraint, rather than asking you to remember which width is enough.
+Use `let` by default, `var` for bindings that change, and `const` for compile-time constants. `Int` is the default 64-bit signed integer. A range type states the problem's constraint right where the value enters the program.
 
 ```example accumulation
 ```
 
-Range-typed storage is intended to use the smallest fitting width, while arithmetic uses `Int`. `Int` reserves the most-negative 64-bit bit pattern for `none`, so `?Int` fits in the same eight bytes. Use the explicit fixed-width types for bit-level work.
+Range-typed storage uses the smallest fitting integer width while arithmetic runs in 64-bit `Int`. `Int` reserves `LLONG_MIN` as the niche for `none`, so `?Int` fits in eight bytes with zero overhead. Use `U64`, `I128`, and `F64` when you specifically need unsigned 64-bit, 128-bit, or floating-point arithmetic.
+
+When you want a plain integer-indexed array without introducing a nominal domain, write the bounds directly and reset with `.fill`:
+
+```example range_array
+```
+
+In CP Lang v2, `cnt.fill(0)` resets the entire array in place (and `seen.fill(none)` resets a `[D]?T` table between test cases).
 
 ## Missing is a value
 
-`?T` means “a `T`, or `none`”. `??` supplies a fallback; `if let` uses the value only when it exists. A missing predecessor is not `-1`, and an unreachable distance is not a suspiciously large integer.
+`?T` means “a `T`, or `none`”. `??` supplies a fallback, `if let` binds a present value, and `opt!` unwraps when you know it exists. A missing answer is not `-1`, and an unreachable distance is not `1e18`.
 
 ```example optional
 ```
 
-`v.prev` returns `none` at the first position. You cannot silently step outside the domain. The same pattern handles `v.next`, an empty minimum, and a lookup that finds nothing.
+`min` and `max` skip `none` on either side, and `ans min= dist[v]` updates only when `dist[v]` is present and smaller. Stepping a domain position by an integer (`v + 1`, `v - 1`, `v + k`) also returns `?V`, so stepping off either end can never silently read out of bounds. Neither `?T` nor `Mod<P>` implements `Ord`; when sorting records with optional fields, place `none` explicitly (`by: x => (x.d == none, x.d ?? 0)`).
 
-## Functions and explicit changes
+## Functions, nested helpers, and explicit `mut`
 
-A parameter borrows by default. A function that changes its argument marks it `mut`, and its caller agrees by writing `mut` too. There is no implicit deep copy of an array.
+Parameters borrow read-only by default. A function that mutates an argument marks it `mut`, and the caller writes `mut` too. There is no implicit deep copy of an array.
 
-```cp CP Lang · design
+```cp CP Lang v2
 fn add_to(mut a: [V]Int, v: V, delta: Int):
     a[v] += delta
 
@@ -30,14 +37,41 @@ add_to(mut a, V.first, 3)
 let snapshot = a.copy()
 ```
 
-An ordinary helper can see immutable values in the surrounding program. A nested `mut fn` can mutate captured variables but cannot escape as a stored function value. Read [ownership & borrowing](borrowing.html) before writing helpers that keep views into containers.
+A plain nested `fn` can read and mutate captured outer `var` bindings directly—ideal for a DFS that updates `vis` and `order` without threading extra parameters:
 
-## Records and choices
+```cp CP Lang v2
+var vis: [V]Bool = false
+fn dfs(u: V):
+    vis[u] = true
+    for v in g[u] if not vis[v]:
+        dfs(v)
+```
 
-Name the pieces of an edge instead of remembering what `first.second` means. Use an enum when the input describes one of several shapes, and `match` to handle each shape.
+Read [ownership & borrowing](borrowing.html) for the lexical rules behind `mut` borrows and `lends` projections.
 
-```cp CP Lang · design
-let edges: [E](u: V, v: V, w: 1..=1e9) = read()
+## Parallel assignment, `defer`, records, and choices
+
+Swap or step coupled state with parallel tuple assignment—the right-hand side is evaluated completely before any binding is written:
+
+```cp CP Lang v2
+var (r0, r1) = (a, b)
+while r1 != 0:
+    let q = r0 / r1
+    (r0, r1) = (r1, r0 - q * r1)
+```
+
+Use `defer` for rollback cleanup at scope exit, such as rolling back a DSU checkpoint:
+
+```cp CP Lang v2
+let snap = dsu.mark()
+defer dsu.undo_to(snap)
+```
+
+Name record fields instead of remembering `.first.second`, and match enums exhaustively with bare variant names:
+
+```cp CP Lang v2
+type Edge = (u: V, v: V, w: 1..=1e9)
+let edges: [0..m]Edge = read()
 
 enum Move:
     Add(v: V, delta: Int)
@@ -48,24 +82,25 @@ match move:
     Ask(l, r) => print(range_sum(l, r))
 ```
 
-This is a fragment: it assumes domains `V` and `E`, an array `a`, and the two helpers are already defined. The [Modern Art corpus port](https://github.com/ryanbai1412/cp-lang/blob/main/proto/ports/ccc21s2.cp) uses this pattern for row and column strokes.
-
 ## A few C++ habits to leave behind
 
-Write `and`, `or`, and `not` for logical operators. `..` excludes the end; `..=` includes it. A position plus an integer may leave its domain, so `v + k` is an optional: bind it with `if let`, clamp it with `??`, or assert it with `!`. `.next` and `.prev` are one step, and `.cyc(k)` wraps.
-
-In the approved design, integer division is `/` and remainder is `%`, with Euclidean semantics. The remainder is always non-negative and smaller than the absolute divisor: `-7 / 3` is `-3`, `-7 % 3` is `2`, and `7 / -3` is `-2` with remainder `1`. Division by zero is an error. When operands are proven non-negative, the backend can use native C++ operations. `//` starts a line comment, not a division expression.
+- Write `and`, `or`, and `not` for logical operators.
+- `..` excludes the end; `..=` includes it. Open-ended ranges `..i`, `..=i`, and `i..` work in slices and range structures (`st.fold(..i)`).
+- Stepping a nominal domain position with `v + k` or `v - k` returns `?V`: handle it with `if let`, `??`, or `!`. `v.cyc(k)` wraps cyclically.
+- Use `x min= y` and `x max= y` (any two-argument function works as `x f= y`).
+- Integer division `/` and remainder `%` use Euclidean semantics: remainder is always in `0..|b|`, so `-7 / 3` is `-3` and `-7 % 3` is `2`. When operands are proven non-negative, C++ codegen lowers straight to native `/` and `%`. `//` is always a line comment.
+- Break out of nested loops with labels: `'outer: for r in Row:` and `break 'outer`.
 
 ## Program structure
 
-Use top-level code for the solution's flow and functions for parts you want to test alone. A top-level `return` ends the program, or the current case under `@multitest`. The decorator is library-level contest behavior, not a special kind of program body.
+Top-level statements run in order from top to bottom. A top-level `return` ends the program, or the current test case under `@multitest`:
 
-```cp CP Lang · design
-@multitest(sum: n <= 2e5)
+```cp CP Lang v2
+@multitest
 let n: 1..=2e5 = read()
 domain V = 1..=n
 let a: [V]Int = read()
 print(sum(a))
 ```
 
-Each case gets fresh ordinary state. Expensive immutable precomputation can use `static let`. Library modules contain declarations rather than hidden top-level actions; importing a helper should not secretly read input or change state.
+`@multitest` also accepts `@multitest(until_eof)` and `@multitest(count: t)`. Each test case starts with fresh state; shared immutable tables live in `const` or before the case loop. Library modules contain only declarations—importing a helper never reads input or mutates hidden global state.
