@@ -72,7 +72,115 @@ fn cache_dir() -> PathBuf {
     }
 }
 
-fn compile_cpp(source: &Path) -> Result<String, BuildError> {
+/// The flags every C++ file is built with. The precompiled header is
+/// only usable by a build with the same ones.
+const CXX_FLAGS: [&str; 2] = ["-std=c++17", "-O2"];
+
+/// A header that includes the whole standard library, with its
+/// precompiled form beside it, or `None` while there is none.
+///
+/// Most of the wait for a small C++ file is g++ reading the standard
+/// headers. Read once and kept, they cost a fraction of that. The header
+/// belongs to the compiler, not to a program, so it is kept per g++
+/// version in the temp dir rather than in the binary cache. The first
+/// run that finds it missing starts building it and goes on without it.
+/// `CPL_NO_PCH` turns it off.
+fn std_header() -> Option<&'static Path> {
+    static HEADER: std::sync::OnceLock<Option<PathBuf>> = std::sync::OnceLock::new();
+    HEADER.get_or_init(find_std_header).as_deref()
+}
+
+#[cfg(not(unix))]
+fn find_std_header() -> Option<PathBuf> {
+    None
+}
+
+#[cfg(unix)]
+fn find_std_header() -> Option<PathBuf> {
+    if std::env::var_os("CPL_NO_PCH").is_some() {
+        return None;
+    }
+    let version = Command::new("g++")
+        .args(["-dumpfullversion", "-dumpmachine"])
+        .output()
+        .ok()?;
+    let mut key = version.stdout;
+    key.extend(CXX_FLAGS.concat().bytes());
+    let dir = std::env::temp_dir()
+        .join("cpl-pch")
+        .join(format!("{:016x}", hash(&key)));
+    let header = dir.join("cpl_std.h");
+    let compiled = dir.join("cpl_std.h.gch");
+    if compiled.is_file() {
+        return Some(header);
+    }
+    std::fs::create_dir_all(&dir).ok()?;
+    // One build at a time: a marker left by a build that died is
+    // ignored once it is older than any build takes.
+    let marker = dir.join("building");
+    let stale = |path: &Path| {
+        let age = path
+            .metadata()
+            .and_then(|m| m.modified())
+            .ok()?
+            .elapsed()
+            .ok()?;
+        Some(age > Duration::from_secs(120))
+    };
+    if marker.exists() && stale(&marker) != Some(true) {
+        return None;
+    }
+    std::fs::write(&marker, b"").ok()?;
+    std::fs::write(&header, "#include <bits/stdc++.h>\n").ok()?;
+    // Left running after this process ends; the rename makes the
+    // header appear whole or not at all.
+    let script = r#"g++ "$@" -x c++-header "$HDR" -o "$HDR.gch.$$" && mv "$HDR.gch.$$" "$HDR.gch"; rm -f "$MARK""#;
+    Command::new("sh")
+        .args(["-c", script, "sh"])
+        .args(CXX_FLAGS)
+        .env("HDR", &header)
+        .env("MARK", &marker)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .ok()?;
+    None
+}
+
+/// Whether the first thing `text` does is include the whole standard
+/// library (`bits/stdc++.h`, or `bits/extc++.h`, which starts with it): then including it beforehand changes nothing. A file that
+/// first defines a macro or sets a pragma may mean it for the headers.
+fn starts_with_std(text: &[u8]) -> bool {
+    let text = String::from_utf8_lossy(text);
+    let mut in_comment = false;
+    for line in text.lines() {
+        let line = line.trim();
+        if in_comment {
+            in_comment = !line.contains("*/");
+            continue;
+        }
+        if line.is_empty() || line.starts_with("//") {
+            continue;
+        }
+        if line.starts_with("/*") {
+            in_comment = !line.contains("*/");
+            continue;
+        }
+        let rest = line.strip_prefix('#').map(str::trim_start);
+        let included = rest.and_then(|r| r.strip_prefix("include")).map(str::trim);
+        // `bits/extc++.h` includes `bits/stdc++.h` first.
+        return included.is_some_and(|name| {
+            let name = name.trim_start_matches(['<', '"']);
+            name.starts_with("bits/stdc++.h") || name.starts_with("bits/extc++.h")
+        });
+    }
+    false
+}
+
+/// Builds `source`. `ours` is for C++ the compiler emitted: it includes
+/// standard headers only, and no macro of its own comes before them.
+fn compile_cpp(source: &Path, ours: bool) -> Result<String, BuildError> {
     let text = std::fs::read(source)
         .map_err(|e| BuildError(format!("can't read {}: {e}", source.display())))?;
     let dir = cache_dir();
@@ -88,8 +196,15 @@ fn compile_cpp(source: &Path) -> Result<String, BuildError> {
             hash(&text),
             std::process::id()
         ));
-        let output = Command::new("g++")
-            .args(["-std=c++17", "-O2", "-o"])
+        let mut build = Command::new("g++");
+        build.args(CXX_FLAGS);
+        if ours || starts_with_std(&text) {
+            if let Some(header) = std_header() {
+                build.arg("-include").arg(header);
+            }
+        }
+        let output = build
+            .arg("-o")
             .arg(&partial)
             .arg(source)
             .output()
@@ -159,9 +274,9 @@ impl Program {
         }
         let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
         let argv = match extension {
-            "cpp" | "cc" | "cxx" => vec![compile_cpp(path)?],
+            "cpp" | "cc" | "cxx" => vec![compile_cpp(path, false)?],
             "py" => vec!["python3".to_string(), name.clone()],
-            "cp" => vec![compile_cpp(&emit_cpp(path)?)?],
+            "cp" => vec![compile_cpp(&emit_cpp(path)?, true)?],
             // Relative paths need `./` to be found.
             _ => vec![path
                 .canonicalize()
@@ -262,4 +377,30 @@ pub(crate) fn kill_group(pid: u32) {
         .status();
     #[cfg(not(unix))]
     let _ = pid;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::starts_with_std;
+
+    #[test]
+    fn the_standard_header_is_only_put_first_where_it_already_is() {
+        assert!(starts_with_std(
+            b"// a brute\n\n#include <bits/stdc++.h>\nint main() {}\n"
+        ));
+        assert!(starts_with_std(
+            b"/* two\n   lines */\n# include \"bits/extc++.h\"\n"
+        ));
+        // A macro or a pragma ahead of the headers may be meant for them.
+        assert!(!starts_with_std(
+            b"#define _GLIBCXX_DEBUG\n#include <bits/stdc++.h>\n"
+        ));
+        assert!(!starts_with_std(
+            b"#pragma GCC optimize(\"O3\")\n#include <bits/stdc++.h>\n"
+        ));
+        assert!(!starts_with_std(
+            b"#include <vector>\n#include <bits/stdc++.h>\n"
+        ));
+        assert!(!starts_with_std(b""));
+    }
 }

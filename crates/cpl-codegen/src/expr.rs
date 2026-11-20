@@ -461,15 +461,20 @@ impl<'p> Emitter<'p> {
                                 Code::primary(cell)
                             }
                         }
-                        Ty::List(elem) if **elem == Ty::Bool => {
-                            Code::new(format!("(bool)cpl::at({}, {})", codes[0].text, at[0]), UNARY)
+                        Ty::List(elem) if **elem == Ty::Bool => Code::new(
+                            format!("(bool)cpl::at({}, {})", codes[0].text, at[0]),
+                            UNARY,
+                        ),
+                        Ty::List(_) => {
+                            Code::primary(format!("cpl::at({}, {})", codes[0].text, at[0]))
                         }
-                        Ty::List(_) => Code::primary(format!("cpl::at({}, {})", codes[0].text, at[0])),
                         Ty::Array { elem, .. } if **elem == Ty::Bool => {
                             Code::new(format!("(bool){b}[{}]", at[0]), UNARY)
                         }
                         Ty::Str => Code::new(format!("(cpl::u8){b}[{}]", at[0]), UNARY),
-                        Ty::Map(..) | Ty::HashMap(..) => Code::primary(format!("{b}.at({})", at[0])),
+                        Ty::Map(..) | Ty::HashMap(..) => {
+                            Code::primary(format!("{b}.at({})", at[0]))
+                        }
                         _ => Code::primary(format!("{b}[{}]", at[0])),
                     }
                 })
@@ -583,7 +588,10 @@ impl<'p> Emitter<'p> {
                 let inner_is_pos = matches!(&e.ty, Ty::Range(inner) if matches!(**inner, Ty::Pos(_) | Ty::Bound(_)));
                 self.sequence(&[lo, hi], &e.ty, |_, codes| {
                     if inner_is_pos {
-                        Code::primary(format!("{rty}{{(int)({}), (int)({})}}", codes[0].text, codes[1].text))
+                        Code::primary(format!(
+                            "{rty}{{(int)({}), (int)({})}}",
+                            codes[0].text, codes[1].text
+                        ))
                     } else {
                         Code::primary(format!("{rty}{{{}, {}}}", codes[0].text, codes[1].text))
                     }
@@ -664,9 +672,9 @@ impl<'p> Emitter<'p> {
                     }
                 }
             }
-            ExprKind::Sort(place, sort_by) => self.lambda("void", |this, out| {
-                this.sort_stmts(place, sort_by, out)
-            }),
+            ExprKind::Sort(place, sort_by) => {
+                self.lambda("void", |this, out| this.sort_stmts(place, sort_by, out))
+            }
             ExprKind::Read(spec) => self.read(spec),
             ExprKind::Print(args) => self.lambda("void", |this, out| this.print_stmts(args, out)),
             ExprKind::Format(pieces) => self.lambda("std::string", |this, out| {
@@ -1078,7 +1086,9 @@ impl<'p> Emitter<'p> {
             Builtin::Reversed => {
                 if matches!(first_ty, Some(Ty::Str)) {
                     let s = text(0);
-                    Code::primary(format!("([](std::string s){{ std::reverse(s.begin(), s.end()); return s; }}({s}))"))
+                    Code::primary(format!(
+                        "([](std::string s){{ std::reverse(s.begin(), s.end()); return s; }}({s}))"
+                    ))
                 } else {
                     helper(self, "reversed")
                 }
@@ -1101,7 +1111,11 @@ impl<'p> Emitter<'p> {
             Builtin::PosOffset(d) => {
                 self.need("pos_ops");
                 let dn = ident(&self.program.domains[d]);
-                Code::primary(format!("cpl::pos_offset({}, {}, {dn}_len)", text(0), text(1)))
+                Code::primary(format!(
+                    "cpl::pos_offset({}, {}, {dn}_len)",
+                    text(0),
+                    text(1)
+                ))
             }
             Builtin::PosCyc(d) => {
                 self.need("pos_ops");
@@ -1111,12 +1125,20 @@ impl<'p> Emitter<'p> {
             Builtin::BoundStepL(d) => {
                 self.need("pos_ops");
                 let dn = ident(&self.program.domains[d]);
-                Code::primary(format!("cpl::bound_step((ll)({}) + 1 - ({}), {dn}_len)", text(0), text(1)))
+                Code::primary(format!(
+                    "cpl::bound_step((ll)({}) + 1 - ({}), {dn}_len)",
+                    text(0),
+                    text(1)
+                ))
             }
             Builtin::BoundStepR(d) => {
                 self.need("pos_ops");
                 let dn = ident(&self.program.domains[d]);
-                Code::primary(format!("cpl::bound_step((ll)({}) + ({}), {dn}_len)", text(0), text(1)))
+                Code::primary(format!(
+                    "cpl::bound_step((ll)({}) + ({}), {dn}_len)",
+                    text(0),
+                    text(1)
+                ))
             }
             Builtin::BoundLeft(_d) => {
                 self.need("pos_ops");
@@ -1191,7 +1213,11 @@ impl<'p> Emitter<'p> {
         for &slot in &def.params {
             let ty = &def.locals[slot].ty;
             let cpp = self.ty(ty);
-            let cpp = if ty.is_scalar() { cpp } else { format!("const {cpp}&") };
+            let cpp = if ty.is_scalar() {
+                cpp
+            } else {
+                format!("const {cpp}&")
+            };
             params.push((cpp, inner_names[slot].clone()));
         }
 
@@ -1203,6 +1229,8 @@ impl<'p> Emitter<'p> {
         let saved_closure = self.closure_id.replace(cid);
         let saved_names = std::mem::replace(&mut self.names, inner_names);
         let saved_hoisted = std::mem::replace(&mut self.hoisted, inner_hoisted);
+        let inner_spent = crate::scope::spent(self.program, &def.body);
+        let saved_spent = std::mem::replace(&mut self.spent, inner_spent);
         let saved_taken = std::mem::replace(&mut self.taken, inner_taken);
         let saved_fresh = std::mem::replace(&mut self.fresh, inner_fresh);
         let saved_brk = std::mem::take(&mut self.break_targets);
@@ -1254,7 +1282,13 @@ impl<'p> Emitter<'p> {
         };
         let param_parts: Vec<String> = params
             .iter()
-            .map(|(cpp, name)| if names(name) { format!("{cpp} {name}") } else { cpp.clone() })
+            .map(|(cpp, name)| {
+                if names(name) {
+                    format!("{cpp} {name}")
+                } else {
+                    cpp.clone()
+                }
+            })
             .collect();
         let text = format!(
             "[{}]({}) mutable -> {ret_cpp} {{\n{text}",
@@ -1266,6 +1300,7 @@ impl<'p> Emitter<'p> {
         self.closure_id = saved_closure;
         self.names = saved_names;
         self.hoisted = saved_hoisted;
+        self.spent = saved_spent;
         self.taken = saved_taken;
         self.fresh = saved_fresh;
         self.break_targets = saved_brk;

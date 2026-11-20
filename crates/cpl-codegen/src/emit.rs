@@ -105,6 +105,8 @@ pub(crate) struct Emitter<'p> {
     pub closure_id: Option<usize>,
     pub names: Vec<String>,
     pub hoisted: BTreeSet<usize>,
+    /// Tuple temporaries whose fields are moved out: see [`crate::scope::spent`].
+    pub spent: BTreeSet<usize>,
     pub taken: BTreeSet<String>,
     pub fresh: usize,
     /// Loops that a `break` or `continue` names from an inner loop.
@@ -146,6 +148,7 @@ impl<'p> Emitter<'p> {
             closure_id: None,
             names: Vec::new(),
             hoisted: BTreeSet::new(),
+            spent: BTreeSet::new(),
             taken: BTreeSet::new(),
             fresh: 0,
             break_targets: BTreeSet::new(),
@@ -306,6 +309,7 @@ impl<'p> Emitter<'p> {
             self.names.push(name);
         }
         self.hoisted = crate::scope::hoisted(body, params);
+        self.spent = crate::scope::spent(self.program, body);
         self.break_targets.clear();
         self.continue_targets.clear();
         walk::deep_stmts(body, &mut |stmt| match stmt {
@@ -380,9 +384,11 @@ impl<'p> Emitter<'p> {
     fn needs_complete(&self, ty: &Ty, out: &mut Vec<Ty>) {
         match ty {
             Ty::Struct(_) | Ty::Enum(_) => out.push(ty.clone()),
-            Ty::Opt(inner) | Ty::List(inner) | Ty::Set(inner) | Ty::HashSet(inner) | Ty::Range(inner) => {
-                self.needs_complete(inner, out)
-            }
+            Ty::Opt(inner)
+            | Ty::List(inner)
+            | Ty::Set(inner)
+            | Ty::HashSet(inner)
+            | Ty::Range(inner) => self.needs_complete(inner, out),
             Ty::Array { elem, .. } => self.needs_complete(elem, out),
             Ty::Map(key, value) | Ty::HashMap(key, value) => {
                 self.needs_complete(key, out);

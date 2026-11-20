@@ -146,3 +146,57 @@ impl Scopes {
         }
     }
 }
+
+/// The tuple temporaries of a fn that exist only to be taken apart:
+/// `let (u, arcs, i) = path[k]` is lowered as a copy of `path[k]`
+/// followed by one `let` per field, and nothing else reads the copy. Its
+/// fields can be moved out of it rather than copied a second time.
+///
+/// A slot qualifies when its `let` is directly followed by the `let`s
+/// of its fields, each field at most once, and those are its only uses.
+pub(crate) fn spent(program: &cpl_ir::Program, body: &Block) -> BTreeSet<usize> {
+    let mut reads: BTreeMap<usize, usize> = BTreeMap::new();
+    let mut barred = walk::Effects::of_block(body).locals;
+    walk::deep_exprs(body, &mut |e| match &e.kind {
+        ExprKind::Local(slot) => *reads.entry(*slot).or_default() += 1,
+        ExprKind::Closure(id) => {
+            barred.extend(program.closures[*id].captures.iter().map(|c| c.outer));
+        }
+        _ => {}
+    });
+    // The run of field `let`s being followed: the slot and the fields
+    // taken so far.
+    let mut run: Option<(usize, BTreeSet<usize>)> = None;
+    let mut found = BTreeSet::new();
+    let mut close = |run: &mut Option<(usize, BTreeSet<usize>)>| {
+        if let Some((slot, fields)) = run.take() {
+            if reads.get(&slot) == Some(&fields.len()) && !barred.contains(&slot) {
+                found.insert(slot);
+            }
+        }
+    };
+    walk::deep_stmts(body, &mut |stmt| {
+        if let Stmt::Let(_, Some(init)) = stmt {
+            if let ExprKind::Field(base, index) = &init.kind {
+                if let (ExprKind::Local(slot), Some((of, fields))) = (&base.kind, &mut run) {
+                    if slot == of && fields.insert(*index) {
+                        return;
+                    }
+                    // A second read of one field: the slot is not spent.
+                    if slot == of {
+                        run = None;
+                        return;
+                    }
+                }
+            }
+        }
+        close(&mut run);
+        if let Stmt::Let(slot, Some(init)) = stmt {
+            if matches!(init.ty, cpl_ir::Ty::Tuple(_)) {
+                run = Some((*slot, BTreeSet::new()));
+            }
+        }
+    });
+    close(&mut run);
+    found
+}
