@@ -2,7 +2,9 @@
 
 use super::types::pattern_types;
 use super::*;
-use cpl_syntax::ast::{self, AssignOp, Block, Expr, ExprKind, FnBody, Pattern, PatternKind, Stmt, StmtKind};
+use cpl_syntax::ast::{
+    self, AssignOp, Block, Expr, ExprKind, FnBody, Pattern, PatternKind, Stmt, StmtKind,
+};
 
 impl<'a> Checker<'a> {
     /// Checks the statements of one top-level item.
@@ -37,7 +39,11 @@ impl<'a> Checker<'a> {
                 }
             }
             PatternKind::Variant { path, args } => {
-                let fields = match path.last().and_then(|name| self.env.global(&name.text)).as_deref() {
+                let fields = match path
+                    .last()
+                    .and_then(|name| self.env.global(&name.text))
+                    .as_deref()
+                {
                     Some(Def::Variant { fields, .. }) => fields.clone(),
                     _ => Vec::new(),
                 };
@@ -60,20 +66,29 @@ impl<'a> Checker<'a> {
 
     fn stmt(&mut self, stmt: &Stmt, top_level: bool) -> Ty {
         match &stmt.kind {
-            StmtKind::Let { mutable, pat, ty, init } => {
+            StmtKind::Let {
+                mutable,
+                pat,
+                ty,
+                init,
+            } => {
                 let keyword = if *mutable { "var" } else { "let" };
                 let declared = ty.as_ref().map(|ty| self.resolve_type(ty));
                 let init_ty = init.as_ref().map(|init| self.infer(init));
                 // `var seen: [V]Bool = false` fills the array with the value.
                 // A comprehension builds the array when one is declared.
                 let fills = match (&declared, &init_ty) {
-                    (Some(Ty::Array { elem, .. }), Some(Ty::Named { name, args })) if name == "List" && args.len() == 1 => {
+                    (Some(Ty::Array { elem, .. }), Some(Ty::Named { name, args }))
+                        if name == "List" && args.len() == 1 =>
+                    {
                         args[0].fits(elem)
                     }
                     (Some(Ty::Array { elem, .. }), Some(init_ty)) => init_ty.fits(elem),
                     _ => false,
                 };
-                if let (Some(declared), Some(init_ty), Some(init), false) = (&declared, &init_ty, init, fills) {
+                if let (Some(declared), Some(init_ty), Some(init), false) =
+                    (&declared, &init_ty, init, fills)
+                {
                     let name = self.quote(pat.span);
                     self.expect_fits(init_ty, declared, init, |c, got, want| {
                         format!(
@@ -111,7 +126,8 @@ impl<'a> Checker<'a> {
                     args: Vec::new(),
                 };
                 let outer = self.generics.len();
-                self.generics.extend(s.generics.iter().map(|g| g.text.clone()));
+                self.generics
+                    .extend(s.generics.iter().map(|g| g.text.clone()));
                 for field in &s.fields {
                     let ty = self.resolve_type(&field.ty);
                     self.hovers.push(HoverEntry {
@@ -144,7 +160,8 @@ impl<'a> Checker<'a> {
                     args: Vec::new(),
                 };
                 let outer = self.generics.len();
-                self.generics.extend(e.generics.iter().map(|g| g.text.clone()));
+                self.generics
+                    .extend(e.generics.iter().map(|g| g.text.clone()));
                 for variant in &e.variants {
                     for (_, ty) in &variant.fields {
                         self.resolve_type(ty);
@@ -158,31 +175,48 @@ impl<'a> Checker<'a> {
                 self.infer(def);
                 self.type_hover(name);
                 if !top_level {
-                    self.declare(&name.text, name.span, Ty::Domain(name.text.clone()), false, "domain");
+                    self.declare(
+                        &name.text,
+                        name.span,
+                        Ty::Domain(name.text.clone()),
+                        false,
+                        "domain",
+                    );
                 }
             }
             StmtKind::TypeAlias { name, generics, ty } => {
                 let outer = self.generics.len();
-                self.generics.extend(generics.iter().map(|g| g.text.clone()));
+                self.generics
+                    .extend(generics.iter().map(|g| g.text.clone()));
                 self.resolve_type(ty);
                 self.generics.truncate(outer);
                 self.type_hover(name);
             }
-            StmtKind::Trait { name, generics, body } => {
+            StmtKind::Trait {
+                name,
+                generics,
+                body,
+            } => {
                 let outer = self.generics.len();
-                self.generics.extend(generics.iter().map(|g| g.text.clone()));
+                self.generics
+                    .extend(generics.iter().map(|g| g.text.clone()));
                 self.type_hover(name);
                 self.methods(&body.stmts, &Ty::Unknown);
                 self.generics.truncate(outer);
             }
-            StmtKind::Impl { trait_name, target, body } => {
+            StmtKind::Impl {
+                trait_name,
+                target,
+                body,
+            } => {
                 if let Some(trait_name) = trait_name {
                     self.resolve_type(trait_name);
                 }
                 let self_ty = self.resolve_type(target);
                 self.methods(&body.stmts, &self_ty);
             }
-            StmtKind::Use { .. } | StmtKind::Break(_) | StmtKind::Continue(_) | StmtKind::Error => {}
+            StmtKind::Use { .. } | StmtKind::Break(_) | StmtKind::Continue(_) | StmtKind::Error => {
+            }
             StmtKind::Expr(expr) => return self.infer(expr),
             StmtKind::Assign { target, op, value } => {
                 let target_ty = self.infer(target);
@@ -206,7 +240,9 @@ impl<'a> Checker<'a> {
                 self.block(body);
                 self.pop_scope();
             }
-            StmtKind::For { pat, iter, body, .. } => {
+            StmtKind::For {
+                pat, iter, body, ..
+            } => {
                 let iter_ty = self.infer(iter);
                 let elem = self.element_ty(&iter_ty);
                 self.push_scope();
@@ -237,7 +273,9 @@ impl<'a> Checker<'a> {
 
     /// Checks a returned value against the enclosing fn's declared type.
     fn returns(&mut self, value: &Expr, value_ty: &Ty) {
-        let Some((name, ret, declared)) = self.fns.last().cloned() else { return };
+        let Some((name, ret, declared)) = self.fns.last().cloned() else {
+            return;
+        };
         if !declared {
             return;
         }
@@ -287,7 +325,8 @@ impl<'a> Checker<'a> {
             });
         }
         let outer = self.generics.len();
-        self.generics.extend(f.generics.iter().map(|g| g.text.clone()));
+        self.generics
+            .extend(f.generics.iter().map(|g| g.text.clone()));
         self.in_fn += 1;
         self.push_scope();
         // Inside a method the struct's fields can be named without `self.`.
@@ -312,7 +351,13 @@ impl<'a> Checker<'a> {
         for param in &f.params {
             if self_ty.is_some() && param.name.text == "self" {
                 let ty = self_ty.cloned().unwrap_or(Ty::Unknown);
-                self.declare("self", param.name.span, ty, param.mutable, if param.mutable { "param" } else { "self" });
+                self.declare(
+                    "self",
+                    param.name.span,
+                    ty,
+                    param.mutable,
+                    if param.mutable { "param" } else { "self" },
+                );
                 continue;
             }
             let ty = sig_params.next().map_or(Ty::Unknown, |p| p.ty.clone());
@@ -328,11 +373,24 @@ impl<'a> Checker<'a> {
                     )
                 });
             }
-            self.declare(&param.name.text, param.name.span, ty, param.mutable, "param");
+            self.declare(
+                &param.name.text,
+                param.name.span,
+                ty,
+                param.mutable,
+                "param",
+            );
         }
         // A generator's body yields its values; it has no value of its own.
-        let generator = matches!(f.ret.as_ref().map(|t| &t.kind), Some(ast::TypeKind::Yields(_)));
-        self.fns.push((f.name.text.clone(), (**ret).clone(), f.ret.is_some() && !generator));
+        let generator = matches!(
+            f.ret.as_ref().map(|t| &t.kind),
+            Some(ast::TypeKind::Yields(_))
+        );
+        self.fns.push((
+            f.name.text.clone(),
+            (**ret).clone(),
+            f.ret.is_some() && !generator,
+        ));
         match &f.body {
             FnBody::Block(block) => {
                 let ty = self.block(block);
@@ -344,7 +402,8 @@ impl<'a> Checker<'a> {
                 {
                     // An `if` or `match` whose branches all `return` has no
                     // value; the returns were checked on their own.
-                    let statement_like = ty == Ty::Unit && matches!(last.kind, ExprKind::If { .. } | ExprKind::Match { .. });
+                    let statement_like = ty == Ty::Unit
+                        && matches!(last.kind, ExprKind::If { .. } | ExprKind::Match { .. });
                     if !statement_like {
                         self.returns(last, &ty);
                     }

@@ -61,12 +61,18 @@ impl Server {
             };
         };
         let is_request = !id.is_null();
-        let outcome = catch_unwind(AssertUnwindSafe(|| self.dispatch(method, message.get("params"))));
+        let outcome = catch_unwind(AssertUnwindSafe(|| {
+            self.dispatch(method, message.get("params"))
+        }));
         match outcome {
             Ok(Ok(result)) => {
                 let mut out = Vec::new();
                 if is_request {
-                    out.push(obj([("jsonrpc", "2.0".into()), ("id", id), ("result", result.response)]));
+                    out.push(obj([
+                        ("jsonrpc", "2.0".into()),
+                        ("id", id),
+                        ("result", result.response),
+                    ]));
                 }
                 out.extend(result.notifications);
                 out
@@ -95,27 +101,36 @@ impl Server {
             out.push(error(id, INTERNAL_ERROR, &text));
         }
         if let Some(uri) = params.at(&["textDocument", "uri"]).as_str() {
-            let diag = Diagnostic::error(codes::INTERNAL, Span::point(0), text)
-                .with_help("this is a bug in cpl, not in your code; please report it with this file");
+            let diag = Diagnostic::error(codes::INTERNAL, Span::point(0), text).with_help(
+                "this is a bug in cpl, not in your code; please report it with this file",
+            );
             let source = self.docs.get(uri).map_or("", String::as_str);
             let lines = LineIndex::new(source);
-            out.push(publish(uri, vec![diagnostic_json(&diag, uri, source, &lines)]));
+            out.push(publish(
+                uri,
+                vec![diagnostic_json(&diag, uri, source, &lines)],
+            ));
         }
         out
     }
 
     fn dispatch(&mut self, method: &str, params: &Value) -> Result<Reply, (i32, String)> {
         if !self.initialized && !matches!(method, "initialize" | "exit" | "initialized") {
-            return Err((SERVER_NOT_INITIALIZED, "the server has not been initialized".into()));
+            return Err((
+                SERVER_NOT_INITIALIZED,
+                "the server has not been initialized".into(),
+            ));
         }
         match method {
             "initialize" => {
                 self.initialized = true;
                 Ok(Reply::result(capabilities()))
             }
-            "initialized" | "$/cancelRequest" | "$/setTrace" | "textDocument/didSave" | "workspace/didChangeConfiguration" => {
-                Ok(Reply::default())
-            }
+            "initialized"
+            | "$/cancelRequest"
+            | "$/setTrace"
+            | "textDocument/didSave"
+            | "workspace/didChangeConfiguration" => Ok(Reply::default()),
             "shutdown" => {
                 self.shutdown = true;
                 Ok(Reply::default())
@@ -156,20 +171,33 @@ impl Server {
             }
             "textDocument/hover" => {
                 let (uri, offset) = self.position(params)?;
-                let Some(hover) = self.db.hover(&uri, offset) else { return Ok(Reply::default()) };
+                let Some(hover) = self.db.hover(&uri, offset) else {
+                    return Ok(Reply::default());
+                };
                 let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
                 Ok(Reply::result(obj([
                     (
                         "contents",
-                        obj([("kind", "markdown".into()), ("value", format!("```cp\n{}\n```", hover.text).into())]),
+                        obj([
+                            ("kind", "markdown".into()),
+                            ("value", format!("```cp\n{}\n```", hover.text).into()),
+                        ]),
                     ),
-                    ("range", range_json(hover.span, &analysis.text, &analysis.lines)),
+                    (
+                        "range",
+                        range_json(hover.span, &analysis.text, &analysis.lines),
+                    ),
                 ])))
             }
             "textDocument/definition" => {
                 let (uri, offset) = self.position(params)?;
-                let Some(span) = self.db.definition(&uri, offset) else { return Ok(Reply::default()) };
-                let analysis = self.db.analyze(&uri).expect("definition implies an analysis");
+                let Some(span) = self.db.definition(&uri, offset) else {
+                    return Ok(Reply::default());
+                };
+                let analysis = self
+                    .db
+                    .analyze(&uri)
+                    .expect("definition implies an analysis");
                 Ok(Reply::result(obj([
                     ("uri", uri.as_str().into()),
                     ("range", range_json(span, &analysis.text, &analysis.lines)),
@@ -178,15 +206,23 @@ impl Server {
             "textDocument/documentSymbol" => {
                 let uri = uri_of(params)?;
                 let symbols = self.db.symbols(uri);
-                let Some(analysis) = self.db.analyze(uri) else { return Ok(Reply::result(Value::Array(Vec::new()))) };
+                let Some(analysis) = self.db.analyze(uri) else {
+                    return Ok(Reply::result(Value::Array(Vec::new())));
+                };
                 let items = symbols
                     .iter()
                     .map(|s| {
                         obj([
                             ("name", s.name.as_str().into()),
                             ("kind", symbol_kind(s.kind).into()),
-                            ("range", range_json(s.span.to(s.name_span), &analysis.text, &analysis.lines)),
-                            ("selectionRange", range_json(s.name_span, &analysis.text, &analysis.lines)),
+                            (
+                                "range",
+                                range_json(s.span.to(s.name_span), &analysis.text, &analysis.lines),
+                            ),
+                            (
+                                "selectionRange",
+                                range_json(s.name_span, &analysis.text, &analysis.lines),
+                            ),
                         ])
                     })
                     .collect();
@@ -194,7 +230,9 @@ impl Server {
             }
             "textDocument/codeAction" => {
                 let uri = uri_of(params)?;
-                let Some(analysis) = self.db.analyze(uri) else { return Ok(Reply::result(Value::Array(Vec::new()))) };
+                let Some(analysis) = self.db.analyze(uri) else {
+                    return Ok(Reply::result(Value::Array(Vec::new())));
+                };
                 let start = position_of(params.at(&["range", "start"]))?;
                 let end = position_of(params.at(&["range", "end"]))?;
                 let wanted = Span::new(
@@ -222,9 +260,16 @@ impl Server {
                             ("kind", "quickfix".into()),
                             (
                                 "diagnostics",
-                                vec![diagnostic_json(diag, uri, &analysis.text, &analysis.lines)].into(),
+                                vec![diagnostic_json(diag, uri, &analysis.text, &analysis.lines)]
+                                    .into(),
                             ),
-                            ("edit", obj([("changes", Value::Object(vec![(uri.to_string(), edits.into())]))])),
+                            (
+                                "edit",
+                                obj([(
+                                    "changes",
+                                    Value::Object(vec![(uri.to_string(), edits.into())]),
+                                )]),
+                            ),
                         ]));
                     }
                 }
@@ -238,7 +283,9 @@ impl Server {
 
     /// The `publishDiagnostics` notification for a document.
     fn diagnostics(&mut self, uri: &str) -> Value {
-        let Some(analysis) = self.db.analyze(uri) else { return publish(uri, Vec::new()) };
+        let Some(analysis) = self.db.analyze(uri) else {
+            return publish(uri, Vec::new());
+        };
         let items = analysis
             .diagnostics
             .iter()
@@ -255,7 +302,10 @@ impl Server {
             .db
             .analyze(uri)
             .ok_or((INVALID_PARAMS, format!("`{uri}` is not open")))?;
-        Ok((uri.to_string(), analysis.lines.offset_utf16(position, &analysis.text)))
+        Ok((
+            uri.to_string(),
+            analysis.lines.offset_utf16(position, &analysis.text),
+        ))
     }
 }
 
@@ -288,16 +338,25 @@ fn capabilities() -> Value {
             obj([
                 ("positionEncoding", "utf-16".into()),
                 // Open/close notifications, incremental changes.
-                ("textDocumentSync", obj([("openClose", true.into()), ("change", 2.into())])),
+                (
+                    "textDocumentSync",
+                    obj([("openClose", true.into()), ("change", 2.into())]),
+                ),
                 ("hoverProvider", true.into()),
                 ("definitionProvider", true.into()),
                 ("documentSymbolProvider", true.into()),
-                ("codeActionProvider", obj([("codeActionKinds", vec!["quickfix".into()].into())])),
+                (
+                    "codeActionProvider",
+                    obj([("codeActionKinds", vec!["quickfix".into()].into())]),
+                ),
             ]),
         ),
         (
             "serverInfo",
-            obj([("name", "cpl".into()), ("version", env!("CARGO_PKG_VERSION").into())]),
+            obj([
+                ("name", "cpl".into()),
+                ("version", env!("CARGO_PKG_VERSION").into()),
+            ]),
         ),
     ])
 }
@@ -308,7 +367,10 @@ fn error(id: Value, code: i32, message: &str) -> Value {
         ("id", id),
         (
             "error",
-            obj([("code", Value::Number(f64::from(code))), ("message", message.into())]),
+            obj([
+                ("code", Value::Number(f64::from(code))),
+                ("message", message.into()),
+            ]),
         ),
     ])
 }
@@ -317,7 +379,10 @@ fn publish(uri: &str, diagnostics: Vec<Value>) -> Value {
     obj([
         ("jsonrpc", "2.0".into()),
         ("method", "textDocument/publishDiagnostics".into()),
-        ("params", obj([("uri", uri.into()), ("diagnostics", diagnostics.into())])),
+        (
+            "params",
+            obj([("uri", uri.into()), ("diagnostics", diagnostics.into())]),
+        ),
     ])
 }
 
@@ -351,7 +416,10 @@ fn apply_change(text: &mut String, change: &Value) -> Result<(), (i32, String)> 
     let start = lines.offset_utf16(position_of(range.get("start"))?, text) as usize;
     let end = lines.offset_utf16(position_of(range.get("end"))?, text) as usize;
     if start > end {
-        return Err((INVALID_PARAMS, "content change range ends before it starts".to_string()));
+        return Err((
+            INVALID_PARAMS,
+            "content change range ends before it starts".to_string(),
+        ));
     }
     text.replace_range(start..end, new_text);
     Ok(())
@@ -396,7 +464,10 @@ fn diagnostic_json(diag: &Diagnostic, uri: &str, text: &str, lines: &LineIndex) 
                 obj([
                     (
                         "location",
-                        obj([("uri", uri.into()), ("range", range_json(label.span, text, lines))]),
+                        obj([
+                            ("uri", uri.into()),
+                            ("range", range_json(label.span, text, lines)),
+                        ]),
                     ),
                     ("message", label.message.as_str().into()),
                 ])

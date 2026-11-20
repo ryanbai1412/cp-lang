@@ -12,8 +12,15 @@ use std::hash::{Hash, Hasher};
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Def {
     /// `let`, `var` or `const`.
-    Value { ty: Ty, mutable: bool, keyword: &'static str },
-    Fn { ty: Ty, generics: Vec<String> },
+    Value {
+        ty: Ty,
+        mutable: bool,
+        keyword: &'static str,
+    },
+    Fn {
+        ty: Ty,
+        generics: Vec<String>,
+    },
     Struct {
         generics: Vec<String>,
         /// Fields in declaration order: also the constructor's parameters.
@@ -25,9 +32,14 @@ pub enum Def {
         methods: Vec<(String, Ty)>,
     },
     /// A variant of the named enum, usable bare.
-    Variant { of: String, fields: Vec<Ty> },
+    Variant {
+        of: String,
+        fields: Vec<Ty>,
+    },
     Domain(DomainInfo),
-    Alias { ty: Ty },
+    Alias {
+        ty: Ty,
+    },
     Trait,
 }
 
@@ -46,7 +58,9 @@ impl Def {
     pub fn value_ty(&self, name: &str) -> Ty {
         match self {
             Def::Value { ty, .. } | Def::Fn { ty, .. } => ty.clone(),
-            Def::Struct { .. } | Def::Enum { .. } | Def::Alias { .. } | Def::Trait => Ty::TypeName(name.to_string()),
+            Def::Struct { .. } | Def::Enum { .. } | Def::Alias { .. } | Def::Trait => {
+                Ty::TypeName(name.to_string())
+            }
             Def::Variant { of, fields } if fields.is_empty() => Ty::Named {
                 name: of.clone(),
                 args: Vec::new(),

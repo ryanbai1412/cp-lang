@@ -9,7 +9,12 @@ impl<'a> Parser<'a> {
         // Lambdas: `x => x + 1`, `(a, b) => a + b`.
         let lambda = match self.peek() {
             T::Ident => self.peek_n(1) == T::FatArrow,
-            T::LParen => self.tokens.get(after_group(self.tokens, self.pos)).map(|t| t.kind) == Some(T::FatArrow),
+            T::LParen => {
+                self.tokens
+                    .get(after_group(self.tokens, self.pos))
+                    .map(|t| t.kind)
+                    == Some(T::FatArrow)
+            }
             _ => false,
         };
         if lambda {
@@ -52,7 +57,13 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn binary(&mut self, start: u32, op: BinOp, lhs: Expr, rhs: impl FnOnce(&mut Self) -> Expr) -> Expr {
+    fn binary(
+        &mut self,
+        start: u32,
+        op: BinOp,
+        lhs: Expr,
+        rhs: impl FnOnce(&mut Self) -> Expr,
+    ) -> Expr {
         let op_span = self.span();
         self.bump();
         let rhs = rhs(self);
@@ -101,7 +112,10 @@ impl<'a> Parser<'a> {
             self.bump();
             let expr = Box::new(self.not());
             return Expr {
-                kind: ExprKind::Unary { op: UnOp::Not, expr },
+                kind: ExprKind::Unary {
+                    op: UnOp::Not,
+                    expr,
+                },
                 span: self.span_from(start),
             };
         }
@@ -188,7 +202,11 @@ impl<'a> Parser<'a> {
             Some(Box::new(self.bit_or()))
         } else {
             if inclusive {
-                self.error_expected(codes::EXPECTED_EXPR, "the end of the range after `..=`", None);
+                self.error_expected(
+                    codes::EXPECTED_EXPR,
+                    "the end of the range after `..=`",
+                    None,
+                );
             }
             None
         };
@@ -317,7 +335,11 @@ impl<'a> Parser<'a> {
                 span: self.span_from(start),
             };
         }
-        Arg { name, mutable, value }
+        Arg {
+            name,
+            mutable,
+            value,
+        }
     }
 
     fn postfix(&mut self) -> Expr {
@@ -349,13 +371,11 @@ impl<'a> Parser<'a> {
                         // Mid-edit `xs.`: keep the access so completion and
                         // hover still see the receiver.
                         let span = Span::point(self.prev_end());
-                        self.error(
-                            Diagnostic::error(
-                                codes::EXPECTED_NAME,
-                                span,
-                                "expected a field or method name after `.`",
-                            ),
-                        );
+                        self.error(Diagnostic::error(
+                            codes::EXPECTED_NAME,
+                            span,
+                            "expected a field or method name after `.`",
+                        ));
                         Name {
                             text: String::new(),
                             span,
@@ -393,8 +413,10 @@ impl<'a> Parser<'a> {
 
     /// Keywords that are also ordinary member names: `xs.min`, `V.none`.
     fn field_keyword(&self) -> bool {
-        matches!(self.peek(), T::None | T::In | T::By | T::Type | T::Domain | T::Use | T::With)
-            && !self.at_line_end()
+        matches!(
+            self.peek(),
+            T::None | T::In | T::By | T::Type | T::Domain | T::Use | T::With
+        ) && !self.at_line_end()
     }
 
     fn primary(&mut self) -> Expr {
@@ -455,7 +477,10 @@ impl<'a> Parser<'a> {
                 if type_like && self.at(T::Lt) {
                     let args = self.speculate(|p| {
                         let args = p.type_args();
-                        if args.is_empty() || !matches!(p.peek(), T::LParen | T::Dot | T::ColonColon) && !p.at_line_end() {
+                        if args.is_empty()
+                            || !matches!(p.peek(), T::LParen | T::Dot | T::ColonColon)
+                                && !p.at_line_end()
+                        {
                             p.speculation_failed = true;
                         }
                         args
@@ -514,7 +539,9 @@ impl<'a> Parser<'a> {
                 return self.unary();
             }
             _ => {
-                let after = self.prev_kind().map_or("here".to_string(), |k| format!("after {}", k.describe()));
+                let after = self
+                    .prev_kind()
+                    .map_or("here".to_string(), |k| format!("after {}", k.describe()));
                 self.error_expected(codes::EXPECTED_EXPR, &format!("a value {after}"), None);
                 return Expr {
                     kind: ExprKind::Missing,
@@ -535,7 +562,12 @@ impl<'a> Parser<'a> {
         let after = |n: usize| self.tokens.get(close + n).map(|t| t.kind);
         let table = match after(0) {
             Some(T::Ident) => after(1) == Some(T::FatArrow),
-            Some(T::LParen) => self.tokens.get(after_group(self.tokens, close)).map(|t| t.kind) == Some(T::FatArrow),
+            Some(T::LParen) => {
+                self.tokens
+                    .get(after_group(self.tokens, close))
+                    .map(|t| t.kind)
+                    == Some(T::FatArrow)
+            }
             _ => false,
         };
         self.bump();
@@ -548,7 +580,11 @@ impl<'a> Parser<'a> {
             };
             self.bump();
             let body = Box::new(self.expr());
-            return ExprKind::Table { domains, params, body };
+            return ExprKind::Table {
+                domains,
+                params,
+                body,
+            };
         }
         if self.eat(T::RBracket) {
             return ExprKind::List(Vec::new());
@@ -616,18 +652,20 @@ impl<'a> Parser<'a> {
             }
             break;
         }
-        ExprKind::If { branches, otherwise }
+        ExprKind::If {
+            branches,
+            otherwise,
+        }
     }
 
     fn match_expr(&mut self) -> ExprKind {
         self.bump();
         let scrutinee = Box::new(self.expr());
         let mut arms = Vec::new();
-        if !self.expect(T::Colon, "`:` after the value being matched") {
-            if !(self.at(T::Newline) && self.peek_n(1) == T::Indent) {
-                self.skip_line();
-                return ExprKind::Match { scrutinee, arms };
-            }
+        let colon = self.expect(T::Colon, "`:` after the value being matched");
+        if !colon && !(self.at(T::Newline) && self.peek_n(1) == T::Indent) {
+            self.skip_line();
+            return ExprKind::Match { scrutinee, arms };
         }
         if !(self.at(T::Newline) && self.peek_n(1) == T::Indent) {
             let at = self.prev_end();
@@ -687,11 +725,18 @@ impl<'a> Parser<'a> {
                     sub.speculating = self.speculating;
                     let expr = sub.expr();
                     if !matches!(sub.peek(), T::Newline | T::Eof) {
-                        sub.error_expected(codes::UNEXPECTED_TOKEN, "`}` to end the interpolation", None);
+                        sub.error_expected(
+                            codes::UNEXPECTED_TOKEN,
+                            "`}` to end the interpolation",
+                            None,
+                        );
                     }
                     let failed = sub.speculation_failed;
-                    let mut diags: Vec<Diagnostic> =
-                        lexed.diagnostics.into_iter().map(|d| shift_signed(d, delta)).collect();
+                    let mut diags: Vec<Diagnostic> = lexed
+                        .diagnostics
+                        .into_iter()
+                        .map(|d| shift_signed(d, delta))
+                        .collect();
                     diags.extend(sub.sink.finish());
                     // One string, one diagnostic.
                     if let Some(diag) = diags.into_iter().next() {
@@ -707,7 +752,12 @@ impl<'a> Parser<'a> {
 }
 
 fn shift_signed(mut diag: Diagnostic, delta: i64) -> Diagnostic {
-    let fix = |s: Span| Span::new((s.start as i64 + delta) as u32, (s.end as i64 + delta) as u32);
+    let fix = |s: Span| {
+        Span::new(
+            (s.start as i64 + delta) as u32,
+            (s.end as i64 + delta) as u32,
+        )
+    };
     diag.span = fix(diag.span);
     for label in &mut diag.labels {
         label.span = fix(label.span);

@@ -108,7 +108,9 @@ impl<'a> Checker<'a> {
     }
 
     fn text(&self, span: Span) -> &'a str {
-        self.src.get(span.start as usize..span.end as usize).unwrap_or("")
+        self.src
+            .get(span.start as usize..span.end as usize)
+            .unwrap_or("")
     }
 
     /// Source text for a message: one line, shortened if long.
@@ -126,7 +128,9 @@ impl<'a> Checker<'a> {
     fn error(&mut self, code: Code, span: Span, message: String) -> Option<&mut Diagnostic> {
         let before = self.sink.len();
         self.sink.push(Diagnostic::error(code, span, message));
-        (self.sink.len() > before).then(|| self.sink.last_mut()).flatten()
+        (self.sink.len() > before)
+            .then(|| self.sink.last_mut())
+            .flatten()
     }
 
     fn push_scope(&mut self) {
@@ -255,11 +259,15 @@ impl<'a> Checker<'a> {
     /// Checks that `expr` can be changed. `action` finishes the sentence
     /// "`x` is a `let`, so it can't be ...".
     fn require_mutable(&mut self, expr: &cpl_syntax::ast::Expr, action: &str) {
-        let Some((name, span)) = Self::root_name(expr) else { return };
+        let Some((name, span)) = Self::root_name(expr) else {
+            return;
+        };
         let (mutable, keyword, decl) = match self.local(name) {
             Some(local) => (local.mutable, local.keyword, Some(local.span)),
             None => match self.env.global(name).as_deref() {
-                Some(Def::Value { mutable, keyword, .. }) => (*mutable, *keyword, None),
+                Some(Def::Value {
+                    mutable, keyword, ..
+                }) => (*mutable, *keyword, None),
                 _ => return,
             },
         };
@@ -267,12 +275,28 @@ impl<'a> Checker<'a> {
             return;
         }
         let (what, help) = match keyword {
-            "param" => ("a parameter without `mut`".to_string(), format!("declare it `mut {name}` to change it")),
-            "for" => ("a loop variable".to_string(), format!("copy it into a `var` to change it")),
-            "self" => ("`self` without `mut`".to_string(), "declare the method with `mut self` to change it".to_string()),
-            other => (format!("a `{other}`"), format!("declare it with `var {name}` to change it")),
+            "param" => (
+                "a parameter without `mut`".to_string(),
+                format!("declare it `mut {name}` to change it"),
+            ),
+            "for" => (
+                "a loop variable".to_string(),
+                "copy it into a `var` to change it".to_string(),
+            ),
+            "self" => (
+                "`self` without `mut`".to_string(),
+                "declare the method with `mut self` to change it".to_string(),
+            ),
+            other => (
+                format!("a `{other}`"),
+                format!("declare it with `var {name}` to change it"),
+            ),
         };
-        let subject = if name == "self" { "`self`".to_string() } else { format!("`{name}`") };
+        let subject = if name == "self" {
+            "`self`".to_string()
+        } else {
+            format!("`{name}`")
+        };
         let message = if keyword == "self" {
             format!("this method takes {what}, so `self` can't be {action}")
         } else {
@@ -320,8 +344,8 @@ fn edit_distance(a: &str, b: &str) -> usize {
     for (i, row) in rows.iter_mut().enumerate() {
         row[0] = i;
     }
-    for j in 0..=b.len() {
-        rows[0][j] = j;
+    for (j, cell) in rows[0].iter_mut().enumerate() {
+        *cell = j;
     }
     for i in 1..=a.len() {
         for j in 1..=b.len() {
@@ -344,7 +368,10 @@ mod tests {
     fn suggestions_are_close_names_only() {
         let names = ["total", "roads", "dist", "n"];
         assert_eq!(closest("totl", names.iter().copied()), Some("total".into()));
-        assert_eq!(closest("raods", names.iter().copied()), Some("roads".into()));
+        assert_eq!(
+            closest("raods", names.iter().copied()),
+            Some("roads".into())
+        );
         assert_eq!(closest("answer", names.iter().copied()), None);
         assert_eq!(closest("m", names.iter().copied()), None);
         assert_eq!(closest("dits", names.iter().copied()), Some("dist".into()));

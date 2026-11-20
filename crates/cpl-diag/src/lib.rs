@@ -203,7 +203,12 @@ impl Diagnostic {
         self
     }
 
-    pub fn with_fix(mut self, title: impl Into<String>, span: Span, replacement: impl Into<String>) -> Diagnostic {
+    pub fn with_fix(
+        mut self,
+        title: impl Into<String>,
+        span: Span,
+        replacement: impl Into<String>,
+    ) -> Diagnostic {
         self.fixes.push(Fix {
             title: title.into(),
             edits: vec![(span, replacement.into())],
@@ -265,7 +270,11 @@ impl Sink {
         if self.is_poisoned(diag.span) {
             return;
         }
-        if self.diags.iter().any(|d| d.code == diag.code && d.span == diag.span) {
+        if self
+            .diags
+            .iter()
+            .any(|d| d.code == diag.code && d.span == diag.span)
+        {
             return;
         }
         self.diags.push(diag);
@@ -332,8 +341,16 @@ mod tests {
     fn sink_drops_anything_inside_a_poisoned_span() {
         let mut sink = Sink::new();
         sink.poison(Span::new(10, 30));
-        sink.push(Diagnostic::error(codes::TYPE_MISMATCH, Span::new(12, 15), "inside"));
-        sink.push(Diagnostic::error(codes::TYPE_MISMATCH, Span::new(40, 42), "outside"));
+        sink.push(Diagnostic::error(
+            codes::TYPE_MISMATCH,
+            Span::new(12, 15),
+            "inside",
+        ));
+        sink.push(Diagnostic::error(
+            codes::TYPE_MISMATCH,
+            Span::new(40, 42),
+            "outside",
+        ));
         let out = sink.finish();
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].message, "outside");
@@ -342,8 +359,16 @@ mod tests {
     #[test]
     fn finish_orders_by_position() {
         let mut sink = Sink::new();
-        sink.push(Diagnostic::error(codes::TYPE_MISMATCH, Span::new(40, 42), "second"));
-        sink.push(Diagnostic::error(codes::UNRESOLVED_NAME, Span::new(1, 2), "first"));
+        sink.push(Diagnostic::error(
+            codes::TYPE_MISMATCH,
+            Span::new(40, 42),
+            "second",
+        ));
+        sink.push(Diagnostic::error(
+            codes::UNRESOLVED_NAME,
+            Span::new(1, 2),
+            "first",
+        ));
         let out = sink.finish();
         assert_eq!(out[0].message, "first");
         assert_eq!(out[1].message, "second");

@@ -68,11 +68,17 @@ impl<'a> Parser<'a> {
                     ret: Box::new(ret),
                 }
             }
-            T::Ident if self.text() == "yields" && !matches!(self.peek_n(1), T::DotDot | T::DotDotEq) => {
+            T::Ident
+                if self.text() == "yields"
+                    && !matches!(self.peek_n(1), T::DotDot | T::DotDotEq) =>
+            {
                 self.bump();
                 TypeKind::Yields(Box::new(self.ty()))
             }
-            T::Ident if self.text().starts_with(|c: char| c.is_ascii_uppercase()) && !self.range_follows() => {
+            T::Ident
+                if self.text().starts_with(|c: char| c.is_ascii_uppercase())
+                    && !self.range_follows() =>
+            {
                 let mut name = self.name();
                 // `V.bounds`: a domain derived from another.
                 while self.at(T::Dot) && self.peek_n(1) == T::Ident {
@@ -81,7 +87,11 @@ impl<'a> Parser<'a> {
                     name.text = format!("{}.{}", name.text, member.text);
                     name.span = name.span.to(member.span);
                 }
-                let args = if self.at(T::Lt) { self.type_args() } else { Vec::new() };
+                let args = if self.at(T::Lt) {
+                    self.type_args()
+                } else {
+                    Vec::new()
+                };
                 TypeKind::Named { name, args }
             }
             T::Ident | T::Int | T::Minus | T::Float => {
@@ -91,8 +101,9 @@ impl<'a> Parser<'a> {
                 if !inclusive && !self.at(T::DotDot) {
                     let span = lo.span;
                     self.error(
-                        Diagnostic::error(codes::EXPECTED_TYPE, span, "expected a type")
-                            .with_help("types are capitalized (`Int`, `V`), or ranges such as `0..=1e9`"),
+                        Diagnostic::error(codes::EXPECTED_TYPE, span, "expected a type").with_help(
+                            "types are capitalized (`Int`, `V`), or ranges such as `0..=1e9`",
+                        ),
                     );
                     TypeKind::Error
                 } else {
@@ -173,7 +184,11 @@ impl<'a> Parser<'a> {
             }
             self.half_shr = !self.half_shr;
         } else {
-            self.error_expected(codes::EXPECTED_TOKEN, "`>` to close the type arguments", Some(">"));
+            self.error_expected(
+                codes::EXPECTED_TOKEN,
+                "`>` to close the type arguments",
+                Some(">"),
+            );
         }
         args
     }

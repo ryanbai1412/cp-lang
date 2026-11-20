@@ -18,7 +18,10 @@ impl Value {
     /// The member `key` of an object, or `Null`.
     pub fn get(&self, key: &str) -> &Value {
         match self {
-            Value::Object(members) => members.iter().find(|(k, _)| k == key).map_or(&Value::Null, |(_, v)| v),
+            Value::Object(members) => members
+                .iter()
+                .find(|(k, _)| k == key)
+                .map_or(&Value::Null, |(_, v)| v),
             _ => &Value::Null,
         }
     }
@@ -86,7 +89,12 @@ impl From<Vec<Value>> for Value {
 
 /// Builds an object: `obj([("line", 3.into()), ("character", 0.into())])`.
 pub fn obj<const N: usize>(members: [(&str, Value); N]) -> Value {
-    Value::Object(members.into_iter().map(|(k, v)| (k.to_string(), v)).collect())
+    Value::Object(
+        members
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v))
+            .collect(),
+    )
 }
 
 impl std::fmt::Display for Value {
@@ -229,7 +237,10 @@ impl Parser<'_> {
             }),
             Some(b'-' | b'0'..=b'9') => {
                 let start = self.pos;
-                while matches!(self.bytes.get(self.pos), Some(b'-' | b'+' | b'.' | b'e' | b'E' | b'0'..=b'9')) {
+                while matches!(
+                    self.bytes.get(self.pos),
+                    Some(b'-' | b'+' | b'.' | b'e' | b'E' | b'0'..=b'9')
+                ) {
                     self.pos += 1;
                 }
                 self.text[start..self.pos]
@@ -241,7 +252,10 @@ impl Parser<'_> {
         }
     }
 
-    fn nested(&mut self, body: impl FnOnce(&mut Self) -> Result<Value, String>) -> Result<Value, String> {
+    fn nested(
+        &mut self,
+        body: impl FnOnce(&mut Self) -> Result<Value, String>,
+    ) -> Result<Value, String> {
         if self.depth >= 128 {
             return Err(self.fail("nested too deeply"));
         }
@@ -262,7 +276,10 @@ impl Parser<'_> {
     }
 
     fn hex4(&mut self) -> Result<u32, String> {
-        let digits = self.text.get(self.pos..self.pos + 4).ok_or_else(|| self.fail("short \\u escape"))?;
+        let digits = self
+            .text
+            .get(self.pos..self.pos + 4)
+            .ok_or_else(|| self.fail("short \\u escape"))?;
         let code = u32::from_str_radix(digits, 16).map_err(|_| self.fail("bad \\u escape"))?;
         self.pos += 4;
         Ok(code)
@@ -285,7 +302,10 @@ impl Parser<'_> {
                 }
                 _ => {
                     self.pos += 1;
-                    let escape = *self.bytes.get(self.pos).ok_or_else(|| self.fail("unterminated string"))?;
+                    let escape = *self
+                        .bytes
+                        .get(self.pos)
+                        .ok_or_else(|| self.fail("unterminated string"))?;
                     self.pos += 1;
                     match escape {
                         b'n' => out.push('\n'),
@@ -296,10 +316,14 @@ impl Parser<'_> {
                         b'u' => {
                             let mut code = self.hex4()?;
                             // A surrogate pair is one character.
-                            if (0xd800..0xdc00).contains(&code) && self.text[self.pos..].starts_with("\\u") {
+                            if (0xd800..0xdc00).contains(&code)
+                                && self.text[self.pos..].starts_with("\\u")
+                            {
                                 self.pos += 2;
                                 let low = self.hex4()?;
-                                code = 0x10000 + ((code - 0xd800) << 10) + (low.wrapping_sub(0xdc00) & 0x3ff);
+                                code = 0x10000
+                                    + ((code - 0xd800) << 10)
+                                    + (low.wrapping_sub(0xdc00) & 0x3ff);
                             }
                             out.push(char::from_u32(code).unwrap_or('\u{fffd}'));
                         }
@@ -329,7 +353,10 @@ mod tests {
     fn strings_escape_and_unescape() {
         let value = parse(r#""a\"b\\c\n\t\u00e9\ud834\udd1e/\/""#).unwrap();
         assert_eq!(value.as_str(), Some("a\"b\\c\n\té𝄞//"));
-        assert_eq!(Value::from("line\n\"q\"\u{1}").to_string(), r#""line\n\"q\"\u0001""#);
+        assert_eq!(
+            Value::from("line\n\"q\"\u{1}").to_string(),
+            r#""line\n\"q\"\u0001""#
+        );
     }
 
     #[test]
@@ -340,7 +367,18 @@ mod tests {
 
     #[test]
     fn malformed_input_is_an_error_not_a_panic() {
-        for bad in ["", "{", "[1,", "{\"a\"}", "\"abc", "tru", "{\"a\":1,}", "1 2", "\"\\u12\"", "-"] {
+        for bad in [
+            "",
+            "{",
+            "[1,",
+            "{\"a\"}",
+            "\"abc",
+            "tru",
+            "{\"a\":1,}",
+            "1 2",
+            "\"\\u12\"",
+            "-",
+        ] {
             assert!(parse(bad).is_err(), "{bad:?} should not parse");
         }
         let deep = "[".repeat(100_000);

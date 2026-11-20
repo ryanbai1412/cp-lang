@@ -35,7 +35,12 @@ pub struct ParsedItem {
 /// subtracted from every span in the result. `lexer_poison` holds the spans
 /// the lexer already reported on, relative to the item.
 pub fn parse_item(src: &str, tokens: &[Token], base: u32, lexer_poison: Vec<Span>) -> ParsedItem {
-    let mut p = Parser::new(src, tokens, -(base as i64), Sink::with_poisoned(lexer_poison));
+    let mut p = Parser::new(
+        src,
+        tokens,
+        -(base as i64),
+        Sink::with_poisoned(lexer_poison),
+    );
     let mut stmts = Vec::new();
     while !p.at(T::Eof) {
         let before = p.pos;
@@ -132,7 +137,10 @@ impl<'a> Parser<'a> {
     }
 
     fn prev_kind(&self) -> Option<TokenKind> {
-        self.pos.checked_sub(1).and_then(|i| self.tokens.get(i)).map(|t| t.kind)
+        self.pos
+            .checked_sub(1)
+            .and_then(|i| self.tokens.get(i))
+            .map(|t| t.kind)
     }
 
     fn span_from(&self, start: u32) -> Span {
@@ -169,7 +177,8 @@ impl<'a> Parser<'a> {
     /// (`by: cmp`, `in: xs`).
     fn at_label(&self) -> bool {
         self.peek_n(1) == T::Colon
-            && (self.at(T::Ident) || (TokenKind::keyword(self.text()).is_some() && !self.at(T::Else)))
+            && (self.at(T::Ident)
+                || (TokenKind::keyword(self.text()).is_some() && !self.at(T::Else)))
     }
 
     fn at_ident(&self, text: &str) -> bool {
@@ -279,7 +288,9 @@ impl<'a> Parser<'a> {
                     self.bump();
                     break;
                 }
-                T::Semi | T::RBrace if self.brace_depth > 0 && brackets == 0 && indent == 0 => break,
+                T::Semi | T::RBrace if self.brace_depth > 0 && brackets == 0 && indent == 0 => {
+                    break
+                }
                 T::Indent => indent += 1,
                 T::Dedent => indent -= 1,
                 T::LParen | T::LBracket | T::LBrace => brackets += 1,

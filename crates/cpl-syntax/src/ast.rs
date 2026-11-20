@@ -109,7 +109,10 @@ pub enum StmtKind {
     Break(Option<Name>),
     Continue(Option<Name>),
     /// `yield x`, or `yield from xs` to yield each value of `xs`.
-    Yield { value: Expr, from: bool },
+    Yield {
+        value: Expr,
+        from: bool,
+    },
     Assert {
         cond: Expr,
         message: Option<Expr>,
@@ -200,7 +203,10 @@ pub struct Arg {
 pub enum Cond {
     Expr(Expr),
     /// `if let v = find():`.
-    Let { pat: Pattern, value: Expr },
+    Let {
+        pat: Pattern,
+        value: Expr,
+    },
     /// `if const D.max_len <= 64:`.
     Const(Expr),
 }
@@ -399,7 +405,10 @@ pub enum PatternKind {
     Name(String),
     Tuple(Vec<Pattern>),
     /// `Add(l, r)` or a bare variant such as `L`.
-    Variant { path: Vec<Name>, args: Vec<Pattern> },
+    Variant {
+        path: Vec<Name>,
+        args: Vec<Pattern>,
+    },
     Literal(Box<Expr>),
     Or(Vec<Pattern>),
     Error,
@@ -414,11 +423,20 @@ pub struct Type {
 #[derive(Clone, PartialEq, Debug)]
 pub enum TypeKind {
     /// `Int`, `List<Int>`, `V`.
-    Named { name: Name, args: Vec<Type> },
+    Named {
+        name: Name,
+        args: Vec<Type>,
+    },
     /// `[V]Int`, `[Row, Col]Char`.
-    Array { index: Vec<Type>, elem: Box<Type> },
+    Array {
+        index: Vec<Type>,
+        elem: Box<Type>,
+    },
     /// `[domain S]Char`: an array that brings its own domain.
-    OwnDomain { name: Name, elem: Box<Type> },
+    OwnDomain {
+        name: Name,
+        elem: Box<Type>,
+    },
     Optional(Box<Type>),
     Tuple(Vec<Type>),
     Record(Vec<(Name, Type)>),
@@ -428,7 +446,10 @@ pub enum TypeKind {
         hi: Box<Expr>,
         inclusive: bool,
     },
-    Fn { params: Vec<Type>, ret: Box<Type> },
+    Fn {
+        params: Vec<Type>,
+        ret: Box<Type>,
+    },
     /// `yields T`: the return type of a generator.
     Yields(Box<Type>),
     Error,
