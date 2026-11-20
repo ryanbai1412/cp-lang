@@ -1,34 +1,32 @@
-// cp: 0.1 1f59ac0+dirty
 // CCC 2010 S4 Animal Farm: pens are polygons whose corners are numbered
 // posts; a fence between two posts has a cost to remove. Remove the cheapest
 // fences so that all animals can meet, either inside or by all getting
 // outside: a minimum spanning tree over the pens, with or without the
 // outside as an extra vertex.
-use std.dsu.{Dsu}
-
 let pens: 1..=100 = read()
 domain Pen = 0..=pens                   // pen 0 is the outside
-domain Post = 1..=1000
-type Side = (a: Post, b: Post, pen: Pen, cost: Int)
 
-var sides: List<Side> = []
-for pen in Pen.first.next!..:
+var sides: List<(a: Int, b: Int, cost: Int, pen: Pen)> = []
+for pen in Pen if pen != Pen.first:
     let m: 3..=8 = read()
-    let posts: [m]Post = read() where all(posts[j] != posts[(j + 1) % m] for j in 0..m)
-    let costs: [m]1..=5000 = read()
+    let posts: [0..m]1..=1000 = read()
+    let costs: [0..m]1..=5000 = read()
     for j in 0..m:
         let (a, b) = (posts[j], posts[(j + 1) % m])
-        sides.push((min(a, b), max(a, b), pen, costs[j]))
+        sides.push((min(a, b), max(a, b), costs[j], pen))
+sort(mut sides)
 
-type Fence = (cost: Int, u: Pen, v: Pen)
-var fences: List<Fence> = []
-for wall in runs(sorted(sides, by: s => (s.a, s.b)), same: (s, t) => (s.a, s.b) == (t.a, t.b)):
-    let cost = wall[wall.len - 1].cost
-    if wall.len == 2: fences.push((cost, wall[0].pen, wall[1].pen))
-    if wall.len == 1: fences.push((cost, wall[0].pen, Pen.first))
-fences.sort()
+// a fence is one side of two pens, or of one pen and the outside
+var fences: List<(cost: Int, u: Pen, v: Pen)> = []
+for j in 0..sides.len:
+    let (a, b, cost, pen) = sides[j]
+    if j + 1 < sides.len and (sides[j + 1].a, sides[j + 1].b) == (a, b): fences.push((cost, pen, sides[j + 1].pen))
+    elif j == 0 or (sides[j - 1].a, sides[j - 1].b) != (a, b): fences.push((cost, pen, Pen.first))
+sort(mut fences)
 
-fn spanning(outside: Bool) -> Int:
+fn spanning(outside: Bool) -> ?Int:
     var joined = Dsu<Pen>()
-    sum(f.cost for f in fences if (outside or f.v != Pen.first) and joined.unite(f.u, f.v))
-print(min(spanning(false), spanning(true)))
+    var cost = 0
+    for (c, u, v) in fences if (outside or v != Pen.first) and joined.unite(u, v): cost += c
+    if joined.components == (if outside: 1 else: 2): cost else: none
+print(min(spanning(false), spanning(true))!)

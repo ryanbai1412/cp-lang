@@ -1,14 +1,12 @@
-// cp: 0.1 0f8d77b+dirty
 // IOI 2011 Crocodile's Underground City: escape from chamber 0 to any exit
 // through weighted corridors. At every chamber the gatekeeper blocks one
 // corridor after seeing where you stand. Minimise the worst-case time.
-let n: 3..=1e5 = read()
-let m: 2..=1e6 = read()
-let k: 1..=n = read()
+let (n, m, k): (3..=1e5, 2..=1e6, 1..=1e5) = read()
 domain Chamber = 0..n
-let corridors: [m](u: Chamber, v: Chamber, time: 1..=1e9) = read()
-let exits: [k]Chamber = read()
-let maze = Graph.undirected(corridors)
+domain Corridor = 0..m
+let corridors: [Corridor](u: Chamber, v: Chamber, time: 1..=1e9) = read()
+let exits: [0..k]Chamber = read()
+let maze = Graph<Chamber, Corridor>.undirected([Corridor] c => (corridors[c].u, corridors[c].v))
 
 // The best corridor out of a chamber is the one that gets blocked, so a
 // chamber's time is its second-cheapest way out: Dijkstra from the exits,
@@ -20,8 +18,8 @@ for x in exits:
     pq.push((0, x))
 while let (d, u) = pq.pop():
     arrivals[u] += 1
-    if arrivals[u] == 2:
-        if u == Chamber.first:
-            print(d)
-            break
-        for (v, time) in maze[u]: pq.push((d + time, v))
+    if arrivals[u] != 2: continue
+    if u == Chamber.first:
+        print(d)
+        return
+    for (v, c) in maze.adj(u): pq.push((d + corridors[c].time, v))

@@ -1,16 +1,14 @@
-// cp: 0.1 c217120+dirty
 // IOI 2010 Quality of Living: an r x c grid holds each of 1..r*c once. Print
 // the smallest median of any h x w window (h and w odd).
-let r: 1..=3000 = read()
-let c: 1..=3000 = read()
-let h: 1..=r = read() where h % 2 == 1
-let w: 1..=c = read() where w % 2 == 1
-domain Row = 1..=r
-domain Col = 1..=c
-let rank: [Row, Col]1..=r * c = read()
+use std.seq.{bsearch_first}
+
+let (r, c, h, w): (1..=3000, 1..=3000, 1..=3000, 1..=3000) = read()
+domain Row = 0..r
+domain Col = 0..c
+let rank: [Row, Col]Int = read()
 
 // A window's median is at most x exactly when more than half of its cells are.
 fn some_median_at_most(x: Int) -> Bool:
-    let low = prefix([Row, Col] (i, j) => rank[i, j] <= x)
-    any(2 * low.sum(rows, cols) > h * w for rows in Row.windows(h) for cols in Col.windows(w))
-print((1..=r * c).first_where(some_median_at_most)!)
+    let low = Prefix2<Row, Col>([Row, Col] (i, j) => Int(rank[i, j] <= x))
+    any(2 * low.sum(i.l..i.r(h), j.l..j.r(w)) > h * w for i in Row.first..=Row(r - h) for j in Col.first..=Col(c - w))
+print(bsearch_first(1..=r * c, some_median_at_most)!)
