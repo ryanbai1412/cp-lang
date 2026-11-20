@@ -52,9 +52,10 @@ def f_print(it, args, kw, node):
 
 def f_minmax(pick):
     def f(it, args, kw, node):
-        xs = args if len(args) > 1 else seq(it, args[0], node)
+        # `none` is skipped on either side; the minimum of nothing is `none`
+        xs = [x for x in (args if len(args) > 1 else seq(it, args[0], node)) if x is not None]
         if not xs:
-            it.fail("min/max of nothing", node)
+            return None
         best = xs[0]
         for x in xs[1:]:
             if (x < best) if pick < 0 else (best < x):
@@ -73,6 +74,20 @@ def f_sum(it, args, kw, node):
     for x in xs:
         acc = it.binop("+", acc, x, node)
     return acc
+
+
+def bools(it, args, node, what):
+    xs = seq(it, args[0], node)
+    for x in xs:
+        if type(x) is not bool:
+            it.fail(f"{what} needs Bool elements, got {it.show(x)}", node)
+    return xs
+
+
+def f_first(it, args, kw, node):
+    for x in it.values(args[0], node):
+        return x
+    return None
 
 
 def f_sort(it, args, kw, node):
@@ -203,6 +218,10 @@ def install(it):
         "print": f_print, "min": f_minmax(-1), "max": f_minmax(1), "abs": f_abs, "sum": f_sum,
         "sort": f_sort, "sorted": f_sorted, "rand": f_rand, "shuffle": f_shuffle,
         "laws_hold": f_laws_hold,
+        "count": lambda it, a, k, n: sum(bools(it, a, n, "count")),
+        "any": lambda it, a, k, n: any(bools(it, a, n, "any")),
+        "all": lambda it, a, k, n: all(bools(it, a, n, "all")),
+        "first": f_first,
         "some": lambda it, a, k, n: a[0],
         "popcount": int_fn(lambda x: bin(x & ((1 << 64) - 1)).count("1")),
         "ctz": int_fn(f_ctz),
@@ -218,9 +237,8 @@ def install(it):
         it.fail("the list is empty", node)
 
     def l_pop(it, o, a, k, n):
-        if not o.items:
-            it.fail("pop from an empty list", n)
-        return o.items.pop()
+        # `pop` is optional: `none` from an empty list, so `while let x = xs.pop():` drains it
+        return o.items.pop() if o.items else None
 
     def l_swap(it, o, a, k, n):
         i, j = it.offset(o, [a[0]], n), it.offset(o, [a[1]], n)
@@ -235,8 +253,9 @@ def install(it):
         CList: {
             "len": lambda it, o, n: len(o.items),
             "is_empty": lambda it, o, n: not o.items,
-            "first": lambda it, o, n: o.items[0] if o.items else fail_empty(it, o, n),
-            "last": lambda it, o, n: o.items[-1] if o.items else fail_empty(it, o, n),
+            # the ends of a list are optional: `none` when it is empty
+            "first": lambda it, o, n: o.items[0] if o.items else None,
+            "last": lambda it, o, n: o.items[-1] if o.items else None,
             "rev": lambda it, o, n: CList(o.items[::-1], o.is_str),
         },
         CArray: {
@@ -250,6 +269,8 @@ def install(it):
             "first": lambda it, o, n: None if len(o) == 0 else (o.lo if o.dom is None else DomVal(o.dom, o.lo)),
             "last": lambda it, o, n: None if len(o) == 0 else (o.hi - 1 if o.dom is None else DomVal(o.dom, o.hi - 1)),
             "rev": lambda it, o, n: CList(list(o.values())[::-1]),
+            "mid": lambda it, o, n: None if len(o) == 0 else (
+                (o.lo + o.hi - 1) // 2 if o.dom is None else DomVal(o.dom, (o.lo + o.hi - 1) // 2)),
         },
         Domain: {
             "K": lambda it, o, n: o.K,
@@ -280,8 +301,9 @@ def install(it):
             "is_upper": lambda it, o, n: "A" <= o <= "Z",
         },
         TypeV: {
-            "MAX": lambda it, o, n: I64_MAX if o == INT else math.inf,
-            "MIN": lambda it, o, n: I64_MIN if o == INT else -math.inf,
+            # `?T` has `none` at both ends: `min` and `max` skip it, so it is their identity
+            "MAX": lambda it, o, n: None if o.name == "Opt" else (I64_MAX if o == INT else math.inf),
+            "MIN": lambda it, o, n: None if o.name == "Opt" else (I64_MIN if o == INT else -math.inf),
             "zero": lambda it, o, n: 0 if o == INT else (0.0 if o == FLOAT else it.fail(f"{o!r} has no zero", n)),
             "one": lambda it, o, n: 1 if o == INT else (1.0 if o == FLOAT else it.fail(f"{o!r} has no one", n)),
         },
@@ -294,6 +316,29 @@ def install(it):
         if not 0 <= i <= o.dom.K:
             it.fail(f"a window of {k} at {it.show(o)} leaves {o.dom!r}", node)
         return DomVal(b, i)
+
+    def sorted_pos(it, o, x, n, ge):
+        """`first_ge` / `last_le` on a sorted list or one-dimensional array: the index, or none."""
+        import bisect
+        xs = o.items
+        if ge:
+            i = bisect.bisect_left(xs, x)
+        else:
+            i = bisect.bisect_right(xs, x) - 1
+        if not 0 <= i < len(xs):
+            return None
+        return i if type(o) is CList else DomVal(o.dims[0], i)
+
+    def find(it, o, x, n):
+        for i, y in enumerate(o.items):
+            if y == x:
+                return i if type(o) is CList else DomVal(o.dims[0], i)
+        return None
+
+    def windows(it, o, k, n):
+        if type(k) is not int or k < 1:
+            it.fail("windows(k) needs k >= 1", n)
+        return CList([RangeVal(o, i, i + k) for i in range(0, o.K - k + 1)])
 
     it.vmethods = {
         CList: {
@@ -308,8 +353,14 @@ def install(it):
             "extend": lambda it, o, a, k, n: o.items.extend(seq(it, a[0], n)),
             "resize": l_resize,
             "truncate": lambda it, o, a, k, n: o.items.__delitem__(slice(a[0], None)),
+            "first_ge": lambda it, o, a, k, n: sorted_pos(it, o, a[0], n, True),
+            "last_le": lambda it, o, a, k, n: sorted_pos(it, o, a[0], n, False),
+            "find": lambda it, o, a, k, n: find(it, o, a[0], n),
         },
         CArray: {
+            "first_ge": lambda it, o, a, k, n: sorted_pos(it, o, a[0], n, True),
+            "last_le": lambda it, o, a, k, n: sorted_pos(it, o, a[0], n, False),
+            "find": lambda it, o, a, k, n: find(it, o, a[0], n),
             "copy": lambda it, o, a, k, n: copyv(o),
             "fill": lambda it, o, a, k, n: o.items.__setitem__(slice(None), [copyv(a[0]) for _ in o.items]),
         },
@@ -318,6 +369,7 @@ def install(it):
         },
         Domain: {
             "nth": lambda it, o, a, k, n: dom_at(it, o, a[0], n),
+            "windows": lambda it, o, a, k, n: windows(it, o, a[0], n),
             "from_idx": lambda it, o, a, k, n: dom_at(it, o, a[0], n),
             "try_at": lambda it, o, a, k, n: dom_try(o, a[0]),
             "try": lambda it, o, a, k, n: dom_try(o, (ord(a[0]) - ord(o.lo)) if o.char else a[0] - o.lo),

@@ -25,6 +25,23 @@ FOLD_IDENTITY = {"+": 0, "-": 0, "*": 1, "|": 0, "^": 0, "gcd": 0, "lcm": 1}
 ESC = {"n": "\n", "t": "\t", "\\": "\\", '"': '"', "'": "'", "0": "\0", "{": "{", "}": "}"}
 
 
+def same_fn(a, b):
+    """Two fn values are equal when they are the same fn; a bare operator (`+`, `max`) equals itself."""
+    if a is b:
+        return True
+    if type(a) is Closure and type(b) is Closure:
+        if a.node is b.node and a.env is b.env:
+            return True
+        x, y = a.node, b.node
+        return x.kind == "lambda" and y.kind == "lambda" and is_bare_op(x) and is_bare_op(y) and x.body.op == y.body.op
+    return False
+
+
+def is_bare_op(lam):
+    b = lam.body
+    return (b.kind == "binop" and b.a.kind == "name" and b.a.name == "_a" and b.b.kind == "name" and b.b.name == "_b")
+
+
 def is_gen(fn):
     return fn.kind == "fn" and fn.ret is not None and fn.ret.kind == "tyields"
 
@@ -32,6 +49,7 @@ def is_gen(fn):
 class Interp:
     def __init__(self, stdin_tokens=None, out=None):
         self.modules = {}
+        self.trait_defaults = {}
         self.loading = []
         self.line = 0
         self.mod = None
@@ -85,7 +103,7 @@ class Interp:
         name = getattr(s, "name", None)
         if s.kind == "let" and s.pat.kind == "pname":
             name = s.pat.name
-        if name and s.kind in ("fn", "struct", "gconst", "let", "typedef", "domain"):
+        if name and s.kind in ("fn", "struct", "gconst", "let", "typedef", "domain", "trait"):
             if getattr(s, "pub", False):
                 mod.pub.add(name)
             mod.decls.append(s)
@@ -164,6 +182,11 @@ class Interp:
             v = self.ev(s.value, env)
             if type(v) is Tup and s.value.kind in ("name", "field", "index"):
                 v = Tup(list(v.items), v.names)
+            if s.ty is not None and s.ty.kind == "tname" and s.value.kind == "list" and not s.value.items:
+                # `var q: Deque<T> = []`: the empty value of a library container
+                d = env.get(s.ty.name) if env.has(s.ty.name) else None
+                if type(d) is StructDecl and "new" in d.methods:
+                    v = self.construct(self.ty(s.ty, env), [], None, s, None)
         if getattr(s, "orelse", None) and v is None:
             self.block(s.orelse, env)
             self.fail("the `else` of a `let` must leave (return, break or continue)", s)
@@ -221,10 +244,10 @@ class Interp:
         v = self.ev(s.value, env)
         if op != "=":
             cur = get()
-            if op == "min=":
-                v = v if v < cur else cur
-            elif op == "max=":
-                v = v if cur < v else cur
+            if op in ("min=", "max="):
+                # `none` on either side is skipped
+                if v is None or (cur is not None and ((cur < v) if op == "min=" else (v < cur))):
+                    v = cur
             else:
                 v = self.binop(op[:-1], cur, v, s)
         elif type(v) is Tup and s.value.kind in ("name", "field", "index"):
@@ -420,7 +443,26 @@ class Interp:
         return st.consts[name]
 
     def x_trait(self, s, env):
-        pass
+        # a trait method written with a body is the default: any value whose type has no
+        # method of that name answers with it (`Reversible.rev` is the identity for plain values)
+        env.vars[s.name] = TypeV("trait " + s.name)
+        for m in getattr(s, "defaults", ()):
+            self.trait_defaults[m.name] = Closure(m, env, self.mod)
+
+    def extension(self, o, name):
+        """`p.adj4` for a value with no such member: a fn in scope whose first parameter is `self`
+        (an extension method, `fn adj4(self: (R, C))`), else a trait's default method."""
+        env = self.mod.env if self.mod is not None else self.globals
+        f = env.get(name) if env.has(name) else None
+        if not (type(f) is Closure and f.node.kind == "fn" and f.node.params and f.node.params[0].name == "self"):
+            f = self.trait_defaults.get(name)
+        return f
+
+    def call_extension(self, f, o, args, kwargs, node):
+        return self.call_fn(f.node, f.env, f.mod, [o] + list(args), kwargs, node)
+
+    def is_get(self, f):
+        return any(d.name == "get" for d in f.node.decos)
 
     def x_law(self, s, env):
         pass
@@ -639,6 +681,8 @@ class Interp:
                 a = args[i]
             elif kwargs and p.name in kwargs:
                 a = kwargs[p.name]
+            elif getattr(p, "default", None) is not None:
+                a = self.ev(p.default, frame)
             else:
                 self.fail(f"`{fn.name}` is missing its argument `{p.name}`", node)
             if p.ty is not None:
@@ -649,6 +693,19 @@ class Interp:
             for kname in kwargs:
                 if kname not in names:
                     self.fail(f"`{fn.name}` has no parameter `{kname}`", node)
+        if tps:
+            # a type parameter no argument's annotation fixed is read off a struct argument that
+            # has one of the same name: `scc(g)` learns `V` from a `Graph<V, E>`. This stands in
+            # for inference through a trait (`N: Neighbours<V>`), which needs static types.
+            for tp in tps:
+                if tp in bind or env.has(tp):
+                    continue
+                for a in args:
+                    if type(a) is Obj and a.stype.targs and tp in a.stype.decl.tparams:
+                        got = a.stype.targs[a.stype.decl.tparams.index(tp)]
+                        if got is not None:
+                            bind[tp] = got
+                            break
         if bind:
             for kname, v in bind.items():
                 vals.setdefault(kname, v)
@@ -874,9 +931,10 @@ class Interp:
             self.fail(f"unknown name `{e.name}`", e)
         args = [self.ty(a, env) if a.kind in TYPE_KINDS else self.ev(a, env) for a in e.args]
         if type(v) is StructDecl:
-            if len(args) != len(v.tparams):
+            if len(args) > len(v.tparams):
                 self.fail(f"`{v.name}` takes {len(v.tparams)} type argument(s), got {len(args)}", e)
-            return v.inst(args)
+            # trailing type arguments may be left to inference: `LazySegTree<V, Int>(AddMax, a)`
+            return v.inst(args + [None] * (len(v.tparams) - len(args)))
         if type(v) is GConst:
             return self.gconst(v, args, e)
         if type(v) is TypeV:
@@ -962,8 +1020,20 @@ class Interp:
         return v
 
     def e_range(self, e, env):
-        lo = self.ev(e.lo, env)
         hi = self.ev(e.hi, env) if e.hi is not None else None
+        if e.lo is None:
+            # `..i` and `..=i`: from the start of whatever `i` indexes
+            if type(hi) is int:
+                return RangeVal(None, 0, hi + 1 if e.incl else hi)
+            if type(hi) is DomVal:
+                d = hi.dom
+                if d.of is not None:
+                    if e.incl:
+                        self.fail("a range up to a boundary is written `..b`", e)
+                    return RangeVal(d.of, 0, hi.ord)
+                return RangeVal(d, 0, hi.ord + 1 if e.incl else hi.ord)
+            self.fail(f"cannot build a range up to {self.show(hi)}", e)
+        lo = self.ev(e.lo, env)
         if type(lo) is int and type(hi) is int:
             return RangeVal(None, lo, hi + 1 if e.incl else hi)
         if type(lo) is DomVal:
@@ -1104,6 +1174,8 @@ class Interp:
         if op == "not in":
             return not self.contains(b, a, node)
         ta, tb = type(a), type(b)
+        if op in ("==", "!=") and (ta is Closure or tb is Closure or callable(a) or callable(b)):
+            return same_fn(a, b) == (op == "==")
         if ta is not tb and a is not None and b is not None and not (ta in (int, float) and tb in (int, float)):
             self.fail(f"cannot compare {self.show(a)} with {self.show(b)}", node)
         if ta is DomVal and tb is DomVal and a.dom is not b.dom:
@@ -1131,6 +1203,9 @@ class Interp:
 
     def contains(self, c, x, node):
         t = type(c)
+        if t is Obj and "contains" in c.stype.decl.methods:
+            # `x in s` on a library container asks its `contains`
+            return bool(self.call_method_node(c, c.stype.decl.methods["contains"], [x], None, node))
         if t is RangeVal:
             if c.dom is None:
                 return type(x) is int and c.lo <= x < c.hi
@@ -1182,6 +1257,12 @@ class Interp:
             if idx[0] not in o.items:
                 self.fail(f"key {self.show(idx[0])} is not in the map", e)
             return o.items[idx[0]]
+        if t is Obj:
+            # `xs[i]` on a struct reads through its `get`
+            m = o.stype.decl.methods.get("get")
+            if m is None:
+                self.fail(f"{o.stype!r} cannot be indexed: it has no `get`", e)
+            return self.call_method_node(o, m, idx, None, e)
         if len(idx) == 1 and type(idx[0]) is RangeVal:
             r = idx[0]
             if t is CList and r.dom is None or t is CArray and len(o.dims) == 1 and r.dom is o.dims[0]:
@@ -1214,8 +1295,23 @@ class Interp:
                 if any(d.name == "get" for d in m.decos):
                     return self.call_method_node(o, m, [], None, node)
                 return Bound(o, m)
+            # a value's type arguments are members too: `xs.D` of a `Compressed<D, T>`
+            st = o.stype
+            if st.targs and name in st.decl.tparams:
+                return st.targs[st.decl.tparams.index(name)]
+            x = self.extension(o, name)
+            if x is not None:
+                if self.is_get(x):
+                    return self.call_extension(x, o, [], None, node)
+                return lambda it, args, kwargs, node: it.call_extension(x, o, args, kwargs, node)
             self.fail(f"{o.stype!r} has no field or method `{name}`", node)
         if t is Tup:
+            if not (name.isdigit() or (o.names and name in o.names)):
+                x = self.extension(o, name)
+                if x is not None:
+                    if self.is_get(x):
+                        return self.call_extension(x, o, [], None, node)
+                    return lambda it, args, kwargs, node: it.call_extension(x, o, args, kwargs, node)
             return o.items[self.tup_index(o, name, node)]
         if t is Module:
             if name not in o.pub:
@@ -1237,6 +1333,11 @@ class Interp:
         if ms is not None and name in ms:
             m = ms[name]
             return lambda it, args, kwargs, node: m(it, o, args, kwargs, node)
+        x = self.extension(o, name)
+        if x is not None:
+            if self.is_get(x):
+                return self.call_extension(x, o, [], None, node)
+            return lambda it, args, kwargs, node: it.call_extension(x, o, args, kwargs, node)
         self.fail(f"{self.show(o)} has no field or method `{name}`", node)
 
     def e_call(self, e, env, raw=False):
@@ -1306,6 +1407,9 @@ class Interp:
                 return self.call_method_node(o, m, args, kwargs, node, raw)
             if name in o.f:
                 return self.call(o.f[name], args, kwargs, node)
+            x = self.extension(o, name)
+            if x is not None:
+                return self.call_extension(x, o, args, kwargs, node)
             self.fail(f"{o.stype!r} has no method `{name}`", node)
         if t is StructType:
             m = o.decl.methods.get(name)
@@ -1328,6 +1432,9 @@ class Interp:
             return ms[name](self, o, args, kwargs, node)
         if t is Tup and (o.names and name in o.names):
             return self.call(o.items[o.names.index(name)], args, kwargs, node)
+        x = self.extension(o, name)
+        if x is not None:
+            return self.call_extension(x, o, args, kwargs, node)
         self.fail(f"{self.show(o)} has no method `{name}`", node)
 
 
