@@ -1430,8 +1430,84 @@ impl<'a> Lowerer<'a> {
             self.error(codes::UNSUPPORTED, span, message);
             return self.err_expr(span);
         }
+        if let Spec::Array { dims, elem } = &spec {
+            if let [DimSpec::Pos(d)] = dims[..] {
+                if self.own_domains.contains(&d) {
+                    return self.read_own(d, elem, spec.ty(), span);
+                }
+            }
+        }
         let ty = spec.ty();
         self.mk(ExprKind::Read(Box::new(spec)), ty, span)
+    }
+
+    /// `let s: [domain S]Char = read()`: the token read is the array,
+    /// and its length is the size of `S`.
+    fn read_own(&mut self, d: DomainId, elem: &Spec, ty: Ty, span: Span) -> Expr {
+        if elem.ty() != Ty::Char {
+            let shown = self.show(&ty);
+            self.error(
+                codes::UNSUPPORTED,
+                span,
+                format!("`read()` can't tell how many values a `{shown}` has"),
+            );
+            self.help("read the count first, name a domain of that size, and read a `[D]T`".to_string());
+            return self.err_expr(span);
+        }
+        self.do_expr(Some(&ty.clone()), span, |lw, out| {
+            let word = lw.temp(Ty::Str);
+            let token = lw.mk(ExprKind::Read(Box::new(Spec::Plain(Ty::Str))), Ty::Str, span);
+            out.push(Stmt::Let(word, Some(token)));
+            let len = |lw: &Self| {
+                lw.mk(
+                    ExprKind::Builtin(Builtin::Len, vec![lw.local(word, span)]),
+                    Ty::Int,
+                    span,
+                )
+            };
+            out.push(Stmt::DefDomain {
+                id: d,
+                lo: lw.int_lit(0, span),
+                len: len(lw),
+            });
+            let cells = lw.temp(ty.clone());
+            let blank = lw.mk(ExprKind::Fill(vec![DimSpec::Pos(d)], None), ty.clone(), span);
+            out.push(Stmt::Let(cells, Some(blank)));
+            let at = lw.temp(Ty::Int);
+            let pos = lw.mk(
+                ExprKind::Cast(Cast::Trust, Box::new(lw.local(at, span))),
+                Ty::Pos(d),
+                span,
+            );
+            let cell = Place {
+                kind: PlaceKind::Index(
+                    Box::new(Place {
+                        kind: PlaceKind::Local(cells),
+                        ty: ty.clone(),
+                        span: lw.span(span),
+                    }),
+                    vec![pos],
+                ),
+                ty: Ty::Char,
+                span: lw.span(span),
+            };
+            let byte = lw.mk(
+                ExprKind::Index(Box::new(lw.local(word, span)), vec![lw.local(at, span)]),
+                Ty::Char,
+                span,
+            );
+            let lid = lw.next_loop;
+            lw.next_loop += 1;
+            let iter = Iter::Range {
+                lo: lw.int_lit(0, span),
+                hi: len(lw),
+                step: None,
+                rev: false,
+            };
+            let copy = Stmt::Assign(cell, AssignOp::Set, byte);
+            out.push(Stmt::For(lid, at, iter, Block { stmts: vec![copy] }));
+            out.push(Stmt::Give(lw.local(cells, span)));
+        })
     }
 
     fn min_max(&mut self, is_max: bool, args: &[ast::Arg], span: Span) -> Expr {
