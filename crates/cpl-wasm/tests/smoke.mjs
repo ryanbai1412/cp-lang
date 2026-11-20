@@ -79,6 +79,10 @@ test("every program of cpl's own tests prints what its .out file says", () => {
   };
   for (const program of programs) {
     const stem = program.slice(0, -".cp".length);
+    // A program with its `@interactor` is played against it by `cpl run`
+    // on two threads, which a page does not have: its .out is the
+    // conversation, not what the solution prints alone.
+    if (read(program).toString().includes("\n@interactor")) continue;
     const run = cpl.run(read(program).toString(), read(`${stem}.in`), { name: program });
     assert.deepEqual(Buffer.from(run.stdoutBytes), read(`${stem}.out`), program);
   }
