@@ -1,0 +1,138 @@
+//! Values of literals.
+
+use cpl_diag::Span;
+
+/// The value of an integer literal: `42`, `1_000_000`, `0xff`, `0b101`, and
+/// `1e9` or `2.5e3`-style literals whose value is an exact integer.
+pub fn int_value(text: &str) -> Option<i128> {
+    let clean: String = text.chars().filter(|c| *c != '_').collect();
+    let lower = clean.to_ascii_lowercase();
+    if let Some(hex) = lower.strip_prefix("0x") {
+        return i128::from_str_radix(hex, 16).ok();
+    }
+    if let Some(bin) = lower.strip_prefix("0b") {
+        return i128::from_str_radix(bin, 2).ok();
+    }
+    let (mantissa, exp) = match lower.split_once('e') {
+        Some((m, e)) => (m, e.parse::<i32>().ok()?),
+        None => (lower.as_str(), 0),
+    };
+    let (whole, frac) = mantissa.split_once('.').unwrap_or((mantissa, ""));
+    let frac = frac.trim_end_matches('0');
+    let exp = exp - frac.len() as i32;
+    let digits: i128 = format!("{whole}{frac}").parse().ok()?;
+    if exp >= 0 {
+        10i128.checked_pow(exp as u32)?.checked_mul(digits)
+    } else {
+        let div = 10i128.checked_pow(exp.unsigned_abs())?;
+        (digits % div == 0).then(|| digits / div)
+    }
+}
+
+/// One piece of an interpolating string.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum StrPart {
+    /// Literal text (escapes not yet processed).
+    Text(Span),
+    /// The inside of `{...}`: an expression to parse.
+    Expr(Span),
+}
+
+/// Splits the token text of an interpolating string (quotes included) into
+/// text and `{expr}` parts. Spans are relative to `text`.
+pub fn string_parts(text: &str) -> Vec<StrPart> {
+    let bytes = text.as_bytes();
+    let end = if bytes.len() >= 2 && bytes[bytes.len() - 1] == b'"' {
+        bytes.len() - 1
+    } else {
+        bytes.len()
+    };
+    let mut parts = Vec::new();
+    let mut i = 1;
+    let mut text_start = 1;
+    while i < end {
+        match bytes[i] {
+            b'\\' => i += 2,
+            b'{' if bytes.get(i + 1) == Some(&b'{') => i += 2,
+            b'}' if bytes.get(i + 1) == Some(&b'}') => i += 2,
+            b'{' => {
+                if i > text_start {
+                    parts.push(StrPart::Text(Span::new(text_start as u32, i as u32)));
+                }
+                let expr_start = i + 1;
+                let mut depth = 1;
+                let mut in_str = false;
+                i += 1;
+                while i < end && depth > 0 {
+                    match bytes[i] {
+                        b'\\' if in_str => i += 1,
+                        b'"' => in_str = !in_str,
+                        b'{' if !in_str => depth += 1,
+                        b'}' if !in_str => depth -= 1,
+                        _ => {}
+                    }
+                    i += 1;
+                }
+                let expr_end = if depth == 0 { i - 1 } else { i.min(end) };
+                parts.push(StrPart::Expr(Span::new(expr_start as u32, expr_end as u32)));
+                text_start = i.min(end);
+            }
+            _ => i += 1,
+        }
+    }
+    if end > text_start {
+        parts.push(StrPart::Text(Span::new(text_start as u32, end as u32)));
+    }
+    parts
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn integer_literals() {
+        assert_eq!(int_value("42"), Some(42));
+        assert_eq!(int_value("1_000_000"), Some(1_000_000));
+        assert_eq!(int_value("1e9"), Some(1_000_000_000));
+        assert_eq!(int_value("2e5"), Some(200_000));
+        assert_eq!(int_value("0xff"), Some(255));
+        assert_eq!(int_value("0b1010"), Some(10));
+        assert_eq!(int_value("2.5e3"), Some(2500));
+        assert_eq!(int_value("1e-3"), None);
+        assert_eq!(int_value("10e-1"), Some(1));
+        assert_eq!(int_value("0.5"), None);
+        assert_eq!(int_value("1e999"), None);
+    }
+
+    fn parts(text: &str) -> Vec<(char, &str)> {
+        string_parts(text)
+            .into_iter()
+            .map(|p| match p {
+                StrPart::Text(s) => ('t', s.text(text)),
+                StrPart::Expr(s) => ('e', s.text(text)),
+            })
+            .collect()
+    }
+
+    #[test]
+    fn strings_split_into_text_and_expressions() {
+        assert_eq!(
+            parts(r#""Case #{t}: {ans + 1}""#),
+            vec![('t', "Case #"), ('e', "t"), ('t', ": "), ('e', "ans + 1")]
+        );
+        assert_eq!(parts(r#""plain""#), vec![('t', "plain")]);
+        assert_eq!(parts(r#""""#), vec![]);
+    }
+
+    #[test]
+    fn doubled_braces_and_nested_strings_are_not_interpolations() {
+        assert_eq!(parts(r#""{{x}} {y}""#), vec![('t', "{{x}} "), ('e', "y")]);
+        assert_eq!(parts(r#""{m["a}"]}""#), vec![('e', r#"m["a}"]"#)]);
+    }
+
+    #[test]
+    fn an_unclosed_interpolation_runs_to_the_end() {
+        assert_eq!(parts(r#""a {b + "#), vec![('t', "a "), ('e', "b + ")]);
+    }
+}
