@@ -4,15 +4,15 @@ A scout pass over the `coci*`/`coi*` bucket of the corpus: a DP on a graph
 with one cycle (coci21c1p3), a Fourier transform over Z_3^k (coci21c1p4),
 disjoint longest increasing subsequences (coci21c1p5), tree diameters in a
 forest (coci21c3p2), a two-pointer over row bands (coci21c6p2), a
-floating-point sweep (coi07p1) and four easy first and second problems
-(coci21c2p1, coci21c2p2, coci21c3p1, coci21c6p1). The ports are in
+floating-point sweep (coi07p1) and five easy first and second problems
+(coci21c1p1, coci21c2p1, coci21c2p2, coci21c3p1, coci21c6p1). The ports are in
 [`proto/ports/scout_batch_35/`](../proto/ports/scout_batch_35/). Items are
 numbered `K1`... so they do not collide with earlier batches.
 
 What was checked, and what was not. Each port exists twice: `<code>.cp` as
 the v2 cheat sheet (`docs/one-page-cheat-sheet.md`) spells it, and
 `today/<code>.cp` in the forms the prototype takes. Only the `today/` forms
-ran: eight built to C++17 by `proto/cp.py build` and compared with the
+ran: nine built to C++17 by `proto/cp.py build` and compared with the
 original on 200 random inputs each, two (coi07p1, coci21c2p1) on the
 reference interpreter on 60 inputs each
 (`python3 proto/ports/scout_batch_35/check.py`, `main` at `c8e381f`). The
@@ -24,9 +24,12 @@ DMOJ API returned 403 for every problem, so statements were reconstructed
 from the accepted C++; for coi07p1 nothing else was available. Nothing was
 run on the Rust compiler, and `crates/` and `proto/cpc/` were not changed.
 
-The brief asked for ten hard problems; the bucket had three (coci21c1p3,
-p4, p5). Twelve problems were unported when the batch was picked and the
-two left out are easier still. Items K1 to K5 come from the three hard
+The brief asked for ten hard, unported problems; the bucket had three hard
+ones (coci21c1p3, p4, p5) and twelve unported in all. While this batch was
+in progress batch 30 landed its own coci21c1p5, so there are eleven ports
+here: coci21c1p1 was added to keep ten that are new, and coci21c1p5 stays
+because it solves the problem differently (K7). The one problem left in
+the bucket is coci08c1p1. Items K1 to K5 come from the three hard
 ports and rest on one port each.
 
 ## Line counts
@@ -40,6 +43,7 @@ coci21c1p4, and the generic segment tree in coci21c1p5 (ranges in
 
 ```text
 problem        v2  today   C++  C++ stripped  raw cut  stripped cut
+coci21c1p1     10     16    60            23      83%           57%
 coci21c1p3     23     49   177           115      87%           80%
 coci21c1p4     24     38   239            76      90%           68%
 coci21c1p5     34     41   189           102      82%           67%
@@ -50,11 +54,11 @@ coci21c3p2     20     27    80            46      75%           57%
 coci21c6p1      7     16    62            32      89%           78%
 coci21c6p2     19     22    71            41      73%           54%
 coi07p1        12     17    59            28      80%           57%
-total         165    250  1081           542      85%           70%
+total         175    266  1141           565      85%           69%
 ```
 
 The cuts are for the v2 column. The honest number for what runs today is
-the `today` column: 250 lines, 77% fewer raw and 54% fewer stripped. Part
+the `today` column: 266 lines, 77% fewer raw and 53% fewer stripped. Part
 of the cut is a different algorithm rather than the language: Kutije's
 original builds a reachability table where the port unites boxes, and
 Volontiranje's original keeps a segment tree per level where the port
@@ -275,6 +279,12 @@ if at == tails.len:
 else: tails[at] = p[i]
 level[at].push(i)
 ```
+
+Batch 30 ported the same problem the way the original solves it, with a
+segment tree over the packed levels and a backtracking search; this port
+keeps one stack and needs no structure, and at n = 10^6 its built form
+takes 0.08 to 0.16 s against the original's 0.16 to 0.83 s. The two were
+not compared with each other.
 
 `first_ge` returning `?I` is right for lookups, but for insertion the
 `none` is immediately turned back into `len` and then tested again. The
