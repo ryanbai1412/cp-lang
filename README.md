@@ -112,12 +112,12 @@ $ target/debug/cpl build site/examples/optional.cp --checked # also build it wit
 $ target/debug/cpl --help                                   # check, fmt, lint, test, stress, lsp, ...
 ```
 
-Run the standard library and sample library tests in the Python
-prototype, or compile a port with it:
+Run the standard library and sample library tests, or compile a corpus
+port:
 
 ```text
-$ python3 proto/cp.py test stdlib examples/local-lib
-$ python3 proto/cp.py build proto/ports/aac4p2.cp            # writes proto/ports/aac4p2.cpp
+$ target/debug/cpl test stdlib examples/local-lib
+$ target/debug/cpl build proto/ports/aac4p2.cp -o -          # the C++17 for one port
 ```
 
 Install the VS Code extension (highlighting, snippets and the `cpl lsp`
@@ -140,12 +140,16 @@ $ site/.venv/bin/python site/bundle.py                       # writes dist/cp-la
 
 ## Status
 
-0.2.2 is a locked specification, and the two implementations are still
-catching up to it. The Rust compiler (`crates/`) checks, runs and builds a
-growing subset; the playground runs that same compiler. The Python
-prototype (`proto/`) covers more of the library and builds the corpus
-ports, but predates some 0.2.2 spellings. The example above runs in the
-Rust compiler, in the interpreter and as emitted C++.
+0.2.2 is a locked specification, and the Rust compiler (`crates/`) is
+its implementation; the playground and the VS Code extension run that
+same compiler. It checks, runs and builds the whole standard library and
+the sample library. `crates/cpl-cli/tests/corpus.rs` checks the corpus
+ports and the prototype's tests; the files it does not pass yet are listed
+there as `PENDING` or `NOT_BUILT`, and
+[`research/friction-queue.md`](research/friction-queue.md) says what each
+one waits on. The Python prototype (`proto/`) is frozen: new syntax lands
+in the Rust compiler. The example above runs in the interpreter and as
+emitted C++.
 The docs site labels every snippet as either runnable or specification.
 
 ## Repository map
@@ -158,8 +162,10 @@ The docs site labels every snippet as either runnable or specification.
   and C++ benchmarks).
 - `Cargo.toml`, `crates/`: the Rust compiler and tools.
   `crates/README.md` says which crate owns what.
-- `proto/`: the Python prototype compiler and the corpus ports
-  (`proto/ports/`). Kept for trying design changes quickly.
+- `proto/`: the corpus ports (`proto/ports/`) and the frozen Python
+  prototype compiler they were first written against.
+- `research/friction-queue.md`: every open friction item from the ports,
+  clustered, with the next syntax batches.
 - `stdlib/`: the standard library, written in CP Lang, with its tests.
   `stdlib/README.md` is the tour.
 - `examples/local-lib/`: a sample personal contest library built on it.
@@ -182,12 +188,14 @@ clone:
 $ scripts/install-hooks.sh            # git commit now runs scripts/check.sh --fast
 ```
 
-`scripts/check.sh --fast` takes about 2 minutes: it refuses staged
-`dist/` output and secrets, then runs clippy with warnings as errors,
-`cargo test --workspace` and the library tests. Before pushing a change
-to the prototype, the WebAssembly build or the VS Code extension, run the
-slow suites too:
+`scripts/check.sh --fast` takes under a minute on a warm build: it
+refuses staged `dist/` output and secrets, then runs clippy with warnings
+as errors, the workspace tests (with `cargo nextest` when it is
+installed), the library tests and `cpl fmt --check stdlib`. It leaves out
+the slow prototype fuzz test and the timing budget tests. Before pushing
+a change to the prototype, the WebAssembly build or the VS Code
+extension, run the slow suites too:
 
 ```text
-$ scripts/check.sh --full             # adds the wasm smoke test, the VS Code tests and proto/run_all.sh
+$ scripts/check.sh --full             # adds proto_fuzz, the budget tests, the wasm smoke test, the VS Code tests and proto/run_all.sh
 ```
