@@ -6,6 +6,7 @@ class ParseError(Exception):
     pass
 
 ASSIGN_OPS = {"=", "+=", "-=", "*=", "/=", "%=", "|=", "&=", "^="}
+OP_FNS = {"+", "*", "|", "&", "^"}
 CMP_OPS = {"==", "!=", "<", ">", "<=", ">="}
 
 class Parser:
@@ -149,6 +150,8 @@ class Parser:
                 return f
             if v == "struct":
                 return self.struct_def()
+        if t.kind == "NAME" and t.val == "use" and self.peek().kind == "NAME":
+            return self.use_stmt()
         if t.kind == "NAME" and t.val == "impl" and self.peek().kind == "NAME":
             # `impl Index for Cell:` followed by `let K = ...` and fns (plan/19 §3.1)
             self.next()
@@ -250,6 +253,33 @@ class Parser:
         self.end_line()
         return s
 
+    def use_stmt(self):
+        """`use std.dsu`, `use std.dsu.{Dsu}`, `use std.segtree.*`, `use lib.graph.flow as fl` (plan/40)."""
+        line = self.next().line
+        path = [self.name()]
+        names, alias, glob = None, None, False
+        while self.at("."):
+            self.next()
+            if self.at("{"):
+                self.next()
+                names = []
+                while not self.at("}"):
+                    names.append(self.name())
+                    if self.at(","):
+                        self.next()
+                self.expect("}")
+                break
+            if self.at("*"):
+                self.next()
+                glob = True
+                break
+            path.append(self.name())
+        if self.t.kind == "NAME" and self.t.val == "as":
+            self.next()
+            alias = self.name()
+        self.end_line()
+        return N("use", line, path=path, names=names, alias=alias, glob=glob)
+
     def simple_stmt(self):
         t = self.t
         line = t.line
@@ -268,6 +298,12 @@ class Parser:
                     val = self.expr()
                 if v == "let" and val is None:
                     self.err("let needs a value")
+                more = []           # `let a = x and let b = y else: ...`: what `if let` accepts
+                while self.at("and") and self.peek().kind == "KW" and self.peek().val == "let":
+                    self.next(); self.next()
+                    p2 = self.pattern()
+                    self.expect("=")
+                    more.append((p2, self.expr()))
                 where = None
                 if self.at("where"):
                     self.next()
@@ -277,7 +313,10 @@ class Parser:
                     self.next()
                     els = self.block()
                     self.after_block = True
-                return N("let", line, pat=pat, ty=ty, value=val, mut=(v == "var"), const=False, where=where, orelse=els)
+                if more and els is None:
+                    self.err("`let a = x and let b = y` needs an `else:` for when one of them is none")
+                return N("let", line, pat=pat, ty=ty, value=val, mut=(v == "var"), const=False, where=where, orelse=els,
+                         more=more)
             if v == "yield":
                 self.next()
                 if self.t.kind == "NAME" and self.t.val == "from":
@@ -335,7 +374,7 @@ class Parser:
             if f in ("min", "max"):
                 return N("assign", line, target=e, op=f + "=", value=rhs)
             call = N("call", line, fn=N("name", line, name=f), args=[e, rhs])
-            return N("assign", line, target=e, op="=", value=call)
+            return N("assign", line, target=e, op="=", value=call, fold=f)
         return N("exprstmt", line, expr=e)
 
     def pattern(self, bare=True):
@@ -669,7 +708,7 @@ class Parser:
 
     def and_(self):
         e = self.not_()
-        while self.at("and"):
+        while self.at("and") and not (self.peek().kind == "KW" and self.peek().val == "let"):
             line = self.next().line
             e = N("binop", line, op="and", a=e, b=self.not_())
         return e
@@ -789,6 +828,15 @@ class Parser:
                 mut = self.t.kind == "NAME" and self.t.val == "mut" and self.peek().kind == "NAME"
                 if mut:
                     self.next()
+                if self.t.kind == "OP" and self.t.val in OP_FNS and self.peek().kind == "OP" and self.peek().val in (",", ")"):
+                    # an operator where a two-argument fn is expected: `scan(a, +)` is `scan(a, (x, y) => x + y)`
+                    op = self.next().val
+                    args.append(N("lambda", line, params=[N("pname", line, name="_a"), N("pname", line, name="_b")],
+                                  body=N("binop", line, op=op, a=N("name", line, name="_a"), b=N("name", line, name="_b")),
+                                  op=op))
+                    if self.at(","):
+                        self.next()
+                    continue
                 e = self.expr()
                 if self.at("for"):
                     e = self.gen_tail(e)
@@ -910,6 +958,13 @@ class Parser:
                 ps = [self.pattern(False)]
             self.expect("=>")
             return N("lambda", line, params=ps, body=self.expr())
+        if self.at(".") and self.peek().kind == "NAME":
+            # `.cost` where a one-argument fn is expected is `x => x.cost` (and `.a.b` is `x => x.a.b`)
+            body = N("name", line, name="_it")
+            while self.at(".") and self.peek().kind == "NAME":
+                self.next()
+                body = N("field", line, obj=body, name=self.next().val)
+            return N("lambda", line, params=[N("pname", line, name="_it")], body=body)
         if t.kind == "NUM":
             self.next()
             return N("num", line, value=t.val)
@@ -958,13 +1013,21 @@ class Parser:
         if self.at("["):
             self.next()
             items = []
+            pairs = []              # `[k: v, ...]`: a map literal
             while not self.at("]"):
                 items.append(self.expr())
+                if self.at(":") and len(pairs) == len(items) - 1:
+                    self.next()
+                    pairs.append((items[-1], self.expr()))
+                elif pairs:
+                    self.err("a map literal is `[key: value, ...]`; this entry has no `: value`")
                 if self.at("for"):
                     items[-1] = self.gen_tail(items[-1])
                 if self.at(","):
                     self.next()
             self.expect("]")
+            if pairs:
+                return N("maplit", line, pairs=pairs)
             # table comprehension: [D] i => e   /  [A, B] (i, j) => e
             if (self.t.kind == "NAME" and self.peek().kind == "OP" and self.peek().val == "=>") or self.at("("):
                 save = self.i

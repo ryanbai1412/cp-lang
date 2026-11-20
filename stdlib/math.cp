@@ -9,6 +9,14 @@ pub fn gcd(a: Int, b: Int) -> Int:
 /// The least common multiple, never negative; stops on overflow.
 pub fn lcm(a: Int, b: Int) -> Int = if a == 0 or b == 0: 0 else: abs(a / gcd(a, b) * b)
 
+/// The number of ways to pick `k` of `n` things, exactly; 0 when `k` is outside `0..=n`.
+/// O(min(k, n - k)); stops on overflow. For counts modulo a prime use `Comb` in `std.mod`.
+pub fn choose(n: Int, k: Int) -> Int:
+    if k < 0 or k > n: return 0
+    var r = 1
+    for i in 0..min(k, n - k): r = r * (n - i) / (i + 1)
+    r
+
 /// `(g, x, y)` with `a * x + b * y == g == gcd(a, b)`. O(log min(a, b)).
 pub fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int):
     var (r0, r1) = (a, b)
@@ -117,6 +125,13 @@ fn gcd_lcm_and_bezout():
         let e = ext_gcd(a, b)
         assert e.g == g and a * e.x + b * e.y == g
     assert gcd(0, 0) == 0 and lcm(4, 6) == 12 and lcm(0, 5) == 0 and lcm(-4, 6) == 12
+
+@test
+fn choose_is_pascals_triangle():
+    assert choose(0, 0) == 1 and choose(5, 2) == 10 and choose(5, 7) == 0 and choose(5, -1) == 0
+    assert choose(1000000, 3) == 166666166667000000
+    for n in 1..=30:
+        for k in 0..=n: assert choose(n, k) == choose(n - 1, k - 1) + choose(n - 1, k)
 
 @test
 fn division_helpers_round_the_right_way():

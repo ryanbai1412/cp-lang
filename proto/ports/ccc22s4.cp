@@ -1,7 +1,8 @@
+// cp: 0.1 c217120+dirty
 // CCC 2022 S4 Good Triplets: n points sit on c evenly spaced spots of a
 // circle. Count the triples of points whose triangle has the centre strictly
 // inside.
-use std.math.{choose}                                               // WISH F1
+use std.math.{choose}
 
 let n: 3..=1e6 = read()
 let c: 3..=1e6 = read()
@@ -17,12 +18,12 @@ let ring = prefix(at)
 // the next c / 2 spots.
 var bad = 0
 for p in Spot:
-    let ahead = ring.sum(p.cyc(1).., len: c / 2)                    // WISH F11: a range that wraps
+    let ahead = ring.sum(from: p.cyc(1), len: c / 2)
     bad += choose(at[p], 3) + choose(at[p], 2) * ahead + at[p] * choose(ahead, 2)
 // When c is even, a triple with two points on one end of a diameter and one
 // on the other was charged at both ends.
 if c % 2 == 0:
-    for p in Spot.first(c / 2):
+    for p in Spot.all.prefix(c / 2):
         let q = p.cyc(c / 2)
         bad -= choose(at[p], 2) * at[q] + at[p] * choose(at[q], 2)
 print(choose(n, 3) - bad)

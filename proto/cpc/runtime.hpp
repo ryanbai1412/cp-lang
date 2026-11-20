@@ -127,12 +127,19 @@ template <class U> static inline void opt_min(OptI32& o, U x) { if (!o.has() || 
 template <class U> static inline void opt_max(OptI32& o, U x) { if (!o.has() || o.get() < (ll)x) o = OptI32((ll)x); }
 // @end
 
-struct Rng { ll lo, hi; };
+struct Rng {
+    ll lo, hi;
+    bool operator==(const Rng& o) const { return lo == o.lo && hi == o.hi; }
+    bool operator!=(const Rng& o) const { return !(*this == o); }
+    bool operator<(const Rng& o) const { return lo != o.lo ? lo < o.lo : hi < o.hi; }
+    bool operator>(const Rng& o) const { return o < *this; }
+};
 static inline Opt<int> cp_step(ll ord, ll k, bool minus, ll len) {
     __int128 x = (__int128)ord + (minus ? -(__int128)k : (__int128)k);
     return x >= 0 && x < len ? Opt<int>((int)x) : Opt<int>();
 }
 // r.prefix(k) / r.suffix(k): the first / last k positions of a range, or all of it when it is shorter
+static inline ll cp_width(ll k, int line) { if (k < 1) cp_fail("windows(k) needs k >= 1", line); return k; }
 static inline Rng cp_rprefix(Rng r, ll k) { return Rng{r.lo, max(r.lo, min(r.hi, r.lo + max(k, 0LL)))}; }
 static inline Rng cp_rsuffix(Rng r, ll k) { return Rng{min(r.hi, max(r.lo, r.hi - max(k, 0LL))), max(r.lo, r.hi)}; }
 // span(a, b): wa / wb is 1 for a position (one cell wide) and 0 for a boundary
@@ -283,11 +290,31 @@ template <class M, class K> auto& cp_mget(M& m, const K& k, int ln) {
     return it->second;
 }
 
+// `m[k] f= x`: the entry for k, created as f's identity when the key is new
+template <class M, class K, class V> auto& cp_mslot(M& m, const K& k, const V& init) {
+    auto it = m.find(k);
+    if (it == m.end()) { auto& s = m[k]; s = init; return s; }
+    return it->second;
+}
+// `m[k] min= x` / `m[k] max= x`: a new key takes x, an old one keeps the better of the two
+template <class M, class K, class V, class F> void cp_mkeep(M& m, const K& k, const V& x, F f) {
+    auto it = m.find(k);
+    if (it == m.end()) m[k] = x; else it->second = f(it->second, x);
+}
+
 // SegTree<T>: point update, range fold with a user monoid (id, op). Prototype stand-in for std.segtree.
 template <class T> struct SegTree {
     int n = 0; T id; std::function<T(const T&, const T&)> op; vector<T> t;
     SegTree() {}
     template <class F> SegTree(int n_, T id_, F f) : n(n_), id(id_), op(f), t(2 * max(n_, 1), id_) {}
+    // SegTree.of(op, f): leaf i is f(i), built in O(n); refresh(i) recomputes one leaf from the same f
+    std::function<T(int)> src;
+    template <class F, class G> SegTree(int n_, T id_, F f, G g) : n(n_), id(id_), op(f), t(2 * max(n_, 1), id_), src(g) {
+        for (int i = 0; i < n; ++i) t[i + n] = src(i);
+        for (int i = n - 1; i >= 1; --i) t[i] = op(t[2 * i], t[2 * i + 1]);
+    }
+    void refresh(int i) { set(i, src(i)); }
+    T all() const { return n ? query(0, n - 1) : id; }
     void set(int i, const T& v) { for (t[i += n] = v; i > 1; i >>= 1) t[i >> 1] = op(t[i & ~1], t[i | 1]); }
     T get(int i) const { return t[i + n]; }
     T query(int l, int r) const {  // inclusive
@@ -426,11 +453,11 @@ template <class G, class F> static vector<vector<int>> cp_condense(const G& g, c
 
 // Disjoint sets: union by size, path halving
 struct CpDsu {
-    vector<int> p, sz;
+    vector<int> p, sz; ll parts = 0;
     CpDsu() {}
-    explicit CpDsu(ll n) : p(n), sz(n, 1) { iota(p.begin(), p.end(), 0); }
+    explicit CpDsu(ll n) : p(n), sz(n, 1), parts(n) { iota(p.begin(), p.end(), 0); }
     int find(int v) { while (p[v] != v) v = p[v] = p[p[v]]; return v; }
-    bool unite(int a, int b) { a = find(a); b = find(b); if (a == b) return false; if (sz[a] < sz[b]) swap(a, b); p[b] = a; sz[a] += sz[b]; return true; }
+    bool unite(int a, int b) { a = find(a); b = find(b); if (a == b) return false; if (sz[a] < sz[b]) swap(a, b); p[b] = a; sz[a] += sz[b]; --parts; return true; }
     bool same(int a, int b) { return find(a) == find(b); }
     int size(int v) { return sz[find(v)]; }
 };
@@ -440,6 +467,7 @@ struct CpDsu {
 // vertex to one of its ancestors. Prototype stand-in for std.tree.
 struct RootedTree {
     vector<int> par, order, tin, dep, siz; vector<vector<int>> sp, kids;
+    vector<ll> down;                    // total edge length from the root; the depth when edges have no lengths
     mutable vector<vector<int>> jump;   // jump[k][v]: 2^k steps up, built on the first ancestor() call
     RootedTree() {}
     RootedTree(const vector<vector<int>>& adj, int root) : par(adj.size(), -1), tin(adj.size(), -1), dep(adj.size(), 0) {
@@ -454,6 +482,7 @@ struct RootedTree {
         }
         int n = (int)order.size();
         siz.assign(adj.size(), 1); kids.resize(adj.size());
+        down.assign(dep.begin(), dep.end());
         for (int i = n - 1; i > 0; --i) siz[par[order[i]]] += siz[order[i]];
         for (int i = 1; i < n; ++i) kids[par[order[i]]].push_back(order[i]);
         sp.assign(1, vector<int>(n));
@@ -463,6 +492,16 @@ struct RootedTree {
             for (int i = 0; i + (1 << k) <= n; ++i) sp[k][i] = min(sp[k - 1][i], sp[k - 1][i + (1 << (k - 1))]);
         }
     }
+    // The same tree with a length on every edge: arcs[u] holds (v, length), in both directions or parent to child.
+    static vector<vector<int>> plain(const vector<vector<pair<int, ll>>>& arcs) {
+        vector<vector<int>> adj(arcs.size());
+        for (size_t u = 0; u < arcs.size(); ++u) for (const auto& a : arcs[u]) adj[u].push_back(a.first);
+        return adj;
+    }
+    RootedTree(const vector<vector<pair<int, ll>>>& arcs, int root) : RootedTree(plain(arcs), root) {
+        for (int u : order) for (const auto& a : arcs[u]) if (par[a.first] == u) down[a.first] = down[u] + a.second;
+    }
+    ll length(int u, int v) const { return down[u] + down[v] - 2 * down[lca(u, v)]; }
     int lca(int u, int v) const {
         if (u == v) return u;
         int l = min(tin[u], tin[v]) + 1, r = max(tin[u], tin[v]) + 1, k = 31 - __builtin_clz(r - l);
@@ -687,6 +726,12 @@ struct CpPrefix {
         for (ll r = 0; r < rows; ++r) for (ll c = 0; c < cols; ++c)
             p[(r + 1) * w + c + 1] = p[r * w + c + 1] + p[(r + 1) * w + c] - p[r * w + c] + a[r * cols + c];
     }
+    ll wrap(ll from, ll k, ll n, int line) const {     // 1-D: k cells starting at `from`, going round past the end
+        if (k < 0 || n <= 0) cp_fail("sum(from:, len:) needs len >= 0 and a non-empty array", line);
+        auto upto = [&](ll b) { return p[b * w + 1]; };
+        ll rest = k % n, to = from + rest;
+        return (k / n) * upto(n) + (to <= n ? upto(to) - upto(from) : upto(n) - upto(from) + upto(to - n));
+    }
     ll sum(Rng rs, Rng cs) const {      // an empty range sums to 0
         if (rs.lo >= rs.hi || cs.lo >= cs.hi) return 0;
         return p[rs.hi * w + cs.hi] - p[rs.lo * w + cs.hi] - p[rs.hi * w + cs.lo] + p[rs.lo * w + cs.lo];
@@ -701,4 +746,58 @@ struct I32 {
     I32& operator+=(ll x) { v += (int)x; return *this; }
     I32& operator-=(ll x) { v -= (int)x; return *this; }
 };
+// @end
+// @part cp_bfs
+// bfs(adj, from): fewest arcs from any of `from` to each vertex. Prototype stand-in for std.graph.bfs.
+static inline int cp_arc_to(int v) { return v; }
+template <class A> static inline auto cp_arc_to(const A& a) -> decltype((int)a.to) { return (int)a.to; }
+template <class O, class F, class Adj> vector<O> cp_bfs(ll n, const F& from, Adj adj) {
+    vector<O> dist((size_t)n); vector<int> q;
+    for (int s : from) if (!dist[s].has()) { dist[s] = O(0); q.push_back(s); }
+    for (size_t h = 0; h < q.size(); ++h) {
+        int u = q[h]; ll d = dist[u].get() + 1;
+        for (const auto& a : adj(u)) { int v = cp_arc_to(a); if (!dist[v].has()) { dist[v] = O(d); q.push_back(v); } }
+    }
+    return dist;
+}
+// @end
+// @part cp_choose
+// choose(n, k): the number of k-subsets of n things, exactly; 0 when k is outside 0..=n
+static inline ll cp_choose(ll n, ll k, int line) {
+    if (k < 0 || k > n) return 0;
+    k = min(k, n - k);
+    __int128 r = 1;
+    for (ll i = 0; i < k; ++i) {
+        r = r * (n - i) / (i + 1);
+        if (r > (__int128)LLONG_MAX) cp_fail("Int overflow", line);
+    }
+    return (ll)r;
+}
+// @end
+// @part CpSteps
+// Steps<K>: a function on a line that changes at few places. add(range, x) adds x over a range; runs(range)
+// reads it back as maximal stretches of one value. Prototype stand-in for std.steps.
+struct CpSteps {
+    map<ll, ll> d;                      // the change of value at each boundary
+    void add(Rng r, ll x) { if (r.lo < r.hi && x != 0) { d[r.lo] += x; d[r.hi] -= x; } }
+    template <class Tup> vector<Tup> runs(Rng clip) const {
+        vector<Tup> out;
+        if (clip.lo >= clip.hi) return out;
+        ll cur = 0, at = clip.lo;
+        auto it = d.begin();
+        for (; it != d.end() && it->first <= clip.lo; ++it) cur += it->second;
+        auto put = [&](ll hi) {
+            if (hi <= at) return;
+            if (!out.empty() && (ll)out.back().f1 == cur) out.back().f0.hi = hi; else out.push_back(Tup{Rng{at, hi}, cur});
+            at = hi;
+        };
+        for (; it != d.end() && it->first < clip.hi; ++it) { put(it->first); cur += it->second; }
+        put(clip.hi);
+        return out;
+    }
+};
+// @end
+// @part cp_take
+// take(place): the value, leaving the place empty
+template <class T> static inline T cp_take(T& x, T empty) { T v = std::move(x); x = std::move(empty); return v; }
 // @end
