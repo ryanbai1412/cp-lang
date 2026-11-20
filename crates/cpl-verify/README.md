@@ -6,7 +6,7 @@ line counts and a latency benchmark. It tests the Python prototype in
 same two traits when they can run programs.
 
 ```text
-$ cargo test -p cpl-verify                 # all of it, about a minute
+$ cargo test -p cpl-verify                 # all of it, under a minute
 $ cargo run -p cpl-verify -- fuzz --seeds 0..2000
 $ cargo run -p cpl-verify -- layout
 $ cargo run -p cpl-verify -- loc
@@ -65,7 +65,8 @@ report. The prototype promises only `index` today; pass
 
 `backend::Transpiler` is ".cp to C++17" and `backend::Interpreter` is
 "run .cp". Until the crates export an API, the `cpl` binary plugs in by
-command line, with `{src}` and `{cpp}` filled in:
+command line, with `{src}` and `{cpp}` filled in (the flags below stand
+for whatever `cpl` ends up taking):
 
 ```text
 $ cargo run -p cpl-verify -- fuzz \
