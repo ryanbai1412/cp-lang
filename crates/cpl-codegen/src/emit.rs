@@ -851,12 +851,18 @@ impl<'p> Emitter<'p> {
         } else {
             "    cpl::read_all();\n"
         });
+        // Each test case has its own query limit.
+        let case = if self.used.contains("count_query") {
+            "{ cpl::asked = 0; prog::solve(); }"
+        } else {
+            "prog::solve();"
+        };
         if program.until_eof {
-            out.push_str("    if (prog::setup()) while (!cpl::at_eof()) prog::solve();\n");
+            out.push_str(&format!("    if (prog::setup()) while (!cpl::at_eof()) {case}\n"));
         } else if program.multitest {
-            out.push_str(
-                "    if (prog::setup()) for (ll tests = cpl::read_int(); tests > 0; tests--) prog::solve();\n",
-            );
+            out.push_str(&format!(
+                "    if (prog::setup()) for (ll tests = cpl::read_int(); tests > 0; tests--) {case}\n",
+            ));
         } else {
             out.push_str("    prog::solve();\n");
         }

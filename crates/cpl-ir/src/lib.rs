@@ -23,14 +23,33 @@ pub use cpl_syntax::ast::{BinOp, CmpOp, UnOp};
 pub fn check(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
     let mut diagnostics = analysis.diagnostics.clone();
     if !analysis.has_errors() {
-        if let Err(more) = lower(analysis) {
-            diagnostics.extend(more);
+        // The judge's side and the brute are programs of their own, and
+        // an error in one is an error in the file.
+        let mut results = vec![lower(analysis).map(drop)];
+        if let Some(name) = interactor(analysis) {
+            results.push(lower_judge(analysis, &name).map(drop));
+        }
+        if let Some((name, _)) = brute(analysis) {
+            results.push(lower_brute(analysis, &name).map(drop));
+        }
+        if let Some((name, _)) = checker(analysis) {
+            results.push(lower_checker(analysis, &name).map(drop));
+        }
+        for more in results.into_iter().filter_map(Result::err) {
+            for diagnostic in more {
+                if !diagnostics.contains(&diagnostic) {
+                    diagnostics.push(diagnostic);
+                }
+            }
         }
     }
     diagnostics
 }
 
-pub use lower::{interactor, list_tests, lower, lower_judge, lower_test};
+pub use lower::{
+    brute, checker, interactor, list_tests, lower, lower_brute, lower_checker, lower_judge,
+    lower_test,
+};
 pub use show::{sep_of, Sep};
 
 use cpl_diag::Span;
@@ -288,6 +307,10 @@ pub enum ExprKind {
     Read(Box<Spec>),
     /// `print(a, b)`: the values space-separated, then a newline.
     Print(Vec<FmtArg>),
+    /// `debug(a, b)`: shown on a local run and recorded as a checkpoint of
+    /// its trace. The C++ for a judge has none of it.
+    /// With its 1-based line.
+    Debug(u32, Vec<DebugArg>),
     /// An interpolated string.
     Format(Vec<FmtPiece>),
     /// An array of the given shape with every cell `value`, or the
@@ -305,6 +328,16 @@ pub struct FmtArg {
     pub value: Expr,
     /// Digits after the point for floats inside.
     pub digits: u32,
+}
+
+/// One argument of `debug(...)`.
+#[derive(Clone, PartialEq, Debug)]
+pub struct DebugArg {
+    /// The argument as written: `dp[i]`.
+    pub text: String,
+    pub value: Expr,
+    /// A string literal: it names the checkpoint instead of being a value.
+    pub label: bool,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -610,6 +643,9 @@ pub struct EnumDef {
 pub struct Global {
     pub name: String,
     pub ty: Ty,
+    /// Where the file declares it; empty for a variable the compiler made
+    /// or one of an imported module.
+    pub span: Span,
 }
 
 #[derive(Clone, PartialEq, Debug, Default)]
@@ -638,6 +674,9 @@ pub struct Program {
     /// The program calls `ask(...)`: every `print` goes out at once, so
     /// the judge sees a query before the answer is read.
     pub interactive: bool,
+    /// An `@interactor` under `@!multitest`: it reads the number of test
+    /// cases from the hidden test and sends it to the solution first.
+    pub announce_tests: bool,
     /// `@grader fn name(...)` without a body: the judge's grader supplies
     /// these fns. Each has its signature and an empty body.
     pub judge_fns: Vec<FnId>,

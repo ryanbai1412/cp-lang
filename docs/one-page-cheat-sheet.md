@@ -52,7 +52,7 @@ cnt.fill(0)                     // reset; hot multi-query loops use `[D]Bool` + 
 let b: [V]Int = [V] v => a[v] * 2   // domain comprehension (list comprehension: `[x * 2 for x in a if x > 0]`)
 ```
 
-- **Anonymous range vs `domain`:** `[0..n]T`, `[0..=n]T`, `['a'..='z']T` are structural (`for i in 0..n` gives `i: Int`). `domain V = 1..=n` is nominal (`for v in V` gives `v: V`, `v + 1 -> ?V`, `v - 1 -> ?V`, `b - a -> Int`, `v.cyc(k) -> V`, `V.K`, `V.first`, `V.last`, `v.to_idx`, `V.from_idx(i) -> ?V` row-major on tuples).
+- **Anonymous range vs `domain`:** `[0..n]T`, `[0..=n]T`, `['a'..='z']T` are structural (`for i in 0..n` gives `i: Int`). `domain V = 1..=n` is nominal (`for v in V` gives `v: V`, `v + 1 -> ?V`, `v - 1 -> ?V`, `b - a -> Int`, `v.cyc(k) -> V`, `V.K`, `V.first`, `V.last`, `v.to_idx`, `V.from_idx(i) -> V` row-major on tuples).
 - **Boundaries (`V.bounds`, `V.K + 1` gaps):** `v.l`/`v.r`, `v.l(k)`/`v.r(k)` (`v.l == v.l(1)`), `b.left -> ?V`, `b.right -> ?V`.
 - **One `Range<I>` type:** `l..r`, `l..=r`, `..i`, `..=i`, `i..`, `i.r..`, `l.r..r.l`. Properties/methods: `.l`/`.r` (boundary cuts even if empty; canonical segtree split: `let m = r.mid!; (r.l..m.r, m.r..r.r)`), `.first -> ?I`, `.last -> ?I`, `.mid -> ?I`, `.len`, `.is_empty`, `.rev`, `.step(k)`, `(lo..=hi).clamp(D)`.
 - **Slices & grids (`std.grid`):** `a[l..=r]` (mutable slice: `sort(mut a[l..=r])`, `reverse(mut a[l..=r])`, `.sorted()`, `.first_ge`, `.last_le`), `g.row(r)`, `g.col(c)`, `g.transposed` (`[C, R]T`), `swap(mut g.row(r1), mut g.row(r2))`. `[R, C]Char = read()`. `type Cell = (Row, Col)` works with `[Cell]T`, `bfs`, `Dsu<Cell>`, `@memo`, `Dir4` (`.cw`, `.ccw`, `.back`, `Dir4.from("UDLR", ch)`), `p.step(d)`, `p.ray(d)`, `p.adj4`, `p.adj8`.

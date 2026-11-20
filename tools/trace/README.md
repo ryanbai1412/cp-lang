@@ -134,3 +134,23 @@ a second implementation. The Python tests exercise safe embedding and the
 sample generator. Browser verification additionally covers all renderers,
 time travel, spec alignment, file import/export, keyboard use and narrow
 layouts. No npm dependencies are needed for the viewer or these tests.
+
+## Live traces from `cpl`
+
+The compiler records real runs in this schema; nothing here is a fixture.
+
+```sh
+cpl run a.cp in.txt --trace                 # writes a.trace.html, this viewer with the run in it
+cpl run a.cp in.txt --trace --format json   # the trace document on standard output
+cpl run a.cp in.txt --trace --format html   # the same page on standard output (the VS Code webview)
+cpl stress a.cp --trace                     # on a failure: a.tests/stress-<seed>.trace.html
+```
+
+A step is recorded at every change to a top-level variable, every `print`
+and every `debug(...)`. `debug("name", x, y)` is a named checkpoint: the
+solution and the file's `@brute(main)` fn are lined up wherever both ran
+the same one, and `cpl stress` prints the first that differs. `cpl build`
+leaves `debug(...)` out of the C++ entirely.
+
+In the browser, `trace()` of `crates/cpl-wasm` returns the same document,
+and the playground's **Trace** button opens it here (`trace.html#live`).

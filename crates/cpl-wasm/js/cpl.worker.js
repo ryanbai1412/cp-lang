@@ -4,7 +4,7 @@
 
 import { load } from "./cpl.js";
 
-const METHODS = new Set(["check", "run", "build", "hover", "definition", "symbols", "lsp"]);
+const METHODS = new Set(["check", "run", "trace", "build", "hover", "definition", "symbols", "lsp"]);
 const cpl = load();
 
 self.onmessage = async ({ data: { id, method, args } }) => {

@@ -70,6 +70,16 @@ impl<'p> Emitter<'p> {
         let e = self.flatten(e, out);
         match &e.kind {
             ExprKind::Unit | ExprKind::Error => {}
+            // Nothing of a `debug(...)` runs. A variable it alone reads
+            // is still named, unevaluated, so g++ does not call it unused.
+            ExprKind::Debug(_, args) => {
+                for arg in args {
+                    if matches!(arg.value.kind, ExprKind::Local(_) | ExprKind::Global(_)) {
+                        let name = self.expr(&arg.value).text;
+                        self.line(out, &format!("(void)sizeof({name});"));
+                    }
+                }
+            }
             ExprKind::Print(args) => self.print_stmts(args, out),
             ExprKind::Sort(place, sort_by) => self.sort_stmts(place, sort_by, out),
             ExprKind::If(cond, then, otherwise) if e.ty == Ty::Unit => {

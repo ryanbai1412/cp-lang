@@ -12,7 +12,7 @@
 //! lets the generator and the shrinker keep every case valid.
 
 use cpl_diag::Span;
-use cpl_syntax::ast::{
+use cpl_syntax::ast::{Block, FnBody, 
     BinOp, Expr, ExprKind, Pattern, PatternKind, StmtKind, Type, TypeKind, UnOp,
 };
 use std::collections::{HashMap, HashSet};
@@ -34,7 +34,28 @@ pub enum Shape {
         len: Expr,
         elem: Box<Shape>,
     },
+    /// A tuple, or a record `(u: V, v: V)`: its fields in order.
     Tuple(Vec<Shape>),
+    /// One byte in `lo..=hi`: a lowercase letter unless told otherwise.
+    Char {
+        lo: u8,
+        hi: u8,
+    },
+    /// `0` or `1`.
+    Bool,
+    /// A word of letters, of any length from 1.
+    Str,
+    /// Every value of `lo..lo + len` once, in some order.
+    Perm {
+        lo: Expr,
+        len: Expr,
+    },
+    /// The `hi - lo` edges of a tree on the vertices `lo..=hi`, each a
+    /// pair of them.
+    Tree {
+        lo: Expr,
+        hi: Expr,
+    },
 }
 
 /// One `let ... = read()`.
@@ -57,6 +78,11 @@ pub struct InputSpec {
     /// Names that decide how much input there is (`n` in `1..=n`). The
     /// generator keeps these small and the shrinker lowers them first.
     pub sizes: HashSet<String>,
+    /// `@!multitest`: what one test case reads, below the divider. The
+    /// input is `fields`, then the number of test cases, then each one.
+    pub cases: Option<Box<InputSpec>>,
+    /// `@!multitest(until_eof)`: the test cases come with no count.
+    pub until_eof: bool,
 }
 
 /// A `read()` whose type the generator cannot produce.
@@ -199,20 +225,50 @@ impl Builder<'_> {
                 Ok(Shape::Int { lo, hi })
             }
             TypeKind::Named { name, args } if args.is_empty() => {
-                if name.text == "Int" {
-                    return Ok(Shape::Int {
-                        lo: int(DEFAULT_INT.0),
-                        hi: int(DEFAULT_INT.1),
-                    });
+                match name.text.as_str() {
+                    "Int" => {
+                        return Ok(Shape::Int {
+                            lo: int(DEFAULT_INT.0),
+                            hi: int(DEFAULT_INT.1),
+                        })
+                    }
+                    "Char" => return Ok(Shape::Char { lo: b'a', hi: b'z' }),
+                    "Bool" => return Ok(Shape::Bool),
+                    "Str" => return Ok(Shape::Str),
+                    _ => {}
                 }
                 if let Some((lo, hi)) = self.domains.get(&name.text).cloned() {
                     return Ok(Shape::Int { lo, hi });
                 }
                 match self.aliases.get(&name.text).cloned() {
+                    // `type Perm = [V]V` and `type Tree = [E](u: V, v: V)`
+                    // say what the values are, beyond their type.
+                    Some(alias) if name.text == "Perm" => self.perm(&alias).ok_or_else(|| unsupported(self)),
+                    Some(alias) if name.text == "Tree" => self.tree(&alias).ok_or_else(|| unsupported(self)),
                     Some(alias) => self.shape(&alias),
                     None => Err(unsupported(self)),
                 }
             }
+            // `Perm<V>` and `Tree<V>`: a permutation of a domain, and the
+            // edges of a tree on it.
+            TypeKind::Named { name, args } if args.len() == 1 && matches!(name.text.as_str(), "Perm" | "Tree") => {
+                let (lo, hi) = self.index(&args[0])?;
+                names_in(&lo, &mut self.spec.sizes);
+                names_in(&hi, &mut self.spec.sizes);
+                Ok(if name.text == "Perm" {
+                    let len = binary(BinOp::Add, binary(BinOp::Sub, hi, lo.clone()), int(1));
+                    Shape::Perm { lo, len }
+                } else {
+                    Shape::Tree { lo, hi }
+                })
+            }
+            // `[domain S]Char`: a word that brings its own length.
+            TypeKind::OwnDomain { elem, .. } if matches!(self.shape(elem), Ok(Shape::Char { .. })) => Ok(Shape::Str),
+            TypeKind::Record(fields) => fields
+                .iter()
+                .map(|(_, field)| self.shape(field))
+                .collect::<Result<_, _>>()
+                .map(Shape::Tuple),
             TypeKind::Array { index, elem } => {
                 let mut shape = self.shape(elem)?;
                 // `[Row, Col]T` is rows of columns.
@@ -236,11 +292,46 @@ impl Builder<'_> {
         }
     }
 
+    /// `[V]V` as a permutation of `V`.
+    fn perm(&mut self, ty: &Type) -> Option<Shape> {
+        let TypeKind::Array { index, .. } = &ty.kind else {
+            return None;
+        };
+        let [dimension] = index.as_slice() else {
+            return None;
+        };
+        let (lo, hi) = self.index(dimension).ok()?;
+        names_in(&lo, &mut self.spec.sizes);
+        names_in(&hi, &mut self.spec.sizes);
+        let len = binary(BinOp::Add, binary(BinOp::Sub, hi, lo.clone()), int(1));
+        Some(Shape::Perm { lo, len })
+    }
+
+    /// `[E](u: V, v: V)` or `[E](V, V)` as the edges of a tree on `V`.
+    fn tree(&mut self, ty: &Type) -> Option<Shape> {
+        let TypeKind::Array { elem, .. } = &ty.kind else {
+            return None;
+        };
+        let ends: Vec<&Type> = match &elem.kind {
+            TypeKind::Tuple(parts) => parts.iter().collect(),
+            TypeKind::Record(fields) => fields.iter().map(|(_, field)| field).collect(),
+            _ => return None,
+        };
+        let [u, v] = ends.as_slice() else {
+            return None;
+        };
+        match (self.shape(u).ok()?, self.shape(v).ok()?) {
+            (Shape::Int { lo, hi }, Shape::Int { .. }) => Some(Shape::Tree { lo, hi }),
+            _ => None,
+        }
+    }
+
     /// The names a pattern gives to the parts of `shape`.
     fn names(pat: &Pattern, shape: &Shape) -> Vec<Option<String>> {
         match (&pat.kind, shape) {
-            // An array's name is only a label: nothing is bound to it.
-            (PatternKind::Name(name), Shape::Int { .. } | Shape::Array { .. }) => {
+            // The name of anything but a number is only a label:
+            // nothing is bound to it.
+            (PatternKind::Name(name), shape) if !matches!(shape, Shape::Tuple(_)) => {
                 vec![Some(name.clone())]
             }
             (PatternKind::Tuple(pats), Shape::Tuple(shapes)) if pats.len() == shapes.len() => pats
@@ -263,6 +354,11 @@ fn is_read(expr: &Expr) -> bool {
 }
 
 impl InputSpec {
+    /// True when the program reads nothing a case can be made from.
+    pub fn is_empty(&self) -> bool {
+        self.fields.is_empty() && self.cases.as_ref().is_none_or(|cases| cases.fields.is_empty())
+    }
+
     /// Reads the input a program declares: every top-level
     /// `let pattern: Type = read()`, in order.
     pub fn from_source(src: &str) -> Result<InputSpec, SpecError> {
@@ -275,9 +371,40 @@ impl InputSpec {
             aliases: HashMap::new(),
             spec: InputSpec::default(),
         };
+        // What is read above `@!multitest`, once the divider is seen.
+        let mut above: Option<InputSpec> = None;
+        // With an `@interactor`, the hidden test is what its body reads,
+        // once per test case; the solution reads only what it is sent.
+        let judge: Option<&Block> = parsed.items.iter().flat_map(|(_, item)| &item.stmts).find_map(|stmt| {
+            let decorated = stmt.decorators.iter().any(|d| d.name.text == "interactor");
+            match &stmt.kind {
+                StmtKind::Fn(decl) if decorated => match &decl.body {
+                    FnBody::Block(block) => Some(block),
+                    _ => None,
+                },
+                _ => None,
+            }
+        });
+        let mut hidden = Vec::new();
         for (base, item) in &parsed.items {
             builder.base = *base;
-            for stmt in &item.stmts {
+            let stmts = item.stmts.iter().map(|stmt| (stmt, false));
+            let stmts = stmts.chain(judge.iter().flat_map(|block| &block.stmts).map(|stmt| (stmt, true)));
+            for (stmt, in_judge) in stmts {
+                // Decorated fns (`@brute`, `@checker`, `@interactor`)
+                // read for themselves; the divider splits the input.
+                if let Some(divider) = stmt.decorators.iter().find(|d| d.name.text == "multitest") {
+                    if above.is_none() {
+                        let mut setup = std::mem::take(&mut builder.spec);
+                        builder.spec.consts = setup.consts.clone();
+                        builder.spec.sizes = setup.sizes.clone();
+                        setup.until_eof = divider
+                            .args
+                            .iter()
+                            .any(|arg| matches!(&arg.value.kind, ExprKind::Name(name) if name == "until_eof"));
+                        above = Some(setup);
+                    }
+                }
                 match &stmt.kind {
                     StmtKind::Const {
                         name,
@@ -318,18 +445,40 @@ impl InputSpec {
                             ));
                         };
                         let shape = builder.shape(ty)?;
-                        builder.spec.fields.push(Field {
+                        let field = Field {
                             names: Builder::names(pat, &shape),
                             shape,
                             line: lines.line_of(stmt.span.shift(*base).start) + 1,
-                        });
+                        };
+                        match (in_judge, judge.is_some()) {
+                            (true, _) => hidden.push(field),
+                            (false, false) => builder.spec.fields.push(field),
+                            // The solution's own reads are answers
+                            // from the interactor, not input.
+                            (false, true) => {}
+                        }
                     }
                     _ => {}
                 }
             }
+            // The interactor is read once, after the file it is in.
+            if judge.is_some() && !hidden.is_empty() {
+                break;
+            }
         }
-        let consts: HashSet<&String> = builder.spec.consts.keys().collect();
+        if judge.is_some() {
+            builder.spec.fields = hidden;
+        }
+        let consts: HashSet<String> = builder.spec.consts.keys().cloned().collect();
         builder.spec.sizes.retain(|name| !consts.contains(name));
-        Ok(builder.spec)
+        Ok(match above {
+            Some(mut setup) => {
+                setup.sizes = builder.spec.sizes.clone();
+                setup.consts = builder.spec.consts.clone();
+                setup.cases = Some(Box::new(builder.spec));
+                setup
+            }
+            None => builder.spec,
+        })
     }
 }

@@ -712,6 +712,55 @@ impl<'a> Lowerer<'a> {
                     .collect();
                 self.mk(ExprKind::Print(values), Ty::Unit, span)
             }
+            // `debug(i, best)`: shown on a local run, and a checkpoint
+            // of its trace. A string literal names the checkpoint.
+            "debug" => {
+                let mut values = Vec::new();
+                for arg in args {
+                    if let Some(arg_name) = &arg.name {
+                        let message = format!("`debug` has no argument named `{}`", arg_name.text);
+                        self.error(codes::UNKNOWN_ARG_NAME, arg_name.span, message);
+                        continue;
+                    }
+                    let text = self.source(arg.value.span);
+                    let label = matches!(arg.value.kind, ast::ExprKind::Str(_));
+                    let value = self.expr(&arg.value, None);
+                    if value.ty == Ty::Unit {
+                        self.error(codes::TYPE_MISMATCH, arg.value.span, "this has no value to show");
+                        continue;
+                    }
+                    values.push(DebugArg { text, value, label });
+                }
+                let line = self.line(span);
+                self.mk(ExprKind::Debug(line, values), Ty::Unit, span)
+            }
+            // `let k: Int = read_output()` in a `@checker`: the next
+            // thing the solution printed.
+            "read_output" => {
+                if self.aside != Some(Aside::Checker) {
+                    self.error(
+                        codes::UNRESOLVED_NAME,
+                        span,
+                        "`read_output()` reads what the solution printed, which only a `@checker` fn sees",
+                    );
+                    return self.err_expr(span);
+                }
+                if !args.is_empty() {
+                    self.error(codes::WRONG_ARG_COUNT, span, "`read_output` takes no arguments");
+                    return self.err_expr(span);
+                }
+                let Some(want) = hint.filter(|want| **want != Ty::Unit) else {
+                    self.error(codes::TYPE_MISMATCH, span, "`read_output` can't tell what to read");
+                    self.help("say what the solution printed: `let k: Int = read_output()`");
+                    return self.err_expr(span);
+                };
+                let Some(spec) = self.spec_of(want) else {
+                    let message = format!("`read_output` can't tell how much a `{}` is", self.show(want));
+                    self.error(codes::TYPE_MISMATCH, span, message);
+                    return self.err_expr(span);
+                };
+                self.read_printed(spec, span)
+            }
             // `let r: Int = ask("?", x)`: the query goes out, the answer
             // comes back as the type says. `ask("!", x)` only prints.
             "ask" => {
@@ -1419,6 +1468,21 @@ impl<'a> Lowerer<'a> {
     }
 
     /// The spec of a type that says everything `read()` needs on its own.
+    /// `read_output()` of a value laid out as `spec`: a `read()` from
+    /// what the solution printed, then back to the input.
+    pub(super) fn read_printed(&mut self, spec: Spec, span: Span) -> Expr {
+        let want = spec.ty();
+        self.do_expr(Some(&want), span, |lw, out| {
+            let swap = lw.mk(ExprKind::Builtin(Builtin::SwapInput, Vec::new()), Ty::Unit, span);
+            out.push(Stmt::Expr(swap.clone()));
+            let printed = lw.read(spec, span);
+            let slot = lw.temp(printed.ty.clone());
+            out.push(Stmt::Let(slot, Some(printed)));
+            out.push(Stmt::Expr(swap));
+            out.push(Stmt::Give(lw.local(slot, span)));
+        })
+    }
+
     fn spec_of(&mut self, ty: &Ty) -> Option<Spec> {
         Some(match ty {
             Ty::Struct(id) => self.struct_spec(*id),

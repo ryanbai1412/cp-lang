@@ -247,6 +247,7 @@ impl<'a> Lowerer<'a> {
                             self.globals.push(Global {
                                 name: format!("{cname}_rt_{gid}"),
                                 ty: Ty::Int,
+                                span: Span::default(),
                             });
                             let val_ref = self.local(slot, stmt.span);
                             out.push(Stmt::Assign(
@@ -460,6 +461,7 @@ impl<'a> Lowerer<'a> {
                             self.globals.push(Global {
                                 name: format!("{vname}_rt_{gid}"),
                                 ty: Ty::Int,
+                                span: Span::default(),
                             });
                             let vref = self.local(vslot, pat.span);
                             stmts.push(Stmt::Assign(
@@ -1280,6 +1282,11 @@ impl<'a> Lowerer<'a> {
         };
         if is_read_call(init) {
             return Some(self.read(spec, init.span));
+        }
+        // `let b: [0..n]Int = read_output()` in a `@checker`: the same
+        // layout, read from what the solution printed.
+        if is_read_output_call(init) && self.aside == Some(Aside::Checker) {
+            return Some(self.read_printed(spec, init.span));
         }
         if let Spec::Array { dims, elem } = &spec {
             let elem_ty = elem.ty();
@@ -2481,6 +2488,12 @@ impl<'a> Lowerer<'a> {
             }
         }
     }
+}
+
+/// `read_output()`.
+fn is_read_output_call(e: &ast::Expr) -> bool {
+    matches!(&e.kind, ast::ExprKind::Call { callee, args }
+        if args.is_empty() && matches!(&callee.kind, ast::ExprKind::Name(n) if n == "read_output"))
 }
 
 /// `read()` or `read(gen: ...)`.

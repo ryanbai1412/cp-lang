@@ -7,14 +7,38 @@ use crate::spec::{eval, Env, InputSpec, Shape};
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Value {
     Int(i128),
+    /// One byte, written as itself.
+    Char(i128),
     Seq(Vec<Value>),
     Tuple(Vec<Value>),
 }
 
+impl Value {
+    /// The number a number or a byte holds.
+    pub fn number(&self) -> Option<i128> {
+        match self {
+            Value::Int(v) | Value::Char(v) => Some(*v),
+            _ => None,
+        }
+    }
+
+    /// The same kind of value holding `to`.
+    pub fn with(&self, to: i128) -> Value {
+        match self {
+            Value::Char(_) => Value::Char(to),
+            _ => Value::Int(to),
+        }
+    }
+}
+
 /// One input: a value per `read()`, in order.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Default)]
 pub struct Case {
     pub values: Vec<Value>,
+    /// Under `@!multitest`: the test cases, after `values`.
+    pub cases: Vec<Case>,
+    /// The test cases are written with no count before them.
+    pub until_eof: bool,
 }
 
 /// How large a case may be.
@@ -85,6 +109,60 @@ fn build(shape: &Shape, env: &Env, is_size: bool, pick: &mut dyn Pick) -> Option
             .map(|part| build(part, env, false, pick))
             .collect::<Option<_>>()
             .map(Value::Tuple),
+        Shape::Char { lo, hi } => Some(Value::Char(pick.pick(i128::from(*lo), i128::from(*hi), false))),
+        Shape::Bool => Some(Value::Int(pick.pick(0, 1, false))),
+        Shape::Str => {
+            let len = pick.pick(1, MAX_WORD, true);
+            Some(Value::Seq(
+                (0..len)
+                    .map(|_| Value::Char(pick.pick(i128::from(b'a'), i128::from(b'z'), false)))
+                    .collect(),
+            ))
+        }
+        Shape::Perm { lo, len } => {
+            let (lo, len) = (eval(lo, env)?, eval(len, env)?.max(0));
+            (len <= MAX_LEN).then_some(())?;
+            let mut order: Vec<i128> = (lo..lo + len).collect();
+            shuffle(&mut order, pick);
+            Some(Value::Seq(order.into_iter().map(Value::Int).collect()))
+        }
+        Shape::Tree { lo, hi } => {
+            let (lo, hi) = (eval(lo, env)?, eval(hi, env)?);
+            let n = (hi - lo + 1).max(0);
+            (n <= MAX_LEN).then_some(())?;
+            // Each vertex hangs under an earlier one; then the names
+            // and the order of the edges are mixed.
+            let mut names: Vec<i128> = (lo..=hi).collect();
+            shuffle(&mut names, pick);
+            let mut edges: Vec<(i128, i128)> = (1..n)
+                .map(|child| {
+                    let parent = pick.pick(0, child - 1, false);
+                    let (a, b) = (names[parent as usize], names[child as usize]);
+                    if pick.pick(0, 1, false) == 0 {
+                        (a, b)
+                    } else {
+                        (b, a)
+                    }
+                })
+                .collect();
+            shuffle(&mut edges, pick);
+            Some(Value::Seq(
+                edges
+                    .into_iter()
+                    .map(|(a, b)| Value::Tuple(vec![Value::Int(a), Value::Int(b)]))
+                    .collect(),
+            ))
+        }
+    }
+}
+
+/// The longest word a generated case may hold.
+pub const MAX_WORD: i128 = 200_000;
+
+fn shuffle<T>(items: &mut [T], pick: &mut dyn Pick) {
+    for i in 0..items.len() {
+        let j = pick.pick(i as i128, items.len() as i128 - 1, false);
+        items.swap(i, j.clamp(i as i128, items.len() as i128 - 1) as usize);
     }
 }
 
@@ -93,7 +171,7 @@ fn leaves(value: &Value, out: &mut Vec<Option<i128>>) {
     match value {
         Value::Int(v) => out.push(Some(*v)),
         Value::Tuple(parts) => parts.iter().for_each(|part| leaves(part, out)),
-        Value::Seq(_) => out.push(None),
+        Value::Seq(_) | Value::Char(_) => out.push(None),
     }
 }
 
@@ -112,7 +190,14 @@ pub(crate) fn bind(names: &[Option<String>], value: &Value, env: &mut Env) {
 /// cannot be evaluated, a range is empty, or an array would be longer
 /// than [`MAX_LEN`].
 pub fn make(spec: &InputSpec, pick: &mut dyn Pick) -> Option<Case> {
-    let mut env: Env = spec.consts.clone();
+    make_in(spec, &spec.consts, pick)
+}
+
+/// The most test cases a generated multitest input holds.
+const MAX_TESTS: i128 = 5;
+
+fn make_in(spec: &InputSpec, outer: &Env, pick: &mut dyn Pick) -> Option<Case> {
+    let mut env: Env = outer.clone();
     let mut values = Vec::new();
     for field in &spec.fields {
         let value = match (&field.shape, field.names.as_slice()) {
@@ -135,7 +220,18 @@ pub fn make(spec: &InputSpec, pick: &mut dyn Pick) -> Option<Case> {
         bind(&field.names, &value, &mut env);
         values.push(value);
     }
-    Some(Case { values })
+    let mut cases = Vec::new();
+    if let Some(inner) = &spec.cases {
+        // Each test case starts from what was read above the divider.
+        for _ in 0..pick.pick(1, MAX_TESTS, true).clamp(1, MAX_TESTS) {
+            cases.push(make_in(inner, &env, pick)?);
+        }
+    }
+    Some(Case {
+        values,
+        cases,
+        until_eof: spec.until_eof,
+    })
 }
 
 /// A random case. `None` when a bound cannot be evaluated or a range is
@@ -144,17 +240,26 @@ pub fn generate(spec: &InputSpec, rng: &mut Rng, size: Size) -> Option<Case> {
     make(spec, &mut Random { rng, size })
 }
 
-/// One line when `value` is a number or a row of numbers.
+/// One line when `value` is a number, a row of numbers, or a word.
 fn flat(value: &Value) -> Option<String> {
     let number = |value: &Value| match value {
         Value::Int(v) => Some(v.to_string()),
         _ => None,
     };
+    let letter = |value: &Value| match value {
+        Value::Char(c) => Some(*c as u8 as char),
+        _ => None,
+    };
     match value {
         Value::Int(v) => Some(v.to_string()),
+        Value::Char(c) => Some((*c as u8 as char).to_string()),
+        // Letters are written together, as one word.
+        Value::Seq(items) if !items.is_empty() && items.iter().all(|item| letter(item).is_some()) => {
+            items.iter().map(letter).collect()
+        }
         Value::Seq(items) | Value::Tuple(items) => items
             .iter()
-            .map(number)
+            .map(|item| number(item).or_else(|| letter(item).map(String::from)))
             .collect::<Option<Vec<_>>>()
             .map(|parts| parts.join(" ")),
     }
@@ -169,16 +274,46 @@ fn write(value: &Value, out: &mut String) {
         (None, Value::Seq(items) | Value::Tuple(items)) => {
             items.iter().for_each(|item| write(item, out))
         }
-        (None, Value::Int(_)) => unreachable!("a number is always flat"),
+        (None, Value::Int(_) | Value::Char(_)) => unreachable!("a number is always flat"),
+    }
+}
+
+fn show(value: &Value) -> String {
+    let joined = |items: &[Value]| items.iter().map(show).collect::<Vec<_>>().join(", ");
+    match value {
+        Value::Int(v) => v.to_string(),
+        Value::Char(c) => format!("'{}'", *c as u8 as char),
+        Value::Seq(items) if !items.is_empty() && items.iter().all(|item| matches!(item, Value::Char(_))) => {
+            format!("\"{}\"", flat(value).unwrap_or_default())
+        }
+        Value::Seq(items) => format!("[{}]", joined(items)),
+        Value::Tuple(items) => format!("({})", joined(items)),
     }
 }
 
 impl Case {
-    /// The case as a judge would give it: a number or a row of numbers
-    /// per line.
+    /// A case of these values and no test cases.
+    pub fn of(values: Vec<Value>) -> Case {
+        Case {
+            values,
+            ..Case::default()
+        }
+    }
+
+    /// The case as a judge would give it: a number, a row of numbers or
+    /// a word per line, and under `@!multitest` the number of test cases
+    /// before them.
     pub fn render(&self) -> String {
         let mut out = String::new();
         self.values.iter().for_each(|value| write(value, &mut out));
+        if !self.cases.is_empty() {
+            if !self.until_eof {
+                out.push_str(&format!("{}\n", self.cases.len()));
+            }
+            for case in &self.cases {
+                out.push_str(&case.render());
+            }
+        }
         out
     }
 
@@ -188,7 +323,7 @@ impl Case {
     pub fn weight(&self) -> (usize, u128) {
         fn walk(value: &Value, count: &mut usize, sum: &mut u128) {
             match value {
-                Value::Int(v) => {
+                Value::Int(v) | Value::Char(v) => {
                     *count += 1;
                     *sum = sum.saturating_add(v.unsigned_abs());
                 }
@@ -201,28 +336,16 @@ impl Case {
         self.values
             .iter()
             .for_each(|value| walk(value, &mut count, &mut sum));
+        for case in &self.cases {
+            let (more, total) = case.weight();
+            count += more;
+            sum = sum.saturating_add(total);
+        }
         (count, sum)
     }
 
     /// `n = 3  a = [1, 5, 2]`: the case by the names the program gives it.
     pub fn describe(&self, spec: &InputSpec) -> String {
-        fn show(value: &Value) -> String {
-            match value {
-                Value::Int(v) => v.to_string(),
-                Value::Seq(items) => {
-                    format!(
-                        "[{}]",
-                        items.iter().map(show).collect::<Vec<_>>().join(", ")
-                    )
-                }
-                Value::Tuple(items) => {
-                    format!(
-                        "({})",
-                        items.iter().map(show).collect::<Vec<_>>().join(", ")
-                    )
-                }
-            }
-        }
         let mut parts = Vec::new();
         for (index, (field, value)) in spec.fields.iter().zip(&self.values).enumerate() {
             match (value, field.names.as_slice()) {
@@ -239,6 +362,15 @@ impl Case {
                     };
                     parts.push(format!("{name} = {}", show(value)));
                 }
+            }
+        }
+        if let Some(inner) = &spec.cases {
+            for (index, case) in self.cases.iter().enumerate() {
+                let described = case.describe(inner);
+                parts.push(match self.cases.len() {
+                    1 => described,
+                    _ => format!("[test {}] {described}", index + 1),
+                });
             }
         }
         parts.join("  ")

@@ -31,6 +31,7 @@ def editor_html(key, source="", stdin=""):
     return f'''<div class="compiler-editor" data-cpl-editor>
       <div class="playground-toolbar"><span class="runner-label">CP Lang 0.2.2 · WebAssembly</span>
         <div class="compiler-actions"><button class="secondary-button" data-build type="button">C++17</button>
+        <button class="secondary-button" data-trace type="button" title="Run and open every step in the trace debugger">Trace</button>
         <button class="secondary-button" data-stop type="button" disabled>Stop</button>
         <button class="primary-button" data-run type="button">Run program</button></div></div>
       <div class="runner-grid">

@@ -92,6 +92,11 @@ pub(crate) fn children<'p>(e: &'p Expr, f: &mut dyn FnMut(&'p Expr)) {
             spec_p(s, f);
         }
         ExprKind::Print(args) => args.iter().for_each(|arg| f(&arg.value)),
+        // Only the variables a `debug(...)` names reach the C++.
+        ExprKind::Debug(_, args) => args
+            .iter()
+            .filter(|arg| matches!(arg.value.kind, ExprKind::Local(_) | ExprKind::Global(_)))
+            .for_each(|arg| f(&arg.value)),
         ExprKind::Format(pieces) => {
             for piece in pieces {
                 if let FmtPiece::Value(arg) = piece {

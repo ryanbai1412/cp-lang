@@ -84,6 +84,10 @@ pub fn value(name: &str) -> Option<Ty> {
         // answer; `Subset<D>` is the subsets of a domain. Both are lowered
         // by `cpl-ir`.
         "ask" | "Subset" => Ty::Unknown,
+        // `debug(i, best)` shows values on a local run and is no part of
+        // the C++ a judge gets; `read_output()` is what the solution
+        // printed, to a `@checker`.
+        "debug" | "read_output" => Ty::Unknown,
         _ if TYPE_NAMES.contains(&name) => Ty::TypeName(name.into()),
         _ => return None,
     })
@@ -156,6 +160,8 @@ pub const VALUE_NAMES: &[&str] = &[
     "INF",
     "print",
     "read",
+    "debug",
+    "read_output",
     "min",
     "max",
     "abs",

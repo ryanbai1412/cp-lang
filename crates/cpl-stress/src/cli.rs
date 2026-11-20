@@ -9,13 +9,15 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 pub const USAGE: &str = "\
-usage: cpl stress <file.cp> --brute <program> [options]
+usage: cpl stress <file.cp> [options]
 
 Runs the solution and a brute on random inputs made from the file's
 `read()` types, stops at the first case they disagree on, shrinks it, and
 saves it to <file>.tests/ as a regression test.
 
-A program is a .cpp file (built with g++), a .py file, or an executable.
+The brute, the checker and the interactor are the file's own `@brute(main)`,
+`@checker` and `@interactor` fns unless an option names a program: a .cpp
+file (built with g++), a .py file, or an executable.
 
 options:
   --brute PROG       the slow, obviously right solution to compare with
@@ -28,8 +30,34 @@ options:
   --seed N           the first seed (default 1)
   --time-limit MS    per run, in milliseconds (default 5000)
   --jobs N           cases run at once (default: one per core)
+  --trace            on a failure, run the solution and the brute on the
+                     shrunk case in the debug interpreter and save the two
+                     traces side by side as <file>.tests/stress-<seed>.trace.html
   --format json      print the result as JSON, for an editor
 ";
+
+/// One checkpoint both the solution and the brute reached on the failing
+/// case: a `debug(...)` each of them ran.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Stage {
+    pub name: String,
+    /// 1-based line in the solution.
+    pub line: u32,
+    pub fast: String,
+    pub brute: String,
+}
+
+/// The solution and its brute run side by side on one input.
+#[derive(Clone, PartialEq, Eq, Debug, Default)]
+pub struct Traced {
+    pub stages: Vec<Stage>,
+    /// The two traces as one self-contained page.
+    pub html: String,
+}
+
+/// Runs a `.cp` file and its `@brute(main)` on an input in the debug
+/// interpreter. `cpl` passes its own; this crate does not link one.
+pub type Tracer<'a> = &'a dyn Fn(&Path, &str) -> Result<Traced, String>;
 
 struct Args {
     file: PathBuf,
@@ -40,6 +68,7 @@ struct Args {
     interactor: Option<PathBuf>,
     options: Options,
     json: bool,
+    trace: bool,
 }
 
 fn parse(args: &[String]) -> Result<Args, String> {
@@ -53,6 +82,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
         interactor: None,
         options: Options::default(),
         json: false,
+        trace: false,
     };
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
@@ -76,6 +106,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
             "--seed" => parsed.options.seed = number(value()?)?,
             "--time-limit" => parsed.options.limit = Duration::from_millis(number(value()?)?),
             "--jobs" => parsed.options.jobs = number(value()?)?.max(1) as usize,
+            "--trace" => parsed.trace = true,
             "--format" => match value()?.as_str() {
                 "json" => parsed.json = true,
                 "text" => parsed.json = false,
@@ -86,7 +117,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
             extra => return Err(format!("`stress` takes one file; `{extra}` is a second")),
         }
     }
-    parsed.file = file.ok_or("`stress` needs a file: `cpl stress d.cp --brute brute.cpp`")?;
+    parsed.file = file.ok_or("`stress` needs a file: `cpl stress d.cp`")?;
     if parsed.checker.is_some() && parsed.interactor.is_some() {
         return Err("a problem has a checker or an interactor, not both".to_string());
     }
@@ -115,12 +146,16 @@ pub fn select_judge(
                 argv: vec![cpl.display().to_string(), "judge".to_string(), name.to_string()],
             }))
         }
-        (None, None, Some(judge)) => Err(format!(
-            "{name} declares the {kind} `{fn_name}` (line {line}), which cpl can't build yet; pass it built with `--{kind} <program>`",
-            kind = judge.kind,
-            fn_name = judge.name,
-            line = judge.line
-        )),
+        // The checker in the file is run by `cpl judge` too: it is
+        // given the input, the output and the answer.
+        (None, None, Some(judge)) => {
+            let cpl = std::env::current_exe()
+                .map_err(|e| format!("can't find `cpl` to run the checker `{}`: {e}", judge.name))?;
+            Ok(Judge::Checker(Program {
+                name: format!("{name} (`{}`)", judge.name),
+                argv: vec![cpl.display().to_string(), "judge".to_string(), name.to_string()],
+            }))
+        }
         (None, None, None) => Ok(Judge::Tokens),
     }
 }
@@ -149,12 +184,25 @@ pub fn json_string(text: &str) -> String {
 }
 
 /// The report in the shape the editor reads (`editors/vscode/README.md`).
-fn json(report: &Report, saved: Option<&Path>) -> String {
+fn json(report: &Report, saved: Option<&Path>, stages: &[Stage], trace: Option<&Path>) -> String {
     let Some(failure) = &report.failure else {
         return format!("{{\"status\":\"ok\",\"cases\":{}}}\n", report.cases);
     };
+    let stages: Vec<String> = stages
+        .iter()
+        .map(|stage| {
+            format!(
+                "{{\"name\":{},\"line\":{},\"fast\":{},\"brute\":{}}}",
+                json_string(&stage.name),
+                stage.line,
+                json_string(&stage.fast),
+                json_string(&stage.brute)
+            )
+        })
+        .collect();
+    let path = |path: Option<&Path>| path.map_or("null".to_string(), |path| json_string(&path.display().to_string()));
     format!(
-        "{{\"status\":\"fail\",\"cases\":{},\"counterexample\":{{\"case\":{},\"seed\":{},\"input\":{},\"raw_input\":{},\"expected\":{},\"got\":{},\"verdict\":{},\"stages\":[],\"saved\":{}}}}}\n",
+        "{{\"status\":\"fail\",\"cases\":{},\"counterexample\":{{\"case\":{},\"seed\":{},\"input\":{},\"raw_input\":{},\"expected\":{},\"got\":{},\"verdict\":{},\"stages\":[{}],\"saved\":{},\"trace\":{}}}}}\n",
         report.cases,
         failure.case,
         failure.seed,
@@ -163,7 +211,9 @@ fn json(report: &Report, saved: Option<&Path>) -> String {
         json_string(&failure.expected),
         json_string(&failure.got),
         json_string(failure.verdict.code()),
-        saved.map_or("null".to_string(), |path| json_string(&path.display().to_string())),
+        stages.join(","),
+        path(saved),
+        path(trace),
     )
 }
 
@@ -183,6 +233,11 @@ fn indent(text: &str) -> String {
 /// Runs `cpl stress`. Returns the exit code: 0 when every case agreed, 1
 /// when one did not or the run could not start, 2 for a usage error.
 pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
+    run_with(args, stdout, stderr, None)
+}
+
+/// [`run`], with the debug interpreter to trace a failure in.
+pub fn run_with(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write, tracer: Option<Tracer>) -> u8 {
     if args.iter().any(|arg| arg == "-h" || arg == "--help") {
         let _ = write!(stdout, "{USAGE}");
         return 0;
@@ -214,9 +269,41 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         Ok(judge) => judge,
         Err(message) => return fail(message),
     };
-    if args.brute.is_none() && judge == Judge::Tokens {
+    // The file's own `@brute(main)`, unless `--brute` names another.
+    let own_brute = match (&args.brute, args.file.extension().and_then(|e| e.to_str())) {
+        (None, Some("cp")) => {
+            let mut db = cpl_check::Database::new();
+            db.set_file(&name, src.as_str());
+            db.analyze(&name).and_then(|analysis| cpl_ir::brute(&analysis))
+        }
+        _ => None,
+    };
+    // The file's own judge has to build before it can rule on a case.
+    if args.checker.is_none() && args.interactor.is_none() && args.file.extension().is_some_and(|e| e == "cp") {
+        let mut db = cpl_check::Database::new();
+        db.set_file(&name, src.as_str());
+        let broken = db.analyze(&name).and_then(|analysis| {
+            let lowered = match (cpl_ir::checker(&analysis), cpl_ir::interactor(&analysis)) {
+                (Some((checker, _)), _) => cpl_ir::lower_checker(&analysis, &checker),
+                (None, Some(judge)) => cpl_ir::lower_judge(&analysis, &judge),
+                (None, None) => return None,
+            };
+            let lines = cpl_diag::LineIndex::new(&src);
+            lowered.err().map(|diagnostics| {
+                diagnostics
+                    .iter()
+                    .map(|d| cpl_diag::render(d, &name, &src, &lines))
+                    .collect::<String>()
+            })
+        });
+        if let Some(errors) = broken {
+            let _ = write!(stderr, "{errors}");
+            return 1;
+        }
+    }
+    if args.brute.is_none() && own_brute.is_none() && judge == Judge::Tokens {
         return fail(format!(
-            "there is nothing to compare {name} with: pass `--brute <program>`, or a `--checker` or `--interactor` that can judge an output on its own"
+            "there is nothing to compare {name} with: write a `@brute(main) fn` in it, pass `--brute <program>`, or give it a `@checker` or an `@interactor` that can judge an output on its own"
         ));
     }
     let source = match &args.gen {
@@ -225,7 +312,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             Err(message) => return fail(message),
         },
         None => match InputSpec::from_source(&src) {
-            Ok(spec) if spec.fields.is_empty() => {
+            Ok(spec) if spec.is_empty() => {
                 return fail(format!(
                     "{name} has no typed `read()` to make inputs from; write `let n: 1..=100 = read()`, or pass `--gen <program>`"
                 ))
@@ -240,7 +327,13 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     // The two builds are the whole wait before the first case, so they
     // run side by side.
     let (fast, brute) = std::thread::scope(|scope| {
-        let brute = scope.spawn(|| args.brute.as_deref().map(resolve).transpose());
+        let brute = scope.spawn(|| match (&args.brute, &own_brute) {
+            (Some(path), _) => resolve(path).map(Some),
+            (None, Some((fn_name, _))) => Program::resolve_brute(&args.file, fn_name)
+                .map(Some)
+                .map_err(|e| e.to_string()),
+            (None, None) => Ok(None),
+        });
         let fast = solution(&args.file, args.fast.as_deref());
         (fast, brute.join().expect("a build does not panic"))
     });
@@ -261,8 +354,41 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         .failure
         .as_ref()
         .and_then(|failure| save(&args.file, failure).ok());
+    // The failing case again, both sides in the debug interpreter: the
+    // `debug(...)`s they share, and with `--trace` the two traces.
+    let traced = match (&report.failure, tracer, &own_brute) {
+        (Some(failure), Some(tracer), Some(_)) if args.fast.is_none() => Some(tracer(&args.file, &failure.input)),
+        _ => None,
+    };
+    let (stages, html) = match &traced {
+        Some(Ok(traced)) => (traced.stages.as_slice(), Some(traced.html.as_str())),
+        _ => (&[][..], None),
+    };
+    let mut trace_note = None;
+    let trace_path = match (args.trace, &report.failure, html) {
+        (true, Some(failure), Some(html)) => {
+            let path = args.file.with_extension("tests").join(format!("stress-{}.trace.html", failure.seed));
+            let written = std::fs::create_dir_all(path.parent().unwrap_or(Path::new(".")))
+                .and_then(|()| std::fs::write(&path, html));
+            match written {
+                Ok(()) => Some(path),
+                Err(e) => {
+                    trace_note = Some(format!("the trace could not be saved: {e}"));
+                    None
+                }
+            }
+        }
+        (true, Some(_), None) => {
+            trace_note = Some(match &traced {
+                Some(Err(why)) => format!("no trace: {why}"),
+                _ => "no trace: `--trace` runs the file against its own `@brute(main)` fn".to_string(),
+            });
+            None
+        }
+        _ => None,
+    };
     if args.json {
-        let _ = write!(stdout, "{}", json(&report, saved.as_deref()));
+        let _ = write!(stdout, "{}", json(&report, saved.as_deref(), stages, trace_path.as_deref()));
         return report.failure.is_some() as u8;
     }
     let judged_by = match &judge {
@@ -315,6 +441,27 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         _ => {
             let _ = writeln!(stdout, "  the solution ran past the time limit");
         }
+    }
+    if !stages.is_empty() {
+        let _ = writeln!(stdout, "  debug(...) both ran, solution | brute:");
+        let first = stages.iter().position(|stage| stage.fast != stage.brute);
+        for (index, stage) in stages.iter().enumerate().take(first.map_or(12, |first| first + 1)) {
+            let mark = if stage.fast == stage.brute { " " } else { "!" };
+            let _ = writeln!(
+                stdout,
+                "  {mark} line {}: {}: {} | {}",
+                stage.line, stage.name, stage.fast, stage.brute
+            );
+            if Some(index) == first {
+                let _ = writeln!(stdout, "    ^ the first one that differs");
+            }
+        }
+    }
+    if let Some(path) = &trace_path {
+        let _ = writeln!(stdout, "  trace {}", path.display());
+    }
+    if let Some(note) = &trace_note {
+        let _ = writeln!(stderr, "warning: {note}");
     }
     match saved {
         Some(path) => {

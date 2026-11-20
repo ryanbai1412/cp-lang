@@ -167,18 +167,21 @@ impl<'a> Lowerer<'a> {
     pub(super) fn mod_items(&self, m: ModId) -> impl Iterator<Item = (u32, &'a ast::Stmt)> {
         let analysis = self.mods[m];
         let judge = self.judge;
+        let aside = self.aside;
         analysis.items.iter().flat_map(move |item| {
             let offset = item.offset;
-            // A `@checker` or `@interactor` is the judge's side of the
-            // problem: it is checked, and is no part of the solution.
+            // A `@checker`, an `@interactor` and a `@brute(main)` are
+            // each a program of their own: checked, run by `cpl stress`,
+            // and no part of the solution a judge gets.
             item.syntax
                 .parsed
                 .stmts
                 .iter()
                 .filter(move |s| {
                     !s.decorators.iter().any(|d| match d.name.text.as_str() {
-                        "checker" => true,
+                        "checker" => aside != Some(Aside::Checker),
                         "interactor" => !judge,
+                        "brute" => is_whole_brute(d) && aside != Some(Aside::Brute),
                         _ => false,
                     })
                 })
@@ -852,6 +855,7 @@ impl<'a> Lowerer<'a> {
         self.globals.push(Global {
             name: gname,
             ty: val_ty.clone(),
+            span: Span::default(),
         });
         self.mod_consts[mcid].global = Some(gid);
         let place = Place {
