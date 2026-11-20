@@ -4,7 +4,7 @@ Thirty more solved ports, none of them in waves
 [1](friction-hunter-wave-1.md), [2](friction-hunter-wave-2.md) or
 [3](friction-hunter-wave-3.md), which brings the audit to 120 ports. I read
 every line of each. Each pattern was checked against `cpl` on `main` at
-`1da58ea` and labelled [STALE PORT], [REAL GAP] or [REJECTED] as before.
+`f09d7b6` and labelled [STALE PORT], [REAL GAP] or [REJECTED] as before.
 Every finding was deduplicated against the earlier waves and
 `research/friction-queue.md`.
 
@@ -138,7 +138,17 @@ diagnostics bug as wave 3's B4.
 
 ## New detector rules for `scripts/friction_lint.py`
 
-These continue after wave 3's rule 37.
+`scripts/friction_lint.py` landed on `main` in `b497b2c` while this wave
+was running. It has 7 categories. Several earlier proposals map onto them:
+
+- `positional_action` is wave 2's rule 26.
+- `manual_cursor_loop` is wave 3's rule 28 (the worklist shape).
+- `missing_compound_assign` covers wave 1's rule 3 and wave 3's rule 30.
+- `manual_temp_swap` covers the swap findings.
+- `comprehension_copy` covers wave 1's rule 11 and part of wave 3's rule 33.
+
+The rest of rules 1 to 37 and the rules below are still to be added as new
+categories. These continue after wave 3's rule 37.
 
 38. `use std\.math\.\{[^}]*\bbit_len\b`: use `bit_width` (and delete `bit_len`, X1).
 39. `print\(\[.*\.v for `: report X2 until lists of `Mod` print on one line.
