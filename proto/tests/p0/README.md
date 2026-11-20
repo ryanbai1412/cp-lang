@@ -20,8 +20,18 @@ with a runtime error on both. The spellings the synthesis rejects are `../bad/s2
 
 - `s2_keep_bool`: `x min= y` / `x max= y` is a Bool, true when the place changed.
 - `s2_read_flow`: `read()` / `ask()` take their type from the place, parameter or return type; `read::<T>()` otherwise.
-- `s2_index_conv`: `V(x)`, `Int(v)`, `v.to_idx`, `V.from_idx(i) -> ?V`.
+- `s2_index_conv`: `V(x)`, `Int(v)`, `v.to_idx`, trapping `V.from_idx(i) -> V` and fallible `V.try_from_idx(i) -> ?V`.
 - `s2_int_widen`: an Int beside an F64 widens in `+ - * / **`; `Int / Int` stays integer division.
 - `s2_format`: `{v:W}`, `{v:0W}`, `{x:.D}`, `{x:.Df}`, `{n:x}`, `{n:b}`, and 64-bit shifts.
 - `s2_char_step`, `s2_char_step_trap`: `Char + Int -> Char`, checked to stay ASCII.
 - `s2_place`, `s2_place_trap`, `s2_array_literal_trap`: a list literal fills a `[D]T`; `x!` on a `var ?T` is a place.
+
+## Synthesis #3 (`s3_*`)
+
+One case per leap in `research/language-architecture-synthesis-3.md` (`0.2.2`). Positive cases print `s3_x.out` on both `cpc` (ASan + UBSan) and `cpi` (except `*_cpc` for cpc-only containers); `*_trap` must trap at runtime on both. Negative cases in `../bad/s3_*.cp` lock all four anti-spookiness invariants, strict nominal domain safety on `.get(?I)`, no scalar broadcast, and `const struct` / `if const` checks.
+
+- `s3_multibind_shapes`: homogeneous `let n, m: T = read()`, `var lo, hi: Int = (0, m)`, and `[n]Int` / `[n - 1](...)` input shapes.
+- `s3_narrow_n1`: strictly local syntactic Rule N1 narrowing (`if x != none`, diverging `if x == none: return`, `and`/`or`, `while cur != none`, redundant `!` tolerance).
+- `s3_narrow_n2`, `s3_narrow_n2_containers_cpc`: Rule N2 non-empty narrowing (`List`, `MaxHeap`, `Deque`, and userland `@law some_when(not self.is_empty)`).
+- `s3_array_get_from_idx`, `s3_from_idx_trap`: optional-accepting `a.get(?I)` (1D, 2D, `List`), trapping `D.from_idx(i) -> D`, and fallible `D.try_from_idx(i) -> ?D`.
+- `s3_const_config`: `const struct` POD configs, `Rooted<V, const C: TreeCfg = DEFAULT>`, `if const` compile-time branching, and `()` field erasure verified in emitted C++17.

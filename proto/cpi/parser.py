@@ -250,8 +250,7 @@ class LibParser(Parser):
                 self.next()
                 pub = True
             elif self.at("@"):
-                self.next()
-                decos.append(N("deco", line, name=self.name(), args=[]))
+                decos.append(self.parse_deco())
                 self.skip_newlines()
             else:
                 break
@@ -303,11 +302,11 @@ class LibParser(Parser):
                 self.next()
         return out
 
-    def struct_def(self):
+    def struct_def(self, is_const=False):
         line = self.next().line
         nm = self.name()
-        tparams = self.tparams()
-        fields, methods, laws, assocs = [], [], [], []
+        tparams, const_tparams, tparam_defaults = self.parse_tparams()
+        fields, methods, laws, assocs, defaults = [], [], [], [], {}
         if self.at("("):
             self.next()
             fields = self.fields(")")
@@ -327,7 +326,14 @@ class LibParser(Parser):
                         names.append(self.name())
                     self.expect(":")
                     ty = self.type_()
-                    fields += [(f, ty) for f in names]
+                    dval = None
+                    if self.at("="):
+                        self.next()
+                        dval = self.expr()
+                    for f in names:
+                        fields.append((f, ty))
+                        if dval is not None:
+                            defaults[f] = dval
                     self.end_line()
                 elif m.kind == "fn":
                     methods.append(m)
@@ -340,7 +346,9 @@ class LibParser(Parser):
                 self.next()
         else:
             self.end_line()
-        return N("struct", line, name=nm, tparams=tparams, fields=fields, methods=methods, laws=laws, assocs=assocs, decos=[])
+        return N("struct", line, name=nm, tparams=tparams, const_tparams=const_tparams,
+                 tparam_defaults=tparam_defaults, is_const=is_const,
+                 fields=fields, methods=methods, laws=laws, assocs=assocs, defaults=defaults, decos=[])
 
     def fn_def(self):
         # drop the `where` clause of the header, then parse as usual
@@ -370,25 +378,32 @@ class LibParser(Parser):
 
     # ---- expressions
     def looks_generic(self):
-        j, d = self.i, 0
+        j, d, p = self.i, 0, 0
         while j < len(self.toks):
             t = self.toks[j]
-            if t.kind == "OP" and t.val == "<":
+            if t.kind == "OP" and t.val in ("(", "["):
+                p += 1
+            elif t.kind == "OP" and t.val in (")", "]"):
+                p -= 1
+                if p < 0:
+                    return False
+            elif p == 0 and t.kind == "OP" and t.val == "<":
                 d += 1
-            elif t.kind == "OP" and t.val == ">":
+            elif p == 0 and t.kind == "OP" and t.val == ">":
                 d -= 1
                 if d == 0:
                     nx = self.toks[j + 1]
                     return nx.kind in ("NEWLINE", "EOF") or (nx.kind == "OP" and nx.val in ("(", ".", ")", ",", "]"))
-            elif t.kind == "OP" and t.val == ">>":
+            elif p == 0 and t.kind == "OP" and t.val == ">>":
                 d -= 2
                 if d < 0:
                     return False
                 if d == 0:
                     nx = self.toks[j + 1]
                     return nx.kind in ("NEWLINE", "EOF") or (nx.kind == "OP" and nx.val in ("(", ".", ")", ",", "]"))
-            elif t.kind in ("NEWLINE", "EOF", "KW", "STR", "CHAR") or (
-                    t.kind == "OP" and t.val not in (",", "(", ")", "[", "]", "?", ".")):
+            elif t.kind in ("NEWLINE", "EOF") or (p == 0 and (
+                    (t.kind == "KW" and t.val not in ("true", "false"))
+                    or (t.kind == "OP" and t.val not in (",", "(", ")", "[", "]", "?", ".")))):
                 return False
             j += 1
         return False

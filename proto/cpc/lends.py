@@ -434,6 +434,8 @@ class LendMixin:
         name = e.fn.name
         writes, reads, _ = self.fn_effects(fsym)
         self.drop_facts(writes)
+        if hasattr(self, "drop_narrow"):
+            self.drop_narrow(writes)
         for h in self.holds:
             hn = next((nm for nm in writes | reads if self.lookup(nm) is h.root), None)
             if hn is None or not (hn in writes or h.mut):

@@ -25,7 +25,7 @@ a092c05549	s2_no_ord,s2_optionals,s2_packed_opt_kinds,s2_question_return,s2_sort
 6b55cdb7ed	s3_cell_array,s3_range_between,s3_range_clamp,s3_range_first_opt,s3_range_mid,s3_range_step_in_generator	var cnt: [0..=k]Int = 0 // structural range array (`['a'..='z']Int`; clones fill per slot)
 2b7a194206	s3_index_ops,s3_list_arena	cnt.fill(0) // reset; hot multi-query loops use `[D]Bool` + touched-list reset
 4d442f3aee	s3_comprehension,s3_list_arena	let b: [V]Int = [V] v => a[v] * 2 // domain comprehension (list comprehension: `[x * 2 for x in a if x > 0]`)
-279cf9072e	s3_from_idx_optional,s3_grid_row,s3_range_between,s3_range_clamp,s3_range_first_opt,s3_range_mid,s3_range_step_in_generator	- **Anonymous range vs `domain`:** `[0..n]T`, `[0..=n]T`, `['a'..='z']T` are structural (`for i in 0..n` gives
+3808aa63c0	s3_from_idx_optional,s3_grid_row,s3_range_between,s3_range_clamp,s3_range_first_opt,s3_range_mid,s3_range_step_in_generator	- **Anonymous range vs `domain`:** `[0..n]T`, `[0..=n]T`, `['a'..='z']T` are structural (`for i in 0..n` gives
 c48c1761bc	s3_bounds	- **Boundaries (`V.bounds`, `V.K + 1` gaps):** `v.l`/`v.r`, `v.l(k)`/`v.r(k)` (`v.l == v.l(1)`), `b.left -> ?V
 1bd1ef5d10	s3_range_between,s3_range_clamp,s3_range_first_opt,s3_range_mid,s3_range_step_in_generator	- **One `Range<I>` type:** `l..r`, `l..=r`, `..i`, `..=i`, `i..`, `i.r..`, `l.r..r.l`. Properties/methods: `.l
 d60e28b8dd	s3_adj,s3_cell_array,s3_dir4,s3_from_idx_optional,s3_grid_col,s3_grid_flipped,s3_grid_read,s3_grid_row,s3_grid_swap_rows,s3_grid_transposed,s3_range_first_opt,s3_range_step_in_generator,s3_slices	- **Slices & grids (`std.grid`):** `a[l..=r]` (mutable slice: `sort(mut a[l..=r])`, `reverse(mut a[l..=r])`, `
@@ -80,6 +80,9 @@ ad3e32bdd2	s8_multitest_divider,s8_multitest_eof,s8_multitest_file,s8_memo	@!mul
 79b7ca93cf	s8_read_gen,s8_read_none,s8_read_until	let (n, m): (1..=2e5, 1..=n) = read() // dependent bounds on scalars, tuples, record fields
 6ac5014fb7	s8_read_gen,s8_read_none,s8_read_until	let g: [Row, Col]?Int = read(none: "X") // symmetric `none:` on read / print / read_output
 e810da0566	s8_read_none	print(ans, none: "IMPOSSIBLE") // lists space-separated; auto-flushes if program uses `ask(...)`
+c2331b0a39	s8_print_sep	print(k); print(colour, sep: "\n") // `sep:` between arguments and between list items; `" ".join(xs)` is the S
+881acf7f43	s8_format_specs	print("{n:5} {n:05} {x:.3} {x:8.2f} {n:x} {n:b}") // width, zero-fill, digits (never `-0.00`), hex, binary
+95f6e04fb8	s8_fixed_div	print(fixed(num, den, 5)) // exact `num / den` to 5 digits from Ints (`std.math`, in the prelude)
 9d04b158dd	s8_read_gen,s8_read_none,s8_read_until	for (r, c) in read_until((0, 0)): ... // sentinel stream; read_line() skips trailing ws after read()
 42ca8e6d19	s8_assume_assert_debug	assert ok // ALWAYS checked (local + judge); feeds range/disjoint proofs
 03ddd4c594	s8_assume_assert_debug	debug(n, dp) // stderr locally (replayed on stress fail); stripped on judge

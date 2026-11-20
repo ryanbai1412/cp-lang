@@ -131,12 +131,7 @@ class Parser:
         if self.at("@"):
             decos = []
             while self.at("@"):
-                self.next()
-                dname = self.name()
-                args = []
-                if self.at("("):
-                    args = self.call_args()
-                decos.append(N("deco", line, name=dname, args=args))
+                decos.append(self.parse_deco())
                 self.skip_newlines()
             s = self.stmt()
             s.decos = decos
@@ -151,6 +146,9 @@ class Parser:
                 self.end_line()
                 return N("domain", line, name=nm, range=e)
             if v == "const":
+                if self.peek().kind == "KW" and self.peek().val == "struct":
+                    self.next()
+                    return self.struct_def(is_const=True)
                 self.next()
                 nm = self.name()
                 ty = None
@@ -362,6 +360,9 @@ class Parser:
                 if self.at(":"):
                     self.next()
                     ty = self.type_()
+                    if pat.kind == "ptuple" and getattr(pat, "bare", False):
+                        # Synthesis #3 L1.1: homogeneous multi-binding `let n, m: T = ...`
+                        ty = N("ttuple", ty.line, fields=[(None, ty) for _ in pat.items])
                 val = None
                 if self.at("="):
                     self.next()
@@ -463,14 +464,14 @@ class Parser:
                 self.next()
                 names.append(self.pattern(False))
             self.expect(")")
-            return N("ptuple", line, items=names)
+            return N("ptuple", line, items=names, bare=False)
         nm = self.name()
         if bare and self.at(","):
             items = [N("pname", line, name=nm)]
             while self.at(","):
                 self.next()
                 items.append(N("pname", line, name=self.name()))
-            return N("ptuple", line, items=items)
+            return N("ptuple", line, items=items, bare=True)
         return N("pname", line, name=nm)
 
     def input_stmt(self):
@@ -526,20 +527,51 @@ class Parser:
             ps.append(N("param", self.t.line, name=pn, ty=None, mode=pm))
         return ps
 
-    def fn_def(self):
-        line = self.next().line
-        nm = self.name()
-        tparams = []
+    def parse_deco(self):
+        line = self.t.line
+        self.next()
+        dname = self.name()
+        args = []
+        if dname == "law" and self.t.kind == "NAME":
+            lname = self.name()
+            largs = self.call_args() if self.at("(") else []
+            args = [N("call", line, fn=N("name", line, name=lname), args=largs)]
+        elif self.at("("):
+            args = self.call_args()
+        return N("deco", line, name=dname, args=args)
+
+    def parse_tparams(self):
+        tparams, const_tparams, defaults = [], {}, {}
         if self.at("<"):
             self.next()
             while not self.at_close_angle():
-                tparams.append(self.name())
+                is_const = False
+                if self.at("const"):
+                    self.next()
+                    is_const = True
+                nm = self.name()
+                tparams.append(nm)
+                pty = None
                 if self.at(":"):
                     self.next()
-                    self.type_()
+                    pty = self.type_()
+                    while self.at("+"):
+                        self.next()
+                        self.type_()
+                if self.at("="):
+                    self.next()
+                    defaults[nm] = self.add() if is_const else self.type_()
+                if is_const:
+                    const_tparams[nm] = pty
                 if self.at(","):
                     self.next()
             self.close_angle()
+        return tparams, const_tparams, defaults
+
+    def fn_def(self):
+        line = self.next().line
+        nm = self.name()
+        tparams, const_tparams, tparam_defaults = self.parse_tparams()
         ps = self.params()
         ret = None
         lends = None
@@ -568,20 +600,30 @@ class Parser:
             body = None
         else:
             body = self.block()
-        return N("fn", line, name=nm, tparams=tparams, params=ps, ret=ret, body=body, decos=[], pure=False, lends=lends)
+        return N("fn", line, name=nm, tparams=tparams, const_tparams=const_tparams,
+                 tparam_defaults=tparam_defaults, params=ps, ret=ret, body=body, decos=[], pure=False, lends=lends)
 
-    def struct_def(self):
+    def struct_def(self, is_const=False):
         line = self.next().line
         nm = self.name()
+        tparams, const_tparams, tparam_defaults = self.parse_tparams()
         self.expect(":")
         self.expect_kind("NEWLINE")
         self.expect_kind("INDENT")
         fields, methods, defaults = [], [], {}
         self.skip_newlines()
         while not self.at_kind("DEDENT"):
+            decos = []
+            while self.at("@"):
+                decos.append(self.parse_deco())
+                self.skip_newlines()
             if self.at("fn"):
-                methods.append(self.fn_def())
+                m = self.fn_def()
+                m.decos = decos
+                methods.append(m)
             else:
+                if decos:
+                    self.err("decorators inside a struct apply to methods")
                 names = [self.name()]
                 while self.at(","):
                     self.next()
@@ -599,10 +641,18 @@ class Parser:
                 self.end_line()
             self.skip_newlines()
         self.next()
-        return N("struct", line, name=nm, fields=fields, methods=methods, decos=[], defaults=defaults)
+        return N("struct", line, name=nm, tparams=tparams, const_tparams=const_tparams,
+                 tparam_defaults=tparam_defaults, is_const=is_const,
+                 fields=fields, methods=methods, decos=[], defaults=defaults)
 
     def if_stmt(self):
         line = self.next().line
+        if self.at("const"):
+            self.next()
+            c = self.expr()
+            body = self.block()
+            els = self.else_part()
+            return N("if", line, cond=c, body=body, orelse=els, is_const=True)
         if self.at("let"):
             self.next()
             pat = self.pattern()
@@ -655,6 +705,16 @@ class Parser:
     def type_(self):
         t = self.t
         line = t.line
+        if self.at("if") and self.peek().kind == "KW" and self.peek().val == "const":
+            self.next(); self.next()
+            cond = self.expr()
+            self.expect(":")
+            then_ty = self.type_()
+            self.skip_newlines_before_else()
+            self.expect("else")
+            self.expect(":")
+            else_ty = self.type_()
+            return N("tifconst", line, cond=cond, then_ty=then_ty, else_ty=else_ty)
         if self.at("["):
             self.next()
             if self.at("]"):
@@ -672,6 +732,9 @@ class Parser:
             return N("topt", line, inner=self.type_())
         if self.at("("):
             self.next()
+            if self.at(")"):
+                self.next()
+                return N("tunit", line)
             fields = []
             pending = []
             while not self.at(")"):
@@ -731,7 +794,7 @@ class Parser:
         return self.type_()
 
     def type_or_expr(self):
-        if self.t.kind == "NUM":
+        if self.t.kind == "NUM" or (self.t.kind == "KW" and self.t.val in ("true", "false")):
             return self.range_expr()
         return self.type_()
 
@@ -753,6 +816,10 @@ class Parser:
             return N("ifletexpr", line, pat=pat, value=v, a=a, b=self.expr())
         if self.at("if"):
             self.next()
+            is_const = False
+            if self.at("const"):
+                self.next()
+                is_const = True
             c = self.expr()
             self.expect(":")
             a = self.expr()
@@ -764,7 +831,7 @@ class Parser:
                 self.expect("else")
                 self.expect(":")
                 b = self.expr()
-            return N("ifexpr", line, cond=c, a=a, b=b)
+            return N("ifexpr", line, cond=c, a=a, b=b, is_const=is_const)
         if self.at("{"):
             line = self.next().line
             body = [self.simple_stmt()]
@@ -1048,7 +1115,7 @@ class Parser:
                 self.next()
                 targs = []
                 while not self.at_close_angle():
-                    targs.append(self.type_())
+                    targs.append(self.type_or_expr())
                     if self.at(","):
                         self.next()
                 self.close_angle()
@@ -1066,17 +1133,23 @@ class Parser:
                 return e
 
     def looks_generic(self):
-        j, d = self.i, 0
+        j, d, p = self.i, 0, 0
         while j < len(self.toks):
             t = self.toks[j]
-            if t.kind == "OP" and t.val == "<":
+            if t.kind == "OP" and t.val in ("(", "["):
+                p += 1
+            elif t.kind == "OP" and t.val in (")", "]"):
+                p -= 1
+                if p < 0:
+                    return False
+            elif p == 0 and t.kind == "OP" and t.val == "<":
                 d += 1
-            elif t.kind == "OP" and t.val in (">", ">>"):
+            elif p == 0 and t.kind == "OP" and t.val in (">", ">>"):
                 d -= len(t.val)
                 if d <= 0:
                     nx = self.toks[j + 1]
                     return nx.kind == "OP" and nx.val in ("(", ".")
-            elif t.kind in ("NEWLINE", "EOF") or (t.kind == "OP" and t.val in ("=", ":")):
+            elif t.kind in ("NEWLINE", "EOF") or (p == 0 and t.kind == "OP" and t.val in ("=", ":")):
                 return False
             j += 1
         return False

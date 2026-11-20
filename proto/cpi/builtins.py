@@ -345,8 +345,43 @@ def install(it):
             it.fail("windows(k) needs k >= 1", n)
         return CList([RangeVal(o, i, i + k) for i in range(0, o.K - k + 1)])
 
+    def arr_get(it, o, a, k, n):
+        idx = list(a)
+        if len(idx) == 1 and type(idx[0]) is Tup and len(o.dims) > 1:
+            idx = idx[0].items
+        if len(idx) != len(o.dims):
+            it.fail(f"`.get(...)` expects {len(o.dims)} index(es), got {len(idx)}", n)
+        off = 0
+        for d, i in zip(o.dims, idx):
+            if i is None:
+                return None
+            if type(i) is DomVal and i.dom is d:
+                kk = i.ord
+            elif isinstance(d, Domain) and d.anon and type(i) is int:
+                kk = i - d.lo
+                if not 0 <= kk < d.K:
+                    return None
+            elif type(i) is Obj and i.stype is d:
+                kk = it.call_method_node(i, d.decl.methods["to_idx"], [], None, n)
+                if not 0 <= kk < it.dim_k(d, n):
+                    return None
+            else:
+                got = f"a {i.dom!r}" if type(i) is DomVal else ("an Int" if type(i) is int else it.show(i))
+                it.fail(f"`.get(...)` expects {d!r} or ?{d!r}, got {got}", n)
+            off = off * it.dim_k(d, n) + kk
+        return o.items[off]
+
+    def list_get(it, o, a, k, n):
+        i = a[0]
+        if i is None:
+            return None
+        if type(i) is not int:
+            it.fail(f"List.get expects Int or ?Int, got {it.show(i)}", n)
+        return o.items[i] if 0 <= i < len(o.items) else None
+
     it.vmethods = {
         CList: {
+            "get": list_get,
             "push": lambda it, o, a, k, n: o.items.append(a[0]),
             "pop": l_pop,
             "clear": lambda it, o, a, k, n: o.items.clear(),
@@ -363,6 +398,7 @@ def install(it):
             "find": lambda it, o, a, k, n: find(it, o, a[0], n),
         },
         CArray: {
+            "get": arr_get,
             "first_ge": lambda it, o, a, k, n: sorted_pos(it, o, a[0], n, True),
             "last_le": lambda it, o, a, k, n: sorted_pos(it, o, a[0], n, False),
             "find": lambda it, o, a, k, n: find(it, o, a[0], n),
@@ -375,7 +411,8 @@ def install(it):
         Domain: {
             "nth": lambda it, o, a, k, n: dom_at(it, o, a[0], n),
             "windows": lambda it, o, a, k, n: windows(it, o, a[0], n),
-            "from_idx": lambda it, o, a, k, n: dom_try(o, a[0]),      # -> ?V: none outside 0..K
+            "from_idx": lambda it, o, a, k, n: dom_at(it, o, a[0], n, "from_idx"),
+            "try_from_idx": lambda it, o, a, k, n: dom_try(o, a[0]),
             "try_at": lambda it, o, a, k, n: dom_try(o, a[0]),
             "try": lambda it, o, a, k, n: dom_try(o, (ord(a[0]) - ord(o.lo)) if o.char else a[0] - o.lo),
         },

@@ -100,8 +100,8 @@ class Domain:
     `lo` is the label of the first position; K is frozen when it is declared.
     `of` is set for Bounds<V>, the K + 1 boundaries around V's positions.
     """
-    def __init__(self, name, lo, K, char=False, of=None):
-        self.name, self.lo, self.K, self.char, self.of = name, lo, K, char, of
+    def __init__(self, name, lo, K, char=False, of=None, anon=False):
+        self.name, self.lo, self.K, self.char, self.of, self.anon = name, lo, K, char, of, anon
         self._bounds = None
 
     @property
@@ -228,6 +228,10 @@ class StructDecl:
         self.node, self.env, self.mod = node, env, mod
         self.name = node.name
         self.tparams = list(getattr(node, "tparams", []))
+        self.const_tparams = dict(getattr(node, "const_tparams", {}) or {})
+        self.tparam_defaults = dict(getattr(node, "tparam_defaults", {}) or {})
+        self.defaults = dict(getattr(node, "defaults", {}) or {})
+        self.is_const = bool(getattr(node, "is_const", False))
         self.fields = [f for f, _ in node.fields]
         self.ftypes = dict(node.fields)
         self.methods = {m.name: m for m in node.methods}
@@ -237,7 +241,13 @@ class StructDecl:
         self.open = StructType(self, None)
 
     def inst(self, targs):
-        key = tuple(id(t) if not isinstance(t, (int, TypeV)) else t for t in targs)
+        def _k(t):
+            if isinstance(t, (int, bool, float, str, TypeV)):
+                return t
+            if type(t) is Obj:
+                return (t.stype.decl.name, tuple(sorted((k, _k(v)) for k, v in t.f.items())))
+            return id(t)
+        key = tuple(_k(t) for t in targs)
         st = self.insts.get(key)
         if st is None:
             st = self.insts[key] = StructType(self, tuple(targs))

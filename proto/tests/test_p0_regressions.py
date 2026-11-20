@@ -109,9 +109,12 @@ code, out = stress("all_rejected")
 check("an all-rejected stress run is not OK", code == 3 and "INCONCLUSIVE" in out and "stress OK" not in out, out)
 
 # Synthesis #2 (research/language-architecture-synthesis-2.md): the seven kernel rules and the format specifiers.
-# Every tests/p0/s2_*.cp must print its .out on both paths: built by cpc under ASan + UBSan, and run by cpi.
-S2 = sorted(f[:-3] for f in os.listdir(P0) if f.startswith("s2_") and f.endswith(".cp"))
-for name in S2:
+# Synthesis #3 (research/language-architecture-synthesis-3.md): multi-binding, `[expr]T`, local `!` narrowing,
+# optional-accepting `.get(?I)` + trapping `D.from_idx`, `const struct` + `if const` + erased `()` fields.
+# Every tests/p0/s2_*.cp and s3_*.cp must print its .out on both paths: built by cpc under ASan + UBSan, and run by cpi
+# (`*_cpc.cp` tests cpc-only containers like Heap/Deque; `*_trap.cp` must trap at runtime on both paths).
+S2_S3 = sorted(f[:-3] for f in os.listdir(P0) if (f.startswith("s2_") or f.startswith("s3_")) and f.endswith(".cp"))
+for name in S2_S3:
     if name.endswith("_trap"):      # a runtime error on both paths, never a wrong value
         got = compiled(name)
         check("cpc " + name, "line " in got and "g++ failed" not in got and "build failed" not in got, got)
@@ -121,8 +124,24 @@ for name in S2:
     want = open(os.path.join(P0, name + ".out")).read()
     got = compiled(name)
     check("cpc " + name, got == want, got)
-    got = interpreted(name)
-    check("cpi " + name, got == want, got)
+    if not name.endswith("_cpc"):
+        got = interpreted(name)
+        check("cpi " + name, got == want, got)
+
+# Verify `if const` field erasure in emitted C++ for `s3_const_config.cp`: the LITE specialization omits `up` and `tin`.
+with tempfile.TemporaryDirectory() as tmp:
+    shutil.copy(os.path.join(P0, "s3_const_config.cp"), os.path.join(tmp, "t.cp"))
+    r = subprocess.run(CP + ["build", os.path.join(tmp, "t.cp")], capture_output=True, text=True)
+    if r.returncode:
+        check("cpc s3_const_config erasure", False, r.stderr[-200:])
+    else:
+        cpp = open(os.path.join(tmp, "t.cpp")).read()
+        # Look for two distinct struct declarations for Rooted: the full one has `up` & `tin`, the lite one has only `depth`.
+        import re as _re
+        structs = _re.findall(r"struct\s+\w+\s*\{[^\n]*\bdepth;[^\n]*", cpp)
+        has_full = any("up;" in body and "tin;" in body and "depth;" in body for body in structs)
+        has_lite = any("depth;" in body and "up;" not in body and "tin;" not in body for body in structs)
+        check("cpc s3_const_config erasure", has_full and has_lite, f"structs={structs}")
 
 # The spellings Synthesis #2 rejects must be rejected by the interpreter too, where it can tell without static types
 # (run_all.sh checks every tests/bad/*.cp against cpc).

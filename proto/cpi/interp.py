@@ -247,6 +247,14 @@ class Interp:
         return self.ev(s.expr, env)
 
     def x_let(self, s, env):
+        if s.pat.kind == "ptuple" and s.ty is not None and s.ty.kind == "ttuple" and s.value is not None \
+                and self.is_io(s.value, env) and len(s.ty.fields) == len(s.pat.items) and not getattr(s, "orelse", None):
+            # `let n, m: T = read()` / `let (n, m): (1..=10, 1..=n) = read()`: read left to right
+            for k, (pat, (_, ft)) in enumerate(zip(s.pat.items, s.ty.fields)):
+                last = k == len(s.pat.items) - 1
+                self.x_let(N("let", s.line, pat=pat, ty=ft, value=s.value, mut=s.mut, const=False,
+                             where=getattr(s, "where", None) if last else None, orelse=None, more=[]), env)
+            return
         if s.value is None:
             v = self.default(self.ty(s.ty, env), s) if s.ty is not None else None
         elif s.ty is not None and s.ty.kind == "tarray" and s.value.kind not in ("table", "call", "name", "field", "index"):
@@ -275,7 +283,7 @@ class Interp:
             self.fail(f"`where` does not hold: {self.src(s)}", s)
 
     def table_fill(self, ty, value, env):
-        dims = tuple(self.ty(d, env) for d in ty.dims)
+        dims = tuple(self.dim_ty(d, env) for d in ty.dims)
         n = 1
         for d in dims:
             n *= self.dim_k(d, ty)
@@ -729,9 +737,31 @@ class Interp:
     def x_lend(self, s, env):
         raise ReturnEx(Lent(s.value, env))
 
+    def dim_ty(self, d, env):
+        if d.kind == "texpr":
+            k = self.ev(d.expr, env)
+            if type(k) is int:
+                return Domain(f"0..{k}", 0, max(0, k), anon=True)
+            return k
+        if d.kind == "trange":
+            r = d.range
+            lo = self.ev(r.lo, env)
+            hi = self.ev(r.hi, env)
+            if type(lo) is str and type(hi) is str:
+                return Domain(f"{lo!r}..{hi!r}", lo, max(0, ord(hi) - ord(lo) + (1 if r.incl else 0)), char=True, anon=True)
+            return Domain(f"{lo}..{hi}", lo, max(0, hi - lo + (1 if r.incl else 0)), anon=True)
+        v = self.ty(d, env)
+        if type(v) is int:
+            return Domain(f"0..{v}", 0, max(0, v), anon=True)
+        return v
+
     # ---- types as values
     def ty(self, t, env):
         k = t.kind
+        if k == "tunit":
+            return TypeV("Unit")
+        if k == "tifconst":
+            return self.ty(t.then_ty if self.ev(t.cond, env) else t.else_ty, env)
         if k == "tpath":
             return self.field(self.ty(t.base, env), t.name, t)
         if k == "tname":
@@ -743,19 +773,35 @@ class Interp:
                     self.fail(f"unknown type `{t.name}`", t)
                 v = self.assoc(st, t.name)
             if t.args:
-                args = [self.ty(a, env) if a.kind.startswith("t") else self.ev(a, env) for a in t.args]
                 if isinstance(v, StructDecl):
+                    args = []
+                    for i, a in enumerate(t.args):
+                        tp = v.tparams[i] if i < len(v.tparams) else None
+                        if tp is not None and tp in v.const_tparams:
+                            args.append(self.ev(a.expr if a.kind == "texpr" else N("name", a.line, name=a.name), env))
+                        else:
+                            args.append(self.ty(a, env) if a.kind.startswith("t") else self.ev(a, env))
+                    for tp in v.tparams[len(args):]:
+                        if tp in v.tparam_defaults:
+                            dnode = v.tparam_defaults[tp]
+                            args.append(self.ev(dnode, v.env) if tp in v.const_tparams else self.ty(dnode, v.env))
                     return v.inst(args)
+                args = [self.ty(a, env) if a.kind.startswith("t") else self.ev(a, env) for a in t.args]
                 if isinstance(v, TypeV):
                     return TypeV(v.name, args)
                 if isinstance(v, GConst):
                     return self.gconst(v, args, t)
                 self.fail(f"`{t.name}` takes no type arguments", t)
             if isinstance(v, StructDecl):
-                return v.inst(()) if not v.tparams else v.open
+                if not v.tparams:
+                    return v.inst(())
+                if all(tp in v.tparam_defaults for tp in v.tparams):
+                    args = [self.ev(v.tparam_defaults[tp], v.env) if tp in v.const_tparams else self.ty(v.tparam_defaults[tp], v.env) for tp in v.tparams]
+                    return v.inst(args)
+                return v.open
             return v
         if k == "tarray":
-            return TypeV("Array", [tuple(self.ty(d, env) for d in t.dims), self.ty(t.elem, env)])
+            return TypeV("Array", [tuple(self.dim_ty(d, env) for d in t.dims), self.ty(t.elem, env)])
         if k == "tlist":
             return TypeV("List", [self.ty(t.elem, env)])
         if k == "topt":
@@ -1002,15 +1048,25 @@ class Interp:
         if len(args) > len(names):
             self.fail(f"`{decl.name}` has {len(names)} field(s), got {len(args)} values", node)
         f = {}
+        erased = set()
+        if st.targs is not None:
+            for nm in names:
+                ft = decl.ftypes[nm]
+                if ft.kind in ("tifconst", "tunit") and self.ty(ft, st.env) == TypeV("Unit"):
+                    erased.add(nm)
         for i, nm in enumerate(names):
             if i < len(args):
                 f[nm] = args[i]
             elif kwargs and nm in kwargs:
                 f[nm] = kwargs[nm]
+            elif nm in decl.defaults:
+                f[nm] = self.ev(decl.defaults[nm], st.env if st.targs is not None else decl.env)
+            elif nm in erased:
+                continue
             else:
                 self.fail(f"`{decl.name}` is missing its field `{nm}`", node)
         if st.targs is None and decl.tparams:
-            st = self.infer(st, [(decl.ftypes[nm], nm) for nm in names], args, kwargs, node)
+            st = self.infer(st, [(decl.ftypes[nm], nm) for nm in names if nm in f], args, kwargs, node)
         return Obj(st, f)
 
     def infer(self, st, params, args, kwargs, node):
@@ -1045,7 +1101,7 @@ class Interp:
     def read(self, t, env):
         k = t.kind
         if k == "tarray":
-            dims = tuple(self.ty(d, env) for d in t.dims)
+            dims = tuple(self.dim_ty(d, env) for d in t.dims)
             n = 1
             for d in dims:
                 n *= self.dim_k(d, t)
@@ -1233,8 +1289,14 @@ class Interp:
         if type(v) is StructDecl:
             if len(args) > len(v.tparams):
                 self.fail(f"`{v.name}` takes {len(v.tparams)} type argument(s), got {len(args)}", e)
-            # trailing type arguments may be left to inference: `LazySegTree<V, Int>(AddMax, a)`
-            return v.inst(args + [None] * (len(v.tparams) - len(args)))
+            # Fill defaulted type/const parameters (Synthesis #3 Leap 4); trailing non-defaulted ones stay None for inference
+            for tp in v.tparams[len(args):]:
+                if tp in v.tparam_defaults:
+                    dn = v.tparam_defaults[tp]
+                    args.append(self.ev(dn, v.env) if tp in v.const_tparams else self.ty(dn, v.env))
+                else:
+                    args.append(None)
+            return v.inst(args)
         if type(v) is GConst:
             return self.gconst(v, args, e)
         if type(v) is TypeV:
@@ -1540,6 +1602,10 @@ class Interp:
             for d, i in zip(o.dims, idx):
                 if type(i) is DomVal and i.dom is d:
                     k = i.ord
+                elif isinstance(d, Domain) and d.anon and type(i) is int:
+                    k = i - d.lo
+                    if not 0 <= k < d.K:
+                        self.fail(f"index {i} is out of bounds for {d!r}", node)
                 elif type(i) is Obj and i.stype is d:
                     k = self.call_method_node(i, d.decl.methods["to_idx"], [], None, node)
                     if not 0 <= k < self.dim_k(d, node):

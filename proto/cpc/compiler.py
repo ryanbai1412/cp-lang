@@ -149,9 +149,29 @@ LIB_FNS = {"Dsu": "dsu", "Graph": "graph", "bfs": "graph", "dijkstra": "graph", 
 # `min` and `max` have none over Int; their fold starts at the first value (the `opt` monoid).
 FOLD_IDENTITY = {"+": "0", "-": "0", "*": "1", "|": "0", "^": "0", "gcd": "0", "lcm": "1"}
 
+class ConstStruct:
+    """Compile-time value of a `const struct` POD config (Synthesis #3 Leap 4)."""
+    def __init__(self, name, fields):
+        self.name = name
+        self.fields = dict(fields)  # field_name -> python const value
+
+    def key(self):
+        return (self.name, tuple((k, v.key() if isinstance(v, ConstStruct) else v) for k, v in sorted(self.fields.items())))
+
+    def __eq__(self, o):
+        return isinstance(o, ConstStruct) and self.key() == o.key()
+
+    def __hash__(self):
+        return hash(self.key())
+
+    def __repr__(self):
+        return f"{self.name}({', '.join(f'{k}: {v!r}' for k, v in self.fields.items())})"
+
+
 class Sym:
-    def __init__(self, kind, ty, cpp, mut=False, node=None):
+    def __init__(self, kind, ty, cpp, mut=False, node=None, const_val=None):
         self.kind, self.ty, self.cpp, self.mut, self.node = kind, ty, cpp, mut, node
+        self.const_val = const_val
         self.fact = None
 
 def unparse(e):
@@ -200,6 +220,15 @@ class Compiler(LendMixin):
         self.tests_ty = None
         self.tmp = 0
         self.dom_count = 0
+        self.opt_narrow = {}          # name -> (Sym, inner_ty)   (Rule N1)
+        self.nonempty_narrow = {}     # name -> Sym               (Rule N2)
+        self.narrowed_exprs = set()   # id(expr) narrowed by N1/N2 (Invariant 4)
+        self.warnings = []
+        self.struct_laws = {}         # (struct_cpp, method_name) -> law cond str
+        self.struct_getters = {}      # struct_cpp -> {name: fn_name}
+        self.const_structs = {}       # name -> (TTuple, struct_node)
+        self.gen_structs = {}         # name -> struct_node
+        self.gen_struct_insts = {}    # (name, key) -> TTuple
         self.lend_init()
 
     # ---------- diagnostics
@@ -314,8 +343,8 @@ class Compiler(LendMixin):
             return self.orderable(t.elem)
         return getattr(t, "ordered", True)
 
-    def tuple_type(self, names, types):
-        key = (tuple(names), tuple(types))
+    def tuple_type(self, names, types, nominal=None):
+        key = (nominal, tuple(names), tuple(types)) if nominal is not None else (tuple(names), tuple(types))
         if key in self.structs:
             return self.structs[key]
         cpp = f"Tup{len(self.structs)}"
@@ -324,6 +353,16 @@ class Compiler(LendMixin):
         # `<` on a record compares field by field, so every field needs one (an optional or an enum has none)
         t.ordered = all(self.orderable(x) for x in types)
         self.structs[key] = t
+        if not names:
+            t.hashable = True
+            self.struct_defs.append(
+                f"struct {cpp} {{\n"
+                f"    template <class H> size_t cp_hash(const H&) const {{ return 0; }}\n"
+                f"    bool operator<(const {cpp}&) const {{ return false; }}\n"
+                f"    bool operator>(const {cpp}&) const {{ return false; }}\n"
+                f"    bool operator==(const {cpp}&) const {{ return true; }}\n"
+                f"    bool operator!=(const {cpp}&) const {{ return false; }} }};")
+            return t
         fields = " ".join(f"{'I32' if self.narrow(ft) else self.cpp_type(ft)} {self.field_cpp(fn)};" for fn, ft in zip(names, types))
         tie = ", ".join(self.field_cpp(fn) for fn in names)
         # a record of hashable fields is a hashable key (HashMap<(Row, Col), V>)
@@ -433,12 +472,21 @@ class Compiler(LendMixin):
         k = tn.kind
         if k == "tyields":
             return TGen(self.resolve_type(tn.inner))
+        if k == "tunit":
+            return UNIT
+        if k == "tifconst":
+            cond_val = self.eval_const(tn.cond)
+            if not isinstance(cond_val, bool):
+                self.error(tn, f"`if const` condition must be Bool, got {type(cond_val).__name__}")
+            return self.resolve_type(tn.then_ty if cond_val else tn.else_ty)
         if k == "tname":
             nm = tn.name
             prim = {"Int": INT, "Bool": BOOL, "Char": CHAR, "Str": STR, "F64": F64, "U64": U64, "I128": I128}
             if nm in prim:
                 return prim[nm]
             declared = self.lookup(nm)      # a `struct Dsu` or `enum Set` of the program is that name from there on
+            if declared and declared.kind == "genstruct":
+                return self.specialize_struct(declared.node, tn.args, tn)
             if declared and declared.kind == "type":
                 return declared.ty
             need = BUILTIN_TYPE_ARGS.get(nm)
@@ -647,10 +695,30 @@ class Compiler(LendMixin):
     def anon_count_domain(self, name, lo_c, hi_c_excl, lo_iv, hi_iv, node):
         # `[0..n]T` is structural: the same written bounds are the same type wherever they are written (v2 T3)
         cache = self.__dict__.setdefault("anon_doms", {})
-        key = (lo_c, hi_c_excl)
-        if key in cache and re.fullmatch(r"[\w() +\-]*", lo_c + hi_c_excl):
-            return cache[key]
+        def _norm(s):
+            s = s.strip()
+            while s.startswith("(") and s.endswith(")"):
+                d = 0
+                ok = True
+                for i, ch in enumerate(s):
+                    if ch == "(": d += 1
+                    elif ch == ")": d -= 1
+                    if d == 0 and i < len(s) - 1:
+                        ok = False
+                        break
+                if ok: s = s[1:-1].strip()
+                else: break
+            return s
+        key = (_norm(lo_c), _norm(hi_c_excl))
+        if key in cache and re.fullmatch(r"[\w() +\-*']*$", lo_c + hi_c_excl):
+            t = cache[key]
+            # If first created inside a nested scope that may not dominate here, re-init bounds idempotently
+            if getattr(t.info, "_init_depth", 0) > len(self.scopes) or getattr(t.info, "_init_fn", 0) != len(self.fn_ret):
+                self.emit(f"{t.info.cpp}_lo = {lo_c}; {t.info.cpp}_len = max(0LL, (ll)(({hi_c_excl}) - ({lo_c})));")
+            return t
         cache[key] = t = self.anon_count_domain_new(name, lo_c, hi_c_excl, lo_iv, hi_iv, node)
+        t.info._init_depth = len(self.scopes)
+        t.info._init_fn = len(self.fn_ret)
         return t
 
     def anon_count_domain_new(self, name, lo_c, hi_c_excl, lo_iv, hi_iv, node):
@@ -669,11 +737,16 @@ class Compiler(LendMixin):
         return self._bool_dom
 
     def dim_type(self, d):
+        if d.kind == "tname" and not d.args:
+            sym = self.lookup(d.name)
+            if sym is not None and sym.kind == "type" and getattr(sym.node, "kind", None) == "typedef" and sym.node.ty.kind == "trange":
+                return self.dim_type(sym.node.ty)
         if d.kind == "trange":
             r = d.range
             lo_c, lo_t = self.expr(r.lo)
             hi_c, hi_t = self.expr(r.hi)
-            if isinstance(lo_t, TChar) and isinstance(hi_t, TChar):
+            is_char = isinstance(lo_t, TChar) and isinstance(hi_t, TChar)
+            if is_char:
                 lo_c = f"(ll)(unsigned char)({lo_c})"
                 hi_c = f"(ll)(unsigned char)({hi_c})"
                 lo_t, hi_t = TInt(0, 127), TInt(0, 127)
@@ -681,8 +754,11 @@ class Compiler(LendMixin):
             hiv = (getattr(hi_t, "lo", None), getattr(hi_t, "hi", None))
             if r.incl:
                 hiv = tuple(None if x is None else x + 1 for x in hiv)
-            return self.anon_count_domain(unparse(r), lo_c, hi_excl,
-                                          (getattr(lo_t, "lo", None), getattr(lo_t, "hi", None)), hiv, d)
+            td = self.anon_count_domain(unparse(r), lo_c, hi_excl,
+                                        (getattr(lo_t, "lo", None), getattr(lo_t, "hi", None)), hiv, d)
+            if is_char:
+                td.info.labels = "char"
+            return td
         if d.kind == "texpr":
             # `[n - 1]T`: any Int expression is a count, like `[n]T`; the positions are 0..count
             _, (c, t) = self.capture(lambda: self.expr(d.expr))
@@ -957,6 +1033,8 @@ class Compiler(LendMixin):
 
     def x_paren(self, e, want):
         c, t = self.expr(e.a, want)
+        if id(e.a) in self.narrowed_exprs:
+            self.narrowed_exprs.add(id(e))
         return f"({c})", t
 
     def x_none(self, e, want):
@@ -981,6 +1059,9 @@ class Compiler(LendMixin):
             self.error(e, f"unknown name {e.name}")
         if s.kind == "type":
             return "", TType(s.ty)
+        if s.kind == "genstruct":
+            # Bare generic struct with all defaults, e.g. `Rooted(...)`
+            return "", TType(self.specialize_struct(s.node, [], e))
         if s.kind == "ctor":
             return self.construct(s, [], e)
         if s.kind == "fn":
@@ -989,6 +1070,14 @@ class Compiler(LendMixin):
             tps = ", ".join(s.node.tparams)
             self.error(e, f"`{e.name}` is a generic fn and is only called, as `{e.name}(...)`: its type parameters come "
                           f"from its arguments (`{e.name}<{tps}>(...)` would be two comparisons)")
+        # Rule N1: local binding narrowed from ?T to T by a syntactic guard (not when used as lvalue/mut arg)
+        lv = getattr(self, "lvalue", None)
+        is_lv = (lv is not None and lv[0] is e) or getattr(self, "_raw_name_node", None) is e
+        if not is_lv and e.name in self.opt_narrow:
+            nsym, inner_t = self.opt_narrow[e.name]
+            if nsym is s:
+                self.narrowed_exprs.add(id(e))
+                return f"({s.cpp}).get()", inner_t
         t = s.ty
         if isinstance(t, TInt) and s.node is not None and id(s.node) in self.var_iv:
             lo, hi = self.var_iv[id(s.node)]
@@ -1218,13 +1307,24 @@ class Compiler(LendMixin):
                 return f"{fn}({a}, {b})", at
         if op in ("and", "or"):
             a, at = self.expr(e.a)
-            b, bt = self.expr(e.b)
+            saved_n = (dict(self.opt_narrow), dict(self.nonempty_narrow))
+            try:
+                self.apply_narrow(self.extract_narrow(e.a, truthy=(op == "and")))
+                b, bt = self.expr(e.b)
+            finally:
+                self.opt_narrow, self.nonempty_narrow = saved_n
             if not (isinstance(at, TBool) and isinstance(bt, TBool)):
                 self.error(e, f"`{op}` needs Bool operands, got {at!r} and {bt!r}")
             return f"({a} {'&&' if op == 'and' else '||'} {b})", BOOL
         if op == "??":
             a, at = self.expr(e.a)
             if not isinstance(at, TOpt):
+                if id(e.a) in self.narrowed_exprs:
+                    # Invariant 4: guarding never breaks existing `x ?? fallback`
+                    self.warnings.append(f"line {e.line}: redundant `??` on already-narrowed `{unparse(e.a)}`")
+                    b, bt = self.expr(e.b, at)
+                    self.coerce(b, bt, at, e.b)
+                    return a, at
                 self.error(e, f"`??` needs a ?T on the left, got {at!r}")
             b, bt = self.expr(e.b, at.inner)
             b = self.coerce(b, bt, at.inner, e.b)
@@ -1395,7 +1495,28 @@ class Compiler(LendMixin):
         if e.ops[0] in ("in", "not in") and e.first.kind == "tuple":
             rt0 = self.capture(lambda: self.expr(e.rest[0]))[1][1]
             want_first = rt0.elem if isinstance(rt0, TSet) else rt0.key if isinstance(rt0, TMap) else None
-        left_c, left_t = self.expr(e.first, want_first)
+        if e.first.kind == "none" and len(e.ops) == 1 and e.ops[0] in ("==", "!="):
+            # Support `none == x` / `none != x` symmetrically with `x == none` / `x != none`
+            rn = e.rest[0]
+            saved_raw = getattr(self, "_raw_name_node", None)
+            if rn.kind == "name" and rn.name in self.opt_narrow:
+                self._raw_name_node = rn
+            try:
+                rc, rt = self.expr(rn)
+            finally:
+                self._raw_name_node = saved_raw
+            if not isinstance(rt, TOpt):
+                self.error(e, f"`none {e.ops[0]}` needs a ?T and == / !=")
+            return f"({'!' if e.ops[0] == '==' else ''}({rc}).has())", BOOL
+        saved_raw = getattr(self, "_raw_name_node", None)
+        if len(e.ops) == 1 and e.ops[0] in ("==", "!=") and e.rest[0].kind == "none" \
+                and e.first.kind == "name" and e.first.name in self.opt_narrow:
+            # Invariant 4: redundant `x != none` / `x == none` inside an already-guarded block
+            self._raw_name_node = e.first
+        try:
+            left_c, left_t = self.expr(e.first, want_first)
+        finally:
+            self._raw_name_node = saved_raw
         for op, rn in zip(e.ops, e.rest):
             if op in ("in", "not in"):
                 c = self.membership(left_c, left_t, rn, e)
@@ -1542,6 +1663,10 @@ class Compiler(LendMixin):
     def x_unwrap(self, e, want):
         c, t = self.expr(e.a)
         if not isinstance(t, TOpt):
+            if id(e.a) in self.narrowed_exprs:
+                # Synthesis #3 Invariant 4: guarding never breaks existing `!` (redundant unwrap -> warning, not error)
+                self.warnings.append(f"line {e.line}: redundant `!` on already-narrowed `{unparse(e.a)}`")
+                return c, t
             self.error(e, f"`!` on a non-optional {t!r}")
         self.note_check(e, f"`{unparse(e.a)}!` is not none")
         spine = list(self.place_spine(e.a))
@@ -1559,16 +1684,36 @@ class Compiler(LendMixin):
             t = t.a if t.kind in ("paren", "unwrap") else t.obj
 
     def x_ifexpr(self, e, want):
+        if getattr(e, "is_const", False):
+            cv = self.eval_const(e.cond)
+            if not isinstance(cv, bool):
+                self.error(e, f"`if const` condition must be Bool, got {type(cv).__name__}")
+            return self.expr(e.a if cv else e.b, want)
         cc, ct = self.expr(e.cond)
         if not isinstance(ct, TBool):
             self.error(e, f"condition must be Bool, got {ct!r}")
         if want is None and "none" in (e.a.kind, e.b.kind) and e.a.kind != e.b.kind:
             # `if ok: x else: none` is a ?T of the other branch
             other = e.b if e.a.kind == "none" else e.a
-            ot = self.capture(lambda: self.expr(other))[1][1]
+            saved_n = (dict(self.opt_narrow), dict(self.nonempty_narrow))
+            try:
+                self.apply_narrow(self.extract_narrow(e.cond, truthy=(other is e.a)))
+                ot = self.capture(lambda: self.expr(other))[1][1]
+            finally:
+                self.opt_narrow, self.nonempty_narrow = saved_n
             want = ot if isinstance(ot, TOpt) else TOpt(TInt() if is_int(ot) else ot)
-        a, at = self.expr(e.a, want)
-        b, bt = self.expr(e.b, want or at)
+        saved_n = (dict(self.opt_narrow), dict(self.nonempty_narrow))
+        try:
+            self.apply_narrow(self.extract_narrow(e.cond, truthy=True))
+            a, at = self.expr(e.a, want)
+        finally:
+            self.opt_narrow, self.nonempty_narrow = saved_n
+        saved_n = (dict(self.opt_narrow), dict(self.nonempty_narrow))
+        try:
+            self.apply_narrow(self.extract_narrow(e.cond, truthy=False))
+            b, bt = self.expr(e.b, want or at)
+        finally:
+            self.opt_narrow, self.nonempty_narrow = saved_n
         t = want or at
         if is_int(at) and is_int(bt) and want is None:
             t = TInt(*iv_join(at, bt))
@@ -1873,9 +2018,15 @@ class Compiler(LendMixin):
                         f"Opt<int>({tmp}) : Opt<int>(); }}())"), TOpt(ot)
             self.error(e, f"{info.name} values have no `.{f}`")
         if isinstance(ot, TTuple):
+            if f in getattr(ot, "erased_fields", ()):
+                self.error(e, f"field `{f}` is erased (`()`) under this const config; guard access with `if const`")
             i = ot.field(f)
             if i is None and f == "to_idx" and ot.cpp in self.index_impls:
                 return self.to_idx(self.index_impls[ot.cpp], oc, e)
+            if i is None and ot.cpp in self.struct_getters and f in self.struct_getters[ot.cpp]:
+                fname = self.struct_getters[ot.cpp][f]
+                rc, rt = self.expr(N("call", e.line, fn=N("name", e.line, name=fname), args=[copy.copy(e.obj)]), want)
+                return self.maybe_n2_field(e, ot, f, rc, rt)
             if i is None:
                 self.error(e, f"{ot!r} has no field `{f}`")
             lv = getattr(self, "lvalue", None)
@@ -1899,7 +2050,8 @@ class Compiler(LendMixin):
         if isinstance(ot, TList) and f in ("first", "last"):
             et = ot.elem
             cty = self.cpp_type(TOpt(et))
-            return f"([&](const auto& _v) -> {cty} {{ return _v.empty() ? {cty}() : {cty}(_v.{'front' if f == 'first' else 'back'}()); }}({oc}))", TOpt(et)
+            rc = f"([&](const auto& _v) -> {cty} {{ return _v.empty() ? {cty}() : {cty}(_v.{'front' if f == 'first' else 'back'}()); }}({oc}))"
+            return self.maybe_n2_field(e, ot, f, rc, TOpt(et))
         if isinstance(ot, TType) and isinstance(ot.t, TEnum):
             if f == "K" and getattr(ot.t, "index_info", None) is not None:
                 return f"(ll)({ot.t.index_info.len_cpp})", TInt(*ot.t.index_info.len_iv)
@@ -1928,10 +2080,11 @@ class Compiler(LendMixin):
         if isinstance(ot, TSet):
             if f == "len": return f"(ll){oc}.size()", TInt(0, None)
             if f == "is_empty": return f"{oc}.empty()", BOOL
-            if f in ("first", "last") and not ot.hashed:
+            if f in ("first", "last", "min", "max") and not ot.hashed:
                 ov = self.cpp_type(TOpt(ot.elem))
-                end = "begin()" if f == "first" else "rbegin()"
-                return f"({oc}.empty() ? {ov}() : {ov}(*{oc}.{end}))", TOpt(ot.elem)
+                end = "begin()" if f in ("first", "min") else "rbegin()"
+                rc = f"({oc}.empty() ? {ov}() : {ov}(*{oc}.{end}))"
+                return self.maybe_n2_field(e, ot, f, rc, TOpt(ot.elem))
         if isinstance(ot, TMap):
             if f == "len": return f"(ll){oc}.size()", TInt(0, None)
             if f == "is_empty": return f"{oc}.empty()", BOOL
@@ -1939,7 +2092,8 @@ class Compiler(LendMixin):
                 pt = self.tuple_type(["f0", "f1"], [ot.key, ot.val])
                 ov = self.cpp_type(TOpt(pt))
                 end = "begin()" if f == "first" else "rbegin()"
-                return f"([&](const auto& _m) -> {ov} {{ if (_m.empty()) return {ov}(); auto _it = _m.{end}; return {ov}({pt.cpp}{{_it->first, _it->second}}); }}({oc}))", TOpt(pt)
+                rc = f"([&](const auto& _m) -> {ov} {{ if (_m.empty()) return {ov}(); auto _it = _m.{end}; return {ov}({pt.cpp}{{_it->first, _it->second}}); }}({oc}))"
+                return self.maybe_n2_field(e, ot, f, rc, TOpt(pt))
         if isinstance(ot, TCounter) and f == "distinct":
             return f"{oc}.distinct", TInt(0, None)
         if isinstance(ot, (TList, TStr, TMap, TSet)):
@@ -1952,13 +2106,15 @@ class Compiler(LendMixin):
                 return f"{oc}.empty()", BOOL
             el = self.cpp_type(TOpt(ot.elem))
             if isinstance(ot, THeap) and f == "peek":
-                return f"({oc}.empty() ? {el}() : {el}({oc}.top()))", TOpt(ot.elem)
-            if isinstance(ot, TRt) and f in ("first", "last"):
-                return f"({oc}.empty() ? {el}() : {el}({oc}.{'front' if f == 'first' else 'back'}()))", TOpt(ot.elem)
+                rc = f"({oc}.empty() ? {el}() : {el}({oc}.top()))"
+                return self.maybe_n2_field(e, ot, f, rc, TOpt(ot.elem))
+            if isinstance(ot, TRt) and f in ("first", "last", "front", "back"):
+                rc = f"({oc}.empty() ? {el}() : {el}({oc}.{'front' if f in ('first', 'front') else 'back'}()))"
+                return self.maybe_n2_field(e, ot, f, rc, TOpt(ot.elem))
         if isinstance(ot, TRt) and ot.name == "Desc" and f == "val":
             return f"{oc}.val", ot.elem
         if isinstance(ot, TRt) and ot.name == "MonoDeque" and f == "best":
-            return f"{oc}.best()", TOpt(ot.elem)
+            return self.maybe_n2_field(e, ot, f, f"{oc}.best()", TOpt(ot.elem))
         if isinstance(ot, TArr) and len(ot.dims) == 1:
             view = getattr(ot, "view", None)
             if f == "len":
@@ -2822,31 +2978,22 @@ class Compiler(LendMixin):
                 if isinstance(t, TDom):
                     self.error(e, f"Int(v) is the written label of a domain over Ints, and {t!r} is not one (use `v.to_idx` for its position)")
             self.error(e, f"cannot convert {t!r} to {fn.name}")
+        if fn.kind == "tapp" and fn.obj.kind == "name":
+            fsym = self.lookup(fn.obj.name)
+            if fsym is not None and fsym.kind == "genfn":
+                return self.call_generic(fsym.node, e, explicit_targs=fn.targs)
+        if fn.kind == "generic" and getattr(self.lookup(fn.name), "kind", None) == "genstruct":
+            sym = self.lookup(fn.name)
+            st = self.specialize_struct(sym.node, fn.args, fn)
+            return self.construct_struct(st, sym.node, e)
+        if fn.kind == "name" and getattr(self.lookup(fn.name), "kind", None) == "genstruct":
+            sym = self.lookup(fn.name)
+            st = self.specialize_struct(sym.node, [], fn)
+            return self.construct_struct(st, sym.node, e)
         if fn.kind == "name" and getattr(self.lookup(fn.name), "kind", None) == "type" \
                 and getattr(getattr(self.lookup(fn.name), "node", None), "kind", None) == "struct":
             sym = self.lookup(fn.name)
-            fields = sym.ty.names
-            items, names = [], []
-            for i, a in enumerate(e.args):
-                if a.kind == "kwarg":
-                    items.append(a.value); names.append(a.name)
-                else:
-                    if names and names[-1] not in fields[:i]:
-                        pass
-                    if i >= len(fields):
-                        self.error(a, f"{fn.name} has {len(fields)} fields")
-                    items.append(a); names.append(fields[i])
-            defaults = getattr(sym.node, "defaults", None) or {}
-            if sorted(names) != sorted(fields):
-                for f in fields:
-                    if f not in names and f in defaults:
-                        items.append(defaults[f]); names.append(f)
-            if sorted(names) != sorted(fields):
-                missing = [f for f in fields if f not in names]
-                self.error(e, f"{fn.name}(...) is missing {', '.join(missing) or 'nothing'} / has unknown fields")
-            order = [names.index(f) for f in fields]
-            lit = N("tuple", e.line, items=[items[k] for k in order], names=list(fields))
-            return self.x_tuple(lit, sym.ty)
+            return self.construct_struct(sym.ty, sym.node, e)
         if fn.kind == "name" and getattr(self.lookup(fn.name), "kind", None) == "ctor":
             return self.construct(self.lookup(fn.name), e.args, e)
         if fn.kind == "name" and fn.name == "swap" and len(e.args) == 2 and not self.lookup("swap"):
@@ -2873,7 +3020,7 @@ class Compiler(LendMixin):
             return self.call_generic(self.lookup(fn.name).node, e)
         fc, ft = self.expr(fn) if fn.kind != "field" else (None, None)
         if fn.kind == "field":
-            if fn.name in ("push", "pop", "sort", "rev", "clear", "insert", "remove", "swap", "set", "add", "unite", "refresh"):
+            if fn.name in ("push", "pop", "pop_front", "pop_back", "sort", "rev", "clear", "insert", "remove", "swap", "set", "add", "unite", "refresh", "fill"):
                 self.note_write(fn.obj, e.line)
             return self.method_call(e, want)
         if isinstance(ft, TType):
@@ -2896,11 +3043,20 @@ class Compiler(LendMixin):
         if isinstance(ft, TFn):
             if len(e.args) != len(ft.params):
                 self.error(e, f"expected {len(ft.params)} arguments, got {len(e.args)}")
-            args, ats = [], []
+            args, ats, mut_args = [], [], []
             for a, pt in zip(e.args, ft.params):
-                c, at = self.expr(self.typed(a, pt), pt)
+                saved_raw = getattr(self, "_raw_name_node", None)
+                if getattr(a, "mut", False) and a.kind == "name":
+                    self._raw_name_node = a
+                    mut_args.append(a)
+                try:
+                    c, at = self.expr(self.typed(a, pt), pt)
+                finally:
+                    self._raw_name_node = saved_raw
                 args.append(self.coerce(c, at, pt, a))
                 ats.append(at)
+            for a in mut_args:
+                self.invalidate_narrow(a)
             # everything passed by reference to one call is lent for the same time (plan/19 §3.6)
             self.check_args(e, [(a, getattr(a, "mut", False)) for a, at in zip(e.args, ats)
                                 if getattr(a, "mut", False) or not isinstance(at, SCALARS)])
@@ -3028,12 +3184,25 @@ class Compiler(LendMixin):
 
     def method_call(self, e, want):
         obj, m = e.fn.obj, e.fn.name
+        was_nonempty = self.is_local_nonempty(obj)
         oc, ot = self.expr(obj)
-        args = e.args
+        rc, rt = self._method_call_inner(e, obj, m, oc, ot, e.args, want)
+        # Rule N2: syntactic non-empty narrowing on local bindings via `@law some_when(not self.is_empty)`
+        rc, rt = self.maybe_n2_method(e, obj, ot, m, rc, rt, was_nonempty=was_nonempty)
+        # Invariant 3: any mutating method call immediately invalidates local narrowing on `obj`
+        if self.is_mutating_method(ot, m):
+            self.invalidate_narrow(obj)
+        return rc, rt
+
+    def _method_call_inner(self, e, obj, m, oc, ot, args, want):
         tbl = getattr(self, "struct_methods", {})
         key = ot.t.cpp if isinstance(ot, TType) and hasattr(ot.t, "cpp") else getattr(ot, "cpp", None)
         if key in self.projs and m in self.projs[key]:
             return self.call_proj(self.projs[key][m], e, oc, ot)
+        if isinstance(ot, TArr) and m == "get":
+            return self.array_get(e, oc, ot, args)
+        if isinstance(ot, TList) and m == "get" and len(args) == 1:
+            return self.list_get(e, oc, ot, args[0])
         if isinstance(ot, TArr) and m == "fill" and len(args) == 1:
             # `cnt.fill(0)`, `seen.fill(none)`: every cell of the array, whatever its dimensions
             self.require_mut(obj, e)
@@ -3127,10 +3296,18 @@ class Compiler(LendMixin):
             step = f"{oc}, 1, {kc}, true" if m == "l" else f"{oc}, 0, {kc}, false"
             return f"{self.step_fn(kt)}({step}, {b.len_cpp}, {what}, {e.line})", TDom(b)
         if isinstance(ot, TType) and isinstance(ot.t, TDom) and m == "from_idx" and len(args) == 1:
+            # Synthesis #3 L3.3: trapping D.from_idx(i) -> D (consistent with Index.from_idx and D(x))
             info = ot.t.info
             ic, it = self.expr(args[0])
             if not is_int(it):
                 self.error(args[0], f"{info.name}.from_idx takes an Int, got {it!r}")
+            self.note_check(e, f"`{unparse(args[0])}` is a 0-based position of {info.name}")
+            return f"chk_dom((ll)({ic}), {info.len_cpp}, {e.line})", ot.t
+        if isinstance(ot, TType) and isinstance(ot.t, TDom) and m == "try_from_idx" and len(args) == 1:
+            info = ot.t.info
+            ic, it = self.expr(args[0])
+            if not is_int(it):
+                self.error(args[0], f"{info.name}.try_from_idx takes an Int, got {it!r}")
             return (f"([&](ll _i) -> Opt<int> {{ return _i >= 0 && _i < (ll){info.len_cpp} "
                     f"? Opt<int>((int)_i) : Opt<int>(); }}({ic}))"), TOpt(ot.t)
         if isinstance(ot, TType) and isinstance(ot.t, TTuple) and ot.t.cpp in self.index_impls and m == "from_idx":
@@ -3597,9 +3774,9 @@ class Compiler(LendMixin):
                 self.require_mut(obj, e)
                 c, t = self.expr(args[0], ot.elem)
                 return f"{oc}.{'push_back' if m == 'push' else 'push_front'}({self.coerce(c, t, ot.elem, args[0])})", UNIT
-            if m in ("pop", "pop_front") and not args:
+            if m in ("pop", "pop_front", "pop_back") and not args:
                 self.require_mut(obj, e)
-                end = "back" if m == "pop" else "front"
+                end = "front" if m == "pop_front" else "back"
                 return f"([&]{{ if ({oc}.empty()) return {el}(); auto _v = {oc}.{end}(); {oc}.pop_{end}(); return {el}(_v); }}())", TOpt(ot.elem)
             if m == "clear" and not args:
                 self.require_mut(obj, e)
@@ -4655,6 +4832,28 @@ class Compiler(LendMixin):
             self.bind_pattern(s.pat, f"{o}.get()", t.inner, s, mut=s.mut)
             return
         if s.pat.kind != "pname":
+            if s.value is None:
+                if s.ty is not None and s.ty.kind == "ttuple" and len(s.ty.fields) == len(s.pat.items):
+                    for pat, (_, ft) in zip(s.pat.items, s.ty.fields):
+                        self.s_let(N("let", s.line, pat=pat, ty=ft, value=None, mut=s.mut, const=False, where=None, orelse=None, more=[]))
+                    return
+                self.error(s, "tuple declaration needs a value or tuple type")
+            if s.ty is not None:
+                want_ty = self.resolve_type(s.ty)
+                if not isinstance(want_ty, TTuple) or len(want_ty.types) != len(s.pat.items):
+                    self.error(s, f"expected a {len(s.pat.items)}-tuple type for `{unparse(s.pat)}`, got {want_ty!r}")
+                if s.value.kind == "tuple" and not any(s.value.names) and len(s.value.items) == len(s.pat.items) and s.ty.kind == "ttuple":
+                    for k, (pat, (_, ft), iv) in enumerate(zip(s.pat.items, s.ty.fields, s.value.items)):
+                        last = k == len(s.pat.items) - 1
+                        self.s_let(N("let", s.line, pat=pat, ty=ft, value=iv, mut=s.mut, const=False,
+                                     where=getattr(s, "where", None) if last else None, orelse=None, more=[]))
+                    return
+                c, t = self.expr(s.value, want_ty)
+                if not isinstance(t, TTuple) or len(t.types) != len(want_ty.types):
+                    self.error(s, f"expected {want_ty!r}, got {t!r} (no scalar broadcast on tuple bindings)")
+                c = self.coerce(c, t, want_ty, s.value)
+                self.bind_pattern(s.pat, c, want_ty, s, mut=s.mut, owned=True)
+                return
             c, t = self.expr(s.value)
             self.bind_pattern(s.pat, c, t, s, mut=s.mut, owned=True)
             return
@@ -4783,6 +4982,12 @@ class Compiler(LendMixin):
         else:
             self.emit(f"{'' if s.mut else 'const '}{self.cpp_type(decl_t)} {cpp} = {c};")
         sym = self.declare(name, decl_t, cpp, s.mut, s)
+        if getattr(s, "const", False) and s.value is not None:
+            sym.kind = "const"
+            try:
+                sym.const_val = self.eval_const(s.value)
+            except CompileError:
+                sym.const_val = None
         if lent_view:
             self.begin_hold(s, name, sym, s.value)      # the receiver stays lent until `name` is last used
         if isinstance(decl_t, TInt):
@@ -5138,6 +5343,15 @@ class Compiler(LendMixin):
         return out
 
     def s_if(self, s):
+        if getattr(s, "is_const", False):
+            # `if const` is decided at compile time, and only the taken branch is type-checked
+            cv = self.eval_const(s.cond)
+            if not isinstance(cv, bool):
+                self.error(s, f"`if const` condition must be Bool, got {type(cv).__name__}")
+            branch = s.body if cv else (s.orelse or [])
+            if branch:
+                self.block(branch, new_scope=False)
+            return
         if not s.orelse and s.body and s.body[-1].kind in ("return", "break", "continue"):
             cnd = s.cond
             if cnd.kind == "cmp" and cnd.ops == ["=="] and cnd.first.kind == "name" and \
@@ -5148,13 +5362,20 @@ class Compiler(LendMixin):
         c = self.cond(s.cond)
         self.emit(f"if ({c}) {{")
         self.ind += 1
+        saved_opt, saved_ne = dict(self.opt_narrow), dict(self.nonempty_narrow)
+        then_facts = self.extract_narrow(s.cond, truthy=True)
+        else_facts = self.extract_narrow(s.cond, truthy=False)
         self.scopes.append(dict(self.refine_facts(s.cond)))
         nfacts = len(self.facts)
         self.add_facts(s.cond)
+        self.apply_narrow(then_facts)
         self.block(s.body, new_scope=False)
+        then_after = (dict(self.opt_narrow), dict(self.nonempty_narrow))
         del self.facts[nfacts:]
         self.scopes.pop()
         self.ind -= 1
+        self.opt_narrow, self.nonempty_narrow = dict(saved_opt), dict(saved_ne)
+        self.apply_narrow(else_facts)
         if s.orelse:
             self.emit("} else {")
             self.ind += 1
@@ -5162,7 +5383,20 @@ class Compiler(LendMixin):
             self.block(s.orelse)
             del self.facts[nfacts:]
             self.ind -= 1
+        else_after = (dict(self.opt_narrow), dict(self.nonempty_narrow))
         self.emit("}")
+        # after the `if`: a branch that always leaves hands its complement to the rest of the block;
+        # otherwise only what held before and survived both branches is kept (no fact is born at a join)
+        then_div, else_div = self.always_diverges(s.body), self.always_diverges(s.orelse)
+        if then_div and not else_div:
+            self.opt_narrow, self.nonempty_narrow = else_after
+        elif else_div and not then_div:
+            self.opt_narrow, self.nonempty_narrow = then_after
+        else:
+            self.opt_narrow = {k: v for k, v in saved_opt.items()
+                               if then_after[0].get(k) == v and else_after[0].get(k) == v}
+            self.nonempty_narrow = {k: v for k, v in saved_ne.items()
+                                    if then_after[1].get(k) is v and else_after[1].get(k) is v}
         if not s.orelse and s.body and s.body[-1].kind in ("return", "break", "continue"):
             self.add_facts(s.cond, negate=True)      # `if i == j: return` leaves `i != j` for the rest of the block
         sym = getattr(self, "after_if_nonzero", None)
@@ -5241,6 +5475,7 @@ class Compiler(LendMixin):
             self.block(s.orelse)
             self.ind -= 1
         self.emit("} }")
+        self.drop_narrow(self.block_writes(s.body) | (self.block_writes(s.orelse) if s.orelse else set()))
 
     def s_for(self, s):
         stack = self.__dict__.setdefault("trip_stack", [1])
@@ -5250,10 +5485,14 @@ class Compiler(LendMixin):
             t = None
         stack.append(stack[-1] * (t if t is not None else 1))
         self.check_cost(s.line, stack[-1])
-        self.drop_facts(self.block_writes(s.body) | {p.name for p in walk(s.pat) if p.kind == "pname"})
+        written = self.block_writes(s.body) | {p.name for p in walk(s.pat) if p.kind == "pname"}
+        self.drop_facts(written)
+        self.drop_narrow(written)
+        saved_n = (dict(self.opt_narrow), dict(self.nonempty_narrow))
         try:
             self.labeled(s, lambda body: self.loop(s.pat, s.iter, s, body))
         finally:
+            self.opt_narrow, self.nonempty_narrow = saved_n
             stack.pop()
 
     def check_cost(self, line, n):
@@ -5275,30 +5514,79 @@ class Compiler(LendMixin):
         return f"([&]{{ {' '.join(parts)} return {tmp}; }}())", et
 
     def s_struct(self, s):
-        names = [f for f, _ in s.fields]
-        types = [self.resolve_type(t) for _, t in s.fields]
-        t = self.tuple_type(names, types)
-        self.scopes[-1][s.name] = Sym("type", t, t.cpp, node=s)
-        if not s.methods:
+        if getattr(s, "tparams", None):
+            # `struct Rooted<V, const C: TreeCfg = DEFAULT>`: compiled once per set of arguments it is used with
+            self.scopes[-1][s.name] = Sym("genstruct", None, s.name, node=s)
             return
-        from .parser import Parser
-        self.proj_names |= {m.name for m in s.methods if getattr(m, "lends", None)}
-        table = self.__dict__.setdefault("struct_methods", {}).setdefault(t.cpp, {})
-        for m in s.methods:
-            if getattr(m, "lends", None):
-                self.s_proj(s.name, t, m)
-                continue
-            ps = list(m.params)
-            has_self = bool(ps) and ps[0].name == "self"
-            if has_self:
-                ps[0] = N("param", m.line, name="self", ty=Parser(s.name).type_(), mode=ps[0].mode)
-            fn = N("fn", m.line, name=f"{s.name}__{m.name}", tparams=m.tparams, params=ps, ret=m.ret,
-                   body=m.body, decos=m.decos, pure=m.pure)
-            if has_self:
-                fn.self_struct = t
-            table[m.name] = (fn.name, has_self, has_self and ps[0].mode == "inout")
-            self.method_nodes.setdefault(t.cpp, {}).setdefault(m.name, []).append(fn)
-            self.s_fn(fn)
+        self.struct_inst(s, s.name)
+
+    def struct_inst(self, s, inst_name, binds=None):
+        saved_scopes = self.scopes
+        if binds is not None:
+            self.scopes = [self.scopes[0], binds]
+        try:
+            raw = [(f, self.resolve_type(t)) for f, t in s.fields]
+            if getattr(s, "is_const", False):
+                for fname, ft in raw:
+                    if not self.is_pod_type(ft):
+                        self.error(s, f"`const struct {s.name}` holds plain scalars only (Bool, Int, Char, F64 or another "
+                                      f"const struct); field `{fname}` is a {ft!r}")
+            # a field of type `()` takes no space: it is left out of the emitted struct
+            names = [f for f, ft in raw if not isinstance(ft, TUnit)]
+            types = [ft for _, ft in raw if not isinstance(ft, TUnit)]
+            t = self.tuple_type(names, types, nominal=inst_name if (binds is not None or getattr(s, "is_const", False) or len(names) != len(raw)) else None)
+            t.erased_fields = {f for f, ft in raw if isinstance(ft, TUnit)}
+            t.all_field_names = [f for f, _ in raw]
+            t.is_const_struct = bool(getattr(s, "is_const", False))
+            if t.is_const_struct:
+                self.const_structs[s.name] = (t, s)
+            sym = Sym("type", t, t.cpp, node=s)
+            self.scopes[-1][s.name] = sym
+            if binds is None:
+                saved_scopes[-1][s.name] = sym
+            if not s.methods:
+                return t
+            from .parser import Parser
+            self.proj_names |= {m.name for m in s.methods if getattr(m, "lends", None)}
+            table = self.__dict__.setdefault("struct_methods", {}).setdefault(t.cpp, {})
+            getters = self.struct_getters.setdefault(t.cpp, {})
+            for m in s.methods:
+                if getattr(m, "lends", None):
+                    self.s_proj(s.name, t, m)
+                    continue
+                mdecos = {d.name: d for d in (m.decos or [])}
+                for d in (m.decos or []):
+                    # `@law some_when(not self.is_empty)`: this member is there whenever the receiver is not empty (N2)
+                    la = d.args[0] if d.name == "law" and d.args else None
+                    if la is not None and la.kind == "call" and la.fn.kind == "name" and la.fn.name == "some_when" \
+                            and len(la.args) == 1 and unparse(la.args[0]) == "not self.is_empty":
+                        self.struct_laws[(t.cpp, m.name)] = "not_empty"
+                ps = list(m.params)
+                has_self = bool(ps) and ps[0].name == "self"
+                if has_self:
+                    ps[0] = N("param", m.line, name="self", ty=Parser(s.name).type_(), mode=ps[0].mode)
+                    ps[0].ty_fixed = t
+                fn = N("fn", m.line, name=f"{inst_name}__{m.name}", tparams=m.tparams, params=ps, ret=m.ret,
+                       body=m.body, decos=[d for d in (m.decos or []) if d.name not in ("get", "law")], pure=m.pure)
+                if has_self:
+                    fn.self_struct = t
+                table[m.name] = (fn.name, has_self, has_self and ps[0].mode == "inout")
+                if "get" in mdecos and has_self and len(ps) == 1:
+                    getters[m.name] = fn.name
+                self.method_nodes.setdefault(t.cpp, {}).setdefault(m.name, []).append(fn)
+                if binds is None:
+                    self.s_fn(fn)
+                else:
+                    saved = (self.at_top, self.fn_ret, getattr(self, "loop_ctx", []), getattr(self, "in_multitest", False))
+                    self.at_top, self.fn_ret, self.loop_ctx, self.in_multitest = True, [], [], False
+                    try:
+                        self.capture(lambda: self.s_fn(fn, hoist=True))
+                    finally:
+                        self.at_top, self.fn_ret, self.loop_ctx, self.in_multitest = saved
+                    self.scopes[0][fn.name] = binds[fn.name]
+            return t
+        finally:
+            self.scopes = saved_scopes
 
     # ---------- plan/19: projections, lent views, user Index types
     def lent_type(self, value, ty):
@@ -5782,8 +6070,13 @@ class Compiler(LendMixin):
         if missing and not wildcard:
             self.error(s, f"match on {t.name} misses {', '.join(missing)}")
         self.emit(f"{done}:; }}")
+        for arm in s.arms:
+            self.drop_narrow(self.block_writes(arm.body))
 
     def s_whilelet(self, s):
+        written = self.block_writes(s.body)
+        self.drop_narrow(written)
+        saved_n = (dict(self.opt_narrow), dict(self.nonempty_narrow))
         self.emit("while (true) {")
         self.loop_trips.append(None)
         self.ind += 1
@@ -5802,9 +6095,13 @@ class Compiler(LendMixin):
         self.ind -= 1
         self.loop_trips.pop()
         self.emit("}")
+        self.opt_narrow, self.nonempty_narrow = saved_n
 
     def s_while(self, s):
-        self.drop_facts(self.block_writes(s.body))   # a fact about a var the loop assigns holds only on the first trip
+        written = self.block_writes(s.body)
+        self.drop_facts(written)   # a fact about a var the loop assigns holds only on the first trip
+        self.drop_narrow(written)
+        saved_n = (dict(self.opt_narrow), dict(self.nonempty_narrow))
         c = self.cond(s.cond)
         self.emit(f"while ({c}) {{")
         self.loop_trips.append(None)
@@ -5814,6 +6111,7 @@ class Compiler(LendMixin):
         self.loop_ctx.append(("c",))
         nfacts = len(self.facts)
         self.add_facts(s.cond)
+        self.apply_narrow(self.extract_narrow(s.cond, truthy=True))
         cpp = None
         if getattr(s, "label", None):
             cpp = self.tmpname("L_" + s.label)
@@ -5831,8 +6129,16 @@ class Compiler(LendMixin):
         self.emit("}")
         if cpp:
             self.emit(f"{cpp}_break:;")
+        self.opt_narrow, self.nonempty_narrow = saved_n
 
     def s_assign(self, s):
+        try:
+            return self.s_assign_inner(s)
+        finally:
+            for t in (s.target.items if s.target.kind == "tuple" else [s.target]):
+                self.invalidate_narrow(t)
+
+    def s_assign_inner(self, s):
         tgt, op = s.target, s.op
         fold = getattr(s, "fold", None)         # `x f= y`, parsed as `x = f(x, y)`
         if tgt.kind == "index" and (fold or op in ("min=", "max=")):
@@ -6438,7 +6744,7 @@ class Compiler(LendMixin):
             return body[:-1] + [N("doassign", last.line, value=last.expr)]
         if last.kind == "if" and last.orelse:
             return body[:-1] + [N("if", last.line, cond=last.cond, body=self.do_tail(last.body),
-                                  orelse=self.do_tail(last.orelse))]
+                                  orelse=self.do_tail(last.orelse), is_const=getattr(last, "is_const", False))]
         self.error(last, "a `do:` block must end with an expression")
 
     def s_doassign(self, s):
@@ -6456,10 +6762,18 @@ class Compiler(LendMixin):
             return body[:-1] + [N("return", last.line, value=last.expr, synthetic=True)]
         if last.kind == "if" and last.orelse:
             return body[:-1] + [N("if", last.line, cond=last.cond, body=self.tail_returns(last.body),
-                                  orelse=self.tail_returns(last.orelse))]
+                                  orelse=self.tail_returns(last.orelse), is_const=getattr(last, "is_const", False))]
         return body
 
     def fn_body(self, body, rt):
+        saved_n = (self.opt_narrow, self.nonempty_narrow)
+        self.opt_narrow, self.nonempty_narrow = {}, {}      # a guard says nothing inside another fn's body
+        try:
+            self.fn_body_inner(body, rt)
+        finally:
+            self.opt_narrow, self.nonempty_narrow = saved_n
+
+    def fn_body_inner(self, body, rt):
         if body and not isinstance(rt, (TUnit, TGen)) and body[-1].kind == "if" and body[-1].orelse:
             body = self.tail_returns(body)
         if body and not isinstance(rt, TUnit) and body[-1].kind == "exprstmt":
@@ -6507,16 +6821,33 @@ class Compiler(LendMixin):
             for d, td in zip(ast.dims, t.dims):
                 self.unify(d, td, tps, bind, node)
 
-    def specialize(self, g, bind):
-        key = (g.name,) + tuple(bind[tp].info.cpp for tp in g.tparams)
+    def specialize(self, g, bind, const_bind=None):
+        const_bind = const_bind or {}
+        const_tps = getattr(g, "const_tparams", None) or {}
+        def _part(tp):
+            if tp in const_tps:
+                v = const_bind[tp]
+                return re.sub(r"[^A-Za-z0-9_]", "_", repr(v))
+            t = bind[tp]
+            return t.info.cpp if isinstance(t, TDom) else getattr(t, "cpp", re.sub(r"[^A-Za-z0-9_]", "_", repr(t)))
+        key = (g.name,) + tuple(_part(tp) for tp in g.tparams)
         specs = self.__dict__.setdefault("specs", {})
         if key not in specs:
             import copy
             clone = copy.copy(g)
             clone.name = "_".join(key)
             clone.tparams = []
+            clone.const_tparams = {}
             clone.decos = [d for d in g.decos if d.name != "brute"]
-            binds = {tp: Sym("type", bind[tp], bind[tp].info.cpp) for tp in g.tparams}
+            binds = {}
+            for tp in g.tparams:
+                if tp in const_tps:
+                    v = const_bind[tp]
+                    pty = self.resolve_type(const_tps[tp]) if const_tps[tp] is not None else self.const_value_type(v)
+                    binds[tp] = Sym("const", pty, self.const_to_cpp(v, pty), const_val=v)
+                else:
+                    t = bind[tp]
+                    binds[tp] = Sym("type", t, t.info.cpp if isinstance(t, TDom) else getattr(t, "cpp", ""))
             saved = (self.scopes, self.at_top, self.fn_ret, getattr(self, "loop_ctx", []), getattr(self, "in_multitest", False))
             self.scopes, self.at_top, self.fn_ret, self.loop_ctx, self.in_multitest = [self.scopes[0], binds], True, [], [], False
             specs[key] = clone.name
@@ -6528,27 +6859,435 @@ class Compiler(LendMixin):
         sym = specs[key]
         return self.lookup(sym) if isinstance(sym, str) else sym
 
-    def call_generic(self, g, e):
-        """Monomorphize a generic fn for the domains its arguments use."""
+    def call_generic(self, g, e, explicit_targs=None):
+        """Monomorphize a generic fn for the domains and/or const params its arguments use."""
         if len(e.args) != len(g.params):
             self.error(e, f"`{g.name}` takes {len(g.params)} arguments")
+        const_tps = getattr(g, "const_tparams", None) or {}
+        tdefaults = getattr(g, "tparam_defaults", None) or {}
+        bind, const_bind = {}, {}
+        if explicit_targs is not None:
+            for tp, ta in zip(g.tparams, explicit_targs):
+                if tp in const_tps:
+                    const_bind[tp] = self.eval_const_typearg(ta)
+                else:
+                    bind[tp] = self.resolve_type(ta)
         args = [self.expr(a) for a in e.args]
-        bind = {}
+        type_tps = {tp for tp in g.tparams if tp not in const_tps}
         for (_, at), p in zip(args, g.params):
-            self.unify(p.ty, at, set(g.tparams), bind, e)
-        missing = [tp for tp in g.tparams if tp not in bind]
+            self.unify(p.ty, at, type_tps, bind, e)
+        for tp in g.tparams:
+            if tp in const_tps and tp not in const_bind and tp in tdefaults:
+                const_bind[tp] = self.eval_const(tdefaults[tp])
+            elif tp not in const_tps and tp not in bind and tp in tdefaults:
+                bind[tp] = self.resolve_type(tdefaults[tp])
+        missing = [tp for tp in g.tparams if tp not in bind and tp not in const_bind]
         if missing:
             self.error(e, f"cannot infer {', '.join(missing)} for `{g.name}` from its arguments")
-        sym = self.specialize(g, bind)
-        for h in [x.node for x in self.scopes[0].values() if getattr(x, "kind", None) == "genfn"]:
-            bd = {d.name: d for d in h.decos}.get("brute")
-            if bd and bd.args and getattr(bd.args[0], "name", None) == g.name and h.tparams == g.tparams:
-                key = ("brute", h.name) + tuple(bind[tp].info.cpp for tp in g.tparams)
-                done = self.__dict__.setdefault("brute_specs", set())
-                if key not in done:
-                    done.add(key)
-                    self.fn_brutes.append((sym, self.specialize(h, bind), h))
+        sym = self.specialize(g, bind, const_bind)
+        if not const_tps:
+            for h in [x.node for x in self.scopes[0].values() if getattr(x, "kind", None) == "genfn"]:
+                bd = {d.name: d for d in h.decos}.get("brute")
+                if bd and bd.args and getattr(bd.args[0], "name", None) == g.name and h.tparams == g.tparams:
+                    key = ("brute", h.name) + tuple(bind[tp].info.cpp for tp in g.tparams)
+                    done = self.__dict__.setdefault("brute_specs", set())
+                    if key not in done:
+                        done.add(key)
+                        self.fn_brutes.append((sym, self.specialize(h, bind), h))
         return f"{sym.cpp}({', '.join(c for c, _ in args)})", sym.ty.ret
+
+    # ---------- Synthesis #3 helpers: Leap 2 (local narrowing), Leap 3 (.get(?I)), Leap 4 (const POD & if const)
+    def array_get(self, e, oc, ot, args):
+        """a.get(?I) / a.get(I) on [D]T or [R, C]T: accepts D or ?D (strict nominal domain!), returns ?T."""
+        if len(args) != len(ot.dims):
+            self.error(e, f"`{unparse(e.fn.obj)}.get(...)` expects {len(ot.dims)} index(es), got {len(args)}")
+        parts = []
+        checks = []
+        rt = TOpt(ot.elem)
+        rty = self.cpp_type(rt)
+        for idx_node, dim in zip(args, ot.dims):
+            info = dim.info
+            ic, it = self.expr(idx_node, dim)
+            if isinstance(it, TOpt):
+                inner = it.inner
+                if isinstance(inner, TDom):
+                    if inner.info is not info:
+                        self.error(idx_node, f"`.get(...)` expects {info.name} or ?{info.name}, got {it!r} (wrong domain)")
+                    v = self.tmpname("gi")
+                    checks.append(f"Opt<int> {v} = {ic}; if (!{v}.has()) return {rty}();")
+                    parts.append(f"{v}.get()")
+                elif is_int(inner) and info.anon:
+                    v = self.tmpname("gi")
+                    checks.append(
+                        f"auto {v} = {ic}; if (!{v}.has()) return {rty}(); "
+                        f"ll {v}_k = (ll){v}.get() - ({info.lo_cpp}); "
+                        f"if ({v}_k < 0 || {v}_k >= (ll){info.len_cpp}) return {rty}();")
+                    parts.append(f"(int){v}_k")
+                else:
+                    self.error(idx_node, f"`.get(...)` expects {info.name} or ?{info.name}, got {it!r}")
+            elif isinstance(it, TDom):
+                if it.info is not info:
+                    self.error(idx_node, f"`.get(...)` expects {info.name} or ?{info.name}, got {it!r} (wrong domain)")
+                parts.append(ic)
+            elif is_int(it):
+                if not info.anon:
+                    self.error(idx_node, f"`.get(...)` expects {info.name} or ?{info.name}, got {it!r} (use `{info.name}.try_at(...)` or `{info.name}(...)`)")
+                v = self.tmpname("gi")
+                checks.append(
+                    f"ll {v}_k = (ll)({ic}) - ({info.lo_cpp}); "
+                    f"if ({v}_k < 0 || {v}_k >= (ll){info.len_cpp}) return {rty}();")
+                parts.append(f"(int){v}_k")
+            else:
+                self.error(idx_node, f"`.get(...)` expects {info.name} or ?{info.name}, got {it!r}")
+        idx_expr = parts[0] if len(parts) == 1 else f"(size_t)({parts[0]}) * (size_t)({ot.dims[1].info.len_cpp}) + (size_t)({parts[1]})"
+        if len(parts) > 2:
+            acc = f"(size_t)({parts[0]})"
+            for p, d in zip(parts[1:], ot.dims[1:]):
+                acc = f"({acc} * (size_t)({d.info.len_cpp}) + (size_t)({p}))"
+            idx_expr = acc
+        elem_expr = f"(ll){oc}[{idx_expr}]" if self.narrow(ot.elem) else f"{oc}[{idx_expr}]"
+        return f"([&]() -> {rty} {{ {' '.join(checks)} return {rty}({elem_expr}); }}())", rt
+
+    def list_get(self, e, oc, ot, idx_node):
+        """xs.get(i) / xs.get(?i) on List<T>: bounds-checked optional access returning ?T."""
+        ic, it = self.expr(idx_node)
+        rt = TOpt(ot.elem)
+        rty = self.cpp_type(rt)
+        if isinstance(it, TOpt) and is_int(it.inner):
+            return (f"([&]() -> {rty} {{ auto _o = {ic}; if (!_o.has()) return {rty}(); "
+                    f"ll _k = _o.get(); if (_k < 0 || _k >= (ll){oc}.size()) return {rty}(); "
+                    f"return {rty}({oc}[(size_t)_k]); }}())"), rt
+        if is_int(it):
+            return (f"([&]() -> {rty} {{ ll _k = {ic}; if (_k < 0 || _k >= (ll){oc}.size()) return {rty}(); "
+                    f"return {rty}({oc}[(size_t)_k]); }}())"), rt
+        self.error(idx_node, f"List.get expects Int or ?Int, got {it!r}")
+
+    def is_pod_type(self, t):
+        if isinstance(t, (TBool, TInt, TChar, TF64)):
+            return True
+        if isinstance(t, TTuple) and getattr(t, "is_const_struct", False):
+            return True
+        return False
+
+    def const_value_type(self, v):
+        if isinstance(v, bool): return BOOL
+        if isinstance(v, int): return TInt(v, v)
+        if isinstance(v, float): return F64
+        if isinstance(v, str) and len(v) == 1: return CHAR
+        if isinstance(v, ConstStruct) and v.name in self.const_structs:
+            return self.const_structs[v.name][0]
+        return INT
+
+    def const_to_cpp(self, v, ty=None):
+        if isinstance(v, bool): return "true" if v else "false"
+        if isinstance(v, int): return f"{v}LL"
+        if isinstance(v, float): return repr(v)
+        if isinstance(v, str) and len(v) == 1: return repr(v)
+        if isinstance(v, ConstStruct) and v.name in self.const_structs:
+            st, _ = self.const_structs[v.name]
+            vals = [self.const_to_cpp(v.fields[fn], ft) for fn, ft in zip(st.names, st.types)]
+            return f"{st.cpp}{{{', '.join(vals)}}}"
+        return "0LL"
+
+    def eval_const_typearg(self, ta):
+        """Evaluate a const generic argument passed inside `<...>` (parsed as a type AST)."""
+        if ta.kind == "texpr":
+            return self.eval_const(ta.expr)
+        if ta.kind == "tname" and not ta.args:
+            if ta.name == "true": return True
+            if ta.name == "false": return False
+            return self.eval_const(N("name", ta.line, name=ta.name))
+        self.error(ta, f"expected a compile-time const argument, got `{ta.kind}`")
+
+    def eval_const(self, e):
+        """Evaluate a compile-time constant expression (POD scalars, const structs, field access, boolean/arith ops)."""
+        k = e.kind
+        if k == "paren": return self.eval_const(e.a)
+        if k == "bool": return bool(e.value)
+        if k == "num": return e.value
+        if k == "char": return e.value
+        if k == "name":
+            if e.name == "true": return True
+            if e.name == "false": return False
+            s = self.lookup(e.name)
+            if s is not None and s.const_val is not None:
+                return s.const_val
+            self.error(e, f"`{e.name}` is not a compile-time constant (declare it `const` or pass it as `const` parameter)")
+        if k == "field":
+            ov = self.eval_const(e.obj)
+            if isinstance(ov, ConstStruct):
+                if e.name not in ov.fields:
+                    self.error(e, f"const struct `{ov.name}` has no field `{e.name}`")
+                return ov.fields[e.name]
+            self.error(e, f"cannot read `.{e.name}` on non-struct const value {ov!r}")
+        if k == "unop":
+            a = self.eval_const(e.a)
+            if e.op == "not":
+                if not isinstance(a, bool): self.error(e, "`not` in const expr requires Bool")
+                return not a
+            if e.op == "-": return -a
+            if e.op == "+": return +a
+        if k == "binop":
+            if e.op == "and":
+                a = self.eval_const(e.a)
+                return bool(a) and bool(self.eval_const(e.b))
+            if e.op == "or":
+                a = self.eval_const(e.a)
+                return bool(a) or bool(self.eval_const(e.b))
+            a, b = self.eval_const(e.a), self.eval_const(e.b)
+            ops = {"+": lambda x, y: x + y, "-": lambda x, y: x - y, "*": lambda x, y: x * y,
+                   "/": lambda x, y: x // y, "%": lambda x, y: x % y, "&": lambda x, y: x & y,
+                   "|": lambda x, y: x | y, "^": lambda x, y: x ^ y, "<<": lambda x, y: x << y, ">>": lambda x, y: x >> y}
+            if e.op in ops:
+                return ops[e.op](a, b)
+        if k == "cmp":
+            cur = self.eval_const(e.first)
+            for op, rhs in zip(e.ops, e.rest):
+                rv = self.eval_const(rhs)
+                ok = {"==": cur == rv, "!=": cur != rv, "<": cur < rv, "<=": cur <= rv, ">": cur > rv, ">=": cur >= rv}.get(op)
+                if ok is None:
+                    self.error(e, f"unsupported operator `{op}` in const expression")
+                if not ok:
+                    return False
+                cur = rv
+            return True
+        if k == "call" and e.fn.kind == "name" and e.fn.name in self.const_structs:
+            st, snode = self.const_structs[e.fn.name]
+            fields = st.names
+            vals = {}
+            for i, a in enumerate(e.args):
+                if a.kind == "kwarg":
+                    if a.name not in fields:
+                        self.error(a, f"`{e.fn.name}` has no field `{a.name}`")
+                    vals[a.name] = self.eval_const(a.value)
+                else:
+                    if i >= len(fields):
+                        self.error(a, f"`{e.fn.name}` takes at most {len(fields)} arguments")
+                    vals[fields[i]] = self.eval_const(a)
+            defaults = getattr(snode, "defaults", None) or {}
+            for f in fields:
+                if f not in vals:
+                    if f in defaults:
+                        vals[f] = self.eval_const(defaults[f])
+                    else:
+                        self.error(e, f"`{e.fn.name}(...)` is missing field `{f}`")
+            return ConstStruct(e.fn.name, vals)
+        self.error(e, f"expression `{unparse(e)}` is not a compile-time constant")
+
+    def specialize_struct(self, snode, targs, node):
+        """Monomorphize a generic/const-generic struct `struct Rooted<V, const C: TreeCfg = DEFAULT>`."""
+        tps = getattr(snode, "tparams", [])
+        const_tps = getattr(snode, "const_tparams", None) or {}
+        tdefaults = getattr(snode, "tparam_defaults", None) or {}
+        if len(targs) > len(tps):
+            self.error(node, f"`{snode.name}` takes at most {len(tps)} type/const arguments, got {len(targs)}")
+        binds = {}
+        key_parts = []
+        for i, tp in enumerate(tps):
+            if i < len(targs):
+                ta = targs[i]
+                if tp in const_tps:
+                    v = self.eval_const_typearg(ta)
+                    pty = self.resolve_type(const_tps[tp]) if const_tps[tp] is not None else self.const_value_type(v)
+                    binds[tp] = Sym("const", pty, self.const_to_cpp(v, pty), const_val=v)
+                    key_parts.append(v.key() if isinstance(v, ConstStruct) else v)
+                else:
+                    t = self.resolve_type(ta)
+                    binds[tp] = Sym("type", t, t.info.cpp if isinstance(t, TDom) else getattr(t, "cpp", ""))
+                    key_parts.append(t.info.cpp if isinstance(t, TDom) else repr(t))
+            elif tp in tdefaults:
+                if tp in const_tps:
+                    v = self.eval_const(tdefaults[tp])
+                    pty = self.resolve_type(const_tps[tp]) if const_tps[tp] is not None else self.const_value_type(v)
+                    binds[tp] = Sym("const", pty, self.const_to_cpp(v, pty), const_val=v)
+                    key_parts.append(v.key() if isinstance(v, ConstStruct) else v)
+                else:
+                    t = self.resolve_type(tdefaults[tp])
+                    binds[tp] = Sym("type", t, t.info.cpp if isinstance(t, TDom) else getattr(t, "cpp", ""))
+                    key_parts.append(t.info.cpp if isinstance(t, TDom) else repr(t))
+            else:
+                self.error(node, f"`{snode.name}` is missing type/const argument `{tp}`")
+        key = (snode.name, tuple(key_parts))
+        if key in self.gen_struct_insts:
+            return self.gen_struct_insts[key]
+        inst_name = f"{snode.name}_{len(self.gen_struct_insts) + 1}"
+        t = self.struct_inst(snode, inst_name, binds=binds)
+        self.gen_struct_insts[key] = t
+        return t
+
+    def construct_struct(self, st, snode, e):
+        """Construct a struct value, handling defaults and erased `()` fields."""
+        all_fields = getattr(st, "all_field_names", st.names)
+        erased = getattr(st, "erased_fields", set())
+        items, names = [], []
+        for i, a in enumerate(e.args):
+            if a.kind == "kwarg":
+                items.append(a.value); names.append(a.name)
+            else:
+                if i >= len(all_fields):
+                    self.error(a, f"{snode.name} has {len(all_fields)} fields")
+                items.append(a); names.append(all_fields[i])
+        defaults = getattr(snode, "defaults", None) or {}
+        for f in all_fields:
+            if f not in names:
+                if f in defaults:
+                    items.append(defaults[f]); names.append(f)
+                elif f in erased:
+                    items.append(None); names.append(f)
+        if sorted(names) != sorted(all_fields):
+            missing = [f for f in all_fields if f not in names]
+            extra = [f for f in names if f not in all_fields]
+            self.error(e, f"{snode.name}(...) is missing {', '.join(missing) or 'nothing'}"
+                          + (f" / unknown {', '.join(extra)}" if extra else ""))
+        kept_items, kept_names = [], []
+        for f in st.names:
+            k = names.index(f)
+            kept_items.append(items[k])
+            kept_names.append(f)
+        if not kept_names:
+            return f"{st.cpp}{{}}", st
+        lit = N("tuple", e.line, items=kept_items, names=kept_names)
+        return self.x_tuple(lit, st)
+
+    # ---------- Synthesis #3 Leap 2: Strict Local Syntactic Narrowing (Rules N1/N2 + 4 Anti-Spookiness Invariants)
+    def extract_narrow(self, cond, truthy=True):
+        """Extract local syntactic narrowing facts from `cond` when `cond` is `truthy`.
+        Returns (opt_facts: [(name, Sym, inner_ty)], nonempty_facts: [(name, Sym)]).
+        Strictly syntactic (Invariant 1) and local-binding only (Invariant 2)."""
+        opt_f, ne_f = [], []
+        if cond is None:
+            return opt_f, ne_f
+        k = cond.kind
+        if k == "paren":
+            return self.extract_narrow(cond.a, truthy)
+        if k == "unop" and cond.op == "not":
+            return self.extract_narrow(cond.a, not truthy)
+        if k == "binop" and ((cond.op == "and" and truthy) or (cond.op == "or" and not truthy)):
+            o1, n1 = self.extract_narrow(cond.a, truthy)
+            o2, n2 = self.extract_narrow(cond.b, truthy)
+            return o1 + o2, n1 + n2
+        if k == "cmp" and len(cond.ops) == 1:
+            op, a, b = cond.ops[0], cond.first, cond.rest[0]
+            if op in ("!=", "=="):
+                is_not_none = (op == "!=" and truthy) or (op == "==" and not truthy)
+                if is_not_none:
+                    target = a if b.kind == "none" else (b if a.kind == "none" else None)
+                    # Invariant 2: ONLY local bindings (`name`), NEVER array elements `a[i]` or struct fields `s.x`!
+                    if target is not None and target.kind == "name":
+                        sym = self.lookup(target.name)
+                        if sym is not None and sym.kind in ("let", "var") and isinstance(sym.ty, TOpt):
+                            opt_f.append((target.name, sym, sym.ty.inner))
+            if truthy:
+                ne_name = None
+                if op == ">" and a.kind == "field" and a.name == "len" and a.obj.kind == "name" and b.kind == "num" and b.value == 0:
+                    ne_name = a.obj.name
+                elif op == "<" and b.kind == "field" and b.name == "len" and b.obj.kind == "name" and a.kind == "num" and a.value == 0:
+                    ne_name = b.obj.name
+                elif op == ">=" and a.kind == "field" and a.name == "len" and a.obj.kind == "name" and b.kind == "num" and b.value >= 1:
+                    ne_name = a.obj.name
+                elif op == "<=" and b.kind == "field" and b.name == "len" and b.obj.kind == "name" and a.kind == "num" and a.value >= 1:
+                    ne_name = b.obj.name
+                elif op == "!=" and a.kind == "field" and a.name == "len" and a.obj.kind == "name" and b.kind == "num" and b.value == 0:
+                    ne_name = a.obj.name
+                elif op == "!=" and b.kind == "field" and b.name == "len" and b.obj.kind == "name" and a.kind == "num" and a.value == 0:
+                    ne_name = b.obj.name
+                if ne_name is not None:
+                    sym = self.lookup(ne_name)
+                    if sym is not None and sym.kind in ("let", "var"):
+                        ne_f.append((ne_name, sym))
+            else:
+                ne_name = None
+                if op == "==" and a.kind == "field" and a.name == "len" and a.obj.kind == "name" and b.kind == "num" and b.value == 0:
+                    ne_name = a.obj.name
+                elif op == "==" and b.kind == "field" and b.name == "len" and b.obj.kind == "name" and a.kind == "num" and a.value == 0:
+                    ne_name = b.obj.name
+                if ne_name is not None:
+                    sym = self.lookup(ne_name)
+                    if sym is not None and sym.kind in ("let", "var"):
+                        ne_f.append((ne_name, sym))
+        if not truthy and k == "field" and cond.name == "is_empty" and cond.obj.kind == "name":
+            sym = self.lookup(cond.obj.name)
+            if sym is not None and sym.kind in ("let", "var"):
+                ne_f.append((cond.obj.name, sym))
+        return opt_f, ne_f
+
+    def apply_narrow(self, facts):
+        opt_f, ne_f = facts
+        for nm, sym, inner_t in opt_f:
+            self.opt_narrow[nm] = (sym, inner_t)
+        for nm, sym in ne_f:
+            self.nonempty_narrow[nm] = sym
+
+    def drop_narrow(self, names):
+        for w in names:
+            self.opt_narrow.pop(w, None)
+            self.nonempty_narrow.pop(w, None)
+
+    def invalidate_narrow(self, expr_node):
+        """Invariant 3: invalidate local narrowing whenever a binding (or root of a mutated place) is mutated."""
+        root = expr_node
+        while root is not None and root.kind in ("paren", "unwrap", "index", "field"):
+            root = root.a if root.kind in ("paren", "unwrap") else root.obj
+        if root is not None and root.kind == "name":
+            self.opt_narrow.pop(root.name, None)
+            self.nonempty_narrow.pop(root.name, None)
+
+    def always_diverges(self, stmts):
+        if not stmts:
+            return False
+        for st in stmts:
+            if st.kind in ("return", "break", "continue"):
+                return True
+            if st.kind == "if" and st.orelse and self.always_diverges(st.body) and self.always_diverges(st.orelse):
+                return True
+        return False
+
+    def is_local_nonempty(self, obj):
+        if obj.kind != "name":
+            return False
+        sym = self.lookup(obj.name)
+        return sym is not None and self.nonempty_narrow.get(obj.name) is sym
+
+    def maybe_n2_field(self, e, ot, f, rc, rt):
+        if not isinstance(rt, TOpt) or not self.is_local_nonempty(e.obj):
+            return rc, rt
+        ok = False
+        if isinstance(ot, TList) and f in ("first", "last"): ok = True
+        elif isinstance(ot, THeap) and f == "peek": ok = True
+        elif isinstance(ot, TRt) and ot.name == "Deque" and f in ("first", "last", "front", "back"): ok = True
+        elif isinstance(ot, TRt) and ot.name == "MonoDeque" and f == "best": ok = True
+        elif isinstance(ot, (TSet, TMap)) and f in ("first", "last", "min", "max") and not ot.hashed: ok = True
+        elif isinstance(ot, TTuple) and self.struct_laws.get((ot.cpp, f)) == "not_empty": ok = True
+        if ok:
+            self.narrowed_exprs.add(id(e))
+            return f"({rc}).get()", rt.inner
+        return rc, rt
+
+    def maybe_n2_method(self, e, obj, ot, m, rc, rt, was_nonempty=None):
+        if was_nonempty is None:
+            was_nonempty = self.is_local_nonempty(obj)
+        if not isinstance(rt, TOpt) or not was_nonempty:
+            return rc, rt
+        ok = False
+        if isinstance(ot, TList) and m == "pop": ok = True
+        elif isinstance(ot, THeap) and m == "pop": ok = True
+        elif isinstance(ot, TRt) and ot.name == "Deque" and m in ("pop", "pop_front", "pop_back"): ok = True
+        elif isinstance(ot, TTuple) and self.struct_laws.get((ot.cpp, m)) == "not_empty": ok = True
+        if ok:
+            self.narrowed_exprs.add(id(e))
+            return f"({rc}).get()", rt.inner
+        return rc, rt
+
+    def is_mutating_method(self, ot, m):
+        if m in ("push", "push_front", "push_back", "pop", "pop_front", "pop_back", "clear", "insert",
+                 "remove", "erase", "swap", "sort", "rev", "fill", "resize", "truncate", "set", "add",
+                 "unite", "refresh", "update", "assign", "extend", "append"):
+            return True
+        if isinstance(ot, TTuple):
+            tbl = getattr(self, "struct_methods", {}).get(ot.cpp, {})
+            if m in tbl and tbl[m][2]:
+                return True
+        return False
 
     def narrow(self, t):
         """Range-typed array elements that fit in 32 bits are stored as int."""
