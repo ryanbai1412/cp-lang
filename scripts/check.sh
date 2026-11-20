@@ -3,21 +3,22 @@
 # this repository: this script, run on your machine, is the gate.
 #
 #   scripts/check.sh           same as --fast
-#   scripts/check.sh --fast    what the pre-commit hook runs (about 2 minutes)
+#   scripts/check.sh --fast    what the pre-commit hook runs (about 25 s warm)
 #   scripts/check.sh --full    --fast, then the slow suites (15 minutes or more)
 #
 # --fast  1. nothing from dist/ and no secret is staged or in an unpushed commit
 #         2. cargo clippy --workspace --all-targets -- -D warnings
 #         3. the workspace tests (cargo nextest when installed, else cargo
-#            test), without the slow proto_fuzz and the timing-based budget
-#         4. cpl test stdlib examples/local-lib
+#            test), without the tests listed under 7 and 8
+#         4. cpl test stdlib examples/local-lib, run beside 3
 #         5. cpl fmt --check stdlib (the standard library stays formatted)
 #         6. scripts/friction_lint.py: its rule tests, then no wa_trap hit in
 #            proto/ports or examples, with a one-line severity summary
-# --full  7. proto_fuzz, and the budget tests alone so no other load skews them
-#         8. the WebAssembly build and crates/cpl-wasm/tests/smoke.mjs
-#         9. the VS Code extension tests (editors/vscode: npm test)
-#        10. proto/run_all.sh, in a throwaway clone because it stamps its sources
+# --full  7. proto_fuzz, the shrinker fuzzer and the prover's products fuzzer
+#         8. the budget tests and the front-end latency test, each alone
+#         9. the WebAssembly build and crates/cpl-wasm/tests/smoke.mjs
+#        10. the VS Code extension tests (editors/vscode: npm test)
+#        11. proto/run_all.sh, in a throwaway clone because it stamps its sources
 #
 # Needs cargo with clippy and python3; --full also needs node, npm, g++ and
 # the wasm target (rustup target add wasm32-unknown-unknown).
@@ -77,25 +78,48 @@ need cargo "see https://rustup.rs"
 step "cargo clippy --workspace --all-targets -- -D warnings"
 cargo clippy --workspace --all-targets -- -D warnings
 
-# proto_fuzz checks the retired Python prototype and takes over a minute;
-# budget measures wall-clock time, which other tests running beside it skew.
-# Both run in --full.
+# The library tests only need the cpl binary, so they run beside the
+# workspace tests and their output is printed after them.
+cargo build -q -p cpl-cli
+lib_log="$(mktemp)"
+"${CARGO_TARGET_DIR:-target}/debug/cpl" test stdlib examples/local-lib >"$lib_log" 2>&1 &
+lib_pid=$!
+cleanup() { kill "$lib_pid" 2>/dev/null || true; rm -rf "$lib_log" ${tmp:+"$tmp"}; }
+trap cleanup EXIT
+
+# These run in --full instead:
+# - proto_fuzz checks the retired Python prototype and takes over a minute;
+# - the shrinker and prover fuzzers take 21 s and 7 s, longer than the rest
+#   of the suite together;
+# - budget and the 50 ms front-end latency test measure wall-clock time,
+#   which other tests running beside them skew.
+slow_tests=(
+    shrinks_a_failing_program_to_a_few_lines
+    products_and_variable_divisors_are_never_decided_wrongly
+    front_end_check_is_under_50_ms
+)
 if cargo nextest --version >/dev/null 2>&1; then
-    step "cargo nextest run --workspace (without proto_fuzz and budget)"
-    cargo nextest run --workspace --no-fail-fast -E 'not (binary(proto_fuzz) or binary(budget))'
+    step "cargo nextest run --workspace (without the --full tests)"
+    filter='binary(proto_fuzz) or binary(budget)'
+    for t in "${slow_tests[@]}"; do filter+=" or test(/(^|::)$t\$/)"; done
+    cargo nextest run --workspace --no-fail-fast -E "not ($filter)"
     step "cargo test --workspace --doc"
     cargo test -q --workspace --doc
 else
-    step "cargo test --workspace (without proto_fuzz and budget)"
-    cargo test --workspace -- \
-        --skip prototype_agrees_with_the_reference_evaluator \
-        --skip run_answers_within_200_ms \
-        --skip build_takes_under_a_second_and_fits_64_kb
+    step "cargo test --workspace (without the --full tests)"
+    skips=()
+    for t in "${slow_tests[@]}" prototype_agrees_with_the_reference_evaluator \
+        run_answers_within_200_ms build_takes_under_a_second_and_fits_64_kb; do
+        skips+=(--skip "$t")
+    done
+    cargo test --workspace -- "${skips[@]}"
 fi
 
 step "cpl test stdlib examples/local-lib"
-cargo run -q -p cpl-cli -- test stdlib examples/local-lib | tail -n 1
-[ "${PIPESTATUS[0]}" -eq 0 ] || fail "library tests failed; rerun: cargo run -p cpl-cli -- test stdlib examples/local-lib"
+lib_status=0
+wait "$lib_pid" || lib_status=$?
+tail -n 1 "$lib_log"
+[ "$lib_status" -eq 0 ] || { cat "$lib_log"; fail "library tests failed; rerun: cargo run -p cpl-cli -- test stdlib examples/local-lib"; }
 
 step "cpl fmt --check stdlib"
 cargo run -q -p cpl-cli -- fmt --check stdlib || fail "stdlib/ is not formatted; run: cargo run -p cpl-cli -- fmt stdlib"
@@ -114,11 +138,15 @@ if [ "$mode" = full ]; then
     need g++ "proto/run_all.sh compiles the ports with it"
 
     tmp="$(mktemp -d)"
-    trap 'rm -rf "$tmp"' EXIT
 
-    step "cargo test: proto_fuzz, then budget on its own"
+    step "cargo test: proto_fuzz and the slow fuzzers"
     cargo test -p cpl-verify --test proto_fuzz
+    cargo test -p cpl-verify --lib -- --exact fuzz::shrink::tests::shrinks_a_failing_program_to_a_few_lines
+    cargo test -p cpl-prover --test fuzz -- --exact products_and_variable_divisors_are_never_decided_wrongly
+
+    step "cargo test: budget, then the front-end latency, each on its own"
     cargo test -p cpl-cli --test budget -- --test-threads=1
+    cargo test -p cpl-lsp --test latency -- --exact front_end_check_is_under_50_ms
 
     step "wasm build and crates/cpl-wasm/tests/smoke.mjs"
     scripts/build-wasm.sh --smoke --out "$tmp/wasm"

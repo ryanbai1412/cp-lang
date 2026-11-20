@@ -82,10 +82,9 @@ not Rust: `cpl-verify/tests/proto_fuzz.rs` 34.1 s, one crate's unit-test binary
 
 ## Next cycle
 
-1. **Run the fast gate on nextest.** Make `scripts/check.sh --fast` call
-   `cargo nextest run --workspace` when `cargo-nextest` is on `PATH` and fall
-   back to `cargo test --workspace` otherwise. Measured: 91.5 s to 50.9 s per
-   pre-commit run with the same tests.
+1. **Run the fast gate on nextest.** Done since: `scripts/check.sh --fast`
+   uses `cargo nextest run` when it is installed (91.5 s to 50.9 s for the
+   same tests), and the slow fuzzers moved to `--full` (below).
 2. **Take the `proto/cpc` fuzzer out of the fast gate.** `proto_fuzz.rs` and
    `proto_tools.rs` test the retired Python prototype and cost 41.9 s of the
    suite. Give them `required-features = ["slow"]` as `[[test]]` entries in
@@ -97,6 +96,43 @@ not Rust: `cpl-verify/tests/proto_fuzz.rs` 34.1 s, one crate's unit-test binary
    `cpl-lower` crate depending on `cpl-ir` would let codegen and interp compile
    in parallel with lowering on a clean build, and an edit to lowering would
    stop recompiling `cpl-codegen` and `cpl-interp` at all.
+
+## `scripts/check.sh --fast`, step by step
+
+Warm tree (nothing to rebuild), 8 cores, each step timed on its own:
+
+```
+                                         before   after
+staged-file and secret guard               0.03    0.03
+cargo clippy (cached)                      0.08    0.08
+cargo nextest run --workspace             32.48   20.91
+cargo test --workspace --doc               0.86    0.86
+cpl test stdlib examples/local-lib         6.65    (beside nextest)
+cpl fmt --check stdlib                     0.09    0.09
+friction lint tests + --fail-on-wa-trap    0.54    0.54
+whole script                              40.66   22.26 (21.56, 22.59, 22.61)
+```
+
+The suite's wall time is its longest test. Before, those were
+`fuzz::shrink::tests::shrinks_a_failing_program_to_a_few_lines` (21.3 s),
+the differential test (18.3 s), `front_end_check_is_under_50_ms` (16.1 s)
+and the prover's `products_and_variable_divisors_are_never_decided_wrongly`
+(7.0 s). What changed:
+
+- The shrinker and prover fuzz tests moved to `--full` (15.1 s and 3.0 s
+  when run alone).
+- `front_end_check_is_under_50_ms` moved to `--full`, run alone next to
+  `budget`, because it measures wall-clock time (7.3 s alone).
+- `cpl test stdlib examples/local-lib` runs beside the workspace tests
+  instead of after them.
+
+`interpreter_and_sanitized_cpp_agree_on_every_program` (16 to 18 s) is now
+the longest test in `--fast`. It stays there on purpose: differential testing
+against sanitized C++ is meant to run on every commit. The next cut is to
+split its program list into several tests so nextest can run them in
+parallel; that needs a change in `crates/cpl-cli/tests/differential.rs`.
+After it come the `cpl-verify::proto_tools` tests (5 to 9 s each), which
+test the retired `proto/cpc` prototype.
 
 ## Commands
 
