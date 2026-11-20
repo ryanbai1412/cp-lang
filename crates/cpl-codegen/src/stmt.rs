@@ -573,6 +573,9 @@ impl<'p> Emitter<'p> {
                 let text = self.expr(init).text;
                 if hoisted {
                     self.line(out, &format!("{name} = {text};"));
+                } else if name.starts_with('_') {
+                    // `_t` is a name for a value the program may not use.
+                    self.line(out, &format!("[[maybe_unused]] {cpp} {name} = {text};"));
                 } else {
                     self.line(out, &format!("{cpp} {name} = {text};"));
                 }

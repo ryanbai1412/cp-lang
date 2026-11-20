@@ -59,6 +59,12 @@ fn run_matches_cpl_run() {
         let name = path.to_str().expect("a UTF-8 path");
         let source = std::fs::read_to_string(&path).expect("readable program");
         let input = std::fs::read(path.with_extension("in")).unwrap_or_default();
+        // `cpl run` plays a file's `@interactor` against it on a second
+        // thread, which the playground does not have: there the program
+        // stops at its first unanswered question.
+        if source.contains("\n@interactor") {
+            continue;
+        }
 
         let cli = cpl_cli::run_with_input(&["run", name], &input);
         let run = playground.run(name, &source, &input);
