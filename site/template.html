@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{{description}} Learn CP Lang with concrete examples for competitive programmers.">
+  <meta name="color-scheme" content="light dark">
+  <title>{{title}} — CP Lang</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="assets/theme.js"></script>
+  <script src="assets/app.js" defer></script>
+</head>
+<body class="{{page_class}}">
+  <a href="#main" class="skip-link">Skip to content</a>
+  <header class="topbar">
+    <a class="brand" href="index.html" aria-label="CP Lang home"><span class="brand-mark" aria-hidden="true">c<span>p</span>_</span><span>CP Lang</span></a>
+    <span class="header-divider"></span><span class="header-label">The field guide</span>
+    <div class="top-actions">
+      <button class="search-trigger" type="button" aria-label="Search the guide" aria-haspopup="dialog"><span class="search-icon" aria-hidden="true"></span><span>Search the guide</span><kbd>/</kbd></button>
+      <a class="github-link" href="{{repo}}">GitHub <span aria-hidden="true">↗</span></a>
+      <button class="theme-toggle icon-button" aria-label="Switch to dark theme" type="button">◐</button>
+      <button class="menu-toggle icon-button" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar" type="button">☰</button>
+    </div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <a class="edition" href="getting-started.html#what-works-today"><span class="status-dot"></span> Development edition <span>0.0</span></a>
+      <nav aria-label="Guide chapters">{{navigation}}</nav>
+      <div class="sidebar-footer"><span class="tiny-mark">{ }</span><p>Built for the way<br>you solve problems.</p><a href="{{repo}}/blob/main/decisions.md">Follow the language design ↗</a></div>
+    </aside>
+    <main id="main" tabindex="-1">
+      <div class="breadcrumb"><span>{{section}}</span><span aria-hidden="true">/</span><span>{{title}}</span></div>
+      <div class="page-meta"><span>THE CP LANG GUIDE</span><span>{{number}} <span aria-hidden="true">/</span> {{duration}} read</span></div>
+      <div class="chapter-title"><h1>{{heading}}</h1><p>{{description}}</p></div>
+      <article>{{content}}</article>
+      <nav class="pager" aria-label="Adjacent chapters">{{pager}}</nav>
+      <footer class="page-footer"><span>CP Lang · A language for competitive programming.</span><a href="{{repo}}/blob/main/site/content/{{name}}.md">Edit this page ↗</a></footer>
+    </main>
+    <aside class="right-rail" aria-label="On this page"><div class="toc"><p>On this page</p>{{toc}}<a class="source-link" href="{{repo}}/tree/main/plan">Language design ↗</a></div></aside>
+  </div>
+  <dialog class="search-dialog" aria-labelledby="search-title">
+    <form method="dialog" class="search-header"><label id="search-title" for="search-input">Search the guide</label><button type="submit" aria-label="Close search">Esc</button></form>
+    <input id="search-input" type="search" autocomplete="off" placeholder="Try “boundaries” or “lends mut”…" aria-controls="search-results">
+    <p id="search-status" role="status">Type to find a chapter or a concept.</p>
+    <div id="search-results"></div>
+    <div class="search-footer"><span>↑ ↓ navigate</span><span>Enter to open</span></div>
+  </dialog>
+</body>
+</html>
