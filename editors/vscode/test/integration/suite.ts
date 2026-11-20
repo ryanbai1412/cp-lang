@@ -126,16 +126,17 @@ const tests: [string, () => Promise<void>][] = [
                     decorators.includes('@brute') &&
                     decorators.includes('@grader') &&
                     decorators.includes('@checker') &&
-                    decorators.includes('@interactor'),
+                    decorators.includes('@interactor') &&
+                    decorators.includes('@law'),
                 decorators.join(', '),
             );
             assert.ok(!decorators.includes('domain'));
             const words = await labels(document.lineCount - 1, 1);
-            for (const word of ['domain', 'unchecked', 'lends', 'defer', 'assume', 'print', 'Int', 'F64', 'Mod', 'SegTree', 'Rooted']) {
+            for (const word of ['domain', 'unchecked', 'lends', 'assert', 'print', 'prev_permutation', 'Int', 'F64', 'Interactor', 'Mod', 'SegTree', 'Rooted']) {
                 assert.ok(words.includes(word), `no \`${word}\` among the completions`);
             }
-            for (const stale of ['INF', 'Float', 'I32', 'U8', 'ModR']) {
-                assert.ok(!words.includes(stale), `stale v1 token \`${stale}\` appeared in completions`);
+            for (const stale of ['INF', 'Float', 'I32', 'U8', 'ModR', 'defer', 'assume', 'where', 'inline', 'lend']) {
+                assert.ok(!words.includes(stale), `stale/removed token \`${stale}\` appeared in completions`);
             }
             await vscode.commands.executeCommand('workbench.action.files.revert');
         },

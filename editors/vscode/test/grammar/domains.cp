@@ -1,4 +1,4 @@
-// SYNTAX TEST "source.cp" "CP Lang v2.1 types, domains, borrows and escape hatches"
+// SYNTAX TEST "source.cp" "CP Lang v2.2 types, domains, borrows and escape hatches"
 
 let (n, m): (1..=2e5, 1..=2e5) = read()
 // <--- storage.type.let.cp
@@ -105,12 +105,13 @@ link(mut g, roads[e])
 //                                 ^^^ storage.modifier.mut.cp
 //                                     ^^^^^ entity.name.type.cp
 
-        law disjoint(s, t) = s.hi <= t.lo or t.hi <= s.lo
-//      ^^^ storage.type.law.cp
-//          ^^^^^^^^ entity.name.function.law.cp
-//                         ^ keyword.operator.assignment.cp
-//                                ^^ keyword.operator.comparison.cp
-//                                        ^^ keyword.operator.logical.or.cp
+        @law disjoint(s, t) = s.hi <= t.lo or t.hi <= s.lo
+//      ^ punctuation.definition.decorator.cp
+//       ^^^ entity.name.function.decorator.cp
+//           ^^^^^^^^ entity.name.function.call.cp
+//                          ^ keyword.operator.assignment.cp
+//                                 ^^ keyword.operator.comparison.cp
+//                                         ^^ keyword.operator.logical.or.cp
 
     pub fn pair_mut(mut self, i: I, j: I) lends (mut T, mut T):
 //         ^^^^^^^^ entity.name.function.cp
@@ -123,16 +124,10 @@ link(mut g, roads[e])
 //                               ^^^ storage.modifier.mut.cp
 //                                    ^ entity.name.type.cp
 
-fn row(self, r: A, inline use: ([B]T) -> R) -> R =
-//                 ^^^^^^ storage.modifier.inline.cp
-//                        ^^^ variable.parameter.label.cp
-//                        ^^^ - keyword
-//                                    ^^ keyword.operator.arrow.cp
-
-    pub fn table(inline f: I -> T) -> Array<I, T> = build(f)
-//               ^^^^^^ storage.modifier.inline.cp
-//                      ^ variable.parameter.label.cp
-//                                    ^^^^^ entity.name.type.cp
+    pub fn table(f: (I) -> T) -> Array<I, T> = build(f)
+//               ^ variable.parameter.label.cp
+//                      ^^ keyword.operator.arrow.cp
+//                               ^^^^^ entity.name.type.cp
 
 swap(mut g.row(r1), mut g.row(r2))
 // <---- support.function.builtin.cp
@@ -164,20 +159,19 @@ trait Seq: Index + Ord
 //                                           ^^^^^^^^ entity.name.function.method.cp
 //                                                         ^^^^^^ variable.other.property.cp
 
-pub struct Bounds<I>(ord: 0..=I.K) where I: Seq:
+pub struct Bounds<I: Seq>(ord: 0..=I.K):
 //         ^^^^^^ entity.name.type.struct.cp
-//                   ^^^ variable.parameter.label.cp
-//                              ^ entity.name.type.cp
-//                                 ^^^^^ keyword.control.where.cp
+//                   ^^^ entity.name.type.cp
+//                        ^^^ variable.parameter.label.cp
+//                                 ^ entity.name.type.cp
 
-fn longest_true<A>(a: A) -> Int where A: Indexed<V, Elem = Bool>
+fn longest_true<A>(a: A) -> Int:
 // ^^^^^^^^^^^^ entity.name.function.cp
 //             ^ punctuation.definition.generic.begin.cp
 //              ^ entity.name.type.cp
 //               ^ punctuation.definition.generic.end.cp
 //                 ^ variable.parameter.label.cp
-//                              ^^^^^ keyword.control.where.cp
-//                                                         ^^^^ support.type.builtin.cp
+//                          ^^^ support.type.builtin.cp
 
 pub fn compress_vals(xs: List<Int>) -> (domain X, vals: [X]Int, rank: List<X>):
 //                                      ^^^^^^ storage.type.domain.cp
@@ -224,8 +218,6 @@ unchecked:
 let raw = rows.len
 //  ^^^ - keyword
 
-let reqs: [q](l: I, r: I, x: X) = read() where all(t.l <= t.r for t in reqs)
+let reqs: [q](l: I, r: I, x: X) = read()
 //            ^ variable.parameter.label.cp
-//                                       ^^^^^ keyword.control.where.cp
-//                                             ^^^ support.function.builtin.cp
-//                                                            ^^^ keyword.control.for.cp
+//                                ^^^^ support.function.builtin.cp

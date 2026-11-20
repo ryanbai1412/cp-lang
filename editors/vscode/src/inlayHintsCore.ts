@@ -1,4 +1,4 @@
-// Pure inlay-hint computation for CP Lang v2.1. No `vscode` import so unit
+// Pure inlay-hint computation for CP Lang v2.2. No `vscode` import so unit
 // tests can run directly under Node.
 
 import { PRELUDE_TYPES, STDLIB_TYPES } from './languageData';
@@ -19,6 +19,7 @@ const CONSTRUCTOR_FUNCS: Record<string, string> = {
     Sieve: 'Sieve',
     RollingHash: 'RollingHash',
     SuffixArray: 'SuffixArray',
+    Rng: 'Rng',
 };
 
 function stripComment(line: string): string {

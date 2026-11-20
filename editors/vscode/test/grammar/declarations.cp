@@ -1,4 +1,4 @@
-// SYNTAX TEST "source.cp" "CP Lang v2.1 declarations, decorators and imports"
+// SYNTAX TEST "source.cp" "CP Lang v2.2 declarations, decorators and imports"
 
 use std.graph
 // <--- keyword.control.import.cp
@@ -23,19 +23,13 @@ use std.segtree.*
 // <- punctuation.definition.decorator.cp
 // <~--------- entity.name.function.decorator.cp
 
-@memo(flat)
+@memo
 // <- punctuation.definition.decorator.cp
 // <~---- meta.decorator.cp entity.name.function.decorator.cp
 
 @brute(main)
 // <~----- entity.name.function.decorator.cp
 //     ^^^^ - entity.name.function
-
-@grader const N: 0..=2000
-// <~------ entity.name.function.decorator.cp
-//      ^^^^^ storage.modifier.const.cp
-//            ^ variable.other.constant.cp
-//                ^^^ keyword.operator.range.cp
 
 @grader fn restore(n: Int) -> Int:
 // <~------ entity.name.function.decorator.cp
@@ -48,10 +42,12 @@ use std.segtree.*
 //       ^^ storage.type.function.cp
 //          ^^^^^ entity.name.function.cp
 
-@interactor fn judge():
+@interactor fn judge(sol: Interactor):
 // <~---------- entity.name.function.decorator.cp
 //          ^^ storage.type.function.cp
 //             ^^^^^ entity.name.function.cp
+//                   ^^^ variable.parameter.label.cp
+//                        ^^^^^^^^^^ support.type.builtin.cp
 
 @gen fn make_case(size: Int):
 // <~--- entity.name.function.decorator.cp
@@ -137,21 +133,18 @@ trait Monoid<T>:
 // <----- storage.type.trait.cp
 //    ^^^^^^ entity.name.type.trait.cp
 
-    law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
-//  ^^^ storage.type.law.cp
-//      ^^^^^ entity.name.function.law.cp
-//            ^ variable.parameter.label.cp
-//                                ^^ entity.name.function.call.cp
+    @law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
+//  ^ punctuation.definition.decorator.cp
+//   ^^^ entity.name.function.decorator.cp
+//       ^^^^^ entity.name.function.call.cp
+//             ^ variable.parameter.label.cp
+//                                 ^^ entity.name.function.call.cp
 
 impl Ord for Edge:
 // <---- storage.type.impl.cp
 //   ^^^ entity.name.type.cp
 //       ^^^ keyword.control.for.cp
 //           ^^^^ entity.name.type.cp
-
-fn each(inline f: (V) -> Int):
-//      ^^^^^^ storage.modifier.inline.cp
-//             ^ variable.parameter.label.cp
 
 fn bsearch(lo: Int, hi: Int) -> Int:
 // ^^^^^^^ entity.name.function.cp
@@ -165,6 +158,5 @@ fn bsearch(lo: Int, hi: Int) -> Int:
         invariant = l
 //      ^^^^^^^^^ - keyword
 
-    defer dsu.undo_to(snap)
-//  ^^^^^ keyword.control.defer.cp
-//            ^^^^^^^ entity.name.function.method.cp
+    dsu.undo_to(snap)
+//      ^^^^^^^ entity.name.function.method.cp
