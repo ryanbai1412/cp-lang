@@ -3,7 +3,7 @@
 // weakest) hits for atk. One number of hits x must kill every dragon:
 // atk * x >= a and atk * x = a (mod p). The smallest such x, or -1.
 // original: corpus/submissions/6517796.cpp
-use std.math.{ext_gcd, crt, mul_mod, ceil_div}
+use std.math.{ext_gcd, crt, mul_mod}
 
 // The solutions of a * x = b (mod m) as one congruence x = r (mod m'), or none.
 fn solve_linear(a: Int, b: Int, m: Int) -> ?(Int, Int):

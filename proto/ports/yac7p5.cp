@@ -6,7 +6,7 @@
 let n: 1..=1e4 = read()
 domain Egg = 1..=n
 var floor_of: [Egg]Int = 0
-var standing = 0                        // the floor of the latest question
+var standing = 0  // the floor of the latest question
 
 fn breaks(egg: Egg, floor: Int) -> Bool:
     standing = floor

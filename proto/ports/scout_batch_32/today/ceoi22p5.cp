@@ -2,7 +2,7 @@
 // original: corpus/submissions/4733784.cpp
 let (n, m, gap1): (Int, Int, Int) = read()
 let total = n + m
-let gap = 2 * gap1                      // work in half units
+let gap = 2 * gap1  // work in half units
 let NEG = -1000000000000000000
 var xs: List<Int> = []
 for _ in 0..total:

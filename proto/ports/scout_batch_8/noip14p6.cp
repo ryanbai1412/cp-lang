@@ -25,7 +25,7 @@ for i in 0..=n:
 
 fn is_root(x: Int, t: Int) -> Bool:
     var y = 0
-    for i in (0..=n).rev: y = (y * x + a[t, i]) % primes[t]     // Horner
+    for i in (0..=n).rev: y = (y * x + a[t, i]) % primes[t]  // Horner
     y == 0
 
 let roots = [x for x in 1..=m if is_root(x, 0) and is_root(x, 1)]

@@ -4,8 +4,7 @@
 // over sqrt-bucket prefix top-k sums.
 // original: corpus/submissions/4691224.cpp
 
-use std.algebra.{desc}
-use std.seq.{scan, reverse}
+use std.seq.{reverse}
 
 const B = 300
 

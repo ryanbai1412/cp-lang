@@ -103,7 +103,7 @@ while blk * 8 < n:
     blk += 1
 
 // Adversarial channel: reverse sent array (destroys order completely; decoder must be order-invariant).
-sent.rev()
+sent.reverse()
 
 // Verify channel constraints (m <= 5*n and every symbol in 0..255).
 assert sent.len <= 5 * n

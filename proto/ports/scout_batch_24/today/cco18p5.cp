@@ -16,10 +16,9 @@ let empty_peak = Peak(false, 0, -1)
 
 let arg_max = Monoid<Peak>(
     id: empty_peak,
-    op: (a, b) =>
-        if not a.has: b
-        else: if not b.has: a
-        else: if a.val > b.val or (a.val == b.val and a.idx > b.idx): a else: b
+    op: (a, b) => if not a.has: b else: if not b.has: a else: if a.val > b.val or (
+        a.val == b.val and a.idx > b.idx
+    ): a else: b,
 )
 
 let init_peaks = [I] i => Peak(true, init_a[i], i.to_idx)

@@ -10,7 +10,7 @@ type Z = Mod<P>
 
 let t: Int = read()
 domain Ask = 0..t
-let asks: [Ask](n: Int, m: Int) = read()     // n, m <= 1e6
+let asks: [Ask](n: Int, m: Int) = read()  // n, m <= 1e6
 let top = max(max(a.n, a.m) for a in asks)
 
 // Mobius function from smallest prime factors
@@ -40,7 +40,7 @@ let undo = [x.inv for x in upto]
 for a in asks:
     var (answer, l) = (Z(1), 1)
     while l <= min(a.n, a.m):
-        let r = min(a.n / (a.n / l), a.m / (a.m / l))     // last T with the same two quotients
+        let r = min(a.n / (a.n / l), a.m / (a.m / l))  // last T with the same two quotients
         answer *= (upto[r] * undo[l - 1]).pow((a.n / l) * (a.m / l))
         l = r + 1
     print(answer)

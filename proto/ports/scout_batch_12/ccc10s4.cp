@@ -6,7 +6,7 @@
 
 let pens: 1..=100 = read()
 domain Pen = 1..=pens
-domain Yard = 0..=pens                                    // pen 0 is the outside
+domain Yard = 0..=pens  // pen 0 is the outside
 domain Corner = 1..=1000
 
 // Each wall by its two corners, smaller first: its cost and the pens beside it.
@@ -16,12 +16,12 @@ for p in Pen:
     let sides: 3..=8 = read()
     let corner: [sides]Corner = read()
     let cost: [sides]0..=5000 = read()
-    for j in 0..sides:                                    // WISH L18: for (j, a, b) in corner.cyc.pairs()
+    for j in 0..sides:  // WISH L18: for (j, a, b) in corner.cyc.pairs()
         let a = corner[j]
         let b = corner[(j + 1) % sides]
         let wall = (min(a, b), max(a, b))
         cost_of[wall] = cost[j]
-        if wall not in beside: beside[wall] = []          // WISH L17: beside[wall].push(...) on a key that is new
+        if wall not in beside: beside[wall] = []  // WISH L17: beside[wall].push(...) on a key that is new
         beside[wall].push(Yard(p.label))
 
 var doors: List<(Int, Yard, Yard)> = []
@@ -31,7 +31,7 @@ for (wall, who) in beside:
 doors.sort()
 
 // The cheapest set of doors that joins every pen, with or without going outside.
-fn cheapest(outside: Bool) -> ?Int:                       // WISH L19: mst(doors) -> ?(cost, edges), none when it cannot span
+fn cheapest(outside: Bool) -> ?Int:  // WISH L19: mst(doors) -> ?(cost, edges), none when it cannot span
     var joined = Dsu<Yard>()
     var total = 0
     var used = 0

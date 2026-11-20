@@ -6,12 +6,11 @@
 // end. With the left value at 0, a gap put on the right adds one value, as
 // tall as all the gaps so far; put on the left it lifts every earlier value.
 // original: corpus/submissions/5445678.cpp
-use std.seq.{scan}
 
 let n: 1..=10000 = read()
 let a: [n]1..=600 = read()
 let gaps = sorted([a[i + 1] - a[i] for i in 0..n - 1])
-let height = scan(gaps, +)                  // height[i]: gaps 0..=i together
+let height = scan(gaps, +)  // height[i]: gaps 0..=i together
 let top = n * (a[n - 1] - a[0])
 
 // gaps i.. are still to place around i + 1 values that sum to s: n times

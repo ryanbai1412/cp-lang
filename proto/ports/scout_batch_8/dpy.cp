@@ -13,7 +13,10 @@ let walls: [Wall](r: 1..=h, c: 1..=w) = read()
 
 let comb = Comb<P>.new(h + w)
 // paths(a, b): monotone paths from a to b; 0 when b is not below-right of a.
-fn paths(a: (r: Int, c: Int), b: (r: Int, c: Int)) -> Z = comb.choose(b.r - a.r + b.c - a.c, b.r - a.r)
+fn paths(
+    a: (r: Int, c: Int),
+    b: (r: Int, c: Int),
+) -> Z = comb.choose(b.r - a.r + b.c - a.c, b.r - a.r)
 
 // clean[i]: paths from the start to stop i that touch no wall on the way:
 // all paths, minus those whose first wall is an earlier stop j.

@@ -31,7 +31,7 @@ let at: [Block]At = read(gen: city)
 // way between two blocks crosses exactly the tree edges between their runs.
 // So an edge with w blocks on one side is crossed by w * (n - w) pairs.
 fn crossings(blocks: List<(Int, Int)>) -> Int:
-    var run_of: Map<(Int, Int), Int> = []         // a HashMap keyed by a pair builds, then fails in g++
+    var run_of: Map<(Int, Int), Int> = []  // a HashMap keyed by a pair builds, then fails in g++
     var size: List<Int> = []
     var last = (-1, -1)
     for (x, y) in sorted(blocks):

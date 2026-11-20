@@ -21,15 +21,15 @@ for h in sorted(heights):
         for c in 0..=limit:
             for e in 0..=2:
                 let w = ways[g, c, e]
-                let sides = 2 * g - e                   // open sides, all rising to h
+                let sides = 2 * g - e  // open sides, all rising to h
                 let paid = c + (h - level) * sides
                 if w != 0 and paid <= limit:
-                    next[g + 1, paid, e] += w * (g + 1 - e)             // a group of its own
-                    if e < 2: next[g + 1, paid, e + 1] += w * (2 - e)   // ... at an end
+                    next[g + 1, paid, e] += w * (g + 1 - e)            // a group of its own
+                    if e < 2: next[g + 1, paid, e + 1] += w * (2 - e)  // ... at an end
                     if g >= 1:
-                        next[g, paid, e] += w * sides                   // beside one group
-                        if e < 2: next[g, paid, e + 1] += w * (2 - e)   // ... at an end
-                    if g >= 2: next[g - 1, paid, e] += w * (g - 1)      // between two groups
+                        next[g, paid, e] += w * sides                  // beside one group
+                        if e < 2: next[g, paid, e + 1] += w * (2 - e)  // ... at an end
+                    if g >= 2: next[g - 1, paid, e] += w * (g - 1)     // between two groups
     ways = next
     level = h
 print(if n == 1: Z(1) else: sum(ways[1, c, 2] for c in 0..=limit))

@@ -48,7 +48,10 @@ for cid in hs.D:
                 pq[first].push((lo_h, span))
                 sq[first].push((lo_h, span))
             else:
-                ans += Z(sz) * sum_range(lo_h, cur_h - 1) + Z(sz * 2 - 3) * sum_range(lo_h + 1, cur_h)
+                ans += Z(sz) * sum_range(lo_h, cur_h - 1) + Z(sz * 2 - 3) * sum_range(
+                    lo_h + 1,
+                    cur_h,
+                )
                 pq[first].push((lo_h, span))
                 sq[last].push((lo_h, span))
                 pq[V.last].push((lo_h, span))

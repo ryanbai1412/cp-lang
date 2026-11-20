@@ -26,7 +26,7 @@ for _ in 0..m:
 // everything c reaches through cities that appeared no later than c.
 fn merge_tree(order: List<City>):
     var parts = Dsu<City>.new()
-    var newest = [City] c => c          // the latest city of each part, by its representative
+    var newest = [City] c => c  // the latest city of each part, by its representative
     var seen: [City]Bool = false
     var kids: [City]List<(to: City)> = []
     for c in order:

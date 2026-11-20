@@ -43,7 +43,7 @@ fn fits(row: Str, clues: List<Int>) -> List<List<Bool>>:
 
 let lens = [clues[c] for c in Clue]
 let before = fits(row, lens)
-let after = fits(row.rev, lens.rev)     // after[n - i][j]: cells i.. hold the last j blocks
+let after = fits(row.rev, lens.rev)  // after[n - i][j]: cells i.. hold the last j blocks
 let whites = whites_before(row)
 
 var black_change = List.filled(n + 1, 0)

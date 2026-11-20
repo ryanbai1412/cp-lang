@@ -35,8 +35,15 @@ let (k, n): (Int, Int) = read()
 
 // Kirchhoff: the Laplacian (degree on the diagonal, -1 per edge) with one vertex removed.
 fn trees(size: Int) -> Z:
-    det([[Z(if i == j: min(k, i) + min(k, size - 1 - i) else: if abs(i - j) <= k: -1 else: 0)
-          for j in 0..size - 1] for i in 0..size - 1])
+    det(
+        [
+            [
+                Z(
+                    if i == j: min(k, i) + min(k, size - 1 - i) else: if abs(i - j) <= k: -1 else: 0
+                ) for j in 0..size - 1
+            ] for i in 0..size - 1
+        ]
+    )
 
 // terms[i] is the answer for k + i vertices; more terms until the recurrence is confirmed
 var terms = List<Z>()

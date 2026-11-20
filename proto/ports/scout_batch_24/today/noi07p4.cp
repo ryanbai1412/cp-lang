@@ -14,17 +14,19 @@ struct Run:
 
 let run_monoid = Monoid<Run>(
     id: Run(true, 0, 0, 0),
-    op: (a, b) =>
-        if a.empty: b
-        else: if b.empty: a
-        else: Run(false, a.lcol, b.rcol, a.runs + b.runs - Int(a.rcol == b.lcol))
+    op: (a, b) => if a.empty: b else: if b.empty: a else: Run(
+        false,
+        a.lcol,
+        b.rcol,
+        a.runs + b.runs - Int(a.rcol == b.lcol),
+    ),
 )
 
 let paint_action = Action<Run, ?Int>(
     id: none,
     compose: (f, g) => if f == none: g else: f,
     apply: (f, x, len) => if f == none or x.empty: x else: Run(false, f!, f!, 1),
-    over: run_monoid
+    over: run_monoid,
 )
 
 let init = [Pos] p => Run(false, init_col[p], init_col[p], 1)

@@ -8,10 +8,10 @@ let n: Int = read()
 domain I = 1..=n
 let bridge: [I](to: I, len: Int) = read()
 
-var pending: [I]Int = 0                     // unpeeled islands whose bridge leads here
+var pending: [I]Int = 0  // unpeeled islands whose bridge leads here
 for i in I: pending[bridge[i].to] += 1
-var reach: [I]Int = 0                       // longest walk from i out into its peeled tree
-var inside: [I]Int = 0                      // longest path within i's peeled tree
+var reach: [I]Int = 0   // longest walk from i out into its peeled tree
+var inside: [I]Int = 0  // longest path within i's peeled tree
 var leaves = [i for i in I if pending[i] == 0]
 var next = 0
 while next < leaves.len:
@@ -37,8 +37,8 @@ for start in I:
     // Two islands a, b of the ring, a first: reach[a] + reach[b] plus the
     // longer way round, b's distance from start minus a's, or the rest.
     var best = 0
-    var at = 0                              // distance from start, going round
-    var (short, long): (?Int, ?Int) = (none, none)      // best reach[a] - at, reach[a] + at so far
+    var at = 0                                      // distance from start, going round
+    var (short, long): (?Int, ?Int) = (none, none)  // best reach[a] - at, reach[a] + at so far
     for b in ring:
         best max= inside[b]
         if short != none: best = max(best, reach[b] + at + short!, reach[b] + around - at + long!)

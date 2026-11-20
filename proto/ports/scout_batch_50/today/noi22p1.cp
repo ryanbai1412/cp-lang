@@ -6,17 +6,17 @@
 // emits C++ that does not compile.
 let n: 1..=5e5 = read()
 let q: 1..=5e5 = read()
-const BITS = 20                         // values are at most n + q < 2^20
+const BITS = 20  // values are at most n + q < 2^20
 
-var val: List<Int> = []                 // node -> value
-var before: List<Int> = []              // node -> the node in front of it, or -1
+var val: List<Int> = []     // node -> value
+var before: List<Int> = []  // node -> the node in front of it, or -1
 var head: [0..n]Int = -1
 var tail: [0..n]Int = -1
 var size: [0..n]Int = 0
-var ones: [0..n, 0..BITS]Int = 0        // how many values of the store have bit b set
-var count = HashMap<Int, Int>()         // key(store, value) -> copies
+var ones: [0..n, 0..BITS]Int = 0  // how many values of the store have bit b set
+var count = HashMap<Int, Int>()   // key(store, value) -> copies
 fn key(s: Int, x: Int) -> Int: s << BITS | x
-var store: [1..=n + q]Int = 0           // sequence label -> store
+var store: [1..=n + q]Int = 0  // sequence label -> store
 
 fn push(s: Int, x: Int):
     val.push(x)
@@ -77,8 +77,10 @@ for _ in 0..q:
             count[key(big, val[node])] += 1
             node = before[node]
         for b in 0..BITS: ones[big, b] += ones[small, b]
-        let (first, last) = (if size[front] > 0: head[front] else: head[back],
-                             if size[back] > 0: tail[back] else: tail[front])
+        let (first, last) = (
+            if size[front] > 0: head[front] else: head[back],
+            if size[back] > 0: tail[back] else: tail[front],
+        )
         if size[front] > 0 and size[back] > 0: before[head[back]] = tail[front]
         size[big] += size[small]
         head[big] = first

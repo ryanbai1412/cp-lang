@@ -1,4 +1,3 @@
-// cp: 0.1 0f8d77b+dirty
 // AtCoder DP V, Subtree: for every vertex v of a tree, count the ways to
 // paint some vertices black so that the black ones are connected and
 // include v. Answers modulo m, which need not be prime.

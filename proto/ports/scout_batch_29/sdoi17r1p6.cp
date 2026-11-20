@@ -12,7 +12,7 @@
 // original: corpus/submissions/5461671.cpp
 
 type Sums = (xy: Int, x: Int, y: Int, xx: Int, lo: Int, len: Int)
-type Edit = (set: ?(x: Int, y: Int), dx: Int, dy: Int)       // set first, then add
+type Edit = (set: ?(x: Int, y: Int), dx: Int, dy: Int)  // set first, then add
 
 fn join(a: Sums, b: Sums) -> Sums:
     if a.len == 0: return b
@@ -31,20 +31,29 @@ fn edit(f: Edit, t: Sums, len: Int) -> Sums:
         let hi = t.lo + t.len - 1
         let i1 = tri(hi) - tri(t.lo - 1)
         let i2 = pyr(hi) - pyr(t.lo - 1)
-        s = (xy: t.len * v.x * v.y + (v.x + v.y) * i1 + i2,
-             x: t.len * v.x + i1,
-             y: t.len * v.y + i1,
-             xx: t.len * v.x * v.x + 2 * v.x * i1 + i2,
-             lo: t.lo, len: t.len)
-    (xy: s.xy + f.dx * s.y + f.dy * s.x + s.len * f.dx * f.dy,
-     x: s.x + s.len * f.dx,
-     y: s.y + s.len * f.dy,
-     xx: s.xx + 2 * f.dx * s.x + s.len * f.dx * f.dx,
-     lo: s.lo, len: s.len)
+        s = (
+            xy: t.len * v.x * v.y + (v.x + v.y) * i1 + i2,
+            x: t.len * v.x + i1,
+            y: t.len * v.y + i1,
+            xx: t.len * v.x * v.x + 2 * v.x * i1 + i2,
+            lo: t.lo,
+            len: t.len,
+        )
+    (
+        xy: s.xy + f.dx * s.y + f.dy * s.x + s.len * f.dx * f.dy,
+        x: s.x + s.len * f.dx,
+        y: s.y + s.len * f.dy,
+        xx: s.xx + 2 * f.dx * s.x + s.len * f.dx * f.dx,
+        lo: s.lo,
+        len: s.len,
+    )
 
 /// `f` after `g`.
-fn then(f: Edit, g: Edit) -> Edit = if f.set != none: f else: (set: g.set, dx: g.dx + f.dx, dy: g.dy + f.dy)
-
+fn then(f: Edit, g: Edit) -> Edit = if f.set != none: f else: (
+    set: g.set,
+    dx: g.dx + f.dx,
+    dy: g.dy + f.dy,
+)
 
 let (n, q): (Int, Int) = read()
 domain Pos = 1..=n
@@ -52,8 +61,11 @@ let x: [Pos]Int = read()
 let y: [Pos]Int = read()
 let empty: Sums = (xy: 0, x: 0, y: 0, xx: 0, lo: 0, len: 0)
 let keep: Edit = (set: none, dx: 0, dy: 0)
-var tree = LazySegTree<Pos, Sums, Edit>(Action<Sums, Edit>(keep, then, edit, over: Monoid<Sums>(empty, join)),
-    [Pos] i => (xy: x[i] * y[i], x: x[i], y: y[i], xx: x[i] * x[i], lo: i.label, len: 1))
+var tree = LazySegTree<Pos, Sums, Edit>(
+    Action<Sums,
+    Edit>(keep, then, edit, over: Monoid<Sums>(empty, join)),
+    [Pos] i => (xy: x[i] * y[i], x: x[i], y: y[i], xx: x[i] * x[i], lo: i.label, len: 1),
+)
 
 for _ in 0..q:
     let (kind, l, r): (Int, Pos, Pos) = read()
@@ -62,4 +74,7 @@ for _ in 0..q:
         print(fixed(s.xy * s.len - s.x * s.y, s.len * s.xx - s.x * s.x, 5))
     else:
         let (a, b): (Int, Int) = read()
-        tree.apply(l..=r, if kind == 2: (set: none, dx: a, dy: b) else: (set: (x: a, y: b), dx: 0, dy: 0))
+        tree.apply(
+            l..=r,
+            if kind == 2: (set: none, dx: a, dy: b) else: (set: (x: a, y: b), dx: 0, dy: 0),
+        )

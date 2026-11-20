@@ -27,7 +27,7 @@ for _ in 0..p:
 
 // the cheapest place for a base of side k, or none when the field is too small
 fn cheapest(k: Int) -> Int:
-    domain X = 1..=m - k + 1                // where the base's lowest corner can be
+    domain X = 1..=m - k + 1  // where the base's lowest corner can be
     domain Y = 1..=n - k + 1
     var starts: [X]List<(lo: Y, hi: Y, cost: Int)> = []
     var stops: [X]List<(lo: Y, hi: Y, cost: Int)> = []
@@ -44,7 +44,7 @@ fn cheapest(k: Int) -> Int:
     best
 
 fn with_budget() -> Int:
-    var (lo, hi) = (0, min(m, n))           // side lo fits, side hi + 1 does not
+    var (lo, hi) = (0, min(m, n))  // side lo fits, side hi + 1 does not
     while lo < hi:
         let k = (lo + hi + 1) / 2
         if cheapest(k) <= budget: lo = k else: hi = k - 1
@@ -54,13 +54,19 @@ fn with_budget() -> Int:
 // ever removed whole: a node keeps the count of intervals that span it, and
 // the free runs below it, so nothing is pushed down.
 struct Cover(n: Int):
-    over: List<Int>                         // intervals spanning the whole node
-    head: List<Int>                         // free run at the node's start, end, and the longest
+    over: List<Int>  // intervals spanning the whole node
+    head: List<Int>  // free run at the node's start, end, and the longest
     tail: List<Int>
     run: List<Int>
 
     fn new(n: Int) -> Cover:
-        var c = Cover(n, List.filled(4 * n, 0), List.filled(4 * n, 0), List.filled(4 * n, 0), List.filled(4 * n, 0))
+        var c = Cover(
+            n,
+            List.filled(4 * n, 0),
+            List.filled(4 * n, 0),
+            List.filled(4 * n, 0),
+            List.filled(4 * n, 0),
+        )
         c.build(1, 1, n)
         c
 
@@ -103,7 +109,7 @@ fn for_free() -> Int:
         enters[X(b.x0)].push(b)
         leaves[X(b.x1)].push(b)
     var cover = Cover.new(n)
-    var (best, left) = (0, 1)               // the window is columns left..=right
+    var (best, left) = (0, 1)  // the window is columns left..=right
     for right in 1..=m:
         for b in enters[X(right)]: cover.put(b.y0, b.y1)
         while cover.longest_free < right - left + 1:

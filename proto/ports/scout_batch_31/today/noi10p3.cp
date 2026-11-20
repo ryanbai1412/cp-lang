@@ -12,11 +12,11 @@
 // Runnable on proto/cpc today.
 // original: corpus/submissions/5672180.cpp
 let n0: 1..=500 = read()
-let n = n0 + 1                                  // junctions per side
+let n = n0 + 1  // junctions per side
 domain X = 0..n
 domain Y = 0..n
-domain Dir = 0..8                               // W, SW, S, SE, E, NE, N, NW
-domain Ext = 0..n + 2                           // a coordinate + 1
+domain Dir = 0..8      // W, SW, S, SE, E, NE, N, NW
+domain Ext = 0..n + 2  // a coordinate + 1
 type State = (Ext, Ext, Dir)
 const DX = [0, 1, 1, 1, 0, -1, -1, -1]
 const DY = [-1, -1, 0, 1, 1, 1, 0, -1]
@@ -41,15 +41,15 @@ fn relax(s: State, d: Int):
         pq.push((d, s))
 
 for i in 0..n:
-    relax((Ext(i + 1), Ext(1), Dir(0)), 0)      // entering from the west border
-    relax((Ext(n), Ext(i + 1), Dir(2)), 0)      // entering from the south border
+    relax((Ext(i + 1), Ext(1), Dir(0)), 0)  // entering from the west border
+    relax((Ext(n), Ext(i + 1), Dir(2)), 0)  // entering from the south border
 
 while let (d, s) = pq.pop():
     if dist[s.0, s.1, s.2] != d: continue
     let x = s.0.idx - 1
     let y = s.1.idx - 1
-    if x < 0 or x >= n or y < 0 or y >= n: continue          // an exit
-    if x == n - 1 and y == n - 1: continue                   // the height-1 corner
+    if x < 0 or x >= n or y < 0 or y >= n: continue  // an exit
+    if x == n - 1 and y == n - 1: continue           // the height-1 corner
     // Turn counter-clockwise from the entry direction, paying for each street swept.
     var paid = 0
     for turn in 1..7:

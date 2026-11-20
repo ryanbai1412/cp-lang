@@ -10,7 +10,7 @@ let chart: [0..2 * people]Int = read()
 
 var row: List<Int> = []
 var col: List<Int> = []
-var who: List<Int> = []                    // who[r * w + c]: contestant in that seat
+var who: List<Int> = []  // who[r * w + c]: contestant in that seat
 for _ in 0..people: who.push(0)
 for p in 0..people:
     row.push(chart[2 * p])

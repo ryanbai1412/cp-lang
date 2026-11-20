@@ -8,7 +8,7 @@ let signs: Str = read()
 
 var ways: [0..n]Z = 0
 ways[0] = 1
-for len in 0..n - 1:                    // the prefix has len + 1 values
+for len in 0..n - 1:  // the prefix has len + 1 values
     var next: [0..n]Z = 0
     var acc: Z = 0
     if signs[len] == '<':

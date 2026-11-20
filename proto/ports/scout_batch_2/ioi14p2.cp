@@ -11,7 +11,12 @@ domain Col = 0..n
 
 type Clamp = (lo: Int, hi: Int)
 fn clamp(c: Clamp, h: Int) -> Int = min(max(h, c.lo), c.hi)
-let clamps = Action<Int, Clamp>((lo: 0, hi: Int.MAX), (f, g) => (lo: clamp(f, g.lo), hi: clamp(f, g.hi)), (f, h, len) => clamp(f, h), over: max)
+let clamps = Action<Int, Clamp>(
+    (lo: 0, hi: Int.MAX),
+    (f, g) => (lo: clamp(f, g.lo), hi: clamp(f, g.hi)),
+    (f, h, len) => clamp(f, h),
+    over: max,
+)
 
 var wall = LazySegTree<Col, Int, Clamp>(clamps, [Col] c => 0)
 for _ in 0..k:

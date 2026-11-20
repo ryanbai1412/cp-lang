@@ -23,7 +23,7 @@ fn scores(n: Int) -> List<Int>:
     var found = Set<Int>()
     // `rest` is still to be split into factors >= divs[from]; `score` so far.
     fn split(rest: Int, from: Int, score: Int):
-        found.insert(score + rest - 1)          // keep `rest` as the last factor
+        found.insert(score + rest - 1)  // keep `rest` as the last factor
         for k in from..divs.len:
             let d = divs[k]
             if d * d > rest: break

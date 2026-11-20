@@ -4,11 +4,11 @@
 // outside: a minimum spanning tree over the pens, with or without the
 // outside as an extra vertex.
 let pens: 1..=100 = read()
-domain Pen = 0..=pens                   // pen 0 is the outside
+domain Pen = 0..=pens  // pen 0 is the outside
 
 // a fence is one side of two pens, or of one pen and the outside
 var fences: List<(cost: Int, u: Pen, v: Pen)> = []
-var open = Map<(Int, Int), (cost: Int, pen: Pen)>()     // sides seen once so far
+var open = Map<(Int, Int), (cost: Int, pen: Pen)>()  // sides seen once so far
 for pen in Pen.first.r..:
     let m: 3..=8 = read()
     let posts: [0..m]1..=1000 = read()

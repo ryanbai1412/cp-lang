@@ -18,7 +18,7 @@
 let (n, m, p, q): (Int, Int, Int, Int) = read()
 domain F = 0..n
 domain Trail = 0..m
-domain State = 0..2 * n                 // 2 * fountain + (arrived by its best trail)
+domain State = 0..2 * n  // 2 * fountain + (arrived by its best trail)
 var ends: List<(a: F, b: F)> = []
 var best: [F]?Trail = none
 var second: [F]?Trail = none
@@ -56,7 +56,7 @@ for by_best in [false, true]:
     var starts: [Len]Int = 0
     for f in F:
         if let d = dist[state(f, false)]: starts[Len(d)] += 1
-    let lap = (dist[next(goal)] ?? -1) + 1      // 0 when the goal is not on a cycle
+    let lap = (dist[next(goal)] ?? -1) + 1  // 0 when the goal is not on a cycle
     if lap > 0:
         for d in Len:
             if d.to_idx >= lap: starts[d] += starts[Len(d.to_idx - lap)]
@@ -64,7 +64,7 @@ for by_best in [false, true]:
         let k = lengths[i]
         if k <= 2 * n: ans[i] += starts[Len(k)]
         elif lap > 0:
-            let top = 2 * n - (2 * n - k) % lap     // the largest length <= 2n that is k minus whole laps
+            let top = 2 * n - (2 * n - k) % lap  // the largest length <= 2n that is k minus whole laps
             ans[i] += starts[Len(top)]
 
 for x in ans: print(x)

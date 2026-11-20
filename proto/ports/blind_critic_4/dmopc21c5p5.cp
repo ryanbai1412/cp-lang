@@ -62,7 +62,7 @@ fn solve_exact(m_n: 1..=12):
         cm = cm ^ (1 << cv)
         if pv >= 0:
             cv = pv
-    out.rev()
+    out.reverse()
     for i in 0..m_n:
         print(out[i])
 

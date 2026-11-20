@@ -8,11 +8,11 @@
 let (_w, _h, n): (Int, Int, Int) = read()
 domain Win = 1..=n
 let frame: [Win](x1: Int, y2: Int, x2: Int, y1: Int) = read()
-var stack: List<Win> = [w for w in Win]     // bottom to top
+var stack: List<Win> = [w for w in Win]  // bottom to top
 let q: Int = read()
 for _ in 0..q:
     let (x, y): (Int, Int) = read()
-    var hit: ?Int = none                    // position in the stack
+    var hit: ?Int = none  // position in the stack
     for i in 0..stack.len:
         let f = frame[stack[i]]
         if f.x1 <= x and x <= f.x2 and f.y1 <= y and y <= f.y2: hit = i

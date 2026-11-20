@@ -8,7 +8,7 @@ let calls: 0..=1000000 = read()
 // Layer 0 is the whole graph. Once some ring has three links, only it and
 // its three neighbours can be critical; layer k = 1..4 is the graph without
 // candidate k - 1, and the candidate survives while that graph is all chains.
-var up: [0..5 * n]Int = -1                 // union-find: -size at a root
+var up: [0..5 * n]Int = -1  // union-find: -size at a root
 var deg: [0..5 * n]Int = 0
 var adj: List<List<Int>> = []
 for _ in 0..n: adj.push([])

@@ -142,7 +142,10 @@ pub fn biconnected_components<V, A>(adj: V -> Iter<A>) -> List<List<V>>:
 /// Compressed (virtual / auxiliary) tree induced by `keys` inside `tree`:
 /// contains every vertex in `keys` together with all pairwise LCAs, linked by
 /// directed parent-to-child edges in `tree`. O(k log k + k log n).
-pub fn virtual_tree<V>(tree: Rooted<V>, keys: List<V>) -> (nodes: List<V>, edges: List<(u: V, v: V)>):
+pub fn virtual_tree<V>(tree: Rooted<V>, keys: List<V>) -> (
+    nodes: List<V>,
+    edges: List<(u: V, v: V)>,
+):
     if keys.is_empty: return (nodes: [], edges: [])
     var by_tin = [(tree.tin[v].ord, v) for v in keys]
     by_tin.sort()
@@ -271,7 +274,10 @@ fn cut_vertices_with_root_and_leaf():
 fn coloring_and_bipartite_dsu_rollback():
     domain V = 0..4
     domain E = 0..3
-    let edges = [E] e => (u: V([(0, 1), (1, 2), (2, 3)][e.to_idx].0), v: V([(0, 1), (1, 2), (2, 3)][e.to_idx].1))
+    let edges = [E] e => (
+        u: V([(0, 1), (1, 2), (2, 3)][e.to_idx].0),
+        v: V([(0, 1), (1, 2), (2, 3)][e.to_idx].1),
+    )
     let g = Graph<V, E>.undirected(edges)
     let col = two_color::<V>(u => g.adj(u))!
     assert col[V(0)] != col[V(1)] and col[V(1)] != col[V(2)] and col[V(2)] != col[V(3)]

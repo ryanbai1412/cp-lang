@@ -19,13 +19,13 @@ for _ in 0..tests:
             waiting[deck[i]] = none
         else: waiting[deck[i]] = i
 
-    var stacks: [0..n]List<Int> = []        // bottom first
-    var leaves: [1..=k]Int = 0              // per card value now in a stack
+    var stacks: [0..n]List<Int> = []  // bottom first
+    var leaves: [1..=k]Int = 0        // per card value now in a stack
     var home: [1..=k]Int = 0
     var script: List<(Int, Int, Int)> = []
     var empty = Set<Int>()
     var single = Set<Int>()
-    var ripe = Set<Int>()                   // two cards, and the bottom one leaves first
+    var ripe = Set<Int>()  // two cards, and the bottom one leaves first
     for s in 0..n: empty.insert(s)
 
     fn refresh(s: Int):
@@ -63,7 +63,7 @@ for _ in 0..tests:
                     if stacks[s].len == 1 and leaves[stacks[s][0]] > leaves[stacks[best][0]]: best = s
                 place(best, card)
             elif empty.len > 1: place(empty.min()!, card)
-            elif let s = single.min(): place(s, card)       // keep the last spare stack free
+            elif let s = single.min(): place(s, card)  // keep the last spare stack free
             elif let s = ripe.min(): place(s, card)
             else: place(empty.min()!, card)
         else:

@@ -16,7 +16,10 @@ domain Pos = 0..n
 domain Val = 0..n
 
 let dist: [Pos]Int = read()
-let ends: [Pos](Val, Val) = [Pos] i => (Val((i.to_idx - dist[i]) % n), Val((i.to_idx + dist[i]) % n))
+let ends: [Pos](Val, Val) = [Pos] i => (
+    Val((i.to_idx - dist[i]) % n),
+    Val((i.to_idx + dist[i]) % n),
+)
 
 var adj: [Val]List<(to: Val, edge: Pos)> = []
 var deg: [Val]Int = 0

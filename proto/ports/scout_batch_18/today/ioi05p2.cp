@@ -30,14 +30,14 @@ struct SegVal:
 
 let rail_monoid = Monoid<SegVal>(
     id: SegVal(0, 0, 0),
-    op: (x, y) => SegVal(x.total + y.total, max(x.max_pre, x.total + y.max_pre), x.len + y.len)
+    op: (x, y) => SegVal(x.total + y.total, max(x.max_pre, x.total + y.max_pre), x.len + y.len),
 )
 
 let assign_slope = Action<SegVal, ?Int>(
     id: none,
     compose: (f, g) => if f == none: g else: f,
     apply: (f, x, len) => if f == none: x else: SegVal(f! * x.len, max(0, f! * x.len), x.len),
-    over: rail_monoid
+    over: rail_monoid,
 )
 
 var pts = [1, n + 1]

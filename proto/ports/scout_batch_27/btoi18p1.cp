@@ -26,7 +26,7 @@ fn kept() -> Int:
         let o = loves[p]
         if o != p and loves[o] == p:
             paired[p] = true
-            total += 1                      // counted from both sides: 2 per pair
+            total += 1  // counted from both sides: 2 per pair
     var fans: [P]Int = 0
     for p in P: fans[loves[p]] += 1
     var free = [p for p in P if fans[p] == 0]

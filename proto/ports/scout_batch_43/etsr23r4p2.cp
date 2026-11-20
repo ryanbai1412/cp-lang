@@ -52,10 +52,7 @@ fn tower(steps: Int, x: Int, depth: Int) -> (over: Bool, val: Int):
 // FRICTION ET6: Fixed-length small array `[Slot]Z` stored inside a
 // `LazySegTree` node needs copy/value semantics for `Monoid` and `Action`,
 // and clamping shift `s + shift` into `Slot` drops to raw `.to_idx` math.
-let node_m = Monoid<[Slot]Z>(
-    [Slot] _ => Z(0),
-    (x, y) => [Slot] s => x[s] + y[s],
-)
+let node_m = Monoid<[Slot]Z>([Slot] _ => Z(0), (x, y) => [Slot] s => x[s] + y[s])
 let shift_act = Action<[Slot]Z, Int>(
     0,
     (a, b) => min(a + b, K - 1),

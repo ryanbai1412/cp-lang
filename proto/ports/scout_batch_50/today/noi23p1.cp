@@ -7,9 +7,9 @@ let tc: Int = read()
 let rows: 1..=1e9 = read()
 let cols: 1..=1e9 = read()
 let n: 1..=2e5 = read()
-var hori_in: List<(Int, Int, Int)> = []    // (y, x from, x to)
-var vert_in: List<(Int, Int, Int)> = []    // (x, y from, y to)
-var diag_in: List<(Int, Int, Int)> = []    // (y - x, x from, x to)
+var hori_in: List<(Int, Int, Int)> = []  // (y, x from, x to)
+var vert_in: List<(Int, Int, Int)> = []  // (x, y from, y to)
+var diag_in: List<(Int, Int, Int)> = []  // (y - x, x from, x to)
 for _ in 0..n:
     let kind: 1..=3 = read()
     let x1: Int = read()
@@ -41,7 +41,7 @@ for s in diag: cells += s.2 - s.1 + 1
 // a cell on a horizontal and a vertical stroke was counted twice: sweep y
 // upward keeping the x of every vertical stroke alive at that height
 var xs: List<Int> = []
-for s in vert: xs.push(s.0)              // already sorted, one per stroke
+for s in vert: xs.push(s.0)  // already sorted, one per stroke
 fn first_ge(x: Int) -> Int:
     var (lo, hi) = (0, xs.len)
     while lo < hi:
@@ -55,14 +55,14 @@ fn add(at: Int, d: Int):
     while i <= xs.len:
         alive[i] += d
         i += i & -i
-fn below(k: Int) -> Int:                 // live strokes among the first k
+fn below(k: Int) -> Int:  // live strokes among the first k
     var (i, total) = (k, 0)
     while i > 0:
         total += alive[i]
         i -= i & -i
     total
 
-var events: List<(Int, Int, Int, Int)> = []    // (y, order, a, b): leave, enter, then ask
+var events: List<(Int, Int, Int, Int)> = []  // (y, order, a, b): leave, enter, then ask
 for i in 0..vert.len:
     events.push((vert[i].1, 1, i, 1))
     events.push((vert[i].2 + 1, 0, i, -1))

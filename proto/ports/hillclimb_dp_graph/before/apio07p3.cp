@@ -1,4 +1,3 @@
-// cp: 0.1 0f8d77b+dirty
 // APIO 2007 Zoo: n pens in a ring, one animal each. A child standing at pen
 // p sees pens p..p+4 and is happy if a feared animal in view is removed or a
 // loved one in view stays. Remove animals to make the most children happy.
@@ -6,9 +5,9 @@ let n: 10..=1e4 = read()
 let c: 1..=5e4 = read()
 domain Pen = 1..=n
 domain Window = 0..5
-type View = Subset<Window>                  // which of the five pens in view are emptied
+type View = Subset<Window>  // which of the five pens in view are emptied
 
-var stand = Pen.first                       // generator: a child only names animals it can see
+var stand = Pen.first  // generator: a child only names animals it can see
 fn in_view() -> Pen: Pen((stand.idx + rand(0, 4)) % n + 1)
 
 // happy[p, gone]: children at pen p who are happy when `gone` is emptied in their view

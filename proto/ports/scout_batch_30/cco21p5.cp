@@ -23,7 +23,12 @@ fn opt_min(a: ?Int, b: ?Int) -> ?Int:
     out min= b
     out
 
-let add_min = Action<?Int, Int>(0, (f, g) => f + g, (f, x, _) => x + f, over: Monoid<?Int>(none, opt_min))
+let add_min = Action<?Int, Int>(
+    0,
+    (f, g) => f + g,
+    (f, x, _) => x + f,
+    over: Monoid<?Int>(none, opt_min),
+)
 var tree = LazySegTree<Slot, ?Int, Int>(add_min)
 tree.set(Slot.last, 0)
 

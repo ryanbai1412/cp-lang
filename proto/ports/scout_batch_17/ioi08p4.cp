@@ -6,7 +6,7 @@
 let n: 1..=1e6 = read()
 let m: 1..=1e6 = read()
 domain Tele = 1..=n
-domain Point = 1..=2 * n                    // the endpoints, west to east
+domain Point = 1..=2 * n  // the endpoints, west to east
 type Ends = (w: 1..=2e6, e: 1..=2e6)
 
 // All 2n endpoints are different and w < e: no type says that, so the input
@@ -22,8 +22,10 @@ fn track() -> [Tele]Ends:
         let s = spot[p]
         spot[p] = spot[o]
         spot[o] = s
-    [Tele] t => (min(spot[Point(2 * t.label - 1)], spot[Point(2 * t.label)]),
-                 max(spot[Point(2 * t.label - 1)], spot[Point(2 * t.label)]))
+    [Tele] t => (
+        min(spot[Point(2 * t.label - 1)], spot[Point(2 * t.label)]),
+        max(spot[Point(2 * t.label - 1)], spot[Point(2 * t.label)]),
+    )
 
 let teles: [Tele]Ends = read(gen: track)
 
@@ -47,7 +49,7 @@ for p in Point:
 // its partner. So the stretches form one path from 0 off the east end, which
 // is the ride, plus loops that are never visited.
 var seen: [0..=2 * n]Bool = false
-fn ride(from: Int) -> Int:                  // jumps until the track ends or the ride repeats
+fn ride(from: Int) -> Int:  // jumps until the track ends or the ride repeats
     var s = from
     var jumps = 0
     while s < 2 * n and not seen[s]:

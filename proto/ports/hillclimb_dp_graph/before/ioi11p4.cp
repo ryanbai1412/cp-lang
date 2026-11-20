@@ -1,4 +1,3 @@
-// cp: 0.1 0f8d77b+dirty
 // IOI 2011 Crocodile's Underground City: escape from chamber 0 to any exit
 // through weighted corridors. At every chamber the gatekeeper blocks one
 // corridor after seeing where you stand. Minimise the worst-case time.

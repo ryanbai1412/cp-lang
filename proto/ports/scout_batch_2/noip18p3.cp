@@ -14,7 +14,7 @@ let g = Graph<Junction, Road>.undirected(roads)
 let tree = Rooted(u => g.adj(u), Junction.first)
 let bottom_up = tree.preorder.rev
 
-var up_len: [Junction]Int = 0               // the road from v to its parent
+var up_len: [Junction]Int = 0  // the road from v to its parent
 for (u, v, len) in roads:
     if tree.parent(u) == v: up_len[u] = len else: up_len[v] = len
 
@@ -23,7 +23,7 @@ for (u, v, len) in roads:
 // longest chain left alone.
 fn pair_up(chains: List<Int>, k: Int) -> (tracks: Int, spare: Int):
     let a = sorted(chains)
-    var skip = [i for i in 0..=a.len]       // skip[i]: the first unused chain at or after i
+    var skip = [i for i in 0..=a.len]  // skip[i]: the first unused chain at or after i
     fn unused(i: Int) -> Int:
         var j = i
         while skip[j] != j:
@@ -34,7 +34,7 @@ fn pair_up(chains: List<Int>, k: Int) -> (tracks: Int, spare: Int):
     for i in 0..a.len:
         if unused(i) != i: continue
         skip[i] = i + 1
-        var (lo, hi) = (i + 1, a.len)       // the first chain after i that is at least k - a[i]
+        var (lo, hi) = (i + 1, a.len)  // the first chain after i that is at least k - a[i]
         while lo < hi:
             let mid = (lo + hi) / 2
             if a[mid] >= k - a[i]: hi = mid else: lo = mid + 1
@@ -57,7 +57,7 @@ fn tracks_of(k: Int) -> Int:
             if chain >= k: tracks += 1 else: chains[p].push(chain)
     tracks
 
-var (lo, hi) = (0, sum(r.len for r in roads))   // the longest k that still gives m tracks
+var (lo, hi) = (0, sum(r.len for r in roads))  // the longest k that still gives m tracks
 while lo < hi:
     let mid = (lo + hi + 1) / 2
     if tracks_of(mid) >= m: lo = mid else: hi = mid - 1

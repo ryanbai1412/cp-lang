@@ -5,11 +5,11 @@
 // A road of w days becomes w one-day steps, so one day is one max-plus
 // matrix product over 5n states, and the festivals split t into k + 1 jumps.
 // original: corpus/submissions/3890258.cpp
-const NONE = -4e18                           // "no walk": the zero of max-plus
+const NONE = -4e18  // "no walk": the zero of max-plus
 
 let (n, m, t, k): (Int, Int, Int, Int) = read()
 domain City = 1..=n
-domain State = 0..5 * n                      // (city, days still to wait)
+domain State = 0..5 * n  // (city, days still to wait)
 domain Road = 0..m
 domain Fest = 0..k
 let joy: [City]Int = read()

@@ -15,10 +15,10 @@
 domain Letter = 'a'..='z'
 
 struct State:
-    len: Int            // its longest block
-    link: Int           // the state of the longest tail that is elsewhere; the root links to itself
+    len: Int   // its longest block
+    link: Int  // the state of the longest tail that is elsewhere; the root links to itself
     next: [Letter]?Int
-    first: Int          // where its blocks first end
+    first: Int  // where its blocks first end
 
 /// The suffix automaton of the letters added so far. State 0 is the empty block.
 struct Automaton:
@@ -39,7 +39,14 @@ struct Automaton:
                 else:
                     // q also stands for longer blocks that do not end here: split it.
                     let clone = states.len
-                    states.push(State(states[p].len + 1, states[q].link, states[q].next.copy(), states[q].first))
+                    states.push(
+                        State(
+                            states[p].len + 1,
+                            states[q].link,
+                            states[q].next.copy(),
+                            states[q].first,
+                        )
+                    )
                     states[q].link = clone
                     states[cur].link = clone
                     while states[p].next[c] == some(q):
@@ -83,7 +90,7 @@ fn any_in(node: Int, lo: Int, hi: Int, from: Int, to: Int) -> Bool:
     let mid = (lo + hi) / 2
     any_in(left[node], lo, mid, from, to) or any_in(right[node], mid, hi, from, to)
 
-var ends: List<Int> = [0]       // per state of s: the places its blocks end
+var ends: List<Int> = [0]  // per state of s: the places its blocks end
 for i in 0..n:
     let state = of_s.add(Letter(s[i]), i)
     while ends.len < of_s.states.len: ends.push(0)
@@ -97,9 +104,9 @@ for v in longest_first:
 let q: Int = read()
 for _ in 0..q:
     let (t, l, r): (Str, Int, Int) = read()
-    let (from, to) = (l - 1, r)             // the block of s as places from..to
+    let (from, to) = (l - 1, r)  // the block of s as places from..to
     var of_t = Automaton.new()
-    var seen: List<Int> = []                // per place of t: the longest tail ending there that occurs
+    var seen: List<Int> = []  // per place of t: the longest tail ending there that occurs
     var (at, len) = (0, 0)
     for i in 0..t.len:
         let c = Letter(t[i])

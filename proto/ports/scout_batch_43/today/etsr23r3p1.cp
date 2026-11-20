@@ -20,7 +20,13 @@ fn eval_op(op: Op, orig: Int, val: Int) -> Int:
 
 fn compose_op(newer: Op, older: Op) -> Op:
     if newer.has_set: newer
-    else: Op(older.has_set, older.set_val, older.mul * newer.mul, older.m * newer.mul + newer.m, older.b * newer.mul + newer.b)
+    else: Op(
+        older.has_set,
+        older.set_val,
+        older.mul * newer.mul,
+        older.m * newer.mul + newer.m,
+        older.b * newer.mul + newer.b,
+    )
 
 fn apply_op(op: Op, c: ?Cell, _len: Int) -> ?Cell:
     if c == none: return none
@@ -56,7 +62,10 @@ let ulen = uniq.len
 domain U = 0..ulen
 let m_cell = Monoid<?Cell>(none, merge_cell)
 let act_cell = Action<?Cell, Op>(Op(false, 0, 1, 0, 0), compose_op, apply_op, over: m_cell)
-var st = LazySegTree<U, ?Cell, Op>(act_cell, [U] u => Cell(uniq[u.to_idx], uniq[u.to_idx], uniq[u.to_idx], uniq[u.to_idx]))
+var st = LazySegTree<U, ?Cell, Op>(
+    act_cell,
+    [U] u => Cell(uniq[u.to_idx], uniq[u.to_idx], uniq[u.to_idx], uniq[u.to_idx]),
+)
 
 for k in 0..n:
     let t = op_t[k]
