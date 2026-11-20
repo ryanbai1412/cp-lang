@@ -28,15 +28,18 @@ pub struct Mod<P>(v: Int):
             k /= 2
         acc
 
-    /// The multiplicative inverse, by the extended Euclidean algorithm (so `P` need not be prime).
-    pub @get fn inv(self) -> Mod<P>:
+    /// The multiplicative inverse when `gcd(v, P) == 1`, or `none` otherwise. O(log P).
+    pub fn try_inv(self) -> ?Mod<P>:
         var (a, b, x, y) = (v, P, 1, 0)
         while b != 0:
             let q = a / b
             (a, b) = (b, a - q * b)
             (x, y) = (y, x - q * y)
-        assert a == 1
+        if a != 1: return none
         Mod(x % P)
+
+    /// The multiplicative inverse, by the extended Euclidean algorithm (so `P` need not be prime).
+    pub @get fn inv(self) -> Mod<P> = self.try_inv()!
 
 impl Add for Mod<P>:
     fn add(a, b) = Mod(if a.v + b.v >= P: a.v + b.v - P else: a.v + b.v)
@@ -56,42 +59,67 @@ impl Div for Mod<P>:
 impl Show for Mod<P>:
     fn show(a) = "{a.v}"
 
-/// Factorials and inverse factorials modulo a prime `P`, for arguments up to `limit`.
-/// Built in O(limit + log P); every query is O(1). Memory is two lists of `limit + 1`.
+/// Factorials and inverse factorials modulo a prime `P`.
+/// Auto-grows lazily on demand across test cases: `var c = Comb<P>()` (or `Comb<P>(limit)`
+/// to pre-size). Amortized O(1) per new factorial; every query is O(1).
 pub struct Comb<P>:
     f: List<Mod<P>>
     g: List<Mod<P>>
 
-    pub fn new(limit: Int) -> Comb<P>:
-        var f = List.filled(limit + 1, Mod<P>(1))
-        for i in 1..=limit: f[i] = f[i - 1] * Mod<P>(i)
-        var g = List.filled(limit + 1, f[limit].inv)
-        for i in (0..limit).rev: g[i] = g[i + 1] * Mod<P>(i + 1)
-        Comb(f, g)
+    pub fn new(limit: Int = 0) -> Comb<P>:
+        var c = Comb([Mod<P>(1)], [Mod<P>(1)])
+        if limit > 0: c.ensure(limit)
+        c
+
+    fn ensure(mut self, n: Int):
+        if n < f.len: return
+        let old = f.len
+        var cap = old
+        while cap <= n: cap *= 2
+        if P > 1 and cap > P: cap = P
+        while f.len < cap:
+            let i = f.len
+            f.push(f[i - 1] * Mod<P>(i))
+        let last = cap - 1
+        while g.len < cap: g.push(Mod<P>(0))
+        g[last] = f[last].inv
+        for i in (old..last).rev: g[i] = g[i + 1] * Mod<P>(i + 1)
 
     /// `n!`
-    pub fn fact(self, n: Int) -> Mod<P> = f[n]
+    pub fn fact(mut self, n: Int) -> Mod<P>:
+        assert n >= 0
+        if n >= P: return Mod<P>(0)
+        self.ensure(n)
+        f[n]
 
-    /// `1 / n!`
-    pub fn inv_fact(self, n: Int) -> Mod<P> = g[n]
+    /// `1 / n!` (requires `0 <= n < P`).
+    pub fn inv_fact(mut self, n: Int) -> Mod<P>:
+        assert 0 <= n and n < P
+        self.ensure(n)
+        g[n]
 
     /// The number of `k`-subsets of `n` things; 0 when `k` is outside `0..=n`.
-    pub fn choose(self, n: Int, k: Int) -> Mod<P>:
+    /// Uses Lucas's theorem automatically when `n >= P` (for prime `P`).
+    pub fn choose(mut self, n: Int, k: Int) -> Mod<P>:
         if k < 0 or k > n: return Mod<P>(0)
+        if n >= P: return self.choose(n / P, k / P) * self.choose(n % P, k % P)
+        self.ensure(n)
         f[n] * g[k] * g[n - k]
 
     /// The number of ordered selections of `k` out of `n` things.
-    pub fn arrange(self, n: Int, k: Int) -> Mod<P>:
+    pub fn arrange(mut self, n: Int, k: Int) -> Mod<P>:
         if k < 0 or k > n: return Mod<P>(0)
+        self.ensure(n)
         f[n] * g[n - k]
 
     /// The number of ways to put `n` equal balls into `k` boxes (stars and bars).
-    pub fn multichoose(self, n: Int, k: Int) -> Mod<P>:
+    pub fn multichoose(mut self, n: Int, k: Int) -> Mod<P>:
         if n == 0: return Mod<P>(1)
+        if k <= 0 or n < 0: return Mod<P>(0)
         self.choose(n + k - 1, n)
 
     /// The `n`-th Catalan number.
-    pub fn catalan(self, n: Int) -> Mod<P> = self.choose(2 * n, n) - self.choose(2 * n, n + 1)
+    pub fn catalan(mut self, n: Int) -> Mod<P> = self.choose(2 * n, n) - self.choose(2 * n, n + 1)
 
 @test
 fn values_stay_reduced():
@@ -132,7 +160,7 @@ fn mod_values_work_in_generic_structures():
 @test
 fn choose_matches_pascals_triangle():
     type M = Mod<1000000007>
-    let c = Comb<1000000007>(60)
+    var c = Comb<1000000007>()
     var row = [M(1)]
     for n in 0..=30:
         for k in 0..=n: assert c.choose(n, k) == row[k]
@@ -142,6 +170,21 @@ fn choose_matches_pascals_triangle():
     assert c.arrange(5, 2) == M(20)
     assert c.multichoose(3, 2) == M(4)
     assert [c.catalan(n).v for n in 0..8] == [1, 1, 2, 5, 14, 42, 132, 429]
+    // Auto-growth on a small prime clamps before P so (P-1)! stays invertible
+    var small = Comb<11>()
+    assert small.choose(10, 4) == Mod<11>(210)
+    assert small.fact(10) == Mod<11>(10)
+    // Pre-sizing still works
+    var pre = Comb<1000000007>(40)
+    assert pre.choose(40, 20) == c.choose(40, 20)
+
+@test
+fn try_inv_and_modulus_one():
+    assert Mod<10>(3).try_inv() == Mod<10>(7)
+    assert Mod<10>(2).try_inv() == none
+    assert Mod<10>(0).try_inv() == none
+    assert Mod<1>(0) == Mod<1>(42) and Mod<1>(0).try_inv() == Mod<1>(0)
+    assert Mod<1>.zero == Mod<1>.one
 
 @test
 fn a_modulus_read_at_run_time():

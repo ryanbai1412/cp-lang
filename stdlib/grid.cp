@@ -83,8 +83,11 @@ pub @get fn adj8<R, C>(self: (R, C)) -> List<(R, C)>:
 /// The grid with rows and columns exchanged.
 pub @get fn transposed<R, C, T>(self: [R, C]T) -> [C, R]T = [C, R] (c, r) => self[r, c]
 
-/// The grid with every row reversed, left to right.
-pub @get fn flipped<R, C, T>(self: [R, C]T) -> [R, C]T = [R, C] (r, c) => self[r, C.nth(C.K - 1 - c.to_idx)]
+/// The grid with row order reversed, top to bottom.
+pub @get fn flipped_rows<R, C, T>(self: [R, C]T) -> [R, C]T = [R, C] (r, c) => self[R.nth(R.K - 1 - r.to_idx), c]
+
+/// The grid with column order reversed, left to right.
+pub @get fn flipped_cols<R, C, T>(self: [R, C]T) -> [R, C]T = [R, C] (r, c) => self[r, C.nth(C.K - 1 - c.to_idx)]
 
 @test
 fn neighbours_stay_on_the_grid():
@@ -129,6 +132,8 @@ fn directions_turn_and_step():
                 todo.push(n)
     assert count(seen[r, c] for r in Row for c in Col) == 9
 
+fn grid_sum<R, C>(g: [R, C]Int) -> Int = sum(g[r, c] for r in R for c in C)
+
 @test
 fn transposed_and_flipped():
     domain Row = 0..2
@@ -137,4 +142,13 @@ fn transposed_and_flipped():
     let t = g.transposed
     for r in Row:
         for c in Col: assert t[c, r] == g[r, c]
-    assert [g.flipped[Row(1), c] for c in Col] == [12, 11, 10]
+    assert grid_sum(g) == grid_sum(t)
+    assert [g.flipped_cols[Row(1), c] for c in Col] == [12, 11, 10]
+    assert [g.flipped_rows[r, Col(2)] for r in Row] == [12, 2]
+    assert g.flipped_rows.flipped_rows == g
+    assert g.flipped_cols.flipped_cols == g
+    assert g.transposed.transposed == g
+    // 90-degree clockwise rotation: flip rows then transpose
+    let rot90 = g.flipped_rows.transposed
+    for r in Row:
+        for c in Col: assert rot90[c, Row.nth(Row.K - 1 - r.to_idx)] == g[r, c]

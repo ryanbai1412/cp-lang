@@ -257,3 +257,62 @@ fn max_right_and_min_left_see_pending_updates():
                     back += a[V.nth(low - 1)]
                     low -= 1
                 assert st.min_left(V.bounds.nth(from), s => s <= cap).ord == low
+
+fn ccc_compose(f: (?Int, ?Int, Int), g: (?Int, ?Int, Int)) -> (?Int, ?Int, Int):
+    let nb = f.0 ?? g.0
+    if f.1 != none: return (nb, f.1, 0)
+    if g.1 != none: return (nb, g.1! + f.2, 0)
+    (nb, none, g.2 + f.2)
+
+fn ccc_apply(f: (?Int, ?Int, Int), x: (Int, Int, Int), len: Int) -> (Int, Int, Int):
+    let b_min = f.0 ?? x.1
+    if f.1 != none:
+        let a_val = b_min + f.1!
+        return (a_val, b_min, a_val * len)
+    (x.0 + f.2, b_min, x.2 + f.2 * len)
+
+@test
+fn ccc02s4hard_dual_field_cross_overwrite_and_interleaved_point_set():
+    // Conformance test pinned in v2.1: each position holds (a, b) where a range update can
+    // overwrite `b` and cross-overwrite `a = b + d` or add to `a`, interleaved with point
+    // `.set` calls that must push pending tags root-to-leaf first.
+    let over = Monoid<(Int, Int, Int)>((Int.MAX, Int.MAX, 0), (x, y) => (min(x.0, y.0), min(x.1, y.1), x.2 + y.2))
+    let act = Action<(Int, Int, Int), (?Int, ?Int, Int)>((none, none, 0), ccc_compose, ccc_apply, over: over)
+    domain V = 0..11
+    var a = [V] v => rand(-10, 10)
+    var b = [V] v => rand(-10, 10)
+    var st = LazySegTree<V, (Int, Int, Int)>(act, [V] v => (a[v], b[v], a[v]))
+    for _ in 0..120:
+        let kind = rand(0, 3)
+        if kind == 0:
+            // range add to a
+            let l = V.nth(rand(0, 10))
+            let r = V.nth(rand(l.to_idx, 10))
+            let d = rand(-5, 5)
+            for v in l..=r: a[v] += d
+            st.apply(l..=r, (none, none, d))
+        elif kind == 1:
+            // range cross-overwrite: set b = vb and a = b + d
+            let l = V.nth(rand(0, 10))
+            let r = V.nth(rand(l.to_idx, 10))
+            let vb = rand(-8, 8)
+            let d = rand(-4, 4)
+            for v in l..=r:
+                b[v] = vb
+                a[v] = vb + d
+            st.apply(l..=r, (vb, d, 0))
+        elif kind == 2:
+            // interleaved point set while lazy tags are still pending above the leaf
+            let p = V.nth(rand(0, 10))
+            let na = rand(-15, 15)
+            let nb = rand(-15, 15)
+            a[p] = na
+            b[p] = nb
+            st.set(p, (na, nb, na))
+        else:
+            let l = V.nth(rand(0, 10))
+            let r = V.nth(rand(l.to_idx, 10))
+            let want = (min(a[v] for v in l..=r)!, min(b[v] for v in l..=r)!, sum(a[v] for v in l..=r))
+            assert st.fold(l..=r) == want
+    for v in V:
+        assert st.get(v) == (a[v], b[v], a[v])

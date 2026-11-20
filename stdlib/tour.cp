@@ -52,7 +52,7 @@ fn ranges_and_boundaries():
     lz.apply(I(4)..=I(5), 1)
     assert lz.fold(I(0)..=I(5)) == 11 and lz.fold(I(0)..=I(1)) == 0
     let rmq = SparseTable<I, Int>(min, [I] i => [5, 2, 7, 1, 8, 3][i.to_idx])
-    assert rmq.fold(I(0)..=I(2)) == 2 and rmq.fold(I(4)..=I(5)) == 3
+    assert rmq.fold(I(0)..=I(2)) == 2 and rmq.fold(I(4)..=I(5)) == 3 and rmq.fold(I(2)..I(2)) == none
 
 @test
 fn graphs_are_functions():
@@ -93,17 +93,17 @@ fn paths_on_trees():
     let r = Rooted(root: V(1), adj: u => kids[u])
     assert r.lca(V(4), V(6)) == V(2) and r.dist(V(4), V(6)) == 3 and r.dist(V(3), V(6)) == 4
     // a value per vertex lives in any structure over the tree's own positions
-    var st = SegTree<Rooted<V>.Pre, Int>(+, [Rooted<V>.Pre] p => r.at[p].to_idx + 1)
+    var st = SegTree(+, r.reorder([V] v => v.to_idx + 1))
     assert r.fold_path(V(4), V(6), st) == 4 + 2 + 5 + 6
     assert st.fold(r.sub(V(2))) == 2 + 4 + 5 + 6
-    st.set(r.tin[V(2)], 100)
+    st.set(r.pos(V(2)), 100)
     assert r.fold_path(V(4), V(3), st) == 4 + 100 + 1 + 3
 
 @test
 fn numbers_modulo_a_prime():
     type M = Mod<998244353>
     assert M(2).pow(10) == M(1024) and M(3) / M(3) == M(1) and M(-1) + M(1) == M(0)
-    let c = Comb<998244353>(100)
+    var c = Comb<998244353>()
     assert c.choose(10, 3) == M(120)
     // a mod number is a number: the generic structures take it as they are
     domain I = 0..4

@@ -1,12 +1,12 @@
 //! Rooted trees: parents, subtree ranges, LCA, and path folds over one range structure.
 //!
-//! `Rooted<V>` owns a second domain, `Pre`: the positions of an Euler order
-//! in which every subtree and every heavy chain is one contiguous range.
-//! `tin[v]` is a `Pre`, not a `V`, so indexing a per-position structure
-//! with a vertex (the classic Euler tour bug) does not type-check.
+//! Each `Rooted` tree value `t` owns a fresh domain, `t.Pre`: the positions of an
+//! Euler order in which every subtree and every heavy chain is one contiguous range.
+//! `t.pos(v)` is a `t.Pre`, not a `V` (and never mixes with another tree `t2.Pre`), so
+//! indexing a per-position structure with a vertex or another tree's position does not type-check.
 //!
-//! `Rooted<V>` is the one tree abstraction. A value per vertex lives in any
-//! structure indexed by `Pre` (a `SegTree`, a `LazySegTree`, a `Fenwick`), and
+//! `Rooted` is the one tree abstraction. A value per vertex lives in any
+//! structure indexed by `t.Pre` (a `SegTree`, a `LazySegTree`, a `Fenwick`), and
 //! `fold_path` / `apply_path` walk a path over it, so there is no second
 //! "tree with values" type and no second copy of the data.
 use std.algebra.{Reversible}
@@ -15,12 +15,9 @@ use std.algebra.{Monoid}
 use std.segtree.{SegTree}
 use std.lazy.{LazySegTree, AddMax}
 
-/// A tree rooted at `root`. Built in O(n) without recursion; memory is
-/// seven `[V]` arrays, one `[Pre]` array and the child lists.
-pub struct Rooted<V>:
-    /// Positions in heavy-first preorder.
-    domain Pre = 0..V.K
-
+/// A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre`.
+/// Built in O(n) without recursion; memory is seven `[V]` arrays, one `[Pre]` array and child lists.
+pub struct Rooted<V, Pre>:
     root: V
     /// The parent; `none` at the root.
     par: [V]?V
@@ -35,7 +32,7 @@ pub struct Rooted<V>:
     /// The highest vertex of the heavy chain through `v`.
     top: [V]V
     tin: [V]Pre
-    /// The inverse of `tin`.
+    /// The inverse of `tin` / `pos`.
     at: [Pre]V
 
     /// Root the tree given by `adj` at `root`: `Rooted(g, root: r)` for a `Graph`,
@@ -43,11 +40,25 @@ pub struct Rooted<V>:
     /// (the parent is skipped) or only the children, as vertices or as arcs. The tree is the
     /// depth-first spanning tree, so on a graph with extra edges every other edge joins a
     /// vertex to one of its ancestors. Stops if some vertex is not reachable from the root.
-    pub fn new<N>(adj: N, root: V) -> Rooted<V> = Rooted.weighted(adj, root, a => 1)
+    pub fn new<N>(adj: N, root: V) = Rooted.weighted(adj, root, a => 1)
+
+    /// Build a rooted tree directly from a parent array `par: [V]?V` where the unique vertex
+    /// with `par[v] == none` is the root. O(n).
+    pub fn from_parents(par: [V]?V):
+        var root: ?V = none
+        var kids: [V]List<V> = []
+        for v in V:
+            if let p = par[v]: kids[p].push(v)
+            else:
+                assert root == none
+                root = v
+        assert root != none
+        Rooted.weighted(u => kids[u], root!, a => 1)
 
     /// The same for edges with lengths: `len(arc)` is the length of the edge an arc runs along,
     /// and `dist` adds lengths up instead of counting edges.
-    pub fn weighted<N, A>(adj: N, root: V, len: A -> Int) -> Rooted<V>:
+    pub fn weighted<N, A>(adj: N, root: V, len: A -> Int):
+        domain P = 0..V.K
         var par: [V]?V = none
         var dep: [V]Int = 0
         var far: [V]Int = 0
@@ -80,23 +91,29 @@ pub struct Rooted<V>:
             for c in kid[u]:
                 if heavy[u] == none or sz[c] > sz[heavy[u]!]: heavy[u] = c
         var top = [V] v => v
-        var tin = [V] v => Pre.first
+        var tin = [V] v => P.first
         for u in order:
             var next = tin[u].ord + 1
             if let h = heavy[u]:
                 top[h] = top[u]
-                tin[h] = Pre.nth(next)
+                tin[h] = P.nth(next)
                 next += sz[h]
             for c in kid[u]:
                 if c != heavy[u]:
-                    tin[c] = Pre.nth(next)
+                    tin[c] = P.nth(next)
                     next += sz[c]
-        var at = [Pre] p => root
+        var at = [P] p => root
         for v in V: at[tin[v]] = v
-        Rooted(root, par, dep, far, sz, kid, heavy, top, tin, at)
+        Rooted<V, P>(root, par, dep, far, sz, kid, heavy, top, tin, at)
+
+    /// The position of `v` in this tree's value-owned preorder domain `t.Pre`. Inverse of `at`. O(1).
+    pub fn pos(self, v: V) -> Pre = tin[v]
 
     /// The parent of `v`; `none` at the root.
     pub fn parent(self, v: V) -> ?V = par[v]
+
+    /// Reorder a vertex-indexed array `[V]T` into preorder `[t.Pre]T` (`out[t.pos(v)] == a[v]`). O(n).
+    pub fn reorder<T>(self, a: [V]T) -> [Pre]T = [Pre] p => a[at[p]]
 
     /// The children of `v`, in the order `adj` listed them.
     pub fn children(self, v: V) -> List<V> = kid[v]
@@ -115,6 +132,20 @@ pub struct Rooted<V>:
         var out = [at[p] for p in Pre]
         sort(mut out, by: v => (tin[v].ord + sz[v], -dep[v]))
         out
+
+    /// Iterative enter/exit Euler tour: yields `(v, true)` when entering `v` and
+    /// `(v, false)` when leaving `v`'s subtree, without recursion. O(n).
+    pub @get fn tour(self) -> yields (v: V, entering: Bool):
+        var stack = [(root, 0)]
+        while not stack.is_empty:
+            let (u, i) = stack[stack.len - 1]
+            if i == 0: yield (v: u, entering: true)
+            if i < kid[u].len:
+                stack[stack.len - 1] = (u, i + 1)
+                stack.push((kid[u][i], 0))
+            else:
+                stack.pop()
+                yield (v: u, entering: false)
 
     /// The positions of `v`'s subtree, `v` first.
     pub fn sub(self, v: V) -> Range<Pre> = tin[v].l..tin[v].r(sz[v])
@@ -236,7 +267,7 @@ fn random_tree<V>(any: V) -> [V]List<V>:
     adj
 
 /// The vertices from `a` to `b`, by climbing parents.
-fn slow_path<V>(r: Rooted<V>, a: V, b: V) -> List<V>:
+fn slow_path<V, Pre>(r: Rooted<V, Pre>, a: V, b: V) -> List<V>:
     var (x, y) = (a, b)
     var (left, right) = (List<V>(), List<V>())
     while x != y:
@@ -301,12 +332,11 @@ fn weighted_dist_adds_the_lengths_on_the_path():
 @test
 fn path_folds_keep_the_order_from_a_to_b():
     domain V = 0..12
-    type Pre = Rooted<V>.Pre
     for _ in 0..12:
         let adj = random_tree(V(0))
         let r = Rooted(root: V.nth(rand(0, 11)), adj: v => adj[v])
         var name = [V] v => Word(Str([Char(97 + v.to_idx)]))
-        var st = SegTree<Pre, Word>(Monoid<Word>(Word(""), (a, b) => Word(a.s + b.s)), [Pre] p => name[r.at[p]])
+        var st = SegTree(Monoid<Word>(Word(""), (a, b) => Word(a.s + b.s)), r.reorder(name))
         for _ in 0..12:
             let (a, b) = (V.nth(rand(0, 11)), V.nth(rand(0, 11)))
             let path = slow_path(r, a, b)
@@ -315,7 +345,7 @@ fn path_folds_keep_the_order_from_a_to_b():
             assert r.fold_path(a, b, st, edges: true).s == Str([name[v].s[0] for v in lower])
             let v = V.nth(rand(0, 11))
             name[v] = Word(Str([Char(65 + rand(0, 25))]))
-            st.set(r.tin[v], name[v])
+            st.set(r.pos(v), name[v])
 
 struct Word(s: Str)
 
@@ -325,12 +355,11 @@ impl Reversible for Word:
 @test
 fn path_updates_and_subtree_folds_over_one_lazy_tree():
     domain V = 0..11
-    type Pre = Rooted<V>.Pre
     for _ in 0..10:
         let adj = random_tree(V(0))
         let r = Rooted(root: V(0), adj: v => adj[v])
         var val = [V] v => rand(0, 9)
-        var st = LazySegTree<Pre, Int>(AddMax, [Pre] p => val[r.at[p]])
+        var st = LazySegTree(AddMax, r.reorder(val))
         for _ in 0..20:
             let (a, b, x) = (V.nth(rand(0, 10)), V.nth(rand(0, 10)), rand(-3, 3))
             for v in slow_path(r, a, b): val[v] += x
@@ -381,3 +410,41 @@ fn a_tree_from_a_stored_graph():
     let r = Rooted(g, root: V(1))
     assert r.lca(V(4), V(6)) == V(2) and r.dist(V(4), V(6)) == 3 and r.size(V(2)) == 4
     assert r.children(V(2)) == [V(4), V(5)] and r.parent(V(6)) == V(5)
+
+@test
+fn from_parents_tour_pos_and_value_owned_pre():
+    domain V = 1..=6
+    let par = [V] v => [none, V(1), V(1), V(2), V(2), V(5)][v.to_idx]
+    let t1 = Rooted.from_parents(par)
+    let t2 = Rooted.from_parents([V] v => [V(2), none, V(2), V(1), V(3), V(5)][v.to_idx])
+    assert t1.root == V(1) and t2.root == V(2)
+    assert t1.lca(V(4), V(6)) == V(2) and t1.dist(V(4), V(6)) == 3
+    for v in V: assert t1.at[t1.pos(v)] == v
+    // Both trees have independent value-owned Pre domains
+    var a1: [t1.Pre]Int = 0
+    for p in t1.Pre: a1[p] = t1.at[p].to_idx
+    var a2: [t2.Pre]Int = 0
+    for p in t2.Pre: a2[p] = t2.at[p].to_idx
+    assert a1[t1.pos(V(6))] == 5 and a2[t2.pos(V(6))] == 5
+    // Iterative enter/exit tour balances parentheses and matches subtree nesting
+    var entered: List<V> = []
+    var exited: List<V> = []
+    var stack: List<V> = []
+    for (v, entering) in t1.tour:
+        if entering:
+            entered.push(v)
+            stack.push(v)
+        else:
+            assert stack.pop() == v
+            exited.push(v)
+    assert stack.is_empty and entered.len == V.K and exited.len == V.K
+    assert entered[0] == t1.root and exited[exited.len - 1] == t1.root
+    // Every vertex is entered before its children and exited after its children
+    var ent_pos: [V]Int = 0
+    var ext_pos: [V]Int = 0
+    for i in 0..V.K:
+        ent_pos[entered[i]] = i
+        ext_pos[exited[i]] = i
+    for v in V:
+        for c in t1.children(v):
+            assert ent_pos[v] < ent_pos[c] and ext_pos[c] < ext_pos[v]
