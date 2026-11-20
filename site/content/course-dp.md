@@ -101,3 +101,8 @@ for mask in Subset<V>:
 Submask iteration is equally direct: `for sub in mask.subsets:` visits every subset of `mask` in `O(3^n)` total across all masks. For larger bit-parallel DP (such as subset-sum reachability up to `10^5`), `Bitset<D>` packs bits into 64-bit machine words with `|`, `&`, `^`, `<<`, `>>`, `.count`, and `.first_set`.
 
 Next, [algebraic segment trees and `Rooted`](course-algebra.html) replaces ad-hoc tree boilerplate with `Fenwick`, `Monoid(id, op)`, and `Action(id, compose, apply, over)`.
+
+## Write a program
+
+```exercise dp-write-coins
+```

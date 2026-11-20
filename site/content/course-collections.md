@@ -51,7 +51,7 @@ In-place mutation takes `mut` explicitly (`sort(mut a)`, `reverse(mut a)`), whil
 
 ```cp CP Lang 0.2.2
 sort(mut intervals, by: iv => (iv.r, desc(iv.l)))
-let xs = compress(all_coords)      // sorted unique values; xs.rank(v) -> 0..xs.len
+let xs = compress(all_coords)      // sorted unique values; xs.at(v) returns its typed index
 ```
 
 Three prelude sequence helpers replace repetitive contest loops:
@@ -76,4 +76,9 @@ In CP Lang, binary search comes in two clean shapes:
 ```
 
 ```exercise coll-first-ge-types
+```
+
+## Write a program
+
+```exercise coll-write-smallest
 ```

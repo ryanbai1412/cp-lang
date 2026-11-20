@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build/link checks and native execution of every prototype-tested snippet."""
+"""Build/link checks and native execution through the Rust compiler."""
 
 from html.parser import HTMLParser
 import html as html_lib
@@ -7,7 +7,6 @@ import json
 from pathlib import Path
 import re
 import subprocess
-import sys
 import tempfile
 import unittest
 from urllib.parse import unquote, urlsplit
@@ -16,15 +15,23 @@ import build
 
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent
-sys.path.insert(0, str(REPO / "proto"))
-from cpc.compiler import compile_program  # noqa: E402
-from cpc.parser import parse  # noqa: E402
+CPL = REPO / "target/debug/cpl"
+
+
+def cpl(*arguments):
+    result = subprocess.run([str(CPL), *map(str, arguments)], cwd=REPO,
+                            capture_output=True, text=True, timeout=60)
+    if result.returncode:
+        raise AssertionError(f"cpl {' '.join(map(str, arguments))}\n{result.stderr}")
+    return result
 
 
 def compile_native(source, name, directory):
-    cpp, _ = compile_program(parse(source))
+    source_path = Path(directory) / f"{name}.cp"
+    source_path.write_text(source)
+    cpl("check", source_path)
     path, executable = Path(directory) / f"{name}.cpp", Path(directory) / name
-    path.write_text(cpp)
+    cpl("build", source_path, "-o", path)
     subprocess.run(
         ["g++", "-std=c++17", "-O2", str(path), "-o", str(executable)],
         check=True, capture_output=True, timeout=60)
@@ -53,7 +60,24 @@ class Page(HTMLParser):
 class SiteTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        subprocess.run(["cargo", "build", "-p", "cpl-cli"], cwd=REPO, check=True)
         build.build()
+
+    def test_every_showcase_port_checks_builds_and_emits_valid_cpp17(self):
+        from showcase import SHOWCASE_ITEMS
+        with tempfile.TemporaryDirectory(prefix="cpl-showcase-") as temporary:
+            for item in SHOWCASE_ITEMS:
+                with self.subTest(port=item["cp_path"]):
+                    source = REPO / item["cp_path"]
+                    counted = [line for line in source.read_text().splitlines()
+                               if line.strip() and not line.lstrip().startswith("//")]
+                    self.assertEqual(item["cp_loc"], len(counted))
+                    cpl("check", source)
+                    cpp = Path(temporary) / f'{item["id"]}.cpp'
+                    cpl("build", source, "-o", cpp)
+                    result = subprocess.run(["g++", "-std=c++17", "-fsyntax-only", str(cpp)],
+                                            capture_output=True, text=True, timeout=60)
+                    self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_all_local_links_and_fragments_resolve(self):
         target = ROOT / "_build"
@@ -143,6 +167,7 @@ class SiteTests(unittest.TestCase):
         self.assertEqual(len(build.LESSONS), 10)
         self.assertGreaterEqual(len(build.EXERCISES), 45)
         for lesson in build.LESSONS:
+            self.assertTrue(any(e["kind"] == "code" for e in lesson["exercises"]), lesson["slug"])
             source = (ROOT / "_build" / f'{lesson["slug"]}.html').read_text()
             page = Page(source)
             for exercise in lesson["exercises"]:
@@ -154,6 +179,10 @@ class SiteTests(unittest.TestCase):
                         "Check answer uses the original program and the inputs shown above.</p>",
                         source,
                     )
+                elif exercise["kind"] == "code":
+                    self.assertIn(f'id="{exercise["id"]}-source" data-source', source)
+                    self.assertIn("Check code", source)
+                    self.assertIn("Grading test cases", source)
             self.assertIn('id="course-data" type="application/json"', source)
             self.assertIn("Solution and explanation", source)
         data = build.course_data("course")
@@ -207,7 +236,7 @@ class SiteTests(unittest.TestCase):
                             ("5 5\n3 -1 4 1 5\n", "12"),
                             ("3 1\n-2 -9 -4\n", "-2")],
             "grid-sum": [("2 3\n", "21 21 YES")],
-            "slices": [("5\n9 2 7 4 5\n", "3 7 13\n9 2 4 7 5")],
+            "window-copy": [("5\n9 2 7 4 5\n", "3 7 13\n9 2 4 7 5")],
         }
         programs = {}
         for name in ("first-program", "domains", "index-slices"):
@@ -229,7 +258,19 @@ class SiteTests(unittest.TestCase):
                                              capture_output=True, check=True, timeout=5)
                         self.assertEqual(run.stdout.split(), expected.split())
 
-    def test_every_prototype_example_runs_as_native_cpp(self):
+    def test_every_write_code_reference_passes_all_cases_as_native_cpp(self):
+        with tempfile.TemporaryDirectory(prefix="cpl-exercises-") as temporary:
+            for exercise in build.EXERCISES.values():
+                if exercise["kind"] != "code":
+                    continue
+                with self.subTest(exercise=exercise["id"]):
+                    executable = compile_native(exercise["reference"], exercise["id"], temporary)
+                    for case in exercise["tests"]:
+                        run = subprocess.run([str(executable)], input=case["input"], text=True,
+                                             capture_output=True, check=True, timeout=5)
+                        self.assertEqual(run.stdout.split(), case["expected"].split())
+
+    def test_every_example_runs_as_native_cpp(self):
         fixtures = {
             "bounds": [("5\n3 1 4 1 5\n", "14"), ("1\n-9\n", "-9")],
             "sum": [("5\n3 1 4 1 5\n", "14"), ("1\n-9\n", "-9")],
@@ -240,36 +281,19 @@ class SiteTests(unittest.TestCase):
             "ascii": [("5\nabaca\n", "3"), ("1\nz\n", "0")],
             "memo": [("4\n", "45"), ("1\n", "1")],
         }
-        # 0.2.2 fixtures that use Rust/WASM stdlib or syntax verified in test_compiler.cjs.
-        wasm_only = {
-            "early_return",
-            "multitest_divider",
-            "lends",
-            "tropical_dp",
-            "optional_coalesce",
-            "memo_dp",
-            "segtree_monoid",
-            "lazy_action",
-            "colocated_brute",
-            "enum_match",
-            "collections_heap",
-            "sort_bsearch",
-            "fenwick_sum",
-            "dsu_mod",
-        }
         # Course predictions are checked against actual compiled CP source,
         # not merely against a second copy of their answer key.
         for lesson in build.LESSONS:
             for exercise in lesson["exercises"]:
-                if exercise["kind"] == "output" and exercise["fixture"] in fixtures:
-                    fixtures[exercise["fixture"]].extend(
+                if exercise["kind"] == "output":
+                    fixtures.setdefault(exercise["fixture"], []).extend(
                         (case["input"], case["expected"]) for case in exercise["tests"])
         referenced = set()
         for path in (ROOT / "content").glob("*.md"):
             referenced.update(re.findall(r"```example (\w+)", path.read_text()))
-        self.assertEqual(referenced, set(fixtures) | wasm_only)
+        self.assertEqual(referenced, set(fixtures))
         self.assertEqual(
-            {p.stem for p in (ROOT / "examples").glob("*.cp")}, set(fixtures) | wasm_only
+            {p.stem for p in (ROOT / "examples").glob("*.cp")}, set(fixtures)
         )
         with tempfile.TemporaryDirectory(prefix="cpl-docs-") as temporary:
             for name, cases in fixtures.items():
@@ -357,6 +381,13 @@ class SiteTests(unittest.TestCase):
             visible = re.sub(r'href="[^"]*"', "", visible)
             match = pattern.search(visible)
             self.assertIsNone(match, f"{path.name} contains internal/stale text: {match.group(0) if match else ''}")
+
+    def test_authored_copy_does_not_advertise_unbuilt_collection_apis(self):
+        # The canonical cheat sheet lives outside site/ and has its own owner.
+        for path in (ROOT / "content").glob("*.md"):
+            self.assertNotRegex(path.read_text(),
+                                r"\bHashSet\b|\bpop_(?:first|last)\b|\bSet(?:<[^>]+>)?\.rank\b",
+                                path.name)
 
     def test_sidebar_sections_are_not_duplicated(self):
         html = (ROOT / "_build/index.html").read_text()

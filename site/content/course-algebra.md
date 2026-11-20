@@ -106,3 +106,8 @@ let sub_ans = seg.fold(tree.sub(u))
 
 ```exercise algebra-local-library
 ```
+
+## Write a program
+
+```exercise algebra-write-range-min
+```

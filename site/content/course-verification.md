@@ -75,3 +75,8 @@ Here is a compact linear recurrence (`f(0) = 1`, `f(i) = f(i - 1) * 3 + i`) for 
 
 ```exercise verify-memo-output
 ```
+
+## Write a program
+
+```exercise verify-write-nonempty
+```

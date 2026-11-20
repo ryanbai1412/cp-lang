@@ -105,3 +105,8 @@ enum Tile: Empty; Wall; Start; End
 
 let grid: [Row, Col]Tile = read()
 ```
+
+## Write a program
+
+```exercise types-write-digits
+```

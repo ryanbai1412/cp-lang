@@ -729,6 +729,8 @@ th,td {
 .compiler-editor button:disabled { opacity:.5; cursor:default; }
 .exercise-sandbox .runner-grid { grid-template-columns:minmax(0,1fr); }
 .exercise-sandbox .runner-grid pre { min-height:80px; }
+.exercise-form .runner-grid { grid-template-columns:minmax(0,1fr); }
+.exercise-form .runner-output { min-height:80px; }
 @media(max-width:600px) { .compiler-editor .playground-toolbar { align-items:flex-start; flex-direction:column; } }
 .course-progress {
   margin: 0 0 28px;

@@ -60,3 +60,8 @@ The emitted C++17 evaluates the index and value first, then writes to the slot, 
 
 ```exercise borrow-lends-output
 ```
+
+## Write a program
+
+```exercise borrow-write-counter
+```

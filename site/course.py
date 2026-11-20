@@ -66,9 +66,17 @@ def load_lessons():
                     raise ValueError(f"Invalid choices in {key}")
                 if not exercise.get("explanation"):
                     raise ValueError(f"Missing explanation in {key}")
-            elif exercise["kind"] == "output":
-                if exercise["fixture"] not in FIXTURES or not exercise["tests"]:
+            elif exercise["kind"] in ("output", "code"):
+                if not exercise["tests"]:
+                    raise ValueError(f"Missing test cases in {key}")
+                if exercise["kind"] == "output" and exercise["fixture"] not in FIXTURES:
                     raise ValueError(f"Invalid output fixture in {key}")
+                if exercise["kind"] == "code":
+                    for field in ("starter", "reference"):
+                        if not isinstance(exercise[field], str) or not exercise[field].strip():
+                            raise ValueError(f"Missing {field} in {key}")
+                    if len(exercise["tests"]) < 3:
+                        raise ValueError(f"Code exercise {key} needs at least three cases")
                 for case in exercise["tests"]:
                     if not all(isinstance(case[field], str) for field in ("input", "expected")):
                         raise ValueError(f"Output cases must be text: {key}")
@@ -89,7 +97,7 @@ def exercise_html(exercise, highlight):
             for i, option in enumerate(exercise["options"])
         ) + '</fieldset>'
         label = "Knowledge check"
-    else:
+    elif kind == "output":
         fields = "".join(
             f'<div class="exercise-case"><h4>Case {i + 1}</h4><span class="case-label">Standard input</span>'
             f'<pre tabindex="0">{e(case["input"]) or "(no input)"}</pre>'
@@ -105,18 +113,36 @@ def exercise_html(exercise, highlight):
             + editor_html(key + "-sandbox", source, exercise["tests"][0]["input"])
             + '</details>'
         )
+    else:
+        label = "Write code"
+        fields = (
+            '<p class="exercise-sandbox-note">Run program uses the editable input. '
+            'Check code runs your source against every test case below.</p>'
+            + editor_html(key, exercise["starter"], exercise["tests"][0]["input"])
+            + '<details class="exercise-help"><summary>Grading test cases</summary>'
+            + ''.join(
+                f'<div class="exercise-case"><h4>Case {i + 1}</h4>'
+                f'<span class="case-label">Standard input</span><pre>{e(case["input"]) or "(no input)"}</pre>'
+                f'<span class="case-label">Expected output</span><pre>{e(case["expected"])}</pre></div>'
+                for i, case in enumerate(exercise["tests"])
+            ) + '</details>'
+        )
+    solution = f'<p>{e(exercise["solution"])}</p>'
+    if kind == "code":
+        solution += f'<pre class="exercise-code" tabindex="0"><code>{highlight(exercise["reference"], "cp")}</code></pre>'
+    submit_label = "Check code" if kind == "code" else "Check answer"
     return (
         f'<section class="exercise" id="{key}" data-exercise="{key}" aria-labelledby="{key}-title">'
         f'<div class="exercise-heading"><span>{label}</span><span class="exercise-badge" data-badge>Not checked</span></div>'
         f'<h3 id="{key}-title">{e(exercise["title"])}</h3>'
         f'<p id="{key}-prompt">{e(exercise["prompt"])}</p>{code}'
         f'<form class="exercise-form">{fields}<div class="exercise-actions">'
-        '<button class="primary-button" type="submit">Check answer</button>'
+        f'<button class="primary-button" type="submit">{submit_label}</button>'
         '<button class="secondary-button" type="reset">Reset</button></div></form>'
         f'<div class="exercise-feedback" id="{key}-feedback" role="status" aria-live="polite"></div>'
         f'{sandbox}'
         f'<details class="exercise-help"><summary>Hint</summary><p>{e(exercise["hint"])}</p></details>'
-        f'<details class="exercise-help"><summary>Solution and explanation</summary><p>{e(exercise["solution"])}</p></details>'
+        f'<details class="exercise-help"><summary>Solution and explanation</summary>{solution}</details>'
         '<noscript>Enable JavaScript to check your answer. Hints and solutions work without it.</noscript></section>\n'
     )
 

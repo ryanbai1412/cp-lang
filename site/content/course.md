@@ -9,4 +9,4 @@ All {{chapter_count}} chapters combine concise prose, runnable WebAssembly examp
 
 Work through the chapters in order if you are new to CP Lang, or jump straight to a topic you need for a contest. If you already write competitive programming solutions in C++17, you can also skim the [C++17 migration guide](cpp-guide.html) and keep the [one-page cheat sheet](cheat-sheet.html) open beside your editor.
 
-Every chapter mixes two kinds of exercises: **output predictions** (where you trace a real CP Lang program on small inputs and can open a live WebAssembly sandbox to experiment) and **concept checks** (which lock in the rules that prevent contest bugs, like Euclidean modulo, `?T` guardrails, and `lends mut` aliasing).
+Every chapter includes **write-code exercises**: complete or repair a program, try your own inputs, then press **Check code** to run it against several test cases in WebAssembly. **Output predictions** help you trace real programs, and **concept checks** cover rules such as Euclidean modulo, `?T` arithmetic, and `lends mut` aliasing. Hints and reference solutions are available without a login.

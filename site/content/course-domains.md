@@ -87,3 +87,8 @@ Use `??` for a fallback, `if let` to bind a present value, and `opt!` when an ea
 
 ```exercise domains-window-edge
 ```
+
+## Write a program
+
+```exercise domains-write-range-sum
+```

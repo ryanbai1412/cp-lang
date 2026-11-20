@@ -97,3 +97,8 @@ The remaining `std` modules cover the classic toolkit with the same domain-typed
 
 ```exercise graphs-geometry-exact
 ```
+
+## Write a program
+
+```exercise graphs-write-components
+```

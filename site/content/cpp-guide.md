@@ -62,7 +62,7 @@ print(dist[t] ?? -1)
 - **Niche-packed optionals:** `?Int` (`INT64_MIN`), `?F64` (quiet `NaN`), `?V`, `?Bool`, `?Char`, and `?Enum` take zero extra bytes — no `std::optional` padding overhead.
 - **Compact `Mod<P>`:** stored as a 4-byte `uint32_t` with compile-time modulus reduction when `P` is `const`.
 - **Flat CSR graphs:** `Graph<V>` packs adjacency lists into two contiguous arrays (`head` + `edges`) rather than `vector<vector<...>>`, avoiding heap fragmentation and pointer chasing.
-- **Salted hash maps:** `HashMap` and `HashSet` use splitmix64 with a runtime-seeded salt so standard Codeforces anti-hash tests cannot trigger `O(n^2)` collisions.
+- **Salted hash maps:** `HashMap` uses splitmix64 with a runtime-seeded salt to resist predictable collision patterns. For unique ordered keys, use `Set<T>`.
 - **Smart `@memo` lowering:** state spaces up to `2^24` entries lower to a flat contiguous table; larger spaces fall back automatically to a salted hash map.
 
 ## Performance controls and escape hatches

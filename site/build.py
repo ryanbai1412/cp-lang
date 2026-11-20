@@ -441,7 +441,7 @@ def course_data(name):
                 if local:
                     check["explanation"] = exercise["explanation"]
             else:
-                # Non-local chapters only verify stored predictions; source lives in the local sandbox textarea.
+                # Stored code receipts and predictions use the same expected outputs.
                 check["tests"] = (
                     exercise["tests"]
                     if local

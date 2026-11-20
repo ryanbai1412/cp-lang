@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const {Worker} = require("node:worker_threads");
+const CourseChecks = require("./assets/course.js");
 const blobs = new Map();
 const urls = Object.assign(class extends URL {}, {
   createObjectURL(blob) { const id = `blob:test-${blobs.size}`; blobs.set(id, blob); return id; },
@@ -35,6 +36,49 @@ const context = {WebAssembly, Uint8Array, atob, Blob, Response, DecompressionStr
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, "_build/assets/compiler.js"), "utf8"), context);
 const compiler = context.CpCompiler;
 after(() => compiler.stop());
+
+test("editing and resetting an errored editor clears its error status", async () => {
+  const element = () => ({value:"", dataset:{}, textContent:"", listeners:{},
+    addEventListener(name, callback) { this.listeners[name] = callback; },
+    replaceChildren() {}, append() {}});
+  const fields = Object.fromEntries(["source", "stdin", "stdout", "status", "diagnostics",
+    "hover", "run", "build", "stop", "trace", "cpp", "cpp-panel"].map(name => [name, element()]));
+  const form = element(), editor = element();
+  editor.querySelector = selector => fields[selector.slice(6, -1)];
+  editor.closest = selector => selector === "form" ? form : null;
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, "assets/playground.js"), "utf8"), {
+    document:{getElementById:() => null, querySelectorAll:() => [editor], createElement:element},
+    CpCompiler:compiler, queueMicrotask, setTimeout() {}, clearTimeout() {}
+  });
+  for (const action of ["input", "reset"]) {
+    fields.source.value = "print(undefined_name)";
+    await fields.run.listeners.click();
+    assert.equal(fields.status.dataset.error, "true");
+    fields.source.value = "print(42)";
+    (action === "input" ? fields.source : form).listeners[action]();
+    await new Promise(queueMicrotask);
+    assert.match(fields.status.textContent, /Source changed/);
+    assert.equal(fields.status.dataset.error, "false", action);
+  }
+});
+
+test("every chapter's write-code reference is graded by real WASM, and its starter fails", async () => {
+  const lessons = ["foundations", "advanced"].flatMap(name => JSON.parse(fs.readFileSync(path.join(__dirname, `course/${name}.json`))));
+  for (const lesson of lessons) {
+    const exercises = lesson.exercises.filter(exercise => exercise.kind === "code");
+    assert.ok(exercises.length, `${lesson.slug} needs a write-code exercise`);
+    for (const exercise of exercises) {
+      const run = (source, input) => compiler.call("run", source, input);
+      const built = await compiler.call("build", exercise.reference);
+      assert.equal(built.ok, true, `${exercise.id}: ${built.stderr}`);
+      const result = await CourseChecks.execute(exercise, exercise.reference, run);
+      assert.equal(result.passed, true, `${exercise.id}: ${result.message}`);
+      assert.equal(CourseChecks.check(exercise, result.answer).passed, true, exercise.id);
+      const starter = await CourseChecks.execute(exercise, exercise.starter, run);
+      assert.equal(starter.passed, false, `${exercise.id} starter must require a change`);
+    }
+  }
+});
 
 test("the generated runtime executes and builds all examples, inline course programs, playground presets, and course predictions in real WASM", async () => {
   const manifests = ["foundations", "advanced"].flatMap(name => JSON.parse(fs.readFileSync(path.join(__dirname, `course/${name}.json`))));
@@ -70,6 +114,7 @@ test("the generated runtime executes and builds all examples, inline course prog
       ["3 1\n-2 -9 -4\n", "-2"],
     ],
     "grid-sum": [["2 3\n", "21 21 YES"]],
+    "window-copy": [["5\n9 2 7 4 5\n", "3 7 13\n9 2 4 7 5"]],
   };
   const inlineFound = new Map();
   for (const file of fs.readdirSync(path.join(__dirname, "content")).filter(f => f.startsWith("course-") && f.endsWith(".md"))) {

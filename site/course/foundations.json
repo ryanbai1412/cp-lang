@@ -148,6 +148,34 @@
         "hint": "One subcommand executes the program directly; another emits the standalone C++17 translation.",
         "solution": "Run `cpl run solve.cp < sample.in` to test locally, and `cpl build solve.cp -o solve.cpp` to emit a single self-contained C++17 file ready to compile with g++ or submit.",
         "explanation": "`cpl check` only type-checks without writing output. `g++` and online judges expect C++17, not `.cp` source directly. `cpl run` runs your program immediately and `cpl build` emits clean, tree-shaken C++17 with your `.cp` source preserved in a header comment."
+      },
+      {
+        "id": "first-program-write-positives",
+        "title": "Sum the positive values",
+        "prompt": "Read n and then n integers. Print the sum of the strictly positive values; print 0 when there are none. Complete the loop in the editor.",
+        "hint": "Keep a mutable total. Add x only when x > 0.",
+        "solution": "The accumulator starts at 0. Each positive value contributes once; negative values and zero contribute nothing.",
+        "starter": "let n: 1..=100 = read()\nlet a: [0..n]Int = read()\nvar total = 0\n// Add the positive values to total.\nprint(total)\n",
+        "reference": "let n: 1..=100 = read()\nlet a: [0..n]Int = read()\nvar total = 0\nfor x in a:\n    if x > 0: total += x\nprint(total)\n",
+        "tests": [
+          {
+            "input": "5\n-3 8 0 -4 7\n",
+            "expected": "15"
+          },
+          {
+            "input": "3\n-2 -1 0\n",
+            "expected": "0"
+          },
+          {
+            "input": "1\n9\n",
+            "expected": "9"
+          },
+          {
+            "input": "4\n2 2 2 2\n",
+            "expected": "8"
+          }
+        ],
+        "kind": "code"
       }
     ]
   },
@@ -223,6 +251,34 @@
         "hint": "v.l(k) counts v itself. Which is the first position that has k elements ending at it?",
         "solution": "Start at V(k). The window of k elements ending at position k is exactly positions 1 through k, and every later position also has a full window.",
         "explanation": "v.l(k) is the left edge of the k-element window that ends at v and includes v, so the first valid v is the k-th position. Looping over all of V asks for v.l(k) at early positions where no such window exists, triggering a range trap. Starting at V(k + 1) skips the first window, the classic off-by-one when forgetting that the window counts v. V.first..=V(k) visits positions where the window does not yet exist."
+      },
+      {
+        "id": "domains-write-range-sum",
+        "title": "Answer an inclusive range sum",
+        "prompt": "Read n, an array indexed by V = 1..=n, and two positions l and r with l <= r. Build prefix sums on V.bounds and print the sum from l through r, including both endpoints.",
+        "hint": "For each v, write pre[v.r] = pre[v.l] + a[v]. The query is the prefix at r.r minus the prefix at l.l.",
+        "solution": "Each boundary stores the sum of all values to its left. Subtracting pre[l.l] from pre[r.r] keeps exactly the requested inclusive interval.",
+        "starter": "let n: 1..=100 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nlet (l, r): (V, V) = read()\nvar pre: [V.bounds]Int = 0\n// Build the prefix sums and print the requested sum.\nprint(0)\n",
+        "reference": "let n: 1..=100 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nlet (l, r): (V, V) = read()\nvar pre: [V.bounds]Int = 0\nfor v in V:\n    pre[v.r] = pre[v.l] + a[v]\nprint(pre[r.r] - pre[l.l])\n",
+        "tests": [
+          {
+            "input": "5\n3 1 4 1 5\n2 4\n",
+            "expected": "6"
+          },
+          {
+            "input": "1\n-9\n1 1\n",
+            "expected": "-9"
+          },
+          {
+            "input": "4\n-2 0 7 3\n1 4\n",
+            "expected": "8"
+          },
+          {
+            "input": "3\n4 5 6\n3 3\n",
+            "expected": "6"
+          }
+        ],
+        "kind": "code"
       }
     ]
   },
@@ -317,6 +373,34 @@
         "hint": "Both Str and [domain S]Char are O(1) ASCII byte arrays; the difference is in the index type.",
         "solution": "Nominal character domains give each string its own index type, preventing transposed DP indices (`a[j]` instead of `a[i]`) at compile time.",
         "explanation": "Both `Str` and `[domain S]Char` are flat ASCII byte arrays with O(1) indexing and zero UTF-8 overhead. `Str` is the default ergonomic string (with `.push()` when `var`), while `[domain S]Char` opts into nominal index safety for multi-string DP."
+      },
+      {
+        "id": "types-write-digits",
+        "title": "Count ASCII digits",
+        "prompt": "Read one nonempty ASCII word with no spaces. Print how many characters are digits from '0' through '9'. Letters and punctuation do not count.",
+        "hint": "Walk positions 0..s.len and check both character bounds with and.",
+        "solution": "ASCII digits occupy one contiguous range. Test '0' <= s[i] and s[i] <= '9' and increment the count for each match.",
+        "starter": "let s: Str = read()\nvar digits = 0\n// Count characters between '0' and '9'.\nprint(digits)\n",
+        "reference": "let s: Str = read()\nvar digits = 0\nfor i in 0..s.len:\n    if s[i] >= '0' and s[i] <= '9': digits += 1\nprint(digits)\n",
+        "tests": [
+          {
+            "input": "a1b20z\n",
+            "expected": "3"
+          },
+          {
+            "input": "letters\n",
+            "expected": "0"
+          },
+          {
+            "input": "09\n",
+            "expected": "2"
+          },
+          {
+            "input": "/0:9@\n",
+            "expected": "2"
+          }
+        ],
+        "kind": "code"
       }
     ]
   },
@@ -415,6 +499,34 @@
         "hint": "Arrays are indexed by positions; sets hold values without positional indices.",
         "solution": "On an array or slice `[D]T`, `.first_ge` returns `?D` (an optional index). On a `Set<T>` or `SortedBag<T>`, it returns `?T` (the optional element itself).",
         "explanation": "Neither ever traps on a miss — both return `none` when no element is `>= x`. Returning `?D` for indexed sequences lets you inspect neighbors or slice directly at that position, while sets return the value itself."
+      },
+      {
+        "id": "coll-write-smallest",
+        "title": "Extract the k smallest values",
+        "prompt": "Read n, k (0 <= k <= n), and n integers. Use MinHeap<Int> to print the k smallest values in ascending order, keeping duplicates. When k is 0, print nothing.",
+        "hint": "Push every value, then pop exactly k times. Each pop is nonempty because k <= n.",
+        "solution": "A min-heap exposes the smallest remaining value on each pop. Repeated values remain separate entries, and a zero-length loop handles k = 0.",
+        "starter": "use std.heap.{MinHeap}\nlet n: 1..=100 = read()\nlet k: 0..=n = read()\nlet a: [0..n]Int = read()\nvar pq = MinHeap<Int>()\n// Fill pq, then print k popped values.\n",
+        "reference": "use std.heap.{MinHeap}\nlet n: 1..=100 = read()\nlet k: 0..=n = read()\nlet a: [0..n]Int = read()\nvar pq = MinHeap<Int>()\nfor x in a: pq.push(x)\nfor _ in 0..k: print(pq.pop()!)\n",
+        "tests": [
+          {
+            "input": "5 3\n4 1 1 8 -2\n",
+            "expected": "-2 1 1"
+          },
+          {
+            "input": "1 1\n7\n",
+            "expected": "7"
+          },
+          {
+            "input": "3 0\n9 8 7\n",
+            "expected": ""
+          },
+          {
+            "input": "3 3\n0 -4 -1\n",
+            "expected": "-4 -1 0"
+          }
+        ],
+        "kind": "code"
       }
     ]
   },
@@ -487,6 +599,30 @@
         "hint": "One of these is plain data; one is a lexical borrow; one is a separate owned list.",
         "solution": "Return the range. A range is two positions and can be returned freely; the caller applies it to the array where the sort happens, which creates a short-lived slice in that scope.",
         "explanation": "A slice is a lend tied to the scope that created it, so returning it or holding it in a var is rejected. Returning a copy compiles, but sorting the copy leaves the original array unchanged, which is not what the caller wanted. A range keeps the window as data and leaves the borrow to the place that uses it."
+      },
+      {
+        "id": "index-write-row-sums",
+        "title": "Sum each row of a typed grid",
+        "prompt": "Read h, w, and h × w integers in row order. Store them in [Row, Col]Int and print one sum for each row, in order. Keep row and column indices in their own domains.",
+        "hint": "Nest for r in Row and for c in Col. Reset the row total inside the outer loop.",
+        "solution": "The outer domain selects a row, the inner domain visits every column. Resetting total for each row prevents one row's sum leaking into the next.",
+        "starter": "let (h, w): (1..=50, 1..=50) = read()\ndomain Row = 1..=h\ndomain Col = 1..=w\nlet g: [Row, Col]Int = read()\n// Print the sum of each row.\nprint(0)\n",
+        "reference": "let (h, w): (1..=50, 1..=50) = read()\ndomain Row = 1..=h\ndomain Col = 1..=w\nlet g: [Row, Col]Int = read()\nfor r in Row:\n    var total = 0\n    for c in Col: total += g[r, c]\n    print(total)\n",
+        "tests": [
+          {
+            "input": "2 3\n1 2 3\n-4 5 6\n",
+            "expected": "6 7"
+          },
+          {
+            "input": "1 1\n-8\n",
+            "expected": "-8"
+          },
+          {
+            "input": "3 1\n4\n0\n-2\n",
+            "expected": "4 0 -2"
+          }
+        ],
+        "kind": "code"
       }
     ]
   }

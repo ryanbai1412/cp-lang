@@ -48,10 +48,26 @@ for p in (Row, Col):
 
 One `Range<I>` type covers `l..r`, `l..=r`, and open-ended `..i`, `..=i`, `i..`, `i.r..`, and `l.r..r.l`. A range is plain data: you can store it in a variable or return it from a helper, then apply it to an array at the point of use (`sort(mut a[w])`) to form a temporary slice without changing index numbering.
 
-> **Browser status for parent-indexed slices.** In CP Lang 0.2.2, `a[l..=r]` produces a parent-indexed slice (`mid[V(3)]` keeps parent position `V(3)`) and `sort(mut a[l..=r])` sorts that window in place. The browser WebAssembly build still lowers slices as zero-based sub-lists, so the slice example below illustrates the full 0.2.2 behavior:
+> **Current slice support.** Parent-indexed slicing and in-place slice sorting are not yet complete in the compiler or browser. To sort part of an array today, copy the selected values into a list, sort that list, and write it back explicitly:
 
-```cp CP Lang 0.2.2 · slices.cp
-let n: 3..=50 = read()
+```cp CP Lang · window-copy.cp
+let n: 4..=50 = read()
+domain V = 1..=n
+var a: [V]Int = read()
+
+var mid: List<Int> = []
+for v in V(2)..=V(4): mid.push(a[v])
+print(mid.len, mid[1], sum(mid))
+sort(mut mid)
+for i in 0..mid.len:
+    a[V(i + 2)] = mid[i]
+print(a)
+```
+
+The full 0.2.2 specification retains parent indices in a slice (`mid[V(3)]` means the original position `V(3)`) and permits sorting the window in place. This form is not yet runnable:
+
+```cp CP Lang 0.2.2 · spec fragment
+let n: 4..=50 = read()
 domain V = 1..=n
 var a: [V]Int = read()
 
@@ -96,4 +112,9 @@ Combining `I.bounds` with a structural range `0..=cap` gives a zero-boilerplate 
 ```
 
 ```exercise index-slices-range-or-lend
+```
+
+## Write a program
+
+```exercise index-write-row-sums
 ```

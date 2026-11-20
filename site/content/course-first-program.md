@@ -129,3 +129,8 @@ See [Getting started & CLI](getting-started.html) for installation instructions 
 ```
 
 Next, [domains and boundaries](course-domains.html) shows how `domain V` prevents index mix-ups and removes `+ 1` shifts from prefix sums and windows.
+
+## Write a program
+
+```exercise first-program-write-positives
+```

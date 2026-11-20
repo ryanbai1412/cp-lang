@@ -34,10 +34,11 @@ node --test site/test_trace.cjs
 ```
 
 `test_site.py` builds every page, validates local links and heading fragments, and
-runs the legacy prototype `example` fixtures and foundations worked programs with
-the Python prototype and `g++` C++17.
+runs the example fixtures, worked programs, and write-code reference solutions with
+the Rust `cpl` binary and `g++` C++17. It also checks and builds every homepage
+showcase port and syntax-checks its emitted C++17. No Python compiler is imported.
 `test_compiler.cjs` and `test_course.cjs` run and build every fixture, runnable inline
-course block, playground preset, and course prediction through the real browser WASM
+course block, playground preset, course prediction, and write-code reference through the real browser WASM
 runtime (including timeout and recovery). Compiler APIs avoid the
 prototype CLI's source-stamping side effect. Design blocks are explicitly
 labeled and are not compiled; they must be reviewed against the design.
@@ -64,9 +65,9 @@ site/.venv/bin/python site/test_trace_browser.py --chrome "$(command -v google-c
   with an explicit label if a different status applies.
 - `template.html` and `assets/` own the shared layout, colors, behavior, and
   system font stacks. Markdown raw HTML is escaped by default.
-- `course/` stores seven progressive lessons' metadata and exercise banks.
+- `course/` stores ten progressive lessons' metadata and exercise banks.
   Lesson prose is in `content/course-*.md`. An empty fenced `exercise ID`
-  block renders a checked knowledge or output-prediction exercise with a
+  block renders a knowledge, output-prediction, or write-code exercise with a
   hint and solution. `course.py` validates IDs, references, and answer data
   at build time. Exercise prose is escaped, never treated as HTML.
 - `../tools/trace/index.html` is the canonical authored trace viewer, embedded
@@ -110,6 +111,13 @@ off the UI thread, stops runs after five seconds, and restarts after Stop or a
 timeout. The compiled module is shared across offline page navigation. The
 complete HTML is about 1.9 MB; the compiler itself adds about 0.8 MiB of base64
 gzip. Modern browsers need WebAssembly, Workers, and DecompressionStream.
+
+Write-code exercises use `kind: "code"`, an editable `starter`, a runnable
+`reference`, and at least three `tests` with `input` and `expected` strings.
+Check code grades the learner's source against every case in WASM, not against
+the reference text. Progress stores the checked source and its observed outputs;
+editing the source invalidates completion. Changing sandbox stdin does not change
+the grading cases. Reference solutions run in both native C++17 and WASM tests.
 
 Conceptual course questions check a selected answer; output checks actually run
 each input through WASM and compare stdout to the prediction, ignoring whitespace

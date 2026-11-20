@@ -11,45 +11,45 @@ SHOWCASE_ITEMS = [
     dict(
         id="coci21c1p3",
         title="COCI '21 #1 — Logičari",
-        topic="Tree & cycle DP · Dsu, Rooted, @memo, ?Int",
-        cp_path="proto/ports/scout_batch_35/coci21c1p3.cp",
+        topic="Tree & cycle DP · Dsu, @memo, ?Int",
+        cp_path="proto/ports/scout_batch_35/today/coci21c1p3.cp",
         cpp_path="corpus/submissions/4080960.cpp",
-        v2_loc=23,
+        cp_loc=49,
         raw_loc=177,
         stripped_loc=115,
         summary=(
             "A functional graph has one cycle per component. Drop one cycle edge with Dsu, "
-            "root the remaining tree with Rooted, and let @memo solve the four endpoint cases "
-            "over ?Int without manual cycle extraction or 1e9 sentinel tables."
+            "build the remaining tree's child lists, and let @memo solve the four endpoint cases "
+            "over ?Int without sentinel tables."
         ),
     ),
     dict(
         id="noip10p4",
         title="NOIP '10 — Water Diversion",
-        topic="Grid flood fill & interval cover · (Row, Col), p.adj4, @memo",
-        cp_path="proto/ports/scout_batch_37/noip10p4.cp",
+        topic="Grid flood fill & interval cover · typed rows and columns",
+        cp_path="proto/ports/scout_batch_37/today/noip10p4.cp",
         cpp_path="corpus/submissions/5205786.cpp",
-        v2_loc=30,
+        cp_loc=39,
         raw_loc=132,
         stripped_loc=104,
         summary=(
-            "A typed product domain Cell = (R, C) and p.adj4 eliminate bounds checks and "
-            "four-way direction loops, while @memo computes the reachable bottom-row interval "
-            "from every top-row cell directly."
+            "Separate row and column domains keep grid coordinates distinct. A cached flood fill "
+            "computes the reachable bottom-row intervals, then a greedy sweep covers them "
+            "with the fewest pump stations."
         ),
     ),
     dict(
         id="noi10p1",
         title="NOI '10 — Energy Collection",
-        topic="Harmonic GCD inclusion-exclusion · [1..=k]Int, .rev, .step(g)",
-        cp_path="proto/ports/scout_batch_37/noi10p1.cp",
+        topic="Harmonic GCD inclusion-exclusion · [1..=k]Int, .rev",
+        cp_path="proto/ports/scout_batch_37/today/noi10p1.cp",
         cpp_path="corpus/submissions/5670455.cpp",
-        v2_loc=9,
+        cp_loc=13,
         raw_loc=66,
         stripped_loc=42,
         summary=(
-            "A 1-based array [1..=k]Int, a reversed inclusive range, and a stepped generator "
-            "expression replace a 40-line map sweep with nine lines of direct math."
+            "A 1-based array [1..=k]Int and a reversed inclusive range express GCD "
+            "inclusion-exclusion directly. Each step subtracts counts already assigned to larger multiples."
         ),
     ),
     dict(
@@ -58,7 +58,7 @@ SHOWCASE_ITEMS = [
         topic="2D sub-rectangle sweep · [0..n, 0..m], nested fn, parallel assignment",
         cp_path="proto/ports/scout_batch_35/coci21c6p2.cp",
         cpp_path="corpus/submissions/4529998.cpp",
-        v2_loc=19,
+        cp_loc=19,
         raw_loc=71,
         stripped_loc=41,
         summary=(
@@ -69,15 +69,15 @@ SHOWCASE_ITEMS = [
     dict(
         id="cheerio1s5",
         title="Cheerio '1 S5 — Block Clearing",
-        topic="String prefix & interval DP · Str, prefix, dual @memo",
-        cp_path="proto/ports/scout_batch_40/cheerio1s5.cp",
+        topic="String prefix & interval DP · character domains, range-indexed tables",
+        cp_path="proto/ports/scout_batch_40/today/cheerio1s5.cp",
         cpp_path="corpus/submissions/5339756.cpp",
-        v2_loc=16,
+        cp_loc=20,
         raw_loc=74,
         stripped_loc=46,
         summary=(
-            "0..n-indexed Str, prefix(...), and two @memo recurrences replace reverse-ordered "
-            "nested DP tables and manual boundary checks."
+            "A nominal character domain identifies the input positions. Prefix counts and "
+            "two range-indexed DP tables track the best score while respecting the block budget."
         ),
     ),
 ]
@@ -127,7 +127,7 @@ def _default_block(code, language, header_html, highlight, *, collapsible_lines=
 
 
 def showcase_html(highlight, render_block=None):
-    total_v2 = sum(item["v2_loc"] for item in SHOWCASE_ITEMS)
+    total_v2 = sum(item["cp_loc"] for item in SHOWCASE_ITEMS)
     total_raw = sum(item["raw_loc"] for item in SHOWCASE_ITEMS)
     total_stripped = sum(item["stripped_loc"] for item in SHOWCASE_ITEMS)
     raw_pct = round((1 - total_v2 / total_raw) * 100)
@@ -137,15 +137,15 @@ def showcase_html(highlight, render_block=None):
     for item in SHOWCASE_ITEMS:
         cp_source = _strip_header_comments((REPO_ROOT / item["cp_path"]).read_text())
         cpp_source = _extract_cpp_solution((REPO_ROOT / item["cpp_path"]).read_text())
-        raw_cut = round((1 - item["v2_loc"] / item["raw_loc"]) * 100)
-        strip_cut = round((1 - item["v2_loc"] / item["stripped_loc"]) * 100)
+        raw_cut = round((1 - item["cp_loc"] / item["raw_loc"]) * 100)
+        strip_cut = round((1 - item["cp_loc"] / item["stripped_loc"]) * 100)
 
         cpp_header = (
             f'<span>Before · C++17 ({item["raw_loc"]} raw / {item["stripped_loc"]} stripped) · '
             f'<a href="{REPO_URL}/{item["cpp_path"]}" style="white-space:nowrap">full file ↗</a></span>'
         )
         cp_header = (
-            f'<span>After · CP Lang 0.2.2 ({item["v2_loc"]} lines) · '
+            f'<span>After · CP Lang 0.2.2 ({item["cp_loc"]} lines) · '
             f'<a href="{REPO_URL}/{item["cp_path"]}" style="white-space:nowrap">source ↗</a></span>'
         )
 
@@ -180,8 +180,8 @@ def showcase_html(highlight, render_block=None):
             f'<div><h3>{html.escape(item["title"])}</h3>'
             f'<p class="showcase-topic">{html.escape(item["topic"])}</p></div>'
             f'<div class="showcase-metrics">'
-            f'<span class="metric-pill"><strong>{item["v2_loc"]}</strong> vs {item["raw_loc"]} raw (−{raw_cut}%)</span>'
-            f'<span class="metric-pill"><strong>{item["v2_loc"]}</strong> vs {item["stripped_loc"]} stripped (−{strip_cut}%)</span>'
+            f'<span class="metric-pill"><strong>{item["cp_loc"]}</strong> vs {item["raw_loc"]} raw (−{raw_cut}%)</span>'
+            f'<span class="metric-pill"><strong>{item["cp_loc"]}</strong> vs {item["stripped_loc"]} stripped (−{strip_cut}%)</span>'
             f'</div></div>'
             f'<p class="showcase-summary">{html.escape(item["summary"])}</p>'
             f'<div class="showcase-grid">{cpp_block}{cp_block}</div></section>'

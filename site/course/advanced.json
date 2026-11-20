@@ -92,6 +92,34 @@
             "expected": "10"
           }
         ]
+      },
+      {
+        "id": "borrow-write-counter",
+        "title": "Update through a mutable projection",
+        "prompt": "Read n and q. All n counters start at 0. Each of the q updates gives a position and a signed delta. Apply the updates through Counter.at and print the final counters in position order.",
+        "hint": "Inside the update loop, write c.at(pos) += delta. The lend ends after that statement.",
+        "solution": "Counter.at projects the chosen array cell as lends mut Int. A compound assignment changes that cell in place without storing or returning a borrow.",
+        "starter": "let (n, q): (1..=100, 0..=100) = read()\ndomain V = 1..=n\nstruct Counter:\n    cnt: [V]Int\n    fn at(mut self, i: V) lends mut Int:\n        mut self.cnt[i]\nvar c = Counter([V] v => 0)\nfor _ in 0..q:\n    let (pos, delta): (V, Int) = read()\n    // Apply this delta through c.at(pos).\nprint(c.cnt)\n",
+        "reference": "let (n, q): (1..=100, 0..=100) = read()\ndomain V = 1..=n\nstruct Counter:\n    cnt: [V]Int\n    fn at(mut self, i: V) lends mut Int:\n        mut self.cnt[i]\nvar c = Counter([V] v => 0)\nfor _ in 0..q:\n    let (pos, delta): (V, Int) = read()\n    c.at(pos) += delta\nprint(c.cnt)\n",
+        "tests": [
+          {
+            "input": "3 3\n1 4\n3 -2\n1 5\n",
+            "expected": "9 0 -2"
+          },
+          {
+            "input": "1 2\n1 -3\n1 3\n",
+            "expected": "0"
+          },
+          {
+            "input": "4 0\n",
+            "expected": "0 0 0 0"
+          },
+          {
+            "input": "2 1\n2 7\n",
+            "expected": "0 7"
+          }
+        ],
+        "kind": "code"
       }
     ]
   },
@@ -201,6 +229,34 @@
         ],
         "answer": 1,
         "explanation": "Automatic per-test and per-loop resets are a core 0.2.2 rule that removes one of the most common multitest WA bugs without manual memset or generation counters."
+      },
+      {
+        "id": "dp-write-coins",
+        "title": "Complete the optional coin-change DP",
+        "prompt": "Read n, a target x, and n positive coin values. You may use each coin any number of times. Print the fewest coins needed to reach exactly x, or -1 if it is impossible. Target 0 needs 0 coins.",
+        "hint": "Set dp[0] = 0. For each sum s and coin c <= s, relax dp[s] min= dp[s - c] + 1.",
+        "solution": "Unreachable sums stay none. Adding 1 to none stays none, and min= ignores that candidate. Reachable candidates compete by coin count.",
+        "starter": "let (n, x): (1..=20, 0..=100) = read()\nlet coins: [0..n]1..=100 = read()\nvar dp: [0..=x]?Int = none\ndp[0] = 0\n// Fill dp for positive sums.\nprint(dp[x] ?? -1)\n",
+        "reference": "let (n, x): (1..=20, 0..=100) = read()\nlet coins: [0..n]1..=100 = read()\nvar dp: [0..=x]?Int = none\ndp[0] = 0\nfor s in 1..=x:\n    for c in coins:\n        if c <= s: dp[s] min= dp[s - c] + 1\nprint(dp[x] ?? -1)\n",
+        "tests": [
+          {
+            "input": "3 11\n1 5 7\n",
+            "expected": "3"
+          },
+          {
+            "input": "2 3\n2 4\n",
+            "expected": "-1"
+          },
+          {
+            "input": "1 0\n7\n",
+            "expected": "0"
+          },
+          {
+            "input": "2 6\n2 3\n",
+            "expected": "2"
+          }
+        ],
+        "kind": "code"
       }
     ]
   },
@@ -378,6 +434,30 @@
         ],
         "answer": 2,
         "explanation": "Concatenating the whole folder would blow past judge size limits. Local `#include` paths fail on judges, and judges never fetch dependencies. Tree-shaking keeps every submission compact and self-contained."
+      },
+      {
+        "id": "algebra-write-range-min",
+        "title": "Maintain range minima with SegTree",
+        "prompt": "Read n, q, and n integers. Query 1 pos value replaces a value. Query 2 l r prints the minimum on the inclusive interval l..=r. Complete the two operations using the minimum monoid.",
+        "hint": "Construct SegTree<V, Int>(min, a). Use st.set(pos, value) for updates and st.fold(l..=r) for queries.",
+        "solution": "Minimum is associative, so a segment tree can combine adjacent pieces. Point updates replace one leaf; an inclusive range fold returns its smallest current value.",
+        "starter": "use std.segtree.{SegTree}\nlet (n, q): (1..=100, 1..=100) = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nvar st = SegTree<V, Int>(min, a)\nfor _ in 0..q:\n    let t: Int = read()\n    if t == 1:\n        let pos: V = read()\n        let value: Int = read()\n        // Replace the value at pos.\n    else:\n        let (l, r): (V, V) = read()\n        // Print the minimum from l through r.\n        print(0)\n",
+        "reference": "use std.segtree.{SegTree}\nlet (n, q): (1..=100, 1..=100) = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nvar st = SegTree<V, Int>(min, a)\nfor _ in 0..q:\n    let t: Int = read()\n    if t == 1:\n        let pos: V = read()\n        let value: Int = read()\n        st.set(pos, value)\n    else:\n        let (l, r): (V, V) = read()\n        print(st.fold(l..=r))\n",
+        "tests": [
+          {
+            "input": "4 4\n5 2 7 3\n2 1 4\n1 2 9\n2 1 4\n2 2 3\n",
+            "expected": "2 3 7"
+          },
+          {
+            "input": "1 3\n-4\n2 1 1\n1 1 8\n2 1 1\n",
+            "expected": "-4 8"
+          },
+          {
+            "input": "3 3\n2 2 2\n1 3 -5\n2 3 3\n2 1 2\n",
+            "expected": "-5 2"
+          }
+        ],
+        "kind": "code"
       }
     ]
   },
@@ -469,6 +549,34 @@
         "hint": "Avoid `atan2` on integers; use exact cross-product predicates.",
         "solution": "Use `ByAngle` (backed by half-plane + exact `cross` sign) and `orient(a, b, c) -> -1 | 0 | 1`, both computed in exact integer arithmetic.",
         "explanation": "`atan2` converts coordinates to `F64` and can mis-order nearly collinear points with coordinates up to 1e9. `ByAngle` and `orient` stay completely exact using 64-bit / 128-bit integer cross products."
+      },
+      {
+        "id": "graphs-write-components",
+        "title": "Count connected components",
+        "prompt": "Read n, m, and m undirected edges on vertices 1..=n. Use Dsu<V> to print the number of connected components after all edges. Repeated edges and self-loops do not create extra merges.",
+        "hint": "Start with n singleton components. Call d.unite(u, v) for each edge, then print d.components.",
+        "solution": "Union-find joins two components only when their representatives differ. Isolated vertices remain singleton components; duplicate edges and self-loops leave the count unchanged.",
+        "starter": "use std.dsu.{Dsu}\nlet (n, m): (1..=100, 0..=100) = read()\ndomain V = 1..=n\nvar d = Dsu<V>()\nfor _ in 0..m:\n    let (u, v): (V, V) = read()\n    // Join the components of u and v.\nprint(d.components)\n",
+        "reference": "use std.dsu.{Dsu}\nlet (n, m): (1..=100, 0..=100) = read()\ndomain V = 1..=n\nvar d = Dsu<V>()\nfor _ in 0..m:\n    let (u, v): (V, V) = read()\n    d.unite(u, v)\nprint(d.components)\n",
+        "tests": [
+          {
+            "input": "5 3\n1 2\n2 3\n4 5\n",
+            "expected": "2"
+          },
+          {
+            "input": "4 0\n",
+            "expected": "4"
+          },
+          {
+            "input": "3 4\n1 1\n1 2\n2 1\n2 3\n",
+            "expected": "1"
+          },
+          {
+            "input": "1 1\n1 1\n",
+            "expected": "1"
+          }
+        ],
+        "kind": "code"
       }
     ]
   },
@@ -588,6 +696,34 @@
           }
         ],
         "code": "let n: 1..=20 = read()\n\n// Small linear recurrence (see memo_dp.cp for cached @memo DP).\nfn f(i: Int) -> Int:\n    if i == 0:\n        return 1\n    f(i - 1) * 3 + i\n\nprint(f(n - 1))"
+      },
+      {
+        "id": "verify-write-nonempty",
+        "title": "Repair an all-negative counterexample",
+        "prompt": "The fast program incorrectly allows an empty subarray and prints 0 for all-negative input. Fix it to print the maximum sum of a nonempty contiguous subarray. Keep the co-located brute for comparison; Trace can compare the two programs on the editable input.",
+        "hint": "Initialize from an actual array element, not 0. At each later element, choose between starting a new subarray and extending the current one.",
+        "solution": "Starting at the first element enforces nonemptiness. The running sum is the best subarray ending here, and best is the largest running sum so far. The brute enumerates every nonempty interval.",
+        "starter": "let n: 1..=100 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nvar cur = 0\nvar best = 0\nfor x in a:\n    cur = max(0, cur + x)\n    best max= cur\nprint(best)\n\n@brute(main)\nfn slow():\n    var ans: ?Int = none\n    for l in V:\n        var total = 0\n        for r in l..=V.last:\n            total += a[r]\n            ans max= total\n    print(ans!)\n",
+        "reference": "let n: 1..=100 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nvar cur = a[V.first]\nvar best = cur\nfor v in V if v != V.first:\n    cur = max(a[v], cur + a[v])\n    best max= cur\nprint(best)\n\n@brute(main)\nfn slow():\n    var ans: ?Int = none\n    for l in V:\n        var total = 0\n        for r in l..=V.last:\n            total += a[r]\n            ans max= total\n    print(ans!)\n",
+        "tests": [
+          {
+            "input": "3\n-5 -2 -9\n",
+            "expected": "-2"
+          },
+          {
+            "input": "1\n-7\n",
+            "expected": "-7"
+          },
+          {
+            "input": "5\n-2 3 -1 4 -5\n",
+            "expected": "6"
+          },
+          {
+            "input": "3\n0 0 0\n",
+            "expected": "0"
+          }
+        ],
+        "kind": "code"
       }
     ]
   }

@@ -50,6 +50,7 @@
       diagnostics.replaceChildren();
       find("[data-cpp]").textContent = "";
       find("[data-cpp-panel]").open = false;
+      status.dataset.error = "false";
       status.textContent = "Source changed · Ctrl / ⌘ + Enter to run";
       checkTimer = setTimeout(check, 300);
       inspect();
@@ -109,6 +110,12 @@
     source.addEventListener("input", changed);
     source.addEventListener("click", inspect);
     source.addEventListener("keyup", inspect);
+    editor.closest("form")?.addEventListener("reset", () => {
+      queueMicrotask(() => {
+        changed();
+        stdout.textContent = "Run a program to see its output.";
+      });
+    });
     editor.addEventListener("keydown", event => {
       if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && !run.disabled) {
         event.preventDefault(); execute("run");

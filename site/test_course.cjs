@@ -6,10 +6,11 @@ const {check, execute} = require("./assets/course.js");
 
 test("catalog progress rechecks stored answers even when passed and revision are current", () => {
   const data = {
-    lessons:[{slug:"lesson", exercises:["choice", "output"]}],
+    lessons:[{slug:"lesson", exercises:["choice", "output", "code"]}],
     exercises:{choice:{kind:"choice", answer:1, explanation:"Correct."},
-      output:{kind:"output", tests:[{expected:"3"}, {expected:"4"}]}},
-    revisions:{choice:"current", output:"current"}
+      output:{kind:"output", tests:[{expected:"3"}, {expected:"4"}]},
+      code:{kind:"code", tests:[{expected:"42"}]}},
+    revisions:{choice:"current", output:"current", code:"current"}
   };
   function catalog(answers) {
     const progress = {value:0}, label = {}, note = {};
@@ -27,6 +28,10 @@ test("catalog progress rechecks stored answers even when passed and revision are
   assert.equal(catalog({choice:"0", output:["3", "wrong"]}), 0);
   assert.equal(catalog({choice:"1", output:["3", "wrong"]}), 1);
   assert.equal(catalog({choice:"1", output:[" 3\n", "4"]}), 2);
+  assert.equal(catalog({code:{source:"print(42)", outputs:["42\n"]}}), 1);
+  for (const code of ["print(42)", {source:"", outputs:["42"]},
+    {source:"print(0)", outputs:["0"]}, {source:"print(42)", outputs:[]}])
+    assert.equal(catalog({code}), 0);
 });
 
 test("a choice needs an explicit answer; empty input never selects option zero", () => {
@@ -69,6 +74,71 @@ test("output predictions execute the source and compare real stdout, not answer 
   assert.equal(result.passed, true);
   assert.deepEqual(calls, [[exercise.source, "21"]]);
   assert.equal((await execute(exercise, ["42"], async () => ({ok:false, stderr:"error[E0301]"}))).passed, false);
+});
+
+test("code grading runs the submitted source on every fixed input and fails closed", async () => {
+  const exercise = {kind:"code", reference:"not the submitted source", tests:[
+    {input:"21", expected:"42"}, {input:"-2", expected:"-4"}, {input:"0", expected:"0"}
+  ]};
+  const calls = [];
+  const run = async (source, input) => {
+    calls.push([source, input]); return {ok:true, stdout:String(Number(input) * 2)};
+  };
+  const result = await execute(exercise, "submitted", run);
+  assert.equal(result.passed, true);
+  assert.deepEqual(calls, [["submitted", "21"], ["submitted", "-2"], ["submitted", "0"]]);
+  assert.equal(check(exercise, result.answer).passed, true);
+  assert.equal(check(exercise, "submitted").passed, false, "source alone is not a completion receipt");
+  const wrong = await execute(exercise, "wrong", async () => ({ok:true, stdout:"42"}));
+  assert.equal(wrong.passed, false);
+  assert.match(wrong.message, /Case 2.*Expected: -4.*Got: 42/);
+  const error = await execute(exercise, "broken", async () => ({ok:false, stderr:"error[E0201]"}));
+  assert.equal(error.passed, false);
+  assert.match(error.message, /Case 1.*E0201/);
+  assert.equal((await execute(exercise, "  ", () => { throw new Error("must not run"); })).passed, false);
+  await assert.rejects(execute(exercise, "loop", async () => { throw new Error("Stopped after 5 seconds."); }), /Stopped after/);
+});
+
+test("code completion restores source, ignores sandbox stdin, and clears on source edits or reset", async () => {
+  const handlers = {}, submit = {disabled:false}, status = {}, badge = {}, stored = new Map();
+  const source = {value:"starter", setAttribute(){}, removeAttribute(){}};
+  const form = {
+    querySelector:selector => selector === "[data-source]" ? source : submit,
+    querySelectorAll:() => [source],
+    addEventListener(name, callback) { handlers[name] = callback; }
+  };
+  const section = {dataset:{exercise:"code"}, querySelector:selector =>
+    ({form, ".exercise-feedback":status, "[data-badge]":badge})[selector], querySelectorAll:() => []};
+  const data = {lessons:[], revisions:{code:"current"}, exercises:{code:{kind:"code", tests:[{input:"21", expected:"42"}]}}};
+  function load() {
+    vm.runInNewContext(fs.readFileSync(require.resolve("./assets/course.js"), "utf8"), {
+      document:{getElementById:() => ({textContent:JSON.stringify(data)}),
+        querySelectorAll:selector => selector === "[data-exercise]" ? [section] : []},
+      localStorage:{getItem:key => stored.get(key), setItem:(key, value) => stored.set(key, value),
+        removeItem:key => stored.delete(key)},
+      CpCompiler:{call:async () => ({ok:true, stdout:"42\n"})}
+    });
+  }
+  load();
+  source.value = "print(42)";
+  await handlers.submit({preventDefault(){}});
+  assert.equal(section.dataset.state, "passed");
+  assert.equal(JSON.parse(stored.get("cp-course-v1:code")).answer.source, "print(42)");
+  source.value = "starter";
+  load();
+  assert.equal(source.value, "print(42)");
+  assert.equal(section.dataset.state, "passed");
+  handlers.input({target:{matches:() => false}});
+  assert.equal(section.dataset.state, "passed", "sandbox input is not part of the submission");
+  source.value = "changed";
+  handlers.input({target:{matches:() => true}});
+  assert.equal(section.dataset.state, undefined);
+  assert.equal(stored.size, 0);
+  await handlers.submit({preventDefault(){}});
+  handlers.reset();
+  assert.equal(section.dataset.state, undefined);
+  assert.equal(stored.size, 0);
+  assert.match(status.textContent, /cleared/);
 });
 
 test("editing a first prediction clears pending feedback even if its run times out", async () => {
