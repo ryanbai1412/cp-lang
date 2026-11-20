@@ -53,8 +53,8 @@ print(dp[x] ?? -1)
 `dp[s - c] + 1` is `none` when `dp[s - c]` is, and `min=` skips `none`, so
 there is no `INF` to pick and no guard to forget. The bounds in the first
 line are the statement's constraints: they size the array and check
-the input. This example is written against the 0.2.2 specification; see
-[Status](#status) for what runs today.
+the input. It runs today: save it as `coins.cp` and `cpl run coins.cp`
+prints `3` for the input `3 11` / `1 5 7`.
 
 ## What 0.2.2 is
 
@@ -107,6 +107,8 @@ $ cargo build -p cpl-cli
 $ printf '3\n1 4 6\n' | target/debug/cpl run site/examples/optional.cp
 6
 $ target/debug/cpl build site/examples/optional.cp -o -    # the C++17 to submit
+$ target/debug/cpl run site/examples/optional.cp --release  # run that C++, built with g++ -O2
+$ target/debug/cpl build site/examples/optional.cp --checked # also build it with sanitizers
 $ target/debug/cpl --help                                   # check, fmt, lint, test, stress, lsp, ...
 ```
 
@@ -142,8 +144,8 @@ $ site/.venv/bin/python site/bundle.py                       # writes dist/cp-la
 catching up to it. The Rust compiler (`crates/`) checks, runs and builds a
 growing subset; the playground runs that same compiler. The Python
 prototype (`proto/`) covers more of the library and builds the corpus
-ports, but predates some 0.2.2 spellings. Neither accepts Tropical
-Optional arithmetic yet, so the example above does not compile today.
+ports, but predates some 0.2.2 spellings. The example above runs in the
+Rust compiler, in the interpreter and as emitted C++.
 The docs site labels every snippet as either runnable or specification.
 
 ## Repository map
