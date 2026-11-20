@@ -60,6 +60,22 @@ def main():
         print(f"cp {VERSION} ({compiler_rev()})")
         return
     cmd, path = sys.argv[1], sys.argv[2]
+    if cmd in ("test", "doc", "lib-run"):
+        # library code (stdlib/, examples/local-lib/) runs in the reference interpreter, cpi
+        from cpi import runner
+        if cmd == "test":
+            only = None
+            paths = sys.argv[2:]
+            if "-k" in paths:
+                i = paths.index("-k")
+                only = paths[i + 1]
+                paths = paths[:i] + paths[i + 2:]
+            sys.exit(1 if runner.run_tests(paths, only) else 0)
+        if cmd == "doc":
+            print(runner.doc(path))
+            return
+        runner.run_file(path, sys.stdin.read())
+        return
     if cmd == "explain":
         _, comp = build(path)
         seen = set()
