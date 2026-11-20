@@ -1,6 +1,6 @@
 // Runnable port (proto/cp.py lib-run) of statement-first cco18p5.cp
 // original: corpus/submissions/4801867.cpp
-use std.algebra.{Monoid, Max}
+use std.algebra.{Monoid}
 use std.segtree.{SegTree}
 
 let (n, k, q): (Int, Int, Int) = read()
@@ -25,8 +25,8 @@ let arg_max = Monoid<Peak>(
 )
 
 let init_peaks = [I] i => Peak(true, init_a[i], i.to_idx)
-var val_st = SegTree<I, Peak>.from(arg_max, init_peaks)
-var pair_st = SegTree<I, Int>.new(Max<Int>)
+var val_st = SegTree<I, Peak>(arg_max, init_peaks)
+var pair_st = SegTree<I, Int>(max)
 
 fn left_best(p: I) -> Peak:
     let pi = p.to_idx

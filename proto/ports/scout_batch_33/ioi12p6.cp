@@ -13,7 +13,6 @@
 // input: n c r, the n - 1 ranks in order, then c lines `s e` (0-based)
 // original: corpus/submissions/4848321.cpp (the grader function GetBestPosition)
 use std.fenwick.{Fenwick}
-use std.algebra.{Sum}
 
 let (n, c, r): (Int, Int, Int) = read()
 domain Pos = 0..n
@@ -24,7 +23,7 @@ var kids: [Node]List<Node> = [Node] _ => []
 
 // alive[p] = 1 while the group whose leftmost starting position is p is
 // still in; `head[p]` is the tree node that group has become
-var alive = Fenwick<Pos, Int>.from(Sum<Int>, [Pos] _ => 1)
+var alive = Fenwick<Pos, Int>([Pos] _ => 1)
 var head: [Pos]Node = [Pos] p => Node(p.to_idx)
 for round in 0..c:
     let (s, e): (Int, Int) = read()

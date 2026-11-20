@@ -8,8 +8,7 @@
 // '(' later; when the running depth goes negative, flip the open mixed pair
 // that closes earliest.
 // original: corpus/submissions/4531869.cpp
-use std.heap.{Heap}
-use std.algebra.{Less}
+use std.heap.{MinHeap}
 
 fn solve():
     let n: Int = read()
@@ -30,7 +29,7 @@ fn solve():
             kept[if s[x] == ')': x else: y] = true
 
     var depth = 0
-    var flippable = Heap<(Int, Int)>.new(Less<(Int, Int)>)      // (y, pair)
+    var flippable = MinHeap<(Int, Int)>()                       // (y, pair)
     for i in 0..2 * n:
         if let p = opens_mixed[i]: flippable.push((pairs[p].1, p))
         if not kept[i]: continue

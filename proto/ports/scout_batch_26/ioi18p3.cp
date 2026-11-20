@@ -15,7 +15,6 @@
 use std.graph.{Graph}
 use std.tree.{Rooted}
 use std.fenwick.{Fenwick}
-use std.algebra.{Sum}
 
 let (n, m, q): (2..=2e5, 1..=4e5, 1..=2e5) = read()
 domain V = 0..n
@@ -29,7 +28,7 @@ let g = Graph<V, E>.undirected(roads)
 // WISH TR12: `Dsu<V>.unite_under(a, b)` (b becomes the top) or a ready
 // `kruskal_tree(order, adj)`; std.dsu picks the top by size, so the find is
 // rewritten here.
-fn reach_tree(order: List<V>, earlier: (V, V) -> Bool) -> Rooted<V>:
+fn reach_tree(order: List<V>, earlier: (V, V) -> Bool):
     var top: [V]V = [V] v => v
     var kids: [V]List<(to: V)> = [V] _ => []
     fn find(v: V) -> V:
@@ -45,7 +44,7 @@ fn reach_tree(order: List<V>, earlier: (V, V) -> Bool) -> Rooted<V>:
             if c != v:
                 top[c] = v
                 kids[v].push((to: c))
-    Rooted<V>.new(u => kids[u], order.last)
+    Rooted(u => kids[u], order.last)
 
 var down: List<V> = []
 for v in V.rev: down.push(v)
@@ -54,33 +53,22 @@ for v in V: up.push(v)
 let human = reach_tree(down, (a, v) => a > v)
 let wolf = reach_tree(up, (a, v) => a < v)
 
-// The highest ancestor of v that still passes `ok` (ok holds for v and
-// fails from some ancestor on).
-// WISH TR13: `t.climb(v, ok)` by binary lifting; `ancestor(v, k)` under a
-// hand bisection is O(log^2 n) and nine lines.
-fn climb(t: Rooted<V>, v: V, ok: V -> Bool) -> V:
-    var (lo, hi) = (0, t.depth[v])
-    while lo < hi:
-        let mid = (lo + hi + 1) / 2
-        if ok(t.ancestor(v, mid)!): lo = mid
-        else: hi = mid - 1
-    t.ancestor(v, lo)!
-
 // cities inside the wolf range among the first k of the human order, for
 // both ends of every trip's human range
 domain Cut = 0..=n
 var asks: [Cut]List<(trip: Trip, sign: Int)> = [Cut] _ => []
-var wolf_range: [Trip]Range<Rooted<V>.Pre> = [Trip] _ => wolf.sub(V.first)
+var wolf_range: [Trip]Range<wolf.Pre> = [Trip] _ => wolf.sub(V.first)
 for i in Trip:
     let trip = trips[i]
-    let h = human.sub(climb(human, trip.s, c => c >= trip.l))
-    wolf_range[i] = wolf.sub(climb(wolf, trip.e, c => c <= trip.r))
+    let h = human.sub(human.lift_while(trip.s, c => c >= trip.l)!)
+    wolf_range[i] = wolf.sub(wolf.lift_while(trip.e, c => c <= trip.r)!)
     asks[Cut(h.lo.ord)].push((trip: i, sign: -1))
     asks[Cut(h.hi.ord)].push((trip: i, sign: 1))
 
+let horder = human.preorder
 var shared: [Trip]Int = 0
-var seen = Fenwick<Rooted<V>.Pre, Int>.new(Sum<Int>)
+var seen = Fenwick<wolf.Pre, Int>.new()
 for k in Cut:
-    for a in asks[k]: shared[a.trip] += a.sign * seen.fold(wolf_range[a.trip])
-    if k.ord < n: seen.add(wolf.tin[human.at[Rooted<V>.Pre.nth(k.ord)]], 1)
+    for a in asks[k]: shared[a.trip] += a.sign * seen.sum(wolf_range[a.trip])
+    if k.ord < n: seen.add(wolf.pos(horder[k.ord]), 1)
 for i in Trip: print(if shared[i] > 0: 1 else: 0)

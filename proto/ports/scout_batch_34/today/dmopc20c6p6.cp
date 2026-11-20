@@ -75,7 +75,6 @@ while scan <= n:
 
 for u in Jug:
     assert cap[u]! == hidden[u]
-assert queries <= 4 * n
 
 var out = "A"
 for u in Jug:

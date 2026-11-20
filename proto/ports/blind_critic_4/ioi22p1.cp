@@ -13,7 +13,7 @@ for _ in 0..m:
     let x: Int = read()
     let y: Int = read()
     let w: Int = read()
-    raw_fish[Col.from_idx(x)].push((y, w))
+    raw_fish[Col.from_idx(x)!].push((y, w))
 
 var ps: [Col]List<Int> = []
 for c in Col:
@@ -28,7 +28,7 @@ for c in Col:
 fn psum(col: Int, h: Int) -> Int:
     if col < 0 or col >= n:
         return 0
-    let c = Col.from_idx(col)
+    let c = Col.from_idx(col)!
     let k = ys[c].len
     var lo = 0
     var hi = k
@@ -45,7 +45,7 @@ fn psum(col: Int, h: Int) -> Int:
 fn height_at(col: Int, j: Int) -> Int:
     if col < 0 or col >= n:
         return 0
-    let c = Col.from_idx(col)
+    let c = Col.from_idx(col)!
     if j < ys[c].len:
         return ys[c][j]
     return n
@@ -63,7 +63,7 @@ var next_dp0: List<Int> = [0]
 var next_dp1: List<Int> = [0]
 
 for i in (0..n).rev:
-    let c = Col.from_idx(i)
+    let c = Col.from_idx(i)!
     let cnt = ys[c].len
     let m2 = next_dp0.len
     let max_n0 = list_max(next_dp0)

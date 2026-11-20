@@ -50,19 +50,19 @@ fn solve():
     domain Raise = 0..=(highest - lowest)
     let goal = Raise.try(-k - lowest)
     var reach: List<Bitset<Raise>> = [Bitset<Raise>.new()]     // reach[j]: after the first j items
-    reach[0].insert(Raise(0))
+    reach[0].add(Raise(0))
     for i in Item:
         var next = reach[i.ord].shifted(abs(d[i] - k))
         next.union(reach[i.ord])
         reach.push(next)
-    if goal == none or not reach[n].has(goal!):
+    if goal == none or not reach[n].contains(goal!):
         print(-1)
         return
 
     var at = goal!
     var (group, others): (List<Stock>, List<Stock>) = ([], [])
     for i in Item.rev:
-        let moved = not reach[i.ord].has(at)       // item i was moved in or out
+        let moved = not reach[i.ord].contains(at)       // item i was moved in or out
         if moved: at = at.offset(-abs(d[i] - k))!
         if moved == (d[i] >= k): group.push((grams: d[i], id: i.label)) else: others.push((grams: d[i], id: i.label))
     cook(mut group, k)

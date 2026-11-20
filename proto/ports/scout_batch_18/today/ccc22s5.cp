@@ -23,20 +23,18 @@ fn opt_min(a: ?Int, b: ?Int) -> ?Int:
     else: b
 
 let g = Graph<V, E>.undirected(edges)
-let tree = Rooted<V>.new(u => g.adj(u), V.first)
+let tree = Rooted(u => g.adj(u), V.first)
 
 var need: [V]?Int = [V] _ => none
 var done: [V]?Int = [V] _ => none
 var push: [V]?Int = [V] _ => none
 
-var idx = n - 1
-while idx >= 0:
-    let u = tree.at[Rooted<V>.Pre.nth(idx)]
+for u in tree.preorder.rev:
     let is_y = init_s[u.to_idx] == 'Y'
 
     var sum_done: ?Int = 0
     var sum_any: ?Int = 0
-    for c in tree.kids[u]:
+    for c in tree.children(u):
         sum_done = opt_add(sum_done, opt_min(done[c], push[c]))
         sum_any = opt_add(sum_any, opt_min(need[c], opt_min(done[c], push[c])))
 
@@ -45,7 +43,7 @@ while idx >= 0:
     else:
         var best_push: ?Int = none
         if let sa = sum_any:
-            for c in tree.kids[u]:
+            for c in tree.children(u):
                 if let pc = push[c]:
                     let base = opt_min(need[c], opt_min(done[c], pc))!
                     best_push = opt_min(best_push, sa - base + pc)
@@ -56,7 +54,7 @@ while idx >= 0:
     else:
         var best_unpaid: ?Int = none
         if let sd = sum_done:
-            for c in tree.kids[u]:
+            for c in tree.children(u):
                 if let pc = push[c]:
                     let base = opt_min(done[c], pc)!
                     best_unpaid = opt_min(best_unpaid, sd - base + pc)
@@ -64,6 +62,5 @@ while idx >= 0:
 
     let paid_from_parent = opt_add(cost[u], sum_any)
     need[u] = opt_min(done[u], opt_min(sum_done, paid_from_parent))
-    idx -= 1
 
 print(opt_min(done[V.first], push[V.first])!)

@@ -1,7 +1,6 @@
 //! Min-cost max-flow and weighted bipartite matching.
 //! Proposed additions to `std.flow` (or `std.matching`).
-use std.heap.{Heap}
-use std.algebra.{Order}
+use std.heap.{MinHeap}
 
 /// Handle to a directed arc inside a `MinCostFlow`.
 pub struct CostArc(id: Int):
@@ -68,7 +67,7 @@ pub struct MinCostFlow<V>:
             var prev_v: [V]?V = none
             var prev_a: [V]?CostArc = none
             dist[s] = 0
-            var heap = Heap<(Int, V)>(Order<(Int, V)>((a, b) => a.0 < b.0))
+            var heap = MinHeap<(Int, V)>()
             heap.push((0, s))
             while let (d, u) = heap.pop():
                 if d > dist[u]!: continue

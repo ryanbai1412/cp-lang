@@ -16,23 +16,19 @@
 use std.graph.{Graph}
 use std.tree.{Rooted}
 use std.segtree.{SegTree}
-use std.lazy.{LazySegTree, MaxOpt, AddMax}
-use std.algebra.{Sum}
+use std.lazy.{LazySegTree, AddMax}
 
 let (n, q): (1..=1e5, 1..=1e5) = read()
 domain V = 1..=n
 domain E = 0..(n - 1)
 let edges: [E](u: V, v: V) = read()
 let g = Graph<V, E>.undirected(edges)
-let t = Rooted<V>.new(u => g.adj(u), V.first)
+let t = Rooted(u => g.adj(u), V.first)
 
-// WISH TR8: `t.lazy(MaxOpt, AddMax, v => t.depth[v] + 1)` with
-// `f.apply_sub(v, +1)`, `f.sub(v)`, `f.get(v)`: a lazy tree keyed by V, so
-// the `t.at[p]` / `t.tin[v]` / `t.sub(v)` hops below disappear.
-var f = LazySegTree<Rooted<V>.Pre, ?Int, Int>.from(MaxOpt, AddMax, [Rooted<V>.Pre] p => t.depth[t.at[p]] + 1)
+var f = LazySegTree<t.Pre, Int, Int>(AddMax, [t.Pre] p => t.depth(t.at[p]) + 1)
 var same: [V]?V = [V] _ => none
 // 1 where same[v] is not the heavy child
-var off = SegTree<Rooted<V>.Pre, Int>.from(Sum<Int>, [Rooted<V>.Pre] p => if t.heavy[t.at[p]] == none: 0 else: 1)
+var off = SegTree<t.Pre, Int>(+, [t.Pre] p => if t.heavy[t.at[p]] == none: 0 else: 1)
 
 fn point(v: V, to: ?V):
     if same[v] == to: return
@@ -62,7 +58,7 @@ for _ in 0..q:
     elif kind == 2:
         let (x, y): (V, V) = read()
         let top = t.lca(x, y)
-        print(f.get(t.tin[x])! + f.get(t.tin[y])! - 2 * f.get(t.tin[top])! + 1)
+        print(f.get(t.tin[x]) + f.get(t.tin[y]) - 2 * f.get(t.tin[top]) + 1)
     else:
         let x: V = read()
-        print(f.fold(t.sub(x))!)
+        print(f.fold(t.sub(x)))

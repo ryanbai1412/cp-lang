@@ -1,6 +1,7 @@
 // WAC 6 P6 (Hard) (today/ runnable subset) — original: corpus/submissions/5122001.cpp
 
 let tcs: 1..=10_000 = read()
+domain Col = 0..3
 
 for _ in 0..tcs:
     var c0: 0..=100 = read()
@@ -32,8 +33,8 @@ for _ in 0..tcs:
             else:
                 print("DISCARD")
     elif b + c - 2 * a >= 46:
-        var cnt: [0..3]Int = 0
-        var bin: [0..3]Int = -1
+        var cnt: [Col]Int = 0
+        var bin: [Col]Int = -1
         var next_bin = 1
         for _ in 0..100:
             let ch: Char = read()
@@ -42,19 +43,20 @@ for _ in 0..tcs:
                 x = 0
             elif ch == 'G':
                 x = 1
-            cnt[x] += 1
-            if cnt[x] > a:
-                if bin[x] == -1:
-                    bin[x] = next_bin
+            let cx = Col(x)
+            cnt[cx] += 1
+            if cnt[cx] > a:
+                if bin[cx] == -1:
+                    bin[cx] = next_bin
                     next_bin += 1
-                print("PLACE", bin[x])
+                print("PLACE", bin[cx])
             else:
                 print("DISCARD")
     else:
-        var cnt: [0..3]Int = 0
-        var bin: [0..3]Int = -1
-        bin[0] = 1
-        bin[1] = 2
+        var cnt: [Col]Int = 0
+        var bin: [Col]Int = -1
+        bin[Col(0)] = 1
+        bin[Col(1)] = 2
         for _ in 0..100:
             let ch: Char = read()
             var x = 2
@@ -62,13 +64,14 @@ for _ in 0..tcs:
                 x = 0
             elif ch == 'G':
                 x = 1
-            cnt[x] += 1
-            if cnt[x] > b and bin[x] == -1:
-                let tmp = bin[x]
-                bin[x] = bin[0]
-                bin[0] = tmp
-                print("EMPTY", bin[x])
-            if bin[x] == -1:
+            let cx = Col(x)
+            cnt[cx] += 1
+            if cnt[cx] > b and bin[cx] == -1:
+                let tmp = bin[cx]
+                bin[cx] = bin[Col(0)]
+                bin[Col(0)] = tmp
+                print("EMPTY", bin[cx])
+            if bin[cx] == -1:
                 print("DISCARD")
             else:
-                print("PLACE", bin[x])
+                print("PLACE", bin[cx])

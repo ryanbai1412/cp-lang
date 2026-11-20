@@ -25,7 +25,7 @@ fn join(a: Sums, b: Sums) -> Sums:
 fn tri(k: Int) -> Int = k * (k + 1) / 2
 fn pyr(k: Int) -> Int = k * (k + 1) * (2 * k + 1) / 6
 
-fn edit(f: Edit, t: Sums) -> Sums:
+fn edit(f: Edit, t: Sums, len: Int) -> Sums:
     if t.len == 0: return t
     var s = t
     if let v = f.set:
@@ -61,7 +61,7 @@ let x: [Pos]Int = read()
 let y: [Pos]Int = read()
 let empty: Sums = (xy: 0, x: 0, y: 0, xx: 0, lo: 0, len: 0)
 let keep: Edit = (set: none, dx: 0, dy: 0)
-var tree = LazySegTree<Pos, Sums, Edit>.from(Monoid<Sums>(empty, join), Action<Sums, Edit>(keep, then, edit),
+var tree = LazySegTree<Pos, Sums, Edit>(Action<Sums, Edit>(keep, then, edit, over: Monoid<Sums>(empty, join)),
     [Pos] i => (xy: x[i] * y[i], x: x[i], y: y[i], xx: x[i] * x[i], lo: i.label, len: 1))
 
 for _ in 0..q:

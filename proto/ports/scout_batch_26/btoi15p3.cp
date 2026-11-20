@@ -18,11 +18,11 @@ let g = Graph<V, E>.undirected(edges)
 var root = V.first
 for v in V:
     if g.deg(v) > 1: root = v
-let t = Rooted<V>.new(u => g.adj(u), root)
+let t = Rooted(u => g.adj(u), root)
 
 var leaves: List<V> = []
-for p in Rooted<V>.Pre:
-    if g.deg(t.at[p]) == 1: leaves.push(t.at[p])
+for v in t.preorder:
+    if g.deg(v) == 1: leaves.push(v)
 
 let k = leaves.len
 print((k + 1) / 2)

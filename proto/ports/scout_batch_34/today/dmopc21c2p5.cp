@@ -15,7 +15,7 @@ domain Deg = 0..MAX_DEG
 
 let edges: [E](u: V, v: V) = read()
 let g = Graph<V, E>.undirected(edges)
-let tree = Rooted<V>.new(u => g.adj(u), V.first)
+let tree = Rooted(u => g.adj(u), V.first)
 
 var fact: [Deg]Z = [Deg] _ => Z(1)
 for d in Deg:
@@ -25,21 +25,16 @@ for d in Deg:
 var memo0: [V]List<Z> = [V] _ => []
 var memo1: [V]List<Z> = [V] _ => []
 
-// Walk vertices in reverse preorder (children before parent).
-var pre_order: List<V> = []
-for p in tree.sub(V.first):
-    pre_order.push(tree.at[p])
-
-for u in pre_order.rev:
-    let sz_u = tree.size[u]
+for u in tree.preorder.rev:
+    let sz_u = tree.size(u)
 
     for par_used in 0..=1:
         var cur: [Deg]List<Z> = [Deg] _ => [Z(0) for _ in 0..=sz_u]
         cur[Deg(par_used)][par_used] = Z(1)
         var csum = par_used
 
-        for v in tree.kids[u]:
-            let sz_v = tree.size[v]
+        for v in tree.children(u):
+            let sz_v = tree.size(v)
             let c0 = memo0[v]
             let c1 = memo1[v]
             var nxt: [Deg]List<Z> = [Deg] _ => [Z(0) for _ in 0..=sz_u]

@@ -14,7 +14,6 @@
 // each polygon once.
 // original: corpus/submissions/4225209.cpp
 use std.math.{gcd}
-use std.algebra.{Order}
 
 struct Line(a: Int, b: Int, c: Int)         // a x + b y + c = 0
 struct Hom(x: Int, y: Int, w: Int)          // the point (x / w, y / w), w > 0, reduced
@@ -28,7 +27,8 @@ fn crossing(p: Line, q: Line) -> ?Hom:
     let g = gcd(gcd(abs(x), abs(y)), abs(w)) * (if w < 0: -1 else: 1)
     Hom(x / g, y / g, w / g)
 
-const LeftToRight = Order<Hom>(lt: (p, q) => if p.x * q.w != q.x * p.w: p.x * q.w < q.x * p.w else: p.y * q.w < q.y * p.w)
+impl Ord for Hom:
+    fn lt(p, q) = if p.x * q.w != q.x * p.w: p.x * q.w < q.x * p.w else: p.y * q.w < q.y * p.w
 
 let n: Int = read()
 var lines: List<Line> = []
@@ -43,7 +43,7 @@ for i in 0..n:
     var found: List<Hom> = []
     for other in lines:
         if let p = crossing(lines[i], other): found.push(p)
-    sort(mut found, by: LeftToRight)
+    sort(mut found)
     var ids: List<Int> = []
     for p in found:
         let key = (p.x, p.y, p.w)

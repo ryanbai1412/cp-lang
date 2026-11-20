@@ -12,7 +12,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PROTO = os.path.dirname(os.path.dirname(HERE))
 ROOT = os.path.dirname(PROTO)
 CORPUS = os.path.join(ROOT, "corpus", "submissions")
-CPL = os.path.join(ROOT, "target", "debug", "cpl")
+CPL = os.environ.get("CPL") or os.path.join(ROOT, "target", "debug", "cpl")
+if not os.path.exists(CPL):
+    subprocess.run(["cargo", "build", "-p", "cpl-cli"], cwd=ROOT, check=True)
 
 ORIGINAL = {
     "bsspc21s4": 4152932,

@@ -13,7 +13,6 @@
 use std.graph.{Graph}
 use std.tree.{Rooted}
 use std.fenwick.{Fenwick}
-use std.algebra.{Sum}
 
 let tests: 1..=5 = read()
 for _ in 0..tests:
@@ -27,51 +26,48 @@ for _ in 0..tests:
     // WISH TR6: `let t = Rooted<V>.at_centroid(g)` (or `t.centroid()` and
     // `t.reroot(c)`); today the tree is rooted twice, the first time only
     // to learn the sizes that locate the centroid.
-    let first = Rooted<V>.new(u => g.adj(u), V.first)
+    let first = Rooted(u => g.adj(u), V.first)
     var c = V.first
     while let h = first.heavy[c]:
-        if 2 * first.size[h] <= n: break
+        if 2 * first.size(h) <= n: break
         c = h
-    let t = Rooted<V>.new(u => g.adj(u), c)
+    let t = Rooted(u => g.adj(u), c)
 
     fn heavy(x: V) -> Int:
-        if let h = t.heavy[x]: t.size[h]
+        if let h = t.heavy[x]: t.size(h)
         else: 0
 
     var total = 0
 
     // the root: its two largest children decide
     var second = 0
-    for k in t.kids[c]:
-        if some(k) != t.heavy[c]: second = max(second, t.size[k])
+    for k in t.children(c):
+        if some(k) != t.heavy[c]: second = max(second, t.size(k))
     for v in V:
         if v == c: continue
         let rest = if t.is_anc(t.heavy[c]!, v): second else: heavy(c)
-        if 2 * rest <= n - t.size[v]: total += c.label
+        if 2 * rest <= n - t.size(v): total += c.label
 
     // every other vertex
-    var all = Fenwick<Size, Int>.new(Sum<Int>)      // size(v) over all v != root
-    var seen = Fenwick<Size, Int>.new(Sum<Int>)     // size(v) over v visited so far
-    var chain = Fenwick<Size, Int>.new(Sum<Int>)    // size(a) over proper ancestors a
-    var above = Fenwick<Size, Int>.new(Sum<Int>)    // n - size(a) over ancestors a, self included
+    var all = Fenwick<Size, Int>.new()      // size(v) over all v != root
+    var seen = Fenwick<Size, Int>.new()     // size(v) over v visited so far
+    var chain = Fenwick<Size, Int>.new()    // size(a) over proper ancestors a
+    var above = Fenwick<Size, Int>.new()    // n - size(a) over ancestors a, self included
     for v in V:
-        if v != c: all.add(Size(t.size[v]), 1)
+        if v != c: all.add(Size(t.size(v)), 1)
 
-    // WISH TR7: an enter/exit walk, `for (v, entering) in t.tour:`, so the
-    // "ancestors of the current vertex" multiset needs no recursion; a
-    // 3e5-vertex path overflows the judge's stack in this form.
     fn walk(x: V):
-        let want = Size(max(n - 2 * t.size[x], 0))..=Size(n - 2 * heavy(x))
-        above.add(Size(n - t.size[x]), 1)
-        let before = seen.fold(want)
-        seen.add(Size(t.size[x]), 1)
-        let up = chain.fold(want)
-        chain.add(Size(t.size[x]), 1)
-        for k in t.kids[x]: walk(k)
-        chain.add(Size(t.size[x]), -1)
-        let below = seen.fold(want) - before
-        total += x.label * (all.fold(want) - below - up + above.fold(want))
-        above.add(Size(n - t.size[x]), -1)
+        let want = Size(max(n - 2 * t.size(x), 0))..=Size(n - 2 * heavy(x))
+        above.add(Size(n - t.size(x)), 1)
+        let before = seen.sum(want)
+        seen.add(Size(t.size(x)), 1)
+        let up = chain.sum(want)
+        chain.add(Size(t.size(x)), 1)
+        for k in t.children(x): walk(k)
+        chain.add(Size(t.size(x)), -1)
+        let below = seen.sum(want) - before
+        total += x.label * (all.sum(want) - below - up + above.sum(want))
+        above.add(Size(n - t.size(x)), -1)
 
-    for k in t.kids[c]: walk(k)
+    for k in t.children(c): walk(k)
     print(total)

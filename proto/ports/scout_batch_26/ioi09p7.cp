@@ -24,15 +24,14 @@ for v in V:
     let (boss, h): (V, Region) = read()
     kids[boss].push((to: v))
     home[v] = h
-let t = Rooted<V>.new(u => kids[u], V.first)
+let t = Rooted(u => kids[u], V.first)
 
 var members: [Region]List<V> = [Region] _ => []
 // spots[x]: preorder positions of the employees of region x, increasing
 var spots: [Region]List<Int> = [Region] _ => []
-for p in Rooted<V>.Pre:
-    let v = t.at[p]
+for v in t.preorder:
     members[home[v]].push(v)
-    spots[home[v]].push(p.to_idx)
+    spots[home[v]].push(t.pos(v).to_idx)
 
 // how many employees of region x sit at preorder positions < p
 // WISH TR4: `bsearch_first(0..w.len, i => w[i] >= p)` is on the cheat sheet
@@ -50,9 +49,8 @@ fn before(x: Region, p: Int) -> Int:
 fn sweep(x: Region) -> [Region]Int:
     var above: [V]Int = 0
     var pairs: [Region]Int = 0
-    for p in Rooted<V>.Pre:
-        let v = t.at[p]
-        if let b = t.up[v]: above[v] = above[b]
+    for v in t.preorder:
+        if let b = t.parent(v): above[v] = above[b]
         pairs[home[v]] += above[v]
         if home[v] == x: above[v] += 1
     pairs

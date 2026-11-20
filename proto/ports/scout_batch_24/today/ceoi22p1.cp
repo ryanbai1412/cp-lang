@@ -1,6 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of statement-first ceoi22p1.cp
 // original: corpus/submissions/4728849.cpp
-use std.algebra.{Sum}
 use std.fenwick.{Fenwick}
 
 let (n, q): (Int, Int) = read()
@@ -26,7 +25,7 @@ while idx >= 0:
     stk.push(idx)
     idx -= 1
 
-var bit = Fenwick<Card, Int>.new(Sum<Int>)
+var bit = Fenwick<Card, Int>.new()
 var run_len: [Card]Int = [Card] _ => 0
 
 fn insert_runs(lo_idx: Int, hi_idx: Int):

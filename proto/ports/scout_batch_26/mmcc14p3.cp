@@ -15,19 +15,16 @@ domain V = 1..=n
 domain E = 0..(n - 1)
 let edges: [E](u: V, v: V) = read()
 let g = Graph<V, E>.undirected(edges)
-let t = Rooted<V>.new(u => g.adj(u), V.first)
+let t = Rooted(u => g.adj(u), V.first)
 
 fn outposts(radius: Int) -> Int:
     var open: [V]?Int = [V] _ => none      // farthest uncovered vertex below, if any
     var post: [V]?Int = [V] _ => none      // nearest outpost below, if any
     var used = 0
-    // WISH TR5: `for v in t.bottom_up:`; children-before-parents is the most
-    // common loop over a rooted tree and is spelled through `Pre` and `at`.
-    for p in Rooted<V>.Pre.rev:
-        let v = t.at[p]
+    for v in t.preorder.rev:
         var far = 0
         var near: ?Int = none
-        for c in t.kids[v]:
+        for c in t.children(v):
             if let d = post[c]: near = min(near ?? n, d + 1)
             if let d = open[c]:
                 if d + 1 > radius:

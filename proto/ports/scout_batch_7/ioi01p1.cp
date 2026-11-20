@@ -5,14 +5,13 @@
 //
 // A Fenwick tree whose slots are Fenwick trees: the outer one walks the
 // x axis, and each slot holds the y axis of the columns it covers.
-use std.algebra.{Sum}
 use std.fenwick.{Fenwick}
 
 let (_, n): (Int, Int) = read()
 domain X = 0..n
 domain Y = 0..n
 
-var slots = [Fenwick<Y, Int>(Sum<Int>) for _ in 0..=n]
+var slots = [Fenwick<Y, Int>() for _ in 0..=n]
 
 fn add(x: X, y: Y, a: Int):
     var p = x.to_idx + 1
@@ -23,7 +22,7 @@ fn add(x: X, y: Y, a: Int):
 fn left_of(x: Bounds<X>, ys: Range<Y>) -> Int:
     var (p, total) = (x.ord, 0)
     while p > 0:
-        total += slots[p].fold(ys)
+        total += slots[p].sum(ys)
         p -= p & -p
     total
 

@@ -100,7 +100,7 @@ var ops = 0
 for _ in 0..q:
     let idx_raw: Int = read()
     let y: Int = read()
-    let e = E.from_idx(idx_raw)
+    let e = E.from_idx(idx_raw)!
     let old_x = pos[e]
     pos[e] = y
 

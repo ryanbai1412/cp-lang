@@ -16,18 +16,18 @@ var dp_lo: [RL, AL]Int = 0
 var dp_ovf: [RL, AL]Bool = false
 
 for j in 0..ALPHA:
-    dp_lo[RL.from_idx(0), AL.from_idx(j)] = 1
+    dp_lo[RL.from_idx(0)!, AL.from_idx(j)!] = 1
 
 for i in 1..=MAX_LEN:
-    let ri = RL.from_idx(i)
-    let rp = RL.from_idx(i - 1)
+    let ri = RL.from_idx(i)!
+    let rp = RL.from_idx(i - 1)!
     for j in 0..ALPHA:
-        let aj = AL.from_idx(j)
+        let aj = AL.from_idx(j)!
         var s_hi = 0
         var s_lo = 0
         var s_ovf = false
         for k in j..ALPHA:
-            let ak = AL.from_idx(k)
+            let ak = AL.from_idx(k)!
             if dp_ovf[rp, ak]:
                 s_ovf = true
             if not s_ovf:
@@ -41,8 +41,8 @@ for i in 1..=MAX_LEN:
         dp_ovf[ri, aj] = s_ovf
 
 fn dp_gt(len_i: Int, sym: Int, x_hi: Int, x_lo: Int) -> Bool:
-    let ri = RL.from_idx(len_i)
-    let aj = AL.from_idx(sym)
+    let ri = RL.from_idx(len_i)!
+    let aj = AL.from_idx(sym)!
     if dp_ovf[ri, aj]:
         return true
     let dh = dp_hi[ri, aj]
@@ -87,8 +87,8 @@ while blk * 8 < n:
             if dp_gt(rem, j, x_hi, x_lo):
                 chosen = j
                 break
-            let ri = RL.from_idx(rem)
-            let aj = AL.from_idx(j)
+            let ri = RL.from_idx(rem)!
+            let aj = AL.from_idx(j)!
             x_lo -= dp_lo[ri, aj]
             x_hi -= dp_hi[ri, aj]
             if x_lo < 0:
@@ -116,7 +116,7 @@ var buckets: [B]List<Int> = []
 for s in sent:
     let bi = s / 32
     let sym = s % 32
-    buckets[B.from_idx(bi)].push(sym)
+    buckets[B.from_idx(bi)!].push(sym)
 
 var decoded: List<Int> = []
 blk = 0
@@ -125,7 +125,7 @@ while blk * 8 < n:
     let end = if start + 8 < n: start + 8 else: n
     let cnt = end - start
     var cm: List<Int> = []
-    let raw = buckets[B.from_idx(blk)]
+    let raw = buckets[B.from_idx(blk)!]
     for _ in 0..MAX_LEN - raw.len:
         cm.push(0)
     for x in raw:
@@ -138,8 +138,8 @@ while blk * 8 < n:
         let rem = MAX_LEN - 1 - i
         let lo_j = if i > 0: cm[i - 1] else: 0
         for j in lo_j..cm[i]:
-            let ri = RL.from_idx(rem)
-            let aj = AL.from_idx(j)
+            let ri = RL.from_idx(rem)!
+            let aj = AL.from_idx(j)!
             x_lo += dp_lo[ri, aj]
             x_hi += dp_hi[ri, aj] + x_lo / BASE
             x_lo = x_lo % BASE

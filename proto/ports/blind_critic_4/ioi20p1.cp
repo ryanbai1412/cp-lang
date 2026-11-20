@@ -13,7 +13,7 @@ var r_init: [V]Int = read()
 let INF = 1_000_000_000
 var st = AddMax<V>()
 for i in 0..n:
-    let vi = V.from_idx(i)
+    let vi = V.from_idx(i)!
     st.add(vi, vi, -r_init[vi])
 
 // Ordered sets `zeros` and `ready` via SegTree<V, Int> (proto/cpc Set<T> lacks first_ge/last_le).
@@ -24,14 +24,14 @@ var ready_min = SegTree<V, Int>(n, (a, b) => if a < b: a else: b)
 
 fn prev_in_zeros(x: Int) -> Int:
     if x > 0:
-        let p = zero_max.query(V.from_idx(0), V.from_idx(x - 1))
+        let p = zero_max.query(V.from_idx(0)!, V.from_idx(x - 1)!)
         if p >= 0:
             return p
     return zero_max.all
 
 fn next_in_zeros(x: Int) -> Int:
     if x + 1 < n:
-        let nx = zero_min.query(V.from_idx(x + 1), V.from_idx(n - 1))
+        let nx = zero_min.query(V.from_idx(x + 1)!, V.from_idx(n - 1)!)
         if nx < n:
             return nx
     return zero_min.all
@@ -43,7 +43,7 @@ fn cyc_dist(a: Int, b: Int) -> Int:
     return d
 
 fn check_ready(x: Int):
-    let vx = V.from_idx(x)
+    let vx = V.from_idx(x)!
     if zero_cnt == 1:
         ready_min.set(vx, x)
         return
@@ -54,7 +54,7 @@ fn check_ready(x: Int):
         ready_min.set(vx, n)
 
 fn add_zero(x: Int):
-    let vx = V.from_idx(x)
+    let vx = V.from_idx(x)!
     zero_cnt += 1
     zero_max.set(vx, x)
     zero_min.set(vx, x)
@@ -64,7 +64,7 @@ fn add_zero(x: Int):
         check_ready(nxt)
 
 fn remove_zero(x: Int):
-    let vx = V.from_idx(x)
+    let vx = V.from_idx(x)!
     ready_min.set(vx, n)
     if zero_cnt == 1:
         zero_cnt -= 1
@@ -81,16 +81,16 @@ fn remove_zero(x: Int):
 fn harvest_zeros(l: Int, r: Int):
     if l > r:
         return
-    while st.max(V.from_idx(l), V.from_idx(r)) == 0:
+    while st.max(V.from_idx(l)!, V.from_idx(r)!) == 0:
         var lo = l
         var hi = r
         while lo < hi:
             let mid = (lo + hi) / 2
-            if st.max(V.from_idx(lo), V.from_idx(mid)) == 0:
+            if st.max(V.from_idx(lo)!, V.from_idx(mid)!) == 0:
                 hi = mid
             else:
                 lo = mid + 1
-        let vl = V.from_idx(lo)
+        let vl = V.from_idx(lo)!
         st.add(vl, vl, -INF)
         add_zero(lo)
 
@@ -102,11 +102,11 @@ fn add_cyc(l_raw: Int, r_raw: Int, delta: Int):
     if r < 0:
         r += n
     if l <= r:
-        st.add(V.from_idx(l), V.from_idx(r), delta)
+        st.add(V.from_idx(l)!, V.from_idx(r)!, delta)
         harvest_zeros(l, r)
     else:
-        st.add(V.from_idx(l), V.from_idx(n - 1), delta)
-        st.add(V.from_idx(0), V.from_idx(r), delta)
+        st.add(V.from_idx(l)!, V.from_idx(n - 1)!, delta)
+        st.add(V.from_idx(0)!, V.from_idx(r)!, delta)
         harvest_zeros(l, n - 1)
         harvest_zeros(0, r)
 
@@ -119,7 +119,7 @@ for step in 0..n:
     let x = ready_min.all
     remove_zero(x)
     order.push(x)
-    height[V.from_idx(x)] = n - 1 - step
+    height[V.from_idx(x)!] = n - 1 - step
     // Decrement r for the k-1 plants counterclockwise from x => add +1 to `-r`.
     add_cyc(x - k + 1, x - 1, 1)
 
@@ -133,7 +133,7 @@ for step in 0..n:
 // on plants already inserted in ascending height order!
 var rk_by_h: [V]Int = 0
 for i in 0..n:
-    rk_by_h[V.from_idx(height[V.from_idx(i)])] = i
+    rk_by_h[V.from_idx(height[V.from_idx(i)!])!] = i
 
 var htree = SegTree<V, Int>(-1, (a, b) => if a > b: a else: b)
 
@@ -145,9 +145,9 @@ fn query_max_cyc(l_raw: Int, r_raw: Int) -> Int:
     if r < 0:
         r += n
     if l <= r:
-        return htree.query(V.from_idx(l), V.from_idx(r))
-    let a = htree.query(V.from_idx(l), V.from_idx(n - 1))
-    let b = htree.query(V.from_idx(0), V.from_idx(r))
+        return htree.query(V.from_idx(l)!, V.from_idx(r)!)
+    let a = htree.query(V.from_idx(l)!, V.from_idx(n - 1)!)
+    let b = htree.query(V.from_idx(0)!, V.from_idx(r)!)
     return if a > b: a else: b
 
 var LOG = 1
@@ -161,63 +161,63 @@ var up_l: [L, V]Int = 0
 var dist_l: [L, V]Int = 0
 
 for h in 0..n:
-    let x = rk_by_h[V.from_idx(h)]
-    let vx = V.from_idx(x)
+    let x = rk_by_h[V.from_idx(h)!]
+    let vx = V.from_idx(x)!
     let best_rh = query_max_cyc(x + 1, x + k - 1)
     if best_rh >= 0:
-        let to = rk_by_h[V.from_idx(best_rh)]
-        up_r[L.from_idx(0), vx] = to
-        dist_r[L.from_idx(0), vx] = cyc_dist(x, to)
+        let to = rk_by_h[V.from_idx(best_rh)!]
+        up_r[L.from_idx(0)!, vx] = to
+        dist_r[L.from_idx(0)!, vx] = cyc_dist(x, to)
     else:
-        up_r[L.from_idx(0), vx] = x
-        dist_r[L.from_idx(0), vx] = 0
+        up_r[L.from_idx(0)!, vx] = x
+        dist_r[L.from_idx(0)!, vx] = 0
 
     let best_lh = query_max_cyc(x - k + 1, x - 1)
     if best_lh >= 0:
-        let to = rk_by_h[V.from_idx(best_lh)]
-        up_l[L.from_idx(0), vx] = to
-        dist_l[L.from_idx(0), vx] = cyc_dist(to, x)
+        let to = rk_by_h[V.from_idx(best_lh)!]
+        up_l[L.from_idx(0)!, vx] = to
+        dist_l[L.from_idx(0)!, vx] = cyc_dist(to, x)
     else:
-        up_l[L.from_idx(0), vx] = x
-        dist_l[L.from_idx(0), vx] = 0
+        up_l[L.from_idx(0)!, vx] = x
+        dist_l[L.from_idx(0)!, vx] = 0
 
     htree.set(vx, h)
 
 for j in 1..LOG:
-    let lj = L.from_idx(j)
-    let lp = L.from_idx(j - 1)
+    let lj = L.from_idx(j)!
+    let lp = L.from_idx(j - 1)!
     for i in 0..n:
-        let vi = V.from_idx(i)
+        let vi = V.from_idx(i)!
         let mr = up_r[lp, vi]
-        up_r[lj, vi] = up_r[lp, V.from_idx(mr)]
-        dist_r[lj, vi] = dist_r[lp, vi] + dist_r[lp, V.from_idx(mr)]
+        up_r[lj, vi] = up_r[lp, V.from_idx(mr)!]
+        dist_r[lj, vi] = dist_r[lp, vi] + dist_r[lp, V.from_idx(mr)!]
         let ml = up_l[lp, vi]
-        up_l[lj, vi] = up_l[lp, V.from_idx(ml)]
-        dist_l[lj, vi] = dist_l[lp, vi] + dist_l[lp, V.from_idx(ml)]
+        up_l[lj, vi] = up_l[lp, V.from_idx(ml)!]
+        dist_l[lj, vi] = dist_l[lp, vi] + dist_l[lp, V.from_idx(ml)!]
 
 fn can_reach(u: Int, v: Int) -> Bool:
     let dr = cyc_dist(u, v)
     var cur = u
     var moved = 0
     for j in (0..LOG).rev:
-        let lj = L.from_idx(j)
-        let vc = V.from_idx(cur)
+        let lj = L.from_idx(j)!
+        let vc = V.from_idx(cur)!
         if dist_r[lj, vc] > 0 and moved + dist_r[lj, vc] <= dr:
             moved += dist_r[lj, vc]
             cur = up_r[lj, vc]
-    if cyc_dist(cur, v) < k and height[V.from_idx(cur)] >= height[V.from_idx(v)]:
+    if cyc_dist(cur, v) < k and height[V.from_idx(cur)!] >= height[V.from_idx(v)!]:
         return true
 
     let dl = cyc_dist(v, u)
     cur = u
     moved = 0
     for j in (0..LOG).rev:
-        let lj = L.from_idx(j)
-        let vc = V.from_idx(cur)
+        let lj = L.from_idx(j)!
+        let vc = V.from_idx(cur)!
         if dist_l[lj, vc] > 0 and moved + dist_l[lj, vc] <= dl:
             moved += dist_l[lj, vc]
             cur = up_l[lj, vc]
-    if cyc_dist(v, cur) < k and height[V.from_idx(cur)] >= height[V.from_idx(v)]:
+    if cyc_dist(v, cur) < k and height[V.from_idx(cur)!] >= height[V.from_idx(v)!]:
         return true
     return false
 

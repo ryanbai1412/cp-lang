@@ -38,7 +38,8 @@ let rail_monoid = Monoid<SegVal>(
 let assign_slope = Action<SegVal, ?Int>(
     id: none,
     compose: (f, g) => if f == none: g else: f,
-    apply: (f, x) => if f == none: x else: SegVal(f! * x.len, max(0, f! * x.len), x.len)
+    apply: (f, x, len) => if f == none: x else: SegVal(f! * x.len, max(0, f! * x.len), x.len),
+    over: rail_monoid
 )
 
 var pts = [1, n + 1]
@@ -61,7 +62,7 @@ fn coord(x: Int) -> Int:
 
 domain Seg = 0..(xs.len - 1)
 let init = [Seg] i => SegVal(0, 0, xs[i.to_idx + 1] - xs[i.to_idx])
-var st = LazySegTree<Seg, SegVal, ?Int>.from(rail_monoid, assign_slope, init)
+var st = LazySegTree<Seg, SegVal, ?Int>(assign_slope, init)
 
 for i in 0..tags.len:
     if tags[i] == 0:

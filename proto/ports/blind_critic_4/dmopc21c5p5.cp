@@ -29,36 +29,36 @@ fn solve_exact(m_n: 1..=12):
     var dp: [M, V]Int = -1
     var prv: [M, V]Int = -1
     for v in 0..m_n:
-        dp[M.from_idx(1 << v), V.from_idx(v)] = 0
+        dp[M.from_idx(1 << v)!, V.from_idx(v)!] = 0
     for mask in 1..total_masks:
-        let mm = M.from_idx(mask)
+        let mm = M.from_idx(mask)!
         for last in 0..m_n:
-            let cur = dp[mm, V.from_idx(last)]
+            let cur = dp[mm, V.from_idx(last)!]
             if cur < 0:
                 continue
             for nxt in 0..m_n:
                 if (mask & (1 << nxt)) != 0:
                     continue
-                let nmask = M.from_idx(mask | (1 << nxt))
-                let vn = V.from_idx(nxt)
+                let nmask = M.from_idx(mask | (1 << nxt))!
+                let vn = V.from_idx(nxt)!
                 let cand = cur + edge_w(last + 1, nxt + 1)
                 if cand > dp[nmask, vn]:
                     dp[nmask, vn] = cand
                     prv[nmask, vn] = last
     let full = total_masks - 1
-    let fm = M.from_idx(full)
+    let fm = M.from_idx(full)!
     var best_end = 0
     var best_val = -1
     for v in 0..m_n:
-        if dp[fm, V.from_idx(v)] > best_val:
-            best_val = dp[fm, V.from_idx(v)]
+        if dp[fm, V.from_idx(v)!] > best_val:
+            best_val = dp[fm, V.from_idx(v)!]
             best_end = v
     var out: List<Int> = []
     var cm = full
     var cv = best_end
     for _ in 0..m_n:
         out.push(cv + 1)
-        let pv = prv[M.from_idx(cm), V.from_idx(cv)]
+        let pv = prv[M.from_idx(cm)!, V.from_idx(cv)!]
         cm = cm ^ (1 << cv)
         if pv >= 0:
             cv = pv

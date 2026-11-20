@@ -60,7 +60,7 @@ for s in Slot:
         cur_slot[Item(e.tag)] = s
         init[s] = Node.leaf(e.a, e.b)
 
-var st = SegTree<Slot, Node>.from(node_monoid, init)
+var st = SegTree<Slot, Node>(node_monoid, init)
 
 fn split_fold(k: Int) -> (Node, Node):
     let left = if k <= 0: Node.empty() else: st.fold(Slot(0)..=Slot(k - 1))
