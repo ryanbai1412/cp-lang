@@ -59,7 +59,10 @@ fn lower_impl(analysis: &Analysis, test_name: Option<&str>) -> Result<Program, V
     // demand-driven functions referenced from `main`, closures, preamble, or transitive callees.
     if test_name.is_none() {
         for id in 0..lw.sigs.len() {
-            if lw.sigs[id].mod_id == 0 && lw.sigs[id].owner.is_none() {
+            // A fn with no body is the judge's: there is nothing to lower
+            // until something calls it.
+            let bodyless = matches!(lw.sigs[id].decl.body, ast::FnBody::None);
+            if lw.sigs[id].mod_id == 0 && lw.sigs[id].owner.is_none() && !bodyless {
                 lw.queue_fn(id);
             }
         }
@@ -1639,7 +1642,17 @@ impl<'a> Lowerer<'a> {
                 let tail = if is_gen { Tail::Discard } else { Tail::Return };
                 self.tail(expr, tail, &mut out);
             }
-            ast::FnBody::None => self.unsupported(decl.name.span, "a fn without a body"),
+            ast::FnBody::None => {
+                let name = &decl.name.text;
+                self.error(
+                    codes::UNSUPPORTED,
+                    decl.name.span,
+                    format!("`{name}` has no body: the judge's grader supplies it, so there is nothing to run here"),
+                );
+                self.help(format!(
+                    "give `{name}` a body to try the program locally, and take it out to submit"
+                ));
+            }
         }
 
         if let Some((acc, _)) = self.cx.yield_slot {

@@ -1579,3 +1579,50 @@ fn reading_an_enum_needs_its_tags() {
     let ok = format!("@tags(\"X\", \"O\")\nenum Tile:\n    X\n    O\n{rest}");
     assert!(codes(&ok).is_empty(), "{:?}", check(&ok));
 }
+
+/// `STD_NAMES` is what the hint for a missing `use` is read from: it has
+/// every public name of `stdlib/` that one module declares, in order.
+#[test]
+fn the_std_name_table_matches_the_standard_library() {
+    let stdlib = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../stdlib");
+    let mut found: std::collections::BTreeMap<String, Vec<String>> = Default::default();
+    for entry in std::fs::read_dir(&stdlib).expect("stdlib/ is beside crates/") {
+        let path = entry.expect("a readable entry").path();
+        if path.extension().and_then(|e| e.to_str()) != Some("cp") {
+            continue;
+        }
+        let module = path.file_stem().unwrap().to_string_lossy().into_owned();
+        let text = std::fs::read_to_string(&path).expect("a readable module");
+        for line in text.lines() {
+            let mut words = line.split_whitespace();
+            if words.next() != Some("pub") {
+                continue;
+            }
+            let declares = matches!(
+                words.next(),
+                Some("fn" | "struct" | "enum" | "trait" | "type" | "const" | "domain")
+            );
+            if !declares || line.starts_with(' ') {
+                continue;
+            }
+            let name: String = words
+                .next()
+                .unwrap_or_default()
+                .chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect();
+            found.entry(name).or_default().push(module.clone());
+        }
+    }
+    let expected: Vec<(String, String)> = found
+        .into_iter()
+        .filter(|(_, modules)| modules.len() == 1)
+        .map(|(name, mut modules)| (name, modules.remove(0)))
+        .collect();
+    let table: Vec<(String, String)> = crate::prelude::STD_NAMES
+        .iter()
+        .map(|(name, module)| (name.to_string(), module.to_string()))
+        .collect();
+    assert_eq!(table, expected);
+    assert_eq!(crate::prelude::std_module("min_by"), Some("seq"));
+}

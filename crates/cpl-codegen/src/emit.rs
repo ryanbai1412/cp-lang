@@ -645,6 +645,20 @@ impl<'p> Emitter<'p> {
             out.push('\n');
         }
         out.push_str(&protos);
+        // A struct with its own `Ord` is ordered by it everywhere: in a
+        // sort, a set, a heap and inside a tuple, not only in `a < b`.
+        for (id, s) in program.structs.iter().enumerate() {
+            let Some(lt) = s.lt_fn.filter(|lt| reachable.contains(lt)) else {
+                continue;
+            };
+            let (ty, lt) = (self.ty(&Ty::Struct(id)), fn_name(&program.fns[lt].name));
+            out.push_str(&format!(
+                "inline bool operator<(const {ty}& a, const {ty}& b) {{ return {lt}(a, b); }}\n\
+                 inline bool operator>(const {ty}& a, const {ty}& b) {{ return {lt}(b, a); }}\n\
+                 inline bool operator<=(const {ty}& a, const {ty}& b) {{ return !{lt}(b, a); }}\n\
+                 inline bool operator>=(const {ty}& a, const {ty}& b) {{ return !{lt}(a, b); }}\n"
+            ));
+        }
         if self.show_cycle {
             for show in &self.shows {
                 if let Some(signature) =

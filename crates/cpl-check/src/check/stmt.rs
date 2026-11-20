@@ -191,6 +191,9 @@ impl<'a> Checker<'a> {
                         | ast::BinOp::Mul
                         | ast::BinOp::BitOr
                         | ast::BinOp::BitXor
+                        // `m[k] ??= init` is the entry itself: a missing
+                        // key gets `init`.
+                        | ast::BinOp::Coalesce
                 ) {
                     return;
                 }

@@ -823,6 +823,19 @@ impl<'a> Lowerer<'a> {
                         out.push(FmtPiece::Value(arg));
                     }
                 }
+                ast::StrPiece::Fixed(e, digits) => {
+                    let value = self.expr(e, None);
+                    if !matches!(value.ty, Ty::Float | Ty::Error) {
+                        let message = format!(
+                            "`:.{digits}f` sets the digits of an `F64`, but this is a `{}`",
+                            self.show(&value.ty)
+                        );
+                        self.error(codes::TYPE_MISMATCH, e.span, message);
+                    }
+                    if let Some(arg) = self.fmt_arg(value, *digits, e.span) {
+                        out.push(FmtPiece::Value(arg));
+                    }
+                }
             }
         }
         match out.as_slice() {

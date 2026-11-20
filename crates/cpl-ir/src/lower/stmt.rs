@@ -1400,7 +1400,12 @@ impl<'a> Lowerer<'a> {
                     let inner = (**inner).clone();
                     self.expect(value, &inner)
                 }
-                _ => self.expr(value, None),
+                Ty::Error => self.expr(value, None),
+                // A map entry: `m[k] ??= []` holds what the map holds.
+                entry => {
+                    let entry = entry.clone();
+                    self.expect(value, &entry)
+                }
             },
             _ => self.expr(value, Some(&place.ty)),
         };
@@ -1567,6 +1572,36 @@ impl<'a> Lowerer<'a> {
                 use BinOp::*;
                 // `x ??= init`: `init` runs only when `x` is `none`.
                 if bin == Coalesce {
+                    // `m[k] ??= init`: a key the map does not have gets
+                    // `init`.
+                    if let PlaceKind::Index(base, keys) = &place.kind {
+                        if matches!(base.ty, Ty::Map(..) | Ty::HashMap(..)) {
+                            let init = self.coerce(value, &place.ty, span);
+                            let has = self.mk(
+                                ExprKind::Builtin(
+                                    Builtin::Contains,
+                                    vec![place_to_expr(base), keys[0].clone()],
+                                ),
+                                Ty::Bool,
+                                span,
+                            );
+                            let missing =
+                                self.mk(ExprKind::Unary(UnOp::Not, Box::new(has)), Ty::Bool, span);
+                            let slot = self.temp(place.ty.clone());
+                            let fresh = self.local(slot, span);
+                            out.push(Stmt::If(
+                                missing,
+                                Block {
+                                    stmts: vec![
+                                        Stmt::Let(slot, Some(init)),
+                                        Stmt::Assign(place, AssignOp::Set, fresh),
+                                    ],
+                                },
+                                Block::default(),
+                            ));
+                            return;
+                        }
+                    }
                     let Ty::Opt(inner) = place.ty.clone() else {
                         if place.ty != Ty::Error {
                             let message = format!(

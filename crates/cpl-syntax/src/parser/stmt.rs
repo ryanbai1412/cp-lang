@@ -31,7 +31,9 @@ impl<'a> Parser<'a> {
         if self.eat(T::Newline) {
             return;
         }
-        out.push(self.stmt());
+        let stmt = self.stmt();
+        out.append(&mut self.lead_stmts);
+        out.push(stmt);
         out.append(&mut self.extra_stmts);
     }
 
@@ -72,7 +74,10 @@ impl<'a> Parser<'a> {
         if self.eat(T::Pub) {
             public = true;
         }
+        let grader = decorators.iter().any(|d| d.name.text == "grader");
+        let was_in_grader = std::mem::replace(&mut self.in_grader, grader);
         let kind = self.stmt_kind();
+        self.in_grader = was_in_grader;
         self.end_stmt(start);
         Stmt {
             kind,
@@ -131,6 +136,12 @@ impl<'a> Parser<'a> {
             || self.prev_kind() == Some(T::Dedent)
             || matches!(self.peek(), T::Dedent | T::Eof)
             || (self.brace_depth > 0 && matches!(self.peek(), T::Semi | T::RBrace));
+        // `a; b` on one line is two statements (v2.2 cheat sheet).
+        let ended = ended
+            || (self.at(T::Semi) && !matches!(self.peek_n(1), T::Newline | T::Eof | T::Dedent) && {
+                self.bump();
+                true
+            });
         if !ended {
             if self.at(T::Indent) {
                 // Reported by `stmt_into` as an unexpected indent.
@@ -461,7 +472,29 @@ impl<'a> Parser<'a> {
         let pat = self.pattern();
         self.expect(T::In, "`in` after the loop variable");
         let iter = self.expr();
-        let body = self.colon_block("the `for` header");
+        // `for x in xs if cond:` runs the body for the `x` that pass: the
+        // body is an `if`.
+        let filter = self.eat(T::If).then(|| (self.start(), self.expr()));
+        let mut body = self.colon_block("the `for` header");
+        if let Some((start, cond)) = filter {
+            let span = Span::new(start, body.span.end.max(cond.span.end));
+            let test = Expr {
+                kind: ExprKind::If {
+                    branches: vec![(Cond::Expr(cond), body)],
+                    otherwise: None,
+                },
+                span,
+            };
+            body = Block {
+                stmts: vec![Stmt {
+                    kind: StmtKind::Expr(test),
+                    span,
+                    decorators: Vec::new(),
+                    public: false,
+                }],
+                span,
+            };
+        }
         StmtKind::For {
             label,
             pat,
@@ -470,8 +503,102 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// True at the `(` of `(place ??= init)`.
+    fn at_filled_place(&self) -> bool {
+        if !self.at(T::LParen) {
+            return false;
+        }
+        let mut depth = 0u32;
+        for t in &self.tokens[self.pos + 1..] {
+            match t.kind {
+                T::LParen | T::LBracket | T::LBrace => depth += 1,
+                T::RParen | T::RBracket | T::RBrace if depth == 0 => return false,
+                T::RParen | T::RBracket | T::RBrace => depth -= 1,
+                T::OpEq if depth == 0 => return t.span.text(self.src) == "??=",
+                T::Newline | T::Indent | T::Dedent | T::Eof => return false,
+                _ => {}
+            }
+        }
+        false
+    }
+
+    /// `(m[k] ??= init)` at the start of a statement: `m[k] ??= init` runs
+    /// first, then the statement goes on with `m[k]`. An index that is
+    /// more than a name or a number is worked out once, into a hidden
+    /// `let`, so `(m[f(x)] ??= []).push(y)` calls `f` once.
+    fn filled_place(&mut self) -> Expr {
+        let start = self.start();
+        self.bump();
+        let mut target = self.postfix();
+        self.name_indices(&mut target);
+        self.bump();
+        let value = self.expr();
+        self.expect(T::RParen, "`)` to close the parenthesis");
+        let span = self.span_from(start);
+        self.lead_stmts.push(Stmt {
+            kind: StmtKind::Assign {
+                target: target.clone(),
+                op: AssignOp::Binary(BinOp::Coalesce),
+                value,
+            },
+            span,
+            decorators: Vec::new(),
+            public: false,
+        });
+        Expr {
+            kind: ExprKind::Paren(Box::new(target)),
+            span,
+        }
+    }
+
+    fn name_indices(&mut self, place: &mut Expr) {
+        match &mut place.kind {
+            ExprKind::Field { base, .. } | ExprKind::Paren(base) => self.name_indices(base),
+            ExprKind::Index { base, indices } => {
+                self.name_indices(base);
+                for index in indices {
+                    if matches!(index.kind, ExprKind::Name(_) | ExprKind::Int(_)) {
+                        continue;
+                    }
+                    let span = index.span;
+                    let name = format!("__key_{}", span.start);
+                    let init = std::mem::replace(
+                        index,
+                        Expr {
+                            kind: ExprKind::Name(name.clone()),
+                            span,
+                        },
+                    );
+                    self.lead_stmts.push(Stmt {
+                        kind: StmtKind::Let {
+                            mutable: false,
+                            pat: Pattern {
+                                kind: PatternKind::Name(name),
+                                span,
+                            },
+                            ty: None,
+                            init: Some(init),
+                            otherwise: None,
+                            guard: None,
+                        },
+                        span,
+                        decorators: Vec::new(),
+                        public: false,
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
+
     fn expr_stmt(&mut self) -> StmtKind {
-        let target = self.expr();
+        let target = if self.at_filled_place() {
+            let start = self.start();
+            let place = self.filled_place();
+            self.postfix_from(start, place)
+        } else {
+            self.expr()
+        };
         let op = match self.peek() {
             T::Eq => AssignOp::Set,
             T::OpEq => {
@@ -647,17 +774,32 @@ impl<'a> Parser<'a> {
             };
         }
         // One statement on the same line: `if x < 0: return none`.
+        // `if c: a; b` keeps both in the block.
         let start = self.start();
-        let kind = self.stmt_kind();
-        let span = self.span_from(start);
-        Block {
-            stmts: vec![Stmt {
+        let outer = std::mem::take(&mut self.lead_stmts);
+        let mut stmts = Vec::new();
+        loop {
+            let at = self.start();
+            let kind = self.stmt_kind();
+            stmts.append(&mut self.lead_stmts);
+            stmts.push(Stmt {
                 kind,
-                span,
+                span: self.span_from(at),
                 decorators: Vec::new(),
                 public: false,
-            }],
-            span,
+            });
+            let more = self.brace_depth == 0
+                && self.at(T::Semi)
+                && !matches!(self.peek_n(1), T::Newline | T::Eof | T::Dedent);
+            if !more {
+                break;
+            }
+            self.bump();
+        }
+        self.lead_stmts = outer;
+        Block {
+            stmts,
+            span: self.span_from(start),
         }
     }
 
