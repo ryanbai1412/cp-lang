@@ -235,6 +235,9 @@ class Compiler(LendMixin):
         if isinstance(t, TBool): return "bool"
         if isinstance(t, TChar): return "char"
         if isinstance(t, TStr): return "string"
+        if isinstance(t, TF64): return "double"
+        if isinstance(t, TU64): return "unsigned long long"
+        if isinstance(t, TI128): return "__int128"
         if isinstance(t, TUnit): return "void"
         if isinstance(t, TDom): return "int"
         if isinstance(t, TMod): return f"Mod<{t.m}>"
@@ -415,7 +418,7 @@ class Compiler(LendMixin):
             return TGen(self.resolve_type(tn.inner))
         if k == "tname":
             nm = tn.name
-            prim = {"Int": INT, "Bool": BOOL, "Char": CHAR, "Str": STR}
+            prim = {"Int": INT, "Bool": BOOL, "Char": CHAR, "Str": STR, "F64": F64, "U64": U64, "I128": I128}
             if nm in prim:
                 return prim[nm]
             declared = self.lookup(nm)      # a `struct Dsu` or `enum Set` of the program is that name from there on
@@ -647,6 +650,11 @@ class Compiler(LendMixin):
             return c
         if isinstance(want, TInt) and isinstance(t, TInt):
             return c
+        if isinstance(want, (TF64, TU64, TI128)) and isinstance(t, TInt):
+            lit = node.a if getattr(node, "kind", None) == "unop" and node.op == "-" else node
+            if getattr(lit, "kind", None) == "num":
+                return f"(({self.cpp_type(want)})({c}))"
+            self.error(node, f"an Int is not a {want!r}; convert with `{want!r}(x)`")
         if isinstance(want, TMod) and isinstance(t, TInt):
             return f"Mod<{want.m}>({c})"
         if isinstance(want, TOpt):
@@ -776,8 +784,14 @@ class Compiler(LendMixin):
 
     def x_num(self, e, want):
         v = e.value
-        if isinstance(v, float):
-            return repr(v), TInt()
+        if isinstance(v, float) or getattr(e, "is_float", False):
+            return repr(float(v)), F64
+        if isinstance(want, TF64):      # an integer literal unifies with F64: `x * 2`, `let h: F64 = 0`
+            return f"{v}.0", F64
+        if isinstance(want, TU64):
+            return f"{v}ULL", U64
+        if isinstance(want, TI128):
+            return f"((__int128){v}LL)", I128
         if isinstance(want, TMod):
             return f"Mod<{want.m}>({v}LL)", want
         return (f"{v}LL" if abs(v) > 2**31 - 1 else str(v)), TInt(v, v)
@@ -842,6 +856,7 @@ class Compiler(LendMixin):
             return f"cp_fmt_i({c}, {m.group(2) or 0}, {'true' if m.group(1) else 'false'})"
         if isinstance(t, TF64):
             self.error(node, "an F64 has no default format: write `{x:.6f}` with the digits you want")
+        if isinstance(t, (TU64, TI128)): return f"cp_wide_str({c})"
         if isinstance(t, TInt): return f"to_string((ll)({c}))"
         if isinstance(t, TDom):
             lab = self.dom_label(t.info, c)
@@ -866,7 +881,9 @@ class Compiler(LendMixin):
             return "CP_INF", TInt(4e18, 4e18)
         s = self.lookup(e.name)
         if s is None:
-            prim = {"Int": INT, "Bool": BOOL, "Char": CHAR}
+            prim = {"Int": INT, "Bool": BOOL, "Char": CHAR, "F64": F64, "U64": U64, "I128": I128}
+            if e.name == "PI":
+                return "3.14159265358979323846", F64
             if e.name in prim:
                 return "", TType(prim[e.name])
             if e.name == "Steps":
@@ -1057,6 +1074,8 @@ class Compiler(LendMixin):
             return f"!({c})", BOOL
         if e.op == "~":
             return self.x_bitnot(c, t, e)
+        if isinstance(t, (TF64, TI128)):
+            return f"(-({c}))", t
         if isinstance(t, TInt):
             lo, hi = iv_neg(t)
             if hi is None:              # -x overflows for the minimum Int only
@@ -1065,6 +1084,9 @@ class Compiler(LendMixin):
         if isinstance(t, TMod):
             return f"-({c})", t
         self.error(e, f"cannot negate {t!r}")
+
+    def is_literal(self, x):
+        return x.kind == "num" or (x.kind == "unop" and x.op == "-" and x.a.kind == "num") or (x.kind == "paren" and self.is_literal(x.a))
 
     def x_bitnot(self, c, t, e):
         if not isinstance(t, TInt):
@@ -1102,6 +1124,29 @@ class Compiler(LendMixin):
         b, bt = self.expr(e.b, at if isinstance(at, TMod) else None)
         if isinstance(at, TOpt) or isinstance(bt, TOpt):
             self.error(e, f"`{op}` on an optional ({at!r}, {bt!r}); unwrap with `!`, `??` or `if let` first")
+        WIDE = (TF64, TU64, TI128)
+        if isinstance(at, WIDE) or isinstance(bt, WIDE) or (isinstance(want, WIDE) and is_int(at) and is_int(bt)
+                                                             and self.is_literal(e.a) and self.is_literal(e.b)):
+            # F64, U64 and I128 never mix silently with Int: only an integer literal unifies with them
+            wt = at if isinstance(at, WIDE) else bt if isinstance(bt, WIDE) else want
+            if not isinstance(at, WIDE):
+                a, at = self.expr(e.a, wt)
+                a = self.coerce(a, at, wt, e.a)
+            if op == "**" and isinstance(wt, TI128) and is_int(bt):
+                return f"cp_ipow128({a}, {b}, {e.line})", wt
+            if op in ("<<", ">>") and isinstance(wt, (TU64, TI128)) and is_int(bt):
+                return f"(({a}) {op} ({b}))", wt
+            if not isinstance(bt, WIDE):
+                b, bt = self.expr(e.b, wt)
+                b = self.coerce(b, bt, wt, e.b)
+            if type(bt) is not type(wt) or type(at) is not type(wt):
+                self.error(e, f"`{op}` between {at!r} and {bt!r}; convert one side explicitly")
+            ops = {TF64: "+-*/", TU64: "+-*/%&|^", TI128: "+-*/%"}[type(wt)]
+            if op not in ops or len(op) != 1:
+                self.error(e, f"`{op}` is not defined on {wt!r}")
+            if op in "/%" and not isinstance(wt, TF64):
+                return f"cp_wdiv{'mod' if op == '%' else ''}({a}, {b}, {e.line})", wt
+            return f"(({a}) {op} ({b}))", wt
         if isinstance(at, TInt) and isinstance(bt, TMod):
             a, at = f"Mod<{bt.m}>({a})", bt
         if isinstance(at, TMod):
@@ -1223,6 +1268,14 @@ class Compiler(LendMixin):
                 if (isinstance(lt, TOpt) or isinstance(rt, TOpt)) and op not in ("==", "!="):
                     self.error(e, f"`{op}` on an optional ({lt!r} vs {rt!r}): ?T has no ordering; "
                                   f"handle `none` explicitly")
+                WIDE = (TF64, TU64, TI128)
+                if isinstance(lt, WIDE) != isinstance(rt, WIDE) or (isinstance(lt, WIDE) and type(lt) is not type(rt)):
+                    if isinstance(lt, WIDE) and is_int(rt):
+                        rc, rt = self.coerce(rc, rt, lt, rn), lt
+                    elif isinstance(rt, WIDE) and is_int(lt) and len(parts) == 0:
+                        left_c, lt = self.coerce(left_c, lt, rt, e.first), rt
+                    else:
+                        self.error(e, f"comparing {lt!r} with {rt!r}; convert one side explicitly")
                 if (isinstance(lt, TMod) or isinstance(rt, TMod)) and op not in ("==", "!="):
                     self.error(e, f"`{op}` on a Mod ({lt!r} vs {rt!r}): a residue has no ordering; "
                                   f"compare `.val` if you mean the representative in 0..P")
@@ -2192,8 +2245,55 @@ class Compiler(LendMixin):
                     "; it pops the smallest element, so for another order push a key first: "
                     "`h.push((-x, x))` pops the largest `x`" if fn.name == "MinHeap" else ""))
             return f"{self.cpp_type(t)}()", t
+        if fn.kind == "name" and fn.name in ("F64", "U64", "I128") and len(e.args) == 1 and not self.lookup(fn.name):
+            wt = {"F64": F64, "U64": U64, "I128": I128}[fn.name]
+            c, t = self.expr(e.args[0])
+            if not (is_int(t) or isinstance(t, (TF64, TU64, TI128))) or (isinstance(t, TF64) and wt is not F64):
+                self.error(e, f"cannot convert {t!r} to {fn.name}" + ("; round it first with floor/ceil/round/trunc" if isinstance(t, TF64) else ""))
+            return f"(({self.cpp_type(wt)})({c}))", wt
+        if fn.kind == "name" and fn.name in ("floor", "ceil", "round", "trunc") and len(e.args) == 1 and not self.lookup(fn.name):
+            c, t = self.expr(e.args[0], F64)
+            if not isinstance(t, TF64):
+                self.error(e, f"{fn.name} takes an F64, got {t!r}")
+            return f"cp_f2i({fn.name}({c}), {e.line})", TInt()
+        F1 = {"sqrt": "sqrt", "sin": "sin", "cos": "cos", "tan": "tan", "exp": "exp", "ln": "log"}
+        F2 = {"atan2": "atan2", "hypot": "hypot"}
+        if fn.kind == "name" and (fn.name in F1 or fn.name in F2 or fn.name in ("close", "sign")) and not self.lookup(fn.name):
+            n = 1 if fn.name in F1 else 3 if fn.name == "close" else 2
+            if len(e.args) != n:
+                self.error(e, f"{fn.name} takes {n} F64 argument{'s' if n > 1 else ''}")
+            cs = []
+            for a in e.args:
+                c, t = self.expr(a, F64)
+                cs.append(self.coerce(c, t, F64, a))
+            if fn.name == "close":      # close(a, b, eps): |a - b| <= eps
+                return f"(fabs(({cs[0]}) - ({cs[1]})) <= ({cs[2]}))", BOOL
+            if fn.name == "sign":       # sign(x, eps): -1, 0 or 1, with |x| <= eps counted as 0
+                return f"cp_fsign({cs[0]}, {cs[1]})", TInt(-1, 1)
+            return f"cp_fchk({(F1.get(fn.name) or F2[fn.name])}({', '.join(cs)}), {e.line})", F64
+        if fn.kind == "name" and fn.name in ("abs", "min", "max") and e.args and not self.lookup(fn.name) and all(a.kind != "gen" for a in e.args):
+            ts = [self.capture(lambda a=a: self.expr(a))[1][1] for a in e.args]
+            wide = next((t for t in ts if isinstance(t, (TF64, TU64, TI128))), None)
+            if wide is not None:
+                cs = []
+                for a in e.args:
+                    c, t = self.expr(a, wide)
+                    cs.append(self.coerce(c, t, wide, a))
+                ct = self.cpp_type(wide)
+                if fn.name == "abs":
+                    if len(cs) != 1 or isinstance(wide, TU64):
+                        self.error(e, "abs takes one signed number")
+                    return (f"fabs({cs[0]})" if isinstance(wide, TF64) else f"([](__int128 _x) {{ return _x < 0 ? -_x : _x; }}({cs[0]}))"), wide
+                c = cs[0]
+                for x in cs[1:]:
+                    c = f"{fn.name}<{ct}>({c}, {x})"
+                return c, wide
         if fn.kind == "name" and fn.name in ("Int", "Bool"):
             c, t = self.expr(e.args[0])
+            if fn.name == "Int" and isinstance(t, TF64):
+                self.error(e, "Int(x) on an F64 does not say how to round: write floor(x), ceil(x), round(x) or trunc(x)")
+            if fn.name == "Int" and isinstance(t, (TU64, TI128)):
+                return f"cp_narrow64({c}, {e.line})", TInt()
             if fn.name == "Int":
                 if isinstance(t, TBool): return f"(ll)({c})", TInt(0, 1)
                 if isinstance(t, TChar): return f"(ll)({c})", TInt(0, 255)
@@ -4585,6 +4685,10 @@ class Compiler(LendMixin):
             return
         if isinstance(tt, TDom):
             self.error(s, f"`{op}` on a domain value; use `i = i + k` (checked)")
+        if isinstance(tt, (TF64, TU64, TI128)):
+            c, _ = self.x_binop(N("binop", s.line, op=bop, a=N("ctemp", s.line, code=tc, ty=tt, src=tgt), b=s.value), tt)
+            self.emit(f"{tc} = {c};")
+            return
         if not (isinstance(tt, TInt) and isinstance(vt, TInt)):
             self.error(s, f"`{op}` between {tt!r} and {vt!r}")
         if bop in ("+", "-"):
@@ -5376,7 +5480,13 @@ def _emit_read(self, target, ty, node, packed=False):
     """Emit code reading (or, in gen mode, generating) a value of type ty into target. `packed`: the value is
     one of a run (an array), so a one-character tag is written without a space after it."""
     ln = node.line
-    if isinstance(ty, TInt):
+    if isinstance(ty, TF64):
+        self.emit(f"{target} = CP_GEN ? (double)gen_int(-1000000, 1000000) / 1000.0 : rd_f64({ln});")
+        self.emit(f"if (CP_GEN) {{ out_str(cp_fmt_f({target}, 3, 0, false)); out_char(' '); }}")
+    elif isinstance(ty, (TU64, TI128)):
+        self.emit(f"{target} = ({self.cpp_type(ty)})(CP_GEN ? gen_int(0, 1000000000) : rd_int());")
+        self.emit(f"if (CP_GEN) {{ out_str(cp_wide_str({target})); out_char(' '); }}")
+    elif isinstance(ty, TInt):
         lo = getattr(ty, "lo_cpp", None) or ("LLONG_MIN" if ty.lo is None else f"{ty.lo}LL")
         hi = getattr(ty, "hi_cpp", None) or ("LLONG_MAX" if ty.hi is None else f"{ty.hi}LL")
         self.emit(f"{target} = CP_GEN ? gen_int({lo}, {hi}) : rd_range({lo}, {hi}, {ln});")
@@ -5576,7 +5686,11 @@ def _emit_print_body(self, args, newline, node):
         self.emit("out_char('\\n');")
 
 def _emit_value(self, c, t, node):
-    if isinstance(t, TInt):
+    if isinstance(t, TF64):
+        self.error(node, "print of a bare F64 does not say how many digits: format it, `print(\"{x:.6f}\")`")
+    if isinstance(t, (TU64, TI128)):
+        self.emit(f"out_str(cp_wide_str({c}));")
+    elif isinstance(t, TInt):
         self.emit(f"out_int({c});")
     elif isinstance(t, TDom):
         lab = self.dom_label(t.info, c)
