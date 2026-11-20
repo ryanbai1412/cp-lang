@@ -1,0 +1,5 @@
+// Codeforces 2222 A: check whether any element of the array equals 100.
+@!multitest
+let n: Int = read()
+let a: [0..n]Int = read()
+print(if any(a[i] == 100 for i in 0..n): "Yes" else: "No")
