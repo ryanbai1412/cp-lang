@@ -738,7 +738,8 @@ class Compiler:
             kc, kt = self.expr(e.idx[0], ot.key)
             kc = self.coerce(kc, kt, ot.key, e.idx[0])
             lv = getattr(self, "lvalue", None)
-            if lv is not None and lv[0] is e and lv[1] == "=":
+            # `m[k] = v` inserts; `m[k] += v` on a missing key starts from the zero value (counting)
+            if lv is not None and lv[0] is e and (lv[1] == "=" or is_int(ot.val) or isinstance(ot.val, TMod)):
                 return f"{oc}[{kc}]", ot.val
             self.note_check(e, f"key `{unparse(e.idx[0])}` is in the map")
             return f"cp_mget({oc}, {kc}, {e.line})", ot.val
