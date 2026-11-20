@@ -251,9 +251,9 @@ confirmed by Ryan yet; each is small and local to change.
   so the file obeys the 1.8 lean without `U64`. When `U64` lands, the
   four helpers collapse to plain shifts.
 - **The library runs on a reference interpreter**, `proto/cpi/`, until
-  the Rust front end accepts generics, traits and modules. It checks at
-  run time and does no static typing; `proto/cpi/README.md` lists what
-  that does and does not prove.
+  the Rust compiler can run it. It checks at run time and does no static
+  typing; `proto/cpi/README.md` lists what that does and does not prove.
+  The Rust front end has checked the library statically since §13.
 
 ## 11. Leaning since 2026-11-20: the ergonomics audit
 
@@ -449,3 +449,43 @@ an explicit start value for every operation; that makes the common
 `m[k] += 1` longer to protect the rare `m[k] /= x`, so only the
 operations without an identity ask. And `?` could have been allowed
 everywhere; see above.
+||||||| parent of 7a2691c (Document what the Rust front end now checks)
+
+## 14. Calls made bringing the Rust front end up to the libraries (2026-11-20)
+
+The Rust checker now accepts `stdlib/`, `examples/local-lib/` and
+`proto/ports/` unchanged. Where the source needed a rule the plan does
+not state, these calls were made. None is confirmed by Ryan yet.
+
+- **14.1 A value with more fields fits where fewer are asked for.** The
+  library passes a `Group<T>` where a `Monoid<T>` is expected, and a
+  `(u, v, w)` edge where `(u, v)` is:
+
+  ```
+  struct Monoid<T>(id: T, op: (T, T) -> T)
+  struct Group<T>(id: T, op: (T, T) -> T, inv: T -> T)
+  let sums = SegTree<I, Int>.from(Sum<Int>, a)    // Sum<Int> is a Group<Int>
+  ```
+
+  The checker accepts a struct for another struct when it has every field
+  the other has, at the same types, and a record for a narrower record.
+  The alternative is a conversion at every such call.
+- **14.2 An impl's type parameters are read off its header.**
+  `impl Add for Mod<P>` does not declare `P`; a type argument in the
+  header that names nothing in scope is a parameter of the impl.
+- **14.3 Top-level statements see the lends and asserts before them.**
+  A file's top-level statements are checked one at a time. A slice bound
+  by a top-level `let` still keeps its array lent in the statements after
+  it, and a top-level `assert i != j` holds until `i` or `j` is assigned:
+
+  ```
+  let part = a[l..=r]
+  a[l] = 0          // error: `a` is lent to `part` until its last use
+  print(part[l])
+  ```
+- **14.4 The prototype's built-in names are accepted without a type.**
+  The ports use `SegTree`, `Mod`, `dijkstra` and a dozen more names with
+  no `use`, because `proto/cpc` builds them in. The checker lists them in
+  `crates/cpl-check/src/prelude.rs` and does not type what goes through
+  them. This is a stopgap: the fix is for each port to `use` the `std`
+  module, at which point the name leaves the list.
