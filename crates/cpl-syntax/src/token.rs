@@ -183,7 +183,10 @@ impl TokenKind {
     }
 
     pub fn is_closer(self) -> bool {
-        matches!(self, TokenKind::RParen | TokenKind::RBracket | TokenKind::RBrace)
+        matches!(
+            self,
+            TokenKind::RParen | TokenKind::RBracket | TokenKind::RBrace
+        )
     }
 
     /// How the token is named in a diagnostic.

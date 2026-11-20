@@ -37,10 +37,17 @@ impl<'a> Checker<'a> {
                         Ty::Bool
                     }
                     UnOp::Neg | UnOp::BitNot if ty.is_numeric() => ty.widen(),
-                    UnOp::Neg | UnOp::BitNot => self.bad_operand(&ty, inner, if *op == UnOp::Neg { "-" } else { "~" }),
+                    UnOp::Neg | UnOp::BitNot => {
+                        self.bad_operand(&ty, inner, if *op == UnOp::Neg { "-" } else { "~" })
+                    }
                 }
             }
-            ExprKind::Binary { op, op_span, lhs, rhs } => self.binary(*op, *op_span, lhs, rhs),
+            ExprKind::Binary {
+                op,
+                op_span,
+                lhs,
+                rhs,
+            } => self.binary(*op, *op_span, lhs, rhs),
             ExprKind::Compare { first, rest } => {
                 let mut left = self.infer(first);
                 let mut left_expr: &Expr = first;
@@ -57,7 +64,12 @@ impl<'a> Checker<'a> {
                 }
                 Ty::Bool
             }
-            ExprKind::Range { lo, hi, inclusive, step } => {
+            ExprKind::Range {
+                lo,
+                hi,
+                inclusive,
+                step,
+            } => {
                 let lo_ty = lo.as_ref().map(|e| self.infer(e));
                 let hi_ty = hi.as_ref().map(|e| self.infer(e));
                 if let Some(step) = step {
@@ -67,10 +79,13 @@ impl<'a> Checker<'a> {
                     (Some(Ty::Pos(d)), _) | (_, Some(Ty::Pos(d))) => Ty::Pos(d.clone()),
                     (Some(a), Some(b)) if a.is_int() && b.is_int() => {
                         let lo_min = lo.as_ref().and_then(|e| self.bounds(e).0);
-                        let hi_max = hi
-                            .as_ref()
-                            .and_then(|e| self.bounds(e).1)
-                            .map(|h| if *inclusive { h } else { h - 1 });
+                        let hi_max = hi.as_ref().and_then(|e| self.bounds(e).1).map(|h| {
+                            if *inclusive {
+                                h
+                            } else {
+                                h - 1
+                            }
+                        });
                         Ty::Range {
                             lo: lo_min,
                             hi: hi_max,
@@ -130,7 +145,11 @@ impl<'a> Checker<'a> {
                 self.pop_scope();
                 Ty::list(body_ty)
             }
-            ExprKind::Table { domains, params, body } => {
+            ExprKind::Table {
+                domains,
+                params,
+                body,
+            } => {
                 let index: Vec<Ty> = domains.iter().map(|d| self.resolve_type(d)).collect();
                 self.push_scope();
                 for (i, param) in params.iter().enumerate() {
@@ -157,7 +176,10 @@ impl<'a> Checker<'a> {
                 Ty::Unknown
             }
             ExprKind::Block(block) => self.block(block),
-            ExprKind::If { branches, otherwise } => {
+            ExprKind::If {
+                branches,
+                otherwise,
+            } => {
                 let mut result = None;
                 for (cond, body) in branches {
                     self.push_scope();
@@ -252,7 +274,10 @@ impl<'a> Checker<'a> {
             return;
         }
         let quoted = self.quote(expr.span);
-        let message = format!("{what} needs a Bool, but `{quoted}` is {}", ty.with_article());
+        let message = format!(
+            "{what} needs a Bool, but `{quoted}` is {}",
+            ty.with_article()
+        );
         if let Some(diag) = self.error(codes::CONDITION_NOT_BOOL, expr.span, message) {
             diag.help = Some(match ty {
                 Ty::Optional(_) => format!("compare it: `{quoted} != none`"),
@@ -267,7 +292,11 @@ impl<'a> Checker<'a> {
             return ty.clone();
         }
         if matches!(ty, Ty::Bool | Ty::Str) {
-            let message = format!("`{op}` needs a number, but `{}` is {}", self.quote(expr.span), ty.with_article());
+            let message = format!(
+                "`{op}` needs a number, but `{}` is {}",
+                self.quote(expr.span),
+                ty.with_article()
+            );
             self.error(codes::BAD_OPERANDS, expr.span, message);
             return Ty::Error;
         }
@@ -324,7 +353,9 @@ impl<'a> Checker<'a> {
 
     /// Reports a comparison between positions of two different domains.
     fn comparable(&mut self, left: &Ty, left_expr: &Expr, right: &Ty, right_expr: &Expr) {
-        let (Ty::Pos(a), Ty::Pos(b)) = (left, right) else { return };
+        let (Ty::Pos(a), Ty::Pos(b)) = (left, right) else {
+            return;
+        };
         if a == b {
             return;
         }
@@ -335,7 +366,11 @@ impl<'a> Checker<'a> {
             self.quote(right_expr.span),
             right.with_article()
         );
-        self.error(codes::WRONG_DOMAIN, left_expr.span.to(right_expr.span), message);
+        self.error(
+            codes::WRONG_DOMAIN,
+            left_expr.span.to(right_expr.span),
+            message,
+        );
     }
 
     /// What a `for` over a value of type `ty` yields.
@@ -344,7 +379,11 @@ impl<'a> Checker<'a> {
             Ty::Domain(name) => Ty::Pos(name.clone()),
             Ty::Array { elem, .. } => (**elem).clone(),
             Ty::Str => Ty::Char,
-            Ty::Named { name, args } if matches!(name.as_str(), "List" | "Set" | "Range" | "Gen") && args.len() == 1 => args[0].clone(),
+            Ty::Named { name, args }
+                if matches!(name.as_str(), "List" | "Set" | "Range" | "Gen") && args.len() == 1 =>
+            {
+                args[0].clone()
+            }
             Ty::Error => Ty::Error,
             _ => Ty::Unknown,
         }
@@ -354,9 +393,17 @@ impl<'a> Checker<'a> {
     /// struct or record that has it.
     fn field_of(&mut self, ty: &Ty, name: &ast::Name) -> Option<Ty> {
         match ty {
-            Ty::Record(fields) => fields.iter().find(|(n, _)| *n == name.text).map(|(_, t)| t.clone()),
-            Ty::Named { name: type_name, .. } => match self.env.global(type_name).as_deref() {
-                Some(Def::Struct { fields, .. }) => fields.iter().find(|f| f.name == name.text).map(|f| f.ty.clone()),
+            Ty::Record(fields) => fields
+                .iter()
+                .find(|(n, _)| *n == name.text)
+                .map(|(_, t)| t.clone()),
+            Ty::Named {
+                name: type_name, ..
+            } => match self.env.global(type_name).as_deref() {
+                Some(Def::Struct { fields, .. }) => fields
+                    .iter()
+                    .find(|f| f.name == name.text)
+                    .map(|f| f.ty.clone()),
                 _ => None,
             },
             _ => None,
@@ -379,9 +426,16 @@ impl<'a> Checker<'a> {
                     _ => Ty::Unknown,
                 }
             }
-            Ty::Named { name: type_name, .. } => match self.env.global(type_name).as_deref() {
-                Some(Def::Struct { fields, methods, .. }) => Some((
-                    fields.iter().find(|f| f.name == name.text).map(|f| f.ty.clone()),
+            Ty::Named {
+                name: type_name, ..
+            } => match self.env.global(type_name).as_deref() {
+                Some(Def::Struct {
+                    fields, methods, ..
+                }) => Some((
+                    fields
+                        .iter()
+                        .find(|f| f.name == name.text)
+                        .map(|f| f.ty.clone()),
                     fields.iter().map(|f| f.name.clone()).collect(),
                     methods.clone(),
                 )),
@@ -419,14 +473,21 @@ impl<'a> Checker<'a> {
         let Some((field_ty, field_names, methods)) = found else {
             // Members of library types, arrays and domains (`xs.len`,
             // `V.rev`) come from `std`, which is not loaded yet.
-            return if base_ty == Ty::Error { Ty::Error } else { Ty::Unknown };
+            return if base_ty == Ty::Error {
+                Ty::Error
+            } else {
+                Ty::Unknown
+            };
         };
         let ty = match field_ty {
             Some(ty) => ty,
             None => match methods.iter().find(|(m, _)| *m == name.text) {
                 Some((_, ty)) => ty.clone(),
                 None => {
-                    let known = field_names.iter().chain(methods.iter().map(|(m, _)| m)).map(String::as_str);
+                    let known = field_names
+                        .iter()
+                        .chain(methods.iter().map(|(m, _)| m))
+                        .map(String::as_str);
                     let suggestion = closest(&name.text, known);
                     let message = format!("{} has no field or method `{}`", base_ty, name.text);
                     if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
@@ -439,7 +500,8 @@ impl<'a> Checker<'a> {
                                 });
                             }
                             None if !field_names.is_empty() => {
-                                diag.help = Some(format!("its fields are {}", list_names(&field_names)));
+                                diag.help =
+                                    Some(format!("its fields are {}", list_names(&field_names)));
                             }
                             None => {}
                         }
@@ -470,10 +532,17 @@ impl<'a> Checker<'a> {
                         self.quote(base.span),
                         plural(index.len(), "index", "indices"),
                         wanted.join(", "),
-                        if indices.len() == 1 { "1 was".to_string() } else { format!("{} were", indices.len()) },
+                        if indices.len() == 1 {
+                            "1 was".to_string()
+                        } else {
+                            format!("{} were", indices.len())
+                        },
                     );
                     if let Some(diag) = self.error(codes::NOT_INDEXABLE, expr.span, message) {
-                        diag.help = Some("all indices go in one pair of brackets: `g[r, c]`, never `g[r][c]`".into());
+                        diag.help = Some(
+                            "all indices go in one pair of brackets: `g[r, c]`, never `g[r][c]`"
+                                .into(),
+                        );
                     }
                     return Ty::Error;
                 }
@@ -513,7 +582,11 @@ impl<'a> Checker<'a> {
             Ty::Named { name, args } if name == "Map" && args.len() == 2 => args[1].clone(),
             Ty::Str => Ty::Char,
             ty if ty.is_numeric() || matches!(ty, Ty::Bool | Ty::Char | Ty::Fn { .. }) => {
-                let message = format!("`{}` is {} and can't be indexed", self.quote(base.span), ty.with_article());
+                let message = format!(
+                    "`{}` is {} and can't be indexed",
+                    self.quote(base.span),
+                    ty.with_article()
+                );
                 self.error(codes::NOT_INDEXABLE, base.span, message);
                 Ty::Error
             }
@@ -532,7 +605,11 @@ impl<'a> Checker<'a> {
     ) -> bool {
         // `none` fills whatever is declared, and code that already has an
         // error is not reported again.
-        if got.fits(want) || matches!(at.kind, ExprKind::None) || got.has_error() || want.has_error() {
+        if got.fits(want)
+            || matches!(at.kind, ExprKind::None)
+            || got.has_error()
+            || want.has_error()
+        {
             return true;
         }
         let text = message(self, got, want);
@@ -556,5 +633,9 @@ pub(crate) fn plural(n: usize, one: &str, many: &str) -> String {
 }
 
 pub(crate) fn list_names(names: &[String]) -> String {
-    names.iter().map(|n| format!("`{n}`")).collect::<Vec<_>>().join(", ")
+    names
+        .iter()
+        .map(|n| format!("`{n}`"))
+        .collect::<Vec<_>>()
+        .join(", ")
 }

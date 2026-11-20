@@ -50,7 +50,10 @@ pub fn split_items(tokens: &[Token]) -> Vec<ItemRange> {
             }
             i += 1;
             // After a block closes, only `elif`/`else` continue the item.
-            if depth == 0 && tokens[i - 1].kind == T::Dedent && !matches!(tokens[i].kind, T::Elif | T::Else | T::Dedent) {
+            if depth == 0
+                && tokens[i - 1].kind == T::Dedent
+                && !matches!(tokens[i].kind, T::Elif | T::Else | T::Dedent)
+            {
                 break;
             }
             if depth < 0 {

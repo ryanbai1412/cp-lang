@@ -39,7 +39,10 @@ impl<'a> Parser<'a> {
         let mut decorators = Vec::new();
         while self.at(T::At) {
             decorators.push(self.decorator());
-            if !self.eat(T::Newline) && !self.at_line_end() && decorators.last().is_some_and(|d| d.name.text.is_empty()) {
+            if !self.eat(T::Newline)
+                && !self.at_line_end()
+                && decorators.last().is_some_and(|d| d.name.text.is_empty())
+            {
                 break;
             }
         }
@@ -83,19 +86,28 @@ impl<'a> Parser<'a> {
             let found = self.peek();
             let span = self.span();
             let mut diag = Diagnostic::error(
-                if found.is_closer() { codes::UNMATCHED_CLOSER } else { codes::UNEXPECTED_TOKEN },
+                if found.is_closer() {
+                    codes::UNMATCHED_CLOSER
+                } else {
+                    codes::UNEXPECTED_TOKEN
+                },
                 span,
                 if found.is_closer() {
                     format!("this {} has no matching opener", found.describe())
                 } else {
-                    format!("expected the end of the statement, found {}", found.describe())
+                    format!(
+                        "expected the end of the statement, found {}",
+                        found.describe()
+                    )
                 },
             );
             if found.is_closer() {
                 diag = diag.with_fix("remove it", span, "");
             } else if found == T::Semi {
                 diag = diag
-                    .with_help("statements end at the end of the line; `;` is only used inside `{ ... }`")
+                    .with_help(
+                        "statements end at the end of the line; `;` is only used inside `{ ... }`",
+                    )
                     .with_fix("remove `;`", span, "");
             }
             self.error(diag);
@@ -149,7 +161,11 @@ impl<'a> Parser<'a> {
             }
             T::Yield => {
                 self.bump();
-                let from = self.at_ident("from") && !matches!(self.peek_n(1), T::Newline | T::Dot | T::LParen | T::LBracket);
+                let from = self.at_ident("from")
+                    && !matches!(
+                        self.peek_n(1),
+                        T::Newline | T::Dot | T::LParen | T::LBracket
+                    );
                 if from {
                     self.bump();
                 }
@@ -193,8 +209,12 @@ impl<'a> Parser<'a> {
             T::Ident if self.text() == "pure" && self.peek_n(1) == T::Fn => {
                 let span = self.span();
                 self.error(
-                    Diagnostic::error(codes::UNEXPECTED_TOKEN, span, "`pure fn` was removed; write `fn`")
-                        .with_fix("remove `pure`", span, ""),
+                    Diagnostic::error(
+                        codes::UNEXPECTED_TOKEN,
+                        span,
+                        "`pure fn` was removed; write `fn`",
+                    )
+                    .with_fix("remove `pure`", span, ""),
                 );
                 self.recovering = false;
                 self.bump();
@@ -226,7 +246,12 @@ impl<'a> Parser<'a> {
             }
             None
         };
-        StmtKind::Let { mutable, pat, ty, init }
+        StmtKind::Let {
+            mutable,
+            pat,
+            ty,
+            init,
+        }
     }
 
     fn const_stmt(&mut self) -> StmtKind {
@@ -237,7 +262,11 @@ impl<'a> Parser<'a> {
             Some(self.expr())
         } else {
             if !self.in_trait {
-                self.error_expected(codes::EXPECTED_TOKEN, "`=` and a value for the `const`", None);
+                self.error_expected(
+                    codes::EXPECTED_TOKEN,
+                    "`=` and a value for the `const`",
+                    None,
+                );
             }
             None
         };
@@ -250,7 +279,12 @@ impl<'a> Parser<'a> {
         self.expect(T::In, "`in` after the loop variable");
         let iter = self.expr();
         let body = self.colon_block("the `for` header");
-        StmtKind::For { label, pat, iter, body }
+        StmtKind::For {
+            label,
+            pat,
+            iter,
+            body,
+        }
     }
 
     fn expr_stmt(&mut self) -> StmtKind {
@@ -275,7 +309,11 @@ impl<'a> Parser<'a> {
             }
             // `best max= x`.
             T::Ident if self.peek_n(1) == T::Eq && matches!(self.text(), "max" | "min") => {
-                let op = if self.text() == "max" { AssignOp::Max } else { AssignOp::Min };
+                let op = if self.text() == "max" {
+                    AssignOp::Max
+                } else {
+                    AssignOp::Min
+                };
                 self.bump();
                 op
             }
@@ -291,7 +329,10 @@ impl<'a> Parser<'a> {
             self.bump();
             let pat = self.pattern();
             self.expect(T::Eq, "`=` after the pattern in `if let`");
-            return Cond::Let { pat, value: self.expr() };
+            return Cond::Let {
+                pat,
+                value: self.expr(),
+            };
         }
         if self.at(T::Const) {
             self.bump();

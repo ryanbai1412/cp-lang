@@ -52,12 +52,22 @@ impl<'a> Parser<'a> {
                 }
                 PatternKind::Tuple(items)
             }
-            T::Int | T::Float | T::Str | T::RawStr | T::Char | T::True | T::False | T::None | T::Minus => {
-                PatternKind::Literal(Box::new(self.unary()))
-            }
+            T::Int
+            | T::Float
+            | T::Str
+            | T::RawStr
+            | T::Char
+            | T::True
+            | T::False
+            | T::None
+            | T::Minus => PatternKind::Literal(Box::new(self.unary())),
             _ => {
                 let after = self.prev_kind().map_or("here", |k| k.describe());
-                self.error_expected(codes::EXPECTED_PATTERN, &format!("a name or pattern after {after}"), None);
+                self.error_expected(
+                    codes::EXPECTED_PATTERN,
+                    &format!("a name or pattern after {after}"),
+                    None,
+                );
                 PatternKind::Error
             }
         };

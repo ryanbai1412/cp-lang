@@ -14,7 +14,10 @@ impl<'a> Checker<'a> {
                 self.args(&callee_text, "takes", &params, args, call);
                 *ret
             }
-            Ty::Named { name, args: type_args } => self.construct(&name, type_args, &callee_text, args, call),
+            Ty::Named {
+                name,
+                args: type_args,
+            } => self.construct(&name, type_args, &callee_text, args, call),
             Ty::TypeName(name) => self.construct(&name, Vec::new(), &callee_text, args, call),
             // `V(i)`: a number checked into the domain.
             Ty::Domain(name) => {
@@ -49,7 +52,14 @@ impl<'a> Checker<'a> {
     }
 
     /// `Road(u, v, len)`, `Int(x)`, `List<Int>()`.
-    fn construct(&mut self, name: &str, type_args: Vec<Ty>, callee_text: &str, args: &[Arg], call: &Expr) -> Ty {
+    fn construct(
+        &mut self,
+        name: &str,
+        type_args: Vec<Ty>,
+        callee_text: &str,
+        args: &[Arg],
+        call: &Expr,
+    ) -> Ty {
         if let Some(def) = self.env.global(name) {
             return match &*def {
                 Def::Struct { fields, .. } => {
@@ -71,7 +81,10 @@ impl<'a> Checker<'a> {
         }
         self.plain_args(args);
         match prelude::ty(name) {
-            Some(Ty::Named { name, .. }) => Ty::Named { name, args: type_args },
+            Some(Ty::Named { name, .. }) => Ty::Named {
+                name,
+                args: type_args,
+            },
             Some(ty) => ty,
             None => Ty::Unknown,
         }
@@ -83,7 +96,11 @@ impl<'a> Checker<'a> {
         let positional: Vec<&Param> = params.iter().filter(|p| !p.named_only).collect();
         let variadic = positional.last().is_some_and(|p| p.variadic);
         let labeled = params.iter().all(|p| !p.name.is_empty());
-        let noun = if verb == "has" { ("field", "fields") } else { ("argument", "arguments") };
+        let noun = if verb == "has" {
+            ("field", "fields")
+        } else {
+            ("argument", "arguments")
+        };
         let mut supplied: Vec<&str> = Vec::new();
         let mut next = 0usize;
         let mut extra = 0usize;
@@ -98,7 +115,8 @@ impl<'a> Checker<'a> {
                         let suggestion = closest(&name.text, names.iter().map(String::as_str));
                         let what = if verb == "has" { "field" } else { "parameter" };
                         let message = format!("`{callee}` has no {what} named `{}`", name.text);
-                        if let Some(diag) = self.error(codes::UNKNOWN_ARG_NAME, name.span, message) {
+                        if let Some(diag) = self.error(codes::UNKNOWN_ARG_NAME, name.span, message)
+                        {
                             diag.help = Some(match suggestion {
                                 Some(s) => format!("did you mean `{s}`?"),
                                 None => format!("its {what}s are {}", list_names(&names)),
@@ -130,7 +148,11 @@ impl<'a> Checker<'a> {
             };
             supplied.push(&param.name);
             self.expect_fits(&arg_ty, &param.ty, &arg.value, |c, got, want| {
-                let slot = if param.name.is_empty() { String::new() } else { format!(" for `{}`", param.name) };
+                let slot = if param.name.is_empty() {
+                    String::new()
+                } else {
+                    format!(" for `{}`", param.name)
+                };
                 format!(
                     "`{callee}` {verb} {}{slot}, but `{}` is {}",
                     want.with_article(),
@@ -140,7 +162,10 @@ impl<'a> Checker<'a> {
             });
             if param.mutable && !arg.mutable {
                 let quoted = self.quote(arg.value.span);
-                let message = format!("`{callee}` changes `{}`, so the argument must be passed as `mut {quoted}`", param.name);
+                let message = format!(
+                    "`{callee}` changes `{}`, so the argument must be passed as `mut {quoted}`",
+                    param.name
+                );
                 let at = arg.value.span;
                 if let Some(diag) = self.error(codes::MISSING_MUT_AT_CALL, at, message) {
                     diag.fixes.push(cpl_diag::Fix {
@@ -149,9 +174,16 @@ impl<'a> Checker<'a> {
                     });
                 }
             } else if arg.mutable && !param.mutable && verb == "takes" {
-                let message = format!("`{callee}` doesn't change `{}`, so `mut` doesn't belong here", param.name);
-                if let Some(diag) = self.error(codes::MISSING_MUT_AT_CALL, arg.value.span, message) {
-                    diag.help = Some(format!("remove `mut`, or declare the parameter `mut {}`", param.name));
+                let message = format!(
+                    "`{callee}` doesn't change `{}`, so `mut` doesn't belong here",
+                    param.name
+                );
+                if let Some(diag) = self.error(codes::MISSING_MUT_AT_CALL, arg.value.span, message)
+                {
+                    diag.help = Some(format!(
+                        "remove `mut`, or declare the parameter `mut {}`",
+                        param.name
+                    ));
                 }
             }
             if arg.mutable {
@@ -162,14 +194,26 @@ impl<'a> Checker<'a> {
         if misnamed || (!labeled && args.iter().any(|a| a.name.is_some())) {
             return;
         }
-        let names: Vec<String> = positional.iter().map(|p| p.name.clone()).filter(|n| !n.is_empty()).collect();
-        let listed = if names.is_empty() { String::new() } else { format!(" ({})", names.join(", ")) };
+        let names: Vec<String> = positional
+            .iter()
+            .map(|p| p.name.clone())
+            .filter(|n| !n.is_empty())
+            .collect();
+        let listed = if names.is_empty() {
+            String::new()
+        } else {
+            format!(" ({})", names.join(", "))
+        };
         let given = args.iter().filter(|a| a.name.is_none()).count();
         if extra > 0 {
             let message = format!(
                 "`{callee}` {verb} {}{listed}, but {} given",
                 plural(positional.len(), noun.0, noun.1),
-                if given == 1 { "1 was".to_string() } else { format!("{given} were") }
+                if given == 1 {
+                    "1 was".to_string()
+                } else {
+                    format!("{given} were")
+                }
             );
             self.error(codes::WRONG_ARG_COUNT, call.span, message);
             return;
@@ -183,7 +227,14 @@ impl<'a> Checker<'a> {
             let what = if missing.iter().all(|m| !m.is_empty()) {
                 format!("{} missing", list_names(&missing))
             } else {
-                format!("{} given", if given == 1 { "only 1 was".to_string() } else { format!("only {given} were") })
+                format!(
+                    "{} given",
+                    if given == 1 {
+                        "only 1 was".to_string()
+                    } else {
+                        format!("only {given} were")
+                    }
+                )
             };
             let verb_s = if missing.len() == 1 { "is" } else { "are" };
             let message = if what.ends_with("missing") {
@@ -193,7 +244,10 @@ impl<'a> Checker<'a> {
                     list_names(&missing)
                 )
             } else {
-                format!("`{callee}` {verb} {}, but {what}", plural(positional.len(), noun.0, noun.1))
+                format!(
+                    "`{callee}` {verb} {}, but {what}",
+                    plural(positional.len(), noun.0, noun.1)
+                )
             };
             self.error(codes::WRONG_ARG_COUNT, call.span, message);
         }

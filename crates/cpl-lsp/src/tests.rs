@@ -15,11 +15,20 @@ print(total)
 ";
 
 fn request(id: u32, method: &str, params: Value) -> Value {
-    obj([("jsonrpc", "2.0".into()), ("id", id.into()), ("method", method.into()), ("params", params)])
+    obj([
+        ("jsonrpc", "2.0".into()),
+        ("id", id.into()),
+        ("method", method.into()),
+        ("params", params),
+    ])
 }
 
 fn notification(method: &str, params: Value) -> Value {
-    obj([("jsonrpc", "2.0".into()), ("method", method.into()), ("params", params)])
+    obj([
+        ("jsonrpc", "2.0".into()),
+        ("method", method.into()),
+        ("params", params),
+    ])
 }
 
 fn doc() -> Value {
@@ -35,7 +44,12 @@ fn did_open(text: &str) -> Value {
         "textDocument/didOpen",
         obj([(
             "textDocument",
-            obj([("uri", URI.into()), ("languageId", "cp".into()), ("version", 1.into()), ("text", text.into())]),
+            obj([
+                ("uri", URI.into()),
+                ("languageId", "cp".into()),
+                ("version", 1.into()),
+                ("text", text.into()),
+            ]),
         )]),
     )
 }
@@ -45,11 +59,17 @@ fn did_change(start: (u32, u32), end: (u32, u32), text: &str) -> Value {
     notification(
         "textDocument/didChange",
         obj([
-            ("textDocument", obj([("uri", URI.into()), ("version", 2.into())])),
+            (
+                "textDocument",
+                obj([("uri", URI.into()), ("version", 2.into())]),
+            ),
             (
                 "contentChanges",
                 vec![obj([
-                    ("range", obj([("start", pos(start.0, start.1)), ("end", pos(end.0, end.1))])),
+                    (
+                        "range",
+                        obj([("start", pos(start.0, start.1)), ("end", pos(end.0, end.1))]),
+                    ),
                     ("text", text.into()),
                 ])]
                 .into(),
@@ -64,16 +84,24 @@ fn open(text: &str) -> (Server, Vec<Value>) {
     let mut server = Server::new();
     let reply = server.handle(&request(1, "initialize", obj([])));
     assert_eq!(reply.len(), 1);
-    assert!(server.handle(&notification("initialized", obj([]))).is_empty());
+    assert!(server
+        .handle(&notification("initialized", obj([])))
+        .is_empty());
     let published = server.handle(&did_open(text));
     (server, diagnostics_of(&published))
 }
 
 fn diagnostics_of(messages: &[Value]) -> Vec<Value> {
     assert_eq!(messages.len(), 1, "{messages:?}");
-    assert_eq!(messages[0].get("method").as_str(), Some("textDocument/publishDiagnostics"));
+    assert_eq!(
+        messages[0].get("method").as_str(),
+        Some("textDocument/publishDiagnostics")
+    );
     assert_eq!(messages[0].at(&["params", "uri"]).as_str(), Some(URI));
-    messages[0].at(&["params", "diagnostics"]).as_array().to_vec()
+    messages[0]
+        .at(&["params", "diagnostics"])
+        .as_array()
+        .to_vec()
 }
 
 fn hover_at(server: &mut Server, line: u32, character: u32) -> Value {
@@ -96,7 +124,10 @@ fn initialize_announces_what_the_server_can_do() {
     assert_eq!(caps.get("hoverProvider"), &Value::Bool(true));
     assert_eq!(caps.get("definitionProvider"), &Value::Bool(true));
     assert_eq!(caps.get("documentSymbolProvider"), &Value::Bool(true));
-    assert_eq!(reply[0].at(&["result", "serverInfo", "name"]).as_str(), Some("cpl"));
+    assert_eq!(
+        reply[0].at(&["result", "serverInfo", "name"]).as_str(),
+        Some("cpl")
+    );
 }
 
 #[test]
@@ -115,13 +146,20 @@ fn opening_a_clean_file_publishes_no_diagnostics() {
 
 #[test]
 fn diagnostics_carry_range_code_help_and_related_spans() {
-    let (_, diagnostics) = open(&SOURCE.replace("dist[v]", "dist[w]").replace("print(total)", "n = 1"));
+    let (_, diagnostics) = open(
+        &SOURCE
+            .replace("dist[v]", "dist[w]")
+            .replace("print(total)", "n = 1"),
+    );
     assert_eq!(diagnostics.len(), 2);
     let d = &diagnostics[0];
     assert_eq!(d.get("code").as_str(), Some("E0201"));
     assert_eq!(d.get("source").as_str(), Some("cpl"));
     assert_eq!(d.get("severity").as_u32(), Some(1));
-    assert_eq!(d.get("message").as_str(), Some("no `w` in scope\nhelp: declare it first: `let w = ...`"));
+    assert_eq!(
+        d.get("message").as_str(),
+        Some("no `w` in scope\nhelp: declare it first: `let w = ...`")
+    );
     assert_eq!(d.at(&["range", "start"]), &pos(6, 18));
     assert_eq!(d.at(&["range", "end"]), &pos(6, 19));
     let d = &diagnostics[1];
@@ -130,7 +168,10 @@ fn diagnostics_carry_range_code_help_and_related_spans() {
 
     let (_, diagnostics) = open("type R = Int\ntype R = Bool\n");
     let related = diagnostics[0].get("relatedInformation").as_array();
-    assert_eq!(related[0].get("message").as_str(), Some("first defined here"));
+    assert_eq!(
+        related[0].get("message").as_str(),
+        Some("first defined here")
+    );
     assert_eq!(related[0].at(&["location", "uri"]).as_str(), Some(URI));
     assert_eq!(related[0].at(&["location", "range", "start"]), &pos(0, 5));
 }
@@ -161,7 +202,10 @@ fn full_document_changes_are_accepted_too() {
         "textDocument/didChange",
         obj([
             ("textDocument", doc()),
-            ("contentChanges", vec![obj([("text", "let x: Bool = 1\n".into())])].into()),
+            (
+                "contentChanges",
+                vec![obj([("text", "let x: Bool = 1\n".into())])].into(),
+            ),
         ]),
     );
     let diagnostics = diagnostics_of(&server.handle(&change));
@@ -205,9 +249,16 @@ fn hover_keeps_working_while_the_buffer_is_broken() {
     let published = server.handle(&did_change((4, 13), (4, 13), " +"));
     assert_eq!(diagnostics_of(&published).len(), 2);
     let hover = hover_at(&mut server, 6, 13);
-    assert!(hover.at(&["contents", "value"]).as_str().unwrap().contains("dist: [V]?Int"));
+    assert!(hover
+        .at(&["contents", "value"])
+        .as_str()
+        .unwrap()
+        .contains("dist: [V]?Int"));
     let hover = hover_at(&mut server, 7, 7);
-    assert_eq!(hover.at(&["contents", "value"]).as_str(), Some("```cp\ntotal: Int\n```"));
+    assert_eq!(
+        hover.at(&["contents", "value"]).as_str(),
+        Some("```cp\ntotal: Int\n```")
+    );
 }
 
 #[test]
@@ -222,10 +273,22 @@ fn definition_and_outline() {
     assert_eq!(reply[0].at(&["result", "range", "start"]), &pos(3, 4));
     assert_eq!(reply[0].at(&["result", "range", "end"]), &pos(3, 8));
 
-    let reply = server.handle(&request(4, "textDocument/documentSymbol", obj([("textDocument", doc())])));
-    let names: Vec<&str> = reply[0].get("result").as_array().iter().filter_map(|s| s.get("name").as_str()).collect();
+    let reply = server.handle(&request(
+        4,
+        "textDocument/documentSymbol",
+        obj([("textDocument", doc())]),
+    ));
+    let names: Vec<&str> = reply[0]
+        .get("result")
+        .as_array()
+        .iter()
+        .filter_map(|s| s.get("name").as_str())
+        .collect();
     assert_eq!(names, vec!["n", "V", "E", "dist", "total"]);
-    assert_eq!(reply[0].get("result").as_array()[1].get("kind").as_u32(), Some(26));
+    assert_eq!(
+        reply[0].get("result").as_array()[1].get("kind").as_u32(),
+        Some(26)
+    );
 }
 
 #[test]
@@ -254,9 +317,16 @@ fn quick_fixes_come_from_the_diagnostics() {
 fn closing_a_document_clears_its_diagnostics() {
     let (mut server, diagnostics) = open("let x = y\n");
     assert_eq!(diagnostics.len(), 1);
-    let published = server.handle(&notification("textDocument/didClose", obj([("textDocument", doc())])));
+    let published = server.handle(&notification(
+        "textDocument/didClose",
+        obj([("textDocument", doc())]),
+    ));
     assert!(diagnostics_of(&published).is_empty());
-    let reply = server.handle(&request(9, "textDocument/hover", obj([("textDocument", doc()), ("position", pos(0, 4))])));
+    let reply = server.handle(&request(
+        9,
+        "textDocument/hover",
+        obj([("textDocument", doc()), ("position", pos(0, 4))]),
+    ));
     assert_eq!(reply[0].at(&["error", "code"]), &Value::Number(-32602.0));
 }
 
@@ -265,8 +335,14 @@ fn unknown_and_malformed_messages_get_errors_not_crashes() {
     let (mut server, _) = open(SOURCE);
     let reply = server.handle(&request(2, "textDocument/rename", obj([])));
     assert_eq!(reply[0].at(&["error", "code"]), &Value::Number(-32601.0));
-    assert!(server.handle(&notification("workspace/didChangeWatchedFiles", obj([]))).is_empty());
-    let reply = server.handle(&request(3, "textDocument/hover", obj([("textDocument", doc())])));
+    assert!(server
+        .handle(&notification("workspace/didChangeWatchedFiles", obj([])))
+        .is_empty());
+    let reply = server.handle(&request(
+        3,
+        "textDocument/hover",
+        obj([("textDocument", doc())]),
+    ));
     assert_eq!(reply[0].at(&["error", "code"]), &Value::Number(-32602.0));
     let reply = server.handle(&request(4, "textDocument/hover", Value::Null));
     assert_eq!(reply[0].at(&["error", "code"]), &Value::Number(-32602.0));
@@ -275,7 +351,10 @@ fn unknown_and_malformed_messages_get_errors_not_crashes() {
     // A change for a document that is not open.
     let mut other = did_change((0, 0), (0, 0), "x");
     if let Value::Object(members) = &mut other {
-        members[2].1 = obj([("textDocument", obj([("uri", "file:///nope.cp".into())])), ("contentChanges", Value::Array(Vec::new()))]);
+        members[2].1 = obj([
+            ("textDocument", obj([("uri", "file:///nope.cp".into())])),
+            ("contentChanges", Value::Array(Vec::new())),
+        ]);
     }
     assert!(server.handle(&other).is_empty());
     // The server still works.
@@ -291,11 +370,19 @@ fn a_panic_is_contained_and_reported() {
     std::panic::set_hook(quiet);
     assert_eq!(reply.len(), 2);
     assert_eq!(reply[0].at(&["error", "code"]), &Value::Number(-32603.0));
-    assert!(reply[0].at(&["error", "message"]).as_str().unwrap().contains("deliberate test panic"));
+    assert!(reply[0]
+        .at(&["error", "message"])
+        .as_str()
+        .unwrap()
+        .contains("deliberate test panic"));
     let diagnostics = diagnostics_of(&reply[1..]);
     assert_eq!(diagnostics[0].get("code").as_str(), Some("E9999"));
     // The open document survived, and the next request is answered.
-    assert!(hover_at(&mut server, 6, 13).at(&["contents", "value"]).as_str().unwrap().contains("dist: [V]?Int"));
+    assert!(hover_at(&mut server, 6, 13)
+        .at(&["contents", "value"])
+        .as_str()
+        .unwrap()
+        .contains("dist: [V]?Int"));
 }
 
 #[test]
@@ -337,7 +424,11 @@ fn a_whole_session_over_the_wire() {
         request(1, "initialize", obj([])),
         notification("initialized", obj([])),
         did_open(&SOURCE.replace("dist[v]", "dist[n]")),
-        request(2, "textDocument/hover", obj([("textDocument", doc()), ("position", pos(1, 7))])),
+        request(
+            2,
+            "textDocument/hover",
+            obj([("textDocument", doc()), ("position", pos(1, 7))]),
+        ),
         request(3, "shutdown", Value::Null),
         notification("exit", Value::Null),
     ]);
@@ -366,11 +457,18 @@ fn bad_frames_and_bad_json_do_not_stop_the_server() {
     input.extend(framed(&[request(1, "initialize", obj([]))]));
     let mut output = Vec::new();
     // The input ends without `exit`: that is exit code 1.
-    assert_eq!(serve(std::io::BufReader::new(&input[..]), &mut output).unwrap(), 1);
+    assert_eq!(
+        serve(std::io::BufReader::new(&input[..]), &mut output).unwrap(),
+        1
+    );
     let replies = unframed(&output);
     assert_eq!(replies[0].at(&["error", "code"]), &Value::Number(-32700.0));
     assert_eq!(replies[1].get("id").as_u32(), Some(1));
 
     let mut output = Vec::new();
-    assert!(serve(std::io::BufReader::new(&b"Content-Type: x\r\n\r\n"[..]), &mut output).is_err());
+    assert!(serve(
+        std::io::BufReader::new(&b"Content-Type: x\r\n\r\n"[..]),
+        &mut output
+    )
+    .is_err());
 }

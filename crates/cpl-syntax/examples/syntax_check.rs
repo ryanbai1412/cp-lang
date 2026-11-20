@@ -5,6 +5,10 @@ fn main() {
         let src = std::fs::read_to_string(&path).expect("readable file");
         let file = cpl_syntax::parse_file(&src);
         print!("{}", cpl_diag::render_all(&file.diagnostics, &path, &src));
-        println!("{path}: {} items, {} syntax diagnostics", file.items.len(), file.diagnostics.len());
+        println!(
+            "{path}: {} items, {} syntax diagnostics",
+            file.items.len(),
+            file.diagnostics.len()
+        );
     }
 }

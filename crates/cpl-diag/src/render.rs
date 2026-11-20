@@ -16,7 +16,13 @@ use std::fmt::Write;
 pub fn render(diag: &Diagnostic, path: &str, text: &str, lines: &LineIndex) -> String {
     let mut out = String::new();
     let at = lines.line_col(diag.span.start);
-    let _ = writeln!(out, "{}[{}]: {}", diag.severity.as_str(), diag.code.0, diag.message);
+    let _ = writeln!(
+        out,
+        "{}[{}]: {}",
+        diag.severity.as_str(),
+        diag.code.0,
+        diag.message
+    );
     let _ = writeln!(out, "  --> {}:{}:{}", path, at.line + 1, at.col + 1);
 
     let mut marks: Vec<(Span, char, &str)> = vec![(diag.span, '^', "")];
@@ -42,7 +48,13 @@ pub fn render(diag: &Diagnostic, path: &str, text: &str, lines: &LineIndex) -> S
         let to = span.end.clamp(from, end);
         let pad = text[start as usize..from as usize].chars().count();
         let len = text[from as usize..to as usize].chars().count().max(1);
-        let _ = write!(out, "{:width$} | {:pad$}{}", "", "", mark.to_string().repeat(len));
+        let _ = write!(
+            out,
+            "{:width$} | {:pad$}{}",
+            "",
+            "",
+            mark.to_string().repeat(len)
+        );
         if message.is_empty() {
             out.push('\n');
         } else {
@@ -66,14 +78,31 @@ pub fn render_all(diags: &[Diagnostic], path: &str, text: &str) -> String {
         out.push_str(&render(diag, path, text, &lines));
         out.push('\n');
     }
-    let errors = diags.iter().filter(|d| d.severity == crate::Severity::Error).count();
-    let warnings = diags.iter().filter(|d| d.severity == crate::Severity::Warning).count();
+    let errors = diags
+        .iter()
+        .filter(|d| d.severity == crate::Severity::Error)
+        .count();
+    let warnings = diags
+        .iter()
+        .filter(|d| d.severity == crate::Severity::Warning)
+        .count();
     let plural = |n: usize, word: &str| format!("{n} {word}{}", if n == 1 { "" } else { "s" });
     match (errors, warnings) {
         (0, 0) => {}
-        (e, 0) => { let _ = writeln!(out, "{path}: {}", plural(e, "error")); }
-        (0, w) => { let _ = writeln!(out, "{path}: {}", plural(w, "warning")); }
-        (e, w) => { let _ = writeln!(out, "{path}: {}, {}", plural(e, "error"), plural(w, "warning")); }
+        (e, 0) => {
+            let _ = writeln!(out, "{path}: {}", plural(e, "error"));
+        }
+        (0, w) => {
+            let _ = writeln!(out, "{path}: {}", plural(w, "warning"));
+        }
+        (e, w) => {
+            let _ = writeln!(
+                out,
+                "{path}: {}, {}",
+                plural(e, "error"),
+                plural(w, "warning")
+            );
+        }
     }
     out
 }
@@ -87,8 +116,12 @@ mod tests {
     fn renders_code_location_caret_and_help() {
         let text = "let deg = 1\nlet x = deg[e]\n";
         let at = text.find("[e]").unwrap() as u32 + 1;
-        let diag = Diagnostic::error(codes::WRONG_DOMAIN, Span::new(at, at + 1), "`deg` is indexed by V, but `e` is an E")
-            .with_help("index with a V");
+        let diag = Diagnostic::error(
+            codes::WRONG_DOMAIN,
+            Span::new(at, at + 1),
+            "`deg` is indexed by V, but `e` is an E",
+        )
+        .with_help("index with a V");
         let out = render(&diag, "d.cp", text, &LineIndex::new(text));
         assert_eq!(
             out,
@@ -99,16 +132,27 @@ mod tests {
     #[test]
     fn labels_are_shown_in_source_order_with_their_text() {
         let text = "let n = 1\nn = 2\n";
-        let diag = Diagnostic::error(codes::ASSIGN_TO_LET, Span::new(10, 11), "`n` is a `let`, so it can't be assigned")
-            .with_label(Span::new(4, 5), "declared here");
+        let diag = Diagnostic::error(
+            codes::ASSIGN_TO_LET,
+            Span::new(10, 11),
+            "`n` is a `let`, so it can't be assigned",
+        )
+        .with_label(Span::new(4, 5), "declared here");
         let out = render(&diag, "a.cp", text, &LineIndex::new(text));
-        assert!(out.contains("1 | let n = 1\n  |     - declared here\n2 | n = 2\n  | ^\n"), "{out}");
+        assert!(
+            out.contains("1 | let n = 1\n  |     - declared here\n2 | n = 2\n  | ^\n"),
+            "{out}"
+        );
     }
 
     #[test]
     fn an_empty_span_at_end_of_line_still_gets_a_caret() {
         let text = "let x =\n";
-        let diag = Diagnostic::error(codes::EXPECTED_EXPR, Span::point(7), "expected a value after `=`");
+        let diag = Diagnostic::error(
+            codes::EXPECTED_EXPR,
+            Span::point(7),
+            "expected a value after `=`",
+        );
         let out = render(&diag, "a.cp", text, &LineIndex::new(text));
         assert!(out.contains("1 | let x =\n  |        ^\n"), "{out}");
     }

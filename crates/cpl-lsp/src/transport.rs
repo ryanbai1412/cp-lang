@@ -35,7 +35,10 @@ pub fn read_message(input: &mut impl BufRead) -> io::Result<Option<String>> {
         }
     }
     let length = length.filter(|n| *n <= MAX_BODY).ok_or_else(|| {
-        io::Error::new(io::ErrorKind::InvalidData, "missing or oversized Content-Length")
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            "missing or oversized Content-Length",
+        )
     })?;
     let mut body = vec![0; length];
     input.read_exact(&mut body)?;

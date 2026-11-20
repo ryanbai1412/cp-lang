@@ -11,7 +11,11 @@ impl<'a> Parser<'a> {
         let params = if self.eat(T::LParen) {
             self.params()
         } else {
-            self.error_expected(codes::EXPECTED_TOKEN, "`(` to start the parameter list", Some("()"));
+            self.error_expected(
+                codes::EXPECTED_TOKEN,
+                "`(` to start the parameter list",
+                Some("()"),
+            );
             Vec::new()
         };
         let ret = self.eat(T::Arrow).then(|| self.ty());
@@ -30,7 +34,10 @@ impl<'a> Parser<'a> {
                 Diagnostic::error(
                     codes::EXPECTED_TOKEN,
                     at,
-                    format!("expected `:` or `=` to start the body of `{}`, found {found}", name.text),
+                    format!(
+                        "expected `:` or `=` to start the body of `{}`, found {found}",
+                        name.text
+                    ),
                 )
                 .with_fix("insert `:`", Span::point(at.start), ":"),
             );
@@ -70,7 +77,11 @@ impl<'a> Parser<'a> {
             if self.at(T::RParen) {
                 break;
             }
-            self.error_expected(codes::EXPECTED_TOKEN, "`,` or `)` in the parameter list", None);
+            self.error_expected(
+                codes::EXPECTED_TOKEN,
+                "`,` or `)` in the parameter list",
+                None,
+            );
             self.skip_to(T::RParen);
             if self.pos == before && !self.at(T::RParen) && !self.at_line_end() {
                 self.bump();
@@ -109,7 +120,9 @@ impl<'a> Parser<'a> {
     /// `member`, one per line, and returns the methods among them.
     fn members(&mut self, after: &str, mut member: impl FnMut(&mut Self)) -> Vec<Stmt> {
         let mut methods = Vec::new();
-        if !self.expect(T::Colon, &format!("`:` after {after}")) && !(self.at(T::Newline) && self.peek_n(1) == T::Indent) {
+        if !self.expect(T::Colon, &format!("`:` after {after}"))
+            && !(self.at(T::Newline) && self.peek_n(1) == T::Indent)
+        {
             self.skip_line();
             return methods;
         }
@@ -195,7 +208,9 @@ impl<'a> Parser<'a> {
                 }
             }
         } else {
-            methods = self.members(&format!("`enum {}`", name.text), |p| variants.push(p.variant()));
+            methods = self.members(&format!("`enum {}`", name.text), |p| {
+                variants.push(p.variant())
+            });
         }
         StmtKind::Enum(EnumDecl {
             name,
@@ -225,7 +240,10 @@ impl<'a> Parser<'a> {
     pub(super) fn domain_decl(&mut self) -> StmtKind {
         self.bump();
         let name = self.expect_name("a domain name after `domain`");
-        self.expect(T::Eq, "`=` and the domain's range, as in `domain V = 1..=n`");
+        self.expect(
+            T::Eq,
+            "`=` and the domain's range, as in `domain V = 1..=n`",
+        );
         let def = self.expr();
         StmtKind::Domain { name, def }
     }
@@ -246,7 +264,11 @@ impl<'a> Parser<'a> {
         let was_in_trait = std::mem::replace(&mut self.in_trait, true);
         let body = self.colon_block(&format!("`trait {}`", name.text));
         self.in_trait = was_in_trait;
-        StmtKind::Trait { name, generics, body }
+        StmtKind::Trait {
+            name,
+            generics,
+            body,
+        }
     }
 
     pub(super) fn impl_decl(&mut self) -> StmtKind {
@@ -276,7 +298,9 @@ impl<'a> Parser<'a> {
                 break;
             }
             if self.eat(T::LBrace) {
-                names = self.comma_list(T::RBrace, "the import list", |p| p.expect_name("a name to import"));
+                names = self.comma_list(T::RBrace, "the import list", |p| {
+                    p.expect_name("a name to import")
+                });
                 break;
             }
             path.push(self.expect_name("a module name after `.`"));

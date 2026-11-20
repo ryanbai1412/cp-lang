@@ -60,7 +60,9 @@ impl Database {
 
     /// The file's top-level declarations, in source order.
     pub fn symbols(&mut self, path: &str) -> Vec<Symbol> {
-        let Some(analysis) = self.analyze(path) else { return Vec::new() };
+        let Some(analysis) = self.analyze(path) else {
+            return Vec::new();
+        };
         symbols(&analysis)
     }
 }
@@ -84,7 +86,10 @@ fn symbols(analysis: &Analysis) -> Vec<Symbol> {
 
 /// The smallest entry under the cursor.
 fn innermost(hovers: &[HoverEntry], at: u32) -> Option<&HoverEntry> {
-    hovers.iter().filter(|h| h.span.touches(at)).min_by_key(|h| h.span.len())
+    hovers
+        .iter()
+        .filter(|h| h.span.touches(at))
+        .min_by_key(|h| h.span.len())
 }
 
 type Lookup<'a> = dyn FnMut(&str) -> Option<Arc<Def>> + 'a;
@@ -105,7 +110,9 @@ fn render_def(name: &str, def: &Def, lookup: &mut Lookup) -> String {
     match def {
         Def::Value { ty, .. } => render_value(name, ty, lookup),
         Def::Fn { ty, .. } => fn_text(name, ty),
-        Def::Struct { fields, methods, .. } => {
+        Def::Struct {
+            fields, methods, ..
+        } => {
             let mut out = format!("struct {name}");
             for field in fields {
                 out += &format!("\n  {}: {}", field.name, field.ty);
@@ -129,7 +136,14 @@ fn render_def(name: &str, def: &Def, lookup: &mut Lookup) -> String {
                     if fields.is_empty() {
                         v.clone()
                     } else {
-                        format!("{v}({})", fields.iter().map(Ty::to_string).collect::<Vec<_>>().join(", "))
+                        format!(
+                            "{v}({})",
+                            fields
+                                .iter()
+                                .map(Ty::to_string)
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        )
                     }
                 })
                 .collect();
@@ -137,7 +151,14 @@ fn render_def(name: &str, def: &Def, lookup: &mut Lookup) -> String {
         }
         Def::Variant { of, fields } if fields.is_empty() => format!("{of}.{name}"),
         Def::Variant { of, fields } => {
-            format!("{of}.{name}({})", fields.iter().map(Ty::to_string).collect::<Vec<_>>().join(", "))
+            format!(
+                "{of}.{name}({})",
+                fields
+                    .iter()
+                    .map(Ty::to_string)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
         }
         Def::Domain(info) => {
             let mut out = format!("domain {name} = {}", info.text);
@@ -169,7 +190,11 @@ fn fn_text(name: &str, ty: &Ty) -> String {
 }
 
 fn render_value(name: &str, ty: &Ty, lookup: &mut Lookup) -> String {
-    let shown = if *ty == Ty::Error { "not known until the error in its definition is fixed".to_string() } else { ty.to_string() };
+    let shown = if *ty == Ty::Error {
+        "not known until the error in its definition is fixed".to_string()
+    } else {
+        ty.to_string()
+    };
     format!("{name}: {shown}{}", cost_lines(ty, lookup))
 }
 
@@ -185,7 +210,10 @@ fn size_at_depth(ty: &Ty, lookup: &mut Lookup, depth: u32) -> Option<u64> {
     }
     let mut domains = Vec::new();
     domains_in(ty, &mut domains);
-    let domain_sizes: Vec<(String, Option<i128>)> = domains.into_iter().map(|n| (n.clone(), domain_size(&n, lookup))).collect();
+    let domain_sizes: Vec<(String, Option<i128>)> = domains
+        .into_iter()
+        .map(|n| (n.clone(), domain_size(&n, lookup)))
+        .collect();
     let mut structs = Vec::new();
     structs_in(ty, &mut structs);
     let struct_sizes: Vec<(String, Option<u64>)> = structs
@@ -193,7 +221,10 @@ fn size_at_depth(ty: &Ty, lookup: &mut Lookup, depth: u32) -> Option<u64> {
         .map(|name| {
             let size = match lookup(&name).as_deref() {
                 Some(Def::Struct { fields, .. }) => {
-                    let sizes: Vec<Option<u64>> = fields.iter().map(|f| size_at_depth(&f.ty, lookup, depth + 1)).collect();
+                    let sizes: Vec<Option<u64>> = fields
+                        .iter()
+                        .map(|f| size_at_depth(&f.ty, lookup, depth + 1))
+                        .collect();
                     struct_size(sizes.into_iter())
                 }
                 _ => None,
@@ -203,8 +234,18 @@ fn size_at_depth(ty: &Ty, lookup: &mut Lookup, depth: u32) -> Option<u64> {
         .collect();
     size_of(
         ty,
-        &|name| domain_sizes.iter().find(|(n, _)| n == name).and_then(|(_, s)| *s),
-        &|name| struct_sizes.iter().find(|(n, _)| n == name).and_then(|(_, s)| *s),
+        &|name| {
+            domain_sizes
+                .iter()
+                .find(|(n, _)| n == name)
+                .and_then(|(_, s)| *s)
+        },
+        &|name| {
+            struct_sizes
+                .iter()
+                .find(|(n, _)| n == name)
+                .and_then(|(_, s)| *s)
+        },
     )
 }
 
@@ -278,7 +319,12 @@ fn cost_lines(ty: &Ty, lookup: &mut Lookup) -> String {
                 }
             }
         }
-        Ty::Range { .. } | Ty::Pos(_) | Ty::Optional(_) | Ty::Tuple(_) | Ty::Record(_) | Ty::Named { .. } => {
+        Ty::Range { .. }
+        | Ty::Pos(_)
+        | Ty::Optional(_)
+        | Ty::Tuple(_)
+        | Ty::Record(_)
+        | Ty::Named { .. } => {
             if let Some(bytes) = size(ty, lookup) {
                 out += &format!("\n  storage: {}", human_bytes(bytes.into()));
             }

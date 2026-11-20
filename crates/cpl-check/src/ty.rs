@@ -22,15 +22,24 @@ pub enum Ty {
     /// The domain itself, as in `for v in V`.
     Domain(String),
     /// `[V]T`, `[Row, Col]T`.
-    Array { index: Vec<Ty>, elem: Box<Ty> },
+    Array {
+        index: Vec<Ty>,
+        elem: Box<Ty>,
+    },
     Optional(Box<Ty>),
     Tuple(Vec<Ty>),
     Record(Vec<(String, Ty)>),
     /// A struct, enum, type parameter or library type: `Road`, `List<Int>`.
-    Named { name: String, args: Vec<Ty> },
+    Named {
+        name: String,
+        args: Vec<Ty>,
+    },
     /// The name of a struct or enum used as a value: its constructor.
     TypeName(String),
-    Fn { params: Vec<Param>, ret: Box<Ty> },
+    Fn {
+        params: Vec<Param>,
+        ret: Box<Ty>,
+    },
     /// Not known to this checker. Compatible with everything, so missing
     /// knowledge never becomes an error.
     Unknown,
@@ -120,16 +129,33 @@ impl Ty {
             (a, b) if a.is_int() && b.is_int() => true,
             (a, Ty::Float) if a.is_int() => true,
             (a, Ty::Optional(inner)) => a.fits(inner),
-            (Ty::Array { index: ai, elem: ae }, Ty::Array { index: bi, elem: be }) => {
-                ai.len() == bi.len() && ai.iter().zip(bi).all(|(a, b)| a.fits(b)) && ae.fits(be)
+            (
+                Ty::Array {
+                    index: ai,
+                    elem: ae,
+                },
+                Ty::Array {
+                    index: bi,
+                    elem: be,
+                },
+            ) => ai.len() == bi.len() && ai.iter().zip(bi).all(|(a, b)| a.fits(b)) && ae.fits(be),
+            (Ty::Tuple(a), Ty::Tuple(b)) => {
+                a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.fits(b))
             }
-            (Ty::Tuple(a), Ty::Tuple(b)) => a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.fits(b)),
             (Ty::Record(a), Ty::Record(b)) => {
-                a.len() == b.len() && a.iter().zip(b).all(|((an, at), (bn, bt))| an == bn && at.fits(bt))
+                a.len() == b.len()
+                    && a.iter()
+                        .zip(b)
+                        .all(|((an, at), (bn, bt))| an == bn && at.fits(bt))
             }
-            (Ty::Tuple(a), Ty::Record(b)) => a.len() == b.len() && a.iter().zip(b).all(|(a, (_, b))| a.fits(b)),
+            (Ty::Tuple(a), Ty::Record(b)) => {
+                a.len() == b.len() && a.iter().zip(b).all(|(a, (_, b))| a.fits(b))
+            }
             (Ty::Named { name: an, args: aa }, Ty::Named { name: bn, args: ba }) => {
-                an == bn && (aa.is_empty() || ba.is_empty() || (aa.len() == ba.len() && aa.iter().zip(ba).all(|(a, b)| a.fits(b))))
+                an == bn
+                    && (aa.is_empty()
+                        || ba.is_empty()
+                        || (aa.len() == ba.len() && aa.iter().zip(ba).all(|(a, b)| a.fits(b))))
             }
             (Ty::Fn { .. }, Ty::Fn { .. }) => true,
             // A record or tuple literal builds a struct with those fields;
@@ -259,7 +285,11 @@ pub fn size_of(
             let inner_size = size_of(inner, domain_size, named_size)?;
             let spare = match &**inner {
                 Ty::Int | Ty::Pos(_) => true,
-                Ty::Range { lo: Some(lo), hi: Some(hi), .. } => hi - lo + 1 < 1i128 << (8 * inner_size),
+                Ty::Range {
+                    lo: Some(lo),
+                    hi: Some(hi),
+                    ..
+                } => hi - lo + 1 < 1i128 << (8 * inner_size),
                 _ => false,
             };
             if spare {
@@ -269,7 +299,11 @@ pub fn size_of(
             }
         }
         Ty::Tuple(items) => struct_size(items.iter().map(|t| size_of(t, domain_size, named_size)))?,
-        Ty::Record(fields) => struct_size(fields.iter().map(|(_, t)| size_of(t, domain_size, named_size)))?,
+        Ty::Record(fields) => struct_size(
+            fields
+                .iter()
+                .map(|(_, t)| size_of(t, domain_size, named_size)),
+        )?,
         Ty::Named { name, args } if args.is_empty() => named_size(name)?,
         _ => return None,
     })
@@ -311,7 +345,7 @@ fn int_width(lo: i128, hi: i128) -> u64 {
 pub fn human_bytes(bytes: u128) -> String {
     let unit = |n: u128, div: u128, name: &str| {
         let tenths = n * 10 / div;
-        if tenths % 10 == 0 || tenths >= 1000 {
+        if tenths.is_multiple_of(10) || tenths >= 1000 {
             format!("{} {name}", tenths / 10)
         } else {
             format!("{}.{} {name}", tenths / 10, tenths % 10)
@@ -365,17 +399,54 @@ mod tests {
     #[test]
     fn sizes_follow_the_values_and_types_plan() {
         assert_eq!(size_of(&Ty::Int, &no_domains, &no_structs), Some(8));
-        assert_eq!(size_of(&range(0, 1_000_000_000), &no_domains, &no_structs), Some(4));
+        assert_eq!(
+            size_of(&range(0, 1_000_000_000), &no_domains, &no_structs),
+            Some(4)
+        );
         assert_eq!(size_of(&range(1, 2000), &no_domains, &no_structs), Some(2));
         assert_eq!(size_of(&range(0, 255), &no_domains, &no_structs), Some(1));
         assert_eq!(size_of(&range(-1, 255), &no_domains, &no_structs), Some(2));
         // `?0..=1e9` is still 4 bytes: the spare values hold none.
-        assert_eq!(size_of(&Ty::Optional(Box::new(range(0, 1_000_000_000))), &no_domains, &no_structs), Some(4));
-        assert_eq!(size_of(&Ty::Optional(Box::new(Ty::Int)), &no_domains, &no_structs), Some(8));
-        assert_eq!(size_of(&Ty::Optional(Box::new(Ty::Pos("V".into()))), &no_domains, &no_structs), Some(4));
-        assert_eq!(size_of(&Ty::Optional(Box::new(range(0, 255))), &no_domains, &no_structs), Some(2));
-        assert_eq!(size_of(&Ty::Tuple(vec![Ty::Pos("V".into()), Ty::Int]), &no_domains, &no_structs), Some(16));
-        assert_eq!(size_of(&Ty::Pos("V".into()), &|_| Some(200), &no_structs), Some(1));
+        assert_eq!(
+            size_of(
+                &Ty::Optional(Box::new(range(0, 1_000_000_000))),
+                &no_domains,
+                &no_structs
+            ),
+            Some(4)
+        );
+        assert_eq!(
+            size_of(&Ty::Optional(Box::new(Ty::Int)), &no_domains, &no_structs),
+            Some(8)
+        );
+        assert_eq!(
+            size_of(
+                &Ty::Optional(Box::new(Ty::Pos("V".into()))),
+                &no_domains,
+                &no_structs
+            ),
+            Some(4)
+        );
+        assert_eq!(
+            size_of(
+                &Ty::Optional(Box::new(range(0, 255))),
+                &no_domains,
+                &no_structs
+            ),
+            Some(2)
+        );
+        assert_eq!(
+            size_of(
+                &Ty::Tuple(vec![Ty::Pos("V".into()), Ty::Int]),
+                &no_domains,
+                &no_structs
+            ),
+            Some(16)
+        );
+        assert_eq!(
+            size_of(&Ty::Pos("V".into()), &|_| Some(200), &no_structs),
+            Some(1)
+        );
         assert_eq!(size_of(&Ty::list(Ty::Int), &no_domains, &no_structs), None);
     }
 
@@ -402,7 +473,10 @@ mod tests {
             elem: Box::new(Ty::Optional(Box::new(Ty::Int))),
         };
         assert_eq!(dist.to_string(), "[V]?Int");
-        assert_eq!(Ty::list(Ty::Tuple(vec![Ty::Pos("V".into()), Ty::Int])).to_string(), "List<(V, Int)>");
+        assert_eq!(
+            Ty::list(Ty::Tuple(vec![Ty::Pos("V".into()), Ty::Int])).to_string(),
+            "List<(V, Int)>"
+        );
         assert_eq!(Ty::Pos("E".into()).with_article(), "an E");
         assert_eq!(Ty::Pos("V".into()).with_article(), "a V");
         assert_eq!(dist.with_article(), "a [V]?Int");

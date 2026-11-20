@@ -100,14 +100,18 @@ pub struct Analysis {
 
 impl Analysis {
     pub fn has_errors(&self) -> bool {
-        self.diagnostics.iter().any(|d| d.severity == cpl_diag::Severity::Error)
+        self.diagnostics
+            .iter()
+            .any(|d| d.severity == cpl_diag::Severity::Error)
     }
 
     /// The item at `offset`, with the offset relative to it.
     pub(crate) fn item_at(&self, offset: u32) -> Option<(&AnalyzedItem, u32)> {
         let at = self.items.partition_point(|item| item.span.end < offset);
         let item = self.items.get(at)?;
-        item.span.touches(offset).then(|| (item, offset - item.offset))
+        item.span
+            .touches(offset)
+            .then(|| (item, offset - item.offset))
     }
 
     /// Where a top-level name is declared, in file positions.
@@ -227,7 +231,10 @@ impl Database {
             let item_text = range.span.text(&text);
             let col = lines.line_col(range.span.start).col;
             let hash = hash_str(item_text) ^ u64::from(col).wrapping_mul(0x9e37_79b9_7f4a_7c15);
-            let cached = self.syntax.get_mut(&hash).filter(|m| m.item.text == item_text && m.item.col == col);
+            let cached = self
+                .syntax
+                .get_mut(&hash)
+                .filter(|m| m.item.text == item_text && m.item.col == col);
             let item = match cached {
                 Some(memo) => {
                     memo.last_used = revision;
@@ -243,7 +250,10 @@ impl Database {
                         col,
                         hash,
                         decls: decls_of(&parsed.stmts),
-                        has_use: parsed.stmts.iter().any(|s| matches!(s.kind, StmtKind::Use { .. })),
+                        has_use: parsed
+                            .stmts
+                            .iter()
+                            .any(|s| matches!(s.kind, StmtKind::Use { .. })),
                         parsed,
                     });
                     self.syntax.insert(
@@ -277,7 +287,13 @@ impl Database {
         }
         let mut sorted: Vec<&String> = scope.names.keys().collect();
         sorted.sort();
-        scope.names_fp = hash_str(&sorted.iter().map(|s| s.as_str()).collect::<Vec<_>>().join("\n")) | 2;
+        scope.names_fp = hash_str(
+            &sorted
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<Vec<_>>()
+                .join("\n"),
+        ) | 2;
         let scope = Arc::new(scope);
         let items = Arc::new(items);
 
@@ -306,7 +322,10 @@ impl Database {
         for (index, decl) in duplicates {
             let offset = ranges[index].span.start;
             let first_index = scope.names[&decl.name];
-            let first = items[first_index].decls.iter().find(|d| d.name == decl.name);
+            let first = items[first_index]
+                .decls
+                .iter()
+                .find(|d| d.name == decl.name);
             let mut diag = Diagnostic::error(
                 codes::DUPLICATE_DEFINITION,
                 decl.span.shift(offset),
@@ -314,18 +333,25 @@ impl Database {
             )
             .with_help("rename one of them; a top-level name has one definition");
             if let Some(first) = first {
-                diag = diag.with_label(first.span.shift(ranges[first_index].span.start), "first defined here");
+                diag = diag.with_label(
+                    first.span.shift(ranges[first_index].span.start),
+                    "first defined here",
+                );
             }
             sink.push(diag);
         }
         for (index, check) in checks.iter().enumerate() {
             let offset = ranges[index].span.start;
             for r in check.refs.iter().filter(|r| r.top_level) {
-                let Some(&def_index) = scope.names.get(&r.name) else { continue };
+                let Some(&def_index) = scope.names.get(&r.name) else {
+                    continue;
+                };
                 if def_index < index {
                     continue;
                 }
-                let Some(decl) = items[def_index].decls.iter().find(|d| d.name == r.name) else { continue };
+                let Some(decl) = items[def_index].decls.iter().find(|d| d.name == r.name) else {
+                    continue;
+                };
                 if decl.kind != DeclKind::Value {
                     continue;
                 }
@@ -341,7 +367,8 @@ impl Database {
                 } else {
                     format!("`{}` is used here before it is set on line {line}", r.name)
                 };
-                let mut diag = Diagnostic::error(codes::USED_BEFORE_SET, r.span.shift(offset), message);
+                let mut diag =
+                    Diagnostic::error(codes::USED_BEFORE_SET, r.span.shift(offset), message);
                 if def_index != index {
                     diag = diag
                         .with_label(decl_span, "set here")
@@ -377,11 +404,18 @@ impl Database {
 
     /// Every diagnostic for a file, in source order.
     pub fn diagnostics(&mut self, path: &str) -> Vec<Diagnostic> {
-        self.analyze(path).map(|a| a.diagnostics.clone()).unwrap_or_default()
+        self.analyze(path)
+            .map(|a| a.diagnostics.clone())
+            .unwrap_or_default()
     }
 
     /// The definition of a top-level name in an analyzed file.
-    pub(crate) fn lookup(&mut self, path: &str, analysis: &Analysis, name: &str) -> Option<Arc<Def>> {
+    pub(crate) fn lookup(
+        &mut self,
+        path: &str,
+        analysis: &Analysis,
+        name: &str,
+    ) -> Option<Arc<Def>> {
         let id = self.files.get(path)?.id;
         let items: Vec<Arc<ItemSyntax>> = analysis.items.iter().map(|i| i.syntax.clone()).collect();
         let mut ctx = FileCtx {
@@ -421,8 +455,16 @@ impl Database {
 /// declares `name` in `item`.
 fn inside_own_init(item: &ItemSyntax, name: &str, span: Span) -> bool {
     item.parsed.stmts.iter().any(|stmt| match &stmt.kind {
-        StmtKind::Let { pat, init: Some(init), .. } => init.span.contains(span) && pattern_binds(pat, name),
-        StmtKind::Const { name: n, init: Some(init), .. } => init.span.contains(span) && n.text == name,
+        StmtKind::Let {
+            pat,
+            init: Some(init),
+            ..
+        } => init.span.contains(span) && pattern_binds(pat, name),
+        StmtKind::Const {
+            name: n,
+            init: Some(init),
+            ..
+        } => init.span.contains(span) && n.text == name,
         _ => false,
     })
 }
@@ -463,7 +505,9 @@ fn decls_of(stmts: &[ast::Stmt]) -> Vec<Decl> {
             StmtKind::Let { pat, ty, .. } => {
                 pattern(pat, &mut out);
                 if let Some(ty) = ty {
-                    crate::check::own_domains(ty, &mut |name| push(&mut out, name, DeclKind::Domain));
+                    crate::check::own_domains(ty, &mut |name| {
+                        push(&mut out, name, DeclKind::Domain)
+                    });
                 }
             }
             StmtKind::Const { name, .. } => push(&mut out, name, DeclKind::Value),
@@ -516,13 +560,16 @@ impl FileCtx<'_> {
     }
 
     fn deps_hold(&mut self, deps: &[(String, u64)]) -> bool {
-        deps.iter().all(|(key, fingerprint)| self.fingerprint(key) == *fingerprint)
+        deps.iter()
+            .all(|(key, fingerprint)| self.fingerprint(key) == *fingerprint)
     }
 
     /// The definition of a top-level name and its fingerprint (0 if the
     /// file does not define it).
     fn def(&mut self, name: &str) -> (Option<Arc<Def>>, u64) {
-        let Some(&index) = self.scope.names.get(name) else { return (None, 0) };
+        let Some(&index) = self.scope.names.get(name) else {
+            return (None, 0);
+        };
         if self.in_progress.iter().any(|n| n == name) {
             return (None, 0);
         }

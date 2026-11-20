@@ -126,7 +126,9 @@ impl<'a> Lexer<'a> {
         while self.pos < self.bytes.len() && self.peek() != b'\n' {
             self.pos += 1;
         }
-        self.out.comments.push(Span::new(start as u32, self.pos as u32));
+        self.out
+            .comments
+            .push(Span::new(start as u32, self.pos as u32));
     }
 
     /// Ends the current logical line, if it had any tokens.
@@ -165,7 +167,8 @@ impl<'a> Lexer<'a> {
             return None;
         }
         if tab {
-            self.tab_lines.push(Span::new(start as u32, self.pos as u32));
+            self.tab_lines
+                .push(Span::new(start as u32, self.pos as u32));
         }
         Some(width)
     }
@@ -174,7 +177,9 @@ impl<'a> Lexer<'a> {
     /// `Dedent` tokens for the change in indentation.
     fn line_start(&mut self) {
         let start = self.pos;
-        let Some(width) = self.measure_indent() else { return };
+        let Some(width) = self.measure_indent() else {
+            return;
+        };
         self.line_indent = width;
         let top = *self.indents.last().unwrap();
         if width > top {
@@ -213,10 +218,18 @@ impl<'a> Lexer<'a> {
     /// statements, unless the line shows the bracket was never closed.
     fn continuation_line(&mut self) {
         let line_start = self.pos;
-        let Some(width) = self.measure_indent() else { return };
-        let Some(depth) = self.unclosed_depth(width) else { return };
+        let Some(width) = self.measure_indent() else {
+            return;
+        };
+        let Some(depth) = self.unclosed_depth(width) else {
+            return;
+        };
         // Close at the end of the last line that had tokens.
-        let close_at = self.out.tokens.last().map_or(line_start, |t| t.span.end as usize);
+        let close_at = self
+            .out
+            .tokens
+            .last()
+            .map_or(line_start, |t| t.span.end as usize);
         self.close_unclosed(depth, close_at, line_start);
         self.end_line(close_at);
         self.pos = line_start;
@@ -232,7 +245,11 @@ impl<'a> Lexer<'a> {
     /// bracket was left open. (A line starting with a literal or an operator
     /// is left alone, so `[\n1, 2\n]` still reads as one list.)
     fn unclosed_depth(&self, width: u32) -> Option<usize> {
-        let keep = self.openers.iter().take_while(|o| o.line_indent < width).count();
+        let keep = self
+            .openers
+            .iter()
+            .take_while(|o| o.line_indent < width)
+            .count();
         if keep == self.openers.len() {
             return None;
         }
@@ -274,20 +291,23 @@ impl<'a> Lexer<'a> {
                     format!("this `{open}` is never closed"),
                 )
                 .with_help(format!("add `{close}` at the end of the expression"))
-                .with_fix(format!("insert `{close}`"), Span::point(close_at as u32), close);
+                .with_fix(
+                    format!("insert `{close}`"),
+                    Span::point(close_at as u32),
+                    close,
+                );
                 if next_line > close_at {
-                    diag = diag.with_label(
-                        Span::point(next_line as u32),
-                        "a new statement starts here",
-                    );
+                    diag = diag
+                        .with_label(Span::point(next_line as u32), "a new statement starts here");
                 }
                 self.out.diagnostics.push(diag);
             }
             self.push_empty(closer_kind, close_at);
         }
-        self.out
-            .poisoned
-            .push(Span::new(outermost.end, close_at.max(outermost.end as usize) as u32));
+        self.out.poisoned.push(Span::new(
+            outermost.end,
+            close_at.max(outermost.end as usize) as u32,
+        ));
     }
 
     fn token(&mut self) {
@@ -387,7 +407,9 @@ impl<'a> Lexer<'a> {
                 );
                 diag.help = match ch {
                     '#' => Some("comments start with `//`".into()),
-                    _ if !ch.is_ascii() => Some("names are ASCII; other characters go in strings and comments".into()),
+                    _ if !ch.is_ascii() => {
+                        Some("names are ASCII; other characters go in strings and comments".into())
+                    }
                     _ => Option::None,
                 };
                 self.out.diagnostics.push(diag);
@@ -425,7 +447,8 @@ impl<'a> Lexer<'a> {
     }
 
     fn number(&mut self, start: usize) {
-        let radix_prefix = self.peek() == b'0' && matches!(self.peek_at(1), b'x' | b'X' | b'b' | b'B');
+        let radix_prefix =
+            self.peek() == b'0' && matches!(self.peek_at(1), b'x' | b'X' | b'b' | b'B');
         let mut float = false;
         if radix_prefix {
             self.pos += 2;
@@ -489,13 +512,24 @@ impl<'a> Lexer<'a> {
         if !closed {
             let span = Span::new(start as u32, self.pos as u32);
             self.out.diagnostics.push(
-                Diagnostic::error(codes::UNTERMINATED_STRING, span, "this string is never closed")
-                    .with_help("add `\"` at the end of the string")
-                    .with_fix("insert `\"`", Span::point(self.pos as u32), "\""),
+                Diagnostic::error(
+                    codes::UNTERMINATED_STRING,
+                    span,
+                    "this string is never closed",
+                )
+                .with_help("add `\"` at the end of the string")
+                .with_fix("insert `\"`", Span::point(self.pos as u32), "\""),
             );
             self.out.poisoned.push(span);
         }
-        self.push(if raw { TokenKind::RawStr } else { TokenKind::Str }, start);
+        self.push(
+            if raw {
+                TokenKind::RawStr
+            } else {
+                TokenKind::Str
+            },
+            start,
+        );
     }
 
     /// Scans to the closing quote. Returns false if the line ends first.
@@ -576,7 +610,9 @@ impl<'a> Lexer<'a> {
     }
 
     fn report_tabs(&mut self) {
-        let Some(first) = self.tab_lines.first().copied() else { return };
+        let Some(first) = self.tab_lines.first().copied() else {
+            return;
+        };
         let mut diag = Diagnostic::error(
             codes::TAB_INDENT,
             first,

@@ -19,7 +19,13 @@ impl<'a> Checker<'a> {
             TypeKind::OwnDomain { name, elem } => {
                 // `[domain S]Char` declares `S` where it is written.
                 if self.local(&name.text).is_none() && !self.scopes.is_empty() {
-                    self.declare(&name.text, name.span, Ty::Domain(name.text.clone()), false, "domain");
+                    self.declare(
+                        &name.text,
+                        name.span,
+                        Ty::Domain(name.text.clone()),
+                        false,
+                        "domain",
+                    );
                 }
                 Ty::Array {
                     index: vec![Ty::Pos(name.text.clone())],
@@ -28,7 +34,9 @@ impl<'a> Checker<'a> {
             }
             TypeKind::Optional(inner) => Ty::Optional(Box::new(self.resolve_type(inner))),
             TypeKind::Tuple(items) if items.is_empty() => Ty::Unit,
-            TypeKind::Tuple(items) => Ty::Tuple(items.iter().map(|i| self.resolve_type(i)).collect()),
+            TypeKind::Tuple(items) => {
+                Ty::Tuple(items.iter().map(|i| self.resolve_type(i)).collect())
+            }
             TypeKind::Record(fields) => Ty::Record(
                 fields
                     .iter()
@@ -39,7 +47,10 @@ impl<'a> Checker<'a> {
                 self.infer(lo);
                 self.infer(hi);
                 let lo = self.bounds(lo).0;
-                let hi = self.bounds(hi).1.map(|h| if *inclusive { h } else { h - 1 });
+                let hi = self
+                    .bounds(hi)
+                    .1
+                    .map(|h| if *inclusive { h } else { h - 1 });
                 Ty::Range {
                     lo,
                     hi,
@@ -165,13 +176,25 @@ impl<'a> Checker<'a> {
             ExprKind::Binary { op, lhs, rhs, .. } => {
                 let (alo, ahi) = self.bounds(lhs);
                 let (blo, bhi) = self.bounds(rhs);
-                let both = |a: Option<i128>, b: Option<i128>, f: fn(i128, i128) -> Option<i128>| f(a?, b?);
+                let both =
+                    |a: Option<i128>, b: Option<i128>, f: fn(i128, i128) -> Option<i128>| f(a?, b?);
                 match op {
-                    ast::BinOp::Add => (both(alo, blo, i128::checked_add), both(ahi, bhi, i128::checked_add)),
-                    ast::BinOp::Sub => (both(alo, bhi, i128::checked_sub), both(ahi, blo, i128::checked_sub)),
+                    ast::BinOp::Add => (
+                        both(alo, blo, i128::checked_add),
+                        both(ahi, bhi, i128::checked_add),
+                    ),
+                    ast::BinOp::Sub => (
+                        both(alo, bhi, i128::checked_sub),
+                        both(ahi, blo, i128::checked_sub),
+                    ),
                     ast::BinOp::Mul => match (alo, ahi, blo, bhi) {
                         (Some(a), Some(b), Some(c), Some(d)) => {
-                            let products = [a.checked_mul(c), a.checked_mul(d), b.checked_mul(c), b.checked_mul(d)];
+                            let products = [
+                                a.checked_mul(c),
+                                a.checked_mul(d),
+                                b.checked_mul(c),
+                                b.checked_mul(d),
+                            ];
                             if products.iter().all(Option::is_some) {
                                 let values = products.map(Option::unwrap);
                                 (values.iter().min().copied(), values.iter().max().copied())
@@ -192,7 +215,8 @@ impl<'a> Checker<'a> {
     /// the `self` parameter is not part of the signature callers see.
     pub(crate) fn fn_sig(&mut self, f: &ast::FnDecl, self_ty: Option<&Ty>) -> Ty {
         let outer = self.generics.len();
-        self.generics.extend(f.generics.iter().map(|g| g.text.clone()));
+        self.generics
+            .extend(f.generics.iter().map(|g| g.text.clone()));
         self.in_fn += 1;
         let params = f
             .params
@@ -237,7 +261,12 @@ impl<'a> Checker<'a> {
     pub(crate) fn defs_of(&mut self, stmt: &ast::Stmt) -> Vec<(String, Def)> {
         use ast::StmtKind as S;
         match &stmt.kind {
-            S::Let { mutable, pat, ty, init } => {
+            S::Let {
+                mutable,
+                pat,
+                ty,
+                init,
+            } => {
                 let keyword = if *mutable { "var" } else { "let" };
                 let value_ty = match (ty, init) {
                     (Some(ty), _) => self.resolve_type(ty),
@@ -297,7 +326,8 @@ impl<'a> Checker<'a> {
                     args: Vec::new(),
                 };
                 let outer = self.generics.len();
-                self.generics.extend(s.generics.iter().map(|g| g.text.clone()));
+                self.generics
+                    .extend(s.generics.iter().map(|g| g.text.clone()));
                 let fields = s
                     .fields
                     .iter()
@@ -327,11 +357,20 @@ impl<'a> Checker<'a> {
                     args: Vec::new(),
                 };
                 let outer = self.generics.len();
-                self.generics.extend(e.generics.iter().map(|g| g.text.clone()));
+                self.generics
+                    .extend(e.generics.iter().map(|g| g.text.clone()));
                 let variants: Vec<(String, Vec<Ty>)> = e
                     .variants
                     .iter()
-                    .map(|v| (v.name.text.clone(), v.fields.iter().map(|(_, ty)| self.resolve_type(ty)).collect()))
+                    .map(|v| {
+                        (
+                            v.name.text.clone(),
+                            v.fields
+                                .iter()
+                                .map(|(_, ty)| self.resolve_type(ty))
+                                .collect(),
+                        )
+                    })
                     .collect();
                 let methods = self.method_sigs(&e.methods, &self_ty);
                 self.generics.truncate(outer);
@@ -350,10 +389,13 @@ impl<'a> Checker<'a> {
                 out.insert(0, (e.name.text.clone(), Def::Enum { variants, methods }));
                 out
             }
-            S::Domain { name, def } => vec![(name.text.clone(), Def::Domain(self.domain_info(def)))],
+            S::Domain { name, def } => {
+                vec![(name.text.clone(), Def::Domain(self.domain_info(def)))]
+            }
             S::TypeAlias { name, generics, ty } => {
                 let outer = self.generics.len();
-                self.generics.extend(generics.iter().map(|g| g.text.clone()));
+                self.generics
+                    .extend(generics.iter().map(|g| g.text.clone()));
                 let ty = self.resolve_type(ty);
                 self.generics.truncate(outer);
                 vec![(name.text.clone(), Def::Alias { ty })]
@@ -380,7 +422,9 @@ impl<'a> Checker<'a> {
                     _ => None,
                 };
                 let bound = match (&hi.kind, hi_max) {
-                    (ExprKind::Name(name), Some(max)) => Some(format!("{name} <= {}", human_int(max))),
+                    (ExprKind::Name(name), Some(max)) => {
+                        Some(format!("{name} <= {}", human_int(max)))
+                    }
                     _ => None,
                 };
                 (size, bound)
@@ -404,7 +448,11 @@ impl<'a> Checker<'a> {
             }
             _ => (None, None),
         };
-        DomainInfo { text, max_size, bound }
+        DomainInfo {
+            text,
+            max_size,
+            bound,
+        }
     }
 }
 

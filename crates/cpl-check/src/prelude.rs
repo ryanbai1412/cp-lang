@@ -18,8 +18,12 @@ pub fn value(name: &str) -> Option<Ty> {
     Some(match name {
         "INF" => Ty::Int,
         "print" | "read" | "min" | "max" | "abs" => Ty::Unknown,
-        "sum" | "count" | "all" | "any" | "find" | "first" | "last" | "argmax" | "argmin" => Ty::Unknown,
-        "List" | "Map" | "Set" | "Int" | "Bool" | "Char" | "Str" | "Float" => Ty::TypeName(name.into()),
+        "sum" | "count" | "all" | "any" | "find" | "first" | "last" | "argmax" | "argmin" => {
+            Ty::Unknown
+        }
+        "List" | "Map" | "Set" | "Int" | "Bool" | "Char" | "Str" | "Float" => {
+            Ty::TypeName(name.into())
+        }
         _ => return None,
     })
 }
@@ -43,6 +47,6 @@ pub fn ty(name: &str) -> Option<Ty> {
 }
 
 pub const VALUE_NAMES: &[&str] = &[
-    "INF", "print", "read", "min", "max", "abs", "sum", "count", "all", "any", "find", "first", "last", "argmax",
-    "argmin", "List", "Map", "Set", "Int", "Bool", "Char", "Str", "Float",
+    "INF", "print", "read", "min", "max", "abs", "sum", "count", "all", "any", "find", "first",
+    "last", "argmax", "argmin", "List", "Map", "Set", "Int", "Bool", "Char", "Str", "Float",
 ];

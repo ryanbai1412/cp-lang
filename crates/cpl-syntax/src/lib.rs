@@ -55,8 +55,19 @@ pub fn parse_file(src: &str) -> ParsedFile {
     let mut items = Vec::new();
     for range in split_items(&lexed.tokens) {
         let tokens = &lexed.tokens[range.tokens.0..range.tokens.1];
-        let parsed = parse_item(src, tokens, range.span.start, poison_for_item(&lexed, &range));
-        diagnostics.extend(parsed.diagnostics.iter().cloned().map(|d| d.shift(range.span.start)));
+        let parsed = parse_item(
+            src,
+            tokens,
+            range.span.start,
+            poison_for_item(&lexed, &range),
+        );
+        diagnostics.extend(
+            parsed
+                .diagnostics
+                .iter()
+                .cloned()
+                .map(|d| d.shift(range.span.start)),
+        );
         items.push((range.span.start, parsed));
     }
     diagnostics.sort_by_key(|d| (d.span.start, d.span.end));
