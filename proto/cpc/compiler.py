@@ -167,6 +167,9 @@ def unparse(e):
     if k == "paren": return f"({unparse(e.a)})"
     return k
 
+NL = "\n"
+
+
 class Compiler(LendMixin):
     def __init__(self, prog, var_iv=None):
         self.prog = prog
@@ -188,6 +191,7 @@ class Compiler(LendMixin):
         self.contrib_nodes = {}
         self.last_read = 0
         self.reads_in_fns = False
+        self.io_type = {}
         self.out = None
         self.ind = 1
         self.fn_ret = []
@@ -835,7 +839,7 @@ class Compiler(LendMixin):
                     continue
                 if n.kind == "name" and getattr(self.lookup(n.name), "kind", None) not in ("let", "var"):
                     continue
-                c, t = self.expr(n, wants[k])
+                c, t = self.expr(self.typed(n, wants[k]), wants[k])
                 if isinstance(t, (TType, TFn)) or not c:
                     continue
                 tmp = self.tmpname("s")
@@ -924,12 +928,20 @@ class Compiler(LendMixin):
     def show(self, c, t, spec, node):
         """The text of a value inside `"{x}"`: what `print(x)` writes, or a number under a checked format."""
         if spec:
-            m = re.fullmatch(r"(0?)(\d*)(?:\.(\d+)f)?", spec)
-            if not m or not (is_int(t) or isinstance(t, TF64)) or (m.group(3) is None and not is_int(t)):
-                self.error(node, f"`:{spec}` is not a number format {t!r} takes (use `:.6f` for an F64, `:04` for an Int)")
+            # the whole grammar: `{v:W}` width, `{v:0W}` zero-filled, `{x:.D}` / `{x:.Df}` fixed decimals,
+            # `{n:x}` hex and `{n:b}` binary (each after an optional width). No alignment, no nested widths.
+            m = re.fullmatch(r"(0?)(\d*)(?:\.(\d+)f?|([xb]))?", spec)
+            help = "use `:.6f` for an F64, `:04` / `:x` / `:b` for an Int"
+            if not m or not (is_int(t) or isinstance(t, TF64)):
+                self.error(node, f"`:{spec}` is not a number format {t!r} takes ({help})")
+            zero, width = "true" if m.group(1) else "false", m.group(2) or 0
             if m.group(3) is not None:
-                return f"cp_fmt_f((double)({c}), {m.group(3)}, {m.group(2) or 0}, {'true' if m.group(1) else 'false'})"
-            return f"cp_fmt_i({c}, {m.group(2) or 0}, {'true' if m.group(1) else 'false'})"
+                return f"cp_fmt_f((double)({c}), {m.group(3)}, {width}, {zero})"
+            if not is_int(t):
+                self.error(node, f"`:{spec}` does not say how many decimals an F64 gets ({help})")
+            if m.group(4):
+                return f"cp_fmt_radix({c}, {16 if m.group(4) == 'x' else 2}, {width}, {zero})"
+            return f"cp_fmt_i({c}, {width}, {zero})"
         if isinstance(t, TF64):
             self.error(node, "an F64 has no default format: write `{x:.6f}` with the digits you want")
         if isinstance(t, (TU64, TI128)): return f"cp_wide_str({c})"
@@ -1252,6 +1264,15 @@ class Compiler(LendMixin):
                                                              and self.is_literal(e.a) and self.is_literal(e.b)):
             # F64, U64 and I128 never mix silently with Int: only an integer literal unifies with them
             wt = at if isinstance(at, WIDE) else bt if isinstance(bt, WIDE) else want
+            if isinstance(wt, TF64) and op in ("+", "-", "*", "/", "**"):
+                # an Int next to an F64 widens, as an integer literal does. `Int / Int` is still integer
+                # division (neither side is an F64), and an F64 never narrows back without floor/round/trunc.
+                if is_int(at):
+                    a, at = f"((double)({a}))", wt
+                if is_int(bt):
+                    b, bt = f"((double)({b}))", wt
+                if op == "**" and isinstance(at, TF64) and isinstance(bt, TF64):
+                    return f"cp_fchk(std::pow({a}, {b}), {e.line})", wt
             if not isinstance(at, WIDE):
                 a, at = self.expr(e.a, wt)
                 a = self.coerce(a, at, wt, e.a)
@@ -1299,7 +1320,8 @@ class Compiler(LendMixin):
         if isinstance(bt, TDom):
             self.error(e, f"`{op}` between {at!r} and {bt!r}; use `{unparse(e.b)}.ord` for its position")
         if isinstance(at, TChar) and isinstance(bt, TInt) and op in "+-":
-            return f"(char)({a} {op} {b})", CHAR
+            # Char + Int -> Char, the inverse of Char - Char; the result must still be one ASCII byte
+            return f"cp_char_step({a}, {'-' if op == '-' else ''}(ll)({b}), {e.line})", CHAR
         if isinstance(at, TChar) and isinstance(bt, TChar) and op == "-":
             return f"(ll)({a} - {b})", TInt(-255, 255)
         if isinstance(at, TStr) and op == "+" and isinstance(bt, (TStr, TChar)):
@@ -1522,7 +1544,19 @@ class Compiler(LendMixin):
         if not isinstance(t, TOpt):
             self.error(e, f"`!` on a non-optional {t!r}")
         self.note_check(e, f"`{unparse(e.a)}!` is not none")
+        spine = list(self.place_spine(e.a))
+        if not isinstance(t.inner, SCALARS) and spine[-1].kind == "name" and self.cpp_type(t).startswith("Opt<"):
+            # `state!.h[p] = cost`, `xs!.push(v)`: `x!` of a place is the value in place, not a copy of it
+            return f"opt_place({c}, {e.line})", t.inner
         return f"opt_unwrap({c}, {e.line})", t.inner
+
+    def place_spine(self, t):
+        """The nodes a write to `t` goes through: `t` itself and each object it is a field, element or `!` of."""
+        while t is not None:
+            yield t
+            if t.kind not in ("paren", "unwrap", "index", "field"):
+                break
+            t = t.a if t.kind in ("paren", "unwrap") else t.obj
 
     def x_ifexpr(self, e, want):
         cc, ct = self.expr(e.cond)
@@ -1943,8 +1977,58 @@ class Compiler(LendMixin):
     # ---------- calls
     REDUCERS = {"sum", "count", "min", "max", "any", "all", "product", "prod"}
 
+    def io_call(self, e):
+        """`read()` / `ask(...)`, bare or as `read::<T>()`, when the program has not defined its own."""
+        while e is not None and e.kind == "paren":
+            e = e.a
+        if e is None or e.kind != "call":
+            return None
+        f = e.fn.obj if e.fn.kind == "tapp" else e.fn
+        if f.kind == "name" and f.name in ("read", "ask") and not self.lookup(f.name):
+            return e
+        return None
+
+    def typed(self, e, ty):
+        """The value of `e` is going somewhere of type `ty`: a bare `read()` / `ask()` there reads a `ty`."""
+        c = self.io_call(e)
+        if c is not None and ty is not None:
+            self.io_type[id(c)] = ty
+        return e
+
+    def x_io(self, e):
+        fn = e.fn
+        name = (fn.obj if fn.kind == "tapp" else fn).name
+        if fn.kind == "tapp":
+            if len(fn.targs) != 1:
+                self.error(e, f"`{name}::<T>()` takes one type")
+            ty = self.resolve_type(fn.targs[0])
+        else:
+            ty = self.io_type.get(id(e))
+            if ty is None:
+                self.error(e, f"{name}() cannot tell what type to read here\n"
+                              f"  help: give the place a type (`let x: T = {name}(...)`), or say `{name}::<T>(...)`")
+        if name == "read" and e.args:
+            self.error(e, "read(...) with arguments is the right-hand side of a typed `let`")
+        if len(self.fn_ret) > getattr(self, "sol_depth", 0) and len(self.fn_ret) > (1 if getattr(self, "in_multitest", False) else 0):
+            self.reads_in_fns = True
+        tmp = self.tmpname("rd")
+
+        def body():
+            if name == "ask":
+                pargs = [a for a in e.args if not (a.kind == "kwarg" and a.name == "limit")]
+                self.emit_print(pargs, newline=True, node=e)
+                self.emit("out_flush(); fflush(stdout);")
+            self.emit(f"{self.cpp_type(ty)} {tmp};")
+            self.emit_read(tmp, ty, e)
+        # one expression, so it runs where it is written: after the operands to its left, and not at all on
+        # the unused side of `and` / `or` / `if .. else`
+        lines = self.capture(body)[0]
+        return f"([&]() {{ {NL.join(lines)} return {tmp}; }})()", ty
+
     def x_call(self, e, want):
         fn = e.fn
+        if self.io_call(e) is e:
+            return self.x_io(e)
         if fn.kind == "name" and fn.name in self.REDUCERS and not self.lookup(fn.name):
             if len(e.args) == 1:
                 return self.reduction(fn.name, e.args[0], e, want)
@@ -2345,7 +2429,7 @@ class Compiler(LendMixin):
                 self.emit(f"return {self.cpp_type(TOpt(box['t']))}({c});")
             lines, _ = self.capture(lambda: self.gen_loops(g.clauses, 0, inner, g))
             rt = TOpt(box["t"])
-            return f"([&]() -> {self.cpp_type(rt)} {{ {' '.join(l.strip() for l in lines)} return {self.cpp_type(rt)}(); }}())", rt
+            return f"([&]() -> {self.cpp_type(rt)} {{ {NL.join(lines)} return {self.cpp_type(rt)}(); }}())", rt
         if fn.kind == "name" and fn.name in ("min_by", "max_by") and len(e.args) == 2 and not self.lookup(fn.name):
             # max_by(r, i => key): the element of a range whose key is largest (the first such); traps when empty
             rc, rt = self.expr(e.args[0])
@@ -2711,6 +2795,8 @@ class Compiler(LendMixin):
             body = " ".join(parts)
             return f"([&](){{ (void)0; /* debug */ if (CP_LOCAL) {{ {body} }} }}())", UNIT
         if fn.kind == "name" and fn.name == "Str" and len(e.args) == 1 and not self.lookup("Str"):
+            if e.args[0].kind == "gen":     # `Str('0' + d for d in row)`: the Chars, in order
+                e = N("call", e.line, fn=fn, args=[N("list", e.line, items=[e.args[0]])])
             ac, at = self.expr(e.args[0])
             if (isinstance(at, TList) and isinstance(at.elem, TChar)) or (isinstance(at, TArr) and len(at.dims) == 1 and isinstance(at.elem, TChar)):
                 return f"([&](const auto& _cs){{ return string(_cs.begin(), _cs.end()); }}({ac}))", STR
@@ -2730,6 +2816,11 @@ class Compiler(LendMixin):
                 if isinstance(t, TChar): return f"(ll)({c})", TInt(0, 255)
                 if isinstance(t, TMod): return f"(ll)(({c}).v)", TInt(0, t.m - 1)
                 if is_int(t): return c, t
+                if isinstance(t, TDom) and t.info.of is None and t.info.labels == "int":
+                    # the written label, the same number `print(v)` shows and `V(x)` takes back
+                    return self.x_field(N("field", e.line, obj=N("ctemp", e.line, code=c, ty=t, src=e.args[0]), name="label"), None)
+                if isinstance(t, TDom):
+                    self.error(e, f"Int(v) is the written label of a domain over Ints, and {t!r} is not one (use `v.to_idx` for its position)")
             self.error(e, f"cannot convert {t!r} to {fn.name}")
         if fn.kind == "name" and getattr(self.lookup(fn.name), "kind", None) == "type" \
                 and getattr(getattr(self.lookup(fn.name), "node", None), "kind", None) == "struct":
@@ -2807,7 +2898,7 @@ class Compiler(LendMixin):
                 self.error(e, f"expected {len(ft.params)} arguments, got {len(e.args)}")
             args, ats = [], []
             for a, pt in zip(e.args, ft.params):
-                c, at = self.expr(a, pt)
+                c, at = self.expr(self.typed(a, pt), pt)
                 args.append(self.coerce(c, at, pt, a))
                 ats.append(at)
             # everything passed by reference to one call is lent for the same time (plan/19 §3.6)
@@ -3712,7 +3803,7 @@ class Compiler(LendMixin):
             self.scopes.pop()
             if not isinstance(bt, TBool):
                 self.error(lam, f"slide_until needs a Bool test, got {bt!r}")
-            self.emit(f"auto {r}_ok = [&](const {cty} {pa}, const {cty} {pb}) -> bool {{ {' '.join(l.strip() for l in lines)} return {bc}; }};")
+            self.emit(f"auto {r}_ok = [&](const {cty} {pa}, const {cty} {pb}) -> bool {{ {NL.join(lines)} return {bc}; }};")
             self.emit(f"while ({hi} < {r}.hi && !{r}_ok(({cty}){lo}, ({cty}){hi})) ++{hi};")
             self.emit(f"if ({hi} >= {r}.hi) break;")
             self.scopes.append({})
@@ -4800,6 +4891,44 @@ class Compiler(LendMixin):
         c, t = self.expr(e)
         self.emit(f"{c};")
 
+    def x_keepassign(self, e, want=None):
+        """`x min= y` / `x max= y` as a Bool: true when the place changed. The update itself is the statement
+        form, so `none` is skipped and a missing map key is inserted exactly as there."""
+        tgt = e.target
+        if self.has_effects(tgt):
+            self.error(e, f"`{unparse(tgt)} {e.op} ...` would evaluate `{unparse(tgt)}` twice, and it calls a fn\n"
+                          f"  help: bind the position first: `let i = ...`")
+        if e.value.kind == "none":      # `none` on the right is skipped: nothing changes
+            return "false", TBool()
+        stmt = N("assign", e.line, target=tgt, op=e.op, value=e.value)
+        changed = self.tmpname("ch")
+
+        def body():
+            mt = self.capture(lambda: self.expr(tgt.obj))[1][1] if tgt.kind == "index" else None
+            if isinstance(mt, TMap) and not isinstance(mt.val, TOpt):
+                oc, _ = self.expr(tgt.obj)
+                kc, kt = self.expr(tgt.idx[0], mt.key)
+                kc = self.coerce(kc, kt, mt.key, tgt.idx[0])
+                key, old = self.tmpname("k"), self.tmpname("old")
+                self.emit(f"const auto {key} = {kc};")
+                vt_c = self.cpp_type(mt.val)
+                self.emit(f"const auto {old}_it = {oc}.find({key});")
+                self.emit(f"const bool {old}_had = {old}_it != {oc}.end();")
+                self.emit(f"const {vt_c} {old} = {old}_had ? {vt_c}({old}_it->second) : {vt_c}();")
+                stmt.target = N("index", tgt.line, obj=tgt.obj, idx=[N("ctemp", tgt.line, code=key, ty=mt.key, src=tgt.idx[0])])
+                self.s_assign(stmt)
+                self.emit(f"const bool {changed} = !{old}_had || !({vt_c}({oc}.find({key})->second) == {old});")
+            else:
+                tc, _ = self.expr(tgt)
+                old = self.tmpname("old")
+                self.emit(f"const auto {old} = {tc};")
+                self.s_assign(stmt)
+                tc, _ = self.expr(tgt)
+                self.emit(f"const bool {changed} = !({tc} == {old});")
+        # one expression, so it runs where it is written (`if ok and best min= d:` leaves best alone when not ok)
+        lines = self.capture(body)[0]
+        return f"([&]() -> bool {{ {NL.join(lines)} return {changed}; }})()", TBool()
+
     def s_assert(self, s):
         c, t = self.expr(s.cond)
         if not isinstance(t, TBool):
@@ -4926,7 +5055,7 @@ class Compiler(LendMixin):
             self.error(e, f"expected {len(fty.params)} arguments, got {len(e.args)}")
         out = []
         for a, pt in zip(e.args, fty.params):
-            c, at = self.expr(a, pt)
+            c, at = self.expr(self.typed(a, pt), pt)
             out.append(self.coerce(c, at, pt, a))
         return out
 
@@ -4968,7 +5097,7 @@ class Compiler(LendMixin):
             elif s.value is None:
                 self.emit(f"{{ {g[1]} = true; return false; }}")
             else:
-                c, t = self.expr(s.value, rt)
+                c, t = self.expr(self.typed(s.value, rt), rt)
                 self.emit(f"{{ {g[2]} = {self.coerce(c, t, rt, s.value)}; {g[1]} = true; return false; }}")
             return
         if isinstance(rt, TGen):
@@ -4978,7 +5107,7 @@ class Compiler(LendMixin):
             self.emit("return;")
             return
         self.escapes[id(s.value)] = "`return`"
-        c, t = self.expr(s.value, rt)
+        c, t = self.expr(self.typed(s.value, rt), rt)
         if rt is not None:
             c = self.coerce(c, t, rt, s.value)
         self.emit(f"return {c};")
@@ -5353,7 +5482,7 @@ class Compiler(LendMixin):
         lv, self.lvalue = getattr(self, "lvalue", None), None
         args = []
         for a, pt in zip(e.args, p.ptypes):       # index arguments are evaluated before the lend begins
-            c, at = self.expr(a, pt)
+            c, at = self.expr(self.typed(a, pt), pt)
             args.append(self.coerce(c, at, pt, a))
         self.lvalue = lv
         if p.mut_self:
@@ -5716,6 +5845,22 @@ class Compiler(LendMixin):
                 self.no_identity(tgt, fold)
         if tgt.kind == "tuple":
             return self.s_parallel_assign(s)
+        if tgt.kind == "unwrap" and not fold:
+            # `x! += d` / `x! = v`: `x!` is a place. The value must be there; the write goes to x itself.
+            self.require_mut(tgt, s)
+            if self.has_effects(tgt.a):
+                self.error(s, f"`{unparse(tgt)} {op} ...` would evaluate `{unparse(tgt.a)}` twice, and it calls a fn\n"
+                              f"  help: bind the position first: `let i = ...`")
+            cur = N("unwrap", tgt.line, a=tgt.a)
+            cc, ct = self.expr(cur)
+            if op == "=":
+                self.emit(f"(void)({cc});")
+                value = s.value
+            elif op in ("min=", "max="):
+                value = N("call", s.line, fn=N("name", s.line, name=op[:3]), args=[cur, s.value])
+            else:
+                value = N("binop", s.line, op=op[:-1], a=cur, b=s.value)
+            return self.s_assign(N("assign", s.line, target=tgt.a, op="=", value=value))
         if op in ("min=", "max=") and self.has_effects(tgt):
             self.error(s, f"`{unparse(tgt)} {op} ...` would evaluate `{unparse(tgt)}` twice, and it calls a fn\n"
                           f"  help: bind the position first: `let i = ...`")
@@ -5724,6 +5869,10 @@ class Compiler(LendMixin):
         # in `a`, so growing/reallocating `a` during `rhs` or `idx` never dangles or reads stale size.
         rhs_node = s.value
         tgt_eval = tgt
+        if op == "=" and self.io_call(rhs_node) is not None:
+            tt0 = self.capture(lambda: self.expr(tgt))[1][1]
+            rc, rt = self.expr(self.typed(rhs_node, tt0))
+            rhs_node = N("ctemp", rhs_node.line, code=rc, ty=rt, src=rhs_node)
         has_idx = tgt.kind in ("index", "field") and any(x.kind == "index" for x in walk([tgt]))
         if has_idx and self.has_effects(rhs_node):
             tt0 = self.capture(lambda: self.expr(tgt))[1][1]
@@ -5875,6 +6024,12 @@ class Compiler(LendMixin):
             seen.add(key)
         v = s.value.a if s.value.kind == "paren" else s.value
         temps = []
+        if self.io_call(v) is v and v.fn.kind != "tapp":
+            # `(a[d], b[d]) = read()`: each place's type says what to read, left to right
+            rest = [N("call", v.line, fn=N("name", v.line, name="read"), args=[]) for _ in tgt.items[1:]]
+            v = N("tuple", v.line, items=[v] + rest, names=[None] * len(tgt.items))
+            for t, x in zip(tgt.items, v.items):
+                self.typed(x, self.capture(lambda: self.expr(t))[1][1])
         if v.kind == "tuple" and len(v.items) == len(tgt.items) and not any(v.names):
             for t, x in zip(tgt.items, v.items):
                 want = self.capture(lambda: self.expr(t))[1][1]
@@ -6311,7 +6466,7 @@ class Compiler(LendMixin):
             self.block(body[:-1], new_scope=False)
             def tail():
                 self.escapes[id(body[-1].expr)] = "returning it"
-                c, t = self.expr(body[-1].expr, rt)
+                c, t = self.expr(self.typed(body[-1].expr, rt), rt)
                 self.emit(f"return {self.coerce(c, t, rt, body[-1])};")
             self.with_tries(body[-1], "expr", tail)
         else:

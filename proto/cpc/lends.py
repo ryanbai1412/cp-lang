@@ -99,7 +99,7 @@ def written_names(stmts):
     """Names a block may assign to (syntactic): assignment targets, `mut` arguments, mutating methods."""
     out = set()
     for n in walk(stmts):
-        if n.kind == "assign":
+        if n.kind in ("assign", "keepassign"):
             out.add(root_name(n.target))
         elif n.kind == "call":
             for a in n.args:
@@ -113,7 +113,7 @@ def written_names(stmts):
     return out
 
 
-IO_FNS = {"read", "print", "println", "write", "flush"}
+IO_FNS = {"read", "ask", "print", "println", "write", "flush"}
 
 
 def own_effects(fn):
@@ -412,7 +412,8 @@ class LendMixin:
         for n in walk(x):
             if n.kind != "call":
                 continue
-            if n.fn.kind == "name" and n.fn.name in IO_FNS and self.lookup(n.fn.name) is None:
+            f = n.fn.obj if n.fn.kind == "tapp" else n.fn
+            if f.kind == "name" and f.name in IO_FNS and self.lookup(f.name) is None:
                 io = True
             s = self.callee(n)
             if s is not None:

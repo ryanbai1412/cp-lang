@@ -108,5 +108,29 @@ check("stress --tokens compares tokens", code == 0 and "compared by tokens" in o
 code, out = stress("all_rejected")
 check("an all-rejected stress run is not OK", code == 3 and "INCONCLUSIVE" in out and "stress OK" not in out, out)
 
+# Synthesis #2 (research/language-architecture-synthesis-2.md): the seven kernel rules and the format specifiers.
+# Every tests/p0/s2_*.cp must print its .out on both paths: built by cpc under ASan + UBSan, and run by cpi.
+S2 = sorted(f[:-3] for f in os.listdir(P0) if f.startswith("s2_") and f.endswith(".cp"))
+for name in S2:
+    if name.endswith("_trap"):      # a runtime error on both paths, never a wrong value
+        got = compiled(name)
+        check("cpc " + name, "line " in got and "g++ failed" not in got and "build failed" not in got, got)
+        got = interpreted(name)
+        check("cpi " + name, "error:" in got, got)
+        continue
+    want = open(os.path.join(P0, name + ".out")).read()
+    got = compiled(name)
+    check("cpc " + name, got == want, got)
+    got = interpreted(name)
+    check("cpi " + name, got == want, got)
+
+# The spellings Synthesis #2 rejects must be rejected by the interpreter too, where it can tell without static types
+# (run_all.sh checks every tests/bad/*.cp against cpc).
+for name in ("s2_read_no_type", "s2_read_angle", "s2_fmt_align", "s2_fmt_nested_width", "s2_fmt_float_width_only",
+             "s2_fmt_hex_float", "s2_int_of_f64", "s2_char_of_digit", "s2_for_mut", "s2_array_default_literal"):
+    r = subprocess.run(CP + ["lib-run", os.path.join(HERE, "bad", name + ".cp")], input="", capture_output=True, text=True,
+                       timeout=20, cwd=PROTO)
+    check("cpi rejects " + name, "error:" in r.stdout + r.stderr, r.stdout + r.stderr)
+
 print(f"p0 regressions: {'all passed' if not failed else str(len(failed)) + ' FAILED'}")
 sys.exit(1 if failed else 0)
