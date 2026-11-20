@@ -1,0 +1,6 @@
+# Lines of noi01p5_orig.cpp that a perfect C++ contest library would have supplied.
+# Read by `cpl-verify loc` for the library-stripped line count; argue with it here.
+1-30   template header
+32-67  hash map
+69-79  integer power
+113-115  fast I/O setup

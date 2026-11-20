@@ -1,6 +1,7 @@
 # The Rust workspace
 
-Every crate here is an empty shell with one passing test. The split is a
+Every crate here except `cpl-verify` is an empty shell with one passing
+test. The split is a
 starting point so that work can go on in parallel without two people
 editing the same crate; change it when the code says it is wrong.
 
@@ -21,6 +22,12 @@ dependency when the code first needs it):
 - **`cpl-lsp`** is the language server (`plan/60-editor.md`).
 - **`cpl-cli`** builds the `cpl` binary and owns the commands (`plan/40-tooling.md`,
   `plan/45-dev-tools.md`).
+
+Beside the pipeline, **`cpl-verify`** is the verification harness: the
+differential fuzzer under ASan and UBSan, the `sizeof` audit, the raw and
+library-stripped line counts and the latency benchmark
+(`plan/80-validation.md`, `crates/cpl-verify/README.md`). It tests
+`proto/cpc/` today and the crates above as they land.
 
 ```text
 $ cargo test            # must pass before every push to main

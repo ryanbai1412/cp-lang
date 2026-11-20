@@ -1,0 +1,12 @@
+[package]
+name = "cpl-verify"
+description = "Verification harness: differential fuzzing, layout audit, line counts and latency benchmarks."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "cpl-verify"
+path = "src/main.rs"
+
+[dependencies]
