@@ -169,6 +169,16 @@ impl Ty {
                         || (aa.len() == ba.len() && aa.iter().zip(ba).all(|(a, b)| a.fits(b))))
             }
             (Ty::Fn { .. }, Ty::Fn { .. }) => true,
+            // `Bounds<V>` is how library code spells `V.bounds`.
+            (Ty::Pos(bounds), Ty::Named { name, args })
+            | (Ty::Named { name, args }, Ty::Pos(bounds))
+                if name == "Bounds" =>
+            {
+                match args.as_slice() {
+                    [Ty::Pos(domain)] => bounds.strip_suffix(".bounds") == Some(domain),
+                    _ => bounds.ends_with(".bounds"),
+                }
+            }
             // A string is a list of its characters (decision 9: `Str` is
             // `[domain S]Char`, one flat byte array).
             (Ty::Str, Ty::Named { name, args }) if name == "List" => {

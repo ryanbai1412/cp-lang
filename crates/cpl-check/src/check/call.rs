@@ -3,11 +3,66 @@
 use super::expr::{list_names, plural};
 use super::*;
 use crate::ty::{Bindings, Param};
-use cpl_syntax::ast::{Arg, Expr};
+use cpl_syntax::ast::{Arg, Expr, ExprKind};
 
 impl<'a> Checker<'a> {
     pub(crate) fn call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Ty {
         let callee_ty = self.infer(callee);
+        let receiver = self.receiver(call, callee);
+        let ty = self.call_kind(call, callee, callee_ty.clone(), args);
+        self.lent_together(args);
+        self.no_escape_args(callee, &callee_ty, args);
+        self.mutates_view(call, callee);
+        receiver.unwrap_or(ty)
+    }
+
+    /// What a method call means beyond its signature: `g.row(r)` lends a
+    /// row, `v.l(k)` is a boundary, `b.at(i)` is a projection of `b`.
+    /// Returns the call's type when the receiver decides it.
+    fn receiver(&mut self, call: &Expr, callee: &Expr) -> Option<Ty> {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return None;
+        };
+        match self.quietly(|c| c.infer(base)) {
+            Ty::Array { index, elem } if name.text == "row" && index.len() > 1 => {
+                self.note_view(call, "row");
+                Some(Ty::Array {
+                    index: index[1..].to_vec(),
+                    elem,
+                })
+            }
+            // `v.l(k)`, `v.r(k)`: the far end of a window of `k` at `v`.
+            Ty::Pos(domain)
+                if matches!(name.text.as_str(), "l" | "r") && !domain.ends_with(".bounds") =>
+            {
+                Some(Ty::Pos(format!("{domain}.bounds")))
+            }
+            Ty::Named {
+                name: type_name, ..
+            } => {
+                let members = self.members_of(&type_name)?;
+                let projection = members
+                    .projections
+                    .iter()
+                    .find(|p| p.name == name.text)?
+                    .clone();
+                self.note_proj_call(
+                    call,
+                    super::lends::ProjCall {
+                        who: format!("{type_name}.{}", projection.name),
+                        name: projection.name,
+                        mutable: projection.mutable,
+                        lent: projection.lent,
+                        law: projection.law,
+                    },
+                );
+                None
+            }
+            _ => None,
+        }
+    }
+
+    fn call_kind(&mut self, call: &Expr, callee: &Expr, callee_ty: Ty, args: &[Arg]) -> Ty {
         let callee_text = self.quote(callee.span);
         match callee_ty {
             Ty::Fn { params, ret } => {
@@ -28,6 +83,12 @@ impl<'a> Checker<'a> {
             Ty::Error => {
                 self.plain_args(args);
                 Ty::Error
+            }
+            // `v.l(k)`: a boundary reached from a position.
+            Ty::Pos(_) if matches!(&callee.kind, ExprKind::Field { name, .. } if matches!(name.text.as_str(), "l" | "r")) =>
+            {
+                self.plain_args(args);
+                callee_ty
             }
             ty if ty.is_numeric() || matches!(ty, Ty::Bool | Ty::Str | Ty::Char | Ty::Pos(_)) => {
                 self.plain_args(args);

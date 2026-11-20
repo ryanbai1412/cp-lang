@@ -7,6 +7,7 @@
 
 mod call;
 mod expr;
+mod lends;
 mod stmt;
 mod types;
 
@@ -86,6 +87,8 @@ pub(crate) struct Checker<'a> {
     in_fn: u32,
     /// What `Self` is: the struct, enum or impl target whose body this is.
     self_ty: Option<Ty>,
+    /// What is lent and what is known, for the exclusivity of lends.
+    lends: lends::Lends,
 }
 
 pub(crate) struct Checked {
@@ -107,6 +110,7 @@ impl<'a> Checker<'a> {
             fns: Vec::new(),
             in_fn: 0,
             self_ty: None,
+            lends: lends::Lends::default(),
         }
     }
 
@@ -301,6 +305,7 @@ impl<'a> Checker<'a> {
     /// Checks that `expr` can be changed. `action` finishes the sentence
     /// "`x` is a `let`, so it can't be ...".
     fn require_mutable(&mut self, expr: &cpl_syntax::ast::Expr, action: &str) {
+        self.writable(expr);
         let Some((name, span)) = Self::root_name(expr) else {
             return;
         };

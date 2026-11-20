@@ -430,6 +430,36 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// The projections among the fns of a body.
+    pub(crate) fn projections(&mut self, methods: &[ast::Stmt]) -> Vec<crate::def::Projection> {
+        methods
+            .iter()
+            .filter_map(|m| match &m.kind {
+                ast::StmtKind::Fn(f) => {
+                    let lends = f.lends.as_ref()?;
+                    let law = match &f.body {
+                        ast::FnBody::Block(block) => {
+                            block.stmts.iter().find_map(|s| match &s.kind {
+                                ast::StmtKind::Law { name, .. } if name.text == "disjoint" => {
+                                    Some(self.text(s.span).to_string())
+                                }
+                                _ => None,
+                            })
+                        }
+                        _ => None,
+                    };
+                    Some(crate::def::Projection {
+                        name: f.name.text.clone(),
+                        mutable: lends.mutable,
+                        lent: self.text(lends.ty.span).to_string(),
+                        law,
+                    })
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
     /// The signatures of the fns in a body, and which of them are `@get`.
     pub(crate) fn method_sigs(
         &mut self,
@@ -614,6 +644,7 @@ impl<'a> Checker<'a> {
                         ctor,
                         getters,
                         owned,
+                        projections: self.projections(&s.methods),
                     },
                 )]
             }
@@ -717,6 +748,7 @@ impl<'a> Checker<'a> {
                         methods,
                         getters,
                         owned,
+                        projections: self.projections(&body.stmts),
                     },
                 )]
             }

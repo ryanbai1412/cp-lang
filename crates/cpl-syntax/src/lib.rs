@@ -17,6 +17,7 @@ mod lexer;
 pub mod literal;
 mod parser;
 mod token;
+pub mod visit;
 
 pub use items::{split_items, ItemRange};
 pub use lexer::{lex, Lexed};
