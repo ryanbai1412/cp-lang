@@ -50,6 +50,8 @@ def run_case(path):
     return None
 
 def names(d):
+    if not os.path.isdir(d):
+        return []
     return sorted(f[:-3] for f in os.listdir(d) if f.endswith(".cp"))
 
 def sheet_lines():

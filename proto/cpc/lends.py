@@ -270,6 +270,8 @@ class LendMixin:
         if e.kind != "cmp" or len(e.ops) != 1 or e.ops[0] not in FLIP:
             return False
         op, a, b = e.ops[0], e.first, e.rest[0]
+        if a.kind == "call" and b.kind == "call" and show(a.fn) == show(b.fn) and len(a.args) == 1 and len(b.args) == 1:
+            a, b = a.args[0], b.args[0]
         la, lb = self.lit(a), self.lit(b)
         if la is not None and lb is not None:
             return {"!=": la != lb, "==": la == lb, "<": la < lb, "<=": la <= lb, ">": la > lb, ">=": la >= lb}[op]

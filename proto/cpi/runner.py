@@ -49,9 +49,9 @@ def run_tests(paths, only=None):
     return failed
 
 
-def run_file(path, text):
-    """Run a solution through the interpreter, reading `text` as its input."""
-    it = Interp(stdin_tokens=text.split())
+def run_file(path, text=None, stream=None):
+    """Run a solution through the interpreter, reading `text` or streaming from `stream`."""
+    it = Interp(stdin_tokens=text.split() if text is not None else None, stdin_stream=stream)
     try:
         it.load(path)
     except CpError as e:

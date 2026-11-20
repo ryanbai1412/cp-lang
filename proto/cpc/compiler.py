@@ -19,10 +19,10 @@ class TMap(T):
     def __repr__(self): return f"{'HashMap' if self.hashed else 'Map'}<{self.key!r}, {self.val!r}>"
 
 class TSet(T):
-    def __init__(self, elem): self.elem = elem
-    def __eq__(self, o): return isinstance(o, TSet) and o.elem == self.elem
-    def __hash__(self): return hash(("set", self.elem))
-    def __repr__(self): return f"Set<{self.elem!r}>"
+    def __init__(self, elem, hashed=False, bag=False): self.elem, self.hashed, self.bag = elem, hashed, bag
+    def __eq__(self, o): return isinstance(o, TSet) and (o.elem, o.hashed, o.bag) == (self.elem, self.hashed, self.bag)
+    def __hash__(self): return hash(("set", self.elem, self.hashed, self.bag))
+    def __repr__(self): return f"{'HashSet' if self.hashed else 'SortedBag' if self.bag else 'Set'}<{self.elem!r}>"
 
 class TGen(T):
     def __init__(self, elem): self.elem = elem
@@ -140,9 +140,9 @@ CPP_RESERVED = set(CPP_RESERVED) | {
 # is checked against the real module, so a port can only import what the library really exports.
 MEMO_DENSE_MAX = 1 << 26     # slots of a dense @memo table (at most ~1 GB of optional Ints); larger products are hashed
 LIBS = {"Steps": ("steps", "CpSteps")}
-BUILTIN_TYPE_ARGS = {"Fenwick": 2, "LazySegTree": 2, "SparseTable": 2, "Deque": 1, "MonoDeque": 1, "Desc": 1, "MaxHeap": 1, "List": 1, "Map": 2, "HashMap": 2, "Set": 1, "Perm": 1, "MinHeap": 1, "Dsu": 1, "AssignSum": 1, "AddMax": 1,
-                     "SegTree": 2, "Subset": 1, "Counter": 1, "Range": 1}
-LIB_FNS = {"Dsu": "dsu", "bfs": "graph", "dijkstra": "graph", "choose": "math", "gcd": "math", "lcm": "math", "scan": "seq",
+BUILTIN_TYPE_ARGS = {"Fenwick": 2, "LazySegTree": 2, "SparseTable": 2, "Deque": 1, "MonoDeque": 1, "Desc": 1, "MaxHeap": 1, "List": 1, "Map": 2, "HashMap": 2, "Set": 1, "HashSet": 1, "SortedBag": 1, "Bitset": 1, "Marks": 1, "Perm": 1, "MinHeap": 1, "Dsu": 1, "AssignSum": 1, "AddMax": 1,
+                     "SegTree": 2, "Subset": 1, "Counter": 1, "Range": 1, "Fenwick2D": 3, "Matrix": 3, "FlowGraph": 1, "TwoSat": 1, "Steps": 2}
+LIB_FNS = {"Dsu": "dsu", "Graph": "graph", "bfs": "graph", "dijkstra": "graph", "choose": "math", "gcd": "math", "lcm": "math", "scan": "seq",
            "running_sum": "seq", "SegTree": "segtree", "Rooted": "tree", "Fenwick": "fenwick"}
 
 # The identity each built-in two-argument operation folds from (std.algebra: Sum, Prod, Xor and friends).
@@ -240,7 +240,8 @@ class Compiler(LendMixin):
         if isinstance(t, TI128): return "__int128"
         if isinstance(t, TUnit): return "void"
         if isinstance(t, TDom): return "int"
-        if isinstance(t, TMod): return f"Mod<{t.m}>"
+        if isinstance(t, TMod):
+            return f"DynMod<{t.m[1]}>" if isinstance(t.m, tuple) else f"Mod<{t.m}>"
         if isinstance(t, TOpt):
             if self.narrow(t.inner) and t.inner.lo > -2**31:
                 return "OptI32"
@@ -259,6 +260,10 @@ class Compiler(LendMixin):
                 return f"CpHashMap<{self.cpp_type(t.key)}, {self.cpp_type(t.val)}, CpHash>"
             return f"map<{self.cpp_type(t.key)}, {self.cpp_type(t.val)}>"
         if isinstance(t, TSet):
+            if t.hashed:
+                return f"unordered_set<{self.cpp_type(t.elem)}, CpHash>"
+            if t.bag:
+                return f"multiset<{self.cpp_type(t.elem)}>"
             if self.word_set(t):
                 return "Mask64"
             return "DenseSet" if self.dense_set(t) else f"set<{self.cpp_type(t.elem)}>"
@@ -283,8 +288,14 @@ class Compiler(LendMixin):
         if isinstance(t, THeap):
             e = self.cpp_type(t.elem)
             return f"priority_queue<{e}, vector<{e}>, {'less' if t.largest else 'greater'}<{e}>>"
-        if isinstance(t, TRt) and t.name in ("Fenwick", "SparseTable", "LazySegTree"):
+        if isinstance(t, TRt) and t.name in ("Fenwick", "SparseTable", "LazySegTree", "Marks", "Bitset", "Pt", "FlowGraph", "TwoSat", "SuffixArray", "RollingHash", "Dir4", "Dir8"):
             return t.cpp
+        if isinstance(t, TRt) and t.name == "Fenwick2D":
+            return f"CpFenwick2D<{self.cpp_type(t.args[2])}>"
+        if isinstance(t, TRt) and t.name == "StepsT":
+            return f"CpStepsT<{self.cpp_type(t.args[0])}, {self.cpp_type(t.args[1])}>"
+        if isinstance(t, TRt) and t.name == "Matrix":
+            return f"CpMat<{self.cpp_type(t.args[2])}>"
         if isinstance(t, TRt):
             return f"{t.cpp}<{', '.join(self.cpp_type(a) for a in t.args)}>"
         raise CompileError(f"no C++ type for {t!r}")
@@ -329,7 +340,7 @@ class Compiler(LendMixin):
         return t
 
     def hashable(self, t):
-        return isinstance(t, (TInt, TDom, TBool, TChar)) or (isinstance(t, TTuple) and getattr(t, "hashable", False))
+        return isinstance(t, (TInt, TDom, TBool, TChar, TStr)) or (isinstance(t, TTuple) and getattr(t, "hashable", False))
 
     def field_cpp(self, name):
         return name + "_" if name in CPP_RESERVED else name
@@ -434,8 +445,27 @@ class Compiler(LendMixin):
                 return TList(self.resolve_type(tn.args[0]))
             if nm in ("Map", "HashMap"):
                 return TMap(self.resolve_type(tn.args[0]), self.resolve_type(tn.args[1]), nm == "HashMap")
-            if nm == "Set":
-                return TSet(self.resolve_type(tn.args[0]))
+            if nm in ("Set", "HashSet", "SortedBag"):
+                return TSet(self.resolve_type(tn.args[0]), hashed=(nm == "HashSet"), bag=(nm == "SortedBag"))
+            if nm == "Dir4" and not tn.args:
+                return TRt("Dir4", [], "CpDir4")
+            if nm == "Dir8" and not tn.args:
+                return TRt("Dir8", [], "CpDir8")
+            if nm == "Pt" and not tn.args:
+                return TRt("Pt", [], "CpPt")
+            if nm == "Matrix" and len(tn.args) == 3:
+                return TRt("Matrix", [self.dim_type(tn.args[0]), self.dim_type(tn.args[1]), self.resolve_type(tn.args[2])], "CpMat")
+            if nm == "Fenwick2D" and len(tn.args) == 3:
+                return TRt("Fenwick2D", [self.dim_type(tn.args[0]), self.dim_type(tn.args[1]), self.resolve_type(tn.args[2])], "CpFenwick2D")
+            if nm == "FlowGraph" and len(tn.args) == 1:
+                return TRt("FlowGraph", [self.resolve_type(tn.args[0])], "CpFlowGraph")
+            if nm == "TwoSat" and len(tn.args) == 1:
+                return TRt("TwoSat", [self.dim_type(tn.args[0])], "CpTwoSat")
+            if nm == "Steps" and len(tn.args) == 2:
+                return TRt("StepsT", [self.resolve_type(tn.args[0]), self.resolve_type(tn.args[1])], "CpStepsT")
+            if nm == "Bitset":
+                d = self.dim_type(tn.args[0])
+                return TRt("Bitset", [d], "CpBitset")
             if nm == "Perm":
                 d = self.resolve_type(tn.args[0])
                 if not isinstance(d, TDom):
@@ -456,6 +486,9 @@ class Compiler(LendMixin):
                 if is_int(et):
                     et = TInt()
                 return TRt(nm, [et], {"Deque": "deque", "MonoDeque": "CpMonoDeque", "Desc": "CpDesc"}[nm])
+            if nm == "Marks":
+                d = self.dim_type(tn.args[0])
+                return TRt("Marks", [d], "CpMarks")
             if nm == "Dsu":
                 d = self.resolve_type(tn.args[0])
                 if not isinstance(d, TDom):
@@ -507,6 +540,15 @@ class Compiler(LendMixin):
                 a = tn.args[0]
                 if a.kind == "tname" and not a.args:
                     a = N("name", a.line, name=a.name)
+                if a.kind == "name":
+                    sym = self.lookup(a.name)
+                    if sym and sym.kind in ("let", "var") and is_int(sym.ty):
+                        dmods = self.__dict__.setdefault("dyn_mods", {})
+                        if sym.cpp not in dmods:
+                            tag = len(dmods)
+                            dmods[sym.cpp] = tag
+                            self.emit(f"DynMod<{tag}>::M = {sym.cpp};")
+                        return TMod(("dyn", dmods[sym.cpp]))
                 v = a.value if a.kind == "num" else self.const_value(a)
                 return TMod(v)
             if nm == "Counter":
@@ -577,7 +619,15 @@ class Compiler(LendMixin):
         import os
         if s.path[0] != "std" or len(s.path) != 2 or s.names is None:
             self.error(s, "the prototype compiler imports names from the standard library only: `use std.module.{Name}`")
-        path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "stdlib", s.path[1] + ".cp")
+        root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        path = os.path.join(root, "stdlib", s.path[1] + ".cp")
+        if not os.path.exists(path):
+            # v2.2 moved some opt-in modules (e.g. `steps.cp`) into examples/local-lib/<group>/
+            for grp in ("ds", "graph", "grid", "geom", "math", "seq", "str", "dp", "spec"):
+                alt = os.path.join(root, "examples", "local-lib", grp, s.path[1] + ".cp")
+                if os.path.exists(alt):
+                    path = alt
+                    break
         if not os.path.exists(path):
             self.error(s, f"there is no module std.{s.path[1]} (stdlib/{s.path[1]}.cp)")
         src = open(path).read()
@@ -607,11 +657,22 @@ class Compiler(LendMixin):
         self.emit(f"{info.cpp}_lo = {lo_c}; {info.cpp}_len = max(0LL, (ll)(({hi_c_excl}) - ({lo_c})));")
         return TDom(info)
 
+    def bool_domain(self):
+        if not hasattr(self, "_bool_dom"):
+            info = DomInfo("Bool", "cp_bool_dom", "0", "2", (0, 0), (2, 2), anon=False)
+            info.is_bool = True
+            self._bool_dom = info
+        return self._bool_dom
+
     def dim_type(self, d):
         if d.kind == "trange":
             r = d.range
             lo_c, lo_t = self.expr(r.lo)
             hi_c, hi_t = self.expr(r.hi)
+            if isinstance(lo_t, TChar) and isinstance(hi_t, TChar):
+                lo_c = f"(ll)(unsigned char)({lo_c})"
+                hi_c = f"(ll)(unsigned char)({hi_c})"
+                lo_t, hi_t = TInt(0, 127), TInt(0, 127)
             hi_excl = f"({hi_c}) + 1" if r.incl else hi_c
             hiv = (getattr(hi_t, "lo", None), getattr(hi_t, "hi", None))
             if r.incl:
@@ -625,6 +686,19 @@ class Compiler(LendMixin):
                 c, t = self.expr(d.expr)
                 return self.anon_count_domain(f"0..{unparse(d.expr)}", "0", c, (0, 0), (t.lo, t.hi), d)
         t = self.resolve_type(d)
+        if isinstance(t, TBool):
+            return TDom(self.bool_domain())
+        if isinstance(t, TEnum) and getattr(t, "index_info", None) is not None:
+            return TDom(t.index_info)
+        if isinstance(t, TTuple) and t.types and all(isinstance(ft, TDom) for ft in t.types):
+            prod_cpp = " * ".join(f"(ll){ft.info.len_cpp}" for ft in t.types)
+            lo_iv, hi_iv = 1, 1
+            for ft in t.types:
+                lo_iv = None if (lo_iv is None or ft.info.len_iv[0] is None) else lo_iv * ft.info.len_iv[0]
+                hi_iv = None if (hi_iv is None or ft.info.len_iv[1] is None) else hi_iv * ft.info.len_iv[1]
+            info = DomInfo(f"({', '.join(ft.info.name for ft in t.types)})", f"prod_{t.cpp}", "0", prod_cpp, (0, 0), (lo_iv, hi_iv), anon=False)
+            info.prod_tuple = t
+            return TDom(info)
         if isinstance(t, TTuple) and t.cpp in self.index_impls:
             return TDom(self.index_impls[t.cpp])     # any struct with `impl Index` is a dimension (plan/19 §3.1)
         if not isinstance(t, TDom):
@@ -658,7 +732,7 @@ class Compiler(LendMixin):
                 return f"(({self.cpp_type(want)})({c}))"
             self.error(node, f"an Int is not a {want!r}; convert with `{want!r}(x)`")
         if isinstance(want, TMod) and isinstance(t, TInt):
-            return f"Mod<{want.m}>({c})"
+            return f"{self.cpp_type(want)}({c})"
         if isinstance(want, TOpt):
             if isinstance(t, TOpt) and t.inner == want.inner:
                 return c
@@ -795,7 +869,7 @@ class Compiler(LendMixin):
         if isinstance(want, TI128):
             return f"((__int128){v}LL)", I128
         if isinstance(want, TMod):
-            return f"Mod<{want.m}>({v}LL)", want
+            return f"{self.cpp_type(want)}({v}LL)", want
         return (f"{v}LL" if abs(v) > 2**31 - 1 else str(v)), TInt(v, v)
 
     def x_bool(self, e, want):
@@ -881,6 +955,8 @@ class Compiler(LendMixin):
     def x_name(self, e, want):
         if e.name == "inf" and not self.lookup("inf"):
             return "CP_INF", TInt(4e18, 4e18)
+        if e.name in ("Dir4", "Dir8") and not self.lookup(e.name):
+            return e.name, TType(TRt(e.name, [], f"Cp{e.name}"))
         s = self.lookup(e.name)
         if s is None:
             prim = {"Int": INT, "Bool": BOOL, "Char": CHAR, "F64": F64, "U64": U64, "I128": I128}
@@ -1083,6 +1159,11 @@ class Compiler(LendMixin):
             if hi is None:              # -x overflows for the minimum Int only
                 return f"cp_sub(0, {c}, {e.line})", self.int_result(e, lo, hi)
             return f"-({c})", self.int_result(e, lo, hi)
+        if isinstance(t, TOpt) and isinstance(t.inner, (TInt, TF64)):
+            ct = self.cpp_type(t)
+            return f"([]({ct} _a){{ return _a.has() ? {ct}(-{('_a.get()' if isinstance(t.inner, TF64) else f'cp_sub(0, _a.get(), {e.line})')}) : {ct}(); }}({c}))", TOpt(TInt() if isinstance(t.inner, TInt) else TF64())
+        if isinstance(t, TRt) and t.name == "Pt":
+            return f"(-({c}))", t
         if isinstance(t, TMod):
             return f"-({c})", t
         self.error(e, f"cannot negate {t!r}")
@@ -1098,16 +1179,31 @@ class Compiler(LendMixin):
 
     def x_binop(self, e, want):
         op = e.op
-        if op in ("|", "&", "-") and e.a.kind == "name" and isinstance(getattr(self.lookup(e.a.name), "ty", None), TSet):
+        if op in ("|", "&", "-", "^") and e.a.kind == "name" and isinstance(getattr(self.lookup(e.a.name), "ty", None), TSet):
             a, at = self.expr(e.a)
-            if True:
+            b, bt = self.expr(e.b, at)
+            if bt != at:
+                self.error(e, f"`{op}` needs two {at!r}, got {bt!r}")
+            if self.word_set(at):
+                m = {"|": "a.m | b.m", "&": "a.m & b.m", "-": "a.m & ~b.m", "^": "a.m ^ b.m"}[op]
+                return f"([](Mask64 a, Mask64 b) {{ Mask64 r; r.m = {m}; return r; }}({a}, {b}))", at
+            fn = {"|": "cp_set_union", "&": "cp_set_inter", "-": "cp_set_diff", "^": "cp_set_symdiff"}[op]
+            return f"{fn}({a}, {b})", at
+        if op in ("|", "&", "-", "^"):
+            _, (_, at0) = self.capture(lambda: self.expr(e.a))
+            if isinstance(at0, TRt) and at0.name == "Bitset":
+                a, at = self.expr(e.a)
                 b, bt = self.expr(e.b, at)
                 if bt != at:
                     self.error(e, f"`{op}` needs two {at!r}, got {bt!r}")
-                if not self.word_set(at):
-                    self.error(e, f"set `{op}` is only supported for sets over domains of at most 64 elements (prototype)")
-                m = {"|": "a.m | b.m", "&": "a.m & b.m", "-": "a.m & ~b.m"}[op]
-                return f"([](Mask64 a, Mask64 b) {{ Mask64 r; r.m = {m}; return r; }}({a}, {b}))", at
+                return f"(({a}) {op} ({b}))", at
+            if isinstance(at0, TSet):
+                a, at = self.expr(e.a)
+                b, bt = self.expr(e.b, at)
+                if bt != at:
+                    self.error(e, f"`{op}` needs two {at!r}, got {bt!r}")
+                fn = {"|": "cp_set_union", "&": "cp_set_inter", "-": "cp_set_diff", "^": "cp_set_symdiff"}[op]
+                return f"{fn}({a}, {b})", at
         if op in ("and", "or"):
             a, at = self.expr(e.a)
             b, bt = self.expr(e.b)
@@ -1124,7 +1220,32 @@ class Compiler(LendMixin):
             return f"([&]{{ auto {tmp} = {a}; return {tmp}.has() ? {tmp}.get() : {self.cpp_type(at.inner)}({b}); }}())", at.inner
         a, at = self.expr(e.a, want if isinstance(want, TMod) else None)
         b, bt = self.expr(e.b, at if isinstance(at, TMod) and op != "**" else None)      # an exponent is an Int
+        if isinstance(at, TRange) and isinstance(bt, TRange) and op == "&":
+            if at.elem != bt.elem and not (is_int(at.elem) and is_int(bt.elem)):
+                self.error(e, f"`&` between ranges of {at.elem!r} and {bt.elem!r}")
+            return f"cp_rinter({a}, {b})", at
+        if isinstance(at, TRt) and at.name == "Pt" and bt == at and op in ("+", "-"):
+            return f"(({a}) {op} ({b}))", at
+        if isinstance(at, TRt) and at.name == "Matrix" and isinstance(bt, TRt) and bt.name == "Matrix" and op == "*":
+            if at.args[1] != bt.args[0] or at.args[2] != bt.args[2]:
+                self.error(e, f"matrix multiply dimension/type mismatch: {at!r} * {bt!r}")
+            return f"(({a}) * ({b}))", TRt("Matrix", [at.args[0], bt.args[1], at.args[2]], "CpMat")
         if isinstance(at, TOpt) or isinstance(bt, TOpt):
+            if op in ("+", "-"):
+                ai = at.inner if isinstance(at, TOpt) else at
+                bi = bt.inner if isinstance(bt, TOpt) else bt
+                if (is_int(ai) and is_int(bi)) or (isinstance(ai, TF64) and (isinstance(bi, TF64) or (is_int(bi) and self.is_literal(e.b)))) or (isinstance(bi, TF64) and is_int(ai) and self.is_literal(e.a)):
+                    bt_base = TF64() if (isinstance(ai, TF64) or isinstance(bi, TF64)) else TInt()
+                    ot = TOpt(bt_base)
+                    octy = self.cpp_type(ot)
+                    ac = a if isinstance(at, TOpt) else f"{octy}({self.coerce(a, at, bt_base, e.a)})"
+                    bc = b if isinstance(bt, TOpt) else f"{octy}({self.coerce(b, bt, bt_base, e.b)})"
+                    if isinstance(bt_base, TF64):
+                        comb = f"cp_fchk(_a.get() {op} _b.get(), {e.line})"
+                    else:
+                        fn = "cp_add" if op == "+" else "cp_sub"
+                        comb = f"{fn}(_a.get(), _b.get(), {e.line})"
+                    return f"([&](auto _a, auto _b) -> {octy} {{ return (_a.has() && _b.has()) ? {octy}({comb}) : {octy}(); }}({ac}, {bc}))", ot
             self.error(e, f"`{op}` on an optional ({at!r}, {bt!r}); unwrap with `!`, `??` or `if let` first")
         WIDE = (TF64, TU64, TI128)
         if isinstance(at, WIDE) or isinstance(bt, WIDE) or (isinstance(want, WIDE) and is_int(at) and is_int(bt)
@@ -1150,10 +1271,10 @@ class Compiler(LendMixin):
                 return f"cp_wdiv{'mod' if op == '%' else ''}({a}, {b}, {e.line})", wt
             return f"(({a}) {op} ({b}))", wt
         if isinstance(at, TInt) and isinstance(bt, TMod):
-            a, at = f"Mod<{bt.m}>({a})", bt
+            a, at = f"{self.cpp_type(bt)}({a})", bt
         if isinstance(at, TMod):
             if isinstance(bt, TInt) and op != "**":
-                b = f"Mod<{at.m}>({b})"
+                b = f"{self.cpp_type(at)}({b})"
             elif op == "**":
                 return f"({a}).pow({b})", at
             if op not in "+-*/":
@@ -1357,6 +1478,9 @@ class Compiler(LendMixin):
         if isinstance(rt, (TMap, TSet)):
             kt = rt.key if isinstance(rt, TMap) else rt.elem
             return f"({rc}.count({self.coerce(xc, xt, kt, e)}) > 0)"
+        if isinstance(rt, TRt) and rt.name in ("Marks", "Bitset"):
+            ic = self.index_into(e.first, rt.args[0].info, e)
+            return f"{rc}.has({ic})"
         if isinstance(rt, (TList, TArr)):
             return f"(find({rc}.begin(), {rc}.end(), {xc}) != {rc}.end())"
         self.error(e, f"cannot test membership in {rt!r}")
@@ -1447,6 +1571,21 @@ class Compiler(LendMixin):
                 self.note_check(e, "raw index in range")
                 return f"{rc}[(size_t)chk_dom({ic}, (ll){rc}.size(), {e.line})]", rt.elem
         oc, ot = self.expr(e.obj)
+        if isinstance(ot, TType) and isinstance(ot.t, TDom) and len(e.idx) == 1 and e.idx[0].kind == "range":
+            # D[..k], D[l..r], etc.: clamped sub-range of domain D
+            info = ot.t.info
+            ix = e.idx[0]
+            lo_c = "0" if ix.lo is None else f"max(0LL, min((ll){info.len_cpp}, (ll)({self.expr(ix.lo)[0]})))"
+            if ix.hi is None:
+                hi_c = f"(ll){info.len_cpp}"
+            else:
+                hc, _ = self.expr(ix.hi)
+                hi_c = f"max(0LL, min((ll){info.len_cpp}, (ll)({hc}){' + 1' if ix.incl else ''}))"
+            return f"([&](ll _lo, ll _hi){{ return Rng{{_lo, max(_lo, _hi)}}; }}({lo_c}, {hi_c}))", TRange(ot.t)
+        if isinstance(ot, TRt) and ot.name == "Matrix" and len(e.idx) == 2:
+            ri = self.index_into(e.idx[0], ot.args[0].info, e)
+            ci = self.index_into(e.idx[1], ot.args[1].info, e)
+            return f"{oc}.at({ri}, {ci})", ot.args[2]
         if isinstance(ot, TMap):
             kc, kt = self.expr(e.idx[0], ot.key)
             kc = self.coerce(kc, kt, ot.key, e.idx[0])
@@ -1474,20 +1613,30 @@ class Compiler(LendMixin):
         if isinstance(ot, TList):
             if len(e.idx) != 1:
                 self.error(e, "lists take one index")
+            if e.idx[0].kind == "range":
+                rc, rt = self.expr(e.idx[0])
+                if not isinstance(rt, TRange):
+                    self.error(e, f"list slice needs a range, got {rt!r}")
+                el = 'int' if self.narrow(ot.elem) else ('uint8_t' if isinstance(ot.elem, TBool) else self.cpp_type(ot.elem))
+                lo_c = "0" if e.idx[0].lo is None else f"(ll)({self.expr(e.idx[0].lo)[0]})"
+                hi_c = f"(ll){oc}.size()" if e.idx[0].hi is None else f"((ll)({self.expr(e.idx[0].hi)[0]}){' + 1' if e.idx[0].incl else ''})"
+                vt = TArr([TDom(DomInfo("slice", "sl", "0", f"({hi_c} - {lo_c})", (0, 0), (0, None), anon=True))], ot.elem)
+                vt.view = "slice"
+                return f"cp_slice({oc}, Rng{{{lo_c}, {hi_c}}}, {e.line})", vt
             ic, it = self.expr(e.idx[0])
             if not is_int(it):
                 self.error(e, f"list index must be Int, got {it!r}")
             self.note_check(e, f"`{unparse(e)}` in bounds")
             lv = getattr(self, "lvalue", None)
             if self.narrow(ot.elem) and not (lv is not None and lv[0] is e):
-                return f"(ll){oc}[cp_lidx({ic}, {oc}.size(), {e.line})]", ot.elem
-            return f"{oc}[cp_lidx({ic}, {oc}.size(), {e.line})]", ot.elem
+                return f"(ll)cp_at({oc}, {ic}, {e.line})", ot.elem
+            return f"cp_at({oc}, {ic}, {e.line})", ot.elem
         if isinstance(ot, TRt) and ot.name == "Deque":
             if len(e.idx) != 1:
                 self.error(e, "a Deque takes one index")
             ic = self.str_pos(e.idx[0])
             self.note_check(e, f"`{unparse(e)}` in bounds")
-            return f"{oc}[cp_lidx({ic}, {oc}.size(), {e.line})]", ot.elem
+            return f"cp_at({oc}, {ic}, {e.line})", ot.elem
         if isinstance(ot, TStr):
             # a Str is a flat run of ASCII bytes at positions 0..len: `s[i]` is a Char, `s[l..r]` a Str
             if len(e.idx) != 1:
@@ -1500,7 +1649,7 @@ class Compiler(LendMixin):
                 return f"cp_str_slice({oc}, {lo}, {hi}, {'true' if ix.incl else 'false'}, {e.line})", STR
             ic = self.str_pos(ix)
             self.note_check(e, f"`{unparse(e)}` in bounds")
-            return f"{oc}[cp_lidx({ic}, {oc}.size(), {e.line})]", CHAR
+            return f"cp_at({oc}, {ic}, {e.line})", CHAR
         if not isinstance(ot, TArr):
             self.error(e, f"cannot index {ot!r}")
         view = getattr(ot, "view", None)
@@ -1561,6 +1710,19 @@ class Compiler(LendMixin):
             # the real checker proves `to_idx` returns 0..K from its declared range; the prototype checks it
             self.note_check(e, f"`{show(ix)}.to_idx` is below {info.name}.K")
             return f"chk_dom({c}, {info.len_cpp}, {e.line})"
+        if getattr(info, "enum_type", None) is not None:
+            if it != info.enum_type:
+                self.error(ix, f"index of type {it!r} into array over {info.name}")
+            return f"cp_eidx_{info.enum_type.cpp}({ic})"
+        if getattr(info, "prod_tuple", None) is not None:
+            pt = info.prod_tuple
+            if it != pt:
+                self.error(ix, f"index of type {it!r} into array over {info.name}")
+            flat = None
+            for fnm, ft in zip(pt.names, pt.types):
+                fc = f"({ic}).{self.field_cpp(fnm)}"
+                flat = fc if flat is None else f"(({flat}) * {ft.info.len_cpp} + ({fc}))"
+            return flat
         if isinstance(it, TDom):
             if it.info is info:
                 return ic
@@ -1569,6 +1731,10 @@ class Compiler(LendMixin):
             if info.of is it.info or it.info.of is info:
                 self.error(ix, f"index of type {it!r} into array over {info.name}; use `.l` / `.r` for the boundaries on either side of a position")
             self.error(ix, f"index of type {it!r} into array over {info.name}")
+        if isinstance(it, TBool) and getattr(info, "is_bool", False):
+            return f"(int)({ic})"
+        if isinstance(it, TChar) and info.anon:
+            return f"chk_dom((ll)(unsigned char)({ic}) - {info.lo_cpp}, {info.len_cpp}, {e.line})"
         if isinstance(it, TInt):
             if not info.anon:
                 self.error(ix, f"Int index `{unparse(ix)}` into array over {info.name}; "
@@ -1609,7 +1775,7 @@ class Compiler(LendMixin):
         if isinstance(ot, TArr) and getattr(ot, "compressed", False) and f == "D":
             return "", TType(ot.dims[0])
         if isinstance(ot, TMod) and f == "inv":
-            return f"(Mod<{ot.m}>(1) / ({oc}))", ot
+            return f"({self.cpp_type(ot)}(1) / ({oc}))", ot
         if isinstance(ot, TMod) and f == "val":
             return f"(ll)(({oc}).v)", TInt(0, ot.m - 1)
         if isinstance(ot, (TList, TStr)) and f == "is_empty":
@@ -1622,7 +1788,7 @@ class Compiler(LendMixin):
             return f"{oc}.kids", TArr([ot.dom], TList(ot.dom))
         if isinstance(ot, TTree) and f == "root":
             return f"{oc}.order[0]", ot.dom
-        if isinstance(ot, TDsu) and f == "count":       # the number of sets
+        if isinstance(ot, TDsu) and f in ("count", "components"):       # the number of sets
             return f"(ll){oc}.parts", TInt(0, ot.dom.info.len_iv[1])
         if isinstance(ot, TSeg) and f == "all":         # the fold of every position
             return f"{oc}.all()", ot.elem
@@ -1683,8 +1849,8 @@ class Compiler(LendMixin):
                 return f"(ll){oc}.{self.field_cpp(ot.names[i])}", ot.types[i]
             return f"{oc}.{self.field_cpp(ot.names[i])}", ot.types[i]
         if isinstance(ot, TRange):
-            if f in ("start", "end", "lo", "hi"):
-                c = f"{oc}.lo" if f in ("start", "lo") else f"{oc}.hi"
+            if f in ("start", "end", "lo", "hi", "l", "r"):
+                c = f"{oc}.lo" if f in ("start", "lo", "l") else f"{oc}.hi"
                 el = ot.elem
                 return (f"(int)({c})" if isinstance(el, TDom) else c), (TDom(self.bounds_of(el.info)) if isinstance(el, TDom) else INT)
             if f == "len":
@@ -1692,10 +1858,54 @@ class Compiler(LendMixin):
                 return f"max(0LL, {oc}.hi - {oc}.lo)", TInt(0, hi)
             if f == "is_empty":
                 return f"({oc}.hi <= {oc}.lo)", BOOL
-            if f in ("first", "last"):
-                self.note_check(e, "range is non-empty")
-                c = f"cp_rfirst({oc}, {e.line})" if f == "first" else f"cp_rlast({oc}, {e.line})"
-                return (f"(int){c}" if isinstance(ot.elem, TDom) else c), ot.elem
+            if f in ("first", "last", "mid"):
+                suf = "dom" if isinstance(ot.elem, TDom) else "opt"
+                fn = f"cp_r{f}_{suf}"
+                return f"{fn}({oc})", TOpt(ot.elem)
+        if isinstance(ot, TList) and f in ("first", "last"):
+            et = ot.elem
+            cty = self.cpp_type(TOpt(et))
+            return f"([&](const auto& _v) -> {cty} {{ return _v.empty() ? {cty}() : {cty}(_v.{'front' if f == 'first' else 'back'}()); }}({oc}))", TOpt(et)
+        if isinstance(ot, TType) and isinstance(ot.t, TEnum):
+            if f == "K" and getattr(ot.t, "index_info", None) is not None:
+                return f"(ll)({ot.t.index_info.len_cpp})", TInt(*ot.t.index_info.len_iv)
+            k, v = ot.t.variant(f)
+            if k is not None and not v[1]:
+                return f"([&]{{ {ot.t.cpp} _e; _e.tag = {k}; return _e; }}())", ot.t
+        if isinstance(ot, TRt) and ot.name == "Dir4":
+            if f in ("cw", "ccw", "back"):
+                return f"{oc}.{f}()", ot
+        if isinstance(ot, TRt) and ot.name == "SuffixArray":
+            if f in ("sa", "lcp"): return f"{oc}.{f}", TList(TInt(0))
+        if isinstance(ot, TRt) and ot.name == "Pt":
+            if f in ("x", "y"): return f"{oc}.{f}", TInt()
+            if f == "norm2": return f"{oc}.norm2()", TInt(0)
+        if isinstance(ot, TArr) and len(ot.dims) == 2 and f in ("flipped", "transposed"):
+            r, c = ot.dims[0], ot.dims[1]
+            if f == "flipped":
+                return f"cp_grid_flipped({oc}, {r.info.len_cpp}, {c.info.len_cpp})", ot
+            return f"cp_grid_transposed({oc}, {r.info.len_cpp}, {c.info.len_cpp})", TArr([c, r], ot.elem)
+        if isinstance(ot, TRt) and ot.name == "Marks":
+            if f == "len": return f"{oc}.size()", TInt(0)
+            if f == "is_empty": return f"{oc}.empty()", BOOL
+        if isinstance(ot, TRt) and ot.name == "Bitset":
+            if f == "len": return f"{oc}.len()", TInt(0)
+            if f == "is_empty": return f"{oc}.empty()", BOOL
+        if isinstance(ot, TSet):
+            if f == "len": return f"(ll){oc}.size()", TInt(0, None)
+            if f == "is_empty": return f"{oc}.empty()", BOOL
+            if f in ("first", "last") and not ot.hashed:
+                ov = self.cpp_type(TOpt(ot.elem))
+                end = "begin()" if f == "first" else "rbegin()"
+                return f"({oc}.empty() ? {ov}() : {ov}(*{oc}.{end}))", TOpt(ot.elem)
+        if isinstance(ot, TMap):
+            if f == "len": return f"(ll){oc}.size()", TInt(0, None)
+            if f == "is_empty": return f"{oc}.empty()", BOOL
+            if f in ("first", "last") and not ot.hashed:
+                pt = self.tuple_type(["f0", "f1"], [ot.key, ot.val])
+                ov = self.cpp_type(TOpt(pt))
+                end = "begin()" if f == "first" else "rbegin()"
+                return f"([&](const auto& _m) -> {ov} {{ if (_m.empty()) return {ov}(); auto _it = _m.{end}; return {ov}({pt.cpp}{{_it->first, _it->second}}); }}({oc}))", TOpt(pt)
         if isinstance(ot, TCounter) and f == "distinct":
             return f"{oc}.distinct", TInt(0, None)
         if isinstance(ot, (TList, TStr, TMap, TSet)):
@@ -1731,7 +1941,7 @@ class Compiler(LendMixin):
         self.error(e, f"{ot!r} has no `.{f}`")
 
     # ---------- calls
-    REDUCERS = {"sum", "count", "min", "max", "any", "all", "product"}
+    REDUCERS = {"sum", "count", "min", "max", "any", "all", "product", "prod"}
 
     def x_call(self, e, want):
         fn = e.fn
@@ -1829,13 +2039,15 @@ class Compiler(LendMixin):
                 self.error(e, f"condense needs the components as a [{vt!r}]C, got {ct!r}")
             return f"cp_condense({c}, {cc}, {ct.elem.info.len_cpp}, {to})", TArr([ct.elem], TList(ct.elem))
         if fn.kind == "name" and fn.name == "Rooted" and len(e.args) in (2, 3) and not self.lookup(fn.name):
-            # Rooted(g, root) / Rooted(g, root, weight: e => e.len): a tree hung from `root`. `g` is adjacency
-            # lists ([V]List<V>, or arcs with a `to: V`) or a list of edges (records that start with two V).
-            weight = [a for a in e.args[2:] if a.kind == "kwarg" and a.name == "weight"]
-            if len(e.args) == 3 and not weight:
+            # Rooted(g, root) / Rooted(g, root: v, weight: e => e.len): a tree hung from `root`.
+            pos = [a for a in e.args if a.kind != "kwarg"]
+            kw = {a.name: a.value for a in e.args if a.kind == "kwarg"}
+            weight = [N("kwarg", e.line, name="weight", value=kw["weight"])] if "weight" in kw else []
+            root_arg = kw["root"] if "root" in kw else (pos[1] if len(pos) > 1 else None)
+            if root_arg is None or len(pos) < 1:
                 self.error(e, "Rooted(g, root) or Rooted(g, root, weight: e => e.len)")
             # Fuse Rooted(Graph.undirected(edges), root) directly onto the edge list to avoid intermediate vector<vector<int>>
-            g_arg = e.args[0]
+            g_arg = pos[0]
             if (not weight and g_arg.kind == "call" and g_arg.fn.kind == "field" and g_arg.fn.obj.kind == "name"
                     and g_arg.fn.obj.name == "Graph" and g_arg.fn.name == "undirected"
                     and len(g_arg.args) == 1 and not self.lookup("Graph")):
@@ -1864,7 +2076,7 @@ class Compiler(LendMixin):
                 if not is_int(wt):
                     self.error(weight[0], f"`weight:` gives each edge an Int length, got {wt!r}")
                 w = f"([&](const {self.cpp_type(arc)}& {pn}) -> ll {{ return {wc}; }}(_a))"
-            rc, rt = self.expr(e.args[1], V)
+            rc, rt = self.expr(root_arg, V)
             if rt != V:
                 self.error(e, f"the root must be a {V!r}, got {rt!r}")
             tt = TTree(V)
@@ -1898,7 +2110,7 @@ class Compiler(LendMixin):
                     f"vector<int> _to(_hd[_n]); vector<ll> _wt(_hd[_n]); int _p = 0; "
                     f"for (int _u = 0; _u < _n; ++_u) for (const auto& _a : _g[_u]) {{ _to[_p] = (int)({to}); _wt[_p] = {w}; ++_p; }} "
                     f"return RootedTree(_n, _hd, _to, _wt, {rc}); }}())"), tt
-        if fn.kind == "generic" and fn.name in LIBS and not self.lookup(fn.name):
+        if fn.kind == "generic" and fn.name in LIBS and not fn.args and not self.lookup(fn.name):
             return self.lib_new(self.resolve_type(N("tname", fn.line, name=fn.name, args=fn.args)), e.args, e)
         if fn.kind == "name" and fn.name == "Set" and len(e.args) == 1 and not self.lookup("Set"):
             # Set(xs): the distinct elements of a list or an array
@@ -1908,27 +2120,30 @@ class Compiler(LendMixin):
             st = TSet(TInt() if is_int(t.elem) else t.elem)
             return f"([&]{{ auto _s = {self.set_ctor(st)}; for (const auto& _x : {c}) _s.insert(_x); return _s; }}())", st
         if fn.kind == "name" and fn.name == "bfs" and len(e.args) == 2 and not self.lookup("bfs"):
-            self.need_use("bfs", e)
-            # bfs(adj, from): fewest arcs from any of `from` to each vertex, none where there is no way (std.graph)
-            src = e.args[1]
-            if src.kind == "kwarg":
-                if src.name != "from":
-                    self.error(src, f"bfs(adj, from: sources) has no `{src.name}:`")
-                src = src.value
+            # bfs(adj, from: sources) OR bfs(from: sources, next: u => adj[u])
+            kw = {a.name: a.value for a in e.args if a.kind == "kwarg"}
+            pos = [a for a in e.args if a.kind != "kwarg"]
+            if "from" in kw and "next" in kw:
+                src, adj_arg = kw["from"], kw["next"]
+            elif "from" in kw and len(pos) == 1:
+                adj_arg, src = pos[0], kw["from"]
+            elif len(pos) == 2:
+                adj_arg, src = pos[0], pos[1]
+            else:
+                self.error(e, "bfs(adj, from: sources) or bfs(from: sources, next: u => adj[u])")
             fc, ft = self.expr(src)
             if not (isinstance(ft, (TList, TArr)) and isinstance(ft.elem, TDom)):
-                self.error(e.args[1], f"bfs(adj, from) starts from a list of vertices, got {ft!r}")
+                self.error(src, f"bfs(adj, from) starts from a list of vertices, got {ft!r}")
             V = ft.elem
-            pn, ac, at = self.lambda_key(e.args[0], V)
+            pn, ac, at = self.lambda_key(adj_arg, V)
             arc = at.elem if isinstance(at, (TList, TArr)) else None
             if not (arc == V or (isinstance(arc, TTuple) and arc.field("to") is not None and arc.types[arc.field("to")] == V)):
-                self.error(e.args[0], f"bfs(adj, from): `adj` gives the neighbours of a {V!r} as a list of {V!r} "
+                self.error(adj_arg, f"bfs(adj, from): `adj` gives the neighbours of a {V!r} as a list of {V!r} "
                                       f"(or of arcs with a `to: {V!r}`), got {at!r}")
             rt = TArr([V], TOpt(TInt(0, V.info.len_iv[1])))
             return (f"cp_bfs<{self.cpp_type(rt.elem)}>({V.info.len_cpp}, {fc}, [&](int {pn}) -> decltype(auto) "
                     f"{{ return ({ac}); }})"), rt
         if fn.kind == "name" and fn.name == "choose" and len(e.args) == 2 and not self.lookup("choose"):
-            self.need_use("choose", e)
             # choose(n, k): exact; 0 when k is outside 0..=n (std.math)
             (nc, nt), (kc, kt) = self.expr(e.args[0]), self.expr(e.args[1])
             if not (is_int(nt) and is_int(kt)):
@@ -1942,7 +2157,6 @@ class Compiler(LendMixin):
             return f"cp_choose({nc}, {kc}, {e.line})", TInt(0, hi if hi is not None and hi <= INT_MAX else None)
         if fn.kind == "name" and fn.name in ("scan", "running_sum") and not self.lookup(fn.name) and \
                 len(e.args) == (2 if fn.name == "scan" else 1):
-            self.need_use(fn.name, e)
             # scan(xs, f): the running fold x0, f(x0, x1), ...; running_sum(xs) is scan(xs, +) (std.seq)
             c, t = self.expr(e.args[0])
             if not isinstance(t, (TList, TArr)) or (isinstance(t, TArr) and len(t.dims) != 1):
@@ -2195,16 +2409,134 @@ class Compiler(LendMixin):
             return (f"([&]{{ auto _s = {c}; sort(_s.begin(), _s.end()); "
                     f"return adjacent_find(_s.begin(), _s.end()) == _s.end(); }}())"), BOOL
         if fn.kind == "name" and fn.name == "runs" and not self.lookup("runs"):
-            # runs(xs, same: (a, b) => Bool): maximal stretches of neighbours that are `same`
+            # runs(xs) or runs(xs, same: (a, b) => Bool): maximal stretches of equal/`same` neighbours
             c, t = self.expr(e.args[0])
             same = [a for a in e.args[1:] if a.kind == "kwarg" and a.name == "same"]
-            if not isinstance(t, (TList, TArr)) or (isinstance(t, TArr) and len(t.dims) != 1) or len(same) != 1:
-                self.error(e, "runs(xs, same: (a, b) => Bool) over a list or 1-D array")
+            if not isinstance(t, (TList, TArr)) or (isinstance(t, TArr) and len(t.dims) != 1) or len(same) > 1 or len(e.args) > 2:
+                self.error(e, "runs(xs[, same: (a, b) => Bool]) over a list or 1-D array")
             ec = self.cpp_type(t.elem)
-            eq = self.lambda2(same[0].value, t.elem, t.elem, BOOL)
+            eq = self.lambda2(same[0].value, t.elem, t.elem, BOOL) if same else "[](const auto& _a, const auto& _b){ return _a == _b; }"
             return (f"([&]{{ auto _eq = {eq}; vector<vector<{ec}>> _r; const auto& _xs = {c}; "
                     f"for (size_t _i = 0; _i < _xs.size(); ++_i) {{ if (_i == 0 || !_eq(_xs[_i - 1], _xs[_i])) _r.emplace_back(); "
                     f"_r.back().push_back(_xs[_i]); }} return _r; }}())"), TList(TList(t.elem))
+        if fn.kind == "name" and fn.name == "Pt" and len(e.args) == 2 and not self.lookup("Pt"):
+            xc, _ = self.expr(e.args[0])
+            yc, _ = self.expr(e.args[1])
+            return f"CpPt({xc}, {yc})", TRt("Pt", [], "CpPt")
+        if fn.kind == "name" and fn.name == "turn" and len(e.args) == 3 and not self.lookup("turn"):
+            cs = [self.expr(a)[0] for a in e.args]
+            return f"cp_turn({cs[0]}, {cs[1]}, {cs[2]})", TInt(-1, 1)
+        if fn.kind == "name" and fn.name == "convex_hull" and len(e.args) == 1 and not self.lookup("convex_hull"):
+            pc, pt = self.expr(e.args[0])
+            return f"cp_convex_hull({pc})", TList(TRt("Pt", [], "CpPt"))
+        if fn.kind == "name" and fn.name == "isqrt" and len(e.args) == 1 and not self.lookup("isqrt"):
+            nc, _ = self.expr(e.args[0])
+            return f"cp_isqrt({nc}, {e.line})", TInt(0)
+        if fn.kind == "name" and fn.name == "pow_mod" and len(e.args) == 3 and not self.lookup("pow_mod"):
+            ac, _ = self.expr(e.args[0])
+            ec, _ = self.expr(e.args[1])
+            mc, _ = self.expr(e.args[2])
+            return f"cp_pow_mod({ac}, {ec}, {mc}, {e.line})", TInt(0)
+        if fn.kind == "name" and fn.name == "factor" and len(e.args) == 1 and not self.lookup("factor"):
+            nc, _ = self.expr(e.args[0])
+            pt = self.tuple_type(["f0", "f1"], [TInt(), TInt()])
+            return f"cp_factor<{pt.cpp}>({nc})", TList(pt)
+        if fn.kind == "name" and fn.name == "sieve" and len(e.args) == 1 and not self.lookup("sieve"):
+            nc, _ = self.expr(e.args[0])
+            return f"cp_sieve({nc})", TList(TInt(2))
+        if fn.kind == "name" and fn.name in ("sliding_min", "sliding_max") and len(e.args) == 2 and not self.lookup(fn.name):
+            ac, at = self.expr(e.args[0])
+            kc, _ = self.expr(e.args[1])
+            is_min = "true" if fn.name == "sliding_min" else "false"
+            return f"cp_sliding_minmax({ac}, {kc}, {is_min})", TList(at.elem)
+        if fn.kind == "name" and fn.name == "reverse" and len(e.args) == 1 and not self.lookup("reverse"):
+            self.require_mut(e.args[0], e)
+            ac, _ = self.expr(e.args[0])
+            return f"std::reverse({ac}.begin(), {ac}.end())", UNIT
+        if fn.kind == "name" and fn.name == "dedup" and len(e.args) == 1 and not self.lookup("dedup"):
+            self.require_mut(e.args[0], e)
+            ac, _ = self.expr(e.args[0])
+            return f"([&](auto& _v){{ _v.erase(unique(_v.begin(), _v.end()), _v.end()); }}({ac}))", UNIT
+        if fn.kind == "name" and fn.name == "rotate_left" and len(e.args) == 2 and not self.lookup("rotate_left"):
+            self.require_mut(e.args[0], e)
+            ac, _ = self.expr(e.args[0])
+            kc, _ = self.expr(e.args[1])
+            return f"([&](auto& _v, ll _k){{ if (!_v.empty()) {{ _k = cp_emod_pos(_k, (ll)_v.size()); std::rotate(_v.begin(), _v.begin() + _k, _v.end()); }} }}({ac}, {kc}))", UNIT
+        if fn.kind == "name" and fn.name == "next_permutation" and len(e.args) == 1 and not self.lookup("next_permutation"):
+            self.require_mut(e.args[0], e)
+            ac, _ = self.expr(e.args[0])
+            return f"std::next_permutation({ac}.begin(), {ac}.end())", BOOL
+        if fn.kind == "name" and fn.name == "bsearch_first" and not self.lookup("bsearch_first"):
+            pos = [a for a in e.args if a.kind != "kwarg"]
+            kw = {a.name: a.value for a in e.args if a.kind == "kwarg"}
+            if len(pos) == 2 and pos[0].kind == "range" and pos[1].kind == "lambda" and len(pos[1].params) == 1:
+                lc, lt = self.expr(pos[0].lo)
+                hc, ht = self.expr(pos[0].hi)
+                if isinstance(lt, TF64) or isinstance(ht, TF64):
+                    steps_c = self.expr(kw["steps"])[0] if "steps" in kw else "80"
+                    pn, bc, bt = self.lambda_key(pos[1], F64)
+                    return (f"([&]() -> Opt<double> {{ double _lo = (double)({lc}), _hi = (double)({hc}); "
+                            f"auto _p = [&](double {pn}) {{ return ({bc}); }}; "
+                            f"if (!_p(_hi)) return Opt<double>(); "
+                            f"for (ll _it = 0; _it < (ll)({steps_c}); ++_it) {{ double _m = 0.5 * (_lo + _hi); if (_p(_m)) _hi = _m; else _lo = _m; }} "
+                            f"return Opt<double>(_hi); }}())"), TOpt(F64)
+                et = lt if isinstance(lt, TDom) else (ht if isinstance(ht, TDom) else TInt())
+                pn, bc, bt = self.lambda_key(pos[1], et)
+                cty = self.cpp_type(TOpt(et))
+                vty = self.cpp_type(et)
+                hi_x = f"(ll)({hc}) + 1" if pos[0].incl else f"(ll)({hc})"
+                return (f"([&]() -> {cty} {{ ll _lo = (ll)({lc}), _hi = {hi_x}, _ans = _hi; "
+                        f"auto _p = [&]({vty} {pn}) {{ return ({bc}); }}; "
+                        f"while (_lo < _hi) {{ ll _m = _lo + (_hi - _lo) / 2; if (_p(({vty})_m)) {{ _ans = _m; _hi = _m; }} else _lo = _m + 1; }} "
+                        f"return _ans < {hi_x} ? {cty}(({vty})_ans) : {cty}(); }}())"), TOpt(et)
+        if fn.kind == "lambda" and not fn.params and not e.args:
+            return self.expr(fn.body, want)
+        if fn.kind == "name" and fn.name == "read_output" and not e.args and not self.lookup("read_output"):
+            rt = want if want is not None else INT
+            tmp = self.tmpname("ro")
+            self.emit(f"{self.cpp_type(rt)} {tmp};")
+            self.emit_read(tmp, rt, e)
+            return tmp, rt
+        if fn.kind == "name" and fn.name == "topo" and len(e.args) == 1 and not self.lookup("topo"):
+            gc, gt = self.expr(e.args[0])
+            if not (isinstance(gt, TArr) and len(gt.dims) == 1 and isinstance(gt.elem, TList) and gt.elem.elem == gt.dims[0]):
+                self.error(e, f"topo needs [V]List<V>, got {gt!r}")
+            return f"cp_topo({gc})", TOpt(TList(gt.dims[0]))
+        if fn.kind == "name" and fn.name == "scc" and len(e.args) == 1 and not self.lookup("scc"):
+            gc, gt = self.expr(e.args[0])
+            if not (isinstance(gt, TArr) and len(gt.dims) == 1 and isinstance(gt.elem, TList) and gt.elem.elem == gt.dims[0]):
+                self.error(e, f"scc needs [V]List<V>, got {gt!r}")
+            return f"cp_scc_list({gc})", TList(TList(gt.dims[0]))
+        if fn.kind == "name" and fn.name == "z_function" and len(e.args) == 1 and not self.lookup("z_function"):
+            sc, _ = self.expr(e.args[0])
+            return f"cp_z_function({sc})", TList(TInt(0))
+        if fn.kind == "name" and fn.name == "prefix_function" and len(e.args) == 1 and not self.lookup("prefix_function"):
+            sc, _ = self.expr(e.args[0])
+            return f"cp_prefix_function({sc})", TList(TInt(0))
+        if fn.kind == "name" and fn.name == "SuffixArray" and len(e.args) == 1 and not self.lookup("SuffixArray"):
+            sc, _ = self.expr(e.args[0])
+            return f"CpSuffixArray({sc})", TRt("SuffixArray", [], "CpSuffixArray")
+        if fn.kind == "name" and fn.name == "RollingHash" and len(e.args) == 1 and not self.lookup("RollingHash"):
+            sc, _ = self.expr(e.args[0])
+            return f"CpRollingHash({sc})", TRt("RollingHash", [], "CpRollingHash")
+        if fn.kind == "name" and fn.name == "palindromes" and len(e.args) == 1 and not self.lookup("palindromes"):
+            sc, _ = self.expr(e.args[0])
+            return f"cp_palindromes({sc})", TList(TInt(0))
+        if fn.kind == "generic" and fn.name == "Fenwick2D" and len(fn.args) == 3 and not e.args:
+            t = self.resolve_type(N("tname", fn.line, name="Fenwick2D", args=fn.args))
+            return f"CpFenwick2D<{self.cpp_type(t.args[2])}>({t.args[0].info.len_cpp}, {t.args[1].info.len_cpp})", t
+        if fn.kind == "generic" and fn.name == "TwoSat" and len(fn.args) == 1 and not e.args:
+            t = self.resolve_type(N("tname", fn.line, name="TwoSat", args=fn.args))
+            return f"CpTwoSat({t.args[0].info.len_cpp})", t
+        if fn.kind == "generic" and fn.name == "FlowGraph" and len(fn.args) == 1 and not e.args:
+            t = self.resolve_type(N("tname", fn.line, name="FlowGraph", args=fn.args))
+            nt = t.args[0]
+            nc = nt.info.len_cpp if isinstance(nt, TDom) else (str(len(nt.variants)) if isinstance(nt, TEnum) else "0")
+            return f"CpFlowGraph({nc})", t
+        if fn.kind == "generic" and fn.name == "Steps" and len(fn.args) == 2:
+            t = self.resolve_type(N("tname", fn.line, name="Steps", args=fn.args))
+            dc = self.coerce(*self.expr(e.args[0], t.args[1]), t.args[1], e.args[0]) if e.args else f"{self.cpp_type(t.args[1])}()"
+            return f"CpStepsT<{self.cpp_type(t.args[0])}, {self.cpp_type(t.args[1])}>({dc})", t
         if fn.kind == "name" and fn.name == "dijkstra" and not self.lookup("dijkstra"):
             gc, gt = self.expr(e.args[0])
             ok = (isinstance(gt, TArr) and len(gt.dims) == 1 and isinstance(gt.elem, TList)
@@ -2212,13 +2544,23 @@ class Compiler(LendMixin):
                   and gt.elem.elem.types[0] == gt.dims[0] and is_int(gt.elem.elem.types[1]))
             if not ok:
                 self.error(e, f"dijkstra needs [D]List<(D, Int)>, got {gt!r}")
-            sc, st = self.expr(e.args[1], gt.dims[0])
-            sc = self.coerce(sc, st, gt.dims[0], e.args[1])
+            s_arg = e.args[1].value if e.args[1].kind == "kwarg" and e.args[1].name == "from" else e.args[1]
+            sc, st = self.expr(s_arg, gt.dims[0])
+            sc = self.coerce(sc, st, gt.dims[0], s_arg)
             return f"cp_dijkstra({gc}, {sc})", TArr([gt.dims[0]], TOpt(TInt(0, None)))
-        if fn.kind == "generic" and fn.name in ("Map", "Set", "HashMap"):
+        if fn.kind == "generic" and fn.name in ("Map", "Set", "HashMap", "HashSet", "SortedBag"):
             ts = [self.resolve_type(a) if a.kind.startswith("t") else self.resolve_type(N("texpr", a.line, expr=a)) for a in fn.args]
-            t = TSet(ts[0]) if fn.name == "Set" else TMap(*ts, hashed=fn.name == "HashMap")
+            if fn.name in ("Set", "HashSet", "SortedBag"):
+                t = TSet(ts[0], hashed=(fn.name == "HashSet"), bag=(fn.name == "SortedBag"))
+            else:
+                t = TMap(*ts, hashed=fn.name == "HashMap")
             return self.set_ctor(t), t
+        if fn.kind == "generic" and fn.name == "Bitset" and len(fn.args) == 1 and not e.args:
+            t = self.resolve_type(N("tname", fn.line, name="Bitset", args=fn.args))
+            return f"CpBitset({t.args[0].info.len_cpp})", t
+        if fn.kind == "generic" and fn.name == "Subset" and len(fn.args) == 1 and not e.args:
+            t = self.resolve_type(N("tname", fn.line, name="Subset", args=fn.args))
+            return "0", t
         if fn.kind == "generic" and fn.name == "AssignSum" and not e.args:
             # AssignSum<D>(): assign to a range, sum of a range; every cell starts at 0 (stdlib/lazy.cp)
             t = self.resolve_type(N("tname", fn.line, name="AssignSum", args=fn.args))
@@ -2240,16 +2582,21 @@ class Compiler(LendMixin):
             ic = self.coerce(ic, it, t.elem, e.args[0])
             ec = self.cpp_type(t.elem)
             return f"SegTree<{ec}>({t.dom.info.len_cpp}, {ic}, {self.lambda2(e.args[1], t.elem, t.elem, t.elem)})", t
+        if fn.kind == "generic" and fn.name == "Marks" and len(fn.args) == 1 and not e.args:
+            t = self.resolve_type(N("tname", fn.line, name="Marks", args=fn.args))
+            return f"CpMarks({t.args[0].info.len_cpp})", t
         if fn.kind == "generic" and fn.name == "Dsu" and not e.args:
             # Dsu<V>(): disjoint sets over a domain, every value alone to start (stdlib/dsu.cp)
             t = self.resolve_type(N("tname", fn.line, name="Dsu", args=fn.args))
             return f"CpDsu({t.dom.info.len_cpp})", t
-        if fn.kind == "generic" and fn.name == "Comb" and len(fn.args) == 1 and len(e.args) == 1:
-            # Comb<P>(n): factorials and inverse factorials up to n, modulo the prime P
+        if fn.kind == "generic" and fn.name == "Comb" and len(fn.args) == 1 and len(e.args) in (0, 1):
+            # Comb<P>() or Comb<P>(n): auto-growing factorials and inverse factorials modulo P
             mt = self.resolve_type(N("tname", fn.line, name="Mod", args=fn.args))
-            nc, nt = self.expr(e.args[0])
-            if not is_int(nt):
-                self.error(e, f"Comb<P>(n) takes an Int bound, got {nt!r}")
+            nc = "0"
+            if e.args:
+                nc, nt = self.expr(e.args[0])
+                if not is_int(nt):
+                    self.error(e, f"Comb<P>(n) takes an Int bound, got {nt!r}")
             t = TRt("Comb", [mt], "CpComb")
             return f"{self.cpp_type(t)}({nc})", t
         if fn.kind == "generic" and fn.name in ("Fenwick", "SparseTable", "LazySegTree") and len(fn.args) == 2 \
@@ -2326,6 +2673,52 @@ class Compiler(LendMixin):
                 for x in cs[1:]:
                     c = f"{fn.name}<{ct}>({c}, {x})"
                 return c, wide
+        if fn.kind == "tapp" and fn.obj.kind == "name" and fn.obj.name == "parse" and len(fn.targs) == 1 and len(e.args) == 1:
+            tt = self.resolve_type(fn.targs[0])
+            sc, st = self.expr(e.args[0])
+            if not isinstance(st, TStr):
+                self.error(e, f"parse::<{tt!r}> expects a Str, got {st!r}")
+            if isinstance(tt, TInt):
+                return f"cp_parse_int({sc}, {e.line})", tt
+            if isinstance(tt, TU64):
+                return f"cp_parse_u64({sc}, {e.line})", tt
+            if isinstance(tt, TF64):
+                return f"cp_parse_f64({sc}, {e.line})", tt
+            if isinstance(tt, TChar):
+                return f"cp_at({sc}, 0, {e.line})", CHAR
+            self.error(e, f"parse::<{tt!r}> is not supported")
+        if fn.kind == "name" and fn.name == "debug" and not self.lookup("debug"):
+            parts = []
+            for i, a in enumerate(e.args):
+                ac, at = self.expr(a)
+                if i:
+                    parts.append('fputc(\' \', stderr);')
+                if isinstance(at, TInt):
+                    parts.append(f'fprintf(stderr, "%lld", (long long)({ac}));')
+                elif isinstance(at, TBool):
+                    parts.append(f'fputs(({ac}) ? "true" : "false", stderr);')
+                elif isinstance(at, TChar):
+                    parts.append(f'fputc({ac}, stderr);')
+                elif isinstance(at, TStr):
+                    parts.append(f'fwrite(({ac}).data(), 1, ({ac}).size(), stderr);')
+                elif isinstance(at, TF64):
+                    parts.append(f'fprintf(stderr, "%g", (double)({ac}));')
+                elif isinstance(at, TDom):
+                    parts.append(f'fprintf(stderr, "%lld", (long long)({ac} + {at.info.lo_cpp}));')
+                else:
+                    parts.append('fputs("?", stderr);')
+            parts.append('fputc(\'\\n\', stderr);')
+            body = " ".join(parts)
+            return f"([&](){{ (void)0; /* debug */ if (CP_LOCAL) {{ {body} }} }}())", UNIT
+        if fn.kind == "name" and fn.name == "Str" and len(e.args) == 1 and not self.lookup("Str"):
+            ac, at = self.expr(e.args[0])
+            if (isinstance(at, TList) and isinstance(at.elem, TChar)) or (isinstance(at, TArr) and len(at.dims) == 1 and isinstance(at.elem, TChar)):
+                return f"([&](const auto& _cs){{ return string(_cs.begin(), _cs.end()); }}({ac}))", STR
+            if isinstance(at, TStr):
+                return ac, STR
+            if isinstance(at, TChar):
+                return f"string(1, {ac})", STR
+            self.error(e, f"Str(...) expects List<Char>, [D]Char, Char, or Str, got {at!r}")
         if fn.kind == "name" and fn.name in ("Int", "Bool"):
             c, t = self.expr(e.args[0])
             if fn.name == "Int" and isinstance(t, TF64):
@@ -2352,6 +2745,11 @@ class Compiler(LendMixin):
                     if i >= len(fields):
                         self.error(a, f"{fn.name} has {len(fields)} fields")
                     items.append(a); names.append(fields[i])
+            defaults = getattr(sym.node, "defaults", None) or {}
+            if sorted(names) != sorted(fields):
+                for f in fields:
+                    if f not in names and f in defaults:
+                        items.append(defaults[f]); names.append(f)
             if sorted(names) != sorted(fields):
                 missing = [f for f in fields if f not in names]
                 self.error(e, f"{fn.name}(...) is missing {', '.join(missing) or 'nothing'} / has unknown fields")
@@ -2402,7 +2800,7 @@ class Compiler(LendMixin):
                 return f"chk_dom((ll)({c}) - {info.lo_cpp}, {info.len_cpp}, {e.line})", t
             if isinstance(t, TMod) and len(e.args) == 1:
                 c, at = self.expr(e.args[0])
-                return f"Mod<{t.m}>({c})", t
+                return f"{self.cpp_type(t)}({c})", t
             self.error(e, f"cannot call type {t!r}")
         if isinstance(ft, TFn):
             if len(e.args) != len(ft.params):
@@ -2462,6 +2860,12 @@ class Compiler(LendMixin):
             return (f"CpFenwick({n}, {src})" if src else f"CpFenwick({n})"), t
         if fn.name == "LazySegTree":
             tag = args.pop(0) if args else None
+            if tag is not None and tag.kind == "call" and tag.fn.kind == "name" and tag.fn.name == "Action" and len(tag.args) == 3:
+                idc, _ = self.expr(tag.args[0])
+                comp = self.lambda2(tag.args[1], TInt(), TInt(), TInt())
+                app = self.lambda2(tag.args[2], TInt(), TInt(), TInt())
+                t = TRt("LazySegTree", [d], "CpCustomLazy")
+                return f"CpCustomLazy({n}, (ll)({idc}), {comp}, {app})", t
             if tag is None or tag.kind != "name" or tag.name not in self.LAZY_TAGS:
                 self.error(e, f"LazySegTree<D, Int>(Tag, a) takes a stock tag: {', '.join(self.LAZY_TAGS)}")
             assign, fold = self.LAZY_TAGS[tag.name]
@@ -2576,6 +2980,18 @@ class Compiler(LendMixin):
             ec = self.cpp_type(t.elem)
             return (f"SegTree<{ec}>({t.dom.info.len_cpp}, {ident}, {op}, [&](int {pn}) -> {ec} "
                     f"{{ return {self.coerce(fc, ft, t.elem, args[1])}; }})"), t
+        if isinstance(ot, TRange) and m == "clamp" and len(args) == 1:
+            dc, dt = self.expr(args[0])
+            if not (isinstance(dt, TType) and isinstance(dt.t, TDom)):
+                self.error(args[0], f"Range.clamp expects a domain, got {dt!r}")
+            info = dt.t.info
+            return (f"([&](Rng _r){{ ll _lo = max(0LL, _r.lo - (ll){info.lo_cpp}); "
+                    f"ll _hi = min((ll){info.len_cpp}, _r.hi - (ll){info.lo_cpp}); "
+                    f"return Rng{{_lo, max(_lo, _hi)}}; }}({oc}))"), TRange(dt.t)
+        if (isinstance(ot, TRange) or (isinstance(ot, TType) and isinstance(ot.t, TDom))) and m == "chunks" and len(args) == 1:
+            rc, el, kc = self.windows_of(oc, ot, args[0], e)
+            return (f"([&](Rng _r, ll _k) {{ vector<Rng> _w; for (ll _s = _r.lo; _s < _r.hi; _s += _k) "
+                    f"_w.push_back(Rng{{_s, min(_r.hi, _s + _k)}}); return _w; }}({rc}, {kc}))"), TList(TRange(el))
         if (isinstance(ot, TRange) or (isinstance(ot, TType) and isinstance(ot.t, TDom))) and m == "windows" and len(args) == 1:
             # r.windows(k) / D.windows(k): every stretch of k positions in a row, each one a Range
             rc, el, kc = self.windows_of(oc, ot, args[0], e)
@@ -2620,9 +3036,12 @@ class Compiler(LendMixin):
             step = f"{oc}, 1, {kc}, true" if m == "l" else f"{oc}, 0, {kc}, false"
             return f"{self.step_fn(kt)}({step}, {b.len_cpp}, {what}, {e.line})", TDom(b)
         if isinstance(ot, TType) and isinstance(ot.t, TDom) and m == "from_idx" and len(args) == 1:
-            e2 = copy.copy(e)
-            e2.fn = N("field", e.fn.line, obj=obj, name="nth")
-            return self.method_call(e2, want)
+            info = ot.t.info
+            ic, it = self.expr(args[0])
+            if not is_int(it):
+                self.error(args[0], f"{info.name}.from_idx takes an Int, got {it!r}")
+            return (f"([&](ll _i) -> Opt<int> {{ return _i >= 0 && _i < (ll){info.len_cpp} "
+                    f"? Opt<int>((int)_i) : Opt<int>(); }}({ic}))"), TOpt(ot.t)
         if isinstance(ot, TType) and isinstance(ot.t, TTuple) and ot.t.cpp in self.index_impls and m == "from_idx":
             info = self.index_impls[ot.t.cpp]
             return self.expr(N("call", e.line, fn=N("name", e.line, name=info.from_idx), args=list(args)), want)
@@ -2689,7 +3108,13 @@ class Compiler(LendMixin):
                 return f"chk_dom({c}, {info.len_cpp}, {e.line})", ot.t
             return f"([&](ll _k){{ return _k >= 0 && _k < {info.len_cpp} ? Opt<int>((int)_k) : Opt<int>(); }}({c}))", TOpt(ot.t)
         sub = ot.t if isinstance(ot, TType) else ot
-        if isinstance(sub, TDom) and getattr(sub.info, "subset_of", None) is not None and m in ("with", "without", "of"):
+        if isinstance(sub, TDom) and getattr(sub.info, "subset_of", None) is not None and m in ("with", "without", "of", "shifted"):
+            if m == "shifted" and len(args) == 1:
+                kc, kt = self.expr(args[0])
+                b = sub.info.subset_of
+                return (f"([&](int _m, ll _k){{ int _n = (int){b.len_cpp}; "
+                        f"if (_k >= _n || _k <= -_n) return 0; "
+                        f"return _k >= 0 ? (int)(((_m << _k) & ((1 << _n) - 1))) : (_m >> (-_k)); }}({oc}, {kc}))"), sub
             el = TDom(sub.info.subset_of)
             c, t = self.expr(args[0], el)
             if t != el:
@@ -2705,21 +3130,64 @@ class Compiler(LendMixin):
             if isinstance(ot, TMap) and m == "get":
                 ov = self.cpp_type(TOpt(ot.val))
                 return f"([&](auto _it){{ return _it == {oc}.end() ? {ov}() : {ov}(_it->second); }}({oc}.find({key(args[0])})))", TOpt(ot.val)
+            if isinstance(ot, TMap) and not ot.hashed and m in ("first_ge", "first_gt", "last_le", "last_lt", "ge", "gt", "le", "lt") and len(args) == 1:
+                pt = self.tuple_type(["f0", "f1"], [ot.key, ot.val])
+                ov = self.cpp_type(TOpt(pt))
+                k = key(args[0])
+                if m in ("first_ge", "ge"):
+                    return f"([&](const auto& _m){{ auto _it = _m.lower_bound({k}); return _it == _m.end() ? {ov}() : {ov}({pt.cpp}{{_it->first, _it->second}}); }}({oc}))", TOpt(pt)
+                if m in ("first_gt", "gt"):
+                    return f"([&](const auto& _m){{ auto _it = _m.upper_bound({k}); return _it == _m.end() ? {ov}() : {ov}({pt.cpp}{{_it->first, _it->second}}); }}({oc}))", TOpt(pt)
+                if m in ("last_le", "le"):
+                    return f"([&](const auto& _m){{ auto _it = _m.upper_bound({k}); if (_it == _m.begin()) return {ov}(); --_it; return {ov}({pt.cpp}{{_it->first, _it->second}}); }}({oc}))", TOpt(pt)
+                return f"([&](const auto& _m){{ auto _it = _m.lower_bound({k}); if (_it == _m.begin()) return {ov}(); --_it; return {ov}({pt.cpp}{{_it->first, _it->second}}); }}({oc}))", TOpt(pt)
             if isinstance(ot, TSet) and m in ("insert", "add"):
+                if ot.bag:
+                    return f"({oc}.insert({key(args[0])}), true)", BOOL
                 return f"{oc}.insert({key(args[0])}).second", BOOL
             if m == "remove":
+                if isinstance(ot, TSet) and ot.bag:
+                    return f"([&](auto& _s){{ auto _it = _s.find({key(args[0])}); if (_it == _s.end()) return false; _s.erase(_it); return true; }}({oc}))", BOOL
                 return f"({oc}.erase({key(args[0])}) > 0)", BOOL
             if m == "clear":
                 return f"{oc}.clear()", UNIT
-            if isinstance(ot, TSet) and m in ("min", "max"):
+            if isinstance(ot, TSet) and m == "count" and len(args) == 1:
+                return f"(ll){oc}.count({key(args[0])})", TInt(0)
+            if isinstance(ot, TSet) and not ot.hashed and m in ("min", "max"):
                 ov = self.cpp_type(TOpt(ot.elem))
                 end = "begin()" if m == "min" else "rbegin()"
                 return f"({oc}.empty() ? {ov}() : {ov}(*{oc}.{end}))", TOpt(ot.elem)
+            if isinstance(ot, TSet) and not ot.hashed and m in ("pop_first", "pop_last") and not args:
+                self.require_mut(obj, e)
+                ov = self.cpp_type(TOpt(ot.elem))
+                if m == "pop_first":
+                    return f"([&](auto& _s) -> {ov} {{ if (_s.empty()) return {ov}(); auto _v = *_s.begin(); _s.erase(_s.begin()); return {ov}(_v); }}({oc}))", TOpt(ot.elem)
+                return f"([&](auto& _s) -> {ov} {{ if (_s.empty()) return {ov}(); auto _it = prev(_s.end()); auto _v = *_it; _s.erase(_it); return {ov}(_v); }}({oc}))", TOpt(ot.elem)
+            if isinstance(ot, TSet) and not ot.hashed and m in ("first_ge", "first_gt", "last_le", "last_lt", "ge", "gt", "le", "lt") and len(args) == 1:
+                ov = self.cpp_type(TOpt(ot.elem))
+                k = key(args[0])
+                if m in ("first_ge", "ge"):
+                    return f"([&](const auto& _s) -> {ov} {{ auto _it = _s.lower_bound({k}); return _it == _s.end() ? {ov}() : {ov}(*_it); }}({oc}))", TOpt(ot.elem)
+                if m in ("first_gt", "gt"):
+                    return f"([&](const auto& _s) -> {ov} {{ auto _it = _s.upper_bound({k}); return _it == _s.end() ? {ov}() : {ov}(*_it); }}({oc}))", TOpt(ot.elem)
+                if m in ("last_le", "le"):
+                    return f"([&](const auto& _s) -> {ov} {{ auto _it = _s.upper_bound({k}); if (_it == _s.begin()) return {ov}(); --_it; return {ov}(*_it); }}({oc}))", TOpt(ot.elem)
+                return f"([&](const auto& _s) -> {ov} {{ auto _it = _s.lower_bound({k}); if (_it == _s.begin()) return {ov}(); --_it; return {ov}(*_it); }}({oc}))", TOpt(ot.elem)
+            if isinstance(ot, TSet) and not ot.hashed and m == "rank" and len(args) == 1:
+                return f"cp_set_rank({oc}, {key(args[0])})", TInt(0)
+            if isinstance(ot, TSet) and not ot.hashed and m == "nth" and len(args) == 1:
+                ov = self.cpp_type(TOpt(ot.elem))
+                kc, _ = self.expr(args[0])
+                return f"cp_set_nth<decltype({oc}), {ov}>({oc}, {kc})", TOpt(ot.elem)
             self.error(e, f"no method {m} on {ot!r}")
         if isinstance(ot, TList):
             if m == "push":
                 c, t = self.expr(args[0], ot.elem)
                 return f"{oc}.push_back({self.coerce(c, t, ot.elem, args[0])})", UNIT
+            if m == "push_id" and len(args) == 1:
+                self.require_mut(obj, e)
+                c, t = self.expr(args[0], ot.elem)
+                return f"([&](auto& _v){{ ll _id = (ll)_v.size(); _v.push_back({self.coerce(c, t, ot.elem, args[0])}); return _id; }}({oc}))", TInt(0)
             if m == "pop":
                 # same shape as heap.pop(): ?T, so `while let u = stack.pop()` drains a list
                 oc_t = self.cpp_type(TOpt(ot.elem))
@@ -2912,8 +3380,18 @@ class Compiler(LendMixin):
                 return f"{oc}.query({at(args[0])}, {at(args[1])})", ot.elem
             if m == "refresh" and len(args) == 1:
                 return f"{oc}.refresh({at(args[0])})", UNIT
-            self.error(e, f"no method {m} on {ot!r} (set(i, v), get(i), query(l, r), refresh(i), .all)")
-        if isinstance(ot, TDsu) and m in ("find", "unite", "same", "size"):
+            if m in ("max_right", "min_left") and len(args) == 2 and args[1].kind == "lambda" and len(args[1].params) == 1:
+                pn, bc, bt = self.lambda_key(args[1], ot.elem)
+                return f"{oc}.{m}({at(args[0])}, [&]({self.cpp_type(ot.elem)} {pn}) {{ return ({bc}); }})", TOpt(ot.dom)
+            self.error(e, f"no method {m} on {ot!r} (set(i, v), get(i), query(l, r), refresh(i), max_right, min_left, .all)")
+        if isinstance(ot, TDsu) and m in ("find", "unite", "same", "size", "mark", "undo_to"):
+            if m == "mark" and not args:
+                return f"(ll){oc}.mark()", TInt(0)
+            if m == "undo_to" and len(args) == 1:
+                sc, st = self.expr(args[0])
+                if not is_int(st):
+                    self.error(args[0], f"Dsu.undo_to expects a mark Int, got {st!r}")
+                return f"{oc}.undo_to((int)({sc}))", UNIT
             cs = []
             for a in args:
                 c, t = self.expr(a, ot.dom)
@@ -2925,6 +3403,103 @@ class Compiler(LendMixin):
             if m == "find": return f"{oc}.find({cs[0]})", ot.dom
             if m == "size": return f"(ll){oc}.size({cs[0]})", TInt(1, ot.dom.info.len_iv[1])
             return f"{oc}.{m}({cs[0]}, {cs[1]})", BOOL
+        if isinstance(ot, TList) and m == "swap" and len(args) == 2:
+            self.require_mut(obj, e)
+            ic, it = self.expr(args[0])
+            jc, jt = self.expr(args[1])
+            return f"([&](ll _i, ll _j){{ swap(cp_at({oc}, _i, {e.line}), cp_at({oc}, _j, {e.line})); }}({ic}, {jc}))", UNIT
+        if m == "take" and not args and isinstance(ot, (TList, TStr, TMap, TSet, TRt)):
+            self.require_mut(obj, e)
+            return f"cp_take({oc})", ot
+        if m == "absorb" and len(args) == 1 and isinstance(ot, (TList, TStr, TMap, TSet)):
+            self.require_mut(obj, e)
+            self.require_mut(args[0], e)
+            bc, bt = self.expr(args[0])
+            if bt != ot:
+                self.error(args[0], f"absorb expects {ot!r}, got {bt!r}")
+            fn = "cp_absorb_vec" if isinstance(ot, (TList, TStr)) else "cp_absorb_map" if isinstance(ot, TMap) else "cp_absorb_set"
+            return f"{fn}({oc}, {bc})", UNIT
+        if isinstance(ot, TType) and isinstance(ot.t, TEnum):
+            k, v = ot.t.variant(m)
+            if k is None:
+                self.error(e, f"enum {ot.t.name} has no variant `{m}`")
+            vn, fns, fts = v
+            if len(args) != len(fns):
+                self.error(e, f"{ot.t.name}.{vn} takes {len(fns)} argument(s), got {len(args)}")
+            inits = []
+            for a, fnm, ft in zip(args, fns, fts):
+                c, t = self.expr(a, ft)
+                inits.append(f"_e.{vn}_{fnm} = {self.coerce(c, t, ft, a)};")
+            return f"([&]{{ {ot.t.cpp} _e; _e.tag = {k}; {' '.join(inits)} return _e; }}())", ot.t
+        if isinstance(ot, TType) and isinstance(ot.t, TRt) and ot.t.name == "Dir4" and m == "from" and len(args) == 2:
+            sc, _ = self.expr(args[0])
+            cc, _ = self.expr(args[1])
+            return f"CpDir4::from({sc}, {cc}, {e.line})", ot.t
+        if isinstance(ot, TTuple) and len(ot.types) == 2 and all(isinstance(ft, TDom) for ft in ot.types) and m == "step" and len(args) == 1:
+            dc, dt = self.expr(args[0])
+            if not (isinstance(dt, TRt) and dt.name in ("Dir4", "Dir8")):
+                self.error(args[0], f".step takes a Dir4 or Dir8, got {dt!r}")
+            rinfo, cinfo = ot.types[0].info, ot.types[1].info
+            rn, cn = self.field_cpp(ot.names[0]), self.field_cpp(ot.names[1])
+            cty = self.cpp_type(TOpt(ot))
+            return (f"([&](const {ot.cpp}& _p, auto _d) -> {cty} {{ "
+                    f"int _r = _p.{rn} + _d.dr(), _c = _p.{cn} + _d.dc(); "
+                    f"if (_r < 0 || _r >= {rinfo.len_cpp} || _c < 0 || _c >= {cinfo.len_cpp}) return {cty}(); "
+                    f"return {cty}({ot.cpp}{{_r, _c}}); }}({oc}, {dc}))"), TOpt(ot)
+        if isinstance(ot, TRt) and ot.name == "Fenwick2D":
+            if m == "add" and len(args) == 3:
+                self.require_mut(obj, e)
+                ri = self.index_into(args[0], ot.args[0].info, e)
+                ci = self.index_into(args[1], ot.args[1].info, e)
+                vc, vt = self.expr(args[2], ot.args[2])
+                return f"{oc}.add({ri}, {ci}, {self.coerce(vc, vt, ot.args[2], args[2])})", UNIT
+            if m == "sum" and len(args) == 2:
+                return f"{oc}.sum({self.dom_range(args[0], ot.args[0])}, {self.dom_range(args[1], ot.args[1])})", ot.args[2]
+            self.error(e, f"no method {m} on Fenwick2D")
+        if isinstance(ot, TRt) and ot.name == "RollingHash":
+            if m == "get" and len(args) == 1:
+                rc, rt = self.expr(args[0])
+                return f"{oc}.get({rc})", TInt(0)
+            self.error(e, f"no method {m} on RollingHash")
+        if isinstance(ot, TRt) and ot.name == "Pt":
+            if m in ("dot", "cross") and len(args) == 1:
+                bc, _ = self.expr(args[0])
+                return f"{oc}.{m}({bc})", TInt()
+            self.error(e, f"no method {m} on Pt")
+        if isinstance(ot, TRt) and ot.name == "Matrix":
+            if m == "pow" and len(args) == 1:
+                ec, _ = self.expr(args[0])
+                return f"{oc}.pow({ec})", ot
+            self.error(e, f"no method {m} on Matrix")
+        if isinstance(ot, TPerm):
+            if m == "inv" and not args:
+                return f"cp_perm_inv({oc})", ot
+            if m == "cycles" and not args:
+                return f"cp_perm_cycles({oc})", TList(TList(ot.elem))
+        if isinstance(ot, TArr) and len(ot.dims) == 2 and m == "col" and len(args) == 1:
+            ci = self.index_into(args[0], ot.dims[1].info, e)
+            return f"cp_grid_col({oc}, {ot.dims[0].info.len_cpp}, {ot.dims[1].info.len_cpp}, {ci})", TArr([ot.dims[0]], ot.elem)
+        if isinstance(ot, TRt) and ot.name == "Bitset":
+            if m == "clear" and not args:
+                self.require_mut(obj, e)
+                return f"{oc}.clear()", UNIT
+            if m in ("add", "remove", "toggle") and len(args) == 1:
+                self.require_mut(obj, e)
+                ic = self.index_into(args[0], ot.args[0].info, e)
+                return f"{oc}.{m}({ic})", (UNIT if m == "toggle" else BOOL)
+            if m == "shifted" and len(args) == 1:
+                kc, _ = self.expr(args[0])
+                return f"{oc}.shifted({kc})", ot
+            self.error(e, f"no method {m} on Bitset")
+        if isinstance(ot, TRt) and ot.name == "Marks":
+            if m == "clear" and not args:
+                self.require_mut(obj, e)
+                return f"{oc}.clear()", UNIT
+            if m in ("add", "remove") and len(args) == 1:
+                self.require_mut(obj, e)
+                ic = self.index_into(args[0], ot.args[0].info, e)
+                return f"{oc}.{m}({ic})", BOOL
+            self.error(e, f"no method {m} on Marks")
         if isinstance(ot, TRt) and ot.name == "Deque":
             el = self.cpp_type(TOpt(ot.elem))
             if m in ("push", "push_front") and len(args) == 1:
@@ -3150,6 +3725,95 @@ class Compiler(LendMixin):
             self.ind -= 1
             self.emit("} }")
             return
+        if it.kind == "call" and it.fn.kind == "name" and it.fn.name == "read_until" and len(it.args) == 1 and not self.lookup("read_until"):
+            sc, st = self.expr(it.args[0])
+            ru = self.tmpname("ru")
+            sen = self.tmpname("sen")
+            self.emit(f"{{ const auto {sen} = {sc}; while (true) {{ {self.cpp_type(st)} {ru};")
+            self.ind += 1
+            self.emit_read(ru, st, node)
+            self.emit(f"if ({ru} == {sen}) break;")
+            self.scopes.append({})
+            self.loop_trips.append(None)
+            self.bind_pattern(pat, ru, st, node)
+            body()
+            self.loop_trips.pop()
+            self.scopes.pop()
+            self.ind -= 1
+            self.emit("} }")
+            return
+        if it.kind == "call" and it.fn.kind == "field" and it.fn.name == "ray" and len(it.args) == 1:
+            pc, pt = self.expr(it.fn.obj)
+            dc, dt = self.expr(it.args[0])
+            if isinstance(pt, TTuple) and len(pt.types) == 2 and all(isinstance(ft, TDom) for ft in pt.types):
+                rinfo, cinfo = pt.types[0].info, pt.types[1].info
+                rn, cn = self.field_cpp(pt.names[0]), self.field_cpp(pt.names[1])
+                pr, dr_, rr, cc = self.tmpname("p"), self.tmpname("d"), self.tmpname("r"), self.tmpname("c")
+                self.emit(f"{{ auto {pr} = {pc}; auto {dr_} = {dc};")
+                self.emit(f"for (int {rr} = {pr}.{rn} + {dr_}.dr(), {cc} = {pr}.{cn} + {dr_}.dc(); "
+                          f"{rr} >= 0 && {rr} < {rinfo.len_cpp} && {cc} >= 0 && {cc} < {cinfo.len_cpp}; "
+                          f"{rr} += {dr_}.dr(), {cc} += {dr_}.dc()) {{")
+                self.scopes.append({})
+                self.loop_trips.append(None)
+                self.ind += 1
+                self.bind_pattern(pat, f"{pt.cpp}{{{rr}, {cc}}}", pt, node)
+                body()
+                self.ind -= 1
+                self.loop_trips.pop()
+                self.scopes.pop()
+                self.emit("} }")
+                return
+        if it.kind == "field" and it.name in ("adj4", "adj8"):
+            pc, pt = self.expr(it.obj)
+            if isinstance(pt, TTuple) and len(pt.types) == 2 and all(isinstance(ft, TDom) for ft in pt.types):
+                rinfo, cinfo = pt.types[0].info, pt.types[1].info
+                rn, cn = self.field_cpp(pt.names[0]), self.field_cpp(pt.names[1])
+                n_dir = 4 if it.name == "adj4" else 8
+                dcls = "CpDir4" if it.name == "adj4" else "CpDir8"
+                pr, dk, rr, cc = self.tmpname("p"), self.tmpname("k"), self.tmpname("r"), self.tmpname("c")
+                self.emit(f"{{ auto {pr} = {pc}; for (int {dk} = 0; {dk} < {n_dir}; ++{dk}) {{ "
+                          f"int {rr} = {pr}.{rn} + {dcls}::DR[{dk}], {cc} = {pr}.{cn} + {dcls}::DC[{dk}]; "
+                          f"if ({rr} < 0 || {rr} >= {rinfo.len_cpp} || {cc} < 0 || {cc} >= {cinfo.len_cpp}) continue;")
+                self.scopes.append({})
+                self.loop_trips.append(n_dir)
+                self.ind += 1
+                self.bind_pattern(pat, f"{pt.cpp}{{{rr}, {cc}}}", pt, node)
+                body()
+                self.ind -= 1
+                self.loop_trips.pop()
+                self.scopes.pop()
+                self.emit("} }")
+                return
+        if it.kind == "field" and it.name == "adjacent" and pat.kind == "ptuple" and len(pat.items) == 2:
+            oc, ot = self.expr(it.obj)
+            if isinstance(ot, (TList, TArr)) and not (isinstance(ot, TArr) and len(ot.dims) != 1):
+                a, k = self.tmpname("a"), self.tmpname("k")
+                self.emit(f"{{ const auto& {a} = {oc};")
+                self.emit(f"for (ll {k} = 0; {k} + 1 < (ll){a}.size(); ++{k}) {{")
+                self.scopes.append({})
+                self.loop_trips.append(None)
+                self.ind += 1
+                self.bind_pattern(pat.items[0], f"{a}[{k}]", ot.elem, node)
+                self.bind_pattern(pat.items[1], f"{a}[{k} + 1]", ot.elem, node)
+                body()
+                self.ind -= 1
+                self.loop_trips.pop()
+                self.scopes.pop()
+                self.emit("} }")
+                return
+        if it.kind == "field" and it.name == "subsets":
+            sc, st = self.expr(it.obj)
+            if isinstance(st, TDom) and getattr(st.info, "subset_of", None) is not None:
+                m_ = self.tmpname("m")
+                v = self.fresh(pat.name if pat.kind == "pname" else "s")
+                self.emit(f"for (int {m_} = {sc}, {v} = {m_}, {m_}_go = 1; {m_}_go; {m_}_go = ({v} != 0), {v} = ({v} - 1) & {m_}) {{")
+                self.scopes[-1][pat.name] = Sym("let", st, v, node=pat)
+                self.ind += 1
+                body()
+                self.ind -= 1
+                self.emit("}")
+                self.scopes.pop()
+                return
         if it.kind == "call" and it.fn.kind == "field" and it.fn.name == "step" and len(it.args) == 1:
             # `for i in (0..n).step(2)` and `.step(2).rev`: every k-th value, counted from the low end
             rc, rt = self.expr(it.fn.obj)
@@ -3252,6 +3916,18 @@ class Compiler(LendMixin):
                 self.bind_pattern(pat, v, t.t, node) if pat.kind != "pname" else \
                     self.scopes[-1].__setitem__(pat.name, Sym("let", t.t, v, node=pat))
                 self.ind -= 1
+            elif isinstance(t, TType) and isinstance(t.t, TRt) and t.t.name in ("Dir4", "Dir8"):
+                nd = 4 if t.t.name == "Dir4" else 8
+                trips = nd
+                k = self.tmpname("k")
+                v = self.fresh(pat.name if pat.kind == "pname" else "d")
+                self.emit(f"for (int {k} = 0; {k} < {nd}; ++{k}) {{ Cp{t.t.name} {v}({k});")
+                self.scopes[-1][pat.name] = Sym("let", t.t, v, node=pat)
+            elif isinstance(t, TType) and isinstance(t.t, TBool):
+                trips = 2
+                v = self.fresh(pat.name if pat.kind == "pname" else "b")
+                self.emit(f"for (bool {v} : {{{'true, false' if rev else 'false, true'}}}) {{")
+                self.scopes[-1][pat.name] = Sym("let", BOOL, v, node=pat)
             elif isinstance(t, TType) and isinstance(t.t, TTuple) and t.t.cpp in self.index_impls:
                 # `for c in Cell`: every value of a user Index type, in to_idx order
                 info = self.index_impls[t.t.cpp]
@@ -3311,15 +3987,24 @@ class Compiler(LendMixin):
                     trips = t.dims[0].info.len_iv[1]
                 el = t.elem
                 v = self.tmpname("x")
+                fmut = getattr(node, "mut", False)
+                if fmut:
+                    self.require_mut(it, node)
+                    ref = "auto&"
+                else:
+                    ref = "const auto&"
                 if rev:
                     # lists have no domain to reverse, so `for x in xs.rev` walks back to front
                     r = self.tmpname("r")
-                    self.emit(f"const auto& {r} = {c};")
-                    self.emit(f"for (auto {r}i = {r}.rbegin(); {r}i != {r}.rend(); ++{r}i) {{ const auto& {v} = *{r}i;")
+                    self.emit(f"{ref} {r} = {c};")
+                    self.emit(f"for (auto {r}i = {r}.rbegin(); {r}i != {r}.rend(); ++{r}i) {{ {ref} {v} = *{r}i;")
                 else:
-                    self.emit(f"for (const auto& {v} : {c}) {{")
+                    self.emit(f"for ({ref} {v} : {c}) {{")
                 self.ind += 1
-                self.bind_pattern(pat, v, el, node)
+                if fmut and pat.kind == "pname":
+                    self.scopes[-1][pat.name] = Sym("var", el, v, mut=True, node=pat)
+                else:
+                    self.bind_pattern(pat, v, el, node)
                 self.ind -= 1
             else:
                 self.error(it, f"cannot iterate {t!r}")
@@ -3419,6 +4104,12 @@ class Compiler(LendMixin):
             t = None
             if it.kind == "field" and it.name == "rev":
                 it = it.obj
+            if it.kind == "field" and it.name in ("subsets", "adjacent", "adj4", "adj8"):
+                return None
+            if it.kind == "call" and it.fn.kind == "field" and it.fn.name == "ray":
+                return None
+            if it.kind == "call" and it.fn.kind == "field" and it.fn.name == "step":
+                return None
             if it.kind == "range" and (it.lo is None or it.hi is None):
                 rt = self.capture(lambda: self.expr(it))[1][1]
                 t = rt.elem.info.len_iv[1] if isinstance(rt.elem, TDom) else None
@@ -3443,6 +4134,8 @@ class Compiler(LendMixin):
         return p
 
     def reduction(self, name, arg, e, want):
+        if name == "prod":
+            name = "product"
         elem, clauses = self.as_gen(arg)
         has_filter = any(c[0] != "for" for c in clauses)
         trips = self.trips_of(clauses)
@@ -3461,7 +4154,12 @@ class Compiler(LendMixin):
             c, t = self.expr(elem, want if name in ("sum", "product") else None)
             box["t"] = t
             if name == "sum":
-                self.emit(f"{acc} += {c};")
+                if isinstance(t, TOpt) and isinstance(t.inner, (TInt, TF64)):
+                    box["opt_sum"] = t.inner
+                    ct = self.cpp_type(TOpt(TInt() if is_int(t.inner) else t.inner))
+                    self.emit(f"{{ auto _o = {c}; if (!_o.has()) {acc} = {ct}(); else if ({acc}.has()) {acc} = {ct}({acc}.get() + _o.get()); }}")
+                else:
+                    self.emit(f"{acc} += {c};")
             elif name == "product":
                 self.emit(f"{acc} *= {c};")
             elif name == "count":
@@ -3552,6 +4250,11 @@ class Compiler(LendMixin):
         if name == "count":
             return f"([&]() -> ll {{ ll {acc} = 0;\n{body}\n return {acc}; }}())", TInt(0, trips)
         if name in ("sum", "product"):
+            if box.get("opt_sum") is not None:
+                bi = TInt() if is_int(box["opt_sum"]) else box["opt_sum"]
+                rt = TOpt(bi)
+                ct = self.cpp_type(rt)
+                return f"([&]() {{ {ct} {acc}(0);\n{body}\n return {acc}; }}())", rt
             rt = t if not is_int(t) else TInt()
             if is_int(t):
                 if name == "sum":
@@ -3731,6 +4434,23 @@ class Compiler(LendMixin):
 
     def s_let(self, s):
         v = s.value
+        if v is not None and v.kind == "call" and v.fn.kind == "field" and v.fn.name == "freeze" and not v.args \
+                and s.pat.kind == "ptuple" and len(s.pat.items) == 2 and all(p.kind == "pname" for p in s.pat.items):
+            # `let (D, arr) = nodes.freeze()`: seal a list arena into a domain D and [D]T array
+            oc, ot = self.expr(v.fn.obj)
+            if not isinstance(ot, TList):
+                self.error(s, f"`.freeze()` needs a List, got {ot!r}")
+            dname, aname = s.pat.items[0].name, s.pat.items[1].name
+            acpp = self.fresh(aname)
+            dcpp = self.fresh(dname)
+            info = DomInfo(dname, dcpp, "0", f"(ll){acpp}.size()", (0, 0), (0, None))
+            info.lo_src, info.hi_src = "0", f"(ll){acpp}.size()"
+            at_arr = TArr([TDom(info)], ot.elem)
+            self.decl_global_or_local(acpp, ot)
+            self.emit(f"{acpp} = std::move({oc});")
+            self.scopes[-1][dname] = Sym("type", TDom(info), dcpp, node=s)
+            self.scopes[-1][aname] = Sym("var" if s.mut else "let", at_arr, acpp, mut=s.mut, node=s)
+            return
         if v is not None and v.kind == "call" and v.fn.kind == "name" and v.fn.name == "compress" and len(v.args) == 1 \
                 and s.ty is None and s.pat.kind == "pname" and not self.lookup("compress"):
             return self.s_compress(s)
@@ -3849,11 +4569,12 @@ class Compiler(LendMixin):
         v = s.value
         if (v is not None and v.kind == "call" and v.fn.kind == "name" and v.fn.name == "ask"
                 and not self.lookup("ask")):
-            # interactive: `let x: T = ask("?", i, j)` prints the question, flushes, and reads the judge's reply
+            # interactive: `let x: T = ask("?", i, j, limit: 60)` prints the question, flushes, and reads the judge's reply
             if s.ty is None:
                 self.error(s, "ask() needs a declared type: `let x: T = ask(...)`")
             ty = self.resolve_type(s.ty)
-            self.emit_print(v.args, newline=True, node=s)
+            pargs = [a for a in v.args if not (a.kind == "kwarg" and a.name == "limit")]
+            self.emit_print(pargs, newline=True, node=s)
             self.emit("out_flush(); fflush(stdout);")
             cpp = self.fresh(name)
             self.emit(f"{self.cpp_type(ty)} {cpp};")
@@ -3872,31 +4593,38 @@ class Compiler(LendMixin):
             cpp = self.fresh(name)
             self.decl_global_or_local(cpp, ty)
             gen = [a for a in getattr(s.value, "args", []) if a.kind == "kwarg" and a.name == "gen"]
-            if gen:
-                gc, gt = self.expr(N("call", s.line, fn=gen[0].value, args=[]), ty)
-                self.emit("if (CP_GEN) {")
-                self.ind += 1
-                self.emit(f"{cpp} = {self.coerce(gc, gt, ty, s)};")
-                _emit_input(self, cpp, ty, s)
-                self.ind -= 1
-                self.emit("} else {")
-                self.ind += 1
-                self.emit_read(cpp, ty, s)
-                self.ind -= 1
-                self.emit("}")
-            elif s.ty.kind == "trange" and s.ty.range.hi is not None and isinstance(ty, TInt):
-                # `let k: 1..=n = read()`: the bounds are the ones written, evaluated now, not just their static
-                # envelope: the input is checked against them and generated inputs are drawn from them
-                r = s.ty.range
-                (lo, _), (hi, _) = self.expr(r.lo), self.expr(r.hi)
-                if not r.incl:
-                    hi = f"({hi}) - 1"
-                self.emit(f"{cpp} = CP_GEN ? gen_int({lo}, {hi}) : rd_range({lo}, {hi}, {s.line});")
-                self.emit(f"if (CP_GEN) {{ out_int({cpp}); out_char(' '); }}")
-            elif any(self.is_columns(a) for a in s.value.args):
-                self.emit_read_columns(cpp, ty, s)
-            else:
-                self.emit_read(cpp, ty, s)
+            none_kw = [a for a in getattr(s.value, "args", []) if a.kind == "kwarg" and a.name == "none"]
+            saved_rnone = getattr(self, "read_none", None)
+            if none_kw and none_kw[0].value.kind == "str":
+                self.read_none = none_kw[0].value.value
+            try:
+                if gen:
+                    gc, gt = self.expr(N("call", s.line, fn=gen[0].value, args=[]), ty)
+                    self.emit("if (CP_GEN) {")
+                    self.ind += 1
+                    self.emit(f"{cpp} = {self.coerce(gc, gt, ty, s)};")
+                    _emit_input(self, cpp, ty, s)
+                    self.ind -= 1
+                    self.emit("} else {")
+                    self.ind += 1
+                    self.emit_read(cpp, ty, s)
+                    self.ind -= 1
+                    self.emit("}")
+                elif s.ty.kind == "trange" and s.ty.range.hi is not None and isinstance(ty, TInt):
+                    # `let k: 1..=n = read()`: the bounds are the ones written, evaluated now, not just their static
+                    # envelope: the input is checked against them and generated inputs are drawn from them
+                    r = s.ty.range
+                    (lo, _), (hi, _) = self.expr(r.lo), self.expr(r.hi)
+                    if not r.incl:
+                        hi = f"({hi}) - 1"
+                    self.emit(f"{cpp} = CP_GEN ? gen_int({lo}, {hi}) : rd_range({lo}, {hi}, {s.line});")
+                    self.emit(f"if (CP_GEN) {{ out_int({cpp}); out_char(' '); }}")
+                elif any(self.is_columns(a) for a in s.value.args):
+                    self.emit_read_columns(cpp, ty, s)
+                else:
+                    self.emit_read(cpp, ty, s)
+            finally:
+                self.read_none = saved_rnone
             self.emit("if (CP_GEN) out_char('\\n');")
             if self.out is self.init_lines:
                 self.last_read = len(self.init_lines)
@@ -4085,6 +4813,40 @@ class Compiler(LendMixin):
         self.emit(f"if (CP_GEN && !({c})) exit(4);")
         self.emit(f"CP_ASSERT({c}, \"assumption does not hold\", {s.line});")
         self.add_facts(s.cond)
+
+    def s_defer(self, s):
+        body = self.capture(lambda: self.stmt(s.stmt))[0]
+        dn = self.tmpname("def")
+        joined = " ".join(ln.strip() for ln in body)
+        self.emit(f"auto {dn} = cp_defer([&]() {{ {joined} }});")
+
+    def x_coalesce_assign(self, e, want=None):
+        tgt = e.target
+        if tgt.kind == "index":
+            oc, ot = self.expr(tgt.obj)
+            if isinstance(ot, TMap):
+                self.require_mut(tgt.obj, e)
+                if len(tgt.idx) != 1:
+                    self.error(e, "Map takes one key")
+                kc, kt = self.expr(tgt.idx[0], ot.key)
+                kc = self.coerce(kc, kt, ot.key, tgt.idx[0])
+                vc, vt = self.expr(e.value, ot.val)
+                vc = self.coerce(vc, vt, ot.val, e.value)
+                vcpp = self.cpp_type(ot.val)
+                return (f"([&]() -> {vcpp}& {{ auto _k = {kc}; auto _it = {oc}.find(_k); "
+                        f"if (_it == {oc}.end()) _it = {oc}.emplace(_k, {vc}).first; return _it->second; }}())"), ot.val
+        tc, tt = self.expr(tgt)
+        self.require_mut(tgt, e)
+        if isinstance(tt, TOpt):
+            vc, vt = self.expr(e.value, tt.inner)
+            vc = self.coerce(vc, vt, tt.inner, e.value)
+            icpp = self.cpp_type(tt.inner)
+            return f"([&]() -> auto& {{ auto& _p = {tc}; if (!_p.has()) _p = {vc}; return _p; }}())", tt
+        self.error(e, f"`??=` needs a Map entry or optional place, got {tt!r}")
+
+    def s_coalesce_assign(self, s):
+        c, _ = self.x_coalesce_assign(s)
+        self.emit(f"(void)({c});")
 
     def in_gen_body(self):
         ctx = getattr(self, "loop_ctx", [])
@@ -4297,6 +5059,12 @@ class Compiler(LendMixin):
         self.ind += 1
         self.scopes.append({})
         self.bind_pattern(s.pat, f"{o}.get()", t.inner, s)
+        nfacts = len(self.facts)
+        if (s.pat.kind == "pname" and s.value.kind == "binop" and s.value.op in ("+", "-")
+                and s.value.b.kind == "num" and s.value.b.value != 0):
+            aname = unparse(s.value.a)
+            self.facts.append((s.pat.name, "!=", aname, {s.pat.name} | names_in(s.value.a)))
+            self.facts.append((aname, "!=", s.pat.name, {s.pat.name} | names_in(s.value.a)))
         if s.extra is not None:
             ec = self.cond(s.extra)
             self.emit(f"if ({ec}) {{")
@@ -4306,6 +5074,7 @@ class Compiler(LendMixin):
             self.emit("} else goto " + o + "_else;" if s.orelse else "}")
         else:
             self.block(s.body)
+        del self.facts[nfacts:]
         self.scopes.pop()
         self.ind -= 1
         if s.orelse:
@@ -4390,13 +5159,15 @@ class Compiler(LendMixin):
     def require_mut(self, tgt, node):
         """A write through `tgt` needs a var at the root and `lends mut` at every projection on the way."""
         root = tgt
-        while root.kind in ("index", "field", "paren", "unwrap") or self.is_proj_call(root):
+        while root.kind in ("index", "field", "paren", "unwrap", "coalesce_assign") or self.is_proj_call(root):
             if root.kind == "call":
                 p = self.find_proj(root.fn.name)
                 if p is not None and not p.mut:
                     self.error(node, f"`{show(root)}` is lent read-only: `{p.owner}.{p.name}` is declared `lends {p.ret!r}`; "
                                      f"declare it `lends mut {p.ret!r}` to allow writes through it")
                 root = root.fn.obj
+            elif root.kind == "coalesce_assign":
+                root = root.target
             else:
                 root = root.a if root.kind in ("paren", "unwrap") else root.obj
         if root.kind == "name":
@@ -4686,9 +5457,19 @@ class Compiler(LendMixin):
         et = TEnum(s.name, cpp)
         for d in getattr(s, "decos", []):
             if d.name == "tags":
-                if len(d.args) != len(s.variants) or any(a.kind != "str" for a in d.args):
-                    self.error(s, "@tags needs one string per variant")
-                et.tags = [a.value for a in d.args]
+                if len(d.args) != len(s.variants):
+                    self.error(s, "@tags needs one tag per variant")
+                tags = []
+                for a in d.args:
+                    if a.kind == "str":
+                        tags.append(a.value)
+                    elif a.kind == "char":
+                        tags.append(("char", a.value))
+                    elif a.kind == "range" and a.lo and a.hi and a.lo.kind == "char" and a.hi.kind == "char":
+                        tags.append(("charrange", a.lo.value, a.hi.value, a.incl))
+                    else:
+                        self.error(s, "@tags entries must be strings, chars, or char ranges")
+                et.tags = tags
         self.scopes[-1][s.name] = Sym("type", et, cpp, node=s)
         fields = []
         for k, (vn, fl) in enumerate(s.variants):
@@ -4698,6 +5479,48 @@ class Compiler(LendMixin):
             for f, t in zip(fns, fts):
                 fields.append(f"{self.cpp_type(t)} {vn}_{f}{{}};")
             self.scopes[-1][vn] = Sym("ctor", et, k, node=s)
+        # Compute finite Index cardinality & to_idx() if every variant field is finite (unit enum, bounded Int, Bool, Domain)
+        def field_card(ft):
+            if isinstance(ft, TDom):
+                return ft.info.len_cpp, ft.info.len_iv, lambda expr: f"(int)({expr})"
+            if isinstance(ft, TBool):
+                return "2", (2, 2), lambda expr: f"(int)({expr})"
+            if isinstance(ft, TInt) and ft.lo is not None and ft.hi is not None:
+                sz = ft.hi - ft.lo + 1
+                return str(sz), (sz, sz), (lambda lo: lambda expr: f"(int)(({expr}) - ({lo}LL))")(ft.lo)
+            return None
+        off_parts, lo_tot, hi_tot, idx_cases, ok_idx = [], 0, 0, [], True
+        for k, (vn, fns, fts) in enumerate(et.variants):
+            base_expr = " + ".join(off_parts) if off_parts else "0"
+            if not fns:
+                idx_cases.append(f"if (_e.tag == {k}) return (int)({base_expr});")
+                off_parts.append("1")
+                lo_tot = None if lo_tot is None else lo_tot + 1
+                hi_tot = None if hi_tot is None else hi_tot + 1
+            else:
+                cs = [field_card(ft) for ft in fts]
+                if any(c is None for c in cs):
+                    ok_idx = False
+                    break
+                cur_expr = None
+                sz_exprs = []
+                vlo, vhi = 1, 1
+                for fnm, (sc, siv, to_i) in zip(fns, cs):
+                    fi = to_i(f"_e.{vn}_{fnm}")
+                    cur_expr = fi if cur_expr is None else f"(({cur_expr}) * (int)({sc}) + ({fi}))"
+                    sz_exprs.append(f"(int)({sc})")
+                    vlo = None if (vlo is None or siv[0] is None) else vlo * siv[0]
+                    vhi = None if (vhi is None or siv[1] is None) else vhi * siv[1]
+                idx_cases.append(f"if (_e.tag == {k}) return (int)(({base_expr}) + ({cur_expr}));")
+                off_parts.append(" * ".join(sz_exprs))
+                lo_tot = None if (lo_tot is None or vlo is None) else lo_tot + vlo
+                hi_tot = None if (hi_tot is None or vhi is None) else hi_tot + vhi
+        if ok_idx and off_parts:
+            len_cpp = " + ".join(off_parts)
+            info = DomInfo(s.name, f"enum_{cpp}", "0", len_cpp, (0, 0), (lo_tot, hi_tot), anon=False)
+            info.enum_type = et
+            et.index_info = info
+            self.funcs.append(f"static inline int cp_eidx_{cpp}(const {cpp}& _e) {{ {' '.join(idx_cases)} return 0; }}")
         trivial = all(isinstance(t, (TInt, TDom, TBool, TChar)) for _, _, fts in et.variants for t in fts)
         if trivial and sum(1 for _, fns, _ in et.variants if fns) >= 2:
             # variants share storage; anonymous structs in a union are a GNU extension every judge's g++ accepts
@@ -4706,7 +5529,7 @@ class Compiler(LendMixin):
             cases = " : ".join(f"tag == {k} ? ({' && '.join(f'{vn}_{f} == o.{vn}_{f}' for f in fns)})"
                                for k, (vn, fns, _) in enumerate(et.variants) if fns)
             self.struct_defs.append(f"struct {cpp} {{ int tag = 0; union {{ {arms} }};\n"
-                                    f"    {cpp}() {{ memset((void*)this, 0, sizeof *this); }}\n"
+                                    f"    {cpp}() {{}}\n"
                                     f"    bool operator==(const {cpp}& o) const {{ return tag == o.tag && ({cases} : true); }}\n"
                                     f"    bool operator!=(const {cpp}& o) const {{ return !(*this == o); }} }};")
             self.struct_defs.append(f"template <> struct Opt<{cpp}> {{ {cpp} v; Opt() {{ v.tag = -1; }} Opt(const {cpp}& x) : v(x) {{}}\n"
@@ -4722,6 +5545,39 @@ class Compiler(LendMixin):
                                 f"    bool has() const {{ return v.tag >= 0; }} const {cpp}& get() const {{ return v; }}\n"
                                 f"    bool operator==(const Opt& o) const {{ return has() == o.has() && (!has() || v == o.v); }}\n"
                                 f"    bool operator!=(const Opt& o) const {{ return !(*this == o); }} }};")
+
+    def x_matchexpr(self, e, want):
+        sc, st = self.expr(e.subject)
+        if not isinstance(st, TEnum):
+            self.error(e, f"match needs an enum value, got {st!r}")
+        m = self.tmpname("m")
+        rt = want
+        arm_code = []
+        for arm in e.arms:
+            self.scopes.append({})
+            lines = []
+            if arm.name == "_":
+                vc, vt = self.expr(arm.value, rt)
+                rt = rt or (TInt() if is_int(vt) else vt)
+                lines.append(f"return {self.coerce(vc, vt, rt, arm.value)};")
+            else:
+                k, v = st.variant(arm.name)
+                if k is None:
+                    self.error(arm, f"{st.name} has no variant {arm.name}")
+                vn, fns, fts = v
+                binds_c = []
+                for b, fnm, ft in zip(arm.binds, fns, fts):
+                    cpp = self.fresh(b)
+                    self.scopes[-1][b] = Sym("let", ft, cpp, node=arm)
+                    binds_c.append(f"const auto& {cpp} = {m}.{vn}_{fnm};")
+                vc, vt = self.expr(arm.value, rt)
+                rt = rt or (TInt() if is_int(vt) else vt)
+                g_cond = f"if ({self.expr(arm.guard)[0]}) " if arm.guard is not None else ""
+                lines.append(f"if ({m}.tag == {k}) {{ {' '.join(binds_c)} {g_cond}return {self.coerce(vc, vt, rt, arm.value)}; }}")
+            self.scopes.pop()
+            arm_code.extend(lines)
+        cty = self.cpp_type(rt)
+        return f"([&](const auto {m}) -> {cty} {{ {' '.join(arm_code)} cp_fail(\"non-exhaustive match\", {e.line}); return {cty}(); }}({sc}))", rt
 
     def s_match(self, s):
         c, t = self.expr(s.subject)
@@ -4833,8 +5689,44 @@ class Compiler(LendMixin):
                 self.no_identity(tgt, fold)
         if tgt.kind == "tuple":
             return self.s_parallel_assign(s)
-        self.lvalue = (tgt, op)
-        tc, tt = self.expr(tgt)
+        if op in ("min=", "max=") and self.has_effects(tgt):
+            self.error(s, f"`{unparse(tgt)} {op} ...` would evaluate `{unparse(tgt)}` twice, and it calls a fn\n"
+                          f"  help: bind the position first: `let i = ...`")
+        # Indexed assignment `a[idx].f = rhs` (v2.1 U4): evaluate effectful RHS first (matching RHS-before-LHS
+        # assignment semantics), then effectful indices left-to-right, and only then capture the mutable slot
+        # in `a`, so growing/reallocating `a` during `rhs` or `idx` never dangles or reads stale size.
+        rhs_node = s.value
+        tgt_eval = tgt
+        has_idx = tgt.kind in ("index", "field") and any(x.kind == "index" for x in walk([tgt]))
+        if has_idx and self.has_effects(rhs_node):
+            tt0 = self.capture(lambda: self.expr(tgt))[1][1]
+            want0 = tt0.inner if isinstance(tt0, TOpt) and (op == "=" or op in ("min=", "max=")) and rhs_node.kind != "none" else tt0
+            self.escapes[id(rhs_node)] = "this assignment"
+            rvc, rvt = self.expr(rhs_node, want0 if not isinstance(tt0, TInt) else None)
+            self.check_assign_alias(s)
+            rvtmp = self.tmpname("rv")
+            self.emit(f"auto {rvtmp} = {rvc};")
+            rhs_node = N("ctemp", rhs_node.line, code=rvtmp, ty=rvt, src=rhs_node)
+        if has_idx:
+            def _hoist_idx(n):
+                if n.kind == "field":
+                    return N("field", n.line, obj=_hoist_idx(n.obj), name=n.name)
+                if n.kind == "index":
+                    hoisted_obj = _hoist_idx(n.obj)
+                    new_idx = []
+                    for ix in n.idx:
+                        if self.has_effects(ix):
+                            ic, it = self.expr(ix)
+                            tmp = self.tmpname("ix")
+                            self.emit(f"auto {tmp} = {ic};")
+                            new_idx.append(N("ctemp", ix.line, code=tmp, ty=it, src=ix))
+                        else:
+                            new_idx.append(ix)
+                    return N("index", n.line, obj=hoisted_obj, idx=new_idx)
+                return n
+            tgt_eval = _hoist_idx(tgt)
+        self.lvalue = (tgt_eval, op)
+        tc, tt = self.expr(tgt_eval)
         self.lvalue = None
         self.note_write(tgt, s.line)
         if tgt.kind == "name":
@@ -4844,9 +5736,6 @@ class Compiler(LendMixin):
         else:
             self.require_mut(tgt, s)
             sym = None
-        if op in ("min=", "max=") and self.has_effects(tgt):
-            self.error(s, f"`{unparse(tgt)} {op} ...` would evaluate `{unparse(tgt)}` twice, and it calls a fn\n"
-                          f"  help: bind the position first: `let i = ...`")
         if op != "=" and any(self.is_proj_call(x) for x in walk([tgt])):
             # `t.at(v) += 1` reads and writes one lent place: the projection runs once
             place = self.tmpname("p")
@@ -4858,14 +5747,15 @@ class Compiler(LendMixin):
             base = tt.inner if isinstance(tt, TOpt) else tt
             if not self.orderable(base):
                 self.error(s, f"`{op}` needs an ordered value, and {base!r} has no `<`")
-            vt0 = self.capture(lambda: self.expr(s.value, base))[1][1]
-            if isinstance(vt0, TOpt) or s.value.kind == "none":
-                if s.value.kind == "none":
+            vt0 = self.capture(lambda: self.expr(rhs_node, base))[1][1]
+            if isinstance(vt0, TOpt) or rhs_node.kind == "none":
+                if rhs_node.kind == "none":
                     return
-                vc, vt = self.expr(s.value)
-                self.check_assign_alias(s)
+                vc, vt = self.expr(rhs_node)
+                if rhs_node is s.value:
+                    self.check_assign_alias(s)
                 o = self.tmpname("o")
-                x = self.coerce(f"{o}.get()", vt.inner, base, s.value)
+                x = self.coerce(f"{o}.get()", vt.inner, base, rhs_node)
                 if isinstance(tt, TOpt):
                     self.emit(f"{{ const auto {o} = {vc}; if ({o}.has()) opt_{op[:3]}({tc}, {x}); }}")
                 else:
@@ -4875,16 +5765,18 @@ class Compiler(LendMixin):
                         self.track(sym, tgt, TInt(), "=", s)
                 return
         if op in ("min=", "max=") and isinstance(tt, TOpt):
-            vc, vt = self.expr(s.value, tt.inner)
-            self.check_assign_alias(s)
-            self.emit(f"opt_{op[:3]}({tc}, {self.coerce(vc, vt, tt.inner, s.value)});")
+            vc, vt = self.expr(rhs_node, tt.inner)
+            if rhs_node is s.value:
+                self.check_assign_alias(s)
+            self.emit(f"opt_{op[:3]}({tc}, {self.coerce(vc, vt, tt.inner, rhs_node)});")
             return
-        want = tt.inner if isinstance(tt, TOpt) and op == "=" and s.value.kind != "none" else tt
-        self.escapes[id(s.value)] = "this assignment"
-        vc, vt = self.expr(s.value, want if not isinstance(tt, TInt) else None)
-        self.check_assign_alias(s)
+        want = tt.inner if isinstance(tt, TOpt) and op == "=" and rhs_node.kind != "none" else tt
+        self.escapes[id(rhs_node)] = "this assignment"
+        vc, vt = self.expr(rhs_node, want if not isinstance(tt, TInt) else None)
+        if rhs_node is s.value:
+            self.check_assign_alias(s)
         if op == "=":
-            c = self.coerce(vc, vt, tt, s.value)
+            c = self.coerce(vc, vt, tt, rhs_node)
             self.emit(f"{tc} = {c};")
             self.track(sym, tgt, vt, "=", s)
             return
@@ -4893,19 +5785,27 @@ class Compiler(LendMixin):
                 self.emit(f"{tc} = {op[:3]}<ll>({tc}, {vc});")
                 self.track(sym, tgt, vt, "=", s)
                 return
-            self.emit(f"{tc} = {op[:3]}({tc}, {self.coerce(vc, vt, tt, s.value)});")
+            self.emit(f"{tc} = {op[:3]}({tc}, {self.coerce(vc, vt, tt, rhs_node)});")
             return
         bop = op[:-1]
+        if isinstance(tt, TOpt) and op in ("+=", "-=") and isinstance(tt.inner, (TInt, TF64)):
+            bi = TInt() if is_int(tt.inner) else tt.inner
+            octy = self.cpp_type(tt)
+            if isinstance(vt, TOpt):
+                self.emit(f"{{ auto _b = {vc}; if (!_b.has()) {tc} = {octy}(); else if ({tc}.has()) {tc} = {octy}({tc}.get() {bop} _b.get()); }}")
+            else:
+                self.emit(f"{{ auto _b = {self.coerce(vc, vt, bi, rhs_node)}; if ({tc}.has()) {tc} = {octy}({tc}.get() {bop} _b); }}")
+            return
         if isinstance(tt, TStr) and op == "+=" and isinstance(vt, (TStr, TChar)):
             self.emit(f"{tc} += {vc};")
             return
         if isinstance(tt, TMod):
-            self.emit(f"{tc} {op} {self.coerce(vc, vt, tt, s.value)};")
+            self.emit(f"{tc} {op} {self.coerce(vc, vt, tt, rhs_node)};")
             return
         if isinstance(tt, TDom):
             self.error(s, f"`{op}` on a domain value; use `i = i + k` (checked)")
         if isinstance(tt, (TF64, TU64, TI128)):
-            c, _ = self.x_binop(N("binop", s.line, op=bop, a=N("ctemp", s.line, code=tc, ty=tt, src=tgt), b=s.value), tt)
+            c, _ = self.x_binop(N("binop", s.line, op=bop, a=N("ctemp", s.line, code=tc, ty=tt, src=tgt), b=rhs_node), tt)
             self.emit(f"{tc} = {c};")
             return
         if not (isinstance(tt, TInt) and isinstance(vt, TInt)):
@@ -4922,12 +5822,12 @@ class Compiler(LendMixin):
                 self.error(s, f"`{unparse(s.value)}` may be 0 in `{op}`")
             if not (tt.lo is not None and tt.lo >= 0 and vt.lo is not None and vt.lo > 0):
                 fn = "cp_ediv" if bop == "/" else "cp_emod"
-                if self.has_effects(tgt):   # evaluate the target once
+                if self.has_effects(tgt_eval):   # evaluate the target once
                     self.emit(f"{{ auto& _t = {tc}; _t = {fn}(_t, {vc}, {s.line}); }}")
                 else:
                     self.emit(f"{tc} = {fn}({tc}, {vc}, {s.line});")
                 return
-        unproven = bop in ("+", "-", "*") and None in (tt.lo, tt.hi, vt.lo, vt.hi) and not self.has_effects(tgt)
+        unproven = bop in ("+", "-", "*") and None in (tt.lo, tt.hi, vt.lo, vt.hi) and not self.has_effects(tgt_eval)
         if unproven:
             self.emit(f"{tc} = cp_{ {'+': 'add', '-': 'sub', '*': 'mul'}[bop] }({tc}, {vc}, {s.line});")
         else:
@@ -5090,6 +5990,14 @@ class Compiler(LendMixin):
             return
         if "solution" in decos or ("brute" in decos and not s.params) or "multitest" in decos:
             self.solution_fn(s, decos)
+            return
+        if "grader" in decos or s.body is None:
+            ptypes = [self.resolve_type(p.ty) for p in s.params]
+            rt = self.resolve_type(s.ret) if s.ret is not None else UNIT
+            cpp = self.fresh(s.name)
+            self.scopes[-1][s.name] = Sym("fn", TFn(ptypes, rt), cpp, node=s)
+            pdecl = ", ".join(f"{self.cpp_type(pt)} {self.fresh(p.name)}" for p, pt in zip(s.params, ptypes))
+            self.funcs.append(f"{self.cpp_type(rt)} {cpp}({pdecl}) {{ return {self.cpp_type(rt)}(); }}")
             return
         params, ptypes, names = [], [], []
         # a fn declared inside a top-level loop or `if` sees that block's variables, so it is a closure too
@@ -5485,12 +6393,16 @@ class Compiler(LendMixin):
             self.funcs.insert(0, shead.rstrip() + ";")
 
     def word_set(self, t):
+        if getattr(t, "hashed", False) or getattr(t, "bag", False):
+            return False
         e = t.elem
         return isinstance(e, TDom) and e.info.len_iv[1] is not None and e.info.len_iv[1] <= 64
 
     def set_ctor(self, t):
         if isinstance(t, TMap) and isinstance(t.key, TDom):
             return f"{self.cpp_type(t)}({t.key.info.len_cpp})"
+        if isinstance(t, TSet) and (t.hashed or t.bag):
+            return f"{self.cpp_type(t)}()"
         if isinstance(t, TSet) and self.word_set(t):
             return "Mask64()"
         d = self.dense_set(t) if isinstance(t, TSet) else None
@@ -5727,6 +6639,32 @@ def _emit_read(self, target, ty, node, packed=False):
     elif isinstance(ty, TTuple):
         for fn, ft in zip(ty.names, ty.types):
             self.emit_read(f"{target}.{self.field_cpp(fn)}", ft, node)
+    elif isinstance(ty, TEnum) and ty.tags and any(isinstance(t, tuple) for t in ty.tags):
+        # char / char-range tags: `@tags('.', '*', '1'..='9') enum Cell: Empty | Wall | Coin(val: 1..=9)`
+        cvar = self.tmpname("c")
+        self.emit(f"{{ char {cvar} = rd_char();")
+        self.ind += 1
+        first = True
+        for k, (tag, (vn, fns, fts)) in enumerate(zip(ty.tags, ty.variants)):
+            kw = "if" if first else "else if"
+            first = False
+            if isinstance(tag, tuple) and tag[0] == "char":
+                self.emit(f"{kw} ({cvar} == {repr(tag[1])}) {{ {target}.tag = {k}; }}")
+            elif isinstance(tag, tuple) and tag[0] == "charrange":
+                _, lo_c, hi_c, incl = tag
+                cmp_op = "<=" if incl else "<"
+                assign = ""
+                if len(fns) == 1:
+                    ft = fts[0]
+                    if is_int(ft):
+                        base = f"({ft.lo}LL)" if ft.lo is not None else "0LL"
+                        assign = f" {target}.{vn}_{fns[0]} = (ll)({cvar} - {repr(lo_c)}) + {base};"
+                    elif isinstance(ft, TChar):
+                        assign = f" {target}.{vn}_{fns[0]} = {cvar};"
+                self.emit(f"{kw} ({cvar} >= {repr(lo_c)} && {cvar} {cmp_op} {repr(hi_c)}) {{ {target}.tag = {k};{assign} }}")
+        self.emit(f"else cp_fail(\"unknown tag\", {ln});")
+        self.ind -= 1
+        self.emit("}")
     elif isinstance(ty, TEnum) and ty.tags and all(len(t) == 1 for t in ty.tags) and not any(f for _, f, _ in ty.variants):
         # tags of one character are read a character at a time, so `WLLW` and `W L L W` are the same input
         # (this is also every `.`/`#` grid); a generated array of them is written packed
@@ -5765,12 +6703,29 @@ def _emit_read(self, target, ty, node, packed=False):
                 self.emit_read(f"{target}.{vn}_{f}", ft, node)
             self.ind -= 1
             self.emit("}")
+    elif isinstance(ty, TOpt) and is_int(ty.inner):
+        sentinel = getattr(self, "read_none", None)
+        if sentinel is not None:
+            w = self.tmpname("w")
+            self.emit(f"{{ string {w} = rd_word(); {target} = ({w} == {json.dumps(sentinel)}) ? Opt<ll>() : Opt<ll>(stoll({w})); }}")
+        else:
+            x = self.tmpname("r")
+            self.emit(f"{{ ll {x} = rd_int(); {target} = ({x} == -1) ? Opt<ll>() : Opt<ll>({x}); }}")
     elif isinstance(ty, TOpt) and isinstance(ty.inner, TDom):
         info = ty.inner.info
         x = self.tmpname("r")
         self.emit(f"{{ ll {x} = CP_GEN ? (gen_int(0, 1) ? -1 : {info.lo_cpp} + gen_int(0, {info.len_cpp} - 1)) : rd_int();")
         self.emit(f"if (CP_GEN) {{ out_int({x}); out_char(' '); }}")
         self.emit(f"{target} = {x} == -1 ? Opt<int>() : Opt<int>(chk_dom({x} - {info.lo_cpp}, {info.len_cpp}, {ln})); }}")
+    elif isinstance(ty, TRt) and ty.name == "Matrix":
+        r, c, el = ty.args[0].info, ty.args[1].info, ty.args[2]
+        self.emit(f"{target} = CpMat<{self.cpp_type(el)}>({r.len_cpp}, {c.len_cpp});")
+        ir, ic = self.tmpname("r"), self.tmpname("c")
+        self.emit(f"for (int {ir} = 0; {ir} < {r.len_cpp}; ++{ir}) for (int {ic} = 0; {ic} < {c.len_cpp}; ++{ic}) {{")
+        self.ind += 1
+        self.emit_read(f"{target}.at({ir}, {ic})", el, node)
+        self.ind -= 1
+        self.emit("}")
     elif isinstance(ty, TPerm):
         d = ty.elem.info
         n = f"{d.len_cpp}"
@@ -5895,7 +6850,7 @@ def _emit_print_body(self, args, newline, node):
         c, t = self.expr(a)
         if late and a.kind not in ("num", "char", "bool", "str"):
             tmp = self.tmpname("pa")
-            self.emit(f"auto&& {tmp} = {c};")
+            self.emit(f"auto {tmp} = {c};")
             c = tmp
         vals.append((c, t))
     for a, (c, t) in zip(args, vals):
@@ -5982,7 +6937,35 @@ Compiler.emit_value = _emit_value
 def _program(self):
     self.out = self.init_lines
     self.memo_reads, self.writes, self.fn_brutes, self.fn_props = [], [], [], []
-    self.block(self.prog.body, new_scope=False)
+    body = self.prog.body
+    mt_idx = next((i for i, st in enumerate(body) if st.kind != "fn" and any(d.name == "multitest" for d in getattr(st, "decos", []))), None)
+    if mt_idx is not None:
+        self.block(body[:mt_idx], new_scope=False)
+        st = copy.copy(body[mt_idx])
+        mt_deco = next(d for d in st.decos if d.name == "multitest")
+        st.decos = [d for d in st.decos if d.name != "multitest"]
+        rest = [st] + body[mt_idx + 1:]
+        args = mt_deco.args
+        is_eof = any(a.kind == "name" and a.name == "until_eof" for a in args)
+        cnt_kw = [a.value for a in args if a.kind == "kwarg" and a.name == "count"]
+        if is_eof:
+            self.emit("while (cp_has_more()) {")
+        elif cnt_kw:
+            cc, _ = self.expr(cnt_kw[0])
+            self.emit(f"for (ll _mt = (ll)({cc}), _mi = 0; _mi < _mt; ++_mi) {{")
+        else:
+            self.emit("ll _mt = CP_GEN ? gen_int(1, 3) : rd_int(); if (CP_GEN) { out_int(_mt); out_char('\\n'); }")
+            self.emit("for (ll _mi = 0; _mi < _mt; ++_mi) {")
+        self.ind += 1
+        saved_mt = getattr(self, "in_multitest", False)
+        self.in_multitest = True
+        self.block(rest, new_scope=True)
+        self.in_multitest = saved_mt
+        self.ind -= 1
+        self.emit("}")
+        self.last_read = len(self.init_lines)
+    else:
+        self.block(body, new_scope=False)
     self.check_memo_staleness()
     self.fntest_lines, _ = self.capture(self.emit_fn_tests)
     self.add_swap_hooks()
@@ -6019,7 +7002,11 @@ def render(comp):
         name, body = m.group(1), m.group(2)
         rest = code[:m.start()] + code[m.end():]
         return body if re.search(r"\b(?:" + name + r")\b", rest) else ""
-    code = re.sub(r"// @part ([\w|]+)\n(.*?)// @end\n", keep, code, flags=re.S)
+    for _ in range(4):
+        nxt = re.sub(r"// @part ([\w|]+)\n(.*?)// @end\n", keep, code, flags=re.S)
+        if nxt == code:
+            break
+        code = nxt
     return (code,) + tuple(res[1:]) if isinstance(res, tuple) else code
 
 

@@ -1,0 +1,6 @@
+let n: Int = read()
+print(n + 1)
+let a: Int = read()
+print(a * 2)
+let b: Int = read()
+print(a + b)

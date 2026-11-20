@@ -47,7 +47,7 @@ def f_print(it, args, kw, node):
     if it.capture:
         it.out.append(line)
     else:
-        print(line)
+        print(line, flush=True)
 
 
 def f_minmax(pick):

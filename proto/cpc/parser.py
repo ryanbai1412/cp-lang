@@ -155,15 +155,13 @@ class Parser:
                 return N("typedef", line, name=nm, ty=ty)
             if v == "fn":
                 return self.fn_def()
-            if v == "pure":
-                self.next()
-                if not self.at("fn"):
-                    self.err("expected fn after pure")
-                f = self.fn_def()
-                f.pure = True
-                return f
             if v == "struct":
                 return self.struct_def()
+        if t.kind == "NAME" and t.val == "pure" and self.peek().kind == "KW" and self.peek().val == "fn":
+            self.next()
+            f = self.fn_def()
+            f.pure = True
+            return f
         if t.kind == "NAME" and t.val == "assume" and not (self.peek().kind == "OP" and self.peek().val in ASSIGN_OPS | {".", "[", "("}):
             # `assume cond`: an input promise. Rejects the case when generating, traps in a local run, and is
             # stripped from a judge build.
@@ -267,6 +265,10 @@ class Parser:
                 return self.if_stmt()
             if v == "for":
                 self.next()
+                fmut = False
+                if self.t.kind == "NAME" and self.t.val == "mut":
+                    self.next()
+                    fmut = True
                 pat = self.pattern()
                 self.expect("in")
                 it = self.expr()
@@ -277,7 +279,7 @@ class Parser:
                     body = [N("if", cl, cond=cond, body=self.block(), orelse=[])]
                 else:
                     body = self.block()
-                return N("for", line, pat=pat, iter=it, body=body)
+                return N("for", line, pat=pat, iter=it, body=body, mut=fmut)
             if v == "while":
                 self.next()
                 if self.at("let"):
@@ -386,6 +388,9 @@ class Parser:
                 self.next()
                 label = self.next().val if self.t.kind == "LABEL" else None
                 return N(v, line, label=label)
+            if v == "defer":
+                self.next()
+                return N("defer", line, stmt=self.simple_stmt())
             if v == "assert":
                 self.next()
                 e = self.expr()
@@ -483,7 +488,7 @@ class Parser:
         pending = []
         while not self.at(")"):
             mode = None
-            if self.at("inout") or self.at("ref"):
+            if (self.t.kind == "NAME" and self.t.val in ("inout", "ref")) and self.peek().kind == "NAME":
                 mode = self.next().val
             elif self.t.kind == "NAME" and self.t.val == "mut" and self.peek().kind == "NAME":
                 self.next()
@@ -541,6 +546,9 @@ class Parser:
             self.next()
             body = [self.simple_stmt()]
             self.end_line()
+        elif self.at_kind("NEWLINE") or self.at_kind("EOF"):
+            self.end_line()
+            body = None
         else:
             body = self.block()
         return N("fn", line, name=nm, tparams=tparams, params=ps, ret=ret, body=body, decos=[], pure=False, lends=lends)
@@ -551,7 +559,7 @@ class Parser:
         self.expect(":")
         self.expect_kind("NEWLINE")
         self.expect_kind("INDENT")
-        fields, methods = [], []
+        fields, methods, defaults = [], [], {}
         self.skip_newlines()
         while not self.at_kind("DEDENT"):
             if self.at("fn"):
@@ -563,12 +571,18 @@ class Parser:
                     names.append(self.name())
                 self.expect(":")
                 ty = self.type_()
+                dval = None
+                if self.at("="):
+                    self.next()
+                    dval = self.expr()
                 for f in names:
                     fields.append((f, ty))
+                    if dval is not None:
+                        defaults[f] = dval
                 self.end_line()
             self.skip_newlines()
         self.next()
-        return N("struct", line, name=nm, fields=fields, methods=methods, decos=[])
+        return N("struct", line, name=nm, fields=fields, methods=methods, decos=[], defaults=defaults)
 
     def if_stmt(self):
         line = self.next().line
@@ -747,6 +761,45 @@ class Parser:
             body = self.block()
             self.after_block = True
             return N("doblock", line, body=body)
+        if self.at("match"):
+            self.next()
+            subj = self.expr()
+            self.expect(":")
+            self.expect_kind("NEWLINE")
+            self.expect_kind("INDENT")
+            arms = []
+            self.skip_newlines()
+            while not self.at_kind("DEDENT") and not self.at_kind("EOF"):
+                an = self.name()
+                binds = []
+                if self.at("("):
+                    self.next()
+                    while not self.at(")"):
+                        binds.append(self.name())
+                        if self.at(","):
+                            self.next()
+                    self.expect(")")
+                guard = None
+                if self.at("if"):
+                    self.next()
+                    self.no_lambda = 1
+                    guard = self.expr()
+                    self.no_lambda = 0
+                if self.at("=>"):
+                    self.next()
+                else:
+                    self.expect(":")
+                val = self.expr()
+                self.end_line()
+                arms.append(N("arm", line, name=an, binds=binds, guard=guard, value=val))
+                self.skip_newlines()
+            if self.at_kind("DEDENT"):
+                self.next()
+            self.after_block = True
+            return N("matchexpr", line, subject=subj, arms=arms)
+        if self.at("(") and self.peek().kind == "OP" and self.peek().val == ")" and self.peek(2).kind == "OP" and self.peek(2).val == "=>":
+            self.next(); self.next(); self.next()
+            return N("lambda", line, params=[], body=self.expr())
         if self.at("|"):
             self.next()
             ps = []
@@ -963,6 +1016,16 @@ class Parser:
             elif self.at("?"):
                 line = self.next().line
                 e = N("try", line, a=e)
+            elif self.at("::") and self.peek().kind == "OP" and self.peek().val == "<":
+                self.next()
+                self.next()
+                targs = []
+                while not self.at_close_angle():
+                    targs.append(self.type_())
+                    if self.at(","):
+                        self.next()
+                self.close_angle()
+                e = N("tapp", e.line, obj=e, targs=targs)
             elif self.at("<") and e.kind == "name" and e.name[:1].isupper() and self.looks_generic():
                 self.next()
                 args = []
@@ -1063,6 +1126,9 @@ class Parser:
                     nm = self.next().val
                     self.next()
                 e = self.expr()
+                if self.at("??="):
+                    c_line = self.next().line
+                    e = N("coalesce_assign", c_line, target=e, value=self.expr())
                 if self.at("for"):
                     e = self.gen_tail(e)
                 items.append(e)

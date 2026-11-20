@@ -10,15 +10,18 @@ class Tok:
 class LexError(Exception):
     pass
 
-OPS = ["<<=", ">>=", "??=", "..=", "..?", "**=", "...", "..", "=>", "->", "==", "!=", "<=", ">=", "+=", "-=", "*=", "/=",
+OPS = ["<<=", ">>=", "??=", "..=", "..?", "**=", "...", "..", "=>", "->", "::", "==", "!=", "<=", ">=", "+=", "-=", "*=", "/=",
        "%=", "|=", "&=", "^=", "**", "??", "<<", ">>", "&&", "||",
        "+", "-", "*", "/", "%", "<", ">", "=", "(", ")", "[", "]", "{", "}", ",", ":", ".",
        "?", "!", "|", "&", "^", "@", ";", "~"]
-KEYWORDS = {"domain", "const", "type", "fn", "pure", "let", "var", "if", "elif", "else", "for", "in",
+KEYWORDS = {"domain", "const", "type", "fn", "let", "var", "if", "elif", "else", "for", "in",
             "while", "return", "break", "continue", "assert", "and", "or", "not", "none",
             "true", "false", "match", "struct", "enum", "yield", "defer",
-            "where", "ref", "inout"}
+            "where"}
 CONT_START = {"and", "or", "."}
+CONT_END = {"+", "-", "*", "/", "%", "**", "&", "|", "^", "<<",
+            "==", "!=", "<=", ">=", "??", "=", "+=", "-=", "*=", "/=", "%=",
+            ",", "..", "..=", "and", "or"}
 NUM_RE = re.compile(r"\d[\d_]*(\.\d+)?([eE][+-]?\d+)?")
 NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
@@ -44,8 +47,9 @@ def lex(src):
         if depth == 0:
             first = NAME_RE.match(stripped)
             word = first.group(0) if first else stripped[:1]
-            is_cont = toks and toks[-1].kind == "NEWLINE" and ind > indents[-1] and (
-                word in CONT_START and not stripped.startswith(".."))
+            is_cont = toks and toks[-1].kind == "NEWLINE" and (
+                (ind > indents[-1] and word in CONT_START and not stripped.startswith(".."))
+                or (len(toks) >= 2 and toks[-2].kind in ("OP", "KW") and toks[-2].val in CONT_END))
             if is_cont:
                 toks.pop()
             else:

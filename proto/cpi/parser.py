@@ -30,6 +30,8 @@ class LibParser(Parser):
 
     def atom(self):
         e = super().atom()
+        if e.kind == "tapp" and e.obj.kind == "name":
+            return N("generic", e.line, name=e.obj.name, args=e.targs)
         # `scc::<V>(adj)`: explicit type arguments on a fn (decisions 2.13)
         if e.kind == "name" and self.at(":") and self.tok_is(1, "OP", ":") and self.tok_is(2, "OP", "<"):
             self.i += 3

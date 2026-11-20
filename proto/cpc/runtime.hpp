@@ -37,8 +37,10 @@ static inline ll chk_dom_len(__int128 len, int line) {
     return len < 0 ? 0 : (ll)len;
 }
 #ifdef LOCAL
+static constexpr bool CP_LOCAL = true;
 #define CP_ASSERT(c, msg, line) do { if (!(c)) cp_fail(msg, line); } while (0)
 #else
+static constexpr bool CP_LOCAL = false;
 #define CP_ASSERT(c, msg, line) do {} while (0)
 #endif
 
@@ -362,21 +364,31 @@ template <ll M> struct Opt<Mod<M>> {
     bool operator!=(const Opt& o) const { return v != o.v; }
 };
 
-// Comb<P>(n): factorials modulo a prime P up to n; choose and arrange are 0 outside 0 <= k <= n
+// @part CpComb
+// Comb<P>() / Comb<P>(n): lazily auto-growing factorials modulo P; choose and arrange are 0 outside 0 <= k <= n
 template <class M> struct CpComb {
-    vector<M> f, g;
-    explicit CpComb(ll n = 0) : f((size_t)n + 1, M(1)), g((size_t)n + 1, M(1)) {
-        for (ll i = 1; i <= n; ++i) f[(size_t)i] = f[(size_t)i - 1] * M(i);
-        g[(size_t)n] = M(1) / f[(size_t)n];
-        for (ll i = n; i > 0; --i) g[(size_t)i - 1] = g[(size_t)i] * M(i);
+    mutable vector<M> f, g;
+    explicit CpComb(ll n = 0) : f(1, M(1)), g(1, M(1)) { if (n > 0) ensure(n); }
+    void ensure(ll k) const {
+        if (k < (ll)f.size()) return;
+        ll old = (ll)f.size() - 1;
+        ll nw = max(k, max(old * 2, 16LL));
+        f.resize((size_t)nw + 1, M(1));
+        g.resize((size_t)nw + 1, M(1));
+        for (ll i = old + 1; i <= nw; ++i) f[(size_t)i] = f[(size_t)i - 1] * M(i);
+        g[(size_t)nw] = M(1) / f[(size_t)nw];
+        for (ll i = nw; i > old + 1; --i) g[(size_t)i - 1] = g[(size_t)i] * M(i);
+        if (old >= 0 && nw > old) g[(size_t)old] = g[(size_t)old + 1] * M(old + 1);
     }
-    void chk(ll k, int line) const { if (k < 0 || k >= (ll)f.size()) cp_fail("Comb: argument beyond the bound it was built with", line); }
+    void chk(ll k, int line) const { if (k < 0) cp_fail("Comb: negative argument", line); ensure(k); }
     M fact(ll k, int line) const { chk(k, line); return f[(size_t)k]; }
     M inv_fact(ll k, int line) const { chk(k, line); return g[(size_t)k]; }
     M choose(ll n, ll k, int line) const { if (k < 0 || k > n || n < 0) return M(0); chk(n, line); return f[(size_t)n] * g[(size_t)k] * g[(size_t)(n - k)]; }
     M arrange(ll n, ll k, int line) const { if (k < 0 || k > n || n < 0) return M(0); chk(n, line); return f[(size_t)n] * g[(size_t)(n - k)]; }
 };
 
+// @end
+// @part CpFenwick|CpSparse|CpLazy
 // Range structures over a domain (cheat sheet section 11). Ranges arrive as half-open Rng of ordinals.
 struct CpFenwick {
     int n = 0; vector<ll> t;
@@ -443,12 +455,32 @@ struct CpLazy {
     void apply(Rng r, ll x) { if (r.lo < r.hi) apply(1, 0, n - 1, (int)r.lo, (int)r.hi - 1, x); }
     ll fold(Rng r) { return r.lo < r.hi ? fold(1, 0, n - 1, (int)r.lo, (int)r.hi - 1) : kind == 0 ? 0 : kind == 1 ? LLONG_MAX : LLONG_MIN; }
 };
+// @end
+
+// ---- output (declared before input so cp_getc can flush interactive prompts before blocking on read(2))
+static string cp_obuf;
+static inline void out_flush() { if (!cp_obuf.empty()) { fwrite(cp_obuf.data(), 1, cp_obuf.size(), stdout); cp_obuf.clear(); } }
 
 // ---- input
 static char cp_ibuf[1 << 16]; static size_t cp_ipos = 0, cp_ilen = 0;
 static inline int cp_getc() {
-    if (cp_ipos == cp_ilen) { cp_ilen = (size_t)max<long>(0, read(0, cp_ibuf, sizeof cp_ibuf));  /* read(2), not fread: returns what is there, so `ask` cannot deadlock on a pipe */ cp_ipos = 0; if (!cp_ilen) return -1; }
+    if (cp_ipos == cp_ilen) {
+        if (!cp_obuf.empty()) { out_flush(); fflush(stdout); }
+        cp_ilen = (size_t)max<long>(0, read(0, cp_ibuf, sizeof cp_ibuf));  /* read(2), not fread: returns what is there, so interactive reads cannot deadlock on a pipe */
+        cp_ipos = 0; if (!cp_ilen) return -1;
+    }
     return cp_ibuf[cp_ipos++];
+}
+static inline bool cp_has_more() {
+    while (true) {
+        if (cp_ipos == cp_ilen) {
+            if (!cp_obuf.empty()) { out_flush(); fflush(stdout); }
+            cp_ilen = (size_t)max<long>(0, read(0, cp_ibuf, sizeof cp_ibuf));
+            cp_ipos = 0; if (!cp_ilen) return false;
+        }
+        if ((unsigned char)cp_ibuf[cp_ipos] > ' ') return true;
+        ++cp_ipos;
+    }
 }
 // read_line(): the next line of input. After a token read that stopped inside a line, the blank rest of
 // that line is skipped first, so `let n: Int = read()` then `read_line()` gives the line after n.
@@ -503,8 +535,7 @@ static inline ll gen_int(ll lo, ll hi) {
     return lo + (ll)(cp_rng() % (unsigned long long)(h - lo + 1));
 }
 
-// ---- output
-static string cp_obuf;
+// ---- output helpers
 static inline void out_int(ll x) { char b[24]; int n = 0; bool neg = x < 0; unsigned long long u = neg ? -(unsigned long long)x : x; do b[n++] = '0' + u % 10; while (u /= 10); if (neg) cp_obuf += '-'; while (n) cp_obuf += b[--n]; }
 static inline void out_str(const string& s) { cp_obuf += s; }
 static inline void out_char(char c) { cp_obuf += c; }
@@ -546,12 +577,47 @@ static inline int cp_cyc(int v, ll k, int n) {
     return (int)(r < 0 ? r + n : r);
 }
 // @end
-static inline void out_flush() { fwrite(cp_obuf.data(), 1, cp_obuf.size(), stdout); cp_obuf.clear(); }
-
 static inline ll cp_ipow(ll b, ll e) { ll r = 1; while (e--) r *= b; return r; }
 static inline size_t cp_lidx(ll i, size_t n, int line) { if (i < 0 || (size_t)i >= n) cp_fail("list index out of range", line); return (size_t)i; }
+// Sequence-safe element indexing: `i` finishes evaluating (even if it grows `c`) before `c.size()` is checked.
+template <class C> static inline auto& cp_at(C& c, ll i, int line) { if (i < 0 || (size_t)i >= c.size()) cp_fail("list index out of range", line); return c[(size_t)i]; }
+template <class C> static inline const auto& cp_at(const C& c, ll i, int line) { if (i < 0 || (size_t)i >= c.size()) cp_fail("list index out of range", line); return c[(size_t)i]; }
 static inline ll cp_rfirst(Rng r, int line) { if (r.lo >= r.hi) cp_fail("empty range", line); return r.lo; }
 static inline ll cp_rlast(Rng r, int line) { if (r.lo >= r.hi) cp_fail("empty range", line); return r.hi - 1; }
+static inline Opt<ll> cp_rfirst_opt(Rng r) { return r.lo < r.hi ? Opt<ll>(r.lo) : Opt<ll>(); }
+static inline Opt<ll> cp_rlast_opt(Rng r) { return r.lo < r.hi ? Opt<ll>(r.hi - 1) : Opt<ll>(); }
+static inline Opt<ll> cp_rmid_opt(Rng r) { return r.lo < r.hi ? Opt<ll>(r.lo + (r.hi - 1 - r.lo) / 2) : Opt<ll>(); }
+static inline Opt<int> cp_rfirst_dom(Rng r) { return r.lo < r.hi ? Opt<int>((int)r.lo) : Opt<int>(); }
+static inline Opt<int> cp_rlast_dom(Rng r) { return r.lo < r.hi ? Opt<int>((int)(r.hi - 1)) : Opt<int>(); }
+static inline Opt<int> cp_rmid_dom(Rng r) { return r.lo < r.hi ? Opt<int>((int)(r.lo + (r.hi - 1 - r.lo) / 2)) : Opt<int>(); }
+static inline Rng cp_rinter(Rng a, Rng b) { ll lo = max(a.lo, b.lo), hi = min(a.hi, b.hi); return {lo, max(lo, hi)}; }
+struct CpMarks {
+    vector<int> stamp; int gen = 1; ll cnt = 0;
+    CpMarks() {}
+    explicit CpMarks(ll n) : stamp((size_t)n, 0) {}
+    bool add(int v) { if (stamp[v] == gen) return false; stamp[v] = gen; ++cnt; return true; }
+    bool remove(int v) { if (stamp[v] != gen) return false; stamp[v] = 0; --cnt; return true; }
+    bool has(int v) const { return stamp[v] == gen; }
+    void clear() { if (++gen == INT_MAX) { fill(stamp.begin(), stamp.end(), 0); gen = 1; } cnt = 0; }
+    ll size() const { return cnt; }
+    bool empty() const { return cnt == 0; }
+};
+template <class T> static inline T cp_take(T& x) { T r = std::move(x); x.clear(); return r; }
+template <class V> static inline void cp_absorb_vec(V& a, V& b) {
+    if (a.size() < b.size()) a.swap(b);
+    a.insert(a.end(), make_move_iterator(b.begin()), make_move_iterator(b.end()));
+    b.clear();
+}
+template <class S> static inline void cp_absorb_set(S& a, S& b) {
+    if (a.size() < b.size()) a.swap(b);
+    for (auto&& x : b) a.insert(x);
+    b.clear();
+}
+template <class M> static inline void cp_absorb_map(M& a, M& b) {
+    if (a.size() < b.size()) a.swap(b);
+    for (auto&& kv : b) a.emplace(kv.first, kv.second);
+    b.clear();
+}
 template <class T> static inline vector<T> cp_concat(vector<T> a, const vector<T>& b) { a.insert(a.end(), b.begin(), b.end()); return a; }
 template <class T> static inline T cp_pop(vector<T>& v, int line) { if (v.empty()) cp_fail("pop from empty list", line); T x = v.back(); v.pop_back(); return x; }
 
@@ -592,6 +658,7 @@ template <class M, class K, class V, class F> void cp_mkeep(M& m, const K& k, co
     if (it == m.end()) m[k] = x; else it->second = f(it->second, x);
 }
 
+// @part SegTree|AssignSum|AddMax|StrHash|cp_scc|cp_components|cp_condense|CpDsu
 // SegTree<T>: point update, range fold with a user monoid (id, op). Prototype stand-in for std.segtree.
 template <class T> struct SegTree {
     int n = 0; T id; std::function<T(const T&, const T&)> op; vector<T> t;
@@ -614,6 +681,30 @@ template <class T> struct SegTree {
             if (r & 1) b = op(t[--r], b);
         }
         return op(a, b);
+    }
+    template <class P> Opt<int> max_right(int l, P pred) const {
+        if (l < 0 || l >= n) return Opt<int>();
+        T acc = id;
+        int r = l;
+        while (r < n) {
+            T nxt = op(acc, t[r + n]);
+            if (!pred(nxt)) break;
+            acc = nxt;
+            ++r;
+        }
+        return r == l ? Opt<int>() : Opt<int>(r - 1);
+    }
+    template <class P> Opt<int> min_left(int r, P pred) const {
+        if (r < 0 || r >= n) return Opt<int>();
+        T acc = id;
+        int l = r;
+        while (l >= 0) {
+            T nxt = op(t[l + n], acc);
+            if (!pred(nxt)) break;
+            acc = nxt;
+            --l;
+        }
+        return l == r ? Opt<int>() : Opt<int>(l + 1);
     }
 };
 
@@ -750,17 +841,51 @@ template <class G, class F> static vector<vector<int>> cp_condense(const G& g, c
 // Disjoint sets: union by size, path halving
 struct CpDsu {
     vector<int> p, sz; ll parts = 0;
+    vector<pair<int, int>> hist;
+    bool rb = false;
     CpDsu() {}
     explicit CpDsu(ll n) : p(n), sz(n, 1), parts(n) { iota(p.begin(), p.end(), 0); }
-    int find(int v) { while (p[v] != v) v = p[v] = p[p[v]]; return v; }
-    bool unite(int a, int b) { a = find(a); b = find(b); if (a == b) return false; if (sz[a] < sz[b]) swap(a, b); p[b] = a; sz[a] += sz[b]; --parts; return true; }
+    int find(int v) {
+        if (rb) { while (p[v] != v) v = p[v]; return v; }
+        while (p[v] != v) v = p[v] = p[p[v]]; return v;
+    }
+    bool unite(int a, int b) {
+        a = find(a); b = find(b);
+        if (a == b) return false;
+        if (sz[a] < sz[b]) swap(a, b);
+        if (rb) hist.push_back({b, sz[a]});
+        p[b] = a; sz[a] += sz[b]; --parts; return true;
+    }
+    int mark() { rb = true; return (int)hist.size(); }
+    void undo_to(int snap) {
+        while ((int)hist.size() > snap) {
+            auto [b, old_sz] = hist.back(); hist.pop_back();
+            int a = p[b]; p[b] = b; sz[a] = old_sz; ++parts;
+        }
+    }
     bool same(int a, int b) { return find(a) == find(b); }
     int size(int v) { return sz[find(v)]; }
 };
+// @end
+template <class F> struct CpDefer { F f; ~CpDefer() { f(); } };
+template <class F> static inline CpDefer<F> cp_defer(F f) { return CpDefer<F>{f}; }
+static inline unsigned long long cp_parse_u64(const string& s, int line) {
+    char* end = nullptr; errno = 0;
+    unsigned long long v = strtoull(s.c_str(), &end, 10);
+    if (s.empty() || *end || errno == ERANGE) cp_fail("parse::<U64>: invalid unsigned integer", line);
+    return v;
+}
+static inline double cp_parse_f64(const string& s, int line) {
+    char* end = nullptr;
+    double v = strtod(s.c_str(), &end);
+    if (s.empty() || *end) cp_fail("parse::<F64>: invalid float", line);
+    return v;
+}
 
 // RootedTree: the depth-first spanning tree of `adj` from `root`, with parent, preorder, O(1) lca and level
 // ancestors. On a tree that is the tree itself; on any other connected graph every edge left out joins a
 // vertex to one of its ancestors. Prototype stand-in for std.tree.
+// @part RootedTree
 struct KidSpan {
     const int *b, *e;
     const int* begin() const { return b; }
@@ -939,6 +1064,7 @@ struct RootedTree {
         return k <= up ? ancestor(a, k) : ancestor(b, up + down - k);
     }
 };
+// @end
 
 static int cp_fn_iters = 1000;
 
@@ -1072,6 +1198,11 @@ struct CpArrHash {
 };
 struct CpHash {
     size_t operator()(ll x) const { return (size_t)cp_splitmix64((uint64_t)x + cp_hash_salt()); }
+    size_t operator()(const string& s) const {
+        uint64_t h = cp_hash_salt() ^ 0x9e3779b97f4a7c15ULL;
+        for (unsigned char c : s) h = cp_splitmix64(h ^ (uint64_t)c);
+        return (size_t)h;
+    }
     // a record hashes its fields in order (each record struct has `cp_hash`)
     template <class T> auto operator()(const T& x) const -> decltype(x.cp_hash(*this)) { return x.cp_hash(*this); }
 };
@@ -1359,6 +1490,504 @@ template <class V, class H> struct CpHashMap<ll, V, H> {
         for (const auto& e : *this) { auto it = o.find(e.first); if (it == o.end() || !(it->second == e.second)) return false; }
         return true;
     }
+};
+// @end
+// @part CpBitset
+struct CpBitset {
+    int n = 0; vector<uint64_t> w;
+    CpBitset() {}
+    explicit CpBitset(ll n_) : n((int)n_), w(((size_t)n_ + 63) / 64, 0) {}
+    void mask_tail() { int rem = n & 63; if (rem && !w.empty()) w.back() &= (1ULL << rem) - 1; }
+    bool add(int i) { uint64_t m = 1ULL << (i & 63); bool r = !(w[i >> 6] & m); w[i >> 6] |= m; return r; }
+    bool remove(int i) { uint64_t m = 1ULL << (i & 63); bool r = !!(w[i >> 6] & m); w[i >> 6] &= ~m; return r; }
+    void toggle(int i) { w[i >> 6] ^= 1ULL << (i & 63); }
+    bool has(int i) const { return (w[i >> 6] >> (i & 63)) & 1; }
+    ll len() const { ll c = 0; for (uint64_t x : w) c += __builtin_popcountll(x); return c; }
+    bool empty() const { for (uint64_t x : w) if (x) return false; return true; }
+    void clear() { fill(w.begin(), w.end(), 0); }
+    CpBitset shifted(ll k) const {
+        CpBitset r(n);
+        if (k >= n || k <= -n) return r;
+        if (k == 0) return *this;
+        if (k > 0) {
+            int ws = (int)(k >> 6), bs = (int)(k & 63);
+            for (int i = (int)w.size() - 1; i >= ws; --i) {
+                uint64_t v = w[i - ws] << bs;
+                if (bs && i - ws - 1 >= 0) v |= w[i - ws - 1] >> (64 - bs);
+                r.w[i] = v;
+            }
+            r.mask_tail();
+        } else {
+            k = -k;
+            int ws = (int)(k >> 6), bs = (int)(k & 63);
+            for (int i = 0; i + ws < (int)w.size(); ++i) {
+                uint64_t v = w[i + ws] >> bs;
+                if (bs && i + ws + 1 < (int)w.size()) v |= w[i + ws + 1] << (64 - bs);
+                r.w[i] = v;
+            }
+        }
+        return r;
+    }
+    CpBitset operator|(const CpBitset& o) const { CpBitset r(n); for (size_t i = 0; i < w.size(); ++i) r.w[i] = w[i] | o.w[i]; return r; }
+    CpBitset operator&(const CpBitset& o) const { CpBitset r(n); for (size_t i = 0; i < w.size(); ++i) r.w[i] = w[i] & o.w[i]; return r; }
+    CpBitset operator-(const CpBitset& o) const { CpBitset r(n); for (size_t i = 0; i < w.size(); ++i) r.w[i] = w[i] & ~o.w[i]; return r; }
+    CpBitset operator^(const CpBitset& o) const { CpBitset r(n); for (size_t i = 0; i < w.size(); ++i) r.w[i] = w[i] ^ o.w[i]; return r; }
+};
+// @end
+// @part cp_set_union|cp_set_inter|cp_set_diff|cp_set_symdiff|cp_set_rank|cp_set_nth
+template <class S> static inline S cp_set_union(const S& a, const S& b) { S r = a; r.insert(b.begin(), b.end()); return r; }
+template <class S> static inline S cp_set_inter(const S& a, const S& b) { S r; for (const auto& x : a) if (b.count(x)) r.insert(x); return r; }
+template <class S> static inline S cp_set_diff(const S& a, const S& b) { S r; for (const auto& x : a) if (!b.count(x)) r.insert(x); return r; }
+template <class S> static inline S cp_set_symdiff(const S& a, const S& b) { S r; for (const auto& x : a) if (!b.count(x)) r.insert(x); for (const auto& x : b) if (!a.count(x)) r.insert(x); return r; }
+template <class S, class T> static inline ll cp_set_rank(const S& s, const T& x) { return (ll)distance(s.begin(), s.lower_bound(x)); }
+template <class S, class O> static inline O cp_set_nth(const S& s, ll k) {
+    if (k < 0 || k >= (ll)s.size()) return O();
+    auto it = s.begin(); advance(it, k); return O(*it);
+}
+// @end
+// @part CpPt|cp_turn|cp_convex_hull
+struct CpPt {
+    ll x = 0, y = 0;
+    CpPt() {}
+    CpPt(ll x_, ll y_) : x(x_), y(y_) {}
+    CpPt operator+(CpPt o) const { return {x + o.x, y + o.y}; }
+    CpPt operator-(CpPt o) const { return {x - o.x, y - o.y}; }
+    CpPt operator-() const { return {-x, -y}; }
+    bool operator==(CpPt o) const { return x == o.x && y == o.y; }
+    bool operator!=(CpPt o) const { return !(*this == o); }
+    bool operator<(CpPt o) const { return x != o.x ? x < o.x : y < o.y; }
+    ll dot(CpPt o) const { return x * o.x + y * o.y; }
+    ll cross(CpPt o) const { return x * o.y - y * o.x; }
+    ll norm2() const { return x * x + y * y; }
+};
+static inline ll cp_turn(CpPt a, CpPt b, CpPt c) {
+    ll cr = (b - a).cross(c - a);
+    return cr > 0 ? 1 : cr < 0 ? -1 : 0;
+}
+static inline vector<CpPt> cp_convex_hull(vector<CpPt> pts) {
+    sort(pts.begin(), pts.end());
+    pts.erase(unique(pts.begin(), pts.end()), pts.end());
+    if (pts.size() <= 1) return pts;
+    vector<CpPt> h;
+    for (int phase = 0; phase < 2; ++phase) {
+        size_t start = h.size();
+        for (const auto& p : pts) {
+            while (h.size() >= start + 2 && (h[h.size() - 1] - h[h.size() - 2]).cross(p - h[h.size() - 2]) <= 0)
+                h.pop_back();
+            h.push_back(p);
+        }
+        h.pop_back();
+        reverse(pts.begin(), pts.end());
+    }
+    return h;
+}
+// @end
+// @part DynMod
+template <int Tag> struct DynMod {
+    static inline ll M = 1000000007LL;
+    ll v = 0;
+    DynMod() {}
+    DynMod(ll x) { x %= M; if (x < 0) x += M; v = x; }
+    static DynMod raw(ll x) { DynMod r; r.v = x; return r; }
+    DynMod operator+(DynMod o) const { ll r = v + o.v; return raw(r >= M ? r - M : r); }
+    DynMod operator-(DynMod o) const { ll r = v - o.v; return raw(r < 0 ? r + M : r); }
+    DynMod operator-() const { return raw(v ? M - v : 0); }
+    DynMod operator*(DynMod o) const { return raw((ll)((__int128)v * o.v % M)); }
+    DynMod pow(ll e) const { DynMod r(1), b = *this; while (e > 0) { if (e & 1) r = r * b; b = b * b; e >>= 1; } return r; }
+    DynMod inv() const { return pow(M - 2); }
+    DynMod operator/(DynMod o) const { return *this * o.inv(); }
+    DynMod& operator+=(DynMod o) { return *this = *this + o; }
+    DynMod& operator-=(DynMod o) { return *this = *this - o; }
+    DynMod& operator*=(DynMod o) { return *this = *this * o; }
+    DynMod& operator/=(DynMod o) { return *this = *this / o; }
+    bool operator==(DynMod o) const { return v == o.v; }
+    bool operator!=(DynMod o) const { return v != o.v; }
+    ll val() const { return v; }
+};
+// @end
+// @part CpMat
+template <class T> struct CpMat {
+    int r = 0, c = 0; vector<T> a;
+    CpMat() {}
+    CpMat(int r_, int c_, T init = T()) : r(r_), c(c_), a((size_t)r_ * c_, init) {}
+    T& at(int i, int j) { return a[(size_t)i * c + j]; }
+    const T& at(int i, int j) const { return a[(size_t)i * c + j]; }
+    CpMat operator*(const CpMat& o) const {
+        CpMat res(r, o.c, T(0));
+        for (int i = 0; i < r; ++i)
+            for (int k = 0; k < c; ++k) {
+                T aik = at(i, k);
+                for (int j = 0; j < o.c; ++j) res.at(i, j) = res.at(i, j) + aik * o.at(k, j);
+            }
+        return res;
+    }
+    CpMat pow(ll e) const {
+        CpMat res(r, c, T(0)), base = *this;
+        for (int i = 0; i < r; ++i) res.at(i, i) = T(1);
+        while (e > 0) { if (e & 1) res = res * base; base = base * base; e >>= 1; }
+        return res;
+    }
+};
+// @end
+// @part cp_isqrt|cp_pow_mod|cp_factor|cp_sieve
+static inline ll cp_isqrt(ll n, int line) {
+    if (n < 0) cp_fail("isqrt of negative number", line);
+    ll r = (ll)sqrt((long double)n);
+    while ((r + 1) > 0 && (r + 1) <= n / (r + 1)) ++r;
+    while (r > 0 && r > n / r) --r;
+    return r;
+}
+static inline ll cp_pow_mod(ll a, ll e, ll m, int line) {
+    if (m <= 0) cp_fail("pow_mod requires m > 0", line);
+    if (m == 1) return 0;
+    ll r = 1, b = ((a % m) + m) % m;
+    while (e > 0) {
+        if (e & 1) r = (ll)((__int128)r * b % m);
+        b = (ll)((__int128)b * b % m);
+        e >>= 1;
+    }
+    return r;
+}
+template <class P> static inline vector<P> cp_factor(ll n) {
+    vector<P> res;
+    for (ll d = 2; d * d <= n; ++d) {
+        if (n % d == 0) {
+            ll c = 0;
+            while (n % d == 0) { n /= d; ++c; }
+            res.push_back(P{d, c});
+        }
+    }
+    if (n > 1) res.push_back(P{n, 1});
+    return res;
+}
+static inline vector<ll> cp_sieve(ll n) {
+    vector<ll> ps;
+    if (n < 2) return ps;
+    vector<uint8_t> comp((size_t)n + 1, 0);
+    for (ll i = 2; i <= n; ++i) if (!comp[(size_t)i]) {
+        ps.push_back(i);
+        if (i <= n / i) for (ll j = i * i; j <= n; j += i) comp[(size_t)j] = 1;
+    }
+    return ps;
+}
+// @end
+// @part cp_sliding_minmax
+template <class T> static inline vector<T> cp_sliding_minmax(const vector<T>& a, ll k, bool is_min) {
+    vector<T> res;
+    ll n = (ll)a.size();
+    if (k <= 0 || k > n) return res;
+    deque<ll> dq;
+    for (ll i = 0; i < n; ++i) {
+        while (!dq.empty() && dq.front() <= i - k) dq.pop_front();
+        while (!dq.empty() && (is_min ? a[dq.back()] >= a[i] : a[dq.back()] <= a[i])) dq.pop_back();
+        dq.push_back(i);
+        if (i >= k - 1) res.push_back(a[dq.front()]);
+    }
+    return res;
+}
+// @end
+// @part cp_perm_inv|cp_perm_cycles
+static inline vector<int> cp_perm_inv(const vector<int>& p) {
+    vector<int> inv(p.size());
+    for (size_t i = 0; i < p.size(); ++i) inv[(size_t)p[i]] = (int)i;
+    return inv;
+}
+static inline vector<vector<int>> cp_perm_cycles(const vector<int>& p) {
+    size_t n = p.size();
+    vector<uint8_t> vis(n, 0);
+    vector<vector<int>> cycs;
+    for (size_t i = 0; i < n; ++i) if (!vis[i]) {
+        vector<int> c;
+        size_t u = i;
+        while (!vis[u]) { vis[u] = 1; c.push_back((int)u); u = (size_t)p[u]; }
+        cycs.push_back(std::move(c));
+    }
+    return cycs;
+}
+// @end
+// @part cp_grid_col|cp_grid_flipped|cp_grid_transposed
+template <class T> static inline vector<T> cp_grid_col(const vector<T>& g, int rows, int cols, int c) {
+    vector<T> res((size_t)rows);
+    for (int r = 0; r < rows; ++r) res[(size_t)r] = g[(size_t)r * cols + c];
+    return res;
+}
+template <class T> static inline vector<T> cp_grid_flipped(const vector<T>& g, int rows, int cols) {
+    vector<T> res(g.size());
+    for (int r = 0; r < rows; ++r)
+        for (int c = 0; c < cols; ++c)
+            res[(size_t)(rows - 1 - r) * cols + c] = g[(size_t)r * cols + c];
+    return res;
+}
+template <class T> static inline vector<T> cp_grid_transposed(const vector<T>& g, int rows, int cols) {
+    vector<T> res(g.size());
+    for (int r = 0; r < rows; ++r)
+        for (int c = 0; c < cols; ++c)
+            res[(size_t)c * rows + r] = g[(size_t)r * cols + c];
+    return res;
+}
+// @end
+// @part CpFenwick2D
+template <class T> struct CpFenwick2D {
+    int r = 0, c = 0; vector<T> t;
+    CpFenwick2D() {}
+    CpFenwick2D(int r_, int c_) : r(r_), c(c_), t((size_t)(r_ + 1) * (c_ + 1), T(0)) {}
+    void add(int i, int j, T d) {
+        for (int x = i + 1; x <= r; x += x & -x)
+            for (int y = j + 1; y <= c; y += y & -y)
+                t[(size_t)x * (c + 1) + y] += d;
+    }
+    T pre(int i, int j) const {
+        T s = T(0);
+        for (int x = i; x > 0; x -= x & -x)
+            for (int y = j; y > 0; y -= y & -y)
+                s += t[(size_t)x * (c + 1) + y];
+        return s;
+    }
+    T sum(Rng rr, Rng cr) const {
+        if (rr.lo >= rr.hi || cr.lo >= cr.hi) return T(0);
+        return pre((int)rr.hi, (int)cr.hi) - pre((int)rr.lo, (int)cr.hi) - pre((int)rr.hi, (int)cr.lo) + pre((int)rr.lo, (int)cr.lo);
+    }
+};
+// @end
+// @part CpFlowGraph
+struct CpFlowGraph {
+    struct Edge { int to, rev; ll cap; };
+    int n = 0; vector<vector<Edge>> g;
+    CpFlowGraph() {}
+    explicit CpFlowGraph(int n_) : n(n_), g((size_t)n_) {}
+    void add_edge(int u, int v, ll cap) {
+        g[u].push_back({v, (int)g[v].size(), cap});
+        g[v].push_back({u, (int)g[u].size() - 1, 0});
+    }
+    ll max_flow(int s, int t) {
+        ll flow = 0; vector<int> lvl(n), ptr(n);
+        while (true) {
+            fill(lvl.begin(), lvl.end(), -1);
+            queue<int> q; lvl[s] = 0; q.push(s);
+            while (!q.empty()) {
+                int u = q.front(); q.pop();
+                for (auto& e : g[u]) if (e.cap > 0 && lvl[e.to] < 0) { lvl[e.to] = lvl[u] + 1; q.push(e.to); }
+            }
+            if (lvl[t] < 0) break;
+            fill(ptr.begin(), ptr.end(), 0);
+            auto dfs = [&](auto& self, int u, ll pushed) -> ll {
+                if (u == t || pushed == 0) return pushed;
+                for (int& cid = ptr[u]; cid < (int)g[u].size(); ++cid) {
+                    auto& e = g[u][cid];
+                    if (e.cap > 0 && lvl[e.to] == lvl[u] + 1) {
+                        ll tr = self(self, e.to, min(pushed, e.cap));
+                        if (tr > 0) { e.cap -= tr; g[e.to][e.rev].cap += tr; return tr; }
+                    }
+                }
+                return 0;
+            };
+            while (ll p = dfs(dfs, s, LLONG_MAX)) flow += p;
+        }
+        return flow;
+    }
+};
+// @end
+// @part CpTwoSat
+struct CpTwoSat {
+    int n = 0; vector<vector<int>> g, gr;
+    CpTwoSat() {}
+    explicit CpTwoSat(int n_) : n(n_), g(2 * n_), gr(2 * n_) {}
+    void add_imp(int a, int b) { g[a].push_back(b); gr[b].push_back(a); }
+    void or_clause(int u, bool bu, int v, bool bv) {
+        int a = 2 * u + (bu ? 1 : 0), b = 2 * v + (bv ? 1 : 0);
+        add_imp(a ^ 1, b); add_imp(b ^ 1, a);
+    }
+    Opt<vector<uint8_t>> solve() const {
+        int m = 2 * n; vector<int> ord, comp(m, -1); vector<uint8_t> vis(m, 0);
+        auto d1 = [&](auto& self, int u) -> void { vis[u] = 1; for (int v : g[u]) if (!vis[v]) self(self, v); ord.push_back(u); };
+        for (int i = 0; i < m; ++i) if (!vis[i]) d1(d1, i);
+        int cid = 0;
+        auto d2 = [&](auto& self, int u) -> void { comp[u] = cid; for (int v : gr[u]) if (comp[v] < 0) self(self, v); };
+        for (int i = m - 1; i >= 0; --i) if (comp[ord[i]] < 0) { d2(d2, ord[i]); ++cid; }
+        vector<uint8_t> ans(n, 0);
+        for (int i = 0; i < n; ++i) {
+            if (comp[2 * i] == comp[2 * i + 1]) return Opt<vector<uint8_t>>();
+            ans[i] = comp[2 * i + 1] > comp[2 * i];
+        }
+        return Opt<vector<uint8_t>>(ans);
+    }
+};
+// @end
+// @part cp_topo
+static inline Opt<vector<int>> cp_topo(const vector<vector<int>>& adj) {
+    int n = (int)adj.size();
+    vector<int> indeg(n, 0), ord;
+    for (int u = 0; u < n; ++u) for (int v : adj[u]) ++indeg[v];
+    queue<int> q;
+    for (int u = 0; u < n; ++u) if (indeg[u] == 0) q.push(u);
+    while (!q.empty()) {
+        int u = q.front(); q.pop(); ord.push_back(u);
+        for (int v : adj[u]) if (--indeg[v] == 0) q.push(v);
+    }
+    return (int)ord.size() == n ? Opt<vector<int>>(ord) : Opt<vector<int>>();
+}
+// @end
+// @part cp_scc_list
+static inline vector<vector<int>> cp_scc_list(const vector<vector<int>>& adj) {
+    int n = (int)adj.size();
+    vector<vector<int>> gr(n), res;
+    for (int u = 0; u < n; ++u) for (int v : adj[u]) gr[v].push_back(u);
+    vector<uint8_t> vis(n, 0); vector<int> ord;
+    auto d1 = [&](auto& self, int u) -> void { vis[u] = 1; for (int v : adj[u]) if (!vis[v]) self(self, v); ord.push_back(u); };
+    for (int i = 0; i < n; ++i) if (!vis[i]) d1(d1, i);
+    fill(vis.begin(), vis.end(), 0);
+    auto d2 = [&](auto& self, int u, vector<int>& c) -> void { vis[u] = 1; c.push_back(u); for (int v : gr[u]) if (!vis[v]) self(self, v, c); };
+    for (int i = n - 1; i >= 0; --i) if (!vis[ord[i]]) { vector<int> c; d2(d2, ord[i], c); res.push_back(std::move(c)); }
+    return res;
+}
+// @end
+// @part cp_z_function|cp_prefix_function|CpSuffixArray|CpRollingHash|cp_palindromes
+static inline vector<ll> cp_z_function(const string& s) {
+    int n = (int)s.size(); vector<ll> z(n, 0);
+    for (int i = 1, l = 0, r = 0; i < n; ++i) {
+        if (i < r) z[i] = min<ll>(r - i, z[i - l]);
+        while (i + z[i] < n && s[z[i]] == s[i + z[i]]) ++z[i];
+        if (i + z[i] > r) { l = i; r = i + (int)z[i]; }
+    }
+    return z;
+}
+static inline vector<ll> cp_prefix_function(const string& s) {
+    int n = (int)s.size(); vector<ll> pi(n, 0);
+    for (int i = 1; i < n; ++i) {
+        ll j = pi[i - 1];
+        while (j > 0 && s[i] != s[j]) j = pi[j - 1];
+        if (s[i] == s[j]) ++j;
+        pi[i] = j;
+    }
+    return pi;
+}
+struct CpSuffixArray {
+    vector<ll> sa, lcp;
+    CpSuffixArray() {}
+    explicit CpSuffixArray(const string& s) {
+        int n = (int)s.size(); sa.resize(n); iota(sa.begin(), sa.end(), 0);
+        vector<int> rk(n), tmp(n);
+        for (int i = 0; i < n; ++i) rk[i] = (unsigned char)s[i];
+        for (int k = 1; k < n; k <<= 1) {
+            auto cmp = [&](ll a, ll b) {
+                if (rk[a] != rk[b]) return rk[a] < rk[b];
+                int ra = a + k < n ? rk[a + k] : -1, rb = b + k < n ? rk[b + k] : -1;
+                return ra < rb;
+            };
+            sort(sa.begin(), sa.end(), cmp);
+            tmp[sa[0]] = 0;
+            for (int i = 1; i < n; ++i) tmp[sa[i]] = tmp[sa[i - 1]] + (cmp(sa[i - 1], sa[i]) ? 1 : 0);
+            rk.swap(tmp);
+            if (rk[sa[n - 1]] == n - 1) break;
+        }
+        lcp.assign(max(0, n - 1), 0);
+        for (int i = 0, h = 0; i < n; ++i) if (rk[i] > 0) {
+            int j = (int)sa[rk[i] - 1];
+            while (i + h < n && j + h < n && s[i + h] == s[j + h]) ++h;
+            lcp[rk[i] - 1] = h;
+            if (h > 0) --h;
+        }
+    }
+};
+struct CpRollingHash {
+    static constexpr uint64_t MOD = (1ULL << 61) - 1;
+    static constexpr uint64_t BASE = 1315423911ULL;
+    vector<uint64_t> h, pw;
+    static inline uint64_t mul(uint64_t a, uint64_t b) {
+        __uint128_t t = (__uint128_t)a * b;
+        uint64_t r = (uint64_t)(t >> 61) + (uint64_t)(t & MOD);
+        return r >= MOD ? r - MOD : r;
+    }
+    CpRollingHash() {}
+    explicit CpRollingHash(const string& s) : h(s.size() + 1, 0), pw(s.size() + 1, 1) {
+        for (size_t i = 0; i < s.size(); ++i) {
+            pw[i + 1] = mul(pw[i], BASE);
+            uint64_t v = mul(h[i], BASE) + (unsigned char)s[i] + 1;
+            h[i + 1] = v >= MOD ? v - MOD : v;
+        }
+    }
+    ll get(Rng r) const {
+        if (r.lo >= r.hi) return 0;
+        uint64_t sub = mul(h[(size_t)r.lo], pw[(size_t)(r.hi - r.lo)]);
+        uint64_t v = h[(size_t)r.hi] + MOD - sub;
+        return (ll)(v >= MOD ? v - MOD : v);
+    }
+};
+static inline vector<ll> cp_palindromes(const string& s) {
+    string t = "#";
+    for (char c : s) { t += c; t += '#'; }
+    int n = (int)t.size(); vector<ll> p(n, 0);
+    for (int i = 0, l = 0, r = -1; i < n; ++i) {
+        int k = i > r ? 1 : (int)min<ll>(p[l + r - i], r - i + 1);
+        while (0 <= i - k && i + k < n && t[i - k] == t[i + k]) ++k;
+        p[i] = k--;
+        if (i + k > r) { l = i - k; r = i + k; }
+    }
+    return p;
+}
+// @end
+// @part CpCustomLazy
+struct CpCustomLazy {
+    int n = 0; ll id_tag = 0;
+    std::function<ll(ll, ll)> comp, app;
+    vector<ll> a, lz;
+    CpCustomLazy() {}
+    CpCustomLazy(int n_, ll id_, std::function<ll(ll, ll)> c_, std::function<ll(ll, ll)> ap_)
+        : n(n_), id_tag(id_), comp(c_), app(ap_), a(n_, 0), lz(n_, id_) {}
+    void apply(Rng r, ll f) {
+        for (ll i = max(0LL, r.lo); i < min((ll)n, r.hi); ++i) a[i] = app(f, a[i]);
+    }
+    ll fold(Rng r) const {
+        ll s = 0;
+        for (ll i = max(0LL, r.lo); i < min((ll)n, r.hi); ++i) s += a[i];
+        return s;
+    }
+};
+// @end
+// @part CpStepsT
+template <class K, class V> struct CpStepsT {
+    map<K, V> m; V def;
+    CpStepsT() : def(V()) {}
+    explicit CpStepsT(V d) : def(d) {}
+};
+// @end
+// @part CpDir4|CpDir8
+struct CpDir4 {
+    int d = 0; // 0=U(-1,0), 1=R(0,1), 2=D(1,0), 3=L(0,-1)
+    static constexpr int DR[4] = {-1, 0, 1, 0};
+    static constexpr int DC[4] = {0, 1, 0, -1};
+    CpDir4() {}
+    explicit CpDir4(int d_) : d(d_ & 3) {}
+    int dr() const { return DR[d]; }
+    int dc() const { return DC[d]; }
+    CpDir4 cw() const { return CpDir4((d + 1) & 3); }
+    CpDir4 ccw() const { return CpDir4((d + 3) & 3); }
+    CpDir4 back() const { return CpDir4((d + 2) & 3); }
+    bool operator==(CpDir4 o) const { return d == o.d; }
+    bool operator!=(CpDir4 o) const { return d != o.d; }
+    static CpDir4 from(const string& order, char ch, int line) {
+        static constexpr int MAP[4] = {0, 2, 3, 1}; // default "UDLR" -> U=0, D=2, L=3, R=1
+        if (order == "NESW" || order == "URDL") {
+            size_t p = order.find(ch);
+            if (p != string::npos) return CpDir4((int)p);
+        } else if (order.size() == 4) {
+            size_t p = order.find(ch);
+            if (p != string::npos) return CpDir4(MAP[p]);
+        }
+        cp_fail("Dir4.from: character not found", line);
+        return CpDir4(0);
+    }
+};
+struct CpDir8 {
+    int d = 0;
+    static constexpr int DR[8] = {-1, -1, 0, 1, 1, 1, 0, -1};
+    static constexpr int DC[8] = {0, 1, 1, 1, 0, -1, -1, -1};
+    CpDir8() {}
+    explicit CpDir8(int d_) : d(d_ & 7) {}
+    int dr() const { return DR[d]; }
+    int dc() const { return DC[d]; }
+    bool operator==(CpDir8 o) const { return d == o.d; }
+    bool operator!=(CpDir8 o) const { return d != o.d; }
 };
 // @end
 // @part CpCounter|CpDenseCounter
