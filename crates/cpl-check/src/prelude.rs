@@ -83,6 +83,8 @@ pub fn ty(name: &str) -> Option<Ty> {
 const PROTOTYPE_NAMES: &[&str] = &[
     "gcd",
     "lcm",
+    "runs",
+    "distinct",
     "product",
     "compress",
     "inf",

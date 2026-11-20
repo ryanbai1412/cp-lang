@@ -61,6 +61,26 @@ impl<'a> Checker<'a> {
                 rhs,
             } => self.binary(*op, *op_span, lhs, rhs),
             ExprKind::Compare { first, rest } => {
+                // `f<A>(x)` is two comparisons: a fn's type arguments are
+                // written `f::<A>(x)`.
+                if let ExprKind::Name(name) = &first.kind {
+                    let generic = self.local(name).is_none()
+                        && matches!(
+                            self.env.global(name).as_deref(),
+                            Some(Def::Fn { generics, .. }) if !generics.is_empty()
+                        );
+                    if generic {
+                        let message = format!(
+                            "`{name}` is a generic fn and is only called, as `{name}(...)`: its type parameters come from its arguments"
+                        );
+                        if let Some(diag) = self.error(codes::BAD_OPERANDS, expr.span, message) {
+                            diag.help = Some(format!(
+                                "to name one that no argument gives, write `{name}::<T>(...)`"
+                            ));
+                        }
+                        return Ty::Error;
+                    }
+                }
                 let mut left = self.infer(first);
                 let mut left_expr: &Expr = first;
                 for (op, right_expr) in rest {

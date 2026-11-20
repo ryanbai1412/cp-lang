@@ -1536,3 +1536,27 @@ fn what_a_fn_changes_is_a_dependency_of_its_callers() {
     db.set_file("a.cp", quiet.as_str());
     assert!(db.diagnostics("a.cp").is_empty());
 }
+
+#[test]
+fn a_generic_fn_takes_its_type_arguments_after_two_colons() {
+    let head = "domain A = 0..3\nfn firsts<D>(k: Int) -> Int: k + D.len\n";
+    let diag = one(&format!("{head}print(firsts<A>(1))\n"));
+    assert_eq!(
+        diag.message,
+        "`firsts` is a generic fn and is only called, as `firsts(...)`: its type parameters come from its arguments"
+    );
+    assert_eq!(
+        diag.help.as_deref(),
+        Some("to name one that no argument gives, write `firsts::<T>(...)`")
+    );
+    let ok = format!("{head}print(firsts::<A>(1))\nlet k = 2\nprint(k < 3)\n");
+    assert!(codes(&ok).is_empty(), "{:?}", check(&ok));
+}
+
+#[test]
+fn a_heap_starts_empty() {
+    let diag = one("var h = MinHeap<Int>(by: x => -x)\n");
+    assert_eq!(diag.message, "`MinHeap<T>()` takes no arguments");
+    let ok = "var h = MinHeap<(Int, Int)>()\nh.push((-3, 3))\nvar xs = List<Int>()\nxs.push(1)\n";
+    assert!(codes(ok).is_empty(), "{:?}", check(ok));
+}

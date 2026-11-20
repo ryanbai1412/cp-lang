@@ -40,12 +40,7 @@ fn check(path: &Path) -> cpl_cli::Outcome {
 /// Files written in syntax that reached `main` after this checker did,
 /// which it does not read yet. A file leaves this list when it checks
 /// clean, and the test below says so.
-const PENDING: &[&str] = &[
-    // `runs` and `distinct`, which `proto/cpc` has and the prelude here does not.
-    "proto/ports/ccc10s4.cp",
-    "proto/ports/dpy.cp",
-    "proto/ports/noip07p1.cp",
-];
+const PENDING: &[&str] = &[];
 
 /// Passing tests the language has since moved away from, which the
 /// prototype rejects too: `offset_check` indexes with `i + 1`, and a step
@@ -100,11 +95,8 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
 /// not have yet. A name leaves this list when its case is rejected for
 /// its stated reason, and the test below says so.
 const NOT_YET: &[&str] = &[
-    // Reading an enum whose variants have no input spelling, `f<A>(x)`
-    // for a generic fn that is only called, and `MinHeap<T>(by: ..)`.
+    // Reading an enum whose variants have no input spelling.
     "enum_read_no_tags",
-    "generic_angle_call",
-    "minheap_by",
 ];
 
 /// Failing tests that state a limit of the prototype's code generator,
