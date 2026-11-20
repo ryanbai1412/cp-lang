@@ -1587,6 +1587,14 @@ class Compiler(LendMixin):
     def x_field(self, e, want):
         oc, ot = self.expr(e.obj)
         f = e.name
+        if isinstance(ot, TTuple) and f in ("adj4", "adj8") and len(ot.types) == 2 and all(isinstance(t, TDom) for t in ot.types):
+            # p.adj4 / p.adj8: the in-grid neighbours of a (Row, Col) point, in row-major order
+            (r, c), (rn, cn) = ot.types, [self.field_cpp(n) for n in ot.names]
+            steps = "{-1,0},{0,-1},{0,1},{1,0}" if f == "adj4" else "{-1,-1},{-1,0},{-1,1},{0,-1},{0,1},{1,-1},{1,0},{1,1}"
+            return (f"([&](const {ot.cpp}& _p) {{ vector<{ot.cpp}> _out; static const int _d[][2] = {{{steps}}}; "
+                    f"for (auto& _s : _d) {{ ll _r = (ll)_p.{rn} + _s[0], _c = (ll)_p.{cn} + _s[1]; "
+                    f"if (_r >= 0 && _r < (ll){r.info.len_cpp} && _c >= 0 && _c < (ll){c.info.len_cpp}) {{ {ot.cpp} _q; _q.{rn} = (int)_r; _q.{cn} = (int)_c; _out.push_back(_q); }} }} "
+                    f"return _out; }}({oc}))"), TList(ot)
         if isinstance(ot, (TList, TStr)) and f == "is_empty":
             return f"{oc}.empty()", BOOL
         if isinstance(ot, TTree) and f == "Pre":
