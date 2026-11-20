@@ -102,9 +102,11 @@ but not numeric precision or token order. Each output exercise also has an edita
 source sandbox with stdin/stdout, diagnostics, and C++17 preview. `@!multitest`
 with top-level `return`, `@memo` caching, Tropical Optionals (`?Int`, `min=`,
 `max=`, `??=`), `lends mut` projections, and `SegTree`/`LazySegTree` (`AddSum`,
-`Monoid`, `Action`) all run and emit C++17 in real WASM; spec-only forms (such
-as `@checker` `read_output()` and parent-indexed `a[l..=r]` slices) are labeled
-explicitly. Solutions
+`Monoid`, `Action`) all run and emit C++17 in real WASM; the playground's Trace
+button runs a program (and its `@brute(main)` when present) live into the trace
+debugger. Automated `cpl stress` (`@checker`/`@interactor`/shrinking) runs
+locally via `cpl` rather than in the browser sandbox, and spec-only forms (such
+as parent-indexed `a[l..=r]` slices) are labeled explicitly. Solutions
 are intentionally available without a login. Correct answers and chapter progress
 persist in browser storage; reset clears an exercise, changing an answer requires a
 fresh check, and changed exercise definitions invalidate old completion records.

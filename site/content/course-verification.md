@@ -7,7 +7,7 @@ Attach `@brute(main)` (or `@brute(fn_name)` to target one helper) directly insid
 ```example colocated_brute
 ```
 
-Run the fast prefix-minimum solution above in the sandbox, or inspect **C++17** to see that `slow()` is omitted from the executable C++ body (while the original `.cp` source remains in the header comment).
+Run the fast prefix-minimum solution above in the sandbox, inspect **C++17** to see that `slow()` is omitted from the executable C++ body (while the original `.cp` source remains in the header comment), or open it in the [playground](playground.html) and press **Trace** to step through the solution and `@brute(main)` side by side in the [trace debugger](trace.html).
 
 ```exercise verify-brute-output
 ```
@@ -19,7 +19,7 @@ Run the fast prefix-minimum solution above in the sandbox, or inspect **C++17** 
 
 When a problem accepts any valid coloring, permutation, or construction, character-by-character comparison against a brute fails. Add a `@checker` block in the same file:
 
-```cp CP Lang 0.2.2 · spec (cpl stress harness)
+```cp CP Lang 0.2.2 · local cpl stress
 @checker
 fn check():
     let out: [V]Color = read_output()
@@ -28,7 +28,7 @@ fn check():
 
 When paired with `@brute(main)`, the brute settles **existence** (e.g., whether a valid coloring exists or the answer is `-1`), while `@checker` validates any constructive answer your fast solution prints.
 
-> **WASM status.** `@brute(main)` and `@interactor` parse, check, and strip cleanly in WASM `run`/`build` today (`colocated_brute.cp` above). The `read_output()` builtin and the automated `cpl stress` shrinking/comparison runner are part of the approved 0.2.2 verification spec and are not executed inside the browser sandbox.
+> **Browser vs. local CLI.** `@brute(main)`, `@checker` (including `read_output()`), and `@interactor` parse, check, and omit verification code from the executable C++17 body in both `cpl` and WebAssembly. In the [playground](playground.html), **Trace** runs `@brute(main)` beside your fast solution on the current input and opens the live diff in the [trace debugger](trace.html). The automated `cpl stress` random generator, shrinker, and `@checker`/`@interactor` harnesses run locally via `cpl stress` (with `--trace` for side-by-side HTML captures), not inside the browser sandbox.
 
 ```exercise verify-shrink
 ```
@@ -40,7 +40,7 @@ When paired with `@brute(main)`, the brute settles **existence** (e.g., whether 
 
 Interactive problems pair `ask("?", x, limit: K)` in your solution with a co-located `@interactor` judge in the same file:
 
-```cp CP Lang 0.2.2 · spec (cpl stress interactive harness)
+```cp CP Lang 0.2.2 · local cpl stress
 @interactor
 fn judge(sol: Interactor):
     let secret: 1..=1000 = read()      // hidden test case

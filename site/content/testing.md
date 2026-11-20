@@ -24,7 +24,7 @@ For input `4`, `f(3)` evaluates to `45`.
 There is one assertion keyword, so a sanity check can never be stripped by accident:
 
 - `assert cond` — always checked in both local and judge builds, and it feeds the range and disjointness proofs. Input constraints are not assertions: they live in typed `read()` bounds, `read(gen: f)`, `@gen`, and `@checker`.
-- `debug(x, dp)` — pretty-prints labeled values to `stderr` locally and replays side-by-side when `cpl stress` finds a failing case; stripped on judge builds.
+- `debug(x, dp)` — checkpoint shown on a local run, recorded in `cpl run --trace` and the playground's **Trace** button, and replayed side-by-side when `cpl stress` finds a failing case; omitted from the executable C++ that `cpl build` writes.
 
 ## Co-located `@brute`, `@checker`, `@interactor`, and `@gen`
 
@@ -67,9 +67,9 @@ In interactive problems, pair `@interactor` with `ask("?", x, limit: 2)` so quer
 
 ## Running `cpl stress`
 
-`cpl stress solution.cp` defaults to the in-file `@brute`, `@checker`, or `@interactor`, escalates test sizes (`1..=20`), compiles with `-DLOCAL`, shrinks the first failure via choice streams, replays `debug(...)` outputs side-by-side, and reports max size reached, rejection rate (warning above 50%), diff mode (`--close 1e-9` for floats), and output diversity.
+`cpl stress solution.cp` runs locally using the file's own `@brute(main)`, `@checker` (with `read_output()`), or `@interactor`, handles `@!multitest` headers, shrinks failing inputs (including shrinking a multitest input to the one failing case), replays `debug(...)` checkpoints from both sides, and with `--trace` writes a side-by-side HTML trace page. The automated generator, shrinker, and `@checker`/`@interactor` harnesses run locally in `cpl stress`, not in the browser sandbox.
 
-For a visual side-by-side comparison of an optimized DP run against its reference, open the [trace explorer](trace.html) and inspect the 0/1 knapsack capture.
+For a visual side-by-side comparison, run `cpl run --trace` / `cpl stress --trace` locally, press **Trace** in the [playground](playground.html) (which runs `@brute(main)` beside your fast solution in WebAssembly when present), or open the [trace debugger](trace.html) to inspect the sample 0/1 knapsack capture.
 
 ## How the site stays honest
 

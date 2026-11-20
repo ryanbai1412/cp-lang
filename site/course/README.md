@@ -67,15 +67,18 @@ playground presets through the real WASM runtime (including cached `@memo` DP an
 Output checking ignores whitespace only: token order and full integer precision
 matter. Browser checks execute the real fixture; each output exercise also has
 an editable WASM sandbox. Keep fixtures within the Rust backend's supported
-subset, and explicitly label spec-only or prototype-only syntax (such as
-`read_output()` and parent-indexed `a[l..=r]` slices).
+subset, and explicitly label local-CLI-only harnesses (automated `cpl stress`
+with `@checker`/`@interactor` and shrinking) and spec-only or prototype-only
+syntax (such as parent-indexed `a[l..=r]` slices).
 
 ## Status and verification
 
 Use an `example NAME` fence for native-tested examples. Use a labeled `cp`
-fragment for approved design, and say plainly when an API or workflow is planned.
-Review against `../../plan/19-index-and-lends.md` and `../../decisions.md`.
-In particular, do not invent a working `spec`, `checker`, or `interactor` CLI.
+fragment for approved design or local-CLI-only harnesses, and say plainly when
+an API or workflow is not executed in the browser. Review against
+`../../plan/19-index-and-lends.md` and `../../decisions.md`. In particular, do
+not invent a `spec` keyword, and keep browser execution distinct from local
+`cpl stress` execution.
 
 From the repository root:
 

@@ -426,7 +426,7 @@
       {
         "id": "verify-checker",
         "title": "Who decides existence",
-        "prompt": "In the approved @checker design for a print-any-valid-coloring problem, the brute prints -1 because no coloring exists. When does your output pass?",
+        "prompt": "With a co-located @checker for a print-any-valid-coloring problem, the brute prints -1 because no coloring exists. When does your output pass?",
         "hint": "The checker judges an answer; something else settles whether an answer exists.",
         "solution": "Only -1 passes. The brute settles existence; when it does find an answer, your output must parse as [V]Color and pass valid. The checker never needs to decide whether a coloring exists, which keeps it short.",
         "kind": "choice",
