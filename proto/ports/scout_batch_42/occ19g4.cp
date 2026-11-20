@@ -32,7 +32,7 @@ for k in 0..n:
 // FRICTION MC4: Sparse/jagged 2D Fenwick (`[X]Fenwick<Y_x, Int>`) cannot be typed
 // with per-bucket domains in v2, pushing 2D sparse counting cleanly to CDQ + 1D Fenwick.
 let ys = compress(all_v)
-var bit = Fenwick<ys.D, Int>(+)
+var bit = Fenwick<ys.D, Int>()
 var ans: [P]Int = 0
 
 sort(mut pts, by: p => (desc(p.d), p.id))
