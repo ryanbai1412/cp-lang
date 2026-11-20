@@ -326,6 +326,20 @@ inline __int128 shl128(__int128 a, ll b) {
 ",
     },
     Piece {
+        name: "have",
+        needs: &["fail"],
+        code: "\
+template <class O> decltype(auto) have(O& o) {
+    if (!o.has_value()) fail(\"`!` on `none`: there is no value here\");
+    return *o;
+}
+template <class O, std::enable_if_t<!std::is_lvalue_reference<O>::value, int> = 0> auto have(O&& o) {
+    if (!o.has_value()) fail(\"`!` on `none`: there is no value here\");
+    return std::move(*o);
+}
+",
+    },
+    Piece {
         name: "udiv",
         needs: &[],
         code: "\

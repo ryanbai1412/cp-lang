@@ -279,7 +279,7 @@ pub(crate) fn show(
             }
         }
         (Value::Array(array), Ty::Array { dims, elem }) => {
-            let sep = sep_of(elem);
+            let sep = sep_of(elem, &program.structs);
             // The last dimension is a row; rows are one per line.
             let row = match dims.last() {
                 Some(Dim::Pos(_) | Dim::Bound(_) | Dim::Int | Dim::IntFrom(_)) if dims.len() > 1 => {
@@ -299,7 +299,7 @@ pub(crate) fn show(
             }
         }
         (Value::List(items), Ty::List(elem)) => {
-            let sep = sep_of(elem);
+            let sep = sep_of(elem, &program.structs);
             for (i, item) in items.iter().enumerate() {
                 if i > 0 {
                     out.extend_from_slice(sep.bytes());
@@ -308,7 +308,7 @@ pub(crate) fn show(
             }
         }
         (Value::Set(items), Ty::Set(elem) | Ty::HashSet(elem)) => {
-            let sep = match sep_of(elem) {
+            let sep = match sep_of(elem, &program.structs) {
                 Sep::None => Sep::Space,
                 sep => sep,
             };

@@ -2417,8 +2417,57 @@ impl<'a> Lowerer<'a> {
     }
 
     /// What a `for` walks over, and the type of each value.
+    /// What `e` is where a sequence is wanted and `e` is something a
+    /// `for` walks without being one: a range, a domain, `Bool`. It is
+    /// the values the walk gives, `x for x in e`, so `sorted(0..n)`,
+    /// `sum(lo..hi)` and `max(D)` need no rule of their own.
+    pub(super) fn walked(&self, e: &ast::Expr) -> Option<ast::Expr> {
+        let mut inner = e;
+        while let ast::ExprKind::Paren(next) = &inner.kind {
+            inner = next;
+        }
+        let walks = match &inner.kind {
+            ast::ExprKind::Range { .. } => true,
+            ast::ExprKind::Name(name) if self.lookup(name).is_none() => {
+                name == "Bool"
+                    || matches!(self.gen_env.get(name), Some(GenArg::Domain(_)))
+                    || matches!(self.get_sym(name), Some(Sym::Domain(_)))
+            }
+            _ => false,
+        };
+        let item = "item";
+        walks.then(|| ast::Expr {
+            span: e.span,
+            kind: ast::ExprKind::Comprehension {
+                body: Box::new(ast::Expr {
+                    kind: ast::ExprKind::Name(item.to_string()),
+                    span: e.span,
+                }),
+                clauses: vec![ast::Clause {
+                    pat: ast::Pattern {
+                        kind: ast::PatternKind::Name(item.to_string()),
+                        span: e.span,
+                    },
+                    iter: e.clone(),
+                    conds: Vec::new(),
+                }],
+            },
+        })
+    }
+
     pub(super) fn iter(&mut self, e: &ast::Expr) -> (Iter, Ty) {
         let span = e.span;
+        // `for b in Bool` walks `false`, then `true`.
+        if matches!(&e.kind, ast::ExprKind::Name(name) if name == "Bool" && self.lookup(name).is_none()) {
+            let both = [false, true].map(|b| ast::Expr {
+                kind: ast::ExprKind::Bool(b),
+                span,
+            });
+            return self.iter(&ast::Expr {
+                kind: ast::ExprKind::List(both.to_vec()),
+                span,
+            });
+        }
         let error = |lw: &mut Self| {
             let zero = lw.int_lit(0, span);
             (

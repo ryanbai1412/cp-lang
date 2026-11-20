@@ -1646,7 +1646,61 @@ impl<'a> Lowerer<'a> {
         // and the place is only reached for after both: `trie[grow()].ends
         // = true` and `trie[o].next ??= trie.push_id(Node())` are safe when
         // the list moves.
+        let settled = out.len();
         let place = self.settle_indexes(place, out);
+        // `a op= b` is `a = a op b` for every type that has `op`: a list,
+        // a set, anything `a op b` is written for. The numbers, strings
+        // and structs below have a shorter way that reads `a` once.
+        if let ast::AssignOp::Binary(bin) = op {
+            let short = bin == BinOp::Coalesce
+                || matches!(
+                    place.ty,
+                    Ty::Int
+                        | Ty::I128
+                        | Ty::U64
+                        | Ty::Float
+                        | Ty::Bool
+                        | Ty::Str
+                        | Ty::Struct(_)
+                        | Ty::Opt(_)
+                        | Ty::Error
+                );
+            // `xs += ys` grows `xs` where it is; it is not a copy of both.
+            if bin == BinOp::Add && matches!(place.ty, Ty::List(_)) {
+                let more = self.expect(value, &place.ty);
+                let extend = ExprKind::Mutate(Mutation::Extend, Box::new(place), vec![more]);
+                out.push(Stmt::Expr(self.mk(extend, Ty::Unit, target.span)));
+                return;
+            }
+            // An index that does work is done once, so `a` can't be
+            // written out a second time.
+            if !short && out.len() == settled {
+                let whole = ast::Expr {
+                    kind: ast::ExprKind::Binary {
+                        op: bin,
+                        op_span: target.span,
+                        lhs: Box::new(target.clone()),
+                        rhs: Box::new(value.clone()),
+                    },
+                    span: target.span,
+                };
+                // A step along a domain is checked: `cur += 2` stops the
+                // program when it leaves the domain, as `(cur + 2)!` does.
+                let rhs = if matches!(place.ty, Ty::Pos(_)) {
+                    let stepped = self.expr(&whole, None);
+                    if stepped.ty == Ty::opt(place.ty.clone()) {
+                        let inside = ExprKind::Unwrap(Box::new(stepped), true);
+                        self.mk(inside, place.ty.clone(), target.span)
+                    } else {
+                        self.coerce(stepped, &place.ty, target.span)
+                    }
+                } else {
+                    self.expect(&whole, &place.ty)
+                };
+                out.push(Stmt::Assign(place, AssignOp::Set, rhs));
+                return;
+            }
+        }
         let rhs = match op {
             ast::AssignOp::Set => self.expect(value, &place.ty),
             ast::AssignOp::Binary(BinOp::Coalesce) => match &place.ty {

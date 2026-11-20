@@ -625,7 +625,14 @@ impl<'p> Emitter<'p> {
                 let code = self.opened(value);
                 Code::primary(format!("{}.has_value()", code.at(PRIMARY)))
             }
-            ExprKind::Unwrap(value, _) => {
+            // The user's `!` is an assertion: on `none` it stops the
+            // program, as it does in `cpl run`. After a test it is a plain read.
+            ExprKind::Unwrap(value, true) => {
+                self.need("have");
+                let code = self.opened(value);
+                Code::primary(format!("cpl::have({})", code.text))
+            }
+            ExprKind::Unwrap(value, false) => {
                 let code = self.opened(value);
                 Code::new(format!("*{}", code.at(UNARY)), UNARY)
             }

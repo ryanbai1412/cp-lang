@@ -26,11 +26,14 @@ impl Sep {
     }
 }
 
-/// The separator for a sequence whose elements have type `elem`.
-pub fn sep_of(elem: &Ty) -> Sep {
+/// The separator for a sequence whose elements have type `elem`. A struct
+/// that says how it is shown (`impl Show`) is one word, as a number is:
+/// a list of `Mod`s is one line.
+pub fn sep_of(elem: &Ty, structs: &[StructDef]) -> Sep {
     match elem {
         Ty::Char => Sep::None,
-        Ty::Opt(inner) => match sep_of(inner) {
+        Ty::Struct(id) if structs[*id].show_fn.is_some() => Sep::Space,
+        Ty::Opt(inner) => match sep_of(inner, structs) {
             Sep::None => Sep::Space,
             sep => sep,
         },

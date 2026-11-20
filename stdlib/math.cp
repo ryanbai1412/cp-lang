@@ -85,6 +85,15 @@ pub struct Sieve:
 /// The number of bits needed to write `x >= 0` (`bit_len(0) == 0`, `bit_len(5) == 3`).
 pub fn bit_len(x: Int) -> Int = bit_width(x)
 
+/// The digits of `x >= 0` in `base`, lowest first: `1203.digits()` is `[3, 0, 2, 1]`, and `0` has the one digit `0`.
+pub fn digits(self: Int, base: Int = 10) -> List<Int>:
+    assert self >= 0 and base >= 2
+    var (out, x) = ([self % base], self / base)
+    while x > 0:
+        out.push(x % base)
+        x /= base
+    out
+
 /// Whether bit `i` of `x` is set: `x.bit(i)`, bit 0 the lowest. No bit from 63 up is set in an `Int` that is not negative.
 pub fn bit(self: Int, i: Int) -> Bool = i < 64 and (self >> i) & 1 == 1
 
@@ -212,3 +221,12 @@ fn bit_reads_one_bit():
     for _ in 0..100:
         let x = rand(0, 1 << 40)
         assert sum(1 << i for i in 0..41 if x.bit(i)) == x
+
+@test
+fn digits_are_lowest_first():
+    assert 1203.digits() == [3, 0, 2, 1] and 0.digits() == [0] and 5.digits(2) == [1, 0, 1]
+    assert 7 in 1700.digits() and not (7 in 1800.digits())
+    for _ in 0..100:
+        let (x, base) = (rand(0, 1 << 40), rand(2, 16))
+        let ds = x.digits(base)
+        assert sum(ds[i] * base ** i for i in 0..ds.len) == x and all(0 <= d < base for d in ds)

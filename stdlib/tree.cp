@@ -180,6 +180,11 @@ pub struct Rooted<V, Pre>:
     /// Is `a` an ancestor of `b`? A vertex is its own ancestor. O(1).
     pub fn is_anc(self, a: V, b: V) -> Bool = tin[b] in self.sub(a)
 
+    /// The child end of the tree edge between `u` and `v`: the one below. O(1).
+    pub fn lower(self, u: V, v: V) -> V:
+        assert par[u] == v or par[v] == u
+        if par[u] == v: u else: v
+
     /// The lowest common ancestor. O(log n).
     pub fn lca(self, a: V, b: V) -> V:
         var (x, y) = (a, b)
@@ -572,3 +577,12 @@ fn weighted_rooted_dfs_tree_on_cyclic_graph():
         assert r.is_anc(V(u), V(v)) or r.is_anc(V(v), V(u))
     // DFS explores first neighbor 1 -> 2 -> 4 -> 3, 5; so 0's only tree child is 1
     assert r.children(V(0)) == [V(1)] and r.dist(V(0), V(2)) == 10 and r.dist(V(0), V(5)) == 15
+
+@test
+fn lower_is_the_child_end_of_an_edge():
+    domain V = 0..9
+    let adj = random_tree(V.first)
+    let r = Rooted(adj, V.first)
+    for v in V:
+        if let p = r.parent(v):
+            assert r.lower(v, p) == v and r.lower(p, v) == v

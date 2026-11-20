@@ -19,7 +19,9 @@ pub struct FlowGraph<V>:
         FlowGraph([V] v => [], [], [], [])
 
     /// Add an arc `u -> v` with capacity `cap` (and its reverse with capacity 0).
-    pub fn add(mut self, u: V, v: V, cap: Int) -> Arc:
+    /// A `cap` of `none` is an arc no cut can afford: its capacity is 2^60.
+    pub fn add(mut self, u: V, v: V, cap: ?Int) -> Arc:
+        let cap = cap ?? 1 << 60
         assert cap >= 0
         let a = Arc(to.len)
         head[u].push(a)
@@ -234,3 +236,15 @@ fn hungarian_matches_brute_force_on_random_matrices():
             if not next_permutation(mut p): break
         assert h.total == best
         assert sorted([h.mate[i].to_idx for i in L]) == [0, 1, 2, 3]
+
+@test
+fn an_arc_without_a_capacity_is_never_cut():
+    domain V = 0..4
+    var g = FlowGraph<V>()
+    g.add(V(0), V(1), 5)
+    g.add(V(1), V(2), none)
+    g.add(V(2), V(3), 3)
+    assert g.max_flow(V(0), V(3)) == 3
+    let side = g.min_cut(V(0))
+    // the cut is the arc of capacity 3, not the one between
+    assert side[V(1)] and side[V(2)] and not side[V(3)]

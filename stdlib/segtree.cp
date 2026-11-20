@@ -46,6 +46,10 @@ pub struct SegTree<D, T>(m: Monoid<T>):
             p /= 2
             t[p] = m.op(t[2 * p], t[2 * p + 1])
 
+    /// Replace the value at `i` with `f` of it, as `LazySegTree.update` does. O(log n).
+    pub fn update(mut self, i: D, f: T -> T):
+        self.set(i, f(self.get(i)))
+
     /// The fold of a range, left to right: `st.fold(l..=r)`, `st.fold(..i)`, `st.fold(i..)`.
     /// An empty range gives the identity.
     pub fn fold(self, r: Range<D>) -> T:
@@ -185,3 +189,11 @@ fn max_right_and_min_left_binary_search():
                 acc += want
                 want -= 1
             assert st.min_left(V.bounds.nth(h), s => s <= cap).ord == want
+
+@test
+fn update_changes_one_value_in_place():
+    domain V = 0..6
+    var st = SegTree<V, Int>(+, [V] v => v.to_idx)
+    st.update(V(2), x => x + 10)
+    st.update(V(5), x => x * 2)
+    assert st.get(V(2)) == 12 and st.get(V(5)) == 10 and st.all == 15 + 10 + 5

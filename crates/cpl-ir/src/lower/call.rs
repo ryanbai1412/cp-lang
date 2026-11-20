@@ -1083,7 +1083,10 @@ impl<'a> Lowerer<'a> {
                     self.error(codes::WRONG_ARG_COUNT, span, "`sorted` takes a sequence");
                     return self.err_expr(span);
                 }
-                let value = self.expr(&args[0].value, None);
+                let value = match self.walked(&args[0].value) {
+                    Some(values) => self.expr(&values, None),
+                    None => self.expr(&args[0].value, None),
+                };
                 if args.len() == 1 {
                     self.sorted(value, span)
                 } else {
@@ -1976,6 +1979,9 @@ impl<'a> Lowerer<'a> {
     }
 
     fn reduce_opt(&mut self, kind: Reduce, arg: &ast::Expr, optional: bool, span: Span) -> Expr {
+        if let Some(values) = self.walked(arg) {
+            return self.reduce_opt(kind, &values, optional, span);
+        }
         let at = self.span(span);
         let (frames, value) = match &arg.kind {
             ast::ExprKind::Comprehension { body, clauses } => {

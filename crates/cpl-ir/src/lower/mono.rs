@@ -1055,20 +1055,31 @@ impl<'a> Lowerer<'a> {
         // and arc element type `A` from a bound `next: N` when `N` is a `Graph<V, E>` or fn.
         for g in &gen_names {
             if !inferred.contains_key(g) && (g == "V" || g == "D") {
-                let dom_from_struct = inferred.values().find_map(|ga| {
-                    if let GenArg::Ty(Ty::Struct(sid)) = ga {
-                        self.structs[*sid].origin_gen.as_ref().and_then(|(_, gargs)| {
-                            gargs.iter().find_map(|a| {
-                                if let GenArg::Domain(d) = a {
-                                    Some(*d)
-                                } else {
-                                    None
-                                }
-                            })
+                // The struct's own parameter of that name first, whether
+                // it was given as a domain or as the type of its positions
+                // (`Graph.directed` of a plain list of `(V, V)`).
+                let as_domain = |a: &GenArg| match a {
+                    GenArg::Domain(d) | GenArg::Ty(Ty::Pos(d)) => Some(*d),
+                    _ => None,
+                };
+                let dom_from_struct = inferred.values().find_map(|ga| match ga {
+                    GenArg::Ty(Ty::Struct(sid)) => {
+                        let info = &self.structs[*sid];
+                        info.env.get(g).and_then(as_domain).or_else(|| {
+                            info.origin_gen
+                                .as_ref()
+                                .and_then(|(_, gargs)| gargs.iter().find_map(as_domain))
                         })
-                    } else {
-                        None
                     }
+                    // A table of neighbour lists, `[V]List<..>`, is a graph
+                    // over the domain that indexes it.
+                    GenArg::Ty(Ty::Array { dims, elem }) if matches!(**elem, Ty::List(_)) => {
+                        match dims.as_slice() {
+                            [Dim::Pos(d)] => Some(*d),
+                            _ => None,
+                        }
+                    }
+                    _ => None,
                 });
                 if let Some(d) = dom_from_struct {
                     inferred.insert(g.clone(), GenArg::Domain(d));

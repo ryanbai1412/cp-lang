@@ -231,7 +231,7 @@ impl<'p> Emitter<'p> {
                     dims.len() - 1
                 ));
                 b.push_str("    for (size_t i = 0; i < v.d.size(); i++) {\n");
-                b.push_str(match sep_of(elem) {
+                b.push_str(match sep_of(elem, &self.program.structs) {
                     Sep::None => "        if (i > 0 && i % row == 0) cpl::put_char('\\n');\n",
                     Sep::Space => "        if (i > 0) cpl::put_char(i % row == 0 ? '\\n' : ' ');\n",
                     Sep::Line => "        if (i > 0) cpl::put_char('\\n');\n",
@@ -242,7 +242,7 @@ impl<'p> Emitter<'p> {
                 let cell = self.cell("v[i]", elem);
                 let shown = self.show_stmt(&cell, elem, "digits");
                 b.push_str("    for (size_t i = 0; i < v.size(); i++) {\n");
-                let sep = sep_of(elem);
+                let sep = sep_of(elem, &self.program.structs);
                 if sep != Sep::None {
                     b.push_str(&format!(
                         "        if (i > 0) cpl::put_char({});\n",
@@ -256,7 +256,7 @@ impl<'p> Emitter<'p> {
                 b.push_str("    bool first = true;\n    for (const auto& x : v) {\n");
                 b.push_str(&format!(
                     "        if (!first) cpl::put_char({});\n        first = false;\n",
-                    sep_char(sep_of(elem))
+                    sep_char(sep_of(elem, &self.program.structs))
                 ));
                 b.push_str(&format!("        {shown}\n    }}\n"));
             }
