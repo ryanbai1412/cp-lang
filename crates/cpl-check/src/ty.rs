@@ -328,9 +328,11 @@ impl Ty {
     /// "a V", "an E", "an Int": the type with its article, for messages.
     pub fn with_article(&self) -> String {
         let text = self.to_string();
-        let vowel = text
-            .trim_start_matches(['[', '?', '('])
-            .starts_with(['A', 'E', 'I', 'O', 'U', 'a', 'e', 'i', 'o', 'u']);
+        // "an F64": the name is said "eff".
+        let vowel = text == "F64"
+            || text
+                .trim_start_matches(['[', '?', '('])
+                .starts_with(['A', 'E', 'I', 'O', 'U', 'a', 'e', 'i', 'o', 'u']);
         format!("{} {text}", if vowel { "an" } else { "a" })
     }
 }
@@ -348,7 +350,7 @@ impl fmt::Display for Ty {
         };
         match self {
             Ty::Int => f.write_str("Int"),
-            Ty::Float => f.write_str("Float"),
+            Ty::Float => f.write_str("F64"),
             Ty::Bool => f.write_str("Bool"),
             Ty::Char => f.write_str("Char"),
             Ty::Str => f.write_str("Str"),

@@ -471,7 +471,11 @@ impl<'a> Parser<'a> {
         }
         let pat = self.pattern();
         self.expect(T::In, "`in` after the loop variable");
-        let iter = self.expr();
+        let iter = if self.at(T::Question) {
+            self.optional_type_iter()
+        } else {
+            self.expr()
+        };
         // `for x in xs if cond:` runs the body for the `x` that pass: the
         // body is an `if`.
         let filter = self.eat(T::If).then(|| (self.start(), self.expr()));
@@ -500,6 +504,25 @@ impl<'a> Parser<'a> {
             pat,
             iter,
             body,
+        }
+    }
+
+    /// `?Col` where a `for` walks: every value of the type, `none` first.
+    /// It is held as `Opt<Col>`, the way `Subset<Row>` is.
+    pub(super) fn optional_type_iter(&mut self) -> Expr {
+        let start = self.start();
+        let name_span = self.span();
+        self.bump();
+        let inner = self.ty();
+        Expr {
+            kind: ExprKind::Generic {
+                base: Box::new(Expr {
+                    kind: ExprKind::Name("Opt".to_string()),
+                    span: name_span,
+                }),
+                args: vec![inner],
+            },
+            span: self.span_from(start),
         }
     }
 

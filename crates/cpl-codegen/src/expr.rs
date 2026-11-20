@@ -226,6 +226,7 @@ impl<'p> Emitter<'p> {
                     _ => format!("std::get<{index}>({b})"),
                 }
             }
+            PlaceKind::Some(base) => format!("(*{})", self.place_at(base, false)),
             PlaceKind::Index(base, indices) => {
                 let b = self.place_at(base, false);
                 let touches: Vec<Touch> = indices.iter().map(|e| self.touch(e)).collect();

@@ -139,6 +139,26 @@ impl<'a> Parser<'a> {
                 }
                 TypeKind::Named { name, args }
             }
+            // `xs.D`: the domain a value brought with it, as `compress` does.
+            T::Ident
+                if self.peek_n(1) == T::Dot
+                    && self.peek_n(2) == T::Ident
+                    && self.tokens[self.pos + 2]
+                        .span
+                        .text(self.src)
+                        .starts_with(|c: char| c.is_ascii_uppercase())
+                    && !matches!(self.peek_n(3), T::Dot | T::DotDot | T::DotDotEq | T::LParen) =>
+            {
+                let mut name = self.name();
+                self.bump();
+                let member = self.name();
+                name.text = format!("{}.{}", name.text, member.text);
+                name.span = name.span.to(member.span);
+                TypeKind::Named {
+                    name,
+                    args: Vec::new(),
+                }
+            }
             T::Ident | T::Int | T::Minus | T::Float => {
                 // A range type: `0..=1e9`, `1..=n`.
                 let lo = self.additive();

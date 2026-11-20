@@ -610,6 +610,8 @@ impl<'a> Parser<'a> {
                                     | T::Comma
                                     | T::RParen
                                     | T::RBracket
+                                    // `for mask in Subset<Row>:`
+                                    | T::Colon
                             ) && !p.at_line_end()
                         {
                             p.speculation_failed = true;
@@ -763,7 +765,11 @@ impl<'a> Parser<'a> {
             let pat = self.pattern();
             self.expect(T::In, "`in` after the comprehension variable");
             // Stop before `if`, which here is the filter.
-            let iter = self.coalesce();
+            let iter = if self.at(T::Question) {
+                self.optional_type_iter()
+            } else {
+                self.coalesce()
+            };
             // `for c in City if let b = buy[c] if b > 0`.
             let mut conds = Vec::new();
             while self.eat(T::If) {

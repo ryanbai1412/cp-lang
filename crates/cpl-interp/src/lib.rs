@@ -279,13 +279,16 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
             }
             Stmt::DefDomain { id, lo, len } => {
+                let len_span = len.span;
                 let lo = self.eval(lo)?.int();
                 let len = self.eval(len)?.int().max(0);
                 self.domains[*id] = (lo, len);
+                self.size_subsets(*id, len_span)?;
             }
             Stmt::DefDomainFromVal { id, val } => {
                 if let Value::DomainVal(lo, len) = self.eval(val)? {
                     self.domains[*id] = (lo, len.max(0));
+                    self.size_subsets(*id, val.span)?;
                 }
             }
             Stmt::Trap(message, span) => return trap(*span, message.clone()),
@@ -432,13 +435,33 @@ impl<'p, 'o> Interp<'p, 'o> {
         Ok(Flow::Next)
     }
 
+    /// Sizes each `Subset<D>` of the domain `base`, which was just set.
+    fn size_subsets(&mut self, base: cpl_ir::DomainId, span: Span) -> Res<()> {
+        for &(subset, of) in &self.program.subsets {
+            if of == base {
+                let len = self.domains[base].1;
+                if len > cpl_ir::MAX_SUBSET_BITS {
+                    return trap(
+                        span,
+                        format!(
+                            "a `Subset` needs a domain of at most {} values, and this one has {len}",
+                            cpl_ir::MAX_SUBSET_BITS
+                        ),
+                    );
+                }
+                self.domains[subset] = (0, 1 << len);
+            }
+        }
+        Ok(())
+    }
+
     // ----- places -----
 
     /// Evaluates every index along `place`, outermost container first.
     fn indices(&mut self, place: &'p Place, out: &mut Vec<Value>) -> Res<()> {
         match &place.kind {
             PlaceKind::Local(_) | PlaceKind::Global(_) => {}
-            PlaceKind::Field(base, _) => self.indices(base, out)?,
+            PlaceKind::Field(base, _) | PlaceKind::Some(base) => self.indices(base, out)?,
             PlaceKind::Index(base, indices) => {
                 self.indices(base, out)?;
                 for index in indices {
@@ -466,6 +489,11 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::Tuple(fields) => Ok(&mut Rc::make_mut(fields)[*index]),
                 Value::Moved => trap(span, LENT),
                 _ => trap(span, "internal: field of a value without fields"),
+            },
+            PlaceKind::Some(base) => match self.resolve(base, indices)? {
+                Value::Opt(Some(inner)) => Ok(Rc::make_mut(inner)),
+                Value::Moved => trap(span, LENT),
+                _ => trap(span, "there is no value here: it is `none`"),
             },
             PlaceKind::Index(base, exprs) => {
                 let base_ty = &base.ty;

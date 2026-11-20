@@ -31,6 +31,9 @@ pub const INF: i64 = 4_000_000_000_000_000_000;
 pub const INT_MIN: i64 = i64::MIN;
 
 pub type DomainId = usize;
+
+/// The most values a domain can have for `Subset<D>` to hold its subsets.
+pub const MAX_SUBSET_BITS: i64 = 25;
 pub type StructId = usize;
 pub type EnumId = usize;
 pub type FnId = usize;
@@ -438,6 +441,9 @@ pub enum PlaceKind {
     Global(GlobalId),
     Index(Box<Place>, Vec<Expr>),
     Field(Box<Place>, usize),
+    /// The value inside an optional that was just filled: the place of
+    /// `(o ??= [])`.
+    Some(Box<Place>),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -589,6 +595,9 @@ pub struct Program {
     /// `@multitest`: the input starts with a count and the file runs once
     /// per test.
     pub multitest: bool,
+    /// `Subset<D>`: each `(subset, base)` is a domain of the `2^K` subsets
+    /// of `base`, a subset held as its bitmask. It is sized when `base` is.
+    pub subsets: Vec<(DomainId, DomainId)>,
     /// The program calls `ask(...)`: every `print` goes out at once, so
     /// the judge sees a query before the answer is read.
     pub interactive: bool,

@@ -1398,6 +1398,8 @@ impl<'a> Lowerer<'a> {
             ast::AssignOp::Binary(BinOp::Coalesce) => match &place.ty {
                 Ty::Opt(inner) => {
                     let inner = (**inner).clone();
+                    // `(o ??= []).push(x)` goes on with what `o` holds.
+                    self.filled.insert((self.cur_mod, target.span.start, target.span.end));
                     self.expect(value, &inner)
                 }
                 Ty::Error => self.expr(value, None),
@@ -1675,6 +1677,11 @@ impl<'a> Lowerer<'a> {
         out.push(Stmt::Assign(place, op, value));
     }
 
+    /// True for the `o` of `(o ??= init)`, which holds a value from there on.
+    pub(super) fn is_filled(&self, e: &ast::Expr) -> bool {
+        self.filled.contains(&(self.cur_mod, e.span.start, e.span.end))
+    }
+
     pub(super) fn try_place(&mut self, e: &ast::Expr) -> Option<Place> {
         let diag_len = self.diags.len();
         let p = self.place(e);
@@ -1706,7 +1713,17 @@ impl<'a> Lowerer<'a> {
             span,
         };
         match &e.kind {
-            ast::ExprKind::Paren(inner) => self.place(inner),
+            ast::ExprKind::Paren(inner) => {
+                let place = self.place(inner);
+                match &place.ty {
+                    Ty::Opt(held) if self.is_filled(inner) => Place {
+                        ty: (**held).clone(),
+                        kind: PlaceKind::Some(Box::new(place)),
+                        span,
+                    },
+                    _ => place,
+                }
+            }
             ast::ExprKind::Name(_) | ast::ExprKind::SelfValue => {
                 // Inside an inlined `lends` projection, `self` or bare fields of `self` refer to `inline_self`.
                 if let Some((ref recv_place, sid)) = self.cx.inline_self.clone() {
@@ -2272,7 +2289,9 @@ fn root_place(place: &Place) -> PlaceKind {
     match &place.kind {
         PlaceKind::Local(s) => PlaceKind::Local(*s),
         PlaceKind::Global(g) => PlaceKind::Global(*g),
-        PlaceKind::Index(base, _) | PlaceKind::Field(base, _) => root_place(base),
+        PlaceKind::Index(base, _) | PlaceKind::Field(base, _) | PlaceKind::Some(base) => {
+            root_place(base)
+        }
     }
 }
 
@@ -2281,6 +2300,7 @@ pub(super) fn place_to_expr(place: &Place) -> Expr {
         PlaceKind::Local(s) => ExprKind::Local(*s),
         PlaceKind::Global(g) => ExprKind::Global(*g),
         PlaceKind::Field(base, idx) => ExprKind::Field(Box::new(place_to_expr(base)), *idx),
+        PlaceKind::Some(base) => ExprKind::Unwrap(Box::new(place_to_expr(base)), false),
         PlaceKind::Index(base, idxs) => {
             ExprKind::Index(Box::new(place_to_expr(base)), idxs.clone())
         }

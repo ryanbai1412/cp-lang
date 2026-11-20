@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 pub(crate) fn place_exprs<'p>(place: &'p Place, f: &mut dyn FnMut(&'p Expr)) {
     match &place.kind {
         PlaceKind::Local(_) | PlaceKind::Global(_) => {}
-        PlaceKind::Field(base, _) => place_exprs(base, f),
+        PlaceKind::Field(base, _) | PlaceKind::Some(base) => place_exprs(base, f),
         PlaceKind::Index(base, indices) => {
             place_exprs(base, f);
             indices.iter().for_each(f);
@@ -222,7 +222,7 @@ pub(crate) fn root(place: &Place) -> (bool, usize) {
     match &place.kind {
         PlaceKind::Local(slot) => (false, *slot),
         PlaceKind::Global(id) => (true, *id),
-        PlaceKind::Index(base, _) | PlaceKind::Field(base, _) => root(base),
+        PlaceKind::Index(base, _) | PlaceKind::Field(base, _) | PlaceKind::Some(base) => root(base),
     }
 }
 
