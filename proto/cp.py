@@ -85,15 +85,19 @@ def main():
             seen.add((line, name))
             print(f"line {line:4}  {name:14} {ty:34} -> {cpp}")
         return
+    opts, pos = pop_flags(sys.argv[3:])
     if cmd == "locate":
-        locate(path, sys.argv[3], int(sys.argv[4]) if len(sys.argv) > 4 else 200, int(sys.argv[5]) if len(sys.argv) > 5 else 8)
+        # cp.py locate x.cp ref.cpp [seeds] [max_size] [--max-size N] [--tokens]
+        locate(path, pos[0], int(pos[1]) if len(pos) > 1 else 200,
+               opts.get("max_size", int(pos[2]) if len(pos) > 2 else 20), opts.get("tokens", False))
         return
     if cmd == "fntest":
         fntest(path, int(sys.argv[3]) if len(sys.argv) > 3 else 20, int(sys.argv[4]) if len(sys.argv) > 4 else 8)
         return
     if cmd == "stress":
-        stress(path, sys.argv[3], int(sys.argv[4]) if len(sys.argv) > 4 else 300,
-               int(sys.argv[5]) if len(sys.argv) > 5 else 8)
+        # cp.py stress x.cp ref.cpp [iters] [max_size] [--iters N] [--max-size N] [--tokens]
+        stress(path, pos[0], opts.get("iters", int(pos[1]) if len(pos) > 1 else 300),
+               opts.get("max_size", int(pos[2]) if len(pos) > 2 else 20), opts.get("tokens", False))
         return
     code, comp = build(path)
     out = os.path.splitext(path)[0] + ".cpp"
@@ -108,7 +112,38 @@ def main():
     if size > 49152:
         print(f"warning: {out} is {size} bytes, over 48 KB of the 64 KB limit", file=sys.stderr)
 
-def locate(path, ref_src, seeds=200, max_size=8):
+def same_output(a, b, tokens=False):
+    """Whether two outputs agree. By default line by line (trailing blanks and trailing empty lines aside), so
+    `1 2\n3` and `1\n2 3` differ; `tokens=True` compares whitespace-separated tokens only."""
+    if tokens:
+        return a.split() == b.split()
+    norm = lambda t: [l.rstrip() for l in t.rstrip().split("\n")]
+    return norm(a) == norm(b)
+
+def pop_flags(args):
+    """Split `--max-size N`, `--iters N` and `--tokens` out of a command's arguments."""
+    opts, rest, i = {}, [], 0
+    while i < len(args):
+        if args[i] in ("--max-size", "--iters"):
+            opts[args[i][2:].replace("-", "_")] = int(args[i + 1]); i += 2
+        elif args[i] == "--tokens":
+            opts["tokens"] = True; i += 1
+        else:
+            rest.append(args[i]); i += 1
+    return opts, rest
+
+def gen_case(gen, seed, size):
+    """One generated input: (text, None), or (None, "rejected") when a `where`/`assume` refused it. A generator
+    that dies any other way is a bug in the generator, never a quietly skipped case."""
+    g = sh([gen, str(seed), str(size)], timeout=20)
+    if g.returncode == 4:
+        return None, "rejected"
+    if g.returncode:
+        print(f"GENERATOR CRASH seed={seed} size={size} (exit {g.returncode})\n{g.stderr[-2000:]}")
+        sys.exit(3)
+    return g.stdout, None
+
+def locate(path, ref_src, seeds=200, max_size=20, tokens=False):
     """Find the smallest failing generated input, then blame the first @brute'd part whose swap fixes it."""
     code, comp = build(path)
     base = os.path.splitext(path)[0]
@@ -118,28 +153,38 @@ def locate(path, ref_src, seeds=200, max_size=8):
         if r.returncode:
             print(r.stderr[:2000]); sys.exit(1)
         return out
-    gen, ours, ref = cc(base + "_gen", "-DCP_GEN_MODE"), cc(base + "_ours"), cc(base + "_ref", src=ref_src)
-    run = lambda exe, inp: subprocess.run([exe], input=inp, capture_output=True, text=True, timeout=20).stdout.split()
-    found = None
+    gen, ours, ref = cc(base + "_gen", "-DCP_GEN_MODE"), cc(base + "_ours", "-DLOCAL"), cc(base + "_ref", src=ref_src)
+    def run(exe, inp):
+        r = subprocess.run([exe], input=inp, capture_output=True, text=True, timeout=20)
+        return r.stdout if r.returncode == 0 else r.stdout + f"\n<crashed: exit {r.returncode}> {r.stderr.strip()[-300:]}"
+    found, tried, rej, largest = None, 0, 0, 0
     for size in range(1, max_size + 1):
         for seed in range(1, seeds + 1):
-            g = subprocess.run([gen, str(seed), str(size)], capture_output=True, text=True, timeout=20)
-            if g.returncode:
+            inp, why = gen_case(gen, seed, size)
+            if why:
+                rej += 1
                 continue
-            if run(ours, g.stdout) != run(ref, g.stdout):
-                found = g.stdout
+            tried, largest = tried + 1, size
+            if not same_output(run(ours, inp), run(ref, inp), tokens):
+                found = inp
                 break
         if found:
             break
+    mode = "tokens" if tokens else "lines"
     if not found:
-        print(f"no mismatch found (sizes 1..{max_size}, {seeds} seeds each)"); return
-    print("smallest failing input:\n" + found.strip())
-    print("ours:     " + " ".join(run(ours, found)))
-    print("expected: " + " ".join(run(ref, found)))
+        if not tried:
+            print(f"locate INCONCLUSIVE: every generated input was rejected ({rej} of {rej}); nothing was compared")
+            sys.exit(3)
+        print(f"no mismatch found: {tried} inputs compared by {mode}, sizes 1..{largest} of 1..{max_size}, "
+              f"{seeds} seeds each, {rej} rejected. This is not a proof: raise --max-size if the bug needs larger inputs")
+        return
+    print(f"smallest failing input (size {largest}, compared by {mode}):\n" + found.strip())
+    print("ours:\n" + run(ours, found).rstrip())
+    print("expected:\n" + run(ref, found).rstrip())
     want = run(ref, found)
     for fast, slow, node in comp.fn_brutes:
-        exe = cc(base + "_swap", "-DCP_SWAP_" + fast.cpp)
-        if run(exe, found) == want:
+        exe = cc(base + "_swap", "-DLOCAL", "-DCP_SWAP_" + fast.cpp)
+        if same_output(run(exe, found), want, tokens):
             print(f"blame: `{fast.node.name}` (replacing it with @brute `{node.name}` fixes this input)")
             return
     print("no single @brute swap fixes it; the bug is outside the tested parts")
@@ -170,11 +215,13 @@ def fntest(path, seeds=20, size=8):
 def sh(cmd, inp=None, timeout=10, env=None):
     return subprocess.run(cmd, input=inp, capture_output=True, text=True, timeout=timeout, env=env)
 
-def stress(path, ref_cpp, iters=300, size=8):
+def stress(path, ref_cpp, iters=300, max_size=20, tokens=False):
+    """Compare the program with a reference on generated inputs of escalating size (1..max_size), built with
+    -DLOCAL so every runtime check is on. The summary says what was really covered."""
     code, comp = build(path)
     base = os.path.splitext(path)[0]
     open(base + ".cpp", "w").write(code)
-    for out, flags in ((base + "_bin", ["-O2"]), (base + "_gen", ["-O2", "-DCP_GEN_MODE"])):
+    for out, flags in ((base + "_bin", ["-O2", "-DLOCAL"]), (base + "_gen", ["-O2", "-DCP_GEN_MODE"])):
         r = sh(["g++", "-std=c++17", *flags, "-o", out, base + ".cpp"], timeout=120)
         if r.returncode:
             print(r.stderr[:3000]); sys.exit(1)
@@ -182,17 +229,47 @@ def stress(path, ref_cpp, iters=300, size=8):
     r = sh(["g++", "-std=c++17", "-O2", "-o", ref, ref_cpp], timeout=120)
     if r.returncode:
         print(r.stderr[:3000]); sys.exit(1)
-    ok = rej = 0
+    mode = "tokens" if tokens else "lines"
+    def check(seed, size):
+        """None when rejected, True when the outputs agree, else a report of the failure."""
+        inp, why = gen_case(base + "_gen", seed, size)
+        if why:
+            return None
+        a = sh([base + "_bin"], inp)
+        b = sh([ref], inp)
+        outputs.add(b.stdout)
+        if a.returncode:
+            return f"CRASH seed={seed} size={size} (exit {a.returncode})\ninput:\n{inp}\nours:\n{a.stdout}{a.stderr}\nref:\n{b.stdout}"
+        if not same_output(a.stdout, b.stdout, tokens):
+            return f"MISMATCH seed={seed} size={size} (compared by {mode})\ninput:\n{inp}\nours:\n{a.stdout}{a.stderr}\nref:\n{b.stdout}"
+        return True
+    ok = rej = largest = 0
+    outputs = set()
     for seed in range(1, iters + 1):
-        g = sh([base + "_gen", str(seed), str(size)])
-        if g.returncode == 4:
-            rej += 1; continue
-        a = sh([base + "_bin"], g.stdout)
-        b = sh([ref], g.stdout)
-        if a.stdout.split() != b.stdout.split() or a.returncode:
-            print(f"MISMATCH seed={seed}\ninput:\n{g.stdout}\nours:\n{a.stdout}{a.stderr}\nref:\n{b.stdout}")
+        size = 1 + (seed - 1) * max_size // iters      # ascending: small cases first, max_size by the end
+        r = check(seed, size)
+        if r is None:
+            rej += 1
+            continue
+        if r is not True:
+            # shrink: the smallest size at which any seed fails is the one worth reading
+            for small in range(1, size):
+                hit = next((x for x in (check(sd, small) for sd in range(1, 41)) if x not in (None, True)), None)
+                if hit:
+                    r = hit
+                    break
+            print(r)
             sys.exit(2)
-        ok += 1
+        ok, largest = ok + 1, max(largest, size)
+    if not ok:
+        print(f"stress INCONCLUSIVE: all {rej} generated inputs were rejected by where; nothing was compared")
+        sys.exit(3)
+    print(f"coverage: sizes 1..{largest} (max-size {max_size}), {rej} of {ok + rej} inputs rejected, compared by {mode}, "
+          f"{len(outputs)} distinct reference outputs")
+    if rej > ok:
+        print(f"warning: more than half of the generated inputs were rejected ({rej} of {ok + rej}); the generator barely reaches valid cases")
+    if len(outputs) == 1 and ok > 1:
+        print("warning: every case had the same reference output; this run says little")
     print(f"stress OK: {ok} tests agree ({rej} rejected by where)")
 
 if __name__ == "__main__":
