@@ -100,7 +100,11 @@ template <> struct Opt<bool> {
 template <> struct Opt<ll> {
     ll v = LLONG_MIN;
     Opt() {}
-    Opt(ll x) : v(x) { if (x == LLONG_MIN) cp_fail("?Int cannot hold the minimum Int", 0); }
+    Opt(ll x) : v(x) {
+#ifdef LOCAL
+        if (x == LLONG_MIN) cp_fail("?Int cannot hold the minimum Int", 0);
+#endif
+    }
     bool has() const { return v != LLONG_MIN; }
     ll get() const { return v; }
     bool operator==(const Opt& o) const { return v == o.v; }
@@ -114,6 +118,18 @@ template <class T> static inline T opt_unwrap(const Opt<T>& o, int line) {
 }
 template <class T, class U> static inline void opt_min(Opt<T>& o, U x) { if (!o.has() || T(x) < o.get()) o = Opt<T>(T(x)); }
 template <class T, class U> static inline void opt_max(Opt<T>& o, U x) { if (!o.has() || o.get() < T(x)) o = Opt<T>(T(x)); }
+static inline void opt_min(Opt<ll>& o, ll x) {
+#ifdef LOCAL
+    if (x == LLONG_MIN) cp_fail("?Int cannot hold the minimum Int", 0);
+#endif
+    if (o.v == LLONG_MIN || x < o.v) o.v = x;
+}
+static inline void opt_max(Opt<ll>& o, ll x) {
+#ifdef LOCAL
+    if (x == LLONG_MIN) cp_fail("?Int cannot hold the minimum Int", 0);
+#endif
+    if (x > o.v) o.v = x;
+}
 // @part OptI32
 // ?T for a range type that fits in 32 bits: none is INT_MIN, 4 bytes total
 struct OptI32 {
@@ -145,8 +161,9 @@ struct Rng {
     bool operator>(const Rng& o) const { return o < *this; }
 };
 static inline Opt<int> cp_step(ll ord, ll k, bool minus, ll len) {
-    __int128 x = (__int128)ord + (minus ? -(__int128)k : (__int128)k);
-    return x >= 0 && x < len ? Opt<int>((int)x) : Opt<int>();
+    ll x;
+    if (minus ? __builtin_sub_overflow(ord, k, &x) : __builtin_add_overflow(ord, k, &x)) return Opt<int>();
+    return (unsigned long long)x < (unsigned long long)len ? Opt<int>((int)x) : Opt<int>();
 }
 // r.prefix(k) / r.suffix(k): the first / last k positions of a range, or all of it when it is shorter
 static inline ll cp_width(ll k, int line) { if (k < 1) cp_fail("windows(k) needs k >= 1", line); return k; }
@@ -181,28 +198,46 @@ template <class A> static inline auto cp_row(const A& g, ll r, ll w) {
     return CpView<T>(const_cast<T*>(g.data()) + r * w, 0, w);
 }
 static inline ll cp_win(ll i, ll lo, ll hi, int line) {
-    if (i < lo || i >= hi) cp_fail("position is outside the slice", line);
+    if ((unsigned long long)(i - lo) >= (unsigned long long)(hi - lo)) cp_fail("position is outside the slice", line);
     return i;
 }
 template <class T> static inline void cp_swap_view(CpView<T> a, CpView<T> b) { swap_ranges(a.begin(), a.end(), b.begin()); }
 // @end
 
 template <ll M> struct Mod {
-    ll v;
-    Mod(ll x = 0) : v(((x % M) + M) % M) {}
-    static Mod raw(ll x) { Mod r; r.v = x; return r; }
-    Mod operator+(Mod o) const { ll s = v + o.v; return raw(s >= M ? s - M : s); }
-    Mod operator-(Mod o) const { ll s = v - o.v; return raw(s < 0 ? s + M : s); }
-    Mod operator*(Mod o) const { return raw((ll)((__int128)v * o.v % M)); }
-    Mod operator-() const { return raw(v ? M - v : 0); }
+    using U = conditional_t<(M <= 2147483647LL), uint32_t, uint64_t>;
+    U v;
+    Mod(ll x = 0) { ll r = x % M; v = (U)(r < 0 ? r + M : r); }
+    static Mod raw(U x) { Mod r; r.v = x; return r; }
+    Mod operator+(Mod o) const { U s = v + o.v; return raw(s >= (U)M ? s - (U)M : s); }
+    Mod operator-(Mod o) const { U s = v - o.v; return raw(v < o.v ? s + (U)M : s); }
+    Mod operator*(Mod o) const {
+        if constexpr (M <= 2147483647LL) return raw((uint32_t)((uint64_t)v * o.v % (uint64_t)M));
+        else return raw((uint64_t)((__uint128_t)v * o.v % (uint64_t)M));
+    }
+    Mod operator-() const { return raw(v ? (U)M - v : 0); }
     Mod pow(ll e) const { Mod r(1), b = *this; for (; e; e >>= 1, b = b * b) if (e & 1) r = r * b; return r; }
     Mod inv() const { return pow(M - 2); }
     Mod operator/(Mod o) const { return *this * o.inv(); }
-    Mod& operator+=(Mod o) { return *this = *this + o; }
-    Mod& operator-=(Mod o) { return *this = *this - o; }
+    Mod& operator+=(Mod o) { U s = v + o.v; v = s >= (U)M ? s - (U)M : s; return *this; }
+    Mod& operator-=(Mod o) { U s = v - o.v; v = v < o.v ? s + (U)M : s; return *this; }
     Mod& operator*=(Mod o) { return *this = *this * o; }
     bool operator==(Mod o) const { return v == o.v; }
     bool operator!=(Mod o) const { return v != o.v; }
+};
+// ?Mod<M> packs none as ~0 in the same 4 or 8 bytes as Mod<M>
+template <ll M> struct Opt<Mod<M>> {
+    using U = typename Mod<M>::U;
+    static constexpr U NONE = ~(U)0;
+    U v = NONE;
+    Opt() {}
+    Opt(Mod<M> x) : v(x.v) {}
+    bool has() const { return v != NONE; }
+    Mod<M> get() const { return Mod<M>::raw(v); }
+    bool operator==(const Opt& o) const { return v == o.v; }
+    bool operator<(const Opt& o) const { return has() && o.has() ? v < o.v : has() < o.has(); }
+    bool operator>(const Opt& o) const { return o < *this; }
+    bool operator!=(const Opt& o) const { return v != o.v; }
 };
 
 // ---- input
@@ -252,7 +287,7 @@ static string cp_obuf;
 static inline void out_int(ll x) { char b[24]; int n = 0; bool neg = x < 0; unsigned long long u = neg ? -(unsigned long long)x : x; do b[n++] = '0' + u % 10; while (u /= 10); if (neg) cp_obuf += '-'; while (n) cp_obuf += b[--n]; }
 static inline void out_str(const string& s) { cp_obuf += s; }
 static inline void out_char(char c) { cp_obuf += c; }
-// @part cp_ediv|cp_emod
+// @part cp_ediv|cp_emod|cp_ediv_pos|cp_emod_pos
 // Euclidean: a == (a / b) * b + a % b and 0 <= a % b < |b|, for every a and b the native operators would
 // get wrong or leave undefined: b == 0 stops the program, and b == -1 never reaches the native `/` or `%`.
 static inline ll cp_emod(ll a, ll b, int line) {
@@ -265,6 +300,29 @@ static inline ll cp_ediv(ll a, ll b, int line) {
     if (b == 0) cp_fail("division by zero", line);
     if (b == -1) { if (a == LLONG_MIN) cp_fail("Int overflow", line); return -a; }
     return a / b - (a % b < 0 ? (b < 0 ? -1 : 1) : 0);
+}
+static inline ll cp_emod_pos(ll a, ll b) { ll r = a % b; return r < 0 ? r + b : r; }
+static inline ll cp_ediv_pos(ll a, ll b) { return a / b - (a % b < 0); }
+// @end
+// @part cp_cyc|cp_cyc_nonneg
+static inline int cp_cyc_nonneg(int v, ll k, int n) {
+    ll s;
+    if (!__builtin_add_overflow((ll)v, k, &s)) {
+        if (s < n) return (int)s;
+        if (s < 2LL * n) return (int)(s - n);
+        return (int)(s % n);
+    }
+    return (int)(((ll)v + k % n) % n);
+}
+static inline int cp_cyc(int v, ll k, int n) {
+    ll s;
+    if (!__builtin_add_overflow((ll)v, k, &s)) {
+        if ((unsigned long long)s < (unsigned long long)n) return (int)s;
+        ll r = s % n;
+        return (int)(r < 0 ? r + n : r);
+    }
+    ll r = ((ll)v + k % n) % n;
+    return (int)(r < 0 ? r + n : r);
 }
 // @end
 static inline void out_flush() { fwrite(cp_obuf.data(), 1, cp_obuf.size(), stdout); cp_obuf.clear(); }
@@ -340,49 +398,55 @@ template <class T> struct SegTree {
 
 // AddMax: add to an inclusive range, max of an inclusive range. Prototype stand-in for a lazy std.segtree.
 // Lazy segment tree: assign to a range, sum of a range (stdlib/lazy.cp LazySegTree with the AssignSum action)
+// Euler-tour layout uses 2*n nodes instead of 4*n (halving memory).
 struct AssignSum {
     int n = 0; vector<ll> v, lz;
     AssignSum() {}
-    AssignSum(int n_) : n(max(n_, 1)), v(4 * max(n_, 1)), lz(4 * max(n_, 1), LLONG_MIN) {}
+    AssignSum(int n_) : n(max(n_, 1)), v(2 * max(n_, 1)), lz(2 * max(n_, 1), LLONG_MIN) {}
     void put(int o, int l, int r, ll x) { v[o] = x * (r - l + 1); lz[o] = x; }
-    void push(int o, int l, int m, int r) { if (lz[o] != LLONG_MIN) { put(2 * o, l, m, lz[o]); put(2 * o + 1, m + 1, r, lz[o]); lz[o] = LLONG_MIN; } }
+    void push(int o, int l, int m, int r) {
+        if (lz[o] != LLONG_MIN) {
+            int rc = o + 2 * (m - l + 1);
+            put(o + 1, l, m, lz[o]); put(rc, m + 1, r, lz[o]); lz[o] = LLONG_MIN;
+        }
+    }
     void assign(int o, int l, int r, int ql, int qr, ll x) {
         if (ql <= l && r <= qr) { put(o, l, r, x); return; }
-        int m = (l + r) / 2; push(o, l, m, r);
-        if (ql <= m) assign(2 * o, l, m, ql, qr, x);
-        if (qr > m) assign(2 * o + 1, m + 1, r, ql, qr, x);
-        v[o] = v[2 * o] + v[2 * o + 1];
+        int m = (l + r) >> 1, rc = o + 2 * (m - l + 1); push(o, l, m, r);
+        if (ql <= m) assign(o + 1, l, m, ql, qr, x);
+        if (qr > m) assign(rc, m + 1, r, ql, qr, x);
+        v[o] = v[o + 1] + v[rc];
     }
     ll sum(int o, int l, int r, int ql, int qr) {
         if (ql <= l && r <= qr) return v[o];
-        int m = (l + r) / 2; push(o, l, m, r);
-        return (ql <= m ? sum(2 * o, l, m, ql, qr) : 0) + (qr > m ? sum(2 * o + 1, m + 1, r, ql, qr) : 0);
+        int m = (l + r) >> 1, rc = o + 2 * (m - l + 1); push(o, l, m, r);
+        return (ql <= m ? sum(o + 1, l, m, ql, qr) : 0) + (qr > m ? sum(rc, m + 1, r, ql, qr) : 0);
     }
-    void assign(int l, int r, ll x) { if (l <= r) assign(1, 0, n - 1, l, r, x); }
-    ll sum(int l, int r) { return l <= r ? sum(1, 0, n - 1, l, r) : 0; }
+    void assign(int l, int r, ll x) { if (l <= r) assign(0, 0, n - 1, l, r, x); }
+    ll sum(int l, int r) { return l <= r ? sum(0, 0, n - 1, l, r) : 0; }
 };
 
 struct AddMax {
     int n = 0; vector<ll> v, lz;
     AddMax() {}
-    AddMax(int n_) : n(max(n_, 1)), v(4 * max(n_, 1)), lz(4 * max(n_, 1)) {}
+    AddMax(int n_) : n(max(n_, 1)), v(2 * max(n_, 1)), lz(2 * max(n_, 1)) {}
     void add(int o, int l, int r, int ql, int qr, ll x) {
         if (ql <= l && r <= qr) { v[o] += x; lz[o] += x; return; }
-        int m = (l + r) / 2;
-        if (ql <= m) add(2 * o, l, m, ql, qr, x);
-        if (m < qr) add(2 * o + 1, m + 1, r, ql, qr, x);
-        v[o] = max(v[2 * o], v[2 * o + 1]) + lz[o];
+        int m = (l + r) >> 1, rc = o + 2 * (m - l + 1);
+        if (ql <= m) add(o + 1, l, m, ql, qr, x);
+        if (m < qr) add(rc, m + 1, r, ql, qr, x);
+        v[o] = max(v[o + 1], v[rc]) + lz[o];
     }
     ll query(int o, int l, int r, int ql, int qr) const {
         if (ql <= l && r <= qr) return v[o];
-        int m = (l + r) / 2; ll best = LLONG_MIN;
-        if (ql <= m) best = max(best, query(2 * o, l, m, ql, qr));
-        if (m < qr) best = max(best, query(2 * o + 1, m + 1, r, ql, qr));
+        int m = (l + r) >> 1, rc = o + 2 * (m - l + 1); ll best = LLONG_MIN;
+        if (ql <= m) best = max(best, query(o + 1, l, m, ql, qr));
+        if (m < qr) best = max(best, query(rc, m + 1, r, ql, qr));
         return best + lz[o];
     }
-    void add(int l, int r, ll x) { if (l <= r) add(1, 0, n - 1, l, r, x); }
-    ll query(int l, int r) const { return query(1, 0, n - 1, l, r); }
-    ll top() const { return v[1]; }
+    void add(int l, int r, ll x) { if (l <= r) add(0, 0, n - 1, l, r, x); }
+    ll query(int l, int r) const { return query(0, 0, n - 1, l, r); }
+    ll top() const { return v[0]; }
 };
 
 // StrHash: polynomial hash of every substring, mod 2^61 - 1. Prototype stand-in for std.hash.
@@ -476,13 +540,63 @@ struct CpDsu {
 // RootedTree: the depth-first spanning tree of `adj` from `root`, with parent, preorder, O(1) lca and level
 // ancestors. On a tree that is the tree itself; on any other connected graph every edge left out joins a
 // vertex to one of its ancestors. Prototype stand-in for std.tree.
+struct KidSpan {
+    const int *b, *e;
+    const int* begin() const { return b; }
+    const int* end() const { return e; }
+    reverse_iterator<const int*> rbegin() const { return reverse_iterator<const int*>(e); }
+    reverse_iterator<const int*> rend() const { return reverse_iterator<const int*>(b); }
+    size_t size() const { return (size_t)(e - b); }
+    bool empty() const { return b == e; }
+    int operator[](size_t i) const { return b[i]; }
+    int back() const { return *(e - 1); }
+    operator vector<int>() const { return vector<int>(b, e); }
+};
+struct KidsCSR {
+    vector<int> head, to;
+    KidSpan operator[](int u) const { return {to.data() + head[u], to.data() + head[u + 1]}; }
+    size_t size() const { return head.empty() ? 0 : head.size() - 1; }
+    operator vector<vector<int>>() const {
+        size_t n = size(); vector<vector<int>> out(n);
+        for (size_t u = 0; u < n; ++u) out[u].assign(to.data() + head[u], to.data() + head[u + 1]);
+        return out;
+    }
+};
+template <class P> struct ChainList {
+    P a[68]; int n = 0;
+    void push_back(const P& x) { a[n++] = x; }
+    const P* begin() const { return a; }
+    const P* end() const { return a + n; }
+    reverse_iterator<const P*> rbegin() const { return reverse_iterator<const P*>(a + n); }
+    reverse_iterator<const P*> rend() const { return reverse_iterator<const P*>(a); }
+    size_t size() const { return (size_t)n; }
+    bool empty() const { return n == 0; }
+    const P& operator[](size_t i) const { return a[i]; }
+    operator vector<P>() const { return vector<P>(a, a + n); }
+};
 struct RootedTree {
-    vector<int> par, order, tin, dep, siz; vector<vector<int>> sp, kids;
-    vector<ll> down;                    // total edge length from the root; the depth when edges have no lengths
+    vector<int> par, order, tin, dep, siz;
+    KidsCSR kids;
+    vector<ll> down;                    // total edge length from the root; empty when unweighted
+    mutable vector<vector<int>> sp;     // Euler-order sparse table, built on the first lca() call
     mutable vector<vector<int>> jump;   // jump[k][v]: 2^k steps up, built on the first ancestor() call
     RootedTree() {}
+    void build_meta(int N) {
+        int n = (int)order.size();
+        siz.assign(N, 1);
+        for (int i = n - 1; i > 0; --i) siz[par[order[i]]] += siz[order[i]];
+        kids.head.assign(N + 1, 0);
+        for (int i = 1; i < n; ++i) ++kids.head[par[order[i]] + 1];
+        for (int i = 0; i < N; ++i) kids.head[i + 1] += kids.head[i];
+        kids.to.resize(max(0, n - 1));
+        vector<int> cur(kids.head.begin(), kids.head.begin() + N);
+        for (int i = 1; i < n; ++i) { int u = order[i]; kids.to[cur[par[u]]++] = u; }
+    }
     RootedTree(const vector<vector<int>>& adj, int root) : par(adj.size(), -1), tin(adj.size(), -1), dep(adj.size(), 0) {
-        vector<pair<int, int>> st{{root, 0}};
+        int N = (int)adj.size();
+        order.reserve(N);
+        vector<pair<int, int>> st; st.reserve(N);
+        st.push_back({root, 0});
         tin[root] = 0; order.push_back(root);
         while (!st.empty()) {
             int u = st.back().first, i = st.back().second;
@@ -491,30 +605,68 @@ struct RootedTree {
             int v = adj[u][i];
             if (tin[v] < 0) { par[v] = u; dep[v] = dep[u] + 1; tin[v] = (int)order.size(); order.push_back(v); st.push_back({v, 0}); }
         }
-        int n = (int)order.size();
-        siz.assign(adj.size(), 1); kids.resize(adj.size());
-        down.assign(dep.begin(), dep.end());
-        for (int i = n - 1; i > 0; --i) siz[par[order[i]]] += siz[order[i]];
-        for (int i = 1; i < n; ++i) kids[par[order[i]]].push_back(order[i]);
-        sp.assign(1, vector<int>(n));
-        for (int i = 0; i < n; ++i) sp[0][i] = par[order[i]] < 0 ? 0 : tin[par[order[i]]];
-        for (int k = 1; (1 << k) <= n; ++k) {
-            sp.emplace_back(n - (1 << k) + 1);
-            for (int i = 0; i + (1 << k) <= n; ++i) sp[k][i] = min(sp[k - 1][i], sp[k - 1][i + (1 << (k - 1))]);
+        build_meta(N);
+    }
+    // Flat CSR constructor for unweighted undirected edge lists: avoids building vector<vector<int>>
+    RootedTree(int N, const vector<int>& head, const vector<int>& to, int root) : par(N, -1), tin(N, -1), dep(N, 0) {
+        order.reserve(N);
+        vector<pair<int, int>> st; st.reserve(N);
+        st.push_back({root, head[root]});
+        tin[root] = 0; order.push_back(root);
+        while (!st.empty()) {
+            int u = st.back().first, i = st.back().second;
+            if (i == head[u + 1]) { st.pop_back(); continue; }
+            st.back().second = i + 1;
+            int v = to[i];
+            if (tin[v] < 0) { par[v] = u; dep[v] = dep[u] + 1; tin[v] = (int)order.size(); order.push_back(v); st.push_back({v, head[v]}); }
         }
+        build_meta(N);
     }
-    // The same tree with a length on every edge: arcs[u] holds (v, length), in both directions or parent to child.
-    static vector<vector<int>> plain(const vector<vector<pair<int, ll>>>& arcs) {
-        vector<vector<int>> adj(arcs.size());
-        for (size_t u = 0; u < arcs.size(); ++u) for (const auto& a : arcs[u]) adj[u].push_back(a.first);
-        return adj;
+    // Flat CSR constructor for weighted graphs: single DFS, no plain() copy
+    RootedTree(int N, const vector<int>& head, const vector<int>& to, const vector<ll>& wt, int root)
+        : par(N, -1), tin(N, -1), dep(N, 0), down(N, 0) {
+        order.reserve(N);
+        vector<pair<int, int>> st; st.reserve(N);
+        st.push_back({root, head[root]});
+        tin[root] = 0; order.push_back(root);
+        while (!st.empty()) {
+            int u = st.back().first, i = st.back().second;
+            if (i == head[u + 1]) { st.pop_back(); continue; }
+            st.back().second = i + 1;
+            int v = to[i];
+            if (tin[v] < 0) { par[v] = u; dep[v] = dep[u] + 1; down[v] = down[u] + wt[i]; tin[v] = (int)order.size(); order.push_back(v); st.push_back({v, head[v]}); }
+        }
+        build_meta(N);
     }
-    RootedTree(const vector<vector<pair<int, ll>>>& arcs, int root) : RootedTree(plain(arcs), root) {
-        for (int u : order) for (const auto& a : arcs[u]) if (par[a.first] == u) down[a.first] = down[u] + a.second;
+    // Weighted adjacency lists: single DFS directly over arcs without plain() copy
+    RootedTree(const vector<vector<pair<int, ll>>>& arcs, int root)
+        : par(arcs.size(), -1), tin(arcs.size(), -1), dep(arcs.size(), 0), down(arcs.size(), 0) {
+        int N = (int)arcs.size();
+        order.reserve(N);
+        vector<pair<int, int>> st; st.reserve(N);
+        st.push_back({root, 0});
+        tin[root] = 0; order.push_back(root);
+        while (!st.empty()) {
+            int u = st.back().first, i = st.back().second;
+            if (i == (int)arcs[u].size()) { st.pop_back(); continue; }
+            st.back().second++;
+            int v = arcs[u][i].first;
+            if (tin[v] < 0) { par[v] = u; dep[v] = dep[u] + 1; down[v] = down[u] + arcs[u][i].second; tin[v] = (int)order.size(); order.push_back(v); st.push_back({v, 0}); }
+        }
+        build_meta(N);
     }
-    ll length(int u, int v) const { return down[u] + down[v] - 2 * down[lca(u, v)]; }
+    ll length(int u, int v) const { return down.empty() ? (ll)dist(u, v) : down[u] + down[v] - 2 * down[lca(u, v)]; }
     int lca(int u, int v) const {
         if (u == v) return u;
+        if (sp.empty()) {
+            int n = (int)order.size();
+            sp.assign(1, vector<int>(n));
+            for (int i = 0; i < n; ++i) sp[0][i] = par[order[i]] < 0 ? 0 : tin[par[order[i]]];
+            for (int k = 1; (1 << k) <= n; ++k) {
+                sp.emplace_back(n - (1 << k) + 1);
+                for (int i = 0; i + (1 << k) <= n; ++i) sp[k][i] = min(sp[k - 1][i], sp[k - 1][i + (1 << (k - 1))]);
+            }
+        }
         int l = min(tin[u], tin[v]) + 1, r = max(tin[u], tin[v]) + 1, k = 31 - __builtin_clz(r - l);
         return order[min(sp[k][l], sp[k][r - (1 << k)])];
     }
@@ -535,9 +687,9 @@ struct RootedTree {
         }
     }
     template <class P> P sub(int v) const { layout(); return P{hpos[v], hpos[v] + siz[v] - 1}; }
-    template <class P> vector<P> chains(int a, int b) const {
+    template <class P> ChainList<P> chains(int a, int b) const {
         layout();
-        vector<P> out;
+        ChainList<P> out;
         while (top[a] != top[b]) {
             if (dep[top[a]] < dep[top[b]]) swap(a, b);
             out.push_back(P{hpos[top[a]], hpos[a]});
@@ -674,30 +826,318 @@ template <class V> struct DenseMap {
     void clear() { fill(has.begin(), has.end(), 0); fill(val.begin(), val.end(), V()); cnt = 0; }
 };
 // @end
-// @part CpArrHash
+// @part CpArrHash|CpHash|CpHashMap
+// Per-process runtime salt mixed into splitmix64 so fixed-seed anti-hash collision tests cannot target buckets.
+static inline uint64_t cp_splitmix64(uint64_t z) {
+    z += 0x9e3779b97f4a7c15ULL;
+    z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ULL;
+    z = (z ^ (z >> 27)) * 0x94d049bb133111ebULL;
+    return z ^ (z >> 31);
+}
+static inline uint64_t cp_hash_salt() {
+    static const uint64_t s = []() -> uint64_t {
+        uint64_t t = (uint64_t)chrono::steady_clock::now().time_since_epoch().count();
+        uint64_t a = (uint64_t)(uintptr_t)&t ^ ((uint64_t)getpid() << 32);
+        return cp_splitmix64(t ^ cp_splitmix64(a));
+    }();
+    return s;
+}
 struct CpArrHash {
     template <size_t K> size_t operator()(const array<ll, K>& a) const {
-        uint64_t h = 0x9e3779b97f4a7c15ULL;
-        for (ll x : a) {
-            uint64_t z = (uint64_t)x + h + 0x9e3779b97f4a7c15ULL;
-            z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ULL;
-            z = (z ^ (z >> 27)) * 0x94d049bb133111ebULL;
-            h = z ^ (z >> 31);
-        }
+        uint64_t h = cp_hash_salt();
+        for (ll x : a) h = cp_splitmix64((uint64_t)x + h);
         return (size_t)h;
     }
 };
-// @end
-// @part CpHash
 struct CpHash {
-    size_t operator()(ll x) const {
-        uint64_t z = (uint64_t)x + 0x9e3779b97f4a7c15ULL;
-        z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ULL;
-        z = (z ^ (z >> 27)) * 0x94d049bb133111ebULL;
-        return (size_t)(z ^ (z >> 31));
-    }
+    size_t operator()(ll x) const { return (size_t)cp_splitmix64((uint64_t)x + cp_hash_salt()); }
     // a record hashes its fields in order (each record struct has `cp_hash`)
     template <class T> auto operator()(const T& x) const -> decltype(x.cp_hash(*this)) { return x.cp_hash(*this); }
+};
+// Compact open-addressed hash map: single allocation, linear probing with salted hash and
+// backward-shift deletion (no tombstones). For ll keys, packs pair<ll, V> contiguously (16 B/slot,
+// single cache line per probe) using LLONG_MIN as the empty sentinel plus a dedicated side slot.
+template <class K, class V, class H = CpHash> struct CpHashMap {
+    struct Slot { pair<K, V> kv; uint8_t used; };
+    char* buf = nullptr;
+    uint32_t cap = 0, cnt = 0;
+    CpHashMap() {}
+    ~CpHashMap() { destroy(); }
+    CpHashMap(const CpHashMap& o) {
+        if (!o.cap) return;
+        alloc(o.cap);
+        auto *d = slots(), *s = o.slots();
+        for (uint32_t i = 0; i < cap; ++i) if (s[i].used) { ::new (&d[i].kv) pair<K, V>(s[i].kv); d[i].used = 1; }
+        cnt = o.cnt;
+    }
+    CpHashMap(CpHashMap&& o) noexcept : buf(o.buf), cap(o.cap), cnt(o.cnt) { o.buf = nullptr; o.cap = o.cnt = 0; }
+    CpHashMap& operator=(const CpHashMap& o) {
+        if (this != &o) { CpHashMap tmp(o); *this = std::move(tmp); }
+        return *this;
+    }
+    CpHashMap& operator=(CpHashMap&& o) noexcept {
+        if (this != &o) { destroy(); buf = o.buf; cap = o.cap; cnt = o.cnt; o.buf = nullptr; o.cap = o.cnt = 0; }
+        return *this;
+    }
+    Slot* slots() const { return (Slot*)buf; }
+    void alloc(uint32_t ncap) {
+        buf = (char*)::operator new((size_t)ncap * sizeof(Slot));
+        cap = ncap; cnt = 0;
+        auto* d = slots();
+        for (uint32_t i = 0; i < ncap; ++i) d[i].used = 0;
+    }
+    void destroy() {
+        if (!buf) return;
+        auto* s = slots();
+        if constexpr (!is_trivially_destructible_v<pair<K, V>>)
+            for (uint32_t i = 0; i < cap; ++i) if (s[i].used) s[i].kv.~pair<K, V>();
+        ::operator delete(buf);
+        buf = nullptr; cap = cnt = 0;
+    }
+    void rehash(uint32_t ncap) {
+        char* obuf = buf; uint32_t ocap = cap;
+        auto* os = slots();
+        alloc(ncap);
+        uint32_t m = cap - 1; auto* ns = slots();
+        for (uint32_t i = 0; i < ocap; ++i) if (os[i].used) {
+            uint32_t j = (uint32_t)H{}(os[i].kv.first) & m;
+            while (ns[j].used) j = (j + 1) & m;
+            ::new (&ns[j].kv) pair<K, V>(std::move(os[i].kv));
+            ns[j].used = 1; ++cnt;
+            if constexpr (!is_trivially_destructible_v<pair<K, V>>) os[i].kv.~pair<K, V>();
+        }
+        if (obuf) ::operator delete(obuf);
+    }
+    void reserve_hint(size_t n) {
+        if (n <= 8) return;
+        uint32_t nc = 8;
+        while ((size_t)nc < n && nc < (1U << 30)) nc <<= 1;
+        if (nc > cap) rehash(nc);
+    }
+    void ensure_space() {
+        if (!cap) alloc(8);
+        else if ((size_t)(cnt + 1) * 10 >= (size_t)cap * 7) rehash(cap << 1);
+    }
+    uint32_t find_slot(const K& k) const {
+        if (!cap) return 0;
+        uint32_t m = cap - 1, i = (uint32_t)H{}(k) & m;
+        auto* s = slots();
+        while (s[i].used) { if (s[i].kv.first == k) return i; i = (i + 1) & m; }
+        return cap;
+    }
+    V& operator[](const K& k) {
+        ensure_space();
+        uint32_t m = cap - 1, i = (uint32_t)H{}(k) & m;
+        auto* s = slots();
+        while (s[i].used) { if (s[i].kv.first == k) return s[i].kv.second; i = (i + 1) & m; }
+        ::new (&s[i].kv) pair<K, V>(k, V());
+        s[i].used = 1; ++cnt;
+        return s[i].kv.second;
+    }
+    template <class U> void emplace(const K& k, U&& v) {
+        ensure_space();
+        uint32_t m = cap - 1, i = (uint32_t)H{}(k) & m;
+        auto* s = slots();
+        while (s[i].used) { if (s[i].kv.first == k) return; i = (i + 1) & m; }
+        ::new (&s[i].kv) pair<K, V>(k, std::forward<U>(v));
+        s[i].used = 1; ++cnt;
+    }
+    void erase_at(uint32_t i) {
+        uint32_t m = cap - 1; auto* s = slots();
+        --cnt;
+        for (;;) {
+            uint32_t j = (i + 1) & m;
+            while (s[j].used) {
+                uint32_t h = (uint32_t)H{}(s[j].kv.first) & m;
+                if (((j - h) & m) >= ((j - i) & m)) break;
+                j = (j + 1) & m;
+            }
+            if (!s[j].used) {
+                if constexpr (!is_trivially_destructible_v<pair<K, V>>) s[i].kv.~pair<K, V>();
+                s[i].used = 0; return;
+            }
+            s[i].kv = std::move(s[j].kv);
+            i = j;
+        }
+    }
+    struct It {
+        const CpHashMap* m; uint32_t i;
+        pair<K, V>& operator*() const { return m->slots()[i].kv; }
+        pair<K, V>* operator->() const { return &m->slots()[i].kv; }
+        It& operator++() { i = m->next_from(i + 1); return *this; }
+        bool operator==(const It& o) const { return i == o.i; }
+        bool operator!=(const It& o) const { return i != o.i; }
+    };
+    uint32_t next_from(uint32_t i) const {
+        auto* s = slots();
+        while (i < cap && !s[i].used) ++i;
+        return i;
+    }
+    It begin() const { return {this, cap ? next_from(0) : 0}; }
+    It end() const { return {this, cap}; }
+    It find(const K& k) const { return {this, find_slot(k)}; }
+    size_t count(const K& k) const { return find_slot(k) != cap; }
+    size_t erase(const K& k) { uint32_t i = find_slot(k); if (i == cap) return 0; erase_at(i); return 1; }
+    void erase(It it) { if (it.i < cap) erase_at(it.i); }
+    size_t size() const { return cnt; }
+    bool empty() const { return cnt == 0; }
+    void clear() {
+        if (!buf) return;
+        auto* s = slots();
+        for (uint32_t i = 0; i < cap; ++i) if (s[i].used) {
+            if constexpr (!is_trivially_destructible_v<pair<K, V>>) s[i].kv.~pair<K, V>();
+            s[i].used = 0;
+        }
+        cnt = 0;
+    }
+    bool operator==(const CpHashMap& o) const {
+        if (cnt != o.cnt) return false;
+        for (const auto& e : *this) { auto it = o.find(e.first); if (it == o.end() || !(it->second == e.second)) return false; }
+        return true;
+    }
+};
+// Specialized sentinel-key table for ll keys: 16 B/slot for ll->ll, one cache line per lookup.
+template <class V, class H> struct CpHashMap<ll, V, H> {
+    static constexpr ll EMPTY = LLONG_MIN;
+    pair<ll, V>* tbl = nullptr;
+    uint32_t cap = 0, cnt = 0;
+    bool has_e = false;
+    pair<ll, V> e_kv{EMPTY, V()};
+    CpHashMap() {}
+    ~CpHashMap() { destroy(); }
+    CpHashMap(const CpHashMap& o) : has_e(o.has_e), e_kv(o.e_kv) {
+        if (!o.cap) return;
+        alloc(o.cap);
+        for (uint32_t i = 0; i < cap; ++i) if (o.tbl[i].first != EMPTY) { ::new (tbl + i) pair<ll, V>(o.tbl[i]); }
+        cnt = o.cnt;
+    }
+    CpHashMap(CpHashMap&& o) noexcept : tbl(o.tbl), cap(o.cap), cnt(o.cnt), has_e(o.has_e), e_kv(std::move(o.e_kv)) {
+        o.tbl = nullptr; o.cap = o.cnt = 0; o.has_e = false;
+    }
+    CpHashMap& operator=(const CpHashMap& o) {
+        if (this != &o) { CpHashMap tmp(o); *this = std::move(tmp); }
+        return *this;
+    }
+    CpHashMap& operator=(CpHashMap&& o) noexcept {
+        if (this != &o) {
+            destroy(); tbl = o.tbl; cap = o.cap; cnt = o.cnt; has_e = o.has_e; e_kv = std::move(o.e_kv);
+            o.tbl = nullptr; o.cap = o.cnt = 0; o.has_e = false;
+        }
+        return *this;
+    }
+    void alloc(uint32_t ncap) {
+        tbl = (pair<ll, V>*)::operator new((size_t)ncap * sizeof(pair<ll, V>));
+        cap = ncap; cnt = 0;
+        for (uint32_t i = 0; i < ncap; ++i) tbl[i].first = EMPTY;
+    }
+    void destroy() {
+        if (!tbl) return;
+        if constexpr (!is_trivially_destructible_v<V>)
+            for (uint32_t i = 0; i < cap; ++i) if (tbl[i].first != EMPTY) tbl[i].second.~V();
+        ::operator delete(tbl);
+        tbl = nullptr; cap = cnt = 0;
+    }
+    void rehash(uint32_t ncap) {
+        pair<ll, V>* ot = tbl; uint32_t oc = cap;
+        alloc(ncap);
+        uint32_t m = cap - 1;
+        for (uint32_t i = 0; i < oc; ++i) if (ot[i].first != EMPTY) {
+            uint32_t j = (uint32_t)H{}(ot[i].first) & m;
+            while (tbl[j].first != EMPTY) j = (j + 1) & m;
+            ::new (tbl + j) pair<ll, V>(std::move(ot[i]));
+            ++cnt;
+            if constexpr (!is_trivially_destructible_v<V>) ot[i].second.~V();
+        }
+        if (ot) ::operator delete(ot);
+    }
+    void reserve_hint(size_t n) {
+        if (n <= 8) return;
+        uint32_t nc = 8;
+        while ((size_t)nc < n && nc < (1U << 30)) nc <<= 1;
+        if (nc > cap) rehash(nc);
+    }
+    void ensure_space() {
+        if (!cap) alloc(8);
+        else if ((size_t)(cnt + 1) * 10 >= (size_t)cap * 7) rehash(cap << 1);
+    }
+    uint32_t find_slot(ll k) const {
+        if (k == EMPTY) return has_e ? cap : cap + 1;
+        if (!cap) return cap + 1;
+        uint32_t m = cap - 1, i = (uint32_t)H{}(k) & m;
+        while (tbl[i].first != EMPTY) { if (tbl[i].first == k) return i; i = (i + 1) & m; }
+        return cap + 1;
+    }
+    V& operator[](ll k) {
+        if (k == EMPTY) { if (!has_e) { has_e = true; e_kv.second = V(); } return e_kv.second; }
+        ensure_space();
+        uint32_t m = cap - 1, i = (uint32_t)H{}(k) & m;
+        while (tbl[i].first != EMPTY) { if (tbl[i].first == k) return tbl[i].second; i = (i + 1) & m; }
+        ::new (tbl + i) pair<ll, V>(k, V());
+        ++cnt;
+        return tbl[i].second;
+    }
+    template <class U> void emplace(ll k, U&& v) {
+        if (k == EMPTY) { if (!has_e) { has_e = true; e_kv.second = std::forward<U>(v); } return; }
+        ensure_space();
+        uint32_t m = cap - 1, i = (uint32_t)H{}(k) & m;
+        while (tbl[i].first != EMPTY) { if (tbl[i].first == k) return; i = (i + 1) & m; }
+        ::new (tbl + i) pair<ll, V>(k, std::forward<U>(v));
+        ++cnt;
+    }
+    void erase_at(uint32_t i) {
+        if (i == cap) { has_e = false; e_kv.second = V(); return; }
+        uint32_t m = cap - 1;
+        --cnt;
+        for (;;) {
+            uint32_t j = (i + 1) & m;
+            while (tbl[j].first != EMPTY) {
+                uint32_t h = (uint32_t)H{}(tbl[j].first) & m;
+                if (((j - h) & m) >= ((j - i) & m)) break;
+                j = (j + 1) & m;
+            }
+            if (tbl[j].first == EMPTY) {
+                if constexpr (!is_trivially_destructible_v<V>) tbl[i].second.~V();
+                tbl[i].first = EMPTY; return;
+            }
+            tbl[i] = std::move(tbl[j]);
+            i = j;
+        }
+    }
+    struct It {
+        const CpHashMap* m; uint32_t i;
+        pair<ll, V>& operator*() const { return i == m->cap ? const_cast<pair<ll, V>&>(m->e_kv) : m->tbl[i]; }
+        pair<ll, V>* operator->() const { return i == m->cap ? const_cast<pair<ll, V>*>(&m->e_kv) : m->tbl + i; }
+        It& operator++() { i = m->next_from(i + 1); return *this; }
+        bool operator==(const It& o) const { return i == o.i; }
+        bool operator!=(const It& o) const { return i != o.i; }
+    };
+    uint32_t next_from(uint32_t i) const {
+        while (i < cap && tbl[i].first == EMPTY) ++i;
+        if (i == cap && !has_e) return cap + 1;
+        return i;
+    }
+    It begin() const { return {this, next_from(0)}; }
+    It end() const { return {this, cap + 1}; }
+    It find(ll k) const { return {this, find_slot(k)}; }
+    size_t count(ll k) const { return find_slot(k) != cap + 1; }
+    size_t erase(ll k) { uint32_t i = find_slot(k); if (i == cap + 1) return 0; erase_at(i); return 1; }
+    void erase(It it) { if (it.i <= cap) erase_at(it.i); }
+    size_t size() const { return cnt + (has_e ? 1 : 0); }
+    bool empty() const { return cnt == 0 && !has_e; }
+    void clear() {
+        has_e = false; e_kv.second = V();
+        if (!tbl) return;
+        for (uint32_t i = 0; i < cap; ++i) if (tbl[i].first != EMPTY) {
+            if constexpr (!is_trivially_destructible_v<V>) tbl[i].second.~V();
+            tbl[i].first = EMPTY;
+        }
+        cnt = 0;
+    }
+    bool operator==(const CpHashMap& o) const {
+        if (size() != o.size()) return false;
+        for (const auto& e : *this) { auto it = o.find(e.first); if (it == o.end() || !(it->second == e.second)) return false; }
+        return true;
+    }
 };
 // @end
 // @part CpCounter|CpDenseCounter
@@ -707,11 +1147,14 @@ template <class C, class K> struct CpCount {
     C* c; K k;
     operator ll() const { return c->get(k); }
     CpCount& operator=(ll v) { c->set(k, v); return *this; }
-    CpCount& operator+=(ll d) { c->set(k, c->get(k) + d); return *this; }
-    CpCount& operator-=(ll d) { c->set(k, c->get(k) - d); return *this; }
+    CpCount& operator+=(ll d) { c->inc(k, d); return *this; }
+    CpCount& operator-=(ll d) { c->inc(k, -d); return *this; }
 };
+template <class M> static inline auto cp_try_reserve(M& m, size_t n, int) -> decltype(m.reserve_hint(n), void()) { m.reserve_hint(n); }
+template <class M> static inline void cp_try_reserve(M&, size_t, long) {}
 template <class M, class K> struct CpCounter {
     M m; ll distinct = 0;
+    void reserve_hint(size_t n) { cp_try_reserve(m, n, 0); }
     ll get(const K& k) const { auto it = m.find(k); return it == m.end() ? 0 : it->second; }
     void set(const K& k, ll v) {
         auto it = m.find(k);
@@ -719,35 +1162,48 @@ template <class M, class K> struct CpCounter {
         else if (v == 0) { m.erase(it); --distinct; }
         else it->second = v;
     }
+    void inc(const K& k, ll d = 1) {
+        if (d == 0) return;
+        ll& v = m[k];
+        if (v == 0) ++distinct;
+        v += d;
+        if (v == 0) { m.erase(k); --distinct; }
+    }
     CpCount<CpCounter, K> at(const K& k) { return {this, k}; }
 };
 struct CpDenseCounter {
     vector<ll> m; ll distinct = 0;
     CpDenseCounter() {}
     explicit CpDenseCounter(ll n) : m(n, 0) {}
+    void reserve_hint(size_t) {}
     ll get(int k) const { return m[k]; }
     void set(int k, ll v) { distinct += (v != 0) - (m[k] != 0); m[k] = v; }
+    void inc(int k, ll d = 1) { ll nv = m[k] + d; distinct += (nv != 0) - (m[k] != 0); m[k] = nv; }
     CpCount<CpDenseCounter, int> at(int k) { return {this, k}; }
 };
 // @end
 // @part CpPrefix
 // prefix(a): p[r][c] is the sum of the cells before boundary r and before boundary c (a 1-D array is one column)
-struct CpPrefix {
-    vector<ll> p; ll w = 0;
+template <class T = ll> struct CpPrefix {
+    vector<T> p; ll w = 0;
     CpPrefix() {}
-    template <class A> CpPrefix(const A& a, ll rows, ll cols) : p((rows + 1) * (cols + 1), 0), w(cols + 1) {
-        for (ll r = 0; r < rows; ++r) for (ll c = 0; c < cols; ++c)
-            p[(r + 1) * w + c + 1] = p[r * w + c + 1] + p[(r + 1) * w + c] - p[r * w + c] + a[r * cols + c];
+    CpPrefix(ll rows, ll cols) : p((size_t)(rows + 1) * (size_t)(cols + 1), 0), w(cols + 1) {}
+    template <class A> CpPrefix(const A& a, ll rows, ll cols) : p((size_t)(rows + 1) * (size_t)(cols + 1), 0), w(cols + 1) {
+        for (ll r = 0; r < rows; ++r) {
+            ll r0 = r * w, r1 = r0 + w, ar = r * cols;
+            for (ll c = 0; c < cols; ++c)
+                p[r1 + c + 1] = p[r0 + c + 1] + p[r1 + c] - p[r0 + c] + (T)a[ar + c];
+        }
     }
     ll wrap(ll from, ll k, ll n, int line) const {     // 1-D: k cells starting at `from`, going round past the end
         if (k < 0 || n <= 0) cp_fail("sum(from:, len:) needs len >= 0 and a non-empty array", line);
-        auto upto = [&](ll b) { return p[b * w + 1]; };
+        auto upto = [&](ll b) -> ll { return (ll)p[b * w + 1]; };
         ll rest = k % n, to = from + rest;
         return (k / n) * upto(n) + (to <= n ? upto(to) - upto(from) : upto(n) - upto(from) + upto(to - n));
     }
     ll sum(Rng rs, Rng cs) const {      // an empty range sums to 0
         if (rs.lo >= rs.hi || cs.lo >= cs.hi) return 0;
-        return p[rs.hi * w + cs.hi] - p[rs.lo * w + cs.hi] - p[rs.hi * w + cs.lo] + p[rs.lo * w + cs.lo];
+        return (ll)p[rs.hi * w + cs.hi] - (ll)p[rs.lo * w + cs.hi] - (ll)p[rs.hi * w + cs.lo] + (ll)p[rs.lo * w + cs.lo];
     }
 };
 // @end
@@ -791,20 +1247,42 @@ static inline ll cp_choose(ll n, ll k, int line) {
 // Steps<K>: a function on a line that changes at few places. add(range, x) adds x over a range; runs(range)
 // reads it back as maximal stretches of one value. Prototype stand-in for std.steps.
 struct CpSteps {
-    map<ll, ll> d;                      // the change of value at each boundary
-    void add(Rng r, ll x) { if (r.lo < r.hi && x != 0) { d[r.lo] += x; d[r.hi] -= x; } }
+    mutable vector<pair<ll, ll>> ev;    // lazy-sorted (coord, delta) events
+    mutable bool dirty = false;
+    void add(Rng r, ll x) {
+        if (r.lo < r.hi && x != 0) {
+            ev.emplace_back(r.lo, x);
+            ev.emplace_back(r.hi, -x);
+            dirty = true;
+        }
+    }
+    void normalize() const {
+        if (!dirty) return;
+        dirty = false;
+        if (ev.empty()) return;
+        sort(ev.begin(), ev.end(), [](const pair<ll, ll>& a, const pair<ll, ll>& b) { return a.first < b.first; });
+        size_t w = 0;
+        for (size_t i = 0; i < ev.size(); ++i) {
+            if (w && ev[w - 1].first == ev[i].first) ev[w - 1].second += ev[i].second;
+            else ev[w++] = ev[i];
+        }
+        size_t k = 0;
+        for (size_t i = 0; i < w; ++i) if (ev[i].second != 0) ev[k++] = ev[i];
+        ev.resize(k);
+    }
     template <class Tup> vector<Tup> runs(Rng clip) const {
+        normalize();
         vector<Tup> out;
         if (clip.lo >= clip.hi) return out;
         ll cur = 0, at = clip.lo;
-        auto it = d.begin();
-        for (; it != d.end() && it->first <= clip.lo; ++it) cur += it->second;
+        size_t i = 0;
+        for (; i < ev.size() && ev[i].first <= clip.lo; ++i) cur += ev[i].second;
         auto put = [&](ll hi) {
             if (hi <= at) return;
             if (!out.empty() && (ll)out.back().f1 == cur) out.back().f0.hi = hi; else out.push_back(Tup{Rng{at, hi}, cur});
             at = hi;
         };
-        for (; it != d.end() && it->first < clip.hi; ++it) { put(it->first); cur += it->second; }
+        for (; i < ev.size() && ev[i].first < clip.hi; ++i) { put(ev[i].first); cur += ev[i].second; }
         put(clip.hi);
         return out;
     }

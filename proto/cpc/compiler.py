@@ -70,9 +70,9 @@ class TCounter(T):
 
 class TPrefix(T):
     """prefix(a): prefix sums of a 1-D or 2-D array, read with `pre.sum(range)` / `pre.sum(rows, cols)`."""
-    def __init__(self, dims): self.dims = tuple(dims)
-    def __eq__(self, o): return isinstance(o, TPrefix) and o.dims == self.dims
-    def __hash__(self): return hash(("prefix", self.dims))
+    def __init__(self, dims, narrow=False): self.dims = tuple(dims); self.narrow = narrow
+    def __eq__(self, o): return isinstance(o, TPrefix) and o.dims == self.dims and o.narrow == self.narrow
+    def __hash__(self): return hash(("prefix", self.dims, self.narrow))
     def __repr__(self): return "Prefix<" + ", ".join(map(repr, self.dims)) + ">"
 
 class THash(T):
@@ -235,31 +235,33 @@ class Compiler(LendMixin):
             return f"Opt<{self.cpp_type(t.inner)}>"
         if isinstance(t, TRange): return "Rng"
         if isinstance(t, TTuple): return t.cpp
-        if isinstance(t, TList): return f"vector<{'int' if self.narrow(t.elem) else self.cpp_type(t.elem)}>"
+        if isinstance(t, TList):
+            el = 'int' if self.narrow(t.elem) else ('uint8_t' if isinstance(t.elem, TBool) else self.cpp_type(t.elem))
+            return f"vector<{el}>"
         if isinstance(t, TMap):
             if isinstance(t.key, TDom):
                 return f"DenseMap<{self.cpp_type(t.val)}>"
             if t.hashed:
                 if not self.hashable(t.key):
                     raise CompileError(f"a HashMap key must be a number, a domain value, a Char, a Bool or a record of those, not {t.key!r}; use Map<...>")
-                return f"unordered_map<{self.cpp_type(t.key)}, {self.cpp_type(t.val)}, CpHash>"
+                return f"CpHashMap<{self.cpp_type(t.key)}, {self.cpp_type(t.val)}, CpHash>"
             return f"map<{self.cpp_type(t.key)}, {self.cpp_type(t.val)}>"
         if isinstance(t, TSet):
             if self.word_set(t):
                 return "Mask64"
             return "DenseSet" if self.dense_set(t) else f"set<{self.cpp_type(t.elem)}>"
         if isinstance(t, TArr):
-            el = 'int' if self.narrow(t.elem) else self.cpp_type(t.elem)
+            el = 'int' if self.narrow(t.elem) else ('uint8_t' if isinstance(t.elem, TBool) else self.cpp_type(t.elem))
             return f"CpView<{el}>" if getattr(t, "view", None) else f"vector<{el}>"
         if isinstance(t, TEnum): return t.cpp
         if isinstance(t, TCounter):
             if isinstance(t.key, TDom):
                 return "CpDenseCounter"
             k = self.cpp_type(t.key)
-            m = f"unordered_map<{k}, ll, CpHash>" if isinstance(t.key, TInt) else f"map<{k}, ll>"
+            m = f"CpHashMap<{k}, ll, CpHash>" if isinstance(t.key, TInt) else f"map<{k}, ll>"
             return f"CpCounter<{m}, {k}>"
         if isinstance(t, TLib): return LIBS[t.name][1]
-        if isinstance(t, TPrefix): return "CpPrefix"
+        if isinstance(t, TPrefix): return "CpPrefix<int>" if t.narrow else "CpPrefix<ll>"
         if isinstance(t, THash): return "StrHash"
         if isinstance(t, TTree): return "RootedTree"
         if isinstance(t, TSeg): return f"SegTree<{self.cpp_type(t.elem)}>"
@@ -1059,12 +1061,12 @@ class Compiler(LendMixin):
             plain = at.lo is not None and at.lo >= 0 and bt.lo is not None and bt.lo > 0
             pos_b = bt.lo is not None and bt.lo > 0
             if op == "/":
-                c = f"({a} / {b})" if plain else f"cp_ediv({a}, {b}, {e.line})"
+                c = f"({a} / {b})" if plain else (f"cp_ediv_pos({a}, {b})" if pos_b else f"cp_ediv({a}, {b}, {e.line})")
                 if pos_b and None not in (at.lo, at.hi, bt.hi):
                     qs = [at.lo // bt.lo, at.lo // bt.hi, at.hi // bt.lo, at.hi // bt.hi]
                     return c, TInt(min(qs), max(qs))
                 return c, TInt()
-            c = f"({a} % {b})" if plain else f"cp_emod({a}, {b}, {e.line})"
+            c = f"({a} % {b})" if plain else (f"cp_emod_pos({a}, {b})" if pos_b else f"cp_emod({a}, {b}, {e.line})")
             if None not in (bt.lo, bt.hi):
                 m = max(abs(bt.lo), abs(bt.hi))
                 return c, TInt(0, m - 1)
@@ -1472,7 +1474,7 @@ class Compiler(LendMixin):
         if isinstance(ot, TTuple) and ot.cpp in self.index_impls and f == "to_idx" and ot.field(f) is None:
             return self.to_idx(self.index_impls[ot.cpp], oc, e)
         if isinstance(ot, TMod) and f == "value":
-            return f"{oc}.v", TInt(0, ot.m - 1)
+            return f"(ll)({oc}.v)", TInt(0, ot.m - 1)
         self.error(e, f"{ot!r} has no `.{f}`")
 
     # ---------- calls
@@ -1574,22 +1576,28 @@ class Compiler(LendMixin):
         if fn.kind == "name" and fn.name == "Rooted" and len(e.args) in (2, 3) and not self.lookup(fn.name):
             # Rooted(g, root) / Rooted(g, root, weight: e => e.len): a tree hung from `root`. `g` is adjacency
             # lists ([V]List<V>, or arcs with a `to: V`) or a list of edges (records that start with two V).
-            c, t = self.expr(e.args[0])
             weight = [a for a in e.args[2:] if a.kind == "kwarg" and a.name == "weight"]
             if len(e.args) == 3 and not weight:
                 self.error(e, "Rooted(g, root) or Rooted(g, root, weight: e => e.len)")
+            # Fuse Rooted(Graph.undirected(edges), root) directly onto the edge list to avoid intermediate vector<vector<int>>
+            g_arg = e.args[0]
+            if (not weight and g_arg.kind == "call" and g_arg.fn.kind == "field" and g_arg.fn.obj.kind == "name"
+                    and g_arg.fn.obj.name == "Graph" and g_arg.fn.name == "undirected"
+                    and len(g_arg.args) == 1 and not self.lookup("Graph")):
+                g_arg = g_arg.args[0]
+            c, t = self.expr(g_arg)
+            kind = None
             if isinstance(t, TArr) and len(t.dims) == 1 and isinstance(t.elem, TList):
                 V, arc = t.dims[0], t.elem.elem
                 to = "_a" if arc == V else f"_a.{self.field_cpp('to')}" if isinstance(arc, TTuple) and \
                     arc.field("to") is not None and arc.types[arc.field("to")] == V else None
-                fill = f"for (size_t _u = 0; _u < _g.size(); ++_u) for (const auto& _a : _g[_u]) _adj[_u].emplace_back((int)({to}), {{w}});"
+                kind = "adj"
             elif isinstance(t, (TArr, TList)) and isinstance(t.elem, TTuple) and len(t.elem.types) >= 2 and \
                     isinstance(t.elem.types[0], TDom) and t.elem.types[0] == t.elem.types[1]:
                 V, arc = t.elem.types[0], t.elem
                 u, v = (f"_a.{self.field_cpp(n)}" for n in arc.names[:2])
                 to = u
-                fill = (f"for (const auto& _a : _g) {{{{ ll _w = {{w}}; _adj[{u}].emplace_back((int)({v}), _w); "
-                        f"_adj[{v}].emplace_back((int)({u}), _w); }}}}")
+                kind = "edges"
             else:
                 to = None
             if to is None:
@@ -1606,8 +1614,35 @@ class Compiler(LendMixin):
                 self.error(e, f"the root must be a {V!r}, got {rt!r}")
             tt = TTree(V)
             tt.weighted = bool(weight)
-            return (f"([&]{{ const auto& _g = {c}; vector<vector<pair<int, ll>>> _adj({V.info.len_cpp}); "
-                    f"{fill.format(w=w)} return RootedTree(_adj, {rc}); }}())"), tt
+            n_cpp = f"(int)({V.info.len_cpp})"
+            if kind == "adj" and not weight and to == "_a":
+                return f"RootedTree({c}, {rc})", tt
+            if kind == "edges":
+                if not weight:
+                    return (f"([&]{{ const auto& _g = {c}; int _n = {n_cpp}; vector<int> _hd(_n + 1, 0); "
+                            f"for (const auto& _a : _g) {{ ++_hd[(int)({u}) + 1]; ++_hd[(int)({v}) + 1]; }} "
+                            f"for (int _i = 0; _i < _n; ++_i) _hd[_i + 1] += _hd[_i]; "
+                            f"vector<int> _to(_hd[_n]), _cur(_hd.begin(), _hd.begin() + _n); "
+                            f"for (const auto& _a : _g) {{ int _u = (int)({u}), _v = (int)({v}); _to[_cur[_u]++] = _v; _to[_cur[_v]++] = _u; }} "
+                            f"return RootedTree(_n, _hd, _to, {rc}); }}())"), tt
+                return (f"([&]{{ const auto& _g = {c}; int _n = {n_cpp}; vector<int> _hd(_n + 1, 0); "
+                        f"for (const auto& _a : _g) {{ ++_hd[(int)({u}) + 1]; ++_hd[(int)({v}) + 1]; }} "
+                        f"for (int _i = 0; _i < _n; ++_i) _hd[_i + 1] += _hd[_i]; "
+                        f"vector<int> _to(_hd[_n]), _cur(_hd.begin(), _hd.begin() + _n); vector<ll> _wt(_hd[_n]); "
+                        f"for (const auto& _a : _g) {{ int _u = (int)({u}), _v = (int)({v}); ll _w = {w}; "
+                        f"int _pu = _cur[_u]++, _pv = _cur[_v]++; _to[_pu] = _v; _wt[_pu] = _w; _to[_pv] = _u; _wt[_pv] = _w; }} "
+                        f"return RootedTree(_n, _hd, _to, _wt, {rc}); }}())"), tt
+            if not weight:
+                return (f"([&]{{ const auto& _g = {c}; int _n = {n_cpp}; vector<int> _hd(_n + 1, 0); "
+                        f"for (int _u = 0; _u < _n; ++_u) _hd[_u + 1] = _hd[_u] + (int)_g[_u].size(); "
+                        f"vector<int> _to(_hd[_n]); int _p = 0; "
+                        f"for (int _u = 0; _u < _n; ++_u) for (const auto& _a : _g[_u]) _to[_p++] = (int)({to}); "
+                        f"return RootedTree(_n, _hd, _to, {rc}); }}())"), tt
+            return (f"([&]{{ const auto& _g = {c}; int _n = {n_cpp}; vector<int> _hd(_n + 1, 0); "
+                    f"for (int _u = 0; _u < _n; ++_u) _hd[_u + 1] = _hd[_u] + (int)_g[_u].size(); "
+                    f"vector<int> _to(_hd[_n]); vector<ll> _wt(_hd[_n]); int _p = 0; "
+                    f"for (int _u = 0; _u < _n; ++_u) for (const auto& _a : _g[_u]) {{ _to[_p] = (int)({to}); _wt[_p] = {w}; ++_p; }} "
+                    f"return RootedTree(_n, _hd, _to, _wt, {rc}); }}())"), tt
         if fn.kind == "generic" and fn.name in LIBS and not self.lookup(fn.name):
             return self.lib_new(self.resolve_type(N("tname", fn.line, name=fn.name, args=fn.args)), e.args, e)
         if fn.kind == "name" and fn.name == "Set" and len(e.args) == 1 and not self.lookup("Set"):
@@ -1702,18 +1737,89 @@ class Compiler(LendMixin):
             if not isinstance(t, (TList, TArr)):
                 self.error(e, f"counts takes a list or an array, got {t!r}")
             ct = TCounter(t.elem)
-            x, r = self.tmpname("x"), self.tmpname("c")
-            return (f"([&]{{ auto {r} = {self.cpp_type(ct)}{self.counter_init(ct)}; for (const auto& {x} : {c}) "
-                    f"{r}.set({x}, {r}.get({x}) + 1); return {r}; }}())"), ct
+            x, r, s = self.tmpname("x"), self.tmpname("c"), self.tmpname("s")
+            return (f"([&]{{ const auto& {s} = {c}; auto {r} = {self.cpp_type(ct)}{self.counter_init(ct)}; "
+                    f"{r}.reserve_hint({s}.size()); for (const auto& {x} : {s}) {r}.inc({x}); return {r}; }}())"), ct
         if fn.kind == "name" and fn.name == "prefix" and len(e.args) == 1 and not self.lookup("prefix"):
             # prefix(a): the sum of everything before each boundary, so any block's sum is O(1)
+            def prefix_narrow(dims, et):
+                cells = 1
+                for d in dims:
+                    n = d.info.len_iv[1]
+                    if n is None: return False
+                    cells *= n
+                if isinstance(et, TBool): return cells < 2**31
+                if isinstance(et, TInt) and et.lo is not None and et.hi is not None:
+                    return cells * max(abs(et.lo), abs(et.hi)) < 2**31
+                return False
+            # Fuse prefix([D1, D2] (r, c) => expr) directly into CpPrefix without materializing the table
+            if e.args[0].kind == "table" and len(e.args[0].dims) in (1, 2):
+                te = e.args[0]
+                dims = []
+                for d in te.dims:
+                    if d.kind == "range":
+                        dims.append(self.dim_type(N("trange", d.line, range=d)))
+                    else:
+                        _, dt = self.expr(d)
+                        if not (isinstance(dt, TType) and isinstance(dt.t, TDom)):
+                            self.error(d, f"table dimension must be a domain or range, got {dt!r}")
+                        dims.append(dt.t)
+                pats = [te.pat] if len(dims) == 1 else (te.pat.items if te.pat.kind == "ptuple" else None)
+                if pats is None or len(pats) != len(dims):
+                    self.error(te, "table pattern must bind one name per dimension")
+                pre = self.tmpname("pre")
+                box = {}
+                def body():
+                    self.scopes.append({})
+                    vs = [self.fresh(p.name if p.name != "_" else "i") for p in pats]
+                    for p, v, d in zip(pats, vs, dims):
+                        self.scopes[-1][p.name] = Sym("let", d, v, node=p)
+                    if len(dims) == 1:
+                        v0, d0 = vs[0], dims[0]
+                        self.emit(f"for (int {v0} = 0; {v0} < {d0.info.len_cpp}; ++{v0}) {{")
+                        self.ind += 1
+                        bc, bt = self.expr(te.body)
+                        if not (is_int(bt) or isinstance(bt, TBool)):
+                            self.error(e, f"prefix takes a 1-D or 2-D array of Int or Bool, got {bt!r}")
+                        box["t"] = bt
+                        ct = "int" if prefix_narrow(dims, bt) else "ll"
+                        self.emit(f"{pre}.p[({v0} + 1) * 2 + 1] = {pre}.p[{v0} * 2 + 1] + ({ct})({bc});")
+                        self.ind -= 1
+                        self.emit("}")
+                    else:
+                        (v0, v1), (d0, d1) = vs, dims
+                        self.emit(f"ll _w = {pre}.w;")
+                        self.emit(f"for (int {v0} = 0; {v0} < {d0.info.len_cpp}; ++{v0}) {{")
+                        self.ind += 1
+                        self.emit(f"ll _r0 = (ll){v0} * _w, _r1 = _r0 + _w;")
+                        self.emit(f"for (int {v1} = 0; {v1} < {d1.info.len_cpp}; ++{v1}) {{")
+                        self.ind += 1
+                        bc, bt = self.expr(te.body)
+                        if not (is_int(bt) or isinstance(bt, TBool)):
+                            self.error(e, f"prefix takes a 1-D or 2-D array of Int or Bool, got {bt!r}")
+                        box["t"] = bt
+                        ct = "int" if prefix_narrow(dims, bt) else "ll"
+                        self.emit(f"{pre}.p[_r1 + {v1} + 1] = {pre}.p[_r0 + {v1} + 1] + {pre}.p[_r1 + {v1}] - {pre}.p[_r0 + {v1}] + ({ct})({bc});")
+                        self.ind -= 1
+                        self.emit("}")
+                        self.ind -= 1
+                        self.emit("}")
+                    self.scopes.pop()
+                lines, _ = self.capture(body)
+                nar = prefix_narrow(dims, box["t"])
+                rows = dims[0].info.len_cpp
+                cols = dims[1].info.len_cpp if len(dims) == 2 else "1"
+                pt = TPrefix(dims, narrow=nar)
+                return f"([&]() {{ {self.cpp_type(pt)} {pre}({rows}, {cols});\n" + "\n".join(lines) + f"\n return {pre}; }}())", pt
             c, t = self.expr(e.args[0])
             # a Bool array counts its true cells
             if not (isinstance(t, TArr) and len(t.dims) in (1, 2) and (is_int(t.elem) or isinstance(t.elem, TBool))):
                 self.error(e, f"prefix takes a 1-D or 2-D array of Int or Bool, got {t!r}")
+            nar = prefix_narrow(t.dims, t.elem)
             rows = t.dims[0].info.len_cpp
             cols = t.dims[1].info.len_cpp if len(t.dims) == 2 else "1"
-            return f"CpPrefix({c}, {rows}, {cols})", TPrefix(t.dims)
+            pt = TPrefix(t.dims, narrow=nar)
+            return f"{self.cpp_type(pt)}({c}, {rows}, {cols})", pt
         if fn.kind == "name" and fn.name == "span" and len(e.args) == 2 and not self.lookup("span"):
             # span(a, b): the smallest range that covers a and b, given in either order. Each is a
             # position (covered) or a boundary (the range reaches it) of one domain.
@@ -1830,7 +1936,7 @@ class Compiler(LendMixin):
             if fn.name == "Int":
                 if isinstance(t, TBool): return f"(ll)({c})", TInt(0, 1)
                 if isinstance(t, TChar): return f"(ll)({c})", TInt(0, 255)
-                if isinstance(t, TMod): return f"({c}).v", TInt(0, t.m - 1)
+                if isinstance(t, TMod): return f"(ll)(({c}).v)", TInt(0, t.m - 1)
                 if is_int(t): return c, t
             self.error(e, f"cannot convert {t!r} to {fn.name}")
         if fn.kind == "name" and getattr(self.lookup(fn.name), "kind", None) == "type" \
@@ -2290,7 +2396,9 @@ class Compiler(LendMixin):
             if not is_int(t):
                 self.error(e, f"cyc needs an Int number of steps, got {t!r}")
             n = ot.info.len_cpp
-            return f"(int)(((((ll)({oc}) + ({c})) % (ll)({n})) + (ll)({n})) % (ll)({n}))", ot
+            if t.lo is not None and t.lo >= 0:
+                return f"cp_cyc_nonneg({oc}, {c}, (int)({n}))", ot
+            return f"cp_cyc({oc}, {c}, (int)({n}))", ot
         if isinstance(ot, TOpt) and m == "map":
             self.error(e, ".map on ?T is not in the prototype yet")
         self.error(e, f"{ot!r} has no method `{m}`")
@@ -2694,7 +2802,8 @@ class Compiler(LendMixin):
                     box["t"], box["opt"] = t.inner, True
                     self.emit(f"{{ auto _o = {c}; if (_o.has() && (!{acc}.has() || _o.get() {cmp} {acc}.get())) {acc} = _o; }}")
                     return
-                self.emit(f"{{ auto _v = {c}; if (!{acc}.has() || _v {cmp} {acc}.get()) {acc} = decltype({acc})(_v); }}")
+                op_fn = "opt_min" if name == "min" else "opt_max"
+                self.emit(f"{op_fn}({acc}, {c});")
         early = name in ("any", "all")
         if early:
             self.fn_ret.append(BOOL)
@@ -2711,7 +2820,51 @@ class Compiler(LendMixin):
         body = "\n".join(lines)
         if name == "List":
             lt = TList(box["et"])
-            return f"([&]() {{ {self.cpp_type(lt)} {acc};\n{body}\n return {acc}; }}())", lt
+            res = ""
+            if not has_filter:
+                # Pre-reserve when every `for` clause has an independent cheap size expression
+                factors, bound = [], set()
+                def pat_names(p):
+                    if p.kind == "pname": bound.add(p.name)
+                    elif p.kind == "ptuple":
+                        for x in p.items: pat_names(x)
+                def uses_bound(nd):
+                    if nd is None: return False
+                    if getattr(nd, "kind", None) == "name": return nd.name in bound
+                    for v in nd.__dict__.values():
+                        if isinstance(v, list):
+                            if any(uses_bound(x) for x in v): return True
+                        elif hasattr(v, "__dict__") and uses_bound(v): return True
+                    return False
+                ok_res = True
+                for cl in clauses:
+                    it = cl[2]
+                    if it.kind == "field" and it.name == "rev":
+                        it = it.obj
+                    if uses_bound(it):
+                        ok_res = False; break
+                    if it.kind == "name":
+                        sym = self.lookup(it.name)
+                        if sym is not None and isinstance(sym.ty, (TList, TArr)):
+                            factors.append(f"(size_t){sym.cpp}.size()")
+                        elif sym is not None and isinstance(sym.ty, TType) and isinstance(sym.ty.t, TDom):
+                            factors.append(f"(size_t)({sym.ty.t.info.len_cpp})")
+                        else:
+                            ok_res = False; break
+                    elif it.kind == "range" and it.lo is not None and it.hi is not None:
+                        _, (lc, lt0) = self.capture(lambda: self.expr(it.lo))
+                        _, (hc, ht0) = self.capture(lambda: self.expr(it.hi))
+                        if is_int(lt0) and is_int(ht0):
+                            end = f"((ll)({hc}) + 1)" if it.incl else f"(ll)({hc})"
+                            factors.append(f"(size_t)max(0LL, {end} - (ll)({lc}))")
+                        else:
+                            ok_res = False; break
+                    else:
+                        ok_res = False; break
+                    pat_names(cl[1])
+                if ok_res and factors:
+                    res = f" {acc}.reserve({' * '.join(factors)});"
+            return f"([&]() {{ {self.cpp_type(lt)} {acc};{res}\n{body}\n return {acc}; }}())", lt
         if name in ("any", "all"):
             return f"([&]() -> bool {{\n{body}\n return {'false' if name == 'any' else 'true'}; }}())", BOOL
         if name == "count":
@@ -3045,6 +3198,7 @@ class Compiler(LendMixin):
                 self.last_read = len(self.init_lines)
             self.read_pos = (id(self.out), len(self.out))
             return
+        fill_assign = None
         if s.value is None:
             if ty is None:
                 self.error(s, "var without a value needs a type")
@@ -3060,6 +3214,7 @@ class Compiler(LendMixin):
                 fc = self.coerce(fc, ft, ty.elem, s.value)
                 size = " * ".join(f"(size_t){d.info.len_cpp}" for d in ty.dims)
                 c, vt = f"{self.cpp_type(ty)}({size}, {fc})", ty
+                fill_assign = (size, fc)
         else:
             c, vt = self.expr(s.value, ty)
             if ty is not None:
@@ -3077,7 +3232,10 @@ class Compiler(LendMixin):
         cpp = self.fresh(name)
         if self.at_top and len(self.fn_ret) <= (1 if getattr(self, "in_multitest", False) else 0):
             self.globals.append(f"{self.cpp_type(decl_t)} {cpp};")
-            self.emit(f"{cpp} = {c};")
+            if fill_assign is not None and not getattr(decl_t, "view", None):
+                self.emit(f"{cpp}.assign({fill_assign[0]}, {fill_assign[1]});")
+            else:
+                self.emit(f"{cpp} = {c};")
         else:
             self.emit(f"{'' if s.mut else 'const '}{self.cpp_type(decl_t)} {cpp} = {c};")
         sym = self.declare(name, decl_t, cpp, s.mut, s)
@@ -4174,28 +4332,47 @@ class Compiler(LendMixin):
             return
         memo = "memo" in decos
         if memo:
-            hashed = any(a.kind == "name" and a.name == "hash" for a in decos["memo"].args) or not all(isinstance(t, TDom) for t in ptypes)
-            if local or not all(isinstance(t, (TDom, TInt, TBool)) for t in ptypes) or isinstance(rt, TUnit):
+            def memo_dim(t):
+                if isinstance(t, TDom):
+                    return ("0", t.info.len_cpp, t.info.len_iv[1], False, lambda pn: pn)
+                if isinstance(t, TBool):
+                    return ("0", "2", 2, False, lambda pn: f"(int)({pn})")
+                if isinstance(t, TEnum) and all(not fns for _, fns, _ in t.variants):
+                    return ("0", str(len(t.variants)), len(t.variants), False, lambda pn: f"(int)({pn}.tag)")
+                if isinstance(t, TInt) and t.lo is not None and t.hi is not None and t.hi >= t.lo:
+                    max_n = t.hi - t.lo + 1
+                    lo_c = getattr(t, "lo_cpp", None) or str(t.lo)
+                    hi_c = getattr(t, "hi_cpp", None) or str(t.hi)
+                    len_c = str(max_n) if lo_c == str(t.lo) and hi_c == str(t.hi) else f"max(0LL, (ll)({hi_c}) - (ll)({lo_c}) + 1)"
+                    idx_f = (lambda pn, lc=lo_c: f"(ll)({pn})" if lc == "0" else f"((ll)({pn}) - (ll)({lc}))")
+                    return (lo_c, len_c, max_n, True, idx_f)
+                return None
+            unit_enum = lambda t: isinstance(t, TEnum) and all(not fns for _, fns, _ in t.variants)
+            if local or not all(isinstance(t, (TDom, TInt, TBool)) or unit_enum(t) for t in ptypes) or isinstance(rt, TUnit):
                 self.error(s, "@memo (prototype) needs a fn at top level or directly in a @multitest fn, with domain parameters")
+            dims_info = [memo_dim(t) for t in ptypes]
+            has_into_order = any(a.kind == "kwarg" and a.name in ("into", "order") for a in decos["memo"].args)
+            hashed = any(a.kind == "name" and a.name == "hash" for a in decos["memo"].args) or any(d is None for d in dims_info)
+            if not hashed and has_into_order and not all(isinstance(t, TDom) for t in ptypes):
+                hashed = True
             if not hashed:
-                # a dense table has one slot per point of the domains' product; past MEMO_DENSE_MAX slots (at the
-                # domains' declared maximum sizes) only the points actually asked for are stored
+                # a dense table has one slot per point of the dimensions' product; past MEMO_DENSE_MAX slots (at the
+                # dimensions' declared maximum sizes) only the points actually asked for are stored
                 slots = 1
-                for t in ptypes:
-                    n = t.info.len_iv[1]
+                for _, _, n, _, _ in dims_info:
                     slots = None if slots is None or n is None else slots * n
                 if slots is not None and slots > MEMO_DENSE_MAX:
-                    if any(a.kind == "kwarg" and a.name in ("into", "order") for a in decos["memo"].args):
+                    if has_into_order:
                         self.error(s, f"@memo(into/order) fills a table of up to {slots} slots, one per point of "
                                       f"{' x '.join(repr(t) for t in ptypes)}; that is past the {MEMO_DENSE_MAX} it allows")
                     hashed = True
             self.check_memo_reads(s)
             tab = f"_memo_{cpp}"
             if hashed:
-                if any(a.kind == "kwarg" and a.name in ("into", "order") for a in decos["memo"].args):
+                if has_into_order:
                     self.error(s, "@memo(hash) does not support into/order yet (prototype)")
                 k = len(ptypes)
-                self.globals.append(f"unordered_map<array<ll, {k}>, {self.cpp_type(rt)}, CpArrHash> {tab};")
+                self.globals.append(f"CpHashMap<array<ll, {k}>, {self.cpp_type(rt)}, CpArrHash> {tab};")
                 pnames = [self.lookup(p.name).cpp for p in s.params]
                 inner = self.fresh(s.name + "_body")
                 body_lines, _ = self.capture(lambda: self.fn_body(s.body, rt))
@@ -4204,7 +4381,7 @@ class Compiler(LendMixin):
                 self.at_top = saved_top
                 rcpp = self.cpp_type(rt)
                 self.funcs.append(f"{rcpp} {inner}({', '.join(params)}) {{\n" + "\n".join(body_lines) + "\n}")
-                key = ", ".join(f"(ll){pn}" for pn in pnames)
+                key = ", ".join(f"(ll)({pn}.tag)" if isinstance(t, TEnum) else f"(ll){pn}" for pn, t in zip(pnames, ptypes))
                 self.funcs.append(
                     f"{rcpp} {cpp}({', '.join(params)}) {{\n"
                     f"    array<ll, {k}> _key{{{key}}};\n"
@@ -4217,18 +4394,28 @@ class Compiler(LendMixin):
                 self.emit(f"{tab}.clear();")
                 return
             self.globals.append(f"vector<{self.cpp_type(TOpt(rt))}> {tab};")
-            size = " * ".join(f"(size_t){t.info.len_cpp}" for t in ptypes)
+            size = " * ".join(f"(size_t)({d[1]})" for d in dims_info)
             pnames = [self.lookup(p.name).cpp for p in s.params]
-            flat = pnames[0]
-            for pn, t in zip(pnames[1:], ptypes[1:]):
-                flat = f"({flat}) * {t.info.len_cpp} + {pn}"
+            guard_lines = []
+            idx_exprs = []
+            for k, (pn, d) in enumerate(zip(pnames, dims_info)):
+                _, len_c, _, is_range, idx_f = d
+                if is_range:
+                    iv = f"_mi{k}"
+                    guard_lines.append(f"    ll {iv} = {idx_f(pn)};\n    if ((unsigned long long){iv} >= (unsigned long long)({len_c})) return {cpp}_body_placeholder;")
+                    idx_exprs.append(iv)
+                else:
+                    idx_exprs.append(idx_f(pn))
+            flat = idx_exprs[0]
+            for ix, d in zip(idx_exprs[1:], dims_info[1:]):
+                flat = f"({flat}) * (size_t)({d[1]}) + (size_t)({ix})"
             inner = self.fresh(s.name + "_body")
+            guard = "".join(g.replace(f"{cpp}_body_placeholder", f"{inner}({', '.join(pnames)})") + "\n" for g in guard_lines)
             body_lines, _ = self.capture(lambda: self.fn_body(s.body, rt))
             self.fn_ret.pop()
             self.scopes.pop()
             self.at_top = saved_top
             rcpp = self.cpp_type(rt)
-            self.funcs.append(f"{rcpp} {inner}({', '.join(params)}) {{\n" + "\n".join(body_lines) + "\n}")
             order = next((a.value.name for a in decos["memo"].args if a.kind == "kwarg" and a.name == "order"), "recursive")
             if order not in ("recursive", "ascending"):
                 self.error(s, "@memo(order: ...) is `recursive` or `ascending`")
@@ -4239,23 +4426,35 @@ class Compiler(LendMixin):
                 loops = "".join(f"for (int {v} = 0; {v} < {t.info.len_cpp}; ++{v}) " for v, t in zip(idx, ptypes))
                 fill = (f"    if (!{tab}_filled) {{ {tab}_filled = true; if ({tab}.size() != {size}) {tab}.assign({size}, {{}}); "
                         f"{loops}{cpp}({', '.join(idx)}); }}\n")
+            init_chk = ""
+            self.funcs.append(f"static __attribute__((noinline)) {rcpp} {inner}({', '.join(params)});")
+            if order != "ascending":
+                self.funcs.append(f"static __attribute__((noinline)) void {tab}_init() {{ {tab}.assign({size}, {{}}); }}")
+                init_chk = f"    if (__builtin_expect({tab}.empty(), 0)) {tab}_init();\n"
             self.funcs.append(
-                f"{rcpp} {cpp}({', '.join(params)}) {{\n" + fill +
-                f"    if ({tab}.size() != {size}) {tab}.assign({size}, {{}});\n"
+                f"inline {rcpp} {cpp}({', '.join(params)}) {{\n" + fill + init_chk + guard +
                 f"    auto& _m = {tab}[{flat}];\n"
-                f"    if (!_m.has()) _m = {inner}({', '.join(pnames)});\n"
+                f"    if (__builtin_expect(!_m.has(), 0)) _m = {inner}({', '.join(pnames)});\n"
                 f"    return _m.get();\n}}")
-            self.funcs.insert(0, f"{rcpp} {cpp}({', '.join(params)});")
+            self.funcs.append(f"static __attribute__((noinline)) {rcpp} {inner}({', '.join(params)}) {{\n" + "\n".join(body_lines) + "\n}")
+            self.funcs.insert(0, f"inline {rcpp} {cpp}({', '.join(params)});")
             into = next((a.value for a in decos["memo"].args if a.kind == "kwarg" and a.name == "into"), None)
             if order == "ascending":
                 self.emit(f"{tab}_filled = false;")
-            if into is not None:
+                if into is not None:
+                    if into.kind != "name":
+                        self.error(s, "@memo(into: name) needs a plain name")
+                    self.emit(f"{tab}.assign({size}, {{}});")
+                    self.declare(into.name, TArr(list(ptypes), TOpt(rt)), tab, True, s)
+                else:
+                    self.emit(f"{tab}.clear();")
+            elif into is not None:
                 if into.kind != "name":
                     self.error(s, "@memo(into: name) needs a plain name")
                 self.emit(f"{tab}.assign({size}, {{}});")
                 self.declare(into.name, TArr(list(ptypes), TOpt(rt)), tab, True, s)
             else:
-                self.emit(f"{tab}.clear();")
+                self.emit(f"{tab}.assign({size}, {{}});")
             return
         lines, _ = self.capture(lambda: self.fn_body(s.body, rt))
         self.fn_ret.pop()

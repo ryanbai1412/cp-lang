@@ -778,31 +778,29 @@ def invert_splitmix64(h: int) -> int:
 def run_adversarial(tmpdir: str) -> dict:
     results = {}
 
-    # 1. Anti-hash collision attack on CpHash (unseeded splitmix64 in libstdc++ unordered_map)
+    # 1. Anti-hash collision attack on the actual runtime.hpp CpHash (both unordered_map and CpHashMap)
     probe_cpp = os.path.join(tmpdir, "antihash.cpp")
     probe_bin = os.path.join(tmpdir, "antihash")
+    runtime_inc = os.path.join(REPO_ROOT, "proto/cpc")
     with open(probe_cpp, "w") as f:
         f.write(r"""
 #include <bits/stdc++.h>
-using namespace std;
-using ll = long long;
-struct CpHash {
-    size_t operator()(ll x) const {
-        uint64_t z = (uint64_t)x + 0x9e3779b97f4a7c15ULL;
-        z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ULL;
-        z = (z ^ (z >> 27)) * 0x94d049bb133111ebULL;
-        return (size_t)(z ^ (z >> 31));
-    }
-};
-int main() {
+#include "runtime.hpp"
+int main(int argc, char** argv) {
     int n; cin >> n;
-    unordered_map<ll, ll, CpHash> m;
-    for (int i = 0; i < n; ++i) { ll k; cin >> k; m[k] += 1; }
-    cout << m.size() << " " << m.bucket_count() << " " << m.bucket_size(0) << "\n";
+    bool use_custom = argc > 1 && string(argv[1]) == "custom";
+    if (use_custom) {
+        CpHashMap<ll, ll, CpHash> m;
+        for (int i = 0; i < n; ++i) { ll k; cin >> k; m[k] += 1; }
+        cout << m.size() << " " << m.cap << " 0\n";
+    } else {
+        unordered_map<ll, ll, CpHash> m;
+        for (int i = 0; i < n; ++i) { ll k; cin >> k; m[k] += 1; }
+        cout << m.size() << " " << m.bucket_count() << " " << m.bucket_size(0) << "\n";
+    }
 }
 """)
-    compile_cpp(probe_cpp, probe_bin)
-    # libstdc++ prime bucket count right above 100k is 107897 (or 126271); find exact bucket count for N=50000
+    subprocess.run(["g++", "-std=c++17", "-O2", f"-I{runtime_inc}", probe_cpp, "-o", probe_bin], check=True)
     n_keys = 50_000
     rand_inp = os.path.join(tmpdir, "ah_rand.in")
     with open(rand_inp, "w") as f:
@@ -812,7 +810,7 @@ int main() {
     parts = open(out_r).read().split()
     bc = int(parts[1])  # exact libstdc++ prime bucket count at N=50,000
 
-    # Generate 50,000 keys whose CpHash(k) is a multiple of bc (all collide into bucket 0!)
+    # Generate 50,000 keys whose unseeded splitmix64(k) is a multiple of bc (used to collide 100% into bucket 0!)
     kill_inp = os.path.join(tmpdir, "ah_kill.in")
     kill_keys = [str(invert_splitmix64(i * bc)) for i in range(1, n_keys + 1)]
     with open(kill_inp, "w") as f:
@@ -826,7 +824,27 @@ int main() {
         "bucket0_size_killer": int(kparts[2]),
         "random_ms": round(w_rand * 1000, 1),
         "killer_ms": round(w_kill * 1000, 1),
-        "slowdown": round(w_kill / max(w_rand, 1e-6), 1),
+        "slowdown": round(w_kill / max(w_rand, 1e-6), 2),
+    }
+
+    # Also test power-of-2 bucket killer keys against the real CpHashMap<ll, ll, CpHash>
+    kill_p2_inp = os.path.join(tmpdir, "ah_kill_p2.in")
+    p2_mod = 1 << 17  # 131072 slots for N=50,000
+    with open(kill_p2_inp, "w") as f:
+        f.write(f"{n_keys}\n" + "\n".join(str(invert_splitmix64(i * p2_mod)) for i in range(1, n_keys + 1)) + "\n")
+    out_cr = os.path.join(tmpdir, "ah_crand.out")
+    out_ck = os.path.join(tmpdir, "ah_ckill.out")
+    t0 = time.perf_counter()
+    subprocess.run([probe_bin, "custom"], stdin=open(rand_inp), stdout=open(out_cr, "w"), check=True)
+    w_cr = time.perf_counter() - t0
+    t0 = time.perf_counter()
+    subprocess.run([probe_bin, "custom"], stdin=open(kill_p2_inp), stdout=open(out_ck, "w"), check=True)
+    w_ck = time.perf_counter() - t0
+    results["antihash_cphashmap_pow2"] = {
+        "n_keys": n_keys,
+        "random_ms": round(w_cr * 1000, 1),
+        "killer_ms": round(w_ck * 1000, 1),
+        "slowdown": round(w_ck / max(w_cr, 1e-6), 2),
     }
 
     # 2. Stack-overflow probe on dpp (chain of N=100,000 under default 8MB stack)
