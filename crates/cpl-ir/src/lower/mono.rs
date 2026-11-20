@@ -13,12 +13,27 @@ pub(super) type GenConstId = usize;
 pub(super) type ModConstId = usize;
 pub(super) type TraitId = usize;
 
+/// A bare binary operator or stdlib combinator passed as a value (`+`, `*`, `max`, `min`, `gcd`, etc.).
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub(super) enum BareOp {
+    Add,
+    Mul,
+    BitXor,
+    BitOr,
+    BitAnd,
+    Max,
+    Min,
+    Gcd,
+}
+
 /// One concrete argument to a generic type, struct, function, or const.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(super) enum GenArg {
     Ty(Ty),
     Domain(DomainId),
     Int(i64),
+    RuntimeInt(GlobalId),
+    Op(BareOp),
 }
 
 pub(super) type GenEnv = HashMap<String, GenArg>;
@@ -152,10 +167,15 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    /// Look up a symbol in the current module (or local domains/aliases/gen_env).
+    /// Look up a symbol in the current module (or local domains/aliases/gen_env, including enclosing scopes).
     pub(super) fn get_sym(&self, name: &str) -> Option<Sym> {
         if let Some(local_sym) = self.cx.local_syms.iter().rev().find_map(|s| s.get(name).copied()) {
             return Some(local_sym);
+        }
+        for ocx in self.outer_cxs.iter().rev() {
+            if let Some(local_sym) = ocx.local_syms.iter().rev().find_map(|s| s.get(name).copied()) {
+                return Some(local_sym);
+            }
         }
         self.mod_syms[self.cur_mod].get(name).copied()
     }
@@ -171,6 +191,54 @@ impl<'a> Lowerer<'a> {
             }
             GenArg::Domain(d) => format!("D{d}_{}", self.domains[*d]),
             GenArg::Ty(ty) => self.mangle_ty(ty),
+            GenArg::RuntimeInt(gid) => format!("RI{gid}"),
+            GenArg::Op(op) => format!("Op_{op:?}"),
+        }
+    }
+
+    /// Recognizes a bare operator expression (`+`, `*`, `^`, `|`, `&`, `max`, `min`, `gcd`)
+    /// or a local variable bound to a `BareOp` generic parameter.
+    pub(super) fn detect_bare_op(&self, e: &ast::Expr) -> Option<BareOp> {
+        match &e.kind {
+            ast::ExprKind::Paren(inner) => self.detect_bare_op(inner),
+            ast::ExprKind::Name(n) => {
+                if let Some(&op) = self.cx.op_locals.get(n) {
+                    return Some(op);
+                }
+                if self.lookup(n).is_some() {
+                    return None;
+                }
+                match n.as_str() {
+                    "max" => Some(BareOp::Max),
+                    "min" => Some(BareOp::Min),
+                    "gcd" => Some(BareOp::Gcd),
+                    _ => None,
+                }
+            }
+            ast::ExprKind::Lambda { params, body } if params.len() == 2 => {
+                let ast::PatternKind::Name(p0) = &params[0].kind else {
+                    return None;
+                };
+                let ast::PatternKind::Name(p1) = &params[1].kind else {
+                    return None;
+                };
+                if let ast::ExprKind::Binary { op, lhs, rhs, .. } = &body.kind {
+                    let is_direct = matches!(&lhs.kind, ast::ExprKind::Name(a) if a == p0)
+                        && matches!(&rhs.kind, ast::ExprKind::Name(b) if b == p1);
+                    if is_direct {
+                        return match op {
+                            ast::BinOp::Add => Some(BareOp::Add),
+                            ast::BinOp::Mul => Some(BareOp::Mul),
+                            ast::BinOp::BitXor => Some(BareOp::BitXor),
+                            ast::BinOp::BitOr => Some(BareOp::BitOr),
+                            ast::BinOp::BitAnd => Some(BareOp::BitAnd),
+                            _ => None,
+                        };
+                    }
+                }
+                None
+            }
+            _ => None,
         }
     }
 
@@ -265,6 +333,11 @@ impl<'a> Lowerer<'a> {
                     if let Some(Sym::Domain(d)) = self.get_sym(n) {
                         return GenArg::Domain(d);
                     }
+                    if let Some(Sym::Global(gid)) = self.get_sym(n) {
+                        if self.globals[gid].ty == Ty::Int {
+                            return GenArg::RuntimeInt(gid);
+                        }
+                    }
                 }
                 self.error(codes::BAD_NUMBER, expr.span, "expected a compile-time constant integer");
                 GenArg::Int(1)
@@ -275,6 +348,11 @@ impl<'a> Lowerer<'a> {
                 }
                 if let Some(Sym::Domain(d)) = self.get_sym(&name.text) {
                     return GenArg::Domain(d);
+                }
+                if let Some(Sym::Global(gid)) = self.get_sym(&name.text) {
+                    if self.globals[gid].ty == Ty::Int {
+                        return GenArg::RuntimeInt(gid);
+                    }
                 }
                 if let Some(v) = self.const_ints.get(&name.text).copied() {
                     return GenArg::Int(v);
@@ -606,16 +684,27 @@ impl<'a> Lowerer<'a> {
                             }
                         }
                     }
-                    ast::StmtKind::Let { pat: ast::Pattern { kind: ast::PatternKind::Name(cname), .. }, ty, init: Some(init), .. } => {
-                        self.structs[sid].consts.insert(
-                            cname.clone(),
-                            StructConst {
-                                mod_id: imp_mod,
-                                offset: imp_offset,
-                                ty: ty.as_ref(),
-                                init,
-                            },
-                        );
+                    ast::StmtKind::Let { pat, ty, init: Some(init), .. } => {
+                        let cname = match &pat.kind {
+                            ast::PatternKind::Name(n) => Some(n.clone()),
+                            ast::PatternKind::Variant { path, args }
+                                if path.len() == 1 && args.is_empty() =>
+                            {
+                                Some(path[0].text.clone())
+                            }
+                            _ => None,
+                        };
+                        if let Some(cname) = cname {
+                            self.structs[sid].consts.insert(
+                                cname,
+                                StructConst {
+                                    mod_id: imp_mod,
+                                    offset: imp_offset,
+                                    ty: ty.as_ref(),
+                                    init,
+                                },
+                            );
+                        }
                     }
                     ast::StmtKind::Const { name, ty, init: Some(init), .. } => {
                         self.structs[sid].consts.insert(
@@ -835,11 +924,22 @@ impl<'a> Lowerer<'a> {
             }
         }
 
-        // Pass 1: unify from non-lambda arguments.
+        // Pass 1: unify from non-lambda arguments (and detect bare operators passed for unbound type params).
         for (param, arg) in ast_params.iter().zip(&matched) {
             let (Some(pty), Some(arg)) = (&param.ty, arg) else {
                 continue;
             };
+            if let ast::TypeKind::Named { name, args: targs } = &pty.kind {
+                if targs.is_empty()
+                    && gen_names.contains(&name.text)
+                    && !inferred.contains_key(&name.text)
+                {
+                    if let Some(op) = self.detect_bare_op(&arg.value) {
+                        inferred.insert(name.text.clone(), GenArg::Op(op));
+                        continue;
+                    }
+                }
+            }
             if matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
                 continue;
             }
@@ -850,10 +950,93 @@ impl<'a> Lowerer<'a> {
             }
         }
 
+        // Propagate domain param `V` from a bound `Graph<V, E>` (or any struct with a domain param),
+        // and arc element type `A` from a bound `next: N` when `N` is a `Graph<V, E>` or fn.
+        for g in &gen_names {
+            if !inferred.contains_key(g) && (g == "V" || g == "D") {
+                let dom_from_struct = inferred.values().find_map(|ga| {
+                    if let GenArg::Ty(Ty::Struct(sid)) = ga {
+                        self.structs[*sid].origin_gen.as_ref().and_then(|(_, gargs)| {
+                            gargs.iter().find_map(|a| {
+                                if let GenArg::Domain(d) = a {
+                                    Some(*d)
+                                } else {
+                                    None
+                                }
+                            })
+                        })
+                    } else {
+                        None
+                    }
+                });
+                if let Some(d) = dom_from_struct {
+                    inferred.insert(g.clone(), GenArg::Domain(d));
+                }
+            }
+        }
+
         // Pass 2 (up to 3 rounds for chained lambdas like `dijkstra(adj, from, w)`):
         // unify from lambda arguments whose parameter types are now known.
         for _ in 0..3 {
             let before = inferred.len();
+            // If an unbound generic (e.g. `T` in `fold_path<S, T>(..., ds: S)`) is present in a bound
+            // struct argument's generic environment (e.g. `SegTree<Pre, Word>` has `T -> Word`), inherit it.
+            for g in &gen_names {
+                if !inferred.contains_key(g) {
+                    let from_struct = inferred.values().find_map(|ga| match ga {
+                        GenArg::Ty(Ty::Struct(sid)) => self.structs[*sid].env.get(g).cloned(),
+                        _ => None,
+                    });
+                    if let Some(ga) = from_struct {
+                        inferred.insert(g.clone(), ga);
+                    }
+                }
+            }
+            // If an unbound generic `T` is used as a lambda parameter type (e.g. `min_by<S, T, K>(it: S, key: T -> K)`),
+            // deduce `T` from a bound container generic `S` (`List<Elem>`, `[D]Elem`, `Range<Elem>`, `Str`).
+            for g in &gen_names {
+                if !inferred.contains_key(g) && (g == "T" || g == "E" || g == "X") {
+                    let elem_ty = inferred.values().find_map(|ga| match ga {
+                        GenArg::Ty(Ty::List(e))
+                        | GenArg::Ty(Ty::Array { elem: e, .. })
+                        | GenArg::Ty(Ty::Range(e))
+                        | GenArg::Ty(Ty::Set(e))
+                        | GenArg::Ty(Ty::HashSet(e)) => Some((**e).clone()),
+                        GenArg::Ty(Ty::Str) => Some(Ty::Char),
+                        _ => None,
+                    });
+                    if let Some(ety) = elem_ty {
+                        inferred.insert(g.clone(), GenArg::Ty(ety));
+                    }
+                }
+            }
+            // If an unbound generic `A` is used as a lambda parameter type (e.g. `w: A -> W` in `dijkstra`),
+            // deduce `A` from a bound `N` (`Graph<V, E>`'s `out` element type, or `Fn(_, List<Elem>)`).
+            for g in &gen_names {
+                if !inferred.contains_key(g) && g == "A" {
+                    let arc_ty = inferred.values().find_map(|ga| match ga {
+                        GenArg::Ty(Ty::Struct(sid)) => {
+                            let out_fn = self.structs[*sid].methods.get("out").copied()?;
+                            if let Some(Ty::List(elem)) = self.sigs[out_fn].ret.clone() {
+                                Some((*elem).clone())
+                            } else {
+                                None
+                            }
+                        }
+                        GenArg::Ty(Ty::Fn(_, ret)) => {
+                            if let Ty::List(elem) = ret.as_ref() {
+                                Some((**elem).clone())
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    });
+                    if let Some(aty) = arc_ty {
+                        inferred.insert(g.clone(), GenArg::Ty(aty));
+                    }
+                }
+            }
             for (param, arg) in ast_params.iter().zip(&matched) {
                 let (Some(pty), Some(arg)) = (&param.ty, arg) else {
                     continue;
@@ -861,6 +1044,31 @@ impl<'a> Lowerer<'a> {
                 let ast::ExprKind::Lambda { params: lparams, body: lbody } = &arg.value.kind else {
                     continue;
                 };
+                if let ast::TypeKind::Named { name, args: targs } = &pty.kind {
+                    if targs.is_empty()
+                        && gen_names.contains(&name.text)
+                        && !inferred.contains_key(&name.text)
+                        && lparams.len() == 1
+                    {
+                        let dom_ty = inferred
+                            .get("V")
+                            .or_else(|| inferred.get("D"))
+                            .and_then(|ga| match ga {
+                                GenArg::Domain(d) => Some(Ty::Pos(*d)),
+                                GenArg::Ty(t) => Some(t.clone()),
+                                _ => None,
+                            });
+                        if let Some(vty) = dom_ty {
+                            if let Some(ret_ty) = self.probe_lambda_ret(lparams, std::slice::from_ref(&vty), lbody) {
+                                inferred.insert(
+                                    name.text.clone(),
+                                    GenArg::Ty(Ty::Fn(vec![vty], Box::new(ret_ty))),
+                                );
+                            }
+                        }
+                        continue;
+                    }
+                }
                 if let ast::TypeKind::Fn { params: fparams, ret: fret } = &pty.kind {
                     // Check if all parameter types of this lambda can now be resolved.
                     let mut p_tys = Vec::new();
@@ -1014,6 +1222,17 @@ impl<'a> Lowerer<'a> {
     }
 
     /// Probes the concrete type of an expression without permanently emitting errors or side effects.
+    pub(super) fn probe_ty_silent(&mut self, e: &ast::Expr) -> Option<Ty> {
+        let saved_diags = self.diags.len();
+        let saved_cx = self.cx.clone();
+        let saved_outer = self.outer_cxs.clone();
+        let val = self.expr(e, None);
+        self.diags.truncate(saved_diags);
+        self.cx = saved_cx;
+        self.outer_cxs = saved_outer;
+        (val.ty != Ty::Error).then_some(val.ty)
+    }
+
     fn probe_expr_ty(
         &mut self,
         e: &ast::Expr,
@@ -1024,7 +1243,6 @@ impl<'a> Lowerer<'a> {
         inferred: &GenEnv,
     ) -> Option<Ty> {
         let diag_len = self.diags.len();
-        let closure_len = self.closures.len();
         let hint = if !self.ast_ty_has_unbound(param_ty, gen_names, inferred) {
             let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
             let saved_offset = std::mem::replace(&mut self.offset, tpl_offset);
@@ -1043,13 +1261,11 @@ impl<'a> Lowerer<'a> {
         self.cx = saved_cx;
         self.outer_cxs = saved_outer;
         self.diags.truncate(diag_len);
-        self.closures.truncate(closure_len);
         (probed.ty != Ty::Error).then_some(probed.ty)
     }
 
     fn probe_lambda_ret(&mut self, lparams: &[ast::Pattern], p_tys: &[Ty], body: &ast::Expr) -> Option<Ty> {
         let diag_len = self.diags.len();
-        let closure_len = self.closures.len();
         let saved_cx = self.cx.clone();
         let saved_outer = self.outer_cxs.clone();
         self.cx.scopes.push(HashMap::new());
@@ -1061,7 +1277,6 @@ impl<'a> Lowerer<'a> {
         self.cx = saved_cx;
         self.outer_cxs = saved_outer;
         self.diags.truncate(diag_len);
-        self.closures.truncate(closure_len);
         (probed.ty != Ty::Error).then_some(probed.ty)
     }
 
@@ -1161,6 +1376,20 @@ impl<'a> Lowerer<'a> {
                                         }
                                     }
                                 }
+                                GenArg::RuntimeInt(gid) => {
+                                    if let ast::TypeKind::Named { name: n, args: a } = &pa.kind {
+                                        if a.is_empty() && gen_names.contains(&n.text) {
+                                            env.entry(n.text.clone()).or_insert(GenArg::RuntimeInt(*gid));
+                                        }
+                                    }
+                                }
+                                GenArg::Op(op) => {
+                                    if let ast::TypeKind::Named { name: n, args: a } = &pa.kind {
+                                        if a.is_empty() && gen_names.contains(&n.text) {
+                                            env.entry(n.text.clone()).or_insert(GenArg::Op(*op));
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -1222,7 +1451,10 @@ impl<'a> Lowerer<'a> {
         span: Span,
     ) -> Expr {
         let (param_tys, ret_hint) = match hint {
-            Some(Ty::Fn(ps, r)) if ps.len() == params.len() => (ps.clone(), Some((**r).clone())),
+            Some(Ty::Fn(ps, r)) if ps.len() == params.len() => {
+                let rh = if **r == Ty::Error { None } else { Some((**r).clone()) };
+                (ps.clone(), rh)
+            }
             _ => (vec![Ty::Int; params.len()], None),
         };
 

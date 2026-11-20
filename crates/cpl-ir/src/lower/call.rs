@@ -115,6 +115,13 @@ impl<'a> Lowerer<'a> {
                         _ => {}
                     }
                 }
+                if name == "same" && args.len() == 2 {
+                    let op_a = self.detect_bare_op(&args[0].value);
+                    let op_b = self.detect_bare_op(&args[1].value);
+                    if op_a.is_some() || op_b.is_some() {
+                        return self.mk(ExprKind::Bool(op_a.is_some() && op_a == op_b), Ty::Bool, span);
+                    }
+                }
                 match self.get_sym(name) {
                     Some(Sym::Fn(id)) => self.user_call(id, None, args, span),
                     Some(Sym::GenFn(gfid)) => self.call_gen_fn(gfid, Vec::new(), None, args, span),
@@ -122,8 +129,14 @@ impl<'a> Lowerer<'a> {
                     Some(Sym::GenStruct(gid)) => self.call_gen_struct(gid, Vec::new(), args, hint, span),
                     Some(Sym::Variant(id, tag)) => self.variant(id, tag, args, span),
                     Some(Sym::Domain(id)) => {
-                        let Some(value) = self.one_arg(name, args, &Ty::Int, span) else {
+                        let Some(exprs) = self.positional_any(name, args, 1, span) else {
                             return self.err_expr(span);
+                        };
+                        let v = self.expr(exprs[0], None);
+                        let value = if v.ty == Ty::Char {
+                            self.mk(ExprKind::Cast(Cast::CharToInt, Box::new(v)), Ty::Int, exprs[0].span)
+                        } else {
+                            self.coerce(v, &Ty::Int, exprs[0].span)
                         };
                         self.mk(
                             ExprKind::Cast(Cast::FromLabel(id), Box::new(value)),
@@ -365,18 +378,40 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        // Otherwise infer generic params from the constructor arguments (`Lit(Road(a), true)`).
+        // Otherwise infer generic params from `fn new(...)` (if present) or constructor fields (`Lit(Road(a), true)`).
         let mut inferred: GenEnv = HashMap::new();
         for (n, a) in gen_names.iter().zip(&explicit) {
             inferred.insert(n.clone(), a.clone());
         }
+        let new_params: Option<&[ast::Param]> = decl.methods.iter().find_map(|s| match &s.kind {
+            ast::StmtKind::Fn(f) if f.name.text == "new" => Some(f.params.as_slice()),
+            _ => None,
+        });
+        if let Some(params) = new_params {
+            let mut pos_idx = 0usize;
+            for arg in args {
+                let param = if let Some(aname) = &arg.name {
+                    params.iter().find(|p| p.name.text == aname.text)
+                } else {
+                    let p = params.get(pos_idx);
+                    pos_idx += 1;
+                    p
+                };
+                if let Some(p) = param {
+                    if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
+                        if let Some(pty) = self.probe_ty_silent(&arg.value) {
+                            if let Some(pat_ty) = &p.ty {
+                                self.unify_ast_ty(pat_ty, &pty, tpl_mod, &gen_names, &mut inferred);
+                            }
+                        }
+                    }
+                }
+            }
+        }
         for (f, arg) in decl.fields.iter().zip(args) {
             if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
-                let diag_len = self.diags.len();
-                let probed = self.expr(&arg.value, None);
-                self.diags.truncate(diag_len);
-                if probed.ty != Ty::Error {
-                    self.unify_ast_ty(&f.ty, &probed.ty, tpl_mod, &gen_names, &mut inferred);
+                if let Some(pty) = self.probe_ty_silent(&arg.value) {
+                    self.unify_ast_ty(&f.ty, &pty, tpl_mod, &gen_names, &mut inferred);
                 }
             }
         }
@@ -517,7 +552,13 @@ impl<'a> Lowerer<'a> {
                     }
                     lowered.push(Arg::Mut(place));
                 }
-                Some(arg) => lowered.push(Arg::Value(self.expect(&arg.value, &param.ty))),
+                Some(arg) => {
+                    if param.ty == Ty::Unit && self.detect_bare_op(&arg.value).is_some() {
+                        lowered.push(Arg::Value(self.mk(ExprKind::Unit, Ty::Unit, arg.value.span)));
+                    } else {
+                        lowered.push(Arg::Value(self.expect(&arg.value, &param.ty)));
+                    }
+                }
                 None => match param.default {
                     Some(default) if !param.mutable => {
                         let sm = std::mem::replace(&mut self.cur_mod, self.sigs[id].mod_id);
@@ -678,6 +719,12 @@ impl<'a> Lowerer<'a> {
                 }
             }
             "min" | "max" => self.min_max(name == "max", args, span),
+            "first" => {
+                let Some(exprs) = self.positional_any(name, args, 1, span) else {
+                    return self.err_expr(span);
+                };
+                self.lower_first(exprs[0], span)
+            }
             "sum" | "count" | "all" | "any" => {
                 let kind = match name {
                     "sum" => Reduce::Sum,
@@ -995,7 +1042,7 @@ impl<'a> Lowerer<'a> {
         self.mk(ExprKind::Cast(cast, Box::new(value)), ty, span)
     }
 
-    fn len_of(&mut self, value: Expr, span: Span) -> Expr {
+    pub(super) fn len_of(&mut self, value: Expr, span: Span) -> Expr {
         match value.ty {
             Ty::Array { .. }
             | Ty::List(_)
@@ -1278,9 +1325,10 @@ impl<'a> Lowerer<'a> {
                 );
                 self.err_expr(span)
             }
-            [one] => self.reduce(
+            [one] => self.reduce_opt(
                 if is_max { Reduce::Max } else { Reduce::Min },
                 &one.value,
+                false,
                 span,
             ),
             _ => {
@@ -1294,9 +1342,61 @@ impl<'a> Lowerer<'a> {
                 } else {
                     values[0].ty.clone()
                 };
-                if matches!(ty, Ty::Opt(_)) {
-                    self.unsupported(span, &format!("`{name}` of optionals"));
-                    return self.err_expr(span);
+                if let Ty::Opt(inner) = ty.clone() {
+                    if !self.ordered(&inner) {
+                        let message = format!("a `{}` has no order for `{name}`", self.show(&ty));
+                        self.error(codes::BAD_OPERANDS, span, message);
+                        return self.err_expr(span);
+                    }
+                    // Optional min/max: `none` is the identity element.
+                    let mut acc_expr = self.coerce(
+                        std::mem::replace(&mut values[0], self.err_expr(span)),
+                        &ty,
+                        args[0].value.span,
+                    );
+                    for i in 1..values.len() {
+                        let rhs_expr = self.coerce(
+                            std::mem::replace(&mut values[i], self.err_expr(span)),
+                            &ty,
+                            args[i].value.span,
+                        );
+                        let lhs_ty = ty.clone();
+                        let inner_c = (*inner).clone();
+                        acc_expr = self.do_expr(Some(&ty), span, |lw, out| {
+                            let a_slot = lw.temp(lhs_ty.clone());
+                            let b_slot = lw.temp(lhs_ty.clone());
+                            out.push(Stmt::Let(a_slot, Some(acc_expr)));
+                            out.push(Stmt::Let(b_slot, Some(rhs_expr)));
+                            let a = lw.local(a_slot, span);
+                            let b = lw.local(b_slot, span);
+                            let a_some = lw.mk(ExprKind::IsSome(Box::new(a.clone())), Ty::Bool, span);
+                            let b_some = lw.mk(ExprKind::IsSome(Box::new(b.clone())), Ty::Bool, span);
+                            let av = lw.mk(ExprKind::Unwrap(Box::new(a.clone()), false), inner_c.clone(), span);
+                            let bv = lw.mk(ExprKind::Unwrap(Box::new(b.clone()), false), inner_c.clone(), span);
+                            let op = if is_max { Builtin::Max } else { Builtin::Min };
+                            let both = lw.mk(
+                                ExprKind::Some(Box::new(lw.mk(
+                                    ExprKind::Builtin(op, vec![av, bv]),
+                                    inner_c,
+                                    span,
+                                ))),
+                                lhs_ty.clone(),
+                                span,
+                            );
+                            let inner_if = lw.mk(
+                                ExprKind::If(Box::new(b_some), Box::new(both), Box::new(a)),
+                                lhs_ty.clone(),
+                                span,
+                            );
+                            let res = lw.mk(
+                                ExprKind::If(Box::new(a_some), Box::new(inner_if), Box::new(b)),
+                                lhs_ty,
+                                span,
+                            );
+                            out.push(Stmt::Give(res));
+                        });
+                    }
+                    return acc_expr;
                 }
                 if !self.ordered(&ty) {
                     let message = format!("a `{}` has no order for `{name}`", self.show(&ty));
@@ -1313,9 +1413,97 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// `first(x for x in seq if cond)` or `first(seq)` -> `?T` (first yielded item, or `none`).
+    fn lower_first(&mut self, arg: &ast::Expr, span: Span) -> Expr {
+        let at = self.span(span);
+        let (frames, value) = match &arg.kind {
+            ast::ExprKind::Comprehension { body, clauses } => {
+                let frames = self.open_loops(clauses);
+                let value = self.expr(body, None);
+                (frames, value)
+            }
+            _ => {
+                let seq = self.expr(arg, None);
+                let elem = match &seq.ty {
+                    Ty::Array { elem, .. } | Ty::List(elem) | Ty::Set(elem) | Ty::Range(elem) => (**elem).clone(),
+                    Ty::Error => return self.err_expr(span),
+                    other => {
+                        let message = format!(
+                            "this needs a sequence of values, not a `{}`",
+                            self.show(other)
+                        );
+                        self.error(codes::TYPE_MISMATCH, arg.span, message);
+                        return self.err_expr(span);
+                    }
+                };
+                self.open_seq(seq, elem)
+            }
+        };
+        let elem_ty = value.ty.clone();
+        if elem_ty == Ty::Error {
+            self.close_loops(frames, Vec::new());
+            return self.err_expr(span);
+        }
+        let res_ty = Ty::opt(elem_ty);
+        let acc = self.temp(res_ty.clone());
+        let mut stmts = vec![Stmt::Let(
+            acc,
+            Some(Expr {
+                kind: ExprKind::None,
+                ty: res_ty.clone(),
+                span: at,
+            }),
+        )];
+        let inner = vec![
+            Stmt::Assign(
+                Place {
+                    kind: PlaceKind::Local(acc),
+                    ty: res_ty.clone(),
+                    span: at,
+                },
+                AssignOp::Set,
+                Expr {
+                    kind: ExprKind::Some(Box::new(value)),
+                    ty: res_ty.clone(),
+                    span: at,
+                },
+            ),
+            Stmt::Break(None),
+        ];
+        let (mut loops, outer) = self.close_loops(frames, inner);
+        retarget_break(&mut loops, outer, 0);
+        stmts.extend(loops);
+        stmts.push(Stmt::Give(Expr {
+            kind: ExprKind::Local(acc),
+            ty: res_ty.clone(),
+            span: at,
+        }));
+        self.mk(ExprKind::Do(Block { stmts }), res_ty, span)
+    }
+
+    /// Lowers `e`, returning `?T` when `e` is a 1-arg `min(...)` or `max(...)` reduction
+    /// (for `min(...) ?? default` and `min(...)!`).
+    pub(super) fn expr_maybe_opt_reduce(&mut self, e: &ast::Expr) -> Expr {
+        if let ast::ExprKind::Call { callee, args } = &e.kind {
+            if args.len() == 1 && args[0].name.is_none() {
+                if let ast::ExprKind::Name(n) = &callee.kind {
+                    if (n == "min" || n == "max") && self.lookup(n).is_none() {
+                        let kind = if n == "max" { Reduce::Max } else { Reduce::Min };
+                        return self.reduce_opt(kind, &args[0].value, true, e.span);
+                    }
+                }
+            }
+        }
+        self.expr(e, None)
+    }
+
     /// `sum(a[v] for v in V)`, `max(xs)`, `any(...)`: a loop that folds
     /// the values into one.
     fn reduce(&mut self, kind: Reduce, arg: &ast::Expr, span: Span) -> Expr {
+        self.reduce_opt(kind, arg, false, span)
+    }
+
+    fn reduce_opt(&mut self, kind: Reduce, arg: &ast::Expr, optional: bool, span: Span) -> Expr {
         let at = self.span(span);
         let (frames, value) = match &arg.kind {
             ast::ExprKind::Comprehension { body, clauses } => {
@@ -1457,18 +1645,35 @@ impl<'a> Lowerer<'a> {
                         },
                     ),
                 ];
-                let word = if kind == Reduce::Max { "max" } else { "min" };
-                let empty = Stmt::If(
-                    lit(
-                        ExprKind::Unary(UnOp::Not, Box::new(local(have, &Ty::Bool))),
-                        Ty::Bool,
-                    ),
-                    Block {
-                        stmts: vec![Stmt::Trap(format!("`{word}` of an empty sequence"), at)],
-                    },
-                    Block::default(),
-                );
-                (acc, ty, inner, vec![empty])
+                if optional {
+                    let res_ty = Ty::opt(ty.clone());
+                    let out_slot = self.temp(res_ty.clone());
+                    let choose = Stmt::Let(
+                        out_slot,
+                        Some(lit(
+                            ExprKind::If(
+                                Box::new(local(have, &Ty::Bool)),
+                                Box::new(lit(ExprKind::Some(Box::new(local(acc, &ty))), res_ty.clone())),
+                                Box::new(lit(ExprKind::None, res_ty.clone())),
+                            ),
+                            res_ty.clone(),
+                        )),
+                    );
+                    (out_slot, res_ty, inner, vec![choose])
+                } else {
+                    let word = if kind == Reduce::Max { "max" } else { "min" };
+                    let empty = Stmt::If(
+                        lit(
+                            ExprKind::Unary(UnOp::Not, Box::new(local(have, &Ty::Bool))),
+                            Ty::Bool,
+                        ),
+                        Block {
+                            stmts: vec![Stmt::Trap(format!("`{word}` of an empty sequence"), at)],
+                        },
+                        Block::default(),
+                    );
+                    (acc, ty, inner, vec![empty])
+                }
             }
         };
         let (mut loops, outer) = self.close_loops(frames, inner);
@@ -1641,6 +1846,19 @@ impl<'a> Lowerer<'a> {
                         _ => {}
                     }
                 }
+                if let Some(GenArg::Ty(Ty::Struct(sid))) = self.gen_env.get(type_name).cloned() {
+                    if let Some(sc) = self.structs[sid].consts.get(&name.text).cloned() {
+                        return self.eval_struct_const(sid, sc, span);
+                    }
+                    if let Some(&fn_id) = self.structs[sid].methods.get(&name.text) {
+                        return self.method_call(fn_id, None, &[], span);
+                    }
+                }
+                if let Some(GenArg::Ty(Ty::Opt(inner))) = self.gen_env.get(type_name).cloned() {
+                    if matches!(name.text.as_str(), "MAX" | "MIN") {
+                        return self.mk(ExprKind::None, Ty::Opt(inner), span);
+                    }
+                }
                 if type_name == "Float"
                     || matches!(self.gen_env.get(type_name), Some(GenArg::Ty(Ty::Float)))
                 {
@@ -1728,6 +1946,62 @@ impl<'a> Lowerer<'a> {
                     _ => hi,
                 }
             }
+            (Ty::Struct(id), field_name)
+                if matches!(
+                    self.structs[*id].env.get(field_name),
+                    Some(GenArg::Domain(_))
+                ) =>
+            {
+                let Some(GenArg::Domain(d)) = self.structs[*id].env.get(field_name).cloned() else {
+                    unreachable!()
+                };
+                self.mk(ExprKind::DomainVal(d), Ty::DomainVal, span)
+            }
+            (Ty::Range(inner), "mid") => {
+                let inner_ty = (**inner).clone();
+                let res_ty = Ty::opt(inner_ty.clone());
+                let r_ty = value.ty.clone();
+                self.do_expr(Some(&res_ty.clone()), span, |lw, out| {
+                    let r_slot = lw.temp(r_ty);
+                    out.push(Stmt::Let(r_slot, Some(value)));
+                    let r_ref = lw.local(r_slot, span);
+                    let len = lw.mk(ExprKind::Builtin(Builtin::Len, vec![r_ref.clone()]), Ty::Int, span);
+                    let empty = lw.mk(
+                        ExprKind::Cmp(CmpOp::Eq, Box::new(len.clone()), Box::new(lw.int_lit(0, span))),
+                        Ty::Bool,
+                        span,
+                    );
+                    let lo = lw.mk(ExprKind::Builtin(Builtin::RangeLo, vec![r_ref]), Ty::Int, span);
+                    let half = lw.mk(
+                        ExprKind::Binary(
+                            BinOp::Div,
+                            Box::new(lw.int_add(len, -1)),
+                            Box::new(lw.int_lit(2, span)),
+                        ),
+                        Ty::Int,
+                        span,
+                    );
+                    let mid_int = lw.mk(
+                        ExprKind::Binary(BinOp::Add, Box::new(lo), Box::new(half)),
+                        Ty::Int,
+                        span,
+                    );
+                    let mid_val = match inner_ty {
+                        Ty::Pos(d) => lw.mk(ExprKind::Cast(Cast::FromOrd(d), Box::new(mid_int)), Ty::Pos(d), span),
+                        _ => mid_int,
+                    };
+                    let res = lw.mk(
+                        ExprKind::If(
+                            Box::new(empty),
+                            Box::new(lw.mk(ExprKind::None, res_ty.clone(), span)),
+                            Box::new(lw.mk(ExprKind::Some(Box::new(mid_val)), res_ty.clone(), span)),
+                        ),
+                        res_ty,
+                        span,
+                    );
+                    out.push(Stmt::Give(res));
+                })
+            }
             (Ty::Range(inner), "first") => {
                 let inner = (**inner).clone();
                 builtin(self, Builtin::First, vec![value], Ty::opt(inner))
@@ -1737,6 +2011,28 @@ impl<'a> Lowerer<'a> {
                 builtin(self, Builtin::Last, vec![value], Ty::opt(inner))
             }
             (Ty::DomainVal, "len" | "size" | "K") => {
+                // If this is `xs.D.K` where `xs` is a struct holding a `[D]`-indexed array field,
+                // read the instance's own array length so multiple instances of `compress` don't alias one global domain length.
+                if let ast::ExprKind::Field { base: owner_ast, name: dom_field } = &base.kind {
+                    if let Some(Ty::Struct(sid)) = self.probe_ty_silent(owner_ast) {
+                        if let Some(GenArg::Domain(d)) = self.structs[sid].env.get(&dom_field.text).cloned() {
+                            if let Some((fidx, fty)) = self.structs[sid]
+                                .def
+                                .fields
+                                .iter()
+                                .enumerate()
+                                .find(|(_, (_, ty))| {
+                                    matches!(ty, Ty::Array { dims, .. } if dims.first() == Some(&Dim::Pos(d)))
+                                })
+                                .map(|(i, (_, ty))| (i, ty.clone()))
+                            {
+                                let owner_val = self.expr(owner_ast, None);
+                                let arr = self.mk(ExprKind::Field(Box::new(owner_val), fidx), fty, span);
+                                return builtin(self, Builtin::Len, vec![arr], Ty::Int);
+                            }
+                        }
+                    }
+                }
                 builtin(self, Builtin::Len, vec![value], Ty::Int)
             }
             (
@@ -1770,21 +2066,81 @@ impl<'a> Lowerer<'a> {
                 )
             }
             (Ty::List(elem), "first") => {
-                builtin(self, Builtin::FirstVal, vec![value], (**elem).clone())
+                let opt = Ty::opt((**elem).clone());
+                builtin(self, Builtin::First, vec![value], opt)
             }
             (Ty::List(elem), "last") => {
-                builtin(self, Builtin::LastVal, vec![value], (**elem).clone())
+                let opt = Ty::opt((**elem).clone());
+                builtin(self, Builtin::Last, vec![value], opt)
             }
             (Ty::List(_) | Ty::Str, "rev") => {
                 builtin(self, Builtin::Reversed, vec![value], ty.clone())
             }
             (Ty::Char, "ord") => self.cast(Cast::CharToInt, value, Ty::Int),
+            (Ty::Char, "is_digit") => {
+                let ord = self.cast(Cast::CharToInt, value, Ty::Int);
+                let lo = self.int_lit(b'0' as i64, span);
+                let hi = self.int_lit(b'9' as i64, span);
+                let ge = self.mk(ExprKind::Cmp(CmpOp::Ge, Box::new(ord.clone()), Box::new(lo)), Ty::Bool, span);
+                let le = self.mk(ExprKind::Cmp(CmpOp::Le, Box::new(ord), Box::new(hi)), Ty::Bool, span);
+                self.mk(ExprKind::Binary(BinOp::And, Box::new(ge), Box::new(le)), Ty::Bool, span)
+            }
+            (Ty::Char, "is_lower") => {
+                let ord = self.cast(Cast::CharToInt, value, Ty::Int);
+                let lo = self.int_lit(b'a' as i64, span);
+                let hi = self.int_lit(b'z' as i64, span);
+                let ge = self.mk(ExprKind::Cmp(CmpOp::Ge, Box::new(ord.clone()), Box::new(lo)), Ty::Bool, span);
+                let le = self.mk(ExprKind::Cmp(CmpOp::Le, Box::new(ord), Box::new(hi)), Ty::Bool, span);
+                self.mk(ExprKind::Binary(BinOp::And, Box::new(ge), Box::new(le)), Ty::Bool, span)
+            }
+            (Ty::Char, "is_upper") => {
+                let ord = self.cast(Cast::CharToInt, value, Ty::Int);
+                let lo = self.int_lit(b'A' as i64, span);
+                let hi = self.int_lit(b'Z' as i64, span);
+                let ge = self.mk(ExprKind::Cmp(CmpOp::Ge, Box::new(ord.clone()), Box::new(lo)), Ty::Bool, span);
+                let le = self.mk(ExprKind::Cmp(CmpOp::Le, Box::new(ord), Box::new(hi)), Ty::Bool, span);
+                self.mk(ExprKind::Binary(BinOp::And, Box::new(ge), Box::new(le)), Ty::Bool, span)
+            }
+            (Ty::Char, "is_alpha") => {
+                let ord = self.cast(Cast::CharToInt, value, Ty::Int);
+                let a = self.int_lit(b'a' as i64, span);
+                let z = self.int_lit(b'z' as i64, span);
+                let cap_a = self.int_lit(b'A' as i64, span);
+                let cap_z = self.int_lit(b'Z' as i64, span);
+                let lo1 = self.mk(ExprKind::Cmp(CmpOp::Ge, Box::new(ord.clone()), Box::new(a)), Ty::Bool, span);
+                let hi1 = self.mk(ExprKind::Cmp(CmpOp::Le, Box::new(ord.clone()), Box::new(z)), Ty::Bool, span);
+                let is_lo = self.mk(ExprKind::Binary(BinOp::And, Box::new(lo1), Box::new(hi1)), Ty::Bool, span);
+                let lo2 = self.mk(ExprKind::Cmp(CmpOp::Ge, Box::new(ord.clone()), Box::new(cap_a)), Ty::Bool, span);
+                let hi2 = self.mk(ExprKind::Cmp(CmpOp::Le, Box::new(ord), Box::new(cap_z)), Ty::Bool, span);
+                let is_hi = self.mk(ExprKind::Binary(BinOp::And, Box::new(lo2), Box::new(hi2)), Ty::Bool, span);
+                self.mk(ExprKind::Binary(BinOp::Or, Box::new(is_lo), Box::new(is_hi)), Ty::Bool, span)
+            }
+            (Ty::Char, "is_space") => {
+                let ord = self.cast(Cast::CharToInt, value, Ty::Int);
+                let sp = self.int_lit(b' ' as i64, span);
+                let tab = self.int_lit(b'\t' as i64, span);
+                let nl = self.int_lit(b'\n' as i64, span);
+                let cr = self.int_lit(b'\r' as i64, span);
+                let e1 = self.mk(ExprKind::Cmp(CmpOp::Eq, Box::new(ord.clone()), Box::new(sp)), Ty::Bool, span);
+                let e2 = self.mk(ExprKind::Cmp(CmpOp::Eq, Box::new(ord.clone()), Box::new(tab)), Ty::Bool, span);
+                let e3 = self.mk(ExprKind::Cmp(CmpOp::Eq, Box::new(ord.clone()), Box::new(nl)), Ty::Bool, span);
+                let e4 = self.mk(ExprKind::Cmp(CmpOp::Eq, Box::new(ord), Box::new(cr)), Ty::Bool, span);
+                let o1 = self.mk(ExprKind::Binary(BinOp::Or, Box::new(e1), Box::new(e2)), Ty::Bool, span);
+                let o2 = self.mk(ExprKind::Binary(BinOp::Or, Box::new(e3), Box::new(e4)), Ty::Bool, span);
+                self.mk(ExprKind::Binary(BinOp::Or, Box::new(o1), Box::new(o2)), Ty::Bool, span)
+            }
             (Ty::Opt(_), "is_some") => self.mk(ExprKind::IsSome(Box::new(value)), Ty::Bool, span),
             (Ty::Opt(_), "is_none") => {
                 let some = self.mk(ExprKind::IsSome(Box::new(value)), Ty::Bool, span);
                 self.mk(ExprKind::Unary(UnOp::Not, Box::new(some)), Ty::Bool, span)
             }
+            // Default `Target::to` trait getter on plain values (e.g. vertices yielded by `u => adj[u]`).
+            (_, "to") => value,
             _ => {
+                // UFCS `@get` free function (e.g. `p.adj4`, `g.transposed`, `g.flipped`).
+                if let Some(res) = self.try_ufcs_call(&name.text, base, &[], span) {
+                    return res;
+                }
                 let message = format!(
                     "a `{}` has no member `{}` that `cpl run` knows",
                     self.show(&ty),
@@ -1796,9 +2152,230 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// Tries calling a free function or generic free function whose first parameter is `self`
+    /// using UFCS (`base.name(args...)` -> `name(base, args...)`).
+    fn try_ufcs_call(
+        &mut self,
+        name: &str,
+        base: &ast::Expr,
+        args: &[ast::Arg],
+        span: Span,
+    ) -> Option<Expr> {
+        let sym = self.get_sym(name)?;
+        let has_self = match sym {
+            Sym::Fn(fid) => self.sigs[fid]
+                .decl
+                .params
+                .first()
+                .is_some_and(|p| p.name.text == "self"),
+            Sym::GenFn(gfid) => self.gen_fns[gfid]
+                .decl
+                .params
+                .first()
+                .is_some_and(|p| p.name.text == "self"),
+            _ => false,
+        };
+        if !has_self {
+            return None;
+        }
+        let mut all_args = Vec::with_capacity(args.len() + 1);
+        all_args.push(ast::Arg {
+            name: None,
+            mutable: false,
+            value: base.clone(),
+        });
+        all_args.extend(args.iter().cloned());
+        match sym {
+            Sym::Fn(fid) => Some(self.user_call(fid, None, &all_args, span)),
+            Sym::GenFn(gfid) => Some(self.call_gen_fn(gfid, Vec::new(), None, &all_args, span)),
+            _ => None,
+        }
+    }
+
+    /// Lowers `xs.first_ge(val)`, `xs.last_le(val)`, or `xs.find(val)` on a `List<T>` or 1D `[D]T`.
+    fn seq_search_method(
+        &mut self,
+        method: &str,
+        container: Expr,
+        elem: Ty,
+        dom: Option<DomainId>,
+        args: &[ast::Arg],
+        span: Span,
+    ) -> Expr {
+        let Some(target) = self.one_arg(method, args, &elem, span) else {
+            return self.err_expr(span);
+        };
+        let idx_ty = match dom {
+            Some(d) => Ty::Pos(d),
+            None => Ty::Int,
+        };
+        let out_ty = Ty::opt(idx_ty.clone());
+        let cont_ty = container.ty.clone();
+        let out_ty_hint = out_ty.clone();
+        self.do_expr(Some(&out_ty_hint), span, |lw, out| {
+            let c_slot = lw.temp(cont_ty);
+            let t_slot = lw.temp(elem.clone());
+            out.push(Stmt::Let(c_slot, Some(container)));
+            out.push(Stmt::Let(t_slot, Some(target)));
+            let c_ref = lw.local(c_slot, span);
+            let t_ref = lw.local(t_slot, span);
+            let n_expr = match dom {
+                Some(d) => lw.mk(ExprKind::DomainLen(d), Ty::Int, span),
+                None => lw.len_of(c_ref.clone(), span),
+            };
+            let n_slot = lw.temp(Ty::Int);
+            out.push(Stmt::Let(n_slot, Some(n_expr)));
+            let n_ref = lw.local(n_slot, span);
+            let make_idx = |lw: &mut Self, i: Expr| -> Expr {
+                match dom {
+                    Some(d) => lw.mk(ExprKind::Cast(Cast::FromOrd(d), Box::new(i)), Ty::Pos(d), span),
+                    None => i,
+                }
+            };
+            if method == "find" {
+                let res_slot = lw.temp(out_ty.clone());
+                out.push(Stmt::Let(res_slot, Some(lw.mk(ExprKind::None, out_ty.clone(), span))));
+                let i_slot = lw.temp(Ty::Int);
+                let i_ref = lw.local(i_slot, span);
+                let pos_e = make_idx(lw, i_ref);
+                let cur = lw.mk(ExprKind::Index(Box::new(c_ref), vec![pos_e.clone()]), elem, span);
+                let eq = lw.mk(ExprKind::Cmp(CmpOp::Eq, Box::new(cur), Box::new(t_ref)), Ty::Bool, span);
+                let lid = lw.next_loop;
+                lw.next_loop += 1;
+                out.push(Stmt::For(
+                    lid,
+                    i_slot,
+                    Iter::Range {
+                        lo: lw.int_lit(0, span),
+                        hi: n_ref,
+                        step: None,
+                        rev: false,
+                    },
+                    Block {
+                        stmts: vec![Stmt::If(
+                            eq,
+                            Block {
+                                stmts: vec![
+                                    Stmt::Assign(
+                                        Place {
+                                            kind: PlaceKind::Local(res_slot),
+                                            ty: out_ty.clone(),
+                                            span,
+                                        },
+                                        AssignOp::Set,
+                                        lw.mk(ExprKind::Some(Box::new(pos_e)), out_ty.clone(), span),
+                                    ),
+                                    Stmt::Break(None),
+                                ],
+                            },
+                            Block::default(),
+                        )],
+                    },
+                ));
+                out.push(Stmt::Give(lw.local(res_slot, span)));
+            } else {
+                // Binary search: `first_ge` finds smallest i in 0..n with c[i] >= t;
+                // `last_le` finds largest i in 0..n with c[i] <= t (i.e. first_gt - 1).
+                let is_ge = method == "first_ge";
+                let lo_slot = lw.temp(Ty::Int);
+                let hi_slot = lw.temp(Ty::Int);
+                out.push(Stmt::Let(lo_slot, Some(lw.int_lit(0, span))));
+                out.push(Stmt::Let(hi_slot, Some(n_ref.clone())));
+                let lo_ref = lw.local(lo_slot, span);
+                let hi_ref = lw.local(hi_slot, span);
+                let cond = lw.mk(
+                    ExprKind::Cmp(CmpOp::Lt, Box::new(lo_ref.clone()), Box::new(hi_ref.clone())),
+                    Ty::Bool,
+                    span,
+                );
+                let sum = lw.mk(
+                    ExprKind::Binary(BinOp::Add, Box::new(lo_ref.clone()), Box::new(hi_ref.clone())),
+                    Ty::Int,
+                    span,
+                );
+                let mid = lw.mk(
+                    ExprKind::Binary(BinOp::Div, Box::new(sum), Box::new(lw.int_lit(2, span))),
+                    Ty::Int,
+                    span,
+                );
+                let mid_slot = lw.temp(Ty::Int);
+                let mid_ref = lw.local(mid_slot, span);
+                let mid_pos = make_idx(lw, mid_ref.clone());
+                let cur = lw.mk(ExprKind::Index(Box::new(c_ref), vec![mid_pos]), elem, span);
+                let go_left = if is_ge {
+                    lw.mk(ExprKind::Cmp(CmpOp::Ge, Box::new(cur), Box::new(t_ref)), Ty::Bool, span)
+                } else {
+                    lw.mk(ExprKind::Cmp(CmpOp::Gt, Box::new(cur), Box::new(t_ref)), Ty::Bool, span)
+                };
+                let lid = lw.next_loop;
+                lw.next_loop += 1;
+                out.push(Stmt::While(
+                    lid,
+                    cond,
+                    Block {
+                        stmts: vec![
+                            Stmt::Let(mid_slot, Some(mid)),
+                            Stmt::If(
+                                go_left,
+                                Block {
+                                    stmts: vec![Stmt::Assign(
+                                        Place { kind: PlaceKind::Local(hi_slot), ty: Ty::Int, span },
+                                        AssignOp::Set,
+                                        mid_ref.clone(),
+                                    )],
+                                },
+                                Block {
+                                    stmts: vec![Stmt::Assign(
+                                        Place { kind: PlaceKind::Local(lo_slot), ty: Ty::Int, span },
+                                        AssignOp::Set,
+                                        lw.int_add(mid_ref, 1),
+                                    )],
+                                },
+                            ),
+                        ],
+                    },
+                ));
+                let res = if is_ge {
+                    let ok = lw.mk(
+                        ExprKind::Cmp(CmpOp::Lt, Box::new(lo_ref.clone()), Box::new(n_ref)),
+                        Ty::Bool,
+                        span,
+                    );
+                    let pos = make_idx(lw, lo_ref);
+                    lw.mk(
+                        ExprKind::If(
+                            Box::new(ok),
+                            Box::new(lw.mk(ExprKind::Some(Box::new(pos)), out_ty.clone(), span)),
+                            Box::new(lw.mk(ExprKind::None, out_ty.clone(), span)),
+                        ),
+                        out_ty,
+                        span,
+                    )
+                } else {
+                    let ok = lw.mk(
+                        ExprKind::Cmp(CmpOp::Gt, Box::new(lo_ref.clone()), Box::new(lw.int_lit(0, span))),
+                        Ty::Bool,
+                        span,
+                    );
+                    let pos = make_idx(lw, lw.int_add(lo_ref, -1));
+                    lw.mk(
+                        ExprKind::If(
+                            Box::new(ok),
+                            Box::new(lw.mk(ExprKind::Some(Box::new(pos)), out_ty.clone(), span)),
+                            Box::new(lw.mk(ExprKind::None, out_ty.clone(), span)),
+                        ),
+                        out_ty,
+                        span,
+                    )
+                };
+                out.push(Stmt::Give(res));
+            }
+        })
+    }
+
     /// Calls method `fn_id`. With a receiver, `self` is the caller's own
     /// variable when the method changes it.
-    fn method_call(
+    pub(super) fn method_call(
         &mut self,
         fn_id: FnId,
         receiver: Option<(&ast::Expr, Expr)>,
@@ -2294,7 +2871,107 @@ impl<'a> Lowerer<'a> {
                 }
                 None => self.err_expr(span),
             },
+            (Ty::DomainVal, "windows") => {
+                let Some(k_expr) = self.one_arg(method, args, &Ty::Int, span) else {
+                    return self.err_expr(span);
+                };
+                let dom_id = match value.kind {
+                    ExprKind::DomainVal(d) => Some(d),
+                    _ => None,
+                };
+                let range_ty = match dom_id {
+                    Some(d) => Ty::Range(Box::new(Ty::Pos(d))),
+                    None => Ty::Range(Box::new(Ty::Int)),
+                };
+                let list_ty = Ty::list(range_ty.clone());
+                let list_ty_hint = list_ty.clone();
+                self.do_expr(Some(&list_ty_hint), span, |lw, out| {
+                    let k_slot = lw.temp(Ty::Int);
+                    out.push(Stmt::Let(k_slot, Some(k_expr)));
+                    let k_ref = lw.local(k_slot, span);
+                    let n_expr = match dom_id {
+                        Some(d) => lw.mk(ExprKind::DomainLen(d), Ty::Int, span),
+                        None => lw.mk(ExprKind::Builtin(Builtin::Len, vec![value]), Ty::Int, span),
+                    };
+                    let n_slot = lw.temp(Ty::Int);
+                    out.push(Stmt::Let(n_slot, Some(n_expr)));
+                    let n_ref = lw.local(n_slot, span);
+                    let acc_slot = lw.temp(list_ty.clone());
+                    out.push(Stmt::Let(
+                        acc_slot,
+                        Some(lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span)),
+                    ));
+                    let lim = lw.mk(
+                        ExprKind::Binary(BinOp::Sub, Box::new(n_ref), Box::new(k_ref.clone())),
+                        Ty::Int,
+                        span,
+                    );
+                    let hi_loop = lw.int_add(lim, 1);
+                    let i_slot = lw.temp(Ty::Int);
+                    let i_ref = lw.local(i_slot, span);
+                    let end_e = lw.mk(
+                        ExprKind::Binary(BinOp::Add, Box::new(i_ref.clone()), Box::new(k_ref)),
+                        Ty::Int,
+                        span,
+                    );
+                    let rng = lw.mk(
+                        ExprKind::Range {
+                            lo: Box::new(i_ref),
+                            hi: Box::new(end_e),
+                        },
+                        range_ty,
+                        span,
+                    );
+                    let push = lw.mk(
+                        ExprKind::Mutate(
+                            Mutation::Push,
+                            Box::new(Place {
+                                kind: PlaceKind::Local(acc_slot),
+                                ty: list_ty.clone(),
+                                span,
+                            }),
+                            vec![rng],
+                        ),
+                        Ty::Unit,
+                        span,
+                    );
+                    let lid = lw.next_loop;
+                    lw.next_loop += 1;
+                    out.push(Stmt::For(
+                        lid,
+                        i_slot,
+                        Iter::Range {
+                            lo: lw.int_lit(0, span),
+                            hi: hi_loop,
+                            step: None,
+                            rev: false,
+                        },
+                        Block {
+                            stmts: vec![Stmt::Expr(push)],
+                        },
+                    ));
+                    out.push(Stmt::Give(lw.local(acc_slot, span)));
+                })
+            }
+            (Ty::List(e), "first_ge" | "last_le" | "find") => {
+                let e = (**e).clone();
+                self.seq_search_method(method, value, e, None, args, span)
+            }
+            (Ty::Array { dims, elem: e }, "first_ge" | "last_le" | "find") if dims.len() == 1 => {
+                let dom = match dims[0] {
+                    Dim::Pos(d) => Some(d),
+                    _ => None,
+                };
+                let e = (**e).clone();
+                self.seq_search_method(method, value, e, dom, args, span)
+            }
+            (Ty::Fn(_, _), "out") => self.call_fn_val(value, args, span),
+            (_, "rev") if args.is_empty() => value,
             _ => {
+                // UFCS free function with `self` first parameter (e.g. `p.step(d)`, `p.ray(d)`).
+                if let Some(res) = self.try_ufcs_call(method, base, args, span) {
+                    return res;
+                }
                 let message = format!(
                     "a `{}` has no method `{method}` that `cpl run` knows",
                     self.show(&ty)

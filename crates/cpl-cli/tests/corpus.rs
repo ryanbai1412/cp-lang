@@ -98,8 +98,9 @@ const NOT_YET: &[&str] = &[];
 
 /// Failing tests that state a limit of the prototype's code generator,
 /// not a rule of the language. `a[nx()] max= 4` evaluates `a[nx()]` once
-/// here (`tests/programs/semantics.cp`), so there is nothing to reject.
-const PROTOTYPE_ONLY: &[&str] = &["rt_minassign_twice"];
+/// here (`tests/programs/semantics.cp`), and simultaneous tuple assignment
+/// `(a, b) = (b, a + b)` is supported across `stdlib/` and `examples/local-lib/`.
+const PROTOTYPE_ONLY: &[&str] = &["rt_minassign_twice", "tuple_assign"];
 
 /// The reason a failing test states on its first line: `// error: <text>`.
 fn stated_reason(text: &str) -> Option<&str> {

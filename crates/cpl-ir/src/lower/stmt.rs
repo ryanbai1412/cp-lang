@@ -11,15 +11,22 @@ impl<'a> Lowerer<'a> {
             None if tail == Tail::Give => self.needs_value(block.span),
             None => {}
             Some((last, init)) => {
+                let mut terminated = false;
                 for (idx, stmt) in init.iter().enumerate() {
                     self.stmt_with_rest(stmt, &block.stmts[idx + 1..], &mut out);
+                    if matches!(out.last(), Some(Stmt::Return(_))) {
+                        terminated = true;
+                        break;
+                    }
                 }
-                match &last.kind {
-                    ast::StmtKind::Expr(e) if tail != Tail::Discard => self.tail(e, tail, &mut out),
-                    _ => {
-                        self.stmt(last, &mut out);
-                        if tail == Tail::Give {
-                            self.needs_value(last.span);
+                if !terminated {
+                    match &last.kind {
+                        ast::StmtKind::Expr(e) if tail != Tail::Discard => self.tail(e, tail, &mut out),
+                        _ => {
+                            self.stmt(last, &mut out);
+                            if tail == Tail::Give {
+                                self.needs_value(last.span);
+                            }
                         }
                     }
                 }
@@ -186,7 +193,45 @@ impl<'a> Lowerer<'a> {
                     self.let_value_with_rest(ty.as_ref(), init.as_ref(), pat, rest, stmt.span)
                 };
                 if let Some(value) = val {
+                    let single_name = match &pat.kind {
+                        ast::PatternKind::Name(n) => Some(n.clone()),
+                        ast::PatternKind::Variant { path, args }
+                            if path.len() == 1 && args.is_empty() =>
+                        {
+                            Some(path[0].text.clone())
+                        }
+                        _ => None,
+                    };
+                    let runtime_const_name = if !*mutable && !self.at_top_level() && value.ty == Ty::Int {
+                        single_name.filter(|n| n.chars().next().is_some_and(|c| c.is_ascii_uppercase()))
+                    } else {
+                        None
+                    };
                     self.bind_mut(pat, value, *mutable, out);
+                    if let Some(cname) = runtime_const_name {
+                        if let Some(slot) = self.lookup(&cname) {
+                            let gid = self.globals.len();
+                            self.globals.push(Global {
+                                name: format!("{cname}_rt_{gid}"),
+                                ty: Ty::Int,
+                            });
+                            let val_ref = self.local(slot, stmt.span);
+                            out.push(Stmt::Assign(
+                                Place {
+                                    kind: PlaceKind::Global(gid),
+                                    ty: Ty::Int,
+                                    span: self.span(stmt.span),
+                                },
+                                AssignOp::Set,
+                                val_ref,
+                            ));
+                            self.cx
+                                .local_syms
+                                .last_mut()
+                                .unwrap()
+                                .insert(cname, Sym::Global(gid));
+                        }
+                    }
                 }
             }
             ast::StmtKind::Const {
@@ -209,6 +254,9 @@ impl<'a> Lowerer<'a> {
             ast::StmtKind::TypeAlias { name, generics, ty } if !self.at_top_level() => {
                 if generics.is_empty() {
                     let resolved = self.resolve_ty(ty);
+                    self.cx
+                        .local_type_aliases
+                        .insert(name.text.clone(), resolved.clone());
                     let sym = match resolved {
                         Ty::Struct(id) => Some(Sym::Struct(id)),
                         Ty::Enum(id) => Some(Sym::Enum(id)),
@@ -252,6 +300,64 @@ impl<'a> Lowerer<'a> {
                     }
                 }
             }
+            ast::StmtKind::Use {
+                path,
+                names,
+                glob,
+                alias,
+            } if !self.at_top_level() => {
+                // Support block-scoped `use std.segtree.{SegTree}` inside functions/tests.
+                let mod_name = path.iter().map(|n| n.text.as_str()).collect::<Vec<_>>().join(".");
+                let mod_slash = path.iter().map(|n| n.text.as_str()).collect::<Vec<_>>().join("/");
+                let last_cp = path
+                    .last()
+                    .map(|n| format!("/{}.cp", n.text))
+                    .unwrap_or_default();
+                let target_mod = self
+                    .mods[self.cur_mod]
+                    .modules()
+                    .iter()
+                    .find(|m| {
+                        m.path == mod_name
+                            || m.path.ends_with(&format!(".{mod_name}"))
+                            || m.path.ends_with(&format!("{mod_slash}.cp"))
+                            || (!last_cp.is_empty() && m.path.ends_with(&last_cp))
+                    })
+                    .and_then(|m| self.path_to_mod.get(&m.path).copied());
+                if let Some(tmod) = target_mod {
+                    if !names.is_empty() {
+                        for item in names {
+                            if let Some(&sym) = self.mod_syms[tmod].get(&item.text) {
+                                self.cx
+                                    .local_syms
+                                    .last_mut()
+                                    .unwrap()
+                                    .insert(item.text.clone(), sym);
+                            }
+                        }
+                    } else if *glob {
+                        let syms: Vec<(String, Sym)> = self.mod_syms[tmod]
+                            .iter()
+                            .map(|(k, &v)| (k.clone(), v))
+                            .collect();
+                        for (k, v) in syms {
+                            self.cx.local_syms.last_mut().unwrap().insert(k, v);
+                        }
+                    } else if let Some(al) = alias {
+                        self.cx
+                            .local_syms
+                            .last_mut()
+                            .unwrap()
+                            .insert(al.text.clone(), Sym::Mod(tmod));
+                    } else if let Some(last) = path.last() {
+                        self.cx
+                            .local_syms
+                            .last_mut()
+                            .unwrap()
+                            .insert(last.text.clone(), Sym::Mod(tmod));
+                    }
+                }
+            }
             ast::StmtKind::Fn(decl) if !self.at_top_level() => {
                 self.lower_local_fn(decl, out);
             }
@@ -275,12 +381,70 @@ impl<'a> Lowerer<'a> {
                 iter,
                 body,
             } => {
+                // Support compile-time unrolling of heterogeneous literal lists like
+                // `for (k, act) in [(0, AddSum), ..., (0, AssignSum)]:` where items have different struct types.
+                if let ast::ExprKind::List(items) = &iter.kind {
+                    if items.len() >= 2 {
+                        let first_ty = self.probe_ty_silent(&items[0]);
+                        let is_hetero = first_ty.as_ref().is_some_and(|ft| {
+                            items[1..].iter().any(|it| {
+                                self.probe_ty_silent(it).is_some_and(|ot| ot != *ft)
+                            })
+                        });
+                        if is_hetero {
+                            for item in items {
+                                let item_val = self.expr(item, None);
+                                self.cx.scopes.push(HashMap::new());
+                                self.cx.local_syms.push(HashMap::new());
+                                self.bind(pat, item_val, out);
+                                out.extend(self.block(body, Tail::Discard).stmts);
+                                self.cx.local_syms.pop();
+                                self.cx.scopes.pop();
+                            }
+                            return;
+                        }
+                    }
+                }
                 let (iter, elem) = self.iter(iter);
                 let id = self.open_loop(label.as_ref().map(|l| l.text.clone()));
                 self.cx.scopes.push(HashMap::new());
                 self.cx.local_syms.push(HashMap::new());
                 let mut stmts = Vec::new();
+                let elem_is_int = elem == Ty::Int;
                 let slot = self.loop_var(pat, elem, &mut stmts);
+                // If an `Int` loop variable is used as a runtime generic value arg (`for d in 0..=6: type F = Fixed<d>`),
+                // mirror it into a global so monomorphized methods can read it at run time.
+                if elem_is_int
+                    && body
+                        .stmts
+                        .iter()
+                        .any(|s| matches!(s.kind, ast::StmtKind::TypeAlias { .. }))
+                {
+                    if let ast::PatternKind::Name(vname) = &pat.kind {
+                        if let Some(vslot) = self.lookup(vname) {
+                            let gid = self.globals.len();
+                            self.globals.push(Global {
+                                name: format!("{vname}_rt_{gid}"),
+                                ty: Ty::Int,
+                            });
+                            let vref = self.local(vslot, pat.span);
+                            stmts.push(Stmt::Assign(
+                                Place {
+                                    kind: PlaceKind::Global(gid),
+                                    ty: Ty::Int,
+                                    span: self.span(pat.span),
+                                },
+                                AssignOp::Set,
+                                vref,
+                            ));
+                            self.cx
+                                .local_syms
+                                .last_mut()
+                                .unwrap()
+                                .insert(vname.clone(), Sym::Global(gid));
+                        }
+                    }
+                }
                 stmts.extend(self.block(body, Tail::Discard).stmts);
                 self.cx.local_syms.pop();
                 self.cx.scopes.pop();
@@ -469,8 +633,18 @@ impl<'a> Lowerer<'a> {
             self.unsupported(def.span, "a domain that is not a range such as `1..=n`");
             return;
         };
-        let lo = self.expect(lo, &Ty::Int);
-        let hi = self.expect(hi, &Ty::Int);
+        let lo_e = self.expr(lo, None);
+        let lo = if lo_e.ty == Ty::Char {
+            self.mk(ExprKind::Cast(Cast::CharToInt, Box::new(lo_e)), Ty::Int, lo.span)
+        } else {
+            self.coerce(lo_e, &Ty::Int, lo.span)
+        };
+        let hi_e = self.expr(hi, None);
+        let hi = if hi_e.ty == Ty::Char {
+            self.mk(ExprKind::Cast(Cast::CharToInt, Box::new(hi_e)), Ty::Int, hi.span)
+        } else {
+            self.coerce(hi_e, &Ty::Int, hi.span)
+        };
         let slot = self.temp(Ty::Int);
         out.push(Stmt::Let(slot, Some(lo)));
         let lo = self.local(slot, def.span);
@@ -485,6 +659,135 @@ impl<'a> Lowerer<'a> {
             len
         };
         out.push(Stmt::DefDomain { id, lo, len });
+    }
+
+    fn peek_list_elem_type(&mut self, var_name: &str, rest: &[ast::Stmt]) -> Option<Ty> {
+        fn find_push<'a>(var_name: &str, stmts: &'a [ast::Stmt]) -> Option<&'a ast::Expr> {
+            for s in stmts {
+                match &s.kind {
+                    ast::StmtKind::Expr(e) => {
+                        if let ast::ExprKind::Call { callee, args } = &e.kind {
+                            if let ast::ExprKind::Field { base, name } = &callee.kind {
+                                if name.text == "push"
+                                    && matches!(&base.kind, ast::ExprKind::Name(n) if n == var_name)
+                                    && args.len() == 1
+                                {
+                                    return Some(&args[0].value);
+                                }
+                            }
+                        }
+                        if let ast::ExprKind::If {
+                            branches,
+                            otherwise,
+                        } = &e.kind
+                        {
+                            for (_, b) in branches {
+                                if let Some(e) = find_push(var_name, &b.stmts) {
+                                    return Some(e);
+                                }
+                            }
+                            if let Some(b) = otherwise {
+                                if let Some(e) = find_push(var_name, &b.stmts) {
+                                    return Some(e);
+                                }
+                            }
+                        }
+                    }
+                    ast::StmtKind::While { body, .. } | ast::StmtKind::For { body, .. } => {
+                        if let Some(e) = find_push(var_name, &body.stmts) {
+                            return Some(e);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            None
+        }
+        let arg = find_push(var_name, rest)?;
+        self.probe_ty_silent(arg)
+    }
+
+    fn peek_fn_arg_types(&mut self, fn_name: &str, arity: usize, rest: &[ast::Stmt]) -> Option<Vec<Ty>> {
+        fn find_call_in_expr<'a>(
+            fn_name: &str,
+            arity: usize,
+            e: &'a ast::Expr,
+        ) -> Option<&'a [ast::Arg]> {
+            match &e.kind {
+                ast::ExprKind::Call { callee, args } => {
+                    if matches!(&callee.kind, ast::ExprKind::Name(n) if n == fn_name)
+                        && args.len() == arity
+                    {
+                        return Some(args);
+                    }
+                    if let Some(found) = find_call_in_expr(fn_name, arity, callee) {
+                        return Some(found);
+                    }
+                    for a in args {
+                        if let Some(found) = find_call_in_expr(fn_name, arity, &a.value) {
+                            return Some(found);
+                        }
+                    }
+                    None
+                }
+                ast::ExprKind::Field { base, .. }
+                | ast::ExprKind::Paren(base)
+                | ast::ExprKind::Unary { expr: base, .. }
+                | ast::ExprKind::Unwrap(base) => find_call_in_expr(fn_name, arity, base),
+                ast::ExprKind::Binary { lhs, rhs, .. } => find_call_in_expr(fn_name, arity, lhs)
+                    .or_else(|| find_call_in_expr(fn_name, arity, rhs)),
+                ast::ExprKind::List(items) | ast::ExprKind::Tuple(items) => {
+                    items.iter().find_map(|x| find_call_in_expr(fn_name, arity, x))
+                }
+                _ => None,
+            }
+        }
+        fn find_call<'a>(
+            fn_name: &str,
+            arity: usize,
+            stmts: &'a [ast::Stmt],
+        ) -> Option<&'a [ast::Arg]> {
+            for s in stmts {
+                match &s.kind {
+                    ast::StmtKind::Let { init: Some(e), .. }
+                    | ast::StmtKind::Expr(e)
+                    | ast::StmtKind::Assign { value: e, .. }
+                    | ast::StmtKind::Return(Some(e))
+                    | ast::StmtKind::Assert { cond: e, .. } => {
+                        if let Some(args) = find_call_in_expr(fn_name, arity, e) {
+                            return Some(args);
+                        }
+                    }
+                    ast::StmtKind::For { iter, body, .. } => {
+                        if let Some(args) = find_call_in_expr(fn_name, arity, iter) {
+                            return Some(args);
+                        }
+                        if let Some(args) = find_call(fn_name, arity, &body.stmts) {
+                            return Some(args);
+                        }
+                    }
+                    ast::StmtKind::While { cond, body } => {
+                        if let ast::Cond::Expr(e) = cond {
+                            if let Some(args) = find_call_in_expr(fn_name, arity, e) {
+                                return Some(args);
+                            }
+                        }
+                        if let Some(args) = find_call(fn_name, arity, &body.stmts) {
+                            return Some(args);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            None
+        }
+        let args = find_call(fn_name, arity, rest)?;
+        let mut tys = Vec::with_capacity(args.len());
+        for a in args {
+            let t = self.probe_ty_silent(&a.value)?;
+            tys.push(t);
+        }
+        Some(tys)
     }
 
     fn peek_map_kv_types(&mut self, var_name: &str, rest: &[ast::Stmt]) -> (Ty, Ty) {
@@ -523,6 +826,103 @@ impl<'a> Lowerer<'a> {
         rest: &[ast::Stmt],
         span: Span,
     ) -> Option<Expr> {
+        // Handle untyped `var (path, at) = ([], v)` followed by `path.push(elem)`.
+        if ty.is_none() {
+            if let (
+                ast::PatternKind::Tuple(pats),
+                Some(ast::Expr {
+                    kind: ast::ExprKind::Tuple(exprs),
+                    span: tspan,
+                }),
+            ) = (&pat.kind, init)
+            {
+                if pats.len() == exprs.len()
+                    && exprs
+                        .iter()
+                        .any(|e| matches!(&e.kind, ast::ExprKind::List(items) if items.is_empty()))
+                {
+                    // Lower non-empty elements first so sibling names (e.g. `at` in `var (path, at) = ([], v)`)
+                    // are visible when peeking `path.push(at)` in `rest`.
+                    let mut slots: Vec<Option<Expr>> = vec![None; exprs.len()];
+                    let mut temp_bindings: Vec<(String, Ty)> = Vec::new();
+                    for (i, (p, e)) in pats.iter().zip(exprs).enumerate() {
+                        if !matches!(&e.kind, ast::ExprKind::List(items) if items.is_empty()) {
+                            let v = self.expr(e, None);
+                            if let ast::PatternKind::Name(n) = &p.kind {
+                                temp_bindings.push((n.clone(), v.ty.clone()));
+                            }
+                            slots[i] = Some(v);
+                        }
+                    }
+                    // Temporarily bind sibling names in a scratch scope while peeking empty-list element types.
+                    let saved_cx = self.cx.clone();
+                    self.cx.scopes.push(HashMap::new());
+                    for (n, t) in &temp_bindings {
+                        let s = self.cx.locals.len();
+                        self.cx.locals.push(Local {
+                            name: n.clone(),
+                            ty: t.clone(),
+                        });
+                        self.cx.scopes.last_mut().unwrap().insert(n.clone(), s);
+                    }
+                    let mut inferred_elems: Vec<Option<Ty>> = vec![None; exprs.len()];
+                    for (i, (p, e)) in pats.iter().zip(exprs).enumerate() {
+                        if slots[i].is_none() {
+                            if let ast::PatternKind::Name(vname) = &p.kind {
+                                inferred_elems[i] = self.peek_list_elem_type(vname, rest);
+                            }
+                        }
+                        let _ = e;
+                    }
+                    self.cx = saved_cx;
+                    let mut lowered = Vec::with_capacity(exprs.len());
+                    let mut tys = Vec::with_capacity(exprs.len());
+                    for (i, e) in exprs.iter().enumerate() {
+                        if let Some(v) = slots[i].take() {
+                            tys.push(v.ty.clone());
+                            lowered.push(v);
+                        } else if let Some(elem_ty) = inferred_elems[i].take() {
+                            let lty = Ty::list(elem_ty);
+                            lowered.push(self.mk(ExprKind::Tuple(Vec::new()), lty.clone(), e.span));
+                            tys.push(lty);
+                        } else {
+                            let v = self.expr(e, None);
+                            tys.push(v.ty.clone());
+                            lowered.push(v);
+                        }
+                    }
+                    return Some(self.mk(ExprKind::Tuple(lowered), Ty::Tuple(tys), *tspan));
+                }
+            }
+            if let (
+                ast::PatternKind::Name(vname),
+                Some(ast::Expr {
+                    kind: ast::ExprKind::List(items),
+                    ..
+                }),
+            ) = (&pat.kind, init)
+            {
+                if items.is_empty() {
+                    if let Some(elem_ty) = self.peek_list_elem_type(vname, rest) {
+                        return Some(self.mk(ExprKind::Tuple(Vec::new()), Ty::list(elem_ty), span));
+                    }
+                }
+            }
+            // Handle untyped `let f = w => ...` followed by `f("abc")` by peeking call argument types in `rest`.
+            if let (
+                ast::PatternKind::Name(vname),
+                Some(ast::Expr {
+                    kind: ast::ExprKind::Lambda { params, body },
+                    span: lspan,
+                }),
+            ) = (&pat.kind, init)
+            {
+                if let Some(param_tys) = self.peek_fn_arg_types(vname, params.len(), rest) {
+                    let hint = Ty::Fn(param_tys, Box::new(Ty::Error));
+                    return Some(self.lower_lambda(params, body, Some(&hint), *lspan));
+                }
+            }
+        }
         let val = self.let_value(ty, init, span)?;
         // Handle `let v = stack.pop()` where `stack: List<T>` (non-Opt elem):
         // if `v` is NOT used as an optional in `rest`, unwrap `Pop` -> `PopVal` so stdlib works,
@@ -581,11 +981,7 @@ impl<'a> Lowerer<'a> {
             let elem_ty = elem.ty();
             if is_literal(init) {
                 let value = self.expect(init, &elem_ty);
-                return Some(self.mk(
-                    ExprKind::Fill(dims.clone(), Some(Box::new(value))),
-                    want,
-                    init.span,
-                ));
+                return Some(self.fill_with_index_domains(dims.clone(), Some(Box::new(value)), want, init.span));
             }
             if let Some(table) = self.comprehension_table(init, dims, &elem_ty) {
                 return Some(table);
@@ -595,18 +991,64 @@ impl<'a> Lowerer<'a> {
                 return Some(value);
             }
             return Some(match self.try_coerce(value, &elem_ty) {
-                Ok(value) => self.mk(
-                    ExprKind::Fill(dims.clone(), Some(Box::new(value))),
-                    want,
-                    init.span,
-                ),
+                Ok(value) => self.fill_with_index_domains(dims.clone(), Some(Box::new(value)), want, init.span),
                 Err(value) => {
                     self.mismatch(init.span, &want, &value.ty);
                     self.err_expr(init.span)
                 }
             });
         }
+        if let Ty::Struct(sid) = &want {
+            if matches!(&init.kind, ast::ExprKind::List(items) if items.is_empty()) {
+                if let Some(&new_fn) = self.structs[*sid].methods.get("new") {
+                    if self.sigs[new_fn].params.is_empty() {
+                        return Some(self.method_call(new_fn, None, &[], init.span));
+                    }
+                }
+            }
+        }
         Some(self.expect(init, &want))
+    }
+
+    /// Wraps `ExprKind::Fill` with dynamic `DefDomain` initialization when any dimension
+    /// is an `impl Index` struct domain (e.g. `[Tri<D>]Int` where `K = D.K * (D.K + 1) / 2`).
+    fn fill_with_index_domains(
+        &mut self,
+        dims: Vec<DimSpec>,
+        fill: Option<Box<Expr>>,
+        want: Ty,
+        span: Span,
+    ) -> Expr {
+        let mut init_pairs: Vec<(DomainId, StructId, StructConst<'a>)> = Vec::new();
+        for dim in &dims {
+            if let DimSpec::Pos(dom_id) = dim {
+                if let Some((sid, sc)) = self.structs.iter().enumerate().find_map(|(sid, s)| {
+                    if s.index_domain == Some(*dom_id) {
+                        s.consts.get("K").cloned().map(|sc| (sid, sc))
+                    } else {
+                        None
+                    }
+                }) {
+                    init_pairs.push((*dom_id, sid, sc));
+                }
+            }
+        }
+        let fill_expr = self.mk(ExprKind::Fill(dims, fill), want.clone(), span);
+        if init_pairs.is_empty() {
+            return fill_expr;
+        }
+        self.do_expr(Some(&want), span, |lw, out| {
+            for (dom_id, sid, sc) in init_pairs {
+                let k_val = lw.eval_struct_const(sid, sc, span);
+                let lo = lw.int_lit(0, span);
+                out.push(Stmt::DefDomain {
+                    id: dom_id,
+                    lo,
+                    len: k_val,
+                });
+            }
+            out.push(Stmt::Give(fill_expr));
+        })
     }
 
     /// The value a variable declared without one starts with.
@@ -651,6 +1093,33 @@ impl<'a> Lowerer<'a> {
     ) {
         match &pat.kind {
             ast::PatternKind::Name(name) => self.declare(name, value, mutable, out),
+            ast::PatternKind::Variant { path, args } if path.len() == 1 && args.is_empty() => {
+                // Uppercase variable binding like `let P = p` or `let V = g.V` (parsed as Variant).
+                let vname = &path[0].text;
+                if value.ty == Ty::DomainVal {
+                    if let ExprKind::DomainVal(dom_id) = value.kind {
+                        self.cx
+                            .local_syms
+                            .last_mut()
+                            .unwrap()
+                            .insert(vname.clone(), Sym::Domain(dom_id));
+                        return;
+                    }
+                    let dom_id = self.domains.len();
+                    self.domains.push(format!("{vname}_{dom_id}"));
+                    out.push(Stmt::DefDomainFromVal {
+                        id: dom_id,
+                        val: value,
+                    });
+                    self.cx
+                        .local_syms
+                        .last_mut()
+                        .unwrap()
+                        .insert(vname.clone(), Sym::Domain(dom_id));
+                    return;
+                }
+                self.declare(vname, value, mutable, out);
+            }
             ast::PatternKind::Wildcard => out.push(Stmt::Expr(value)),
             ast::PatternKind::Tuple(pats) => {
                 let Some(fields) = value.ty.fields() else {
@@ -813,6 +1282,55 @@ impl<'a> Lowerer<'a> {
         let (op, value) = match op {
             ast::AssignOp::Set => (AssignOp::Set, self.coerce(value, &place.ty, span)),
             ast::AssignOp::Max | ast::AssignOp::Min => {
+                if let Ty::Opt(inner) = place.ty.clone() {
+                    if !matches!(*inner, Ty::Error) && !self.ordered(&inner) {
+                        let message = format!(
+                            "`max=` and `min=` need values with an order, not `{}`",
+                            self.show(&place.ty)
+                        );
+                        self.error(codes::BAD_OPERANDS, span, message);
+                        return;
+                    }
+                    let is_max = op == ast::AssignOp::Max;
+                    let rhs = self.coerce(value, &place.ty, span);
+                    let r_slot = self.temp(place.ty.clone());
+                    out.push(Stmt::Let(r_slot, Some(rhs)));
+                    let r_expr = self.local(r_slot, span);
+                    let r_some = self.mk(ExprKind::IsSome(Box::new(r_expr.clone())), Ty::Bool, span);
+                    let r_val = self.mk(ExprKind::Unwrap(Box::new(r_expr), false), (*inner).clone(), span);
+                    let p_expr = place_to_expr(&place);
+                    let p_some = self.mk(ExprKind::IsSome(Box::new(p_expr.clone())), Ty::Bool, span);
+                    let p_none = self.mk(ExprKind::Unary(UnOp::Not, Box::new(p_some)), Ty::Bool, span);
+                    let p_val = self.mk(ExprKind::Unwrap(Box::new(p_expr), false), (*inner).clone(), span);
+                    let cmp_op = if is_max { CmpOp::Gt } else { CmpOp::Lt };
+                    let better = self.mk(
+                        ExprKind::Cmp(cmp_op, Box::new(r_val.clone()), Box::new(p_val)),
+                        Ty::Bool,
+                        span,
+                    );
+                    let should_set = self.mk(
+                        ExprKind::Binary(BinOp::Or, Box::new(p_none), Box::new(better)),
+                        Ty::Bool,
+                        span,
+                    );
+                    let set_stmt = Stmt::Assign(
+                        place,
+                        AssignOp::Set,
+                        self.mk(ExprKind::Some(Box::new(r_val)), Ty::Opt(inner), span),
+                    );
+                    out.push(Stmt::If(
+                        r_some,
+                        Block {
+                            stmts: vec![Stmt::If(
+                                should_set,
+                                Block { stmts: vec![set_stmt] },
+                                Block::default(),
+                            )],
+                        },
+                        Block::default(),
+                    ));
+                    return;
+                }
                 if !matches!(place.ty, Ty::Error) && !self.ordered(&place.ty) {
                     let message = format!(
                         "`max=` and `min=` need values with an order, not `{}`",
@@ -1042,6 +1560,14 @@ impl<'a> Lowerer<'a> {
         match cond {
             ast::Cond::Expr(cond) => {
                 let cond = self.expect(cond, &Ty::Bool);
+                if matches!(cond.kind, ExprKind::Bool(true)) {
+                    out.extend(self.block(body, tail).stmts);
+                    return;
+                }
+                if matches!(cond.kind, ExprKind::Bool(false)) {
+                    self.if_chain(rest, otherwise, tail, out);
+                    return;
+                }
                 let then = self.block(body, tail);
                 let mut els = Vec::new();
                 self.if_chain(rest, otherwise, tail, &mut els);

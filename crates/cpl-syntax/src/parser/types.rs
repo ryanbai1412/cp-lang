@@ -223,8 +223,10 @@ impl<'a> Parser<'a> {
             if self.at_type_args_end() || self.at_line_end() {
                 break;
             }
-            // `Mod<7>`: a value argument.
-            let value = matches!(self.peek(), T::Int)
+            // `Mod<7>`, `Fixed<d>`: a value argument.
+            let value = (matches!(self.peek(), T::Int)
+                || (self.at(T::Ident)
+                    && !self.text().starts_with(|c: char| c.is_ascii_uppercase())))
                 && matches!(self.peek_n(1), T::Comma | T::Gt | T::Shr);
             if value {
                 let expr = self.unary();

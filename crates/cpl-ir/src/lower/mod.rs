@@ -55,7 +55,7 @@ fn lower_impl(analysis: &Analysis, test_name: Option<&str>) -> Result<Program, V
         lw.main();
     }
     // Queue root-module top-level functions (for non-test runs) plus any
-    // demand-driven functions referenced from `main` or transitive callees.
+    // demand-driven functions referenced from `main`, closures, preamble, or transitive callees.
     if test_name.is_none() {
         for id in 0..lw.sigs.len() {
             if lw.sigs[id].mod_id == 0 && lw.sigs[id].owner.is_none() {
@@ -63,26 +63,35 @@ fn lower_impl(analysis: &Analysis, test_name: Option<&str>) -> Result<Program, V
             }
         }
     }
-    while let Some(id) = lw.queued_fns.pop() {
-        lw.function(id);
-    }
-    // Also lower any struct comparison/display hooks (`eq_fn`, `lt_fn`, `show_fn`)
-    // that are invoked implicitly by `==`, `<`, `print`, etc.
     loop {
-        let mut added = false;
+        while let Some(id) = lw.queued_fns.pop() {
+            lw.function(id);
+        }
+        let mut newly_called = Vec::new();
+        collect_block_calls(&lw.main_body, &mut newly_called);
+        for s in &lw.preamble_stmts {
+            collect_stmt_calls(s, &mut newly_called);
+        }
+        for c in &lw.closures {
+            collect_block_calls(&c.body, &mut newly_called);
+        }
+        for body in lw.bodies.iter().flatten() {
+            collect_block_calls(&body.body, &mut newly_called);
+        }
         for s in &lw.structs {
             for hook in [s.def.eq_fn, s.def.lt_fn, s.def.show_fn].into_iter().flatten() {
-                if lw.queued_set.insert(hook) {
-                    lw.queued_fns.push(hook);
-                    added = true;
-                }
+                newly_called.push(hook);
+            }
+        }
+        let mut added = false;
+        for fid in newly_called {
+            if lw.queued_set.insert(fid) {
+                lw.queued_fns.push(fid);
+                added = true;
             }
         }
         if !added {
             break;
-        }
-        while let Some(id) = lw.queued_fns.pop() {
-            lw.function(id);
         }
     }
     // Prepend any lazy imported module const initializers to `main`.
@@ -225,6 +234,10 @@ struct FnCx {
     scopes: Vec<HashMap<String, Slot>>,
     /// Block-scoped type aliases, local domains, etc. (e.g. `domain V = 1..=6`, `type M = Mod<7>`).
     local_syms: Vec<HashMap<String, Sym>>,
+    /// Parameters bound to compile-time `BareOp` values (`+`, `min`, `max`, `gcd`, etc.).
+    op_locals: HashMap<String, BareOp>,
+    /// Block-scoped `type Alias = ...` resolved to concrete types (e.g. `type Cell = (Row, Col)`).
+    local_type_aliases: HashMap<String, Ty>,
     /// Local slots declared `var` or mutated, so closures capture them by reference.
     mut_slots: HashSet<Slot>,
     ret: Option<Ty>,
@@ -1027,8 +1040,17 @@ impl<'a> Lowerer<'a> {
                 return Spec::Plain(match ga {
                     GenArg::Ty(t) => t,
                     GenArg::Domain(d) => Ty::Pos(d),
-                    GenArg::Int(_) => Ty::Int,
+                    GenArg::Int(_) | GenArg::RuntimeInt(_) => Ty::Int,
+                    GenArg::Op(_) => Ty::Unit,
                 });
+            }
+            if let Some(ty) = self.cx.local_type_aliases.get(&name.text).cloned() {
+                return Spec::Plain(ty);
+            }
+            for ocx in self.outer_cxs.iter().rev() {
+                if let Some(ty) = ocx.local_type_aliases.get(&name.text).cloned() {
+                    return Spec::Plain(ty);
+                }
             }
         }
         // Check qualified module type `mod_alias.Type` or `D.bounds` or `Rooted.Pre`.
@@ -1196,6 +1218,12 @@ impl<'a> Lowerer<'a> {
                 if let Ty::Pos(id) = self.resolve_ty(&args[0]) {
                     return Some(DimSpec::Bound(id));
                 }
+            } else if let Some(Sym::GenStruct(gid)) = self.get_sym(&name.text) {
+                let gargs = self.resolve_gen_args(args);
+                let sid = self.instantiate_struct(gid, gargs);
+                if let Some(dom_id) = self.structs[sid].index_domain {
+                    return Some(DimSpec::Pos(dom_id));
+                }
             } else if let Some((prefix, rest)) = name.text.split_once('.') {
                 if let Some(Sym::GenStruct(gid)) = self.get_sym(prefix) {
                     let gargs = self.resolve_gen_args(args);
@@ -1207,6 +1235,44 @@ impl<'a> Lowerer<'a> {
                 if let Some(Sym::Struct(sid)) = self.get_sym(prefix) {
                     if let Some(&dom_id) = self.structs[sid].owned_domains.get(rest) {
                         return Some(DimSpec::Pos(dom_id));
+                    }
+                }
+                if let Some(slot) = self.lookup(prefix) {
+                    if let Ty::Struct(sid) = self.cx.locals[slot].ty {
+                        match self.structs[sid].env.get(rest).cloned() {
+                            Some(GenArg::Domain(dom_id)) | Some(GenArg::Ty(Ty::Pos(dom_id))) => {
+                                return Some(DimSpec::Pos(dom_id));
+                            }
+                            _ => {}
+                        }
+                        if let Some(&dom_id) = self.structs[sid].owned_domains.get(rest) {
+                            return Some(DimSpec::Pos(dom_id));
+                        }
+                    }
+                }
+            }
+        }
+        // Also handle `[xs.D]T` parsed as `TypeKind::Value(Field { base: Name(prefix), name: rest })`.
+        if let ast::TypeKind::Value(e) = &ty.kind {
+            if let ast::ExprKind::Field { base, name } = &e.kind {
+                if let ast::ExprKind::Name(prefix) = &base.kind {
+                    if let Some(slot) = self.lookup(prefix) {
+                        if let Ty::Struct(sid) = self.cx.locals[slot].ty {
+                            match self.structs[sid].env.get(&name.text).cloned() {
+                                Some(GenArg::Domain(dom_id)) | Some(GenArg::Ty(Ty::Pos(dom_id))) => {
+                                    return Some(DimSpec::Pos(dom_id));
+                                }
+                                _ => {}
+                            }
+                            if let Some(&dom_id) = self.structs[sid].owned_domains.get(&name.text) {
+                                return Some(DimSpec::Pos(dom_id));
+                            }
+                        }
+                    }
+                    if let Some(Sym::Struct(sid)) = self.get_sym(prefix) {
+                        if let Some(&dom_id) = self.structs[sid].owned_domains.get(&name.text) {
+                            return Some(DimSpec::Pos(dom_id));
+                        }
                     }
                 }
             }
@@ -1227,6 +1293,18 @@ impl<'a> Lowerer<'a> {
                 if !matches!(lo.kind, ast::ExprKind::Int(0)) {
                     self.unsupported(lo.span, "array dimensions that don't start at 0");
                     return None;
+                }
+                if !*inclusive {
+                    let saved_diags = self.diags.len();
+                    let saved_cx = self.cx.clone();
+                    let saved_outer = self.outer_cxs.clone();
+                    let probed = self.expr(hi, None);
+                    self.diags.truncate(saved_diags);
+                    self.cx = saved_cx;
+                    self.outer_cxs = saved_outer;
+                    if let ExprKind::DomainVal(dom_id) = probed.kind {
+                        return Some(DimSpec::Pos(dom_id));
+                    }
                 }
                 if !values {
                     return Some(DimSpec::Int(Box::new(self.int_lit(0, ty.span))));
@@ -1249,9 +1327,23 @@ impl<'a> Lowerer<'a> {
             }
             ast::TypeKind::Value(expr) => {
                 if !values {
+                    let saved_diags = self.diags.len();
+                    let saved_cx = self.cx.clone();
+                    let saved_outer = self.outer_cxs.clone();
+                    let v = self.expr(expr, None);
+                    self.diags.truncate(saved_diags);
+                    self.cx = saved_cx;
+                    self.outer_cxs = saved_outer;
+                    if let ExprKind::DomainVal(dom_id) = v.kind {
+                        return Some(DimSpec::Pos(dom_id));
+                    }
                     return Some(DimSpec::Int(Box::new(self.int_lit(0, ty.span))));
                 }
-                Some(DimSpec::Int(Box::new(self.expect(expr, &Ty::Int))))
+                let v = self.expr(expr, None);
+                if let ExprKind::DomainVal(dom_id) = v.kind {
+                    return Some(DimSpec::Pos(dom_id));
+                }
+                Some(DimSpec::Int(Box::new(self.coerce(v, &Ty::Int, expr.span))))
             }
             _ => {
                 self.error(
@@ -1393,6 +1485,7 @@ impl<'a> Lowerer<'a> {
             }
         }
         if let Some(Sym::Fn(fn_id)) = self.mod_syms[0].get(test_name).copied() {
+            self.queue_fn(fn_id);
             let ret = self.ret_of(fn_id, Span::default());
             let call = Expr {
                 kind: ExprKind::Call(fn_id, Vec::new()),
@@ -1465,6 +1558,19 @@ impl<'a> Lowerer<'a> {
             params.push(ParamDef {
                 mutable: param.mutable,
             });
+        }
+        for ast_p in &decl.params {
+            if let Some(ast::Type {
+                kind: ast::TypeKind::Named { name, args },
+                ..
+            }) = &ast_p.ty
+            {
+                if args.is_empty() {
+                    if let Some(GenArg::Op(op)) = self.gen_env.get(&name.text) {
+                        cx.op_locals.insert(ast_p.name.text.clone(), *op);
+                    }
+                }
+            }
         }
         let saved_cx = std::mem::replace(&mut self.cx, cx);
         let mut out = Vec::new();
@@ -1672,6 +1778,180 @@ impl<'a> Lowerer<'a> {
                     ..e
                 })
             }
+            (Ty::List(w_elem), Ty::List(e_elem)) if w_elem != e_elem => {
+                // Element-wise list coercion (e.g. `List<Int>` -> `List<?Int>`, `List<(Char, Int)>` -> `List<(val: Char, len: Int)>`).
+                let can_elem = matches!(
+                    (&**w_elem, &**e_elem),
+                    (Ty::Opt(inner), other) if **inner == *other
+                ) || matches!(
+                    (&**w_elem, &**e_elem),
+                    (Ty::Record(wf), Ty::Tuple(et)) if wf.len() == et.len() && wf.iter().zip(et).all(|((_, a), b)| a == b)
+                ) || matches!(
+                    (&**w_elem, &**e_elem),
+                    (Ty::Tuple(wt), Ty::Record(ef)) if wt.len() == ef.len() && wt.iter().zip(ef).all(|(a, (_, b))| a == b)
+                );
+                if !can_elem {
+                    return Err(e);
+                }
+                let src_ty = e.ty.clone();
+                let dst_ty = want.clone();
+                let w_elem = (**w_elem).clone();
+                let e_elem = (**e_elem).clone();
+                Ok(self.do_expr(Some(&dst_ty), span, |lw, out| {
+                    let src_slot = lw.temp(src_ty);
+                    out.push(Stmt::Let(src_slot, Some(e)));
+                    let acc_slot = lw.temp(dst_ty.clone());
+                    out.push(Stmt::Let(
+                        acc_slot,
+                        Some(lw.mk(ExprKind::Tuple(Vec::new()), dst_ty.clone(), span)),
+                    ));
+                    let item_slot = lw.temp(e_elem.clone());
+                    let item_expr = lw.local(item_slot, span);
+                    let coerced = lw.try_coerce(item_expr, &w_elem).unwrap_or_else(|x| x);
+                    let push = lw.mk(
+                        ExprKind::Mutate(
+                            Mutation::Push,
+                            Box::new(Place {
+                                kind: PlaceKind::Local(acc_slot),
+                                ty: dst_ty.clone(),
+                                span,
+                            }),
+                            vec![coerced],
+                        ),
+                        Ty::Unit,
+                        span,
+                    );
+                    let lid = lw.next_loop;
+                    lw.next_loop += 1;
+                    let src_ref = lw.local(src_slot, span);
+                    out.push(Stmt::For(
+                        lid,
+                        item_slot,
+                        Iter::Seq(src_ref, false),
+                        Block {
+                            stmts: vec![Stmt::Expr(push)],
+                        },
+                    ));
+                    out.push(Stmt::Give(lw.local(acc_slot, span)));
+                }))
+            }
+            (
+                Ty::Array {
+                    dims: w_dims,
+                    elem: w_elem,
+                },
+                Ty::Array {
+                    dims: e_dims,
+                    elem: e_elem,
+                },
+            ) if w_dims == e_dims && w_dims.len() == 1 => {
+                // Structural record projection for 1D arrays, e.g. `[E](u: V, v: V, w: Int)` -> `[E](u: V, v: V)`.
+                if let (Ty::Record(w_fields), Ty::Record(e_fields)) = (&**w_elem, &**e_elem) {
+                    let indices: Option<Vec<usize>> = w_fields
+                        .iter()
+                        .map(|(wn, wt)| {
+                            e_fields
+                                .iter()
+                                .position(|(en, et)| en == wn && et == wt)
+                        })
+                        .collect();
+                    if let Some(indices) = indices {
+                        let dim = w_dims[0];
+                        let src_ty = e.ty.clone();
+                        let dst_ty = want.clone();
+                        let w_rec = (**w_elem).clone();
+                        let e_rec = (**e_elem).clone();
+                        return Ok(self.do_expr(Some(&dst_ty), span, |lw, out| {
+                            let src_slot = lw.temp(src_ty);
+                            out.push(Stmt::Let(src_slot, Some(e)));
+                            let dim_spec = match dim {
+                                Dim::Pos(d) => DimSpec::Pos(d),
+                                Dim::Bound(d) => DimSpec::Bound(d),
+                                Dim::Int => {
+                                    let sref = lw.local(src_slot, span);
+                                    DimSpec::Int(Box::new(lw.len_of(sref, span)))
+                                }
+                            };
+                            let arr_slot = lw.temp(dst_ty.clone());
+                            out.push(Stmt::Let(
+                                arr_slot,
+                                Some(lw.mk(ExprKind::Fill(vec![dim_spec], None), dst_ty.clone(), span)),
+                            ));
+                            let idx_ty = match dim {
+                                Dim::Pos(d) => Ty::Pos(d),
+                                Dim::Bound(d) => Ty::Bound(d),
+                                Dim::Int => Ty::Int,
+                            };
+                            let idx_slot = lw.temp(idx_ty.clone());
+                            let idx_expr = lw.local(idx_slot, span);
+                            let sref = lw.local(src_slot, span);
+                            let elem_expr = lw.mk(
+                                ExprKind::Index(Box::new(sref.clone()), vec![idx_expr.clone()]),
+                                e_rec.clone(),
+                                span,
+                            );
+                            let elem_slot = lw.temp(e_rec);
+                            let el_ref = lw.local(elem_slot, span);
+                            let proj_fields: Vec<Expr> = indices
+                                .iter()
+                                .zip(w_fields)
+                                .map(|(&fi, (_, ft))| {
+                                    lw.mk(ExprKind::Field(Box::new(el_ref.clone()), fi), ft.clone(), span)
+                                })
+                                .collect();
+                            let proj_val = lw.mk(ExprKind::Tuple(proj_fields), w_rec.clone(), span);
+                            let set_stmt = Stmt::Assign(
+                                Place {
+                                    kind: PlaceKind::Index(
+                                        Box::new(Place {
+                                            kind: PlaceKind::Local(arr_slot),
+                                            ty: dst_ty.clone(),
+                                            span,
+                                        }),
+                                        vec![idx_expr],
+                                    ),
+                                    ty: w_rec,
+                                    span,
+                                },
+                                AssignOp::Set,
+                                proj_val,
+                            );
+                            let iter = match dim {
+                                Dim::Pos(d) => Iter::Range {
+                                    lo: lw.int_lit(0, span),
+                                    hi: lw.mk(ExprKind::DomainLen(d), Ty::Int, span),
+                                    step: None,
+                                    rev: false,
+                                },
+                                Dim::Bound(d) => Iter::Range {
+                                    lo: lw.int_lit(0, span),
+                                    hi: lw.int_add(lw.mk(ExprKind::DomainLen(d), Ty::Int, span), 1),
+                                    step: None,
+                                    rev: false,
+                                },
+                                Dim::Int => Iter::Range {
+                                    lo: lw.int_lit(0, span),
+                                    hi: lw.len_of(sref, span),
+                                    step: None,
+                                    rev: false,
+                                },
+                            };
+                            let lid = lw.next_loop;
+                            lw.next_loop += 1;
+                            out.push(Stmt::For(
+                                lid,
+                                idx_slot,
+                                iter,
+                                Block {
+                                    stmts: vec![Stmt::Let(elem_slot, Some(elem_expr)), set_stmt],
+                                },
+                            ));
+                            out.push(Stmt::Give(lw.local(arr_slot, span)));
+                        }));
+                    }
+                }
+                Err(e)
+            }
             (Ty::Record(fields), Ty::Tuple(items))
                 if fields.len() == items.len()
                     && fields.iter().zip(items).all(|((_, f), i)| f == i) =>
@@ -1708,6 +1988,209 @@ impl<'a> Lowerer<'a> {
                 }
             }
             _ => Err(e),
+        }
+    }
+}
+
+fn collect_block_calls(block: &Block, out: &mut Vec<FnId>) {
+    for stmt in &block.stmts {
+        collect_stmt_calls(stmt, out);
+    }
+}
+
+fn collect_stmt_calls(stmt: &Stmt, out: &mut Vec<FnId>) {
+    match stmt {
+        Stmt::Let(_, init) => {
+            if let Some(e) = init {
+                collect_expr_calls(e, out);
+            }
+        }
+        Stmt::Assign(place, _, value) => {
+            collect_place_calls(place, out);
+            collect_expr_calls(value, out);
+        }
+        Stmt::Expr(e) | Stmt::Give(e) => collect_expr_calls(e, out),
+        Stmt::Return(value) => {
+            if let Some(e) = value {
+                collect_expr_calls(e, out);
+            }
+        }
+        Stmt::If(cond, then, otherwise) => {
+            collect_expr_calls(cond, out);
+            collect_block_calls(then, out);
+            collect_block_calls(otherwise, out);
+        }
+        Stmt::While(_, cond, body) => {
+            collect_expr_calls(cond, out);
+            collect_block_calls(body, out);
+        }
+        Stmt::For(_, _, iter, body) => {
+            match iter {
+                Iter::Range { lo, hi, step, .. } => {
+                    collect_expr_calls(lo, out);
+                    collect_expr_calls(hi, out);
+                    if let Some(s) = step {
+                        collect_expr_calls(s, out);
+                    }
+                }
+                Iter::RangeVal(e, _) | Iter::Seq(e, _) => collect_expr_calls(e, out),
+            }
+            collect_block_calls(body, out);
+        }
+        Stmt::Assert { cond, message, .. } => {
+            collect_expr_calls(cond, out);
+            if let Some(m) = message {
+                collect_expr_calls(m, out);
+            }
+        }
+        Stmt::DefDomain { lo, len, .. } => {
+            collect_expr_calls(lo, out);
+            collect_expr_calls(len, out);
+        }
+        Stmt::DefDomainFromVal { val, .. } => collect_expr_calls(val, out),
+        Stmt::Break(_) | Stmt::Continue(_) | Stmt::Trap(..) => {}
+    }
+}
+
+fn collect_place_calls(place: &Place, out: &mut Vec<FnId>) {
+    match &place.kind {
+        PlaceKind::Local(_) | PlaceKind::Global(_) => {}
+        PlaceKind::Field(base, _) => collect_place_calls(base, out),
+        PlaceKind::Index(base, indices) => {
+            collect_place_calls(base, out);
+            for idx in indices {
+                collect_expr_calls(idx, out);
+            }
+        }
+    }
+}
+
+fn collect_spec_calls(spec: &Spec, out: &mut Vec<FnId>) {
+    match spec {
+        Spec::Plain(_) => {}
+        Spec::Int { lo, hi, .. } => {
+            if let Some(e) = lo {
+                collect_expr_calls(e, out);
+            }
+            if let Some(e) = hi {
+                collect_expr_calls(e, out);
+            }
+        }
+        Spec::Fields(_, fields) => {
+            for f in fields {
+                collect_spec_calls(f, out);
+            }
+        }
+        Spec::Array { dims, elem } => {
+            for d in dims {
+                if let DimSpec::Int(len) = d {
+                    collect_expr_calls(len, out);
+                }
+            }
+            collect_spec_calls(elem, out);
+        }
+        Spec::Opt(inner) => collect_spec_calls(inner, out),
+    }
+}
+
+fn collect_expr_calls(e: &Expr, out: &mut Vec<FnId>) {
+    match &e.kind {
+        ExprKind::Unit
+        | ExprKind::Int(_)
+        | ExprKind::Float(_)
+        | ExprKind::Bool(_)
+        | ExprKind::Char(_)
+        | ExprKind::Str(_)
+        | ExprKind::None
+        | ExprKind::Local(_)
+        | ExprKind::Global(_)
+        | ExprKind::DomainLen(_)
+        | ExprKind::DomainLo(_)
+        | ExprKind::DomainVal(_)
+        | ExprKind::Closure(_)
+        | ExprKind::Error => {}
+        ExprKind::Do(block) => collect_block_calls(block, out),
+        ExprKind::Some(a)
+        | ExprKind::Unary(_, a)
+        | ExprKind::Cast(_, a)
+        | ExprKind::Field(a, _)
+        | ExprKind::IsVariant(a, _)
+        | ExprKind::Payload(a, _, _)
+        | ExprKind::IsSome(a)
+        | ExprKind::Unwrap(a, _) => collect_expr_calls(a, out),
+        ExprKind::Binary(_, a, b)
+        | ExprKind::Cmp(_, a, b)
+        | ExprKind::Range { lo: a, hi: b } => {
+            collect_expr_calls(a, out);
+            collect_expr_calls(b, out);
+        }
+        ExprKind::If(a, b, c) => {
+            collect_expr_calls(a, out);
+            collect_expr_calls(b, out);
+            collect_expr_calls(c, out);
+        }
+        ExprKind::Index(base, indices) => {
+            collect_expr_calls(base, out);
+            for i in indices {
+                collect_expr_calls(i, out);
+            }
+        }
+        ExprKind::Tuple(items) | ExprKind::Variant(_, items) | ExprKind::Builtin(_, items) => {
+            for i in items {
+                collect_expr_calls(i, out);
+            }
+        }
+        ExprKind::Call(fid, args) => {
+            out.push(*fid);
+            for a in args {
+                match a {
+                    Arg::Value(v) => collect_expr_calls(v, out),
+                    Arg::Mut(p) => collect_place_calls(p, out),
+                }
+            }
+        }
+        ExprKind::CallExpr(callee, args) => {
+            collect_expr_calls(callee, out);
+            for a in args {
+                collect_expr_calls(a, out);
+            }
+        }
+        ExprKind::Mutate(_, place, args) => {
+            collect_place_calls(place, out);
+            for a in args {
+                collect_expr_calls(a, out);
+            }
+        }
+        ExprKind::Sort(place, sort_by) => {
+            collect_place_calls(place, out);
+            match sort_by {
+                SortBy::Natural => {}
+                SortBy::Key(_, key) => collect_expr_calls(key, out),
+                SortBy::Fn { func, .. } => collect_expr_calls(func, out),
+            }
+        }
+        ExprKind::Read(spec) => collect_spec_calls(spec, out),
+        ExprKind::Print(args) => {
+            for a in args {
+                collect_expr_calls(&a.value, out);
+            }
+        }
+        ExprKind::Format(pieces) => {
+            for p in pieces {
+                if let FmtPiece::Value(a) = p {
+                    collect_expr_calls(&a.value, out);
+                }
+            }
+        }
+        ExprKind::Fill(dims, value) => {
+            for d in dims {
+                if let DimSpec::Int(len) = d {
+                    collect_expr_calls(len, out);
+                }
+            }
+            if let Some(v) = value {
+                collect_expr_calls(v, out);
+            }
         }
     }
 }
