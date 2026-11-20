@@ -1,10 +1,5 @@
-// CCO 2005 P4 Primed Sequences: for each test, find the shortest run of at
-// least two consecutive numbers whose sum is prime (the leftmost such run
-// of that length), and print it in the judge's sentence; or say that the
-// sequence is anti-primed.
-//
-// The original sieves every sum up to 10^8 before reading anything. The
-// sums that are actually asked about are few, so this tests each one.
+// CCO 2005 P4 Primed Sequences (CP Lang 0.2.2): shortest run of length >= 2
+// with prime sum, breaking ties leftmost.
 // original: corpus/submissions/4665767.cpp
 fn is_prime(x: Int) -> Bool:
     if x < 2: return false
@@ -14,21 +9,15 @@ fn is_prime(x: Int) -> Bool:
         d += 1
     true
 
-fn solve():
-    let n: Int = read()
-    domain I = 0..n
-    let a: [I]Int = read()
-    var pre = [0]
-    for x in a: pre.push(pre.last + x)
+@multitest
+let n: Int = read()
+let a: [0..n]Int = read()
+var pre: [0..=n]Int = 0
+for i in 0..n: pre[i + 1] = pre[i] + a[i]
 
-    for len in 2..=n:
-        for l in 0..=n - len:
-            if not is_prime(pre[l + len] - pre[l]): continue
-            var line = Str("Shortest primed subsequence is length {len}:")
-            for i in l..l + len: line.extend(" {a[I.nth(i)]}")
-            print(line)
+for len in 2..=n:
+    for l in 0..=n - len:
+        if is_prime(pre[l + len] - pre[l]):
+            print("Shortest primed subsequence is length {len}:", [a[i] for i in l..l + len])
             return
-    print("This sequence is anti-primed.")
-
-let t: Int = read()
-for _ in 0..t: solve()
+print("This sequence is anti-primed.")

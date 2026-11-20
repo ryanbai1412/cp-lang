@@ -1,6 +1,5 @@
-// DMOPC '20 Contest 6 P6 — Water Jugs (Interactive, CP Lang v2 spec)
+// DMOPC '20 Contest 6 P6 — Water Jugs (Interactive, CP Lang 0.2.2)
 // original: corpus/submissions/5200785.cpp
-// spec: docs/one-page-cheat-sheet.md (3723dca)
 //
 // Interactive capacity discovery: `n` jugs start full with hidden capacities
 // in `1..=m`. Operations: `E x` (empty), `F x` (fill), `D x y` (pour x -> y,
@@ -9,19 +8,15 @@
 let (n, m): (2..=40_000, 1..=1e9) = read()
 domain Jug = 1..=n
 
-// FRICTION UD3: `ask(...)` on the v2 cheat sheet assumes every query receives
-// a reply. Here `E x` and `F x` are one-way commands that still consume the
-// shared query budget (`<= 4*n`), while `D x y` returns an `Int`. Mixing
-// `print` with `ask` splits the query budget unless `send(...)` or `ask<Unit>`
-// shares the interactor counter.
 fn empty_jug(x: Jug):
-    print("E {x}")
+    ask("E", x, limit: 4 * n)
 
 fn fill_jug(x: Jug):
-    print("F {x}")
+    ask("F", x, limit: 4 * n)
 
 fn pour_jug(x: Jug, y: Jug) -> Int:
-    ask("D", x, y)
+    let moved: Int = ask("D", x, y, limit: 4 * n)
+    moved
 
 var cap: [Jug]?Int = none
 var best_jug: ?Jug = none
@@ -69,34 +64,37 @@ while let cur = scan:
     full_known = cur
     scan = probe
 
-print("A " + " ".join("{cap[u]!}" for u in Jug))
+print("A", [cap[u]! for u in Jug])
 
 @interactor
-fn judge():
+fn judge(mut sol: Interactor):
+    let (n, m): (2..=40_000, 1..=1e9) = read()
+    domain Jug = 1..=n
     let hidden: [Jug]Int = read()
+    sol.send(n, m)
     var cur = hidden.copy()
     var queries = 0
     while true:
-        let op: Str = read_output()
+        let op: Str = sol.recv()
         if op == "E":
-            let x: Jug = read_output()
+            let x: Jug = sol.recv()
             cur[x] = 0
             queries += 1
         elif op == "F":
-            let x: Jug = read_output()
+            let x: Jug = sol.recv()
             cur[x] = hidden[x]
             queries += 1
         elif op == "D":
-            let (x, y): (Jug, Jug) = read_output()
+            let (x, y): (Jug, Jug) = sol.recv()
             let moved = min(hidden[y] - cur[y], cur[x])
             cur[x] = 0
             cur[y] += moved
             queries += 1
-            print(moved)
+            sol.send(moved)
         elif op == "A":
-            let guess: [Jug]Int = read_output()
+            let guess: [Jug]Int = sol.recv()
             assert guess == hidden
             assert queries <= 4 * n
-            break
+            return
         else:
             assert false

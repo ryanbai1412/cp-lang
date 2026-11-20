@@ -1,6 +1,6 @@
 // CCO '07 P5 — UFO / Moving Target on a Ring (Interactive) (DMOJ: cco07p5)
 // original: corpus/submissions/5120565.cpp
-// CP Lang v2 (locked spec, docs/one-page-cheat-sheet.md @ 3723dca)
+// CP Lang 0.2.2 (locked spec, docs/one-page-cheat-sheet.md)
 //
 // Interactive problem: an object on a ring 0..n starts at unknown position p
 // with constant velocity v in 0..n. Each "Look l r" query returns "True"/"False"
@@ -15,18 +15,9 @@ fn look(l: Int, r: Int) -> Bool:
     let tok: Str = ask("Look", l, r)
     tok == "True"
 
-// Note: CP Lang v2 has no stdlib RNG for contestant code (see friction backlog),
-// so a 3-line deterministic xorshift64 replaces C++'s mt19937.
-var seed: U64 = 1412
-fn next_u64() -> U64:
-    seed ^= seed << 13
-    seed ^= seed >> 7
-    seed ^= seed << 17
-    seed
-
 var x = 0
 while true:
-    x = Int(next_u64() % U64(n - BLOCK + 1))
+    x = rand(0, n - BLOCK)
     if look(x, x + BLOCK - 1): break
 
 var cands: List<(p: Pos, v: Int)> = []
@@ -48,18 +39,18 @@ let (p, v) = cands[0]
 print("Guess", v, p)
 
 @interactor
-fn judge():
+fn judge(mut sol: Interactor):
     let hidden_n: 2..=1000 = read()
     var p: 0..hidden_n = read()
     let v: 0..hidden_n = read()
     while true:
-        let cmd: Str = read_output()
-        if cmd == "GetSize": print(hidden_n)
+        let cmd: Str = sol.recv()
+        if cmd == "GetSize": sol.send(hidden_n)
         elif cmd == "Look":
-            let (l, r): (Int, Int) = read_output()
-            print(if p in l..=r: "True" else: "False")
+            let (l, r): (Int, Int) = sol.recv()
+            sol.send(if p in l..=r: "True" else: "False")
             p = (p + v) % hidden_n
         elif cmd == "Guess":
-            let (gv, gp): (Int, Int) = read_output()
+            let (gv, gp): (Int, Int) = sol.recv()
             assert gv == v and gp == p
             return

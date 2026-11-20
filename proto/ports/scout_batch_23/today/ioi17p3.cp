@@ -1,91 +1,75 @@
-// IOI '17 P3 - Toy Train (runnable on proto/cp.py lib-run today)
-let (n, m): (Int, Int) = read()
-var owner: List<Int> = []
-for _ in 0..n:
-    let v: Int = read()
-    owner.push(v)
-var charge: List<Int> = []
-for _ in 0..n:
-    let v: Int = read()
-    charge.push(v)
+// IOI '17 P3 — Toy Train (CP Lang 0.2.2): `Marks<V>` (O(1) clear) + `Deque<V>`
+// replace 4x per-iteration `List.filled(n, false)` resets and 2x manual queues.
+// original: corpus/submissions/5656304.cpp
+use std.deque.{Deque}
+use std.marks.{Marks}
 
-var rev: List<List<Int>> = []
-for _ in 0..n:
-    rev.push([])
-var out_alive = List.filled(n, 0)
+let (n, m): (Int, Int) = read()
+domain V = 0..n
+let owner: [V]Int = read()
+let charge: [V]Int = read()
+
+var rev: [V]List<V> = []
+var out_alive: [V]Int = 0
 for _ in 0..m:
-    let (u, v): (Int, Int) = read()
+    let (u, v): (V, V) = read()
     rev[v].push(u)
     out_alive[u] += 1
 
-var alive = List.filled(n, true)
+var alive: [V]Bool = true
+var good = Marks<V>()
+var pushed = Marks<V>()
+var lose = Marks<V>()
+var q = Deque<V>.new()
+var lq = Deque<V>.new()
 
 while true:
-    // Step 1: Arezou's >= 1-step attractor of alive charging stations inside `alive`
-    var good = List.filled(n, false)
-    var pushed = List.filled(n, false)
-    var rem = List.filled(n, 0)
-    for v in 0..n:
-        rem[v] = out_alive[v]
-    var q: List<Int> = []
-    for v in 0..n:
+    good.clear()
+    pushed.clear()
+    var rem: [V]Int = [V] v => out_alive[v]
+    for v in V:
         if alive[v] and charge[v] == 1:
-            pushed[v] = true
+            pushed.add(v)
             q.push(v)
-    var head = 0
-    while head < q.len:
-        let w = q[head]
-        head += 1
-        let preds = rev[w]
-        for idx in 0..preds.len:
-            let u = preds[idx]
-            if not alive[u] or good[u]: continue
+    while let w = q.pop_front():
+        for u in rev[w]:
+            if not alive[u] or u in good: continue
             if owner[u] == 1:
-                good[u] = true
+                good.add(u)
             else:
                 rem[u] -= 1
-                if rem[u] == 0: good[u] = true
-            if good[u] and not pushed[u]:
-                pushed[u] = true
+                if rem[u] == 0: good.add(u)
+            if u in good and u not in pushed:
+                pushed.add(u)
                 q.push(u)
 
-    // Step 2: `bad = alive \ good`
-    var lose = List.filled(n, false)
-    var lq: List<Int> = []
-    for v in 0..n:
-        if alive[v] and not good[v]:
-            lose[v] = true
+    lose.clear()
+    var lost: List<V> = []
+    for v in V:
+        if alive[v] and v not in good:
+            lose.add(v)
             lq.push(v)
-    if lq.len == 0: break
+            lost.push(v)
+    if lost.is_empty: break
 
-    // Step 3: Bita's attractor of `bad` inside `alive`
-    var lhead = 0
-    while lhead < lq.len:
-        let w = lq[lhead]
-        lhead += 1
-        let preds = rev[w]
-        for idx in 0..preds.len:
-            let u = preds[idx]
-            if not alive[u] or lose[u]: continue
+    while let w = lq.pop_front():
+        for u in rev[w]:
+            if not alive[u] or u in lose: continue
             if owner[u] == 0:
-                lose[u] = true
+                lose.add(u)
                 lq.push(u)
+                lost.push(u)
             else:
                 out_alive[u] -= 1
                 if out_alive[u] == 0:
-                    lose[u] = true
+                    lose.add(u)
                     lq.push(u)
+                    lost.push(u)
 
-    for idx in 0..lq.len:
-        let v = lq[idx]
+    for v in lost:
         alive[v] = false
-        let preds = rev[v]
-        for j in 0..preds.len:
-            let u = preds[j]
+        for u in rev[v]:
             if alive[u] and owner[u] == 0:
                 out_alive[u] -= 1
 
-var out: List<Int> = []
-for v in 0..n:
-    out.push(if alive[v]: 1 else: 0)
-print(out)
+print([if alive[v]: 1 else: 0 for v in V])
