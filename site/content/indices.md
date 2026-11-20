@@ -38,13 +38,16 @@ A domain implements the `Index` and `Seq` traits:
 - `v.to_idx` converts to `0..V.K` and `V.from_idx(i) -> ?V` converts back safely.
 - `v + k -> ?V` and `v - k -> ?V` step by an integer offset and return `none` past the ends; `b - a -> Int` is the signed distance; `v.cyc(k) -> V` wraps cyclically.
 
-Domain-array endpoints are **values**, not indices: `a.first` and `a.last` return `T`, like `a[V.first]` and `a[V.last]`. They require a nonempty domain. In contrast, `List<T>.first` and `.last` return `?T` because a list may be empty:
+Array endpoints are **values**, not domain indices: `a.first` and `a.last` return `?T`, while `V.first` and `V.last` are indices. Like lists, empty arrays return `none`; unwrap with `a.first!` or `a.last!` only when nonempty. An unwrapped endpoint is also a mutable place, so `a.last! += 1` works on a mutable array or list:
 
 ```cp CP Lang 0.2.2
 domain V = 5..8
 let a: [V]Int = [V] v => 10 + v.to_idx
-let endpoints: (Int, Int) = (a.first, a.last)
+let endpoints: (?Int, ?Int) = (a.first, a.last)
 print(V.first, V.last, endpoints.0, endpoints.1) // 5 7 10 12
+domain Empty = 0..0
+let empty: [Empty]Int = 0
+print(empty.first ?? -1, empty.last ?? -1) // -1 -1
 ```
 
 ## Boundaries: `.l` and `.r`

@@ -53,7 +53,7 @@ print(best[V(2)] ?? -1)             // fallback only on none
 domain V = 1..=4                    // nominal index type, distinct from Int
 let a: [V]Int = [V] v => v.to_idx + 10
 print(a[V.first], a[V.last])        // domain endpoints are indices
-print(a.first, a.last)              // array endpoints are Int values
+print(a.first, a.last)              // array endpoints are ?Int values
 var count: [0..=9]Int = 0           // structural array, ordinary Int indices
 count[3] += 1
 count.fill(0)
@@ -61,7 +61,7 @@ count.fill(0)
 
 - `[V]T` uses `v: V`; `[0..n]T` uses `i: Int`. Different nominal domains never mix.
 - `V.K` is the size; `V.first`/`V.last` require a nonempty domain; `v.to_idx` is zero-based.
-- Domain-array `.first`/`.last` return `T`, not indices or optionals; use on nonempty domains.
+- Array `.first`/`.last` return `?T`, or `none` when empty, not indices; unwrap a known nonempty end with `!`.
 - `v + k` / `v - k` return `?V`; `b - a` returns `Int`; `v.cyc(k)` wraps.
 - `V.bounds` contains `V.K + 1` gaps; `v.l`/`v.r`, `v.l(k)`/`v.r(k)` select boundaries.
 - `b.left`/`b.right` return `?V`; range structures accept `..v`, `..=v`, and `v..`.
