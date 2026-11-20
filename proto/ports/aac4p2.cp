@@ -10,11 +10,11 @@ let queries: [q]1..=1e9 = read()
 
 var pre: [I.bounds]1..=CAP = 1          // lcm of everything before a bound, capped
 for i in I:
-    pre[i.after] = min(CAP, lcm(pre[i.before], a[i]))
+    pre[i.r] = min(CAP, lcm(pre[i.l], a[i]))
 
 for x in queries:
     // multiples of a longer prefix are multiples of every shorter one
-    if let i = I.first_where(i => x % pre[i.after] != 0):
+    if let i = I.first_where(i => x % pre[i.r] != 0):
         print(i)
     else:
         print(-1)

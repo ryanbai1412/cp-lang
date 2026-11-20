@@ -323,6 +323,13 @@ Tooling:
 - **Research:** `research/NOTES.md` has the data and
   `research/RECOMMENDATIONS.md` has proposals for borrows, generators, domain
   strictness and checks.
+- **Approved on 2026-11-20:** `plan/19-index-and-lends.md` (1.10): one
+  mechanism for `domain`, `Str`, `Grid` and `Perm`, projections (`lends`),
+  `law disjoint` and lexical exclusivity; also Euclidean `/` and `%`.
+  Outcomes are in `decisions.md` §9. The prototype implements the surface
+  rules (`proto/cpc/lends.py`, `proto/tests/lend/`, the `lend_*`, `proj_*`
+  and `index_*` files in `proto/tests/bad/`); 19 §11 lists what it leaves
+  out. The Rust compiler does not have any of it yet.
 - **Reviewed on 2026-11-19:** the four proposals in
   `plan/18-key-features.md` (folded into the plan as 1.9) and the research
   proposals above; outcomes are in `decisions.md` §8.

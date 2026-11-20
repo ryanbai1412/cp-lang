@@ -72,17 +72,30 @@ range, `x.wrap<U32>()` truncates.
 
 ### Division and remainder
 
-`/` rounds toward negative infinity and `%` is never negative (decision
-24: "we should just get rid of the negative remainder bug"):
+`/` and `%` on integers are Euclidean (decision 1.9, locked in on
+2026-11-20; it grew out of decision 24: "we should just get rid of the
+negative remainder bug"). For every `a` and every non-zero `b`,
+`a == (a / b) * b + a % b` and `0 <= a % b < abs(b)`. So `a % b` is never
+negative, whatever the signs of `a` and `b`:
 
 ```
--7 / 2   // -4
--7 % 3   // 2
+-7 / 2    // -4
+-7 % 2    // 1
+-7 % 3    // 2
+ 7 / -2   // -3
+ 7 % -2   // 1      not -1: the remainder is non-negative for a negative divisor too
+-7 / -2   // 4
+-7 % -2   // 1
 (i - 1) % n   // always a valid index into 0..n
 ```
 
-When both operands are provably non-negative, which is nearly always,
-these compile to plain C++ `/` and `%` with no extra instructions.
+There is one division operator. `//` is not a second one: it starts a
+comment.
+
+When the range checker proves `a >= 0` and `b > 0`, which is nearly
+always, both compile to the plain C++ `/` and `%` with no extra
+instructions. Otherwise they compile to the native operation and a
+two-instruction fix-up.
 
 ### Literals
 
@@ -109,11 +122,18 @@ six significant digits.
 
 - `Bool` is 1 byte. `[V]Bool` is a byte array; `BitSet<V>` is the explicit
   packed form, with word-level operations.
-- `Char` is a byte, with literals `'a'` and arithmetic as an integer
-  (`c - 'a'` is a `0..26` when `c` is proven lowercase).
-- `Str` is a byte array with its own domain, so every sequence tool works
-  on strings: `runs(s)`, `windows(s.idx, k)`, `s[r]` for a slice
-  (*proposed*, decision 1.6).
+- `Char` is one byte holding an ASCII character, with literals `'a'` and
+  arithmetic as an integer (`c - 'a'` is a `0..26` when `c` is proven
+  lowercase).
+- `Str` is a flat array of `Char` with its own domain, so every sequence
+  tool works on strings: `runs(s)`, `windows(s.Idx, k)`, `s[r]` for a
+  slice (decision 1.6; `19-index-and-lends.md` §4.4 defines it as
+  `[domain]Char`).
+- **ASCII only, no UTF-8.** `s[i]` is one load and `s.len` counts both
+  characters and bytes. A non-ASCII character in a `Char` or string
+  literal is a compile error. This is a decision, not a gap: contest text
+  is ASCII, and a string type with code points would put a decoding
+  question behind every index.
 - String literals interpolate: `"{a} {b}"`, with `{{` for a brace. Raw
   strings are `r"..."`. The user asked whether interpolating everything is
   "a bit weird" and accepted it: it removes `f"..."` noise from every

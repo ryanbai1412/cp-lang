@@ -29,6 +29,7 @@ Each document states its status at the top. "Decided" means the user agreed;
    - [1.7 Input, output, interaction](16-io.md)
    - [1.8 Syntax and style reference](17-syntax.md)
    - [1.9 Key features: input types, contracts, compile-time evaluation, REPL (proposed)](18-key-features.md)
+   - [1.10 Bounded indices and lends: one mechanism for `domain`, `Str`, `Grid` and `Perm`](19-index-and-lends.md)
 2. [Standard library](20-stdlib.md)
 3. [Compiler and runtime](30-compiler.md)
 4. [Tooling and the `cp` command](40-tooling.md)

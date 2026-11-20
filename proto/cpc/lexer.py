@@ -22,6 +22,13 @@ CONT_START = {"and", "or", "."}
 NUM_RE = re.compile(r"\d[\d_]*(\.\d+)?([eE][+-]?\d+)?")
 NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
+def ascii_only(text, what, ln):
+    """Char is one byte and Str is [S]Char: no UTF-8 anywhere (decision 1.6)."""
+    for ch in text:
+        if ord(ch) > 127:
+            raise LexError(f"line {ln}: `{ch}` is not ASCII; a {what} literal holds single-byte ASCII characters only "
+                           f"(Char is one byte, Str is a flat array of Char, there is no UTF-8)")
+
 def lex(src):
     toks = []
     indents = [0]
@@ -96,6 +103,7 @@ def lex(src):
                     else:
                         buf += line[j]
                         j += 1
+                ascii_only(buf, "string", ln)
                 toks.append(Tok("STR", buf, ln, col))
                 i = j + 1
                 continue
@@ -103,6 +111,9 @@ def lex(src):
                 j = line.index("'", i + 1 if line[i + 1] != "\\" else i + 3)
                 body = line[i + 1:j]
                 ch = {"\\n": "\n", "\\t": "\t", "\\'": "'", "\\\\": "\\"}.get(body, body)
+                ascii_only(ch, "Char", ln)
+                if len(ch) != 1:
+                    raise LexError(f"line {ln}: a Char literal is exactly one byte, got '{body}'")
                 toks.append(Tok("CHAR", ch, ln, col))
                 i = j + 1
                 continue

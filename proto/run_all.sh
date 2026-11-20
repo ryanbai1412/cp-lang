@@ -14,8 +14,20 @@ for f in ports/*.cp; do
 done
 for f in tests/bad/*.cp; do
     case $(basename $f) in ok_*|refine.cp) want=0;; *) want=1;; esac
-    python3 cp.py build "$f" >/dev/null 2>&1; got=$?
+    msg=$(python3 cp.py build "$f" 2>&1 >/dev/null); got=$?
     [[ $got -ne 0 ]] && got=1
     [[ $got -eq $want ]] || { echo "UNEXPECTED: $f exit $got"; fail=1; }
+    # a first line `// error: text` locks the message too (decision 5.11): the build must fail with that text
+    exp=$(head -1 "$f" | sed -n 's|^// error: ||p')
+    [[ -z $exp || $msg == *"$exp"* ]] || { echo "WRONG MESSAGE: $f wanted \"$exp\""; fail=1; }
 done
-echo "bad tests checked"; exit $fail
+echo "bad tests checked"
+# plan/19: Index, lends and lexical borrows. Each tests/lend/x.cp is built, run on x.in and compared with x.out.
+for f in tests/lend/*.cp; do
+    b=${f%.cp}
+    if python3 cp.py build "$f" >/dev/null 2>&1 && g++ -std=c++17 -O1 -DLOCAL -o "${b}_bin" "$b.cpp" 2>/dev/null \
+        && "./${b}_bin" < "$b.in" 2>&1 | cmp -s - "$b.out"; then :
+    else echo "LEND TEST FAILED: $f"; fail=1; fi
+    rm -f "${b}_bin"
+done
+echo "lend tests checked"; exit $fail

@@ -17,10 +17,10 @@ fn solve():
     var half = Len.first                    // longest border of the prefix that fits in half of it
     var answer = Z(1)
     for i in S:
-        let p = i.after
+        let p = i.r
         depth[p] = 1
         if p.idx >= 2:
-            var b = border[i.before]
+            var b = border[i.l]
             while b.idx > 0 and s[S(b.idx)] != s[i]: b = border[b]
             if s[S(b.idx)] == s[i]: b = Len(b.idx + 1)
             border[p] = b

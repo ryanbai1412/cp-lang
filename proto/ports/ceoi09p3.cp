@@ -23,13 +23,13 @@ const INF = 1000000000
 var dp: [P.bounds, P.bounds, H]Int = [P.bounds, P.bounds, H] (a, b, _) => if a == b: 0 else: INF
 for l in P.rev:
     for r in l..=P.last:
-        let lo = l.before
-        let hi = r.after
+        let lo = l.l
+        let hi = r.r
         for k in H.rev:
             if pts[l].y <= height[k]:
-                dp[lo, hi, k] = dp[l.after, hi, k]
+                dp[lo, hi, k] = dp[l.r, hi, k]
             elif pts[r].y <= height[k]:
-                dp[lo, hi, k] = dp[lo, r.before, k]
+                dp[lo, hi, k] = dp[lo, r.l, k]
             else:
-                dp[lo, hi, k] = min(dp[lo, i.after, tallest(l, i)] + dp[i.after, hi, k] + 1 for i in l..=r)!
+                dp[lo, hi, k] = min(dp[lo, i.r, tallest(l, i)] + dp[i.r, hi, k] + 1 for i in l..=r)!
 print(dp[P.bounds.first, P.bounds.last, H.first])

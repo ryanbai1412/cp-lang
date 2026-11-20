@@ -8,6 +8,11 @@ proposal yet. "Where" points to the doc that has (or will have) the detail.
 Suggested order: state and effects (5) first, since several open items in
 2, 4 and 6 depend on the borrow rules.
 
+**Update, 2026-11-20.** Ryan approved the unified bounded-index, slice and
+lexical borrow design (plan/19-index-and-lends.md) with three changes, and
+locked in Euclidean division. §9 lists what he approved and the rows it
+changed.
+
 **Update, 2026-11-19.** Ryan reviewed the open proposals and approved the
 defaults; §8 lists what he approved and the rows it changed. Rows changed
 that day say so in their Status. For rows still Leaning or Open, the
@@ -36,27 +41,30 @@ G7, G8):
 | 1.3 | Optionals and niches | Settled | `?T`, niche when the type has a spare value, else a flag | 1.1 | plan/13-abstraction.md M7b |
 | 1.4 | Structs, records, enums | Settled | auto constructors, `with`, payload enums, exhaustive `match` | | plan/17-syntax.md |
 | 1.5 | Float semantics | Open | `F64`; `==` allowed but linted; `close(a, b, eps)` in std | | |
-| 1.6 | Strings | Settled 2026-11-19 | `Str` = `[domain S]Char` (bytes), so strings get domains for free and need no string-only indexing rules | 2.x | §8 |
+| 1.6 | Strings | Settled 2026-11-19, defined 2026-11-20 | `Str` is the alias `[domain]Char`: a flat array of `Char` packaged with its own fresh index type, opened where it is bound (`s: [s.Idx]Char`). **ASCII only**: a `Char` is one byte, there is no UTF-8 anywhere, and a non-ASCII literal is a compile error. `List<Char>` builds one. No string-only indexing rules | 2.x | plan/19-index-and-lends.md §4.4 |
 | 1.7 | `I128` / `U64` / `I64` rules | Leaning | `U64` wraps and allows bit ops; `I128` only where declared; `I64` full range, no niche | 1.1 | |
 | 1.8 | Bit operations on `Int` | Leaning | shifts that can reach bit 63 are errors with "use `U64`" | 1.7 | |
+| 1.9 | Integer division and modulo | Settled 2026-11-20 | **Euclidean everywhere**: `a / b` and `a % b` satisfy `a == (a / b) * b + a % b` with `0 <= a % b < abs(b)`, so `a % b` is never negative, for negative `a` and for negative `b`. (`//` is not an operator: it starts a comment.) When the range checker proves `a >= 0` and `b > 0`, both lower to the native C++ `/` and `%` with no extra code; otherwise to the two-instruction fix-up (`cp_ediv` / `cp_emod` in the prototype) | 1.1 | plan/11-values-and-types.md |
 
 ## 2. Index spaces
 
 | # | Decision | Status | Current lean | Depends on | Where |
 |---|---|---|---|---|---|
-| 2.1 | Domains, `[V]T`, unchecked indexing by `V` | Settled | positions are 4-byte ordinals; checks only where positions are created | | plan/12-domains-and-sequences.md §1 |
-| 2.2 | Bounds (gaps between positions) | Settled | `V.bounds`, `v.before` / `v.after`; prefix sums indexed by bounds | | plan/12-domains-and-sequences.md §1.4 |
-| 2.3 | `Range<D>` / `Range1<D>` | Settled | ranges stored as two bounds; views yield `Range1` | | plan/12-domains-and-sequences.md §2 |
-| 2.4 | Slices | Settled | borrowed views; positions are `Sub<V>` and convert to `V` | 5.1 | plan/12-domains-and-sequences.md §3 |
-| 2.5 | Product and fresh domains | Settled | `(A, B)`; `compress`, `scc`, Euler order return fresh domains | | plan/12-domains-and-sequences.md §1.5 |
+| 2.1 | Domains, `[V]T`, unchecked indexing by `V` | Settled, revised 2026-11-20 | `domain V = 1..=n` is sugar for a sealed nominal struct over a range type with `impl Index` and `impl Seq`; its width follows the range (4 bytes at most for input-sized domains). Checks only where positions are created; the no-check guarantee is now derived from `to_idx: 0..K`, not a rule about domains | | plan/19-index-and-lends.md §3.1 |
+| 2.2 | Bounds (gaps between positions) | Settled, revised 2026-11-20 | `V.bounds`; **`v.l` / `v.r`** are the boundaries left and right of `v`, and `v.l(k)` / `v.r(k)` the far end of the `k`-wide window ending / starting at `v` (so `v.l == v.l(1)`). `v.before` / `v.after` stay as the long names. Prefix sums are indexed by bounds: `pre[v.r] - pre[v.l(k)]` | | plan/19-index-and-lends.md §3.1 |
+| 2.3 | `Range<D>` / `Range1<D>` | Settled | ranges stored as two bounds (`s.lo`, `s.hi`); views yield `Range1`. Library structs over `Seq` | | plan/12-domains-and-sequences.md §2, plan/19-index-and-lends.md §4.1 |
+| 2.4 | Slices | Settled, revised 2026-11-20 | `a[s]` is a library projection that lends a slice. A slice is indexed by the positions of its array (`V`), with a window check unless proven; **`Sub<V>` is removed**. The window is a value, the slice is a lend: fns return ranges, callers apply them | 5.12 | plan/19-index-and-lends.md §4.2 |
+| 2.5 | Product and fresh domains | Settled, revised 2026-11-20 | `(A, B)` is an `Index`, so `a[i, j]` is sugar for `a[(i, j)]` on any container; `domain D` in a signature or binding introduces a fresh index type that can't leave the block that introduced it (`compress`, `scc`, Euler order) | | plan/19-index-and-lends.md §3.2, §4.3 |
 | 2.6 | Domains that depend on a value | Open | e.g. "children of `v`" as a domain; candidate: `domain Kids(v: V) = ...` | 3.x | design-v2 C2 |
 | 2.7 | Growable domains | Leaning | pools grow; `freeze()` turns them into ordinary domains | 5.6 | design-v2 |
-| 2.8 | Conversions between related domains | Settled 2026-11-19 | strict: `Sub<V>` → `V` is the only implicit conversion; every other one is a named method (`v.before`, `pre.vertex`, `V(x)`). Full list for `Rev<V>`, `Pre`, `WithMin<V>` still to write | 2.4 | research/RECOMMENDATIONS.md §3 |
+| 2.8 | Conversions between related domains | Settled, revised 2026-11-20 | strict, and now **no implicit conversion at all**: `Sub<V>` is gone (2.4), so every conversion is a named method (`v.l`, `pre.vertex`, `V(x)`). Full list for `Rev<V>`, `Pre`, `WithMin<V>` still to write | 2.4 | research/RECOMMENDATIONS.md §3, plan/19-index-and-lends.md §4.2 |
 | 2.9 | `v + 1` on positions | Settled | error; `v.next` / `v.offset(k)` (optional) or `v.cyc(k)` | | plan/12-domains-and-sequences.md §1.3 |
 | 2.10 | Self-reading tables | Leaning | allowed only for cells provably filled already | | plan/12-domains-and-sequences.md §4 |
-| 2.11 | Escape hatch from domain checks | Settled | explicit and greppable: `a.raw[i]` with an `Int` index; never implicit. With `unchecked:` (7.1) and raw intrinsics these are the contest escape hatches of G15 | 2.1 | research/RECOMMENDATIONS.md §3 |
+| 2.11 | Escape hatch from domain checks | Settled | explicit and greppable: `a.raw[i]` with an `Int` index; never implicit. `a.raw` is a library projection lending the same storage indexed by `0..K`. With `unchecked:` (7.1) and raw intrinsics these are the contest escape hatches of G15 | 2.1 | research/RECOMMENDATIONS.md §3 |
 | 2.12 | `Name<` generics vs less-than | Leaning | capitalized name and a tentative type-argument parse closed by `>`; otherwise a comparison (`INF < x`) | | compiler/03-parsing.md, plan/17-syntax.md |
 | 2.13 | Explicit type arguments on lowercase generic fns | Settled 2026-11-19 | inferred from the expected type by default; `f::<T>()` when you must say it | 2.12 | compiler/03-parsing.md |
+| 2.14 | `[domain]T` packages | Settled 2026-11-20 | an array stored with a fresh index type of its own (a pointer and a length); binding one opens it as `[x.Idx]T`. Serves `Str`, jagged rows and `List<[domain]Int>` with no string or CSR rule | 2.5 | plan/19-index-and-lends.md §4.4 |
+| 2.15 | Indexing is a trait | Settled 2026-11-20 | `a[i]` is `Indexed<I>.at`, a projection; `[I]T` is sugar for the library struct `Array<I, T>`, and grids, strings and permutations are library code over it. The compiler knows no domain, string, grid or permutation rule | 3.5, 5.12 | plan/19-index-and-lends.md §3.3, §7 |
 
 ## 3. Abstraction mechanisms
 
@@ -66,10 +74,10 @@ G7, G8):
 | 3.2 | Specialization | Settled | per type and per fn identity; runtime-chosen code is an error | | plan/13-abstraction.md M3 |
 | 3.3 | `dyn` escape hatch | Open | keep `dyn (T, T) -> T` for explicit indirect calls, or error only | 3.2 | plan/13-abstraction.md M3 |
 | 3.4 | Laws | Settled | declared on operation types, checked by `cp fntest` and debug runs | | plan/13-abstraction.md M4 |
-| 3.5 | Representation traits | Settled | `Niche`, `Index`, `Bits`, `Small`, `Relocate`, `Zero`, `OrdKey`, `Bounded` | | plan/13-abstraction.md M7b |
+| 3.5 | Representation traits | Settled, revised 2026-11-20 | `Niche`, `Index`, `Seq`, `Bits`, `Small`, `Relocate`, `Zero`, `OrdKey`, `Bounded`. `Seq` is `Index + Ord` for positions in a line (`next`, `offset`, `cyc`, `l`, `r`, `bounds`); enums, tuples and masks are `Index` but not `Seq` | | plan/13-abstraction.md M7b, plan/19-index-and-lends.md §3.1 |
 | 3.6 | Implicit representation choices | Settled | only when no worse on any op or memory, and visible (G9) | | plan/00-vision.md G9 |
 | 3.7 | Structural field bounds | Leaning | `A has to: V` as a general feature, not graph-specific | | plan/13-abstraction.md G9 |
-| 3.8 | Associated types and consts | Open | Rust-style `type Mark`, `const K` in traits | | |
+| 3.8 | Associated types, consts and frozen lets | Settled 2026-11-20 | yes. Associated types (`Indexed.Elem`, `Seq.bounds`). An associated size is `const K = 10` when known at compile time and **`let K = n`** when frozen from a run-time value where the impl is declared; **`const K = n` with a run-time `n` is an error**, so `const` stays strictly compile-time (7.10). Sizing by a `var` is an error | 7.10 | plan/19-index-and-lends.md §3.1 |
 | 3.9 | Coherence (who may `impl` what) | Settled 2026-11-19 | orphan rule relaxed inside one program, strict for libraries | 6.4 | §8 |
 | 3.10 | `ModInt` moduli | Settled 2026-11-19 | compile-time `Mod<P>` and runtime `ModR` as two types | 3.2 | plan/13-abstraction.md |
 | 3.11 | User-defined decorators | Leaning | a `decorator` declaration that rewrites the item hygienically during name resolution; type-dependent choices stay in generic stdlib code | 3.1 | compiler/04-names-and-modules.md |
@@ -85,7 +93,7 @@ G7, G8):
 | 4.5 | `return` / `break` / `?` in `do:` blocks and lambdas | Open | `?` exits the `do:` block; `return` always exits the enclosing fn | | design-v2 Part 10 |
 | 4.6 | Labeled `break` | Settled 2026-11-19 | `break 'outer` | | §8 |
 | 4.7 | Exhaustiveness for range patterns | Open | `match x: 0 => .., 1..=9 => ..` checked against `x`'s range type | 1.2 | |
-| 4.8 | Views as read-only array arguments | Open | allow `[V]T` params to accept views via specialization | 3.2 | plan/12-domains-and-sequences.md §9 |
+| 4.8 | Views as read-only array arguments | Settled 2026-11-20 | a lent row or slice is a `[B]T` to the callee, with no adapter; a fn that wants any indexable thing opts in with `A: Indexed<V, Elem = T>`; concrete `[V]T` parameters stay concrete | 3.2 | plan/19-index-and-lends.md §3.3, §3.5 |
 
 ## 5. State and effects
 
@@ -93,15 +101,18 @@ G7, G8):
 |---|---|---|---|---|---|
 | 5.1 | Ownership model | Settled | variables own, params borrow, no pointers, `mut` at both ends | | plan/17-syntax.md |
 | 5.2 | Copies and moves | Settled | big values need `.copy()`; last-use moves are implicit | | plan/17-syntax.md |
-| 5.3 | Precise borrow rules | Settled 2026-11-19 | no stored borrows in structs (so no lifetimes); fields borrow separately, indices don't (`swap`, `a.pair_mut(i, j)`); two-phase borrows; generator-lent values live one iteration | 5.1 | research/RECOMMENDATIONS.md §1 |
-| 5.4 | Inline closures reusing a caller's `mut` borrow | Settled 2026-11-19 | yes: a lambda passed to an `inline` parameter is checked as part of the caller's body, so `undo` is an ordinary library fn | 5.3 | research/RECOMMENDATIONS.md §1 |
-| 5.5 | Moves out of arrays | Open | `swap`, `take` (leaves default), no partial moves | 5.3 | |
+| 5.3 | Precise borrow rules | Settled 2026-11-19, revised 2026-11-20 | lexical exclusivity: no stored and no returned borrows (so no lifetimes); fields borrow separately; two lends of one projection are separate when its `disjoint` law is proven from flow facts (5.13), which replaces "indices don't borrow separately"; index arguments are evaluated before any lend begins (two-phase); generator-lent values live one iteration | 5.1 | plan/19-index-and-lends.md §3.4 to §3.6, §5 |
+| 5.4 | Inline closures reusing a caller's `mut` borrow | Settled 2026-11-19 | yes: a lambda passed to an `inline` parameter is checked as part of the caller's body, so `undo` is an ordinary library fn. Projections (5.12) are its second client | 5.3 | research/RECOMMENDATIONS.md §1 |
+| 5.5 | Moves out of arrays | Settled 2026-11-20 | `swap`, `take` (leaves default) and `pair_mut` are library fns over `at`, allowed by its `disjoint` law; no partial moves | 5.13 | plan/19-index-and-lends.md §3.6 |
 | 5.6 | Pools and handles | Leaning | `pool Nodes: Node`; typed handles; columns per field | | plan/13-abstraction.md M9 |
 | 5.7 | `defer` | Leaning | core; runs on every exit; evaluated at exit; no unwinding on crash | | state-structure-views.md §1 |
 | 5.8 | `Rollback`, `Journaled`, `undo`, `scoped` | Leaning | plain arrays not rollback-able; journaling is opt-in by type | 5.4, 5.7 | state-structure-views.md §1 |
 | 5.9 | `@memo` control | Open | table layout from key type; evaluation order; clearing; I/O is an error | | plan/15-program-structure.md §3.3 |
 | 5.10 | `mut fn` | Settled | a statement; captures `var`s above it; can't escape | 5.3 | plan/15-program-structure.md §3.2 |
 | 5.11 | Keeping the borrow rules understandable | Settled 2026-11-19 (the method; the rules stay open to change) | fresh agents repeatedly search for the smallest programs where a borrow rule surprises; each one changes the rule or its error message and is kept as a test | 5.3 | plan/agent-context.md |
+| 5.12 | Projections: `lends` / `lend` | Settled 2026-11-20 | `fn row(self, r: A) lends mut [B]T` with a body that reaches one `lend place`. Meaning: a fn with one extra `inline` callback, called once at the `lend`; the caller's continuation (the rest of the statement, or of the block for a `let`) is that callback. No reference is returned. Justification: it is what makes slices, rows and element access library code without lifetimes | 5.3, 5.4 | plan/19-index-and-lends.md §3.4 |
+| 5.13 | `law disjoint` | Settled 2026-11-20 | a projection may state when two of its lends don't overlap (`law disjoint(i, j) = i != j`). Two live lends of one projection on one receiver, one of them `mut`, need the law proven from flow facts (`if`, `while`, `assert`, `requires`, value ranges); otherwise a compile error that prints the law. Never a silent check; a wrong law is caught by debug runs and `cpl fntest` | 3.4, 5.12 | plan/19-index-and-lends.md §3.6 |
+| 5.14 | Lent values are second-class | Settled 2026-11-20 | a value built from lent parts is lent and lives only in the block that made it: it may be passed, bound by `let`, iterated and lent onward; not put in a `var`, a field or a container, captured by a non-`inline` lambda, or returned. Borrowed-ness is a mode of the binding, not a type, so there is no `view` keyword | 5.3 | plan/19-index-and-lends.md §3.5 |
 
 ## 6. Program structure
 
@@ -176,3 +187,35 @@ inside a single program (3.9).
 repository is `ryanbai1412/cp-lang`; work is pushed straight to `main`,
 which must stay green. The trace viewer is designed fresh (7.14). The
 sample library is new (7.15). Conciseness is measured two ways (7.17).
+
+## 9. Approved on 2026-11-20
+
+Ryan approved `plan/19-index-and-lends.md`: one mechanism for `domain`,
+`Str`, `Grid` and `Perm`, and lexical exclusivity as the borrow model.
+
+**The design.** A bounded index is a sealed struct with `impl Index`
+(2.1, 2.15). Indexing is the `Indexed` trait and `[I]T` is a library
+struct (2.15). Slices, rows and element access are projections that lend
+part of their receiver (5.12), lent values are second-class (5.14), and
+two lends of the same container are allowed when the projection's
+`disjoint` law is proven (5.13). No borrow is ever stored or returned
+(5.3). `Sub<V>` is removed (2.4, 2.8). Decisions 3.8, 4.8 and 5.5, which
+were open, are settled by it.
+
+**His three changes.**
+
+- `let K = n`, not `const K = n`, for a size frozen from a run-time
+  value. `const` stays strictly compile-time (3.8, 7.10).
+- `v.l` / `v.r`, with `v.l(k)` / `v.r(k)`, as the short spellings of
+  `v.before` / `v.after` (2.2).
+- `Char` and `Str` are ASCII only: one byte per `Char`, a flat `[S]Char`
+  or `List<Char>`, and no UTF-8 (1.6).
+
+**Also locked in.** `/` and `%` are Euclidean on integers, and cost
+nothing when the operands are proven non-negative and positive (1.9).
+
+**Prototype.** `proto/cpc/` implements the surface rules of the above and
+keeps the 30 corpus ports passing; `plan/19-index-and-lends.md` §11 lists
+what it covers and what it leaves out. One call made there and not yet
+confirmed by Ryan: `v.l(k)` and `v.r(k)` count `v` itself, so `v.l` is
+`v.l(1)`.

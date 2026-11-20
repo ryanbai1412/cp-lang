@@ -4,6 +4,7 @@ import json
 """Type checker + C++ emitter (one pass). See PLAN.md for representation decisions."""
 from .ast import N
 from .types import *
+from .lends import LendMixin, Hold, Proj, SCALARS, show, walk, root_name, written_names, names_in
 
 class CompileError(Exception):
     pass
@@ -109,7 +110,7 @@ def unparse(e):
     if k == "paren": return f"({unparse(e.a)})"
     return k
 
-class Compiler:
+class Compiler(LendMixin):
     def __init__(self, prog, var_iv=None):
         self.prog = prog
         self.scopes = [{}]
@@ -138,6 +139,7 @@ class Compiler:
         self.tests_ty = None
         self.tmp = 0
         self.dom_count = 0
+        self.lend_init()
 
     # ---------- diagnostics
     def error(self, node, msg):
@@ -196,7 +198,9 @@ class Compiler:
             if self.word_set(t):
                 return "Mask64"
             return "DenseSet" if self.dense_set(t) else f"set<{self.cpp_type(t.elem)}>"
-        if isinstance(t, TArr): return f"vector<{'int' if self.narrow(t.elem) else self.cpp_type(t.elem)}>"
+        if isinstance(t, TArr):
+            el = 'int' if self.narrow(t.elem) else self.cpp_type(t.elem)
+            return f"CpView<{el}>" if getattr(t, "view", None) else f"vector<{el}>"
         if isinstance(t, TEnum): return t.cpp
         if isinstance(t, THash): return "StrHash"
         if isinstance(t, TTree): return "RootedTree"
@@ -393,8 +397,10 @@ class Compiler:
             return self.anon_count_domain(unparse(r), lo_c, hi_excl,
                                           (getattr(lo_t, "lo", None), getattr(lo_t, "hi", None)), hiv, d)
         t = self.resolve_type(d)
+        if isinstance(t, TTuple) and t.cpp in self.index_impls:
+            return TDom(self.index_impls[t.cpp])     # any struct with `impl Index` is a dimension (plan/19 §3.1)
         if not isinstance(t, TDom):
-            self.error(d, f"array dimension must be a domain or a range, got {t!r}")
+            self.error(d, f"array dimension must be a domain, a range, or a struct with `impl Index`, got {t!r}")
         return t
 
     def const_value(self, e):
@@ -449,7 +455,28 @@ class Compiler:
         m = getattr(self, "x_" + e.kind, None)
         if m is None:
             self.error(e, f"unsupported expression {e.kind}")
-        return m(e, want)
+        if self.holds and (e.kind in ("name", "field", "index") or self.is_proj_call(e)):
+            # only the outermost place expression is checked against the live lends; `a[i]` is not also a use of all of `a`
+            if id(e) not in self.covered:
+                self.check_access(e, False)
+            if e.kind != "name":
+                self.covered.add(id(e.fn.obj if e.kind == "call" else e.obj))
+        if e.kind in ("list", "tuple"):
+            for x in e.items:
+                self.escapes[id(x)] = "storing it in a list or tuple"
+        elif e.kind == "call":
+            if e.fn.kind == "field" and e.fn.name in ("push", "insert", "set", "add"):
+                for x in e.args:
+                    self.escapes[id(x)] = f"`.{e.fn.name}(...)`"
+            elif e.fn.kind == "name" and getattr(self.lookup(e.fn.name), "kind", None) in ("ctor", "type"):
+                for x in e.args:
+                    self.escapes[id(x)] = f"storing it in a `{e.fn.name}`"
+        r = m(e, want)
+        if getattr(r[1], "view", None):
+            self.last_type[id(e)] = r[1]
+            if id(e) in self.escapes:
+                self.no_escape(r[1], e, self.escapes[id(e)])
+        return r
 
     def x_num(self, e, want):
         v = e.value
@@ -824,6 +851,38 @@ class Compiler:
             return f"{oc}[cp_lidx({ic}, {oc}.size(), {e.line})]", ot.elem
         if not isinstance(ot, TArr):
             self.error(e, f"cannot index {ot!r}")
+        view = getattr(ot, "view", None)
+        if len(e.idx) == 1 and len(ot.dims) == 1 and e.idx[0].kind in ("range", "name", "field", "paren", "call"):
+            _, (_, it) = self.capture(lambda: self.expr(e.idx[0])) if e.idx[0].kind != "range" else (None, (None, None))
+            if e.idx[0].kind == "range" or isinstance(it, TRange):
+                # a[s]: Array.at(Range) lends the window as a slice, indexed by the same positions (plan/19 §4.2)
+                rc, rt = self.expr(e.idx[0])
+                base = ot.dims[0].info
+                # `l..=r` between positions, or `x..y` between boundaries (v.l, v.r): both are stored as two boundaries
+                if not (isinstance(rt, TRange) and isinstance(rt.elem, TDom) and
+                        (rt.elem.info is base or rt.elem.info is self.bounds_of(base))):
+                    self.error(e, f"a slice of {ot!r} takes a range of {ot.dims[0]!r}, got {rt!r}")
+                if rt.elem.info is not base and e.idx[0].kind == "range" and e.idx[0].incl:
+                    self.error(e, f"a slice between two boundaries is written `x..y`; `..=` is for positions")
+                if isinstance(ot.elem, TBool):
+                    self.error(e, "slices of a Bool array are not in the prototype")
+                self.idx_kind[id(e)] = "slice"
+                st = TArr(ot.dims, ot.elem)
+                st.view = "slice"
+                return f"cp_slice({oc}, {rc}, {e.line})", st
+        if len(e.idx) == 1 and len(ot.dims) > 1:
+            pc, pt = self.capture(lambda: self.expr(e.idx[0]))[1]
+            if isinstance(pt, TTuple) and len(pt.types) == len(ot.dims) and all(
+                    isinstance(t, TDom) and t.info is d.info for t, d in zip(pt.types, ot.dims)):
+                # g[p] with p: (Row, Col): a[i, j] is sugar for a[(i, j)], so a tuple indexes directly
+                pc, pt = self.expr(e.idx[0])
+                flat = None
+                for k, d in enumerate(ot.dims):
+                    comp = f"_p.{self.field_cpp(pt.names[k])}"
+                    flat = comp if flat is None else f"({flat}) * {d.info.len_cpp} + ({comp})"
+                lv = getattr(self, "lvalue", None)
+                cast = "(ll)" if self.narrow(ot.elem) and not (lv is not None and lv[0] is e) else ""
+                return f"([&](const auto& _p) -> decltype(auto) {{ return ({cast}{oc}[{flat}]); }}({pc}))", ot.elem
         if len(e.idx) == 1 and len(ot.dims) > 1:
             self.error(e, f"{ot!r} is indexed as g[{', '.join(d.info.name.lower()[:1] or 'i' for d in ot.dims)}]; for a whole row use .row(...)")
         if len(e.idx) != len(ot.dims):
@@ -832,6 +891,10 @@ class Compiler:
         for ix, d in zip(e.idx, ot.dims):
             ic = self.index_into(ix, d.info, e)
             flat = ic if flat is None else f"({flat}) * {d.info.len_cpp} + ({ic})"
+        if view == "slice":
+            # a logic check, not a memory check: the position is valid for the base array whatever the window is
+            self.note_check(e, f"`{show(e.idx[0])}` is inside the slice `{show(e.obj)}`")
+            flat = f"cp_win({flat}, {oc}.lo, {oc}.hi, {e.line})"
         lv = getattr(self, "lvalue", None)
         if self.narrow(ot.elem) and not (lv is not None and lv[0] is e):
             return f"(ll){oc}[{flat}]", ot.elem
@@ -839,13 +902,23 @@ class Compiler:
 
     def index_into(self, ix, info, e):
         ic, it = self.expr(ix)
+        user = getattr(info, "user", None)
+        if user is not None:
+            if it != user:
+                self.error(ix, f"index of type {it!r} into array over {info.name}")
+            c, rt = self.to_idx(info, ic, e)
+            if rt.lo is not None and rt.hi is not None and rt.lo >= 0 and info.len_iv[0] is not None and rt.hi < info.len_iv[0]:
+                return f"(int)({c})"
+            # the real checker proves `to_idx` returns 0..K from its declared range; the prototype checks it
+            self.note_check(e, f"`{show(ix)}.to_idx` is below {info.name}.K")
+            return f"chk_dom({c}, {info.len_cpp}, {e.line})"
         if isinstance(it, TDom):
             if it.info is info:
                 return ic
             if getattr(info, "base", None) is it.info:
                 return f"(({ic}) + 1)"
             if info.of is it.info or it.info.of is info:
-                self.error(ix, f"index of type {it!r} into array over {info.name}; use .before/.after for cuts")
+                self.error(ix, f"index of type {it!r} into array over {info.name}; use `.l` / `.r` for the boundaries on either side of a position")
             self.error(ix, f"index of type {it!r} into array over {info.name}")
         if isinstance(it, TInt):
             if not info.anon:
@@ -873,7 +946,7 @@ class Compiler:
             return f"([&](int _w) {{ return _w == 0 ? Opt<int>() : Opt<int>(_w - 1); }}({oc}))", TOpt(TDom(ot.info.base))
         if isinstance(ot, TType) and isinstance(ot.t, TDom):
             info = ot.t.info
-            if f == "len":
+            if f in ("len", "K"):       # K is the name the Index trait gives the size (plan/19 §3.1)
                 return f"(ll){info.len_cpp}", TInt(*info.len_iv)
             if f in ("first", "last"):
                 self.note_check(e, f"{info.name} is non-empty")
@@ -897,15 +970,15 @@ class Compiler:
                     return f"(({oc}) == 0)", BOOL
             if f == "mirror":
                 return f"((int)({info.len_cpp}) - 1 - ({oc}))", ot
-            if f in ("ord", "idx"):
+            if f in ("ord", "idx", "to_idx"):
                 return f"(ll)({oc})", TInt(0, None if info.len_iv[1] is None else info.len_iv[1] - 1)
             if f == "rank":
                 return f"((ll)({oc}) + 1)", TInt(1, info.len_iv[1])
             if f == "label":
                 return self.dom_label(info, oc), TInt(info.lo_iv[0], None if None in (info.lo_iv[1], info.len_iv[1]) else info.lo_iv[1] + info.len_iv[1] - 1)
-            if f in ("before", "after"):
+            if f in ("before", "after", "l", "r"):      # v.l / v.r: the boundary on the left / right of v
                 b = self.bounds_of(info)
-                return (oc if f == "before" else f"({oc} + 1)"), TDom(b)
+                return (oc if f in ("before", "l") else f"({oc} + 1)"), TDom(b)
             if f in ("next", "prev"):
                 d = "+" if f == "next" else "-"
                 tmp = self.tmpname("i")
@@ -914,6 +987,8 @@ class Compiler:
             self.error(e, f"{info.name} values have no `.{f}`")
         if isinstance(ot, TTuple):
             i = ot.field(f)
+            if i is None and f == "to_idx" and ot.cpp in self.index_impls:
+                return self.to_idx(self.index_impls[ot.cpp], oc, e)
             if i is None:
                 self.error(e, f"{ot!r} has no field `{f}`")
             lv = getattr(self, "lvalue", None)
@@ -921,8 +996,8 @@ class Compiler:
                 return f"(ll){oc}.{self.field_cpp(ot.names[i])}", ot.types[i]
             return f"{oc}.{self.field_cpp(ot.names[i])}", ot.types[i]
         if isinstance(ot, TRange):
-            if f in ("start", "end"):
-                c = f"{oc}.lo" if f == "start" else f"{oc}.hi"
+            if f in ("start", "end", "lo", "hi"):
+                c = f"{oc}.lo" if f in ("start", "lo") else f"{oc}.hi"
                 el = ot.elem
                 return (f"(int)({c})" if isinstance(el, TDom) else c), (TDom(self.bounds_of(el.info)) if isinstance(el, TDom) else INT)
             if f == "len":
@@ -934,6 +1009,17 @@ class Compiler:
         if isinstance(ot, (TList, TStr, TMap, TSet)):
             if f == "len":
                 return f"(ll){oc}.size()", TInt(0, None)
+        if isinstance(ot, TArr) and len(ot.dims) == 1:
+            view = getattr(ot, "view", None)
+            if f == "len":
+                return f"(ll){oc}.size()", TInt(0, ot.dims[0].info.len_iv[1])
+            if f == "positions":        # the window of a slice, as a plain Range value
+                return (f"Rng{{{oc}.lo, {oc}.hi}}" if view else f"Rng{{0, (ll){ot.dims[0].info.len_cpp}}}"), TRange(ot.dims[0])
+        if isinstance(ot, TType) and isinstance(ot.t, TTuple) and ot.t.cpp in self.index_impls and f == "K":
+            info = self.index_impls[ot.t.cpp]
+            return f"(ll){info.len_cpp}", TInt(*info.len_iv)
+        if isinstance(ot, TTuple) and ot.cpp in self.index_impls and f == "to_idx" and ot.field(f) is None:
+            return self.to_idx(self.index_impls[ot.cpp], oc, e)
         if isinstance(ot, TMod) and f == "value":
             return f"{oc}.v", TInt(0, ot.m - 1)
         self.error(e, f"{ot!r} has no `.{f}`")
@@ -1106,6 +1192,8 @@ class Compiler:
             return self.x_tuple(lit, sym.ty)
         if fn.kind == "name" and getattr(self.lookup(fn.name), "kind", None) == "ctor":
             return self.construct(self.lookup(fn.name), e.args, e)
+        if fn.kind == "name" and fn.name == "swap" and len(e.args) == 2 and not self.lookup("swap"):
+            return self.builtin_swap(e)
         if fn.kind == "name":
             fsym = self.lookup(fn.name)
             fnode = getattr(fsym, "node", None)
@@ -1148,11 +1236,19 @@ class Compiler:
         if isinstance(ft, TFn):
             if len(e.args) != len(ft.params):
                 self.error(e, f"expected {len(ft.params)} arguments, got {len(e.args)}")
-            args = []
+            args, ats = [], []
             for a, pt in zip(e.args, ft.params):
                 c, at = self.expr(a, pt)
                 args.append(self.coerce(c, at, pt, a))
-            sym = self.lookup(fn.name)
+                ats.append(at)
+            # everything passed by reference to one call is lent for the same time (plan/19 §3.6)
+            self.check_args(e, [(a, getattr(a, "mut", False)) for a, at in zip(e.args, ats)
+                                if getattr(a, "mut", False) or not isinstance(at, SCALARS)])
+            sym = self.lookup(fn.name) if fn.kind == "name" else None
+            if any(getattr(at, "view", None) for at in ats):
+                # a lent [B]T is a [B]T to the callee: the fn is specialised for the view (decision 4.8)
+                sym = self.view_spec(sym, ats, e)
+                fc = sym.cpp
             if getattr(sym, "local", False):
                 args = [fc] + args
             return f"{fc}({', '.join(args)})", ft.ret
@@ -1164,6 +1260,40 @@ class Compiler:
         args = e.args
         tbl = getattr(self, "struct_methods", {})
         key = ot.t.cpp if isinstance(ot, TType) and hasattr(ot.t, "cpp") else getattr(ot, "cpp", None)
+        if key in self.projs and m in self.projs[key]:
+            return self.call_proj(self.projs[key][m], e, oc, ot)
+        if isinstance(ot, TDom) and m in ("l", "r") and len(args) == 1:
+            # v.l(k) / v.r(k): the far boundary of the k-wide window that ends / starts at v; v.l == v.l(1)
+            b = self.bounds_of(ot.info)
+            kc, kt = self.expr(args[0])
+            if not is_int(kt):
+                self.error(args[0], f"`.{m}(k)` takes an Int width, got {kt!r}")
+            self.note_check(e, f"`{show(e)}` is a boundary of {ot.info.name}")
+            pos = f"(ll)({oc}) + 1 - ({kc})" if m == "l" else f"(ll)({oc}) + ({kc})"
+            return f"chk_dom({pos}, {b.len_cpp}, {e.line})", TDom(b)
+        if isinstance(ot, TType) and isinstance(ot.t, TDom) and m == "from_idx" and len(args) == 1:
+            e2 = copy.copy(e)
+            e2.fn = N("field", e.fn.line, obj=obj, name="nth")
+            return self.method_call(e2, want)
+        if isinstance(ot, TType) and isinstance(ot.t, TTuple) and ot.t.cpp in self.index_impls and m == "from_idx":
+            info = self.index_impls[ot.t.cpp]
+            return self.expr(N("call", e.line, fn=N("name", e.line, name=info.from_idx), args=list(args)), want)
+        if isinstance(ot, TArr) and len(ot.dims) == 2 and m == "row" and len(args) == 1:
+            # Array.row: lends the contiguous block of one row as a [B]T (plan/19 §4.3)
+            if getattr(ot, "view", None) or isinstance(ot.elem, TBool):
+                self.error(e, "rows of a view or of a Bool grid are not in the prototype")
+            rc = self.index_into(args[0], ot.dims[0].info, e)
+            rt = TArr([ot.dims[1]], ot.elem)
+            rt.view = "row"
+            return f"cp_row({oc}, {rc}, {ot.dims[1].info.len_cpp})", rt
+        if isinstance(ot, TArr) and len(ot.dims) == 1 and m in ("sort", "rev", "copy") and not args:
+            if isinstance(ot.elem, TBool):
+                self.error(e, f"`.{m}()` on a Bool array is not in the prototype")
+            if m in ("sort", "rev"):
+                self.require_mut(obj, e)
+                return (f"sort({oc}.begin(), {oc}.end())" if m == "sort" else f"reverse({oc}.begin(), {oc}.end())"), UNIT
+            owned = TList(ot.elem) if getattr(ot, "view", None) == "slice" else TArr(ot.dims, ot.elem)
+            return f"{self.cpp_type(owned)}({oc}.begin(), {oc}.end())", owned
         if key in tbl and m in tbl[key]:
             fname, has_self, mut_self = tbl[key][m]
             call_args = list(args)
@@ -1437,6 +1567,17 @@ class Compiler:
                 self.ind += 1
                 self.bind_pattern(pat, v, t.t, node) if pat.kind != "pname" else \
                     self.scopes[-1].__setitem__(pat.name, Sym("let", t.t, v, node=pat))
+                self.ind -= 1
+            elif isinstance(t, TType) and isinstance(t.t, TTuple) and t.t.cpp in self.index_impls:
+                # `for c in Cell`: every value of a user Index type, in to_idx order
+                info = self.index_impls[t.t.cpp]
+                trips = info.len_iv[1]
+                k, v = self.tmpname("k"), self.tmpname("x")
+                self.emit(f"for (ll {k} = {info.len_cpp} - 1; {k} >= 0; --{k}) {{" if rev else
+                          f"for (ll {k} = 0; {k} < {info.len_cpp}; ++{k}) {{")
+                self.ind += 1
+                self.emit(f"const auto {v} = {self.lookup(info.from_idx).cpp}({k});")
+                self.bind_pattern(pat, v, t.t, node)
                 self.ind -= 1
             elif isinstance(t, TRange):
                 trips = None
@@ -1760,8 +1901,15 @@ class Compiler:
     def block(self, stmts, new_scope=True):
         if new_scope:
             self.scopes.append({})
-        for s in stmts:
+        saved_rest, nfacts, nholds = self.cur_rest, len(self.facts), len(self.holds)
+        for k, s in enumerate(stmts):
+            self.cur_rest = stmts[k + 1:]
             self.stmt(s)
+            if self.holds:      # a let-bound lend ends after the last statement that mentions it
+                self.holds = [h for h in self.holds if h.until is not s]
+        self.cur_rest = saved_rest
+        del self.facts[nfacts:]
+        del self.holds[nholds:]
         if new_scope:
             self.scopes.pop()
 
@@ -1778,6 +1926,7 @@ class Compiler:
             except Exception:
                 pass
         sym = Sym(kind or ("var" if mut else "let"), ty, cpp, mut=mut, node=node)
+        self.drop_facts({name})     # a new binding of this name: facts about the old one no longer apply
         self.scopes[-1][name] = sym
         self.decl_depth[id(node)] = len(self.loop_trips)
         return sym
@@ -1927,7 +2076,12 @@ class Compiler:
             c, vt = self.expr(s.value, ty)
             if ty is not None:
                 c = self.coerce(c, vt, ty, s.value)
-        decl_t = ty if ty is not None else vt
+        lent_view = s.value is not None and self.lent_type(s.value, ty)
+        if lent_view:
+            if s.mut:
+                self.no_escape(lent_view, s.value, f"`var {name}`")
+            vt = lent_view
+        decl_t = ty if ty is not None and not lent_view else vt
         if isinstance(decl_t, TInt) and ty is None and s.mut:
             decl_t = TInt()
         if isinstance(decl_t, TUnit):
@@ -1938,7 +2092,9 @@ class Compiler:
             self.emit(f"{cpp} = {c};")
         else:
             self.emit(f"{'' if s.mut else 'const '}{self.cpp_type(decl_t)} {cpp} = {c};")
-        self.declare(name, decl_t, cpp, s.mut, s)
+        sym = self.declare(name, decl_t, cpp, s.mut, s)
+        if lent_view:
+            self.begin_hold(s, name, sym, s.value)      # the receiver stays lent until `name` is last used
         if isinstance(decl_t, TInt):
             if s.mut:
                 # A declared type bounds the variable; without one the initializer starts the range.
@@ -2015,6 +2171,7 @@ class Compiler:
         if not isinstance(t, TBool):
             self.error(s, "assert needs a Bool")
         self.emit(f"CP_ASSERT({c}, \"assertion failed\", {s.line});")
+        self.add_facts(s.cond)
 
     def in_gen_body(self):
         ctx = getattr(self, "loop_ctx", [])
@@ -2083,6 +2240,7 @@ class Compiler:
         if s.value is None:
             self.emit("return;")
             return
+        self.escapes[id(s.value)] = "`return`"
         c, t = self.expr(s.value, rt)
         if rt is not None:
             c = self.coerce(c, t, rt, s.value)
@@ -2125,15 +2283,22 @@ class Compiler:
         self.emit(f"if ({c}) {{")
         self.ind += 1
         self.scopes.append(dict(self.refine_facts(s.cond)))
+        nfacts = len(self.facts)
+        self.add_facts(s.cond)
         self.block(s.body, new_scope=False)
+        del self.facts[nfacts:]
         self.scopes.pop()
         self.ind -= 1
         if s.orelse:
             self.emit("} else {")
             self.ind += 1
+            self.add_facts(s.cond, negate=True)
             self.block(s.orelse)
+            del self.facts[nfacts:]
             self.ind -= 1
         self.emit("}")
+        if not s.orelse and s.body and s.body[-1].kind in ("return", "break", "continue"):
+            self.add_facts(s.cond, negate=True)      # `if i == j: return` leaves `i != j` for the rest of the block
         sym = getattr(self, "after_if_nonzero", None)
         if sym is not None:
             sym.nonzero = True
@@ -2177,6 +2342,7 @@ class Compiler:
             t = None
         stack.append(stack[-1] * (t if t is not None else 1))
         self.check_cost(s.line, stack[-1])
+        self.drop_facts(written_names(s.body) | {p.name for p in walk(s.pat) if p.kind == "pname"})
         try:
             self.loop(s.pat, s.iter, s, lambda: self.block(s.body))
         finally:
@@ -2208,8 +2374,12 @@ class Compiler:
         if not s.methods:
             return
         from .parser import Parser
+        self.proj_names |= {m.name for m in s.methods if getattr(m, "lends", None)}
         table = self.__dict__.setdefault("struct_methods", {}).setdefault(t.cpp, {})
         for m in s.methods:
+            if getattr(m, "lends", None):
+                self.s_proj(s.name, t, m)
+                continue
             ps = list(m.params)
             has_self = bool(ps) and ps[0].name == "self"
             if has_self:
@@ -2220,6 +2390,265 @@ class Compiler:
                 fn.self_struct = t
             table[m.name] = (fn.name, has_self, has_self and ps[0].mode == "inout")
             self.s_fn(fn)
+
+    # ---------- plan/19: projections, lent views, user Index types
+    def lent_type(self, value, ty):
+        """The view type if `value` is a lent slice or row, else None (re-evaluates nothing)."""
+        t = self.last_type.get(id(value))
+        return t if getattr(t, "view", None) else None
+
+    def find_proj(self, name):
+        for tbl in self.projs.values():
+            if name in tbl:
+                return tbl[name]
+        return None
+
+    def require_mut(self, tgt, node):
+        """A write through `tgt` needs a var at the root and `lends mut` at every projection on the way."""
+        root = tgt
+        while root.kind in ("index", "field", "paren", "unwrap") or self.is_proj_call(root):
+            if root.kind == "call":
+                p = self.find_proj(root.fn.name)
+                if p is not None and not p.mut:
+                    self.error(node, f"`{show(root)}` is lent read-only: `{p.owner}.{p.name}` is declared `lends {p.ret!r}`; "
+                                     f"declare it `lends mut {p.ret!r}` to allow writes through it")
+                root = root.fn.obj
+            else:
+                root = root.a if root.kind in ("paren", "unwrap") else root.obj
+        if root.kind == "name":
+            sym = self.lookup(root.name)
+            if sym is None or not (sym.mut or getattr(sym, "lent_mut", False)):
+                lent = getattr(sym, "lent", None)
+                if lent is not None:
+                    self.error(node, f"`{root.name}` was lent from a value that is not a var, so it is read-only")
+                self.error(node, f"`{root.name}` is not a var")
+
+    def builtin_swap(self, e):
+        """swap(mut x, mut y): two places lent mutably at once, so they must be provably disjoint."""
+        a, b = e.args
+        if not (getattr(a, "mut", False) and getattr(b, "mut", False)):
+            self.error(e, "swap changes both arguments; write `swap(mut x, mut y)`")
+        cs = []
+        for x in (a, b):
+            self.require_mut(x, x) if x.kind != "name" else None
+            if x.kind == "name" and not getattr(self.lookup(x.name), "mut", False):
+                self.error(x, f"`{x.name}` is not a var")
+            self.note_write(x, e.line)
+            self.lvalue = (x, "=")
+            try:
+                cs.append(self.expr(x))
+            finally:
+                self.lvalue = None
+        (ac, at), (bc, bt) = cs
+        if at != bt:
+            self.error(e, f"swap of {at!r} and {bt!r}")
+        self.check_args(e, [(a, True), (b, True)])
+        if getattr(at, "view", None) or getattr(bt, "view", None):
+            if not (getattr(at, "view", None) == "row" and getattr(bt, "view", None) == "row"):
+                self.error(e, "swap of two lent parts needs both to have one fixed length; the prototype swaps rows only")
+            return f"cp_swap_view({ac}, {bc})", UNIT
+        return f"swap({ac}, {bc})", UNIT
+
+    def view_spec(self, sym, ats, e):
+        g = getattr(sym, "node", None)
+        if sym is None or g is None or g.kind != "fn" or getattr(sym, "local", False):
+            self.error(e, "a lent slice or row can only be passed to a top-level fn (prototype)")
+        key = (sym.cpp,) + tuple(getattr(t, "view", None) or "-" for t in ats)
+        if key not in self.view_specs:
+            clone = copy.copy(g)
+            clone.name = f"{g.name}__view{len(self.view_specs)}"
+            clone.decos = []
+            clone.params = []
+            for p, t in zip(g.params, ats):
+                q = copy.copy(p)
+                if getattr(t, "view", None):
+                    q.ty_fixed = t
+                clone.params.append(q)
+            holder = {}
+            saved = (self.scopes, self.at_top, self.fn_ret, getattr(self, "loop_ctx", []), getattr(self, "in_multitest", False))
+            self.scopes, self.at_top, self.fn_ret, self.loop_ctx, self.in_multitest = [self.scopes[0], holder], True, [], [], False
+            self.view_specs[key] = None
+            try:
+                self.capture(lambda: self.s_fn(clone))
+            finally:
+                self.scopes, self.at_top, self.fn_ret, self.loop_ctx, self.in_multitest = saved
+            self.view_specs[key] = holder[clone.name]
+        if self.view_specs[key] is None:
+            self.error(e, f"`{g.name}` passes a lent part to itself recursively (prototype)")
+        return self.view_specs[key]
+
+    def s_proj(self, sname, st, m):
+        """`fn at(self, i: I) lends mut T: ... lend mut place`.
+
+        Checked as a fn with one inline callback called at the `lend`; emitted as a C++ function that
+        returns the lent place by reference (or a view by value), which is what inlining the callback gives."""
+        ps = list(m.params)
+        if not ps or ps[0].name != "self":
+            self.error(m, f"a projection lends part of its receiver, so `{m.name}` needs `self` as its first parameter")
+        if not m.body or m.body[-1].kind != "lend":
+            self.error(m, f"`{m.name}` is declared `lends`, so every path through it must reach one `lend place`; "
+                          f"the prototype wants it as the last statement")
+        pre, lend = m.body[:-1], m.body[-1]
+        laws = [x for x in pre if x.kind == "law"]
+        pre = [x for x in pre if x.kind != "law"]
+        for x in walk(pre):
+            if x.kind in ("lend", "return", "law"):
+                self.error(x, f"`{m.name}` must reach exactly one `lend`, as its last statement (prototype)")
+        law = laws[0] if laws else None
+        if len(laws) > 1 or (law is not None and law.name != "disjoint"):
+            self.error(laws[-1], "a projection states one law, `law disjoint(...)`")
+        if law is not None and len(law.params) != 2 * (len(ps) - 1):
+            self.error(law, f"`law disjoint` relates two lends of `{m.name}`, so it takes {2 * (len(ps) - 1)} "
+                            f"parameters: the arguments of the first lend, then of the second")
+        if m.lends == "read" and lend.mut:
+            self.error(lend, f"`{m.name}` is declared `lends` without `mut`, so it can't `lend mut`; declare it `lends mut`")
+        if m.lends == "mut" and not lend.mut:
+            self.error(lend, f"`{m.name}` is declared `lends mut`, so say `lend mut {show(lend.value)}`")
+        fields = set(st.names)
+        if root_name(lend.value) not in fields | {"self"}:
+            self.error(lend, f"a projection may only lend part of `self`; `{show(lend.value)}` is not reached through a field")
+        mut_self = ps[0].mode == "inout"
+        declared = self.resolve_type(m.ret)
+        cpp = self.fresh(f"{sname}__{m.name}")
+        self.scopes.append({})
+        saved_top, self.at_top = self.at_top, False
+        saved_lend = (self.facts, self.holds, self.cur_rest)
+        self.facts, self.holds, self.cur_rest = [], [], []
+        saved_ctx, self.loop_ctx = getattr(self, "loop_ctx", []), []
+        self.fn_ret.append(UNIT)
+        params, ptypes, pnames = [], [], []
+        try:
+            self.declare("self", st, "self_", mut_self, None)
+            for fname, ftype in zip(st.names, st.types):
+                self.declare(fname, ftype, f"self_.{self.field_cpp(fname)}", mut_self, None)
+            for p in ps[1:]:
+                if p.ty is None:
+                    self.error(p, f"parameter `{p.name}` needs a type")
+                pt = self.resolve_type(p.ty)
+                pc = self.fresh(p.name)
+                params.append(f"{self.cpp_type(pt)} {'' if isinstance(pt, SCALARS) else 'const &'}{pc}")
+                self.declare(p.name, pt, pc, False, p)
+                ptypes.append(pt)
+                pnames.append(p.name)
+            def body():
+                self.block(pre, new_scope=False)
+                self.lvalue = (lend.value, "=")
+                try:
+                    return self.expr(lend.value)
+                finally:
+                    self.lvalue = None
+            lines, (c, t) = self.capture(body)
+        finally:
+            self.fn_ret.pop()
+            self.loop_ctx = saved_ctx
+            self.facts, self.holds, self.cur_rest = saved_lend
+            self.at_top = saved_top
+            self.scopes.pop()
+        if t != declared:
+            self.error(lend, f"`{m.name}` is declared `lends {declared!r}` but lends a {t!r}")
+        sig = "".join(", " + x for x in params)
+        self.funcs.append(f"template <class S_> decltype(auto) {cpp}(S_& self_{sig}) {{\n" + "\n".join(lines) +
+                          f"\n    return ({c});\n}}")
+        self.projs.setdefault(st.cpp, {})[m.name] = Proj(m.name, cpp, pnames, ptypes, t, m.lends == "mut", law, mut_self, sname)
+
+    def call_proj(self, p, e, oc, ot):
+        if isinstance(ot, TType):
+            self.error(e, f"`{p.name}` lends part of a value; call it on a {p.owner}, not on the type")
+        if len(e.args) != len(p.ptypes):
+            self.error(e, f"`{p.owner}.{p.name}` takes {len(p.ptypes)} arguments, got {len(e.args)}")
+        lv, self.lvalue = getattr(self, "lvalue", None), None
+        args = []
+        for a, pt in zip(e.args, p.ptypes):       # index arguments are evaluated before the lend begins
+            c, at = self.expr(a, pt)
+            args.append(self.coerce(c, at, pt, a))
+        self.lvalue = lv
+        if p.mut_self:
+            self.require_mut(e.fn.obj, e) if e.fn.obj.kind != "name" else None
+            if e.fn.obj.kind == "name" and not getattr(self.lookup(e.fn.obj.name), "mut", False):
+                self.error(e, f"`{p.owner}.{p.name}` takes `mut self`, and `{e.fn.obj.name}` is not a var")
+            self.note_write(e.fn.obj, e.line)
+        code = f"{p.cpp}({', '.join([oc] + args)})"
+        if self.narrow(p.ret) and not (lv is not None and lv[0] is e):
+            code = f"(ll){code}"
+        return code, p.ret
+
+    def to_idx(self, info, oc, e):
+        f = self.lookup(info.to_idx)
+        return f"{f.cpp}({oc})", f.ty.ret
+
+    def s_lend(self, s):
+        self.error(s, "`lend` is the last statement of a projection (`fn name(self, ...) lends T`), and only there")
+
+    def s_law(self, s):
+        self.error(s, "`law disjoint(...)` belongs at the top of a projection's body")
+
+    def s_impl(self, s):
+        """`impl Index for Cell:` makes a struct a bounded index: `[Cell]T`, `for c in Cell`, `Cell.K`."""
+        sym = self.lookup(s.target)
+        if s.trait != "Index":
+            if not s.body:
+                return          # `impl Seq for V`: a marker; domains already have the Seq methods
+            self.error(s, f"the prototype implements `impl Index for <struct>` only, not `{s.trait}`")
+        if sym is None or sym.kind != "type" or not isinstance(sym.ty, TTuple):
+            self.error(s, f"`impl Index for {s.target}` needs a struct; a `domain` is already an Index")
+        st = sym.ty
+        ks = [x for x in s.body if x.kind == "let" and x.pat.kind == "pname" and x.pat.name == "K"]
+        fns = {x.name: x for x in s.body if x.kind == "fn"}
+        if len(ks) != 1 or set(fns) != {"to_idx", "from_idx"} or len(s.body) != 3:
+            self.error(s, f"`impl Index for {s.target}` is exactly `let K = <size>`, `fn to_idx(self) -> Int` and "
+                          f"`fn from_idx(i: Int) -> {s.target}`")
+        k = ks[0]
+        if k.mut:
+            self.error(k, "the size of an index type is fixed where it is declared; write `let K = ...`, not `var K`")
+        if k.const:
+            try:
+                self.capture(lambda: self.const_value(k.value))
+            except CompileError:
+                raise CompileError(
+                    f"line {k.line}: `const K = {show(k.value)}`: `const` is compile-time only, and `{show(k.value)}` is known "
+                    f"only at run time\n  help: write `let K = {show(k.value)}`; an associated `let` is evaluated once, where "
+                    f"the impl is declared, and is frozen from then on")
+        for nm in sorted(names_in(k.value)):
+            v = self.lookup(nm)
+            if v is not None and v.kind == "var":
+                self.error(k, f"`K` can't be sized by the var `{nm}`: it could change after arrays are made\n"
+                              f"  help: freeze it first: `let n = {nm}`")
+        kc, kt = self.expr(k.value)
+        if not is_int(kt):
+            self.error(k, f"`K` is a size, got {kt!r}")
+        kcpp = self.fresh(f"K_{s.target}")
+        self.globals.append(f"ll {kcpp};")
+        self.emit(f"{kcpp} = {kc};")
+        ksym = Sym("let", TInt(kt.lo, kt.hi), kcpp, node=None)
+        from .parser import Parser
+        table = self.__dict__.setdefault("struct_methods", {}).setdefault(st.cpp, {})
+        had = self.scopes[-1].get("K")
+        self.scopes[-1]["K"] = ksym
+        try:
+            for name in ("to_idx", "from_idx"):
+                m = fns[name]
+                ps = list(m.params)
+                has_self = bool(ps) and ps[0].name == "self"
+                if has_self != (name == "to_idx") or len(ps) != 1 or m.ret is None:
+                    self.error(m, f"expected `fn to_idx(self) -> Int` and `fn from_idx(i: Int) -> {s.target}`")
+                if has_self:
+                    ps[0] = N("param", m.line, name="self", ty=Parser(s.target).type_(), mode=ps[0].mode)
+                fn = N("fn", m.line, name=f"{s.target}__{name}", tparams=m.tparams, params=ps, ret=m.ret,
+                       body=m.body, decos=m.decos, pure=m.pure, lends=None)
+                if has_self:
+                    fn.self_struct = st
+                table[name] = (fn.name, has_self, False)
+                self.s_fn(fn)
+        finally:
+            if had is None:
+                self.scopes[-1].pop("K", None)
+            else:
+                self.scopes[-1]["K"] = had
+        if not is_int(self.lookup(f"{s.target}__to_idx").ty.ret) or self.lookup(f"{s.target}__from_idx").ty.ret != st:
+            self.error(s, f"expected `fn to_idx(self) -> Int` and `fn from_idx(i: Int) -> {s.target}`")
+        info = DomInfo(s.target, f"I_{s.target}", "0", kcpp, (0, 0), (kt.lo, kt.hi), anon=False)
+        info.user, info.to_idx, info.from_idx = st, f"{s.target}__to_idx", f"{s.target}__from_idx"
+        self.index_impls[st.cpp] = info
 
     def lambda_key(self, lam, et):
         if lam.kind != "lambda" or len(lam.params) != 1:
@@ -2345,6 +2774,7 @@ class Compiler:
         self.emit("}")
 
     def s_while(self, s):
+        self.drop_facts(written_names(s.body))   # a fact about a var the loop assigns holds only on the first trip
         c = self.cond(s.cond)
         self.emit(f"while ({c}) {{")
         self.loop_trips.append(None)
@@ -2352,7 +2782,10 @@ class Compiler:
         if not hasattr(self, "loop_ctx"):
             self.loop_ctx = []
         self.loop_ctx.append(("c",))
+        nfacts = len(self.facts)
+        self.add_facts(s.cond)
         self.block(s.body)
+        del self.facts[nfacts:]
         self.loop_ctx.pop()
         self.ind -= 1
         self.loop_trips.pop()
@@ -2369,19 +2802,14 @@ class Compiler:
             if sym is None or not sym.mut:
                 self.error(s, f"`{tgt.name}` is not a var")
         else:
-            root = tgt
-            while root.kind in ("index", "field"):
-                root = root.obj
-            if root.kind == "name":
-                sym = self.lookup(root.name)
-                if sym is None or not sym.mut:
-                    self.error(s, f"`{root.name}` is not a var")
+            self.require_mut(tgt, s)
             sym = None
         if op in ("min=", "max=") and isinstance(tt, TOpt):
             vc, vt = self.expr(s.value, tt.inner)
             self.emit(f"opt_{op[:3]}({tc}, {self.coerce(vc, vt, tt.inner, s.value)});")
             return
         want = tt.inner if isinstance(tt, TOpt) and op == "=" and s.value.kind != "none" else tt
+        self.escapes[id(s.value)] = "this assignment"
         vc, vt = self.expr(s.value, want if not isinstance(tt, TInt) else None)
         if op == "=":
             c = self.coerce(vc, vt, tt, s.value)
@@ -2511,8 +2939,11 @@ class Compiler:
         for p in s.params:
             if p.ty is None:
                 self.error(p, f"parameter `{p.name}` needs a type")
-            pt = self.resolve_type(p.ty)
+            pt = getattr(p, "ty_fixed", None) or self.resolve_type(p.ty)
             ptypes.append(pt)
+        if getattr(s, "lends", None):
+            self.error(s, f"`{s.name}` is declared `lends`: a projection lends part of its receiver, so it must be a "
+                          f"method with `self` (prototype: methods of a struct only)")
         rt = self.resolve_type(s.ret) if s.ret is not None else UNIT
         local = len(self.fn_ret) > (1 if getattr(self, "in_multitest", False) else 0) or not saved_top
         pre = getattr(self, "predeclared", {}).get(s.name)
@@ -2547,6 +2978,8 @@ class Compiler:
         for p, pt in zip(s.params, ptypes):
             pc = self.fresh(p.name)
             mode = "&" if p.mode == "inout" else ("" if isinstance(pt, (TInt, TBool, TChar, TDom, TMod)) else "const &")
+            if getattr(pt, "view", None):
+                mode = ""       # a view is a pointer and a window: passed by value
             params.append(f"{self.cpp_type(pt)} {mode}{pc}".replace("  ", " "))
             self.declare(p.name, pt, pc, p.mode == "inout", p)
         st = getattr(s, "self_struct", None)
@@ -2556,10 +2989,13 @@ class Compiler:
                 self.declare(fname, ftype, f"{me.cpp}.{self.field_cpp(fname)}", me.mut, None)
         self.fn_ret.append(rt)
         saved_ctx, self.loop_ctx = getattr(self, "loop_ctx", []), []
+        saved_lend = (self.facts, self.holds, self.cur_rest)     # a fn body knows none of its definition site's facts
+        self.facts, self.holds, self.cur_rest = [], [], []
         try:
             self.fn_rest(s, decos, params, ptypes, rt, cpp, local, saved_top)
         finally:
             self.loop_ctx = saved_ctx
+            self.facts, self.holds, self.cur_rest = saved_lend
 
     def fn_rest(self, s, decos, params, ptypes, rt, cpp, local, saved_top):
         if isinstance(rt, TGen):
@@ -2723,6 +3159,7 @@ class Compiler:
             body = self.tail_returns(body)
         if body and not isinstance(rt, TUnit) and body[-1].kind == "exprstmt":
             self.block(body[:-1], new_scope=False)
+            self.escapes[id(body[-1].expr)] = "returning it"
             c, t = self.expr(body[-1].expr, rt)
             self.emit(f"return {self.coerce(c, t, rt, body[-1])};")
         else:
@@ -2929,12 +3366,14 @@ class Compiler:
 
     def note_write(self, target, line):
         root = target
-        while root.kind in ("index", "field"):
-            root = root.obj
+        while root.kind in ("index", "field") or self.is_proj_call(root):
+            root = root.fn.obj if root.kind == "call" else root.obj
         if root.kind == "name":
             sym = self.lookup(root.name)
             if sym is not None:
                 self.writes.append((sym, line))
+            self.drop_facts({root.name})
+            self.check_access(target, True)
 
     def check_memo_staleness(self):
         for fn, read, sym in self.memo_reads:
@@ -3223,8 +3662,7 @@ Compiler.emit_value = _emit_value
 def _program(self):
     self.out = self.init_lines
     self.memo_reads, self.writes, self.fn_brutes, self.fn_props = [], [], [], []
-    for s in self.prog.body:
-        self.stmt(s)
+    self.block(self.prog.body, new_scope=False)
     self.check_memo_staleness()
     self.fntest_lines, _ = self.capture(self.emit_fn_tests)
     self.add_swap_hooks()

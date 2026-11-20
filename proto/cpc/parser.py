@@ -139,6 +139,20 @@ class Parser:
                 return f
             if v == "struct":
                 return self.struct_def()
+        if t.kind == "NAME" and t.val == "impl" and self.peek().kind == "NAME":
+            # `impl Index for Cell:` followed by `let K = ...` and fns (plan/19 §3.1)
+            self.next()
+            trait = self.name()
+            if not self.at("for"):
+                self.err("expected `for` in `impl Trait for Type`")
+            self.next()
+            target = self.name()
+            body = self.block() if self.at(":") else []
+            if not body:
+                self.end_line()
+            return N("impl", line, trait=trait, target=target, body=body)
+        if t.kind == "KW":
+            v = t.val
             if v == "enum":
                 self.next()
                 nm = self.name()
@@ -276,6 +290,28 @@ class Parser:
                 self.next()
                 e = self.expr()
                 return N("assert", line, cond=e)
+        if t.kind == "NAME" and t.val == "lend" and (self.peek().kind in ("NAME", "NUM") or
+                                                     (self.peek().kind == "OP" and self.peek().val == "(")):
+            # `lend place` / `lend mut place`: the one exit of a projection (plan/19 §3.4)
+            self.next()
+            mut = False
+            if self.t.kind == "NAME" and self.t.val == "mut" and self.peek().kind in ("NAME", "NUM"):
+                self.next()
+                mut = True
+            return N("lend", line, value=self.expr(), mut=mut)
+        if t.kind == "NAME" and t.val == "law" and self.peek().kind == "NAME":
+            # `law disjoint(i, j) = i != j`: when two lends of this projection don't overlap (plan/19 §3.6)
+            self.next()
+            nm = self.name()
+            self.expect("(")
+            ps = []
+            while not self.at(")"):
+                ps.append(self.name())
+                if self.at(","):
+                    self.next()
+            self.expect(")")
+            self.expect("=")
+            return N("law", line, name=nm, params=ps, expr=self.expr())
         e = self.expr()
         if self.t.kind == "OP" and self.t.val in ASSIGN_OPS:
             op = self.next().val
@@ -376,15 +412,30 @@ class Parser:
             self.expect(">")
         ps = self.params()
         ret = None
-        if self.at("->"):
+        lends = None
+        if self.t.kind == "NAME" and self.t.val == "lends":
+            # a projection (plan/19 §3.4): `fn row(self, r: A) lends mut [B]T`
+            self.next()
+            lends = "read"
+            if self.t.kind == "NAME" and self.t.val == "mut":
+                self.next()
+                lends = "mut"
+            ret = self.type_()
+        elif self.at("->"):
             self.next()
             if self.t.kind == "NAME" and self.t.val == "yields":
                 yl = self.next().line
                 ret = N("tyields", yl, inner=self.type_())
             else:
                 ret = self.type_()
-        body = self.block()
-        return N("fn", line, name=nm, tparams=tparams, params=ps, ret=ret, body=body, decos=[], pure=False)
+        if self.at("="):
+            # `fn to_idx(self) -> Int = r.ord * w + c.ord`: a one-expression body
+            self.next()
+            body = [self.simple_stmt()]
+            self.end_line()
+        else:
+            body = self.block()
+        return N("fn", line, name=nm, tparams=tparams, params=ps, ret=ret, body=body, decos=[], pure=False, lends=lends)
 
     def struct_def(self):
         line = self.next().line

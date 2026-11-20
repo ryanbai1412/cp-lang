@@ -11,14 +11,14 @@ let reqs: [q](l: I, r: I, x: X) = read() where all(t.l <= t.r for t in reqs)
 // cover[x, b]: requirements with value x open at bound b (difference, then prefix)
 var cover: [X, I.bounds]Int = 0
 for (l, r, x) in reqs:
-    cover[x, l.before] += 1
-    cover[x, r.after] -= 1
+    cover[x, l.l] += 1
+    cover[x, r.r] -= 1
 var gcds = SegTree<I, Int>(0, (a, b) => gcd(a, b))
 var a: [I]Int = 1
 for x in X:
     var open = 0
     for i in I:
-        open += cover[x, i.before]
+        open += cover[x, i.l]
         if open > 0: a[i] = lcm(a[i], x.label)
 for i in I: gcds.set(i, a[i])
 

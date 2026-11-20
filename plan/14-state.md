@@ -1,8 +1,10 @@
 # 1.5 State: ownership, borrowing, rollback
 
-Status: the ownership model is decided. The precise borrow rules are
-proposed, based on research (research/RECOMMENDATIONS.md). `defer` and
-rollback are proposed.
+Status: the ownership model is decided. The borrow rules are decided
+(2026-11-19 and 2026-11-20): lexical exclusivity, with no stored and no
+returned borrows. `19-index-and-lends.md` §3.4 to §3.6 and §5 give the
+full rules for projections, lent values and disjoint lends, and win where
+this page is shorter. `defer` and rollback are proposed.
 
 ## Ownership
 
@@ -38,13 +40,22 @@ var dist: [V]?Int = none
 mut fn relax(v: V, d: Int): if d < (dist[v] ?? Int.MAX): dist[v] = d
 ```
 
-## Borrow rules (proposed)
+## Borrow rules
 
 - **Exclusive mutation.** While a place is borrowed mutably, nothing else
   reads or writes it. While it is borrowed for reading, nothing mutates it.
-- **Fields are borrowed separately; indices are not.** `f(mut s.left, s.right)`
-  is allowed. `f(mut a[i], a[j])` is an error whose fix suggests `swap(mut a,
-  i, j)` or `a.pair_mut(i, j)`, which checks `i != j` once.
+- **Fields are borrowed separately. Elements are, when the program shows
+  they differ.** `f(mut s.left, s.right)` is allowed. `f(mut a[i], a[j])`
+  is allowed where `i != j` is known (`if i != j:`, `assert i != j`,
+  `i < j`), because element access is a projection whose law is
+  `disjoint(i, j) = i != j` (19 §3.6). Where it isn't known, the error
+  prints that law and suggests the `if`, the `assert`, `swap(mut a[i], mut
+  a[j])` inside a guard, or `a.pair_mut(i, j)`, which asserts `i != j`
+  once. No check is ever inserted silently.
+- **Nothing lent is kept.** A slice, a row, or any value built from lent
+  parts lives only in the block that made it. Functions return ranges and
+  positions, which are plain values, and the caller applies them (19
+  §3.5).
 - **Two-phase borrows.** `a.push(a.len)` works, because the mutable borrow
   starts only at the call.
 - **No struct holds a borrow.** A helper over an outside array is a top-level
