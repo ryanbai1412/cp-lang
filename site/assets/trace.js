@@ -271,8 +271,8 @@
   }
 
   function graph(value, d, marks, lane) {
-    const nodes = value.nodes.slice(0, LIMIT.graph), ids = new Set(nodes.map(n => String(n.id)));
-    const pos = T.layout({nodes, edges:value.edges.filter(e => ids.has(String(e.from)) && ids.has(String(e.to)))}, d);
+    if (value.nodes.length > LIMIT.graph) return el("p", {class:"empty", text:`${d.kind === "tree" ? "Tree" : "Graph"} has ${value.nodes.length} vertices, more than the ${LIMIT.graph} this view draws. Save JSON to inspect the full state.`});
+    const pos = T.layout(value, d);
     const box = T.viewBox(pos);
     if (!box) return el("p", {class:"empty", text:`${d.kind === "tree" ? "Empty tree" : "Empty graph"}: no vertices at this step`});
     const {x:minX, y:minY, w, h} = box, arrow = `arrow-${lane}`;
@@ -287,7 +287,7 @@
           x1:a.x + ux * 17, y1:a.y + uy * 17, x2:b.x - ux * 19, y2:b.y - uy * 19, "marker-end":d.directed ? `url(#${arrow})` : null}),
         e.weight !== undefined ? svg("text", {class:"weight", x:(a.x + b.x) / 2, y:(a.y + b.y) / 2 - 4, "text-anchor":"middle", text:display(e.weight)}) : null);
     });
-    const circles = nodes.map((n, k) => {
+    const circles = value.nodes.map((n, k) => {
       const p = pos.get(String(n.id));
       if (!p) return null;
       const path = ["nodes", k], cls = classify(path, marks).filter(c => c !== "changed");
@@ -317,6 +317,7 @@
       list.slice(0, 200).map(d => el("li", {}, el("button", {class:"row", type:"button", "data-focus":`diff:${d.variable}:${key(d.path)}`, "aria-pressed":String(d.variable === variable && selected && key(selected) === key(d.path)),
         onclick:() => { variable = d.variable; selected = d.path; render(); }},
         el("span", {text:T.pathName(nameOf(d.variable), d.path)}), el("span", {class:"bad", text:T.format(d.fast, d.fastPresent)}), el("span", {class:"exp", text:T.format(d.slow, d.slowPresent)}))))));
+    if (list.length > 200) box.append(el("p", {class:"lane-note", text:`Showing first 200 of ${list.length}; JSON contains full state`}));
   }
 
   function renderChanges(v) {
@@ -327,6 +328,7 @@
       list.slice(0, 200).map(c => el("li", {}, el("button", {class:"row", type:"button", "data-focus":`change:${c.variable}:${key(c.path)}`, "aria-pressed":String(c.variable === variable && selected && key(selected) === key(c.path)),
         onclick:() => { variable = c.variable; selected = c.path; render(); }},
         el("span", {text:T.pathName(nameOf(c.variable), c.path)}), el("span", {class:"old", text:T.format(c.before, c.beforePresent)}), el("span", {text:T.format(c.after, c.afterPresent)}))))));
+    if (list.length > 200) $("changes").append(el("p", {class:"lane-note", text:`Showing first 200 of ${list.length}; JSON contains full state`}));
   }
 
   const TOKENS = /(\/\/[^\n]*)|("(?:\\.|[^"\\])*")|(@!?\w+)|(\b\d[\d_]*\b)|(\b(?:let|var|const|fn|struct|enum|domain|type|use|if|elif|else|for|while|in|match|return|break|continue|and|or|not|assert|mut|self|true|false|none|trait|impl|lends|yield|unchecked)\b)/g;
@@ -397,7 +399,7 @@
     $("log-meta").textContent = `${matches.length} of ${steps.length} events${matches.length > shown.length ? ` · showing ${shown.length}` : ""}`;
     $("log").replaceChildren(...shown.map(i => {
       const s = steps[i], diverged = analysis.byFast.get(i)?.differences.length;
-      return el("li", {}, el("button", {class:"ev", type:"button", "aria-current":String(i === v.i), onclick:() => { player.go(i); }},
+      return el("li", {}, el("button", {class:"ev", type:"button", "data-focus":`log:${i}`, "aria-current":String(i === v.i), onclick:() => { player.go(i); }},
         el("span", {text:pad(i + 1, String(steps.length).length)}), el("span", {text:`L${s.line}`}), el("span", {class:"lbl", text:s.label}),
         el("span", {class:diverged ? "x" : null, text:diverged ? `≠ ${s.checkpoint}` : s.checkpoint ?? ""})));
     }));

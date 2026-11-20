@@ -195,7 +195,7 @@ const TraceCore = (() => {
         positions.set(id, {x, y:depth});
         return x;
       };
-      // Iterative guard is unnecessary: validate() rejects cycles and caps vertices.
+      // Recursion is safe: validate() rejects tree cycles and the renderer refuses graphs over 500 vertices.
       place(root, 0);
       for (const [id, p] of positions) positions.set(id, {x:40 + p.x * 72, y:40 + p.y * 80});
       return positions;
