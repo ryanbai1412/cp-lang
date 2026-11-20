@@ -511,6 +511,7 @@ impl<'a> Checker<'a> {
             StmtKind::Assign { target, op, value } => {
                 let target_ty = self.infer(target);
                 let value_ty = self.infer(value);
+                self.optional_fold(target, &target_ty, *op);
                 self.map_fold(target, *op, value);
                 self.assign_alias(target, *op, value);
                 self.require_mutable(target, "assigned");

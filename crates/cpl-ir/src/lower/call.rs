@@ -2555,7 +2555,35 @@ impl<'a> Lowerer<'a> {
         span: Span,
     ) -> Expr {
         let name = self.sigs[fn_id].decl.name.text.clone();
+        let declared_mut = self.sigs[fn_id]
+            .decl
+            .params
+            .first()
+            .is_some_and(|p| p.mutable);
         let receiver = match (self.sigs[fn_id].receiver, receiver) {
+            // A method that grows a cache, called on a value with no home
+            // (`Squares([]).at(4)`): the value is held for the call.
+            (Some(true), Some((base, value))) if !declared_mut && !is_place(base) => {
+                let mut ty = Ty::Unit;
+                let mut call = self.do_expr(None, span, |lw, out| {
+                    let held = lw.temp(value.ty.clone());
+                    let place = Place {
+                        kind: PlaceKind::Local(held),
+                        ty: value.ty.clone(),
+                        span,
+                    };
+                    out.push(Stmt::Let(held, Some(value)));
+                    let call = lw.user_call(fn_id, Some(Arg::Mut(place)), args, span);
+                    ty = call.ty.clone();
+                    out.push(if ty == Ty::Unit {
+                        Stmt::Expr(call)
+                    } else {
+                        Stmt::Give(call)
+                    });
+                });
+                call.ty = ty;
+                return call;
+            }
             (Some(true), Some((base, _))) => Some(Arg::Mut(self.place(base))),
             (Some(false), Some((_, value))) => Some(Arg::Value(value)),
             (None, None) => None,
@@ -2843,7 +2871,8 @@ impl<'a> Lowerer<'a> {
                     .decl
                     .params
                     .first()
-                    .is_some_and(|p| p.name.text == "self" && p.mutable);
+                    .is_some_and(|p| p.name.text == "self" && p.mutable)
+                    || super::cache::grows_cache(self.structs[*id].decl, self.gen_fns[gfid].decl);
                 let recv = if is_mut {
                     Arg::Mut(self.place(base))
                 } else {
@@ -3356,5 +3385,16 @@ fn retarget_break(stmts: &mut [Stmt], outer: LoopId, depth: usize) {
             Stmt::Break(target @ None) if depth > 1 => *target = Some(outer),
             _ => {}
         }
+    }
+}
+
+/// Whether `e` names somewhere a value lives: a variable, a field or an
+/// element of one.
+fn is_place(e: &ast::Expr) -> bool {
+    match &e.kind {
+        ast::ExprKind::Name(_) | ast::ExprKind::SelfValue => true,
+        ast::ExprKind::Paren(inner) => is_place(inner),
+        ast::ExprKind::Field { base, .. } | ast::ExprKind::Index { base, .. } => is_place(base),
+        _ => false,
     }
 }

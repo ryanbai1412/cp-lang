@@ -491,7 +491,8 @@ fn imported_module_symbols_hover_and_jump_to_definition() {
         .expect("workspace root");
     let file_path = repo_root.join("_lsp_imported_test.cp");
     let uri = format!("file://{}", file_path.display());
-    let src = "use std.mod.{Mod, Comb}\nlet c = Comb<1000000007>.new(10)\nprint(c.choose(5, 2).v)\n";
+    let src =
+        "use std.mod.{Mod, Comb}\nlet c = Comb<1000000007>.new(10)\nprint(c.choose(5, 2).v)\n";
 
     let mut server = Server::new();
     server.handle(&request(1, "initialize", obj([])));
@@ -542,4 +543,86 @@ fn imported_module_symbols_hover_and_jump_to_definition() {
         def_uri.ends_with("/stdlib/mod.cp"),
         "expected definition in stdlib/mod.cp, got: {def_uri}"
     );
+}
+
+const V22: &str = "\
+let (n, x): (1..=100, 1..=1e6) = read()
+let coins: [0..n]Int = read()
+var dp: [0..=x]?Int = none
+dp[0] = 0
+for s in 1..=x:
+    for c in coins:
+        if c <= s: dp[s] min= dp[s - c] + 1
+let best = dp[x] - 1
+print(best ?? -1)
+";
+
+/// The line and message of every diagnostic, in order.
+fn lines_and_messages(diagnostics: &[Value]) -> Vec<(u32, String)> {
+    diagnostics
+        .iter()
+        .map(|d| {
+            let line = d.at(&["range", "start", "line"]).as_u32().unwrap();
+            (line, d.get("message").as_str().unwrap().to_string())
+        })
+        .collect()
+}
+
+#[test]
+fn v22_optionals_hover_as_optionals_and_check_clean() {
+    let (mut server, diagnostics) = open(V22);
+    assert_eq!(diagnostics, Vec::<Value>::new());
+    // `dp[x] - 1` is `none` when `dp[x]` is.
+    let hover = hover_at(&mut server, 7, 4);
+    assert_eq!(
+        hover.at(&["contents", "value"]).as_str(),
+        Some("```cp\nbest: ?Int\n  storage: 8 bytes\n```")
+    );
+    assert_eq!(hover.at(&["range", "start"]), &pos(7, 4));
+    assert_eq!(hover.at(&["range", "end"]), &pos(7, 8));
+    let hover = hover_at(&mut server, 2, 4);
+    assert_eq!(
+        hover.at(&["contents", "value"]).as_str(),
+        Some("```cp\ndp: [0..=x]?Int\n  storage: 8 bytes per element\n```")
+    );
+}
+
+#[test]
+fn v22_removed_forms_are_reported_with_what_to_write() {
+    let (_, diagnostics) = open(
+        &V22.replace("dp[s] min= dp[s - c] + 1", "dp[s] += 1")
+            .replace(
+                "print(best ?? -1)",
+                "print(best ?? 0 + 1)\ndefer print(1)\nprint(sum(dp))",
+            ),
+    );
+    for d in &diagnostics {
+        assert_eq!(d.get("severity").as_u32(), Some(1));
+        assert_eq!(d.get("source").as_str(), Some("cpl"));
+    }
+    let codes: Vec<_> = diagnostics
+        .iter()
+        .map(|d| d.get("code").as_str().unwrap())
+        .collect();
+    assert_eq!(codes, ["E0309", "E0110", "E0503", "E0309"]);
+    let found = lines_and_messages(&diagnostics);
+    let expected = [
+        (6, "`+=` can't be applied to an ?Int\nhelp: write `x = x + y` when `none` should stay `none`"),
+        (8, "`??` mixed with `+ - * / %` needs parentheses\nhelp: write `(a ?? 0) + b`"),
+        (9, "`defer` was removed in CP Lang v2.2\nhelp: undo by hand after the call"),
+        (10, "`sum` adds numbers, not an ?Int\nhelp: `sum` does not skip or absorb `none`"),
+    ];
+    assert_eq!(found.len(), expected.len(), "{found:?}");
+    for ((line, message), (want_line, want)) in found.iter().zip(expected) {
+        assert_eq!(*line, want_line, "{message}");
+        assert!(message.starts_with(want), "{message}");
+    }
+
+    let (_, diagnostics) = open(&V22.replace("for c in coins", "for mut c in coins"));
+    let found = lines_and_messages(&diagnostics);
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].0, 5);
+    assert!(found[0]
+        .1
+        .starts_with("`for mut` was removed in CP Lang v2.2\nhelp: loop over the indexes"));
 }

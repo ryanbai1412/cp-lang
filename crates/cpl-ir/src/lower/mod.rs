@@ -7,6 +7,7 @@
 //! projections and generators, and emits one concrete [`Program`] shared by
 //! `cpl-interp` and `cpl-codegen`.
 
+mod cache;
 mod call;
 mod expr;
 mod mono;
@@ -839,7 +840,10 @@ impl<'a> Lowerer<'a> {
         let mut params = Vec::new();
         for (i, param) in decl.params.iter().enumerate() {
             if i == 0 && param.name.text == "self" && self.sigs[id].owner.is_some() {
-                self.sigs[id].receiver = Some(param.mutable);
+                // A method that grows a cache works on the caller's struct.
+                let owner = self.sigs[id].owner.expect("checked above");
+                let cached = cache::grows_cache(self.structs[owner].decl, decl);
+                self.sigs[id].receiver = Some(param.mutable || cached);
                 continue;
             }
             if param.variadic {

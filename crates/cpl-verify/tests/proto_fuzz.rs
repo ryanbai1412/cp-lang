@@ -16,10 +16,7 @@ fn proto() -> Toolchain {
         interpreter: None,
         // A local build of the prototype stops on all three.
         traps: vec![Trap::Overflow, Trap::DivByZero, Trap::IndexOutOfRange],
-        static_refusals: vec![
-            "beyond Int".into(),
-            "over the 64 KB submission limit".into(),
-        ],
+        static_refusals: vec!["beyond Int".into()],
     }
 }
 
