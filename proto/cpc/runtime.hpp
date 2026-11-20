@@ -68,6 +68,22 @@ static inline ll cp_ctz(ll x) { return x == 0 ? 64 : __builtin_ctzll((unsigned l
 static inline ll cp_clz(ll x) { return x == 0 ? 64 : __builtin_clzll((unsigned long long)x); }
 static inline ll cp_bit_len(ll x) { return 64 - cp_clz(x); }
 
+// "{x:.3f}" and "{n:04}": a number under a checked format; a value that rounds to zero is never written `-0.000`
+static inline string cp_fmt_f(double x, int prec, int width, bool zero) {
+    char buf[512];
+    snprintf(buf, sizeof buf, zero ? "%0*.*f" : "%*.*f", width, prec, x);
+    string r(buf);
+    bool nonzero = false;
+    for (char c : r) if (c >= '1' && c <= '9') nonzero = true;
+    if (!nonzero) { size_t k = r.find('-'); if (k != string::npos) { r.erase(k, 1); if ((int)r.size() < width) r.insert(0, 1, zero ? '0' : ' '); } }
+    return r;
+}
+static inline string cp_fmt_i(ll x, int width, bool zero) {
+    char buf[64];
+    snprintf(buf, sizeof buf, zero ? "%0*lld" : "%*lld", width, (long long)x);
+    return string(buf);
+}
+
 // Str: a flat run of ASCII bytes at positions 0..len (cheat sheet section 4)
 static inline string cp_str_slice(const string& s, ll lo, ll hi, bool incl, int line) {
     if (hi < 0 && !incl) hi = (ll)s.size(); else if (incl) hi += 1;
