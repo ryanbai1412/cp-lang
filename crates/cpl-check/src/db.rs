@@ -241,6 +241,9 @@ pub struct Database {
     /// The files being analyzed, outermost first: a module that imports
     /// one of them is a cycle.
     analyzing: Vec<String>,
+    /// Whether a file gets the standard library's types it names
+    /// without a `use`: what `cpl run` and `cpl build` do.
+    implicit_std: bool,
 }
 
 impl Default for Database {
@@ -267,7 +270,16 @@ impl Database {
             stats: Stats::default(),
             loader,
             analyzing: Vec::new(),
+            implicit_std: false,
         }
+    }
+
+    /// Gives the files analyzed from here on the standard library's types
+    /// they name without a `use` (`Mod<P>` as if `use std.mod.{Mod}` were
+    /// written). `cpl run` and `cpl build` ask for this; `cpl check` and
+    /// the language server keep reporting the missing `use`.
+    pub fn use_std_implicitly(&mut self) {
+        self.implicit_std = true;
     }
 
     /// Sets the text of a file. Nothing is computed until it is asked for.
@@ -433,6 +445,43 @@ impl Database {
                         }
                     }
                 }
+            }
+        }
+        // A name of the standard library that the file uses and neither
+        // declares nor imports is imported for it: `Mod<P>` works as if
+        // `use std.mod.{Mod}` were written. Only the file being run gets
+        // this; a module says what it uses.
+        // A `use` that failed may have been meant to bring the name.
+        if self.implicit_std && self.analyzing.len() == 1 && import_diags.is_empty() {
+            let declared: std::collections::HashSet<&str> = items
+                .iter()
+                .flat_map(|item| item.decls.iter().map(|decl| decl.name.as_str()))
+                .collect();
+            let word = |c: char| c.is_ascii_alphanumeric() || c == '_';
+            let uses = |name: &str| {
+                items.iter().any(|item| {
+                    item.text.match_indices(name).any(|(at, _)| {
+                        !item.text[..at].ends_with(word)
+                            && !item.text[at + name.len()..].starts_with(word)
+                    })
+                })
+            };
+            let name_of = |text: &str| ast::Name {
+                text: text.to_string(),
+                span: cpl_diag::Span::new(0, 0),
+            };
+            for (name, module) in crate::prelude::STD_NAMES {
+                // Only types: a lower-case name is too easily the file's own.
+                if !name.starts_with(char::is_uppercase)
+                    || declared.contains(name)
+                    || scope.imports.contains_key(*name)
+                    || !uses(name)
+                {
+                    continue;
+                }
+                let module = [name_of("std"), name_of(module)];
+                let mut diags = Vec::new();
+                self.import(path, &module, &[name_of(name)], false, None, &mut scope, &mut diags);
             }
         }
         self.analyzing.pop();
