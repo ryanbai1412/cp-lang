@@ -53,6 +53,14 @@ pub struct Fenwick<D, T>:
             step /= 2
         if p == D.K: none else: D.bounds.nth(p + 1)
 
+    /// The `k`-th position, counting from 1, when each position stands for as many items as
+    /// its value: the first `d` with `prefix` through `d` at least `k`, or `none` when there
+    /// are fewer than `k` items. For non-negative values. O(log n).
+    pub fn kth(self, k: Int) -> ?D:
+        assert k >= 1, "`kth` counts from 1"
+        let b = self.lower_bound(k)
+        if b == none: none else: b!.left
+
 /// Point add and rectangle sum on a grid. `add` and `sum` are O(log R * log C);
 /// memory is (R + 1) * (C + 1) values.
 pub struct Fenwick2D<R, C, T>:
@@ -123,6 +131,10 @@ fn lower_bound_finds_the_kth():
     assert f.lower_bound(3)!.left == V(4)
     assert f.lower_bound(4)!.left == V(6)
     assert f.lower_bound(5) == none
+    assert f.kth(1) == V(1)
+    assert f.kth(3) == V(4)
+    assert f.kth(4) == V(6)
+    assert f.kth(5) == none
 
 @test
 fn two_dimensions_match_a_plain_grid():

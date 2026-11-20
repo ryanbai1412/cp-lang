@@ -9,7 +9,7 @@
 //! compiler. A library module says what it uses: only the program being
 //! checked or run gets the prelude.
 
-use std.algebra.{Action, Desc, Monoid, Reversible}
+use std.algebra.{Action, Desc, Monoid, Reversible, desc, fold}
 use std.bag.{SortedBag}
 use std.bitset.{Bitset}
 use std.deque.{Deque}
@@ -22,7 +22,7 @@ use std.grid.{Dir4}
 use std.heap.{MaxHeap, MinHeap}
 use std.lazy.{AddMax, AddMin, AddSum, AssignMax, AssignMin, AssignSum, LazySegTree}
 use std.marks.{Marks}
-use std.math.{Sieve, bit, digits, fixed, gcd, lcm}
+use std.math.{Sieve, bit, ceil_div, digits, fixed, gcd, lcm}
 use std.mod.{Comb, Mod}
 use std.prefix.{Prefix1, Prefix2, prefix1, prefix2, prefix_n}
 use std.segtree.{SegTree}
@@ -32,13 +32,18 @@ use std.seq.{
     bsearch_last,
     compress,
     deduped,
+    excl_fold,
     get_or_insert,
+    insert,
     max_by,
     min_by,
     partition,
+    remove,
     resized,
     runs,
+    runs_by,
+    scan,
 }
 use std.sparse.{SparseTable}
-use std.strings.{HashVal, Hashable, RollingHash, repeat}
+use std.strings.{HashVal, Hashable, RollingHash, ends_with, find, lower, repeat, starts_with, upper}
 use std.tree.{Rooted}

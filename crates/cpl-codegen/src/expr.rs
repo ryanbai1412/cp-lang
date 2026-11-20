@@ -417,6 +417,19 @@ impl<'p> Emitter<'p> {
                 }
             }
             ExprKind::Binary(op, l, r) => self.binary(e, *op, l, r),
+            // `f == none`, `f != none` on an optional fn: whether one is
+            // there. Fns don't compare, so the optionals can't.
+            ExprKind::Cmp(op @ (CmpOp::Eq | CmpOp::Ne), x, none) | ExprKind::Cmp(op @ (CmpOp::Eq | CmpOp::Ne), none, x)
+                if none.kind == ExprKind::None && matches!(&x.ty, Ty::Opt(inner) if matches!(**inner, Ty::Fn(..))) =>
+            {
+                let code = self.expr(x);
+                let has = format!("{}.has_value()", code.at(PRIMARY));
+                if *op == CmpOp::Ne {
+                    Code::primary(has)
+                } else {
+                    Code::new(format!("!{has}"), UNARY)
+                }
+            }
             ExprKind::Cmp(op, l, r) => self.sequence(&[l, r], &Ty::Bool, |_, codes| {
                 if let Ty::Struct(id) = l.ty {
                     let sdef = &program.structs[id];

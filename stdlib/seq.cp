@@ -6,6 +6,8 @@
 //! `last_le`, `last_lt` (`?(K, V)`); a linear search is `first(it)`, `a.find(x)`, `min_by`,
 //! and `max_by`.
 
+use std.algebra.{Monoid}
+
 /// Every prefix folded with `f`: `[a0, f(a0, a1), f(f(a0, a1), a2), ...]`, as long as `xs`.
 /// `scan(xs, +)` is the running sum and `scan(xs, max)` the running maximum; no identity
 /// is needed because the first value starts the fold. O(n) calls of `f`.
@@ -152,6 +154,30 @@ pub fn runs<T>(a: List<T>) -> List<(val: T, len: Int)>:
         else:
             out.push((val: x, len: 1))
     out
+
+/// The stretches of neighbours with the same `by`, in order, each with its values:
+/// `runs_by(["ab", "ac", "b"], s => s[0])` is `[('a', ["ab", "ac"]), ('b', ["b"])]`.
+pub fn runs_by<T, K>(a: List<T>, by: T -> K) -> List<(key: K, items: List<T>)>:
+    var out: List<(key: K, items: List<T>)> = []
+    for x in a:
+        let k = by(x)
+        if out.len > 0 and out.last!.key == k: out.last!.items.push(x)
+        else: out.push((key: k, items: [x]))
+    out
+
+/// For each value of `xs`, in order, the fold with `m` of all the others: what is left when
+/// one is taken out, with no division or inverse needed. The fold keeps the order (the ones
+/// before, then the ones after), so `m` need not commute. O(n) calls of `m`.
+///
+///     for (x, rest) in [2, 3, 5].excl_fold(*): print(x, rest)    // 2 15, 3 10, 5 6
+pub fn excl_fold<T, M>(self: List<T>, m: M) -> yields (x: T, rest: T):
+    let k = Monoid<T>.of(m)
+    var after = List.filled(self.len + 1, k.id)
+    for i in (0..self.len).rev: after[i] = k.op(self[i], after[i + 1])
+    var before = k.id
+    for i in 0..self.len:
+        yield (x: self[i], rest: k.op(before, after[i + 1]))
+        before = k.op(before, self[i])
 
 /// The distinct values of a coordinate compression, in increasing order, indexed by their
 /// own domain `D`. `xs[i]` is the value at index `i`, `xs.at(val)` the index of a value that
@@ -514,3 +540,21 @@ fn get_or_insert_stores_only_what_is_missing():
     var ids = Map<Str, Int>()
     assert ids.get_or_insert("a", ids.len) == 0 and ids.get_or_insert("b", ids.len) == 1
     assert ids.get_or_insert("a", 99) == 0 and ids.len == 2
+
+@test
+fn runs_by_groups_neighbours_with_the_same_key():
+    let rs = runs_by(["ab", "ac", "b", "ad"], s => s[0])
+    assert rs.len == 3
+    assert rs[0].key == 'a' and rs[0].items == ["ab", "ac"]
+    assert rs[1].key == 'b' and rs[1].items == ["b"]
+    assert rs[2].items == ["ad"]
+    let none_yet: List<Int> = []
+    assert runs_by(none_yet, x => x).len == 0
+
+@test
+fn excl_fold_folds_all_but_one():
+    assert [(x, rest) for (x, rest) in [2, 3, 5].excl_fold(*)] == [(2, 15), (3, 10), (5, 6)]
+    assert [
+        rest for (_, rest) in ["a", "b", "c"].excl_fold(Monoid("", (p, q) => p + q))
+    ] == ["bc", "ac", "ab"]
+    assert [rest for (_, rest) in [7].excl_fold(+)] == [0]

@@ -6,6 +6,27 @@ use std.seq.{reverse}
 /// `s` written `n` times over: `"0".repeat(4)` is `"0000"`.
 pub fn repeat(self: Str, n: Int) -> Str = Str(self[i % self.len] for i in 0..n * self.len)
 
+/// True when `s` opens with `p`: `"contest".starts_with("con")`. O(p.len).
+pub fn starts_with(self: Str, p: Str) -> Bool = p.len <= self.len and all(
+    self[i] == p[i] for i in 0..p.len
+)
+
+/// True when `s` closes with `p`: `"contest".ends_with("test")`. O(p.len).
+pub fn ends_with(self: Str, p: Str) -> Bool:
+    let d = self.len - p.len
+    d >= 0 and all(self[d + i] == p[i] for i in 0..p.len)
+
+/// Where `p` first stands in `s`, or `none`: `"banana".find("nan")` is `2`. O(s.len + p.len).
+pub fn find(self: Str, p: Str) -> ?Int:
+    for i in find_all([c for c in self], [c for c in p]): return i
+    none
+
+/// The small letter of a capital, and any other character as it is: `'A'.lower` is `'a'`.
+pub @get fn lower(self: Char) -> Char = if 'A' <= self and self <= 'Z': Char(self.ord + 32) else: self
+
+/// The capital of a small letter, and any other character as it is: `'a'.upper` is `'A'`.
+pub @get fn upper(self: Char) -> Char = if 'a' <= self and self <= 'z': Char(self.ord - 32) else: self
+
 /// `z[i]` is the length of the longest common prefix of `s` and `s[i..]`; `z[0]` is `s.len`. O(n).
 @allow(unproven_list_index)
 pub fn z_function<T>(s: List<T>) -> List<Int>:
@@ -413,3 +434,15 @@ fn repeat_writes_a_string_over():
     assert "ab".repeat(3) == "ababab"
     assert "0".repeat(4) == "0000"
     assert "ab".repeat(0) == "" and "".repeat(5) == ""
+
+@test
+fn starts_ends_and_find_on_text():
+    let s = "Banana"
+    assert s.starts_with("Ban") and not s.starts_with("an") and s.starts_with("")
+    assert s.ends_with("ana") and not s.ends_with("Bananas") and s.ends_with("")
+    assert s.find("nan") == 2 and s.find("x") == none and s.find("") == 0
+
+@test
+fn lower_and_upper_change_only_letters():
+    assert Str(c.lower for c in "aZ-9") == "az-9"
+    assert Str(c.upper for c in "aZ-9") == "AZ-9"

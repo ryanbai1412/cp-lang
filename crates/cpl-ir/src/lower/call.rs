@@ -3592,6 +3592,42 @@ impl<'a> Lowerer<'a> {
                 );
                 self.cast(Cast::Trust, res, Ty::Pos(*d))
             }
+            // `s.set(v, on)` is `s.with(v)` when `on` holds and `s.without(v)`
+            // when it does not.
+            (Ty::Pos(d), "set") if self.subset_base(*d).is_some() => {
+                let base_d = self.subset_base(*d).unwrap();
+                let Some(exprs) = self.positional_any(method, args, 2, span) else {
+                    return self.err_expr(span);
+                };
+                let v = self.expect(exprs[0], &Ty::Pos(base_d));
+                let on = self.expect(exprs[1], &Ty::Bool);
+                let s_ord = self.cast(Cast::Ord, value, Ty::Int);
+                let v_ord = self.cast(Cast::Ord, v, Ty::Int);
+                let one = self.int_lit(1, span);
+                let bit = self.mk(
+                    ExprKind::Binary(BinOp::Shl, Box::new(one), Box::new(v_ord)),
+                    Ty::Int,
+                    span,
+                );
+                let with = self.mk(
+                    ExprKind::Binary(BinOp::BitOr, Box::new(s_ord.clone()), Box::new(bit.clone())),
+                    Ty::Int,
+                    span,
+                );
+                let mask = self.mk(ExprKind::Unary(UnOp::BitNot, Box::new(bit)), Ty::Int, span);
+                let without = self.mk(
+                    ExprKind::Binary(BinOp::BitAnd, Box::new(s_ord), Box::new(mask)),
+                    Ty::Int,
+                    span,
+                );
+                // One side runs, so `s` and `v` are each worked out once.
+                let res = self.mk(
+                    ExprKind::If(Box::new(on), Box::new(with), Box::new(without)),
+                    Ty::Int,
+                    span,
+                );
+                self.cast(Cast::Trust, res, Ty::Pos(*d))
+            }
             (Ty::Pos(d), "without") if self.subset_base(*d).is_some() => {
                 let base_d = self.subset_base(*d).unwrap();
                 let Some(v) = self.one_arg(method, args, &Ty::Pos(base_d), span) else {

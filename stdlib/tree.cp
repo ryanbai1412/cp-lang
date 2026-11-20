@@ -14,6 +14,7 @@ use std.graph.{Neighbours, Target, Graph}
 use std.algebra.{Monoid}
 use std.segtree.{SegTree}
 use std.lazy.{LazySegTree, AddMax}
+use std.seq.{excl_fold}
 
 /// A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre`.
 /// Built in O(n) without recursion; memory is seven `[V]` arrays, one `[Pre]` array and child lists.
@@ -131,15 +132,11 @@ pub struct Rooted<V, Pre>:
     ///     for (c, rest) in t.excl_fold(v, mul, c => down[c] + 1):
     ///         up[c] = (up[v] * rest + 1) % m
     pub fn excl_fold<T, M>(self, v: V, m: M, f: V -> T) -> yields (c: V, rest: T):
-        let k = Monoid<T>.of(m)
         let cs = kid[v]
-        let vals = [f(c) for c in cs]
-        var after = List.filled(cs.len + 1, k.id)
-        for i in (0..cs.len).rev: after[i] = k.op(vals[i], after[i + 1])
-        var before = k.id
-        for i in 0..cs.len:
-            yield (c: cs[i], rest: k.op(before, after[i + 1]))
-            before = k.op(before, vals[i])
+        var i = 0
+        for (_, rest) in [f(c) for c in cs].excl_fold(m):
+            yield (c: cs[i], rest: rest)
+            i += 1
 
     /// The number of edges between `v` and the root.
     pub fn depth(self, v: V) -> Int = dep[v]
