@@ -155,7 +155,7 @@ test('does not count duplicate compare entries as multiple differences',()=>{
   assert.throws(()=>T.validate(trace),/unique declared/);
 });
 
-test('embedded demos exactly match the published JSON captures',()=>{
+test('canonical source carries no generated demo bundle',()=>{
   const embedded=JSON.parse(html.match(/<script id="trace-samples" type="application\/json">([\s\S]*?)<\/script>/)[1]);
-  assert.deepEqual(embedded,['knapsack','dijkstra','tree','grid','array'].map(sample));
+  assert.deepEqual(embedded, []);
 });

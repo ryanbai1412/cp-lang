@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const T = require("./assets/trace-core.js");
+const {core:T, section} = require("../tools/trace/read-viewer.cjs");
 
 const samples = Object.fromEntries(["knapsack", "dijkstra", "tree", "grid", "array"].map(name =>
   [name, JSON.parse(fs.readFileSync(path.join(__dirname, "../tools/trace/samples", `${name}.json`), "utf8"))]));
@@ -65,6 +65,28 @@ test("changes lists leaf writes relative to the previous snapshot", () => {
   assert.deepEqual(plain(T.changes(scoped, 1, ["x"])), [{variable:"x", path:[], after:1, afterPresent:true, beforePresent:false}]);
 });
 
+test("checkpoint navigation skips internal steps without treating them as matches", () => {
+  const trace = structuredClone(samples.knapsack);
+  delete trace.runs.fast.steps[5].checkpoint;
+  const analysis = T.analyze(trace);
+  assert.equal(T.adjacentCheckpoint(analysis, 4, 1), 6);
+  assert.equal(T.adjacentCheckpoint(analysis, 5, -1), 4);
+  assert.equal(T.adjacentCheckpoint(analysis, 0, -1), null);
+  assert.equal(T.adjacentCheckpoint(analysis, 33, 1), null);
+  assert.equal(T.referenceAt(analysis, 5).exact, false);
+});
+
+test("checkpoint picker bounds the DOM while retaining the current neighborhood", () => {
+  const pairs = Array.from({length:100000}, (_, i) => ({fastIndex:i * 2}));
+  const analysis = {pairs, byFast:new Map(pairs.map(p => [p.fastIndex, p]))};
+  const window = T.checkpointWindow(analysis, 150001, 101);
+  assert.equal(window.length, 101);
+  assert.ok(window.some(p => p.fastIndex === 150000));
+  assert.equal(T.referenceAt(analysis, 150001).pair.fastIndex, 150000);
+  assert.equal(T.referenceAt(analysis, -1).pair, null);
+  assert.equal(T.checkpointWindow({pairs:[]}, 0).length, 0);
+});
+
 test("format and valueAt keep false, zero, null and out-of-scope distinct", () => {
   assert.deepEqual([T.format(false), T.format(0), T.format(null), T.format(undefined, false), T.format([1, "a"])], ["false", "0", "none", "out of scope", '[1,"a"]']);
   const values = {dp:[[0, 5]], z:null};
@@ -72,6 +94,22 @@ test("format and valueAt keep false, zero, null and out-of-scope distinct", () =
   assert.deepEqual(T.valueAt(values, "dp", [3, 0]), {value:undefined, present:false});
   assert.deepEqual(T.valueAt(values, "z", []), {value:null, present:true});
   assert.deepEqual(T.valueAt(values, "missing", []), {value:undefined, present:false});
+});
+
+test("future debug variables absent from both runs do not create false divergences", () => {
+  const trace = structuredClone(samples.knapsack);
+  trace.variables.future = {name:"debug(score)", kind:"json", type:"Int"};
+  delete trace.compare; // real producers compare every declared variable
+  const first = T.summary(trace, T.analyze(trace));
+  assert.equal(first.first.fastIndex, 4); // unchanged: first real DP mismatch
+  const pair = T.analyze(trace).byFast.get(0);
+  assert.deepEqual(pair.differences, []); // both runs have not reached debug(score)
+  assert.deepEqual(T.diff(undefined, undefined, [], false, false), []);
+  trace.runs.fast.steps[0].values.future = null;
+  const differences = T.analyze(trace).byFast.get(0).differences;
+  assert.equal(differences.length, 1); // present none vs absent remains meaningful
+  assert.equal(differences[0].fastPresent, true);
+  assert.equal(differences[0].slowPresent, false);
 });
 
 test("tree layout centers parents over children and gives leaves distinct columns", () => {
@@ -186,17 +224,17 @@ test("manual navigation and speed changes during playback behave predictably", (
 });
 
 test("phone layout lets the transport wrap and keeps content clear of the taller timeline", () => {
-  const css = fs.readFileSync(path.join(__dirname, "assets/trace.css"), "utf8");
+  const css = section("trace-style", "style");
   const phone = css.slice(css.indexOf("@media (max-width: 560px)"));
   assert.match(phone, /\.transport \{[^}]*flex-wrap: wrap/);
-  assert.match(phone, /main \{ padding-bottom: 176px; \}/);
+  assert.match(phone, /main \{ padding-bottom: 214px; \}/);
 });
 
 test("page UI never writes captured text through innerHTML", () => {
-  const ui = fs.readFileSync(path.join(__dirname, "assets/trace.js"), "utf8");
+  const ui = section("trace-ui");
   assert.doesNotMatch(ui, /innerHTML|outerHTML\s*=|insertAdjacentHTML|document\.write/);
-  for (const file of ["assets/trace.js", "assets/trace-core.js", "assets/trace.css"]) {
-    const text = fs.readFileSync(path.join(__dirname, file), "utf8").replaceAll('"http://www.w3.org/2000/svg"', "SVG_NS");
+  for (const [file, tag] of [["trace-ui", "script"], ["trace-core", "script"], ["trace-style", "style"]]) {
+    const text = section(file, tag).replaceAll('"http://www.w3.org/2000/svg"', "SVG_NS");
     assert.doesNotMatch(text, /<\/script|@font-face|@import|https?:\/\//i, file);
   }
 });

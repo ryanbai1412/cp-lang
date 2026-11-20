@@ -291,16 +291,14 @@ TRACE_SAMPLES = ["knapsack", "dijkstra", "tree", "grid", "array"]
 
 
 def trace_html():
-    """Self-contained trace debugger: site/trace.html with its assets and sample traces inlined."""
+    """Use the exact viewer embedded by cpl and VS Code; only add site navigation/data."""
     samples = [json.loads((ROOT.parent / f"tools/trace/samples/{name}.json").read_text()) for name in TRACE_SAMPLES]
     payload = json.dumps(samples, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
     payload = payload.replace("<", "\\u003c").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
-    page = (ROOT / "trace.html").read_text()
-    asset = lambda name: (ROOT / "assets" / name).read_text()
+    page = (ROOT.parent / "tools/trace/index.html").read_text()
     parts = {
-        "/*@trace-css*/": asset("trace.css"),
-        "/*@trace-core*/": asset("trace-core.js"),
-        "/*@trace-ui*/": asset("trace.js"),
+        '<html lang="en" data-context="standalone">': '<html lang="en" data-context="site">',
+        '<nav hidden data-site-nav': '<nav data-site-nav',
         '<script id="trace-samples" type="application/json">[]</script>':
             f'<script id="trace-samples" type="application/json">{payload}</script>',
     }

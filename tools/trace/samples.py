@@ -212,12 +212,8 @@ def all_samples():
 
 
 if __name__ == "__main__":
-    from emit import embed_payload
-
     directory = Path(__file__).parent / "samples"
     directory.mkdir(exist_ok=True)
     samples = all_samples()
     for name, trace in zip(["knapsack", "dijkstra", "tree", "grid", "array"], samples):
         (directory / f"{name}.json").write_text(json.dumps(trace, ensure_ascii=False, indent=2) + "\n")
-    template = Path(__file__).parent / "index.html"
-    template.write_text(embed_payload(template.read_text(), "trace-samples", samples))

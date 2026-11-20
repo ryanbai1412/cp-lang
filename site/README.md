@@ -43,6 +43,18 @@ prototype CLI's source-stamping side effect. Design blocks are explicitly
 labeled and are not compiled; they must be reviewed against the design.
 The full Rust workspace gate remains `cargo test` before a push.
 
+For real headless Chrome end-to-end checks, install Playwright into the site
+virtualenv and use an installed Google Chrome. Rebuild the offline edition
+(which also builds the site) and CLI before testing so both embed the current
+viewer:
+
+```sh
+site/.venv/bin/pip install 'playwright>=1.51,<2'
+site/.venv/bin/python site/bundle.py
+cargo build -p cpl-cli
+site/.venv/bin/python site/test_trace_browser.py --chrome "$(command -v google-chrome)"
+```
+
 ## Edit
 
 - `content/` contains the authored Markdown. `build.py` defines chapter order
@@ -57,9 +69,12 @@ The full Rust workspace gate remains `cargo test` before a push.
   block renders a checked knowledge or output-prediction exercise with a
   hint and solution. `course.py` validates IDs, references, and answer data
   at build time. Exercise prose is escaped, never treated as HTML.
-- `trace.html`, `assets/trace.js`, `assets/trace-core.js`, and `assets/trace.css`
-  own the site trace viewer (shortcuts: `[`/`]` divergences, `Home`/`End`, `Space`,
-  arrow keys); trace schema and sample data live under `tools/trace/`.
+- `../tools/trace/index.html` is the canonical authored trace viewer, embedded
+  unchanged by the CLI and VS Code. `build.py` consumes that same template and
+  adds site navigation and illustrative sample payloads; there is no second
+  site viewer or copied JS/CSS. `test_site.py` enforces this contract.
+  Shortcuts: `[`/`]` divergences, `Home`/`End`, `Space`, and arrow keys.
+  Use the step field or shared-checkpoint picker for precise time travel.
 - Search indexes the entire course and reference; `/` or Ctrl/Cmd+K opens it. Arrow keys
   navigate results, Enter follows, and Escape closes. Themes persist locally.
 

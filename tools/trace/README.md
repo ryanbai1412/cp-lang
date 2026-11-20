@@ -1,15 +1,24 @@
 # Trace explorer
 
+`tools/trace/index.html` is the **canonical authored viewer template** used
+by `cpl run --trace`, `cpl stress --trace`, the VS Code webview, the site,
+and exported captures. Edit its named `trace-style`, `trace-core`, and
+`trace-ui` sections directly; never generate or copy a second viewer.
+`site/build.py` reads it and changes only host navigation and sample data.
+`site/test_site.py` asserts the generated site and CLI template stay identical
+after normalizing those two host-specific details. No built HTML is committed.
+
 Open `tools/trace/index.html` directly in a browser. No build, server, fonts,
 CDN, telemetry, or network connection is needed. The shadcn/ui zinc-based
 visual system matches the documentation: white and neutral surfaces, crisp
 borders, system sans/monospace stacks, and blue interaction states.
 Light/dark mode follows your system initially and persists locally.
 
-Five deterministic illustrative traces are embedded: a deliberately broken
+The site supplies five deterministic illustrative traces: a deliberately broken
 0/1 knapsack versus a correct spec, Dijkstra, postorder subtree sizes, maze
 BFS, and insertion sort. These are generated executions of the example
-algorithms, **not captures from the unfinished CP Lang interpreter**.
+algorithms, **not live browser executions**. The bare template starts empty;
+use Open or the emitter below. CLI and playground traces are real executions.
 
 ## Try a capture
 
@@ -26,12 +35,20 @@ export remains a standalone capture. No data leaves the browser.
 For all documentation, the example playground, and this debugger in one
 offline file, run `python3 site/bundle.py` and open `dist/cp-lang.html`.
 
-The timeline supports scrubbing, first/last, previous/next, playback and four
-speeds. On the page background, Left/Right step, Home/End jump, and Space
+The timeline supports scrubbing, first/last, previous/next, playback and five
+speeds. Type an exact step or jump between shared checkpoints with the picker
+and its arrows (internal steps never masquerade as comparisons). The picker
+windows long traces to 201 options while its arrows reach every checkpoint.
+On the page background, Left/Right step, Home/End jump, and Space
 plays or pauses. Native input and button keys keep their normal behavior.
 The execution log searches labels, stages, locals and all captured values.
 Select an event to move the playhead, then switch back to the inspector.
 Cells and array elements can be selected with pointer or keyboard.
+The selection strip keeps exact fast/reference values readable. **Isolate
+differences** dims matching cells; red fast values and blue expected values
+retain text/path evidence, not just color. Numeric DP tables use a subtle heatmap
+without overriding changed or mismatching cells. **Raw JSON** always exposes
+the selected variable's captured state alongside its automatic typed renderer.
 
 ## Trace contract
 
@@ -103,8 +120,8 @@ divergence, not a claim about an unrecorded instruction or causality.
 
 ## Emitter integration
 
-The Rust interpreter is still a skeleton; `cpl run --trace` is not wired up
-by this standalone viewer change. Its producer can use the same seam as
+The CLI embeds this exact template with Rust's `include_str!`; VS Code uses
+that CLI output. Other producers can use the same seam as
 `emit.py`: replace the contents of `<script id="trace-data"
 type="application/json">` in `index.html` with one trace document, replace
 `trace-samples` with `[]`, and write the HTML. Both scripts must remain.
@@ -123,9 +140,11 @@ small counterexamples, not multi-gigabyte execution recording.
 ## Development
 
 ```sh
-python3 tools/trace/samples.py        # regenerate JSON files + embedded demos
+python3 tools/trace/samples.py        # regenerate only the illustrative JSON files
 python3 -m unittest discover -s tools/trace -p 'test_*.py'
 node --test tools/trace/trace.test.cjs
+node --test site/test_trace.cjs
+site/.venv/bin/python site/test_site.py  # includes the cross-host source-of-truth gate
 cargo test                          # repository-wide required check
 ```
 

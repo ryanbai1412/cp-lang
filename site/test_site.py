@@ -103,6 +103,23 @@ class SiteTests(unittest.TestCase):
         for path in (ROOT / "_build").glob("*.html"):
             self.assertNotRegex(path.read_text(), r"\{\{[a-z_]+\}\}")
 
+    def test_cli_and_site_use_one_canonical_trace_viewer(self):
+        """Only host navigation and sample payloads may differ; no JS/CSS fork."""
+        canonical = (REPO / "tools/trace/index.html").read_text()
+        site = (ROOT / "_build/trace.html").read_text()
+        normalize = lambda text: re.sub(
+            r'(<script id="trace-samples" type="application/json">).*?(</script>)',
+            r'\1[]\2', text, flags=re.S).replace(
+                'data-context="site"', 'data-context="standalone"').replace(
+                '<nav data-site-nav', '<nav hidden data-site-nav')
+        self.assertEqual(normalize(site), canonical)
+        # A second editable template or asset silently reintroduces drift.
+        for fork in ["trace.html", "assets/trace.js", "assets/trace-core.js", "assets/trace.css"]:
+            self.assertFalse((ROOT / fork).exists(), fork)
+        self.assertEqual(Page(canonical).duplicates, [])
+        for tag, section in [("script", "trace-core"), ("script", "trace-ui"), ("style", "trace-style")]:
+            self.assertEqual(canonical.count(f'<{tag} id="{section}">'), 1)
+
     def test_offline_bundle_has_all_pages_without_font_blobs(self):
         import bundle
         path = bundle.bundle()
