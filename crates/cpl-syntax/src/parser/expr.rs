@@ -100,7 +100,8 @@ impl<'a> Parser<'a> {
     pub(super) fn and(&mut self) -> Expr {
         let start = self.start();
         let mut lhs = self.not();
-        while self.at(T::And) {
+        // `and let` goes on to another binding, not another operand.
+        while self.at(T::And) && self.peek_n(1) != T::Let {
             lhs = self.binary(start, BinOp::And, lhs, Self::not);
         }
         lhs
@@ -316,6 +317,58 @@ impl<'a> Parser<'a> {
         lhs
     }
 
+    /// The two short ways to write a fn as an argument: `.cost` is
+    /// `x => x.cost`, and an operator alone, `+`, is `(a, b) => a + b`.
+    fn fn_shorthand(&mut self) -> Option<Expr> {
+        let start = self.start();
+        let span = self.span();
+        let param = |text: &str| Pattern {
+            kind: PatternKind::Name(text.into()),
+            span,
+        };
+        let name = |text: &str| {
+            Box::new(Expr {
+                kind: ExprKind::Name(text.into()),
+                span,
+            })
+        };
+        let (params, body) = if self.at(T::Dot) && self.peek_n(1) == T::Ident {
+            self.bump();
+            let field = self.name();
+            let body = ExprKind::Field {
+                base: name("it"),
+                name: field,
+            };
+            (vec![param("it")], body)
+        } else if matches!(self.peek_n(1), T::Comma | T::RParen) {
+            let op = match self.peek() {
+                T::Plus => BinOp::Add,
+                T::Minus => BinOp::Sub,
+                T::Star => BinOp::Mul,
+                T::Pipe => BinOp::BitOr,
+                T::Caret => BinOp::BitXor,
+                T::Amp => BinOp::BitAnd,
+                _ => return None,
+            };
+            self.bump();
+            let body = ExprKind::Binary {
+                op,
+                op_span: span,
+                lhs: name("a"),
+                rhs: name("b"),
+            };
+            (vec![param("a"), param("b")], body)
+        } else {
+            return None;
+        };
+        let span = self.span_from(start);
+        let body = Box::new(Expr { kind: body, span });
+        Some(Expr {
+            kind: ExprKind::Lambda { params, body },
+            span,
+        })
+    }
+
     pub(super) fn arg(&mut self) -> Arg {
         let name = self.at_label().then(|| {
             let name = self.name();
@@ -324,7 +377,10 @@ impl<'a> Parser<'a> {
         });
         let mutable = self.eat(T::Mut);
         let start = self.start();
-        let mut value = self.expr();
+        let mut value = match self.fn_shorthand() {
+            Some(value) => value,
+            None => self.expr(),
+        };
         // `max(dist[v] for v in V)`.
         if self.at(T::For) {
             let clauses = self.clauses();
@@ -613,6 +669,20 @@ impl<'a> Parser<'a> {
                 body: Box::new(first),
                 clauses,
             };
+        }
+        // `[3: 4, 5: 6]`.
+        if self.eat(T::Colon) {
+            let mut entries = vec![(first, self.expr())];
+            if self.eat(T::Comma) {
+                entries.extend(self.comma_list(T::RBracket, "the map", |p| {
+                    let key = p.expr();
+                    p.expect(T::Colon, "`:` between a key and its value");
+                    (key, p.expr())
+                }));
+            } else {
+                self.expect(T::RBracket, "`,` or `]` in the map");
+            }
+            return ExprKind::Map(entries);
         }
         let mut items = vec![first];
         if self.eat(T::Comma) {

@@ -317,6 +317,12 @@ pub(crate) fn walk_expr(v: &mut dyn Visitor, expr: &Expr) {
                 walk_ty(v, ty);
             }
         }
+        ExprKind::Map(entries) => {
+            for (key, value) in entries {
+                walk_expr(v, key);
+                walk_expr(v, value);
+            }
+        }
         ExprKind::Tuple(items) | ExprKind::List(items) => {
             for item in items {
                 walk_expr(v, item);

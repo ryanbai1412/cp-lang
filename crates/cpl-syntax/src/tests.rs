@@ -1095,3 +1095,58 @@ fn a_match_arm_of_statements_takes_a_colon_and_a_block() {
     assert_eq!(arms[0].body.stmts.len(), 2);
     assert_eq!(arms[1].body.stmts.len(), 1);
 }
+
+#[test]
+fn a_field_or_an_operator_alone_is_a_fn_argument() {
+    let src = "print(sorted(links, by: .cost), scan(a, +))\n";
+    assert!(codes(src).is_empty());
+    let StmtKind::Expr(e) = one_stmt(src).kind else {
+        panic!("not an expression")
+    };
+    let ExprKind::Call { args, .. } = e.kind else {
+        panic!("not a call")
+    };
+    for (arg, params) in [(0, 1), (1, 2)] {
+        let ExprKind::Call { args, .. } = &args[arg].value.kind else {
+            panic!("not a call")
+        };
+        let ExprKind::Lambda { params: found, .. } = &args[1].value.kind else {
+            panic!("not a fn: {:?}", args[1].value.kind)
+        };
+        assert_eq!(found.len(), params);
+    }
+    // Between two values an operator is still an operator.
+    assert!(codes("print(a + b, -c)\n").is_empty());
+}
+
+#[test]
+fn map_literals_counts_and_chained_let_else() {
+    let StmtKind::Let {
+        init: Some(init), ..
+    } = one_stmt("let m = [3: 4, 5: 6]\n").kind
+    else {
+        panic!("not a let")
+    };
+    assert!(matches!(init.kind, ExprKind::Map(entries) if entries.len() == 2));
+    // `[n - 1]T` counts with any `Int` expression; a range keeps its `..`.
+    for src in [
+        "let es: [n - 1](a: Int, b: Int) = read()\n",
+        "let a: [0..9]Int = 0\n",
+    ] {
+        assert!(codes(src).is_empty(), "{src}");
+    }
+    // One `let ... else` after another, sharing the `else`.
+    let src = "let g = x.right and let h = y.right else: return -1\n";
+    assert!(codes(src).is_empty());
+    let stmts = stmts(src);
+    assert_eq!(stmts.len(), 2);
+    for stmt in &stmts {
+        assert!(matches!(
+            &stmt.kind,
+            StmtKind::Let {
+                otherwise: Some(_),
+                ..
+            }
+        ));
+    }
+}

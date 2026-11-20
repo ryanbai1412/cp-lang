@@ -137,7 +137,7 @@ rejected for the reason its first line states. The sketches in
 `proto/ports/scout_batch_*/` are left out: they are written in syntax the
 language does not have yet. `main` moves quickly, so that file also names
 what the checker is behind on: `PENDING` is the passing files it does not
-read yet, and `NOT_YET` the failing tests it still accepts.
+read yet (none now), and `NOT_YET` the failing tests it still accepts.
 
 Not checked yet: value ranges beyond literals and domains, whether a type
 argument satisfies the bounds of the parameter it fills, and laws beyond

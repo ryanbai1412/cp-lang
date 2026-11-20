@@ -40,17 +40,7 @@ fn check(path: &Path) -> cpl_cli::Outcome {
 /// Files written in syntax that reached `main` after this checker did,
 /// which it does not read yet. A file leaves this list when it checks
 /// clean, and the test below says so.
-const PENDING: &[&str] = &[
-    // `by: .len`, `[k: v]` map literals, `+` as a fn, `take`, `columns`,
-    // `let a = x and let b = y else:`, and `[n - 1](a: T, b: T)`.
-    "proto/ports/ccc18s5.cp",
-    "proto/ports/cco18p1.cp",
-    "proto/ports/cco20p1.cp",
-    "proto/ports/ioi11p2.cp",
-    "proto/tests/ergo/columns.cp",
-    "proto/tests/ergo/library.cp",
-    "proto/tests/ergo/sugar.cp",
-];
+const PENDING: &[&str] = &[];
 
 #[test]
 fn the_libraries_ports_and_passing_tests_check_clean() {

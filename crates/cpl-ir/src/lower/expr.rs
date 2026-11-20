@@ -146,6 +146,10 @@ impl<'a> Lowerer<'a> {
                 self.mk(ExprKind::Tuple(values), ty, span)
             }
             ast::ExprKind::List(items) => self.list(items, inner_hint, span),
+            ast::ExprKind::Map(_) => {
+                self.unsupported(span, "map literals");
+                self.err_expr(span)
+            }
             ast::ExprKind::Comprehension { body, clauses } => {
                 self.comprehension(body, clauses, inner_hint, span)
             }

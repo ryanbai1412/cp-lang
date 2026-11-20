@@ -172,6 +172,19 @@ impl<'a> Checker<'a> {
                     .map(|(name, value)| (name.text.clone(), self.infer(value)))
                     .collect(),
             ),
+            ExprKind::Map(entries) => {
+                let (mut key, mut value) = (Ty::Unknown, Ty::Unknown);
+                for (i, (k, v)) in entries.iter().enumerate() {
+                    let (k, v) = (self.infer(k), self.infer(v));
+                    if i == 0 {
+                        (key, value) = (k.widen(), v.widen());
+                    }
+                }
+                Ty::Named {
+                    name: "Map".into(),
+                    args: vec![key, value],
+                }
+            }
             ExprKind::List(items) => {
                 let mut elem = Ty::Unknown;
                 for (i, item) in items.iter().enumerate() {

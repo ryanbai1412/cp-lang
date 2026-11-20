@@ -176,6 +176,12 @@ pub fn walk_expr(expr: &Expr, v: &mut dyn Visitor) {
                 walk_expr(index, v);
             }
         }
+        ExprKind::Map(entries) => {
+            for (key, value) in entries {
+                walk_expr(key, v);
+                walk_expr(value, v);
+            }
+        }
         ExprKind::Tuple(items) | ExprKind::List(items) => {
             for item in items {
                 walk_expr(item, v);
