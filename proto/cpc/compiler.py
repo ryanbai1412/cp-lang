@@ -1310,6 +1310,18 @@ class Compiler:
             self.bind_pattern(sub, f"{tmp}.{self.field_cpp(fn)}", ft, node)
 
     def loop(self, pat, it, node, body):
+        # a read() inside a top-level loop: the input ends where the outermost loop ends
+        self.loop_nest = getattr(self, "loop_nest", 0) + 1
+        mark = self.last_read
+        try:
+            self._loop(pat, it, node, body)
+        finally:
+            self.loop_nest -= 1
+        if self.loop_nest == 0 and self.last_read != mark and self.out is self.init_lines:
+            self.last_read = len(self.init_lines)
+            self.read_pos = (id(self.out), len(self.out))
+
+    def _loop(self, pat, it, node, body):
         """Emit a for-loop over iterable node `it`, binding `pat`; body() emits the loop body."""
         if not hasattr(self, "loop_ctx"):
             self.loop_ctx = []
