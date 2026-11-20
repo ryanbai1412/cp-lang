@@ -1151,6 +1151,16 @@ impl<'a> Lowerer<'a> {
                     }));
                 }
             }
+            // `var bags: [R, C]SortedBag<T> = SortedBag()`: a struct built
+            // by name is one cell's value, and takes its type from the cell.
+            let builds_a_cell = matches!(&init.kind, ast::ExprKind::Call { callee, .. }
+                if matches!(&callee.kind, ast::ExprKind::Name(name)
+                    if self.lookup(name).is_none()
+                        && matches!(self.get_sym(name), Some(Sym::Struct(_) | Sym::GenStruct(_)))));
+            if builds_a_cell && matches!(elem_ty, Ty::Struct(_)) {
+                let value = self.expect(init, &elem_ty);
+                return Some(self.fill_with_index_domains(dims.clone(), Some(Box::new(value)), want, init.span));
+            }
             let value = self.expr(init, Some(&want));
             if value.ty == want || value.ty == Ty::Error {
                 return Some(value);
