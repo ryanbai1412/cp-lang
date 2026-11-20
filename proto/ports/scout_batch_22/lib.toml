@@ -1,0 +1,2 @@
+# Lets `python3 proto/cp.py lib-run` resolve imports from this directory.
+name = "scout"
