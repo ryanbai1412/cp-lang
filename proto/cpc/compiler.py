@@ -962,6 +962,8 @@ class Compiler(LendMixin):
             if not isinstance(t, TBool):
                 self.error(e, f"`not` needs Bool, got {t!r}")
             return f"!({c})", BOOL
+        if e.op == "~":
+            return self.x_bitnot(c, t, e)
         if isinstance(t, TInt):
             lo, hi = iv_neg(t)
             if hi is None:              # -x overflows for the minimum Int only
@@ -970,6 +972,12 @@ class Compiler(LendMixin):
         if isinstance(t, TMod):
             return f"-({c})", t
         self.error(e, f"cannot negate {t!r}")
+
+    def x_bitnot(self, c, t, e):
+        if not isinstance(t, TInt):
+            self.error(e, f"`~` needs an Int, got {t!r}")
+        lo, hi = iv_neg(t)
+        return f"(~(ll)({c}))", TInt(None if lo is None else lo - 1, None if hi is None else hi - 1)
 
     def x_binop(self, e, want):
         op = e.op
@@ -1084,7 +1092,8 @@ class Compiler(LendMixin):
             return f"({a} {op} {b})", TInt(lo, hi)
         if op == "<<":
             if None not in (at.lo, at.hi, bt.hi) and at.lo >= 0:
-                return f"({a} << {b})", self.int_result(e, 0, at.hi << bt.hi)
+                # the left operand is widened first: `1 << 40` on a C++ `int` is undefined (backlog W5)
+                return f"((ll)({a}) << {b})", self.int_result(e, 0, at.hi << bt.hi)
             return f"cp_shl({a}, {b}, {e.line})", TInt()
         if op == ">>":
             rt = TInt(0 if (at.lo or 0) >= 0 else None, at.hi)
@@ -3364,8 +3373,43 @@ class Compiler(LendMixin):
                 return c
         return None
 
-    def s_break(self, s): self.emit("return false;" if self.in_gen_body() else "break;")
-    def s_continue(self, s): self.emit("return true;" if self.in_gen_body() else "continue;")
+    def s_break(self, s):
+        if getattr(s, "label", None):
+            return self.emit(f"goto {self.loop_label(s)}_break;")
+        self.emit("return false;" if self.in_gen_body() else "break;")
+
+    def s_continue(self, s):
+        if getattr(s, "label", None):
+            return self.emit(f"goto {self.loop_label(s)}_continue;")
+        self.emit("return true;" if self.in_gen_body() else "continue;")
+
+    def loop_label(self, s):
+        """`break 'outer` / `continue 'outer` leave through a C++ label on the loop named `'outer`."""
+        for name, cpp, depth in reversed(getattr(self, "labels", [])):
+            if name == s.label:
+                if depth != len(self.fn_ret) or self.in_gen_body():
+                    self.error(s, f"`'{s.label}` names a loop outside this fn or generator body")
+                return cpp
+        self.error(s, f"no enclosing loop is labeled `'{s.label}`")
+
+    def labeled(self, s, run):
+        """Run the loop statement `s`, whose body is compiled by `body()`, under its label (if it has one)."""
+        if not getattr(s, "label", None):
+            return run(lambda: self.block(s.body))
+        cpp = self.tmpname("L_" + s.label)
+        self.__dict__.setdefault("labels", []).append((s.label, cpp, len(self.fn_ret)))
+        def body():
+            self.emit("{")
+            self.ind += 1
+            self.block(s.body)
+            self.ind -= 1
+            self.emit("}")
+            self.emit(f"{cpp}_continue:;")
+        try:
+            run(body)
+        finally:
+            self.labels.pop()
+        self.emit(f"{cpp}_break:;")
 
     def gen_stop(self):
         g = self.gen_ctx()
@@ -3560,7 +3604,7 @@ class Compiler(LendMixin):
         self.check_cost(s.line, stack[-1])
         self.drop_facts(self.block_writes(s.body) | {p.name for p in walk(s.pat) if p.kind == "pname"})
         try:
-            self.loop(s.pat, s.iter, s, lambda: self.block(s.body))
+            self.labeled(s, lambda body: self.loop(s.pat, s.iter, s, body))
         finally:
             stack.pop()
 
@@ -4033,12 +4077,23 @@ class Compiler(LendMixin):
         self.loop_ctx.append(("c",))
         nfacts = len(self.facts)
         self.add_facts(s.cond)
+        cpp = None
+        if getattr(s, "label", None):
+            cpp = self.tmpname("L_" + s.label)
+            self.__dict__.setdefault("labels", []).append((s.label, cpp, len(self.fn_ret)))
+            self.emit("{")
         self.block(s.body)
+        if cpp:
+            self.emit("}")
+            self.emit(f"{cpp}_continue:;")
+            self.labels.pop()
         del self.facts[nfacts:]
         self.loop_ctx.pop()
         self.ind -= 1
         self.loop_trips.pop()
         self.emit("}")
+        if cpp:
+            self.emit(f"{cpp}_break:;")
 
     def s_assign(self, s):
         tgt, op = s.target, s.op
@@ -4051,9 +4106,8 @@ class Compiler(LendMixin):
                 if not self.lookup(fold):
                     return self.s_map_fold(s, mt)
                 self.no_identity(tgt, fold)
-        if tgt.kind == "tuple":         # it built, and assigned to a temporary
-            self.error(s, "a tuple is a value, not a place to assign to\n"
-                          "  help: assign each part on its own line, binding what the later lines need first with a `let`")
+        if tgt.kind == "tuple":
+            return self.s_parallel_assign(s)
         self.lvalue = (tgt, op)
         tc, tt = self.expr(tgt)
         self.lvalue = None
@@ -4124,6 +4178,38 @@ class Compiler(LendMixin):
             self.emit(f"{tc} = cp_{ {'+': 'add', '-': 'sub', '*': 'mul'}[bop] }({tc}, {vc}, {s.line});")
         else:
             self.emit(f"{tc} {op} {vc};")
+
+    def s_parallel_assign(self, s):
+        """`(a, b) = (b, a + b)`: every right-hand value is computed before any target is written (v2 R4)."""
+        tgt = s.target
+        if s.op != "=":
+            self.error(s, f"`{s.op}` has no tuple form; parallel assignment is `(a, b) = (x, y)`")
+        seen = set()
+        for t in tgt.items:
+            if t.kind not in ("name", "index", "field"):
+                self.error(s, f"`{unparse(t)}` is not a place to assign to")
+            key = unparse(t)
+            if key in seen:
+                self.error(s, f"`{key}` is assigned twice in one parallel assignment")
+            seen.add(key)
+        v = s.value.a if s.value.kind == "paren" else s.value
+        temps = []
+        if v.kind == "tuple" and len(v.items) == len(tgt.items) and not any(v.names):
+            for t, x in zip(tgt.items, v.items):
+                want = self.capture(lambda: self.expr(t))[1][1]
+                c, ty = self.expr(x, None if isinstance(want, TInt) else want)
+                tmp = self.tmpname("pa")
+                self.emit(f"auto {tmp} = {c};")
+                temps.append(N("ctemp", x.line, code=tmp, ty=ty, src=x))
+        else:
+            c, ty = self.expr(v)
+            if not isinstance(ty, TTuple) or len(ty.types) != len(tgt.items):
+                self.error(s, f"cannot assign {ty!r} to {len(tgt.items)} places")
+            tmp = self.tmpname("pa")
+            self.emit(f"auto {tmp} = {c};")
+            temps = [N("ctemp", v.line, code=f"{tmp}.{self.field_cpp(fn)}", ty=ft, src=v) for fn, ft in zip(ty.names, ty.types)]
+        for t, x in zip(tgt.items, temps):
+            self.s_assign(N("assign", s.line, target=t, op="=", value=x))
 
     def no_identity(self, tgt, f):
         old = f"({unparse(tgt.obj)}.get({unparse(tgt.idx[0])}) ?? start)"

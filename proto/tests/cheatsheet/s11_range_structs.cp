@@ -1,0 +1,13 @@
+let n: 1..=10 = read()
+domain I = 1..=n
+let a: [I]Int = read()
+var fw = Fenwick<I, Int>(a)
+let s0 = fw.sum(I(1)..=I(5))
+fw.add(I(2), 6)
+var st = SegTree<I, Int>(max, a)
+st.set(I(3), 9)
+var sum_t = SegTree<I, Int>(+, a)
+var lz = LazySegTree<I, Int>(AddSum, a)
+lz.apply(I(1)..=I(5), 2)
+let sp = SparseTable<I, Int>(min, a)
+print(s0, st.fold(I(1)..=I(4)), fw.sum(I(1)..), st.fold(I(4)..), sum_t.fold(..I(3)), lz.fold(I(1)..=I(5)), sp.fold(I(4)..=I(5)), sum_t.fold(I(2)..I(2)))
