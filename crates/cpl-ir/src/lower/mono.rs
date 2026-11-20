@@ -1243,7 +1243,7 @@ impl<'a> Lowerer<'a> {
     }
 
     /// Lower a local `fn name(params) -> R: body` inside a block as a closure bound to `name`.
-    pub(super) fn lower_local_fn(&mut self, decl: &ast::FnDecl, out: &mut Vec<Stmt>) {
+    pub(super) fn lower_local_fn(&mut self, decl: &ast::FnDecl, memo: bool, out: &mut Vec<Stmt>) {
         let param_tys: Vec<Ty> = decl
             .params
             .iter()
@@ -1285,7 +1285,7 @@ impl<'a> Lowerer<'a> {
         self.outer_cxs.push(outer_cx);
 
         let mut param_slots = Vec::new();
-        for (p, pty) in decl.params.iter().zip(param_tys) {
+        for (p, pty) in decl.params.iter().zip(param_tys.clone()) {
             let slot = self.cx.locals.len();
             self.cx.locals.push(Local {
                 name: p.name.text.clone(),
@@ -1319,11 +1319,70 @@ impl<'a> Lowerer<'a> {
             params: param_slots,
             captures: inner_cx.captures,
             locals: inner_cx.locals,
-            ret: ret_ty,
+            ret: ret_ty.clone(),
             body,
         });
-        let init = self.mk(ExprKind::Closure(cid), fn_ty, decl.name.span);
-        out.push(Stmt::Let(fn_slot, Some(init)));
+        let init = self.mk(ExprKind::Closure(cid), fn_ty.clone(), decl.name.span);
+        let plain = decl.params.iter().all(|p| !p.mutable);
+        if !(memo && plain) || matches!(ret_ty, Ty::Unit | Ty::Error) {
+            out.push(Stmt::Let(fn_slot, Some(init)));
+            return;
+        }
+        // `@memo`: the body is kept under a name of its own, and the fn
+        // is a wrapper that looks the arguments up before calling it.
+        let span = decl.name.span;
+        let body_name = format!("__memo_body{}", self.closures.len());
+        let body_slot = self.new_slot(&body_name, fn_ty.clone());
+        self.cx
+            .scopes
+            .last_mut()
+            .unwrap()
+            .insert(body_name.clone(), body_slot);
+        // The body calls the wrapper, so the wrapper's variable comes first.
+        out.push(Stmt::Let(fn_slot, None));
+        out.push(Stmt::Let(body_slot, Some(init)));
+
+        let mut fresh = FnCx {
+            is_closure: true,
+            ..FnCx::default()
+        };
+        fresh.scopes.push(HashMap::new());
+        fresh.local_syms.push(HashMap::new());
+        fresh.ret = Some(ret_ty.clone());
+        let outer_cx = std::mem::replace(&mut self.cx, fresh);
+        self.outer_cxs.push(outer_cx);
+        let mut slots = Vec::new();
+        for (p, pty) in decl.params.iter().zip(&param_tys) {
+            let slot = self.new_slot(&p.name.text, pty.clone());
+            self.cx.scopes[0].insert(p.name.text.clone(), slot);
+            slots.push((slot, p.ty.as_ref()));
+        }
+        let body = self.capture_from_outer(&body_name).expect("just declared");
+        let args = slots.iter().map(|(slot, _)| self.local(*slot, span)).collect();
+        let call = self.mk(
+            ExprKind::CallExpr(Box::new(self.local(body, span)), args),
+            ret_ty.clone(),
+            span,
+        );
+        let mut lets = Vec::new();
+        let stmts = self.memo_wrapper(memo::MemoHome::Outer, &slots, &ret_ty, call, span, &mut lets);
+        let inner_cx = std::mem::replace(&mut self.cx, self.outer_cxs.pop().unwrap());
+        out.extend(lets);
+        let wrapper = self.closures.len();
+        self.closures.push(ClosureDef {
+            params: slots.iter().map(|(slot, _)| *slot).collect(),
+            captures: inner_cx.captures,
+            locals: inner_cx.locals,
+            ret: ret_ty,
+            body: Block { stmts },
+        });
+        let init = self.mk(ExprKind::Closure(wrapper), fn_ty.clone(), span);
+        let place = Place {
+            kind: PlaceKind::Local(fn_slot),
+            ty: fn_ty,
+            span: self.span(span),
+        };
+        out.push(Stmt::Assign(place, AssignOp::Set, init));
     }
 
     /// Probes the concrete type of an expression without permanently emitting errors or side effects.

@@ -10,6 +10,7 @@
 mod cache;
 mod call;
 mod expr;
+mod memo;
 mod mono;
 mod stmt;
 
@@ -132,6 +133,15 @@ fn lower_entry(
         }
     }
     // Prepend any lazy imported module const initializers to `main`.
+    if !lw.memo_resets.is_empty() {
+        let unset = lw.memo_resets.iter().map(|ready| {
+            let no = lw.mk(ExprKind::Bool(false), Ty::Bool, Span::default());
+            Stmt::Assign(ready.clone(), AssignOp::Set, no)
+        });
+        let mut combined: Vec<Stmt> = unset.collect();
+        combined.extend(std::mem::take(&mut lw.main_body.stmts));
+        lw.main_body.stmts = combined;
+    }
     if !lw.preamble_stmts.is_empty() {
         let mut combined = std::mem::take(&mut lw.preamble_stmts);
         combined.extend(lw.main_body.stmts);
@@ -341,6 +351,11 @@ struct Lowerer<'a> {
     queued_fns: Vec<FnId>,
     queued_set: HashSet<FnId>,
     preamble_stmts: Vec<Stmt>,
+    /// The top-level fns marked `@memo`.
+    memo_fns: HashSet<FnId>,
+    memo_count: usize,
+    /// The `ready` flag of each file-level cache: cleared as a test starts.
+    memo_resets: Vec<Place>,
     main_body: Block,
     main_locals: Vec<Local>,
     multitest: bool,
@@ -393,6 +408,9 @@ impl<'a> Lowerer<'a> {
             queued_fns: Vec::new(),
             queued_set: HashSet::new(),
             preamble_stmts: Vec::new(),
+            memo_fns: HashSet::new(),
+            memo_count: 0,
+            memo_resets: Vec::new(),
             main_body: Block::default(),
             main_locals: Vec::new(),
             multitest: false,
@@ -693,6 +711,9 @@ impl<'a> Lowerer<'a> {
                         } else {
                             let id = self.declare_fn_in(decl, m, offset, None, HashMap::new());
                             self.mod_syms[m].insert(decl.name.text.clone(), Sym::Fn(id));
+                            if stmt.decorators.iter().any(|d| d.name.text == "memo") {
+                                self.memo_fns.insert(id);
+                            }
                         }
                     }
                     ast::StmtKind::Const {
@@ -1888,6 +1909,66 @@ impl<'a> Lowerer<'a> {
             );
             let shown = self.show(&ret);
             self.help(format!("add `-> {shown}` to `fn {name}`"));
+        }
+        // `@memo`: the body moves to a fn of its own, and this one looks
+        // the arguments up before calling it.
+        let plain = params.iter().all(|p| !p.mutable) && self.sigs[id].receiver.is_none();
+        if self.memo_fns.contains(&id) && plain && !is_gen && !matches!(ret, Ty::Unit | Ty::Error) {
+            let wrapper = FnCx {
+                ret: Some(ret.clone()),
+                scopes: vec![HashMap::new()],
+                local_syms: vec![HashMap::new()],
+                ..FnCx::default()
+            };
+            let body_cx = std::mem::replace(&mut self.cx, wrapper);
+            let body_id = self.sigs.len();
+            self.sigs.push(FnSig {
+                name: format!("{}_body", self.sigs[id].name),
+                params: Vec::new(),
+                ret: Some(ret.clone()),
+                assumed_unit: false,
+                owner: None,
+                receiver: None,
+                mod_id: self.sigs[id].mod_id,
+                env: self.sigs[id].env.clone(),
+                decl,
+                offset: self.sigs[id].offset,
+                is_generator: false,
+                new_domain_slot: None,
+                state: State::Done,
+            });
+            self.bodies.push(Some(Function {
+                name: format!("{}_body", self.sigs[id].name),
+                params: params.clone(),
+                ret: ret.clone(),
+                locals: body_cx.locals,
+                body: Block {
+                    stmts: std::mem::take(&mut out),
+                },
+            }));
+            let mut slots = Vec::new();
+            for (param, written) in self.sigs[id].params.iter().zip(&decl.params) {
+                let slot = self.cx.locals.len();
+                self.cx.scopes[0].insert(param.name.clone(), slot);
+                self.cx.locals.push(Local {
+                    name: param.name.clone(),
+                    ty: param.ty.clone(),
+                });
+                slots.push((slot, written.ty.as_ref()));
+            }
+            let args = slots
+                .iter()
+                .map(|(slot, _)| Arg::Value(self.local(*slot, decl.name.span)))
+                .collect();
+            let call = self.mk(ExprKind::Call(body_id, args), ret.clone(), decl.name.span);
+            out = self.memo_wrapper(
+                memo::MemoHome::Global,
+                &slots,
+                &ret,
+                call,
+                decl.name.span,
+                &mut Vec::new(),
+            );
         }
         let cx = std::mem::replace(&mut self.cx, saved_cx);
         self.cur_mod = saved_mod;

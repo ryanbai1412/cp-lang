@@ -1525,6 +1525,30 @@ impl<'p, 'o> Interp<'p, 'o> {
 
     fn builtin(&mut self, op: Builtin, args: &'p [Expr], e: &'p Expr) -> Res<Value> {
         let span = e.span;
+        // `k in m` and `m.get(k)` on a variable look in it where it is:
+        // copying a map to ask it one question makes a loop quadratic.
+        if let (Builtin::Contains | Builtin::MapGet, [holder, key]) = (op, args) {
+            if matches!(holder.kind, ExprKind::Local(_) | ExprKind::Global(_)) {
+                let key = self.eval(key)?;
+                let held = match &holder.kind {
+                    ExprKind::Local(slot) => self.local(*slot),
+                    ExprKind::Global(id) => &self.globals[*id],
+                    _ => unreachable!("checked above"),
+                };
+                match (op, held) {
+                    (Builtin::Contains, Value::Map(entries)) => {
+                        return Ok(Value::Bool(entries.contains_key(&key)));
+                    }
+                    (Builtin::Contains, Value::Set(items)) => {
+                        return Ok(Value::Bool(items.contains(&key)));
+                    }
+                    (Builtin::MapGet, Value::Map(entries)) => {
+                        return Ok(Value::Opt(entries.get(&key).cloned().map(Rc::new)));
+                    }
+                    _ => {}
+                }
+            }
+        }
         let mut values = Vec::with_capacity(args.len());
         for arg in args {
             values.push(self.eval(arg)?);
