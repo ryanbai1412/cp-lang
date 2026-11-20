@@ -196,7 +196,7 @@ pub(crate) fn show(
             let _ = write!(out, "{v}");
         }
         (Value::Float(v), _) => show_float(out, *v, digits),
-        (Value::Bool(v), _) => out.extend_from_slice(if *v { b"true" } else { b"false" }),
+        (Value::Bool(v), _) => out.extend_from_slice(if *v { b"YES" } else { b"NO" }),
         (Value::Char(c), _) => out.push(*c),
         (Value::Str(s), _) => out.extend_from_slice(s),
         (Value::Opt(None), _) => out.extend_from_slice(b"none"),

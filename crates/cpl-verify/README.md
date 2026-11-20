@@ -69,21 +69,25 @@ some. The overflow variants include the minimum Int, where `-x`,
 ### Plugging in the Rust compiler
 
 `backend::Transpiler` is ".cp to C++17" and `backend::Interpreter` is
-"run .cp". Until the crates export an API, the `cpl` binary plugs in by
-command line, with `{src}` and `{cpp}` filled in (the flags below stand
-for whatever `cpl` ends up taking):
+"run .cp". The `cpl` binary plugs in by command line, with `{src}` and
+`{cpp}` filled in:
 
 ```text
+$ cargo build -p cpl-cli
 $ cargo run -p cpl-verify -- fuzz \
-    --transpile 'target/debug/cpl build {src} --emit-cpp {cpp}' \
+    --transpile 'target/debug/cpl build {src} -o {cpp}' \
     --interp 'target/debug/cpl run {src}' \
-    --traps overflow,div-by-zero,index
+    --traps ''
 ```
 
 With `--interp`, every program goes through the interpreter as well as
-through the sanitized C++, and both must match the reference. Once
-`cpl-interp` and `cpl-codegen` have a library entry point, implement the
-two traits for them in `backend.rs` and make them the default.
+through the sanitized C++, and both must match the reference. `--traps ''`
+is right for `cpl` today: `cpl run` stops on overflow, division by zero
+and a bad index, but the C++ from `cpl build` is the judge build and
+checks none of them, so a trapping program has no C++ answer to compare.
+`cpl-interp` and `cpl-codegen` now have library entry points
+(`cpl_interp::run`, `cpl_codegen::emit`); implementing the two traits for
+them in `backend.rs` and making them the default is the next step.
 
 ## The `sizeof` audit
 

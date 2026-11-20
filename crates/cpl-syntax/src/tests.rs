@@ -781,3 +781,23 @@ fn the_parser_never_panics_or_hangs_on_truncated_input() {
         let _ = parse_file(&format!("{}) ] }} => : else", &src[..end]));
     }
 }
+
+#[test]
+fn a_block_ends_its_expression_so_the_next_line_is_a_new_statement() {
+    for (next, shown) in [("(a, b)", "Tuple"), ("[a, b]", "List"), ("-a", "Unary")] {
+        let src = format!("if c:\n    return 1\n{next}\n");
+        assert!(codes(&src).is_empty(), "{src}");
+        let stmts = stmts(&src);
+        assert_eq!(stmts.len(), 2, "{src}");
+        let StmtKind::Expr(e) = &stmts[1].kind else {
+            panic!("{src}")
+        };
+        assert!(
+            format!("{:?}", e.kind).starts_with(shown),
+            "{src}: {:?}",
+            e.kind
+        );
+    }
+    // On one line the operators still continue the expression.
+    assert_eq!(stmts("x = (if c: 1 else: 2) - a\n").len(), 1);
+}

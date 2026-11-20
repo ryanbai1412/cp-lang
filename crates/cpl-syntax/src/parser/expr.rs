@@ -268,7 +268,8 @@ impl<'a> Parser<'a> {
         loop {
             let op = match self.peek() {
                 T::Plus => BinOp::Add,
-                T::Minus => BinOp::Sub,
+                // After a block, `-x` on the next line is a new statement.
+                T::Minus if self.prev_kind() != Some(T::Dedent) => BinOp::Sub,
                 _ => return lhs,
             };
             lhs = self.binary(start, op, lhs, Self::multiplicative);
@@ -346,6 +347,11 @@ impl<'a> Parser<'a> {
         let start = self.start();
         let mut expr = self.primary();
         loop {
+            // An expression that ended with a block ended there: a `(` or
+            // `[` on the next line starts a new statement.
+            if self.prev_kind() == Some(T::Dedent) {
+                return expr;
+            }
             let kind = match self.peek() {
                 T::LParen => {
                     self.bump();
