@@ -103,6 +103,19 @@ class Parser:
         elif not (self.at_kind("DEDENT") or self.at_kind("EOF")):
             self.err("expected end of line")
 
+    def at_directive(self):
+        return self.at("@") and self.peek().kind == "OP" and self.peek().val == "!"
+
+    def directive(self):
+        """`@!name` on a line of its own: a file-level directive, in force from its line down. (`@name`
+        decorates the one item below it.) `@!multitest` is the only one (decision 6.3)."""
+        line = self.t.line
+        self.next(); self.next()
+        name = self.name()
+        args = self.call_args() if self.at("(") else []
+        self.end_line()
+        return N("directive", line, name=name, args=args)
+
     def stmt(self):
         t = self.t
         line = t.line
@@ -113,6 +126,8 @@ class Parser:
             s = self.stmt()
             s.label = t.val
             return s
+        if self.at_directive():
+            return self.directive()
         if self.at("@"):
             decos = []
             while self.at("@"):

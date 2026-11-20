@@ -46,6 +46,9 @@ def is_gen(fn):
     return fn.kind == "fn" and fn.ret is not None and fn.ret.kind == "tyields"
 
 
+DECL_KINDS = ("fn", "struct", "enum", "typedef", "impl", "trait", "use")
+
+
 class Interp:
     def __init__(self, stdin_tokens=None, out=None, stdin_stream=None):
         self.modules = {}
@@ -91,13 +94,80 @@ class Interp:
         saved = self.mod, self.line
         self.mod = mod
         try:
-            for s in tree.body:
-                self.declare(s, mod)
+            self.run_program(tree.body, mod)
         finally:
             self.mod, self.line = saved
             self.loading.pop()
         self.modules[path] = mod
         return mod
+
+    def run_program(self, body, mod):
+        """Top-level statements run in order. `@!multitest` on its own line divides the file: what is above
+        runs once, what is below runs once per test case (the count is read first), each time in a fresh
+        scope, so its `let`s and its fns start over (cpi keeps no `@memo` cache: a `@memo fn` is pure, and
+        runs as written). A top-level `return` ends the program, or
+        the current test case below the divider (decision 6.3)."""
+        is_mt = lambda s: s.kind == "directive" or any(d.name == "multitest" for d in getattr(s, "decos", ()))
+        marks = [i for i, s in enumerate(body) if is_mt(s)]
+        for i in marks:
+            if body[i].kind == "directive" and body[i].name != "multitest":
+                self.fail(f"unknown directive `@!{body[i].name}` (the one file-level directive is `@!multitest`)", body[i])
+        if len(marks) > 1:
+            self.fail("a second `@!multitest`: a file has one divider, and everything below it runs once per test case", body[marks[1]])
+        cut = marks[0] if marks else len(body)
+        wrapper = None
+        if marks and body[cut].kind == "fn" and not body[cut].params and not any(
+                s.kind not in DECL_KINDS for s in body[cut + 1:]):
+            wrapper, cut = body[cut], len(body)     # `@multitest fn solve():`, the older wrapper form
+        try:
+            for s in body[:cut]:
+                self.declare(s, mod)
+        except ReturnEx as r:
+            self.top_return(r)
+            return
+        until_eof = False
+        if wrapper is not None:
+            rest = wrapper.body
+            deco = next(d for d in wrapper.decos if d.name == "multitest")
+        elif marks and body[cut].kind == "directive":
+            rest, deco = body[cut + 1:], body[cut]
+        elif marks:         # deprecated spelling: a bare `@multitest` on the first statement of the test case
+            rest = body[cut:]
+            deco = next(d for d in rest[0].decos if d.name == "multitest")
+        else:
+            return
+        until_eof = any(a.kind == "name" and a.name == "until_eof" for a in deco.args)
+        count = next((a.value for a in deco.args if a.kind == "kwarg" and a.name == "count"), None)
+        if until_eof:
+            tests = None
+        elif count is not None:
+            tests = self.ev(count, mod.env)
+        else:
+            if not self.more_input():
+                self.fail("@multitest: the input ended before the number of test cases", deco)
+            tests = int(self.tokens[self.tok_i])
+            self.tok_i += 1
+        done = 0
+        while (self.more_input() if tests is None else done < tests):
+            done += 1
+            env = Env(mod.env)
+            try:
+                self.block(rest, env)
+            except ReturnEx as r:
+                self.top_return(r)
+
+    def top_return(self, r):
+        if r.value is not None:
+            raise CpError(f"{os.path.relpath(self.mod.path)}: a top-level `return` takes no value: it ends the "
+                          "program, or the current test case below `@!multitest`")
+
+    def more_input(self):
+        while self.tok_i >= len(self.tokens) and self.stdin_stream is not None:
+            line = self.stdin_stream.readline()
+            if not line:
+                break
+            self.tokens.extend(line.split())
+        return self.tok_i < len(self.tokens)
 
     def declare(self, s, mod):
         self.ex(s, mod.env)
@@ -454,6 +524,9 @@ class Interp:
             except Exception:
                 return ""
         return ""
+
+    def x_directive(self, s, env):
+        self.fail(f"`@!{s.name}` stands at the top level of the file, on a line of its own", s)
 
     def x_fn(self, s, env):
         env.vars[s.name] = Closure(s, env, self.mod)
