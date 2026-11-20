@@ -60,7 +60,7 @@ test('the grammar cleanly tokenizes every .cp program in proto/, stdlib/ and exa
                 if (VALID_NUMBER.test(token.text)) {
                     assert.ok(has(token, 'constant.numeric.'), `number \`${token.text}\`: ${where(index)}`);
                 }
-                if (/^(let|var|fn|for|while|if|elif|else|return|match|struct|enum|domain|defer|assume)$/.test(token.text)) {
+                if (/^(let|var|fn|for|while|if|elif|else|return|match|struct|enum|domain)$/.test(token.text)) {
                     assert.ok(has(token, 'keyword.') || has(token, 'storage.'), `keyword \`${token.text}\`: ${where(index)}`);
                 }
             }

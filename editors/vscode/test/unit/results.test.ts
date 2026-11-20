@@ -6,9 +6,12 @@ import {
     diffOutput,
     firstDifference,
     liveLabel,
+    parseCliDiagnostics,
     parseRunReport,
     parseStressReport,
     renderCounterexample,
+    runtimeErrorLabel,
+    sampleStatusLabel,
     stageLabel,
 } from '../../src/results';
 
@@ -135,4 +138,51 @@ test('diffOutput ignores trailing spaces and blank lines, and finds the first di
     assert.deepEqual(diffOutput('1 2 \n3\n\n', '1 2\n3'), { same: true });
     assert.deepEqual(diffOutput('1\n2\n3\n', '1\n5\n3\n'), { same: false, line: 1, expected: '2', actual: '5' });
     assert.deepEqual(diffOutput('1\n', '1\n2\n'), { same: false, line: 1, expected: undefined, actual: '2' });
+});
+
+test('parseCliDiagnostics extracts line, column, code and help from cpl stderr', () => {
+    const stderr = [
+        'cpl: the solution failed',
+        'error[E0301]: `deg` is indexed by V, but `e` is an E',
+        '  --> d.cp:7:17',
+        '  |',
+        '7 | let x = deg[e]',
+        '  |             ^',
+        '  = help: index with a V',
+        '',
+        'warning[W0002]: unused binding `tmp`',
+        '  --> d.cp:3:5',
+    ].join('\n');
+    assert.deepEqual(parseCliDiagnostics(stderr), [
+        {
+            severity: 'error',
+            code: 'E0301',
+            message: '`deg` is indexed by V, but `e` is an E',
+            file: 'd.cp',
+            line: 6,
+            col: 16,
+            help: 'index with a V',
+        },
+        {
+            severity: 'warning',
+            code: 'W0002',
+            message: 'unused binding `tmp`',
+            file: 'd.cp',
+            line: 2,
+            col: 4,
+        },
+    ]);
+});
+
+test('runtimeErrorLabel and sampleStatusLabel format compact inline badges', () => {
+    assert.equal(
+        runtimeErrorLabel({ line: 10, code: 'E9001', message: 'index out of range', sample: 'i1' }, 60),
+        'i1 error: [E9001] index out of range',
+    );
+    assert.equal(
+        runtimeErrorLabel({ line: 4, message: 'assertion failed' }, 60),
+        'runtime error: assertion failed',
+    );
+    assert.equal(sampleStatusLabel({ line: 0, ok: true, label: 'i1: passed (3 ms)' }, 60), '\u2713 i1: passed (3 ms)');
+    assert.equal(sampleStatusLabel({ line: 0, ok: false, label: '1 of 2 samples passed' }, 60), '\u2717 1 of 2 samples passed');
 });

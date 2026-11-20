@@ -25,13 +25,27 @@ let s = "Case #{t}: {ans + 1}"
 //                       ^ keyword.operator.arithmetic.cp
 //                         ^ constant.numeric.integer.decimal.cp
 
-let fmt = "{ans:.6f} {mask:08x}"
+let fmt = "{ans:.6f} {mask:08x} {x:.5} {n:05} {n:x} {n:b} {s:>10}"
 //         ^ punctuation.section.interpolation.begin.cp
 //             ^ punctuation.separator.format.cp
 //              ^^^ constant.other.placeholder.format.cp
 //                 ^ punctuation.section.interpolation.end.cp
 //                        ^ punctuation.separator.format.cp
 //                         ^^^ constant.other.placeholder.format.cp
+//                                ^ punctuation.separator.format.cp
+//                                 ^^ constant.other.placeholder.format.cp
+//                                       ^ punctuation.separator.format.cp
+//                                        ^^ constant.other.placeholder.format.cp
+//                                              ^ punctuation.separator.format.cp
+//                                               ^ constant.other.placeholder.format.cp
+//                                                    ^ punctuation.separator.format.cp
+//                                                     ^ constant.other.placeholder.format.cp
+//                                                          ^ punctuation.separator.format.cp
+//                                                           ^^^ constant.other.placeholder.format.cp
+
+let cond_interp = "{if ok: 1 else: 0}"
+//                               ^ - punctuation.separator.format.cp
+//                                 ^ constant.numeric.integer.decimal.cp
 
 let b = "{{literal}} \n \" {x}"
 //       ^^ constant.character.escape.brace.cp

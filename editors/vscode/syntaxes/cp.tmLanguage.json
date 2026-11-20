@@ -5,6 +5,7 @@
   "fileTypes": ["cp"],
   "patterns": [
     { "include": "#comments" },
+    { "include": "#directives" },
     { "include": "#decorators" },
     { "include": "#strings" },
     { "include": "#chars-and-labels" },
@@ -16,6 +17,7 @@
     { "include": "#keywords" },
     { "include": "#lambda-params" },
     { "include": "#compound-assign-words" },
+    { "include": "#optional-types" },
     { "include": "#turbofish" },
     { "include": "#generics" },
     { "include": "#boundaries" },
@@ -40,9 +42,19 @@
         }
       ]
     },
+    "directives": {
+      "comment": "File-level directives (`@!multitest`, `@!...`) apply from this line down and are scoped distinctly from item attributes.",
+      "name": "meta.directive.cp",
+      "match": "(@!)([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "punctuation.definition.directive.cp" },
+        "2": { "name": "keyword.control.directive.cp" }
+      }
+    },
     "decorators": {
+      "comment": "Item attributes (`@memo`, `@brute`, `@checker`, `@interactor`, `@law`, `@grader`, `@tags`, `@gen`, `@get`, `@test`).",
       "name": "meta.decorator.cp",
-      "match": "(@)([A-Za-z_][A-Za-z0-9_]*)",
+      "match": "(@)(?!!)([A-Za-z_][A-Za-z0-9_]*)",
       "captures": {
         "1": { "name": "punctuation.definition.decorator.cp" },
         "2": { "name": "entity.name.function.decorator.cp" }
@@ -84,8 +96,8 @@
       "patterns": [
         { "include": "#braces" },
         {
-          "comment": "Format specifiers such as `:.6f`, `:08x`, `:>10` right before the closing brace.",
-          "match": "(:)((?:[<>=^]?[+-]?#?0?[0-9]*(?:\\.[0-9]+)?[fFeEgGdoxXbBs%])|(?:[<>=^][0-9]+))(?=\\})",
+          "comment": "Format specifiers such as `:.5`, `:.6f`, `:05`, `:x`, `:b`, `:08x`, `:>10`, `:+08.3f` right before the closing brace.",
+          "match": "(?<!:)(:)((?:[^:\\s{}]?[<>=^])?[+-]?#?0?(?:[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+)[fFeEgGdoxXbBs%]?|(?:[^:\\s{}]?[<>=^])?[+-]?#?0?[fFeEgGdoxXbBs%])(?=\\})",
           "captures": {
             "1": { "name": "punctuation.separator.format.cp" },
             "2": { "name": "constant.other.placeholder.format.cp" }
@@ -258,9 +270,38 @@
       }
     },
     "compound-assign-words": {
-      "comment": "`best max= x` and `best min= x`.",
-      "match": "\\b(max|min)(=)(?!=)",
-      "name": "keyword.operator.assignment.compound.cp"
+      "comment": "Tropical optional updates (`dist[v] min= dist[u] + w`, `best max= x`).",
+      "name": "meta.operator.tropical.cp",
+      "match": "\\b((?:min|max)=)(?!=)",
+      "captures": {
+        "1": { "name": "keyword.operator.assignment.compound.cp" }
+      }
+    },
+    "optional-types": {
+      "comment": "Tropical optional type prefixes (`?Int`, `?V`, `??Int`, `?[V]Int`, `?(Int, V)`).",
+      "patterns": [
+        {
+          "name": "meta.type.optional.cp",
+          "match": "(\\?+)(?=[A-Z])",
+          "captures": {
+            "1": { "name": "keyword.operator.optional.cp" }
+          }
+        },
+        {
+          "name": "meta.type.optional.cp",
+          "match": "(?<=[:<,( \\t])(\\?+)(?=[\\[(])",
+          "captures": {
+            "1": { "name": "keyword.operator.optional.cp" }
+          }
+        },
+        {
+          "name": "meta.type.optional.cp",
+          "match": "(?<=\\])(\\?+)(?=\\()",
+          "captures": {
+            "1": { "name": "keyword.operator.optional.cp" }
+          }
+        }
+      ]
     },
     "turbofish": {
       "comment": "`f::<Int>()` and `topo::<V>(next)`.",
@@ -321,8 +362,8 @@
       ]
     },
     "boundaries": {
-      "comment": "`s.l` and `s.r`, or `s.l(k)` and `s.r(k)`: the two boundaries of a position or slice.",
-      "match": "(\\.)(l|r)\\b",
+      "comment": "`s.l` and `s.r`, or `s.l(k)` and `s.r(k)`: the two boundaries of a position or slice (not `..l` / `..r`).",
+      "match": "(?<!\\.)(\\.)(l|r)\\b",
       "captures": {
         "1": { "name": "punctuation.accessor.dot.cp" },
         "2": { "name": "variable.other.property.boundary.cp" }
@@ -353,7 +394,15 @@
         { "name": "keyword.operator.arrow.cp", "match": "->" },
         { "name": "keyword.operator.fat-arrow.cp", "match": "=>" },
         { "name": "keyword.operator.comparison.cp", "match": "==|!=" },
-        { "name": "keyword.operator.assignment.compound.cp", "match": "\\?\\?=|\\*\\*=|<<=|>>=|[-+*/%^&|]=" },
+        {
+          "comment": "Lazy optional initialization (`(adj[k] ??= []).push(x)`).",
+          "name": "meta.operator.tropical.cp",
+          "match": "(\\?\\?=)",
+          "captures": {
+            "1": { "name": "keyword.operator.assignment.compound.cp" }
+          }
+        },
+        { "name": "keyword.operator.assignment.compound.cp", "match": "\\*\\*=|<<=|>>=|[-+*/%^&|]=" },
         { "name": "keyword.operator.comparison.cp", "match": "<=|>=" },
         { "name": "keyword.operator.bitwise.shift.cp", "match": "<<|>>" },
         { "name": "keyword.operator.comparison.cp", "match": "<|>" },

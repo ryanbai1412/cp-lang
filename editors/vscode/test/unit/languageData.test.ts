@@ -9,6 +9,7 @@ import {
     CONTESTANT_KEYWORDS,
     CONTEXTUAL_KEYWORDS,
     DECORATORS,
+    FILE_DIRECTIVES,
     KEYWORDS,
     LIBRARY_KEYWORDS,
     PRELUDE_CONSTANTS,
@@ -80,6 +81,10 @@ test('type, constant, function and decorator tables have CP Lang 0.2.2 parity an
     for (const requiredBuiltin of ['prev_permutation', 'next_permutation', 'ceil_div', 'rand', 'shuffle']) {
         assert.ok(PRELUDE_VALUES.includes(requiredBuiltin), `missing 0.2.2 builtin ${requiredBuiltin}`);
     }
+    assert.deepEqual(
+        sorted(FILE_DIRECTIVES.map(d => d.name)),
+        ['multitest'],
+    );
     const decoratorNames = DECORATORS.map(d => d.name);
     assert.deepEqual(
         sorted(decoratorNames),
@@ -135,4 +140,13 @@ test('stale v1 and removed v2.1 tokens do not get keyword, builtin or deprecated
         !infScopes.some(scope => scope.startsWith('support.constant.')),
         `stale INF got builtin constant scope ${JSON.stringify(infScopes)}`,
     );
+});
+
+test('file-level directives (@!...) are scoped distinctly from item attributes (@...)', async () => {
+    const directiveScopes = await scopesOf('@!multitest', 'multitest');
+    assert.ok(directiveScopes.includes('keyword.control.directive.cp'), `got ${JSON.stringify(directiveScopes)}`);
+    assert.ok(!directiveScopes.includes('entity.name.function.decorator.cp'), `got ${JSON.stringify(directiveScopes)}`);
+    const decoratorScopes = await scopesOf('@memo', 'memo');
+    assert.ok(decoratorScopes.includes('entity.name.function.decorator.cp'), `got ${JSON.stringify(decoratorScopes)}`);
+    assert.ok(!decoratorScopes.includes('keyword.control.directive.cp'), `got ${JSON.stringify(decoratorScopes)}`);
 });

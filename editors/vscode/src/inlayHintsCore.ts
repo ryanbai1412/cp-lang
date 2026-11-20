@@ -127,8 +127,11 @@ export function computeInlayHints(text: string): HintSpec[] {
             return;
         }
 
-        // `for v in V:` or `for mut v in V:` where `V` is a declared domain.
-        const loop = /^(\s*for\s+(?:mut\s+)?)([a-z_][A-Za-z0-9_]*)\s+in\s+([A-Z][A-Za-z0-9_]*)\s*:/.exec(line);
+        // `for v in V:`, `for v in V if ok(v):`, `'outer: for v in V:`, or `for mut v in V:` where `V` is a declared domain.
+        const loop =
+            /^(\s*(?:'[A-Za-z_][A-Za-z0-9_]*\s*:\s*)?for\s+(?:mut\s+)?)([a-z_][A-Za-z0-9_]*)\s+in\s+([A-Z][A-Za-z0-9_]*)(?:\s+if\b[^:]*)?\s*:/.exec(
+                line,
+            );
         if (loop && domains.has(loop[3])) {
             hints.push({
                 line: lineIndex,

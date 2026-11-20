@@ -100,9 +100,19 @@ assert all(x >= 0 for x in vals)
 // <------ keyword.control.assert.cp
 //     ^^^ support.function.builtin.cp
 
-// 0.2.2 decorators + explicit sol: Interactor
+// 0.2.2 file-level directives (@!...) are scoped distinctly from item attributes (@...)
+@!multitest
+// <-- punctuation.definition.directive.cp
+// <~~--------- keyword.control.directive.cp
+// <~~--------- - entity.name.function.decorator.cp
+@!strict
+// <-- punctuation.definition.directive.cp
+// <~~------ keyword.control.directive.cp
+
+// 0.2.2 item attributes + explicit sol: Interactor
 @memo
 // <~---- entity.name.function.decorator.cp
+// <~---- - keyword.control.directive.cp
 @grader
 // <~------ entity.name.function.decorator.cp
 @multitest
@@ -116,11 +126,62 @@ assert all(x >= 0 for x in vals)
 fn judge(sol: Interactor):
 //       ^^^ variable.parameter.label.cp
 //            ^^^^^^^^^^ support.type.builtin.cp
-    print("ans = {best}, avg = {avg:.6f}")
+    print("{x:.5} {n:05} {n:x} {n:b} {avg:.6f} {best ?? 0.0:.3f}")
 //  ^^^^^ support.function.builtin.cp
-//                ^^^^ meta.interpolation.cp
-//                                 ^ punctuation.separator.format.cp
-//                                  ^^^ constant.other.placeholder.format.cp
+//          ^ meta.interpolation.cp
+//           ^ punctuation.separator.format.cp
+//            ^^ constant.other.placeholder.format.cp
+//                  ^ punctuation.separator.format.cp
+//                   ^^ constant.other.placeholder.format.cp
+//                         ^ punctuation.separator.format.cp
+//                          ^ constant.other.placeholder.format.cp
+//                               ^ punctuation.separator.format.cp
+//                                ^ constant.other.placeholder.format.cp
+//                                       ^ punctuation.separator.format.cp
+//                                        ^^^ constant.other.placeholder.format.cp
+//                                                         ^ punctuation.separator.format.cp
+//                                                          ^^^ constant.other.placeholder.format.cp
+
+// Tropical Optionals: ?T, ??Int, ?[V]Int, ?(Int, V), min=, max=, ??=
+var opt_a: ?Int = none
+//         ^ meta.type.optional.cp keyword.operator.optional.cp
+//          ^^^ support.type.builtin.cp
+var opt_b: ??Int = none
+//         ^^ meta.type.optional.cp keyword.operator.optional.cp
+//           ^^^ support.type.builtin.cp
+var opt_c: ?[V]Int = none
+//         ^ meta.type.optional.cp keyword.operator.optional.cp
+var opt_d: [V]?(Int, V) = none
+//            ^ meta.type.optional.cp keyword.operator.optional.cp
+var opt_e: List<?V> = []
+//              ^ meta.type.optional.cp keyword.operator.optional.cp
+//               ^ entity.name.type.cp
+opt_a min= 5
+//    ^^^^ meta.operator.tropical.cp keyword.operator.assignment.compound.cp
+opt_a max= 10
+//    ^^^^ meta.operator.tropical.cp keyword.operator.assignment.compound.cp
+(adj[k] ??= []).push(1)
+//      ^^^ meta.operator.tropical.cp keyword.operator.assignment.compound.cp
+let fallback = opt_a ?? 0
+//                   ^^ keyword.operator.coalesce.cp
+//                   ^^ - meta.type.optional.cp
+let unwrapped = opt_a?
+//                   ^ keyword.operator.optional.cp
+//                   ^ - meta.type.optional.cp
+
+// .l / .r boundaries in ranges vs open-ended ..l / ..r
+let sub = tin[v].l..tin[v].r(sz[v])
+//               ^ variable.other.property.boundary.cp
+//                ^^ keyword.operator.range.cp
+//                         ^ variable.other.property.boundary.cp
+let tail = V(2).r..
+//              ^ variable.other.property.boundary.cp
+//               ^^ keyword.operator.range.cp
+let prefix_sum = st.fold(..l) + st.fold(..r)
+//                       ^^ keyword.operator.range.cp
+//                         ^ - variable.other.property.boundary.cp
+//                                      ^^ keyword.operator.range.cp
+//                                        ^ - variable.other.property.boundary.cp
 
 // Removed v2.1 keywords must NOT receive keyword/storage scopes in 0.2.2
 let removed_v21 = defer + assume + where + inline + lend + law
