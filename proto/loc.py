@@ -9,11 +9,16 @@ Blank lines and comment-only lines never count, on either side. The whole port c
 including its test generators and `where` preconditions, which the originals do not have;
 those lines are also reported on their own.
 
-usage: loc.py [--md]
+usage: loc.py [--md] [dir]
+
+dir is a directory of ports under ports/ (default: ports/ itself). If it has a before/
+directory, the same ports as they had to be written before a language or library change,
+those are measured too and the drop is reported.
 """
 import glob, os, re, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+PORTS = f"{HERE}/ports"
 
 def counted(path, block_comments):
     """1-based numbers of the lines that count"""
@@ -72,20 +77,40 @@ def scaffolding(path):
             return {k + 1 for k in inside}
         test_only = grown
 
-def measure(name):
-    port = counted(f"{HERE}/ports/{name}.cp", False)
-    orig = counted(f"{HERE}/ports/{name}_orig.cpp", True)
+def measure(name, src=None):
+    src = src or f"{PORTS}/{name}.cp"
+    port = counted(src, False)
+    orig = counted(f"{PORTS}/{name}_orig.cpp", True)
     gone = set()
-    for a, b, _, _ in stripped_ranges(f"{HERE}/ports/{name}.strip"):
+    for a, b, _, _ in stripped_ranges(f"{PORTS}/{name}.strip"):
         gone |= set(range(a, b + 1))
-    tests = scaffolding(f"{HERE}/ports/{name}.cp")
+    tests = scaffolding(src)
     return len(port), len(orig), len([i for i in orig if i not in gone]), len([i for i in port if i in tests])
 
 def pct(ours, theirs):
     return 100.0 * (theirs - ours) / theirs
 
+def before_after(names):
+    """ports that also exist under before/: lines then and now, against the same original"""
+    rows = []
+    for n in names:
+        if os.path.exists(f"{PORTS}/before/{n}.cp"):
+            (b, o, s, _), (a, _, _, _) = measure(n, f"{PORTS}/before/{n}.cp"), measure(n)
+            rows.append((n, b, a, o, s))
+    if not rows:
+        return
+    rows.append((f"all {len(rows)}", *(sum(r[i] for r in rows) for i in (1, 2, 3, 4))))
+    print("\nbefore and after the changes these ports asked for (reductions are against the original):")
+    print(f"{'port':<14}{'before':>7}{'after':>7}{'raw before':>12}{'raw after':>11}{'stripped before':>17}{'stripped after':>16}")
+    for n, b, a, o, s in rows:
+        print(f"{n:<14}{b:>7}{a:>7}{pct(b, o):>11.0f}%{pct(a, o):>10.0f}%{pct(b, s):>16.0f}%{pct(a, s):>15.0f}%")
+
 def main():
-    names = sorted(os.path.basename(p)[:-3] for p in glob.glob(f"{HERE}/ports/*.cp"))
+    global PORTS
+    dirs = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if dirs:
+        PORTS = os.path.abspath(dirs[0]) if os.path.isdir(dirs[0]) else f"{HERE}/ports/{dirs[0]}"
+    names = sorted(os.path.basename(p)[:-3] for p in glob.glob(f"{PORTS}/*.cp"))
     rows = [(n, *measure(n)) for n in names]
     rows.append((f"all {len(rows)}", *(sum(r[i] for r in rows) for i in (1, 2, 3, 4))))
     if "--md" in sys.argv:
@@ -102,6 +127,7 @@ def main():
     worse = [r[0] for r in rows if r[1] >= r[3]]
     if worse:
         print("no library-stripped win (friction):", ", ".join(worse))
+    before_after(names)
 
 if __name__ == "__main__":
     main()

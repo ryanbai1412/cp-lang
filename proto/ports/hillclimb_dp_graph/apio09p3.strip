@@ -1,0 +1,7 @@
+# apio09p3_orig.cpp: the lines a perfect C++ contest library would have supplied.
+# Everything else is counted as problem-specific code. Read by proto/loc.py.
+# lines      facility        what it is
+1-26         template        includes, debug macros, typedefs
+28-59        graph           CSR adjacency with a reversed copy
+61-102       scc             Kosaraju strongly connected components
+183-188      driver          fast I/O setup and the test-case loop

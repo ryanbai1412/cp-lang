@@ -5,3 +5,10 @@ __pycache__/
 proto/ports/*_bin
 proto/ports/*_gen
 proto/ports/*_ref
+proto/ports/*/*_bin
+proto/ports/*/*_gen
+proto/ports/*/*_ref
+proto/ports/*/before/*.cpp
+proto/ports/*/before/*_bin
+proto/ports/*/before/*_gen
+proto/ports/*/before/*_ref

@@ -92,6 +92,9 @@ pub const AddMax = Action<Int, Int>(id: 0, compose: (f, g) => f + g, apply: (f, 
 /// Range add over `(sum, len)` pairs, for range add with range sum.
 pub const AddSum = Action<(Int, Int), Int>(id: 0, compose: (f, g) => f + g, apply: (f, x) => (x.0 + f * x.1, x.1))
 
+/// Range assign over `(sum, len)` pairs, for range assign with range sum. `none` leaves a range alone.
+pub const AssignSum = Action<(Int, Int), ?Int>(id: none, compose: (f, g) => if f == none: g else: f, apply: (f, x) => if f == none: x else: (f! * x.1, x.1))
+
 /// The monoid of `(sum, len)` pairs.
 pub const SumLen = Monoid<(Int, Int)>(id: (0, 0), op: (a, b) => (a.0 + b.0, a.1 + b.1))
 
@@ -122,6 +125,21 @@ fn range_add_range_sum_carries_the_length():
     st.set(V(4), (100, 1))
     assert st.fold(V(3)..=V(5)).0 == 13 + 100 + 10
     assert st.fold(V(2)..V(2)) == (0, 0)
+
+@test
+fn range_assign_range_sum_matches_brute_force():
+    domain V = 0..9
+    var a = [V] v => 0
+    var st = LazySegTree<V, (Int, Int), ?Int>.from(SumLen, AssignSum, [V] v => (0, 1))
+    for _ in 0..80:
+        let l = V.nth(rand(0, 8))
+        let r = V.nth(rand(l.to_idx, 8))
+        if rand(0, 1) == 0:
+            let x = rand(-5, 5)
+            st.apply(l..=r, x)
+            for v in l..=r: a[v] = x
+        else:
+            assert st.fold(l..=r).0 == sum(a[v] for v in l..=r)
 
 @test
 fn stock_actions_obey_their_laws():
