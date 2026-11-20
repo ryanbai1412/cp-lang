@@ -1,6 +1,6 @@
 use std.dsu.{Dsu}
 use std.graph.{bfs}
-use std.seq.{scan, running_sum}
+use std.seq.{scan}
 use std.steps.{Steps}
 let n: 2..=8 = read()
 domain V = 1..=n
@@ -27,7 +27,7 @@ st.add(2..=5, 1)
 st.add(4..=9, 2)
 st.add(-3..0, 7)
 for (span, count) in st.runs(0..=10): print(span.lo, span.len, count)
-print(scan([3, 1, 4, 1, 5], +), running_sum([1, 2, 3]), scan([3, 1, 4, 1, 5], max), scan([4, 6, 9], gcd))
+print(scan([3, 1, 4, 1, 5], +), scan([1, 2, 3], +), scan([3, 1, 4, 1, 5], max), scan([4, 6, 9], gcd))
 var lists: [V]List<Int> = []
 lists[V(1)].push(5)
 var mine = take(lists[V(1)])

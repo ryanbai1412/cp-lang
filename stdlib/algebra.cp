@@ -1,99 +1,120 @@
-//! Operation values: the behaviour a type can have many versions of.
+//! Operations as values: what a range structure folds with.
 //!
-//! A structure never asks "what is the sum of two `T`s"; it is handed a
-//! value that says so. `SegTree<V, Int>(Max<Int>)` and
-//! `SegTree<V, Int>(Sum<Int>)` are the same tree with two monoids. Each
-//! struct states its laws, and `laws_hold(m, samples)` checks them.
+//! A structure never asks "what is the sum of two `T`s"; it is handed the
+//! operation. Most of the time that is a bare operator: `SegTree<V, Int>(max, a)`
+//! and `SegTree<V, Int>(+, a)` are the same tree with two operations. An operation
+//! of your own is the pair `Monoid(id, op)`; a lazy update is an `Action`.
+//! `desc(x)` reverses an order inside a sort key or a heap entry, and a
+//! non-commutative value says how it reads backwards with `Reversible`.
+use std.math.{gcd}
 
-/// An associative operation. Enough for a sparse table when it is also idempotent.
-pub struct Semigroup<T>(op: (T, T) -> T):
-    law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
-
-/// An associative operation with an identity.
+/// An associative operation with an identity: the pair `(id, op)`.
+/// The laws are checked by `laws_hold(m, samples)`.
 pub struct Monoid<T>(id: T, op: (T, T) -> T):
     law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
     law ident(a: T) = op(id, a) == a and op(a, id) == a
 
-/// A monoid where every value can be undone. What a Fenwick tree needs for range queries.
-pub struct Group<T>(id: T, op: (T, T) -> T, inv: T -> T):
-    law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
-    law ident(a: T) = op(id, a) == a and op(a, id) == a
-    law inverse(a: T) = op(a, inv(a)) == id and op(inv(a), a) == id
+    /// What a structure was handed, as a monoid: a `Monoid` is itself, and a bare operator
+    /// brings its identity (`+ ^ | gcd`: zero, `*`: one, `&`: all bits, `min` / `max`: the far
+    /// end of `T`, which is `none` for a `?T`). Any other fn needs `Monoid(id, op)`.
+    pub fn of<M>(m: M) -> Monoid<T>:
+        if same(m, +): return Monoid(T.zero, (a, b) => a + b)
+        if same(m, *): return Monoid(T.one, (a, b) => a * b)
+        if same(m, ^): return Monoid(T.zero, (a, b) => a ^ b)
+        if same(m, |): return Monoid(T.zero, (a, b) => a | b)
+        if same(m, &): return Monoid(T.zero - T.one, (a, b) => a & b)
+        if same(m, max): return Monoid(T.MIN, (a, b) => max(a, b))
+        if same(m, min): return Monoid(T.MAX, (a, b) => min(a, b))
+        if same(m, gcd): return Monoid(T.zero, (a, b) => gcd(a, b))
+        m
 
-/// Updates `F` acting on values `T`: `apply(f, x)` is `x` after `f`,
-/// `compose(f, g)` is "g first, then f".
-pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T) -> T):
-    law ident(a: T) = apply(id, a) == a
-    law composes(f: F, g: F, a: T) = apply(compose(f, g), a) == apply(f, apply(g, a))
+fn same<A, B>(a: A, b: B) -> Bool = a == b
 
-/// A strict ordering passed as a value: `sort(mut xs, by: Order.by(e => e.w))`.
-pub struct Order<T>(lt: (T, T) -> Bool):
-    law irreflexive(a: T) = not lt(a, a)
-    law transitive(a: T, b: T, c: T) = not (lt(a, b) and lt(b, c)) or lt(a, c)
+/// A lazy update `F` on values `T` folded with `over`: `apply(f, x, len)` is the fold `x` of
+/// `len` positions after every one of them took `f`, `compose(f, g)` is "g first, then f",
+/// and `id` changes nothing. `Action(id, compose, apply, over: op)`.
+pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, over: Monoid<T>):
+    law ident(a: T) = apply(id, a, 1) == a
+    law composes(f: F, g: F, a: T) = apply(compose(f, g), a, 1) == apply(f, apply(g, a, 1), 1)
 
-    /// Order by a key.
-    pub fn by(key: T -> Int) -> Order<T> = Order((a, b) => key(a) < key(b))
+    pub fn new<M>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, over: M) -> Action<T, F>:
+        Action(id, compose, apply, Monoid<T>.of(over))
 
-    /// The same order, reversed.
-    pub @get fn rev(self) -> Order<T> = Order((a, b) => self.lt(b, a))
+/// `x` with its order reversed. Build it with `desc(x)`.
+pub struct Desc<T>(x: T)
 
-pub const Sum<T> = Group<T>(id: T.zero, op: (a, b) => a + b, inv: a => -a) where T: Add
-pub const Prod<T> = Monoid<T>(id: T.one, op: (a, b) => a * b) where T: Mul
-pub const Max<T> = Monoid<T>(id: T.MIN, op: (a, b) => max(a, b)) where T: Ord + Bounded
-pub const Min<T> = Monoid<T>(id: T.MAX, op: (a, b) => min(a, b)) where T: Ord + Bounded
-pub const Xor<T> = Group<T>(id: T.zero, op: (a, b) => a ^ b, inv: a => a) where T: Bits
-pub const Less<T> = Order<T>(lt: (a, b) => a < b) where T: Ord
-pub const Greater<T> = Order<T>(lt: (a, b) => b < a) where T: Ord
+impl Ord for Desc<T>:
+    fn lt(a, b) = b.x < a.x
 
-/// `m` with its arguments swapped: folds right to left.
-pub fn flip<T>(m: Monoid<T>) -> Monoid<T> = Monoid(m.id, (a, b) => m.op(b, a))
+impl Show for Desc<T>:
+    fn show(a) = "desc({a.x})"
 
-/// Two monoids side by side, e.g. `both(Sum<Int>, Max<Int>)` over pairs.
-pub fn both<A, B>(x: Monoid<A>, y: Monoid<B>) -> Monoid<(A, B)>:
-    Monoid((x.id, y.id), (a, b) => (x.op(a.0, b.0), y.op(a.1, b.1)))
+/// `x` ordered the other way round, for one part of a sort key or a heap entry:
+/// `sort(mut es, by: e => (e.w, desc(e.name)))`, `MinHeap<(Int, Desc<V>)>()`.
+pub fn desc<T>(x: T) -> Desc<T> = Desc(x)
 
-/// A semigroup made into a monoid by adding `none` as the identity.
-pub fn opt<T>(s: Semigroup<T>) -> Monoid<?T>:
-    Monoid(none, (a, b) => if a == none: b else: if b == none: a else: s.op(a!, b!))
+/// A folded value that can be read from the other end. A fold along a tree path walks some
+/// stretches upwards; `Rooted.fold_path` reverses those with `rev`. A type that does not
+/// implement it is its own reverse, which is right for every commutative operation.
+pub trait Reversible:
+    fn rev(self) -> Self = self
 
-/// The monoid part of a group; structures that take a `Monoid` accept a `Group` directly.
-pub fn fold<T>(m: Monoid<T>, xs: List<T>) -> T:
-    var acc = m.id
+/// `xs` folded left to right with `m`.
+pub fn fold<T, M>(m: M, xs: List<T>) -> T:
+    let k = Monoid<T>.of(m)
+    var acc = k.id
     for x in xs:
-        acc = m.op(acc, x)
+        acc = k.op(acc, x)
     acc
 
 @test
-fn laws_of_the_stock_values():
+fn bare_operators_bring_their_identity():
+    assert Monoid<Int>.of(+).id == 0 and Monoid<Int>.of(*).id == 1
+    assert Monoid<Int>.of(^).id == 0 and Monoid<Int>.of(|).id == 0 and Monoid<Int>.of(gcd).id == 0
+    assert Monoid<Int>.of(&).id == -1
+    assert Monoid<Int>.of(max).id == Int.MIN and Monoid<Int>.of(min).id == Int.MAX
+    assert Monoid<?Int>.of(max).id == none and Monoid<?Int>.of(min).id == none
     let xs = [-7, -1, 0, 2, 5, 9]
-    assert laws_hold(Sum<Int>, xs)
-    assert laws_hold(Max<Int>, xs)
-    assert laws_hold(Min<Int>, xs)
-    assert laws_hold(Xor<Int>, xs)
-    assert laws_hold(Prod<Int>, xs)
-    assert laws_hold(Less<Int>, xs)
-    assert laws_hold(Less<Int>.rev, xs)
-    assert laws_hold(flip(Sum<Int>), xs)
-    assert laws_hold(both(Sum<Int>, Max<Int>), [(1, 2), (0, -3), (-4, 4)])
-    assert laws_hold(opt(Semigroup<Int>((a, b) => min(a, b))), [none, 1, 5])
+    assert laws_hold(Monoid<Int>.of(+), xs)
+    assert laws_hold(Monoid<Int>.of(*), [-2, -1, 0, 1, 3])
+    assert laws_hold(Monoid<Int>.of(^), xs)
+    assert laws_hold(Monoid<Int>.of(&), xs)
+    assert laws_hold(Monoid<Int>.of(|), xs)
+    assert laws_hold(Monoid<Int>.of(max), xs)
+    assert laws_hold(Monoid<Int>.of(min), xs)
+    assert laws_hold(Monoid<Int>.of(gcd), [0, 4, 6, 9, 12])
+    assert laws_hold(Monoid<?Int>.of(max), [none, -3, 0, 8])
 
 @test
-fn fold_respects_order():
+fn a_monoid_of_your_own_is_a_pair():
     let cat = Monoid<Str>("", (a, b) => a + b)
-    assert fold(cat, ["ab", "c", "de"]) == "abcde"
-    assert fold(flip(cat), ["ab", "c", "de"]) == "decab"
-    assert fold(Sum<Int>, [1, 2, 3]) == 6
+    assert laws_hold(cat, ["", "ab", "c"])
+    assert fold::<Str>(cat, ["ab", "c", "de"]) == "abcde"
+    assert fold::<Int>(+, [1, 2, 3]) == 6
+    assert fold::<Int>(max, [1, 5, 3]) == 5
 
 @test
 fn affine_action_laws():
-    // f = (mul, add) acting on x as mul * x + add
-    let act = Action<Int, (Int, Int)>((1, 0), (f, g) => (f.0 * g.0, f.0 * g.1 + f.1), (f, x) => f.0 * x + f.1)
+    // f = (mul, add) acting on a sum of `len` values as mul * x + add * len
+    let act = Action<Int, (Int, Int)>((1, 0), (f, g) => (f.0 * g.0, f.0 * g.1 + f.1), (f, x, len) => f.0 * x + f.1 * len, over: +)
     assert laws_hold(act, T: [-3, 0, 4], F: [(1, 0), (2, 3), (-1, 5), (0, 7)])
+    assert act.over.id == 0
 
 @test
-fn order_by_key():
-    var xs = [(3, 1), (1, 2), (2, 0)]
-    sort(mut xs, by: Order<(Int, Int)>.by(p => p.1))
-    assert xs == [(2, 0), (3, 1), (1, 2)]
-    sort(mut xs, by: Greater<(Int, Int)>)
-    assert xs == [(3, 1), (2, 0), (1, 2)]
+fn desc_reverses_one_part_of_a_key():
+    var xs = [(3, 1), (1, 2), (3, 0), (2, 2)]
+    sort(mut xs, by: p => (p.0, desc(p.1)))
+    assert xs == [(1, 2), (2, 2), (3, 1), (3, 0)]
+    sort(mut xs, by: p => desc(p))
+    assert xs == [(3, 1), (3, 0), (2, 2), (1, 2)]
+    assert desc(2) < desc(1) and desc(1) == desc(1)
+
+struct Word(s: Str)
+
+impl Reversible for Word:
+    fn rev(self) -> Word = Word(Str([s[s.len - 1 - i] for i in 0..s.len]))
+
+@test
+fn plain_values_are_their_own_reverse():
+    assert 5.rev() == 5 and (3, 4).rev() == (3, 4)
+    assert Word("abc").rev() == Word("cba")

@@ -1,23 +1,33 @@
-//! Segment tree over a domain, for any monoid.
-use std.algebra.{Monoid, Sum, Max, Min}
+//! Segment tree over a domain, for any associative operation.
+use std.algebra.{Monoid}
+use std.math.{gcd}
 
-/// Point update and range fold. `set`, `get`-then-`set` and `fold` are O(log n);
-/// `max_right` and `min_left` are O(log n) too. Memory is 2 * bit_ceil(n) values.
-/// The fold keeps the order of the positions, so non-commutative monoids work.
+/// Point update and range fold. The operation is a bare operator (`+`, `*`, `^`, `&`, `|`,
+/// `min`, `max`, `gcd`) or your own `Monoid(id, op)`: `SegTree<V, Int>(max, a)`,
+/// `SegTree<V, Int>(+)`, `SegTree<V, Run>(Monoid(Run.empty, Run.join), a)`.
+/// `set` and `fold` are O(log n), and so are `max_right` and `min_left`; memory is
+/// 2 * bit_ceil(n) values. The fold keeps the order of the positions, so
+/// non-commutative operations work.
 pub struct SegTree<D, T>(m: Monoid<T>):
     t: List<T>
     size: Int
     /// What each position holds, for a tree built with `of`.
     source: ?(D -> T)
 
-    pub fn new(m: Monoid<T>) -> SegTree<D, T>:
+    /// A tree over `a`, or with the identity everywhere when no array is given. O(n).
+    pub fn new<M>(op: M, a: ?[D]T = none) -> SegTree<D, T>:
+        let m = Monoid<T>.of(op)
         let size = bit_ceil(D.K)
-        SegTree(m, List.filled(2 * size, m.id), size, none)
+        var t = List.filled(2 * size, m.id)
+        if let init = a:
+            for i in D: t[size + i.to_idx] = init[i]
+            for p in (1..size).rev: t[p] = m.op(t[2 * p], t[2 * p + 1])
+        SegTree(m, t, size, none)
 
     /// A tree whose position `i` holds `f(i)`. When something `f` reads changes, `refresh(i)`
     /// brings position `i` up to date, so the formula is written once, not at every update. O(n).
-    pub fn of(m: Monoid<T>, f: D -> T) -> SegTree<D, T>:
-        var s = SegTree.from(m, [D] i => f(i))
+    pub fn of<M>(op: M, f: D -> T) -> SegTree<D, T>:
+        var s = SegTree<D, T>.new(op, [D] i => f(i))
         s.source = f
         s
 
@@ -26,17 +36,6 @@ pub struct SegTree<D, T>(m: Monoid<T>):
         assert source != none            // only a tree built with `of` has a formula
         let f = source!
         self.set(i, f(i))
-
-    /// The fold of every position. O(1).
-    pub @get fn all(self) -> T = t[1]
-
-    /// Build from an array in O(n).
-    pub fn from(m: Monoid<T>, a: [D]T) -> SegTree<D, T>:
-        let size = bit_ceil(D.K)
-        var t = List.filled(2 * size, m.id)
-        for i in D: t[size + i.to_idx] = a[i]
-        for p in (1..size).rev: t[p] = m.op(t[2 * p], t[2 * p + 1])
-        SegTree(m, t, size, none)
 
     pub fn get(self, i: D) -> T = t[size + i.to_idx]
 
@@ -47,11 +46,8 @@ pub struct SegTree<D, T>(m: Monoid<T>):
             p /= 2
             t[p] = m.op(t[2 * p], t[2 * p + 1])
 
-    /// `a[i] = op(a[i], x)`.
-    pub fn add(mut self, i: D, x: T):
-        self.set(i, m.op(self.get(i), x))
-
-    /// The fold of `a[l..=r]`, left to right. An empty range gives the identity.
+    /// The fold of a range, left to right: `st.fold(l..=r)`, `st.fold(..i)`, `st.fold(i..)`.
+    /// An empty range gives the identity.
     pub fn fold(self, r: Range<D>) -> T:
         var (l, h) = (r.lo.ord + size, r.hi.ord + size)
         var (a, b) = (m.id, m.id)
@@ -68,6 +64,9 @@ pub struct SegTree<D, T>(m: Monoid<T>):
 
     /// The fold of the whole array. O(1).
     pub @get fn all(self) -> T = t[1]
+
+    /// The operation the tree folds with, as its `(id, op)` pair.
+    pub @get fn monoid(self) -> Monoid<T> = m
 
     /// The furthest boundary `b` right of `from` such that `ok(fold(from..b))`.
     /// `ok` must hold for the identity and switch from true to false at most once.
@@ -112,7 +111,7 @@ pub struct SegTree<D, T>(m: Monoid<T>):
 fn folds_match_a_plain_array():
     domain V = 1..=11
     var a = [V] v => rand(-20, 20)
-    var st = SegTree<V, Int>.from(Max<Int>, a)
+    var st = SegTree<V, Int>(max, a)
     for _ in 0..80:
         let i = V.nth(rand(0, 10))
         a[i] = rand(-20, 20)
@@ -122,12 +121,32 @@ fn folds_match_a_plain_array():
         assert st.fold(l..=r) == max(a[v] for v in l..=r)
     assert st.all == max(a[v] for v in V)
     assert st.fold(V(3)..V(3)) == Int.MIN
+    assert st.fold(..V(4)) == max(a[v] for v in V if v < V(4))
+    assert st.fold(V(4)..) == max(a[v] for v in V if v >= V(4))
+
+@test
+fn every_bare_operator_folds():
+    domain V = 0..6
+    let a = [V] v => [12, 18, 6, 30, 7, 9][v.to_idx]
+    assert SegTree<V, Int>(+, a).all == 82
+    assert SegTree<V, Int>(min, a).all == 6
+    assert SegTree<V, Int>(gcd, a).fold(V(0)..=V(3)) == 6
+    assert SegTree<V, Int>(^, a).fold(V(0)..=V(1)) == 12 ^ 18
+    assert SegTree<V, Int>(&, a).fold(V(0)..=V(1)) == 12 & 18
+    assert SegTree<V, Int>(|, a).fold(V(0)..=V(1)) == 12 | 18
+    assert SegTree<V, Int>(*, a).fold(V(4)..=V(5)) == 63
+    // over ?Int, `none` is "no value": the identity of max, and what an empty range folds to
+    var best = SegTree<V, ?Int>(max)
+    assert best.all == none
+    best.set(V(2), 5)
+    best.set(V(4), -1)
+    assert best.all == 5 and best.fold(V(3)..) == -1 and best.fold(..V(2)) == none
 
 @test
 fn of_and_refresh_follow_the_formula():
     domain V = 1..=9
     var a = [V] v => rand(-20, 20)
-    var st = SegTree<V, Int>.of(Min<Int>, v => a[v] + v.ord)
+    var st = SegTree<V, Int>.of(min, v => a[v] + v.ord)
     for _ in 0..60:
         let i = V.nth(rand(0, 8))
         a[i] = rand(-20, 20)
@@ -148,7 +167,7 @@ fn keeps_the_order_for_non_commutative_monoids():
 fn max_right_and_min_left_binary_search():
     domain V = 0..7
     let a = [V] v => v.to_idx + 1
-    let st = SegTree<V, Int>.from(Sum<Int>, a)
+    let st = SegTree<V, Int>(+, a)
     for l in 0..=7:
         for cap in 0..30:
             let from = V.bounds.nth(l)

@@ -1,6 +1,5 @@
 //! String algorithms. They only compare elements, so they work on a `Str`
 //! (ASCII bytes) and on any `List<T>` alike. Positions are 0-based.
-use std.algebra.{Order}
 
 /// `z[i]` is the length of the longest common prefix of `s` and `s[i..]`; `z[0]` is `s.len`. O(n).
 pub fn z_function<T>(s: List<T>) -> List<Int>:
@@ -50,7 +49,7 @@ pub fn suffix_array<T>(s: List<T>) -> List<Int>:
     var sa = [i for i in 0..n]
     if n <= 1: return sa
     // ranks of single elements, by sorting positions on the element
-    sort(mut sa, by: Order<Int>((a, b) => s[a] < s[b]))
+    sort(mut sa, by: i => s[i])
     var rank = List.filled(n, 0)
     for j in 1..n: rank[sa[j]] = rank[sa[j - 1]] + (if s[sa[j - 1]] < s[sa[j]]: 1 else: 0)
     var k = 1
@@ -152,7 +151,7 @@ fn suffix_array_and_lcp_match_sorting_the_suffixes():
         let s = random_word(rand(1, 18), rand(1, 3))
         let sa = suffix_array(s)
         var want = [i for i in 0..s.len]
-        sort(mut want, by: Order<Int>((a, b) => suffix_less(s, a, b)))
+        sort(mut want, by: i => [s[j] for j in i..s.len])
         assert sa == want
         let lcp = lcp_array(s, sa)
         for j in 0..s.len - 1: assert lcp[j] == common_prefix(s, sa[j], sa[j + 1])

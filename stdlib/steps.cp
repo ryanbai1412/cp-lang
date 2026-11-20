@@ -3,24 +3,30 @@
 /// `add(r, x)` adds `x` on every integer of `r`; `runs(clip)` then walks the result
 /// as maximal runs of equal value. This is the "sort the +1 / -1 events and sweep"
 /// pattern with the events, the sort and the off-by-one of the closing end kept inside.
-/// `add` is O(log n); `runs` is O(n) for n additions. Coordinates are plain Ints of
-/// any size: nothing is allocated per coordinate.
+/// `add` is O(1): the events go on a list that is sorted only when `runs` next reads it, so
+/// n additions and one `runs` cost one O(n log n) sort. Coordinates are plain Ints of any
+/// size: nothing is allocated per coordinate.
 pub struct Steps:
-    change: Map<Int, Int>               // at a coordinate: how much the value changes there
+    /// (coordinate, how much the value changes there), sorted only when `runs` reads them
+    change: List<(Int, Int)>
+    sorted_upto: Int
 
-    pub fn new() -> Steps = Steps(Map())
+    pub fn new() -> Steps = Steps([], 0)
 
-    /// Add `x` on every integer of `r`. An empty range adds nothing.
+    /// Add `x` on every integer of `r`. An empty range adds nothing. O(1).
     pub fn add(mut self, r: Range<Int>, x: Int):
         if r.len == 0 or x == 0: return
-        change[r.lo] = (change.get(r.lo) ?? 0) + x
-        change[r.hi] = (change.get(r.hi) ?? 0) - x
+        change.push((r.lo, x))
+        change.push((r.hi, -x))
 
     /// The maximal runs of equal value inside `clip`, left to right, covering all of it
     /// (stretches nothing was added to have value 0).
-    pub fn runs(self, clip: Range<Int>) -> List<(span: Range<Int>, value: Int)>:
+    pub fn runs(mut self, clip: Range<Int>) -> List<(span: Range<Int>, value: Int)>:
         var out: List<(span: Range<Int>, value: Int)> = []
         if clip.len == 0: return out
+        if sorted_upto < change.len:
+            sort(mut change)
+            sorted_upto = change.len
         var (cur, at) = (0, clip.lo)
         for (x, d) in change:
             if x >= clip.hi: break

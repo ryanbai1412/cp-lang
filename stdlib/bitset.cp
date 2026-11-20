@@ -15,24 +15,24 @@ pub struct Bitset<D>:
     pub fn from(a: [D]Bool) -> Bitset<D>:
         var b = Bitset<D>.new()
         for i in D:
-            if a[i]: b.insert(i)
+            if a[i]: b.add(i)
         b
 
-    pub fn has(self, i: D) -> Bool = ((w[i.to_idx / 64] >> (i.to_idx % 64)) & 1) == 1
+    pub fn contains(self, i: D) -> Bool = ((w[i.to_idx / 64] >> (i.to_idx % 64)) & 1) == 1
 
-    pub fn insert(mut self, i: D):
+    pub fn add(mut self, i: D):
         w[i.to_idx / 64] |= bit(i.to_idx % 64)
 
     pub fn remove(mut self, i: D):
         w[i.to_idx / 64] &= bit(i.to_idx % 64) ^ -1
 
-    pub fn flip(mut self, i: D):
+    pub fn toggle(mut self, i: D):
         w[i.to_idx / 64] ^= bit(i.to_idx % 64)
 
     /// The number of positions in the set.
-    pub @get fn count(self) -> Int = sum(popcount(x) for x in w)
+    pub @get fn len(self) -> Int = sum(popcount(x) for x in w)
 
-    pub @get fn is_empty(self) -> Bool = self.count == 0
+    pub @get fn is_empty(self) -> Bool = self.len == 0
 
     pub fn union(mut self, o: Bitset<D>):
         for k in 0..w.len: w[k] |= o.w[k]
@@ -52,10 +52,15 @@ pub struct Bitset<D>:
             if (w[k] & o.w[k]) != 0: return true
         false
 
-    /// Move every position `k` places up; positions that leave `D` are dropped.
+    /// Move every position `k` places up (down for a negative `k`); positions that leave `D` are dropped.
     /// This is the knapsack step: `reach.union(reach.shifted(weight))`.
     pub fn shifted(self, k: Int) -> Bitset<D>:
         var out = Bitset<D>.new()
+        if k < 0:
+            // towards lower positions: the ones that fall below the first are dropped
+            for i in self.each():
+                if let j = D.try_at(i.to_idx + k): out.add(j)
+            return out
         let (words, bits) = (k / 64, k % 64)
         for i in (words..w.len).rev:
             var x = shl(w[i - words], bits)
@@ -109,12 +114,12 @@ fn shr(x: Int, k: Int) -> Int = if k == 0: x else: (x >> k) & low(64 - k)
 fn single_bits_across_word_borders():
     domain P = 0..200
     var b = Bitset<P>()
-    for i in [0, 1, 62, 63, 64, 127, 128, 199]: b.insert(P(i))
-    assert b.count == 8
-    assert b.has(P(63)) and b.has(P(64)) and not b.has(P(65))
+    for i in [0, 1, 62, 63, 64, 127, 128, 199]: b.add(P(i))
+    assert b.len == 8
+    assert b.contains(P(63)) and b.contains(P(64)) and not b.contains(P(65))
     b.remove(P(63))
-    b.flip(P(65))
-    b.flip(P(0))
+    b.toggle(P(65))
+    b.toggle(P(0))
     assert [p.to_idx for p in b.each()] == [1, 62, 64, 65, 127, 128, 199]
     assert b.next(P(2)) == P(62) and b.next(P(129)) == P(199) and b.next(P(64)) == P(64)
     b.remove(P(199))
@@ -135,12 +140,12 @@ fn set_algebra_matches_bool_arrays():
     var s = copy(bx)
     s.symmetric(by)
     for p in P:
-        assert u.has(p) == (x[p] or y[p])
-        assert n.has(p) == (x[p] and y[p])
-        assert d.has(p) == (x[p] and not y[p])
-        assert s.has(p) == (x[p] != y[p])
+        assert u.contains(p) == (x[p] or y[p])
+        assert n.contains(p) == (x[p] and y[p])
+        assert d.contains(p) == (x[p] and not y[p])
+        assert s.contains(p) == (x[p] != y[p])
     assert bx.meets(by) != n.is_empty
-    assert bx.count == sum(1 for p in P if x[p])
+    assert bx.len == sum(1 for p in P if x[p])
 
 @test
 fn shifted_matches_moving_each_position():
@@ -151,14 +156,25 @@ fn shifted_matches_moving_each_position():
         let s = b.shifted(k)
         for p in P:
             let from = p.to_idx - k
-            assert s.has(p) == (from >= 0 and x[P.nth(max(from, 0))])
+            assert s.contains(p) == (from >= 0 and x[P.nth(max(from, 0))])
 
 @test
 fn subset_sum_by_shifting():
     domain S = 0..=100
     var reach = Bitset<S>()
-    reach.insert(S(0))
+    reach.add(S(0))
     for wt in [7, 13, 29, 40]: reach.union(reach.shifted(wt))
-    assert reach.has(S(20)) and reach.has(S(89)) and reach.has(S(49))
-    assert not reach.has(S(1)) and not reach.has(S(30))
-    assert reach.count == 16
+    assert reach.contains(S(20)) and reach.contains(S(89)) and reach.contains(S(49))
+    assert not reach.contains(S(1)) and not reach.contains(S(30))
+    assert reach.len == 16
+
+@test
+fn membership_and_a_signed_shift():
+    domain D = 0..130
+    var s = Bitset<D>()
+    for x in [0, 3, 64, 129]: s.add(D(x))
+    assert D(64) in s and D(65) not in s and s.len == 4
+    s.toggle(D(3))
+    s.toggle(D(5))
+    assert [i.to_idx for i in s.shifted(-3).each()] == [2, 61, 126]
+    assert [i.to_idx for i in s.shifted(2).each()] == [2, 7, 66]
