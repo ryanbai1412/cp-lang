@@ -1741,9 +1741,26 @@ impl<'a> Lowerer<'a> {
         }
         match &ty.kind {
             ast::TypeKind::Range { lo, hi, inclusive } => {
-                if !matches!(lo.kind, ast::ExprKind::Int(0)) {
-                    self.unsupported(lo.span, "array dimensions that don't start at 0");
+                let first = match &lo.kind {
+                    ast::ExprKind::Int(first) => i64::try_from(*first).ok(),
+                    ast::ExprKind::Unary { op: ast::UnOp::Neg, expr } => match &expr.kind {
+                        ast::ExprKind::Int(first) => i64::try_from(*first).ok().map(|first| -first),
+                        _ => None,
+                    },
+                    _ => None,
+                };
+                let Some(first) = first else {
+                    self.unsupported(lo.span, "an array dimension that starts at anything but a number");
+                    self.help("name the range: `domain D = lo..=hi`, then `[D]T`");
                     return None;
+                };
+                if first != 0 {
+                    if !values {
+                        return Some(DimSpec::IntFrom(first, Box::new(self.int_lit(0, ty.span))));
+                    }
+                    let mut len = self.expect(hi, &Ty::Int);
+                    len = self.int_add(len, if *inclusive { 1 - first } else { -first });
+                    return Some(DimSpec::IntFrom(first, Box::new(len)));
                 }
                 if !*inclusive {
                     let saved_diags = self.diags.len();
@@ -2751,7 +2768,7 @@ impl<'a> Lowerer<'a> {
                             let dim_spec = match dim {
                                 Dim::Pos(d) => DimSpec::Pos(d),
                                 Dim::Bound(d) => DimSpec::Bound(d),
-                                Dim::Int => {
+                                Dim::Int | Dim::IntFrom(_) => {
                                     let sref = lw.local(src_slot, span);
                                     DimSpec::Int(Box::new(lw.len_of(sref, span)))
                                 }
@@ -2764,7 +2781,7 @@ impl<'a> Lowerer<'a> {
                             let idx_ty = match dim {
                                 Dim::Pos(d) => Ty::Pos(d),
                                 Dim::Bound(d) => Ty::Bound(d),
-                                Dim::Int => Ty::Int,
+                                Dim::Int | Dim::IntFrom(_) => Ty::Int,
                             };
                             let idx_slot = lw.temp(idx_ty.clone());
                             let idx_expr = lw.local(idx_slot, span);
@@ -2813,7 +2830,7 @@ impl<'a> Lowerer<'a> {
                                     step: None,
                                     rev: false,
                                 },
-                                Dim::Int => Iter::Range {
+                                Dim::Int | Dim::IntFrom(_) => Iter::Range {
                                     lo: lw.int_lit(0, span),
                                     hi: lw.len_of(sref, span),
                                     step: None,

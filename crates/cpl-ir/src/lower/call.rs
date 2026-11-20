@@ -1607,7 +1607,7 @@ impl<'a> Lowerer<'a> {
                     .map(|d| match d {
                         Dim::Pos(d) => Some(DimSpec::Pos(*d)),
                         Dim::Bound(d) => Some(DimSpec::Bound(*d)),
-                        Dim::Int => None,
+                        Dim::Int | Dim::IntFrom(_) => None,
                     })
                     .collect();
                 Spec::Array {
@@ -3552,7 +3552,7 @@ impl<'a> Lowerer<'a> {
                             Ty::Array { dims, .. } if dims.len() == 1 => match dims[0] {
                                 Dim::Pos(d) => Ty::Pos(d),
                                 Dim::Bound(d) => Ty::Bound(d),
-                                Dim::Int => Ty::Int,
+                                Dim::Int | Dim::IntFrom(_) => Ty::Int,
                             },
                             _ => Ty::Int,
                         };
@@ -4255,7 +4255,7 @@ impl<'a> Lowerer<'a> {
                 let index = match dim {
                     Dim::Pos(d) => lw.cast(Cast::Trust, i, Ty::Pos(d)),
                     Dim::Bound(d) => lw.cast(Cast::Trust, i, Ty::Bound(d)),
-                    Dim::Int => i,
+                    Dim::Int | Dim::IntFrom(_) => i,
                 };
                 lw.mk(
                     ExprKind::Index(Box::new(seq.clone()), vec![index]),

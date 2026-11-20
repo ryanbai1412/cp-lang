@@ -108,7 +108,7 @@ pub(crate) fn children<'p>(e: &'p Expr, f: &mut dyn FnMut(&'p Expr)) {
         }
         ExprKind::Fill(ds, value) => {
             for dim in ds {
-                if let DimSpec::Int(len) = dim {
+                if let DimSpec::Int(len) | DimSpec::IntFrom(_, len) = dim {
                     f(len);
                 }
             }
@@ -130,7 +130,7 @@ fn spec_p<'p>(s: &'p Spec, f: &mut dyn FnMut(&'p Expr)) {
         Spec::Fields(_, fields) => fields.iter().for_each(|field| spec_p(field, f)),
         Spec::Array { dims: ds, elem } => {
             for dim in ds {
-                if let DimSpec::Int(len) = dim {
+                if let DimSpec::Int(len) | DimSpec::IntFrom(_, len) = dim {
                     f(len);
                 }
             }

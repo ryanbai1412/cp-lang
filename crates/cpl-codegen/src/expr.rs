@@ -321,7 +321,7 @@ impl<'p> Emitter<'p> {
         match dim {
             DimSpec::Pos(d) => format!("{}_len", ident(&self.program.domains[*d])),
             DimSpec::Bound(d) => format!("{}_len + 1", ident(&self.program.domains[*d])),
-            DimSpec::Int(len) => self.expr(len).text,
+            DimSpec::Int(len) | DimSpec::IntFrom(_, len) => self.expr(len).text,
         }
     }
 

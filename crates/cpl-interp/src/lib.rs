@@ -1293,7 +1293,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             let len = match dim {
                 DimSpec::Pos(d) => self.domains[*d].1,
                 DimSpec::Bound(d) => self.domains[*d].1 + 1,
-                DimSpec::Int(len) => {
+                DimSpec::Int(len) | DimSpec::IntFrom(_, len) => {
                     let len = self.eval(len)?.int();
                     if len < 0 {
                         return trap(span, format!("an array can't have length {len}"));

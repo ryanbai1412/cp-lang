@@ -126,6 +126,9 @@ pub enum Dim {
     Bound(DomainId),
     /// A plain `Int` from 0, checked against the length.
     Int,
+    /// A plain `Int` from this first index: `[1..=9]T` starts at 1. The
+    /// cells are stored from 0; indexing takes the first index off.
+    IntFrom(i64),
 }
 
 impl Ty {
@@ -225,6 +228,8 @@ pub enum DimSpec {
     Bound(DomainId),
     /// A count-indexed dimension and its length.
     Int(Box<Expr>),
+    /// The same, indexed from a first index other than 0.
+    IntFrom(i64, Box<Expr>),
 }
 
 impl DimSpec {
@@ -233,6 +238,7 @@ impl DimSpec {
             DimSpec::Pos(d) => Dim::Pos(*d),
             DimSpec::Bound(d) => Dim::Bound(*d),
             DimSpec::Int(_) => Dim::Int,
+            DimSpec::IntFrom(lo, _) => Dim::IntFrom(*lo),
         }
     }
 }

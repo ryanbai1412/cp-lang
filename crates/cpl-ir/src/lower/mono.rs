@@ -1615,7 +1615,7 @@ impl<'a> Lowerer<'a> {
                             Dim::Pos(did) | Dim::Bound(did) => {
                                 self.unify_ast_ty(ix, &Ty::Pos(*did), tpl_mod, gen_names, env);
                             }
-                            Dim::Int => {}
+                            Dim::Int | Dim::IntFrom(_) => {}
                         }
                     }
                     self.unify_ast_ty(elem, ce, tpl_mod, gen_names, env);

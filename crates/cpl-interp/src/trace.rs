@@ -578,6 +578,7 @@ fn labels(dim: Dim, len: i64, view: &View) -> String {
     let lo = match dim {
         Dim::Pos(d) => view.domains[d].0,
         Dim::Bound(_) | Dim::Int => 0,
+        Dim::IntFrom(first) => first,
     };
     let mut out = String::from("[");
     for i in 0..len.clamp(0, 1000) {
@@ -594,14 +595,14 @@ fn dim_len(dim: Dim, view: &View) -> Option<i64> {
     match dim {
         Dim::Pos(d) => Some(view.domains[d].1),
         Dim::Bound(d) => Some(view.domains[d].1 + 1),
-        Dim::Int => None,
+        Dim::Int | Dim::IntFrom(_) => None,
     }
 }
 
 fn dim_name<'a>(dim: Dim, view: &View<'a>) -> Option<&'a str> {
     match dim {
         Dim::Pos(d) | Dim::Bound(d) => Some(view.program.domains[d].as_str()),
-        Dim::Int => None,
+        Dim::Int | Dim::IntFrom(_) => None,
     }
 }
 

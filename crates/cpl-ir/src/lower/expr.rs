@@ -1831,7 +1831,7 @@ impl<'a> Lowerer<'a> {
                             let want = match dim {
                                 Dim::Pos(d) => Ty::Pos(*d),
                                 Dim::Bound(d) => Ty::Bound(*d),
-                                Dim::Int => Ty::Int,
+                                Dim::Int | Dim::IntFrom(_) => Ty::Int,
                             };
                             let field_e = self.mk(
                                 ExprKind::Field(Box::new(tuple_val.clone()), i),
@@ -1861,10 +1861,14 @@ impl<'a> Lowerer<'a> {
                     let want = match dim {
                         Dim::Pos(d) => Ty::Pos(*d),
                         Dim::Bound(d) => Ty::Bound(*d),
-                        Dim::Int => Ty::Int,
+                        Dim::Int | Dim::IntFrom(_) => Ty::Int,
                     };
-                    let hint = if *dim == Dim::Int { None } else { Some(&want) };
-                    let value = self.expr(index, hint);
+                    let hint = if want == Ty::Int { None } else { Some(&want) };
+                    let mut value = self.expr(index, hint);
+                    // `b[i]` of a `[1..=9]T` is the cell `i - 1`.
+                    if let (Dim::IntFrom(lo), Ty::Int) = (dim, &value.ty) {
+                        value = self.int_add(value, -*lo);
+                    }
                     if let (Dim::Pos(d), Ty::Struct(sid)) = (dim, &value.ty) {
                         if self.structs[*sid].index_domain == Some(*d) {
                             if let Some(to_idx) = self.structs[*sid].methods.get("to_idx").copied() {
@@ -2208,12 +2212,12 @@ impl<'a> Lowerer<'a> {
                         let gaps = ExprKind::Binary(BinOp::Add, Box::new(len), Box::new(one));
                         (DimSpec::Bound(d), self.mk(gaps, Ty::Int, span))
                     }
-                    Dim::Int => unreachable!("matched above"),
+                    Dim::Int | Dim::IntFrom(_) => unreachable!("matched above"),
                 };
                 let index_ty = match dims[0] {
                     Dim::Bound(d) => Ty::Bound(d),
                     Dim::Pos(d) => Ty::Pos(d),
-                    Dim::Int => Ty::Int,
+                    Dim::Int | Dim::IntFrom(_) => Ty::Int,
                 };
                 let values: Vec<Expr> = items.iter().map(|item| self.expect(item, elem)).collect();
                 let ty = ty.clone();
@@ -2924,6 +2928,7 @@ impl<'a> Lowerer<'a> {
             .into_iter()
             .map(|dim| match dim {
                 DimSpec::Int(len) => DimSpec::Int(Box::new(self.hold(*len, &mut stmts))),
+                DimSpec::IntFrom(lo, len) => DimSpec::IntFrom(lo, Box::new(self.hold(*len, &mut stmts))),
                 other => other,
             })
             .collect();
@@ -2937,7 +2942,7 @@ impl<'a> Lowerer<'a> {
                     let len = self.mk(ExprKind::DomainLen(*d), Ty::Int, span);
                     (Ty::Bound(*d), self.int_add(len, 1))
                 }
-                DimSpec::Int(len) => (Ty::Int, (**len).clone()),
+                DimSpec::Int(len) | DimSpec::IntFrom(_, len) => (Ty::Int, (**len).clone()),
             };
             let mut pre = Vec::new();
             let slot = self.loop_var(param, ty.clone(), &mut pre);
