@@ -102,7 +102,9 @@ input.addEventListener("input", async () => {
   }
   status.textContent = "Searching…";
   try {
-    indexPromise ||= fetch("search.json")
+    indexPromise ||= document.getElementById("search-index")
+      ? Promise.resolve(JSON.parse(document.getElementById("search-index").textContent))
+      : fetch("search.json")
       .then((response) => {
         if (!response.ok) throw new Error("Search index unavailable");
         return response.json();

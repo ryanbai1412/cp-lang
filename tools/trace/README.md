@@ -1,9 +1,10 @@
 # Trace explorer
 
 Open `tools/trace/index.html` directly in a browser. No build, server, fonts,
-CDN, telemetry, or network connection is needed. This is a new visual system:
-warm paper, forest ink, a quiet source pane, and a state-first comparison
-workspace. It does not use the old mock.
+CDN, telemetry, or network connection is needed. The shadcn/ui zinc-based
+visual system matches the documentation: white and neutral surfaces, crisp
+borders, system sans/monospace stacks, and blue interaction states.
+Light/dark mode follows your system initially and persists locally.
 
 Five deterministic illustrative traces are embedded: a deliberately broken
 0/1 knapsack versus a correct spec, Dijkstra, postorder subtree sizes, maze
@@ -19,7 +20,11 @@ python3 tools/trace/emit.py tools/trace/samples/knapsack.json /tmp/knapsack-trac
 
 Use **Open trace** to load another JSON capture locally. **Save JSON** keeps
 the full capture; **Save HTML** embeds the loaded trace in a portable file.
-The latter deliberately omits the demo library. No data leaves the browser.
+The latter deliberately omits the demo library and docs navigation so the
+export remains a standalone capture. No data leaves the browser.
+
+For all documentation, the example playground, and this debugger in one
+offline file, run `python3 site/bundle.py` and open `dist/cp-lang.html`.
 
 The timeline supports scrubbing, first/last, previous/next, playback and four
 speeds. On the page background, Left/Right step, Home/End jump, and Space
