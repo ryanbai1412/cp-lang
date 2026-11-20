@@ -75,7 +75,7 @@ while prev_permutation(mut perm):
 //    ^^^^^^^^^^^^^^^^ support.function.stdlib.cp
 //                     ^^^ storage.modifier.mut.cp
     let k = ceil_div(a, b) + rand(1..=10)
-//          ^^^^^^^^ support.function.stdlib.cp
+//          ^^^^^^^^ support.function.builtin.cp
 //                           ^^^^ support.function.builtin.cp
     shuffle(mut perm)
 //  ^^^^^^^ support.function.builtin.cp
@@ -208,3 +208,9 @@ let stale_words = by + with + static + protocol + decorator + do + yields + requ
 //                                                                          ^^^^^^^^ - keyword
 //                                                                                     ^^^^^^^ - keyword
 //                                                                                               ^^^^ - invalid
+let total = fold(+, xs) + ceil_div(n, k) + scan(xs, +).len
+//          ^^^^ support.function.builtin.cp
+//                        ^^^^^^^^ support.function.builtin.cp
+//                                         ^^^^ support.function.builtin.cp
+for r in runs_by(sorted(xs, by: desc), x => x % 2): print(r.key)
+//       ^^^^^^^ support.function.builtin.cp

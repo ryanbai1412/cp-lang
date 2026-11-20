@@ -74,20 +74,21 @@ function shipped() {
     const builtinValues = new Set([...rustStrings(prelude, /pub fn value\(/, '\n}\n'), ...typeNames]);
     const builtinTypes = new Set([...rustStrings(prelude, /pub fn ty\(/, '\n}\n'), ...typeNames]);
     const stdlib = path.join(REPO_ROOT, 'stdlib');
+    const imported = new Set<string>();
+    for (const use of fs.readFileSync(path.join(stdlib, 'prelude.cp'), 'utf8').matchAll(/^use std\.\w+\.\{([^}]*)\}/gm)) {
+        for (const name of use[1].split(',').map(name => name.trim()).filter(Boolean)) {
+            imported.add(name);
+        }
+    }
+    // A `@get` fn is read as a field (`'a'.upper`, `r.l`), so it is a name of its own only when
+    // the prelude imports it.
     const declared = new Map<string, string>();
     for (const file of fs.readdirSync(stdlib).filter(name => name.endsWith('.cp'))) {
         for (const line of fs.readFileSync(path.join(stdlib, file), 'utf8').split('\n')) {
-            const decl = /^pub (fn|struct|enum|trait|type|const|domain) ([A-Za-z_][A-Za-z0-9_]*)/.exec(line);
-            if (decl) {
-                declared.set(decl[2], decl[1]);
+            const decl = /^pub (@get )?(?:@\w+ )*(fn|struct|enum|trait|type|const|domain) ([A-Za-z_][A-Za-z0-9_]*)/.exec(line);
+            if (decl && (!decl[1] || imported.has(decl[3]))) {
+                declared.set(decl[3], decl[2]);
             }
-        }
-    }
-    const imported = new Set<string>();
-    for (const line of fs.readFileSync(path.join(stdlib, 'prelude.cp'), 'utf8').split('\n')) {
-        const use = /^use std\.\w+\.\{(.*)\}/.exec(line);
-        for (const name of use ? use[1].split(',') : []) {
-            imported.add(name.trim());
         }
     }
     const kinds = (...wanted: string[]) =>
@@ -110,7 +111,6 @@ const UNLISTED_BUILTINS: Record<string, string> = {
     argmax: 'checked, but cpl run has no lowering yet',
     argmin: 'checked, but cpl run has no lowering yet',
     columns: 'checked, but cpl run has no lowering yet',
-    find: 'checked, but cpl run has no lowering yet',
     last: 'checked, but cpl run has no lowering yet',
     take: 'checked as a builtin, but cpl run has no lowering yet (std.seq.take needs a use)',
 };
