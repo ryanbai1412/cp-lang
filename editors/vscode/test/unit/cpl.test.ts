@@ -1,0 +1,47 @@
+import * as assert from 'node:assert/strict';
+import * as path from 'node:path';
+import { test } from 'node:test';
+import { resolveServer, runCpl } from '../../src/cpl';
+
+function resolve(configured: string, files: string[], platform: NodeJS.Platform = 'linux'): string | undefined {
+    return resolveServer(configured, {
+        pathEnv: platform === 'win32' ? 'C:\\bin;C:\\tools' : '/usr/bin:/opt/cp/bin',
+        workspaceFolders: ['/work/cp-lang'],
+        platform,
+        exists: file => files.includes(file),
+    });
+}
+
+test('a bare name is found on PATH before the workspace build', () => {
+    const built = path.join('/work/cp-lang', 'target', 'debug', 'cpl');
+    const release = path.join('/work/cp-lang', 'target', 'release', 'cpl');
+    assert.equal(resolve('cpl', ['/opt/cp/bin/cpl', built]), '/opt/cp/bin/cpl');
+    assert.equal(resolve('cpl', [built, release]), release);
+    assert.equal(resolve('cpl', [built]), built);
+    assert.equal(resolve('cpl', []), undefined);
+    assert.equal(resolve('', ['/usr/bin/cpl']), undefined);
+});
+
+test('a path is taken as written', () => {
+    assert.equal(resolve('/abs/cpl', ['/abs/cpl']), '/abs/cpl');
+    assert.equal(resolve('/abs/cpl', ['/usr/bin/cpl']), undefined);
+    const relative = path.join('/work/cp-lang', 'tools/cpl');
+    assert.equal(resolve('tools/cpl', [relative]), relative);
+});
+
+test('runCpl collects output, feeds stdin and reports the exit status', async () => {
+    const echo = 'process.stdin.on("data", d => process.stdout.write(String(d).toUpperCase())); process.stdin.on("end", () => { console.error("warn"); process.exit(3); })';
+    const result = await runCpl(process.execPath, ['-e', echo], { stdin: 'abc\n' });
+    assert.equal(result.stdout, 'ABC\n');
+    assert.equal(result.stderr, 'warn\n');
+    assert.equal(result.code, 3);
+    assert.equal(result.timedOut, false);
+});
+
+test('runCpl stops a run that takes too long, and reports a binary that is not there', async () => {
+    const slow = await runCpl(process.execPath, ['-e', 'setTimeout(() => {}, 60000)'], { timeoutMs: 200 });
+    assert.equal(slow.timedOut, true);
+    assert.equal(slow.code, null);
+    const missing = await runCpl('/nonexistent/cpl', ['lsp']);
+    assert.ok(missing.spawnError, 'expected a spawn error');
+});

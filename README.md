@@ -11,6 +11,8 @@ toolchain. The command is `cpl` (a working name) and source files end in
   benchmarks).
 - `Cargo.toml`, `crates/`: the Rust compiler and tools. An empty skeleton
   for now; `crates/README.md` says which crate owns what.
+- `editors/vscode/`: the VS Code extension: TextMate grammar, the client
+  for `cpl lsp`, run lenses and inline overlays.
 - `proto/`: the Python prototype compiler (partial; see
   `plan/agent-context.md`). Kept for trying design changes quickly.
 - `corpus/`, `subs/`: Ryan's accepted submissions, used for ports,

@@ -1,0 +1,372 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "CP Lang",
+  "scopeName": "source.cp",
+  "fileTypes": ["cp"],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#decorators" },
+    { "include": "#strings" },
+    { "include": "#chars-and-labels" },
+    { "include": "#numbers" },
+    { "include": "#use" },
+    { "include": "#declarations" },
+    { "include": "#contracts" },
+    { "include": "#labels" },
+    { "include": "#keywords" },
+    { "include": "#lambda-params" },
+    { "include": "#compound-assign-words" },
+    { "include": "#generics" },
+    { "include": "#boundaries" },
+    { "include": "#calls" },
+    { "include": "#type-names" },
+    { "include": "#members" },
+    { "include": "#operators" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.documentation.cp",
+          "match": "(///).*$",
+          "captures": { "1": { "name": "punctuation.definition.comment.cp" } }
+        },
+        {
+          "name": "comment.line.double-slash.cp",
+          "match": "(//).*$",
+          "captures": { "1": { "name": "punctuation.definition.comment.cp" } }
+        }
+      ]
+    },
+    "decorators": {
+      "name": "meta.decorator.cp",
+      "match": "(@)([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "punctuation.definition.decorator.cp" },
+        "2": { "name": "entity.name.function.decorator.cp" }
+      }
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.raw.cp",
+          "begin": "\\b(r)(\")",
+          "end": "(\")|$",
+          "beginCaptures": {
+            "1": { "name": "storage.type.string.raw.cp" },
+            "2": { "name": "punctuation.definition.string.begin.cp" }
+          },
+          "endCaptures": { "1": { "name": "punctuation.definition.string.end.cp" } }
+        },
+        {
+          "name": "string.quoted.double.cp",
+          "begin": "\"",
+          "end": "(\")|$",
+          "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.cp" } },
+          "endCaptures": { "1": { "name": "punctuation.definition.string.end.cp" } },
+          "patterns": [
+            { "name": "constant.character.escape.cp", "match": "\\\\." },
+            { "name": "constant.character.escape.brace.cp", "match": "\\{\\{|\\}\\}" },
+            { "include": "#interpolation" }
+          ]
+        }
+      ]
+    },
+    "interpolation": {
+      "name": "meta.interpolation.cp",
+      "contentName": "meta.embedded.line.cp",
+      "begin": "\\{",
+      "end": "(\\})|(?=$)",
+      "beginCaptures": { "0": { "name": "punctuation.section.interpolation.begin.cp" } },
+      "endCaptures": { "1": { "name": "punctuation.section.interpolation.end.cp" } },
+      "patterns": [
+        { "include": "#braces" },
+        { "include": "$self" }
+      ]
+    },
+    "braces": {
+      "begin": "\\{",
+      "end": "(\\})|(?=$)",
+      "beginCaptures": { "0": { "name": "punctuation.section.braces.begin.cp" } },
+      "endCaptures": { "1": { "name": "punctuation.section.braces.end.cp" } },
+      "patterns": [
+        { "include": "#braces" },
+        { "include": "$self" }
+      ]
+    },
+    "chars-and-labels": {
+      "patterns": [
+        {
+          "name": "string.quoted.single.char.cp",
+          "match": "(')(?:(\\\\.)|[^'\\\\])(')",
+          "captures": {
+            "1": { "name": "punctuation.definition.string.begin.cp" },
+            "2": { "name": "constant.character.escape.cp" },
+            "3": { "name": "punctuation.definition.string.end.cp" }
+          }
+        },
+        {
+          "name": "entity.name.label.cp",
+          "match": "'[A-Za-z_][A-Za-z0-9_]*"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        { "name": "constant.numeric.integer.hexadecimal.cp", "match": "\\b0[xX][0-9a-fA-F_]+\\b" },
+        { "name": "constant.numeric.integer.binary.cp", "match": "\\b0[bB][01_]+\\b" },
+        {
+          "name": "constant.numeric.float.cp",
+          "match": "\\b[0-9][0-9_]*\\.[0-9][0-9_]*(?:[eE][+-]?[0-9][0-9_]*)?\\b"
+        },
+        {
+          "name": "constant.numeric.float.cp",
+          "match": "\\b[0-9][0-9_]*[eE]-[0-9][0-9_]*\\b"
+        },
+        {
+          "name": "constant.numeric.integer.decimal.cp",
+          "match": "\\b[0-9][0-9_]*(?:[eE]\\+?[0-9][0-9_]*)?\\b"
+        }
+      ]
+    },
+    "use": {
+      "name": "meta.use.cp",
+      "begin": "^\\s*(?:(pub)\\s+)?(use)\\b",
+      "end": "$",
+      "beginCaptures": {
+        "1": { "name": "storage.modifier.pub.cp" },
+        "2": { "name": "keyword.control.import.cp" }
+      },
+      "patterns": [
+        { "include": "#comments" },
+        { "name": "keyword.control.import.as.cp", "match": "\\bas\\b" },
+        { "name": "keyword.operator.glob.cp", "match": "\\*" },
+        { "include": "#type-names" },
+        { "name": "entity.name.namespace.cp", "match": "\\b[a-z_][A-Za-z0-9_]*\\b" },
+        { "include": "#punctuation" }
+      ]
+    },
+    "declarations": {
+      "patterns": [
+        {
+          "match": "\\b(fn)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": { "name": "storage.type.function.cp" },
+            "2": { "name": "entity.name.function.cp" }
+          }
+        },
+        {
+          "match": "\\b(struct|enum|trait|protocol)\\s+([A-Z][A-Za-z0-9_]*)",
+          "captures": {
+            "1": { "name": "storage.type.$1.cp" },
+            "2": { "name": "entity.name.type.$1.cp" }
+          }
+        },
+        {
+          "match": "\\b(domain)\\s+([A-Z][A-Za-z0-9_]*)",
+          "captures": {
+            "1": { "name": "storage.type.domain.cp" },
+            "2": { "name": "entity.name.type.domain.cp" }
+          }
+        },
+        {
+          "match": "\\b(type)\\s+([A-Z][A-Za-z0-9_]*)",
+          "captures": {
+            "1": { "name": "storage.type.alias.cp" },
+            "2": { "name": "entity.name.type.alias.cp" }
+          }
+        },
+        {
+          "match": "(?<!if )\\b(const)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": { "name": "storage.modifier.const.cp" },
+            "2": { "name": "variable.other.constant.cp" }
+          }
+        },
+        {
+          "match": "\\b(law)\\s+([a-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": { "name": "storage.type.law.cp" },
+            "2": { "name": "entity.name.function.law.cp" }
+          }
+        },
+        {
+          "match": "\\b(decorator)\\s+([a-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": { "name": "storage.type.decorator.cp" },
+            "2": { "name": "entity.name.function.decorator.cp" }
+          }
+        },
+        {
+          "match": "^\\s*(spec)\\b(?=\\s+[A-Za-z_]|\\s*:)",
+          "captures": { "1": { "name": "storage.type.spec.cp" } }
+        },
+        {
+          "match": "\\b(pure)(?=\\s+fn\\b)",
+          "captures": { "1": { "name": "invalid.deprecated.pure.cp" } }
+        }
+      ]
+    },
+    "contracts": {
+      "match": "^\\s*(requires|ensures|invariant)\\b(?=\\s+(?![-+*/%^&|<>]*=)\\S)",
+      "captures": { "1": { "name": "keyword.other.contract.$1.cp" } }
+    },
+    "labels": {
+      "comment": "A named argument, a parameter or a record field: `(by: min`, `, mut g: Dsu`.",
+      "match": "([(,;])\\s*(?:(mut|inline|lends)\\s+)?([a-z_][A-Za-z0-9_]*)\\s*(:)(?!:)",
+      "captures": {
+        "1": { "patterns": [{ "include": "#punctuation" }] },
+        "2": { "name": "storage.modifier.$2.cp" },
+        "3": { "name": "variable.parameter.label.cp" },
+        "4": { "name": "punctuation.separator.label.cp" }
+      }
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "match": "\\b(yield)\\s+(from)\\b(?!\\s*[.(\\[]|\\s*$)",
+          "captures": {
+            "1": { "name": "keyword.control.yield.cp" },
+            "2": { "name": "keyword.control.yield.from.cp" }
+          }
+        },
+        { "name": "keyword.control.do.cp", "match": "\\bdo(?=\\s*:)" },
+        {
+          "name": "keyword.control.$1.cp",
+          "match": "\\b(if|elif|else|for|while|in|match|return|break|continue|yield|where|assert|defer)\\b"
+        },
+        { "name": "keyword.operator.logical.$1.cp", "match": "\\b(and|or|not)\\b" },
+        { "name": "keyword.operator.word.$1.cp", "match": "\\b(by|with)\\b" },
+        { "name": "keyword.other.unsafe.unchecked.cp", "match": "\\bunchecked\\b" },
+        { "name": "storage.type.var.cp", "match": "\\bvar\\b" },
+        { "name": "storage.type.let.cp", "match": "\\blet\\b" },
+        { "name": "storage.type.function.cp", "match": "\\bfn\\b" },
+        { "name": "storage.type.$1.cp", "match": "\\b(struct|enum|domain|type|trait|impl)\\b" },
+        { "name": "keyword.control.import.cp", "match": "\\buse\\b" },
+        { "name": "storage.modifier.mut.cp", "match": "\\bmut\\b" },
+        { "name": "storage.modifier.lends.cp", "match": "\\blends\\b" },
+        { "name": "storage.modifier.$1.cp", "match": "\\b(pub|const)\\b" },
+        { "name": "storage.modifier.$1.cp", "match": "\\b(static|inline)(?=\\s+(?:let|var|fn|[a-z_][A-Za-z0-9_]*\\s*:))" },
+        { "name": "keyword.other.yields.cp", "match": "\\byields\\b(?!\\s*\\.\\.)(?=\\s*[A-Z(\\[?])" },
+        { "name": "variable.language.self.cp", "match": "\\bself\\b" },
+        { "name": "constant.language.boolean.$1.cp", "match": "\\b(true|false)\\b" },
+        { "name": "constant.language.none.cp", "match": "\\bnone\\b" }
+      ]
+    },
+    "lambda-params": {
+      "match": "\\b([a-z_][A-Za-z0-9_]*)\\s*(=>)",
+      "captures": {
+        "1": { "name": "variable.parameter.lambda.cp" },
+        "2": { "name": "keyword.operator.fat-arrow.cp" }
+      }
+    },
+    "compound-assign-words": {
+      "comment": "`best max= x` and `best min= x`.",
+      "match": "\\b(max|min)(=)(?!=)",
+      "name": "keyword.operator.assignment.compound.cp"
+    },
+    "generics": {
+      "comment": "`Name<` starts type arguments only when `Name` is capitalized and `<` touches it.",
+      "name": "meta.generic.cp",
+      "begin": "\\b([A-Z][A-Za-z0-9_]*)(<)(?![=<\\s])",
+      "end": "(>)|(?=$)",
+      "beginCaptures": {
+        "1": { "patterns": [{ "include": "#type-names" }] },
+        "2": { "name": "punctuation.definition.generic.begin.cp" }
+      },
+      "endCaptures": { "1": { "name": "punctuation.definition.generic.end.cp" } },
+      "patterns": [{ "include": "$self" }]
+    },
+    "calls": {
+      "patterns": [
+        {
+          "name": "support.function.builtin.cp",
+          "match": "(?<![.A-Za-z0-9_])(print|read|min|max|abs|sum|count|all|any|find|first|last|argmax|argmin)(?=\\s*\\()"
+        },
+        {
+          "match": "(\\.)([a-z_][A-Za-z0-9_]*)(?=\\s*\\(|::<)",
+          "captures": {
+            "1": { "name": "punctuation.accessor.dot.cp" },
+            "2": { "name": "entity.name.function.method.cp" }
+          }
+        },
+        {
+          "name": "entity.name.function.call.cp",
+          "match": "\\b[a-z_][A-Za-z0-9_]*(?=\\s*\\(|::<)"
+        }
+      ]
+    },
+    "type-names": {
+      "patterns": [
+        {
+          "name": "support.type.builtin.cp",
+          "match": "\\b(Int|Float|Bool|Char|Str|I32|U8|U64|I128|List|Map|Set)\\b"
+        },
+        { "name": "support.constant.inf.cp", "match": "\\bINF\\b" },
+        { "name": "constant.other.caps.cp", "match": "\\b[A-Z][A-Z0-9_]+\\b" },
+        { "name": "entity.name.type.cp", "match": "\\b[A-Z][A-Za-z0-9_]*\\b" }
+      ]
+    },
+    "boundaries": {
+      "comment": "`s.l` and `s.r`, or `s.l(k)` and `s.r(k)`: the two boundaries of a slice.",
+      "match": "(\\.)(l|r)\\b",
+      "captures": {
+        "1": { "name": "punctuation.accessor.dot.cp" },
+        "2": { "name": "variable.other.property.boundary.cp" }
+      }
+    },
+    "members": {
+      "patterns": [
+        {
+          "comment": "`a.raw[i]`: the escape hatch out of a domain.",
+          "match": "(\\.)(raw)\\b",
+          "captures": {
+            "1": { "name": "punctuation.accessor.dot.cp" },
+            "2": { "name": "keyword.other.unsafe.raw.cp" }
+          }
+        },
+        {
+          "match": "(\\.)([a-z_][A-Za-z0-9_]*)\\b",
+          "captures": {
+            "1": { "name": "punctuation.accessor.dot.cp" },
+            "2": { "name": "variable.other.property.cp" }
+          }
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        { "name": "keyword.operator.range.cp", "match": "\\.\\.=|\\.\\." },
+        { "name": "keyword.operator.arrow.cp", "match": "->" },
+        { "name": "keyword.operator.fat-arrow.cp", "match": "=>" },
+        { "name": "keyword.operator.comparison.cp", "match": "<=>|==|!=" },
+        { "name": "keyword.operator.assignment.compound.cp", "match": "\\*\\*=|<<=|>>=|[-+*/%^&|]=" },
+        { "name": "keyword.operator.comparison.cp", "match": "<=|>=" },
+        { "name": "keyword.operator.bitwise.shift.cp", "match": "<<|>>" },
+        { "name": "keyword.operator.comparison.cp", "match": "<|>" },
+        { "name": "keyword.operator.assignment.cp", "match": "=" },
+        { "name": "keyword.operator.coalesce.cp", "match": "\\?\\?" },
+        { "name": "keyword.operator.optional.cp", "match": "\\?" },
+        { "name": "keyword.operator.unwrap.cp", "match": "!" },
+        { "name": "keyword.operator.arithmetic.cp", "match": "\\*\\*|[-+*/%]" },
+        { "name": "keyword.operator.bitwise.cp", "match": "[&|^~]" }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        { "name": "punctuation.accessor.double-colon.cp", "match": "::" },
+        { "name": "punctuation.accessor.dot.cp", "match": "\\." },
+        { "name": "punctuation.separator.comma.cp", "match": "," },
+        { "name": "punctuation.separator.colon.cp", "match": ":" },
+        { "name": "punctuation.terminator.semicolon.cp", "match": ";" },
+        { "name": "punctuation.section.parens.begin.cp", "match": "\\(" },
+        { "name": "punctuation.section.parens.end.cp", "match": "\\)" },
+        { "name": "punctuation.section.brackets.begin.cp", "match": "\\[" },
+        { "name": "punctuation.section.brackets.end.cp", "match": "\\]" },
+        { "name": "punctuation.section.braces.begin.cp", "match": "\\{" },
+        { "name": "punctuation.section.braces.end.cp", "match": "\\}" }
+      ]
+    }
+  }
+}

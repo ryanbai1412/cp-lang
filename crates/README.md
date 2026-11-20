@@ -83,6 +83,7 @@ $ cargo run -p cpl-cli -- --version
 cpl 0.0.0
 ```
 
-Not here yet, and not Rust: the standard library and the sample local
-library (`.cp` source), the VS Code extension, the trace viewer and the
-docs site. Each gets its own top-level directory when it starts.
+Not Rust: the VS Code extension is in `editors/vscode/`. Not here yet: the
+standard library and the sample local library (`.cp` source), the trace
+viewer and the docs site. Each gets its own top-level directory when it
+starts.

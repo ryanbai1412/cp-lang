@@ -1,0 +1,99 @@
+import * as assert from 'node:assert/strict';
+import { test } from 'node:test';
+import {
+    clip,
+    diffOutput,
+    firstDifference,
+    liveLabel,
+    parseRunReport,
+    parseStressReport,
+    renderCounterexample,
+    stageLabel,
+} from '../../src/results';
+
+test('parseRunReport reads values with 0-based lines', () => {
+    const report = parseRunReport(
+        JSON.stringify({
+            values: [
+                { line: 12, name: 'dist', value: '[0, 3, none, 7, 5]' },
+                { line: 0, name: 'bad', value: 'x' },
+                { name: 'no line', value: 'x' },
+            ],
+            stdout: '0 3 -1 7 5\n',
+            time_ms: 4,
+        }),
+    );
+    assert.deepEqual(report, {
+        values: [{ line: 11, name: 'dist', value: '[0, 3, none, 7, 5]' }],
+        stdout: '0 3 -1 7 5\n',
+        timeMs: 4,
+    });
+});
+
+test('parseRunReport keeps a runtime error and rejects other output', () => {
+    const report = parseRunReport('{"values": [], "error": {"line": 24, "message": "index out of range"}}');
+    assert.deepEqual(report?.error, { line: 23, message: 'index out of range' });
+    assert.equal(parseRunReport('6\n'), undefined);
+    assert.equal(parseRunReport('[1, 2]'), undefined);
+    assert.equal(parseRunReport(''), undefined);
+});
+
+const FAIL = JSON.stringify({
+    status: 'fail',
+    cases: 313,
+    counterexample: {
+        case: 313,
+        input: 'n = 2  a = [7, 7]  q = 1  qs = [(l: 2, r: 2)]',
+        stages: [
+            { name: 'last_seen', line: 9, fast: '[none, 1]', brute: '[none, 1]' },
+            { name: 'answer', line: 14, fast: '[0]', brute: '[1]' },
+        ],
+        saved: 'i6',
+    },
+});
+
+test('parseStressReport reads a counterexample and marks where the parts differ', () => {
+    const report = parseStressReport(FAIL);
+    assert.equal(report?.status, 'fail');
+    const found = report!.counterexample!;
+    assert.deepEqual(found.stages.map(s => [s.name, s.line, s.differs]), [
+        ['last_seen', 8, false],
+        ['answer', 13, true],
+    ]);
+    assert.equal(firstDifference(found)?.name, 'answer');
+    assert.deepEqual(parseStressReport('{"status": "pass", "cases": 1000}'), { status: 'pass', cases: 1000 });
+    assert.equal(parseStressReport('312 cases ... FAIL'), undefined);
+});
+
+test('renderCounterexample lays the parts out side by side', () => {
+    assert.equal(
+        renderCounterexample(parseStressReport(FAIL)!.counterexample!),
+        [
+            'FAIL at case 313, shrunk to:',
+            '  n = 2  a = [7, 7]  q = 1  qs = [(l: 2, r: 2)]',
+            '  part       fast       brute',
+            '  last_seen  [none, 1]  [none, 1]',
+            '  answer     [0]        [1]   <- first difference',
+            '  saved as i6',
+        ].join('\n'),
+    );
+});
+
+test('labels are clipped to the configured length', () => {
+    assert.equal(clip('[1,\n  2]', 20), '[1, 2]');
+    assert.equal(clip('abcdefghij', 5), 'abcd\u2026');
+    assert.equal(liveLabel('i1', [{ line: 3, name: 'dist', value: '[0, 3, none]' }], 60), 'i1: [0, 3, none]');
+    assert.equal(
+        liveLabel('i1', [{ line: 3, name: 'n', value: '2' }, { line: 3, name: 'm', value: '5' }], 60),
+        'i1: n = 2  m = 5',
+    );
+    const [agree, differ] = parseStressReport(FAIL)!.counterexample!.stages;
+    assert.equal(stageLabel(agree, 60), 'fast = brute = [none, 1]');
+    assert.equal(stageLabel(differ, 60), 'fast [0]  \u2260  brute [1]  \u2190 first difference');
+});
+
+test('diffOutput ignores trailing spaces and blank lines, and finds the first different line', () => {
+    assert.deepEqual(diffOutput('1 2 \n3\n\n', '1 2\n3'), { same: true });
+    assert.deepEqual(diffOutput('1\n2\n3\n', '1\n5\n3\n'), { same: false, line: 1, expected: '2', actual: '5' });
+    assert.deepEqual(diffOutput('1\n', '1\n2\n'), { same: false, line: 1, expected: undefined, actual: '2' });
+});
