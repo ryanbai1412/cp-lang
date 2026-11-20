@@ -1230,6 +1230,12 @@ impl<'a> Lowerer<'a> {
         let r = unwrap_first_last(self.expr(rhs, r_hint));
         // Dispatch operator traits (`impl Add/Sub/Mul/Div for Struct`).
         if let Ty::Struct(sid) = l.ty {
+            // `z ** e` is the struct's `pow(e: Int)`: `Mod<P>` has one.
+            if let (Pow, Ty::Int, Some(fn_id)) = (op, &r.ty, self.structs[sid].methods.get("pow").copied()) {
+                self.queue_fn(fn_id);
+                let ret = self.ret_of(fn_id, span);
+                return self.mk(ExprKind::Call(fn_id, vec![Arg::Value(l), Arg::Value(r)]), ret, span);
+            }
             let mname = match op {
                 Add => Some("add"),
                 Sub => Some("sub"),

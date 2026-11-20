@@ -2007,8 +2007,21 @@ impl<'a> Lowerer<'a> {
         let lit = |kind: ExprKind, ty: Ty| Expr { kind, ty, span: at };
         let mut stmts = Vec::new();
         let (acc, ty, inner, after): (Slot, Ty, Vec<Stmt>, Vec<Stmt>) = match kind {
-            Reduce::Sum => {
+            Reduce::Sum => 'sum: {
                 let ty = value.ty.clone();
+                // A `Mod<P>` adds with its own `+`, from its own zero.
+                if let Ty::Struct(sid) = ty {
+                    if let (true, Some(add)) = (self.is_std_mod(sid), self.struct_op_fn(sid, "add")) {
+                        let zero = self.int_lit(0, span);
+                        let zero = self.coerce(zero, &ty, span);
+                        let acc = self.temp(ty.clone());
+                        stmts.push(Stmt::Let(acc, Some(zero)));
+                        let total = lit(ExprKind::Local(acc), ty.clone());
+                        let next = lit(ExprKind::Call(add, vec![Arg::Value(total), Arg::Value(value)]), ty.clone());
+                        let add = Stmt::Assign(place(acc, &ty), AssignOp::Set, next);
+                        break 'sum (acc, ty, vec![add], Vec::new());
+                    }
+                }
                 let zero = match ty {
                     Ty::Int => ExprKind::Int(0),
                     Ty::I128 => ExprKind::Cast(Cast::IntToI128, Box::new(lit(ExprKind::Int(0), Ty::Int))),
