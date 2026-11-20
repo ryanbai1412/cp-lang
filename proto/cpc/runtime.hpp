@@ -1,4 +1,5 @@
 #include <bits/stdc++.h>
+#include <unistd.h>
 using namespace std;
 typedef long long ll;
 
@@ -103,7 +104,7 @@ template <ll M> struct Mod {
 // ---- input
 static char cp_ibuf[1 << 16]; static size_t cp_ipos = 0, cp_ilen = 0;
 static inline int cp_getc() {
-    if (cp_ipos == cp_ilen) { cp_ilen = fread(cp_ibuf, 1, sizeof cp_ibuf, stdin); cp_ipos = 0; if (!cp_ilen) return -1; }
+    if (cp_ipos == cp_ilen) { cp_ilen = (size_t)max<long>(0, read(0, cp_ibuf, sizeof cp_ibuf));  /* read(2), not fread: returns what is there, so `ask` cannot deadlock on a pipe */ cp_ipos = 0; if (!cp_ilen) return -1; }
     return cp_ibuf[cp_ipos++];
 }
 static inline ll rd_int() {

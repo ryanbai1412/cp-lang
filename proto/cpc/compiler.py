@@ -1814,6 +1814,20 @@ class Compiler:
             self.bind_pattern(s.pat, c, t, s, mut=s.mut)
             return
         name = s.pat.name
+        v = s.value
+        if (v is not None and v.kind == "call" and v.fn.kind == "name" and v.fn.name == "ask"
+                and not self.lookup("ask")):
+            # interactive: `let x: T = ask("?", i, j)` prints the question, flushes, and reads the judge's reply
+            if s.ty is None:
+                self.error(s, "ask() needs a declared type: `let x: T = ask(...)`")
+            ty = self.resolve_type(s.ty)
+            self.emit_print(v.args, newline=True, node=s)
+            self.emit("out_flush(); fflush(stdout);")
+            cpp = self.fresh(name)
+            self.emit(f"{self.cpp_type(ty)} {cpp};")
+            self.emit_read(cpp, ty, s)
+            self.declare(name, ty, cpp, s.mut, s)
+            return
         if (s.ty is not None and s.ty.kind == "tarray" and len(s.ty.dims) == 1 and s.ty.dims[0].kind == "tfresh"
                 and self.is_read(s.value)):
             return self.read_fresh(s, name)
