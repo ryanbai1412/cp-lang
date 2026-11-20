@@ -120,6 +120,7 @@ if (typeof document !== "undefined" && document.getElementById("course-data")) {
         const current = ++revision, answer = readAnswer();
         const submit = form.querySelector('[type="submit"]');
         submit.disabled = true;
+        section.dataset.state = "checking";
         status.textContent = exercise.kind === "output" ? "Running each case with CP Lang WebAssembly…" : "Checking…";
         try {
           const result = await CourseChecks.execute(exercise, answer,
