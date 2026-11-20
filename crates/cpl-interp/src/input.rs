@@ -5,22 +5,52 @@ pub(crate) struct InputError {
     pub message: String,
 }
 
+/// Gives the next bytes of an input that arrives while the program runs,
+/// and `None` once there are no more: what a judge sends a solution.
+pub type More<'a> = Box<dyn FnMut() -> Option<Vec<u8>> + Send + 'a>;
+
 pub(crate) struct Input<'a> {
-    data: &'a [u8],
+    data: std::borrow::Cow<'a, [u8]>,
     pos: usize,
+    /// Where the bytes after `data` come from, until it runs dry.
+    more: Option<More<'a>>,
 }
 
 impl<'a> Input<'a> {
     pub fn new(data: &'a [u8]) -> Input<'a> {
-        Input { data, pos: 0 }
+        Input {
+            data: std::borrow::Cow::Borrowed(data),
+            pos: 0,
+            more: None,
+        }
+    }
+
+    /// An input that starts empty and is fed by `more`.
+    pub fn live(more: More<'a>) -> Input<'a> {
+        Input {
+            data: std::borrow::Cow::Owned(Vec::new()),
+            pos: 0,
+            more: Some(more),
+        }
+    }
+
+    /// The byte at `pos`, waiting for it when the input is live.
+    fn byte(&mut self, pos: usize) -> Option<u8> {
+        while pos >= self.data.len() {
+            let chunk = self.more.as_mut().and_then(|more| more());
+            match chunk {
+                Some(chunk) => self.data.to_mut().extend_from_slice(&chunk),
+                None => {
+                    self.more = None;
+                    return None;
+                }
+            }
+        }
+        Some(self.data[pos])
     }
 
     fn skip_space(&mut self) {
-        while self
-            .data
-            .get(self.pos)
-            .is_some_and(|b| b.is_ascii_whitespace())
-        {
+        while self.byte(self.pos).is_some_and(|b| b.is_ascii_whitespace()) {
             self.pos += 1;
         }
     }
@@ -40,14 +70,10 @@ impl<'a> Input<'a> {
     }
 
     /// The next run of non-space bytes, and where it starts.
-    pub fn token(&mut self, what: &str) -> Result<(&'a [u8], usize), InputError> {
+    pub fn token(&mut self, what: &str) -> Result<(&[u8], usize), InputError> {
         self.skip_space();
         let start = self.pos;
-        while self
-            .data
-            .get(self.pos)
-            .is_some_and(|b| !b.is_ascii_whitespace())
-        {
+        while self.byte(self.pos).is_some_and(|b| !b.is_ascii_whitespace()) {
             self.pos += 1;
         }
         if start == self.pos {
@@ -63,57 +89,51 @@ impl<'a> Input<'a> {
             [b'+', rest @ ..] => (false, rest),
             rest => (false, rest),
         };
-        let bad = || {
-            self.fail(
-                start,
-                format!("expected a number, found `{}`", lossy(token)),
-            )
-        };
         if digits.is_empty() || !digits.iter().all(u8::is_ascii_digit) {
-            return Err(bad());
+            let message = format!("expected a number, found `{}`", lossy(token));
+            return Err(self.fail(start, message));
         }
-        let mut value: i64 = 0;
+        let mut value: Option<i64> = Some(0);
         for digit in digits {
             let d = i64::from(digit - b'0');
-            value = value
-                .checked_mul(10)
-                .and_then(|v| {
-                    if negative {
-                        v.checked_sub(d)
-                    } else {
-                        v.checked_add(d)
-                    }
-                })
-                .ok_or_else(|| {
-                    self.fail(
-                        start,
-                        format!("`{}` does not fit in an `Int`", lossy(token)),
-                    )
-                })?;
+            value = value.and_then(|v| v.checked_mul(10)).and_then(|v| {
+                if negative {
+                    v.checked_sub(d)
+                } else {
+                    v.checked_add(d)
+                }
+            });
         }
-        Ok((value, start))
+        match value {
+            Some(value) => Ok((value, start)),
+            None => {
+                let message = format!("`{}` does not fit in an `Int`", lossy(token));
+                Err(self.fail(start, message))
+            }
+        }
     }
 
     pub fn float(&mut self) -> Result<f64, InputError> {
         let (token, start) = self.token("a number")?;
-        std::str::from_utf8(token)
+        let parsed = std::str::from_utf8(token)
             .ok()
-            .and_then(|text| text.parse::<f64>().ok())
-            .ok_or_else(|| {
-                self.fail(
-                    start,
-                    format!("expected a number, found `{}`", lossy(token)),
-                )
-            })
+            .and_then(|text| text.parse::<f64>().ok());
+        match parsed {
+            Some(value) => Ok(value),
+            None => {
+                let message = format!("expected a number, found `{}`", lossy(token));
+                Err(self.fail(start, message))
+            }
+        }
     }
 
     /// The next byte that is not white space.
     pub fn char(&mut self) -> Result<u8, InputError> {
         self.skip_space();
-        match self.data.get(self.pos) {
+        match self.byte(self.pos) {
             Some(byte) => {
                 self.pos += 1;
-                Ok(*byte)
+                Ok(byte)
             }
             None => Err(self.fail(
                 self.pos,

@@ -66,7 +66,11 @@ std::string in;
 size_t in_at = 0;
 inline void read_all() { char b[1 << 16]; size_t n; while ((n = fread(b, 1, sizeof b, stdin)) > 0) in.append(b, n); }
 inline bool is_space(char c) { return c == ' ' || c == '\\n' || c == '\\t' || c == '\\r' || c == '\\f'; }
-inline void skip_space() { while (in_at < in.size() && is_space(in[in_at])) in_at++; }
+// An interactive program reads a line when it needs one: the judge
+// answers only after it has seen the query.
+bool live = false;
+inline bool more() { if (!live) return false; char b[1 << 12]; bool got = false; while (fgets(b, sizeof b, stdin)) { got = true; in += b; if (in.back() == '\\n') break; } return got; }
+inline void skip_space() { for (;;) { while (in_at < in.size() && is_space(in[in_at])) in_at++; if (in_at < in.size() || !more()) return; } }
 ",
     },
     Piece {
@@ -372,6 +376,14 @@ inline ll clz(ll x) { return x == 0 ? 64 : (ll)__builtin_clzll((uint64_t)x); }
 inline ll bit_width(ll x) { return x == 0 ? 0 : 64 - (ll)__builtin_clzll((uint64_t)x); }
 inline ll bit_ceil(ll x) { return x <= 1 ? 1 : (1LL << (64 - __builtin_clzll((uint64_t)(x - 1)))); }
 inline ll isqrt(ll x) { ll r = (ll)std::sqrt((double)x); while ((r + 1) <= 3037000499LL && (r + 1) * (r + 1) <= x) r++; while (r * r > x) r--; return r; }
+",
+    },
+    Piece {
+        name: "count_query",
+        needs: &["fail"],
+        code: "\
+// `ask(.., limit: K)`: the judge allows `K` queries.
+inline void count_query(ll limit) { static ll asked = 0; if (++asked > limit) fail((\"query limit exceeded: the limit is \" + std::to_string(limit)).c_str()); }
 ",
     },
     Piece {

@@ -703,11 +703,13 @@ impl<'a> Lowerer<'a> {
             "ask" => {
                 self.interactive = true;
                 let mut values = Vec::new();
+                let mut limit = None;
                 for arg in args {
                     match &arg.name {
-                        // The query budget is the judge's to enforce.
+                        // `limit: K`: the judge allows `K` queries, and
+                        // one more fails here as it would there.
                         Some(name) if name.text == "limit" => {
-                            self.expect(&arg.value, &Ty::Int);
+                            limit = Some(self.expect(&arg.value, &Ty::Int));
                         }
                         Some(name) => {
                             let message = format!("`ask` has no argument named `{}`", name.text);
@@ -721,8 +723,18 @@ impl<'a> Lowerer<'a> {
                     .filter_map(|(value, at)| self.fmt_arg(value, 6, at))
                     .collect();
                 let query = self.mk(ExprKind::Print(values), Ty::Unit, span);
+                let counted = limit.map(|limit| {
+                    self.mk(ExprKind::Builtin(Builtin::CountQuery, vec![limit]), Ty::Unit, span)
+                });
                 let Some(want) = hint.filter(|want| **want != Ty::Unit) else {
-                    return query;
+                    let Some(counted) = counted else {
+                        return query;
+                    };
+                    return self.do_expr(Some(&Ty::Unit), span, |lw, out| {
+                        out.push(Stmt::Expr(counted));
+                        out.push(Stmt::Expr(query));
+                        out.push(Stmt::Give(lw.mk(ExprKind::Unit, Ty::Unit, span)));
+                    });
                 };
                 let Some(spec) = self.spec_of(want) else {
                     let message = format!("`ask` can't tell how much a `{}` is", self.show(want));
@@ -732,6 +744,7 @@ impl<'a> Lowerer<'a> {
                 };
                 let want = want.clone();
                 self.do_expr(Some(&want), span, |lw, out| {
+                    out.extend(counted.map(Stmt::Expr));
                     out.push(Stmt::Expr(query));
                     let answer = lw.read(spec, span);
                     out.push(Stmt::Give(answer));
@@ -2612,6 +2625,46 @@ impl<'a> Lowerer<'a> {
         self.user_call(fn_id, receiver, args, span)
     }
 
+    /// The judge's side of the conversation: `sol.send(a, b)` is a line
+    /// the solution reads, and `sol.recv()` is the next thing it printed.
+    fn talk(&mut self, name: &ast::Name, args: &[ast::Arg], hint: Option<&Ty>, span: Span) -> Expr {
+        if name.text == "send" {
+            let values: Vec<(Expr, Span)> = args
+                .iter()
+                .map(|arg| (self.expr(&arg.value, None), arg.value.span))
+                .collect();
+            let values: Vec<FmtArg> = values
+                .into_iter()
+                .filter_map(|(value, at)| self.fmt_arg(value, 6, at))
+                .collect();
+            return self.mk(ExprKind::Print(values), Ty::Unit, span);
+        }
+        if !args.is_empty() {
+            self.error(codes::WRONG_ARG_COUNT, span, "`recv` takes no arguments");
+            return self.err_expr(span);
+        }
+        let Some(want) = hint.filter(|want| **want != Ty::Unit) else {
+            self.error(codes::TYPE_MISMATCH, span, "`recv` can't tell what to read");
+            self.help("say what the solution printed: `let x: Int = sol.recv()`");
+            return self.err_expr(span);
+        };
+        let Some(spec) = self.spec_of(want) else {
+            let message = format!("`recv` can't tell how much a `{}` is", self.show(want));
+            self.error(codes::TYPE_MISMATCH, span, message);
+            return self.err_expr(span);
+        };
+        let want = want.clone();
+        self.do_expr(Some(&want), span, |lw, out| {
+            let swap = lw.mk(ExprKind::Builtin(Builtin::SwapInput, Vec::new()), Ty::Unit, span);
+            out.push(Stmt::Expr(swap.clone()));
+            let heard = lw.read(spec, span);
+            let slot = lw.temp(heard.ty.clone());
+            out.push(Stmt::Let(slot, Some(heard)));
+            out.push(Stmt::Expr(swap));
+            out.push(Stmt::Give(lw.local(slot, span)));
+        })
+    }
+
     /// `base.name(args)`.
     fn method(
         &mut self,
@@ -2622,6 +2675,14 @@ impl<'a> Lowerer<'a> {
         hint: Option<&Ty>,
     ) -> Expr {
         let span = whole.span;
+        // `sol.send(x)` and `sol.recv()` in an `@interactor`.
+        if self.judge && matches!(name.text.as_str(), "send" | "recv") {
+            if let ast::ExprKind::Name(n) = &base.kind {
+                if self.lookup(n).is_some_and(|slot| self.cx.locals[slot].ty == Ty::Unit) {
+                    return self.talk(name, args, hint, span);
+                }
+            }
+        }
         // `List.filled(n, val)`
         if let ast::ExprKind::Name(n) = &base.kind {
             if n == "List" && self.lookup(n).is_none() && name.text == "filled" {

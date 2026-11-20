@@ -272,3 +272,161 @@ fn build_refuses_cpp_over_64_kb() {
     let stderr = String::from_utf8(out.stderr).unwrap();
     assert!(stderr.contains("over the 65536-byte limit"), "{stderr}");
 }
+
+/// A guessing game with its judge in the file: the solution halves the
+/// range, and the judge holds the secret.
+const GUESS: &str = "\
+let n: Int = read()
+var lo = 1
+var hi = n
+while lo < hi:
+    let mid = (lo + hi) / 2
+    let answer: Str = ask(\"?\", mid, limit: LIMIT)
+    if answer == \"<\": hi = mid
+    else: lo = mid + 1
+ask(\"!\", ANSWER)
+
+@interactor
+fn judge(mut sol: Interactor):
+    let n: 1..=1000 = read()
+    let secret: 1..=n = read()
+    sol.send(n)
+    while true:
+        let kind: Str = sol.recv()
+        let x: Int = sol.recv()
+        if kind == \"!\":
+            assert x == secret
+            return
+        sol.send(if secret <= x: \"<\" else: \">=\")
+";
+
+fn guess(test: &str, limit: &str, answer: &str) -> std::path::PathBuf {
+    let source = GUESS.replace("LIMIT", limit).replace("ANSWER", answer);
+    scratch(test, "guess.cp", source.as_bytes())
+}
+
+#[test]
+fn run_plays_the_solution_against_the_interactor_in_its_file() {
+    let path = guess("interactor-accepts", "10", "lo");
+    let out = cpl(&["run".as_ref(), path.as_os_str()], b"8 3\n");
+    assert_eq!(out.status.code(), Some(0), "{}", String::from_utf8_lossy(&out.stderr));
+    // The hidden test is the judge's: the solution hears `8` from it.
+    assert_eq!(out.stdout, b"? 4\n? 2\n? 3\n! 3\n");
+    assert!(String::from_utf8_lossy(&out.stderr).contains("the interactor `judge` accepted the run"));
+}
+
+#[test]
+fn run_reports_the_interactor_rejecting_a_wrong_answer() {
+    let path = guess("interactor-rejects", "10", "lo + 1");
+    let out = cpl(&["run".as_ref(), path.as_os_str()], b"8 3\n");
+    assert_eq!(out.status.code(), Some(3));
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("the interactor `judge` rejected the run"), "{stderr}");
+    assert!(stderr.contains("assertion failed: x == secret"), "{stderr}");
+}
+
+#[test]
+fn run_stops_a_solution_that_asks_more_than_its_limit() {
+    let path = guess("interactor-limit", "2", "lo");
+    let out = cpl(&["run".as_ref(), path.as_os_str()], b"1000 637\n");
+    assert_eq!(out.status.code(), Some(3));
+    assert_eq!(out.stdout, b"? 500\n? 750\n");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("query limit exceeded: this is query 3, and the limit is 2"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn run_ends_a_conversation_where_both_sides_wait() {
+    // The solution reads a second number the judge never sends.
+    let source = GUESS.replace("LIMIT", "10").replace("ask(\"!\", ANSWER)", "let more: Int = read()");
+    let path = scratch("interactor-deadlock", "guess.cp", source.as_bytes());
+    let out = cpl(&["run".as_ref(), path.as_os_str()], b"8 3\n");
+    assert_eq!(out.status.code(), Some(3));
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("the input ended where a number was expected"), "{stderr}");
+}
+
+#[test]
+fn judge_is_the_interactor_as_a_program_on_stdin_and_stdout() {
+    let path = guess("interactor-judge", "10", "lo");
+    let hidden = path.with_file_name("hidden.in");
+    std::fs::write(&hidden, "8 3\n").unwrap();
+    let args = ["judge".as_ref(), path.as_os_str(), hidden.as_os_str()];
+    let out = cpl(&args, b"? 4\n? 2\n? 3\n! 3\n");
+    assert_eq!(out.status.code(), Some(0));
+    assert_eq!(out.stdout, b"8\n<\n>=\n<\n");
+    let out = cpl(&args, b"! 5\n");
+    assert_eq!(out.status.code(), Some(3));
+    assert!(String::from_utf8_lossy(&out.stderr).starts_with("assertion failed: x == secret"));
+}
+
+#[test]
+fn stress_judges_with_the_interactor_in_the_file() {
+    let gen = "#!/bin/sh\nn=$(( ($1 * 37) % 1000 + 1 ))\necho \"$n $(( ($1 * 13) % n + 1 ))\"\n";
+    let stress = |test: &str, answer: &str| {
+        let path = guess(test, "10", answer);
+        let script = path.with_file_name("gen.sh");
+        std::fs::write(&script, gen).unwrap();
+        #[cfg(unix)]
+        std::fs::set_permissions(&script, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+        let args = [
+            "stress".as_ref(),
+            path.as_os_str(),
+            "--gen".as_ref(),
+            script.as_os_str(),
+            "--cases".as_ref(),
+            "12".as_ref(),
+        ];
+        let out = cpl(&args, b"");
+        format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr))
+    };
+    let right = stress("interactor-stress-ok", "lo");
+    assert!(right.contains("12 cases agree"), "{right}");
+    let wrong = stress("interactor-stress-wa", "lo + 1");
+    assert!(wrong.contains("interactor: assertion failed: x == secret"), "{wrong}");
+}
+
+const LAWS: &str = "\
+fn add(a: Int, b: Int) -> Int = a + b
+fn clamp(x: Int) -> Int:
+    if x < 0: return 0
+    return x
+
+@law comm(a: Int, b: Int) = add(a, b) == add(b, a)
+@law clamp_idem(x: Int) = clamp(clamp(x)) == clamp(x)
+";
+
+#[test]
+fn test_checks_each_law_and_a_valid_law_passes() {
+    let path = scratch("laws-hold", "laws.cp", LAWS.as_bytes());
+    let out = cpl(&["test".as_ref(), path.as_os_str()], b"");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert_eq!(out.status.code(), Some(0), "{stdout}");
+    assert!(stdout.contains("::law_comm") && stdout.contains("::law_clamp_idem"), "{stdout}");
+    assert!(stdout.contains("2 passed, 0 failed"), "{stdout}");
+}
+
+#[test]
+fn test_fails_a_broken_law_with_the_values_that_break_it() {
+    let source = format!("{LAWS}@law clamp_id(x: Int) = clamp(x) == x\n");
+    let path = scratch("laws-break", "laws.cp", source.as_bytes());
+    let out = cpl(&["test".as_ref(), path.as_os_str()], b"");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert_ne!(out.status.code(), Some(0), "{stdout}");
+    assert!(
+        stdout.contains("FAIL") && stdout.contains("law `clamp_id` does not hold for x = -1"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("2 passed, 1 failed"), "{stdout}");
+}
+
+#[test]
+fn messages_call_the_float_type_f64() {
+    let path = scratch("f64-name", "f.cp", b"let x: F64 = 1.5\nlet y: Int = x\n");
+    let out = cpl(&["check".as_ref(), path.as_os_str()], b"");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("F64") && !stderr.contains("Float"), "{stderr}");
+}

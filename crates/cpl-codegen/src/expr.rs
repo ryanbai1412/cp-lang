@@ -119,7 +119,10 @@ impl<'p> Emitter<'p> {
             ExprKind::Global(id) => {
                 touch.reads.insert((true, *id));
             }
-            ExprKind::Read(_) | ExprKind::Print(_) | ExprKind::CallExpr(..) => touch.io = true,
+            ExprKind::Read(_)
+            | ExprKind::Print(_)
+            | ExprKind::CallExpr(..)
+            | ExprKind::Builtin(Builtin::CountQuery | Builtin::SwapInput, _) => touch.io = true,
             ExprKind::Call(id, args) => {
                 let summary = &self.summaries[*id];
                 touch.io |= summary.io;
@@ -951,6 +954,15 @@ impl<'p> Emitter<'p> {
             Builtin::Floor => Code::new(format!("(ll)std::floor({})", text(0)), UNARY),
             Builtin::Ceil => Code::new(format!("(ll)std::ceil({})", text(0)), UNARY),
             Builtin::Round => Code::new(format!("(ll)std::round({})", text(0)), UNARY),
+            Builtin::CountQuery => {
+                self.need("count_query");
+                Code::primary(format!("cpl::count_query({})", text(0)))
+            }
+            // An `@interactor` runs in the interpreter, never as C++.
+            Builtin::SwapInput => {
+                self.need("fail");
+                Code::primary("cpl::fail(\"an `@interactor` is not built to C++\")".to_string())
+            }
             Builtin::Popcount => {
                 self.need("bits");
                 Code::primary(format!("cpl::popcount({})", text(0)))

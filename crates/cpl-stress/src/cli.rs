@@ -106,6 +106,15 @@ pub fn select_judge(
     match (checker, interactor, declared(src).first()) {
         (Some(path), _, _) => resolve(path).map(Judge::Checker),
         (_, Some(path), _) => resolve(path).map(Judge::Interactor),
+        // The interactor in the file is run by `cpl judge`.
+        (None, None, Some(judge)) if judge.kind == "interactor" => {
+            let cpl = std::env::current_exe()
+                .map_err(|e| format!("can't find `cpl` to run the interactor `{}`: {e}", judge.name))?;
+            Ok(Judge::Interactor(Program {
+                name: format!("{name} (`{}`)", judge.name),
+                argv: vec![cpl.display().to_string(), "judge".to_string(), name.to_string()],
+            }))
+        }
         (None, None, Some(judge)) => Err(format!(
             "{name} declares the {kind} `{fn_name}` (line {line}), which cpl can't build yet; pass it built with `--{kind} <program>`",
             kind = judge.kind,

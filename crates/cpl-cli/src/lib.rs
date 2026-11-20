@@ -1,6 +1,9 @@
 //! The `cpl` command-line tool. `cpl` is the working name of the binary
 //! (`cp` clashes with Unix `cp`); source files end in `.cp`.
 
+mod interact;
+mod laws;
+
 use std::io::Write;
 
 /// Version of the toolchain.
@@ -28,7 +31,10 @@ usage: cpl <command> [args]
 commands:
   check <file>...       report every error in the files
   run <file> [input]    check, then run in the debug interpreter, reading
-                        the input file or standard input
+                        the input file or standard input; a file with an
+                        `@interactor` runs against it, on the hidden test
+  judge <file> <input>  run the file's `@interactor` as a judge program on
+                        standard input and output
   build <file> [-o out] check, then write one C++17 file to submit: next to
                         the source by default, to standard output with `-o -`
   fmt [path]...         format files in the one canonical style
@@ -127,6 +133,12 @@ pub fn exec<S: AsRef<str>>(
                 "`run` takes a file and at most one input: `cpl run a.cp in.txt`".into(),
             ),
         },
+        Some("judge") => match rest.as_slice() {
+            [file, input] => judge_file(file, input, stderr),
+            _ => usage_error(
+                "`judge` takes a file and the hidden test: `cpl judge a.cp in.txt`".into(),
+            ),
+        },
         Some("build") => match rest.as_slice() {
             [file] => build_file(file, None, stdout, stderr),
             [file, "-o", out] | ["-o", out, file] => build_file(file, Some(out), stdout, stderr),
@@ -169,6 +181,8 @@ pub fn tool(command: &str) -> Option<Tool> {
 struct Compiled {
     text: String,
     program: cpl_ir::Program,
+    /// The file's `@interactor`, by name and lowered as a program.
+    judge: Option<(String, cpl_ir::Program)>,
 }
 
 /// Reads and checks `path` through the shared front end, then lowers it.
@@ -196,13 +210,60 @@ fn compile(path: &str, stderr: &mut String) -> Result<Compiled, u8> {
             return Err(EXIT_ERRORS);
         }
     }
-    match cpl_ir::lower(&analysis) {
-        Ok(program) => Ok(Compiled { text, program }),
+    let lowered = cpl_ir::lower(&analysis).and_then(|program| {
+        let judge = match cpl_ir::interactor(&analysis) {
+            Some(name) => Some((name.clone(), cpl_ir::lower_judge(&analysis, &name)?)),
+            None => None,
+        };
+        Ok((program, judge))
+    });
+    match lowered {
+        Ok((program, judge)) => Ok(Compiled {
+            text,
+            program,
+            judge,
+        }),
         Err(diagnostics) => {
             *stderr += &cpl_diag::render_all(&diagnostics, path, &text);
             Err(EXIT_ERRORS)
         }
     }
+}
+
+/// `cpl judge`: the file's `@interactor`, talking to a solution on
+/// standard input and output. The first line of what it says on failure
+/// is the reason, which is what `cpl stress` reports.
+fn judge_file(path: &str, input: &str, stderr: &mut String) -> u8 {
+    let input = match std::fs::read(input) {
+        Ok(input) => input,
+        Err(error) => {
+            *stderr += &format!("cpl: can't read `{input}`: {error}\n");
+            return EXIT_USAGE;
+        }
+    };
+    let compiled = match compile(path, stderr) {
+        Ok(compiled) => compiled,
+        Err(code) => return code,
+    };
+    let Some((_, judge)) = &compiled.judge else {
+        *stderr += &format!("cpl: `{path}` declares no `@interactor`\n");
+        return EXIT_USAGE;
+    };
+    match interact::judge_alone(judge, &input) {
+        Ok(()) => 0,
+        Err(trap) => {
+            *stderr += &format!("{}\n", trap.message);
+            *stderr += &render_trap(path, &compiled.text, &trap);
+            EXIT_FAILED
+        }
+    }
+}
+
+fn render_trap(path: &str, text: &str, trap: &cpl_interp::Trap) -> String {
+    let lines = cpl_diag::LineIndex::new(text);
+    let diagnostic =
+        cpl_diag::Diagnostic::error(cpl_diag::codes::RUNTIME, trap.span, trap.message.clone());
+    cpl_diag::render(&diagnostic, path, text, &lines)
 }
 
 /// `cpl run`: the program's output goes straight to `stdout`.
@@ -211,13 +272,43 @@ fn run_file(path: &str, input: &[u8], stdout: &mut (dyn Write + Send), stderr: &
         Ok(compiled) => compiled,
         Err(code) => return code,
     };
+    // An interactive problem with its judge in the file: the input is
+    // the hidden test, and the two talk to each other.
+    if let Some((name, judge)) = &compiled.judge {
+        let ruling = interact::run(&compiled.program, judge, input, stdout);
+        // A side that stops leaves the other with nothing to read: that
+        // second failure only follows from the first.
+        let starved = |trap: &cpl_interp::Trap| trap.message.starts_with("the input ended");
+        let (judge_trap, solution_trap) = match (ruling.judge, ruling.solution) {
+            (Some(judge), Some(solution)) if starved(&judge) && !starved(&solution) => {
+                (None, Some(solution))
+            }
+            (Some(judge), Some(solution)) if starved(&solution) && !starved(&judge) => {
+                (Some(judge), None)
+            }
+            both => both,
+        };
+        if judge_trap.is_none() && solution_trap.is_none() {
+            *stderr += &format!(
+                "cpl: the interactor `{name}` accepted the run ({} lines from the solution)\n",
+                ruling.lines
+            );
+            return 0;
+        }
+        if let Some(trap) = &solution_trap {
+            *stderr += "cpl: the solution failed\n";
+            *stderr += &render_trap(path, &compiled.text, trap);
+        }
+        if let Some(trap) = &judge_trap {
+            *stderr += &format!("cpl: the interactor `{name}` rejected the run\n");
+            *stderr += &render_trap(path, &compiled.text, trap);
+        }
+        return EXIT_FAILED;
+    }
     match cpl_interp::run(&compiled.program, input, stdout) {
         Ok(()) => 0,
         Err(trap) => {
-            let lines = cpl_diag::LineIndex::new(&compiled.text);
-            let diagnostic =
-                cpl_diag::Diagnostic::error(cpl_diag::codes::RUNTIME, trap.span, trap.message);
-            *stderr += &cpl_diag::render(&diagnostic, path, &compiled.text, &lines);
+            *stderr += &render_trap(path, &compiled.text, &trap);
             EXIT_FAILED
         }
     }
@@ -314,6 +405,9 @@ fn should_run_unit_tests(args: &[&str]) -> bool {
         if let Ok(text) = std::fs::read_to_string(p) {
             let mut db = cpl_check::Database::new();
             db.set_file(paths[0], text.as_str());
+            if laws::with_law_tests(&text).is_some() {
+                return true;
+            }
             if let Some(analysis) = db.analyze(paths[0]) {
                 return !cpl_ir::list_tests(&analysis).is_empty();
             }
@@ -377,6 +471,11 @@ fn run_unit_tests(
                 failed += 1;
                 continue;
             }
+        };
+        // Each top-level `@law` is checked as a test of its own.
+        let text = match laws::with_law_tests(&text) {
+            Some((with_laws, _)) => with_laws,
+            None => text,
         };
         db.set_file(&path_str, text.as_str());
         let Some(analysis) = db.analyze(&path_str) else {

@@ -610,3 +610,31 @@ fn sampling_settles_what_the_solver_cannot() {
         .unwrap_err();
     assert_eq!(err.to_string(), "`op` is not declared");
 }
+
+// ---- the `@law`s of a file -------------------------------------------------
+
+#[test]
+fn a_valid_law_of_a_file_is_proved_and_a_broken_one_is_refuted() {
+    let report = cpl_prover::laws::check_source(
+        "fn add(a: Int, b: Int) -> Int = a + b\n\
+         const K: Int = 3\n\
+         @law comm(a: Int, b: Int) = add(a, b) == add(b, a)\n\
+         @law shift(a: Int) = add(a, K) == a + 3\n\
+         @law sub_comm(a: Int, b: Int) = a - b == b - a\n",
+    );
+    assert!(report.verdict("comm").is_proved(), "{report}");
+    assert!(report.verdict("shift").is_proved(), "{report}");
+    assert!(!report.holds());
+    let broken = report.law("sub_comm").unwrap();
+    assert!(matches!(broken.verdict, Verdict::Refuted(_)), "{report}");
+    assert!(broken.broken.is_some());
+}
+
+#[test]
+fn a_law_about_a_fn_the_prover_cannot_read_is_not_proved() {
+    let report = cpl_prover::laws::check_source(
+        "fn clamp(x: Int) -> Int:\n    if x < 0: return 0\n    return x\n\
+         @law idem(x: Int) = clamp(clamp(x)) == clamp(x)\n",
+    );
+    assert!(matches!(report.verdict("idem"), Verdict::Unknown(_)), "{report}");
+}

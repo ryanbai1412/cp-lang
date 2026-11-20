@@ -17,6 +17,7 @@ use cpl_ir::{
     FnId, Iter, LoopId, Mutation, Place, PlaceKind, Program, SortBy, Spec, Stmt, Ty, UnOp,
 };
 use input::Input;
+pub use input::More;
 use std::cmp::Ordering;
 use std::io::Write;
 use std::rc::Rc;
@@ -57,6 +58,53 @@ pub struct Limits {
 /// any recursion a contest solution needs. Where no thread can be started
 /// (WebAssembly), use [`run_on_this_thread`].
 pub fn run(program: &Program, input: &[u8], output: &mut (dyn Write + Send)) -> Result<(), Trap> {
+    run_with(program, Io::fixed(input), output)
+}
+
+/// What a program reads.
+pub struct Io<'a> {
+    /// What `read()` reads.
+    input: Feed<'a>,
+    /// What an `@interactor` hears from the solution: `sol.recv()`.
+    peer: Option<More<'a>>,
+}
+
+enum Feed<'a> {
+    Fixed(&'a [u8]),
+    Live(More<'a>),
+}
+
+impl<'a> Io<'a> {
+    /// The whole input, known before the program starts.
+    pub fn fixed(input: &'a [u8]) -> Io<'a> {
+        Io {
+            input: Feed::Fixed(input),
+            peer: None,
+        }
+    }
+
+    /// An input that arrives while the program runs: the solution's side
+    /// of an interactive problem.
+    pub fn live(more: More<'a>) -> Io<'a> {
+        Io {
+            input: Feed::Live(more),
+            peer: None,
+        }
+    }
+
+    /// The judge's side: `input` is the hidden test, and `solution` is
+    /// what the solution prints.
+    pub fn judge(input: &'a [u8], solution: More<'a>) -> Io<'a> {
+        Io {
+            input: Feed::Fixed(input),
+            peer: Some(solution),
+        }
+    }
+}
+
+/// [`run`] with an input that can arrive while the program runs.
+pub fn run_with(program: &Program, io: Io, output: &mut (dyn Write + Send)) -> Result<(), Trap> {
+    let io = std::sync::Mutex::new(Some(io));
     // The writer is shared by reference so that a spawn that fails (too
     // little address space for the stack) can be tried again smaller.
     let output = std::sync::Mutex::new(output);
@@ -66,7 +114,7 @@ pub fn run(program: &Program, input: &[u8], output: &mut (dyn Write + Send)) -> 
     };
     std::thread::scope(|scope| {
         for bytes in [STACK_BYTES, 1 << 28, 1 << 23] {
-            let output = &output;
+            let (output, io) = (&output, &io);
             let limits = Limits {
                 depth: MAX_DEPTH,
                 // The rest is left for the frames under the deepest call.
@@ -79,7 +127,12 @@ pub fn run(program: &Program, input: &[u8], output: &mut (dyn Write + Send)) -> 
                         let mut output = output
                             .lock()
                             .unwrap_or_else(|poisoned| poisoned.into_inner());
-                        run_on_this_thread(program, input, &mut **output, limits)
+                        let io = io
+                            .lock()
+                            .unwrap_or_else(|poisoned| poisoned.into_inner())
+                            .take()
+                            .expect("only the thread that starts takes the input");
+                        run_io(program, io, &mut **output, limits)
                     });
             if let Ok(handle) = spawned {
                 return handle.join().unwrap_or_else(|_| Err(bug()));
@@ -101,6 +154,15 @@ pub fn run_on_this_thread(
     output: &mut (dyn Write + Send),
     limits: Limits,
 ) -> Result<(), Trap> {
+    run_io(program, Io::fixed(input), output, limits)
+}
+
+fn run_io(
+    program: &Program,
+    io: Io,
+    output: &mut (dyn Write + Send),
+    limits: Limits,
+) -> Result<(), Trap> {
     let top = 0u8;
     let mut interp = Interp {
         program,
@@ -108,7 +170,12 @@ pub fn run_on_this_thread(
         domains: vec![(0, 0); program.domains.len()],
         stack: Vec::new(),
         base: 0,
-        input: Input::new(input),
+        input: match io.input {
+            Feed::Fixed(input) => Input::new(input),
+            Feed::Live(more) => Input::live(more),
+        },
+        peer: io.peer.map(Input::live),
+        queries: 0,
         out: Vec::with_capacity(1 << 16),
         sink: output,
         depth: 0,
@@ -150,6 +217,10 @@ struct Interp<'p, 'o> {
     stack: Vec<Value>,
     base: usize,
     input: Input<'p>,
+    /// What the solution prints, for an `@interactor`.
+    peer: Option<Input<'p>>,
+    /// How many times the program has called `ask`.
+    queries: i64,
     out: Vec<u8>,
     sink: &'o mut (dyn Write + Send),
     depth: usize,
@@ -1492,6 +1563,24 @@ impl<'p, 'o> Interp<'p, 'o> {
                     return trap(span, format!("{v} does not fit in an `Int`"));
                 }
                 Value::Int(v as i64)
+            }
+            Builtin::CountQuery => {
+                self.queries += 1;
+                let limit = first.int();
+                if self.queries > limit {
+                    return trap(
+                        span,
+                        format!("query limit exceeded: this is query {}, and the limit is {limit}", self.queries),
+                    );
+                }
+                Value::Unit
+            }
+            Builtin::SwapInput => {
+                match &mut self.peer {
+                    Some(peer) => std::mem::swap(&mut self.input, peer),
+                    None => return trap(span, "there is no solution to talk to: an `@interactor` runs under `cpl run` or `cpl stress`"),
+                }
+                Value::Unit
             }
             Builtin::Popcount => Value::Int(i64::from((first.int() as u64).count_ones())),
             Builtin::Ctz => Value::Int(i64::from((first.int() as u64).trailing_zeros())),

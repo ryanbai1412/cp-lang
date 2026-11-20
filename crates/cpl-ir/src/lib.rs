@@ -16,7 +16,7 @@ mod lower;
 mod show;
 
 pub use cpl_syntax::ast::{BinOp, CmpOp, UnOp};
-pub use lower::{list_tests, lower, lower_test};
+pub use lower::{interactor, list_tests, lower, lower_judge, lower_test};
 pub use show::{sep_of, Sep};
 
 use cpl_diag::Span;
@@ -334,6 +334,11 @@ pub enum Builtin {
     Floor,
     Ceil,
     Round,
+    /// `ask(.., limit: K)`: counts the query and fails past `K` of them.
+    CountQuery,
+    /// Switches `read()` between the hidden test and what the solution
+    /// prints, around each `sol.recv()` of an `@interactor`.
+    SwapInput,
     Popcount,
     Ctz,
     Clz,
