@@ -222,7 +222,7 @@ fn run_io(
             Feed::Fixed(input) => Input::new(input),
             Feed::Live(more) => Input::live(more),
         },
-        peer: io.peer.map(Input::live),
+        peer: io.peer.map(|more| Input::live(more).named("solution's output")),
         queries: 0,
         out: Vec::with_capacity(1 << 16),
         sink: output,

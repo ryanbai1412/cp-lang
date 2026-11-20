@@ -3,6 +3,7 @@
 
 pub mod choices;
 pub mod cli;
+pub mod explain;
 pub mod gen;
 pub mod judge;
 pub mod program;

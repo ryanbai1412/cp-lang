@@ -556,7 +556,9 @@ fn run_file(args: &RunArgs, input: &[u8], stdout: &mut (dyn Write + Send), stder
         let ruling = interact::run(&compiled.program, judge, input, stdout);
         // A side that stops leaves the other with nothing to read: that
         // second failure only follows from the first.
-        let starved = |trap: &cpl_interp::Trap| trap.message.starts_with("the input ended");
+        let starved = |trap: &cpl_interp::Trap| {
+            trap.message.starts_with("the input ended") || trap.message.starts_with("the solution's output ended")
+        };
         let (judge_trap, solution_trap) = match (ruling.judge, ruling.solution) {
             (Some(judge), Some(solution)) if starved(&judge) && !starved(&solution) => {
                 (None, Some(solution))

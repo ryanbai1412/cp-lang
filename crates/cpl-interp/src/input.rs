@@ -14,6 +14,9 @@ pub(crate) struct Input<'a> {
     pos: usize,
     /// Where the bytes after `data` come from, until it runs dry.
     more: Option<More<'a>>,
+    /// What the bytes are, for messages: `input`, or the `solution's
+    /// output` a judge reads with `read_output()`.
+    name: &'static str,
 }
 
 impl<'a> Input<'a> {
@@ -22,6 +25,7 @@ impl<'a> Input<'a> {
             data: std::borrow::Cow::Borrowed(data),
             pos: 0,
             more: None,
+            name: "input",
         }
     }
 
@@ -31,7 +35,13 @@ impl<'a> Input<'a> {
             data: std::borrow::Cow::Owned(Vec::new()),
             pos: 0,
             more: Some(more),
+            name: "input",
         }
+    }
+
+    /// The same stream, called `name` in messages.
+    pub fn named(self, name: &'static str) -> Input<'a> {
+        Input { name, ..self }
     }
 
     /// The byte at `pos`, waiting for it when the input is live.
@@ -66,7 +76,10 @@ impl<'a> Input<'a> {
         let before = &self.data[..pos.min(self.data.len())];
         let line = before.iter().filter(|b| **b == b'\n').count() + 1;
         let col = before.iter().rev().take_while(|b| **b != b'\n').count() + 1;
-        format!("input line {line}, column {col}")
+        match self.name {
+            "input" => format!("input line {line}, column {col}"),
+            name => format!("line {line}, column {col} of the {name}"),
+        }
     }
 
     pub fn fail(&self, start: usize, message: String) -> InputError {
@@ -83,7 +96,7 @@ impl<'a> Input<'a> {
             self.pos += 1;
         }
         if start == self.pos {
-            return Err(self.fail(start, format!("the input ended where {what} was expected")));
+            return Err(self.fail(start, format!("the {} ended where {what} was expected", self.name)));
         }
         Ok((&self.data[start..self.pos], start))
     }
@@ -161,7 +174,7 @@ impl<'a> Input<'a> {
             }
             None => Err(self.fail(
                 self.pos,
-                "the input ended where a character was expected".into(),
+                format!("the {} ended where a character was expected", self.name),
             )),
         }
     }

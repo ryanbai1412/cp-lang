@@ -110,8 +110,11 @@ impl Watch {
                 return Ok(true);
             }
         };
-        let results = run_cases(&ready.solution, &ready.judge, &cases, ready.limits.time)
+        let mut results = run_cases(&ready.solution, &ready.judge, &cases, ready.limits.time)
             .map_err(|e| format!("can't run {}: {e}", ready.solution.name))?;
+        if args.value("--fast").is_none() {
+            crate::test::explain_runtime_errors(&mut results, &cases, &self.source);
+        }
         let _ = write!(out, "{}", render(&results));
         Ok(results.iter().all(|result| result.passed()))
     }

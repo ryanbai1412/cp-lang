@@ -43,6 +43,9 @@ pub struct CaseResult {
     pub peak_kb: Option<u64>,
     pub expected: Option<String>,
     pub output: String,
+    /// For a runtime error: what the debug interpreter reports on the same
+    /// input, with the source line.
+    pub explained: Option<String>,
 }
 
 impl CaseResult {
@@ -73,6 +76,7 @@ pub fn run_cases(
             let unjudged =
                 expected.is_none() && *judge == Judge::Tokens && judged.verdict.accepted();
             Ok(CaseResult {
+                explained: None,
                 name: case.name.clone(),
                 verdict: (!unjudged).then_some(judged.verdict),
                 elapsed: judged.outcome.elapsed,
@@ -82,6 +86,18 @@ pub fn run_cases(
             })
         })
         .collect()
+}
+
+/// Fills in `explained` for each runtime error: the `.cp` solution `source`
+/// run on that case's input in the debug interpreter.
+pub fn explain_runtime_errors(results: &mut [CaseResult], cases: &[TestCase], source: &Path) {
+    for (result, case) in results.iter_mut().zip(cases) {
+        if matches!(result.verdict, Some(Verdict::RuntimeError(_))) {
+            if let Ok(input) = std::fs::read_to_string(&case.input) {
+                result.explained = cpl_stress::explain::runtime_error(source, &input);
+            }
+        }
+    }
 }
 
 /// At most `max` lines of `text`, each after `prefix`.
@@ -122,7 +138,10 @@ pub fn render(results: &[CaseResult]) -> String {
                 out.push_str(&block("     got:      ", &result.output, 10));
                 out.push_str(&format!("     {why}\n"));
             }
-            Some(Verdict::RuntimeError(why)) => out.push_str(&format!("     {why}\n")),
+            Some(Verdict::RuntimeError(why)) => match &result.explained {
+                Some(explained) => out.push_str(&block("     ", explained, 12)),
+                None => out.push_str(&format!("     {why}\n")),
+            },
             Some(Verdict::Accepted | Verdict::TimeLimit) => {}
         }
     }
@@ -194,8 +213,12 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                 ));
             }
             let ready = ready(&source, &src, &args)?;
-            run_cases(&ready.solution, &ready.judge, &cases, ready.limits.time)
-                .map_err(|e| format!("can't run {}: {e}", ready.solution.name))
+            let mut results = run_cases(&ready.solution, &ready.judge, &cases, ready.limits.time)
+                .map_err(|e| format!("can't run {}: {e}", ready.solution.name))?;
+            if args.value("--fast").is_none() {
+                explain_runtime_errors(&mut results, &cases, &source);
+            }
+            Ok(results)
         });
     match result {
         Ok(results) => {

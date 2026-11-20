@@ -12,7 +12,7 @@
 //! lets the generator and the shrinker keep every case valid.
 
 use cpl_diag::Span;
-use cpl_syntax::ast::{Block, FnBody, 
+use cpl_syntax::ast::{Block, FnBody, Stmt,
     BinOp, Expr, ExprKind, Pattern, PatternKind, StmtKind, Type, TypeKind, UnOp,
 };
 use std::collections::{HashMap, HashSet};
@@ -348,6 +348,20 @@ impl Builder<'_> {
     }
 }
 
+fn span_range(span: Span) -> std::ops::Range<usize> {
+    span.start as usize..span.end as usize
+}
+
+/// True when `code` calls `read()`, outside `//` comments.
+fn reads_inside(code: &str) -> bool {
+    code.lines().any(|line| {
+        let line = line.split("//").next().unwrap_or("");
+        line.match_indices("read()").any(|(at, _)| {
+            !line[..at].chars().next_back().is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '.')
+        })
+    })
+}
+
 fn is_read(expr: &Expr) -> bool {
     matches!(&expr.kind, ExprKind::Call { callee, args }
         if args.is_empty() && matches!(&callee.kind, ExprKind::Name(name) if name == "read"))
@@ -375,11 +389,11 @@ impl InputSpec {
         let mut above: Option<InputSpec> = None;
         // With an `@interactor`, the hidden test is what its body reads,
         // once per test case; the solution reads only what it is sent.
-        let judge: Option<&Block> = parsed.items.iter().flat_map(|(_, item)| &item.stmts).find_map(|stmt| {
+        let judge: Option<(_, &Block)> = parsed.items.iter().flat_map(|(base, item)| item.stmts.iter().map(move |stmt| (*base, stmt))).find_map(|(base, stmt)| {
             let decorated = stmt.decorators.iter().any(|d| d.name.text == "interactor");
             match &stmt.kind {
                 StmtKind::Fn(decl) if decorated => match &decl.body {
-                    FnBody::Block(block) => Some(block),
+                    FnBody::Block(block) => Some((base, block)),
                     _ => None,
                 },
                 _ => None,
@@ -388,9 +402,26 @@ impl InputSpec {
         let mut hidden = Vec::new();
         for (base, item) in &parsed.items {
             builder.base = *base;
-            let stmts = item.stmts.iter().map(|stmt| (stmt, false));
-            let stmts = stmts.chain(judge.iter().flat_map(|block| &block.stmts).map(|stmt| (stmt, true)));
+            // A `@multitest fn` reads one case: its body is read like
+            // the lines below an `@!multitest` divider.
+            let stmts = item.stmts.iter().flat_map(|stmt| {
+                let multitest = stmt.decorators.iter().any(|d| !d.directive && d.name.text == "multitest");
+                let body: &[Stmt] = match &stmt.kind {
+                    StmtKind::Fn(decl) if multitest => match &decl.body {
+                        FnBody::Block(block) => &block.stmts,
+                        _ => &[],
+                    },
+                    _ => &[],
+                };
+                std::iter::once(stmt).chain(body).map(|stmt| (stmt, false))
+            });
+            let stmts = stmts.chain(judge.iter().flat_map(|(_, block)| &block.stmts).map(|stmt| (stmt, true)));
             for (stmt, in_judge) in stmts {
+                // The interactor's lines are offset from its own item.
+                builder.base = match judge {
+                    Some((judge_base, _)) if in_judge => judge_base,
+                    _ => *base,
+                };
                 // Decorated fns (`@brute`, `@checker`, `@interactor`)
                 // read for themselves; the divider splits the input.
                 if let Some(divider) = stmt.decorators.iter().find(|d| d.name.text == "multitest") {
@@ -448,7 +479,7 @@ impl InputSpec {
                         let field = Field {
                             names: Builder::names(pat, &shape),
                             shape,
-                            line: lines.line_of(stmt.span.shift(*base).start) + 1,
+                            line: lines.line_of(stmt.span.shift(builder.base).start) + 1,
                         };
                         match (in_judge, judge.is_some()) {
                             (true, _) => hidden.push(field),
@@ -457,6 +488,16 @@ impl InputSpec {
                             // from the interactor, not input.
                             (false, true) => {}
                         }
+                    }
+                    StmtKind::Fn(_) => {}
+                    // A `read()` anywhere else (in an expression, a loop
+                    // or a branch) reads input no field describes: a case
+                    // made without it would be cut short.
+                    _ if (in_judge || judge.is_none()) && reads_inside(&src[span_range(stmt.span.shift(builder.base))]) => {
+                        return Err(builder.error(
+                            stmt.span,
+                            "this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`".into(),
+                        ));
                     }
                     _ => {}
                 }

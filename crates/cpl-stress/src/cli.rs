@@ -4,6 +4,8 @@ use crate::judge::{declared, Judge};
 use crate::program::Program;
 use crate::run::{save, stress, Options, Report, Source};
 use crate::spec::InputSpec;
+use cpl_diag::Span;
+use std::collections::HashMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -171,6 +173,66 @@ pub fn solution(file: &Path, fast: Option<&Path>) -> Result<Program, String> {
 }
 
 /// `text` as a JSON string, quotes included.
+/// The file with each `@brute(f) fn g` put in place of `fn f`: `g` takes
+/// `f`'s name, `f` steps aside and the decorator is blanked. Lines stay
+/// where they were, so `debug(...)` lines still pair up. `None` when the
+/// file pairs no fn with a brute.
+fn swap_in_part_brutes(src: &str) -> Option<String> {
+    let parsed = cpl_syntax::parse_file(src);
+    let mut fns: HashMap<&str, Span> = HashMap::new();
+    let mut pairs = Vec::new();
+    for (base, item) in &parsed.items {
+        for stmt in &item.stmts {
+            let cpl_syntax::ast::StmtKind::Fn(decl) = &stmt.kind else {
+                continue;
+            };
+            fns.insert(decl.name.text.as_str(), decl.name.span.shift(*base));
+            for decorator in stmt.decorators.iter().filter(|d| !d.directive && d.name.text == "brute") {
+                if let [arg] = decorator.args.as_slice() {
+                    if let cpl_syntax::ast::ExprKind::Name(part) = &arg.value.kind {
+                        if part != "main" {
+                            pairs.push((decorator.span.shift(*base), decl.name.span.shift(*base), part.as_str()));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    let mut edits: Vec<(Span, String)> = Vec::new();
+    for (decorator, brute, part) in pairs {
+        let Some(&fast) = fns.get(part) else { continue };
+        let blank = src[decorator.start as usize..decorator.end as usize]
+            .chars()
+            .map(|c| if c == '\n' { c } else { ' ' })
+            .collect();
+        edits.push((decorator, blank));
+        edits.push((brute, part.to_string()));
+        edits.push((fast, format!("{part}_cpl_fast")));
+    }
+    if edits.is_empty() {
+        return None;
+    }
+    edits.sort_by_key(|(span, _)| std::cmp::Reverse(span.start));
+    let mut swapped = src.to_string();
+    for (span, text) in edits {
+        swapped.replace_range(span.start as usize..span.end as usize, &text);
+    }
+    Some(swapped)
+}
+
+/// Builds `swapped`, the file with its `@brute(f)` fns in place, from
+/// beside `file` so its imports resolve the same way.
+fn build_part_brute(file: &Path, name: &str, swapped: &str) -> Result<Program, String> {
+    let stem = file.file_stem().and_then(|s| s.to_str()).unwrap_or("brute");
+    let path = file.with_file_name(format!(".{stem}.brute-{}.cp", std::process::id()));
+    std::fs::write(&path, swapped).map_err(|e| format!("can't write {}: {e}", path.display()))?;
+    let built = Program::resolve(&path);
+    let _ = std::fs::remove_file(&path);
+    let mut program = built.map_err(|e| e.to_string())?;
+    program.name = format!("{name} with its @brute fns swapped in");
+    Ok(program)
+}
+
 pub fn json_string(text: &str) -> String {
     let mut out = String::from("\"");
     for c in text.chars() {
@@ -305,7 +367,12 @@ pub fn run_with(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write,
             return 1;
         }
     }
-    if args.brute.is_none() && own_brute.is_none() && judge == Judge::Tokens {
+    // `@brute(f) fn g`: the brute is the whole file with `g` in `f`'s place.
+    let part_brute = match (&args.brute, &own_brute, args.file.extension().and_then(|e| e.to_str())) {
+        (None, None, Some("cp")) => swap_in_part_brutes(&src),
+        _ => None,
+    };
+    if args.brute.is_none() && own_brute.is_none() && part_brute.is_none() && judge == Judge::Tokens {
         return fail(format!(
             "there is nothing to compare {name} with: write a `@brute(main) fn` in it, pass `--brute <program>`, or give it a `@checker` or an `@interactor` that can judge an output on its own"
         ));
@@ -352,7 +419,10 @@ pub fn run_with(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write,
             (None, Some((fn_name, _))) => Program::resolve_brute(&args.file, fn_name)
                 .map(Some)
                 .map_err(|e| e.to_string()),
-            (None, None) => Ok(None),
+            (None, None) => match &part_brute {
+                Some(swapped) => build_part_brute(&args.file, &name, swapped).map(Some),
+                None => Ok(None),
+            },
         });
         let fast = solution(&args.file, args.fast.as_deref());
         (fast, brute.join().expect("a build does not panic"))
@@ -461,7 +531,14 @@ pub fn run_with(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write,
             );
         }
         crate::Verdict::RuntimeError(why) => {
-            let _ = writeln!(stdout, "  the solution failed: {why}");
+            match args.fast.is_none().then(|| crate::explain::runtime_error(&args.file, &failure.input)).flatten() {
+                Some(explained) => {
+                    let _ = writeln!(stdout, "  the solution failed:\n{}", indent(explained.trim_end()));
+                }
+                None => {
+                    let _ = writeln!(stdout, "  the solution failed: {why}");
+                }
+            }
         }
         _ => {
             let _ = writeln!(stdout, "  the solution ran past the time limit");

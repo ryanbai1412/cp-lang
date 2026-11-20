@@ -147,6 +147,9 @@ pub struct Run {
     pub peak_kb: Option<u64>,
     /// `ok`, `TLE`, `MLE` or `RE`.
     pub status: &'static str,
+    /// Why a run failed (`RE`): the last line it printed to standard error,
+    /// or the signal that stopped it.
+    pub error: Option<String>,
 }
 
 /// Runs the solution on every worst case the spec has.
@@ -172,15 +175,27 @@ pub fn bench(
             Exit::Code(0) => "ok",
             Exit::Code(_) | Exit::Signal => "RE",
         };
+        let error = (status == "RE").then(|| crash_reason(&outcome));
         runs.push(Run {
             shape,
             numbers: case.weight().0,
             elapsed: outcome.elapsed,
             peak_kb: outcome.peak_kb,
             status,
+            error,
         });
     }
     Ok(runs)
+}
+
+/// Why a run that did not exit cleanly failed.
+fn crash_reason(outcome: &cpl_stress::Outcome) -> String {
+    let last = outcome.stderr.lines().rev().find(|line| !line.trim().is_empty()).map(str::trim);
+    match (&outcome.exit, last) {
+        (_, Some(line)) => line.to_string(),
+        (Exit::Code(code), None) => format!("exit code {code}"),
+        _ => "killed by a signal (often a stack overflow from deep recursion)".to_string(),
+    }
 }
 
 fn megabytes(kb: Option<u64>) -> String {
@@ -217,11 +232,24 @@ pub fn render(runs: &[Run], limits: Limits) -> String {
             limits.memory_kb / 1024
         ));
     }
-    let over = runs.iter().filter(|run| run.status != "ok").count();
-    out.push_str(&match over {
-        0 => "  within limits on every shape\n".to_string(),
-        1 => "  1 shape is over the limits\n".to_string(),
-        n => format!("  {n} shapes are over the limits\n"),
+    let mut crashes: Vec<(&str, &str)> = Vec::new();
+    for run in runs.iter().filter(|run| run.status == "RE") {
+        let why = run.error.as_deref().unwrap_or("no reason given");
+        if !crashes.iter().any(|(_, seen)| *seen == why) {
+            crashes.push((run.shape.name(), why));
+        }
+    }
+    for (shape, why) in &crashes {
+        out.push_str(&format!("  runtime error on {shape}: {why}\n"));
+    }
+    let crashed = runs.iter().filter(|run| run.status == "RE").count();
+    let over = runs.iter().filter(|run| run.status != "ok" && run.status != "RE").count();
+    let shapes = |n: usize| if n == 1 { "1 shape".to_string() } else { format!("{n} shapes") };
+    out.push_str(&match (over, crashed) {
+        (0, 0) => "  within limits on every shape\n".to_string(),
+        (0, c) => format!("  {} crashed\n", shapes(c)),
+        (o, 0) => format!("  {} over the limits\n", if o == 1 { "1 shape is".to_string() } else { format!("{o} shapes are") }),
+        (o, c) => format!("  {} over the limits, {} crashed\n", shapes(o), shapes(c)),
     });
     out
 }
@@ -231,12 +259,13 @@ fn json(runs: &[Run], limits: Limits) -> String {
         .iter()
         .map(|run| {
             format!(
-                "{{\"shape\":{},\"numbers\":{},\"status\":{},\"ms\":{},\"kb\":{}}}",
+                "{{\"shape\":{},\"numbers\":{},\"status\":{},\"ms\":{},\"kb\":{},\"error\":{}}}",
                 json_string(run.shape.name()),
                 run.numbers,
                 json_string(run.status),
                 run.elapsed.as_millis(),
-                run.peak_kb.map_or("null".to_string(), |kb| kb.to_string())
+                run.peak_kb.map_or("null".to_string(), |kb| kb.to_string()),
+                run.error.as_deref().map_or("null".to_string(), json_string)
             )
         })
         .collect();
@@ -296,7 +325,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                 let line = src[..error.span.start as usize].matches('\n').count() + 1;
                 format!("{name}:{line}: {}", error.message.replace("pass a generator with `--gen`", "`cpl bench` needs typed input"))
             })?;
-            if spec.fields.is_empty() {
+            if spec.is_empty() {
                 return Err(format!(
                     "{name} has no typed `read()` to make inputs from; write `let n: 1..=2e5 = read()`"
                 ));

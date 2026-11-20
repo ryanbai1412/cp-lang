@@ -114,6 +114,7 @@ dependencies = [
  "cpl-check",
  "cpl-codegen",
  "cpl-diag",
+ "cpl-interp",
  "cpl-ir",
  "cpl-syntax",
 ]

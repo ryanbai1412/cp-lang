@@ -293,9 +293,16 @@ impl Program {
         }
     }
 
-    /// Makes `path` runnable, building it if it is source.
+    /// Makes `path` runnable, building it if it is source. A path that is
+    /// not a file but has spaces in it is a command line, split like a
+    /// shell splits one: `--gen "python3 gen.py --tree"`.
     pub fn resolve(path: &Path) -> Result<Program, BuildError> {
         let name = path.display().to_string();
+        if !path.is_file() && name.contains(char::is_whitespace) {
+            let words = split_command(&name)?;
+            let argv: Vec<&str> = words.iter().map(String::as_str).collect();
+            return Ok(Program::command(&name, &argv));
+        }
         if !path.is_file() {
             return Err(BuildError(format!("there is no file {name}")));
         }
@@ -405,6 +412,39 @@ impl Program {
             peak_kb,
         })
     }
+}
+
+/// The words of a command line: split at spaces, with '...' and "..."
+/// keeping spaces and a backslash escaping the next character.
+fn split_command(line: &str) -> Result<Vec<String>, BuildError> {
+    let mut words = Vec::new();
+    let mut word: Option<String> = None;
+    let mut quote: Option<char> = None;
+    let mut chars = line.chars();
+    while let Some(c) = chars.next() {
+        match (quote, c) {
+            (Some(q), c) if c == q => quote = None,
+            (Some('"') | None, '\\') => match chars.next() {
+                Some(next) => word.get_or_insert_with(String::new).push(next),
+                None => return Err(BuildError(format!("`{line}` ends in a lone backslash"))),
+            },
+            (Some(_), c) => word.get_or_insert_with(String::new).push(c),
+            (None, '\'' | '"') => {
+                quote = Some(c);
+                word.get_or_insert_with(String::new);
+            }
+            (None, c) if c.is_whitespace() => words.extend(word.take()),
+            (None, c) => word.get_or_insert_with(String::new).push(c),
+        }
+    }
+    if quote.is_some() {
+        return Err(BuildError(format!("`{line}` has a quote that is never closed")));
+    }
+    words.extend(word);
+    if words.is_empty() {
+        return Err(BuildError("the command line is empty".into()));
+    }
+    Ok(words)
 }
 
 /// The high-water mark of a running process's memory, in kilobytes.
