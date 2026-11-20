@@ -1,188 +1,216 @@
 {
   "Memoized DP (@memo)": {
-    "prefix": ["memo", "dp"],
-    "description": "CP Lang v2.1 memoized DP over bounded domains",
+    "prefix": ["memo", "@memo", "dp"],
     "body": [
       "@memo",
-      "fn ${1:dp}(${2:i}: ${3:V}, ${4:state}: ${5:Bool}) -> ${6:Int}:",
+      "fn ${1:dp}(${2:i}: ${3:V}) -> ${4:Int}:",
       "    ${0}"
-    ]
+    ],
+    "description": "CP Lang v2.2 @memo DP function (auto-dispatches flat vs salted hash table)"
   },
-  "Hash-Memoized DP (@memo(hash))": {
-    "prefix": ["memohash", "dphash"],
-    "description": "CP Lang v2.1 hash-memoized DP for sparse or non-domain states",
+  "Binary search first true": {
+    "prefix": ["bsearch_first", "bsfirst"],
     "body": [
-      "@memo(hash)",
-      "fn ${1:dp}(${2:i}: ${3:Int}, ${4:k}: ${5:Int}) -> ${6:Int}:",
+      "let ${1:ans} = bsearch_first(${2:lo..=hi}, ${3:x} => ${4:ok(x)})"
+    ],
+    "description": "Find the smallest value in a range satisfying a monotone predicate"
+  },
+  "Binary search last true": {
+    "prefix": ["bsearch_last", "bslast"],
+    "body": [
+      "let ${1:ans} = bsearch_last(${2:lo..=hi}, ${3:x} => ${4:ok(x)})"
+    ],
+    "description": "Find the largest value in a range satisfying a monotone predicate"
+  },
+  "Coordinate compression": {
+    "prefix": ["compress", "coord"],
+    "body": [
+      "let ${1:xs} = compress(${2:vals})",
+      "for r in ${1:xs}.D:",
+      "    let v = ${1:xs}[r]",
       "    ${0}"
-    ]
+    ],
+    "description": "Coordinate compression returning Compressed<T> with domain xs.D and xs.at(v)"
   },
-  "Binary Search First True (bsearch_first)": {
-    "prefix": ["bsearch_first", "bsearch"],
-    "description": "First value in a range where the predicate holds",
-    "body": [
-      "let ${1:ans} = bsearch_first(${2:0..=hi}, ${3:mid} => ${4:ok(mid)})"
-    ]
-  },
-  "Binary Search Last True (bsearch_last)": {
-    "prefix": ["bsearch_last"],
-    "description": "Last value in a range where the predicate holds",
-    "body": [
-      "let ${1:ans} = bsearch_last(${2:0..=hi}, ${3:mid} => ${4:ok(mid)})"
-    ]
-  },
-  "Coordinate Compression (compress)": {
-    "prefix": ["compress"],
-    "description": "Coordinate-compress values into a dedicated sorted domain",
-    "body": [
-      "let ${1:xs} = compress(${2:all})",
-      "// domain ${1:xs}.D, value ${1:xs}[r], rank ${1:xs}.at(v)",
-      "${0}"
-    ]
-  },
-  "Segment Tree (SegTree)": {
+  "Segment tree": {
     "prefix": ["segtree", "SegTree"],
-    "description": "Domain-indexed segment tree over a bare operator",
     "body": [
-      "var ${1:st} = SegTree<${2:V}, ${3:Int}>(${4|+,*,^,&,|,min,max,gcd|}, ${5:a})",
+      "var ${1:st} = SegTree<${2:V}, ${3:Int}>(${4|+,min,max,^,gcd|}, ${5:a})",
       "${0}"
-    ]
+    ],
+    "description": "Domain-indexed SegTree with operator or custom Monoid"
   },
-  "Segment Tree with Custom Monoid": {
+  "Segment tree with custom Monoid": {
     "prefix": ["segtree-monoid", "monoid"],
-    "description": "Segment tree with a custom Monoid(id, op)",
     "body": [
-      "let ${1:m} = Monoid<${2:Node}>(${3:id}, (${4:x}, ${5:y}) => ${6:merge(x, y)})",
-      "var ${7:st} = SegTree<${8:V}, ${2:Node}>(${1:m}, ${9:init})",
+      "let ${1:m} = Monoid(${2:id}, (${3:a}, ${4:b}) => ${5:merge(a, b)})",
+      "var ${6:st} = SegTree<${7:V}, ${8:Node}>(${1:m}, ${9:a})",
       "${0}"
-    ]
+    ],
+    "description": "SegTree with a custom Monoid(id, op)"
   },
-  "Lazy Segment Tree (LazySegTree)": {
-    "prefix": ["lazysegtree", "lazyseg", "LazySegTree"],
-    "description": "Domain-indexed lazy segment tree with a built-in range action",
+  "Lazy segment tree": {
+    "prefix": ["lazysegtree", "LazySegTree"],
     "body": [
       "var ${1:st} = LazySegTree<${2:V}, ${3:Int}>(${4|AddSum,AddMin,AddMax,AssignSum,AssignMin,AssignMax|}, ${5:a})",
       "${0}"
-    ]
+    ],
+    "description": "Domain-indexed LazySegTree with built-in range Action"
   },
-  "Sparse Table (SparseTable)": {
-    "prefix": ["sparsetable", "sparse", "SparseTable"],
-    "description": "O(1) idempotent range query returning ?T",
+  "Lazy segment tree with custom Action": {
+    "prefix": ["lazysegtree-action", "action"],
     "body": [
-      "let ${1:st} = SparseTable<${2:V}, ${3:Int}>(${4|min,max,gcd,&,||}, ${5:a})",
+      "let ${1:act} = Action(",
+      "    ${2:id},",
+      "    (new_f, old_f) => ${3:compose(new_f, old_f)},",
+      "    (f, val, span) => ${4:apply(f, val, span)},",
+      "    over: ${5|+,min,max|},",
+      ")",
+      "var ${6:st} = LazySegTree<${7:V}, ${8:Int}>(${1:act}, ${9:a})",
       "${0}"
-    ]
+    ],
+    "description": "LazySegTree with v2.2 custom Action(id, compose(new_f, old_f), apply(f, val, span), over: op)"
   },
-  "Rooted Tree & HLD (Rooted)": {
+  "Sparse table": {
+    "prefix": ["sparsetable", "SparseTable"],
+    "body": [
+      "let ${1:rmq} = SparseTable<${2:V}, ${3:Int}>(${4|min,max,gcd|}, ${5:a})",
+      "${0}"
+    ],
+    "description": "O(1) idempotent range query SparseTable"
+  },
+  "Rooted tree with HLD": {
     "prefix": ["rooted", "hld", "Rooted"],
-    "description": "Rooted tree with HLD preorder domain and LazySegTree over t.Pre",
     "body": [
       "let ${1:t} = Rooted<${2:V}>(${3:g}, ${4:V.first})",
-      "var ${5:ds} = LazySegTree<${1:t}.Pre, ${6:Int}>(${7|AddSum,AddMin,AddMax,AssignSum,AssignMin,AssignMax|}, [${1:t}.Pre] p => ${8:a[${1:t}.preorder[p]]})",
-      "// path query:   ${1:t}.fold_path(u, v, ${5:ds})",
-      "// path update:  ${1:t}.apply_path(u, v, mut ${5:ds}, tag)",
-      "// subtree fold: ${5:ds}.fold(${1:t}.sub(u))",
+      "var ${5:st} = LazySegTree<${1:t}.Pre, ${6:Int}>(${7|AddSum,AddMin,AddMax,AssignSum,AssignMin,AssignMax|}, [${1:t}.Pre] p => ${8:a}[${1:t}.preorder[p]])",
+      "// Path query: ${1:t}.fold_path(u, v, ${5:st})",
+      "// Subtree query: ${5:st}.fold(${1:t}.sub(u))",
       "${0}"
-    ]
+    ],
+    "description": "Rooted<V> tree with HLD preorder domain t.Pre and LazySegTree"
   },
-  "Disjoint Set Union with Rollback (Dsu + defer)": {
+  "DSU with rollback": {
     "prefix": ["dsu", "Dsu"],
-    "description": "Domain-indexed DSU with rollback snapshot via defer",
     "body": [
       "var ${1:dsu} = Dsu<${2:V}>()",
       "let ${3:snap} = ${1:dsu}.mark()",
-      "defer ${1:dsu}.undo_to(${3:snap})",
-      "${0}"
-    ]
+      "${0}",
+      "${1:dsu}.undo_to(${3:snap})"
+    ],
+    "description": "Disjoint Set Union with explicit mark/undo_to rollback"
   },
-  "Generation-Stamped Visited Marks (Marks<D>)": {
-    "prefix": ["marks", "Marks"],
-    "description": "O(1)-clearable visited table over a domain",
+  "Touched-list reset table": {
+    "prefix": ["touched", "seen"],
     "body": [
-      "var ${1:seen} = Marks<${2:V}>()",
+      "var ${1:seen}: [${2:V}]Bool = false",
+      "var ${3:touched}: List<${2:V}> = []",
+      "if not ${1:seen}[${4:u}]:",
+      "    ${1:seen}[${4:u}] = true",
+      "    ${3:touched}.push(${4:u})",
+      "// O(|touched|) reset:",
+      "for u in ${3:touched}.take(): ${1:seen}[u] = false",
       "${0}"
-    ]
+    ],
+    "description": "1-byte [V]Bool table with O(|touched|) reset for hot multi-query loops"
   },
-  "Monotone Deque (MonoDeque)": {
-    "prefix": ["monodeque", "MonoDeque"],
-    "description": "Sliding-window min/max deque",
+  "Small-to-large merge": {
+    "prefix": ["small-to-large", "stl"],
     "body": [
-      "var ${1:dq} = MonoDeque<${2:Int}>(${3|min,max|})",
-      "${1:dq}.push(at: ${4:i}, val: ${5:x})",
-      "${1:dq}.drop_before(${6:i - k + 1})",
-      "${0}"
-    ]
+      "if ${1:dst}.len < ${2:src}.len: swap(mut ${1:dst}, mut ${2:src})",
+      "for ${3:x} in ${2:src}.take():",
+      "    ${0}"
+    ],
+    "description": "O(n log n) small-to-large merge using swap + .take()"
   },
-  "Modular Arithmetic & Combinatorics (Mod<P> + Comb<P>)": {
-    "prefix": ["mod", "comb", "Mod"],
-    "description": "Mod<P> type alias and lazy factorial table Comb<P>",
+  "Modular arithmetic + combinatorics": {
+    "prefix": ["mod", "Mod", "comb"],
     "body": [
-      "const ${1:MOD} = ${2|1_000_000_007,998_244_353|}",
-      "type ${3:Z} = Mod<${1:MOD}>",
-      "var ${4:comb} = Comb<${1:MOD}>()",
+      "const MOD = ${1|998_244_353,1_000_000_007|}",
+      "type Z = Mod<MOD>",
+      "let comb = Comb<MOD>()",
       "${0}"
-    ]
+    ],
+    "description": "Mod<MOD> type alias and immutable interior-mutable Comb<MOD>()"
   },
-  "Multi-Test Skeleton (@multitest)": {
+  "Multitest skeleton": {
     "prefix": ["multitest", "@multitest"],
-    "description": "CP Lang v2.1 multi-test entry point",
     "body": [
       "@multitest",
-      "fn solve():",
-      "    let ${1:n}: ${2:1..=2e5} = read()",
-      "    domain ${3:V} = 1..=${1:n}",
-      "    ${0}"
-    ]
+      "let ${1:n}: ${2:1..=2e5} = read()",
+      "domain ${3:V} = 1..=${1:n}",
+      "let ${4:a}: [${3:V}]Int = read()",
+      "${0}"
+    ],
+    "description": "Whole-file @multitest solution template"
   },
-  "Constructive Checker (@checker)": {
+  "Constructive @checker": {
     "prefix": ["checker", "@checker"],
-    "description": "In-file constructive or multi-answer validator for cpl stress",
     "body": [
       "@checker",
-      "fn ${1:check}():",
-      "    let ${2:out}: ${3:Int} = read_output()",
-      "    assert ${4:valid(out)}",
+      "fn check():",
+      "    let ${1:ans}: ${2:Int} = read_output()",
+      "    assert ${3:ok(ans)}",
       "    ${0}"
-    ]
+    ],
+    "description": "Co-located @checker validating solution stdout with read_output() and assert"
   },
-  "Interactive Judge (@interactor)": {
+  "Interactive @interactor": {
     "prefix": ["interactor", "@interactor"],
-    "description": "In-file local interactive judge for cpl stress and cpl run",
     "body": [
       "@interactor",
-      "fn ${1:judge}():",
-      "    ${2:// respond to ask(\"?\", x, limit: ...)}",
-      "    ${0}"
-    ]
+      "fn judge(sol: Interactor):",
+      "    let ${1:secret}: ${2:1..=1000} = read()",
+      "    sol.send(${3:n})",
+      "    var queries = 0",
+      "    while true:",
+      "        let kind: Str = sol.recv()",
+      "        if kind == \"!\":",
+      "            let guess: Int = sol.recv()",
+      "            assert guess == ${1:secret}",
+      "            return",
+      "        queries += 1",
+      "        assert queries <= ${4:20}",
+      "        let x: Int = sol.recv()",
+      "        sol.send(${0:x})",
+      ""
+    ],
+    "description": "Co-located @interactor using explicit sol: Interactor (sol.recv / sol.send)"
   },
-  "Stress Test with gen: / assume / @brute": {
-    "prefix": ["stress", "gen-assume", "brute"],
-    "description": "Custom read(gen: ...) + assume constraint + @brute(main) for cpl stress",
+  "Stress test with gen: and @brute(main)": {
+    "prefix": ["stress", "gen", "brute"],
     "body": [
-      "let ${1:xs} = read(gen: () => ${2:gen_case()})",
-      "assume ${3:ok(xs)}",
+      "let ${1:n}: ${2:1..=20} = read()",
+      "domain ${3:V} = 1..=${1:n}",
+      "let ${4:a}: [${3:V}]Int = read(gen: () => [${3:V}] _ => rand(1..=10))",
       "",
-      "@brute(${4:main})",
-      "fn ${5:slow}():",
+      "@brute(main)",
+      "fn slow():",
       "    ${0}"
-    ]
+    ],
+    "description": "Typed read(gen: ...) + @brute(main) stress-test setup"
   },
-  "Whole-Input Stress Generator (@gen)": {
+  "Whole-input @gen": {
     "prefix": ["atgen", "@gen"],
-    "description": "Whole-input generator function for cpl stress",
     "body": [
       "@gen",
-      "fn ${1:make_case}(size: Int):",
+      "fn make_case(size: Int):",
+      "    let n = rand(1..=size)",
+      "    print(n)",
       "    ${0}"
-    ]
+    ],
+    "description": "Whole-input @gen generator with choice-stream shrinking"
   },
-  "IOI Grader Declaration (@grader)": {
+  "IOI @grader declaration": {
     "prefix": ["grader", "@grader"],
-    "description": "IOI grader-provided function or constant",
     "body": [
+      "var ${1:state}: ?${2:State} = none",
+      "",
       "@grader",
-      "fn ${1:solve}(${2:n}: Int) -> ${3:Int}:",
+      "fn ${3:init}(${4:n}: Int, ${5:a}: [0..${4:n}]Int):",
+      "    ${1:state} = ${2:State}(${5:a})",
       "    ${0}"
-    ]
+    ],
+    "description": "Stateful IOI @grader entry point"
   }
 }

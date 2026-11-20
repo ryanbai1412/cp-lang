@@ -1,4 +1,4 @@
-// SYNTAX TEST "source.cp" "CP Lang v2.1 keywords and operators"
+// SYNTAX TEST "source.cp" "CP Lang v2.2 keywords and operators"
 
 let n = read()
 // <--- storage.type.let.cp
@@ -28,10 +28,10 @@ else: return none
 //    ^^^^^^ keyword.control.return.cp
 //           ^^^^ constant.language.none.cp
 
-for mut b in blocks:
+for i in 0..blocks.len:
 // <--- keyword.control.for.cp
-//  ^^^ storage.modifier.mut.cp
-//        ^^ keyword.control.in.cp
+//    ^^ keyword.control.in.cp
+//        ^^ keyword.operator.range.cp
 
 for v in 1..=n: total += w[v]
 //       ^ constant.numeric.integer.decimal.cp
@@ -60,11 +60,16 @@ assert lo <= hi, "empty"
 //        ^^ keyword.operator.comparison.cp
 //               ^^^^^^^ string.quoted.double.cp
 
-assume n >= 1 and sum(a) <= 2e5
-// <------ keyword.control.assume.cp
+assert n >= 1 and sum(a) <= 2e5
+// <------ keyword.control.assert.cp
 //       ^^ keyword.operator.comparison.cp
 //            ^^^ keyword.operator.logical.and.cp
 //                ^^^ support.function.builtin.cp
+
+let u = opt ?? return (none, none)
+//          ^^ keyword.operator.coalesce.cp
+//             ^^^^^^ keyword.control.return.cp
+//                     ^^^^ constant.language.none.cp
 
 yield from walk(child)
 // <----- keyword.control.yield.cp

@@ -1,5 +1,5 @@
-// Validates `snippets/cp.json`: every required CP Lang v2.1 contest snippet
-// exists, has valid structure, contains zero stale v1 tokens, and tokenizes
+// Validates `snippets/cp.json`: every required CP Lang v2.2 contest snippet
+// exists, has valid structure, contains zero stale v1/v2.1 tokens, and tokenizes
 // cleanly with the TextMate grammar.
 
 import * as assert from 'node:assert/strict';
@@ -27,7 +27,7 @@ function expandSnippet(body: readonly string[]): string {
         .replace(/\$\d+/g, '');
 }
 
-test('snippets/cp.json includes all required CP Lang v2.1 contest snippets', () => {
+test('snippets/cp.json includes all required CP Lang v2.2 contest snippets', () => {
     const allPrefixes = new Set(
         Object.values(snippets).flatMap(entry => (Array.isArray(entry.prefix) ? entry.prefix : [entry.prefix])),
     );
@@ -56,20 +56,21 @@ test('snippets/cp.json includes all required CP Lang v2.1 contest snippets', () 
         'Rooted<',
         '@checker',
         '@interactor',
+        'sol: Interactor',
         'gen:',
-        'assume ',
+        'let comb = Comb<',
     ]) {
         assert.ok(allExpanded.includes(requiredToken), `snippets do not cover \`${requiredToken}\``);
     }
 });
 
-test('every snippet is well-formed, free of stale v1 tokens, and tokenizes cleanly', async () => {
-    const stalePattern = /\b(Float|I32|U8|ModR|INF|protocol|static|yields|requires|ensures)\b/;
+test('every snippet is well-formed, free of stale v1/v2.1 tokens, and tokenizes cleanly', async () => {
+    const stalePattern = /\b(Float|I32|U8|ModR|INF|protocol|static|yields|requires|ensures|defer|assume|where|inline|lend|absorb)\b|@memo\(|for\s+mut\b/;
     for (const [name, entry] of Object.entries(snippets)) {
         assert.ok(Array.isArray(entry.body) && entry.body.length > 0, `empty body in snippet "${name}"`);
         assert.ok(typeof entry.description === 'string' && entry.description.length > 0, `missing description in "${name}"`);
         const code = expandSnippet(entry.body);
-        assert.ok(!stalePattern.test(code), `stale v1 token in snippet "${name}":\n${code}`);
+        assert.ok(!stalePattern.test(code), `stale v1/v2.1 token in snippet "${name}":\n${code}`);
         const lines = await tokenize(code);
         for (const row of lines) {
             for (const token of row) {
