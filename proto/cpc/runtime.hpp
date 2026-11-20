@@ -218,6 +218,42 @@ template <class U> static inline void opt_min(OptI32& o, U x) { if (!o.has() || 
 template <class U> static inline void opt_max(OptI32& o, U x) { if (!o.has() || o.get() < (ll)x) o = OptI32((ll)x); }
 // @end
 
+// F64, U64 and I128 (cheat sheet section 1)
+static inline double cp_fchk(double x, int line) {
+#ifdef LOCAL
+    if (x != x || x - x != 0) cp_fail("F64 result is NaN or infinite", line);
+#endif
+    return x;
+}
+static inline ll cp_f2i(double x, int line) {
+    if (!(x >= -9.2e18 && x <= 9.2e18)) cp_fail("F64 does not fit an Int", line);
+    return (ll)x;
+}
+static inline ll cp_fsign(double x, double eps) { return x > eps ? 1 : x < -eps ? -1 : 0; }
+static inline string cp_wide_str(unsigned long long x) { return to_string(x); }
+static inline string cp_wide_str(__int128 x) {
+    if (x == 0) return "0";
+    bool neg = x < 0; unsigned __int128 u = neg ? -(unsigned __int128)x : (unsigned __int128)x;
+    string r; while (u) { r += (char)('0' + (int)(u % 10)); u /= 10; }
+    if (neg) r += '-';
+    reverse(r.begin(), r.end());
+    return r;
+}
+static inline ll cp_narrow64(__int128 x, int line) { if (x < -(__int128)LLONG_MAX || x > (__int128)LLONG_MAX) cp_fail("value does not fit an Int", line); return (ll)x; }
+static inline ll cp_narrow64(unsigned long long x, int line) { if (x > (unsigned long long)LLONG_MAX) cp_fail("value does not fit an Int", line); return (ll)x; }
+static inline __int128 cp_ipow128(__int128 a, ll e, int line) {
+    if (e < 0) cp_fail("negative exponent", line);
+    __int128 r = 1;
+    for (; e; e >>= 1) { if (e & 1) { if (__builtin_mul_overflow(r, a, &r)) cp_fail("I128 overflow", line); } if (e > 1 && __builtin_mul_overflow(a, a, &a)) cp_fail("I128 overflow", line); }
+    return r;
+}
+// Euclidean division on the wide integers, as on Int: the remainder is never negative
+static inline __int128 cp_wdiv(__int128 a, __int128 b, int line) { if (b == 0) cp_fail("division by zero", line); __int128 q = a / b; if ((a % b) < 0) q += b > 0 ? -1 : 1; return q; }
+static inline __int128 cp_wdivmod(__int128 a, __int128 b, int line) { if (b == 0) cp_fail("division by zero", line); __int128 r = a % b; if (r < 0) r += b < 0 ? -b : b; return r; }
+static inline unsigned long long cp_wdiv(unsigned long long a, unsigned long long b, int line) { if (b == 0) cp_fail("division by zero", line); return a / b; }
+static inline unsigned long long cp_wdivmod(unsigned long long a, unsigned long long b, int line) { if (b == 0) cp_fail("division by zero", line); return a % b; }
+static inline double rd_f64(int line);
+
 // desc(x): x with its order reversed, so a MinHeap<(Int, Desc<V>)> pops the largest V among equal keys
 template <class T> struct CpDesc {
     T val;
@@ -358,6 +394,12 @@ static inline char rd_char() {
 static inline string rd_word() {
     int c = cp_getc(); while (c == ' ' || c == '\n' || c == '\r' || c == '\t') c = cp_getc();
     string s; while (c > ' ') { s += (char)c; c = cp_getc(); } return s;
+}
+static inline double rd_f64(int line) {
+    string w = rd_word(); char* end = nullptr;
+    double x = strtod(w.c_str(), &end);
+    if (w.empty() || *end) cp_fail("input is not a number", line);
+    return x;
 }
 static inline ll rd_range(ll lo, ll hi, int line) {
     ll x = rd_int();

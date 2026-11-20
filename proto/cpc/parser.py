@@ -1013,7 +1013,7 @@ class Parser:
             return N("lambda", line, params=[N("pname", line, name="_it")], body=body)
         if t.kind == "NUM":
             self.next()
-            return N("num", line, value=t.val)
+            return N("num", line, value=t.val, is_float=getattr(t, "is_float", False))
         if t.kind == "STR":
             self.next()
             return N("str", line, value=t.val)
