@@ -674,7 +674,12 @@ impl<'p> Emitter<'p> {
             out.push('\n');
         }
         out.push_str(&fns);
-        out.push_str("}  // namespace prog\n\nint main() {\n    cpl::read_all();\n");
+        out.push_str("}  // namespace prog\n\nint main() {\n");
+        out.push_str(if program.interactive {
+            "    cpl::live = true;\n"
+        } else {
+            "    cpl::read_all();\n"
+        });
         if program.multitest {
             out.push_str(
                 "    for (ll tests = cpl::read_int(); tests > 0; tests--) prog::solve();\n",

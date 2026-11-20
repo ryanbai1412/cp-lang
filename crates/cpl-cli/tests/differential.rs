@@ -36,7 +36,61 @@ fn input_of(program: &Path) -> Vec<u8> {
 }
 
 /// Compiles `cpp` with the sanitizers on and runs it on `input`.
-fn compile_and_run(name: &str, cpp: &[u8], input: &[u8]) -> Result<(Vec<u8>, Option<i32>), String> {
+/// Runs the built solution against `cpl judge`, the `@interactor` of
+/// `program`: each reads what the other prints, and `input` is the
+/// hidden test. The output is what the solution printed.
+fn against_judge(
+    binary: &Path,
+    program: &Path,
+    hidden: &Path,
+    input: &[u8],
+) -> Result<std::process::Output, String> {
+    use std::io::{BufRead, BufReader};
+    std::fs::write(hidden, input).map_err(|e| e.to_string())?;
+    let mut judge = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("judge")
+        .arg(program)
+        .arg(hidden)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    let mut solution = Command::new(binary)
+        .stdin(judge.stdout.take().expect("piped"))
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    // Every line the solution prints is kept, and passed on to the judge.
+    let mut to_judge = judge.stdin.take().expect("piped");
+    let mut said = Vec::new();
+    for line in BufReader::new(solution.stdout.take().expect("piped")).split(b'\n') {
+        let mut line = line.map_err(|e| e.to_string())?;
+        line.push(b'\n');
+        said.extend_from_slice(&line);
+        // A judge that has ruled no longer listens.
+        let _ = to_judge.write_all(&line).and_then(|()| to_judge.flush());
+    }
+    drop(to_judge);
+    let mut ran = solution.wait_with_output().map_err(|e| e.to_string())?;
+    let judged = judge.wait_with_output().map_err(|e| e.to_string())?;
+    ran.stdout = said;
+    if ran.status.success() && !judged.status.success() {
+        return Err(format!(
+            "the interactor rejected the C++:\n{}",
+            String::from_utf8_lossy(&judged.stderr)
+        ));
+    }
+    Ok(ran)
+}
+
+fn compile_and_run(
+    name: &str,
+    cpp: &[u8],
+    input: &[u8],
+    interactor: Option<&Path>,
+) -> Result<(Vec<u8>, Option<i32>), String> {
     let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("differential");
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let source = dir.join(format!("{name}.cpp"));
@@ -62,16 +116,21 @@ fn compile_and_run(name: &str, cpp: &[u8], input: &[u8]) -> Result<(Vec<u8>, Opt
             source.display()
         ));
     }
-    let mut child = Command::new(&binary)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| e.to_string())?;
-    let mut stdin = child.stdin.take().expect("piped");
-    stdin.write_all(input).map_err(|e| e.to_string())?;
-    drop(stdin);
-    let ran = child.wait_with_output().map_err(|e| e.to_string())?;
+    let ran = match interactor {
+        None => {
+            let mut child = Command::new(&binary)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .map_err(|e| e.to_string())?;
+            let mut stdin = child.stdin.take().expect("piped");
+            stdin.write_all(input).map_err(|e| e.to_string())?;
+            drop(stdin);
+            child.wait_with_output().map_err(|e| e.to_string())?
+        }
+        Some(program) => against_judge(&binary, program, &dir.join(format!("{name}.in")), input)?,
+    };
     let stderr = String::from_utf8_lossy(&ran.stderr);
     if stderr.contains("Sanitizer") || stderr.contains("runtime error:") {
         return Err(format!(
@@ -139,7 +198,9 @@ fn check(program: &Path) -> Result<(), String> {
         }
     }
 
-    let (stdout, code) = compile_and_run(&name, &built.stdout, &input)?;
+    // An interactive problem is run against the judge in its file.
+    let interactor = source.contains("\n@interactor").then_some(program);
+    let (stdout, code) = compile_and_run(&name, &built.stdout, &input, interactor)?;
     if stdout != interpreted.stdout {
         return Err(format!(
             "the C++ printed\n{}\nbut the interpreter printed\n{}",

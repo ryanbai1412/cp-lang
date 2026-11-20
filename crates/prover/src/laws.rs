@@ -177,20 +177,7 @@ impl Structure {
                 ctx.declare(param, &sort)?;
             }
             let verdict = ctx.prove_term(&law.body)?;
-            let broken = verdict.counterexample().and_then(|counterexample| {
-                equations(&law.body).into_iter().find_map(|(lhs, rhs)| {
-                    let (left, right) = (
-                        ctx.eval_at(counterexample, lhs)?,
-                        ctx.eval_at(counterexample, rhs)?,
-                    );
-                    (left != right).then(|| Broken {
-                        lhs: lhs.to_string(),
-                        left,
-                        rhs: rhs.to_string(),
-                        right,
-                    })
-                })
-            });
+            let broken = broken_equation(&ctx, &law.body, &verdict);
             results.push(LawResult {
                 law: law.clone(),
                 verdict,
@@ -202,6 +189,121 @@ impl Structure {
             results,
         })
     }
+}
+
+/// Checks the `@law`s a `.cp` file states at its top level.
+///
+/// A one-line fn (`fn add(a: Int, b: Int) -> Int = a + b`) and a `const`
+/// are what a law can be proved from; a law about anything else comes
+/// back as not proved, and `cpl test` is what tries it on sample values.
+///
+/// ```
+/// let report = cpl_prover::laws::check_source(
+///     "fn add(a: Int, b: Int) -> Int = a + b\n\
+///      @law comm(a: Int, b: Int) = add(a, b) == add(b, a)\n\
+///      @law no_ident(a: Int) = add(a, 1) == a\n",
+/// );
+/// assert!(report.verdict("comm").is_proved());
+/// assert_eq!(report.verdict("no_ident").to_string(), "fails for a = 0");
+/// ```
+pub fn check_source(src: &str) -> Report {
+    let mut base = Context::new();
+    let mut laws = Vec::new();
+    for line in src.lines() {
+        // Only what starts a line is at the top level.
+        let line = match line.find("//") {
+            Some(at) => &line[..at],
+            None => line,
+        };
+        let line = line.strip_prefix("pub ").unwrap_or(line).trim_end();
+        if let Some(law) = line.strip_prefix("@law ") {
+            laws.push((law.to_string(), Law::parse(&format!("law {law}"))));
+        } else if let Some(def) = line.strip_prefix("fn ") {
+            if let Some((name, lambda)) = one_line_fn(def) {
+                // A fn the prover can't read leaves its laws not proved.
+                let _ = base.define(name, &lambda);
+            }
+        } else if let Some(def) = line.strip_prefix("const ") {
+            if let Some((head, value)) = def.split_once('=') {
+                let name = head.split(':').next().unwrap_or(head).trim();
+                let _ = base.define(name, value.trim());
+            }
+        }
+    }
+    let mut results = Vec::with_capacity(laws.len());
+    for (text, law) in laws {
+        let law = match law {
+            Ok(law) => law,
+            Err(error) => {
+                let name = text.split('(').next().unwrap_or(&text).trim().to_string();
+                results.push(LawResult {
+                    law: Law {
+                        name,
+                        params: Vec::new(),
+                        body: Term::Bool(true),
+                    },
+                    verdict: Verdict::Unknown(error.to_string()),
+                    broken: None,
+                });
+                continue;
+            }
+        };
+        let mut ctx = base.clone();
+        let verdict = law
+            .params
+            .iter()
+            .try_for_each(|(param, sort)| ctx.declare(param, sort.as_ref().unwrap_or(&Sort::Int)))
+            .and_then(|()| ctx.prove_term(&law.body))
+            .unwrap_or_else(|error| Verdict::Unknown(error.to_string()));
+        let broken = broken_equation(&ctx, &law.body, &verdict);
+        results.push(LawResult {
+            law,
+            verdict,
+            broken,
+        });
+    }
+    Report {
+        structure: String::new(),
+        results,
+    }
+}
+
+/// `add(a: Int, b: Int) -> Int = a + b` as `add` and `(a, b) => a + b`.
+fn one_line_fn(def: &str) -> Option<(&str, String)> {
+    let (name, rest) = def.split_once('(')?;
+    let (params, rest) = rest.split_once(')')?;
+    let (_, body) = rest.split_once('=')?;
+    // `->` and `==` are not the `=` of a body.
+    if rest.trim_start().starts_with("->") && !rest.contains(" = ") {
+        return None;
+    }
+    let body = match rest.split_once(" = ") {
+        Some((_, body)) => body,
+        None => body,
+    };
+    let names: Vec<&str> = params
+        .split(',')
+        .map(|param| param.split(':').next().unwrap_or(param).trim())
+        .filter(|param| !param.is_empty())
+        .collect();
+    Some((name.trim(), format!("({}) => {}", names.join(", "), body.trim())))
+}
+
+/// The equation of `body` that the counterexample of `verdict` breaks.
+fn broken_equation(ctx: &Context, body: &Term, verdict: &Verdict) -> Option<Broken> {
+    let counterexample = verdict.counterexample()?;
+    equations(body).into_iter().find_map(|(lhs, rhs)| {
+        let (left, right) = (
+            ctx.eval_at(counterexample, lhs)?,
+            ctx.eval_at(counterexample, rhs)?,
+        );
+        (left != right).then(|| Broken {
+            lhs: lhs.to_string(),
+            left,
+            rhs: rhs.to_string(),
+            right,
+        })
+    })
 }
 
 fn instantiate(sort: &Sort, bound: &HashMap<String, Sort>) -> Sort {
@@ -280,7 +382,12 @@ impl fmt::Display for Report {
             if i > 0 {
                 writeln!(f)?;
             }
-            let (structure, law) = (&self.structure, &result.law.name);
+            let law = &result.law.name;
+            // The laws of a file have no structure to name.
+            let structure = match self.structure.as_str() {
+                "" => "the file",
+                name => name,
+            };
             match &result.verdict {
                 Verdict::Proved => write!(f, "{structure} keeps law {law}")?,
                 Verdict::Unknown(reason) => {

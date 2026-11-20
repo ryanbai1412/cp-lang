@@ -161,7 +161,8 @@ impl<'a> Lowerer<'a> {
 
     pub(super) fn mod_items(&self, m: ModId) -> impl Iterator<Item = (u32, &'a ast::Stmt)> {
         let analysis = self.mods[m];
-        analysis.items.iter().flat_map(|item| {
+        let judge = self.judge;
+        analysis.items.iter().flat_map(move |item| {
             let offset = item.offset;
             // A `@checker` or `@interactor` is the judge's side of the
             // problem: it is checked, and is no part of the solution.
@@ -169,10 +170,12 @@ impl<'a> Lowerer<'a> {
                 .parsed
                 .stmts
                 .iter()
-                .filter(|s| {
-                    !s.decorators
-                        .iter()
-                        .any(|d| matches!(d.name.text.as_str(), "checker" | "interactor"))
+                .filter(move |s| {
+                    !s.decorators.iter().any(|d| match d.name.text.as_str() {
+                        "checker" => true,
+                        "interactor" => !judge,
+                        _ => false,
+                    })
                 })
                 .map(move |s| (offset, s))
         })

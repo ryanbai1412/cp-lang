@@ -45,8 +45,41 @@ pub fn lower_test(analysis: &Analysis, test_name: &str) -> Result<Program, Vec<D
     lower_impl(analysis, Some(test_name))
 }
 
+/// The `@interactor` fn a file declares at its top level, if any.
+pub fn interactor(analysis: &Analysis) -> Option<String> {
+    analysis
+        .items
+        .iter()
+        .flat_map(|item| &item.syntax.parsed.stmts)
+        .find_map(|stmt| match &stmt.kind {
+            ast::StmtKind::Fn(decl) if stmt.decorators.iter().any(|d| d.name.text == "interactor") => {
+                Some(decl.name.text.clone())
+            }
+            _ => None,
+        })
+}
+
+/// Lowers the judge's side of an interactive problem: a program that
+/// runs the `@interactor` fn `name`. Its `read()` reads the hidden test,
+/// `sol.recv()` reads what the solution prints, and `sol.send(..)` prints
+/// what the solution reads.
+pub fn lower_judge(analysis: &Analysis, name: &str) -> Result<Program, Vec<Diagnostic>> {
+    lower_entry(analysis, Some(name), true)
+}
+
 fn lower_impl(analysis: &Analysis, test_name: Option<&str>) -> Result<Program, Vec<Diagnostic>> {
+    lower_entry(analysis, test_name, false)
+}
+
+fn lower_entry(
+    analysis: &Analysis,
+    test_name: Option<&str>,
+    judge: bool,
+) -> Result<Program, Vec<Diagnostic>> {
     let mut lw = Lowerer::new(analysis);
+    lw.judge = judge;
+    // Whatever the judge sends goes out at once.
+    lw.interactive = judge;
     lw.load_modules(analysis);
     lw.collect_all(test_name);
     lw.signatures();
@@ -308,6 +341,8 @@ struct Lowerer<'a> {
     main_locals: Vec<Local>,
     multitest: bool,
     interactive: bool,
+    /// Lowering an `@interactor` as the program, not the solution.
+    judge: bool,
 
     cx: FnCx,
     outer_cxs: Vec<FnCx>,
@@ -357,6 +392,7 @@ impl<'a> Lowerer<'a> {
             main_locals: Vec::new(),
             multitest: false,
             interactive: false,
+            judge: false,
             cx: FnCx::default(),
             outer_cxs: Vec::new(),
             gen_env: HashMap::new(),
@@ -1120,6 +1156,8 @@ impl<'a> Lowerer<'a> {
         }
 
         let ty = match name.text.as_str() {
+            // The solution an `@interactor` talks to holds nothing.
+            "Interactor" if self.judge => Ty::Unit,
             "Int" | "I64" => Ty::Int,
             "Float" | "F64" => Ty::Float,
             "Bool" => Ty::Bool,
@@ -1638,6 +1676,8 @@ impl<'a> Lowerer<'a> {
                 ast::StmtKind::Const { generics, .. } if generics.is_empty() => {
                     self.stmt(stmt, &mut out);
                 }
+                // The solution's own lines are not the judge's to run.
+                ast::StmtKind::Let { .. } | ast::StmtKind::Domain { .. } if self.judge => {}
                 ast::StmtKind::Let { .. }
                 | ast::StmtKind::Domain { .. }
                 | ast::StmtKind::Impl { .. } => {
@@ -1649,8 +1689,25 @@ impl<'a> Lowerer<'a> {
         if let Some(Sym::Fn(fn_id)) = self.mod_syms[0].get(test_name).copied() {
             self.queue_fn(fn_id);
             let ret = self.ret_of(fn_id, Span::default());
+            // An `@interactor` is handed the solution: `sol`.
+            let mutable: Vec<bool> = self.sigs[fn_id].params.iter().map(|p| p.mutable).collect();
+            let args = mutable
+                .into_iter()
+                .map(|mutable| {
+                    if !mutable {
+                        return Arg::Value(self.mk(ExprKind::Unit, Ty::Unit, Span::default()));
+                    }
+                    let slot = self.new_slot("", Ty::Unit);
+                    out.push(Stmt::Let(slot, None));
+                    Arg::Mut(Place {
+                        kind: PlaceKind::Local(slot),
+                        ty: Ty::Unit,
+                        span: Span::default(),
+                    })
+                })
+                .collect();
             let call = Expr {
-                kind: ExprKind::Call(fn_id, Vec::new()),
+                kind: ExprKind::Call(fn_id, args),
                 ty: ret,
                 span: Span::default(),
             };
