@@ -10,6 +10,7 @@ examples/local-lib/
   lib.toml                    name = "lib"
   ds/                         data structures
   math/                       numbers, algebra, transforms
+  graph/                      graph decompositions
   dp/                         DP optimizations
   seq/                        folds over lists
   str/                        strings
@@ -39,6 +40,11 @@ Data structures, in `ds/`:
   `count_below` on any range of a fixed array (a persistent segment tree).
 - `li_chao.cp`: `LiChao` and `Line`, the lowest line at a point: the
   convex hull trick without sorted slopes or queries.
+- `li_chao_arena.cp`: `LiChaoArena` and `Hull`, many Li Chao trees in
+  one pool of nodes: a hull per vertex or per DP layer, lines limited to
+  a segment, every past version kept, and a range as wide as an `Int`.
+- `tri.cp`: `Tri<D>`, a pair `l <= r` as an index, so `[Tri<D>]T` is an
+  interval or symmetric table with no unused half.
 - `potential_dsu.cp`: `PotentialDsu<V>`, union-find that knows
   `pot(b) - pot(a)` inside a component and refuses a contradiction.
 - `bipartite_dsu.cp`: `BipartiteDsu<V>`, union-find with a side per
@@ -55,6 +61,11 @@ Data structures, in `ds/`:
 Numbers, in `math/`:
 
 - `frac.cp`: `Frac`, exact fractions that sort and round correctly.
+- `fixed.cp`: `Fixed<D>`, exact decimals with `D` digits after the
+  point, for money and coordinates that must not become a `Float`.
+- `congruence.cp`: `Congruence`, a residue class that solves
+  `a * x = b (mod m)` and combines with others when the moduli share
+  factors (the general Chinese remainder theorem).
 - `hom.cp`: `Hom<T>`, affine maps under composition, and `BothWays<T>`,
   the `Reversible` value that lets `Rooted.fold_path` fold them along a
   tree path.
@@ -63,6 +74,12 @@ Numbers, in `math/`:
 - `powers.cp`: `Powers<P>`, the powers of one base in O(1).
 - `sos.cp`: `sos_sub`, `sos_sup` and `sos_sub_inv`, sums over subsets and
   supersets of bitmasks.
+
+Graphs, in `graph/`:
+
+- `functional.cp`: `Functional<V>`, the graph where every vertex has one
+  way out, split into its rings and the trees draining into them, with
+  the vertex `k` steps ahead for any `k`.
 
 DP optimizations, in `dp/`:
 
@@ -82,6 +99,102 @@ Sequences and strings, in `seq/` and `str/`:
 Two structures that used to be here are now in `std`, because the v2
 design made them core: 2-SAT is `std.graph.TwoSat`, and union-find with
 undo is `Dsu.mark()` / `Dsu.undo_to(snap)`.
+
+## The five T13 structures, by example
+
+These are the structures the v2 design names for a local library and that
+`std` will never hold. Each is shown the way a solution would use it.
+
+`Tri<D>` is an index, not a container. It implements `Index` with
+`K = D.K * (D.K + 1) / 2`, so the table type is the ordinary `[Tri<I>]T`
+and an interval DP stores exactly the cells with `l <= r`. `of_len` gives
+the intervals in the order the DP fills them, and `splits` the two parts
+of every cut:
+
+```
+use lib.ds.tri.{Tri}
+
+domain I = 0..n
+var dp: [Tri<I>]Int = 0
+for len in 2..=n:
+    for t in Tri<I>.of_len(len):
+        dp[t] = min(dp[x] + dp[y] for (x, y) in t.splits) + sum(a[i] for i in t.l..=t.r)
+print(dp[Tri<I>(I.first, I.last)])
+```
+
+For a symmetric table, `Tri<V>.sym(a, b)` is the same cell as
+`Tri<V>.sym(b, a)`.
+
+`Fixed<D>` keeps a decimal as an `Int` counting units of `10 ** -D`.
+`parse` takes `12.5` and `12.50` as the same value and returns `none` for
+text it would have to round; printing always shows `D` digits. `+`, `-`
+and comparisons are exact; `*` and `/` round down to `D` digits:
+
+```
+use lib.math.fixed.{Fixed}
+
+type Money = Fixed<2>
+let total = Money.parse("10")!
+let share = total / Money.of(3)          // 3.33
+let left = total - share.times(3)        // 0.01
+print("{share} each, {left} left over")
+```
+
+`Congruence` is one residue class `x = r (mod m)`. `meet` intersects two
+of them and is `none` when they contradict, whatever the moduli have in
+common; `all` folds a whole system; `first` and `count` then answer the
+usual questions about the solutions:
+
+```
+use lib.math.congruence.{Congruence}
+
+// gear i shows its mark every period[i] ticks, first at tick start[i]
+let sys = Congruence.all([Congruence.new(3, 4), Congruence.new(1, 6), Congruence.new(7, 9)])
+if sys == none: print("never")
+else: print(sys!.first(at_least: 7))     // 7, and again every sys!.m = 36 ticks
+
+let x = Congruence.solve(6, 4, 10)!      // 6 * x = 4 (mod 10): x = 4 (mod 5)
+```
+
+`Functional<V>` takes the array of successors. `rings` lists every cycle,
+`peel_order` lists the tree vertices with each one before the vertex it
+points at, and `jump` and `dist` cost O(log n) even for `k = 10 ** 18`,
+because past the tree only the position on the ring matters:
+
+```
+use lib.graph.functional.{Functional}
+
+let g = Functional<V>(next)
+var load: [V]Int = 1
+for v in g.peel_order: load[next[v]] += load[v]      // fold every tree into its ring
+for ring in g.rings: print(sum(load[v] for v in ring))
+print(g.jump(start, k))                               // where the walk is after k steps
+print(g.dist(a, b))                                   // none if a never reaches b
+```
+
+`LiChaoArena` is `LiChao` with the tree taken out of the structure: the
+arena owns the nodes, and a `Hull` is a handle to one set of lines in it.
+`add` works in place and makes at most one node. `added` leaves the old
+hull valid and returns a new one, which is what a hull per tree vertex
+needs: each child extends its parent's lines without disturbing its
+siblings.
+
+```
+use lib.ds.li_chao.{Line}
+use lib.ds.li_chao_arena.{LiChaoArena}
+
+var pool = LiChaoArena(-1_000_000_000, 1_000_000_000)
+var hull = [V] _ => pool.empty
+for v in order:                                       // parents before children
+    if parent[v] != none:
+        dp[v] = pool.min_at(hull[parent[v]!], h[v])! + h[v] * h[v]
+        hull[v] = hull[parent[v]!]
+    hull[v] = pool.added(hull[v], Line(-2 * h[v], dp[v] + h[v] * h[v]))
+```
+
+`add_on(hull, from, to, line)` limits a line to a segment, `merge` pours
+one hull into another for small-to-large, and `clear` empties the whole
+pool in one call between test cases.
 
 ## Importing
 

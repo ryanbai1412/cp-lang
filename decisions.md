@@ -830,7 +830,11 @@ writing the library against the spec, where the spec left room:
   `fold_balanced`, `overlaps`, `borders`, `sos_sub` / `sos_sup`), plus
   `BipartiteDsu`. Moved the other way, into `std`: `TwoSat` (now in
   `std.graph`) and rollback (now `Dsu.mark` / `undo_to`).
-- **17.7 Not done yet:** `Fixed<D>`, `Tri<D>`, `Functional`, `Congruence`
-  and `LiChaoArena` from the T13 list; the payload-enum `FlowGraph` node
-  and a real-valued `bsearch`, which wait for enums with payloads and
-  `F64` ranges in the reference interpreter.
+- **17.7 Not done yet:** the payload-enum `FlowGraph` node and a
+  real-valued `bsearch`, which wait for enums with payloads and `F64`
+  ranges in the reference interpreter. The last five T13 structures are
+  now in `examples/local-lib/`: `Fixed<D>` (`math/fixed.cp`), `Tri<D>`
+  (`ds/tri.cp`), `Functional<V>` (`graph/functional.cp`), `Congruence`
+  (`math/congruence.cp`) and `LiChaoArena` (`ds/li_chao_arena.cp`).
+  `Fixed<D>` has `parse` and `Show`; a `read()` of one waits for struct
+  `Read` in the reference interpreter.
