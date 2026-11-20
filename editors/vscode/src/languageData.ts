@@ -1,9 +1,9 @@
-// CP Lang v2.2 language tables for fallback completion and grammar checks
+// CP Lang 0.2.2 language tables for fallback completion and grammar checks
 // (`docs/one-page-cheat-sheet.md`, `research/language-architecture-v2.2.md`).
 // `test/unit/languageData.test.ts` checks that these tables and
 // `syntaxes/cp.tmLanguage.json` stay in lockstep with zero stale v1/v2.1 tokens.
 
-/** 30 contestant keywords (including 3 literals) in CP Lang v2.2. */
+/** 30 contestant keywords (including 3 literals) in CP Lang 0.2.2. */
 export const CONTESTANT_KEYWORDS: readonly string[] = [
     'let', 'var', 'const', 'fn', 'struct', 'enum', 'domain', 'type', 'use', 'pub',
     'if', 'elif', 'else', 'for', 'while', 'in', 'match', 'return', 'break', 'continue',
@@ -11,12 +11,12 @@ export const CONTESTANT_KEYWORDS: readonly string[] = [
     'true', 'false', 'none',
 ];
 
-/** 4 library-author keywords in CP Lang v2.2. */
+/** 4 library-author keywords in CP Lang 0.2.2. */
 export const LIBRARY_KEYWORDS: readonly string[] = [
     'trait', 'impl', 'lends', 'yield',
 ];
 
-/** All 34 reserved keywords in CP Lang v2.2. */
+/** All 34 reserved keywords in CP Lang 0.2.2. */
 export const KEYWORDS: readonly string[] = [...CONTESTANT_KEYWORDS, ...LIBRARY_KEYWORDS];
 
 /** Words that are keywords only in one position, so they stay usable as names. */
@@ -24,7 +24,7 @@ export const CONTEXTUAL_KEYWORDS: readonly string[] = [
     'as', 'from', 'invariant',
 ];
 
-/** Core primitive, container, and runtime types built into CP Lang v2.2. */
+/** Core primitive, container, and runtime types built into CP Lang 0.2.2. */
 export const PRELUDE_TYPES: readonly string[] = [
     'Int', 'U64', 'I128', 'F64', 'Bool', 'Char', 'Str',
     'List', 'Deque', 'Map', 'HashMap', 'Set', 'HashSet',
@@ -32,7 +32,7 @@ export const PRELUDE_TYPES: readonly string[] = [
     'Interactor', 'Rng',
 ];
 
-/** Core standard library contest data structures and algebra helpers in CP Lang v2.2. */
+/** Core standard library contest data structures and algebra helpers in CP Lang 0.2.2. */
 export const STDLIB_TYPES: readonly string[] = [
     'Mod', 'Comb', 'Marks', 'Compressed',
     'SegTree', 'LazySegTree', 'SparseTable', 'Fenwick', 'Fenwick2D',
@@ -43,7 +43,7 @@ export const STDLIB_TYPES: readonly string[] = [
     'AddSum', 'AddMin', 'AddMax', 'AssignSum', 'AssignMin', 'AssignMax',
 ];
 
-/** Prelude and core standard-library functions highlighted as builtins in CP Lang v2.2. */
+/** Prelude and core standard-library functions highlighted as builtins in CP Lang 0.2.2. */
 export const PRELUDE_VALUES: readonly string[] = [
     'read', 'read_line', 'read_until', 'read_output', 'print', 'debug', 'ask',
     'min', 'max', 'sum', 'any', 'all', 'count', 'first', 'min_by', 'max_by',
@@ -60,7 +60,7 @@ export const PRELUDE_VALUES: readonly string[] = [
     'z_function', 'prefix_function',
 ];
 
-/** Built-in math constants in CP Lang v2.2 (no INF sentinel; use ?Int / none). */
+/** Built-in math constants in CP Lang 0.2.2 (no INF sentinel; use ?Int / none). */
 export const PRELUDE_CONSTANTS: readonly string[] = ['PI'];
 
 export interface DecoratorInfo {
@@ -70,7 +70,7 @@ export interface DecoratorInfo {
     detail: string;
 }
 
-/** 8 contestant decorators + 3 library-author decorators in CP Lang v2.2. */
+/** 8 contestant decorators + 3 library-author decorators in CP Lang 0.2.2. */
 export const DECORATORS: readonly DecoratorInfo[] = [
     { name: 'memo', insert: 'memo', detail: 'memoize a function (auto-dispatches flat vs salted hash table)' },
     { name: 'multitest', insert: 'multitest', detail: 'run the file or `solve()` once per test case' },

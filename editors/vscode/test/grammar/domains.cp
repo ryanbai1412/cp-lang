@@ -1,4 +1,4 @@
-// SYNTAX TEST "source.cp" "CP Lang v2.2 types, domains, borrows and escape hatches"
+// SYNTAX TEST "source.cp" "CP Lang 0.2.2 types, domains, borrows and escape hatches"
 
 let (n, m): (1..=2e5, 1..=2e5) = read()
 // <--- storage.type.let.cp

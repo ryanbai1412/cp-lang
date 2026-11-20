@@ -1,6 +1,6 @@
-// SYNTAX TEST "source.cp" "CP Lang v2.2 parity and zero stale v1/v2.1 tokens"
+// SYNTAX TEST "source.cp" "CP Lang 0.2.2 parity and zero stale v1/v2.1 tokens"
 
-// Core v2.2 stdlib and builtin generic types
+// Core 0.2.2 stdlib and builtin generic types
 const P = 998_244_353
 type Z = Mod<P>
 //       ^^^ support.type.stdlib.cp
@@ -54,7 +54,7 @@ let tree = Rooted<V>(g, V.first)
 //               ^ punctuation.definition.generic.begin.cp
 //                 ^ punctuation.definition.generic.end.cp
 
-// v2.2 constructs: domain, lends, lends mut, @law, invariant, prev_permutation, diverging ??, sol: Interactor
+// 0.2.2 constructs: domain, lends, lends mut, @law, invariant, prev_permutation, diverging ??, sol: Interactor
 domain D = 1..=n
 // <------ storage.type.domain.cp
 //     ^ entity.name.type.domain.cp
@@ -100,7 +100,7 @@ assert all(x >= 0 for x in vals)
 // <------ keyword.control.assert.cp
 //     ^^^ support.function.builtin.cp
 
-// v2.2 decorators + explicit sol: Interactor
+// 0.2.2 decorators + explicit sol: Interactor
 @memo
 // <~---- entity.name.function.decorator.cp
 @grader
@@ -122,7 +122,7 @@ fn judge(sol: Interactor):
 //                                 ^ punctuation.separator.format.cp
 //                                  ^^^ constant.other.placeholder.format.cp
 
-// Removed v2.1 keywords must NOT receive keyword/storage scopes in v2.2
+// Removed v2.1 keywords must NOT receive keyword/storage scopes in 0.2.2
 let removed_v21 = defer + assume + where + inline + lend + law
 //                ^^^^^ - keyword
 //                        ^^^^^^ - keyword

@@ -4,7 +4,7 @@ Most off-by-one bugs come from storing two kinds of numbers in the same `int`: a
 
 When an array is just a scratch table indexed by plain integers—like a frequency count or digit bucket—you do not need to name a domain:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 var cnt: [0..=k]Int = 0
 for i in 0..n:
     cnt[a[i]] += 1
@@ -17,7 +17,7 @@ Structural range arrays unify across functions whenever their written bounds mat
 
 Declare a nominal domain with `domain Name = lo..=hi` whenever you want zero-check indexing and compile-time protection against mixing different index spaces:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 let n: 1..=2e5 = read()
 let m: 1..=2e5 = read()
 domain Row = 1..=n
@@ -63,7 +63,7 @@ All range data structures accept open and empty ranges directly (`st.fold(..h[i]
 
 A 2D array `[Row, Col]T` is indexed directly by a product-domain cell `type Cell = (Row, Col)`. `g[p]` works without unpacking `p`, and `Cell` implements `Index`, so `[Cell]T`, `bfs`, `Dsu<Cell>`, and `@memo` all work on grid coordinates.
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 domain Row = 1..=h
 domain Col = 1..=w
 type Cell = (Row, Col)
@@ -81,7 +81,7 @@ for p in (Row, Col):
 
 Coordinate compression produces a fresh nominal domain `xs.D` together with value lookup and inverse mapping:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 let xs = compress(all_coords)
 var bit = Fenwick<xs.D, Int>()
 

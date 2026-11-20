@@ -1,6 +1,6 @@
-# CP Lang v2.2 — One-Page Contest Cheat Sheet
+# CP Lang 0.2.2 — One-Page Contest Cheat Sheet
 
-*Canonical minimal reference for the locked **CP Lang v2.2** spec (`research/language-architecture-v2.2.md`, `decisions.md` §16–§19). Every construct has one spelling.*
+*Canonical minimal reference for the locked **CP Lang 0.2.2** spec (`research/language-architecture-v2.2.md`, `decisions.md` §16–§19). Every construct has one spelling.*
 
 ---
 

@@ -8,7 +8,7 @@ Construct empty `List<T>` and `Deque<T>` with `= []`; construct all other contai
 - **`Deque<T>`:** `.push(x)`, `.pop() -> ?T`, `.push_front(x)`, `.pop_front() -> ?T`, `.first`, `.last`, `q[i]`.
 - **`MinHeap<T>()` / `MaxHeap<T>()`:** `.push(x)`, `.pop() -> ?T`, `.peek -> ?T`. For mixed-order keys inside tuples or `sort(..., by:)`, wrap descending fields with `desc(x)` (type `Desc<T>`):
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 var pq = MinHeap<(Int, Desc<V>)>()
 pq.push((dist, desc(u)))
 sort(mut items, by: x => (x.cost, desc(x.value)))
@@ -22,7 +22,7 @@ sort(mut items, by: x => (x.cost, desc(x.value)))
 
 Binary search uses two free functions on ranges (`F64` ranges take `steps: 80`). Both return `?I`, so “no value satisfies the predicate” is `none`:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 let ans = bsearch_first(1..=1e9, x => feasible(x))
 let hi = bsearch_last(0..=n, k => cost(k) <= budget)
 ```
@@ -31,7 +31,7 @@ Sorted lookup has one pair of names, `.first_ge(x)` and `.last_le(x)`, and the r
 
 A two-pointer window is an explicit loop, which can carry whatever incremental state the window needs:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 var l = 0
 for r in 0..n:
     while pre.sum(l..=r) > limit: l += 1
@@ -44,7 +44,7 @@ Also in the prelude: `D.windows(k)`, `compress(all)` (`xs.D`, `xs[v]`, `xs.at(va
 
 Range structures accept bare operators (`+`, `*`, `^`, `&`, `|`, `min`, `max`, `gcd`) directly, or a custom `Monoid(id, op)`. Lazy segment trees accept stock tags (`AddSum`, `AddMin`, `AddMax`, `AssignSum`, `AssignMin`, `AssignMax`) or a custom `Action(id, compose, apply, over: op)`. `LazySegTree<D, T>` takes two type arguments and infers the tag type from the action; `compose(new_f, old_f)` applies `old_f` first, then `new_f`:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 var bit = Fenwick<V, Int>(a)                        // sum-only: .add(i, d), .sum(l..=r)
 var rmq = SparseTable<V, Int>(min, a)               // O(1) .fold(l..=r) -> Int, non-empty range
 var st = SegTree<V, Int>(+, a)                      // bare operator
@@ -68,7 +68,7 @@ var affine = LazySegTree<V, Int>(aff, a)
 
 `Rooted<V>(g, root)` unifies rooted tree queries, lazy LCA, Euler tours, virtual trees, and heavy-light path operations into one structure:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 let tree = Rooted(g, root)
 var seg = LazySegTree<tree.Pre, Int>(AddSum, 0)
 
@@ -85,7 +85,7 @@ Core `std` also ships `FlowGraph<Node>()` and `max_weight_matching<L, R>`, which
 
 One `Mod<P>` type works for both compile-time `const` moduli and runtime-frozen `let` moduli:
 
-```cp CP Lang v2.2
+```cp CP Lang 0.2.2
 const MOD = 998_244_353
 type Z = Mod<MOD>
 
@@ -97,4 +97,4 @@ type DynamicZ = Mod<p>
 
 ## Core `std` vs. local libraries (`examples/local-lib/`)
 
-Specialized contest structures—`MonoDeque`, `Steps`, `TwoSat`, `Matrix`, `MinCostFlow`, `Dir8`, `palindromes`, `shortest`, `walk_back`, `mst`, `convex_hull`, `Rope`, `RangeKth`, `LiChao`, `PotentialDsu`, `Cover`, `Line`/`Hom`, `TwoStackFold`, `mo`, `Poly`/NTT, `XorBasis`, `Frac`, `Fixed`, `Tri`, and `Counter`—live in `examples/local-lib/` rather than core `std`; v2.2 moved the first eleven there because each had at most one use across the corpus. `std.marks.Marks<D>` (32-bit stamps) is opt-in; the default visited table is `[D]Bool` with a touched-list reset. Because CP Lang keeps the language core general, a local library compiles to the exact same zero-overhead C++17 as `std` and is pinned by lockfile for reproducible submissions.
+Specialized contest structures—`MonoDeque`, `Steps`, `TwoSat`, `Matrix`, `MinCostFlow`, `Dir8`, `palindromes`, `shortest`, `walk_back`, `mst`, `convex_hull`, `Rope`, `RangeKth`, `LiChao`, `PotentialDsu`, `Cover`, `Line`/`Hom`, `TwoStackFold`, `mo`, `Poly`/NTT, `XorBasis`, `Frac`, `Fixed`, `Tri`, and `Counter`—live in `examples/local-lib/` rather than core `std`; 0.2.2 moved the first eleven there because each had at most one use across the corpus. `std.marks.Marks<D>` (32-bit stamps) is opt-in; the default visited table is `[D]Bool` with a touched-list reset. Because CP Lang keeps the language core general, a local library compiles to the exact same zero-overhead C++17 as `std` and is pinned by lockfile for reproducible submissions.

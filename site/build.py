@@ -20,14 +20,14 @@ REFERENCE_PAGES = [
         "index",
         "Overview",
         "Start here",
-        "CP Lang v2.2 for competitive programming, targeting clean C++17.",
+        "CP Lang 0.2.2 for competitive programming, targeting clean C++17.",
         "6 min",
     ),
     (
         "cheat-sheet",
         "One-page cheat sheet",
         "Quick reference",
-        "Every CP Lang v2.2 construct, collection, and stdlib helper on one page.",
+        "Every CP Lang 0.2.2 construct, collection, and stdlib helper on one page.",
         "1 page",
     ),
     (
@@ -143,7 +143,7 @@ class Renderer(mistune.HTMLRenderer):
                 raise ValueError(f"Unknown exercise directive: {info}")
             return exercise_html(EXERCISES[fields[1]], highlight)
         label = " ".join(fields[1:]) or {
-            "cp": "CP Lang v2.2",
+            "cp": "CP Lang 0.2.2",
             "sh": "Terminal",
             "text": "Output",
         }.get(language, language)
@@ -216,7 +216,7 @@ def build():
             docs_current='' if (is_course or name == "cheat-sheet") else 'aria-current="page"',
             cheat_sheet_current='aria-current="page"' if name == "cheat-sheet" else '',
             course_current='aria-current="page"' if is_course else '',
-            series="THE CP LANG COURSE" if is_course else ("CP LANG v2.2 REFERENCE" if name == "cheat-sheet" else "THE CP LANG GUIDE"),
+            series="THE CP LANG COURSE" if is_course else ("CP LANG 0.2.2 REFERENCE" if name == "cheat-sheet" else "THE CP LANG GUIDE"),
             playground_current="",
         )
         page = template
@@ -305,7 +305,7 @@ def build_playground(target, template):
         dict(id="str-scan", source=STR_SCAN_SOURCE, stdin="abracadabra"),
     )
     values = dict(title="Playground", heading="Example playground", section="Tools",
-        description="Run CP Lang v2.2 examples with your own input, entirely offline in WebAssembly.",
+        description="Run CP Lang 0.2.2 examples with your own input, entirely offline in WebAssembly.",
         duration="", number="", navigation=navigation("playground"),
         content=(ROOT / "playground.html").read_text().replace("{{editor}}", editor_html("playground")), toc="", pager="",
         name="playground", repo=REPO, page_class="playground", source_path="site/playground.html",

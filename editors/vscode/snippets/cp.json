@@ -6,7 +6,7 @@
       "fn ${1:dp}(${2:i}: ${3:V}) -> ${4:Int}:",
       "    ${0}"
     ],
-    "description": "CP Lang v2.2 @memo DP function (auto-dispatches flat vs salted hash table)"
+    "description": "CP Lang 0.2.2 @memo DP function (auto-dispatches flat vs salted hash table)"
   },
   "Binary search first true": {
     "prefix": ["bsearch_first", "bsfirst"],
@@ -69,7 +69,7 @@
       "var ${6:st} = LazySegTree<${7:V}, ${8:Int}>(${1:act}, ${9:a})",
       "${0}"
     ],
-    "description": "LazySegTree with v2.2 custom Action(id, compose(new_f, old_f), apply(f, val, span), over: op)"
+    "description": "LazySegTree with 0.2.2 custom Action(id, compose(new_f, old_f), apply(f, val, span), over: op)"
   },
   "Sparse table": {
     "prefix": ["sparsetable", "SparseTable"],

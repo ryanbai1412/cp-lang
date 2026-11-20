@@ -81,7 +81,7 @@ test("arbitrary edited programs, stdin, C++17, diagnostics and hover use the rea
   assert.match((await compiler.call("hover", source, source.indexOf("n *"))).text, /Int/);
 });
 
-test("v2.2 Tropical Optionals and deleted-form migration diagnostics run in WASM", async () => {
+test("0.2.2 Tropical Optionals and deleted-form migration diagnostics run in WASM", async () => {
   const coinChange = [
     "let (n, x): (1..=100, 1..=1e6) = read()",
     "let coins: [0..n]Int = read()",
@@ -108,7 +108,7 @@ test("v2.2 Tropical Optionals and deleted-form migration diagnostics run in WASM
   const deferCheck = await compiler.call("check", "defer print(1)\n");
   assert.equal(deferCheck.ok, false);
   assert.equal(deferCheck.diagnostics[0].code, "E0503");
-  assert.match(deferCheck.diagnostics[0].message, /removed in CP Lang v2\.2/);
+  assert.match(deferCheck.diagnostics[0].message, /removed in CP Lang (?:v2\.2|0\.2\.2)/);
 
   const optPlusEq = await compiler.call("check", "var x: ?Int = 1\nx += 2\n");
   assert.equal(optPlusEq.ok, false);
