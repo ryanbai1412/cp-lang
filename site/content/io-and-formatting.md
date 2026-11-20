@@ -28,8 +28,10 @@ let parent: [V]?V = read(none: -1)      // maps -1 directly to none
 For problems that terminate on a sentinel value or EOF, or read full lines containing spaces:
 
 ```cp CP Lang 0.2.2
-for (n, m) in read_until((0, 0)):       // stops when (0, 0) is read
-    ...
+while true:
+    let (n, m): (Int, Int) = read()
+    if (n, m) == (0, 0): break          // stops when (0, 0) is read
+    print(n + m)
 
 let line: Str = read_line()             // reads a full ASCII line (strips trailing \r/\n)
 ```
