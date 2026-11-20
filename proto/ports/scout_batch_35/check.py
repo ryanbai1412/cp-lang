@@ -39,6 +39,16 @@ def gen_kaucuk(rng, big):
     return lines(n, *rows)
 
 
+def gen_ljeto(rng, big):
+    n = rng.randint(1, 100 if big else 8)
+    t, rows = 0, []
+    for _ in range(n):
+        t += rng.choice([1, 5, 9, 10, 11, 30])
+        a = rng.randint(1, 8)
+        rows.append((t, a, rng.randint(5, 8) if a <= 4 else rng.randint(1, 4)))
+    return lines(n, *rows)
+
+
 def gen_kutije(rng, big):
     n, m, q = (rng.randint(1, 300), rng.randint(1, 20), 400) if big else (rng.randint(1, 7), rng.randint(1, 3), 10)
     perms = []
@@ -158,6 +168,7 @@ def judge_volont(inp, ref, out):
 
 
 PROBLEMS = {   # code: (original submission, generator, judge or None)
+    "coci21c1p1": (4080824, gen_ljeto, None),
     "coci21c2p1": (4143397, gen_kaucuk, None),
     "coci21c2p2": (4143417, gen_kutije, None),
     "coci21c3p1": (4196130, gen_lista, None),

@@ -1,20 +1,22 @@
 # Scout batch 35: COCI and COI
 
-Ten submissions from `corpus/submissions/` whose problem code starts with
+Eleven submissions from `corpus/submissions/` whose problem code starts with
 `coci` or `coi`, rethought in CP Lang v2 (`docs/one-page-cheat-sheet.md`).
-None is in `proto/ports/`, an earlier scout batch or a `blind_critic_*`
-directory (checked against `main` at `c8e381f`). The friction they showed
+Ten are in no other directory of `proto/ports/` (checked against `main`
+at `895e565`). The eleventh, coci21c1p5, overlaps batch 30, which landed
+while this batch was in progress; it is kept because it uses a different
+algorithm (one stack instead of a segment tree), and coci21c1p1 was added
+so that ten ports are new. The friction they showed
 is in
 [`research/friction-backlog-batch-35-coci-coi.md`](../../../research/friction-backlog-batch-35-coci-coi.md)
 (items `K1`...).
 
 The brief asked for ten hard problems. The bucket did not have ten hard
 ones left: twelve `coci*`/`coi*` problems with an accepted submission were
-unported when the batch was picked, and the two not taken are first
-problems of a round (coci08c1p1, coci21c1p1). So this batch is the three
-hard ones (coci21c1p3, coci21c1p4, coci21c1p5), three of middle weight
-(coci21c3p2, coci21c6p2, coi07p1) and four easy ones. After it the bucket
-is empty apart from those two.
+unported when the batch was picked. So this batch is the three hard ones
+(coci21c1p3, coci21c1p4, coci21c1p5), three of middle weight (coci21c3p2,
+coci21c6p2, coi07p1) and five easy ones. After it the only one left in
+the bucket is coci08c1p1.
 
 ```sh
 python3 proto/ports/scout_batch_35/check.py                 # every port, 200 random inputs each
@@ -25,12 +27,12 @@ python3 proto/ports/scout_batch_35/loc.py                   # the line counts be
 ## What runs
 
 Each problem has two files. `<code>.cp` is the port as the v2 cheat sheet
-spells it. Neither prototype accepts all of v2, so these ten files were
+spells it. Neither prototype accepts all of v2, so these eleven files were
 not run. `today/<code>.cp` is the same algorithm in the forms the
 prototype takes, and that is what `check.py` runs against the original
 C++:
 
-- Eight are built to C++17 by `proto/cp.py build` and agree with the
+- Nine are built to C++17 by `proto/cp.py build` and agree with the
   original on 200 random inputs each (seeded), one in ten medium-sized
   (for example 3000 vertices for coci21c1p3, 3^7 cards for coci21c1p4,
   40 by 40 for coci21c6p2).
@@ -92,8 +94,9 @@ without what a perfect C++ library would supply (`<code>.strip`).
 - `coi07p1.cp` (12 / 59, 28): a left-to-right sweep in `F64`.
 - `coci21c2p2.cp` (9 / 82, 48): Kutije. `Dsu` over the boxes.
 - `coci21c3p1.cp` (9 / 63, 29): Lista. `first` over (start, length).
+- `coci21c1p1.cp` (10 / 60, 24): Ljeto. A `[Player]?Int` of last hits.
 - `coci21c2p1.cp` (8 / 59, 25): Kaučuk. Section numbering.
 - `coci21c6p1.cp` (7 / 62, 32): Med. Rank by tuple order.
 
-In total 165 lines against 1081 raw (85% fewer) and against 542 stripped
-(70% fewer). The runnable `today/` forms are 250 lines (77% and 54%).
+In total 175 lines against 1141 raw (85% fewer) and against 565 stripped
+(69% fewer). The runnable `today/` forms are 266 lines (77% and 53%).
