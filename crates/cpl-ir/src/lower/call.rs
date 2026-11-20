@@ -3346,6 +3346,62 @@ impl<'a> Lowerer<'a> {
                 self.seq_search_method(method, value, e, dom, args, span)
             }
             (Ty::Fn(_, _), "out") => self.call_fn_val(value, args, span),
+            // `(lo..hi).clamp(D)`: the part of an Int range that lies in
+            // `D`, as a range of D's positions; empty when none does.
+            (Ty::Range(inner), "clamp") if **inner == Ty::Int && args.len() == 1 => {
+                let domain = match &args[0].value.kind {
+                    ast::ExprKind::Name(name) if self.lookup(name).is_none() => {
+                        match (self.gen_env.get(name.as_str()), self.get_sym(name)) {
+                            (Some(GenArg::Domain(id)), _) => Some(*id),
+                            (_, Some(Sym::Domain(id))) => Some(id),
+                            _ => None,
+                        }
+                    }
+                    _ => None,
+                };
+                let Some(d) = domain else {
+                    self.error(codes::TYPE_MISMATCH, args[0].value.span, "`clamp` takes a domain");
+                    self.help("write the domain the range is cut to: `(l..=r).clamp(V)`");
+                    return self.err_expr(span);
+                };
+                let range_ty = Ty::Range(Box::new(Ty::Pos(d)));
+                self.do_expr(Some(&range_ty.clone()), span, |lw, out| {
+                    let range = lw.new_slot("range", value.ty.clone());
+                    out.push(Stmt::Let(range, Some(value)));
+                    // An end of the range as an ordinal of `D`, kept in 0..=len.
+                    let end = |lw: &mut Self, which| {
+                        let range = lw.local(range, span);
+                        let at = lw.mk(ExprKind::Builtin(which, vec![range]), Ty::Int, span);
+                        let first = lw.mk(ExprKind::DomainLo(d), Ty::Int, span);
+                        let ord = lw.mk(
+                            ExprKind::Binary(BinOp::Sub, Box::new(at), Box::new(first)),
+                            Ty::Int,
+                            span,
+                        );
+                        let len = lw.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                        let zero = lw.int_lit(0, span);
+                        let capped = lw.mk(ExprKind::Builtin(Builtin::Min, vec![ord, len]), Ty::Int, span);
+                        lw.mk(ExprKind::Builtin(Builtin::Max, vec![capped, zero]), Ty::Int, span)
+                    };
+                    let lo = lw.new_slot("lo", Ty::Int);
+                    let from = end(lw, Builtin::RangeLo);
+                    out.push(Stmt::Let(lo, Some(from)));
+                    let to = end(lw, Builtin::RangeHi);
+                    // An empty range stays empty: its end is not before its start.
+                    let lo_again = lw.local(lo, span);
+                    let hi = lw.mk(ExprKind::Builtin(Builtin::Max, vec![to, lo_again]), Ty::Int, span);
+                    let lo = lw.local(lo, span);
+                    let cut = lw.mk(
+                        ExprKind::Range {
+                            lo: Box::new(lo),
+                            hi: Box::new(hi),
+                        },
+                        range_ty.clone(),
+                        span,
+                    );
+                    out.push(Stmt::Give(cut));
+                })
+            }
             // `(lo..hi).step(k)`: lo, lo + k, ... below hi, as a list.
             (Ty::Range(inner), "step") if **inner == Ty::Int && args.len() == 1 => {
                 let by = self.expr(&args[0].value, Some(&Ty::Int));
