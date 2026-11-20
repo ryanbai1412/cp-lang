@@ -2,9 +2,10 @@
 //!
 //! `Mod<P>` is a number modulo a constant `P`: the modulus is part of the
 //! type, takes no memory, and two moduli cannot be mixed by accident.
-//! `ModR` is for a modulus read from the input: an operation value over
-//! plain `Int`s. Both need `P * P` to fit in an `Int`, so `P < 3.03e9`.
-use std.algebra.{Sum, Prod}
+//! The modulus may be a constant (`type Z = Mod<998244353>`) or a value read from
+//! the input (`let P: Int = read()`, then `type Z = Mod<P>`): one type serves both.
+//! `P * P` must fit in an `Int`, so `P < 3.03e9`.
+use std.algebra.{Monoid}
 use std.fenwick.{Fenwick}
 use std.math.{gcd}
 
@@ -54,32 +55,6 @@ impl Div for Mod<P>:
 
 impl Show for Mod<P>:
     fn show(a) = "{a.v}"
-
-/// Arithmetic modulo `m`, for a modulus known only when the program runs.
-/// Values are plain `Int`s in `0..m`; every operation is O(1) except `pow` and `inv`.
-pub struct ModR(m: Int):
-    pub fn of(self, x: Int) -> Int = x % m
-    pub fn add(self, a: Int, b: Int) -> Int = (a + b) % m
-    pub fn sub(self, a: Int, b: Int) -> Int = (a - b) % m
-    pub fn mul(self, a: Int, b: Int) -> Int = a * b % m
-
-    /// `a` to the power `e`, for `e >= 0`. O(log e).
-    pub fn pow(self, a: Int, e: Int) -> Int:
-        var (base, acc, k) = (a % m, 1 % m, e)
-        while k > 0:
-            if k % 2 == 1: acc = acc * base % m
-            base = base * base % m
-            k /= 2
-        acc
-
-    /// The inverse of `a`, or `none` when `gcd(a, m) != 1`. O(log m).
-    pub fn inv(self, a: Int) -> ?Int:
-        var (r, b, x, y) = (a % m, m, 1, 0)
-        while b != 0:
-            let q = r / b
-            (r, b) = (b, r - q * b)
-            (x, y) = (y, x - q * y)
-        if r == 1: x % m else: none
 
 /// Factorials and inverse factorials modulo a prime `P`, for arguments up to `limit`.
 /// Built in O(limit + log P); every query is O(1). Memory is two lists of `limit + 1`.
@@ -147,12 +122,12 @@ fn pow_and_inverse():
 fn mod_values_work_in_generic_structures():
     type M = Mod<1000000007>
     let xs = [M(0), M(1), M(5), M(-3), M(123456789)]
-    assert laws_hold(Sum<M>, xs)
-    assert laws_hold(Prod<M>, xs)
+    assert laws_hold(Monoid<M>.of(+), xs)
+    assert laws_hold(Monoid<M>.of(*), xs)
     domain V = 0..5
-    var f = Fenwick<V, M>(Sum<M>)
+    var f = Fenwick<V, M>()
     for v in V: f.add(v, M(10).pow(9 + v.to_idx))
-    assert f.fold(V(0)..=V(4)) == M(1000000000) * M(11111)
+    assert f.sum(V(0)..=V(4)) == M(1000000000) * M(11111)
 
 @test
 fn choose_matches_pascals_triangle():
@@ -169,12 +144,12 @@ fn choose_matches_pascals_triangle():
     assert [c.catalan(n).v for n in 0..8] == [1, 1, 2, 5, 14, 42, 132, 429]
 
 @test
-fn runtime_modulus():
-    let r = ModR(12)
-    assert r.of(-1) == 11 and r.add(7, 8) == 3 and r.sub(3, 8) == 7 and r.mul(5, 5) == 1
-    assert r.pow(5, 3) == 5 and r.pow(2, 0) == 1
-    for a in 0..12:
-        let i = r.inv(a)
-        assert (i != none) == (gcd(a, 12) == 1)
-        if i != none: assert r.mul(a, i!) == 1
-    assert ModR(1).pow(5, 0) == 0
+fn a_modulus_read_at_run_time():
+    for p in [2, 12, 1_000_000_007]:
+        let P = p                   // a modulus is frozen under a capitalized name
+        type Z = Mod<P>
+        assert Z(p) == Z(0) and Z(-1) + Z(1) == Z(0)
+        assert Z(5).pow(3) == Z(125 % p) and Z(7).pow(0) == Z(1)
+    type Z12 = Mod<12>
+    assert Z12(7) * Z12(7).inv == Z12(1)
+    assert Z12(1).pow(0) == Z12(1)

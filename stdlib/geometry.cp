@@ -1,7 +1,6 @@
 //! Plane geometry on integer points. Every predicate is exact: no epsilons,
 //! no floating point until you ask for a length. Coordinates up to about
 //! 1e9 are safe (a cross product is a sum of two products).
-use std.algebra.{Order}
 
 /// A point or a vector with integer coordinates.
 pub struct Pt(x: Int, y: Int):
@@ -34,11 +33,13 @@ pub fn turn(a: Pt, b: Pt, c: Pt) -> Int:
     if k > 0: 1 else: if k < 0: -1 else: 0
 
 /// Left to right, then bottom to top.
-pub const ByXY = Order<Pt>(lt: (a, b) => a.x < b.x or (a.x == b.x and a.y < b.y))
 
 /// Counter-clockwise by direction, starting from the positive x axis. Exact;
 /// vectors in the same direction compare equal, the zero vector comes first.
-pub const ByAngle = Order<Pt>(lt: (a, b) => if half(a) != half(b): half(a) < half(b) else: cross(a, b) > 0)
+pub struct ByAngle(p: Pt)
+
+impl Ord for ByAngle:
+    fn lt(a, b) = if half(a.p) != half(b.p): half(a.p) < half(b.p) else: cross(a.p, b.p) > 0
 
 /// 0 for the zero vector, 1 for directions in [0, pi), 2 for [pi, 2 pi).
 fn half(a: Pt) -> Int:
@@ -62,9 +63,9 @@ pub fn area2(poly: List<Pt>) -> Int:
 
 /// The convex hull, counter-clockwise from the lowest of the leftmost points,
 /// without repeated or collinear points (Andrew's monotone chain). O(n log n).
-pub fn hull(pts: List<Pt>) -> List<Pt>:
+pub fn convex_hull(pts: List<Pt>) -> List<Pt>:
     var ps = copy(pts)
-    sort(mut ps, by: ByXY)
+    sort(mut ps, by: p => (p.x, p.y))
     var uniq = List<Pt>()
     for p in ps:
         if uniq.is_empty or uniq.last != p: uniq.push(p)
@@ -109,8 +110,6 @@ fn angle_order_goes_once_around():
     var dirs = [Pt(1, -1), Pt(-1, 0), Pt(0, 1), Pt(1, 0), Pt(-2, -2), Pt(0, -3), Pt(1, 1), Pt(-1, 1)]
     sort(mut dirs, by: ByAngle)
     assert dirs == [Pt(1, 0), Pt(1, 1), Pt(0, 1), Pt(-1, 1), Pt(-1, 0), Pt(-2, -2), Pt(0, -3), Pt(1, -1)]
-    assert laws_hold(ByAngle, dirs)
-    assert laws_hold(ByXY, dirs)
 
 @test
 fn segments_touching_crossing_and_apart():
@@ -136,12 +135,12 @@ fn segments_touching_crossing_and_apart():
 
 @test
 fn hull_is_convex_and_contains_every_point():
-    assert hull([]) == [] and hull([Pt(1, 1), Pt(1, 1)]) == [Pt(1, 1)]
-    assert hull([Pt(0, 0), Pt(2, 2), Pt(1, 1)]) == [Pt(0, 0), Pt(2, 2)]
-    assert hull([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2), Pt(1, 1), Pt(1, 0)]) == [Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]
+    assert convex_hull([]) == [] and convex_hull([Pt(1, 1), Pt(1, 1)]) == [Pt(1, 1)]
+    assert convex_hull([Pt(0, 0), Pt(2, 2), Pt(1, 1)]) == [Pt(0, 0), Pt(2, 2)]
+    assert convex_hull([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2), Pt(1, 1), Pt(1, 0)]) == [Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]
     for _ in 0..40:
         let pts = random_points(rand(3, 14), 5)
-        let h = hull(pts)
+        let h = convex_hull(pts)
         if h.len < 3: continue
         for i in 0..h.len:
             assert h[i] in pts
@@ -154,7 +153,7 @@ fn hull_is_convex_and_contains_every_point():
 @test
 fn locate_agrees_with_half_planes_on_convex_polygons():
     for _ in 0..40:
-        let h = hull(random_points(8, 4))
+        let h = convex_hull(random_points(8, 4))
         if h.len < 3: continue
         for x in -5..=5:
             for y in -5..=5:

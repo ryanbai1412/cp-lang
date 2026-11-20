@@ -1,11 +1,19 @@
-//! Rooted trees: parents, subtree ranges, LCA, and path folds by heavy-light decomposition.
+//! Rooted trees: parents, subtree ranges, LCA, and path folds over one range structure.
 //!
 //! `Rooted<V>` owns a second domain, `Pre`: the positions of an Euler order
 //! in which every subtree and every heavy chain is one contiguous range.
 //! `tin[v]` is a `Pre`, not a `V`, so indexing a per-position structure
 //! with a vertex (the classic Euler tour bug) does not type-check.
-use std.algebra.{Monoid, Sum, Max, flip}
+//!
+//! `Rooted<V>` is the one tree abstraction. A value per vertex lives in any
+//! structure indexed by `Pre` (a `SegTree`, a `LazySegTree`, a `Fenwick`), and
+//! `fold_path` / `apply_path` walk a path over it, so there is no second
+//! "tree with values" type and no second copy of the data.
+use std.algebra.{Reversible}
+use std.graph.{Neighbours, Target, Graph}
+use std.algebra.{Monoid}
 use std.segtree.{SegTree}
+use std.lazy.{LazySegTree, AddMax}
 
 /// A tree rooted at `root`. Built in O(n) without recursion; memory is
 /// seven `[V]` arrays, one `[Pre]` array and the child lists.
@@ -15,13 +23,13 @@ pub struct Rooted<V>:
 
     root: V
     /// The parent; `none` at the root.
-    up: [V]?V
-    depth: [V]Int
-    /// The total edge length from the root; equal to `depth` when the edges have no lengths.
+    par: [V]?V
+    dep: [V]Int
+    /// The total edge length from the root; equal to the depth when the edges have no lengths.
     far: [V]Int
     /// The number of vertices in the subtree.
-    size: [V]Int
-    kids: [V]List<V>
+    sz: [V]Int
+    kid: [V]List<V>
     /// The child with the largest subtree; `none` at a leaf.
     heavy: [V]?V
     /// The highest vertex of the heavy chain through `v`.
@@ -30,41 +38,47 @@ pub struct Rooted<V>:
     /// The inverse of `tin`.
     at: [Pre]V
 
-    /// Root the tree given by `adj` (arcs in both directions, or parent to child) at `root`.
-    /// Stops if some vertex is not reachable from the root.
-    pub fn new<A>(adj: V -> Iter<A>, root: V) -> Rooted<V> = Rooted.weighted(adj, root, a => 1)
+    /// Root the tree given by `adj` at `root`: `Rooted(g, root: r)` for a `Graph`,
+    /// `Rooted(root: r, adj: u => lists[u])` for anything else. `adj` may list every neighbour
+    /// (the parent is skipped) or only the children, as vertices or as arcs. The tree is the
+    /// depth-first spanning tree, so on a graph with extra edges every other edge joins a
+    /// vertex to one of its ancestors. Stops if some vertex is not reachable from the root.
+    pub fn new<N>(adj: N, root: V) -> Rooted<V> = Rooted.weighted(adj, root, a => 1)
 
     /// The same for edges with lengths: `len(arc)` is the length of the edge an arc runs along,
     /// and `dist` adds lengths up instead of counting edges.
-    pub fn weighted<A>(adj: V -> Iter<A>, root: V, len: A -> Int) -> Rooted<V>:
-        var up: [V]?V = none
-        var depth: [V]Int = 0
+    pub fn weighted<N, A>(adj: N, root: V, len: A -> Int) -> Rooted<V>:
+        var par: [V]?V = none
+        var dep: [V]Int = 0
         var far: [V]Int = 0
-        var kids: [V]List<V> = []
+        var kid: [V]List<V> = []
         var seen: [V]Bool = false
-        var order = [root]
+        var order = [root]                       // preorder of the depth-first search
         seen[root] = true
-        var i = 0
-        while i < order.len:
-            let u = order[i]
-            i += 1
-            for a in adj(u):
-                let c = a.to
-                if not seen[c]:
-                    seen[c] = true
-                    up[c] = u
-                    depth[c] = depth[u] + 1
-                    far[c] = far[u] + len(a)
-                    kids[u].push(c)
-                    order.push(c)
+        var path = [(root, [a for a in adj.out(root)], 0)]
+        while not path.is_empty:
+            let (u, arcs, i) = path[path.len - 1]
+            if i == arcs.len:
+                path.pop()
+                continue
+            path[path.len - 1] = (u, arcs, i + 1)
+            let c = arcs[i].to
+            if not seen[c]:
+                seen[c] = true
+                par[c] = u
+                dep[c] = dep[u] + 1
+                far[c] = far[u] + len(arcs[i])
+                kid[u].push(c)
+                order.push(c)
+                path.push((c, [a for a in adj.out(c)], 0))
         assert order.len == V.K
-        var size: [V]Int = 1
+        var sz: [V]Int = 1
         for u in order.rev:
-            if let p = up[u]: size[p] += size[u]
+            if let p = par[u]: sz[p] += sz[u]
         var heavy: [V]?V = none
         for u in order:
-            for c in kids[u]:
-                if heavy[u] == none or size[c] > size[heavy[u]!]: heavy[u] = c
+            for c in kid[u]:
+                if heavy[u] == none or sz[c] > sz[heavy[u]!]: heavy[u] = c
         var top = [V] v => v
         var tin = [V] v => Pre.first
         for u in order:
@@ -72,17 +86,38 @@ pub struct Rooted<V>:
             if let h = heavy[u]:
                 top[h] = top[u]
                 tin[h] = Pre.nth(next)
-                next += size[h]
-            for c in kids[u]:
+                next += sz[h]
+            for c in kid[u]:
                 if c != heavy[u]:
                     tin[c] = Pre.nth(next)
-                    next += size[c]
+                    next += sz[c]
         var at = [Pre] p => root
         for v in V: at[tin[v]] = v
-        Rooted(root, up, depth, far, size, kids, heavy, top, tin, at)
+        Rooted(root, par, dep, far, sz, kid, heavy, top, tin, at)
+
+    /// The parent of `v`; `none` at the root.
+    pub fn parent(self, v: V) -> ?V = par[v]
+
+    /// The children of `v`, in the order `adj` listed them.
+    pub fn children(self, v: V) -> List<V> = kid[v]
+
+    /// The number of edges between `v` and the root.
+    pub fn depth(self, v: V) -> Int = dep[v]
+
+    /// The number of vertices in the subtree of `v`.
+    pub fn size(self, v: V) -> Int = sz[v]
+
+    /// Every vertex, each before its descendants (heavy child first): `at[p] for p in Pre`.
+    pub @get fn preorder(self) -> List<V> = [at[p] for p in Pre]
+
+    /// Every vertex, each after its descendants: the order to fold children into parents.
+    pub @get fn postorder(self) -> List<V>:
+        var out = [at[p] for p in Pre]
+        sort(mut out, by: v => (tin[v].ord + sz[v], -dep[v]))
+        out
 
     /// The positions of `v`'s subtree, `v` first.
-    pub fn sub(self, v: V) -> Range<Pre> = tin[v].l..tin[v].r(size[v])
+    pub fn sub(self, v: V) -> Range<Pre> = tin[v].l..tin[v].r(sz[v])
 
     /// Is `a` an ancestor of `b`? A vertex is its own ancestor. O(1).
     pub fn is_anc(self, a: V, b: V) -> Bool = tin[b] in self.sub(a)
@@ -91,9 +126,9 @@ pub struct Rooted<V>:
     pub fn lca(self, a: V, b: V) -> V:
         var (x, y) = (a, b)
         while top[x] != top[y]:
-            if depth[top[x]] < depth[top[y]]: swap(mut x, mut y)
-            x = up[top[x]]!
-        if depth[x] < depth[y]: x else: y
+            if dep[top[x]] < dep[top[y]]: swap(mut x, mut y)
+            x = par[top[x]]!
+        if dep[x] < dep[y]: x else: y
 
     /// The length of the path between `a` and `b`: its number of edges, or their total length in a
     /// tree built with `weighted`. O(log n).
@@ -101,89 +136,103 @@ pub struct Rooted<V>:
 
     /// The ancestor `k` edges above `v`, or `none` if that is above the root. O(log n).
     pub fn ancestor(self, v: V, k: Int) -> ?V:
-        if k > depth[v]: return none
+        if k > dep[v]: return none
         var (x, left) = (v, k)
-        while depth[x] - depth[top[x]] < left:
-            left -= depth[x] - depth[top[x]] + 1
-            x = up[top[x]]!
+        while dep[x] - dep[top[x]] < left:
+            left -= dep[x] - dep[top[x]] + 1
+            x = par[top[x]]!
         at[tin[x].offset(-left)!]
 
     /// The vertex `k` edges from `a` on the path to `b`, or `none` if the path is shorter. O(log n).
     pub fn step(self, a: V, b: V, k: Int) -> ?V:
         let c = self.lca(a, b)
-        let (da, db) = (depth[a] - depth[c], depth[b] - depth[c])
+        let (da, db) = (dep[a] - dep[c], dep[b] - dep[c])
         if k <= da: return self.ancestor(a, k)
         if k > da + db: return none
         self.ancestor(b, da + db - k)
 
-    /// The path from `a` to `b` as O(log n) position ranges. `rising` ranges
-    /// are walked from their high end to their low end. With `skip_top`, the
-    /// highest vertex of the path is left out (for values stored per edge, at
-    /// its lower end).
-    pub fn chains(self, a: V, b: V, skip_top: Bool) -> yields (range: Range<Pre>, rising: Bool):
+    /// The highest ancestor `u` of `v` such that `pred` holds for `u`, or `none` when it does not
+    /// hold for `v` itself. `pred` must be true and then false on the way up. O(log^2 n).
+    pub fn lift_while(self, v: V, pred: V -> Bool) -> ?V:
+        if not pred(v): return none
+        var (lo, hi) = (0, dep[v])
+        while lo < hi:
+            let mid = (lo + hi + 1) / 2
+            if pred(self.ancestor(v, mid)!): lo = mid else: hi = mid - 1
+        self.ancestor(v, lo)
+
+    /// The path from `a` to `b` as O(log n) position ranges. `rising` ranges are walked from
+    /// their high end to their low end. With `edges`, the highest vertex of the path is left
+    /// out: for a value per edge, stored at the edge's lower end.
+    pub fn chains(self, a: V, b: V, edges: Bool = false) -> yields (range: Range<Pre>, rising: Bool):
         var (x, y) = (a, b)
         var falling = List<Range<Pre>>()
         while top[x] != top[y]:
-            if depth[top[x]] >= depth[top[y]]:
+            if dep[top[x]] >= dep[top[y]]:
                 yield (range: tin[top[x]]..=tin[x], rising: true)
-                x = up[top[x]]!
+                x = par[top[x]]!
             else:
                 falling.push(tin[top[y]]..=tin[y])
-                y = up[top[y]]!
-        let skip = if skip_top: 1 else: 0
-        if depth[x] >= depth[y]:
+                y = par[top[y]]!
+        let skip = if edges: 1 else: 0
+        if dep[x] >= dep[y]:
             yield (range: tin[y].l(1 - skip)..tin[x].r, rising: true)
         else:
             yield (range: tin[x].l(1 - skip)..tin[y].r, rising: false)
         for r in falling.rev: yield (range: r, rising: false)
 
-/// Path and subtree folds over a tree with a value on every vertex.
-/// `path` and `set` are O(log^2 n) and O(log n); `sub` is O(log n).
-/// Paths are folded in order from `a` to `b`, so the monoid does not have
-/// to be commutative; the price is a second segment tree for the upward
-/// direction (2 * 2 * bit_ceil(n) values in total).
-pub struct Hld<V, T>(m: Monoid<T>):
-    r: Rooted<V>
-    down: SegTree<Rooted<V>.Pre, T>
-    rise: SegTree<Rooted<V>.Pre, T>
-
-    pub fn new(r: Rooted<V>, m: Monoid<T>, val: [V]T) -> Hld<V, T>:
-        let by_pos = [Rooted<V>.Pre] p => val[r.at[p]]
-        Hld(m, r, SegTree.from(m, by_pos), SegTree.from(flip(m), by_pos))
-
-    pub fn get(self, v: V) -> T = down.get(r.tin[v])
-
-    pub fn set(mut self, v: V, x: T):
-        down.set(r.tin[v], x)
-        rise.set(r.tin[v], x)
-
-    /// The fold of the values on the path, from `a` to `b`, both ends included.
-    pub fn path(self, a: V, b: V) -> T = self.walk(a, b, false)
-
-    /// `path` without the highest vertex: for a tree with a value per edge,
-    /// stored at the edge's lower end.
-    pub fn path_edges(self, a: V, b: V) -> T = self.walk(a, b, true)
-
-    /// The fold over the subtree of `v`, in `Pre` order.
-    pub fn sub(self, v: V) -> T = down.fold(r.sub(v))
-
-    fn walk(self, a: V, b: V, skip_top: Bool) -> T:
+    /// The fold of the values on the path from `a` to `b`, in that order, read from `ds`: any
+    /// structure over `Pre` with `fold(range)` and a `monoid` (`SegTree`, `LazySegTree`).
+    /// A stretch of the path that climbs is folded top-down by `ds` and then turned round
+    /// with `rev()`: a value that is not its own reverse implements `Reversible`. One
+    /// structure, O(log^2 n).
+    pub fn fold_path<S, T>(self, a: V, b: V, ds: S, edges: Bool = false) -> T:
+        let m = ds.monoid
         var acc = m.id
-        for c in r.chains(a, b, skip_top):
-            acc = m.op(acc, if c.rising: rise.fold(c.range) else: down.fold(c.range))
+        for c in self.chains(a, b, edges):
+            let part = ds.fold(c.range)
+            acc = m.op(acc, if c.rising: part.rev() else: part)
         acc
+
+    /// Every vertex on the path from `a` to `b` takes the update `tag`, through `ds.apply`.
+    /// O(log^2 n).
+    pub fn apply_path<S, F>(self, a: V, b: V, mut ds: S, tag: F, edges: Bool = false):
+        for c in self.chains(a, b, edges): ds.apply(c.range, tag)
+
+    /// The tree squeezed down to `keys`: those vertices and the lowest common ancestors
+    /// between them, each with its nearest kept ancestor as parent. `nodes` is in preorder
+    /// and `edges` go from parent to child. O(k log k + k log n).
+    pub fn virtual_tree(self, keys: List<V>) -> (nodes: List<V>, edges: List<(u: V, v: V)>):
+        if keys.is_empty: return (nodes: [], edges: [])
+        var all = [(tin[v].ord, v) for v in keys]
+        sort(mut all)
+        for i in 0..keys.len - 1:
+            let l = self.lca(all[i].1, all[i + 1].1)
+            all.push((tin[l].ord, l))
+        sort(mut all)
+        var nodes = List<V>()
+        for p in all:
+            if nodes.is_empty or nodes[nodes.len - 1] != p.1: nodes.push(p.1)
+        var edges: List<(u: V, v: V)> = []
+        var st = [nodes[0]]
+        for i in 1..nodes.len:
+            let u = nodes[i]
+            while not self.is_anc(st[st.len - 1], u): st.pop()
+            edges.push((u: st[st.len - 1], v: u))
+            st.push(u)
+        (nodes: nodes, edges: edges)
 
 // ---- tests
 
 /// A random tree on `V` as adjacency lists, with arcs in both directions.
-fn random_tree<V>(any: V) -> [V]List<(to: V)>:
-    var adj: [V]List<(to: V)> = []
+fn random_tree<V>(any: V) -> [V]List<V>:
+    var adj: [V]List<V> = []
     var label = [v for v in V]
     shuffle(mut label)
     for i in 1..V.K:
         let (c, p) = (label[i], label[rand(0, i - 1)])
-        adj[c].push((to: p))
-        adj[p].push((to: c))
+        adj[c].push(p)
+        adj[p].push(c)
     adj
 
 /// The vertices from `a` to `b`, by climbing parents.
@@ -191,12 +240,12 @@ fn slow_path<V>(r: Rooted<V>, a: V, b: V) -> List<V>:
     var (x, y) = (a, b)
     var (left, right) = (List<V>(), List<V>())
     while x != y:
-        if r.depth[x] >= r.depth[y]:
+        if r.depth(x) >= r.depth(y):
             left.push(x)
-            x = r.up[x]!
+            x = r.parent(x)!
         else:
             right.push(y)
-            y = r.up[y]!
+            y = r.parent(y)!
     left.push(x)
     left + right.rev
 
@@ -205,14 +254,14 @@ fn subtrees_and_chains_are_contiguous():
     domain V = 1..=14
     for _ in 0..10:
         let adj = random_tree(V.first)
-        let r = Rooted(v => adj[v], V.nth(rand(0, 13)))
-        assert r.size[r.root] == 14 and r.up[r.root] == none
+        let r = Rooted(root: V.nth(rand(0, 13)), adj: v => adj[v])
+        assert r.size(r.root) == 14 and r.parent(r.root) == none
         for v in V:
             assert r.at[r.tin[v]] == v
-            assert r.sub(v).len == r.size[v]
+            assert r.sub(v).len == r.size(v)
             for u in V:
                 var x = u
-                while x != v and r.up[x] != none: x = r.up[x]!
+                while x != v and r.parent(x) != none: x = r.parent(x)!
                 assert r.is_anc(v, u) == (x == v)
             if let h = r.heavy[v]:
                 assert r.tin[h].ord == r.tin[v].ord + 1 and r.top[h] == r.top[v]
@@ -222,17 +271,17 @@ fn lca_dist_ancestor_and_step_match_climbing():
     domain V = 0..13
     for _ in 0..10:
         let adj = random_tree(V.first)
-        let r = Rooted(v => adj[v], V.nth(rand(0, 12)))
+        let r = Rooted(root: V.nth(rand(0, 12)), adj: v => adj[v])
         for a in V:
             for b in V:
                 let path = slow_path(r, a, b)
                 assert r.dist(a, b) == path.len - 1
                 let top = r.lca(a, b)
-                assert top in path and min(r.depth[v] for v in path) == r.depth[top]
+                assert top in path and min(r.depth(v) for v in path) == r.depth(top)
                 for k in 0..path.len: assert r.step(a, b, k) == path[k]
                 assert r.step(a, b, path.len) == none
-            assert r.ancestor(a, r.depth[a]) == r.root
-            assert r.ancestor(a, r.depth[a] + 1) == none
+            assert r.ancestor(a, r.depth(a)) == r.root
+            assert r.ancestor(a, r.depth(a) + 1) == none
 
 @test
 fn weighted_dist_adds_the_lengths_on_the_path():
@@ -244,45 +293,91 @@ fn weighted_dist_adds_the_lengths_on_the_path():
         adj[u].push((to: v, len: len))
         adj[v].push((to: u, len: len))
     let r = Rooted.weighted(v => adj[v], V(0), a => a.len)
-    assert [r.far[v] for v in V] == [0, 3, 7, 13, 7] and r.depth[V(3)] == 2
+    assert [r.far[v] for v in V] == [0, 3, 7, 13, 7] and r.depth(V(3)) == 2
     assert r.dist(V(2), V(3)) == 14 and r.dist(V(4), V(2)) == 14 and r.dist(V(3), V(3)) == 0
-    let plain = Rooted(v => adj[v], V(0))
-    assert plain.dist(V(2), V(3)) == 2 and plain.far[V(3)] == plain.depth[V(3)]
+    let plain = Rooted(root: V(0), adj: v => adj[v])
+    assert plain.dist(V(2), V(3)) == 2 and plain.far[V(3)] == plain.depth(V(3))
 
 @test
 fn path_folds_keep_the_order_from_a_to_b():
     domain V = 0..12
-    let cat = Monoid<Str>("", (x, y) => x + y)
-    for _ in 0..8:
-        let adj = random_tree(V.first)
-        let r = Rooted(v => adj[v], V.nth(rand(0, 11)))
-        var name = [V] v => [Char(Int('a') + v.to_idx)]
-        var h = Hld(r, cat, name)
-        for round in 0..2:
-            for a in V:
-                for b in V:
-                    let path = slow_path(r, a, b)
-                    var want = ""
-                    for v in path: want = want + name[v]
-                    assert h.path(a, b) == want
-                    var edges = ""
-                    for v in path:
-                        if v != r.lca(a, b): edges = edges + name[v]
-                    assert h.path_edges(a, b) == edges
+    type Pre = Rooted<V>.Pre
+    for _ in 0..12:
+        let adj = random_tree(V(0))
+        let r = Rooted(root: V.nth(rand(0, 11)), adj: v => adj[v])
+        var name = [V] v => Word(Str([Char(97 + v.to_idx)]))
+        var st = SegTree<Pre, Word>(Monoid<Word>(Word(""), (a, b) => Word(a.s + b.s)), [Pre] p => name[r.at[p]])
+        for _ in 0..12:
+            let (a, b) = (V.nth(rand(0, 11)), V.nth(rand(0, 11)))
+            let path = slow_path(r, a, b)
+            assert r.fold_path(a, b, st).s == Str([name[v].s[0] for v in path])
+            let lower = [v for v in path if v != r.lca(a, b)]
+            assert r.fold_path(a, b, st, edges: true).s == Str([name[v].s[0] for v in lower])
             let v = V.nth(rand(0, 11))
-            name[v] = "Z"
-            h.set(v, "Z")
-            assert h.get(v) == "Z"
+            name[v] = Word(Str([Char(65 + rand(0, 25))]))
+            st.set(r.tin[v], name[v])
+
+struct Word(s: Str)
+
+impl Reversible for Word:
+    fn rev(self) -> Word = Word(Str([s[s.len - 1 - i] for i in 0..s.len]))
 
 @test
-fn subtree_sums_and_path_maxima():
-    domain V = 1..=10
-    let adj = random_tree(V.first)
-    let r = Rooted(v => adj[v], V(1))
-    let val = [V] v => rand(-20, 20)
-    let sums = Hld(r, Sum<Int>, val)
-    let tops = Hld(r, Max<Int>, val)
-    for v in V:
-        assert sums.sub(v) == sum(val[u] for u in V if r.is_anc(v, u))
-        for u in V:
-            assert tops.path(u, v) == max(val[x] for x in slow_path(r, u, v))
+fn path_updates_and_subtree_folds_over_one_lazy_tree():
+    domain V = 0..11
+    type Pre = Rooted<V>.Pre
+    for _ in 0..10:
+        let adj = random_tree(V(0))
+        let r = Rooted(root: V(0), adj: v => adj[v])
+        var val = [V] v => rand(0, 9)
+        var st = LazySegTree<Pre, Int>(AddMax, [Pre] p => val[r.at[p]])
+        for _ in 0..20:
+            let (a, b, x) = (V.nth(rand(0, 10)), V.nth(rand(0, 10)), rand(-3, 3))
+            for v in slow_path(r, a, b): val[v] += x
+            r.apply_path(a, b, mut st, x)
+            let (c, d) = (V.nth(rand(0, 10)), V.nth(rand(0, 10)))
+            assert r.fold_path(c, d, st) == max(val[v] for v in slow_path(r, c, d))
+            assert st.fold(r.sub(c)) == max(val[v] for v in V if r.is_anc(c, v))
+
+@test
+fn orders_lifting_and_the_virtual_tree():
+    domain V = 0..13
+    for _ in 0..15:
+        let adj = random_tree(V(0))
+        let r = Rooted(root: V.nth(rand(0, 12)), adj: v => adj[v])
+        var seen: [V]Bool = false
+        for v in r.postorder:
+            for c in r.children(v): assert seen[c]
+            seen[v] = true
+        seen.fill(false)
+        for v in r.preorder:
+            assert r.parent(v) == none or seen[r.parent(v)!]
+            seen[v] = true
+        for v in V:
+            let cap = rand(0, 4)
+            let got = r.lift_while(v, u => r.depth(v) - r.depth(u) <= cap)
+            assert got == r.ancestor(v, min(cap, r.depth(v)))
+            assert r.lift_while(v, u => false) == none
+        var keys: List<V> = []
+        for v in V:
+            if rand(0, 2) == 0: keys.push(v)
+        let vt = r.virtual_tree(keys)
+        var kept: [V]Bool = false
+        for a in keys:
+            for b in keys: kept[r.lca(a, b)] = true
+        assert sorted(vt.nodes) == [v for v in V if kept[v]]
+        assert vt.edges.len == max(vt.nodes.len - 1, 0)
+        for e in vt.edges:
+            assert r.is_anc(e.u, e.v) and e.u != e.v
+            // nothing kept lies strictly between a node and its parent
+            assert not any(kept[w] and w != e.u and w != e.v and r.is_anc(e.u, w) and r.is_anc(w, e.v) for w in V)
+
+@test
+fn a_tree_from_a_stored_graph():
+    domain V = 1..=6
+    domain E = 1..=5
+    let edges = [E] e => [(u: V(1), v: V(2)), (u: V(1), v: V(3)), (u: V(2), v: V(4)), (u: V(2), v: V(5)), (u: V(5), v: V(6))][e.to_idx]
+    let g = Graph.undirected(edges)
+    let r = Rooted(g, root: V(1))
+    assert r.lca(V(4), V(6)) == V(2) and r.dist(V(4), V(6)) == 3 and r.size(V(2)) == 4
+    assert r.children(V(2)) == [V(4), V(5)] and r.parent(V(6)) == V(5)

@@ -36,34 +36,54 @@ from the wrong domain, an out-of-range value, a broken algebraic law or a
 written for the real compiler; when it can run them they should compile
 unchanged, and the interpreter stays as the oracle to test it against.
 
-## Operation values: one structure, many behaviours
+## Bare operators: one structure, many behaviours
 
-A structure never assumes what "combine" means. You hand it a value that
-says so, and the same tree serves sums, maxima or your own monoid.
+A structure never assumes what "combine" means. You hand it the operator,
+and the same tree serves sums, maxima or your own monoid. An operator the
+language already knows brings its identity with it; anything else is the
+pair `Monoid(id, op)`.
 
 ```
 domain I = 1..=5
 let a = [I] i => [3, 1, 4, 1, 5][i.to_idx]
-let sums = SegTree<I, Int>.from(Sum<Int>, a)
-let highs = SegTree<I, Int>.from(Max<Int>, a)
+let sums = SegTree<I, Int>(+, a)
+let highs = SegTree<I, Int>(max, a)
 assert sums.fold(I(2)..=I(4)) == 6
 assert highs.fold(I(2)..=I(4)) == 4
 
 // your own monoid is one line: (best, count of best)
 let best = Monoid<(Int, Int)>((Int.MIN, 0), (x, y) => if x.0 > y.0: x else: if y.0 > x.0: y else: (x.0, x.1 + y.1))
-let t = SegTree<I, (Int, Int)>.from(best, [I] i => (a[i], 1))
+let t = SegTree<I, (Int, Int)>(best, [I] i => (a[i], 1))
 assert t.all == (5, 1)
 ```
 
-`algebra.cp` defines `Semigroup`, `Monoid`, `Group`, `Action` and `Order`,
-the ready-made `Sum`, `Prod`, `Max`, `Min`, `Xor`, `Less` and `Greater`,
-and the combinators `flip`, `both` and `opt`. Each one states its laws,
-and `laws_hold(m, samples)` checks them on sample values, which is how the
-tests catch a "monoid" that is not associative.
+The bare operators are `+ * ^ | & min max gcd`. `min` and `max` over a
+`?T` skip `none`, so `SegTree<I, ?Int>(min)` starts empty and the fold of
+an empty range is `none` rather than a sentinel.
 
-Each structure asks for exactly what it needs. `Fenwick` wants a `Group`
-because it subtracts prefixes; `SegTree` a `Monoid`; `SparseTable` a
-`Semigroup` that is idempotent; `LazySegTree` a `Monoid` plus an `Action`.
+`algebra.cp` is the whole vocabulary, and it is short:
+
+- `Monoid(id, op)` for an operation of your own, with its laws.
+- `Action(id, compose, apply, over: op)` for a lazy update:
+  `apply(f, x, len)` is the fold `x` of `len` positions after each took `f`.
+- `desc(x)` reverses the order of one part of a key:
+  `sort(mut xs, by: p => (desc(p.score), p.name))`, or a max-heap entry
+  inside a `MinHeap`.
+- `Reversible` is a hook with a default: a value is its own reverse unless
+  it says otherwise, which is what lets `Rooted.fold_path` fold a
+  non-commutative path over one tree.
+
+Each one states its laws, and `laws_hold(m, samples)` checks them on
+sample values, which is how the tests catch a "monoid" that is not
+associative. The named wrappers of the first design (`Sum`, `Max`, `Min`,
+`Prod`, `Xor`, `Less`, `Greater`, `Semigroup`, `Group`, `Order`, `flip`,
+`both`, `opt`) are gone: the operator is the name.
+
+`Fenwick` is sums: it needs `+` and `-` on `T` and nothing else is passed.
+`SparseTable` takes an idempotent operator (`min`, `max`, `gcd`, `&`, `|`).
+`LazySegTree` takes an `Action`; the six that cover most problems are
+ready-made: `AddSum`, `AddMin`, `AddMax`, `AssignSum`, `AssignMin`,
+`AssignMax`.
 
 ## Indices know their container
 
@@ -77,13 +97,28 @@ domain E = 0..3
 var d = Dsu<V>()
 for e in E:
     if d.unite(edges[e].u, edges[e].v): joined += 1
-assert d.count == 2 and d.same(V(1), V(2))
+assert d.components == 2 and d.same(V(1), V(2))
 // `d.find(e)` for an edge index `e` is rejected: an E is not a V
 ```
 
 The domain also fixes the size. There is no `n` to pass and no `n + 1` to
 remember: `Dsu<V>()` has one slot per vertex whether `V` is `0..n` or
 `1..=n`.
+
+`Dsu` also rolls back, for offline dynamic connectivity and divide and
+conquer over time: `let snap = d.mark()`, some `unite`s, then
+`d.undo_to(snap)`.
+
+Coordinate compression gives the values their own domain, so a rank cannot
+be mixed up with a value or with an index of another array:
+
+```
+let xs = compress(all)                 // sorted, distinct
+var f = Fenwick<xs.D, Int>()           // one slot per distinct value
+f.add(xs.at(val), 1)                   // the rank of a value that is present
+let hit = xs.first_ge(q)                // ?xs.D: the first rank holding a value >= q, for any q
+assert xs[xs.at(val)] == val
+```
 
 ## Ranges and boundaries
 
@@ -93,24 +128,48 @@ is no convention to remember. A boundary (`i.l` is the gap before `i`,
 
 ```
 domain I = 0..6
-var f = Fenwick<I, Int>(Sum<Int>)
+var f = Fenwick<I, Int>()
 for i in I: f.add(i, i.to_idx + 1)
-assert f.fold(I(1)..=I(3)) == 2 + 3 + 4
-assert f.fold(I(1)..I(3)) == 2 + 3
+assert f.sum(I(1)..=I(3)) == 2 + 3 + 4
+assert f.sum(I(1)..I(3)) == 2 + 3
 assert f.prefix(I(3).l) == 1 + 2 + 3 and f.prefix(I(3).r) == 1 + 2 + 3 + 4
 
-var lz = LazySegTree<I, ?Int, Int>.from(MaxOpt, AddMax, [I] i => 0)
+var lz = LazySegTree<I, Int>(AddMax, [I] i => 0)
 lz.apply(I(2)..=I(4), 10)
 assert lz.fold(I(0)..=I(5)) == 10
 ```
 
-`MaxOpt` is the maximum over `?Int`: the fold of an empty range is
-`none`, and a cell set to `none` stays out of every maximum whatever is
-added to its range. `?Int` is 8 bytes, the same as `Int`.
+`Fenwick2D<R, C, T>` is the same over a grid: `add(r, c, x)` and
+`sum(rows, cols)`.
 
 The binary searches on a tree return boundaries too:
 `t.max_right(i.l, ok)` is the furthest boundary such that the fold from
 `i` up to it still satisfies `ok`.
+
+## Searching and sliding
+
+Binary search is three free functions over a range, of `Int`s or of a
+domain, and each says in its name which end it returns:
+
+```
+let k = bsearch_first(0..n, i => pre[i] >= need)           // ?Int: the first i where it holds
+let t = bsearch_last(1..=10**9, x => feasible(x))          // the last x where it holds
+let (i, w) = bsearch_first_some(0..n, i => witness(i))!    // the first i with a witness, and the witness
+```
+
+A two-pointer loop is `slide_until`: for every left end, the nearest right
+end at which the window is good. It keeps no state; fold what you need
+from prefix sums or a structure.
+
+```
+for (lo, hi) in slide_until(0..n, (l, r) => pre[r] - pre[l] >= need):
+    best min= hi - lo
+```
+
+`sliding_min(xs, k)` and `sliding_max(xs, k)` are the fixed-width window.
+When the window is driven by your own loop, `MonoDeque` in `deque.cp` is
+the same thing by hand (`push(at, val)`, `drop_before(at)`, `best`), next to a plain
+ring-buffer `Deque<T>` for 0-1 BFS and queues.
 
 ## Graphs are functions
 
@@ -120,23 +179,32 @@ implicit graph needs no adjacency list at all.
 
 ```
 let g = Graph<V, E>.directed(ends)
-let dist = dijkstra::<V>(u => g.adj(u), [(V(1), 0)], a => w[a.e])
+let dist = dijkstra(g, from: [(V(1), 0)], w: a => w[a.e])
 assert [dist[v] for v in V] == [0, 5, 6, 13]
 
-let (C, comp) = scc::<V>(u => g.adj(u))
+let (C, comp) = scc(g)
 assert C.K == 2 and comp[V(1)] == comp[V(3)]
 
 domain N = 0..10
-let hops = dijkstra::<N>(u => [(to: N(x)) for x in [u.to_idx * 2, u.to_idx + 1] if x < 10], [(N(1), 0)], a => 1)
+let hops = dijkstra(from: [(N(1), 0)], next: u => [N(x) for x in [u.to_idx * 2, u.to_idx + 1] if x < 10], w: a => 1)
 assert hops[N(9)] == 4
 ```
+
+An algorithm takes either: `bfs(g, from: [s])` for a stored graph,
+`bfs(from: [s], next: u => ...)` for a formula. A neighbour may be a bare
+vertex or an arc with a `to` field.
 
 `scc` and `components` return a fresh domain `C` of components along with
 the labelling, so the condensed graph is indexed by `C` and cannot be
 confused with the original. Distances are `?W`: an unreachable vertex is
 `none`, not a large number that might take part in arithmetic.
 
-`flow.cp` is Dinic's algorithm. `add` returns the arc, which you later
+Connectivity is in `graph.cp` as well: `two_edge_components` (bridges),
+`articulation_points`, `biconnected_components`, `two_color`, `mst`,
+`topo_prefix` and `TwoSat`.
+
+`flow.cp` is Dinic's algorithm, plus `MinCostFlow` (successive shortest
+paths with potentials) and `max_weight_matching` for assignment problems. `add` returns the arc, which you later
 ask for its flow:
 
 ```
@@ -149,26 +217,59 @@ assert net.flow(a) == 3
 
 ## Trees
 
-`Rooted<V>` computes parents, depths, sizes and a heavy-first preorder in
-one pass, and answers `lca`, `dist`, `ancestor` and `step` from it. The
-preorder positions are their own domain, `Rooted<V>.Pre`, so a position
-cannot be used where a vertex is expected. `Hld<V, T>` adds values on the
-vertices, with path and subtree folds over any monoid. Path folds keep
-the order from `a` to `b`, so non-commutative monoids work.
+`Rooted<V>` is the one tree type. It computes parents, depths, sizes and a
+heavy-first preorder in one pass, and answers `lca`, `dist`, `ancestor`,
+`step`, `lift_while`, `postorder` and `virtual_tree` from it. The preorder
+positions are their own domain, `Rooted<V>.Pre`, so a position cannot be
+used where a vertex is expected.
+
+A value per vertex lives in any structure over `Pre`. `fold_path` and
+`apply_path` walk a path over it, and a subtree is the range `r.sub(v)`,
+so there is no second "tree with values" type and no second copy of the
+data:
 
 ```
-let r = Rooted<V>(u => [(to: c) for c in kids[u]], V(1))
+let r = Rooted(root: V(1), adj: u => kids[u])
 assert r.lca(V(4), V(6)) == V(2) and r.dist(V(4), V(6)) == 3
-var h = Hld<V, Int>(r, Sum<Int>, [V] v => v.to_idx + 1)
-assert h.path(V(4), V(6)) == 4 + 2 + 5 + 6
-assert h.sub(V(2)) == 2 + 4 + 5 + 6
+var st = SegTree<Rooted<V>.Pre, Int>(+, [Rooted<V>.Pre] p => r.at[p].to_idx + 1)
+assert r.fold_path(V(4), V(6), st) == 4 + 2 + 5 + 6
+assert st.fold(r.sub(V(2))) == 2 + 4 + 5 + 6
 ```
+
+With a `LazySegTree`, `r.apply_path(a, b, mut st, tag)` updates the path.
+`edges: true` leaves out the top vertex, for a value per edge stored at
+its lower end. Path folds keep the order from `a` to `b`: the stretch that
+climbs is folded top-down and turned round with `rev()`, so a
+non-commutative value implements `Reversible` (store both directions and
+swap them; `examples/local-lib/math/hom.cp` does) and everything else
+pays nothing.
+
+## Grids
+
+A cell is the pair `(Row, Col)`, and it indexes a `[Row, Col]T` directly.
+`grid.cp` adds what a cell can do. The neighbours are named by how many
+there are, and they never leave the grid:
+
+```
+use std.grid.{adj4, Dir4, step}
+
+for n in p.adj4:
+    if open[n] and not seen[n]: ...
+
+let d = Dir4.from("URDL", ch)!        // or "NESW"
+let q = p.step(d.cw)                  // ?(Row, Col): none off the edge
+```
+
+`adj8`, `Dir8`, `ray(d)` (the cells up to the edge), `transposed` and
+`flipped` are there too.
 
 ## Numbers
 
 `Mod<P>` carries its modulus in the type. It is a number like any other,
-so the generic structures take it as they are. `ModR` is for a modulus
-read from the input. `Comb<P>` precomputes factorials.
+so the generic structures take it as they are. A modulus read from the
+input is the same type: freeze it under a capitalized name
+(`let P: Int = read()`, then `type Z = Mod<P>`). `Comb<P>` precomputes
+factorials.
 
 ```
 type M = Mod<998244353>
@@ -176,7 +277,7 @@ assert M(2).pow(10) == M(1024) and M(3) / M(3) == M(1) and M(-1) + M(1) == M(0)
 let c = Comb<998244353>(100)
 assert c.choose(10, 3) == M(120)
 
-var f = Fenwick<I, M>(Sum<M>)
+var f = Fenwick<I, M>()
 ```
 
 `/` and `%` on `Int` are Euclidean: the remainder is never negative, so
@@ -196,11 +297,12 @@ assert [i for i in find_all("abracadabra", "abra")] == [0, 7]
 ```
 
 Geometry is on integer points and every predicate is exact: `turn`,
-`on_segment`, `segments_meet`, `hull`, `area2`, `locate`, and the orders
-`ByXY` and `ByAngle` (which sorts by direction without `atan2`).
+`on_segment`, `segments_meet`, `convex_hull`, `area2`, `locate`, and the
+sort key `ByAngle` (which orders directions without `atan2`:
+`sort(mut dirs, by: ByAngle)`).
 
 ```
-let square = hull([Pt(0, 0), Pt(2, 0), Pt(1, 1), Pt(2, 2), Pt(0, 2), Pt(1, 0)])
+let square = convex_hull([Pt(0, 0), Pt(2, 0), Pt(1, 1), Pt(2, 2), Pt(0, 2), Pt(1, 0)])
 assert square == [Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)] and area2(square) == 8
 ```
 
@@ -211,10 +313,13 @@ choose, never something a `[D]Bool` silently turns into.
 
 ```
 var reach = Bitset<D>()
-reach.insert(D(0))
+reach.add(D(0))
 for w in [5, 11, 40]: reach.union(reach.shifted(w))
-assert reach.has(D(56)) and not reach.has(D(17))
+assert reach.contains(D(56)) and not reach.contains(D(17))
 ```
+
+It speaks the collection verbs every container does: `add`, `remove`,
+`toggle`, `x in s`, `len`. `shifted(k)` takes a negative `k` to move down.
 
 ## Asking the brute force what it is
 
@@ -245,14 +350,22 @@ is evidence, not a proof.
 
 ## The modules
 
-- `algebra.cp`: operation values and their laws.
-- `dsu.cp`, `fenwick.cp`, `segtree.cp`, `lazy.cp`, `sparse.cp`, `heap.cp`,
-  `bitset.cp`: the data structures.
+- `algebra.cp`: `Monoid`, `Action`, `desc`, `Reversible` and their laws.
+- `dsu.cp` (with rollback), `fenwick.cp` (1D and 2D), `segtree.cp`,
+  `lazy.cp`, `sparse.cp`, `heap.cp` (`MinHeap`, `MaxHeap`), `deque.cp`
+  (`Deque`, `MonoDeque`), `bitset.cp`: the data structures.
+- `seq.cp`: `scan`, `bsearch_first` / `bsearch_last` / `bsearch_first_some`,
+  `slide_until`, `sliding_min` / `sliding_max`, `min_by` / `max_by`,
+  `compress`, `dedup`, `rotate_left`, `next_permutation`, `runs`.
 - `graph.cp`: `Graph`, `bfs`, `dijkstra`, `shortest` (with the path),
-  `topo`, `scc`, `components`, `condense`.
-- `flow.cp`: maximum flow and minimum cut.
-- `tree.cp`: `Rooted` (with edge lengths through `Rooted.weighted`) and `Hld`.
-- `seq.cp`: `scan` and `running_sum`, the running folds of a list.
+  `topo`, `topo_prefix`, `scc`, `components`, `condense`,
+  `two_edge_components`, `articulation_points`, `biconnected_components`,
+  `two_color`, `mst`, `TwoSat`.
+- `flow.cp`: maximum flow and minimum cut, `MinCostFlow`,
+  `max_weight_matching`.
+- `tree.cp`: `Rooted` (with edge lengths through `Rooted.weighted`).
+- `grid.cp`: `Dir4`, `Dir8`, `adj4`, `adj8`, `step`, `ray`, `transposed`,
+  `flipped`.
 - `steps.cp`: `Steps`, range additions read back as runs of equal value.
 - `mod.cp`, `math.cp`: modular arithmetic, counting, number theory.
 - `strings.cp`: Z, prefix function, KMP search, suffix array, LCP,
@@ -274,8 +387,16 @@ the caller writes to it, so these types expose operations (`set`, `add`,
 cells, lend them: `examples/local-lib/math/matrix.cp` does, with
 `m.at(i, j) += x`.
 
-## What is not here yet
+## What is deliberately not here
 
-Ordered sets and maps, hashing, a persistent or dynamic segment tree,
-min-cost flow, matching, FFT/NTT and floating-point geometry. For the
-shape of a library of your own, see `examples/local-lib/`.
+The standard library is what most contests need most of the time. The
+structures a problem needs once a season live in
+[`examples/local-lib/`](../examples/local-lib/), written on top of this
+library the way your own would be: `Rope`, `RangeKth`, `LiChao`,
+`PotentialDsu`, `BipartiteDsu`, `Cover`, `TwoStackFold`, `mo_order`,
+`XorBasis`, `Frac`, `Hom`, `Powers`, NTT, `sos_sub` / `sos_sup`, `Mat`,
+`monotone_minima` / `dnc_layer`, `knuth`, `fold_others`, `borders` /
+`overlaps`, `Trie`, `SuffixAutomaton`, `Hash2D`.
+
+Not written yet, in either place: ordered sets and maps as library code,
+floating-point geometry, and a real-valued `bsearch`.

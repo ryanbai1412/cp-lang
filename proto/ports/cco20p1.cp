@@ -3,7 +3,7 @@
 // at height y. Friend i sits at (x_i, 0) and sees the points with
 // |x - x_i| * v_i < h_i * y. For every k from 0 to n, print how many
 // positions are seen by at most k friends.
-use std.seq.{running_sum}
+use std.seq.{scan}
 use std.steps.{Steps}
 
 let n: 1..=1e5 = read()
@@ -19,4 +19,4 @@ for (x, v, h) in friends:
 
 var seen_by: [0..=n]Int = 0                 // positions watched by exactly this many friends
 for (span, count) in watchers.runs(l..=r): seen_by[count] += span.len
-for total in running_sum(seen_by): print(total)
+for total in scan(seen_by, +): print(total)

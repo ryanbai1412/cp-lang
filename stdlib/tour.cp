@@ -1,16 +1,16 @@
 //! A short tour: the examples from README.md, kept here so they stay runnable.
-use std.algebra.{Sum, Max, Min, Monoid}
+use std.algebra.{Monoid}
 use std.dsu.{Dsu}
 use std.fenwick.{Fenwick}
 use std.segtree.{SegTree}
-use std.lazy.{LazySegTree, AddMax, MaxOpt}
+use std.lazy.{LazySegTree, AddMax}
 use std.sparse.{SparseTable}
 use std.graph.{Graph, dijkstra, scc}
 use std.flow.{FlowGraph}
-use std.tree.{Rooted, Hld}
+use std.tree.{Rooted}
 use std.mod.{Mod, Comb}
 use std.strings.{z_function, suffix_array, find_all}
-use std.geometry.{Pt, hull, area2}
+use std.geometry.{Pt, convex_hull, area2}
 use std.bitset.{Bitset}
 use std.spec.{poly_degree, poly_at, guess_at, dnc_break, convexity_break}
 
@@ -18,13 +18,13 @@ use std.spec.{poly_degree, poly_at, guess_at, dnc_break, convexity_break}
 fn one_tree_many_monoids():
     domain I = 1..=5
     let a = [I] i => [3, 1, 4, 1, 5][i.to_idx]
-    let sums = SegTree<I, Int>.from(Sum<Int>, a)
-    let highs = SegTree<I, Int>.from(Max<Int>, a)
+    let sums = SegTree<I, Int>(+, a)
+    let highs = SegTree<I, Int>(max, a)
     assert sums.fold(I(2)..=I(4)) == 6
     assert highs.fold(I(2)..=I(4)) == 4
     // your own monoid is one line: (best, count of best)
     let best = Monoid<(Int, Int)>((Int.MIN, 0), (x, y) => if x.0 > y.0: x else: if y.0 > x.0: y else: (x.0, x.1 + y.1))
-    let t = SegTree<I, (Int, Int)>.from(best, [I] i => (a[i], 1))
+    let t = SegTree<I, (Int, Int)>(best, [I] i => (a[i], 1))
     assert t.fold(I(1)..=I(4)) == (4, 1) and t.fold(I(1)..=I(2)) == (3, 1) and t.all == (5, 1)
 
 @test
@@ -36,22 +36,22 @@ fn indices_know_their_container():
     var joined = 0
     for e in E:
         if d.unite(edges[e].u, edges[e].v): joined += 1
-    assert joined == 2 and d.count == 2 and d.same(V(1), V(2)) and not d.same(V(2), V(3))
+    assert joined == 2 and d.components == 2 and d.same(V(1), V(2)) and not d.same(V(2), V(3))
     // `d.find(e)` for an edge index `e` is rejected: an E is not a V
 
 @test
 fn ranges_and_boundaries():
     domain I = 0..6
-    var f = Fenwick<I, Int>(Sum<Int>)
+    var f = Fenwick<I, Int>()
     for i in I: f.add(i, i.to_idx + 1)
-    assert f.fold(I(1)..=I(3)) == 2 + 3 + 4
-    assert f.fold(I(1)..I(3)) == 2 + 3
+    assert f.sum(I(1)..=I(3)) == 2 + 3 + 4
+    assert f.sum(I(1)..I(3)) == 2 + 3
     assert f.prefix(I(3).l) == 1 + 2 + 3 and f.prefix(I(3).r) == 1 + 2 + 3 + 4
-    var lz = LazySegTree<I, ?Int, Int>.from(MaxOpt, AddMax, [I] i => 0)
+    var lz = LazySegTree<I, Int>(AddMax, [I] i => 0)
     lz.apply(I(2)..=I(4), 10)
     lz.apply(I(4)..=I(5), 1)
     assert lz.fold(I(0)..=I(5)) == 11 and lz.fold(I(0)..=I(1)) == 0
-    let rmq = SparseTable<I, Int>(Min<Int>, [I] i => [5, 2, 7, 1, 8, 3][i.to_idx])
+    let rmq = SparseTable<I, Int>(min, [I] i => [5, 2, 7, 1, 8, 3][i.to_idx])
     assert rmq.fold(I(0)..=I(2)) == 2 and rmq.fold(I(4)..=I(5)) == 3
 
 @test
@@ -61,13 +61,13 @@ fn graphs_are_functions():
     let ends = [E] e => [(u: V(1), v: V(2)), (u: V(2), v: V(3)), (u: V(3), v: V(1)), (u: V(3), v: V(4))][e.to_idx]
     let w = [E] e => [5, 1, 1, 7][e.to_idx]
     let g = Graph<V, E>.directed(ends)
-    let dist = dijkstra::<V>(u => g.adj(u), [(V(1), 0)], a => w[a.e])
+    let dist = dijkstra(g, from: [(V(1), 0)], w: a => w[a.e])
     assert [dist[v] for v in V] == [0, 5, 6, 13]
-    let (C, comp) = scc::<V>(u => g.adj(u))
+    let (C, comp) = scc(g)
     assert C.K == 2 and comp[V(1)] == comp[V(3)] and comp[V(4)] != comp[V(1)]
     // an implicit graph needs no Graph at all: a grid walk, a number line, a state space
     domain N = 0..10
-    let hops = dijkstra::<N>(u => [(to: N(x)) for x in [u.to_idx * 2, u.to_idx + 1] if x < 10], [(N(1), 0)], a => 1)
+    let hops = dijkstra(from: [(N(1), 0)], next: u => [N(x) for x in [u.to_idx * 2, u.to_idx + 1] if x < 10], w: a => 1)
     assert hops[N(9)] == 4
 
 @test
@@ -90,13 +90,14 @@ fn paths_on_trees():
     var kids = [V] v => List<V>()
     for v in V:
         if v != V(1): kids[V(up[v])].push(v)
-    let r = Rooted<V>(u => [(to: c) for c in kids[u]], V(1))
+    let r = Rooted(root: V(1), adj: u => kids[u])
     assert r.lca(V(4), V(6)) == V(2) and r.dist(V(4), V(6)) == 3 and r.dist(V(3), V(6)) == 4
-    var h = Hld<V, Int>(r, Sum<Int>, [V] v => v.to_idx + 1)
-    assert h.path(V(4), V(6)) == 4 + 2 + 5 + 6
-    assert h.sub(V(2)) == 2 + 4 + 5 + 6
-    h.set(V(2), 100)
-    assert h.path(V(4), V(3)) == 4 + 100 + 1 + 3
+    // a value per vertex lives in any structure over the tree's own positions
+    var st = SegTree<Rooted<V>.Pre, Int>(+, [Rooted<V>.Pre] p => r.at[p].to_idx + 1)
+    assert r.fold_path(V(4), V(6), st) == 4 + 2 + 5 + 6
+    assert st.fold(r.sub(V(2))) == 2 + 4 + 5 + 6
+    st.set(r.tin[V(2)], 100)
+    assert r.fold_path(V(4), V(3), st) == 4 + 100 + 1 + 3
 
 @test
 fn numbers_modulo_a_prime():
@@ -106,31 +107,31 @@ fn numbers_modulo_a_prime():
     assert c.choose(10, 3) == M(120)
     // a mod number is a number: the generic structures take it as they are
     domain I = 0..4
-    var f = Fenwick<I, M>(Sum<M>)
+    var f = Fenwick<I, M>()
     f.add(I(0), M(998244352))
     f.add(I(1), M(5))
-    assert f.fold(I(0)..=I(3)) == M(4)
+    assert f.sum(I(0)..=I(3)) == M(4)
 
 @test
 fn strings_and_points():
     assert z_function("abacaba") == [7, 0, 1, 0, 3, 0, 1]
     assert suffix_array("abracadabra") == [10, 7, 0, 3, 5, 8, 1, 4, 6, 9, 2]
     assert [i for i in find_all("abracadabra", "abra")] == [0, 7]
-    let square = hull([Pt(0, 0), Pt(2, 0), Pt(1, 1), Pt(2, 2), Pt(0, 2), Pt(1, 0)])
+    let square = convex_hull([Pt(0, 0), Pt(2, 0), Pt(1, 1), Pt(2, 2), Pt(0, 2), Pt(1, 0)])
     assert square == [Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)] and area2(square) == 8
 
 @test
 fn sets_of_indices():
     domain D = 0..100
     var seen = Bitset<D>()
-    for x in [3, 64, 99]: seen.insert(D(x))
-    assert seen.count == 3 and seen.has(D(64)) and not seen.has(D(65))
+    for x in [3, 64, 99]: seen.add(D(x))
+    assert seen.len == 3 and seen.contains(D(64)) and not seen.contains(D(65))
     assert [d.to_idx for d in seen.each()] == [3, 64, 99]
     // subset sums: shift and union, 64 at a time
     var reach = Bitset<D>()
-    reach.insert(D(0))
+    reach.add(D(0))
     for w in [5, 11, 40]: reach.union(reach.shifted(w))
-    assert reach.has(D(56)) and reach.has(D(16)) and not reach.has(D(17))
+    assert reach.contains(D(56)) and reach.contains(D(16)) and not reach.contains(D(17))
 
 @test
 fn ask_the_brute_force_what_it_is():
