@@ -387,7 +387,8 @@ impl<'a> Lowerer<'a> {
                 }
             }
             ast::StmtKind::Fn(decl) if !self.at_top_level() => {
-                self.lower_local_fn(decl, out);
+                let memo = stmt.decorators.iter().any(|d| d.name.text == "memo");
+                self.lower_local_fn(decl, memo, out);
             }
             // Top-level declarations were handled by `collect_all`.
             ast::StmtKind::Fn(_)
