@@ -1,0 +1,5 @@
+# Lines of mccc4j5_orig.cpp that a perfect C++ contest library would have supplied.
+# Read by `cpl-verify loc` for the library-stripped line count; argue with it here.
+1-30   template header
+32-33  min-heap alias
+73-75  fast I/O setup
