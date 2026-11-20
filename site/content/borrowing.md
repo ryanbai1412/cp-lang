@@ -1,6 +1,6 @@
 Variables own their values. Function parameters borrow them for the call. A projection lets a caller work on part of a value—a row, a slice, or an element—without allocating a copy or keeping a reference for later.
 
-> **Approved design.** `lends`, `lend`, and `law disjoint` are the intended projection mechanism. They are not implemented by the current prototype. The examples here explain the rules, not a runnable borrow checker.
+> **Approved design, partially prototyped.** The Python prototype implements struct projections with `lends`, `lend`, and `law disjoint`, plus lexical checks for slices and rows. Generic library implementations and the full checker remain work in progress. The fragments below explain the design; [runnable projection tests](https://github.com/ryanbai1412/cp-lang/blob/main/proto/tests/lend/projection.cp) show the supported subset and the [implementation notes](https://github.com/ryanbai1412/cp-lang/blob/main/plan/19-index-and-lends.md#11-what-the-prototype-does-today) state its limits.
 
 ## Own it, borrow it, or copy it
 
@@ -77,7 +77,7 @@ Without the guard or another proof of `i != j`, the two elements might alias, so
 For two ranges, the law is that one ends before the other begins: `s.hi <= t.lo or t.hi <= s.lo`. Adjacent halves can therefore be lent separately:
 
 ```cp CP Lang · design fragment
-solve(mut a[l..m], mut a[m..r])
+solve(mut a[l.l..m.l], mut a[m.l..r.r])
 ```
 
 The law applies to two calls of the **same projection** on the **same receiver**. Different operations do not automatically become disjoint: a row and a column may cross even when their arguments look different.
