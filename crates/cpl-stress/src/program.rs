@@ -4,8 +4,8 @@
 //! A path becomes a program by its extension: `.cpp` is compiled with
 //! `g++ -std=c++17 -O2` (once; the binary is cached by content), `.py`
 //! runs under `python3`, and anything else is run as it is. A `.cp` file
-//! needs the compiler's C++ backend, which is not written yet; with
-//! `CPL_PROTO` set to the prototype's `cp.py` it is built through that.
+//! goes through the compiler's C++ back end first, the same one behind
+//! `cpl build`.
 
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -109,6 +109,38 @@ fn compile_cpp(source: &Path) -> Result<String, BuildError> {
     Ok(binary.display().to_string())
 }
 
+/// Emits the C++ for a `.cp` file into the cache, through the same front
+/// end and back end as `cpl build`. Returns the path of the C++ file.
+fn emit_cpp(source: &Path) -> Result<PathBuf, BuildError> {
+    let name = source.display().to_string();
+    let text = std::fs::read_to_string(source)
+        .map_err(|e| BuildError(format!("can't read {name}: {e}")))?;
+    let errors = |diagnostics: &[cpl_diag::Diagnostic]| {
+        BuildError(format!(
+            "{name} does not build:\n{}",
+            cpl_diag::render_all(diagnostics, &name, &text).trim_end()
+        ))
+    };
+    let mut db = cpl_check::Database::new();
+    db.set_file(&name, text.as_str());
+    let analysis = db.analyze(&name).expect("the file was just set");
+    let is_error = |d: &cpl_diag::Diagnostic| d.severity == cpl_diag::Severity::Error;
+    if analysis.diagnostics.iter().any(is_error) {
+        return Err(errors(&analysis.diagnostics));
+    }
+    let program = cpl_ir::lower(&analysis).map_err(|diagnostics| errors(&diagnostics))?;
+    let file = source.file_name().unwrap_or_default().to_string_lossy();
+    let cpp = cpl_codegen::emit(&program, &file, None);
+    let dir = cache_dir();
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| BuildError(format!("can't create {}: {e}", dir.display())))?;
+    let stem = source.file_stem().unwrap_or_default().to_string_lossy();
+    let out = dir.join(format!("{stem}-{:016x}.cpp", hash(cpp.as_bytes())));
+    std::fs::write(&out, cpp)
+        .map_err(|e| BuildError(format!("can't write {}: {e}", out.display())))?;
+    Ok(out)
+}
+
 impl Program {
     /// A program that runs `argv` as given.
     pub fn command(name: &str, argv: &[&str]) -> Program {
@@ -128,27 +160,7 @@ impl Program {
         let argv = match extension {
             "cpp" | "cc" | "cxx" => vec![compile_cpp(path)?],
             "py" => vec!["python3".to_string(), name.clone()],
-            "cp" => {
-                let Some(proto) = std::env::var_os("CPL_PROTO") else {
-                    return Err(BuildError(format!(
-                        "cpl can't build {name} yet: the C++ backend is not written. Pass the built solution (`{}`), or set CPL_PROTO to the prototype's cp.py",
-                        path.with_extension("cpp").display()
-                    )));
-                };
-                let output = Command::new("python3")
-                    .arg(&proto)
-                    .arg("build")
-                    .arg(path)
-                    .output()
-                    .map_err(|e| BuildError(format!("can't run the prototype compiler: {e}")))?;
-                if !output.status.success() {
-                    return Err(BuildError(format!(
-                        "{name} does not build:\n{}",
-                        String::from_utf8_lossy(&output.stderr).trim_end()
-                    )));
-                }
-                vec![compile_cpp(&path.with_extension("cpp"))?]
-            }
+            "cp" => vec![compile_cpp(&emit_cpp(path)?)?],
             // Relative paths need `./` to be found.
             _ => vec![path
                 .canonicalize()

@@ -105,7 +105,10 @@ dependencies = [
 name = "cpl-stress"
 version = "0.0.0"
 dependencies = [
+ "cpl-check",
+ "cpl-codegen",
  "cpl-diag",
+ "cpl-ir",
  "cpl-syntax",
 ]
 
