@@ -3,6 +3,7 @@
 mod emit;
 mod expr;
 mod names;
+mod niche;
 mod ranges;
 mod runtime;
 mod scope;

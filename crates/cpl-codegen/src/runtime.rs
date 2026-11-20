@@ -190,6 +190,58 @@ template <class T, int K> Grid<T, K> grid(std::array<ll, K> n, const T& fill) {
 ",
     },
     Piece {
+        name: "niche",
+        needs: &[],
+        code: "\
+// `?V` held in one scalar: `none` is a value of S that no V is stored as, so
+// there is no flag beside the value. Everything else is std::optional's: `none`
+// sorts first, and nothing converts to or from it without being asked.
+template <class T, class S, S NONE> struct Niche {
+    S raw = NONE;
+    Niche() = default;
+    explicit Niche(T x) : raw((S)x) {}
+    explicit Niche(const std::optional<T>& o) : raw(o ? (S)*o : NONE) {}
+    bool has_value() const { return raw != NONE; }
+    explicit operator bool() const { return raw != NONE; }
+    T operator*() const { return (T)raw; }
+    template <class U = S, class = std::enable_if_t<std::is_same<U, T>::value>> T& operator*() { return raw; }
+    explicit operator std::optional<T>() const { return raw != NONE ? std::optional<T>((T)raw) : std::nullopt; }
+    friend bool operator==(Niche a, Niche b) { return a.raw == b.raw; }
+    friend bool operator!=(Niche a, Niche b) { return a.raw != b.raw; }
+    friend bool operator<(Niche a, Niche b) { return b.has_value() && (!a.has_value() || *a < *b); }
+    friend bool operator>(Niche a, Niche b) { return b < a; }
+    friend bool operator<=(Niche a, Niche b) { return !(b < a); }
+    friend bool operator>=(Niche a, Niche b) { return !(a < b); }
+};
+// A position is an ordinal from 0: -1 is free.
+using OptPos = Niche<int, int, -1>;
+",
+    },
+    Piece {
+        name: "niche_bool",
+        needs: &["niche"],
+        code: "\
+// One byte: 0, 1, or 2 for `none`.
+using OptBool = Niche<bool, u8, 2>;
+",
+    },
+    Piece {
+        name: "niche_char",
+        needs: &["niche"],
+        code: "\
+// A Char is any byte, so `none` is the first value past one: -1 in 16 bits.
+using OptChar = Niche<u8, short, -1>;
+",
+    },
+    Piece {
+        name: "niche_int",
+        needs: &["niche"],
+        code: "\
+// For tables whose values are proven never to be Int.MIN.
+using OptInt = Niche<ll, ll, (-0x7fffffffffffffffLL - 1)>;
+",
+    },
+    Piece {
         name: "pop",
         needs: &[],
         code: "\
@@ -255,23 +307,23 @@ template <class T> std::vector<T> reversed(std::vector<T> v) { std::reverse(v.be
     },
     Piece {
         name: "next_pos",
-        needs: &[],
+        needs: &["niche"],
         code: "\
-inline std::optional<int> next_pos(ll v, ll len) { return v + 1 < len ? std::optional<int>((int)(v + 1)) : std::optional<int>(); }
+inline OptPos next_pos(ll v, ll len) { return v + 1 < len ? OptPos((int)(v + 1)) : OptPos(); }
 ",
     },
     Piece {
         name: "prev_pos",
-        needs: &[],
+        needs: &["niche"],
         code: "\
-inline std::optional<int> prev_pos(ll v) { return v > 0 ? std::optional<int>((int)(v - 1)) : std::optional<int>(); }
+inline OptPos prev_pos(ll v) { return v > 0 ? OptPos((int)(v - 1)) : OptPos(); }
 ",
     },
     Piece {
         name: "either",
         needs: &[],
         code: "\
-template <class T> std::optional<T> either(std::optional<T> a, std::optional<T> b) { return a ? a : b; }
+template <class O> O either(O a, O b) { return a ? a : b; }
 ",
     },
     Piece {
@@ -299,7 +351,8 @@ struct CpHash {
         for (unsigned char c : s) h = splitmix64(h ^ c);
         return (size_t)h;
     }
-    template <class T> size_t operator()(const std::optional<T>& o) const {
+    // An optional, packed or not.
+    template <class O> auto operator()(const O& o) const -> decltype(o.has_value(), size_t()) {
         return o ? (*this)(*o) : (size_t)splitmix64(salt());
     }
     template <class T, size_t I = 0> uint64_t hash_tuple(const T& t) const {
@@ -437,15 +490,15 @@ template <class M, class K, class V> void map_and(M& m, const K& k, const V& v) 
     },
     Piece {
         name: "pos_ops",
-        needs: &["fail"],
+        needs: &["fail", "niche"],
         code: "\
-inline std::optional<int> pos_try(ll v, ll lo, ll len) { return (v >= lo && v - lo < len) ? std::optional<int>((int)(v - lo)) : std::nullopt; }
-inline std::optional<int> pos_try_ord(ll i, ll len) { return (i >= 0 && i < len) ? std::optional<int>((int)i) : std::nullopt; }
-inline std::optional<int> pos_offset(ll i, ll d, ll len) { ll t = i + d; return (t >= 0 && t < len) ? std::optional<int>((int)t) : std::nullopt; }
+inline OptPos pos_try(ll v, ll lo, ll len) { return (v >= lo && v - lo < len) ? OptPos((int)(v - lo)) : OptPos(); }
+inline OptPos pos_try_ord(ll i, ll len) { return (i >= 0 && i < len) ? OptPos((int)i) : OptPos(); }
+inline OptPos pos_offset(ll i, ll d, ll len) { ll t = i + d; return (t >= 0 && t < len) ? OptPos((int)t) : OptPos(); }
 inline int pos_cyc(ll i, ll d, ll len) { ll r = (i + d) % len; return (int)(r < 0 ? r + len : r); }
 inline int bound_step(ll b, ll len) { if (b < 0 || b > len) fail(\"window leaves domain\"); return (int)b; }
-inline std::optional<int> bound_left(ll b) { return b > 0 ? std::optional<int>((int)(b - 1)) : std::nullopt; }
-inline std::optional<int> bound_right(ll b, ll len) { return b < len ? std::optional<int>((int)b) : std::nullopt; }
+inline OptPos bound_left(ll b) { return b > 0 ? OptPos((int)(b - 1)) : OptPos(); }
+inline OptPos bound_right(ll b, ll len) { return b < len ? OptPos((int)b) : OptPos(); }
 ",
     },
     Piece {

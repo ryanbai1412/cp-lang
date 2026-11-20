@@ -166,8 +166,18 @@ pub(crate) fn is_plain_enum(program: &Program, id: usize) -> bool {
         .all(|(_, fields)| fields.is_empty())
 }
 
+/// Which optionals of a one-byte value are held in one scalar. A position
+/// always is; these two are not when the program takes the inside of one
+/// as a place (`(flag ??= false) = true`), which needs a `bool&` or a
+/// `u8&` that the packed form does not have.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) struct Niches {
+    pub bools: bool,
+    pub chars: bool,
+}
+
 /// The C++ type of a value of type `ty`.
-pub(crate) fn cty(program: &Program, ty: &Ty) -> String {
+pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
     match ty {
         Ty::Unit | Ty::Error => "void".into(),
         Ty::Int => "ll".into(),
@@ -182,32 +192,37 @@ pub(crate) fn cty(program: &Program, ty: &Ty) -> String {
         },
         Ty::DomainVal => "cpl::DomainVal".into(),
         Ty::Array { dims, elem } if dims.len() == 1 => {
-            format!("std::vector<{}>", elem_ty(program, elem))
+            format!("std::vector<{}>", elem_ty(program, niches, elem))
         }
         Ty::Array { dims, elem } => {
-            format!("cpl::Grid<{}, {}>", elem_ty(program, elem), dims.len())
+            format!("cpl::Grid<{}, {}>", elem_ty(program, niches, elem), dims.len())
         }
-        Ty::Opt(inner) => format!("std::optional<{}>", cty(program, inner)),
+        Ty::Opt(inner) => match **inner {
+            Ty::Pos(_) | Ty::Bound(_) => "cpl::OptPos".into(),
+            Ty::Bool if niches.bools => "cpl::OptBool".into(),
+            Ty::Char if niches.chars => "cpl::OptChar".into(),
+            _ => format!("std::optional<{}>", cty(program, niches, inner)),
+        },
         Ty::Tuple(items) => {
-            let items: Vec<String> = items.iter().map(|t| cty(program, t)).collect();
+            let items: Vec<String> = items.iter().map(|t| cty(program, niches, t)).collect();
             format!("std::tuple<{}>", items.join(", "))
         }
         Ty::Record(fields) => {
-            let items: Vec<String> = fields.iter().map(|(_, t)| cty(program, t)).collect();
+            let items: Vec<String> = fields.iter().map(|(_, t)| cty(program, niches, t)).collect();
             format!("std::tuple<{}>", items.join(", "))
         }
-        Ty::List(elem) => format!("std::vector<{}>", elem_ty(program, elem)),
-        Ty::Map(key, value) => format!("std::map<{}, {}>", cty(program, key), cty(program, value)),
+        Ty::List(elem) => format!("std::vector<{}>", elem_ty(program, niches, elem)),
+        Ty::Map(key, value) => format!("std::map<{}, {}>", cty(program, niches, key), cty(program, niches, value)),
         Ty::HashMap(key, value) => format!(
             "std::unordered_map<{}, {}, cpl::CpHash>",
-            cty(program, key),
-            cty(program, value)
+            cty(program, niches, key),
+            cty(program, niches, value)
         ),
-        Ty::Set(elem) => format!("std::set<{}>", cty(program, elem)),
-        Ty::HashSet(elem) => format!("std::unordered_set<{}, cpl::CpHash>", cty(program, elem)),
+        Ty::Set(elem) => format!("std::set<{}>", cty(program, niches, elem)),
+        Ty::HashSet(elem) => format!("std::unordered_set<{}, cpl::CpHash>", cty(program, niches, elem)),
         Ty::Fn(args, ret) => {
-            let ps: Vec<String> = args.iter().map(|t| cty(program, t)).collect();
-            format!("std::function<{}({})>", cty(program, ret), ps.join(", "))
+            let ps: Vec<String> = args.iter().map(|t| cty(program, niches, t)).collect();
+            format!("std::function<{}({})>", cty(program, niches, ret), ps.join(", "))
         }
         Ty::Struct(id) => ident(&program.structs[*id].name),
         Ty::Enum(id) => ident(&program.enums[*id].name),
@@ -216,9 +231,9 @@ pub(crate) fn cty(program: &Program, ty: &Ty) -> String {
 
 /// The C++ type of an element of a vector. `Bool` is stored as a byte:
 /// `std::vector<bool>` packs bits and hands out proxies, not references.
-pub(crate) fn elem_ty(program: &Program, ty: &Ty) -> String {
+pub(crate) fn elem_ty(program: &Program, niches: Niches, ty: &Ty) -> String {
     match ty {
         Ty::Bool => "char".into(),
-        other => cty(program, other),
+        other => cty(program, niches, other),
     }
 }
