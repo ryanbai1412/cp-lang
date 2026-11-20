@@ -9,7 +9,8 @@ fn tick(x: Int) -> Int:
 fn pair(a: Int, b: Int) -> Int:
     a * 10 + b
 
-// Operands, arguments, indices and elements run left to right.
+// Operands, arguments, indices and elements run left to right; the
+// indices of an assignment run before its right side (v2.2).
 print(tick(1) - tick(2), pair(tick(3), tick(4)), [tick(5), tick(6)], (tick(7), tick(8)))
 var grid: [3, 3]Int = 0
 grid[tick(1), tick(2)] = tick(9)

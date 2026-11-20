@@ -887,6 +887,15 @@ impl<'a> Lowerer<'a> {
                         self.err_expr(span)
                     }
                     (_, Ty::Error) => value,
+                    // `-x` on a `?Int` or `?F64` keeps `none`.
+                    (_, Ty::Opt(inner)) if matches!(**inner, Ty::Int | Ty::Float) => {
+                        let zero = if **inner == Ty::Int {
+                            self.mk(ExprKind::Int(0), Ty::Int, span)
+                        } else {
+                            self.mk(ExprKind::Float(0.0), Ty::Float, span)
+                        };
+                        self.tropical(BinOp::Sub, zero, value, span)
+                    }
                     _ => {
                         let message =
                             format!("`-` can't be applied to a `{}`", self.show(&value.ty));
@@ -940,6 +949,37 @@ impl<'a> Lowerer<'a> {
                     self.expr(rhs, None);
                     return self.err_expr(span);
                 };
+                if let ast::ExprKind::Block(block) = &rhs.kind {
+                    if let [way_out @ ast::Stmt {
+                        kind:
+                            ast::StmtKind::Return(_) | ast::StmtKind::Break(_) | ast::StmtKind::Continue(_),
+                        ..
+                    }] = block.stmts.as_slice()
+                    {
+                        if self.cx.way_out.take() != Some(span) {
+                            self.error(
+                                codes::UNSUPPORTED,
+                                rhs.span,
+                                "`?? return`, `?? break` and `?? continue` have to be the whole right side of a `let`, an assignment or a statement",
+                            );
+                            self.help("give the value a name first: `let u = o ?? return`");
+                            return self.err_expr(span);
+                        }
+                        let slot = self.temp(l.ty.clone());
+                        let held = self.local(slot, span);
+                        let some = self.mk(ExprKind::IsSome(Box::new(held.clone())), Ty::Bool, span);
+                        let missing = self.mk(ExprKind::Unary(UnOp::Not, Box::new(some)), Ty::Bool, span);
+                        let mut leave = Vec::new();
+                        // The way out is lowered as the statement it is,
+                        // outside any value block.
+                        let dos = std::mem::take(&mut self.cx.dos);
+                        self.stmt(way_out, &mut leave);
+                        self.cx.dos = dos;
+                        self.cx.pending.push(Stmt::Let(slot, Some(l)));
+                        self.cx.pending.push(Stmt::If(missing, Block { stmts: leave }, Block::default()));
+                        return self.mk(ExprKind::Unwrap(Box::new(held), false), *inner, span);
+                    }
+                }
                 let r = self.expr(rhs, Some(&l.ty));
                 // `a ?? b ?? 0`: an optional default keeps the result optional.
                 let ty = if r.ty == l.ty { l.ty.clone() } else { *inner };
@@ -987,6 +1027,14 @@ impl<'a> Lowerer<'a> {
         let arith = matches!(op, Add | Sub | Mul | Div | Pow);
         let (l, r, ty) = match (&l.ty, &r.ty) {
             (Ty::Error, _) | (_, Ty::Error) => return self.err_expr(span),
+            (a, b)
+                if matches!(op, Add | Sub)
+                    && (matches!(a, Ty::Opt(_)) || matches!(b, Ty::Opt(_)))
+                    && tropical_side(a).is_some()
+                    && tropical_side(b).is_some() =>
+            {
+                return self.tropical(op, l, r, span);
+            }
             (Ty::Int, Ty::Int) => (l, r, Ty::Int),
             (Ty::Float, Ty::Float) if arith => (l, r, Ty::Float),
             (Ty::Float, Ty::Int) if arith => {
@@ -1071,6 +1119,51 @@ impl<'a> Lowerer<'a> {
             }
         };
         self.mk(ExprKind::Binary(op, Box::new(l), Box::new(r)), ty, span)
+    }
+
+    /// `a + b` and `a - b` where a side is a `?Int` or `?F64`: `none` on
+    /// either side makes the whole `none`.
+    fn tropical(&mut self, op: BinOp, l: Expr, r: Expr, span: Span) -> Expr {
+        let float = tropical_side(&l.ty) == Some(Ty::Float) || tropical_side(&r.ty) == Some(Ty::Float);
+        let num = if float { Ty::Float } else { Ty::Int };
+        let ty = Ty::opt(num.clone());
+        self.do_expr(Some(&ty), span, |lw, out| {
+            let mut present: Option<Expr> = None;
+            let mut sides = Vec::with_capacity(2);
+            for side in [l, r] {
+                let side_ty = side.ty.clone();
+                let slot = lw.temp(side_ty.clone());
+                out.push(Stmt::Let(slot, Some(side)));
+                let held = lw.local(slot, span);
+                let value = if let Ty::Opt(inner) = &side_ty {
+                    let some = lw.mk(ExprKind::IsSome(Box::new(held.clone())), Ty::Bool, span);
+                    present = Some(match present.take() {
+                        Some(first) => lw.mk(
+                            ExprKind::Binary(BinOp::And, Box::new(first), Box::new(some)),
+                            Ty::Bool,
+                            span,
+                        ),
+                        None => some,
+                    });
+                    lw.mk(ExprKind::Unwrap(Box::new(held), false), (**inner).clone(), span)
+                } else {
+                    held
+                };
+                sides.push(lw.coerce(value, &num, span));
+            }
+            let r = sides.pop().expect("two sides");
+            let l = sides.pop().expect("two sides");
+            let sum = lw.mk(ExprKind::Binary(op, Box::new(l), Box::new(r)), num.clone(), span);
+            let some = lw.coerce(sum, &ty, span);
+            let none = lw.mk(ExprKind::None, ty.clone(), span);
+            let cond = present.expect("one side is optional");
+            let value = lw.mk(
+                ExprKind::If(Box::new(cond), Box::new(some), Box::new(none)),
+                ty.clone(),
+                span,
+            );
+            out.push(Stmt::Give(value));
+        })
     }
 
     /// Whether `<` means something for the type.
@@ -2441,4 +2534,14 @@ fn strip_opt(ty: &Ty) -> Ty {
         Ty::Opt(inner) => (**inner).clone(),
         other => other.clone(),
     }
+}
+
+/// The number type of one side of a `none`-absorbing `+` or `-`: the type
+/// itself, or what its optional holds.
+fn tropical_side(ty: &Ty) -> Option<Ty> {
+    let inner = match ty {
+        Ty::Opt(inner) => &**inner,
+        other => other,
+    };
+    matches!(inner, Ty::Int | Ty::Float).then(|| inner.clone())
 }

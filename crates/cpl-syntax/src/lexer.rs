@@ -367,6 +367,7 @@ impl<'a> Lexer<'a> {
             (b':', _, _) => (Colon, 1),
             (b';', _, _) => (Semi, 1),
             (b'@', _, _) => (At, 1),
+            (b'?', b'?', b'=') if self.bytes.get(self.pos + 3) != Some(&b'=') => (OpEq, 3),
             (b'?', b'?', _) => (QuestionQuestion, 2),
             (b'?', _, _) => (Question, 1),
             (b'-', b'>', _) => (Arrow, 2),

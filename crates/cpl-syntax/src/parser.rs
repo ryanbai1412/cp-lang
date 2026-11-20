@@ -185,6 +185,14 @@ impl<'a> Parser<'a> {
                 || (TokenKind::keyword(self.text()).is_some() && !self.at(T::Else)))
     }
 
+    fn eat_ident(&mut self, text: &str) -> bool {
+        let hit = self.at_ident(text);
+        if hit {
+            self.bump();
+        }
+        hit
+    }
+
     fn at_ident(&self, text: &str) -> bool {
         self.at(T::Ident) && self.text() == text
     }

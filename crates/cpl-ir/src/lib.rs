@@ -413,6 +413,8 @@ pub enum Mutation {
     Shuffle,
     /// `a.fill(val)` on an array.
     Fill,
+    /// `xs.take()`: gives the value and leaves an empty one, in O(1).
+    Take,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -587,6 +589,9 @@ pub struct Program {
     /// `@multitest`: the input starts with a count and the file runs once
     /// per test.
     pub multitest: bool,
+    /// The program calls `ask(...)`: every `print` goes out at once, so
+    /// the judge sees a query before the answer is read.
+    pub interactive: bool,
 }
 
 impl Program {

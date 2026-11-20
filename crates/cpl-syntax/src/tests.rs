@@ -855,7 +855,7 @@ fn an_expression_body_may_sit_on_the_next_lines() {
 #[test]
 fn type_parameters_carry_their_bounds() {
     let f =
-        fn_of("fn best<T: Ord + Bounded, const N: Int>(xs: List<T>) -> T where T: Show: xs[0]\n");
+        fn_of("fn best<T: Ord + Bounded, const N: Int>(xs: List<T>) -> T: xs[0]\n");
     let names: Vec<&str> = f.generics.iter().map(|g| g.text.as_str()).collect();
     assert_eq!(names, ["T", "N"]);
     let bounds: Vec<(&str, usize)> = f
@@ -863,9 +863,9 @@ fn type_parameters_carry_their_bounds() {
         .iter()
         .map(|b| (b.name.text.as_str(), b.traits.len()))
         .collect();
-    assert_eq!(bounds, [("T", 2), ("T", 1)]);
+    assert_eq!(bounds, [("T", 2)]);
     assert!(matches!(
-        one_stmt("pub const Max<T> = Monoid<T>(id: T.MIN, op: (a, b) => max(a, b)) where T: Ord + Bounded\n"),
+        one_stmt("pub const Max<T: Ord + Bounded> = Monoid<T>(id: T.MIN, op: (a, b) => max(a, b))\n"),
         Stmt { public: true, kind: StmtKind::Const { ref generics, ref bounds, .. }, .. }
             if generics.len() == 1 && bounds[0].traits.len() == 2
     ));
@@ -922,7 +922,7 @@ fn structs_take_fields_in_the_header_and_declarations_in_the_body() {
     let s = struct_of("pub struct Monoid<T>(id: T, op: (T, T) -> T)\n");
     assert_eq!((s.fields.len(), s.methods.len()), (2, 0));
     let s = struct_of(
-        "struct Fenwick<D, T>(g: Group<T>) where T: Add:\n    t: List<T>\n    domain Pre = 0..D.K\n    law assoc(a: T, b: T) = g.op(a, b) == g.op(b, a)\n    pub @get fn count(self) -> Int = t.len\n",
+        "struct Fenwick<D, T: Add>(g: Group<T>):\n    t: List<T>\n    domain Pre = 0..D.K\n    @law assoc(a: T, b: T) = g.op(a, b) == g.op(b, a)\n    pub @get fn count(self) -> Int = t.len\n",
     );
     let fields: Vec<&str> = s.fields.iter().map(|f| f.name.text.as_str()).collect();
     assert_eq!(fields, ["g", "t"]);
@@ -951,7 +951,7 @@ fn traits_and_impls_have_supertraits_bounds_and_optional_bodies() {
         StmtKind::Impl { trait_name: Some(_), ref body, .. } if body.stmts.is_empty()
     ));
     assert!(matches!(
-        one_stmt("impl Indexed<Range<I>> for Array<I, T> where I: Seq:\n    let K = n\n    fn add(a, b) = a\n").kind,
+        one_stmt("impl<I: Seq> Indexed<Range<I>> for Array<I, T>:\n    let K = n\n    fn add(a, b) = a\n").kind,
         StmtKind::Impl { ref bounds, ref body, .. } if bounds.len() == 1 && body.stmts.len() == 2
     ));
     assert!(matches!(
@@ -963,7 +963,7 @@ fn traits_and_impls_have_supertraits_bounds_and_optional_bodies() {
 #[test]
 fn projections_lend_and_state_laws() {
     let s = struct_of(
-        "struct Bag:\n    cnt: [V]Int\n    fn at(self, i: V) lends mut Int:\n        law disjoint(i, j) = i != j\n        lend mut cnt[i]\n    fn peek(self, i: V) lends Int:\n        lend cnt[i]\n",
+        "struct Bag:\n    cnt: [V]Int\n    fn at(self, i: V) lends mut Int:\n        @law disjoint(i, j) = i != j\n        mut cnt[i]\n    fn peek(self, i: V) lends Int:\n        cnt[i]\n",
     );
     let StmtKind::Fn(at) = &s.methods[0].kind else {
         panic!()
@@ -983,8 +983,8 @@ fn projections_lend_and_state_laws() {
         panic!()
     };
     assert!(peek.lends.as_ref().is_some_and(|l| !l.mutable));
-    // `lend`, `lends` and `law` stay ordinary names elsewhere.
-    stmts("let lend = 1\nlet law = lend + 1\nlet lends = law\nlend = 2\nprint(lends)\n");
+    // `lend` and `law` are ordinary names in v2.2.
+    stmts("let lend = 1\nlet law = lend + 1\nlend = 2\nprint(law)\n");
 }
 
 #[test]
@@ -997,14 +997,10 @@ fn bindings_take_else_branches_and_refinements() {
             ..
         }
     ));
-    assert!(matches!(
-        one_stmt("let k: 0..n = read(gen: fewer) where k < n\n").kind,
-        StmtKind::Let {
-            otherwise: None,
-            guard: Some(_),
-            ..
-        }
-    ));
+    // v2.2 has no `where`: the constraint goes in the type or an `assert`.
+    let diag = one_diag("let k: 0..n = read(gen: fewer) where k < n\n");
+    assert_eq!(diag.code.0, "E0503");
+    assert!(diag.help.is_some());
     assert!(matches!(
         expr("max(price[s] - price[b] for c in City if let b = buy[c] if let s = sell[c] if b < s)\n").kind,
         ExprKind::Call { ref args, .. }
@@ -1149,4 +1145,51 @@ fn map_literals_counts_and_chained_let_else() {
             }
         ));
     }
+}
+
+#[test]
+fn there_are_thirty_four_keywords_and_no_others() {
+    for word in crate::KEYWORDS {
+        let lexed = crate::lex(&format!("{word}\n"));
+        assert_ne!(lexed.tokens[0].kind, TokenKind::Ident, "`{word}` is reserved");
+    }
+    for word in ["defer", "assume", "where", "inline", "lend", "law", "with", "by"] {
+        let lexed = crate::lex(&format!("{word}\n"));
+        assert_eq!(lexed.tokens[0].kind, TokenKind::Ident, "`{word}` is a name");
+    }
+    stmts("let defer = 1\nlet inline = defer + 1\nlet assume = inline\nlet by = assume\nprint(by)\n");
+}
+
+#[test]
+fn removed_spellings_say_what_replaces_them() {
+    for (src, needle) in [
+        ("defer cur.pop()\n", "by hand"),
+        ("assume x > 0\n", "assert"),
+        ("inline fn f(): print(1)\n", "always inlined"),
+        ("fn f<T>(x: T) where T: Ord: print(x)\n", "angle brackets"),
+        ("for mut x in xs: x += 1\n", "index"),
+        ("if a: print(1)\nelse if b: print(2)\n", "elif"),
+        ("@memo(hash)\nfn f(x: Int) -> Int = x\n", "bare `@memo`"),
+        ("@multitest(count: 3)\nfn solve(): print(1)\n", "for _ in 0..tests"),
+    ] {
+        let diags = parse_file(src).diagnostics;
+        assert_eq!(diags.len(), 1, "{src:?}: {diags:#?}");
+        assert_eq!(diags[0].code.0, "E0503", "{src:?}");
+        let text = format!("{} {}", diags[0].message, diags[0].help.clone().unwrap_or_default());
+        assert!(text.contains(needle), "{src:?}: {text}");
+    }
+    // The v2.1 `law` and `lend` statements are still read: `stdlib/` has them.
+    let diags = parse_file("struct B:\n    c: List<Int>\n    fn at(mut self, i: Int) lends mut Int:\n        law disjoint(i, j) = i != j\n        lend mut c[i]\n").diagnostics;
+    assert!(diags.is_empty(), "{diags:#?}");
+}
+
+#[test]
+fn a_default_can_be_a_way_out() {
+    for word in ["return -1", "return", "break", "continue"] {
+        let src = format!("while true:\n    let u = o ?? {word}\n");
+        stmts(&src);
+    }
+    assert_eq!(codes("print(a + b ?? 0)\n"), Vec::<&str>::new());
+    assert_eq!(codes("print(a ?? 0 + b)\n"), ["E0110"]);
+    stmts("print((a ?? 0) + b, (a + b) ?? 0)\nx ??= 3\n");
 }

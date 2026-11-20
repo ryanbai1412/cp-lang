@@ -130,6 +130,34 @@ impl<'a> Lowerer<'a> {
     }
 
     fn stmt_with_rest(&mut self, stmt: &ast::Stmt, rest: &[ast::Stmt], out: &mut Vec<Stmt>) {
+        // `let u = o ?? return -1`: the test and the way out go ahead of
+        // the statement, which then reads the value that is there.
+        let root = match &stmt.kind {
+            ast::StmtKind::Let { init: Some(e), otherwise: None, .. }
+            | ast::StmtKind::Assign { value: e, .. }
+            | ast::StmtKind::Expr(e)
+            | ast::StmtKind::Return(Some(e)) => Some(e),
+            _ => None,
+        };
+        let root = root.map(|mut e| {
+            while let ast::ExprKind::Paren(inner) = &e.kind {
+                e = inner;
+            }
+            e
+        });
+        let way_out = root.filter(|e| diverging_default(e).is_some()).map(|e| e.span);
+        let outer = (
+            std::mem::replace(&mut self.cx.way_out, way_out),
+            std::mem::take(&mut self.cx.pending),
+        );
+        let at = out.len();
+        self.stmt_inner(stmt, rest, out);
+        let pending = std::mem::replace(&mut self.cx.pending, outer.1);
+        self.cx.way_out = outer.0;
+        out.splice(at..at, pending);
+    }
+
+    fn stmt_inner(&mut self, stmt: &ast::Stmt, rest: &[ast::Stmt], out: &mut Vec<Stmt>) {
         match &stmt.kind {
             ast::StmtKind::Let {
                 mutable,
@@ -1360,11 +1388,57 @@ impl<'a> Lowerer<'a> {
             }
         }
         let place = self.place(target);
+        // Every index of the target is worked out before the right side,
+        // and the place is only reached for after both: `trie[grow()].ends
+        // = true` and `trie[o].next ??= trie.push_id(Node())` are safe when
+        // the list moves.
+        let place = self.settle_indexes(place, out);
         let rhs = match op {
             ast::AssignOp::Set => self.expect(value, &place.ty),
+            ast::AssignOp::Binary(BinOp::Coalesce) => match &place.ty {
+                Ty::Opt(inner) => {
+                    let inner = (**inner).clone();
+                    self.expect(value, &inner)
+                }
+                _ => self.expr(value, None),
+            },
             _ => self.expr(value, Some(&place.ty)),
         };
         self.emit_assign_place(place, op, rhs, target.span, out);
+    }
+
+    /// Moves each index of `place` that does work (a call, a push) into a
+    /// local declared in `out`, left to right, so the place can be named
+    /// again without doing the work twice.
+    pub(super) fn settle_indexes(&mut self, place: Place, out: &mut Vec<Stmt>) -> Place {
+        let Place { kind, ty, span } = place;
+        let kind = match kind {
+            PlaceKind::Index(base, indexes) => {
+                let base = self.settle_indexes(*base, out);
+                let indexes = indexes
+                    .into_iter()
+                    .map(|index| {
+                        if settled(&index) {
+                            return index;
+                        }
+                        let slot = self.temp(index.ty.clone());
+                        let held = Expr {
+                            kind: ExprKind::Local(slot),
+                            ty: index.ty.clone(),
+                            span: index.span,
+                        };
+                        out.push(Stmt::Let(slot, Some(index)));
+                        held
+                    })
+                    .collect();
+                PlaceKind::Index(Box::new(base), indexes)
+            }
+            PlaceKind::Field(base, field) => {
+                PlaceKind::Field(Box::new(self.settle_indexes(*base, out)), field)
+            }
+            other => other,
+        };
+        Place { kind, ty, span }
     }
 
     pub(super) fn emit_assign_place(
@@ -1431,6 +1505,27 @@ impl<'a> Lowerer<'a> {
                     ));
                     return;
                 }
+                // `best min= cand` with a `?T` on the right skips `none`.
+                if matches!(&value.ty, Ty::Opt(inner) if **inner == place.ty) && self.ordered(&place.ty) {
+                    let op = if op == ast::AssignOp::Max {
+                        AssignOp::Max
+                    } else {
+                        AssignOp::Min
+                    };
+                    let slot = self.temp(value.ty.clone());
+                    out.push(Stmt::Let(slot, Some(value)));
+                    let held = self.local(slot, span);
+                    let some = self.mk(ExprKind::IsSome(Box::new(held.clone())), Ty::Bool, span);
+                    let inside = self.mk(ExprKind::Unwrap(Box::new(held), false), place.ty.clone(), span);
+                    out.push(Stmt::If(
+                        some,
+                        Block {
+                            stmts: vec![Stmt::Assign(place, op, inside)],
+                        },
+                        Block::default(),
+                    ));
+                    return;
+                }
                 if !matches!(place.ty, Ty::Error) && !self.ordered(&place.ty) {
                     let message = format!(
                         "`max=` and `min=` need values with an order, not `{}`",
@@ -1470,6 +1565,56 @@ impl<'a> Lowerer<'a> {
                     }
                 }
                 use BinOp::*;
+                // `x ??= init`: `init` runs only when `x` is `none`.
+                if bin == Coalesce {
+                    let Ty::Opt(inner) = place.ty.clone() else {
+                        if place.ty != Ty::Error {
+                            let message = format!(
+                                "`??=` fills in an optional, but this is a `{}`",
+                                self.show(&place.ty)
+                            );
+                            self.error(codes::BAD_OPERANDS, span, message);
+                        }
+                        return;
+                    };
+                    let init = self.coerce(value, &inner, span);
+                    let held = place_to_expr(&place);
+                    let some = self.mk(ExprKind::IsSome(Box::new(held)), Ty::Bool, span);
+                    let missing = self.mk(ExprKind::Unary(UnOp::Not, Box::new(some)), Ty::Bool, span);
+                    // The value is whole before the place is reached for.
+                    let slot = self.temp((*inner).clone());
+                    let fresh = self.local(slot, span);
+                    let filled = self.mk(ExprKind::Some(Box::new(fresh)), place.ty.clone(), span);
+                    out.push(Stmt::If(
+                        missing,
+                        Block {
+                            stmts: vec![
+                                Stmt::Let(slot, Some(init)),
+                                Stmt::Assign(place, AssignOp::Set, filled),
+                            ],
+                        },
+                        Block::default(),
+                    ));
+                    return;
+                }
+                // `none` does not pass through `+=` and `-=`: a `none` that
+                // stays `none` hides a table that was never filled in.
+                if let (Ty::Opt(inner), Add | Sub) = (&place.ty, bin) {
+                    if matches!(**inner, Ty::Int | Ty::Float) {
+                        let message = format!(
+                            "`{}=` can't be applied to a `{}`",
+                            bin.text(),
+                            self.show(&place.ty)
+                        );
+                        let help = format!(
+                            "write `x = x {} y` when `none` should stay `none`, or `x min= y + w` for a transition",
+                            bin.text()
+                        );
+                        self.error(codes::BAD_OPERANDS, span, message);
+                        self.help(help);
+                        return;
+                    }
+                }
                 let value = match (&place.ty, bin) {
                     (
                         Ty::Int,
@@ -2184,5 +2329,35 @@ fn is_literal(e: &ast::Expr) -> bool {
         ast::ExprKind::Tuple(items) => items.iter().all(is_literal),
         ast::ExprKind::List(items) => items.is_empty(),
         _ => false,
+    }
+}
+
+/// Whether working `e` out again gives the same value and does nothing
+/// else: names, literals and arithmetic on them.
+fn settled(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Int(_) | ExprKind::Bool(_) | ExprKind::Char(_) | ExprKind::Local(_) | ExprKind::Global(_) => true,
+        ExprKind::Unary(_, inner) | ExprKind::Cast(_, inner) | ExprKind::Field(inner, _) => settled(inner),
+        ExprKind::Binary(op, l, r) => {
+            !matches!(op, BinOp::Div | BinOp::Rem | BinOp::Pow) && settled(l) && settled(r)
+        }
+        _ => false,
+    }
+}
+
+/// The `return`, `break` or `continue` on the right of `x ?? return`.
+pub(super) fn diverging_default(e: &ast::Expr) -> Option<&ast::Stmt> {
+    let ast::ExprKind::Binary { op: BinOp::Coalesce, rhs, .. } = &e.kind else {
+        return None;
+    };
+    match &rhs.kind {
+        ast::ExprKind::Block(block) => match block.stmts.as_slice() {
+            [stmt @ ast::Stmt {
+                kind: ast::StmtKind::Return(_) | ast::StmtKind::Break(_) | ast::StmtKind::Continue(_),
+                ..
+            }] => Some(stmt),
+            _ => None,
+        },
+        _ => None,
     }
 }

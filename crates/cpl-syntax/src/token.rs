@@ -42,15 +42,13 @@ pub enum TokenKind {
     Or,
     Not,
     Assert,
-    With,
-    By,
     Mut,
     SelfKw,
     True,
     False,
     None,
+    Lends,
     Yield,
-    Where,
     Unchecked,
 
     // Delimiters.
@@ -110,6 +108,30 @@ pub enum TokenKind {
     Error,
 }
 
+/// The 34 reserved words of CP Lang v2.2: 30 for contestants (three of
+/// them the literals `true`, `false` and `none`) and 4 for library authors
+/// (`trait`, `impl`, `lends`, `yield`).
+pub const KEYWORDS: [&str; 34] = [
+    "let", "var", "const", "fn", "struct", "enum", "domain", "type", "use", "pub", "if", "elif",
+    "else", "for", "while", "in", "match", "return", "break", "continue", "and", "or", "not",
+    "assert", "mut", "self", "unchecked", "true", "false", "none", "trait", "impl", "lends",
+    "yield",
+];
+
+/// What to write instead of a word that v2.1 reserved and v2.2 does not.
+/// The word itself is an ordinary name now.
+pub fn removed_keyword(text: &str) -> Option<&'static str> {
+    Some(match text {
+        "defer" => "undo by hand after the call: `cur.push(x); dfs(); cur.pop()`",
+        "assume" => "write `assert`, which is always checked",
+        "where" => "write the bound in the angle brackets: `fn f<T: Ord>(...)`",
+        "inline" => "drop it: closures and `lends` bodies are always inlined",
+        "lend" => "end the `lends` body with the place itself: `mut self.data[i]`",
+        "law" => "write `@law name(args) = condition`",
+        _ => return None,
+    })
+}
+
 impl TokenKind {
     pub fn keyword(text: &str) -> Option<TokenKind> {
         use TokenKind::*;
@@ -140,15 +162,13 @@ impl TokenKind {
             "or" => Or,
             "not" => Not,
             "assert" => Assert,
-            "with" => With,
-            "by" => By,
             "mut" => Mut,
             "self" => SelfKw,
             "true" => True,
             "false" => False,
             "none" => None,
+            "lends" => Lends,
             "yield" => Yield,
-            "where" => Where,
             "unchecked" => Unchecked,
             _ => return Option::None,
         })
@@ -224,15 +244,13 @@ impl TokenKind {
             Or => "`or`",
             Not => "`not`",
             Assert => "`assert`",
-            With => "`with`",
-            By => "`by`",
             Mut => "`mut`",
             SelfKw => "`self`",
             True => "`true`",
             False => "`false`",
             None => "`none`",
             Yield => "`yield`",
-            Where => "`where`",
+            Lends => "`lends`",
             Unchecked => "`unchecked`",
             LParen => "`(`",
             RParen => "`)`",

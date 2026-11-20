@@ -137,6 +137,7 @@ fn lower_impl(analysis: &Analysis, test_name: Option<&str>) -> Result<Program, V
         main: lw.main_body,
         main_locals: lw.main_locals,
         multitest: lw.multitest,
+        interactive: lw.interactive,
     })
 }
 
@@ -249,6 +250,10 @@ struct FnCx {
     yield_slot: Option<(Slot, Ty)>,
     loops: Vec<(Option<String>, LoopId)>,
     dos: Vec<DoFrame>,
+    /// The `x ?? return` that is the whole right side of the statement
+    /// being lowered, and the test it puts ahead of that statement.
+    way_out: Option<Span>,
+    pending: Vec<Stmt>,
     is_main: bool,
     is_closure: bool,
     captures: Vec<Capture>,
@@ -295,6 +300,7 @@ struct Lowerer<'a> {
     main_body: Block,
     main_locals: Vec<Local>,
     multitest: bool,
+    interactive: bool,
 
     cx: FnCx,
     outer_cxs: Vec<FnCx>,
@@ -340,6 +346,7 @@ impl<'a> Lowerer<'a> {
             main_body: Block::default(),
             main_locals: Vec::new(),
             multitest: false,
+            interactive: false,
             cx: FnCx::default(),
             outer_cxs: Vec::new(),
             gen_env: HashMap::new(),
@@ -415,7 +422,8 @@ impl<'a> Lowerer<'a> {
                     for decorator in &stmt.decorators {
                         match decorator.name.text.as_str() {
                             "multitest" => self.multitest = true,
-                            "get" | "brute" | "test" | "solution" | "tags" | "memo" | "" => {}
+                            "get" | "brute" | "test" | "solution" | "tags" | "memo" | "law" | "gen" | "checker"
+                            | "interactor" | "grader" | "" => {}
                             other => self.unsupported(
                                 decorator.span,
                                 &format!("the `@{other}` decorator"),

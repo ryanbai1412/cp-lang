@@ -43,6 +43,23 @@ impl<'a> Parser<'a> {
             self.bump();
         }
         let mut decorators = Vec::new();
+        // `@law assoc(a, b, c) = op(op(a, b), c) == op(a, op(b, c))`.
+        if self.at(T::At)
+            && self.peek_n(1) == T::Ident
+            && self.peek_n(2) == T::Ident
+            && self.tokens.get(self.pos + 1).is_some_and(|t| t.span.text(self.src) == "law")
+        {
+            self.bump();
+            self.bump();
+            let kind = self.law();
+            self.end_stmt(start);
+            return Stmt {
+                kind,
+                span: self.span_from(start),
+                decorators,
+                public,
+            };
+        }
         while self.at(T::At) {
             decorators.push(self.decorator());
             if !self.eat(T::Newline)
@@ -74,11 +91,38 @@ impl<'a> Parser<'a> {
         } else {
             Vec::new()
         };
-        Decorator {
-            name,
-            args,
-            span: self.span_from(start),
+        let span = self.span_from(start);
+        // Decorator arguments v2.2 took away.
+        let removed = match name.text.as_str() {
+            "memo" => args.iter().find_map(|arg| match &arg.value.kind {
+                ExprKind::Name(kind) if arg.name.is_none() && (kind == "flat" || kind == "hash") => Some((
+                    format!("`@memo({kind})` was removed in CP Lang v2.2"),
+                    "write bare `@memo`: the table is flat when the arguments are small and hashed otherwise",
+                )),
+                _ => None,
+            }),
+            "multitest" => args
+                .iter()
+                .any(|arg| arg.name.as_ref().is_some_and(|n| n.text == "count"))
+                .then(|| {
+                    (
+                        "`@multitest(count:)` was removed in CP Lang v2.2".to_string(),
+                        "read the count and loop: `for _ in 0..tests:`",
+                    )
+                }),
+            "grader" if self.at(T::Const) => Some((
+                "`@grader const` was removed in CP Lang v2.2".to_string(),
+                "take the value as a parameter of the `@grader fn`",
+            )),
+            _ => None,
+        };
+        if let Some((message, help)) = removed {
+            if self.speculating == 0 {
+                self.sink
+                    .push(Diagnostic::error(codes::REMOVED_SYNTAX, span, message).with_help(help));
+            }
         }
+        Decorator { name, args, span }
     }
 
     /// Ends a statement: expects the end of the line (or `;` in braces).
@@ -129,7 +173,7 @@ impl<'a> Parser<'a> {
         self.end_recovery(start);
     }
 
-    fn stmt_kind(&mut self) -> StmtKind {
+    pub(super) fn stmt_kind(&mut self) -> StmtKind {
         match self.peek() {
             T::Let | T::Var => self.let_stmt(),
             T::Const => self.const_stmt(),
@@ -219,15 +263,7 @@ impl<'a> Parser<'a> {
                     && self.peek_n(2) == T::LParen =>
             {
                 self.bump();
-                let name = self.name();
-                self.bump();
-                let params = self.params();
-                self.expect(T::Eq, "`=` and the law's condition");
-                StmtKind::Law {
-                    name,
-                    params,
-                    body: self.expr(),
-                }
+                self.law()
             }
             T::Ident
                 if self.text() == "lend"
@@ -239,6 +275,36 @@ impl<'a> Parser<'a> {
                     mutable,
                     place: self.expr(),
                 }
+            }
+            // The place a `lends mut` body hands out: `mut self.data[i]`.
+            T::Mut if matches!(self.peek_n(1), T::Ident | T::SelfKw) => {
+                self.bump();
+                StmtKind::Lend {
+                    mutable: true,
+                    place: self.expr(),
+                }
+            }
+            T::Ident
+                if matches!(self.text(), "defer" | "assume" | "inline")
+                    && matches!(
+                        self.peek_n(1),
+                        T::Ident | T::Fn | T::SelfKw | T::Not | T::Int | T::True | T::False
+                    ) =>
+            {
+                let span = self.span();
+                let word = self.text();
+                let help = crate::token::removed_keyword(word).unwrap_or_default();
+                self.error(
+                    Diagnostic::error(
+                        codes::REMOVED_SYNTAX,
+                        span,
+                        format!("`{word}` was removed in CP Lang v2.2"),
+                    )
+                    .with_help(help),
+                );
+                self.recovering = true;
+                self.skip_line();
+                StmtKind::Error
             }
             T::Ident if self.text() == "pure" && self.peek_n(1) == T::Fn => {
                 let span = self.span();
@@ -313,7 +379,21 @@ impl<'a> Parser<'a> {
             });
         }
         // `let k: 0..n = read() where k < n`.
-        let guard = self.eat(T::Where).then(|| self.expr());
+        let guard = if self.at_ident("where") {
+            let span = self.span();
+            self.error(
+                Diagnostic::error(
+                    codes::REMOVED_SYNTAX,
+                    span,
+                    "`where` guards were removed in CP Lang v2.2",
+                )
+                .with_help("put the constraint in the type (`let k: 0..n = read()`) or `assert` it on the next line"),
+            );
+            self.bump();
+            Some(self.expr())
+        } else {
+            None
+        };
         StmtKind::Let {
             mutable,
             pat,
@@ -351,8 +431,33 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// The rest of a law, from its name: `assoc(a, b, c) = cond`.
+    fn law(&mut self) -> StmtKind {
+        let name = self.name();
+        self.expect(T::LParen, "`(` and the law's arguments");
+        let params = self.params();
+        self.expect(T::Eq, "`=` and the law's condition");
+        StmtKind::Law {
+            name,
+            params,
+            body: self.expr(),
+        }
+    }
+
     fn for_stmt(&mut self, label: Option<Name>) -> StmtKind {
         self.bump();
+        if self.at(T::Mut) {
+            let span = self.span();
+            self.error(
+                Diagnostic::error(
+                    codes::REMOVED_SYNTAX,
+                    span,
+                    "`for mut` was removed in CP Lang v2.2",
+                )
+                .with_help("loop over the indexes and assign through them: `for i in 0..xs.len: xs[i] += 1`"),
+            );
+            self.bump();
+        }
         let pat = self.pattern();
         self.expect(T::In, "`in` after the loop variable");
         let iter = self.expr();
@@ -382,6 +487,7 @@ impl<'a> Parser<'a> {
                     "&" => BinOp::BitAnd,
                     "|" => BinOp::BitOr,
                     "<<" => BinOp::Shl,
+                    "??" => BinOp::Coalesce,
                     _ => BinOp::Shr,
                 })
             }

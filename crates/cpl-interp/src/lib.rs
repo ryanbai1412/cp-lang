@@ -843,7 +843,13 @@ impl<'p, 'o> Interp<'p, 'o> {
                     self.out.extend_from_slice(&buf);
                 }
                 self.out.push(b'\n');
-                self.flush_if_large();
+                if self.program.interactive {
+                    let _ = self.sink.write_all(&self.out);
+                    let _ = self.sink.flush();
+                    self.out.clear();
+                } else {
+                    self.flush_if_large();
+                }
                 Value::Unit
             }
             ExprKind::Format(pieces) => {
@@ -1758,6 +1764,17 @@ impl<'p, 'o> Interp<'p, 'o> {
             (Mutation::Push, Value::List(items)) => {
                 Rc::make_mut(items).push(arg);
                 Value::Unit
+            }
+            (Mutation::Take, cell) => {
+                let empty = match &*cell {
+                    Value::List(_) => Value::List(Rc::default()),
+                    Value::Str(_) => Value::Str(Rc::default()),
+                    Value::Map(_) => Value::Map(Rc::default()),
+                    Value::Set(_) => Value::Set(Rc::default()),
+                    // What is left behind in `swap` is written over.
+                    other => other.clone(),
+                };
+                std::mem::replace(cell, empty)
             }
             (Mutation::Push, Value::Str(bytes)) => {
                 if let Value::Char(c) = arg {

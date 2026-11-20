@@ -111,6 +111,7 @@ pub mod codes {
     pub const UNEXPECTED_TOKEN: Code = Code("E0107");
     pub const EXPECTED_NAME: Code = Code("E0108");
     pub const UNMATCHED_CLOSER: Code = Code("E0109");
+    pub const UNPARENTHESIZED_COALESCE: Code = Code("E0110");
 
     pub const UNRESOLVED_NAME: Code = Code("E0201");
     pub const DUPLICATE_DEFINITION: Code = Code("E0202");
@@ -138,6 +139,8 @@ pub mod codes {
 
     pub const UNSUPPORTED: Code = Code("E0501");
     pub const NON_ASCII: Code = Code("E0502");
+    /// A spelling an earlier version of the language had and v2.2 removed.
+    pub const REMOVED_SYNTAX: Code = Code("E0503");
 
     pub const LENT_TWICE: Code = Code("E0601");
     pub const USED_WHILE_LENT: Code = Code("E0602");

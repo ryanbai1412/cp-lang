@@ -288,6 +288,10 @@ impl<'a> Checker<'a> {
         };
         if let Some(diag) = self.error(code, span, message) {
             match suggestion {
+                _ if cpl_syntax::removed_keyword(name).is_some() => {
+                    let fix = cpl_syntax::removed_keyword(name).unwrap_or_default();
+                    diag.help = Some(format!("`{name}` was removed in CP Lang v2.2: {fix}"));
+                }
                 Some(s) => {
                     diag.help = Some(format!("did you mean `{s}`?"));
                     diag.fixes.push(cpl_diag::Fix {
