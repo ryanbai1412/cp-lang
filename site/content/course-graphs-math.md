@@ -28,12 +28,15 @@ use std.graph.{Graph, bfs, dijkstra, topo, scc, condense}
 
 let (n, m): (1..=2e5, 0..=2e5) = read()
 domain V = 1..=n
-let edges: [0..m](u: V, v: V, w: Int) = read()
+domain E = 0..m
+let edges: [E](u: V, v: V, w: Int) = read()
 
 let g = Graph.directed(edges)
-let dist: [V]?Int = dijkstra(g, [V.first])
+let dist = dijkstra(g, from: [(V.first, 0)], w: a => edges[a.e].w)
 print(dist[V.last] ?? -1)
 ```
+
+`from` is a list of `(vertex, starting distance)` pairs, so several sources are one call, and `w` gives the weight of an arc: `a.e` is the index of the edge it came from, `a.to` the vertex it leads to.
 
 Notice two contest conveniences:
 

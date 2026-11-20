@@ -4442,8 +4442,17 @@ impl<'a> Lowerer<'a> {
         if src.ty == Ty::Error {
             return self.err_expr(span);
         }
+        let elem_ty = match &src.ty {
+            Ty::Array { elem, .. } | Ty::List(elem) => (**elem).clone(),
+            _ => Ty::Error,
+        };
+        let adds = match &elem_ty {
+            Ty::Int | Ty::Float | Ty::I128 | Ty::U64 => true,
+            Ty::Struct(sid) => ["add", "sub"].iter().all(|op| self.struct_op_fn(*sid, op).is_some()),
+            _ => false,
+        };
         let doms: Option<Vec<DomainId>> = match &src.ty {
-            Ty::Array { dims, elem } if **elem == Ty::Int && matches!(dims.len(), 1 | 2) => dims
+            Ty::Array { dims, .. } if adds && matches!(dims.len(), 1 | 2) => dims
                 .iter()
                 .map(|d| match d {
                     Dim::Pos(d) => Some(*d),
@@ -4452,9 +4461,31 @@ impl<'a> Lowerer<'a> {
                 .collect(),
             _ => None,
         };
+        // A list, or an array indexed by plain `Int`s from 0: `p.sum(l..r)`
+        // takes `Int`s.
+        let counted = match &src.ty {
+            Ty::List(_) => true,
+            Ty::Array { dims, .. } => matches!(dims[..], [Dim::Int]),
+            _ => false,
+        };
+        if counted && adds {
+            let gfid = self.std_prefix.and_then(|mod_id| match self.mod_syms[mod_id].get("prefix_n") {
+                Some(Sym::GenFn(gfid)) => Some(*gfid),
+                _ => None,
+            });
+            let Some(gfid) = gfid else {
+                self.unsupported(span, "`prefix` without `stdlib/prefix.cp`");
+                return self.err_expr(span);
+            };
+            let list = Ty::List(Box::new(elem_ty.clone()));
+            let src = self.coerce(src, &list, span);
+            let fn_id = self.instantiate_fn(gfid, vec![GenArg::Ty(elem_ty)]);
+            let ret = self.ret_of(fn_id, span);
+            return self.mk(ExprKind::Call(fn_id, vec![Arg::Value(src)]), ret, span);
+        }
         let Some(doms) = doms else {
             let message = format!(
-                "`prefix` takes a `[D]Int` or a `[R, C]Int`, found `{}`",
+                "`prefix` takes a `[D]T` or a `[R, C]T` of numbers over domains, found `{}`",
                 self.show(&src.ty)
             );
             self.error(codes::TYPE_MISMATCH, span, message);
@@ -4469,7 +4500,8 @@ impl<'a> Lowerer<'a> {
             self.unsupported(span, "`prefix` without `stdlib/prefix.cp`");
             return self.err_expr(span);
         };
-        let gargs: Vec<GenArg> = doms.into_iter().map(GenArg::Domain).collect();
+        let mut gargs: Vec<GenArg> = doms.into_iter().map(GenArg::Domain).collect();
+        gargs.push(GenArg::Ty(elem_ty));
         let fn_id = self.instantiate_fn(gfid, gargs);
         let ret = self.ret_of(fn_id, span);
         self.mk(ExprKind::Call(fn_id, vec![Arg::Value(src)]), ret, span)
