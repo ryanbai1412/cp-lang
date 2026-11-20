@@ -861,6 +861,7 @@ impl<'a> Lowerer<'a> {
                 name: init_fn_name.clone(),
                 params: Vec::new(),
                 ret: Some(val_ty.clone()),
+                assumed_unit: false,
                 owner: None,
                 receiver: None,
                 mod_id: tpl_mod,
@@ -1265,6 +1266,10 @@ impl<'a> Lowerer<'a> {
             .last_mut()
             .unwrap()
             .insert(decl.name.text.clone(), fn_slot);
+        // A fn that calls itself reads its own slot, which is set only
+        // after its body is lowered: it is captured by reference, so the
+        // call finds the fn and not the empty slot.
+        self.cx.mut_slots.insert(fn_slot);
 
         let mut fresh = FnCx {
             is_closure: true,

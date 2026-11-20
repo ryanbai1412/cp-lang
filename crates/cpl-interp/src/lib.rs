@@ -552,8 +552,12 @@ impl<'p, 'o> Interp<'p, 'o> {
         let span = place.span;
         match &place.kind {
             PlaceKind::Local(slot) => {
-                let base = self.base;
-                Ok(&mut self.stack[base + slot])
+                let at = self.base + slot;
+                match self.stack[at] {
+                    Value::Alias(true, id) => Ok(&mut self.globals[id]),
+                    Value::Alias(false, at) => Ok(&mut self.stack[at]),
+                    _ => Ok(&mut self.stack[at]),
+                }
             }
             PlaceKind::Global(id) => Ok(&mut self.globals[*id]),
             PlaceKind::Field(base, index) => match self.resolve(base, indices)? {
@@ -700,7 +704,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             ExprKind::Str(bytes) => Value::Str(Rc::new(bytes.clone())),
             ExprKind::None => Value::Opt(None),
             ExprKind::Some(inner) => Value::some(self.eval(inner)?),
-            ExprKind::Local(slot) => match &self.stack[self.base + slot] {
+            ExprKind::Local(slot) => match self.local(*slot) {
                 Value::Moved => return trap(span, LENT),
                 value => value.clone(),
             },
@@ -769,7 +773,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 // A field of a variable is read in place, without first
                 // copying the whole value.
                 let direct = match &base.kind {
-                    ExprKind::Local(slot) => Some(&self.stack[self.base + slot]),
+                    ExprKind::Local(slot) => Some(self.local(*slot)),
                     ExprKind::Global(id) => Some(&self.globals[*id]),
                     _ => None,
                 };
@@ -847,9 +851,14 @@ impl<'p, 'o> Interp<'p, 'o> {
                             caps.push(CaptureVal::Val(self.globals[cap.outer].clone()));
                         }
                     } else if cap.by_ref {
-                        caps.push(CaptureVal::StackRef(self.base + cap.outer));
+                        // A variable this fn itself captured stays where it lives.
+                        caps.push(match self.stack[self.base + cap.outer] {
+                            Value::Alias(true, id) => CaptureVal::GlobalRef(id),
+                            Value::Alias(false, at) => CaptureVal::StackRef(at),
+                            _ => CaptureVal::StackRef(self.base + cap.outer),
+                        });
                     } else {
-                        caps.push(CaptureVal::Val(self.stack[self.base + cap.outer].clone()));
+                        caps.push(CaptureVal::Val(self.local(cap.outer).clone()));
                     }
                 }
                 Value::Closure(*cid, Rc::new(caps))
@@ -1019,7 +1028,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 values.push(self.eval(index)?);
             }
             match &base.kind {
-                ExprKind::Local(slot) => &self.stack[self.base + slot],
+                ExprKind::Local(slot) => self.local(*slot),
                 ExprKind::Global(id) => &self.globals[*id],
                 _ => unreachable!("checked above"),
             }
@@ -1192,6 +1201,15 @@ impl<'p, 'o> Interp<'p, 'o> {
         })
     }
 
+    /// The value of a local, through the alias a by-reference capture holds.
+    fn local(&self, slot: usize) -> &Value {
+        match &self.stack[self.base + slot] {
+            Value::Alias(true, id) => &self.globals[*id],
+            Value::Alias(false, at) => &self.stack[*at],
+            value => value,
+        }
+    }
+
     fn call_value(&mut self, fv: Value, args: Vec<Value>, span: Span) -> Res<Value> {
         let Value::Closure(cid, caps) = fv else {
             return trap(span, "internal: tried to call a non-function value");
@@ -1213,8 +1231,10 @@ impl<'p, 'o> Interp<'p, 'o> {
         for (cap, cval) in def.captures.iter().zip(caps.iter()) {
             let v = match cval {
                 CaptureVal::Val(v) => v.clone(),
-                CaptureVal::StackRef(idx) => self.stack[*idx].clone(),
-                CaptureVal::GlobalRef(gid) => self.globals[*gid].clone(),
+                // Captured by reference: the slot names the variable, so
+                // every call, however deep, reads and writes the one value.
+                CaptureVal::StackRef(at) => Value::Alias(false, *at),
+                CaptureVal::GlobalRef(id) => Value::Alias(true, *id),
             };
             self.stack[base + cap.inner] = v;
         }
@@ -1226,17 +1246,6 @@ impl<'p, 'o> Interp<'p, 'o> {
         self.frame_locals.pop();
         self.base = saved;
         let flow = flow?;
-        // Write back any by-ref captures.
-        for (cap, cval) in def.captures.iter().zip(caps.iter()) {
-            if cap.by_ref {
-                let updated = std::mem::take(&mut self.stack[base + cap.inner]);
-                match cval {
-                    CaptureVal::StackRef(idx) => self.stack[*idx] = updated,
-                    CaptureVal::GlobalRef(gid) => self.globals[*gid] = updated,
-                    CaptureVal::Val(_) => {}
-                }
-            }
-        }
         self.stack.truncate(base);
         Ok(match flow {
             Flow::Return(v) | Flow::Give(v) => v,

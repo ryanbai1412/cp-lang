@@ -238,6 +238,8 @@ struct FnSig<'a> {
     params: Vec<SigParam<'a>>,
     /// `None` until the body has been read, for a fn without `->`.
     ret: Option<Ty>,
+    /// A call of the fn from its own body took it to give nothing.
+    assumed_unit: bool,
     /// The struct whose method this is, and whether it takes `self`
     /// (`Some(mutable)`).
     owner: Option<StructId>,
@@ -811,6 +813,7 @@ impl<'a> Lowerer<'a> {
             name: base,
             params: Vec::new(),
             ret: None,
+            assumed_unit: false,
             owner,
             receiver: None,
             mod_id,
@@ -1865,6 +1868,18 @@ impl<'a> Lowerer<'a> {
                 self.span(decl.name.span),
             ));
         }
+        if self.sigs[id].assumed_unit && !matches!(ret, Ty::Unit | Ty::Error) {
+            // Its own calls were read as giving nothing, but its last
+            // line gives a value.
+            let name = decl.name.text.clone();
+            self.error(
+                codes::UNKNOWN_TYPE,
+                decl.name.span,
+                format!("`{name}` calls itself, so it needs its return type written"),
+            );
+            let shown = self.show(&ret);
+            self.help(format!("add `-> {shown}` to `fn {name}`"));
+        }
         let cx = std::mem::replace(&mut self.cx, saved_cx);
         self.cur_mod = saved_mod;
         self.offset = saved_offset;
@@ -1887,6 +1902,14 @@ impl<'a> Lowerer<'a> {
             return ty.clone();
         }
         if self.sigs[id].state == State::InProgress {
+            // A fn that calls itself and never writes `return value` is
+            // a procedure: its calls give nothing.
+            let decl = self.sigs[id].decl;
+            if matches!(&decl.body, ast::FnBody::Block(block) if !returns_a_value(block)) {
+                self.sigs[id].ret = Some(Ty::Unit);
+                self.sigs[id].assumed_unit = true;
+                return Ty::Unit;
+            }
             let name = self.sigs[id].decl.name.text.clone();
             self.error(
                 codes::UNKNOWN_TYPE,

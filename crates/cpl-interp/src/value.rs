@@ -33,6 +33,9 @@ pub(crate) enum Value {
     DomainVal(i64, i64),
     /// A closure value referencing `Program::closures[id]` with captured environment.
     Closure(ClosureId, Rc<Vec<CaptureVal>>),
+    /// A closure's slot for a variable it captured by reference: where
+    /// the variable lives, on the stack or (`true`) among the globals.
+    Alias(bool, usize),
     /// A tuple, record or struct: its fields.
     Tuple(Rc<Vec<Value>>),
     Enum(u32, Rc<Vec<Value>>),
@@ -90,7 +93,7 @@ impl Value {
             Value::Opt(_) => 6,
             Value::Range(..) => 7,
             Value::DomainVal(..) => 8,
-            Value::Closure(..) => 9,
+            Value::Closure(..) | Value::Alias(..) => 9,
             Value::Tuple(_) => 10,
             Value::Enum(..) => 11,
             Value::Array(_) => 12,
