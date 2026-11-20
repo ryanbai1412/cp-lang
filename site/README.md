@@ -27,8 +27,10 @@ clipboard support depends on browser permissions.
 
 ```sh
 site/.venv/bin/python site/test_site.py
+site/.venv/bin/python site/test_trace.py
 node --test site/test_course.cjs
 node --test site/test_compiler.cjs
+node --test site/test_trace.cjs
 ```
 
 This builds every page, validates local links and heading fragments, and
@@ -54,6 +56,9 @@ The full Rust workspace gate remains `cargo test` before a push.
   block renders a checked knowledge or output-prediction exercise with a
   hint and solution. `course.py` validates IDs, references, and answer data
   at build time. Exercise prose is escaped, never treated as HTML.
+- `trace.html`, `assets/trace.js`, `assets/trace-core.js`, and `assets/trace.css`
+  own the site trace viewer (shortcuts: `[`/`]` divergences, `Home`/`End`, `Space`,
+  arrow keys); trace schema and sample data live under `tools/trace/`.
 - Search indexes the entire course and reference; `/` or Ctrl/Cmd+K opens it. Arrow keys
   navigate results, Enter follows, and Escape closes. Themes persist locally.
 
