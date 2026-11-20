@@ -293,7 +293,7 @@ impl<'a> Checker<'a> {
             match suggestion {
                 _ if cpl_syntax::removed_keyword(name).is_some() => {
                     let fix = cpl_syntax::removed_keyword(name).unwrap_or_default();
-                    diag.help = Some(format!("`{name}` was removed in CP Lang v2.2: {fix}"));
+                    diag.help = Some(format!("`{name}` was removed in CP Lang 0.2.2: {fix}"));
                 }
                 _ if prelude::std_module(name).is_some() => {
                     let module = prelude::std_module(name).unwrap_or_default();

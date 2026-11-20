@@ -326,7 +326,7 @@ impl<'a> Parser<'a> {
             Diagnostic::error(
                 codes::REMOVED_SYNTAX,
                 span,
-                "`where` clauses were removed in CP Lang v2.2",
+                "`where` clauses were removed in CP Lang 0.2.2",
             )
             .with_help("write the bound in the angle brackets: `fn f<T: Ord>(...)`"),
         );
