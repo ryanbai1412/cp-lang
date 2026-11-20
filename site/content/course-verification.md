@@ -1,6 +1,6 @@
 A fast solution is a claim. This chapter shows how to check that claim against something slower and obviously correct, for recurrences, for problems with many valid answers, and for interactive problems, and how a failing case is shrunk until the bug is easy to see.
 
-> **Status.** Two different things are described here, and the labels keep them apart. **Working in the prototype today:** `@memo` and `@memo(into: table)`, `@brute(f)` slow references for functions, `@invariant(rev)` and `@invariant(shuffle)`, random inputs generated from typed `read()` declarations, and the `proto/cp.py` commands `fntest`, `stress`, and `locate`. **Approved but not implemented:** `@checker`, `protocol` and `@interactor`, structure-aware shrinking, the integrated `cpl stress` command, co-located `spec` state diffing, and first-divergence views in the trace debugger. The prototype has no `spec` keyword; its input specification is the typed `read()` calls. The [testing reference](testing.html) and [plan/15-program-structure.md](https://github.com/ryanbai1412/cp-lang/blob/main/plan/15-program-structure.md) have the details.
+> **Status.** Two different things are described here, and the labels keep them apart. **Working in the prototype today:** `@memo` and `@memo(into: table)`, `@brute(f)` slow references for functions, `@invariant(rev)` and `@invariant(shuffle)`, random inputs generated from typed `read()` declarations, and the `proto/cp.py` commands `fntest`, `stress`, and `locate`. **Approved but not implemented:** `@checker`, `protocol` and `@interactor`, structure-aware shrinking, the integrated `cpl stress` command, and automatic trace capture from co-located `spec` checks. The [trace viewer](trace.html) already compares recorded fast/spec states and jumps to their first captured divergence; compiler integration is the missing part. The prototype has no `spec` keyword; its input specification is the typed `read()` calls. The [testing reference](testing.html) and [plan/15-program-structure.md](https://github.com/ryanbai1412/cp-lang/blob/main/plan/15-program-structure.md) have the details.
 
 ## Write the recurrence, not the cache
 
@@ -141,7 +141,7 @@ When a fast and a slow version disagree on the final answer, the useful question
   answer         [0]             [1]          <- first difference
 ```
 
-Everything before the first difference is known good, so the bug is in the stage that produced it, and its inputs are the rows above. The HTML trace view jumps straight to that row. The prototype's `locate` gives the coarse version today: it names the first `@brute`'d function whose replacement fixes the smallest failing input.
+The first differing captured state narrows the search to the stage that produced it; agreement at earlier checkpoints is evidence, not proof that every preceding instruction is correct. The [HTML trace viewer](trace.html) already compares imported fast/spec captures and can jump to their first captured difference. Automatic capture from this planned `cpl stress` workflow is not implemented. The prototype's `locate` gives a coarser clue today: it names the first `@brute`'d function whose replacement fixes the smallest failing input.
 
 ## Common mistakes
 

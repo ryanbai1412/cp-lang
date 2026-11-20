@@ -1,3 +1,7 @@
+Start with the [interactive course](course.html): six progressive chapters with
+worked examples, hints, solutions, and checked exercises. This guide remains
+the reference for individual language concepts.
+
 CP Lang is a language for competitive programming that targets C++17. Keep the algorithms you know. Replace index arithmetic, sentinel values, and repeated bookkeeping with types that say what you mean.
 
 Start with [your first program](getting-started.html), take the [language tour](tour.html), or go straight to [index spaces](indices.html).

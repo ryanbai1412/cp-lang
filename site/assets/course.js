@@ -1,0 +1,132 @@
+/* Deterministic knowledge/output checks, not a source compiler. No eval/network. */
+const CourseChecks = (() => {
+  const normalize = value => String(value).trim().split(/\s+/).filter(Boolean).join(" ");
+  function check(exercise, answer) {
+    if (exercise.kind === "choice") {
+      if (!/^(0|[1-9]\d*)$/.test(String(answer)))
+        return {passed:false, message:"Choose an answer first."};
+      const passed = Number(answer) === exercise.answer;
+      return {passed, message:passed ? "Correct." + (exercise.explanation ? " " + exercise.explanation : "")
+        : "Not quite. Revisit the example or open a hint, then try again."};
+    }
+    if (exercise.kind === "output") {
+      if (!Array.isArray(answer) || answer.length !== exercise.tests.length)
+        return {passed:false, message:"Fill in the output for each case."};
+      const matches = exercise.tests.map((test, i) => normalize(answer[i]) === normalize(test.expected));
+      const passed = matches.every(Boolean);
+      return {passed, matches, message:passed
+        ? `All ${matches.length} cases match the prototype-tested output.`
+        : `${matches.filter(Boolean).length} of ${matches.length} cases match. Check the marked cases or open a hint. Whitespace does not matter.`};
+    }
+    return {passed:false, message:"This check is unavailable."};
+  }
+  return {normalize, check};
+})();
+
+if (typeof document !== "undefined" && document.getElementById("course-data")) {
+  (() => {
+    "use strict";
+    const data = JSON.parse(document.getElementById("course-data").textContent);
+    const prefix = "cp-course-v1:";
+    const records = new Map();
+    let storageAvailable = true;
+    // Read only known IDs and bound record sizes. Corrupt/obsolete data is ignored.
+    for (const [id, revision] of Object.entries(data.revisions)) {
+      let raw;
+      try {
+        raw = localStorage.getItem(prefix + id);
+      } catch (_) { storageAvailable = false; continue; }
+      try {
+        if (raw && raw.length < 20000) {
+          const record = JSON.parse(raw);
+          if (record && record.revision === revision && record.passed === true &&
+              CourseChecks.check(data.exercises[id], record.answer).passed)
+            records.set(id, record);
+        }
+      } catch (_) { /* A damaged record must not prevent other checks loading. */ }
+    }
+    function save(id, answer, passed) {
+      if (passed) records.set(id, {revision:data.revisions[id], answer, passed:true});
+      else records.delete(id);
+      try {
+        if (passed) localStorage.setItem(prefix + id, JSON.stringify(records.get(id)));
+        else localStorage.removeItem(prefix + id);
+      } catch (_) { storageAvailable = false; }
+      updateProgress();
+    }
+    function count(ids) { return ids.filter(id => records.has(id)).length; }
+    function updateProgress() {
+      document.querySelectorAll("[data-progress]").forEach(region => {
+        const lessons = data.lessons.filter(lesson => region.dataset.progress === "all" || lesson.slug === region.dataset.progress);
+        const ids = lessons.flatMap(lesson => lesson.exercises);
+        const done = count(ids);
+        region.querySelector("progress").value = done;
+        region.querySelector("[data-progress-label]").textContent = `${done} of ${ids.length} exercises checked`;
+        region.querySelector(".storage-note").textContent = storageAvailable
+          ? "Progress stays in this browser. No account needed."
+          : "Browser storage is unavailable. Progress lasts for this page only.";
+      });
+      document.querySelectorAll("[data-lesson]").forEach(label => {
+        const lesson = data.lessons.find(item => item.slug === label.dataset.lesson);
+        const done = count(lesson.exercises);
+        label.textContent = done === lesson.exercises.length ? "Complete" : `${done} / ${lesson.exercises.length}`;
+        label.dataset.complete = String(done === lesson.exercises.length);
+      });
+    }
+    document.querySelectorAll("[data-exercise]").forEach(section => {
+      const id = section.dataset.exercise, exercise = data.exercises[id];
+      const form = section.querySelector("form"), status = section.querySelector(".exercise-feedback");
+      const badge = section.querySelector("[data-badge]");
+      function readAnswer() {
+        return exercise.kind === "choice" ? form.querySelector("input:checked")?.value
+          : [...form.querySelectorAll("textarea")].map(field => field.value);
+      }
+      function feedback(result) {
+        status.textContent = result.message;
+        section.dataset.state = result.passed ? "passed" : "retry";
+        badge.textContent = result.passed ? "Checked" : "Try again";
+        form.querySelectorAll("textarea").forEach((field, i) => {
+          if (result.matches) field.setAttribute("aria-invalid", String(!result.matches[i]));
+          else field.removeAttribute("aria-invalid");
+        });
+      }
+      const record = records.get(id);
+      if (record) {
+        if (exercise.kind === "choice") {
+          const field = [...form.querySelectorAll("input")].find(input => input.value === String(record.answer));
+          if (field) field.checked = true;
+        } else if (Array.isArray(record.answer)) {
+          form.querySelectorAll("textarea").forEach((field, i) => { field.value = String(record.answer[i] ?? ""); });
+        }
+        const result = CourseChecks.check(exercise, readAnswer());
+        if (result.passed) feedback(result);
+        else records.delete(id);
+      }
+      form.addEventListener("submit", event => {
+        event.preventDefault();
+        const answer = readAnswer(), result = CourseChecks.check(exercise, answer);
+        feedback(result);
+        save(id, answer, result.passed);
+      });
+      form.addEventListener("input", () => {
+        if (!section.dataset.state && !records.has(id)) return;
+        delete section.dataset.state;
+        status.textContent = "Answer changed. Check it again when ready.";
+        badge.textContent = "Not checked";
+        form.querySelectorAll("textarea").forEach(field => field.removeAttribute("aria-invalid"));
+        save(id, null, false);
+      });
+      form.addEventListener("reset", () => {
+        delete section.dataset.state;
+        status.textContent = "Answer and progress cleared.";
+        badge.textContent = "Not checked";
+        form.querySelectorAll("textarea").forEach(field => field.removeAttribute("aria-invalid"));
+        section.querySelectorAll("details").forEach(details => { details.open = false; });
+        save(id, null, false);
+      });
+    });
+    updateProgress();
+  })();
+}
+
+if (typeof module !== "undefined") module.exports = CourseChecks;

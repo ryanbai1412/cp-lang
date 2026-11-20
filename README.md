@@ -21,7 +21,7 @@ toolchain. The command is `cpl` (a working name) and source files end in
 - `corpus/`, `subs/`: Ryan's accepted submissions, used for ports,
   benchmarks and design mining.
 - `archive/`: superseded design docs.
-- `site/`: the CP Lang documentation site and offline example playground. See
+- `site/`: the interactive CP Lang course, reference, and offline example playground. See
   [the site README](site/README.md) to build and preview it locally.
 
 ```text

@@ -14,12 +14,12 @@
         "kind": "choice",
         "options": [
           "bump(a, 1)",
-          "bump(mut a, 1)",
           "bump(a.copy(), 1)",
+          "bump(mut a, 1)",
           "bump(&mut a, 1)"
         ],
-        "answer": 1,
-        "explanation": "bump(a, 1) is rejected because the call does not mark the mutation. bump(a.copy(), 1) changes a temporary copy, so a is unchanged. &mut is Rust syntax; CP Lang has no reference operator.",
+        "answer": 2,
+        "explanation": "bump(a, 1) and bump(a.copy(), 1) both omit the required mut and are rejected. An explicit owned copy would not change a anyway. &mut is Rust syntax; CP Lang has no reference operator.",
         "code": "fn bump(mut xs: [V]Int, by: Int):\n    for v in xs.positions: xs[v] += by"
       },
       {
@@ -30,12 +30,12 @@
         "solution": "A projection is sugar for fn at(mut self, i: V, inline use: (mut Int) -> R) -> R = use(mut cnt[i]). The rest of the caller's expression is the callback, it runs while at is still on the stack, and nothing reference-like is ever returned.",
         "kind": "choice",
         "options": [
-          "The runtime reference-counts every cell of cnt",
           "The caller's expression runs as an inline callback inside at, so the borrow ends before at returns",
+          "The runtime reference-counts every cell of cnt",
           "The checker infers a lifetime parameter for the returned reference",
           "lend copies cnt[i], so there is no reference at all"
         ],
-        "answer": 1,
+        "answer": 0,
         "explanation": "There is no reference counting and no lifetime inference: the design avoids both. lend does not copy; b.at(v) += 5 really changes cnt[v], which is the point of a mutable projection."
       },
       {
@@ -47,11 +47,11 @@
         "kind": "choice",
         "options": [
           "move(mut b.at(i), mut b.at(j)) with nothing known about i and j",
-          "if i != j: move(mut b.at(i), mut b.at(j))",
           "if i != j: move(mut b.at(i), mut b.other(j))",
-          "move(mut b.at(i), mut b.at(i)) followed by assert i != j"
+          "move(mut b.at(i), mut b.at(i)) followed by assert i != j",
+          "if i != j: move(mut b.at(i), mut b.at(j))"
         ],
-        "answer": 1,
+        "answer": 3,
         "explanation": "Without the guard nothing proves i != j, so the call is rejected with help to guard or assert. Different projections (at and other) are never assumed disjoint, even when i != j. An assert after the call is too late, and lending b.at(i) twice can never satisfy i != j."
       },
       {
@@ -134,12 +134,12 @@
         "solution": "max is associative, max(max(x, y), z) == max(x, max(y, z)), with identity Int.MIN, so it is a monoid and any grouping gives the same answer.",
         "kind": "choice",
         "options": [
+          "(a, b) => max(a, b)",
           "(a, b) => (a + b) / 2",
           "(a, b) => a - b",
-          "(a, b) => max(a, b)",
           "(a, b) => keep whichever piece was combined first on a tie, else the larger"
         ],
-        "answer": 2,
+        "answer": 0,
         "explanation": "Averaging is not associative: avg(avg(2, 4), 6) = 4.5 but avg(2, avg(4, 6)) = 3.5; carry (sum, count) instead. Subtraction is not associative either. A rule that depends on combination history gives answers that depend on how the query happens to split across nodes."
       },
       {
@@ -152,10 +152,10 @@
         "options": [
           "Range maximum",
           "Range minimum",
-          "Range sum",
-          "Range gcd"
+          "Range gcd",
+          "Range sum"
         ],
-        "answer": 2,
+        "answer": 3,
         "explanation": "Maximum, minimum, and gcd are monoids without inverses: knowing max(1..=r) and max(1..=l-1) tells you nothing about max(l..=r). Those need a segment tree or a sparse table, and the stdlib makes Fenwick-on-max a type error."
       },
       {
@@ -167,11 +167,11 @@
         "kind": "choice",
         "options": [
           "6 3",
-          "6 1",
           "5 1",
+          "6 1",
           "6 2"
         ],
-        "answer": 1,
+        "answer": 2,
         "explanation": "6 3 is the answer for the reversed order, which is the classic mistake of combining a right-hand accumulator in the wrong order. 5 1 adds the multipliers instead of multiplying them.",
         "code": "struct Aff:\n    mul: Int\n    add: Int\n\nfn then(f: Aff, g: Aff) -> Aff:\n    Aff(f.mul * g.mul, f.add * g.mul + g.add)\n\nfn compose_all<D>(fs: [D]Aff) -> Aff:\n    var acc = Aff(1, 0)\n    for d in D:\n        acc = then(acc, fs[d])\n    acc"
       },
@@ -183,12 +183,12 @@
         "solution": "It is a compile error with help: write if k: SegTree(Max<Int>) else: SegTree(Min<Int>), so each branch gets its own inlined copy, or opt into an indirect call with dyn.",
         "kind": "choice",
         "options": [
-          "It compiles to one tree that calls max or min through a function pointer",
           "A compile error: the code of op is not known at compile time; branch outside the structure or declare a dyn function type",
+          "It compiles to one tree that calls max or min through a function pointer",
           "It silently picks Max because it is the first branch",
           "It compiles, but laws are skipped"
         ],
-        "answer": 1,
+        "answer": 0,
         "explanation": "Static dispatch is a language guarantee, so the compiler never quietly inserts a function pointer. Nothing is picked silently, and laws are unrelated: they are checked by fntest and debug runs and stripped from release builds."
       },
       {
@@ -200,11 +200,11 @@
         "kind": "choice",
         "options": [
           "The whole library folder, concatenated",
-          "Only the code the solution reaches, inlined into one file and tree-shaken",
           "An include of the library path on your machine",
+          "Only the code the solution reaches, inlined into one file and tree-shaken",
           "Nothing until the judge downloads the library"
         ],
-        "answer": 1,
+        "answer": 2,
         "explanation": "Concatenating the folder would waste size and compile time. An include of a local path fails on the judge. Judges never fetch dependencies."
       }
     ]
@@ -248,11 +248,11 @@
         "kind": "choice",
         "options": [
           "A copy of range_sum with different variable names",
-          "sum(a[i] for i in l..=r), a direct loop over the range",
           "A brute for the whole program that also uses the prefix table",
-          "No brute: compare against the sample output only"
+          "No brute: compare against the sample output only",
+          "sum(a[i] for i in l..=r), a direct loop over the range"
         ],
-        "answer": 1,
+        "answer": 3,
         "explanation": "A renamed copy shares every bug. A whole-program brute built on the same prefix table shares the idea and only says the final answer differs. Samples are a handful of cases, while fntest tries thousands of random calls on generated inputs."
       },
       {
@@ -279,12 +279,12 @@
         "solution": "Only -1 passes. The brute settles existence; when it does find an answer, your output must parse as [V]Color and pass valid. The checker never needs to decide whether a coloring exists, which keeps it short.",
         "kind": "choice",
         "options": [
-          "When valid(c) returns true for your coloring",
           "Only when your output is also -1",
+          "When valid(c) returns true for your coloring",
           "Whenever your output parses as [V]Color",
           "When your output equals the brute's output character for character"
         ],
-        "answer": 1,
+        "answer": 0,
         "explanation": "Printing a coloring when none exists is wrong, so valid is not even consulted. Parsing is necessary but not sufficient. Character-for-character comparison is exactly what checkers replace."
       },
       {
@@ -296,11 +296,11 @@
         "kind": "choice",
         "options": [
           "Ask every value from 1 upward",
-          "Binary search with first_true, about log2(1e9) questions",
           "Ask 30 random values and answer the closest",
+          "Binary search with first_true, about log2(1e9) questions",
           "Ternary search with two asks per step"
         ],
-        "answer": 1,
+        "answer": 2,
         "explanation": "A linear scan needs up to 10^9 asks. Random asks are not correct. Ternary search with two asks per step needs about 2 * log base 1.5 of 10^9, roughly 100, far more than 30."
       }
     ]

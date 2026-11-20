@@ -91,7 +91,7 @@ if i != j:
 print(b.cnt)
 ```
 
-With input `4` and the values `3 9 2 5` this prints `0 2 3 5`. (The program reads only `n`; the bag starts from the labels `1 2 3 4`, and `move` shifts the first count onto the last.)
+With input `4` this prints `0 2 3 5`. The bag starts from the labels `1 2 3 4`, and `move` shifts the first count onto the last.
 
 The key idea is what a projection *means*. It is not a function that returns a reference. It is a function that takes the rest of your expression as an **inline callback** and runs it while the place is still inside its own frame:
 

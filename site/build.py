@@ -2,16 +2,18 @@
 """Build the CP Lang guide. No network, JavaScript bundler, or server required."""
 
 import html
+import hashlib
 import json
 from pathlib import Path
 import re
 import shutil
 
 import mistune
+from course import catalog_html, exercise_html, load_lessons, progress_html
 
 ROOT = Path(__file__).resolve().parent
 REPO = "https://github.com/ryanbai1412/cp-lang"
-PAGES = [
+REFERENCE_PAGES = [
     (
         "index",
         "Overview",
@@ -70,6 +72,13 @@ PAGES = [
     ),
 ]
 
+LESSONS = load_lessons()
+EXERCISES = {exercise["id"]: exercise for lesson in LESSONS for exercise in lesson["exercises"]}
+PAGES = [REFERENCE_PAGES[0],
+         ("course", "Interactive course", "Course", "Six progressive chapters. Worked examples, exercises, and checked answers.", "6 chapters"),
+         *[(lesson["slug"], lesson["title"], "Course", lesson["description"], lesson["duration"]) for lesson in LESSONS],
+         *REFERENCE_PAGES[1:]]
+
 
 def slug(text):
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
@@ -113,6 +122,12 @@ class Renderer(mistune.HTMLRenderer):
     def block_code(self, code, info=None):
         fields = (info or "text").split()
         language = fields[0]
+        if language == "course":
+            return catalog_html(LESSONS)
+        if language == "exercise":
+            if len(fields) != 2 or fields[1] not in EXERCISES:
+                raise ValueError(f"Unknown exercise directive: {info}")
+            return exercise_html(EXERCISES[fields[1]], highlight)
         label = " ".join(fields[1:]) or {
             "cp": "CP Lang · design",
             "sh": "Terminal",
@@ -150,13 +165,20 @@ def build():
         source = (ROOT / "content" / f"{name}.md").read_text()
         renderer = Renderer()
         body = mistune.create_markdown(renderer=renderer)(source)
+        is_course = section == "Course"
+        if is_course:
+            body = progress_html(LESSONS, name if name != "course" else None) + body
         toc = "".join(
             f'<a href="#{anchor}">{text}</a>' for anchor, text in renderer.headings
         )
         pager = []
-        for index, direction in [(i - 1, "Previous"), (i + 1, "Next")]:
-            if 0 <= index < len(PAGES):
-                other, label, *_ = PAGES[index]
+        sequence = ([("course", "Interactive course")]
+                    + [(lesson["slug"], lesson["title"]) for lesson in LESSONS]
+                    + [("playground", "Try the examples")]) if is_course else [page[:2] for page in REFERENCE_PAGES]
+        position = next(j for j, page in enumerate(sequence) if page[0] == name)
+        for index, direction in [(position - 1, "Previous"), (position + 1, "Next")]:
+            if 0 <= index < len(sequence):
+                other, label = sequence[index]
                 pager.append(
                     f'<a class="pager-{direction.lower()}" href="{other}.html"><span>{direction} {"←" if direction == "Previous" else "→"}</span>{label}</a>'
                 )
@@ -173,14 +195,20 @@ def build():
             toc=toc,
             pager="".join(pager),
             name=name,
+            source_path=f"site/content/{name}.md",
             repo=REPO,
             page_class="overview" if name == "index" else "chapter",
-            docs_current='aria-current="page"',
+            docs_current='' if is_course else 'aria-current="page"',
+            course_current='aria-current="page"' if is_course else '',
+            series="THE CP LANG COURSE" if is_course else "THE CP LANG GUIDE",
             playground_current="",
         )
         page = template
         for key, value in values.items():
             page = page.replace("{{" + key + "}}", value)
+        if is_course:
+            page = page.replace('</body>', '<script id="course-data" type="application/json">'
+                + safe_json(course_data(name)) + '</script></body>')
         (target / f"{name}.html").write_text(page)
         plain = html.unescape(re.sub(r"<[^>]*>", " ", body))
         search.append(
@@ -208,6 +236,25 @@ def safe_json(value):
     return json.dumps(value, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
 
 
+def course_data(name):
+    """Ship compact checks for cross-chapter progress; keep feedback local."""
+    checks = {}
+    for lesson in LESSONS:
+        for exercise in lesson["exercises"]:
+            check = {"kind": exercise["kind"]}
+            if exercise["kind"] == "choice":
+                check["answer"] = exercise["answer"]
+                if lesson["slug"] == name:
+                    check["explanation"] = exercise["explanation"]
+            else:
+                check["tests"] = [{"expected": case["expected"]} for case in exercise["tests"]]
+            checks[exercise["id"]] = check
+    revisions = {key: hashlib.sha256(safe_json(exercise).encode()).hexdigest()[:16]
+                 for key, exercise in EXERCISES.items()}
+    return dict(lessons=[dict(slug=lesson["slug"], exercises=[exercise["id"] for exercise in lesson["exercises"]])
+                         for lesson in LESSONS], exercises=checks, revisions=revisions)
+
+
 def build_playground(target, template):
     examples = [dict(id=name, source=(ROOT / "examples" / f"{name}.cp").read_text())
                 for name in ("sum", "bounds", "accumulation", "ascii", "optional", "memo")]
@@ -215,8 +262,8 @@ def build_playground(target, template):
         description="Run documented examples with your own input, entirely offline.",
         duration="", number="", navigation=navigation("playground"),
         content=(ROOT / "playground.html").read_text(), toc="", pager="",
-        name="playground", repo=REPO, page_class="playground",
-        docs_current="", playground_current='aria-current="page"')
+        name="playground", repo=REPO, page_class="playground", source_path="site/playground.html",
+        docs_current="", course_current="", series="CP LANG TOOLS", playground_current='aria-current="page"')
     page = template
     for key, value in values.items():
         page = page.replace("{{" + key + "}}", value)
