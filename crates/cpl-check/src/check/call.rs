@@ -2,7 +2,7 @@
 
 use super::expr::{list_names, plural};
 use super::*;
-use crate::ty::Param;
+use crate::ty::{Bindings, Param};
 use cpl_syntax::ast::{Arg, Expr};
 
 impl<'a> Checker<'a> {
@@ -11,8 +11,9 @@ impl<'a> Checker<'a> {
         let callee_text = self.quote(callee.span);
         match callee_ty {
             Ty::Fn { params, ret } => {
-                self.args(&callee_text, "takes", &params, args, call);
-                *ret
+                let mut bindings = Bindings::new();
+                self.args(&callee_text, "takes", &params, args, call, &mut bindings);
+                self.settle(&ret.subst(&bindings))
             }
             Ty::Named {
                 name,
@@ -62,8 +63,33 @@ impl<'a> Checker<'a> {
     ) -> Ty {
         if let Some(def) = self.env.global(name) {
             return match &*def {
-                Def::Struct { fields, .. } => {
-                    self.args(callee_text, "has", fields, args, call);
+                Def::Struct {
+                    generics,
+                    fields,
+                    ctor,
+                    ..
+                } => {
+                    // Outside the struct's body `S(..)` calls its `new`;
+                    // inside, it fills the fields.
+                    let inside =
+                        matches!(&self.self_ty, Some(Ty::Named { name: own, .. }) if own == name);
+                    let (verb, params) = match ctor {
+                        Some(params) if !inside => ("takes", params),
+                        _ => ("has", fields),
+                    };
+                    let mut bindings = Bindings::new();
+                    if type_args.len() == generics.len() {
+                        bindings.extend(generics.iter().cloned().zip(type_args.iter().cloned()));
+                    }
+                    self.args(callee_text, verb, params, args, call, &mut bindings);
+                    // Type arguments left out are read off the values.
+                    let type_args = if type_args.is_empty()
+                        && generics.iter().all(|g| bindings.contains_key(g))
+                    {
+                        generics.iter().map(|g| bindings[g].clone()).collect()
+                    } else {
+                        type_args
+                    };
                     Ty::Named {
                         name: name.to_string(),
                         args: type_args,
@@ -92,7 +118,19 @@ impl<'a> Checker<'a> {
 
     /// Matches `args` to `params`. `verb` is "takes" for a fn and "has" for
     /// a struct's fields.
-    fn args(&mut self, callee: &str, verb: &str, params: &[Param], args: &[Arg], call: &Expr) {
+    ///
+    /// A generic callee's type parameters are read off the arguments as
+    /// they go by, into `bindings`: after `pair(1, ..)` binds `T = Int`,
+    /// the next `T` argument must be an `Int`.
+    fn args(
+        &mut self,
+        callee: &str,
+        verb: &str,
+        params: &[Param],
+        args: &[Arg],
+        call: &Expr,
+        bindings: &mut Bindings,
+    ) {
         let positional: Vec<&Param> = params.iter().filter(|p| !p.named_only).collect();
         let variadic = positional.last().is_some_and(|p| p.variadic);
         let labeled = params.iter().all(|p| !p.name.is_empty());
@@ -147,7 +185,9 @@ impl<'a> Checker<'a> {
                 continue;
             };
             supplied.push(&param.name);
-            self.expect_fits(&arg_ty, &param.ty, &arg.value, |c, got, want| {
+            param.ty.unify(&arg_ty, bindings);
+            let want = param.ty.subst(bindings);
+            self.expect_fits(&arg_ty, &want, &arg.value, |c, got, want| {
                 let slot = if param.name.is_empty() {
                     String::new()
                 } else {

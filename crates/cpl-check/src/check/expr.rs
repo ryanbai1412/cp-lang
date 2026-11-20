@@ -397,16 +397,64 @@ impl<'a> Checker<'a> {
                 .find(|(n, _)| *n == name.text)
                 .map(|(_, t)| t.clone()),
             Ty::Named {
-                name: type_name, ..
-            } => match self.env.global(type_name).as_deref() {
-                Some(Def::Struct { fields, .. }) => fields
+                name: type_name,
+                args,
+            } => {
+                let members = self.members_of(type_name)?;
+                let bindings = members.bindings(args);
+                members
+                    .fields
                     .iter()
                     .find(|f| f.name == name.text)
-                    .map(|f| f.ty.clone()),
-                _ => None,
-            },
+                    .map(|f| self.settle(&f.ty.subst(&bindings)))
+            }
             _ => None,
         }
+    }
+
+    /// Everything `value.name` can reach on a struct or enum: its fields,
+    /// its methods (a `@get` method reads as its value), what its body
+    /// owns, and the same from each impl for it.
+    fn members_of(&mut self, type_name: &str) -> Option<Members> {
+        let mut out = Members::default();
+        let add = |out: &mut Members, methods: &[(String, Ty)], getters: &[String]| {
+            for (name, ty) in methods {
+                let ty = match ty {
+                    Ty::Fn { ret, .. } if getters.contains(name) => (**ret).clone(),
+                    other => other.clone(),
+                };
+                out.members.push((name.clone(), ty));
+            }
+        };
+        match self.env.global(type_name).as_deref() {
+            Some(Def::Struct {
+                generics,
+                fields,
+                methods,
+                getters,
+                owned,
+                ..
+            }) => {
+                out.generics = generics.clone();
+                out.fields = fields.clone();
+                add(&mut out, methods, getters);
+                out.members.extend(owned.iter().cloned());
+            }
+            Some(Def::Enum { methods, .. }) => add(&mut out, methods, &[]),
+            _ => return None,
+        }
+        for (_, def) in self.env.impls(type_name) {
+            if let Def::Impl {
+                methods,
+                getters,
+                owned,
+            } = &*def
+            {
+                add(&mut out, methods, getters);
+                out.members.extend(owned.iter().cloned());
+            }
+        }
+        Some(out)
     }
 
     fn field(&mut self, base: &Expr, name: &ast::Name) -> Ty {
@@ -426,21 +474,24 @@ impl<'a> Checker<'a> {
                 }
             }
             Ty::Named {
-                name: type_name, ..
-            } => match self.env.global(type_name).as_deref() {
-                Some(Def::Struct {
-                    fields, methods, ..
-                }) => Some((
-                    fields
+                name: type_name,
+                args,
+            } => self.members_of(type_name).map(|members| {
+                let bindings = members.bindings(args);
+                (
+                    members
+                        .fields
                         .iter()
                         .find(|f| f.name == name.text)
-                        .map(|f| f.ty.clone()),
-                    fields.iter().map(|f| f.name.clone()).collect(),
-                    methods.clone(),
-                )),
-                Some(Def::Enum { methods, .. }) => Some((None, Vec::new(), methods.clone())),
-                _ => None,
-            },
+                        .map(|f| f.ty.subst(&bindings)),
+                    members.fields.iter().map(|f| f.name.clone()).collect(),
+                    members
+                        .members
+                        .into_iter()
+                        .map(|(m, ty)| (m, ty.subst(&bindings)))
+                        .collect::<Vec<_>>(),
+                )
+            }),
             // The members of a domain that give positions back.
             Ty::Domain(domain) => {
                 return match name.text.as_str() {
@@ -452,8 +503,8 @@ impl<'a> Checker<'a> {
             }
             Ty::Pos(_) if name.text == "ord" => return Ty::Int,
             // `Dir.L`: a variant named through its enum.
-            Ty::TypeName(type_name) => match self.env.global(type_name).as_deref() {
-                Some(Def::Enum { variants, methods }) => {
+            Ty::TypeName(type_name) => {
+                if let Some(Def::Enum { variants, .. }) = self.env.global(type_name).as_deref() {
                     if let Some((_, fields)) = variants.iter().find(|(v, _)| *v == name.text) {
                         let def = Def::Variant {
                             of: type_name.clone(),
@@ -461,12 +512,11 @@ impl<'a> Checker<'a> {
                         };
                         return def.value_ty(&name.text);
                     }
-                    Some((None, Vec::new(), methods.clone()))
                 }
-                // `Graph.read()`: a static fn of the struct.
-                Some(Def::Struct { methods, .. }) => Some((None, Vec::new(), methods.clone())),
-                _ => None,
-            },
+                // `Graph.read()`, `Rooted.Pre`: what the type has without a value.
+                self.members_of(type_name)
+                    .map(|members| (None, Vec::new(), members.members))
+            }
             _ => None,
         };
         let Some((field_ty, field_names, methods)) = found else {
@@ -479,9 +529,9 @@ impl<'a> Checker<'a> {
             };
         };
         let ty = match field_ty {
-            Some(ty) => ty,
+            Some(ty) => self.settle(&ty),
             None => match methods.iter().find(|(m, _)| *m == name.text) {
-                Some((_, ty)) => ty.clone(),
+                Some((_, ty)) => self.settle(ty),
                 None => {
                     let known = field_names
                         .iter()
@@ -624,6 +674,28 @@ impl<'a> Checker<'a> {
             }
         }
         false
+    }
+}
+
+/// What a struct or enum, with its impls, lets a value reach by name.
+#[derive(Default)]
+struct Members {
+    generics: Vec<String>,
+    fields: Vec<crate::ty::Param>,
+    members: Vec<(String, Ty)>,
+}
+
+impl Members {
+    /// What each type parameter is for a value of the type with `args`.
+    fn bindings(&self, args: &[Ty]) -> crate::ty::Bindings {
+        if args.len() != self.generics.len() {
+            return crate::ty::Bindings::new();
+        }
+        self.generics
+            .iter()
+            .cloned()
+            .zip(args.iter().cloned())
+            .collect()
     }
 }
 

@@ -10,7 +10,7 @@ mod expr;
 mod stmt;
 mod types;
 
-pub(crate) use types::own_domains;
+pub(crate) use types::{own_domains, type_head};
 
 use crate::def::Def;
 use crate::prelude;
@@ -24,6 +24,9 @@ use std::sync::Arc;
 pub(crate) trait Env {
     /// The definition of a top-level name.
     fn global(&mut self, name: &str) -> Option<Arc<Def>>;
+    /// Every impl for the type `target`, with the trait it implements
+    /// (`None` for `impl Target:`).
+    fn impls(&mut self, target: &str) -> Vec<(Option<String>, Arc<Def>)>;
     /// True if the file imports modules. They are not loaded yet, so names
     /// that are not found may come from them.
     fn has_imports(&mut self) -> bool;
@@ -76,6 +79,8 @@ pub(crate) struct Checker<'a> {
     /// Inside a fn signature or body, where a single capital letter is a
     /// type parameter without being declared.
     in_fn: u32,
+    /// What `Self` is: the struct, enum or impl target whose body this is.
+    self_ty: Option<Ty>,
 }
 
 pub(crate) struct Checked {
@@ -96,6 +101,7 @@ impl<'a> Checker<'a> {
             refs: Vec::new(),
             fns: Vec::new(),
             in_fn: 0,
+            self_ty: None,
         }
     }
 
@@ -131,6 +137,25 @@ impl<'a> Checker<'a> {
         (self.sink.len() > before)
             .then(|| self.sink.last_mut())
             .flatten()
+    }
+
+    /// Runs `f` without keeping what it reports or records: for reading a
+    /// type out of code that is checked, and reported, somewhere else.
+    fn quietly<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
+        let (hovers, refs) = (self.hovers.len(), self.refs.len());
+        let sink = std::mem::replace(&mut self.sink, Sink::new());
+        let out = f(self);
+        self.sink = sink;
+        self.hovers.truncate(hovers);
+        self.refs.truncate(refs);
+        out
+    }
+
+    /// A type that came out of a generic, as the code here sees it: type
+    /// parameters that nothing bound, and that are not this code's own,
+    /// are unknown.
+    fn settle(&self, ty: &Ty) -> Ty {
+        ty.settle(&self.generics)
     }
 
     fn push_scope(&mut self) {

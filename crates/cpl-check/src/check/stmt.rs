@@ -103,7 +103,17 @@ impl<'a> Checker<'a> {
                 let ty = declared.or(init_ty).unwrap_or(Ty::Error);
                 self.bind(pat, &ty, *mutable, keyword);
             }
-            StmtKind::Const { name, ty, init, .. } => {
+            StmtKind::Const {
+                name,
+                generics,
+                bounds,
+                ty,
+                init,
+            } => {
+                let outer = self.generics.len();
+                self.generics
+                    .extend(generics.iter().map(|g| g.text.clone()));
+                self.bounds_exist(bounds);
                 let declared = ty.as_ref().map(|ty| self.resolve_type(ty));
                 let init_ty = init.as_ref().map(|init| self.infer(init));
                 if let (Some(declared), Some(init_ty), Some(init)) = (&declared, &init_ty, init) {
@@ -118,17 +128,19 @@ impl<'a> Checker<'a> {
                     });
                 }
                 let ty = declared.or(init_ty).unwrap_or(Ty::Error);
+                self.generics.truncate(outer);
                 self.declare(&name.text, name.span, ty, false, "const");
             }
             StmtKind::Fn(f) => self.fn_decl(f, None, !top_level),
             StmtKind::Struct(s) => {
+                let generics: Vec<String> = s.generics.iter().map(|g| g.text.clone()).collect();
                 let self_ty = Ty::Named {
                     name: s.name.text.clone(),
-                    args: Vec::new(),
+                    args: generics.iter().cloned().map(Ty::Param).collect(),
                 };
-                let outer = self.generics.len();
-                self.generics
-                    .extend(s.generics.iter().map(|g| g.text.clone()));
+                let body = self.enter_body(&generics, self_ty.clone());
+                self.bounds_exist(&s.bounds);
+                self.owned(&s.name.text, &s.methods);
                 for field in &s.fields {
                     let ty = self.resolve_type(&field.ty);
                     self.hovers.push(HoverEntry {
@@ -153,16 +165,15 @@ impl<'a> Checker<'a> {
                 }
                 self.type_hover(&s.name);
                 self.methods(&s.methods, &self_ty);
-                self.generics.truncate(outer);
+                self.leave_body(body);
             }
             StmtKind::Enum(e) => {
+                let generics: Vec<String> = e.generics.iter().map(|g| g.text.clone()).collect();
                 let self_ty = Ty::Named {
                     name: e.name.text.clone(),
-                    args: Vec::new(),
+                    args: generics.iter().cloned().map(Ty::Param).collect(),
                 };
-                let outer = self.generics.len();
-                self.generics
-                    .extend(e.generics.iter().map(|g| g.text.clone()));
+                let body = self.enter_body(&generics, self_ty.clone());
                 for variant in &e.variants {
                     for (_, ty) in &variant.fields {
                         self.resolve_type(ty);
@@ -170,7 +181,7 @@ impl<'a> Checker<'a> {
                 }
                 self.type_hover(&e.name);
                 self.methods(&e.methods, &self_ty);
-                self.generics.truncate(outer);
+                self.leave_body(body);
             }
             StmtKind::Domain { name, def } => {
                 self.infer(def);
@@ -196,27 +207,38 @@ impl<'a> Checker<'a> {
             StmtKind::Trait {
                 name,
                 generics,
+                supers,
                 body,
-                ..
             } => {
-                let outer = self.generics.len();
-                self.generics
-                    .extend(generics.iter().map(|g| g.text.clone()));
+                let generics: Vec<String> = generics.iter().map(|g| g.text.clone()).collect();
+                let self_ty = Ty::Param("Self".into());
+                let scope = self.enter_body(&generics, self_ty.clone());
+                for sup in supers {
+                    self.trait_exists(sup);
+                }
                 self.type_hover(name);
-                self.methods(&body.stmts, &Ty::Unknown);
-                self.generics.truncate(outer);
+                self.owned(&name.text, &body.stmts);
+                self.methods(&body.stmts, &self_ty);
+                self.leave_body(scope);
             }
             StmtKind::Impl {
                 trait_name,
                 target,
+                bounds,
                 body,
-                ..
             } => {
-                if let Some(trait_name) = trait_name {
-                    self.resolve_type(trait_name);
-                }
+                let generics = self.impl_generics(target);
+                let scope = self.enter_body(&generics, Ty::Unknown);
                 let self_ty = self.resolve_type(target);
+                self.self_ty = Some(self_ty.clone());
+                self.bounds_exist(bounds);
+                if let Some(trait_name) = trait_name {
+                    self.impl_matches_trait(trait_name, target, &body.stmts);
+                }
+                let owner = type_head(target).unwrap_or_default();
+                self.owned(&owner, &body.stmts);
                 self.methods(&body.stmts, &self_ty);
+                self.leave_body(scope);
             }
             StmtKind::Use { .. } | StmtKind::Break(_) | StmtKind::Continue(_) | StmtKind::Error => {
             }
@@ -317,13 +339,141 @@ impl<'a> Checker<'a> {
         });
     }
 
+    /// Checks the fns, laws and constants of a struct, enum, trait or impl
+    /// body. The struct's fields can be named in them without `self.`.
     fn methods(&mut self, methods: &[Stmt], self_ty: &Ty) {
+        let fields = match self_ty {
+            Ty::Named { name, .. } => match self.env.global(name).as_deref() {
+                Some(Def::Struct { fields, .. }) => fields.clone(),
+                _ => Vec::new(),
+            },
+            _ => Vec::new(),
+        };
         for method in methods {
             match &method.kind {
                 StmtKind::Fn(f) => self.fn_decl(f, Some(self_ty), false),
+                StmtKind::Law { name, .. } => {
+                    self.push_scope();
+                    for field in &fields {
+                        self.scopes.last_mut().unwrap().insert(
+                            field.name.clone(),
+                            Local {
+                                ty: field.ty.clone(),
+                                mutable: false,
+                                span: name.span,
+                                keyword: "self",
+                            },
+                        );
+                    }
+                    self.stmt(method, false);
+                    self.pop_scope();
+                }
+                // Owned domains and constants were declared on entry; this
+                // checks their values.
+                StmtKind::Domain { def, .. } => {
+                    self.infer(def);
+                }
+                StmtKind::Const {
+                    init: Some(init), ..
+                }
+                | StmtKind::Let {
+                    init: Some(init), ..
+                } => {
+                    self.infer(init);
+                }
                 _ => {
                     self.stmt(method, false);
                 }
+            }
+        }
+    }
+
+    /// Every trait a bound names must exist: `where T: Ord + Bounded`.
+    fn bounds_exist(&mut self, bounds: &[ast::Bound]) {
+        for bound in bounds {
+            for trait_ty in &bound.traits {
+                self.trait_exists(trait_ty);
+            }
+        }
+    }
+
+    /// Reports a trait name that is not a trait. Returns the trait's
+    /// methods when it is declared in cp source.
+    fn trait_exists(&mut self, trait_ty: &ast::Type) -> Option<Vec<crate::def::TraitMethod>> {
+        let ast::TypeKind::Named { name, args } = &trait_ty.kind else {
+            return None;
+        };
+        for arg in args {
+            self.resolve_type(arg);
+        }
+        match self.env.global(&name.text).as_deref() {
+            Some(Def::Trait { methods, .. }) => {
+                self.refs.push(GlobalRef {
+                    span: name.span,
+                    name: name.text.clone(),
+                    top_level: false,
+                });
+                return Some(methods.clone());
+            }
+            Some(_) => {
+                let message = format!("`{}` is not a trait", name.text);
+                self.error(codes::UNKNOWN_TYPE, name.span, message);
+            }
+            None if prelude::is_trait(&name.text) || name.text.is_empty() => {}
+            None if self.env.has_imports() => {}
+            None => {
+                let message = format!("no trait named `{}`", name.text);
+                self.error(codes::UNKNOWN_TYPE, name.span, message);
+            }
+        }
+        None
+    }
+
+    /// An impl of a trait written in cp must define every fn the trait
+    /// leaves without a body, and no fn the trait does not have.
+    fn impl_matches_trait(&mut self, trait_ty: &ast::Type, target: &ast::Type, body: &[Stmt]) {
+        let Some(methods) = self.trait_exists(trait_ty) else {
+            return;
+        };
+        let trait_text = self.quote(trait_ty.span);
+        let defined: Vec<&ast::Name> = body
+            .iter()
+            .filter_map(|m| match &m.kind {
+                StmtKind::Fn(f) => Some(&f.name),
+                _ => None,
+            })
+            .collect();
+        for name in &defined {
+            if methods.iter().all(|m| m.name != name.text) {
+                let known: Vec<String> = methods.iter().map(|m| m.name.clone()).collect();
+                let suggestion = closest(&name.text, known.iter().map(String::as_str));
+                let message = format!("`{trait_text}` has no fn `{}`", name.text);
+                if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
+                    diag.help = Some(match suggestion {
+                        Some(s) => format!("did you mean `{s}`?"),
+                        None => format!("its fns are {}", super::expr::list_names(&known)),
+                    });
+                }
+            }
+        }
+        let missing: Vec<String> = methods
+            .iter()
+            .filter(|m| m.required && defined.iter().all(|d| d.text != m.name))
+            .map(|m| m.name.clone())
+            .collect();
+        if !missing.is_empty() {
+            let message = format!(
+                "`impl {trait_text} for {}` is missing {}",
+                self.quote(target.span),
+                super::expr::list_names(&missing)
+            );
+            let span = trait_ty.span.to(target.span);
+            if let Some(diag) = self.error(codes::WRONG_ARG_COUNT, span, message) {
+                diag.help = Some(format!(
+                    "`{trait_text}` declares {} without a body, so each impl writes {}",
+                    if missing.len() == 1 { "it" } else { "them" },
+                    if missing.len() == 1 { "it" } else { "them" },
+                ));
             }
         }
     }
@@ -345,6 +495,7 @@ impl<'a> Checker<'a> {
         let outer = self.generics.len();
         self.generics
             .extend(f.generics.iter().map(|g| g.text.clone()));
+        self.bounds_exist(&f.bounds);
         self.in_fn += 1;
         self.push_scope();
         // Inside a method the struct's fields can be named without `self.`.
@@ -364,6 +515,9 @@ impl<'a> Checker<'a> {
                 }
             }
             self.push_scope();
+        }
+        if let Some(lends) = &f.lends {
+            self.resolve_type(&lends.ty);
         }
         let mut sig_params = params.iter();
         for param in &f.params {

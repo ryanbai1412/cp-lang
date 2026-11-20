@@ -40,6 +40,10 @@ pub enum Ty {
         params: Vec<Param>,
         ret: Box<Ty>,
     },
+    /// A type parameter, inside the fn or struct that declares it: the `T`
+    /// of `struct Fenwick<D, T>`. Each use of the generic thing replaces it
+    /// with the type given there.
+    Param(String),
     /// Not known to this checker. Compatible with everything, so missing
     /// knowledge never becomes an error.
     Unknown,
@@ -47,6 +51,9 @@ pub enum Ty {
     /// everything, so one root cause is reported once.
     Error,
 }
+
+/// What each type parameter stands for at one use.
+pub type Bindings = std::collections::HashMap<String, Ty>;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Param {
@@ -126,6 +133,9 @@ impl Ty {
         match (self, want) {
             (a, b) if a == b => true,
             (a, b) if a.is_vague() || b.is_vague() => true,
+            // What a type parameter can do is its bounds' business; the
+            // code is checked again with real types at each use.
+            (Ty::Param(_), _) | (_, Ty::Param(_)) => true,
             (a, b) if a.is_int() && b.is_int() => true,
             (a, Ty::Float) if a.is_int() => true,
             (a, Ty::Optional(inner)) => a.fits(inner),
@@ -158,10 +168,141 @@ impl Ty {
                         || (aa.len() == ba.len() && aa.iter().zip(ba).all(|(a, b)| a.fits(b))))
             }
             (Ty::Fn { .. }, Ty::Fn { .. }) => true,
+            // A string is a list of its characters (decision 9: `Str` is
+            // `[domain S]Char`, one flat byte array).
+            (Ty::Str, Ty::Named { name, args }) if name == "List" => {
+                args.first().is_none_or(|elem| Ty::Char.fits(elem))
+            }
             // A record or tuple literal builds a struct with those fields;
             // the fields are checked where the struct is known.
             (Ty::Record(_) | Ty::Tuple(_), Ty::Named { .. }) => true,
             _ => false,
+        }
+    }
+
+    /// Rebuilds the type with `leaf` applied to every type inside it.
+    fn map(&self, leaf: &mut dyn FnMut(&Ty) -> Option<Ty>) -> Ty {
+        if let Some(replaced) = leaf(self) {
+            return replaced;
+        }
+        match self {
+            Ty::Array { index, elem } => Ty::Array {
+                index: index.iter().map(|t| t.map(leaf)).collect(),
+                elem: Box::new(elem.map(leaf)),
+            },
+            Ty::Optional(inner) => Ty::Optional(Box::new(inner.map(leaf))),
+            Ty::Tuple(items) => Ty::Tuple(items.iter().map(|t| t.map(leaf)).collect()),
+            Ty::Record(fields) => Ty::Record(
+                fields
+                    .iter()
+                    .map(|(name, t)| (name.clone(), t.map(leaf)))
+                    .collect(),
+            ),
+            Ty::Named { name, args } => Ty::Named {
+                name: name.clone(),
+                args: args.iter().map(|t| t.map(leaf)).collect(),
+            },
+            Ty::Fn { params, ret } => Ty::Fn {
+                params: params
+                    .iter()
+                    .map(|p| Param {
+                        ty: p.ty.map(leaf),
+                        ..p.clone()
+                    })
+                    .collect(),
+                ret: Box::new(ret.map(leaf)),
+            },
+            other => other.clone(),
+        }
+    }
+
+    /// The type with each type parameter in `bindings` replaced by its
+    /// type: `[D]T` with `D = V, T = Int` is `[V]Int`.
+    pub fn subst(&self, bindings: &Bindings) -> Ty {
+        if bindings.is_empty() {
+            return self.clone();
+        }
+        self.map(&mut |ty| match ty {
+            Ty::Param(name) => bindings.get(name).cloned(),
+            _ => None,
+        })
+    }
+
+    /// The type as code outside the generic sees it when nothing says what
+    /// a parameter is: every parameter left is unknown.
+    pub fn erase(&self) -> Ty {
+        self.map(&mut |ty| matches!(ty, Ty::Param(_)).then_some(Ty::Unknown))
+    }
+
+    /// Like [`Ty::erase`], but the parameters in `keep` stay: they belong
+    /// to the code the type is used in.
+    pub fn settle(&self, keep: &[String]) -> Ty {
+        self.map(&mut |ty| match ty {
+            Ty::Param(name) if !keep.contains(name) => Some(Ty::Unknown),
+            _ => None,
+        })
+    }
+
+    /// Reads type parameters off a use: matching the declared `[D]T`
+    /// against a `[V]Int` binds `D = V` and `T = Int`. The first type seen
+    /// for a parameter stays.
+    pub fn unify(&self, got: &Ty, bindings: &mut Bindings) {
+        match (self, got) {
+            (_, Ty::Unknown | Ty::Error | Ty::Param(_)) => {}
+            (Ty::Param(name), got) => {
+                bindings.entry(name.clone()).or_insert_with(|| got.widen());
+            }
+            (
+                Ty::Array { index, elem },
+                Ty::Array {
+                    index: got_index,
+                    elem: got_elem,
+                },
+            ) => {
+                for (want, got) in index.iter().zip(got_index) {
+                    want.unify(got, bindings);
+                }
+                elem.unify(got_elem, bindings);
+            }
+            (Ty::Optional(want), Ty::Optional(got)) => want.unify(got, bindings),
+            (Ty::Optional(want), got) => want.unify(got, bindings),
+            (Ty::Tuple(want), Ty::Tuple(got)) => {
+                for (want, got) in want.iter().zip(got) {
+                    want.unify(got, bindings);
+                }
+            }
+            (Ty::Record(want), Ty::Record(got)) => {
+                for ((_, want), (_, got)) in want.iter().zip(got) {
+                    want.unify(got, bindings);
+                }
+            }
+            (
+                Ty::Named { name, args },
+                Ty::Named {
+                    name: got,
+                    args: got_args,
+                },
+            ) if name == got => {
+                for (want, got) in args.iter().zip(got_args) {
+                    want.unify(got, bindings);
+                }
+            }
+            (Ty::Named { name, args }, Ty::Str) if name == "List" && args.len() == 1 => {
+                args[0].unify(&Ty::Char, bindings);
+            }
+            (
+                Ty::Fn { params, ret },
+                Ty::Fn {
+                    params: got_params,
+                    ret: got_ret,
+                },
+            ) => {
+                for (want, got) in params.iter().zip(got_params) {
+                    want.ty.unify(&got.ty, bindings);
+                }
+                ret.unify(got_ret, bindings);
+            }
+            _ => {}
         }
     }
 
@@ -194,7 +335,7 @@ impl fmt::Display for Ty {
             Ty::Str => f.write_str("Str"),
             Ty::Unit => f.write_str("()"),
             Ty::Range { text, .. } => f.write_str(text),
-            Ty::Pos(name) | Ty::TypeName(name) => f.write_str(name),
+            Ty::Pos(name) | Ty::TypeName(name) | Ty::Param(name) => f.write_str(name),
             Ty::Domain(name) => write!(f, "domain {name}"),
             Ty::Array { index, elem } => {
                 f.write_str("[")?;
