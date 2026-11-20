@@ -15,6 +15,10 @@ cpl-codegen = { path = "crates/cpl-codegen" }
 cpl-interp = { path = "crates/cpl-interp" }
 cpl-ir = { path = "crates/cpl-ir" }
 cpl-fmt = { path = "crates/cpl-fmt" }
+cpl-lint = { path = "crates/cpl-lint" }
+cpl-doc = { path = "crates/cpl-doc" }
+cpl-stress = { path = "crates/cpl-stress" }
+cpl-contest = { path = "crates/cpl-contest" }
 cpl-lsp = { path = "crates/cpl-lsp" }
 
 [profile.release]
