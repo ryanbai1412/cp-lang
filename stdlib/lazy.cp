@@ -1,12 +1,13 @@
 //! Segment tree with range updates.
 use std.algebra.{Monoid, Action}
 
-/// Range update, range fold: `LazySegTree<V, Int>(AddMax, a)`. The `Action` says how an
-/// update changes a folded stretch and what the stretches are folded with; the stock ones are
-/// `AddSum`, `AddMin`, `AddMax`, `AssignSum`, `AssignMin` and `AssignMax`, and your own is
-/// `Action(id, compose, apply, over: op)`.
-/// `apply`, `set`, `fold`, `max_right` and `min_left` are O(log n); memory is
-/// 2 * bit_ceil(n) values and lengths plus bit_ceil(n) pending updates.
+/// Range update, range fold: `LazySegTree<V, Int>(AddMax, a)` (the tag type `F` is inferred
+/// from the `Action`). The stock actions are `AddSum`, `AddMin`, `AddMax`, `AssignSum`,
+/// `AssignMin`, and `AssignMax`; a custom action is `Action(id, compose, apply, over: op)`
+/// where `compose(new_f, old_f)` applies `old_f` first then `new_f` and `apply(f, val, span)`
+/// updates a node fold covering `span` leaves.
+/// `apply`, `set`, `update`, `get`, `fold`, `max_right`, and `min_left` are O(log n); `all` is O(1).
+/// Memory is 2 * bit_ceil(n) values and spans plus bit_ceil(n) pending tags.
 pub struct LazySegTree<D, T, F>(act: Action<T, F>):
     t: List<T>
     lz: List<F>
@@ -50,6 +51,13 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
         let p = i.to_idx + size
         for k in (1..=log).rev: self.push(p >> k)
         t[p] = x
+        for k in 1..=log: self.pull(p >> k)
+
+    /// Push down to leaf `i`, replace its value with `f(cur)`, and pull back up in one O(log n) traversal.
+    pub fn update(mut self, i: D, f: T -> T):
+        let p = i.to_idx + size
+        for k in (1..=log).rev: self.push(p >> k)
+        t[p] = f(t[p])
         for k in 1..=log: self.pull(p >> k)
 
     pub fn get(mut self, i: D) -> T:
@@ -316,3 +324,61 @@ fn ccc02s4hard_dual_field_cross_overwrite_and_interleaved_point_set():
             assert st.fold(l..=r) == want
     for v in V:
         assert st.get(v) == (a[v], b[v], a[v])
+
+@test
+fn update_pushes_modifies_and_pulls_in_one_pass():
+    // Single-leaf callback `update(i, f)` must see all pending ancestor tags before modifying
+    // the leaf and must never double-apply those tags afterward.
+    domain V = 1..=9
+    var a = [V] v => rand(-10, 10)
+    var st = LazySegTree<V, Int>(AddSum, a)
+    for _ in 0..80:
+        let kind = rand(0, 3)
+        if kind == 0:
+            let l = V.nth(rand(0, 8))
+            let r = V.nth(rand(l.to_idx, 8))
+            let d = rand(-7, 7)
+            for v in l..=r: a[v] += d
+            st.apply(l..=r, d)
+        elif kind == 1:
+            let i = V.nth(rand(0, 8))
+            let add = rand(-5, 5)
+            a[i] = a[i] * 2 + add
+            st.update(i, cur => cur * 2 + add)
+        elif kind == 2:
+            let i = V.nth(rand(0, 8))
+            let x = rand(-20, 20)
+            a[i] = x
+            st.set(i, x)
+        else:
+            let l = V.nth(rand(0, 8))
+            let r = V.nth(rand(l.to_idx, 8))
+            assert st.fold(l..=r) == sum(a[v] for v in l..=r)
+            assert st.all == sum(a[v] for v in V)
+    for v in V: assert st.get(v) == a[v]
+
+@test
+fn custom_clamp_action_with_update():
+    // Non-commutative clamp tag `(lo, hi)`: clamps values into `[lo, hi]` over `max`.
+    let clamp = Action<Int, (Int, Int)>(
+        (Int.MIN, Int.MAX),
+        (new_f, old_f) => (min(max(old_f.0, new_f.0), new_f.1), max(min(old_f.1, new_f.1), new_f.0)),
+        (f, val, span) => min(max(val, f.0), f.1),
+        over: max,
+    )
+    domain V = 0..6
+    var a = [V] v => [3, -4, 9, 0, 5, -2][v.to_idx]
+    var st = LazySegTree<V, Int>(clamp, a)
+    for _ in 0..50:
+        let l = V.nth(rand(0, 5))
+        let r = V.nth(rand(l.to_idx, 5))
+        let lo = rand(-6, 4)
+        let hi = rand(lo, 8)
+        for v in l..=r: a[v] = min(max(a[v], lo), hi)
+        st.apply(l..=r, (lo, hi))
+        let i = V.nth(rand(0, 5))
+        a[i] = a[i] + 1
+        st.update(i, x => x + 1)
+        assert st.fold(l..=r) == max(a[v] for v in l..=r)!
+        assert st.all == max(a[v] for v in V)!
+    for v in V: assert st.get(v) == a[v]

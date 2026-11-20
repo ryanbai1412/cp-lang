@@ -1,12 +1,16 @@
-//! Generation-stamped mark table: `add`, `in`, `remove`, and `clear` are all O(1).
+//! Opt-in generation-stamped mark table: `add`, `in`, `remove`, and `clear` are all O(1).
 //!
-//! Use `Marks<D>()` whenever clearing a `[D]Bool` inside a loop would cost O(T * N).
-//! Each `clear()` bumps a generation counter instead of touching the underlying array.
+//! For sparse resets prefer `[D]Bool` with a touched list; import `std.marks.Marks<D>` when
+//! repeated full clears inside a loop would otherwise cost O(T * N). Each `clear()` bumps a
+//! 32-bit generation counter instead of touching the underlying array, resetting the table
+//! only if the counter reaches its 32-bit ceiling.
+
+const MAX_GEN = 2_000_000_000
 
 /// A visited/mark set over a domain `D` with O(1) `add`, `remove`, `contains` (`v in m`),
-/// and O(1) `clear()`. Memory is one `[D]Int` array of generation stamps.
+/// and O(1) `clear()`. Memory is one `[D]0..=2_000_000_000` array (4 bytes per element).
 pub struct Marks<D>:
-    stamp: [D]Int
+    stamp: [D]0..=2_000_000_000
     gen: Int
     cnt: Int
 
@@ -30,9 +34,13 @@ pub struct Marks<D>:
     /// Is `v` marked in the current round? Also `v in m`. O(1).
     pub fn contains(self, v: D) -> Bool = stamp[v] == gen
 
-    /// Clear every mark in O(1) without touching the array.
+    /// Clear every mark in O(1) without touching the array (resets the table on wraparound).
     pub fn clear(mut self):
-        gen += 1
+        if gen == MAX_GEN:
+            stamp.fill(0)
+            gen = 1
+        else:
+            gen += 1
         cnt = 0
 
     /// How many positions are marked in the current round. O(1).
@@ -97,3 +105,16 @@ fn marks_over_char_and_one_based_domains():
         assert big.add(v) and not big.add(v) and big.len == 1
         big.clear()
         assert big.is_empty and v not in big
+
+@test
+fn marks_wraps_cleanly_at_32bit_ceiling():
+    domain V = 0..6
+    var m = Marks<V>()
+    m.gen = MAX_GEN
+    assert m.add(V(2)) and m.add(V(5)) and m.len == 2
+    assert V(2) in m and V(5) in m
+    // Clearing at MAX_GEN resets the backing stamps and restarts generation at 1
+    m.clear()
+    assert m.is_empty and m.len == 0 and m.gen == 1
+    for v in V: assert v not in m and m.stamp[v] == 0
+    assert m.add(V(2)) and V(2) in m and V(5) not in m and m.len == 1

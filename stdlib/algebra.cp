@@ -30,12 +30,14 @@ pub struct Monoid<T>(id: T, op: (T, T) -> T):
 
 fn same<A, B>(a: A, b: B) -> Bool = a == b
 
-/// A lazy update `F` on values `T` folded with `over`: `apply(f, x, len)` is the fold `x` of
-/// `len` positions after every one of them took `f`, `compose(f, g)` is "g first, then f",
-/// and `id` changes nothing. `Action(id, compose, apply, over: op)`.
+/// A lazy update `F` on values `T` folded with `over`:
+/// `Action(id, compose, apply, over: op)`.
+/// - `id` is the no-op tag (`apply(id, x, len) == x`).
+/// - `compose(new_f, old_f)` applies `old_f` first and then `new_f`.
+/// - `apply(f, val, span)` returns the folded value `val` of `span` covered leaves after applying `f`.
 pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, over: Monoid<T>):
     law ident(a: T) = apply(id, a, 1) == a
-    law composes(f: F, g: F, a: T) = apply(compose(f, g), a, 1) == apply(f, apply(g, a, 1), 1)
+    law composes(new_f: F, old_f: F, a: T) = apply(compose(new_f, old_f), a, 1) == apply(new_f, apply(old_f, a, 1), 1)
 
     pub fn new<M>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, over: M) -> Action<T, F>:
         Action(id, compose, apply, Monoid<T>.of(over))
@@ -95,10 +97,20 @@ fn a_monoid_of_your_own_is_a_pair():
 
 @test
 fn affine_action_laws():
-    // f = (mul, add) acting on a sum of `len` values as mul * x + add * len
-    let act = Action<Int, (Int, Int)>((1, 0), (f, g) => (f.0 * g.0, f.0 * g.1 + f.1), (f, x, len) => f.0 * x + f.1 * len, over: +)
+    // f = (mul, add) acting on a sum of `span` values as mul * x + add * span;
+    // compose(new_f, old_f) applies old_f first, then new_f.
+    let act = Action<Int, (Int, Int)>(
+        (1, 0),
+        (new_f, old_f) => (new_f.0 * old_f.0, new_f.0 * old_f.1 + new_f.1),
+        (f, val, span) => f.0 * val + f.1 * span,
+        over: +,
+    )
     assert laws_hold(act, T: [-3, 0, 4], F: [(1, 0), (2, 3), (-1, 5), (0, 7)])
     assert act.over.id == 0
+    // Non-commutative check: old = (*2 + 1), new = (*3 + 5) => 3*(2x + 1) + 5 = 6x + 8
+    let combined = act.compose((3, 5), (2, 1))
+    assert combined == (6, 8) and act.apply(combined, 4, 1) == 32
+    assert act.apply(combined, 10, 3) == 6 * 10 + 8 * 3
 
 @test
 fn desc_reverses_one_part_of_a_key():

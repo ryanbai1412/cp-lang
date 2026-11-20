@@ -32,8 +32,6 @@ pub fn turn(a: Pt, b: Pt, c: Pt) -> Int:
     let k = cross(b - a, c - a)
     if k > 0: 1 else: if k < 0: -1 else: 0
 
-/// Left to right, then bottom to top.
-
 /// Counter-clockwise by direction, starting from the positive x axis. Exact;
 /// vectors in the same direction compare equal, the zero vector comes first.
 pub struct ByAngle(p: Pt)
@@ -60,24 +58,6 @@ pub fn area2(poly: List<Pt>) -> Int:
     var total = 0
     for i in 0..poly.len: total += cross(poly[i], poly[(i + 1) % poly.len])
     total
-
-/// The convex hull, counter-clockwise from the lowest of the leftmost points,
-/// without repeated or collinear points (Andrew's monotone chain). O(n log n).
-pub fn convex_hull(pts: List<Pt>) -> List<Pt>:
-    var ps = copy(pts)
-    sort(mut ps, by: p => (p.x, p.y))
-    var uniq = List<Pt>()
-    for p in ps:
-        if uniq.is_empty or uniq.last != p: uniq.push(p)
-    if uniq.len <= 2: return uniq
-    var out = List<Pt>()
-    for pass in 0..2:
-        let base = out.len
-        for p in (if pass == 0: uniq else: uniq.rev):
-            while out.len >= base + 2 and turn(out[out.len - 2], out[out.len - 1], p) <= 0: out.pop()
-            out.push(p)
-        out.pop()
-    out
 
 /// Where `p` is relative to a simple polygon (either orientation):
 /// 1 inside, 0 on the boundary, -1 outside. O(n), by counting crossings of a ray to the right.
@@ -134,35 +114,18 @@ fn segments_touching_crossing_and_apart():
             assert m == within
 
 @test
-fn hull_is_convex_and_contains_every_point():
-    assert convex_hull([]) == [] and convex_hull([Pt(1, 1), Pt(1, 1)]) == [Pt(1, 1)]
-    assert convex_hull([Pt(0, 0), Pt(2, 2), Pt(1, 1)]) == [Pt(0, 0), Pt(2, 2)]
-    assert convex_hull([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2), Pt(1, 1), Pt(1, 0)]) == [Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]
-    for _ in 0..40:
-        let pts = random_points(rand(3, 14), 5)
-        let h = convex_hull(pts)
-        if h.len < 3: continue
-        for i in 0..h.len:
-            assert h[i] in pts
-            assert turn(h[i], h[(i + 1) % h.len], h[(i + 2) % h.len]) == 1
-        for p in pts:
-            assert locate(h, p) >= 0
-            assert (locate(h, p) == 0) == (sum(1 for i in 0..h.len if on_segment(p, h[i], h[(i + 1) % h.len])) > 0)
-        assert area2(h) > 0 and area2(h.rev) == -area2(h)
-
-@test
-fn locate_agrees_with_half_planes_on_convex_polygons():
-    for _ in 0..40:
-        let h = convex_hull(random_points(8, 4))
-        if h.len < 3: continue
-        for x in -5..=5:
-            for y in -5..=5:
-                let p = Pt(x, y)
-                let turns = [turn(h[i], h[(i + 1) % h.len], p) for i in 0..h.len]
-                let want = if min(turns) > 0: 1 else: if min(turns) == 0: 0 else: -1
-                assert locate(h, p) == want
-                assert locate(h.rev, p) == want
+fn area_and_locate_on_convex_and_concave_polygons():
+    let poly = [Pt(0, 0), Pt(4, 0), Pt(5, 2), Pt(2, 4), Pt(-1, 2)]
+    assert area2(poly) == 32 and area2(poly.rev) == -32
+    for x in -2..=6:
+        for y in -1..=5:
+            let p = Pt(x, y)
+            let turns = [turn(poly[i], poly[(i + 1) % poly.len], p) for i in 0..poly.len]
+            let want = if min(turns)! > 0: 1 else: if min(turns)! == 0: 0 else: -1
+            assert locate(poly, p) == want
+            assert locate(poly.rev, p) == want
     // a concave polygon: an L shape
     let l = [Pt(0, 0), Pt(4, 0), Pt(4, 2), Pt(2, 2), Pt(2, 4), Pt(0, 4)]
+    assert area2(l) == 24
     assert locate(l, Pt(1, 3)) == 1 and locate(l, Pt(3, 3)) == -1 and locate(l, Pt(2, 3)) == 0
     assert locate(l, Pt(3, 1)) == 1 and locate(l, Pt(5, 2)) == -1 and locate(l, Pt(-1, 0)) == -1

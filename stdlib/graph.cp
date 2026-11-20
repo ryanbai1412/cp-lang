@@ -109,13 +109,7 @@ pub fn bfs<V, N>(next: N, from: List<V>) -> [V]?Int:
 /// Shortest distances for non-negative weights, from `(vertex, starting distance)` pairs.
 /// O((n + m) log m) with a binary heap.
 pub fn dijkstra<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W) -> [V]?W:
-    shortest(next, from, w).dist
-
-/// `dijkstra` that also records how each vertex was reached: `via[v]` is the
-/// vertex before `v` on a shortest path, `none` at a start. See `walk_back`.
-pub fn shortest<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W) -> (dist: [V]?W, via: [V]?V):
     var dist: [V]?W = none
-    var via: [V]?V = none
     var heap = MinHeap<(W, V)>()
     for (s, d) in from:
         if dist[s] == none or d < dist[s]!:
@@ -127,26 +121,12 @@ pub fn shortest<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W) -> (dist: [V
             let nd = d + w(a)
             if dist[a.to] == none or nd < dist[a.to]!:
                 dist[a.to] = nd
-                via[a.to] = u
                 heap.push((nd, a.to))
-    (dist: dist, via: via)
-
-/// The vertices from a start to `t`, following `via` backwards. O(path length).
-pub fn walk_back<V>(via: [V]?V, t: V) -> List<V>:
-    var path = [t]
-    while let p = via[path[path.len - 1]]: path.push(p)
-    path.reverse()
-    path
+    dist
 
 /// A topological order, or `none` if there is a cycle. O(n + m).
 /// For a vertexless closure graph, pass the vertex domain via turbofish: `topo::<V>(u => ...)`.
 pub fn topo<V, N>(next: N) -> ?List<V>:
-    let order = topo_prefix::<V>(next)
-    if order.len == V.K: order else: none
-
-/// As much of a topological order as exists: every vertex that is not on a cycle and not
-/// reachable from one, each after everything that leads to it. O(n + m).
-pub fn topo_prefix<V, N>(next: N) -> List<V>:
     var indeg: [V]Int = 0
     for u in V:
         for a in next.out(u): indeg[a.to] += 1
@@ -158,7 +138,7 @@ pub fn topo_prefix<V, N>(next: N) -> List<V>:
         for a in next.out(u):
             indeg[a.to] -= 1
             if indeg[a.to] == 0: order.push(a.to)
-    order
+    if order.len == V.K: order else: none
 
 /// Strongly connected components. `C` is a fresh domain, numbered so that
 /// every arc goes from a smaller or equal component to a larger or equal
@@ -362,10 +342,7 @@ pub fn biconnected_components<V, N>(next: N) -> List<List<V>>:
                     stack.pop()
     blocks
 
-/// Compressed (virtual / auxiliary) tree induced by `keys` inside `tree`:
-/// contains every vertex in `keys` together with all pairwise LCAs, linked by
-/// directed parent-to-child edges in `tree`. O(k log k + k log n).
-
+/// 2-coloring of an undirected graph: returns a side for each vertex, or `none` if an odd cycle exists. O(n + m).
 pub fn two_color<V, N>(next: N) -> ?[V]Bool:
     var side: [V]?Bool = none
     for root in V:
@@ -385,62 +362,6 @@ pub fn two_color<V, N>(next: N) -> ?[V]Bool:
                 elif side[v]! != next_c:
                     return none
     [V] v => side[v]!
-
-/// Rollback union-find that tracks bipartiteness (whether any odd cycle exists).
-/// `unite` is O(log n), `undo` is O(1). Each `unite` pushes one log record so
-/// `rewind(mark)` restores the exact earlier state, including `is_bipartite`.
-
-/// A minimum spanning forest by Kruskal's algorithm: the edges kept, in increasing weight,
-/// and their total. O(m log m).
-pub fn mst<V, E, W>(edges: [E](u: V, v: V, w: W)) -> (total: W, used: List<E>):
-    var order = [e for e in E]
-    sort(mut order, by: e => edges[e].w)
-    var d = Dsu<V>()
-    var used: List<E> = []
-    var total = W.zero
-    for e in order:
-        if d.unite(edges[e].u, edges[e].v):
-            used.push(e)
-            total = total + edges[e].w
-    (total: total, used: used)
-
-/// A variable or its negation: `Lit(x, true)` is "x holds".
-pub struct Lit<X>(x: X, value: Bool):
-    /// The opposite literal.
-    pub @get fn flip(self) -> Lit<X> = Lit(x, not value)
-
-/// A conjunction of two-literal clauses over the variables `X`.
-/// `solve` is O(variables + clauses).
-pub struct TwoSat<X>:
-    /// Implications between literal nodes: node `2 * i` is "variable i is false", `2 * i + 1` "is true".
-    imp: List<List<Int>>
-
-    pub fn new() -> TwoSat<X>:
-        TwoSat([[] for _ in 0..2 * X.K])
-
-    /// At least one of `a`, `b` holds.
-    pub fn add_or(mut self, a: Lit<X>, b: Lit<X>):
-        imp[lit_node(a.flip)].push(lit_node(b))
-        imp[lit_node(b.flip)].push(lit_node(a))
-
-    /// `a` holds.
-    pub fn must(mut self, a: Lit<X>):
-        self.add_or(a, a)
-
-    /// If `a` holds then `b` holds.
-    pub fn implies(mut self, a: Lit<X>, b: Lit<X>):
-        self.add_or(a.flip, b)
-
-    /// An assignment satisfying every clause, or `none` if there is none.
-    pub fn solve(self) -> ?[X]Bool:
-        domain N = 0..2 * X.K
-        let (C, comp) = scc::<N>(u => [N(v) for v in imp[u.to_idx]])
-        // components are in topological order: a literal is true when it comes after its negation
-        for x in X:
-            if comp[N(2 * x.to_idx)] == comp[N(2 * x.to_idx + 1)]: return none
-        [X] x => comp[N(2 * x.to_idx + 1)] > comp[N(2 * x.to_idx)]
-
-fn lit_node<X>(l: Lit<X>) -> Int = 2 * l.x.to_idx + (if l.value: 1 else: 0)
 
 @test
 fn csr_keeps_edge_ids_and_order():
@@ -489,12 +410,9 @@ fn dijkstra_matches_floyd_warshall():
                         let via = best[i, k]! + best[k, j]!
                         if best[i, j] == none or via < best[i, j]!: best[i, j] = via
         for s in V:
-            let r = shortest(g, from: [(s, 0)], w: a => edges[a.e].w)
+            let dist = dijkstra(g, from: [(s, 0)], w: a => edges[a.e].w)
             for t in V:
-                assert r.dist[t] == best[s, t]
-                if r.dist[t] != none:
-                    let path = walk_back(r.via, t)
-                    assert path[0] == s and path[path.len - 1] == t
+                assert dist[t] == best[s, t]
 
 @test
 fn topo_orders_a_dag_and_rejects_a_cycle():
@@ -506,9 +424,8 @@ fn topo_orders_a_dag_and_rejects_a_cycle():
     for u in V:
         for v in out[u]: assert pos[u] < pos[v]
     assert topo::<V>(v => [v.cyc(1)]) == none
-    // 5 -> 0 -> {1, 2} -> 3 -> 4 with 4 -> 3 added: only what comes before the cycle is ordered
     let stuck = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [3], [0]][v.to_idx]]
-    assert topo_prefix::<V>(v => stuck[v]) == [V(5), V(0), V(1), V(2)]
+    assert topo::<V>(v => stuck[v]) == none
 
 @test
 fn scc_agrees_with_reachability():
@@ -599,50 +516,6 @@ fn two_color_finds_a_colouring_or_an_odd_cycle():
             for e in E: assert side![edges[e].u] != side![edges[e].v]
 
 @test
-fn mst_matches_trying_every_subset():
-    domain V = 0..5
-    domain E = 0..7
-    for _ in 0..30:
-        let edges = [E] e => (u: V.nth(rand(0, 4)), v: V.nth(rand(0, 4)), w: rand(1, 20))
-        let got = mst(edges)
-        var parts = Dsu<V>()
-        for e in E: parts.unite(edges[e].u, edges[e].v)
-        var best: ?Int = none
-        for mask in 0..128:
-            var d = Dsu<V>()
-            var (cost, cyclic) = (0, false)
-            for e in E:
-                if ((mask >> e.to_idx) & 1) == 1:
-                    if not d.unite(edges[e].u, edges[e].v): cyclic = true
-                    cost += edges[e].w
-            if not cyclic and d.components == parts.components: best min= cost
-        assert got.total == best and got.used.len == V.K - parts.components
-
-@test
-fn two_sat_solutions_satisfy_every_clause_and_unsat_is_detected():
-    domain X = 0..5
-    for _ in 0..60:
-        var sat = TwoSat<X>()
-        var clauses: List<(Lit<X>, Lit<X>)> = []
-        for _ in 0..rand(1, 12):
-            let a = Lit(X.nth(rand(0, 4)), rand(0, 1) == 1)
-            let b = Lit(X.nth(rand(0, 4)), rand(0, 1) == 1)
-            sat.add_or(a, b)
-            clauses.push((a, b))
-        var possible = false
-        for mask in 0..32:
-            if all((((mask >> c.0.x.to_idx) & 1) == 1) == c.0.value or (((mask >> c.1.x.to_idx) & 1) == 1) == c.1.value for c in clauses): possible = true
-        let got = sat.solve()
-        assert (got != none) == possible
-        if got != none:
-            for c in clauses: assert got![c.0.x] == c.0.value or got![c.1.x] == c.1.value
-    var s = TwoSat<X>()
-    s.must(Lit(X(0), true))
-    s.implies(Lit(X(0), true), Lit(X(3), false))
-    let fixed = s.solve()!
-    assert fixed[X(0)] and not fixed[X(3)]
-
-@test
 fn vertexless_closure_graphs_with_turbofish():
     domain V = 0..5
     // DAG 0 -> 1 -> 3, 0 -> 2 -> 3, 3 -> 4 via pure closure (no Graph or adj array)
@@ -653,11 +526,9 @@ fn vertexless_closure_graphs_with_turbofish():
         else: []
     )!
     assert order.len == 5 and order[0] == V(0) and order[4] == V(4)
-    // Cyclic closure graph returns none for topo and partial prefix for topo_prefix
+    // Cyclic closure graph returns none for topo
     let cyc = topo::<V>(u => [V((u.to_idx + 1) % 5)])
     assert cyc == none
-    let pref = topo_prefix::<V>(u => if u == V(0): [V(1)] else: if u == V(1): [V(2)] else: if u == V(2): [V(1)] else: [])
-    assert V(0) in pref and V(1) not in pref and V(2) not in pref
     // scc and components also work with vertexless closures via turbofish
     let (SC, scomp) = scc::<V>(u => if u == V(0): [V(1)] else: if u == V(1): [V(0)] else: [])
     assert SC.K == 4 and scomp[V(0)] == scomp[V(1)]

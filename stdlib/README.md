@@ -20,8 +20,8 @@ Every example below is a test in [`tour.cp`](tour.cp), so it runs.
 ## How it runs today
 
 The Rust front end checks the library as it is written: generic structs,
-traits and impls, `use` across modules, strict domain indexing, and the
-exclusivity of lends.
+traits and impls, `use` across modules, strict domain indexing, and
+lexical borrow exclusivity.
 
 ```
 $ cargo run -q -p cpl-cli -- check stdlib/*.cp examples/local-lib/*/*.cp
@@ -65,7 +65,9 @@ an empty range is `none` rather than a sentinel.
 
 - `Monoid(id, op)` for an operation of your own, with its laws.
 - `Action(id, compose, apply, over: op)` for a lazy update:
-  `apply(f, x, len)` is the fold `x` of `len` positions after each took `f`.
+  `compose(new_f, old_f)` applies `old_f` first and then `new_f`;
+  `apply(f, val, span)` returns the folded value `val` of `span` covered
+  leaves after applying `f`.
 - `desc(x)` reverses the order of one part of a key:
   `sort(mut xs, by: p => (desc(p.score), p.name))`, or a max-heap entry
   inside a `MinHeap`.
@@ -80,10 +82,12 @@ associative. The named wrappers of the first design (`Sum`, `Max`, `Min`,
 `both`, `opt`) are gone: the operator is the name.
 
 `Fenwick` is sums: it needs `+` and `-` on `T` and nothing else is passed.
-`SparseTable` takes any associative idempotent operator (`min`, `max`, `gcd`, `&`, `|`, or a closure) and returns `?T` (`none` on an empty range — no monoid identity required).
-`LazySegTree` takes an `Action`; the six that cover most problems are
-ready-made: `AddSum`, `AddMin`, `AddMax`, `AssignSum`, `AssignMin`,
-`AssignMax`.
+`SparseTable` takes any associative idempotent operator (`min`, `max`,
+`gcd`, `&`, `|`, or a closure) and `fold(r)` returns `T` (asserting `r` is
+non-empty). `LazySegTree<D, T>(act, a)` infers its tag type from `act`,
+exposes `all` in O(1) and `update(i, f)` for single-leaf push-modify-pull;
+the six stock actions are `AddSum`, `AddMin`, `AddMax`, `AssignSum`,
+`AssignMin`, and `AssignMax`.
 
 ## Indices know their container
 
@@ -110,8 +114,10 @@ conquer over time: `let snap = d.mark()`, some `unite`s, then
 `d.undo_to(snap)`. `d.groups()` returns every connected component as
 `List<List<V>>`.
 
-`Marks<D>` in `marks.cp` is a generation-stamped visited table over `D`
-with O(1) `.clear()`, replacing per-round `seen.fill(false)`.
+`Marks<D>` in `marks.cp` (opt-in `use std.marks.{Marks}`) is a
+generation-stamped visited table over `D` backed by compact 32-bit stamps
+(`[D]0..=2_000_000_000`, 4 bytes/cell) with O(1) `.clear()` and automatic
+table reset at the 32-bit ceiling.
 
 Coordinate compression gives the values their own domain, so a rank cannot
 be mixed up with a value or with an index of another array:
@@ -120,7 +126,7 @@ be mixed up with a value or with an index of another array:
 let xs = compress(all)                 // sorted, distinct
 var f = Fenwick<xs.D, Int>()           // one slot per distinct value
 f.add(xs.at(val), 1)                   // the rank of a value that is present
-let hit = xs.first_ge(q)                // ?xs.D: the first rank holding a value >= q, for any q
+let hit = xs.first_ge(q)               // ?xs.D: the first rank holding a value >= q, for any q
 assert xs[xs.at(val)] == val
 ```
 
@@ -150,30 +156,34 @@ The binary searches on a tree return boundaries too:
 `t.max_right(i.l, ok)` is the furthest boundary such that the fold from
 `i` up to it still satisfies `ok`.
 
-## Searching and sliding
+## Searching, maps, and reordering
 
-Binary search is three free functions over a range, of `Int`s or of a
+Binary search is two free functions over a range, of `Int`s or of a
 domain, and each says in its name which end it returns:
 
 ```
-let k = bsearch_first(0..n, i => pre[i] >= need)           // ?Int: the first i where it holds
-let t = bsearch_last(1..=10**9, x => feasible(x))          // the last x where it holds
-let (i, w) = bsearch_first_some(0..n, i => witness(i))!    // the first i with a witness, and the witness
+let k = bsearch_first(0..n, i => pre[i] >= need)   // ?Int: the first i where it holds
+let t = bsearch_last(1..=10**9, x => feasible(x))  // the last x where it holds
 ```
 
-A two-pointer loop is `slide_until`: for every left end, the nearest right
-end at which the window is good. It keeps no state; fold what you need
-from prefix sums or a structure.
+Sorted lookup distinguishes sequences from ordered collections by return
+type:
 
-```
-for (lo, hi) in slide_until(0..n, (l, r) => pre[r] - pre[l] >= need):
-    best min= hi - lo
-```
+- Sorted `List<T>` and `[D]T`: `first_ge(x)` / `last_le(x)` return the
+  index (`?Int` / `?D`); `first_ge_by` / `last_le_by` take a key function
+  and return `?Int`.
+- Ordered `Map<K, V>`: `first_ge`, `first_gt`, `last_le`, `last_lt`
+  return `?(K, V)` pairs. Missing-key reads `m[k]` trap (use `m.get(k)`
+  for `?V`); `m[k] = v` inserts or overwrites; compound updates
+  (`m[k] += 1`, `m[k] min= v`, `m[k] max= v`) auto-insert from the
+  operator identity; `m[k] ??= v` lazily inserts and lends mutably;
+  `m.remove(k)` returns the removed `?V`.
 
-`sliding_min(xs, k)` and `sliding_max(xs, k)` are the fixed-width window.
-When the window is driven by your own loop, `MonoDeque` in `deque.cp` is
-the same thing by hand (`push(at, val)`, `drop_before(at)`, `best`), next to a plain
-ring-buffer `Deque<T>` for 0-1 BFS and queues.
+In-place sequence operations in `seq.cp` cover `reverse`, `dedup`,
+`rotate_left(mut a, k)` (signed Euclidean `k`, so negative `k` rotates
+right), `next_permutation`, `prev_permutation`, `runs`, `List.insert`,
+`List.remove`, `List.take`, and `swap_at`. A plain ring-buffer `Deque<T>`
+lives in `deque.cp` for 0-1 BFS and queues.
 
 ## Graphs are functions
 
@@ -203,13 +213,13 @@ the labelling, so the condensed graph is indexed by `C` and cannot be
 confused with the original. Distances are `?W`: an unreachable vertex is
 `none`, not a large number that might take part in arithmetic.
 
-Connectivity is in `graph.cp` as well: `two_edge_components` (bridges),
-`articulation_points`, `biconnected_components`, `two_color`, `mst`,
-`topo_prefix` and `TwoSat`.
+Connectivity is in `graph.cp` as well: `topo` (returning `?List<V>`),
+`two_edge_components` (bridges), `articulation_points`,
+`biconnected_components`, and `two_color`.
 
-`flow.cp` is Dinic's algorithm, plus `MinCostFlow` (successive shortest
-paths with potentials) and `max_weight_matching` for assignment problems. `add` returns the arc, which you later
-ask for its flow:
+`flow.cp` is Dinic's algorithm (`FlowGraph`) plus `max_weight_matching`
+for assignment problems. `add` returns the arc, which you later ask for
+its flow:
 
 ```
 var net = FlowGraph<V>()
@@ -267,8 +277,8 @@ let d = Dir4.from("URDL", ch)!        // or "NESW"
 let q = p.step(d.cw)                  // ?(Row, Col): none off the edge
 ```
 
-`adj8`, `Dir8`, `ray(d)` (the cells up to the edge), `transposed`,
-`flipped_rows`, and `flipped_cols` are there too.
+`adj8`, `ray(d)` (the cells up to the edge), and `transposed` are there
+too.
 
 ## Numbers
 
@@ -277,21 +287,23 @@ so the generic structures take it as they are (and `.try_inv() -> ?Mod<P>`
 handles non-invertible residues cleanly). A modulus read from the
 input is the same type: freeze it under a capitalized name
 (`let P: Int = read()`, then `type Z = Mod<P>`). `Comb<P>()` lazily
-auto-grows factorials on demand across test cases.
+auto-grows factorials on demand with interior mutability, so an immutable
+`let c = Comb<P>()` works across test cases.
 
 ```
 type M = Mod<998244353>
 assert M(2).pow(10) == M(1024) and M(3) / M(3) == M(1) and M(-1) + M(1) == M(0)
-var c = Comb<998244353>()
+let c = Comb<998244353>()
 assert c.choose(10, 3) == M(120)
 
 var f = Fenwick<I, M>()
 ```
 
 `/` and `%` on `Int` are Euclidean: the remainder is never negative, so
-`x % m` is already the residue you want and `Mod(-1)` needs no fix-up.
-`math.cp` has `gcd`, `ext_gcd`, `floor_div`, `ceil_div`, `bit_len`, a linear
-`Sieve`, `factor`, `divisors`, and `crt`.
+`x % m` is already the residue you want, `a / b` already equals
+`floor(a / b)` for `b > 0`, and `Mod(-1)` needs no fix-up.
+`math.cp` has `gcd`, `ext_gcd`, `ceil_div`, `bit_len`, a linear `Sieve`,
+`factor`, `divisors`, and `crt`.
 
 ## Strings and geometry
 
@@ -304,14 +316,14 @@ assert suffix_array("abracadabra") == [10, 7, 0, 3, 5, 8, 1, 4, 6, 9, 2]
 assert [i for i in find_all("abracadabra", "abra")] == [0, 7]
 ```
 
-Geometry is on integer points and every predicate is exact: `turn`,
-`on_segment`, `segments_meet`, `convex_hull`, `area2`, `locate`, and the
-sort key `ByAngle` (which orders directions without `atan2`:
+Geometry is on integer points and every predicate is exact: `Pt`, `dot`,
+`cross`, `turn`, `on_segment`, `segments_meet`, `area2`, `locate`, and
+the sort key `ByAngle` (which orders directions without `atan2`:
 `sort(mut dirs, by: ByAngle)`).
 
 ```
-let square = convex_hull([Pt(0, 0), Pt(2, 0), Pt(1, 1), Pt(2, 2), Pt(0, 2), Pt(1, 0)])
-assert square == [Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)] and area2(square) == 8
+let square = [Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]
+assert area2(square) == 8 and locate(square, Pt(1, 1)) == 1
 ```
 
 ## Bitsets
@@ -358,35 +370,37 @@ is evidence, not a proof.
 
 ## The modules
 
-- `algebra.cp`: `Monoid`, `Action`, `desc`, `Reversible` and their laws.
-- `dsu.cp` (with rollback and `groups`), `marks.cp` (`Marks<D>` O(1)-clear
-  generation table), `fenwick.cp` (1D and 2D), `segtree.cp`,
-  `lazy.cp`, `sparse.cp` (`fold -> ?T`), `heap.cp` (`MinHeap`, `MaxHeap`,
-  with `take` / `absorb`), `deque.cp` (`Deque` with `take`, `MonoDeque`),
-  `bitset.cp`: the data structures.
-- `seq.cp`: `prod`, `scan`, `bsearch_first` / `bsearch_last` / `bsearch_first_some`,
-  `slide_until`, `sliding_min` / `sliding_max`, `min_by` / `max_by`
+- `algebra.cp`: `Monoid`, `Action` (`compose(new_f, old_f)`,
+  `apply(f, val, span)`), `desc`, `Reversible`, and their laws.
+- `dsu.cp` (`Dsu` with `components`, rollback `mark`/`undo_to`, and
+  `groups`), `marks.cp` (opt-in `Marks<D>` with 32-bit stamps and O(1)
+  `clear`), `fenwick.cp` (1D and 2D), `segtree.cp`, `lazy.cp` (with
+  `update(i, f)` and `all`), `sparse.cp` (`fold -> T`, asserts non-empty),
+  `heap.cp` (`MinHeap`, `MaxHeap`, with `take`), `deque.cp` (`Deque` with
+  `take`), `bitset.cp`: the data structures.
+- `seq.cp`: `scan`, `bsearch_first` / `bsearch_last`, `min_by` / `max_by`
   (first-extremum tie-breaking, `none` on empty), `compress` (with range
-  slicing), `chunks`, `prefix_range`, `intersect`, `mirror`, `first_ge_by` /
-  `last_le_by`, ordered `Map` 4-lookups (`first_ge`/`ge`, `first_gt`/`gt`,
-  `last_le`/`le`, `last_lt`/`lt`), `swap_at`, `take` / `absorb`, `dedup`,
-  `rotate_left` / `rotate_right`, `next_permutation`, `runs`.
-- `graph.cp`: `Graph`, `bfs`, `dijkstra`, `shortest` (with the path),
-  `topo` (including vertexless `topo::<V>`), `topo_prefix`, `scc`,
-  `components`, `condense`, `two_edge_components`, `articulation_points`,
-  `biconnected_components`, `two_color`, `mst`, `TwoSat`.
-- `flow.cp`: maximum flow and minimum cut, `MinCostFlow`,
+  slicing), `Range.l` / `Range.r`, `first_ge_by` / `last_le_by` (`?Int`),
+  ordered `Map` 4-lookups (`first_ge`, `first_gt`, `last_le`, `last_lt`
+  returning `?(K, V)`), `swap_at`, `List.take`, `List.insert`,
+  `List.remove`, `reverse`, `dedup`, `rotate_left` (signed Euclidean `k`),
+  `next_permutation`, `prev_permutation`, `runs`.
+- `graph.cp`: `Graph`, `bfs`, `dijkstra`, `topo` (including vertexless
+  `topo::<V>`), `scc`, `components`, `condense`, `two_edge_components`,
+  `articulation_points`, `biconnected_components`, `two_color`.
+- `flow.cp`: `FlowGraph` (Dinic's max flow and min cut) and
   `max_weight_matching`.
 - `tree.cp`: `Rooted` (value-owned `t.Pre`, `t.pos`, `t.reorder`,
-  `Rooted.from_parents`, `Rooted.weighted`, iterative `t.tour`).
-- `grid.cp`: `Dir4`, `Dir8`, `adj4`, `adj8`, `step`, `ray`, `transposed`,
-  `flipped_rows`, `flipped_cols`.
-- `steps.cp`: `Steps`, range additions read back as runs of equal value.
-- `mod.cp`, `math.cp`: modular arithmetic (`try_inv`), auto-growing `Comb<P>()`,
-  number theory (`factor`, `bit_len`, `Sieve`, `divisors`, `crt`).
-- `strings.cp`: Z, prefix function, KMP search, suffix array, LCP,
-  palindromes, generalized `RollingHash` & `HashVal`.
-- `geometry.cp`: integer points.
+  `Rooted.from_parents`, `Rooted.weighted`, iterative `t.tour`,
+  `virtual_tree`).
+- `grid.cp`: `Dir4`, `adj4`, `adj8`, `step`, `ray`, `transposed`.
+- `mod.cp`, `math.cp`: modular arithmetic (`try_inv`), interior-mutable
+  auto-growing `Comb<P>()`, number theory (`gcd`, `ext_gcd`, `ceil_div`,
+  `bit_len`, `Sieve`, `factor`, `divisors`, `crt`).
+- `strings.cp`: Z, prefix function, KMP `find_all`, `period`, suffix
+  array, LCP, generalized `RollingHash` & `HashVal`.
+- `geometry.cp`: integer points (`Pt`, `dot`, `cross`, `turn`, `ByAngle`,
+  `on_segment`, `segments_meet`, `area2`, `locate`).
 - `spec.cp`: structure discovery.
 - `tour.cp`: the examples above, as tests.
 
@@ -398,9 +412,9 @@ where it matters, its memory. `cp.py doc` prints them.
 Every structure here keeps an invariant over its storage: a segment
 tree's inner nodes, a Fenwick tree's partial sums, a heap's order. A
 `lends mut` projection hands out a cell and cannot repair anything after
-the caller writes to it, so these types expose operations (`set`, `add`,
-`apply`) and return values by copy. Where there is no invariant between
-cells, lend them: `examples/local-lib/math/matrix.cp` does, with
+the caller writes to it, so these types expose operations (`set`, `update`,
+`add`, `apply`) and return values by copy. Where there is no invariant
+between cells, lend them: `examples/local-lib/math/matrix.cp` does, with
 `m.at(i, j) += x`.
 
 ## What is deliberately not here
@@ -408,11 +422,15 @@ cells, lend them: `examples/local-lib/math/matrix.cp` does, with
 The standard library is what most contests need most of the time. The
 structures a problem needs once a season live in
 [`examples/local-lib/`](../examples/local-lib/), written on top of this
-library the way your own would be: `Rope`, `RangeKth`, `LiChao`,
+library the way your own would be: `MonoDeque`, `Steps`, `TwoSat`, `Mat`,
+`palindromes`, `shortest` / `walk_back`, `mst`, `convex_hull`, `Dir8`,
+`MinCostFlow`, `Rope`, `RangeKth`, `LiChao`, `LiChaoArena`, `Tri`,
 `PotentialDsu`, `BipartiteDsu`, `Cover`, `TwoStackFold`, `mo_order`,
-`XorBasis`, `Frac`, `Hom`, `Powers`, NTT, `sos_sub` / `sos_sup`, `Mat`,
-`monotone_minima` / `dnc_layer`, `knuth`, `fold_others`, `borders` /
-`overlaps`, `Trie`, `SuffixAutomaton`, `Hash2D`.
+`XorBasis`, `Interner`, `RollbackArray`, `Frac`, `Fixed`, `Congruence`,
+`Hom`, `Powers`, NTT, `sos_sub` / `sos_sup`, `monotone_minima` /
+`dnc_layer`, `knuth`, `fold_others`, `order_stats`, `borders` /
+`overlaps`, `Trie`, `SuffixAutomaton`, `Hash2D`, `Functional`,
+`Centroids`, `KruskalTree`, `MinCount`.
 
 Not written yet, in either place: ordered sets and maps as library code,
 floating-point geometry, and a real-valued `bsearch`.

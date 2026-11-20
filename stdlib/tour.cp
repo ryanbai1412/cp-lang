@@ -10,7 +10,7 @@ use std.flow.{FlowGraph}
 use std.tree.{Rooted}
 use std.mod.{Mod, Comb}
 use std.strings.{z_function, suffix_array, find_all}
-use std.geometry.{Pt, convex_hull, area2}
+use std.geometry.{Pt, area2, locate}
 use std.bitset.{Bitset}
 use std.spec.{poly_degree, poly_at, guess_at, dnc_break, convexity_break}
 
@@ -52,7 +52,7 @@ fn ranges_and_boundaries():
     lz.apply(I(4)..=I(5), 1)
     assert lz.fold(I(0)..=I(5)) == 11 and lz.fold(I(0)..=I(1)) == 0
     let rmq = SparseTable<I, Int>(min, [I] i => [5, 2, 7, 1, 8, 3][i.to_idx])
-    assert rmq.fold(I(0)..=I(2)) == 2 and rmq.fold(I(4)..=I(5)) == 3 and rmq.fold(I(2)..I(2)) == none
+    assert rmq.fold(I(0)..=I(2)) == 2 and rmq.fold(I(4)..=I(5)) == 3 and rmq.fold(I(3)..=I(3)) == 1
 
 @test
 fn graphs_are_functions():
@@ -103,7 +103,7 @@ fn paths_on_trees():
 fn numbers_modulo_a_prime():
     type M = Mod<998244353>
     assert M(2).pow(10) == M(1024) and M(3) / M(3) == M(1) and M(-1) + M(1) == M(0)
-    var c = Comb<998244353>()
+    let c = Comb<998244353>()
     assert c.choose(10, 3) == M(120)
     // a mod number is a number: the generic structures take it as they are
     domain I = 0..4
@@ -117,8 +117,8 @@ fn strings_and_points():
     assert z_function("abacaba") == [7, 0, 1, 0, 3, 0, 1]
     assert suffix_array("abracadabra") == [10, 7, 0, 3, 5, 8, 1, 4, 6, 9, 2]
     assert [i for i in find_all("abracadabra", "abra")] == [0, 7]
-    let square = convex_hull([Pt(0, 0), Pt(2, 0), Pt(1, 1), Pt(2, 2), Pt(0, 2), Pt(1, 0)])
-    assert square == [Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)] and area2(square) == 8
+    let square = [Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]
+    assert area2(square) == 8 and locate(square, Pt(1, 1)) == 1 and locate(square, Pt(3, 1)) == -1
 
 @test
 fn sets_of_indices():
@@ -156,3 +156,4 @@ fn a_fold_on_a_missing_map_key_starts_from_the_identity():
     m[7] *= 3
     m[7] *= 3
     assert m[3] == -5 and m[5] == 2 and m[6] == 2 and m[7] == 9
+    assert m.remove(5) == 2 and m.remove(5) == none
