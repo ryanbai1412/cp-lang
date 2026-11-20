@@ -61,7 +61,7 @@ impl<'a> Checker<'a> {
         args: &[Arg],
         call: &Expr,
     ) -> Ty {
-        if let Some(def) = self.env.global(name) {
+        if let Some(def) = self.env.type_def(name) {
             return match &*def {
                 Def::Struct {
                     generics,
@@ -185,6 +185,7 @@ impl<'a> Checker<'a> {
                 continue;
             };
             supplied.push(&param.name);
+            let arg_ty = self.narrowed(&arg_ty, &param.ty);
             param.ty.unify(&arg_ty, bindings);
             let want = param.ty.subst(bindings);
             self.expect_fits(&arg_ty, &want, &arg.value, |c, got, want| {

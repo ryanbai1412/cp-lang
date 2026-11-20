@@ -42,6 +42,7 @@ pub fn value(name: &str) -> Option<Ty> {
         "popcount" | "ctz" | "bit_width" | "bit_ceil" | "isqrt" => int_fn(1),
         "sqrt" | "atan2" => Ty::Unknown,
         _ if TYPE_NAMES.contains(&name) => Ty::TypeName(name.into()),
+        _ if PROTOTYPE_NAMES.contains(&name) => Ty::Unknown,
         _ => return None,
     })
 }
@@ -60,9 +61,19 @@ pub fn ty(name: &str) -> Option<Ty> {
             name: name.into(),
             args: Vec::new(),
         },
+        _ if PROTOTYPE_NAMES.contains(&name) => Ty::Unknown,
         _ => return None,
     })
 }
+
+/// Names the prototype compiler (`proto/cpc`) builds in, which the ports
+/// in `proto/ports/` were written against before `std` existed as cp
+/// source. They are accepted without a type so those ports still check;
+/// each one goes away when the ports that use it import its `std` module.
+const PROTOTYPE_NAMES: &[&str] = &[
+    "gcd", "lcm", "product", "compress", "inf", "ask", "dijkstra", "Rooted", "SegTree", "StrHash",
+    "MinHeap", "HashMap", "AddMax", "WithMin", "Perm", "Subset", "Mod",
+];
 
 /// A prelude trait: what `T: Ord` and `impl Add for V` may name.
 pub fn is_trait(name: &str) -> bool {

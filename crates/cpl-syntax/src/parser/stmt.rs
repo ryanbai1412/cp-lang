@@ -379,10 +379,11 @@ impl<'a> Parser<'a> {
             self.bump();
             let pat = self.pattern();
             self.expect(T::Eq, "`=` after the pattern in `if let`");
-            return Cond::Let {
-                pat,
-                value: self.expr(),
-            };
+            // The value ends before `and`, which adds a condition on
+            // what the pattern bound.
+            let value = self.not();
+            let and = self.eat(T::And).then(|| self.and());
+            return Cond::Let { pat, value, and };
         }
         if self.at(T::Const) {
             self.bump();

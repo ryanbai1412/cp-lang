@@ -9,7 +9,7 @@ impl<'a> Checker<'a> {
     pub(crate) fn resolve_type(&mut self, ty: &ast::Type) -> Ty {
         match &ty.kind {
             TypeKind::Named { name, args } => {
-                let args: Vec<Ty> = args.iter().map(|a| self.resolve_type(a)).collect();
+                let args: Vec<Ty> = args.iter().map(|a| self.type_arg(a)).collect();
                 self.named_type(&name.text, name.span, args)
             }
             TypeKind::Array { index, elem } => Ty::Array {
@@ -37,12 +37,35 @@ impl<'a> Checker<'a> {
             TypeKind::Tuple(items) => {
                 Ty::Tuple(items.iter().map(|i| self.resolve_type(i)).collect())
             }
-            TypeKind::Record(fields) => Ty::Record(
-                fields
+            TypeKind::Record(fields) => {
+                // `(domain C, comp: [V]C)`: the fresh domain is in scope
+                // for the fields after it.
+                self.push_scope();
+                let fields = fields
                     .iter()
-                    .map(|(name, ty)| (name.text.clone(), self.resolve_type(ty)))
-                    .collect(),
-            ),
+                    .map(|(name, ty)| {
+                        let field_ty = match &ty.kind {
+                            TypeKind::NewDomain => {
+                                let domain = Ty::Domain(name.text.clone());
+                                self.scopes.last_mut().unwrap().insert(
+                                    name.text.clone(),
+                                    Local {
+                                        ty: domain.clone(),
+                                        mutable: false,
+                                        span: name.span,
+                                        keyword: "domain",
+                                    },
+                                );
+                                domain
+                            }
+                            _ => self.resolve_type(ty),
+                        };
+                        (name.text.clone(), field_ty)
+                    })
+                    .collect();
+                self.pop_scope();
+                Ty::Record(fields)
+            }
             TypeKind::Range { lo, hi, inclusive } => {
                 self.infer(lo);
                 self.infer(hi);
@@ -80,6 +103,27 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// An argument of a generic type: a type, or the name of a number
+    /// (`Mod<P>` with `const P = 998244353`).
+    fn type_arg(&mut self, arg: &ast::Type) -> Ty {
+        if let TypeKind::Named { name, args } = &arg.kind {
+            if args.is_empty() {
+                let value = match self.local(&name.text) {
+                    Some(local) => Some(local.ty.clone()),
+                    None => match self.env.global(&name.text).as_deref() {
+                        Some(Def::Value { ty, .. }) => Some(ty.clone()),
+                        _ => None,
+                    },
+                };
+                if value.is_some_and(|ty| ty.is_int()) {
+                    self.name_ty(&name.text, name.span);
+                    return Ty::Unknown;
+                }
+            }
+        }
+        self.resolve_type(arg)
+    }
+
     fn named_type(&mut self, name: &str, span: Span, args: Vec<Ty>) -> Ty {
         if name == "Self" {
             return self.self_ty.clone().unwrap_or(Ty::Unknown);
@@ -91,6 +135,17 @@ impl<'a> Checker<'a> {
         // `Rooted<V>.Pre` is a domain the struct declares.
         if let Some((head, member)) = name.split_once('.') {
             let head_span = Span::new(span.start, span.start + head.len() as u32);
+            // `treap.Treap<Int>` after `use lib.treap`.
+            if self.local(head).is_none() && self.env.is_module(head) {
+                return match self.env.global(name) {
+                    Some(def) => self.def_type(&def, member, span, args),
+                    None => {
+                        let message = format!("module `{head}` has no public type `{member}`");
+                        self.error(codes::UNKNOWN_TYPE, span, message);
+                        Ty::Error
+                    }
+                };
+            }
             return match self.named_type(head, head_span, Vec::new()) {
                 Ty::Pos(domain) => Ty::Pos(format!("{domain}.{member}")),
                 Ty::Named { name: owner, .. } => match self.owned_member(&owner, member) {
@@ -108,6 +163,10 @@ impl<'a> Checker<'a> {
             };
         }
         if let Some(local) = self.local(name) {
+            // `type Len = S.bounds` inside a fn.
+            if local.keyword == "type" {
+                return local.ty.clone();
+            }
             if let Ty::Domain(domain) = &local.ty {
                 return Ty::Pos(domain.clone());
             }
@@ -125,23 +184,7 @@ impl<'a> Checker<'a> {
                 keyword: "type",
                 decl: None,
             });
-            return match &*def {
-                Def::Domain(_) => Ty::Pos(name.to_string()),
-                Def::Alias { ty } => ty.clone(),
-                Def::Struct { .. } | Def::Enum { .. } => Ty::Named {
-                    name: name.to_string(),
-                    args,
-                },
-                Def::Trait { .. } => Ty::Unknown,
-                Def::Value { .. } | Def::Fn { .. } | Def::Variant { .. } | Def::Impl { .. } => {
-                    self.error(
-                        codes::UNKNOWN_TYPE,
-                        span,
-                        format!("`{name}` is a value, not a type"),
-                    );
-                    Ty::Error
-                }
-            };
+            return self.def_type(&def, name, span, args);
         }
         if let Some(ty) = prelude::ty(name) {
             return match ty {
@@ -251,6 +294,8 @@ impl<'a> Checker<'a> {
             .collect();
         let ret = match (&f.ret, &f.body) {
             (Some(ty), _) => self.resolve_type(ty),
+            // A projection's caller works with the value it lends.
+            (None, _) if f.lends.is_some() => self.resolve_type(&f.lends.as_ref().unwrap().ty),
             (None, ast::FnBody::Expr(_)) => Ty::Unknown,
             (None, _) => Ty::Unit,
         };
@@ -262,10 +307,36 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// The type a definition gives its name when the name is used as a type.
+    fn def_type(&mut self, def: &Def, name: &str, span: Span, args: Vec<Ty>) -> Ty {
+        match def {
+            Def::Domain(_) => Ty::Pos(name.to_string()),
+            // `let (C, comp) = scc(..)`: a domain a fn made and returned.
+            Def::Value {
+                ty: Ty::Domain(domain),
+                ..
+            } => Ty::Pos(domain.clone()),
+            Def::Alias { ty } => ty.clone(),
+            Def::Struct { .. } | Def::Enum { .. } => Ty::Named {
+                name: name.to_string(),
+                args,
+            },
+            Def::Trait { .. } => Ty::Unknown,
+            Def::Value { .. } | Def::Fn { .. } | Def::Variant { .. } | Def::Impl { .. } => {
+                self.error(
+                    codes::UNKNOWN_TYPE,
+                    span,
+                    format!("`{name}` is a value, not a type"),
+                );
+                Ty::Error
+            }
+        }
+    }
+
     /// A domain or constant that the struct `owner`, or an impl for it,
     /// declares in its body.
     pub(crate) fn owned_member(&mut self, owner: &str, member: &str) -> Option<Ty> {
-        if let Some(Def::Struct { owned, .. }) = self.env.global(owner).as_deref() {
+        if let Some(Def::Struct { owned, .. }) = self.env.type_def(owner).as_deref() {
             if let Some((_, ty)) = owned.iter().find(|(name, _)| name == member) {
                 return Some(ty.clone());
             }
@@ -310,27 +381,27 @@ impl<'a> Checker<'a> {
                 ast::StmtKind::Const { name, ty, init, .. } => {
                     (name, self.declared_or_inferred(ty, init), "const")
                 }
-                ast::StmtKind::Let {
-                    pat:
-                        ast::Pattern {
-                            kind: ast::PatternKind::Name(text),
-                            span,
+                ast::StmtKind::Let { pat, ty, init, .. } => {
+                    // `let K = n`: a capitalized name parses as a pattern
+                    // that could be an enum variant; here it is the name.
+                    let text = match &pat.kind {
+                        ast::PatternKind::Name(text) => text.as_str(),
+                        _ => match domain_binding(pat) {
+                            Some(text) => text,
+                            None => continue,
                         },
-                    ty,
-                    init,
-                    ..
-                } => {
+                    };
                     let ty = self.declared_or_inferred(ty, init);
                     self.scopes.last_mut().unwrap().insert(
-                        text.clone(),
+                        text.to_string(),
                         Local {
                             ty: ty.clone(),
                             mutable: false,
-                            span: *span,
+                            span: pat.span,
                             keyword: "let",
                         },
                     );
-                    owned.push((text.clone(), ty));
+                    owned.push((text.to_string(), ty));
                     continue;
                 }
                 _ => continue,
@@ -427,6 +498,7 @@ impl<'a> Checker<'a> {
                             ty,
                             mutable: *mutable,
                             keyword,
+                            generics: Vec::new(),
                         },
                     ))
                 });
@@ -466,16 +538,38 @@ impl<'a> Checker<'a> {
                         ty,
                         mutable: false,
                         keyword: "const",
+                        generics: generics.iter().map(|g| g.text.clone()).collect(),
                     },
                 )]
             }
-            S::Fn(f) => vec![(
-                f.name.text.clone(),
-                Def::Fn {
-                    ty: self.fn_sig(f, None),
-                    generics: f.generics.iter().map(|g| g.text.clone()).collect(),
-                },
-            )],
+            S::Fn(f) => {
+                let ty = self.fn_sig(f, None);
+                let mut out = Vec::new();
+                // `@memo(into: dp)`: the answers, indexed by the arguments,
+                // `none` where the fn has not been asked yet.
+                if let (Some((table, _)), Ty::Fn { params, ret }) = (memo_table(stmt), &ty) {
+                    out.push((
+                        table.to_string(),
+                        Def::Value {
+                            ty: Ty::Array {
+                                index: params.iter().map(|p| p.ty.clone()).collect(),
+                                elem: Box::new(Ty::Optional(Box::new(ret.widen()))),
+                            },
+                            mutable: true,
+                            keyword: "var",
+                            generics: Vec::new(),
+                        },
+                    ));
+                }
+                out.push((
+                    f.name.text.clone(),
+                    Def::Fn {
+                        ty,
+                        generics: f.generics.iter().map(|g| g.text.clone()).collect(),
+                    },
+                ));
+                out
+            }
             S::Struct(s) => {
                 let generics: Vec<String> = s.generics.iter().map(|g| g.text.clone()).collect();
                 let self_ty = Ty::Named {
@@ -683,6 +777,20 @@ impl<'a> Checker<'a> {
 
 /// Calls `f` with each name a pattern binds and the type it gets from a
 /// value of type `ty`.
+/// The table a `@memo(into: dp)` fn keeps its answers in: its name and
+/// where the name is written.
+pub(crate) fn memo_table(stmt: &ast::Stmt) -> Option<(&str, Span)> {
+    let memo = stmt.decorators.iter().find(|d| d.name.text == "memo")?;
+    memo.args
+        .iter()
+        .find_map(|arg| match (&arg.name, &arg.value.kind) {
+            (Some(label), ExprKind::Name(table)) if label.text == "into" => {
+                Some((table.as_str(), arg.value.span))
+            }
+            _ => None,
+        })
+}
+
 /// The name a type starts with: `Mod` for `Mod<P>`.
 pub(crate) fn type_head(ty: &ast::Type) -> Option<String> {
     match &ty.kind {
@@ -703,10 +811,28 @@ pub(crate) fn pattern_types(pat: &ast::Pattern, ty: &Ty, f: &mut dyn FnMut(&str,
                     Ty::Error => Ty::Error,
                     _ => Ty::Unknown,
                 };
-                pattern_types(item, &item_ty, f);
+                match domain_binding(item) {
+                    // `let (C, comp) = scc(..)`: the domain the fn made.
+                    // Out of a tuple this checker can't see into, the
+                    // capitalized name is still a domain.
+                    Some(name) if item_ty == Ty::Unknown => f(name, Ty::Domain(name.to_string())),
+                    Some(name) => f(name, item_ty),
+                    None => pattern_types(item, &item_ty, f),
+                }
             }
         }
         _ => {}
+    }
+}
+
+/// A capitalized name alone inside a tuple pattern binds a domain:
+/// `let (C, comp) = scc(..)`.
+pub(crate) fn domain_binding(pat: &ast::Pattern) -> Option<&str> {
+    match &pat.kind {
+        ast::PatternKind::Variant { path, args } if path.len() == 1 && args.is_empty() => {
+            Some(&path[0].text)
+        }
+        _ => None,
     }
 }
 

@@ -97,7 +97,7 @@ impl<'a> Parser<'a> {
         lhs
     }
 
-    fn and(&mut self) -> Expr {
+    pub(super) fn and(&mut self) -> Expr {
         let start = self.start();
         let mut lhs = self.not();
         while self.at(T::And) {
@@ -106,7 +106,7 @@ impl<'a> Parser<'a> {
         lhs
     }
 
-    fn not(&mut self) -> Expr {
+    pub(super) fn not(&mut self) -> Expr {
         if self.at(T::Not) {
             let start = self.start();
             self.bump();
@@ -644,6 +644,7 @@ impl<'a> Parser<'a> {
                     Cond::Let {
                         pat,
                         value: self.coalesce(),
+                        and: None,
                     }
                 } else {
                     Cond::Expr(self.coalesce())

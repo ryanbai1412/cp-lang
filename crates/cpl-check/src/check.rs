@@ -10,7 +10,7 @@ mod expr;
 mod stmt;
 mod types;
 
-pub(crate) use types::{own_domains, type_head};
+pub(crate) use types::{domain_binding, memo_table, own_domains, type_head};
 
 use crate::def::Def;
 use crate::prelude;
@@ -24,6 +24,11 @@ use std::sync::Arc;
 pub(crate) trait Env {
     /// The definition of a top-level name.
     fn global(&mut self, name: &str) -> Option<Arc<Def>>;
+    /// The struct or enum behind the type of a value, which may come from
+    /// a module this file reaches without importing the type by name.
+    fn type_def(&mut self, name: &str) -> Option<Arc<Def>>;
+    /// True if `alias` names a module imported whole: `use lib.treap`.
+    fn is_module(&mut self, alias: &str) -> bool;
     /// Every impl for the type `target`, with the trait it implements
     /// (`None` for `impl Target:`).
     fn impls(&mut self, target: &str) -> Vec<(Option<String>, Arc<Def>)>;
@@ -196,6 +201,13 @@ impl<'a> Checker<'a> {
     fn name_ty(&mut self, name: &str, span: Span) -> Ty {
         if let Some(local) = self.local(name) {
             let (ty, keyword, decl) = (local.ty.clone(), local.keyword, local.span);
+            // A local type alias used as a value names the domain or the
+            // constructor: `Len.first`.
+            let ty = match ty {
+                Ty::Pos(domain) if keyword == "type" => Ty::Domain(domain),
+                Ty::Named { name, .. } if keyword == "type" => Ty::TypeName(name),
+                ty => ty,
+            };
             self.hovers.push(HoverEntry {
                 span,
                 name: name.to_string(),
@@ -205,11 +217,16 @@ impl<'a> Checker<'a> {
             });
             return ty;
         }
+        // A type parameter: `T.zero`, `V.K`, or the `P` of `Mod<P>` as a number.
         if self.generics.iter().any(|g| g == name) {
-            return Ty::TypeName(name.to_string());
+            return Ty::Param(name.to_string());
         }
         if let Some(def) = self.env.global(name) {
-            let ty = def.value_ty(name);
+            let ty = match &*def {
+                // `Sum` without `<Int>`: nothing says what `T` is.
+                Def::Value { ty, generics, .. } if !generics.is_empty() => self.settle(ty),
+                def => def.value_ty(name),
+            };
             self.refs.push(GlobalRef {
                 span,
                 name: name.to_string(),

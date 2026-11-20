@@ -24,6 +24,7 @@
 
 use crate::check::{Checker, Env, GlobalRef, HoverEntry};
 use crate::def::{hash_str, impl_name, impl_parts, DeclKind, Def};
+use crate::modules::{FsLoader, Loader};
 use cpl_diag::{codes, Diagnostic, LineIndex, Sink, Span};
 use cpl_syntax::ast::{self, StmtKind};
 use cpl_syntax::ParsedItem;
@@ -60,6 +61,8 @@ pub struct Decl {
     pub name: String,
     pub span: Span,
     pub kind: DeclKind,
+    /// Declared with `pub`: other modules may import it.
+    pub public: bool,
 }
 
 /// The result of checking one item. Spans are relative to the item.
@@ -84,7 +87,37 @@ pub(crate) struct Scope {
     /// Name to the index of the item that defines it.
     pub names: HashMap<String, usize>,
     pub names_fp: u64,
+    /// True if a `use` names a module that could not be loaded: a name
+    /// that is not found may have come from it, so it is not reported.
     pub has_imports: bool,
+    /// Changes when anything this file's imports can reach changes shape.
+    pub imports_fp: u64,
+    /// Names brought in by `use`, by the name this file calls them.
+    pub imports: HashMap<String, Import>,
+    /// Modules imported whole (`use lib.treap`, `use lib.flow as fl`), by
+    /// the name this file calls them: their public names are `treap.X`.
+    pub aliases: HashMap<String, usize>,
+    /// Every module this file reaches through `use`, its own imports
+    /// first and theirs after. A type that comes back from an imported fn
+    /// is looked up here even when this file never names it.
+    pub modules: Vec<Module>,
+}
+
+/// One name of `use std.algebra.{Monoid}`.
+#[derive(Debug)]
+pub(crate) struct Import {
+    /// Index into [`Scope::modules`].
+    pub module: usize,
+    /// What the module calls it.
+    pub name: String,
+}
+
+#[derive(Debug)]
+pub(crate) struct Module {
+    /// `std.algebra`.
+    pub name: String,
+    pub path: String,
+    pub analysis: Arc<Analysis>,
 }
 
 /// Everything known about one revision of a file.
@@ -115,6 +148,20 @@ impl Analysis {
     }
 
     /// Where a top-level name is declared, in file positions.
+    /// The names other modules may import, sorted.
+    pub(crate) fn public_names(&self) -> Vec<String> {
+        let mut names: Vec<String> = self
+            .items
+            .iter()
+            .flat_map(|item| &item.syntax.decls)
+            .filter(|d| d.public && d.kind != DeclKind::Impl)
+            .map(|d| d.name.clone())
+            .collect();
+        names.sort();
+        names.dedup();
+        names
+    }
+
     pub(crate) fn decl_span(&self, name: &str) -> Option<Span> {
         let item = &self.items[*self.scope.names.get(name)?];
         let decl = item.syntax.decls.iter().find(|d| d.name == name)?;
@@ -126,6 +173,9 @@ struct FileState {
     id: u32,
     text: Arc<str>,
     analysis: Option<Arc<Analysis>>,
+    /// Read by the module loader, not given by `set_file`: the loader may
+    /// replace its text.
+    loaded: bool,
 }
 
 struct SyntaxMemo {
@@ -151,11 +201,12 @@ struct CheckMemo {
 /// Dependency keys that are not top-level names.
 const DEP_NAMES: &str = "\0names";
 const DEP_IMPORTS: &str = "\0imports";
+/// Prefix of the dependency on what a type's name resolves to.
+const DEP_TYPE: &str = "\0type:";
 
 /// Memos unused for this many revisions are dropped.
 const KEEP_REVISIONS: u64 = 32;
 
-#[derive(Default)]
 pub struct Database {
     files: HashMap<String, FileState>,
     next_file: u32,
@@ -164,21 +215,57 @@ pub struct Database {
     defs: HashMap<(u32, u64, String), DefMemo>,
     checks: HashMap<(u32, u64), CheckMemo>,
     stats: Stats,
+    loader: Box<dyn Loader>,
+    /// The files being analyzed, outermost first: a module that imports
+    /// one of them is a cycle.
+    analyzing: Vec<String>,
+}
+
+impl Default for Database {
+    fn default() -> Database {
+        Database::with_loader(Box::new(FsLoader))
+    }
 }
 
 impl Database {
+    /// A database that reads the modules its files import from disk.
     pub fn new() -> Database {
         Database::default()
     }
 
+    /// A database that asks `loader` for the modules its files import.
+    pub fn with_loader(loader: Box<dyn Loader>) -> Database {
+        Database {
+            files: HashMap::new(),
+            next_file: 0,
+            revision: 0,
+            syntax: HashMap::new(),
+            defs: HashMap::new(),
+            checks: HashMap::new(),
+            stats: Stats::default(),
+            loader,
+            analyzing: Vec::new(),
+        }
+    }
+
     /// Sets the text of a file. Nothing is computed until it is asked for.
     pub fn set_file(&mut self, path: &str, text: impl Into<Arc<str>>) {
-        let text = text.into();
+        self.store(path, text.into(), false);
+    }
+
+    fn store(&mut self, path: &str, text: Arc<str>, loaded: bool) {
         match self.files.get_mut(path) {
-            Some(file) if file.text == text => {}
+            // What the editor holds wins over what is on disk.
+            Some(file) if loaded && !file.loaded => {}
+            Some(file) if file.text == text => file.loaded &= loaded,
             Some(file) => {
                 file.text = text;
-                file.analysis = None;
+                file.loaded = loaded;
+                // Any file may import this one, and re-analyzing an
+                // unchanged file is a walk over memoized items.
+                for file in self.files.values_mut() {
+                    file.analysis = None;
+                }
             }
             None => {
                 let id = self.next_file;
@@ -189,6 +276,7 @@ impl Database {
                         id,
                         text,
                         analysis: None,
+                        loaded,
                     },
                 );
             }
@@ -272,9 +360,36 @@ impl Database {
         // The file's scope: the first declaration of a name wins, and later
         // ones are reported below.
         let mut scope = Scope::default();
+        let mut import_diags: Vec<(usize, Diagnostic)> = Vec::new();
+        self.analyzing.push(path.to_string());
+        for (index, item) in items.iter().enumerate() {
+            for stmt in item.parsed.stmts.iter().filter(|_| item.has_use) {
+                if let StmtKind::Use {
+                    path: module,
+                    names,
+                    glob,
+                    alias,
+                } = &stmt.kind
+                {
+                    let mut diags = Vec::new();
+                    self.import(
+                        path,
+                        module,
+                        names,
+                        *glob,
+                        alias.as_ref(),
+                        &mut scope,
+                        &mut diags,
+                    );
+                    import_diags.extend(diags.into_iter().map(|d| (index, d)));
+                }
+            }
+        }
+        self.analyzing.pop();
+        // Loading the modules analyzed them, which moved the revision on.
+        scope.imports_fp = scope.fingerprint_imports();
         let mut duplicates: Vec<(usize, Decl)> = Vec::new();
         for (index, item) in items.iter().enumerate() {
-            scope.has_imports |= item.has_use;
             for decl in &item.decls {
                 match scope.names.get(&decl.name) {
                     None => {
@@ -318,6 +433,9 @@ impl Database {
             for diag in item.parsed.diagnostics.iter().chain(&check.diagnostics) {
                 sink.push(diag.clone().shift(offset));
             }
+        }
+        for (index, diag) in import_diags {
+            sink.push(diag.shift(ranges[index].span.start));
         }
         for (index, decl) in duplicates {
             let offset = ranges[index].span.start;
@@ -410,6 +528,134 @@ impl Database {
     }
 
     /// The definition of a top-level name in an analyzed file.
+    /// Loads what one `use` names into `scope`.
+    #[allow(clippy::too_many_arguments)]
+    fn import(
+        &mut self,
+        from: &str,
+        module: &[ast::Name],
+        names: &[ast::Name],
+        glob: bool,
+        alias: Option<&ast::Name>,
+        scope: &mut Scope,
+        diags: &mut Vec<Diagnostic>,
+    ) {
+        let (Some(first), Some(last)) = (module.first(), module.last()) else {
+            return;
+        };
+        let whole = first.span.to(last.span);
+        let parts: Vec<String> = module.iter().map(|n| n.text.clone()).collect();
+        let mut single = None;
+        let mut found = self.load_module(from, &parts, whole, diags);
+        // `use std.math.gcd`: the last name is a name in the module before it.
+        if found.is_none() && diags.is_empty() && names.is_empty() && !glob && parts.len() > 2 {
+            found = self.load_module(from, &parts[..parts.len() - 1], whole, diags);
+            single = found.as_ref().map(|_| last);
+        }
+        let Some(loaded) = found else {
+            if diags.is_empty() {
+                let dotted = parts.join(".");
+                let help = match first.text.as_str() {
+                    "std" => "the standard library's modules are the files of `stdlib/`".to_string(),
+                    lib => format!(
+                        "`{lib}` is a library: a folder with a `lib.toml` that says `name = \"{lib}\"`, at or above this file"
+                    ),
+                };
+                diags.push(
+                    Diagnostic::error(
+                        codes::UNRESOLVED_MODULE,
+                        whole,
+                        format!("no module `{dotted}`"),
+                    )
+                    .with_help(help),
+                );
+            }
+            scope.has_imports = true;
+            return;
+        };
+        let index = scope.add_module(loaded);
+        let module_name = scope.modules[index].name.clone();
+        let analysis = scope.modules[index].analysis.clone();
+        let decl_of = |name: &str| {
+            let item = &analysis.items[*analysis.scope.names.get(name)?];
+            item.syntax.decls.iter().find(|d| d.name == name)
+        };
+        let listed: Vec<&ast::Name> = single.into_iter().chain(names).collect();
+        for name in listed {
+            match decl_of(&name.text) {
+                Some(decl) if decl.public => {
+                    scope.imports.insert(
+                        name.text.clone(),
+                        Import {
+                            module: index,
+                            name: name.text.clone(),
+                        },
+                    );
+                }
+                Some(_) => diags.push(
+                    Diagnostic::error(
+                        codes::PRIVATE_NAME,
+                        name.span,
+                        format!("`{}` is private to `{module_name}`", name.text),
+                    )
+                    .with_help(format!("declare it `pub` in `{module_name}` to import it")),
+                ),
+                None => {
+                    let public = analysis.public_names();
+                    let mut diag = Diagnostic::error(
+                        codes::UNRESOLVED_NAME,
+                        name.span,
+                        format!("`{module_name}` has no `{}`", name.text),
+                    );
+                    if let Some(s) =
+                        crate::check::closest(&name.text, public.iter().map(String::as_str))
+                    {
+                        diag = diag.with_help(format!("did you mean `{s}`?"));
+                    }
+                    diags.push(diag);
+                }
+            }
+        }
+        if glob {
+            for name in analysis.public_names() {
+                scope.imports.entry(name.clone()).or_insert(Import {
+                    module: index,
+                    name,
+                });
+            }
+        } else if names.is_empty() && single.is_none() {
+            let local = alias.map_or(&last.text, |a| &a.text);
+            scope.aliases.insert(local.clone(), index);
+        }
+    }
+
+    /// Finds, reads and analyzes the module `parts`, imported by `from`.
+    fn load_module(
+        &mut self,
+        from: &str,
+        parts: &[String],
+        span: Span,
+        diags: &mut Vec<Diagnostic>,
+    ) -> Option<Module> {
+        let (path, text) = self.loader.load(from, parts)?;
+        let name = parts.join(".");
+        if self.analyzing.contains(&path) {
+            let message = format!("`{name}` imports this file, so they import each other");
+            diags.push(
+                Diagnostic::error(codes::UNRESOLVED_MODULE, span, message)
+                    .with_help("move what both need into a third module"),
+            );
+            return None;
+        }
+        self.store(&path, text.into(), true);
+        let analysis = self.analyze(&path)?;
+        Some(Module {
+            name,
+            path,
+            analysis,
+        })
+    }
+
     pub(crate) fn lookup(
         &mut self,
         path: &str,
@@ -453,6 +699,55 @@ impl Database {
 
 /// True if `span` is inside the initializer of the top-level `let` that
 /// declares `name` in `item`.
+impl Scope {
+    fn fingerprint_imports(&self) -> u64 {
+        let mut imports: Vec<String> = self
+            .imports
+            .iter()
+            .map(|(local, import)| format!("{local}={}:{}", import.module, import.name))
+            .chain(self.aliases.iter().map(|(alias, m)| format!("{alias}={m}")))
+            .collect();
+        imports.sort();
+        let modules: Vec<String> = self
+            .modules
+            .iter()
+            .map(|m| format!("{}@{}", m.path, m.analysis.scope.names_fp))
+            .collect();
+        hash_str(&format!(
+            "{}\n{}\n{}",
+            self.has_imports,
+            imports.join("\n"),
+            modules.join("\n")
+        )) | 2
+    }
+
+    /// Adds a module and the modules it reaches, once each; returns its
+    /// index.
+    fn add_module(&mut self, module: Module) -> usize {
+        if let Some(index) = self.modules.iter().position(|m| m.path == module.path) {
+            return index;
+        }
+        let reached: Vec<Module> = module
+            .analysis
+            .scope
+            .modules
+            .iter()
+            .map(|m| Module {
+                name: m.name.clone(),
+                path: m.path.clone(),
+                analysis: m.analysis.clone(),
+            })
+            .collect();
+        self.has_imports |= module.analysis.scope.has_imports;
+        self.modules.push(module);
+        let index = self.modules.len() - 1;
+        for module in reached {
+            self.add_module(module);
+        }
+        index
+    }
+}
+
 fn inside_own_init(item: &ItemSyntax, name: &str, span: Span) -> bool {
     item.parsed.stmts.iter().any(|stmt| match &stmt.kind {
         StmtKind::Let {
@@ -479,49 +774,82 @@ fn pattern_binds(pat: &ast::Pattern, name: &str) -> bool {
 
 /// The top-level names a list of statements declares.
 fn decls_of(stmts: &[ast::Stmt]) -> Vec<Decl> {
+    let mut out = Vec::new();
+    for stmt in stmts {
+        let from = out.len();
+        stmt_decls(stmt, &mut out);
+        for decl in &mut out[from..] {
+            decl.public = stmt.public;
+        }
+    }
+    out
+}
+
+fn stmt_decls(stmt: &ast::Stmt, out: &mut Vec<Decl>) {
     fn pattern(pat: &ast::Pattern, out: &mut Vec<Decl>) {
         match &pat.kind {
             ast::PatternKind::Name(name) if name != "_" => out.push(Decl {
                 name: name.clone(),
                 span: pat.span,
                 kind: DeclKind::Value,
+                public: false,
             }),
-            ast::PatternKind::Tuple(items) => items.iter().for_each(|i| pattern(i, out)),
+            ast::PatternKind::Tuple(items) => {
+                for item in items {
+                    match crate::check::domain_binding(item) {
+                        Some(name) => out.push(Decl {
+                            name: name.to_string(),
+                            span: item.span,
+                            kind: DeclKind::Domain,
+                            public: false,
+                        }),
+                        None => pattern(item, out),
+                    }
+                }
+            }
             _ => {}
         }
     }
-    let mut out = Vec::new();
     let push = |out: &mut Vec<Decl>, name: &ast::Name, kind: DeclKind| {
         if !name.text.is_empty() {
             out.push(Decl {
                 name: name.text.clone(),
                 span: name.span,
                 kind,
+                public: false,
             });
         }
     };
-    for stmt in stmts {
+    {
         match &stmt.kind {
             StmtKind::Let { pat, ty, .. } => {
-                pattern(pat, &mut out);
+                pattern(pat, out);
                 if let Some(ty) = ty {
-                    crate::check::own_domains(ty, &mut |name| {
-                        push(&mut out, name, DeclKind::Domain)
+                    crate::check::own_domains(ty, &mut |name| push(out, name, DeclKind::Domain));
+                }
+            }
+            StmtKind::Const { name, .. } => push(out, name, DeclKind::Value),
+            StmtKind::Fn(f) => {
+                if let Some((table, span)) = crate::check::memo_table(stmt) {
+                    out.push(Decl {
+                        name: table.to_string(),
+                        span,
+                        kind: DeclKind::Value,
+                        public: false,
                     });
                 }
+                push(out, &f.name, DeclKind::Fn)
             }
-            StmtKind::Const { name, .. } => push(&mut out, name, DeclKind::Value),
-            StmtKind::Fn(f) => push(&mut out, &f.name, DeclKind::Fn),
-            StmtKind::Struct(s) => push(&mut out, &s.name, DeclKind::Struct),
+            StmtKind::Struct(s) => push(out, &s.name, DeclKind::Struct),
             StmtKind::Enum(e) => {
-                push(&mut out, &e.name, DeclKind::Enum);
+                push(out, &e.name, DeclKind::Enum);
                 for variant in &e.variants {
-                    push(&mut out, &variant.name, DeclKind::Variant);
+                    push(out, &variant.name, DeclKind::Variant);
                 }
             }
-            StmtKind::Domain { name, .. } => push(&mut out, name, DeclKind::Domain),
-            StmtKind::TypeAlias { name, .. } => push(&mut out, name, DeclKind::Alias),
-            StmtKind::Trait { name, .. } => push(&mut out, name, DeclKind::Trait),
+            StmtKind::Domain { name, .. } => push(out, name, DeclKind::Domain),
+            StmtKind::TypeAlias { name, .. } => push(out, name, DeclKind::Alias),
+            StmtKind::Trait { name, .. } => push(out, name, DeclKind::Trait),
             // An impl is filed under a name of its own, so it is found,
             // memoized and reported twice like any other definition.
             StmtKind::Impl {
@@ -535,13 +863,13 @@ fn decls_of(stmts: &[ast::Stmt]) -> Vec<Decl> {
                             .as_ref()
                             .map_or(target.span, |t| t.span.to(target.span)),
                         kind: DeclKind::Impl,
+                        public: true,
                     });
                 }
             }
             _ => {}
         }
     }
-    out
 }
 
 /// The database seen from inside one file: resolves top-level names and
@@ -570,8 +898,11 @@ impl FileCtx<'_> {
     fn fingerprint(&mut self, key: &str) -> u64 {
         match key {
             DEP_NAMES => self.scope.names_fp,
-            DEP_IMPORTS => u64::from(self.scope.has_imports),
-            name => self.def(name).1,
+            DEP_IMPORTS => self.scope.imports_fp,
+            key => match key.strip_prefix(DEP_TYPE) {
+                Some(name) => self.type_def(name).1,
+                None => self.def(key).1,
+            },
         }
     }
 
@@ -584,7 +915,7 @@ impl FileCtx<'_> {
     /// file does not define it).
     fn def(&mut self, name: &str) -> (Option<Arc<Def>>, u64) {
         let Some(&index) = self.scope.names.get(name) else {
-            return (None, 0);
+            return self.imported(name);
         };
         if self.in_progress.iter().any(|n| n == name) {
             return (None, 0);
@@ -649,6 +980,67 @@ impl FileCtx<'_> {
         found
     }
 
+    /// The definition of a name this file does not define: one it imports
+    /// (`Monoid` after `use std.algebra.{Monoid}`, `fl.Graph` after `use
+    /// lib.flow as fl`), or an impl in a module it reaches.
+    fn imported(&mut self, name: &str) -> (Option<Arc<Def>>, u64) {
+        let scope = self.scope.clone();
+        if let Some(import) = scope.imports.get(name) {
+            return self.module_def(&scope.modules[import.module], &import.name);
+        }
+        if let Some((alias, member)) = name.split_once('.') {
+            return match scope.aliases.get(alias) {
+                Some(&index) => {
+                    let module = &scope.modules[index];
+                    let public = module.analysis.public_names();
+                    if public.iter().any(|n| n == member) {
+                        self.module_def(module, member)
+                    } else {
+                        (None, 0)
+                    }
+                }
+                None => (None, 0),
+            };
+        }
+        if impl_parts(name).is_some() {
+            return self.reached(name);
+        }
+        (None, 0)
+    }
+
+    /// The definition of `name` in the first module this file reaches
+    /// that has one.
+    fn reached(&mut self, name: &str) -> (Option<Arc<Def>>, u64) {
+        let scope = self.scope.clone();
+        for module in &scope.modules {
+            if module.analysis.scope.names.contains_key(name) {
+                return self.module_def(module, name);
+            }
+        }
+        (None, 0)
+    }
+
+    /// The definition behind a type's name: this file's own or imported
+    /// one, else the one in a module it reaches. A value of a library's
+    /// type can come back from a call without the file ever importing the
+    /// type by name.
+    fn type_def(&mut self, name: &str) -> (Option<Arc<Def>>, u64) {
+        match self.def(name) {
+            (None, _) => self.reached(name),
+            found => found,
+        }
+    }
+
+    fn module_def(&mut self, module: &Module, name: &str) -> (Option<Arc<Def>>, u64) {
+        match self.db.lookup(&module.path, &module.analysis, name) {
+            Some(def) => {
+                let fingerprint = def.fingerprint();
+                (Some(def), fingerprint)
+            }
+            None => (None, 0),
+        }
+    }
+
     fn check_item(&mut self, index: usize) -> Arc<ItemCheck> {
         let item = self.items[index].clone();
         let revision = self.db.revision;
@@ -699,12 +1091,29 @@ impl Env for FileCtx<'_> {
         def
     }
 
+    fn type_def(&mut self, name: &str) -> Option<Arc<Def>> {
+        let (def, fingerprint) = self.type_def(name);
+        self.record(&format!("{DEP_TYPE}{name}"), fingerprint);
+        def
+    }
+
+    fn is_module(&mut self, alias: &str) -> bool {
+        self.record(DEP_IMPORTS, self.scope.imports_fp);
+        self.scope.aliases.contains_key(alias)
+    }
+
     fn impls(&mut self, target: &str) -> Vec<(Option<String>, Arc<Def>)> {
         self.record(DEP_NAMES, self.scope.names_fp);
-        let mut names: Vec<(String, Option<String>)> = self
-            .scope
+        self.record(DEP_IMPORTS, self.scope.imports_fp);
+        let scope = self.scope.clone();
+        let reached = scope
+            .modules
+            .iter()
+            .flat_map(|module| module.analysis.scope.names.keys());
+        let mut names: Vec<(String, Option<String>)> = scope
             .names
             .keys()
+            .chain(reached)
             .filter_map(|name| match impl_parts(name) {
                 Some((trait_name, of)) if of == target => {
                     Some((name.clone(), trait_name.map(str::to_string)))
@@ -713,6 +1122,7 @@ impl Env for FileCtx<'_> {
             })
             .collect();
         names.sort();
+        names.dedup();
         names
             .into_iter()
             .filter_map(|(name, trait_name)| Some((trait_name, self.global(&name)?)))
@@ -720,13 +1130,22 @@ impl Env for FileCtx<'_> {
     }
 
     fn has_imports(&mut self) -> bool {
-        self.record(DEP_IMPORTS, u64::from(self.scope.has_imports));
+        self.record(DEP_IMPORTS, self.scope.imports_fp);
         self.scope.has_imports
     }
 
     fn names(&mut self) -> Vec<String> {
         self.record(DEP_NAMES, self.scope.names_fp);
-        let mut names: Vec<String> = self.scope.names.keys().cloned().collect();
+        self.record(DEP_IMPORTS, self.scope.imports_fp);
+        let mut names: Vec<String> = self
+            .scope
+            .names
+            .keys()
+            .chain(self.scope.imports.keys())
+            .chain(self.scope.aliases.keys())
+            .filter(|name| impl_parts(name).is_none())
+            .cloned()
+            .collect();
         names.sort();
         names
     }

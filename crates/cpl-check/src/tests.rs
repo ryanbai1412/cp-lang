@@ -288,9 +288,9 @@ fn top_level_names_have_one_definition_and_are_set_before_use() {
 }
 
 #[test]
-fn what_the_checker_does_not_know_is_not_an_error() {
+fn names_a_missing_module_may_have_brought_are_not_errors() {
     let src = "\
-use std.graph
+use kit.graph.*
 let n: 1..=2e5 = read()
 domain V = 1..=n
 let g = Graph.read(n)
@@ -301,7 +301,15 @@ for v in V:
     best = best + g.adj(v).len * 2
 print(\" \".join(d[v] ?? -1 for v in V), best, xs.sorted().rev())
 ";
-    assert_eq!(check(src), vec![]);
+    // The module is the one thing wrong; what it would have defined is
+    // not reported a second time.
+    let diag = one(src);
+    assert_eq!(diag.code.0, "E0206");
+    assert_eq!(diag.message, "no module `kit.graph`");
+    assert_eq!(
+        &src[diag.span.start as usize..diag.span.end as usize],
+        "kit.graph"
+    );
 }
 
 // --- One root cause, one diagnostic ------------------------------------------
