@@ -2185,6 +2185,11 @@ class Compiler(LendMixin):
         key = ot.t.cpp if isinstance(ot, TType) and hasattr(ot.t, "cpp") else getattr(ot, "cpp", None)
         if key in self.projs and m in self.projs[key]:
             return self.call_proj(self.projs[key][m], e, oc, ot)
+        if isinstance(ot, TArr) and m == "fill" and len(args) == 1:
+            # `cnt.fill(0)`, `seen.fill(none)`: every cell of the array, whatever its dimensions
+            self.require_mut(obj, e)
+            vc, vt = self.expr(args[0], ot.elem)
+            return f"cp_fill({oc}, {self.coerce(vc, vt, ot.elem, args[0])})", UNIT
         if isinstance(ot, TStr):
             r = self.str_method(e, oc, m, args)
             if r is not None:
