@@ -1,6 +1,6 @@
 # Scout Batch 25: Hard Greedy, Ad-hoc, Bitwise and Constructive Problems
 
-Stage-1 scouting batch over 10 previously unported problems from `corpus/` (no overlap with the existing ports, `scout_batch_1`–`scout_batch_24`, or `blind_critic_*`): a 64-bit Gray code, three-key ranking, sorted-window greedy, a bit-reversal construction, top-bit recursion, exchange-argument greedy, fracturing search over a heap, bitset subset sum with reconstruction, a constructive whiteboard strategy, and an XOR step on a graph.
+Stage-1 scouting batch over 10 previously unported problems from `corpus/` (no overlap with the ports that existed when it was picked, `scout_batch_1`–`scout_batch_24`, or `blind_critic_*`; see the note on two later overlaps below): a 64-bit Gray code, three-key ranking, sorted-window greedy, a bit-reversal construction, top-bit recursion, exchange-argument greedy, fracturing search over a heap, bitset subset sum with reconstruction, a constructive whiteboard strategy, and an XOR step on a graph.
 
 The friction analysis is in `research/friction-backlog-batch-25-greedy-bitwise.md`.
 
@@ -19,6 +19,8 @@ python3 proto/ports/scout_batch_25/verify.py
 `dmoj.ca/api/v2/problem/<code>` and the statement pages both answered with a Cloudflare challenge (HTTP 403) for the whole session. Nine problems are well-known olympiad tasks and were written from their published contest specs (NOI, NOIP, IOI, Baltic OI). The tenth, `dmopc21c7p3`, has no spec outside DMOJ: its task description was reconstructed from the accepted submission, and its file says so in the header.
 
 Two things about the selection. The corpus has no unported XOR linear basis or meet-in-the-middle submission (a search of the unported accepted C++ for `basis`, `meet`, `mitm` and `half` found none; that is a text search, not a read of every file), so those two themes are not represented. And four problems first picked for this batch (`noi14p1`, `noi21p4`, `btoi19p2`, `btoi19p4`) were landed by scout batches 20 and 22 while this one was being written; they were removed and replaced by `noip19p1`, `ioi09p3`, `ioi16p1` and `ioi18p4`, which are easier than the ones they replace. The backlog still cites what the four dropped drafts ran into, marked as such.
+
+Two overlaps remain. `ioi20p4` and `noi20p4` were also landed by scout batches 28 and 29 minutes before this batch was pushed. They are kept here because GB1 (the 32-bit shift) and GB5 (`Bitset`) in the backlog rest on them; the ports were written independently, so the two versions can be compared.
 
 ## Problems
 
