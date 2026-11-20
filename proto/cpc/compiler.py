@@ -48,6 +48,12 @@ class TSeg(T):
     def __hash__(self): return hash(("seg", self.dom, self.elem))
     def __repr__(self): return f"SegTree<{self.dom!r}, {self.elem!r}>"
 
+class THash(T):
+    def __init__(self, dom): self.dom = dom
+    def __eq__(self, o): return isinstance(o, THash) and o.dom == self.dom
+    def __hash__(self): return hash(("strhash", self.dom))
+    def __repr__(self): return f"StrHash<{self.dom!r}>"
+
 class THeap(T):
     def __init__(self, elem): self.elem = elem
     def __eq__(self, o): return isinstance(o, THeap) and o.elem == self.elem
@@ -180,6 +186,7 @@ class Compiler:
             return "DenseSet" if self.dense_set(t) else f"set<{self.cpp_type(t.elem)}>"
         if isinstance(t, TArr): return f"vector<{'int' if self.narrow(t.elem) else self.cpp_type(t.elem)}>"
         if isinstance(t, TEnum): return t.cpp
+        if isinstance(t, THash): return "StrHash"
         if isinstance(t, TSeg): return f"SegTree<{self.cpp_type(t.elem)}>"
         if isinstance(t, THeap):
             e = self.cpp_type(t.elem)
@@ -911,6 +918,11 @@ class Compiler:
             if not (is_int(lt) and is_int(ht)):
                 self.error(e, "rand(lo, hi) needs Ints")
             return f"gen_int({lc}, {hc})", TInt(lt.lo, ht.hi)
+        if fn.kind == "name" and fn.name == "StrHash" and len(e.args) == 1 and not self.lookup(fn.name):
+            c, t = self.expr(e.args[0])
+            if not (isinstance(t, TArr) and len(t.dims) == 1 and isinstance(t.elem, TChar)):
+                self.error(e, f"StrHash needs a [S]Char, got {t!r}")
+            return f"StrHash({c})", THash(t.dims[0])
         if fn.kind == "name" and fn.name in ("gcd", "lcm") and len(e.args) == 2 and not self.lookup(fn.name):
             (ac, at), (bc, bt) = self.expr(e.args[0]), self.expr(e.args[1])
             if not (is_int(at) and is_int(bt)):
@@ -1042,6 +1054,8 @@ class Compiler:
                 c, at = self.expr(e.args[0])
                 if isinstance(at, TDom) and at.info is info:
                     return c, t
+                if isinstance(at, TChar) and info.labels == "char":
+                    c, at = f"(ll)({c})", TInt(0, 255)
                 if not is_int(at):
                     self.error(e, f"{info.name}(x) needs an Int, got {at!r}")
                 self.note_check(e, f"`{unparse(e.args[0])}` in {info.name}")
@@ -1166,6 +1180,14 @@ class Compiler:
                         f"return _k >= 0 ? Opt<int>((int)_k) : Opt<int>(); }}({c}))"), TOpt(ot.dims[0])
             return (f"([&](auto _x){{ ll _k = lower_bound({oc}.begin(), {oc}.end(), _x) - {oc}.begin(); "
                     f"return _k < (ll){oc}.size() ? Opt<int>((int)_k) : Opt<int>(); }}({c}))"), TOpt(ot.dims[0])
+        if isinstance(ot, THash) and m == "of" and len(args) == 2:
+            cs = []
+            for a in args:
+                c, t = self.expr(a, ot.dom)
+                if t != ot.dom:
+                    self.error(a, f"positions of this string are {ot.dom!r}, got {t!r}")
+                cs.append(c)
+            return f"{oc}.of({cs[0]}, {cs[1]})", TInt(0, (1 << 61) - 1)
         if isinstance(ot, TSeg):
             def at(a):
                 c, t = self.expr(a, ot.dom)
@@ -1704,6 +1726,9 @@ class Compiler:
             self.bind_pattern(s.pat, c, t, s, mut=s.mut)
             return
         name = s.pat.name
+        if (s.ty is not None and s.ty.kind == "tarray" and len(s.ty.dims) == 1 and s.ty.dims[0].kind == "tfresh"
+                and self.is_read(s.value)):
+            return self.read_fresh(s, name)
         ty = self.resolve_type(s.ty) if s.ty is not None else None
         if self.is_read(s.value) and len(self.fn_ret) > getattr(self, "sol_depth", 0) and len(self.fn_ret) > (1 if getattr(self, "in_multitest", False) else 0):
             self.reads_in_fns = True
@@ -1797,6 +1822,29 @@ class Compiler:
             size = " * ".join(f"(size_t){d.info.len_cpp}" for d in ty.dims)
             return f"{self.cpp_type(ty)}({size})"
         return f"{self.cpp_type(ty)}()"
+
+    def read_fresh(self, s, name):
+        """`let s: [domain S]Char = read()`: a whitespace-delimited word whose positions get the fresh domain S."""
+        d = s.ty.dims[0]
+        et = self.resolve_type(s.ty.elem)
+        if not isinstance(et, TChar) or d.range is not None:
+            self.error(s, "only `[domain S]Char = read()` (a word) is supported for a fresh domain")
+        w = self.tmpname("w")
+        self.emit(f"string {w};")
+        self.emit(f"if (CP_GEN) {{ int _n = gen_int(1, 1000000); for (int _i = 0; _i < _n; ++_i) {w} += (char)('a' + gen_int(0, 25)); "
+                  f"out_str({w}); out_char('\\n'); }} else {w} = rd_word();")
+        info, _, _ = self.new_domain(d.name, "0", "", (0, 0), (0, None))
+        info.lo_src, info.hi_src = "0", f"(ll){w}.size()"
+        self.emit(f"{info.cpp}_lo = 0; {info.cpp}_len = (ll){w}.size();")
+        self.scopes[-1][d.name] = Sym("type", TDom(info), info.cpp, node=s)
+        ty = TArr([TDom(info)], et)
+        cpp = self.fresh(name)
+        self.decl_global_or_local(cpp, ty)
+        self.emit(f"{cpp} = {self.cpp_type(ty)}({w}.begin(), {w}.end());")
+        self.declare(name, ty, cpp, s.mut, s)
+        if self.out is self.init_lines:
+            self.last_read = len(self.init_lines)
+        self.read_pos = (id(self.out), len(self.out))
 
     def s_domain(self, s):
         if s.range.kind != "range":
