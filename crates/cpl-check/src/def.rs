@@ -40,6 +40,9 @@ pub enum Def {
     Enum {
         variants: Vec<(String, Vec<Ty>)>,
         methods: Vec<(String, Ty)>,
+        /// `@tags("X", "O")` says how each variant is written in the
+        /// input.
+        tagged: bool,
     },
     /// A variant of the named enum, usable bare.
     Variant {

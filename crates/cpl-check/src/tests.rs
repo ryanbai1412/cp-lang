@@ -1560,3 +1560,19 @@ fn a_heap_starts_empty() {
     let ok = "var h = MinHeap<(Int, Int)>()\nh.push((-3, 3))\nvar xs = List<Int>()\nxs.push(1)\n";
     assert!(codes(ok).is_empty(), "{:?}", check(ok));
 }
+
+#[test]
+fn reading_an_enum_needs_its_tags() {
+    let rest = "let n: 1..=3 = read()\ndomain Row = 1..=n\nlet g: [Row, Row]Tile = read()\n";
+    let diag = one(&format!("enum Tile:\n    X\n    O\n{rest}"));
+    assert_eq!(
+        diag.message,
+        "reading a `Tile` needs to know how its variants are written in the input"
+    );
+    assert_eq!(
+        diag.help.as_deref(),
+        Some("put `@tags(\"X\", \"O\")` above the enum")
+    );
+    let ok = format!("@tags(\"X\", \"O\")\nenum Tile:\n    X\n    O\n{rest}");
+    assert!(codes(&ok).is_empty(), "{:?}", check(&ok));
+}
