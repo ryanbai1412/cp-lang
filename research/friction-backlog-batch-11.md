@@ -8,12 +8,12 @@ ports are in
 canada21p5, noi20p1, noi21p2, noi07p5, noi18p4, noip21p1, sdoi17r1p3,
 sdoi17r1p1, noip21p2 and shoi16p3. Nothing in `crates/` or `proto/cpc/`
 was changed. Items are numbered `N1`... so they do not collide with `F`
-(batch 1), `G` (batch 3), `B` (batches 2 and 4), `K` (batch 5), `D`
-(batch 7) or `H` (batch 8).
+(batch 1), `G` (batch 3), `B` (batches 2 and 4), `K` (batch 5), `S`
+(batch 6), `D` (batch 7), `H` (batch 8) or `T` (batch 10).
 
 What was checked: all ten ports agree with their originals on random
 inputs (`proto/ports/scout_batch_11/check.py`, 20 to 200 inputs each) on
-top of commit `2797733`. Three build with `proto/cpc`; seven run on
+top of commit `fe7ca6d`. Three build with `proto/cpc`; seven run on
 `proto/cpi` with small inputs only, and none of those seven was run at
 full size. Every "today" snippet is a line a port contains. Every quoted
 message was produced by the prototype named with it. The "wanted" snippets
@@ -504,9 +504,12 @@ type for input that is then edited. 1 of 10.
   above x, else the smallest", remove it, insert another. The port
   rebuilds a sorted list per dragon, which is O(n^2); the original uses a
   `multiset`.
-- **Batch 8 H3** (no standard library in `proto/cpc`): noip21p2 builds
-  Pascal's triangle by hand instead of `Comb`, and sdoi17r1p3 its own
-  sieve. 7 of 10 could not be built by `proto/cpc` at all.
+- **Batch 8 H3** (the standard library in `proto/cpc`): *checked on
+  `fe7ca6d`:* `use std.mod.{Mod, Comb}` and `use std.math.{Sieve}` are
+  both "library code the prototype compiler has no stand-in for yet (it
+  runs on proto/cpi)". So noip21p2 builds Pascal's triangle by hand
+  instead of `Comb`, sdoi17r1p3 its own sieve, and 7 of 10 were not built
+  by `proto/cpc` at all.
 - **Batch 8 H1** (a bound that names an earlier input): noip21p2 reads
   `let k: 1..=30 = read() where k <= n`, and 72 of 200 generated cases
   were thrown away.
