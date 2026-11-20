@@ -179,7 +179,12 @@ def type_call(it, tv, args, kw, node):
     x = args[0]
     if n == "Int":
         if type(x) is float:
-            return it.int(math.floor(x), node)
+            it.fail("Int(x) on an F64 does not say how to round: write floor(x), ceil(x), round(x) or trunc(x)", node)
+        if type(x) is DomVal:
+            # the written label, the same number `print(v)` shows and `V(x)` takes back
+            if x.dom.of is not None or x.dom.char:
+                it.fail(f"Int(v) is the written label of a domain over Ints, and {x.dom.name} is not one (use `v.to_idx` for its position)", node)
+            return x.label
         if type(x) is str:
             return ord(x)
         if type(x) is bool:
@@ -187,7 +192,7 @@ def type_call(it, tv, args, kw, node):
         if type(x) is CList and x.is_str:
             return int("".join(x.items))
         return x
-    if n == "Float":
+    if n == "F64":
         return float(x)
     if n == "Char":
         if type(x) is int and 0 <= x < 128:
@@ -212,7 +217,7 @@ def install(it):
     it.capture = False
     it.type_call = type_call
     g = it.globals.vars
-    for n in ("Int", "Float", "Bool", "Char", "Str", "List", "Set", "Map", "Iter", "Opt", "Range", "Bounds"):
+    for n in ("Int", "F64", "Bool", "Char", "Str", "List", "Set", "Map", "Iter", "Opt", "Range", "Bounds"):
         g[n] = TypeV(n)
     g.update({
         "print": f_print, "min": f_minmax(-1), "max": f_minmax(1), "abs": f_abs, "sum": f_sum,
@@ -370,7 +375,7 @@ def install(it):
         Domain: {
             "nth": lambda it, o, a, k, n: dom_at(it, o, a[0], n),
             "windows": lambda it, o, a, k, n: windows(it, o, a[0], n),
-            "from_idx": lambda it, o, a, k, n: dom_at(it, o, a[0], n),
+            "from_idx": lambda it, o, a, k, n: dom_try(o, a[0]),      # -> ?V: none outside 0..K
             "try_at": lambda it, o, a, k, n: dom_try(o, a[0]),
             "try": lambda it, o, a, k, n: dom_try(o, (ord(a[0]) - ord(o.lo)) if o.char else a[0] - o.lo),
         },

@@ -85,6 +85,18 @@ static inline string cp_fmt_i(ll x, int width, bool zero) {
     snprintf(buf, sizeof buf, zero ? "%0*lld" : "%*lld", width, (long long)x);
     return string(buf);
 }
+// "{n:x}" and "{n:b}": lowercase digits in base 16 or 2, a `-` for a negative value, then the width
+static inline string cp_fmt_radix(ll x, int base, int width, bool zero) {
+    unsigned long long u = x < 0 ? 0ULL - (unsigned long long)x : (unsigned long long)x;
+    string d;
+    do { d.insert(d.begin(), "0123456789abcdef"[u % base]); u /= base; } while (u);
+    size_t sign = x < 0 ? 1 : 0;
+    if (d.size() + sign < (size_t)width) {
+        if (zero) d.insert(0, (size_t)width - d.size() - sign, '0');
+        else return string((size_t)width - d.size() - sign, ' ') + (sign ? "-" : "") + d;
+    }
+    return (sign ? "-" : "") + d;
+}
 
 template <class A, class V> static inline void cp_fill(A& a, const V& v) { for (auto&& x : a) x = v; }
 
@@ -179,6 +191,16 @@ template <> struct Opt<ll> {
     bool operator>(const Opt& o) const { return v > o.v; }
     bool operator!=(const Opt& o) const { return v != o.v; }
 };
+// `x!` on the way to a write (`state!.h[p] = cost`): the value in place
+template <class T> static inline T& opt_place(Opt<T>& o, int line) {
+    if (!o.has()) cp_fail("unwrapped none", line);
+    return o.v;
+}
+static inline char cp_char_step(char c, ll k, int line) {
+    ll r = (ll)(unsigned char)c + k;
+    if (r < 0 || r > 127) cp_fail("Char + Int left ASCII (0..=127)", line);
+    return (char)r;
+}
 template <class T> static inline T opt_unwrap(const Opt<T>& o, int line) {
     if (!o.has()) cp_fail("unwrapped none", line);
     return o.get();

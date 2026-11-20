@@ -433,6 +433,8 @@ class Parser:
             self.expect("=")
             return N("law", line, name=nm, params=ps, expr=self.expr())
         e = self.expr()
+        if e.kind == "keepassign":      # as a statement the Bool is discarded
+            return N("assign", line, target=e.target, op=e.op, value=e.value)
         if self.t.kind == "OP" and self.t.val in ASSIGN_OPS:
             op = self.next().val
             rhs = self.expr()
@@ -855,6 +857,16 @@ class Parser:
         return self.cmp()
 
     def cmp(self):
+        e = self.cmp0()
+        if self.t.kind == "NAME" and self.t.val in ("min", "max") and self.peek().kind == "OP" and self.peek().val == "=":
+            # `x min= y` / `x max= y` is a Bool: true when the place changed (`if dist[v] min= d: pq.push((d, v))`).
+            # It binds like a comparison: `ok and best min= a + b` is `ok and (best min= (a + b))`.
+            f = self.next().val
+            line = self.next().line
+            e = N("keepassign", line, target=e, op=f + "=", value=self.cmp0())
+        return e
+
+    def cmp0(self):
         e = self.range_expr()
         ops, rest = [], []
         while True:

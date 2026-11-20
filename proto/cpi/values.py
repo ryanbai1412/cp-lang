@@ -27,11 +27,27 @@ class ConsumerExit(Exception):
 
 
 class Env:
-    __slots__ = ("vars", "parent")
+    __slots__ = ("vars", "parent", "types")
 
     def __init__(self, parent=None, vars=None):
         self.vars = {} if vars is None else vars
         self.parent = parent
+        self.types = None       # name -> (type node, env): the declared types `read()` / `ask()` flow from
+
+    def declare_type(self, name, ty, env):
+        if self.types is None:
+            self.types = {}
+        self.types[name] = (ty, env)
+
+    def declared_type(self, name):
+        e = self
+        while e is not None:
+            if e.types is not None and name in e.types:
+                return e.types[name]
+            if name in e.vars:
+                return None     # shadowed by a binding with no declared type
+            e = e.parent
+        return None
 
     def get(self, name):
         e = self
@@ -75,7 +91,7 @@ class TypeV:
         return self.name + ("<" + ", ".join(map(repr, self.args)) + ">" if self.args else "")
 
 
-INT, FLOAT, BOOL, CHAR, STR = (TypeV(n) for n in ("Int", "Float", "Bool", "Char", "Str"))
+INT, FLOAT, BOOL, CHAR, STR = (TypeV(n) for n in ("Int", "F64", "Bool", "Char", "Str"))
 
 
 class Domain:

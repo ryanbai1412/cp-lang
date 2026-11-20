@@ -240,6 +240,10 @@ class Interp:
         return m(s, env)
 
     def x_exprstmt(self, s, env):
+        if s.expr.kind in ("call", "paren") and self.is_io(s.expr, env):
+            ret = env.declared_type("$ret")     # `fn next() -> 0..=9 = read()`: the tail value is the return type
+            if ret is not None and ret[0].kind != "tyields" and ret[2] is s:
+                return self.io(s.expr, ret[0], ret[1], env)
         return self.ev(s.expr, env)
 
     def x_let(self, s, env):
@@ -247,8 +251,8 @@ class Interp:
             v = self.default(self.ty(s.ty, env), s) if s.ty is not None else None
         elif s.ty is not None and s.ty.kind == "tarray" and s.value.kind not in ("table", "call", "name", "field", "index"):
             v = self.table_fill(s.ty, s.value, env)
-        elif s.ty is not None and s.value.kind == "call" and s.value.fn.kind == "name" and s.value.fn.name == "read" and not s.value.args:
-            v = self.read(s.ty, env)
+        elif s.ty is not None and self.is_io(s.value, env):
+            v = self.io(s.value, s.ty, env, env)
         else:
             v = self.ev(s.value, env)
             if s.value.kind in ("name", "field", "index"):
@@ -262,6 +266,11 @@ class Interp:
             self.block(s.orelse, env)
             self.fail("the `else` of a `let` must leave (return, break or continue)", s)
         self.bind(s.pat, v, env)
+        if s.pat.kind == "pname":
+            if s.ty is not None:
+                env.declare_type(s.pat.name, s.ty, env)
+            elif env.types is not None:
+                env.types.pop(s.pat.name, None)
         if getattr(s, "where", None) is not None and not self.ev(s.where, env):
             self.fail(f"`where` does not hold: {self.src(s)}", s)
 
@@ -297,7 +306,12 @@ class Interp:
     def x_assign(self, s, env):
         t = s.target
         if t.kind == "tuple":
-            v = self.ev(s.value, env)
+            if self.is_io(s.value, env):
+                # `(a[d], b[d]) = read()`: each place's declared type says what to read, left to right
+                self.ask(s.value, env)
+                v = Tup([self.read_into(tt, self.place(tt, env)[0], None, env) for tt in t.items])
+            else:
+                v = self.ev(s.value, env)
             if type(v) is not Tup or len(v.items) != len(t.items):
                 self.fail("tuple assignment needs a tuple of the same size", s)
             for tt, x in zip(t.items, list(v.items)):
@@ -318,7 +332,10 @@ class Interp:
                     self.fail(f"`{self.src(t)} {f}= ...`: the key is not in the map, and `{f}` has no identity to start from", s)
                 o.items[key] = FOLD_IDENTITY[f]
         get, put = self.place(t, env)
-        v = self.ev(s.value, env)
+        if op == "=" and self.is_io(s.value, env):
+            v = self.read_into(t, get, s.value, env)
+        else:
+            v = self.ev(s.value, env)
         if op != "=":
             cur = get()
             if op in ("min=", "max="):
@@ -498,7 +515,113 @@ class Interp:
         self.fail(f"cannot iterate over {self.show(it)}", node)
 
     def x_return(self, s, env):
+        if s.value is not None and self.is_io(s.value, env):
+            ret = env.declared_type("$ret")
+            if ret is not None:
+                raise ReturnEx(self.io(s.value, ret[0], ret[1], env))
         raise ReturnEx(self.ev(s.value, env) if s.value is not None else None)
+
+    # ---- read() / ask(): the type comes from where the value is going (a typed let, a typed place, the
+    # fn's return type, a parameter), or from `read::<T>()` when nothing around it says
+    def is_io(self, e, env):
+        if e.kind == "paren":
+            return self.is_io(e.a, env)
+        return e.kind == "call" and e.fn.kind == "name" and e.fn.name in ("read", "ask") and not env.has(e.fn.name) \
+            and not (e.fn.name == "read" and e.args)
+
+    def ask(self, e, env):
+        """`ask("?", i, j)` prints the question, flushes, and the reply is read next."""
+        while e.kind == "paren":
+            e = e.a
+        if e.fn.name != "ask":
+            return
+        from .builtins import f_print
+        f_print(self, [self.ev(a, env) for a in e.args if a.kind != "kwarg"], None, e)
+
+    def io(self, e, ty, tenv, env):
+        self.ask(e, env)
+        return self.read(ty, tenv)
+
+    def read_into(self, t, get, call, env):
+        """`place = read()`: read what the place holds. Its declared type says what that is; a `var` with no
+        annotation holds the type of its current value (cpi has no static types to ask)."""
+        if call is not None:
+            self.ask(call, env)
+        r = self.place_type_opt(t, env)
+        if r is not None:
+            return self.read(*r)
+        cur = get()
+        ty = type(cur)
+        if ty is DomVal and cur.dom.of is None:
+            tok = self.token(t)
+            return self.dom_new(cur.dom, tok[0] if cur.dom.char else int(tok), t)
+        if ty is int:
+            return int(self.token(t))
+        if ty is float:
+            return float(self.token(t))
+        if ty is str:
+            return self.token(t)[0]
+        if ty is CList and cur.is_str:
+            return CList(list(self.token(t)), True)
+        self.place_type(t, env, t)
+
+    def place_type(self, t, env, node):
+        """The declared type of an assignable expression, as (type node, env), for `place = read()`."""
+        r = self.place_type_opt(t, env)
+        if r is None:
+            self.fail(f"read() cannot tell the type of `{self.src(t)}` here: declare it (`var x: T`), or say `read::<T>()`", node)
+        return r
+
+    def place_type_opt(self, t, env):
+        k = t.kind
+        if k == "paren":
+            return self.place_type_opt(t.a, env)
+        if k == "name":
+            return env.declared_type(t.name)
+        if k == "unwrap":
+            r = self.place_type_opt(t.a, env)
+            return (r[0].inner, r[1]) if r is not None and r[0].kind == "topt" else None
+        if k == "index":
+            r = self.place_type_opt(t.obj, env)
+            if r is None:
+                return None
+            ty, tenv = self.alias(*r)
+            if ty.kind == "tarray" and len(ty.dims) == len(t.idx):
+                return ty.elem, tenv
+            if ty.kind == "tarray" and len(t.idx) < len(ty.dims):
+                return N("tarray", ty.line, dims=ty.dims[len(t.idx):], elem=ty.elem), tenv
+            if ty.kind == "tlist" and len(t.idx) == 1:
+                return ty.elem, tenv
+            if ty.kind == "tname" and ty.name in ("List", "Deque") and len(ty.args) == 1 and len(t.idx) == 1:
+                return ty.args[0], tenv
+            if ty.kind == "tname" and ty.name in ("Map", "HashMap") and len(ty.args) == 2 and len(t.idx) == 1:
+                return ty.args[1], tenv
+            return None
+        if k == "field":
+            r = self.place_type_opt(t.obj, env)
+            if r is not None:
+                ty, tenv = self.alias(*r)
+                if ty.kind == "ttuple":
+                    for i, (nm, ft) in enumerate(ty.fields):
+                        if nm == t.name or str(i) == str(t.name):
+                            return ft, tenv
+                    return None
+            try:
+                o = self.ev(t.obj, env)
+            except CpError:
+                return None
+            if type(o) is Obj and t.name in o.stype.decl.ftypes:
+                return o.stype.decl.ftypes[t.name], o.stype.env
+        return None
+
+    def alias(self, ty, tenv):
+        """Follow `type X = ...` names to the type they stand for."""
+        while ty.kind == "tname" and not ty.args:
+            r = tenv.declared_type("type " + ty.name)
+            if r is None:
+                break
+            ty, tenv = r
+        return ty, tenv
 
     def x_break(self, s, env):
         raise BreakEx()
@@ -582,6 +705,7 @@ class Interp:
 
     def x_typedef(self, s, env):
         env.vars[s.name] = self.ty(s.ty, env)
+        env.declare_type("type " + s.name, s.ty, env)
 
     def x_domain(self, s, env):
         r = s.range
@@ -797,6 +921,7 @@ class Interp:
                 self.fail(f"`{fn.name}` is missing its argument `{p.name}`", node)
             if p.ty is not None:
                 self.unify(p.ty, a, tps, bind, env, node)
+                frame.declare_type(p.name, p.ty, frame)
             vals[p.name] = a
         if kwargs:
             names = {p.name for p in params}
@@ -824,6 +949,10 @@ class Interp:
                 frame.vars["$yield"] = emit
                 self.run_body(fn, frame, mod)
             return GenVal(run)
+        if fn.ret is not None:
+            if frame.types is None:
+                frame.types = {}
+            frame.types["$ret"] = (fn.ret, frame, fn.body[-1] if fn.body else None)
         r = self.run_body(fn, frame, mod)
         if type(r) is Lent and not raw:
             if fn.lends is None:
@@ -902,6 +1031,17 @@ class Interp:
             self.fail(f"{self.show(x)} is not in domain {d.name} ({self.show(d.lo)}..={self.show(hi)})", node)
         return DomVal(d, i)
 
+    def token(self, node):
+        while self.tok_i >= len(self.tokens) and self.stdin_stream is not None:
+            line = self.stdin_stream.readline()
+            if not line:
+                break
+            self.tokens.extend(line.split())
+        if self.tok_i >= len(self.tokens):
+            self.fail("read(): the input ended", node)
+        self.tok_i += 1
+        return self.tokens[self.tok_i - 1]
+
     def read(self, t, env):
         k = t.kind
         if k == "tarray":
@@ -912,15 +1052,7 @@ class Interp:
             return CArray(dims, [self.read(t.elem, env) for _ in range(n)])
         if k == "ttuple":
             return Tup([self.read(ft, env) for _, ft in t.fields], [nm for nm, _ in t.fields])
-        while self.tok_i >= len(self.tokens) and self.stdin_stream is not None:
-            line = self.stdin_stream.readline()
-            if not line:
-                break
-            self.tokens.extend(line.split())
-        if self.tok_i >= len(self.tokens):
-            self.fail("read(): the input ended", t)
-        tok = self.tokens[self.tok_i]
-        self.tok_i += 1
+        tok = self.token(t)
         if k == "trange":
             x = int(tok)
             if x not in self.ev(t.range, env).values():
@@ -985,6 +1117,24 @@ class Interp:
     def e_char(self, e, env):
         return e.value
 
+    def e_keepassign(self, e, env):
+        """`x min= y` / `x max= y` as a Bool: true when the place changed. `none` on either side is skipped."""
+        t = e.target
+        if t.kind == "index":
+            o = self.ev(t.obj, env)
+            if type(o) is CMap:
+                key = self.ev(t.idx[0], env)
+                if key not in o.items:
+                    o.items[key] = self.ev(e.value, env)
+                    return True
+        get, put = self.place(t, env)
+        v = self.ev(e.value, env)
+        cur = get()
+        if v is None or (cur is not None and not ((v < cur) if e.op == "min=" else (cur < v))):
+            return False
+        put(v)
+        return True
+
     def e_paren(self, e, env):
         return self.ev(e.a, env)
 
@@ -1016,11 +1166,29 @@ class Interp:
         """`{x}` shows a value; `{x:.3f}` and `{n:04}` format a number (never `-0.000`)."""
         if not spec:
             return self.show(v)
-        if not re.fullmatch(r"0?\d*(\.\d+f)?", spec) or isinstance(v, bool) or not isinstance(v, (int, float)):
-            self.fail(f"`:{spec}` is not a number format this value takes (use `:.6f` or `:04`)", node)
-        out = format(v, spec)
-        if out.startswith("-") and float(out) == 0:
-            out = out[1:]
+        # the whole grammar: `{v:W}` width, `{v:0W}` zero-filled, `{x:.D}` / `{x:.Df}` fixed decimals,
+        # `{n:x}` hex and `{n:b}` binary (each after an optional width). No alignment, no nested widths.
+        m = re.fullmatch(r"(0?)(\d*)(?:\.(\d+)f?|([xb]))?", spec)
+        help = "use `:.6f` for an F64, `:04` / `:x` / `:b` for an Int"
+        if not m or isinstance(v, bool) or not isinstance(v, (int, float)):
+            self.fail(f"`:{spec}` is not a number format this value takes ({help})", node)
+        zero, width = m.group(1), int(m.group(2) or 0)
+        if m.group(3) is not None:
+            out = format(float(v), f".{m.group(3)}f")
+            if out.startswith("-") and float(out) == 0:
+                out = out[1:]
+        elif isinstance(v, float):
+            self.fail(f"`:{spec}` does not say how many decimals an F64 gets ({help})", node)
+        elif m.group(4):
+            out = ("-" if v < 0 else "") + format(abs(v), m.group(4))
+        else:
+            out = str(v)
+        if len(out) < width:
+            if zero:
+                sign = "-" if out.startswith("-") else ""
+                out = sign + out[len(sign):].rjust(width - len(sign), "0")
+            else:
+                out = out.rjust(width)
         return out
 
     def member_const(self, name, env):
@@ -1281,6 +1449,8 @@ class Interp:
             if not 0 <= c < 128:
                 self.fail(f"Char out of range: {c}", node)
             return chr(c)
+        if ta is CList and a.is_str and tb is str and op == "+":
+            return CList(a.items + [b], True)       # Str + Char
         if ta is CList and tb is CList and op == "+":
             return CList(a.items + b.items, a.is_str and b.is_str)
         if ta is DomVal and tb is int and op in "+-":
@@ -1474,6 +1644,17 @@ class Interp:
 
     def e_call(self, e, env, raw=False):
         fn = e.fn
+        if fn.kind == "tapp" and fn.obj.kind == "name":
+            fn = N("generic", fn.line, name=fn.obj.name, args=fn.targs)
+        if fn.kind == "generic" and fn.name in ("read", "ask") and not env.has(fn.name):
+            if len(fn.args) != 1:
+                self.fail(f"`{fn.name}::<T>()` takes one type", e)
+            bare = N("call", e.line, fn=N("name", e.line, name=fn.name), args=e.args)
+            return self.io(bare, fn.args[0], env, env)
+        fn = e.fn
+        if self.is_io(e, env):
+            self.fail(f"{fn.name}() cannot tell what type to read here: give the place a type "
+                      f"(`let x: T = {fn.name}(...)`), or say `{fn.name}::<T>(...)`", e)
         if fn.kind == "name" and fn.name == "swap" and len(e.args) == 2:
             ga, pa = self.place(e.args[0], env)
             gb, pb = self.place(e.args[1], env)
@@ -1496,6 +1677,12 @@ class Interp:
             else:
                 if getattr(a, "mut", False):
                     muts = (muts or []) + [i]
+                if a.kind == "call" and self.is_io(a, env):
+                    # an argument is read as the parameter's type: `solve(read(), read())`
+                    ps = self.callee_params(f if target is None and fn.kind != "field" else None)
+                    if ps is not None and len(args) < len(ps[0]) and ps[0][len(args)].ty is not None:
+                        args.append(self.io(a, ps[0][len(args)].ty, ps[1], env))
+                        continue
                 args.append(self.ev(a, env))
         self.last_call = None
         if fn.kind == "field":
@@ -1528,6 +1715,11 @@ class Interp:
                     if nv is not args[i]:
                         self.place(e.args[i], env)[1](nv)
         return r
+
+    def callee_params(self, f):
+        if type(f) is Closure and f.node.kind == "fn" and not f.node.tparams:
+            return f.node.params, f.env
+        return None
 
     def method(self, o, name, args, kwargs, node, env, raw=False):
         t = type(o)
