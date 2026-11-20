@@ -65,7 +65,7 @@ for i in 0..n:
             depth = open_depth.pop()!
             size += open_size.pop()!
         elif top == next and next >= 0:
-            open_size[open_size.len - 1] += size
+            open_size.last! += size
             break
         else:
             if next >= 0:

@@ -32,7 +32,7 @@ for i in (0..n).rev:
             runs.pop()
             rel[i] = if top.neq: (to: runs.last!.head, flip: true) else: (to: -1, flip: false)
         else:
-            runs[runs.len - 1].head = succ[top.head]
+            runs.last!.head = succ[top.head]
             rel[i] = (to: succ[top.head], flip: false)
         continue
     var l = runs.pop()!
@@ -57,7 +57,7 @@ for i in (0..n).rev:
         if under.neq: l = swallow(l)
         else: l.neq = false
     else:
-        runs[runs.len - 1].head = succ[under.head]
+        runs.last!.head = succ[under.head]
         rel[i] = (to: succ[under.head], flip: false)
     runs.push(l)
 

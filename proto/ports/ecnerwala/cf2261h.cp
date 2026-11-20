@@ -22,7 +22,7 @@ fn parity(s: Str, bit: Int) -> Bool = count(s[j] == '1' for j in 0..s.len if j &
 
 fn encode(h: Int, b: Str) -> Str:
     let size = (1 << h) - 1
-    var s = Str('0' for _ in 0..size)
+    var s = "0".repeat(size)
     var at = 0
     for i in (0..size).rev:
         if is_data(i):

@@ -21,7 +21,7 @@ fn chain(x: Int) -> Int:
     nodes.push((cnt: 1, kid: (none, none)))
     for z in 0..L:
         let below = nodes.len - 1
-        nodes.push((cnt: 1, kid: if x >> z & 1 == 0: (below, none) else: (none, below)))
+        nodes.push((cnt: 1, kid: if x.bit(z): (none, below) else: (below, none)))
     nodes.len - 1
 
 var groups = List<(mask: Int, root: Int)>()    // distinct suffix ANDs, each with its trie
@@ -40,7 +40,7 @@ for x in a:
         var t: ?Int = g.root
         for b in (0..L).rev:
             let kid = nodes[t!].kid
-            t = if want >> b & 1 == 0: kid.0 else: kid.1
+            t = if want.bit(b): kid.1 else: kid.0
             if t == none: break
-            if g.mask >> b & 1 == 1: ans += nodes[t!].cnt << b
+            if g.mask.bit(b): ans += nodes[t!].cnt << b
 print(ans)
