@@ -841,7 +841,10 @@ impl<'p> Emitter<'p> {
                 )
             }
             BinOp::Coalesce => {
-                let keeps_opt = matches!(e.ty, Ty::Opt(_));
+                // An optional default keeps the result optional: `a` itself.
+                // A plain default gives what is inside `a`, which is still
+                // an optional when `a` is an optional of optionals.
+                let keeps_opt = l.ty == e.ty;
                 if walk::path_root(l).is_some() {
                     let a = self.expr(l).at(PRIMARY);
                     let b = self.expr(r);

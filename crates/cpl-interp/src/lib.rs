@@ -730,7 +730,9 @@ impl<'p, 'o> Interp<'p, 'o> {
                 BinOp::Or => Value::Bool(self.eval(lhs)?.bool() || self.eval(rhs)?.bool()),
                 BinOp::Coalesce => match self.eval(lhs)? {
                     Value::Opt(Some(inner)) => {
-                        if matches!(e.ty, Ty::Opt(_)) {
+                        // An optional default keeps the optional; a plain
+                        // one gives what is inside, optional or not.
+                        if lhs.ty == e.ty {
                             Value::Opt(Some(inner))
                         } else {
                             Rc::try_unwrap(inner).unwrap_or_else(|rc| (*rc).clone())
