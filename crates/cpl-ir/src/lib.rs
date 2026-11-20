@@ -16,6 +16,20 @@ mod lower;
 mod show;
 
 pub use cpl_syntax::ast::{BinOp, CmpOp, UnOp};
+/// Every diagnostic the front end has for a file: the checker's, and when
+/// it has no error, what lowering rejects. `cpl check`, `cpl run`,
+/// `cpl build` and the playground all answer with this, so a file one of
+/// them takes is a file all of them take.
+pub fn check(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
+    let mut diagnostics = analysis.diagnostics.clone();
+    if !analysis.has_errors() {
+        if let Err(more) = lower(analysis) {
+            diagnostics.extend(more);
+        }
+    }
+    diagnostics
+}
+
 pub use lower::{interactor, list_tests, lower, lower_judge, lower_test};
 pub use show::{sep_of, Sep};
 

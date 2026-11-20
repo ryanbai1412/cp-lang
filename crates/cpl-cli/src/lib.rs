@@ -596,6 +596,7 @@ fn run_unit_tests(
 /// finds.
 fn check(files: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
     let mut db = cpl_check::Database::new();
+    db.use_std_implicitly();
     let mut code = 0;
     for path in files {
         let text = match std::fs::read_to_string(path) {
@@ -607,7 +608,9 @@ fn check(files: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -
             }
         };
         db.set_file(path, text.as_str());
-        let diagnostics = db.diagnostics(path);
+        // What `cpl run` and `cpl build` would reject, `cpl check` rejects.
+        let analysis = db.analyze(path).expect("the file was just set");
+        let diagnostics = cpl_ir::check(&analysis);
         if diagnostics.is_empty() {
             let _ = writeln!(stdout, "{path}: no errors");
         } else {

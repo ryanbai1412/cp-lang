@@ -109,8 +109,9 @@ impl Playground {
 
     /// `cpl check`: every diagnostic in `source`.
     pub fn check(&mut self, name: &str, source: &str) -> Value {
-        self.db.set_file(name, source);
-        let diagnostics = self.db.diagnostics(name);
+        self.runner.set_file(name, source);
+        let analysis = self.runner.analyze(name).expect("the file was just set");
+        let diagnostics = cpl_ir::check(&analysis);
         let code = if diagnostics.is_empty() {
             0
         } else {
