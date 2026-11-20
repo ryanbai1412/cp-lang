@@ -292,3 +292,69 @@ this file, each says what is library code and what is not.
   two: `min=` and `max=` are now instances of it.
 - **`[domain S]Letter = read()`.** Library: `read` for an array whose
   element is a domain of `Char`.
+
+## 12. Calls made while hillclimbing hard DP, graph and tree problems (2026-11-20)
+
+Fifteen hard corpus problems were re-solved from scratch in
+`proto/ports/hillclimb_dp_graph/` (bitmask, subset, digit, interval, tree
+and rerooting DP; SCC, bridges, heavy-light paths, shortest paths;
+constructive). Each change below removes boilerplate that showed up in
+more than one of them, and each is a general rule rather than a case. The
+ports as they had to be written before are kept in `before/`;
+`python3 proto/loc.py hillclimb_dp_graph` prints both. On the twelve ports
+a change touched: 364 lines before, 235 after; the library-stripped
+reduction against the C++ originals went from 43% to 63%.
+
+- **`Subset<D>` is a set, so it has set algebra.** `s | t`, `s & t`,
+  `s - t`, `s ^ t`, and `for g in s.subsets` (every subset of `s`, `s`
+  first, the empty set last). Before, a submask walk dropped to integers:
+  `g = (g - 1) & s.idx` and `Group.nth(s.idx ^ g)`. Now the Grouping DP is
+  `for g in s.subsets: best[s] max= score[g] + best[s - g]`. No new type:
+  the operators are the ones `Set` already has.
+- **`v.cyc(k)` on every domain** (specified in plan/19 §3.2, now built):
+  `k` steps round the domain, Euclidean, so `k` may be negative. Ring DP
+  and ring input stop spelling `Bead((i.idx + k) % n)`.
+- **A read range is the range that was written.** `let m: n - 1..=5e5 =
+  read()` and `let k: 1..=n = read()` used to check and generate against
+  the static envelope only (`1..=5e5`), so ports added a generator and a
+  `where` to say the same thing twice. The bounds are now evaluated at the
+  read: input outside them stops with the line number, and stress inputs
+  are drawn from them: one rule, the same as for constant bounds.
+- **`xs + ys` joins two lists.** Constructive answers are often "this run,
+  then that one": `print(odds + [5, 4] + evens)`.
+- **`Graph.undirected(edges)` and `Graph.directed(edges)` build the
+  adjacency from the edge list as read** (`[E](u: V, v: V)`, or with a
+  third field that rides along: `for (v, w) in g[u]`). Every graph port
+  had the same four-line loop. This is `stdlib/graph.cp`'s constructor;
+  the prototype compiler now has the stand-in.
+- **`Rooted(adj, root)` is the depth-first spanning tree.** On a tree that
+  is the tree. On any connected graph, every edge it leaves out joins a
+  vertex to one of its ancestors, which is the one fact bridges and cut
+  vertices need: `low` is four lines over `tree.preorder.rev`, with no
+  hand-written DFS, entry and exit clocks or child lists. No new type and
+  no new function; `Rooted` only stopped assuming its input was a tree.
+  `stdlib/tree.cp`'s `Rooted.new` still searches breadth-first and is to
+  follow.
+- **The `Rooted` stand-in grew to the stdlib surface**: `children(v)`,
+  `size(v)`, `is_anc(a, b)`, `dist(a, b)`, `ancestor(v, k)`,
+  `step(a, b, k)`, and the heavy-light layout as `tree.Pre`, `tree.sub(v)`
+  and `tree.chains(a, b)`. A subtree is one range of positions and a path
+  a few, so a path or subtree update is a loop over ranges on any range
+  structure. Tree DP reads `for c in tree.children(v)` instead of
+  filtering neighbours by parent.
+- **`scc` and `components` return a fresh domain**, `let (C, comp) =
+  scc(g)`, numbered so that arcs lead to later components, and
+  `condense(g, comp)` is the DAG. A DP over the condensation is then
+  `for c in C.rev`, with no topological sort. (Mechanism: section 10, "a
+  function may return a fresh domain".)
+- **`Dsu<V>()` and `AssignSum<D>()`** are stand-ins for `stdlib/dsu.cp`
+  and for `LazySegTree` with the new `AssignSum` action in
+  `stdlib/lazy.cp` (range assign, range sum), next to the existing
+  `AddMax<D>()`.
+
+Left as friction, not fixed here: the prototype compiler has no `Float`
+(one candidate problem was swapped out for it); `let (a, b): (T, U) =
+read()` and `var (lo, hi) = ...` are not accepted; every tree port writes
+its own two-line random-tree generator; a tree given as a parent array
+needs a three-line loop before `Rooted`; rerooting is still a hand-written
+prefix and suffix pass (a `reroot` combinator is the next candidate).

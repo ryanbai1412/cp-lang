@@ -3,7 +3,7 @@
 cd "$(dirname "$0")"
 ulimit -s unlimited 2>/dev/null   # some originals keep megabytes of tables on the stack
 fail=0
-for f in ports/*.cp; do
+for f in ports/*.cp ports/hillclimb_dp_graph/*.cp; do   # its before/ holds superseded versions, not run here
     b=${f%.cp}
     if [[ -f ${b}_judge.py ]]; then   # interactive: talk to a judge instead of comparing outputs
         r=$(timeout 600 python3 interact.py "$f" "${b}_orig.cpp" "${b}_judge.py" ${ITERS:-200} 6 2>&1 | tail -1)

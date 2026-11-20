@@ -255,6 +255,7 @@ static inline ll cp_ipow(ll b, ll e) { ll r = 1; while (e--) r *= b; return r; }
 static inline size_t cp_lidx(ll i, size_t n, int line) { if (i < 0 || (size_t)i >= n) cp_fail("list index out of range", line); return (size_t)i; }
 static inline ll cp_rfirst(Rng r, int line) { if (r.lo >= r.hi) cp_fail("empty range", line); return r.lo; }
 static inline ll cp_rlast(Rng r, int line) { if (r.lo >= r.hi) cp_fail("empty range", line); return r.hi - 1; }
+template <class T> static inline vector<T> cp_concat(vector<T> a, const vector<T>& b) { a.insert(a.end(), b.begin(), b.end()); return a; }
 template <class T> static inline T cp_pop(vector<T>& v, int line) { if (v.empty()) cp_fail("pop from empty list", line); T x = v.back(); v.pop_back(); return x; }
 
 const ll CP_INF = (ll)4e18;
@@ -300,6 +301,29 @@ template <class T> struct SegTree {
 };
 
 // AddMax: add to an inclusive range, max of an inclusive range. Prototype stand-in for a lazy std.segtree.
+// Lazy segment tree: assign to a range, sum of a range (stdlib/lazy.cp LazySegTree with the AssignSum action)
+struct AssignSum {
+    int n = 0; vector<ll> v, lz;
+    AssignSum() {}
+    AssignSum(int n_) : n(max(n_, 1)), v(4 * max(n_, 1)), lz(4 * max(n_, 1), LLONG_MIN) {}
+    void put(int o, int l, int r, ll x) { v[o] = x * (r - l + 1); lz[o] = x; }
+    void push(int o, int l, int m, int r) { if (lz[o] != LLONG_MIN) { put(2 * o, l, m, lz[o]); put(2 * o + 1, m + 1, r, lz[o]); lz[o] = LLONG_MIN; } }
+    void assign(int o, int l, int r, int ql, int qr, ll x) {
+        if (ql <= l && r <= qr) { put(o, l, r, x); return; }
+        int m = (l + r) / 2; push(o, l, m, r);
+        if (ql <= m) assign(2 * o, l, m, ql, qr, x);
+        if (qr > m) assign(2 * o + 1, m + 1, r, ql, qr, x);
+        v[o] = v[2 * o] + v[2 * o + 1];
+    }
+    ll sum(int o, int l, int r, int ql, int qr) {
+        if (ql <= l && r <= qr) return v[o];
+        int m = (l + r) / 2; push(o, l, m, r);
+        return (ql <= m ? sum(2 * o, l, m, ql, qr) : 0) + (qr > m ? sum(2 * o + 1, m + 1, r, ql, qr) : 0);
+    }
+    void assign(int l, int r, ll x) { if (l <= r) assign(1, 0, n - 1, l, r, x); }
+    ll sum(int l, int r) { return l <= r ? sum(1, 0, n - 1, l, r) : 0; }
+};
+
 struct AddMax {
     int n = 0; vector<ll> v, lz;
     AddMax() {}
@@ -345,18 +369,93 @@ struct StrHash {
     }
 };
 
-// RootedTree: parent, preorder and O(1) lca of a tree given as adjacency lists. Prototype stand-in for std.tree.
+// Strongly connected components (Tarjan, iterative). Returns their number; comp[v] is numbered so that
+// every arc goes to an equal or larger component (a topological order of the condensation).
+template <class G, class F> static ll cp_scc(const G& g, vector<int>& comp, F to) {
+    int n = (int)g.size(), timer = 0, k = 0;
+    vector<int> seen(n, -1), low(n), stk;
+    vector<pair<int, int>> path;
+    comp.assign(n, -1);
+    for (int r = 0; r < n; ++r) {
+        if (seen[r] != -1) continue;
+        path.push_back({r, 0});
+        while (!path.empty()) {
+            int u = path.back().first, i = path.back().second;
+            if (i == 0) { seen[u] = low[u] = timer++; stk.push_back(u); }
+            if (i < (int)g[u].size()) {
+                path.back().second++;
+                int v = to(g[u][i]);
+                if (seen[v] == -1) path.push_back({v, 0});
+                else if (comp[v] == -1) low[u] = min(low[u], seen[v]);
+            } else {
+                path.pop_back();
+                if (!path.empty()) low[path.back().first] = min(low[path.back().first], low[u]);
+                if (low[u] == seen[u]) {
+                    for (;;) { int v = stk.back(); stk.pop_back(); comp[v] = k; if (v == u) break; }
+                    ++k;
+                }
+            }
+        }
+    }
+    for (int& c : comp) c = k - 1 - c;
+    return k;
+}
+// Connected components of an undirected adjacency, numbered by smallest member.
+template <class G, class F> static ll cp_components(const G& g, vector<int>& comp, F to) {
+    int n = (int)g.size(), k = 0;
+    vector<int> stk;
+    comp.assign(n, -1);
+    for (int r = 0; r < n; ++r) {
+        if (comp[r] != -1) continue;
+        comp[r] = k; stk.push_back(r);
+        while (!stk.empty()) {
+            int u = stk.back(); stk.pop_back();
+            for (const auto& a : g[u]) { int v = to(a); if (comp[v] == -1) { comp[v] = k; stk.push_back(v); } }
+        }
+        ++k;
+    }
+    return k;
+}
+template <class G, class F> static vector<vector<int>> cp_condense(const G& g, const vector<int>& comp, ll k, F to) {
+    vector<vector<int>> out(k);
+    for (int u = 0; u < (int)g.size(); ++u)
+        for (const auto& a : g[u]) if (comp[u] != comp[to(a)]) out[comp[u]].push_back(comp[to(a)]);
+    for (auto& o : out) { sort(o.begin(), o.end()); o.erase(unique(o.begin(), o.end()), o.end()); }
+    return out;
+}
+
+// Disjoint sets: union by size, path halving
+struct CpDsu {
+    vector<int> p, sz;
+    CpDsu() {}
+    explicit CpDsu(ll n) : p(n), sz(n, 1) { iota(p.begin(), p.end(), 0); }
+    int find(int v) { while (p[v] != v) v = p[v] = p[p[v]]; return v; }
+    bool unite(int a, int b) { a = find(a); b = find(b); if (a == b) return false; if (sz[a] < sz[b]) swap(a, b); p[b] = a; sz[a] += sz[b]; return true; }
+    bool same(int a, int b) { return find(a) == find(b); }
+    int size(int v) { return sz[find(v)]; }
+};
+
+// RootedTree: the depth-first spanning tree of `adj` from `root`, with parent, preorder, O(1) lca and level
+// ancestors. On a tree that is the tree itself; on any other connected graph every edge left out joins a
+// vertex to one of its ancestors. Prototype stand-in for std.tree.
 struct RootedTree {
-    vector<int> par, order, tin, dep; vector<vector<int>> sp;
+    vector<int> par, order, tin, dep, siz; vector<vector<int>> sp, kids;
+    mutable vector<vector<int>> jump;   // jump[k][v]: 2^k steps up, built on the first ancestor() call
     RootedTree() {}
     RootedTree(const vector<vector<int>>& adj, int root) : par(adj.size(), -1), tin(adj.size(), -1), dep(adj.size(), 0) {
-        vector<int> st{root};
+        vector<pair<int, int>> st{{root, 0}};
+        tin[root] = 0; order.push_back(root);
         while (!st.empty()) {
-            int u = st.back(); st.pop_back();
-            tin[u] = (int)order.size(); order.push_back(u);
-            for (int i = (int)adj[u].size() - 1; i >= 0; --i) { int v = adj[u][i]; if (v != par[u]) { par[v] = u; dep[v] = dep[u] + 1; st.push_back(v); } }
+            int u = st.back().first, i = st.back().second;
+            if (i == (int)adj[u].size()) { st.pop_back(); continue; }
+            st.back().second++;
+            int v = adj[u][i];
+            if (tin[v] < 0) { par[v] = u; dep[v] = dep[u] + 1; tin[v] = (int)order.size(); order.push_back(v); st.push_back({v, 0}); }
         }
         int n = (int)order.size();
+        siz.assign(adj.size(), 1); kids.resize(adj.size());
+        for (int i = n - 1; i > 0; --i) siz[par[order[i]]] += siz[order[i]];
+        for (int i = 1; i < n; ++i) kids[par[order[i]]].push_back(order[i]);
         sp.assign(1, vector<int>(n));
         for (int i = 0; i < n; ++i) sp[0][i] = par[order[i]] < 0 ? 0 : tin[par[order[i]]];
         for (int k = 1; (1 << k) <= n; ++k) {
@@ -368,6 +467,53 @@ struct RootedTree {
         if (u == v) return u;
         int l = min(tin[u], tin[v]) + 1, r = max(tin[u], tin[v]) + 1, k = 31 - __builtin_clz(r - l);
         return order[min(sp[k][l], sp[k][r - (1 << k)])];
+    }
+    // Heavy-light layout, built on first use: hpos is a preorder that visits the largest child first, so
+    // a subtree is one range of positions and a path is O(log n) ranges (one per heavy chain it crosses).
+    mutable vector<int> hpos, top;
+    void layout() const {
+        if (!hpos.empty()) return;
+        hpos.assign(par.size(), 0); top.assign(par.size(), 0);
+        vector<int> st{order[0]}; top[order[0]] = order[0]; int t = 0;
+        while (!st.empty()) {
+            int u = st.back(); st.pop_back();
+            hpos[u] = t++;
+            int h = -1;
+            for (int c : kids[u]) if (h < 0 || siz[c] > siz[h]) h = c;
+            for (int c : kids[u]) if (c != h) { top[c] = c; st.push_back(c); }
+            if (h >= 0) { top[h] = top[u]; st.push_back(h); }
+        }
+    }
+    template <class P> P sub(int v) const { layout(); return P{hpos[v], hpos[v] + siz[v] - 1}; }
+    template <class P> vector<P> chains(int a, int b) const {
+        layout();
+        vector<P> out;
+        while (top[a] != top[b]) {
+            if (dep[top[a]] < dep[top[b]]) swap(a, b);
+            out.push_back(P{hpos[top[a]], hpos[a]});
+            a = par[top[a]];
+        }
+        out.push_back(P{min(hpos[a], hpos[b]), max(hpos[a], hpos[b])});
+        return out;
+    }
+    bool is_anc(int a, int b) const { return tin[a] <= tin[b] && tin[b] < tin[a] + siz[a]; }
+    int dist(int a, int b) const { return dep[a] + dep[b] - 2 * dep[lca(a, b)]; }
+    int ancestor(int v, ll k) const {       // -1 above the root
+        if (k < 0 || k > dep[v]) return -1;
+        if (jump.empty()) {
+            jump.push_back(par);
+            for (int j = 1; (1 << j) < (int)order.size(); ++j) {
+                jump.emplace_back(par.size(), -1);
+                for (int x : order) { int h = jump[j - 1][x]; jump[j][x] = h < 0 ? -1 : jump[j - 1][h]; }
+            }
+        }
+        for (int j = 0; k; ++j, k >>= 1) if (k & 1) v = jump[j][v];
+        return v;
+    }
+    int step(int a, int b, ll k) const {    // -1 past b
+        int c = lca(a, b); ll up = dep[a] - dep[c], down = dep[b] - dep[c];
+        if (k < 0 || k > up + down) return -1;
+        return k <= up ? ancestor(a, k) : ancestor(b, up + down - k);
     }
 };
 

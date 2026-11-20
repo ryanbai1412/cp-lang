@@ -43,6 +43,12 @@ class TEnum(T):
                 return k, v
         return None, None
 
+class TAssignSum(T):
+    def __init__(self, dom): self.dom = dom
+    def __eq__(self, o): return isinstance(o, TAssignSum) and o.dom == self.dom
+    def __hash__(self): return hash(("assignsum", self.dom))
+    def __repr__(self): return f"AssignSum<{self.dom!r}>"
+
 class TAddMax(T):
     def __init__(self, dom): self.dom = dom
     def __eq__(self, o): return isinstance(o, TAddMax) and o.dom == self.dom
@@ -80,6 +86,12 @@ class TTree(T):
     def __eq__(self, o): return isinstance(o, TTree) and o.dom == self.dom
     def __hash__(self): return hash(("tree", self.dom))
     def __repr__(self): return f"Rooted<{self.dom!r}>"
+
+class TDsu(T):
+    def __init__(self, dom): self.dom = dom
+    def __eq__(self, o): return isinstance(o, TDsu) and o.dom == self.dom
+    def __hash__(self): return hash(("dsu", self.dom))
+    def __repr__(self): return f"Dsu<{self.dom!r}>"
 
 class THeap(T):
     def __init__(self, elem): self.elem = elem
@@ -228,6 +240,8 @@ class Compiler(LendMixin):
         if isinstance(t, TTree): return "RootedTree"
         if isinstance(t, TSeg): return f"SegTree<{self.cpp_type(t.elem)}>"
         if isinstance(t, TAddMax): return "AddMax"
+        if isinstance(t, TAssignSum): return "AssignSum"
+        if isinstance(t, TDsu): return "CpDsu"
         if isinstance(t, THeap):
             e = self.cpp_type(t.elem)
             return f"priority_queue<{e}, vector<{e}>, greater<{e}>>"
@@ -257,6 +271,29 @@ class Compiler(LendMixin):
         return name + "_" if name in CPP_RESERVED else name
 
     # ---------- domains
+    def tree_pre(self, tt):
+        """Rooted<V>.Pre: the positions of V's vertices in a tree's heavy-first preorder (one domain per V)."""
+        if not hasattr(self, "pre_domains"):
+            self.pre_domains = {}
+        v = tt.dom.info
+        if v not in self.pre_domains:
+            info, _, _ = self.new_domain(f"Pre_{v.name}", "0", "", (0, 0), v.len_iv)
+            info.lo_src, info.hi_src = "0", v.len_cpp
+            self.pre_domains[v] = info
+        info = self.pre_domains[v]
+        self.emit(f"{info.cpp}_lo = 0; {info.cpp}_len = {v.len_cpp};")
+        return TDom(info)
+
+    def adjacency(self, t, node, what):
+        """An adjacency `[V]List<V>` or `[V]List<(V, ...)>`: returns (V, a C++ lambda from an arc to its target)."""
+        if isinstance(t, TArr) and len(t.dims) == 1 and isinstance(t.elem, TList):
+            a, vt = t.elem.elem, t.dims[0]
+            if a == vt:
+                return vt, "[](int _a) { return _a; }"
+            if isinstance(a, TTuple) and a.types[0] == vt:
+                return vt, f"[](const {a.cpp}& _a) {{ return (int)_a.{self.field_cpp(a.names[0])}; }}"
+        self.error(node, f"{what} needs an adjacency [V]List<V> or [V]List<(V, ...)>, got {t!r}")
+
     def new_domain(self, name, lo_c, len_c, lo_iv, len_iv, anon=False, labels="int"):
         self.dom_count += 1
         cpp = f"D{self.dom_count}_{name}" if not anon else f"D{self.dom_count}"
@@ -338,6 +375,16 @@ class Compiler(LendMixin):
                 return TPerm([TDom(pos)], d)
             if nm == "MinHeap":
                 return THeap(self.resolve_type(tn.args[0]))
+            if nm == "Dsu":
+                d = self.resolve_type(tn.args[0])
+                if not isinstance(d, TDom):
+                    self.error(tn, f"Dsu<V> needs a domain, got {d!r}")
+                return TDsu(d)
+            if nm == "AssignSum":
+                d = self.dim_type(tn.args[0]) if tn.args[0].kind.startswith("t") else self.resolve_type(N("texpr", tn.line, expr=tn.args[0]))
+                if not isinstance(d, TDom):
+                    self.error(tn, "AssignSum<D> needs a domain D")
+                return TAssignSum(d)
             if nm == "AddMax":
                 d = self.resolve_type(tn.args[0])
                 if not isinstance(d, TDom):
@@ -768,6 +815,12 @@ class Compiler(LendMixin):
             if op not in "+-*/":
                 self.error(e, f"`{op}` is not defined on Mod")
             return f"({a} {op} {b})", at
+        if isinstance(at, TDom) and getattr(at.info, "subset_of", None) is not None:
+            # Subset<D> is a set: union, intersection, difference, symmetric difference
+            if not (isinstance(bt, TDom) and bt.info is at.info) or op not in ("|", "&", "-", "^"):
+                self.error(e, f"`{op}` between {at!r} and {bt!r}; sets support `s | t`, `s & t`, `s - t`, `s ^ t`, "
+                              f"and `s.with(x)` / `s.without(x)` for one element")
+            return (f"(({a}) & ~({b}))" if op == "-" else f"(({a}) {op} ({b}))"), at
         if isinstance(at, TDom):
             info = at.info
             if op in "+-" and isinstance(bt, TInt):
@@ -784,6 +837,13 @@ class Compiler(LendMixin):
             return f"(char)({a} {op} {b})", CHAR
         if isinstance(at, TChar) and isinstance(bt, TChar) and op == "-":
             return f"(ll)({a} - {b})", TInt(-255, 255)
+        if isinstance(at, TList) and isinstance(bt, TList) and op == "+":
+            # xs + ys: a new list, xs then ys
+            if is_int(at.elem) and is_int(bt.elem):
+                return f"cp_concat({a}, {b})", TList(TInt(*iv_join(at.elem, bt.elem)))
+            if at.elem != bt.elem:
+                self.error(e, f"`+` joins two lists of one element type, got {at!r} and {bt!r}")
+            return f"cp_concat({a}, {b})", at
         if not (isinstance(at, TInt) and isinstance(bt, TInt)):
             self.error(e, f"`{op}` needs Int operands, got {at!r} and {bt!r}")
         if op in "+-*":
@@ -1083,6 +1143,8 @@ class Compiler(LendMixin):
     def x_field(self, e, want):
         oc, ot = self.expr(e.obj)
         f = e.name
+        if isinstance(ot, TTree) and f == "Pre":
+            return "", TType(self.tree_pre(ot))
         if isinstance(ot, TTree) and f == "preorder":
             return f"{oc}.order", TList(ot.dom)
         if isinstance(ot, TDom) and f == "elem" and getattr(ot.info, "base", None) is not None:
@@ -1206,6 +1268,34 @@ class Compiler(LendMixin):
             if not (is_int(lt) and is_int(ht)):
                 self.error(e, "rand(lo, hi) needs Ints")
             return f"gen_int({lc}, {hc})", TInt(lt.lo, ht.hi)
+        if (fn.kind == "field" and fn.obj.kind == "name" and fn.obj.name == "Graph" and fn.name in ("undirected", "directed")
+                and len(e.args) == 1 and not self.lookup("Graph")):
+            # Graph.undirected(edges) / Graph.directed(edges): the adjacency of an edge list (stdlib/graph.cp).
+            # Edges are (u, v) or (u, v, w); a third field rides along, so `for (v, w) in g[u]` sees it.
+            c, t = self.expr(e.args[0])
+            et = t.elem if (isinstance(t, TArr) and len(t.dims) == 1) or isinstance(t, TList) else None
+            if not (isinstance(et, TTuple) and len(et.types) in (2, 3) and isinstance(et.types[0], TDom)
+                    and et.types[1] == et.types[0]):
+                self.error(e, f"Graph.{fn.name} needs a list of edges (u: V, v: V) or (u: V, v: V, w: W), got {t!r}")
+            vt = et.types[0]
+            fs = [self.field_cpp(n) for n in et.names]
+            if len(et.types) == 2:
+                at, mk = vt, (lambda to: f"(int)_e.{to}")
+            else:
+                at = self.tuple_type(["", ""], [vt, et.types[2]])
+                mk = lambda to: f"{at.cpp}{{(int)_e.{to}, _e.{fs[2]}}}"
+            gt = TArr([vt], TList(at))
+            back = f" _g[(int)_e.{fs[1]}].push_back({mk(fs[0])});" if fn.name == "undirected" else ""
+            return (f"([&]{{ {self.cpp_type(gt)} _g({vt.info.len_cpp}); for (const auto& _e : {c}) {{ "
+                    f"_g[(int)_e.{fs[0]}].push_back({mk(fs[1])});{back} }} return _g; }}())"), gt
+        if fn.kind == "name" and fn.name == "condense" and len(e.args) == 2 and not self.lookup(fn.name):
+            # condense(adj, comp): the graph of components, one arc per pair of joined components
+            c, t = self.expr(e.args[0])
+            vt, to = self.adjacency(t, e, "condense")
+            cc, ct = self.expr(e.args[1])
+            if not (isinstance(ct, TArr) and ct.dims == [vt] and isinstance(ct.elem, TDom)):
+                self.error(e, f"condense needs the components as a [{vt!r}]C, got {ct!r}")
+            return f"cp_condense({c}, {cc}, {ct.elem.info.len_cpp}, {to})", TArr([ct.elem], TList(ct.elem))
         if fn.kind == "name" and fn.name == "Rooted" and len(e.args) == 2 and not self.lookup(fn.name):
             # Rooted(adj, root): a tree given as [V]List<V>, hung from `root`
             c, t = self.expr(e.args[0])
@@ -1326,6 +1416,10 @@ class Compiler(LendMixin):
             ts = [self.resolve_type(a) if a.kind.startswith("t") else self.resolve_type(N("texpr", a.line, expr=a)) for a in fn.args]
             t = TSet(ts[0]) if fn.name == "Set" else TMap(*ts, hashed=fn.name == "HashMap")
             return self.set_ctor(t), t
+        if fn.kind == "generic" and fn.name == "AssignSum" and not e.args:
+            # AssignSum<D>(): assign to a range, sum of a range; every cell starts at 0 (stdlib/lazy.cp)
+            t = self.resolve_type(N("tname", fn.line, name="AssignSum", args=fn.args))
+            return f"AssignSum({t.dom.info.len_cpp})", t
         if fn.kind == "generic" and fn.name == "AddMax":
             # AddMax<D>(): add to a range, max of a range; every cell starts at 0
             t = self.resolve_type(N("tname", fn.line, name="AddMax", args=fn.args))
@@ -1341,6 +1435,10 @@ class Compiler(LendMixin):
             ic = self.coerce(ic, it, t.elem, e.args[0])
             ec = self.cpp_type(t.elem)
             return f"SegTree<{ec}>({t.dom.info.len_cpp}, {ic}, {self.lambda2(e.args[1], t.elem, t.elem, t.elem)})", t
+        if fn.kind == "generic" and fn.name == "Dsu" and not e.args:
+            # Dsu<V>(): disjoint sets over a domain, every value alone to start (stdlib/dsu.cp)
+            t = self.resolve_type(N("tname", fn.line, name="Dsu", args=fn.args))
+            return f"CpDsu({t.dom.info.len_cpp})", t
         if fn.kind == "generic" and fn.name in ("List", "MinHeap"):
             a = fn.args[0]
             et = self.resolve_type(a) if a.kind.startswith("t") else self.resolve_type(N("texpr", a.line, expr=a))
@@ -1594,6 +1692,19 @@ class Compiler(LendMixin):
                         f"return _k >= 0 ? Opt<int>((int)_k) : Opt<int>(); }}({c}))"), TOpt(ot.dims[0])
             return (f"([&](auto _x){{ ll _k = lower_bound({oc}.begin(), {oc}.end(), _x) - {oc}.begin(); "
                     f"return _k < (ll){oc}.size() ? Opt<int>((int)_k) : Opt<int>(); }}({c}))"), TOpt(ot.dims[0])
+        if isinstance(ot, TTree) and m in ("ancestor", "step") and len(args) == (2 if m == "ancestor" else 3):
+            # ancestor(v, k): k steps up from v; step(a, b, k): k steps from a along the path to b (stdlib/tree.cp)
+            cs = []
+            for a in args[:-1]:
+                c, t = self.expr(a, ot.dom)
+                if t != ot.dom:
+                    self.error(a, f"nodes of this tree are {ot.dom!r}, got {t!r}")
+                cs.append(c)
+            kc, kt = self.expr(args[-1])
+            if not is_int(kt):
+                self.error(args[-1], f"{m} needs an Int number of steps, got {kt!r}")
+            return (f"([&](int _p){{ return _p < 0 ? Opt<int>() : Opt<int>(_p); }}({oc}.{m}({', '.join(cs)}, {kc})))",
+                    TOpt(ot.dom))
         if isinstance(ot, TTree):
             cs = []
             for a in args:
@@ -1609,7 +1720,22 @@ class Compiler(LendMixin):
                 return f"(ll){oc}.tin[{cs[0]}]", TInt(0, ot.dom.info.len_iv[1])
             if m == "depth" and len(cs) == 1:
                 return f"(ll){oc}.dep[{cs[0]}]", TInt(0, ot.dom.info.len_iv[1])
-            self.error(e, f"no method {m} on {ot!r} (lca(u, v), parent(v), pos(v), depth(v), .preorder)")
+            if m in ("sub", "chains") and len(cs) == (1 if m == "sub" else 2):
+                # positions in the heavy-first preorder: a subtree is one range of them, a path a few (stdlib/tree.cp)
+                pre = self.tree_pre(ot)
+                span = self.tuple_type(["l", "r"], [pre, pre])
+                if m == "sub":
+                    return f"{oc}.sub<{span.cpp}>({cs[0]})", span
+                return f"{oc}.chains<{span.cpp}>({cs[0]}, {cs[1]})", TList(span)
+            if m == "is_anc" and len(cs) == 2:
+                return f"{oc}.is_anc({cs[0]}, {cs[1]})", BOOL
+            if m == "dist" and len(cs) == 2:
+                return f"(ll){oc}.dist({cs[0]}, {cs[1]})", TInt(0, ot.dom.info.len_iv[1])
+            if m == "children" and len(cs) == 1:
+                return f"{oc}.kids[{cs[0]}]", TList(ot.dom)
+            if m == "size" and len(cs) == 1:
+                return f"(ll){oc}.siz[{cs[0]}]", TInt(1, ot.dom.info.len_iv[1])
+            self.error(e, f"no method {m} on {ot!r} (lca, dist, is_anc, parent, ancestor, step, children, size, pos, depth, .preorder)")
         if isinstance(ot, TPrefix) and m == "sum":
             if len(args) != len(ot.dims):
                 self.error(e, f"`sum` on {ot!r} takes {len(ot.dims)} range(s), one per dimension")
@@ -1638,6 +1764,20 @@ class Compiler(LendMixin):
                     self.error(a, f"positions of this string are {ot.dom!r}, got {t!r}")
                 cs.append(c)
             return f"{oc}.of({cs[0]}, {cs[1]})", TInt(0, (1 << 61) - 1)
+        if isinstance(ot, TAssignSum):
+            def at(a):
+                c, t = self.expr(a, ot.dom)
+                if t != ot.dom:
+                    self.error(a, f"a {ot!r} is indexed by {ot.dom!r}, got {t!r}")
+                return c
+            if m == "assign" and len(args) == 3:
+                vc, vt = self.expr(args[2])
+                if not is_int(vt):
+                    self.error(args[2], f"assign(l, r, x) needs an Int x, got {vt!r}")
+                return f"{oc}.assign({at(args[0])}, {at(args[1])}, {vc})", UNIT
+            if m == "sum" and len(args) == 2:
+                return f"{oc}.sum({at(args[0])}, {at(args[1])})", INT
+            self.error(e, f"no method {m} on {ot!r} (assign(l, r, x), sum(l, r))")
         if isinstance(ot, TAddMax):
             def at(a):
                 c, t = self.expr(a, ot.dom)
@@ -1668,6 +1808,18 @@ class Compiler(LendMixin):
             if m == "query" and len(args) == 2:
                 return f"{oc}.query({at(args[0])}, {at(args[1])})", ot.elem
             self.error(e, f"no method {m} on {ot!r} (set(i, v), get(i), query(l, r))")
+        if isinstance(ot, TDsu) and m in ("find", "unite", "same", "size"):
+            cs = []
+            for a in args:
+                c, t = self.expr(a, ot.dom)
+                if t != ot.dom:
+                    self.error(a, f"this Dsu is over {ot.dom!r}, got {t!r}")
+                cs.append(c)
+            if len(cs) != (1 if m in ("find", "size") else 2):
+                self.error(e, f"Dsu.{m}: wrong number of arguments")
+            if m == "find": return f"{oc}.find({cs[0]})", ot.dom
+            if m == "size": return f"(ll){oc}.size({cs[0]})", TInt(1, ot.dom.info.len_iv[1])
+            return f"{oc}.{m}({cs[0]}, {cs[1]})", BOOL
         if isinstance(ot, THeap):
             if m == "push":
                 c, t = self.expr(args[0], ot.elem)
@@ -1682,6 +1834,13 @@ class Compiler(LendMixin):
             info = ot.info
             return (f"([&](ll _k){{ return _k >= 0 && _k < {info.len_cpp} ? Opt<int>((int)_k) : Opt<int>(); }}"
                     f"((ll)({oc}) + ({c})))"), TOpt(ot)
+        if isinstance(ot, TDom) and m == "cyc" and len(args) == 1:
+            # v.cyc(k): k steps round the domain, wrapping (plan/19 §3.2). Euclidean, so k may be negative.
+            c, t = self.expr(args[0])
+            if not is_int(t):
+                self.error(e, f"cyc needs an Int number of steps, got {t!r}")
+            n = ot.info.len_cpp
+            return f"(int)(((((ll)({oc}) + ({c})) % (ll)({n})) + (ll)({n})) % (ll)({n}))", ot
         if isinstance(ot, TOpt) and m == "map":
             self.error(e, ".map on ?T is not in the prototype yet")
         self.error(e, f"{ot!r} has no method `{m}`")
@@ -1752,6 +1911,27 @@ class Compiler(LendMixin):
             self.loop_trips.pop()
             self.scopes.pop()
             self.emit("} }")
+            return
+        if it.kind == "field" and it.name == "subsets":
+            c, t = self.expr(it.obj)
+            if not (isinstance(t, TDom) and getattr(t.info, "subset_of", None) is not None):
+                self.error(it, f"`.subsets` needs a Subset<D> value, got {t!r}")
+            if rev:
+                self.error(it, "`.subsets` runs from the whole set down to the empty set; `.rev` is not in the prototype")
+            s_, v, done = self.tmpname("s"), self.fresh(pat.name if pat.kind == "pname" else "g"), self.tmpname("done")
+            # every subset of s, s itself first and the empty set last (the standard (g - 1) & s walk)
+            self.emit(f"for (int {s_} = {c}, {v} = {s_}, {done} = 0; !{done}; {done} = !{v}, {v} = ({v} - 1) & {s_}) {{")
+            self.scopes.append({})
+            self.loop_trips.append(None)
+            self.ind += 1
+            if pat.kind != "pname":
+                self.error(it, "`for g in s.subsets` binds one name")
+            self.scopes[-1][pat.name] = Sym("let", t, v, node=pat)
+            body()
+            self.ind -= 1
+            self.loop_trips.pop()
+            self.scopes.pop()
+            self.emit("}")
             return
         self.scopes.append({})
         trips = None
@@ -2232,6 +2412,22 @@ class Compiler(LendMixin):
             self.scopes[-1][dn] = Sym("type", TDom(info), info.cpp, node=s)
             self.declare(vn, TArr([TDom(info)], t.elem), vals, False, s)
             return
+        if v is not None and v.kind == "call" and v.fn.kind == "name" and v.fn.name in ("scc", "components") \
+                and not self.lookup(v.fn.name) and s.pat.kind == "ptuple" and len(s.pat.items) == 2 and len(v.args) == 1:
+            # let (C, comp) = scc(adj): C is a fresh domain of components, comp: [V]C (stdlib/graph.cp).
+            # scc numbers C so that every arc goes to an equal or larger component.
+            c, t = self.expr(v.args[0])
+            vt, to = self.adjacency(t, v, v.fn.name)
+            dn, vn = s.pat.items[0].name, s.pat.items[1].name
+            comp = self.fresh(vn)
+            info, _, _ = self.new_domain(dn, "0", "", (0, 0), (0, vt.info.len_iv[1]))
+            ty = TArr([vt], TDom(info))
+            self.decl_global_or_local(comp, ty)
+            self.emit(f"{info.cpp}_lo = 0; {info.cpp}_len = cp_{v.fn.name}({c}, {comp}, {to});")
+            info.lo_src, info.hi_src = "0", f"{info.cpp}_len"
+            self.scopes[-1][dn] = Sym("type", TDom(info), info.cpp, node=s)
+            self.declare(vn, ty, comp, False, s)
+            return
         if v is not None and (v.kind == "try" or getattr(s, "orelse", None)):
             inner = v.a if v.kind == "try" else v
             c, t = self.expr(inner)
@@ -2300,6 +2496,15 @@ class Compiler(LendMixin):
                 self.emit_read(cpp, ty, s)
                 self.ind -= 1
                 self.emit("}")
+            elif s.ty.kind == "trange" and s.ty.range.hi is not None and isinstance(ty, TInt):
+                # `let k: 1..=n = read()`: the bounds are the ones written, evaluated now, not just their static
+                # envelope: the input is checked against them and generated inputs are drawn from them
+                r = s.ty.range
+                (lo, _), (hi, _) = self.expr(r.lo), self.expr(r.hi)
+                if not r.incl:
+                    hi = f"({hi}) - 1"
+                self.emit(f"{cpp} = CP_GEN ? gen_int({lo}, {hi}) : rd_range({lo}, {hi}, {s.line});")
+                self.emit(f"if (CP_GEN) {{ out_int({cpp}); out_char(' '); }}")
             else:
                 self.emit_read(cpp, ty, s)
             self.emit("if (CP_GEN) out_char('\\n');")
@@ -2383,7 +2588,9 @@ class Compiler(LendMixin):
         return f"{self.cpp_type(ty)}()"
 
     def read_fresh(self, s, name):
-        """`let s: [domain S]Char = read()`: a whitespace-delimited word whose positions get the fresh domain S."""
+        """`let s: [domain S]Char = read()`: a whitespace-delimited word whose positions get the fresh domain S.
+        The element may also be a char-labelled domain (`domain Digit = '0'..='9'`): every character is checked
+        to be in it, and generated words draw from it."""
         d = s.ty.dims[0]
         et = self.resolve_type(s.ty.elem)
         # the elements are Chars, or a domain of Chars such as `domain Letter = 'a'..='z'`
