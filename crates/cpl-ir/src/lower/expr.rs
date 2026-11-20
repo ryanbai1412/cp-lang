@@ -2154,6 +2154,22 @@ impl<'a> Lowerer<'a> {
             self.unsupported(span, "stepped slice");
             return self.err_expr(span);
         }
+        // `a[..-1]` is known to be wrong before the program runs.
+        for bound in [lo, hi].into_iter().flatten() {
+            let negative = matches!(
+                &bound.kind,
+                ast::ExprKind::Unary { op: UnOp::Neg, expr } if matches!(expr.kind, ast::ExprKind::Int(n) if n > 0)
+            );
+            if negative {
+                self.error(
+                    codes::BAD_OPERANDS,
+                    bound.span,
+                    "a slice bound counts from the start, so it can't be negative",
+                );
+                self.help("count from the end with the length: `a[..a.len - 1]`");
+                return self.err_expr(span);
+            }
+        }
         let is_str = base.ty == Ty::Str;
         let (elem_ty, dim_dom) = match &base.ty {
             Ty::List(e) => ((**e).clone(), None),
@@ -2212,8 +2228,35 @@ impl<'a> Lowerer<'a> {
             };
             let hi_e = match hi {
                 Some(h) => to_idx(lw, h, true),
-                None => len_expr,
+                None => len_expr.clone(),
             };
+            // A slice is `0 <= lo <= hi <= len`. Anything else stops the
+            // program: `a[..-1]` is not "all but the last", and going on
+            // with an empty list would hide the mistake.
+            let (lo_slot, hi_slot) = (lw.temp(Ty::Int), lw.temp(Ty::Int));
+            out.push(Stmt::Let(lo_slot, Some(lo_e)));
+            out.push(Stmt::Let(hi_slot, Some(hi_e)));
+            let (lo_e, hi_e) = (lw.local(lo_slot, span), lw.local(hi_slot, span));
+            let cmp = |lw: &mut Self, op: CmpOp, l: &Expr, r: &Expr| {
+                lw.mk(ExprKind::Cmp(op, Box::new(l.clone()), Box::new(r.clone())), Ty::Bool, span)
+            };
+            let or = |lw: &mut Self, l: Expr, r: Expr| {
+                lw.mk(ExprKind::Binary(BinOp::Or, Box::new(l), Box::new(r)), Ty::Bool, span)
+            };
+            let zero = lw.int_lit(0, span);
+            let below = cmp(lw, CmpOp::Lt, &lo_e, &zero);
+            let reversed = cmp(lw, CmpOp::Lt, &hi_e, &lo_e);
+            let beyond = cmp(lw, CmpOp::Gt, &hi_e, &len_expr);
+            let bad = or(lw, below, reversed);
+            let bad = or(lw, bad, beyond);
+            let message = "a slice `a[lo..hi]` needs 0 <= lo <= hi <= a.len".to_string();
+            out.push(Stmt::If(
+                bad,
+                Block {
+                    stmts: vec![Stmt::Trap(message, lw.span(span))],
+                },
+                Block::default(),
+            ));
             let acc_slot = lw.temp(out_ty.clone());
             let empty_init = if is_str {
                 lw.mk(ExprKind::Str(Vec::new()), Ty::Str, span)
