@@ -1,12 +1,1278 @@
-//! Debug interpreter: runs a checked program directly and records the trace.
+//! Debug interpreter: runs a lowered program directly.
+//!
+//! This is `cpl run`. It walks the same [`cpl_ir::Program`] that the C++
+//! back end prints, and it checks what the submission build doesn't:
+//! indices, input ranges, integer overflow, `!` on `none`, and a variable
+//! used while a call is still changing it. A failed check is a [`Trap`]
+//! with the source span, never a crash of the interpreter.
+//!
+//! Strings are byte vectors. Nothing here decodes or validates text.
+
+mod input;
+mod value;
+
+use cpl_diag::Span;
+use cpl_ir::{
+    Arg, AssignOp, BinOp, Block, Builtin, Cast, CmpOp, DimSpec, Expr, ExprKind, FmtArg, FmtPiece,
+    FnId, Iter, LoopId, Mutation, Place, PlaceKind, Program, Spec, Stmt, Ty, UnOp,
+};
+use input::Input;
+use std::cmp::Ordering;
+use std::io::Write;
+use std::rc::Rc;
+use value::{show, zero, Array, Value};
 
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn crate_is_named() {
-        assert_eq!(super::NAME, "cpl-interp");
+/// A program that failed while running.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Trap {
+    pub message: String,
+    /// The expression or statement that failed.
+    pub span: Span,
+}
+
+/// Calls nested deeper than this are reported as runaway recursion.
+const MAX_DEPTH: usize = 400_000;
+/// Stack for the interpreter thread: deep recursion in the program is deep
+/// recursion here. Reserved, not committed.
+const STACK_BYTES: usize = 3 << 30;
+
+/// Runs `program` on `input`, writing what it prints to `output`. Output
+/// printed before a failure is still written.
+pub fn run(program: &Program, input: &[u8], output: &mut (dyn Write + Send)) -> Result<(), Trap> {
+    let body = |output: &mut (dyn Write + Send), stack_bytes: usize| {
+        let top = 0u8;
+        let mut interp = Interp {
+            program,
+            globals: vec![Value::Unit; program.globals.len()],
+            domains: vec![(0, 0); program.domains.len()],
+            stack: Vec::new(),
+            base: 0,
+            input: Input::new(input),
+            out: Vec::with_capacity(1 << 16),
+            sink: output,
+            depth: 0,
+            stack_top: std::ptr::addr_of!(top) as usize,
+            // The rest is left for the frames under the deepest call.
+            stack_budget: stack_bytes - (stack_bytes / 64).max(1 << 20),
+            frame_locals: Vec::new(),
+        };
+        let result = interp.main();
+        let _ = interp.sink.write_all(&interp.out);
+        let _ = interp.sink.flush();
+        result.map_err(|trap| *trap)
+    };
+    // The writer is shared by reference so that a spawn that fails (too
+    // little address space for the stack) can be tried again smaller.
+    let output = std::sync::Mutex::new(output);
+    let bug = || Trap {
+        message: "the interpreter itself failed; this is a bug in cpl".into(),
+        span: Span::default(),
+    };
+    std::thread::scope(|scope| {
+        for bytes in [STACK_BYTES, 1 << 28, 1 << 23] {
+            let (body, output) = (&body, &output);
+            let spawned =
+                std::thread::Builder::new()
+                    .stack_size(bytes)
+                    .spawn_scoped(scope, move || {
+                        let mut output = output
+                            .lock()
+                            .unwrap_or_else(|poisoned| poisoned.into_inner());
+                        body(&mut **output, bytes)
+                    });
+            if let Ok(handle) = spawned {
+                return handle.join().unwrap_or_else(|_| Err(bug()));
+            }
+        }
+        Err(Trap {
+            message: "could not start the interpreter thread".into(),
+            span: Span::default(),
+        })
+    })
+}
+
+type Res<T> = Result<T, Box<Trap>>;
+
+fn trap<T>(span: Span, message: impl Into<String>) -> Res<T> {
+    Err(Box::new(Trap {
+        message: message.into(),
+        span,
+    }))
+}
+
+enum Flow {
+    Next,
+    Break(Option<LoopId>),
+    Continue(Option<LoopId>),
+    Return(Value),
+    Give(Value),
+}
+
+struct Interp<'p, 'o> {
+    program: &'p Program,
+    globals: Vec<Value>,
+    /// First label and size of each domain, once it is declared.
+    domains: Vec<(i64, i64)>,
+    /// Locals of every active call; `base` is where the current call's start.
+    stack: Vec<Value>,
+    base: usize,
+    input: Input<'p>,
+    out: Vec<u8>,
+    sink: &'o mut (dyn Write + Send),
+    depth: usize,
+    /// Where the interpreter's own stack began, and how much of it calls
+    /// may use: the program's recursion is the interpreter's.
+    stack_top: usize,
+    stack_budget: usize,
+    /// The locals of each active fn, innermost last; `main` when empty.
+    frame_locals: Vec<&'p [cpl_ir::Local]>,
+}
+
+impl<'p, 'o> Interp<'p, 'o> {
+    fn main(&mut self) -> Res<()> {
+        let program = self.program;
+        let tests = if program.multitest {
+            match self.input.int() {
+                Ok((count, _)) => count,
+                Err(error) => {
+                    return trap(
+                        Span::default(),
+                        format!("reading the number of tests: {}", error.message),
+                    )
+                }
+            }
+        } else {
+            1
+        };
+        for _ in 0..tests {
+            self.stack.clear();
+            self.stack.resize(program.main_locals.len(), Value::Unit);
+            self.base = 0;
+            self.block(&program.main)?;
+        }
+        Ok(())
+    }
+
+    fn flush_if_large(&mut self) {
+        if self.out.len() >= 1 << 16 {
+            let _ = self.sink.write_all(&self.out);
+            self.out.clear();
+        }
+    }
+
+    // ----- statements -----
+
+    fn block(&mut self, block: &'p Block) -> Res<Flow> {
+        for stmt in &block.stmts {
+            match self.stmt(stmt)? {
+                Flow::Next => {}
+                other => return Ok(other),
+            }
+        }
+        Ok(Flow::Next)
+    }
+
+    fn stmt(&mut self, stmt: &'p Stmt) -> Res<Flow> {
+        match stmt {
+            Stmt::Let(slot, init) => {
+                let value = match init {
+                    Some(init) => self.eval(init)?,
+                    None => zero(&self.locals()[*slot].ty, self.program),
+                };
+                let base = self.base;
+                self.stack[base + slot] = value;
+            }
+            Stmt::Assign(place, op, value) => self.assign(place, *op, value)?,
+            Stmt::Expr(e) => {
+                self.eval(e)?;
+            }
+            Stmt::If(cond, then, otherwise) => {
+                let branch = if self.eval(cond)?.bool() {
+                    then
+                } else {
+                    otherwise
+                };
+                return self.block(branch);
+            }
+            Stmt::While(id, cond, body) => {
+                while self.eval(cond)?.bool() {
+                    match self.block(body)? {
+                        Flow::Next | Flow::Continue(None) => {}
+                        Flow::Break(None) => break,
+                        Flow::Break(Some(target)) if target == *id => break,
+                        Flow::Continue(Some(target)) if target == *id => {}
+                        other => return Ok(other),
+                    }
+                }
+            }
+            Stmt::For(id, slot, iter, body) => return self.for_loop(*id, *slot, iter, body),
+            Stmt::Return(value) => {
+                let value = match value {
+                    Some(value) => self.eval(value)?,
+                    None => Value::Unit,
+                };
+                return Ok(Flow::Return(value));
+            }
+            Stmt::Break(target) => return Ok(Flow::Break(*target)),
+            Stmt::Continue(target) => return Ok(Flow::Continue(*target)),
+            Stmt::Give(value) => return Ok(Flow::Give(self.eval(value)?)),
+            Stmt::Assert {
+                cond,
+                message,
+                text,
+                span,
+                ..
+            } => {
+                if !self.eval(cond)?.bool() {
+                    let mut report = format!("assertion failed: {text}");
+                    if let Some(message) = message {
+                        if let Value::Str(bytes) = self.eval(message)? {
+                            report.push_str(": ");
+                            report.extend(bytes.iter().map(|b| *b as char));
+                        }
+                    }
+                    return trap(*span, report);
+                }
+            }
+            Stmt::DefDomain { id, lo, len } => {
+                let lo = self.eval(lo)?.int();
+                let len = self.eval(len)?.int().max(0);
+                self.domains[*id] = (lo, len);
+            }
+            Stmt::Trap(message, span) => return trap(*span, message.clone()),
+        }
+        Ok(Flow::Next)
+    }
+
+    fn locals(&self) -> &'p [cpl_ir::Local] {
+        self.frame_locals
+            .last()
+            .copied()
+            .unwrap_or(&self.program.main_locals)
+    }
+
+    fn for_loop(&mut self, id: LoopId, slot: usize, iter: &'p Iter, body: &'p Block) -> Res<Flow> {
+        let base = self.base;
+        macro_rules! round {
+            ($value:expr) => {{
+                self.stack[base + slot] = $value;
+                match self.block(body)? {
+                    Flow::Next | Flow::Continue(None) => {}
+                    Flow::Break(None) => break,
+                    Flow::Break(Some(target)) if target == id => break,
+                    Flow::Continue(Some(target)) if target == id => {}
+                    other => return Ok(other),
+                }
+            }};
+        }
+        match iter {
+            Iter::Range { lo, hi, step, rev } => {
+                let lo = self.eval(lo)?.int();
+                let hi = self.eval(hi)?.int();
+                let step = match step {
+                    Some(step) => {
+                        let value = self.eval(step)?.int();
+                        if value <= 0 {
+                            return trap(
+                                step.span,
+                                format!("a range steps forward: `by {value}` is not positive"),
+                            );
+                        }
+                        value
+                    }
+                    None => 1,
+                };
+                if lo >= hi {
+                    return Ok(Flow::Next);
+                }
+                // The values are lo, lo + step, ..., below hi.
+                let count = ((hi as i128 - lo as i128 + step as i128 - 1) / step as i128) as i64;
+                if *rev {
+                    let mut k = count - 1;
+                    loop {
+                        if k < 0 {
+                            break;
+                        }
+                        round!(Value::Int(lo + k * step));
+                        k -= 1;
+                    }
+                } else {
+                    let mut k = 0;
+                    loop {
+                        if k >= count {
+                            break;
+                        }
+                        round!(Value::Int(lo + k * step));
+                        k += 1;
+                    }
+                }
+            }
+            Iter::Seq(seq, rev) => {
+                // The loop walks the value as it was when the loop began.
+                let held = self.eval(seq)?;
+                match &held {
+                    Value::List(items) => {
+                        let n = items.len();
+                        for k in 0..n {
+                            let k = if *rev { n - 1 - k } else { k };
+                            round!(items[k].clone());
+                        }
+                    }
+                    Value::Array(array) => {
+                        let n = array.data.len();
+                        for k in 0..n {
+                            let k = if *rev { n - 1 - k } else { k };
+                            round!(array.data[k].clone());
+                        }
+                    }
+                    Value::Str(bytes) => {
+                        let n = bytes.len();
+                        for k in 0..n {
+                            let k = if *rev { n - 1 - k } else { k };
+                            round!(Value::Char(bytes[k]));
+                        }
+                    }
+                    Value::Set(items) => {
+                        if *rev {
+                            for item in items.iter().rev() {
+                                round!(item.clone());
+                            }
+                        } else {
+                            for item in items.iter() {
+                                round!(item.clone());
+                            }
+                        }
+                    }
+                    Value::Map(entries) => {
+                        if *rev {
+                            for (key, value) in entries.iter().rev() {
+                                round!(Value::tuple(vec![key.clone(), value.clone()]));
+                            }
+                        } else {
+                            for (key, value) in entries.iter() {
+                                round!(Value::tuple(vec![key.clone(), value.clone()]));
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        Ok(Flow::Next)
+    }
+
+    // ----- places -----
+
+    /// Evaluates every index along `place`, outermost container first.
+    fn indices(&mut self, place: &'p Place, out: &mut Vec<Value>) -> Res<()> {
+        match &place.kind {
+            PlaceKind::Local(_) | PlaceKind::Global(_) => {}
+            PlaceKind::Field(base, _) => self.indices(base, out)?,
+            PlaceKind::Index(base, indices) => {
+                self.indices(base, out)?;
+                for index in indices {
+                    out.push(self.eval(index)?);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// The storage `place` names, with its indices already evaluated.
+    fn resolve<'s>(
+        &'s mut self,
+        place: &Place,
+        indices: &mut std::slice::Iter<'_, Value>,
+    ) -> Res<&'s mut Value> {
+        let span = place.span;
+        match &place.kind {
+            PlaceKind::Local(slot) => {
+                let base = self.base;
+                Ok(&mut self.stack[base + slot])
+            }
+            PlaceKind::Global(id) => Ok(&mut self.globals[*id]),
+            PlaceKind::Field(base, index) => match self.resolve(base, indices)? {
+                Value::Tuple(fields) => Ok(&mut Rc::make_mut(fields)[*index]),
+                Value::Moved => trap(span, LENT),
+                _ => trap(span, "internal: field of a value without fields"),
+            },
+            PlaceKind::Index(base, exprs) => {
+                let base_ty = &base.ty;
+                let holder = self.resolve(base, indices)?;
+                match holder {
+                    Value::Array(array) => {
+                        let at =
+                            array_offset(&array.dims, indices.by_ref().take(exprs.len()), span)?;
+                        Ok(&mut Rc::make_mut(array).data[at])
+                    }
+                    Value::List(items) => {
+                        let index = indices.next().map_or(0, Value::int);
+                        let len = items.len();
+                        match usize::try_from(index).ok().filter(|i| *i < len) {
+                            Some(i) => Ok(&mut Rc::make_mut(items)[i]),
+                            None => trap(
+                                span,
+                                format!("index {index} is outside a list of length {len}"),
+                            ),
+                        }
+                    }
+                    Value::Map(entries) => {
+                        let key = indices.next().cloned().unwrap_or_default();
+                        match Rc::make_mut(entries).get_mut(&key) {
+                            Some(value) => Ok(value),
+                            None => trap(
+                                span,
+                                "this key is not in the map; store with `m[k] = v` first",
+                            ),
+                        }
+                    }
+                    Value::Moved => trap(span, LENT),
+                    _ => {
+                        let _ = base_ty;
+                        trap(span, "internal: index of a value that has no elements")
+                    }
+                }
+            }
+        }
+    }
+
+    fn assign(&mut self, place: &'p Place, op: AssignOp, value: &'p Expr) -> Res<()> {
+        // As in C++17: the right side first, then the place.
+        let value = self.eval(value)?;
+        let mut indices = Vec::new();
+        self.indices(place, &mut indices)?;
+        // Storing into a string or under a new map key has no cell to
+        // point at, so those two go through their container.
+        if let PlaceKind::Index(base, _) = &place.kind {
+            if matches!(base.ty, Ty::Str | Ty::Map(..)) {
+                let (key, rest) = indices.split_last().expect("an index");
+                let holder = self.resolve(base, &mut rest.iter())?;
+                match holder {
+                    Value::Str(bytes) => {
+                        let index = key.int();
+                        let len = bytes.len();
+                        let Some(i) = usize::try_from(index).ok().filter(|i| *i < len) else {
+                            return trap(
+                                place.span,
+                                format!("index {index} is outside a string of length {len}"),
+                            );
+                        };
+                        let old = Value::Char(bytes[i]);
+                        let new = combine(op, old, value, place.span)?;
+                        if let Value::Char(c) = new {
+                            Rc::make_mut(bytes)[i] = c;
+                        }
+                        return Ok(());
+                    }
+                    Value::Map(entries) if op == AssignOp::Set => {
+                        Rc::make_mut(entries).insert(key.clone(), value);
+                        return Ok(());
+                    }
+                    Value::Moved => return trap(place.span, LENT),
+                    _ => {}
+                }
+            }
+        }
+        let cell = self.resolve(place, &mut indices.iter())?;
+        if op == AssignOp::Set {
+            *cell = value;
+        } else {
+            let old = std::mem::take(cell);
+            if matches!(old, Value::Moved) {
+                *cell = old;
+                return trap(place.span, LENT);
+            }
+            *cell = combine(op, old, value, place.span)?;
+        }
+        Ok(())
+    }
+
+    // ----- expressions -----
+
+    fn eval(&mut self, e: &'p Expr) -> Res<Value> {
+        let span = e.span;
+        Ok(match &e.kind {
+            ExprKind::Unit | ExprKind::Error => Value::Unit,
+            ExprKind::Int(v) => Value::Int(*v),
+            ExprKind::Float(v) => Value::Float(*v),
+            ExprKind::Bool(v) => Value::Bool(*v),
+            ExprKind::Char(v) => Value::Char(*v),
+            ExprKind::Str(bytes) => Value::Str(Rc::new(bytes.clone())),
+            ExprKind::None => Value::Opt(None),
+            ExprKind::Some(inner) => Value::some(self.eval(inner)?),
+            ExprKind::Local(slot) => match &self.stack[self.base + slot] {
+                Value::Moved => return trap(span, LENT),
+                value => value.clone(),
+            },
+            ExprKind::Global(id) => match &self.globals[*id] {
+                Value::Moved => return trap(span, LENT),
+                value => value.clone(),
+            },
+            ExprKind::Unary(op, operand) => {
+                let value = self.eval(operand)?;
+                match (op, value) {
+                    (UnOp::Neg, Value::Int(v)) => match v.checked_neg() {
+                        Some(v) => Value::Int(v),
+                        None => return trap(span, OVERFLOW),
+                    },
+                    (UnOp::Neg, Value::Float(v)) => Value::Float(-v),
+                    (UnOp::Not, Value::Bool(v)) => Value::Bool(!v),
+                    (UnOp::BitNot, Value::Int(v)) => Value::Int(!v),
+                    (_, other) => other,
+                }
+            }
+            ExprKind::Binary(op, lhs, rhs) => match op {
+                BinOp::And => Value::Bool(self.eval(lhs)?.bool() && self.eval(rhs)?.bool()),
+                BinOp::Or => Value::Bool(self.eval(lhs)?.bool() || self.eval(rhs)?.bool()),
+                BinOp::Coalesce => match self.eval(lhs)? {
+                    Value::Opt(Some(inner)) => {
+                        if matches!(e.ty, Ty::Opt(_)) {
+                            Value::Opt(Some(inner))
+                        } else {
+                            Rc::try_unwrap(inner).unwrap_or_else(|rc| (*rc).clone())
+                        }
+                    }
+                    _ => self.eval(rhs)?,
+                },
+                _ => {
+                    let l = self.eval(lhs)?;
+                    let r = self.eval(rhs)?;
+                    binary(*op, l, r, span)?
+                }
+            },
+            ExprKind::Cmp(op, lhs, rhs) => {
+                let l = self.eval(lhs)?;
+                let r = self.eval(rhs)?;
+                Value::Bool(compare(*op, &l, &r))
+            }
+            ExprKind::Cast(cast, operand) => {
+                let value = self.eval(operand)?;
+                self.cast(*cast, value, span)?
+            }
+            ExprKind::Index(base, indices) => self.index(base, indices, span)?,
+            ExprKind::Field(base, index) => {
+                // A field of a variable is read in place, without first
+                // copying the whole value.
+                let direct = match &base.kind {
+                    ExprKind::Local(slot) => Some(&self.stack[self.base + slot]),
+                    ExprKind::Global(id) => Some(&self.globals[*id]),
+                    _ => None,
+                };
+                match direct {
+                    Some(Value::Tuple(fields)) => fields[*index].clone(),
+                    Some(Value::Moved) => return trap(span, LENT),
+                    _ => match self.eval(base)? {
+                        Value::Tuple(fields) => fields[*index].clone(),
+                        _ => return trap(span, "internal: field of a value without fields"),
+                    },
+                }
+            }
+            ExprKind::Tuple(items) => {
+                let mut values = Vec::with_capacity(items.len());
+                for item in items {
+                    values.push(self.eval(item)?);
+                }
+                match &e.ty {
+                    Ty::List(_) => Value::List(Rc::new(values)),
+                    Ty::Set(_) => Value::Set(Rc::new(values.into_iter().collect())),
+                    Ty::Map(..) => Value::Map(Rc::default()),
+                    _ => Value::tuple(values),
+                }
+            }
+            ExprKind::Variant(tag, items) => {
+                let mut values = Vec::with_capacity(items.len());
+                for item in items {
+                    values.push(self.eval(item)?);
+                }
+                Value::Enum(*tag as u32, Rc::new(values))
+            }
+            ExprKind::IsVariant(value, tag) => match self.eval(value)? {
+                Value::Enum(actual, _) => Value::Bool(actual as usize == *tag),
+                _ => Value::Bool(false),
+            },
+            ExprKind::Payload(value, tag, index) => match self.eval(value)? {
+                Value::Enum(actual, payload) if actual as usize == *tag => payload[*index].clone(),
+                _ => return trap(span, "internal: payload of another variant"),
+            },
+            ExprKind::IsSome(value) => {
+                Value::Bool(matches!(self.eval(value)?, Value::Opt(Some(_))))
+            }
+            ExprKind::Unwrap(value, _) => match self.eval(value)? {
+                Value::Opt(Some(inner)) => Rc::try_unwrap(inner).unwrap_or_else(|rc| (*rc).clone()),
+                _ => return trap(span, "`!` on `none`: there is no value here"),
+            },
+            ExprKind::If(cond, then, otherwise) => {
+                if self.eval(cond)?.bool() {
+                    self.eval(then)?
+                } else {
+                    self.eval(otherwise)?
+                }
+            }
+            ExprKind::Do(block) => match self.block(block)? {
+                Flow::Give(value) => value,
+                _ => return trap(span, "internal: a block ended without its value"),
+            },
+            ExprKind::Call(id, args) => self.call(*id, args, span)?,
+            ExprKind::Builtin(op, args) => self.builtin(*op, args, e)?,
+            ExprKind::Mutate(op, place, args) => self.mutate(*op, place, args, span)?,
+            ExprKind::Sort(place, key) => {
+                let mut indices = Vec::new();
+                self.indices(place, &mut indices)?;
+                let cell = self.resolve(place, &mut indices.iter())?;
+                let Value::List(mut items) = std::mem::replace(cell, Value::Moved) else {
+                    return trap(span, LENT);
+                };
+                match key {
+                    None => Rc::make_mut(&mut items).sort(),
+                    Some((slot, key)) => {
+                        let base = self.base;
+                        let mut keyed = Vec::with_capacity(items.len());
+                        for item in items.iter() {
+                            self.stack[base + slot] = item.clone();
+                            keyed.push((self.eval(key)?, item.clone()));
+                        }
+                        keyed.sort_by(|a, b| a.0.cmp(&b.0));
+                        items = Rc::new(keyed.into_iter().map(|(_, item)| item).collect());
+                    }
+                }
+                *self.resolve(place, &mut indices.iter())? = Value::List(items);
+                Value::Unit
+            }
+            ExprKind::Read(spec) => self.read(spec, span)?,
+            ExprKind::Print(args) => {
+                for (i, arg) in args.iter().enumerate() {
+                    let value = self.eval(&arg.value)?;
+                    if i > 0 {
+                        self.out.push(b' ');
+                    }
+                    show(
+                        &mut self.out,
+                        &value,
+                        &arg.value.ty,
+                        arg.digits,
+                        self.program,
+                        &self.domains,
+                    );
+                }
+                self.out.push(b'\n');
+                self.flush_if_large();
+                Value::Unit
+            }
+            ExprKind::Format(pieces) => {
+                let mut text = Vec::new();
+                for piece in pieces {
+                    match piece {
+                        FmtPiece::Text(bytes) => text.extend_from_slice(bytes),
+                        FmtPiece::Value(FmtArg { value, digits }) => {
+                            let v = self.eval(value)?;
+                            show(
+                                &mut text,
+                                &v,
+                                &value.ty,
+                                *digits,
+                                self.program,
+                                &self.domains,
+                            );
+                        }
+                    }
+                }
+                Value::Str(Rc::new(text))
+            }
+            ExprKind::Fill(dims, value) => {
+                let dims = self.dims(dims, span)?;
+                let cell = match value {
+                    Some(value) => self.eval(value)?,
+                    None => match &e.ty {
+                        Ty::Array { elem, .. } => zero(elem, self.program),
+                        _ => Value::Unit,
+                    },
+                };
+                let cells = dims.iter().product::<i64>() as usize;
+                Value::Array(Rc::new(Array {
+                    dims,
+                    data: vec![cell; cells],
+                }))
+            }
+            ExprKind::DomainLen(id) => Value::Int(self.domains[*id].1),
+            ExprKind::DomainLo(id) => Value::Int(self.domains[*id].0),
+        })
+    }
+
+    /// The length of each dimension of an array being made.
+    fn dims(&mut self, dims: &'p [DimSpec], span: Span) -> Res<Vec<i64>> {
+        let mut out = Vec::with_capacity(dims.len());
+        let mut cells: i64 = 1;
+        for dim in dims {
+            let len = match dim {
+                DimSpec::Pos(d) => self.domains[*d].1,
+                DimSpec::Bound(d) => self.domains[*d].1 + 1,
+                DimSpec::Int(len) => {
+                    let len = self.eval(len)?.int();
+                    if len < 0 {
+                        return trap(span, format!("an array can't have length {len}"));
+                    }
+                    len
+                }
+            };
+            cells = match cells.checked_mul(len).filter(|c| *c <= 1 << 32) {
+                Some(cells) => cells,
+                None => return trap(span, "this array is too large to allocate"),
+            };
+            out.push(len);
+        }
+        Ok(out)
+    }
+
+    fn index(&mut self, base: &'p Expr, indices: &'p [Expr], span: Span) -> Res<Value> {
+        // A variable is indexed in place: only the element is copied.
+        let direct = matches!(base.kind, ExprKind::Local(_) | ExprKind::Global(_));
+        let held;
+        let mut values = Vec::with_capacity(indices.len());
+        let holder: &Value = if direct {
+            for index in indices {
+                values.push(self.eval(index)?);
+            }
+            match &base.kind {
+                ExprKind::Local(slot) => &self.stack[self.base + slot],
+                ExprKind::Global(id) => &self.globals[*id],
+                _ => unreachable!("checked above"),
+            }
+        } else {
+            held = self.eval(base)?;
+            for index in indices {
+                values.push(self.eval(index)?);
+            }
+            &held
+        };
+        match holder {
+            Value::Array(array) => {
+                let at = array_offset(&array.dims, values.iter(), span)?;
+                Ok(array.data[at].clone())
+            }
+            Value::List(items) => {
+                let index = values[0].int();
+                match usize::try_from(index).ok().and_then(|i| items.get(i)) {
+                    Some(item) => Ok(item.clone()),
+                    None => trap(
+                        span,
+                        format!("index {index} is outside a list of length {}", items.len()),
+                    ),
+                }
+            }
+            Value::Str(bytes) => {
+                let index = values[0].int();
+                match usize::try_from(index).ok().and_then(|i| bytes.get(i)) {
+                    Some(byte) => Ok(Value::Char(*byte)),
+                    None => trap(
+                        span,
+                        format!(
+                            "index {index} is outside a string of length {}",
+                            bytes.len()
+                        ),
+                    ),
+                }
+            }
+            Value::Map(entries) => match entries.get(&values[0]) {
+                Some(value) => Ok(value.clone()),
+                None => {
+                    let mut key = Vec::new();
+                    if let Ty::Map(key_ty, _) = &base.ty {
+                        show(&mut key, &values[0], key_ty, 6, self.program, &self.domains);
+                    }
+                    let key: String = key.iter().map(|b| *b as char).collect();
+                    trap(
+                        span,
+                        format!("the key `{key}` is not in the map; `m.get(k)` gives an optional"),
+                    )
+                }
+            },
+            Value::Moved => trap(span, LENT),
+            _ => trap(span, "internal: index of a value that has no elements"),
+        }
+    }
+
+    fn cast(&mut self, cast: Cast, value: Value, span: Span) -> Res<Value> {
+        Ok(match cast {
+            Cast::IntToFloat => Value::Float(value.int() as f64),
+            Cast::FloatToInt => {
+                let v = value.float().trunc();
+                if !(-9.2e18..=9.2e18).contains(&v) {
+                    return trap(span, format!("{v} does not fit in an `Int`"));
+                }
+                Value::Int(v as i64)
+            }
+            Cast::CharToInt => match value {
+                Value::Char(c) => Value::Int(i64::from(c)),
+                other => other,
+            },
+            Cast::IntToChar => match u8::try_from(value.int()) {
+                Ok(c) => Value::Char(c),
+                Err(_) => {
+                    return trap(
+                        span,
+                        format!("{} is not a byte, so it is not a `Char`", value.int()),
+                    )
+                }
+            },
+            Cast::Ord | Cast::Trust => value,
+            Cast::Label(d) => Value::Int(value.int() + self.domains[d].0),
+            Cast::FromLabel(d) => {
+                let (lo, len) = self.domains[d];
+                let label = value.int();
+                if label < lo || label - lo >= len {
+                    let name = &self.program.domains[d];
+                    return trap(
+                        span,
+                        format!("{label} is not in `{name}`, which is {}", describe(lo, len)),
+                    );
+                }
+                Value::Int(label - lo)
+            }
+            Cast::FromOrd(d) => {
+                let (lo, len) = self.domains[d];
+                let ord = value.int();
+                if ord < 0 || ord >= len {
+                    let name = &self.program.domains[d];
+                    return trap(
+                        span,
+                        format!(
+                            "`{name}` has no position {ord}: it is {}",
+                            describe(lo, len)
+                        ),
+                    );
+                }
+                value
+            }
+        })
+    }
+
+    fn call(&mut self, id: FnId, args: &'p [Arg], span: Span) -> Res<Value> {
+        let f = &self.program.fns[id];
+        let mut values = Vec::with_capacity(args.len());
+        // `mut` arguments are lent: taken out of the caller's variable for
+        // the call and put back after. Touching the variable meanwhile is
+        // the aliasing the language forbids, and it traps.
+        let mut lent: Vec<(usize, &'p Place, Vec<Value>)> = Vec::new();
+        for (i, arg) in args.iter().enumerate() {
+            match arg {
+                Arg::Value(e) => values.push(self.eval(e)?),
+                Arg::Mut(place) => {
+                    let mut indices = Vec::new();
+                    self.indices(place, &mut indices)?;
+                    let cell = self.resolve(place, &mut indices.iter())?;
+                    let value = std::mem::replace(cell, Value::Moved);
+                    if matches!(value, Value::Moved) {
+                        return trap(place.span, LENT);
+                    }
+                    values.push(value);
+                    lent.push((i, place, indices));
+                }
+            }
+        }
+        let here = 0u8;
+        let used = self.stack_top.abs_diff(std::ptr::addr_of!(here) as usize);
+        if self.depth >= MAX_DEPTH || used > self.stack_budget {
+            return trap(
+                span,
+                format!(
+                    "calls are nested {} deep: `{}` never stops calling itself?",
+                    self.depth, f.name
+                ),
+            );
+        }
+        let base = self.stack.len();
+        self.stack.extend(values);
+        self.stack.resize(base + f.locals.len(), Value::Unit);
+        let saved = std::mem::replace(&mut self.base, base);
+        self.frame_locals.push(&f.locals);
+        self.depth += 1;
+        let flow = self.block(&f.body);
+        self.depth -= 1;
+        self.frame_locals.pop();
+        self.base = saved;
+        let flow = flow?;
+        for (i, place, indices) in lent {
+            let value = std::mem::take(&mut self.stack[base + i]);
+            *self.resolve(place, &mut indices.iter())? = value;
+        }
+        self.stack.truncate(base);
+        Ok(match flow {
+            Flow::Return(value) => value,
+            _ => Value::Unit,
+        })
+    }
+
+    fn builtin(&mut self, op: Builtin, args: &'p [Expr], e: &'p Expr) -> Res<Value> {
+        let span = e.span;
+        let mut values = Vec::with_capacity(args.len());
+        for arg in args {
+            values.push(self.eval(arg)?);
+        }
+        let mut values = values.into_iter();
+        let first = values.next().unwrap_or_default();
+        let optional = |value: Option<Value>| Value::Opt(value.map(Rc::new));
+        Ok(match op {
+            Builtin::Min => values.fold(first, |best, v| if v < best { v } else { best }),
+            Builtin::Max => values.fold(first, |best, v| if v > best { v } else { best }),
+            Builtin::Abs => match first {
+                Value::Int(v) => match v.checked_abs() {
+                    Some(v) => Value::Int(v),
+                    None => return trap(span, OVERFLOW),
+                },
+                Value::Float(v) => Value::Float(v.abs()),
+                other => other,
+            },
+            Builtin::Sqrt => Value::Float(first.float().sqrt()),
+            Builtin::Floor | Builtin::Ceil | Builtin::Round => {
+                let v = match op {
+                    Builtin::Floor => first.float().floor(),
+                    Builtin::Ceil => first.float().ceil(),
+                    _ => first.float().round(),
+                };
+                if !(-9.2e18..=9.2e18).contains(&v) {
+                    return trap(span, format!("{v} does not fit in an `Int`"));
+                }
+                Value::Int(v as i64)
+            }
+            Builtin::Len => Value::Int(match &first {
+                Value::Array(array) => array.data.len(),
+                Value::List(items) => items.len(),
+                Value::Str(bytes) => bytes.len(),
+                Value::Map(entries) => entries.len(),
+                Value::Set(items) => items.len(),
+                _ => 0,
+            } as i64),
+            Builtin::First => match &first {
+                Value::List(items) => optional(items.first().cloned()),
+                _ => Value::Opt(None),
+            },
+            Builtin::Last => match &first {
+                Value::List(items) => optional(items.last().cloned()),
+                _ => Value::Opt(None),
+            },
+            Builtin::Contains => {
+                let needle = values.next().unwrap_or_default();
+                Value::Bool(match &first {
+                    Value::List(items) => items.contains(&needle),
+                    Value::Array(array) => array.data.contains(&needle),
+                    Value::Set(items) => items.contains(&needle),
+                    Value::Map(entries) => entries.contains_key(&needle),
+                    Value::Str(bytes) => matches!(needle, Value::Char(c) if bytes.contains(&c)),
+                    _ => false,
+                })
+            }
+            Builtin::MapGet => {
+                let key = values.next().unwrap_or_default();
+                match &first {
+                    Value::Map(entries) => optional(entries.get(&key).cloned()),
+                    _ => Value::Opt(None),
+                }
+            }
+            Builtin::SetMin => match &first {
+                Value::Set(items) => optional(items.first().cloned()),
+                _ => Value::Opt(None),
+            },
+            Builtin::SetMax => match &first {
+                Value::Set(items) => optional(items.last().cloned()),
+                _ => Value::Opt(None),
+            },
+            Builtin::Sorted => match first {
+                Value::List(mut items) => {
+                    Rc::make_mut(&mut items).sort();
+                    Value::List(items)
+                }
+                Value::Set(items) => Value::List(Rc::new(items.iter().cloned().collect())),
+                other => other,
+            },
+            Builtin::Reversed => match first {
+                Value::List(mut items) => {
+                    Rc::make_mut(&mut items).reverse();
+                    Value::List(items)
+                }
+                other => other,
+            },
+            Builtin::PosNext => {
+                let len = values.next().unwrap_or_default().int();
+                let next = first.int() + 1;
+                optional((next < len).then_some(Value::Int(next)))
+            }
+            Builtin::PosPrev => {
+                let ord = first.int();
+                optional((ord > 0).then_some(Value::Int(ord - 1)))
+            }
+        })
+    }
+
+    fn mutate(
+        &mut self,
+        op: Mutation,
+        place: &'p Place,
+        args: &'p [Expr],
+        span: Span,
+    ) -> Res<Value> {
+        // As in C++17: what is called on comes before the argument.
+        let mut indices = Vec::new();
+        self.indices(place, &mut indices)?;
+        let arg = match args.first() {
+            Some(arg) => self.eval(arg)?,
+            None => Value::Unit,
+        };
+        let cell = self.resolve(place, &mut indices.iter())?;
+        Ok(match (op, cell) {
+            (_, Value::Moved) => return trap(span, LENT),
+            (Mutation::Push, Value::List(items)) => {
+                Rc::make_mut(items).push(arg);
+                Value::Unit
+            }
+            (Mutation::Push, Value::Str(bytes)) => {
+                if let Value::Char(c) = arg {
+                    Rc::make_mut(bytes).push(c);
+                }
+                Value::Unit
+            }
+            (Mutation::Pop, Value::List(items)) => {
+                Value::Opt(Rc::make_mut(items).pop().map(Rc::new))
+            }
+            (Mutation::Insert, Value::Set(items)) => Value::Bool(Rc::make_mut(items).insert(arg)),
+            (Mutation::Remove, Value::Set(items)) => Value::Bool(Rc::make_mut(items).remove(&arg)),
+            (Mutation::Remove, Value::Map(entries)) => {
+                Value::Bool(Rc::make_mut(entries).remove(&arg).is_some())
+            }
+            (Mutation::Clear, Value::List(items)) => {
+                Rc::make_mut(items).clear();
+                Value::Unit
+            }
+            (Mutation::Clear, Value::Set(items)) => {
+                Rc::make_mut(items).clear();
+                Value::Unit
+            }
+            (Mutation::Clear, Value::Map(entries)) => {
+                Rc::make_mut(entries).clear();
+                Value::Unit
+            }
+            (Mutation::Reverse, Value::List(items)) => {
+                Rc::make_mut(items).reverse();
+                Value::Unit
+            }
+            _ => return trap(span, "internal: this value can't be changed that way"),
+        })
+    }
+
+    // ----- input -----
+
+    fn read(&mut self, spec: &'p Spec, span: Span) -> Res<Value> {
+        let fail = |error: input::InputError| -> Box<Trap> {
+            Box::new(Trap {
+                message: error.message,
+                span,
+            })
+        };
+        Ok(match spec {
+            Spec::Plain(ty) => match ty {
+                Ty::Int => Value::Int(self.input.int().map_err(fail)?.0),
+                Ty::Float => Value::Float(self.input.float().map_err(fail)?),
+                Ty::Char => Value::Char(self.input.char().map_err(fail)?),
+                Ty::Str => Value::Str(Rc::new(
+                    self.input.token("a word").map_err(fail)?.0.to_vec(),
+                )),
+                Ty::Pos(d) => {
+                    let (label, start) = self.input.int().map_err(fail)?;
+                    let (lo, len) = self.domains[*d];
+                    if label < lo || label - lo >= len {
+                        let name = &self.program.domains[*d];
+                        let message =
+                            format!("{label} is not in `{name}`, which is {}", describe(lo, len));
+                        return Err(fail(self.input.fail(start, message)));
+                    }
+                    Value::Int(label - lo)
+                }
+                _ => Value::Unit,
+            },
+            Spec::Int { lo, hi, text } => {
+                let (value, start) = self.input.int().map_err(fail)?;
+                let lo = match lo {
+                    Some(lo) => self.eval(lo)?.int(),
+                    None => i64::MIN,
+                };
+                let hi = match hi {
+                    Some(hi) => self.eval(hi)?.int(),
+                    None => i64::MAX,
+                };
+                if value < lo || value > hi {
+                    let message = format!("{value} is outside `{text}`");
+                    return Err(fail(self.input.fail(start, message)));
+                }
+                Value::Int(value)
+            }
+            Spec::Fields(_, fields) => {
+                let mut values = Vec::with_capacity(fields.len());
+                for field in fields {
+                    values.push(self.read(field, span)?);
+                }
+                Value::tuple(values)
+            }
+            Spec::Array { dims, elem } => {
+                let dims = self.dims(dims, span)?;
+                let cells = dims.iter().product::<i64>() as usize;
+                let mut data = Vec::with_capacity(cells);
+                for _ in 0..cells {
+                    data.push(self.read(elem, span)?);
+                }
+                Value::Array(Rc::new(Array { dims, data }))
+            }
+            Spec::Opt(_) => Value::Opt(None),
+        })
     }
 }
+
+const OVERFLOW: &str = "integer overflow: the result does not fit in an `Int` (64 bits)";
+const LENT: &str = "this variable is being changed by a call that has not returned yet";
+
+/// A domain for a message: `1..=5`, or that it is empty.
+fn describe(lo: i64, len: i64) -> String {
+    if len == 0 {
+        "empty".into()
+    } else {
+        format!("{lo}..={}", lo + len - 1)
+    }
+}
+
+/// The cell of an array that `indices` name, checked against each dimension.
+fn array_offset<'v>(
+    dims: &[i64],
+    indices: impl Iterator<Item = &'v Value>,
+    span: Span,
+) -> Res<usize> {
+    let mut at: i64 = 0;
+    for (len, index) in dims.iter().zip(indices) {
+        let index = index.int();
+        if index < 0 || index >= *len {
+            return trap(
+                span,
+                format!("index {index} is outside an array dimension of length {len}"),
+            );
+        }
+        at = at * len + index;
+    }
+    Ok(at as usize)
+}
+
+fn compare(op: CmpOp, l: &Value, r: &Value) -> bool {
+    // Floats compare as IEEE says, so a NaN is neither less nor equal.
+    if let (Value::Float(a), Value::Float(b)) = (l, r) {
+        return match op {
+            CmpOp::Eq => a == b,
+            CmpOp::Ne => a != b,
+            CmpOp::Lt => a < b,
+            CmpOp::Le => a <= b,
+            CmpOp::Gt => a > b,
+            CmpOp::Ge => a >= b,
+            _ => false,
+        };
+    }
+    let order = l.cmp(r);
+    match op {
+        CmpOp::Eq => order == Ordering::Equal,
+        CmpOp::Ne => order != Ordering::Equal,
+        CmpOp::Lt => order == Ordering::Less,
+        CmpOp::Le => order != Ordering::Greater,
+        CmpOp::Gt => order == Ordering::Greater,
+        CmpOp::Ge => order != Ordering::Less,
+        _ => false,
+    }
+}
+
+fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
+    Ok(match (l, r) {
+        (Value::Int(a), Value::Int(b)) => {
+            let result = match op {
+                BinOp::Add => a.checked_add(b),
+                BinOp::Sub => a.checked_sub(b),
+                BinOp::Mul => a.checked_mul(b),
+                // Euclidean: the remainder is never negative, whatever the
+                // signs, and the quotient is the one that goes with it.
+                BinOp::Div | BinOp::Rem if b == 0 => return trap(span, "division by zero"),
+                BinOp::Div => a.checked_div_euclid(b),
+                BinOp::Rem => a.checked_rem_euclid(b),
+                BinOp::Pow => match u32::try_from(b) {
+                    Ok(exp) => a.checked_pow(exp),
+                    Err(_) if b < 0 => {
+                        return trap(
+                            span,
+                            format!("`**` needs a power that is not negative, and this is {b}"),
+                        )
+                    }
+                    Err(_) => match a {
+                        0 | 1 => Some(a),
+                        -1 => Some(if b % 2 == 0 { 1 } else { -1 }),
+                        _ => None,
+                    },
+                },
+                BinOp::BitAnd => Some(a & b),
+                BinOp::BitOr => Some(a | b),
+                BinOp::BitXor => Some(a ^ b),
+                BinOp::Shl | BinOp::Shr if !(0..64).contains(&b) => {
+                    return trap(span, format!("a shift by {b} is outside 0..64"))
+                }
+                BinOp::Shl => {
+                    if a < 0 {
+                        return trap(span, format!("`<<` of the negative number {a}"));
+                    }
+                    Some(a << b).filter(|shifted| *shifted >= 0 && shifted >> b == a)
+                }
+                BinOp::Shr => Some(a >> b),
+                BinOp::And | BinOp::Or | BinOp::Coalesce => None,
+            };
+            match result {
+                Some(value) => Value::Int(value),
+                None => return trap(span, OVERFLOW),
+            }
+        }
+        (Value::Float(a), Value::Float(b)) => Value::Float(match op {
+            BinOp::Add => a + b,
+            BinOp::Sub => a - b,
+            BinOp::Mul => a * b,
+            BinOp::Div => a / b,
+            BinOp::Pow => a.powf(b),
+            _ => return trap(span, "internal: this operator has no float form"),
+        }),
+        (Value::Bool(a), Value::Bool(b)) => Value::Bool(match op {
+            BinOp::BitAnd => a & b,
+            BinOp::BitOr => a | b,
+            _ => a ^ b,
+        }),
+        (Value::Str(mut a), Value::Str(b)) => {
+            Rc::make_mut(&mut a).extend_from_slice(&b);
+            Value::Str(a)
+        }
+        _ => return trap(span, "internal: operands of different kinds"),
+    })
+}
+
+/// `old op= new`.
+fn combine(op: AssignOp, old: Value, new: Value, span: Span) -> Res<Value> {
+    Ok(match op {
+        AssignOp::Set => new,
+        AssignOp::Max => {
+            if new > old {
+                new
+            } else {
+                old
+            }
+        }
+        AssignOp::Min => {
+            if new < old {
+                new
+            } else {
+                old
+            }
+        }
+        AssignOp::Binary(op) => binary(op, old, new, span)?,
+    })
+}
+
+#[cfg(test)]
+mod tests;

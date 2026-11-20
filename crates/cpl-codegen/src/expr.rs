@@ -1,0 +1,896 @@
+//! Expressions as C++.
+
+use crate::emit::{
+    pad, Code, Emitter, Touch, ADD, AND, BIT, COND, EQ, MUL, OR, PRIMARY, REL, SHIFT, UNARY,
+};
+use crate::names::{elem_ty, fn_name, ident, is_plain_enum};
+use crate::ranges::Sign;
+use crate::walk;
+use cpl_ir::{
+    Arg, BinOp, Builtin, Cast, CmpOp, DimSpec, Expr, ExprKind, FmtPiece, Mutation, Place,
+    PlaceKind, Stmt, Ty, UnOp,
+};
+
+fn int_literal(v: i64) -> Code {
+    if v == i64::MIN {
+        return Code::primary("(-9223372036854775807LL - 1)");
+    }
+    let narrow = v.unsigned_abs() < (1 << 31);
+    Code {
+        text: if narrow {
+            v.to_string()
+        } else {
+            format!("{v}LL")
+        },
+        prec: if v < 0 { UNARY } else { PRIMARY },
+        narrow,
+    }
+}
+
+fn float_literal(v: f64) -> Code {
+    if v.is_nan() {
+        Code::primary("NAN")
+    } else if v.is_infinite() {
+        Code::new(if v > 0.0 { "INFINITY" } else { "-INFINITY" }, UNARY)
+    } else {
+        Code::new(
+            format!("{v:?}"),
+            if v.is_sign_negative() { UNARY } else { PRIMARY },
+        )
+    }
+}
+
+fn char_literal(c: u8) -> Code {
+    match c {
+        b'\'' => Code::primary("'\\''"),
+        b'\\' => Code::primary("'\\\\'"),
+        b'\n' => Code::primary("'\\n'"),
+        b'\t' => Code::primary("'\\t'"),
+        b'\r' => Code::primary("'\\r'"),
+        0x20..=0x7e => Code::primary(format!("'{}'", c as char)),
+        _ => Code::new(format!("(cpl::u8){c}"), UNARY),
+    }
+}
+
+/// The bytes as a C++ string literal, quotes included.
+pub(crate) fn string_literal(bytes: &[u8]) -> String {
+    let mut out = String::from("\"");
+    let mut last = 0u8;
+    for &b in bytes {
+        match b {
+            b'"' => out.push_str("\\\""),
+            b'\\' => out.push_str("\\\\"),
+            b'\n' => out.push_str("\\n"),
+            b'\t' => out.push_str("\\t"),
+            b'\r' => out.push_str("\\r"),
+            // `??x` could be read as a trigraph by an old compiler.
+            b'?' if last == b'?' => out.push_str("\\?"),
+            0x20..=0x7e => out.push(b as char),
+            _ => out.push_str(&format!("\\{b:03o}")),
+        }
+        last = b;
+    }
+    out.push('"');
+    out
+}
+
+/// An `int` expression made `long long`, so arithmetic on it has 64 bits.
+fn widen(code: &Code) -> Code {
+    if !code.narrow {
+        return code.clone();
+    }
+    let text = if code.text.parse::<i64>().is_ok() {
+        format!("{}LL", code.text)
+    } else {
+        format!("(ll){}", code.at(UNARY))
+    };
+    Code {
+        text,
+        prec: code.prec.min(UNARY),
+        narrow: false,
+    }
+}
+
+fn infix(l: &Code, sym: &str, r: &Code, prec: u8) -> Code {
+    Code::new(format!("{} {sym} {}", l.at(prec), r.at(prec + 1)), prec)
+}
+
+/// `e` as a position and a small step from it, when it is one.
+fn neighbour(e: &Expr) -> Option<(&Expr, char, i64)> {
+    let ExprKind::Binary(op @ (BinOp::Add | BinOp::Sub), l, r) = &e.kind else {
+        return None;
+    };
+    match (&l.kind, &r.kind) {
+        (ExprKind::Cast(Cast::Ord, pos), ExprKind::Int(step)) if (0..=1 << 20).contains(step) => {
+            Some((pos, if *op == BinOp::Add { '+' } else { '-' }, *step))
+        }
+        _ => None,
+    }
+}
+
+impl<'p> Emitter<'p> {
+    /// What evaluating `e` reads, writes and prints.
+    pub fn touch(&self, e: &Expr) -> Touch {
+        let mut touch = Touch::default();
+        walk::deep_expr(e, &mut |inner| match &inner.kind {
+            ExprKind::Local(slot) => {
+                touch.reads.insert((false, *slot));
+            }
+            ExprKind::Global(id) => {
+                touch.reads.insert((true, *id));
+            }
+            ExprKind::Read(_) | ExprKind::Print(_) => touch.io = true,
+            ExprKind::Call(id, args) => {
+                let summary = &self.summaries[*id];
+                touch.io |= summary.io;
+                touch.reads.extend(summary.reads.iter().map(|g| (true, *g)));
+                touch
+                    .writes
+                    .extend(summary.writes.iter().map(|g| (true, *g)));
+                for arg in args {
+                    if let Arg::Mut(place) = arg {
+                        touch.writes.insert(walk::root(place));
+                    }
+                }
+            }
+            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _) => {
+                touch.writes.insert(walk::root(place));
+            }
+            ExprKind::Do(block) => walk::deep_stmts(block, &mut |stmt| match stmt {
+                Stmt::Assign(place, ..) => {
+                    touch.writes.insert(walk::root(place));
+                }
+                Stmt::Let(slot, _) | Stmt::For(_, slot, ..) => {
+                    touch.writes.insert((false, *slot));
+                }
+                Stmt::DefDomain { .. } | Stmt::Assert { .. } | Stmt::Trap(..) => touch.io = true,
+                _ => {}
+            }),
+            _ => {}
+        });
+        touch
+    }
+
+    /// A lambda called on the spot: `[&]() -> ret { body }()`.
+    pub fn lambda(&mut self, ret: &str, body: impl FnOnce(&mut Self, &mut String)) -> Code {
+        let mut text = format!("[&]() -> {ret} {{\n");
+        self.indent += 1;
+        body(self, &mut text);
+        self.indent -= 1;
+        text.push_str(&pad(self.indent));
+        text.push_str("}()");
+        Code::primary(text)
+    }
+
+    /// Emits `operands` and hands them to `build`. C++ does not say which
+    /// operand of `a + b` or argument of `f(a, b)` runs first; the
+    /// language says left to right. Where the difference could show, the
+    /// operands are named in order first.
+    pub fn sequence(
+        &mut self,
+        operands: &[&Expr],
+        ret: &Ty,
+        build: impl FnOnce(&mut Self, Vec<Code>) -> Code,
+    ) -> Code {
+        let touches: Vec<Touch> = operands.iter().map(|e| self.touch(e)).collect();
+        let n = operands.len();
+        let ordered = (0..n).any(|i| (i + 1..n).any(|j| touches[i].conflicts(&touches[j])));
+        if !ordered {
+            let codes = operands.iter().map(|e| self.expr(e)).collect();
+            return build(self, codes);
+        }
+        let ret_text = self.ty(ret);
+        let is_unit = *ret == Ty::Unit;
+        self.lambda(&ret_text, |this, out| {
+            let mut codes = Vec::with_capacity(n);
+            for (i, e) in operands.iter().enumerate() {
+                let code = this.expr(e);
+                if i + 1 == n
+                    || this.is_fixed(e)
+                    || matches!(e.kind, ExprKind::Str(_) | ExprKind::None)
+                {
+                    codes.push(code);
+                } else {
+                    let name = this.temp();
+                    out.push_str(&format!(
+                        "{}{} {name} = {};\n",
+                        pad(this.indent),
+                        this.ty(&e.ty),
+                        code.text
+                    ));
+                    codes.push(Code::primary(name));
+                }
+            }
+            let result = build(this, codes);
+            let lead = if is_unit { "" } else { "return " };
+            out.push_str(&format!("{}{lead}{};\n", pad(this.indent), result.text));
+        })
+    }
+
+    pub fn place(&mut self, place: &Place) -> String {
+        self.place_at(place, false)
+    }
+
+    /// `store` is true for the target of a plain `=`, where a map makes
+    /// room for a new key.
+    pub fn place_at(&mut self, place: &Place, store: bool) -> String {
+        match &place.kind {
+            PlaceKind::Local(slot) => self.names[*slot].clone(),
+            PlaceKind::Global(id) => ident(&self.program.globals[*id].name),
+            PlaceKind::Field(base, index) => {
+                let b = self.place_at(base, false);
+                match &base.ty {
+                    Ty::Struct(id) => {
+                        format!("{b}.{}", ident(&self.program.structs[*id].fields[*index].0))
+                    }
+                    _ => format!("std::get<{index}>({b})"),
+                }
+            }
+            PlaceKind::Index(base, indices) => {
+                let b = self.place_at(base, false);
+                let touches: Vec<Touch> = indices.iter().map(|e| self.touch(e)).collect();
+                let n = indices.len();
+                if (0..n).any(|i| (i + 1..n).any(|j| touches[i].conflicts(&touches[j]))) {
+                    // The arguments of a call run in no set order: name
+                    // the indices one by one.
+                    let cell = format!("{}&", elem_ty(self.program, &place.ty));
+                    return self
+                        .lambda(&cell, |this, out| {
+                            let mut at = Vec::with_capacity(n);
+                            for index in indices {
+                                let code = this.expr(index).text;
+                                let name = this.temp();
+                                out.push_str(&format!(
+                                    "{}{} {name} = {code};\n",
+                                    pad(this.indent),
+                                    this.ty(&index.ty)
+                                ));
+                                at.push(name);
+                            }
+                            out.push_str(&format!(
+                                "{}return {b}({});\n",
+                                pad(this.indent),
+                                at.join(", ")
+                            ));
+                        })
+                        .text;
+                }
+                let at: Vec<String> = indices.iter().map(|e| self.expr(e).text).collect();
+                match &base.ty {
+                    Ty::Array { dims, .. } if dims.len() > 1 => format!("{b}({})", at.join(", ")),
+                    Ty::Map(..) if !store => format!("{b}.at({})", at.join(", ")),
+                    _ => format!("{b}[{}]", at.join(", ")),
+                }
+            }
+        }
+    }
+
+    /// True when writing `place` twice would run something twice.
+    pub fn place_is_plain(&self, place: &Place) -> bool {
+        let mut plain = true;
+        walk::place_exprs(place, &mut |e| {
+            let touch = self.touch(e);
+            plain &= !touch.io && touch.writes.is_empty();
+        });
+        plain
+    }
+
+    /// An element of a `{...}` list, which C++ refuses to narrow: a
+    /// `Char` or position that C++ computed as a wider type is cast back.
+    fn braced(&mut self, e: &Expr) -> String {
+        let code = self.expr(e);
+        let typed = matches!(
+            e.kind,
+            ExprKind::Local(_)
+                | ExprKind::Global(_)
+                | ExprKind::Field(..)
+                | ExprKind::Char(_)
+                | ExprKind::Read(_)
+        ) || matches!(
+            (&e.kind, &e.ty),
+            (ExprKind::Index(..), Ty::Pos(_) | Ty::Bound(_))
+        );
+        match &e.ty {
+            Ty::Char | Ty::Pos(_) | Ty::Bound(_) if !typed && !code.text.starts_with('(') => {
+                format!("({}){}", self.ty(&e.ty), code.at(UNARY))
+            }
+            _ => code.text,
+        }
+    }
+
+    pub fn dim(&mut self, dim: &DimSpec) -> String {
+        match dim {
+            DimSpec::Pos(d) => format!("{}_len", ident(&self.program.domains[*d])),
+            DimSpec::Bound(d) => format!("{}_len + 1", ident(&self.program.domains[*d])),
+            DimSpec::Int(len) => self.expr(len).text,
+        }
+    }
+
+    /// The arguments of a 1-D vector's constructor: `n, value`.
+    pub fn fill_args(&mut self, dims: &[DimSpec], value: Option<&Expr>) -> String {
+        let n = self.dim(&dims[0]);
+        match value {
+            Some(value) => format!("{n}, {}", self.expr(value).text),
+            None => n,
+        }
+    }
+
+    pub fn expr(&mut self, e: &Expr) -> Code {
+        let program = self.program;
+        match &e.kind {
+            ExprKind::Unit | ExprKind::Error => Code::primary("(void)0"),
+            ExprKind::Int(v) => int_literal(*v),
+            ExprKind::Float(v) => float_literal(*v),
+            ExprKind::Bool(v) => Code::primary(if *v { "true" } else { "false" }),
+            ExprKind::Char(c) => char_literal(*c),
+            ExprKind::Str(bytes) => {
+                if bytes.contains(&0) {
+                    Code::primary(format!(
+                        "std::string({}, {})",
+                        string_literal(bytes),
+                        bytes.len()
+                    ))
+                } else {
+                    Code::primary(format!("std::string({})", string_literal(bytes)))
+                }
+            }
+            ExprKind::None => Code::primary(format!("{}()", self.ty(&e.ty))),
+            ExprKind::Some(inner) => {
+                let inner = self.expr(inner).text;
+                Code::primary(format!("{}({inner})", self.ty(&e.ty)))
+            }
+            ExprKind::Local(slot) => Code::primary(self.names[*slot].clone()),
+            ExprKind::Global(id) => Code::primary(ident(&program.globals[*id].name)),
+            ExprKind::Unary(op, inner) => {
+                let code = self.expr(inner);
+                let sym = match op {
+                    UnOp::Neg => "-",
+                    UnOp::Not => "!",
+                    UnOp::BitNot => "~",
+                };
+                let operand = if code.text.starts_with('-') {
+                    format!("({})", code.text)
+                } else {
+                    code.at(UNARY)
+                };
+                Code {
+                    text: format!("{sym}{operand}"),
+                    prec: UNARY,
+                    narrow: code.narrow && *op != UnOp::Not,
+                }
+            }
+            ExprKind::Binary(op, l, r) => self.binary(e, *op, l, r),
+            ExprKind::Cmp(op, l, r) => self.sequence(&[l, r], &Ty::Bool, |_, codes| {
+                let (sym, prec) = match op {
+                    CmpOp::Ne => ("!=", EQ),
+                    CmpOp::Lt => ("<", REL),
+                    CmpOp::Le => ("<=", REL),
+                    CmpOp::Gt => (">", REL),
+                    CmpOp::Ge => (">=", REL),
+                    _ => ("==", EQ),
+                };
+                // `a < b == c` is right but reads wrong: keep the parentheses.
+                Code::new(
+                    format!("{} {sym} {}", codes[0].at(REL + 1), codes[1].at(REL + 1)),
+                    prec,
+                )
+            }),
+            ExprKind::Cast(Cast::Trust | Cast::FromOrd(_), inner) if neighbour(inner).is_some() => {
+                // `v.after`, `v.prev`: a position a small step away
+                // stays an `int`.
+                let (pos, op, step) = neighbour(inner).expect("checked");
+                let pos = self.expr(pos);
+                let mut code = Code::new(format!("{} {op} {step}", pos.at(ADD)), ADD);
+                code.narrow = true;
+                code
+            }
+            ExprKind::Cast(cast, inner) => {
+                let code = self.expr(inner);
+                let c_cast = |ty: &str| Code::new(format!("({ty}){}", code.at(UNARY)), UNARY);
+                match cast {
+                    Cast::IntToFloat => c_cast("double"),
+                    Cast::FloatToInt | Cast::CharToInt | Cast::Ord => c_cast("ll"),
+                    Cast::IntToChar => c_cast("cpl::u8"),
+                    Cast::Label(d) => Code::new(
+                        format!("{} + {}_lo", code.at(ADD), ident(&program.domains[*d])),
+                        ADD,
+                    ),
+                    Cast::FromLabel(d) => Code::new(
+                        format!(
+                            "(int)({} - {}_lo)",
+                            code.at(ADD),
+                            ident(&program.domains[*d])
+                        ),
+                        UNARY,
+                    ),
+                    Cast::FromOrd(_) => c_cast("int"),
+                    Cast::Trust if matches!(inner.ty, Ty::Pos(_) | Ty::Bound(_)) => code,
+                    Cast::Trust => c_cast("int"),
+                }
+            }
+            ExprKind::Index(base, indices) => {
+                let mut operands: Vec<&Expr> = vec![base];
+                operands.extend(indices.iter());
+                let base_ty = &base.ty;
+                self.sequence(&operands, &e.ty, |_, codes| {
+                    let b = codes[0].at(PRIMARY);
+                    let at: Vec<String> = codes[1..].iter().map(|c| c.text.clone()).collect();
+                    match base_ty {
+                        Ty::Array { dims, elem } if dims.len() > 1 => {
+                            let cell = format!("{b}({})", at.join(", "));
+                            if **elem == Ty::Bool {
+                                Code::new(format!("(bool){cell}"), UNARY)
+                            } else {
+                                Code::primary(cell)
+                            }
+                        }
+                        Ty::Array { elem, .. } | Ty::List(elem) if **elem == Ty::Bool => {
+                            Code::new(format!("(bool){b}[{}]", at[0]), UNARY)
+                        }
+                        Ty::Str => Code::new(format!("(cpl::u8){b}[{}]", at[0]), UNARY),
+                        Ty::Map(..) => Code::primary(format!("{b}.at({})", at[0])),
+                        _ => Code::primary(format!("{b}[{}]", at[0])),
+                    }
+                })
+            }
+            ExprKind::Field(base, index) => {
+                let b = self.expr(base);
+                match &base.ty {
+                    Ty::Struct(id) => Code::primary(format!(
+                        "{}.{}",
+                        b.at(PRIMARY),
+                        ident(&program.structs[*id].fields[*index].0)
+                    )),
+                    _ => Code::primary(format!("std::get<{index}>({})", b.text)),
+                }
+            }
+            ExprKind::Tuple(items) => {
+                let ty = self.ty(&e.ty);
+                match &e.ty {
+                    Ty::Unit | Ty::Error => Code::primary("(void)0"),
+                    Ty::Map(..) => Code::primary(format!("{ty}()")),
+                    _ if items.is_empty() => Code::primary(format!("{ty}()")),
+                    _ => {
+                        // `{...}` runs its elements left to right.
+                        let items: Vec<String> =
+                            items.iter().map(|item| self.braced(item)).collect();
+                        Code::primary(format!("{ty}{{{}}}", items.join(", ")))
+                    }
+                }
+            }
+            ExprKind::Variant(tag, items) => {
+                let Ty::Enum(id) = &e.ty else {
+                    return Code::primary("(void)0");
+                };
+                let def = &program.enums[*id];
+                let name = ident(&def.name);
+                let variant = ident(&def.variants[*tag].0);
+                if is_plain_enum(program, *id) {
+                    return Code::primary(format!("{name}::{variant}"));
+                }
+                let operands: Vec<&Expr> = items.iter().collect();
+                self.sequence(&operands, &e.ty, |_, codes| {
+                    let args: Vec<String> = codes.iter().map(|c| c.text.clone()).collect();
+                    Code::primary(format!("{name}::make_{variant}({})", args.join(", ")))
+                })
+            }
+            ExprKind::IsVariant(value, tag) => {
+                let Ty::Enum(id) = &value.ty else {
+                    return Code::primary("false");
+                };
+                let def = &program.enums[*id];
+                let code = self.expr(value);
+                let variant = format!("{}::{}", ident(&def.name), ident(&def.variants[*tag].0));
+                if is_plain_enum(program, *id) {
+                    Code::new(format!("{} == {variant}", code.at(REL)), EQ)
+                } else {
+                    Code::new(format!("{}.tag == {variant}", code.at(PRIMARY)), EQ)
+                }
+            }
+            ExprKind::Payload(value, tag, index) => {
+                let Ty::Enum(id) = &value.ty else {
+                    return Code::primary("(void)0");
+                };
+                let variant = ident(&program.enums[*id].variants[*tag].0);
+                let code = self.expr(value);
+                Code::primary(format!("{}.{variant}_{index}", code.at(PRIMARY)))
+            }
+            ExprKind::IsSome(value) => {
+                let code = self.expr(value);
+                Code::primary(format!("{}.has_value()", code.at(PRIMARY)))
+            }
+            ExprKind::Unwrap(value, _) => {
+                let code = self.expr(value);
+                Code::new(format!("*{}", code.at(UNARY)), UNARY)
+            }
+            ExprKind::If(cond, then, otherwise) => {
+                let c = self.expr(cond);
+                let a = self.expr(then);
+                let b = self.expr(otherwise);
+                if e.ty == Ty::Unit {
+                    return Code::primary(format!(
+                        "({} ? (void)({}) : (void)({}))",
+                        c.at(COND + 1),
+                        a.text,
+                        b.text
+                    ));
+                }
+                Code {
+                    text: format!("{} ? {} : {}", c.at(COND + 1), a.at(COND + 1), b.at(COND)),
+                    prec: COND,
+                    narrow: a.narrow && b.narrow,
+                }
+            }
+            ExprKind::Do(block) => {
+                let ret = self.ty(&e.ty);
+                self.lambda(&ret, |this, out| this.block(block, out))
+            }
+            ExprKind::Call(id, args) => self.call(e, *id, args),
+            ExprKind::Builtin(op, args) => {
+                let operands: Vec<&Expr> = args.iter().collect();
+                self.sequence(&operands, &e.ty, |this, codes| {
+                    this.builtin(e, *op, args, codes)
+                })
+            }
+            ExprKind::Mutate(op, place, args) => {
+                let p = self.place(place);
+                let arg = args
+                    .first()
+                    .map(|arg| self.expr(arg).text)
+                    .unwrap_or_default();
+                match op {
+                    Mutation::Push if place.ty == Ty::Str => {
+                        Code::primary(format!("{p}.push_back((char){arg})"))
+                    }
+                    Mutation::Push => Code::primary(format!("{p}.push_back({arg})")),
+                    Mutation::Pop => {
+                        self.need("pop");
+                        Code::primary(format!("cpl::pop({p})"))
+                    }
+                    Mutation::Insert => Code::primary(format!("{p}.insert({arg}).second")),
+                    Mutation::Remove => Code::new(format!("{p}.erase({arg}) != 0"), EQ),
+                    Mutation::Clear => Code::primary(format!("{p}.clear()")),
+                    Mutation::Reverse if self.place_is_plain(place) => {
+                        Code::primary(format!("std::reverse({p}.begin(), {p}.end())"))
+                    }
+                    Mutation::Reverse => self.lambda("void", |this, out| {
+                        let r = this.temp();
+                        out.push_str(&format!("{}auto& {r} = {p};\n", pad(this.indent)));
+                        out.push_str(&format!(
+                            "{}std::reverse({r}.begin(), {r}.end());\n",
+                            pad(this.indent)
+                        ));
+                    }),
+                }
+            }
+            ExprKind::Sort(place, key) => self.lambda("void", |this, out| {
+                this.sort_stmts(place, key.as_ref(), out)
+            }),
+            ExprKind::Read(spec) => self.read(spec),
+            ExprKind::Print(args) => self.lambda("void", |this, out| this.print_stmts(args, out)),
+            ExprKind::Format(pieces) => self.lambda("std::string", |this, out| {
+                // Values that run code are computed before the capture
+                // begins, so what they print goes out and not in.
+                let mut values = Vec::new();
+                for piece in pieces {
+                    if let FmtPiece::Value(arg) = piece {
+                        let touch = this.touch(&arg.value);
+                        let code = this.expr(&arg.value);
+                        let calls = !crate::walk::Effects::of_expr(&arg.value).calls.is_empty();
+                        if touch.io || !touch.writes.is_empty() || calls {
+                            let name = this.temp();
+                            out.push_str(&format!(
+                                "{}{} {name} = {};\n",
+                                pad(this.indent),
+                                this.ty(&arg.value.ty),
+                                code.text
+                            ));
+                            values.push(Code::primary(name));
+                        } else {
+                            values.push(code);
+                        }
+                    }
+                }
+                this.need("capture");
+                let capture = this.temp();
+                out.push_str(&format!("{}cpl::Capture {capture};\n", pad(this.indent)));
+                let mut values = values.into_iter();
+                let mut parts = Vec::new();
+                for piece in pieces {
+                    match piece {
+                        FmtPiece::Text(bytes) => parts.push(this.put_text(bytes)),
+                        FmtPiece::Value(arg) => {
+                            let code = values.next().expect("one per value");
+                            parts.push(this.show_stmt(
+                                &code,
+                                &arg.value.ty,
+                                &arg.digits.to_string(),
+                            ));
+                        }
+                    }
+                }
+                if !parts.is_empty() {
+                    out.push_str(&format!("{}{}\n", pad(this.indent), parts.join(" ")));
+                }
+                out.push_str(&format!("{}return {capture}.take();\n", pad(this.indent)));
+            }),
+            ExprKind::Fill(dims, value) => {
+                let Ty::Array { elem, .. } = &e.ty else {
+                    return Code::primary("(void)0");
+                };
+                let cell = elem_ty(program, elem);
+                if dims.len() == 1 {
+                    let args = self.fill_args(dims, value.as_deref());
+                    Code::primary(format!("std::vector<{cell}>({args})"))
+                } else {
+                    self.need("grid");
+                    let lens: Vec<String> = dims.iter().map(|d| self.dim(d)).collect();
+                    let value = match value {
+                        Some(value) => self.expr(value).text,
+                        None => format!("{cell}()"),
+                    };
+                    Code::primary(format!(
+                        "cpl::grid<{cell}, {}>({{{}}}, {value})",
+                        dims.len(),
+                        lens.join(", ")
+                    ))
+                }
+            }
+            ExprKind::DomainLen(d) => Code::primary(format!("{}_len", ident(&program.domains[*d]))),
+            ExprKind::DomainLo(d) => Code::primary(format!("{}_lo", ident(&program.domains[*d]))),
+        }
+    }
+
+    fn binary(&mut self, e: &Expr, op: BinOp, l: &Expr, r: &Expr) -> Code {
+        match op {
+            BinOp::And => {
+                let (a, b) = (self.expr(l), self.expr(r));
+                infix(&a, "&&", &b, AND)
+            }
+            BinOp::Or => {
+                let (a, b) = (self.expr(l), self.expr(r));
+                // `a || b && c` is right but reads wrong: keep the parentheses.
+                Code::new(
+                    format!(
+                        "{} || {}",
+                        a.at(if a.prec == OR { OR } else { AND + 1 }),
+                        b.at(AND + 1)
+                    ),
+                    OR,
+                )
+            }
+            BinOp::Coalesce => {
+                let keeps_opt = matches!(e.ty, Ty::Opt(_));
+                if walk::path_root(l).is_some() {
+                    let a = self.expr(l).at(PRIMARY);
+                    let b = self.expr(r);
+                    let value = if keeps_opt {
+                        a.clone()
+                    } else {
+                        format!("*{a}")
+                    };
+                    return Code::new(format!("{a}.has_value() ? {value} : {}", b.at(COND)), COND);
+                }
+                let ret = self.ty(&e.ty);
+                self.lambda(&ret, |this, out| {
+                    let a = this.expr(l).text;
+                    let name = this.temp();
+                    out.push_str(&format!(
+                        "{}{} {name} = {a};\n",
+                        pad(this.indent),
+                        this.ty(&l.ty)
+                    ));
+                    let b = this.expr(r);
+                    let value = if keeps_opt {
+                        name.clone()
+                    } else {
+                        format!("*{name}")
+                    };
+                    out.push_str(&format!(
+                        "{}return {name}.has_value() ? {value} : {};\n",
+                        pad(this.indent),
+                        b.at(COND)
+                    ));
+                })
+            }
+            _ => self.sequence(&[l, r], &e.ty, |this, codes| {
+                this.arith(op, l, r, &codes[0], &codes[1])
+            }),
+        }
+    }
+
+    /// `l op r` for operands already emitted as `a` and `b`.
+    pub fn arith(&mut self, op: BinOp, l: &Expr, r: &Expr, a: &Code, b: &Code) -> Code {
+        let both_narrow = a.narrow && b.narrow;
+        match (&l.ty, op) {
+            (Ty::Int, BinOp::Add | BinOp::Sub | BinOp::Mul) => {
+                let (sym, prec) = match op {
+                    BinOp::Add => ("+", ADD),
+                    BinOp::Sub => ("-", ADD),
+                    _ => ("*", MUL),
+                };
+                let a = if both_narrow { widen(a) } else { a.clone() };
+                infix(&a, sym, b, prec)
+            }
+            (Ty::Int, BinOp::Div | BinOp::Rem) => {
+                let div = op == BinOp::Div;
+                let dividend = self.facts.sign(self.fn_id, l);
+                let divisor = self.facts.sign(self.fn_id, r);
+                if dividend != Sign::Unknown && divisor == Sign::Positive {
+                    // Nothing is negative: C++'s own operator agrees.
+                    let mut code = infix(a, if div { "/" } else { "%" }, b, MUL);
+                    code.narrow = both_narrow;
+                    return code;
+                }
+                let helper = match (divisor == Sign::Positive, div) {
+                    (true, true) => "divp",
+                    (true, false) => "modp",
+                    (false, true) => "ediv",
+                    (false, false) => "emod",
+                };
+                self.need(helper);
+                Code::primary(format!("cpl::{helper}({}, {})", a.text, b.text))
+            }
+            (Ty::Int, BinOp::Pow) => {
+                self.need("ipow");
+                Code::primary(format!("cpl::ipow({}, {})", a.text, b.text))
+            }
+            (Ty::Int, BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor) => {
+                let sym = match op {
+                    BinOp::BitAnd => "&",
+                    BinOp::BitOr => "|",
+                    _ => "^",
+                };
+                let mut code = Code::new(format!("{} {sym} {}", a.at(BIT + 1), b.at(BIT + 1)), BIT);
+                code.narrow = both_narrow;
+                code
+            }
+            (Ty::Int, BinOp::Shl) => {
+                Code::new(format!("{} << {}", widen(a).at(UNARY), b.at(UNARY)), SHIFT)
+            }
+            (Ty::Int, BinOp::Shr) => {
+                let mut code = Code::new(format!("{} >> {}", a.at(UNARY), b.at(UNARY)), SHIFT);
+                code.narrow = a.narrow;
+                code
+            }
+            (Ty::Float, BinOp::Pow) => Code::primary(format!("std::pow({}, {})", a.text, b.text)),
+            (Ty::Bool, BinOp::BitAnd) => {
+                Code::primary(format!("bool({} & {})", a.at(BIT + 1), b.at(BIT + 1)))
+            }
+            (Ty::Bool, BinOp::BitOr) => {
+                Code::primary(format!("bool({} | {})", a.at(BIT + 1), b.at(BIT + 1)))
+            }
+            (Ty::Bool, BinOp::BitXor) => Code::new(format!("{} != {}", a.at(REL), b.at(REL)), EQ),
+            _ => {
+                let (sym, prec) = match op {
+                    BinOp::Sub => ("-", ADD),
+                    BinOp::Mul => ("*", MUL),
+                    BinOp::Div => ("/", MUL),
+                    BinOp::Rem => ("%", MUL),
+                    _ => ("+", ADD),
+                };
+                infix(a, sym, b, prec)
+            }
+        }
+    }
+
+    fn call(&mut self, e: &Expr, id: usize, args: &[Arg]) -> Code {
+        let program = self.program;
+        let f = &program.fns[id];
+        let operands: Vec<&Expr> = args
+            .iter()
+            .filter_map(|arg| match arg {
+                Arg::Value(value) => Some(value),
+                Arg::Mut(_) => None,
+            })
+            .collect();
+        let lent: Vec<(bool, usize)> = args
+            .iter()
+            .filter_map(|arg| match arg {
+                Arg::Mut(place) => Some(walk::root(place)),
+                Arg::Value(_) => None,
+            })
+            .collect();
+        self.sequence(&operands, &e.ty, |this, codes| {
+            let mut codes = codes.into_iter();
+            let mut texts = Vec::with_capacity(args.len());
+            for (slot, arg) in args.iter().enumerate() {
+                match arg {
+                    Arg::Mut(place) => texts.push(this.place(place)),
+                    Arg::Value(value) => {
+                        let code = codes.next().expect("one per value");
+                        // A parameter taken by reference must not see the
+                        // callee change what it refers to: the language
+                        // passes values.
+                        let by_ref = !value.ty.is_scalar()
+                            && this.facts.stores((Some(id), false, slot)) <= 2;
+                        let shared = match walk::path_root(value) {
+                            Some(root) => {
+                                lent.contains(&root)
+                                    || (root.0 && this.summaries[id].writes.contains(&root.1))
+                            }
+                            None => false,
+                        };
+                        if by_ref && shared {
+                            texts.push(format!("{}({})", this.ty(&value.ty), code.text));
+                        } else {
+                            texts.push(code.text);
+                        }
+                    }
+                }
+            }
+            Code::primary(format!("{}({})", fn_name(&f.name), texts.join(", ")))
+        })
+    }
+
+    fn builtin(&mut self, e: &Expr, op: Builtin, args: &[Expr], codes: Vec<Code>) -> Code {
+        let text = |i: usize| codes.get(i).map(|c| c.text.clone()).unwrap_or_default();
+        let first_ty = args.first().map(|a| &a.ty);
+        let is_grid = matches!(first_ty, Some(Ty::Array { dims, .. }) if dims.len() > 1);
+        let helper = |this: &mut Self, name: &'static str| {
+            this.need(name);
+            Code::primary(format!("cpl::{name}({})", text(0)))
+        };
+        match op {
+            Builtin::Min | Builtin::Max => {
+                let name = if op == Builtin::Min { "min" } else { "max" };
+                let ty = self.ty(&e.ty);
+                let all: Vec<String> = codes.iter().map(|c| c.text.clone()).collect();
+                if all.len() == 2 {
+                    Code::primary(format!("std::{name}<{ty}>({})", all.join(", ")))
+                } else {
+                    Code::primary(format!("std::{name}<{ty}>({{{}}})", all.join(", ")))
+                }
+            }
+            Builtin::Abs if e.ty == Ty::Float => Code::primary(format!("std::fabs({})", text(0))),
+            Builtin::Abs => Code::primary(format!("std::abs({})", widen(&codes[0]).text)),
+            Builtin::Sqrt => Code::primary(format!("std::sqrt({})", text(0))),
+            Builtin::Floor => Code::new(format!("(ll)std::floor({})", text(0)), UNARY),
+            Builtin::Ceil => Code::new(format!("(ll)std::ceil({})", text(0)), UNARY),
+            Builtin::Round => Code::new(format!("(ll)std::round({})", text(0)), UNARY),
+            Builtin::Len if is_grid => {
+                Code::new(format!("(ll){}.d.size()", codes[0].at(PRIMARY)), UNARY)
+            }
+            Builtin::Len => Code::new(format!("(ll){}.size()", codes[0].at(PRIMARY)), UNARY),
+            Builtin::First => helper(self, "first"),
+            Builtin::Last => helper(self, "last"),
+            Builtin::Contains => {
+                let holder = codes[0].at(PRIMARY);
+                match first_ty {
+                    Some(Ty::Set(_) | Ty::Map(..)) => {
+                        Code::new(format!("{holder}.count({}) != 0", text(1)), EQ)
+                    }
+                    Some(Ty::Str) => Code::new(
+                        format!(
+                            "{holder}.find((char){}) != std::string::npos",
+                            codes[1].at(UNARY)
+                        ),
+                        EQ,
+                    ),
+                    _ => {
+                        self.need("has");
+                        let items = if is_grid {
+                            format!("{holder}.d")
+                        } else {
+                            holder
+                        };
+                        Code::primary(format!("cpl::has({items}, {})", text(1)))
+                    }
+                }
+            }
+            Builtin::MapGet => {
+                self.need("get");
+                Code::primary(format!("cpl::get({}, {})", text(0), text(1)))
+            }
+            Builtin::SetMin => helper(self, "set_min"),
+            Builtin::SetMax => helper(self, "set_max"),
+            Builtin::Sorted => helper(self, "sorted"),
+            Builtin::Reversed => helper(self, "reversed"),
+            Builtin::PosNext => {
+                self.need("next_pos");
+                Code::primary(format!("cpl::next_pos({}, {})", text(0), text(1)))
+            }
+            Builtin::PosPrev => helper(self, "prev_pos"),
+        }
+    }
+}

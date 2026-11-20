@@ -3,7 +3,9 @@
 //! `Map`, `Set`, `Int`, `Bool`, `Char`, `Str`, `INF`) and the reductions
 //! over sequences that `plan/12-domains-and-sequences.md` writes bare
 //! (`sum`, `count`, `all`, `any`, `find`, `first`, `last`, `argmax`,
-//! `argmin`).
+//! `argmin`), plus the few fns over numbers and sequences that `cpl run`
+//! and `cpl build` implement (`sqrt`, `floor`, `ceil`, `round`, `len`,
+//! `sorted`).
 //!
 //! The standard library is not ported to cp yet, so the prelude is a table
 //! here. Once `std` exists as cp source this file goes away and these names
@@ -18,6 +20,7 @@ pub fn value(name: &str) -> Option<Ty> {
     Some(match name {
         "INF" => Ty::Int,
         "print" | "read" | "min" | "max" | "abs" => Ty::Unknown,
+        "sqrt" | "floor" | "ceil" | "round" | "len" | "sorted" => Ty::Unknown,
         "sum" | "count" | "all" | "any" | "find" | "first" | "last" | "argmax" | "argmin" => {
             Ty::Unknown
         }
@@ -48,5 +51,6 @@ pub fn ty(name: &str) -> Option<Ty> {
 
 pub const VALUE_NAMES: &[&str] = &[
     "INF", "print", "read", "min", "max", "abs", "sum", "count", "all", "any", "find", "first",
-    "last", "argmax", "argmin", "List", "Map", "Set", "Int", "Bool", "Char", "Str", "Float",
+    "last", "argmax", "argmin", "sqrt", "floor", "ceil", "round", "len", "sorted", "List", "Map",
+    "Set", "Int", "Bool", "Char", "Str", "Float",
 ];

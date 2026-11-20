@@ -88,7 +88,9 @@ impl Severity {
 pub struct Code(pub &'static str);
 
 /// Every code the front end can report. Syntax is `E00xx`/`E01xx`, names are
-/// `E02xx`, types and domains are `E03xx`, ownership is `E04xx`.
+/// `E02xx`, types and domains are `E03xx`, ownership is `E04xx`. The back
+/// ends report `E05xx` for what they can't run, and a program that fails
+/// while it runs is `R0001`.
 pub mod codes {
     use super::Code;
 
@@ -131,6 +133,11 @@ pub mod codes {
     pub const MISSING_MUT_AT_CALL: Code = Code("E0402");
     pub const MUT_OF_IMMUTABLE: Code = Code("E0403");
     pub const TOP_LEVEL_VAR_IN_FN: Code = Code("E0404");
+
+    pub const UNSUPPORTED: Code = Code("E0501");
+    pub const NON_ASCII: Code = Code("E0502");
+
+    pub const RUNTIME: Code = Code("R0001");
 
     pub const INTERNAL: Code = Code("E9999");
 }

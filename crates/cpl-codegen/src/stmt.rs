@@ -1,0 +1,548 @@
+//! Statements as C++.
+
+use crate::emit::{pad, Emitter, ADD, PRIMARY, REL};
+use crate::expr::string_literal;
+use crate::names::ident;
+use crate::walk::{self, Effects};
+use cpl_ir::{
+    AssignOp, BinOp, Block, Expr, ExprKind, Iter, LoopId, Place, PlaceKind, Spec, Stmt, Ty,
+};
+
+/// A block with a value that is statements and then the value, with no
+/// other way out: it can be written in line.
+fn flat(e: &Expr) -> Option<(&[Stmt], &Expr)> {
+    let ExprKind::Do(block) = &e.kind else {
+        return None;
+    };
+    match block.stmts.split_last() {
+        Some((Stmt::Give(value), rest)) if !walk::has_give(rest) => Some((rest, value)),
+        _ => None,
+    }
+}
+
+impl<'p> Emitter<'p> {
+    fn line(&self, out: &mut String, text: &str) {
+        out.push_str(&pad(self.indent));
+        out.push_str(text);
+        out.push('\n');
+    }
+
+    pub fn block(&mut self, block: &Block, out: &mut String) {
+        for stmt in &block.stmts {
+            self.stmt(stmt, out);
+        }
+    }
+
+    /// Writes the statements of a value block in line and gives back the
+    /// expression that is its value.
+    fn flatten<'a>(&mut self, mut e: &'a Expr, out: &mut String) -> &'a Expr {
+        while let Some((stmts, value)) = flat(e) {
+            for stmt in stmts {
+                self.stmt(stmt, out);
+            }
+            e = value;
+        }
+        e
+    }
+
+    fn expr_stmt(&mut self, e: &Expr, out: &mut String) {
+        let e = self.flatten(e, out);
+        match &e.kind {
+            ExprKind::Unit | ExprKind::Error => {}
+            ExprKind::Print(args) => self.print_stmts(args, out),
+            ExprKind::Sort(place, key) => self.sort_stmts(place, key.as_ref(), out),
+            ExprKind::If(cond, then, otherwise) if e.ty == Ty::Unit => {
+                let cond = self.expr(cond).text;
+                self.line(out, &format!("if ({cond}) {{"));
+                self.indent += 1;
+                self.expr_stmt(then, out);
+                self.indent -= 1;
+                if !matches!(otherwise.kind, ExprKind::Unit) {
+                    self.line(out, "} else {");
+                    self.indent += 1;
+                    self.expr_stmt(otherwise, out);
+                    self.indent -= 1;
+                }
+                self.line(out, "}");
+            }
+            _ => {
+                let text = self.expr(e).text;
+                self.line(out, &format!("{text};"));
+            }
+        }
+    }
+
+    pub fn sort_stmts(
+        &mut self,
+        place: &Place,
+        key: Option<&(usize, Box<Expr>)>,
+        out: &mut String,
+    ) {
+        let mut p = self.place(place);
+        if !self.place_is_plain(place) {
+            let r = self.temp();
+            self.line(out, &format!("auto& {r} = {p};"));
+            p = r;
+        }
+        let Some((slot, key)) = key else {
+            self.line(out, &format!("std::sort({p}.begin(), {p}.end());"));
+            return;
+        };
+        let elem = self.locals()[*slot].ty.clone();
+        let cpp = self.ty(&elem);
+        let param = if elem.is_scalar() {
+            format!("{cpp} {}", self.names[*slot])
+        } else {
+            format!("const {cpp}& {}", self.names[*slot])
+        };
+        let key_ty = self.ty(&key.ty);
+        let key_text = self.expr(key).text;
+        let (kf, a, b) = (self.temp(), self.temp(), self.temp());
+        self.line(
+            out,
+            &format!("auto {kf} = [&]({param}) -> {key_ty} {{ return {key_text}; }};"),
+        );
+        self.line(
+            out,
+            &format!("std::stable_sort({p}.begin(), {p}.end(), [&](const auto& {a}, const auto& {b}) {{ return {kf}({a}) < {kf}({b}); }});"),
+        );
+    }
+
+    fn if_stmt(
+        &mut self,
+        cond: &Expr,
+        then: &Block,
+        otherwise: &Block,
+        out: &mut String,
+        lead: &str,
+    ) {
+        let c = self.expr(cond).text;
+        out.push_str(&format!("{lead}if ({c}) {{\n"));
+        self.indent += 1;
+        self.block(then, out);
+        self.indent -= 1;
+        match otherwise.stmts.as_slice() {
+            [] => self.line(out, "}"),
+            [Stmt::If(cond, then, otherwise)] => {
+                let lead = format!("{}}} else ", pad(self.indent));
+                self.if_stmt(cond, then, otherwise, out, &lead);
+            }
+            _ => {
+                self.line(out, "} else {");
+                self.indent += 1;
+                self.block(otherwise, out);
+                self.indent -= 1;
+                self.line(out, "}");
+            }
+        }
+    }
+
+    /// The body of a loop, its `}` and the labels a `break` or
+    /// `continue` from an inner loop jumps to. `first` are statements
+    /// that open the body.
+    fn loop_body(&mut self, id: LoopId, first: &[String], body: &Block, out: &mut String) {
+        self.indent += 1;
+        for line in first {
+            self.line(out, line);
+        }
+        if self.continue_targets.contains(&id) {
+            // In a block of its own, so the jump passes no declaration.
+            self.line(out, "{");
+            self.indent += 1;
+            self.block(body, out);
+            self.indent -= 1;
+            self.line(out, "}");
+            self.line(out, &format!("cont_{id}:;"));
+        } else {
+            self.block(body, out);
+        }
+        self.indent -= 1;
+        self.line(out, "}");
+        if self.break_targets.contains(&id) {
+            self.line(out, &format!("brk_{id}:;"));
+        }
+    }
+
+    fn for_stmt(&mut self, id: LoopId, slot: usize, iter: &Iter, body: &Block, out: &mut String) {
+        let ty = self.locals()[slot].ty.clone();
+        let cpp = self.ty(&ty);
+        let name = self.names[slot].clone();
+        let stable = self.facts.stable((self.fn_id, false, slot));
+        let hoisted = self.hoisted.contains(&slot);
+        // The loop's own counter, when the body may change the variable.
+        let var = if hoisted || !stable {
+            self.temp()
+        } else {
+            name.clone()
+        };
+        let mut first = Vec::new();
+        if hoisted {
+            first.push(format!("{name} = {var};"));
+        } else if !stable {
+            first.push(format!("{cpp} {name} = {var};"));
+        }
+        match iter {
+            Iter::Range { lo, hi, step, rev } => {
+                let fit = |text: String, narrow: bool| {
+                    if cpp == "int" && !narrow {
+                        format!("(int)({text})")
+                    } else {
+                        text
+                    }
+                };
+                let lo_code = self.expr(lo);
+                let hi_code = self.expr(hi);
+                let mut extra = String::new();
+                let step_text = match step {
+                    None => None,
+                    Some(step) if self.is_fixed(step) => Some(self.expr(step).at(ADD + 1)),
+                    Some(step) => {
+                        let name = self.unique(&format!("{var}_step"));
+                        let text = self.expr(step).text;
+                        extra.push_str(&format!(", {name} = {}", fit(text, false)));
+                        Some(name)
+                    }
+                };
+                match (rev, &step_text) {
+                    (false, _) => {
+                        let bound = if self.is_fixed(hi) {
+                            hi_code.at(REL + 1)
+                        } else {
+                            let end = self.unique(&format!("{var}_end"));
+                            extra.push_str(&format!(
+                                ", {end} = {}",
+                                fit(hi_code.text.clone(), hi_code.narrow)
+                            ));
+                            end
+                        };
+                        let advance = match &step_text {
+                            Some(step) => format!("{var} += {step}"),
+                            None => format!("{var}++"),
+                        };
+                        let start = fit(lo_code.text.clone(), lo_code.narrow);
+                        self.line(
+                            out,
+                            &format!(
+                                "for ({cpp} {var} = {start}{extra}; {var} < {bound}; {advance}) {{"
+                            ),
+                        );
+                        self.loop_body(id, &first, body, out);
+                    }
+                    (true, None) => {
+                        let bound = if self.is_fixed(lo) {
+                            lo_code.at(REL + 1)
+                        } else {
+                            let end = self.unique(&format!("{var}_end"));
+                            extra.push_str(&format!(
+                                ", {end} = {}",
+                                fit(lo_code.text.clone(), lo_code.narrow)
+                            ));
+                            end
+                        };
+                        let start = fit(format!("{} - 1", hi_code.at(ADD)), false);
+                        self.line(
+                            out,
+                            &format!(
+                                "for ({cpp} {var} = {start}{extra}; {var} >= {bound}; {var}--) {{"
+                            ),
+                        );
+                        self.loop_body(id, &first, body, out);
+                    }
+                    (true, Some(step)) => {
+                        // Backward by steps: count them, then walk down.
+                        let (a, b, k) = (self.temp(), self.temp(), self.temp());
+                        self.line(out, "{");
+                        self.indent += 1;
+                        self.line(
+                            out,
+                            &format!(
+                                "ll {a} = {}, {b} = {}{};",
+                                lo_code.text,
+                                hi_code.text,
+                                extra.replace(", ", "; ll ").replacen("; ll ", ", ", 1)
+                            ),
+                        );
+                        self.line(out, &format!("for (ll {k} = {b} > {a} ? ({b} - {a} - 1) / {step} : -1; {k} >= 0; {k}--) {{"));
+                        let mut opening = vec![format!(
+                            "{cpp} {var} = {};",
+                            fit(format!("{a} + {k} * {step}"), false)
+                        )];
+                        opening.extend(first);
+                        self.loop_body(id, &opening, body, out);
+                        self.indent -= 1;
+                        self.line(out, "}");
+                    }
+                }
+            }
+            Iter::Seq(seq, rev) => {
+                let effects = Effects::of_block(body);
+                // The loop walks the value as it was when the loop began,
+                // so a container the body changes is walked as a copy.
+                let untouched = match walk::path_root(seq) {
+                    Some((false, local)) => !effects.locals.contains(&local),
+                    Some((true, global)) => {
+                        !effects.globals.contains(&global)
+                            && !effects
+                                .calls
+                                .iter()
+                                .any(|f| self.summaries[*f].writes.contains(&global))
+                    }
+                    None => false,
+                };
+                let is_map = matches!(seq.ty, Ty::Map(..));
+                let is_grid = matches!(&seq.ty, Ty::Array { dims, .. } if dims.len() > 1);
+                let seq_code = self.expr(seq);
+                let opened = !(untouched && !rev && !is_map);
+                let holder = if opened {
+                    self.line(out, "{");
+                    self.indent += 1;
+                    let held = self.temp();
+                    let holder_ty = self.ty(&seq.ty);
+                    if untouched {
+                        self.line(
+                            out,
+                            &format!("const {holder_ty}& {held} = {};", seq_code.text),
+                        );
+                    } else {
+                        self.line(out, &format!("{holder_ty} {held} = {};", seq_code.text));
+                    }
+                    held
+                } else {
+                    seq_code.at(PRIMARY)
+                };
+                let items = if is_grid {
+                    format!("{holder}.d")
+                } else {
+                    holder
+                };
+                let decl = if ty.is_scalar() || var != name {
+                    format!("{cpp} {var}")
+                } else {
+                    format!("const {cpp}& {var}")
+                };
+                if is_map {
+                    let it = self.temp();
+                    let mut opening = Vec::new();
+                    if *rev {
+                        self.line(out, &format!("for (auto {it} = {items}.rbegin(); {it} != {items}.rend(); ++{it}) {{"));
+                        opening.push(format!("{cpp} {var}({it}->first, {it}->second);"));
+                    } else {
+                        self.line(out, &format!("for (const auto& {it} : {items}) {{"));
+                        opening.push(format!("{cpp} {var}({it}.first, {it}.second);"));
+                    }
+                    opening.extend(first);
+                    self.loop_body(id, &opening, body, out);
+                } else if *rev {
+                    let it = self.temp();
+                    self.line(
+                        out,
+                        &format!(
+                            "for (auto {it} = {items}.rbegin(); {it} != {items}.rend(); ++{it}) {{"
+                        ),
+                    );
+                    let mut opening = vec![format!("{decl} = *{it};")];
+                    opening.extend(first);
+                    self.loop_body(id, &opening, body, out);
+                } else {
+                    self.line(out, &format!("for ({decl} : {items}) {{"));
+                    self.loop_body(id, &first, body, out);
+                }
+                if opened {
+                    self.indent -= 1;
+                    self.line(out, "}");
+                }
+            }
+        }
+    }
+
+    fn assign(&mut self, place: &Place, op: AssignOp, value: &Expr, out: &mut String) {
+        let value = self.flatten(value, out);
+        if let (AssignOp::Set, PlaceKind::Local(_) | PlaceKind::Global(_), ExprKind::Read(spec)) =
+            (op, &place.kind, &value.kind)
+        {
+            if let Spec::Array { dims, elem } = &**spec {
+                let name = self.place(place);
+                self.read_array(&name, false, dims, elem, out);
+                return;
+            }
+        }
+        let v = self.expr(value);
+        let into_map = op == AssignOp::Set
+            && matches!(&place.kind, PlaceKind::Index(base, _) if matches!(base.ty, Ty::Map(..)));
+        let p = self.place_at(place, into_map);
+        let ty = self.ty(&place.ty);
+        // `p = f(p, v)` names the place twice.
+        let twice = |this: &mut Self, out: &mut String, make: &dyn Fn(&str, &str) -> String| {
+            if this.place_is_plain(place) {
+                this.line(out, &make(&p, &v.text));
+            } else {
+                let (value_name, r) = (this.temp(), this.temp());
+                this.line(out, "{");
+                this.indent += 1;
+                this.line(out, &format!("{ty} {value_name} = {};", v.text));
+                this.line(out, &format!("auto& {r} = {p};"));
+                this.line(out, &make(&r, &value_name));
+                this.indent -= 1;
+                this.line(out, "}");
+            }
+        };
+        match op {
+            AssignOp::Set => self.line(out, &format!("{p} = {};", v.text)),
+            AssignOp::Max => twice(self, out, &|p, v| {
+                format!("{p} = std::max<{ty}>({p}, {v});")
+            }),
+            AssignOp::Min => twice(self, out, &|p, v| {
+                format!("{p} = std::min<{ty}>({p}, {v});")
+            }),
+            AssignOp::Binary(bop) => match (&place.ty, bop) {
+                (Ty::Int, BinOp::Div | BinOp::Rem) => {
+                    let positive =
+                        self.facts.sign(self.fn_id, value) == crate::ranges::Sign::Positive;
+                    let helper = match (positive, bop == BinOp::Div) {
+                        (true, true) => "divp",
+                        (true, false) => "modp",
+                        (false, true) => "ediv",
+                        (false, false) => "emod",
+                    };
+                    self.need(helper);
+                    twice(self, out, &|p, v| format!("{p} = cpl::{helper}({p}, {v});"));
+                }
+                (Ty::Int, BinOp::Pow) => {
+                    self.need("ipow");
+                    twice(self, out, &|p, v| format!("{p} = cpl::ipow({p}, {v});"));
+                }
+                (Ty::Float, BinOp::Pow) => {
+                    twice(self, out, &|p, v| format!("{p} = std::pow({p}, {v});"))
+                }
+                _ => {
+                    let sym = match bop {
+                        BinOp::Sub => "-",
+                        BinOp::Mul => "*",
+                        BinOp::Div => "/",
+                        BinOp::Rem => "%",
+                        BinOp::BitAnd => "&",
+                        BinOp::BitOr => "|",
+                        BinOp::BitXor => "^",
+                        BinOp::Shl => "<<",
+                        BinOp::Shr => ">>",
+                        _ => "+",
+                    };
+                    self.line(out, &format!("{p} {sym}= {};", v.text));
+                }
+            },
+        }
+    }
+
+    pub fn stmt(&mut self, stmt: &Stmt, out: &mut String) {
+        let program = self.program;
+        match stmt {
+            Stmt::Let(slot, init) => {
+                let ty = self.locals()[*slot].ty.clone();
+                let name = self.names[*slot].clone();
+                let cpp = self.ty(&ty);
+                let hoisted = self.hoisted.contains(slot);
+                let Some(init) = init else {
+                    if ty != Ty::Unit {
+                        if hoisted {
+                            self.line(out, &format!("{name} = {cpp}();"));
+                        } else {
+                            self.line(out, &format!("{cpp} {name}{};", self.zero_init(&ty)));
+                        }
+                    }
+                    return;
+                };
+                if ty == Ty::Unit {
+                    self.expr_stmt(init, out);
+                    return;
+                }
+                let init = self.flatten(init, out);
+                match &init.kind {
+                    ExprKind::Read(spec) => {
+                        if let Spec::Array { dims, elem } = &**spec {
+                            self.read_array(&name, !hoisted, dims, elem, out);
+                            return;
+                        }
+                    }
+                    ExprKind::Fill(dims, value) if !hoisted && dims.len() == 1 => {
+                        let args = self.fill_args(dims, value.as_deref());
+                        self.line(out, &format!("{cpp} {name}({args});"));
+                        return;
+                    }
+                    _ => {}
+                }
+                let text = self.expr(init).text;
+                if hoisted {
+                    self.line(out, &format!("{name} = {text};"));
+                } else {
+                    self.line(out, &format!("{cpp} {name} = {text};"));
+                }
+            }
+            Stmt::Assign(place, op, value) => self.assign(place, *op, value, out),
+            Stmt::Expr(e) => self.expr_stmt(e, out),
+            Stmt::If(cond, then, otherwise) => {
+                let lead = pad(self.indent);
+                self.if_stmt(cond, then, otherwise, out, &lead);
+            }
+            Stmt::While(id, cond, body) => {
+                let cond = self.expr(cond).text;
+                self.line(out, &format!("while ({cond}) {{"));
+                self.loop_body(*id, &[], body, out);
+            }
+            Stmt::For(id, slot, iter, body) => self.for_stmt(*id, *slot, iter, body, out),
+            Stmt::Return(None) => self.line(out, "return;"),
+            Stmt::Return(Some(value)) | Stmt::Give(value) => {
+                let value = self.flatten(value, out);
+                if value.ty == Ty::Unit {
+                    self.expr_stmt(value, out);
+                    self.line(out, "return;");
+                } else {
+                    let text = self.expr(value).text;
+                    self.line(out, &format!("return {text};"));
+                }
+            }
+            Stmt::Break(None) => self.line(out, "break;"),
+            Stmt::Break(Some(id)) => self.line(out, &format!("goto brk_{id};")),
+            Stmt::Continue(None) => self.line(out, "continue;"),
+            Stmt::Continue(Some(id)) => self.line(out, &format!("goto cont_{id};")),
+            Stmt::Assert {
+                cond,
+                message,
+                text,
+                line,
+                ..
+            } => {
+                self.need("fail");
+                let cond = self.expr(cond).text;
+                let report = format!("assertion failed: {text} (line {line})");
+                match message {
+                    None => self.line(
+                        out,
+                        &format!(
+                            "if (!({cond})) cpl::fail({});",
+                            string_literal(report.as_bytes())
+                        ),
+                    ),
+                    Some(message) => {
+                        let message = self.expr(message).text;
+                        let report = string_literal(format!("{report}: ").as_bytes());
+                        self.line(out, &format!("if (!({cond})) cpl::fail((std::string({report}) + {message}).c_str());"));
+                    }
+                }
+            }
+            Stmt::DefDomain { id, lo, len } => {
+                let d = ident(&program.domains[*id]);
+                let lo = self.expr(lo).text;
+                let len = self.expr(len).text;
+                self.line(out, &format!("{d}_lo = {lo};"));
+                self.line(out, &format!("{d}_len = std::max<ll>({len}, 0);"));
+            }
+            Stmt::Trap(message, _) => {
+                self.need("fail");
+                self.line(
+                    out,
+                    &format!("cpl::fail({});", string_literal(message.as_bytes())),
+                );
+            }
+        }
+    }
+}
