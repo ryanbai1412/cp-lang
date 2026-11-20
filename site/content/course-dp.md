@@ -2,7 +2,7 @@ In C++, dynamic programming and shortest paths constantly fight sentinel constan
 
 ## Tropical Optionals: `?T`, `min=`, and `max=`
 
-An optional `?T` holds either a value of type `T` or `none`. The 0.2.2 target layout specifies niche packing for small/sentinel types (`?V`, `?Bool`, `?Char`, `?Enum`, `?F64`), while the current C++17 codegen (`crates/cpl-cpp/src/niche.rs`) emits `std::optional<int64_t>` for `?Int` so every 64-bit integer value remains representable.
+An optional `?T` holds either any value of type `T` or `none` (so `?Int` represents every 64-bit `Int` plus `none`). The compiler can optimize optional storage layout when it proves a niche or sentinel is safe, rather than reserving `Int.MIN` or promising universal zero overhead.
 
 Three rules make DP transitions one line with no `INF` constant:
 

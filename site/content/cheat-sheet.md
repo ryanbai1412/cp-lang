@@ -17,7 +17,7 @@ const MOD = 1_000_000_007       // compile-time constant (inlined)
 
 ## 2. Optionals (`?T`) & Tropical DP
 
-No `INF` or `-1` sentinels. `?Int` (`LLONG_MIN`), `?F64` (quiet NaN), `?V`, `?Bool`, `?Char`, and `?Enum` are niche-packed with zero extra memory.
+No `INF` or `-1` sentinels. `?T` holds any value of `T` or `none` (`?Int` represents every 64-bit `Int` plus `none`), and the compiler packs optional layouts when proven safe.
 
 ```cp CP Lang 0.2.2
 var dist: [V]?Int = none        // none or bare value `dist[src] = 0`
@@ -154,7 +154,7 @@ debug(n, dp)                              // stderr locally (replayed on stress 
 enum Cell: Empty | Wall | Coin(val: 1..=9) // single-char packed tags + char-range payload
 
 @memo                                     // top-level or nested in fn/loop (auto-resets per call/iter)
-fn dp(u: V, used: Bool) -> Int: ...       // auto-dispatches flat (<= 2^24; 2^26 for ?Bool) vs salted hash
+fn dp(u: V, used: Bool) -> Int: ...       // auto-dispatches flat (<= 2^24) vs salted hash
                                           // permits `ask(...)` & extern `@grader fn` (1 call per arg tuple)
 
 let (k, walls) = read(gen: () => gen_walls(pts)) // typed gen: with optional `witness val`

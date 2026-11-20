@@ -7,7 +7,7 @@ Use `let` by default, `var` for bindings that change, and `const` for compile-ti
 ```example accumulation
 ```
 
-Range-typed storage uses the smallest fitting integer width while arithmetic runs in 64-bit `Int`. `Int` reserves `LLONG_MIN` as the niche for `none`, so `?Int` fits in eight bytes with zero overhead. Use `U64`, `I128`, and `F64` when you specifically need unsigned 64-bit, 128-bit, or floating-point arithmetic.
+Range-typed storage uses the smallest fitting integer width while arithmetic runs in 64-bit `Int`. `?Int` represents every 64-bit `Int` plus `none`, and the compiler can pack optional layouts when proven safe rather than reserving `Int.MIN`. Use `U64`, `I128`, and `F64` when you specifically need unsigned 64-bit, 128-bit, or floating-point arithmetic.
 
 When you want a plain integer-indexed array without introducing a nominal domain, write the bounds directly and reset with `.fill`:
 
