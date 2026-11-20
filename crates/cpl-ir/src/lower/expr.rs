@@ -1277,7 +1277,7 @@ impl<'a> Lowerer<'a> {
                 Div => Some("div"),
                 _ => None,
             };
-            if self.is_std_mod(sid) {
+            if self.is_number(sid) {
                 if let Some(fn_id) = mname.and_then(|m| self.struct_op_fn(sid, m)) {
                     let l = self.coerce(l, &Ty::Struct(sid), lhs.span);
                     let ret = self.ret_of(fn_id, span);
@@ -2433,8 +2433,27 @@ impl<'a> Lowerer<'a> {
                             Ty::Pos(d),
                         )
                     }
+                    // `for i in 3..:` counts up until the body leaves.
+                    Ty::Int => {
+                        let hi = self.int_lit(INF, span);
+                        let step = step.as_ref().map(|s| self.expect(s, &Ty::Int));
+                        (
+                            Iter::Range {
+                                lo,
+                                hi,
+                                step,
+                                rev: false,
+                            },
+                            Ty::Int,
+                        )
+                    }
+                    Ty::Error => error(self),
                     _ => {
-                        self.unsupported(span, "a range without an end in a `for`");
+                        let message = format!(
+                            "a `for` over `lo..` counts from an `Int` or a domain value, found `{}`",
+                            self.show(&lo.ty)
+                        );
+                        self.error(codes::TYPE_MISMATCH, span, message);
                         error(self)
                     }
                 }

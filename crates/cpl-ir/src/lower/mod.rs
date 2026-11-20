@@ -821,17 +821,14 @@ impl<'a> Lowerer<'a> {
                                         }
                                     }
                                     ast::StmtKind::Let {
-                                        pat:
-                                            ast::Pattern {
-                                                kind: ast::PatternKind::Name(cname),
-                                                ..
-                                            },
+                                        pat,
                                         ty,
                                         init: Some(init),
                                         ..
-                                    } => {
+                                    } if mono::let_const_name(pat).is_some() => {
+                                        let cname = mono::let_const_name(pat).expect("guarded");
                                         self.structs[id].consts.insert(
-                                            cname.clone(),
+                                            cname.to_string(),
                                             StructConst {
                                                 mod_id: m,
                                                 offset,
@@ -2553,12 +2550,15 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// Whether a struct is an instance of the standard library's `Mod<P>`.
-    fn is_std_mod(&self, sid: StructId) -> bool {
+    /// Whether a struct is a number: it has a `zero`, a `one` and a
+    /// `new(x: Int)`, so an `Int` is made into it where it is wanted.
+    /// `Mod<P>` is one, and so is any struct written the same way.
+    pub(super) fn is_number(&self, sid: StructId) -> bool {
         let info = &self.structs[sid];
-        info.origin_gen.is_some()
-            && info.decl.is_some_and(|d| d.name.text == "Mod")
-            && self.std_mod == Some(info.mod_id)
+        let made_from_int = info.methods.get("new").is_some_and(|&new_fn| {
+            matches!(self.sigs[new_fn].params.as_slice(), [only] if only.ty == Ty::Int)
+        });
+        made_from_int && ["zero", "one"].iter().all(|c| info.consts.contains_key(*c))
     }
 
     /// Resolves a domain or type alias pointing to a domain (e.g. `type Group = Subset<Rabbit>`).
@@ -2639,9 +2639,9 @@ impl<'a> Lowerer<'a> {
                 ty: Ty::Pos(*d),
                 span,
             }),
-            // An `Int` where a `Mod<P>` is wanted is reduced into it
+            // An `Int` where a number struct is wanted is made into it
             // (decision 3.10): `var ans: Z = 1` is `Z(1)`.
-            (Ty::Struct(sid), Ty::Int) if self.is_std_mod(*sid) => {
+            (Ty::Struct(sid), Ty::Int) if self.is_number(*sid) => {
                 match self.structs[*sid].methods.get("new").copied() {
                     Some(new_fn) => {
                         let ret = self.ret_of(new_fn, span);

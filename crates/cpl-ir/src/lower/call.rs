@@ -2020,7 +2020,7 @@ impl<'a> Lowerer<'a> {
                 let ty = value.ty.clone();
                 // A `Mod<P>` adds with its own `+`, from its own zero.
                 if let Ty::Struct(sid) = ty {
-                    if let (true, Some(add)) = (self.is_std_mod(sid), self.struct_op_fn(sid, "add")) {
+                    if let (true, Some(add)) = (self.is_number(sid), self.struct_op_fn(sid, "add")) {
                         let zero = self.int_lit(0, span);
                         let zero = self.coerce(zero, &ty, span);
                         let acc = self.temp(ty.clone());
@@ -2179,6 +2179,19 @@ impl<'a> Lowerer<'a> {
     // ----- members -----
 
     /// `base.name` that is not being called.
+    /// A number a generic struct was given, read off the type by the
+    /// parameter's name: with `struct Mod<P>` and `type Z = Mod<7>`,
+    /// `Z.P` is 7.
+    fn struct_number_param(&mut self, sid: StructId, name: &str, span: Span) -> Option<Expr> {
+        let (gid, gargs) = self.structs[sid].origin_gen.clone()?;
+        let at = self.gen_structs[gid].decl.generics.iter().position(|p| p.text == name)?;
+        match gargs.get(at)? {
+            GenArg::Int(value) => Some(self.int_lit(*value, span)),
+            GenArg::RuntimeInt(id) => Some(self.mk(ExprKind::Global(*id), Ty::Int, span)),
+            _ => None,
+        }
+    }
+
     pub(super) fn field(&mut self, whole: &ast::Expr, base: &ast::Expr, name: &ast::Name) -> Expr {
         let span = whole.span;
         // Handle `GenericBase<...>.member` (e.g., `Mod<7>.zero`, `Sum<Int>.id`, `Less<Int>.rev`).
@@ -2192,6 +2205,9 @@ impl<'a> Lowerer<'a> {
                     }
                     if let Some(&fn_id) = self.structs[sid].methods.get(&name.text) {
                         return self.method_call(fn_id, None, &[], span);
+                    }
+                    if let Some(number) = self.struct_number_param(sid, &name.text, span) {
+                        return number;
                     }
                     if name.text == "K" {
                         if let Some(d) = self.structs[sid].index_domain {
@@ -2249,6 +2265,9 @@ impl<'a> Lowerer<'a> {
                 if let Some(&fn_id) = self.structs[id].methods.get(&name.text) {
                     return self.method_call(fn_id, None, &[], span);
                 }
+                if let Some(number) = self.struct_number_param(id, &name.text, span) {
+                    return number;
+                }
             }
             Some(Sym::Alias(aid)) => {
                 let (m, ty_ast, offset) = self.aliases[aid];
@@ -2264,6 +2283,9 @@ impl<'a> Lowerer<'a> {
                         }
                         if let Some(&fn_id) = self.structs[id].methods.get(&name.text) {
                             return self.method_call(fn_id, None, &[], span);
+                        }
+                        if let Some(number) = self.struct_number_param(id, &name.text, span) {
+                            return number;
                         }
                     }
                     Ty::Pos(id) => return self.domain_field(id, name, span),
@@ -2529,6 +2551,32 @@ impl<'a> Lowerer<'a> {
                     Ty::Bool,
                     span,
                 )
+            }
+            // `a.first` and `a.last` of an array over domains are `a[D.first]`
+            // and `a[D.last]`: values, since the array is never empty.
+            (Ty::Array { dims, elem }, "first" | "last")
+                if dims.iter().all(|d| matches!(d, Dim::Pos(_) | Dim::Bound(_))) =>
+            {
+                let last = name.text == "last";
+                let indices: Vec<Expr> = dims
+                    .iter()
+                    .map(|dim| {
+                        let (d, extra, ty) = match dim {
+                            Dim::Bound(d) => (*d, 0, Ty::Bound(*d)),
+                            Dim::Pos(d) => (*d, -1, Ty::Pos(*d)),
+                            _ => unreachable!("guarded above"),
+                        };
+                        let at = if last {
+                            let len = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                            self.int_add(len, extra)
+                        } else {
+                            self.int_lit(0, span)
+                        };
+                        self.mk(ExprKind::Cast(Cast::Trust, Box::new(at)), ty, span)
+                    })
+                    .collect();
+                let elem = (**elem).clone();
+                self.mk(ExprKind::Index(Box::new(value), indices), elem, span)
             }
             (Ty::List(elem), "first") => {
                 let opt = Ty::opt((**elem).clone());

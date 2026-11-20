@@ -134,6 +134,13 @@ impl Ty {
     /// integer fits any integer type. Domains are strict: a `V` is not an
     /// `E` and not an `Int` (decision 2.11).
     pub fn fits(&self, want: &Ty) -> bool {
+        self.fits_in(want, &mut |_| false)
+    }
+
+    /// `fits`, where `number(name)` says whether the struct `name` is a
+    /// number an `Int` is made into: one with a `zero`, a `one` and a
+    /// `new(x: Int)`, as `Mod<P>` is (decision 3.10).
+    pub fn fits_in(&self, want: &Ty, number: &mut dyn FnMut(&str) -> bool) -> bool {
         match (self, want) {
             (a, b) if a == b => true,
             (a, b) if a.is_vague() || b.is_vague() => true,
@@ -142,9 +149,8 @@ impl Ty {
             (Ty::Param(_), _) | (_, Ty::Param(_)) => true,
             (a, b) if a.is_int() && b.is_int() => true,
             (a, Ty::Float) if a.is_int() => true,
-            // An `Int` is reduced into a `Mod<P>` (decision 3.10).
-            (a, Ty::Named { name, .. }) if a.is_int() && name == "Mod" => true,
-            (a, Ty::Optional(inner)) => a.fits(inner),
+            (a, Ty::Named { name, .. }) if a.is_int() && number(name) => true,
+            (a, Ty::Optional(inner)) => a.fits_in(inner, number),
             (
                 Ty::Array {
                     index: ai,
@@ -154,26 +160,26 @@ impl Ty {
                     index: bi,
                     elem: be,
                 },
-            ) => ai.len() == bi.len() && ai.iter().zip(bi).all(|(a, b)| a.fits(b)) && ae.fits(be),
+            ) => ai.len() == bi.len() && ai.iter().zip(bi).all(|(a, b)| a.fits_in(b, number)) && ae.fits_in(be, number),
             (Ty::Tuple(a), Ty::Tuple(b)) => {
-                a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.fits(b))
+                a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.fits_in(b, number))
             }
             // A record with more fields fits where fewer are asked for:
             // edges `(u, v, w)` are edges `(u, v)`.
             (Ty::Record(a), Ty::Record(b)) => b.iter().all(|(bn, bt)| {
                 a.iter()
                     .find(|(an, _)| an == bn)
-                    .is_some_and(|(_, at)| at.fits(bt))
+                    .is_some_and(|(_, at)| at.fits_in(bt, number))
             }),
             (Ty::Tuple(a), Ty::Record(b)) => {
-                a.len() == b.len() && a.iter().zip(b).all(|(a, (_, b))| a.fits(b))
+                a.len() == b.len() && a.iter().zip(b).all(|(a, (_, b))| a.fits_in(b, number))
             }
             (Ty::Named { name: an, args: aa }, Ty::Named { name: bn, args: ba }) => {
                 // `[k: v]` is written the same for either kind of map.
                 (an == bn || (an == "Map" && bn == "HashMap"))
                     && (aa.is_empty()
                         || ba.is_empty()
-                        || (aa.len() == ba.len() && aa.iter().zip(ba).all(|(a, b)| a.fits(b))))
+                        || (aa.len() == ba.len() && aa.iter().zip(ba).all(|(a, b)| a.fits_in(b, number))))
             }
             (Ty::Fn { .. }, Ty::Fn { .. }) => true,
             // `Bounds<V>` is how library code spells `V.bounds`.
@@ -189,14 +195,14 @@ impl Ty {
             // A string is a list of its characters (decision 9: `Str` is
             // `[domain S]Char`, one flat byte array).
             (Ty::Str, Ty::Named { name, args }) if name == "List" => {
-                args.first().is_none_or(|elem| Ty::Char.fits(elem))
+                args.first().is_none_or(|elem| Ty::Char.fits_in(elem, number))
             }
             (Ty::Named { name, args }, Ty::Str) if name == "List" => {
-                args.first().is_none_or(|elem| elem.fits(&Ty::Char))
+                args.first().is_none_or(|elem| elem.fits_in(&Ty::Char, number))
             }
             // An array is read where a list is asked for: `running_sum(a)`.
             (Ty::Array { elem, .. }, Ty::Named { name, args }) if name == "List" => {
-                args.first().is_none_or(|want| elem.fits(want))
+                args.first().is_none_or(|want| elem.fits_in(want, number))
             }
             // A record or tuple literal builds a struct with those fields;
             // the fields are checked where the struct is known.

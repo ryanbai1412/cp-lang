@@ -554,9 +554,10 @@ impl<'a> Lowerer<'a> {
                         self.structs[id].methods.insert(f.name.text.clone(), fn_id);
                     }
                 }
-                ast::StmtKind::Let { pat: ast::Pattern { kind: ast::PatternKind::Name(cname), .. }, ty, init: Some(init), .. } => {
+                ast::StmtKind::Let { pat, ty, init: Some(init), .. } if let_const_name(pat).is_some() => {
+                    let cname = let_const_name(pat).expect("guarded");
                     self.structs[id].consts.insert(
-                        cname.clone(),
+                        cname.to_string(),
                         StructConst {
                             mod_id: tpl_mod,
                             offset: tpl_offset,
@@ -754,15 +755,7 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                     ast::StmtKind::Let { pat, ty, init: Some(init), .. } => {
-                        let cname = match &pat.kind {
-                            ast::PatternKind::Name(n) => Some(n.clone()),
-                            ast::PatternKind::Variant { path, args }
-                                if path.len() == 1 && args.is_empty() =>
-                            {
-                                Some(path[0].text.clone())
-                            }
-                            _ => None,
-                        };
+                        let cname = let_const_name(pat).map(str::to_string);
                         if let Some(cname) = cname {
                             self.structs[sid].consts.insert(
                                 cname,
@@ -2338,4 +2331,17 @@ fn split_projection_body(
         }
     }
     (&[], None, &[])
+}
+
+/// The name a `let` in a struct or impl body gives its constant. A
+/// capitalized one, `let MOD = P`, parses as a pattern that could be an
+/// enum variant; there it is the name.
+pub(super) fn let_const_name(pat: &ast::Pattern) -> Option<&str> {
+    match &pat.kind {
+        ast::PatternKind::Name(name) => Some(name),
+        ast::PatternKind::Variant { path, args } if path.len() == 1 && args.is_empty() => {
+            Some(&path[0].text)
+        }
+        _ => None,
+    }
 }

@@ -746,7 +746,7 @@ impl<'a> Checker<'a> {
                 return got.clone();
             };
             let got_ty = got_field.ty.subst(&got_bindings);
-            if !got_ty.fits(&want_field.ty) {
+            if !self.fits(&got_ty, &want_field.ty) {
                 return got.clone();
             }
             want_field.ty.unify(&got_ty, &mut bindings);
@@ -1019,7 +1019,7 @@ impl<'a> Checker<'a> {
                         slice = true;
                         continue;
                     }
-                    if got.fits(want) {
+                    if self.fits(got, want) {
                         continue;
                     }
                     let message = format!(
@@ -1090,6 +1090,24 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// True if the struct `name` is a number: it has a `zero`, a `one`
+    /// and a `new(x: Int)`, so an `Int` is made into it where it is
+    /// wanted. `Mod<P>` is one, and so is any struct written the same way.
+    pub(crate) fn is_number(&mut self, name: &str) -> bool {
+        match self.env.type_def(name).as_deref() {
+            Some(Def::Struct { ctor: Some(params), owned, .. }) => {
+                matches!(params.as_slice(), [only] if only.ty.is_int())
+                    && ["zero", "one"].iter().all(|c| owned.iter().any(|(n, _)| n == c))
+            }
+            _ => false,
+        }
+    }
+
+    /// `got.fits(want)`, with an `Int` fitting a number struct.
+    pub(crate) fn fits(&mut self, got: &Ty, want: &Ty) -> bool {
+        got.fits_in(want, &mut |name| self.is_number(name))
+    }
+
     /// Reports with `message(self, got, want)` unless `got` fits `want`.
     pub(crate) fn expect_fits(
         &mut self,
@@ -1101,7 +1119,7 @@ impl<'a> Checker<'a> {
         // `none` fills whatever is declared, and code that already has an
         // error is not reported again.
         let got = &self.narrowed(got, want);
-        if got.fits(want)
+        if self.fits(got, want)
             || matches!(at.kind, ExprKind::None)
             || got.has_error()
             || want.has_error()

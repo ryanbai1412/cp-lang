@@ -305,9 +305,9 @@ impl<'a> Checker<'a> {
                     (Some(Ty::Array { elem, .. }), Some(Ty::Named { name, args }))
                         if name == "List" && args.len() == 1 =>
                     {
-                        args[0].fits(elem)
+                        self.fits(&args[0], elem)
                     }
-                    (Some(Ty::Array { elem, .. }), Some(init_ty)) => init_ty.fits(elem),
+                    (Some(Ty::Array { elem, .. }), Some(init_ty)) => self.fits(init_ty, elem),
                     _ => false,
                 };
                 if let (Some(declared), Some(init_ty), Some(init), false) =
