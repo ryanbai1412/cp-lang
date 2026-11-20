@@ -12,12 +12,14 @@
 #            test), without the slow proto_fuzz and the timing-based budget
 #         4. cpl test stdlib examples/local-lib
 #         5. cpl fmt --check stdlib (the standard library stays formatted)
-# --full  6. proto_fuzz, and the budget tests alone so no other load skews them
-#         7. the WebAssembly build and crates/cpl-wasm/tests/smoke.mjs
-#         8. the VS Code extension tests (editors/vscode: npm test)
-#         9. proto/run_all.sh, in a throwaway clone because it stamps its sources
+#         6. scripts/friction_lint.py: its rule tests, then no wa_trap hit in
+#            proto/ports or examples, with a one-line severity summary
+# --full  7. proto_fuzz, and the budget tests alone so no other load skews them
+#         8. the WebAssembly build and crates/cpl-wasm/tests/smoke.mjs
+#         9. the VS Code extension tests (editors/vscode: npm test)
+#        10. proto/run_all.sh, in a throwaway clone because it stamps its sources
 #
-# Needs cargo with clippy; --full also needs node, npm, python3, g++ and
+# Needs cargo with clippy and python3; --full also needs node, npm, g++ and
 # the wasm target (rustup target add wasm32-unknown-unknown).
 set -euo pipefail
 
@@ -97,6 +99,13 @@ cargo run -q -p cpl-cli -- test stdlib examples/local-lib | tail -n 1
 
 step "cpl fmt --check stdlib"
 cargo run -q -p cpl-cli -- fmt --check stdlib || fail "stdlib/ is not formatted; run: cargo run -p cpl-cli -- fmt stdlib"
+
+step "friction lint: rule tests, no wa_trap"
+need python3 "scripts/friction_lint.py runs on it"
+python3 scripts/test_friction_lint.py -q 2>&1 | tail -n 1
+[ "${PIPESTATUS[0]}" -eq 0 ] || fail "friction lint rule tests failed; rerun: python3 scripts/test_friction_lint.py"
+python3 scripts/friction_lint.py --fail-on-wa-trap --summary \
+    || fail "a wa_trap pattern is in the corpus; list it: python3 scripts/friction_lint.py --list <rule>"
 
 if [ "$mode" = full ]; then
     need node "the wasm smoke test and the VS Code tests run on it"

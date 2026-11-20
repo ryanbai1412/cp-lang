@@ -12,13 +12,15 @@ down. A rule has one severity:
                 (`Z(0)` where `0` coerces, `use std.mod.{Mod}`, `a[i - 1]`)
 
 Rules come from the original seven categories and the detector proposals in
-research/friction-hunter-wave-{1,2,3}.md (`source` in the JSON says which).
+research/friction-hunter-wave-{1,2,3,4}.md (`source` in the JSON says which).
 
-usage: friction_lint.py [--json] [--top N] [--list RULE] [--baseline FILE] [PATH ...]
+usage: friction_lint.py [--json | --summary] [--top N] [--list RULE] [--baseline FILE]
+                        [--fail-on-wa-trap] [PATH ...]
 
 PATHs default to proto/ports and examples (every *.cp below them, minus
 before/ snapshots that record code as it had to be written before a fix).
---baseline takes an earlier --json report and exits 1 if any rule grew.
+--baseline takes an earlier --json report and exits 1 if any rule grew;
+--fail-on-wa-trap exits 1 if any wa_trap rule has a hit (scripts/check.sh).
 """
 import argparse, json, os, re, sys
 from collections import Counter
@@ -346,6 +348,20 @@ def find_fact_mod(code, lines, raw):
     return [(i, "hand-rolled modular arithmetic") for i, line in enumerate(lines, 1) if pat.search(line)]
 
 
+def find_doubling_search(code, lines, raw):
+    """`hi *= 2` in a `while` loop, with a `bsearch_` call after it in the file."""
+    hits = []
+    for i, line in enumerate(lines):
+        if not re.search(r"\bwhile\b.*:", line):
+            continue
+        rest = "\n".join(lines[i:])
+        if "bsearch_" not in rest:
+            continue
+        hits += [(j + 1, "hi *= 2 then bsearch_") for j in block(lines, i)
+                 if re.search(r"\b(?:hi|high|r)\s*\*=\s*2\b", lines[j])]
+    return sorted(set(hits))
+
+
 V = rf"({IDENT})"
 # (key, severity, source, title, finder)
 RULES = [
@@ -364,9 +380,6 @@ RULES = [
      line_hits(r"\bin\s+\[\s*false\s*,\s*true\s*\]", "in [false, true]")),
     ("infinite_capacity", "real_gap", "wave2#21", "INF capacity edge (N3)",
      line_hits(r"\.add\(.*\b(?:INF|inf\w*|cap_inf)\s*\)\s*$", ".add(.., INF)")),
-    ("param_copy", "real_gap", "wave1#14", "var x = x for a mutable parameter", find_param_copy),
-    ("bit_test", "real_gap", "wave1#15", "x >> i & 1 bit test",
-     line_hits(r">>\s*\w+\s*&\s*1\b", "x >> i & 1")),
     ("digit_loop", "real_gap", "wave3#29", "x /= 10 digit loop (W3)", find_digit_loop),
     ("list_self_append", "real_gap", "wave3#30", "xs = xs + [..] (W4)", find_list_self_append),
     ("segtree_get_set", "real_gap", "wave3#31", "t.set(i, t.get(i) op ..) (W5)",
@@ -374,7 +387,21 @@ RULES = [
     ("child_end", "real_gap", "wave3#32", "if parent(u) == v: u else: v (W6)",
      line_hits(rf"\.parent\(\s*{V}\s*\)\s*==\s*{V}\s*:\s*\1\s+else\s*:\s*\2\b", "parent(u) == v: u else: v")),
     ("arrow_block", "real_gap", "wave3#37", "array builder or lambda with a block body (B1)", line_hits(r"(?:[=(,]|\])\s*(?:\([\w\s,:]*\)|\w+)\s*=>\s*$", "builder/lambda => at end of line")),
+    ("mod_list_print", "real_gap", "wave4#39", "print([x.v for ..]) for a list of Mod (X2)",
+     line_hits(r"\bprint\(\s*\[.*\.v\s+for\b", "print([x.v for ..])")),
+    ("doubling_search", "real_gap", "wave4#41", "hi *= 2 before a bsearch_ (X5)", find_doubling_search),
+    ("graph_from_literal", "real_gap", "wave4#43", "Graph.directed([..]) from an inline list",
+     line_hits(r"\bGraph\.(?:directed|undirected)\(\s*\[", "Graph.directed([..])")),
     # stale_port
+    ("param_copy", "stale_port", "wave1#14", "var x = x instead of fn f(var x: T)", find_param_copy),
+    ("bit_test", "stale_port", "wave1#15", "x >> i & 1 instead of x.bit(i)",
+     line_hits(r">>\s*\w+\s*&\s*1\b", "x >> i & 1")),
+    ("bit_len_import", "stale_port", "wave4#38", "bit_len instead of bit_width (X1)",
+     line_hits(r"\buse\s+std\.math\.\{[^}]*\bbit_len\b", "use std.math.{bit_len}")),
+    ("hand_decimal_mod", "stale_port", "wave4#40", "x = (x * 10 + (c - '0')) % p instead of reading Mod<P> (X4)",
+     line_hits(r"\b(\w+)\s*=\s*\(\s*\1\s*\*\s*10\s*\+\s*\(\s*\w+\s*-\s*'0'\s*\)\s*\)\s*%", "(x * 10 + (c - '0')) % p")),
+    ("manual_get_or_insert", "stale_port", "wave4#42", "if k not in m: m[k] = .. instead of get_or_insert (X6)",
+     line_hits(rf"\bif\s+({PLACE})\s+not\s+in\s+({PLACE})\s*:\s*\2\[\s*\1\s*\]\s*=[^=]", "if k not in m: m[k] =")),
     ("mod_literal_wrapping", "stale_port", "orig", "Mod literal wrapping", find_mod_literals),
     ("missing_compound_assign", "stale_port", "orig", "x = x op .. instead of x op= ..", find_self_assign),
     ("manual_temp_swap", "stale_port", "orig", "3-line temp swap", find_temp_swaps),
@@ -436,27 +463,41 @@ def sources(paths):
                     yield os.path.join(d, f)
 
 
+def rule_table():
+    return [(k, sev, src, title, f) for k, sev, src, title, f in RULES] + \
+           [(k, "metric", src, title, f) for k, src, title, f in METRICS]
+
+
+def scan_file(path):
+    """(rule, line, pattern) for every hit in one file."""
+    text = open(path, errors="replace").read()
+    code = strip_code(text)
+    lines, raw = code.split("\n"), text.split("\n")
+    return [(key, line, pattern) for key, _, _, _, find in rule_table()
+            for line, pattern in find(code, lines, raw)]
+
+
 def scan(paths):
-    table = [(k, sev, src, title, f) for k, sev, src, title, f in RULES] + \
-            [(k, "metric", src, title, f) for k, src, title, f in METRICS]
+    table = rule_table()
     report = {k: {"severity": sev, "source": src, "title": title, "count": 0,
                   "patterns": Counter(), "files": Counter(), "hits": []}
               for k, sev, src, title, _ in table}
-    files = 0
-    for path in sources(paths):
-        files += 1
+    files = list(sources(paths))
+    if len(files) > 64:
+        import multiprocessing
+        with multiprocessing.Pool() as pool:
+            results = pool.map(scan_file, files, chunksize=16)
+    else:
+        results = map(scan_file, files)
+    for path, hits in zip(files, results):
         rel = os.path.relpath(path, ROOT)
-        text = open(path, errors="replace").read()
-        code = strip_code(text)
-        lines, raw = code.split("\n"), text.split("\n")
-        for key, _, _, _, find in table:
-            for line, pattern in find(code, lines, raw):
-                r = report[key]
-                r["count"] += 1
-                r["patterns"][pattern] += 1
-                r["files"][rel] += 1
-                r["hits"].append(f"{rel}:{line}: {pattern}")
-    return files, report
+        for key, line, pattern in hits:
+            r = report[key]
+            r["count"] += 1
+            r["patterns"][pattern] += 1
+            r["files"][rel] += 1
+            r["hits"].append(f"{rel}:{line}: {pattern}")
+    return len(files), report
 
 
 def as_json(files, report, top):
@@ -504,6 +545,8 @@ def main():
     ap.add_argument("--top", type=int, default=5, help="offending files shown per rule")
     ap.add_argument("--list", metavar="RULE", help="print every hit of one rule")
     ap.add_argument("--baseline", metavar="FILE", help="exit 1 if a rule grew past this --json report")
+    ap.add_argument("--summary", action="store_true", help="one line: hits per severity")
+    ap.add_argument("--fail-on-wa-trap", action="store_true", help="exit 1 if any wa_trap rule has a hit")
     args = ap.parse_args()
 
     files, report = scan(args.paths)
@@ -514,8 +557,12 @@ def main():
         return 0
 
     data = as_json(files, report, args.top)
+    totals = data["severity_totals"]
     if args.json:
         print(json.dumps(data, indent=2))
+    elif args.summary:
+        print(f"friction_lint: {totals['wa_trap']} wa_trap, {totals['real_gap']} real_gap, "
+              f"{totals['stale_port']} stale_port in {files} files")
     else:
         sev = ", ".join(f"{n} {s}" for s, n in data["severity_totals"].items())
         print(f"{data['total_hits']} friction workarounds in {files} files "
@@ -531,14 +578,21 @@ def main():
         if zero:
             print(f"\n    0  {', '.join(zero)}")
 
+    status = 0
+    if args.fail_on_wa_trap and totals["wa_trap"]:
+        for key, r in report.items():
+            if r["severity"] == "wa_trap":
+                for hit in r["hits"]:
+                    print(f"friction_lint: wa_trap {key}: {hit}", file=sys.stderr)
+        status = 1
     if args.baseline:
         with open(args.baseline) as fh:
             base = baseline_counts(json.load(fh))
         grew = [(k, base[k], r["count"]) for k, r in report.items() if k in base and r["count"] > base[k]]
         for k, old, new in grew:
             print(f"friction_lint: {k} grew from {old} to {new}", file=sys.stderr)
-        return 1 if grew else 0
-    return 0
+        status = status or (1 if grew else 0)
+    return status
 
 
 if __name__ == "__main__":

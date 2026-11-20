@@ -49,6 +49,13 @@ CASES = {
     "none_check_unwrap": ("if x != none and x! > 3: f()\n", "if let v = x and v > 3: f()\n"),
     "none_or_compare": ("if b == none or d < b!: b = d\n", "b min= d\n"),
     "where_guard": ("let k: 1..=9 = read() where k <= n\n", "let k: 1..=9 = read()\nassert k <= n\n"),
+    "mod_list_print": ("print([x.v for x in ans])\n", "print(ans)\n"),
+    "doubling_search": ("while ok(hi):\n    hi *= 2\nlet k = bsearch_first(0..hi, ok)\n",
+                        "while ok(hi):\n    hi *= 2\n"),
+    "graph_from_literal": ("let g = Graph.directed([(u: 0, v: 1)])\n", "let g = Graph.directed(edges)\n"),
+    "bit_len_import": ("use std.math.{bit_len}\n", "use std.math.{bit_width}\n"),
+    "hand_decimal_mod": ("x = (x * 10 + (c - '0')) % P\n", "x = x * 10 + (c - '0')\n"),
+    "manual_get_or_insert": ("if k not in m: m[k] = 0\n", "if k in m: m[k] = 0\n"),
     "label_crossing": ("let i = v.to_idx\n", "let i = v\n"),
 }
 
@@ -74,6 +81,23 @@ class Rules(unittest.TestCase):
             with self.subTest(rule=rule):
                 self.assertTrue(hits(rule, bad), f"{rule} missed:\n{bad}")
                 self.assertFalse(hits(rule, good), f"{rule} flagged:\n{good}")
+
+    def test_flags(self):
+        import subprocess
+        tool = os.path.join(os.path.dirname(os.path.abspath(__file__)), "friction_lint.py")
+        with __import__("tempfile").TemporaryDirectory() as d:
+            for name, src in [("clean.cp", "let x = 1\n"), ("trap.cp", "let h = lower[..-1]\n")]:
+                with open(os.path.join(d, name), "w") as fh:
+                    fh.write(src)
+            run = lambda f, *a: subprocess.run([sys.executable, tool, *a, os.path.join(d, f)],
+                                               capture_output=True, text=True)
+            ok = run("clean.cp", "--summary", "--fail-on-wa-trap")
+            self.assertEqual(ok.returncode, 0, ok.stderr)
+            self.assertEqual(ok.stdout.count("\n"), 1)
+            self.assertIn("0 wa_trap", ok.stdout)
+            bad = run("trap.cp", "--summary", "--fail-on-wa-trap")
+            self.assertEqual(bad.returncode, 1)
+            self.assertIn("negative_slice", bad.stderr)
 
     def test_comments_and_strings_are_ignored(self):
         self.assertFalse(hits("bool_to_int", '// s += if c: 1 else: 0\nprint("if c: 1 else: 0")\n'))
