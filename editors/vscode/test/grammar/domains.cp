@@ -94,21 +94,109 @@ link(mut g, roads[e])
 // <---- entity.name.function.call.cp
 //   ^^^ storage.modifier.mut.cp
 
-// Projections lend a part of their receiver to the caller.
-fn left(self) -> lends [I]Int:
-//               ^^^^^ storage.modifier.lends.cp
-//                        ^^^ support.type.builtin.cp
+// A projection is declared with `lends` in place of `->` (plan/19-index-and-lends.md).
+    fn at(self, i: I) lends Elem
+//     ^^ entity.name.function.cp
+//                    ^^^^^ storage.modifier.lends.cp
+//                          ^^^^ entity.name.type.cp
 
-fn halves(mut self, k: I) -> lends mut ([I]Int, [I]Int):
+    fn at(self, s: Range<I>) lends mut Slice<I, T>:
 //                           ^^^^^ storage.modifier.lends.cp
 //                                 ^^^ storage.modifier.mut.cp
+//                                     ^^^^^ entity.name.type.cp
 
-    law disjoint(self.l(k), self.r(k))
-//  ^^^ storage.type.law.cp
-//      ^^^^^^^^ entity.name.function.law.cp
-//                    ^ variable.other.property.boundary.cp
-//                               ^ variable.other.property.boundary.cp
-//                      ^ - variable.other.property
+        law disjoint(s, t) = s.hi <= t.lo or t.hi <= s.lo
+//      ^^^ storage.type.law.cp
+//          ^^^^^^^^ entity.name.function.law.cp
+//                         ^ keyword.operator.assignment.cp
+//                                ^^ keyword.operator.comparison.cp
+//                                        ^^ keyword.operator.logical.or.cp
+
+    pub fn pair_mut(mut self, i: I, j: I) lends (mut T, mut T):
+//         ^^^^^^^^ entity.name.function.cp
+//                                        ^^^^^ storage.modifier.lends.cp
+//                                                      ^^^ storage.modifier.mut.cp
+
+    pub fn row(self, r: A) lends mut [B]T:
+//         ^^^ entity.name.function.cp
+//                         ^^^^^ storage.modifier.lends.cp
+//                                    ^ entity.name.type.cp
+
+fn row(self, r: A, inline use: ([B]T) -> R) -> R =
+//                 ^^^^^^ storage.modifier.inline.cp
+//                        ^^^ variable.parameter.label.cp
+//                        ^^^ - keyword
+//                                    ^^ keyword.operator.arrow.cp
+
+    pub fn table(inline f: I -> T) -> Array<I, T> = build(f)
+//               ^^^^^^ storage.modifier.inline.cp
+//                      ^ variable.parameter.label.cp
+//                                    ^^^^^ entity.name.type.cp
+
+swap(mut g.row(r1), mut g.row(r2))
+// <---- entity.name.function.call.cp
+//                  ^^^ storage.modifier.mut.cp
+//         ^^^ entity.name.function.method.cp
+
+impl Index for V:
+// <---- storage.type.impl.cp
+//   ^^^^^ entity.name.type.cp
+//         ^^^ keyword.control.for.cp
+
+    let K = n
+//  ^^^ storage.type.let.cp
+//      ^ entity.name.type.cp
+
+    type bounds = Bounds<Self>
+//  ^^^^ storage.type.alias.cp
+//       ^^^^^^ entity.name.type.alias.cp
+//                       ^^^^ entity.name.type.cp
+
+trait Seq: Index + Ord
+//    ^^^ entity.name.type.trait.cp
+//                 ^^^ entity.name.type.cp
+
+    @get fn l(self) -> Bounds<Self> = Bounds.from_idx(self.to_idx)
+//   ^^^ entity.name.function.decorator.cp
+//          ^ entity.name.function.cp
+//                                           ^^^^^^^^ entity.name.function.method.cp
+//                                                         ^^^^^^ variable.other.property.cp
+
+pub struct Bounds<I>(ord: 0..=I.K) where I: Seq:
+//         ^^^^^^ entity.name.type.struct.cp
+//                   ^^^ variable.parameter.label.cp
+//                              ^ entity.name.type.cp
+//                                 ^^^^^ keyword.control.where.cp
+
+fn longest_true<A>(a: A) -> Int where A: Indexed<V, Elem = Bool>
+// ^^^^^^^^^^^^ entity.name.function.cp
+//             ^ punctuation.definition.generic.begin.cp
+//              ^ entity.name.type.cp
+//               ^ punctuation.definition.generic.end.cp
+//                 ^ variable.parameter.label.cp
+//                              ^^^^^ keyword.control.where.cp
+//                                                         ^^^^ support.type.builtin.cp
+
+pub fn compress(xs: List<Int>) -> (domain X, vals: [X]Int, rank: List<X>):
+//                                 ^^^^^^ storage.type.domain.cp
+//                                        ^ entity.name.type.domain.cp
+//                                           ^^^^ variable.parameter.label.cp
+//                                                         ^^^^ variable.parameter.label.cp
+
+domain L = 'A'..'A' + k
+//         ^^^ string.quoted.single.char.cp
+//            ^^ keyword.operator.range.cp
+
+// `.l` and `.r` are the boundaries left and right of a position; `.l(k)` and `.r(k)` step k further.
+for v in V: pre[v.r] = pre[v.l] + a[v]
+//                ^ variable.other.property.boundary.cp
+//                           ^ variable.other.property.boundary.cp
+
+let window = pre[v.r] - pre[v.l(k)] + pre[v.r(k)]
+//                 ^ variable.other.property.boundary.cp
+//                            ^ variable.other.property.boundary.cp
+//                                          ^ variable.other.property.boundary.cp
+//                                          ^ - entity.name.function
 
 let width = s.r - s.l
 //            ^ variable.other.property.boundary.cp

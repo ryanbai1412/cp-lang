@@ -36,8 +36,9 @@ let x = a.raw[i + 1]            // `.raw` and `unchecked` carry `keyword.other.u
 unchecked:                      // the scope themes already colour for Rust's `unsafe`
     total += a.raw[i]
 
-fn halves(mut self, k: I) -> lends mut ([I]Int, [I]Int):
-    law disjoint(self.l(k), self.r(k))
+fn at(self, s: Range<I>) lends mut Slice<I, T>:        // `lends` and `law`, plan/19
+    law disjoint(s, t) = s.hi <= t.lo or t.hi <= s.lo
+for v in V: pre[v.r] = pre[v.l] + a[v]                 // `.l`, `.r`: the boundaries of `v`
 
 let from = spec + law           // plain names here: not keywords in this position
 ```
@@ -116,10 +117,11 @@ $ cpl stress d.cp --format json --part count
    "stages": [{"name": "count", "line": 12, "fast": "1", "brute": "0"}],
    "saved": "i3"}}
 
-$ cpl run d.cp --trace count --format html < i1      # the trace page, shown beside the source
+$ cpl run d.cp --trace count --format html < i1      # a self-contained page, shown beside the source
 ```
 
-Lines are 1-based, as in diagnostics. A runtime error is
+The trace page is what `tools/trace/emit.py` writes: the trace explorer
+with one capture embedded. Lines are 1-based, as in diagnostics. A runtime error is
 `"error": {"line": 24, "message": "index out of range"}` in the run report.
 Output that is not this JSON is shown as it is, so the plain-text `cpl`
 keeps working. `test/fixtures/cpl-stub.js` answers these three commands
