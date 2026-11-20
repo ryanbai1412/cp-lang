@@ -328,6 +328,7 @@ fn kind_name(kind: DeclKind) -> &'static str {
         DeclKind::Domain => "domain",
         DeclKind::Alias => "alias",
         DeclKind::Trait => "trait",
+        DeclKind::Impl => "impl",
     }
 }
 

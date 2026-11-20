@@ -346,8 +346,7 @@ impl<'a> Checker<'a> {
                 };
                 self.bind(pat, &ty, false, "let");
                 if let Some(and) = and {
-                    let ty = self.infer(and);
-                    self.require_bool(&ty, and, "the condition");
+                    self.cond(and);
                 }
             }
         }

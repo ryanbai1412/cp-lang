@@ -473,6 +473,14 @@ impl<'a> Lowerer<'a> {
                 self.unsupported(ty.span, "fn types");
                 Spec::Plain(Ty::Error)
             }
+            ast::TypeKind::Value(_) => {
+                self.unsupported(ty.span, "values as type arguments");
+                Spec::Plain(Ty::Error)
+            }
+            ast::TypeKind::NewDomain => {
+                self.unsupported(ty.span, "fns that return a fresh domain");
+                Spec::Plain(Ty::Error)
+            }
             ast::TypeKind::Yields(_) => {
                 self.unsupported(ty.span, "generators");
                 Spec::Plain(Ty::Error)

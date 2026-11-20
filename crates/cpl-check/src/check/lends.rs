@@ -194,9 +194,12 @@ pub(crate) struct Lends {
     proj_calls: HashMap<Span, ProjCall>,
     /// `let`-bound views, by where the name is declared.
     views: HashMap<Span, Lent>,
-    /// The one statement where `lend` may stand: the last of the
+    /// The one statement where `lend` may stand: the `lend` of the
     /// projection being checked.
     lend_at: Option<Span>,
+    /// The projection being checked was already told its `lend`s are
+    /// wrong.
+    lend_reported: bool,
 }
 
 /// Source text of an expression, exact enough to compare two for equality.
@@ -626,10 +629,12 @@ impl<'a> Checker<'a> {
         let facts = std::mem::take(&mut self.lends.facts);
         let holds = std::mem::take(&mut self.lends.holds);
         let lend_at = self.lends.lend_at.take();
+        let lend_reported = std::mem::take(&mut self.lends.lend_reported);
         let out = f(self);
         self.lends.facts = facts;
         self.lends.holds = holds;
         self.lends.lend_at = lend_at;
+        self.lends.lend_reported = lend_reported;
         out
     }
 
@@ -1280,37 +1285,53 @@ impl<'a> Checker<'a> {
 
     // --- projections ---------------------------------------------------------
 
-    /// Checks the shape of `fn name(self, ..) lends [mut] T`: it ends in
-    /// one `lend` of a part of `self`. Returns the statement where `lend`
-    /// may stand.
+    /// Checks the shape of `fn name(self, ..) lends [mut] T`: one `lend`
+    /// of a part of `self`, as a statement of the body itself. What
+    /// follows it is the write-back, which runs when the caller is done
+    /// with the place and so needs `mut self`.
     pub(crate) fn projection_shape(&mut self, f: &ast::FnDecl, fields: &[String]) {
         let Some(lends) = &f.lends else {
             return;
         };
         let name = &f.name.text;
-        if f.params.first().is_none_or(|p| p.name.text != "self") {
+        let receiver = f.params.first().filter(|p| p.name.text == "self");
+        if receiver.is_none() {
             let message = format!(
                 "a projection lends part of its receiver, so `{name}` needs `self` as its first parameter"
             );
             self.error(codes::BAD_PROJECTION, f.name.span, message);
         }
-        let last = match &f.body {
-            ast::FnBody::Block(block) => block.stmts.last(),
-            _ => None,
+        let stmts: &[Stmt] = match &f.body {
+            ast::FnBody::Block(block) => &block.stmts,
+            _ => &[],
         };
-        let Some((stmt, mutable, place)) = last.and_then(|stmt| match &stmt.kind {
-            StmtKind::Lend { mutable, place } => Some((stmt, *mutable, place)),
-            _ => None,
-        }) else {
+        let mut found = stmts
+            .iter()
+            .enumerate()
+            .filter_map(|(at, stmt)| match &stmt.kind {
+                StmtKind::Lend { mutable, place } => Some((at, stmt, *mutable, place)),
+                _ => None,
+            });
+        let (Some((at, stmt, mutable, place)), None) = (found.next(), found.next()) else {
             let message = format!(
                 "`{name}` is declared `lends`, so every path through it must reach one `lend place`"
             );
             if let Some(diag) = self.error(codes::BAD_PROJECTION, f.name.span, message) {
-                diag.help =
-                    Some("end the body with `lend <place>`: the part of `self` it lends".into());
+                diag.help = Some(
+                    "give the body one `lend <place>`, the part of `self` it lends, as a statement of its own"
+                        .into(),
+                );
             }
+            self.lends.lend_reported = true;
             return;
         };
+        if let Some(after) = stmts.get(at + 1) {
+            if receiver.is_some_and(|p| !p.mutable) {
+                let message =
+                    format!("code after the `lend` changes `self`, so `{name}` takes `mut self`");
+                self.error(codes::BAD_PROJECTION, after.span, message);
+            }
+        }
         self.lends.lend_at = Some(stmt.span);
         if mutable && !lends.mutable {
             let message =
@@ -1335,13 +1356,14 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// `lend` anywhere but at the end of a projection.
+    /// `lend` anywhere but in the body of a projection, as one of its own
+    /// statements.
     pub(crate) fn lend_in_place(&mut self, stmt: &Stmt) {
-        if self.lends.lend_at != Some(stmt.span) {
+        if self.lends.lend_at != Some(stmt.span) && !self.lends.lend_reported {
             self.error(
                 codes::BAD_PROJECTION,
                 stmt.span,
-                "`lend` is the last statement of a projection (`fn name(self, ...) lends T`), and only there"
+                "`lend` is a statement of a projection's body (`fn name(self, ...) lends T`), and only there"
                     .to_string(),
             );
         }

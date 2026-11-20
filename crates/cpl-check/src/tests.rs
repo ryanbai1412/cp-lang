@@ -855,7 +855,7 @@ let p: Pt = Pt(1, 2) + Pt(3, 4)
 ";
     assert_eq!(check(src), vec![]);
     let diag = one(&src.replace("Pt(1, 2) + Pt(3, 4)", "Pt(1, 2) - Pt(3, 4)"));
-    assert_eq!(diag.code.0, "E0506");
+    assert_eq!(diag.code.0, "E0606");
     assert_eq!(
         diag.message,
         "`-` needs `impl Sub for Pt`, and there is none"
@@ -959,7 +959,7 @@ fn two_mut_lends_of_one_array_need_to_be_apart() {
         assert_eq!(lent(body), vec![], "{body}");
     }
     let diag = &lent("swap(mut a[l], mut a[r])\n")[0];
-    assert_eq!(diag.code.0, "E0501");
+    assert_eq!(diag.code.0, "E0601");
     assert_eq!(
         diag.message,
         "`a[l]` and `a[r]` may be the same storage, and both are lent `mut` to this call: Array.at lends disjoint parts only when `i != j`, and that is not known here"
@@ -990,7 +990,7 @@ fn a_let_bound_slice_keeps_its_array_lent_until_its_last_use() {
     );
     let diags = lent("let part = a[l..=r]\na[l] = 0\nprint(part[l])\n");
     assert_eq!(diags.len(), 1, "{diags:#?}");
-    assert_eq!(diags[0].code.0, "E0502");
+    assert_eq!(diags[0].code.0, "E0602");
     assert!(diags[0]
         .message
         .starts_with("`a[l]` can't be changed here: `a` is lent to `part`"));
@@ -1029,7 +1029,7 @@ fn a_lent_slice_is_not_stored_assigned_or_returned() {
     ] {
         let diags = check(&format!("{ARRAY}{body}"));
         assert_eq!(diags.len(), 1, "{body}: {diags:#?}");
-        assert_eq!(diags[0].code.0, "E0503");
+        assert_eq!(diags[0].code.0, "E0603");
         assert!(
             diags[0]
                 .message
@@ -1121,7 +1121,34 @@ fn a_projection_ends_in_one_lend_of_a_part_of_self() {
     );
     let diags = check(&format!("{BAG}fn f(k: V):\n    lend zero[k]\n"));
     assert_eq!(diags.len(), 1, "{diags:#?}");
-    assert_eq!(diags[0].code.0, "E0504");
+    assert_eq!(diags[0].code.0, "E0604");
+}
+
+#[test]
+fn code_after_a_lend_is_the_write_back_and_needs_mut_self() {
+    let tally = |receiver: &str| {
+        format!(
+            "let n: 2..=9 = read()\ndomain V = 1..=n\nstruct Tally:\n    cnt: [V]Int\n    distinct: Int\n    fn at({receiver}, v: V) lends mut Int:\n        if cnt[v] != 0: distinct -= 1\n        lend mut cnt[v]\n        if cnt[v] != 0: distinct += 1\n"
+        )
+    };
+    assert_eq!(check(&tally("mut self")), vec![]);
+    let diags = check(&tally("self"));
+    assert!(messages(&diags)
+        .contains(&"code after the `lend` changes `self`, so `at` takes `mut self`"));
+    // One `lend`, and a statement of the body itself.
+    let twice = tally("mut self").replace(
+        "        lend mut cnt[v]\n",
+        "        lend mut cnt[v]\n        lend mut cnt[v]\n",
+    );
+    assert_eq!(
+        messages(&check(&twice)),
+        ["`at` is declared `lends`, so every path through it must reach one `lend place`"]
+    );
+    let nested = tally("mut self").replace(
+        "        lend mut cnt[v]\n",
+        "        if distinct > 0:\n            lend mut cnt[v]\n",
+    );
+    assert_eq!(check(&nested)[0].code.0, "E0604");
 }
 
 #[test]

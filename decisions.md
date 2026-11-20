@@ -449,7 +449,6 @@ an explicit start value for every operation; that makes the common
 `m[k] += 1` longer to protect the rare `m[k] /= x`, so only the
 operations without an identity ask. And `?` could have been allowed
 everywhere; see above.
-||||||| parent of 7a2691c (Document what the Rust front end now checks)
 
 ## 14. Calls made bringing the Rust front end up to the libraries (2026-11-20)
 
@@ -484,8 +483,8 @@ not state, these calls were made. None is confirmed by Ryan yet.
   print(part[l])
   ```
 - **14.4 The prototype's built-in names are accepted without a type.**
-  The ports use `SegTree`, `Mod`, `dijkstra` and a dozen more names with
-  no `use`, because `proto/cpc` builds them in. The checker lists them in
+  The ports use `SegTree`, `Mod`, `Graph`, `dijkstra` and some twenty
+  more names with no `use`, because `proto/cpc` builds them in. The checker lists them in
   `crates/cpl-check/src/prelude.rs` and does not type what goes through
   them. This is a stopgap: the fix is for each port to `use` the `std`
   module, at which point the name leaves the list.

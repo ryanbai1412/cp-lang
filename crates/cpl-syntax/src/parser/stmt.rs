@@ -358,7 +358,11 @@ impl<'a> Parser<'a> {
                 })
             }
             // `best max= x`.
-            T::Ident if self.peek_n(1) == T::Eq && matches!(self.text(), "max" | "min") => {
+            T::Ident
+                if self.peek_n(1) == T::Eq
+                    && self.same_line()
+                    && matches!(self.text(), "max" | "min") =>
+            {
                 let op = if self.text() == "max" {
                     AssignOp::Max
                 } else {
@@ -367,11 +371,59 @@ impl<'a> Parser<'a> {
                 self.bump();
                 op
             }
+            // `l lcm= x` is `l = lcm(l, x)`, for any fn of two values.
+            T::Ident if self.peek_n(1) == T::Eq && self.same_line() => {
+                let name = Expr {
+                    kind: ExprKind::Name(self.text().to_string()),
+                    span: self.span(),
+                };
+                self.bump();
+                self.bump();
+                let operand = self.expr();
+                let span = name.span.to(operand.span);
+                let args = [target.clone(), operand]
+                    .into_iter()
+                    .map(|value| Arg {
+                        name: None,
+                        mutable: false,
+                        value,
+                    })
+                    .collect();
+                let value = Expr {
+                    kind: ExprKind::Call {
+                        callee: Box::new(name),
+                        args,
+                    },
+                    span,
+                };
+                return StmtKind::Assign {
+                    target,
+                    op: AssignOp::Set,
+                    value,
+                };
+            }
             _ => return StmtKind::Expr(target),
         };
         self.bump();
         let value = self.expr();
         StmtKind::Assign { target, op, value }
+    }
+
+    /// Whether the next token continues a line that `target` is on,
+    /// rather than starting a line of its own. A target that ends with a
+    /// block (`if c:` and its body) is followed by the next statement
+    /// with no line break token between them.
+    fn same_line(&self) -> bool {
+        // Token spans index the source; the spans of the tree do not.
+        let Some(before) = self
+            .tokens
+            .get(self.pos)
+            .and_then(|token| self.src.get(..token.span.start as usize))
+        else {
+            return false;
+        };
+        let line = &before[before.rfind('\n').map_or(0, |i| i + 1)..];
+        !line.trim().is_empty()
     }
 
     pub(super) fn cond(&mut self) -> Cond {
@@ -382,7 +434,13 @@ impl<'a> Parser<'a> {
             // The value ends before `and`, which adds a condition on
             // what the pattern bound.
             let value = self.not();
-            let and = self.eat(T::And).then(|| self.and());
+            let and = self.eat(T::And).then(|| {
+                Box::new(if self.at(T::Let) {
+                    self.cond()
+                } else {
+                    Cond::Expr(self.and())
+                })
+            });
             return Cond::Let { pat, value, and };
         }
         if self.at(T::Const) {

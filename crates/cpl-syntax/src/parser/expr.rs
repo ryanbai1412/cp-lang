@@ -717,7 +717,11 @@ impl<'a> Parser<'a> {
             let start = self.start();
             let pat = self.pattern();
             let guard = self.eat(T::If).then(|| self.expr());
-            let body = if self.expect(T::FatArrow, "`=>` after the pattern") {
+            // `Pat => value` or, for an arm of statements, `Pat:` and a
+            // block.
+            let body = if self.eat(T::Colon) {
+                self.block("`:`")
+            } else if self.expect(T::FatArrow, "`=>` after the pattern") {
                 self.block("`=>`")
             } else {
                 self.skip_line();

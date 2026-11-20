@@ -63,6 +63,7 @@ impl Bounds {
                     pat,
                     ty: None,
                     init: Some(init),
+                    ..
                 } => {
                     if let (PatternKind::Name(name), Some(value)) = (&pat.kind, bounds.expr(init)) {
                         bounds.values.insert(name.clone(), value);
