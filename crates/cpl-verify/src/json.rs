@@ -1,5 +1,5 @@
 //! A small JSON value, reader and writer for the LSP benchmark client.
-//! The workspace builds without network access, so there is no serde.
+//! The workspace has no external dependencies, so there is no serde.
 
 use std::fmt;
 
