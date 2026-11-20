@@ -89,6 +89,105 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// What `let pat = init else: ...` binds: the value in each optional.
+    /// A tuple of values is taken apart, `let (x, y) = (a, b) else: ...`.
+    fn let_else(&mut self, pat: &ast::Pattern, init: &ast::Expr, ty: Ty) -> Ty {
+        let inside = |ty: Ty| match ty {
+            Ty::Optional(inner) => Ok(*inner),
+            Ty::Error => Ok(Ty::Error),
+            ty if ty.is_vague() || matches!(ty, Ty::Param(_)) => Ok(Ty::Unknown),
+            ty => Err(ty),
+        };
+        match (&pat.kind, &init.kind, ty) {
+            (ast::PatternKind::Tuple(_), ExprKind::Tuple(items), Ty::Tuple(tys))
+                if items.len() == tys.len() =>
+            {
+                let mut out = Vec::new();
+                for (item, ty) in items.iter().zip(tys) {
+                    out.push(inside(ty).unwrap_or_else(|ty| {
+                        let message = format!(
+                            "let-else needs a ?T for `{}`, and it is {}",
+                            self.quote(item.span),
+                            ty.with_article()
+                        );
+                        self.error(codes::TYPE_MISMATCH, item.span, message);
+                        Ty::Error
+                    }));
+                }
+                Ty::Tuple(out)
+            }
+            (ast::PatternKind::Name(_) | ast::PatternKind::Tuple(_), _, ty) => inside(ty)
+                .unwrap_or_else(|ty| {
+                    let message = format!(
+                        "let-else needs a ?T, and `{}` is {}",
+                        self.quote(init.span),
+                        ty.with_article()
+                    );
+                    self.error(codes::TYPE_MISMATCH, init.span, message);
+                    Ty::Error
+                }),
+            (_, _, ty) => inside(ty).unwrap_or(Ty::Unknown),
+        }
+    }
+
+    /// `m[k] f= x` on a map folds `x` into the entry, and a key that is
+    /// not there starts from the identity of `f` (decisions §13). `min`
+    /// and `max` store `x`; an operation with no identity is an error.
+    fn map_fold(&mut self, target: &ast::Expr, op: AssignOp, value: &ast::Expr) {
+        let ExprKind::Index { base, indices } = &target.kind else {
+            return;
+        };
+        let fold = match (op, &value.kind) {
+            (AssignOp::Binary(op), _) => {
+                if matches!(
+                    op,
+                    ast::BinOp::Add
+                        | ast::BinOp::Sub
+                        | ast::BinOp::Mul
+                        | ast::BinOp::BitOr
+                        | ast::BinOp::BitXor
+                ) {
+                    return;
+                }
+                op.text().to_string()
+            }
+            // `m[k] f= x`, which the parser wrote as `m[k] = f(m[k], x)`.
+            (AssignOp::Set, ExprKind::Call { callee, args })
+                if args.first().is_some_and(|first| first.value == *target) =>
+            {
+                match &callee.kind {
+                    ExprKind::Name(name) if !matches!(name.as_str(), "gcd" | "lcm") => name.clone(),
+                    _ => return,
+                }
+            }
+            _ => return,
+        };
+        let map = self.quietly(|c| c.infer(base));
+        let Ty::Named { name, args } = &map else {
+            return;
+        };
+        let plain = matches!(args.as_slice(), [_, value] if !matches!(value, Ty::Optional(_)) && !value.is_vague());
+        if !matches!(name.as_str(), "Map" | "HashMap") || !plain {
+            return;
+        }
+        let (target_text, key) = (self.quote(target.span), self.quote(indices[0].span));
+        let message = format!(
+            "`{target_text} {fold}= x` may meet a key that is not in the map yet, and `{fold}` has no identity to start it from"
+        );
+        let base = self.quote(base.span);
+        let help = match op {
+            AssignOp::Binary(_) => format!(
+                "say what a missing key means: `{target_text} = ({base}.get({key}) ?? start) {fold} x`"
+            ),
+            _ => format!(
+                "say what a missing key means: `{target_text} = {fold}({base}.get({key}) ?? start, x)`"
+            ),
+        };
+        if let Some(diag) = self.error(codes::BAD_OPERANDS, target.span, message) {
+            diag.help = Some(help);
+        }
+    }
+
     /// A domain written with two literal ends holds at most 2^31 - 1
     /// values: a position is an `i32` in the generated code.
     fn domain_size(&mut self, def: &ast::Expr) {
@@ -112,6 +211,23 @@ impl<'a> Checker<'a> {
     }
 
     fn stmt(&mut self, stmt: &Stmt, top_level: bool) -> Ty {
+        // A statement is straight-line code again, whatever it is inside;
+        // an `if` or `match` standing as a statement is one too.
+        let branch = match &stmt.kind {
+            StmtKind::Expr(expr) => {
+                if matches!(expr.kind, ExprKind::If { .. } | ExprKind::Match { .. }) {
+                    self.plain_if = Some(expr.span);
+                }
+                self.branch
+            }
+            _ => std::mem::take(&mut self.branch),
+        };
+        let ty = self.stmt_kind(stmt, top_level);
+        self.branch = branch;
+        ty
+    }
+
+    fn stmt_kind(&mut self, stmt: &Stmt, top_level: bool) -> Ty {
         match &stmt.kind {
             StmtKind::Let {
                 mutable,
@@ -126,11 +242,10 @@ impl<'a> Checker<'a> {
                 let mut init_ty = init.as_ref().map(|init| self.infer(init));
                 // `let v = u else: return`: past here `v` is the value in `u`.
                 if let Some(otherwise) = otherwise {
-                    init_ty = init_ty.map(|ty| match ty {
-                        Ty::Optional(inner) => *inner,
-                        Ty::Error => Ty::Error,
-                        _ => Ty::Unknown,
-                    });
+                    init_ty = match (init_ty, init) {
+                        (Some(ty), Some(init)) => Some(self.let_else(pat, init, ty)),
+                        (ty, _) => ty,
+                    };
                     self.block(otherwise);
                 }
                 // `var seen: [V]Bool = false` fills the array with the value.
@@ -331,6 +446,7 @@ impl<'a> Checker<'a> {
             StmtKind::Assign { target, op, value } => {
                 let target_ty = self.infer(target);
                 let value_ty = self.infer(value);
+                self.map_fold(target, *op, value);
                 self.require_mutable(target, "assigned");
                 self.check_access(target, true);
                 if let Some((root, _)) = Self::root_name(target) {

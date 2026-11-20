@@ -1262,3 +1262,72 @@ fn the_max_of_a_slice_is_optional() {
         assert!(codes(&src).is_empty(), "{src}: {:?}", check(&src));
     }
 }
+
+#[test]
+fn let_else_takes_an_optional() {
+    let tuple = one("fn f(a: ?Int) -> Int:\n    let (x, y) = (a, 3) else: return 0\n    x + y\n");
+    assert_eq!(
+        tuple.message,
+        "let-else needs a ?T for `3`, and it is an Int"
+    );
+    let plain = one("fn f(a: Int) -> Int:\n    let x = a else: return 0\n    x\n");
+    assert_eq!(plain.message, "let-else needs a ?T, and `a` is an Int");
+    let ok = "fn f(a: ?Int, b: ?Int) -> Int:\n    let (x, y) = (a, b) else: return 0\n    let z = a else: return 1\n    x + y + z\n";
+    assert!(codes(ok).is_empty(), "{:?}", check(ok));
+}
+
+#[test]
+fn a_try_stays_out_of_branches() {
+    let head = "fn pick(a: ?Int, use_it: Bool) -> ?Int:\n";
+    for body in [
+        "    let v = if use_it: a? + 1 else: 0\n    v * 2\n",
+        "    let f = x => a? + x\n    f(1)\n",
+        "    sum(a? + i for i in 0..3)\n",
+    ] {
+        let diag = one(&format!("{head}{body}"));
+        assert!(
+            diag.message.starts_with("`a?` is inside a branch"),
+            "{body}"
+        );
+        assert_eq!(diag.help.as_deref(), Some("bind it first: `let x = a?`"));
+    }
+    // Straight-line code, and a statement of an `if` that is a statement.
+    for body in [
+        "    let v = a? + 1\n    v * 2\n",
+        "    if use_it:\n        let v = a?\n        return v\n    a? + 1\n",
+        "    if use_it: a? + 1 else: 0\n",
+    ] {
+        let src = format!("{head}{body}");
+        assert!(codes(&src).is_empty(), "{src}: {:?}", check(&src));
+    }
+}
+
+#[test]
+fn a_fold_into_a_map_needs_an_identity() {
+    let divide = one("var m: HashMap<Int, Int> = []\nm[4] /= 2\n");
+    assert!(divide
+        .message
+        .ends_with("`/` has no identity to start it from"));
+    assert_eq!(
+        divide.help.as_deref(),
+        Some("say what a missing key means: `m[4] = (m.get(4) ?? start) / x`")
+    );
+    let named = one("fn longer(x: Int, y: Int) -> Int: if y > x: y else: x\nvar m: Map<Int, Int> = []\nm[4] longer= 2\n");
+    assert!(named
+        .message
+        .ends_with("`longer` has no identity to start it from"));
+    // `+`, `*`, `gcd` and the rest start from their identity, `min` and
+    // `max` store the value, and a `?Int` entry starts as `none`.
+    for body in [
+        "m[4] += 2\n",
+        "m[4] *= 2\n",
+        "m[4] min= 2\n",
+        "m[4] gcd= 2\n",
+        "m[4] = 7\n",
+    ] {
+        let src = format!("var m: Map<Int, Int> = []\n{body}");
+        assert!(codes(&src).is_empty(), "{src}: {:?}", check(&src));
+    }
+    let array = "domain V = 1..=5\nvar a: [V]Int = 8\na[V(1)] /= 2\n";
+    assert!(codes(array).is_empty(), "{:?}", check(array));
+}

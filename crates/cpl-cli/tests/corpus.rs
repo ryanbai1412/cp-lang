@@ -107,11 +107,6 @@ const NOT_YET: &[&str] = &[
     "rt_hold_captured_write_deep",
     "rt_minassign_twice",
     "rt_mut_arg_captured",
-    // `let ... else`, `?` and `m[k] f= x` on a map.
-    "let_else_not_optional",
-    "map_fold_divide",
-    "map_fold_no_identity",
-    "try_in_branch",
 ];
 
 /// The reason a failing test states on its first line: `// error: <text>`.

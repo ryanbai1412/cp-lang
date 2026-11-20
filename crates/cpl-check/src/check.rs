@@ -88,6 +88,11 @@ pub(crate) struct Checker<'a> {
     /// Inside a fn signature or body, where a single capital letter is a
     /// type parameter without being declared.
     in_fn: u32,
+    /// How many branches, lambdas and comprehensions the expression being
+    /// checked is inside, within its statement: `e?` can't leave from there.
+    branch: u32,
+    /// The `if` or `match` that is a statement of its own, not a value.
+    plain_if: Option<Span>,
     /// What `Self` is: the struct, enum or impl target whose body this is.
     self_ty: Option<Ty>,
     /// What is lent and what is known, for the exclusivity of lends.
@@ -112,6 +117,8 @@ impl<'a> Checker<'a> {
             refs: Vec::new(),
             fns: Vec::new(),
             in_fn: 0,
+            branch: 0,
+            plain_if: None,
             self_ty: None,
             lends: lends::Lends::default(),
         }
