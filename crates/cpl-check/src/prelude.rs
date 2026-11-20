@@ -101,6 +101,8 @@ pub fn ty(name: &str) -> Option<Ty> {
         "Bool" => Ty::Bool,
         "Char" => Ty::Char,
         "Str" => Ty::Str,
+        // Kept for bit-level work: 64-bit masks and wide products.
+        "U64" | "I128" => Ty::Int,
         "List" | "Map" | "HashMap" | "Set" | "Iter" | "Opt" | "Range" | "Bounds" | "Counter" => {
             Ty::Named {
                 name: name.into(),

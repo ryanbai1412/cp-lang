@@ -1418,6 +1418,7 @@ impl<'a> Lowerer<'a> {
                 Ty::Pos(d) => Ty::Bound(d),
                 other => other,
             },
+            "U64" | "I128" => Ty::Int,
             _ => match self.get_sym(&name.text) {
                 Some(Sym::Struct(id)) if values => return self.struct_spec(id),
                 Some(Sym::Struct(id)) => Ty::Struct(id),
