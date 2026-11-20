@@ -251,3 +251,109 @@ fn interpreter_and_sanitized_cpp_agree_on_every_program() {
         failures.join("\n\n")
     );
 }
+
+#[test]
+fn lowering_gaps_agree_between_interp_and_sanitized_cpp() {
+    let cases: &[(&str, &str, &str)] = &[
+        (
+            "prefix_counts_span",
+            "\
+domain I = 1..=3
+let a: [I, I]Int = [I, I] (r, c) => r.ord * 3 + c.ord + 1
+let pre = prefix(a)
+let row = [I] i => a[I(2), i]
+let p1 = prefix(row)
+let cnt = counts([1, 2, 1, 3, 1])
+print(pre.sum(span(I(1).l, I(2)), span(I(2).l, I(3))))
+print(p1.sum(span(I(1), I(3))))
+print(cnt[1], cnt[2], cnt[99])
+",
+            "16\n15\n3 1 0\n",
+        ),
+        (
+            "subset_alias_and_submasks",
+            "\
+domain Item = 0..3
+type Group = Subset<Item>
+var total = 0
+for s in Group:
+    for g in s.subsets:
+        let rest = s - g
+        total += g.len + rest.len
+let full = Group.full
+let one = Group.empty.with(Item(1))
+print(total, full.len, full.without(Item(1)).len, one.first!.ord)
+",
+            "54 3 2 1\n",
+        ),
+        (
+            "filled_none_inference",
+            "\
+fn make_grid(n: Int) -> List<List<?Int>>:
+    var out = List.filled(n, List.filled(n, none))
+    out[0][1] = 7
+    out
+
+let g = make_grid(2)
+var dp = List.filled(3, none)
+dp[2] = 42
+print(g[0][0] ?? -1, g[0][1] ?? -1, dp[0] ?? -1, dp[2] ?? -1)
+",
+            "-1 7 -1 42\n",
+        ),
+        (
+            "adjacent_and_domain_list_index",
+            "\
+domain Bug = 0..4
+let bs = List(Bug)
+var total = 0
+for i in Bug:
+    total += bs[i.to_idx].ord
+let pairs = [10, 20, 35, 35]
+print(total, count(a != b for (a, b) in pairs.adjacent))
+var known: [Bool]List<Int> = []
+known[true].push(5)
+known[false].push(9)
+let flag = true
+print(known[if flag: true else: false][0])
+",
+            "6 2\n5\n",
+        ),
+    ];
+
+    let tmp = std::env::temp_dir().join(format!("cpl_lowering_gaps_{}", std::process::id()));
+    std::fs::create_dir_all(&tmp).expect("create temp dir");
+    for (name, src, expected) in cases {
+        let cp = tmp.join(format!("{name}.cp"));
+        std::fs::write(&cp, src).expect("write test program");
+        let path = cp.to_string_lossy().into_owned();
+        let interpreted = cpl_cli::run(&["run", &path]);
+        assert_eq!(
+            interpreted.code,
+            0,
+            "{name}: cpl run failed:\n{}",
+            interpreted.stderr
+        );
+        assert_eq!(
+            String::from_utf8_lossy(&interpreted.stdout),
+            *expected,
+            "{name}: interpreter output mismatch"
+        );
+        let built = cpl_cli::run(&["build", &path, "-o", "-"]);
+        assert_eq!(
+            built.code,
+            0,
+            "{name}: cpl build failed:\n{}",
+            built.stderr
+        );
+        let (stdout, code) =
+            compile_and_run(&format!("gap_{name}"), &built.stdout, &[], None).expect(name);
+        assert_eq!(code, Some(0), "{name}: sanitized C++ non-zero exit");
+        assert_eq!(
+            String::from_utf8_lossy(&stdout),
+            *expected,
+            "{name}: sanitized C++ output mismatch"
+        );
+    }
+    let _ = std::fs::remove_dir_all(&tmp);
+}

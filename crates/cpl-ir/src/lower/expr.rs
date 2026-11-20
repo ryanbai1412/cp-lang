@@ -129,6 +129,34 @@ impl<'a> Lowerer<'a> {
                     _ => raw_base,
                 };
                 if let Ty::Struct(sid) = base_expr.ty {
+                    if let Some(key_ty) = self.counter_key.get(&sid).cloned() {
+                        if indices.len() != 1 {
+                            self.error(
+                                codes::WRONG_ARG_COUNT,
+                                span,
+                                format!("a counter takes 1 index, found {}", indices.len()),
+                            );
+                            return self.err_expr(span);
+                        }
+                        let map_ty = self.structs[sid].def.fields[0].1.clone();
+                        let map_expr = self.mk(
+                            ExprKind::Field(Box::new(base_expr), 0),
+                            map_ty,
+                            span,
+                        );
+                        let key = self.expect(&indices[0], &key_ty);
+                        let found = self.mk(
+                            ExprKind::Builtin(Builtin::MapGet, vec![map_expr, key]),
+                            Ty::opt(Ty::Int),
+                            span,
+                        );
+                        let zero = self.int_lit(0, span);
+                        return self.mk(
+                            ExprKind::Binary(BinOp::Coalesce, Box::new(found), Box::new(zero)),
+                            Ty::Int,
+                            span,
+                        );
+                    }
                     let ast_args: Vec<ast::Arg> = indices
                         .iter()
                         .map(|idx| ast::Arg {
@@ -442,6 +470,9 @@ impl<'a> Lowerer<'a> {
                 GenArg::Ty(_) | GenArg::Op(_) => {}
             }
         }
+        if let Some(&Ty::Pos(d)) = self.cx.local_type_aliases.get(name) {
+            return self.mk(ExprKind::DomainVal(d), Ty::DomainVal, span);
+        }
         match self.get_sym(name) {
             Some(Sym::Global(id)) => {
                 return self.mk(ExprKind::Global(id), self.globals[id].ty.clone(), span)
@@ -500,7 +531,20 @@ impl<'a> Lowerer<'a> {
                 let fn_ty = Ty::Fn(fields, Box::new(Ty::Struct(id)));
                 return self.mk(ExprKind::Closure(cid), fn_ty, span);
             }
-            Some(Sym::GenStruct(_) | Sym::Enum(_) | Sym::GenEnum(_) | Sym::Alias(_) | Sym::GenAlias(_)) => {
+            Some(Sym::Alias(aid)) => {
+                let (m, ty_ast, offset) = self.aliases[aid];
+                let sm = std::mem::replace(&mut self.cur_mod, m);
+                let so = std::mem::replace(&mut self.offset, offset);
+                let resolved = self.resolve_ty(ty_ast);
+                self.cur_mod = sm;
+                self.offset = so;
+                if let Ty::Pos(d) = resolved {
+                    return self.mk(ExprKind::DomainVal(d), Ty::DomainVal, span);
+                }
+                let message = format!("`{name}` is a type, and a value is needed here");
+                self.error(codes::TYPE_MISMATCH, span, message);
+            }
+            Some(Sym::GenStruct(_) | Sym::Enum(_) | Sym::GenEnum(_) | Sym::GenAlias(_)) => {
                 let message = format!("`{name}` is a type, and a value is needed here");
                 self.error(codes::TYPE_MISMATCH, span, message);
             }
@@ -1117,6 +1161,34 @@ impl<'a> Lowerer<'a> {
                 );
                 return self.cast(Cast::IntToChar, sum, Ty::Char);
             }
+            (Ty::Pos(a), Ty::Pos(b))
+                if a == b
+                    && self.subset_base(*a).is_some()
+                    && matches!(op, BitOr | BitAnd | BitXor | Sub) =>
+            {
+                let d = *a;
+                let lo = self.cast(Cast::Ord, l, Ty::Int);
+                let ro = self.cast(Cast::Ord, r, Ty::Int);
+                if op == Sub {
+                    let mask = self.mk(
+                        ExprKind::Unary(UnOp::BitNot, Box::new(ro)),
+                        Ty::Int,
+                        span,
+                    );
+                    let diff = self.mk(
+                        ExprKind::Binary(BinOp::BitAnd, Box::new(lo), Box::new(mask)),
+                        Ty::Int,
+                        span,
+                    );
+                    return self.cast(Cast::Trust, diff, Ty::Pos(d));
+                }
+                let res = self.mk(
+                    ExprKind::Binary(op, Box::new(lo), Box::new(ro)),
+                    Ty::Int,
+                    span,
+                );
+                return self.cast(Cast::Trust, res, Ty::Pos(d));
+            }
             (Ty::Pos(a), Ty::Pos(b)) | (Ty::Bound(a), Ty::Bound(b)) if a == b && op == Sub => {
                 let l = self.cast(Cast::Ord, l, Ty::Int);
                 let r = self.cast(Cast::Ord, r, Ty::Int);
@@ -1589,7 +1661,8 @@ impl<'a> Lowerer<'a> {
                         Dim::Bound(d) => Ty::Bound(*d),
                         Dim::Int => Ty::Int,
                     };
-                    let value = self.expr(index, Some(&want));
+                    let hint = if *dim == Dim::Int { None } else { Some(&want) };
+                    let value = self.expr(index, hint);
                     if let (Dim::Pos(d), Ty::Struct(sid)) = (dim, &value.ty) {
                         if self.structs[*sid].index_domain == Some(*d) {
                             if let Some(to_idx) = self.structs[*sid].methods.get("to_idx").copied() {
@@ -2121,16 +2194,9 @@ impl<'a> Lowerer<'a> {
             }
             ast::ExprKind::Name(name)
                 if self.lookup(name).is_none()
-                    && (matches!(self.gen_env.get(name), Some(GenArg::Domain(_)))
-                        || matches!(self.get_sym(name), Some(Sym::Domain(_)))) =>
+                    && self.resolve_domain_name(name).is_some() =>
             {
-                let id = match self.gen_env.get(name) {
-                    Some(GenArg::Domain(id)) => *id,
-                    _ => match self.get_sym(name) {
-                        Some(Sym::Domain(id)) => id,
-                        _ => unreachable!(),
-                    },
-                };
+                let id = self.resolve_domain_name(name).unwrap();
                 let lo = self.int_lit(0, span);
                 let hi = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
                 (
@@ -2213,19 +2279,64 @@ impl<'a> Lowerer<'a> {
                     },
                     Iter::RangeVal(value, rev) => Iter::RangeVal(value, !rev),
                     Iter::Seq(value, rev) => Iter::Seq(value, !rev),
+                    Iter::Subsets(mask) => {
+                        let list_ty = Ty::list(ty.clone());
+                        let collected = self.do_expr(Some(&list_ty), span, |lw, out| {
+                            let acc = lw.temp(list_ty.clone());
+                            out.push(Stmt::Let(
+                                acc,
+                                Some(lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span)),
+                            ));
+                            let item = lw.temp(ty.clone());
+                            let lid = lw.fresh_loop();
+                            let push = lw.mk(
+                                ExprKind::Mutate(
+                                    Mutation::Push,
+                                    Box::new(Place {
+                                        kind: PlaceKind::Local(acc),
+                                        ty: list_ty.clone(),
+                                        span: lw.span(span),
+                                    }),
+                                    vec![lw.local(item, span)],
+                                ),
+                                Ty::Unit,
+                                span,
+                            );
+                            out.push(Stmt::For(
+                                lid,
+                                item,
+                                Iter::Subsets(mask),
+                                Block {
+                                    stmts: vec![Stmt::Expr(push)],
+                                },
+                            ));
+                            out.push(Stmt::Give(lw.local(acc, span)));
+                        });
+                        Iter::Seq(collected, true)
+                    }
                 };
                 (iter, ty)
+            }
+            ast::ExprKind::Field { base, name } if name.text == "subsets" => {
+                let value = self.expr(base, None);
+                if let Ty::Pos(subset) = value.ty {
+                    if self.subset_base(subset).is_some() {
+                        return (Iter::Subsets(value), Ty::Pos(subset));
+                    }
+                }
+                if value.ty != Ty::Error {
+                    self.error(
+                        codes::UNKNOWN_FIELD,
+                        name.span,
+                        format!("`{}` has no `.subsets` (expected a `Subset<D>`)", self.show(&value.ty)),
+                    );
+                }
+                error(self)
             }
             ast::ExprKind::Field { base, name } if name.text == "bounds" => {
                 let domain = match &base.kind {
                     ast::ExprKind::Name(n) if self.lookup(n).is_none() => {
-                        if let Some(GenArg::Domain(id)) = self.gen_env.get(n) {
-                            Some(*id)
-                        } else if let Some(Sym::Domain(id)) = self.get_sym(n) {
-                            Some(id)
-                        } else {
-                            None
-                        }
+                        self.resolve_domain_name(n)
                     }
                     _ => None,
                 };

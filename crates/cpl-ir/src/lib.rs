@@ -527,6 +527,8 @@ pub enum Iter {
     /// The elements of an array, list, set or string, or the `(key,
     /// value)` pairs of a map. `rev` walks backward.
     Seq(Expr, bool),
+    /// All subsets of a `Subset<D>` bitmask, from the mask down to `0` inclusive.
+    Subsets(Expr),
 }
 
 #[derive(Clone, PartialEq, Debug)]

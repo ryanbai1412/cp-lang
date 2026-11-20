@@ -154,6 +154,8 @@ impl<'a> Lowerer<'a> {
                     self.mod_syms.push(HashMap::new());
                     if imported.name == "std.mod" {
                         self.std_mod = Some(id);
+                    } else if imported.name == "std.prefix" {
+                        self.std_prefix = Some(id);
                     }
                     queue.push(id);
                 }
@@ -421,7 +423,7 @@ impl<'a> Lowerer<'a> {
                 eq_fn: None,
                 lt_fn: None,
             },
-            decl,
+            decl: Some(decl),
             mod_id: tpl_mod,
             offset: tpl_offset,
             origin_gen: Some((gid, args.clone())),
@@ -592,7 +594,10 @@ impl<'a> Lowerer<'a> {
 
     /// Finds and attaches all `impl` blocks matching concrete struct `sid`.
     pub(super) fn attach_impls_for_struct(&mut self, sid: StructId) {
-        let struct_decl_name = self.structs[sid].decl.name.text.clone();
+        let Some(sdecl) = self.structs[sid].decl else {
+            return;
+        };
+        let struct_decl_name = sdecl.name.text.clone();
         let struct_mod = self.structs[sid].mod_id;
         let origin_args: Vec<GenArg> = self.structs[sid]
             .origin_gen

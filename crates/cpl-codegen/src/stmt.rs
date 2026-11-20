@@ -335,6 +335,23 @@ impl<'p> Emitter<'p> {
                 self.indent -= 1;
                 self.line(out, "}");
             }
+            Iter::Subsets(mask_expr) => {
+                let m_code = self.expr(mask_expr);
+                let held = self.temp();
+                let done = self.temp();
+                self.line(out, "{");
+                self.indent += 1;
+                self.line(out, &format!("{cpp} {held} = {};", m_code.text));
+                self.line(
+                    out,
+                    &format!(
+                        "for ({cpp} {var} = {held}, {done} = 0; !{done}; {done} = !{var}, {var} = ({var} - 1) & {held}) {{"
+                    ),
+                );
+                self.loop_body(id, &first, body, out);
+                self.indent -= 1;
+                self.line(out, "}");
+            }
             Iter::Seq(seq, rev) => {
                 let effects = Effects::of_block(body);
                 // The loop walks the value as it was when the loop began,
