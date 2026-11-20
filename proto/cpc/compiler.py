@@ -102,10 +102,19 @@ class TLib(T):
     def __repr__(self): return f"{self.name}<{', '.join(map(repr, self.args))}>"
 
 class THeap(T):
-    def __init__(self, elem): self.elem = elem
-    def __eq__(self, o): return isinstance(o, THeap) and o.elem == self.elem
-    def __hash__(self): return hash(("heap", self.elem))
-    def __repr__(self): return f"MinHeap<{self.elem!r}>"
+    def __init__(self, elem, largest=False): self.elem, self.largest = elem, largest
+    def __eq__(self, o): return isinstance(o, THeap) and (o.elem, o.largest) == (self.elem, self.largest)
+    def __hash__(self): return hash(("heap", self.elem, self.largest))
+    def __repr__(self): return f"{'Max' if self.largest else 'Min'}Heap<{self.elem!r}>"
+
+class TRt(T):
+    """A v2 prelude container the prototype backs with a C++ class in runtime.hpp: Deque<T>, MonoDeque<T>, Desc<T>."""
+    def __init__(self, name, args, cpp): self.name, self.args, self.cpp = name, tuple(args), cpp
+    def __eq__(self, o): return isinstance(o, TRt) and (o.name, o.args) == (self.name, self.args)
+    def __hash__(self): return hash(("rt", self.name, self.args))
+    def __repr__(self): return f"{self.name}<{', '.join(map(repr, self.args))}>"
+    @property
+    def elem(self): return self.args[0]
 
 CPP_RESERVED = {"new", "delete", "int", "long", "auto", "class", "default", "register", "this", "template",
                 "typename", "union", "unsigned", "signed", "char", "double", "float", "short", "switch", "case",
@@ -131,7 +140,7 @@ CPP_RESERVED = set(CPP_RESERVED) | {
 # is checked against the real module, so a port can only import what the library really exports.
 MEMO_DENSE_MAX = 1 << 26     # slots of a dense @memo table (at most ~1 GB of optional Ints); larger products are hashed
 LIBS = {"Steps": ("steps", "CpSteps")}
-BUILTIN_TYPE_ARGS = {"List": 1, "Map": 2, "HashMap": 2, "Set": 1, "Perm": 1, "MinHeap": 1, "Dsu": 1, "AssignSum": 1, "AddMax": 1,
+BUILTIN_TYPE_ARGS = {"Deque": 1, "MonoDeque": 1, "Desc": 1, "MaxHeap": 1, "List": 1, "Map": 2, "HashMap": 2, "Set": 1, "Perm": 1, "MinHeap": 1, "Dsu": 1, "AssignSum": 1, "AddMax": 1,
                      "SegTree": 2, "Subset": 1, "Counter": 1, "Range": 1}
 LIB_FNS = {"Dsu": "dsu", "bfs": "graph", "dijkstra": "graph", "choose": "math", "gcd": "math", "lcm": "math", "scan": "seq",
            "running_sum": "seq", "SegTree": "segtree", "Rooted": "tree", "Fenwick": "fenwick"}
@@ -270,7 +279,9 @@ class Compiler(LendMixin):
         if isinstance(t, TDsu): return "CpDsu"
         if isinstance(t, THeap):
             e = self.cpp_type(t.elem)
-            return f"priority_queue<{e}, vector<{e}>, greater<{e}>>"
+            return f"priority_queue<{e}, vector<{e}>, {'less' if t.largest else 'greater'}<{e}>>"
+        if isinstance(t, TRt):
+            return f"{t.cpp}<{', '.join(self.cpp_type(a) for a in t.args)}>"
         raise CompileError(f"no C++ type for {t!r}")
 
     def orderable(self, t):
@@ -428,8 +439,18 @@ class Compiler(LendMixin):
                 pos.lo_src, pos.hi_src = "0", d.info.len_cpp
                 self.emit(f"{pos.cpp}_lo = 0; {pos.cpp}_len = {d.info.len_cpp};")
                 return TPerm([TDom(pos)], d)
-            if nm == "MinHeap":
-                return THeap(self.resolve_type(tn.args[0]))
+            if nm in ("MinHeap", "MaxHeap"):
+                et = self.resolve_type(tn.args[0])
+                if not self.orderable(et):
+                    self.error(tn, f"{nm}<T> needs an ordered T, and {et!r} has no `<`")
+                return THeap(et, nm == "MaxHeap")
+            if nm in ("Deque", "MonoDeque", "Desc"):
+                et = self.resolve_type(tn.args[0])
+                if nm != "Deque" and not self.orderable(et):
+                    self.error(tn, f"{nm}<T> needs an ordered T, and {et!r} has no `<`")
+                if is_int(et):
+                    et = TInt()
+                return TRt(nm, [et], {"Deque": "deque", "MonoDeque": "CpMonoDeque", "Desc": "CpDesc"}[nm])
             if nm == "Dsu":
                 d = self.resolve_type(tn.args[0])
                 if not isinstance(d, TDom):
@@ -998,6 +1019,8 @@ class Compiler(LendMixin):
                 return self.x_table(N("table", e.line, dims=[it], pat=pat, body=g.elem), want)
         if len(e.items) == 1 and e.items[0].kind == "gen":
             return self.reduction("List", e.items[0], e, want)
+        if (isinstance(want, THeap) or (isinstance(want, TRt) and want.name == "Deque")) and not e.items:
+            return f"{self.cpp_type(want)}()", want
         if isinstance(want, TCounter) and not e.items:      # `var c: Counter<K> = []`: every count is 0
             return f"{self.cpp_type(want)}{self.counter_init(want)}", want
         et = want.elem if isinstance(want, TList) else None
@@ -1395,6 +1418,12 @@ class Compiler(LendMixin):
             if self.narrow(ot.elem) and not (lv is not None and lv[0] is e):
                 return f"(ll){oc}[cp_lidx({ic}, {oc}.size(), {e.line})]", ot.elem
             return f"{oc}[cp_lidx({ic}, {oc}.size(), {e.line})]", ot.elem
+        if isinstance(ot, TRt) and ot.name == "Deque":
+            if len(e.idx) != 1:
+                self.error(e, "a Deque takes one index")
+            ic = self.str_pos(e.idx[0])
+            self.note_check(e, f"`{unparse(e)}` in bounds")
+            return f"{oc}[cp_lidx({ic}, {oc}.size(), {e.line})]", ot.elem
         if isinstance(ot, TStr):
             # a Str is a flat run of ASCII bytes at positions 0..len: `s[i]` is a Char, `s[l..r]` a Str
             if len(e.idx) != 1:
@@ -1594,6 +1623,20 @@ class Compiler(LendMixin):
         if isinstance(ot, (TList, TStr, TMap, TSet)):
             if f == "len":
                 return f"(ll){oc}.size()", TInt(0, None)
+        if isinstance(ot, THeap) or (isinstance(ot, TRt) and ot.name == "Deque"):
+            if f == "len":
+                return f"(ll){oc}.size()", TInt(0, None)
+            if f == "is_empty":
+                return f"{oc}.empty()", BOOL
+            el = self.cpp_type(TOpt(ot.elem))
+            if isinstance(ot, THeap) and f == "peek":
+                return f"({oc}.empty() ? {el}() : {el}({oc}.top()))", TOpt(ot.elem)
+            if isinstance(ot, TRt) and f in ("first", "last"):
+                return f"({oc}.empty() ? {el}() : {el}({oc}.{'front' if f == 'first' else 'back'}()))", TOpt(ot.elem)
+        if isinstance(ot, TRt) and ot.name == "Desc" and f == "val":
+            return f"{oc}.val", ot.elem
+        if isinstance(ot, TRt) and ot.name == "MonoDeque" and f == "best":
+            return f"{oc}.best()", TOpt(ot.elem)
         if isinstance(ot, TArr) and len(ot.dims) == 1:
             view = getattr(ot, "view", None)
             if f == "len":
@@ -2121,8 +2164,27 @@ class Compiler(LendMixin):
             # Dsu<V>(): disjoint sets over a domain, every value alone to start (stdlib/dsu.cp)
             t = self.resolve_type(N("tname", fn.line, name="Dsu", args=fn.args))
             return f"CpDsu({t.dom.info.len_cpp})", t
-        if fn.kind == "generic" and fn.name in ("List", "MinHeap"):
+        if fn.kind == "generic" and fn.name == "MonoDeque":
+            # MonoDeque<T>(min) / MonoDeque<T>(max): which end `.best` reports
+            t = self.resolve_type(N("tname", fn.line, name="MonoDeque", args=fn.args))
+            if len(e.args) != 1 or e.args[0].kind != "name" or e.args[0].name not in ("min", "max"):
+                self.error(e, "MonoDeque<T>(min) or MonoDeque<T>(max)")
+            return f"{self.cpp_type(t)}({'true' if e.args[0].name == 'min' else 'false'})", t
+        if fn.kind == "name" and fn.name == "desc" and len(e.args) == 1 and not self.lookup("desc"):
+            # desc(x): x with its order reversed, for one descending field of a key
+            inner = want.args[0] if isinstance(want, TRt) and want.name == "Desc" else None
+            c, t = self.expr(e.args[0], inner)
+            if not self.orderable(t):
+                self.error(e, f"desc(x) reverses an order, and {t!r} has none")
+            rt = TRt("Desc", [inner or (TInt() if is_int(t) else t)], "CpDesc")
+            return f"{self.cpp_type(rt)}{{{self.coerce(c, t, rt.args[0], e.args[0])}}}", rt
+        if fn.kind == "generic" and fn.name in ("List", "MinHeap", "MaxHeap", "Deque"):
             a = fn.args[0]
+            if fn.name != "List":
+                t = self.resolve_type(N("tname", fn.line, name=fn.name, args=fn.args))
+                if e.args:
+                    self.error(e, f"`{fn.name}<T>()` takes no arguments")
+                return f"{self.cpp_type(t)}()", t
             et = self.resolve_type(a) if a.kind.startswith("t") else self.resolve_type(N("texpr", a.line, expr=a))
             t = TList(et) if fn.name == "List" else THeap(et)
             if e.args:
@@ -2629,7 +2691,36 @@ class Compiler(LendMixin):
             if m == "find": return f"{oc}.find({cs[0]})", ot.dom
             if m == "size": return f"(ll){oc}.size({cs[0]})", TInt(1, ot.dom.info.len_iv[1])
             return f"{oc}.{m}({cs[0]}, {cs[1]})", BOOL
+        if isinstance(ot, TRt) and ot.name == "Deque":
+            el = self.cpp_type(TOpt(ot.elem))
+            if m in ("push", "push_front") and len(args) == 1:
+                self.require_mut(obj, e)
+                c, t = self.expr(args[0], ot.elem)
+                return f"{oc}.{'push_back' if m == 'push' else 'push_front'}({self.coerce(c, t, ot.elem, args[0])})", UNIT
+            if m in ("pop", "pop_front") and not args:
+                self.require_mut(obj, e)
+                end = "back" if m == "pop" else "front"
+                return f"([&]{{ if ({oc}.empty()) return {el}(); auto _v = {oc}.{end}(); {oc}.pop_{end}(); return {el}(_v); }}())", TOpt(ot.elem)
+            if m == "clear" and not args:
+                self.require_mut(obj, e)
+                return f"{oc}.clear()", UNIT
+            self.error(e, f"no method `{m}` on {ot!r} (push, pop, push_front, pop_front, clear, .first, .last, .len, q[i])")
+        if isinstance(ot, TRt) and ot.name == "MonoDeque":
+            kw = {a.name: a.value for a in args if a.kind == "kwarg"}
+            if m == "push" and set(kw) == {"at", "val"} and len(args) == 2:
+                self.require_mut(obj, e)
+                c, t = self.expr(kw["val"], ot.elem)
+                return f"{oc}.push({self.str_pos(kw['at'])}, {self.coerce(c, t, ot.elem, kw['val'])})", UNIT
+            if m == "drop_before" and set(kw) == {"min_at"} and len(args) == 1:
+                self.require_mut(obj, e)
+                return f"{oc}.drop_before({self.str_pos(kw['min_at'])})", UNIT
+            if m == "clear" and not args:
+                self.require_mut(obj, e)
+                return f"{oc}.clear()", UNIT
+            self.error(e, f"no method `{m}` on {ot!r} (push(at: i, val: x), drop_before(min_at: i), clear(), .best)")
         if isinstance(ot, THeap):
+            if m == "clear" and not args:
+                return f"{oc} = {self.cpp_type(ot)}()", UNIT
             if m == "push":
                 c, t = self.expr(args[0], ot.elem)
                 return f"{oc}.push({self.coerce(c, t, ot.elem, args[0])})", UNIT
