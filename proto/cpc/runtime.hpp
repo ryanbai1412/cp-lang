@@ -196,6 +196,28 @@ template <class T> struct SegTree {
     }
 };
 
+// StrHash: polynomial hash of every substring, mod 2^61 - 1. Prototype stand-in for std.hash.
+struct StrHash {
+    static constexpr unsigned long long M = (1ULL << 61) - 1;
+    static unsigned long long mul(unsigned long long a, unsigned long long b) {
+        __uint128_t t = (__uint128_t)a * b; unsigned long long r = (unsigned long long)(t & M) + (unsigned long long)(t >> 61);
+        return r >= M ? r - M : r;
+    }
+    vector<unsigned long long> pre, pw;
+    StrHash() {}
+    template <class S> explicit StrHash(const S& s) : pre(s.size() + 1), pw(s.size() + 1, 1) {
+        const unsigned long long B = 0x1f3d5b79a2c4e68ULL % M;
+        for (size_t i = 0; i < s.size(); ++i) {
+            pw[i + 1] = mul(pw[i], B);
+            pre[i + 1] = mul(pre[i], B) + (unsigned long long)(unsigned char)s[i] + 1; if (pre[i + 1] >= M) pre[i + 1] -= M;
+        }
+    }
+    ll of(int l, int r) const {  // inclusive
+        unsigned long long x = pre[r + 1] + M - mul(pre[l], pw[r + 1 - l]);
+        return (ll)(x >= M ? x - M : x);
+    }
+};
+
 static int cp_fn_iters = 1000;
 
 // @part DenseSet
