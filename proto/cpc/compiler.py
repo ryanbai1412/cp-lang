@@ -268,6 +268,19 @@ class Compiler:
                 return TPerm([TDom(pos)], d)
             if nm == "MinHeap":
                 return THeap(self.resolve_type(tn.args[0]))
+            if nm == "Subset":
+                # Subset<D>: the domain of all subsets of a small domain D, stored as a bitmask ordinal
+                d = self.resolve_type(tn.args[0])
+                if not isinstance(d, TDom) or d.info.len_iv[1] is None or d.info.len_iv[1] > 30:
+                    self.error(tn, "Subset<D> needs a domain with at most 30 values")
+                if getattr(d.info, "subsets", None) is None:
+                    b = d.info
+                    w, _, _ = self.new_domain(f"Subset<{b.name}>", "", "", (0, 0), (1, 1 << b.len_iv[1]), anon=True)
+                    w.name, w.subset_of, w.anon = f"Subset<{b.name}>", b, False
+                    w.lo_src, w.hi_src = "0", f"(1LL << {b.len_cpp})"
+                    self.emit(f"{w.cpp}_lo = 0; {w.cpp}_len = 1LL << {b.len_cpp};")
+                    b.subsets = TDom(w)
+                return d.info.subsets
             if nm == "WithMin":
                 d = self.resolve_type(tn.args[0])
                 if not isinstance(d, TDom):
@@ -675,6 +688,10 @@ class Compiler:
             if not isinstance(xt, TInt):
                 self.error(e, f"`in {info.name}` needs an Int, got {xt!r}")
             return f"((ll)({xc}) - {info.lo_cpp} >= 0 && (ll)({xc}) - {info.lo_cpp} < {info.len_cpp})"
+        if isinstance(rt, TDom) and getattr(rt.info, "subset_of", None) is not None:
+            if not (isinstance(xt, TDom) and xt.info is rt.info.subset_of):
+                self.error(e, f"`in` a {rt.info.name} needs a {rt.info.subset_of.name}, got {xt!r}")
+            return f"((({rc}) >> ({xc})) & 1)"
         if isinstance(rt, TRange):
             return f"([&](ll _x, Rng _r){{ return _r.lo <= _x && _x < _r.hi; }}({xc}, {rc}))"
         if isinstance(rt, (TMap, TSet)):
@@ -793,11 +810,18 @@ class Compiler:
                 return "", TType(TDom(self.bounds_of(info)))
             if f == "bottom" and getattr(info, "base", None) is not None:
                 return "0", ot.t
+            if f in ("empty", "full") and getattr(info, "subset_of", None) is not None:
+                return ("0" if f == "empty" else f"(int)({info.len_cpp} - 1)"), ot.t
             if f == "all":
                 return f"Rng{{0, (ll){info.len_cpp}}}", TRange(ot.t)
             self.error(e, f"{info.name} has no `.{f}`")
         if isinstance(ot, TDom):
             info = ot.info
+            if getattr(info, "subset_of", None) is not None:
+                if f == "len":
+                    return f"(ll)__builtin_popcount({oc})", TInt(0, info.subset_of.len_iv[1])
+                if f == "is_empty":
+                    return f"(({oc}) == 0)", BOOL
             if f == "mirror":
                 return f"((int)({info.len_cpp}) - 1 - ({oc}))", ot
             if f in ("ord", "idx"):
@@ -878,13 +902,27 @@ class Compiler:
                 self.error(e, "abs needs Int")
             m = None if None in (t.lo, t.hi) else max(abs(t.lo), abs(t.hi))
             return f"llabs({c})", TInt(0 if m is not None else None, m)
-        if fn.kind == "name" and fn.name == "sorted" and not self.lookup("sorted"):
+        if fn.kind == "name" and fn.name in ("sorted", "sort") and not self.lookup(fn.name):
+            # sort(xs) / sort(xs, by: key) in place; sorted(...) returns a sorted copy
             c, t = self.expr(e.args[0])
             if not isinstance(t, (TList, TArr)) or (isinstance(t, TArr) and len(t.dims) != 1):
-                self.error(e, "sorted needs a list or 1-D array")
+                self.error(e, f"{fn.name} needs a list or 1-D array")
             et = t.elem
+            ec = self.cpp_type(et)
+            by = [a for a in e.args[1:] if a.kind == "kwarg" and a.name == "by"]
+            if len(e.args) > 1 and len(by) != len(e.args) - 1:
+                self.error(e, f"{fn.name}(xs) or {fn.name}(xs, by: x => key)")
+            cmp = ""
+            if by:
+                pn, kc, kt = self.lambda_key(by[0].value, et)
+                cmp = (f", [&](const {ec}& A, const {ec}& B) {{ auto _key = [&](const {ec}& {pn}) {{ return {kc}; }}; "
+                       f"return _key(A) < _key(B); }}")
+            algo = "stable_sort" if by else "sort"
+            if fn.name == "sort":
+                return f"{algo}({c}.begin(), {c}.end(){cmp})", UNIT
             tmp = self.tmpname("s")
-            return f"([&]{{ vector<{self.cpp_type(et)}> {tmp}({c}.begin(), {c}.end()); sort({tmp}.begin(), {tmp}.end()); return {tmp}; }}())", (t if isinstance(t, TArr) else TList(et))
+            return (f"([&]{{ auto&& _src = {c}; vector<{ec}> {tmp}(_src.begin(), _src.end()); {algo}({tmp}.begin(), {tmp}.end(){cmp}); "
+                    f"return {tmp}; }}())"), (t if isinstance(t, TArr) and not by else TList(et))
         if fn.kind == "name" and fn.name == "dijkstra" and not self.lookup("dijkstra"):
             gc, gt = self.expr(e.args[0])
             ok = (isinstance(gt, TArr) and len(gt.dims) == 1 and isinstance(gt.elem, TList)
@@ -1014,6 +1052,15 @@ class Compiler:
                 self.note_check(e, f"`{unparse(args[0])}` is {what} of {info.name}")
                 return f"chk_dom({c}, {info.len_cpp}, {e.line})", ot.t
             return f"([&](ll _k){{ return _k >= 0 && _k < {info.len_cpp} ? Opt<int>((int)_k) : Opt<int>(); }}({c}))", TOpt(ot.t)
+        sub = ot.t if isinstance(ot, TType) else ot
+        if isinstance(sub, TDom) and getattr(sub.info, "subset_of", None) is not None and m in ("with", "without", "of"):
+            el = TDom(sub.info.subset_of)
+            c, t = self.expr(args[0], el)
+            if t != el:
+                self.error(e, f"{m} needs a {el!r}, got {t!r}")
+            if m == "of":
+                return f"(1 << ({c}))", sub
+            return (f"(({oc}) | (1 << ({c})))" if m == "with" else f"(({oc}) & ~(1 << ({c})))"), sub
         if isinstance(ot, (TMap, TSet)):
             kt = ot.key if isinstance(ot, TMap) else ot.elem
             def key(a):
@@ -1038,8 +1085,9 @@ class Compiler:
                 c, t = self.expr(args[0], ot.elem)
                 return f"{oc}.push_back({self.coerce(c, t, ot.elem, args[0])})", UNIT
             if m == "pop":
-                self.note_check(e, "pop from a non-empty list")
-                return f"cp_pop({oc}, {e.line})", ot.elem
+                # same shape as heap.pop(): ?T, so `while let u = stack.pop()` drains a list
+                oc_t = self.cpp_type(TOpt(ot.elem))
+                return f"([&]{{ if ({oc}.empty()) return {oc_t}(); auto _v = {oc}.back(); {oc}.pop_back(); return {oc_t}(_v); }}())", TOpt(ot.elem)
             if m == "last":
                 return f"({oc}.empty() ? {self.cpp_type(TOpt(ot.elem))}() : {self.cpp_type(TOpt(ot.elem))}({oc}.back()))", TOpt(ot.elem)
             if m == "sort":
@@ -1192,6 +1240,11 @@ class Compiler:
                 self.emit("} }")
                 self.scopes.pop()
                 return
+            elif isinstance(t, TDom) and getattr(t.info, "subset_of", None) is not None:
+                v = self.fresh(pat.name if pat.kind == "pname" else "i")
+                m_ = self.tmpname("m")
+                self.emit(f"for (int {m_} = {c}; {m_}; {m_} &= {m_} - 1) {{ int {v} = __builtin_ctz({m_});")
+                self.scopes[-1][pat.name] = Sym("let", TDom(t.info.subset_of), v, node=pat)
             elif isinstance(t, (TMap, TSet)):
                 v = self.tmpname("x")
                 self.emit(f"for (const auto& {v} : {c}) {{")
@@ -1367,9 +1420,12 @@ class Compiler:
                 else:
                     self.emit(f"if ({cond}) return {val};")
             else:
-                if isinstance(t, TOpt):
-                    self.error(e, f"{name} over ?T values; filter with `if let`")
                 cmp = "<" if name == "min" else ">"
+                if isinstance(t, TOpt):
+                    # min/max skip `none` elements (none = "no value here"), result is ?T
+                    box["t"], box["opt"] = t.inner, True
+                    self.emit(f"{{ auto _o = {c}; if (_o.has() && (!{acc}.has() || _o.get() {cmp} {acc}.get())) {acc} = _o; }}")
+                    return
                 self.emit(f"{{ auto _v = {c}; if (!{acc}.has() || _v {cmp} {acc}.get()) {acc} = decltype({acc})(_v); }}")
         early = name in ("any", "all")
         if early:
@@ -1404,7 +1460,7 @@ class Compiler:
             init = "0" if name == "sum" else "1"
             return f"([&]() {{ {self.cpp_type(rt)} {acc} = {init};\n{body}\n return {acc}; }}())", rt
         rt = t if not is_int(t) else TInt(t.lo, t.hi)
-        nonempty = not has_filter and self.nonempty(clauses)
+        nonempty = not has_filter and not box.get("opt") and self.nonempty(clauses)
         ot = TOpt(rt)
         expr = f"([&]() {{ {self.cpp_type(ot)} {acc};\n{body}\n return {acc}; }}())"
         if nonempty:
@@ -1906,7 +1962,7 @@ class Compiler:
 
     def lambda_key(self, lam, et):
         if lam.kind != "lambda" or len(lam.params) != 1:
-            self.error(lam, "expected a one-parameter lambda `|x| ...`")
+            self.error(lam, "expected a one-parameter lambda `x => ...`")
         self.scopes.append({})
         pn = self.fresh("x")
         self.bind_lambda_param(lam.params[0], pn, et, lam)
