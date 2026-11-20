@@ -2,12 +2,12 @@ A fast algorithm is only half the contest loop. Before submitting, you want a sl
 
 ## Co-located `@brute`
 
-Attach `@brute(main)` (or `@brute(fn_name)` to target one helper) directly inside your `.cp` file. The brute sees the same top-level `let` inputs in both single-test and `@!multitest` files, and `cpl build` strips `@brute` completely from judge submissions:
+Attach `@brute(main)` (or `@brute(fn_name)` to target one helper) directly inside your `.cp` file. The brute sees the same top-level `let` inputs in both single-test and `@!multitest` files, and `cpl build` omits `@brute` from the executable C++17 body (the original `.cp` source remains in the default comment header):
 
 ```example colocated_brute
 ```
 
-Run the fast prefix-minimum solution above in the sandbox, or click **C++17** to verify that `@brute(main)` is stripped from the generated submission code.
+Run the fast prefix-minimum solution above in the sandbox, or inspect **C++17** to see that `slow()` is omitted from the executable C++ body (while the original `.cp` source remains in the header comment).
 
 ```exercise verify-brute-output
 ```
