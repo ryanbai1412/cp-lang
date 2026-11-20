@@ -22,7 +22,7 @@ const INF = 1000000000
 // dp[lo, hi, k]: rectangles to cover the points in lo..hi lying above height[k]
 var dp: [P.bounds, P.bounds, H]Int = [P.bounds, P.bounds, H] (a, b, _) => if a == b: 0 else: INF
 for l in P.rev:
-    for r in l..=P.last:
+    for r in l..:
         let lo = l.l
         let hi = r.r
         for k in H.rev:

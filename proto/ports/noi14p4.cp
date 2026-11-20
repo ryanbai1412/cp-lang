@@ -14,19 +14,23 @@ fn solve():
     // p has, counting p itself (the border chain p, border[p], ...)
     var border: [Len]Len = Len.first
     var depth: [Len]Int = 0
+
+    // p is a border of the prefix that ends before i. The longest border of
+    // the prefix that ends after i: p or one of p's borders, grown by s[i].
+    fn grow(p: Len, i: S) -> Len:
+        var b = p
+        while b != Len.first and s[b.right!] != s[i]: b = border[b]
+        if s[b.right!] == s[i]: (b + 1)! else: b
+
     var half = Len.first                    // longest border of the prefix that fits in half of it
     var answer = Z(1)
     for i in S:
         let p = i.r
         depth[p] = 1
-        if p.idx >= 2:
-            var b = border[i.l]
-            while b.idx > 0 and s[S(b.idx)] != s[i]: b = border[b]
-            if s[S(b.idx)] == s[i]: b = Len(b.idx + 1)
-            border[p] = b
-            depth[p] = depth[b] + 1
-        while half.idx > 0 and s[S(half.idx)] != s[i]: half = border[half]
-        if p.idx >= 2 and s[S(half.idx)] == s[i]: half = Len(half.idx + 1)
+        if i != S.first:
+            border[p] = grow(border[i.l], i)
+            depth[p] = depth[border[p]] + 1
+            half = grow(half, i)
         while half.idx * 2 > p.idx: half = border[half]
         answer *= Z(depth[half] + 1)
     print(answer)

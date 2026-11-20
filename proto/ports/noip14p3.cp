@@ -39,9 +39,9 @@ fn fly():
         var next: [H]?Int = none
         for h in H:                         // upward, so several taps chain
             if let t = min(t for t in [taps[h], next[h]]):
-                next[H(min(h.label + up, m))] min= t + 1
+                next[h + up ?? H.last] min= t + 1
         for h in H:
-            if let t = taps[h] and h.label > down: next[H(h.label - down)] min= t
+            if let t = taps[h] and let low = h - down: next[low] min= t
         taps = next
     if let best = min(taps[h] for h in H):
         print(1)

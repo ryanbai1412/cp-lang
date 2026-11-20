@@ -7,7 +7,7 @@ fn go(i: V):
     a[i] += 1
     seen[i] = true
     if i != V.last:
-        go(i + 1)
+        go((i + 1)!)
 go(V.first)
 for v in V:
     if seen[v]: go(v)

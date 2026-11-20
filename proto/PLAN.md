@@ -274,6 +274,12 @@ INDEX + LENDS (plan/19-index-and-lends.md, approved 2026-11-20). cpc/lends.py = 
 - Checks: args of one call lent together (check_args); `let part = a[s]` holds `a` until the last
   statement naming `part`; views can't be var/assigned/pushed/stored/returned.
 - Tests: tests/lend/*.cp + .in + .out (run), tests/bad/*.cp with `// error: text` on line 1 (message locked).
+- Ergonomics audit (research/ergonomics-audit.md), tests in tests/ergo/*.cp + .in + .out:
+  open ranges `..i` `..=i` `i..` (a boundary may end a range), `span(a, b)`, `r.prefix(k)` / `r.suffix(k)`;
+  `i + k` / `i - k` -> ?I (cp_step), `b.left` / `b.right`, `if let a = x and let b = y`;
+  `Counter<K>` / `counts(xs)` / `.distinct`, `prefix(a)` + `pre.sum(range[, range])`, `hash.of(range)`;
+  `x f= y` == `x = f(x, y)`; `[domain S]Letter = read()`; code after `lend` (write-back, `<proj>_after`);
+  a fn declared in a top-level loop or `if` is a closure.
 - Char/Str: ASCII only, lexer rejects non-ASCII in literals. `/` and `%` are Euclidean (cp_ediv/cp_emod,
   native when a >= 0 and b > 0 are proven).
 - Red-team pass (plan/19 section 5.6, cases 11-23; tests/redteam/*.cp + .in + .out, run under ASan/UBSan

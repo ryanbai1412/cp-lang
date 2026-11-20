@@ -15,5 +15,5 @@ fn solve():
         if not payable[Amount(c)]:
             needed += 1
             for a in Amount:
-                if a.idx >= c and payable[a - c]: payable[a] = true
+                if let b = a - c and payable[b]: payable[a] = true
     print(needed)

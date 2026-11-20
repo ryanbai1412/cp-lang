@@ -327,11 +327,15 @@ class Parser:
             op = self.next().val
             rhs = self.expr()
             return N("assign", line, target=e, op=op, value=rhs)
-        if self.t.kind == "NAME" and self.t.val in ("min", "max") and self.peek().kind == "OP" and self.peek().val == "=":
-            op = self.next().val + "="
+        if self.t.kind == "NAME" and self.peek().kind == "OP" and self.peek().val == "=":
+            # `x f= y` is `x = f(x, y)` for any two-argument fn: `best min= d`, `a[i] lcm= x`, `g gcd= v`
+            f = self.next().val
             self.next()
             rhs = self.expr()
-            return N("assign", line, target=e, op=op, value=rhs)
+            if f in ("min", "max"):
+                return N("assign", line, target=e, op=f + "=", value=rhs)
+            call = N("call", line, fn=N("name", line, name=f), args=[e, rhs])
+            return N("assign", line, target=e, op="=", value=call)
         return N("exprstmt", line, expr=e)
 
     def pattern(self, bare=True):
@@ -483,12 +487,23 @@ class Parser:
                 self.next()
                 e = N("binop", line, op="??", a=e, b=self.not_())
             extra = None
-            if self.at("and"):
+            more = []                   # `if let a = x and let b = y`: every binding must be there
+            while self.at("and"):
                 self.next()
-                extra = self.expr()
+                if not self.at("let"):
+                    extra = self.expr()
+                    break
+                self.next()
+                p2 = self.pattern()
+                self.expect("=")
+                e2 = self.not_()
+                if self.at("??"):
+                    self.next()
+                    e2 = N("binop", line, op="??", a=e2, b=self.not_())
+                more.append((p2, e2))
             body = self.block()
             els = self.else_part()
-            return N("iflet", line, pat=pat, value=e, extra=extra, body=body, orelse=els)
+            return N("iflet", line, pat=pat, value=e, extra=extra, more=more, body=body, orelse=els)
         c = self.expr()
         body = self.block()
         els = self.else_part()
@@ -685,6 +700,11 @@ class Parser:
         return N("cmp", e.line, first=e, ops=ops, rest=rest)
 
     def range_expr(self):
+        if self.at("..", "..="):
+            # `..i`, `..=i`: everything up to i; the range's type comes from i
+            line = self.t.line
+            incl = self.next().val == "..="
+            return N("range", line, lo=None, hi=self.bitor(), incl=incl)
         e = self.bitor()
         if self.at("..", "..="):
             line = self.t.line

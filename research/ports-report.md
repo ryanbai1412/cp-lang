@@ -6,12 +6,13 @@ prototype, and all 30 agree with their original on every generated input
 that satisfies the port's declared preconditions. What the ports taught us
 about the language is in [`friction.md`](friction.md).
 
-The 30 ports total 785 lines against 2588 lines of original C++, a raw
+The 30 ports total 764 lines against 2588 lines of original C++, a raw
 reduction of 70%. Against the originals with everything a perfect C++
 contest library would have supplied removed (1289 lines), the reduction is
-39%. Those figures count the whole port, including 70 lines of test
+41%. Those figures count the whole port, including 70 lines of test
 generators and precondition helpers that the originals do not have; without
-them the reductions are 72% and 45%.
+them the reductions are 73% and 46%. (Before the rewrites of
+[`ergonomics-audit.md`](ergonomics-audit.md) the ports were 785 lines.)
 
 ## Where things are
 
@@ -91,22 +92,22 @@ enum and a `match` where the original has one `if`/`else`. The smallest wins are
 | `btoi17p3` | `4456180.cpp` | trees (LCA) | 29 | 141 | 79% | 84 | 65% | yes | 200 random inputs agree |
 | `btoi17p6` | `4456183.cpp` | trees, greedy | 16 | 71 | 77% | 40 | 60% | yes | 200 random inputs agree |
 | `btoi18p6` | `4456176.cpp` | graphs, bitmask DP | 19 | 74 | 74% | 40 | 52% | yes | 200 random inputs agree |
-| `ccc20s3` | `4323643.cpp` | strings (hashing) | 19 | 109 | 83% | 29 | 34% | yes | 200 random inputs agree |
+| `ccc20s3` | `4323643.cpp` | strings (hashing) | 11 | 109 | 90% | 29 | 62% | yes | 200 random inputs agree |
 | `ccc21s2` (earlier round) | `4323443.cpp` | implementation | 21 | 54 | 61% | 19 | -11% | yes | 200 random inputs agree |
 | `ccc21s5` | `4323513.cpp` | segment tree, math | 21 | 95 | 78% | 44 | 52% | yes | 128 random inputs agree (72 more rejected by the `where` precondition) |
 | `ccc23s4` (earlier round) | `5350808.cpp` | graphs (Dijkstra) | 20 | 109 | 82% | 32 | 38% | yes | 200 random inputs agree |
 | `cco16p2` | `5566900.cpp` | geometry | 31 | 114 | 73% | 51 | 39% | yes | 139 random inputs agree (61 more rejected by the `where` precondition) |
 | `cco24p1` | `6435479.cpp` | graphs (shortest paths) | 19 | 74 | 74% | 42 | 55% | yes | 200 random inputs agree |
 | `ceoi09p3` (earlier round) | `4827241.cpp` | DP | 29 | 80 | 64% | 49 | 41% | yes | 200 random inputs agree |
-| `ceoi18p1` | `5323668.cpp` | DP (knapsack) | 19 | 68 | 72% | 37 | 49% | yes | 200 random inputs agree |
-| `coci13c1p3` | `5245417.cpp` | 2-D prefix sums | 24 | 87 | 72% | 35 | 31% | yes | 200 random inputs agree |
+| `ceoi18p1` | `5323668.cpp` | DP (knapsack) | 18 | 68 | 74% | 37 | 51% | yes | 200 random inputs agree |
+| `coci13c1p3` | `5245417.cpp` | 2-D prefix sums | 14 | 87 | 84% | 35 | 60% | yes | 200 random inputs agree |
 | `coci20c6p3` | `4188081.cpp` | DP, math/mod, strings | 29 | 89 | 67% | 41 | 29% | yes | 200 random inputs agree |
 | `dmopc21c2p1` | `3946478.cpp` | greedy, sorting | 14 | 58 | 76% | 21 | 33% | yes | 200 random inputs agree |
 | `dmopc21c9p4` (earlier round) | `4565958.cpp` | grids, game | 49 | 97 | 49% | 66 | 26% | yes | 200 random inputs agree |
 | `ioi05p6` (earlier round) | `5032744.cpp` | tree DP | 41 | 78 | 47% | 47 | 13% | yes | 200 random inputs agree |
 | `mccc4j5` (earlier round) | `4264954.cpp` | graphs (heap) | 20 | 73 | 73% | 36 | 44% | yes | 200 random inputs agree |
 | `nccc10s2` (earlier round) | `4214203.cpp` | graphs, memo DP | 12 | 78 | 85% | 43 | 72% | yes | 200 random inputs agree |
-| `noi01p5` (earlier round) | `5079272.cpp` | meet in the middle, hashing | 17 | 103 | 83% | 29 | 41% | yes | 200 random inputs agree |
+| `noi01p5` (earlier round) | `5079272.cpp` | meet in the middle, hashing | 15 | 103 | 85% | 29 | 48% | yes | 200 random inputs agree |
 | `noi02p1` (earlier round) | `4793930.cpp` | union-find | 37 | 69 | 46% | 28 | -32% | yes | 200 random inputs agree |
 | `noi14p4` | `3821774.cpp` | strings (KMP), multitest | 24 | 88 | 73% | 69 | 65% | yes | 200 random inputs agree |
 | `noi16p4` | `4791678.cpp` | segment tree, two pointers | 29 | 98 | 70% | 30 | 3% | yes | 200 random inputs agree |

@@ -216,9 +216,11 @@ domain's name.
 `to_idx` returns `0..K` and `Bounds<Self>.K` is `K + 1`: the range checker
 proves it, with no trusted code.
 
-`v + 1` is still an error (2.9), now for the plainest reason: `V` has no
-`impl Add`. The help text (`v.next`, `v.offset(1)`, `v.cyc(1)`) is attached
-to `Seq` with the existing "did you mean" hook for a missing operator.
+`v + 1` was an error here (2.9), for the plainest reason: `V` has no
+`impl Add`. The ergonomics audit leans the other way (decisions.md §11):
+`Seq` provides `impl Add<Int>` whose result is `?V`, the body of
+`v.offset(k)`, so a step that leaves the domain is `none` and never a
+position outside it.
 
 **The `domain` line stays.** `domain V = 1..=n` is the declaration people
 write dozens of times, so it keeps its one-line spelling (G16). It is
@@ -1277,9 +1279,13 @@ not of the design:
   `Indexed` are not written in `.cp`, because the prototype has no traits
   or generic structs. Step 1 of §9 is therefore still to do.
 - A projection is emitted as a C++ function returning the lent place by
-  reference, which is what inlining the callback of §3.4 produces. Its
-  `lend` must be the last statement, so there is no code after the lend
-  (write-back) yet, and free fns can't be projections.
+  reference, which is what inlining the callback of §3.4 produces. Code
+  after the `lend` (write-back) is emitted as a second function that runs
+  when the statement using the place ends, so it sees `self` and the
+  parameters but not locals declared before the `lend`, and such a
+  projection can be used in an assignment, a `let` or a call statement
+  only (`tests/lend/writeback.cp`). The `lend` must be a statement of the
+  body itself, and free fns can't be projections.
 - A user `Index` type pays one bounds check per index unless `to_idx`'s
   result range proves it; the real checker proves it from `0..K`.
 - Indexing a slice by a position always checks the window; the "proven

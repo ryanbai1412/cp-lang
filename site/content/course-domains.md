@@ -110,13 +110,13 @@ A window that would run past the edge is an error, not a silent read of garbage.
 
 ## Moving between positions
 
-A position is not an integer, so the approved design rejects `v + 1`: there is no meaningful "position plus number" until you say what should happen at the edge. Say it with a method instead:
+A position is not an integer, so `v + 1` is not another position: there is no meaningful "position plus number" until you say what should happen at the edge. Every step that can leave the domain therefore gives an optional:
 
 - `v.next` and `v.prev` step to a neighbor. At the last or first element they have nothing to return, so use them with `if let` (the [optional example](tour.html#missing-is-a-value) shows the pattern).
-- `v.offset(d)` jumps `d` positions in either direction and also returns an optional, so the edge case is visible at the call site.
+- `v + d` and `v - d` (or `v.offset(d)`, the same step by name) jump `d` positions and also return an optional, so the edge case is visible at the call site: `if let u = v - d`, `v + d ?? V.last`, or `(v + 1)!` when it cannot fail.
 - `v.cyc(k)` wraps around, for circular arrays. It is approved design; the prototype does not implement it yet.
 
-One honest caveat: the prototype currently still accepts `v + 1` on a domain value. Do not rely on it; the approved rule is that it is an error whose message suggests `.next`, `.offset(1)`, or `.cyc(1)`.
+One honest caveat: the optional `v + d` is a proposal from the [ergonomics audit](https://github.com/ryanbai1412/cp-lang/blob/main/research/ergonomics-audit.md) that the prototype implements; the earlier approved rule made `v + 1` an error and offered only `.offset`. Either way, indexing with an unhandled step is a compile error.
 
 ## Common mistakes
 
