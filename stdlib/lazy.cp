@@ -86,8 +86,16 @@ pub struct LazySegTree<D, T, F>(m: Monoid<T>, act: Action<T, F>):
             if ((l0 >> i) << i) != l0: self.pull(l0 >> i)
             if ((h0 >> i) << i) != h0: self.pull((h0 - 1) >> i)
 
-/// Range add, range max.
-pub const AddMax = Action<Int, Int>(id: 0, compose: (f, g) => f + g, apply: (f, x) => if x == Int.MIN: x else: x + f)
+/// Maximum over `?Int`, where `none` is "no value": the identity, and the
+/// fold of an empty range. `?Int` is 8 bytes, the same as `Int`.
+pub const MaxOpt = Monoid<?Int>(id: none, op: (a, b) => if a == none: b else: if b == none: a else: max(a!, b!))
+
+/// Range add, range max, over `MaxOpt`. A `none` cell stays `none` under
+/// every add, so it works as "minus infinity" or "switched off". The empty
+/// value is outside `Int` on purpose: with `Int.MIN` as the marker, a sum
+/// that lands exactly on it would be taken for empty and the next add
+/// dropped, which breaks `composes` at `Int.MIN + 1`.
+pub const AddMax = Action<?Int, Int>(id: 0, compose: (f, g) => f + g, apply: (f, x) => if x == none: none else: x! + f)
 
 /// Range add over `(sum, len)` pairs, for range add with range sum.
 pub const AddSum = Action<(Int, Int), Int>(id: 0, compose: (f, g) => f + g, apply: (f, x) => (x.0 + f * x.1, x.1))
@@ -102,7 +110,7 @@ pub const SumLen = Monoid<(Int, Int)>(id: (0, 0), op: (a, b) => (a.0 + b.0, a.1 
 fn range_add_range_max_matches_brute_force():
     domain V = 1..=10
     var a = [V] v => rand(-9, 9)
-    var st = LazySegTree<V, Int, Int>.from(Max<Int>, AddMax, a)
+    var st = LazySegTree<V, ?Int, Int>.from(MaxOpt, AddMax, [V] v => a[v])
     for _ in 0..80:
         let l = V.nth(rand(0, 9))
         let r = V.nth(rand(l.to_idx, 9))
@@ -143,6 +151,21 @@ fn range_assign_range_sum_matches_brute_force():
 
 @test
 fn stock_actions_obey_their_laws():
-    assert laws_hold(AddMax, T: [Int.MIN, -3, 0, 8], F: [-4, 0, 6])
+    assert laws_hold(AddMax, T: [none, -3, 0, 8], F: [-4, 0, 6])
+    assert laws_hold(MaxOpt, [none, Int.MIN, -3, 0, 8])
     assert laws_hold(AddSum, T: [(0, 0), (5, 2), (-1, 3)], F: [-4, 0, 6])
     assert laws_hold(SumLen, [(0, 0), (5, 2), (-1, 3)])
+
+@test
+fn add_on_max_composes_at_the_bottom_of_int():
+    // A sum may land on Int.MIN: it is a value like any other, not "empty".
+    let low: ?Int = Int.MIN + 1
+    assert AddMax.apply(-1, low) == Int.MIN
+    assert AddMax.apply(1, AddMax.apply(-1, low)) == AddMax.apply(AddMax.compose(1, -1), low)
+    assert AddMax.apply(5, none) == none
+    domain V = 0..3
+    var st = LazySegTree<V, ?Int, Int>.from(MaxOpt, AddMax, [V] v => Int.MIN + 1)
+    st.apply(V(0)..=V(2), -1)
+    st.apply(V(0)..=V(1), 1)
+    assert st.fold(V(0)..=V(2)) == Int.MIN + 1 and st.get(V(2)) == Int.MIN
+    assert st.fold(V(1)..V(1)) == none

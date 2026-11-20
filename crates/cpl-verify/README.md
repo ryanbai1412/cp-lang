@@ -63,8 +63,9 @@ For each runtime error the toolchain promises to catch, every seed also
 gets a variant that must stop with a nonzero exit code and no sanitizer
 report. All three kinds are on by default (`overflow`, `div-by-zero`,
 `index`); `--traps index` narrows it for a toolchain that only promises
-some. The overflow variants include the minimum Int, where `-x`,
-`abs(x)` and `x / -1` are the operations that leave `Int`.
+some. The overflow variants include the 64-bit minimum `-2^63`, the one
+pattern below `Int.MIN`, where `-x`, `abs(x)` and `x / -1` do not fit;
+for every `Int`, `Int.MIN` included, all three are exact.
 
 ### Plugging in the Rust compiler
 

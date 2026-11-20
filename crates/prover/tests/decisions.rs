@@ -68,6 +68,38 @@ fn division_is_euclidean_for_every_sign() {
 }
 
 #[test]
+fn division_never_leaves_int() {
+    // 1.1 makes Int symmetric, so the quotient by -1 is a negation that
+    // fits: Int.MIN / -1 is Int.MAX. Only a zero divisor stops the program.
+    let mut ctx = Context::new();
+    ctx.var("a", "Int").unwrap();
+    ctx.var("b", "Int").unwrap();
+    assert!(ctx
+        .prove("Int.MIN / -1 == Int.MAX and Int.MIN % -1 == 0 and a / -1 == -a and a % -1 == 0")
+        .unwrap()
+        .is_proved());
+    assert!(ctx
+        .prove("Int.MAX / Int.MIN == -1 and Int.MAX % Int.MIN == 0 and -1 / Int.MIN == 1 and -1 % Int.MIN == Int.MAX - 1")
+        .unwrap()
+        .is_proved());
+    assert!(ctx
+        .check_overflow("a / -1 + a % -1")
+        .unwrap()
+        .iter()
+        .all(|f| f.trouble != Trouble::Overflow || f.verdict.is_proved()));
+    ctx.assume("b != 0").unwrap();
+    assert!(ctx
+        .prove("Int.MIN <= a / b and a / b <= Int.MAX and abs(a / b) <= abs(a)")
+        .unwrap()
+        .is_proved());
+    let traps = ctx.check_traps("a / b + a % b").unwrap();
+    assert!(traps
+        .iter()
+        .filter(|f| f.trouble == Trouble::DivisionByZero)
+        .all(|f| f.verdict.is_proved()));
+}
+
+#[test]
 fn a_proved_sign_selects_the_native_operator() {
     // "When the range checker proves a >= 0 and b > 0, both lower to the native / and %."
     let mut ctx = Context::new();

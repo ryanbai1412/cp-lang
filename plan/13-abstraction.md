@@ -214,11 +214,17 @@ pub struct Monoid<T>(id: T, op: (T, T) -> T):
 **Errors.**
 ```
 fntest: Monoid `best` breaks law assoc
-  a = (sum: 1, pre: 5), b = (sum: -2, pre: 0), c = (sum: 3, pre: 3)
-  op(op(a, b), c) = (sum: 2, pre: 5)   op(a, op(b, c)) = (sum: 2, pre: 4)
-  --> d.cp:12  op: (x, y) => (sum: x.sum + y.sum, pre: max(x.pre, y.pre))
+  a = (sum: 0, pre: 0), b = (sum: 0, pre: 0), c = (sum: 1, pre: 0)
+  op(op(a, b), c) = (sum: 1, pre: 1)   op(a, op(b, c)) = (sum: 1, pre: 2)
+  --> d.cp:12  op: (x, y) => (sum: x.sum + y.sum, pre: max(x.pre, y.sum + y.pre))
 help: pre should be max(x.pre, x.sum + y.pre)
 ```
+
+Not every wrong `op` breaks a law. Dropping the left sum altogether,
+`pre: max(x.pre, y.pre)`, is associative: it is the pair (sum, max), a
+correct monoid that answers a different question. Laws catch an
+operation that is not the kind of thing the structure needs; a brute
+force (`spec`) catches one that is the wrong member of that kind.
 
 **Open.** Laws for `Action` (distributivity over the monoid) need values
 of three types at once; fine for `Gen`, but the error format needs work.

@@ -3,7 +3,7 @@ use std.algebra.{Sum, Max, Min, Monoid}
 use std.dsu.{Dsu}
 use std.fenwick.{Fenwick}
 use std.segtree.{SegTree}
-use std.lazy.{LazySegTree, AddMax}
+use std.lazy.{LazySegTree, AddMax, MaxOpt}
 use std.sparse.{SparseTable}
 use std.graph.{Graph, dijkstra, scc}
 use std.flow.{FlowGraph}
@@ -47,7 +47,7 @@ fn ranges_and_boundaries():
     assert f.fold(I(1)..=I(3)) == 2 + 3 + 4
     assert f.fold(I(1)..I(3)) == 2 + 3
     assert f.prefix(I(3).l) == 1 + 2 + 3 and f.prefix(I(3).r) == 1 + 2 + 3 + 4
-    var lz = LazySegTree<I, Int, Int>.from(Max<Int>, AddMax, [I] i => 0)
+    var lz = LazySegTree<I, ?Int, Int>.from(MaxOpt, AddMax, [I] i => 0)
     lz.apply(I(2)..=I(4), 10)
     lz.apply(I(4)..=I(5), 1)
     assert lz.fold(I(0)..=I(5)) == 11 and lz.fold(I(0)..=I(1)) == 0
