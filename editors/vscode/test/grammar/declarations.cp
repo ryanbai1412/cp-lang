@@ -1,4 +1,4 @@
-// SYNTAX TEST "source.cp" "declarations, decorators and imports"
+// SYNTAX TEST "source.cp" "CP Lang v2.1 declarations, decorators and imports"
 
 use std.graph
 // <--- keyword.control.import.cp
@@ -19,34 +19,58 @@ use lib.graph.flow as fl // alias
 use std.segtree.*
 //              ^ keyword.operator.glob.cp
 
-@multitest(sum: n <= 2e5)
+@multitest
 // <- punctuation.definition.decorator.cp
 // <~--------- entity.name.function.decorator.cp
-//         ^^^ variable.parameter.label.cp
-//                ^^ keyword.operator.comparison.cp
-//                   ^^^ constant.numeric.integer.decimal.cp
 
-@sample("3\n1 2 3\n", "6\n")
-// <~------ entity.name.function.decorator.cp
-//       ^ string.quoted.double.cp
-//               ^^ constant.character.escape.cp
-
-@memo
+@memo(flat)
 // <- punctuation.definition.decorator.cp
 // <~---- meta.decorator.cp entity.name.function.decorator.cp
 
-@brute(count_brute)
+@brute(main)
 // <~----- entity.name.function.decorator.cp
-//     ^^^^^^^^^^^ - entity.name.function
+//     ^^^^ - entity.name.function
 
-fn dijkstra(src: V) -> [V]?Int:
+@grader const N: 0..=2000
+// <~------ entity.name.function.decorator.cp
+//      ^^^^^ storage.modifier.const.cp
+//            ^ variable.other.constant.cp
+//                ^^^ keyword.operator.range.cp
+
+@grader fn restore(n: Int) -> Int:
+// <~------ entity.name.function.decorator.cp
+//      ^^ storage.type.function.cp
+//         ^^^^^^^ entity.name.function.cp
+//                 ^ variable.parameter.label.cp
+
+@checker fn check():
+// <~------- entity.name.function.decorator.cp
+//       ^^ storage.type.function.cp
+//          ^^^^^ entity.name.function.cp
+
+@interactor fn judge():
+// <~---------- entity.name.function.decorator.cp
+//          ^^ storage.type.function.cp
+//             ^^^^^ entity.name.function.cp
+
+@gen fn make_case(size: Int):
+// <~--- entity.name.function.decorator.cp
+//   ^^ storage.type.function.cp
+//      ^^^^^^^^^ entity.name.function.cp
+
+@tags('.', '*', '1'..='9')
+// <~---- entity.name.function.decorator.cp
+//    ^^^ string.quoted.single.char.cp
+//                 ^^^ keyword.operator.range.cp
+
+fn solve_dist(src: V) -> [V]?Int:
 // <-- storage.type.function.cp
-// ^^^^^^^^ entity.name.function.cp
-//          ^^^ variable.parameter.label.cp
-//               ^ entity.name.type.cp
-//                  ^^ keyword.operator.arrow.cp
-//                        ^ keyword.operator.optional.cp
-//                         ^^^ support.type.builtin.cp
+// ^^^^^^^^^^ entity.name.function.cp
+//            ^^^ variable.parameter.label.cp
+//                 ^ entity.name.type.cp
+//                    ^^ keyword.operator.arrow.cp
+//                          ^ keyword.operator.optional.cp
+//                           ^^^ support.type.builtin.cp
 
 fn sq(x: Int) -> Int = x * x
 // ^^ entity.name.function.cp
@@ -54,28 +78,22 @@ fn sq(x: Int) -> Int = x * x
 //                   ^ keyword.operator.assignment.cp
 //                       ^ keyword.operator.arithmetic.cp
 
-pub fn link(mut g: Dsu, r: Road; strict: Bool = false):
+pub fn link(mut g: Dsu<V>, r: Road; strict: Bool = false):
 // <--- storage.modifier.pub.cp
 //     ^^^^ entity.name.function.cp
 //          ^^^ storage.modifier.mut.cp
 //              ^ variable.parameter.label.cp
-//                 ^^^ entity.name.type.cp
-//                      ^ variable.parameter.label.cp
-//                               ^^^^^^ variable.parameter.label.cp
-//                                       ^^^^ support.type.builtin.cp
+//                 ^^^ support.type.stdlib.cp
+//                    ^ punctuation.definition.generic.begin.cp
+//                      ^ punctuation.definition.generic.end.cp
+//                         ^ variable.parameter.label.cp
+//                                  ^^^^^^ variable.parameter.label.cp
+//                                          ^^^^ support.type.builtin.cp
 
-@local fn dump(g: Graph<V>) = print(g)
-// <~----- entity.name.function.decorator.cp
-//     ^^ storage.type.function.cp
-//        ^^^^ entity.name.function.cp
-//                ^^^^^ entity.name.type.cp
-//                     ^ punctuation.definition.generic.begin.cp
-//                       ^ punctuation.definition.generic.end.cp
-//                          ^ keyword.operator.assignment.cp
-
-pure fn old() -> Int = 1
-// <---- invalid.deprecated.pure.cp
-//      ^^^ entity.name.function.cp
+@test fn check_tree():
+// <~---- entity.name.function.decorator.cp
+//    ^^ storage.type.function.cp
+//       ^^^^^^^^^^ entity.name.function.cp
 
 struct Edge(u: V, v: V, w: Int = 0):
 // <------ storage.type.struct.cp
@@ -107,18 +125,10 @@ type Kids = List<Bar>
 //          ^^^^ support.type.builtin.cp
 //               ^^^ entity.name.type.cp
 
-const best = Monoid<Int>(id: -INF, op: max)
+const MOD = 998_244_353
 // <----- storage.modifier.const.cp
-//    ^^^^ variable.other.constant.cp
-//           ^^^^^^ entity.name.type.cp
-//                       ^^ variable.parameter.label.cp
-//                            ^^^ support.constant.inf.cp
-//                                 ^^ variable.parameter.label.cp
-//                                     ^^^ - support.function
-
-const MOD = 998244353
 //    ^^^ variable.other.constant.cp
-//          ^^^^^^^^^ constant.numeric.integer.decimal.cp
+//          ^^^^^^^^^^^ constant.numeric.integer.decimal.cp
 
 let y = x % MOD
 //          ^^^ constant.other.caps.cp
@@ -139,45 +149,12 @@ impl Ord for Edge:
 //       ^^^ keyword.control.for.cp
 //           ^^^^ entity.name.type.cp
 
-protocol Guess:
-// <-------- storage.type.protocol.cp
-//       ^^^^^ entity.name.type.protocol.cp
-
-    @wire("?") fn ask(x: 1..=1e9) -> Ordering
-//   ^^^^ entity.name.function.decorator.cp
-//                ^^^ entity.name.function.cp
-//                        ^^^ keyword.operator.range.cp
-//                                   ^^^^^^^^ entity.name.type.cp
-
-static let cache = build()
-// <------ storage.modifier.static.cp
-//     ^^^ storage.type.let.cp
-
-fn each(inline f: (V) -> Int) -> yields V:
+fn each(inline f: (V) -> Int):
 //      ^^^^^^ storage.modifier.inline.cp
 //             ^ variable.parameter.label.cp
-//                               ^^^^^^ keyword.other.yields.cp
-
-decorator timed(f):
-// <--------- storage.type.decorator.cp
-//        ^^^^^ entity.name.function.decorator.cp
-
-spec fn sorted(xs: [I]Int) -> Bool
-// <---- storage.type.spec.cp
-//   ^^ storage.type.function.cp
-//      ^^^^^^ entity.name.function.cp
-
-spec:
-// <---- storage.type.spec.cp
 
 fn bsearch(lo: Int, hi: Int) -> Int:
 // ^^^^^^^ entity.name.function.cp
-
-    requires lo <= hi
-//  ^^^^^^^^ keyword.other.contract.requires.cp
-
-    ensures result >= 0
-//  ^^^^^^^ keyword.other.contract.ensures.cp
 
     while l < r:
 //  ^^^^^ keyword.control.while.cp
@@ -188,10 +165,6 @@ fn bsearch(lo: Int, hi: Int) -> Int:
         invariant = l
 //      ^^^^^^^^^ - keyword
 
-@invariant(swap(x, y))
-// <~--------- entity.name.function.decorator.cp
-//         ^^^^ entity.name.function.call.cp
-
-    defer pool.free(node)
+    defer dsu.undo_to(snap)
 //  ^^^^^ keyword.control.defer.cp
-//             ^^^^ entity.name.function.method.cp
+//            ^^^^^^^ entity.name.function.method.cp

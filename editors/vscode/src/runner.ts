@@ -1,6 +1,7 @@
 // The commands behind the lenses: run a file on its samples, stress it
-// against its brute, trace it. Each one runs `cpl`, writes what happened to
-// the output panel and updates the inline overlays.
+// against its brute / checker / interactor, or trace it. Each command runs
+// `cpl`, writes what happened to the output panel and updates the inline
+// overlays.
 
 import * as path from 'node:path';
 import * as vscode from 'vscode';
@@ -44,7 +45,7 @@ export class Runner {
         const samples = await samplesOf(document);
         if (samples.length === 0) {
             void vscode.window.showInformationMessage(
-                'No samples yet. Add `@sample("input", "output")` to the file, or save an input as `i1` beside it.',
+                'No samples yet. Save an input as `i1` beside the file, place files in `<file>.tests/`, or add `@sample("in", "out")`.',
             );
             return;
         }
@@ -73,8 +74,19 @@ export class Runner {
             return;
         }
         this.output.show(true);
-        const args = ['stress', document.uri.fsPath, '--format', 'json', ...(part ? ['--part', part] : [])];
-        const result = await this.cpl(document, args, 'cpl stress');
+        const extra = vscode.workspace.getConfiguration('cp').get<string[]>('stress.args', []);
+        const baseArgs = ['stress', document.uri.fsPath, '--format', 'json', ...extra];
+        let result = await this.cpl(
+            document,
+            part ? [...baseArgs, '--part', part] : baseArgs,
+            'cpl stress',
+            undefined,
+            { allowUsageFallback: Boolean(part) },
+        );
+        // Current `cpl stress` does not take `--part`; retry whole-file stress cleanly.
+        if (part && result && result.code === 2 && /--part/.test(result.stderr)) {
+            result = await this.cpl(document, baseArgs, 'cpl stress');
+        }
         if (!result) {
             return;
         }
@@ -87,7 +99,7 @@ export class Runner {
             this.overlays.setCounterexample(document.uri, undefined);
             this.output.appendLine(
                 report.status === 'pass'
-                    ? `stress: ${report.cases ?? 'all'} cases agree with the brute`
+                    ? `stress: ${report.cases ?? 'all'} cases passed`
                     : 'stress: FAIL (the report has no counterexample)',
             );
             return;
@@ -168,7 +180,17 @@ export class Runner {
     ): Promise<SampleOutcome> {
         const label = sample?.label ?? 'no input';
         const stdin = sample ? await this.read(document, sample.input) : '';
-        const result = await this.cpl(document, ['run', document.uri.fsPath, '--format', 'json'], `cpl run (${label})`, stdin);
+        let result = await this.cpl(
+            document,
+            ['run', document.uri.fsPath, '--format', 'json'],
+            `cpl run (${label})`,
+            stdin,
+            { allowUsageFallback: true },
+        );
+        // Fall back to plain `cpl run <file>` when this `cpl` build doesn't accept `--format json` yet.
+        if (result && result.code === 2 && /takes a file|unknown option|--format/i.test(result.stderr)) {
+            result = await this.cpl(document, ['run', document.uri.fsPath], `cpl run (${label})`, stdin);
+        }
         if (!result) {
             return 'stopped';
         }
@@ -209,6 +231,7 @@ export class Runner {
         args: string[],
         what: string,
         stdin?: string,
+        options?: { allowUsageFallback?: boolean },
     ): Promise<CplResult | undefined> {
         const binary = serverBinary();
         if (!binary) {
@@ -233,7 +256,10 @@ export class Runner {
             this.output.appendLine(`${what}: stopped after ${result.timeMs} ms (\`cp.run.timeoutMs\`)`);
             return undefined;
         }
-        if (result.code === EXIT_NOT_BUILT) {
+        if (options?.allowUsageFallback && result.code === 2 && result.stdout.trim() === '') {
+            return result;
+        }
+        if (result.code === EXIT_NOT_BUILT && /not built yet/i.test(result.stderr)) {
             // The file checked clean; this command's back end is not in this `cpl` yet.
             this.output.appendLine(result.stderr.trim());
             return undefined;

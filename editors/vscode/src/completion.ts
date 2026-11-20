@@ -1,9 +1,18 @@
-// Completion for when the server offers none: reserved words, the prelude
-// and decorators. It is registered only while the server's capabilities
-// have no `completionProvider`, so the two never both answer.
+// Fallback completion for when the server offers none: CP Lang v2.1
+// reserved words, prelude/stdlib types, prelude functions and decorators.
+// Registered only while the server's capabilities have no
+// `completionProvider`, so the two never both answer.
 
 import * as vscode from 'vscode';
-import { CONTEXTUAL_KEYWORDS, DECORATORS, KEYWORDS, PRELUDE_TYPES, PRELUDE_VALUES } from './languageData';
+import {
+    CONTEXTUAL_KEYWORDS,
+    DECORATORS,
+    KEYWORDS,
+    PRELUDE_CONSTANTS,
+    PRELUDE_TYPES,
+    PRELUDE_VALUES,
+    STDLIB_TYPES,
+} from './languageData';
 
 function items(names: readonly string[], kind: vscode.CompletionItemKind, detail: string): vscode.CompletionItem[] {
     return names.map(name => {
@@ -16,14 +25,11 @@ function items(names: readonly string[], kind: vscode.CompletionItemKind, detail
 export function registerFallbackCompletion(selector: vscode.DocumentSelector): vscode.Disposable {
     const words = [
         ...items(KEYWORDS, vscode.CompletionItemKind.Keyword, 'keyword'),
-        ...items(CONTEXTUAL_KEYWORDS, vscode.CompletionItemKind.Keyword, 'keyword'),
+        ...items(CONTEXTUAL_KEYWORDS, vscode.CompletionItemKind.Keyword, 'contextual keyword'),
         ...items(PRELUDE_TYPES, vscode.CompletionItemKind.Class, 'prelude type'),
-        ...items(
-            PRELUDE_VALUES.filter(name => name !== 'INF'),
-            vscode.CompletionItemKind.Function,
-            'prelude fn',
-        ),
-        ...items(['INF'], vscode.CompletionItemKind.Constant, 'prelude constant'),
+        ...items(STDLIB_TYPES, vscode.CompletionItemKind.Class, 'stdlib type'),
+        ...items(PRELUDE_VALUES, vscode.CompletionItemKind.Function, 'prelude fn'),
+        ...items(PRELUDE_CONSTANTS, vscode.CompletionItemKind.Constant, 'math constant'),
     ];
     const decorators = DECORATORS.map(decorator => {
         const item = new vscode.CompletionItem('@' + decorator.name, vscode.CompletionItemKind.Event);

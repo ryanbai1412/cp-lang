@@ -2,6 +2,7 @@ import * as assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
     clip,
+    counterexampleSummary,
     diffOutput,
     firstDifference,
     liveLabel,
@@ -52,7 +53,23 @@ const FAIL = JSON.stringify({
     },
 });
 
-test('parseStressReport reads a counterexample and marks where the parts differ', () => {
+const CLI_FAIL = JSON.stringify({
+    status: 'fail',
+    cases: 17,
+    counterexample: {
+        case: 17,
+        seed: 42,
+        verdict: 'wrong_answer',
+        input: 'n = 2  a = [7, 7]',
+        raw_input: '2\n7 7\n',
+        expected: '1\n',
+        got: '0\n',
+        stages: [],
+        saved: 'd.tests/stress-17.in',
+    },
+});
+
+test('parseStressReport reads stage diffs, ok status, and whole-program CLI reports', () => {
     const report = parseStressReport(FAIL);
     assert.equal(report?.status, 'fail');
     const found = report!.counterexample!;
@@ -62,10 +79,22 @@ test('parseStressReport reads a counterexample and marks where the parts differ'
     ]);
     assert.equal(firstDifference(found)?.name, 'answer');
     assert.deepEqual(parseStressReport('{"status": "pass", "cases": 1000}'), { status: 'pass', cases: 1000 });
+    assert.deepEqual(parseStressReport('{"status": "ok", "cases": 500}'), { status: 'pass', cases: 500 });
     assert.equal(parseStressReport('312 cases ... FAIL'), undefined);
+
+    const cli = parseStressReport(CLI_FAIL);
+    assert.equal(cli?.status, 'fail');
+    assert.equal(cli?.counterexample?.seed, 42);
+    assert.equal(cli?.counterexample?.verdict, 'wrong_answer');
+    assert.equal(cli?.counterexample?.expected, '1\n');
+    assert.equal(cli?.counterexample?.got, '0\n');
+    assert.equal(
+        counterexampleSummary(cli!.counterexample!, 60),
+        'counterexample: n = 2 a = [7, 7]  (fast 0 \u2260 brute 1)',
+    );
 });
 
-test('renderCounterexample lays the parts out side by side', () => {
+test('renderCounterexample lays out stage diffs and whole-program diffs', () => {
     assert.equal(
         renderCounterexample(parseStressReport(FAIL)!.counterexample!),
         [
@@ -75,6 +104,16 @@ test('renderCounterexample lays the parts out side by side', () => {
             '  last_seen  [none, 1]  [none, 1]',
             '  answer     [0]        [1]   <- first difference',
             '  saved as i6',
+        ].join('\n'),
+    );
+    assert.equal(
+        renderCounterexample(parseStressReport(CLI_FAIL)!.counterexample!),
+        [
+            'FAIL at case 17 (seed 42) [wrong_answer], shrunk to:',
+            '  n = 2  a = [7, 7]',
+            '  fast:  0',
+            '  brute: 1',
+            '  saved as d.tests/stress-17.in',
         ].join('\n'),
     );
 });

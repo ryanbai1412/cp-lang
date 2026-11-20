@@ -1,5 +1,6 @@
-// Runs the grammar over every `.cp` file in the repository's prototype
-// ports and tests: real programs, not lines written to suit the grammar.
+// Runs the grammar over every `.cp` file in `proto/ports/`, `proto/tests/`,
+// `stdlib/` and `examples/local-lib/`: real programs, not lines written to
+// suit the grammar.
 
 import * as assert from 'node:assert/strict';
 import * as fs from 'node:fs';
@@ -8,6 +9,9 @@ import { test } from 'node:test';
 import { REPO_ROOT, Token, tokenize } from './grammar';
 
 function cpFiles(dir: string): string[] {
+    if (!fs.existsSync(dir)) {
+        return [];
+    }
     return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
         const full = path.join(dir, entry.name);
         if (entry.isDirectory()) {
@@ -21,9 +25,16 @@ function has(token: Token, prefix: string): boolean {
     return token.scopes.some(scope => scope.startsWith(prefix));
 }
 
-test('the grammar reads every program in proto/', async () => {
-    const files = [...cpFiles(path.join(REPO_ROOT, 'proto', 'ports')), ...cpFiles(path.join(REPO_ROOT, 'proto', 'tests'))];
-    assert.ok(files.length >= 30, `only ${files.length} .cp files found`);
+const VALID_NUMBER = /^(?:0[xX][0-9a-fA-F_]+|0[bB][01_]+|[0-9][0-9_]*(?:\.[0-9][0-9_]*)?(?:[eE][+-]?[0-9][0-9_]*)?)$/;
+
+test('the grammar cleanly tokenizes every .cp program in proto/, stdlib/ and examples/', async () => {
+    const files = [
+        ...cpFiles(path.join(REPO_ROOT, 'proto', 'ports')),
+        ...cpFiles(path.join(REPO_ROOT, 'proto', 'tests')),
+        ...cpFiles(path.join(REPO_ROOT, 'stdlib')),
+        ...cpFiles(path.join(REPO_ROOT, 'examples', 'local-lib')),
+    ];
+    assert.ok(files.length >= 50, `only ${files.length} .cp files found`);
     for (const file of files) {
         const text = fs.readFileSync(file, 'utf8');
         const lines = text.split('\n');
@@ -42,16 +53,14 @@ test('the grammar reads every program in proto/', async () => {
                 assert.ok(!has(row[0], 'string.') && !has(row[0], 'comment.'), `starts inside a string: ${where(index)}`);
             }
             for (const token of row) {
-                // `pure fn` was removed from the language, and the grammar says so as the compiler does.
-                const removed = has(token, 'invalid.deprecated.pure.cp') && token.text === 'pure';
-                assert.ok(removed || !has(token, 'invalid.'), `invalid scope on \`${token.text}\`: ${where(index)}`);
+                assert.ok(!has(token, 'invalid.'), `invalid scope on \`${token.text}\`: ${where(index)}`);
                 if (!plain) {
                     continue;
                 }
-                if (/^[0-9]/.test(token.text)) {
+                if (VALID_NUMBER.test(token.text)) {
                     assert.ok(has(token, 'constant.numeric.'), `number \`${token.text}\`: ${where(index)}`);
                 }
-                if (/^(let|var|fn|for|while|if|elif|else|return|match|struct|enum|domain)$/.test(token.text)) {
+                if (/^(let|var|fn|for|while|if|elif|else|return|match|struct|enum|domain|defer|assume)$/.test(token.text)) {
                     assert.ok(has(token, 'keyword.') || has(token, 'storage.'), `keyword \`${token.text}\`: ${where(index)}`);
                 }
             }

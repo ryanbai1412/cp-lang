@@ -1,4 +1,4 @@
-// SYNTAX TEST "source.cp" "comments, strings, characters and numbers"
+// SYNTAX TEST "source.cp" "comments, strings, interpolation, format specs, chars and numbers"
 
 // a comment with "quotes" and let
 // <-- punctuation.definition.comment.cp
@@ -24,6 +24,14 @@ let s = "Case #{t}: {ans + 1}"
 //                ^^ string.quoted.double.cp
 //                       ^ keyword.operator.arithmetic.cp
 //                         ^ constant.numeric.integer.decimal.cp
+
+let fmt = "{ans:.6f} {mask:08x}"
+//         ^ punctuation.section.interpolation.begin.cp
+//             ^ punctuation.separator.format.cp
+//              ^^^ constant.other.placeholder.format.cp
+//                 ^ punctuation.section.interpolation.end.cp
+//                        ^ punctuation.separator.format.cp
+//                         ^^^ constant.other.placeholder.format.cp
 
 let b = "{{literal}} \n \" {x}"
 //       ^^ constant.character.escape.brace.cp

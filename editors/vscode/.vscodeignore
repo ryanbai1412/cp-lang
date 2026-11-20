@@ -1,6 +1,7 @@
 **
 !out/src/extension.js
 !syntaxes/**
+!snippets/**
 !language-configuration.json
 !package.json
 !README.md

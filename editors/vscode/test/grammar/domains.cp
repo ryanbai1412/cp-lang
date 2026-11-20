@@ -1,4 +1,4 @@
-// SYNTAX TEST "source.cp" "types, domains, borrows and escape hatches"
+// SYNTAX TEST "source.cp" "CP Lang v2.1 types, domains, borrows and escape hatches"
 
 let (n, m): (1..=2e5, 1..=2e5) = read()
 // <--- storage.type.let.cp
@@ -38,17 +38,15 @@ var grid: [Row, Col]Char = '.'
 //                  ^^^^ support.type.builtin.cp
 //                         ^^^ string.quoted.single.char.cp
 
-var pre: [I.bounds]Int = 0
+var pre: [V.bounds]Int = 0
 //        ^ entity.name.type.cp
 //          ^^^^^^ variable.other.property.cp
 
-var pq = Heap<(Int, V)>(by: min)
-//       ^^^^ entity.name.type.cp
-//           ^ punctuation.definition.generic.begin.cp
-//             ^^^ support.type.builtin.cp
-//                    ^ punctuation.definition.generic.end.cp
-//                      ^^ variable.parameter.label.cp
-//                          ^^^ - support.function
+var pq = MinHeap<(Int, V)>()
+//       ^^^^^^^ support.type.builtin.cp
+//              ^ punctuation.definition.generic.begin.cp
+//                ^^^ support.type.builtin.cp
+//                       ^ punctuation.definition.generic.end.cp
 
 var g: [V]List<(V, Int)> = []
 //        ^^^^ support.type.builtin.cp
@@ -64,27 +62,29 @@ var m: Map<Str, List<Set<U64>>> = Map()
 //                              ^ keyword.operator.assignment.cp
 
 // A capitalized name and `<` with a space between is a comparison.
-if INF < x and N > 3:
-// ^^^ support.constant.inf.cp
-//     ^ keyword.operator.comparison.cp
-//             ^ entity.name.type.cp
-//               ^ keyword.operator.comparison.cp
+if PI < x and N > 3:
+// ^^ support.constant.math.cp
+//    ^ keyword.operator.comparison.cp
+//            ^ entity.name.type.cp
+//              ^ keyword.operator.comparison.cp
 
-let w: I32 = x.raw + I128.MAX
+let w: F64 = F64(x) + F64(I128.MAX)
 //     ^^^ support.type.builtin.cp
-//                   ^^^^ support.type.builtin.cp
-//                        ^^^ constant.other.caps.cp
+//           ^^^ support.type.builtin.cp
+//                        ^^^^ support.type.builtin.cp
+//                             ^^^ constant.other.caps.cp
 
 let twice = [V] u => deg[u] * 2
 //           ^ entity.name.type.cp
 //              ^ variable.parameter.lambda.cp
 //                ^^ keyword.operator.fat-arrow.cp
 
-sort(xs, by: (a, b) => a.w < b.w)
-// <---- entity.name.function.call.cp
-//       ^^ variable.parameter.label.cp
-//                  ^^ keyword.operator.fat-arrow.cp
-//                       ^ variable.other.property.cp
+sort(mut xs, by: (a, b) => a.w < b.w)
+// <---- support.function.builtin.cp
+//   ^^^ storage.modifier.mut.cp
+//           ^^ variable.parameter.label.cp
+//                      ^^ keyword.operator.fat-arrow.cp
+//                           ^ variable.other.property.cp
 
 fn link(mut g: [V]List<V>, r: Road):
 //      ^^^ storage.modifier.mut.cp
@@ -94,7 +94,7 @@ link(mut g, roads[e])
 // <---- entity.name.function.call.cp
 //   ^^^ storage.modifier.mut.cp
 
-// A projection is declared with `lends` in place of `->` (plan/19-index-and-lends.md).
+// A projection is declared with `lends` / `lends mut`.
     fn at(self, i: I) lends Elem
 //     ^^ entity.name.function.cp
 //                    ^^^^^ storage.modifier.lends.cp
@@ -120,6 +120,7 @@ link(mut g, roads[e])
     pub fn row(self, r: A) lends mut [B]T:
 //         ^^^ entity.name.function.cp
 //                         ^^^^^ storage.modifier.lends.cp
+//                               ^^^ storage.modifier.mut.cp
 //                                    ^ entity.name.type.cp
 
 fn row(self, r: A, inline use: ([B]T) -> R) -> R =
@@ -134,7 +135,7 @@ fn row(self, r: A, inline use: ([B]T) -> R) -> R =
 //                                    ^^^^^ entity.name.type.cp
 
 swap(mut g.row(r1), mut g.row(r2))
-// <---- entity.name.function.call.cp
+// <---- support.function.builtin.cp
 //                  ^^^ storage.modifier.mut.cp
 //         ^^^ entity.name.function.method.cp
 
@@ -150,6 +151,7 @@ impl Index for V:
     type bounds = Bounds<Self>
 //  ^^^^ storage.type.alias.cp
 //       ^^^^^^ entity.name.type.alias.cp
+//                ^^^^^^ support.type.builtin.cp
 //                       ^^^^ entity.name.type.cp
 
 trait Seq: Index + Ord
@@ -177,11 +179,11 @@ fn longest_true<A>(a: A) -> Int where A: Indexed<V, Elem = Bool>
 //                              ^^^^^ keyword.control.where.cp
 //                                                         ^^^^ support.type.builtin.cp
 
-pub fn compress(xs: List<Int>) -> (domain X, vals: [X]Int, rank: List<X>):
-//                                 ^^^^^^ storage.type.domain.cp
-//                                        ^ entity.name.type.domain.cp
-//                                           ^^^^ variable.parameter.label.cp
-//                                                         ^^^^ variable.parameter.label.cp
+pub fn compress_vals(xs: List<Int>) -> (domain X, vals: [X]Int, rank: List<X>):
+//                                      ^^^^^^ storage.type.domain.cp
+//                                             ^ entity.name.type.domain.cp
+//                                                ^^^^ variable.parameter.label.cp
+//                                                              ^^^^ variable.parameter.label.cp
 
 domain L = 'A'..'A' + k
 //         ^^^ string.quoted.single.char.cp
@@ -206,7 +208,7 @@ let mid = s.len / 2 + s.lo
 //          ^^^ variable.other.property.cp
 //                      ^^ variable.other.property.cp
 
-// The escape hatches stand out: they carry the `unsafe` scope themes already colour.
+// Escape hatches carry the `unsafe` scope themes already colour.
 let x = a.raw[i + 1]
 //        ^^^ keyword.other.unsafe.raw.cp
 //              ^ keyword.operator.arithmetic.cp
@@ -227,7 +229,3 @@ let reqs: [q](l: I, r: I, x: X) = read() where all(t.l <= t.r for t in reqs)
 //                                       ^^^^^ keyword.control.where.cp
 //                                             ^^^ support.function.builtin.cp
 //                                                            ^^^ keyword.control.for.cp
-
-pre[i.after] = pre[i.before] + a[i]
-//    ^^^^^ variable.other.property.cp
-//                   ^^^^^^ variable.other.property.cp

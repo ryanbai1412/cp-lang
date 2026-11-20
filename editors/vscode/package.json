@@ -1,8 +1,8 @@
 {
   "name": "cp-lang",
   "displayName": "CP Lang",
-  "description": "Syntax highlighting, the cpl language server, run lenses and counterexample overlays for .cp files.",
-  "version": "0.0.1",
+  "description": "CP Lang v2.1 syntax highlighting, contest snippets, cpl lsp integration, inlay hints, live sample overlays, and stress/trace commands.",
+  "version": "0.1.0",
   "publisher": "cp-lang",
   "private": true,
   "license": "UNLICENSED",
@@ -15,7 +15,8 @@
     "vscode": "^1.82.0"
   },
   "categories": [
-    "Programming Languages"
+    "Programming Languages",
+    "Snippets"
   ],
   "main": "./out/src/extension.js",
   "activationEvents": [],
@@ -43,6 +44,12 @@
         }
       }
     ],
+    "snippets": [
+      {
+        "language": "cp",
+        "path": "./snippets/cp.json"
+      }
+    ],
     "commands": [
       {
         "command": "cp.runSample",
@@ -56,7 +63,7 @@
       },
       {
         "command": "cp.stress",
-        "title": "Stress Against the Brute",
+        "title": "Stress Test",
         "category": "CP"
       },
       {
@@ -146,7 +153,12 @@
         "cp.codeLens.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Show Run, Stress and Trace lenses above the file, its samples and its parts."
+          "description": "Show Run, Stress and Trace lenses above the file, its samples and its `@brute`/`@checker`/`@interactor` functions."
+        },
+        "cp.inlayHints.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show inferred type inlay hints for unannotated bindings and domain loops when `cpl lsp` does not provide its own."
         },
         "cp.liveValues.enabled": {
           "type": "boolean",
@@ -164,11 +176,19 @@
           "minimum": 10,
           "description": "Longest value shown inline before it is cut; the full value is in the hover."
         },
+        "cp.stress.args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Extra flags passed to `cpl stress` (for example `[\"--cases\", \"1000\", \"--size\", \"10\"]`)."
+        },
         "cp.run.timeoutMs": {
           "type": "integer",
           "default": 10000,
           "minimum": 100,
-          "description": "Kill a sample run that takes longer than this."
+          "description": "Kill a sample run or stress run that takes longer than this."
         }
       }
     },

@@ -3,7 +3,14 @@
 // produced it. Both are decorations; neither edits the document.
 
 import * as vscode from 'vscode';
-import { Counterexample, firstDifference, liveLabel, LiveValue, stageLabel } from './results';
+import {
+    Counterexample,
+    counterexampleSummary,
+    firstDifference,
+    liveLabel,
+    LiveValue,
+    stageLabel,
+} from './results';
 
 interface DocumentOverlay {
     live?: { sample: string; values: LiveValue[] };
@@ -137,11 +144,25 @@ export class Overlays implements vscode.Disposable {
                 (stage === first ? differs : agrees).push(after(stage.line, stageLabel(stage, max), hover));
             }
             if (lineCount > 0 && !stageLines.has(0)) {
-                const hover = new vscode.MarkdownString('The smallest input `cpl stress` found where the fast code and the brute disagree.');
+                const hover = new vscode.MarkdownString(
+                    'The smallest input `cpl stress` found where the fast code and the reference disagree.',
+                );
                 if (counterexample.saved) {
                     hover.appendMarkdown(` Saved as \`${counterexample.saved}\`.`);
                 }
-                input.push(after(0, `counterexample: ${counterexample.input}`, hover));
+                if (counterexample.stages.length === 0 && (counterexample.got !== undefined || counterexample.expected !== undefined)) {
+                    const details = [
+                        counterexample.rawInput?.trimEnd() || counterexample.input,
+                        counterexample.got !== undefined ? `fast  = ${counterexample.got.trimEnd()}` : undefined,
+                        counterexample.expected !== undefined ? `brute = ${counterexample.expected.trimEnd()}` : undefined,
+                    ]
+                        .filter((part): part is string => part !== undefined && part !== '')
+                        .join('\n');
+                    if (details) {
+                        hover.appendCodeblock(details, 'cp');
+                    }
+                }
+                input.push(after(0, counterexampleSummary(counterexample, max), hover));
             }
         }
         editor.setDecorations(this.differsType, differs);
