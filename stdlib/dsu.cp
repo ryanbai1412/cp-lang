@@ -4,7 +4,7 @@
 /// `find`, `unite`, `same` and `size` are O(alpha(n)) amortized; memory is two `[V]` arrays.
 ///
 /// It can also step back in time: `let snap = d.mark()` remembers the present and
-/// `d.undo_to(snap)` returns to it, usually as `defer d.undo_to(snap)`. From the first
+/// `d.undo_to(snap)` returns to it. From the first
 /// `mark` on, paths are no longer shortened (a shortened path cannot be restored), so every
 /// operation is O(log n) and each `unite` costs one entry of memory until it is undone.
 pub struct Dsu<V>:
@@ -59,10 +59,6 @@ pub struct Dsu<V>:
 
     /// The number of sets.
     pub @get fn components(self) -> Int = parts
-
-    /// The number of sets: the earlier name of `components`, which the prototype compiler's
-    /// ports still use.
-    pub @get fn count(self) -> Int = parts
 
     /// Every connected component as a list of its vertices, each vertex appearing once. O(n alpha(n)).
     pub fn groups(mut self) -> List<List<V>>:

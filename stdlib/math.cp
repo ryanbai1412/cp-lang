@@ -29,10 +29,9 @@ pub fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int):
         (y0, y1) = (y1, y0 - q * y1)
     if r0 < 0: (g: -r0, x: -x0, y: -y0) else: (g: r0, x: x0, y: y0)
 
-/// `floor(a / b)` and `ceil(a / b)` for any signs. `/` itself is Euclidean
-/// (the remainder is never negative), which is the floor only for `b > 0`.
-pub fn floor_div(a: Int, b: Int) -> Int = if b > 0: a / b else: (-a) / (-b)
-pub fn ceil_div(a: Int, b: Int) -> Int = -floor_div(-a, b)
+/// `ceil(a / b)` for any non-zero `b`. Built-in `/` is Euclidean division
+/// (remainder is always non-negative), which already equals `floor(a / b)` for `b > 0`.
+pub fn ceil_div(a: Int, b: Int) -> Int = if b > 0: -((-a) / b) else: -(a / (-b))
 
 /// The smallest prime factor of every number up to `n` (0 for 0 and 1), by a linear sieve.
 /// O(n) time and memory.
@@ -140,9 +139,8 @@ fn choose_is_pascals_triangle():
 fn division_helpers_round_the_right_way():
     assert -7 / 2 == -4 and -7 % 2 == 1
     assert 7 / -2 == -3 and 7 % -2 == 1
-    assert floor_div(7, -2) == -4 and ceil_div(7, -2) == -3
-    assert floor_div(-7, 2) == -4 and ceil_div(-7, 2) == -3
-    assert floor_div(6, 3) == 2 and ceil_div(6, 3) == 2 and ceil_div(7, 2) == 4
+    assert ceil_div(7, -2) == -3 and ceil_div(-7, 2) == -3
+    assert ceil_div(-7, -2) == 4 and ceil_div(6, 3) == 2 and ceil_div(6, -3) == -2 and ceil_div(7, 2) == 4
     for _ in 0..200:
         let (a, b) = (rand(-50, 50), rand(1, 9) * (rand(0, 1) * 2 - 1))
         assert a == b * (a / b) + a % b and 0 <= a % b < abs(b)

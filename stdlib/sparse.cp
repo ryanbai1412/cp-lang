@@ -3,8 +3,8 @@ use std.math.{gcd}
 
 /// `SparseTable<V, Int>(min, a)`: built in O(n log n) time and memory, `fold` is O(1).
 /// The operation must be associative and idempotent (`op(a, a) == a`): `min`, `max`, `gcd`,
-/// `&`, `|`, or any custom `(T, T) -> T` — no identity is required because `fold` returns `?T`
-/// (`none` on an empty range). Sums are not idempotent; use `Fenwick` or `prefix` for those.
+/// `&`, `|`, or any custom `(T, T) -> T` — no identity is required because `fold` asserts
+/// the range is non-empty and returns `T` directly. Sums are not idempotent; use `Fenwick` or `prefix` for those.
 pub struct SparseTable<D, T>(op: (T, T) -> T):
     rows: List<List<T>>
 
@@ -17,9 +17,9 @@ pub struct SparseTable<D, T>(op: (T, T) -> T):
             w *= 2
         SparseTable(op, rows)
 
-    /// The fold of a range, or `none` for an empty one. O(1).
-    pub fn fold(self, r: Range<D>) -> ?T:
-        if r.is_empty: return none
+    /// The fold of a non-empty range. O(1). Asserts `not r.is_empty`.
+    pub fn fold(self, r: Range<D>) -> T:
+        assert not r.is_empty
         let k = bit_width(r.len) - 1
         op(rows[k][r.lo.ord], rows[k][r.hi.ord - (1 << k)])
 
@@ -36,11 +36,9 @@ fn range_min_matches_brute_force():
     let st = SparseTable<V, Int>(min, a)
     for l in V:
         for r in l..=V.last:
-            assert st.fold(l..=r) == min(a[v] for v in l..=r)
-    assert st.fold(V(2)..V(2)) == none
-    assert st.fold(V(5)..V(2)) == none
-    assert st.fold(..=V(5)) == min(a[v] for v in V if v <= V(5))
-    assert st.fold(V(8)..) == min(a[v] for v in V if v >= V(8))
+            assert st.fold(l..=r) == min(a[v] for v in l..=r)!
+    assert st.fold(..=V(5)) == min(a[v] for v in V if v <= V(5))!
+    assert st.fold(V(8)..) == min(a[v] for v in V if v >= V(8))!
 
 @test
 fn gcd_max_bitwise_and_custom_semigroup_tables():
@@ -54,7 +52,7 @@ fn gcd_max_bitwise_and_custom_semigroup_tables():
     let pairs = [V] v => (a[v], v.to_idx)
     let pick = SparseTable<V, (Int, Int)>((x, y) => if x < y: x else: y, pairs)
     assert pick.fold(V(0)..=V(3)) == (6, 2)
-    assert pick.fold(V(3)..V(3)) == none
+    assert pick.fold(V(3)..=V(3)) == (30, 3)
 
 @test
 fn idempotence_separates_min_from_sum():

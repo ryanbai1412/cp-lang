@@ -1,7 +1,7 @@
 //! A queue that knows the fold of everything in it, for any monoid: the "two stacks" trick.
 //!
 //! This is the sliding window for operations with no inverse (gcd, bitwise or, matrix
-//! products). `std.seq.sliding_min` covers min and max; a `Fenwick` covers sums.
+//! products). `MonoDeque` (`ds/mono_deque.cp`) covers min and max; a `Fenwick` covers sums.
 use std.algebra.{Monoid}
 use std.math.{gcd}
 

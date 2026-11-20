@@ -10,10 +10,12 @@ examples/local-lib/
   lib.toml                    name = "lib"
   ds/                         data structures
   math/                       numbers, algebra, transforms
-  graph/                      graph decompositions
+  graph/                      graph decompositions, flow, 2-SAT
+  geom/                       computational geometry
+  grid/                       grid extensions
   dp/                         DP optimizations
   spec/                       guessing structure from a brute force
-  seq/                        folds over lists
+  seq/                        folds and order statistics over lists
   str/                        strings
   solutions/road_reversal.cp  a problem solved with the library
 ```
@@ -28,13 +30,20 @@ YES
 ## What is in it, and why it is not in `std`
 
 The standard library holds what most contests need most of the time. The
-locked v2 design (`research/language-architecture-v2.md`, T13) moved
-everything a problem needs once a season out of it and into a library like
-this one, so the core stays small enough to know by heart. Each module
-below is one file with its tests.
+locked **CP Lang v2.2** architecture (`research/language-architecture-v2.2.md`)
+keeps `std` small enough to know by heart by placing specialized
+structures and algorithms — including the 11 v2.2 relocations (`MonoDeque`,
+`Steps`, `TwoSat`, `Mat`, `palindromes`, `shortest`/`walk_back`, `mst`,
+`convex_hull`, `Dir8`, and `MinCostFlow`) plus the T13 library structures —
+in a local library like this one. Each module below is one file with its
+tests.
 
 Data structures, in `ds/`:
 
+- `mono_deque.cp`: `MonoDeque<T>`, monotone sliding-window minimum or
+  maximum queue (`push`, `drop_before`, `best`).
+- `steps.cp`: `Steps`, range additions over arbitrary integer coordinates
+  read back as maximal constant runs.
 - `rope.cp`: `Rope<T>`, a sequence with insert, erase, reverse and move of
   any stretch in O(log n) (an implicit treap).
 - `range_kth.cp`: `RangeKth<D>`, the k-th smallest value and
@@ -83,6 +92,13 @@ Numbers, in `math/`:
 
 Graphs, in `graph/`:
 
+- `shortest.cp`: `shortest` (Dijkstra with predecessor tracking) and
+  `walk_back` (path reconstruction).
+- `mst.cp`: `mst`, Kruskal's minimum spanning forest.
+- `two_sat.cp`: `TwoSat<X>` and `Lit<X>`, 2-SAT over a typed variable
+  domain backed by `std.graph.scc`.
+- `min_cost_flow.cp`: `MinCostFlow<V>` and `CostArc`, successive shortest
+  paths with Johnson potentials (SPFA initialization + Dijkstra).
 - `functional.cp`: `Functional<V>`, the graph where every vertex has one
   way out, split into its rings and the trees draining into them, with
   `jump`, `dist`, and `jump_while`.
@@ -92,6 +108,13 @@ Graphs, in `graph/`:
   tree) and `spanning` forest selector.
 - `min_count.cp`: `MinCount<P>` shortest-path distance + count semiring and
   `floyd_warshall`.
+
+Geometry and grids, in `geom/` and `grid/`:
+
+- `convex_hull.cp`: `convex_hull`, Andrew's monotone chain over
+  `std.geometry.Pt`.
+- `dir8.cp`: `Dir8`, eight-way grid directions compatible with
+  `std.grid.{step, ray}`.
 
 DP optimizations, in `dp/`:
 
@@ -127,14 +150,15 @@ Sequences and strings, in `seq/` and `str/`:
   the others, with no inverse needed) and `fold_balanced`.
 - `order_stats.cp`: `ranks`, `lis` (strict and non-decreasing, with index
   reconstruction), and offline 2D Fenwick `count_in_rects`.
+- `palindromes.cp`: `palindromes` (Manacher's linear-time odd and even
+  palindrome radii).
 - `borders.cp`: `borders`, `period` and `overlaps`.
 - `trie.cp`: `Trie<A>` over an alphabet that is a domain.
 - `suffix_automaton.cp`: `SuffixAutomaton<A>`, built online.
 - `hash2d.cp`: `Hash2D<R, C>`, the hash of any rectangle of a grid.
 
-Two structures that used to be here are now in `std`, because the v2
-design made them core: 2-SAT is `std.graph.TwoSat`, and union-find with
-undo is `Dsu.mark()` / `Dsu.undo_to(snap)`.
+Union-find with undo lives in `std.dsu` (`Dsu.mark()` / `Dsu.undo_to(snap)`),
+while `TwoSat` lives here in `graph/two_sat.cp` per the v2.2 stdlib split.
 
 ## The five T13 structures, by example
 

@@ -34,21 +34,7 @@ pub struct Dir4(k: Int):
     /// The change in (row, column) of one step.
     pub @get fn delta(self) -> (Int, Int) = (DR[2 * k], DC[2 * k])
 
-/// One of the eight directions, clockwise from up; the odd ones are the diagonals.
-pub struct Dir8(k: Int):
-    /// All eight, clockwise from up.
-    pub fn all() -> List<Dir8> = [Dir8(k) for k in 0..8]
-
-    /// An eighth of a turn clockwise.
-    pub @get fn cw(self) -> Dir8 = Dir8((k + 1) % 8)
-    /// An eighth of a turn counter-clockwise.
-    pub @get fn ccw(self) -> Dir8 = Dir8((k + 7) % 8)
-    /// The opposite direction.
-    pub @get fn back(self) -> Dir8 = Dir8((k + 4) % 8)
-    /// The change in (row, column) of one step.
-    pub @get fn delta(self) -> (Int, Int) = (DR[k], DC[k])
-
-/// The cell one step from `self` in direction `d` (a `Dir4` or a `Dir8`), or `none` off the grid.
+/// The cell one step from `self` in direction `d` (such as `Dir4`), or `none` off the grid.
 pub fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C):
     let (dr, dc) = d.delta
     let r = self.0 + dr
@@ -75,19 +61,14 @@ pub @get fn adj4<R, C>(self: (R, C)) -> List<(R, C)>:
 /// The up to eight cells sharing a side or a corner with `self`, clockwise from up.
 pub @get fn adj8<R, C>(self: (R, C)) -> List<(R, C)>:
     var out: List<(R, C)> = []
-    for d in Dir8.all():
-        let q = step(self, d)
-        if q != none: out.push(q!)
+    for k in 0..8:
+        let r = self.0 + DR[k]
+        let c = self.1 + DC[k]
+        if r != none and c != none: out.push((r!, c!))
     out
 
 /// The grid with rows and columns exchanged.
 pub @get fn transposed<R, C, T>(self: [R, C]T) -> [C, R]T = [C, R] (c, r) => self[r, c]
-
-/// The grid with row order reversed, top to bottom.
-pub @get fn flipped_rows<R, C, T>(self: [R, C]T) -> [R, C]T = [R, C] (r, c) => self[R.nth(R.K - 1 - r.to_idx), c]
-
-/// The grid with column order reversed, left to right.
-pub @get fn flipped_cols<R, C, T>(self: [R, C]T) -> [R, C]T = [R, C] (r, c) => self[r, C.nth(C.K - 1 - c.to_idx)]
 
 @test
 fn neighbours_stay_on_the_grid():
@@ -115,8 +96,6 @@ fn directions_turn_and_step():
     assert Dir4.from("NESW", 'x') == none
     assert p.step(d) == (Row(1), Col(2)) and p.step(Dir4.up())!.step(Dir4.up()) == none
     assert p.ray(d) == [(Row(1), Col(2)), (Row(1), Col(3)), (Row(1), Col(4))]
-    assert p.ray(Dir8(3)) == [(Row(2), Col(2))]
-    for e in Dir8.all(): assert e.cw.ccw == e and e.back.back == e and e.cw.cw.cw.cw == e.back
     // a grid is indexed by a cell, and a flood fill is three lines
     var open: [Row, Col]Bool = true
     open[Row(1), Col(3)] = false
@@ -135,7 +114,7 @@ fn directions_turn_and_step():
 fn grid_sum<R, C>(g: [R, C]Int) -> Int = sum(g[r, c] for r in R for c in C)
 
 @test
-fn transposed_and_flipped():
+fn transposed_swaps_axes():
     domain Row = 0..2
     domain Col = 0..3
     let g = [Row, Col] (r, c) => 10 * r.to_idx + c.to_idx
@@ -143,12 +122,4 @@ fn transposed_and_flipped():
     for r in Row:
         for c in Col: assert t[c, r] == g[r, c]
     assert grid_sum(g) == grid_sum(t)
-    assert [g.flipped_cols[Row(1), c] for c in Col] == [12, 11, 10]
-    assert [g.flipped_rows[r, Col(2)] for r in Row] == [12, 2]
-    assert g.flipped_rows.flipped_rows == g
-    assert g.flipped_cols.flipped_cols == g
     assert g.transposed.transposed == g
-    // 90-degree clockwise rotation: flip rows then transpose
-    let rot90 = g.flipped_rows.transposed
-    for r in Row:
-        for c in Col: assert rot90[c, Row.nth(Row.K - 1 - r.to_idx)] == g[r, c]

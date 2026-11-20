@@ -81,25 +81,6 @@ pub fn lcp_array<T>(s: List<T>, sa: List<Int>) -> List<Int>:
         if k > 0: k -= 1
     lcp
 
-/// Palindrome radii (Manacher). `odd[i]` is the number of palindromes centred on `s[i]`;
-/// `even[i]` the number centred between `s[i - 1]` and `s[i]`. O(n).
-pub fn palindromes<T>(s: List<T>) -> (odd: List<Int>, even: List<Int>):
-    let n = s.len
-    var (odd, even) = (List.filled(n, 0), List.filled(n, 0))
-    var (l, r) = (0, -1)
-    for i in 0..n:
-        var k = if i > r: 1 else: min(odd[l + r - i], r - i + 1)
-        while i - k >= 0 and i + k < n and s[i - k] == s[i + k]: k += 1
-        odd[i] = k
-        if i + k - 1 > r: (l, r) = (i - k + 1, i + k - 1)
-    (l, r) = (0, -1)
-    for i in 0..n:
-        var k = if i > r: 0 else: min(even[l + r - i + 1], r - i + 1)
-        while i - k - 1 >= 0 and i + k < n and s[i - k - 1] == s[i + k]: k += 1
-        even[i] = k
-        if i + k - 1 > r: (l, r) = (i - k, i + k - 1)
-    (odd: odd, even: even)
-
 // ---- generalized rolling hash
 
 const RH_M1 = 1_000_000_007
@@ -227,20 +208,6 @@ fn suffix_array_and_lcp_match_sorting_the_suffixes():
         assert sa == want
         let lcp = lcp_array(s, sa)
         for j in 0..s.len - 1: assert lcp[j] == common_prefix(s, sa[j], sa[j + 1])
-
-@test
-fn palindromes_match_expanding_from_each_centre():
-    for _ in 0..40:
-        let s = random_word(rand(0, 16), 2)
-        let n = s.len
-        let p = palindromes(s)
-        for i in 0..n:
-            var k = 0
-            while i - k >= 0 and i + k < n and s[i - k] == s[i + k]: k += 1
-            assert p.odd[i] == k
-            k = 0
-            while i - k - 1 >= 0 and i + k < n and s[i - k - 1] == s[i + k]: k += 1
-            assert p.even[i] == k
 
 @test
 fn rolling_hash_over_str_list_and_domain_arrays():
