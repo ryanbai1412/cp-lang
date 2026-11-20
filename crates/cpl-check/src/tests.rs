@@ -1182,3 +1182,37 @@ fn division_and_remainder_are_euclidean() {
     let text = hover("domain E = 0..(0 - (-7 / 2))\n", "E").unwrap();
     assert!(text.contains("4"), "-7 / 2 is -4, not -3: {text}");
 }
+
+#[test]
+fn a_step_is_optional_until_it_is_handled() {
+    let head = "let n: 2..=9 = read()\ndomain I = 1..=n\nlet a: [I]Int = read()\nfn show(i: I): print(i)\n";
+    let index = one(&format!("{head}for i in I: print(a[i + 1])\n"));
+    assert_eq!(index.message, "`i + 1` is a ?I: it may step outside I");
+    assert!(index.help.unwrap().contains("(i + 1)!"));
+    let arg = one(&format!("{head}for i in I: show(i - 1)\n"));
+    assert_eq!(
+        arg.message,
+        "expected I, got ?I: `i - 1` may step outside I"
+    );
+    // Bound, clamped or asserted, the step is a position again; and two
+    // positions of one domain are an `Int` apart.
+    for body in [
+        "    if let j = i + 1: print(a[j])\n",
+        "    print(a[i + 1 ?? I.last])\n",
+        "    print(a[(i + 1)!])\n",
+        "    show((i - 1)!)\n",
+        "    let d: Int = I.last - i\n    print(d)\n",
+    ] {
+        let src = format!("{head}for i in I:\n{body}");
+        assert!(codes(&src).is_empty(), "{src}: {:?}", check(&src));
+    }
+}
+
+#[test]
+fn a_domain_holds_at_most_an_i32_of_values() {
+    let big = one("domain V = 0..=3000000000\n");
+    assert!(big
+        .message
+        .starts_with("a domain holds at most 2^31 - 1 values"));
+    assert!(codes("domain V = 0..2147483647\n").is_empty());
+}

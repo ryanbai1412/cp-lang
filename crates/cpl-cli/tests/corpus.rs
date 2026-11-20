@@ -42,6 +42,11 @@ fn check(path: &Path) -> cpl_cli::Outcome {
 /// clean, and the test below says so.
 const PENDING: &[&str] = &[];
 
+/// Passing tests the language has since moved away from, which the
+/// prototype rejects too: `offset_check` indexes with `i + 1`, and a step
+/// is a `?V` now.
+const STALE: &[&str] = &["proto/tests/ok/offset_check.cp"];
+
 #[test]
 fn the_libraries_ports_and_passing_tests_check_clean() {
     let mut failures = Vec::new();
@@ -61,6 +66,9 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
         ("proto/tests/redteam", false),
     ] {
         for path in sources(dir, nested) {
+            if STALE.iter().any(|file| path.ends_with(file)) {
+                continue;
+            }
             checked += 1;
             let out = check(&path);
             let pending = PENDING.iter().any(|file| path.ends_with(file));
@@ -104,8 +112,6 @@ const NOT_YET: &[&str] = &[
     "range_two_domains",
     "rt_min_empty_slice",
     "span_two_domains",
-    "step_as_argument",
-    "step_is_optional",
     // `let ... else`, `?` and `m[k] f= x` on a map.
     "let_else_not_optional",
     "map_fold_divide",
