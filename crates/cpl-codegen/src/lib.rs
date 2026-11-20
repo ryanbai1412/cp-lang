@@ -1,12 +1,24 @@
 //! Lowering of a checked program to a single C++17 file.
 
+mod emit;
+mod expr;
+mod names;
+mod ranges;
+mod runtime;
+mod scope;
+mod show;
+mod stmt;
+mod walk;
+
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn crate_is_named() {
-        assert_eq!(super::NAME, "cpl-codegen");
-    }
+/// The C++17 file for `program`. `name` is the source file's name and
+/// `source` its text, which opens the file as a comment so that whoever
+/// reads the C++ can read what it was written from.
+pub fn emit(program: &cpl_ir::Program, name: &str, source: &str) -> String {
+    emit::Emitter::new(program).file(name, source)
 }
+
+#[cfg(test)]
+mod tests;

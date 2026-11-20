@@ -19,6 +19,7 @@ dependencies = [
  "cpl-diag",
  "cpl-fmt",
  "cpl-interp",
+ "cpl-ir",
  "cpl-lsp",
  "cpl-syntax",
 ]
@@ -26,6 +27,10 @@ dependencies = [
 [[package]]
 name = "cpl-codegen"
 version = "0.0.0"
+dependencies = [
+ "cpl-check",
+ "cpl-ir",
+]
 
 [[package]]
 name = "cpl-diag"
@@ -38,6 +43,20 @@ version = "0.0.0"
 [[package]]
 name = "cpl-interp"
 version = "0.0.0"
+dependencies = [
+ "cpl-check",
+ "cpl-diag",
+ "cpl-ir",
+]
+
+[[package]]
+name = "cpl-ir"
+version = "0.0.0"
+dependencies = [
+ "cpl-check",
+ "cpl-diag",
+ "cpl-syntax",
+]
 
 [[package]]
 name = "cpl-lsp"

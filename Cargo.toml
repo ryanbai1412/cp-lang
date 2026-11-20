@@ -13,6 +13,7 @@ cpl-syntax = { path = "crates/cpl-syntax" }
 cpl-check = { path = "crates/cpl-check" }
 cpl-codegen = { path = "crates/cpl-codegen" }
 cpl-interp = { path = "crates/cpl-interp" }
+cpl-ir = { path = "crates/cpl-ir" }
 cpl-fmt = { path = "crates/cpl-fmt" }
 cpl-lsp = { path = "crates/cpl-lsp" }
 

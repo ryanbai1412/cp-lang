@@ -1,0 +1,358 @@
+//! Printing and reading values, as C++.
+
+use crate::emit::{pad, Code, Emitter, PRIMARY, UNARY};
+use crate::expr::string_literal;
+use crate::names::{elem_ty, ident, is_plain_enum};
+use cpl_ir::{sep_of, DimSpec, FmtArg, Sep, Spec, Ty};
+
+fn sep_char(sep: Sep) -> &'static str {
+    match sep {
+        Sep::Line => "'\\n'",
+        _ => "' '",
+    }
+}
+
+impl<'p> Emitter<'p> {
+    /// One statement that writes the literal `bytes`.
+    pub fn put_text(&mut self, bytes: &[u8]) -> String {
+        self.need("out");
+        if bytes.contains(&0) {
+            format!(
+                "cpl::put_str(std::string({}, {}));",
+                string_literal(bytes),
+                bytes.len()
+            )
+        } else {
+            format!("cpl::put_str({});", string_literal(bytes))
+        }
+    }
+
+    /// One statement that writes `value` the way `print` shows a `ty`.
+    pub fn show_stmt(&mut self, value: &Code, ty: &Ty, digits: &str) -> String {
+        let program = self.program;
+        self.need("out");
+        match ty {
+            Ty::Int => {
+                self.need("put_int");
+                format!("cpl::put_int({});", value.text)
+            }
+            Ty::Pos(d) | Ty::Bound(d) => {
+                self.need("put_int");
+                format!(
+                    "cpl::put_int({} + {}_lo);",
+                    value.at(UNARY),
+                    ident(&program.domains[*d])
+                )
+            }
+            Ty::Float => {
+                self.need("put_float");
+                format!("cpl::put_float({}, {digits});", value.text)
+            }
+            Ty::Bool => format!("cpl::put_str({} ? \"true\" : \"false\");", value.at(UNARY)),
+            Ty::Char => format!("cpl::put_char({});", value.text),
+            Ty::Str => format!("cpl::put_str({});", value.text),
+            Ty::Unit | Ty::Error => format!("{};", value.text),
+            _ => {
+                let helper = self.show_helper(ty);
+                format!("{helper}({}, {digits});", value.text)
+            }
+        }
+    }
+
+    /// The name of the fn that prints a value of the compound type `ty`.
+    fn show_helper(&mut self, ty: &Ty) -> String {
+        if let Some(index) = self.show_index.get(ty) {
+            return format!("show_{}", index + 1);
+        }
+        // What `ty` is made of first, so a helper follows the ones it
+        // calls. A type that holds itself cannot: its helpers are declared
+        // ahead of them all.
+        if self.showing.insert(ty.clone()) {
+            for part in self.parts(ty) {
+                if !part.is_scalar() && part != Ty::Str {
+                    self.show_helper(&part);
+                }
+            }
+            self.showing.remove(ty);
+        } else {
+            self.show_cycle = true;
+        }
+        if let Some(index) = self.show_index.get(ty) {
+            return format!("show_{}", index + 1);
+        }
+        let index = self.shows.len();
+        self.show_index.insert(ty.clone(), index);
+        self.shows.push(String::new());
+        let body = self.show_body(ty);
+        let digits = if body.contains("digits") {
+            "int digits"
+        } else {
+            "int"
+        };
+        let rest = format!("(const {}& v, {digits}) {{\n{body}}}\n", self.ty(ty));
+        // Two types that are one in C++ and print alike share a helper.
+        let twin = self.shows[..index]
+            .iter()
+            .position(|other| other.ends_with(&rest));
+        if let (Some(twin), true) = (twin, index + 1 == self.shows.len()) {
+            self.shows.pop();
+            self.show_index.insert(ty.clone(), twin);
+            return format!("show_{}", twin + 1);
+        }
+        self.shows[index] = format!(
+            "// Prints a `{}`.\nvoid show_{}{rest}",
+            self.program.show_ty(ty),
+            index + 1
+        );
+        format!("show_{}", index + 1)
+    }
+
+    /// The types a value of the compound type `ty` is made of.
+    fn parts(&self, ty: &Ty) -> Vec<Ty> {
+        match ty {
+            Ty::Opt(inner) | Ty::List(inner) | Ty::Set(inner) => vec![(**inner).clone()],
+            Ty::Array { elem, .. } => vec![(**elem).clone()],
+            Ty::Map(key, value) => vec![(**key).clone(), (**value).clone()],
+            Ty::Struct(id) => self.program.structs[*id]
+                .fields
+                .iter()
+                .map(|(_, t)| t.clone())
+                .collect(),
+            Ty::Enum(id) => self.program.enums[*id]
+                .variants
+                .iter()
+                .flat_map(|(_, tys)| tys.iter().cloned())
+                .collect(),
+            _ => ty.fields().unwrap_or_default(),
+        }
+    }
+
+    fn show_body(&mut self, ty: &Ty) -> String {
+        let program = self.program;
+        let mut b = String::new();
+        let fields = |this: &mut Self, items: Vec<(Code, &Ty)>, lead: &str| -> String {
+            let mut out = String::new();
+            for (i, (code, field_ty)) in items.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(&format!("{lead}cpl::put_char(' ');\n"));
+                }
+                out.push_str(&format!(
+                    "{lead}{}\n",
+                    this.show_stmt(code, field_ty, "digits")
+                ));
+            }
+            out
+        };
+        match ty {
+            Ty::Opt(inner) => {
+                let some = self.show_stmt(&Code::new("*v", UNARY), inner, "digits");
+                b.push_str(&format!(
+                    "    if (v) {{ {some} }} else cpl::put_str(\"none\");\n"
+                ));
+            }
+            Ty::Tuple(_) | Ty::Record(_) => {
+                let tys = ty.fields().unwrap_or_default();
+                let items: Vec<(Code, &Ty)> = tys
+                    .iter()
+                    .enumerate()
+                    .map(|(i, t)| (Code::primary(format!("std::get<{i}>(v)")), t))
+                    .collect();
+                b.push_str(&fields(self, items, "    "));
+            }
+            Ty::Struct(id) => {
+                let items: Vec<(Code, &Ty)> = program.structs[*id]
+                    .fields
+                    .iter()
+                    .map(|(name, t)| (Code::primary(format!("v.{}", ident(name))), t))
+                    .collect();
+                b.push_str(&fields(self, items, "    "));
+            }
+            Ty::Enum(id) if is_plain_enum(program, *id) => {
+                let names: Vec<String> = program.enums[*id]
+                    .variants
+                    .iter()
+                    .map(|(v, _)| string_literal(v.as_bytes()))
+                    .collect();
+                b.push_str(&format!(
+                    "    static const char* const names[] = {{{}}};\n",
+                    names.join(", ")
+                ));
+                b.push_str("    cpl::put_str(names[(int)v]);\n");
+            }
+            Ty::Enum(id) => {
+                let def = &program.enums[*id];
+                b.push_str("    switch (v.tag) {\n");
+                for (variant, tys) in &def.variants {
+                    let name = ident(variant);
+                    b.push_str(&format!(
+                        "    case {}::{name}:\n        cpl::put_str({});\n",
+                        ident(&def.name),
+                        string_literal(variant.as_bytes())
+                    ));
+                    for (i, field_ty) in tys.iter().enumerate() {
+                        let code = Code::primary(format!("v.{name}_{i}"));
+                        b.push_str(&format!(
+                            "        cpl::put_char(' ');\n        {}\n",
+                            self.show_stmt(&code, field_ty, "digits")
+                        ));
+                    }
+                    b.push_str("        break;\n");
+                }
+                b.push_str("    }\n");
+            }
+            Ty::Array { dims, elem } if dims.len() > 1 => {
+                let cell = self.cell("v.d[i]", elem);
+                let shown = self.show_stmt(&cell, elem, "digits");
+                b.push_str(&format!(
+                    "    size_t row = (size_t)std::max<ll>(v.n[{}], 1);\n",
+                    dims.len() - 1
+                ));
+                b.push_str("    for (size_t i = 0; i < v.d.size(); i++) {\n");
+                b.push_str(match sep_of(elem) {
+                    Sep::None => "        if (i > 0 && i % row == 0) cpl::put_char('\\n');\n",
+                    Sep::Space => "        if (i > 0) cpl::put_char(i % row == 0 ? '\\n' : ' ');\n",
+                    Sep::Line => "        if (i > 0) cpl::put_char('\\n');\n",
+                });
+                b.push_str(&format!("        {shown}\n    }}\n"));
+            }
+            Ty::Array { elem, .. } | Ty::List(elem) => {
+                let cell = self.cell("v[i]", elem);
+                let shown = self.show_stmt(&cell, elem, "digits");
+                b.push_str("    for (size_t i = 0; i < v.size(); i++) {\n");
+                let sep = sep_of(elem);
+                if sep != Sep::None {
+                    b.push_str(&format!(
+                        "        if (i > 0) cpl::put_char({});\n",
+                        sep_char(sep)
+                    ));
+                }
+                b.push_str(&format!("        {shown}\n    }}\n"));
+            }
+            Ty::Set(elem) => {
+                let shown = self.show_stmt(&Code::primary("x"), elem, "digits");
+                b.push_str("    bool first = true;\n    for (const auto& x : v) {\n");
+                b.push_str(&format!(
+                    "        if (!first) cpl::put_char({});\n        first = false;\n",
+                    sep_char(sep_of(elem))
+                ));
+                b.push_str(&format!("        {shown}\n    }}\n"));
+            }
+            Ty::Map(key, value) => {
+                let shown_key = self.show_stmt(&Code::primary("x.first"), key, "digits");
+                let shown_value = self.show_stmt(&Code::primary("x.second"), value, "digits");
+                b.push_str("    bool first = true;\n    for (const auto& x : v) {\n");
+                b.push_str("        if (!first) cpl::put_char('\\n');\n        first = false;\n");
+                b.push_str(&format!("        {shown_key}\n        cpl::put_char(' ');\n        {shown_value}\n    }}\n"));
+            }
+            _ => {}
+        }
+        b
+    }
+
+    /// An element of a vector, as its own type: a `Bool` is stored as a byte.
+    fn cell(&self, text: &str, elem: &Ty) -> Code {
+        if *elem == Ty::Bool {
+            Code::new(format!("(bool){text}"), UNARY)
+        } else {
+            Code::new(text, PRIMARY)
+        }
+    }
+
+    /// `print(a, b)` as one line of statements.
+    pub fn print_stmts(&mut self, args: &[FmtArg], out: &mut String) {
+        self.need("out");
+        let mut parts = Vec::new();
+        for (i, arg) in args.iter().enumerate() {
+            if i > 0 {
+                parts.push("cpl::put_char(' ');".to_string());
+            }
+            let code = self.expr(&arg.value);
+            parts.push(self.show_stmt(&code, &arg.value.ty, &arg.digits.to_string()));
+        }
+        parts.push("cpl::put_line();".to_string());
+        out.push_str(&format!("{}{}\n", pad(self.indent), parts.join(" ")));
+    }
+
+    /// `read()` of the type `spec` spells out.
+    pub fn read(&mut self, spec: &Spec) -> Code {
+        let program = self.program;
+        let plain = |this: &mut Self, name: &'static str| {
+            this.need(name);
+            Code::primary(format!("cpl::{name}()"))
+        };
+        match spec {
+            Spec::Int { .. } | Spec::Plain(Ty::Int) => plain(self, "read_int"),
+            Spec::Plain(Ty::Float) => plain(self, "read_float"),
+            Spec::Plain(Ty::Char) => plain(self, "read_char"),
+            Spec::Plain(Ty::Str) => plain(self, "read_str"),
+            Spec::Plain(Ty::Pos(d)) => {
+                self.need("read_int");
+                Code::new(
+                    format!(
+                        "(int)(cpl::read_int() - {}_lo)",
+                        ident(&program.domains[*d])
+                    ),
+                    UNARY,
+                )
+            }
+            Spec::Plain(ty) => Code::primary(format!("{}()", self.ty(ty))),
+            Spec::Opt(_) => Code::primary(format!("{}()", self.ty(&spec.ty()))),
+            Spec::Fields(ty, fields) => {
+                // `{...}` runs its elements in order: so are the fields read.
+                let fields: Vec<String> =
+                    fields.iter().map(|field| self.read(field).text).collect();
+                Code::primary(format!("{}{{{}}}", self.ty(ty), fields.join(", ")))
+            }
+            Spec::Array { dims, elem } => {
+                let ty = self.ty(&spec.ty());
+                self.lambda(&ty, |this, out| {
+                    let name = this.temp();
+                    this.read_array(&name, true, dims, elem, out);
+                    out.push_str(&format!("{}return {name};\n", pad(this.indent)));
+                })
+            }
+        }
+    }
+
+    /// Statements that read an array into `name`, declaring it if asked.
+    pub fn read_array(
+        &mut self,
+        name: &str,
+        declare: bool,
+        dims: &[DimSpec],
+        elem: &Spec,
+        out: &mut String,
+    ) {
+        let elem_ty_ir = elem.ty();
+        let cell = elem_ty(self.program, &elem_ty_ir);
+        let lens: Vec<String> = dims.iter().map(|d| self.dim(d)).collect();
+        let lead = pad(self.indent);
+        let items = if dims.len() == 1 {
+            if declare {
+                out.push_str(&format!("{lead}std::vector<{cell}> {name}({});\n", lens[0]));
+            } else {
+                out.push_str(&format!("{lead}{name}.assign({}, {cell}());\n", lens[0]));
+            }
+            name.to_string()
+        } else {
+            self.need("grid");
+            let made = format!(
+                "cpl::grid<{cell}, {}>({{{}}}, {cell}())",
+                dims.len(),
+                lens.join(", ")
+            );
+            if declare {
+                out.push_str(&format!(
+                    "{lead}cpl::Grid<{cell}, {}> {name} = {made};\n",
+                    dims.len()
+                ));
+            } else {
+                out.push_str(&format!("{lead}{name} = {made};\n"));
+            }
+            format!("{name}.d")
+        };
+        let x = self.temp();
+        let value = self.read(elem).text;
+        out.push_str(&format!("{lead}for (auto& {x} : {items}) {x} = {value};\n"));
+    }
+}

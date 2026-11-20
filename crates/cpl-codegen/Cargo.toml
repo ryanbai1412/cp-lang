@@ -6,3 +6,7 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+cpl-ir.workspace = true
+
+[dev-dependencies]
+cpl-check.workspace = true

@@ -1,12 +1,65 @@
 # The Rust workspace
 
-The front end is built: `cpl-diag`, `cpl-syntax`, `cpl-check` and `cpl-lsp`
-have real code, and `cpl check`, `cpl run`, `cpl build` and `cpl lsp` all
-go through one `cpl_check::Database`. `cpl-verify`, the verification
-harness, is built too. `cpl-codegen`, `cpl-interp` and `cpl-fmt` are still
-empty shells with one passing test. The split is a
-starting point so that work can go on in parallel without two people
-editing the same crate; change it when the code says it is wrong.
+The front end and both back ends are built: `cpl check`, `cpl run`,
+`cpl build` and `cpl lsp` all go through one `cpl_check::Database`, and
+`cpl run` and `cpl build` share one typed lowering (`cpl-ir`), so the
+interpreter and the C++ cannot disagree about what a program means
+without a test saying so. `cpl-verify`, the verification harness, is
+built too. `cpl-fmt` is still an empty shell with one passing test. The
+split is a starting point so that work can go on in parallel without two
+people editing the same crate; change it when the code says it is wrong.
+
+## Running and building a program
+
+`cpl run` interprets a program and `cpl build` writes it as one C++17 file:
+
+```text
+$ cat sum.cp
+let n: 1..=100 = read()
+let a: [n]Int = read()
+print(sum(a), sum(a) / n, sum(a) % n)
+$ printf '3\n-5 1 2\n' | cpl run sum.cp
+-2 -1 1
+$ cpl build sum.cp                 # writes sum.cpp; `-o -` prints it instead
+$ g++ -std=c++17 -O2 sum.cpp -o sum && printf '3\n-5 1 2\n' | ./sum
+-2 -1 1
+```
+
+`/` and `%` on integers are Euclidean, so a remainder is never negative.
+Where the declared ranges prove the dividend is not negative and the
+divisor is positive, the C++ is the bare operator (`a % b`); otherwise it
+is a branchless helper (`cpl::modp(a, b)` for a positive divisor,
+`cpl::emod(a, b)` when nothing is known).
+
+The C++ file opens with the `.cp` source as comments, holds only the
+runtime helpers the program calls, and is refused if it would pass the
+64 KB a judge accepts. Building twice gives the same bytes.
+
+`cpl run` checks what the C++ does not: an index out of range, a division
+by zero, an `Int` overflow, `!` on `none`, input outside its declared
+range, recursion that never ends. Each stops the program with exit
+status 3 and an error that points at the source. A failed `assert` does
+the same in both. `Str` is bytes and `Char` is one byte everywhere: a
+literal must be ASCII (`E0502`), and other bytes pass from input to
+output untouched.
+
+## Testing the back ends
+
+`crates/cpl-cli/tests/programs` holds one `.cp` per area of the language,
+each with the `.in` it reads and the `.out` it must print.
+`tests/differential.rs` runs every one through the interpreter and
+through `g++ -std=c++17 -fsanitize=address,undefined`, and fails if the
+two differ in output or exit status, if a sanitizer speaks, or if g++
+warns. `tests/budget.rs` holds the binary to 200 ms for `cpl run`, one
+second for `cpl build` and 64 KB of C++. To add a program, write the
+`.cp` (and `.in`), then record its `.out` from the interpreter:
+
+```text
+$ CPL_BLESS=1 cargo test -p cpl-cli --test differential
+```
+
+Read the recorded `.out` before committing it: from then on it is what
+both back ends are held to.
 
 ## One front end, reused per item
 
@@ -63,9 +116,14 @@ dependency when the code first needs it):
   (`plan/00-vision.md` G13, `plan/17-syntax.md`).
 - **`cpl-check`** is name resolution, types, domains, borrows and value
   ranges (`plan/11` to `plan/16`, `plan/30-compiler.md` 3.4 and 3.5).
-- **`cpl-codegen`** turns a checked program into one C++17 file (`plan/30-compiler.md` 3.3, `plan/70-judges.md`).
-- **`cpl-interp`** runs a checked program directly for debug runs and
-  records the trace (`plan/30-compiler.md` 3.1, `plan/50-debugging.md`).
+- **`cpl-ir`** lowers a checked program to the typed tree both back ends
+  read: names resolved to slots, patterns and comprehensions turned into
+  loops, every `read()` given the type it reads. What neither back end
+  can run yet is reported here, once, as `E0501`.
+- **`cpl-codegen`** turns that tree into one C++17 file (`plan/30-compiler.md` 3.3, `plan/70-judges.md`).
+- **`cpl-interp`** runs that tree directly for debug runs, checking
+  everything the C++ leaves unchecked (`plan/30-compiler.md` 3.1,
+  `plan/50-debugging.md`).
 - **`cpl-fmt`** is the formatter (`plan/45-dev-tools.md`).
 - **`cpl-lsp`** is the language server (`plan/60-editor.md`).
 - **`cpl-cli`** builds the `cpl` binary and owns the commands (`plan/40-tooling.md`,

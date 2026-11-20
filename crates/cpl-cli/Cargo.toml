@@ -15,5 +15,6 @@ cpl-codegen.workspace = true
 cpl-diag.workspace = true
 cpl-fmt.workspace = true
 cpl-interp.workspace = true
+cpl-ir.workspace = true
 cpl-lsp.workspace = true
 cpl-syntax.workspace = true
