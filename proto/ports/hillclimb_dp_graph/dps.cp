@@ -4,7 +4,7 @@
 const P = 1000000007
 type Z = Mod<P>
 domain Digit = '0'..='9'
-let k: [domain Pos]Digit = read()
+let k: [domain Pos]Digit = read() where Pos.len <= 10000
 let d: 1..=100 = read()
 domain Rem = 0..d
 

@@ -1,0 +1,5 @@
+# ccc10s4_orig.cpp: the lines a perfect C++ contest library would have supplied.
+# Everything else is counted as problem-specific code. Read by proto/loc.py.
+# lines      facility        what it is
+1-4          template        includes, debug macros, typedefs
+6-28         dsu             disjoint set union

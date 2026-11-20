@@ -20,6 +20,8 @@ toolchain. The command is `cpl` (a working name) and source files end in
 - `examples/local-lib/`: a sample personal contest library built on it.
 - `corpus/`, `subs/`: Ryan's accepted submissions, used for ports,
   benchmarks and design mining.
+- `tools/bench/`: measures every corpus port against its original (lines,
+  runtime, memory, emitted C++); see its README.
 - `archive/`: superseded design docs.
 - `site/`: the interactive CP Lang course, reference, and offline example playground. See
   [the site README](site/README.md) to build and preview it locally.

@@ -1,11 +1,14 @@
-# Friction report: 30 corpus problems re-solved in `proto/cpc`
+# Friction report: 76 corpus problems re-solved in `proto/cpc`
 
-Thirty accepted C++ submissions from `corpus/` are now re-solved in CP Lang
-under `proto/ports/` (11 from the earlier round, 19 new in this one). Every
+Seventy-six accepted C++ submissions from `corpus/` are now re-solved in CP
+Lang under `proto/ports/`: 30 from the first two rounds, 8 that the scout
+sprint moved up from its sketches, and 38 added in the third round. Every
 port compiles, and `proto/run_all.sh` checks each against its original on
-random inputs. Line counts and test status per port are in
+random inputs. Line counts, test status and benchmarks per port are in
 [`ports-report.md`](ports-report.md); this file is what the ports taught us
-about the language.
+about the language. The third round's findings are in
+[their own section](#what-the-third-round-38-more-ports-added); the earlier
+sections are unchanged.
 
 Each item names the port it came from and says where it stands: **fixed**
 (the prototype changed and the port uses it), **prototyped** (works in
@@ -150,6 +153,139 @@ hung on a real judge. Tests run against a small judge written in Python
 (`proto/interact.py`, `proto/ports/aac5p2_judge.py`); the port and the
 original must both be accepted.
 
+## What the third round (38 more ports) added
+
+The third round widened the corpus sample on purpose: twelve problems of
+the AtCoder DP set, spanning trees and searches, a tree problem, range
+structures, strings, integer geometry, number theory, a constructive
+problem, two more interactive problems, and a run of older NOIP/CCC/IOI
+problems that are short in C++ and therefore a harder baseline to beat.
+
+`main` moved under this round twice. The ergonomics audit landed first, and
+the drafts were moved onto it: optional steps (`if let rest = p - a and not
+wins[rest]`), `and let` chains, open ranges and `prefix` replaced the raw
+index arithmetic the first drafts had (`dpk`, `dpe`, `dpn`, `noip06p2`,
+`noip07p2`, `ccc03s4`, `ccc19s5`). Then the scout sprint landed `Dsu`,
+`bfs` and `subsets` in the library, which this round had also prototyped,
+and thirteen of the problems ported here arrived from sibling sessions
+(`ccc18s5`, `ccc21s4`, `ccc22s4`, `cco18p1`, `cco20p1`, `ioi04p4` in
+`proto/ports/`; `ccc22s3`, `dpo`, `dpp`, `dps`, `dpu`, `dpv`, `noip06p1` in
+`proto/ports/hillclimb_dp_graph/`). Their versions are the ones in the
+tree, and the remaining ports use the library's spelling (`use
+std.dsu.{Dsu}`, `parts.unite(a, b)`, `bfs(v => adj[v], from: [s])`). What
+is listed below is what was still in the way afterwards. Where the scout
+pass in [`friction-backlog.md`](friction-backlog.md) lists the same thing,
+its item number is given.
+
+### A generated word needs the right characters (fixed; ccc03s4, noip07p2)
+
+`let s: [domain S]Char = read()` generates lowercase letters only, so a
+port whose input is digits, or letters and dashes, is "tested" on words
+that never reach its interesting branches and passes vacuously, the same
+false confidence as the all-negative weights of the earlier round. When
+the characters are one range, the element type can be a domain of
+characters (from the ergonomics audit). When they are not, the read now
+names them. This is test-only information, like `gen:` and `where`:
+
+```
+let s: [domain S]Char = read(alphabet: "-abdx-159")     // noip07p2
+```
+
+### Input that is not a fixed shape cannot be described (open)
+
+Three kinds of input stopped a port or bent it:
+
+- **Sentinel-terminated and read-to-end input** (`ccc04s5`, `noip99p1`):
+  "test cases until `0 0`" and "numbers until end of file" have no `read()`
+  form, and the generator cannot produce them. Both problems were skipped.
+- **`read()` inside a function generates nothing** (`noip04p1`): the port
+  first read its twelve numbers in a function with an early `return`; the
+  generator emitted an empty input. Reads must be at top level, which also
+  means the early exit had to become a flag. This is a prototype bug, but it
+  shows the two open items (no top-level early exit, reads only at top
+  level) are one problem.
+- **Arrays sized by a loop variable** (`ccc10s4`): `let posts: [m]Post =
+  read()` inside a loop works, but a generator function cannot return
+  `[m]Post`, so the only way to keep generated polygons valid is a `where`
+  that rejects nine inputs in ten. The same limit forces `domain E = 1..n`
+  where `[n - 1]T` was meant (`dpg`, `noip14p2`).
+
+The triangle of
+`ccc19s5` and `ioi94p1` is read cell by cell into `[Row]List<Int>` (F4).
+
+### No floating point (open; F15)
+
+The prototype has no `Float`. That excluded `dpi`, `dpj`, `ccc05s5` (a
+two-decimal average), `cco18p4` (golden-section search) and every geometry
+problem that is not exact on integers. The geometry ports of this round
+(`cheerio1s3`, `yac6p3`) are integer geometry.
+This is the largest hole in corpus coverage.
+
+### Small things that cost a minute each (open unless marked)
+
+Each of these made a port stop and look something up, which is the signal
+the porting rule asks for.
+
+- **`var (a, b) = (0, 0)`** declares names that are not `var` (`noip14p2`,
+  `noip04p1`). It should either work or be rejected at the declaration.
+- **`x += k` on a position** is rejected with "use `i = i + k`", but
+  since the audit `i + k` is a `?I`, so the line that compiles is `seen =
+  (seen + step)!`. The message is stale, and a counter that walks a domain
+  wants `+=` with the same trap as `!`.
+- **`prefix(a)` takes `Int` only** (`dpm`): a counting DP sums `Mod` values
+  over a window, so it still builds its own `[C.bounds]Z` table.
+- **Range bounds are re-evaluated every iteration** (`noip06p2`): `for t in
+  0..bundles.len` with a `push` in the body never ends. A `for` range should
+  be evaluated once; this one cost a timeout to find.
+- **Comprehension gaps**: `sorted(D, by: ...)` over a domain needs `[e for
+  e in D]` first and `count(e for e in D if c)` must be `count(c for e in
+  D)` (`ccc17s4`); a filter between two `for` clauses is rejected
+  (`ccc19s5`); `xs.rev` works in a `for` but not as a value (`dpt`).
+- **A tuple literal compared with a named tuple** emits two C++ struct types
+  with no `==` between them (`dpy`); binding the literal to a typed `let`
+  works. Prototype bug.
+- **`Set<(at: Int, stop: V)>()`** does not parse; the tuple needs a `type`
+  alias first.
+- **A string literal cannot be indexed** (`noip00p1`): `"0123456789AB"[d]`
+  had to be `if d < 10: '0' + d else: 'A' + (d - 10)`.
+
+### What the benchmark found (open)
+
+`tools/bench` runs every port against its original on the largest inputs
+its generator produces. Two ports were clearly slower, for reasons that
+belong here:
+
+- **`Mod` division looks like one operation** (`dpy`, fixed in the port).
+  `fact[a + b] / (fact[a] * fact[b])` is a modular inverse per call and
+  made the port eight times slower than the original, which keeps inverse
+  factorials. The port now does too. A `choose` in the library removes the
+  trap; a lint on `/` between `Mod` values inside a loop would catch the
+  rest.
+- **No hash set** (`ccc03s4`, open). Counting distinct substring hashes
+  with `Set<Int>` was 8x slower than the original's open-addressing table;
+  sorting each batch is 4x slower and `HashMap<Int, Int>` is worse than
+  that. The library needs a flat `HashSet` that can be cleared and reused.
+
+- **One large gap in a port from the scout sprint** (open). `ioi04p4`
+  takes 1.5 s where its original takes 0.06 s, the only port more than five
+  times slower. It was not written in this round and has not been looked
+  into.
+- **Smaller gaps, not yet explained** (open). The two `@memo` interval DPs
+  `dpl` and `dpn` take two to four times as long as the originals' loops on
+  runs of a few hundredths of a second; `coci20c6p3`, `cco20p1` and
+  `hillclimb_dp_graph/dpp` are two to three times slower on runs of
+  similar length. The other ports are within 30% of their original or
+  faster.
+
+### Library pieces the originals had and the ports wrote out (open)
+
+Counted honestly in the stripped baseline, these are where the next library
+additions pay: factorial tables and `choose` (`dpy`), a matrix type with
+power (`dpr`), a line container for the convex hull trick (`dpz`), a
+sliding-window minimum (`dmpg16s5` uses a `SegTree` for what a monotone
+deque does), longest increasing subsequence (`noip04p3`), and a way to walk
+cyclic neighbours (`ccc10s4`).
+
 ## Smaller items
 
 **Sorting has two spellings, and needs a decision (prototyped, cco16p2).**
@@ -224,6 +360,22 @@ compiler.
 - The default generator for a range that crosses zero produced only values
   near the low end, so every weight in cco16p2 was negative and 511 "passing"
   tests tested nothing. Ranges that cross zero now sample around zero.
+- Third round: `x /= b` and `x %= b` emitted the C++ operators, which
+  truncate, while `x / b` and `x % b` were Euclidean. `noip00p1` (base -2
+  conversion) printed a wrong digit string until the compound forms took the
+  same path as the binary ones.
+- Third round: a `where` on a word read (`let s: [domain S]Char = read()`)
+  was parsed and then ignored: a digit-DP draft declared `where Pos.len <=
+  10000` and the benchmark still generated a 300,000-digit number that
+  overran the original's table.
+- Third round: `heap.pop()! + heap.pop()!` crashed the compiler when no
+  assignment had been compiled before it (`noip04p2`): the code that orders
+  two effects read a field that only an assignment sets.
+- Open: a tuple that holds an enum cannot be sorted; the emitted C++ has no
+  `<` for the enum. Sorting by a key that leaves the enum out works.
+- Third round: `interact.py` treated an input rejected by `where` as a
+  conversation and crashed on the empty input (`yac6p3`); it now skips and
+  counts rejections like `cp.py stress`.
 - Open: the complexity warning fires on a `where` precondition, which is
   compiled out of a submission.
 - Open: a runtime trap in a one-line `for i in S: stmt` reports the next
@@ -241,6 +393,15 @@ inside the problem's constraints, so each port must declare them; and a
 generator that ignores them produces false alarms, while one that is too
 narrow produces false confidence (the all-negative weights above).
 
+The third round found two more originals that are right only inside
+constraints the statement gives and the code never checks. `ccc21s4`
+assumes the subway line starts at station 1 and that a swap names two
+different stops; `cco20p1` assumes every friend stands inside `l..=r`. A
+port of either has to declare that precondition and generate inputs that
+meet it.
+One original, `ccc10s4`, is marked "not my code" in the corpus; it is kept
+as an oracle but its line counts say less about the corpus author's style.
+
 ## Solutions that changed shape
 
 The ports were re-solved, not translated. The cases where the language
@@ -257,3 +418,18 @@ pushed towards a different and shorter algorithm:
 - **noip09p3**: a two-layer Dijkstra became four floods in sorted order.
 - **dmopc21c2p1**: a sweep over 10^6 positions became a loop over the
   breakpoints of a sorted array.
+- **noip00p1**: alternating floor and ceiling division by the positive base
+  became `digits.push(left % base); left /= base` with the negative base
+  itself, because Euclidean remainders are already digits.
+- **ccc10s4**: a 1000 x 1000 table of pen lists per fence became "sort the
+  sides, take `runs` of equal ones": a run of two is a shared fence, a run
+  of one faces the outside.
+- **noip06p2**: bitmasks over a main item's accessories became a list of
+  bundles that doubles once per accessory, then a grouped knapsack.
+- **dmpg16s5**: a monotone deque became a minimum query over prefix sums.
+- **noip10p3**: a binary search over the answer with a two-colouring of the
+  feud graph per step became one pass over the feuds from angriest down,
+  with a `Dsu` and one `foe` slot per criminal; the graph is never built.
+- **yac6p3**: four corner questions give the extreme `x + y` and `x - y`;
+  the port names those four numbers and builds both candidate pairings from
+  one `cell(sum, diff)` helper instead of four hand-derived formulas.
