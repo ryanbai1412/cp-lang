@@ -107,8 +107,82 @@ pub(crate) struct Hold {
     until: Span,
 }
 
+/// What a top-level statement leaves behind for the statements after it.
+/// Each one is checked on its own, so these are handed to the later ones.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum Flow {
+    None,
+    /// `let part = a[l..=r]`: `a` stays lent while `part` is in use.
+    View(String),
+    /// `assert i != j`: holds until one of these names is assigned.
+    Assert(Vec<String>),
+}
+
+pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
+    let [stmt] = stmts else {
+        return Flow::None;
+    };
+    match &stmt.kind {
+        StmtKind::Assert { cond, .. } => Flow::Assert(names_in(cond)),
+        StmtKind::Let {
+            mutable: false,
+            pat:
+                ast::Pattern {
+                    kind: ast::PatternKind::Name(name),
+                    ..
+                },
+            init: Some(init),
+            ..
+        } => {
+            let view = match &unparen(init).kind {
+                ExprKind::Index { indices, .. } => indices
+                    .iter()
+                    .any(|i| matches!(unparen(i).kind, ExprKind::Range { .. })),
+                ExprKind::Call { callee, .. } => {
+                    matches!(&callee.kind, ExprKind::Field { name, .. } if name.text == "row")
+                }
+                _ => false,
+            };
+            if view {
+                Flow::View(name.clone())
+            } else {
+                Flow::None
+            }
+        }
+        _ => Flow::None,
+    }
+}
+
+/// The names an item mentions, and the ones it may assign.
+pub(crate) fn item_names(stmts: &[Stmt]) -> (Vec<String>, Vec<String>) {
+    let mut names = Names::default();
+    for stmt in stmts {
+        walk_stmt(stmt, &mut names);
+    }
+    (names.0, written_in_stmts(stmts))
+}
+
+/// An earlier top-level statement whose effect reaches the item being
+/// checked.
+pub(crate) struct Replay {
+    pub item: std::sync::Arc<crate::db::ItemSyntax>,
+    /// The view is named again after the item being checked.
+    pub live_after: bool,
+    /// The view is changed in or after the item being checked.
+    pub written: bool,
+}
+
+/// A span no statement has: a lend that began in an earlier top-level
+/// statement, or one that outlives the one being checked.
+const ELSEWHERE: Span = Span {
+    start: u32::MAX,
+    end: u32::MAX,
+};
+
 #[derive(Default)]
 pub(crate) struct Lends {
+    /// Top-level `let`-bound views from earlier statements, by name.
+    global_views: HashMap<String, Lent>,
     facts: Vec<Fact>,
     holds: Vec<Hold>,
     /// Receivers of an enclosing place expression: `a` in `a[i]` is not
@@ -728,7 +802,9 @@ impl<'a> Checker<'a> {
         let (root_mutable, lent) = match self.local(name) {
             Some(local) => (local.mutable, self.lends.views.get(&local.span).cloned()),
             None => match self.env.global(name).as_deref() {
-                Some(Def::Value { mutable, .. }) => (*mutable, None),
+                Some(Def::Value { mutable, .. }) => {
+                    (*mutable, self.lends.global_views.get(name).cloned())
+                }
                 _ => return None,
             },
         };
@@ -908,11 +984,64 @@ impl<'a> Checker<'a> {
             return Some(kind);
         }
         match &e.kind {
-            ExprKind::Name(name) => {
-                let local = self.local(name)?;
-                self.lends.views.get(&local.span).map(|lent| lent.kind)
-            }
+            ExprKind::Name(name) => match self.local(name) {
+                Some(local) => self.lends.views.get(&local.span).map(|lent| lent.kind),
+                None => self.lends.global_views.get(name).map(|lent| lent.kind),
+            },
             _ => None,
+        }
+    }
+
+    /// Brings the effect of an earlier top-level statement into the item
+    /// about to be checked, `current`.
+    pub(crate) fn replay(&mut self, replay: &Replay, current: &[Stmt]) {
+        let Some(stmt) = replay.item.parsed.stmts.first() else {
+            return;
+        };
+        match (&replay.item.flow, &stmt.kind) {
+            (Flow::Assert(_), StmtKind::Assert { cond, .. }) => self.add_facts(cond, false),
+            (
+                Flow::View(name),
+                StmtKind::Let {
+                    init: Some(init), ..
+                },
+            ) => {
+                // The statement was checked, and reported, as its own item.
+                let found = self.quietly(|c| {
+                    c.infer(init);
+                    c.view_kind(init).zip(c.place(init))
+                });
+                // Its spans are positions in another item's text.
+                self.lends.view_exprs.clear();
+                self.lends.proj_calls.clear();
+                self.lends.covered.clear();
+                let Some((kind, place)) = found else {
+                    return;
+                };
+                self.lends.global_views.insert(
+                    name.clone(),
+                    Lent {
+                        kind,
+                        root: place.root.clone(),
+                        root_mutable: place.root_mutable,
+                        steps: place.steps.clone(),
+                    },
+                );
+                let until = match current.iter().rev().find(|s| mentions(s, name)) {
+                    _ if replay.live_after => ELSEWHERE,
+                    Some(last) => last.span,
+                    None => return,
+                };
+                self.lends.holds.push(Hold {
+                    name: name.clone(),
+                    root: place.root,
+                    steps: place.steps,
+                    mutable: replay.written,
+                    at: ELSEWHERE,
+                    until,
+                });
+            }
+            _ => {}
         }
     }
 
@@ -1008,14 +1137,18 @@ impl<'a> Checker<'a> {
                 if mutable { "mutably " } else { "" },
             );
             if let Some(diag) = self.error(codes::USED_WHILE_LENT, e.span, message) {
-                diag.labels.push(cpl_diag::Label {
-                    span: at,
-                    message: format!("lent to `{name}` here"),
-                });
-                diag.labels.push(cpl_diag::Label {
-                    span: until,
-                    message: format!("`{name}` is last used here"),
-                });
+                if at != ELSEWHERE {
+                    diag.labels.push(cpl_diag::Label {
+                        span: at,
+                        message: format!("lent to `{name}` here"),
+                    });
+                }
+                if until != ELSEWHERE {
+                    diag.labels.push(cpl_diag::Label {
+                        span: until,
+                        message: format!("`{name}` is last used here"),
+                    });
+                }
                 diag.help = Some(format!(
                     "finish with `{name}` first, go through `{name}`, or keep the position and re-project later; `.copy()` keeps an owned copy"
                 ));

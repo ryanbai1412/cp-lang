@@ -7,7 +7,7 @@
 
 mod call;
 mod expr;
-mod lends;
+pub(crate) mod lends;
 mod stmt;
 mod types;
 
@@ -30,6 +30,9 @@ pub(crate) trait Env {
     fn type_def(&mut self, name: &str) -> Option<Arc<Def>>;
     /// True if `alias` names a module imported whole: `use lib.treap`.
     fn is_module(&mut self, alias: &str) -> bool;
+    /// The earlier top-level statements whose lends and facts reach the
+    /// item being checked.
+    fn lent_before(&mut self) -> Vec<lends::Replay>;
     /// Every impl for the type `target`, with the trait it implements
     /// (`None` for `impl Target:`).
     fn impls(&mut self, target: &str) -> Vec<(Option<String>, Arc<Def>)>;
