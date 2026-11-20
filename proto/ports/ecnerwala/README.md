@@ -1,4 +1,4 @@
-# ecnerwala/contest-programming ports, wave 1
+# ecnerwala/contest-programming ports, waves 1 and 2
 
 Recent submissions from <https://github.com/ecnerwala/contest-programming>
 (Andrew He's solutions, CC0), newest first, rewritten in CP Lang 0.2.2 and held
@@ -17,10 +17,16 @@ upstream. `samples/` holds the sample files upstream kept next to it, and
 The port names map to upstream paths like this: `agc079a` is
 `AtCoder/AGC079/A/A.cpp`, `cf2261g` is `CF/2261/G/G.cpp`, `ucup5s06g` is
 `ACM/UCup5/Stage06-Hyakumanben/G/G.cpp`, and `ucup5s05e` is
-`ACM/UCup5/Stage05-Chengdu/E/E.cpp`.
+`ACM/UCup5/Stage05-Chengdu/E/E.cpp`. Wave 2 adds stages 3 (`ucup5s03f`,
+Gorkovskaya), 2 (`ucup5s02e`, EPS) and 1 (`ucup5s01a`, Nizhny Novgorod).
 
 Two of the originals (`cf2261g`, `cf2261h`) use C++23 deducing `this`, which
 g++ 11 rejects; `gate.sh` falls back to `zig c++` (clang 20) for those.
 
+`ucup5s05b_orig.cpp` starts with a short `wala::Point` shim, marked as not
+upstream, because the archived file does not compile without it.
+
 What was skipped and every piece of friction found is in
-`research/ecnerwala-corpus-wave-1.md`.
+`research/ecnerwala-corpus-wave-1.md` (13 ports, upstream 2026-10-17 and
+later) and `research/ecnerwala-corpus-wave-2.md` (21 ports, back to August
+2026).
