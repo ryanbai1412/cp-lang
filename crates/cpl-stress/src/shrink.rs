@@ -165,11 +165,18 @@ fn fit_in(spec: &InputSpec, outer: &Env, case: &Case) -> Option<Case> {
 }
 
 /// How far a case is from the plainest one of its size: permutations
-/// out of order. It breaks ties between cases of one weight, so a
-/// permutation shrinks toward `1 2 3 ..`.
+/// out of order and tree edges written high end first. It breaks ties
+/// between cases of one weight, so a permutation shrinks toward
+/// `1 2 3 ..` and an edge toward `1 2`.
 fn disorder(spec: &InputSpec, case: &Case) -> u128 {
     let mut total = 0u128;
     for (field, value) in spec.fields.iter().zip(&case.values) {
+        if let (Shape::Tree { .. }, Value::Seq(edges)) = (&field.shape, value) {
+            total += edges
+                .iter()
+                .filter(|edge| matches!(edge, Value::Tuple(ends) if ends[0].number() > ends[1].number()))
+                .count() as u128;
+        }
         if let (Shape::Perm { .. }, Value::Seq(items)) = (&field.shape, value) {
             let values: Vec<i128> = items.iter().filter_map(Value::number).collect();
             for (i, a) in values.iter().enumerate() {
