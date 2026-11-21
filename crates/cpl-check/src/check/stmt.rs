@@ -675,9 +675,24 @@ impl<'a> Checker<'a> {
                 };
                 let body = self.enter_body(&generics, self_ty.clone());
                 for variant in &e.variants {
-                    for (_, ty) in &variant.fields {
-                        self.resolve_type(ty);
+                    let fields: Vec<Ty> = variant
+                        .fields
+                        .iter()
+                        .map(|(_, ty)| self.resolve_type(ty))
+                        .collect();
+                    let ty = Def::Variant {
+                        of: e.name.text.clone(),
+                        fields,
                     }
+                    .value_ty(&variant.name.text);
+                    self.hovers.push(HoverEntry {
+                        span: variant.name.span,
+                        name: variant.name.text.clone(),
+                        ty,
+                        keyword: "global",
+                        decl: Some(variant.name.span),
+                        owner: None,
+                    });
                 }
                 self.type_hover(&e.name);
                 self.methods(&e.methods, &self_ty);

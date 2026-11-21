@@ -2342,6 +2342,8 @@ print(vals[Node.Src], ys, xs.map(y => y + 1))
     assert!(hover_text(&mut server, 11, 8).contains("d: Int"));
     assert!(hover_text(&mut server, 14, 34).contains("y: Int"));
     assert!(hover_text(&mut server, 14, 17).contains("Src: Node"));
+    assert!(hover_text(&mut server, 4, 5).contains("Node.Src"));
+    assert!(hover_text(&mut server, 6, 5).contains("Node.Cell(Row, Col)"));
     let reply = server.handle(&request(
         32,
         "textDocument/inlayHint",
