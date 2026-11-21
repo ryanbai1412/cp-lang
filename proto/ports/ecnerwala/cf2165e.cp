@@ -7,7 +7,7 @@ domain V = 1..=n
 let edges: [0..n - 1](u: V, v: V) = read()
 let g = Graph.undirected(edges)
 
-var deg = [V] v => g[v].len
+var deg = [V] v => g.deg(v)
 var deg_freq: [0..n]Int = 0
 for v in V: deg_freq[deg[v]] += 1
 

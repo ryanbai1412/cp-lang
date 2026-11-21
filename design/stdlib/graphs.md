@@ -119,10 +119,14 @@ struct Graph<V, E>          // CSR: O(n + m) memory, arcs grouped by tail
 // List-form hooks, never called by name: `Graph.directed(pairs)` with a plain
 // list resolves to `directed_of_pairs`, and a list of triples to
 // `directed_of_triples` (the general `<fn>_of_pairs`/`<fn>_of_triples` rule).
-fn directed_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>                 // O(n + m)
-fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>               // O(n + m)
-fn directed_of_triples<V, W>(edges: List<(V, V, W)>) -> [V]List<(V, W)>    // O(n + m)
-fn undirected_of_triples<V, W>(edges: List<(V, V, W)>) -> [V]List<(V, W)>  // O(n + m)
+fn directed_of_pairs<V>(edges: List<(V, V)>) -> Adj<V, V>                  // O(n + m)
+fn undirected_of_pairs<V>(edges: List<(V, V)>) -> Adj<V, V>                // O(n + m)
+fn directed_of_triples<V, W>(edges: List<(V, V, W)>) -> Adj<V, (V, W)>     // O(n + m)
+fn undirected_of_triples<V, W>(edges: List<(V, V, W)>) -> Adj<V, (V, W)>   // O(n + m)
+struct Adj<V, T>            // CSR like Graph, each entry the neighbour itself
+    fn out(self, u: V) -> yields T                         // O(deg u)
+    fn get(self, u: V) -> List<T>                          // g[u], O(deg u)
+    fn deg(self, u: V) -> Int                              // O(1)
 ```
 
 One constructor per kind of graph, not a `directed: Bool` option. The

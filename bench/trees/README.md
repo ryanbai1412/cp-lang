@@ -60,13 +60,15 @@ n = 10^6, best of three, outputs identical (seed 2 within 0.03 s):
 | depth-first stack, one child list per vertex | 0.63 s | 175 MB |
 | breadth-first, flat child ranges (decisions.md §86) | 0.45 s | 178 MB |
 | the same, edges read as `[E](u: V, v: V)` over `domain E` | 0.30 s | 138 MB |
+| `Tree<V>` edges, `Graph.undirected` building CSR `Adj` (decisions.md §110) | 0.32 s (C++ 0.39 s, loaded box) | 79 MB |
 
-The edge list as `Tree<V>` (`[0..n - 1]`) makes `Graph.undirected` build one
-`List` per vertex; over a declared domain `E` it builds the CSR `Graph`, and the
-build is 1.1x. The remaining RSS is two core gaps: `[V]Int` tables stored as
-64-bit, and the arrays `Rooted.finish` takes being copied into the struct.
-Fixing both by hand in the emitted C++ gives 0.24 s / 75 MB against 0.24 s /
-70 MB (`research/frictions/rooted-build.md`).
+The edge list as `Tree<V>` (`[0..n - 1]`) names no edge domain, so
+`Graph.undirected` builds `Adj`, the same compressed rows as `Graph` holding the
+neighbours themselves, with 32-bit offsets; it used to build one `List` per
+vertex (0.45 s, 178 MB). The last row was measured later than the others on a
+busier machine, so compare it with the C++ run beside it: 0.82x the time and
+79 MB against 70 MB (`research/frictions/rooted-build.md` has the remaining
+storage gaps).
 
 ## `LinkCut`
 
