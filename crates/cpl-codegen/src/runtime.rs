@@ -1374,16 +1374,7 @@ template <class T> struct ListView {
     const T& operator[](size_t i) const noexcept { return rev ? ptr[n - 1 - i] : ptr[i]; }
     const T& front() const noexcept { return (*this)[0]; }
     const T& back() const noexcept { return (*this)[n - 1]; }
-    ListView slice(ll lo, ll hi) const {
-        if (lo < 0 || hi < lo || (size_t)hi > n) fail(\"slice outside the list\");
-        size_t len = (size_t)(hi - lo), off = rev ? (n - (size_t)hi) : (size_t)lo;
-        return ListView(ptr + off, len, rev);
-    }
     ListView reversed() const noexcept { return ListView(ptr, n, !rev); }
-    std::vector<T> to_list() const {
-        if (!rev) return std::vector<T>(ptr, ptr + n);
-        std::vector<T> o; o.reserve(n); for (size_t i = n; i-- > 0;) o.push_back(ptr[i]); return o;
-    }
     struct Iter {
         const T* d; size_t i, n; bool rev;
         const T& operator*() const noexcept { return rev ? d[n - 1 - i] : d[i]; }
@@ -1407,12 +1398,12 @@ template <class T> struct ListView {
     friend bool operator>(ListView a, ListView b) { return a.cmp(b) > 0; }
     friend bool operator>=(ListView a, ListView b) { return a.cmp(b) >= 0; }
 };
-template <class T> ListView<T> list_slice(const std::vector<T>& v, ll lo, ll hi) { return ListView<T>(v).slice(lo, hi); }
-template <class T> ListView<T> list_slice(ListView<T> v, ll lo, ll hi) { return v.slice(lo, hi); }
+template <class T> ListView<T> list_slice(ListView<T> v, ll lo, ll hi) { if (lo < 0 || hi < lo || (size_t)hi > v.n) fail(\"slice outside the list\"); return ListView<T>(v.ptr + (v.rev ? v.n - (size_t)hi : (size_t)lo), (size_t)(hi - lo), v.rev); }
+template <class T> ListView<T> list_slice(const std::vector<T>& v, ll lo, ll hi) { return list_slice(ListView<T>(v), lo, hi); }
 template <class T> ListView<T> list_rev(const std::vector<T>& v) noexcept { return ListView<T>(v, true); }
 template <class T> ListView<T> list_rev(ListView<T> v) noexcept { return v.reversed(); }
 template <class T> std::vector<T> to_list(const std::vector<T>& v) { return v; }
-template <class T> std::vector<T> to_list(ListView<T> v) { return v.to_list(); }
+template <class T> std::vector<T> to_list(ListView<T> v) { std::vector<T> o; o.reserve(v.n); append_list_view(o, v); return o; }
 template <class T> void append_list_view(std::vector<T>& o, ListView<T> v) { if (!v.rev) o.insert(o.end(), v.ptr, v.ptr + v.n); else for (size_t i = v.n; i-- > 0;) o.push_back(v.ptr[i]); }
 template <class T> std::vector<T> list_concat(ListView<T> a, ListView<T> b) { std::vector<T> o; o.reserve(a.size() + b.size()); append_list_view(o, a); append_list_view(o, b); return o; }
 template <class T> std::vector<T> list_concat(ListView<T> a, const std::vector<T>& b) { return list_concat(a, ListView<T>(b)); }
@@ -1423,7 +1414,7 @@ template <class T> std::optional<T> first(ListView<T> v) { return v.empty() ? st
 template <class T> std::optional<T> last(ListView<T> v) { return v.empty() ? std::optional<T>() : std::optional<T>(v.back()); }
 template <class T> T first_val(ListView<T> v) { if (v.empty()) fail(\"the list is empty\"); return v.front(); }
 template <class T> T last_val(ListView<T> v) { if (v.empty()) fail(\"the list is empty\"); return v.back(); }
-template <class T> std::vector<T> sorted(ListView<T> v) { auto o = v.to_list(); std::sort(o.begin(), o.end()); return o; }
+template <class T> std::vector<T> sorted(ListView<T> v) { auto o = to_list(v); std::sort(o.begin(), o.end()); return o; }
 template <class T, class U> bool has(ListView<T> v, const U& x) { for (size_t i = 0; i < v.n; i++) if (v.ptr[i] == x) return true; return false; }
 inline std::string list_to_str(ListView<u8> v) { std::string s; s.reserve(v.size()); for (u8 c : v) s.push_back((char)c); return s; }
 ",
@@ -1436,3 +1427,65 @@ template <class A, class B> auto list_concat_at(const A& a, const B& b, ll i) ->
 ",
     },
 ];
+
+/// The one-line fns of the runtime in `file` whose name nothing else in
+/// the file mentions, after the unused ones are gone. Operators, which
+/// are called without their name, always stay.
+pub(crate) fn unused_lines(file: &str) -> Vec<&str> {
+    let Some(start) = file.find("namespace cpl {\n") else {
+        return Vec::new();
+    };
+    let end = file[start..].find("}  // namespace cpl\n").map_or(file.len(), |at| start + at);
+    let mut defs: Vec<(&str, &str)> = file[start..end].lines().filter_map(|line| Some((one_line_fn(line)?, line))).collect();
+    let mut unused = Vec::new();
+    loop {
+        let dead: Vec<&str> = defs
+            .iter()
+            .map(|&(name, _)| name)
+            .filter(|&name| {
+                !file.lines().any(|line| !unused.contains(&line) && one_line_fn(line) != Some(name) && mentions(line, name))
+            })
+            .collect();
+        if dead.is_empty() {
+            return unused;
+        }
+        defs.retain(|&(name, line)| !dead.contains(&name) || {
+            unused.push(line);
+            false
+        });
+    }
+}
+
+fn word(c: u8) -> bool {
+    c.is_ascii_alphanumeric() || c == b'_'
+}
+
+/// The name a whole fn written on one line defines, as in
+/// `template <class T> T last_val(ListView<T> v) { ... }`.
+fn one_line_fn(line: &str) -> Option<&str> {
+    let mut head = line.strip_prefix("inline ").unwrap_or(line).as_bytes();
+    if !line.ends_with('}') || head.len() == line.len() && !line.starts_with("template <") {
+        return None;
+    }
+    if head.len() == line.len() {
+        let mut depth = 0;
+        let close = head.iter().position(|&c| {
+            depth += (c == b'<') as i32 - (c == b'>') as i32;
+            c == b'>' && depth == 0
+        })?;
+        head = head[close + 1..].trim_ascii_start();
+    }
+    let paren = head.iter().position(|&c| c == b'(')?;
+    let before = &head[..paren];
+    let at = before.iter().rposition(|&c| !word(c))? + 1;
+    let kind = before.starts_with(b"struct ") || before.starts_with(b"class ") || before.starts_with(b"using ");
+    let name = std::str::from_utf8(&before[at..]).ok()?;
+    (!kind && !name.is_empty() && !before.windows(8).any(|w| w == b"operator")).then_some(name)
+}
+
+fn mentions(line: &str, name: &str) -> bool {
+    let (l, n) = (line.as_bytes(), name.as_bytes());
+    (0..=l.len().saturating_sub(n.len())).any(|at| {
+        l[at..].starts_with(n) && (at == 0 || !word(l[at - 1])) && l.get(at + n.len()).is_none_or(|&c| !word(c))
+    })
+}

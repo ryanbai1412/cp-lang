@@ -638,7 +638,26 @@ impl<'p> Emitter<'p> {
         (cpp, self.chunks)
     }
 
+    /// The file, without the one-line runtime fns nothing in it calls:
+    /// a piece pays only for what the program uses of it.
     fn write(&mut self, name: &str, source: Option<&str>) -> String {
+        let out = self.write_all(name, source);
+        let unused = crate::runtime::unused_lines(&out);
+        if unused.is_empty() {
+            return out;
+        }
+        let keep = |text: &str| -> String {
+            text.split_inclusive('\n').filter(|line| !unused.contains(&line.trim_end_matches('\n'))).collect()
+        };
+        for (part, _, text) in &mut self.chunks {
+            if *part == crate::Part::Runtime {
+                *text = keep(text);
+            }
+        }
+        keep(&out)
+    }
+
+    fn write_all(&mut self, name: &str, source: Option<&str>) -> String {
         let program = self.program;
 
         // Compute reachable fns, closures, structs, and enums together so uncalled

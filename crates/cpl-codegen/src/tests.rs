@@ -340,6 +340,19 @@ fn a_memo_over_bounded_ranges_is_a_flat_table_alone() {
 }
 
 #[test]
+fn a_reversed_list_pays_only_for_the_view_parts_it_uses() {
+    let read = "let n: Int = read()\nlet xs: List<Int> = [read() for _ in 0..n]\n";
+    let size = |body: &str| cpp(&format!("{read}{body}")).len();
+    let forward = size("var s = 0\nfor x in xs: s = s * 31 + x\nprint(s)\n");
+    let backward = size("var s = 0\nfor x in xs.rev: s = s * 31 + x\nprint(s)\n");
+    assert!(backward <= forward + 256, "{forward} -> {backward}");
+    let plain = size("let ys = xs\nvar s = 0\nfor x in ys: s = s * 31 + x\nprint(s, ys[0])\n");
+    let view = cpp(&format!("{read}let ys = xs.rev\nvar s = 0\nfor x in ys: s = s * 31 + x\nprint(s, ys[0])\n"));
+    assert!(view.len() <= plain + 3200, "{plain} -> {}", view.len());
+    assert!(!view.contains("list_concat") && !view.contains("list_slice"), "{view}");
+}
+
+#[test]
 fn a_key_tested_and_then_read_is_looked_up_once() {
     let once =
         cpp("var m = Map<Int, Int>()\nm[4] = 7\nlet x: Int = read()\nif x in m: print(m[x] + 1)\n");
