@@ -1,0 +1,18 @@
+// NOIP 2009 Hankson (proto/ports/noip09p2.cp), with a planted multitest
+// leak: the count lives above the `@!multitest` divider, so it is never
+// reset between tests.
+use std.math.{divisors}
+
+var found = 0
+fn hankson(a0: Int, a1: Int, b0: Int, b1: Int) -> Int:
+    for x in divisors(b1):
+        if gcd(x, a0) == a1 and lcm(x, b0) == b1: found += 1
+    found
+
+@brute(hankson)
+fn hankson_slow(a0: Int, a1: Int, b0: Int, b1: Int) -> Int =
+    count(gcd(x, a0) == a1 and lcm(x, b0) == b1 for x in divisors(b1))
+
+@!multitest
+let (a0, a1, b0, b1): (1..=2e9, 1..=2e9, 1..=2e9, 1..=2e9) = read()
+print(hankson(a0, a1, b0, b1))

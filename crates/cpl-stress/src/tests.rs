@@ -780,6 +780,37 @@ fn a_multitest_input_has_a_header_and_shrinks_to_one_failing_test() {
 }
 
 #[test]
+fn a_bug_that_needs_two_tests_shrinks_both_of_them() {
+    let src = "@!multitest\nlet n: 1..=5 = read()\nlet a: [0..n]1..=9 = read()\nprint(a.max)\n";
+    let spec = InputSpec::from_source(src).unwrap();
+    let test = |a: &[i128]| Case {
+        values: vec![Value::Int(a.len() as i128), Value::Seq(a.iter().map(|&x| Value::Int(x)).collect())],
+        cases: Vec::new(),
+        until_eof: false,
+    };
+    let start = Case {
+        values: Vec::new(),
+        cases: vec![test(&[5, 7]), test(&[3]), test(&[8, 9, 4])],
+        until_eof: false,
+    };
+    // Fails when a later test repeats the first test's largest value, as a
+    // count left over from an earlier test would.
+    let fails = |case: &Case| {
+        let max = |c: &Case| match &c.values[1] {
+            Value::Seq(a) => a.iter().filter_map(Value::number).max(),
+            _ => None,
+        };
+        case.cases.len() >= 2 && case.cases[1..].iter().any(|c| max(c) == max(&case.cases[0]))
+    };
+    let mut start = start;
+    start.cases[2] = test(&[7, 2]);
+    let smallest = shrink(&spec, &start, 2000, &mut |case: &Case| fails(case));
+    // Both tests shrink to one number each; the two 7s only move together,
+    // which a shrinker lowering one number at a time cannot do.
+    assert_eq!(smallest.render(), "2\n1\n7\n1\n7\n");
+}
+
+#[test]
 fn an_interactor_says_what_the_hidden_test_is() {
     let src = "\
 @!multitest

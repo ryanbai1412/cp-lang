@@ -412,7 +412,8 @@ pub fn shrink(
 /// Shrinks a multitest input: first to the one test case that fails on
 /// its own, which is then shrunk like any single input. When no test
 /// case fails alone (the bug needs what an earlier one left behind),
-/// test cases are dropped one at a time instead.
+/// test cases are dropped one at a time and each one left is shrunk with
+/// the others held fixed, until neither makes the input smaller.
 fn shrink_tests(
     spec: &InputSpec,
     inner: &InputSpec,
@@ -426,18 +427,32 @@ fn shrink_tests(
         cases,
         until_eof: case.until_eof,
     };
-    if case.cases.len() > 1 {
-        for single in &case.cases {
-            if left == 0 {
-                break;
-            }
-            left -= 1;
-            let alone = with(vec![single.clone()]);
-            if still_fails(&alone) {
-                return shrink_tests(spec, inner, &alone, left, still_fails);
-            }
+    // What a test case sees of the lines above the divider.
+    let mut scoped = inner.clone();
+    let mut env: Env = spec.consts.clone();
+    for (field, value) in spec.fields.iter().zip(&case.values) {
+        bind(&field.names, value, &mut env);
+    }
+    scoped.consts = env;
+    if case.cases.len() == 1 {
+        let smallest = shrink(&scoped, &case.cases[0], left, &mut |candidate| {
+            still_fails(&with(vec![candidate.clone()]))
+        });
+        return with(vec![smallest]);
+    }
+    for single in &case.cases {
+        if left == 0 {
+            break;
         }
-        let mut best = case.clone();
+        left -= 1;
+        let alone = with(vec![single.clone()]);
+        if still_fails(&alone) {
+            return shrink_tests(spec, inner, &alone, left, still_fails);
+        }
+    }
+    let mut best = case.clone();
+    loop {
+        let before = best.weight();
         let mut position = 0;
         while position < best.cases.len() && best.cases.len() > 1 && left > 0 {
             left -= 1;
@@ -449,18 +464,23 @@ fn shrink_tests(
                 position += 1;
             }
         }
-        return best;
+        // Each remaining test case shrinks with the others held fixed.
+        for i in 0..best.cases.len() {
+            if left == 0 {
+                break;
+            }
+            let mut tries = 0;
+            let shrunk = shrink(&scoped, &best.cases[i], left, &mut |candidate| {
+                tries += 1;
+                let mut cases = best.cases.clone();
+                cases[i] = candidate.clone();
+                still_fails(&with(cases))
+            });
+            left = left.saturating_sub(tries);
+            best.cases[i] = shrunk;
+        }
+        if best.weight() >= before || left == 0 {
+            return best;
+        }
     }
-    let Some(only) = case.cases.first() else {
-        return case.clone();
-    };
-    // What the test case sees of the lines above the divider.
-    let mut scoped = inner.clone();
-    let mut env: Env = spec.consts.clone();
-    for (field, value) in spec.fields.iter().zip(&case.values) {
-        bind(&field.names, value, &mut env);
-    }
-    scoped.consts = env;
-    let smallest = shrink(&scoped, only, left, &mut |candidate| still_fails(&with(vec![candidate.clone()])));
-    with(vec![smallest])
 }
