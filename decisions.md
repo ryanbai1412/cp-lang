@@ -3097,13 +3097,6 @@ Reversed the same day: the search index shipped every page's prose a second
 time (571 kB of text, 178 kB gzipped). The offline shell now rebuilds each
 entry's text from its page on load (1013fbfe), which brought the bundle to
 about 2,400,000 bytes, so the cap is back at 2,600,000.
-Split the same day into a compiler cap and a docs cap (f28c59bb); the
-compiler cap moves from 2,100,000 to 2,150,000: main had reached 2,127,498,
-over the cap, and two codegen commits (inferred memo bounds, product-domain
-loops) add 6,180 more. The docs cap, the one that catches duplication, stays.
-Reason: the compiler grows with the language, and 5 kB of headroom is one
-commit. Reverse: set `CAPS` in site/bundle.py and the text in
-scripts/check.sh back once wasm-opt or a cut brings the compiler under it.
 
 ## 55. `Comb<M>` keyed on `Mod<P>` type (2026-11-21)
 
