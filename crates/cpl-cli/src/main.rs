@@ -7,6 +7,9 @@ fn main() -> ExitCode {
     if args.first().map(String::as_str) == Some("lsp") && args[1..].iter().all(|a| a == "--stdio") {
         return ExitCode::from(cpl_cli::lsp());
     }
+    if args.first().map(String::as_str) == Some("dap") && args[1..].iter().all(|a| a == "--stdio") {
+        return ExitCode::from(cpl_cli::dap());
+    }
     // What has arrived on standard input, without waiting for its end;
     // nothing once it has ended.
     let mut read_stdin = || {

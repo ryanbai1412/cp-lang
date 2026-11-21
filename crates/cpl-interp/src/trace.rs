@@ -29,6 +29,8 @@ pub struct TraceConfig {
     pub last_steps: Option<usize>,
     /// Maximum call depth to record (`0` = top-level only).
     pub max_depth: Option<usize>,
+    /// Record the full call stack (`(fn_name, line)`) on each step for DAP.
+    pub record_frames: bool,
 }
 
 /// The most steps one run keeps; the viewer reads up to 100,000.
@@ -87,6 +89,8 @@ pub struct Step {
     pub checkpoint: Option<String>,
     /// A variable and the storage path of the cell that changed.
     pub focus: Option<(usize, Vec<usize>)>,
+    /// Call stack at this step (innermost first), populated when `record_frames` is true.
+    pub frames: Vec<(String, u32)>,
     /// Tree-form snapshots for `[V]?V` variables that stayed trees.
     tree_values: Vec<(usize, Arc<str>)>,
 }
@@ -136,6 +140,7 @@ pub(crate) struct Tracer {
     watch: Vec<String>,
     last_steps: Option<usize>,
     max_depth: Option<usize>,
+    record_frames: bool,
     /// Set during `finish` so the final/error step is always captured.
     finishing: bool,
     kinds: Vec<Kind>,
@@ -169,6 +174,8 @@ pub(crate) struct View<'a> {
     pub locals: Vec<(&'a str, &'a Ty, &'a Value)>,
     /// Current call depth (`0` at top level).
     pub depth: usize,
+    /// Active call frames `(fn_name, call_site_span)` from outermost to innermost.
+    pub call_frames: &'a [(&'a str, Span)],
 }
 
 fn glob_match(pattern: &str, text: &str) -> bool {
@@ -224,6 +231,7 @@ impl Tracer {
             watch: config.watch,
             last_steps: config.last_steps,
             max_depth: config.max_depth,
+            record_frames: config.record_frames,
             finishing: false,
             kinds: Vec::new(),
             of_global: vec![None; program.globals.len()],
@@ -502,6 +510,27 @@ impl Tracer {
                 self.rec.truncated = true;
             }
         }
+        let frames = if self.record_frames {
+            let mut out = Vec::with_capacity(view.call_frames.len() + 1);
+            let current_fn = view
+                .call_frames
+                .last()
+                .map(|(name, _)| (*name).to_string())
+                .unwrap_or_else(|| "main".to_string());
+            out.push((current_fn, line));
+            for i in (0..view.call_frames.len()).rev() {
+                let caller = if i == 0 {
+                    "main".to_string()
+                } else {
+                    view.call_frames[i - 1].0.to_string()
+                };
+                let call_line = self.line(view.call_frames[i].1).max(1);
+                out.push((caller, call_line));
+            }
+            out
+        } else {
+            Vec::new()
+        };
         self.steps.push_back(Step {
             line,
             label: label.unwrap_or_else(|| self.line_text(line)),
@@ -510,6 +539,7 @@ impl Tracer {
             locals,
             checkpoint,
             focus,
+            frames,
             tree_values,
         });
     }

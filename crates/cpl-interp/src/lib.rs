@@ -578,6 +578,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             domains: &self.domains,
             locals,
             depth: self.call_frames.len(),
+            call_frames: &self.call_frames,
         }
     }
 

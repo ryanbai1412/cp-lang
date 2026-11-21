@@ -72,6 +72,11 @@
         "category": "CP"
       },
       {
+        "command": "cp.debug",
+        "title": "Debug File",
+        "category": "CP"
+      },
+      {
         "command": "cp.toggleLiveValues",
         "title": "Toggle Live Sample Values",
         "category": "CP"
@@ -111,6 +116,10 @@
           "when": "editorLangId == cp"
         },
         {
+          "command": "cp.debug",
+          "when": "editorLangId == cp"
+        },
+        {
           "command": "cp.toggleLiveValues",
           "when": "editorLangId == cp"
         },
@@ -120,6 +129,61 @@
         }
       ]
     },
+    "debuggers": [
+      {
+        "type": "cp",
+        "label": "CP Lang",
+        "languages": [
+          "cp"
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "required": [
+              "program"
+            ],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "Absolute path to the `.cp` file to debug.",
+                "default": "${file}"
+              },
+              "input": {
+                "type": "string",
+                "description": "Optional path to an input file (e.g. a sample or failing judge input)."
+              },
+              "inputText": {
+                "type": "string",
+                "description": "Optional inline stdin text to feed to the program."
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Stop at the first recorded step on entry.",
+                "default": true
+              },
+              "brute": {
+                "type": "boolean",
+                "description": "Debug the file's `@brute(main)` function instead of the solution.",
+                "default": false
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "cp",
+            "request": "launch",
+            "name": "Debug CP Lang File",
+            "program": "${file}",
+            "stopOnEntry": true
+          }
+        ]
+      }
+    ],
+    "breakpoints": [
+      {
+        "language": "cp"
+      }
+    ],
     "configuration": {
       "title": "CP Lang",
       "properties": {

@@ -1494,6 +1494,12 @@ via `pos_inside`/`neg_inside` counters in `Tracer`. `Bound(d)` labels and values
 Reverse: remove the extra fields from `TraceConfig`, restore single-fn `only_fn` matching, and
 remove `--test`/`--watch`/`--last`/`--depth` from `RunArgs` in `crates/cpl-cli/src/lib.rs`.
 
+## 27.4. Time-travel DAP debugger (`cpl dap`) backed by interpreter snapshots
+
+- **Decision:** Add `cpl dap` implementing the Debug Adapter Protocol over stdio (`Content-Length`-framed JSON) with zero new dependencies, wired into `editors/vscode` (`type: "cp"`, `cp.debug` command, `DebugAdapterDescriptorFactory`). When `TraceConfig::record_frames` is enabled, each step records the full call stack (`(fn_name, line)`) alongside locals and domain-labeled globals, allowing both forward stepping (`next`, `stepIn`, `stepOut`, `continue`) and backward time-travel (`stepBack`, `reverseContinue`), hover/watch `evaluate`, and exception stops on runtime traps.
+- **Why:** Reusing the deterministic snapshot recorder guarantees that backward stepping, replay of failing judge inputs (`input` / `inputText`), and domain-labeled variable inspection work out of the box with zero overhead on untraced runs or normal `--trace` runs (`record_frames: false`).
+- **How to reverse:** Remove `crates/cpl-cli/src/dap.rs`, `crates/cpl-cli/tests/dap.rs`, the `dap` command dispatch in `crates/cpl-cli/src/{lib,main}.rs`, `record_frames`/`frames` in `crates/cpl-interp/src/trace.rs`, and the `debuggers`/`breakpoints`/`cp.debug` contributions in `editors/vscode/`.
+
 ## 28. Core mechanisms for a library-only stdlib (0.3, §1)
 
 - **28.1 Reflection is a loop: `for f in fields(x)`.** The body runs once per field of a struct, record

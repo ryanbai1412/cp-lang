@@ -1,6 +1,7 @@
 //! The `cpl` command-line tool. `cpl` is the working name of the binary
 //! (`cp` clashes with Unix `cp`); source files end in `.cp`.
 
+mod dap;
 mod interact;
 mod laws;
 mod profile;
@@ -57,6 +58,7 @@ commands:
                         list the lines and branches no input reached
   watch <problem>       check, lint and test on every save
   lsp                   serve the language server protocol on stdio
+  dap                   serve the time-travel debug adapter (DAP) on stdio
 
 `cpl <command> --help` describes a command's options.
 
@@ -130,11 +132,12 @@ pub fn exec<S: AsRef<str>>(
             let _ = writeln!(stdout, "cpl {VERSION}");
             0
         }
-        Some(command @ ("check" | "build" | "judge" | "lsp")) if rest.iter().any(|arg| matches!(*arg, "-h" | "--help")) => {
+        Some(command @ ("check" | "build" | "judge" | "lsp" | "dap")) if rest.iter().any(|arg| matches!(*arg, "-h" | "--help")) => {
             let help = match command {
                 "check" => CHECK_USAGE,
                 "build" => BUILD_USAGE,
                 "judge" => JUDGE_USAGE,
+                "dap" => DAP_USAGE,
                 _ => LSP_USAGE,
             };
             let _ = stdout.write_all(help.as_bytes());
@@ -206,6 +209,7 @@ pub fn exec<S: AsRef<str>>(
             code
         }
         Some("lsp") => usage_error("`lsp` talks to an editor over stdio and takes no files".into()),
+        Some("dap") => usage_error("`dap` talks to an editor over stdio and takes no files".into()),
         Some(other) => usage_error(format!("unknown command `{other}`")),
     }
 }
@@ -243,6 +247,14 @@ usage: cpl lsp
 
 Serves the language server protocol on standard input and output, for an
 editor to start: errors as you type, hover, go to definition.
+";
+
+const DAP_USAGE: &str = "\
+usage: cpl dap
+
+Serves the Debug Adapter Protocol (DAP) on standard input and output,
+supporting breakpoints, stepping, backward time-travel (`stepBack`,
+`reverseContinue`), call stacks, domain-labeled variables, and traps.
 ";
 
 const RUN_USAGE: &str = "\
@@ -1268,6 +1280,12 @@ fn check(files: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -
         }
     }
     code
+}
+
+/// Serves the Debug Adapter Protocol on stdin and stdout until the editor
+/// ends the session. Returns the exit status.
+pub fn dap() -> u8 {
+    dap::serve_stdio()
 }
 
 /// Serves the language server on stdin and stdout until the editor ends

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { CpClient, SELECTOR } from './client';
+import { CpClient, SELECTOR, serverBinary } from './client';
 import { LensProvider } from './lenses';
 import { Overlays } from './overlays';
 import { Runner } from './runner';
@@ -24,6 +24,32 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         command('cp.runAllSamples', (uri?: vscode.Uri) => runner.runAllSamples(uri)),
         command('cp.stress', (uri?: vscode.Uri, part?: string) => runner.stress(uri, part)),
         command('cp.trace', (uri?: vscode.Uri, sample?: Sample, part?: string) => runner.trace(uri, sample, part)),
+        command('cp.debug', async (uri?: vscode.Uri) => {
+            const target = uri ?? vscode.window.activeTextEditor?.document.uri;
+            if (!target) {
+                return;
+            }
+            const folder = vscode.workspace.getWorkspaceFolder(target);
+            await vscode.debug.startDebugging(folder, {
+                type: 'cp',
+                request: 'launch',
+                name: 'Debug CP Lang File',
+                program: target.fsPath,
+                stopOnEntry: true,
+            });
+        }),
+        vscode.debug.registerDebugAdapterDescriptorFactory('cp', {
+            createDebugAdapterDescriptor(): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
+                const binary = serverBinary();
+                if (!binary) {
+                    void vscode.window.showErrorMessage(
+                        "Couldn't find `cpl`. Build it with `cargo build --release -p cpl-cli`, or set `cp.server.path`.",
+                    );
+                    return undefined;
+                }
+                return new vscode.DebugAdapterExecutable(binary, ['dap']);
+            },
+        }),
         command('cp.restartServer', () => client.restart()),
         command('cp.showOutput', () => output.show()),
         command('cp.clearOverlays', () => {

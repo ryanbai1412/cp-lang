@@ -230,8 +230,11 @@ number, and concrete values on arithmetic/bounds/domain/input traps (golden
 tests in `crates/cpl-cli/tests/runtime_errors.rs`); (2) trace filtering now
 supports `--trace` globs/exclusions, `--test`, `--watch`, `--last` ring buffer,
 `--depth`, and 1-based `Bound(d)` cut labels (`crates/cpl-cli/tests/trace_filters.rs`);
-(3) no step debugger / DAP server or VS Code debugger
-wiring; (4) interpreter speed on compute-heavy ports is 44x–261x slower than C++ `-O2`
+(3) `cpl dap` serves a time-travel Debug Adapter Protocol server over stdio
+(breakpoints, call stacks, domain-labeled locals/globals, `next`/`stepIn`/`stepOut`/`continue`,
+backward `stepBack`/`reverseContinue`, hover/watch `evaluate`, replay of failing inputs,
+exception stops on traps; `crates/cpl-cli/tests/dap.rs`) wired into `editors/vscode`
+(`type: "cp"`, `cp.debug`); (4) interpreter speed on compute-heavy ports is 44x–261x slower than C++ `-O2`
 after unboxing `?Int`/1-field `Int` structs and removing hot-path allocations
 (`dph` 884 -> 693 ms, `dpl` 542 -> 483 ms, `dpk` 770 -> 728 ms, `dpm` 1288 ->
 1028 ms; closing the remaining gap to <= 30x requires a bytecode VM);
@@ -240,9 +243,9 @@ after unboxing `?Int`/1-field `Int` structs and removing hot-path allocations
 path; trace filtering and index-space views tested end to end; DAP step
 debugger wired into VS Code and tested over stdio; interpreter within 30x of
 C++ `-O2` on ports.
-**Next.** (1) DAP step debugger (`cpl dap`) with time-travel + VS Code
-integration; (2) bytecode VM to close interpreter speed to <= 30x of C++;
-(3) browser test for trace viewer and stage snapshots.
+**Next.** (1) Bytecode VM in `cpl-interp` to close interpreter speed to <= 30x
+of C++ `-O2`; (2) stage snapshots (`--stage`) and interactive exchange traces;
+(3) headless-browser test for `tools/trace/index.html`.
 
 ## 7. Stress testing and shrinking (`plan/50` 3, `plan/40` 7b)
 **North star.** One command, `cpl stress d.cp`, turns "WA on test 37" into
