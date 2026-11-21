@@ -73,3 +73,49 @@ fn cf2183f_tree_2d_dp_parity_and_speed() {
         "cf2183f (n={n} chain) regressed in interpreter: {took:?}"
     );
 }
+
+#[test]
+fn vm_hot_loop_fallback_ratchet_zero_on_covered_worst_ports() {
+    let cases = [
+        ("proto/ports/ecnerwala/cf2262e.cp", "proto/ports/ecnerwala/samples/cf2262e.sample1.in"),
+        ("proto/ports/ecnerwala/cf2089c1.cp", "proto/ports/ecnerwala/samples/cf2089c1.1.in"),
+        ("proto/ports/ecnerwala/cf2084h.cp", "proto/ports/ecnerwala/samples/cf2084h.sample1.in"),
+        ("proto/ports/ecnerwala/cf2180g.cp", "proto/ports/ecnerwala/samples/cf2180g.sample1.in"),
+        ("proto/ports/ecnerwala/cf2207f.cp", "proto/ports/ecnerwala/samples/cf2207f.1.in"),
+    ];
+    for (port_rel, sample_rel) in cases {
+        let port = repo_root().join(port_rel);
+        let sample = std::fs::read(repo_root().join(sample_rel)).expect("read sample");
+        let mut child = Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .args(["run"])
+            .arg(&port)
+            .env("CPL_VM_STATS", "json")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("spawn cpl");
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(&sample)
+            .expect("write stdin");
+        let out = child.wait_with_output().expect("wait cpl");
+        assert!(
+            out.status.success(),
+            "`cpl run {port_rel}` failed: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        let json_line = stderr
+            .lines()
+            .rev()
+            .find(|l| l.starts_with('{') && l.contains("\"hot_loop_fallbacks\""))
+            .unwrap_or_else(|| panic!("missing CPL_VM_STATS json for {port_rel}: {stderr}"));
+        assert!(
+            json_line.contains("\"hot_loop_fallbacks\":0"),
+            "hot-loop fallback regression on {port_rel}: {json_line}"
+        );
+    }
+}
