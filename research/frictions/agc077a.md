@@ -7,6 +7,7 @@ shape until the gap below closes; the review stays pending a cold rescore.
 ## Mapping a fixed array loses its index domain
 
 - **Severity:** medium
+- **Status:** fixed (Decision 104: `.map` on `[D]T` / `[D, E]T` returns `[D]U` / `[D, E]U`)
 - **Goal it hurts:** express
 - **Area:** sequences (`plan/STDLIB.md`) + checker
 - **Dream lines:** `proto/ports/ecnerwala/dream/agc077a.cp:52`

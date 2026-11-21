@@ -2870,3 +2870,44 @@ print(s.lo, s.hi, r.start, r.end, r.last, r.len)
     assert_eq!(errs[0].fixes[0].edits[0].1, "start");
     assert_eq!(errs[1].fixes[0].edits[0].1, "end");
 }
+
+#[test]
+fn array_map_preserves_index_domain() {
+    let ok = "\
+enum Side:
+    X
+    Y
+
+struct Run(at: Int, end: Int, d: Int):
+    fn shift(self, k: Int) -> Run = Run(at + k, end + k, d)
+
+struct Block(seen: [Side]Run, real: [Side]Run):
+    fn each(self, f: Run -> Run) -> Block = Block(seen.map(f), real.map(f))
+
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => r.ord * 10 + c.ord
+let g2: [R, C]Bool = g.map(x => x % 2 == 0)
+let nested: [Side][C]Int = [Side] s => [C] c => c.ord
+let nested2: [Side][C]Int = nested.map(row => row.map(x => x + 1))
+let xs: List<Int> = [1, 2, 3]
+let ys: List<Int> = xs.map(x => x * 2)
+let zs: List<Int> = xs[0..2].map(x => x + 1)
+let cs: List<Int> = \"ab\".map(c => Int(c == 'a'))
+let _ = (g2, nested2, ys, zs, cs)
+";
+    assert_eq!(check(ok), vec![]);
+
+    let wrong_domain = "\
+domain A = 0..3
+domain B = 0..3
+let a: [A]Int = 0
+let b: [B]Int = a.map(x => x + 1)
+print(b)
+";
+    let errs = check(wrong_domain);
+    assert!(
+        errs.iter().any(|d| d.code == cpl_diag::codes::TYPE_MISMATCH),
+        "expected E0302 when assigning `[A]Int` map result to `[B]Int`, got: {errs:?}"
+    );
+}

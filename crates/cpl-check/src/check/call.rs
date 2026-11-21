@@ -523,6 +523,40 @@ impl<'a> Checker<'a> {
             return None;
         };
         let base_ty = self.quietly(|c| c.infer(base));
+        // Fixed array `.map(f)`: shape-preserving element-wise map `[D...]T -> [D...]U`
+        // (including 1D `[D]T` and multi-dimensional `[D, E]T`).
+        if name.text == "map" {
+            if let Ty::Array { ref index, ref elem } = base_ty {
+                let out = if let [arg] = args {
+                    match &arg.value.kind {
+                        ExprKind::Lambda { params, param_tys, body } if params.len() == 1 => {
+                            self.quietly(|c| {
+                                c.push_scope();
+                                let pty = param_tys
+                                    .first()
+                                    .and_then(|t| t.as_ref())
+                                    .map(|t| c.resolve_type(t))
+                                    .unwrap_or_else(|| (**elem).clone());
+                                c.bind(&params[0], &pty, false, "param");
+                                let ret = c.infer(body).widen();
+                                c.pop_scope();
+                                ret
+                            })
+                        }
+                        _ => match self.quietly(|c| c.infer(&arg.value)) {
+                            Ty::Fn { ret, .. } => (*ret).clone(),
+                            _ => Ty::Unknown,
+                        },
+                    }
+                } else {
+                    Ty::Unknown
+                };
+                return Some(Ty::Array {
+                    index: index.clone(),
+                    elem: Box::new(out),
+                });
+            }
+        }
         // Sequence higher-order operations: `map`, `filter`, `partition`,
         // `group`, `first(pred)`, `sorted`, through one unified `seq_elem()` path.
         let seq_elem: Option<Ty> = base_ty.seq_elem().or_else(|| match &base_ty {

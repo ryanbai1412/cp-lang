@@ -5333,10 +5333,16 @@ impl<'a> Lowerer<'a> {
         let is_seq_like = |ty: &Ty| ty.is_seq() || matches!(ty, Ty::Set(_) | Ty::HashSet(_));
         let base_is_seq = self.probe_ty_silent(base).as_ref().is_some_and(&is_seq_like)
             || matches!(self.sym(base), Some(Sym::Domain(_)));
-        // `xs.map(x => f(x))` returns a `List<U>` across every sequence.
+        // `xs.map(x => f(x))` returns `[D...]U` on fixed arrays `[D...]T`
+        // (preserving index domains), and `List<U>` across every other sequence.
         if let ([func], "map") = (args, name.text.as_str()) {
-            if func.name.is_none() && !func.mutable && base_is_seq {
-                return self.lower_map(base, &func.value, span);
+            if func.name.is_none() && !func.mutable {
+                if matches!(self.probe_ty_silent(base), Some(Ty::Array { .. })) {
+                    return self.lower_array_map(base, &func.value, span);
+                }
+                if base_is_seq {
+                    return self.lower_map(base, &func.value, span);
+                }
             }
         }
         // `xs.filter(x => cond)` returns a `List<T>` of elements satisfying `cond`.
@@ -7813,6 +7819,147 @@ impl<'a> Lowerer<'a> {
             Ty::list(Ty::Int),
             span,
         )
+    }
+
+    fn lower_array_map(&mut self, base: &ast::Expr, func_ast: &ast::Expr, span: Span) -> Expr {
+        let arr_val = self.expr(base, None);
+        let Ty::Array { dims, elem } = arr_val.ty.clone() else {
+            return self.err_expr(span);
+        };
+        let elem_ty = (*elem).clone();
+        if matches!(elem_ty, Ty::Error) {
+            return self.err_expr(span);
+        }
+        let arr_slot = self.temp(arr_val.ty.clone());
+        let arr = self.local(arr_slot, span);
+
+        let mut axis_lens = Vec::with_capacity(dims.len());
+        let mut dim_specs = Vec::with_capacity(dims.len());
+        for (axis, dim) in dims.iter().enumerate() {
+            let len_expr = if dims.len() == 1 {
+                self.mk(ExprKind::Builtin(Builtin::Len, vec![arr.clone()]), Ty::Int, span)
+            } else {
+                self.mk(
+                    ExprKind::Builtin(
+                        Builtin::AxisLen,
+                        vec![arr.clone(), self.int_lit(axis as i64, span)],
+                    ),
+                    Ty::Int,
+                    span,
+                )
+            };
+            let spec = match *dim {
+                Dim::Pos(d) => DimSpec::Pos(d),
+                Dim::Bound(d) => DimSpec::Bound(d),
+                Dim::Sym(d) => DimSpec::Sym(d),
+                Dim::Enum(e) => DimSpec::Enum(e),
+                Dim::Int => DimSpec::Int(Box::new(len_expr.clone())),
+                Dim::IntFrom(lo) => DimSpec::IntFrom(lo, Box::new(len_expr.clone())),
+            };
+            axis_lens.push(len_expr);
+            dim_specs.push(spec);
+        }
+
+        let counters: Vec<Slot> = dims.iter().map(|_| self.temp(Ty::Int)).collect();
+        let stored: Vec<Expr> = dims
+            .iter()
+            .zip(&counters)
+            .map(|(dim, &k)| {
+                let k_expr = self.local(k, span);
+                match *dim {
+                    Dim::Pos(d) => {
+                        self.mk(ExprKind::Cast(Cast::FromOrd(d), Box::new(k_expr)), Ty::Pos(d), span)
+                    }
+                    _ => k_expr,
+                }
+            })
+            .collect();
+        let cell = self.mk(
+            ExprKind::Index(Box::new(arr.clone()), stored.clone()),
+            elem_ty.clone(),
+            span,
+        );
+
+        let mut pre_stmts = vec![Stmt::Let(arr_slot, Some(arr_val))];
+        let (out_elem, mut inner_stmts, mapped) = if let ast::ExprKind::Lambda { params, body, .. } =
+            &func_ast.kind
+        {
+            if params.len() == 1 {
+                self.cx.scopes.push(HashMap::new());
+                let mut bind_stmts = Vec::new();
+                let item = self.loop_var(&params[0], elem_ty.clone(), &mut bind_stmts);
+                let mut inner = vec![Stmt::Let(item, Some(cell))];
+                inner.extend(bind_stmts);
+                let mapped = self.expr(body, None);
+                self.cx.scopes.pop();
+                if matches!(mapped.ty, Ty::Error) {
+                    return self.err_expr(span);
+                }
+                (mapped.ty.clone(), inner, mapped)
+            } else {
+                return self.err_expr(span);
+            }
+        } else {
+            let fn_hint = Ty::Fn(vec![elem_ty.clone()], Box::new(Ty::Error));
+            let func = self.expr(func_ast, Some(&fn_hint));
+            let out_elem = match &func.ty {
+                Ty::Fn(_, ret) if !matches!(ret.as_ref(), Ty::Error) => (**ret).clone(),
+                Ty::Error => return self.err_expr(span),
+                other => {
+                    self.error(
+                        codes::TYPE_MISMATCH,
+                        func_ast.span,
+                        format!("`map` expects a function, not `{}`", self.show(other)),
+                    );
+                    return self.err_expr(span);
+                }
+            };
+            let func_slot = self.temp(func.ty.clone());
+            pre_stmts.push(Stmt::Let(func_slot, Some(func)));
+            let func_val = self.local(func_slot, span);
+            let mapped = self.mk(
+                ExprKind::CallExpr(Box::new(func_val), vec![Arg::Value(cell)]),
+                out_elem.clone(),
+                span,
+            );
+            (out_elem, Vec::new(), mapped)
+        };
+
+        let out_ty = Ty::Array {
+            dims,
+            elem: Box::new(out_elem.clone()),
+        };
+        let acc = self.temp(out_ty.clone());
+        let blank = self.mk(ExprKind::Fill(dim_specs, None), out_ty.clone(), span);
+        pre_stmts.push(Stmt::Let(acc, Some(blank)));
+
+        let whole = Place {
+            kind: PlaceKind::Local(acc),
+            ty: out_ty.clone(),
+            span: self.span(span),
+        };
+        let dst = Place {
+            kind: PlaceKind::Index(Box::new(whole), stored),
+            ty: out_elem,
+            span: self.span(span),
+        };
+        inner_stmts.push(Stmt::Assign(dst, AssignOp::Set, mapped));
+
+        let mut body = inner_stmts;
+        for (len_expr, &k) in axis_lens.into_iter().zip(&counters).rev() {
+            let iter = Iter::Range {
+                lo: self.int_lit(0, span),
+                hi: len_expr,
+                step: None,
+                rev: false,
+                closed: false,
+            };
+            let lid = self.fresh_loop();
+            body = vec![Stmt::For(lid, k, iter, Block { stmts: body })];
+        }
+        pre_stmts.extend(body);
+        pre_stmts.push(Stmt::Give(self.local(acc, span)));
+        self.mk(ExprKind::Do(Block { stmts: pre_stmts }), out_ty, span)
     }
 
     fn lower_map(&mut self, base: &ast::Expr, func_ast: &ast::Expr, span: Span) -> Expr {

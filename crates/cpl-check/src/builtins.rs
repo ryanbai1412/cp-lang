@@ -269,7 +269,7 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(Array, "reversed", Method, "", "List<T>", false, "A new list with the cells in reverse order. O(n).", "a.reversed()", "List<Int>"),
     row!(Array, "sort", Method, "", "", true, "Sorts in place in O(n log n); `by:` gives a key, `cmp:` a strict-weak-order comparator `(a, b) => Bool` (mutually exclusive with `by:`), and `desc: true` reverses the order.", "a.sort()", ""),
     row!(Array, "sorted", Method, "", "List<T>", false, "The cells as a sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.", "a.sorted()", "List<Int>"),
-    row!(Array, "map", Method, "f: T -> U", "List<U>", false, "A new list of `f(x)` for each cell `x`. O(n).", "a.map(x => x + 1)", "List<Int>"),
+    row!(Array, "map", Method, "f: T -> U", "[D]U", false, "A new array with `f(x)` in each cell, keeping the index domain(s). O(n).", "a.map(x => x + 1)", "[0..3]Int"),
     row!(Array, "filter", Method, "pred: T -> Bool", "List<T>", false, "A new list of cells satisfying `pred`.", "a.filter(x => x > 1)", "List<Int>"),
     row!(Array, "contains", Method, "x: T", "Bool", false, "True when some cell equals `x`.", "a.contains(7)", "Bool"),
     row!(Array, "count", Method, "x: T", "Int", false, "How many cells equal `x`; given a test, `a.count(x => x > 1)`, how many it holds for.", "a.count(7)", "Int"),
