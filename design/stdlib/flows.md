@@ -49,7 +49,7 @@ One module, `std.flow`. Two network types that share `Arc`, and free
 functions for everything whose input is a table or an edge list.
 
 ```cp
-struct Arc(id: Int)
+struct Arc(id: 0..2_147_483_648)
     @get fn rev(self) -> Arc                          // O(1)
 
 struct FlowGraph<V>                                   // Dinic
@@ -360,7 +360,8 @@ The whole area, in the order the corpus is likely to want it:
    flow, as ACL's `change_edge`; incremental bipartite matching.
 6. ~~Push-relabel as a named second max-flow solver~~: landed as
    `FlowGraph.push_relabel(s, t)` (decision 112). On cf1404e's 200 x 200
-   all-`#` grid it takes 36 ms where Dinic takes 442 ms.
+   all-`#` grid the port takes 24.5 ms (Dinic: 442 ms; the original: 17 ms).
+   Its solve is 1.02x matched C++ (`bench/flow/prgrid`).
 7. **Matroid intersection** and **bipartite edge colouring** (KACTL).
 8. **Tooling:** `cpl explain` for a network (vertex and arc counts, the
    bound the solver will meet), and a trace view of a min cut over the

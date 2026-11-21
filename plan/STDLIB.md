@@ -1268,7 +1268,7 @@ encoded by negating weights; options are named arguments (`limit:`,
 matched-C++ timings in `bench/flow/`.
 
 ```cp
-struct Arc(id: Int)
+struct Arc(id: 0..2_147_483_648)
     @get fn rev(self) -> Arc                                  // O(1)
 struct FlowGraph<V>                    // Dinic
     fn new() -> FlowGraph<V>                                  // O(V)

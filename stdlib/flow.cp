@@ -9,7 +9,7 @@ use std.heap.{MinHeap}
 use std.seq.{next_permutation}
 
 /// A handle to one arc of a `FlowGraph`. Handles from `add` stay valid as arcs are added.
-pub struct Arc(id: Int):
+pub struct Arc(id: 0..2_147_483_648):
     /// The paired arc in the opposite direction. This is what `e ^ 1` means in C++.
     pub @get fn rev(self) -> Arc = Arc(id ^ 1)
 
@@ -106,8 +106,8 @@ pub struct FlowGraph<V>:
         var height: [V]Int = 0
         var excess: [V]Int = 0
         var next: [V]Int = 0
-        var active = [List<V>() for _ in 0..2 * n]
-        var count = [0 for _ in 0..2 * n]
+        var active = List.filled(2 * n, List<V>())
+        var count = List.filled(2 * n, 0)
         height[s] = n
         // t is never active: a vertex is queued only when its excess leaves 0
         excess[t] = 1
@@ -152,8 +152,8 @@ pub struct FlowGraph<V>:
         mut active: List<List<V>>,
         height: [V]Int,
     ):
-        let v = to[a.id]
         unchecked:
+            let v = to[a.id]
             if excess[v] == 0 and f > 0: active[height[v]].push(v)
             left[a.id] -= f
             left[a.rev.id] += f
@@ -900,10 +900,11 @@ fn bounded_flow<V, E>(
             demand += excess[v]
         elif excess[v] < 0:
             g.add(N(v.to_idx), tt, -excess[v])
-    let back = if let (s, t) = ends: g.add(N(t.to_idx), N(s.to_idx), cap: none) else: Arc(-1)
+    let back: ?Arc = if let (s, t) = ends: g.add(N(t.to_idx), N(s.to_idx), cap: none) else: none
     if g.max_flow(ss, tt) != demand: return none
     if let (s, t) = ends:
         let (ns, nt) = (N(s.to_idx), N(t.to_idx))
+        let back = back!
         let base = g.flow(back)
         g.close(back)
         let extra = if sense > 0: g.max_flow(ns, nt) else: -g.max_flow(nt, ns, limit: base)

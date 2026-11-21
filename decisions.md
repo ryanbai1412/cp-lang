@@ -3734,3 +3734,15 @@ method is not emitted. It has no `limit:`, since a preflow cannot stop at a
 bound. Why now: cf1404e's original uses it and runs 12x faster than Dinic on
 the all-`#` grid. Reverse: delete the method; ports go back to `max_flow`.
 
+## 120. `std.flow.Arc` ids are `0..2^31` (2026-11-21)
+
+`Arc(id: 0..2_147_483_648)`, not `Int`, so every arc handle in the generated
+C++ is 4 bytes, as KACTL's and ACL's `int` edges are. A network that large
+does not fit in memory (each arc also holds an `Int` capacity), so the bound
+costs no program. An arc id past 2^31 traps with "is outside
+`0..2_147_483_648`" in the interpreter and in checked C++
+(`runtime_errors.rs`, `range_typed_stores_trap_in_interp_and_checked_cpp`).
+`bounded_flow`'s missing back arc was the sentinel `Arc(-1)` and is now
+`?Arc`. Measured on bench/flow, best of 5, against matched C++: Dinic 1.29x
+(1.50x with `Int` ids), push-relabel 1.12x (1.31x), bounded flow 1.18x
+(1.26x), closure 1.06x (1.14x). Reverse: `Arc(id: Int)` and the sentinel back.

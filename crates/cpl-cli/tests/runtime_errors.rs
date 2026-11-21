@@ -490,6 +490,11 @@ fn range_typed_stores_trap_in_interp_and_checked_cpp() {
             "99\n",
             "99 is outside `0..=10`",
         ),
+        (
+            "use std.flow.{Arc}\nlet k: Int = read()\nprint(Arc(k).rev.id)\n",
+            "2147483648\n",
+            "2147483648 is outside `0..2_147_483_648`",
+        ),
     ];
     for (idx, (src, input, msg)) in cases.iter().enumerate() {
         let (code, err) = run_stderr(src, input);
