@@ -344,13 +344,19 @@ proven range; no inlay hints for index spaces or ranges; no semantic
 tokens, workspace symbols, document highlights or folding; no cost or
 overflow warnings; rename is one file; no refactorings or "fix all"; no
 expected-type ranking or auto-import; run/test/trace exist only in the VS
-Code client; no fixture tests, fuzzer, DAP, tree-sitter grammar, JetBrains
-plugin, or setups for other editors.
+Code client; no JetBrains plugin, no fixture tests, fuzzer, DAP or
+tree-sitter grammar, so Helix has no highlighting and Zed no setup.
+`editors/README.md` documents Neovim (runtime folder: filetype, Vim syntax,
+`cpl lsp` autostart), Emacs (`cp-mode` with eglot and lsp-mode) and Helix
+(`languages.toml`); `editors/smoke.sh` checks their keyword lists against the
+compiler and drives each against the real server (Neovim: diagnostic and
+hover; Emacs: mode, faces, eglot entry; Helix: `--health`), in `--full`.
 **Bar.** LSP fixture tests per `plan/60` 6.7 for every request; each editor
 integration built and smoke-tested in `scripts/check.sh --full`.
 **Next.** Fixture tests; hover index spaces and ranges; inlay hints for
 index spaces and ranges; semantic tokens; server code lenses and commands
-for run, test and trace; JetBrains plugin; other-editor setups; fuzzer.
+for run, test and trace; JetBrains plugin; tree-sitter grammar (Helix
+highlighting, a Zed extension, Neovim tree-sitter); fuzzer.
 
 ## 11. Docs, site and playground (`plan/90`)
 **North star.** The language is writable from the docs alone: a one-afternoon tour, a

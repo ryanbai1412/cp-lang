@@ -23,7 +23,8 @@
 #            fuzzer and the prover's products fuzzer
 #         9. the budget tests and the front-end latency test, each alone
 #        10. the WebAssembly build and crates/cpl-wasm/tests/smoke.mjs
-#        11. the VS Code extension tests (editors/vscode: npm test)
+#        11. the VS Code extension tests (editors/vscode: npm test), then
+#            editors/smoke.sh: Neovim, Emacs and Helix when installed
 #        12. proto/run_all.sh, in a throwaway clone because it stamps its sources
 #
 # Needs cargo with clippy, python3 with mistune (python3 -m pip install -r
@@ -242,6 +243,9 @@ if [ "$mode" = full ]; then
         [ -d node_modules ] || npm ci --no-audit --no-fund
         npm test
     )
+
+    step "editors/smoke.sh: the other editor setups against cpl lsp"
+    editors/smoke.sh
 
     step "proto/run_all.sh (in a throwaway clone)"
     git clone -q --no-hardlinks "$root" "$tmp/repo"

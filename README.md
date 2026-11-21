@@ -142,6 +142,9 @@ $ cd editors/vscode && npm install && npm run package
 $ code --install-extension cp-lang.vsix
 ```
 
+Neovim, Emacs and Helix use the same server; their setups
+are in `editors/README.md`.
+
 Build the offline course, reference and playground as one HTML file, then
 open it straight from disk. It needs no server and no network; the
 compiler runs in WebAssembly:

@@ -1508,6 +1508,14 @@ hover and go-to-definition on `bit.prefix` reach the method in `stdlib/fenwick.c
 place a cost is written today; a computed cost line can join it later. Reverse: drop `Hover::doc` and
 `HoverEntry::owner` in `crates/cpl-check/src/{hover,check}.rs`.
 
+29.2. **Neovim, Emacs and Helix get thin setups over `cpl lsp`, smoke-tested in the gate.** Each
+setup is the editor's own idiom (a Neovim runtime folder, an Emacs major mode registering with eglot
+and lsp-mode, a Helix `languages.toml`) and holds no logic beyond highlighting and starting the
+server, so a feature lands once, in the server. Their keyword lists are checked against
+`TokenKind::keyword` by `editors/smoke.sh`, which `scripts/check.sh --full` runs, skipping (and
+saying so) an editor that is not installed. Zed waits on a tree-sitter grammar, which it requires for
+any language. Reverse: delete `editors/{neovim,emacs,helix,smoke.sh}` and the `--full` step.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **30.1 A broken-ports benchmark scores recovery.** `crates/cpl-cli/tests/recovery.rs` applies six

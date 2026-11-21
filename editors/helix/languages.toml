@@ -1,0 +1,15 @@
+# CP Lang for Helix: append to ~/.config/helix/languages.toml.
+# Helix highlights only through a tree-sitter grammar, which CP Lang does not have yet;
+# everything else comes from `cpl lsp`.
+[language-server.cpl]
+command = "cpl"
+args = ["lsp"]
+
+[[language]]
+name = "cp"
+scope = "source.cp"
+file-types = ["cp"]
+roots = [".git"]
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+language-servers = ["cpl"]

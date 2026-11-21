@@ -1,0 +1,35 @@
+;;; smoke.el --- emacs --batch -l editors/emacs/smoke.el -*- lexical-binding: t -*-
+;; Loads cp-mode, opens a .cp file and checks the mode, the highlighting, comments and
+;; the eglot registration.
+(require 'cl-lib)
+(add-to-list 'load-path (file-name-directory load-file-name))
+(require 'cp-mode)
+
+(defun cp-smoke-check (ok what)
+  (unless ok (message "emacs smoke: %s" what) (kill-emacs 1)))
+
+(let ((file (make-temp-file "cp" nil ".cp" "@memo\nfn main():\n    let n: Int = read()  // c\n    for 'outer i in 0..n:\n        print('x')\n")))
+  (find-file file)
+  (cp-smoke-check (eq major-mode 'cp-mode) (format "major mode is %s" major-mode))
+  (font-lock-ensure)
+  (cl-flet ((face-at (needle) (goto-char (point-min)) (search-forward needle) (get-text-property (match-beginning 0) 'face)))
+    (cp-smoke-check (eq (face-at "fn") 'font-lock-keyword-face) "`fn` is not a keyword")
+    (cp-smoke-check (eq (face-at "main") 'font-lock-function-name-face) "`main` is not a function name")
+    (cp-smoke-check (eq (face-at "Int") 'font-lock-type-face) "`Int` is not a type")
+    (cp-smoke-check (eq (face-at "@memo") 'font-lock-preprocessor-face) "`@memo` is not a decorator")
+    (cp-smoke-check (eq (face-at "// c") 'font-lock-comment-delimiter-face) "`//` does not start a comment")
+    (cp-smoke-check (eq (face-at "'outer") 'font-lock-constant-face) "`'outer` is not a label")
+    (cp-smoke-check (eq (face-at "'x'") 'font-lock-string-face) "`'x'` is not a char"))
+  (goto-char (point-min))
+  (comment-line 1)
+  (cp-smoke-check (string-prefix-p "// @memo" (buffer-string)) "comment-line does not write //"))
+
+(let ((stub (make-temp-file "eglot" t)))
+  (with-temp-file (expand-file-name "eglot.el" stub)
+    (insert "(defvar eglot-server-programs nil)\n(provide 'eglot)\n"))
+  (add-to-list 'load-path stub)
+  (require 'eglot))
+(let ((entry (assq 'cp-mode eglot-server-programs)))
+  (cp-smoke-check entry "eglot does not know cp-mode")
+  (cp-smoke-check (equal (funcall (cdr entry)) '("cpl" "lsp")) "the eglot command is not `cpl lsp`"))
+(message "emacs smoke: ok")
