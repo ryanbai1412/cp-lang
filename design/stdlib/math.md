@@ -1,0 +1,566 @@
+# Standard library design: number theory, combinatorics, NTT and linear algebra
+
+This document designs the four mathematical modules of the CP Lang standard
+library: `std.math` (integer number theory and sieves), `std.mod` (modular
+arithmetic and combinatorics), `std.ntt` (number-theoretic and bitwise
+convolutions), and `std.matrix` (dense matrices, Gaussian elimination and
+GF(2) linear bases). It corresponds to sections 4.3 through 4.6 of
+`plan/STDLIB.md`.
+
+Every design choice follows `AGENTS.md` and `plan/STDLIB.md`: ordinary CP Lang
+with no compiler privilege, guessable textbook names, options as named
+arguments, documented time and memory cost on every public item, explicit
+representation, and algebraic laws checked by `@test`.
+
+## 1. Survey of contest patterns
+
+A survey of Codeforces Div. 1/2, AtCoder ABC/ARC/AGC/WTF, ICPC World Finals,
+KACTL (`number-theory/`, `numerical/`), AtCoder Library (`math.hpp`,
+`modint.hpp`, `convolution.hpp`), and the 60+ math-bearing accepted
+submissions in `proto/ports/ecnerwala/*_orig.cpp` shows seven recurring
+contest shapes.
+
+First, **basic integer arithmetic and divisibility**: `gcd`, `lcm`, Bezout
+coefficients (`ext_gcd`), Euclidean and ceiling division, modular inverses
+for dynamic non-type moduli (`inv_mod`), exact binomials (`choose`),
+`choose2(n)` for pair counts, and `floor_sum` for lattice-point and
+arithmetic-progression sums. In `proto/ports/ecnerwala/`, `gcd`/`ext_gcd`
+appear in 11 submissions and `floor_sum` is a standard AtCoder Library
+building block.
+
+Second, **primality, sieves, factorization and multiplicative functions**:
+three distinct cost regimes appear in contests. For many queries up to
+`n <= 2e7`, a linear sieve (`Sieve(n)`) gives `O(1)` primality, `O(log x)`
+factorization, and `O(d(x))` divisor enumeration, plus `O(n)` tables of any
+multiplicative function (`phi`, `mobius`, divisor sums, or custom recurrences
+like `cf2135e2`'s `odd_div_sum`). For a single number up to `1e12`, trial
+division (`factor`, `divisors`, `phi`) is `O(sqrt x)` with no setup. For
+numbers up to `2^62`, deterministic 12-base Miller-Rabin (`is_prime`) and
+Pollard's rho with Brent batching (`factor_big`) handle arbitrary 64-bit
+inputs. Rounding out elementary number theory are `crt` / `crt_all` (general
+non-coprime moduli), `primitive_root`, `mod_log` (BSGS discrete logarithm),
+and `mod_sqrt` (Tonelli-Shanks).
+
+Third, **modular arithmetic with compile-time and runtime moduli**: `modnum`
+appears in 60 ecnerwala submissions. The modulus is usually a prime constant
+(`998_244_353` or `1_000_000_007`), sometimes a composite or runtime-read
+integer, and occasionally a 60-bit prime for hashing. One type `Mod<P>`
+serves all of them: the modulus is part of the type, takes zero storage per
+value, and prevents mixing two moduli.
+
+Fourth, **combinatorial counting tables tied to `Mod<P>`**: factorial and
+inverse-factorial tables appear in 25 ecnerwala submissions (`cf2066d2`,
+`cf2084e`, `cf2135e2`, `cf2150g`, etc.). Every such solution wants `fact`,
+`inv_fact`, `inv(i)` in `O(1)`, `choose(n, k)` (with `0` outside `0..=n` and
+Lucas's theorem when `n >= P`), `arrange`, `multichoose`, `multinomial`, and
+`catalan`, without repeating the modulus literal after `type Z = Mod<P>`.
+
+Fifth, **polynomial and bitwise convolutions**: NTT appears in 7 ecnerwala
+submissions and 9 corpus ports (`lib.math.poly`). Contests need four closely
+related operations: in-place `ntt`, polynomial multiplication over an
+NTT-friendly `Mod<P>` (`convolve`), arbitrary-modulus multiplication via
+3-prime CRT (`convolve_mod`), and exact signed integer convolution
+(`convolve_int`, requested by `research/frictions/cf2201e.md`). Both linear
+and cyclic convolutions (`cyclic: true`) occur regularly. Alongside NTT,
+bitwise convolutions (`convolve_or`, `convolve_and`, `convolve_xor`) and
+subset/superset zeta-Mobius transforms (`sos_sub`, `sos_sup`, `sos_sub_inv`,
+`sos_sup_inv`) cover `O(n 2^n)` bitmask DP.
+
+Sixth, **dense matrices and Gaussian elimination**: linear recurrences and
+walk counting (`Mat.pow`, `Mat.apply`), matrix-DP segment trees
+(`Mat.product`), and linear algebra over prime fields `Mod<P>` and reals
+`F64` (`det`, `rank`, `solve`, `solve_space`, `inverse`). Flat row-major
+storage matters for cache locality; elimination is exact over `Mod<P>` and
+uses partial pivoting with a configurable tolerance `eps` over `F64`.
+
+Seventh, **GF(2) linear bases**: XOR subset maximization, membership,
+k-th smallest XOR, and merging bases inside segment trees or DSU-on-tree
+(`cf2115d`, `cf2262e`, `ucup5s05f`, CF 1100F). A compact `XorBasis` type
+with a `Monoid` combinator eliminates a recurring 20-line template.
+
+## 2. Coherent API surface
+
+### 2.1 `std.math`: integer helpers, number theory and sieves
+
+Every function documents its cost and its regime. Where two algorithms exist
+for the same mathematical operation, the cost is visible in the name or type:
+`factor(x)` is `O(sqrt x)`, `Sieve(n).factor(x)` is `O(log x)` after `O(n)`
+setup, and `factor_big(x)` is expected `O(x^(1/4) log x)`.
+
+```cp
+// Divisibility, division, and exact combinatorics
+fn gcd(a: Int, b: Int) -> Int                       // O(log min(|a|, |b|)); >= 0, gcd(0,0) = 0
+fn lcm(a: Int, b: Int) -> Int                       // O(log min(|a|, |b|)); >= 0, traps on overflow
+fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int)
+                                                    // O(log min(|a|, |b|)); a*x + b*y == g >= 0
+fn ceil_div(a: Int, b: Int) -> Int                  // O(1); b != 0
+fn fixed(num: Int, den: Int, k: Int) -> Str         // O(k); exact integer decimal formatting
+fn choose(n: Int, k: Int) -> Int                    // O(min(k, n - k)); 0 outside 0..=n
+fn choose2(n: Int) -> Int                           // O(1); n * (n - 1) / 2, 0 for n < 2
+
+// Bit and digit helpers
+fn bit_len(x: Int) -> Int                           // O(1); 0 for x == 0
+fn digits(self: Int, base: Int = 10) -> List<Int>   // O(log_base x); lowest digit first
+@get fn sign(self: Int) -> Int                      // O(1); -1, 0, or 1
+fn bit(self: Int, i: Int) -> Bool                   // O(1); bit 0 is lowest
+@get fn is_pow2(self: Int) -> Bool                  // O(1); x > 0 and x & (x - 1) == 0
+fn splitmix64(x: U64) -> U64                        // O(1); 64-bit mixing finalizer
+
+// Modular integer arithmetic (dynamic modulus without Mod<P>)
+fn mul_mod(a: Int, b: Int, m: Int) -> Int           // O(1); exact via I128 when needed, m >= 1
+fn pow_mod(a: Int, e: Int, m: Int) -> Int           // O(log e); e >= 0, m >= 1
+fn inv_mod(a: Int, m: Int) -> ?Int                  // O(log m); m >= 1, none if gcd(a, m) != 1
+fn crt(r1: Int, m1: Int, r2: Int, m2: Int) -> ?(Int, Int)
+                                                    // O(log min(m1, m2)); non-coprime allowed
+fn crt_all(eqs: List<(r: Int, m: Int)>) -> ?(r: Int, m: Int)
+                                                    // O(k log M); folds crt over a system
+fn mod_log(a: Int, b: Int, m: Int) -> ?Int          // O(sqrt m); smallest x >= 0: a^x = b (mod m)
+fn mod_sqrt(a: Int, p: Int) -> ?Int                 // O(log^2 p); prime p, x^2 = a (mod p)
+fn primitive_root(p: Int) -> Int                    // expected O(p^(1/4) log p); prime p
+fn floor_sum(n: Int, m: Int, a: Int, b: Int) -> Int // O(log m); sum_{i in 0..n} floor((a*i+b)/m)
+
+// Primality and factorization (single-input)
+fn is_prime(x: Int) -> Bool                         // O(log^2 x); deterministic Miller-Rabin, all Int
+fn factor(x: Int) -> List<(Int, Int)>               // O(sqrt x); (prime, exp) sorted
+fn factor_big(x: Int) -> List<(Int, Int)>           // expected O(x^(1/4) log x); Pollard's rho
+fn divisors(x: Int) -> List<Int>                    // O(sqrt x); sorted
+fn divisors_from_factors(fs: List<(Int, Int)>) -> List<Int>
+                                                    // O(d(x) log d(x)); sorted divisors from factors
+fn phi(x: Int) -> Int                               // O(sqrt x); Euler's totient
+
+// Linear sieve and multiplicative tables
+struct Sieve:                                       // O(n) time and memory
+    spf: List<Int>                                  // smallest prime factor, 0 for 0 and 1
+    primes: List<Int>                               // all primes in 2..=n, ascending
+    fn new(n: Int) -> Sieve                         // O(n)
+    fn is_prime(self, x: Int) -> Bool               // O(1)
+    fn factor(self, x: Int) -> List<(Int, Int)>     // O(log x)
+    fn divisors(self, x: Int) -> List<Int>          // O(d(x) log d(x)); sorted
+    fn phi(self, x: Int) -> Int                     // O(log x)
+    fn mobius(self, x: Int) -> Int                  // O(log x)
+    fn phi_table(self) -> List<Int>                 // O(n); totient[0..=n]
+    fn mobius_table(self) -> List<Int>              // O(n); mu[0..=n]
+
+fn sieve_multiplicative<T>(
+    n: Int,
+    one: T,
+    mul: (T, T) -> T,
+    prime_pow: (Int, Int, Int) -> T,
+) -> List<T>
+    // O(n) time and memory; computes f[0..=n] for any multiplicative f
+    // with f(1) = one, f(a * b) = mul(f(a), f(b)) for gcd(a, b) = 1,
+    // and f(p^k) = prime_pow(p, k, p^k) for every prime power p^k <= n.
+```
+
+Why `sieve_multiplicative` takes `one`, `mul`, and `prime_pow`: passing `mul`
+explicitly (typically `(a, b) => a * b`, or a pair-combining function when
+computing two statistics at once) works for `Int`, `Mod<P>`, and user structs
+alike, requires no extra core trait bounds, and runs in strict `O(n)` time by
+tracking the largest prime-power divisor `low[i]` of each `i`.
+
+### 2.2 `std.mod`: modular arithmetic and combinatorics
+
+`Mod<P>` is one type for both compile-time constants (`type Z = Mod<998_244_353>`)
+and runtime moduli (`let P: Int = read(); type Z = Mod<P>`). `Comb<P>` is
+tied directly to `Mod<P>` via `Z.comb(limit)` so the modulus is written once.
+
+```cp
+struct Mod<P>(v: Int):
+    let MOD = P
+    let zero = Mod(0)
+    let one = Mod(1 % P)
+    fn new(x: Int) -> Mod<P>                        // O(1); Euclidean reduction into 0..P
+    fn comb(limit: Int = 0) -> Comb<P>              // O(limit); avoids repeating P
+    fn pow(self, e: Int) -> Mod<P>                  // O(log |e|); negative e uses inv
+    fn try_inv(self) -> ?Mod<P>                     // O(log P); none if gcd(v, P) != 1
+    @get fn inv(self) -> Mod<P>                     // O(log P); traps if non-invertible
+    // impls: Add, Sub, Neg, Mul, Div, Show
+
+struct Comb<P>:
+    fn new(limit: Int = 0) -> Comb<P>               // O(limit) time and memory; exact size
+    fn fact(self, n: Int) -> Mod<P>                 // O(1) amortized; 0 for n >= P
+    fn inv_fact(self, n: Int) -> Mod<P>             // O(1) amortized; 0 <= n < P
+    fn inv(self, i: Int) -> Mod<P>                  // O(1) amortized; 1 <= i < P
+    fn choose(self, n: Int, k: Int) -> Mod<P>       // O(1) for n < P; Lucas O(log_P n) for n >= P
+    fn arrange(self, n: Int, k: Int) -> Mod<P>      // O(1) amortized; 0 outside 0..=n
+    fn multichoose(self, n: Int, k: Int) -> Mod<P>  // O(1) amortized; stars and bars
+    fn multinomial(self, ks: List<Int>) -> Mod<P>   // O(ks.len) amortized; (sum ks)! / prod(k!)
+    fn catalan(self, n: Int) -> Mod<P>              // O(1) amortized
+```
+
+Performance notes from the corpus (`cf2135e2`, `cf2150g`, `cf2066d2`,
+`cf2062h`, `cf2084e`):
+
+1. `Comb.new(limit)` sizes `f` and `g` to `limit + 1` directly and fills `g`
+   in place without allocating a temporary `tail` buffer. Lazy growth via
+   `ensure(n)` still doubles capacity (clamped at `P`), also filling `g` in
+   place. This cuts peak memory on `n = 2e7` by ~350 MB.
+2. `choose(n, k)` and `arrange(n, k)` take a single fast-path branch
+   `if n < f.len` before checking `n >= P` or calling `ensure`, because
+   `f.len <= P` is an invariant of `Comb<P>`.
+3. Storage width: today `Mod<P>(v: Int)` uses 8 bytes per value because
+   type-parameter range narrowing (`v: 0..P`) is not yet in `cpl-check`/
+   `cpl-codegen`. That is the single largest remaining performance gap on
+   dense `Mod<P>` tables (`cf2150g`, `cf2135e2`, `cf2062h`). Narrowing `0..P`
+   to `uint32_t` when `P <= 2^31 - 1` is tracked for the core/codegen lane
+   and requires no API change in `std.mod`.
+
+### 2.3 `std.ntt`: NTT and bitwise convolutions
+
+`std.ntt` promotes the radix-4 Montgomery NTT engine from
+`examples/local-lib/math/poly.cp` into a clean, generic stdlib module and
+adds cyclic convolution and bitwise transforms.
+
+```cp
+// Number-theoretic transform and polynomial convolution
+fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false)
+    // O(n log n) in place; a.len a power of 2 dividing P - 1.
+    // Uses radix-4 Montgomery butterflies for standard primes (998244353,
+    // 469762049, 167772161, 754974721) and primitive_root(P) for any other
+    // NTT-friendly prime P.
+
+fn convolve<P>(
+    a: List<Mod<P>>,
+    b: List<Mod<P>>,
+    cyclic: Bool = false,
+) -> List<Mod<P>>
+    // O((n + m) log(n + m)); schoolbook below 64 terms.
+    // Linear: length n + m - 1 (empty if either is empty).
+    // Cyclic: requires a.len == b.len == n; returns length n folded mod x^n - 1.
+
+fn convolve_mod(
+    a: List<Int>,
+    b: List<Int>,
+    m: Int,
+    cyclic: Bool = false,
+) -> List<Int>
+    // O((n + m) log(n + m)); 3-prime NTT + Garner CRT for any 1 <= m < 2^31.
+
+fn convolve_int(
+    a: List<Int>,
+    b: List<Int>,
+    cyclic: Bool = false,
+) -> List<Int>
+    // O((n + m) log(n + m)); exact signed integer convolution when every
+    // output fits in about +-2^62. Uses 1-prime fast path when the bound
+    // min(n, m) * max(|a|) * max(|b|) < P1 / 2, else 3-prime CRT.
+
+// Bitwise convolutions and subset/superset zeta-Mobius transforms (n = 2^k)
+fn sos_sub<T>(a: List<T>) -> List<T>                // O(n log n); out[m] = sum_{s sub m} a[s]
+fn sos_sub_inv<T>(a: List<T>) -> List<T>            // O(n log n); inverse of sos_sub
+fn sos_sup<T>(a: List<T>) -> List<T>                // O(n log n); out[m] = sum_{m sub s} a[s]
+fn sos_sup_inv<T>(a: List<T>) -> List<T>            // O(n log n); inverse of sos_sup
+fn convolve_or<T>(a: List<T>, b: List<T>) -> List<T>
+    // O(n log n); c[k] = sum_{i | j == k} a[i] * b[j]
+fn convolve_and<T>(a: List<T>, b: List<T>) -> List<T>
+    // O(n log n); c[k] = sum_{i & j == k} a[i] * b[j]
+fn convolve_xor<T>(a: List<T>, b: List<T>) -> List<T>
+    // O(n log n); c[k] = sum_{i ^ j == k} a[i] * b[j]; requires / 2 on T
+```
+
+Notice the uniform design: `cyclic: Bool = false` is a named argument on all
+three polynomial convolutions (`convolve`, `convolve_mod`, `convolve_int`),
+matching `plan/STDLIB.md` section 2. All bitwise transforms infer the number
+of bits from `a.len` (asserting `a.len.is_pow2`), avoiding a redundant `bits`
+argument that can go out of sync with `a.len`.
+
+### 2.4 `std.matrix`: dense matrices, Gaussian elimination and `XorBasis`
+
+`Mat<T>` stores entries in a single flat row-major `List<T>` of length
+`n * m` so multiplication and elimination stay cache-friendly.
+
+```cp
+struct Mat<T>(n: Int, m: Int, a: List<T>):
+    fn zero(n: Int, m: Int = n) -> Mat<T>           // O(n m)
+    fn identity(n: Int) -> Mat<T>                   // O(n^2)
+    fn of(rows: List<List<T>>) -> Mat<T>            // O(n m)
+    fn get(self, i: Int, j: Int) -> T               // O(1)
+    fn at(self, i: Int, j: Int) lends mut T         // O(1); writable cell: m.at(i, j) += x
+    fn pow(self, e: Int) -> Mat<T>                  // O(n^3 log e); square matrix, e >= 0
+    fn apply(self, v: List<T>) -> List<T>           // O(n m); A * v
+    fn transpose(self) -> Mat<T>                    // O(n m)
+    fn rows(self) -> List<List<T>>                  // O(n m)
+    fn product(n: Int) -> Monoid<Mat<T>>            // O(n^2); monoid for SegTree<D, Mat<T>>
+    // impls: Add, Sub, Neg, Mul (ikj order, skipping zero entries)
+
+    // Exact Gaussian elimination over any exact field (e.g. Mod<P> with prime P):
+    fn det(self) -> T                               // O(n^3); square matrix
+    fn rank(self) -> Int                            // O(n m min(n, m))
+    fn solve(self, b: List<T>) -> ?List<T>          // O(n m min(n, m)); one solution or none
+    fn solve_space(self, b: List<T>) -> ?(x0: List<T>, basis: List<List<T>>)
+                                                    // O(n m min(n, m)); particular + nullspace
+    fn inverse(self) -> ?Mat<T>                     // O(n^3); square matrix, none if singular
+
+// Floating-point elimination with partial pivoting (F64):
+fn det_real(a: Mat<F64>, eps: F64 = 1e-9) -> F64    // O(n^3)
+fn rank_real(a: Mat<F64>, eps: F64 = 1e-9) -> Int   // O(n m min(n, m))
+fn solve_real(a: Mat<F64>, b: List<F64>, eps: F64 = 1e-9) -> ?List<F64>
+                                                    // O(n m min(n, m))
+fn inverse_real(a: Mat<F64>, eps: F64 = 1e-9) -> ?Mat<F64>
+                                                    // O(n^3)
+
+// GF(2) linear basis over 62-bit non-negative integers
+struct XorBasis:
+    fn new() -> XorBasis                            // O(1)
+    @get fn rank(self) -> Int                       // O(1); dimension of span
+    fn add(mut self, x: Int) -> Bool                // O(log x); true if independent
+    fn reduce(self, x: Int) -> Int                  // O(62); min x ^ s over s in span
+    fn contains(self, x: Int) -> Bool               // O(62); reduce(x) == 0
+    fn max_xor(self, init: Int = 0) -> Int          // O(62); max init ^ s over s in span
+    fn min_xor(self, init: Int) -> Int              // O(62); alias for reduce(init)
+    fn kth(self, k: Int) -> ?Int                    // O(62^2); k-th smallest in span (0-indexed)
+    fn merge(mut self, o: XorBasis)                 // O(rank * 62); union of spans
+    fn monoid() -> Monoid<XorBasis>                 // O(1); for SegTree<D, XorBasis>
+```
+
+Why `det_real` / `solve_real` are separate from `Mat<T>.det` / `Mat<T>.solve`:
+floating-point elimination needs partial pivoting by `abs` and a tolerance
+`eps`, whereas exact elimination over `Mod<P>` checks `== T.zero` and divides
+directly. Keeping exact field methods on `Mat<T>` and pivoted real helpers
+explicit avoids hidden `F64` specialization and respects CP Lang's rule that
+float equality is rejected by default.
+
+## 3. Laws and invariants
+
+Every module enforces its mathematical laws in `@test`:
+
+- `std.math`: `gcd(a, b) >= 0`, `a * e.x + b * e.y == e.g == gcd(a, b)` for
+  `e = ext_gcd(a, b)`; `crt(r1, m1, r2, m2)` returns `(r, lcm(m1, m2))` with
+  `r % m1 == r1 % m1` and `r % m2 == r2 % m2`, or `none` iff no solution
+  exists; `is_prime(x)` agrees with `Sieve` and rejects Carmichael numbers
+  and strong pseudoprimes; `factor(x) == factor_big(x) == s.factor(x)` and
+  their product equals `x`; `pow_mod(a, mod_log(a, b, m)!, m) == b % m`;
+  `mod_sqrt(a, p)! ** 2 % p == a % p`; `sieve_multiplicative` satisfies
+  `f[a * b] == mul(f[a], f[b])` for coprime `a, b`.
+- `std.mod`: `Mod<P>` satisfies `laws_hold(Monoid<Mod<P>>.of(+), xs)` and
+  `laws_hold(Monoid<Mod<P>>.of(*), xs)`; `x * x.inv == Mod.one` when
+  `gcd(x.v, P) == 1`; `Comb<P>.choose` satisfies Pascal's identity and
+  Lucas's theorem; `fact(n) * inv_fact(n) == one`; `inv(i) * Mod(i) == one`.
+- `std.ntt`: `ntt(mut a, inverse: true)` is the exact inverse of `ntt(mut a)`;
+  `convolve`, `convolve_mod`, and `convolve_int` agree with naive `O(n m)`
+  convolution for both `cyclic: false` and `cyclic: true`; `sos_sub_inv` and
+  `sos_sup_inv` invert `sos_sub` and `sos_sup`; `convolve_or`, `convolve_and`,
+  and `convolve_xor` agree with naive `O(n^2)` loops.
+- `std.matrix`: `Mat<T>.product(n)` satisfies `laws_hold`; `(A * B).det() ==
+  A.det() * B.det()`; `A * A.inverse()! == Mat.identity(n)`; for every `x0`
+  and `v` in `solve_space(b)!.basis`, `A.apply(x0 + c * v) == b`; `XorBasis`
+  satisfies `laws_hold(XorBasis.monoid(), xs)`, `contains(x)` iff `x` is a
+  subset XOR of inserted elements, and `kth(0..2^rank)` is strictly
+  increasing and exhausts the span.
+
+## 4. Domains, index spaces and what stays user code
+
+`std.math` and `std.mod` operate on mathematical values (`Int`, `Mod<P>`),
+not array positions, so their arguments are integers and moduli rather than
+domains. Where a matrix or basis lives inside a range structure, it plugs
+directly into CP Lang's domain-indexed structures via `Monoid`:
+`SegTree<V, Mat<Z>>(Mat<Z>.product(k), init)` and
+`SegTree<I, XorBasis>(XorBasis.monoid(), init)`.
+
+What stays in `examples/local-lib/math/` or user code (until wider corpus
+demand justifies promotion):
+
+- Formal power series (`poly_inv`, `poly_exp`, `poly_log`, `poly_pow`,
+  `poly_sqrt`, multipoint evaluation, Taylor shift, Berlekamp-Massey,
+  Bostan-Mori, polynomial GCD) stay in `examples/local-lib/math/poly.cp`.
+- Exact fractions (`Frac`), homomorphisms, and simplex/LP stay in
+  `examples/local-lib/math/`.
+- Custom-payload XOR bases (like `cf2115d`, where each basis bit also owns a
+  player `Bool` deciding whether to maximize or minimize that bit) stay user
+  code because the payload semantics are problem-specific.
+- Arbitrary-precision `BigInt`: out of scope for v1; `I128` covers intermediate
+  products.
+
+## 5. Real problems written against this API
+
+Each solution below is written at the bar of `design/EXEMPLARS-PORTS.md`:
+the editorial invariant up front, standard algorithms named, no boilerplate.
+
+### 5.1 Codeforces 2201 E — ABBA Counting
+
+Split `t` of length `2m` into two halves. By inclusion-exclusion on the
+repetition count `f | m` (period `L = m / f`), each `f` has Mobius-like
+weight `prod_{p | f} (1 - p)`. Cyclic exact-integer convolution counts
+agreements and doubly-fixed pairs for every shift at once.
+
+```cp
+// A valid ABBA string of length 2m has minimal period L | m (f = m / L).
+// For each divisor f, fold both halves mod L and use cyclic integer
+// convolution to count agreements and doubly-fixed pairs per shift.
+@!multitest
+use std.math.{divisors, factor}
+use std.ntt.{convolve_int}
+
+type Z = Mod<998_244_353>
+
+let n: 2..=400_000 = read()
+let t: Str = read()
+let m = n / 2
+
+var pow2: [0..=m]Z = 1
+for i in 1..=m: pow2[i] = pow2[i - 1] * 2
+
+var ans: Z = 0
+'divisor: for f in divisors(m):
+    let len = m / f
+    var s: [0..2][0..len]?Char = none
+    for z in 0..2:
+        for k in 0..f:
+            for i in 0..len:
+                let c = t[z * m + k * len + i]
+                if c == '?': continue
+                if let prev = s[z][i], prev != c: continue 'divisor
+                s[z][i] = c
+
+    var sign0: [0..len]Int = 0
+    var sign1: [0..len]Int = 0
+    var fix0: [0..len]Int = 0
+    var fix1: [0..len]Int = 0
+    var tot_fix = 0
+    for i in 0..len:
+        if let c = s[0][i]:
+            sign0[i] = if c == 'a': 1 else: -1
+            fix0[i] = 1
+            tot_fix += 1
+        if let c = s[1][len - 1 - i]:
+            sign1[i] = if c == 'a': 1 else: -1
+            fix1[i] = 1
+            tot_fix += 1
+
+    let diff_conv = convolve_int(sign0, sign1, cyclic: true)
+    let both_conv = convolve_int(fix0, fix1, cyclic: true)
+    var ways: Z = 0
+    for i in 0..len:
+        if diff_conv[i] == both_conv[i]:
+            ways += pow2[len - tot_fix + both_conv[i]]
+
+    var w: Z = 1
+    for (p, _) in factor(f): w *= 1 - p
+    ans += ways * w
+
+print(ans)
+```
+
+Compare with `proto/ports/ecnerwala/cf2201e.cp`: the `cyclic_convolve`
+wrapper, the `Mod<998244353>` encoding hack, and the `.v` field leak are all
+gone.
+
+### 5.2 Codeforces 2135 E2 — Beyond the Palindrome (Hard Version)
+
+The editorial reduces the answer to a linear combination of binomials
+weighted by the multiplicative function `odd_div_sum(x) = 2^{v_2(x)} *
+sigma_1(x / 2^{v_2(x)})`.
+
+```cp
+// odd_div_sum(x) = 2^{v_2(x)} * sigma_1(x / 2^{v_2(x)}) is multiplicative:
+// f(2^k) = 2^k, and for odd prime p, f(p^k) = (p^{k+1} - 1) / (p - 1).
+use std.math.{sieve_multiplicative}
+
+type Z = Mod<998_244_353>
+
+let t: 1..=10_000 = read()
+let ns: [0..t](1..=20_000_000) = read()
+let lim = max(ns) + 1
+
+let comb = Z.comb(lim)
+let odd_div_sum = sieve_multiplicative(
+    lim,
+    one: 1,
+    mul: (a, b) => a * b,
+    prime_pow: (p, _, pe) => if p == 2: pe else: (pe * p - 1) / (p - 1),
+)
+
+for n in ns:
+    var cnt: [0..=n]Z = 0
+    for i in 1..=n + 1:
+        var v = Z(odd_div_sum[i])
+        if i % 2 == 1: v -= 1
+        elif n % 2 == 1 and i % 4 == 2: v -= 2
+        if (i + n) % 2 == 1:
+            if i - 1 <= n: cnt[(n + i - 1) / 2] += 2 * v
+            if i + 1 <= n: cnt[(n + i + 1) / 2] += 2 * v
+        else:
+            if i <= n: cnt[(n + i) / 2] -= 4 * v
+
+    var ans: Z = 0
+    for i in 0..=n: ans += comb.inv_fact(i) * comb.inv_fact(n - i) * cnt[i]
+    print(ans * comb.fact(n) + Z(2).pow(n))
+```
+
+Compare with `proto/ports/ecnerwala/cf2135e2.cp`: the 22-line hand-rolled
+linear sieve disappears into a single `sieve_multiplicative` call, and
+`Z.comb(lim)` writes the modulus once.
+
+### 5.3 AtCoder DP R — Walk
+
+Count directed walks of length `k` in an `n`-vertex graph (`n <= 50`,
+`k <= 10^18`) modulo `10^9 + 7`: raise the adjacency matrix to the `k`-th
+power and sum all entries.
+
+```cp
+// The (i, j) entry of A^k counts length-k walks from i to j.
+use std.matrix.{Mat}
+
+type Z = Mod<1_000_000_007>
+
+let n: 1..=50 = read()
+let k: 1..=1_000_000_000_000_000_000 = read()
+let adj = [[Z(read::<0..=1>()) for _ in 0..n] for _ in 0..n]
+let walks = Mat<Z>.of(adj).pow(k)
+print(sum(walks.get(i, j) for i in 0..n for j in 0..n))
+```
+
+Compare with `proto/ports/dpr.cp`: both hand-rolled matrix multiplication and
+binary exponentiation vanish.
+
+### 5.4 Codeforces 1100 F — Ivan and Burgers
+
+Given an array `a[1..=n]` (`n <= 5e5`) and `q` range queries `[l, r]`, print
+the maximum XOR of any subset of `a[l..=r]`. A `SegTree` over `XorBasis`
+answers each query in `O(log n * 62)` (or offline prefix bases in `O(62)`).
+
+```cp
+// XorBasis forms a monoid under merge, so a SegTree answers range max-XOR
+// queries directly.
+use std.matrix.{XorBasis}
+
+let n: 1..=500_000 = read()
+domain I = 1..=n
+let a: [I]0..=1_000_000 = read()
+
+let init = [I] i =>
+    var b = XorBasis.new()
+    b.add(a[i])
+    b
+let seg = SegTree<I, XorBasis>(XorBasis.monoid(), init)
+
+let q: 1..=500_000 = read()
+repeat q:
+    let (l, r): (I, I) = read()
+    print(seg.fold(l..=r).max_xor())
+```
+
+### 5.5 Codeforces 2084 E — Blossom
+
+Count the sum of `MEX` over all subarrays of all completions of a partial
+permutation `a`. Using `Z.comb(n)` keeps the modulus in one place.
+
+```cp
+@!multitest
+use std.prefix.{prefix1}
+
+type Z = Mod<1_000_000_007>
+
+let n: 1..=5000 = read()
+domain Pos = 0..n
+domain Val = 0..n
+let a: [Pos]Int = read()
+
+var pos: [Val]?Pos = none
+for i in Pos where a[i] >= 0: pos[Val(a[i])] = i
+
+let missing = prefix1([Pos] i => if a[i] == -1: 1 else: 0)
+let m = missing.prefix(Pos.last.r)
+let comb = Z.comb(n)
+// ... sweep Val, accumulating Z(freq[f]) * comb.arrange(f, need) * comb.fact(m - need)
+```

@@ -2066,3 +2066,25 @@ Reverse: delete the step from `scripts/check.sh`.
   Promoted from `examples/local-lib/str/hash2d.cp`, upgraded to the same double-mod `HashVal` as
   `RollingHash` so 2D hashes are anti-hack safe on Codeforces. Reason: single 31-bit hashes collide
   easily at contest grid sizes. Reverse: revert to a single `Mod<2147483647>`.
+
+## 40. Number theory, combinatorics, NTT, and linear algebra (`design/stdlib/math.md`, 2026-11-21)
+
+- **40.1 `Mod<P>.comb(limit = 0)` ties `Comb<P>` to `Mod<P>` without repeating `P`.**
+  After `type Z = Mod<998_244_353>`, `let comb = Z.comb(n)` constructs `Comb<998_244_353>(n)`
+  directly, keeping the modulus in one declaration (`research/frictions/cf2084e.md`,
+  `research/frictions/cf2150g.md`). `Comb<P>(limit)` stays valid. Reverse: remove `Mod.comb`.
+- **40.2 `cyclic: Bool = false` is a named option on `convolve`, `convolve_mod`, and `convolve_int`.**
+  Avoids separate `cyclic_convolve*` names and follows `plan/STDLIB.md` §2; bitwise convolutions
+  (`convolve_or`, `convolve_and`, `convolve_xor`) and `sos_sub`/`sos_sup` live in `std.ntt`
+  alongside NTT so all convolution transforms share one module (`research/frictions/cf2201e.md`).
+  Reverse: split bitwise transforms into `std.sos` or add `cyclic_convolve` wrappers.
+- **40.3 `sieve_multiplicative` takes `(n, one:, mul:, prime_pow:)` explicitly.**
+  Taking `mul: (T, T) -> T` works uniformly for `Int`, `Mod<P>`, and user structs without needing
+  new core trait constraints, and runs in strict `O(n)` by tracking each number's largest
+  prime-power divisor (`research/frictions/cf2135e2.md`). Reverse: specialize on `T: Mul`.
+- **40.4 Exact field elimination lives on `Mat<T>`; pivoted `F64` elimination is `*_real(..., eps: 1e-9)`.**
+  Floating-point Gaussian elimination requires partial pivoting by `abs` and a tolerance `eps`,
+  whereas exact elimination over `Mod<P>` checks `== T.zero`. Keeping them separate avoids hidden
+  `F64` specialization and respects CP Lang's default rejection of float equality. `XorBasis`
+  lives in `std.matrix` with a `Monoid` combinator for segment trees. Reverse: unify behind a
+  `Field` trait once traits support associated pivoting policies.

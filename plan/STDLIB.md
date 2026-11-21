@@ -256,7 +256,8 @@ fn ternary_max(r: Range<Int>, f: Int -> Int) -> Int
 ### 4.3 `std.math`: number theory
 
 Integer helpers and number theory with every cost in the name or the
-type. Three ways to factor, from cheapest setup to largest input:
+type. Full design and contest survey: `design/stdlib/math.md`. Three
+ways to factor, from cheapest setup to largest input:
 `Sieve(n).factor(x)` for many x up to n, `factor(x)` by trial division
 for one x up to about 1e12, `factor_big(x)` by Pollard's rho for x up
 to 4e18.
@@ -272,8 +273,10 @@ struct Sieve // O(n)
     fn new(n: Int) -> Sieve
     fn is_prime(self, x: Int) -> Bool
     fn factor(self, x: Int) -> List<(Int, Int)> // O(log x)
+    fn phi(self, x: Int) -> Int // O(log x)
+    fn mobius(self, x: Int) -> Int // O(log x)
 fn bit_len(x: Int) -> Int
-fn digits(self: Int, base: Int
+fn digits(self: Int, base: Int = 10) -> List<Int>
 @get fn sign(self: Int) -> Int
 fn bit(self: Int, i: Int) -> Bool
 @get fn is_pow2(self: Int) -> Bool
@@ -289,15 +292,27 @@ fn phi(x: Int) -> Int // O(sqrt x)
 fn primitive_root(p: Int) -> Int // expected O(p^(1/4) log p), prime p
 fn floor_sum(n: Int, m: Int, a: Int, b: Int) -> Int
     // O(log m); sum of (a*i + b) / m for i in 0..n, floor division
-fn Sieve.phi(self, x: Int) -> Int // O(log x)
-fn Sieve.mobius(self, x: Int) -> Int // O(log x)
 ```
 
-Promoted from `examples/local-lib/math/primes.cp` and `floor_sum.cp`,
-which now keep only what builds on them (`divisors_of`, `mod_sum`,
-`count_residues`). Ports: `proto/ports/scout_batch_16/cco05p4.cp`
-(`is_prime`), `proto/ports/scout_batch_43/etsr23r4p2.cp` (`phi`).
-Planned: `Sieve.primes`, a linear sieve of any multiplicative function.
+[new] Additions from `design/stdlib/math.md`:
+
+```cp
+fn choose2(n: Int) -> Int // O(1); n * (n - 1) / 2, 0 for n < 2
+fn inv_mod(a: Int, m: Int) -> ?Int // O(log m); m >= 1, none if gcd(a, m) != 1
+fn crt_all(eqs: List<(r: Int, m: Int)>) -> ?(r: Int, m: Int) // O(k log M)
+fn mod_log(a: Int, b: Int, m: Int) -> ?Int // O(sqrt m); BSGS discrete log
+fn mod_sqrt(a: Int, p: Int) -> ?Int // O(log^2 p); Tonelli-Shanks, prime p
+fn divisors_from_factors(fs: List<(Int, Int)>) -> List<Int> // O(d(x) log d(x))
+fn Sieve.divisors(self, x: Int) -> List<Int> // O(d(x) log d(x)), sorted
+fn Sieve.phi_table(self) -> List<Int> // O(n)
+fn Sieve.mobius_table(self) -> List<Int> // O(n)
+fn sieve_multiplicative<T>(
+    n: Int,
+    one: T,
+    mul: (T, T) -> T,
+    prime_pow: (Int, Int, Int) -> T,
+) -> List<T> // O(n) time and memory
+```
 
 Relies on: `I128` (inside `mul_mod`), the builtin `isqrt`.
 
@@ -307,6 +322,7 @@ Relies on: `I128` (inside `mul_mod`), the builtin `isqrt`.
 value read at startup; `Comb<P>` grows factorial tables on demand. The
 0.3 spec's `Mint(mod: p)` and `Z.factorials` are the same ideas; we keep
 the shipped names, which 135 and 37 port files use (decision 26.2).
+`Z.comb(limit)` ties `Comb<P>` to `Mod<P>` so `P` is written once.
 
 ```cp
 struct Mod<P>(v: Int) // O(1), O(log P)
@@ -315,7 +331,7 @@ struct Mod<P>(v: Int) // O(1), O(log P)
     fn try_inv(self) -> ?Mod<P> // O(log P)
     @get fn inv(self) -> Mod<P>
 struct Comb<P> // O(1)
-    fn new(limit: Int
+    fn new(limit: Int = 0) -> Comb<P>
     fn fact(self, n: Int) -> Mod<P>
     fn inv_fact(self, n: Int) -> Mod<P>
     fn inv(self, i: Int) -> Mod<P> // O(1)
@@ -325,56 +341,87 @@ struct Comb<P> // O(1)
     fn catalan(self, n: Int) -> Mod<P>
 ```
 
-[new] `x.try_inv() -> ?Mod<P>`, O(log P), for moduli that are not prime.
+[new] Additions from `design/stdlib/math.md`:
+
+```cp
+fn Mod.comb(limit: Int = 0) -> Comb<P> // O(limit); avoids repeating P
+fn Comb.multinomial(self, ks: List<Int>) -> Mod<P> // O(ks.len)
+```
 
 ### 4.5 `std.ntt` [new]: convolution
 
-The number-theoretic transform and the products built on it, promoted
-from `examples/local-lib/math/poly.cp` (imported as `lib.math.poly` by
-nine port files) and made generic over the modulus. The power-series
-operations stay in the local library until ports other than the
-polynomial batch reach for them.
+The number-theoretic transform, polynomial products (linear and cyclic),
+and bitwise/SOS convolutions, promoted from
+`examples/local-lib/math/poly.cp` (imported as `lib.math.poly` by nine
+port files) and `examples/local-lib/math/sos.cp`. Full design:
+`design/stdlib/math.md`. The formal power-series operations stay in the
+local library until wider corpus demand justifies promotion.
 
 ```cp
 fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false)
     // O(n log n) in place; a.len a power of two dividing P - 1
-fn convolve<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>
+fn convolve<P>(a: List<Mod<P>>, b: List<Mod<P>>, cyclic: Bool = false) -> List<Mod<P>>
     // O((n + m) log(n + m)); P - 1 divisible by a power of two at least
     // n + m - 1 (998244353, 167772161, 469762049, 754974721 qualify);
     // schoolbook below 64 terms
-fn convolve_mod(a: List<Int>, b: List<Int>, m: Int) -> List<Int>
-    // three NTT primes and CRT; any m < 2^31, coefficients in 0..m
-fn convolve_int(a: List<Int>, b: List<Int>) -> List<Int>
-    // exact when every output fits in about 2^62; traps otherwise
+fn convolve_mod(a: List<Int>, b: List<Int>, m: Int, cyclic: Bool = false) -> List<Int>
+    // three NTT primes and Garner CRT; any 1 <= m < 2^31
+fn convolve_int(a: List<Int>, b: List<Int>, cyclic: Bool = false) -> List<Int>
+    // exact signed integer convolution when every output fits in about +-2^62
+fn sos_sub<T>(a: List<T>) -> List<T> // O(n log n); subset zeta transform
+fn sos_sub_inv<T>(a: List<T>) -> List<T> // O(n log n); subset Mobius transform
+fn sos_sup<T>(a: List<T>) -> List<T> // O(n log n); superset zeta transform
+fn sos_sup_inv<T>(a: List<T>) -> List<T> // O(n log n); superset Mobius transform
+fn convolve_or<T>(a: List<T>, b: List<T>) -> List<T> // O(n log n)
+fn convolve_and<T>(a: List<T>, b: List<T>) -> List<T> // O(n log n)
+fn convolve_xor<T>(a: List<T>, b: List<T>) -> List<T> // O(n log n); requires / 2
 ```
 
 Relies on: `Mod<P>` with a type-parameter modulus, `primitive_root`,
 `bit_ceil`, `ctz`.
 
-### 4.6 `std.matrix` [new]: matrices
+### 4.6 `std.matrix` [new]: matrices, Gaussian elimination and linear basis
 
-`Mat<T>` is a dense row-major matrix over any `T` with `T.zero`,
-`T.one`, `+`, `-`, `*` (`Int`, `Mod<P>`, `F64`); elimination needs `/`
-and is offered where the element type divides exactly (`Mod<P>` with
-prime `P`, `F64` with partial pivoting).
+`Mat<T>` is a dense flat row-major matrix over any `T` with `T.zero`,
+`T.one`, `+`, `-`, `*` (`Int`, `Mod<P>`, `F64`). Exact field elimination
+(`det`, `rank`, `solve`, `solve_space`, `inverse`) lives on `Mat<T>` for
+exact fields such as `Mod<P>` with prime `P`; partial-pivoted `F64`
+helpers (`det_real`, `rank_real`, `solve_real`, `inverse_real`) take a
+named tolerance `eps: F64 = 1e-9`. `XorBasis` covers GF(2) linear bases
+with a `Monoid` for segment trees. Full design: `design/stdlib/math.md`.
 
 ```cp
 struct Mat<T>(n: Int, m: Int, a: List<T>)
-fn Mat.zero(n: Int, m: Int = n) -> Mat<T>          // O(n m)
-fn Mat.identity(n: Int) -> Mat<T>                  // O(n^2)
-fn Mat.of(rows: List<List<T>>) -> Mat<T>           // O(n m)
-fn at(self, i: Int, j: Int) lends mut T            // O(1)
-fn mul(self, o: Mat<T>) -> Mat<T>                  // O(n m k), the `*`
-fn add(self, o: Mat<T>) -> Mat<T>                  // O(n m), the `+`
-fn pow(self, e: Int) -> Mat<T>                     // O(n^3 log e)
-fn apply(self, v: List<T>) -> List<T>              // O(n m)
-fn transpose(self) -> Mat<T>                       // O(n m)
-fn rows(self) -> List<List<T>>                     // O(n m)
-fn det(self) -> T                                  // O(n^3), T: Div
-fn rank(self) -> Int                               // O(n m min(n, m))
-fn solve(self, b: List<T>) -> ?List<T>             // O(n m min(n, m))
-fn inverse(self) -> ?Mat<T>                        // O(n^3)
-fn Mat.product(n: Int) -> Monoid<Mat<T>>           // for segment trees
+    fn zero(n: Int, m: Int = n) -> Mat<T>          // O(n m)
+    fn identity(n: Int) -> Mat<T>                  // O(n^2)
+    fn of(rows: List<List<T>>) -> Mat<T>           // O(n m)
+    fn get(self, i: Int, j: Int) -> T              // O(1)
+    fn at(self, i: Int, j: Int) lends mut T        // O(1)
+    fn pow(self, e: Int) -> Mat<T>                 // O(n^3 log e)
+    fn apply(self, v: List<T>) -> List<T>          // O(n m)
+    fn transpose(self) -> Mat<T>                   // O(n m)
+    fn rows(self) -> List<List<T>>                 // O(n m)
+    fn det(self) -> T                              // O(n^3), T: Div
+    fn rank(self) -> Int                           // O(n m min(n, m))
+    fn solve(self, b: List<T>) -> ?List<T>         // O(n m min(n, m))
+    fn solve_space(self, b: List<T>) -> ?(x0: List<T>, basis: List<List<T>>)
+    fn inverse(self) -> ?Mat<T>                    // O(n^3)
+    fn product(n: Int) -> Monoid<Mat<T>>           // for segment trees
+fn det_real(a: Mat<F64>, eps: F64 = 1e-9) -> F64   // O(n^3)
+fn rank_real(a: Mat<F64>, eps: F64 = 1e-9) -> Int  // O(n m min(n, m))
+fn solve_real(a: Mat<F64>, b: List<F64>, eps: F64 = 1e-9) -> ?List<F64>
+fn inverse_real(a: Mat<F64>, eps: F64 = 1e-9) -> ?Mat<F64>
+struct XorBasis
+    fn new() -> XorBasis                           // O(1)
+    @get fn rank(self) -> Int                      // O(1)
+    fn add(mut self, x: Int) -> Bool               // O(log x)
+    fn reduce(self, x: Int) -> Int                 // O(62)
+    fn contains(self, x: Int) -> Bool              // O(62)
+    fn max_xor(self, init: Int = 0) -> Int         // O(62)
+    fn min_xor(self, init: Int) -> Int             // O(62)
+    fn kth(self, k: Int) -> ?Int                   // O(62^2)
+    fn merge(mut self, o: XorBasis)                // O(rank * 62)
+    fn monoid() -> Monoid<XorBasis>                // for segment trees
 ```
 
 Relies on: operator traits, `T.zero` and `T.one`, `lends mut`.
