@@ -1,12 +1,19 @@
 // AtCoder AGC 079 C: transform 1..=n into permutation a with a reversible
 // queue, minimizing reversals (or -1). Reversing time pushes n..=1 and pops a
-// back-to-front; every value enters on one of two ends, and the relative order
-// of pushes and pops forces a unique parity relation within each connected
-// component. Pass 1 walks a backwards keeping unplaced values as a stack of
-// same-side runs (splicing runs when a deeper value pops, or popping the bottom
-// of the sole run). Pass 2 replays the deque greedily: orient each free
-// component to match the active end, pop whenever either end matches, and
-// reverse only when forced (a 1-element reversal is free).
+// back-to-front; every value enters on one of two ends.
+//
+// Invariants:
+// - Unique parity relation per component: whenever two values stay in the deque
+//   simultaneously, the order they leave fixes their relative insertion side:
+//   popping the front of a multi-element run forces the next element to share
+//   its side (same parity), while popping a deeper run's head or a singleton
+//   marked `opp_below` forces opposite sides (opposite parity).
+// - Minimal reversals: in Pass 2, orienting each free component on first touch
+//   to match the active end avoids any avoidable flip; thereafter every push
+//   and forced pop fixes the required active end, so flipping only when needed
+//   (ignoring free 1-element flips) achieves the exact minimum reversal count.
+
+use std.dsu.ParityDsu
 
 enum Side: Back | Front
 
@@ -14,7 +21,6 @@ fn flip(s: Side) -> Side = match s:
     Side.Back => Side.Front
     Side.Front => Side.Back
 
-struct Rel(to: Val, opp: Bool)
 struct Run(vals: LinkedList<Val>, opp_below: Bool)
 
 @!multitest
@@ -25,7 +31,7 @@ let a: [Pos]Val = read()
 
 fn solve() -> ?Int:
     var runs: List<Run> = []
-    var rel: [Pos]?Rel = none
+    var parity = ParityDsu<Val>()
     var unpushed = Val.last
 
     fn swallow(mut l: Run) -> Run:
@@ -33,19 +39,23 @@ fn solve() -> ?Int:
         l.vals.splice_back(under.vals)
         Run(l.vals, under.opp_below)
 
+    // Pop the front of the top run `x`, linking `x` to the newly exposed front.
+    fn pop_top_front(x: Val):
+        var top = runs.pop()!
+        if top.vals.len == 1:
+            if top.opp_below: parity.unite(x, runs.last!.vals.first, differ: true)
+        else:
+            top.vals.pop_front()
+            parity.unite(x, top.vals.first, differ: false)
+            runs.push(top)
+
     for i in Pos.rev:
         let x = a[i]
         while let v = unpushed, x <= v:
             runs.push(Run(LinkedList.of(v), false))
             unpushed = v.prev
-        let top = runs.last!
-        if top.vals.first == x:
-            if top.vals.len == 1:
-                runs.pop()
-                if top.opp_below: rel[i] = Rel(runs.last!.vals.first, true)
-            else:
-                runs.last!.vals.pop_front()
-                rel[i] = Rel(runs.last!.vals.first, false)
+        if runs.last!.vals.first == x:
+            pop_top_front(x)
         else:
             var l = runs.pop()!
             while let r = runs.last, r.vals.first != x:
@@ -54,27 +64,18 @@ fn solve() -> ?Int:
             if runs.is_empty:
                 if l.vals.last != x: return none
                 l.vals.pop_back()
-                rel[i] = Rel(l.vals.last, false)
+                parity.unite(x, l.vals.last, differ: false)
                 runs.push(l)
             else:
                 let under = runs.last!
                 if under.vals.len == 1:
-                    rel[i] = Rel(l.vals.first, true)
+                    parity.unite(x, l.vals.first, differ: true)
                     runs.pop()
                     l = if under.opp_below: swallow(mut l) else: Run(l.vals, false)
                 else:
-                    runs.last!.vals.pop_front()
-                    rel[i] = Rel(runs.last!.vals.first, false)
+                    pop_top_front(x)
                     l.opp_below = true
                 runs.push(l)
-
-    var comp: [Val]Rel = Rel(Val.first, false)
-    for i in Pos:
-        comp[a[i]] = if let r = rel[i]:
-            let c = comp[r.to]
-            Rel(c.to, c.opp != r.opp)
-        else:
-            Rel(a[i], false)
 
     var base_side: [Val]?Side = none
     var active = Side.Back
@@ -88,10 +89,10 @@ fn solve() -> ?Int:
             if q.len != 1: turns += 1
 
     for v in Val.rev:
-        let c = comp[v]
-        base_side[c.to] ??= if c.opp: flip(active) else: active
-        let bs = base_side[c.to]!
-        face(if c.opp: flip(bs) else: bs)
+        let (root, opp) = parity.find(v)
+        base_side[root] ??= if opp: flip(active) else: active
+        let bs = base_side[root]!
+        face(if opp: flip(bs) else: bs)
         match active:
             Side.Front => q.push_front(v)
             Side.Back => q.push(v)

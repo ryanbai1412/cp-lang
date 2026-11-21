@@ -1,7 +1,7 @@
 # agc079c
 
 Score: 3/5
-Dream: 3/5
+Dream: pending cold rescore (rewritten: proves unique parity relation + minimal reversals in header, adopts `std.dsu.ParityDsu` instead of hand `comp` walk, extracts `pop_top_front(x)` to remove duplicated `runs.last!` arms)
 
 The header states the two passes, but pass 1 is a hand linked-run stack with `pred`/`succ` arrays and pass 2 a flag-driven deque replay. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
