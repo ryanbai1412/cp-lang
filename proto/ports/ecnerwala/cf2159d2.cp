@@ -18,7 +18,7 @@ for i in 0..n:
         for k in 0..prev.len:
             min_idx[l + k] min= prev[k]
             if min_idx[l + k] == -1:
-                min_idx = min_idx[0..=l + k]
+                min_idx.truncate(l + k + 1)
                 break
     ans += sum(pos + 1 for pos in min_idx)
     top += 1

@@ -842,6 +842,17 @@ impl<'a> Checker<'a> {
             },
             _ if left.is_numeric() && right.is_numeric() => Ty::Float,
             BinOp::Add if left == Ty::Str && right == Ty::Str => Ty::Str,
+            BinOp::Add if seq_concat_elem(&left).is_some() && seq_concat_elem(&right).is_some() => {
+                let le = seq_concat_elem(&left).unwrap();
+                let re = seq_concat_elem(&right).unwrap();
+                if le == re || re.is_vague() {
+                    Ty::Named { name: "List".into(), args: vec![le.clone()] }
+                } else if le.is_vague() {
+                    Ty::Named { name: "List".into(), args: vec![re.clone()] }
+                } else {
+                    Ty::Unknown
+                }
+            }
             // A step can leave the domain, so `i + k` and `i - k` are a
             // `?I`: `none` past either end.
             BinOp::Add | BinOp::Sub
@@ -1945,5 +1956,15 @@ impl Checker<'_> {
             _ if right.is_vague() => Ty::Unknown,
             _ => right.widen(),
         }
+    }
+}
+
+fn seq_concat_elem(ty: &Ty) -> Option<&Ty> {
+    match ty {
+        Ty::Named { name, args } if matches!(name.as_str(), "List" | "ListView") && args.len() == 1 => {
+            Some(&args[0])
+        }
+        Ty::Array { index, elem } if index.len() == 1 => Some(elem),
+        _ => None,
     }
 }

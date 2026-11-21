@@ -1608,15 +1608,34 @@ impl<'a> Lowerer<'a> {
         } else {
             None
         };
-        let mut l = unwrap_first_last(self.expr(lhs, wide.or(joined).or(lhs_bitset_hint.as_ref())));
+        let joined_owned = if op == Add
+            && joined.is_none()
+            && matches!(&lhs.kind, ast::ExprKind::List(items) if items.is_empty())
+        {
+            self.probe_ty_silent(rhs)
+                .and_then(|ty| seq_concat_elem(&ty).cloned())
+                .map(Ty::list)
+        } else {
+            None
+        };
+        let mut l = unwrap_first_last(self.expr(
+            lhs,
+            wide.or(joined)
+                .or(joined_owned.as_ref())
+                .or(lhs_bitset_hint.as_ref()),
+        ));
         if let (Some(wide), Ty::Int) = (wide, &l.ty) {
             l = self.coerce(l, wide, lhs.span);
         }
         // A place, a parameter or a return type says what `read()` reads;
         // the other side of an operator does not.
         // A shift is by an `Int`, whatever is shifted.
+        let r_concat_hint = (op == Add && !is_bare_read(rhs))
+            .then(|| seq_concat_elem(&l.ty).cloned().map(Ty::list))
+            .flatten();
         let r_hint = match op {
             Shl | Shr => Some(&Ty::Int),
+            _ if r_concat_hint.is_some() => r_concat_hint.as_ref(),
             _ => (!is_bare_read(rhs)).then_some(&l.ty),
         };
         let r = unwrap_first_last(self.expr(rhs, r_hint));
@@ -1757,11 +1776,14 @@ impl<'a> Lowerer<'a> {
                 let r = self.as_str(r, rhs.span);
                 (l, r, Ty::Str)
             }
-            (Ty::List(a) | Ty::ListView(a), Ty::List(b) | Ty::ListView(b))
-                if a == b && op == Add =>
+            (a, b)
+                if op == Add
+                    && seq_concat_elem(a).is_some()
+                    && seq_concat_elem(a) == seq_concat_elem(b) =>
             {
-                let list_ty = Ty::list((**a).clone());
-                if matches!(l.ty, Ty::ListView(_)) || matches!(r.ty, Ty::ListView(_)) {
+                let elem = seq_concat_elem(a).unwrap().clone();
+                let list_ty = Ty::list(elem);
+                if !matches!(l.ty, Ty::List(_)) || !matches!(r.ty, Ty::List(_)) {
                     return self.mk(
                         ExprKind::Builtin(Builtin::ListConcat, vec![l, r]),
                         list_ty,
@@ -4514,5 +4536,13 @@ fn run_gives(stmts: &mut [Stmt]) {
             }
             _ => {}
         }
+    }
+}
+
+fn seq_concat_elem(ty: &Ty) -> Option<&Ty> {
+    match ty {
+        Ty::List(e) | Ty::ListView(e) => Some(e),
+        Ty::Array { dims, elem } if dims.len() == 1 => Some(elem),
+        _ => None,
     }
 }

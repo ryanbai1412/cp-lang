@@ -3665,6 +3665,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 let mut out = match first {
                     Value::List(a) => (*a).clone(),
                     Value::ListView(v) => v.to_vec(),
+                    Value::Array(arr) => arr.to_values(),
                     _ => Vec::new(),
                 };
                 match rhs {
@@ -3675,6 +3676,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                             out.push(v.get(i).unwrap().clone());
                         }
                     }
+                    Value::Array(arr) => out.extend(arr.to_values()),
                     _ => {}
                 }
                 Value::List(Rc::new(out))
