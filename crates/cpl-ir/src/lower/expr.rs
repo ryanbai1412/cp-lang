@@ -1112,6 +1112,11 @@ impl<'a> Lowerer<'a> {
                     )
                 }
                 (Ty::Error, _) | (_, Ty::Error) => self.err_expr(span),
+                (Ty::U64, _) | (_, Ty::U64) => {
+                    self.unsupported(span, "a range of `U64` values");
+                    self.help("loop over an `Int` or `I128` range and narrow inside: `U64(x)`");
+                    self.err_expr(span)
+                }
                 _ => {
                     self.mismatch(span, &l.ty, &r.ty);
                     self.err_expr(span)
