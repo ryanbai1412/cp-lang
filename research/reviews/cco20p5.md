@@ -1,7 +1,7 @@
 # cco20p5
 
-Score: 3/5
-Dream: 3/5
+Score: pending cold rescore (extracted `answer_at` + tuple `best min=`, unified `pick_min`, `27,516 B`, ASan/UBSan 30 random traces pass; `HashMap.entry` unsupported in `cpl run`)
+Dream: pending cold rescore (added `mut fwd`/`mut mir` in `enter`, `and` guard, unified `pick_min`, tuple `best min=` in `answer_at`)
 
 Baseline review, cold, on main 96359635. The header (lines 4-8) names the plan: an offline segment tree over time for disjoint pairs, and heaps for overlapping pairs. Both structures are hand-rolled with node arithmetic, a rollback Fenwick written as `i & -i` loops, and negated heap keys. No dream exists, so the score is capped at 3.
 

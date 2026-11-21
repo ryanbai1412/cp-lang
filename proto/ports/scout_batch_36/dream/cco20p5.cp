@@ -8,9 +8,9 @@
 // its matching `Remove` (or `Q.last` if unclosed) so every interval lives on
 // `O(log q)` tree nodes. During the DFS, maintain:
 // - `min_len`: shortest active interval (handles single-interval multisets).
-// - `min_r` (min `r`, tie max `l`) and `max_l` (max `l`, tie min `r`): when no
-//   disjoint pair exists, the minimum overlap `r1 - l2` is achieved by `(min_r, max_l)`
-//   with hull `max_l.r - min_r.l`.
+// - `min_r` (min `(r, -l)`) and `max_l` (min `(-l, r)`): when no disjoint pair
+//   exists, the minimum overlap `r1 - l2` is achieved by `(min_r, max_l)` with
+//   hull `max_l.r - min_r.l`.
 // - `disjoint`: minimum hull `r2 - l1` over disjoint active pairs (`r1 <= l2`).
 //   Two `RollbackFenwick<Coord, Max>` trees — forward `(l, r)` and mirrored
 //   `(m - r, m - l)` — catch both arrival orders of a disjoint pair in `O(log M)`
@@ -48,7 +48,7 @@ for i in Q:
         Kind.Add => active.entry(key).push(i)
         Kind.Remove =>
             let start = active[key].pop()!
-            if let end = i.prev, start <= end: time_tree.add(start..=end, ev.span)
+            if let end = i.prev and start <= end: time_tree.add(start..=end, ev.span)
 
 for (key, starts) in active:
     let sp = Span(key.0, key.1)
@@ -63,39 +63,34 @@ fn insert_pair(mut bit: RollbackFenwick<Coord, Max>, l: Coord, r: Coord, cur: ?I
     bit.update(r, l.ord)
     best
 
-fn better_min_r(cur: ?Span, sp: Span) -> Span =
+fn pick_min(cur: ?Span, sp: Span, key: fn(Span) -> (Int, Int)) -> Span =
     if let b = cur:
-        if sp.r < b.r or (sp.r == b.r and sp.l > b.l): sp else: b
-    else:
-        sp
-
-fn better_max_l(cur: ?Span, sp: Span) -> Span =
-    if let b = cur:
-        if sp.l > b.l or (sp.l == b.l and sp.r < b.r): sp else: b
+        if key(sp) < key(b): sp else: b
     else:
         sp
 
 var ans: [Q]?Int = none
 
 fn enter(st: State, sp: Span) -> State:
-    let d1 = insert_pair(fwd, Coord(sp.l), Coord(sp.r), st.disjoint)
-    let d2 = insert_pair(mir, Coord(m - sp.r), Coord(m - sp.l), d1)
+    let d1 = insert_pair(mut fwd, Coord(sp.l), Coord(sp.r), st.disjoint)
+    let d2 = insert_pair(mut mir, Coord(m - sp.r), Coord(m - sp.l), d1)
     var ml = st.min_len
     ml min= sp.r - sp.l
-    State(d2, some(better_min_r(st.min_r, sp)), some(better_max_l(st.max_l, sp)), ml)
+    State(
+        d2,
+        some(pick_min(st.min_r, sp, s => (s.r, -s.l))),
+        some(pick_min(st.max_l, sp, s => (-s.l, s.r))),
+        ml,
+    )
 
 fn answer_at(i: Q, st: State):
-    var best_inter = st.min_len!
-    var best_hull = st.min_len!
+    var best = (st.min_len!, st.min_len!)
     let (left_end, right_start) = (st.min_r!, st.max_l!)
     if left_end.r >= right_start.l:
-        let (inter, hull) = (left_end.r - right_start.l, right_start.r - left_end.l)
-        if inter < best_inter or (inter == best_inter and hull < best_hull):
-            (best_inter, best_hull) = (inter, hull)
+        best min= (left_end.r - right_start.l, right_start.r - left_end.l)
     if let d = st.disjoint:
-        if 0 < best_inter or (0 == best_inter and d < best_hull):
-            best_hull = d
-    ans[i] = best_hull
+        best min= (0, d)
+    ans[i] = best.1
 
 fn leave():
     fwd.rollback()
