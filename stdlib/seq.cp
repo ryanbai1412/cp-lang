@@ -40,18 +40,20 @@ pub fn suffix_scan<D, T>(self: [D]T, f: (T, T) -> T) -> [D]T:
 /// Fold every prefix of `self` in place with `f`: `self[i] = f(self[i - 1], self[i])`.
 /// Zero allocations. O(n) calls of `f`.
 pub fn scan_in_place<T>(mut self: List<T>, f: (T, T) -> T):
-    var prev: ?T = none
-    for i in 0..self.len:
-        if let p = prev: self[i] = f(p, self[i])
-        prev = self[i]
+    if self.len <= 1: return
+    var acc = self[0]
+    for i in 1..self.len:
+        acc = f(acc, self[i])
+        self[i] = acc
 
 /// Fold every suffix of `self` right-to-left in place with `f`: `self[i] = f(self[i], self[i + 1])`.
 /// Zero allocations. O(n) calls of `f`.
 pub fn suffix_scan_in_place<T>(mut self: List<T>, f: (T, T) -> T):
-    var next: ?T = none
-    for i in (0..self.len).rev:
-        if let n = next: self[i] = f(self[i], n)
-        next = self[i]
+    if self.len <= 1: return
+    var acc = self[self.len - 1]
+    for i in (0..self.len - 1).rev:
+        acc = f(self[i], acc)
+        self[i] = acc
 
 /// Product of all elements of `self` (`T.one` when empty). Works on any `Seq` (`Str`, `List`, `[D]T`, `Range`, views) of `Int`, `Mod<P>`, `F64`. O(n).
 pub fn prod<S: Seq, T>(self: S) -> T:
@@ -405,8 +407,20 @@ pub fn rotate_right<T>(mut self: List<T>, k: Int, range: ?Range<Int> = none):
 /// A new list rotated left by `k`: what was at offset `k % len` comes first.
 /// Signed Euclidean `k`: negative `k` rotates right. Works on any `Seq`. O(n).
 pub fn rotated_left<S: Seq, T>(self: S, k: Int) -> List<T>:
-    var out: List<T> = [x for x in self]
-    rotate_left(mut out, k)
+    let n = self.len
+    if n <= 1: return [x for x in self]
+    let s = k % n
+    if s == 0: return [x for x in self]
+    var out: List<T> = []
+    out.reserve(n)
+    var head: List<T> = []
+    head.reserve(s)
+    var idx = 0
+    for x in self:
+        if idx < s: head.push(x)
+        else: out.push(x)
+        idx += 1
+    for x in head: out.push(x)
     out
 
 /// A new list rotated right by `k`. Works on any `Seq`. O(n).

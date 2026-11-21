@@ -2287,8 +2287,11 @@ impl<'a> Lowerer<'a> {
                 if let Ty::Array { dims, elem: ce } = concrete {
                     for (ix, d) in index.iter().zip(dims) {
                         match d {
-                            Dim::Pos(did) | Dim::Bound(did) | Dim::Sym(did) => {
+                            Dim::Pos(did) | Dim::Sym(did) => {
                                 self.unify_ast_ty(ix, &Ty::Pos(*did), tpl_mod, gen_names, env);
+                            }
+                            Dim::Bound(did) => {
+                                self.unify_ast_ty(ix, &Ty::Bound(*did), tpl_mod, gen_names, env);
                             }
                             Dim::Enum(_) | Dim::Int | Dim::IntFrom(_) => {}
                         }

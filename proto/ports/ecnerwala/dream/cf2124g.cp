@@ -1,7 +1,7 @@
 // Codeforces 2124 G: Maximise Sum.
 // For each k in 0..n, maximise sum_t pref_min[t] after at most one operation
 // choosing i < pos with cost `pos - i >= k` (setting a[i] += a[pos], a[pos] = 0).
-// Recording each operation's total at `ans[pos - i]` and taking `suffix_maxs()`
+// Recording each operation's total at `ans[pos - i]` and taking `suffix_scan(max)`
 // propagates every higher-cost solution down to every smaller k.
 //
 // Only a prefix-minimum position i benefits: lifting a[i] raises prefix minima

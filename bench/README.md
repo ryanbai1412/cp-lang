@@ -129,3 +129,10 @@ the last recorded harness run shows as `not run` until the harnesses are run aga
 
 `python3 bench/graph/run.py` compares `std.graph` searches against matched
 hand-written C++; results and analysis in `bench/graph/README.md`.
+
+## Sequences (`bench/seq/`)
+
+`bash bench/seq/run.sh` compares `std.seq` scans and rotations (`scan`,
+`suffix_scan`, `scan_in_place`, `suffix_scan_in_place`, `rotate_left`,
+`rotate_right`) against matched C++ `std::partial_sum` and `std::rotate`;
+results in `bench/seq/README.md`.
