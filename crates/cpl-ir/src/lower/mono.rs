@@ -1181,7 +1181,9 @@ impl<'a> Lowerer<'a> {
     pub(super) fn instantiate_fn(&mut self, gfid: GenFnId, args: Vec<GenArg>) -> FnId {
         let key = (gfid, args.clone());
         if let Some(&id) = self.fn_insts.get(&key) {
-            return id;
+            if !self.sigs[id].returns_fresh_domain {
+                return id;
+            }
         }
         let tpl_mod = self.gen_fns[gfid].mod_id;
         let tpl_offset = self.gen_fns[gfid].offset;
@@ -1288,6 +1290,8 @@ impl<'a> Lowerer<'a> {
                 offset: tpl_offset,
                 is_generator: false,
                 new_domain_slots: Vec::new(),
+                returns_fresh_domain: false,
+                used_fresh_call: false,
                 state: State::Done,
                 asked_at: self.asked_at,
             });

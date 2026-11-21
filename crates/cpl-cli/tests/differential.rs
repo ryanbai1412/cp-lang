@@ -704,3 +704,109 @@ print(inv[V(2)]!.label)
         String::from_utf8_lossy(&cpp.stderr)
     );
 }
+
+/// Separate `compress` call sites get distinct fresh domains in checker, IR,
+/// interpreter, `--checked`, and `--release` C++ (top-level, inside a fn called
+/// twice, wrapper fn returning `compress`, and `@!multitest` loop).
+#[test]
+fn compress_call_sites_get_fresh_domains_in_interp_checked_and_release() {
+    let dir = std::env::temp_dir().join(format!("cpl-compress-fresh-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+
+    // 1. Top-level, inside a fn called twice, and a wrapper fn called twice.
+    let main_cp = dir.join("main.cp");
+    let main_src = "\
+let xs = compress([40, -7, 40, 1_000_000_000, 3])
+let ys = compress([5, 6])
+let ix = xs.at(40)
+let iy = ys.at(6)
+print(xs.len, ys.len, xs[ix], ys[iy])
+
+fn work(a: List<Int>, b: List<Int>):
+    let u = compress(a)
+    let v = compress(b)
+    let iu = u.at(a[0])
+    let iv = v.at(b[0])
+    print(u.len, v.len, u[iu], v[iv])
+
+work([10, 20, 30, 10], [99])
+work([5, 5], [1, 2, 3, 4, 5])
+
+fn wrap(a: List<Int>):
+    compress(a)
+
+let wa = wrap([100, 200, 300])
+let wb = wrap([7])
+print(wa.len, wb.len, wa[wa.at(200)], wb[wb.at(7)])
+";
+    std::fs::write(&main_cp, main_src).unwrap();
+    let main_str = main_cp.to_string_lossy().into_owned();
+    let expected_main = "4 2 40 6\n3 1 10 99\n1 5 5 1\n3 1 200 7\n";
+
+    let interp = cpl_cli::run(&["run", &main_str]);
+    assert_eq!(interp.code, 0, "interp stderr: {}", interp.stderr);
+    assert_eq!(String::from_utf8_lossy(&interp.stdout), expected_main);
+
+    let main_cpp = dir.join("main.cpp");
+    let main_cpp_str = main_cpp.to_string_lossy().into_owned();
+    let built_chk = cpl_cli::run(&["build", &main_str, "-o", &main_cpp_str, "--checked"]);
+    assert_eq!(built_chk.code, 0, "--checked build stderr: {}", built_chk.stderr);
+    let chk_out = Command::new(dir.join("main.checked")).output().unwrap();
+    assert!(chk_out.status.success(), "--checked stderr: {}", String::from_utf8_lossy(&chk_out.stderr));
+    assert_eq!(String::from_utf8_lossy(&chk_out.stdout), expected_main);
+
+    let rel = cpl_cli::run(&["run", "--release", &main_str]);
+    assert_eq!(rel.code, 0, "--release stderr: {}", rel.stderr);
+    assert_eq!(String::from_utf8_lossy(&rel.stdout), expected_main);
+
+    // 2. Same pattern inside a `@!multitest` loop.
+    let multi_cp = dir.join("multi.cp");
+    let multi_src = "\
+@!multitest
+let n: Int = read()
+let m: Int = read()
+let a: List<Int> = [read() for _ in 0..n]
+let b: List<Int> = [read() for _ in 0..m]
+let xs = compress(a)
+let ys = compress(b)
+let ix = xs.at(a[0])
+let iy = ys.at(b[0])
+print(xs.len, ys.len, xs[ix], ys[iy])
+";
+    std::fs::write(&multi_cp, multi_src).unwrap();
+    let multi_str = multi_cp.to_string_lossy().into_owned();
+    let multi_in = dir.join("multi.in");
+    let multi_in_str = multi_in.to_string_lossy().into_owned();
+    let input_bytes = b"2\n4 2\n40 -7 40 3\n5 6\n1 3\n9\n10 20 30\n";
+    std::fs::write(&multi_in, input_bytes).unwrap();
+    let expected_multi = "3 2 40 5\n1 3 9 10\n";
+
+    let m_interp = cpl_cli::run(&["run", &multi_str, &multi_in_str]);
+    assert_eq!(m_interp.code, 0, "multi interp stderr: {}", m_interp.stderr);
+    assert_eq!(String::from_utf8_lossy(&m_interp.stdout), expected_multi);
+
+    let multi_cpp = dir.join("multi.cpp");
+    let multi_cpp_str = multi_cpp.to_string_lossy().into_owned();
+    let m_built_chk = cpl_cli::run(&["build", &multi_str, "-o", &multi_cpp_str, "--checked"]);
+    assert_eq!(m_built_chk.code, 0, "multi --checked stderr: {}", m_built_chk.stderr);
+    let mut m_chk_cmd = Command::new(dir.join("multi.checked"));
+    m_chk_cmd.stdin(std::fs::File::open(&multi_in).unwrap());
+    let m_chk_out = m_chk_cmd.output().unwrap();
+    assert!(m_chk_out.status.success(), "multi --checked run stderr: {}", String::from_utf8_lossy(&m_chk_out.stderr));
+    assert_eq!(String::from_utf8_lossy(&m_chk_out.stdout), expected_multi);
+
+    let m_rel = cpl_cli::run(&["run", "--release", &multi_str, &multi_in_str]);
+    assert_eq!(m_rel.code, 0, "multi --release stderr: {}", m_rel.stderr);
+    assert_eq!(String::from_utf8_lossy(&m_rel.stdout), expected_multi);
+
+    // 3. Cross-domain mixing between two `compress` call sites is rejected.
+    let err_cp = dir.join("err.cp");
+    std::fs::write(
+        &err_cp,
+        "let xs = compress([1, 2, 3, 4])\nlet ys = compress([10, 20])\nlet i: xs.D = ys.at(10)\nprint(i)\n",
+    )
+    .unwrap();
+    let err_str = err_cp.to_string_lossy().into_owned();
+    let checked = cpl_cli::run(&["check", &err_str]);
+    assert_ne!(checked.code, 0, "expected domain mismatch between separate compress calls");
+}

@@ -661,11 +661,14 @@ impl<'a> Lowerer<'a> {
     /// by name, then from defaults.
     pub(super) fn user_call(
         &mut self,
-        id: FnId,
+        mut id: FnId,
         receiver: Option<Arg>,
         args: &[ast::Arg],
         span: Span,
     ) -> Expr {
+        if self.sigs[id].returns_fresh_domain && self.sigs[id].used_fresh_call {
+            id = self.clone_fresh_domain_fn(id);
+        }
         self.queue_fn(id);
         let thunked: Vec<ast::Arg>;
         let decl_params: Vec<&ast::Param> =
@@ -875,6 +878,9 @@ impl<'a> Lowerer<'a> {
         }
         self.call_sized = outer_sized;
         let ret = self.ret_of(id, span);
+        if self.sigs[id].returns_fresh_domain {
+            self.sigs[id].used_fresh_call = true;
+        }
         if !ok {
             return self.err_expr(span);
         }
