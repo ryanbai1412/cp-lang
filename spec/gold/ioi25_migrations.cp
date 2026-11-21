@@ -15,9 +15,9 @@ mod migrations:
     type Site = 0..10_000
 
     struct Phase(start: Site, m: Int, b: Int, k: Int, first: Bool):
-        fn block(self) -> Int = ceil_div(self.m, self.b)
+        @get fn block(self) -> Int = ceil_div(self.m, self.b)
         // Block pairs in signal order; in the first phase P = Q, so pairs are unordered.
-        fn pairs(self) -> List<(Int, Int)> =
+        @get fn pairs(self) -> List<(Int, Int)> =
             [(x, y) for x in 0..self.b for y in (if self.first: x else: 0)..self.b]
 
     fn phase_plan(n: Int) -> List<Phase>:
@@ -74,7 +74,7 @@ mod migrations:
 
     fn same(a: (Site, Site), b: (Site, Site)) -> Bool = a == b or a == (b.1, b.0)
 
-    var tree: Graph<Site>
+    var tree: [Site]List<Site>
     var plan: List<Phase>
     var p, q: List<Site>
     var pending: ?(Site, 1..=4)
@@ -82,12 +82,12 @@ mod migrations:
     var (p2, q3): ([2]Site, [3]Site)
 
     fn send_message(n: Int, i: Site, parent: Site) -> 0..=4:
-        if i == 1: (tree, plan, p, q, pending) = (Graph(n), phase_plan(n), [0], [0], none)
-        tree.add_edge(i, parent)
+        if i == 1: (tree, plan, p, q, pending) = ([], phase_plan(n), [0], [0], none)
+        tree[i].push(parent); tree[parent].push(i)
         if i < n - 3: p.push(i); q.push(i)
         if plan.first?.start == i:
             let phase = plan.pop_front()
-            var (u, v) = tree.diameter()                   // O(n) BFS, at 8 sites only
+            var (_, u, v) = Rooted(tree, root: 0).diameter()  // O(n), at 8 sites only
             if u not in p or v not in q: (u, v) = (v, u)
             var (x, y) = (p.index_of(u)! / phase.block, q.index_of(v)! / phase.block)
             if phase.first: (x, y) = minmax(x, y)
@@ -95,9 +95,9 @@ mod migrations:
             pending = signal(phase.pairs.index_of((x, y))!, from: i)
         if let (at, symbol) = pending and at == i: return symbol
         if n - i > 3: return 0
-        let ends = tree.diameter()
-        fn say(options: List<(Site, Site)>, per: Int) -> 0..=4 =
-            said = options.position(where: c => same(c, ends))! / per
+        let (_, x, y) = Rooted(tree, root: 0).diameter()
+        fn say(options: List<(Site, Site)>, per: Int) -> 0..=4:
+            said = options.position(where: c => same(c, (x, y)))! / per
             said
         match n - i:
             3 => say(last3(p.padded(4, with: 0), q.padded(4, with: 0), i), per: 5)

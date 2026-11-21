@@ -2273,6 +2273,45 @@ impl<'a> Checker<'a> {
     }
 
     /// Reports with `message(self, got, want)` unless `got` fits `want`.
+    /// A list literal written where a 1D array is wanted is that array's
+    /// cells, also inside a tuple literal or as the value of a `match` or
+    /// `if` arm: `([p[1], p[0]], [q, r, s])` is a `([2]Site, [3]Site)`.
+    fn literal_shape_fits(&mut self, at: &Expr, got: &Ty, want: &Ty) -> bool {
+        let tail = |block: &ast::Block| match block.stmts.last().map(|s| &s.kind) {
+            Some(ast::StmtKind::Expr(e)) => Some(e.clone()),
+            _ => None,
+        };
+        match (&at.kind, got, want) {
+            (ExprKind::List(_), Ty::Named { name, args }, Ty::Array { index, elem })
+                if name == "List" && index.len() == 1 =>
+            {
+                args.first().is_none_or(|g| self.fits(g, elem))
+            }
+            (ExprKind::Tuple(items), Ty::Tuple(gots), Ty::Tuple(wants))
+                if items.len() == gots.len() && gots.len() == wants.len() =>
+            {
+                items
+                    .iter()
+                    .zip(gots.iter().zip(wants))
+                    .all(|(item, (g, w))| self.fits(g, w) || self.literal_shape_fits(item, g, w))
+            }
+            (ExprKind::Match { arms, .. }, _, _) => {
+                let tails: Vec<_> = arms.iter().map(|arm| tail(&arm.body)).collect();
+                tails
+                    .iter()
+                    .all(|t| t.as_ref().is_some_and(|e| self.literal_shape_fits(e, got, want)))
+            }
+            (ExprKind::If { branches, otherwise }, _, _) => {
+                let mut tails: Vec<_> = branches.iter().map(|(_, b)| tail(b)).collect();
+                tails.push(otherwise.as_ref().and_then(tail));
+                tails
+                    .iter()
+                    .all(|t| t.as_ref().is_some_and(|e| self.literal_shape_fits(e, got, want)))
+            }
+            _ => false,
+        }
+    }
+
     pub(crate) fn expect_fits(
         &mut self,
         got: &Ty,
@@ -2331,7 +2370,7 @@ impl<'a> Checker<'a> {
                 }
             }
         }
-        if self.literal_position(at, want) {
+        if self.literal_position(at, want) || self.literal_shape_fits(at, got, want) {
             return true;
         }
         if self.unhandled_step(got, want, at).is_some() {

@@ -3129,3 +3129,14 @@ fn inline_modules_extern_fns_and_pattern_params_check() {
     let src = "mod m:\n    extern fn ask(x: Int) -> Int\n    fn swap((a, b): (Int, Int)) -> (Int, Int) = (b, a)\n    fn solve(n: Int) -> Int = swap((ask(n), n)).0\n";
     assert_eq!(check(src), Vec::new());
 }
+
+#[test]
+fn list_literals_fill_arrays_inside_tuples_and_match_arms() {
+    let src = "\
+type Site = 0..10
+fn pick(k: 0..=1, a: Site, b: Site) -> ([2]Site, [1]Site) = match k:
+    0 => ([a, b], [a])
+    1 => ([b, a], [b])
+";
+    assert_eq!(codes(src), Vec::<&str>::new());
+}
