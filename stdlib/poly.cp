@@ -46,17 +46,17 @@ pub fn inv<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>:
         unchecked:
             for i in 0..take: f[i] = a[i]
             for i in 0..m: gn[i] = g[i]
-        ntt(mut f)
-        ntt(mut gn)
+        ntt(mut f, bit_reversed: true)
+        ntt(mut gn, bit_reversed: true)
         unchecked:
             for i in 0..lim: f[i] = f[i] * gn[i]
-        ntt(mut f, inverse: true)
+        ntt(mut f, inverse: true, bit_reversed: true)
         unchecked:
             for i in 0..m: f[i] = Mod<P>(0)
-        ntt(mut f)
+        ntt(mut f, bit_reversed: true)
         unchecked:
             for i in 0..lim: f[i] = f[i] * gn[i]
-        ntt(mut f, inverse: true)
+        ntt(mut f, inverse: true, bit_reversed: true)
         unchecked:
             for i in m..lim: g.push(-f[i])
     if g.len > n: g.truncate(n)
@@ -161,10 +161,10 @@ pub fn sqrt<P>(a: List<Mod<P>>, n: Int) -> ?List<Mod<P>>:
         var g2 = List.filled(lim, Mod<P>(0))
         unchecked:
             for i in 0..cur: g2[i] = g[i]
-        ntt(mut g2)
+        ntt(mut g2, bit_reversed: true)
         unchecked:
             for i in 0..lim: g2[i] = g2[i] * g2[i]
-        ntt(mut g2, inverse: true)
+        ntt(mut g2, inverse: true, bit_reversed: true)
         var diff = List.filled(cur, Mod<P>(0))
         unchecked:
             for i in 0..cur:
@@ -222,11 +222,11 @@ fn middle_product<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
     unchecked:
         for i in 0..na: fa[i] = a[i]
         for j in 0..nb: fb[j] = b[nb - 1 - j]
-    ntt(mut fa)
-    ntt(mut fb)
+    ntt(mut fa, bit_reversed: true)
+    ntt(mut fb, bit_reversed: true)
     unchecked:
         for i in 0..size: fa[i] = fa[i] * fb[i]
-    ntt(mut fa, inverse: true)
+    ntt(mut fa, inverse: true, bit_reversed: true)
     var out = List.filled(out_len, Mod<P>(0))
     unchecked:
         for i in 0..out_len: out[i] = fa[nb - 1 + i]
@@ -332,22 +332,21 @@ pub fn eval_all<P>(a: List<Mod<P>>, xs: List<Mod<P>>) -> List<Mod<P>>:
 fn biv_advance<P>(mut c: List<Mod<P>>, l_big: Int, l_step: Int) -> List<Mod<P>>:
     let b_sz = 4 << l_big
     let half_b = 2 << l_big
-    var tq = [x for x in c]
-    ntt(mut tq)
+    ntt(mut c, bit_reversed: true)
     var tn = List.filled(b_sz, Mod<P>(0))
-    var prod = List.filled(b_sz, Mod<P>(0))
     unchecked:
         for i in 0..half_b:
-            let u0 = tq[i]
-            let u1 = tq[i + half_b]
-            tn[i] = u1
-            tn[i + half_b] = u0
+            let i0 = 2 * i
+            let i1 = i0 + 1
+            let u0 = c[i0]
+            let u1 = c[i1]
+            tn[i0] = u1
+            tn[i1] = u0
             let r = u0 * u1
-            prod[i] = r
-            prod[i + half_b] = r
-    ntt(mut prod, inverse: true)
+            c[i0] = r
+            c[i1] = r
+    ntt(mut c, inverse: true, bit_reversed: true)
     unchecked:
-        for j in 0..b_sz: c[j] = prod[j]
         for j in 1..half_b: c[j] = c[2 * j]
         let span = 2 << (l_big - l_step)
         let stride = 1 << (l_big - l_step)
@@ -414,11 +413,11 @@ pub fn compose<P>(f: List<Mod<P>>, g: List<Mod<P>>, n: Int) -> List<Mod<P>>:
                 p_arr[2 * j] = if ((2 * j) & bit_mask) != 0: Mod<P>(0) else: v
                 p_arr[j] = Mod<P>(0)
                 j -= 1
-        ntt(mut p_arr)
+        ntt(mut p_arr, bit_reversed: true)
         let tn = tneg[l_cur]
         unchecked:
             for j in 0..b_sz: p_arr[j] = tn[j] * p_arr[j]
-        ntt(mut p_arr, inverse: true)
+        ntt(mut p_arr, inverse: true, bit_reversed: true)
         unchecked:
             for j in 0..half_b:
                 p_arr[j] = p_arr[half_b + j]

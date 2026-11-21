@@ -467,7 +467,7 @@ port files) and `examples/local-lib/math/sos.cp`. Full design:
 local library until wider corpus demand justifies promotion.
 
 ```cp
-fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false)
+fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = false)
     // O(n log n) in place; a.len a power of two dividing P - 1
 fn convolve<P>(a: List<Mod<P>>, b: List<Mod<P>>, cyclic: Bool = false) -> List<Mod<P>>
     // O((n + m) log(n + m)); P - 1 divisible by a power of two at least
