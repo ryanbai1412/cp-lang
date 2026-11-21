@@ -19,7 +19,10 @@ fn to_mirror(s: Int, e: Int, m: Int) -> Int:
     let gap = d % m
     min(if gap == 0: m else: gap, abs(s - e))
 
-fn front(n: Int, px: Int, py: Int, qa: Int, qb: Int, qc: Int, t: Int) -> Int:
+@! multitest
+let (n, px, py, q): (2..=1e9, 1..=1e9, 1..=1e9, 1..=2e5) = read()
+
+fn front(qa: Int, qb: Int, qc: Int, t: Int) -> Int:
     if t == 0: return Int(qa * px + qb * py + qc == 0)
     // shift to 0-based coordinates, and make the y coefficient non-zero
     let m = n - 1
@@ -47,10 +50,12 @@ fn front(n: Int, px: Int, py: Int, qa: Int, qb: Int, qc: Int, t: Int) -> Int:
                 if at == 0:
                     evts.push((min(ux, vx), 1))
                     evts.push((max(ux, vx) + 1, -1))
-            elif at % slope == 0 and 0 <= -at / slope and -at / slope <= len:
-                let x = ux + sign(vx - ux) * (-at / slope)
-                evts.push((x, 1))
-                evts.push((x + 1, -1))
+            elif at % slope == 0:
+                let k = -at / slope
+                if 0 <= k and k <= len:
+                    let x = ux + sign(vx - ux) * k
+                    evts.push((x, 1))
+                    evts.push((x + 1, -1))
 
     var (open, prev, ans) = (0, 0, 0)
     for (x, d) in sorted(evts):
@@ -59,8 +64,6 @@ fn front(n: Int, px: Int, py: Int, qa: Int, qb: Int, qc: Int, t: Int) -> Int:
         prev = x
     ans
 
-@!multitest
-let (n, x0, y0, q): (2..=1e9, 1..=1e9, 1..=1e9, 1..=2e5) = read()
 for _ in 0..q:
     let (a, b, c, t): (Int, Int, Int, Int) = read()
-    print(front(n, x0, y0, a, b, c, t))
+    print(front(a, b, c, t))

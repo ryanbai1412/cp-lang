@@ -2,8 +2,7 @@
 // flattened (i, j) coordinates, followed by two inclusion-exclusion passes.
 use lib.math.poly.{Z, convolve}
 
-const MOD = 998244353
-let comb = Comb<MOD>()
+let comb = Comb<Z.MOD>()
 
 let n: Int = read()
 let a: [0..n]Int = read()
@@ -21,7 +20,7 @@ for g_cnt in 1..=n:
     for i in 0..n:
         for j in 0..n - i:
             claim_sum[i, j] += pk[i] * pk1[j]
-            claim[i, j] = claim_sum[i, j] * comb.fact(i + j) * comb.inv_fact(i) * comb.inv_fact(j)
+            claim[i, j] = claim_sum[i, j] * comb.choose(i + j, i)
 
     var dp: [0..=n, 0..=n]Z = 0
     dp[0, 0] = 1
@@ -30,8 +29,8 @@ for g_cnt in 1..=n:
         let stride = 2 * cur + 1
         let max_j = n - 1 - cur
         let sz = stride * (max_j + 1)
-        var mul_a: List<Z> = List.filled(sz, Z(0))
-        var mul_b: List<Z> = List.filled(sz, Z(0))
+        var mul_a: [0..sz]Z = 0
+        var mul_b: [0..sz]Z = 0
         var ndp: [0..=n, 0..=n]Z = 0
         for i in 0..=cur:
             for j in 0..=max_j:
@@ -40,7 +39,7 @@ for g_cnt in 1..=n:
                 let idx = i + stride * j
                 mul_a[idx] = claim[i, j] * cur_a
                 mul_b[idx] = dp[i, j]
-        let res = convolve(mul_a, mul_b)
+        let res = convolve([mul_a[t] for t in 0..sz], [mul_b[t] for t in 0..sz])
         for i in 0..=cur:
             for j in 0..=max_j:
                 ndp[i + 1, j] += res[i + stride * j]

@@ -1,26 +1,22 @@
 // Codeforces 2237 E: find a permutation b commuting with a (b[a[i]] == a[b[i]])
 // by matching untouched cycles of equal length, then propagating forced values.
-@!multitest
+@! multitest
 let n: Int = read()
-domain I = 0..n
-let a_raw: [I]Int = read()
-let a = [I] i => I(a_raw[i] - 1)
+domain I = 1..=n
+let a: [I]I = read()
 let b_raw: [I]Int = read()
-var b: [I]?I = [I] i => if b_raw[i] == -1: none else: I(b_raw[i] - 1)
+var b: [I]?I = [I] i => if b_raw[i] == -1: none else: I(b_raw[i])
 
 fn solve() -> Bool:
     var used_val: [I]Bool = false
     for i in I:
         if let v = b[i]: used_val[v] = true
     var vis: [I]Bool = false
-    var unused_ind: List<List<I>> = List.filled(n + 1, [])
-    var unused_val: List<List<I>> = List.filled(n + 1, [])
+    var unused_ind: [1..=n]List<I> = []
+    var unused_val: [1..=n]List<I> = []
     for i in I:
         if vis[i]: continue
-        var len = 0
-        var j = i
-        var has_ind = false
-        var has_val = false
+        var (len, j, has_ind, has_val) = (0, i, false, false)
         while true:
             vis[j] = true
             len += 1
@@ -32,8 +28,7 @@ fn solve() -> Bool:
         if not has_val: unused_val[len].push(i)
     for len in 1..=n:
         if unused_ind[len].len != unused_val[len].len: return false
-        for z in 0..unused_ind[len].len:
-            b[unused_ind[len][z]] = unused_val[len][z]
+        for (u, v) in zip(unused_ind[len], unused_val[len]): b[u] = v
     for st in I:
         if b[st] == none: continue
         var i = st
@@ -49,6 +44,6 @@ fn solve() -> Bool:
 
 if solve():
     print("YES")
-    print([b[i]!.ord + 1 for i in I])
+    print([b[i]! for i in I])
 else:
     print("NO")

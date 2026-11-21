@@ -1,23 +1,21 @@
 // Codeforces 2207 B: simulate each second by incrementing the earliest minimum
 // element of the active window and dropping the front element on flashlight times.
-@!multitest
+@! multitest
 let (n, m_in, l): (Int, Int, Int) = read()
 let a: [0..n]Int = read()
 
+let m0 = min(m_in, n + 1)
+var vals: [0..m0]Int = 0
+var m = m0
 var idx = 0
-var m = min(m_in, n + 1)
-var vals: List<Int> = List.filled(m, 0)
+
 for t in 1..=l:
-    var best = 0
-    for i in 1..vals.len:
-        if vals[i] < vals[best]: best = i
+    let best = min_by(0..m, i => vals[i])!
     vals[best] += 1
     if idx < n and t == a[idx]:
         idx += 1
-        let nm = min(m, n - idx + 1)
-        var next_vals = vals[1..vals.len]
-        while next_vals.len < nm: next_vals.push(0)
-        while next_vals.len > nm: next_vals.pop()
-        vals = next_vals
-        m = nm
+        for i in 0..m - 1: vals[i] = vals[i + 1]
+        vals[m - 1] = 0
+        m min= n - idx + 1
+
 print(vals[0])

@@ -11,13 +11,13 @@
 // y. Coordinates go up to 10^18, so both are built only where a stroke
 // went: nodes live in one list and are named by their position in it.
 struct Node:
-    kid: List<?Int>     // by the next bit
-    total: Int          // in a y trie: what the strokes ending here add
-    ys: ?Int            // in the x trie: the root of the y trie of the strokes ending here
+    kid: [0..2]?Int  // by the next bit
+    total: Int       // in a y trie: what the strokes ending here add
+    ys: ?Int         // in the x trie: the root of the y trie of the strokes ending here
 
 var nodes: List<Node> = []
 fn fresh() -> Int:
-    nodes.push(Node([none, none], 0, none))
+    nodes.push(Node([0..2] _ => none, 0, none))
     nodes.len - 1
 
 // The node that x spells below root, made on the way if it is missing.
@@ -29,17 +29,29 @@ fn reach(root: Int, x: Int) -> Int:
         rest /= 2
     o
 
-// The nodes that exist on the path x spells below root.
-fn along(root: Int, x: Int) -> yields Int:
+// The y-trie roots that exist on the path x spells below root.
+fn along_ys(root: Int, x: Int) -> yields Int:
     var (o, rest) = (root, x)
-    yield o
+    if let ys = nodes[o].ys: yield ys
     while rest > 1:
         if let next = nodes[o].kid[rest % 2]:
-            yield next
             o = next
+            if let ys = nodes[o].ys: yield ys
             rest /= 2
         else:
             return
+
+// The sum of totals along the path y spells below a y-trie root.
+fn sum_along(root: Int, y: Int) -> Int:
+    var (o, rest, total) = (root, y, nodes[root].total)
+    while rest > 1:
+        if let next = nodes[o].kid[rest % 2]:
+            o = next
+            total += nodes[o].total
+            rest /= 2
+        else:
+            break
+    total
 
 let (n, q): (Int, Int) = read()
 let xs = fresh()
@@ -51,8 +63,4 @@ for _ in 0..n:
 
 for _ in 0..q:
     let (r, c): (Int, Int) = read()
-    var value = 0
-    for col in along(xs, r):
-        if let ys = nodes[col].ys:
-            for cell in along(ys, c): value += nodes[cell].total
-    print(value)
+    print(sum(sum_along(ys, c) for ys in along_ys(xs, r)))
