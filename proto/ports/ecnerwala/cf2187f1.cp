@@ -1,7 +1,7 @@
-// Codeforces 2187 F1: Al Fine (maximizing version).
-// The common trees are the decreasing nodes of the permutation tree of b read
-// backwards in a's coordinates; the deepest one follows a decreasing node's
-// chain while its right child is a leaf.
+// Every subtree is an interval of both DFS orders, so read b backwards in a's
+// positions: the common trees are the cuts of that sequence's permutation tree.
+// A decreasing node whose right child is one vertex hangs its left part one
+// level deeper; any other node is as deep as its deeper child.
 use std.seq.{inverse}
 use std.tree.{PermTree, PermKind}
 
