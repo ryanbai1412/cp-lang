@@ -529,17 +529,9 @@ pub struct SuffixArray<T>:
         if len == 0: return 0..n
         let p = rank[i]
         if i + len > n: return p..p
-        var (lo, hi) = (0, p)
-        while lo < hi:
-            let mid = (lo + hi) >> 1
-            if self.rmq_min(mid, p) >= len: hi = mid else: lo = mid + 1
-        let left = lo
-        lo = p
-        hi = n - 1
-        while lo < hi:
-            let mid = (lo + hi + 1) >> 1
-            if self.rmq_min(p, mid) >= len: lo = mid else: hi = mid - 1
-        left..lo + 1
+        let left = bsearch_first(0..p, mid => self.rmq_min(mid, p) >= len) ?? p
+        let right = bsearch_last(p + 1..n, mid => self.rmq_min(p, mid) >= len) ?? p
+        left..right + 1
 
     /// Lexicographic comparison of `s[l1..r1]` and `s[l2..r2]`: returns `-1`, `0`, or `1`. O(1).
     @allow(unproven_list_index)
@@ -712,22 +704,14 @@ pub struct RollingHash:
         let n = p1.len - 1
         assert 0 <= a and a <= n and 0 <= b and b <= n, "`lcp(a, b)` needs `0 <= a, b <= len`"
         if a == b: return n - a
-        var (lo, hi) = (0, min(n - a, n - b))
-        while lo < hi:
-            let mid = (lo + hi + 1) >> 1
-            if self.eq_sub(a, b, mid): lo = mid else: hi = mid - 1
-        lo
+        bsearch_last(1..=min(n - a, n - b), k => self.eq_sub(a, b, k)) ?? 0
 
     /// Longest common suffix of prefixes `s[..a]` and `s[..b]`. O(log n).
     pub fn lcs(self, a: Int, b: Int) -> Int:
         let n = p1.len - 1
         assert 0 <= a and a <= n and 0 <= b and b <= n, "`lcs(a, b)` needs `0 <= a, b <= len`"
         if a == b: return a
-        var (lo, hi) = (0, min(a, b))
-        while lo < hi:
-            let mid = (lo + hi + 1) >> 1
-            if self.eq_sub(a - mid, b - mid, mid): lo = mid else: hi = mid - 1
-        lo
+        bsearch_last(1..=min(a, b), k => self.eq_sub(a - k, b - k, k)) ?? 0
 
     /// Longest common prefix of `self[a..]` and `other[b..]`. Requires `self.bases == other.bases`.
     /// O(log min(|self|, |other|)).
@@ -736,14 +720,10 @@ pub struct RollingHash:
         let n1 = p1.len - 1
         let n2 = other.len
         assert 0 <= a and a <= n1 and 0 <= b and b <= n2, "`lcp_with` indices out of range"
-        var (lo, hi) = (0, min(n1 - a, n2 - b))
-        while lo < hi:
-            let mid = (lo + hi + 1) >> 1
-            if self.raw_slice(a, a + mid) == other.raw_slice(
-                b,
-                b + mid,
-            ): lo = mid else: hi = mid - 1
-        lo
+        bsearch_last(
+            1..=min(n1 - a, n2 - b),
+            k => self.raw_slice(a, a + k) == other.raw_slice(b, b + k),
+        ) ?? 0
 
 /// Double-mod 2D polynomial prefix hash over a grid with row domain `R` and column domain `C`.
 /// Built in O(R * C); `rect(rows, cols)` is O(1) and returns a `HashVal`.

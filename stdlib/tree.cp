@@ -392,11 +392,8 @@ pub struct Rooted<V, Pre>:
     /// hold for `v` itself. `pred` must be true and then false on the way up. O(log^2 n).
     pub fn lift_while(self, v: V, pred: V -> Bool) -> ?V:
         if not pred(v): return none
-        var (lo, hi) = (0, dep[v])
-        while lo < hi:
-            let mid = (lo + hi + 1) / 2
-            if pred(self.ancestor(v, mid)!): lo = mid else: hi = mid - 1
-        self.ancestor(v, lo)
+        let k = bsearch_last(1..=dep[v], k => pred(self.ancestor(v, k)!)) ?? 0
+        self.ancestor(v, k)
 
     /// The path from `a` to `b` as O(log n) position ranges. `rising` ranges are walked from
     /// their high end to their low end. With `edges`, the highest vertex of the path is left

@@ -582,23 +582,13 @@ pub @get fn ends<D>(self: Range<D>) -> (Int, Int):
 
 /// First index in sorted `self` with `by(self[i]) > target`, or `none`. O(log n).
 pub fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
-    if D.count == 0: return none
-    if by(self[D.last]) <= target: return none
-    var (lo, hi) = (0, D.count - 1)
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if by(self[D.nth(mid)]) > target: hi = mid else: lo = mid + 1
-    D.nth(lo)
+    let i = bsearch_first(0..D.count, i => by(self[D.nth(i)]) > target) ?? return none
+    D.nth(i)
 
 /// Last index in sorted `self` with `by(self[i]) < target`, or `none`. O(log n).
 pub fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
-    if D.count == 0: return none
-    if by(self[D.first]) >= target: return none
-    var (lo, hi) = (0, D.count - 1)
-    while lo < hi:
-        let mid = (lo + hi + 1) / 2
-        if by(self[D.nth(mid)]) < target: lo = mid else: hi = mid - 1
-    D.nth(lo)
+    let i = bsearch_last(0..D.count, i => by(self[D.nth(i)]) < target) ?? return none
+    D.nth(i)
 
 // ---- Permutations, monotone stack, and sliding-window extrema
 
