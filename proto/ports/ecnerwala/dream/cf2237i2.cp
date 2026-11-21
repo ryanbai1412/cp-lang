@@ -26,8 +26,6 @@
 // subtracting `1` cancels that double count. At the root, `Deferred` states are
 // excluded because no parent edge can close them.
 
-use std.mod.{Mod}
-
 type Z = Mod<1_000_000_007>
 enum Label: Zero | One | Any
 enum Edge: Zero | One
@@ -89,7 +87,7 @@ fn merge(parent: State, child: State, lbl: Label) -> List<(State, Int)>:
 let n: 1..=500 = read()
 domain V = 1..=n
 let label_str: Str = read()
-let label: [V]Label = [V] v => parse_label(label_str[v.ord])
+let label: [V]Label = [V] v => if v == V.first: Label.Zero else: parse_label(label_str[v.ord - 1])
 
 var par: [V]?V = none
 for u in V:
@@ -107,7 +105,7 @@ for p in t.Pre.rev:
         for (parent, w0) in cur.items:
             for (child, w1) in dp[c].items:
                 for (s, sign) in merge(parent, child, label[c]):
-                    next[s] += sign * w0 * w1
+                    next[s] = (next.get(s) ?? Z(0)) + sign * w0 * w1
         cur = next
     dp[u] = cur
 
