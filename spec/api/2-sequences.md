@@ -189,7 +189,7 @@ properties such as `.len`, and views and generators, which cost O(1) to
 make and are paid for as you walk them (`.rev`, `.items`, `.pairs`, `.keys`,
 `g.edges`, `t.tour`). Anything that computes or allocates up front is a
 call, however few arguments it takes: `g.transpose()`, `t.centroid()`,
-`a.sorted()`, `.collect()`. The checker rejects an `@get` whose documented
+`a.sorted()`, `.collect()`. The spec check rejects an `@get` whose documented
 cost isn't O(1) to make.
 
 ## Making containers
