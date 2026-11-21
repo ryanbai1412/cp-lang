@@ -81,8 +81,8 @@ pub struct Bitset<D>:
     pub fn clear(mut self):
         for k in 0..w.len: w[k] = U64(0)
 
-    /// The first position in this set satisfying `pred`, or `none`.
-    pub fn find(self, pred: D -> Bool) -> ?D:
+    /// [rename] First position in this set satisfying `pred`, or `none` (replaces `find`). O(K / 64 + visited).
+    pub fn first_where(self, pred: D -> Bool) -> ?D:
         for k in 0..w.len:
             var x = w[k]
             while x != U64(0):
@@ -92,8 +92,8 @@ pub struct Bitset<D>:
                 x &= ~bit(b)
         none
 
-    /// True when some position in this set satisfies `pred`.
-    pub fn any(self, pred: D -> Bool) -> Bool = self.find(pred) != none
+    /// True when some position in this set satisfies `pred`. O(K / 64 + visited).
+    pub fn any(self, pred: D -> Bool) -> Bool = self.first_where(pred) != none
     /// The number of positions in the set.
     pub @get fn len(self) -> Int = sum(popcount(x) for x in w)
 
@@ -216,12 +216,6 @@ pub struct Bitset<D>:
                 yield D.nth(64 * k + b)
                 x &= ~bit(b)
 
-    /// The first position in the set satisfying `pred`, or `none`. O(K / 64 + visited).
-    pub fn find(self, pred: D -> Bool) -> ?D:
-        for x in self.each():
-            if pred(x): return x
-        none
-
     /// The first position in the set at or after `i`, or `none`. O(K / 64).
     pub fn next(self, i: D) -> ?D:
         var k = i.to_idx / 64
@@ -270,9 +264,6 @@ pub struct Bitset<D>:
                 if 2 * w < D.K: cnt[2 * w] += carry
             for _ in 0..cnt[w]: reach.shift_or(w)
         reach
-
-    /// First set position matching `pred`, or `none` (preferred rename of `find`). O(K / 64 + visited).
-    pub fn first_where(self, pred: D -> Bool) -> ?D = todo
 
     /// Shift all bits down by `k` positions in place (`i -> i - k`). O(K / 64).
     pub fn shift_down(mut self, k: Int) = todo
@@ -394,54 +385,53 @@ pub struct DynBitset:
     /// All subset sums in `0..cap` reachable from `weights`. O(cap sqrt(S) / 64).
     pub fn subset_sums(cap: Int, weights: List<Int>) -> DynBitset = todo
 
-/// Bitwise XOR trie multiset over non-negative `bits`-bit integers (default 30 bits).
-/// Every query and update runs in O(`bits`).
-pub struct BinaryTrie:
+/// O(bits) per op. Dynamic binary bitwise XOR trie multiset over non-negative `bits`-bit integers (default 60 bits).
+pub struct XorTrie:
     _bits: Int
 
-    /// Create an empty `BinaryTrie` over `bits`-bit non-negative integers. O(1).
-    pub fn new(bits: Int = 30) -> BinaryTrie = todo
+    /// O(1). Create an empty `XorTrie` over `bits`-bit non-negative integers (default 60).
+    pub fn new(bits: Int = 60) -> XorTrie = todo
 
-    /// Reserve pool capacity for at least `nodes` trie nodes. O(nodes).
+    /// O(nodes). Reserve pool capacity for at least `nodes` trie nodes.
     pub fn reserve(mut self, nodes: Int) = todo
 
-    /// Total number of elements (with multiplicity). O(1).
+    /// O(1). Total number of stored integers (with multiplicity).
     pub @get fn len(self) -> Int = todo
 
-    /// Whether the trie is empty. O(1).
+    /// O(1). True when the trie holds no integers.
     pub @get fn is_empty(self) -> Bool = todo
 
-    /// Insert one copy of `x`. O(bits).
+    /// O(bits). Insert one copy of `x`.
     pub fn add(mut self, x: Int) = todo
 
-    /// Remove one copy of `x`; returns false if `x` was not present. O(bits).
+    /// O(bits). Remove one copy of `x`; returns `false` if absent.
     pub fn remove(mut self, x: Int) -> Bool = todo
 
-    /// Whether `x` is present at least once. O(bits).
+    /// O(bits). Whether `x` is present at least once.
     pub fn contains(self, x: Int) -> Bool = todo
 
-    /// Multiplicity of `x`. O(bits).
+    /// O(bits). Multiplicity of `x` currently stored.
     pub fn count(self, x: Int) -> Int = todo
 
-    /// Apply a lazy global XOR mask (`x -> x ^ mask` for all stored elements). O(1).
+    /// O(1). Apply a lazy global XOR mask (`y -> y ^ mask` for all stored elements).
     pub fn xor_all(mut self, mask: Int) = todo
 
-    /// Maximum value of `y ^ x` over `y` in the trie, or `none` if empty. O(bits).
+    /// O(bits). Maximum value of `x ^ y` over stored `y`, or `none` if empty.
     pub fn max_xor(self, x: Int) -> ?Int = todo
 
-    /// Minimum value of `y ^ x` over `y` in the trie, or `none` if empty. O(bits).
+    /// O(bits). Minimum value of `x ^ y` over stored `y`, or `none` if empty.
     pub fn min_xor(self, x: Int) -> ?Int = todo
 
-    /// Count elements `y` with `(y ^ x) < limit`. O(bits).
-    pub fn count_xor_lt(self, x: Int, limit: Int) -> Int = todo
+    /// O(bits). Count of stored `y` with `(x ^ y) < limit`.
+    pub fn count_xor_less(self, x: Int, limit: Int) -> Int = todo
 
-    /// The `k`-th smallest value of `y ^ x` (0-based), or `none` if `k >= len`. O(bits).
-    pub fn nth_xor(self, x: Int, k: Int) -> ?Int = todo
+    /// O(bits). The `k`-th smallest value of `x ^ y` over stored `y` (0-based), or `none` if `k >= len`.
+    pub fn kth_xor(self, x: Int, k: Int) -> ?Int = todo
 
-    /// Smallest non-negative integer not present under XOR mask `x` (mex of `{y ^ x}`). O(bits).
+    /// O(bits). Smallest non-negative integer not present under XOR mask `x` (mex of `{y ^ x}`).
     pub fn mex_xor(self, x: Int = 0) -> Int = todo
 
-    /// Remove all elements. O(1).
+    /// O(1). Remove all elements.
     pub fn clear(mut self) = todo
 
 /// `a - b`: the positions in `a` that are not in `b`.
@@ -562,8 +552,8 @@ fn nav_helpers_and_in_place_shifts():
     assert b.count_below(P(194)) == 5
     assert b.with(P(5)).contains(P(5)) and not b.contains(P(5))
     assert not b.without(P(64)).contains(P(64)) and b.contains(P(64))
-    assert b.find(x => x.to_idx > 100) == P(127)
-    assert b.find(x => x.to_idx > 200) == none
+    assert b.first_where(x => x.to_idx > 100) == P(127)
+    assert b.first_where(x => x.to_idx > 200) == none
 
     // Word-level negative shifts across word boundaries.
     for k in [1, 7, 63, 64, 65, 128, 194, 300]:

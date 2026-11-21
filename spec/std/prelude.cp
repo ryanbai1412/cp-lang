@@ -10,10 +10,10 @@
 //! checked or run gets the prelude.
 
 use std.algebra.{Action, Desc, Monoid, desc, fold}
-use std.bag.{SortedBag, SortedSet}
+use std.bag.{BucketCount, SortedBag, SortedSet}
 use std.bitset.{Bitset}
-use std.deque.{Deque}
-use std.dsu.{Dsu}
+use std.deque.{Deque, LinkedList}
+use std.dsu.{Dsu, DsuOf, PotentialDsu}
 use std.fenwick.{Fenwick, Fenwick2D}
 use std.flow.{Arc, FlowGraph}
 use std.geometry.{ByAngle, Pt}
@@ -101,3 +101,4 @@ use std.strings.{
     upper,
 }
 use std.tree.{Rooted}
+

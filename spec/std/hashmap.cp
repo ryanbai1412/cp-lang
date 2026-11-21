@@ -17,11 +17,8 @@ pub struct FlatMap<V>:
     live: Int
     used: Int
 
-    /// Create an empty `FlatMap<V>` with initial capacity 16. O(1).
-    pub fn new(default_val: V) -> FlatMap<V> = FlatMap<V>.with_capacity(16, default_val)
-
-    /// Create an empty `FlatMap<V>` sized for at least `cap` entries. O(cap).
-    pub fn with_capacity(cap: Int, default_val: V) -> FlatMap<V>:
+    /// [rename] Create an empty `FlatMap<V>` sized for at least `cap` entries (replaces `with_capacity`). O(cap).
+    pub fn new(default_val: V, cap: Int = 16) -> FlatMap<V>:
         var sz = 16
         while sz < cap * 2: sz *= 2
         let s = splitmix64(U64(0x517cc1b727220a95))

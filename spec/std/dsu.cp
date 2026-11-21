@@ -306,8 +306,8 @@ pub struct PotentialDsu<V>:
     conflicts: 0..=2_000_000_000
     log: List<(V, Bool)>
 
-    /// Every position starts in its own set with potential 0. O(n).
-    pub fn new() -> PotentialDsu<V>:
+    /// Every position starts in its own set with potential 0, optionally combined by `op:` (default `+`). O(n).
+    pub fn new(op: ?((Int, Int) -> Int) = none) -> PotentialDsu<V>:
         PotentialDsu([V] v => v, [V] _ => 1, [V] _ => 0, V.K, 0, [])
 
     /// Root of `v`'s set and `val[v] - val[root]`. O(log n).

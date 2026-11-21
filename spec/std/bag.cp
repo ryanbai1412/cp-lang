@@ -949,6 +949,39 @@ pub struct AugSortedSet<K, T>:
     /// Yield all keys in ascending order. O(n).
     pub fn each(self) -> yields K = todo
 
+/// O(1) point add, O(sqrt(N)) k-th order statistic over an integer value range `r`.
+/// Designed as a Mo's algorithm companion for value-range frequency tables.
+pub struct BucketCount:
+    _lo: Int
+    _hi: Int
+
+    /// O(r.len). Create an empty bucketed frequency table over `r`.
+    pub fn new(r: Range<Int>) -> BucketCount = todo
+
+    /// O(1). Add `delta` (default 1; may be negative) copies of `x`.
+    pub fn add(mut self, x: Int, delta: Int = 1) = todo
+
+    /// O(1). Remove `delta` (default 1) copies of `x`.
+    pub fn remove(mut self, x: Int, delta: Int = 1) = todo
+
+    /// O(1). Multiplicity of `x`.
+    pub fn count(self, x: Int) -> Int = todo
+
+    /// O(sqrt(N)). Number of elements strictly less than `x`.
+    pub fn count_lt(self, x: Int) -> Int = todo
+
+    /// O(sqrt(N)). The `k`-th smallest element (1-based).
+    pub fn kth(self, k: Int) -> Int = todo
+
+    /// O(1). Total number of elements (with multiplicity).
+    pub @get fn len(self) -> Int = todo
+
+    /// O(1). Whether the table is empty.
+    pub @get fn is_empty(self) -> Bool = todo
+
+    /// O(r.len). Reset all counts to zero.
+    pub fn clear(mut self) = todo
+
 @test
 fn sorted_bag_basics_duplicates_and_take():
     var b = SortedBag<Int>()

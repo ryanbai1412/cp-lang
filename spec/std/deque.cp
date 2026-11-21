@@ -181,11 +181,11 @@ pub struct LinkedList<T>:
     /// Remove and return the front element, or `none` if empty. O(1).
     pub fn pop_front(mut self) -> ?T = todo
 
-    /// Splice all elements of `other` onto the back of `self`, emptying `other`. O(1).
-    pub fn splice_back(mut self, mut other: LinkedList<T>) = todo
+    /// Splice all elements of `other` onto the back of `self`, consuming `other`. O(1).
+    pub fn splice_back(mut self, other: LinkedList<T>) = todo
 
-    /// Splice all elements of `other` onto the front of `self`, emptying `other`. O(1).
-    pub fn splice_front(mut self, mut other: LinkedList<T>) = todo
+    /// Splice all elements of `other` onto the front of `self`, consuming `other`. O(1).
+    pub fn splice_front(mut self, other: LinkedList<T>) = todo
 
     /// Reverse the list in place. O(1) via reversible links.
     pub fn reverse(mut self) = todo
