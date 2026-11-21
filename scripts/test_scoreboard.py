@@ -461,6 +461,7 @@ class DreamAndPerfRatchetTest(unittest.TestCase):
             ("Codegen pass", "convex hull helper", {"area": "codegen"}, "core"),
             ("Core I/O", "polygon input", {"area": "core language / I/O"}, "core"),
             ("Geometry hull", "tree-like search", {"area": "geometry (`plan/STDLIB.md`)"}, "geometry"),
+            ("Monotone set", "prefix maxima, convex hull trick, staircase", {"area": "containers (`plan/STDLIB.md`)"}, "containers"),
             # When Area: is missing, fall back to keywords without matching "pointer"/"midpoint" as geometry.
             ("Fixed-point walk", "no area field, uses midpoint and two-pointer", {}, "core"),
             ("Convex hull helper", "no area field, convex hull over 2D points", {}, "geometry"),
