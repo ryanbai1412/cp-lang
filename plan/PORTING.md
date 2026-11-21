@@ -46,7 +46,15 @@ A port fails review if any of these hold and the gap is not reported:
   (`let x: Int = read()` for `1 <= x <= 1e7`, `-1` sentinels for
   `-1 <= a_i < n`).
 - A friction says the language lacks something without a run showing it
-  fails: try the dream line in `cpl run` first, and quote the error.
+  fails: try the dream line in `cpl run` on a freshly built `cpl` first,
+  and quote the error.
+
+A dream fails review, and caps at 3, if it keeps the C++ construction where
+the editorial names an object or rule, hides a side effect in an
+expression (`first(xs, x => try_add(x))`), writes a loop or formula twice,
+leaves a constant or closing formula the header does not derive, or mixes
+spellings: `@!multitest` only, `Mod<p>`, `read<T>`, `struct`, methods for
+sequence operations (`xs.sum()`, `xs.any(p)`, `xs.sorted()`).
 
 ## Review
 
