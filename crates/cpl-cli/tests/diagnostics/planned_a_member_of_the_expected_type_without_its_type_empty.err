@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a member of the expected type without its type, `.empty` (not in the design)
+  --> planned_a_member_of_the_expected_type_without_its_type_empty.cp:1:14
+  |
+1 | let f = _ => .empty
+  |              ^^^^^^
+  = help: name the type, `MaxSub.empty`
+
+planned_a_member_of_the_expected_type_without_its_type_empty.cp: 1 error

@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a domain filtered from another, `domain A = V if p(v)` (not in the design)
+  --> planned_a_domain_filtered_from_another_domain_a_v_if_p_v.cp:2:14
+  |
+2 | domain A = V if v.ord > 1
+  |              ^^^^^^^^^^^^
+  = help: keep the chosen values in a list, `[v for v in V if p(v)]`
+
+planned_a_domain_filtered_from_another_domain_a_v_if_p_v.cp: 1 error

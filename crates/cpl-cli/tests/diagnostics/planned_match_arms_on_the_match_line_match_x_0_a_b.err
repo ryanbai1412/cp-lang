@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: `match` arms on the `match` line, `match x: 0 => a; _ => b` (not in the design)
+  --> planned_match_arms_on_the_match_line_match_x_0_a_b.cp:2:16
+  |
+2 | print(match x: 0 => 5; _ => 6)
+  |                ^^^^^^^^^^^^^^
+  = help: put each `pattern => value` arm on its own indented line
+
+planned_match_arms_on_the_match_line_match_x_0_a_b.cp: 1 error

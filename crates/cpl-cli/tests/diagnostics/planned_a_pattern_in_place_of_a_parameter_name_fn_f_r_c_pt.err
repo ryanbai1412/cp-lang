@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a pattern in place of a parameter name, `fn f((r, c): Pt)` (see design/spec/14-functions-traits.md §14.1)
+  --> planned_a_pattern_in_place_of_a_parameter_name_fn_f_r_c_pt.cp:1:6
+  |
+1 | fn f((a, b): (Int, Int)) -> Int = a + b
+  |      ^^^^^^
+  = help: name the parameter and take it apart on the first line, `let (r, c) = p`
+
+planned_a_pattern_in_place_of_a_parameter_name_fn_f_r_c_pt.cp: 1 error

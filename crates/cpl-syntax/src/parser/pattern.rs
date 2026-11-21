@@ -21,6 +21,12 @@ impl<'a> Parser<'a> {
 
     fn pattern_atom(&mut self) -> Pattern {
         let start = self.start();
+        if self.at_ident("some") && self.peek_n(1) == T::Ident {
+            let span = self.span();
+            self.planned(span, &crate::planned::SOME_PATTERN);
+            self.bump();
+            return self.pattern_atom();
+        }
         let kind = match self.peek() {
             T::Ident if self.text() == "_" => {
                 self.bump();

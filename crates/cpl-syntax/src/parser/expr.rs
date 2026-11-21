@@ -64,6 +64,21 @@ impl<'a> Parser<'a> {
             };
         }
         let base = self.coalesce();
+        for (word, planned) in [
+            ("default", &crate::planned::MAP_DEFAULT),
+            ("then", &crate::planned::THEN_CHAIN),
+        ] {
+            if self.at_ident(word) && !matches!(self.peek_n(1), T::Colon | T::Eq | T::Comma | T::RParen) {
+                let start = self.start();
+                while self.at_ident(word) {
+                    self.bump();
+                    self.coalesce();
+                }
+                let span = self.span_from(start);
+                self.planned(span, planned);
+                return base;
+            }
+        }
         if !self.at_ident("with") {
             return base;
         }
@@ -861,6 +876,12 @@ impl<'a> Parser<'a> {
                 self.bump();
                 ExprKind::Block(self.block("`do`"))
             }
+            T::Ident if self.text() == "lazy" && self.peek_n(1) == T::LBracket => {
+                let span = self.span();
+                self.planned(span, &crate::planned::LAZY_ARRAY);
+                self.bump();
+                self.bracket()
+            }
             T::Ident => {
                 let name = self.name();
                 let type_like = name.is_type_like();
@@ -928,8 +949,16 @@ impl<'a> Parser<'a> {
                 } else if self.eat(T::RParen) {
                     ExprKind::Tuple(Vec::new())
                 } else {
-                    let first = self.expr();
-                    if self.at(T::Semi) {
+                    let sequence = self.at(T::Let);
+                    let first = if sequence {
+                        Expr {
+                            kind: ExprKind::Error,
+                            span: self.span(),
+                        }
+                    } else {
+                        self.expr()
+                    };
+                    if sequence || self.at(T::Semi) {
                         let mut depth = 1u32;
                         while depth > 0 && !self.at(T::Eof) {
                             match self.peek() {
@@ -958,6 +987,28 @@ impl<'a> Parser<'a> {
                 }
             }
             T::LBracket => self.bracket(),
+            T::Dot if self.peek_n(1) == T::Ident => {
+                self.bump();
+                self.bump();
+                let span = self.span_from(start);
+                self.planned(span, &crate::planned::IMPLICIT_MEMBER);
+                ExprKind::Error
+            }
+            T::LBrace if self.brace_literal().is_some() => {
+                let planned = self.brace_literal().unwrap();
+                self.pos = after_group(self.tokens, self.pos);
+                let span = self.span_from(start);
+                self.planned(span, planned);
+                ExprKind::Error
+            }
+            T::Let if self.let_in() => {
+                while !matches!(self.peek(), T::Newline | T::Dedent | T::Eof) {
+                    self.bump();
+                }
+                let span = self.span_from(start);
+                self.planned(span, &crate::planned::LET_IN);
+                ExprKind::Error
+            }
             T::LBrace => {
                 self.bump();
                 ExprKind::Block(self.brace_block(start))
@@ -1199,6 +1250,55 @@ impl<'a> Parser<'a> {
         Cond::Let { pat, value, and }
     }
 
+    /// `{k: v}` or `{x for x in xs}` on one line: a map or set, not a block.
+    fn brace_literal(&self) -> Option<&'static crate::planned::Planned> {
+        let (mut depth, mut colon, mut comp, mut keyword) = (0u32, false, false, false);
+        for (i, t) in self.tokens.iter().enumerate().skip(self.pos) {
+            match t.kind {
+                T::LParen | T::LBracket | T::LBrace => depth += 1,
+                T::RParen | T::RBracket | T::RBrace => {
+                    depth -= 1;
+                    if depth == 0 {
+                        return if comp && !colon {
+                            Some(&crate::planned::BRACE_SET)
+                        } else if colon {
+                            Some(&crate::planned::BRACE_MAP)
+                        } else {
+                            None
+                        };
+                    }
+                }
+                T::Newline | T::Indent | T::Dedent | T::Eof => return None,
+                T::Colon if depth == 1 && !keyword && i > self.pos + 1 => colon = true,
+                T::If | T::Elif | T::Else | T::While | T::Let | T::Var | T::Match | T::Return
+                    if depth == 1 =>
+                {
+                    keyword = true
+                }
+                T::For | T::In if depth == 1 && i > self.pos + 1 => comp = true,
+                _ => {}
+            }
+        }
+        None
+    }
+
+    /// `let y = x in y + 1`: an `in` after the `=` on the same line.
+    fn let_in(&self) -> bool {
+        let mut seen_eq = false;
+        let mut depth = 0u32;
+        for t in &self.tokens[self.pos..] {
+            match t.kind {
+                T::LParen | T::LBracket | T::LBrace => depth += 1,
+                T::RParen | T::RBracket | T::RBrace => depth = depth.saturating_sub(1),
+                T::Newline | T::Indent | T::Dedent | T::Eof => return false,
+                T::Eq if depth == 0 => seen_eq = true,
+                T::In if depth == 0 && seen_eq => return true,
+                _ => {}
+            }
+        }
+        false
+    }
+
     fn if_expr(&mut self) -> ExprKind {
         let mut branches = Vec::new();
         let mut otherwise = None;
@@ -1264,6 +1364,37 @@ impl<'a> Parser<'a> {
         let colon = self.expect(T::Colon, "`:` after the value being matched");
         if !colon && !(self.at(T::Newline) && self.peek_n(1) == T::Indent) {
             self.skip_line();
+            return ExprKind::Match { scrutinee, arms };
+        }
+        if colon && !self.at(T::Newline) && !self.at(T::Eof) {
+            let start = self.start();
+            loop {
+                let pat = self.pattern();
+                let guard = self.eat(T::If).then(|| self.expr());
+                if !self.expect(T::FatArrow, "`=>` after the pattern") {
+                    break;
+                }
+                let value = self.expr();
+                let span = value.span;
+                arms.push(Arm {
+                    pat,
+                    guard,
+                    body: Block {
+                        stmts: vec![Stmt {
+                            kind: StmtKind::Expr(value),
+                            span,
+                            decorators: Vec::new(),
+                            public: false,
+                        }],
+                        span,
+                    },
+                });
+                if !self.eat(T::Semi) {
+                    break;
+                }
+            }
+            let span = self.span_from(start);
+            self.planned(span, &crate::planned::INLINE_MATCH);
             return ExprKind::Match { scrutinee, arms };
         }
         if !(self.at(T::Newline) && self.peek_n(1) == T::Indent) {

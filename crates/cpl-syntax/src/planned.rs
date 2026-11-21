@@ -171,9 +171,109 @@ print(twice(1) { x => x + 1 })
 ",
 };
 
+pub const INLINE_MATCH: Planned = Planned {
+    feature: "`match` arms on the `match` line, `match x: 0 => a; _ => b`",
+    see: None,
+    now: "put each `pattern => value` arm on its own indented line",
+    example: "let x = 1\nprint(match x: 0 => 5; _ => 6)\n",
+};
+
+pub const LET_IN: Planned = Planned {
+    feature: "a `let … in` expression, `let y = x in y + 1`",
+    see: None,
+    now: "give the fn a block body, with `let y = x` on its own line",
+    example: "fn f(x: Int) -> Int = let y = x - 1 in y * 2\nprint(f(3))\n",
+};
+
+pub const BRACE_MAP: Planned = Planned {
+    feature: "a map literal in braces, `{k: v}`",
+    see: None,
+    now: "write a map literal in brackets, `[k: v]`",
+    example: "let m = {1: 2}\nprint(m)\n",
+};
+
+pub const BRACE_SET: Planned = Planned {
+    feature: "a set written in braces, `{x for x in xs}`",
+    see: None,
+    now: "build a list, `[x for x in xs]`, or fill a `SortedSet`",
+    example: "let s = {x * 2 for x in 0..3}\nprint(s)\n",
+};
+
+pub const MAP_DEFAULT: Planned = Planned {
+    feature: "a default value after a map, `m default 0`",
+    see: None,
+    now: "give the default where a key is looked up, with `??`",
+    example: "var m: Map<Int, Int> = [0: 1] default 0\nprint(m)\n",
+};
+
+pub const LAZY_ARRAY: Planned = Planned {
+    feature: "a lazily computed array, `lazy[D] i => …`",
+    see: None,
+    now: "build it eagerly, `[D] i => …`, or write a memoized fn",
+    example: "domain D = 0..3\nlet a = lazy[D] i => i.ord * 2\nprint(a[D(1)])\n",
+};
+
+pub const FILTERED_DOMAIN: Planned = Planned {
+    feature: "a domain filtered from another, `domain A = V if p(v)`",
+    see: None,
+    now: "keep the chosen values in a list, `[v for v in V if p(v)]`",
+    example: "domain V = 0..4\ndomain A = V if v.ord > 1\nfor a in A:\n    print(a.ord)\n",
+};
+
+pub const PARAM_PATTERN: Planned = Planned {
+    feature: "a pattern in place of a parameter name, `fn f((r, c): Pt)`",
+    see: Some("design/spec/14-functions-traits.md §14.1"),
+    now: "name the parameter and take it apart on the first line, `let (r, c) = p`",
+    example: "fn f((a, b): (Int, Int)) -> Int = a + b\nprint(f((1, 2)))\n",
+};
+
+pub const SOME_PATTERN: Planned = Planned {
+    feature: "a `some x` pattern",
+    see: None,
+    now: "bind the optional, then unwrap it with `if let x = o:`",
+    example: "for (x, some y) in [(1, 2)]:\n    print(x + y)\n",
+};
+
+pub const ANY_LENGTH: Planned = Planned {
+    feature: "an array type of any length, `[_]T`",
+    see: None,
+    now: "take a `List<T>`, or name the index space, `[n]T`",
+    example: "fn f(a: [_]Int) -> Int = 0\nprint(f([1, 2]))\n",
+};
+
+pub const THEN_CHAIN: Planned = Planned {
+    feature: "a tie-breaker chain of comparisons, `a <=> b then c <=> d`",
+    see: None,
+    now: "compare tuples, `(a, c) <=> (b, d)`, or sort by a key tuple",
+    example: "let a = [3, 1]\nprint(a.sort(cmp: (u, v) => u <=> v then v <=> u))\n",
+};
+
+pub const IMPLICIT_MEMBER: Planned = Planned {
+    feature: "a member of the expected type without its type, `.empty`",
+    see: None,
+    now: "name the type, `MaxSub.empty`",
+    example: "let f = _ => .empty\nprint(1)\n",
+};
+
+pub const LITERAL_TYPE: Planned = Planned {
+    feature: "a type of listed literal values, `'+' | '-'`",
+    see: None,
+    now: "read a `Char` and check it, or declare an enum",
+    example: "let (op, v): ('+' | '-', Int) = read()\nprint(v)\n",
+};
+
 impl Planned {
+    /// Settled as not coming in this version: the design keeps it, `plan/OPERATING.md` defers it.
+    pub fn deferred(&self) -> bool {
+        DEFERRED.iter().any(|d| d.feature == self.feature)
+    }
+
     pub fn message(&self) -> String {
         match self.see {
+            Some(see) if self.deferred() => format!(
+                "not implemented yet, and deferred: {} (see {see})",
+                self.feature
+            ),
             Some(see) => format!("not implemented yet: {} (see {see})", self.feature),
             None => format!("not implemented yet: {} (not in the design)", self.feature),
         }
@@ -231,4 +331,19 @@ pub const PLANNED: &[&Planned] = &[
     &CUT_DOMAIN,
     &OPERATOR_VALUE,
     &VAR_PATTERN,
+    &INLINE_MATCH,
+    &LET_IN,
+    &BRACE_MAP,
+    &BRACE_SET,
+    &MAP_DEFAULT,
+    &LAZY_ARRAY,
+    &FILTERED_DOMAIN,
+    &PARAM_PATTERN,
+    &SOME_PATTERN,
+    &ANY_LENGTH,
+    &THEN_CHAIN,
+    &IMPLICIT_MEMBER,
+    &LITERAL_TYPE,
 ];
+
+pub const DEFERRED: &[&Planned] = &[&CONTEXT_LINE];

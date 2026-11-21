@@ -24,6 +24,17 @@ impl<'a> Parser<'a> {
     fn ty_atom(&mut self) -> Type {
         let start = self.start();
         let kind = match self.peek() {
+            T::Char | T::Str | T::Int if self.peek_n(1) == T::Pipe => {
+                while matches!(self.peek(), T::Char | T::Str | T::Int) {
+                    self.bump();
+                    if !self.eat(T::Pipe) {
+                        break;
+                    }
+                }
+                let span = self.span_from(start);
+                self.planned(span, &crate::planned::LITERAL_TYPE);
+                TypeKind::Error
+            }
             T::Question => {
                 self.bump();
                 TypeKind::Optional(Box::new(self.ty()))
@@ -36,6 +47,18 @@ impl<'a> Parser<'a> {
                     self.expect(T::RBracket, "`]` after the domain name");
                     TypeKind::OwnDomain {
                         name,
+                        elem: Box::new(self.ty()),
+                    }
+                } else if self.at_ident("_") && self.peek_n(1) == T::RBracket {
+                    let span = self.span();
+                    self.planned(span, &crate::planned::ANY_LENGTH);
+                    self.bump();
+                    self.bump();
+                    TypeKind::Array {
+                        index: vec![Type {
+                            kind: TypeKind::Error,
+                            span,
+                        }],
                         elem: Box::new(self.ty()),
                     }
                 } else if self.at_ident("read") && self.peek_n(1) == T::LParen {

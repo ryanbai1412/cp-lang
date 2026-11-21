@@ -183,6 +183,7 @@ impl<'a> Parser<'a> {
             Vec::new()
         };
         let copies = std::mem::take(&mut self.var_params);
+        let unpacked = std::mem::take(&mut self.param_patterns);
         let ret = self.eat(T::Arrow).then(|| self.ty());
         // `fn at(self, i: V) lends mut Int`: a projection.
         let lends =
@@ -239,8 +240,9 @@ impl<'a> Parser<'a> {
             }
         }
         // `fn grow(var b: Int)`: `b` is the fn's own copy, which it may
-        // assign. It is the body opening with `var b = b`.
-        if !copies.is_empty() {
+        // assign. It is the body opening with `var b = b`. A pattern in
+        // place of a name is the body opening with `let (r, s) = param`.
+        if !copies.is_empty() || !unpacked.is_empty() {
             let mut block = match body {
                 FnBody::Block(block) => block,
                 FnBody::Expr(value) => Block {
@@ -276,7 +278,24 @@ impl<'a> Parser<'a> {
                     guard: None,
                 },
             };
-            block.stmts.splice(0..0, copies.into_iter().map(copy));
+            let unpack = |(pat, name): (Pattern, Name)| Stmt {
+                span: name.span,
+                decorators: Vec::new(),
+                public: false,
+                kind: StmtKind::Let {
+                    mutable: false,
+                    pat,
+                    ty: None,
+                    init: Some(Expr {
+                        kind: ExprKind::Name(name.text),
+                        span: name.span,
+                    }),
+                    otherwise: None,
+                    guard: None,
+                },
+            };
+            let lets: Vec<Stmt> = unpacked.into_iter().map(unpack).collect();
+            block.stmts.splice(0..0, copies.into_iter().map(copy).chain(lets));
             body = FnBody::Block(block);
         }
         FnDecl {
@@ -383,6 +402,15 @@ impl<'a> Parser<'a> {
             .then(|| self.name());
         let name = if self.at(T::SelfKw) {
             self.name()
+        } else if self.at(T::LParen) {
+            let pat = self.pattern();
+            self.planned(pat.span, &crate::planned::PARAM_PATTERN);
+            let name = Name {
+                text: format!("__param{}", self.param_patterns.len()),
+                span: pat.span,
+            };
+            self.param_patterns.push((pat, name.clone()));
+            name
         } else {
             self.expect_name("a parameter name")
         };
@@ -638,6 +666,13 @@ impl<'a> Parser<'a> {
             "`=` and the domain's range, as in `domain V = 1..=n`",
         );
         let def = self.expr();
+        if self.at(T::If) {
+            let start = self.start();
+            self.bump();
+            self.expr();
+            let span = self.span_from(start);
+            self.planned(span, &crate::planned::FILTERED_DOMAIN);
+        }
         let list_start = self.start();
         while self.at(T::Comma) && self.peek_n(1) == T::Ident && self.peek_n(2) == T::Eq {
             self.bump();

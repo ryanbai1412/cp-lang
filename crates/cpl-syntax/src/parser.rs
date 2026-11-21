@@ -60,6 +60,8 @@ pub fn parse_item(src: &str, tokens: &[Token], base: u32, lexer_poison: Vec<Span
 pub(crate) struct Parser<'a> {
     /// The `var` parameters of the fn whose signature is being read.
     var_params: Vec<Name>,
+    /// `fn f((a, b): P)`: each pattern and the name its parameter gets.
+    param_patterns: Vec<(Pattern, Name)>,
     src: &'a str,
     tokens: &'a [Token],
     pos: usize,
@@ -109,6 +111,7 @@ impl<'a> Parser<'a> {
             sink,
             recovering: false,
             var_params: Vec::new(),
+            param_patterns: Vec::new(),
             speculating: 0,
             speculation_failed: false,
             speculative_planned: Vec::new(),

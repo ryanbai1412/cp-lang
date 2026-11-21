@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a default value after a map, `m default 0` (not in the design)
+  --> planned_a_default_value_after_a_map_m_default_0.cp:1:31
+  |
+1 | var m: Map<Int, Int> = [0: 1] default 0
+  |                               ^^^^^^^^^
+  = help: give the default where a key is looked up, with `??`
+
+planned_a_default_value_after_a_map_m_default_0.cp: 1 error
