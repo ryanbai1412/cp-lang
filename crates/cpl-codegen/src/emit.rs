@@ -165,6 +165,9 @@ pub(crate) struct Emitter<'p> {
     /// `(list, index)` slots of the loops being written whose index
     /// walks `0..list.len` over a list the body leaves at that length.
     pub inside: Vec<(usize, usize)>,
+    /// Rows the loops being written reach once: the row, the pointer
+    /// that holds it, and the C++ that reaches it the first time.
+    pub row_ptrs: Vec<(crate::rowcache::Row, String, String)>,
     /// How deep the statement being written is indented.
     pub indent: usize,
     /// For a profiled build: the span of each statement that counts its
@@ -238,6 +241,7 @@ impl<'p> Emitter<'p> {
             bodies: Vec::new(),
             found: Vec::new(),
             inside: Vec::new(),
+            row_ptrs: Vec::new(),
             indent: 0,
             sites: None,
             counted: Default::default(),

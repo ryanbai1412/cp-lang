@@ -4076,3 +4076,21 @@ binary is built with `zig c++` too, and `perf.compiler` records which. Before,
 such a port's g++ build was timed against a clang-built original, which put
 cf2261g at 1.39x where the same compiler gives 0.99x. Reverse: time
 `port_bin` in `evaluate_full_port` again.
+
+## 122. A loop reaches a row it never moves once (2026-11-21)
+
+Inside `for x in ..`, a row of a nested array reached by indices the body
+never changes (`ways[mid][lo]` inside `for rest`) is found and checked the
+first time the body reaches it, then reused through a pointer
+(`cpl::lazy`). It is kept only when nothing in the body can move the row or
+change a size checked on the way to it: no store, push or `mut` argument at
+a shallower depth of the same array, no closure or call through a fn value,
+and no call to a fn whose summary writes that array; a row of a parameter
+is kept only in a body with no calls. Rows reached without a check are not
+cached. Each check that is skipped would pass, and a loop that never reaches
+the row never checks it, so traps and output are unchanged: it majorizes
+(the cost is a few bytes per loop). Why now: cf2062h's subset loop repeated
+`cpl::at(cpl::at(ways, mid), lo)` per element and ran 0.62 s vs the
+original's 0.46 s; with this it runs 0.39 s. Corpus: +10,314 B over 29
+programs (max +4.7%, cf2062h), none broken. Reverse: return no rows from
+`Emitter::loop_rows` in `crates/cpl-codegen/src/rowcache.rs`.

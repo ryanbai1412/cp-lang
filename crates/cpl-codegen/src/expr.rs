@@ -228,6 +228,9 @@ impl<'p> Emitter<'p> {
     /// `store` is true for the target of a plain `=`, where a map makes
     /// room for a new key.
     pub fn place_at(&mut self, place: &Place, store: bool) -> String {
+        if let Some(row) = self.cached_row(crate::rowcache::of_place(place)) {
+            return row;
+        }
         match &place.kind {
             PlaceKind::Local(slot) => self.names[*slot].clone(),
             PlaceKind::Global(id) => ident(&self.program.globals[*id].name),
@@ -530,6 +533,9 @@ impl<'p> Emitter<'p> {
 
     pub fn expr(&mut self, e: &Expr) -> Code {
         let program = self.program;
+        if let Some(row) = self.cached_row(crate::rowcache::of_expr(e)) {
+            return Code::primary(row);
+        }
         match &e.kind {
             // `debug(...)` is for local runs: the judge's C++ has none of it.
             ExprKind::Unit | ExprKind::Error | ExprKind::Debug(..) => Code::primary("(void)0"),

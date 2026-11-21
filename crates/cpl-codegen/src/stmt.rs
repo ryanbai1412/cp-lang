@@ -1221,7 +1221,21 @@ impl<'p> Emitter<'p> {
             Stmt::For(id, slot, iter, body) => {
                 let inside = walk::inside_list(*slot, iter, body, self.locals());
                 self.inside.extend(inside);
+                let rows = self.loop_rows(*slot, body);
+                let (start, mark) = (out.len(), self.row_ptrs.len());
+                self.row_ptrs.extend(rows);
                 self.for_stmt(*id, *slot, iter, body, out);
+                let rows = self.row_ptrs.split_off(mark);
+                if !rows.is_empty() {
+                    self.need("lazy");
+                    let lead = pad(self.indent);
+                    let mut head = format!("{lead}{{\n");
+                    for (_, name, code) in &rows {
+                        head.push_str(&format!("{lead}auto {name} = cpl::lazy([&] {{ return &{code}; }});\n"));
+                    }
+                    out.insert_str(start, &head);
+                    self.line(out, "}");
+                }
                 self.inside.truncate(self.inside.len() - usize::from(inside.is_some()));
             }
             Stmt::Return(None) if self.in_setup => self.line(out, "return false;"),

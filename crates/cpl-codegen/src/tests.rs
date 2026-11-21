@@ -919,6 +919,22 @@ fn ranged_int_struct_fields_narrow_to_32_bits() {
 }
 
 #[test]
+fn a_row_a_loop_never_moves_is_checked_once_per_loop() {
+    let src = |inner: &str| {
+        format!(
+            "let n: Int = read()\nvar g = [[0 for _ in 0..n] for _ in 0..n]\nvar i: Int = read()\nfor j in 0..n:\n    g[i][j] += j\n{inner}print(g[0][0])\n"
+        )
+    };
+    let once = cpp(&src(""));
+    assert!(once.contains("auto row = cpl::lazy([&] { return &cpl::at(g, i); });"), "{once}");
+    assert!(once.contains("cpl::at(row(), j)"), "{once}");
+    let moved = cpp(&src("").replace("g[i][j] += j", "g[i][j] += j\n    g.push([j])"));
+    assert!(!moved.contains("cpl::lazy("), "a push onto g may move g[i]: {moved}");
+    let shifted = cpp(&src("").replace("g[i][j] += j", "g[i][j] += j\n    i = j"));
+    assert!(!shifted.contains("cpl::lazy("), "the row index changes in the loop: {shifted}");
+}
+
+#[test]
 fn cheap_pure_sort_key_avoids_sort_by_buffers() {
     let cpp = cpp(concat!(
         "struct Pt(x: Int, y: Int)\n",

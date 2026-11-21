@@ -6,6 +6,7 @@ mod expr;
 mod names;
 mod niche;
 mod ranges;
+mod rowcache;
 mod runtime;
 mod scope;
 mod show;

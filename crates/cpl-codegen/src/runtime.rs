@@ -1597,6 +1597,15 @@ template <class T, class U> bool has(MutView<T> v, const U& x) { for (size_t i =
 template <class A, class B> auto list_concat_at(const A& a, const B& b, ll i) -> decltype(at(a, i)) { if (i < 0) fail(\"index outside the list\"); if ((size_t)i < a.size()) return a[(size_t)i]; return at(b, i - (ll)a.size()); }
 ",
     },
+    Piece {
+        name: "lazy",
+        needs: &[],
+        code: "\
+// A row a loop reaches by indices it never changes, found on first use.
+template <class F> struct Lazy { F f; decltype(f()) p = 0; auto& operator()() { return *(p ? p : p = f()); } };
+template <class F> Lazy<F> lazy(F f) { return {f}; }
+",
+    },
 ];
 
 /// The one-line fns of the runtime in `file` whose name nothing else in
