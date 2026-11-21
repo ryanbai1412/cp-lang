@@ -4496,6 +4496,23 @@ fn write_array_opt_i(arr: &mut Array, at: usize, val: i64, some: i64, kind: Scal
 }
 
 impl<'p, 'io> Interp<'p, 'io> {
+    fn take_regs_v(&mut self, n: usize) -> Vec<Value> {
+        if n == 0 {
+            return Vec::new();
+        }
+        let mut v = self.vm_pool_v.pop().unwrap_or_default();
+        v.clear();
+        v.resize(n, Value::Unit);
+        v
+    }
+
+    fn return_regs_v(&mut self, mut v: Vec<Value>) {
+        if v.capacity() > 0 && self.vm_pool_v.len() < 64 {
+            v.clear();
+            self.vm_pool_v.push(v);
+        }
+    }
+
     pub(crate) fn run_main_vm(&mut self, compiled: &CompiledProgram<'p>) -> Res<()> {
         let mut vm_regs_i = std::mem::take(&mut self.vm_regs_i);
         if vm_regs_i.capacity() < 4096 {
@@ -4528,11 +4545,7 @@ impl<'p, 'io> Interp<'p, 'io> {
         let mut vm_regs_i = std::mem::take(&mut self.vm_regs_i);
         let base_i = vm_regs_i.len();
         vm_regs_i.resize(base_i + chunk.num_i, 0);
-        let mut regs_v = if chunk.num_v > 0 {
-            vec![Value::Unit; chunk.num_v]
-        } else {
-            Vec::new()
-        };
+        let mut regs_v = self.take_regs_v(chunk.num_v);
         sync_from_stack(
             &chunk.slot_map,
             &mut vm_regs_i[base_i..base_i + chunk.num_i],
@@ -4556,6 +4569,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                 self.stack[at] = val;
             }
         }
+        self.return_regs_v(regs_v);
         vm_regs_i.truncate(base_i);
         self.vm_regs_i = vm_regs_i;
         res
@@ -4577,11 +4591,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                 }
             }
         }
-        let mut regs_v = if chunk.num_v > 0 {
-            vec![Value::Unit; chunk.num_v]
-        } else {
-            Vec::new()
-        };
+        let mut regs_v = self.take_regs_v(chunk.num_v);
         let dom_mark = self.saved_domains.len();
         for &d in &chunk.guarded_domains {
             self.saved_domains.push((d, self.domains[d]));
@@ -4591,6 +4601,7 @@ impl<'p, 'io> Interp<'p, 'io> {
             let (id, prev) = self.saved_domains.pop().unwrap();
             self.domains[id] = prev;
         }
+        self.return_regs_v(regs_v);
         vm_regs_i.truncate(base_i);
         res
     }
@@ -4606,11 +4617,7 @@ impl<'p, 'io> Interp<'p, 'io> {
     ) -> Res<Value> {
         let base_i = vm_regs_i.len();
         vm_regs_i.resize(base_i + chunk.num_i, 0);
-        let mut regs_v = if chunk.num_v > 0 {
-            vec![Value::Unit; chunk.num_v]
-        } else {
-            Vec::new()
-        };
+        let mut regs_v = self.take_regs_v(chunk.num_v);
         let mut ii = 0usize;
         let mut iv = 0usize;
         for loc in chunk.slot_map.iter().take(chunk.param_count) {
@@ -4673,6 +4680,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                 }
             }
         }
+        self.return_regs_v(regs_v);
         vm_regs_i.truncate(base_i);
         res
     }
@@ -6109,11 +6117,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                         let prev_in_closure = std::mem::replace(&mut self.in_closure, true);
                         let c_base_i = vm_regs_i.len();
                         vm_regs_i.resize(c_base_i + callee.num_i, 0);
-                        let mut c_regs_v = if callee.num_v > 0 {
-                            vec![Value::Unit; callee.num_v]
-                        } else {
-                            Vec::new()
-                        };
+                        let mut c_regs_v = self.take_regs_v(callee.num_v);
                         let mut ii = 0usize;
                         let mut iv = 0usize;
                         for loc in callee.slot_map.iter().take(callee.param_count) {
@@ -6176,6 +6180,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                             let (id, prev) = self.saved_domains.pop().unwrap();
                             self.domains[id] = prev;
                         }
+                        self.return_regs_v(c_regs_v);
                         vm_regs_i.truncate(c_base_i);
                         self.in_closure = prev_in_closure;
                         if needs_stack {

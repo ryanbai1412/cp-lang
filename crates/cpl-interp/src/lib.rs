@@ -349,6 +349,7 @@ fn run_io(
         fed_left: None,
         vm: None,
         vm_regs_i: Vec::new(),
+        vm_pool_v: Vec::new(),
         vm_stats: vm::VmStats::from_env(),
     };
     let result = interp.main();
@@ -578,6 +579,8 @@ struct Interp<'p, 'o> {
     vm: Option<Rc<vm::CompiledProgram<'p>>>,
     /// Shared unboxed `i64` register stack for the VM.
     vm_regs_i: Vec<i64>,
+    /// Reusable pool of `Value` register frames for VM calls.
+    vm_pool_v: Vec<Vec<Value>>,
     /// Optional fallback counter enabled via `CPL_VM_STATS`.
     vm_stats: Option<vm::VmStats>,
 }
