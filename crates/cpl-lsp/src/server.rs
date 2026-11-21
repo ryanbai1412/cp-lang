@@ -7,6 +7,7 @@
 
 use crate::complete::{self, Cursor, StdLib};
 use crate::json::{obj, Value};
+use crate::rename;
 use cpl_check::{Database, DeclKind};
 use cpl_diag::{codes, Diagnostic, LineCol, LineIndex, Severity, Span};
 use std::collections::BTreeMap;
@@ -225,6 +226,80 @@ impl Server {
                     Some(help) => Reply::result(help),
                     None => Reply::default(),
                 })
+            }
+            "textDocument/references" => {
+                let (uri, offset) = self.position(params)?;
+                let Some((target, spans)) = rename::references(&mut self.db, &uri, offset) else {
+                    return Ok(Reply::result(Value::Array(Vec::new())));
+                };
+                let with_decl =
+                    params.at(&["context", "includeDeclaration"]) != &Value::Bool(false);
+                let analysis = self.db.analyze(&uri).expect("references imply an analysis");
+                let locations = spans
+                    .into_iter()
+                    .filter(|span| with_decl || target.path != uri || *span != target.span)
+                    .map(|span| {
+                        obj([
+                            ("uri", uri.as_str().into()),
+                            ("range", range_json(span, &analysis.text, &analysis.lines)),
+                        ])
+                    })
+                    .collect();
+                Ok(Reply::result(Value::Array(locations)))
+            }
+            // Only a name declared in this file can be renamed: a library's
+            // names belong to the library.
+            "textDocument/prepareRename" => {
+                let (uri, offset) = self.position(params)?;
+                let analysis = self
+                    .db
+                    .analyze(&uri)
+                    .expect("a position implies an analysis");
+                let Some((span, name)) = rename::word_at(&analysis.text, offset) else {
+                    return Ok(Reply::default());
+                };
+                let name = name.to_string();
+                match self.db.definition_location(&uri, offset) {
+                    Some(def) if def.path == uri => Ok(Reply::result(obj([
+                        ("range", range_json(span, &analysis.text, &analysis.lines)),
+                        ("placeholder", name.into()),
+                    ]))),
+                    Some(_) => Err((
+                        INVALID_PARAMS,
+                        format!("`{name}` is declared in another file"),
+                    )),
+                    None => Ok(Reply::default()),
+                }
+            }
+            "textDocument/rename" => {
+                let (uri, offset) = self.position(params)?;
+                let new_name = params.get("newName").as_str().unwrap_or("").to_string();
+                if let Some(why) = rename::invalid_name(&new_name) {
+                    return Err((INVALID_PARAMS, why));
+                }
+                let Some((target, spans)) = rename::references(&mut self.db, &uri, offset) else {
+                    return Ok(Reply::default());
+                };
+                if target.path != uri {
+                    return Err((
+                        INVALID_PARAMS,
+                        "the name is declared in another file".to_string(),
+                    ));
+                }
+                let analysis = self.db.analyze(&uri).expect("references imply an analysis");
+                let edits: Vec<Value> = spans
+                    .into_iter()
+                    .map(|span| {
+                        obj([
+                            ("range", range_json(span, &analysis.text, &analysis.lines)),
+                            ("newText", new_name.as_str().into()),
+                        ])
+                    })
+                    .collect();
+                Ok(Reply::result(obj([(
+                    "changes",
+                    Value::Object(vec![(uri.clone(), Value::Array(edits))]),
+                )])))
             }
             "textDocument/definition" => {
                 let (uri, offset) = self.position(params)?;
@@ -470,6 +545,8 @@ fn capabilities() -> Value {
                     ]),
                 ),
                 ("definitionProvider", true.into()),
+                ("referencesProvider", true.into()),
+                ("renameProvider", obj([("prepareProvider", true.into())])),
                 ("documentSymbolProvider", true.into()),
                 ("documentFormattingProvider", true.into()),
                 ("inlayHintProvider", true.into()),

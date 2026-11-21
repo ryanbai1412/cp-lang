@@ -342,7 +342,7 @@ fn closing_a_document_clears_its_diagnostics() {
 #[test]
 fn unknown_and_malformed_messages_get_errors_not_crashes() {
     let (mut server, _) = open(SOURCE);
-    let reply = server.handle(&request(2, "textDocument/rename", obj([])));
+    let reply = server.handle(&request(2, "textDocument/semanticTokens/full", obj([])));
     assert_eq!(reply[0].at(&["error", "code"]), &Value::Number(-32601.0));
     assert!(server
         .handle(&notification("workspace/didChangeWatchedFiles", obj([])))
@@ -961,4 +961,122 @@ fn the_server_advertises_completion_and_signature_help() {
             .as_array(),
         [Value::from("("), Value::from(",")]
     );
+}
+
+#[test]
+fn dot_completion_on_library_structs_tells_properties_from_methods() {
+    let items = completions("var q = Deque<Int>()\nq.|\n");
+    let kind = |label: &str| {
+        items
+            .iter()
+            .find(|i| i.0 == label)
+            .unwrap_or_else(|| panic!("no `{label}` in {items:?}"))
+            .1
+    };
+    // `len` and `first` are `@get` properties; `push` is called.
+    assert_eq!((kind("len"), kind("first"), kind("push")), (10, 10, 2));
+    let items = completions("var h = MinHeap<Int>()\nh.|\n");
+    assert!(
+        labels(&items).contains(&"push") && labels(&items).contains(&"len"),
+        "{items:?}"
+    );
+}
+
+/// The `(line, character)` of each location or edit in a reply.
+fn starts(values: &[Value]) -> Vec<(u32, u32)> {
+    values
+        .iter()
+        .map(|v| {
+            let start = v.at(&["range", "start"]);
+            (
+                start.get("line").as_u32().unwrap(),
+                start.get("character").as_u32().unwrap(),
+            )
+        })
+        .collect()
+}
+
+fn references_at(src: &str) -> Vec<(u32, u32)> {
+    let reply = ask_at_with(
+        "textDocument/references",
+        src,
+        obj([("context", obj([("includeDeclaration", true.into())]))]),
+    );
+    starts(reply.as_array())
+}
+
+/// Like `ask_at`, with more request params.
+fn ask_at_with(method: &str, src: &str, extra: Value) -> Value {
+    let at = src.find('|').expect("a cursor");
+    let text = src.replacen('|', "", 1);
+    let line = src[..at].matches('\n').count() as u32;
+    let character = (at - src[..at].rfind('\n').map_or(0, |i| i + 1)) as u32;
+    let (mut server, _) = open(&text);
+    let mut params = vec![
+        ("textDocument".to_string(), doc()),
+        ("position".to_string(), pos(line, character)),
+    ];
+    if let Value::Object(more) = extra {
+        params.extend(more);
+    }
+    let reply = server.handle(&request(21, method, Value::Object(params)));
+    let result = reply[0].get("result").clone();
+    if result.is_null() && !reply[0].get("error").is_null() {
+        return reply[0].get("error").clone();
+    }
+    result
+}
+
+#[test]
+fn references_find_locals_params_fns_structs_domains_and_fields() {
+    // A local, and a shadowing one of the same name that is not it.
+    let src = "fn f(n: Int) -> Int:\n    let x = n\n    let y = x| + x\n    let x = 5\n    x\n";
+    assert_eq!(references_at(src), [(1, 8), (2, 12), (2, 16)]);
+    // A parameter.
+    assert_eq!(
+        references_at("fn f(n|: Int) -> Int = n * n\n"),
+        [(0, 5), (0, 22), (0, 26)]
+    );
+    // A fn, from a call.
+    let src = "fn sq(n: Int) -> Int = n * n\nprint(sq(2) + s|q(3))\n";
+    assert_eq!(references_at(src), [(0, 3), (1, 6), (1, 14)]);
+    // A struct and a field, used through a value and inside a method.
+    let src = format!("{ROAD}let r = Road(1, 2)\nprint(r.w|)\n");
+    // The declaration and the access through a value.
+    assert_eq!(references_at(&src), [(2, 4), (12, 8)]);
+    let src = format!("{ROAD}let r = Ro|ad(1, 2)\n");
+    assert_eq!(references_at(&src), [(0, 7), (10, 31), (11, 8)]);
+    // A domain.
+    let src = "domain V = 0..5\nvar a: [V]Int = 0\nfor v in V|:\n    a[v] = 1\n";
+    assert_eq!(references_at(src), [(0, 7), (1, 8), (2, 9)]);
+}
+
+#[test]
+fn rename_edits_every_reference_and_refuses_library_names() {
+    let src = "fn sq(n: Int) -> Int = n * n\nprint(sq(2) + s|q(3))\n";
+    let prepared = ask_at("textDocument/prepareRename", src);
+    assert_eq!(prepared.get("placeholder").as_str(), Some("sq"));
+    let edit = ask_at_with(
+        "textDocument/rename",
+        src,
+        obj([("newName", "square".into())]),
+    );
+    let edits = edit.at(&["changes", URI]).as_array();
+    assert_eq!(starts(edits), [(0, 3), (1, 6), (1, 14)]);
+    assert!(edits
+        .iter()
+        .all(|e| e.get("newText").as_str() == Some("square")));
+    // Not a name, a keyword, or a name the prelude owns.
+    let bad = ask_at_with("textDocument/rename", src, obj([("newName", "fn".into())]));
+    assert!(
+        bad.get("message").as_str().unwrap().contains("keyword"),
+        "{bad:?}"
+    );
+    let bad = ask_at_with("textDocument/rename", src, obj([("newName", "a b".into())]));
+    assert!(
+        bad.get("message").as_str().unwrap().contains("not a name"),
+        "{bad:?}"
+    );
+    let library = ask_at("textDocument/prepareRename", "print(gc|d(4, 6))\n");
+    assert!(library.is_null(), "{library:?}");
 }

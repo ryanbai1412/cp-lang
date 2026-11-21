@@ -231,6 +231,8 @@ fn lsp_latency(lines: usize) {
     let mut complete = Samples(Vec::new());
     let mut signature = Samples(Vec::new());
     let mut hints = Samples(Vec::new());
+    let mut refs = Samples(Vec::new());
+    let mut rename = Samples(Vec::new());
     let mut text = src.clone();
     for (i, ch) in insert.char_indices() {
         let cursor = position(&text, at + i);
@@ -307,6 +309,41 @@ fn lsp_latency(lines: usize) {
         );
         let (_, took) = round_trip(&mut server, &request);
         hints.0.push(took);
+
+        // Find the uses of `roads` and rename it, from the half-typed fn.
+        let on_roads = |id: u32, method: &str, extra: Vec<(String, Value)>| {
+            let mut params = vec![
+                ("textDocument".to_string(), doc()),
+                ("position".to_string(), position(&text, target + 2)),
+            ];
+            params.extend(extra);
+            message(Some(id), method, Value::Object(params))
+        };
+        let context = obj([("includeDeclaration", true.into())]);
+        let (replies, took) = round_trip(
+            &mut server,
+            &on_roads(
+                4000 + i as u32,
+                "textDocument/references",
+                vec![("context".into(), context)],
+            ),
+        );
+        assert!(replies[0].contains(r#""uri""#), "{}", replies[0]);
+        refs.0.push(took);
+        let (replies, took) = round_trip(
+            &mut server,
+            &on_roads(
+                5000 + i as u32,
+                "textDocument/rename",
+                vec![("newName".into(), "edges".into())],
+            ),
+        );
+        assert!(
+            replies[0].contains(r#""newText":"edges""#),
+            "{}",
+            replies[0]
+        );
+        rename.0.push(took);
     }
     report(
         "lsp: keystroke to diagnostics",
@@ -338,6 +375,8 @@ fn lsp_latency(lines: usize) {
         &mut hints,
         LSP_BUDGET,
     );
+    report("lsp: references to a name", actual, &mut refs, LSP_BUDGET);
+    report("lsp: rename a name", actual, &mut rename, LSP_BUDGET);
 }
 
 #[test]

@@ -5,12 +5,13 @@
 //! `cpl build`. It publishes diagnostics as you type and serves hover,
 //! go-to-definition, the document outline, quick fixes, formatting,
 //! type-aware completion (`xs.`, names in scope, `use std.`), signature
-//! help and inlay hints. Semantic tokens come with a later phase
+//! help, inlay hints, find-references and rename. Semantic tokens come with a later phase
 //! (`plan/60-editor.md`).
 
 mod complete;
 pub mod json;
 mod outline;
+mod rename;
 mod server;
 mod transport;
 
