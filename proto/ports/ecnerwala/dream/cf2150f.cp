@@ -7,9 +7,10 @@
 //     L-step path. If `dist = t.dist(i, j) >= L`, skip `skip = dist - L`
 //     vertices by taking every other vertex on `p[..2 * skip]` then `p[2 * skip..]`.
 //     If `dist < L`, let `far` be the diameter end farther from `i` (so
-//     `dist(i, far) >= L`) and `m = t.median(i, j, far)`. Replace `m` with a
-//     detour over the first `stem_len = L - dist + 1` vertices of `m..far`:
-//     out on every other vertex, back on the rest.
+//     `dist(i, far) >= L`) and `mid = t.median(i, j, far)`. Replace `mid` with
+//     a detour over the first `stem_len = L - dist + 1` vertices of `mid..far`:
+//     out on every other vertex, back on the rest (adding `stem_len - 1` steps).
+//   - Building `t.path(...)` per pair is O(n) each, O(n^3) total at n <= 200.
 
 with io(base: 1)
 
