@@ -1,65 +1,66 @@
-// Codeforces 2183 D2: compute the minimum number of operations by depth, then assign
-// vertices bottom-up into slots so no parent shares a slot with its child.
+// Codeforces 2183 D2: Tree Coloring.
+// Partition vertices of a rooted tree into `ans` slots so no two vertices at
+// the same depth share a slot and no parent shares a slot with its child.
+// Lower bound: a depth `d` with `sz` vertices needs `>= sz` slots, and if
+// `d > 0` and all `sz` vertices share one parent `p0`, `p0` cannot use any of
+// those slots, forcing `>= sz + 1`. Thus `ans = max_d (sz + Int(same_parent))`
+// is necessary and sufficient.
+// Bottom-up by depth `d`, vertices whose children occupy a slot at depth `d + 1`
+// form `forbiddens` with pairwise distinct forbidden slots:
+//   - If `forbiddens.len == 1`, at least one slot was unused at depth `d + 1`.
+//   - If `forbiddens.len >= 2`, cyclically rotating their forbidden slots gives
+//     every vertex a slot distinct from its own forbidden slot.
+// Remaining vertices at depth `d` take the remaining slots unused at depth `d`.
+
 @!multitest
-let n: Int = read()
+let n: 2..=200_000 = read()
 domain V = 1..=n
-domain E = 0..n - 1
-let edges: [E](u: V, v: V) = read()
-let g = Graph.undirected(edges)
-
-var by_depth: [0..n]List<(u: V, p: ?V)> = []
-
+let g = Graph.undirected(read<[n - 1](V, V)>())
+var par: [V]?V = none
+var by_depth: [0..n]List<V> = []
 fn dfs(u: V, p: ?V, depth: Int):
-    by_depth[depth].push((u, p))
-    for a in g.out(u):
-        if p == a.to: continue
-        dfs(a.to, u, depth + 1)
-
-dfs(V(1), none, 0)
+    par[u] = p
+    by_depth[depth].push(u)
+    for nb in g[u] if some(nb) != p: dfs(nb, u, depth + 1)
+dfs(V.first, none, 0)
 
 var ans = 0
 for d in 0..n:
     if by_depth[d].is_empty: break
     let sz = by_depth[d].len
-    let p0 = by_depth[d][0].p
-    let same_parent = d > 0 and all(p == p0 for (_, p) in by_depth[d])
+    let p0 = par[by_depth[d][0]]
+    let same_parent = d > 0 and by_depth[d].all(u => par[u] == p0)
     ans max= sz + Int(same_parent)
 
-var resp: [0..ans]List<V> = []
-var last_depth: [0..ans]Int = n + 1
-var forbidden_loc: [V]?Int = none
+domain Slot = 0..ans
+var resp: [Slot]List<V> = []
+var last_depth: [Slot]?Int = none
+var forbidden_loc: [V]?Slot = none
 
 for d in (0..n).rev:
     if by_depth[d].is_empty: continue
 
-    fn place(u: V, p: ?V, loc: Int):
+    fn place(u: V, loc: Slot):
         resp[loc].push(u)
         last_depth[loc] = d
-        if let par = p: forbidden_loc[par] = loc
+        if let p = par[u]: forbidden_loc[p] = loc
 
-    var forbiddens: List<(u: V, p: ?V, loc: Int)> = []
-    for (u, p) in by_depth[d]:
-        if let fl = forbidden_loc[u]:
-            forbiddens.push((u, p, fl))
+    var forbiddens: List<(u: V, loc: Slot)> = []
+    for u in by_depth[d]:
+        if let fl = forbidden_loc[u]: forbiddens.push((u, fl))
 
     if forbiddens.len == 1:
-        let (u, p, _) = forbiddens[0]
-        var loc = 0
-        while last_depth[loc] == d + 1: loc += 1
-        place(u, p, loc)
-    elif not forbiddens.is_empty:
-        let first_loc = forbiddens[0].loc
-        var (prev_u, prev_p) = (forbiddens[0].u, forbiddens[0].p)
-        for (u, p, fl) in forbiddens[1..]:
-            place(prev_u, prev_p, fl)
-            (prev_u, prev_p) = (u, p)
-        place(prev_u, prev_p, first_loc)
+        let s = [x for x in Slot].first(x => last_depth[x] != some(d + 1))!
+        place(forbiddens[0].u, s)
+    elif forbiddens.len >= 2:
+        let k = forbiddens.len
+        for i in 0..k:
+            place(forbiddens[i].u, forbiddens[(i + 1) % k].loc)
 
-    var loc = 0
-    for (u, p) in by_depth[d]:
-        if forbidden_loc[u] == none:
-            while last_depth[loc] == d: loc += 1
-            place(u, p, loc)
+    var free = 0
+    for u in by_depth[d] if forbidden_loc[u] == none:
+        while last_depth[Slot(free)] == some(d): free += 1
+        place(u, Slot(free))
 
 print(ans)
 for group in resp:
