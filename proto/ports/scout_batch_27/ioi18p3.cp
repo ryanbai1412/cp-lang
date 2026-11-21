@@ -39,7 +39,7 @@ fn merge_tree(order: List<City>):
     Rooted(c => kids[c], order.last!)
 
 let human = merge_tree([c for c in City.rev])
-let wolf = merge_tree([c for c in City])
+let wolf = merge_tree(City.all)
 
 type Trip = (s: Int, e: Int, l: Int, r: Int)
 domain Q = 0..q

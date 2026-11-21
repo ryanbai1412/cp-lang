@@ -14,7 +14,7 @@ fn consistent(x: Spot, y: Spot) -> Bool:
     var taller: [Student]List<Student> = []
     var low = true
     for i in x..y:
-        let j = (i + 1)!
+        let j = i + 1
         if low: taller[line[i]].push(line[j])
         else: taller[line[j]].push(line[i])
         low = not low

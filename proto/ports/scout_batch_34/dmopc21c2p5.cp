@@ -20,8 +20,8 @@ let g = Graph.undirected(edges)
 let tree = Rooted<V>(g, V.first)
 
 var fact: [Deg]Z = 1
-for d in Deg if d.to_idx > 0:
-    fact[d] = fact[(d - 1)!] * d.to_idx
+for d in Deg if d > Deg.first:
+    fact[d] = fact[d - 1] * d.to_idx
 
 // memo[u][parent_used] holds a List<Z> of length `tree.size(u) + 1`, indexed by
 // total chosen edges inside u's subtree (plus the parent edge if `parent_used`).

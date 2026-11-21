@@ -28,7 +28,7 @@ for l in Pos.rev:
     for r in l..:
         dp1[l, r, Val(min(num[l, r], CAP))] min= 0
         for mid in l..r:
-            let next = (mid + 1)!
+            let next = mid + 1
             for v in Val:
                 if let c = dp1[next, r, v]:
                     dp1[l, r, Val(min(num[l, mid] * v.to_idx, CAP))] min= 1 + c
@@ -38,7 +38,7 @@ for l in Pos.rev:
         for v in Val:
             dp2[l, r, v] min= dp1[l, r, v]
         for mid in l..r:
-            let next = (mid + 1)!
+            let next = mid + 1
             for va in Val:
                 if let ca = dp1[l, mid, va]:
                     for vb in Val:

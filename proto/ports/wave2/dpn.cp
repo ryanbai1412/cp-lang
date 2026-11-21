@@ -7,5 +7,5 @@ let size = prefix(a)
 
 @memo
 fn cost(l: I, r: I) -> Int =
-    if l == r: 0 else: min(cost(l, m) + cost((m + 1)!, r) for m in l..r)! + size.sum(l..=r)
+    if l == r: 0 else: min(cost(l, m) + cost(m + 1, r) for m in l..r)! + size.sum(l..=r)
 print(cost(I.first, I.last))

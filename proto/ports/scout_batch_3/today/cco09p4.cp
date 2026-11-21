@@ -24,4 +24,4 @@ fn pair_up(caps: List<Cap>, bottles: List<Bottle>):
     let above = [b for b in bottles if b != pivot and fit(cap, b) < 0]
     pair_up(small, below)
     pair_up(big, above)
-pair_up([c for c in Cap], [b for b in Bottle])
+pair_up(Cap.all, Bottle.all)

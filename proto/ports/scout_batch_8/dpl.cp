@@ -8,6 +8,6 @@ let a: [I]1..=1e9 = read()
 // lead(l, r): the best margin for the player to move when a[l..=r] is left.
 @memo
 fn lead(l: I, r: I) -> Int:
-    if l == r: return a[l]
-    max(a[l] - lead((l + 1)!, r), a[r] - lead(l, (r - 1)!))
+    if l >= r: return a[l]
+    max(a[l] - lead(l + 1, r), a[r] - lead(l, r - 1))
 print(lead(I.first, I.last))

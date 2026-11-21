@@ -34,5 +34,5 @@ fn place(lo: Int, hi: Int, eggs: List<Egg>):
         place(lo, mid, lower)
         place(mid, hi, upper)
 
-place(1, n + 1, [e for e in Egg])
+place(1, n + 1, Egg.all)
 print("!", floor_of)
