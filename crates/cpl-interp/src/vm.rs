@@ -1235,33 +1235,48 @@ impl<'p> Compiler<'p> {
         if !f
             .locals
             .iter()
+            .skip(f.params.len())
             .all(|l| ScalarKind::of_ty(&l.ty, self.program).is_some())
         {
             return false;
         }
-        fn simple_block(b: &Block, program: &Program) -> bool {
-            b.stmts.iter().all(|s| simple_stmt(s, program))
+        fn simple_block(b: &Block, f: &cpl_ir::Function, program: &Program) -> bool {
+            b.stmts.iter().all(|s| simple_stmt(s, f, program))
         }
-        fn simple_stmt(s: &Stmt, program: &Program) -> bool {
+        fn simple_stmt(s: &Stmt, f: &cpl_ir::Function, program: &Program) -> bool {
             match s {
-                Stmt::Let(_, e) => e.as_ref().is_none_or(|e| simple_expr(e, program)),
-                Stmt::Assign(p, _, e) => {
-                    matches!(p.kind, PlaceKind::Local(_)) && simple_expr(e, program)
+                Stmt::Let(slot, e) => {
+                    ScalarKind::of_ty(&f.locals[*slot].ty, program).is_some()
+                        && e.as_ref().is_none_or(|e| simple_expr(e, f, program))
                 }
-                Stmt::Return(Some(e)) | Stmt::Give(e) | Stmt::Expr(e) => simple_expr(e, program),
+                Stmt::Assign(p, _, e) => {
+                    matches!(p.kind, PlaceKind::Local(slot) if ScalarKind::of_ty(&f.locals[slot].ty, program).is_some())
+                        && simple_expr(e, f, program)
+                }
+                Stmt::Return(Some(e)) | Stmt::Give(e) | Stmt::Expr(e) => {
+                    simple_expr(e, f, program)
+                }
                 Stmt::If(c, t, e) => {
                     if let Some(b) = Compiler::const_bool(c) {
-                        if b { simple_block(t, program) } else { simple_block(e, program) }
+                        if b { simple_block(t, f, program) } else { simple_block(e, f, program) }
                     } else {
-                        simple_expr(c, program)
-                            && simple_block(t, program)
-                            && simple_block(e, program)
+                        simple_expr(c, f, program)
+                            && simple_block(t, f, program)
+                            && simple_block(e, f, program)
                     }
                 }
                 _ => false,
             }
         }
-        fn simple_expr(e: &Expr, program: &Program) -> bool {
+        fn simple_v_base(e: &Expr, f: &cpl_ir::Function) -> bool {
+            match &e.kind {
+                ExprKind::Global(_) => true,
+                ExprKind::Local(slot) => *slot < f.params.len(),
+                ExprKind::Field(inner, _) => simple_v_base(inner, f),
+                _ => false,
+            }
+        }
+        fn simple_expr(e: &Expr, f: &cpl_ir::Function, program: &Program) -> bool {
             if ScalarKind::of_ty(&e.ty, program).is_none() {
                 return false;
             }
@@ -1271,45 +1286,55 @@ impl<'p> Compiler<'p> {
                 | ExprKind::Char(_)
                 | ExprKind::Local(_)
                 | ExprKind::Global(_) => true,
-                ExprKind::Unary(_, a) | ExprKind::Field(a, _) | ExprKind::Cast(_, a) => {
-                    simple_expr(a, program)
-                }
+                ExprKind::Unary(_, a) | ExprKind::Cast(_, a) => simple_expr(a, f, program),
+                ExprKind::Field(a, _) => simple_expr(a, f, program) || simple_v_base(a, f),
                 ExprKind::Binary(op, a, b) => {
                     let safe_op = match op {
                         BinOp::Div | BinOp::Rem => matches!(b.kind, ExprKind::Int(v) if v != 0),
-                        BinOp::Shl | BinOp::Shr => matches!(b.kind, ExprKind::Int(v) if (0..64).contains(&v)),
+                        BinOp::Shl | BinOp::Shr => {
+                            matches!(b.kind, ExprKind::Int(v) if (0..64).contains(&v))
+                        }
                         _ => true,
                     };
-                    safe_op && simple_expr(a, program) && simple_expr(b, program)
+                    safe_op && simple_expr(a, f, program) && simple_expr(b, f, program)
                 }
                 ExprKind::Cmp(_, a, b) => {
-                    simple_expr(a, program) && simple_expr(b, program)
+                    simple_expr(a, f, program) && simple_expr(b, f, program)
                 }
-                ExprKind::Tuple(fs) => fs.len() == 1 && simple_expr(&fs[0], program),
+                ExprKind::Tuple(fs) => fs.len() == 1 && simple_expr(&fs[0], f, program),
                 ExprKind::Index(base, indices) => {
-                    matches!(base.ty, Ty::Array { .. })
-                        && (indices.len() == 1 || indices.len() == 2)
-                        && matches!(base.kind, ExprKind::Global(_))
-                        && indices.iter().all(|i| simple_expr(i, program))
+                    let container_ok = match &base.ty {
+                        Ty::Array { dims, .. } => {
+                            (indices.len() == 1 || indices.len() == 2)
+                                && dims.len() == indices.len()
+                        }
+                        Ty::List(_) => indices.len() == 1,
+                        _ => false,
+                    };
+                    container_ok
+                        && simple_v_base(base, f)
+                        && indices.iter().all(|i| simple_expr(i, f, program))
                 }
                 ExprKind::Call(callee, args) => {
                     Compiler::recognize_mod_op(program, *callee).is_some()
-                        && args.iter().all(|a| matches!(a, Arg::Value(e) if simple_expr(e, program)))
+                        && args
+                            .iter()
+                            .all(|a| matches!(a, Arg::Value(e) if simple_expr(e, f, program)))
                 }
                 ExprKind::If(c, t, e) => {
                     if let Some(b) = Compiler::const_bool(c) {
-                        if b { simple_expr(t, program) } else { simple_expr(e, program) }
+                        if b { simple_expr(t, f, program) } else { simple_expr(e, f, program) }
                     } else {
-                        simple_expr(c, program)
-                            && simple_expr(t, program)
-                            && simple_expr(e, program)
+                        simple_expr(c, f, program)
+                            && simple_expr(t, f, program)
+                            && simple_expr(e, f, program)
                     }
                 }
-                ExprKind::Do(b) => simple_block(b, program),
+                ExprKind::Do(b) => simple_block(b, f, program),
                 _ => false,
             }
         }
-        simple_block(&f.body, self.program)
+        simple_block(&f.body, f, self.program)
     }
 
     fn stmt_mentions_slot(stmt: &Stmt, target: Slot) -> bool {
@@ -3865,22 +3890,42 @@ impl<'p> Compiler<'p> {
                 }
                 if self.is_pure_leaf_fn(*fn_id) {
                     let f = &self.program.fns[*fn_id];
-                    let mut arg_regs = Vec::with_capacity(args.len());
-                    for a in args {
+                    let mut map = Vec::with_capacity(f.locals.len());
+                    let mut temp_v_to_clear: Vec<u16> = Vec::new();
+                    for (i, a) in args.iter().enumerate() {
                         let Arg::Value(ae) = a else {
                             return self.emit_fallback_expr_i(expr);
                         };
-                        arg_regs.push(self.compile_expr_i(ae));
+                        if let Some(kind) = ScalarKind::of_ty(&f.locals[i].ty, self.program) {
+                            let src = self.compile_expr_i(ae);
+                            let reg = self.alloc_i();
+                            self.emit(Op::MoveI { dst: reg, src }, span);
+                            map.push(SlotLoc::I(reg, kind));
+                        } else {
+                            let reused = if let ExprKind::Local(slot) = &ae.kind {
+                                if let SlotLoc::V(r) = self.slot_loc(*slot) {
+                                    Some(r)
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            };
+                            if let Some(r) = reused {
+                                map.push(SlotLoc::V(r));
+                            } else {
+                                let r = self.compile_expr_v(ae);
+                                if r >= self.num_local_v {
+                                    temp_v_to_clear.push(r);
+                                }
+                                map.push(SlotLoc::V(r));
+                            }
+                        }
                     }
-                    let mut map = Vec::with_capacity(f.locals.len());
-                    for (i, l) in f.locals.iter().enumerate() {
+                    for l in f.locals.iter().skip(args.len()) {
                         let kind = ScalarKind::of_ty(&l.ty, self.program).unwrap();
                         let reg = self.alloc_i();
-                        if i < arg_regs.len() {
-                            self.emit(Op::MoveI { dst: reg, src: arg_regs[i] }, span);
-                        } else {
-                            self.emit(Op::ConstImmI { dst: reg, val: 0 }, span);
-                        }
+                        self.emit(Op::ConstImmI { dst: reg, val: 0 }, span);
                         map.push(SlotLoc::I(reg, kind));
                     }
                     let dst = self.alloc_i();
@@ -3895,6 +3940,9 @@ impl<'p> Compiler<'p> {
                     self.inline_slots = prev_slots;
                     for j in jumps {
                         self.patch(j, end_pc);
+                    }
+                    for r in temp_v_to_clear {
+                        self.emit(Op::ClearV { reg: r }, span);
                     }
                     dst
                 } else {
