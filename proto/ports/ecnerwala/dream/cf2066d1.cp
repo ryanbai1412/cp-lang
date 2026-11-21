@@ -3,10 +3,10 @@
 // of its first c unseen slots in C(c, k) ways, and floor n takes the last c.
 // The generating function is (1 + x)^(c * (n - 1)), so the answer is
 // C(c * (n - 1), m - c).
-type M = Mint(mod: 1e9 + 7)
+type M = Mod<1e9 + 7>
 let comb = Comb<M>(1e4)
 
---- multitest ---
+@!multitest
 let (n, c, m): (1..=100, 1..=100, c..=n * c) = read()
-skip<[m]0..=0>()
+let _: [m]0..=0 = read()
 print(comb.choose(c * (n - 1), m - c))

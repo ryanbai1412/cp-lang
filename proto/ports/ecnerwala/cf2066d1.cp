@@ -3,10 +3,12 @@
 // of its first c unseen slots in C(c, k) ways, and floor n takes the last c.
 // The generating function is (1 + x)^(c * (n - 1)), so the answer is
 // C(c * (n - 1), m - c).
-const MAX_M = 10_000
-let comb = Comb<Mod<1_000_000_007>>(MAX_M)
+type M = Mod<1_000_000_007>
+let comb = Comb<M>(10_000)
 
 @!multitest
-let (n, c, m): (1..=100, 1..=100, 1..=MAX_M) = read()
-let _: [0..m]Int = read()
+let n: 1..=100 = read()
+let c: 1..=100 = read()
+let m: c..=n * c = read()
+let _: [0..m]0..=0 = read()
 print(comb.choose(c * (n - 1), m - c))
