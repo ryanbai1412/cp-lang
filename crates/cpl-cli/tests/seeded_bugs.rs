@@ -8,8 +8,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-/// `GOALS` 4: a seeded bug is found and shrunk in a median of 10 s.
-const MEDIAN_LIMIT: Duration = Duration::from_secs(10);
+/// `GOALS` 4: a seeded bug is found and shrunk in a median of 1 s.
+const MEDIAN_LIMIT: Duration = Duration::from_secs(1);
 
 fn bugs() -> Vec<PathBuf> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bench/stress");
@@ -48,7 +48,7 @@ fn string_field(json: &str, key: &str) -> Option<String> {
 #[test]
 fn stress_finds_every_seeded_bug_and_shrinks_it_to_the_minimal_input() {
     let bugs = bugs();
-    assert!(bugs.len() >= 4, "only {} seeded bugs", bugs.len());
+    assert!(bugs.len() >= 21, "only {} seeded bugs", bugs.len());
     let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("seeded_bugs");
     let _ = std::fs::remove_dir_all(&scratch);
     std::fs::create_dir_all(&scratch).unwrap();

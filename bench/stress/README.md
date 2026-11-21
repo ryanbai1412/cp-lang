@@ -9,7 +9,7 @@ print, with no generator, no flags and nothing else written.
 `crates/cpl-cli/tests/seeded_bugs.rs` runs every bug in the gate, prints
 the time to the minimal counterexample per bug and the median, and fails
 if a bug is missed, shrinks to anything but its `.min`, or the median is
-over 10 s (`GOALS` 4).
+over 1 s (`GOALS` 4).
 
     cargo test -p cpl-cli --test seeded_bugs -- --nocapture
 

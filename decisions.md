@@ -1787,6 +1787,12 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   A word is drawn and shrunk as its position, so the shrinker moves to the first-named arm.
   Words with spaces, or an interpolated string, are refused. Reverse: drop `Shape::Words` and
   `Value::Word`.
+- **25.24 The seeded-bug median bar is 1 s, over at least 21 bugs.** With ten more bugs
+  across multitest leakage, overflow at bounds and off-by-one at a range end, the gate's
+  median time to a minimal counterexample is 0.77 s, so the bar drops from 10 s to 1 s and
+  the benchmark refuses fewer than 21 bugs. The time is wall clock in the debug build the
+  gate runs, so a loaded machine is part of what it measures. Reverse: restore
+  `MEDIAN_LIMIT` to 10 s and the bug floor to 4 in `tests/seeded_bugs.rs`.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 

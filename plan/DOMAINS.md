@@ -523,7 +523,14 @@ decision 25.18). It compares by variable name, so a brute that names
 nothing the solution does gets no explanation beyond its `debug(...)` stages.
 **Bar.** A seeded-bug benchmark in the gate: classic bugs injected into
 correct solutions, each found and shrunk to a known minimal case, with the
-median time to a minimal counterexample at most 10 s (`GOALS` 4).
+median time to a minimal counterexample at most 1 s (`GOALS` 4).
+Benchmark: 21 bugs, all minimal, median 0.77 s. The ten added cover the
+other P0 classes: multitest leaks (`cf2237a-running-min`,
+`cf2152a-seen-set`, `cf2124c-lcm-leak`, `noip18p2-shared-table`, each a
+value or table above `@!multitest`), overflow at bounds
+(`midpoint-overflow`, `mulmod-overflow`, `cube-mod-overflow`) and
+off-by-one at a range end (`cf2237c-skip-last`, `cf2183b-mex-from-one`,
+`cf2096b-skip-largest`); the slowest is `noip10p1-evict-early` at 3.39 s.
 **Next.** loops whose reads a row cannot describe (40 files: nested
 loops with counts worked out in the pass, `a[i] = read()`, a `continue`
 past a read, `read(gen: f)` in a loop); reads in a branch or a `while
