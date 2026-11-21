@@ -14,7 +14,7 @@ var shapes: [I]List<(V, I)> = []
 var latest = SegTree<V, ?I>(max)
 let next = a.next_greater()
 for j in I:
-    if let i = next[j], let k = latest.fold(a[j] <..a[i]): shapes[k].push((a[j], i))
+    if let i = next[j], let k = latest.fold(a[j].r..a[i].l): shapes[k].push((a[j], i))
     latest.set(a[j], j)
 
 // two: the latest "2" per value whose "1" (next smaller) came before i.

@@ -1606,6 +1606,9 @@ impl<'a> Checker<'a> {
             if let Ty::Array { index, elem } = &base_ty {
                 if index.len() == 1 {
                     self.note_readonly_view(expr, "reverse view");
+                    if std::env::var_os("CPL_SPEC").is_some() {
+                        return base_ty;
+                    }
                     return Ty::Named {
                         name: "List".into(),
                         args: vec![(**elem).clone()],

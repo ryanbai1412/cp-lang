@@ -86,6 +86,10 @@ pub struct Graph<V, E>:
     /// The number of arcs out of `u`. O(1).
     pub fn deg(self, u: V) -> Int = todo
 
+    /// O(n + m): a BFS spanning tree, rooted at the first vertex. Traps if the
+    /// graph is disconnected; a forest is `spanning_forest`.
+    pub fn spanning_tree(self) -> Rooted<V, _> = todo
+
     /// O(deg u): is there an arc `u -> v`? A scan of `u`'s arcs, not a lookup.
     pub fn has(self, u: V, v: V) -> Bool = todo
 

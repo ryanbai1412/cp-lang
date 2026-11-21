@@ -63,7 +63,7 @@ fn solve():
         if i == first_diff and v == p[i]: return none
         let pos = inv_p[v]
         if not forms_inversion(i, v, had_inv):
-            [some(v), next_cap, conds.active_cap(pos)].somes.min()
+            [some(v), next_cap, conds.active_cap(pos)].present().min()
         elif let ac = conds.active_cap(pos), v > ac:
             ac
         else:

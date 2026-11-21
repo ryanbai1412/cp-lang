@@ -11,6 +11,7 @@ if a[0] in [none, 1]: ways[1] = 1
 for i in 1..n:
     for d in 1..=m:
         for x in (d..=m - d).step(d): next[x + d] += ways[x]
-    if let v = a[i]: next.keep_only(v)
+    if let v = a[i]:
+        for x in 1..=m if x != v: next[x] = 0
     ways = next.take_all()
 print(ways.sum())

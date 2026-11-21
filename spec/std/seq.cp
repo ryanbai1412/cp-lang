@@ -170,6 +170,14 @@ pub struct Compressed<D, T>(vals: [D]T):
 /// one compression cannot be used in another. Works on any `Seq`. O(n log n).
 pub fn compress<S: Seq, T>(all: S) = todo
 
+/// Gives the items of a list a fresh domain, so arrays over them are index-safe:
+/// `let (domain Arc, arcs) = [...].with_domain()`. Moves the list, O(1).
+pub fn with_domain<T>(self: List<T>) -> (domain I, [I]T) = todo
+
+/// The cycle of a permutation through `from`: `from`, `perm[from]`, ... until it
+/// returns to `from`. O(1) to make, O(cycle length) to walk.
+pub fn cycle<D>(self: [D]D, from: D) -> yields D = todo
+
 // ---- Range boundary cuts, keyed sorted lookup, ordered Map 4-lookups, and List/Array helpers
 
 /// Left boundary cut of a range (valid even when empty).
