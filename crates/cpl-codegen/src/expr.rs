@@ -143,7 +143,7 @@ impl<'p> Emitter<'p> {
                     }
                 }
             }
-            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _) => {
+            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _, _) => {
                 touch.writes.insert(walk::root(place));
             }
             ExprKind::Do(block) => walk::deep_stmts(block, &mut |stmt| match stmt {
@@ -889,8 +889,8 @@ impl<'p> Emitter<'p> {
                     }
                 }
             }
-            ExprKind::Sort(place, sort_by) => {
-                self.lambda("void", |this, out| this.sort_stmts(place, sort_by, out))
+            ExprKind::Sort(place, sort_by, desc) => {
+                self.lambda("void", |this, out| this.sort_stmts(place, sort_by, desc.as_deref(), out))
             }
             ExprKind::Read(spec) => self.read(spec),
             ExprKind::Print(args, end) => self.lambda("void", |this, out| this.print_stmts(args, end.as_deref(), out)),

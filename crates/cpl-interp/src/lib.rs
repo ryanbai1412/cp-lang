@@ -1174,7 +1174,11 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
                 value
             }
-            ExprKind::Sort(place, sort_by) => {
+            ExprKind::Sort(place, sort_by, desc) => {
+                let desc = match desc {
+                    Some(desc) => self.eval(desc)?.bool(),
+                    None => false,
+                };
                 let mut indices = Vec::new();
                 self.indices(place, &mut indices)?;
                 let cell = self.resolve(place, &mut indices.iter())?;
@@ -1196,7 +1200,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 };
                 match sort_by {
                     SortBy::Natural => {
-                        items_vec = self.merge_sort_ty(items_vec, &elem_ty, span)?;
+                        items_vec = self.merge_sort_ty(items_vec, &elem_ty, desc, span)?;
                     }
                     SortBy::Key(slot, key) => {
                         let base = self.base;
@@ -1205,14 +1209,14 @@ impl<'p, 'o> Interp<'p, 'o> {
                             self.stack[base + slot] = item.clone();
                             keyed.push((self.eval(key)?, item));
                         }
-                        keyed = self.merge_sort_keyed(keyed, &key.ty, span)?;
+                        keyed = self.merge_sort_keyed(keyed, &key.ty, desc, span)?;
                         items_vec = keyed.into_iter().map(|(_, item)| item).collect();
                     }
                     SortBy::Fn { func, is_order } => {
                         let fv = self.eval(func)?;
                         if *is_order {
                             // Merge-sort using fallible comparator `fv(a, b) -> Bool`.
-                            items_vec = self.merge_sort_by(items_vec, &fv, span)?;
+                            items_vec = self.merge_sort_by(items_vec, &fv, desc, span)?;
                         } else {
                             let key_ty = match &func.ty {
                                 Ty::Fn(_, r) => (**r).clone(),
@@ -1223,7 +1227,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                                 let k = self.call_value(fv.clone(), vec![item.clone()], span)?;
                                 keyed.push((k, item));
                             }
-                            keyed = self.merge_sort_keyed(keyed, &key_ty, span)?;
+                            keyed = self.merge_sort_keyed(keyed, &key_ty, desc, span)?;
                             items_vec = keyed.into_iter().map(|(_, item)| item).collect();
                         }
                     }
@@ -1865,17 +1869,19 @@ impl<'p, 'o> Interp<'p, 'o> {
         }
     }
 
-    fn merge_sort_ty(&mut self, mut xs: Vec<Value>, ty: &Ty, span: Span) -> Res<Vec<Value>> {
+    fn merge_sort_ty(&mut self, mut xs: Vec<Value>, ty: &Ty, desc: bool, span: Span) -> Res<Vec<Value>> {
         if xs.len() <= 1 {
             return Ok(xs);
         }
         let mid = xs.len() / 2;
-        let right = self.merge_sort_ty(xs.split_off(mid), ty, span)?;
-        let left = self.merge_sort_ty(xs, ty, span)?;
+        let right = self.merge_sort_ty(xs.split_off(mid), ty, desc, span)?;
+        let left = self.merge_sort_ty(xs, ty, desc, span)?;
         let mut out = Vec::with_capacity(left.len() + right.len());
         let (mut i, mut j) = (0, 0);
         while i < left.len() && j < right.len() {
-            if self.cmp_ty_val(ty, &right[j], &left[i], span)?.is_lt() {
+            // `desc`: the right one goes first only when it is the larger.
+            let order = self.cmp_ty_val(ty, &right[j], &left[i], span)?;
+            if if desc { order.is_gt() } else { order.is_lt() } {
                 out.push(right[j].clone());
                 j += 1;
             } else {
@@ -1892,18 +1898,20 @@ impl<'p, 'o> Interp<'p, 'o> {
         &mut self,
         mut xs: Vec<(Value, Value)>,
         key_ty: &Ty,
+        desc: bool,
         span: Span,
     ) -> Res<Vec<(Value, Value)>> {
         if xs.len() <= 1 {
             return Ok(xs);
         }
         let mid = xs.len() / 2;
-        let right = self.merge_sort_keyed(xs.split_off(mid), key_ty, span)?;
-        let left = self.merge_sort_keyed(xs, key_ty, span)?;
+        let right = self.merge_sort_keyed(xs.split_off(mid), key_ty, desc, span)?;
+        let left = self.merge_sort_keyed(xs, key_ty, desc, span)?;
         let mut out = Vec::with_capacity(left.len() + right.len());
         let (mut i, mut j) = (0, 0);
         while i < left.len() && j < right.len() {
-            if self.cmp_ty_val(key_ty, &right[j].0, &left[i].0, span)?.is_lt() {
+            let order = self.cmp_ty_val(key_ty, &right[j].0, &left[i].0, span)?;
+            if if desc { order.is_gt() } else { order.is_lt() } {
                 out.push(right[j].clone());
                 j += 1;
             } else {
@@ -1916,20 +1924,23 @@ impl<'p, 'o> Interp<'p, 'o> {
         Ok(out)
     }
 
-    fn merge_sort_by(&mut self, mut xs: Vec<Value>, cmp: &Value, span: Span) -> Res<Vec<Value>> {
+    fn merge_sort_by(&mut self, mut xs: Vec<Value>, cmp: &Value, desc: bool, span: Span) -> Res<Vec<Value>> {
         if xs.len() <= 1 {
             return Ok(xs);
         }
         let mid = xs.len() / 2;
         let right = xs.split_off(mid);
-        let left = self.merge_sort_by(xs, cmp, span)?;
-        let right = self.merge_sort_by(right, cmp, span)?;
+        let left = self.merge_sort_by(xs, cmp, desc, span)?;
+        let right = self.merge_sort_by(right, cmp, desc, span)?;
         let mut out = Vec::with_capacity(left.len() + right.len());
         let (mut i, mut j) = (0, 0);
         while i < left.len() && j < right.len() {
-            let lt = self
-                .call_value(cmp.clone(), vec![right[j].clone(), left[i].clone()], span)?
-                .bool();
+            let pair = if desc {
+                vec![left[i].clone(), right[j].clone()]
+            } else {
+                vec![right[j].clone(), left[i].clone()]
+            };
+            let lt = self.call_value(cmp.clone(), pair, span)?.bool();
             if lt {
                 out.push(right[j].clone());
                 j += 1;

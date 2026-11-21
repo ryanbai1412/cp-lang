@@ -138,8 +138,11 @@ impl Scopes {
                 self.place(place);
                 args.iter().for_each(|e| self.expr(e));
             }
-            ExprKind::Sort(place, sort_by) => {
+            ExprKind::Sort(place, sort_by, desc) => {
                 self.place(place);
+                if let Some(desc) = desc {
+                    self.expr(desc);
+                }
                 match sort_by {
                     cpl_ir::SortBy::Natural => {}
                     cpl_ir::SortBy::Key(slot, key) => {
@@ -320,7 +323,7 @@ pub(crate) fn rows(program: &Program) -> BTreeMap<(usize, usize), u32> {
             }
         });
         crate::walk::deep_exprs(body, &mut |e| match &e.kind {
-            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _) => whole(place, &mut rows),
+            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _, _) => whole(place, &mut rows),
             ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
                 for arg in args {
                     if let cpl_ir::Arg::Mut(place) = arg {

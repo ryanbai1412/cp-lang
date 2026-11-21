@@ -101,6 +101,14 @@ pub fn windows<T>(self: List<T>, k: Int) -> yields List<T>:
     assert k >= 1, "a window holds at least one element"
     for i in 0..self.len - k + 1: yield self[i..i + k]
 
+/// Every element with the one after it, the last with the first: the
+/// sides of a polygon, the links of a ring. One pair `(x, x)` for a
+/// single element, none for an empty list.
+///
+///     for (u, v) in poly.cyclic_pairs(): area += cross(u, v)
+pub fn cyclic_pairs<T>(self: List<T>) -> yields (T, T):
+    for i in 0..self.len: yield (self[i], self[(i + 1) % self.len])
+
 /// The pairs `(a[i], b[i])`, as many as the shorter list has.
 pub fn zip<A, B>(a: List<A>, b: List<B>) -> List<(A, B)> = [
     (a[i], b[i]) for i in 0..min(a.len, b.len)
@@ -604,3 +612,10 @@ fn windows_and_zip_walk_in_step():
     assert [w for w in [1, 2, 3, 4].windows(2)] == [[1, 2], [2, 3], [3, 4]]
     assert [w for w in [1, 2].windows(2)] == [[1, 2]] and [w for w in [1, 2].windows(3)].len == 0
     assert zip([1, 2, 3], ["a", "b"]) == [(1, "a"), (2, "b")] and zip([1], List<Int>()).len == 0
+
+@test
+fn cyclic_pairs_close_the_ring():
+    assert [p for p in [1, 2, 3].cyclic_pairs()] == [(1, 2), (2, 3), (3, 1)]
+    assert [p for p in [7].cyclic_pairs()] == [(7, 7)]
+    let empty: List<Int> = []
+    assert [p for p in empty.cyclic_pairs()].len == 0

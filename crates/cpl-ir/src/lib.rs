@@ -335,7 +335,9 @@ pub enum ExprKind {
     /// A builtin that changes its receiver: `xs.push(x)`.
     Mutate(Mutation, Box<Place>, Vec<Expr>),
     /// Sort in place, naturally, by key expression, or by fn/Order value.
-    Sort(Box<Place>, SortBy),
+    /// The last part is `desc:`: when true the order is turned around,
+    /// equal elements staying as they were.
+    Sort(Box<Place>, SortBy, Option<Box<Expr>>),
     Read(Box<Spec>),
     /// `print(a, b)`: the values space-separated, then a newline, or the
     /// text of `end: s` in its place.

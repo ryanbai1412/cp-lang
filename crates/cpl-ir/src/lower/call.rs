@@ -3105,8 +3105,8 @@ impl<'a> Lowerer<'a> {
 
     /// The outer shape of a type, for telling whose method a call means:
     /// a list and an array are one shape, as a map and a hash map are.
-    fn shape(ty: &Ty) -> Option<&'static str> {
-        Some(match ty {
+    fn shape(&self, ty: &Ty) -> Option<String> {
+        let plain = match ty {
             Ty::Int | Ty::I128 | Ty::U64 => "Int",
             Ty::Float => "F64",
             Ty::Bool => "Bool",
@@ -3117,34 +3117,50 @@ impl<'a> Lowerer<'a> {
             Ty::Set(_) | Ty::HashSet(_) => "Set",
             Ty::Opt(_) => "?",
             Ty::Tuple(_) | Ty::Record(_) => "()",
-            Ty::Struct(_) | Ty::Enum(_) => "struct",
+            // A struct or enum is its own shape: `foo(self: A)` is not
+            // for a `B`.
+            Ty::Struct(id) => {
+                return Some(match &self.structs[*id].origin_gen {
+                    Some((gid, _)) => format!("struct<> {gid}"),
+                    None => format!("struct {id}"),
+                })
+            }
+            Ty::Enum(id) => return Some(format!("enum {id}")),
             _ => return None,
-        })
+        };
+        Some(plain.to_string())
     }
 
     /// The shape of a type as a fn's `self` writes it; `None` for one of
     /// the fn's own type parameters, which takes any.
-    fn written_shape(&self, ty: &ast::Type, generics: &[ast::Name]) -> Option<&'static str> {
-        match &ty.kind {
-            ast::TypeKind::Array { .. } | ast::TypeKind::OwnDomain { .. } => Some("List"),
-            ast::TypeKind::Optional(_) => Some("?"),
-            ast::TypeKind::Tuple(_) | ast::TypeKind::Record(_) => Some("()"),
-            ast::TypeKind::Range { .. } => Some("Int"),
+    fn written_shape(&self, ty: &ast::Type, generics: &[ast::Name]) -> Option<String> {
+        let plain = match &ty.kind {
+            ast::TypeKind::Array { .. } | ast::TypeKind::OwnDomain { .. } => "List",
+            ast::TypeKind::Optional(_) => "?",
+            ast::TypeKind::Tuple(_) | ast::TypeKind::Record(_) => "()",
+            ast::TypeKind::Range { .. } => "Int",
             ast::TypeKind::Named { name, .. } => match name.text.as_str() {
-                "Int" | "I128" | "U64" => Some("Int"),
-                "F64" => Some("F64"),
-                "Bool" => Some("Bool"),
-                "Char" => Some("Char"),
-                "Str" => Some("Str"),
-                "List" => Some("List"),
-                "Map" | "HashMap" => Some("Map"),
-                "Set" | "HashSet" => Some("Set"),
-                other if generics.iter().any(|g| g.text == other) => None,
-                other => matches!(self.get_sym(other), Some(Sym::Struct(_) | Sym::GenStruct(_) | Sym::Enum(_)))
-                    .then_some("struct"),
+                "Int" | "I128" | "U64" => "Int",
+                "F64" => "F64",
+                "Bool" => "Bool",
+                "Char" => "Char",
+                "Str" => "Str",
+                "List" => "List",
+                "Map" | "HashMap" => "Map",
+                "Set" | "HashSet" => "Set",
+                other if generics.iter().any(|g| g.text == other) => return None,
+                other => {
+                    return match self.get_sym(other)? {
+                        Sym::Struct(id) => Some(format!("struct {id}")),
+                        Sym::GenStruct(gid) => Some(format!("struct<> {gid}")),
+                        Sym::Enum(id) => Some(format!("enum {id}")),
+                        _ => None,
+                    }
+                }
             },
-            _ => None,
-        }
+            _ => return None,
+        };
+        Some(plain.to_string())
     }
 
     /// Tries calling a free function or generic free function whose first parameter is `self`
@@ -3169,7 +3185,7 @@ impl<'a> Lowerer<'a> {
                 let first = decl.params.first().filter(|p| p.name.text == "self")?;
                 self.written_shape(first.ty.as_ref()?, &decl.generics)
             });
-            let given = self.probe_ty_silent(base).and_then(|ty| Self::shape(&ty));
+            let given = self.probe_ty_silent(base).and_then(|ty| self.shape(&ty));
             if own.is_none() || matches!((takes, given), (Some(takes), Some(given)) if takes != given) {
                 sym = theirs;
             }
@@ -4884,10 +4900,9 @@ impl<'a> Lowerer<'a> {
     }
 
     fn sort_place(&mut self, place: Place, elem: &Ty, args: &[ast::Arg], span: Span) -> Expr {
-        // `desc: true`: turned around, sorted as the other arguments say,
-        // then turned around again, so the largest comes first and equal
-        // keys stay in the order they had (the sort keeps the turned
-        // order of equal keys, and the second turn puts it back).
+        // `desc: true`: the same sort asking its comparison the other way
+        // round, so the largest comes first and equal keys stay in the
+        // order they had.
         if let Some(at) = args.iter().position(|arg| arg.name.as_ref().is_some_and(|name| name.text == "desc")) {
             let rest: Vec<ast::Arg> = args.iter().enumerate().filter(|(k, _)| *k != at).map(|(_, arg)| arg.clone()).collect();
             let elem = elem.clone();
@@ -4895,12 +4910,11 @@ impl<'a> Lowerer<'a> {
                 let desc = lw.expect(&args[at].value, &Ty::Bool);
                 let desc = lw.hold(desc, out);
                 let place = lw.settle_indexes(place, out);
-                let turn = lw.mk(ExprKind::Mutate(Mutation::Reverse, Box::new(place.clone()), Vec::new()), Ty::Unit, span);
-                let turn = Stmt::If(desc, Block { stmts: vec![Stmt::Expr(turn)] }, Block::default());
-                out.push(turn.clone());
-                let sort = lw.sort_place(place, &elem, &rest, span);
+                let mut sort = lw.sort_place(place, &elem, &rest, span);
+                if let ExprKind::Sort(_, _, turned) = &mut sort.kind {
+                    *turned = Some(Box::new(desc));
+                }
                 out.push(Stmt::Expr(sort));
-                out.push(turn);
                 out.push(Stmt::Give(lw.mk(ExprKind::Unit, Ty::Unit, span)));
             });
         }
@@ -5028,7 +5042,7 @@ impl<'a> Lowerer<'a> {
                 return self.err_expr(span);
             }
         };
-        self.mk(ExprKind::Sort(Box::new(place), key), Ty::Unit, span)
+        self.mk(ExprKind::Sort(Box::new(place), key, None), Ty::Unit, span)
     }
 
     fn domain_field(&mut self, id: DomainId, name: &ast::Name, span: Span) -> Expr {

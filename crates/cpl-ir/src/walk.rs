@@ -83,8 +83,11 @@ pub fn children<'p>(e: &'p Expr, f: &mut dyn FnMut(&'p Expr)) {
             place_exprs(place, f);
             args.iter().for_each(f);
         }
-        ExprKind::Sort(place, sort_by) => {
+        ExprKind::Sort(place, sort_by, desc) => {
             place_exprs(place, f);
+            if let Some(desc) = desc {
+                f(desc);
+            }
             match sort_by {
                 crate::SortBy::Natural => {}
                 crate::SortBy::Key(_, key) => f(key),
@@ -304,7 +307,7 @@ impl Effects {
                     }
                 }
             }
-            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _) => self.store(place),
+            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _, _) => self.store(place),
             _ => {}
         }
     }

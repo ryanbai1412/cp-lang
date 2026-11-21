@@ -1006,6 +1006,27 @@ impl<'a> Checker<'a> {
         Some(out)
     }
 
+    /// The top-level fn `name` whose first parameter is a `self` of the
+    /// struct or enum `base`, as the method it is: the fn without that
+    /// parameter.
+    fn own_method(&mut self, base: &Ty, name: &str) -> Option<Ty> {
+        let Ty::Named { name: on, .. } = base else {
+            return None;
+        };
+        let def = self.env.global(name)?;
+        let Def::Fn {
+            ty: Ty::Fn { params, ret }, ..
+        } = &*def
+        else {
+            return None;
+        };
+        let first = params.first().filter(|p| p.name == "self")?;
+        matches!(&first.ty, Ty::Named { name: takes, .. } if takes == on).then(|| Ty::Fn {
+            params: params[1..].to_vec(),
+            ret: ret.clone(),
+        })
+    }
+
     fn field(&mut self, base: &Expr, name: &ast::Name) -> Ty {
         // `treap.merge` after `use lib.treap`: a public name of a module.
         if let ExprKind::Name(alias) = &base.kind {
@@ -1151,6 +1172,11 @@ impl<'a> Checker<'a> {
             Some(ty) => self.settle(&ty),
             None => match methods.iter().find(|(m, _)| *m == name.text) {
                 Some((_, ty)) => self.settle(ty),
+                // `fn area(self: Sq) -> Int` at the top of the file is
+                // a method of `Sq`, and of no other struct.
+                None if self.own_method(&base_ty, &name.text).is_some() => {
+                    self.own_method(&base_ty, &name.text).unwrap_or(Ty::Unknown)
+                }
                 None => {
                     let known = field_names
                         .iter()

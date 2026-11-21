@@ -178,9 +178,12 @@ impl<'p> Facts<'p> {
                     self.expr(fn_id, arg);
                 }
             }
-            ExprKind::Sort(place, sort_by) => {
+            ExprKind::Sort(place, sort_by, desc) => {
                 self.store(fn_id, place);
                 self.place(fn_id, place);
+                if let Some(desc) = desc {
+                    self.expr(fn_id, desc);
+                }
                 match sort_by {
                     cpl_ir::SortBy::Natural => {}
                     cpl_ir::SortBy::Key(slot, key) => {

@@ -3196,8 +3196,11 @@ fn collect_expr_calls(e: &Expr, out: &mut Vec<FnId>) {
                 collect_expr_calls(a, out);
             }
         }
-        ExprKind::Sort(place, sort_by) => {
+        ExprKind::Sort(place, sort_by, desc) => {
             collect_place_calls(place, out);
+            if let Some(desc) = desc {
+                collect_expr_calls(desc, out);
+            }
             match sort_by {
                 SortBy::Natural => {}
                 SortBy::Key(_, key) => collect_expr_calls(key, out),

@@ -1733,6 +1733,13 @@ impl<'a> Lowerer<'a> {
             self.grid_keep(target, op == ast::AssignOp::Max, value, false, out);
             return;
         }
+        if op == ast::AssignOp::Set && self.grid_row(target).is_some() {
+            let one = self.probe_ty_silent(value).is_some_and(|ty| !matches!(ty, Ty::List(_) | Ty::Array { .. }));
+            if one {
+                self.grid_fill(target, value, out);
+                return;
+            }
+        }
         if let (ast::ExprKind::Tuple(targets), ast::AssignOp::Set) = (&target.kind, op) {
             // `(a[d], b[d]) = read()`: the places say what is read.
             let wanted: Option<Vec<Ty>> =
@@ -2082,6 +2089,41 @@ impl<'a> Lowerer<'a> {
         let lid = self.fresh_loop();
         out.push(Stmt::For(lid, at, iter, Block { stmts: body }));
         changed
+    }
+
+    /// `g[r, lo..hi] = 0`, `a[l..r] = true`: every cell of one part of a
+    /// row or column takes the one value, where it is, in one loop.
+    fn grid_fill(&mut self, target: &ast::Expr, value: &ast::Expr, out: &mut Vec<Stmt>) {
+        let span = target.span;
+        let Some((base, indices, axis)) = self.grid_row(target) else {
+            return;
+        };
+        let place = self.place(base);
+        let place = self.settle_indexes(place, out);
+        if let PlaceKind::Local(s) = root_place(&place) {
+            self.cx.mut_slots.insert(s);
+        }
+        let Some((dims, elem)) = Self::axes_of(&place.ty) else {
+            return;
+        };
+        let at = self.temp(match dims[axis] {
+            Dim::Pos(d) => Ty::Pos(d),
+            Dim::Bound(d) => Ty::Bound(d),
+            Dim::Int | Dim::IntFrom(_) => Ty::Int,
+        });
+        let cell = self.axis_cell(&place.ty, indices, at, span);
+        let cell: Vec<Expr> =
+            cell.into_iter().enumerate().map(|(k, index)| if k == axis { index } else { self.hold(index, out) }).collect();
+        let grid = place_to_expr(&place);
+        let len = self.axis_len(grid, axis, span);
+        let (lo, hi) = self.axis_part(&indices[axis], dims[axis], len, out);
+        let (lo, hi) = (self.hold(lo, out), self.hold(hi, out));
+        let cell = Place { kind: PlaceKind::Index(Box::new(place), cell), ty: elem.clone(), span: self.span(span) };
+        let value = self.expect(value, &elem);
+        let value = self.hold(value, out);
+        let iter = Iter::Range { lo, hi, step: None, rev: false };
+        let lid = self.fresh_loop();
+        out.push(Stmt::For(lid, at, iter, Block { stmts: vec![Stmt::Assign(cell, AssignOp::Set, value)] }));
     }
 
     /// `a max= b` on two rows: every cell of `a` takes the larger of the

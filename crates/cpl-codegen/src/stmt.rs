@@ -88,7 +88,7 @@ impl<'p> Emitter<'p> {
                 }
             }
             ExprKind::Print(args, end) => self.print_stmts(args, end.as_deref(), out),
-            ExprKind::Sort(place, sort_by) => self.sort_stmts(place, sort_by, out),
+            ExprKind::Sort(place, sort_by, desc) => self.sort_stmts(place, sort_by, desc.as_deref(), out),
             ExprKind::If(cond, then, otherwise) if e.ty == Ty::Unit => {
                 let cond = self.expr(cond).text;
                 self.line(out, &format!("if ({cond}) {{"));
@@ -117,7 +117,7 @@ impl<'p> Emitter<'p> {
         }
     }
 
-    pub fn sort_stmts(&mut self, place: &Place, sort_by: &SortBy, out: &mut String) {
+    pub fn sort_stmts(&mut self, place: &Place, sort_by: &SortBy, desc: Option<&Expr>, out: &mut String) {
         let mut p = self.place(place);
         if !self.place_is_plain(place) {
             let r = self.temp();
@@ -129,10 +129,24 @@ impl<'p> Emitter<'p> {
         } else {
             p
         };
+        // `desc:` asks the comparison the other way round, which leaves
+        // equal elements in the order they had.
+        let desc = desc.map(|desc| self.expr(desc).at(crate::emit::COND + 1));
+        let turned = |less: String, more: String| match &desc {
+            None => less,
+            Some(desc) => format!("{desc} ? {more} : {less}"),
+        };
         match sort_by {
-            SortBy::Natural => {
-                self.line(out, &format!("std::sort({seq}.begin(), {seq}.end());"));
-            }
+            SortBy::Natural => match &desc {
+                None => self.line(out, &format!("std::sort({seq}.begin(), {seq}.end());")),
+                Some(desc) => {
+                    let (a, b) = (self.temp(), self.temp());
+                    self.line(
+                        out,
+                        &format!("std::stable_sort({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {desc} ? {b} < {a} : {a} < {b}; }});"),
+                    );
+                }
+            },
             SortBy::Key(slot, key) => {
                 let elem = self.locals()[*slot].ty.clone();
                 let cpp = self.ty(&elem);
@@ -150,7 +164,7 @@ impl<'p> Emitter<'p> {
                 );
                 self.line(
                     out,
-                    &format!("std::stable_sort({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {kf}({a}) < {kf}({b}); }});"),
+                    &format!("std::stable_sort({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {}; }});", turned(format!("{kf}({a}) < {kf}({b})"), format!("{kf}({b}) < {kf}({a})"))),
                 );
             }
             SortBy::Fn { func, is_order } => {
@@ -160,12 +174,12 @@ impl<'p> Emitter<'p> {
                 if *is_order {
                     self.line(
                         out,
-                        &format!("std::stable_sort({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {kf}({a}, {b}); }});"),
+                        &format!("std::stable_sort({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {}; }});", turned(format!("{kf}({a}, {b})"), format!("{kf}({b}, {a})"))),
                     );
                 } else {
                     self.line(
                         out,
-                        &format!("std::stable_sort({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {kf}({a}) < {kf}({b}); }});"),
+                        &format!("std::stable_sort({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {}; }});", turned(format!("{kf}({a}) < {kf}({b})"), format!("{kf}({b}) < {kf}({a})"))),
                     );
                 }
             }

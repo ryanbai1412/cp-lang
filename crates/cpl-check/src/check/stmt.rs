@@ -652,6 +652,18 @@ impl<'a> Checker<'a> {
                 if matches!(op, AssignOp::Max | AssignOp::Min) {
                     self.row_keep(target, &target_ty, value, &value_ty);
                 }
+                // `a[l..r] = 0`, `g[r, ..] = 0`: one value for every cell
+                // of the part.
+                let part = matches!(&target.kind, ExprKind::Index { indices, .. }
+                    if indices.iter().any(|index| matches!(index.kind, ExprKind::Range { step: None, .. })));
+                let row = |ty: &Ty| {
+                    matches!(ty, Ty::Array { .. }) || matches!(ty, Ty::Named { name, .. } if name == "List")
+                };
+                let target_ty = if *op == AssignOp::Set && part && row(&target_ty) && !row(&value_ty) {
+                    self.element_ty(&target_ty)
+                } else {
+                    target_ty
+                };
                 if *op == AssignOp::Set {
                     self.expect_fits(&value_ty, &target_ty, value, |c, got, want| {
                         format!(

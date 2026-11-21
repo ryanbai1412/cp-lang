@@ -53,7 +53,7 @@ fn small_place(block: &Block, bools: &mut bool, chars: &mut bool) {
                 }
             }
         }
-        ExprKind::Mutate(_, target, _) | ExprKind::Sort(target, _) => place(target),
+        ExprKind::Mutate(_, target, _) | ExprKind::Sort(target, _, _) => place(target),
         _ => {}
     });
 }
@@ -518,7 +518,10 @@ impl<'p> Tables<'p> {
                     self.expr(home, arg);
                 }
             }
-            ExprKind::Sort(place, by) => {
+            ExprKind::Sort(place, by, desc) => {
+                if let Some(desc) = desc {
+                    self.expr(home, desc);
+                }
                 let root = self.root(home, place);
                 self.uses_whole(root);
                 walk::place_exprs(place, &mut |e| self.expr(home, e));
