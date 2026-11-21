@@ -1072,7 +1072,7 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
     /// Whether `u` and `v` are in the same tree. Amortized O(log n).
     pub fn connected(mut self, u: V, v: V) -> Bool = self.root_of(u) == self.root_of(v)
 
-    /// Add the edge `u`-`v`; they must be in different trees. Amortized O(log n).
+    /// Add the edge `u`-`v`; they must be in different trees, which costs one extra `root_of`. Amortized O(log n).
     pub fn link(mut self, u: V, v: V):
         self.make_root(u)
         assert self.root_of(v) != u, "link joins two trees; these vertices are already connected"

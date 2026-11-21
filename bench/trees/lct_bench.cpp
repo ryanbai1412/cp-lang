@@ -34,8 +34,9 @@ int access(int x) {
     splay(x); return joined;
 }
 void make_root(int v) { access(v); turn(v); }
-void link(int u, int v) { make_root(u); pa[u] = v; }
-void cut(int u, int v) { make_root(u); access(v); lc[v] = 0; pa[u] = 0; pull(v); }
+int root_of(int v) { access(v); int x = v; push(x); while (lc[x]) { x = lc[x]; push(x); } splay(x); return x; }
+void link(int u, int v) { make_root(u); if (root_of(v) == u) abort(); pa[u] = v; }
+void cut(int u, int v) { make_root(u); access(v); if (lc[v] != u || rc[u]) abort(); lc[v] = 0; pa[u] = 0; pull(v); }
 int main() {
     scanf("%d", &n);
     lc.assign(n + 1, 0); rc = lc; pa = lc; flip.assign(n + 1, 0); val.assign(n + 1, 0);

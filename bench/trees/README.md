@@ -49,9 +49,16 @@ brings it to 187 MB, and the rest is 64-bit `dep`, `far` and `sz`.
 `python3 lct_gen.py 200000 1000000 1`: n = 2 * 10^5 vertices and 10^6
 operations, a third each of `set`, cut-and-relink and `fold_path`.
 
+Both check what `std.tree` checks: `link` traps when the vertices are already
+connected (one `root_of`, as KACTL's `assert(!connected(u, v))`) and `cut`
+traps when the edge is missing.
+
 | C++ | CP Lang | ratio | C++ RSS | CP Lang RSS |
 |---:|---:|---:|---:|---:|
-| 0.94 s | 1.17 s | 1.24x | 9 MB | 47 MB |
+| 1.17 s | 1.18 s | 1.01x | 9 MB | 47 MB |
 
-Best of three, outputs identical. This misses the 1.1x target. The RSS gap
-is CP Lang reading the 21 MB input in one buffer.
+Best of seven, outputs identical. The generated splay, rotate and pull match
+the C++ line for line (optional links are `-1`-niche ints, the monoid op is a
+direct call); without the `link` check the C++ runs in 0.94 s, and so does
+the generated C++ with that one call deleted. The RSS gap is CP Lang reading
+the 21 MB input in one buffer.
