@@ -2102,12 +2102,17 @@ print(b.|)
         .find(|item| item.get("label").as_str() == Some("area"))
         .unwrap()
         .clone();
-    assert!(area.get("insertText").as_str().is_none_or(|t| t == "area"), "{area:?}");
+    assert!(
+        area.get("insertText").as_str().is_none_or(|t| t == "area"),
+        "{area:?}"
+    );
 
     let text = src.replacen("print(b.|)\n", "", 1);
     let (mut server, diagnostics) = open(&text);
     assert!(
-        diagnostics.iter().all(|d| d.get("severity").as_u32() != Some(1)),
+        diagnostics
+            .iter()
+            .all(|d| d.get("severity").as_u32() != Some(1)),
         "{diagnostics:?}"
     );
     let shown = |server: &mut Server, character| {
@@ -2153,4 +2158,62 @@ print(xs.sorted(), xs.rev, fold(Monoid.sum, xs), m)
     let fold = shown(&mut server, 4, 28);
     assert!(fold.contains("-> T\ncost: O(n)\n```"), "{fold}");
     assert_eq!(shown(&mut server, 2, 4), "```cp\nm: Int in 2..=10001\n```");
+}
+
+/// A range the bounds prove reaches into fns and loops, and a local that
+/// shadows a bounded name hides its bound.
+#[test]
+fn inlay_hints_and_hover_show_ranges_inside_fns_and_loops() {
+    let src = "let n: 1..=100 = read()\nfn f(k: 1..=n) -> Int:\n    let t = k * 2\n    let n = k / 2\n    let u = n + 1\n    for i in 0..k:\n        let j = i + t\n        print(j)\n    t + u\nfor i in 1..=n:\n    let sq = i * i\n    print(sq, f(i))\n";
+    let (mut server, diagnostics) = open(src);
+    assert!(
+        !format!("{diagnostics:?}").contains("\"E0"),
+        "{diagnostics:?}"
+    );
+    let reply = server.handle(&request(
+        35,
+        "textDocument/inlayHint",
+        obj([
+            ("textDocument", doc()),
+            ("range", obj([("start", pos(0, 0)), ("end", pos(12, 0))])),
+        ]),
+    ));
+    let ranged: Vec<(u32, &str)> = reply[0]
+        .get("result")
+        .as_array()
+        .iter()
+        .map(|h| {
+            (
+                h.at(&["position", "line"]).as_u32().unwrap(),
+                h.get("label").as_str().unwrap(),
+            )
+        })
+        .filter(|(_, label)| label.contains(" in "))
+        .collect();
+    assert_eq!(
+        ranged,
+        [
+            (2, ": Int in 2..=200"),
+            (6, ": Int in 2..=299"),
+            (10, ": Int in 1..=10000")
+        ]
+    );
+    let hover = hover_at(&mut server, 6, 12);
+    assert!(
+        hover
+            .at(&["contents", "value"])
+            .as_str()
+            .unwrap()
+            .contains("j: Int in 2..=299"),
+        "{hover:?}"
+    );
+    let hover = hover_at(&mut server, 5, 8);
+    assert!(
+        !hover
+            .at(&["contents", "value"])
+            .as_str()
+            .unwrap()
+            .contains(" in "),
+        "a loop variable already shows its range as its type: {hover:?}"
+    );
 }

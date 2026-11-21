@@ -28,7 +28,7 @@ impl Interval {
 }
 
 /// What the top level of a file says about its names.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub(crate) struct Bounds {
     values: HashMap<String, Interval>,
     /// The number of values of each domain, at most.
@@ -92,13 +92,17 @@ impl Bounds {
         bounds
     }
 
-    /// What the declarations prove about the value of the top-level `name`.
-    pub(crate) fn value(&self, name: &str) -> Option<Interval> {
-        self.values.get(name).copied()
+    /// From here on `name` is in `value`, or unknown: a local that
+    /// shadows a bounded name hides its bound.
+    pub(crate) fn bind(&mut self, name: &str, value: Option<Interval>) {
+        match value {
+            Some(value) => self.values.insert(name.to_string(), value),
+            None => self.values.remove(name),
+        };
     }
 
     /// The values `lo..hi` or `lo..=hi` can cover.
-    fn span(&self, lo: &Expr, hi: &Expr, inclusive: bool) -> Option<Interval> {
+    pub(crate) fn span(&self, lo: &Expr, hi: &Expr, inclusive: bool) -> Option<Interval> {
         let (lo, hi) = (self.expr(lo)?, self.expr(hi)?);
         Some(Interval {
             lo: lo.lo,
@@ -110,7 +114,7 @@ impl Bounds {
         })
     }
 
-    fn range(&self, ty: &Type) -> Option<Interval> {
+    pub(crate) fn range(&self, ty: &Type) -> Option<Interval> {
         match &ty.kind {
             TypeKind::Range {
                 lo: Some(lo),

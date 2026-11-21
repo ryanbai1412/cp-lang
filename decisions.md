@@ -2120,6 +2120,15 @@ The cost comes from the docs because the docs already state every stdlib cost (A
 computed cost would need a cost analysis the checker does not have. Reverse: drop `cost_of`
 in `crates/cpl-check/src/hover.rs` and the range branch of `textDocument/hover`.
 
+29.19. **Proven ranges reach into fns and loops.** `cpl_lint::proven_ranges` walks fn bodies,
+`for`, `while`, `unchecked` and plain `if` blocks with a copy of the top-level bounds: a typed
+range parameter (`k: 1..=n`) and a loop over `lo..hi` bind their range, a `let` binds what its
+value proves, and any other binding of a name forgets its bound, so a shadowing local never
+inherits one. Intervals stay non-relational (`5 * k - 4 * k` is not `k`), the same arithmetic the
+lint already proves overflow with. `var`s get no range: a later assignment would make it a lie.
+Hover adds the range only to a binding typed `Int`; a loop variable already hovers `i: 0..k`.
+Reverse: restore the top-level loop in `rules::proven_ranges`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

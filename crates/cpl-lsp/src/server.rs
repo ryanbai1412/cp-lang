@@ -188,7 +188,14 @@ impl Server {
                 let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
                 let proven = cpl_lint::proven_ranges(&analysis.text)
                     .into_iter()
-                    .find(|&(at, lo, hi)| at == hover.span.start && lo != hi);
+                    .find(|&(at, lo, hi)| at == hover.span.start && lo != hi)
+                    .filter(|_| {
+                        hover
+                            .text
+                            .lines()
+                            .next()
+                            .is_some_and(|l| l.ends_with(": Int"))
+                    });
                 if let Some((_, lo, hi)) = proven {
                     let (first, rest) = hover.text.split_once('\n').unwrap_or((&hover.text, ""));
                     let rest = if rest.is_empty() {

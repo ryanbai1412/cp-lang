@@ -619,7 +619,7 @@ no longer shows first as a wrong argument or index count); the lints
 `cpl lint` reports, each with its `cpl fix` fix as a quick fix, and
 `cpl fix` on the buffer as a `source.fixAll.cpl` action, removed syntax first (the replaced
 spellings, `where`, `--- multitest ---`, `.pow` and getter `()`, each a quick fix tested on a
-real port; a getter, built-in or `@get`, completes as a property and hovers its type; hover adds the `cost:` a stdlib or built-in member documents and the range the input bounds prove for a top-level `let`); a panic becomes an error reply plus an
+real port; a getter, built-in or `@get`, completes as a property and hovers its type; hover adds the `cost:` a stdlib or built-in member documents and the range the input bounds prove for a `let`, in a fn or loop too); a panic becomes an error reply plus an
 internal-error diagnostic. Unit tests in `src/tests.rs`; `tests/latency.rs`
 measures 6.1 (492 lines, debug build: keystroke to diagnostics median
 6 ms, hover 0.06 ms, completion 1.8 ms). The VS Code extension has a
@@ -633,7 +633,7 @@ Hover shows the index space and its bound for arrays and positions
 total), appends the declaration's `///` doc, which in the stdlib states the
 cost, and definition on a field or method jumps to it, in the stdlib too.
 Gaps against `plan/60`: no computed cost on hover; no proven range of an
-expression; proven ranges in inlay hints are top-level only; no cost or overflow
+expression or a `var`; no cost or overflow
 warnings; rename sees open files, not the folder on disk, and misses
 local shadowing; no refactorings or "fix all"; no
 auto-import; no `cpl test` lens; Emacs (eglot draws no lenses) and Helix
@@ -653,8 +653,8 @@ compiler and drives each against the real server (Neovim: diagnostic, hover
 and the run lens through `cpl.exec`; Emacs: mode, faces, eglot entry; Helix: `--health`), in `--full`.
 **Bar.** LSP fixture tests per `plan/60` 6.7 for every request; each editor
 integration built and smoke-tested in `scripts/check.sh --full`.
-**Next.** Fixture tests; proven ranges inside fns, on hover and on
-expressions (needs the checker's own range analysis); a test lens; run the JetBrains tests and add them to `--full`, then
+**Next.** Fixture tests; proven ranges of expressions and `var`s
+(needs the checker's own range analysis); a test lens; run the JetBrains tests and add them to `--full`, then
 the trace's step sync in its tool window; tree-sitter grammar (Helix
 highlighting, a Zed extension, Neovim tree-sitter); fuzzer.
 
