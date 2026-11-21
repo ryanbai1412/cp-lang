@@ -47,11 +47,10 @@ against the latest `main`.
    original; source repos also hold drafts). Each writes the best program in the language, differential-tests
    it against the accepted C++ (interpreter and generated C++), measures tokens,
    runtime, memory and bytes, and files friction reports: the snippet, what
-   felt hacky, which goal it hurts, and a proposed general fix. It also
-   writes the dream program, `<group>/dream/NAME.cp`: the same solution as
-   it should read, unconstrained by today's compiler or stdlib (new syntax,
-   new library calls, anything), not gated or formatted. Each friction cites
-   the dream lines that remove it. Triage mines recurring dream constructs
+   felt hacky, which goal it hurts, and a proposed general fix. The dream
+   program (`<group>/dream/NAME.cp`, the solution as it should read) comes
+   first, and the port follows it as closely as today allows; the standard,
+   checklist and cold taste review are in `plan/PORTING.md`. Triage mines recurring dream constructs
    as language proposals; adopted or rejected, each goes in `decisions.md`.
 2. **Triage.** Cluster friction into general mechanisms. Reject one-problem
    helpers. Decide where each fix belongs: core, stdlib, sugar or tooling.

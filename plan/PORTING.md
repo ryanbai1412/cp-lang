@@ -1,0 +1,49 @@
+# PORTING.md
+
+How to port an accepted solution. A port is evidence about the language, so
+the bar is the exemplars (`design/EXEMPLARS.md`, `design/sketches/`), not
+"it passes the gate".
+
+## Order of work
+
+1. **Understand the problem, not the C++.** Read the statement and the
+   editorial idea. Check the original is complete and passes the samples
+   (`scripts/pick-ports.py` filters drafts, but verify).
+2. **Write the dream first:** `proto/ports/<group>/dream/NAME.cp`, before
+   you look at what compiles. The program as it should read in the ideal
+   CP Lang: invent syntax and library calls freely, in the exemplars' style.
+   Not gated or formatted. If the dream reads like the C++, start over.
+3. **Write the port** as close to the dream as today's language allows,
+   gate it (`proto/ports/<group>/gate.sh NAME 150`), and measure tokens,
+   runtime on a max input against the C++, and emitted bytes.
+4. **Report every gap** between port and dream in
+   `research/frictions/NAME.md`: the snippet, the dream lines that remove it,
+   the goal it hurts, a general fix (never a one-problem helper), severity.
+5. **Self-review against the checklist below**, then commit port, dream and
+   report together: `port(NAME): <what the program does>`.
+
+## Taste checklist
+
+A port fails review if any of these hold and the gap is not reported:
+
+- It does not read like the editorial: the invariant, recurrence or
+  algorithm is buried in index bookkeeping.
+- It hand-rolls a standard algorithm or structure (DFS for a tree path,
+  diameter, a search loop with a `?T` flag where `find`/`first`/`any`
+  belongs, a manual run-length loop).
+- It keeps two copies of one fact in sync by hand (symmetric matrices,
+  parallel arrays, sentinel bookkeeping).
+- It discards results (`let _ =`) or threads state a closure could own.
+- It mixes index spaces through raw `Int` where a domain would keep them
+  apart, or pads with sentinels where a type or `?T` says it.
+- Each fact is not in one place: the bound, base or modulus is repeated.
+- It is slower than the C++ by more than 1.1x on max input without a
+  performance friction filed.
+
+## Review
+
+Every new port gets a cold taste review: a fresh agent with only
+`AGENTS.md`, this file, the exemplars, the statement, the dream and the
+port. It scores the port 1 to 5 against the dream and lists the failures.
+Ports under 4 go back to their author with the review before the wave
+counts as done. Recurring findings become lane work or checklist lines.

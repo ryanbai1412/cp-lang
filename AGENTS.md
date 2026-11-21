@@ -11,6 +11,7 @@ Then read, in order:
    mechanisms, exemplars) and `design/DELTA.md`, the gap from today.
 4. `decisions.md`: every design call, its reason and how to reverse it.
 5. `REPO.md`: where everything lives.
+6. `plan/PORTING.md`: if you port solutions, the bar and the review.
 
 `plan/agent-context.md` has Ryan's own words; `plan/1x-*.md` describes the
 language as implemented today.
