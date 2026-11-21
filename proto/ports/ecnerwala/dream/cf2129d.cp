@@ -32,7 +32,7 @@ var dp: [0..=n, 0..=n, 0..=max_score, 0..=max_score]Z = 0
 for i in 0..=n: dp[i, i, 0, 0] = 1
 
 for len in 1..=n:
-    let pick_prob = Z(len).inv
+    let pick_prob = Z(len).inv()
     for l in 0..=n - len:
         let r = l + len
         let lim_l = if l > 0: target[l - 1] else: none

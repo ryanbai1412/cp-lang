@@ -29,7 +29,7 @@ let tree = Rooted.from_parents(parent)
 
 var sub: [V]P = P.one
 for v in V.rev:
-    sub[v] += sub[v].integral
+    sub[v] += sub[v].integral()
     if let p = parent[v]: sub[p] *= sub[v]
 
 var before: [V]P = P.one
@@ -47,12 +47,12 @@ for t in V.rev if t != V.first:
     var ways = P.one
     for (c, p) in tree.path(t, stop).drop_last().with_prev:
         if let c = c: ways *= before[c]
-        dp[p] += moving.transposed_mul(ways.integral)
-        ways += ways.integral
+        dp[p] += moving.transposed_mul(ways.integral())
+        ways += ways.integral()
 
     var carry = P.zero
     for (c, p) in tree.path(t, V.first).with_prev:
         if let c = c: carry = carry.transposed_mul(before[c])
-        (dp[p], carry) = (P.x * (P.x * dp[p]).deriv + carry, carry + dp[p])
+        (dp[p], carry) = (P.x * (P.x * dp[p]).deriv() + carry, carry + dp[p])
     ans.push(dp[V.first!][0])
 print(ans)

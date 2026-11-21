@@ -190,10 +190,10 @@ pub struct Palindromes(odd: List<Int>, even: List<Int>):
     pub fn is_palindrome<R>(self, r: R) -> Bool = todo
 
     /// Total number of non-empty palindromic substrings. O(n).
-    pub @get fn count(self) -> Int = todo
+    pub fn count(self) -> Int = todo
 
     /// Longest palindromic substring range `(l, r)` (half-open); ties go to the leftmost. O(n).
-    pub @get fn longest(self) -> (l: Int, r: Int) = todo
+    pub fn longest(self) -> (l: Int, r: Int) = todo
 
 /// Linear-time palindrome radii (Manacher's algorithm). Works on any `Indexed` sequence. O(n).
 @allow(unproven_list_index)
@@ -241,7 +241,7 @@ pub struct SuffixArray:
     pub fn compare(self, l1: Int, r1: Int, l2: Int, r2: Int) -> Int = todo
 
     /// O(n). Number of distinct non-empty substrings of `s`.
-    pub @get fn distinct(self) -> Int = todo
+    pub fn distinct(self) -> Int = todo
 
     /// O(1). Minimum adjacent LCP across the rank range `r` (`r.start..r.end`).
     pub fn lcp_of_ranks(self, r: Range<Int>) -> Int = todo
@@ -512,7 +512,7 @@ pub struct SuffixAutomaton<A>:
     pub fn contains<S: Seq>(self, word: S) -> Bool = todo
 
     /// Number of distinct non-empty substrings. O(states).
-    pub @get fn distinct(self) -> Int = todo
+    pub fn distinct(self) -> Int = todo
 
     /// All states sorted by non-decreasing `longest(state)` via counting sort. O(states).
     @allow(unproven_list_index)

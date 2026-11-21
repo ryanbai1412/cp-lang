@@ -184,8 +184,13 @@ for d in divisors(n):
 | `a.runs(by: k)` | `Seq` of views: maximal equal-key runs | `.keys` of each is its range |
 | `s.step(k)` | every k-th element | ranges and indexed |
 
-Every O(1) view and adapter that takes no arguments is an `@get` property
-(`.rev`, `.items`, `.pairs`, `.keys`); everything with arguments is a call.
+**Parentheses mean work.** Only O(1) members read without `()`: `@get`
+properties such as `.len`, and views and generators, which cost O(1) to
+make and are paid for as you walk them (`.rev`, `.items`, `.pairs`, `.keys`,
+`g.edges`, `t.tour`). Anything that computes or allocates up front is a
+call, however few arguments it takes: `g.transpose()`, `t.centroid()`,
+`a.sorted()`, `.collect()`. The checker rejects an `@get` whose documented
+cost isn't O(1) to make.
 
 ## Making containers
 

@@ -66,7 +66,7 @@ pub struct FlowGraph<V>:
     /// O(1). The capacity left on `a` in the residual network: `cap(a) - flow(a)`.
     pub fn residual(self, a: Arc) -> Int = todo
 
-    /// O(E). Every arc added, in the order `add` returned them (never a reverse arc).
+    /// O(1) to make, O(E) to walk. Every arc added, in the order `add` returned them (never a reverse arc).
     pub @get fn arcs(self) -> yields Arc = todo
 
     /// O(deg u). The arcs added out of `u`, in `add` order.
@@ -137,7 +137,7 @@ pub struct CostFlow<V>:
     /// O(1). Change arc `a`'s capacity, as `FlowGraph.set_cap`.
     pub fn set_cap(mut self, a: Arc, cap: ?Int) = todo
 
-    /// O(E). Every arc added, in `add` order.
+    /// O(1) to make, O(E) to walk. Every arc added, in `add` order.
     pub @get fn arcs(self) -> yields Arc = todo
 
     /// O(V E log V) worst case by cost scaling. Saturate every negative-cost cycle of the

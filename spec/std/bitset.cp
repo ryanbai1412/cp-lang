@@ -11,10 +11,10 @@ pub struct Bitset<D>:
     pub fn new() -> Bitset<D> = todo
 
     /// The empty set, matching `Subset<D>.empty`. O(K / 64).
-    pub @get fn empty() -> Bitset<D> = todo
+    pub fn empty() -> Bitset<D> = todo
 
     /// The full set containing every position of `D`, matching `Subset<D>.full`. O(K / 64).
-    pub @get fn full() -> Bitset<D> = todo
+    pub fn full() -> Bitset<D> = todo
 
     /// The singleton set `{i}`, matching `Subset<D>.single(i)`. O(K / 64).
     pub fn single(i: D) -> Bitset<D> = todo
@@ -47,13 +47,10 @@ pub struct Bitset<D>:
     pub fn set(self, i: D, on: Bool) -> Bitset<D> = todo
 
     /// Complement of `self` within `D`, matching `Subset<D>.complement`. O(K / 64).
-    pub @get fn complement(self) -> Bitset<D> = todo
+    pub fn complement(self) -> Bitset<D> = todo
 
     /// Remove every position from the set. O(K / 64).
     pub fn clear(mut self) = todo
-
-    /// [rename] First position in this set satisfying `pred`, or `none` (replaces `find`). O(K / 64 + visited).
-    pub fn first_where(self, pred: D -> Bool) -> ?D = todo
 
     /// True when some position in this set satisfies `pred`. O(K / 64 + visited).
     pub fn any(self, pred: D -> Bool) -> Bool = todo
@@ -63,14 +60,16 @@ pub struct Bitset<D>:
     /// The same number as `len`, under the name C++ gives it.
     pub @get fn count(self) -> Int = todo
 
-    /// Whether the set has no members; stops at the first non-zero word. O(K / 64).
+    /// Whether the set has no members. O(1): the count is kept current by every update.
     pub @get fn is_empty(self) -> Bool = todo
 
-    /// The smallest position in the set, or `none`. O(K / 64).
-    pub @get fn first(self) -> ?D = todo
+    /// The smallest position in the set satisfying `pred` (any, by default), or `none`.
+    /// O(K / 64 + visited).
+    pub fn first(self, pred: D -> Bool = d => true) -> ?D = todo
 
-    /// The largest position in the set, or `none`. O(K / 64).
-    pub @get fn last(self) -> ?D = todo
+    /// The largest position in the set satisfying `pred` (any, by default), or `none`.
+    /// O(K / 64 + visited).
+    pub fn last(self, pred: D -> Bool = d => true) -> ?D = todo
 
     /// Replace `self` with `self | o` in place. O(|D| / 64).
     pub fn union(mut self, o: Bitset<D>) = todo
@@ -157,10 +156,10 @@ pub struct DynBitset:
     /// Bit capacity of the bitset. O(1).
     pub @get fn cap(self) -> Int = todo
 
-    /// Number of set bits. O(cap / 64).
+    /// Number of set bits. O(1), kept current by every update.
     pub @get fn len(self) -> Int = todo
 
-    /// Whether no bits are set. O(cap / 64).
+    /// Whether no bits are set. O(1), kept current by every update.
     pub @get fn is_empty(self) -> Bool = todo
 
     /// Whether bit `i` is set. O(1).
@@ -185,10 +184,10 @@ pub struct DynBitset:
     pub fn resize(mut self, new_cap: Int) = todo
 
     /// Smallest set bit index, or `none` if empty. O(cap / 64).
-    pub @get fn first(self) -> ?Int = todo
+    pub fn first(self) -> ?Int = todo
 
     /// Largest set bit index, or `none` if empty. O(cap / 64).
-    pub @get fn last(self) -> ?Int = todo
+    pub fn last(self) -> ?Int = todo
 
     /// Smallest set bit `>= i`, or `none`. O(cap / 64).
     pub fn next(self, i: Int) -> ?Int = todo

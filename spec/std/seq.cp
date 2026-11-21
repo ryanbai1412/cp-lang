@@ -566,10 +566,10 @@ fn cyclic_pairs_close_the_ring() = todo
 /// `[3, 9, 2, 9].argmax` is `some(1)` and `words.argmax(by: w => w.len)` is the index of the
 /// longest word. It is an index of `self`, so `a[a.argmax!]` is the largest value of a
 /// `List<T>`, a `[1..=n]T` or a `[V]T` alike. O(n).
-pub @get fn argmax<D, T, K>(self: [D]T, by: T -> K = x => x) -> ?D = todo
+pub fn argmax<D, T, K>(self: [D]T, by: T -> K = x => x) -> ?D = todo
 
 /// The index of the first smallest value (optionally under key `by:`), or `none` when empty. O(n).
-pub @get fn argmin<D, T, K>(self: [D]T, by: T -> K = x => x) -> ?D = todo
+pub fn argmin<D, T, K>(self: [D]T, by: T -> K = x => x) -> ?D = todo
 
 @test
 fn argmax_and_argmin_give_the_first_best_index() = todo

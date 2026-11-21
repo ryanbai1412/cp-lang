@@ -34,7 +34,7 @@ g[u].len                                  # degree, O(1)
 | `Graph.directed(edges)`, `Graph.undirected(edges)` | build from any `[E](u: V, v: V, ...)` | O(n + m) |
 | `g[u]` | `Indexed` view of `u`'s arcs, in input order | O(1) |
 | `g.has(u, v)` | is there an arc | O(deg u) |
-| `g.transpose` | arcs reversed, same `E` | O(n + m) |
+| `g.transpose()` | arcs reversed, same `E` | O(n + m) |
 | `g.edges` | the `[E]` records it was built from | O(1) |
 
 Validated input types (`Tree<V>`, `SimpleGraph<V, E>`, `ConnectedGraph`,
@@ -130,7 +130,7 @@ let t = Rooted(g, root: V.first!)          # or Rooted.from_parents(par), Rooted
 | `t.lca(a, b)`, `t.dist(a, b)`, `t.is_anc(a, b)` | | O(log n) |
 | `t.ancestor(v, k)`, `t.jump(a, b, k)` | `?V`: k steps up; k steps along the path a → b | O(log n) |
 | `t.path(a, b)` | `List<V>` | O(length) |
-| `t.diameter()`, `t.centroid` | `(len, u, v)`; a centroid | O(n) |
+| `t.diameter()`, `t.centroid()` | `(len, u, v)`; a centroid | O(n) |
 
 **Tree DP without recursion** walks `t.order.rev`:
 
@@ -169,7 +169,7 @@ for r in t.chains(a, b): ...               # the ranges themselves, when you nee
 | `t.sub(v)`, `t.below(v)` | `Range<t.Pre>`: subtree with / without `v` | O(1) |
 | `t.chains(a, b)` | `yields Range<t.Pre>`, ordered from `a` to `b` | O(log n) ranges |
 | `t.fold_path(a, b, ds, edges:)`, `t.apply_path(...)` | path fold / update over any range structure | O(log n) ranges |
-| `t.tour` | `yields Visit<V>`: `Enter` / `Exit` events | O(n) |
+| `t.tour` | `yields Visit<V>`: `Enter` / `Exit` events | O(1) to make, O(n) to walk |
 | `t.virtual(keys)` | the virtual (auxiliary) tree of `keys` | O(k log k) |
 | `Centroids(g)` | centroid decomposition: `.parent(c)`, `.ancestors(v)` with distances | O(n log n) |
 

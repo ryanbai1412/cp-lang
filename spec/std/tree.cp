@@ -149,13 +149,13 @@ pub struct Rooted<V, Pre>:
 
     /// O(depth). A centroid: a vertex whose removal leaves no piece larger than half the tree. When
     /// there are two, this is the one nearer the root.
-    pub @get fn centroid(self) -> V = todo
+    pub fn centroid(self) -> V = todo
 
     /// O(depth). Every centroid, one or two: the one nearer the root first. Two happen only when
     /// the number of vertices is even and one edge splits the tree in halves.
-    pub @get fn centroids(self) -> List<V> = todo
+    pub fn centroids(self) -> List<V> = todo
 
-    /// O(n). Iterative enter/exit Euler tour, the `Visit` events of `std.graph.dfs`: yields
+    /// O(1) to make, O(n) to walk. Iterative enter/exit Euler tour, the `Visit` events of `std.graph.dfs`: yields
     /// `Enter(v, parent)` when entering `v` and `Exit(v, parent)` when leaving its subtree.
     pub @get fn tour(self) -> yields Visit<V> = todo
 

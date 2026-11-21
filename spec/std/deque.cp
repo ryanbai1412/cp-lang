@@ -58,8 +58,9 @@ pub struct Deque<T>:
     /// back from it, so `dq.last(1)` is the one before the back.
     pub @get fn last(self, k: Int = 0) -> ?T = todo
 
-    /// Each element with its place from the front: `for (i, x) in dq.items`. O(n).
-    pub @get fn items(self) -> List<(Int, T)> = todo
+    /// Each element with its place from the front: `for (i, x) in dq.items`. O(1) to make,
+    /// O(n) to walk.
+    pub @get fn items(self) -> yields (Int, T) = todo
 
     /// The `i`-th element from the front. O(1).
     pub fn get(self, i: Int) -> T = todo

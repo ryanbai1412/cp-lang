@@ -36,7 +36,7 @@ pub struct Pt(x: Int, y: Int):
 
     /// O(log max(|x|, |y|)). Reduced integer direction `(x / g, y / g)` with `g = gcd(|x|, |y|)`;
     /// returns `Pt(0, 0)` for the zero vector.
-    pub @get fn unit_dir(self) -> Pt = todo
+    pub fn unit_dir(self) -> Pt = todo
 
     /// O(1). Explicit conversion to a floating-point `Vec`.
     pub @get fn to_vec(self) -> Vec = todo

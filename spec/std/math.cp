@@ -302,7 +302,7 @@ pub struct BigInt(neg: Bool, limbs: List<Int>):
     pub fn divmod(self, d: BigInt) -> (BigInt, BigInt) = todo
 
     /// O(n). Absolute value.
-    pub @get fn abs(self) -> BigInt = todo
+    pub fn abs(self) -> BigInt = todo
 
     /// O(n^2). Greatest common divisor of `a` and `b`.
     pub fn gcd(a: BigInt, b: BigInt) -> BigInt = todo

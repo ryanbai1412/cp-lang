@@ -25,7 +25,7 @@ pub struct Mod<P>(v: 0..P):
     pub fn try_inv(self) -> ?Mod<P> = todo
 
     /// O(log P). The multiplicative inverse, by the extended Euclidean algorithm (so `P` need not be prime).
-    pub @get fn inv(self) -> Mod<P> = todo
+    pub fn inv(self) -> Mod<P> = todo
 
     /// O(1). Lift an `Int` literal to `Mod<P>`.
     pub fn from_int(x: Int) -> Mod<P> = todo

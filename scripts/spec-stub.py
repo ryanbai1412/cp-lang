@@ -7,7 +7,9 @@ trait methods are kept as written. `lends` fns keep their bodies, since the
 checker needs the `lend place` to type the place they return.
 
 Usage: scripts/spec-stub.py [--check] [FILE...]   (default spec/std/*.cp)
---check changes nothing and exits 1 if any fn still has a body.
+--check changes nothing and exits 1 if any fn still has a body, or if an
+`@get` member is documented as costing more than O(1) to make: anything
+that does work up front takes parentheses (decision 140).
 """
 import glob, os, re, sys
 
@@ -102,6 +104,29 @@ def stub(lines):
     return out, changed
 
 
+GET = re.compile(r"@get\s+fn\s+(\w+)")
+COST = re.compile(r"O\(([^)]*)\)")
+
+
+def costly_getters(lines):
+    """`@get` fns whose doc comment gives a first cost other than O(1)."""
+    out = []
+    for i, line in enumerate(lines):
+        m = GET.search(line)
+        if not m:
+            continue
+        j = i
+        while j > 0 and lines[j - 1].strip().startswith("///"):
+            j -= 1
+        doc = " ".join(l.strip()[3:] for l in lines[j:i])
+        if "O(1) to make" in doc:
+            continue
+        cost = COST.search(doc)
+        if cost and cost.group(1).strip() != "1":
+            out.append((i + 1, m.group(1), cost.group(0)))
+    return out
+
+
 def main(argv):
     check = "--check" in argv
     files = [a for a in argv if a != "--check"] or sorted(glob.glob(
@@ -115,6 +140,11 @@ def main(argv):
             open(f, "w").write("\n".join(new))
         if n:
             print(f"{os.path.relpath(f)}: {n} body(ies){' left' if check else ' stubbed'}")
+        if check:
+            for line, name, cost in costly_getters(lines):
+                print(f"{os.path.relpath(f)}:{line}: `@get {name}` costs {cost}; "
+                      "work up front takes parentheses")
+                total += 1
     print(f"spec-stub: {total} fn body(ies) {'with bodies' if check else 'stubbed'}")
     return 1 if check and total else 0
 

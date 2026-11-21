@@ -105,10 +105,10 @@ pub struct Poly<T>(c: List<T>):
     pub fn set(mut self, i: Int, v: T) = todo
 
     /// O(n). Formal derivative `f'(x)`.
-    pub @get fn deriv(self) -> Poly<T> = todo
+    pub fn deriv(self) -> Poly<T> = todo
 
     /// O(n). Formal integral with zero constant term.
-    pub @get fn integral(self) -> Poly<T> = todo
+    pub fn integral(self) -> Poly<T> = todo
 
     /// O((n + m) log(n + m)). Transposed (middle) product: `out[i] = sum_j self[i + j] * b[j]`.
     pub fn transposed_mul(self, b: Poly<T>) -> Poly<T> = todo

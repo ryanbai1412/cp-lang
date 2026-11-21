@@ -4246,3 +4246,19 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   by `domain Row = 0..n` would fix the size at declaration time.
 - **Reverse.** Require `domain Row = 0..n` inside each grader fn and pass
   state explicitly.
+
+## 140. Parentheses mean work (2026-11-21)
+
+- **Decision.** A member reads without `()` only when it is O(1): an `@get`
+  property, or a view or generator (O(1) to make, paid while walking).
+  Anything that computes or allocates up front takes `()`, whatever its
+  arity: `g.transpose()`, `t.centroid()`, `t.centroids()`. List-returning
+  getters became lazy views (`g.edges`, `path.vertices`, `dq.items`);
+  `Mod.inv`, `argmax`, `deriv` and bitset `first` became calls; Fenwick
+  `all`, bag `first`/`last` and bitset `len` are kept current, so stay O(1).
+  `scripts/spec-stub.py --check` fails on an `@get` documented above O(1).
+  Refines 21.3: an `@get` still reads with or without `()`.
+- **Why.** Ryan: "you need parentheses for anything that's not O(1)". It is
+  the costs-are-visible rule applied to call syntax: `x.foo` never hides a
+  loop.
+- **Reverse.** Allow `@get` on any zero-argument method, as before.

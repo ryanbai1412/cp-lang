@@ -101,8 +101,8 @@ pub struct Graph<V, E>:
     /// arc `u -> v` for which `skip(u, v)` holds.
     pub fn reachable(self, from: List<V>, skip: (V, V) -> Bool = (u, v) => false) -> [V]Bool = todo
 
-    /// O(m): every edge once, with its id and its ends as given.
-    pub @get fn edges(self) -> List<Edge<V, E>> = todo
+    /// O(1) to make, O(m) to walk: every edge once, with its id and its ends as given.
+    pub @get fn edges(self) -> yields Edge<V, E> = todo
 
     /// O(n + m): the DFS tree from `root` of the component holding it. Every
     /// non-tree edge of an undirected graph then joins a vertex to an ancestor.
@@ -352,8 +352,8 @@ pub struct Walk<V, E>:
     start: V
     arcs: List<(to: V, e: E)>
 
-    /// The vertices visited, `start` first. O(length).
-    pub @get fn vertices(self) -> List<V> = todo
+    /// The vertices visited, `start` first. O(1) to make, O(length) to walk.
+    pub @get fn vertices(self) -> yields V = todo
 
 /// O(n + m).
 /// A walk that uses every edge exactly once (Hierholzer's algorithm), or `none` if

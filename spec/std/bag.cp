@@ -72,10 +72,10 @@ pub struct SortedBag<K>:
     /// Whether at least one copy of `x` is in the bag. O(log n) expected.
     pub fn contains(self, x: K) -> Bool = todo
 
-    /// The smallest element, or `none` when empty. O(log n) expected.
+    /// The smallest element, or `none` when empty. O(1), kept current by every update.
     pub @get fn first(self) -> ?K = todo
 
-    /// The largest element, or `none` when empty. O(log n) expected.
+    /// The largest element, or `none` when empty. O(1), kept current by every update.
     pub @get fn last(self) -> ?K = todo
 
     /// Remove and return one copy of the smallest element, or `none` when empty. O(log n) expected.
@@ -226,10 +226,10 @@ pub struct SortedSet<K>:
     /// Whether `x` is in the set. O(log n) expected.
     pub fn contains(self, x: K) -> Bool = todo
 
-    /// Smallest key in the set, or `none`. O(log n) expected.
+    /// Smallest key in the set, or `none`. O(1), kept current by every update.
     pub @get fn first(self) -> ?K = todo
 
-    /// Largest key in the set, or `none`. O(log n) expected.
+    /// Largest key in the set, or `none`. O(1), kept current by every update.
     pub @get fn last(self) -> ?K = todo
 
     /// Remove and return the smallest key, or `none`. O(log n) expected.
@@ -321,10 +321,10 @@ pub struct SortedMap<K, V>:
     /// Remove `k` and return its previous value, or `none` if absent. O(log n).
     pub fn remove(mut self, k: K) -> ?V = todo
 
-    /// Smallest `(key, val)` pair, or `none` if empty. O(log n).
+    /// Smallest `(key, val)` pair, or `none` if empty. O(1), kept current by every update.
     pub @get fn first(self) -> ?(K, V) = todo
 
-    /// Largest `(key, val)` pair, or `none` if empty. O(log n).
+    /// Largest `(key, val)` pair, or `none` if empty. O(1), kept current by every update.
     pub @get fn last(self) -> ?(K, V) = todo
 
     /// Remove and return the smallest `(key, val)` pair, or `none`. O(log n).
@@ -416,10 +416,10 @@ pub struct AugSortedBag<K, T>:
     /// The `i`-th smallest element (0-based), or `none`. O(log n).
     pub fn nth(self, i: Int) -> ?K = todo
 
-    /// Smallest element, or `none`. O(log n).
+    /// Smallest element, or `none`. O(1), kept current by every update.
     pub @get fn first(self) -> ?K = todo
 
-    /// Largest element, or `none`. O(log n).
+    /// Largest element, or `none`. O(1), kept current by every update.
     pub @get fn last(self) -> ?K = todo
 
     /// Fold elements with key `< hi`. O(log n).
@@ -475,10 +475,10 @@ pub struct AugSortedSet<K, T>:
     /// The `i`-th smallest key (0-based), or `none`. O(log n).
     pub fn nth(self, i: Int) -> ?K = todo
 
-    /// Smallest key, or `none`. O(log n).
+    /// Smallest key, or `none`. O(1), kept current by every update.
     pub @get fn first(self) -> ?K = todo
 
-    /// Largest key, or `none`. O(log n).
+    /// Largest key, or `none`. O(1), kept current by every update.
     pub @get fn last(self) -> ?K = todo
 
     /// Fold keys `< hi`. O(log n).

@@ -24,7 +24,7 @@ fn complement_within(s: Bitset<V>):          // toggle every edge inside s
 // Gallai's induction: an odd-degree v is removed after complementing its
 // neighbourhood; on the way back v joins the side where its degree is even.
 fn even_split(alive: Bitset<V>) -> Bitset<V>:
-    let v = alive.first(v => (odd[v] & alive).len % 2 == 1) ?? return Bitset.empty
+    let v = alive.first(v => (odd[v] & alive).len % 2 == 1) ?? return Bitset.empty()
     let rest = alive.without(v)
     let nbr = odd[v] & rest
     complement_within(nbr)

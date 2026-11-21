@@ -36,7 +36,7 @@ pub struct Fenwick<D, T>:
     /// O(log |D|). Assign `a[i] = x` (`IndexSet` write-through place).
     pub fn set(mut self, i: D, x: T) = todo
 
-    /// O(log |D|). Total sum of the entire domain.
+    /// O(1), kept current by every update. Total sum of the entire domain.
     pub @get fn all(self) -> T = todo
 
     /// O(log |D|). Sum of everything right of boundary `b`.
@@ -135,7 +135,7 @@ pub struct RangeFenwick<D>:
     /// O(log |D|). Single-position value `a[i]`.
     pub fn get(self, i: D) -> Int = todo
 
-    /// O(log |D|). Total sum of the entire domain.
+    /// O(1), kept current by every update. Total sum of the entire domain.
     pub @get fn all(self) -> Int = todo
 
     /// O(|D|). Reset all entries to zero without reallocating.
