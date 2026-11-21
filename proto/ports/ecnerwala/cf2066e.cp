@@ -1,73 +1,69 @@
-// A multiset of barrels can merge to one iff no threshold k >= 1 traps barrels >= k:
-// specifically, no k with >= 2 barrels >= k, sum of barrels < k strictly < k, and
-// no adjacent gap < k occurring at or above k. Split at B = 1000 = sqrt(max a):
-// k > B walks down from max(cur) in O(sqrt(M)) steps; k <= B sweeps tracked small gaps.
-let (n, q): (1..=200_000, 1..=200_000) = read()
-let B = 1000
-domain Small = 0..=B
+// Codeforces 2066 E: Tropical Season.
+// Two equal barrels either expose the poison or are both safe, so every barrel
+// whose amount repeats is safe water. Check the barrels with a unique amount,
+// lightest first. With `have` kilograms of safe water, a barrel b can be checked
+// if b <= have (pour until equal, compare), and two unchecked barrels can be if
+// their gap is <= have (top up the lighter, compare); each check adds to `have`.
+// Identification works iff this never gets stuck while two or more barrels are
+// unchecked. It can only get stuck at a unique barrel b with b > have; at the
+// next unique barrel b' > b, `have` has grown by at least b > have, so `have`
+// more than doubles every two steps and there are O(log(total)) stuck points.
+// At each, some gap among the unique barrels >= b must be <= have.
 
-var bag = SortedBag<Int>()
-var gaps: [Small]SortedBag<Int> = [Small] _ => SortedBag<Int>()
-var last_gap_at: [Small]Int = 0
-var small_cnt: [Small]Int = 0
+use std.bag.SortedSet
+
+let MAX_V = 1_000_000
+let INF = MAX_V + 1
+domain Vol = 0..=MAX_V
+
+var count: [Vol]Int = 0
 var total = 0
+var total_unique = 0
+var unique = SortedSet<Int>()
+var unique_sum = Fenwick<Vol, Int>()
+var gaps = SegTree<Vol, Int>(Monoid<Int>(INF, (a, b) => min(a, b)))
 
-fn update_gap(lo: Int, hi: Int, add: Bool):
-    let l = hi - lo
-    if l > B: return
-    let d = Small(l)
-    if add: gaps[d].add(lo) else: gaps[d].remove(lo)
-    last_gap_at[d] = gaps[d].last ?? 0
-
-fn change(v: Int, add: Bool):
-    let d = if add: 1 else: -1
-    let had = bag.count(v)
-    if add: bag.add(v) else: bag.remove(v)
-    if had >= (if add: 1 else: 2):
-        update_gap(v, v, add)
+fn put(v: Vol, delta: Int):
+    let was_alone = count[v] == 1
+    count[v] += delta
+    total += delta * v.ord
+    let is_alone = count[v] == 1
+    if is_alone == was_alone: return
+    if is_alone:
+        unique.add(v.ord)
+        unique_sum.add(v, v.ord)
+        total_unique += v.ord
+        let nxt = unique.range(v.ord + 1..).first
+        gaps.set(v, if let w = nxt: w - v.ord else: INF)
+        if let u = unique.range(..v.ord).last: gaps.set(Vol(u), v.ord - u)
     else:
-        let prv = bag.range(..v).last
-        let nxt = bag.range(v + 1..).first
-        if let p = prv: update_gap(p, v, add)
-        if let x = nxt: update_gap(v, x, add)
-        if let p = prv:
-            if let x = nxt: update_gap(p, x, not add)
-    if v <= B: small_cnt[Small(v)] += d
-    total += d * v
+        unique.remove(v.ord)
+        unique_sum.add(v, -v.ord)
+        total_unique -= v.ord
+        gaps.set(v, INF)
+        if let u = unique.range(..v.ord).last:
+            let nxt = unique.range(u + 1..).first
+            gaps.set(Vol(u), if let w = nxt: w - u else: INF)
 
-fn can_merge() -> Bool:
-    var cur = bag.last!
-    if bag.count(cur) == 1:
-        var rem = total - cur
-        var min_gap = cur
-        while let nxt = bag.range(..cur).last:
-            rem -= nxt
-            min_gap = min(min_gap, min(cur - nxt, nxt))
-            if rem < min_gap: return false
-            if min_gap <= B or bag.count(nxt) >= 2: break
-            cur = nxt
+fn safe_before(b: Int) -> Int = (total - total_unique) + unique_sum.sum(..Vol(b))
 
-    var max_gap_pos = 0
-    var big_cnt = bag.len
-    var small_sum = 0
-    for k in 1..=B:
-        let d = Small(k - 1)
-        max_gap_pos max= last_gap_at[d]
-        big_cnt -= small_cnt[d]
-        small_sum += (k - 1) * small_cnt[d]
-        if big_cnt < 2: break
-        if max_gap_pos < k and small_sum < k: return false
+fn identifiable() -> Bool:
+    let last_u = unique.last ?? return true
+    var cur = unique.first
+    while let b = cur:
+        if b == last_u: break
+        let have = safe_before(b)
+        if b > have and gaps.fold(Vol(b)..=Vol.last) > have: return false
+        cur = unique.range(max(have, b) + 1..).first
     true
 
-type Vol = 1..=1_000_000
-
+let (n, q): (1..=200_000, 1..=200_000) = read()
 repeat n:
-    let a: Vol = read()
-    change(a, true)
-print(if can_merge(): "Yes" else: "No")
-
+    let v: 1..=1_000_000 = read()
+    put(Vol(v), 1)
+print(if identifiable(): "Yes" else: "No")
 repeat q:
     let op: Char = read()
-    let a: Vol = read()
-    change(a, op == '+')
-    print(if can_merge(): "Yes" else: "No")
+    let v: 1..=1_000_000 = read()
+    put(Vol(v), if op == '+': 1 else: -1)
+    print(if identifiable(): "Yes" else: "No")
