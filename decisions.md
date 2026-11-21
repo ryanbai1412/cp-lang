@@ -1508,6 +1508,37 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   *Reversible:* remove the `idioms` entry in `site/build.py`, delete `site/content/idioms.md`, and
   revert `site/content/cpp-guide.md`.
 
+- **24.11 Deterministic 55-problem writable-from-docs v2 set + float tolerance (`1e-6`).**
+  Audited the v1 55-problem manifest and replaced 15 un-evaluable problems (2 interactive, 5 CF
+  redirect duplicates, 8 multi-answer constructive problems where valid answers failed exact string
+  match) with 15 clean unique deterministic-output unseen problems, and added token-wise `1e-6`
+  relative/absolute float tolerance to `scripts/writable-from-docs.py::outputs_match`.
+  *Reason:* pass rate must reflect real correctness, not judge-harness false negatives on valid
+  constructive outputs, redirected duplicates, or `3e-16` float rounding.
+  *Reversible:* revert `research/writable-from-docs-set.json` and `outputs_match` in
+  `scripts/writable-from-docs.py`.
+
+- **24.12 Generated `Reading exemplars` gallery (`site/exemplars.py`) and `Try it` buttons on every docs `cp` fence.**
+  Added `site/exemplars.py` generating `exemplars.html` directly from `proto/ports/**/dream/*.cp`
+  paired with validated ports plus `design/sketches/ioi2025/*.cp`, and wired `Try it` links
+  (`playground.html#share=<base64url>`) into `site/build.py::code_block_html` for every rendered
+  `cp` code block, both gated in `site/check_docs.py`.
+  *Reason:* lets cold readers compare dream vs port without hand-maintained drift and run, trace,
+  or share any docs snippet in one click (online or in the offline `dist/cp-lang.html` bundle).
+  *Reversible:* remove `exemplars` from `site/build.py`, delete `site/exemplars.py`, and remove
+  `try_it` from `code_block_html`.
+
+- **24.13 Generated Stdlib API reference (`site/stdlib_api.py`) + zero-undocumented-`pub fn` gate.**
+  Wired `site/stdlib_api.py` onto the existing `cpl doc --format json stdlib` output (avoiding
+  duplicating the dev-tools doc extractor) to generate `stdlib-api.html`, documented all 55
+  remaining undocumented `pub fn` / `pub @get fn` declarations across `stdlib/*.cp` with O(...)
+  costs, and added `check_stdlib_api_docs()` in `site/check_docs.py` failing on any undocumented
+  public function.
+  *Reason:* keeps the stdlib API reference generated from one source of truth (`///` comments) and
+  prevents undocumented public stdlib functions from landing.
+  *Reversible:* remove `stdlib-api` from `site/build.py`, delete `site/stdlib_api.py`, and remove
+  `check_stdlib_api_docs()` from `site/check_docs.py`.
+
 ## 25. Stress testing and shrinking (0.2.2, 2026-11-21)
 
 - **25.1 `Perm<V>` and `Tree<V>` are stdlib types.** `std.seq.Perm<V> = [V]V` and

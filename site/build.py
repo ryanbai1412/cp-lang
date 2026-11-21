@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build the CP Lang guide. No network, JavaScript bundler, or server required."""
 
+import base64
 import html
 import hashlib
 import json
@@ -13,8 +14,10 @@ from course import catalog_html, exercise_html, load_lessons, progress_html
 from compiler import build_compiler, editor_html
 from cookbook import all_recipes, render_cookbook_html
 from errors import ERROR_CATALOG, error_slug, render_error_index_html, render_error_page_html
+from exemplars import render_exemplars_html
 from ports_gallery import render_ports_gallery_html
 from showcase import showcase_html
+from stdlib_api import render_stdlib_api_html
 
 ROOT = Path(__file__).resolve().parent
 REPO = "https://github.com/ryanbai1412/cp-lang"
@@ -100,8 +103,15 @@ REFERENCE_PAGES = [
         "stdlib",
         "Standard & local libraries",
         "In practice",
-        "Complete API reference for all std modules plus local library packaging and recipes.",
+        "Overview of all std modules plus local library packaging and recipes.",
         "14 min",
+    ),
+    (
+        "stdlib-api",
+        "Stdlib API reference",
+        "In practice",
+        "Generated per-function reference from /// doc comments in stdlib/*.cp (signatures, costs, laws).",
+        "generated",
     ),
     (
         "cookbook",
@@ -109,6 +119,13 @@ REFERENCE_PAGES = [
         "In practice",
         "Real validated contest solutions organized by algorithm and data structure.",
         f"{len(all_recipes())} recipes",
+    ),
+    (
+        "exemplars",
+        "Reading exemplars",
+        "In practice",
+        "Generated Dream vs validated port gallery from the dream corpus and IOI 2025 sketches.",
+        "gallery",
     ),
     (
         "ports",
@@ -217,12 +234,23 @@ def highlight(code, language):
     return "".join(parts) + html.escape(code[end:])
 
 
+def playground_share_href(source: str, stdin: str = "") -> str:
+    payload = json.dumps(
+        {"source": source, "stdin": stdin, "samples": []},
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    encoded = base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
+    return f"playground.html#share={encoded}"
+
+
 def code_block_html(
     code,
     language,
     label,
     *,
     copy=True,
+    try_it=True,
     collapsible_lines=28,
     header_html=None,
     extra_class="",
@@ -238,11 +266,16 @@ def code_block_html(
         classes.extend(["is-collapsible", "is-collapsed"])
     lang_attr = html.escape((language or "text").lower())
     caption_inner = header_html if header_html is not None else f"<span>{html.escape(label)}</span>"
-    copy_btn = (
-        '<button class="copy-button" type="button" aria-label="Copy code">Copy</button>'
-        if copy
-        else ""
-    )
+    actions = []
+    if try_it and lang_attr in ("cp", "cpl", "cp-lang") and cleaned:
+        href = playground_share_href(cleaned)
+        actions.append(
+            f'<a class="try-button" href="{html.escape(href)}" '
+            'title="Run, trace, and share in the browser playground">Try it</a>'
+        )
+    if copy:
+        actions.append('<button class="copy-button" type="button" aria-label="Copy code">Copy</button>')
+    actions_html = f'<span class="code-actions">{"".join(actions)}</span>' if actions else ""
     fade_and_btn = (
         f'<div class="code-fade" aria-hidden="true"></div>'
         f'<button class="code-expand-btn" type="button" aria-expanded="false" '
@@ -252,7 +285,7 @@ def code_block_html(
     )
     return (
         f'<figure class="{" ".join(classes)}" data-lang="{lang_attr}" data-lines="{line_count}">'
-        f"<figcaption>{caption_inner}{copy_btn}</figcaption>"
+        f"<figcaption>{caption_inner}{actions_html}</figcaption>"
         f'<div class="code-body"><pre tabindex="0"><code>{highlight(cleaned, language)}</code></pre>'
         f"{fade_and_btn}</div></figure>\n"
     )
@@ -368,6 +401,10 @@ def load_page_source(name):
         return "", "site/cookbook.py"
     if name == "ports":
         return "", "site/ports_gallery.py"
+    if name == "exemplars":
+        return "", "site/exemplars.py"
+    if name == "stdlib-api":
+        return "", "site/stdlib_api.py"
     return (ROOT / "content" / f"{name}.md").read_text(), f"site/content/{name}.md"
 
 
@@ -391,6 +428,18 @@ def build():
             toc = "".join(
                 f'<a href="#{m.group(1)}">{html.unescape(m.group(2))}</a>'
                 for m in re.finditer(r'<h2 id="([^"]+)">([^<]+)</h2>', body)
+            )
+        elif name == "exemplars":
+            body, ex_headings = render_exemplars_html(highlight, ROOT.parent)
+            toc = "".join(
+                f'<a href="#{html.escape(hid)}">{html.escape(htitle)}</a>'
+                for hid, htitle in ex_headings
+            )
+        elif name == "stdlib-api":
+            body, api_headings = render_stdlib_api_html()
+            toc = "".join(
+                f'<a href="#{html.escape(hid)}">{html.escape(htitle)}</a>'
+                for hid, htitle in api_headings
             )
         elif name == "ports":
             body = render_ports_gallery_html(

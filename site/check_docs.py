@@ -181,7 +181,7 @@ def check_links():
             path = unquote(url.path) or name
             if not (target / path).is_file():
                 sys.exit(f"check_docs: broken link in {name}: {link}")
-            if url.fragment and unquote(url.fragment) not in pages[path].ids:
+            if url.fragment and not (path == "playground.html" and url.fragment.startswith("share=")) and unquote(url.fragment) not in pages[path].ids:
                 sys.exit(f"check_docs: broken fragment in {name}: {link}")
     return len(pages)
 
@@ -413,6 +413,82 @@ def check_ports_gallery() -> tuple[int, int]:
     return len(rows), dreams
 
 
+def check_exemplars_gallery() -> tuple[int, int]:
+    """Verify Reading exemplars page is generated from dream corpus + IOI 2025 sketches."""
+    import exemplars
+
+    pairs = exemplars.load_dream_pairs(REPO)
+    ioi = exemplars.load_ioi_sketches(REPO)
+    if not pairs:
+        sys.exit("check_docs: exemplars gallery found 0 dream/port pairs")
+    if len(ioi) < 6:
+        sys.exit(f"check_docs: expected >= 6 IOI 2025 sketches, found {len(ioi)}")
+    page = ROOT / "_build/exemplars.html"
+    if not page.is_file():
+        sys.exit("check_docs: missing generated site/_build/exemplars.html")
+    html_text = page.read_text()
+    if "exemplar-card" not in html_text or "IOI 2025" not in html_text:
+        sys.exit("check_docs: exemplars.html missing dream cards or IOI 2025 section")
+    for p in pairs:
+        if f">{p['id']}<" not in html_text:
+            sys.exit(f"check_docs: exemplars.html missing dream/port entry {p['id']}")
+    return len(pairs), len(ioi)
+
+
+def check_stdlib_api_docs() -> int:
+    """Verify stdlib-api.html is generated from `cpl doc` and 0 pub fns lack /// docs."""
+    import stdlib_api
+
+    data = stdlib_api.load_stdlib_docs(CPL)
+    missing = stdlib_api.undocumented_public_functions(data, REPO)
+    if missing:
+        sample = ", ".join(f"{p}:{n}" for p, n in missing[:10])
+        sys.exit(
+            f"check_docs: {len(missing)} undocumented public stdlib function(s): {sample}"
+        )
+    total_fns = sum(
+        (1 if it.get("kind") == "fn" else 0) + len(methods)
+        for _, items in stdlib_api.iter_public_items(data, REPO)
+        for it, methods in items
+    )
+    page = ROOT / "_build/stdlib-api.html"
+    if not page.is_file():
+        sys.exit("check_docs: missing generated site/_build/stdlib-api.html")
+    if "api-list" not in page.read_text():
+        sys.exit("check_docs: stdlib-api.html missing generated API list")
+    return total_fns
+
+
+def check_try_it_buttons() -> int:
+    """Verify every rendered cp code block in built HTML pages has a valid Try it share link."""
+    import base64
+    import json
+
+    try_re = re.compile(
+        r'<figure class="code-block[^"]*" data-lang="(cp|cpl|cp-lang)"[^>]*>(.*?)</figure>',
+        re.S,
+    )
+    href_re = re.compile(r'class="try-button" href="playground\.html#share=([A-Za-z0-9_-]+)"')
+    checked = 0
+    for html_path in sorted((ROOT / "_build").glob("*.html")):
+        if html_path.name.startswith("error-"):
+            continue
+        text = html_path.read_text()
+        for m in try_re.finditer(text):
+            block = m.group(2)
+            hm = href_re.search(block)
+            if not hm:
+                sys.exit(f"check_docs: {html_path.name} has a cp code block without a Try it button")
+            b64 = hm.group(1) + "=" * (-len(hm.group(1)) % 4)
+            payload = json.loads(base64.urlsafe_b64decode(b64).decode("utf-8"))
+            if not isinstance(payload.get("source"), str) or not payload["source"].strip():
+                sys.exit(f"check_docs: {html_path.name} Try it payload has empty source")
+            checked += 1
+    if checked == 0:
+        sys.exit("check_docs: found 0 Try it buttons on cp code blocks")
+    return checked
+
+
 def main():
     t0 = time.monotonic()
     if not CPL.is_file():
@@ -424,7 +500,10 @@ def main():
     err_count = check_error_index()
     cb_count, cb_runs = check_cookbook()
     stdlib_mods = check_stdlib_module_coverage()
+    stdlib_pub_fns = check_stdlib_api_docs()
     ports_total, ports_dreams = check_ports_gallery()
+    ex_pairs, ex_ioi = check_exemplars_gallery()
+    try_btns = check_try_it_buttons()
     pg_res = subprocess.run(
         [sys.executable, str(ROOT / "test_playground_parity.py")],
         cwd=REPO,
@@ -437,12 +516,13 @@ def main():
     page_count = check_links()
     ms = int((time.monotonic() - t0) * 1000)
     print(
-        f"docs gate: {fence_count} cp fences, {ex_count} examples ({ex_cases} runs), "
+        f"docs gate: {fence_count} cp fences ({try_btns} Try-it links), {ex_count} examples ({ex_cases} runs), "
         f"{ref_count} course refs ({ref_cases} runs), {err_count} error codes, "
         f"{cb_count} cookbook recipes ({cb_runs} sample runs), "
         f"{ports_total} gallery ports ({ports_dreams} with dream), "
-        f"{stdlib_mods} stdlib modules, {page_count} HTML pages, "
-        f"cheat-sheet {cheat_lines}/250 lines — ok in {ms} ms"
+        f"{ex_pairs} exemplars + {ex_ioi} IOI sketches, "
+        f"{stdlib_mods} stdlib modules ({stdlib_pub_fns}/{stdlib_pub_fns} pub fns documented), "
+        f"{page_count} HTML pages, cheat-sheet {cheat_lines}/250 lines — ok in {ms} ms"
     )
 
 
