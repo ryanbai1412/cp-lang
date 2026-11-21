@@ -125,7 +125,7 @@ class CheckCacheTest(unittest.TestCase):
             self.assertEqual(git("ls-remote", remote, "refs/locks/land"), "")
             self.assertEqual(git("ls-remote", remote, "refs/locks/*"), "")
 
-    def _train(self, gate_body, riders_ok):
+    def _train(self, gate_body, bad=None):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         with tempfile.TemporaryDirectory() as tmp:
@@ -145,7 +145,8 @@ class CheckCacheTest(unittest.TestCase):
                         'git rev-parse "HEAD^{tree}" >> "$(git rev-parse --git-common-dir)/cpl-gate-passed"\n')
             os.chmod(gate, 0o755)
             lanes = {}
-            for lane, path in (("first", "one.md"), ("rider", "bad.md" if not riders_ok else "two.md")):
+            for lane, path in (("first", "one.md"), ("rider", "two.md")):
+                path = "bad.md" if lane == bad else path
                 work = os.path.join(tmp, lane)
                 git("clone", "-q", remote, work)
                 git("config", "user.name", lane, cwd=work)
@@ -176,7 +177,7 @@ class CheckCacheTest(unittest.TestCase):
             return out, files, git("ls-remote", remote, "refs/locks/*")
 
     def test_land_carries_queued_lanes_in_one_gated_train(self):
-        out, files, locks = self._train("", riders_ok=True)
+        out, files, locks = self._train("")
         self.assertEqual(out["first"][2], 0, out["first"][1])
         self.assertEqual(out["rider"][2], 0, out["rider"][1])
         self.assertIn("gating a train of 1 rider(s)", out["first"][1])
@@ -185,12 +186,20 @@ class CheckCacheTest(unittest.TestCase):
         self.assertEqual(locks, "")
 
     def test_land_drops_a_failing_train_and_lands_alone(self):
-        out, files, locks = self._train("! test -e bad.md || exit 1\n", riders_ok=False)
+        out, files, locks = self._train("! test -e bad.md || exit 1\n", bad="rider")
         self.assertEqual(out["first"][2], 0, out["first"][1])
         self.assertIn("the train failed the gate", out["first"][1])
         self.assertNotEqual(out["rider"][2], 0)
         self.assertEqual(files, ["one.md"])
         self.assertIn("refs/locks/solo/", locks)
+
+    def test_land_keeps_riders_off_solo_when_the_holder_broke_the_train(self):
+        out, files, locks = self._train("! test -e bad.md || exit 1\n", bad="first")
+        self.assertNotEqual(out["first"][2], 0)
+        self.assertIn("the train failed the gate", out["first"][1])
+        self.assertEqual(out["rider"][2], 0, out["rider"][1])
+        self.assertEqual(files, ["two.md"])
+        self.assertNotIn("refs/locks/solo/", locks)
 
 if __name__ == "__main__":
     unittest.main()

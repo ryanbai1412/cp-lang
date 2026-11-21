@@ -11,8 +11,8 @@
 # is the waiter's HEAD, so the lock holder can carry waiters in a train: it
 # rebases up to CPL_LAND_TRAIN queued lanes onto its own commits, gates the
 # train once and pushes it, marking each rider refs/locks/done/<ticket>. If
-# the train fails the gate, its riders are marked refs/locks/solo/<ticket>
-# (they then only land alone) and the holder gates and lands by itself.
+# the train fails the gate, the holder gates alone; only if that passes are
+# its riders marked refs/locks/solo/<ticket>, after which they land alone.
 # Remote calls retry, so one dropped connection does not lose a turn.
 #
 # Usage: scripts/land.sh [remote]   (a remote name or URL; default origin)
@@ -76,12 +76,14 @@ for attempt in 1 2 3 4 5; do
     if [ ${#riders[@]} -gt 0 ]; then
         echo "land: gating a train of ${#riders[@]} rider(s): ${riders[*]}" >&2
         if ! $gate; then
-            echo "land: the train failed the gate; marking its riders solo and gating alone" >&2
-            mark solo "${riders[@]}"
+            echo "land: the train failed the gate; gating alone" >&2
+            local failed=("${riders[@]}")
             riders=()
             tip=$own
             git checkout -q -f --detach "$tip"
             $gate
+            echo "land: alone it passes, so a rider broke the train; marking them solo" >&2
+            mark solo "${failed[@]}"
         fi
     else
         $gate
