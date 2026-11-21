@@ -223,18 +223,25 @@ marked vertex" and "sum over marked vertices of a function of distance".
 (`branch`) each vertex hangs off, for "count paths through `c`, excluding
 pairs in the same branch".
 
-### 3.9 Dynamic trees (next step)
+### 3.9 Dynamic trees
 
 ```cp
-struct LinkCut<V, T> [new, after the static API]
-    fn new<M>(m: M, init: [V]T)                   // O(n)
-    fn link(mut self, u: V, v: V)                 // amortized O(log n)
+struct LinkCut<V, T>
+    fn new<M>(op: M, a: ?[V]T = none)             // O(n), like SegTree.new
+    fn link(mut self, u: V, v: V)                 // amortized O(log n) each
     fn cut(mut self, u: V, v: V)
     fn connected(mut self, u: V, v: V) -> Bool
+    fn root_of(mut self, v: V) -> V
+    fn make_root(mut self, v: V)
     fn fold_path(mut self, u: V, v: V) -> T       // path order when Reversible
+    fn get(self, v: V) -> T                       // O(1)
     fn set(mut self, v: V, x: T)
     fn lca(mut self, u: V, v: V, root: V) -> ?V
 ```
+
+Every query restructures the splay trees, so even reads take `mut self`.
+Path updates (`apply_path` with an `Action`) and subtree aggregates are the
+next steps; edge values are a vertex per edge, as in every LCT.
 
 Same verbs as `Rooted` where they mean the same thing (`fold_path`, `lca`),
 same monoid convention as every range structure.

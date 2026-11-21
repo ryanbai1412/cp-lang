@@ -2464,7 +2464,10 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
    Reverse: add an RMQ behind `lca` if `bench/trees` says so.
 7. **Dynamic trees are a separate `LinkCut` with `Rooted`'s verbs**
    (`fold_path`, `lca`), after the static API matches C++. Reverse: drop it
-   from the plan.
+   from the plan. Landed before the static API matches C++ after all, since
+   `LinkCut` shares no code with `Rooted`; `lca` takes the root explicitly
+   because every query re-roots, and reads take `mut self` because splaying
+   is how they stay O(log n).
 8. **`heavy`, `far` and `at` stay indexable fields**, not methods as the
    first draft proposed. Ten corpus ports index them (`t.at[p]`,
    `t.heavy[v]`), the read is O(1) either way, and a field and a method

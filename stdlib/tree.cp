@@ -11,10 +11,11 @@
 //! "tree with values" type and no second copy of the data.
 use std.algebra.{Reversible}
 use std.graph.{Neighbours, Target, Graph}
-use std.algebra.{Monoid}
+use std.algebra.{Monoid, MaxSub}
 use std.segtree.{SegTree}
 use std.lazy.{LazySegTree, AddMax}
 use std.seq.{excl_fold}
+use std.rand.{Rng}
 
 /// A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre`.
 /// Built in O(n) without recursion; memory is seven `[V]` arrays, one `[Pre]` array and child lists.
@@ -959,3 +960,207 @@ fn centroid_ancestors_split_every_path():
                 assert r.dist(c, v) == d and (b == c) == (v == c)
                 assert v == c or (r.dist(c, b) == 1 and r.dist(b, v) == d - 1)
             assert count == [v for v in V if any(x.c == c for x in cd.ancestors(v))].len
+
+/// A forest that changes: `link` and `cut` edges, re-root anywhere, and fold or set vertex
+/// values along paths, by a link-cut tree (splay trees over preferred paths). Values fold
+/// with `op`; a value that is not its own reverse implements `Reversible`, as for
+/// `Rooted.fold_path`. Every operation is amortized O(log n).
+pub struct LinkCut<V, T>(m: Monoid<T>):
+    lc: [V]?V
+    rc: [V]?V
+    pa: [V]?V
+    flip: [V]Bool
+    val: [V]T
+    agg: [V]T
+    stk: List<V>
+
+    /// `V.K` single-vertex trees holding `a` (the identity of `op` when `a` is absent). O(n).
+    pub fn new<M>(op: M, a: ?[V]T = none) -> LinkCut<V, T>:
+        let m = Monoid<T>.of(op)
+        let val = if let init = a: init else: [V] _ => m.id
+        LinkCut(m, [V] _ => none, [V] _ => none, [V] _ => none, [V] _ => false, val, val, [])
+
+    fn top(self, x: V) -> Bool:
+        if let p = pa[x]: lc[p] != some(x) and rc[p] != some(x) else: true
+
+    fn turn(mut self, x: V):
+        let r = agg[x].rev()
+        agg[x] = r
+        flip[x] = not flip[x]
+
+    fn push(mut self, x: V):
+        if flip[x]:
+            let l = lc[x]
+            lc[x] = rc[x]
+            rc[x] = l
+            if let c = lc[x]: self.turn(c)
+            if let c = rc[x]: self.turn(c)
+            flip[x] = false
+
+    fn pull(mut self, x: V):
+        var s = val[x]
+        if let c = lc[x]: s = m.op(agg[c], s)
+        if let c = rc[x]: s = m.op(s, agg[c])
+        agg[x] = s
+
+    fn rotate(mut self, x: V):
+        let p = pa[x]!
+        let g = pa[p]
+        let p_top = self.top(p)
+        if lc[p] == some(x):
+            lc[p] = rc[x]
+            if let c = rc[x]: pa[c] = some(p)
+            rc[x] = some(p)
+        else:
+            rc[p] = lc[x]
+            if let c = lc[x]: pa[c] = some(p)
+            lc[x] = some(p)
+        pa[p] = some(x)
+        pa[x] = g
+        if not p_top, let q = g:
+            if lc[q] == some(p): lc[q] = some(x) else: rc[q] = some(x)
+        self.pull(p)
+        self.pull(x)
+
+    fn splay(mut self, x: V):
+        stk.clear()
+        var y = x
+        stk.push(y)
+        while not self.top(y):
+            y = pa[y]!
+            stk.push(y)
+        while let z = stk.pop(): self.push(z)
+        while not self.top(x):
+            let p = pa[x]!
+            if not self.top(p):
+                let g = pa[p]!
+                if (lc[g] == some(p)) == (lc[p] == some(x)): self.rotate(p) else: self.rotate(x)
+            self.rotate(x)
+
+    // Makes root -> x the preferred path with x at the root of its splay tree; returns the
+    // last vertex where the walk joined the old preferred path (the lca with the previous access).
+    fn access(mut self, x: V) -> V:
+        var last: ?V = none
+        var joined = x
+        var y: ?V = some(x)
+        while let u = y:
+            self.splay(u)
+            rc[u] = last
+            self.pull(u)
+            last = some(u)
+            joined = u
+            y = pa[u]
+        self.splay(x)
+        joined
+
+    /// Make `v` the root of its tree. Amortized O(log n).
+    pub fn make_root(mut self, v: V):
+        let _ = self.access(v)
+        self.turn(v)
+
+    /// The root of the tree holding `v`. Amortized O(log n).
+    pub fn root_of(mut self, v: V) -> V:
+        let _ = self.access(v)
+        var x = v
+        self.push(x)
+        while let c = lc[x]:
+            x = c
+            self.push(x)
+        self.splay(x)
+        x
+
+    /// Whether `u` and `v` are in the same tree. Amortized O(log n).
+    pub fn connected(mut self, u: V, v: V) -> Bool = self.root_of(u) == self.root_of(v)
+
+    /// Add the edge `u`-`v`; they must be in different trees. Amortized O(log n).
+    pub fn link(mut self, u: V, v: V):
+        self.make_root(u)
+        assert self.root_of(v) != u, "link joins two trees; these vertices are already connected"
+        pa[u] = some(v)
+
+    /// Remove the edge `u`-`v`, which must exist. Amortized O(log n).
+    pub fn cut(mut self, u: V, v: V):
+        self.make_root(u)
+        let _ = self.access(v)
+        assert lc[v] == some(u) and rc[u] == none, "cut needs an edge between these vertices"
+        lc[v] = none
+        pa[u] = none
+        self.pull(v)
+
+    /// The lowest common ancestor of `u` and `v` when their tree is rooted at `root`, which
+    /// becomes its root; `none` unless all three are connected. Amortized O(log n).
+    pub fn lca(mut self, u: V, v: V, root: V) -> ?V:
+        self.make_root(root)
+        if self.root_of(u) != root or self.root_of(v) != root: return none
+        let _ = self.access(u)
+        some(self.access(v))
+
+    /// The value at `v`. O(1).
+    pub fn get(self, v: V) -> T = val[v]
+
+    /// Set the value at `v` to `x`. Amortized O(log n).
+    pub fn set(mut self, v: V, x: T):
+        let _ = self.access(v)
+        val[v] = x
+        self.pull(v)
+
+    /// The fold of the values on the path from `u` to `v`, in that order; `u` becomes the root.
+    /// Amortized O(log n).
+    pub fn fold_path(mut self, u: V, v: V) -> T:
+        self.make_root(u)
+        let _ = self.access(v)
+        agg[v]
+
+@test
+fn link_cut_follows_a_changing_forest():
+    domain V = 1..=6
+    var lct = LinkCut<V, Int>.new(+, [V] v => v.to_idx + 1)
+    lct.link(V(1), V(2))
+    lct.link(V(2), V(3))
+    lct.link(V(4), V(3))
+    assert lct.connected(V(1), V(4)) and not lct.connected(V(1), V(5))
+    assert lct.fold_path(V(1), V(4)) == 10
+    assert lct.lca(V(3), V(4), V(1)) == some(V(3)) and lct.lca(V(2), V(4), V(1)) == some(V(2))
+    assert lct.lca(V(1), V(4), V(3)) == some(V(3)) and lct.lca(V(1), V(5), V(1)) == none
+    lct.cut(V(2), V(3))
+    assert not lct.connected(V(1), V(4)) and lct.fold_path(V(3), V(4)) == 7
+    lct.set(V(4), 10)
+    lct.link(V(5), V(4))
+    assert lct.fold_path(V(5), V(3)) == 18 and lct.root_of(V(3)) == V(5)
+
+@test
+fn link_cut_matches_a_brute_forest_with_ordered_folds():
+    domain V = 1..=9
+    var rng = Rng(7)
+    let w = [V] _ => rng.int(-5, 5)
+    var lct = LinkCut<V, MaxSub>.new(MaxSub.monoid(), [V] v => MaxSub.of(w[v]))
+    var adj: [V]List<V> = []
+    for _ in 0..400:
+        let u = V(rng.int(1, 9))
+        let v = V(rng.int(1, 9))
+        var from: [V]?V = none
+        var seen: [V]Bool = false
+        seen[u] = true
+        var st = [u]
+        while let x = st.pop():
+            for y in adj[x]:
+                if not seen[y]:
+                    seen[y] = true
+                    from[y] = some(x)
+                    st.push(y)
+        assert lct.connected(u, v) == seen[v]
+        if seen[v] and u != v:
+            var acc = MaxSub.of(w[v])
+            var x = v
+            while let p = from[x]:
+                acc = MaxSub.of(w[p]) + acc
+                x = p
+            assert lct.fold_path(u, v) == acc
+            if rng.int(0, 2) == 0 and from[v] != none:
+                let p = from[v]!
+                lct.cut(v, p)
+                adj[v] = [y for y in adj[v] if y != p]
+                adj[p] = [y for y in adj[p] if y != v]
+        elif not seen[v]:
+            lct.link(u, v)
+            for (x, y) in [(u, v), (v, u)]: adj[x].push(y)

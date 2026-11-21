@@ -1165,8 +1165,19 @@ struct Centroids<V> // [new] O(n log n) time and memory
     fn new<N>(adj: N) -> Centroids<V>
     fn parent(self, c: V) -> ?V // O(1)
     fn depth(self, c: V) -> Int // O(1), at most log2 n
-    fn ancestors(self, v: V) -> List<(c: V, dist: Int)> // O(1), v's own first
+    fn ancestors(self, v: V) -> yields (c: V, dist: Int) // O(log n), v's own first
     fn piece(self, c: V) -> yields (v: V, dist: Int, branch: V) // O(|piece|)
+struct LinkCut<V, T> // [new] dynamic forest; amortized O(log n) per call
+    fn new<M>(op: M, a: ?[V]T = none) -> LinkCut<V, T> // O(n)
+    fn link(mut self, u: V, v: V)
+    fn cut(mut self, u: V, v: V)
+    fn connected(mut self, u: V, v: V) -> Bool
+    fn root_of(mut self, v: V) -> V
+    fn make_root(mut self, v: V)
+    fn fold_path(mut self, u: V, v: V) -> T // path order; Reversible
+    fn get(self, v: V) -> T // O(1)
+    fn set(mut self, v: V, x: T)
+    fn lca(mut self, u: V, v: V, root: V) -> ?V
 ```
 
 [new], promoted from `examples/local-lib/graph/`:

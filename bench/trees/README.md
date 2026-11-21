@@ -41,3 +41,17 @@ Both are core features, not library changes:
 brings it to 187 MB, and the rest is 64-bit `dep`, `far` and `sz`.
 
 `ancestors` already yields instead of building a list (decisions.md §45.9).
+
+## `LinkCut`
+
+`lct_bench.cp` and `lct_bench.cpp` run the same splay-based link-cut tree
+(path sums, re-rooting by a reversal flag, an explicit push stack) on
+`python3 lct_gen.py 200000 1000000 1`: n = 2 * 10^5 vertices and 10^6
+operations, a third each of `set`, cut-and-relink and `fold_path`.
+
+| C++ | CP Lang | ratio | C++ RSS | CP Lang RSS |
+|---:|---:|---:|---:|---:|
+| 0.94 s | 1.17 s | 1.24x | 9 MB | 47 MB |
+
+Best of three, outputs identical. This misses the 1.1x target. The RSS gap
+is CP Lang reading the 21 MB input in one buffer.

@@ -42,7 +42,7 @@ export const STDLIB_TYPES: readonly string[] = [
     'ConnectedGraph', 'CostFlow', 'Dag', 'Deque', 'Desc', 'Diff1', 'Diff2', 'Digraph', 'Dir4', 'Dir8',
     'DisjointSparseTable', 'Dsu', 'DsuOf', 'DualFenwick', 'DualSegTree', 'ErasableMaxHeap', 'ErasableMinHeap', 'Fenwick', 'Fenwick2D', 'FlatMap',
     'FlowGraph', 'Graph', 'HalfPlane', 'Hash', 'Hash2D', 'HashVal', 'Hashable', 'IndexedMaxHeap', 'IndexedMinHeap', 'Interner',
-    'IntervalMap', 'LazySegTree', 'LiChao', 'Line', 'Lit', 'Location', 'Mark', 'MarkMap', 'Marks', 'Mat',
+    'IntervalMap', 'LazySegTree', 'LiChao', 'LinkCut', 'Line', 'Lit', 'Location', 'Mark', 'MarkMap', 'Marks', 'Mat',
     'MaxHeap', 'MaxSub', 'MergeSortTree', 'MinHeap', 'Mod', 'MonoDeque', 'Monoid', 'Neighbours', 'OrderedSet', 'Palindromes',
     'PalindromicTree', 'ParityDsu', 'Paths', 'Perm', 'PersistentSegTree', 'PotentialDsu', 'Prefix1', 'Prefix2', 'PrefixN', 'Pt',
     'Pt3', 'RangeFenwick', 'RangeKth', 'Reversible', 'Rng', 'RollbackArray', 'RollingHash', 'Rooted', 'SegTree', 'Sieve',
