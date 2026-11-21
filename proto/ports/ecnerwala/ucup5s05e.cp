@@ -15,27 +15,25 @@ domain P = 1..=n
 let pts: [P]Pt = read()
 
 let hull = convex_hull_idx(pts, collinear: true)
-var rm = 0
-for i in 1..hull.len:
-    if pts[hull[i]] > pts[hull[rm]]: rm = i
+let rm = (0..hull.len).max(by: i => pts[hull[i]])!
 let lower = hull[..=rm].to_list()
 let upper = [hull[0]] + hull[rm..].rev.to_list()
-let off_diagonal: ?P = if hull.len == 4:
-    first(
-        p for p in P if turn(pts[hull[0]], pts[hull[2]], pts[p]) != 0 and turn(
-            pts[hull[1]],
-            pts[hull[3]],
-            pts[p],
-        ) != 0
-    )
-else: none
+
+fn off_both_diags(p: P) -> Bool:
+    let (h0, h1, h2, h3) = (pts[hull[0]], pts[hull[1]], pts[hull[2]], pts[hull[3]])
+    turn(h0, h2, pts[p]) != 0 and turn(h1, h3, pts[p]) != 0
+
+let off_diagonal: ?P = if hull.len == 4: first(p for p in P if off_both_diags(p)) else: none
+let quad_edges = if hull.len == 4:
+    [(hull[0], hull[1]), (hull[1], hull[2]), (hull[2], hull[3]), (hull[3], hull[0])]
+else:
+    []
 
 // Up to five consecutive chain vertices around where `c` falls in x order.
 fn near(ch: List<P>, c: Pt) -> List<P>:
     let at = bsearch_first(0..ch.len, i => pts[ch[i]] >= c)!
-    var (lo, hi) = (at - 1, at + 1)
-    while hi - lo < 5 and (hi < ch.len or lo > 0):
-        if hi < ch.len: hi += 1 else: lo -= 1
+    let hi = min(ch.len, at + 4)
+    let lo = max(0, min(at - 1, hi - 5))
     ch[lo..hi].to_list()
 
 fn answer(c: Pt) -> List<P>:
@@ -47,8 +45,8 @@ fn answer(c: Pt) -> List<P>:
             for k in j + 1..cands.len:
                 if in_tri(pts[cands[i]], pts[cands[j]], pts[cands[k]], c):
                     return [cands[i], cands[j], cands[k]]
-    if hull.len == 4 and off_diagonal == none and all(
-        turn(pts[hull[i]], pts[hull[(i + 1) % 4]], c) > 0 for i in 0..4
+    if hull.len == 4 and off_diagonal == none and quad_edges.all(
+        e => turn(pts[e.0], pts[e.1], c) > 0
     ):
         return hull
     []
