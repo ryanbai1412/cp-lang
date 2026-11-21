@@ -30,7 +30,10 @@ let lim = ns.max() + 2
 let comb = Comb<M>(lim)
 
 // odd_div_sum(2^k * m) = 2^k * σ(m) for odd m.
-let odd_div_sum = sieve_multiplicative(lim, (p, _, pe) => if p == 2: pe else: (pe * p - 1) / (p - 1))
+let odd_div_sum = sieve_multiplicative(
+    lim,
+    (p, _, pe) => if p == 2: pe else: (pe * p - 1) / (p - 1),
+)
 
 for n in ns:
     fn g(i: Int) -> M =
@@ -39,6 +42,9 @@ for n in ns:
             let narrow = (if i % 2 == 1: 1 else: 0) + (if n % 2 == 1 and i % 4 == 2: 2 else: 0)
             M(odd_div_sum[i] - narrow)
 
-    let bad = sum(2 * (2 * g(d) - g(d - 1) - g(d + 1)) * comb.choose(n, (n + d) / 2)
-                  for d in (n % 2..=n).step(2))
-    print(2 ** n - bad)
+    let bad = sum(
+        2 * (
+            2 * g(d) - g(d - 1) - g(d + 1)
+        ) * comb.choose(n, (n + d) / 2) for d in (n % 2..=n).step(2)
+    )
+    print(M(2) ** n - bad)
