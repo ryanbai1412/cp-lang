@@ -519,7 +519,12 @@ impl<'a> Checker<'a> {
             } => {
                 let keyword = if *mutable { "var" } else { "let" };
                 let declared = ty.as_ref().map(|ty| self.resolve_type(ty));
+                let prev_bounds_range = self.expected_bounds_range;
+                if declared.as_ref().is_some_and(Self::expects_bounds_range) {
+                    self.expected_bounds_range = true;
+                }
                 let mut init_ty = init.as_ref().map(|init| self.infer(init));
+                self.expected_bounds_range = prev_bounds_range;
                 if let (Some(declared), Some(init)) = (&declared, init) {
                     self.readable(declared, init);
                 }
@@ -807,10 +812,15 @@ impl<'a> Checker<'a> {
             StmtKind::Expr(expr) => return self.infer(expr),
             StmtKind::Assign { target, op, value } => {
                 let target_ty = self.infer(target);
+                let prev_bounds_range = self.expected_bounds_range;
+                if Self::expects_bounds_range(&target_ty) {
+                    self.expected_bounds_range = true;
+                }
                 let value_ty = match self.part_map(target, *op, value) {
                     Some(ty) => ty,
                     None => self.infer(value),
                 };
+                self.expected_bounds_range = prev_bounds_range;
                 self.optional_fold(target, &target_ty, *op);
                 self.map_fold(target, *op, value);
                 self.assign_alias(target, *op, value);

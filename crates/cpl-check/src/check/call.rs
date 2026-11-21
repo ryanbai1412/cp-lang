@@ -133,11 +133,15 @@ impl<'a> Checker<'a> {
                     if matches!(ety, Ty::Error | Ty::Unknown) {
                         return;
                     }
-                    let fits_bound = matches!(
-                        (&k_ty, &ety),
-                        (Ty::Pos(d), Ty::Pos(bd))
-                            if bd.strip_suffix(".bounds").is_some_and(|b| b == d)
-                    );
+                    let fits_bound = match (&k_ty, &ety) {
+                        (Ty::Pos(d), Ty::Pos(bd)) => {
+                            bd.strip_suffix(".bounds") == Some(d.as_str())
+                        }
+                        (Ty::Pos(d), Ty::Named { name, args }) if name == "Bounds" => {
+                            matches!(args.as_slice(), [Ty::Pos(bd)] if bd == d)
+                        }
+                        _ => false,
+                    };
                     if !fits_bound {
                         this.expect_fits(&ety, &k_ty, e, |c, got, want| {
                             format!(
@@ -1132,15 +1136,7 @@ impl<'a> Checker<'a> {
             let prev_bounds_range = self.expected_bounds_range;
             if let Some(p) = param {
                 let expected = p.ty.subst(bindings);
-                if matches!(
-                    expected,
-                    Ty::Named { ref name, ref args }
-                        if name == "Range"
-                            && matches!(
-                                args.as_slice(),
-                                [Ty::Pos(d) | Ty::Domain(d)] if d.ends_with(".bounds")
-                            )
-                ) {
+                if Self::expects_bounds_range(&expected) {
                     self.expected_bounds_range = true;
                 }
             }

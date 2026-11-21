@@ -138,24 +138,35 @@ impl<'a> Checker<'a> {
                 if let Some(step) = step {
                     self.infer(step);
                 }
-                let elem = match (&lo_ty, &hi_ty) {
+                let bounds_domain = |ty: &Option<Ty>| match ty {
+                    Some(Ty::Pos(d)) if d.ends_with(".bounds") => {
+                        Some((d.clone(), d.strip_suffix(".bounds").unwrap().to_string()))
+                    }
+                    Some(Ty::Named { name, args }) if name == "Bounds" => match args.as_slice() {
+                        [Ty::Pos(d)] => Some((format!("{d}.bounds"), d.clone())),
+                        _ => None,
+                    },
+                    _ => None,
+                };
+                let elem = match (bounds_domain(&lo_ty), bounds_domain(&hi_ty), &lo_ty, &hi_ty) {
                     // Two boundaries enclose positions (`l.l..r.r` is a range of `V`),
                     // except when the enclosing context explicitly expects `Range<V.bounds>`.
-                    (Some(Ty::Pos(d)), _) | (_, Some(Ty::Pos(d))) => {
-                        if self.expected_bounds_range && d.ends_with(".bounds") {
-                            Ty::Pos(d.clone())
+                    (Some((bd, base)), _, _, _) | (_, Some((bd, base)), _, _) => {
+                        if self.expected_bounds_range {
+                            Ty::Pos(bd)
                         } else {
-                            Ty::Pos(d.strip_suffix(".bounds").unwrap_or(d).to_string())
+                            Ty::Pos(base)
                         }
                     }
-                    (Some(a), Some(b))
+                    (_, _, Some(Ty::Pos(d)), _) | (_, _, _, Some(Ty::Pos(d))) => Ty::Pos(d.clone()),
+                    (_, _, Some(a), Some(b))
                         if (*a == Ty::I128 && (*b == Ty::I128 || b.is_int()))
                             || (*b == Ty::I128 && a.is_int()) =>
                     {
                         Ty::I128
                     }
-                    (Some(Ty::I128), None) | (None, Some(Ty::I128)) => Ty::I128,
-                    (Some(a), Some(b)) if a.is_int() && b.is_int() => {
+                    (_, _, Some(Ty::I128), None) | (_, _, None, Some(Ty::I128)) => Ty::I128,
+                    (_, _, Some(a), Some(b)) if a.is_int() && b.is_int() => {
                         let lo_min = lo.as_ref().and_then(|e| self.bounds(e).0);
                         let hi_max = hi.as_ref().and_then(|e| self.bounds(e).1).map(|h| {
                             if *inclusive {
@@ -170,8 +181,10 @@ impl<'a> Checker<'a> {
                             text: self.text(expr.span).to_string(),
                         }
                     }
-                    (Some(a), None) | (None, Some(a)) if a.is_int() => Ty::Int,
-                    (Some(a), Some(Ty::Unknown)) | (Some(Ty::Unknown), Some(a)) if a.is_int() => {
+                    (_, _, Some(a), None) | (_, _, None, Some(a)) if a.is_int() => Ty::Int,
+                    (_, _, Some(a), Some(Ty::Unknown)) | (_, _, Some(Ty::Unknown), Some(a))
+                        if a.is_int() =>
+                    {
                         Ty::Int
                     }
                     _ => Ty::Unknown,
@@ -932,6 +945,10 @@ impl<'a> Checker<'a> {
     ) {
         let domain = |ty: &Option<Ty>| match ty {
             Some(Ty::Pos(d)) => Some(d.strip_suffix(".bounds").unwrap_or(d).to_string()),
+            Some(Ty::Named { name, args }) if name == "Bounds" => match args.as_slice() {
+                [Ty::Pos(d)] => Some(d.clone()),
+                _ => None,
+            },
             _ => None,
         };
         if let (Some(a), Some(b)) = (domain(lo_ty), domain(hi_ty)) {
@@ -943,10 +960,15 @@ impl<'a> Checker<'a> {
                 return;
             }
         }
-        let (Some(hi), Some(Ty::Pos(d))) = (hi, hi_ty) else {
+        let Some(hi) = hi else {
             return;
         };
-        if inclusive && d.ends_with(".bounds") && !self.expected_bounds_range {
+        let hi_is_bounds = match hi_ty {
+            Some(Ty::Pos(d)) => d.ends_with(".bounds"),
+            Some(Ty::Named { name, .. }) if name == "Bounds" => true,
+            _ => false,
+        };
+        if inclusive && hi_is_bounds && !self.expected_bounds_range {
             let message = format!(
                 "`..=` ends at a position; a range up to the boundary `{}` is written `..`",
                 self.quote(hi.span)

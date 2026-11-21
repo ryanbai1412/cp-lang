@@ -3082,3 +3082,32 @@ fn mutable_slice_views_lend_and_reject_aliasing() {
         ["E0602"]
     );
 }
+
+#[test]
+fn bounds_ranges_and_domain_ranges_check_per_decision_124() {
+    assert_eq!(
+        codes(
+            "domain I = 1..=5\n\
+             var s: Set<I> = Set()\n\
+             fn walk(c: I, stop: Bounds<I>) -> Int = s.range(c.l..stop).count()\n"
+        ),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes(
+            "domain Seg = 0..2\n\
+             domain PosB = 0..4\n\
+             var piece: [Seg]Range<PosB.bounds> = PosB.bounds.first..PosB.bounds.first\n\
+             piece[Seg(0)] = PosB.bounds.first..PosB.bounds.last\n"
+        ),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes(
+            "domain Pos = 1..=5\n\
+             fn tally(ls: Range<Pos>) -> Int = ls.len\n\
+             let k = tally(Pos)\n"
+        ),
+        Vec::<&str>::new()
+    );
+}
