@@ -505,6 +505,79 @@ impl<'a> Lowerer<'a> {
                     self.fields_loop(pat, values, body, out);
                     return;
                 }
+                // Zero-allocation nested loop for `for (i, j) in V.pairs:` / `V.pairs()`.
+                // If the body has a `break`, fall back to `domain_pairs_list` so `break` exits both loops.
+                if let Some(dom_id) = self.domain_pairs_iter(iter) {
+                    fn expr_has_break(e: &ast::Expr) -> bool {
+                        match &e.kind {
+                            ast::ExprKind::If { branches, otherwise } => {
+                                branches.iter().any(|(_, b)| block_has_break(b))
+                                    || otherwise.as_ref().is_some_and(block_has_break)
+                            }
+                            ast::ExprKind::Match { arms, .. } => {
+                                arms.iter().any(|a| block_has_break(&a.body))
+                            }
+                            ast::ExprKind::Block(b) => block_has_break(b),
+                            _ => false,
+                        }
+                    }
+                    fn block_has_break(b: &ast::Block) -> bool {
+                        b.stmts.iter().any(|s| match &s.kind {
+                            ast::StmtKind::Break(_) => true,
+                            ast::StmtKind::Expr(e) => expr_has_break(e),
+                            _ => false,
+                        })
+                    }
+                    if !block_has_break(body) {
+                        let span = iter.span;
+                        let len = self.mk(ExprKind::DomainLen(dom_id), Ty::Int, span);
+                        let i_slot = self.temp(Ty::Pos(dom_id));
+                        let j_slot = self.temp(Ty::Pos(dom_id));
+                        let i_var = self.mk(ExprKind::Local(i_slot), Ty::Pos(dom_id), span);
+                        let j_var = self.mk(ExprKind::Local(j_slot), Ty::Pos(dom_id), span);
+                        let j_lo = self.int_add(self.cast(Cast::Ord, i_var.clone(), Ty::Int), 1);
+                        let outer_id = self.fresh_loop();
+                        let inner_id = self.open_loop(label.as_ref().map(|l| l.text.clone()));
+                        self.cx.scopes.push(HashMap::new());
+                        self.cx.local_syms.push(HashMap::new());
+                        let pair = self.mk(
+                            ExprKind::Tuple(vec![i_var, j_var]),
+                            Ty::Tuple(vec![Ty::Pos(dom_id), Ty::Pos(dom_id)]),
+                            span,
+                        );
+                        let mut inner_stmts = Vec::new();
+                        self.bind(pat, pair, &mut inner_stmts);
+                        inner_stmts.extend(self.block(body, Tail::Discard).stmts);
+                        self.cx.local_syms.pop();
+                        self.cx.scopes.pop();
+                        self.cx.loops.pop();
+                        let inner = Stmt::For(
+                            inner_id,
+                            j_slot,
+                            Iter::Range {
+                                lo: j_lo,
+                                hi: len.clone(),
+                                step: None,
+                                rev: false,
+                                closed: false,
+                            },
+                            Block { stmts: inner_stmts },
+                        );
+                        out.push(Stmt::For(
+                            outer_id,
+                            i_slot,
+                            Iter::Range {
+                                lo: self.int_lit(0, span),
+                                hi: len,
+                                step: None,
+                                rev: false,
+                                closed: false,
+                            },
+                            Block { stmts: vec![inner] },
+                        ));
+                        return;
+                    }
+                }
                 // Support compile-time unrolling of heterogeneous literal lists like
                 // `for (k, act) in [(0, AddSum), ..., (0, AssignSum)]:` where items have different struct types.
                 if let ast::ExprKind::List(items) = &iter.kind {
@@ -762,6 +835,24 @@ impl<'a> Lowerer<'a> {
     }
 
     pub(super) fn init_domain_id(&mut self, id: DomainId, def: &ast::Expr, out: &mut Vec<Stmt>) {
+        if let Some(base_id) = self.domain_pairs_iter(def) {
+            let n = self.mk(ExprKind::DomainLen(base_id), Ty::Int, def.span);
+            let n_minus_1 = self.int_add(n.clone(), -1);
+            let prod = self.mk(
+                ExprKind::Binary(BinOp::Mul, Box::new(n), Box::new(n_minus_1)),
+                Ty::Int,
+                def.span,
+            );
+            let two = self.int_lit(2, def.span);
+            let len = self.mk(
+                ExprKind::Binary(BinOp::Div, Box::new(prod), Box::new(two)),
+                Ty::Int,
+                def.span,
+            );
+            let lo = self.int_lit(0, def.span);
+            out.push(Stmt::DefDomain { id, lo, len });
+            return;
+        }
         let ast::ExprKind::Range {
             lo: Some(lo),
             hi: Some(hi),
@@ -2238,7 +2329,7 @@ impl<'a> Lowerer<'a> {
         let slot_ty = |dim: Dim| match dim {
             Dim::Pos(d) => Ty::Pos(d),
             Dim::Bound(d) => Ty::Bound(d),
-            Dim::Int | Dim::IntFrom(_) => Ty::Int,
+            Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
         };
         let changed = asked.then(|| {
             let changed = self.temp(Ty::Bool);
@@ -2458,7 +2549,7 @@ impl<'a> Lowerer<'a> {
         let index_ty = |dim: Dim| match dim {
             Dim::Pos(d) => Ty::Pos(d),
             Dim::Bound(d) => Ty::Bound(d),
-            Dim::Int | Dim::IntFrom(_) => Ty::Int,
+            Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
         };
         let (at, from_at) = (self.temp(index_ty(dims[axis])), self.temp(index_ty(from_dims[from_axis])));
         let cell = self.axis_cell(&place.ty, indices, at, span);
@@ -2551,7 +2642,7 @@ impl<'a> Lowerer<'a> {
         let at = self.temp(match dims[axis] {
             Dim::Pos(d) => Ty::Pos(d),
             Dim::Bound(d) => Ty::Bound(d),
-            Dim::Int | Dim::IntFrom(_) => Ty::Int,
+            Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
         });
         let cell = self.axis_cell(&place.ty, indices, at, span);
         let cell: Vec<Expr> =
@@ -3651,7 +3742,7 @@ fn find_pos_domain_in_ty(ty: &Ty) -> Option<DomainId> {
         Ty::Array { dims, elem } => dims
             .iter()
             .find_map(|dim| match dim {
-                Dim::Pos(d) | Dim::Bound(d) => Some(*d),
+                Dim::Pos(d) | Dim::Bound(d) | Dim::Sym(d) => Some(*d),
                 Dim::Int | Dim::IntFrom(_) => None,
             })
             .or_else(|| find_pos_domain_in_ty(elem)),
@@ -3677,6 +3768,7 @@ pub(super) fn remap_domain_ty(ty: &Ty, from: DomainId, to: DomainId) -> Ty {
                 .map(|dim| match dim {
                     Dim::Pos(d) => Dim::Pos(map_d(*d)),
                     Dim::Bound(d) => Dim::Bound(map_d(*d)),
+                    Dim::Sym(d) => Dim::Sym(map_d(*d)),
                     Dim::Int => Dim::Int,
                     Dim::IntFrom(lo) => Dim::IntFrom(*lo),
                 })

@@ -258,7 +258,7 @@ impl<'a> Lowerer<'a> {
                         let at_ty = match dims[axis] {
                             Dim::Pos(d) => Ty::Pos(d),
                             Dim::Bound(d) => Ty::Bound(d),
-                            Dim::Int | Dim::IntFrom(_) => Ty::Int,
+                            Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
                         };
                         return self.collected(elem, span, |lw, out, push| {
                             let base = lw.hold(base_expr, out);
@@ -2138,6 +2138,46 @@ impl<'a> Lowerer<'a> {
         };
         match base {
             Ty::Array { dims, elem } => {
+                if let [Dim::Sym(d)] = dims.as_slice() {
+                    let (u, v) = if indices.len() == 2 {
+                        (
+                            self.expect(&indices[0], &Ty::Pos(*d)),
+                            self.expect(&indices[1], &Ty::Pos(*d)),
+                        )
+                    } else if indices.len() == 1 {
+                        let pair = self.expr(&indices[0], None);
+                        let (ft0, ft1) = match &pair.ty {
+                            Ty::Tuple(ts) if ts.len() == 2 => (ts[0].clone(), ts[1].clone()),
+                            Ty::Record(fs) if fs.len() == 2 => (fs[0].1.clone(), fs[1].1.clone()),
+                            _ => {
+                                self.error(
+                                    codes::WRONG_ARG_COUNT,
+                                    span,
+                                    "a symmetric table takes 2 indices `adj[u, v]` or a pair `(u, v)`",
+                                );
+                                return (vec![self.err_expr(span)], (**elem).clone());
+                            }
+                        };
+                        let f0 = self.mk(ExprKind::Field(Box::new(pair.clone()), 0), ft0, indices[0].span);
+                        let f1 = self.mk(ExprKind::Field(Box::new(pair), 1), ft1, indices[0].span);
+                        (
+                            self.coerce(f0, &Ty::Pos(*d), indices[0].span),
+                            self.coerce(f1, &Ty::Pos(*d), indices[0].span),
+                        )
+                    } else {
+                        self.error(
+                            codes::WRONG_ARG_COUNT,
+                            span,
+                            format!("this takes 2 indices, but {} were given", indices.len()),
+                        );
+                        return (vec![self.err_expr(span)], (**elem).clone());
+                    };
+                    let a = self.cast(Cast::Ord, u, Ty::Int);
+                    let b = self.cast(Cast::Ord, v, Ty::Int);
+                    let sym = self.mk(ExprKind::Builtin(Builtin::SymIdx, vec![a, b]), Ty::Int, span);
+                    let flat = self.cast(Cast::Raw, sym, Ty::Int);
+                    return (vec![flat], (**elem).clone());
+                }
                 if dims.len() > 1 && indices.len() == 1 {
                     // Allow indexing a multi-D array with a single tuple/record coordinate `g[p]` where `p: (Row, Col)`.
                     let tuple_val = self.expr(&indices[0], None);
@@ -2154,7 +2194,7 @@ impl<'a> Lowerer<'a> {
                             let want = match dim {
                                 Dim::Pos(d) => Ty::Pos(*d),
                                 Dim::Bound(d) => Ty::Bound(*d),
-                                Dim::Int | Dim::IntFrom(_) => Ty::Int,
+                                Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
                             };
                             let field_e = self.mk(
                                 ExprKind::Field(Box::new(tuple_val.clone()), i),
@@ -2184,7 +2224,7 @@ impl<'a> Lowerer<'a> {
                     let want = match dim {
                         Dim::Pos(d) => Ty::Pos(*d),
                         Dim::Bound(d) => Ty::Bound(*d),
-                        Dim::Int | Dim::IntFrom(_) => Ty::Int,
+                        Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
                     };
                     if let (Some(slot), true) = (self.whole_axis, is_whole(index)) {
                         out.push(self.mk(ExprKind::Local(slot), want, index.span));
@@ -2407,7 +2447,7 @@ impl<'a> Lowerer<'a> {
             let hint = match dim {
                 Dim::Pos(d) => Some(Ty::Pos(d)),
                 Dim::Bound(d) => Some(Ty::Bound(d)),
-                Dim::Int | Dim::IntFrom(_) => None,
+                Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => None,
             };
             let v = lw.expr(e, hint.as_ref());
             let at = match v.ty {
@@ -2663,12 +2703,12 @@ impl<'a> Lowerer<'a> {
                         let gaps = ExprKind::Binary(BinOp::Add, Box::new(len), Box::new(one));
                         (DimSpec::Bound(d), self.mk(gaps, Ty::Int, span))
                     }
-                    Dim::Int | Dim::IntFrom(_) => unreachable!("matched above"),
+                    Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => unreachable!("matched above"),
                 };
                 let index_ty = match dims[0] {
                     Dim::Bound(d) => Ty::Bound(d),
                     Dim::Pos(d) => Ty::Pos(d),
-                    Dim::Int | Dim::IntFrom(_) => Ty::Int,
+                    Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
                 };
                 let values: Vec<Expr> = items.iter().map(|item| self.expect(item, elem)).collect();
                 let ty = ty.clone();
@@ -3596,6 +3636,14 @@ impl<'a> Lowerer<'a> {
                 DimSpec::Bound(d) => {
                     let len = self.mk(ExprKind::DomainLen(*d), Ty::Int, span);
                     (Ty::Bound(*d), self.int_add(len, 1))
+                }
+                DimSpec::Sym(d) => {
+                    let n = self.mk(ExprKind::DomainLen(*d), Ty::Int, span);
+                    let n1 = self.int_add(n.clone(), 1);
+                    let prod = self.mk(ExprKind::Binary(BinOp::Mul, Box::new(n), Box::new(n1)), Ty::Int, span);
+                    let two = self.int_lit(2, span);
+                    let len = self.mk(ExprKind::Binary(BinOp::Div, Box::new(prod), Box::new(two)), Ty::Int, span);
+                    (Ty::Int, len)
                 }
                 DimSpec::Int(len) | DimSpec::IntFrom(_, len) => (Ty::Int, (**len).clone()),
             };

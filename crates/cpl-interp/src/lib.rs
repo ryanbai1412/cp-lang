@@ -1887,6 +1887,10 @@ impl<'p, 'o> Interp<'p, 'o> {
             let len = match dim {
                 DimSpec::Pos(d) => self.domains[*d].1,
                 DimSpec::Bound(d) => self.domains[*d].1 + 1,
+                DimSpec::Sym(d) => {
+                    let n = self.domains[*d].1;
+                    n * (n + 1) / 2
+                }
                 DimSpec::Int(len) | DimSpec::IntFrom(_, len) => {
                     let len = self.eval(len)?.int();
                     if len < 0 {
@@ -3013,6 +3017,12 @@ impl<'p, 'o> Interp<'p, 'o> {
                 let (_, len) = self.domains[d];
                 let ord = first.int();
                 optional((ord >= 0 && ord < len).then_some(Value::Int(ord)))
+            }
+            Builtin::SymIdx => {
+                let a = first.int();
+                let b = values.next().unwrap_or_default().int();
+                let (lo, hi) = if a <= b { (a, b) } else { (b, a) };
+                Value::Int(hi * (hi + 1) / 2 + lo)
             }
             Builtin::PosOffset(d) => {
                 let (_, len) = self.domains[d];

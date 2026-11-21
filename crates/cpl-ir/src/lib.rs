@@ -134,6 +134,9 @@ pub enum Ty {
 pub enum Dim {
     Pos(DomainId),
     Bound(DomainId),
+    /// Symmetric unordered pairs `{u, v}` (`u <= v`) of a domain: packed
+    /// triangular storage of length `n * (n + 1) / 2`.
+    Sym(DomainId),
     /// A plain `Int` from 0, checked against the length.
     Int,
     /// A plain `Int` from this first index: `[1..=9]T` starts at 1. The
@@ -247,6 +250,7 @@ pub enum Spec {
 pub enum DimSpec {
     Pos(DomainId),
     Bound(DomainId),
+    Sym(DomainId),
     /// A count-indexed dimension and its length.
     Int(Box<Expr>),
     /// The same, indexed from a first index other than 0.
@@ -258,6 +262,7 @@ impl DimSpec {
         match self {
             DimSpec::Pos(d) => Dim::Pos(*d),
             DimSpec::Bound(d) => Dim::Bound(*d),
+            DimSpec::Sym(d) => Dim::Sym(*d),
             DimSpec::Int(_) => Dim::Int,
             DimSpec::IntFrom(lo, _) => Dim::IntFrom(*lo),
         }
@@ -569,6 +574,8 @@ pub enum Builtin {
     PosPrev,
     /// `V.from_idx(ord)` -> `?V`.
     PosTryOrd(DomainId),
+    /// Triangular packed index for `[Sym<V>]T`: `(a, b) -> hi * (hi + 1) / 2 + lo`.
+    SymIdx,
     /// `v.offset(k)` / `v + k` -> `?V`, and `v.cyc(k)` -> `V`.
     PosOffset(DomainId),
     PosCyc(DomainId),
@@ -913,7 +920,7 @@ impl Program {
             }
             Ty::Array { dims, elem } => {
                 for dim in dims {
-                    if let Dim::Pos(d) | Dim::Bound(d) = dim {
+                    if let Dim::Pos(d) | Dim::Bound(d) | Dim::Sym(d) = dim {
                         out.insert(*d);
                     }
                 }

@@ -33,7 +33,7 @@ export const CONTEXTUAL_KEYWORDS: readonly string[] = [
  */
 export const PRELUDE_TYPES: readonly string[] = [
     'Bool', 'Bounds', 'Char', 'F64', 'HashMap', 'I128', 'Int', 'Interactor', 'Iter', 'List', 'Map',
-    'Range', 'Set', 'Str', 'Subset', 'U64',
+    'Range', 'Set', 'Str', 'Subset', 'Sym', 'U64',
 ];
 
 /** Every public type and trait declared in `stdlib/*.cp`, whether `stdlib/prelude.cp` imports it or not. */

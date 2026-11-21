@@ -743,6 +743,13 @@ struct DomGuard {
 ",
     },
     Piece {
+        name: "sym_idx",
+        needs: &[],
+        code: "\
+inline ll sym_idx(ll a, ll b) { if (a > b) std::swap(a, b); return b * (b + 1) / 2 + a; }
+",
+    },
+    Piece {
         name: "rng",
         needs: &[],
         code: "\

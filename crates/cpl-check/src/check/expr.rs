@@ -1158,12 +1158,33 @@ impl<'a> Checker<'a> {
                         .collect::<Vec<_>>(),
                 )
             }),
-            // The members of a domain that give positions back.
+            // The members of a domain that give positions or ranges back.
             Ty::Domain(domain) => {
                 return match name.text.as_str() {
                     "first" | "last" => Ty::Pos(domain.clone()),
                     "rev" => Ty::Domain(domain.clone()),
                     "bounds" => Ty::Domain(format!("{domain}.bounds")),
+                    "pairs" => Ty::Named {
+                        name: "List".into(),
+                        args: vec![Ty::Tuple(vec![
+                            Ty::Pos(domain.clone()),
+                            Ty::Pos(domain.clone()),
+                        ])],
+                    },
+                    "after" | "before" => Ty::Fn {
+                        params: vec![crate::ty::Param {
+                            name: "pos".into(),
+                            ty: Ty::Pos(domain.clone()),
+                            mutable: false,
+                            has_default: false,
+                            named_only: false,
+                            variadic: false,
+                        }],
+                        ret: Box::new(Ty::Named {
+                            name: "Range".into(),
+                            args: vec![Ty::Pos(domain.clone())],
+                        }),
+                    },
                     _ => Ty::Unknown,
                 }
             }
@@ -1257,6 +1278,62 @@ impl<'a> Checker<'a> {
         let base_ty = self.infer(base);
         let index_tys: Vec<Ty> = indices.iter().map(|i| self.infer(i)).collect();
         match &base_ty {
+            // `[Sym<V>]T`: symmetric storage over unordered pairs of `V`,
+            // indexed as `adj[u, v]` or `adj[p]` with `p: (V, V)`.
+            Ty::Array { index, elem }
+                if matches!(index.as_slice(), [Ty::Named { name, args }] if name == "Sym" && args.len() == 1) =>
+            {
+                let Ty::Named { args, .. } = &index[0] else {
+                    unreachable!()
+                };
+                let dom_ty = &args[0];
+                if indices.len() == 1
+                    && (index_tys[0].is_vague()
+                        || matches!(&index_tys[0], Ty::Tuple(items) if items.len() == 2))
+                {
+                    let want = Ty::Tuple(vec![dom_ty.clone(), dom_ty.clone()]);
+                    self.expect_fits(&index_tys[0], &want, &indices[0], |c, got, want| {
+                        format!(
+                            "`{}` is indexed by {}, but `{}` is {}",
+                            c.quote(base.span),
+                            want,
+                            c.quote(indices[0].span),
+                            got.with_article()
+                        )
+                    });
+                    return (**elem).clone();
+                }
+                if indices.len() != 2 {
+                    let message = format!(
+                        "`{}` takes 2 indices ({}, {}), but {} given",
+                        self.quote(base.span),
+                        dom_ty,
+                        dom_ty,
+                        if indices.len() == 1 {
+                            "1 was".to_string()
+                        } else {
+                            format!("{} were", indices.len())
+                        },
+                    );
+                    if let Some(diag) = self.error(codes::NOT_INDEXABLE, expr.span, message) {
+                        diag.help = Some("index a symmetric table with two positions: `adj[u, v]`".into());
+                    }
+                    return Ty::Error;
+                }
+                for (got, index_expr) in index_tys.iter().zip(indices) {
+                    if !self.fits(got, dom_ty) {
+                        let message = format!(
+                            "`{}` is indexed by {}, but `{}` is {}",
+                            self.quote(base.span),
+                            dom_ty,
+                            self.quote(index_expr.span),
+                            got.with_article()
+                        );
+                        self.error(codes::TYPE_MISMATCH, index_expr.span, message);
+                    }
+                }
+                (**elem).clone()
+            }
             // `g[p]` with `p: (Row, Col)`: `a[i, j]` is sugar for `a[(i, j)]`.
             Ty::Array { index, elem }
                 if index.len() > 1

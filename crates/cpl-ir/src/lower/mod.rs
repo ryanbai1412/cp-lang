@@ -1841,6 +1841,10 @@ impl<'a> Lowerer<'a> {
                 if let Ty::Pos(id) = self.resolve_ty(&args[0]) {
                     return Some(DimSpec::Bound(id));
                 }
+            } else if name.text == "Sym" && args.len() == 1 {
+                if let Ty::Pos(id) = self.resolve_ty(&args[0]) {
+                    return Some(DimSpec::Sym(id));
+                }
             } else if let Some(Sym::GenStruct(gid)) = self.get_sym(&name.text) {
                 let gargs = self.resolve_gen_args(args);
                 let sid = self.instantiate_struct(gid, gargs);
@@ -3240,6 +3244,7 @@ impl<'a> Lowerer<'a> {
                             let dim_spec = match dim {
                                 Dim::Pos(d) => DimSpec::Pos(d),
                                 Dim::Bound(d) => DimSpec::Bound(d),
+                                Dim::Sym(d) => DimSpec::Sym(d),
                                 Dim::Int | Dim::IntFrom(_) => {
                                     let sref = lw.local(src_slot, span);
                                     DimSpec::Int(Box::new(lw.len_of(sref, span)))
@@ -3253,7 +3258,7 @@ impl<'a> Lowerer<'a> {
                             let idx_ty = match dim {
                                 Dim::Pos(d) => Ty::Pos(d),
                                 Dim::Bound(d) => Ty::Bound(d),
-                                Dim::Int | Dim::IntFrom(_) => Ty::Int,
+                                Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
                             };
                             let idx_slot = lw.temp(idx_ty.clone());
                             let idx_expr = lw.local(idx_slot, span);
@@ -3304,7 +3309,7 @@ impl<'a> Lowerer<'a> {
                                     rev: false,
                                     closed: false,
                                 },
-                                Dim::Int | Dim::IntFrom(_) => Iter::Range {
+                                Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Iter::Range {
                                     lo: lw.int_lit(0, span),
                                     hi: lw.len_of(sref, span),
                                     step: None,

@@ -346,6 +346,10 @@ impl<'p> Emitter<'p> {
         match dim {
             DimSpec::Pos(d) => format!("{}_len", ident(&self.program.domains[*d])),
             DimSpec::Bound(d) => format!("{}_len + 1", ident(&self.program.domains[*d])),
+            DimSpec::Sym(d) => {
+                let dn = ident(&self.program.domains[*d]);
+                format!("({dn}_len * ({dn}_len + 1) / 2)")
+            }
             DimSpec::Int(len) | DimSpec::IntFrom(_, len) => self.expr(len).text,
         }
     }
@@ -1544,6 +1548,10 @@ impl<'p> Emitter<'p> {
                 self.need("pos_ops");
                 let dn = ident(&self.program.domains[d]);
                 Code::primary(format!("cpl::pos_try_ord({}, {dn}_len)", text(0)))
+            }
+            Builtin::SymIdx => {
+                self.need("sym_idx");
+                Code::primary(format!("cpl::sym_idx({}, {})", text(0), text(1)))
             }
             Builtin::PosOffset(d) => {
                 self.need("pos_ops");

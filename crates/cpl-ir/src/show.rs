@@ -78,6 +78,7 @@ pub(crate) fn ty_name(
                 .map(|d| match d {
                     Dim::Pos(d) => domains[*d].clone(),
                     Dim::Bound(d) => format!("{}.bounds", domains[*d]),
+                    Dim::Sym(d) => format!("Sym<{}>", domains[*d]),
                     Dim::Int | Dim::IntFrom(_) => "Int".into(),
                 })
                 .collect();

@@ -2130,3 +2130,27 @@ print(edges.len, Q.count, vals[Q(0)], A.count, B.count, xs[A(0)], ys[B(0)])
 ";
     assert_eq!(check(src), vec![]);
 }
+
+#[test]
+fn sym_storage_and_domain_iteration_typecheck() {
+    let ok = "\
+domain V = 1..=5
+var adj: [Sym<V>]Bool = false
+for (i, j) in V.pairs:
+    adj[i, j] = true
+    let p = (j, i)
+    if adj[p]: print(i, j)
+for i in V:
+    for j in V.after(i): print(i, j)
+    for j in V.before(i): print(j, i)
+";
+    assert_eq!(check(ok), vec![]);
+
+    let bad = "\
+domain V = 1..=5
+domain U = 1..=5
+var adj: [Sym<V>]Bool = false
+let _ = adj[V.first, U.first]
+";
+    assert_eq!(codes(bad), vec![cpl_diag::codes::TYPE_MISMATCH.0]);
+}

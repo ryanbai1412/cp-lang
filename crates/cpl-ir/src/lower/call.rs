@@ -1953,6 +1953,7 @@ impl<'a> Lowerer<'a> {
                     .map(|d| match d {
                         Dim::Pos(d) => Some(DimSpec::Pos(*d)),
                         Dim::Bound(d) => Some(DimSpec::Bound(*d)),
+                        Dim::Sym(d) => Some(DimSpec::Sym(*d)),
                         Dim::Int | Dim::IntFrom(_) => None,
                     })
                     .collect();
@@ -4357,6 +4358,43 @@ impl<'a> Lowerer<'a> {
                         None => self.err_expr(span),
                     };
                 }
+                "after" => {
+                    return match self.one_arg("after", args, &Ty::Pos(id), span) {
+                        Some(pos) => {
+                            let lo = self.int_add(self.cast(Cast::Ord, pos, Ty::Int), 1);
+                            let hi = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
+                            self.mk(
+                                ExprKind::Range {
+                                    lo: Box::new(lo),
+                                    hi: Box::new(hi),
+                                },
+                                Ty::Range(Box::new(Ty::Pos(id))),
+                                span,
+                            )
+                        }
+                        None => self.err_expr(span),
+                    };
+                }
+                "before" => {
+                    return match self.one_arg("before", args, &Ty::Pos(id), span) {
+                        Some(pos) => {
+                            let lo = self.int_lit(0, span);
+                            let hi = self.cast(Cast::Ord, pos, Ty::Int);
+                            self.mk(
+                                ExprKind::Range {
+                                    lo: Box::new(lo),
+                                    hi: Box::new(hi),
+                                },
+                                Ty::Range(Box::new(Ty::Pos(id))),
+                                span,
+                            )
+                        }
+                        None => self.err_expr(span),
+                    };
+                }
+                "pairs" if args.is_empty() => {
+                    return self.domain_pairs_list(id, span);
+                }
                 _ => {}
             },
             _ => {}
@@ -4638,7 +4676,7 @@ impl<'a> Lowerer<'a> {
                             Ty::Array { dims, .. } if dims.len() == 1 => match dims[0] {
                                 Dim::Pos(d) => Ty::Pos(d),
                                 Dim::Bound(d) => Ty::Bound(d),
-                                Dim::Int | Dim::IntFrom(_) => Ty::Int,
+                                Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
                             },
                             _ => Ty::Int,
                         };
@@ -5363,6 +5401,7 @@ impl<'a> Lowerer<'a> {
                     span,
                 )
             }
+            "pairs" => self.domain_pairs_list(id, span),
             "last" => {
                 let last = self.int_add(len, -1);
                 self.mk(
@@ -5397,6 +5436,72 @@ impl<'a> Lowerer<'a> {
                 self.err_expr(span)
             }
         }
+    }
+
+    /// Recognizes `V.pairs` or `V.pairs()` where `V` is a domain, returning its `DomainId`.
+    pub(super) fn domain_pairs_iter(&self, iter: &ast::Expr) -> Option<DomainId> {
+        match &iter.kind {
+            ast::ExprKind::Field { base, name } if name.text == "pairs" => {
+                if let Some(Sym::Domain(id)) = self.sym(base) {
+                    return Some(id);
+                }
+            }
+            ast::ExprKind::Call { callee, args } if args.is_empty() => {
+                if let ast::ExprKind::Field { base, name } = &callee.kind {
+                    if name.text == "pairs" {
+                        if let Some(Sym::Domain(id)) = self.sym(base) {
+                            return Some(id);
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+        None
+    }
+
+    /// Materializes `V.pairs` as `List<(V, V)>` for all `0 <= i < j < V.count`.
+    pub(super) fn domain_pairs_list(&mut self, id: DomainId, span: Span) -> Expr {
+        let pair_ty = Ty::Tuple(vec![Ty::Pos(id), Ty::Pos(id)]);
+        self.collected(pair_ty.clone(), span, |lw, out, push| {
+            let len = lw.mk(ExprKind::DomainLen(id), Ty::Int, span);
+            let i_slot = lw.temp(Ty::Pos(id));
+            let j_slot = lw.temp(Ty::Pos(id));
+            let i_var = lw.mk(ExprKind::Local(i_slot), Ty::Pos(id), span);
+            let j_var = lw.mk(ExprKind::Local(j_slot), Ty::Pos(id), span);
+            let i_ord = lw.cast(Cast::Ord, i_var.clone(), Ty::Int);
+            let j_lo = lw.int_add(i_ord, 1);
+            let inner_id = lw.fresh_loop();
+            let outer_id = lw.fresh_loop();
+            let pair = lw.mk(ExprKind::Tuple(vec![i_var, j_var]), pair_ty, span);
+            let push_stmt = push(lw, pair);
+            let inner = Stmt::For(
+                inner_id,
+                j_slot,
+                Iter::Range {
+                    lo: j_lo,
+                    hi: len.clone(),
+                    step: None,
+                    rev: false,
+                    closed: false,
+                },
+                Block {
+                    stmts: vec![push_stmt],
+                },
+            );
+            out.push(Stmt::For(
+                outer_id,
+                i_slot,
+                Iter::Range {
+                    lo: lw.int_lit(0, span),
+                    hi: len,
+                    step: None,
+                    rev: false,
+                    closed: false,
+                },
+                Block { stmts: vec![inner] },
+            ));
+        })
     }
 
     /// A `[]` list local, the loop that pushes `value` for each `item` of
@@ -5474,7 +5579,7 @@ impl<'a> Lowerer<'a> {
                 let index = match dim {
                     Dim::Pos(d) => lw.cast(Cast::Trust, i, Ty::Pos(d)),
                     Dim::Bound(d) => lw.cast(Cast::Trust, i, Ty::Bound(d)),
-                    Dim::Int | Dim::IntFrom(_) => i,
+                    Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => i,
                 };
                 lw.mk(
                     ExprKind::Index(Box::new(seq.clone()), vec![index]),
