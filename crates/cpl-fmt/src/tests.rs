@@ -442,6 +442,7 @@ mod cli {
 fn keeps_an_inner_attribute_tight() {
     assert_eq!(fmt("@! multitest\nprint(1)\n"), "@!multitest\nprint(1)\n");
     assert_eq!(fmt("@!multitest\nprint(1)\n"), "@!multitest\nprint(1)\n");
+    assert_eq!(fmt("@! interactive\n@!multitest\nprint(1)\n"), "@!interactive\n@!multitest\nprint(1)\n");
     assert_eq!(fmt("@ memo\nfn f(n: Int) -> Int = n\n"), "@memo\nfn f(n: Int) -> Int = n\n");
     assert_eq!(fmt("let y = o ! + 1\n"), "let y = o! + 1\n");
 }

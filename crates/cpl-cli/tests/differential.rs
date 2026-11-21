@@ -578,3 +578,46 @@ fn a_read_that_waits_shows_what_was_printed_before_it() {
     let binary = sanitized_binary(&built.stdout).unwrap();
     assert_eq!(asked_live(Command::new(binary)), expected, "the C++");
 }
+
+/// `@!interactive`: every `print` is written out as it is said, with no
+/// `flush()` and no read after it, in the interpreter and in the C++.
+/// It stands with `@!multitest` in either order, once, at the top level.
+#[test]
+fn interactive_writes_each_print_out_at_once() {
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("differential/interactive");
+    std::fs::create_dir_all(&dir).unwrap();
+    let write = |name: &str, source: &str| {
+        let path = dir.join(name);
+        std::fs::write(&path, source).unwrap();
+        path.to_string_lossy().into_owned()
+    };
+    // The program never reads and never ends: the line is seen only if
+    // `print` itself wrote it out.
+    let busy = "print(\"! ready\")\nvar k = 0\nwhile k >= 0: k = (k + 1) % 7\n";
+    let path = write("busy.cp", &format!("@!interactive\n{busy}"));
+    let mut interpreted = Command::new(env!("CARGO_BIN_EXE_cpl"));
+    interpreted.args(["run", &path]);
+    assert_eq!(asked_live(interpreted), ["! ready"], "`cpl run`");
+    let built = cpl_cli::run(&["build", &path, "-o", "-"]);
+    assert_eq!(built.code, 0, "{}", built.stderr);
+    let binary = sanitized_binary(&built.stdout).unwrap();
+    assert_eq!(asked_live(Command::new(binary)), ["! ready"], "the C++");
+
+    let rounds = "let n: Int = read()\nprint(\"?\", n)\nlet x: Int = read()\nprint(\"!\", x + n)\n";
+    for head in ["@!interactive\n@!multitest\n", "@!multitest\n@!interactive\n"] {
+        let path = write("rounds.cp", &format!("{head}{rounds}"));
+        let ran = cpl_cli::run_with_input(&["run", &path], b"2\n5\n7\n3\n1\n");
+        assert_eq!((ran.code, String::from_utf8_lossy(&ran.stdout).as_ref()), (0, "? 5\n! 12\n? 3\n! 4\n"), "{head}");
+        let formatted = cpl_cli::run(&["fmt", "--check", &path]);
+        assert_eq!(formatted.code, 0, "{}", formatted.stderr);
+    }
+    for (source, said) in [
+        ("@!interactive\nprint(1)\n@!interactive\nprint(2)\n", "a second `@!interactive`"),
+        ("fn f():\n    @!interactive\n    print(1)\nf()\n", "`@!interactive` stands at the top level of the file"),
+        ("@!interactive(fast)\nprint(1)\n", "`@!interactive` takes nothing"),
+    ] {
+        let checked = cpl_cli::run(&["check", &write("refused.cp", source)]);
+        assert_ne!(checked.code, 0, "{source}");
+        assert!(checked.stderr.contains(said), "{}", checked.stderr);
+    }
+}

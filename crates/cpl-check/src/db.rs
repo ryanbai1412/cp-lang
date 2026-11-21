@@ -562,22 +562,28 @@ impl Database {
         for (index, diag) in import_diags {
             sink.push(diag.shift(ranges[index].span.start));
         }
-        // `@!multitest` divides the file once (decision 20.5).
-        let dividers = items.iter().enumerate().flat_map(|(index, item)| {
-            let decorators = item.parsed.stmts.iter().flat_map(|stmt| &stmt.decorators);
-            decorators
-                .filter(|d| d.name.text == "multitest")
-                .map(move |d| (index, d))
-        });
-        for (index, decorator) in dividers.skip(1) {
-            sink.push(
-                Diagnostic::error(
-                    codes::UNEXPECTED_TOKEN,
-                    decorator.span.shift(ranges[index].span.start),
-                    "a second `@!multitest`",
-                )
-                .with_help("the file has one divider: what is below it runs once per test case"),
-            );
+        // `@!multitest` divides the file once (decision 20.5), and
+        // `@!interactive` is said once.
+        for (name, help) in [
+            ("multitest", "the file has one divider: what is below it runs once per test case"),
+            ("interactive", "one is enough: it holds for the whole file"),
+        ] {
+            let found = items.iter().enumerate().flat_map(|(index, item)| {
+                let decorators = item.parsed.stmts.iter().flat_map(|stmt| &stmt.decorators);
+                decorators
+                    .filter(move |d| d.name.text == name && (d.directive || name == "multitest"))
+                    .map(move |d| (index, d))
+            });
+            for (index, decorator) in found.skip(1) {
+                sink.push(
+                    Diagnostic::error(
+                        codes::UNEXPECTED_TOKEN,
+                        decorator.span.shift(ranges[index].span.start),
+                        format!("a second `@!{name}`"),
+                    )
+                    .with_help(help),
+                );
+            }
         }
         for (index, decl) in duplicates {
             let offset = ranges[index].span.start;

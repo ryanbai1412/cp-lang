@@ -103,8 +103,10 @@ impl<'a> Parser<'a> {
         };
         let span = self.span_from(start);
         if directive && !name.text.is_empty() && self.speculating == 0 {
-            // `@!multitest` is the one directive (decision 20.5).
-            if name.text != "multitest" {
+            // The file-level directives: `@!multitest` divides the file
+            // (decision 20.5), `@!interactive` writes each `print` out at once.
+            let known = matches!(name.text.as_str(), "multitest" | "interactive");
+            if !known {
                 self.sink.push(
                     Diagnostic::error(
                         codes::UNEXPECTED_TOKEN,
@@ -112,19 +114,30 @@ impl<'a> Parser<'a> {
                         format!("unknown directive `@!{}`", name.text),
                     )
                     .with_help(format!(
-                        "`@!multitest` is the only file-level directive; a decorator is `@{}`",
+                        "the file-level directives are `@!multitest` and `@!interactive`; a decorator is `@{}`",
                         name.text
                     )),
                 );
             } else if self.block_depth > 0 {
+                let help = if name.text == "multitest" {
+                    "move it out of the block: what is below it runs once per test case"
+                } else {
+                    "move it out of the block, to the top of the file: it holds for every `print`"
+                };
                 self.sink.push(
                     Diagnostic::error(
                         codes::UNEXPECTED_TOKEN,
                         span,
-                        "`@!multitest` stands at the top level of the file",
+                        format!("`@!{}` stands at the top level of the file", name.text),
                     )
-                    .with_help("move it out of the block: what is below it runs once per test case"),
+                    .with_help(help),
                 );
+            } else if name.text == "interactive" && !args.is_empty() {
+                self.sink.push(Diagnostic::error(
+                    codes::UNEXPECTED_TOKEN,
+                    span,
+                    "`@!interactive` takes nothing",
+                ));
             }
         }
         // Decorator arguments v2.2 took away.

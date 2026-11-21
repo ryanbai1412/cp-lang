@@ -48,6 +48,12 @@ pub fn lower_test(analysis: &Analysis, test_name: &str) -> Result<Program, Vec<D
 }
 
 /// The `@interactor` fn a file declares at its top level, if any.
+/// True when the program's own file has `@!interactive`.
+fn directed(analysis: &Analysis) -> bool {
+    let stmts = analysis.items.iter().flat_map(|item| &item.syntax.parsed.stmts);
+    stmts.flat_map(|stmt| &stmt.decorators).any(|d| d.directive && d.name.text == "interactive")
+}
+
 pub fn interactor(analysis: &Analysis) -> Option<String> {
     analysis
         .items
@@ -168,7 +174,8 @@ fn lower_entry(
     // Whatever the judge sends goes out at once. A solution with a judge
     // in its file talks to it, so it reads as it goes and never all the
     // input at once.
-    lw.interactive = judge || (test_name.is_none() && interactor(analysis).is_some());
+    // `@!interactive` asks for the same without a judge in the file.
+    lw.interactive = judge || (test_name.is_none() && interactor(analysis).is_some()) || directed(analysis);
     lw.load_modules(analysis);
     lw.mutators = narrow::Mutators::of(lw.mod_items(0).map(|(_, stmt)| stmt)).into();
     lw.steps = lw.read_steps().into();
@@ -796,6 +803,8 @@ impl<'a> Lowerer<'a> {
                         match decorator.name.text.as_str() {
                             // The divider: `main` splits the file at it.
                             "multitest" => {}
+                            // Read once, before lowering: see `directed`.
+                            "interactive" if decorator.directive => {}
                             "get" | "brute" | "test" | "solution" | "tags" | "memo" | "law" | "gen" | "checker"
                             | "interactor" | "grader" | "" => {}
                             // For `cpl lint` alone: it changes nothing a run does.
