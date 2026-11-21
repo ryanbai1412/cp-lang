@@ -101,7 +101,7 @@ pub fn reroot<V, T>(
     var down = [V] _ => id
     var sub_val = [V] _ => id
     // 1. Bottom-up pass
-    for u in r.postorder:
+    for u in r.at.rev:
         var acc = id
         for c in r.children(u): acc = merge(acc, lift(down[c], c, u))
         sub_val[u] = acc
@@ -109,7 +109,7 @@ pub fn reroot<V, T>(
     // 2. Top-down pass with prefix/suffix sibling folds (works for non-invertible monoids like max)
     var up = [V] _ => id
     var ans = [V] _ => id
-    for u in r.preorder:
+    for u in r.at:
         let kids = r.children(u)
         let k = kids.len
         let contrib = [lift(down[c], c, u) for c in kids]
@@ -141,7 +141,7 @@ fn rand_tree<V>() -> [V]List<V>:
 fn centroid_tree_depth_and_nearest_marked_vertex():
     domain V = 0..16
     for _ in 0..15:
-        let adj = rand_tree::<V>()
+        let adj = rand_tree<V>()
         let r = Rooted(root: V(0), adj: u => adj[u])
         let cd = Centroids<V>(u => adj[u])
         // Centroid tree depth is O(log n) and distances match true tree distances
@@ -169,10 +169,10 @@ fn centroid_tree_depth_and_nearest_marked_vertex():
 fn reroot_computes_eccentricity_and_distance_sums():
     domain V = 0..14
     for _ in 0..15:
-        let adj = rand_tree::<V>()
+        let adj = rand_tree<V>()
         let r = Rooted(root: V(0), adj: u => adj[u])
         // Non-invertible monoid: maximum distance from every vertex (eccentricity)
-        let ecc = reroot::<V, Int>(
+        let ecc = reroot<V, Int>(
             u => adj[u],
             0,
             (a, b) => max(a, b),
@@ -182,7 +182,7 @@ fn reroot_computes_eccentricity_and_distance_sums():
         for v in V:
             assert ecc[v] == max(r.dist(v, u) for u in V)
         // Sum of distances from every vertex using (sum, size) pairs
-        let sums = reroot::<V, (Int, Int)>(
+        let sums = reroot<V, (Int, Int)>(
             u => adj[u],
             (0, 0),
             (a, b) => (a.0 + b.0, a.1 + b.1),

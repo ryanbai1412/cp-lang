@@ -26,7 +26,7 @@ var open: [V]?V = [V] _ => none
 var ending: [V]Int = 0        // balanced substrings that end exactly at v
 var k: [V]Int = 0
 var ans = 0
-for v in t.preorder:
+for v in t.at:
     let above = t.parent(v)
     if let a = above:
         open[v] = open[a]

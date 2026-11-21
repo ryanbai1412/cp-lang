@@ -27,7 +27,7 @@ var need: [V]?Int = [V] _ => none
 var done: [V]?Int = [V] _ => none
 var push: [V]?Int = [V] _ => none
 
-for u in tree.preorder.rev:
+for u in tree.at.rev:
     let is_y = init_s[u.to_idx] == 'Y'
 
     var sum_done: ?Int = 0

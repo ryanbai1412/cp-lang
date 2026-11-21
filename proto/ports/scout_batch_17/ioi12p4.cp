@@ -52,7 +52,7 @@ fn crossings(blocks: List<(Int, Int)>) -> Int:
     let tree = Rooted(touch, Run.first)
     var under: [Run]Int = [Run] r => size[r.label]
     var total = 0
-    for r in tree.preorder.rev:
+    for r in tree.at.rev:
         if let p = tree.parent(r):
             total += under[r] * (n - under[r])
             under[p] += under[r]

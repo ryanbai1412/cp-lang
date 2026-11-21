@@ -13,7 +13,7 @@ let t = Rooted(g, root: V(n))
 let max_leaf = max(u.to_idx for u in V if g[u].len == 1)!
 var sub_max = [V] u => u.to_idx
 var prv_val: [0..n]?Int = none
-for u in t.postorder:
+for u in t.at.rev:
     var max_ch: ?Int = none
     for c in t.children(u):
         if u == V(n) and sub_max[c] == n - 2: continue

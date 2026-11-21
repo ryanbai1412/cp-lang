@@ -22,7 +22,7 @@ for d in Deg:
 var memo0: [V]List<Z> = [V] _ => []
 var memo1: [V]List<Z> = [V] _ => []
 
-for u in tree.preorder.rev:
+for u in tree.at.rev:
     let sz_u = tree.size(u)
 
     for par_used in 0..=1:
@@ -51,9 +51,7 @@ for u in tree.preorder.rev:
 
         var res: List<Z> = []
         for i in 0..=sz_u:
-            var acc: Z = 0
-            for d in Deg:
-                acc += cur[d][i] * fact[d]
+            let acc: Z = sum(cur[d][i] * fact[d] for d in Deg)
             res.push(acc)
         if par_used == 0:
             memo0[u] = res

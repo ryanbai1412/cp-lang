@@ -19,13 +19,12 @@ for _ in 0..(n - 1):
 
 let g = Graph<V, TE>.undirected([TE] e => tree_edges[e.idx])
 let tree = Rooted<V>(g, root: V.first)
-let post = tree.postorder
 
 var ans = 0
 for mask in Subset<V>:
     if mask.idx == 0: continue
     var dp: [V, V]Int = 0
-    for u in post:
+    for u in tree.at.rev:
         for v1 in mask:
             var ways = 1
             for c in tree.children(u):

@@ -253,7 +253,7 @@ assert net.flow(a) == 3
 `Rooted<V, Pre>` is the one tree type. It computes parents, depths, sizes and a
 heavy-first preorder in one pass (via `Rooted(root:, adj:)`, `Rooted.weighted`,
 or `Rooted.from_parents(par)`), and answers `lca`, `dist`, `ancestor`,
-`step`, `lift_while`, `postorder`, iterative enter/exit `tour`, and
+`step`, `lift_while`, iterative enter/exit `tour`, and
 `virtual_tree` from it. Each tree value owns its own preorder domain
 `r.Pre` (with `r.pos(v) -> r.Pre` and `r.reorder(a) -> [r.Pre]T`), so
 positions from two different trees cannot be mixed by accident.

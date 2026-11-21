@@ -10,7 +10,7 @@ let tree = Rooted(Graph.undirected(edges), V.first)
 // paintings of v's subtree with v white / black
 var white: [V]Z = 1
 var black: [V]Z = 1
-for v in tree.postorder:
+for v in tree.at.rev:
     if let p = tree.parent(v):
         white[p] *= white[v] + black[v]
         black[p] *= white[v]

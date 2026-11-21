@@ -12,7 +12,7 @@ domain K = 0..3
 var down: [V, K, K]Int = 0
 var good = 0
 
-for u in t.postorder:
+for u in t.at.rev:
     let (ub, uw) = if color[u] == 'B': (1, 0) else: (0, 1)
     // FRICTION 46.3: small counters used as indices need K(...) around every sum
     down[u, K(ub), K(uw)] = 1

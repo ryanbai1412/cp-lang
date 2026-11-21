@@ -28,7 +28,7 @@ let t = Rooted(u => kids[u], V.first)
 var members: [Region]List<V> = [Region] _ => []
 // spots[x]: preorder positions of the employees of region x, increasing
 var spots: [Region]List<Int> = [Region] _ => []
-for v in t.preorder:
+for v in t.at:
     members[home[v]].push(v)
     spots[home[v]].push(t.pos(v).to_idx)
 
@@ -48,7 +48,7 @@ fn before(x: Region, p: Int) -> Int:
 fn sweep(x: Region) -> [Region]Int:
     var above: [V]Int = 0
     var pairs: [Region]Int = 0
-    for v in t.preorder:
+    for v in t.at:
         if let b = t.parent(v): above[v] = above[b]
         pairs[home[v]] += above[v]
         if home[v] == x: above[v] += 1

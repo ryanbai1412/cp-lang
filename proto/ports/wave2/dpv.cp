@@ -9,13 +9,13 @@ let tree = Rooted(Graph.undirected(edges), V.first)
 
 // down[v]: such sets inside v's subtree
 var down: [V]Z = 1
-for v in tree.postorder:
+for v in tree.at.rev:
     if let p = tree.parent(v): down[p] *= down[v] + 1
 
 // up[v]: 1 for leaving everything outside v's subtree white, plus the sets
 // out there that contain v's parent. m has no inverses, so `excl_fold` gives
 // each child the product over its siblings without dividing.
 var up: [V]Z = 1
-for v in tree.preorder:
+for v in tree.at:
     for (c, rest) in tree.excl_fold(v, *, c => down[c] + 1): up[c] = up[v] * rest + 1
 for v in V: print(down[v] * up[v])

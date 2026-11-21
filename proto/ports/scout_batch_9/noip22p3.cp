@@ -21,7 +21,7 @@ let land = Graph.undirected(roads)
 // The road above v is a bridge when nothing reaches past v.
 let tree = Rooted(land, City.first)
 var low: [City]Int = [City] v => tree.pos(v)
-for v in tree.preorder.rev:
+for v in tree.at.rev:
     for w in land[v]:
         if tree.parent(v) != w: low[v] min= tree.pos(w)
     if let p = tree.parent(v): low[p] min= low[v]
@@ -30,7 +30,7 @@ for v in tree.preorder.rev:
 // block by its topmost city; the blocks form a tree joined by the bridges.
 var top: [City]City = [City] v => v
 var cities: [City]Int = 0
-for v in tree.preorder:
+for v in tree.at:
     if let p = tree.parent(v) and low[v] < tree.pos(v): top[v] = top[p]
     cities[top[v]] += 1
 
@@ -42,7 +42,7 @@ var some: [City]Z = 1       // over b's child blocks: no barracks there, or a he
 var one: [City]Z = 0        // sets that lie inside a single child block and its bridge
 var total: Z = 0
 let two = Z(2)
-for b in tree.preorder.rev:
+for b in tree.at.rev:
     if top[b] != b: continue
     let held = two ** cities[b] * some[b] - 1
     // the sets whose highest block is b: all but those held through one child alone

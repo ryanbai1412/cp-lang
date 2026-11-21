@@ -275,6 +275,17 @@ pub const BY_TWIN: Lint = Lint {
     fix: "let xs = [\"bbb\", \"a\", \"cc\"]\nprint(xs.min(by: s => s.len))\n",
 };
 
+pub const TREE_ORDER: Lint = Lint {
+    code: Code("L0511"),
+    name: "tree_order",
+    default: Level::Warn,
+    title: "`preorder` or `postorder` of a rooted tree",
+    summary: "`t.preorder` / `t.postorder`: iterate the preorder array `t.at` (`t.at.rev` for children first)",
+    explanation: "A `Rooted` tree has one traversal order, its preorder domain `t.Pre` (decision 63). `for v in t.at` visits each vertex before its descendants, `for v in t.at.rev` after them, and `for (p, v) in t.at.items` gives the position too. `cpl lint --fix` rewrites `t.preorder` to `t.at` and `t.postorder` to `t.at.rev`.",
+    trigger: "use std.graph.{Graph}\nuse std.tree.{Rooted}\ndomain V = 0..2\nlet t = Rooted(Graph.undirected([(V(0), V(1))]), V(0))\nfor v in t.postorder: print(v)\n",
+    fix: "use std.graph.{Graph}\nuse std.tree.{Rooted}\ndomain V = 0..2\nlet t = Rooted(Graph.undirected([(V(0), V(1))]), V(0))\nfor v in t.at.rev: print(v)\n",
+};
+
 /// Every lint, in code order.
 pub const LINTS: &[Lint] = &[
     UNKNOWN_LINT,
@@ -297,6 +308,7 @@ pub const LINTS: &[Lint] = &[
     NONE_CHECK_UNWRAP,
     FREE_FOLD,
     BY_TWIN,
+    TREE_ORDER,
 ];
 
 /// The taste lints (`plan/PORTING.md`): code that works but reads like

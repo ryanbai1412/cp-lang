@@ -13,7 +13,7 @@ let t = Rooted(g, root: rt)
 
 var dp0: [V]F64 = 0.0
 var dp1: [V]?F64 = none
-for u in t.postorder:
+for u in t.at.rev:
     var base = sum(dp0[c] for c in t.children(u))
     if s[u.ord] == '1':
         dp0[u] = base

@@ -17,7 +17,7 @@ fn parks(reach: Int) -> ?List<Town>:
     var built: List<Town> = []
     var far: [Town]?Int = 0                 // farthest town at or below v that no park serves yet
     var near: [Town]?Int = none             // nearest park at or below v
-    for v in tree.preorder.rev:             // children before parents
+    for v in tree.at.rev:             // children before parents
         if let f = far[v] and let d = near[v] and f + d <= reach: far[v] = none
         if let (p, road) = tree.up(v):
             if let f = far[v] and f + road.w > reach:

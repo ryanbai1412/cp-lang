@@ -19,11 +19,11 @@ fn lower(u: City, v: City) -> City = if tree.parent(u) == v: u else: v
 fn wanted(k: Int, plans: List<List<City>>) -> List<Int>:
     var marks: [City]Int = 0
     for plan in plans:
-        let tour = sorted(plan, by: tree.pos)
+        let tour = plan.sorted(by: tree.pos)
         for i in 0..tour.len - 1:
             marks[tour[i]] += 1
             marks[tree.lca(tour[i], tour[i + 1])] -= 1
-    for c in tree.postorder:
+    for c in tree.at.rev:
         if let p = tree.parent(c): marks[p] += marks[c]
     [i for i in 0..tracks.len if marks[lower(tracks[i].u, tracks[i].v)] >= k]
 

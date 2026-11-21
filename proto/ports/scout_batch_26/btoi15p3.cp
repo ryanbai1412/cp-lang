@@ -18,9 +18,7 @@ for v in V:
     if g.deg(v) > 1: root = v
 let t = Rooted(u => g.out(u), root)
 
-var leaves: List<V> = []
-for v in t.preorder:
-    if g.deg(v) == 1: leaves.push(v)
+let leaves: List<V> = [v for v in t.at if g.deg(v) == 1]
 
 let k = leaves.len
 print((k + 1) / 2)

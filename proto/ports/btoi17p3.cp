@@ -17,7 +17,7 @@ for _ in 0..m:
     for i in 0..s:
         marks[tour[i]] += 1
         marks[tree.lca(tour[i], tour[(i + 1) % s])] -= 1
-for c in tree.postorder:                    // children before parents
+for c in tree.at.rev:                    // children before parents
     if let p = tree.parent(c): marks[p] += marks[c]
 
 fn lower(u: City, v: City) -> City = if tree.parent(u) == v: u else: v

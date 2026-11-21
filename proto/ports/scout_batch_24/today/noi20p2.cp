@@ -91,7 +91,7 @@ fn merge_trees(a: Int, b: Int, lo: Int, hi: Int, pre_a: Int, pre_b: Int) -> Int:
     a
 
 var roots: [V]Int = [V] _ => 0
-for u in tree.preorder.rev:
+for u in tree.at.rev:
     let d_u = tree.depth(u) + 1
     var rt = set_point(0, 0, n, need[u], 1)
     for c in tree.children(u):

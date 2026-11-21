@@ -9,7 +9,7 @@ let map = Graph<Town, Road>.undirected(read())
 // ancestors. low[v]: the earliest town such a road reaches from v's subtree.
 let tree = Rooted(map, Town.first)
 var low = [Town] v => tree.pos(v)
-for v in tree.postorder:
+for v in tree.at.rev:
     for (w, _) in map.out(v):
         if tree.parent(v) != w: low[v] min= tree.pos(w)
     if let p = tree.parent(v): low[p] min= low[v]

@@ -25,7 +25,7 @@ var ans: U64 = 0
 for mask in Subset<V>.all if mask.len > 0:
     let allowed = [v for v in V if v in mask]
     var dp: [V, V]U64 = 0
-    for u in tree.postorder:
+    for u in tree.at.rev:
         for v1 in allowed:
             var ways: U64 = 1
             for c in tree.children(u):

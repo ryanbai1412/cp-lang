@@ -835,3 +835,13 @@ fn by_twin_becomes_by_option() {
     let chunk = "let xs = [1, 1, 2]\nprint(xs.chunk_by((a, b) => a == b))\n";
     assert_eq!(taste_codes(chunk), Vec::<&str>::new());
 }
+
+#[test]
+fn tree_order_becomes_preorder_array() {
+    let src = "for v in t.preorder.rev: print(v)\nfor v in t.postorder: print(v)\nlet top = t.preorder[0]\n";
+    assert_eq!(taste_codes(src), ["L0511"; 3]);
+    assert_eq!(
+        fixed(src),
+        "for v in t.at.rev: print(v)\nfor v in t.at.rev: print(v)\nlet top = t.at[0]\n"
+    );
+}

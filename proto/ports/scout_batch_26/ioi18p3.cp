@@ -46,10 +46,8 @@ fn reach_tree(order: List<V>, earlier: (V, V) -> Bool):
                 kids[v].push((to: c))
     Rooted(u => kids[u], order.last)
 
-var down: List<V> = []
-for v in V.rev: down.push(v)
-var up: List<V> = []
-for v in V: up.push(v)
+let down: List<V> = [v for v in V.rev]
+let up: List<V> = [v for v in V]
 let human = reach_tree(down, (a, v) => a > v)
 let wolf = reach_tree(up, (a, v) => a < v)
 
@@ -65,7 +63,7 @@ for i in Trip:
     asks[Cut(h.lo.ord)].push((trip: i, sign: -1))
     asks[Cut(h.hi.ord)].push((trip: i, sign: 1))
 
-let horder = human.preorder
+let horder = [v for v in human.at]
 var shared: [Trip]Int = 0
 var seen = Fenwick<wolf.Pre, Int>.new()
 for k in Cut:

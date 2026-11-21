@@ -115,7 +115,7 @@ fn solve() -> M:
     var roots: [V]?Node.Id = [V] _ => none
     // WISH A11: `Rooted<V>` still lacks `.postorder()` / `.order.rev` iteration
     // without dropping to raw `.pre` indices.
-    for u in tree.postorder():
+    for u in tree.at.rev:
         roots[u] = make_unit(0, n, max_top[u])
         for c in tree.children(u):
             let s_c = range_sum(roots[c], 0, n, 0, dep[u])

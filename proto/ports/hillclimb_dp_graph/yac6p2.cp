@@ -22,6 +22,6 @@ else:
     var kids: [V]List<V> = []
     for v in V:
         if let p = want[v]: kids[p].push(v)
-    let moved = [v for v in Rooted(kids, root(want)).preorder if have[v] != want[v]]
+    let moved = [v for v in Rooted(kids, root(want)).at if have[v] != want[v]]
     print(moved.len)
     for v in moved: print(v, want[v])

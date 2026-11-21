@@ -35,7 +35,7 @@ fn has_active_sub(u: V) -> Bool:
 
 fn closest_edge(u: V) -> (V, V):
     // FRICTION 39.3: Pre -> V inverse relies on t.preorder[p] indexing
-    let top = t.preorder[tins.first!]
+    let top = t.at[tins.first!]
     if not t.is_anc(top, u):
         return (top, t.parent(top)!)
     // FRICTION 39.3: lift_while polarity (highest-true vs first-false) & return type (?V vs V) unspecified

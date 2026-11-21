@@ -33,7 +33,7 @@ let ch: [V]List<V> = [V] u => t.children(u).sorted(by: v => t.size(v))
 
 var dp_down: [V]List<Int> = []
 var prefs: [V]List<List<Int>> = []
-for cur in t.postorder:
+for cur in t.at.rev:
     var cur_dp: List<Int> = [0]
     var cur_prefs: List<List<Int>> = []
     for nxt in ch[cur]:
@@ -46,7 +46,7 @@ for cur in t.postorder:
 var ans: [V]Int = 0
 var dp_up: [V]List<Int> = []
 dp_up[V(1)] = [if i == k: 0 else: -INF for i in 0..=n]
-for cur in t.preorder:
+for cur in t.at:
     var cur_up = dp_up[cur]
     for z in (0..ch[cur].len).rev:
         let nxt = ch[cur][z]

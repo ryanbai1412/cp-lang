@@ -33,9 +33,8 @@ fn read_tree():
 let one = read_tree()
 let two = read_tree()
 
-let one_pre = one.preorder
-var picked: List<V> = []
-for i in Pick: picked.push(one_pre[i.ord])
+let one_pre = [v for v in one.at]
+var picked: List<V> = [one_pre[i.ord] for i in Pick]
 // WISH TR15: `print(picked)` should write the list on one line; the interpreter
 // shows `[1, 2]`, so the picks go out one per line (the judge reads tokens).
 for v in picked: print(v)

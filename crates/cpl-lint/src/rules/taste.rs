@@ -5,7 +5,7 @@
 
 use crate::walk::{self, Bind, Visitor};
 use crate::{
-    File, Finding, BY_TWIN, DISCARDED_RESULT, FREE_FOLD, INDEX_ONLY_LOOP, LOOP_REDUCTION,
+    File, Finding, BY_TWIN, TREE_ORDER, DISCARDED_RESULT, FREE_FOLD, INDEX_ONLY_LOOP, LOOP_REDUCTION,
     NONE_CHECK_UNWRAP, PUSH_LOOP, REPEATED_LITERAL, SEARCH_LOOP, SYMMETRIC_WRITE,
 };
 use cpl_diag::{Diagnostic, Fix, Span};
@@ -72,6 +72,7 @@ impl Visitor for Blocks<'_, '_> {
         self.taste.none_check_unwrap(expr);
         self.taste.free_fold(expr);
         self.taste.by_twin(expr);
+        self.taste.tree_order(expr);
         match &expr.kind {
             ExprKind::Block(body) => self.taste.block(&body.stmts),
             ExprKind::If {
@@ -610,6 +611,30 @@ impl<'a> Taste<'a> {
             edits: vec![(expr.span, call)],
         });
         self.push(&FREE_FOLD, diag);
+    }
+
+    /// `t.preorder` / `t.postorder` of a `Rooted` tree: the preorder array `t.at`,
+    /// reversed for children first.
+    fn tree_order(&mut self, expr: &Expr) {
+        let ExprKind::Field { name, .. } = &expr.kind else {
+            return;
+        };
+        let to = match name.text.as_str() {
+            "preorder" => "at",
+            "postorder" | "post_order" => "at.rev",
+            _ => return,
+        };
+        let mut diag = Diagnostic::warning(
+            TREE_ORDER.code,
+            name.span,
+            format!("`{}` is the preorder array `{to}`", name.text),
+        )
+        .with_help(format!("write `.{to}`"));
+        diag.fixes.push(Fix {
+            title: format!("use `.{to}`"),
+            edits: vec![(name.span, to.to_string())],
+        });
+        self.push(&TREE_ORDER, diag);
     }
 
     /// `_by` twin (`min_by`, `max_by`, `argmax_by`, `runs_by`, `first_ge_by`, ...):

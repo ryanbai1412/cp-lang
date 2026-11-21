@@ -21,7 +21,7 @@ for c in 0..k:
         elif col[l] != c: is_bad[l] = true
 
 let ans = sum(w[v] for v in V if is_bad[v])
-for v in tree.preorder if col[v] == none:
+for v in tree.at if col[v] == none:
     col[v] = if let p = tree.parent(v): col[p] else: 0
 
 print(ans)

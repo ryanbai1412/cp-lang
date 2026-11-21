@@ -2871,7 +2871,6 @@ the core lane in `plan/OPERATING.md`.
    Reason: eliminates O(n^3) heap allocations on `cf1146h` (`2.82x` -> `1.29x` matched C++) without adding a new runtime container type. Reverse: remove the `Bitset` branch in `cpl-codegen/src/scope.rs::rows` and `try_fused_bitset_op` in `expr.rs`.
 3. **`sort(by: key)` with a cheap pure key expression lowers to in-place `std::stable_sort` with an inlined comparator instead of `cpl::sort_by`'s three auxiliary vectors.**
    Reason: preserves stability and interpreter parity while eliminating O(n) temp allocations and index indirection (`cf1284e`: `1.63x` -> `1.14x` matched C++, -709 B emitted). Reverse: remove the `is_cheap_pure_key` branch in `cpl-codegen/src/stmt.rs`.
-<<<<<<< HEAD
 
 ## 63. One name per tree traversal: `t.Pre` (2026-11-21)
 
@@ -2882,6 +2881,17 @@ visits children first, and `t.sub(v)` is a range of `t.Pre`. `preorder` and
 `postorder` go away, with a `cpl fix` codemod. A true postorder (siblings
 in order) is rarely needed in contest code; it stays `t.Pre.rev` until a port
 shows it matters. Reverse by restoring `postorder` as an alias.
+
+Amended: `t.Pre` yields positions, so vertex loops iterate the stored
+preorder array instead: `for v in t.at` (parents first), `for v in t.at.rev`
+(children first) and `for (p, v) in t.at.items` when the position matters
+too; `for p in t.Pre` stays the position loop. Each is one line built from
+general mechanisms (an array is iterable, `.rev` is the decision 61 view,
+`.items` is decision 60's enumerate), so there is no new rule and no core
+work, and the loop reads `at` in place where `preorder` built a list. Lint
+L0511 (`cpl fix`) rewrites `.preorder` to `.at` and `.postorder` /
+`.post_order` to `.at.rev`. Reverse by making `t.Pre` yield vertices (a core
+iteration rule) or by restoring the two getters.
 
 ## 64. `site/test_site.py` joins the fast gate (2026-11-21)
 

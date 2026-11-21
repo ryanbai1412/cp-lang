@@ -16,7 +16,7 @@ for _ in 0..q:
     let t: Int = read()
     var ans = 0
     var up: [V]Int = 0
-    for v in tree.postorder:
+    for v in tree.at.rev:
         var cur_sum = 0
         for c in tree.children(v):
             cur_sum += min(t - up[c], par_w[c])

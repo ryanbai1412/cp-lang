@@ -532,11 +532,11 @@ let t = Tree(read<[V.count - 1](V, V)>()).rooted(at: V.first)
 let n = V.count
 
 var size: [V]Int = 1
-for v in t.preorder.rev():
+for v in t.at.rev:
     if let p = t.parent[v]: size[p] += size[v]
 
 var score: [V]Int = size.sum()                            // at the root; overwritten below
-for v in t.preorder:
+for v in t.at:
     if let p = t.parent[v]: score[v] = score[p] + n - 2 * size[v]
 print(score.max())
 ```

@@ -24,7 +24,7 @@ let far: [Village]Int = [Village] v => tree.dist(out, v)       // the way from v
 // on y, laid out so that a climb is a few ranges.
 var shop_below: [Village]?Int = none
 for v in shops: shop_below[v] = 0
-for v in tree.preorder.rev:
+for v in tree.at.rev:
     if let p = tree.parent(v) and let d = shop_below[v]: shop_below[p] min= d + far[v] - far[p]
 var turn = SegTree<tree.Pre, ?Int>(none, (a, b) => min(a, b))
 for v in Village:

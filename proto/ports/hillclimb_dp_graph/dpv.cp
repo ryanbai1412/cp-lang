@@ -14,14 +14,14 @@ let tree = Rooted(Graph.undirected(edges), V.first)
 
 // down[v]: connected black sets inside v's subtree that contain v
 var down: [V]Int = 1
-for v in tree.preorder.rev:
+for v in tree.at.rev:
     if let p = tree.parent(v): down[p] = down[p] * (down[v] + 1) % m
 
 // up[v]: 1 for leaving the parent's side empty, plus the connected black
 // sets outside v's subtree that contain v's parent. No division mod m, so
 // each child gets the product of its earlier and its later siblings.
 var up: [V]Int = 1
-for v in tree.preorder:
+for v in tree.at:
     var earlier = up[v]
     for c in tree.children(v):
         up[c] = earlier

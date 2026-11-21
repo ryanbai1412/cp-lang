@@ -25,10 +25,10 @@ let asks: [Ask](closed: Road, from: V) = read()
 //   far[from] + (far[nearest shop under t] - 2 far[t])
 // with far[] measured from the exit.
 let tree = Rooted(roads, exit, weight: .len)
-var far: [V]Int = [V] v => tree.dist(exit, v)
+let far: [V]Int = [V] v => tree.dist(exit, v)
 var shop_under: [V]?Int = none              // far[] of the nearest shop in the subtree
 for v in shops: shop_under[v] = far[v]
-for v in tree.preorder.rev:
+for v in tree.at.rev:
     if let p = tree.parent(v):
         if let d = shop_under[v]: shop_under[p] min= d
 
@@ -43,7 +43,7 @@ var turn: [Depth]?Int = none
 var best_turn = SegTree<Depth, ?Int>.of(min, d => turn[d])
 var escaped: [Ask]Bool = false
 var nearest: [Ask]?Int = none
-for v in tree.preorder:
+for v in tree.at:
     let here = Depth(tree.depth(v))
     turn[here] = none
     if let d = shop_under[v]: turn[here] = d - 2 * far[v]

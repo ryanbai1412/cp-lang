@@ -226,7 +226,7 @@ pub struct Rooted<V, Pre>:
         for p in Pre.rev:
             let v = at[p]
             var key = [of[c] for c in kid[v]]
-            sort(mut key)
+            key.sort()
             of[v] = known.get_or_insert(key, known.len)
         domain Shape = 0..known.len
         (Shape: Shape, of: [V] v => Shape(of[v]))
@@ -246,19 +246,6 @@ pub struct Rooted<V, Pre>:
     pub @get fn centroids(self) -> List<V>:
         let c = self.centroid
         if let h = heavy[c], 2 * sz[h] == sz[root]: [c, h] else: [c]
-
-    /// Every vertex, each before its descendants (heavy child first): `at[p] for p in Pre`.
-    pub @get fn preorder(self) -> List<V> = [at[p] for p in Pre]
-
-    /// Every vertex, each after its descendants: the order to fold children into parents.
-    pub @get fn postorder(self) -> List<V>:
-        // v leaves after the sz[v] vertices of its subtree and after every
-        // vertex entered before it, except its dep[v] - dep[root] open ancestors.
-        var out = [at[p] for p in Pre]
-        for p in Pre:
-            let v = at[p]
-            out[p.ord + sz[v] - 1 - (dep[v] - dep[root])] = v
-        out
 
     /// Iterative enter/exit Euler tour: yields `(v, true)` when entering `v` and
     /// `(v, false)` when leaving `v`'s subtree, without recursion. O(n).
@@ -408,11 +395,11 @@ pub struct Rooted<V, Pre>:
     pub fn virtual_tree(self, keys: List<V>) -> (nodes: List<V>, edges: List<(u: V, v: V)>):
         if keys.is_empty: return (nodes: [], edges: [])
         var all = [(tin[v].ord, v) for v in keys]
-        sort(mut all)
+        all.sort()
         for i in 0..keys.len - 1:
             let l = self.lca(all[i].1, all[i + 1].1)
             all.push((tin[l].ord, l))
-        sort(mut all)
+        all.sort()
         var nodes = List<V>()
         for p in all:
             if nodes.is_empty or nodes[nodes.len - 1] != p.1: nodes.push(p.1)
@@ -569,7 +556,7 @@ fn a_table_of_neighbour_lists_roots_like_the_fn_that_reads_it():
     domain V = 0..9
     let adj = random_tree(V.first)
     let (a, b) = (Rooted(adj, V.first), Rooted(v => adj[v], V.first))
-    assert a.preorder == b.preorder and a.par == b.par and a.sz == b.sz
+    assert [v for v in a.at] == [v for v in b.at] and a.par == b.par and a.sz == b.sz
 
 @test
 fn lca_dist_ancestor_and_step_match_climbing():
@@ -689,10 +676,10 @@ fn rerooting_counts_connected_sets_through_every_vertex():
         let adj = random_tree(V(0))
         let t = Rooted(root: V(0), adj: v => adj[v])
         var down: [V]Int = 1
-        for v in t.postorder:
+        for v in t.at.rev:
             for c in t.children(v): down[v] = down[v] * (down[c] + 1) % mod
         var up: [V]Int = 1
-        for v in t.preorder:
+        for v in t.at:
             for (c, rest) in t.excl_fold(v, mul, c => down[c] + 1):
                 up[c] = (up[v] * rest + 1) % mod
         for v in V:
@@ -715,11 +702,11 @@ fn orders_lifting_and_the_virtual_tree():
         let adj = random_tree(V(0))
         let r = Rooted(root: V.nth(rand(0, 12)), adj: v => adj[v])
         var seen: [V]Bool = false
-        for v in r.postorder:
+        for v in r.at.rev:
             for c in r.children(v): assert seen[c]
             seen[v] = true
         seen.fill(false)
-        for v in r.preorder:
+        for v in r.at:
             assert r.parent(v) == none or seen[r.parent(v)!]
             seen[v] = true
         for v in V:
@@ -727,14 +714,12 @@ fn orders_lifting_and_the_virtual_tree():
             let got = r.lift_while(v, u => r.depth(v) - r.depth(u) <= cap)
             assert got == r.ancestor(v, min(cap, r.depth(v)))
             assert r.lift_while(v, u => false) == none
-        var keys: List<V> = []
-        for v in V:
-            if rand(0, 2) == 0: keys.push(v)
+        let keys: List<V> = [v for v in V if rand(0, 2) == 0]
         let vt = r.virtual_tree(keys)
         var kept: [V]Bool = false
         for a in keys:
             for b in keys: kept[r.lca(a, b)] = true
-        assert sorted(vt.nodes) == [v for v in V if kept[v]]
+        assert vt.nodes.sorted() == [v for v in V if kept[v]]
         assert vt.edges.len == max(vt.nodes.len - 1, 0)
         for e in vt.edges:
             assert r.is_anc(e.u, e.v) and e.u != e.v
@@ -861,9 +846,9 @@ fn heavy_light_and_subtree_cover_the_children():
             if let h = r.heavy[v]:
                 assert all(r.size(c) <= r.size(h) for c in r.children(v))
                 cs.push(h)
-            assert sorted(cs) == sorted(r.children(v))
+            assert cs.sorted() == r.children(v).sorted()
             let sub = [u for u in r.subtree(v)]
-            assert sub[0] == v and sorted(sub) == [u for u in V if r.is_anc(v, u)]
+            assert sub[0] == v and sub.sorted() == [u for u in V if r.is_anc(v, u)]
             assert r.root_of(v) == r.root
 
 @test
@@ -880,7 +865,7 @@ fn a_forest_keeps_each_tree_in_one_range():
     assert f.root == V(0) and [f.root_of(v).to_idx for v in V] == [0, 0, 0, 3, 3, 5, 5, 5, 5, 9]
     assert [f.pos(r).ord for r in roots] == [0, 3, 5, 9]
     assert f.size(V(5)) == 4 and f.lca(V(7), V(8)) == V(6) and f.dist(V(2), V(0)) == 2
-    assert all(f.parent(r) == none for r in roots) and f.preorder.len == 10
+    assert all(f.parent(r) == none for r in roots) and f.at.len == 10
     let depth = f.down(0, (d, v) => if f.parent(v) == none: 0 else: d + 1)
     assert all(depth[v] == f.depth(v) for v in V)
 
@@ -928,9 +913,9 @@ fn shapes_match_the_canonical_string():
         let adj = random_tree(V(0))
         let r = Rooted(root: V.nth(rand(0, 13)), adj: v => adj[v])
         var canon: [V]Str = ""
-        for v in r.postorder:
+        for v in r.at.rev:
             var parts = [canon[c] for c in r.children(v)]
-            sort(mut parts)
+            parts.sort()
             canon[v] = "(" + Str(ch for s in parts for ch in s) + ")"
         let sh = r.shapes()
         for a in V:

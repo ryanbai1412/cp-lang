@@ -11,7 +11,7 @@ var sz: [V]Int = 1
 var comps = 0
 var ans: Z = 1
 var s_inv: Z = 0
-for u in t.postorder:
+for u in t.at.rev:
     for c in t.children(u): sz[u] += sz[c]
     if u == V(1):
         ans *= sz[u]

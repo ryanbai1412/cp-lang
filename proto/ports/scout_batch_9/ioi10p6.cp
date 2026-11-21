@@ -15,7 +15,7 @@ let tree = Rooted(roads, City.first)
 
 // below[c]: the fans in c's subtree; they all cross the road above c
 var below: [City]Int = [City] c => fans[c]
-for c in tree.preorder.rev:
+for c in tree.at.rev:
     if let p = tree.parent(c): below[p] += below[c]
 
 // With the arena at c, the roads into c carry each child's subtree, and

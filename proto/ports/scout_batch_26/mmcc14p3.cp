@@ -19,7 +19,7 @@ fn outposts(radius: Int) -> Int:
     var open: [V]?Int = [V] _ => none      // farthest uncovered vertex below, if any
     var post: [V]?Int = [V] _ => none      // nearest outpost below, if any
     var used = 0
-    for v in t.preorder.rev:
+    for v in t.at.rev:
         var far = 0
         var near: ?Int = none
         for c in t.children(v):

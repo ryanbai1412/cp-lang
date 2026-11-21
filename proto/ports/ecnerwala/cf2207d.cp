@@ -8,7 +8,7 @@ let g = Graph.undirected(edges)
 let t = Rooted(g, root: V(v_in))
 
 var dist: [V]Int = k + 2
-for u in t.postorder:
+for u in t.at.rev:
     if g[u].len == 1:
         dist[u] = 0
         continue

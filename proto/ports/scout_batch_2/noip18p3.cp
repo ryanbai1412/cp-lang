@@ -12,7 +12,6 @@ domain Road = 1..n
 let roads: [Road](u: Junction, v: Junction, len: Int) = read()
 let g = Graph<Junction, Road>.undirected(roads)
 let tree = Rooted(u => g.out(u), Junction.first)
-let bottom_up = tree.preorder.rev
 
 var up_len: [Junction]Int = 0  // the road from v to its parent
 for (u, v, len) in roads:
@@ -49,7 +48,7 @@ fn pair_up(chains: List<Int>, k: Int) -> (tracks: Int, spare: Int):
 fn tracks_of(k: Int) -> Int:
     var tracks = 0
     var chains = [Junction] v => List<Int>()
-    for v in bottom_up:
+    for v in tree.at.rev:
         let made = pair_up(chains[v], k)
         tracks += made.tracks
         if let p = tree.parent(v):

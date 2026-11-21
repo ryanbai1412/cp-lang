@@ -38,7 +38,7 @@ fn hung(inside: List<Z>) -> List<Z>:
 
 // down[v]: picks in v's subtree, hanging from v's parent
 var down: [V]List<Z> = [V] _ => [Z(1)]
-for v in tree.preorder.rev:
+for v in tree.at.rev:
     var inside = [Z(1)]
     for c in tree.children(v): inside = times(inside, down[c])
     down[v] = hung(inside)
@@ -47,7 +47,7 @@ for v in tree.preorder.rev:
 // neighbour. The parent's factor is everything around the parent except v.
 var around: [V]List<Z> = [V] _ => [Z(1)]
 var total: [n]Z = 0
-for v in tree.preorder:
+for v in tree.at:
     for c in tree.children(v): around[v] = times(around[v], down[c])
     if let p = tree.parent(v): around[v] = times(around[v], hung(without(around[p], down[v])))
     for k in 0..around[v].len: total[k] += around[v][k]

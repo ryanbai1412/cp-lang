@@ -50,7 +50,7 @@ depth-first spanning tree, so every other road joins a town to an ancestor:
 ```
 let tree = Rooted(map, Town.first)
 var low: [Town]Int = [Town] v => tree.pos(v)
-for v in tree.preorder.rev:
+for v in tree.at.rev:
     for w in map[v]:
         if tree.parent(v) != w: low[v] min= tree.pos(w)
     if let p = tree.parent(v): low[p] min= low[v]

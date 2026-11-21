@@ -35,7 +35,7 @@ if n > 1:
     in_excl[excl] = true
     for c in t.children(rt) if c != excl:
         best[c] = n - sz[excl] - sz[c]
-    for u in t.preorder if u != rt:
+    for u in t.at if u != rt:
         let k = max(best[u], sz[u])
         if in_excl[u]: excl_sz[k] += 1
         else: easy_sz[k] += 1

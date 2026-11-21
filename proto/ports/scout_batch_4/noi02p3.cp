@@ -34,7 +34,7 @@ var cost: [Fruit, Who, 0..=n]?Int = none
 for v in Fruit:
     cost[v, Who(0), 0] = 0
     cost[v, big, 1] = 0
-for c in tree.preorder.rev:             // children are complete before parents
+for c in tree.at.rev:             // children are complete before parents
     if let p = tree.parent(c):
         var merged: [Who, 0..=n]?Int = none
         for wp in Who:

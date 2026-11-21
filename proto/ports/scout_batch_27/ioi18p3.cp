@@ -62,7 +62,7 @@ for t in Q:
     asks.push((at: from.lo.ord, q: t, sign: -1))
     asks.push((at: from.hi.ord, q: t, sign: 1))
 
-let euler = human.preorder
+let euler = [v for v in human.at]
 var placed = Fenwick<wolf.Pre, Int>.new()
 var next = 0
 for a in asks.sorted(by: a => a.at):

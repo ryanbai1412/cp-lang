@@ -83,7 +83,7 @@
     "prefix": ["rooted", "hld", "Rooted"],
     "body": [
       "let ${1:t} = Rooted<${2:V}>(${3:g}, ${4:V.first})",
-      "var ${5:st} = LazySegTree<${1:t}.Pre, ${6:Int}>(${7|AddSum,AddMin,AddMax,AssignSum,AssignMin,AssignMax|}, [${1:t}.Pre] p => ${8:a}[${1:t}.preorder[p]])",
+      "var ${5:st} = LazySegTree<${1:t}.Pre, ${6:Int}>(${7|AddSum,AddMin,AddMax,AssignSum,AssignMin,AssignMax|}, [${1:t}.Pre] p => ${8:a}[${1:t}.at[p]])",
       "// Path query: ${1:t}.fold_path(u, v, ${5:st})",
       "// Subtree query: ${5:st}.fold(${1:t}.sub(u))",
       "${0}"

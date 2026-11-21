@@ -24,7 +24,7 @@ for e in E:
         diff[c] -= id
 
 var ans: [V]Int = base
-for u in t.preorder:
+for u in t.at:
     if let p = t.parent(u):
         diff[u] += diff[p]
     ans[u] += diff[u]

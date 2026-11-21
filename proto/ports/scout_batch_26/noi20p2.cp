@@ -36,7 +36,7 @@ for p in paths: need[p.v] = max(need[p.v], t.depth(p.u) + 1)
 // needs both an owning `take` out of `[V]T` and a library tree whose nodes
 // can change owner.
 var g: [V]List<Z> = [V] _ => []
-for x in t.preorder.rev:
+for x in t.at.rev:
     let d = t.depth(x) + 1
     // WISH TR11: `var row = take(g[h])` to move the heavy child's row up
     // without a copy; the interpreter aliases here, the compiler would reject it.

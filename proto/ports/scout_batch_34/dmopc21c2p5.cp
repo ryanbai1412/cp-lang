@@ -30,7 +30,7 @@ for d in Deg if d > Deg.first:
 // back to `List<Z>` initialized via `[0..=sz] _ => Z.zero` or `List.filled(...)`.
 var memo: [V, Bool]List<Z> = []
 
-for u in tree.postorder:
+for u in tree.at.rev:
     let sz_u = tree.size(u)
     for par_used in Bool:
         let start = Int(par_used)
@@ -55,7 +55,7 @@ for u in tree.postorder:
             csum += sz_v
             cur = nxt
 
-        var res: List<Z> = [sum(cur[d, i] * fact[d] for d in Deg) for i in 0..=sz_u]
+        let res: List<Z> = [sum(cur[d, i] * fact[d] for d in Deg) for i in 0..=sz_u]
         memo[u, par_used] = res
 
 print(if k <= n: memo[V.first, false][k] else: Z.zero)
