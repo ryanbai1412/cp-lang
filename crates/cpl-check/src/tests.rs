@@ -3153,3 +3153,15 @@ fn seq_parameter_takes_anything_walkable() {
     let src = "domain P = 0..5\nfn total(xs: Seq<P>) -> Int:\n    var t = 0\n    for x in xs: t += Int(x.l)\n    t\nprint(total(P.range))\nprint(total([P(1), P(2)]))\n";
     assert_eq!(codes(src), Vec::<&str>::new());
 }
+
+#[test]
+fn reversed_range_keeps_its_element_type() {
+    let src = "domain P = 0..4\nlet km: 0..=9 = read()\nvar dp: [0..=km, P]Int = 0\nvar row: [P]Int = 0\nfor k in (0..=km).rev:\n    dp[k] = row\n";
+    assert_eq!(codes(src), Vec::<&str>::new());
+}
+
+#[test]
+fn domain_wrap_gives_a_position() {
+    let src = "domain P = 0..5\nvar a: [P]Int = 0\nfor p in P: a[P.wrap(Int(p) - 1)] += 1\n";
+    assert_eq!(codes(src), Vec::<&str>::new());
+}

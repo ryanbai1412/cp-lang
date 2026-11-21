@@ -1594,6 +1594,9 @@ impl<'a> Checker<'a> {
         }
         // `s.rev`, `xs.rev`, `a.rev`: O(1) read-only reverse view over a string, list, or 1D domain array.
         if name.text == "rev" {
+            if matches!(&base_ty, Ty::Named { name: range, args } if range == "Range" && args.len() == 1) {
+                return base_ty;
+            }
             if base_ty == Ty::Str
                 || matches!(&base_ty, Ty::Named { name: list, args } if list == "List" && args.len() == 1)
             {
@@ -1756,6 +1759,18 @@ impl<'a> Checker<'a> {
                     "first" | "last" => Ty::Pos(domain.clone()),
                     "all" => Ty::Unknown,
                     "rev" => Ty::Domain(domain.clone()),
+                    "wrap" => Ty::Fn {
+                        params: vec![crate::ty::Param {
+                            name: "x".into(),
+                            ty: Ty::Int,
+                            mutable: false,
+                            has_default: false,
+                            named_only: false,
+                            variadic: false,
+                            lazy: false,
+                        }],
+                        ret: Box::new(Ty::Pos(domain.clone())),
+                    },
                     "bounds" | "cuts" => Ty::Named {
                         name: "Range".into(),
                         args: vec![Ty::Pos(format!("{domain}.cuts"))],
