@@ -1,0 +1,12 @@
+# Hosts that URLs in committed files may point at, one extended regex per
+# line, matched against the whole host. Anything else is rejected, so new
+# internal hosts are caught without this file having to name them. Add a
+# public host here when you cite it.
+(www\.)?github\.com|raw\.githubusercontent\.com|[a-z0-9-]+\.github\.io
+codeforces\.com|atcoder\.jp|dmoj\.ca|judge\.yosupo\.jp|szkopul\.edu\.pl|neerc\.ifmo\.ru|cses\.fi|codechef\.com|(www\.)?spoj\.com|oj\.uz|usaco\.org|open\.kattis\.com
+registry\.npmjs\.org|crates\.io|docs\.rs|rustup\.rs|static\.rust-lang\.org|(www\.)?rust-lang\.org|pypi\.org|golang\.org|(www\.)?debian\.org
+marketplace\.visualstudio\.com|code\.visualstudio\.com|plugins\.jetbrains\.com|(www\.)?jetbrains\.com|microsoft\.github\.io|plugins\.gradle\.org
+[a-z]+\.wikipedia\.org|arxiv\.org|stackoverflow\.com|codereview\.stackexchange\.com|cp-algorithms\.com|(www\.)?w3\.org|json-schema\.org
+xorshift\.di\.unimi\.it|(www\.)?daemonology\.net|(www\.)?cs\.berkeley\.edu|mathexp\.eu|martin\.ankerl\.com|xxccd\.glitch\.me
+(www\.)?patreon\.com|feross\.org|bevry\.me|opencollective\.com|tidelift\.com|paypal\.me
+vitepress\.dev|ui\.shadcn\.com|dejavu-fonts\.github\.io|cp-lang\.dev|(www\.)?example\.(com|org)|localhost|127\.0\.0\.1

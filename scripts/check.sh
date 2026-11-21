@@ -76,6 +76,23 @@ staged_guard() {
             <<<"$lines" | cut -c1-12 | sed 's/$/.../' | grep .; then
             fail "added lines hold what look like secrets (starting as above); remove them"
         fi
+        local top hosts deny
+        top="$(git rev-parse --show-toplevel)"
+        hosts="$(grep -oE 'https?://[A-Za-z0-9.-]+' <<<"$lines" | sed -E 's#^https?://##' | sort -u \
+            | grep -vxE -f <(grep -v '^#' "$top/scripts/public-hosts.txt") || true)"
+        if [ -n "$hosts" ]; then
+            echo "$hosts"
+            fail "added lines link to the hosts above, which are not in scripts/public-hosts.txt; the history will be public, so remove the links or add a public host to that list"
+        fi
+        if grep -nE '/(home|Users)/[A-Za-z0-9_.-]+/' <<<"$lines" | head -3 | grep .; then
+            fail "added lines hold personal home paths; use paths relative to the repository"
+        fi
+        # Words that must never be published can't be listed in the repository
+        # itself, so each machine keeps its own list outside the history.
+        deny="$(git rev-parse --git-common-dir)/info/sensitive-words"
+        if [ -s "$deny" ] && grep -inF -f "$deny" <<<"$lines" | head -3 | cut -c1-60 | grep .; then
+            fail "added lines match the local list in .git/info/sensitive-words"
+        fi
     done
 }
 

@@ -2,11 +2,18 @@
 
 Read this first if you are working on CP Lang, agent or person: what we are
 building, what it owes the contestant, and the rules every change follows.
-How we work day to day (settled decisions and the loop) is in
-`plan/OPERATING.md`; where each domain stands and its north star is in
-`plan/DOMAINS.md`; Ryan's own words are in `plan/agent-context.md`; every
-design call and its reason is in `decisions.md`; the language is in
-`plan/1x-*.md`.
+
+Then read, in order:
+1. `plan/OPERATING.md`: settled decisions and the loop we work in.
+2. `plan/DOMAINS.md`: each domain's north star, status and next steps;
+   find yours.
+3. `design/README.md`: the target language (spec, goals with tests, core
+   mechanisms, exemplars) and `design/DELTA.md`, the gap from today.
+4. `decisions.md`: every design call, its reason and how to reverse it.
+5. `REPO.md`: where everything lives.
+
+`plan/agent-context.md` has Ryan's own words; `plan/1x-*.md` describes the
+language as implemented today.
 
 ## The mission
 
@@ -187,3 +194,22 @@ These decide design questions.
 - **Nothing sensitive in the repo.** The history will be public: no internal
   hostnames, package mirrors, session links, secret names, credentials or
   personal paths.
+
+## Commits
+
+- Subject: `area: summary`, lowercase imperative, at most 72 characters,
+  e.g. `stdlib: add interval map` or `port(cf2237h): rethink with interval
+  map`. A body, when needed, says why, not what.
+- Areas: `syntax`, `check` (types and analysis), `codegen`, `interp`,
+  `stdlib`, `diag`, `lsp`, `editors`, `fmt`, `lint`, `stress`, `judge`,
+  `tools`, `cli`, `docs`, `site`, `design`, `plan`, `port`, `frictions`,
+  `bench`, `factory` (scripts, briefs, retros), `ci`, `deps`, `revert`. An
+  optional scope in parentheses narrows it.
+- One logical change per commit, each green on its own; a port and its
+  friction report go together. Push to `main` after
+  `scripts/check.sh --fast` passes; never rewrite pushed history without
+  Ryan's say-so.
+- `scripts/install-hooks.sh` turns on the hooks: `pre-commit` runs the fast
+  check (including the public-history scan: only hosts in
+  `scripts/public-hosts.txt`, no home paths, nothing from the local
+  `.git/info/sensitive-words`), and `commit-msg` checks the subject.

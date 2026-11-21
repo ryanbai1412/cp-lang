@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Enforces the commit subject convention in AGENTS.md: `area: summary`.
+subject="$(grep -v '^#' "$1" | head -1)"
+areas='syntax|check|codegen|interp|stdlib|diag|lsp|editors|fmt|lint|stress|judge|tools|cli|docs|site|design|plan|port|frictions|bench|factory|ci|deps|revert'
+case "$subject" in
+    Merge\ *|fixup!\ *|squash!\ *) exit 0 ;;
+esac
+if ! grep -qE "^($areas)(\([a-z0-9._/-]+\))?: [^ ].{0,70}$" <<<"$subject"; then
+    echo "commit-msg: subject must be \`area: summary\` (at most 72 characters), with area one of:" >&2
+    echo "  ${areas//|/, }" >&2
+    echo "  e.g. \`stdlib: add interval map\` or \`port(cf2237h): rethink with interval map\`" >&2
+    exit 1
+fi

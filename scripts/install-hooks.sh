@@ -4,4 +4,4 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 git config core.hooksPath .githooks
-echo "hooks installed: git commit now runs scripts/check.sh --fast"
+echo "hooks installed: git commit now runs scripts/check.sh --fast and checks the subject"
