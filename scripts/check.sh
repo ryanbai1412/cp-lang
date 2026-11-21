@@ -61,14 +61,18 @@ cache_dir="$target/check-cache"
 
 # The fast gate compiles the same emitted C++ on every run (profile, judges,
 # trap parity), so `g++` goes through scripts/cxx-cache.py, which reuses a
-# binary built from the same bytes, flags and compiler. --full and
-# CHECK_NO_CXX_CACHE=1 compile everything.
+# binary built from the same bytes, flags, compiler and system headers. The
+# cache is per user, not per checkout, so a fresh worktree starts warm.
+# --full and CHECK_NO_CXX_CACHE=1 compile everything.
 if [ "$mode" = fast ] && [ "${CHECK_NO_CXX_CACHE:-0}" != "1" ] && command -v g++ >/dev/null; then
     export CPL_CXX_SHIM_DIR="$target/cxx-shim"
-    export CPL_CXX_CACHE_DIR="$target/cxx-cache"
+    export CPL_CXX_CACHE_DIR="${CPL_CXX_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/cpl/cxx}"
     mkdir -p "$CPL_CXX_SHIM_DIR" "$CPL_CXX_CACHE_DIR"
     ln -sf "$root/scripts/cxx-cache.py" "$CPL_CXX_SHIM_DIR/g++"
     export PATH="$CPL_CXX_SHIM_DIR:$PATH"
+    # Fingerprint the system headers and libraries once per gate, not per compile.
+    CPL_CXX_SYSTEM_KEY=$(g++ --cpl-system-key 2>/dev/null) || CPL_CXX_SYSTEM_KEY=""
+    export CPL_CXX_SYSTEM_KEY
     # Drop binaries no run has used for a week.
     find "$CPL_CXX_CACHE_DIR" -type f -mtime +7 -delete 2>/dev/null || true
 fi

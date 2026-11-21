@@ -9,6 +9,16 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 FAKE_GXX = """#!/bin/sh
+if [ "$1" = -print-search-dirs ]; then
+    [ -n "$FAKE_NO_DIRS" ] || echo "libraries: =$FAKE_LIB"
+    exit 0
+fi
+if [ "$1" = -xc++ ] && [ "$2" = -E ]; then
+    if [ -z "$FAKE_NO_DIRS" ]; then
+        printf '#include <...> search starts here:\\n %s\\nEnd of search list.\\n' "$FAKE_INC" >&2
+    fi
+    exit 0
+fi
 echo "$@" >> "$FAKE_LOG"
 out=""; src=""; prev=""
 for a in "$@"; do
@@ -35,13 +45,23 @@ class CxxCacheTest(unittest.TestCase):
         os.chmod(os.path.join(fake_dir, "g++"), 0o755)
         os.symlink(os.path.join(ROOT, "scripts", "cxx-cache.py"), os.path.join(shim_dir, "g++"))
         self.log = os.path.join(t, "log")
+        self.inc, self.lib = os.path.join(t, "inc"), os.path.join(t, "lib")
+        os.makedirs(os.path.join(self.inc, "bits"))
+        os.makedirs(self.lib)
+        with open(os.path.join(self.inc, "bits", "stdc++.h"), "w") as f:
+            f.write("v1")
         self.env = dict(
             os.environ,
             PATH=os.pathsep.join([shim_dir, fake_dir, os.environ["PATH"]]),
             CPL_CXX_SHIM_DIR=shim_dir,
             CPL_CXX_CACHE_DIR=os.path.join(t, "cache"),
             FAKE_LOG=self.log,
+            FAKE_INC=self.inc,
+            FAKE_LIB=self.lib,
         )
+        for v in ("CPL_CXX_SYSTEM_KEY", "CPL_CXX_CACHE_MAX_BYTES", "CPATH",
+                  "CPLUS_INCLUDE_PATH", "C_INCLUDE_PATH", "LIBRARY_PATH"):
+            self.env.pop(v, None)
         self.src = os.path.join(t, "a.cpp")
         self.write("int main() {}")
 
@@ -105,6 +125,67 @@ class CxxCacheTest(unittest.TestCase):
         for _ in range(2):
             self.gxx("-include", header, self.src, "-o", "x")
         self.assertEqual(self.compiles(), 2)
+
+    def test_a_quoted_include_or_search_flag_always_compiles(self):
+        self.write('#include "local.hpp"\nint main() {}')
+        for _ in range(2):
+            self.gxx(self.src, "-o", "x")
+        self.write("int main() {}")
+        for _ in range(2):
+            self.gxx("-I.", self.src, "-o", "x")
+        self.env["CPLUS_INCLUDE_PATH"] = self.tmp.name
+        for _ in range(2):
+            self.gxx(self.src, "-o", "x")
+        self.assertEqual(self.compiles(), 6)
+
+    def test_a_changed_system_header_or_library_compiles_again(self):
+        self.gxx(self.src, "-o", "x")
+        self.gxx(self.src, "-o", "x")
+        self.assertEqual(self.compiles(), 1)
+        header = os.path.join(self.inc, "bits", "stdc++.h")
+        with open(header, "w") as f:
+            f.write("v2, a different size")
+        self.gxx(self.src, "-o", "x")
+        self.assertEqual(self.compiles(), 2)
+        with open(os.path.join(self.lib, "libasan.so"), "w") as f:
+            f.write("new")
+        self.gxx(self.src, "-o", "x")
+        self.assertEqual(self.compiles(), 3)
+
+    def test_the_system_key_from_the_gate_is_part_of_the_key(self):
+        self.env["CPL_CXX_SYSTEM_KEY"] = "a"
+        self.gxx(self.src, "-o", "x")
+        self.gxx(self.src, "-o", "x")
+        self.env["CPL_CXX_SYSTEM_KEY"] = "b"
+        self.gxx(self.src, "-o", "x")
+        self.assertEqual(self.compiles(), 2)
+        r = subprocess.run(["g++", "--cpl-system-key"], env=dict(self.env, CPL_CXX_SYSTEM_KEY=""),
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual(len(r.stdout.strip()), 64)
+
+    def test_a_compiler_that_hides_its_search_dirs_always_compiles(self):
+        self.env["FAKE_NO_DIRS"] = "1"
+        for _ in range(2):
+            self.gxx(self.src, "-o", "x")
+        self.assertEqual(self.compiles(), 2)
+
+    def test_the_least_recently_used_entries_are_evicted_past_the_cap(self):
+        self.env["CPL_CXX_CACHE_MAX_BYTES"] = "400"
+        for body in ("int a;", "int b;", "int c;"):
+            self.write(body + " " * 100)
+            self.gxx(self.src, "-o", "x")
+        self.write("int a;" + " " * 100)
+        self.gxx(self.src, "-o", "x")
+        self.write("int c;" + " " * 100)
+        self.gxx(self.src, "-o", "x")
+        self.assertEqual(self.compiles(), 4)
+        total = 0
+        for r, _, fs in os.walk(self.env["CPL_CXX_CACHE_DIR"]):
+            for f in fs:
+                self.assertFalse(f.endswith(".tmp"), f)
+                total += os.path.getsize(os.path.join(r, f))
+        self.assertLessEqual(total, 400)
 
 
 if __name__ == "__main__":
