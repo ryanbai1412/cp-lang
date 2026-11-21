@@ -1,6 +1,7 @@
 # agc077c
 
 Score: 2/5
+Dream: 3/5
 
 The complement-graph components are found by a hand DFS with a two-pointer skip over sorted adjacency, and the parity bookkeeping (`out_deg`, `c0`/`c1`, `mi_1`/`ma_1`) is never explained. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
@@ -19,3 +20,13 @@ The complement-graph components are found by a hand DFS with a two-pointer skip 
 ## Language gaps
 
 No friction report exists. Possibly missing: complement-graph components in `std.graph`; needs a fresh-compiler check before filing.
+
+## Cold review (HEAD)
+
+Dream 3/5 (new, d93c0286), sent back.
+- Line 44 checks only `lo <= target <= hi`, but line 11 says each component reaches only counts *of the same parity as `odd`*. Either the parity of `target` is forced, and the header must say why, or the check is missing it.
+- Lines 7-8 state the k-even and k-odd conditions without deriving either.
+- `[v for v in comp if odd_out[v]].len` (line 39) should be `comp.count(v => odd_out[v])`, which works today.
+- `complement_components` (line 37) isn't in the stdlib (E0201); the friction report covers it.
+
+Port 2/5: it hand-rolls the complement-graph DFS with an unvisited set, a `cursor` and a merge pointer `ai` (the reported gap).
