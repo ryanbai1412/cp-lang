@@ -62,3 +62,13 @@ print(runs("aabbbcc"[1..6]))
 print(prefix_function("ababa"[0..5]))
 print(z_function("ababa".rev))
 print(is_palindrome("xracecary"[1..8]), is_palindrome("abcdef"[1..5]))
+
+// Fused concat indexing and view-concat printing, plus clear-reuse
+var left: List<Int> = [1, 2, 3]
+var right: List<Int> = [4, 5]
+print((left.rev + right)[0], (left.rev + right)[2], (left.rev + right)[4])
+print(s[0..4] + s[5..11])
+left = []
+right = []
+left.push(7)
+print(left, right.len)

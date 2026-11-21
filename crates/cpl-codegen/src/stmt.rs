@@ -644,13 +644,31 @@ impl<'p> Emitter<'p> {
     fn assign(&mut self, place: &Place, op: AssignOp, value: &Expr, out: &mut String) {
         let whole = value;
         let value = self.flatten(value, out);
+        if let (AssignOp::Set, PlaceKind::Local(_) | PlaceKind::Global(_)) = (op, &place.kind) {
+            if matches!((&value.kind, &value.ty), (ExprKind::Tuple(items), Ty::List(_)) if items.is_empty())
+                || matches!(&value.kind, ExprKind::Str(bytes) if bytes.is_empty())
+            {
+                let name = self.place(place);
+                self.line(out, &format!("{name}.clear();"));
+                return;
+            }
+        }
         if let (AssignOp::Set, PlaceKind::Local(_) | PlaceKind::Global(_), ExprKind::Read(spec)) =
             (op, &place.kind, &value.kind)
         {
-            if let Spec::Array { dims, elem } = &**spec {
-                let name = self.place(place);
-                self.read_array(&name, false, dims, elem, out);
-                return;
+            match &**spec {
+                Spec::Array { dims, elem } => {
+                    let name = self.place(place);
+                    self.read_array(&name, false, dims, elem, out);
+                    return;
+                }
+                Spec::Plain(Ty::Str) => {
+                    self.need("read_str");
+                    let name = self.place(place);
+                    self.line(out, &format!("cpl::read_str_into({name});"));
+                    return;
+                }
+                _ => {}
             }
         }
         let mut v = self.expr(value);

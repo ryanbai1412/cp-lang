@@ -164,8 +164,8 @@ template <class... T> struct Judge<std::tuple<T...>> {
 // to see the query before it writes the answer.
 std::string in;
 size_t in_at = 0;
-inline bool is_space(char c) { return c == ' ' || c == '\\n' || c == '\\t' || c == '\\r' || c == '\\f'; }
-inline bool more() { flush(); fflush(stdout); char b[1 << 16]; ssize_t n = read(0, b, sizeof b); if (n <= 0) return false; in.append(b, (size_t)n); return true; }
+inline bool is_space(char c) { return (unsigned char)c <= ' ' && (c == ' ' || (unsigned char)(c - '\\t') <= 4); }
+inline bool more() { if (!out.empty()) { flush(); fflush(stdout); } if (in_at >= in.size()) { in.clear(); in_at = 0; } char b[1 << 16]; ssize_t n = read(0, b, sizeof b); if (n <= 0) return false; in.append(b, (size_t)n); return true; }
 inline void skip_space() { for (;;) { while (in_at < in.size() && is_space(in[in_at])) in_at++; if (in_at < in.size() || !more()) return; } }
 // Before a value is read: input that has run out stops the program, as it
 // stops `cpl run`. The input comes in pieces, so the rest of the value is
@@ -264,7 +264,17 @@ inline u8 read_char() { need_input(); return in_at < in.size() ? (u8)in[in_at++]
         name: "read_str",
         needs: &["in"],
         code: "\
-inline std::string read_str() { need_input(); size_t start = in_at; while ((in_at < in.size() || more()) && !is_space(in[in_at])) in_at++; return in.substr(start, in_at - start); }
+inline void read_str_into(std::string& r) {
+    need_input();
+    r.clear();
+    for (;;) {
+        const char* p = in.data(); size_t n = in.size(), st = in_at;
+        while (in_at < n && !is_space(p[in_at])) in_at++;
+        r.append(p + st, in_at - st);
+        if (in_at < n || !more()) return;
+    }
+}
+inline std::string read_str() { std::string r; read_str_into(r); return r; }
 ",
     },
     Piece {
@@ -1140,6 +1150,13 @@ template <class T> T last_val(ListView<T> v) { if (v.empty()) fail(\"the list is
 template <class T> std::vector<T> sorted(ListView<T> v) { auto o = v.to_list(); std::sort(o.begin(), o.end()); return o; }
 template <class T, class U> bool has(ListView<T> v, const U& x) { for (size_t i = 0; i < v.n; i++) if (v.ptr[i] == x) return true; return false; }
 inline std::string list_to_str(ListView<u8> v) { std::string s; s.reserve(v.size()); for (u8 c : v) s.push_back((char)c); return s; }
+",
+    },
+    Piece {
+        name: "list_concat_at",
+        needs: &["at"],
+        code: "\
+template <class A, class B> auto list_concat_at(const A& a, const B& b, ll i) -> decltype(at(a, i)) { if (i < 0) fail(\"index outside the list\"); if ((size_t)i < a.size()) return a[(size_t)i]; return at(b, i - (ll)a.size()); }
 ",
     },
 ];

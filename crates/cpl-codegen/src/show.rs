@@ -297,6 +297,18 @@ impl<'p> Emitter<'p> {
         }
     }
 
+    fn show_expr(&mut self, e: &cpl_ir::Expr, digits: &str) -> String {
+        if let cpl_ir::ExprKind::Builtin(cpl_ir::Builtin::StrConcat, args) = &e.kind {
+            if args.len() == 2 && e.ty == Ty::Str {
+                let a = self.show_expr(&args[0], digits);
+                let b = self.show_expr(&args[1], digits);
+                return format!("{a} {b}");
+            }
+        }
+        let code = self.expr(e);
+        self.show_stmt(&code, &e.ty, digits)
+    }
+
     /// `print(a, b)` as one line of statements.
     pub fn print_stmts(&mut self, args: &[FmtArg], end: Option<&cpl_ir::Expr>, out: &mut String) {
         self.need("out");
@@ -309,8 +321,7 @@ impl<'p> Emitter<'p> {
             parts.push("{ size_t start = cpl::out.size();".to_string());
         }
         for (i, arg) in args.iter().enumerate() {
-            let code = self.expr(&arg.value);
-            let shown = self.show_stmt(&code, &arg.value.ty, &arg.digits.to_string());
+            let shown = self.show_expr(&arg.value, &arg.digits.to_string());
             match (i > 0, sparse) {
                 (false, _) => parts.push(shown),
                 (true, false) => parts.push(format!("cpl::put_char(' '); {shown}")),

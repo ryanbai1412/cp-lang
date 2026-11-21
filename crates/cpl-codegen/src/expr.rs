@@ -579,6 +579,31 @@ impl<'p> Emitter<'p> {
                     it.map(|f| f.2.as_str()).unwrap_or_default()
                 ))
             }
+            ExprKind::Index(base, indices)
+                if indices.len() == 1
+                    && matches!(
+                        &base.kind,
+                        ExprKind::Builtin(Builtin::ListConcat, args) if args.len() == 2
+                    ) =>
+            {
+                let ExprKind::Builtin(Builtin::ListConcat, args) = &base.kind else {
+                    unreachable!()
+                };
+                self.need("list_concat_at");
+                let operands = [&args[0], &args[1], &indices[0]];
+                let is_bool = matches!(&base.ty, Ty::List(elem) | Ty::ListView(elem) if **elem == Ty::Bool);
+                self.sequence(&operands, &e.ty, |_, codes| {
+                    let call = format!(
+                        "cpl::list_concat_at({}, {}, {})",
+                        codes[0].text, codes[1].text, codes[2].text
+                    );
+                    if is_bool {
+                        Code::new(format!("(bool){call}"), UNARY)
+                    } else {
+                        Code::primary(call)
+                    }
+                })
+            }
             ExprKind::Index(base, indices) => {
                 let mut operands: Vec<&Expr> = vec![base];
                 operands.extend(indices.iter());
