@@ -1918,7 +1918,8 @@ Reverse: drop the `proven` lookup in the `inlayHint` arm of `crates/cpl-lsp/src/
 - **30.7 Dreams are a diagnostics corpus.** `scripts/dream-gaps.py` checks every
   `proto/ports/*/dream/*.cp` and files each error under the gap it names: `syntax:` (an `E0504`
   feature), `library:` (a name, module or method "not in the stdlib (yet)"), `import:` (a stdlib name
-  used without its `use`), `rule:` (a decided rule the dream breaks), or `unnamed:`. The scoreboard
+  used without its `use`), `rule:` (a decided rule the dream breaks), `backend:` (an `E0501` the
+  interpreter or codegen can't run yet), or `unnamed:`. The scoreboard
   prints the ranked summary. The bar is that every dream's first error names its gap. *Reason:* the
   factory needs to see which missing construct blocks the most dreams, and a dream whose first error
   is "expected X" teaches nothing. *Reversible:* drop the script and the scoreboard's `dreams` block.
@@ -1935,6 +1936,11 @@ Reverse: drop the `proven` lookup in the `inlayHint` arm of `crates/cpl-lsp/src/
   missing `std.` module or a name a `std.` module lacks gets it too. No stdlib export is one letter
   and contest code is full of one-letter locals, so `no `w` in scope` stays bare. *Reversible:* the
   `unknown` condition in `Checker::unresolved` and the two branches in `db.rs`.
+- **30.10 `const A = 1, B = 2` declares several constants; a field used in a method without `self`
+  says so.** The first is how dreams write related limits, costs nothing to read (each becomes its own
+  `const`, so every tool sees ordinary declarations); the second turns a bare "not in scope" into the fix (add `self`).
+  Fields already resolve bare inside methods that take `self`. *Reversible:* the `while` after the
+  first `const` in `parser/stmt.rs`; the `field_of_self` branch in `Checker::unresolved`.
 
 ## 31. Generated C++: stack, layout and niches (0.3)
 

@@ -930,7 +930,7 @@ impl<'a> Checker<'a> {
 
     /// The type of field `name` on a value of type `ty`, if `ty` is a
     /// struct or record that has it.
-    fn field_of(&mut self, ty: &Ty, name: &ast::Name) -> Option<Ty> {
+    pub(super) fn field_of(&mut self, ty: &Ty, name: &ast::Name) -> Option<Ty> {
         match ty {
             Ty::Record(fields) => fields
                 .iter()

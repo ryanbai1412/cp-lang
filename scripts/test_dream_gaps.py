@@ -62,6 +62,24 @@ class GapTest(unittest.TestCase):
             "library: std.geometry.Vec",
         )
 
+    def test_backend_gaps_and_unknown_methods_are_named(self):
+        self.assertEqual(
+            dg.gap("E0501", "`cpl run` and `cpl build` can't handle generic fns and types yet", ""),
+            "backend: generic fns and types",
+        )
+        self.assertEqual(
+            dg.gap("E0303", "a `Range<Int>` has no method `group` that `cpl run` knows", ""),
+            "library: Range<Int>.group",
+        )
+
+    def test_missing_arguments_and_implicit_fields_are_named(self):
+        self.assertEqual(dg.gap("E0310", "`count` has no argument named `where`", ""), "library: count(where:)")
+        self.assertEqual(
+            dg.gap("E0201", "no `z` in scope",
+                   "`z` is a field of `Prefix`, and this method takes no `self`: add `self` as its first parameter"),
+            "syntax: a method that uses fields without taking `self`",
+        )
+
     def test_a_decided_rule_is_named_as_one(self):
         self.assertTrue(
             dg.gap("E0102", "a top-level `return` takes no value", "").startswith("rule: ")

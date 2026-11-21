@@ -1,8 +1,8 @@
 error[E0504]: not implemented yet: a wrap line, `--- with f() ---` (see design/spec/16-state.md §16.3)
   --> planned_a_wrap_line_with_f.cp:2:1
   |
-2 | --- with multitest() ---
-  | ^^^^^^^^^^^^^^^^^^^^^^^^
-  = help: pass the rest as a closure, `f(() => …)`; for test cases, `@!multitest` divides the file
+2 | --- with go() ---
+  | ^^^^^^^^^^^^^^^^^
+  = help: pass the rest as a closure, `f(() => …)`; `--- multitest ---` and `--- interactive ---` work today
 
 planned_a_wrap_line_with_f.cp: 1 error

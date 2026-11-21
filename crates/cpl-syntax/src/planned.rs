@@ -35,10 +35,10 @@ pub const FRESH_TYPE: Planned = Planned {
 pub const WRAP_LINE: Planned = Planned {
     feature: "a wrap line, `--- with f() ---`",
     see: Some("design/spec/16-state.md §16.3"),
-    now: "pass the rest as a closure, `f(() => …)`; for test cases, `@!multitest` divides the file",
-    example: "let t = 3
---- with multitest() ---
-print(t)
+    now: "pass the rest as a closure, `f(() => …)`; `--- multitest ---` and `--- interactive ---` work today",
+    example: "fn go(f: () -> Int) -> Int = f()
+--- with go() ---
+print(1)
 ",
 };
 
@@ -127,13 +127,41 @@ match a.find(0):
 ",
 };
 
-pub const BROADCAST: Planned = Planned {
-    feature: "one value for several names, `var a, b: T = 0`",
+pub const VAR_FIELD: Planned = Planned {
+    feature: "a `var` field, `var steps: List<Int> = []`",
     see: None,
-    now: "give each name its value: `var a, b: T = (0, 0)`",
-    example: "var a, b: Int = 0
-a += 1
-print(a + b)
+    now: "drop `var`: a field changes wherever its struct is a `var`",
+    example: "struct S:
+    var n: Int = 0
+print(1)
+",
+};
+
+pub const FIELD_BY_DEFAULT: Planned = Planned {
+    feature: "a field typed by its default, `total = 0`",
+    see: None,
+    now: "give the field its type: `total: Int = 0`",
+    example: "struct S:
+    total = 0
+print(1)
+",
+};
+
+pub const RECORD_DECL: Planned = Planned {
+    feature: "a named record, `record Side(a: Int):`",
+    see: None,
+    now: "declare a struct: `struct Side(a: Int):`",
+    example: "record P(x: Int)
+print(P(1).x)
+",
+};
+
+pub const TRAILING_LAMBDA: Planned = Planned {
+    feature: "a lambda after the call, `f(n) { x => x + 1 }`",
+    see: None,
+    now: "pass it as the last argument: `f(n, x => x + 1)`",
+    example: "fn twice(n: Int, f: (Int) -> Int) -> Int = f(f(n))
+print(twice(1) { x => x + 1 })
 ",
 };
 
@@ -150,5 +178,8 @@ pub const PLANNED: &[&Planned] = &[
     &ENUM_VALUE,
     &IS_BINDING,
     &LOWER_VARIANT_PATTERN,
-    &BROADCAST,
+    &VAR_FIELD,
+    &FIELD_BY_DEFAULT,
+    &RECORD_DECL,
+    &TRAILING_LAMBDA,
 ];

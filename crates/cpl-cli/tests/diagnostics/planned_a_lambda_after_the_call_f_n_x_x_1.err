@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a lambda after the call, `f(n) { x => x + 1 }` (not in the design)
+  --> planned_a_lambda_after_the_call_f_n_x_x_1.cp:2:16
+  |
+2 | print(twice(1) { x => x + 1 })
+  |                ^^^^^^^^^^^^^^
+  = help: pass it as the last argument: `f(n, x => x + 1)`
+
+planned_a_lambda_after_the_call_f_n_x_x_1.cp: 1 error

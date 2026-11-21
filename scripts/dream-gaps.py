@@ -72,11 +72,22 @@ def gap(code, message, help_text):
     m = re.match(r"`(\S+)` has no `(\S+)`, and not in the stdlib \(yet\)", message)
     if m:
         return "library: %s.%s" % (m.group(1), m.group(2))
+    m = re.match(r"`(\S+)` has no argument named `(\S+)`", message)
+    if m:
+        return "library: %s(%s:)" % (m.group(1), m.group(2))
+    if re.match(r"`\S+` is a field of `\S+`, and this method takes no `self`", help_text):
+        return "syntax: a method that uses fields without taking `self`"
     if message == "a top-level `return` takes no value":
         return "rule: a value after a top-level `return` (decision 20.3)"
     m = re.match(r"(\S+) has no field or method `(\S+)`", message)
     if m:
         return "library: %s.%s" % (m.group(1), m.group(2))
+    m = re.match(r"a `(.+)` has no method `(\S+)` that `cpl run` knows", message)
+    if m:
+        return "library: %s.%s" % (m.group(1), m.group(2))
+    m = re.match(r"`cpl run` and `cpl build` can't handle (.+) yet$", message)
+    if m:
+        return "backend: " + m.group(1)
     m = re.match(r"`(\S+)` is in the standard library", help_text)
     if m:
         return "import: " + m.group(1)

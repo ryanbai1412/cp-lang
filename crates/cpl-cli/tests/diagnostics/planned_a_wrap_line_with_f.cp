@@ -1,3 +1,3 @@
-let t = 3
---- with multitest() ---
-print(t)
+fn go(f: () -> Int) -> Int = f()
+--- with go() ---
+print(1)

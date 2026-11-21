@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a named record, `record Side(a: Int):` (not in the design)
+  --> planned_a_named_record_record_side_a_int.cp:1:1
+  |
+1 | record P(x: Int)
+  | ^^^^^^
+  = help: declare a struct: `struct Side(a: Int):`
+
+planned_a_named_record_record_side_a_int.cp: 1 error

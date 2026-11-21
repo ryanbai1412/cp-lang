@@ -459,6 +459,16 @@ impl<'a> Checker<'a> {
                 candidates.extend(scope.keys().cloned());
             }
         }
+        let field_of_self = match self.self_ty.clone() {
+            Some(ty @ Ty::Named { .. }) if value => {
+                let field = cpl_syntax::ast::Name {
+                    text: name.to_string(),
+                    span,
+                };
+                self.field_of(&ty, &field).map(|_| ty)
+            }
+            _ => None,
+        };
         let suggestion = closest(name, candidates.iter().map(String::as_str));
         // Neither here nor in `stdlib/`: say so, and offer the closest
         // library name, since a program reaching for a helper that does not
@@ -466,6 +476,7 @@ impl<'a> Checker<'a> {
         // No stdlib export is one character long, and contest code is full
         // of one-letter locals, so "not in the stdlib" there is only noise.
         let unknown = suggestion.is_none()
+            && field_of_self.is_none()
             && name.chars().nth(1).is_some()
             && prelude::std_module(name).is_none()
             && cpl_syntax::removed_keyword(name).is_none();
@@ -484,6 +495,12 @@ impl<'a> Checker<'a> {
         };
         if let Some(diag) = self.error(code, span, message) {
             match suggestion {
+                _ if field_of_self.is_some() => {
+                    let owner = field_of_self.map(|t| t.to_string()).unwrap_or_default();
+                    diag.help = Some(format!(
+                        "`{name}` is a field of `{owner}`, and this method takes no `self`: add `self` as its first parameter"
+                    ));
+                }
                 _ if cpl_syntax::removed_keyword(name).is_some() => {
                     let fix = cpl_syntax::removed_keyword(name).unwrap_or_default();
                     diag.help = Some(format!("`{name}` was removed in CP Lang 0.2.2: {fix}"));

@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a `var` field, `var steps: List<Int> = []` (not in the design)
+  --> planned_a_var_field_var_steps_list_int.cp:2:5
+  |
+2 |     var n: Int = 0
+  |     ^^^
+  = help: drop `var`: a field changes wherever its struct is a `var`
+
+planned_a_var_field_var_steps_list_int.cp: 1 error

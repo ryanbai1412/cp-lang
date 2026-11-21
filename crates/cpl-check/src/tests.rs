@@ -2191,6 +2191,18 @@ print(apply(5, (a: Str) => 1))
 }
 
 #[test]
+fn a_field_named_without_self_says_where_it_is() {
+    let diags = check(
+        "struct P(z: Int, lnds: Int):\n    fn up(self) -> Int = lnds + 1\n    fn fresh() -> Int = lnds\nprint(P(1, 2).up())\n",
+    );
+    assert_eq!(messages(&diags), ["no `lnds` in scope"]);
+    assert_eq!(
+        diags[0].help.as_deref(),
+        Some("`lnds` is a field of `P`, and this method takes no `self`: add `self` as its first parameter")
+    );
+}
+
+#[test]
 fn a_name_in_no_scope_and_no_library_says_so_and_offers_the_closest_library_name() {
     let diags = check("print(fixed_cost_paths(3))\n");
     assert_eq!(

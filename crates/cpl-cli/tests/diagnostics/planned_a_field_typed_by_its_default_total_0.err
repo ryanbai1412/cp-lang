@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a field typed by its default, `total = 0` (not in the design)
+  --> planned_a_field_typed_by_its_default_total_0.cp:2:5
+  |
+2 |     total = 0
+  |     ^^^^^^^
+  = help: give the field its type: `total: Int = 0`
+
+planned_a_field_typed_by_its_default_total_0.cp: 1 error

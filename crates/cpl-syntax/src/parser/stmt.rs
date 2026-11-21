@@ -109,11 +109,15 @@ impl<'a> Parser<'a> {
             Vec::new()
         };
         while self.eat(T::Minus) {}
+        let span = self.span_from(start);
+        if !name.text.is_empty() && !matches!(name.text.as_str(), "multitest" | "interactive") {
+            self.planned(span, &crate::planned::WRAP_LINE);
+        }
         Decorator {
             name,
             args,
             directive: true,
-            span: self.span_from(start),
+            span,
         }
     }
 
@@ -292,6 +296,15 @@ impl<'a> Parser<'a> {
                     StmtKind::Error
                 }
             }
+            T::Ident
+                if self.text() == "record"
+                    && self.peek_n(1) == T::Ident
+                    && self.peek_n(2) == T::LParen =>
+            {
+                let span = self.span();
+                self.planned(span, &crate::planned::RECORD_DECL);
+                self.struct_decl()
+            }
             T::Const => self.const_stmt(),
             T::Fn => StmtKind::Fn(self.fn_decl()),
             T::Struct => self.struct_decl(),
@@ -371,15 +384,6 @@ impl<'a> Parser<'a> {
                     self.recovering = true;
                     self.skip_line();
                 }
-                StmtKind::Error
-            }
-            T::Minus if self.peek_n(1) == T::Minus && self.peek_n(2) == T::Minus => {
-                // `--- with multitest() ---`, and the `--- multitest ---`
-                // programs write while wrap lines do not exist.
-                let start = self.start();
-                self.skip_line();
-                let span = self.span_from(start);
-                self.planned(span, &crate::planned::WRAP_LINE);
                 StmtKind::Error
             }
             T::Ident if self.text() == "loop" && self.peek_n(1) == T::Colon => {
@@ -590,24 +594,7 @@ impl<'a> Parser<'a> {
             })
         });
         let init = if self.eat(T::Eq) {
-            let init = self.expr();
-            let literal = matches!(
-                init.kind,
-                ExprKind::Int(_)
-                    | ExprKind::Float(_)
-                    | ExprKind::Bool(_)
-                    | ExprKind::Char(_)
-                    | ExprKind::Str(_)
-            );
-            if shared_count > 1 && literal {
-                self.planned(init.span, &crate::planned::BROADCAST);
-                Some(Expr {
-                    kind: ExprKind::Tuple(vec![init.clone(); shared_count]),
-                    span: init.span,
-                })
-            } else {
-                Some(init)
-            }
+            Some(self.expr())
         } else {
             if ty.is_none() {
                 let word = if mutable { "var" } else { "let" };
@@ -760,6 +747,32 @@ impl<'a> Parser<'a> {
             None
         };
         self.where_clause(&mut bounds);
+        // `const N = 3e5, B = 1200` is two constants, as `let a = 0, b = 1`
+        // is two bindings.
+        while init.is_some()
+            && self.at(T::Comma)
+            && self.peek_n(1) == T::Ident
+            && matches!(self.peek_n(2), T::Eq | T::Colon)
+        {
+            self.bump();
+            let start = self.start();
+            let name = self.name();
+            let ty = self.eat(T::Colon).then(|| self.ty());
+            self.expect(T::Eq, "`=` and a value after the name");
+            let value = self.expr();
+            self.extra_stmts.push(Stmt {
+                kind: StmtKind::Const {
+                    name,
+                    generics: Vec::new(),
+                    bounds: Vec::new(),
+                    ty,
+                    init: Some(value),
+                },
+                span: self.span_from(start),
+                decorators: Vec::new(),
+                public: false,
+            });
+        }
         StmtKind::Const {
             name,
             generics,

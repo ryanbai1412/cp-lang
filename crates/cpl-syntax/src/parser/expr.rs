@@ -553,6 +553,35 @@ impl<'a> Parser<'a> {
         self.postfix_from(start, expr)
     }
 
+    /// `f(n) { x => x + 1 }`, read as `f(n, x => x + 1)`.
+    fn trailing_lambda(&mut self) -> Option<Expr> {
+        let params_end = (self.pos + 1..self.tokens.len())
+            .take_while(|&i| matches!(self.tokens[i].kind, T::Ident | T::Comma))
+            .last()?;
+        if !(self.at(T::LBrace) && self.peek_n(params_end + 1 - self.pos) == T::FatArrow) {
+            return None;
+        }
+        let start = self.start();
+        self.bump();
+        let mut params = vec![self.pattern()];
+        while self.eat(T::Comma) {
+            params.push(self.pattern());
+        }
+        self.bump();
+        let body = Box::new(self.expr());
+        self.expect(T::RBrace, "`}` to close the lambda");
+        let span = self.span_from(start);
+        self.planned(span, &crate::planned::TRAILING_LAMBDA);
+        Some(Expr {
+            kind: ExprKind::Lambda {
+                params,
+                param_tys: Vec::new(),
+                body,
+            },
+            span,
+        })
+    }
+
     /// The calls, indexes and fields that follow `expr`.
     pub(super) fn postfix_from(&mut self, start: u32, mut expr: Expr) -> Expr {
         loop {
@@ -564,7 +593,14 @@ impl<'a> Parser<'a> {
             let kind = match self.peek() {
                 T::LParen => {
                     self.bump();
-                    let args = self.comma_list(T::RParen, "the argument list", Self::arg);
+                    let mut args = self.comma_list(T::RParen, "the argument list", Self::arg);
+                    if let Some(lambda) = self.trailing_lambda() {
+                        args.push(Arg {
+                            name: None,
+                            mutable: false,
+                            value: lambda,
+                        });
+                    }
                     ExprKind::Call {
                         callee: Box::new(expr),
                         args,

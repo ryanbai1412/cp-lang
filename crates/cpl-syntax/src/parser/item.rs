@@ -389,13 +389,27 @@ impl<'a> Parser<'a> {
             });
         }
         let methods = self.members(&format!("`struct {}`", name.text), |p| {
+            if p.at(T::Var) {
+                let span = p.span();
+                p.planned(span, &crate::planned::VAR_FIELD);
+                p.bump();
+            }
             // `u, v: V` declares two fields of one type.
             let mut names = vec![p.expect_name("a field name")];
             while p.eat(T::Comma) {
                 names.push(p.expect_name("a field name"));
             }
-            p.expect(T::Colon, "`:` and the field's type");
-            let ty = p.ty();
+            let ty = if p.at(T::Eq) {
+                let span = names[0].span.to(p.span());
+                p.planned(span, &crate::planned::FIELD_BY_DEFAULT);
+                Type {
+                    kind: TypeKind::Error,
+                    span,
+                }
+            } else {
+                p.expect(T::Colon, "`:` and the field's type");
+                p.ty()
+            };
             let default = p.eat(T::Eq).then(|| p.expr());
             for name in names {
                 fields.push(FieldDecl {
