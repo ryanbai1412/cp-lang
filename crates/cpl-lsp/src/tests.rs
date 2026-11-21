@@ -367,11 +367,9 @@ fn quick_fixed(server: &mut Server, uri: &str, text: &str, diagnostic: &Value) -
 /// a real port and undone by its one-click fix.
 #[test]
 fn quick_fixes_undo_the_most_frequent_mistakes_in_a_real_port() {
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../proto/ports/ecnerwala/cf2062g.cp");
-    let original = std::fs::read_to_string(&path).unwrap();
-    let uri = format!("file://{}", path.display());
-    let breaks: &[(&str, &str, &str, &str)] = &[
+    assert_fixes_restore(
+        "cf2062g",
+        &[
         // E0101: a call left open.
         (
             "let p: [I]I = read()",
@@ -395,7 +393,42 @@ fn quick_fixes_undo_the_most_frequent_mistakes_in_a_real_port() {
         ),
         // E0004: a stray character.
         ("fn sort_perm<D>", "fn $sort_perm<D>", "E0004", "remove `$`"),
-    ];
+        ],
+    );
+}
+
+/// A closer dropped mid-line is put back where it was, before the `:` or
+/// `=` it can't enclose, not at the end of the file.
+#[test]
+fn quick_fixes_close_a_bracket_where_it_was_dropped() {
+    assert_fixes_restore(
+        "cf2084c",
+        &[(
+            "if a[i] == b[i]:",
+            "if a[i] == b[i:",
+            "E0101",
+            "insert `]`",
+        )],
+    );
+    assert_fixes_restore(
+        "cf2150c",
+        &[(
+            "if let (nxt_k, nxt_v) = deltas",
+            "if let (nxt_k, nxt_v = deltas",
+            "E0101",
+            "insert `)`",
+        )],
+    );
+}
+
+/// Each `(good, bad, code, title)` breaks the ecnerwala `port` by replacing
+/// `good` with `bad`; its first diagnostic is `code` and the first quick
+/// fix, titled `title`, restores the port.
+fn assert_fixes_restore(port: &str, breaks: &[(&str, &str, &str, &str)]) {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join(format!("../../proto/ports/ecnerwala/{port}.cp"));
+    let original = std::fs::read_to_string(&path).unwrap();
+    let uri = format!("file://{}", path.display());
     for (good, bad, code, title) in breaks {
         assert!(original.contains(good), "{good}");
         let broken = original.replacen(good, bad, 1);

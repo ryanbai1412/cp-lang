@@ -563,7 +563,8 @@ parameter an argument is for, a `let`'s written type, an assigned variable's), s
 (`m: Int in 2..=10001`); parameter names of literal arguments) and quick fixes
 from diagnostic fixes (the four most frequent first errors over the broken
 ports, an unclosed delimiter, a missing token, a doubled operator and a
-stray character, each have one; `recovery.rs` prints the table); a panic becomes an error reply plus an
+stray character, each have one; `recovery.rs` prints the table and how
+often the first fix restores the line); a panic becomes an error reply plus an
 internal-error diagnostic. Unit tests in `src/tests.rs`; `tests/latency.rs`
 measures 6.1 (492 lines, debug build: keystroke to diagnostics median
 6 ms, hover 0.06 ms, completion 1.8 ms). The VS Code extension has a

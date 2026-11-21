@@ -1959,6 +1959,15 @@ fix is on the diagnostic, so `cpl check`, the LSP and every editor get it, and t
 each to a real port broken that way. Reverse: drop `doubled_operator` in
 `crates/cpl-syntax/src/parser/expr.rs` and the `with_fix` after `UNKNOWN_CHAR` in `lexer.rs`.
 
+29.12. **An unclosed bracket's fix inserts the closer where it was most likely dropped.** With one
+bracket open, the fix goes before the first `=` or assignment, the first `:` that ends the line or
+sits in a `[`, or a `for` inside an index (`if a[i] == b[i:` becomes `b[i]:`); otherwise, and in a
+type (`[0..nInt`), it stays where recovery closes. Recovery itself is unchanged: the token stream
+still closes at the end, because closing earlier left the rest of the line outside any bracket and
+raised the benchmark's cascaded errors from 194 to 259. `recovery.rs` now also counts whether a
+first fix restores the port's line and leaves no error: E0101 restores 451 → 582 of 1612 and checks
+clean 814 → 950; cascades stay 194. Reverse: use `close_at` for the fix in `close_unclosed`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

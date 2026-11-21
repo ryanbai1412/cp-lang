@@ -279,6 +279,14 @@ impl<'a> Lexer<'a> {
     /// closers it is missing, innermost first.
     fn close_unclosed(&mut self, keep: usize, close_at: usize, next_line: usize) {
         let outermost = self.openers[keep].span;
+        // Recovery still closes at `close_at`, so the rest of the line stays
+        // inside the bracket; only the fix moves to where the closer most
+        // likely belongs, as in `let (a, b = p` or `if a[i: ...`.
+        let fix_at = match self.openers.len() == keep + 1 {
+            true => self.end_of_unclosed(&self.openers[keep]).map(|(_, at)| at),
+            false => Option::None,
+        }
+        .unwrap_or(close_at);
         while self.openers.len() > keep {
             let opener = self.openers.pop().unwrap();
             let (open, close, closer_kind) = delimiter_text(opener.kind);
@@ -293,7 +301,7 @@ impl<'a> Lexer<'a> {
                 .with_help(format!("add `{close}` at the end of the expression"))
                 .with_fix(
                     format!("insert `{close}`"),
-                    Span::point(close_at as u32),
+                    Span::point(fix_at as u32),
                     close,
                 );
                 if next_line > close_at {
@@ -308,6 +316,39 @@ impl<'a> Lexer<'a> {
             outermost.end,
             close_at.max(outermost.end as usize) as u32,
         ));
+    }
+
+    /// Where the unclosed `opener` most likely ended, outside a type:
+    /// before an `=`, before a `:` that ends the line or sits in brackets,
+    /// or before a `for` in an index. The token index and byte offset.
+    fn end_of_unclosed(&self, opener: &Opener) -> Option<(usize, usize)> {
+        use TokenKind::*;
+        let tokens = &self.out.tokens;
+        let at = tokens.iter().rposition(|t| t.span == opener.span && t.kind == opener.kind)?;
+        let before = at.checked_sub(1).map(|i| tokens[i].kind);
+        // `let a: [0..nInt = ...`: in a type the `]` goes before the
+        // element type, which no token marks.
+        if matches!(before, Some(Colon | Arrow)) {
+            return Option::None;
+        }
+        let indexing = matches!(before, Some(Ident | RParen | RBracket));
+        let mut depth = 0usize;
+        for (i, t) in tokens.iter().enumerate().skip(at + 1) {
+            match t.kind {
+                LParen | LBracket | LBrace => depth += 1,
+                RParen | RBracket | RBrace => depth = depth.saturating_sub(1),
+                _ if depth > 0 => {}
+                Eq | OpEq => return Some((i, tokens[i - 1].span.end as usize)),
+                Colon if opener.kind == LBracket || i + 1 == tokens.len() => {
+                    return Some((i, tokens[i - 1].span.end as usize));
+                }
+                For if opener.kind == LBracket && indexing => {
+                    return Some((i, tokens[i - 1].span.end as usize));
+                }
+                _ => {}
+            }
+        }
+        Option::None
     }
 
     fn token(&mut self) {
