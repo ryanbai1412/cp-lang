@@ -9,8 +9,7 @@ repeat m:
     let (u, v): (V, V) = read()
     adj[u, v] = true
     if dsu.unite(u, v):
-        tree[u].push(v)
-        tree[v].push(u)
+        for (x, y) in [(u, v), (v, u)]: tree[x].push(y)
 
 let T = Rooted(tree, V.first)
 let d = T.diameter()
@@ -28,9 +27,7 @@ for (a, b, c) in ops1: print(a, b, c)
 
 let path_len = ceil_div(d.len, 2)
 print(path_len + 1)
-var num_ops = 0
-for (i, j) in V.pairs if not adj[i, j]: num_ops += 1
-print(num_ops)
+print(count(not adj[i, j] for (i, j) in V.pairs))
 
 for i in V:
     let far = if T.dist(i, d.u) >= T.dist(i, d.v): d.u else: d.v

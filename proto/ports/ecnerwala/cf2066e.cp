@@ -1,84 +1,87 @@
+// A multiset of barrels can merge to one iff no threshold k >= 1 traps barrels >= k:
+// specifically, no k with >= 2 barrels >= k, sum of barrels < k strictly < k, and
+// no adjacent gap < k occurring at or above k. Split at B = 1000 = sqrt(max a):
+// k > B walks down from max(cur) in O(sqrt(M)) steps; k <= B sweeps tracked small gaps.
 let (n, q): (1..=200_000, 1..=200_000) = read()
-let RT = 1000
-domain Small = 0..=RT
+let B = 1000
+domain Small = 0..=B
 
-var cur = SortedBag<Int>()
-var small_gaps: [Small]SortedBag<Int> = [Small] _ => SortedBag<Int>()
-var last_small: [Small]Int = 0
-var cnt_small: [Small]Int = 0
-var tot = 0
+var bag = SortedBag<Int>()
+var gaps: [Small]SortedBag<Int> = [Small] _ => SortedBag<Int>()
+var last_gap_at: [Small]Int = 0
+var small_cnt: [Small]Int = 0
+var total = 0
 
-fn upd_gap(lo: Int, hi: Int, ins: Bool):
+fn update_gap(lo: Int, hi: Int, add: Bool):
     let l = hi - lo
-    if l > RT: return
+    if l > B: return
     let d = Small(l)
-    if ins:
-        let _ = small_gaps[d].add(lo)
-    else:
-        let _ = small_gaps[d].remove(lo)
-    last_small[d] = small_gaps[d].last ?? 0
+    if add: gaps[d].add(lo) else: gaps[d].remove(lo)
+    last_gap_at[d] = gaps[d].last ?? 0
 
-fn insert_barrel(v: Int):
-    tot += v
-    if v <= RT: cnt_small[Small(v)] += 1
-    let had = cur.count(v)
-    let _ = cur.add(v)
+fn add_barrel(v: Int):
+    total += v
+    if v <= B: small_cnt[Small(v)] += 1
+    let had = bag.count(v)
+    bag.add(v)
     if had >= 1:
-        upd_gap(v, v, true)
+        update_gap(v, v, true)
     else:
-        let prv = cur.last_lt(v)
-        let nxt = cur.first_gt(v)
-        if prv != none and nxt != none: upd_gap(prv!, nxt!, false)
-        if prv != none: upd_gap(prv!, v, true)
-        if nxt != none: upd_gap(v, nxt!, true)
+        let prv = bag.last_lt(v)
+        let nxt = bag.first_gt(v)
+        if let p = prv:
+            if let x = nxt: update_gap(p, x, false)
+            update_gap(p, v, true)
+        if let x = nxt: update_gap(v, x, true)
 
 fn remove_barrel(v: Int):
-    let had = cur.count(v)
-    let _ = cur.remove(v)
+    let had = bag.count(v)
+    bag.remove(v)
     if had >= 2:
-        upd_gap(v, v, false)
+        update_gap(v, v, false)
     else:
-        let prv = cur.last_lt(v)
-        let nxt = cur.first_gt(v)
-        if prv != none: upd_gap(prv!, v, false)
-        if nxt != none: upd_gap(v, nxt!, false)
-        if prv != none and nxt != none: upd_gap(prv!, nxt!, true)
-    if v <= RT: cnt_small[Small(v)] -= 1
-    tot -= v
+        let prv = bag.last_lt(v)
+        let nxt = bag.first_gt(v)
+        if let p = prv: update_gap(p, v, false)
+        if let x = nxt: update_gap(v, x, false)
+        if let p = prv:
+            if let x = nxt: update_gap(p, x, true)
+    if v <= B: small_cnt[Small(v)] -= 1
+    total -= v
 
-fn has_bad_k() -> Bool:
-    var cur_val = cur.last!
-    if cur.count(cur_val) == 1:
-        var cur_tot = tot - cur_val
-        var cur_gap = cur_val
-        while let nv = cur.last_lt(cur_val):
-            cur_tot -= nv
-            cur_gap = min(cur_gap, min(cur_val - nv, nv))
-            if cur_tot < cur_gap: return true
-            if cur_gap <= RT: break
-            if cur.count(nv) >= 2: break
-            cur_val = nv
+fn can_merge() -> Bool:
+    var cur = bag.last!
+    if bag.count(cur) == 1:
+        var rem = total - cur
+        var min_gap = cur
+        while let nxt = bag.last_lt(cur):
+            rem -= nxt
+            min_gap = min(min_gap, min(cur - nxt, nxt))
+            if rem < min_gap: return false
+            if min_gap <= B or bag.count(nxt) >= 2: break
+            cur = nxt
 
-    var last_gap = 0
-    var cnt_big = cur.len
-    var tot_small = 0
-    for k in 1..=RT:
+    var max_gap_pos = 0
+    var big_cnt = bag.len
+    var small_sum = 0
+    for k in 1..=B:
         let d = Small(k - 1)
-        last_gap max= last_small[d]
-        cnt_big -= cnt_small[d]
-        tot_small += (k - 1) * cnt_small[d]
-        if cnt_big < 2: break
-        if last_gap < k and tot_small < k: return true
-    false
+        max_gap_pos max= last_gap_at[d]
+        big_cnt -= small_cnt[d]
+        small_sum += (k - 1) * small_cnt[d]
+        if big_cnt < 2: break
+        if max_gap_pos < k and small_sum < k: return false
+    true
+
+type Vol = 1..=1_000_000
 
 repeat n:
-    let a: 1..=1_000_000 = read()
-    insert_barrel(a)
-print(if has_bad_k(): "No" else: "Yes")
+    let a: Vol = read()
+    add_barrel(a)
+print(if can_merge(): "Yes" else: "No")
 
 repeat q:
     let op: Char = read()
-    let a: 1..=1_000_000 = read()
-    if op == '+': insert_barrel(a)
-    else: remove_barrel(a)
-    print(if has_bad_k(): "No" else: "Yes")
+    let a: Vol = read()
+    if op == '+': add_barrel(a) else: remove_barrel(a)
+    print(if can_merge(): "Yes" else: "No")
