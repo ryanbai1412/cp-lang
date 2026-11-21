@@ -1179,6 +1179,7 @@ impl<'a> Checker<'a> {
                             has_default: false,
                             named_only: false,
                             variadic: false,
+                            lazy: false,
                         }],
                         ret: Box::new(Ty::Named {
                             name: "Range".into(),
