@@ -2330,6 +2330,18 @@ impl<'a> Lowerer<'a> {
                     }
                 }
             }
+            if let ast::ExprKind::Field { base, name } = &callee.kind {
+                if args.is_empty()
+                    && matches!(name.text.as_str(), "min" | "max")
+                    && matches!(
+                        self.probe_ty_silent(base),
+                        Some(Ty::List(_) | Ty::Array { .. } | Ty::Range(_) | Ty::Str)
+                    )
+                {
+                    let kind = if name.text == "max" { Reduce::Max } else { Reduce::Min };
+                    return self.reduce_opt(kind, base, true, e.span);
+                }
+            }
         }
         self.expr(e, None)
     }
@@ -4145,21 +4157,43 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        // `xs.count(x => x > 2)` is `count(xs, x => x > 2)`.
-        if let ([test], "count" | "all" | "any") = (args, name.text.as_str()) {
-            if matches!(
-                self.probe_ty_silent(base),
-                Some(Ty::List(_) | Ty::Array { .. } | Ty::Range(_) | Ty::Set(_) | Ty::Str)
-            ) {
-                let seq = ast::Arg { name: None, mutable: false, value: base.clone() };
-                if let Some(walk) = self.tested_walk(&name.text, &[seq, test.clone()], false) {
-                    let kind = match name.text.as_str() {
-                        "count" => Reduce::Count,
-                        "all" => Reduce::All,
-                        _ => Reduce::Any,
+        // A fold over a sequence reads as its method: `xs.sum()` is
+        // `sum(xs)`, `xs.count(x => x > 2)` is `count(xs, x => x > 2)`.
+        let seq_ty = self.probe_ty_silent(base);
+        if matches!(
+            seq_ty,
+            Some(Ty::List(_) | Ty::Array { .. } | Ty::Range(_) | Ty::Set(_) | Ty::Str)
+        ) {
+            let seq = ast::Arg { name: None, mutable: false, value: base.clone() };
+            match (args, name.text.as_str()) {
+                ([], "sum") => return self.reduce(Reduce::Sum, base, span),
+                ([], "prod") => return self.reduce(Reduce::Prod, base, span),
+                (_, "sorted") if !matches!(seq_ty, Some(Ty::List(_) | Ty::Array { .. })) => {
+                    let value = match self.walked(base) {
+                        Some(values) => self.expr(&values, None),
+                        None => self.expr(base, None),
                     };
-                    return self.reduce(kind, &walk, span);
+                    return if args.is_empty() { self.sorted(value, span) } else { self.sorted_by(value, args, span) };
                 }
+                ([], "min" | "max") if !matches!(seq_ty, Some(Ty::Set(_))) => {
+                    return self.min_max(name.text == "max", &[seq], span);
+                }
+                ([test], "first") => {
+                    if let Some(walk) = self.tested_walk("first", &[seq, test.clone()], true) {
+                        return self.lower_first(&walk, span);
+                    }
+                }
+                ([test], "count" | "all" | "any") => {
+                    if let Some(walk) = self.tested_walk(&name.text, &[seq, test.clone()], false) {
+                        let kind = match name.text.as_str() {
+                            "count" => Reduce::Count,
+                            "all" => Reduce::All,
+                            _ => Reduce::Any,
+                        };
+                        return self.reduce(kind, &walk, span);
+                    }
+                }
+                _ => {}
             }
         }
         // `sol.send(x)` and `sol.recv()` in an `@interactor`.
