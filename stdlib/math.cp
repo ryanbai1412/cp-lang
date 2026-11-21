@@ -33,6 +33,9 @@ pub fn choose(n: Int, k: Int) -> Int:
     for i in 0..min(k, n - k): r = r * (n - i) / (i + 1)
     r
 
+/// `n * (n - 1) / 2` for `n >= 2`, else `0`. O(1).
+pub fn choose2(n: Int) -> Int = if n < 2: 0 else: n * (n - 1) / 2
+
 /// `(g, x, y)` with `a * x + b * y == g == gcd(a, b)`. O(log min(a, b)).
 pub fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int):
     var (r0, r1) = (a, b)
@@ -94,6 +97,102 @@ pub struct Sieve:
         let f = self.factor(x)
         if any(e > 1 for (_, e) in f): 0 elif f.len % 2 == 0: 1 else: -1
 
+    /// Table of Euler's totient `phi[0..=n]`. O(n).
+    pub fn phi_table(self) -> List<Int>:
+        let n = spf.len - 1
+        var out = List.filled(n + 1, 0)
+        if n >= 1: out[1] = 1
+        for i in 2..=n:
+            let p = spf[i]
+            let q = i / p
+            out[i] = if spf[q] == p: out[q] * p else: out[q] * (p - 1)
+        out
+
+    /// Table of the Mobius function `mu[0..=n]` (`mu[0] == 0`, `mu[1] == 1`). O(n).
+    pub fn mobius_table(self) -> List<Int>:
+        let n = spf.len - 1
+        var out = List.filled(n + 1, 0)
+        if n >= 1: out[1] = 1
+        for i in 2..=n:
+            let p = spf[i]
+            let q = i / p
+            out[i] = if spf[q] == p: 0 else: -out[q]
+        out
+
+    /// Table of divisor counts `d[0..=n]`. O(n).
+    pub fn div_count_table(self) -> List<Int>:
+        let n = spf.len - 1
+        var out = List.filled(n + 1, 0)
+        var cnt = List.filled(n + 1, 0)
+        if n >= 1: out[1] = 1
+        for i in 2..=n:
+            let p = spf[i]
+            let q = i / p
+            if spf[q] == p:
+                cnt[i] = cnt[q] + 1
+                out[i] = out[q] / (cnt[q] + 1) * (cnt[i] + 1)
+            else:
+                cnt[i] = 1
+                out[i] = out[q] * 2
+        out
+
+    /// Table of divisor sums `sigma[0..=n]`. O(n).
+    pub fn div_sum_table(self) -> List<Int>:
+        let n = spf.len - 1
+        var out = List.filled(n + 1, 0)
+        var pp_sum = List.filled(n + 1, 0)
+        if n >= 1:
+            out[1] = 1
+            pp_sum[1] = 1
+        for i in 2..=n:
+            let p = spf[i]
+            let q = i / p
+            if spf[q] == p:
+                pp_sum[i] = pp_sum[q] * p + 1
+                out[i] = out[q] / pp_sum[q] * pp_sum[i]
+            else:
+                pp_sum[i] = p + 1
+                out[i] = out[q] * (p + 1)
+        out
+
+/// Tabulate any multiplicative function `f` on `1..=n` in O(n) via a linear sieve.
+/// `f(1) = one`, `f(a * b) = mul(f(a), f(b))` for coprime `a, b`, and
+/// `f(p^e) = prime_pow(p, e, p^e)`. Index 0 holds `one`.
+pub fn sieve_multiplicative<T>(
+    n: Int,
+    one: T,
+    mul: (T, T) -> T,
+    prime_pow: (Int, Int, Int) -> T,
+) -> List<T>:
+    assert n >= 0
+    var res = List.filled(n + 1, one)
+    var spf = List.filled(n + 1, 0)
+    var low_pp = List.filled(n + 1, 0)
+    var low_exp = List.filled(n + 1, 0)
+    var primes = List<Int>()
+    for i in 2..=n:
+        if spf[i] == 0:
+            spf[i] = i
+            low_pp[i] = i
+            low_exp[i] = 1
+            primes.push(i)
+            res[i] = prime_pow(i, 1, i)
+        for p in primes:
+            let m = i * p
+            if p > spf[i] or m > n: break
+            spf[m] = p
+            if p == spf[i]:
+                low_pp[m] = low_pp[i] * p
+                low_exp[m] = low_exp[i] + 1
+                if low_pp[m] == m: res[m] = prime_pow(p, low_exp[m], m)
+                else: res[m] = mul(res[m / low_pp[m]], res[low_pp[m]])
+                break
+            else:
+                low_pp[m] = p
+                low_exp[m] = 1
+                res[m] = mul(res[i], res[p])
+    res
+
 /// The number of bits needed to write `x >= 0` (`bit_len(0) == 0`, `bit_len(5) == 3`).
 pub fn bit_len(x: Int) -> Int = bit_width(x)
 
@@ -149,6 +248,25 @@ pub fn divisors(x: Int) -> List<Int>:
         d += 1
     small + large.rev
 
+/// All positive divisors of the integer with prime factorization `factors`, sorted. O(d log d).
+pub fn divisors_from_factors(factors: List<(Int, Int)>) -> List<Int>:
+    var out = [1]
+    for (p, e) in factors:
+        let cur = out.len
+        var pk = 1
+        for _ in 0..e:
+            pk *= p
+            for i in 0..cur: out.push(out[i] * pk)
+    sort(mut out)
+    out
+
+/// The modular inverse of `a` modulo `m >= 1`, in `0..m`, or `none` if `gcd(a, m) != 1`. O(log m).
+pub fn inv_mod(a: Int, m: Int) -> ?Int:
+    assert m >= 1
+    let e = ext_gcd(a % m, m)
+    if e.g != 1: return none
+    e.x % m
+
 /// The solution of `x = r1 (mod m1)`, `x = r2 (mod m2)` as `(r, m)` with
 /// `m = lcm(m1, m2)` and `0 <= r < m`, or `none` if there is none.
 pub fn crt(r1: Int, m1: Int, r2: Int, m2: Int) -> ?(Int, Int):
@@ -159,6 +277,16 @@ pub fn crt(r1: Int, m1: Int, r2: Int, m2: Int) -> ?(Int, Int):
     // x = r1 + m1 * k with k = (r2 - r1) / g * inv(m1 / g) mod (m2 / g)
     let k = mul_mod((r2 - r1) / e.g % step, e.x % step, step)
     ((r1 + m1 * k) % m, m)
+
+/// The solution of a system of congruences `x = r (mod m)` as `(r, m)` with `0 <= r < m`,
+/// or `none` if inconsistent. Empty input yields `(0, 1)`. O(eqs.len * log lcm).
+pub fn crt_all(eqs: List<(Int, Int)>) -> ?(Int, Int):
+    var (r, m) = (0, 1)
+    for (ri, mi) in eqs:
+        let next = crt(r, m, ri, mi)
+        if next == none: return none
+        (r, m) = next!
+    (r, m)
 
 /// `a * b % m` without overflow, rounded down to `0..m` for `m >= 1`. O(1), through `I128`
 /// when the product could leave `Int`.
@@ -273,6 +401,67 @@ pub fn primitive_root(p: Int) -> Int:
     var g = 2
     while any(pow_mod(g, (p - 1) / q, p) == 1 for q in parts): g += 1
     g
+
+/// The smallest non-negative `x` with `a^x = b (mod m)`, or `none` if none exists.
+/// Handles arbitrary `m >= 1` including non-coprime `a` and `m`. O(sqrt m).
+pub fn mod_log(a: Int, b: Int, m: Int) -> ?Int:
+    assert m >= 1
+    let (a0, b0) = (a % m, b % m)
+    if m == 1 or b0 == 1: return 0
+    var (k, add, cur_b, cur_m) = (1, 0, b0, m)
+    while true:
+        let g = gcd(a0, cur_m)
+        if g == 1: break
+        if k == cur_b: return add
+        if cur_b % g != 0: return none
+        cur_b /= g
+        cur_m /= g
+        k = mul_mod(k, a0 / g, cur_m)
+        add += 1
+    if k == cur_b: return add
+    var n = 1
+    while n * n < cur_m: n += 1
+    var table = HashMap<Int, Int>()
+    var rhs = cur_b
+    for q in 0..=n:
+        table[rhs] = q
+        rhs = mul_mod(rhs, a0, cur_m)
+    let an = pow_mod(a0, n, cur_m)
+    var cur = k
+    for p in 1..=n:
+        cur = mul_mod(cur, an, cur_m)
+        if let q = table.get(cur): return p * n - q + add
+    none
+
+/// A square root `x` in `0..p` with `x * x = a (mod p)` for prime `p`, or `none`
+/// if `a` is a quadratic non-residue. Tonelli-Shanks, O(log^2 p).
+pub fn mod_sqrt(a: Int, p: Int) -> ?Int:
+    assert is_prime(p)
+    let x = a % p
+    if x == 0 or p == 2: return x
+    if pow_mod(x, (p - 1) / 2, p) != 1: return none
+    if p % 4 == 3: return pow_mod(x, (p + 1) / 4, p)
+    var (q, s) = (p - 1, 0)
+    while q % 2 == 0:
+        q /= 2
+        s += 1
+    var z = 2
+    while pow_mod(z, (p - 1) / 2, p) != p - 1: z += 1
+    var m = s
+    var c = pow_mod(z, q, p)
+    var t = pow_mod(x, q, p)
+    var r = pow_mod(x, (q + 1) / 2, p)
+    while t != 1:
+        var (i, t2) = (1, mul_mod(t, t, p))
+        while t2 != 1:
+            t2 = mul_mod(t2, t2, p)
+            i += 1
+        let b = pow_mod(c, 1 << (m - i - 1), p)
+        m = i
+        c = mul_mod(b, b, p)
+        t = mul_mod(t, c, p)
+        r = mul_mod(r, b, p)
+    r
 
 /// The sum of `(a * i + b) / m` over `i` in `0..n`, with floor division, for `n >= 0` and
 /// `m >= 1`. O(log m), by the Euclid-like reduction.
@@ -448,3 +637,77 @@ fn floor_sum_agrees_with_the_loop_for_every_sign():
         let (n, m, a, b) = (rand(0, 30), rand(1, 20), rand(-40, 40), rand(-40, 40))
         assert floor_sum(n, m, a, b) == sum((a * i + b) / m for i in 0..n)
     assert floor_sum(1_000_000_000, 1_000_000_007, 998_244_353, 123_456_789) == 499122172130479402
+
+@test
+fn choose2_inv_mod_crt_all_and_divisors_from_factors():
+    assert choose2(-1) == 0 and choose2(0) == 0 and choose2(1) == 0
+    assert choose2(2) == 1 and choose2(10) == 45
+    assert inv_mod(3, 10) == 7 and inv_mod(2, 10) == none and inv_mod(0, 1) == 0
+    assert inv_mod(-3, 10) == 3
+    assert crt_all([]) == (0, 1)
+    assert crt_all([(2, 3), (3, 5), (2, 7)]) == (23, 105)
+    assert crt_all([(1, 4), (3, 6)]) == (9, 12)
+    assert crt_all([(1, 4), (2, 6)]) == none
+    for x in 1..=100: assert divisors_from_factors(factor(x)) == divisors(x)
+
+@test
+fn sieve_tables_and_multiplicative_agree():
+    let s = Sieve(300)
+    let phis = s.phi_table()
+    let mus = s.mobius_table()
+    let dcnt = s.div_count_table()
+    let dsum = s.div_sum_table()
+    let mult_phi = sieve_multiplicative(
+        300,
+        one: 1,
+        mul: (a, b) => a * b,
+        prime_pow: (p, e, pe) => pe - pe / p,
+    )
+    let mult_d = sieve_multiplicative(
+        300,
+        one: 1,
+        mul: (a, b) => a * b,
+        prime_pow: (p, e, pe) => e + 1,
+    )
+    for x in 1..=300:
+        assert phis[x] == s.phi(x) and mult_phi[x] == phis[x]
+        assert mus[x] == s.mobius(x)
+        let ds = divisors(x)
+        assert dcnt[x] == ds.len and mult_d[x] == dcnt[x]
+        assert dsum[x] == sum(ds)
+
+@test
+fn mod_log_and_mod_sqrt_match_brute_force():
+    for m in [1, 2, 6, 12, 13, 24, 35, 37]:
+        for a in 0..min(m, 10):
+            for b in 0..min(m, 10):
+                let got = mod_log(a, b, m)
+                var want: ?Int = none
+                var cur = 1 % m
+                for x in 0..=m:
+                    if cur == b % m:
+                        want = x
+                        break
+                    cur = cur * a % m
+                assert got == want
+    assert mod_log(2, pow_mod(2, 123456, 1_000_003), 1_000_003) == 123456
+    for p in [2, 3, 5, 7, 11, 13, 17, 29, 37, 41, 97]:
+        for a in 0..p:
+            let r = mod_sqrt(a, p)
+            let has = any(x * x % p == a for x in 0..p)
+            if has:
+                assert r != none and r! * r! % p == a
+            else:
+                assert r == none
+    let big_r = mod_sqrt(2, 998_244_353)
+    assert big_r != none and mul_mod(big_r!, big_r!, 998_244_353) == 2
+    let big_r2 = mod_sqrt(3, 998_244_353)
+    assert big_r2 == none
+    let big_r3 = mod_sqrt(9, 998_244_353)
+    assert big_r3 != none and mul_mod(big_r3!, big_r3!, 998_244_353) == 9
+    let big_r4 = mod_sqrt(mul_mod(1234567, 1234567, 998_244_353), 998_244_353)
+    assert big_r4 != none and mul_mod(big_r4!, big_r4!, 998_244_353) == mul_mod(
+        1234567,
+        1234567,
+        998_244_353,
+    )

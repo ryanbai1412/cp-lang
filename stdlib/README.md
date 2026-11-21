@@ -321,8 +321,21 @@ var f = Fenwick<I, M>()
 `/` and `%` on `Int` are Euclidean: the remainder is never negative, so
 `x % m` is already the residue you want, `a / b` already equals
 `floor(a / b)` for `b > 0`, and `Mod(-1)` needs no fix-up.
-`math.cp` has `gcd`, `ext_gcd`, `ceil_div`, `bit_len`, a linear `Sieve`,
-`factor`, `divisors`, and `crt`.
+`math.cp` has `gcd`, `ext_gcd`, `ceil_div`, `choose2`, `bit_len`, a linear
+`Sieve` (with `phi_table`, `mobius_table`, `div_count_table`, `div_sum_table`,
+and generic `sieve_multiplicative`), `factor`, `factor_big`, `divisors`,
+`divisors_from_factors`, `inv_mod`, `crt`, `crt_all`, `mod_log`, `mod_sqrt`,
+`primitive_root`, and `floor_sum`.
+
+`ntt.cp` provides `ntt<P>`, `convolve<P>`, `convolve_mod`, and `convolve_int`
+(all with `cyclic: Bool = false`), plus in-place `sos_sub`/`sos_sup` (with
+`inverse: Bool = false`) and `convolve_or`/`convolve_and`/`convolve_xor`.
+
+`matrix.cp` provides flat row-major `Mat<T>` (`+`, `-`, `*`, `pow`, `mul_vec`,
+`transpose`, `product` monoid, exact-field `det`, `rank`, `solve`, `solve_space`,
+`inverse`), partial-pivoting `det_real`/`rank_real`/`solve_real`/`inverse_real`
+over `Mat<F64>` with explicit `eps:`, and `XorBasis` (with `add`, `reduce`,
+`contains`, `max_xor`, `min_xor`, `kth`, `merge`, `monoid`).
 
 ## Strings and geometry
 
@@ -421,8 +434,14 @@ is evidence, not a proof.
   `virtual_tree`).
 - `grid.cp`: `Dir4`, `adj4`, `adj8`, `step`, `ray`, `transposed`.
 - `mod.cp`, `math.cp`: modular arithmetic (`try_inv`), interior-mutable
-  auto-growing `Comb<P>()`, number theory (`gcd`, `ext_gcd`, `ceil_div`,
-  `bit_len`, `Sieve`, `factor`, `divisors`, `crt`).
+  auto-growing `Comb<P>()` (including `multinomial`), number theory (`gcd`,
+  `ext_gcd`, `ceil_div`, `choose2`, `bit_len`, `Sieve`, `sieve_multiplicative`,
+  `factor`, `factor_big`, `divisors`, `divisors_from_factors`, `inv_mod`,
+  `crt`, `crt_all`, `mod_log`, `mod_sqrt`, `primitive_root`, `floor_sum`).
+- `ntt.cp`: `ntt<P>`, `convolve<P>`, `convolve_mod`, `convolve_int` (`cyclic:`),
+  `sos_sub`, `sos_sup` (`inverse:`), `convolve_or`, `convolve_and`, `convolve_xor`.
+- `matrix.cp`: `Mat<T>` (arithmetic, `pow`, `product`, exact `det`/`rank`/`solve`/`solve_space`/`inverse`),
+  `det_real`/`rank_real`/`solve_real`/`inverse_real` (`eps:`), and `XorBasis`.
 - `strings.cp`: Z, prefix function, KMP (`find_all`, `prefix_matches`,
   `borders`, `period`, `overlap`), Lyndon factorization & `min_rotation`,
   `manacher` (`Palindromes`) & `PalindromicTree<A>`, `suffix_array` /

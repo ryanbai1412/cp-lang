@@ -139,6 +139,24 @@ pub struct Comb<P>:
     /// The `n`-th Catalan number.
     pub fn catalan(self, n: Int) -> Mod<P> = self.choose(2 * n, n) - self.choose(2 * n, n + 1)
 
+    /// The multinomial coefficient `(sum ks)! / prod(k!)`; 0 if any `k < 0`. O(ks.len).
+    pub fn multinomial(self, ks: List<Int>) -> Mod<P>:
+        var total = 0
+        for k in ks:
+            if k < 0: return Mod<P>(0)
+            total += k
+        if total >= P:
+            var acc = Mod<P>(1)
+            var rem = total
+            for k in ks:
+                acc = acc * self.choose(rem, k)
+                rem -= k
+            return acc
+        self.ensure(total)
+        var acc = f[total]
+        for k in ks: acc = acc * g[k]
+        acc
+
 @test
 fn values_stay_reduced():
     type M = Mod<7>
@@ -221,3 +239,17 @@ fn inv_is_one_over_i():
     let c = Comb<1000000007>()
     for i in 1..200: assert c.inv(i) * Mod<1000000007>(i) == Mod<1000000007>(1)
     assert c.inv(1) == Mod<1000000007>(1)
+
+@test
+fn comb_multinomial():
+    type Z = Mod<998_244_353>
+    let c = Comb<998_244_353>(20)
+    assert c.choose(10, 3) == Z(120)
+    assert c.multinomial([]) == Z(1)
+    assert c.multinomial([5]) == Z(1)
+    assert c.multinomial([2, 3, 1]) == Z(60)
+    assert c.multinomial([2, -1, 3]) == Z(0)
+    // Lucas fallback when total >= P
+    let cs = Comb<7>()
+    assert cs.multinomial([3, 3, 3]) == cs.choose(9, 3) * cs.choose(6, 3)
+    assert cs.multinomial([5, 5]) == cs.choose(10, 5)
