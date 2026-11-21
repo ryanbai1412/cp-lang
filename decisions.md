@@ -1466,6 +1466,17 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   *Reversible:* revert the UI controls in `site/compiler.py` / `site/assets/playground.js` and
   remove `site/test_playground_parity.py`.
 
+- **24.8 Diagnostics registry (`crates/cpl-diag/src/registry.rs`) + `cpl explain` as single source of truth for error-index pages.**
+  Moved every diagnostic code's title, summary, explanation, trigger, and fix into
+  `crates/cpl-diag/src/registry.rs` (`REGISTRY: &[CodeInfo]`) and `crates/cpl-lint/src/lib.rs`
+  (`LINTS`), added `cpl explain <CODE>` and `cpl explain --json` in `crates/cpl-cli`, and
+  refactored `site/errors.py` to generate all 69 error/lint pages directly from `cpl explain --json`.
+  *Reason:* eliminates the 700-line Python catalog duplication so site error pages and CLI
+  `cpl explain` always share one verified registry (and immediately picked up the 6 new taste lints
+  `L0501`–`L0506`).
+  *Reversible:* restore the static `ERROR_CATALOG` list in `site/errors.py` and remove
+  `crates/cpl-diag/src/registry.rs` and `explain_code` in `crates/cpl-cli/src/lib.rs`.
+
 ## 25. Stress testing and shrinking (0.2.2, 2026-11-21)
 
 - **25.1 `Perm<V>` and `Tree<V>` are stdlib types.** `std.seq.Perm<V> = [V]V` and

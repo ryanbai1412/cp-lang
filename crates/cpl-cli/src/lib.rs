@@ -49,6 +49,7 @@ commands:
   judges [file]         list the judge profiles, marking the one a build uses
   fmt [path]...         format files in the one canonical style
   lint [path]...        warn about code that is legal but probably wrong or slow
+  explain <CODE|--json> show the explanation, example and fix for a diagnostic or lint code
   doc [path]...         build HTML documentation from `///` comments
   new <name>            create a problem from its constraints or samples
   test <problem>        run every case in <problem>.tests/
@@ -147,6 +148,7 @@ pub fn exec<S: AsRef<str>>(
         }
         Some("profile") => profile::profile(&rest, stdout, stderr),
         Some("cover") => profile::cover(&rest, stdout, stderr),
+        Some("explain") => explain_code(&rest, stdout, stderr),
         Some("check") if rest.is_empty() => {
             usage_error("`check` needs a file: `cpl check a.cp`".into())
         }
@@ -1438,6 +1440,98 @@ pub fn lsp() -> u8 {
     }
 }
 
+fn json_escape(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('"');
+    for ch in s.chars() {
+        match ch {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
+fn explain_code(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8 {
+    match rest {
+        ["--json"] => {
+            let _ = writeln!(stdout, "[");
+            let mut first = true;
+            for info in cpl_diag::REGISTRY {
+                if !first {
+                    let _ = writeln!(stdout, ",");
+                }
+                first = false;
+                let _ = write!(
+                    stdout,
+                    "  {{\"code\":{},\"title\":{},\"summary\":{},\"explanation\":{},\"trigger\":{},\"fix\":{},\"mode\":{},\"lint_name\":null}}",
+                    json_escape(info.code.0),
+                    json_escape(info.title),
+                    json_escape(info.summary),
+                    json_escape(info.explanation),
+                    json_escape(info.trigger),
+                    json_escape(info.fix),
+                    json_escape(info.mode),
+                );
+            }
+            for lint in cpl_lint::LINTS {
+                if !first {
+                    let _ = writeln!(stdout, ",");
+                }
+                first = false;
+                let _ = write!(
+                    stdout,
+                    "  {{\"code\":{},\"title\":{},\"summary\":{},\"explanation\":{},\"trigger\":{},\"fix\":{},\"mode\":\"lint\",\"lint_name\":{}}}",
+                    json_escape(lint.code.0),
+                    json_escape(lint.title),
+                    json_escape(lint.summary),
+                    json_escape(lint.explanation),
+                    json_escape(lint.trigger),
+                    json_escape(lint.fix),
+                    json_escape(lint.name),
+                );
+            }
+            let _ = writeln!(stdout, "\n]");
+            0
+        }
+        [code] => {
+            if let Some(info) = cpl_diag::lookup(code) {
+                let _ = writeln!(stdout, "{}: {}", info.code.0, info.title);
+                let _ = writeln!(stdout, "\n{}", info.explanation);
+                if !info.trigger.is_empty() {
+                    let _ = writeln!(stdout, "\nTrigger:\n{}", info.trigger.trim_end());
+                }
+                if !info.fix.is_empty() {
+                    let _ = writeln!(stdout, "\nFix:\n{}", info.fix.trim_end());
+                }
+                return 0;
+            }
+            if let Some(lint) = cpl_lint::LINTS
+                .iter()
+                .find(|l| l.code.0.eq_ignore_ascii_case(code) || l.name == *code)
+            {
+                let _ = writeln!(stdout, "{} ({}): {}", lint.code.0, lint.name, lint.title);
+                let _ = writeln!(stdout, "\n{}", lint.explanation);
+                let _ = writeln!(stdout, "\nTrigger:\n{}", lint.trigger.trim_end());
+                let _ = writeln!(stdout, "\nFix:\n{}", lint.fix.trim_end());
+                return 0;
+            }
+            *stderr += &format!("cpl: unknown diagnostic or lint code `{code}`\n");
+            EXIT_USAGE
+        }
+        _ => {
+            *stderr += "usage: cpl explain <CODE> | cpl explain --json\n";
+            EXIT_USAGE
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1601,5 +1695,27 @@ mod tests {
     #[test]
     fn every_pipeline_crate_is_linked() {
         assert_eq!(COMPONENTS.len(), 12);
+    }
+
+    #[test]
+    fn explain_lists_registry_and_looks_up_codes() {
+        let e = run(&["explain", "E0301"]);
+        assert_eq!(e.code, 0, "{}", e.stderr);
+        let text = String::from_utf8(e.stdout).unwrap();
+        assert!(text.contains("E0301"), "{text}");
+        assert!(text.contains("Fix:"), "{text}");
+
+        let l = run(&["explain", "L0501"]);
+        assert_eq!(l.code, 0, "{}", l.stderr);
+        let ltext = String::from_utf8(l.stdout).unwrap();
+        assert!(ltext.contains("L0501") && ltext.contains("search_loop"), "{ltext}");
+
+        let j = run(&["explain", "--json"]);
+        assert_eq!(j.code, 0, "{}", j.stderr);
+        let json = String::from_utf8(j.stdout).unwrap();
+        assert!(json.starts_with('[') && json.trim_end().ends_with(']'));
+        assert!(json.contains("\"E0301\"") && json.contains("\"L0506\""));
+
+        assert_eq!(run(&["explain", "E9998"]).code, EXIT_USAGE);
     }
 }

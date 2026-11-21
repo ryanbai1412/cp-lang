@@ -4,9 +4,11 @@
 //! the types here, so an error reads the same on the command line and in the
 //! editor (`plan/30-compiler.md` 3.7).
 
+pub mod registry;
 mod render;
 mod source;
 
+pub use registry::{lookup, CodeInfo, REGISTRY};
 pub use render::{render, render_all};
 pub use source::{LineCol, LineIndex};
 

@@ -67,99 +67,162 @@ pub struct Lint {
     pub code: Code,
     pub name: &'static str,
     pub default: Level,
+    pub title: &'static str,
     pub summary: &'static str,
+    pub explanation: &'static str,
+    pub trigger: &'static str,
+    pub fix: &'static str,
 }
 
 pub const UNKNOWN_LINT: Lint = Lint {
     code: Code("L0001"),
     name: "unknown_lint",
     default: Level::Warn,
+    title: "Unknown lint name",
     summary: "`@allow` or `cp.toml` names a lint that does not exist",
+    explanation: "An `@allow(...)` attribute or `[lints]` table entry names a lint that does not exist. Check the spelling against the lint catalog.",
+    trigger: "@allow(not_a_real_lint)\nlet x = 1\nprint(x)\n",
+    fix: "@allow(var_never_reassigned)\nvar x = 1\nprint(x)\n",
 };
 pub const POSITION_ARITHMETIC: Lint = Lint {
     code: Code("L0101"),
     name: "position_arithmetic",
     default: Level::Warn,
+    title: "Position arithmetic via `.ord`",
     summary: "`V(v.ord + 1)` builds a position from a number",
+    explanation: "Converting a domain index to `.ord`, adding or subtracting an offset, and wrapping it back in `V(...)` bypasses checked neighbor operations. Use `v.next`, `v.prev`, or `v + k` (which return `?V`).",
+    trigger: "domain V = 1..=3\nfor v in V:\n    let _ = V(v.ord + 1)\n",
+    fix: "domain V = 1..=3\nfor v in V:\n    if let nxt = v.next:\n        print(nxt)\n",
 };
 pub const VAR_NEVER_REASSIGNED: Lint = Lint {
     code: Code("L0201"),
     name: "var_never_reassigned",
     default: Level::Warn,
+    title: "Mutable binding never reassigned",
     summary: "a `var` that is never changed",
+    explanation: "A `var` binding is never mutated after initialization. Use `let` to signal immutability to readers and the compiler.",
+    trigger: "var x = 10\nprint(x)\n",
+    fix: "let x = 10\nprint(x)\n",
 };
 pub const UNREAD_FIELD: Lint = Lint {
     code: Code("L0202"),
     name: "unread_field",
     default: Level::Warn,
+    title: "Struct field never read",
     summary: "a struct field that is never read",
+    explanation: "A field declared on a `struct` is never read anywhere in the file. Remove unused fields to keep structs compact and clear.",
+    trigger: "struct Pt:\n    x: Int\n    y: Int\nlet p = Pt(x: 1, y: 2)\nprint(p.x)\n",
+    fix: "struct Pt:\n    x: Int\nlet p = Pt(x: 1)\nprint(p.x)\n",
 };
 pub const SHADOWS_TOP_LEVEL: Lint = Lint {
     code: Code("L0203"),
     name: "shadows_top_level",
     default: Level::Warn,
+    title: "Local shadows top-level binding",
     summary: "a local name that hides a top-level `let`",
+    explanation: "A parameter or local variable inside a function has the same name as a top-level `let` binding, which can hide an unintended reference to global input.",
+    trigger: "let n = 5\nfn f() -> Int:\n    let n = 10\n    n\nprint(f())\n",
+    fix: "let n = 5\nfn f() -> Int:\n    let k = 10\n    k + n\nprint(f())\n",
 };
 pub const FLOAT_EQUALITY: Lint = Lint {
     code: Code("L0301"),
     name: "float_equality",
     default: Level::Warn,
+    title: "Exact float equality comparison",
     summary: "`==` or `!=` on floats",
+    explanation: "Comparing `F64` values with `==` or `!=` is fragile under IEEE-754 rounding. Compare `abs(a - b) < eps` instead.",
+    trigger: "let a: F64 = 0.1 + 0.2\nprint(a == 0.3)\n",
+    fix: "let a: F64 = 0.1 + 0.2\nprint(abs(a - 0.3) < 1e-9)\n",
 };
 pub const DOMAIN_KEYED_MAP: Lint = Lint {
     code: Code("L0412"),
     name: "domain_keyed_map",
     default: Level::Warn,
+    title: "Map or Set keyed by a domain",
     summary: "a `Map` or `Set` keyed by a domain",
+    explanation: "A `Map<V, T>` or `Set<V>` keyed by a dense domain `V` pays hashing or tree overhead on every lookup. Use a flat `[V]?T` or `[V]Bool` array instead.",
+    trigger: "domain V = 1..=5\nvar m: Map<V, Int> = Map()\nm[V(1)] = 42\nprint(m[V(1)] ?? 0)\n",
+    fix: "domain V = 1..=5\nvar m: [V]?Int = none\nm[V(1)] = 42\nprint(m[V(1)] ?? 0)\n",
 };
 pub const MEMO_KEY_SPACE: Lint = Lint {
     code: Code("L0413"),
     name: "memo_key_space",
     default: Level::Warn,
+    title: "`@memo` table exceeds memory budget",
     summary: "a `@memo` whose table does not fit in memory at the input bounds",
+    explanation: "The product of the parameter domain sizes of a `@memo` function exceeds the flat-table memory budget, which can trigger TLE or MLE on contest judges. Narrow the state space or switch to iterative DP.",
+    trigger: "domain A = 0..100_000\ndomain B = 0..100_000\n@memo\nfn dp(a: A, b: B) -> Int: a.to_idx + b.to_idx\nprint(dp(A.first, B.first))\n",
+    fix: "domain A = 0..100\ndomain B = 0..100\n@memo\nfn dp(a: A, b: B) -> Int: a.to_idx + b.to_idx\nprint(dp(A.first, B.first))\n",
 };
 pub const UNPROVEN_LIST_INDEX: Lint = Lint {
     code: Code("L0414"),
     name: "unproven_list_index",
     default: Level::Warn,
+    title: "Unproven `List` index in nested loop",
     summary: "a `List` index inside nested loops that is checked on every access",
+    explanation: "Indexing a `List<T>` with an arbitrary `Int` inside nested loops emits a runtime bounds check on every iteration. Declare a `domain` and `[D]T` array so bounds are verified once.",
+    trigger: "let a: List<Int> = [1, 2, 3]\nvar s = 0\nfor i in 0..3:\n    for j in 0..3:\n        s += a[j]\nprint(s)\n",
+    fix: "domain D = 0..3\nlet a: [D]Int = [1, 2, 3]\nvar s = 0\nfor _ in D:\n    for j in D:\n        s += a[j]\nprint(s)\n",
 };
-
 pub const SEARCH_LOOP: Lint = Lint {
     code: Code("L0501"),
     name: "search_loop",
     default: Level::Warn,
+    title: "Flag-and-break search loop",
     summary: "a loop that sets a flag or `?T` and breaks: `first`, `any` or `all`",
+    explanation: "A loop that initializes a boolean flag or optional, updates it on a condition, and breaks can be written directly with `any`, `all`, or `first`.",
+    trigger: "let xs: List<Int> = [1, 4, 7]\nvar found = false\nfor x in xs:\n    if x > 3:\n        found = true\n        break\nprint(found)\n",
+    fix: "let xs: List<Int> = [1, 4, 7]\nlet found = any(x > 3 for x in xs)\nprint(found)\n",
 };
 pub const DISCARDED_RESULT: Lint = Lint {
     code: Code("L0502"),
     name: "discarded_result",
     default: Level::Warn,
+    title: "Discarded function return value",
     summary: "`let _ =` throws away what a fn of this file returns",
+    explanation: "Binding the result of a local function to `let _ =` hides intent. Either use the returned value or change the function to return nothing when it is only called for side effects.",
+    trigger: "fn work(u: Int) -> Int:\n    print(u)\n    u\nlet _ = work(2)\n",
+    fix: "fn work(u: Int):\n    print(u)\nwork(2)\n",
 };
 pub const SYMMETRIC_WRITE: Lint = Lint {
     code: Code("L0503"),
     name: "symmetric_write",
     default: Level::Warn,
+    title: "Duplicate symmetric write",
     summary: "the same fact written for `(u, v)` and then `(v, u)`",
+    explanation: "Writing the same value to both `(u, v)` and `(v, u)` duplicates one fact. Use `Graph.undirected(...)`, `Sym<V>`, or a two-element loop so the fact lives in one place.",
+    trigger: "domain V = 1..=3\nvar adj: [V]List<V> = []\nlet (u, v) = (V(1), V(2))\nadj[u].push(v)\nadj[v].push(u)\nprint(adj[u].len)\n",
+    fix: "domain V = 1..=3\nvar adj: [V]List<V> = []\nlet (u, v) = (V(1), V(2))\nfor (a, b) in [(u, v), (v, u)]:\n    adj[a].push(b)\nprint(adj[u].len)\n",
 };
 pub const LOOP_REDUCTION: Lint = Lint {
     code: Code("L0504"),
     name: "loop_reduction",
     default: Level::Warn,
+    title: "Manual accumulation loop",
     summary: "a loop that only accumulates: `sum`, `count`, `max` or `min`",
+    explanation: "A loop that only sums, counts, or takes a running `min`/`max` over an iterable reads more clearly as `sum(...)`, `count(...)`, `min(...)`, or `max(...)`.",
+    trigger: "let xs: List<Int> = [1, 2, 3]\nvar total = 0\nfor x in xs:\n    total += x\nprint(total)\n",
+    fix: "let xs: List<Int> = [1, 2, 3]\nlet total = sum(x for x in xs)\nprint(total)\n",
 };
 pub const INDEX_ONLY_LOOP: Lint = Lint {
     code: Code("L0505"),
     name: "index_only_loop",
     default: Level::Warn,
+    title: "Index loop that only reads `xs[i]`",
     summary: "`for i in 0..xs.len` that only reads `xs[i]`",
+    explanation: "Iterating `for i in 0..xs.len` solely to read `xs[i]` introduces an unnecessary index variable. Iterate directly with `for x in xs:`.",
+    trigger: "let xs: List<Int> = [1, 2, 3]\nfor i in 0..xs.len:\n    print(xs[i])\n",
+    fix: "let xs: List<Int> = [1, 2, 3]\nfor x in xs:\n    print(x)\n",
 };
 pub const REPEATED_LITERAL: Lint = Lint {
     code: Code("L0506"),
     name: "repeated_literal",
     default: Level::Warn,
+    title: "Repeated large literal",
     summary: "a big literal (a bound or modulus) written in several places",
+    explanation: "Writing the same large bound or modulus literal in multiple places risks drift when constraints change. Bind it once as a `const` (e.g. `const MAX_N = 1e9`).",
+    trigger: "let n: 1..=1e9 = read()\nlet m: 1..=1e9 = read()\nprint(n + m)\n",
+    fix: "const LIM = 1e9\nlet n: 1..=LIM = read()\nlet m: 1..=LIM = read()\nprint(n + m)\n",
 };
 
 /// Every lint, in code order.
