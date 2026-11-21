@@ -1433,12 +1433,17 @@ impl<'a> Lowerer<'a> {
         if !targs.is_empty() || !gen_names.contains(&name.text) || inferred.contains_key(&name.text) {
             return;
         }
-        let lo = match self.probe_ty_silent(arg) {
+        // `[1, 2, 3]` and `[x for ..]` written at the call are lists.
+        let written = matches!(arg.kind, ast::ExprKind::List(_) | ast::ExprKind::Comprehension { .. });
+        let (lo, list) = match self.probe_ty_silent(arg) {
+            Some(Ty::Array { .. }) if written => (0, true),
             Some(Ty::Array { dims, .. }) => match dims.as_slice() {
-                [Dim::Int] => 0,
-                [Dim::IntFrom(lo)] => *lo,
+                [Dim::Int] => (0, false),
+                [Dim::IntFrom(lo)] => (*lo, false),
                 _ => return,
             },
+            // A list is indexed by its own positions, `0..len`.
+            Some(Ty::List(_) | Ty::Str) => (0, true),
             _ => return,
         };
         // `fn f<D>(mut d: [D]Int, ..)` that never says `D` again takes an
@@ -1452,7 +1457,7 @@ impl<'a> Lowerer<'a> {
             _ => None,
         };
         let site = match shared {
-            Some(gfid) => (usize::MAX, gfid as u32, format!("{} from {lo}", name.text)),
+            Some(gfid) => (usize::MAX, gfid as u32, format!("{} from {lo}{}", name.text, if list { " of a list" } else { "" })),
             None => (self.cur_mod, self.offset + span.start, name.text.clone()),
         };
         let d = match self.range_domain_sites.get(&site) {
@@ -1461,6 +1466,9 @@ impl<'a> Lowerer<'a> {
                 let d = self.domains.len();
                 self.domains.push(format!("{}_{d}", name.text));
                 self.range_domains.insert(d, lo);
+                if list {
+                    self.list_domains.insert(d);
+                }
                 self.range_domain_sites.insert(site, d);
                 if shared.is_some() {
                     self.range_domains_shared.insert(d);
@@ -1882,6 +1890,11 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                     self.unify_ast_ty(elem, ce, tpl_mod, gen_names, env);
+                } else if let (Ty::List(ce), [_]) = (concrete, index.as_slice()) {
+                    // A list given where a `[D]T` is asked for.
+                    self.unify_ast_ty(elem, ce, tpl_mod, gen_names, env);
+                } else if let (Ty::Str, [_]) = (concrete, index.as_slice()) {
+                    self.unify_ast_ty(elem, &Ty::Char, tpl_mod, gen_names, env);
                 }
             }
             ast::TypeKind::Optional(inner) => {

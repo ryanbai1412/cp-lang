@@ -1440,6 +1440,7 @@ impl<'p> Emitter<'p> {
                     codes[0].clone()
                 }
             }
+            Builtin::ListToArray => codes[0].clone(),
             Builtin::Len if is_grid => {
                 Code::new(format!("(ll){}.d.size()", codes[0].at(PRIMARY)), UNARY)
             }

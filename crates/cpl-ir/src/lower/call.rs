@@ -630,7 +630,14 @@ impl<'a> Lowerer<'a> {
                         });
                         place.ty = param.ty.clone();
                     }
-                    if place.ty != param.ty && place.ty != Ty::Error && param.ty != Ty::Error {
+                    if self.list_given(&param.ty).is_some_and(|list| list == place.ty) {
+                        let message = format!(
+                            "`{name}` changes `{}` in place, and a list is given to a `[D]T` as a copy; pass an array such as a `[0..n]T`",
+                            param.name
+                        );
+                        self.error(codes::TYPE_MISMATCH, arg.value.span, message);
+                        ok = false;
+                    } else if place.ty != param.ty && place.ty != Ty::Error && param.ty != Ty::Error {
                         self.mismatch(arg.value.span, &param.ty, &place.ty);
                         ok = false;
                     }
@@ -639,6 +646,11 @@ impl<'a> Lowerer<'a> {
                 Some(arg) => {
                     if param.ty == Ty::Unit && self.detect_bare_op(&arg.value).is_some() {
                         lowered.push(Arg::Value(self.mk(ExprKind::Unit, Ty::Unit, arg.value.span)));
+                    } else if let Some(list) = self.list_given(&param.ty) {
+                        // A list where a `[D]T` is asked for is made as
+                        // the list it is; passing it sizes `D`.
+                        let value = self.expect(&arg.value, &list);
+                        lowered.push(Arg::Value(self.coerce(value, &param.ty, arg.value.span)));
                     } else {
                         let declared = self.sigs[id].decl.params.get(at).and_then(|p| p.ty.as_ref());
                         lowered.push(Arg::Value(self.expect_declared(&arg.value, &param.ty, declared)));

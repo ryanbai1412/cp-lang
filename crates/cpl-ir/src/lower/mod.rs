@@ -487,6 +487,9 @@ struct Lowerer<'a> {
     range_domain_sites: HashMap<(ModId, u32, String), DomainId>,
     /// Those one fn has for all its calls: a call puts the size back.
     range_domains_shared: HashSet<DomainId>,
+    /// Those that stand for the positions of a `List<T>` given where a
+    /// `[D]T` is asked for: a `[D]T` that comes back is a list again.
+    list_domains: HashSet<DomainId>,
 
     enums: Vec<EnumDef>,
     enum_decls: Vec<(ModId, u32, &'a ast::EnumDecl)>,
@@ -590,6 +593,7 @@ impl<'a> Lowerer<'a> {
             range_domains: HashMap::new(),
             range_domain_sites: HashMap::new(),
             range_domains_shared: HashSet::new(),
+            list_domains: HashSet::new(),
             enums: Vec::new(),
             enum_decls: Vec::new(),
             gen_enums: Vec::new(),
@@ -2749,6 +2753,11 @@ impl<'a> Lowerer<'a> {
             Ty::Pos(d) | Ty::Bound(d) if self.is_range_domain(*d) => Ty::Int,
             Ty::Opt(inner) => Ty::Opt(Box::new(self.plain_ty(inner))),
             Ty::Range(inner) => Ty::Range(Box::new(self.plain_ty(inner))),
+            Ty::Array { dims, elem }
+                if matches!(dims.as_slice(), [Dim::Pos(d)] if self.is_range_domain(*d) && self.list_domains.contains(d)) =>
+            {
+                Ty::List(elem.clone())
+            }
             Ty::Array { dims, elem } => Ty::Array {
                 dims: dims
                     .iter()
@@ -2766,17 +2775,30 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// The `List<T>` that was given when `want` is a `[D]T` whose `D`
+    /// stands for a list's positions.
+    pub(super) fn list_given(&self, want: &Ty) -> Option<Ty> {
+        match want {
+            Ty::Array { dims, elem } if matches!(dims.as_slice(), [Dim::Pos(d)] if self.list_domains.contains(d)) => {
+                Some(Ty::List(elem.clone()))
+            }
+            _ => None,
+        }
+    }
+
     /// The domain and first index when an array indexed by a plain range
     /// is given where its `[D]T` is asked for.
     pub(super) fn range_domain_of(&self, want: &Ty, have: &Ty) -> Option<(DomainId, i64)> {
-        let (Ty::Array { dims: want_dims, elem: want_elem }, Ty::Array { dims: have_dims, elem: have_elem }) =
-            (want, have)
-        else {
+        let Ty::Array { dims: want_dims, elem: want_elem } = want else {
             return None;
         };
-        let lo = match have_dims.as_slice() {
-            [Dim::Int] => 0,
-            [Dim::IntFrom(lo)] => *lo,
+        let (lo, have_elem) = match have {
+            Ty::Array { dims, elem } => match dims.as_slice() {
+                [Dim::Int] => (0, elem),
+                [Dim::IntFrom(lo)] => (*lo, elem),
+                _ => return None,
+            },
+            // A list lent `mut` stays a list: see `list_given`.
             _ => return None,
         };
         match want_dims.as_slice() {
@@ -2793,6 +2815,34 @@ impl<'a> Lowerer<'a> {
         let span = match self.cur_mod {
             0 => Span::new(e.span.start.saturating_sub(self.offset), e.span.end.saturating_sub(self.offset)),
             _ => e.span,
+        };
+        // A list is an array over `0..len`, and that array a list.
+        let e = match (want, &e.ty) {
+            (Ty::Array { dims, elem: want_elem }, Ty::List(elem)) if want_elem == elem => match dims.as_slice() {
+                [Dim::Pos(d)] if self.list_domains.contains(d) => {
+                    let d = *d;
+                    // Passing the list sets the size of its domain.
+                    return Ok(self.do_expr(Some(want), span, |lw, out| {
+                        let held = lw.hold(e, out);
+                        let len = lw.mk(ExprKind::Builtin(Builtin::Len, vec![held.clone()]), Ty::Int, span);
+                        out.push(Stmt::DefDomain {
+                            id: d,
+                            lo: lw.int_lit(0, span),
+                            len,
+                        });
+                        let array = ExprKind::Builtin(Builtin::ListToArray, vec![held]);
+                        out.push(Stmt::Give(lw.mk(array, want.clone(), span)));
+                    }));
+                }
+                _ => e,
+            },
+            (Ty::List(want_elem), Ty::Array { dims, elem })
+                if want_elem == elem && matches!(dims.as_slice(), [Dim::Pos(d)] if self.list_domains.contains(d)) =>
+            {
+                let list = ExprKind::Builtin(Builtin::ArrayToList, vec![e]);
+                return Ok(self.mk(list, want.clone(), span));
+            }
+            _ => e,
         };
         let have = e.ty.clone();
         match (want, &have) {

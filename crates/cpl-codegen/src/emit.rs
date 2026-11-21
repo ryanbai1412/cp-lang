@@ -686,7 +686,7 @@ impl<'p> Emitter<'p> {
             scan_block(&program.fns[fid].body, &mut reachable, &mut work);
         }
 
-        let mut protos = String::new();
+        let mut protos: Vec<Proto> = Vec::new();
         let mut fns = String::new();
         let mut judge_decls = String::new();
         let mut entries = String::new();
@@ -696,7 +696,13 @@ impl<'p> Emitter<'p> {
             }
             self.enter(Some(id), &f.body, f.params.len());
             let signature = self.signature(f);
-            protos.push_str(&format!("{signature};\n"));
+            let hook = program.structs.iter().any(|s| [s.eq_fn, s.lt_fn, s.show_fn].contains(&Some(id)));
+            protos.push(Proto {
+                name: fn_name(&f.name),
+                line: format!("{signature};\n"),
+                at: fns.len(),
+                always: hook || program.judge_fns.contains(&id),
+            });
             if program.judge_fns.contains(&id) {
                 // The judge's fn, declared at the top of the file, behind
                 // a fn of the program's own types.
@@ -758,7 +764,12 @@ impl<'p> Emitter<'p> {
                 let params = signature.split_once(&format!(" {name}(")).map(|(_, p)| p.trim_end_matches(')')).unwrap_or("");
                 let sep = if params.is_empty() { "" } else { ", " };
                 let head = format!("template <class CplF> int cpl_each_{name}({params}{sep}CplF&& cpl_f)");
-                protos.push_str(&format!("{head};\n"));
+                protos.push(Proto {
+                    name: format!("cpl_each_{name}"),
+                    line: format!("{head};\n"),
+                    at: fns.len(),
+                    always: false,
+                });
                 fns.push_str(&format!("\n{head} {{\n"));
                 self.reused.clear();
                 self.pushing = Some(acc);
@@ -847,7 +858,16 @@ impl<'p> Emitter<'p> {
         if !vars.is_empty() {
             out.push('\n');
         }
-        out.push_str(&protos);
+        // A fn is declared ahead only when something written above it
+        // names it: a closure called by name, a `show`, or a fn that
+        // comes first. The rest are defined before they are used.
+        for proto in &protos {
+            let above = [direct.as_str(), &fns[..proto.at]];
+            let named = above.into_iter().chain(self.shows.iter().map(String::as_str)).any(|text| names(text, &proto.name));
+            if proto.always || named {
+                out.push_str(&proto.line);
+            }
+        }
         out.push_str(&direct);
         // A struct with its own `Ord` is ordered by it everywhere: in a
         // sort, a set, a heap and inside a tuple, not only in `a < b`.
@@ -1070,4 +1090,25 @@ fn judge_ty(ty: &Ty) -> String {
         }
         _ => unreachable!("lowering lets only these types cross to the judge"),
     }
+}
+
+/// A fn's declaration, and where its definition starts in the text of
+/// the fns.
+struct Proto {
+    name: String,
+    line: String,
+    at: usize,
+    /// Named by text that is written elsewhere: a struct's operators, the
+    /// judge's side.
+    always: bool,
+}
+
+/// True when `text` has `name` as a whole word.
+fn names(text: &str, name: &str) -> bool {
+    let word = |b: u8| b.is_ascii_alphanumeric() || b == b'_';
+    text.match_indices(name).any(|(at, _)| {
+        let before = text.as_bytes()[..at].last().copied();
+        let after = text.as_bytes().get(at + name.len()).copied();
+        !before.is_some_and(word) && !after.is_some_and(word)
+    })
 }

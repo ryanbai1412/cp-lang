@@ -529,10 +529,12 @@ pub enum Builtin {
     SeqGet,
     /// `Int(s)`: parse an integer from a string.
     ParseInt,
-    /// `Str` <-> `List<Char>` and `[D]T` -> `List<T>` conversions.
+    /// `Str` <-> `List<Char>` and `[D]T` <-> `List<T>` conversions.
     StrToList,
     ListToStr,
     ArrayToList,
+    /// A list as an array over its positions, `0..len`.
+    ListToArray,
     /// Length of an array, list, string, map, set or range.
     Len,
     /// `xs.first`, `xs.last`: optional (for `List` or `Range`).

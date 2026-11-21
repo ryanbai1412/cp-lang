@@ -317,7 +317,7 @@ fn a_fn_of_the_judges_grader_is_declared_in_its_types() {
     );
     // The fn the grader calls, in its types, and no `main` beside the grader's.
     assert!(
-        cpp.contains("\nstd::tuple<int, std::vector<int>> best(int n) {\n    cpl_start();"),
+        cpp.contains("\nstd::tuple<int, std::vector<int>> best(int n) {\n  cpl_start();"),
         "{cpp}"
     );
     assert!(!cpp.contains("int main()"), "{cpp}");
@@ -376,7 +376,7 @@ fn a_list_index_inside_unchecked_has_no_bounds_test() {
 fn a_local_list_that_stays_in_its_fn_is_one_buffer() {
     let fixture = include_str!("../../cpl-cli/tests/programs/reused_local_lists.cp");
     let cpp = cpp(fixture);
-    assert!(cpp.contains("static std::vector<ll> xs;\n    xs.clear();"), "{cpp}");
+    assert!(cpp.contains("static std::vector<ll> xs;\n  xs.clear();"), "{cpp}");
     assert!(!cpp.contains("static std::vector<ll> seen;"), "{cpp}");
     assert!(!cpp.contains("static std::vector<ll> out;"), "{cpp}");
 }
@@ -506,4 +506,23 @@ fn a_loop_to_the_length_of_a_list_indexes_it_unchecked() {
         let out = dot(body);
         assert!(out.contains("cpl::at(b, j"), "{body}: {out}");
     }
+}
+
+#[test]
+fn a_fn_is_declared_ahead_only_when_it_is_named_before_it_is_defined() {
+    let cpp = cpp(
+        "fn first(n: Int) -> Int: n + 1\n\
+         fn even(n: Int) -> Bool: n == 0 or odd(n - 1)\n\
+         fn odd(n: Int) -> Bool: n != 0 and even(n - 1)\n\
+         print(first(2), even(4))\n",
+    );
+    assert!(cpp.contains("\nbool odd(ll n);\n"), "{cpp}");
+    assert!(!cpp.contains("\nbool even(ll n);\n") && !cpp.contains("\nll first(ll n);\n"), "{cpp}");
+}
+
+#[test]
+fn interactive_flushes_after_each_print() {
+    let said = "cpl::put_line(); cpl::flush(); fflush(stdout);";
+    assert!(cpp("@!interactive\nprint(1)\n").contains(said));
+    assert!(!cpp("print(1)\n").contains(said));
 }

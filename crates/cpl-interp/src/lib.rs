@@ -2331,6 +2331,13 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::Array(arr) => Value::List(Rc::new(arr.data.clone())),
                 other => other,
             },
+            Builtin::ListToArray => match first {
+                Value::List(items) => Value::Array(Rc::new(Array {
+                    dims: vec![items.len() as i64],
+                    data: items.to_vec(),
+                })),
+                other => other,
+            },
             Builtin::Len => Value::Int(match &first {
                 Value::Array(array) => array.data.len() as i64,
                 Value::List(items) => items.len() as i64,

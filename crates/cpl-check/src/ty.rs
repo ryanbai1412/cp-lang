@@ -267,10 +267,34 @@ impl Ty {
         if bindings.is_empty() {
             return self.clone();
         }
-        self.map(&mut |ty| match ty {
+        let list_index = Ty::list_index();
+        let listed = bindings.values().any(|ty| *ty == list_index);
+        let bound = self.map(&mut |ty| match ty {
             Ty::Param(name) => bindings.get(name).cloned(),
             _ => None,
+        });
+        if !listed {
+            return bound;
+        }
+        // `[D]T` where a list was given is that list's type, and one of
+        // its positions is an `Int`.
+        bound.map(&mut |ty| match ty {
+            Ty::Array { index, elem } if *index == [Ty::list_index()] => Some(Ty::Named {
+                name: "List".to_string(),
+                args: vec![elem.subst(bindings)],
+            }),
+            ty if *ty == list_index => Some(Ty::Int),
+            _ => None,
         })
+    }
+
+    /// What a `D` is when a `List<T>` is given where a `[D]T` is asked
+    /// for: the list's own positions, `0..len`.
+    fn list_index() -> Ty {
+        Ty::Named {
+            name: "List".to_string(),
+            args: Vec::new(),
+        }
     }
 
     /// The type as code outside the generic sees it when nothing says what
@@ -331,6 +355,17 @@ impl Ty {
                 for (want, got) in args.iter().zip(got_args) {
                     want.unify(got, bindings);
                 }
+            }
+            // A list is an array over its own positions.
+            (Ty::Array { index, elem }, Ty::Named { name, args: got_args })
+                if name == "List" && got_args.len() == 1 && matches!(index.as_slice(), [Ty::Param(_)]) =>
+            {
+                index[0].unify(&Ty::list_index(), bindings);
+                elem.unify(&got_args[0], bindings);
+            }
+            (Ty::Array { index, elem }, Ty::Str) if matches!(index.as_slice(), [Ty::Param(_)]) => {
+                index[0].unify(&Ty::list_index(), bindings);
+                elem.unify(&Ty::Char, bindings);
             }
             (Ty::Named { name, args }, Ty::Str) if name == "List" && args.len() == 1 => {
                 args[0].unify(&Ty::Char, bindings);

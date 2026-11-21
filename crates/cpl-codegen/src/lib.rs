@@ -23,7 +23,19 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub fn emit(program: &cpl_ir::Program, name: &str, source: Option<&str>) -> String {
     let mut program = program.clone();
     (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
-    emit::Emitter::new(&program).file(name, source)
+    narrow(&emit::Emitter::new(&program).file(name, source))
+}
+
+/// The file with two spaces a level, not the four it is written with.
+fn narrow(cpp: &str) -> String {
+    let mut narrowed = String::with_capacity(cpp.len());
+    for line in cpp.split_inclusive('\n') {
+        let code = line.trim_start_matches(' ');
+        let indent = line.len() - code.len();
+        narrowed.extend(std::iter::repeat_n(' ', indent / 2));
+        narrowed.push_str(code);
+    }
+    narrowed
 }
 
 /// The C++ of [`emit`] made to fit a judge's source limit.
@@ -39,7 +51,7 @@ pub struct Fitted {
 
 /// The C++17 file for `program` in at most `limit` bytes. What is for the
 /// reader gives way to what the judge accepts: first the source in the
-/// header, then half of every line's indentation. `Err` is the length of
+/// header, then half of what indentation is left. `Err` is the length of
 /// the shortest file when even that is over.
 pub fn emit_within(program: &cpl_ir::Program, name: &str, source: &str, limit: usize) -> Result<Fitted, usize> {
     let cpp = emit(program, name, Some(source));
@@ -51,13 +63,7 @@ pub fn emit_within(program: &cpl_ir::Program, name: &str, source: &str, limit: u
     if cpp.len() <= limit {
         return Ok(Fitted { cpp, full, header: false, narrow: false });
     }
-    let mut narrowed = String::with_capacity(cpp.len());
-    for line in cpp.split_inclusive('\n') {
-        let code = line.trim_start_matches(' ');
-        let indent = line.len() - code.len();
-        narrowed.extend(std::iter::repeat_n(' ', indent / 2));
-        narrowed.push_str(code);
-    }
+    let narrowed = narrow(&cpp);
     match narrowed.len() <= limit {
         true => Ok(Fitted { cpp: narrowed, full, header: false, narrow: true }),
         false => Err(narrowed.len()),

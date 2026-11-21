@@ -8,13 +8,16 @@
 
 use std.algebra.{Monoid}
 
-/// Every prefix folded with `f`: `[a0, f(a0, a1), f(f(a0, a1), a2), ...]`, as long as `xs`.
+/// Every prefix folded with `f`: `[a0, f(a0, a1), f(f(a0, a1), a2), ...]`, as long as `xs`
+/// and indexed as `xs` is: a `List<T>` gives a `List<T>`, a `[D]T` a `[D]T`.
 /// `scan(xs, +)` is the running sum and `scan(xs, max)` the running maximum; no identity
 /// is needed because the first value starts the fold. O(n) calls of `f`.
-pub fn scan<T>(xs: List<T>, f: (T, T) -> T) -> List<T>:
-    var out: List<T> = []
-    for x in xs:
-        out.push(if out.len == 0: x else: f(out[out.len - 1], x))
+pub fn scan<D, T>(xs: [D]T, f: (T, T) -> T) -> [D]T:
+    var out = xs
+    var before: ?D = none
+    for i in D:
+        if let b = before: out[i] = f(out[b], out[i])
+        before = i
     out
 
 /// The first position of `r` where `ok` holds, or `none`. `ok` must be false and then true
