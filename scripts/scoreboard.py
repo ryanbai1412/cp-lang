@@ -1598,7 +1598,7 @@ SPELLING_DRIFT_SPECS = {
                 r"\.(?:len|is_empty|empty|size|rev|inv|last|front|back|top|keys|values|items|chars|bytes|popcount|bit_len)\b(?!\s*\()"
             ),
             ".getter()": re.compile(
-                r"\.(?:len|is_empty|empty|size|rev|inv|last|front|back|top|keys|values|items|chars|bytes|popcount|bit_len)\s*\(\s*\)"
+                r"(?:(?<![A-Za-z0-9_])(?![A-Z])[A-Za-z0-9_]+|[\)\]])\.(?:len|is_empty|empty|size|rev|inv|last|front|back|top|keys|values|items|chars|bytes|popcount|bit_len)\s*\(\s*\)"
             ),
         },
     },
@@ -2797,9 +2797,11 @@ def print_summary(report, diff, show_ports=False, quiet=False):
         f"({t.get('interactive_ports', 0)} interactive, {t.get('checker_ports', 0)} checker)"
     )
     tok = t["tokens"]
+    stripped = tok["median_stripped_ratio"]
+    stripped = f"{stripped:.3f}x" if stripped is not None else "n/a"
     print(
         f"  tokens:    cp={tok['cp_total']:,} vs orig={tok['orig_total']:,} "
-        f"(median {tok['median_ratio']:.3f}x raw, {tok['median_stripped_ratio']:.3f}x stripped; "
+        f"(median {tok['median_ratio']:.3f}x raw, {stripped} stripped; "
         f">1.0x: {tok['over_1_0x_raw']} raw, {tok['over_1_0x_stripped']} stripped)"
         if tok["median_ratio"] is not None
         else "  tokens:    n/a"

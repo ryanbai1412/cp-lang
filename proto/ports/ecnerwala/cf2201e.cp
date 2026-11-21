@@ -1,52 +1,48 @@
 // Codeforces 2201 E: ABBA Counting.
+// With m = n / 2, S = A + B + B + A says exactly that the second half of S is
+// its first half X rotated left by |A|. So count pairs (X, shift), then
+// correct for strings hit by several shifts.
+// If X has least period p, rotations repeat every p and S is hit by m / p
+// shifts. Let ways(len) count pairs (X, shift mod len) with X of period
+// len, for each len = m / f. S is counted there iff p | len, len / p times;
+// weighting ways(m / f) by c(f) = prod over primes r | f of (1 - r) makes S
+// count sum over f | q of c(f) * q / f = 1 for q = m / p, since
+// c = (mu * id) * 1 and (mu * id) * id is the identity of Dirichlet
+// convolution.
+// For one len, fold each half onto len residues (a clash leaves no X). A
+// shift pairs residue j of the first half with j + shift of the second; it
+// is consistent iff every pair of known letters agrees, and then each pair
+// with no known letter is free. Over all shifts at once: correlating the
+// +1/-1 letter signs gives agree - disagree, correlating known flags gives
+// the number of known pairs.
 use std.math.{divisors, factor}
 use std.ntt.{convolve_int}
 
 type Z = Mod<998_244_353>
 
 @!multitest
-let n: Int = read()
+let n: 2..=400_000 = read()
 let t: Str = read()
 let m = n / 2
+let pow2 = [0..=m] i => Z(2) ** i
 
-var pow2: [0..=m]Z = 1
-for i in 1..=m: pow2[i] = pow2[i - 1] * 2
+// The half t[from..from + m] folded onto `len` residues, or none on a clash.
+fn fold(from: Int, len: Int) -> ?List<?Char>:
+    var s: List<?Char> = [none for _ in 0..len]
+    for i in 0..m if t[from + i] != '?':
+        if let c = s[i % len], c != t[from + i]: return none
+        s[i % len] = t[from + i]
+    s
 
-var ans: Z = 0
-'divisor: for f in divisors(m):
-    let len = m / f
-    var s: [0..2][0..len]?Char = none
-    for z in 0..2:
-        for k in 0..f:
-            let off = z * m + k * len
-            for i in 0..len:
-                let c = t[off + i]
-                if c == '?': continue
-                if let prev = s[z][i], prev != c: continue 'divisor
-                s[z][i] = c
+fn sign(c: ?Char) -> Int = if let c = c: (if c == 'a': 1 else: -1) else: 0
+fn known(c: ?Char) -> Int = if c is some: 1 else: 0
 
-    var sign0: [0..len]Int = 0
-    var sign1: [0..len]Int = 0
-    var fix0: [0..len]Int = 0
-    var fix1: [0..len]Int = 0
-    var tot_fix = 0
-    for i in 0..len:
-        if let c = s[0][i]:
-            sign0[i] = if c == 'a': 1 else: -1
-            fix0[i] = 1
-            tot_fix += 1
-        if let c = s[1][len - 1 - i]:
-            sign1[i] = if c == 'a': 1 else: -1
-            fix1[i] = 1
-            tot_fix += 1
+fn ways(len: Int) -> Z:
+    let x = fold(0, len) ?? return 0
+    let y = fold(m, len) ?? return 0
+    let agree = convolve_int(x.map(sign), y.map(sign).reversed(), cyclic: true)
+    let pairs = convolve_int(x.map(known), y.map(known).reversed(), cyclic: true)
+    let fixed = x.count(c => c is some) + y.count(c => c is some)
+    sum(pow2[len - fixed + pairs[i]] for i in 0..len if agree[i] == pairs[i])
 
-    let diff_conv = convolve_int(sign0, sign1, cyclic: true)
-    let both_conv = convolve_int(fix0, fix1, cyclic: true)
-    let ways = sum(
-        pow2[len - tot_fix + both_conv[i]] for i in 0..len if diff_conv[i] == both_conv[i]
-    )
-
-    let w = prod(Z(1 - p) for (p, _) in factor(f))
-    ans += ways * w
-
-print(ans)
+print(sum(ways(m / f) * prod(Z(1 - r) for (r, _) in factor(f)) for f in divisors(m)))
