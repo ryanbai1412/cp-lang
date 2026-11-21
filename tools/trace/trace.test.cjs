@@ -159,3 +159,9 @@ test('canonical source carries no generated demo bundle',()=>{
   const embedded=JSON.parse(html.match(/<script id="trace-samples" type="application\/json">([\s\S]*?)<\/script>/)[1]);
   assert.deepEqual(embedded, []);
 });
+
+test('an editor hears each new step line once and every clicked line',()=>{
+  const posted=[];const link=T.editorLink(m=>posted.push(plain(m)));
+  link.step(3);link.step(3);link.step(5);link.reveal(5);link.reveal(5);
+  assert.deepEqual(posted,[{type:'step',line:3},{type:'step',line:5},{type:'reveal',line:5},{type:'reveal',line:5}]);
+});

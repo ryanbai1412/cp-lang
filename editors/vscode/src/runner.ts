@@ -18,6 +18,7 @@ import {
     RuntimeErrorOverlay,
 } from './results';
 import { Sample } from './samples';
+import { TraceView } from './traceView';
 
 type SampleOutcome = 'passed' | 'failed' | 'printed' | 'stopped';
 
@@ -29,6 +30,7 @@ export class Runner {
     constructor(
         private readonly output: vscode.OutputChannel,
         private readonly overlays: Overlays,
+        private readonly traces: TraceView,
     ) {}
 
     async runSample(uri?: vscode.Uri, sample?: Sample): Promise<void> {
@@ -195,13 +197,7 @@ export class Runner {
             this.printRaw(result);
             return;
         }
-        const panel = vscode.window.createWebviewPanel(
-            'cp.trace',
-            `Trace: ${path.basename(document.uri.fsPath)}`,
-            { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
-            { enableScripts: true },
-        );
-        panel.webview.html = result.stdout;
+        this.traces.show(document, result.stdout);
     }
 
     /** Recomputes the inline values of a saved file, quietly: nothing is shown on compile failure. */

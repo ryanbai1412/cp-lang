@@ -209,6 +209,13 @@ const tests: [string, () => Promise<void>][] = [
                     ? true
                     : undefined,
             );
+            // A second trace of the same file reuses its panel.
+            const trace = lenses.find(lens => lens.command?.command === 'cp.trace')!.command!;
+            await vscode.commands.executeCommand(trace.command, ...(trace.arguments ?? []));
+            const panels = vscode.window.tabGroups.all
+                .flatMap(group => group.tabs)
+                .filter(tab => tab.label === `Trace: ${path.basename(document.uri.fsPath)}`);
+            assert.equal(panels.length, 1);
         },
     ],
 ];

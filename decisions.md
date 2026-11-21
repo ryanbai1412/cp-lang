@@ -1989,6 +1989,15 @@ raised the benchmark's cascaded errors from 194 to 259. `recovery.rs` now also c
 first fix restores the port's line and leaves no error: E0101 restores 451 → 582 of 1612 and checks
 clean 814 → 950; cascades stay 194. Reverse: use `close_at` for the fix in `close_unclosed`.
 
+29.13. **The trace viewer talks to the editor through two messages.** In a webview the viewer posts
+`{type: "step", line}` when the shown step moves to another line and `{type: "reveal", line}` when
+a source line is clicked (`TraceCore.editorLink` in `tools/trace/index.html`); in a browser it posts
+nothing. VS Code keeps one trace panel per file, reused by the next trace, highlights the step's
+line in the file and moves the cursor on a click. Any editor with a webview (JetBrains' JCEF) can
+speak the same two messages. A unit test feeds what the real viewer posts to the extension's
+parser, so the two sides can't drift. Reverse: drop `editorLink` and `src/traceView.ts` and create
+a fresh panel per trace in `Runner.trace`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

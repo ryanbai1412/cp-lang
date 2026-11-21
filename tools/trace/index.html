@@ -696,8 +696,18 @@ const TraceCore = (() => {
     };
     return player;
   }
+  // Inside an editor's webview the editor follows the shown step: `post`
+  // carries {type: "step", line} when the step's line changes and
+  // {type: "reveal", line} when a source line is clicked.
+  function editorLink(post) {
+    let shown = null;
+    return {
+      step(line) { if (line !== shown) { shown = line; post({type:"step", line}); } },
+      reveal(line) { post({type:"reveal", line}); },
+    };
+  }
   return {validate, diff, align, compare, analyze, pathName, own, containsPath, selectDifference,
-    SPEEDS, clamp, format, valueAt, referenceAt, adjacentCheckpoint, checkpointWindow, adjacentDivergence, changes, summary, keyAction, layout, viewBox, legend, liveTrace, createPlayer};
+    SPEEDS, clamp, format, valueAt, referenceAt, adjacentCheckpoint, checkpointWindow, adjacentDivergence, changes, summary, keyAction, layout, viewBox, legend, liveTrace, createPlayer, editorLink};
 })();
 if (typeof module !== "undefined") module.exports = TraceCore;
 
@@ -728,6 +738,8 @@ if (typeof module !== "undefined") module.exports = TraceCore;
   const key = path => JSON.stringify(path);
   const display = v => v === null ? "·" : Array.isArray(v) ? `(${v.map(display).join(", ")})` : typeof v === "object" ? JSON.stringify(v) : String(v);
   const hashParam = name => new URLSearchParams(location.hash.slice(1)).get(name);
+  const host = typeof acquireVsCodeApi === "function" ? acquireVsCodeApi() : null;
+  const editor = host ? T.editorLink(message => host.postMessage(message)) : null;
 
   let samples = [], sampleIndex = -1, trace, analysis, variable, comparing = false, selected = null, tab = "state", search = null, isolate = false;
   const player = T.createPlayer({count:1, onChange:(state, reason) => {
@@ -1082,7 +1094,7 @@ if (typeof module !== "undefined") module.exports = TraceCore;
     const box = $("source"), lines = trace.source.code.split("\n");
     if (sourceKey !== trace) {
       sourceKey = trace;
-      box.replaceChildren(...lines.map((line, i) => el("div", {class:"line", "data-line":i + 1}, el("span", {class:"n", text:i + 1}), el("span", {}, highlight(line)))));
+      box.replaceChildren(...lines.map((line, i) => el("div", {class:"line", "data-line":i + 1, onclick:editor ? () => editor.reveal(i + 1) : undefined}, el("span", {class:"n", text:i + 1}), el("span", {}, highlight(line)))));
     }
     box.querySelectorAll(".line.on").forEach(n => n.classList.remove("on"));
     const active = box.children[v.step.line - 1];
@@ -1092,6 +1104,7 @@ if (typeof module !== "undefined") module.exports = TraceCore;
       if (active.offsetTop < box.scrollTop || active.offsetTop > box.scrollTop + box.clientHeight - 20) box.scrollTop = Math.max(0, top);
     }
     $("src-meta").textContent = `${trace.source.file ?? "source"} · line ${v.step.line}`;
+    editor?.step(v.step.line);
   }
   function renderLocals(v) {
     const entries = Object.entries(v.step.locals ?? {});

@@ -1,3 +1,6 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as vm from 'node:vm';
 import * as assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
@@ -9,6 +12,7 @@ import {
     parseCliDiagnostics,
     parseRunReport,
     parseStressReport,
+    parseTraceMessage,
     renderCounterexample,
     runtimeErrorLabel,
     sampleStatusLabel,
@@ -185,4 +189,24 @@ test('runtimeErrorLabel and sampleStatusLabel format compact inline badges', () 
     );
     assert.equal(sampleStatusLabel({ line: 0, ok: true, label: 'i1: passed (3 ms)' }, 60), '\u2713 i1: passed (3 ms)');
     assert.equal(sampleStatusLabel({ line: 0, ok: false, label: '1 of 2 samples passed' }, 60), '\u2717 1 of 2 samples passed');
+});
+
+test('the editor reads what the real trace viewer posts, and nothing else', () => {
+    const viewer = fs.readFileSync(path.resolve(__dirname, '../../../../../tools/trace/index.html'), 'utf8');
+    const core = viewer.match(/<script id="trace-core">([\s\S]*?)<\/script>/)![1];
+    const T = vm.runInNewContext(`${core}\nTraceCore`);
+    const posted: unknown[] = [];
+    const link = T.editorLink((message: unknown) => posted.push(message));
+    link.step(4);
+    link.reveal(9);
+    assert.deepEqual(
+        posted.map(parseTraceMessage),
+        [
+            { type: 'step', line: 4 },
+            { type: 'reveal', line: 9 },
+        ],
+    );
+    for (const bad of [null, 'step', { type: 'step' }, { type: 'step', line: 0 }, { type: 'jump', line: 2 }, { type: 'reveal', line: 1.5 }]) {
+        assert.equal(parseTraceMessage(bad), undefined, JSON.stringify(bad));
+    }
 });

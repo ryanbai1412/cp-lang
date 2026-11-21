@@ -570,7 +570,9 @@ internal-error diagnostic. Unit tests in `src/tests.rs`; `tests/latency.rs`
 measures 6.1 (492 lines, debug build: keystroke to diagnostics median
 6 ms, hover 0.06 ms, completion 1.8 ms). The VS Code extension has a
 TextMate grammar, snippets, the client, Run/Stress/Trace lenses, live
-sample values, counterexample overlays and a trace webview; its unit
+sample values, counterexample overlays and a trace view (one panel per
+file over `cpl run --trace --format html`; the editor highlights the line
+of the step shown, and a click on a line in the viewer jumps there); its unit
 tests run in `--full`, its extension-host suite in no gate.
 Hover shows the index space and its bound for arrays and positions
 (`xs: [V]Int`, `domain V = 0..n, n <= 100`, storage per element and in

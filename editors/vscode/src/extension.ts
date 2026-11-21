@@ -4,13 +4,15 @@ import { LensProvider } from './lenses';
 import { Overlays } from './overlays';
 import { Runner } from './runner';
 import { Sample } from './samples';
+import { TraceView } from './traceView';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     const output = vscode.window.createOutputChannel('CP Lang');
     const client = new CpClient(output);
     const overlays = new Overlays();
     const lenses = new LensProvider();
-    const runner = new Runner(output, overlays);
+    const traces = new TraceView();
+    const runner = new Runner(output, overlays, traces);
     const command = (id: string, run: (...args: never[]) => unknown) =>
         vscode.commands.registerCommand(id, run as (...args: unknown[]) => unknown);
 
@@ -18,6 +20,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         output,
         client,
         overlays,
+        traces,
         lenses,
         vscode.languages.registerCodeLensProvider(SELECTOR, lenses),
         command('cp.runSample', (uri?: vscode.Uri, sample?: Sample) => runner.runSample(uri, sample)),
