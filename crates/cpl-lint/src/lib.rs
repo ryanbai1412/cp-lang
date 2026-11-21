@@ -446,6 +446,16 @@ pub const HAND_ROLLED_PREFIX_SUM: Lint = Lint {
     trigger: "let a = [1, 2, 3, 4]\nvar p = List.filled(a.len + 1, 0)\nfor i in 0..a.len:\n    p[i + 1] = p[i] + a[i]\nprint(p[3] - p[1])\n",
     fix: "let a = [1, 2, 3, 4]\nlet p = prefix(a)\nprint(p.prefix(3) - p.prefix(1))\n",
 };
+pub const COPY_SORT_WRITEBACK: Lint = Lint {
+    code: Code("L0522"),
+    name: "copy_sort_writeback",
+    default: Level::Warn,
+    title: "Copy-mutate-writeback on a slice",
+    summary: "copying `xs[l..r]` to sort/reverse/rotate and writing it back: mutate `xs[l..r]` in place",
+    explanation: "Copying a contiguous slice `xs[l..r]` into a temporary `List`, sorting/reversing/rotating it, and writing the elements back into `xs[l..r]` allocates an unnecessary copy. Mutable slice views lend `xs[l..r]` in O(1) via `IndexedMut`, so `xs[l..r].sort(...)` / `.reverse()` / `.rotate_left(...)` runs in place with no copy. `cpl fix` rewrites the copy-mutate-writeback sequence when the temporary is not read afterward.",
+    trigger: "var xs = [5, 4, 3, 2, 1]\nlet sub = xs[1..4].sorted()\nfor i in 1..4: xs[i] = sub[i - 1]\nprint(xs)\n",
+    fix: "var xs = [5, 4, 3, 2, 1]\nxs[1..4].sort()\nprint(xs)\n",
+};
 
 /// Every lint, in code order.
 pub const LINTS: &[Lint] = &[
@@ -486,6 +496,7 @@ pub const LINTS: &[Lint] = &[
     HAND_ROLLED_BINARY_LIFTING,
     HAND_ROLLED_ANSWER_SEARCH,
     HAND_ROLLED_PREFIX_SUM,
+    COPY_SORT_WRITEBACK,
 ];
 
 /// The taste lints (`plan/PORTING.md`): code that works but reads like

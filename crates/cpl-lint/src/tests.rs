@@ -105,7 +105,8 @@ fn a_var_is_judged_by_its_own_scope() {
 
 #[test]
 fn shadowing_a_top_level_let_is_reported_once_per_binding() {
-    let src = "let n: 1..=9 = read()\nfn f(k: Int) -> Int:\n    let n = k + 1\n    n\nprint(f(n))\n";
+    let src =
+        "let n: 1..=9 = read()\nfn f(k: Int) -> Int:\n    let n = k + 1\n    n\nprint(f(n))\n";
     let found = only(src);
     assert_eq!(found.code, SHADOWS_TOP_LEVEL.code);
     assert_eq!(found.message, "this local hides the top-level `n`");
@@ -138,7 +139,9 @@ fn shadowing_a_top_level_let_is_reported_once_per_binding() {
 fn domain_keyed_set_is_left_alone_when_sparse_or_ordered() {
     let head = "let n: 1..=9 = read()\ndomain V = 1..=n\n";
     // Plain membership: the array of `Bool` is the better shape.
-    let dense = format!("{head}var seen: Set<V> = Set<V>()\nseen.insert(V.first)\nprint(V.first in seen)\n");
+    let dense = format!(
+        "{head}var seen: Set<V> = Set<V>()\nseen.insert(V.first)\nprint(V.first in seen)\n"
+    );
     assert_eq!(codes(&dense), ["L0412"]);
     // A set per `V` holds few of them; `[V][V]Bool` would hold all.
     let rows = format!("{head}var adj: [V]Set<V> = Set<V>()\nadj[V.first].insert(V.last)\nprint(adj[V.first].len)\n");
@@ -146,8 +149,15 @@ fn domain_keyed_set_is_left_alone_when_sparse_or_ordered() {
     let listed = format!("{head}let groups: List<Set<V>> = []\nprint(groups.len)\n");
     assert_eq!(codes(&listed), Vec::<&str>::new());
     // Asked for its smallest or largest, which an array cannot answer.
-    for ask in ["free.first", "free.last", "free.pop_first()", "free.pop_last()", "free.first_ge(V.first)"] {
-        let src = format!("{head}var free: Set<V> = Set<V>()\nfree.insert(V.first)\nprint({ask})\n");
+    for ask in [
+        "free.first",
+        "free.last",
+        "free.pop_first()",
+        "free.pop_last()",
+        "free.first_ge(V.first)",
+    ] {
+        let src =
+            format!("{head}var free: Set<V> = Set<V>()\nfree.insert(V.first)\nprint({ask})\n");
         assert_eq!(codes(&src), Vec::<&str>::new(), "{ask}");
     }
     let inferred = format!("{head}var free = Set<V>()\nfree.insert(V.first)\nprint(free.first)\n");
@@ -530,7 +540,10 @@ mod cli {
         // `var total` is L0201, not a taste lint: it is left out.
         assert_eq!(
             out,
-            format!("   1  {}  L0503:1\n   1  total over 1 file of 2  L0503:1\n", a.display())
+            format!(
+                "   1  {}  L0503:1\n   1  total over 1 file of 2  L0503:1\n",
+                a.display()
+            )
         );
         assert_eq!(err, "2 files checked, 1 warning, 0 errors\n");
     }
@@ -649,19 +662,31 @@ fn a_top_level_loop_hides_no_name_written_below_it() {
 fn a_local_above_multitest_hides_nothing_below_it() {
     let helper = "fn helper(k: Int) -> Int:\n    let n = k * 2\n    var total = 0\n    for i in 0..n:\n        total += i\n        total *= 2\n    total\n";
     let tests = "let n: Int = read()\nlet total = helper(n)\nprint(total)\n";
-    assert_eq!(codes(&format!("{helper}@!multitest\n{tests}")), Vec::<&str>::new());
+    assert_eq!(
+        codes(&format!("{helper}@!multitest\n{tests}")),
+        Vec::<&str>::new()
+    );
     // Without the line, and for a fn below it, the names are in reach.
     assert_eq!(codes(&format!("{helper}{tests}")), ["L0203", "L0203"]);
-    assert_eq!(codes(&format!("@!multitest\n{helper}{tests}")), ["L0203", "L0203"]);
+    assert_eq!(
+        codes(&format!("@!multitest\n{helper}{tests}")),
+        ["L0203", "L0203"]
+    );
     // What is above the line is still hidden by a local of a fn above it.
-    assert_eq!(codes(&format!("let n = 3\n{helper}@!multitest\nlet total = helper(n)\nprint(total)\n")), ["L0203"]);
+    assert_eq!(
+        codes(&format!(
+            "let n = 3\n{helper}@!multitest\nlet total = helper(n)\nprint(total)\n"
+        )),
+        ["L0203"]
+    );
 }
 
 #[test]
 fn a_statement_s_own_names_are_not_hidden_on_its_right_side() {
     let own = "let n = 3\nlet (i, j) = first((i, j) for i in 0..n for j in 0..n if i + j == 3)!\nprint(i, j)\n";
     assert!(codes(own).is_empty());
-    let later = "let n = 3\nlet i = 1\nlet best = first(i for i in 0..n if i > 1)!\nprint(i, best)\n";
+    let later =
+        "let n = 3\nlet i = 1\nlet best = first(i for i in 0..n if i > 1)!\nprint(i, best)\n";
     assert_eq!(codes(later), ["L0203"]);
 }
 
@@ -679,7 +704,10 @@ fn fixed(src: &str) -> String {
 }
 
 fn taste_codes(src: &str) -> Vec<&'static str> {
-    codes(src).into_iter().filter(|c| c.starts_with("L05")).collect()
+    codes(src)
+        .into_iter()
+        .filter(|c| c.starts_with("L05"))
+        .collect()
 }
 
 #[test]
@@ -713,10 +741,14 @@ fn search_loop_with_a_flag_becomes_any_or_all_from_noi09p1() {
 #[test]
 fn discarded_result_from_noi23p4() {
     // proto/ports/scout_batch_52/today/noi23p4.cp: `let _ = save_sub(u * 2)`.
-    let src = "fn save_sub(u: Int) -> Int:\n    print(u)\n    u\nlet _ = save_sub(2)\nlet _ = print(1)\n";
+    let src =
+        "fn save_sub(u: Int) -> Int:\n    print(u)\n    u\nlet _ = save_sub(2)\nlet _ = print(1)\n";
     let found = only(src);
     assert_eq!(found.code, DISCARDED_RESULT.code);
-    assert_eq!(found.message, "`let _ =` throws away what `save_sub` returns");
+    assert_eq!(
+        found.message,
+        "`let _ =` throws away what `save_sub` returns"
+    );
 }
 
 #[test]
@@ -761,7 +793,10 @@ fn index_only_loop_from_noi05p2() {
     // proto/ports/scout_batch_24/today/noi05p2.cp.
     let src = "let vals = [3, 8]\nfor i in 0..vals.len:\n    print(vals[i] * 2, vals[i])\n";
     assert_eq!(taste_codes(src), ["L0505"]);
-    assert_eq!(fixed(src), "let vals = [3, 8]\nfor val in vals:\n    print(val * 2, val)\n");
+    assert_eq!(
+        fixed(src),
+        "let vals = [3, 8]\nfor val in vals:\n    print(val * 2, val)\n"
+    );
     // `i` used for itself, or the list written through it, needs the index.
     let needed = "var vals = [3, 8]\nfor i in 0..vals.len:\n    print(i, vals[i])\nfor i in vals.indices:\n    vals[i] += 1\nprint(vals)\n";
     assert_eq!(taste_codes(needed), Vec::<&str>::new());
@@ -790,7 +825,10 @@ fn none_check_unwrap_from_cco16p3() {
     let src = "fn f(p: ?Int, v: Int) -> Bool = p != none and v == p!\nprint(f(none, 1))\n";
     let found = only(src);
     assert_eq!(found.code, NONE_CHECK_UNWRAP.code);
-    assert_eq!(found.message, "`p != none` and then `p!`: the check is said twice");
+    assert_eq!(
+        found.message,
+        "`p != none` and then `p!`: the check is said twice"
+    );
     let other = "fn f(p: ?Int, q: ?Int) -> Bool = p != none and q! == 1\nprint(f(none, 1))\n";
     assert_eq!(taste_codes(other), Vec::<&str>::new());
 }
@@ -801,7 +839,10 @@ fn repeated_literal_from_noip19p4() {
     let src = "type Z = Mod<998244353>\nlet a = [3, 4]\nlet total = a.sum() % 998244353\nprint(total, Z(total))\n";
     let found = only(src);
     assert_eq!(found.code, REPEATED_LITERAL.code);
-    assert_eq!(found.message, "`998244353` is written on 2 lines; it is first on line 1");
+    assert_eq!(
+        found.message,
+        "`998244353` is written on 2 lines; it is first on line 1"
+    );
     // proto/ports/scout_batch_39/today/aac4p5.cp: equal statement bounds of
     // different inputs are separate facts; `-1e9..=1e9` is one; small numbers repeat.
     let bounds = "let m: 0..=500_000 = read()\nlet q: 0..=500_000 = read()\nlet x: -1e9..=1e9 = read()\nprint(m + 1000, q - 1000, x + 1000)\n";
@@ -829,7 +870,10 @@ fn free_fold_becomes_a_method() {
         "let xs = [3, 1, 4]\nvar ys = [2, 7]\nys.sort(by: y => -y)\nprint(xs.sum(), xs.count(x => x > 2), xs[1..].max(), (xs + ys).sorted())\n"
     );
     let find = "let xs = [3, 1, 4]\nprint(xs.find(x => x > 3), xs.find(4))\n";
-    assert_eq!(fixed(find), "let xs = [3, 1, 4]\nprint(xs.first(x => x > 3), xs.find(4))\n");
+    assert_eq!(
+        fixed(find),
+        "let xs = [3, 1, 4]\nprint(xs.first(x => x > 3), xs.find(4))\n"
+    );
     // Generators, two values, a domain, a list of values and a fn of the file stay free.
     let math = "domain V = 0..3\nfn sum(a: Int) -> Int = a\nlet xs = [3, 1]\nprint(count(x > 1 for x in xs), min(xs[0], xs[1]), max([xs[0], 2]), sorted(V, by: v => -v.ord), sum(2))\n";
     assert_eq!(taste_codes(math), Vec::<&str>::new());
@@ -894,7 +938,10 @@ let c = s.last_le(5)
 let d = s.last_lt(5)
 let e = s.count_range(1, 5)
 ";
-    assert_eq!(taste_codes(src), ["L0515", "L0515", "L0515", "L0515", "L0515"]);
+    assert_eq!(
+        taste_codes(src),
+        ["L0515", "L0515", "L0515", "L0515", "L0515"]
+    );
     assert_eq!(
         fixed(src),
         "\
@@ -1384,7 +1431,12 @@ fn a_prelude_import_is_dropped() {
 #[test]
 fn a_prelude_name_from_another_module_or_renamed_is_kept() {
     let src = "use std.graph.{Rooted}\nuse std.tree.Rooted as R\nuse std.tree.*\nstruct Mod:\n    x: Int\nuse std.mod.{Mod, Comb}\nlet x = 1\n";
-    assert_eq!(fixed(src).lines().filter(|l| l.starts_with("use")).count(), 4, "{}", fixed(src));
+    assert_eq!(
+        fixed(src).lines().filter(|l| l.starts_with("use")).count(),
+        4,
+        "{}",
+        fixed(src)
+    );
     assert!(fixed(src).contains("use std.mod.{Mod}\n"));
 }
 
@@ -1529,4 +1581,79 @@ let r = (moves:, val: x)
 print(f(moves:, cost:, other: x) + r.moves)
 "
     );
+}
+
+#[test]
+fn copy_sort_writeback_rewrites_to_mut_slice_in_place() {
+    // 2-statement form: `let sub = xs[l..r].sorted()` + index writeback.
+    let two_stmt = "\
+var xs = [5, 4, 3, 2, 1]
+let sub = xs[1..4].sorted()
+for i in 1..4: xs[i] = sub[i - 1]
+print(xs)
+";
+    assert_eq!(taste_codes(two_stmt), ["L0522"]);
+    assert_eq!(
+        fixed(two_stmt),
+        "var xs = [5, 4, 3, 2, 1]\nxs[1..4].sort()\nprint(xs)\n"
+    );
+
+    // 2-statement form with `by:`/`desc:` args and `.items` writeback.
+    let with_args = "\
+fn f(mut xs: List<Int>, l: Int, r: Int):
+    let sub = xs[l..r].sorted(by: x => -x, desc: true)
+    for (i, v) in sub.items: xs[l + i] = v
+";
+    assert_eq!(taste_codes(with_args), ["L0522"]);
+    assert_eq!(
+        fixed(with_args),
+        "fn f(mut xs: List<Int>, l: Int, r: Int):\n    xs[l..r].sort(by: x => -x, desc: true)\n"
+    );
+
+    // 3-statement form: `.to_list()` + `.sort()` + `0..sub.len` writeback.
+    let three_to_list = "\
+var xs = [5, 4, 3, 2, 1]
+var sub = xs[1..4].to_list()
+sub.sort()
+for i in 0..sub.len: xs[1 + i] = sub[i]
+print(xs)
+";
+    assert_eq!(taste_codes(three_to_list), ["L0522"]);
+    assert_eq!(
+        fixed(three_to_list),
+        "var xs = [5, 4, 3, 2, 1]\nxs[1..4].sort()\nprint(xs)\n"
+    );
+
+    // 3-statement form: list comprehension + `.reverse()` + range writeback.
+    let three_comp = "\
+fn f(mut xs: List<Int>, l: Int, r: Int):
+    var sub = [xs[k] for k in l..r]
+    sub.reverse()
+    for i in l..r: xs[i] = sub[i - l]
+";
+    assert_eq!(taste_codes(three_comp), ["L0522"]);
+    assert_eq!(
+        fixed(three_comp),
+        "fn f(mut xs: List<Int>, l: Int, r: Int):\n    xs[l..r].reverse()\n"
+    );
+
+    // `sub` read after writeback: warn, no auto-fix.
+    let read_after = "\
+var xs = [5, 4, 3, 2, 1]
+let sub = xs[1..4].sorted()
+for i in 1..4: xs[i] = sub[i - 1]
+print(sub[0], xs)
+";
+    assert_eq!(taste_codes(read_after), ["L0522"]);
+    assert!(fixed(read_after).contains("let sub = xs[1..4].sorted()"));
+
+    // Strided comprehension is NOT a contiguous slice: no false positive.
+    let strided = "\
+var a = [4, 3, 2, 1]
+var x = [a[i] for i in 0..4 by 2]
+x.sort()
+for (i, v) in x.items: a[2 * i] = v
+print(a)
+";
+    assert_eq!(taste_codes(strided), Vec::<&str>::new());
 }
