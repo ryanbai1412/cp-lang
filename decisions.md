@@ -2704,3 +2704,16 @@ and keeps the signature. Reverse: return the pair list.
 
 1. **Rename `Fenwick.lower_bound(target)` to `Fenwick.first_ge(target)`** and migrate all callers (6 ports + stdlib tests + docs).
    Reason: `lower_bound` is the C++ name; `plan/STDLIB.md` §2 standardizes sorted/monotone prefix lookup on the four-name family `first_ge`/`first_gt`/`last_le`/`last_lt` (`first_ge(target)` returns the first boundary `b` with `prefix(b) >= target`, or `none`). Keeps `kth(k)` as the 1-based position convenience over `first_ge(k)`. Reverse: rename `first_ge` back to `lower_bound` in `stdlib/fenwick.cp`, `plan/STDLIB.md`, `design/stdlib/ranges.md`, and the 6 caller ports.
+
+## 58. One owner for syntax; destructured domains are type names (2026-11-21)
+
+A one-hour factory trial had syntax lanes add a third multitest spelling
+instead of choosing one, and a polish rewrite hand-rolled Gomory–Hu next to
+`std.flow.gomory_hu`. Syntax is now owned by the coordinator: lanes propose
+dream snippets, the owner accepts or rejects, and an accepted form replaces
+the old spelling in the same change with a `cpl fix` codemod
+(`plan/OPERATING.md`). First ruling: `let (domain C, comp) = f(...)` binds
+`C` as a type name for the rest of its scope, nested `fn` signatures
+included, exactly like `domain C = ...`; nested fns read the declaration's
+hidden slot and the escape rule is unchanged. Reverse by returning syntax to
+the core lane in `plan/OPERATING.md`.

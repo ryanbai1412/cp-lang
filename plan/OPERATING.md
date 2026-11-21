@@ -109,6 +109,13 @@ added here.
 - **Codemods, not hand migration.** A rename or syntax change ships with a
   `cpl fix` rule that rewrites the whole corpus mechanically. Moving a port
   toward its dream is a reviewed rewrite, not a codemod.
+- **One owner for syntax.** The coordinator owns the syntax spec and
+  hill-climbs it from the exemplars and dreams. Lanes propose syntax as a
+  dream snippet plus the frictions it closes; nothing enters `decisions.md`
+  or the parser as syntax until the owner accepts it. Accepted forms go to
+  the core lanes as implementation tickets with a regression test and a
+  `cpl fix` codemod. One spelling per idea: a new spelling replaces the old
+  one in the same change, never sits beside it as "provisional".
 - **Pre-push gate.** Every lane pushes straight to `main`, so before each
   push: `git pull --rebase`, rerun `scripts/check.sh --fast` on the rebased
   tip, and push only if it passes. If the push is rejected, repeat. A broken
