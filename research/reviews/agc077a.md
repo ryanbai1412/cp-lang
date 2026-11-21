@@ -1,7 +1,7 @@
 # agc077a
 
-Score: pending (port is now the dream: one `Block` of `[Side]Run` views and a recursive `reconcile` replace four lockstep `Seg`s and global pushes)
-Dream: pending (unchanged; directed-range gap now in the friction report)
+Score: 4/5
+Dream: 4/5
 
 Dream scored cold on main cc838460 (rewrite cd4575de). Old 3/5, new 4/5. The header (lines 3-17) states the invariant (the B-count gap returns to 0 on a prefix that is A…B on one side and B…A on the other) and why at most n / 2 reversals suffice. `enum Side` with `[Side]` views (lines 33-54) removes the old mirrored branches and the duplicated prefix. My earlier off-by-one note on the output is withdrawn: under decisions §101, `span.end` (line 78) is exclusive, so `start + 1, end` is the 1-based inclusive pair. Biggest remaining gap: `Run` (lines 40-45) hand-writes a directed stepped range (`len`, `span`, `rev`, `take`, `drop`) that a range with a step should provide; no friction report asks for it, and one is owed. Minor: `! + 1` after `bsearch_last` (line 62) and the `lead` sign trick encode "first crossing" indirectly. Earlier notes below are superseded where they conflict.
 
@@ -34,3 +34,7 @@ Port 2/5 cold. It is a different program from the dream, and translated:
 - The header doesn't state the "big reversal" invariant that the dream's header derives.
 
 The friction report covers only the lost index domain; add the directed stepped range. Port the dream.
+
+## Cold review (HEAD)
+
+Port 4/5: it is now the dream (`Block` of `[Side]Run` views, recursive `reconcile`). Both carry the one gap already filed: the directed stepped range `Run` (lines 40-45) is hand-written.
