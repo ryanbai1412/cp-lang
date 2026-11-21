@@ -5,15 +5,14 @@
 // |value|; after one, the value is constant and the recorded history fixed. Tags
 // compose in O(1): one dual segment tree (range apply, point get) does everything.
 use std.algebra.{MaxSub}
-
-enum Sign: neg = -1, zero = 0, pos = 1
+use std.math.{Sign}
 
 struct Cell(val: Int, hist: MaxSub)          // MaxSub: stdlib Kadane monoid, scales by k ≥ 0
 struct Path(to: Sign, seen: MaxSub)          // `seen` is per unit of |val|
 struct Tag(path: [Sign]Path, set: ?Cell)     // set: value assigned, history since
 
 fn run(f: Tag, c: Cell) -> Cell:
-    let p = f.path[sign(c.val)]
+    let p = f.path[c.val.sign]
     let hist = c.hist + p.seen * abs(c.val)
     if let s = f.set: Cell(s.val, hist + s.hist) else: Cell(abs(c.val) * Int(p.to), hist)
 

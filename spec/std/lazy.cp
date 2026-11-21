@@ -134,11 +134,11 @@ pub struct DualSegTree<D, T, F>(id: F, compose: (F, F) -> F, apply_fn: (F, T) ->
 
     /// A dual tree over `a` or filled with `fill`. O(n).
     pub fn new(
-        id: F,
-        compose: (F, F) -> F,
-        apply: (F, T) -> T,
         a: ?[D]T = none,
         fill: ?T = none,
+        id: F = F.zero,
+        compose: (F, F) -> F = (+),
+        apply: (F, T) -> T,
     ) -> DualSegTree<D, T, F> = todo
 
     fn put(mut self, p: Int, f: F) = todo

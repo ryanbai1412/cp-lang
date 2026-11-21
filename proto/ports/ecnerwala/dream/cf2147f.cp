@@ -12,14 +12,13 @@ var p, s: [Item]Cut = read()
 
 struct Low(cover: Int, first: Cut, last: Cut, gaps: Int)
 
-impl Add for Low:
-    fn add(a: Low, b: Low) -> Low = match cmp(a.cover, b.cover):
-        less => a
-        greater => b
-        equal => Low(a.cover, a.first, b.last, a.gaps + b.gaps + choose2(b.first - a.last))
+fn (a: Low) + (b: Low) -> Low = match cmp(a.cover, b.cover):
+    less => a
+    greater => b
+    equal => Low(a.cover, a.first, b.last, a.gaps + b.gaps + choose2(b.first - a.last))
 
-var low = LazySegTree<Cut>([Cut] c => Low(0, c, c, 0),
-                           apply: (d: Int, l: Low) => l with cover: l.cover + d)
+let shift = Action(apply: (d: Int, l: Low, _) => l with cover: l.cover + d)
+var low = LazySegTree<Cut>(shift, [Cut] c => Low(0, c, c, 0))
 
 fn cover(i: Item, by d: Int):
     let (lo, hi) = minmax(p[i], s[i])

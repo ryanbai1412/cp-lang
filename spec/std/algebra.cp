@@ -46,7 +46,9 @@ pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, ov
     law composes(f: F, g: F, a: T) = apply(compose(f, g), a, 1) == apply(f, apply(g, a, 1), 1)
 
     /// Construct a lazy `Action<T, F>` from `id`, `compose`, `apply`, and monoid `over`. O(1).
-    pub fn new<M>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, over: M) -> Action<T, F> = todo
+    /// `id`, `compose` and `over` default to `F`'s zero, `F`'s `+` and `T`'s `+`, so an additive
+    /// tag on a summable value needs only `Action(apply: (d, x, span) => ...)`.
+    pub fn new<M>(id: F = F.zero, compose: (F, F) -> F = (+), apply: (F, T, Int) -> T, over: M = (+)) -> Action<T, F> = todo
 
 /// `x` with its order reversed. Build it with `desc(x)`.
 pub struct Desc<T>(x: T)

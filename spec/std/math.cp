@@ -90,8 +90,12 @@ pub fn bit_len(x: Int) -> Int = todo
 /// The digits of `x >= 0` in `base`, lowest first: `1203.digits()` is `[3, 0, 2, 1]`, and `0` has the one digit `0`.
 pub fn digits(self: Int, base: Int = 10) -> List<Int> = todo
 
-/// -1, 0 or 1 as `x` is below, at or above zero: `(b - a).sign`.
-pub @get fn sign(self: Int) -> Int = todo
+/// Which side of zero a number is on. `Int(s)` is -1, 0 or 1, so `x == Int(x.sign) * abs(x)`;
+/// `-s` flips it and `max(s, .zero)` clamps it.
+pub enum Sign: neg = -1, zero = 0, pos = 1
+
+/// The side of zero `x` is on: `(b - a).sign`. O(1).
+pub @get fn sign(self: Int) -> Sign = todo
 
 /// Whether bit `i` of `x` is set: `x.bit(i)`, bit 0 the lowest. No bit from 63 up is set in an `Int` that is not negative.
 pub fn bit(self: Int, i: Int) -> Bool = todo
