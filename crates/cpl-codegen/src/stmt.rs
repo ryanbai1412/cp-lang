@@ -74,6 +74,24 @@ impl<'p> Emitter<'p> {
         e
     }
 
+    /// The local a value block (a comprehension) builds and gives as its
+    /// value: nothing reads it after the block, so it can be moved out.
+    fn built_by(mut e: &Expr) -> Option<cpl_ir::Slot> {
+        let mut made = Vec::new();
+        while crate::expr::map_remove_do(e).is_none() {
+            let Some((stmts, value)) = flat(e) else { break };
+            made.extend(stmts.iter().filter_map(|s| match s {
+                Stmt::Let(slot, _) => Some(*slot),
+                _ => None,
+            }));
+            e = value;
+        }
+        match e.kind {
+            ExprKind::Local(b) if made.contains(&b) && !e.ty.is_scalar() && !matches!(e.ty, Ty::Fn(..)) => Some(b),
+            _ => None,
+        }
+    }
+
     fn dropped_write(&mut self, stmt: &Stmt, out: &mut String) {
         for used in self.quiet_uses(Some(stmt), None) {
             out.push_str(&format!("{}{used};\n", pad(self.indent)));
@@ -1140,6 +1158,7 @@ impl<'p> Emitter<'p> {
                     self.line(out, &format!("{name}.clear();"));
                     return;
                 }
+                let built = Self::built_by(init);
                 let init = self.flatten(init, out);
                 match &init.kind {
                     ExprKind::Read(spec) => {
@@ -1199,6 +1218,10 @@ impl<'p> Emitter<'p> {
                     } else {
                         self.expr_with_elem_layout(init, elem_l.as_ref()).text
                     },
+                };
+                let text = match built {
+                    Some(b) if text == self.names[b] => format!("std::move({text})"),
+                    _ => text,
                 };
                 if hoisted {
                     self.line(out, &format!("{name} = {text};"));

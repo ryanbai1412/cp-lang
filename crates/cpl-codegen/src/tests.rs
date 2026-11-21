@@ -527,6 +527,20 @@ print(zs)
 }
 
 #[test]
+fn a_let_moves_the_array_its_comprehension_built() {
+    let cpp = cpp("let n: 1..=9 = read()
+domain V = 0..n
+fn lists() -> Int:
+    let out = [V] v => [v.to_idx * i for i in 0..3]
+    let kept = out
+    out[V(0)].len + kept[V(0)].len
+print(lists())
+");
+    assert!(cpp.contains(" out = std::move(t"), "{cpp}");
+    assert!(cpp.contains(" kept = out;"), "a named array is copied: {cpp}");
+}
+
+#[test]
 fn an_index_of_the_arrays_own_domain_has_no_bounds_test() {
     // A `D` is one of `D`'s positions by construction; an `Int` is not.
     let src = "let n: Int = read()\ndomain D = 0..n\ndomain R = 0..n\nvar a: [D]Int = 0\nvar g: [R, D]Int = 0\n\
