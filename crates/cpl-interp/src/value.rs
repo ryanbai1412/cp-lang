@@ -180,7 +180,7 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
         Ty::Opt(_) => Value::Opt(None),
         Ty::Range(_) => Value::Range(0, 0),
         Ty::DomainVal => Value::DomainVal(0, 0),
-        Ty::Fn(..) => Value::Unit,
+        Ty::Fn(..) | Ty::Mut(_) => Value::Unit,
         Ty::Tuple(items) => Value::tuple(items.iter().map(|t| zero(t, program)).collect()),
         Ty::Record(fields) => Value::tuple(fields.iter().map(|(_, t)| zero(t, program)).collect()),
         Ty::Struct(id) => Value::tuple(

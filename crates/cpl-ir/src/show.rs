@@ -98,6 +98,7 @@ pub(crate) fn ty_name(
         Ty::Set(elem) => format!("Set<{}>", name(elem)),
         Ty::HashSet(elem) => format!("HashSet<{}>", name(elem)),
         Ty::Fn(args, ret) => format!("({}) -> {}", list(args), name(ret)),
+        Ty::Mut(of) => format!("mut {}", name(of)),
         Ty::Struct(id) => structs[*id].name.clone(),
         Ty::Enum(id) => enums[*id].name.clone(),
         Ty::Error => "_".into(),

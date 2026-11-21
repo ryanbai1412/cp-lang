@@ -1053,11 +1053,34 @@ impl<'p, 'o> Interp<'p, 'o> {
             ExprKind::Call(id, args) => self.call(*id, args, span)?,
             ExprKind::CallExpr(callee, args) => {
                 let fv = self.eval(callee)?;
-                let mut vals = Vec::with_capacity(args.len());
-                for a in args {
-                    vals.push(self.eval(a)?);
+                let mut vals = vec![Value::Unit; args.len()];
+                for (i, arg) in args.iter().enumerate() {
+                    if let Arg::Value(e) = arg {
+                        vals[i] = self.eval(e)?;
+                    }
                 }
-                self.call_value(fv, vals, span)?
+                // `mut` arguments are lent for the call, as to a
+                // top-level fn.
+                let mut lent: Vec<(usize, &'p Place, Vec<Value>)> = Vec::new();
+                for (i, arg) in args.iter().enumerate() {
+                    if let Arg::Mut(place) = arg {
+                        let mut indices = Vec::new();
+                        self.indices(place, &mut indices)?;
+                        let cell = self.resolve(place, &mut indices.iter())?;
+                        let value = std::mem::replace(cell, Value::Moved);
+                        if matches!(value, Value::Moved) {
+                            return trap(place.span, LENT);
+                        }
+                        vals[i] = value;
+                        lent.push((i, place, indices));
+                    }
+                }
+                let at: Vec<usize> = lent.iter().map(|(i, ..)| *i).collect();
+                let (value, back) = self.call_lending(fv, vals, &at, span)?;
+                for ((_, place, indices), value) in lent.into_iter().zip(back) {
+                    *self.resolve(place, &mut indices.iter())? = value;
+                }
+                value
             }
             ExprKind::Closure(cid) => {
                 let def = &self.program.closures[*cid];
@@ -1542,6 +1565,12 @@ impl<'p, 'o> Interp<'p, 'o> {
     }
 
     fn call_value(&mut self, fv: Value, args: Vec<Value>, span: Span) -> Res<Value> {
+        Ok(self.call_lending(fv, args, &[], span)?.0)
+    }
+
+    /// Calls a fn value. The arguments at `lent` are `mut`: what the fn
+    /// left in them comes back, in that order, next to its result.
+    fn call_lending(&mut self, fv: Value, args: Vec<Value>, lent: &[usize], span: Span) -> Res<(Value, Vec<Value>)> {
         let Value::Closure(cid, caps) = fv else {
             return trap(span, "internal: tried to call a non-function value");
         };
@@ -1577,11 +1606,13 @@ impl<'p, 'o> Interp<'p, 'o> {
         self.frame_locals.pop();
         self.base = saved;
         let flow = flow?;
+        let back = lent.iter().map(|i| std::mem::take(&mut self.stack[base + def.params[*i]])).collect();
         self.stack.truncate(base);
-        Ok(match flow {
+        let value = match flow {
             Flow::Return(v) | Flow::Give(v) => v,
             _ => Value::Unit,
-        })
+        };
+        Ok((value, back))
     }
 
     fn eq_ty_val(&mut self, ty: &Ty, l: &Value, r: &Value, span: Span) -> Res<bool> {

@@ -650,12 +650,12 @@ fn an_end_of_another_domain_or_a_changed_name_proves_no_step() {
 }
 
 #[test]
-fn a_fn_inside_a_fn_takes_no_mut_parameter() {
-    // A fn value's type carries no `mut`, so the call would change a copy.
-    let source = "let n: Int = read()\nfor _ in 0..2:\n    var par: [0..=n]Int = -1\n    fn touch(mut par: [0..=n]Int, x: Int) -> Int:\n        par[x] = 0\n        x\n    print(touch(mut par, 0))\n";
-    let stderr = check_errors("nested-mut", source);
-    assert!(stderr.contains("a fn inside a fn can't take `mut par`"), "{stderr}");
-    assert!(stderr.contains("a.cp:4:18"), "{stderr}");
+fn a_fn_inside_a_fn_says_which_arguments_are_mut() {
+    let head = "fn main_like():\n    var xs: List<Int> = []\n    fn add(mut ys: List<Int>, x: Int):\n        ys.push(x)\n";
+    let stderr = check_errors("nested-mut-missing", &format!("{head}    add(xs, 1)\nmain_like()\n"));
+    assert!(stderr.contains("the argument must be passed as `mut xs`"), "{stderr}");
+    let stderr = check_errors("nested-mut-extra", &format!("{head}    var k = 1\n    add(mut xs, mut k)\nmain_like()\n"));
+    assert!(stderr.contains("`add` doesn't change `x`, so `mut` doesn't belong here"), "{stderr}");
 }
 
 #[test]

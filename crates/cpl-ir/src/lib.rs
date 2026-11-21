@@ -113,6 +113,9 @@ pub enum Ty {
     HashSet(Box<Ty>),
     /// A first-class function or closure `(args...) -> ret`.
     Fn(Vec<Ty>, Box<Ty>),
+    /// A `mut` parameter of a fn value: only ever a parameter of a
+    /// [`Ty::Fn`]. The call works on the caller's variable.
+    Mut(Box<Ty>),
     Struct(StructId),
     Enum(EnumId),
     /// Already reported. Fits everything, so one mistake is one message.
@@ -307,7 +310,7 @@ pub enum ExprKind {
     Do(Block),
     Call(FnId, Vec<Arg>),
     /// Calls a first-class function or closure value.
-    CallExpr(Box<Expr>, Vec<Expr>),
+    CallExpr(Box<Expr>, Vec<Arg>),
     /// Creates a closure from [`Program::closures`], capturing variables from the enclosing scope.
     Closure(ClosureId),
     /// A half-open range value `lo..hi`.
@@ -728,6 +731,8 @@ pub struct Capture {
 pub struct ClosureDef {
     /// Parameter slots inside `locals` (always `0..params.len()`).
     pub params: Vec<Slot>,
+    /// The parameters declared `mut`: a call works on the caller's variable.
+    pub muts: Vec<Slot>,
     pub captures: Vec<Capture>,
     pub locals: Vec<Local>,
     pub ret: Ty,

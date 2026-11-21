@@ -121,8 +121,15 @@ impl<'p> Emitter<'p> {
             }
             ExprKind::Read(_)
             | ExprKind::Print(..)
-            | ExprKind::CallExpr(..)
             | ExprKind::Builtin(Builtin::CountQuery | Builtin::SwapInput, _) => touch.io = true,
+            ExprKind::CallExpr(_, args) => {
+                touch.io = true;
+                for arg in args {
+                    if let Arg::Mut(place) = arg {
+                        touch.writes.insert(walk::root(place));
+                    }
+                }
+            }
             ExprKind::Call(id, args) => {
                 let summary = &self.summaries[*id];
                 touch.io |= summary.io;
@@ -717,6 +724,10 @@ impl<'p> Emitter<'p> {
             }
             ExprKind::Call(id, args) => self.call(e, *id, args),
             ExprKind::CallExpr(callee, args) => {
+                let values = args.iter().filter_map(|arg| match arg {
+                    Arg::Value(value) => Some(value),
+                    Arg::Mut(_) => None,
+                });
                 let home = match self.closure_id {
                     Some(_) => None,
                     None => self.fn_id,
@@ -724,17 +735,17 @@ impl<'p> Emitter<'p> {
                 let known = self.devirt.target(home, callee);
                 if let Some(cid) = known.filter(|_| crate::devirt::skippable(callee)) {
                     self.direct.insert(cid);
-                    let operands: Vec<&Expr> = args.iter().collect();
-                    return self.sequence(&operands, &e.ty, |_, codes| {
-                        let ps: Vec<String> = codes.iter().map(|c| c.text.clone()).collect();
+                    let operands: Vec<&Expr> = values.collect();
+                    return self.sequence(&operands, &e.ty, |this, codes| {
+                        let ps = this.fn_value_args(args, codes);
                         Code::primary(format!("{}({})", crate::devirt::name(cid), ps.join(", ")))
                     });
                 }
                 let mut operands: Vec<&Expr> = vec![callee];
-                operands.extend(args.iter());
-                self.sequence(&operands, &e.ty, |_, codes| {
-                    let f = codes[0].at(PRIMARY);
-                    let ps: Vec<String> = codes[1..].iter().map(|c| c.text.clone()).collect();
+                operands.extend(values);
+                self.sequence(&operands, &e.ty, |this, mut codes| {
+                    let f = codes.remove(0).at(PRIMARY);
+                    let ps = this.fn_value_args(args, codes);
                     Code::primary(format!("{f}({})", ps.join(", ")))
                 })
             }
@@ -1160,6 +1171,18 @@ impl<'p> Emitter<'p> {
         }
     }
 
+    /// The arguments of a call through a fn value: `codes` are the ones
+    /// passed by value, in order, and a `mut` one is the place itself.
+    fn fn_value_args(&mut self, args: &[Arg], codes: Vec<Code>) -> Vec<String> {
+        let mut codes = codes.into_iter();
+        args.iter()
+            .map(|arg| match arg {
+                Arg::Value(_) => codes.next().expect("one per value").text,
+                Arg::Mut(place) => self.place(place),
+            })
+            .collect()
+    }
+
     fn call(&mut self, e: &Expr, id: usize, args: &[Arg]) -> Code {
         let program = self.program;
         let f = &program.fns[id];
@@ -1568,7 +1591,9 @@ impl<'p> Emitter<'p> {
         for &slot in &def.params {
             let ty = &def.locals[slot].ty;
             let cpp = self.ty(ty);
-            let cpp = if ty.is_scalar() {
+            let cpp = if def.muts.contains(&slot) {
+                format!("{cpp}&")
+            } else if ty.is_scalar() {
                 cpp
             } else {
                 format!("const {cpp}&")

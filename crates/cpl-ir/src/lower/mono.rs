@@ -295,6 +295,7 @@ impl<'a> Lowerer<'a> {
                 let parts: Vec<String> = ps.iter().map(|t| self.mangle_ty(t)).collect();
                 format!("Fn_{}_{}", parts.join("_"), self.mangle_ty(r))
             }
+            Ty::Mut(t) => format!("Mut_{}", self.mangle_ty(t)),
             Ty::Struct(id) => format!("S{id}"),
             Ty::Enum(id) => format!("E{id}"),
             Ty::Error => "Err".into(),
@@ -1335,16 +1336,13 @@ impl<'a> Lowerer<'a> {
             .as_ref()
             .map(|r| self.resolve_ty(r))
             .unwrap_or(Ty::Unit);
-        // A fn value's type has no `mut` in it, so a call through one
-        // would change a copy and leave the caller's variable as it was.
-        for p in decl.params.iter().filter(|p| p.mutable) {
-            let message = format!("a fn inside a fn can't take `mut {}`", p.name.text);
-            self.error(codes::ASSIGN_TO_LET, p.name.span, message);
-            self.help(
-                "it already sees the variables around it: drop the parameter and change the variable itself, or move the fn to the top level",
-            );
-        }
-        let fn_ty = Ty::Fn(param_tys.clone(), Box::new(ret_ty.clone()));
+        // The fn's type says which parameters are `mut`, so a call through
+        // its name works on the caller's variable.
+        let sig = decl.params.iter().zip(&param_tys).map(|(p, ty)| match p.mutable {
+            true => Ty::Mut(Box::new(ty.clone())),
+            false => ty.clone(),
+        });
+        let fn_ty = Ty::Fn(sig.collect(), Box::new(ret_ty.clone()));
         let fn_slot = self.cx.locals.len();
         self.cx.locals.push(Local {
             name: decl.name.text.clone(),
@@ -1401,8 +1399,10 @@ impl<'a> Lowerer<'a> {
 
         let inner_cx = std::mem::replace(&mut self.cx, self.outer_cxs.pop().unwrap());
         let cid = self.closures.len();
+        let muts = decl.params.iter().zip(&param_slots).filter(|(p, _)| p.mutable).map(|(_, slot)| *slot).collect();
         self.closures.push(ClosureDef {
             params: param_slots,
+            muts,
             captures: inner_cx.captures,
             locals: inner_cx.locals,
             ret: ret_ty.clone(),
@@ -1444,7 +1444,7 @@ impl<'a> Lowerer<'a> {
             slots.push((slot, p.ty.as_ref()));
         }
         let body = self.capture_from_outer(&body_name).expect("just declared");
-        let args = slots.iter().map(|(slot, _)| self.local(*slot, span)).collect();
+        let args = slots.iter().map(|(slot, _)| Arg::Value(self.local(*slot, span))).collect();
         let call = self.mk(
             ExprKind::CallExpr(Box::new(self.local(body, span)), args),
             ret_ty.clone(),
@@ -1460,6 +1460,7 @@ impl<'a> Lowerer<'a> {
         let wrapper = self.closures.len();
         self.closures.push(ClosureDef {
             params: slots.iter().map(|(slot, _)| *slot).collect(),
+            muts: Vec::new(),
             captures: inner_cx.captures,
             locals: inner_cx.locals,
             ret: ret_ty,
@@ -1794,6 +1795,7 @@ impl<'a> Lowerer<'a> {
         let cid = self.closures.len();
         self.closures.push(ClosureDef {
             params: param_slots,
+            muts: Vec::new(),
             captures: finished.captures,
             locals: finished.locals,
             ret: ret_ty.clone(),
@@ -1839,6 +1841,7 @@ impl<'a> Lowerer<'a> {
         let cid = self.closures.len();
         self.closures.push(ClosureDef {
             params: p_slots,
+            muts: Vec::new(),
             captures: Vec::new(),
             locals,
             ret: ret.clone(),
@@ -1973,6 +1976,7 @@ impl<'a> Lowerer<'a> {
             let cid = lw.closures.len();
             lw.closures.push(ClosureDef {
                 params: p_slots,
+                muts: Vec::new(),
                 captures: vec![Capture {
                     outer: outer_recv,
                     inner: inner_recv,

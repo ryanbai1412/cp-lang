@@ -3187,7 +3187,10 @@ fn collect_expr_calls(e: &Expr, out: &mut Vec<FnId>) {
         ExprKind::CallExpr(callee, args) => {
             collect_expr_calls(callee, out);
             for a in args {
-                collect_expr_calls(a, out);
+                match a {
+                    Arg::Value(v) => collect_expr_calls(v, out),
+                    Arg::Mut(p) => collect_place_calls(p, out),
+                }
             }
         }
         ExprKind::Mutate(_, place, args) => {

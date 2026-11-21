@@ -46,7 +46,7 @@ fn small_place(block: &Block, bools: &mut bool, chars: &mut bool) {
         }
     });
     walk::deep_exprs(block, &mut |e| match &e.kind {
-        ExprKind::Call(_, args) => {
+        ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
             for arg in args {
                 if let Arg::Mut(target) = arg {
                     place(target);
@@ -469,7 +469,10 @@ impl<'p> Tables<'p> {
                     }
                 }
             }
-            ExprKind::Call(_, args) => {
+            ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
+                if let ExprKind::CallExpr(callee, _) = &e.kind {
+                    self.expr(home, callee);
+                }
                 for arg in args {
                     match arg {
                         Arg::Value(value) => self.expr(home, value),

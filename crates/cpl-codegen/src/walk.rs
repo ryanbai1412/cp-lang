@@ -68,7 +68,12 @@ pub(crate) fn children<'p>(e: &'p Expr, f: &mut dyn FnMut(&'p Expr)) {
         }
         ExprKind::CallExpr(callee, args) => {
             f(callee);
-            args.iter().for_each(f);
+            for arg in args {
+                match arg {
+                    Arg::Value(value) => f(value),
+                    Arg::Mut(place) => place_exprs(place, f),
+                }
+            }
         }
         ExprKind::Range { lo, hi } => {
             f(lo);
@@ -286,6 +291,13 @@ impl Effects {
         match &e.kind {
             ExprKind::Call(id, args) => {
                 self.calls.insert(*id);
+                for arg in args {
+                    if let Arg::Mut(place) = arg {
+                        self.store(place);
+                    }
+                }
+            }
+            ExprKind::CallExpr(_, args) => {
                 for arg in args {
                     if let Arg::Mut(place) = arg {
                         self.store(place);

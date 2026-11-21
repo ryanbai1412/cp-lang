@@ -117,7 +117,10 @@ impl Scopes {
         match &e.kind {
             ExprKind::Local(slot) => self.uses(*slot),
             ExprKind::Do(block) => self.block(block),
-            ExprKind::Call(_, args) => {
+            ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
+                if let ExprKind::CallExpr(callee, _) = &e.kind {
+                    self.expr(callee);
+                }
                 for arg in args {
                     match arg {
                         Arg::Value(value) => self.expr(value),

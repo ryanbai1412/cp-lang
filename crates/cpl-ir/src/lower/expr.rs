@@ -758,6 +758,7 @@ impl<'a> Lowerer<'a> {
                 let cid = self.closures.len();
                 self.closures.push(ClosureDef {
                     params,
+                    muts: Vec::new(),
                     captures: Vec::new(),
                     locals,
                     ret: Ty::Struct(id),
@@ -809,6 +810,7 @@ impl<'a> Lowerer<'a> {
                         let cid = self.closures.len();
                         self.closures.push(ClosureDef {
                             params: vec![0, 1],
+                            muts: Vec::new(),
                             captures: Vec::new(),
                             locals: std::mem::take(&mut locals),
                             ret: (**r).clone(),

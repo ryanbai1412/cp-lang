@@ -136,7 +136,7 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(List, "len", Get, "", "Int", false, "How many elements.", "xs.len", "Int"),
     row!(List, "is_empty", Get, "", "Bool", false, "True when there is no element.", "xs.is_empty", "Bool"),
     row!(List, "first", Get, "", "?T", false, "The first element, or `none` when empty.", "xs.first", "?Int"),
-    row!(List, "last", Get, "", "?T", false, "The last element, or `none` when empty.", "xs.last", "?Int"),
+    row!(List, "last", Get, "", "?T", false, "The last element, or `none` when empty. `xs.last(k)` is the one `k` back from it.", "xs.last", "?Int"),
     row!(List, "push", Method, "x: T", "", true, "Adds `x` at the end.", "xs.push(4)", ""),
     row!(List, "pop", Method, "", "?T", true, "Takes the last element off, or gives `none` when empty.", "xs.pop()", "?Int"),
     row!(List, "get", Method, "i: Int", "?T", false, "The element at `i`, or `none` when `i` is outside the list.", "xs.get(1)", "?Int"),

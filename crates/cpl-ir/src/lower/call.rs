@@ -45,9 +45,35 @@ impl<'a> Lowerer<'a> {
         };
         let mut vals = Vec::with_capacity(args.len());
         for (i, arg) in args.iter().enumerate() {
-            let v = match param_tys.get(i) {
-                Some(want) => self.expect(&arg.value, want),
-                None => self.expr(&arg.value, None),
+            let v = match (param_tys.get(i), arg.mutable) {
+                // The fn changes the caller's variable, as a top-level
+                // fn with a `mut` parameter does.
+                (Some(Ty::Mut(want)), true) => {
+                    let place = self.place(&arg.value);
+                    if let PlaceKind::Local(slot) = place.kind {
+                        self.cx.mut_slots.insert(slot);
+                    }
+                    if place.ty == Ty::Bool && matches!(place.kind, PlaceKind::Index(..)) {
+                        self.unsupported(arg.value.span, "a `Bool` element passed as `mut`");
+                    } else if place.ty != **want && place.ty != Ty::Error && **want != Ty::Error {
+                        self.mismatch(arg.value.span, want, &place.ty);
+                    }
+                    Arg::Mut(place)
+                }
+                (Some(Ty::Mut(_)), false) => {
+                    let message = "this parameter is `mut`: the fn changes what it is given".to_string();
+                    self.error(codes::ASSIGN_TO_LET, arg.value.span, message);
+                    self.help("write `mut` before it, as for a top-level fn");
+                    Arg::Value(self.err_expr(arg.value.span))
+                }
+                (Some(_), true) => {
+                    let message = "this parameter is not `mut`: the fn takes a copy".to_string();
+                    self.error(codes::ASSIGN_TO_LET, arg.value.span, message);
+                    self.help("drop the `mut`, or declare the parameter `mut`");
+                    Arg::Value(self.err_expr(arg.value.span))
+                }
+                (Some(want), false) => Arg::Value(self.expect(&arg.value, want)),
+                (None, _) => Arg::Value(self.expr(&arg.value, None)),
             };
             vals.push(v);
         }
@@ -1461,14 +1487,30 @@ impl<'a> Lowerer<'a> {
 
     /// The list of what `lo..hi` goes over, in order.
     pub(super) fn range_list(&mut self, lo: Expr, hi: Expr, elem: Ty, span: Span) -> Expr {
+        self.walked_list(Iter::Range { lo, hi, step: None, rev: false }, elem, span)
+    }
+
+    /// The list of what `iter` goes over, in the order it goes.
+    fn walked_list(&mut self, iter: Iter, elem: Ty, span: Span) -> Expr {
         self.collected(elem.clone(), span, |lw, out, push| {
             let item = lw.temp(elem);
             let lid = lw.fresh_loop();
             let at = lw.local(item, span);
             let body = Block { stmts: vec![push(lw, at)] };
-            let iter = Iter::Range { lo, hi, step: None, rev: false };
             out.push(Stmt::For(lid, item, iter, body));
         })
+    }
+
+    /// `r.rev` kept as a value: the list of what the range goes over, last
+    /// first. A loop over `r.rev` never comes here and builds no list.
+    fn reversed_range(&mut self, range: Expr, span: Span) -> Expr {
+        let Ty::Range(elem) = &range.ty else { unreachable!("only a range is asked for") };
+        let elem = (**elem).clone();
+        let iter = match range.kind {
+            ExprKind::Range { lo, hi } => Iter::Range { lo: *lo, hi: *hi, step: None, rev: true },
+            _ => Iter::RangeVal(range, true),
+        };
+        self.walked_list(iter, elem, span)
     }
 
     /// `sorted(xs, by: ...)`
@@ -2787,6 +2829,7 @@ impl<'a> Lowerer<'a> {
             (Ty::List(_) | Ty::Str, "rev") => {
                 builtin(self, Builtin::Reversed, vec![value], ty.clone())
             }
+            (Ty::Range(_), "rev") => self.reversed_range(value, span),
             (Ty::List(_) | Ty::Str, "adjacent") => self.lower_adjacent(value, span),
             (Ty::Array { dims, .. }, "adjacent") if dims.len() == 1 => {
                 self.lower_adjacent(value, span)
@@ -4284,14 +4327,55 @@ impl<'a> Lowerer<'a> {
                     out.push(Stmt::Give(lw.local(acc, span)));
                 })
             }
+            // `xs.last(k)`: the element `k` back from the last one, so
+            // `xs.last(1)` is the one before the last; `none` when there
+            // are not that many.
+            (Ty::List(elem), "last") if args.len() == 1 => {
+                let elem = (**elem).clone();
+                let back = self.expect(&args[0].value, &Ty::Int);
+                self.do_expr(Some(&Ty::opt(elem.clone())), span, |lw, out| {
+                    // A list that is named is read where it is; one that is
+                    // computed is kept for the two reads.
+                    let list = if matches!(value.kind, ExprKind::Local(_) | ExprKind::Global(_)) {
+                        value
+                    } else {
+                        let kept = lw.temp(value.ty.clone());
+                        out.push(Stmt::Let(kept, Some(value)));
+                        lw.local(kept, span)
+                    };
+                    let k = lw.temp(Ty::Int);
+                    out.push(Stmt::Let(k, Some(back)));
+                    let len = lw.mk(ExprKind::Builtin(Builtin::Len, vec![list.clone()]), Ty::Int, span);
+                    let last = lw.int_add(len, -1);
+                    let at = lw.temp(Ty::Int);
+                    let from_end = lw.mk(
+                        ExprKind::Binary(BinOp::Sub, Box::new(last), Box::new(lw.local(k, span))),
+                        Ty::Int,
+                        span,
+                    );
+                    out.push(Stmt::Let(at, Some(from_end)));
+                    let cmp = |lw: &mut Self, slot| {
+                        let zero = lw.int_lit(0, span);
+                        lw.mk(ExprKind::Cmp(CmpOp::Ge, Box::new(lw.local(slot, span)), Box::new(zero)), Ty::Bool, span)
+                    };
+                    let (ahead, inside) = (cmp(lw, k), cmp(lw, at));
+                    let there = lw.mk(ExprKind::Binary(BinOp::And, Box::new(ahead), Box::new(inside)), Ty::Bool, span);
+                    let item = lw.mk(ExprKind::Index(Box::new(list), vec![lw.local(at, span)]), elem.clone(), span);
+                    let opt = Ty::opt(elem);
+                    let some = lw.mk(ExprKind::Some(Box::new(item)), opt.clone(), span);
+                    let none = lw.mk(ExprKind::None, opt.clone(), span);
+                    out.push(Stmt::Give(lw.mk(ExprKind::If(Box::new(there), Box::new(some), Box::new(none)), opt, span)));
+                })
+            }
             (Ty::List(_) | Ty::Str, "rev") if args.is_empty() => {
                 self.mk(ExprKind::Builtin(Builtin::Reversed, vec![value]), ty.clone(), span)
             }
+            (Ty::Range(_), "rev") if args.is_empty() => self.reversed_range(value, span),
             // A sequence walked backwards is something to loop over. As a
             // value it would be the sequence unchanged, which is not what
             // `.rev()` says.
             (
-                Ty::Range(_) | Ty::Array { .. } | Ty::Set(_) | Ty::Map(..) | Ty::HashSet(_) | Ty::HashMap(..),
+                Ty::Array { .. } | Ty::Set(_) | Ty::Map(..) | Ty::HashSet(_) | Ty::HashMap(..),
                 "rev",
             ) if args.is_empty() => {
                 let message = format!(

@@ -150,7 +150,10 @@ impl<'p> Facts<'p> {
     fn expr(&mut self, fn_id: Option<usize>, e: &'p Expr) {
         match &e.kind {
             ExprKind::Do(block) => self.block(fn_id, block),
-            ExprKind::Call(_, args) => {
+            ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
+                if let ExprKind::CallExpr(callee, _) = &e.kind {
+                    self.expr(fn_id, callee);
+                }
                 for arg in args {
                     match arg {
                         Arg::Value(value) => self.expr(fn_id, value),

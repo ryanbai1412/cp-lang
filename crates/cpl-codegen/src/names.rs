@@ -226,6 +226,7 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
         ),
         Ty::Set(elem) => format!("std::set<{}>", cty(program, niches, elem)),
         Ty::HashSet(elem) => format!("std::unordered_set<{}, cpl::CpHash>", cty(program, niches, elem)),
+        Ty::Mut(of) => format!("{}&", cty(program, niches, of)),
         Ty::Fn(args, ret) => {
             let ps: Vec<String> = args.iter().map(|t| cty(program, niches, t)).collect();
             format!("std::function<{}({})>", cty(program, niches, ret), ps.join(", "))
