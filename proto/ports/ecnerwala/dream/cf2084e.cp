@@ -18,7 +18,7 @@ type Z = Mod<1e9 + 7>
 domain Pos = read(1..=5000)
 let a: [Pos]?(0..Pos.count) = read(none: -1)
 let at = a.inverse()
-let blanks = a.map(x => x == none).prefix_sums(at: .cuts)
+let blanks = a.map(x => Int(x == none)).scan(+)
 fn blank(l: Pos, r: Pos) -> Int = blanks[r.after] - blanks[l.before]
 let m = blanks.last
 let comb = Z.comb(Pos.count)

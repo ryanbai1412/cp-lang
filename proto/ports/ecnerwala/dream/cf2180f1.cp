@@ -57,5 +57,5 @@ pub fn stops<domain I, domain J>() -> [I, J]Z:
 let q: [0..read(1..=10_000)](n: 1..=5000, m: 1..=5000) = read()
 domain I = 0..max(q.n)
 domain J = 0..max(q.m)
-let inside = stops<I, J>().prefix_sums()
+let inside = prefix(stops<I, J>())
 for (n, m) in q: print(Z(4) ** ((n + 1) * (m + 1)) * inside[..n, ..m])

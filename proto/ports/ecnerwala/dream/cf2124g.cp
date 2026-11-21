@@ -53,7 +53,7 @@ for i in Pos.rev if pref_min[i] == a[i]:
 
     for pos in suffix_max_pos if pos > i:
         let cur_cap = min(cap, ai + a[pos])
-        let split = blk.cuts.last(c => lifted[c.prev!] > cur_cap) ?? blk.cuts.first
+        let split = blk.keys.cuts.last(c => lifted[c.prev!] > cur_cap) ?? blk.keys.cuts.first
         let gain = (cur_cap - ai) * split.count_before + lifted_suff[split] - ai * split.count_after
         let loss = if pos.l < end_cut: block_loss[pos] else: orig_suff[pos]
         ans[pos - i] = max(ans[pos - i], base_ans + gain - loss)

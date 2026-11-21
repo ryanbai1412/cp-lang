@@ -228,7 +228,7 @@ impl<'a> Checker<'a> {
                 let repl = if matches!(k_ty, Ty::Int | Ty::I128 | Ty::U64) {
                     format!("range({q} + 1..).first")
                 } else {
-                    format!("bsearch_first(x => x > {q})")
+                    format!("first_true(x => x > {q})")
                 };
                 (repl, Ty::Optional(Box::new(k_ty)))
             }

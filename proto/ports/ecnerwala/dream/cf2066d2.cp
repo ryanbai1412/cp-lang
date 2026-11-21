@@ -23,9 +23,9 @@ var dp: [Used]M = 0
 dp[Used.first] = 1
 var fixed_below = 0
 
-for f in Floor.init:
+for f in Floor.range.drop_last():
     let fixed = a.count(x => x == f)
-    let min_used = match Time.last(t => a[t] == f):
+    let min_used = match Time.range.last(t => a[t] == f):
         some(t) => Used(max(0, t.ord + 1 - c))
         none => Used.first
     var next: [Used]M = 0
