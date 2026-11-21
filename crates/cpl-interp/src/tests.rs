@@ -636,6 +636,21 @@ print(dp[3].0, dp[3].1, adj[2].len, popcount(x), ctz(x))
 }
 
 #[test]
+fn vm_nested_array_without_a_value_starts_with_full_rows() {
+    let source = "
+domain Row = 0..3
+var a: [Row][Row](Int, Int)
+a[Row.last][Row.last].0 += 5
+var b: [Row][Row]Int
+b[Row.last][Row.first] += 2
+print(a[Row.last][Row.last].0, a[Row.first][Row.first].1, b[Row.last][Row.first], b[Row.first][Row.last])
+";
+    let (out, trap) = outcome(source, "");
+    assert_eq!(trap, None);
+    assert_eq!(out, "5 0 2 0\n");
+}
+
+#[test]
 fn vm_nested_array_filled_by_a_named_tuple_of_mods() {
     let source = "
 type Z = Mod<1e9 + 7>

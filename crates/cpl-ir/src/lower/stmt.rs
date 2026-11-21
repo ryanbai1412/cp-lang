@@ -2418,7 +2418,10 @@ impl<'a> Lowerer<'a> {
     fn zero(&mut self, spec: &Spec, span: Span) -> Expr {
         let ty = spec.ty();
         let kind = match spec {
-            Spec::Array { dims, .. } => ExprKind::Fill(dims.clone(), None),
+            Spec::Array { dims, elem } => {
+                let cell = matches!(**elem, Spec::Array { .. }).then(|| Box::new(self.zero(elem, span)));
+                ExprKind::Fill(dims.clone(), cell)
+            }
             _ => match &ty {
                 Ty::Int => ExprKind::Int(0),
                 Ty::Float => ExprKind::Float(0.0),
