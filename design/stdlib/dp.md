@@ -181,8 +181,8 @@ proof at 3am.
 
 `bench/dp/` runs each entry point at judge size beside the same algorithm
 in C++. `LiChao`, `dnc_layer` and `MonoDeque` run at or under the C++
-time; `knuth` at 1.24x, because its split table holds 8-byte `Int`s
-where C++ uses `int` (parity needs `I32` storage from the core). Two
+time; `knuth` at 1.11x, its split table held as `0..2^31` (4 bytes,
+as the C++ `int`; 1.24x when it held 8-byte `Int`s). Two
 things in the library make this hold: operations are kept as the value the
 caller passed (`pick`), never wrapped in a fresh closure, so the codegen's
 devirtualization inlines `min` / `max`; and the hot loops are `unchecked`.

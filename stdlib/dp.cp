@@ -187,7 +187,7 @@ pub fn dnc_layer(prev: List<?Int>, cost: (Int, Int) -> Int) -> List<?Int>:
 /// O(n^2) time and memory.
 pub fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>>:
     var dp: List<List<Int>> = []
-    var opt: List<List<Int>> = []
+    var opt: List<List<0..2_147_483_648>> = []
     for _ in 0..=n:
         dp.push(List.filled(n + 1, 0))
         opt.push(List.filled(n + 1, 0))
