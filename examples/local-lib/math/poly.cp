@@ -1337,9 +1337,7 @@ pub fn compose_trunc(f: List<Z>, g: List<Z>, keep: Int) -> List<Z>:
     for i in 0..g_lim:
         let v = g[i].v
         q_arr[half_b + i] = if v == 0: 0 else: mod_p - v
-    var tneg: List<List<Int>> = []
-    for l_step in 1..=l_big:
-        tneg.push(biv_advance(mut q_arr, l_big, l_step))
+    var tneg: List<List<Int>> = [biv_advance(mut q_arr, l_big, l_step) for l_step in 1..=l_big]
     // Base step: P = rev(f[0..m]) / Q_L(0, y) mod y^m
     var rev_f = List.filled(m, Z.zero)
     for i in 0..m: rev_f[i] = f[m - 1 - i]
@@ -1987,9 +1985,7 @@ fn table_matches<P>(rank2: Int) -> Bool:
         for _ in 0..deg_p:
             s = lcg_next(s)
             p.push(Z(s))
-        var xs: List<Z> = []
-        for i in 0..n_pts:
-            xs.push(Z(i * 17 + 3))
+        var xs: List<Z> = [Z(i * 17 + 3) for i in 0..n_pts]
         let tree = SubproductTree.new(xs)
         // Check root polynomial matches naive product of (x - xs[i])
         var want_root = [Z.one]

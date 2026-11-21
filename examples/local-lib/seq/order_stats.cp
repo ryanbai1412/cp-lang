@@ -38,7 +38,7 @@ pub fn lis<T>(xs: List<T>, strict: Bool = true) -> List<Int>:
     while cur != -1:
         res.push(cur)
         cur = prev[cur]
-    var out = [res[i] for i in (0..res.len).rev]
+    let out = [res[i] for i in (0..res.len).rev]
     out
 
 /// Count how many points `(x, y)` in `pts` lie inside each axis-aligned closed rectangle

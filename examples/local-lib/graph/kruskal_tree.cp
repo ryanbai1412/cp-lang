@@ -32,7 +32,7 @@ pub struct KruskalTree<V>:
 
     pub fn new(edges: List<(Int, V, V)>) -> KruskalTree<V>:
         let n = V.K
-        var sorted_e = sorted(edges, by: e => e.0)
+        let sorted_e = sorted(edges, by: e => e.0)
         var dsu = Dsu<V>()
         var comp_root = [i for i in 0..n]
         var weight = List.filled(n, 0)
@@ -69,7 +69,7 @@ pub struct KruskalTree<V>:
                 let (u, idx) = stack.last!
                 if idx == 0: tin[u] = leaf_order.len
                 if idx < children[u].len:
-                    stack[stack.len - 1] = (u, idx + 1)
+                    stack.last! = (u, idx + 1)
                     stack.push((children[u][idx], 0))
                 else:
                     stack.pop()
@@ -101,7 +101,7 @@ pub struct KruskalTree<V>:
     pub fn bottleneck(self, a: V, b: V) -> ?Int:
         if a == b: return 0
         var u = a.to_idx
-        var v = b.to_idx
+        let v = b.to_idx
         let top = up.len - 1
         if up[top][u] != up[top][v]: return none
         // Climb to the LCA of u and v (the first ancestor whose leaf range contains both)

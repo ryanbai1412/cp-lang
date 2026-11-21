@@ -156,7 +156,7 @@ fn a_forest_of_hulls_shares_one_pool():
         var pool = LiChaoArena(lo, hi)
         var hull = [T] _ => pool.empty
         var lines: [T]List<(Line, Int, Int)> = []
-        var whole = 0
+        let whole = 0
         for _ in 0..40:
             let t = T(rand(0, 4))
             let f = rand_line(15)

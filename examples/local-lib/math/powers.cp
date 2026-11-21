@@ -8,7 +8,7 @@ pub struct Powers<P>(base: Mod<P>):
 
     pub fn new(base: Int, upto: Int) -> Powers<P>:
         let b = Mod<P>(base)
-        var pw = [Mod<P>(1)]
+        var pw = [Mod<P>.one]
         for _ in 0..upto: pw.push(pw.last! * b)
         Powers(b, pw)
 

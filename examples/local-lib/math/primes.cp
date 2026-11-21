@@ -79,7 +79,7 @@ pub fn factorize(n: Int) -> List<(Int, Int)>:
     sort(mut primes)
     var found: List<(Int, Int)> = []
     for p in primes:
-        if not found.is_empty and found.last!.0 == p: found[found.len - 1] = (p, found.last!.1 + 1)
+        if not found.is_empty and found.last!.0 == p: found.last! = (p, found.last!.1 + 1)
         else: found.push((p, 1))
     found
 

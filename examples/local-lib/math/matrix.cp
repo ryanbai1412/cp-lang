@@ -4,7 +4,7 @@
 use std.mod.{Mod}
 use std.algebra.{Monoid}
 pub struct Mat<P>(n: Int, a: List<List<Mod<P>>>):
-    pub fn zero(n: Int) -> Mat<P> = Mat(n, [[Mod<P>(0) for _ in 0..n] for _ in 0..n])
+    pub fn zero(n: Int) -> Mat<P> = Mat(n, [[Mod<P>.zero for _ in 0..n] for _ in 0..n])
 
     pub fn identity(n: Int) -> Mat<P> = Mat(
         n,
@@ -34,7 +34,7 @@ pub struct Mat<P>(n: Int, a: List<List<Mod<P>>>):
 
     /// The matrix times a column vector.
     pub fn apply(self, v: List<Mod<P>>) -> List<Mod<P>>:
-        var out = List.filled(n, Mod<P>(0))
+        var out = List.filled(n, Mod<P>.zero)
         for i in 0..n:
             for j in 0..n: out[i] += a[i][j] * v[j]
         out
@@ -48,9 +48,7 @@ pub struct Mat<P>(n: Int, a: List<List<Mod<P>>>):
             while piv < n and m[piv][col] == 0: piv += 1
             if piv == n: return 0
             if piv != col:
-                let tmp = m[col]
-                m[col] = m[piv]
-                m[piv] = tmp
+                m.swap(col, piv)
                 ans = -ans
             let lead = m[col][col]
             ans *= lead
@@ -70,9 +68,7 @@ pub struct Mat<P>(n: Int, a: List<List<Mod<P>>>):
             while piv < n and m[piv][col] == 0: piv += 1
             if piv == n: continue
             if piv != r:
-                let tmp = m[r]
-                m[r] = m[piv]
-                m[piv] = tmp
+                m.swap(r, piv)
             let inv_l = m[r][col].inv
             for i in r + 1..n:
                 if m[i][col] == 0: continue
@@ -110,7 +106,7 @@ pub fn solve_linear<P>(rows: List<List<Mod<P>>>, b: List<Mod<P>>) -> ?List<Mod<P
         r += 1
     for i in r..m:
         if aug[i][k] != 0: return none
-    var x = List.filled(k, Mod<P>(0))
+    var x = List.filled(k, Mod<P>.zero)
     for col in 0..k:
         if pivot_col[col] != -1: x[col] = aug[pivot_col[col]][k]
     x
@@ -150,7 +146,7 @@ fn counting_walks_matches_dp():
 
 fn sum_mod<P>(xs: List<Mod<P>>) -> Mod<P>:
     var t: Mod<P> = 0
-    for x in xs: t += x
+    t += sum(xs)
     t
 
 @test
@@ -191,6 +187,6 @@ fn det_rank_and_solve_over_mod_prime():
     let sing = Mat<7>.of([[1, 2, 3], [2, 4, 6], [1, 0, 1]])
     assert sing.det() == 0
     assert sing.rank() == 2
-    assert sing.solve([Mod<7>(1), Mod<7>(3), Mod<7>(1)]) == none
-    let ok_sol = sing.solve([Mod<7>(1), Mod<7>(2), Mod<7>(3)])
-    assert ok_sol != none and sing.apply(ok_sol!) == [Mod<7>(1), Mod<7>(2), Mod<7>(3)]
+    assert sing.solve([Mod<7>.one, Mod<7>(3), Mod<7>.one]) == none
+    let ok_sol = sing.solve([Mod<7>.one, Mod<7>(2), Mod<7>(3)])
+    assert ok_sol != none and sing.apply(ok_sol!) == [Mod<7>.one, Mod<7>(2), Mod<7>(3)]

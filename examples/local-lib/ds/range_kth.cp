@@ -13,7 +13,7 @@ pub struct RangeKth<D>:
     root: List<Int>
 
     pub fn new(a: [D]Int) -> RangeKth<D>:
-        var vals = sorted([a[i] for i in D])
+        let vals = sorted([a[i] for i in D])
         var uniq: List<Int> = []
         for v in vals:
             if uniq.is_empty or uniq.last! != v: uniq.push(v)

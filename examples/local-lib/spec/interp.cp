@@ -41,7 +41,7 @@ pub fn lagrange_at<P>(ys: List<Mod<P>>, n: Int) -> Mod<P>:
     var total: Mod<P> = 0
     for i in 0..k:
         let term = ys[i] * before[i] * after[i + 1] * inv_fact[i] * inv_fact[k - 1 - i]
-        if (k - 1 - i) % 2 == 0: total += term else: total = total - term
+        if (k - 1 - i) % 2 == 0: total += term else: total -= term
     total
 
 /// The coefficients, lowest degree first, of the polynomial of least degree through

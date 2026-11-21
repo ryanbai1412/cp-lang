@@ -85,7 +85,7 @@ pub fn show_recurrence(c: List<Int>) -> Str:
     for j in 0..c.len:
         if c[j] == 0: continue
         let mag = abs(c[j])
-        if c[j] < 0: out += " -" elif any_term: out = out + " +"
+        if c[j] < 0: out += " -" elif any_term: out += " +"
         out += " "
         if mag != 1: out += "{mag} "
         out += "a[n-{j + 1}]"

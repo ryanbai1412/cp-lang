@@ -90,7 +90,7 @@ fn substrings_and_their_counts_match_brute_force():
         let s = [A(rand(0, 1)) for _ in 0..n]
         let sam = SuffixAutomaton<A>.of(s)
         let occ = sam.occurrences()
-        var seen: List<List<A>> = []
+        let seen: List<List<A>> = []
         for len in 1..=4:
             for code in 0..(1 << len):
                 let w = [A((code >> i) % 2) for i in 0..len]

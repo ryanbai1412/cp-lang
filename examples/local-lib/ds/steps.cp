@@ -38,8 +38,8 @@ pub struct Steps:
         // join neighbours that ended up equal (additions that cancel)
         var joined: List<(span: Range<Int>, value: Int)> = []
         for run in out:
-            if joined.len > 0 and joined.last!.value == run.value:
-                joined[joined.len - 1] = (span: joined.last!.span.lo..run.span.hi, value: run.value)
+            if let last = joined.last, last.value == run.value:
+                joined.last! = (span: joined.last!.span.lo..run.span.hi, value: run.value)
             else:
                 joined.push(run)
         joined

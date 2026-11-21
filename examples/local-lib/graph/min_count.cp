@@ -5,13 +5,13 @@
 use std.mod.{Mod}
 pub struct MinCount<P>(dist: ?Int, ways: Mod<P>):
     /// Unreachable identity for `combine`.
-    pub fn inf() -> MinCount<P> = MinCount(none, Mod<P>(0))
+    pub fn inf() -> MinCount<P> = MinCount(none, Mod<P>.zero)
 
     /// Zero-length identity for `extend` (distance 0, 1 way).
-    pub fn one() -> MinCount<P> = MinCount(0, Mod<P>(1))
+    pub fn one() -> MinCount<P> = MinCount(0, Mod<P>.one)
 
     /// A single edge of weight `w`.
-    pub fn edge(w: Int) -> MinCount<P> = MinCount(w, Mod<P>(1))
+    pub fn edge(w: Int) -> MinCount<P> = MinCount(w, Mod<P>.one)
 
     /// Combine two alternative paths between the same endpoints (tropical `+`).
     pub fn combine(self, other: MinCount<P>) -> MinCount<P>:
@@ -65,7 +65,7 @@ fn floyd_warshall_min_count_matches_exhaustive_dag_and_positive_graphs():
         let fw = floyd_warshall::<V, 1000000007>(edges)
         for s in V:
             var best: [V]?Int = none
-            var cnt = [V] _ => Z(0)
+            var cnt = [V] _ => Z.zero
             best[s] = 0
             cnt[s] = 1
             for i in s.to_idx..V.K:
