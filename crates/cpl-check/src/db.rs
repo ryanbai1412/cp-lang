@@ -487,9 +487,10 @@ impl Database {
                         || (crate::prelude::SEQUENCE_FORMS.contains(&name.text.as_str()) && uses(&name.text))
                 } else {
                     uses(&name.text)
-                        || crate::prelude::BUILT_ON
-                            .iter()
-                            .any(|(word, on)| *on == name.text && uses(word))
+                        || (!is_std_path(path)
+                            && crate::prelude::BUILT_ON
+                                .iter()
+                                .any(|(word, on)| *on == name.text && uses(word)))
                 };
                 if scope.imports.contains_key(&name.text) || !used {
                     continue;
@@ -1603,4 +1604,10 @@ impl Env for FileCtx<'_> {
 /// Whether `path` is the prelude itself, which is not given its own names.
 fn is_prelude(path: &str) -> bool {
     path == "prelude.cp" || path.ends_with("stdlib/prelude.cp")
+}
+
+/// Whether `path` is a standard-library module (which declares its own imports
+/// explicitly, so `BUILT_ON` must not introduce stdlib-to-stdlib cycles).
+fn is_std_path(path: &str) -> bool {
+    path.contains("/stdlib/") || path.starts_with("stdlib/") || path.starts_with("std/")
 }

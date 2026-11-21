@@ -1638,6 +1638,18 @@ impl<'a> Lowerer<'a> {
         if is_read_call(init) {
             return Some(self.read(spec, init.span));
         }
+        if let Some(none_arg) = read_none_arg(init) {
+            let mut spec = spec;
+            let absent = self.expect(none_arg, &Ty::Int);
+            if !super::call::reads_none_as(&mut spec, &absent) {
+                let message = format!(
+                    "`none:` is for reading a `?T`, and a `{}` has none",
+                    self.show(&want)
+                );
+                self.error(codes::UNKNOWN_ARG_NAME, init.span, message);
+            }
+            return Some(self.read(spec, init.span));
+        }
         // `let b: [0..n]Int = read_output()` in a `@checker`: the same
         // layout, read from what the solution printed.
         if is_read_output_call(init) && self.aside == Some(Aside::Checker) {
@@ -3977,6 +3989,25 @@ impl<'a> Lowerer<'a> {
 fn is_read_output_call(e: &ast::Expr) -> bool {
     matches!(&e.kind, ast::ExprKind::Call { callee, args }
         if args.is_empty() && matches!(&callee.kind, ast::ExprKind::Name(n) if n == "read_output"))
+}
+
+/// `read(none: sentinel)` (optionally with `gen: ...`).
+fn read_none_arg(e: &ast::Expr) -> Option<&ast::Expr> {
+    let ast::ExprKind::Call { callee, args } = &e.kind else {
+        return None;
+    };
+    if !matches!(&callee.kind, ast::ExprKind::Name(n) if n == "read") {
+        return None;
+    }
+    let mut none_val = None;
+    for a in args {
+        match a.name.as_ref().map(|n| n.text.as_str()) {
+            Some("none") => none_val = Some(&a.value),
+            Some("gen") => {}
+            _ => return None,
+        }
+    }
+    none_val
 }
 
 /// `read()` or `read(gen: ...)`.

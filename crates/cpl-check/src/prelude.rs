@@ -99,6 +99,8 @@ pub const BUILT_ON: &[(&str, &str)] = &[
     ("prefix", "prefix1"),
     ("prefix", "prefix2"),
     ("adjacency", "Bitset"),
+    ("all", "Bitset"),
+    ("without", "Bitset"),
 ];
 
 fn int_fn(arity: usize) -> Ty {

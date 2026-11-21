@@ -2711,3 +2711,76 @@ print(a == none, b == none, r2.len, r3.len)
 ";
     assert!(check(src).is_empty(), "expected clean check, got: {:?}", check(src));
 }
+
+#[test]
+fn existential_return_compress_hover_and_escape() {
+    let ok = "\
+fn compress_vals<D>(xs: [D]Int) -> (domain C, [D]C, [C]Int):
+    var uniq: List<Int> = []
+    for i in D:
+        uniq.push(xs[i])
+    uniq.sort()
+    uniq = uniq.deduped()
+    domain C = 0..uniq.len
+    let idx: [D]C = [D] i => C(bsearch_first(0..uniq.len, k => uniq[k] >= xs[i])!)
+    let vals: [C]Int = [C] c => uniq[c.ord]
+    (C, idx, vals)
+
+domain I = 0..4
+let a: [I]Int = [30, 10, 30, 20]
+let (domain V, mapped, vals) = compress_vals(a)
+print(V.len, mapped[I(0)].ord, vals[mapped[I(3)]])
+";
+    assert_eq!(check(ok), vec![]);
+    let v_hover = hover(ok, "V, mapped");
+    assert!(
+        v_hover.contains("V"),
+        "expected existential domain hover for V, got: {v_hover}"
+    );
+    let mapped_hover = hover(ok, "mapped,");
+    assert!(
+        mapped_hover.contains("[I]V"),
+        "expected `[I]V` hover for mapped, got: {mapped_hover}"
+    );
+    let vals_hover = hover(ok, "vals) =");
+    assert!(
+        vals_hover.contains("[V]Int"),
+        "expected `[V]Int` hover for vals, got: {vals_hover}"
+    );
+
+    let bad = "\
+fn bad_compress<D>(xs: [D]Int) -> [D]Int:
+    domain C = 0..2
+    let p: [C]Int = 0
+    p
+";
+    let errs = check(bad);
+    assert!(
+        errs.iter().any(|d| d.code == cpl_diag::codes::DOMAIN_ESCAPES),
+        "expected E0313 on escaping local domain, got: {errs:?}"
+    );
+}
+
+#[test]
+fn struct_array_field_defaults_and_optional_map_filter_typecheck() {
+    let ok = "\
+type Z = Mod<998_244_353>
+type Vol = 1..=5
+struct Barrels:
+    count: [Vol]Int = 0
+    delta: [0..=4]Z = 0
+
+let b = Barrels()
+let _ = (b.count[1], b.delta[0])
+
+domain P = 1..=4
+fn is_even(p: P) -> Bool = p.label % 2 == 0
+let x: ?P = some(P(2))
+let y: ?Bool = x.map(is_even)
+let z: ?Int = x.filter(p => p.label > 1).map(p => p.ord)
+let n_opt: ?P = none
+let w: ?Int = n_opt.map(p => p.ord)
+let _ = (y ?? false, z ?? -1, w ?? -1)
+";
+    assert_eq!(check(ok), vec![]);
+}

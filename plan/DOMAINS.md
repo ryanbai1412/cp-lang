@@ -205,6 +205,11 @@ directly in `SegTree`/`LazySegTree`/`Fenwick` (`cf2207f`), algebraic product dom
 and `s.0`/`s.v` projections across checker, IR, interpreter, C++, LSP, and docs),
 partial-injection and bijection `a.inverse()` (`[D]?E -> [E]?D` trapping on duplicate
 images, `[D]E -> [E]D` on bijections, adopted in `cf2084g1`),
+auto-loaded `Bitset` for `V.all.without(c)` with zero imports,
+range-alias array dimensions (`type Vol = 1..=5; [Vol]Int`),
+struct/param array scalar-fill defaults (`count: [Vol]Int = 0`, `delta: [0..=n]Z = 0`),
+typed range-indexed sentinel reads (`let target: [0..n]?Int = read(none: -1)`),
+optional `.map(f)` / `.filter(p)` (adopted in `cf2084g1`),
 and typed `Item`/`Cut` ranges via `minmax` and `choose2` now also work end to end.
 Eight ports converted (`ucup4s25c`, `cf2222f`, `cf2101b`, `cf2268c`, `cf2150f`,
 `cf2147h`, `cf2129b`, `cf2147f`), with `cf2147h` (`1.631x -> 1.063x`) and

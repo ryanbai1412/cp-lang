@@ -402,6 +402,45 @@ impl<'a> Checker<'a> {
             }
         }
         match base_ty {
+            Ty::Optional(ref inner) if matches!(name.text.as_str(), "map" | "filter") => {
+                if let ExprKind::Call { args, .. } = &call.kind {
+                    if args.len() == 1 && args[0].name.is_none() {
+                        let f = &args[0].value;
+                        let fn_ret = match &f.kind {
+                            ExprKind::Lambda {
+                                params,
+                                param_tys,
+                                body,
+                            } if params.len() == 1 => {
+                                self.push_scope();
+                                let pty = param_tys
+                                    .first()
+                                    .and_then(|o| o.as_ref())
+                                    .map(|t| self.resolve_type(t))
+                                    .unwrap_or_else(|| (**inner).clone());
+                                self.bind(&params[0], &pty, false, "param");
+                                let r = self.infer(body);
+                                self.pop_scope();
+                                r
+                            }
+                            _ => {
+                                let fty = self.infer(f);
+                                match fty {
+                                    Ty::Fn { ret, .. } => *ret,
+                                    Ty::Array { elem, .. } => *elem,
+                                    _ => Ty::Unknown,
+                                }
+                            }
+                        };
+                        return Some(if name.text == "map" {
+                            Ty::Optional(Box::new(fn_ret))
+                        } else {
+                            Ty::Optional(inner.clone())
+                        });
+                    }
+                }
+                None
+            }
             Ty::Array { ref index, ref elem } if name.text == "inverse" => {
                 if let Some(ret) = self.array_inverse_ret(index, elem) {
                     Some(ret)

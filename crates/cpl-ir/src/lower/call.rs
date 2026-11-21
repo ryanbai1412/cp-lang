@@ -1010,7 +1010,13 @@ impl<'a> Lowerer<'a> {
                 (Some(arg), _) => values.push(self.expect_declared(&arg.value, ty, Some(&decl.fields[i].ty))),
                 (None, Some(default)) => {
                     let saved = std::mem::replace(&mut self.offset, self.structs[id].offset);
-                    values.push(self.expect(default, ty));
+                    let val = if matches!(ty, Ty::Array { .. }) {
+                        self.let_value(Some(&decl.fields[i].ty), Some(default), default.span)
+                            .unwrap_or_else(|| self.err_expr(default.span))
+                    } else {
+                        self.expect(default, ty)
+                    };
+                    values.push(val);
                     self.offset = saved;
                 }
                 (None, None) => {
@@ -5273,6 +5279,12 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+        // `opt.map(f)` / `opt.filter(p)` on `?T`.
+        if let ([arg], op @ ("map" | "filter")) = (args, name.text.as_str()) {
+            if arg.name.is_none() && matches!(self.probe_ty_silent(base), Some(Ty::Opt(_))) {
+                return self.lower_opt_map_or_filter(base, &arg.value, op == "map", span);
+            }
+        }
         // `a.inverse()`: partial injection `[D]?E -> [E]?D` or bijection `[D]E -> [E]D`.
         if args.is_empty() && name.text == "inverse" {
             if let Some(Ty::Array { dims, .. }) = self.probe_ty_silent(base) {
@@ -7165,6 +7177,107 @@ impl<'a> Lowerer<'a> {
     /// Lowers `a.inverse()` on a 1D array:
     /// - `[D]?E` (partial injection) -> `[E]?D`, trapping if two positions map to the same value;
     /// - `[D]E` (total bijection) -> `[E]D`, trapping if a value is repeated or missing.
+    fn lower_opt_map_or_filter(
+        &mut self,
+        base: &ast::Expr,
+        fn_ast: &ast::Expr,
+        is_map: bool,
+        span: Span,
+    ) -> Expr {
+        let opt_val = self.expr(base, None);
+        let Ty::Opt(inner_ty) = opt_val.ty.clone() else {
+            return self.err_expr(span);
+        };
+        let opt_slot = self.temp(opt_val.ty.clone());
+        let held = self.local(opt_slot, span);
+        let is_some = self.mk(ExprKind::IsSome(Box::new(held.clone())), Ty::Bool, span);
+        let unwrapped = self.mk(
+            ExprKind::Unwrap(Box::new(held), false),
+            (*inner_ty).clone(),
+            span,
+        );
+        let val_slot = self.temp((*inner_ty).clone());
+        let val_expr = self.local(val_slot, span);
+
+        let mut then_stmts = vec![Stmt::Let(val_slot, Some(unwrapped))];
+        let applied = if let ast::ExprKind::Lambda { params, body, .. } = &fn_ast.kind {
+            if params.len() == 1 {
+                self.cx.scopes.push(HashMap::new());
+                let p_slot = self.loop_var(&params[0], (*inner_ty).clone(), &mut then_stmts);
+                let init_p = self.local(val_slot, span);
+                then_stmts.push(Stmt::Let(p_slot, Some(init_p)));
+                let res = if is_map {
+                    self.expr(body, None)
+                } else {
+                    self.expect(body, &Ty::Bool)
+                };
+                self.cx.scopes.pop();
+                res
+            } else {
+                self.err_expr(span)
+            }
+        } else {
+            let callee_val = self.expr(fn_ast, None);
+            match callee_val.ty.clone() {
+                Ty::Fn(_, ret_ty) => self.mk(
+                    ExprKind::CallExpr(Box::new(callee_val), vec![Arg::Value(val_expr.clone())]),
+                    *ret_ty,
+                    span,
+                ),
+                Ty::Array { elem, .. } => self.mk(
+                    ExprKind::Index(Box::new(callee_val), vec![val_expr.clone()]),
+                    *elem,
+                    span,
+                ),
+                _ => {
+                    self.error(
+                        codes::TYPE_MISMATCH,
+                        fn_ast.span,
+                        format!(
+                            "`{}` expects a function, lambda, or array",
+                            if is_map { "map" } else { "filter" }
+                        ),
+                    );
+                    self.err_expr(span)
+                }
+            }
+        };
+
+        let out_ty = if is_map {
+            Ty::Opt(Box::new(applied.ty.clone()))
+        } else {
+            Ty::Opt(inner_ty.clone())
+        };
+        let res_slot = self.temp(out_ty.clone());
+        let none_expr = self.mk(ExprKind::None, out_ty.clone(), span);
+        let res_place = Place {
+            kind: PlaceKind::Local(res_slot),
+            ty: out_ty.clone(),
+            span,
+        };
+        if is_map {
+            let some_expr = self.mk(ExprKind::Some(Box::new(applied)), out_ty.clone(), span);
+            then_stmts.push(Stmt::Assign(res_place, AssignOp::Set, some_expr));
+        } else {
+            let some_val = self.mk(ExprKind::Some(Box::new(val_expr)), out_ty.clone(), span);
+            then_stmts.push(Stmt::If(
+                applied,
+                Block {
+                    stmts: vec![Stmt::Assign(res_place, AssignOp::Set, some_val)],
+                },
+                Block::default(),
+            ));
+        }
+        let res_expr = self.local(res_slot, span);
+        let stmts = vec![
+            Stmt::Let(opt_slot, Some(opt_val)),
+            Stmt::Let(res_slot, Some(none_expr)),
+            Stmt::If(is_some, Block { stmts: then_stmts }, Block::default()),
+            Stmt::Give(res_expr),
+        ];
+        self.mk(ExprKind::Do(Block { stmts }), out_ty, span)
+    }
+
     fn lower_array_inverse(&mut self, base: &ast::Expr, span: Span) -> Expr {
         let base_ty_ast = if let ast::ExprKind::Name(n) = &base.kind {
             if let Some(slot) = self.lookup(n) {
@@ -8484,7 +8597,7 @@ pub(super) fn is_place(e: &ast::Expr) -> bool {
 
 /// Makes every `?T` of `spec` read `absent` as `none`; false when it has no
 /// `?T`.
-fn reads_none_as(spec: &mut Spec, absent: &Expr) -> bool {
+pub(super) fn reads_none_as(spec: &mut Spec, absent: &Expr) -> bool {
     match spec {
         Spec::Plain(_) | Spec::Int { .. } | Spec::Call(_) => false,
         Spec::Fields(_, fields) => {

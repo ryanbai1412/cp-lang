@@ -15,7 +15,7 @@ let at = a.inverse()
 var dp: [0..=half]?Int = none
 dp[0] = 0
 for k in 0..n:
-    let forced: ?Bool = if let p = at[k + 1]: some(p.label % 2 == 0) else: none
+    let forced = at[k + 1].map(p => p.label % 2 == 0)
     var next: [0..=half]?Int = none
     for c in 0..=min(k, half):
         if let x = dp[c]:

@@ -23,6 +23,30 @@ impl<'a> Checker<'a> {
         index.len() > 1 && self.fits(cell, elem)
     }
 
+    fn array_fills(&mut self, declared: &Ty, init_ty: &Ty, init: &Expr) -> bool {
+        match (declared, init_ty) {
+            (Ty::Array { elem, .. }, Ty::Named { name, args })
+                if name == "List" && args.len() == 1 =>
+            {
+                self.fits(&args[0], elem)
+                    || self.fits(init_ty, elem)
+                    || self.rows_fit(declared, &args[0])
+            }
+            (Ty::Array { elem, .. }, _) => {
+                let mut cell = &**elem;
+                let literal = matches!(
+                    init.kind,
+                    ExprKind::Int(_) | ExprKind::Bool(_) | ExprKind::Float(_)
+                );
+                while let (true, Ty::Array { elem, .. }) = (literal, cell) {
+                    cell = elem;
+                }
+                self.fits(init_ty, cell)
+            }
+            _ => false,
+        }
+    }
+
     /// Checks the statements of one top-level item.
     pub(crate) fn item(&mut self, stmts: &[Stmt]) {
         for replay in self.env.lent_before() {
@@ -484,27 +508,8 @@ impl<'a> Checker<'a> {
                 }
                 // `var seen: [V]Bool = false` fills the array with the value.
                 // A comprehension builds the array when one is declared.
-                let fills = match (&declared, &init_ty) {
-                    (Some(Ty::Array { elem, .. }), Some(Ty::Named { name, args }))
-                        if name == "List" && args.len() == 1 =>
-                    {
-                        // `[1, 2, 3]` is the cells; `var ways: [0..n]List<Z> = [Z(1)]`
-                        // fills each cell with the list.
-                        self.fits(&args[0], elem)
-                            || self.fits(init_ty.as_ref().expect("matched"), elem)
-                            || self.rows_fit(declared.as_ref().expect("matched"), &args[0])
-                    }
-                    (Some(Ty::Array { elem, .. }), Some(init_ty)) => {
-                        // A literal fills the cells of an array of arrays too.
-                        let mut cell = &**elem;
-                        let literal = init.as_ref().is_some_and(|e| {
-                            matches!(e.kind, ExprKind::Int(_) | ExprKind::Bool(_) | ExprKind::Float(_))
-                        });
-                        while let (true, Ty::Array { elem, .. }) = (literal, cell) {
-                            cell = elem;
-                        }
-                        self.fits(init_ty, cell)
-                    }
+                let fills = match (&declared, &init_ty, init) {
+                    (Some(decl), Some(ity), Some(init_expr)) => self.array_fills(decl, ity, init_expr),
                     _ => false,
                 };
                 if let (Some(declared), Some(init_ty), Some(init), false) =
@@ -620,15 +625,17 @@ impl<'a> Checker<'a> {
                     });
                     if let Some(default) = &field.default {
                         let default_ty = self.infer(default);
-                        self.expect_fits(&default_ty, &ty, default, |c, got, want| {
-                            format!(
-                                "`{}` is {}, but its default `{}` is {}",
-                                field.name.text,
-                                want.with_article(),
-                                c.quote(default.span),
-                                got.with_article()
-                            )
-                        });
+                        if !self.array_fills(&ty, &default_ty, default) {
+                            self.expect_fits(&default_ty, &ty, default, |c, got, want| {
+                                format!(
+                                    "`{}` is {}, but its default `{}` is {}",
+                                    field.name.text,
+                                    want.with_article(),
+                                    c.quote(default.span),
+                                    got.with_article()
+                                )
+                            });
+                        }
                     }
                 }
                 self.type_hover(&s.name);
@@ -1327,15 +1334,17 @@ impl<'a> Checker<'a> {
             let ty = sig_params.next().map_or(Ty::Unknown, |p| p.ty.clone());
             if let Some(default) = &param.default {
                 let default_ty = self.infer(default);
-                self.expect_fits(&default_ty, &ty, default, |c, got, want| {
-                    format!(
-                        "`{}` is {}, but its default `{}` is {}",
-                        param.name.text,
-                        want.with_article(),
-                        c.quote(default.span),
-                        got.with_article()
-                    )
-                });
+                if !self.array_fills(&ty, &default_ty, default) {
+                    self.expect_fits(&default_ty, &ty, default, |c, got, want| {
+                        format!(
+                            "`{}` is {}, but its default `{}` is {}",
+                            param.name.text,
+                            want.with_article(),
+                            c.quote(default.span),
+                            got.with_article()
+                        )
+                    });
+                }
             }
             self.declare(
                 &param.name.text,

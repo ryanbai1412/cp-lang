@@ -2362,6 +2362,15 @@ impl<'a> Lowerer<'a> {
                 Some(DimSpec::Int(Box::new(self.int_lit(n, ty.span))))
             }
             ast::TypeKind::Named { name, args } if args.is_empty() => {
+                if let Some(Sym::Alias(aid)) = self.get_sym(&name.text) {
+                    let (m, aliased_ty, offset) = self.aliases[aid];
+                    let saved_mod = std::mem::replace(&mut self.cur_mod, m);
+                    let saved_offset = std::mem::replace(&mut self.offset, offset);
+                    let d = self.dim(aliased_ty, values);
+                    self.cur_mod = saved_mod;
+                    self.offset = saved_offset;
+                    return d;
+                }
                 if !values {
                     return Some(DimSpec::Int(Box::new(self.int_lit(0, ty.span))));
                 }
