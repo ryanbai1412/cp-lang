@@ -1,7 +1,7 @@
 # ucup5s05e
 
 Score: 3/5
-Dream: pending cold rescore (rewritten: derives 5-vertex chain window + off-diagonal invariant in header, names `WINDOW = 5`, replaces hand-listed `quad_edges` with cyclic `hull_edges` comprehension, uses `repeat q`)
+Dream: 4/5
 
 Scored cold against `design/EXEMPLARS-PORTS.md` (previous score 3/5; awaiting rescore).
 
@@ -19,3 +19,11 @@ Dream 3/5, port → 3/5, rescored on current main; sent back.
 - Minor: `for _ in 0..q` (line 51) should be `repeat q`.
 
 Port 3/5: a triple loop in place of `combinations` (reported).
+
+## Cold review (HEAD)
+
+Dream 3/5 → 4/5, rescored cold on current main. The header now derives the quadrilateral, why a `WINDOW = 5` chain window gives a strict triangle, and the four-corner fallback; `hull_edges` is cyclic and `WINDOW` is named.
+- The only error is `combinations(3)` (line 56; the `t[0]` E0305s follow from it), which is reported.
+- Minor: `near` (lines 47-50) clamps a window with `max(0, min(at - 1, hi - WINDOW))`; a clamped `window(around:, len:)` would say it.
+
+Port 3/5: still hard-codes `at + 4`/`hi - 5` (lines 35-36), lists `quad_edges` by hand (lines 27-30), and uses `for _ in 0..q` (line 54), all of which the dream now fixes; the triple loop (lines 43-47) is the reported `combinations` gap.

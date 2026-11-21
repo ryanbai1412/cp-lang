@@ -1,7 +1,7 @@
 # wtf26d
 
 Score: 2/5
-Dream: pending cold rescore (rewritten: uses `q[start..] = suffix`, `[...].somes.min()` instead of hand `min_pos`/filter, and removes global `seen_inversion` in favor of local `had_inv` returned by `commit_place`; logs `.somes` and slice assignment in friction)
+Dream: 4/5
 
 Rescored cold on main 1a5cc751 (old 2/5, new 2/5) for accepted syntax (decisions.md §53, §58, §63, §70) and stdlib reuse. Scored on its first landing (ddf13f69); no dream commit since. Syntax: nothing outside decisions.md (`.inverse()` is a method, not a getter). The nested `if let ... else` optional clamps (lines 52-53) are hand-folding a `min` over optionals. Sent back: under 4, the lane owes a rewrite before the port is judged.
 
@@ -75,3 +75,9 @@ Dream 3/5, rescored cold on current main; sent back. The header now derives the 
 - Owed: `min_pos` (line 59) re-implements `min` over optionals, and lines 73-75 filter `some`s by hand to take a minimum.
 - Owed: `seen_inversion` is a mutable global (line 64) that is also threaded as `had_inv` (lines 66-90); keep one of the two.
 - Reported gaps: `pop_while` (line 33; the `max_p` E0203 follows from it) and `Option.filter` (line 36).
+
+## Cold review (HEAD)
+
+Dream 3/5 → 4/5, rescored cold on current main. `q[start..] = suffix`, `.somes.min()` and a local `had_inv` close the three owed items; the header derives the witness choice and block disjointness.
+- The only errors are `pop_while` (line 33; the `max_p` E0203 follows) and `.somes` (lines 60, 71), both reported.
+- Minor: `can_place` and `commit_place` each compute `required_cap` (lines 78, 87), so the fact lives twice. Lines 119-124 pop `conds.items` directly, bypassing `CondStack`.
