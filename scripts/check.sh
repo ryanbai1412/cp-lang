@@ -52,6 +52,10 @@ done
 
 step() { printf '\n==> %s\n' "$*"; }
 fail() { echo "check: $*" >&2; exit 1; }
+
+markers=$(git grep -nE '^(<{7}|>{7}|\|{7})( |$)' -- ':!*.png' ':!*.gz' || true)
+[ -z "$markers" ] || fail "merge conflict markers left in:
+$markers"
 need() { command -v "$1" >/dev/null || fail "\`$1\` is not installed; $2"; }
 
 # Staged changes, plus commits that are not on origin/main yet, so a bot

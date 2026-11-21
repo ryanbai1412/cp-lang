@@ -4,7 +4,7 @@ fn take_r(r: Range<I128>) -> I128 = r.lo + r.hi
 
 let big: I128 = I128(1000000000000000000) * I128(100)
 let r: Range<I128> = big..=big + I128(3)
-print(take_r(r), r.lo, r.hi, r.len(), r.first!, r.last!)
+print(take_r(r), r.lo, r.hi, r.len, r.first!, r.last!)
 var acc: I128 = 0
 for x in r:
     acc += x

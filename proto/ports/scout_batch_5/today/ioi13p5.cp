@@ -28,7 +28,7 @@ fn done_in(minutes: Int) -> Bool:
         for _ in 0..minutes:
             if let s = left.pop():
                 if -s >= limit: return false
-    left.len() == 0
+    left.len == 0
 
 domain Minutes = 1..=t
 if let m = Minutes.first_where(m => done_in(m.label)): print(m)

@@ -18,7 +18,7 @@ var dist: [V]Int = 1e18
 var pq = MinHeap<(Int, V)>()
 dist[V.first] = 0
 pq.push((0, V.first))
-while pq.len() > 0:
+while pq.len > 0:
     let (d, u) = pq.pop()!
     if d == dist[u]:
         for (v, w) in adj[u]:

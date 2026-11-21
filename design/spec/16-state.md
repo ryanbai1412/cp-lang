@@ -49,7 +49,7 @@ let adj = adjacency(read<[V.count - 1](V, V)>())
 fn deepest(v: V, p: ?V) -> Int:              // sees V and adj
     …
 
-if adj[V.first].is_empty():
+if adj[V.first].is_empty:
     print(-1)
     return                                    // returns from the per-test closure: the next test
 print(deepest(V.first, none))

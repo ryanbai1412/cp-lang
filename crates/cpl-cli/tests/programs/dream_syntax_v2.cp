@@ -32,7 +32,7 @@ let st = mut stairs[k % 2]
 k = 0
 st.lift += 5
 st.pts.push(42)
-print(stairs[0].lift, stairs[1].lift, stairs[1].pts.len())
+print(stairs[0].lift, stairs[1].lift, stairs[1].pts.len)
 
 var nums: [0..3]Int = [1, 2, 3]
 let elem = mut nums[1]

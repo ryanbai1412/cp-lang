@@ -8,9 +8,9 @@ let w: [n]1..=1e11 = read()
 
 var heap = MinHeap<(Int, Int)>()
 for x in w: heap.push((x, 0))
-while (heap.len() - 1) % (k - 1) != 0: heap.push((0, 0))
+while (heap.len - 1) % (k - 1) != 0: heap.push((0, 0))
 var total = 0
-while heap.len() > 1:
+while heap.len > 1:
     var weight = 0
     var depth = 0
     for _ in 0..k:

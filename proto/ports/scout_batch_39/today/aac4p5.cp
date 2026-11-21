@@ -19,11 +19,11 @@ for v in V:
         pq.push((-dsu.size(v), -v.idx))
 
 var ok = true
-if pq.len() < x:
+if pq.len < x:
     ok = false
 
 if ok:
-    while pq.len() > x:
+    while pq.len > x:
         let p1 = pq.pop()!
         let p2 = pq.pop()!
         let u = V(-p1.1 + 1)
@@ -34,7 +34,7 @@ if ok:
 
     var comp_id: [V]Int = -1
     var cid = 0
-    while pq.len() > 0:
+    while pq.len > 0:
         let p = pq.pop()!
         let r = V(-p.1 + 1)
         comp_id[r] = cid

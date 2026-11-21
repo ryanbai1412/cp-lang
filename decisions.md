@@ -2957,7 +2957,7 @@ library. Reverse: an `Int`-only `aliens` plus a separate wide variant.
 - **66.2 Fieldless enums as first-class array dimensions (`[Sign]T`, `[Sign] x => ...`, explicit variant values).**
   Fieldless enum variants accept optional constant integer discriminants (`enum Sign: neg = -1, zero = 0, pos = 1`,
   read via `Int(s)`). Any fieldless enum `E` is a valid array dimension `Dim::Enum(E)` / `DimSpec::Enum(E)` of static
-  length `E.variants.len()`, supports `[E] x => expr` table comprehensions and `for x in E:` iteration, and indexes
+  length `E.variants.len`, supports `[E] x => expr` table comprehensions and `for x in E:` iteration, and indexes
   with `Cast::EnumOrd(E)` so distinct enums cannot index each other's tables.
   Reason: enables `[Sign]Path` DP/segment-tree tags (`design/EXEMPLARS-PORTS.md`) without manual ordinal arrays or
   losing enum type safety.

@@ -7,7 +7,7 @@ var m: Map<Int, Str> = Map()
 for x in [5, 2, 9]:
     s.insert(x)
     m[x] = "v{x}"
-print(s.first(), s.last(), s.first, s.len())
+print(s.first(), s.last(), s.first, s.len)
 print(m.first(), m.last())
 print(sorted(E.all, by: e => w[e]))
 print(sorted(0..5, by: i => (i * 2) % 5))

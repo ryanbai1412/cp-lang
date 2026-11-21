@@ -27,14 +27,14 @@ for u in V.rev:
     for (v, w) in kids[u]:
         var other = slot[v]
         lift[other] += w
-        if pile[mine].len() < pile[other].len(): swap(mut mine, mut other)
-        while pile[other].len() > 0:
+        if pile[mine].len < pile[other].len: swap(mut mine, mut other)
+        while pile[other].len > 0:
             let (neg, cnt) = pile[other].pop()!
             pile[mine].push((neg - lift[other] + lift[mine], cnt))
     slot[u] = mine
     // serve u from the most valuable supply below, never at a loss
     var used = 0
-    while used < want[u] and pile[mine].len() > 0:
+    while used < want[u] and pile[mine].len > 0:
         let (neg, cnt) = pile[mine].pop()!
         let value = lift[mine] - neg
         if value < 0:

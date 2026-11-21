@@ -6,4 +6,4 @@ for k in 0..n:
     let x: 1..=99 = read()
     heap.push(x)
 let merged = heap.pop()! * 100 + heap.pop()!
-print(merged, heap.len())
+print(merged, heap.len)
