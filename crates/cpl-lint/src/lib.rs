@@ -269,10 +269,20 @@ pub const BY_TWIN: Lint = Lint {
     name: "by_twin",
     default: Level::Warn,
     title: "`_by` twin instead of a `by:` option",
-    summary: "`min_by`, `max_by`, `argmax_by`, `runs_by`, `first_ge_by`: pass `by:` to the base operation",
-    explanation: "Keyed sequence operations take a `by:` named option on the base function rather than a `_by` twin: `xs.min(by: k)`, `xs.max(by: k)`, `xs.argmax(by: k)`, `xs.is_sorted(by: k)`, `xs.runs(by: k)`, `xs.run_ranges(by: k)`, `xs.first_ge(x, by: k)`. `cpl lint --fix` rewrites both method and free `_by` calls.",
+    summary: "`min_by`, `max_by`, `argmax_by`, `runs_by`, `group_by`, `first_ge_by`: pass `by:` to the base operation",
+    explanation: "Keyed sequence operations take a `by:` named option on the base function rather than a `_by` twin: `xs.min(by: k)`, `xs.max(by: k)`, `xs.argmax(by: k)`, `xs.group(by: k)`, `xs.is_sorted(by: k)`, `xs.runs(by: k)`, `xs.run_ranges(by: k)`, `xs.first_ge(x, by: k)`. `cpl lint --fix` rewrites both method and free `_by` calls.",
     trigger: "let xs = [\"bbb\", \"a\", \"cc\"]\nprint(min_by(xs, s => s.len))\n",
     fix: "let xs = [\"bbb\", \"a\", \"cc\"]\nprint(xs.min(by: s => s.len))\n",
+};
+pub const DOMAIN_SPELLING: Lint = Lint {
+    code: Code("L0512"),
+    name: "domain_spelling",
+    default: Level::Warn,
+    title: "Non-canonical domain/sequence method spelling",
+    summary: "`D.sorted(by:)` -> `D.sort(by:)`; `xs.first(where: p)` -> `xs.first(p)`",
+    explanation: "Domains follow the one-spelling sequence rules: sort a domain with `D.sort(by: key)` (matching `xs.sort(by: key)`), and pass the predicate to `.first(p)` positionally (without `where:`). `cpl fix` rewrites both.",
+    trigger: "domain V = 1..=3\nlet a: [V]Int = [3, 1, 2]\nlet _ = V.sorted(by: a)\nlet _ = V.first(where: v => a[v] > 1)\n",
+    fix: "domain V = 1..=3\nlet a: [V]Int = [3, 1, 2]\nlet _ = V.sort(by: a)\nlet _ = V.first(v => a[v] > 1)\n",
 };
 
 pub const TREE_ORDER: Lint = Lint {
@@ -309,6 +319,7 @@ pub const LINTS: &[Lint] = &[
     FREE_FOLD,
     BY_TWIN,
     TREE_ORDER,
+    DOMAIN_SPELLING,
 ];
 
 /// The taste lints (`plan/PORTING.md`): code that works but reads like

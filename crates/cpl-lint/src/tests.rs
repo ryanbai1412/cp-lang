@@ -835,7 +835,6 @@ fn by_twin_becomes_by_option() {
     let chunk = "let xs = [1, 1, 2]\nprint(xs.chunk_by((a, b) => a == b))\n";
     assert_eq!(taste_codes(chunk), Vec::<&str>::new());
 }
-
 #[test]
 fn tree_order_becomes_preorder_array() {
     let src = "for v in t.preorder.rev: print(v)\nfor v in t.postorder: print(v)\nlet top = t.preorder[0]\n";
@@ -843,5 +842,27 @@ fn tree_order_becomes_preorder_array() {
     assert_eq!(
         fixed(src),
         "for v in t.at.rev: print(v)\nfor v in t.at.rev: print(v)\nlet top = t.at[0]\n"
+    );
+}
+
+#[test]
+fn domain_spelling_and_group_by_codemods() {
+    let src = "\
+domain V = 1..=3
+let w: [V]Int = [3, 1, 2]
+let a = V.sorted(by: w)
+let b = V.first(where: v => w[v] > 1)
+let c = V.group_by(v => Int(v) % 2)
+";
+    assert_eq!(taste_codes(src), ["L0512", "L0512", "L0510"]);
+    assert_eq!(
+        fixed(src),
+        "\
+domain V = 1..=3
+let w: [V]Int = [3, 1, 2]
+let a = V.sort(by: w)
+let b = V.first(v => w[v] > 1)
+let c = V.group(by: v => Int(v) % 2)
+"
     );
 }

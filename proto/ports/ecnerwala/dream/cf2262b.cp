@@ -31,7 +31,7 @@ fn forfeits() -> Int:
     var from = I.first
     while eaters.first_ge(from) is c:
         let stop = fixpoint(tops.first_gt(c)?.l ?? I.end,
-            s => tops.first(where: q => a[q] > total.sum(c.l..s))?.l ?? I.end)
+            s => tops.first(q => a[q] > total.sum(c.l..s))?.l ?? I.end)
         lost -= tops.count(c..stop) - 1
         from = stop.right ?? break
     lost

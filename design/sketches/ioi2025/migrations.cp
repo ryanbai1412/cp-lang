@@ -37,7 +37,7 @@ mod migrations:
     // site (c − 1) / 4 of the window says (c − 1) % 4 + 1.
     fn signal(c: Int, from: Site) -> ?(Site, 1..=4) = if c > 0: (from + (c - 1) / 4, (c - 1) % 4 + 1)
     fn heard(s: [Site]0..=4, window: Range<Site>) -> Int =
-        window.first(where: j => s[j] != 0).map(j => 4 * (j - window.start) + s[j]) ?? 0
+        window.first(j => s[j] != 0).map(j => 4 * (j - window.start) + s[j]) ?? 0
 
     // The endgame. Each table lists the end pairs still possible; a site sends its
     // pair's index divided by the group size, and `after` says what that leaves.

@@ -17,8 +17,8 @@ let masks: List<Set<Query>> = do:
         for q in s: room[q] -= 1
     for s in Query.subsets(size: ..=2): take(s)
     while chosen.len < 845:
-        let roomiest = Query.sorted(by: q => desc(room[q]))
-        take(roomiest.subsets(size: 3).first(where: s => s not in chosen and s.all(q => room[q] > 0))!)
+        let roomiest = Query.sort(by: q => desc(room[q]))
+        take(roomiest.subsets(size: 3).first(s => s not in chosen and s.all(q => room[q] > 0))!)
     chosen.to_list()
 let value_of = masks.inverse()
 

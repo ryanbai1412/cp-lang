@@ -16,7 +16,7 @@ fn win() -> ?V:
     var heavier_lca: ?V = none
     for bucket in by_w.rev:
         if let l = heavier_lca:
-            if let v = bucket.first(where: v => not t.is_anc(v, l)): return v
+            if let v = bucket.first(v => not t.is_anc(v, l)): return v
         for v in bucket:
             heavier_lca = if let l = heavier_lca: t.lca(l, v) else: v
     none

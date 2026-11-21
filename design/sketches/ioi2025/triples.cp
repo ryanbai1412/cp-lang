@@ -19,7 +19,7 @@ fn count_triples(h: [I]1..I.count) -> Int:
         let m = x + h[x]                               // middle holds k−i, h[i] = j−i
         if m in I: found.add(ok(x, m, x + h[m]))
 
-    for group in I.group_by(x => h[x] - x):            // middle holds k−i, crossed
+    for group in I.group(by: x => h[x] - x):            // middle holds k−i, crossed
         if group.len <= isqrt(I.count):
             for (i, j) in group.pairs(): found.add(ok(i, j, i + h[j]))
         else:

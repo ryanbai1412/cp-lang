@@ -5,8 +5,9 @@
 
 use crate::walk::{self, Bind, Visitor};
 use crate::{
-    File, Finding, BY_TWIN, TREE_ORDER, DISCARDED_RESULT, FREE_FOLD, INDEX_ONLY_LOOP, LOOP_REDUCTION,
-    NONE_CHECK_UNWRAP, PUSH_LOOP, REPEATED_LITERAL, SEARCH_LOOP, SYMMETRIC_WRITE,
+    File, Finding, BY_TWIN, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD, INDEX_ONLY_LOOP,
+    LOOP_REDUCTION, NONE_CHECK_UNWRAP, PUSH_LOOP, REPEATED_LITERAL, SEARCH_LOOP, SYMMETRIC_WRITE,
+    TREE_ORDER,
 };
 use cpl_diag::{Diagnostic, Fix, Span};
 use cpl_syntax::ast::*;
@@ -73,6 +74,7 @@ impl Visitor for Blocks<'_, '_> {
         self.taste.free_fold(expr);
         self.taste.by_twin(expr);
         self.taste.tree_order(expr);
+        self.taste.domain_spelling(expr);
         match &expr.kind {
             ExprKind::Block(body) => self.taste.block(&body.stmts),
             ExprKind::If {
@@ -655,6 +657,7 @@ impl<'a> Taste<'a> {
                 "is_sorted_by" => Some(("is_sorted", 0, false)),
                 "runs_by" => Some(("runs", 0, false)),
                 "run_ranges_by" => Some(("run_ranges", 0, false)),
+                "group_by" => Some(("group", 0, false)),
                 "first_ge_by" => Some(("first_ge", 1, false)),
                 "last_le_by" => Some(("last_le", 1, false)),
                 "first_gt_by" => Some(("first_gt", 1, false)),
@@ -747,6 +750,57 @@ impl<'a> Taste<'a> {
             edits: vec![(expr.span, call)],
         });
         self.push(&BY_TWIN, diag);
+    }
+
+    /// Canonical domain/sequence spellings:
+    /// - `D.sorted(...)` -> `D.sort(...)`
+    /// - `xs.first(where: p)` -> `xs.first(p)`
+    fn domain_spelling(&mut self, expr: &Expr) {
+        let ExprKind::Call { callee, args } = &expr.kind else {
+            return;
+        };
+        let ExprKind::Field { base, name: method } = &callee.kind else {
+            return;
+        };
+        if method.text == "sorted" {
+            if let ExprKind::Name(n) = &base.kind {
+                if n.chars().next().is_some_and(char::is_uppercase) {
+                    let mut diag = Diagnostic::warning(
+                        DOMAIN_SPELLING.code,
+                        method.span,
+                        format!("use `{n}.sort(...)` instead of `{n}.sorted(...)`"),
+                    )
+                    .with_help("domains sort with `.sort(by:)`, matching `xs.sort(by:)`");
+                    diag.fixes.push(Fix {
+                        title: "rename to `sort`".into(),
+                        edits: vec![(method.span, "sort".into())],
+                    });
+                    self.push(&DOMAIN_SPELLING, diag);
+                    return;
+                }
+            }
+        }
+        if method.text == "first" && args.len() == 1 {
+            if let Some(arg_name) = &args[0].name {
+                if arg_name.text == "where" {
+                    let label_span = Span {
+                        start: arg_name.span.start,
+                        end: args[0].value.span.start,
+                    };
+                    let mut diag = Diagnostic::warning(
+                        DOMAIN_SPELLING.code,
+                        arg_name.span,
+                        "pass the predicate to `.first(p)` positionally, without `where:`",
+                    )
+                    .with_help("use `.first(p)` to match `xs.first(p)`");
+                    diag.fixes.push(Fix {
+                        title: "drop `where:`".into(),
+                        edits: vec![(label_span, String::new())],
+                    });
+                    self.push(&DOMAIN_SPELLING, diag);
+                }
+            }
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
