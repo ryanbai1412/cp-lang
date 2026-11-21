@@ -377,26 +377,29 @@ zero open blockers and `friction_lint` zero `wa_trap`). Backed by a replayed
 P0 bug corpus (>= 90% prevented or trapped), static `sizeof` and `-O2` assembly
 zero-cost proofs, and real contest use by strong contestants showing faster
 accepted solutions and fewer wrong attempts than in C++.
-**Where we are.** 237 ecnerwala ports gated in `scripts/check.sh --fast`
-(`cpl check`, `cpl fmt --check`, `cpl lint` with 0 warnings, `cpl build <= 64 KB`;
-227 have `gen/*.py`, 218 have `samples/`, 13 have `interactors/*.py`), plus 30
-`wave2` Rust-era ports (30/30 check + lint, 7 unformatted) and legacy DMOJ
-registry (`bench/corpus-500-registry.json`: 594 unique problems, 566 verified
-at `87ce801`). `bench/corpus_p95_bench.py` last ran at `6145b0b` (343 ports,
-runtime p50 0.98x / p95 2.57x, RSS p50 1.07x / p95 3.64x, max emitted 34.4 KB).
-`scripts/friction_lint.py` reports 0 `wa_trap`, 3 `real_gap`, 31 `stale_port`
-on ecnerwala; `research/frictions/` has 2 reports (5 open items: 0 blocker, 2
-high, 2 medium, 1 low). Gaps: no unified `scripts/scoreboard.py` or committed
-`research/scoreboard.json` regression baseline, no contestant-written token
-ratio tracking, no automated friction-report summarizer, no `--fast` scoreboard
-gate in `scripts/check.sh`, and `known_traps.cp` still has 5 open traps.
-**Bar.** 500+ Rust-gated ports; `scripts/scoreboard.py --fast --check` in
-`scripts/check.sh --fast` against `research/scoreboard.json`; full-mode perf
-and interpreter baseline tracked; zero open blocker frictions; P0 bug corpus
->= 90% handled.
-**Next.** Build `scripts/scoreboard.py` + `scripts/test_scoreboard.py` (per-port
-gate, contestant tokens, emitted bytes, max-size C++ vs original runtime/RSS,
-interpreter time, friction summary over `research/frictions/*.md`, baseline
-diff failing on regressions, `--fast` mode); generate and commit
-`research/scoreboard.json`; wire `--fast` into `scripts/check.sh`; add static
-zero-cost and bug-corpus metrics to the scoreboard.
+**Where we are.** Unified scoreboard (`scripts/scoreboard.py` + `scripts/test_scoreboard.py`,
+12 unit tests) and committed full-mode baseline (`research/scoreboard.json`) are live and
+wired into `scripts/check.sh --fast` (`--fast --check --quiet`, ~4.7 s with debug `cpl`).
+At `560251c9`, 251/251 active `proto/ports/ecnerwala/` ports pass `--fast` (13 interactive,
+1 custom checker `checkers/cf2187b.py`), automatically picking up concurrently pushed ports:
+contestant-written tokens median 0.434x raw / 0.512x library-stripped (0 > 1.0x raw, 1 > 1.0x
+stripped: `ucup5s05f` at 1.054x), emitted C++ median 9,275 B / p95 26,192 B / max 59,146 B
+(`cf2255f`; 3 > 48 KB, 0 > 64 KB), `friction_lint` 0 `wa_trap` / 5 `real_gap` / 36 `stale_port`,
+and `research/frictions/*.md` 20 files / 72 open items (0 blocker, 15 high, 22 medium, 15 low).
+Full-mode baseline across 246 ports (`research/scoreboard.json`): 233 perf-measured
+(104 >= 10 ms), runtime p50 0.992x / p95 3.47x (outliers: `cf2096e` 300.5x, `ucup4s25h` 27.2x,
+`cf2245f` 7.87x, `cf2255e2` 4.31x, `cf2147f` 3.47x), peak RSS p50 0.927x / p95 2.356x,
+interpreter 244/246 ok (median 18.16 ms, p95 56.47 ms; 2 timeouts on large samples: `cf2229f`,
+`ucup5s06a`). Constructive-problem checker hook (`checkers/NAME.py INPUT OUTPUT ANSWER`) is
+live in `proto/ports/ecnerwala/gate.sh`, `proto/ports/ecnerwala/README.md`, and
+`scripts/scoreboard.py`. Legacy: 30 `wave2` ports (7 unformatted) and DMOJ registry
+(`bench/corpus-500-registry.json`: 594 unique problems). Gaps: `known_traps.cp` has 5 open
+traps; runtime p95 (3.47x) and outliers exceed the <= 1.5x max target; static `sizeof` / `-O2`
+assembly zero-cost metrics and replayed P0 bug corpus are not yet wired into the scoreboard.
+**Bar.** 500+ Rust-gated ports; `scripts/scoreboard.py --fast --check` green in
+`scripts/check.sh --fast`; full-mode perf and interpreter baseline refreshed regularly with
+runtime p50 <= 1.1x / max <= 1.5x; zero open blocker frictions; P0 bug corpus >= 90% handled.
+**Next.** Add static `sizeof` / `-O2` assembly zero-cost metrics and replayed P0 bug-corpus
+coverage to `scripts/scoreboard.py`; refresh `research/scoreboard.json` after each major wave
+and perf fix (investigating `cf2096e` 300x and `ucup4s25h` 27x outliers); add checkers for
+remaining constructive ports; close the 5 open traps in `known_traps.cp`.

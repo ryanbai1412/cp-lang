@@ -1314,6 +1314,14 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   regressions, open `blocker` friction increases, and (in full mode) p50/p95 runtime or RSS regressions
   (> 1.10x baseline). *How to reverse:* adjust threshold constants at the top of `scripts/scoreboard.py`.
 
+- **23.5 Custom checker hook `checkers/NAME.py INPUT OUTPUT ANSWER` for constructive ports.**
+  Matches the `cpl stress` (`crates/cpl-stress/src/judge.rs`) and testlib argument order: `INPUT` test
+  file, `OUTPUT` candidate stdout, `ANSWER` original C++ stdout; exit 0 accepts, non-zero rejects with
+  reason on stderr. Both `proto/ports/ecnerwala/gate.sh` and `scripts/scoreboard.py` sanity-check
+  `orig` against itself before judging the C++ build and interpreter, and `scripts/scoreboard.py` tracks
+  `checker_ports` in totals. *How to reverse:* remove the `CHECKER` branch in `gate.sh` and
+  `run_checker`/`judge_output` in `scripts/scoreboard.py`.
+
 ## 24. Documentation gate in `scripts/check.sh --fast` (2026-11-21)
 
 - **24.1 Fast docs verification runs on every commit.** `site/check_docs.py` runs inside
