@@ -430,7 +430,7 @@ pub(crate) enum Op {
     FeedBodyBreak,
     FeedEnd,
 
-    // RangeCheck, Unit, SetMin/SetMax, Reverse, BitWidth, IntToFloat, FloatSqrt
+    // RangeCheck, Unit, SetMin/SetMax, Reverse, BitWidth, IntToFloat, FloatSqrt, Map/Set
     RangeCheckI { dst: u16, val: u16, lo: u16, hi: u16, text_idx: u16 },
     ConstUnit { dst: u16 },
     SetMinMaxV { dst: u16, src_v: u16, is_max: bool },
@@ -438,6 +438,11 @@ pub(crate) enum Op {
     BitWidthI { dst: u16, src: u16 },
     IntToFloat { dst: u16, src: u16 },
     FloatSqrt { dst: u16, src: u16 },
+    ContainsV { dst: u16, src_v: u16, key_v: u16 },
+    MapGetV { dst: u16, map_v: u16, key_v: u16 },
+    MapIndexV { dst: u16, map_v: u16, key_v: u16, key_ty: u16 },
+    SetMapMutPlace { dst: u16, path: u16, val_v: u16, is_remove: bool },
+    MapPlaceAssign { path: u16, key_v: u16, val_v: u16, op: AssignOp, val_ty: u16 },
 
     // Seamless fallback to tree-walker for any non-lowered IR stmt/expr
     FallbackStmt { idx: u32, clear_from_v: u16, in_loop: bool },
@@ -3399,6 +3404,35 @@ impl<'p, 'f> Compiler<'p, 'f> {
         op: AssignOp,
         value: &'p Expr,
     ) -> bool {
+        if let PlaceKind::Index(map_place, indices) = &place.kind {
+            if matches!(map_place.ty, Ty::Map(_, _)) && indices.len() == 1 {
+                let saved_ops = self.ops.len();
+                let saved_spans = self.spans.len();
+                let saved_places = self.places.len();
+                let saved_fill_tys = self.fill_tys.len();
+                if let Some(path) = self.compile_place_path(map_place) {
+                    let key_v = self.compile_expr_v(&indices[0]);
+                    let val_v = self.compile_expr_v(value);
+                    let val_ty = self.fill_tys.len() as u16;
+                    self.fill_tys.push(&place.ty);
+                    self.emit(
+                        Op::MapPlaceAssign { path, key_v, val_v, op, val_ty },
+                        place.span,
+                    );
+                    if val_v >= self.num_local_v {
+                        self.emit(Op::ClearV { reg: val_v }, place.span);
+                    }
+                    if key_v >= self.num_local_v {
+                        self.emit(Op::ClearV { reg: key_v }, place.span);
+                    }
+                    return true;
+                }
+                self.ops.truncate(saved_ops);
+                self.spans.truncate(saved_spans);
+                self.places.truncate(saved_places);
+                self.fill_tys.truncate(saved_fill_tys);
+            }
+        }
         let val_kind = ScalarKind::of_ty(&place.ty, self.program);
         let opt_kind = ScalarKind::of_opt_ty(&place.ty, self.program);
         if val_kind == Some(ScalarKind::U64) && op != AssignOp::Set {
@@ -4466,6 +4500,78 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::BitWidthI { dst, src }, span);
                 dst
             }
+            ExprKind::Builtin(Builtin::Contains, args)
+                if args.len() == 2
+                    && matches!(
+                        args[0].ty,
+                        Ty::Set(_) | Ty::Map(_, _) | Ty::List(_) | Ty::Array { .. }
+                    ) =>
+            {
+                let src_v = self.compile_expr_v(&args[0]);
+                let key_v = self.compile_expr_v(&args[1]);
+                let dst = self.alloc_i();
+                self.emit(Op::ContainsV { dst, src_v, key_v }, span);
+                if key_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: key_v }, span);
+                }
+                if src_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: src_v }, span);
+                }
+                dst
+            }
+            ExprKind::Mutate(m @ (Mutation::Insert | Mutation::Remove), place, args)
+                if args.len() == 1
+                    && ((matches!(m, Mutation::Insert) && matches!(place.ty, Ty::Set(_)))
+                        || (matches!(m, Mutation::Remove)
+                            && matches!(place.ty, Ty::Set(_) | Ty::Map(_, _)))) =>
+            {
+                let saved_ops = self.ops.len();
+                let saved_spans = self.spans.len();
+                let saved_places = self.places.len();
+                if let Some(path) = self.compile_place_path(place) {
+                    let val_v = self.compile_expr_v(&args[0]);
+                    let dst = self.alloc_i();
+                    self.emit(
+                        Op::SetMapMutPlace {
+                            dst,
+                            path,
+                            val_v,
+                            is_remove: matches!(m, Mutation::Remove),
+                        },
+                        span,
+                    );
+                    if val_v >= self.num_local_v {
+                        self.emit(Op::ClearV { reg: val_v }, span);
+                    }
+                    dst
+                } else {
+                    self.ops.truncate(saved_ops);
+                    self.spans.truncate(saved_spans);
+                    self.places.truncate(saved_places);
+                    self.emit_fallback_expr_i(expr)
+                }
+            }
+            ExprKind::Index(base, indices)
+                if matches!(base.ty, Ty::Map(_, _)) && indices.len() == 1 =>
+            {
+                let Ty::Map(kty, _) = &base.ty else { unreachable!() };
+                let map_v = self.compile_expr_v(base);
+                let key_v = self.compile_expr_v(&indices[0]);
+                let key_ty = self.fill_tys.len() as u16;
+                self.fill_tys.push(kty);
+                let tmp_v = self.alloc_v();
+                self.emit(Op::MapIndexV { dst: tmp_v, map_v, key_v, key_ty }, span);
+                if key_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: key_v }, span);
+                }
+                if map_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: map_v }, span);
+                }
+                let dst = self.alloc_i();
+                self.emit(Op::UnboxI { dst_i: dst, src_v: tmp_v }, span);
+                self.emit(Op::ClearV { reg: tmp_v }, span);
+                dst
+            }
             ExprKind::Index(base, indices)
                 if matches!(base.ty, Ty::Array { .. })
                     && (indices.len() == 1 || indices.len() == 2) =>
@@ -5337,6 +5443,39 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 );
                 if src_v >= self.num_local_v {
                     self.emit(Op::ClearV { reg: src_v }, span);
+                }
+                dst
+            }
+            ExprKind::Builtin(Builtin::MapGet, args)
+                if args.len() == 2 && matches!(args[0].ty, Ty::Map(_, _)) =>
+            {
+                let map_v = self.compile_expr_v(&args[0]);
+                let key_v = self.compile_expr_v(&args[1]);
+                let dst = self.alloc_v();
+                self.emit(Op::MapGetV { dst, map_v, key_v }, span);
+                if key_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: key_v }, span);
+                }
+                if map_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: map_v }, span);
+                }
+                dst
+            }
+            ExprKind::Index(base, indices)
+                if matches!(base.ty, Ty::Map(_, _)) && indices.len() == 1 =>
+            {
+                let Ty::Map(kty, _) = &base.ty else { unreachable!() };
+                let map_v = self.compile_expr_v(base);
+                let key_v = self.compile_expr_v(&indices[0]);
+                let key_ty = self.fill_tys.len() as u16;
+                self.fill_tys.push(kty);
+                let dst = self.alloc_v();
+                self.emit(Op::MapIndexV { dst, map_v, key_v, key_ty }, span);
+                if key_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: key_v }, span);
+                }
+                if map_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: map_v }, span);
                 }
                 dst
             }
@@ -9174,6 +9313,113 @@ impl<'p, 'io> Interp<'p, 'io> {
                         return trap(spans[cur_pc], format!("sqrt({x}) of a negative number"));
                     }
                     regs_v[dst as usize] = Value::Float(x.sqrt());
+                }
+                Op::ContainsV { dst, src_v, key_v } => {
+                    let needle = &regs_v[key_v as usize];
+                    let found = match &regs_v[src_v as usize] {
+                        Value::Set(items) => items.contains(needle),
+                        Value::Map(entries) => entries.contains_key(needle),
+                        Value::List(items) => items.contains(needle),
+                        Value::ListView(view) => view.contains(needle),
+                        Value::Array(arr) => arr.contains(needle),
+                        _ => false,
+                    };
+                    regs_i[dst as usize] = i64::from(found);
+                }
+                Op::MapGetV { dst, map_v, key_v } => {
+                    let found = match &regs_v[map_v as usize] {
+                        Value::Map(entries) => entries.get(&regs_v[key_v as usize]).cloned(),
+                        _ => None,
+                    };
+                    regs_v[dst as usize] = Value::Opt(OptVal::from_option(found));
+                }
+                Op::MapIndexV { dst, map_v, key_v, key_ty } => {
+                    let found = match &regs_v[map_v as usize] {
+                        Value::Map(entries) => entries.get(&regs_v[key_v as usize]).cloned(),
+                        _ => None,
+                    };
+                    if let Some(v) = found {
+                        regs_v[dst as usize] = v;
+                    } else {
+                        let mut key = Vec::new();
+                        super::show(
+                            &mut key,
+                            &regs_v[key_v as usize],
+                            chunk.fill_tys[key_ty as usize],
+                            6,
+                            self.program,
+                            &self.domains,
+                        );
+                        let key: String = key.iter().map(|b| *b as char).collect();
+                        return trap(
+                            spans[cur_pc],
+                            format!(
+                                "the key `{key}` is not in the map; `m.get(k)` gives an optional"
+                            ),
+                        );
+                    }
+                }
+                Op::SetMapMutPlace { dst, path, val_v, is_remove } => {
+                    let arg = regs_v[val_v as usize].clone();
+                    let pp = &chunk.places[path as usize];
+                    let root = place_root_mut(pp.root, regs_v, &mut self.globals);
+                    let target = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
+                    let ok = match (is_remove, target) {
+                        (false, Value::Set(items)) => Rc::make_mut(items).insert(arg),
+                        (true, Value::Set(items)) => Rc::make_mut(items).remove(&arg),
+                        (true, Value::Map(entries)) => Rc::make_mut(entries).remove(&arg).is_some(),
+                        _ => {
+                            return trap(
+                                spans[cur_pc],
+                                "internal: this value can't be changed that way",
+                            );
+                        }
+                    };
+                    regs_i[dst as usize] = i64::from(ok);
+                }
+                Op::MapPlaceAssign { path, key_v, val_v, op, val_ty } => {
+                    let key = regs_v[key_v as usize].clone();
+                    let value = regs_v[val_v as usize].clone();
+                    let pp = &chunk.places[path as usize];
+                    let root = place_root_mut(pp.root, regs_v, &mut self.globals);
+                    let target = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
+                    if let Value::Map(entries) = target {
+                        let map = Rc::make_mut(entries);
+                        if op == AssignOp::Set {
+                            map.insert(key, value);
+                        } else {
+                            let next = if let Some(old) = map.get(&key).cloned() {
+                                super::combine(op, old, value, spans[cur_pc])?
+                            } else {
+                                match op {
+                                    AssignOp::Max
+                                    | AssignOp::Min
+                                    | AssignOp::Binary(
+                                        BinOp::Add
+                                        | BinOp::Mul
+                                        | BinOp::BitOr
+                                        | BinOp::BitXor
+                                        | BinOp::BitAnd,
+                                    ) => value,
+                                    AssignOp::Binary(BinOp::Sub) => super::combine(
+                                        op,
+                                        super::zero(chunk.fill_tys[val_ty as usize], self.program),
+                                        value,
+                                        spans[cur_pc],
+                                    )?,
+                                    _ => {
+                                        return trap(
+                                            spans[cur_pc],
+                                            "this key is not in the map; store with `m[k] = v` first",
+                                        );
+                                    }
+                                }
+                            };
+                            map.insert(key, next);
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected map");
+                    }
                 }
                 Op::MakeClosure { dst, spec } => {
                     let cs = &chunk.closure_specs[spec as usize];

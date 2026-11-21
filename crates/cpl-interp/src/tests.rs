@@ -885,3 +885,34 @@ print(sqrt(F64(-1)))
     let msg = trap.expect("expected sqrt negative trap");
     assert!(msg.contains("sqrt("), "got: {msg}");
 }
+
+#[test]
+fn vm_map_set_ops_and_missing_key_trap() {
+    let src = "\
+var m = Map<Int, Int>()
+m[10] = 5
+m[10] += 7
+m[20] -= 3
+let g1 = m.get(10) ?? -1
+let g2 = m.get(99) ?? -1
+let has10 = 10 in m
+let rem = m.remove(20)
+var s = Set<Int>()
+let ins1 = s.insert(4)
+let ins2 = s.insert(4)
+let has4 = 4 in s
+let r4 = s.remove(4)
+print(m[10], g1, g2, has10, rem, ins1, ins2, has4, r4, 4 in s)
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "12 12 -1 YES -3 YES NO YES YES NO\n");
+
+    let miss = "\
+var m = Map<Int, Int>()
+print(m[42])
+";
+    let (_, trap) = outcome(miss, "");
+    let msg = trap.expect("expected missing map key trap");
+    assert!(msg.contains("is not in the map"), "got: {msg}");
+}
