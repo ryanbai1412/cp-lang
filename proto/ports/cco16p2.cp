@@ -2,7 +2,7 @@
 // Pick a line and take everything on one side of it, plus what you like of
 // the points on the line. Maximise the weight taken. Some best line passes
 // through a point, so turn a line around every point in turn.
-use std.geometry.{ByAngle, turn}
+use std.geometry.{arg, turn}
 
 let n: 3..=4000 = read()
 domain Hare = 1..=n
@@ -37,7 +37,7 @@ fn best_through(pivot: Hare) -> Int:
         if h != pivot:
             let v = pos(hares[h]) - pos(p)
             seen.push(if upper(v): (v, true, hares[h].w) else: (-v, false, hares[h].w))
-    seen.sort(by: s => ByAngle(s.dir))
+    seen.sort(by: s => arg(s.dir))
 
     let everyone = sum(s.w for s in seen)
     var right = sum(s.w for s in seen if not s.ahead)  // right of the turning line, or behind the pivot on it

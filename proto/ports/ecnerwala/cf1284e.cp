@@ -2,7 +2,7 @@
 // Because no three points are collinear, each non-enclosing 4-subset has a unique first
 // ray in CCW order around p whose remaining 3 rays lie strictly within (0, pi) ahead of it.
 // Sort the other n - 1 vectors around each p by angle and sweep a half-plane window.
-use std.geometry.{ByAngle, Pt, cross}
+use std.geometry.{Pt, arg, cross}
 
 let n: 5..=2500 = read()
 domain V = 0..n
@@ -12,7 +12,7 @@ fn choose3(k: Int) -> Int = k * (k - 1) * (k - 2) / 6
 let total_quads = (n - 1) * (n - 2) * (n - 3) * (n - 4) / 24
 
 fn enclosures(center: V) -> Int:
-    let dirs = [pts[v] - pts[center] for v in V if v != center].sorted(by: d => ByAngle(d))
+    let dirs = [pts[v] - pts[center] for v in V if v != center].sorted(by: d => arg(d))
     let m = dirs.len
     var bad = 0
     var j = 0

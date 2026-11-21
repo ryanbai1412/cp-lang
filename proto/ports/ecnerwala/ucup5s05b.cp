@@ -6,12 +6,14 @@
 // the line in one point or, when parallel and on it, in a whole x-interval.
 // Sweeping the x-events counts distinct points (b != 0 after the swap, so x
 // determines the point).
-fn sign(x: Int) -> Int = Int(x > 0) - Int(x < 0)
+use std.geometry.{Pt, dot}
 
 // Reflect a coordinate back into 0..=m.
 fn fold(v: Int, m: Int) -> Int:
     let r = v % (2 * m)
     if r > m: 2 * m - r else: r
+
+fn fold_pt(p: Pt, m: Int) -> Pt = Pt(fold(p.x, m), fold(p.y, m))
 
 // Steps until a coordinate moving from s towards e hits a mirror line (a multiple of m).
 fn to_mirror(s: Int, e: Int, m: Int) -> Int:
@@ -27,33 +29,40 @@ fn front(qa: Int, qb: Int, qc: Int, t: Int) -> Int:
     // shift to 0-based coordinates, and make the y coefficient non-zero
     let m = n - 1
     let c = qc + qa + qb
-    let (a, b, x0, y0) = if qb == 0: (qb, qa, py - 1, px - 1) else: (qa, qb, px - 1, py - 1)
+    let (normal, origin) = if qb == 0:
+        (Pt(qb, qa), Pt(py - 1, px - 1))
+    else:
+        (Pt(qa, qb), Pt(px - 1, py - 1))
 
     var evts: List<(Int, Int)> = []
-    let corners = [(x0 + t, y0), (x0, y0 + t), (x0 - t, y0), (x0, y0 - t)]
+    let shifts = [Pt(t, 0), Pt(0, t), Pt(-t, 0), Pt(0, -t)]
     for z in 0..4:
-        var (sx, sy) = corners[z]
-        let (ex, ey) = corners[(z + 1) % 4]
-        let (dx, dy) = (sign(ex - sx), sign(ey - sy))
+        var cur = origin + shifts[z]
+        let diff = origin + shifts[(z + 1) % 4] - cur
+        let dir = Pt(diff.x.sign, diff.y.sign)
         // the folded side is periodic with period 2m
         var left = min(t, 2 * m)
         while left > 0:
-            let len = min(to_mirror(sx, sx + dx * left, m), to_mirror(sy, sy + dy * left, m))
-            let (ux, uy) = (fold(sx, m), fold(sy, m))
-            sx += dx * len
-            sy += dy * len
+            let len = min(
+                to_mirror(cur.x, cur.x + dir.x * left, m),
+                to_mirror(cur.y, cur.y + dir.y * left, m),
+            )
+            let u = fold_pt(cur, m)
+            cur = cur + dir * len
             left -= len
-            let (vx, vy) = (fold(sx, m), fold(sy, m))
-            let at = ux * a + uy * b + c
-            let slope = sign(vx - ux) * a + sign(vy - uy) * b
+            let v = fold_pt(cur, m)
+            let at = dot(u, normal) + c
+            let dv = v - u
+            let step = Pt(dv.x.sign, dv.y.sign)
+            let slope = dot(step, normal)
             if slope == 0:
                 if at == 0:
-                    evts.push((min(ux, vx), 1))
-                    evts.push((max(ux, vx) + 1, -1))
+                    evts.push((min(u.x, v.x), 1))
+                    evts.push((max(u.x, v.x) + 1, -1))
             elif at % slope == 0:
                 let k = -at / slope
                 if 0 <= k and k <= len:
-                    let x = ux + sign(vx - ux) * k
+                    let x = u.x + step.x * k
                     evts.push((x, 1))
                     evts.push((x + 1, -1))
 
