@@ -478,6 +478,24 @@ impl<'a> Lowerer<'a> {
         value
     }
 
+    /// The fields of `decl` that are a row of 1 to 64 cells, the count
+    /// written as numbers: `kid: [0..2]?Int`, `cnt: [1..=26]Int`.
+    pub(super) fn fixed_rows(&self, decl: &ast::StructDecl) -> std::collections::BTreeMap<usize, u32> {
+        let mut rows = std::collections::BTreeMap::new();
+        for (at, field) in decl.fields.iter().enumerate() {
+            let ast::TypeKind::Array { index, .. } = &field.ty.kind else { continue };
+            let [ast::Type { kind: ast::TypeKind::Range { lo, hi, inclusive }, .. }] = index.as_slice() else {
+                continue;
+            };
+            let (Some(lo), Some(hi)) = (self.eval_const_int(lo), self.eval_const_int(hi)) else { continue };
+            let len = hi.saturating_sub(lo).saturating_add(i64::from(*inclusive));
+            if (1..=64).contains(&len) {
+                rows.insert(at, len as u32);
+            }
+        }
+        rows
+    }
+
     /// Instantiates a generic struct template with concrete `args`, memoized.
     pub(super) fn instantiate_struct(&mut self, gid: GenStructId, args: Vec<GenArg>) -> StructId {
         let key = (gid, args.clone());
@@ -500,6 +518,7 @@ impl<'a> Lowerer<'a> {
             def: StructDef {
                 name: mangled,
                 fields: Vec::new(),
+                fixed: Default::default(),
                 show_fn: None,
                 eq_fn: None,
                 lt_fn: None,
@@ -551,6 +570,7 @@ impl<'a> Lowerer<'a> {
             .map(|f| (f.name.text.clone(), self.resolve_ty(&f.ty)))
             .collect();
         self.structs[id].def.fields = fields;
+        self.structs[id].def.fixed = self.fixed_rows(decl);
 
         // 3. Collect methods, getters, projections, laws, constants.
         let struct_env = self.gen_env.clone();

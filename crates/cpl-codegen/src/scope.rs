@@ -320,3 +320,53 @@ pub(crate) fn pusher(f: &cpl_ir::Function, summary: &crate::emit::FnSummary) -> 
     });
     (!odd && lets == 1 && named == returns && filled == pushes).then_some(acc)
 }
+
+/// The struct fields that hold a row of a fixed small count of cells and
+/// can be kept inside the struct: `(struct, field)` to the count. A field
+/// that is somewhere sorted, grown, filled, updated as a whole or handed
+/// to a call as `mut` stays a `std::vector`, which those work on.
+pub(crate) fn rows(program: &Program) -> BTreeMap<(usize, usize), u32> {
+    let mut rows = BTreeMap::new();
+    for (id, def) in program.structs.iter().enumerate() {
+        for (field, cells) in &def.fixed {
+            if matches!(&def.fields[*field].1, Ty::Array { dims, .. } if dims.len() == 1) {
+                rows.insert((id, *field), *cells);
+            }
+        }
+    }
+    if rows.is_empty() {
+        return rows;
+    }
+    fn whole(place: &Place, rows: &mut BTreeMap<(usize, usize), u32>) {
+        if let PlaceKind::Field(base, field) = &place.kind {
+            if let Ty::Struct(id) = base.ty {
+                rows.remove(&(id, *field));
+            }
+        }
+    }
+    let bodies = [&program.setup, &program.main]
+        .into_iter()
+        .chain(program.fns.iter().map(|f| &f.body))
+        .chain(program.closures.iter().map(|c| &c.body));
+    for body in bodies {
+        crate::walk::deep_stmts(body, &mut |stmt| {
+            if let Stmt::Assign(place, op, _) = stmt {
+                if *op != cpl_ir::AssignOp::Set {
+                    whole(place, &mut rows);
+                }
+            }
+        });
+        crate::walk::deep_exprs(body, &mut |e| match &e.kind {
+            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _) => whole(place, &mut rows),
+            ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
+                for arg in args {
+                    if let cpl_ir::Arg::Mut(place) = arg {
+                        whole(place, &mut rows);
+                    }
+                }
+            }
+            _ => {}
+        });
+    }
+    rows
+}

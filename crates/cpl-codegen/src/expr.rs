@@ -561,7 +561,13 @@ impl<'p> Emitter<'p> {
                 // A cell of a packed table is a `std::optional` to whatever
                 // reads it, unless it is only being tested or opened.
                 let unpack = self.packed_cell(e) && !raw_cell;
-                self.sequence(&operands, &e.ty, |_, codes| {
+                let in_place = self.is_row(base);
+                self.sequence(&operands, &e.ty, |_, mut codes| {
+                    if in_place {
+                        if let Some(row) = codes[0].text.strip_suffix(".vec()") {
+                            codes[0].text = row.to_string();
+                        }
+                    }
                     let b = codes[0].at(PRIMARY);
                     let at: Vec<String> = codes[1..]
                         .iter()
@@ -623,10 +629,13 @@ impl<'p> Emitter<'p> {
             ExprKind::Field(base, index) => {
                 let b = self.expr(base);
                 match &base.ty {
+                    // A row kept inside the struct is a list to whatever
+                    // takes it whole; an index or a length reads it in place.
                     Ty::Struct(id) => Code::primary(format!(
-                        "{}.{}",
+                        "{}.{}{}",
                         b.at(PRIMARY),
-                        ident(&program.structs[*id].fields[*index].0)
+                        ident(&program.structs[*id].fields[*index].0),
+                        if self.rows.contains_key(&(*id, *index)) { ".vec()" } else { "" }
                     )),
                     _ => Code::primary(format!("std::get<{index}>({})", b.text)),
                 }
@@ -1254,6 +1263,12 @@ impl<'p> Emitter<'p> {
         })
     }
 
+    /// True for a field read that is a row kept inside its struct.
+    fn is_row(&self, e: &Expr) -> bool {
+        matches!(&e.kind, ExprKind::Field(base, index)
+            if matches!(base.ty, Ty::Struct(id) if self.rows.contains_key(&(id, *index))))
+    }
+
     fn builtin(&mut self, e: &Expr, op: Builtin, args: &[Expr], codes: Vec<Code>) -> Code {
         let text = |i: usize| codes.get(i).map(|c| c.text.clone()).unwrap_or_default();
         let first_ty = args.first().map(|a| &a.ty);
@@ -1407,6 +1422,10 @@ impl<'p> Emitter<'p> {
             }
             Builtin::Len if matches!(first_ty, Some(Ty::DomainVal)) => {
                 Code::primary(format!("{}.len", codes[0].at(PRIMARY)))
+            }
+            Builtin::Len if self.is_row(&args[0]) => {
+                let row = codes[0].at(PRIMARY);
+                Code::new(format!("(ll){}.size()", row.strip_suffix(".vec()").unwrap_or(&row)), UNARY)
             }
             Builtin::Len => Code::new(format!("(ll){}.size()", codes[0].at(PRIMARY)), UNARY),
             Builtin::First if matches!(first_ty, Some(Ty::Range(_))) => {

@@ -470,6 +470,17 @@ fn stress_throws_away_inputs_that_stop_both_programs_and_narrows_the_guess() {
             "let n: Int = read()\nlet s: [0..5]Int = read()\n@brute(main)\nfn slow():\n    var at = 0\n    for i in 0..n: at = i\n    print(s[at])\nprint(s[n - 1])\n",
             "n: 5 or less",
         ),
+        // A cell of a list read by a comprehension is used as an index.
+        (
+            "narrow-cells-read-in-a-comprehension",
+            "let n: Int = read()\nlet a: List<Int> = [read() for _ in 0..n]\n@brute(main)\nfn slow():\n    var c: [0..1001]Int = 0\n    for x in a: c[x] += 1\n    print(max(c))\nvar c: [0..1001]Int = 0\nfor x in a: c[x] += 1\nprint(max(c))\n",
+            "cells of the arrays read: 0 to 8",
+        ),
+        (
+            "narrow-cells-from-one",
+            "let n: Int = read()\nlet a: [0..n]Int = read()\n@brute(main)\nfn slow():\n    var seen: [0..8]Int = 0\n    for x in a: seen[x - 1] += 1\n    print(max(seen))\nvar seen: [0..8]Int = 0\nfor x in a: seen[x - 1] += 1\nprint(max(seen))\n",
+            "cells of the arrays read: 1 to 8",
+        ),
     ];
     let stress = |test: &str, source: &str| {
         let path = scratch(test, "narrow.cp", source.as_bytes());
@@ -486,6 +497,10 @@ fn stress_throws_away_inputs_that_stop_both_programs_and_narrows_the_guess() {
     let only_solution = "let n: Int = read()\n@brute(main)\nfn slow():\n    print(max(n - 1, 0))\nlet m = n - 1\nvar dp: [0..m]Int = 0\nprint(dp.len)\n";
     let text = stress("narrow-real-stop", only_solution);
     assert!(text.contains("FAIL on case") && text.contains("an array can't have length"), "{text}");
+    // A cell stops only the solution: still a bug, cells are not narrowed.
+    let only_solution = "let n: Int = read()\nlet a: [0..n]Int = read()\n@brute(main)\nfn slow():\n    print(sum(a))\nvar seen: [0..10]Int = 0\nfor x in a: seen[x] += 1\nprint(sum(a))\n";
+    let text = stress("narrow-real-cell-stop", only_solution);
+    assert!(text.contains("FAIL on case") && !text.contains("thrown away"), "{text}");
     // Both run and differ: a wrong answer, never thrown away.
     let wrong = "let n: Int = read()\nlet a: [0..n]Int = read()\n@brute(main)\nfn slow():\n    print(sum(a))\nprint(sum(a) - a[0])\n";
     let text = stress("narrow-real-wrong", wrong);
@@ -785,4 +800,17 @@ fn a_part_of_a_row_past_its_end_is_not_called_a() {
     assert_eq!(out.status.code(), Some(3), "{stderr}");
     assert!(stderr.contains("a part `lo..hi` of a row or column needs 0 <= lo <= hi <= its length"), "{stderr}");
     assert!(!stderr.contains("a["), "{stderr}");
+}
+
+/// `max=` on a whole grid, or on rows whose cells may be `none`, says
+/// what to write instead of only that the type has no order.
+#[test]
+fn max_assign_on_a_grid_or_optional_rows_says_what_to_write() {
+    let grid = check_errors("max_grid", "var g: [0..2, 0..3]Int = 0\nvar h: [0..2, 0..3]Int = 1\ng max= h\nprint(g)\n");
+    assert!(grid.contains("`max=` works on one row at a time, not on a whole grid"), "{grid}");
+    assert!(grid.contains("`g[r, ..] max= h[r, ..]`"), "{grid}");
+
+    let rows = check_errors("min_opt_rows", "var a: [0..3]?Int = none\nvar b: [0..3]?Int = none\na min= b\nprint(a[1] ?? 0)\n");
+    assert!(rows.contains("a `?Int` cell may be `none`"), "{rows}");
+    assert!(rows.contains("`a[i] min= b[i]`"), "{rows}");
 }

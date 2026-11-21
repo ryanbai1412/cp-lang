@@ -2234,10 +2234,20 @@ impl<'a> Lowerer<'a> {
                     return;
                 }
                 if !matches!(place.ty, Ty::Error) && !self.ordered(&place.ty) {
-                    let message = format!(
-                        "`max=` and `min=` need values with an order, not `{}`",
-                        self.show(&place.ty)
-                    );
+                    let word = if op == ast::AssignOp::Max { "max=" } else { "min=" };
+                    let message = match &place.ty {
+                        Ty::Array { dims, .. } if dims.len() > 1 => format!(
+                            "`{word}` works on one row at a time, not on a whole grid; write `g[r, ..] {word} h[r, ..]` in a loop over the rows"
+                        ),
+                        Ty::Array { elem, .. } | Ty::List(elem) if matches!(**elem, Ty::Opt(_)) => format!(
+                            "`{word}` on whole rows needs cells with an order, and a `{}` cell may be `none`; write `a[i] {word} b[i]` in a loop over the cells, which skips a `none`",
+                            self.show(elem)
+                        ),
+                        _ => format!(
+                            "`max=` and `min=` need values with an order, not `{}`",
+                            self.show(&place.ty)
+                        ),
+                    };
                     self.error(codes::BAD_OPERANDS, span, message);
                 }
                 let op = if op == ast::AssignOp::Max {

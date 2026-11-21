@@ -7,7 +7,7 @@ use crate::judge::{Judge, Verdict};
 use crate::program::Program;
 use crate::rng::Rng;
 use crate::shrink::shrink;
-use crate::spec::InputSpec;
+use crate::spec::{InputSpec, DEFAULT_INT};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -400,6 +400,22 @@ fn narrow(
         if next.counted().iter().any(|name| outside(name, lowest, i128::MAX)) && runs(&next) {
             let names = next.counted().join(", ");
             return Some((next, format!("{names}: {lowest} or more")));
+        }
+    }
+    // A cell of an array that the program counts or indexes with: none
+    // below 0, none below 1, then small as well.
+    let top = DEFAULT_INT.1;
+    for (lo, hi, learned) in [
+        (0, top, "0 or more".to_string()),
+        (1, top, "1 or more".to_string()),
+        (0, size.max(1), format!("0 to {}", size.max(1))),
+        (1, size.max(1), format!("1 to {}", size.max(1))),
+    ] {
+        if spec.cells.as_deref().is_some_and(|&(was_lo, was_hi)| lo <= was_lo && hi >= was_hi) {
+            continue;
+        }
+        if let Some(celled) = spec.celled(lo, hi).filter(|celled| runs(celled)) {
+            return Some((celled, format!("cells of the arrays read: {learned}")));
         }
     }
     // A size too large for something the program holds. Only a brute

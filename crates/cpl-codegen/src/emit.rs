@@ -139,6 +139,9 @@ pub(crate) struct Emitter<'p> {
     pub reused: BTreeSet<usize>,
     /// The `yields` fns that also exist as `cpl_each_f(args, body)`, with
     /// the slot of the list each one builds: see [`crate::scope::pusher`].
+    /// `(struct, field)` to the cell count of a field kept inside the
+    /// struct as a `cpl::Row<T, K>`, not as a `std::vector` of its own.
+    pub rows: BTreeMap<(usize, usize), u32>,
     pub pushers: BTreeMap<usize, usize>,
     /// Set while the `cpl_each_f` form of a fn is written: the slot of its list.
     pub pushing: Option<usize>,
@@ -209,6 +212,7 @@ impl<'p> Emitter<'p> {
             break_targets: BTreeSet::new(),
             continue_targets: BTreeSet::new(),
             reused: BTreeSet::new(),
+            rows: crate::scope::rows(program),
             pushers: BTreeMap::new(),
             pushing: None,
             bodies: Vec::new(),
@@ -565,9 +569,18 @@ impl<'p> Emitter<'p> {
                 for (field, field_ty) in &def.fields {
                     self.need_ty(field_ty);
                     let name = ident(field);
+                    let mut cpp = self.ty(field_ty);
+                    let cells = self.rows.get(&(*id, names.len()));
+                    if let (Some(k), Some(cell)) = (
+                        cells,
+                        cpp.strip_prefix("std::vector<").and_then(|c| c.strip_suffix('>')),
+                    ) {
+                        cpp = format!("cpl::Row<{cell}, {k}>");
+                        self.need("row");
+                    }
                     out.push_str(&format!(
                         "    {} {}{};\n",
-                        self.ty(field_ty),
+                        cpp,
                         name,
                         self.zero_init(field_ty)
                     ));

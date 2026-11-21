@@ -752,6 +752,10 @@ pub struct ClosureDef {
 pub struct StructDef {
     pub name: String,
     pub fields: Vec<(String, Ty)>,
+    /// The fields that are a row of a length written as a number, `kid:
+    /// [0..2]?Int`, by position: every value of the struct holds exactly
+    /// that many cells there.
+    pub fixed: std::collections::BTreeMap<usize, u32>,
     /// From `impl Show for S`: `fn show(a: S) -> Str`.
     pub show_fn: Option<FnId>,
     /// From `impl Eq for S`: `fn eq(a: S, b: S) -> Bool`.

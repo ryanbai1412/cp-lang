@@ -90,6 +90,9 @@ pub struct InputSpec {
     pub raised: i128,
     /// The most a guessed size is, when a larger one stopped the program.
     pub capped: Option<i128>,
+    /// What the plain `Int` cells of every array read are drawn from,
+    /// when some cell stopped the program: `None` is any `Int`.
+    pub cells: Option<Box<(i128, i128)>>,
 }
 
 /// The most a guessed size's lower bound is raised: a program that still
@@ -342,6 +345,45 @@ impl InputSpec {
         spec
     }
 
+    /// The same input with the plain `Int` cells of its arrays drawn from
+    /// `lo..=hi`, or `None` when it reads no such cell.
+    pub fn celled(&self, lo: i128, hi: i128) -> Option<InputSpec> {
+        fn redraw(shape: &mut Shape, inside: bool, from: &Shape, to: &Shape) -> bool {
+            match shape {
+                Shape::Array { elem, .. } => redraw(elem, true, from, to),
+                Shape::Tuple(parts) => {
+                    parts.iter_mut().fold(false, |any, part| redraw(part, inside, from, to) | any)
+                }
+                cell if inside && cell == from => {
+                    *cell = to.clone();
+                    true
+                }
+                _ => false,
+            }
+        }
+        let range = |(lo, hi): (i128, i128)| Shape::Int {
+            lo: int(lo),
+            hi: int(hi),
+        };
+        let (from, to) = (range(self.cells.as_deref().copied().unwrap_or(DEFAULT_INT)), range((lo, hi)));
+        let mut spec = self.clone();
+        let mut any = false;
+        for field in &mut spec.fields {
+            any |= redraw(&mut field.shape, false, &from, &to);
+        }
+        spec.cells = Some(Box::new((lo, hi)));
+        if let Some(cases) = &mut spec.cases {
+            match cases.celled(lo, hi) {
+                Some(inner) => {
+                    **cases = inner;
+                    any = true;
+                }
+                None => cases.cells = Some(Box::new((lo, hi))),
+            }
+        }
+        any.then_some(spec)
+    }
+
     /// The same input with every guessed size at most `most`, or `None`
     /// when that leaves them no value.
     pub fn capping(&self, most: i128) -> Option<InputSpec> {
@@ -408,6 +450,15 @@ impl Builder<'_> {
                 })
             }
             _ => Err(self.error(ty.span, "an array is indexed by a domain or a range".into())),
+        }
+    }
+
+    /// The type of one value of a `List<T>` or a one-dimensional array.
+    fn cell<'t>(&self, ty: &'t Type) -> Option<&'t Type> {
+        match &ty.kind {
+            TypeKind::Named { name, args } if name.text == "List" && args.len() == 1 => Some(&args[0]),
+            TypeKind::Array { index, elem } if index.len() == 1 => Some(elem),
+            _ => None,
         }
     }
 
@@ -564,6 +615,30 @@ fn reads_inside(code: &str) -> bool {
     })
 }
 
+/// `[read() for _ in lo..hi]`: the count `hi - lo` of values it reads.
+fn read_count(expr: &Expr) -> Option<Expr> {
+    let ExprKind::Comprehension { body, clauses } = &expr.kind else {
+        return None;
+    };
+    let [clause] = clauses.as_slice() else {
+        return None;
+    };
+    let ExprKind::Range {
+        lo: Some(lo),
+        hi: Some(hi),
+        inclusive,
+        step: None,
+    } = &clause.iter.kind
+    else {
+        return None;
+    };
+    if !is_read(body) || !clause.conds.is_empty() {
+        return None;
+    }
+    let (lo, hi) = Builder::inclusive(lo, hi, *inclusive);
+    Some(binary(BinOp::Add, binary(BinOp::Sub, hi, lo), int(1)))
+}
+
 fn is_read(expr: &Expr) -> bool {
     matches!(&expr.kind, ExprKind::Call { callee, args }
         if args.is_empty() && matches!(&callee.kind, ExprKind::Name(name) if name == "read"))
@@ -688,6 +763,31 @@ impl InputSpec {
                             (false, false) => builder.spec.fields.push(field),
                             // The solution's own reads are answers
                             // from the interactor, not input.
+                            (false, true) => {}
+                        }
+                    }
+                    // `let a: List<Int> = [read() for _ in 0..n]`: `n`
+                    // values of the list's element type.
+                    StmtKind::Let {
+                        pat,
+                        ty: Some(ty),
+                        init: Some(init),
+                        ..
+                    } if read_count(init).is_some() && builder.cell(ty).is_some() => {
+                        let len = read_count(init).expect("tested above");
+                        names_in(&len, &mut builder.spec.sizes);
+                        let shape = Shape::Array {
+                            len,
+                            elem: Box::new(builder.shape(builder.cell(ty).expect("tested above"))?),
+                        };
+                        let field = Field {
+                            names: Builder::names(pat, &shape),
+                            shape,
+                            line: lines.line_of(stmt.span.shift(builder.base).start) + 1,
+                        };
+                        match (in_judge, judge.is_some()) {
+                            (true, _) => hidden.push(field),
+                            (false, false) => builder.spec.fields.push(field),
                             (false, true) => {}
                         }
                     }

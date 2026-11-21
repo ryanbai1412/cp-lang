@@ -815,6 +815,32 @@ inline void count_query(ll limit) { if (++asked > limit) fail((\"query limit exc
 ",
     },
     Piece {
+        name: "row",
+        needs: &["fail"],
+        code: "\
+// A row of exactly K cells held inside a struct. It is made from a list
+// of K cells and is a list again to whatever takes it whole.
+template <class T, int K> struct Row {
+    std::array<T, K> a{};
+    Row() = default;
+    Row(const std::vector<T>& v) {
+        if (v.size() != (size_t)K) fail(\"a row of another length than its field has\");
+        std::copy(v.begin(), v.end(), a.begin());
+    }
+    std::vector<T> vec() const { return std::vector<T>(a.begin(), a.end()); }
+    operator std::vector<T>() const { return vec(); }
+    size_t size() const { return (size_t)K; }
+    T& operator[](size_t i) { return a[i]; }
+    const T& operator[](size_t i) const { return a[i]; }
+    bool operator==(const Row& o) const { return a == o.a; }
+    bool operator!=(const Row& o) const { return a != o.a; }
+    bool operator<(const Row& o) const { return a < o.a; }
+};
+template <class T, int K> T& at(Row<T, K>& v, ll i) { if ((unsigned long long)i >= (unsigned long long)K) fail(\"index outside the list\"); return v.a[(size_t)i]; }
+template <class T, int K> const T& at(const Row<T, K>& v, ll i) { if ((unsigned long long)i >= (unsigned long long)K) fail(\"index outside the list\"); return v.a[(size_t)i]; }
+",
+    },
+    Piece {
         name: "at",
         needs: &["fail"],
         code: "\
