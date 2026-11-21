@@ -316,6 +316,57 @@ impl<'a> Lowerer<'a> {
                 });
                 true
             }
+            Spec::Plain(Ty::Enum(e)) if self.enums[*e].variants.iter().all(|(_, fs)| fs.is_empty()) => {
+                let n = self.enums[*e].variants.len() as i64;
+                let ord = self.cast(Cast::EnumOrd(*e), value, Ty::Int);
+                memo.parts.push(Part {
+                    ord,
+                    len: self.int_lit(n, span),
+                    ranged: false,
+                    most: Some((n, n)),
+                });
+                true
+            }
+            Spec::Plain(Ty::Opt(inner)) => {
+                let inner = Spec::Opt(Box::new(Spec::Plain((**inner).clone())), None);
+                self.memo_parts(memo, value, &inner)
+            }
+            // `none` is coordinate 0 and `some(x)` is 1 past `x`'s.
+            Spec::Opt(inner, _) => {
+                let Ty::Opt(payload_ty) = &value.ty else {
+                    return false;
+                };
+                let payload = self.mk(
+                    ExprKind::Unwrap(Box::new(value.clone()), false),
+                    (**payload_ty).clone(),
+                    span,
+                );
+                let at = memo.parts.len();
+                if !self.memo_parts(memo, payload, inner) || memo.parts.len() != at + 1 {
+                    return false;
+                }
+                let part = memo.parts.pop().expect("one part was just added");
+                let mut some = self.int_add(part.ord.clone(), 1);
+                if part.ranged {
+                    // Below the range is still outside the table, not `none`.
+                    let low = self.memo_cmp(CmpOp::Ge, part.ord, self.int_lit(0, span), span);
+                    let out = self.int_lit(-1, span);
+                    some = self.mk(ExprKind::If(Box::new(low), Box::new(some), Box::new(out)), Ty::Int, span);
+                }
+                let present = self.mk(ExprKind::IsSome(Box::new(value)), Ty::Bool, span);
+                let ord = self.mk(
+                    ExprKind::If(Box::new(present), Box::new(some), Box::new(self.int_lit(0, span))),
+                    Ty::Int,
+                    span,
+                );
+                memo.parts.push(Part {
+                    ord,
+                    len: self.int_add(part.len, 1),
+                    ranged: part.ranged,
+                    most: part.most.and_then(|(least, most)| least.checked_add(1).zip(most.checked_add(1))),
+                });
+                true
+            }
             Spec::Plain(Ty::Bool) => {
                 let (one, zero) = (self.int_lit(1, span), self.int_lit(0, span));
                 let ord = self.mk(
