@@ -3748,7 +3748,6 @@ ordinal loop. Reverse by deleting `product_heads` in `lower/stmt.rs`.
   headers and dreams started mixing them. The rule keeps one spelling per
   position without losing the expression form.
 - **Reverse.** Drop the lint and its codemod.
-
 ## 112. Push-relabel is a second named max-flow method, `FlowGraph.push_relabel` (2026-11-21)
 
 `FlowGraph.push_relabel(s, t) -> Int` computes the same maximum flow as
@@ -3774,9 +3773,14 @@ costs no program. An arc id past 2^31 traps with "is outside
 `?Arc`. Measured on bench/flow, best of 5, against matched C++: Dinic 1.29x
 (1.50x with `Int` ids), push-relabel 1.12x (1.31x), bounded flow 1.18x
 (1.26x), closure 1.06x (1.14x). Reverse: `Arc(id: Int)` and the sentinel back.
-
 ## 121. In-place `std.mo.mo` driver with separate `add`/`remove` closures (2026-11-21)
 
 - **Decision.** Add `pub fn mo<D, R>(queries: List<Range<D>>, add: D -> (), remove: D -> (), answer: Int -> R) -> List<R>` to `stdlib/mo.cp`, keeping `mo_order` public as the escape hatch (and `mo_steps` for existing callers). `mo` walks `mo_order(queries)` with in-place 4-pointer loops (`add`/`remove` O((n + q)·√n) times, `answer(qi)` `q` times with `queries[qi]` active), returning results in original query order with zero per-query step-list allocation and zero `std::function` (all callbacks lower statically).
 - **Reason.** Closes both high frictions in `research/frictions/cf2006d.md` ("Mo's algorithm has no driver" and "The port runs 2.1x the original on the max input"): `cf2006d` drops from `2.1x` (`430–470 ms`) to `1.34x` (`271.8 ms` vs `202.4 ms`), and `cf2129e` drops its hand-written 4-loop Mo driver (`575.4 ms` vs `452.6 ms`, `1.27x`). Separate `add`/`remove` closures avoid encoding two distinct events behind a `±1` sentinel, and `answer: Int -> R` matches `TimeTree.run` so queries carrying extra per-query data (like `cf2129e`'s `k`) work without duplicating the window.
 - **Reverse.** Remove `pub fn mo` from `stdlib/mo.cp` and revert `cf2006d.cp` / `cf2129e.cp` to `mo_order` + manual loops.
+
+## 113. Add `IntervalMap` to `stdlib/prelude.cp` (2026-11-21)
+
+- **Decision.** Re-export `std.interval.IntervalMap` from `stdlib/prelude.cp` (allocated prelude slot under decision 118, cap 80).
+- **Evidence.** 2 corpus ports (`cf2237h.cp`, `cf2057f.cp`) and 2 dreams (`dream/cf2237h.cp`, `dream/cf2057f.cp`) use `IntervalMap`; 0 name collisions across the corpus; emitted C++ is byte-identical across measured ports (`cf2237h`, `cf2057f`, `cf2022c`, `cf2262b`) and build time is within noise (`+0.05..+3.7 ms`).
+- **Reverse.** Delete `use std.interval.{IntervalMap}` from `stdlib/prelude.cp` and restore explicit `use std.interval.{IntervalMap}` in callers.

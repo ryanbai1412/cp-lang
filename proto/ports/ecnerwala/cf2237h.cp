@@ -5,7 +5,6 @@
 // all matched slime moves into bucket t_now.
 @!multitest
 use std.dsu.{DsuOf}
-use std.interval.{IntervalMap}
 
 let (n, m, q): (2..=100_000, 2..=100_000, 1..=100_000) = read()
 domain V = 1..=n

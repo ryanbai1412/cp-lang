@@ -4,7 +4,6 @@
 // The cost Σ_{j<l} ⌈X / 2^j⌉ − Σ a[s..=i] rises with X, so for each l <= 31 keep the window with the largest sum
 // on every stretch of X; sweeping the stretches from high to low answers the queries in decreasing k.
 @!multitest
-use std.interval.{IntervalMap}
 let (n, q): (1..=50_000, 1..=50_000) = read()
 let a: [n]1..=1e9 = read()
 let ks: [q]1..=1e9 = read()

@@ -20,6 +20,7 @@ use std.geometry.{ByAngle, Pt}
 use std.graph.{Graph, Target, bfs, condense, dijkstra, peel, scc, topo}
 use std.grid.{Dir4, Dir8, step}
 use std.heap.{MaxHeap, MinHeap}
+use std.interval.{IntervalMap}
 use std.lazy.{AddMax, AddMin, AddSum, AssignMax, AssignMin, AssignSum, LazySegTree}
 use std.marks.{Marks}
 use std.math.{Sieve, bit, ceil_div, digits, fixed, gcd, lcm}
