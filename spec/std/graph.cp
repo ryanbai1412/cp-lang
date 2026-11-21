@@ -1247,3 +1247,22 @@ fn at_most_one_forbids_every_pair_and_allows_each_single():
         if let pick = got:
             assert sum(1 for l in group if pick[l.x] == l.value) <= 1
             for (a, b) in clauses: assert pick[a.x] == a.value or pick[b.x] == b.value
+
+/// Values keyed by unordered vertex pairs: `m[u, v] = x` also sets `m[v, u]` to `flip(x)`,
+/// so an oriented value (a table over both endpoints) reads the right way round from either
+/// end. Hashing, O(1) expected per operation.
+pub struct UndirectedMap<V, T>:
+    at: Map<(V, V), T>
+    flip: T -> T
+
+    /// An empty map; `flip` turns a value seen from `u` into the value seen from `v`. O(1).
+    pub fn new(flip: T -> T = x => x) -> UndirectedMap<V, T> = todo
+
+    /// The value between `u` and `v`, oriented from `u`, or `none`. O(1) expected.
+    pub fn get(self, u: V, v: V) -> ?T = todo
+
+    /// Store `x` between `u` and `v`, oriented from `u`. O(1) expected.
+    pub fn set(mut self, u: V, v: V, x: T) = todo
+
+    /// Remove and return the value between `u` and `v`, oriented from `u`. O(1) expected.
+    pub fn remove(mut self, u: V, v: V) -> ?T = todo
