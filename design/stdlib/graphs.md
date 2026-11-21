@@ -156,15 +156,24 @@ struct Paths<V, W, A>       // the result of every single-pair-family search
     fn path(self, t: V) -> ?List<V>           // source .. t, O(len)
     fn arcs(self, t: V) -> ?List<A>           // arcs from source to t, O(len)
 
-fn bfs<V, N>(next: N, from: List<V>) -> Paths<V, Int, A>            // O(n + m)
-fn bfs01<V, N, A>(next: N, from: List<V>, w: A -> Int) -> Paths<V, Int, A>
+fn bfs<V, N>(next: N, from: List<V>, until: ?V = none) -> Paths<V, Int, A>
+    // O(n + m)
+fn bfs01<V, N, A>(next: N, from: List<V>, w: A -> Int, until: ?V = none)
+    -> Paths<V, Int, A>
     // O(n + m); deque; traps unless w(a) is 0 or 1
-fn dijkstra<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W) -> Paths<V, W, A>
+fn dijkstra<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W, until: ?V = none)
+    -> Paths<V, W, A>
     // O((n + m) log m) binary heap with lazy deletion; traps on a negative weight
 fn fixed_cost_paths<S, M, W>(
-    from: List<S>, moves: List<M>, cost: M -> W, step: (M, S) -> ?S,
+    from: List<S>, moves: List<M>, cost: M -> W, step: (M, S) -> ?S, until: ?S = none,
 ) -> Paths<S, W, M>
     // O(|S| * |moves|): one FIFO per move, no heap (Dial's idea for k costs)
+
+`until: t` stops a search once `t` is settled: `p[t]` and every distance in
+`p.order` are exact, and `p.order` ends at `t`; a vertex outside `p.order`
+holds `none` or an upper bound. The cost bounds become the part of the space
+cheaper than `t`, which is what a hand-written loop that stops at the target
+pays (`cf2178h`).
 fn bellman_ford<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W) -> ?Paths<V, W, A>
     // O(n * m); none when a negative cycle is reachable from a source
 fn floyd_warshall<V, W>(w: [V, V]?W) -> ?[V, V]?W
@@ -473,6 +482,6 @@ else:
 - `dominator_tree` (Lengauer-Tarjan) returning `Rooted`.
 - Shortest-path DAG views: `p.dag` as a `Neighbours` over the tight arcs, so
   counting paths is `dp` over `p.order` with `p.dag`.
-- `bfs` and `dijkstra` with `until: t` for early exit and `max_dist:`.
+- `max_dist:` on the searches, next to the landed `until: t`.
 - Johnson's reweighting, `k_shortest` (Eppstein) and minimum mean cycle are
   library candidates only once ports ask for them.

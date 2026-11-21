@@ -615,7 +615,9 @@ fn a_plain_edge_list_needs_no_edge_domain():
 /// What a search found: `p[v]` is the distance to `v` (`none` if unreachable),
 /// `parent[v]` the vertex before `v` on one shortest path, `via[v]` the arc or
 /// move that reached it, and `order` the reached vertices in settling order, so
-/// every vertex comes after its parent and distances never decrease.
+/// every vertex comes after its parent and distances never decrease. A search
+/// given `until: t` stops once `t` is settled: distances in `order` are exact,
+/// and any other vertex holds `none` or an upper bound.
 pub struct Paths<V, W, A>:
     dist: [V]?W
     parent: [V]?V
@@ -651,8 +653,9 @@ pub struct Paths<V, W, A>:
         reverse(mut out)
         out
 
-/// Fewest arcs from any of `from` to each vertex. O(n + m).
-pub fn bfs<V, N, A>(next: N, from: List<V>) -> Paths<V, Int, A>:
+/// Fewest arcs from any of `from` to each vertex; `until: t` stops once `t` is
+/// reached. O(n + m).
+pub fn bfs<V, N, A>(next: N, from: List<V>, until: ?V = none) -> Paths<V, Int, A>:
     var dist: [V]?Int = none
     var parent: [V]?V = none
     var via: [V]?A = none
@@ -663,6 +666,7 @@ pub fn bfs<V, N, A>(next: N, from: List<V>) -> Paths<V, Int, A>:
             queue.push(s)
     var head = 0
     while head < queue.len:
+        if let t = until and dist[t] != none: break
         let u = queue[head]
         head += 1
         let d = dist[u]! + 1
@@ -675,9 +679,9 @@ pub fn bfs<V, N, A>(next: N, from: List<V>) -> Paths<V, Int, A>:
     Paths(dist, parent, via, queue)
 
 /// Shortest distances when every weight `w(a)` is 0 or 1, from every vertex of `from`
-/// at distance 0: a deque, with 0-arcs pushed to the front. O(n + m); traps on any
-/// other weight.
-pub fn bfs01<V, N, A>(next: N, from: List<V>, w: A -> Int) -> Paths<V, Int, A>:
+/// at distance 0: a deque, with 0-arcs pushed to the front; `until: t` stops once
+/// `t` is settled. O(n + m); traps on any other weight.
+pub fn bfs01<V, N, A>(next: N, from: List<V>, w: A -> Int, until: ?V = none) -> Paths<V, Int, A>:
     var dist: [V]?Int = none
     var parent: [V]?V = none
     var via: [V]?A = none
@@ -692,6 +696,7 @@ pub fn bfs01<V, N, A>(next: N, from: List<V>, w: A -> Int) -> Paths<V, Int, A>:
         if done[u]: continue
         done[u] = true
         order.push(u)
+        if until == u: break
         let d = dist[u]!
         for a in next.out(u):
             let c = w(a)
@@ -705,9 +710,14 @@ pub fn bfs01<V, N, A>(next: N, from: List<V>, w: A -> Int) -> Paths<V, Int, A>:
     Paths(dist, parent, via, order)
 
 /// Shortest distances for non-negative weights, from `(vertex, starting distance)`
-/// pairs. O((n + m) log m) with a binary heap and lazy deletion; traps on a
-/// negative weight.
-pub fn dijkstra<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W) -> Paths<V, W, A>:
+/// pairs; `until: t` stops once `t` is settled. O((n + m) log m) with a binary heap
+/// and lazy deletion; traps on a negative weight.
+pub fn dijkstra<V, N, A, W>(
+    next: N,
+    from: List<(V, W)>,
+    w: A -> W,
+    until: ?V = none,
+) -> Paths<V, W, A>:
     var dist: [V]?W = none
     var parent: [V]?V = none
     var via: [V]?A = none
@@ -720,6 +730,7 @@ pub fn dijkstra<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W) -> Paths<V, 
     while let (d, u) = heap.pop():
         if dist[u]! < d: continue
         order.push(u)
+        if until == u: break
         for a in next.out(u):
             let c = w(a)
             assert c >= W.zero
@@ -736,12 +747,14 @@ pub fn dijkstra<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W) -> Paths<V, 
 /// costs: from every state of `from` at distance 0, `step(mv, s)` is where move `mv`
 /// leads from `s` (`none`: not allowed there), at cost `cost(mv)`. One FIFO per move
 /// replaces the heap: a move's queue receives states in non-decreasing distance, so
-/// the cheapest head is always next. O(|S| * |moves|).
+/// the cheapest head is always next; `until: t` stops once `t` is settled.
+/// O(|S| * |moves|).
 pub fn fixed_cost_paths<S, M, W>(
     from: List<S>,
     moves: List<M>,
     cost: M -> W,
     step: (M, S) -> ?S,
+    until: ?S = none,
 ) -> Paths<S, W, M>:
     let price = [cost(mv) for mv in moves]
     var dist: [S]?W = none
@@ -771,6 +784,7 @@ pub fn fixed_cost_paths<S, M, W>(
         if done[s]: continue
         done[s] = true
         order.push(s)
+        if until == s: break
         for j in 0..moves.len:
             if let t = step(moves[j], s):
                 let nd = d + price[j]
@@ -1022,6 +1036,41 @@ fn fixed_cost_paths_match_dijkstra_on_the_same_moves():
         if let path = p.path(s):
             assert path[0] == S(1) and path.last! == s
     for i in 1..p.order.len: assert p[p.order[i - 1]]! <= p[p.order[i]]!
+
+@test
+fn until_stops_at_the_target_with_its_exact_distance():
+    domain V = 0..40
+    domain E = 0..80
+    let edges = [E] e => (
+        u: V.nth(e.to_idx % 40),
+        v: V.nth((e.to_idx * 7 + 3) % 40),
+        w: e.to_idx % 3,
+    )
+    let g = Graph.directed(edges)
+    let full = dijkstra(g, from: [(V(0), 0)], w: a => edges[a.e].w)
+    let hops = bfs(g, from: [V(0)])
+    let cheap = bfs01(g, from: [V(0)], w: a => min(edges[a.e].w, 1))
+    for t in V:
+        let p = dijkstra(g, from: [(V(0), 0)], w: a => edges[a.e].w, until: t)
+        if full[t] == none:
+            assert p.order == full.order
+            continue
+        assert p[t] == full[t] and p.order.last == t and p.path(t) != none
+        for v in p.order: assert p[v] == full[v]
+        assert bfs(g, from: [V(0)], until: t)[t] == hops[t]
+        let q = bfs01(g, from: [V(0)], w: a => min(edges[a.e].w, 1), until: t)
+        assert q[t] == cheap[t] and q.order.last == t
+    domain S = 0..30
+    fn step(m: Int, s: S) -> ?S = if s.to_idx + m < 30: S(s.to_idx + m) else: none
+    let all = fixed_cost_paths(from: [S(0)], moves: [1, 4], cost: m => 5 - m, step: step)
+    let one = fixed_cost_paths(
+        from: [S(0)],
+        moves: [1, 4],
+        cost: m => 5 - m,
+        step: step,
+        until: S(17),
+    )
+    assert one[S(17)] == all[S(17)] and one.order.last == S(17) and one.order.len < all.order.len
 
 @test
 fn bellman_ford_matches_floyd_warshall_and_finds_negative_cycles():

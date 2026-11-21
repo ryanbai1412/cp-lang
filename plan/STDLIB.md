@@ -1062,15 +1062,17 @@ struct Paths<V, W, A> // dist, parent, via: [V]?_; order: List<V>
     fn reached(self, v: V) -> Bool // O(1)
     fn path(self, t: V) -> ?List<V> // O(len)
     fn arcs(self, t: V) -> ?List<A> // O(len)
-fn bfs<V, N>(next: N, from: List<V>) -> Paths<V, Int, A> // O(n + m)
+// every search takes `until: t`: stop once t is settled
+fn bfs<V, N>(next: N, from: List<V>, until: ?V = none) -> Paths<V, Int, A> // O(n + m)
 // O(n + m) deque; traps unless every weight is 0 or 1
-fn bfs01<V, N, A>(next: N, from: List<V>, w: A -> Int) -> Paths<V, Int, A>
+fn bfs01<V, N, A>(next: N, from: List<V>, w: A -> Int, until: ?V = none)
+    -> Paths<V, Int, A>
 // O((n + m) log m)
-fn dijkstra<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W)
+fn dijkstra<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W, until: ?V = none)
     -> Paths<V, W, A>
 // O(|S| |moves|): one FIFO per move, no heap
 fn fixed_cost_paths<S, M, W>(from: List<S>, moves: List<M>, cost: M -> W,
-    step: (M, S) -> ?S) -> Paths<S, W, M>
+    step: (M, S) -> ?S, until: ?S = none) -> Paths<S, W, M>
 // O(n m); none on a reachable negative cycle
 fn bellman_ford<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W)
     -> ?Paths<V, W, A>

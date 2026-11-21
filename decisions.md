@@ -2526,6 +2526,12 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
     tables and the generated API page. Debt: the suffix stands in for a
     general hidden-from-docs marker on a `pub fn`, which does not exist yet.
     Reverse: list them again, or replace the suffix test with that marker.
+11. **Every search takes `until: ?V = none`** (`bfs`, `bfs01`, `dijkstra`,
+    `fixed_cost_paths`): stop once that vertex is settled, so `order` ends
+    there and its distances are exact. An option, not a `_to` twin, and
+    `?V` so one target costs one comparison per settled vertex. A set of
+    targets or a predicate waits for a port that needs one. Reverse: drop
+    the option; callers stopping at a target pay for the whole space.
 
 ## 47. DP and search in the stdlib (`design/stdlib/dp.md`, 2026-11-21)
 
