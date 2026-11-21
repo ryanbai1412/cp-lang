@@ -12,12 +12,11 @@ let m: 3..=200_000 = read()
 domain Drink = 0..m
 type Cut = Drink.bounds
 
-fn sweep(order: List<Int>, pref: Cut -> Int, opens: (Cut, ?Int) -> ?Int) -> [Cut]?Int:
+fn sweep(order: List<Cut>, pref: Cut -> Int, opens: (Cut, ?Int) -> ?Int) -> [Cut]?Int:
     var best: [Cut]?Int = none
     var open: ?Int = none  // best opened day, p < here
     var low: ?Int = none   // least pref[l], l < here
-    for k in order:
-        let c = Drink.bounds.nth(k)
+    for c in order:
         if let o = open: best[c] = pref(c) + o
         open max= opens(c, low)
         low min= pref(c)
@@ -28,10 +27,10 @@ for _ in 0..n:
     let a: [Drink]-1_000_000_000..=1_000_000_000 = read()
     let pre = prefix(a)
     // A day opened at p: end[p] - pref[l] for some l < p, or l = p on day one.
-    fn ends(order: List<Int>, pref: Cut -> Int) -> [Cut]?Int:
+    fn ends(order: List<Cut>, pref: Cut -> Int) -> [Cut]?Int:
         if let e = end: sweep(order, pref, (p, low) => if let l = low: e[p] - l else: none)
         else: sweep(order, pref, (p, _) => -pref(p))
-    let right = ends([k for k in 0..=m], c => pre.prefix(c))
-    let left = ends([k for k in (0..=m).rev], c => -pre.prefix(c))
+    let right = ends([c for c in Drink.bounds], c => pre.prefix(c))
+    let left = ends([c for c in Drink.bounds.rev], c => -pre.prefix(c))
     end = [Cut] p => max(right[p], left[p])!
 print(end!.max())
