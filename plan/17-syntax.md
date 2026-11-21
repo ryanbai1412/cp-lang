@@ -95,7 +95,7 @@ fn sq(x: Int) -> Int = x * x    // one-line form
   comprehension `[deg[u] * 2 for u in V]` builds a `List`, except when the
   declared type is `[V]T`, where it builds the array.
 - **Compound assignment** includes `best max= x` and `best min= x`.
-- **Chaining**: `xs.sorted().rev()`.
+- **Chaining**: `xs.sorted().rev`.
 - **Compile-time branches**: `if const D.max_len <= 64: ...`.
 - **Assertions**: `assert lo <= hi` is kept in submissions unless built with
   `--release`.

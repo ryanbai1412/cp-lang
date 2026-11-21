@@ -35,7 +35,7 @@ for s in 0..n:
 
 // a stack only ever takes a value smaller than its top
 fn fits(stack: List<Int>, x: Int) -> Bool:
-    if let top = stack.last(): return x < top
+    if let top = stack.last: return x < top
     true
 
 if not ok: print(0)
@@ -47,7 +47,7 @@ else:
     while need <= n:
         // a pop that is due beats everything on its own stack; between the
         // stacks the letters decide: a < b < c < d
-        if stack0.last() == need:
+        if stack0.last == need:
             stack0.pop()
             script.push('b')
             need += 1
@@ -55,7 +55,7 @@ else:
             stack0.push(a[next])
             script.push('a')
             next += 1
-        elif stack1.last() == need:
+        elif stack1.last == need:
             stack1.pop()
             script.push('d')
             need += 1

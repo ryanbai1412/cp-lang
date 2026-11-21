@@ -144,6 +144,16 @@ pub const POW_METHOD: Lint = Lint {
     trigger: "let x = 2\nprint(x.pow(10))\n",
     fix: "let x = 2\nprint(x ** 10)\n",
 };
+pub const GETTER_PARENS: Lint = Lint {
+    code: Code("L0206"),
+    name: "getter_parens",
+    default: Level::Warn,
+    title: "Built-in getter called with `()`",
+    summary: "`.len()`, `.is_empty()`, `.first()`, `.last()`, `.rev()`, `.items()` are read without `()`",
+    explanation: "Built-in getters (`len`, `is_empty`, `first`, `last`, `rev`, `items`) are read as properties without parentheses. `cpl fix` drops the empty `()`.",
+    trigger: "let xs = [1, 2, 3]\nprint(xs.len())\n",
+    fix: "let xs = [1, 2, 3]\nprint(xs.len)\n",
+};
 pub const FLOAT_EQUALITY: Lint = Lint {
     code: Code("L0301"),
     name: "float_equality",
@@ -335,6 +345,7 @@ pub const LINTS: &[Lint] = &[
     SHADOWS_TOP_LEVEL,
     TURBOFISH_TYPE_ARGS,
     POW_METHOD,
+    GETTER_PARENS,
     FLOAT_EQUALITY,
     DOMAIN_KEYED_MAP,
     MEMO_KEY_SPACE,

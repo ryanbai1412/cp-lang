@@ -7,5 +7,5 @@ print()
 let back: List<D> = D.all.rev
 let r = D.all.rev
 print(back, total(D.all.rev), [i.ord * 2 for i in D.all.rev], [i for i in r])
-print([i for i in (1..=n).rev], sorted(D.all.rev, by: i => i.ord))
-print(D.all.rev(), (0..n).rev().len)
+print([i for i in (1..=n).rev], D.all.rev.sorted(by: i => i.ord))
+print(D.all.rev, (0..n).rev.len)

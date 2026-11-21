@@ -117,7 +117,7 @@ domain `A` of size n, `A.Cut` is a derived domain of n + 1 cuts.
   `xs.Cut`, a fresh nominal cut domain (`xs.Cut.at(i)` converts an `Int`), so `pre[i]` vs `pre[i + 1]` stays
   checked while elements stay `Int`-indexed. Slices of a named domain keep `A.Cut`.
 - **Open ranges** [p1 F2]: `a[c ..]` (from cut `c` to the end), beside the prefix forms `a[..c]` / `a[..=c]`.
-- **Reversed views** [p1 F5, r13 P21]: `xs.rev()` keeps `D` and reverses iteration order only; suffix work
+- **Reversed views** [p1 F5, r13 P21]: `xs.rev` keeps `D` and reverses iteration order only; suffix work
   uses `suffix_*` scans, and `D.mirror(v)` names the opposite position, so the far end needs no `n - 1 - i`.
 - `A.chunks(k)` yields `Range<A>` blocks of k (the last may be short) [Tourism].
 

@@ -15,7 +15,7 @@ fn main():
     var window: List<Int> = []      // candidate starts, pre increasing
     var head = 0
     for e in 1..=2 * n:
-        while head < window.len and pre[window.last()!] >= pre[e - 1]: window.pop()
+        while head < window.len and pre[window.last!] >= pre[e - 1]: window.pop()
         window.push(e - 1)
         while window[head] <= e - k: head += 1
         best max= pre[e] - pre[window[head]]

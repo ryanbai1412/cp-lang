@@ -10,7 +10,7 @@ fn add(a: List<Z>, b: List<Z>) -> List<Z>:
 
 fn remove(a: List<Z>, b: List<Z>) -> List<Z>:
     if a.is_empty: return []
-    convolve(a, b.rev())[b.len - 1..].to_list()
+    convolve(a, b.rev)[b.len - 1..].to_list()
 
 fn plus_integral(a: List<Z>) -> List<Z> = add(a, integral(a))
 
@@ -53,8 +53,7 @@ for t in (2..=n).rev:
     child = t + 1
     while let v = node:
         if v != t: carry = remove(carry, before[child])
-        var lifted: List<Z> = [0]
-        for (i, x) in dp[v].items: lifted.push(x * (i + 1))
+        let lifted: List<Z> = [0] + [x * (i + 1) for (i, x) in dp[v].items]
         let next = add(lifted, carry)
         carry = add(carry, dp[v])
         dp[v] = next

@@ -30,6 +30,6 @@ fn solve_dir(xs: [V]Int) -> Int:
 
     (0..=n).first_where(x => check(x))!
 
-var rev_a = a.copy()
-rev_a.rev()
+let rev_a = a.copy()
+rev_a.rev
 print(min(solve_dir(a), solve_dir(rev_a)))

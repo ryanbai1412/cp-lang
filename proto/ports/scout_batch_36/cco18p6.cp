@@ -47,8 +47,8 @@ fn sort_swaps(init: [I]Int) -> List<(Int, Int)>:
     ops
 
 let fwd = sort_swaps(a0)
-var bwd = sort_swaps(b0)
-bwd.rev()
+let bwd = sort_swaps(b0)
+bwd.rev
 
 print(fwd.len + bwd.len)
 for (x, y) in fwd: print(x + 1, y + 1)

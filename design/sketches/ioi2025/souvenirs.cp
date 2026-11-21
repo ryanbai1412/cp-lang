@@ -28,7 +28,7 @@ fn buy_souvenirs(n: 2..=100, p0: 1..=1e15):
             e.sum -= v
 
     while T.any(i => price[i] == none):
-        for i in T.rev():
+        for i in T.rev:
             if let v = price[i]:
                 if T.after(i).any(j => price[j] == none): break pay(v - 1)
             elif let e = eq[i]:

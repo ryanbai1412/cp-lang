@@ -34,7 +34,7 @@ fn max_coupons(a0: 0..=1e9, p: [C]1..=1e9, t: [C]1..=4) -> List<C>:
 
     var took: List<C> = []                            // walk back: a skip that keeps best was optimal
     var j = k
-    for i in (0..rest.len).rev():
+    for i in (0..rest.len).rev:
         if best[i + 1][j] != best[i][j]:
             took.push(rest[i])
             j -= 1

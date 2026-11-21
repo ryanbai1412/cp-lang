@@ -299,7 +299,7 @@ var best = 0
 for v in V:
     best max= d[v] ?? 0
     best = best + g.adj(v).len * 2
-print(\" \".join(d[v] ?? -1 for v in V), best, xs.sorted().rev())
+print(\" \".join(d[v] ?? -1 for v in V), best, xs.sorted().rev)
 ";
     // The module is the one thing wrong; what it would have defined is
     // not reported a second time.
@@ -2528,15 +2528,15 @@ fn last_before(blacks: List<(Int, Int)>, r: Int) -> ?Int:
 fn first_after(s: Str, c: Char) -> ?Int:
     bsearch_first(0..s.len, i => s[i] >= c)
 
-fn getter_calls(xs: List<Int>, s: Str, r: Range<Int>) -> Int:
+fn getter_reads(xs: List<Int>, s: Str, r: Range<Int>) -> Int:
     domain D = 0..3
     let a: [D]Int = 0
-    if xs.is_empty() or s.is_empty() or a.is_empty() or r.is_empty():
+    if xs.is_empty or s.is_empty or a.is_empty or r.is_empty:
         return 0
-    xs.len() + s.len() + a.len() + r.len()
+    xs.len + s.len + a.len + r.len
 
 print(last_before([(1, 2), (3, 4)], 3) ?? -1, first_after(\"abc\", 'b') ?? -1)
-print(getter_calls([1, 2], \"ab\", 0..4))
+print(getter_reads([1, 2], \"ab\", 0..4))
 ";
     assert_eq!(check(ok), vec![]);
 }
@@ -2671,4 +2671,28 @@ print(b)
         errs.iter().any(|e| e.message.contains("power uses `**`, not `.pow(...)`")),
         "expected `.pow` error suggesting `**`, got: {errs:?}"
     );
+}
+
+#[test]
+fn builtin_getters_reject_empty_parentheses_with_fix() {
+    let bad = "\
+let xs = [1, 2, 3]
+let s = \"abc\"
+print(xs.len(), xs.is_empty(), xs.first(), xs.last(), xs.rev(), xs.items(), s.len(), s.rev())
+";
+    let errs = check(bad);
+    assert_eq!(errs.len(), 8, "expected 8 getter errors, got: {errs:#?}");
+    for e in &errs {
+        assert!(
+            e.message.contains("is read without parentheses:"),
+            "unexpected message: {}",
+            e.message
+        );
+        assert!(!e.fixes.is_empty(), "expected fix-it on: {e:#?}");
+    }
+    let ok = "\
+let xs = [1, 2, 3]
+print(xs.len, xs.is_empty, xs.first, xs.last, xs.rev, xs.items, xs.first(x => x > 1), xs.last(1))
+";
+    assert!(check(ok).is_empty(), "expected clean check, got: {:?}", check(ok));
 }

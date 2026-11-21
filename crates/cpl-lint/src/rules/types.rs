@@ -3,7 +3,8 @@
 
 use crate::walk::{unparen, Visitor};
 use crate::{
-    File, Finding, DOMAIN_KEYED_MAP, POSITION_ARITHMETIC, POW_METHOD, TURBOFISH_TYPE_ARGS,
+    File, Finding, DOMAIN_KEYED_MAP, GETTER_PARENS, POSITION_ARITHMETIC, POW_METHOD,
+    TURBOFISH_TYPE_ARGS,
 };
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::{BinOp, Expr, ExprKind, PatternKind, Stmt, StmtKind, Type, TypeKind};
@@ -239,6 +240,35 @@ impl Visitor for Types<'_> {
                         });
                         self.findings.push(Finding {
                             lint: &POW_METHOD,
+                            diag,
+                        });
+                        return;
+                    }
+                    if args.is_empty()
+                        && matches!(
+                            name.text.as_str(),
+                            "len" | "is_empty" | "first" | "last" | "rev" | "items"
+                        )
+                    {
+                        let callee_span = callee.span.shift(self.base);
+                        let call_span = expr.span.shift(self.base);
+                        let callee_text = callee_span.text(self.src);
+                        let parens = Span::new(callee_span.end, call_span.end);
+                        let mut diag = Diagnostic::warning(
+                            GETTER_PARENS.code,
+                            call_span,
+                            format!(
+                                "`{}` is read without parentheses: `{callee_text}`",
+                                name.text
+                            ),
+                        )
+                        .with_help(format!("write `{callee_text}`"));
+                        diag.fixes.push(cpl_diag::Fix {
+                            title: format!("drop `()` to read `{callee_text}`"),
+                            edits: vec![(parens, String::new())],
+                        });
+                        self.findings.push(Finding {
+                            lint: &GETTER_PARENS,
                             diag,
                         });
                         return;

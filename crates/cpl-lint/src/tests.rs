@@ -964,3 +964,16 @@ fn pow_method_lint_warns_and_fixes_with_parentheses() {
         "let a = 2\nlet n = 5\nprint(a ** 3, a ** (n - 1), (a + 1) ** 2, (a ** n).abs)\n"
     );
 }
+
+#[test]
+fn getter_parens_lint_warns_and_drops_parens() {
+    let src = "let xs = [1, 2, 3]\nprint(xs.len(), xs.is_empty(), xs.first(), xs.last(), xs.rev(), xs.items(), xs.first(x => x > 1))\n";
+    assert_eq!(
+        codes(src),
+        vec!["L0206", "L0206", "L0206", "L0206", "L0206", "L0206"]
+    );
+    assert_eq!(
+        fixed(src),
+        "let xs = [1, 2, 3]\nprint(xs.len, xs.is_empty, xs.first, xs.last, xs.rev, xs.items, xs.first(x => x > 1))\n"
+    );
+}

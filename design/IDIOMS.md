@@ -12,7 +12,7 @@ One line per idiom. Every spelling is from spec chapters 1–8; nothing here is 
 | `vector<int>(n)` indexed by `int` | anonymous `[n]T`, indexed `0..n` |
 | `pre[i + 1] - pre[l]` | `pre[r.after] - pre[r.before]` (cuts) |
 | `a.begin() + l, a.begin() + r` | `a[l .. r]` or `a[prev]` with `prev: Range<Cut>` |
-| `n - 1 - i` | `D.mirror(i)`; suffix work with `suffix_max`/`suffix_sums`; iterate backwards with `xs.rev()` |
+| `n - 1 - i` | `D.mirror(i)`; suffix work with `suffix_max`/`suffix_sums`; iterate backwards with `xs.rev` |
 | `max(0, i - k)` | `p.back(k)` (clamped) |
 | `i + 1 < n ? i + 1 : -1` | `v.next` (`?D`) |
 | `(i + 1) % n` | `domain K = ring(n)`, then `i + 1` |

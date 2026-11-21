@@ -47,11 +47,19 @@ fn every_row_of_the_catalog_runs_with_the_type_it_names() {
         if let Err(why) = run(&format!("row{i}"), &body) {
             wrong.push(format!("{who}: `{}` does not run as written:\n{why}", member.example));
         }
-        // A `Get` reads the same with empty parentheses.
+        // Built-in `Get` properties are read without parentheses.
         if member.kind == MemberKind::Get {
             let called = format!("let got: {} = {}()\nprint(got)", member.example_ty, member.example);
-            if let Err(why) = run(&format!("row{i}_called"), &called) {
-                wrong.push(format!("{who}: `{}()` does not run:\n{why}", member.example));
+            match run(&format!("row{i}_called"), &called) {
+                Ok(()) => wrong.push(format!(
+                    "{who}: `{}()` should be rejected (getters are read without parentheses)",
+                    member.example
+                )),
+                Err(why) if !why.contains("is read without parentheses") => wrong.push(format!(
+                    "{who}: `{}()` failed with unexpected error (expected `is read without parentheses`):\n{why}",
+                    member.example
+                )),
+                Err(_) => {}
             }
         }
     }

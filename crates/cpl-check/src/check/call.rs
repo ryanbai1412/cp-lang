@@ -7,6 +7,9 @@ use cpl_syntax::ast::{Arg, Expr, ExprKind, Pattern, PatternKind, Type};
 
 impl<'a> Checker<'a> {
     pub(crate) fn call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Ty {
+        if let Some(ty) = self.builtin_getter_call(call, callee, args) {
+            return ty;
+        }
         if let Some(ty) = self.getter_call(callee, args) {
             return ty;
         }
@@ -80,9 +83,68 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// `x.inv()`: a `@get` method of a struct or a builtin sequence getter
-    /// reads the same with empty parentheses, unless what it gives is itself
-    /// a fn to call.
+    /// Built-in `MemberKind::Get` properties (`len`, `is_empty`, `first`,
+    /// `last`, `rev`, `items`) are read without parentheses.
+    fn builtin_getter_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Option<Ty> {
+        if !args.is_empty() {
+            return None;
+        }
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return None;
+        };
+        let base_ty = self.quietly(|c| c.infer(base));
+        let is_builtin_get = match &base_ty {
+            Ty::Named { name: n, args } if n == "List" && args.len() == 1 => {
+                crate::builtins::builtin_members(crate::builtins::Receiver::List)
+                    .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name.text)
+            }
+            Ty::Str => crate::builtins::builtin_members(crate::builtins::Receiver::Str)
+                .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name.text),
+            Ty::Named { name: n, args }
+                if matches!(n.as_str(), "Map" | "HashMap") && args.len() == 2 =>
+            {
+                crate::builtins::builtin_members(crate::builtins::Receiver::Map)
+                    .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name.text)
+            }
+            Ty::Named { name: n, args }
+                if matches!(n.as_str(), "Set" | "HashSet") && args.len() == 1 =>
+            {
+                crate::builtins::builtin_members(crate::builtins::Receiver::Set)
+                    .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name.text)
+            }
+            Ty::Array { .. } => crate::builtins::builtin_members(crate::builtins::Receiver::Array)
+                .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name.text),
+            Ty::Named { name: n, .. } if n == "Range" => {
+                matches!(name.text.as_str(), "len" | "is_empty" | "first" | "last" | "rev")
+            }
+            Ty::Domain(_) => {
+                matches!(name.text.as_str(), "len" | "first" | "last" | "rev" | "bounds")
+            }
+            _ => false,
+        };
+        if !is_builtin_get {
+            return None;
+        }
+        let callee_text = self.quote(callee.span);
+        let message = format!(
+            "`{}` is read without parentheses: `{callee_text}`",
+            name.text
+        );
+        if let Some(diag) = self.error(codes::NOT_CALLABLE, call.span, message) {
+            diag.help = Some(format!(
+                "write `{callee_text}` (or run `cpl fix` to drop `()`)"
+            ));
+            let parens = Span::new(callee.span.end, call.span.end);
+            diag.fixes.push(cpl_diag::Fix {
+                title: format!("drop `()` to read `{callee_text}`"),
+                edits: vec![(parens, String::new())],
+            });
+        }
+        Some(Ty::Error)
+    }
+
+    /// `x.inv()`: a `@get` method of a struct reads the same with empty
+    /// parentheses, unless what it gives is itself a fn to call.
     fn getter_call(&mut self, callee: &Expr, args: &[Arg]) -> Option<Ty> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return None;
@@ -90,13 +152,7 @@ impl<'a> Checker<'a> {
         if !args.is_empty() {
             return None;
         }
-        let base_ty = self.quietly(|c| c.infer(base));
-        if base_ty.seq_elem().is_some()
-            && matches!(name.text.as_str(), "len" | "is_empty" | "first" | "last" | "rev")
-        {
-            return Some(self.infer(callee));
-        }
-        let Ty::Named { name: type_name, .. } = base_ty else {
+        let Ty::Named { name: type_name, .. } = self.quietly(|c| c.infer(base)) else {
             return None;
         };
         let is_getter = |getters: &[String]| getters.contains(&name.text);
@@ -392,16 +448,6 @@ impl<'a> Checker<'a> {
                 let mut bindings = Bindings::new();
                 self.args(&callee_text, "takes", &params, args, call, &mut bindings);
                 self.settle(&ret.subst(&bindings))
-            }
-            // `s.rev()`, `xs.rev()`: zero-arg getter call on a reverse view.
-            ty @ (Ty::Str | Ty::Named { .. })
-                if args.is_empty()
-                    && matches!(&callee.kind, ExprKind::Field { name, .. } if name.text == "rev")
-                    && (ty == Ty::Str
-                        || matches!(&ty, Ty::Named { name, args } if name == "List" && args.len() == 1)) =>
-            {
-                self.note_readonly_view(call, "reverse view");
-                ty
             }
             Ty::Named {
                 name,

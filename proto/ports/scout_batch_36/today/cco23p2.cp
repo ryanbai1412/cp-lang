@@ -39,8 +39,8 @@ for cid in hs.D:
     let cur_h = hs[cid]
     if let lo_h = prev_h:
         if not active.is_empty:
-            let first = V(active.first()!)
-            let last = V(active.last()!)
+            let first = V(active.first!)
+            let last = V(active.last!)
             let span = cur_h - lo_h
             let sz = active.len
             if sz == 1:
@@ -56,10 +56,10 @@ for cid in hs.D:
                 sq[last].push((lo_h, span))
                 pq[V.last].push((lo_h, span))
     for v in by_h[cid]: active.add(v.idx)
-    while let lo = active.first():
+    while let lo = active.first:
         if cur_h < cap[V(lo)]: break
         active.pop_first()
-    while let hi = active.last():
+    while let hi = active.last:
         if cur_h < cap[V(hi)]: break
         active.pop_last()
     prev_h = cur_h

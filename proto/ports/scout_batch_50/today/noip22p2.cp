@@ -38,7 +38,7 @@ for _ in 0..tests:
 
     fn place(s: Int, card: Int):
         script.push((1, s + 1, 0))
-        if stacks[s].last() == card: stacks[s].pop()
+        if stacks[s].last == card: stacks[s].pop()
         else:
             stacks[s].push(card)
             home[card] = s
@@ -47,7 +47,7 @@ for _ in 0..tests:
     fn match_bottoms(s: Int, t: Int):
         script.push((2, s + 1, t + 1))
         for u in [s, t]:
-            var rest: List<Int> = [stacks[u][i] for i in 1..stacks[u].len]
+            let rest: List<Int> = [stacks[u][i] for i in 1..stacks[u].len]
             stacks[u] = rest
             refresh(u)
 
@@ -67,7 +67,7 @@ for _ in 0..tests:
             else: place(empty.min()!, card)
         else:
             let s = home[card]
-            if stacks[s].last() == card: place(s, card)
+            if stacks[s].last == card: place(s, card)
             else:
                 // it is a bottom card: cancel it through the spare stack
                 let spare = empty.min()!

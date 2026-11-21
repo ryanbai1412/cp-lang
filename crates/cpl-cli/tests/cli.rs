@@ -116,7 +116,7 @@ fn a_statement_that_only_works_out_a_value_is_a_warning() {
         assert_eq!(out.status.code(), Some(0), "{body}");
         String::from_utf8(out.stderr).unwrap()
     };
-    for dropped in ["xs.rev()", "xs.sorted()", "sorted(xs)", "s.set(V(1), true)", "s.with(V(1))", "xs.deduped()", "xs.len", "xs[0] + 1"] {
+    for dropped in ["xs.rev", "xs.sorted()", "sorted(xs)", "s.set(V(1), true)", "s.with(V(1))", "xs.deduped()", "xs.len", "xs[0] + 1"] {
         let stderr = check(dropped);
         assert!(stderr.contains("warning[W0101]"), "{dropped}: {stderr}");
     }

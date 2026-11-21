@@ -63,8 +63,8 @@ fn main_solve():
             if let carry = pair_sub(v): open.push(carry)
         var i = 0
         while i + 1 < open.len:
-            var right = climb(open[i], u)
-            right.rev()
+            let right = climb(open[i], u)
+            right.rev
             var full = climb(open[i + 1], u)
             full.push(u)
             for x in right: full.push(x)
@@ -79,8 +79,7 @@ fn main_solve():
     print("YES")
     print(pairings.len)
     for path in pairings:
-        var line: List<Int> = [path.len]
-        for v in path: line.push(v.idx + 1)
+        let line: List<Int> = [path.len] + [v.idx + 1 for v in path]
         print(line)
 
 main_solve()
