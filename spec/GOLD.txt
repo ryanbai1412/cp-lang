@@ -1,0 +1,18 @@
+# Gold dreams: the acceptance tests for the spec. A dream joins only after
+# the coordinator grades it at the bar of these exemplars.
+proto/ports/ecnerwala/dream/cf2069c.cp
+proto/ports/ecnerwala/dream/cf2084h.cp
+proto/ports/ecnerwala/dream/cf2147f.cp
+proto/ports/ecnerwala/dream/cf2147h.cp
+proto/ports/ecnerwala/dream/cf2255e2.cp
+spec/gold/cf1083e.cp
+spec/gold/cf1139e.cp
+spec/gold/cf600e.cp
+spec/gold/cf802i.cp
+spec/gold/cf868f.cp
+spec/gold/ioi25_festival.cp
+spec/gold/ioi25_migrations.cp
+spec/gold/ioi25_obstacles.cp
+spec/gold/ioi25_souvenirs.cp
+spec/gold/ioi25_triples.cp
+spec/gold/ioi25_worldmap.cp

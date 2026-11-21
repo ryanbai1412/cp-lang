@@ -42,13 +42,21 @@ pub struct Bitset<D>:
     /// Whether position `i` is set. O(1).
     pub fn contains(self, i: D) -> Bool = ((w[i.to_idx / 64] >> (i.to_idx % 64)) & U64(1)) == U64(1)
 
-    /// Set the bit at position `i`. O(1).
-    pub fn add(mut self, i: D):
-        w[i.to_idx / 64] |= bit(i.to_idx % 64)
+    /// Set the bit at position `i`; returns `true` if `i` was not already set (matches `Set.add`). O(1).
+    pub fn add(mut self, i: D) -> Bool:
+        let k = i.to_idx / 64
+        let m = bit(i.to_idx % 64)
+        let fresh = (w[k] & m) == U64(0)
+        w[k] |= m
+        fresh
 
-    /// Clear the bit at position `i`. O(1).
-    pub fn remove(mut self, i: D):
-        w[i.to_idx / 64] &= ~bit(i.to_idx % 64)
+    /// Clear the bit at position `i`; returns `true` if `i` was set (matches `Set.remove`). O(1).
+    pub fn remove(mut self, i: D) -> Bool:
+        let k = i.to_idx / 64
+        let m = bit(i.to_idx % 64)
+        let had = (w[k] & m) != U64(0)
+        w[k] &= ~m
+        had
 
     /// Flip the bit at position `i`. O(1).
     pub fn toggle(mut self, i: D):
@@ -316,11 +324,11 @@ pub struct DynBitset:
     /// Set bit `i` to `on` in place (W8 `IndexSet` backing `b[i] = on`). O(1).
     pub fn set(mut self, i: Int, on: Bool = true) = todo
 
-    /// Set bit `i` to 1. O(1).
-    pub fn add(mut self, i: Int) = todo
+    /// Set bit `i` to 1; returns `true` if bit `i` was previously 0 (matches `Bitset.add`). O(1).
+    pub fn add(mut self, i: Int) -> Bool = todo
 
-    /// Clear bit `i` to 0. O(1).
-    pub fn remove(mut self, i: Int) = todo
+    /// Clear bit `i` to 0; returns `true` if bit `i` was previously 1 (matches `Bitset.remove`). O(1).
+    pub fn remove(mut self, i: Int) -> Bool = todo
 
     /// Flip bit `i`. O(1).
     pub fn toggle(mut self, i: Int) = todo

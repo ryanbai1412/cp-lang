@@ -1323,10 +1323,8 @@ fn at_most_one_forbids_every_pair_and_allows_each_single():
 /// `continue` after `Enter(v)` still descends; the loop steers with `break`.
 pub fn dfs<V, N>(next: N, from: List<V>) -> yields Visit<V> = todo
 
-/// O(1): one event of `dfs`; `parent` is `none` at a root.
-pub enum Visit<V>:
-    Enter(v: V, parent: ?V)
-    Exit(v: V, parent: ?V)
+/// O(1): one event of `dfs`, the same shape as `Rooted.tour` yields.
+pub enum Visit<V>: Enter(v: V), Exit(v: V)
 
 /// O(n + m + W): shortest paths for small integer weights `0 ..= max_w` with a
 /// bucket queue (Dial). Same result shape as `dijkstra`.
@@ -1337,9 +1335,9 @@ pub fn dial<V, N, A>(next: N, from: List<V>, w: A -> Int, max_w: Int, until: ?V 
 /// negative cycle exists.
 pub fn johnson<V, N, A, W>(next: N, w: A -> W) -> ?[V, V]?W = todo
 
-/// O((n + m) log n + k log k): the lengths of the `k` shortest `from -> to`
-/// walks, repeats allowed, ascending (Eppstein). Shorter if fewer exist.
-pub fn k_shortest<V, N, A, W>(next: N, from: V, to: V, k: Int, w: A -> W) -> List<W> = todo
+/// O((n + m) log n + k log k): the lengths of the `k` shortest walks from any
+/// of `from` to `to`, repeats allowed, ascending (Eppstein). Shorter if fewer exist.
+pub fn k_shortest<V, N, A, W>(next: N, from: List<V>, to: V, k: Int, w: A -> W) -> List<W> = todo
 
 /// O(n m): some cycle of negative total weight, as its arcs, or `none`.
 pub fn negative_cycle<V, N, A, W>(next: N, w: A -> W) -> ?List<A> = todo
@@ -1357,9 +1355,10 @@ pub fn girth<V, N>(next: N, directed: Bool) -> ?Int = todo
 pub fn smallest_topo<V, N>(next: N) -> ?List<V> = todo
 
 /// O(n + m): DAG DP in topological order. Each vertex starts at `init(v)` and
-/// every arc `u -> a.to` folds `step(val[u], a)` into `val[a.to]` with `join`
-/// (W10: `join: max` gives longest paths, `join: +` counts). `none` on a cycle.
-pub fn dag_fold<V, N, A, T>(next: N, init: V -> T, step: (T, A) -> T, join: (T, T) -> T) -> ?[V]T = todo
+/// every arc `u -> a.to` folds `step(val[u], a)` into `val[a.to]` with the
+/// operation value `op` (W10: `op: max` gives longest paths, `op: +` counts).
+/// `none` on a cycle.
+pub fn dag_fold<V, N, A, T, M>(next: N, init: V -> T, step: (T, A) -> T, op: M) -> ?[V]T = todo
 
 /// O(n + m): the number of `from -> v` paths of a DAG for every `v`, in `T`
 /// (a modular type keeps it exact). `none` on a cycle.
@@ -1438,20 +1437,26 @@ impl<V> Functional<V>:
     /// O(1): does `v` lie on a cycle?
     pub fn on_cycle(self, v: V) -> Bool = todo
 
-    /// O(1): the first cycle vertex reached from `v` (`v` itself on a cycle).
-    pub fn entry(self, v: V) -> V = todo
+    /// O(1): the first cycle vertex reached from `v` (`v` itself on a cycle): the
+    /// root of the in-tree hanging off the cycle that holds `v`.
+    pub fn root_of(self, v: V) -> V = todo
 
-    /// O(1): steps from `v` to `entry(v)`.
-    pub fn tail(self, v: V) -> Int = todo
+    /// O(1): steps from `v` to `root_of(v)`.
+    pub fn depth(self, v: V) -> Int = todo
 
     /// O(1): the length of the cycle `v` eventually reaches.
     pub fn cycle_len(self, v: V) -> Int = todo
 
-    /// O(log k): the vertex `k` steps after `v` (binary lifting).
-    pub fn jump(self, v: V, k: Int) -> V = todo
+    /// O(log k): the vertex `k` steps after `v` (binary lifting). Never `none`,
+    /// unlike `Rooted.ancestor`, since every vertex has an out-arc.
+    pub fn after(self, v: V, k: Int) -> V = todo
+
+    /// O(log n): the first vertex `u` on the walk from `v` with `pred(u)`, for a
+    /// `pred` monotone along every walk, or `none` if no such vertex appears.
+    pub fn jump_while(self, v: V, pred: V -> Bool) -> ?V = todo
 
     /// O(log n): the fewest steps from `a` to `b`, or `none` if `b` is never reached.
-    pub fn steps(self, a: V, b: V) -> ?Int = todo
+    pub fn dist(self, a: V, b: V) -> ?Int = todo
 
     /// O(n): every cycle once, each in walk order.
     pub fn cycles(self) -> List<List<V>> = todo

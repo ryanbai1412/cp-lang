@@ -290,6 +290,20 @@ pub fn wildcard_matches<S: Indexed, P: Indexed>(
 /// O(n) space, O(1) queries. Manacher palindrome radii. `odd[i]` is the number of palindromes centred on `s[i]`;
 /// `even[i]` is the number centred between `s[i - 1]` and `s[i]`.
 pub struct Palindromes(odd: List<Int>, even: List<Int>):
+    /// O(1). Length of the indexed sequence.
+    pub @get fn len(self) -> Int = odd.len
+
+    /// O(1). True when the indexed sequence is empty.
+    pub @get fn is_empty(self) -> Bool = odd.is_empty
+
+    /// O(1). Length of the longest odd-length palindrome centred on position `i`.
+    @allow(unproven_list_index)
+    pub fn longest_at(self, i: Int) -> Int = 2 * odd[i] - 1
+
+    /// O(1). Length of the longest even-length palindrome centred on cut `i` (between `i - 1` and `i`).
+    @allow(unproven_list_index)
+    pub fn longest_between(self, i: Int) -> Int = 2 * even[i]
+
     /// True when the range `r` (`l..r`, `l..=r`, or `Range<D>`) is a palindrome. O(1).
     pub fn is_palindrome<R>(self, r: R) -> Bool:
         if r.is_empty: return true
@@ -551,6 +565,9 @@ pub struct SuffixArray<T>:
     /// Length of the indexed sequence. O(1).
     pub @get fn len(self) -> Int = s.len
 
+    /// O(1). True when the indexed sequence is empty.
+    pub @get fn is_empty(self) -> Bool = s.is_empty
+
     @allow(unproven_list_index)
     fn rmq_min(self, lo: Int, hi: Int) -> Int:
         let k = bit_width(hi - lo) - 1
@@ -596,6 +613,9 @@ pub struct SuffixArray<T>:
             let le = if k == m: true elif st + k == n: true else: s[st + k] < pat.at(k)
             if le: lo = mid + 1 else: hi = mid
         left..lo
+
+    /// O(|pat| log n + matches). Yield every start index where `pat` occurs in `s` (in suffix-array order).
+    pub fn match_positions<P: Indexed>(self, pat: P) -> yields Int = todo
 
     /// Number of occurrences of `pat` in `s`. O(|pat| log n).
     pub fn count<P: Indexed>(self, pat: P) -> Int:
@@ -768,6 +788,9 @@ pub struct RollingHash:
     /// O(1). Number of hashed elements.
     pub @get fn len(self) -> Int = p1.len - 1
 
+    /// O(1). True when no elements are hashed.
+    pub @get fn is_empty(self) -> Bool = p1.len <= 1
+
     /// Hash of the entire sequence. O(1).
     pub @get fn all(self) -> HashVal = self.slice(0, p1.len - 1)
 
@@ -925,6 +948,9 @@ pub struct RollingHash61:
     /// O(1). Number of hashed elements.
     pub @get fn len(self) -> Int = todo
 
+    /// O(1). True when no elements are hashed.
+    pub @get fn is_empty(self) -> Bool = todo
+
     /// O(1). Hash of the entire sequence.
     pub @get fn all(self) -> Hash61 = todo
 
@@ -957,11 +983,26 @@ pub struct DynamicHash<D>:
     /// O(n). Build a mutable rolling hash over `seq` indexed by domain `D`.
     pub fn new<S: Indexed>(seq: S, bases: ?(Int, Int) = none) -> DynamicHash<D> = todo
 
+    /// O(1). Number of hashed positions (`D.K`).
+    pub @get fn len(self) -> Int = todo
+
+    /// O(1). True when `D` is empty.
+    pub @get fn is_empty(self) -> Bool = todo
+
+    /// O(1). Hash of the entire sequence `..`.
+    pub @get fn all(self) -> HashVal = todo
+
     /// O(log n). Set position `i` to `x` (also powers `h[i] = x` via W8 `IndexSet`).
     pub fn set<T: Hashable>(mut self, i: D, x: T) = todo
 
     /// O(log n). Hash of the range `r` (accepts cut ranges `j..i` via decision 124).
     pub fn get(self, r: Range<D>) -> HashVal = todo
+
+    /// O(log n). Hash of the reversed slice over range `r` (accepts cut ranges `j..i`).
+    pub fn rev_get(self, r: Range<D>) -> HashVal = todo
+
+    /// O(log n). True when the slice over range `r` is a palindrome.
+    pub fn is_palindrome(self, r: Range<D>) -> Bool = todo
 
 // ---- alphabet-domain automata
 
@@ -1279,6 +1320,9 @@ pub struct Trie<A>:
     /// Total number of nodes, root included. O(1).
     pub @get fn len(self) -> Int = ends.len
 
+    /// O(1). True when no words are stored in the trie.
+    pub @get fn is_empty(self) -> Bool = pass[0] == 0
+
     /// Child of `node` along edge `a`, or `none`. O(1).
     @allow(unproven_list_index)
     pub fn step(self, node: Int, a: A) -> ?Int:
@@ -1485,6 +1529,12 @@ pub struct DynamicAhoCorasick<A>:
 
     /// O(1). Create an empty online Aho-Corasick pattern set over alphabet `A`.
     pub fn new() -> DynamicAhoCorasick<A> = todo
+
+    /// O(1). Number of active patterns currently stored (with multiplicity).
+    pub @get fn len(self) -> Int = todo
+
+    /// O(1). True when no active patterns are stored.
+    pub @get fn is_empty(self) -> Bool = todo
 
     /// O(|pattern| * |A| * log n) amortized. Insert one copy of `pattern`.
     pub fn add<S: Seq>(mut self, pattern: S) = todo

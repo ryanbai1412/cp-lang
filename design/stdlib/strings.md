@@ -550,7 +550,7 @@ Audit against AtCoder Library (`string`), KACTL (`strings`), cp-algorithms (`str
 | Compressed suffix tree (from SA + LCP) | KACTL `SuffixTree`, ecnerwala (`ucup5s05f`) | new | `SuffixTreeEdge`, `suffix_tree_edges<S: Indexed>` |
 | Double-mod polynomial rolling hash (1D) | cp-alg, Benq, jiangly | have | `HashVal`, `Hashable`, `RollingHash.{new(s, bases:),len,all,slice,get,combine,lcp,lcs,lcp_with}` |
 | Mersenne `2^61 - 1` rolling hash (1D) | KACTL `Hashing` (mod `2^64-1`/Mersenne), Benq | new | `RollingHash61.{new(s, base:),len,all,slice,get,combine,lcp,lcs,lcp_with}` |
-| Dynamic rolling hash (point update + range hash, forward & reverse) | Contest templates (SegTree/Fenwick hash) | new | `DynamicHash.{new(s, bases:),len,get,set,range,rev_range,is_palindrome}` |
+| Dynamic rolling hash (point update + range hash, forward & reverse) | Contest templates (SegTree/Fenwick hash) | new | `DynamicHash<D>.{new(seq, bases:),len,is_empty,all,get,set,rev_get,is_palindrome}` |
 | 2D rolling hash (grid sub-rectangles) | cp-alg, contest templates | have | `Hash2D<R, C>.{new,rect}` |
 | Suffix automaton (SAM) + online/generalized + k-th substring | cp-alg, Benq, jiangly | have / new | `SuffixAutomaton<A>.{new,of,push,root,len,step,link,longest,shortest,first_pos,find,contains,distinct,topo_order,occurrences,lcs}` (have); `{reset_last,push_seq,kth_substring}` (new) |
 | Palindromic tree (eertree) + series_link + deque/rollback/min-partition | cp-alg, Benq, jiangly | have / new | `PalindromicTree<A>.{new,of,push,odd_root,even_root,len,pal_len,link,step,diff,series_link,occurrences}` (have); `{push_front,pop,last_state,contains,min_palindrome_partition}` (new) |
@@ -591,7 +591,7 @@ Every power from `spec/POWERS.md` (and any gap beyond it) needed by `spec/std/st
    - Signatures: `DynamicHash.{get,set}` (so `dh[i] = c` updates the hashed element in O(log n) and `dh[l..r]` queries the range hash).
    - Smallest example: `dh[i] = 'a'; if dh.is_palindrome(l..r): ans += 1`.
 4. **W12 (Cost on first `///` line):**
-   - Signatures: All 177 public declarations in `spec/std/strings.cp`.
+   - Signatures: All 193 public declarations in `spec/std/strings.cp`.
 5. **Defaulted named arguments (Decision 134 / `spec/SYNTAX.md`):**
    - Signatures: `RollingHash.new(s, bases: ?(Int, Int) = none)`, `RollingHash61.new(s, base: ?Int = none)`, `DynamicHash.new(s, bases: ?(Int, Int) = none)`, `wildcard_matches(self, pat, wildcard: Char = '?')`.
    - Smallest example: `let h2 = RollingHash.new(t, bases: h1.bases)`.

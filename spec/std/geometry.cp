@@ -54,14 +54,32 @@ pub struct Pt(x: Int, y: Int):
     /// O(1). Dot product of `self` and `o`.
     pub fn dot(self, o: Pt) -> Int = x * o.x + y * o.y
 
-    /// O(1). 2D cross product of `self` and `o`.
+    /// O(1). Exact 128-bit dot product of `self` and `o`.
+    pub fn dot128(self, o: Pt) -> I128 = I128(x) * I128(o.x) + I128(y) * I128(o.y)
+
+    /// O(1). 2D cross product of `self` and `o`: positive when `o` is counter-clockwise from `self`.
     pub fn cross(self, o: Pt) -> Int = x * o.y - y * o.x
+
+    /// O(1). Exact 128-bit 2D cross product of `self` and `o`.
+    pub fn cross128(self, o: Pt) -> I128 = I128(x) * I128(o.y) - I128(y) * I128(o.x)
 
     /// O(1). Squared Euclidean distance from `self` to `o`.
     pub fn dist2(self, o: Pt) -> Int = (self - o).norm2
 
+    /// O(1). Exact 128-bit squared Euclidean distance from `self` to `o`.
+    pub fn dist2_128(self, o: Pt) -> I128:
+        let dx = I128(x) - I128(o.x)
+        let dy = I128(y) - I128(o.y)
+        dx * dx + dy * dy
+
     /// O(1). Euclidean distance from `self` to `o` as `F64`.
     pub fn dist(self, o: Pt) -> F64 = (self - o).len
+
+    /// O(1). Manhattan (L1) distance `|x - o.x| + |y - o.y|`.
+    pub fn manhattan(self, o: Pt) -> Int = abs(x - o.x) + abs(y - o.y)
+
+    /// O(1). Chebyshev (L-infinity) distance `max(|x - o.x|, |y - o.y|)`.
+    pub fn chebyshev(self, o: Pt) -> Int = max(abs(x - o.x), abs(y - o.y))
 
 impl Add for Pt:
     fn add(a, b) = Pt(a.x + b.x, a.y + b.y)
@@ -78,37 +96,6 @@ impl Mul<Int> for Pt:
 impl Show for Pt:
     fn show(a) = "{a.x} {a.y}"
 
-/// O(1). Dot product of `a` and `b`.
-pub fn dot(a: Pt, b: Pt) -> Int = a.x * b.x + a.y * b.y
-
-/// O(1). 2D cross product of `a` and `b`: positive when `b` is counter-clockwise
-/// from `a`.
-pub fn cross(a: Pt, b: Pt) -> Int = a.x * b.y - a.y * b.x
-
-/// O(1). Exact 128-bit dot product of `a` and `b`.
-pub fn dot128(a: Pt, b: Pt) -> I128 = I128(a.x) * I128(b.x) + I128(a.y) * I128(b.y)
-
-/// O(1). Exact 128-bit cross product of `a` and `b`.
-pub fn cross128(a: Pt, b: Pt) -> I128 = I128(a.x) * I128(b.y) - I128(a.y) * I128(b.x)
-
-/// O(1). Squared Euclidean distance between `a` and `b`.
-pub fn dist2(a: Pt, b: Pt) -> Int = (a - b).norm2
-
-/// O(1). Exact 128-bit squared Euclidean distance between `a` and `b`.
-pub fn dist2_128(a: Pt, b: Pt) -> I128:
-    let dx = I128(a.x) - I128(b.x)
-    let dy = I128(a.y) - I128(b.y)
-    dx * dx + dy * dy
-
-/// O(1). Euclidean distance between `a` and `b` as `F64`.
-pub fn dist(a: Pt, b: Pt) -> F64 = (a - b).len
-
-/// O(1). Manhattan (L1) distance `|a.x - b.x| + |a.y - b.y|`.
-pub fn manhattan(a: Pt, b: Pt) -> Int = todo
-
-/// O(1). Chebyshev (L-infinity) distance `max(|a.x - b.x|, |a.y - b.y|)`.
-pub fn chebyshev(a: Pt, b: Pt) -> Int = todo
-
 fn cross128_3(a: Pt, b: Pt, c: Pt) -> I128:
     (I128(b.x) - I128(a.x)) * (I128(c.y) - I128(a.y)) - (I128(b.y) - I128(a.y)) * (I128(c.x) - I128(a.x))
 
@@ -122,7 +109,7 @@ pub fn turn(a: Pt, b: Pt, c: Pt) -> Int:
     if k > I128(0): 1 else: if k < I128(0): -1 else: 0
 
 /// O(1). True when `a` and `b` are nonzero and point in the same direction.
-pub fn same_dir(a: Pt, b: Pt) -> Bool = cross128(a, b) == I128(0) and dot128(a, b) > I128(0)
+pub fn same_dir(a: Pt, b: Pt) -> Bool = a.cross128(b) == I128(0) and a.dot128(b) > I128(0)
 
 // ---- angular sort
 
@@ -137,7 +124,7 @@ pub fn angle_less(a: Pt, b: Pt, from: Pt = Pt(1, 0)) -> Bool:
     if from != Pt(1, 0): return todo
     let ha = half(a)
     let hb = half(b)
-    if ha != hb: ha < hb else: cross128(a, b) > I128(0)
+    if ha != hb: ha < hb else: a.cross128(b) > I128(0)
 
 /// O(1) comparison key. Counter-clockwise by direction, starting from the positive x axis.
 /// Exact in `I128`; vectors in the same direction compare equal, zero comes first.
@@ -274,7 +261,7 @@ pub struct OnlineHull:
     /// O(log n). Point location against the current hull.
     pub fn locate(self, p: Pt) -> Location = todo
 
-    /// O(log n). Hull vertex maximizing `dot128(v, dir)`, or `none` if empty.
+    /// O(log n). Hull vertex maximizing `v.dot128(dir)`, or `none` if empty.
     pub fn extreme(self, dir: Pt) -> ?Pt = todo
 
     /// O(1). Twice the unsigned area of the current hull (0 if fewer than 3 non-collinear points).
@@ -330,7 +317,7 @@ pub fn minkowski_sum(a: List<Pt>, b: List<Pt>) -> List<Pt>:
             let ib_nxt = if ib + 1 == nb: 0 else: ib + 1
             let ea = a[ia_nxt] - a[ia]
             let eb = b[ib_nxt] - b[ib]
-            let c = cross128(ea, eb)
+            let c = ea.cross128(eb)
             if c > I128(0):
                 i += 1
                 ia = ia_nxt
@@ -362,7 +349,7 @@ pub fn minkowski_upper(a: List<Pt>, b: List<Pt>) -> List<Pt>:
                 let ea = a[i + 1] - a[i]
                 let eb = b[j + 1] - b[j]
                 // Upper hull edges go left-to-right with decreasing slope; take steeper (larger cross).
-                let c = cross128(ea, eb)
+                let c = ea.cross128(eb)
                 if c < I128(0):
                     i += 1
                 else:
@@ -410,7 +397,7 @@ pub fn area2_128(poly: List<Pt>) -> I128:
     var total = I128(0)
     var a = poly[n - 1]
     for b in poly:
-        total += cross128(a, b)
+        total += a.cross128(b)
         a = b
     total
 
@@ -471,7 +458,7 @@ pub fn locate_convex(hull: List<Pt>, p: Pt) -> Location:
 pub fn diameter2(hull: List<Pt>) -> Int:
     let n = hull.len
     if n <= 1: return 0
-    if n == 2: return dist2(hull[0], hull[1])
+    if n == 2: return hull[0].dist2(hull[1])
     var best = 0
     var j = 1
     for i in 0..n:
@@ -479,10 +466,10 @@ pub fn diameter2(hull: List<Pt>) -> Int:
         let edge = hull[ni] - hull[i]
         while true:
             let nj = (j + 1) % n
-            if cross128(edge, hull[nj] - hull[j]) > I128(0): j = nj
+            if edge.cross128(hull[nj] - hull[j]) > I128(0): j = nj
             else: break
-        best max= dist2(hull[i], hull[j])
-        best max= dist2(hull[ni], hull[j])
+        best max= hull[i].dist2(hull[j])
+        best max= hull[ni].dist2(hull[j])
     best
 
 /// O(n). Minimum-area and minimum-perimeter enclosing rectangle of a CCW convex
@@ -490,7 +477,7 @@ pub fn diameter2(hull: List<Pt>) -> Int:
 pub fn min_bounding_box(hull: List<Pt>) -> (area: F64, perimeter: F64):
     let n = hull.len
     if n <= 1: return (area: 0.0, perimeter: 0.0)
-    if n == 2: return (area: 0.0, perimeter: 2.0 * dist(hull[0], hull[1]))
+    if n == 2: return (area: 0.0, perimeter: 2.0 * hull[0].dist(hull[1]))
     var best_area = 1e300
     var best_perim = 1e300
     var right = 1
@@ -502,32 +489,32 @@ pub fn min_bounding_box(hull: List<Pt>) -> (area: F64, perimeter: F64):
         if e.x == 0 and e.y == 0: continue
         while true:
             let nr = if right + 1 == n: 0 else: right + 1
-            if dot128(e, hull[nr] - hull[right]) > I128(0): right = nr
+            if e.dot128(hull[nr] - hull[right]) > I128(0): right = nr
             else: break
         while true:
             let nt = if top + 1 == n: 0 else: top + 1
-            if cross128(e, hull[nt] - hull[top]) > I128(0): top = nt
+            if e.cross128(hull[nt] - hull[top]) > I128(0): top = nt
             else: break
         if i == 0: left = top
         while true:
             let nl = if left + 1 == n: 0 else: left + 1
-            if dot128(e, hull[nl] - hull[left]) < I128(0): left = nl
+            if e.dot128(hull[nl] - hull[left]) < I128(0): left = nl
             else: break
-        let elen = sqrt(F64(dot128(e, e)))
-        let w = F64(dot128(e, hull[right] - hull[left])) / elen
-        let h = F64(cross128(e, hull[top] - hull[i])) / elen
+        let elen = sqrt(F64(e.dot128(e)))
+        let w = F64(e.dot128(hull[right] - hull[left])) / elen
+        let h = F64(e.cross128(hull[top] - hull[i])) / elen
         best_area min= w * h
         best_perim min= 2.0 * (w + h)
     (area: best_area, perimeter: best_perim)
 
 fn better_dir(a: Pt, b: Pt, dir: Pt) -> Bool:
-    let da = dot128(a, dir)
-    let db = dot128(b, dir)
+    let da = a.dot128(dir)
+    let db = b.dot128(dir)
     if da != db: return da > db
-    dot128(a, dir.perp) > dot128(b, dir.perp)
+    a.dot128(dir.perp) > b.dot128(dir.perp)
 
 /// O(log n). Index of a vertex of a non-empty CCW convex polygon maximizing
-/// `dot128(hull[i], dir)`.
+/// `hull[i].dot128(dir)`.
 pub fn hull_extreme(hull: List<Pt>, dir: Pt) -> Int:
     let n = hull.len
     assert n > 0, "hull_extreme requires a non-empty hull"
@@ -565,7 +552,7 @@ pub fn hull_extreme(hull: List<Pt>, dir: Pt) -> Int:
 fn tangent_cmp(p: Pt, a: Pt, b: Pt, sign: Int) -> Bool:
     let t = turn(p, b, a) * sign
     if t != 0: return t > 0
-    dist2_128(p, a) < dist2_128(p, b)
+    p.dist2_128(a) < p.dist2_128(b)
 
 fn find_tangent(hull: List<Pt>, p: Pt, sign: Int) -> Int:
     let n = hull.len
@@ -1213,7 +1200,7 @@ fn sh_seg_cmp(
     let rhs = (I128(a2.y) * dx2 + I128(b2.y - a2.y) * I128(cur_x - a2.x)) * dx1
     if lhs != rhs:
         return if lhs < rhs: -1 else: 1
-    let c = cross128(b1 - a1, b2 - a2)
+    let c = (b1 - a1).cross128(b2 - a2)
     if c != I128(0):
         let lt = if right_eps: c > I128(0) else: c < I128(0)
         return if lt: -1 else: 1
@@ -1510,6 +1497,12 @@ pub struct Pt3(x: Int, y: Int, z: Int):
     /// O(1). 3D Euclidean distance from `self` to `o` as `F64`.
     pub fn dist(self, o: Pt3) -> F64 = (self - o).len
 
+    /// O(1). 3D Manhattan (L1) distance `|x - o.x| + |y - o.y| + |z - o.z|`.
+    pub fn manhattan(self, o: Pt3) -> Int = abs(x - o.x) + abs(y - o.y) + abs(z - o.z)
+
+    /// O(1). 3D Chebyshev (L-infinity) distance `max(|x - o.x|, |y - o.y|, |z - o.z|)`.
+    pub fn chebyshev(self, o: Pt3) -> Int = max(max(abs(x - o.x), abs(y - o.y)), abs(z - o.z))
+
 impl Add for Pt3:
     fn add(a, b) = Pt3(a.x + b.x, a.y + b.y, a.z + b.z)
 
@@ -1678,6 +1671,13 @@ pub fn sphere_dist(a: Vec3, b: Vec3, r: F64 = 1.0) -> F64 = todo
 
 // ---- tests
 
+fn dot(a: Pt, b: Pt) -> Int = a.dot(b)
+fn cross(a: Pt, b: Pt) -> Int = a.cross(b)
+fn dot128(a: Pt, b: Pt) -> I128 = a.dot128(b)
+fn cross128(a: Pt, b: Pt) -> I128 = a.cross128(b)
+fn dist2(a: Pt, b: Pt) -> Int = a.dist2(b)
+fn dist2_128(a: Pt, b: Pt) -> I128 = a.dist2_128(b)
+fn dist(a: Pt, b: Pt) -> F64 = a.dist(b)
 fn vdot(a: Vec, b: Vec) -> F64 = a.dot(b)
 fn vcross(a: Vec, b: Vec) -> F64 = a.cross(b)
 fn vdist(a: Vec, b: Vec) -> F64 = a.dist(b)

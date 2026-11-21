@@ -19,9 +19,12 @@ fn run(f: Tag, c: Cell) -> Cell:
 
 fn then(g: Tag, f: Tag) -> Tag:              // f first, then g
     if let s = f.set: return Tag(f.path, run(g, s))
-    Tag([Sign] x => (let a = f.path[x], b = g.path[a.to]; Path(b.to, a.seen + b.seen)), g.set)
+    Tag([Sign] x =>
+        let (a, b) = (f.path[x], g.path[f.path[x].to])
+        Path(b.to, a.seen + b.seen)
+    , g.set)
 
-fn tag(to: Sign -> Sign = x => x, seen: Sign -> MaxSub = _ => .empty, set: ?Cell = none) -> Tag =
+fn tag(to: Sign -> Sign = x => x, seen: Sign -> MaxSub = _ => MaxSub.empty, set: ?Cell = none) -> Tag =
     Tag([Sign] x => Path(to(x), seen(x)), set)
 
 let record = tag(seen: x => MaxSub.of(Int(x)))
