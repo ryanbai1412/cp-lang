@@ -18,7 +18,7 @@
 #            and cpl build writes at most 65,536 bytes of C++ for each
 #         6. the count of open known_traps (crates/cpl-cli/tests/known_traps.cp)
 #         7. the offline site bundle (python3 site/bundle.py) stays under
-#            2,800,000 bytes
+#            2,600,000 bytes
 # --full  8. proto_fuzz and proto_tools (the retired prototype), the shrinker
 #            fuzzer and the prover's products fuzzer
 #         9. the budget tests and the front-end latency test, each alone
@@ -209,7 +209,7 @@ python3 scripts/review-check.py --check \
 
 # The offline edition is one file people download; site/test_site.py holds
 # the same cap. The WASM build is a cargo no-op when nothing changed.
-step "site bundle: dist/cp-lang.html under 2,800,000 bytes"
+step "site bundle: dist/cp-lang.html under 2,600,000 bytes"
 rustc --print target-libdir --target wasm32-unknown-unknown 2>/dev/null | xargs test -d \
     || fail "the site bundle needs the wasm target; run: rustup target add wasm32-unknown-unknown"
 need python3 "site/bundle.py runs on it"
@@ -218,7 +218,7 @@ python3 -c 'import mistune' 2>/dev/null \
 python3 site/bundle.py >/dev/null 2>&1 || fail "site/bundle.py failed; rerun: python3 site/bundle.py"
 bundle_bytes=$(wc -c <dist/cp-lang.html)
 echo "dist/cp-lang.html: $bundle_bytes bytes"
-[ "$bundle_bytes" -lt 2800000 ] || fail "dist/cp-lang.html is $bundle_bytes bytes, over the cap of 2,800,000"
+[ "$bundle_bytes" -lt 2600000 ] || fail "dist/cp-lang.html is $bundle_bytes bytes, over the cap of 2,600,000"
 
 step "docs examples, course references, cheat-sheet budget and links"
 python3 site/check_docs.py || fail "docs gate failed; rerun: python3 site/check_docs.py"

@@ -2682,6 +2682,11 @@ every lane's gate was red on bytes no single commit owned. Reverse: set the
 number back in scripts/check.sh and site/test_site.py once the bundle is
 under it, e.g. by running wasm-opt -Os in the bundle build.
 
+Reversed the same day: the search index shipped every page's prose a second
+time (571 kB of text, 178 kB gzipped). The offline shell now rebuilds each
+entry's text from its page on load (1013fbfe), which brought the bundle to
+about 2,400,000 bytes, so the cap is back at 2,600,000.
+
 ## 55. `Comb<M>` keyed on `Mod<P>` type (2026-11-21)
 
 1. **`Comb<M>` replaces `Comb<P>` as the single combinatorics table spelling (supersedes 40.1).**
