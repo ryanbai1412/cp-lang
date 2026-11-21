@@ -1,7 +1,7 @@
 # cco20p5
 
 Score: 3/5
-Dream: pending cold rescore (fixed `bit.prefix(l.r)` -> `bit.prefix(l)` on line 62; remaining errors are all reported gaps `TimeSegTree`, `RollbackFenwick`, `Max`, `HashMap.entry`)
+Dream: 4/5
 
 Baseline review, cold, on main 96359635. The header (lines 4-8) names the plan: an offline segment tree over time for disjoint pairs, and heaps for overlapping pairs. Both structures are hand-rolled with node arithmetic, a rollback Fenwick written as `i & -i` loops, and negated heap keys. No dream exists, so the score is capped at 3.
 
@@ -38,3 +38,9 @@ Port 3/5 and dream 3/5, rescored cold on current main; the dream goes back. The 
 - **Owed (dream):** line 62 queries `bit.prefix(l.r)`, but `l` is a `Coord`, which has no `.r`. The disjoint test needs the largest stored left end over right ends `<= l`, so write `bit.prefix(l)`. That fix makes the dream a 4.
 - Line 48 `active.entry(key).push(i)` has no `entry` method on `HashMap` (E0203 in `cpl run`). I added it as friction item 3.
 - Port: lines 42-50 and 68-85 hand-write the reported time segment tree (raw `o * 2` node ids, `0..q` as `Int`) and the rollback Fenwick (`bits[side, i]`, an `Undo` log). Line 58 builds the default list by hand because `entry` is missing.
+
+## Cold review (HEAD)
+
+Dream 3 → 4/5, rescored cold on current main. Line 62 now reads `bit.prefix(l)`. Every remaining `cpl check` error is a reported gap: `TimeSegTree` and `RollbackFenwick<…, Max>` (friction items 1-2), and `HashMap.entry` (item 3).
+
+Port 3/5 holds. It still hand-writes the reported time segment tree (`seg`/`add_span`, lines 42-50) and the rollback Fenwick undo log (`Undo`, line 27). It is blocked by those gaps, not rewritable today.

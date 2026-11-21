@@ -1,7 +1,7 @@
 # yac6p6
 
-Score: pending cold rescore (replaced moved `let empty_cell` with `fn empty_cell() -> Cell = [KDom] _ => none` used at all 4 sites; `port = dream`, 0 check errors, 0 lints)
-Dream: pending cold rescore (replaced moved `let empty_cell` with `fn empty_cell() -> Cell`, fixing E0607)
+Score: 4/5
+Dream: 4/5
 
 Baseline review, cold, on main 96359635. No editorial header; lines 1-2 give only provenance. The DP is written three times (the small case, the forward 3x3 and the backward prefix), with the transitions spelled out in each. The `(x2 + y2) % 3` diagonal bucketing (line 40), the step at which every query is split, is never explained. No dream exists, so the score is capped at 3.
 
@@ -35,3 +35,9 @@ Dream (new) 3/5, port 3/5 (port = dream), cold-reviewed on current main; sent ba
 Port 3/5 and dream 3/5 (port = dream), rescored cold on current main; it goes back. A single `relax` and a shared `backward_dp` remove the triple skip-or-pay transition. The bound on lines 13-17 is now stated per populated bucket: at most n²m²/12 · 6 ≈ 8e8 cell-state steps for n = m = 200.
 - **Owed:** line 35 reuses `empty_cell` after line 34 moved it (E0607), so neither file compiles. Use `empty_cell.copy()`, or fill both tables from `[KDom] _ => none`, and it's a 4.
 - Minor: lines 53 and 80 rebuild `[KDom] _ => none` instead of using `empty_cell`. Lines 90-91 step `k` as a raw `Int` (`KDom(k)`, `qr.kv.offset(-k)!`).
+
+## Cold review (HEAD)
+
+Port 3 → 4/5 and dream 3 → 4/5 (port = dream), rescored cold on current main. `fn empty_cell()` (line 33) fixes E0607, and both files check with zero errors. That was the last blocking item.
+- Minor: lines 90-91 step `k` as a raw `Int` (`KDom(k)`, `qr.kv.offset(-k)!`).
+- Minor: lines 67 and 75 use comma guards where decisions 4.9 has `and`.

@@ -1,7 +1,7 @@
 # dmopc21c5p5
 
-Score: pending cold rescore (removed unproved global-optimality claim and unreachable `(n^2)/2 - 1` early exit; header explains prime-parity obstruction and states exact Held-Karp for `n <= 12` vs 2-opt local-optimum guarantee for `n > 12`; `port = dream`, 0 errors, 0 lints)
-Dream: pending cold rescore (removed unproved optimality claim and unreachable early exit; states prime-parity obstruction and exact vs 2-opt local-optimum guarantee)
+Score: 3/5
+Dream: 3/5
 
 Baseline review, cold, on main 96359635. No editorial: lines 1-3 list prototype deltas. The general case is a random restart plus a 2-opt heuristic with no argument that it reaches the optimum. The body hand-rolls a sieve and an RNG, and drives the search with `-1` sentinels and an `improved` flag. No dream exists, so the score is capped at 3.
 
@@ -46,3 +46,12 @@ Port 3/5 and dream 3/5 (port = dream), rescored cold on current main; it goes ba
   - NP-hardness of the general problem (lines 5-7) says nothing about this particular prime-difference graph.
   - The early-exit bound `(n * n) / 2 - 1` (line 88) ignores the primality condition, so a run may never reach it.
   - Either derive an exact construction for this graph, or state the acceptance rule that the heuristic provably meets.
+
+## Cold review (HEAD)
+
+Port 3/5 and dream 3/5 (port = dream), rescored cold on current main; still sent back. The rewrite removed the unsupported optimality claim and the unreachable early exit. Lines 15-16 now say that for `n > 12` the output is only a 2-opt local optimum. The header (line 2) says the task is to *maximize*, so the program now states it may print a wrong answer for `13 <= n <= 100`.
+- Owed: one of three things.
+  - An exact method for `n <= 100`, such as a construction derived from the parity obstruction in lines 5-8.
+  - Evidence that the 64 starts reach the optimum for every `n` in `13..=100`, for example an exhaustive check against an exact solver, cited in the header.
+  - A statement that the judge scores partially, if it does.
+- Minor: line 42's `dp[nmask, nxt].map(old => cand > old) ?? true` is a hand-written optional `max=` that also has to record a witness.
