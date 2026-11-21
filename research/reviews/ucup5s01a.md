@@ -1,6 +1,8 @@
 # ucup5s01a
 
-Score: 3/5
+Score: pending (header derives the marking count, so the closing `/ i` and `/ (n + z)` are explained; `size` is the tight `0..=n + m`; the initial polynomial is one comprehension per factor; method `count` and `prod`)
+
+Dream: pending (new dream)
 
 The header (lines 1-4) states the state and the initial polynomial, and the transition comments (lines 31-39) read like the editorial. The polynomial product is hand-rolled, and the closing `/ i` and `/ (n + z)` divisions are not derived. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
