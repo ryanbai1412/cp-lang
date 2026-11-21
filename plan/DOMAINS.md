@@ -51,10 +51,13 @@ code. Enums order by variant, then payload (decision 28.2).
 and tuple fields, unrolled in lowering (28.1); a variadic `..xs: Ts` is the
 tuple of its arguments (28.3); `read<(Int, Int)>()` takes type arguments
 on a lowercase fn (28.4); `lazy d: () -> T` takes an expression and passes
-`() => e` (28.5; free fns, generic fns and methods). A projection is
-already a writable place through a method: `fn at(mut self, i: Int) lends
-mut Int: mut self.xs[i]` then `b.at(1) += 10` works. Enum variants are not
-reflected yet. Not built: postfix `x?` expression-extent lifting,
+`() => e` (28.5; free fns, generic fns and methods); `fields(e)` on an enum
+walks the active variant's payload (28.6). `std.derive` has `eq_fields`,
+`lt_fields` and `show_fields` on `fields` for an `impl` to call (28.7); the
+default derive is not on them yet because hooking every struct grew emitted
+C++ past the 5% gate. A projection is a writable place through a method
+(`b.at(i) += 10`, `b.name(1) = ...`, a read-only `lends` rejected), pinned by
+`programs/lends_through_methods`. Not built: postfix `x?` expression-extent lifting,
 opaque `struct List<T>` / struct type-param
 defaults / one-sided range types /
 `@droppable` / `labels(...)` / `Str(len:)`, `@derive` (`E0501`), `print`
