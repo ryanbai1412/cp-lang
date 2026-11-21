@@ -10,6 +10,7 @@ import re
 import build
 
 ROOT = Path(__file__).resolve().parent
+SHARE_HREF = re.compile(r"#share=([A-Za-z0-9_-]+)")
 
 
 def pack(value):
@@ -29,6 +30,17 @@ def bundle():
             old.unlink()
     build.build()
     pages = {}
+    # A Try it link carries its program as base64, which gzip cannot shrink;
+    # the shell re-encodes each from this table of plain payloads.
+    shares, share_ids = [], {}
+
+    def share_ref(encoded):
+        text = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)).decode()
+        if text not in share_ids:
+            share_ids[text] = len(shares)
+            shares.append(text)
+        return share_ids[text]
+
     sidebar = ""
     search_dialog = ""
     for path in sorted(target.glob("*.html")):
@@ -49,6 +61,7 @@ def bundle():
         m_course = re.search(r'<script id="course-data" type="application/json">.*?</script>', page, flags=re.S)
         if m_course:
             page = page[:m_course.start()] + "<!--course-data-->" + page[m_course.end():]
+        page = SHARE_HREF.sub(lambda m: f"#share-ref={share_ref(m.group(1))}", page)
         pages[path.name] = page
     full_course_data = build.safe_json(build.course_data("*"))
     # Everything but the compiler is text that gzip shrinks about sixfold, so
@@ -56,6 +69,7 @@ def bundle():
     # DecompressionStream, as compiler.js already does for the WASM.
     docs = dict(
         pages=pages,
+        shares=shares,
         sidebar=sidebar,
         search_dialog=search_dialog,
         course_data=full_course_data,

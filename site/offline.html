@@ -36,6 +36,12 @@
     entry.text = (article?.textContent || "").replace(/\s+/g, " ");
   }
   data.search = JSON.stringify(index);
+  const encoder = new TextEncoder();
+  function shareHash(text) {
+    let bin = "";
+    for (const byte of encoder.encode(text)) bin += String.fromCharCode(byte);
+    return "#share=" + btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
   let activePage;
   function script(source) {
     // Escape closing tags even if future example strings contain HTML.
@@ -80,7 +86,7 @@
     const {name} = route();
     if (name === activePage) { scrollToAnchor(); return; }
     activePage = name;
-    let page = data.pages[name];
+    let page = data.pages[name].replace(/#share-ref=(\d+)/g, (_, i) => shareHash(data.shares[i]));
     if (data.sidebar) {
       const side = data.sidebar.replace('href="' + name + '"', 'href="' + name + '" aria-current="page"');
       page = page.replace("<!--sidebar-->", () => side);

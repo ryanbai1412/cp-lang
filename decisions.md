@@ -3496,3 +3496,15 @@ the run-time choice stays. Reverse by making `proven` false in
 2. **Indented block bodies after `=>` on lambdas and table comprehensions, plus bracketed `match`/`if`/`else` blocks.**
    - **Reason:** Accepted syntax so multi-statement lambdas work cleanly in table comprehensions (`[0..=s, 0..n] (i, j) =>\n    ...`), named arguments (`by: x =>\n    ...`), and call arguments without wrapping in braces. The lexer tracks `layout_blocks` inside brackets so `Newline`/`Indent`/`Dedent` tokens are emitted for `=>` blocks (and `match`/`if`/`else` blocks ending in `:`) inside `(...)`/`[...]`, `split_items` keeps bracketed items intact, and `Parser::lambda_body` parses `Newline + Indent` into `ExprKind::Block(Block)` whose value is its last expression (matching `fn ... :`, formatter, LSP folding, and `--trace`).
    - **Reverse:** Remove `layout_blocks` in `crates/cpl-syntax/src/lexer.rs`, `brackets` in `crates/cpl-syntax/src/items.rs`, and `lambda_body` in `crates/cpl-syntax/src/parser/expr.rs`.
+
+## 99. The offline bundle ships Try it programs as text, not base64 (2026-11-21)
+
+Every Try it link carried its program as a base64 share hash, which gzip
+cannot shrink: 248 links cost about 77 kB of `dist/cp-lang.html`, which had
+reached 2,599,001 of its 2,600,000 bytes. `site/bundle.py` now swaps each
+hash for `#share-ref=N` into a table of plain payloads, and
+`site/offline.html` re-encodes them when it renders a page, so every link
+is byte-identical to the online site's
+(`test_offline_bundle_rebuilds_every_try_it_link_exactly`). The online
+pages are unchanged. Reverse: drop `SHARE_HREF` from `site/bundle.py` and
+the `share-ref` replace from `site/offline.html`.

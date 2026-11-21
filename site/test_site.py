@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -226,6 +227,28 @@ class SiteTests(unittest.TestCase):
         self.assertEqual(len(json.loads(payload["search"])), len(build.PAGES) + len(build.ERROR_CATALOG))
         self.assertIn("course", payload)
         self.assertIn("course_data", payload)
+
+    def test_offline_bundle_rebuilds_every_try_it_link_exactly(self):
+        import bundle
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("node not installed")
+        path = bundle.bundle()
+        shipped = json.loads(re.search(
+            r'<script id="offline-data" type="application/json">(.*?)</script>',
+            path.read_text(), re.S).group(1))
+        payload = bundle.unpack(shipped["docs"])
+        shell = (ROOT / "offline.html").read_text()
+        helper = re.search(r"  const encoder = .*?\n  }\n", shell, re.S).group(0)
+        script = helper + "process.stdout.write(JSON.stringify(JSON.parse(require('fs').readFileSync(0, 'utf8')).map(shareHash)));"
+        hashes = json.loads(subprocess.run([node, "-e", script], input=json.dumps(payload["shares"]),
+                                           capture_output=True, text=True, check=True).stdout)
+        for name, page in payload["pages"].items():
+            self.assertNotIn("#share=", page, name)
+            rebuilt = re.sub(r"#share-ref=(\d+)", lambda m: hashes[int(m.group(1))], page)
+            built = (ROOT / "_build" / name).read_text()
+            self.assertEqual(re.findall(r"#share=[A-Za-z0-9_-]+", rebuilt),
+                             re.findall(r"#share=[A-Za-z0-9_-]+", built), name)
 
     def test_course_has_ten_sequenced_lessons_and_real_controls(self):
         self.assertEqual(len(build.LESSONS), 10)
