@@ -26,25 +26,6 @@ pub fn mo<D, R>(
 /// endpoint moves than fixed-block snake order on dense queries).
 pub fn mo_order_hilbert<D>(queries: List<Range<D>>) -> List<Int> = todo
 
-/// O(1) space. Stateful Mo window over `D` for incremental/online stepping across ranges
-/// without inverting the active interval.
-pub struct MoWindow<D>:
-    lo: Int
-    hi: Int
-
-    /// O(1). Create a window initialized to `start` (or the empty window at `D.first.l..D.first.l`).
-    pub fn new(start: ?Range<D> = none) -> MoWindow<D> = todo
-
-    /// O(1). Current active half-open window.
-    pub @get fn range(self) -> Range<D> = todo
-
-    /// O(|dl| + |dr|). Move the active window to `target`, expanding before shrinking.
-    pub fn move_to(mut self, target: Range<D>, add: D -> (), remove: D -> ()) = todo
-
-    /// O(|dl| + |dr|). Zero-allocation generator advancing the window to `target`,
-    /// yielding `(pos, entering)` events (expanding before shrinking).
-    pub fn step_to(mut self, target: Range<D>) -> yields (pos: D, entering: Bool) = todo
-
 /// O((n + q) * sqrt(n)) `add` calls, zero `remove` calls. Rollback Mo for add-only / undoable
 /// structures (DSU, max, convex hull). Calls `reset()` once per block, `mark()`/`undo()` around
 /// left-side extensions, and `answer(qi)` when `queries[qi]` is active.

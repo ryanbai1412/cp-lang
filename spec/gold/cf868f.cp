@@ -1,6 +1,8 @@
 // Cut a into k pieces, minimising pairs of equal elements inside a piece.
 // The best last cut moves right as the end moves right, so each layer is divide and conquer
 // over ends. cost(c..i) comes from one window whose ends slide: O(n log n) slides per layer.
+use std.window.{Window}
+
 let n: 2..=100_000 = read()
 let k: 2..=20 = read()
 domain Pos = 0..n
