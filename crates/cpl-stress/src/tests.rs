@@ -1466,3 +1466,78 @@ print(p)
     }
     assert!(sizes.len() > 3);
 }
+
+#[test]
+fn a_query_reads_what_the_branch_its_tag_takes_reads() {
+    let src = "let q: 1..=6 = read()
+for _ in 0..q:
+    let op: Int = read()
+    if op == 1:
+        let (l, r): (1..=9, 1..=9) = read()
+        print(l + r)
+    elif op == 2 or op == 3:
+        let i: 1..=9 = read()
+        print(i)
+    else:
+        print(0)
+    let kind: Char = read()
+    match kind:
+        'B' =>
+            let k: 0..=3 = read()
+            let a: [k]5..=7 = read()
+            print(a)
+        _ => print(kind)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    let mut seen = HashSet::new();
+    for seed in 0..200 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap();
+        let text = case.render();
+        let mut tokens = text.split_whitespace();
+        let mut next = || tokens.next().expect("a token");
+        for _ in 0..next().parse::<usize>().unwrap() {
+            let op: i128 = next().parse().unwrap();
+            let reads = match op {
+                1 => 2,
+                2 | 3 => 1,
+                _ => 0,
+            };
+            for _ in 0..reads {
+                assert!((1..=9).contains(&next().parse::<i128>().unwrap()), "{text}");
+            }
+            let kind = next();
+            if kind == "B" {
+                let k: usize = next().parse().unwrap();
+                for _ in 0..k {
+                    assert!((5..=7).contains(&next().parse::<i128>().unwrap()), "{text}");
+                }
+            }
+            seen.insert((op.clamp(0, 4), kind == "B"));
+        }
+        assert!(tokens.next().is_none(), "{text}");
+    }
+    assert!(seen.len() >= 6, "{seen:?}");
+    // Fails when some query asks for `B` with a 7 in it: the smallest
+    // such input is one query that reads nothing, then a `B` with one 7.
+    let mut fails = |case: &Case| {
+        let Value::Seq(rows) = &case.values[1] else {
+            return false;
+        };
+        rows.iter().any(|row| {
+            matches!(row, Value::Tuple(parts) if matches!(&parts[1],
+                Value::Tuple(b) if b.first() == Some(&Value::Char(i128::from(b'B')))
+                    && matches!(b.get(2), Some(Value::Seq(a)) if a.contains(&Value::Int(7)))))
+        })
+    };
+    let start = (0..500)
+        .filter_map(|seed| generate(&spec, &mut Rng::new(seed), Size::Small(8)))
+        .find(|case| case.weight().0 >= 12 && fails(case))
+        .expect("a large failing case");
+    let smallest = shrink(&spec, &start, 4000, &mut fails);
+    assert_eq!(
+        smallest.render(),
+        "1\n4\nB\n1\n7\n",
+        "from {}",
+        start.render()
+    );
+}

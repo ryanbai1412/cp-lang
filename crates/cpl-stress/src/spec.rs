@@ -13,8 +13,8 @@
 
 use cpl_diag::Span;
 use cpl_syntax::ast::{
-    BinOp, Block, Expr, ExprKind, FnBody, Pattern, PatternKind, Stmt, StmtKind, Type, TypeKind,
-    UnOp,
+    BinOp, Block, CmpOp, Cond, Expr, ExprKind, FnBody, Pattern, PatternKind, Stmt, StmtKind, Type,
+    TypeKind, UnOp,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -62,6 +62,33 @@ pub enum Shape {
         extra: Vec<Shape>,
         kind: GraphKind,
     },
+    /// A tag, then the reads of the first arm that takes it, as one
+    /// tuple: a query `1 l r` or `2 i`. The tag is bound to `name` while
+    /// the arm is read.
+    Choice {
+        tag: Box<Shape>,
+        name: String,
+        arms: Vec<Arm>,
+    },
+}
+
+/// One way a row goes after its tag: an `if` branch or a `match` arm.
+#[derive(Clone, PartialEq, Debug)]
+pub struct Arm {
+    /// The tags that take it; `None` takes every tag the arms before it
+    /// leave.
+    pub tags: Option<Vec<i128>>,
+    pub parts: Vec<Shape>,
+    pub binds: Vec<Vec<Option<String>>>,
+}
+
+impl Arm {
+    /// The arm that tag `tag` takes; `None` when it takes none and
+    /// nothing more is read.
+    pub fn taken(arms: &[Arm], tag: i128) -> Option<&Arm> {
+        arms.iter()
+            .find(|arm| arm.tags.as_ref().is_none_or(|tags| tags.contains(&tag)))
+    }
 }
 
 impl Shape {
@@ -749,17 +776,44 @@ impl Builder<'_> {
         }
         let mut inside = outer.clone();
         bind_names(pat, &mut inside);
-        let reads = |builder: &Self, stmt: &Stmt| {
-            reads_inside(&builder.src[span_range(stmt.span.shift(builder.base))])
-        };
-        let last = body.stmts.iter().rposition(|stmt| reads(self, stmt));
         let mut parts = Vec::new();
         let mut binds = Vec::new();
-        for (at, stmt) in body.stmts.iter().enumerate() {
+        if !self.rows(&body.stmts, &mut inside, &mut parts, &mut binds)? {
+            return Ok(None);
+        }
+        let elem = match parts.len() {
+            0 => return Ok(None),
+            1 => parts.pop().expect("one part"),
+            _ if binds.iter().all(Vec::is_empty) => Shape::tuple(parts),
+            _ => Shape::Tuple { parts, binds },
+        };
+        names_in(&lo, &mut self.spec.sizes);
+        names_in(&hi, &mut self.spec.sizes);
+        Ok(Some(Shape::Array {
+            len: binary(BinOp::Add, binary(BinOp::Sub, hi, lo), int(1)),
+            elem: Box::new(elem),
+        }))
+    }
+
+    fn reads(&self, stmt: &Stmt) -> bool {
+        reads_inside(&self.src[span_range(stmt.span.shift(self.base))])
+    }
+
+    /// The reads of `stmts`, one pass of a loop or one arm of a choice,
+    /// added to `parts`. False when a field cannot describe them.
+    fn rows(
+        &mut self,
+        stmts: &[Stmt],
+        inside: &mut HashSet<String>,
+        parts: &mut Vec<Shape>,
+        binds: &mut Vec<Vec<Option<String>>>,
+    ) -> Result<bool, SpecError> {
+        let last = stmts.iter().rposition(|stmt| self.reads(stmt));
+        for (at, stmt) in stmts.iter().enumerate() {
             let mut jumps = Jumps::default();
             cpl_syntax::visit::walk_stmt(stmt, &mut jumps);
             if jumps.leaves || (jumps.skips && last.is_some_and(|last| at < last)) {
-                return Ok(None);
+                return Ok(false);
             }
             match &stmt.kind {
                 StmtKind::Let {
@@ -770,8 +824,8 @@ impl Builder<'_> {
                 } if is_read(init) => {
                     let mut used = HashSet::new();
                     Sizes(&mut used).of_type(ty);
-                    if !used.is_disjoint(&inside) {
-                        return Ok(None);
+                    if !used.is_disjoint(inside) {
+                        return Ok(false);
                     }
                     let shape = self.shape(ty)?;
                     // A name read here is bound beside its value, so the
@@ -802,15 +856,15 @@ impl Builder<'_> {
                                 counted(&name.text),
                                 Some(Self::inclusive(lo, hi, inclusive)),
                             ),
-                            None => return Ok(None),
+                            None => return Ok(false),
                         },
                     };
                     let (lo, hi) = read.as_ref().unwrap_or(&bounds);
                     let mut used = HashSet::new();
                     names_in(lo, &mut used);
                     names_in(hi, &mut used);
-                    if !used.is_disjoint(&inside) {
-                        return Ok(None);
+                    if !used.is_disjoint(inside) {
+                        return Ok(false);
                     }
                     self.spec.sizes.extend(used);
                     if let Some((lo, hi)) = read {
@@ -820,30 +874,188 @@ impl Builder<'_> {
                     }
                     self.domains.insert(name.text.clone(), bounds);
                 }
-                StmtKind::For { .. } if reads(self, stmt) => match self.pass(stmt, &inside)? {
+                StmtKind::For { .. } if self.reads(stmt) => match self.pass(stmt, inside)? {
                     Some(shape) => {
                         binds.push(Vec::new());
                         parts.push(shape);
                     }
-                    None => return Ok(None),
+                    None => return Ok(false),
                 },
-                _ if reads(self, stmt) => return Ok(None),
-                StmtKind::Let { pat, .. } => bind_names(pat, &mut inside),
+                StmtKind::Expr(expr) if self.reads(stmt) => {
+                    if !self.choice(expr, inside, parts, binds)? {
+                        return Ok(false);
+                    }
+                }
+                _ if self.reads(stmt) => return Ok(false),
+                StmtKind::Let { pat, .. } => bind_names(pat, inside),
                 _ => {}
             }
         }
-        let elem = match parts.len() {
-            0 => return Ok(None),
-            1 => parts.pop().expect("one part"),
-            _ if binds.iter().all(Vec::is_empty) => Shape::tuple(parts),
-            _ => Shape::Tuple { parts, binds },
+        Ok(true)
+    }
+
+    /// An `if` or `match` on the tag just read, each branch reading its
+    /// own values: `if op == 1: let (l, r) = read() else: let i = read()`.
+    fn choice(
+        &mut self,
+        expr: &Expr,
+        inside: &mut HashSet<String>,
+        parts: &mut Vec<Shape>,
+        binds: &mut Vec<Vec<Option<String>>>,
+    ) -> Result<bool, SpecError> {
+        let Some([Some(name)]) = binds.last().map(Vec::as_slice) else {
+            return Ok(false);
         };
-        names_in(&lo, &mut self.spec.sizes);
-        names_in(&hi, &mut self.spec.sizes);
-        Ok(Some(Shape::Array {
-            len: binary(BinOp::Add, binary(BinOp::Sub, hi, lo), int(1)),
-            elem: Box::new(elem),
-        }))
+        let name = name.clone();
+        if !matches!(
+            parts.last(),
+            Some(Shape::Int { .. } | Shape::Char { .. } | Shape::Bool)
+        ) {
+            return Ok(false);
+        }
+        let consts = self.spec.consts.clone();
+        let literal = |expr: &Expr| eval(expr, &consts);
+        // The tags `x == 1 or x == 2` takes, with `x` the tag.
+        fn tags(
+            cond: &Expr,
+            name: &str,
+            literal: &dyn Fn(&Expr) -> Option<i128>,
+        ) -> Option<(Vec<i128>, bool)> {
+            match &cond.kind {
+                ExprKind::Paren(inner) => tags(inner, name, literal),
+                ExprKind::Binary {
+                    op: BinOp::Or,
+                    lhs,
+                    rhs,
+                    ..
+                } => {
+                    let (mut a, false) = tags(lhs, name, literal)? else {
+                        return None;
+                    };
+                    let (b, false) = tags(rhs, name, literal)? else {
+                        return None;
+                    };
+                    a.extend(b);
+                    Some((a, false))
+                }
+                ExprKind::Compare { first, rest } => {
+                    let [(op @ (CmpOp::Eq | CmpOp::Ne), other)] = rest.as_slice() else {
+                        return None;
+                    };
+                    let is_tag = |e: &Expr| matches!(&e.kind, ExprKind::Name(n) if n == name);
+                    let value = match (is_tag(first), is_tag(other)) {
+                        (true, false) => literal(other)?,
+                        (false, true) => literal(first)?,
+                        _ => return None,
+                    };
+                    Some((vec![value], *op == CmpOp::Ne))
+                }
+                _ => None,
+            }
+        }
+        let mut ways: Vec<(Option<Vec<i128>>, Option<&Block>)> = Vec::new();
+        match &expr.kind {
+            ExprKind::If {
+                branches,
+                otherwise,
+            } => {
+                for (at, (cond, block)) in branches.iter().enumerate() {
+                    let Cond::Expr(cond) = cond else {
+                        return Ok(false);
+                    };
+                    match tags(cond, &name, &literal) {
+                        Some((values, false)) => ways.push((Some(values), Some(block))),
+                        // `if x != 1: A else: B` is `B` for 1, else `A`.
+                        Some((values, true)) if at == 0 && branches.len() == 1 => {
+                            ways.push((Some(values), otherwise.as_ref()));
+                            ways.push((None, Some(block)));
+                        }
+                        _ => return Ok(false),
+                    }
+                }
+                if !matches!(ways.last(), Some((None, _))) {
+                    ways.push((None, otherwise.as_ref()));
+                }
+            }
+            ExprKind::Match { scrutinee, arms } if matches!(&scrutinee.kind, ExprKind::Name(n) if *n == name) =>
+            {
+                fn values(
+                    pat: &Pattern,
+                    literal: &dyn Fn(&Expr) -> Option<i128>,
+                ) -> Option<Option<Vec<i128>>> {
+                    match &pat.kind {
+                        PatternKind::Wildcard | PatternKind::Name(_) => Some(None),
+                        PatternKind::Literal(expr) => Some(Some(vec![literal(expr)?])),
+                        PatternKind::Or(pats) => {
+                            let mut all = Vec::new();
+                            for pat in pats {
+                                all.extend(values(pat, literal)??);
+                            }
+                            Some(Some(all))
+                        }
+                        _ => None,
+                    }
+                }
+                for arm in arms {
+                    if arm.guard.is_some() {
+                        return Ok(false);
+                    }
+                    let Some(tags) = values(&arm.pat, &literal) else {
+                        return Ok(false);
+                    };
+                    ways.push((tags, Some(&arm.body)));
+                }
+            }
+            _ => return Ok(false),
+        }
+        let tag = parts.pop().expect("tested above");
+        binds.pop();
+        let mut arms = Vec::new();
+        for (tags, block) in ways {
+            let mut arm = Arm {
+                tags,
+                parts: Vec::new(),
+                binds: Vec::new(),
+            };
+            if let Some(block) = block {
+                let mut inside = inside.clone();
+                if !self.rows(&block.stmts, &mut inside, &mut arm.parts, &mut arm.binds)? {
+                    return Ok(false);
+                }
+            }
+            arms.push(arm);
+        }
+        // An `Int` tag read with no range takes the values its arms test,
+        // and one past them for an arm that takes the rest: the statement
+        // numbers its queries, and a far-off tag only reads as noise.
+        let tag = match tag {
+            Shape::Int { lo, hi }
+                if eval(&lo, &consts) == Some(DEFAULT_INT.0)
+                    && eval(&hi, &consts) == Some(DEFAULT_INT.1) =>
+            {
+                let named: Vec<i128> = arms
+                    .iter()
+                    .flat_map(|arm| arm.tags.iter().flatten().copied())
+                    .collect();
+                let rest = arms.iter().any(|arm| arm.tags.is_none());
+                match (named.iter().min(), named.iter().max()) {
+                    (Some(&min), Some(&max)) => Shape::Int {
+                        lo: int(min),
+                        hi: int(max + i128::from(rest)),
+                    },
+                    _ => Shape::Int { lo, hi },
+                }
+            }
+            tag => tag,
+        };
+        inside.insert(name.clone());
+        parts.push(Shape::Choice {
+            tag: Box::new(tag),
+            name,
+            arms,
+        });
+        binds.push(Vec::new());
+        Ok(true)
     }
 
     /// The first and last value a loop goes over: `lo..hi`, `lo..=hi`

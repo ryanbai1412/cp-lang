@@ -1645,6 +1645,16 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   generator read its bounds as a fixed domain and left the count out. The count is now a field (or
   a part of a loop row) at the place of the declaration, arrays over `V` take that many values,
   and `V` is `0..count`. Reverse: drop `read_size` and the generator refuses such domains again.
+- **25.11 A row whose reads depend on a tag read first is a `Choice`.** `if op == 1: read A
+  elif op == 2: read B else: ...` and `match kind: 'B' => ... _ => ...` read different values per
+  tag; refusing them left out most query problems. `Shape::Choice { tag, name, arms }` holds one
+  arm per branch with the literal tags that take it (`None` takes the rest). Generation picks an
+  arm evenly, then a tag that takes it; fitting rebuilds an arm's values at their low ends when
+  shrinking moves the tag to another arm; shrinking tries each arm's tag before lowering values,
+  so a query that reads nothing wins. An `Int` tag read with no range is narrowed to the tags the
+  arms test (and one more for an `else`), since a far-off tag is noise, not a query. Branches
+  with guards, non-literal tests or a test of anything but the tag are still refused. Reverse:
+  remove `Shape::Choice` and `Builder::choice`; such loops are refused with their old message.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 

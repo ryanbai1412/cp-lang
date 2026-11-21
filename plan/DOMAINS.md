@@ -423,13 +423,25 @@ dropped, like a top-level size
 984 of the 1,332 ports (from 960), and the 11th seeded bug,
 `btoi17p3-open-tour`, reads its plans so.
 Benchmark: 11 bugs, all minimal, median 0.75 s.
+`domain V = read(1..=hi)` is a size read where it is declared, with the
+arrays over `V` that long (`a_domain_read_as_a_size_is_generated_with_its_arrays`).
+A query whose reads depend on a tag read first (`if op == 1: read l, r
+elif op == 2: read i`, `match kind: 'B' => ...`) is a choice: each arm is
+generated about as often as the others, a tag that moves to another arm
+reads that arm's values, and shrinking tries each arm before lowering
+values, so the plainest query wins
+(`a_query_reads_what_the_branch_its_tag_takes_reads`). Ports stress makes
+inputs for: 1,045 of the 1,389 `.cp` files under `proto/ports` (from
+1,014 by the same scan; the 1,332 above counted an older tree), and the
+17 query ports this newly covers all give inputs their programs read to
+the end.
 **Bar.** A seeded-bug benchmark in the gate: classic bugs injected into
 correct solutions, each found and shrunk to a known minimal case, with the
 median time to a minimal counterexample at most 10 s (`GOALS` 4).
-**Next.** `read(gen: f)` made by running `f` (63 ports refused);
-loops that `break`, or whose types use values worked out in the pass
-(88 ports refused); reads in fns the program calls
-(44); generators keyed to the
+**Next.** loops that `break`, or whose types use values worked out in
+the pass (74 ports refused); `read(gen: f)` and `read(none: x)` made by
+running `f` (71 and 64 ports refused); reads in fns the program calls
+(44); reads in a nested block that is not a choice (23); generators keyed to the
 stdlib declarations, not their names; worst-case values and anti-hash generators; grid and string-family shapes (`[R, C]Char` mazes, palindromes).
 
 ## 8. Formatter, linter, profiler, coverage, bench, doc (`plan/45`)

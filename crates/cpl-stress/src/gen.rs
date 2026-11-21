@@ -4,7 +4,7 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 
 use crate::rng::Rng;
-use crate::spec::{eval, Env, GraphKind, InputSpec, Shape};
+use crate::spec::{eval, Arm, Env, GraphKind, InputSpec, Shape};
 
 /// One value of an input.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -136,6 +136,72 @@ impl Pick for Random<'_> {
     }
 }
 
+pub(crate) fn build_parts(
+    parts: &[Shape],
+    binds: &[Vec<Option<String>>],
+    env: &Env,
+    sizes: &HashSet<String>,
+    pick: &mut dyn Pick,
+) -> Option<Vec<Value>> {
+    let mut env = Cow::Borrowed(env);
+    let mut built = Vec::new();
+    for (at, part) in parts.iter().enumerate() {
+        let is_size =
+            matches!(binds.get(at).map(Vec::as_slice), Some([Some(name)]) if sizes.contains(name));
+        let value = build(part, &env, sizes, is_size, pick)?;
+        if let Some(names) = binds.get(at).filter(|names| !names.is_empty()) {
+            bind(names, &value, env.to_mut());
+        }
+        built.push(value);
+    }
+    Some(built)
+}
+
+/// A tag that takes an arm picked evenly, so each kind of query comes
+/// up as often as the others whatever the tag's type allows. A literal
+/// tag is used even outside a `Char`'s usual letters; an `Int` keeps to
+/// its declared range.
+fn choose_tag(tag: &Shape, arms: &[Arm], env: &Env, pick: &mut dyn Pick) -> Option<Value> {
+    let (lo, hi, char) = match tag {
+        Shape::Int { lo, hi } => (eval(lo, env)?, eval(hi, env)?, false),
+        Shape::Char { lo, hi } => (i128::from(*lo), i128::from(*hi), true),
+        Shape::Bool => (0, 1, false),
+        _ => return None,
+    };
+    (lo <= hi).then_some(())?;
+    let wrap = |v: i128| if char { Value::Char(v) } else { Value::Int(v) };
+    let at = usize::try_from(pick.pick(0, arms.len().saturating_sub(1) as i128, false)).ok()?;
+    let arm = arms.get(at)?;
+    if let Some(tags) = &arm.tags {
+        let fits: Vec<i128> = tags
+            .iter()
+            .copied()
+            .filter(|v| char || (lo..=hi).contains(v))
+            .collect();
+        if !fits.is_empty() {
+            let at = pick.pick(0, fits.len() as i128 - 1, false) as usize;
+            return Some(wrap(fits[at]));
+        }
+    }
+    let mut value = pick.pick(lo, hi, false);
+    for _ in 0..8 {
+        if Arm::taken(arms, value).is_some_and(|taken| std::ptr::eq(taken, arm)) {
+            break;
+        }
+        value = pick.pick(lo, hi, false);
+    }
+    Some(wrap(value))
+}
+
+/// Every number at the low end of its range.
+pub(crate) struct Lowest;
+
+impl Pick for Lowest {
+    fn pick(&mut self, lo: i128, _hi: i128, _is_size: bool) -> i128 {
+        lo
+    }
+}
+
 fn build(
     shape: &Shape,
     env: &Env,
@@ -157,15 +223,16 @@ fn build(
                 .map(Value::Seq)
         }
         Shape::Tuple { parts, binds } => {
-            let mut env = Cow::Borrowed(env);
-            let mut built = Vec::new();
-            for (at, part) in parts.iter().enumerate() {
-                let is_size = matches!(binds.get(at).map(Vec::as_slice), Some([Some(name)]) if sizes.contains(name));
-                let value = build(part, &env, sizes, is_size, pick)?;
-                if let Some(names) = binds.get(at).filter(|names| !names.is_empty()) {
-                    bind(names, &value, env.to_mut());
-                }
-                built.push(value);
+            build_parts(parts, binds, env, sizes, pick).map(Value::Tuple)
+        }
+        Shape::Choice { tag, name, arms } => {
+            let tag = choose_tag(tag, arms, env, pick)?;
+            let value = tag.number()?;
+            let mut env = env.clone();
+            env.insert(name.clone(), value);
+            let mut built = vec![tag];
+            if let Some(arm) = Arm::taken(arms, value) {
+                built.extend(build_parts(&arm.parts, &arm.binds, &env, sizes, pick)?);
             }
             Some(Value::Tuple(built))
         }

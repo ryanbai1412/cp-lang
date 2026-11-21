@@ -9,8 +9,8 @@
 
 use std::borrow::Cow;
 
-use crate::gen::{bind, Case, Value};
-use crate::spec::{eval, names_in, Env, GraphKind, InputSpec, Shape};
+use crate::gen::{bind, build_parts, Case, Lowest, Value};
+use crate::spec::{eval, names_in, Arm, Env, GraphKind, InputSpec, Shape};
 
 /// The representative of `v`'s part in a union-find forest.
 fn find(root: &mut [usize], mut v: usize) -> usize {
@@ -19,6 +19,30 @@ fn find(root: &mut [usize], mut v: usize) -> usize {
         v = root[v];
     }
     v
+}
+
+fn fit_parts(
+    parts: &[Shape],
+    binds: &[Vec<Option<String>>],
+    items: &[Value],
+    env: &Env,
+) -> Option<Vec<Value>> {
+    let mut env = Cow::Borrowed(env);
+    let mut fitted = Vec::new();
+    for (at, (shape, item)) in parts.iter().zip(items).enumerate() {
+        let part = fit_value(shape, item, &env)?;
+        if let Some(names) = binds.get(at).filter(|names| !names.is_empty()) {
+            bind(names, &part, env.to_mut());
+        }
+        fitted.push(part);
+    }
+    Some(fitted)
+}
+
+/// The arm a choice's value read, with its parts after the tag.
+fn chosen<'a>(arms: &'a [Arm], items: &'a [Value]) -> Option<(&'a Arm, &'a [Value])> {
+    let arm = Arm::taken(arms, items.first()?.number()?)?;
+    (items.len() == 1 + arm.parts.len()).then(|| (arm, &items[1..]))
 }
 
 fn fit_value(shape: &Shape, value: &Value, env: &Env) -> Option<Value> {
@@ -192,14 +216,38 @@ fn fit_value(shape: &Shape, value: &Value, env: &Env) -> Option<Value> {
                 .map(Value::Seq)
         }
         (Shape::Tuple { parts, binds }, Value::Tuple(items)) if parts.len() == items.len() => {
-            let mut env = Cow::Borrowed(env);
-            let mut fitted = Vec::new();
-            for (at, (shape, item)) in parts.iter().zip(items).enumerate() {
-                let part = fit_value(shape, item, &env)?;
-                if let Some(names) = binds.get(at).filter(|names| !names.is_empty()) {
-                    bind(names, &part, env.to_mut());
-                }
-                fitted.push(part);
+            fit_parts(parts, binds, items, env).map(Value::Tuple)
+        }
+        // A tag that now takes another arm reads that arm's values, each
+        // at its low end.
+        (Shape::Choice { tag, name, arms }, Value::Tuple(items)) if !items.is_empty() => {
+            let literal = |v: i128| {
+                arms.iter()
+                    .any(|arm| arm.tags.as_ref().is_some_and(|tags| tags.contains(&v)))
+            };
+            let first = match items[0].number() {
+                Some(v) if literal(v) => items[0].clone(),
+                _ => fit_value(tag, &items[0], env)?,
+            };
+            let value = first.number()?;
+            let mut env = env.clone();
+            env.insert(name.clone(), value);
+            let mut fitted = vec![first];
+            if let Some(arm) = Arm::taken(arms, value) {
+                let rest = &items[1..];
+                let parts = (rest.len() == arm.parts.len())
+                    .then(|| fit_parts(&arm.parts, &arm.binds, rest, &env))
+                    .flatten()
+                    .or_else(|| {
+                        build_parts(
+                            &arm.parts,
+                            &arm.binds,
+                            &env,
+                            &std::collections::HashSet::new(),
+                            &mut Lowest,
+                        )
+                    })?;
+                fitted.extend(parts);
             }
             Some(Value::Tuple(fitted))
         }
@@ -439,6 +487,99 @@ fn numbers(spec: &InputSpec, case: &Case) -> Vec<(Path, i128)> {
                     }
                 }
             }
+            (Shape::Choice { tag, name, arms }, Value::Tuple(items)) => {
+                path.push(0);
+                walk(tag, &items[0], env, path, out);
+                path.pop();
+                if let Some((arm, rest)) = chosen(arms, items) {
+                    let mut env = env.clone();
+                    env.insert(name.clone(), items[0].number().unwrap_or(0));
+                    for (index, (shape, item)) in arm.parts.iter().zip(rest).enumerate() {
+                        path.push(1 + index);
+                        walk(shape, item, &env, path, out);
+                        path.pop();
+                        if let Some(names) = arm.binds.get(index).filter(|names| !names.is_empty())
+                        {
+                            bind(names, item, &mut env);
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut env: Env = spec.consts.clone();
+    let mut out = Vec::new();
+    for (index, (field, value)) in spec.fields.iter().zip(&case.values).enumerate() {
+        walk(&field.shape, value, &env, &mut vec![index], &mut out);
+        bind(&field.names, value, &mut env);
+    }
+    out
+}
+
+/// The paths of the tags of choices, each with a tag for every arm: a
+/// row may read less down another arm than lowering its tag allows.
+fn tags(spec: &InputSpec, case: &Case) -> Vec<(Path, Vec<i128>)> {
+    fn walk(
+        shape: &Shape,
+        value: &Value,
+        env: &Env,
+        path: &mut Path,
+        out: &mut Vec<(Path, Vec<i128>)>,
+    ) {
+        match (shape, value) {
+            (Shape::Array { elem, .. }, Value::Seq(items)) => {
+                for (index, item) in items.iter().enumerate() {
+                    path.push(index);
+                    walk(elem, item, env, path, out);
+                    path.pop();
+                }
+            }
+            (Shape::Tuple { parts, binds }, Value::Tuple(items)) => {
+                let mut env = Cow::Borrowed(env);
+                for (index, (shape, item)) in parts.iter().zip(items).enumerate() {
+                    path.push(index);
+                    walk(shape, item, &env, path, out);
+                    path.pop();
+                    if let Some(names) = binds.get(index).filter(|names| !names.is_empty()) {
+                        bind(names, item, env.to_mut());
+                    }
+                }
+            }
+            (Shape::Choice { tag, name, arms }, Value::Tuple(items)) => {
+                let named: Vec<i128> = arms
+                    .iter()
+                    .flat_map(|arm| arm.tags.iter().flatten().copied())
+                    .collect();
+                let rest = match &**tag {
+                    Shape::Int { lo, hi } => eval(lo, env).zip(eval(hi, env)),
+                    Shape::Char { lo, hi } => Some((i128::from(*lo), i128::from(*hi))),
+                    Shape::Bool => Some((0, 1)),
+                    _ => None,
+                }
+                .and_then(|(lo, hi)| (lo..=hi).take(named.len() + 1).find(|v| !named.contains(v)));
+                let each = arms
+                    .iter()
+                    .filter_map(|arm| match &arm.tags {
+                        Some(tags) => tags.first().copied(),
+                        None => rest,
+                    })
+                    .collect();
+                out.push((path.iter().copied().chain([0]).collect(), each));
+                if let Some((arm, rest)) = chosen(arms, items) {
+                    let mut env = env.clone();
+                    env.insert(name.clone(), items[0].number().unwrap_or(0));
+                    for (index, (shape, item)) in arm.parts.iter().zip(rest).enumerate() {
+                        path.push(1 + index);
+                        walk(shape, item, &env, path, out);
+                        path.pop();
+                        if let Some(names) = arm.binds.get(index).filter(|names| !names.is_empty())
+                        {
+                            bind(names, item, &mut env);
+                        }
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -513,6 +654,26 @@ fn inner_sizes(
                 path.pop();
             }
         }
+        (Shape::Choice { arms, .. }, Value::Tuple(items)) => {
+            if let Some((arm, rest)) = chosen(arms, items) {
+                let shape = Shape::Tuple {
+                    parts: arm.parts.clone(),
+                    binds: arm.binds.clone(),
+                };
+                let mut sub = Vec::new();
+                inner_sizes(
+                    spec,
+                    &shape,
+                    &Value::Tuple(rest.to_vec()),
+                    &mut Vec::new(),
+                    &mut sub,
+                );
+                for mut inner in sub {
+                    inner[0] += 1;
+                    out.push(path.iter().copied().chain(inner).collect());
+                }
+            }
+        }
         _ => {}
     }
 }
@@ -564,6 +725,18 @@ fn rename_vertices(
             .map(|(shape, item)| rename_vertices(shape, item, ends, rename))
             .collect::<Option<_>>()
             .map(Value::Tuple),
+        (Shape::Choice { arms, .. }, Value::Tuple(items)) => match chosen(arms, items) {
+            Some((arm, rest)) => std::iter::once(Some(items[0].clone()))
+                .chain(
+                    arm.parts
+                        .iter()
+                        .zip(rest)
+                        .map(|(shape, item)| rename_vertices(shape, item, ends, rename)),
+                )
+                .collect::<Option<_>>()
+                .map(Value::Tuple),
+            None => Some(value.clone()),
+        },
         _ => Some(value.clone()),
     }
 }
@@ -871,7 +1044,20 @@ pub fn shrink(
                 }
             }
         }
-        // 3. Values, toward their lower bound.
+        // 3. Values, toward their lower bound; a tag first to the arm
+        //    that reads least.
+        for (path, each) in tags(spec, &best) {
+            for tag in each {
+                // An earlier switch may have removed this tag.
+                if !tags(spec, &best).iter().any(|(p, _)| *p == path) {
+                    break;
+                }
+                let mut candidate = best.clone();
+                let slot = at(&mut candidate, &path);
+                *slot = slot.with(tag);
+                improved |= attempt(&mut best, candidate);
+            }
+        }
         for (path, lo) in numbers(spec, &best) {
             // An earlier step may have removed this number.
             let exists = numbers(spec, &best).iter().any(|(p, _)| *p == path);
