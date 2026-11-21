@@ -527,6 +527,13 @@ interactor or checker `gate.sh` uses, and a solution printing `1` fails
 under every one of the 21 (`stress_judges`, 4.9 s, decision 25.17). These
 cases come from each port's `gen/` script, so they are not shrunk: the
 hidden input an external interactor reads has no type stress can see.
+Time to a counterexample for wrong solutions to all 21 judged ports
+(`bench/stress/judged.py`, seed 1, 1,000 cases, one run at a time): a
+solution printing `1` is caught on case 1 in all 21, p50 0.06 s, p95
+0.12 s. Mutants of the ports themselves (the first site that still checks
+of `+ 1`→`+ 2`, `- 1`→`- 2`, `<`↔`<=`, `0..`→`1..`): 36 of 65 caught,
+p50 0.71 s, p95 3.92 s including the build; 29 survive 1,000 cases, not
+yet sorted into equivalent mutants and inputs the generators never make.
 `cpl stress --explain` names the first value the solution and its
 `@brute(main)` give a shared variable differently, on the shrunk case:
 on a planted sum of squares it reports `s`, its 2nd value, `4` at line 6

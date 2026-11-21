@@ -12,6 +12,10 @@ if a bug is missed or shrinks to anything but its `.min`. Each run has a
 fixed seed and case count, so the verdict never depends on the machine;
 the median is measured against the 1 s bar (`GOALS` 4), not asserted.
 
+`judged.py` times wrong solutions to every judged port (interactor or
+checker) to a counterexample: `print(1)` and one mutant per operator, with
+p50 and p95 over the caught runs. It is a measurement, not a gate test.
+
     cargo test -p cpl-cli --test seeded_bugs -- --nocapture
 
 A new bug is a new pair of files. A stress change that finds a smaller
