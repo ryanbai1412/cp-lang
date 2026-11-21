@@ -13,7 +13,7 @@ use cpl_ir::{
     PlaceKind, Stmt, Ty, UnOp,
 };
 
-fn int_literal(v: i64) -> Code {
+pub(crate) fn int_literal(v: i64) -> Code {
     if v == i64::MIN {
         return Code::primary("(-9223372036854775807LL - 1)");
     }
@@ -1838,7 +1838,8 @@ impl<'p> Emitter<'p> {
                 if cap.is_global {
                     let gname = ident(&self.program.globals[cap.outer].name);
                     if cap.by_ref {
-                        global_ref_aliases.push(format!("auto& {inner} = {gname};"));
+                        let constant = if self.const_globals.contains(&cap.outer) { "const " } else { "" };
+                        global_ref_aliases.push(format!("{constant}auto& {inner} = {gname};"));
                     } else {
                         cap_parts.push(format!("{inner} = {gname}"));
                     }

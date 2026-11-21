@@ -773,3 +773,21 @@ fn struct_never_compared_emits_no_tie_operators() {
         "compared struct must emit cpl_tie operators: {compared}"
     );
 }
+
+#[test]
+fn global_stored_once_with_a_literal_is_constexpr() {
+    let out = cpp(concat!(
+        "const M = 1_000_000_007\n",
+        "let n = 500_000\n",
+        "let big = true\n",
+        "let x = read<Int>()\n",
+        "let f = (y: Int) => y % M\n",
+        "print(f(x) + n, big)\n",
+    ));
+    assert!(out.contains("static constexpr ll M = 1000000007;"), "{out}");
+    assert!(out.contains("static constexpr ll n = 500000;"), "{out}");
+    assert!(out.contains("static constexpr bool big = true;"), "{out}");
+    assert!(!out.contains("  M = 1000000007;"), "constexpr M must not be stored again: {out}");
+    let stored_twice = cpp(concat!("var m = 5\n", "m += read<Int>()\n", "print(m)\n"));
+    assert!(!stored_twice.contains("constexpr ll m"), "{stored_twice}");
+}

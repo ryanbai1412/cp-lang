@@ -648,6 +648,11 @@ impl<'p> Emitter<'p> {
     }
 
     fn assign(&mut self, place: &Place, op: AssignOp, value: &Expr, out: &mut String) {
+        if let (AssignOp::Set, PlaceKind::Global(id)) = (op, &place.kind) {
+            if self.const_globals.contains(id) {
+                return;
+            }
+        }
         let whole = value;
         let value = self.flatten(value, out);
         if let (AssignOp::Set, PlaceKind::Local(_) | PlaceKind::Global(_)) = (op, &place.kind) {

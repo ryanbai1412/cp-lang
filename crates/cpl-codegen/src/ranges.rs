@@ -274,6 +274,11 @@ impl<'p> Facts<'p> {
         }
     }
 
+    /// The value of the variable's first store.
+    pub fn init(&self, v: Var) -> Option<&'p Expr> {
+        self.init.get(&v).copied()
+    }
+
     /// True when the variable is stored once, so its first value is its
     /// only value.
     pub fn stable(&self, v: Var) -> bool {

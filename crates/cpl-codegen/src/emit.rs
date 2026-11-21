@@ -117,6 +117,8 @@ pub(crate) struct Emitter<'p> {
     pub closure_id: Option<usize>,
     pub names: Vec<String>,
     pub hoisted: BTreeSet<usize>,
+    /// Globals stored once, with a literal: emitted as `static constexpr`.
+    pub const_globals: BTreeSet<usize>,
     /// What follows the `let` being written, in its block.
     pub tail: Option<crate::stmt::Tail>,
     /// Local lists kept in one buffer for the whole run: see [`crate::scope::reused`].
@@ -200,6 +202,7 @@ impl<'p> Emitter<'p> {
             closure_id: None,
             names: Vec::new(),
             hoisted: BTreeSet::new(),
+            const_globals: BTreeSet::new(),
             tail: None,
             in_setup: false,
             spent: BTreeSet::new(),
@@ -959,11 +962,16 @@ impl<'p> Emitter<'p> {
             let d = ident(d);
             vars.push_str(&format!("ll {d}_lo = 0, {d}_len = 0;\n"));
         }
-        for global in &program.globals {
+        for (id, global) in program.globals.iter().enumerate() {
             if global.ty == Ty::Unit {
                 continue;
             }
             let cpp = self.ty(&global.ty);
+            if let Some(value) = self.const_global(id) {
+                vars.push_str(&format!("static constexpr {cpp} {} = {value};\n", ident(&global.name)));
+                self.const_globals.insert(id);
+                continue;
+            }
             vars.push_str(&format!(
                 "{} {}{};\n",
                 cpp,
@@ -1295,6 +1303,21 @@ impl<'p> Emitter<'p> {
             None => out.push_str("    cpl::flush();\n    return 0;\n}\n"),
         }
         out
+    }
+
+    /// The C++ literal of a global stored once, by its declaration, with an
+    /// `Int` or `Bool` literal: a compile-time constant, so `% M` by it
+    /// compiles to a multiply instead of a divide.
+    fn const_global(&self, id: usize) -> Option<String> {
+        let v = (None, true, id);
+        if self.facts.stores(v) != 1 {
+            return None;
+        }
+        match (&self.program.globals[id].ty, &self.facts.init(v)?.kind) {
+            (Ty::Int, ExprKind::Int(n)) => Some(crate::expr::int_literal(*n).text),
+            (Ty::Bool, ExprKind::Bool(b)) => Some(b.to_string()),
+            _ => None,
+        }
     }
 
     /// True when `e` gives the same value wherever it runs in the

@@ -3167,3 +3167,15 @@ within 1.1x of the bare treap and 0.8x the original.
 **Reversal.** Delete `stdlib/slope.cp` and restore the `LazyTreap` port from
 history; nothing else depends on it.
 
+## 82. A global stored once with a literal is `static constexpr` (2026-11-21)
+
+`const M = 1_000_000_007` in the main file was emitted as `ll M = 0;` and
+set in `solve()`, so g++ could not see the modulus and `x % M` compiled to a
+hardware divide. Codegen now emits a top-level `Int` or `Bool` global that is
+stored exactly once, with a literal, as `static constexpr` and drops the
+store. `(x * 31 + i) % M` over 10^8 steps: 635 -> 492 ms. The interpreter is
+unchanged: the value is the same, only where C++ keeps it moves. Closures that
+alias such a global by reference bind `const auto&`. Test:
+`global_stored_once_with_a_literal_is_constexpr`. Reverse by deleting
+`Emitter::const_global` and the `const_globals` checks in `stmt.rs` and
+`expr.rs`.
