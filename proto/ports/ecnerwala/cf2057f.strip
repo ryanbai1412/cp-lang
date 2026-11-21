@@ -1,0 +1,5 @@
+# cf2057f_orig.cpp: the lines a perfect C++ contest library would have supplied.
+# Everything else is counted as problem-specific code. Read by proto/loc.py.
+# lines      facility        what it is
+1-290        template        includes, setmax, the seg_tree layout library
+294-294      driver          fast I/O setup
