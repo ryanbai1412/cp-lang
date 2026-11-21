@@ -1293,6 +1293,12 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   *Reversal:* remove the `TypeKind::Range` branch in `crates/cpl-ir/src/lower/call.rs` and remove `shared_count`
   in `crates/cpl-syntax/src/parser/stmt.rs`.
 
+- **22.7 Parenthesized supertraits (`trait Ord(Eq)`), `&mut T` parameter syntax, opaque structs (`struct List<T>`), and multi-trait `impl A + B for T`.**
+  `trait_decl` accepts `(Super1, Super2)` alongside `: Super1 + Super2`; `param` desugars `x: &mut T` to
+  `Param { mutable: true, ty: Some(T) }` with no new AST node; `struct_decl` allows bodyless opaque declarations
+  (`struct List<T>`, `struct Str`); `impl_decl` desugars `impl A + B for T:` into one `StmtKind::Impl` per trait.
+  *Reversal:* revert the four branches in `crates/cpl-syntax/src/parser/item.rs`.
+
 ## 23. Validation scoreboard and friction summary (`scripts/scoreboard.py`, 2026-11-21)
 
 - **23.1 One unified scoreboard over auto-discovered ports.** `scripts/scoreboard.py` discovers every

@@ -207,7 +207,7 @@ impl<'a> Parser<'a> {
     fn param(&mut self, named_only: bool) -> Param {
         let start = self.start();
         let variadic = self.eat(T::DotDot);
-        let mutable = self.eat(T::Mut);
+        let mut mutable = self.eat(T::Mut);
         let copied = !mutable && self.eat(T::Var);
         let name = if self.at(T::SelfKw) {
             self.name()
@@ -217,7 +217,14 @@ impl<'a> Parser<'a> {
         if copied {
             self.var_params.push(name.clone());
         }
-        let ty = self.eat(T::Colon).then(|| self.ty());
+        let ty = self.eat(T::Colon).then(|| {
+            if self.at(T::Amp) && self.peek_n(1) == T::Mut {
+                self.bump();
+                self.bump();
+                mutable = true;
+            }
+            self.ty()
+        });
         let default = self.eat(T::Eq).then(|| self.expr());
         Param {
             mutable,
@@ -327,7 +334,7 @@ impl<'a> Parser<'a> {
                 methods: Vec::new(),
             });
         }
-        if header && self.at_line_end() && self.peek_n(1) != T::Indent {
+        if self.at_line_end() && self.peek_n(1) != T::Indent {
             return StmtKind::Struct(StructDecl {
                 name,
                 generics,
@@ -455,9 +462,11 @@ impl<'a> Parser<'a> {
         self.bump();
         let name = self.expect_name("a trait name after `trait`");
         let (generics, _) = self.generic_params();
-        // `trait Seq: Index + Ord`.
+        // `trait Ord(Eq)` or `trait Seq: Index + Ord`.
         let mut supers = Vec::new();
-        if self.at(T::Colon) && self.peek_n(1) == T::Ident {
+        if self.eat(T::LParen) {
+            supers = self.comma_list(T::RParen, "the supertraits", Self::ty);
+        } else if self.at(T::Colon) && self.peek_n(1) == T::Ident {
             self.bump();
             supers.push(self.ty());
             while self.eat(T::Plus) {
@@ -476,9 +485,14 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn impl_decl(&mut self) -> StmtKind {
+        let start = self.start();
         self.bump();
         let (_, mut bounds) = self.generic_params();
         let first = self.ty();
+        let mut extra_traits = Vec::new();
+        while self.eat(T::Plus) {
+            extra_traits.push(self.ty());
+        }
         let (trait_name, target) = if self.eat(T::For) {
             (Some(first), self.ty())
         } else {
@@ -486,6 +500,19 @@ impl<'a> Parser<'a> {
         };
         self.where_clause(&mut bounds);
         let body = self.optional_body("the `impl` header");
+        for extra in extra_traits {
+            self.extra_stmts.push(Stmt {
+                kind: StmtKind::Impl {
+                    trait_name: Some(extra),
+                    target: target.clone(),
+                    bounds: bounds.clone(),
+                    body: body.clone(),
+                },
+                span: self.span_from(start),
+                decorators: Vec::new(),
+                public: false,
+            });
+        }
         StmtKind::Impl {
             trait_name,
             target,

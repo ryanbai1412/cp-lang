@@ -1236,3 +1236,31 @@ fn a_range_in_parentheses_takes_a_step() {
     // Anything else before `by` is not a range to step.
     assert!(!codes("for i in xs by 2: f(i)\n").is_empty());
 }
+
+#[test]
+fn v03_traits_opaque_structs_mut_ref_params_and_multi_trait_impl_parse() {
+    let src = "\
+trait Ord(Eq): fn cmp(self, o: Self) -> Ordering
+trait Hash: fn hash(self, h: &mut Hasher)
+struct List<T>
+struct Str
+impl Read + Print for Str:
+    fn read() -> Str = \"\"
+";
+    assert_eq!(codes(src), Vec::<&str>::new());
+    let items = stmts(src);
+    assert_eq!(items.len(), 6);
+    assert!(matches!(&items[0].kind, StmtKind::Trait { supers, .. } if supers.len() == 1));
+    assert!(matches!(
+        &items[1].kind,
+        StmtKind::Trait { body, .. }
+            if matches!(
+                &body.stmts[0].kind,
+                StmtKind::Fn(f) if f.params.len() == 2 && f.params[1].mutable
+            )
+    ));
+    assert!(matches!(&items[2].kind, StmtKind::Struct(s) if s.name.text == "List" && s.fields.is_empty()));
+    assert!(matches!(&items[3].kind, StmtKind::Struct(s) if s.name.text == "Str" && s.fields.is_empty()));
+    assert!(matches!(&items[4].kind, StmtKind::Impl { trait_name: Some(_), .. }));
+    assert!(matches!(&items[5].kind, StmtKind::Impl { trait_name: Some(_), .. }));
+}
