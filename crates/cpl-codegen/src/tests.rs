@@ -737,7 +737,6 @@ fn small_domain_bitset_uses_inline_row_and_fused_popcount() {
     assert!(cpp.contains("__builtin_popcountll("), "{cpp}");
     assert!(!cpp.contains("_bitand(a, b)"), "{cpp}");
 }
-
 #[test]
 fn higher_order_combinator_devirtualizes_to_zero_std_function() {
     let cpp = cpp(concat!(
@@ -750,4 +749,27 @@ fn higher_order_combinator_devirtualizes_to_zero_std_function() {
     ));
     assert!(!cpp.contains("std::function"), "{cpp}");
     assert!(!cpp.contains("#include <functional>"), "{cpp}");
+}
+
+#[test]
+fn struct_never_compared_emits_no_tie_operators() {
+    let uncompared = cpp(concat!(
+        "struct Pt(x: Int, y: Int)\n",
+        "let p = Pt(3, 4)\n",
+        "print(p.x + p.y)\n",
+    ));
+    assert!(
+        !uncompared.contains("operator==("),
+        "uncompared struct should not emit cpl_tie operators: {uncompared}"
+    );
+    let compared = cpp(concat!(
+        "struct Pt(x: Int, y: Int)\n",
+        "let a = Pt(1, 2)\n",
+        "let b = Pt(3, 4)\n",
+        "print(if a < b: 1 else: 0)\n",
+    ));
+    assert!(
+        compared.contains("operator<("),
+        "compared struct must emit cpl_tie operators: {compared}"
+    );
 }

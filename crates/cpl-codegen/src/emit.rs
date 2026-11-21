@@ -759,19 +759,78 @@ impl<'p> Emitter<'p> {
             }
         }
 
-        let scan_block = |b: &Block,
-                          reachable: &mut BTreeSet<usize>,
-                          fn_work: &mut Vec<usize>,
-                          reachable_closures: &mut BTreeSet<usize>,
-                          closure_work: &mut Vec<usize>,
-                          reachable_structs: &mut BTreeSet<usize>,
-                          reachable_enums: &mut BTreeSet<usize>| {
+        let mut needs_tie = false;
+
+        fn has_adt(ty: &Ty) -> bool {
+            match ty {
+                Ty::Struct(_) | Ty::Enum(_) => true,
+                Ty::Range(t)
+                | Ty::Opt(t)
+                | Ty::List(t)
+                | Ty::ListView(t)
+                | Ty::Set(t)
+                | Ty::HashSet(t)
+                | Ty::Mut(t) => has_adt(t),
+                Ty::Array { elem, .. } => has_adt(elem),
+                Ty::Map(k, v) | Ty::HashMap(k, v) => has_adt(k) || has_adt(v),
+                Ty::Tuple(ts) => ts.iter().any(has_adt),
+                Ty::Record(fs) => fs.iter().any(|(_, t)| has_adt(t)),
+                _ => false,
+            }
+        }
+
+        let mut scan_block = |b: &Block,
+                              reachable: &mut BTreeSet<usize>,
+                              fn_work: &mut Vec<usize>,
+                              reachable_closures: &mut BTreeSet<usize>,
+                              closure_work: &mut Vec<usize>,
+                              reachable_structs: &mut BTreeSet<usize>,
+                              reachable_enums: &mut BTreeSet<usize>| {
             walk::deep_exprs(b, &mut |e| {
                 mark_ty(&e.ty, program, reachable, fn_work, reachable_structs, reachable_enums);
+                match &e.ty {
+                    Ty::Set(k) | Ty::HashSet(k) | Ty::Map(k, _) | Ty::HashMap(k, _)
+                        if has_adt(k) =>
+                    {
+                        needs_tie = true;
+                    }
+                    _ => {}
+                }
                 match &e.kind {
                     ExprKind::Call(fid, _) if reachable.insert(*fid) => fn_work.push(*fid),
                     ExprKind::Closure(cid) if reachable_closures.insert(*cid) => {
                         closure_work.push(*cid);
+                    }
+                    ExprKind::Cmp(_, left, _) if has_adt(&left.ty) => {
+                        needs_tie = true;
+                    }
+                    ExprKind::Sort(place, by, _) => match by {
+                        cpl_ir::SortBy::Natural if has_adt(&place.ty) => needs_tie = true,
+                        cpl_ir::SortBy::Key(_, k) if has_adt(&k.ty) => needs_tie = true,
+                        cpl_ir::SortBy::Fn { func, is_order: false } => {
+                            if let Ty::Fn(_, ret) = &func.ty {
+                                if has_adt(ret) {
+                                    needs_tie = true;
+                                }
+                            }
+                        }
+                        _ => {}
+                    },
+                    ExprKind::Builtin(
+                        cpl_ir::Builtin::Min
+                        | cpl_ir::Builtin::Max
+                        | cpl_ir::Builtin::Contains
+                        | cpl_ir::Builtin::Sorted
+                        | cpl_ir::Builtin::MapGet
+                        | cpl_ir::Builtin::SetMin
+                        | cpl_ir::Builtin::SetMax
+                        | cpl_ir::Builtin::FirstGe
+                        | cpl_ir::Builtin::FirstGt
+                        | cpl_ir::Builtin::LastLe
+                        | cpl_ir::Builtin::LastLt,
+                        args,
+                    ) if args.iter().any(|a| has_adt(&a.ty)) => {
+                        needs_tie = true;
                     }
                     ExprKind::Print(args, _) => {
                         let (mut vs, mut ve) = (BTreeSet::new(), BTreeSet::new());
@@ -893,7 +952,7 @@ impl<'p> Emitter<'p> {
         for &id in &reachable_enums {
             self.type_def(&Ty::Enum(id), &mut done, &mut types);
         }
-        let has_tie = types.contains("cpl_tie");
+        let has_tie = needs_tie && types.contains("cpl_tie");
 
         let mut vars = String::new();
         for d in &program.domains {
