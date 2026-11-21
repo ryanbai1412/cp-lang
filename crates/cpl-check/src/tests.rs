@@ -1593,6 +1593,21 @@ fn the_std_name_table_is_read_off_the_standard_library() {
     assert_eq!(crate::prelude::std_module("min_by"), Some("seq"));
 }
 
+/// `plan/STDLIB.md` is the design of the whole surface, so a public
+/// name of `stdlib/` it never mentions is a name nobody designed.
+#[test]
+fn the_stdlib_design_names_every_public_name() {
+    let design = include_str!("../../../plan/STDLIB.md");
+    let word = |c: char| c.is_ascii_alphanumeric() || c == '_';
+    let words: std::collections::HashSet<&str> = design.split(|c: char| !word(c)).collect();
+    let missing: Vec<&str> = crate::prelude::STD_NAMES
+        .iter()
+        .map(|(name, _)| *name)
+        .filter(|name| !words.contains(name))
+        .collect();
+    assert!(missing.is_empty(), "plan/STDLIB.md does not mention {missing:?}");
+}
+
 /// `@memo` on a fn that neither back end keeps a table for is an error,
 /// not a fn that quietly runs every time.
 #[test]

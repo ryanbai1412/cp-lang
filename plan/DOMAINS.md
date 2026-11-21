@@ -88,7 +88,7 @@ runtime benchmark against the originals. (Lane running.)
 **Next.** Big-stack thread from the judge profile; heap for runtime-sized
 arrays; niches; a matched-algorithm benchmark harness.
 
-## 4. Standard library (`plan/20`)
+## 4. Standard library (`plan/STDLIB.md`, `plan/20`)
 **North star.** A standard library that covers everything ever asked at the hardest
 contests (ICPC WF, IOI, AtCoder WTF, Codeforces div 1), every module
 written only with public language features, coherent and guessable: the same
@@ -97,15 +97,31 @@ general traits (monoids, actions, orders), every signature documented with
 its cost and checked by a port or test, and every one as fast as the best
 known C++ library implementation (AtCoder Library, KACTL, ecnerwala's
 library) on matched benchmarks.
-**Where we are.** 25 modules, about 322 public items. Absent or thin:
-number theory (sieve, factorization, CRT), NTT/convolution, matrices,
-binary search on answers, RNG and hashing, bitsets as a real type, sparse
-tables generalised, flows and matchings beyond the basics, strings beyond
-the basics, geometry. No single design document of the whole surface.
-**Bar.** A full stdlib design doc (every module, signature, naming rule,
-core features relied on); every function exercised by a port or test.
-**Next.** Write the design doc from 0.2.2 and what the corpus uses; fill
-the missing modules; renames to the 0.3 names.
+The local library (`examples/local-lib/`) is the staging area: a module
+is promoted once it meets the stdlib bar.
+**Where we are.** 25 modules, 280 distinct public names (389 `pub`
+declarations including methods), 160 `@test`s passing in
+`cpl test stdlib`. Present but thin: number theory (sieve, trial-division
+factor, CRT, ext_gcd; no Miller-Rabin, rho, phi, primitive root),
+RNG (seeded stream, no pick/perm/sample), bitsets (set algebra, shift,
+next; no prev/first/last), flows (Dinic, min cut, Hungarian; no
+Hopcroft-Karp, no min-cost flow), strings (Z, prefix function, suffix
+array, LCP, rolling hash; no Manacher, no Aho-Corasick), geometry
+(integer points, turns, segments, area, point location; no hull).
+Absent: NTT and convolution, matrices, search over reals and
+unimodal functions. NTT, matrices, primes, matching and min-cost flow
+exist in `examples/local-lib/`; ports import only `lib.math.poly` (9
+files) and `lib.math.powers` (1). 37 public names appear in no port or
+example (only in stdlib's own tests). `plan/STDLIB.md` is the design of
+the whole surface; a test fails when a public name is missing from it.
+**Bar.** Every item of `plan/STDLIB.md` marked [new] or [rename] has
+landed with tests; every public name is used by a port or an example;
+the [rename]s have codemods and the ports are moved.
+**Next.** Number theory (`pow_mod`, `is_prime`, `factor_big`, `phi`,
+`primitive_root`, `floor_sum`); `std.ntt`; `std.matrix`;
+`bsearch_real` and `ternary_max`; RNG `pick`/`perm`/`sample`; bitset
+`first`/`last`/`prev`; `max_matching` and `CostFlow`; `manacher` and
+`AhoCorasick`; `convex_hull`; then the `_by` renames.
 
 ## 5. Diagnostics and front end (`plan/30` 3.7)
 **North star.** Every error is the message an expert coach would give: what is wrong,

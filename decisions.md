@@ -1307,7 +1307,6 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   remains the full C++17 verification suite.
   *Reversible:* remove the `site/check_docs.py` step from `scripts/check.sh` or replace with a faster
   Rust subcommand if the docs corpus grows past a few seconds.
-||||||| parent of 3a69b04 (stdlib: Perm<V> and Tree<V> are types every tool accepts)
 
 ## 25. Stress testing and shrinking (0.2.2, 2026-11-21)
 
@@ -1319,3 +1318,39 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   shrinks them as a permutation and a tree. They stay out of the prelude (21.5's budget), so a file
   names them with a `use`. Stress still recognises the alias by its name; keying it to the stdlib
   declaration instead is open. Reverse: delete the two aliases.
+
+## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
+
+26.1. **Sorted lookup keeps `first_ge`/`first_gt`/`last_le`/`last_lt`.**
+The 0.3 spec spells them `first(from:)`, `first(after:)`, `last(upto:)`,
+`last(before:)`. The four names read the same in lists, `[D]T`, `Map`,
+`SortedBag` and `Compressed`, are greppable, and need no overloading on
+argument labels, which the core does not have. Reverse: add label
+overloading to the core, then a codemod renames the family.
+
+26.2. **`Mod<P>` and `Comb<P>` keep their names** over the spec's
+`Mint(mod: p)` and `Z.factorials`: 135 and 37 port files use them and
+the ideas are the same. Reverse: add aliases, codemod the ports, drop
+the old names.
+
+26.3. **`Bitset<D>` stays `Bitset`.** The spec's candidate `Bits<D>`
+collides with the `Bits` trait for integer widths. Reverse: rename the
+trait first, then the type.
+
+26.4. **`Monoid` and `Action` stay values, not traits,** until user
+traits can carry associated constants; values also let one type have
+several monoids (min and max over `Int`) without newtypes. Reverse: make
+them traits with instance values as a bridge.
+
+26.5. **Promotion order: the local library is a staging area, and a
+module moves into the stdlib when it meets the stdlib bar and ports
+reach for it** (two ports outside its own batch, a friction report, or
+an import such as the nine `lib.math.poly` ones). The north star is
+everything ever asked at the hardest contests, so nothing is excluded;
+this only orders the work. NTT products, matrices, primes,
+Hopcroft-Karp, min-cost flow, Manacher, Aho-Corasick and convex hull
+come first. Reverse: move a module back and leave a re-export.
+
+26.6. **The design names every public name, by test**
+(`the_stdlib_design_names_every_public_name`), so the doc cannot drift
+silently. Reverse: delete the test.
