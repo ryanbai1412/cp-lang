@@ -25,7 +25,7 @@ use crate::{describe, trap, Flow, Interp, Res};
 use cpl_diag::Span;
 use cpl_ir::{
     Arg, AssignOp, BinOp, Block, Builtin, Cast, CmpOp, Expr, ExprKind, FnId, Iter, Local, LoopId,
-    Place, PlaceKind, Program, Slot, Stmt, Ty, UnOp,
+    Mutation, Place, PlaceKind, Program, Slot, Stmt, Ty, UnOp,
 };
 use std::rc::Rc;
 
@@ -290,6 +290,31 @@ pub(crate) enum Op {
     RetI { src: u16 },
     RetV { src: u16 },
     RetUnit,
+
+    // General V-channel optionals & sequence/range/bit/list ops
+    IsSomeV { dst_i: u16, src_v: u16 },
+    UnwrapV { dst_v: u16, src_v: u16 },
+    UnwrapVI { dst_i: u16, src_v: u16 },
+    WrapSomeV { dst_v: u16, src_v: u16 },
+    ConstNoneV { dst_v: u16 },
+    SeqLastV { dst_v: u16, seq_v: u16 },
+    SeqLastOptI { dst_val: u16, dst_some: u16, seq_v: u16 },
+    SeqFirstV { dst_v: u16, seq_v: u16 },
+    SeqFirstOptI { dst_val: u16, dst_some: u16, seq_v: u16 },
+    SeqLenI { dst: u16, seq_v: u16 },
+    RangeLoI { dst: u16, src_v: u16 },
+    RangeHiI { dst: u16, src_v: u16 },
+    BitCeilI { dst: u16, src: u16 },
+    ListPushLV { list_v: u16, val_v: u16 },
+    ListPushGV { gid: u16, val_v: u16 },
+    ListPushLI { list_v: u16, val_i: u16, kind: ScalarKind },
+    ListPushGI { gid: u16, val_i: u16, kind: ScalarKind },
+    ListPopLV { dst_v: u16, list_v: u16 },
+    ListPopGV { dst_v: u16, gid: u16 },
+    ListPopOptIL { dst_val: u16, dst_some: u16, list_v: u16 },
+    ListPopOptIG { dst_val: u16, dst_some: u16, gid: u16 },
+    ListPopDiscardL { list_v: u16 },
+    ListPopDiscardG { gid: u16 },
 
     // Seamless fallback to tree-walker for any non-lowered IR stmt/expr
     FallbackStmt { idx: u32, clear_from_v: u16 },
@@ -1086,6 +1111,10 @@ impl<'p> Compiler<'p> {
             Stmt::Expr(expr) => {
                 if ScalarKind::of_ty(&expr.ty, self.program).is_some() {
                     let _ = self.compile_expr_i(expr);
+                } else if let ExprKind::Mutate(op, place, args) = &expr.kind {
+                    if !self.try_compile_mutate_stmt(*op, place, args, expr.span) {
+                        self.emit_fallback_stmt(stmt);
+                    }
                 } else if let ExprKind::Call(fn_id, args) = &expr.kind {
                     if self
                         .try_compile_call_mix(*fn_id, args, CallRet::Unit, expr.span)
@@ -1096,6 +1125,13 @@ impl<'p> Compiler<'p> {
                 } else {
                     self.emit_fallback_stmt(stmt);
                 }
+            }
+            Stmt::Assert { cond, span, .. } => {
+                let r_cond = self.compile_expr_i(cond);
+                let j_ok = self.emit(Op::JmpIfNonZero { reg: r_cond, target: 0 }, *span);
+                self.emit_fallback_stmt(stmt);
+                let end_pc = self.ops.len() as u32;
+                self.patch(j_ok, end_pc);
             }
             Stmt::Assign(place, op, value) => {
                 if !self.try_compile_assign(place, *op, value) {
@@ -1835,6 +1871,11 @@ impl<'p> Compiler<'p> {
             if ScalarKind::of_opt_ty(&inner.ty, self.program).is_some() {
                 let (_, r_some) = self.compile_expr_opt_i(inner);
                 return self.emit(Op::JmpIfZero { reg: r_some, target: 0 }, cond.span);
+            } else {
+                let src_v = self.compile_expr_v(inner);
+                let r_some = self.alloc_i();
+                self.emit(Op::IsSomeV { dst_i: r_some, src_v }, cond.span);
+                return self.emit(Op::JmpIfZero { reg: r_some, target: 0 }, cond.span);
             }
         }
         if let ExprKind::Cmp(op, lhs, rhs) = &cond.kind {
@@ -1947,6 +1988,49 @@ impl<'p> Compiler<'p> {
                 );
                 (dst_val, dst_some)
             }
+            ExprKind::Builtin(Builtin::Last, args) if args.len() == 1 => {
+                let seq_v = self.compile_expr_v(&args[0]);
+                let dst_val = self.alloc_i();
+                let dst_some = self.alloc_i();
+                self.emit(Op::SeqLastOptI { dst_val, dst_some, seq_v }, span);
+                (dst_val, dst_some)
+            }
+            ExprKind::Builtin(Builtin::First, args) if args.len() == 1 => {
+                let seq_v = self.compile_expr_v(&args[0]);
+                let dst_val = self.alloc_i();
+                let dst_some = self.alloc_i();
+                self.emit(Op::SeqFirstOptI { dst_val, dst_some, seq_v }, span);
+                (dst_val, dst_some)
+            }
+            ExprKind::Mutate(Mutation::Pop, place, args) if args.is_empty() => match &place.kind {
+                PlaceKind::Local(slot) => {
+                    if let SlotLoc::V(list_v) = self.slot_loc(*slot) {
+                        let dst_val = self.alloc_i();
+                        let dst_some = self.alloc_i();
+                        self.emit(Op::ListPopOptIL { dst_val, dst_some, list_v }, span);
+                        (dst_val, dst_some)
+                    } else {
+                        let src_v = self.emit_fallback_expr_v(expr);
+                        let dst_val = self.alloc_i();
+                        let dst_some = self.alloc_i();
+                        self.emit(Op::UnboxOptI { dst_val, dst_some, src_v }, span);
+                        (dst_val, dst_some)
+                    }
+                }
+                PlaceKind::Global(gid) => {
+                    let dst_val = self.alloc_i();
+                    let dst_some = self.alloc_i();
+                    self.emit(Op::ListPopOptIG { dst_val, dst_some, gid: *gid as u16 }, span);
+                    (dst_val, dst_some)
+                }
+                _ => {
+                    let src_v = self.emit_fallback_expr_v(expr);
+                    let dst_val = self.alloc_i();
+                    let dst_some = self.alloc_i();
+                    self.emit(Op::UnboxOptI { dst_val, dst_some, src_v }, span);
+                    (dst_val, dst_some)
+                }
+            },
             ExprKind::Index(base, indices)
                 if matches!(base.ty, Ty::Array { .. })
                     && (indices.len() == 1 || indices.len() == 2) =>
@@ -2116,17 +2200,29 @@ impl<'p> Compiler<'p> {
                 self.emit(Op::DomainLo { dst, dom: *d as u16 }, span);
                 dst
             }
-            ExprKind::IsSome(inner) if ScalarKind::of_opt_ty(&inner.ty, self.program).is_some() => {
-                let (_, s) = self.compile_expr_opt_i(inner);
-                s
+            ExprKind::IsSome(inner) => {
+                if ScalarKind::of_opt_ty(&inner.ty, self.program).is_some() {
+                    let (_, s) = self.compile_expr_opt_i(inner);
+                    s
+                } else {
+                    let src_v = self.compile_expr_v(inner);
+                    let dst_i = self.alloc_i();
+                    self.emit(Op::IsSomeV { dst_i, src_v }, span);
+                    dst_i
+                }
             }
-            ExprKind::Unwrap(inner, _)
-                if ScalarKind::of_opt_ty(&inner.ty, self.program).is_some() =>
-            {
-                let (val, some) = self.compile_expr_opt_i(inner);
-                let dst = self.alloc_i();
-                self.emit(Op::UnwrapOptI { dst, val, some }, span);
-                dst
+            ExprKind::Unwrap(inner, _) => {
+                if ScalarKind::of_opt_ty(&inner.ty, self.program).is_some() {
+                    let (val, some) = self.compile_expr_opt_i(inner);
+                    let dst = self.alloc_i();
+                    self.emit(Op::UnwrapOptI { dst, val, some }, span);
+                    dst
+                } else {
+                    let src_v = self.compile_expr_v(inner);
+                    let dst_i = self.alloc_i();
+                    self.emit(Op::UnwrapVI { dst_i, src_v }, span);
+                    dst_i
+                }
             }
             ExprKind::Binary(BinOp::Coalesce, lhs, rhs)
                 if ScalarKind::of_opt_ty(&lhs.ty, self.program).is_some() =>
@@ -2357,8 +2453,31 @@ impl<'p> Compiler<'p> {
                     }
                     dst
                 }
-                _ => self.emit_fallback_expr_i(expr),
+                _ => {
+                    let seq_v = self.compile_expr_v(&args[0]);
+                    let dst = self.alloc_i();
+                    self.emit(Op::SeqLenI { dst, seq_v }, span);
+                    dst
+                }
             },
+            ExprKind::Builtin(Builtin::RangeLo, args) if args.len() == 1 && matches!(expr.ty, Ty::Int | Ty::Pos(_) | Ty::Bound(_)) => {
+                let src_v = self.compile_expr_v(&args[0]);
+                let dst = self.alloc_i();
+                self.emit(Op::RangeLoI { dst, src_v }, span);
+                dst
+            }
+            ExprKind::Builtin(Builtin::RangeHi, args) if args.len() == 1 && matches!(expr.ty, Ty::Int | Ty::Pos(_) | Ty::Bound(_)) => {
+                let src_v = self.compile_expr_v(&args[0]);
+                let dst = self.alloc_i();
+                self.emit(Op::RangeHiI { dst, src_v }, span);
+                dst
+            }
+            ExprKind::Builtin(Builtin::BitCeil, args) if args.len() == 1 && matches!(expr.ty, Ty::Int) => {
+                let src = self.compile_expr_i(&args[0]);
+                let dst = self.alloc_i();
+                self.emit(Op::BitCeilI { dst, src }, span);
+                dst
+            }
             ExprKind::Index(base, indices)
                 if matches!(base.ty, Ty::Array { .. })
                     && (indices.len() == 1 || indices.len() == 2) =>
@@ -2702,6 +2821,70 @@ impl<'p> Compiler<'p> {
                 self.emit(Op::MakeTuple { dst, base_v, len: fields.len() as u8 }, span);
                 dst
             }
+            ExprKind::None => {
+                let dst_v = self.alloc_v();
+                self.emit(Op::ConstNoneV { dst_v }, span);
+                dst_v
+            }
+            ExprKind::Some(inner) => {
+                let src_v = self.compile_expr_v(inner);
+                let dst_v = self.alloc_v();
+                self.emit(Op::WrapSomeV { dst_v, src_v }, span);
+                dst_v
+            }
+            ExprKind::Unwrap(inner, _) => {
+                let src_v = self.compile_expr_v(inner);
+                let dst_v = self.alloc_v();
+                self.emit(Op::UnwrapV { dst_v, src_v }, span);
+                dst_v
+            }
+            ExprKind::Binary(BinOp::Coalesce, lhs, rhs) => {
+                let lv = self.compile_expr_v(lhs);
+                let is_some = self.alloc_i();
+                self.emit(Op::IsSomeV { dst_i: is_some, src_v: lv }, lhs.span);
+                let dst = self.alloc_v();
+                let j_none = self.emit(Op::JmpIfZero { reg: is_some, target: 0 }, span);
+                self.emit(Op::UnwrapV { dst_v: dst, src_v: lv }, lhs.span);
+                let j_done = self.emit(Op::Jmp { target: 0 }, span);
+                let none_pc = self.ops.len() as u32;
+                self.patch(j_none, none_pc);
+                let rv = self.compile_expr_v(rhs);
+                if rv != dst {
+                    self.emit(Op::MoveV { dst, src: rv }, rhs.span);
+                }
+                let end_pc = self.ops.len() as u32;
+                self.patch(j_done, end_pc);
+                dst
+            }
+            ExprKind::Builtin(Builtin::Last, args) if args.len() == 1 => {
+                let seq_v = self.compile_expr_v(&args[0]);
+                let dst_v = self.alloc_v();
+                self.emit(Op::SeqLastV { dst_v, seq_v }, span);
+                dst_v
+            }
+            ExprKind::Builtin(Builtin::First, args) if args.len() == 1 => {
+                let seq_v = self.compile_expr_v(&args[0]);
+                let dst_v = self.alloc_v();
+                self.emit(Op::SeqFirstV { dst_v, seq_v }, span);
+                dst_v
+            }
+            ExprKind::Mutate(Mutation::Pop, place, args) if args.is_empty() => match &place.kind {
+                PlaceKind::Local(slot) => {
+                    if let SlotLoc::V(list_v) = self.slot_loc(*slot) {
+                        let dst_v = self.alloc_v();
+                        self.emit(Op::ListPopLV { dst_v, list_v }, span);
+                        dst_v
+                    } else {
+                        self.emit_fallback_expr_v(expr)
+                    }
+                }
+                PlaceKind::Global(gid) => {
+                    let dst_v = self.alloc_v();
+                    self.emit(Op::ListPopGV { dst_v, gid: *gid as u16 }, span);
+                    dst_v
+                }
+                _ => self.emit_fallback_expr_v(expr),
+            },
             ExprKind::Call(fn_id, args) => {
                 if let Some((_, dst_v, _)) =
                     self.try_compile_call_mix(*fn_id, args, CallRet::V, span)
@@ -2712,6 +2895,52 @@ impl<'p> Compiler<'p> {
                 }
             }
             _ => self.emit_fallback_expr_v(expr),
+        }
+    }
+
+    fn try_compile_mutate_stmt(
+        &mut self,
+        op: Mutation,
+        place: &'p Place,
+        args: &'p [Expr],
+        span: Span,
+    ) -> bool {
+        match (op, &place.kind) {
+            (Mutation::Push, PlaceKind::Local(slot)) if args.len() == 1 => {
+                let SlotLoc::V(list_v) = self.slot_loc(*slot) else {
+                    return false;
+                };
+                if let Some(kind) = ScalarKind::of_ty(&args[0].ty, self.program) {
+                    let val_i = self.compile_expr_i(&args[0]);
+                    self.emit(Op::ListPushLI { list_v, val_i, kind }, span);
+                } else {
+                    let val_v = self.compile_expr_v(&args[0]);
+                    self.emit(Op::ListPushLV { list_v, val_v }, span);
+                }
+                true
+            }
+            (Mutation::Push, PlaceKind::Global(gid)) if args.len() == 1 => {
+                if let Some(kind) = ScalarKind::of_ty(&args[0].ty, self.program) {
+                    let val_i = self.compile_expr_i(&args[0]);
+                    self.emit(Op::ListPushGI { gid: *gid as u16, val_i, kind }, span);
+                } else {
+                    let val_v = self.compile_expr_v(&args[0]);
+                    self.emit(Op::ListPushGV { gid: *gid as u16, val_v }, span);
+                }
+                true
+            }
+            (Mutation::Pop, PlaceKind::Local(slot)) if args.is_empty() => {
+                let SlotLoc::V(list_v) = self.slot_loc(*slot) else {
+                    return false;
+                };
+                self.emit(Op::ListPopDiscardL { list_v }, span);
+                true
+            }
+            (Mutation::Pop, PlaceKind::Global(gid)) if args.is_empty() => {
+                self.emit(Op::ListPopDiscardG { gid: *gid as u16 }, span);
+                true
+            }
+            _ => false,
         }
     }
 
@@ -4352,7 +4581,287 @@ impl<'p, 'io> Interp<'p, 'io> {
                     return Ok(std::mem::replace(&mut regs_v[src as usize], Value::Unit));
                 }
                 Op::RetUnit => return Ok(Value::Unit),
+                Op::IsSomeV { dst_i, src_v } => {
+                    regs_i[dst_i as usize] =
+                        i64::from(!matches!(regs_v[src_v as usize], Value::Opt(OptVal::None)));
+                }
+                Op::UnwrapV { dst_v, src_v } => {
+                    let v = match &regs_v[src_v as usize] {
+                        Value::Opt(OptVal::Int(n)) => Value::Int(*n),
+                        Value::Opt(OptVal::Boxed(b)) => (**b).clone(),
+                        Value::Opt(OptVal::None) => {
+                            return trap(spans[cur_pc], "unwrapped a `None` value");
+                        }
+                        other => other.clone(),
+                    };
+                    regs_v[dst_v as usize] = v;
+                }
+                Op::UnwrapVI { dst_i, src_v } => {
+                    let v = match &regs_v[src_v as usize] {
+                        Value::Opt(OptVal::Int(n)) => *n,
+                        Value::Opt(OptVal::Boxed(b)) => ScalarKind::unbox_val(b),
+                        Value::Opt(OptVal::None) => {
+                            return trap(spans[cur_pc], "unwrapped a `None` value");
+                        }
+                        other => ScalarKind::unbox_val(other),
+                    };
+                    regs_i[dst_i as usize] = v;
+                }
+                Op::WrapSomeV { dst_v, src_v } => {
+                    let inner = if (src_v as usize) >= chunk.num_local_v {
+                        std::mem::replace(&mut regs_v[src_v as usize], Value::Unit)
+                    } else {
+                        regs_v[src_v as usize].clone()
+                    };
+                    regs_v[dst_v as usize] = Value::Opt(OptVal::some(inner));
+                }
+                Op::ConstNoneV { dst_v } => {
+                    regs_v[dst_v as usize] = Value::Opt(OptVal::None);
+                }
+                Op::SeqLastV { dst_v, seq_v } => {
+                    let opt = match &regs_v[seq_v as usize] {
+                        Value::List(items) => items.last().cloned(),
+                        Value::ListView(view) => {
+                            view.len.checked_sub(1).and_then(|i| view.get(i)).cloned()
+                        }
+                        Value::Str(bytes) => bytes.last().copied().map(Value::Char),
+                        Value::StrView(view) => {
+                            view.len.checked_sub(1).and_then(|i| view.get(i)).map(Value::Char)
+                        }
+                        Value::Array(arr) => arr.last(),
+                        Value::Range(lo, hi) => (lo < hi).then_some(Value::Int(*hi - 1)),
+                        Value::Range128(lo, hi) => (lo < hi).then_some(Value::I128(*hi - 1)),
+                        _ => None,
+                    };
+                    regs_v[dst_v as usize] = Value::Opt(OptVal::from_option(opt));
+                }
+                Op::SeqLastOptI { dst_val, dst_some, seq_v } => {
+                    let (v, s) = match &regs_v[seq_v as usize] {
+                        Value::List(items) => match items.last() {
+                            Some(x) => (ScalarKind::unbox_val(x), 1),
+                            None => (0, 0),
+                        },
+                        Value::ListView(view) => {
+                            match view.len.checked_sub(1).and_then(|i| view.get(i)) {
+                                Some(x) => (ScalarKind::unbox_val(x), 1),
+                                None => (0, 0),
+                            }
+                        }
+                        Value::Str(bytes) => match bytes.last() {
+                            Some(&b) => (i64::from(b), 1),
+                            None => (0, 0),
+                        },
+                        Value::StrView(view) => {
+                            match view.len.checked_sub(1).and_then(|i| view.get(i)) {
+                                Some(b) => (i64::from(b), 1),
+                                None => (0, 0),
+                            }
+                        }
+                        Value::Array(arr) => match arr.last() {
+                            Some(x) => (ScalarKind::unbox_val(&x), 1),
+                            None => (0, 0),
+                        },
+                        Value::Range(lo, hi) if lo < hi => (*hi - 1, 1),
+                        _ => (0, 0),
+                    };
+                    regs_i[dst_val as usize] = v;
+                    regs_i[dst_some as usize] = s;
+                }
+                Op::SeqFirstV { dst_v, seq_v } => {
+                    let opt = match &regs_v[seq_v as usize] {
+                        Value::List(items) => items.first().cloned(),
+                        Value::ListView(view) => view.get(0).cloned(),
+                        Value::Str(bytes) => bytes.first().copied().map(Value::Char),
+                        Value::StrView(view) => view.get(0).map(Value::Char),
+                        Value::Array(arr) => arr.first(),
+                        Value::Range(lo, hi) => (lo < hi).then_some(Value::Int(*lo)),
+                        Value::Range128(lo, hi) => (lo < hi).then_some(Value::I128(*lo)),
+                        _ => None,
+                    };
+                    regs_v[dst_v as usize] = Value::Opt(OptVal::from_option(opt));
+                }
+                Op::SeqFirstOptI { dst_val, dst_some, seq_v } => {
+                    let (v, s) = match &regs_v[seq_v as usize] {
+                        Value::List(items) => match items.first() {
+                            Some(x) => (ScalarKind::unbox_val(x), 1),
+                            None => (0, 0),
+                        },
+                        Value::ListView(view) => match view.get(0) {
+                            Some(x) => (ScalarKind::unbox_val(x), 1),
+                            None => (0, 0),
+                        },
+                        Value::Str(bytes) => match bytes.first() {
+                            Some(&b) => (i64::from(b), 1),
+                            None => (0, 0),
+                        },
+                        Value::StrView(view) => match view.get(0) {
+                            Some(b) => (i64::from(b), 1),
+                            None => (0, 0),
+                        },
+                        Value::Array(arr) => match arr.first() {
+                            Some(x) => (ScalarKind::unbox_val(&x), 1),
+                            None => (0, 0),
+                        },
+                        Value::Range(lo, hi) if lo < hi => (*lo, 1),
+                        _ => (0, 0),
+                    };
+                    regs_i[dst_val as usize] = v;
+                    regs_i[dst_some as usize] = s;
+                }
+                Op::SeqLenI { dst, seq_v } => {
+                    regs_i[dst as usize] = match &regs_v[seq_v as usize] {
+                        Value::Array(arr) => arr.len() as i64,
+                        Value::List(items) => items.len() as i64,
+                        Value::ListView(view) => view.len as i64,
+                        Value::Str(bytes) => bytes.len() as i64,
+                        Value::StrView(view) => view.len as i64,
+                        Value::Map(m) => m.len() as i64,
+                        Value::Set(s) => s.len() as i64,
+                        Value::Range(lo, hi) => (hi - lo).max(0),
+                        Value::Range128(lo, hi) => (hi - lo).max(0) as i64,
+                        Value::DomainVal(_, len) => *len,
+                        _ => 0,
+                    };
+                }
+                Op::RangeLoI { dst, src_v } => {
+                    regs_i[dst as usize] = match &regs_v[src_v as usize] {
+                        Value::Range(lo, _) => *lo,
+                        _ => 0,
+                    };
+                }
+                Op::RangeHiI { dst, src_v } => {
+                    regs_i[dst as usize] = match &regs_v[src_v as usize] {
+                        Value::Range(_, hi) => *hi,
+                        _ => 0,
+                    };
+                }
+                Op::BitCeilI { dst, src } => {
+                    let x = regs_i[src as usize];
+                    regs_i[dst as usize] = if x <= 1 {
+                        1
+                    } else {
+                        let shift = 64 - ((x - 1) as u64).leading_zeros();
+                        if shift > 62 {
+                            return trap(
+                                spans[cur_pc],
+                                format!(
+                                    "integer overflow: `bit_ceil({x})` does not fit in an `Int` (64 bits)"
+                                ),
+                            );
+                        }
+                        1i64 << shift
+                    };
+                }
+                Op::ListPushLV { list_v, val_v } => {
+                    let item = if (val_v as usize) >= chunk.num_local_v {
+                        std::mem::replace(&mut regs_v[val_v as usize], Value::Unit)
+                    } else {
+                        regs_v[val_v as usize].clone()
+                    };
+                    match &mut regs_v[list_v as usize] {
+                        Value::List(items) => Rc::make_mut(items).push(item),
+                        Value::Str(bytes) => {
+                            if let Value::Char(c) = item {
+                                Rc::make_mut(bytes).push(c);
+                            }
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected list or string"),
+                    }
+                }
+                Op::ListPushGV { gid, val_v } => {
+                    let item = if (val_v as usize) >= chunk.num_local_v {
+                        std::mem::replace(&mut regs_v[val_v as usize], Value::Unit)
+                    } else {
+                        regs_v[val_v as usize].clone()
+                    };
+                    match &mut self.globals[gid as usize] {
+                        Value::List(items) => Rc::make_mut(items).push(item),
+                        Value::Str(bytes) => {
+                            if let Value::Char(c) = item {
+                                Rc::make_mut(bytes).push(c);
+                            }
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected list or string"),
+                    }
+                }
+                Op::ListPushLI { list_v, val_i, kind } => {
+                    let raw = regs_i[val_i as usize];
+                    match &mut regs_v[list_v as usize] {
+                        Value::List(items) => Rc::make_mut(items).push(kind.box_val(raw)),
+                        Value::Str(bytes) => Rc::make_mut(bytes).push(raw as u8),
+                        _ => return trap(spans[cur_pc], "internal: expected list or string"),
+                    }
+                }
+                Op::ListPushGI { gid, val_i, kind } => {
+                    let raw = regs_i[val_i as usize];
+                    match &mut self.globals[gid as usize] {
+                        Value::List(items) => Rc::make_mut(items).push(kind.box_val(raw)),
+                        Value::Str(bytes) => Rc::make_mut(bytes).push(raw as u8),
+                        _ => return trap(spans[cur_pc], "internal: expected list or string"),
+                    }
+                }
+                Op::ListPopLV { dst_v, list_v } => {
+                    let popped = match &mut regs_v[list_v as usize] {
+                        Value::List(items) => Rc::make_mut(items).pop(),
+                        _ => return trap(spans[cur_pc], "internal: expected list"),
+                    };
+                    regs_v[dst_v as usize] = Value::Opt(OptVal::from_option(popped));
+                }
+                Op::ListPopGV { dst_v, gid } => {
+                    let popped = match &mut self.globals[gid as usize] {
+                        Value::List(items) => Rc::make_mut(items).pop(),
+                        _ => return trap(spans[cur_pc], "internal: expected list"),
+                    };
+                    regs_v[dst_v as usize] = Value::Opt(OptVal::from_option(popped));
+                }
+                Op::ListPopOptIL { dst_val, dst_some, list_v } => {
+                    let popped = match &mut regs_v[list_v as usize] {
+                        Value::List(items) => Rc::make_mut(items).pop(),
+                        _ => return trap(spans[cur_pc], "internal: expected list"),
+                    };
+                    match popped {
+                        Some(x) => {
+                            regs_i[dst_val as usize] = ScalarKind::unbox_val(&x);
+                            regs_i[dst_some as usize] = 1;
+                        }
+                        None => {
+                            regs_i[dst_val as usize] = 0;
+                            regs_i[dst_some as usize] = 0;
+                        }
+                    }
+                }
+                Op::ListPopOptIG { dst_val, dst_some, gid } => {
+                    let popped = match &mut self.globals[gid as usize] {
+                        Value::List(items) => Rc::make_mut(items).pop(),
+                        _ => return trap(spans[cur_pc], "internal: expected list"),
+                    };
+                    match popped {
+                        Some(x) => {
+                            regs_i[dst_val as usize] = ScalarKind::unbox_val(&x);
+                            regs_i[dst_some as usize] = 1;
+                        }
+                        None => {
+                            regs_i[dst_val as usize] = 0;
+                            regs_i[dst_some as usize] = 0;
+                        }
+                    }
+                }
+                Op::ListPopDiscardL { list_v } => match &mut regs_v[list_v as usize] {
+                    Value::List(items) => {
+                        Rc::make_mut(items).pop();
+                    }
+                    _ => return trap(spans[cur_pc], "internal: expected list"),
+                },
+                Op::ListPopDiscardG { gid } => match &mut self.globals[gid as usize] {
+                    Value::List(items) => {
+                        Rc::make_mut(items).pop();
+                    }
+                    _ => return trap(spans[cur_pc], "internal: expected list"),
+                },
                 Op::FallbackStmt { idx, clear_from_v } => {
+                    if let Some(stats) = &mut self.vm_stats {
+                        stats.record(stmt_tag(chunk.fallback_stmts[idx as usize]));
+                    }
                     for r in &mut regs_v[clear_from_v as usize..] {
                         *r = Value::Unit;
                     }
@@ -4367,6 +4876,9 @@ impl<'p, 'io> Interp<'p, 'io> {
                     }
                 }
                 Op::FallbackExprI { idx, dst } => {
+                    if let Some(stats) = &mut self.vm_stats {
+                        stats.record(expr_tag(chunk.fallback_exprs[idx as usize], self.program));
+                    }
                     sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
                     let expr = chunk.fallback_exprs[idx as usize];
                     let val = self.eval(expr)?;
@@ -4374,6 +4886,9 @@ impl<'p, 'io> Interp<'p, 'io> {
                     regs_i[dst as usize] = ScalarKind::unbox_val(&val);
                 }
                 Op::FallbackExprV { idx, dst } => {
+                    if let Some(stats) = &mut self.vm_stats {
+                        stats.record(expr_tag(chunk.fallback_exprs[idx as usize], self.program));
+                    }
                     sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
                     let expr = chunk.fallback_exprs[idx as usize];
                     let val = self.eval(expr)?;
@@ -4382,5 +4897,145 @@ impl<'p, 'io> Interp<'p, 'io> {
                 }
             }
         }
+    }
+}
+
+#[derive(Default)]
+pub(crate) struct VmStats {
+    pub(crate) total_fallbacks: u64,
+    pub(crate) counts: std::collections::BTreeMap<String, u64>,
+}
+
+impl VmStats {
+    pub(crate) fn from_env() -> Option<Self> {
+        let val = std::env::var_os("CPL_VM_STATS")?;
+        if val.is_empty() || val == "0" {
+            return None;
+        }
+        Some(Self::default())
+    }
+
+    pub(crate) fn record(&mut self, tag: String) {
+        self.total_fallbacks += 1;
+        *self.counts.entry(tag).or_insert(0) += 1;
+    }
+
+    pub(crate) fn emit_stderr(&self) {
+        let mut entries: Vec<(&str, u64)> =
+            self.counts.iter().map(|(k, &v)| (k.as_str(), v)).collect();
+        entries.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
+        if std::env::var("CPL_VM_STATS").ok().as_deref() == Some("json") {
+            let mut s = format!("{{\"total_fallbacks\":{},\"top\":[", self.total_fallbacks);
+            for (i, (k, v)) in entries.iter().take(20).enumerate() {
+                if i > 0 {
+                    s.push(',');
+                }
+                let escaped = k.replace('\\', "\\\\").replace('"', "\\\"");
+                s.push_str(&format!("[\"{escaped}\",{v}]"));
+            }
+            s.push_str("]}");
+            eprintln!("{s}");
+        } else {
+            eprintln!("vm-stats: total_fallbacks={}", self.total_fallbacks);
+            for (k, v) in entries.iter().take(15) {
+                eprintln!("  {v:>10}  {k}");
+            }
+        }
+    }
+}
+
+fn place_tag(place: &Place) -> &'static str {
+    match &place.kind {
+        PlaceKind::Local(_) => "Local",
+        PlaceKind::Global(_) => "Global",
+        PlaceKind::Index(base, idx) => match (&base.kind, idx.len()) {
+            (PlaceKind::Index(..), _) => "Index2D",
+            (_, 2) => "Index2D",
+            (_, 1) => "Index1D",
+            _ => "IndexND",
+        },
+        PlaceKind::Field(base, _) => match &base.kind {
+            PlaceKind::Index(..) => "Index.Field",
+            PlaceKind::Field(..) => "Field.Field",
+            _ => "Field",
+        },
+        PlaceKind::Some(_) => "Some",
+    }
+}
+
+fn stmt_tag(stmt: &Stmt) -> String {
+    match stmt {
+        Stmt::Let(_, e) => format!("stmt:Let({})", e.as_ref().map_or("Uninit", expr_tag_short)),
+        Stmt::Assign(place, op, _) => format!("stmt:Assign({},{:?})", place_tag(place), op),
+        Stmt::Expr(e) => format!("stmt:Expr({})", expr_tag_short(e)),
+        Stmt::If(..) => "stmt:If".into(),
+        Stmt::While(..) => "stmt:While".into(),
+        Stmt::For(_, _, iter, _) => match iter {
+            Iter::Range { .. } => "stmt:For(Range)".into(),
+            Iter::Seq(_, rev) => {
+                if *rev {
+                    "stmt:For(SeqRev)".into()
+                } else {
+                    "stmt:For(Seq)".into()
+                }
+            }
+            _ => "stmt:For(Other)".into(),
+        },
+        Stmt::Return(_) => "stmt:Return".into(),
+        Stmt::Break(_) => "stmt:Break".into(),
+        Stmt::Continue(_) => "stmt:Continue".into(),
+        Stmt::Give(_) => "stmt:Give".into(),
+        Stmt::Assert { .. } => "stmt:Assert".into(),
+        Stmt::Trap(..) => "stmt:Trap".into(),
+        Stmt::DefDomain { .. } => "stmt:DefDomain".into(),
+        Stmt::DefDomainFromVal { .. } => "stmt:DefDomainFromVal".into(),
+    }
+}
+
+fn expr_tag_short(expr: &Expr) -> &'static str {
+    match &expr.kind {
+        ExprKind::Call(..) => "Call",
+        ExprKind::CallExpr(..) => "CallExpr",
+        ExprKind::Builtin(..) => "Builtin",
+        ExprKind::Mutate(..) => "Mutate",
+        ExprKind::Index(..) => "Index",
+        ExprKind::Field(..) => "Field",
+        ExprKind::Tuple(_) => "Tuple",
+        ExprKind::Fill(..) => "Fill",
+        ExprKind::Cast(..) => "Cast",
+        ExprKind::Unary(..) => "Unary",
+        ExprKind::Binary(..) => "Binary",
+        ExprKind::Closure { .. } => "Closure",
+        ExprKind::Variant(..) => "Variant",
+        ExprKind::IsVariant(..) => "IsVariant",
+        ExprKind::Payload(..) => "Payload",
+        ExprKind::Read(_) => "Read",
+        ExprKind::Print { .. } => "Print",
+        ExprKind::Debug { .. } => "Debug",
+        ExprKind::Format(_) => "Format",
+        ExprKind::Some(_) => "Some",
+        ExprKind::None => "None",
+        ExprKind::IsSome(_) => "IsSome",
+        ExprKind::Unwrap(..) => "Unwrap",
+        _ => "Other",
+    }
+}
+
+fn expr_tag(expr: &Expr, program: &Program) -> String {
+    match &expr.kind {
+        ExprKind::Call(id, _) => {
+            let name = program
+                .fns
+                .get(*id)
+                .map(|f| f.name.as_str())
+                .unwrap_or("?");
+            format!("expr:Call({name})")
+        }
+        ExprKind::Builtin(b, _) => format!("expr:Builtin({b:?})"),
+        ExprKind::Mutate(m, _, _) => format!("expr:Mutate({m:?})"),
+        ExprKind::Cast(c, _) => format!("expr:Cast({c:?})"),
+        ExprKind::Binary(op, _, _) => format!("expr:Binary({op:?})"),
+        ExprKind::Unary(op, _) => format!("expr:Unary({op:?})"),
+        _ => format!("expr:{}", expr_tag_short(expr)),
     }
 }

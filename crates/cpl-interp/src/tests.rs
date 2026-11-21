@@ -385,3 +385,26 @@ print(ways[I.last])
     assert_eq!(trap, None);
     assert_eq!(out, "6\n");
 }
+
+#[test]
+fn vm_optionals_builtins_assert_and_list_mutate() {
+    let source = "
+struct Pair(a: Int, b: Int)
+var st: List<Int> = []
+for i in 0..10:
+    st.push(i * 2)
+    assert(st.len == i + 1)
+assert(st.first! == 0)
+assert(st.last! == 18)
+let popped = st.pop()!
+st.pop()
+var opt: ?Pair = none
+let p = opt ?? Pair(popped, st.last!)
+opt = some(p)
+let r = 2..10
+print(p.a, p.b, opt!.a, r.lo, r.hi, bit_ceil(9))
+";
+    let (out, trap) = outcome(source, "");
+    assert_eq!(trap, None);
+    assert_eq!(out, "18 14 18 2 10 16\n");
+}
