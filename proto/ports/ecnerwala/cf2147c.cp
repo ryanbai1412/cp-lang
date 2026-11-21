@@ -1,12 +1,8 @@
+// Codeforces 2147 C: split into maximal alternating runs; any run starting
+// with '1' of length 3 mod 4 makes the arrangement impossible.
 @!multitest
 let n: Int = read()
 let s: Str = read()
-var good = true
-var i = 0
-while i < n:
-    var j = i + 1
-    while j < n and s[j] != s[j - 1]: j += 1
-    if s[i] == '1' and (j - i) % 4 == 3:
-        good = false
-    i = j
-print(if good: "YES" else: "NO")
+let cuts = [0] + [i for i in 1..n if s[i] == s[i - 1]] + [n]
+let ok = all(s[l] != '1' or (r - l) % 4 != 3 for (l, r) in cuts.adjacent)
+print(if ok: "YES" else: "NO")

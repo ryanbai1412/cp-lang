@@ -1,6 +1,6 @@
+// Codeforces 2152 A: each distinct value needs one rise and (except the last)
+// one drop, giving 2 * distinct - 1 operations.
 @!multitest
 let n: Int = read()
 let a: [0..n]Int = read()
-var seen = Set<Int>()
-for x in a: seen.insert(x)
-print(2 * seen.len - 1)
+print(2 * Set(a).len - 1)

@@ -1,13 +1,8 @@
-const SHIFT = 10_000_000_000
-
+// Codeforces 2096 D: every vertical pair shares x and every diagonal pair
+// shares x + y, so XORing all x and all x + y recovers the unmatched bulb.
 @!multitest
 let n: Int = read()
-var sum_xor = 0
-var x_xor = 0
-for _ in 0..n:
-    let (x0, y0): (Int, Int) = read()
-    let x = x0 + SHIFT
-    let y = y0 + SHIFT
-    sum_xor ^= x + y
-    x_xor ^= x
-print(x_xor - SHIFT, (sum_xor - x_xor) - SHIFT)
+let pts: [0..n](x: Int, y: Int) = read()
+let x = fold(^, p.x for p in pts)
+let diag = fold(^, p.x + p.y for p in pts)
+print(x, diag - x)

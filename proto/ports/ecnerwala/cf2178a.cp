@@ -1,6 +1,4 @@
+// Codeforces 2178 A: at most one 'Y' can remain when adjacent 'Y's cannot merge.
 @!multitest
 let s: Str = read()
-var cnt = 0
-for c in s:
-    if c == 'Y': cnt += 1
-print(if cnt <= 1: "YES" else: "NO")
+print(if s.count('Y') <= 1: "YES" else: "NO")

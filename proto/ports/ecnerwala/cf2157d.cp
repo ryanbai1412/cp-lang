@@ -1,11 +1,7 @@
+// Codeforces 2157 D: pair smallest with largest after sorting, clamping the
+// endpoints to [l, r] and summing every positive contribution.
 @!multitest
 let (n, l, r): (Int, Int, Int) = read()
-var a: [0..n]Int = read()
-a.sort()
-var ans = 0
-for i in 0..n:
-    let lo = min(r, a[i])
-    let hi = max(l, a[n - 1 - i])
-    if lo >= hi: break
-    ans += hi - lo
-print(ans)
+let raw: [0..n]Int = read()
+let a = sorted(raw)
+print(sum(max(0, max(l, a[n - 1 - i]) - min(r, a[i])) for i in 0..n))
