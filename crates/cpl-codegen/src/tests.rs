@@ -949,3 +949,19 @@ fn map_keys_and_values_iterate_without_copying() {
         "Map.keys and Map.values loops/folds must not allocate a vector: {out}"
     );
 }
+
+#[test]
+fn discarded_map_remove_emits_single_erase_without_map_get() {
+    let out = body(concat!(
+        "var m: Map<Int, Int> = [1: 10, 2: 20]\n",
+        "let _ = m.remove(1)\n",
+        "let v = m.remove(2)\n",
+        "print(v ?? 0)\n",
+    ));
+    assert!(out.contains("m.erase(1);"), "expected direct erase: {out}");
+    assert!(out.contains("cpl::map_take(m, 2)"), "expected map_take: {out}");
+    assert!(
+        !out.contains("map_get"),
+        "Map.remove must not emit map_get + erase: {out}"
+    );
+}

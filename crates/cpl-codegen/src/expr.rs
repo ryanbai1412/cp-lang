@@ -830,35 +830,14 @@ impl<'p> Emitter<'p> {
                 }
             }
             ExprKind::Do(block) => {
-                if let [
-                    Stmt::Let(key_id, Some(key_val)),
-                    Stmt::Let(
-                        held_id,
-                        Some(Expr { kind: ExprKind::Builtin(Builtin::MapGet, get_args), .. }),
-                    ),
-                    Stmt::If(
-                        Expr { kind: ExprKind::Mutate(Mutation::Remove, place, rem_args), .. },
-                        then_b,
-                        else_b,
-                    ),
-                    Stmt::Give(Expr { kind: ExprKind::Local(give_id), .. }),
-                ] = block.stmts.as_slice()
-                {
-                    if then_b.stmts.is_empty()
-                        && else_b.stmts.is_empty()
-                        && give_id == held_id
-                        && matches!(get_args.as_slice(), [_, Expr { kind: ExprKind::Local(k), .. }] if k == key_id)
-                        && matches!(rem_args.as_slice(), [Expr { kind: ExprKind::Local(k), .. }] if k == key_id)
-                        && matches!(place.ty, Ty::Map(..) | Ty::HashMap(..))
-                    {
-                        self.need("map_take");
-                        let p = self.place(place);
-                        let k = self.expr(key_val).text;
-                        return self.packed_result(
-                            &e.ty,
-                            Code::primary(format!("cpl::map_take({p}, {k})")),
-                        );
-                    }
+                if let Some(([], place, key_val)) = map_remove_do(e) {
+                    self.need("map_take");
+                    let p = self.place(place);
+                    let k = self.expr(key_val).text;
+                    return self.packed_result(
+                        &e.ty,
+                        Code::primary(format!("cpl::map_take({p}, {k})")),
+                    );
                 }
                 let ret = self.ty(&e.ty);
                 self.lambda(&ret, |this, out| this.block(block, out))
@@ -2362,4 +2341,42 @@ fn proven(indices: &[Expr]) -> bool {
     indices.iter().all(|index| {
         index.ty != Ty::Int || matches!(index.kind, ExprKind::Cast(Cast::Raw | Cast::Trust, _))
     })
+}
+
+/// Recognizes the IR `Do` block emitted for `m.remove(k)` on a `Map` or `HashMap`:
+/// `[...settled_indexes, let key = k, let held = map_get(m, key), if remove(m, key) {}, give held]`.
+pub(crate) fn map_remove_do(e: &Expr) -> Option<(&[Stmt], &Place, &Expr)> {
+    let ExprKind::Do(block) = &e.kind else { return None };
+    let n = block.stmts.len();
+    if n < 4 {
+        return None;
+    }
+    let (prefix, tail) = block.stmts.split_at(n - 4);
+    let [
+        Stmt::Let(key_id, Some(key_val)),
+        Stmt::Let(
+            held_id,
+            Some(Expr { kind: ExprKind::Builtin(Builtin::MapGet, get_args), .. }),
+        ),
+        Stmt::If(
+            Expr { kind: ExprKind::Mutate(Mutation::Remove, place, rem_args), .. },
+            then_b,
+            else_b,
+        ),
+        Stmt::Give(Expr { kind: ExprKind::Local(give_id), .. }),
+    ] = tail
+    else {
+        return None;
+    };
+    if then_b.stmts.is_empty()
+        && else_b.stmts.is_empty()
+        && give_id == held_id
+        && matches!(get_args.as_slice(), [_, Expr { kind: ExprKind::Local(k), .. }] if k == key_id)
+        && matches!(rem_args.as_slice(), [Expr { kind: ExprKind::Local(k), .. }] if k == key_id)
+        && matches!(place.ty, Ty::Map(..) | Ty::HashMap(..))
+    {
+        Some((prefix, place, key_val))
+    } else {
+        None
+    }
 }

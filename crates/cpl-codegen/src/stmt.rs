@@ -64,7 +64,8 @@ impl<'p> Emitter<'p> {
     /// Writes the statements of a value block in line and gives back the
     /// expression that is its value.
     fn flatten<'a>(&mut self, mut e: &'a Expr, out: &mut String) -> &'a Expr {
-        while let Some((stmts, value)) = flat(e) {
+        while crate::expr::map_remove_do(e).is_none() {
+            let Some((stmts, value)) = flat(e) else { break };
             for stmt in stmts {
                 self.stmt(stmt, out);
             }
@@ -74,6 +75,15 @@ impl<'p> Emitter<'p> {
     }
 
     fn expr_stmt(&mut self, e: &Expr, out: &mut String) {
+        if let Some((prefix, place, key_val)) = crate::expr::map_remove_do(e) {
+            for stmt in prefix {
+                self.stmt(stmt, out);
+            }
+            let p = self.place(place);
+            let k = self.expr(key_val).text;
+            self.line(out, &format!("{p}.erase({k});"));
+            return;
+        }
         let e = self.flatten(e, out);
         match &e.kind {
             ExprKind::Unit | ExprKind::Error => {}
