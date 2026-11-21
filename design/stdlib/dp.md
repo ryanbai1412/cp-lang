@@ -148,23 +148,10 @@ with `.to_idx`.
 
 ### 2.2 `std.dp` [new]: the DP toolkit
 
-```cp
-struct MonoQueue<T>
-    fn new(pick: (T, T) -> T) -> MonoQueue<T>   // O(1); pick is min or max
-    fn by(better: (T, T) -> Bool) -> MonoQueue<T>  // O(1); a strict order
-    fn push(mut self, at: Int, val: T)          // amortized O(1)
-    fn drop_before(mut self, at: Int)           // amortized O(1)
-    @get fn best(self) -> ?T                    // O(1)
-    @get fn best_at(self) -> ?Int               // O(1)
-    @get fn len(self) -> Int                    // O(1)
-    @get fn is_empty(self) -> Bool              // O(1)
-    fn clear(mut self)                          // O(1)
-```
-
-The sliding-window optimum. `push` positions must increase; `best` is the
-optimum of what is left, `best_at` its position (the latest one on ties, so
-it survives longest). `MonoQueue<Int>(min)` reads like `SegTree<V,
-Int>(min, a)`: the operation is a value, not a variant. Memory O(window).
+The sliding-window optimum is `std.window.MonoDeque<T>` (containers
+area): `push(at, val)` with increasing `at`, `drop_before(at)`, `best`, all
+amortized O(1), memory O(window). The DP toolkit reuses it rather than
+keeping a second queue under another name.
 
 ```cp
 struct Line(k: Int, m: Int)
@@ -232,20 +219,29 @@ proof at 3am.
 - `ternary_max`/`ternary_min` pair like `argmax`/`argmin` and `max_by`/
   `min_by`; `_real` marks the `F64` domain exactly as in `bsearch_real`.
 - `pick: min | max` is the stdlib's existing convention for a structure's
-  operation (`SegTree<V, Int>(max, a)`, `SparseTable`), so `MonoQueue` and
+  operation (`SegTree<V, Int>(max, a)`, `SparseTable`), so `MonoDeque` and
   `LiChao` take it the same way, and the query on each is `best`/`at`.
 - Options are named arguments with defaults (`steps:`, `on:`), never
   `_by`/`_segment` variants.
-- The local-library names (`MonoDeque`, `LiChaoTag`, `LiChaoF`) are
-  retired: `MonoDeque` was a queue (it never pushes at the front), and the
+- The local-library names `LiChaoTag` and `LiChaoF` are retired: the
   tagged and float trees are instances of `LiChao<L, K>`.
+
+### 2.4 Cost against C++ (measured)
+
+`bench/dp/` runs each entry point at judge size beside the same algorithm
+in C++. `LiChao`, `dnc_layer` and `MonoDeque` run at or under the C++
+time; `knuth` at 1.24x, because its split table holds 8-byte `Int`s
+where C++ uses `int` (parity needs `I32` storage from the core). Two
+things in the library make this hold: operations are kept as the value the
+caller passed (`pick`), never wrapped in a fresh closure, so the codegen's
+devirtualization inlines `min` / `max`; and the hot loops are `unchecked`.
 
 ## 3. Domains and index spaces
 
 - Searches return the position type of the range they search. Over a domain
   `V`, `bsearch_first(V.all, ok)` is a `?V`; over cuts, a `?V.bounds`. The
   caller never converts between an index and an offset.
-- `MonoQueue` and `parallel_bsearch` number positions and queries with
+- `MonoDeque` and `parallel_bsearch` number positions and queries with
   `Int`: a queue's positions are the loop variable of the DP that feeds it,
   usually `Int`; a domain loop passes `v.to_idx`. *Open question:* make
   them generic over an ordered position type once the core can infer `I`

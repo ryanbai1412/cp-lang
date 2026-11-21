@@ -47,6 +47,7 @@ export const STDLIB_TYPES: readonly string[] = [
     'RangeFenwick', 'Reversible', 'Rng', 'RollingHash', 'Rooted', 'SegTree', 'Sieve', 'SimpleGraph',
     'SortedBag', 'SparseTable', 'SuffixArray', 'SuffixAutomaton', 'Target', 'Tree', 'Trie', 'Vec',
     'WindowFold', 'XorBasis', 'XorFenwick',
+    'LiChao', 'Line',
 ];
 
 /**
@@ -96,6 +97,7 @@ export const STDLIB_VALUES: readonly string[] = [
     'two_color', 'two_edge_components', 'undirected_of_pairs', 'undirected_of_triples',
     'unimodality_break', 'update', 'upper_hull', 'vcross', 'vdist', 'vdot', 'vturn', 'with_prev',
     'z_function',
+    'aliens', 'dnc_layer', 'knuth', 'monotone_minima', 'parallel_bsearch', 'sos_sub_inv', 'subset_sums',
 ];
 
 /** Public `stdlib/*.cp` constants (no INF sentinel; use ?Int / none). */

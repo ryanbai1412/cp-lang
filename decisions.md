@@ -2385,8 +2385,10 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
    `(cost, used)` tie-break and max envelopes are the same tree (backlog
    14 P12). No monotone-slope CHT deque yet: Li Chao covers every
    insertion order at O(log). Reverse: add `Hull` beside it.
-4. **`MonoDeque` becomes `MonoQueue`** (it never pushes at the front) with
-   `best_at`, keeping `new(pick)` / `by(better)`. Reverse: rename back.
+4. **No second window queue.** The sliding-window optimum is the
+   containers area's `std.window.MonoDeque`; `std.dp` points at it. An
+   earlier draft renamed it `MonoQueue` (it never pushes at the front);
+   that naming call belongs to its owner. Reverse: move it into `std.dp`.
 5. **No `digit_dp`, interval-DP or rolling-table library types.** Their
    state is the problem; `@memo` and two rows say it. A rolling table is a
    core question (frictions `cf2183e`, `cf2084g1`). Reverse: add them.

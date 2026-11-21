@@ -1,7 +1,7 @@
 //! Sequences: reductions, scans, runs, searching, permutations, monotone stacks, and compression.
 //!
 //! - Reductions & extrema: `prod`, `is_sorted`/`is_sorted_by`, `min_by`/`max_by`, `argmax`/`argmin`/`argmax_by`/`argmin_by`.
-//! - Binary & unimodal search: `bsearch_first`, `bsearch_last`, `bsearch_real`, `ternary_max`/`ternary_min`, `ternary_max_real`/`ternary_min_real`.
+//! - Binary & unimodal search: `bsearch_first`, `bsearch_last`, `bsearch_real`, `ternary_max`/`ternary_min`, `ternary_max_real`/`ternary_min_real`, `parallel_bsearch`.
 //! - Sorted lookup: `first_ge`/`first_gt`/`last_le`/`last_lt` (and `*_by`), returning `?D` on `[D]T`, `?Int` on `List<T>`, and `?(K, V)` on `Map<K, V>`.
 //! - Runs, chunking & windows: `runs`, `run_ranges`/`run_ranges_by`, `chunk_by`, `buckets`, `windows`, `chunks`, `pairs`, `with_prev`, `cyclic_pairs`, `zip`.
 //! - Scans & folds: `scan`, `suffix_scan`, `excl_fold` (cut-indexed `prefix_fold`/`suffix_fold` live in `std.prefix`).
@@ -166,6 +166,43 @@ pub fn ternary_min_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F6
             m1 = r - (r - l) * inv_phi
             f1 = f(m1)
     (l + r) * 0.5
+
+/// Many binary searches over one timeline `r` at once. `reset()` empties the user's
+/// structure, `apply(t)` adds the event at time `t`, and `ok(q)` asks query `q` of the
+/// structure as it stands; `out[q]` is the first `t` with `ok(q)` once every event up to
+/// `t` is applied, or `none`. Law: each `ok(q)` stays true once it holds. O(log n)
+/// rounds, each one `reset`, `n` calls of `apply` and one `ok` per open query, for
+/// n = `r.len`; memory O(n + queries).
+pub fn parallel_bsearch<I>(
+    queries: Int,
+    r: Range<I>,
+    reset: () -> (),
+    apply: I -> (),
+    ok: Int -> Bool,
+) -> List<?I>:
+    let n = r.len
+    var lo = List.filled(queries, 0)
+    var hi = List.filled(queries, n)
+    while true:
+        var start = List.filled(n + 1, 0)
+        for q in 0..queries:
+            if lo[q] < hi[q]: start[(lo[q] + hi[q]) / 2 + 1] += 1
+        if all(lo[q] == hi[q] for q in 0..queries): break
+        for t in 0..n: start[t + 1] += start[t]
+        var order = List.filled(start[n], 0)
+        var fill = [x for x in start]
+        for q in 0..queries:
+            if lo[q] < hi[q]:
+                let t = (lo[q] + hi[q]) / 2
+                order[fill[t]] = q
+                fill[t] += 1
+        reset()
+        for t in 0..n:
+            apply((r.first! + t)!)
+            for at in start[t]..start[t + 1]:
+                let q = order[at]
+                if ok(q): hi[q] = t else: lo[q] = t + 1
+    [if lo[q] == n: none else: (r.first! + lo[q])! for q in 0..queries]
 
 /// The element with the smallest `key`, the first of them on a tie; `none` for nothing.
 pub fn min_by<S, T, K>(it: S, key: T -> K) -> ?T:
@@ -1402,3 +1439,45 @@ fn monotone_stack_and_sliding_extrema():
         let want_max = [max(xs[i..i + k])! for i in 0..max(0, n - k + 1)]
         assert xs.sliding_min(k) == want_min
         assert xs.sliding_max(k) == want_max
+
+@test
+fn ternary_search_matches_a_linear_scan():
+    for _ in 0..300:
+        let n = rand(1, 15)
+        let peak = rand(0, n - 1)
+        let plat = rand(0, n - 1 - peak)
+        var a: List<Int> = []
+        var v = 0
+        for i in 0..n:
+            if i < peak: v += rand(1, 3)
+            elif i > peak + plat: v -= rand(1, 3)
+            a.push(v)
+        let best = ternary_max(0..n, i => a[i])!
+        assert a[best] == max(x for x in a)
+        let low = ternary_min(0..n, i => -a[i])!
+        assert a[low] == a[best]
+    assert ternary_max(0..0, i => i) == none
+    domain V = 1..=9
+    assert ternary_min(V.all, v => (v.to_idx - 3) * (v.to_idx - 3)) == V(4)
+
+var level = 0
+var adds: List<Int> = []
+fn reset_level(): level = 0
+fn add_level(t: Int): level += adds[t]
+var need: List<Int> = []
+
+@test
+fn parallel_search_matches_one_search_per_query():
+    for _ in 0..100:
+        let n = rand(0, 12)
+        adds = [rand(0, 3) for _ in 0..n]
+        let q = rand(0, 10)
+        need = [rand(0, 20) for _ in 0..q]
+        let got = parallel_bsearch(q, 0..n, reset_level, add_level, i => level >= need[i])
+        for i in 0..q:
+            var s = 0
+            var want: ?Int = none
+            for t in 0..n:
+                s += adds[t]
+                if want == none and s >= need[i]: want = t
+            assert got[i] == want

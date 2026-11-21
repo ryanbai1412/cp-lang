@@ -379,6 +379,29 @@ assert reach.contains(D(56)) and not reach.contains(D(17))
 It speaks the collection verbs every container does: `add`, `remove`,
 `toggle`, `x in s`, `len`. `shifted(k)` takes a negative `k` to move down.
 
+## DP: the parts a recurrence calls by name
+
+The recurrence stays your code; `dp.cp` holds the structures and
+optimizations it calls. A window optimum is `window.cp`'s `MonoDeque`, the convex hull
+trick a `LiChao` over anything with `at(x)`, a layer whose best split moves
+right `dnc_layer`, an interval DP with monotone splits `knuth`, and
+"exactly `k` pieces" over a convex cost `aliens`. Searches on answers live
+in `seq.cp` beside `bsearch_first`, and every one returns a position or
+`none`, never a sentinel. Each optimization names its law, and `spec.cp`
+checks it on small inputs.
+
+```
+// Frog 3: dp[i] = min over j < i of dp[j] + (h[i] - h[j])^2 + c
+var hull = LiChao<Line, Int>(min, 0..=10**6)
+var dp = [0 for _ in h]
+for i in 0..h.len:
+    if i > 0: dp[i] = hull.at(h[i])! + h[i] * h[i] + c
+    hull.add(Line(-2 * h[i], dp[i] + h[i] * h[i]))
+
+let root2 = bsearch_real(0.0, 2.0, x => x * x >= 2.0)!   // ?F64
+let peak = ternary_max(0..n, i => a[i])!                   // a position of the top
+```
+
 ## Asking the brute force what it is
 
 `spec.cp` is for the moment when the slow solution works and you are
@@ -423,7 +446,11 @@ is evidence, not a proof.
   ordered `Map` 4-lookups (`first_ge`, `first_gt`, `last_le`, `last_lt`
   returning `?(K, V)`), `swap_at`, `List.take`, `List.insert`,
   `List.remove`, `reverse`, `dedup`, `rotate_left` (signed Euclidean `k`),
-  `next_permutation`, `prev_permutation`, `runs`.
+  `next_permutation`, `prev_permutation`, `runs`; searches on answers
+  `bsearch_real`, `ternary_max` / `ternary_min` (and `_real`),
+  `parallel_bsearch`.
+- `dp.cp`: `Line`, `LiChao`, `monotone_minima`, `dnc_layer`,
+  `knuth`, `aliens`, `subset_sums`, `sos_sub` / `sos_sup` / `sos_sub_inv`.
 - `graph.cp`: `Graph`, `bfs`, `dijkstra`, `topo` (including vertexless
   `topo::<V>`), `scc`, `components`, `condense`, `two_edge_components`,
   `articulation_points`, `biconnected_components`, `two_color`.

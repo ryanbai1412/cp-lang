@@ -23,6 +23,8 @@ use std.geometry.{
     close,
 }
 use std.bitset.{Bitset}
+use std.dp.{LiChao, Line}
+use std.seq.{bsearch_real, ternary_max}
 use std.spec.{poly_degree, poly_at, guess_at, dnc_break, convexity_break}
 
 @test
@@ -185,3 +187,17 @@ fn a_fold_on_a_missing_map_key_starts_from_the_identity():
     m[7] *= 3
     assert m[3] == -5 and m[5] == 2 and m[6] == 2 and m[7] == 9
     assert m.remove(5) == 2 and m.remove(5) == none
+
+@test
+fn a_recurrence_calls_its_optimization_by_name():
+    let (h, c) = ([1, 2, 3, 4, 5], 6)
+    var hull = LiChao<Line, Int>(min, 0..=10 ** 6)
+    var dp = [0 for _ in h]
+    for i in 0..h.len:
+        if i > 0: dp[i] = hull.at(h[i])! + h[i] * h[i] + c
+        hull.add(Line(-2 * h[i], dp[i] + h[i] * h[i]))
+    assert dp.last! == 20
+    let root2 = bsearch_real(0.0, 2.0, x => x * x >= 2.0)!
+    assert abs(root2 * root2 - 2.0) < 1e-9
+    let a = [1, 4, 6, 5, 2]
+    assert ternary_max(0..a.len, i => a[i]) == 2

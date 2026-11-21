@@ -1498,16 +1498,7 @@ takes the cost as an operation and states its law, which `std.spec` checks
 laws and worked problems: `design/stdlib/dp.md`.
 
 ```cp
-struct MonoQueue<T>                           // sliding-window optimum
-    fn new(pick: (T, T) -> T) -> MonoQueue<T> // pick: min or max
-    fn by(better: (T, T) -> Bool) -> MonoQueue<T>
-    fn push(mut self, at: Int, val: T)        // amortized O(1), at increasing
-    fn drop_before(mut self, at: Int)         // amortized O(1)
-    @get fn best(self) -> ?T                  // O(1)
-    @get fn best_at(self) -> ?Int             // O(1)
-    @get fn len(self) -> Int
-    @get fn is_empty(self) -> Bool
-    fn clear(mut self)
+// sliding-window optimum: std.window.MonoDeque (4.8)
 struct Line(k: Int, m: Int)
     fn at(self, x: Int) -> Int                // k * x + m
 struct LiChao<L, K>                           // convex hull trick, any L.at -> K
