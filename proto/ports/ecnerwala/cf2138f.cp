@@ -1,6 +1,9 @@
-// A ladder of triangles between two rails: each new point joins the two rail tips.
-// Even m: m/2 rungs of t/(m/2). Odd m: three opening points reach the line through t,
-// then unit rungs along it.
+// Codeforces 2138 F: Ode to the Lily.
+// Triangle ladder from (0,0), (1,0) to t=(p,q) in m steps, edges in [0.5, 1].
+// Even m=2k: k rungs d=t/k, side rail shifted by (0.5, d.y-0.5).
+// Odd m=2k+1: unit rungs d=t.unit to t; if t0 fails p2, fallback is sqrt(3/4) from p2
+// and valid to t1; the five annuli hold a disk of radius > 1/64, so a 1/64 grid finds s.
+
 use std.geometry.{Vec}
 
 fn fits(a: Vec, b: Vec, eps: F64 = 1e-9) -> Bool = 0.5 + eps <= (a - b).len <= 1.0 - eps
