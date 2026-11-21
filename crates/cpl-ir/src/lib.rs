@@ -900,8 +900,8 @@ pub struct ClosureDef {
     pub body: Block,
 }
 
-/// Narrow storage width for a ranged `Int` field or 1D ranged-`Int` array/list element.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+/// Narrow storage width for a ranged `Int` field or ranged-`Int` array/list element.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub enum IntWidth {
     U32,
     I32,
@@ -912,6 +912,51 @@ impl IntWidth {
         match self {
             IntWidth::U32 => "uint32_t",
             IntWidth::I32 => "int32_t",
+        }
+    }
+}
+
+/// Narrowed element layout for a range-typed array, grid, or list.
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum NarrowLayout {
+    /// Leaf element is a narrowed 32-bit `Int` (`uint32_t` or `int32_t`).
+    Int(IntWidth),
+    /// Leaf element is a tuple or record whose fields are all narrowed 32-bit `Int`s.
+    Tuple(Vec<IntWidth>),
+    /// Element is itself a nested array/grid/list whose elements have the inner layout.
+    Seq(Box<NarrowLayout>),
+}
+
+impl NarrowLayout {
+    /// C++ element type for a container whose IR element type is `elem_ty`.
+    pub fn cpp_elem(&self, elem_ty: &Ty) -> Option<String> {
+        match (self, elem_ty) {
+            (NarrowLayout::Int(w), Ty::Int) => Some(w.cpp().to_string()),
+            (NarrowLayout::Tuple(ws), Ty::Tuple(ts)) if ws.len() == ts.len() => {
+                let parts: Vec<&str> = ws.iter().map(|w| w.cpp()).collect();
+                Some(format!("std::tuple<{}>", parts.join(", ")))
+            }
+            (NarrowLayout::Tuple(ws), Ty::Record(fs)) if ws.len() == fs.len() => {
+                let parts: Vec<&str> = ws.iter().map(|w| w.cpp()).collect();
+                Some(format!("std::tuple<{}>", parts.join(", ")))
+            }
+            (NarrowLayout::Seq(inner), Ty::Array { dims, elem }) => {
+                let cell = inner.cpp_elem(elem)?;
+                if dims.len() == 1 {
+                    Some(format!("std::vector<{cell}>"))
+                } else {
+                    Some(format!("cpl::Grid<{cell}, {}>", dims.len()))
+                }
+            }
+            (NarrowLayout::Seq(inner), Ty::List(elem)) => {
+                let cell = inner.cpp_elem(elem)?;
+                Some(format!("std::vector<{cell}>"))
+            }
+            (NarrowLayout::Seq(inner), Ty::ListView(elem)) => {
+                let cell = inner.cpp_elem(elem)?;
+                Some(format!("cpl::ListView<{cell}>"))
+            }
+            _ => None,
         }
     }
 }
@@ -987,9 +1032,9 @@ pub struct Program {
     /// By [`FnId`]: whether the fn is an imported module's, not the file's.
     pub library_fns: Vec<bool>,
     pub closures: Vec<ClosureDef>,
-    /// Declared 32-bit element storage widths for 1D ranged-`Int` arrays/lists
-    /// (globals, locals/params, fn/closure returns; struct fields live in `StructDef.narrow_ints`).
-    pub narrow_elems: std::collections::BTreeMap<ElemLoc, IntWidth>,
+    /// Declared 32-bit element storage layouts for ranged-`Int` arrays, grids,
+    /// nested arrays, lists, and all-ranged tuple elements.
+    pub narrow_elems: std::collections::BTreeMap<ElemLoc, NarrowLayout>,
     /// The file's top-level code and its locals.
     pub main: Block,
     pub main_locals: Vec<Local>,

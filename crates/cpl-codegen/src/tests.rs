@@ -1202,7 +1202,6 @@ print(sa[0])
         "nested index assignment inside `unchecked:` should not emit `cpl::at`:\n{scatter_body}"
     );
 }
-
 #[test]
 fn short_non_recursive_fns_are_declared_inline() {
     let out = cpp("fn sq(x: Int) -> Int = x * x
@@ -1212,4 +1211,120 @@ print(sq(7) + fact(5))
     assert!(out.contains("inline ll sq("), "{out}");
     assert!(out.contains("\nll fact("), "a recursive fn keeps a plain definition:\n{out}");
     assert!(!out.contains("inline void solve("), "{out}");
+}
+
+#[test]
+fn ranged_2d_nested_and_tuple_elements_narrow_and_widen_conservatively() {
+    let grid = cpp(
+        "let n: 1..=50 = read()
+let m: 1..=50 = read()
+domain R = 0..n
+domain C = 0..m
+var g: [R, C]0..=1_000_000 = 0
+var s: [R, C]-100..=100 = 0
+for r in R:
+    for c in C:
+        g[r, c] = 500_000
+        s[r, c] = -50
+var total = 0
+for r in R:
+    for c in C:
+        total += g[r, c] * g[r, c] + s[r, c]
+print(total)
+",
+    );
+    assert!(
+        grid.contains("cpl::Grid<uint32_t, 2> g"),
+        "expected [R, C]0..=1_000_000 to emit cpl::Grid<uint32_t, 2>:\n{grid}"
+    );
+    assert!(
+        grid.contains("cpl::Grid<int32_t, 2> s"),
+        "expected [R, C]-100..=100 to emit cpl::Grid<int32_t, 2>:\n{grid}"
+    );
+    assert!(
+        grid.contains("ll(g("),
+        "expected 2D grid read to widen to ll before arithmetic:\n{grid}"
+    );
+
+    let nested = cpp(
+        "let n: 1..=50 = read()
+let m: 1..=50 = read()
+domain D = 0..n
+domain E = 0..m
+var mat: [D][E]0..=1_000_000 = 0
+var adj: [D]List<0..=1_000_000> = []
+for i in D:
+    for j in E:
+        mat[i][j] = 500_000
+    adj[i].push(500_000)
+var ans = 0
+for row in mat:
+    for x in row:
+        ans += x * x
+for i in D:
+    for x in adj[i]:
+        ans += x
+print(ans)
+",
+    );
+    assert!(
+        nested.contains("std::vector<std::vector<uint32_t>> mat"),
+        "expected [D][E]0..=1_000_000 to emit std::vector<std::vector<uint32_t>>:\n{nested}"
+    );
+    assert!(
+        nested.contains("std::vector<std::vector<uint32_t>> adj"),
+        "expected [D]List<0..=1_000_000> to emit std::vector<std::vector<uint32_t>>:\n{nested}"
+    );
+
+    let tuples = cpp(
+        "let n: 1..=50 = read()
+domain V = 0..n
+var pts: [V](0..=1_000_000, -100..=100) = (0, 0)
+for v in V:
+    pts[v] = (500_000, -50)
+var ans = 0
+for v in V:
+    let (x, y) = pts[v]
+    ans += x * x + y
+print(ans)
+",
+    );
+    assert!(
+        tuples.contains("std::vector<std::tuple<uint32_t, int32_t>> pts"),
+        "expected [V](0..=1_000_000, -100..=100) to emit std::vector<std::tuple<uint32_t, int32_t>>:\n{tuples}"
+    );
+
+    let widened = cpp(
+        "fn sum_grid<R, C>(g: [R, C]Int) -> Int:
+    var s = 0
+    for x in g: s += x
+    return s
+fn sum_row<E>(row: [E]Int) -> Int:
+    var s = 0
+    for x in row: s += x
+    return s
+fn sum_pts<V>(pts: [V](Int, Int)) -> Int:
+    var s = 0
+    for (x, y) in pts: s += x + y
+    return s
+let n: 1..=20 = read()
+domain D = 0..n
+var g: [D, D]0..=1_000 = 0
+var mat: [D][D]0..=1_000 = 0
+var pts: [D](0..=1_000, -100..=100) = (0, 0)
+print(sum_grid<D, D>(g) + sum_row<D>(mat[D(0)]) + sum_pts<D>(pts))
+",
+    );
+    assert!(
+        widened.contains("cpl::Grid<ll, 2> g"),
+        "expected 2D grid passed to [R, C]Int to widen:\n{widened}"
+    );
+    assert!(
+        widened.contains("std::vector<std::vector<ll>> mat"),
+        "expected nested array whose row flows to [E]Int to widen:\n{widened}"
+    );
+    assert!(
+        widened.contains("std::vector<std::tuple<ll, ll>> pts"),
+        "expected tuple array passed to [V](Int, Int) to widen:\n{widened}"
+    );
 }

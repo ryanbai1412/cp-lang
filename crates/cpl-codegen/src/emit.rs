@@ -130,8 +130,8 @@ pub(crate) struct Emitter<'p> {
     pub rows: BTreeMap<(usize, usize), u32>,
     /// `(struct, field)` to 32-bit storage width for ranged `Int` fields.
     pub narrow_ints: BTreeMap<(usize, usize), cpl_ir::IntWidth>,
-    /// 1D ranged-`Int` arrays, lists, and list views with narrowed 32-bit elements.
-    pub narrow_elems: BTreeMap<cpl_ir::ElemLoc, cpl_ir::IntWidth>,
+    /// Ranged-`Int` arrays, lists, list views, grids, nested sequences, and tuples with narrowed 32-bit elements.
+    pub narrow_elems: BTreeMap<cpl_ir::ElemLoc, cpl_ir::NarrowLayout>,
     /// 1D constant-length arrays (`1..=64`) in locals/globals lowered to `std::array<T, K>`.
     pub fixed_arrays: Vec<(cpl_ir::ElemLoc, u8)>,
     /// Per fn, the parameters it takes by value to move into its result:
@@ -466,7 +466,7 @@ impl<'p> Emitter<'p> {
         };
         format!(
             "{prefix}{} {}({})",
-            self.ty_with_elem_width(&f.ret, self.elem_width(cpl_ir::ElemLoc::FnRet(id))),
+            self.ty_with_elem_layout(&f.ret, self.elem_layout(cpl_ir::ElemLoc::FnRet(id))),
             fn_name(&f.name),
             params.join(", ")
         )
@@ -517,40 +517,48 @@ impl<'p> Emitter<'p> {
         }
     }
 
-    pub fn elem_width(&self, loc: cpl_ir::ElemLoc) -> Option<cpl_ir::IntWidth> {
-        self.narrow_elems.get(&loc).copied()
+    pub fn elem_layout(&self, loc: cpl_ir::ElemLoc) -> Option<&cpl_ir::NarrowLayout> {
+        self.narrow_elems.get(&loc)
     }
 
-    pub fn expr_elem_width(&self, e: &cpl_ir::Expr) -> Option<cpl_ir::IntWidth> {
-        use cpl_ir::{Builtin, ElemLoc, ExprKind, Stmt};
+    pub fn expr_elem_layout(&self, e: &cpl_ir::Expr) -> Option<&cpl_ir::NarrowLayout> {
+        use cpl_ir::{Builtin, ElemLoc, ExprKind, NarrowLayout, Stmt};
         let scope = self.current_scope();
         match &e.kind {
-            ExprKind::Global(g) => self.elem_width(ElemLoc::Global(*g)),
-            ExprKind::Local(s) => self.elem_width(ElemLoc::Local(scope, *s)),
+            ExprKind::Global(g) => self.elem_layout(ElemLoc::Global(*g)),
+            ExprKind::Local(s) => self.elem_layout(ElemLoc::Local(scope, *s)),
             ExprKind::Field(base, f) => match base.ty {
-                Ty::Struct(id) => self.elem_width(ElemLoc::Field(id, *f)),
+                Ty::Struct(id) => self.elem_layout(ElemLoc::Field(id, *f)),
                 _ => None,
             },
-            ExprKind::Call(fid, _) => self.elem_width(ElemLoc::FnRet(*fid)),
+            ExprKind::Call(fid, _) => self.elem_layout(ElemLoc::FnRet(*fid)),
+            ExprKind::Index(base, _) => match self.expr_elem_layout(base) {
+                Some(NarrowLayout::Seq(inner)) => Some(inner.as_ref()),
+                _ => None,
+            },
             ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList | Builtin::Copy, args) => {
-                args.first().and_then(|a| self.expr_elem_width(a))
+                args.first().and_then(|a| self.expr_elem_layout(a))
             }
             ExprKind::Do(blk) => match blk.stmts.last() {
-                Some(Stmt::Give(inner)) => self.expr_elem_width(inner),
+                Some(Stmt::Give(inner)) => self.expr_elem_layout(inner),
                 _ => None,
             },
             _ => None,
         }
     }
 
-    pub fn place_elem_width(&self, p: &cpl_ir::Place) -> Option<cpl_ir::IntWidth> {
-        use cpl_ir::{ElemLoc, PlaceKind};
+    pub fn place_elem_layout(&self, p: &cpl_ir::Place) -> Option<&cpl_ir::NarrowLayout> {
+        use cpl_ir::{ElemLoc, NarrowLayout, PlaceKind};
         let scope = self.current_scope();
         match &p.kind {
-            PlaceKind::Global(g) => self.elem_width(ElemLoc::Global(*g)),
-            PlaceKind::Local(s) => self.elem_width(ElemLoc::Local(scope, *s)),
+            PlaceKind::Global(g) => self.elem_layout(ElemLoc::Global(*g)),
+            PlaceKind::Local(s) => self.elem_layout(ElemLoc::Local(scope, *s)),
             PlaceKind::Field(base, f) => match base.ty {
-                Ty::Struct(id) => self.elem_width(ElemLoc::Field(id, *f)),
+                Ty::Struct(id) => self.elem_layout(ElemLoc::Field(id, *f)),
+                _ => None,
+            },
+            PlaceKind::Index(base, _) => match self.place_elem_layout(base) {
+                Some(NarrowLayout::Seq(inner)) => Some(inner.as_ref()),
                 _ => None,
             },
             _ => None,
@@ -598,25 +606,50 @@ impl<'p> Emitter<'p> {
         if let Some(k) = self.fixed_array_len(loc) {
             return self.fixed_array_cpp(ty, k);
         }
-        self.ty_with_elem_width(ty, self.elem_width(loc))
+        self.ty_with_elem_layout(ty, self.elem_layout(loc))
     }
 
-    pub fn ty_with_elem_width(&self, ty: &Ty, w: Option<cpl_ir::IntWidth>) -> String {
-        if let Some(w) = w {
+    pub fn ty_with_elem_layout(
+        &self,
+        ty: &Ty,
+        layout: Option<&cpl_ir::NarrowLayout>,
+    ) -> String {
+        if let Some(l) = layout {
             match ty {
-                Ty::Array { dims, elem } if dims.len() == 1 && matches!(elem.as_ref(), Ty::Int) => {
-                    return format!("std::vector<{}>", w.cpp());
+                Ty::Array { dims, elem } => {
+                    if let Some(cell) = l.cpp_elem(elem) {
+                        return if dims.len() == 1 {
+                            format!("std::vector<{cell}>")
+                        } else {
+                            format!("cpl::Grid<{cell}, {}>", dims.len())
+                        };
+                    }
                 }
-                Ty::List(elem) if matches!(elem.as_ref(), Ty::Int) => {
-                    return format!("std::vector<{}>", w.cpp());
+                Ty::List(elem) => {
+                    if let Some(cell) = l.cpp_elem(elem) {
+                        return format!("std::vector<{cell}>");
+                    }
                 }
-                Ty::ListView(elem) if matches!(elem.as_ref(), Ty::Int) => {
-                    return format!("cpl::ListView<{}>", w.cpp());
+                Ty::ListView(elem) => {
+                    if let Some(cell) = l.cpp_elem(elem) {
+                        return format!("cpl::ListView<{cell}>");
+                    }
                 }
                 _ => {}
             }
         }
         self.ty(ty)
+    }
+
+    pub fn narrow_cell_value(&self, text: &str, layout: &cpl_ir::NarrowLayout) -> String {
+        match layout {
+            cpl_ir::NarrowLayout::Int(w) => format!("{}({text})", w.cpp()),
+            cpl_ir::NarrowLayout::Tuple(ws) => {
+                let parts: Vec<&str> = ws.iter().map(|w| w.cpp()).collect();
+                format!("std::tuple<{}>({text})", parts.join(", "))
+            }
+            cpl_ir::NarrowLayout::Seq(_) => text.to_string(),
+        }
     }
 
     /// The initializer that gives a new variable its type's zero.
@@ -700,10 +733,10 @@ impl<'p> Emitter<'p> {
                         self.need("row");
                     } else if let Some(w) = self.narrow_ints.get(&(*id, names.len())) {
                         cpp = w.cpp().into();
-                    } else if let Some(w) =
+                    } else if let Some(l) =
                         self.narrow_elems.get(&cpl_ir::ElemLoc::Field(*id, names.len()))
                     {
-                        cpp = self.ty_with_elem_width(field_ty, Some(*w));
+                        cpp = self.ty_with_elem_layout(field_ty, Some(l));
                     }
                     out.push_str(&format!(
                         "    {} {}{};\n",

@@ -82,8 +82,44 @@ impl RangeInfo {
         }
     }
 
-    pub(super) fn narrow_elem_width(&self) -> Option<IntWidth> {
-        self.elem()?.scalar()?.narrow_width()
+    pub(super) fn narrow_value_layout(&self, ty: &Ty) -> Option<NarrowLayout> {
+        match (self, ty) {
+            (RangeInfo::Scalar(b), Ty::Int) => b.narrow_width().map(NarrowLayout::Int),
+            (RangeInfo::Tuple(items), Ty::Tuple(ts)) if !ts.is_empty() && items.len() == ts.len() => {
+                let mut widths = Vec::with_capacity(ts.len());
+                for (item, t) in items.iter().zip(ts) {
+                    if *t != Ty::Int {
+                        return None;
+                    }
+                    let w = item.as_ref()?.scalar()?.narrow_width()?;
+                    widths.push(w);
+                }
+                Some(NarrowLayout::Tuple(widths))
+            }
+            (RangeInfo::Tuple(items), Ty::Record(fs)) if !fs.is_empty() && items.len() == fs.len() => {
+                let mut widths = Vec::with_capacity(fs.len());
+                for (item, (_, t)) in items.iter().zip(fs) {
+                    if *t != Ty::Int {
+                        return None;
+                    }
+                    let w = item.as_ref()?.scalar()?.narrow_width()?;
+                    widths.push(w);
+                }
+                Some(NarrowLayout::Tuple(widths))
+            }
+            (RangeInfo::Elem(_), Ty::Array { .. } | Ty::List(_) | Ty::ListView(_)) => {
+                self.narrow_elem_layout(ty).map(|l| NarrowLayout::Seq(Box::new(l)))
+            }
+            _ => None,
+        }
+    }
+
+    pub(super) fn narrow_elem_layout(&self, container_ty: &Ty) -> Option<NarrowLayout> {
+        let elem_ty = match container_ty {
+            Ty::Array { elem, .. } | Ty::List(elem) | Ty::ListView(elem) => elem.as_ref(),
+            _ => return None,
+        };
+        self.elem()?.narrow_value_layout(elem_ty)
     }
 
     pub(super) fn from_spec(spec: &Spec) -> Option<Self> {
@@ -157,11 +193,7 @@ fn is_minus_one_of(hi_expr: &Expr, divisor: &Expr) -> bool {
 }
 
 pub(super) fn is_narrowable_elem_ty(ty: &Ty) -> bool {
-    match ty {
-        Ty::Array { dims, elem } => dims.len() == 1 && matches!(elem.as_ref(), Ty::Int),
-        Ty::List(elem) | Ty::ListView(elem) => matches!(elem.as_ref(), Ty::Int),
-        _ => false,
-    }
+    matches!(ty, Ty::Array { .. } | Ty::List(_) | Ty::ListView(_))
 }
 
 impl<'a> Lowerer<'a> {
@@ -172,9 +204,9 @@ impl<'a> Lowerer<'a> {
         ranges: &HashMap<Slot, RangeInfo>,
     ) {
         for (&slot, info) in ranges {
-            if locals.get(slot).is_some_and(|l| is_narrowable_elem_ty(&l.ty)) {
-                if let Some(w) = info.narrow_elem_width() {
-                    self.narrow_elems.insert(ElemLoc::Local(scope, slot), w);
+            if let Some(l) = locals.get(slot).filter(|l| is_narrowable_elem_ty(&l.ty)) {
+                if let Some(layout) = info.narrow_elem_layout(&l.ty) {
+                    self.narrow_elems.insert(ElemLoc::Local(scope, slot), layout);
                 }
             }
         }
@@ -259,6 +291,11 @@ impl<'a> Lowerer<'a> {
             self.diags.truncate(saved_diags);
             if !had_err {
                 if let Some(info) = info {
+                    if let Some((_, field_ty)) = self.structs[id].def.fields.get(idx) {
+                        if let Some(layout) = info.narrow_elem_layout(field_ty) {
+                            self.narrow_elems.insert(ElemLoc::Field(id, idx), layout);
+                        }
+                    }
                     self.struct_field_ranges.insert((id, idx), info);
                 }
             }

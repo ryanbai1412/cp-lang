@@ -354,7 +354,10 @@ impl<'p> Emitter<'p> {
 
     fn for_stmt(&mut self, id: LoopId, slot: usize, iter: &Iter, body: &Block, out: &mut String) {
         let ty = self.locals()[slot].ty.clone();
-        let cpp = self.ty(&ty);
+        let cpp = self.ty_with_elem_layout(
+            &ty,
+            self.elem_layout(cpl_ir::ElemLoc::Local(self.current_scope(), slot)),
+        );
         let name = self.names[slot].clone();
         let stable = self.facts.stable((self.fn_id, false, slot));
         let hoisted = self.hoisted.contains(&slot);
@@ -635,7 +638,7 @@ impl<'p> Emitter<'p> {
                     let holder_ty = if let Some(k) = self.expr_fixed_len(seq) {
                         self.fixed_array_cpp(&seq.ty, k)
                     } else {
-                        self.ty_with_elem_width(&seq.ty, self.expr_elem_width(seq))
+                        self.ty_with_elem_layout(&seq.ty, self.expr_elem_layout(seq))
                     };
                     if untouched {
                         self.line(
@@ -654,7 +657,11 @@ impl<'p> Emitter<'p> {
                 } else {
                     holder
                 };
-                let decl = if ty.is_scalar() || var != name {
+                let narrow_tuple_iter = matches!(
+                    self.expr_elem_layout(seq),
+                    Some(cpl_ir::NarrowLayout::Tuple(_))
+                );
+                let decl = if ty.is_scalar() || var != name || narrow_tuple_iter {
                     format!("{cpp} {var}")
                 } else {
                     format!("const {cpp}& {var}")
@@ -717,8 +724,8 @@ impl<'p> Emitter<'p> {
             match &**spec {
                 Spec::Array { dims, elem } => {
                     let name = self.place(place);
-                    let w = self.place_elem_width(place);
-                    self.read_array_with_width(&name, false, dims, elem, w, out);
+                    let l = self.place_elem_layout(place).cloned();
+                    self.read_array_with_layout(&name, false, dims, elem, l.as_ref(), out);
                     return;
                 }
                 Spec::Plain(Ty::Str) => {
@@ -731,18 +738,20 @@ impl<'p> Emitter<'p> {
             }
         }
         let place_fixed = self.place_fixed_len(place);
-        let place_w = self.place_elem_width(place);
+        let place_l = self.place_elem_layout(place).cloned();
         let mut v = if op == AssignOp::Set && place_fixed.is_some() {
             self.expr_with_fixed_len(value, place_fixed)
-        } else if op == AssignOp::Set && place_w.is_some() {
-            self.expr_with_elem_width(value, place_w)
+        } else if op == AssignOp::Set && place_l.is_some() {
+            self.expr_with_elem_layout(value, place_l.as_ref())
         } else {
             self.expr(value)
         };
         if let PlaceKind::Index(base, _) = &place.kind {
             if op == AssignOp::Set {
-                if let Some(w) = self.place_elem_width(base) {
-                    v.text = format!("{}({})", w.cpp(), v.text);
+                if let Some(l @ (cpl_ir::NarrowLayout::Int(_) | cpl_ir::NarrowLayout::Tuple(_))) =
+                    self.place_elem_layout(base)
+                {
+                    v.text = self.narrow_cell_value(&v.text, l);
                 }
             }
         }
@@ -1007,7 +1016,7 @@ impl<'p> Emitter<'p> {
                 let name = self.names[*slot].clone();
                 let loc = cpl_ir::ElemLoc::Local(self.current_scope(), *slot);
                 let fixed_len = self.fixed_array_len(loc);
-                let elem_w = self.elem_width(loc);
+                let elem_l = self.elem_layout(loc).cloned();
                 let cpp = self.ty_for_loc(&ty, loc);
                 let hoisted = self.hoisted.contains(slot);
                 let Some(init) = init else {
@@ -1038,7 +1047,14 @@ impl<'p> Emitter<'p> {
                 match &init.kind {
                     ExprKind::Read(spec) => {
                         if let Spec::Array { dims, elem } = &**spec {
-                            self.read_array_with_width(&name, !hoisted, dims, elem, elem_w, out);
+                            self.read_array_with_layout(
+                                &name,
+                                !hoisted,
+                                dims,
+                                elem,
+                                elem_l.as_ref(),
+                                out,
+                            );
                             return;
                         }
                     }
@@ -1051,7 +1067,8 @@ impl<'p> Emitter<'p> {
                             }
                             return;
                         }
-                        let args = self.fill_args_with_width(dims, value.as_deref(), elem_w);
+                        let args =
+                            self.fill_args_with_layout(dims, value.as_deref(), elem_l.as_ref());
                         if reused {
                             // One buffer, filled again each time round.
                             self.line(out, &format!("static {cpp} {name};"));
@@ -1077,13 +1094,13 @@ impl<'p> Emitter<'p> {
                         _ => if fixed_len.is_some() {
                             self.expr_with_fixed_len(init, fixed_len).text
                         } else {
-                            self.expr_with_elem_width(init, elem_w).text
+                            self.expr_with_elem_layout(init, elem_l.as_ref()).text
                         },
                     },
                     _ => if fixed_len.is_some() {
                         self.expr_with_fixed_len(init, fixed_len).text
                     } else {
-                        self.expr_with_elem_width(init, elem_w).text
+                        self.expr_with_elem_layout(init, elem_l.as_ref()).text
                     },
                 };
                 if hoisted {
@@ -1193,10 +1210,13 @@ impl<'p> Emitter<'p> {
                                                 return format!("std::move({})", self.names[slot]);
                                             }
                                         }
-                                        if let Some(w) = struct_id.and_then(|s| {
-                                            self.elem_width(cpl_ir::ElemLoc::Field(s, idx))
-                                        }) {
-                                            return self.expr_with_elem_width(item, Some(w)).text;
+                                        if let Some(l) = struct_id
+                                            .and_then(|s| {
+                                                self.elem_layout(cpl_ir::ElemLoc::Field(s, idx))
+                                            })
+                                            .cloned()
+                                        {
+                                            return self.expr_with_elem_layout(item, Some(&l)).text;
                                         }
                                         let v = self.expr(item).text;
                                         match struct_id
@@ -1209,28 +1229,34 @@ impl<'p> Emitter<'p> {
                                     .collect();
                                 format!("{ty}{{{}}}", rendered.join(", "))
                             } else {
-                                let ret_w = if is_return {
-                                    self.fn_id.and_then(|id| self.elem_width(cpl_ir::ElemLoc::FnRet(id)))
+                                let ret_l = if is_return {
+                                    self.fn_id
+                                        .and_then(|id| self.elem_layout(cpl_ir::ElemLoc::FnRet(id)))
+                                        .cloned()
                                 } else {
                                     None
                                 };
-                                self.expr_with_elem_width(value, ret_w).text
+                                self.expr_with_elem_layout(value, ret_l.as_ref()).text
                             }
                         } else {
-                            let ret_w = if is_return {
-                                self.fn_id.and_then(|id| self.elem_width(cpl_ir::ElemLoc::FnRet(id)))
+                            let ret_l = if is_return {
+                                self.fn_id
+                                    .and_then(|id| self.elem_layout(cpl_ir::ElemLoc::FnRet(id)))
+                                    .cloned()
                             } else {
                                 None
                             };
-                            self.expr_with_elem_width(value, ret_w).text
+                            self.expr_with_elem_layout(value, ret_l.as_ref()).text
                         }
                     } else {
-                        let ret_w = if is_return {
-                            self.fn_id.and_then(|id| self.elem_width(cpl_ir::ElemLoc::FnRet(id)))
+                        let ret_l = if is_return {
+                            self.fn_id
+                                .and_then(|id| self.elem_layout(cpl_ir::ElemLoc::FnRet(id)))
+                                .cloned()
                         } else {
                             None
                         };
-                        self.expr_with_elem_width(value, ret_w).text
+                        self.expr_with_elem_layout(value, ret_l.as_ref()).text
                     };
                     self.last_use_call = false;
                     self.line(out, &format!("return {text};"));

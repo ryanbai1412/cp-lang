@@ -469,21 +469,28 @@ pub(crate) fn narrow_ints(program: &Program) -> BTreeMap<(usize, usize), cpl_ir:
     narrow
 }
 
-fn is_1d_int_seq(ty: &Ty) -> bool {
-    match ty {
-        Ty::Array { dims, elem } => dims.len() == 1 && matches!(elem.as_ref(), Ty::Int),
-        Ty::List(elem) | Ty::ListView(elem) => matches!(elem.as_ref(), Ty::Int),
-        _ => false,
-    }
+fn is_narrowable_seq(ty: &Ty) -> bool {
+    matches!(ty, Ty::Array { .. } | Ty::List(_) | Ty::ListView(_))
 }
 
-/// 1D ranged-`Int` arrays, lists, and list views whose elements can be stored as
-/// 32-bit integers (`uint32_t` / `int32_t`) consistently across every value flow.
+fn peel_layout(layout: Option<&cpl_ir::NarrowLayout>, depth: usize) -> Option<&cpl_ir::NarrowLayout> {
+    let mut cur = layout?;
+    for _ in 0..depth {
+        match cur {
+            cpl_ir::NarrowLayout::Seq(inner) => cur = inner,
+            _ => return None,
+        }
+    }
+    Some(cur)
+}
+
+/// Range-typed arrays, grids, nested arrays, lists, and all-ranged tuple elements
+/// whose elements can be stored as 32-bit integers consistently across every flow.
 pub(crate) fn narrow_elems(
     program: &Program,
     rows: &BTreeMap<(usize, usize), u32>,
-) -> BTreeMap<cpl_ir::ElemLoc, cpl_ir::IntWidth> {
-    use cpl_ir::{Arg, Builtin, ElemLoc, IntWidth, Iter, Mutation, ScopeId};
+) -> BTreeMap<cpl_ir::ElemLoc, cpl_ir::NarrowLayout> {
+    use cpl_ir::{Arg, Builtin, ElemLoc, Iter, Mutation, NarrowLayout, ScopeId};
 
     let mut narrow = program.narrow_elems.clone();
     for (id, def) in program.structs.iter().enumerate() {
@@ -491,20 +498,29 @@ pub(crate) fn narrow_elems(
             if rows.contains_key(&(id, field)) {
                 continue;
             }
-            if def.fields.get(field).is_some_and(|(_, t)| is_1d_int_seq(t)) {
-                narrow.insert(ElemLoc::Field(id, field), width);
+            if def
+                .fields
+                .get(field)
+                .is_some_and(|(_, t)| matches!(t, Ty::Array { elem, .. } | Ty::List(elem) | Ty::ListView(elem) if matches!(elem.as_ref(), Ty::Int)))
+            {
+                narrow.entry(ElemLoc::Field(id, field)).or_insert(NarrowLayout::Int(width));
+            }
+        }
+        for &(sid, field) in rows.keys() {
+            if sid == id {
+                narrow.remove(&ElemLoc::Field(id, field));
             }
         }
     }
-    // Propagate outer widths into closure captures so closures capturing a narrowed
-    // array can stay narrow if all uses inside the closure are compatible.
+    // Propagate outer layouts into closure captures so closures capturing a narrowed
+    // container can stay narrow if all uses inside the closure are compatible.
     let mut cap_links: Vec<(ElemLoc, ElemLoc)> = Vec::new();
     let collect_caps = |scope: ScopeId, body: &cpl_ir::Block, links: &mut Vec<(ElemLoc, ElemLoc)>| {
         crate::walk::deep_exprs(body, &mut |e| {
             if let ExprKind::Closure(cid) = &e.kind {
                 let c = &program.closures[*cid];
                 for cap in &c.captures {
-                    if c.locals.get(cap.inner).is_some_and(|l| is_1d_int_seq(&l.ty)) {
+                    if c.locals.get(cap.inner).is_some_and(|l| is_narrowable_seq(&l.ty)) {
                         let outer = if cap.is_global {
                             ElemLoc::Global(cap.outer)
                         } else {
@@ -526,8 +542,8 @@ pub(crate) fn narrow_elems(
         collect_caps(ScopeId::Closure(cid), &c.body, &mut cap_links);
     }
     for &(outer, inner) in &cap_links {
-        if let Some(&w) = narrow.get(&outer) {
-            narrow.entry(inner).or_insert(w);
+        if let Some(l) = narrow.get(&outer).cloned() {
+            narrow.entry(inner).or_insert(l);
         }
     }
     // Grader/judge functions keep wide `ll` signatures to match `cpl::Judge<T>`.
@@ -541,35 +557,87 @@ pub(crate) fn narrow_elems(
         return narrow;
     }
 
-    fn place_loc(scope: ScopeId, place: &Place) -> Option<ElemLoc> {
+    fn place_any_seq_root(scope: ScopeId, place: &Place) -> Option<ElemLoc> {
         match &place.kind {
-            PlaceKind::Global(g) => Some(ElemLoc::Global(*g)),
-            PlaceKind::Local(s) => Some(ElemLoc::Local(scope, *s)),
+            PlaceKind::Global(g) if is_narrowable_seq(&place.ty) => Some(ElemLoc::Global(*g)),
+            PlaceKind::Local(s) if is_narrowable_seq(&place.ty) => Some(ElemLoc::Local(scope, *s)),
+            PlaceKind::Field(base, f) => {
+                if is_narrowable_seq(&place.ty) {
+                    if let Ty::Struct(id) = base.ty {
+                        return Some(ElemLoc::Field(id, *f));
+                    }
+                }
+                place_any_seq_root(scope, base)
+            }
+            PlaceKind::Index(base, _) | PlaceKind::Some(base) => place_any_seq_root(scope, base),
+            _ => None,
+        }
+    }
+
+    fn place_root(scope: ScopeId, place: &Place) -> Option<(ElemLoc, usize)> {
+        match &place.kind {
+            PlaceKind::Global(g) => Some((ElemLoc::Global(*g), 0)),
+            PlaceKind::Local(s) => Some((ElemLoc::Local(scope, *s), 0)),
             PlaceKind::Field(base, f) => match base.ty {
-                Ty::Struct(id) => Some(ElemLoc::Field(id, *f)),
+                Ty::Struct(id) => Some((ElemLoc::Field(id, *f), 0)),
+                _ => None,
+            },
+            PlaceKind::Index(base, _) => {
+                let (loc, d) = place_root(scope, base)?;
+                Some((loc, d + 1))
+            }
+            _ => None,
+        }
+    }
+
+    fn expr_root(scope: ScopeId, e: &Expr) -> Option<(ElemLoc, usize)> {
+        match &e.kind {
+            ExprKind::Global(g) => Some((ElemLoc::Global(*g), 0)),
+            ExprKind::Local(s) => Some((ElemLoc::Local(scope, *s), 0)),
+            ExprKind::Field(base, f) => match base.ty {
+                Ty::Struct(id) => Some((ElemLoc::Field(id, *f), 0)),
+                _ => None,
+            },
+            ExprKind::Call(fid, _) => Some((ElemLoc::FnRet(*fid), 0)),
+            ExprKind::Index(base, _) => {
+                let (loc, d) = expr_root(scope, base)?;
+                Some((loc, d + 1))
+            }
+            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList | Builtin::Copy, args) => {
+                args.first().and_then(|a| expr_root(scope, a))
+            }
+            ExprKind::Do(blk) => match blk.stmts.last() {
+                Some(Stmt::Give(inner)) => expr_root(scope, inner),
                 _ => None,
             },
             _ => None,
         }
     }
 
-    fn expr_loc(scope: ScopeId, e: &Expr) -> Option<ElemLoc> {
-        match &e.kind {
-            ExprKind::Global(g) => Some(ElemLoc::Global(*g)),
-            ExprKind::Local(s) => Some(ElemLoc::Local(scope, *s)),
-            ExprKind::Field(base, f) => match base.ty {
-                Ty::Struct(id) => Some(ElemLoc::Field(id, *f)),
-                _ => None,
-            },
-            ExprKind::Call(fid, _) => Some(ElemLoc::FnRet(*fid)),
-            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList | Builtin::Copy, args) => {
-                args.first().and_then(|a| expr_loc(scope, a))
+    // Seed `for row in nested_arr` loop variables from their sequence's inner layout.
+    let mut for_links: Vec<(ElemLoc, usize, ElemLoc)> = Vec::new();
+    let collect_fors = |scope: ScopeId, body: &cpl_ir::Block, links: &mut Vec<(ElemLoc, usize, ElemLoc)>| {
+        crate::walk::deep_stmts(body, &mut |stmt| {
+            if let Stmt::For(_, slot, Iter::Seq(e, _), _) = stmt {
+                if is_narrowable_seq(&e.ty) {
+                    if let Some((src_loc, depth)) = expr_root(scope, e) {
+                        links.push((src_loc, depth + 1, ElemLoc::Local(scope, *slot)));
+                    }
+                }
             }
-            ExprKind::Do(blk) => match blk.stmts.last() {
-                Some(Stmt::Give(inner)) => expr_loc(scope, inner),
-                _ => None,
-            },
-            _ => None,
+        });
+    };
+    collect_fors(ScopeId::Main, &program.setup, &mut for_links);
+    collect_fors(ScopeId::Main, &program.main, &mut for_links);
+    for (fid, f) in program.fns.iter().enumerate() {
+        collect_fors(ScopeId::Fn(fid), &f.body, &mut for_links);
+    }
+    for (cid, c) in program.closures.iter().enumerate() {
+        collect_fors(ScopeId::Closure(cid), &c.body, &mut for_links);
+    }
+    for &(src_loc, depth, dst_loc) in &for_links {
+        if let Some(inner) = peel_layout(narrow.get(&src_loc), depth).cloned() {
+            narrow.entry(dst_loc).or_insert(inner);
         }
     }
 
@@ -583,7 +651,7 @@ pub(crate) fn narrow_elems(
         }
     }
 
-    fn widen_loc(loc: ElemLoc, narrow: &mut BTreeMap<ElemLoc, IntWidth>, changed: &mut bool) {
+    fn widen_loc(loc: ElemLoc, narrow: &mut BTreeMap<ElemLoc, NarrowLayout>, changed: &mut bool) {
         if narrow.remove(&loc).is_some() {
             *changed = true;
         }
@@ -592,26 +660,43 @@ pub(crate) fn narrow_elems(
     fn widen_expr(
         scope: ScopeId,
         e: &Expr,
-        narrow: &mut BTreeMap<ElemLoc, IntWidth>,
+        narrow: &mut BTreeMap<ElemLoc, NarrowLayout>,
         changed: &mut bool,
     ) {
-        if let Some(loc) = expr_loc(scope, e) {
+        if let Some((loc, _)) = expr_root(scope, e) {
             widen_loc(loc, narrow, changed);
         }
     }
 
-    fn check_flow(
+    fn check_flow_at(
         scope: ScopeId,
         src: &Expr,
         dst: ElemLoc,
-        narrow: &mut BTreeMap<ElemLoc, IntWidth>,
+        dst_depth: usize,
+        narrow: &mut BTreeMap<ElemLoc, NarrowLayout>,
         changed: &mut bool,
     ) {
         if is_fresh_adaptable(src) {
+            if let ExprKind::Fill(_, Some(inner)) = &src.kind {
+                if is_narrowable_seq(&inner.ty) {
+                    check_flow_at(scope, inner, dst, dst_depth + 1, narrow, changed);
+                }
+            }
+            if let ExprKind::Tuple(items) = &src.kind {
+                if matches!(src.ty, Ty::List(_)) {
+                    for item in items {
+                        if is_narrowable_seq(&item.ty) {
+                            check_flow_at(scope, item, dst, dst_depth + 1, narrow, changed);
+                        }
+                    }
+                }
+            }
             return;
         }
-        if let Some(src_loc) = expr_loc(scope, src) {
-            if narrow.get(&src_loc) != narrow.get(&dst) {
+        if let Some((src_loc, src_depth)) = expr_root(scope, src) {
+            let src_l = peel_layout(narrow.get(&src_loc), src_depth);
+            let dst_l = peel_layout(narrow.get(&dst), dst_depth);
+            if src_l != dst_l {
                 widen_loc(src_loc, narrow, changed);
                 widen_loc(dst, narrow, changed);
             }
@@ -620,16 +705,27 @@ pub(crate) fn narrow_elems(
         }
     }
 
+    fn check_flow(
+        scope: ScopeId,
+        src: &Expr,
+        dst: ElemLoc,
+        narrow: &mut BTreeMap<ElemLoc, NarrowLayout>,
+        changed: &mut bool,
+    ) {
+        check_flow_at(scope, src, dst, 0, narrow, changed);
+    }
+
     fn check_expr(
         program: &Program,
         scope: ScopeId,
         e: &Expr,
-        narrow: &mut BTreeMap<ElemLoc, IntWidth>,
+        narrow: &mut BTreeMap<ElemLoc, NarrowLayout>,
         changed: &mut bool,
     ) {
         match &e.kind {
-            ExprKind::Index(base, indices) if indices.len() == 1 && is_1d_int_seq(&base.ty) => {
-                // Element read on a narrowed 1D sequence is safe (widened to `ll` on read).
+            ExprKind::Index(base, indices) if is_narrowable_seq(&base.ty) => {
+                // Element read on a narrowed sequence is safe (leaf Int/Tuple widens on read;
+                // nested sequence stays narrow only if its consumer is also compatible).
                 check_nested_base(program, scope, base, narrow, changed);
                 for idx in indices {
                     check_val(program, scope, idx, narrow, changed);
@@ -637,7 +733,7 @@ pub(crate) fn narrow_elems(
             }
             ExprKind::Builtin(Builtin::Len, args) => {
                 for a in args {
-                    if is_1d_int_seq(&a.ty) {
+                    if is_narrowable_seq(&a.ty) {
                         check_nested_base(program, scope, a, narrow, changed);
                     } else {
                         check_val(program, scope, a, narrow, changed);
@@ -676,22 +772,40 @@ pub(crate) fn narrow_elems(
                         | Mutation::Swap
                         | Mutation::Remove
                 );
-                if safe_mut && is_1d_int_seq(&place.ty) {
+                if safe_mut && is_narrowable_seq(&place.ty) {
+                    if matches!(m, Mutation::Pop) {
+                        if let Some((loc, depth)) = place_root(scope, place) {
+                            if matches!(peel_layout(narrow.get(&loc), depth), Some(NarrowLayout::Seq(_))) {
+                                widen_loc(loc, narrow, changed);
+                            }
+                        }
+                    }
                     check_place_nested(program, scope, place, narrow, changed);
                     for a in args {
-                        check_val(program, scope, a, narrow, changed);
+                        if matches!(m, Mutation::Push | Mutation::Fill | Mutation::Resize)
+                            && is_narrowable_seq(&a.ty)
+                        {
+                            if let Some((loc, depth)) = place_root(scope, place) {
+                                check_flow_at(scope, a, loc, depth + 1, narrow, changed);
+                                check_nested_base(program, scope, a, narrow, changed);
+                            } else {
+                                check_val(program, scope, a, narrow, changed);
+                            }
+                        } else {
+                            check_val(program, scope, a, narrow, changed);
+                        }
                     }
-                } else if matches!(m, Mutation::Extend) && is_1d_int_seq(&place.ty) && args.len() == 1 {
+                } else if matches!(m, Mutation::Extend) && is_narrowable_seq(&place.ty) && args.len() == 1 {
                     check_place_nested(program, scope, place, narrow, changed);
-                    if let Some(dst) = place_loc(scope, place) {
-                        check_flow(scope, &args[0], dst, narrow, changed);
+                    if let Some((dst, depth)) = place_root(scope, place) {
+                        check_flow_at(scope, &args[0], dst, depth, narrow, changed);
                         check_nested_base(program, scope, &args[0], narrow, changed);
                     } else {
                         check_val(program, scope, &args[0], narrow, changed);
                     }
                 } else {
-                    if is_1d_int_seq(&place.ty) {
-                        if let Some(loc) = place_loc(scope, place) {
+                    if is_narrowable_seq(&place.ty) {
+                        if let Some((loc, _)) = place_root(scope, place) {
                             widen_loc(loc, narrow, changed);
                         }
                     }
@@ -702,11 +816,11 @@ pub(crate) fn narrow_elems(
                 }
             }
             ExprKind::Sort(place, by, _) => {
-                if matches!(by, cpl_ir::SortBy::Natural) && is_1d_int_seq(&place.ty) {
+                if matches!(by, cpl_ir::SortBy::Natural) && is_narrowable_seq(&place.ty) {
                     check_place_nested(program, scope, place, narrow, changed);
                 } else {
-                    if is_1d_int_seq(&place.ty) {
-                        if let Some(loc) = place_loc(scope, place) {
+                    if is_narrowable_seq(&place.ty) {
+                        if let Some((loc, _)) = place_root(scope, place) {
                             widen_loc(loc, narrow, changed);
                         }
                     }
@@ -723,7 +837,7 @@ pub(crate) fn narrow_elems(
             ExprKind::Tuple(values) => {
                 if let Ty::Struct(sid) = e.ty {
                     for (idx, val) in values.iter().enumerate() {
-                        if is_1d_int_seq(&val.ty) {
+                        if is_narrowable_seq(&val.ty) {
                             check_flow(scope, val, ElemLoc::Field(sid, idx), narrow, changed);
                             check_nested_base(program, scope, val, narrow, changed);
                         } else {
@@ -743,7 +857,7 @@ pub(crate) fn narrow_elems(
                     let p_loc = ElemLoc::Local(ScopeId::Fn(*fid), i);
                     match arg {
                         Arg::Value(v) => {
-                            if p_ty.is_some_and(is_1d_int_seq) {
+                            if p_ty.is_some_and(is_narrowable_seq) {
                                 check_flow(scope, v, p_loc, narrow, changed);
                                 check_nested_base(program, scope, v, narrow, changed);
                             } else {
@@ -751,9 +865,9 @@ pub(crate) fn narrow_elems(
                             }
                         }
                         Arg::Mut(p) => {
-                            if p_ty.is_some_and(is_1d_int_seq) {
-                                if let Some(src_loc) = place_loc(scope, p) {
-                                    if narrow.get(&src_loc) != narrow.get(&p_loc) {
+                            if p_ty.is_some_and(is_narrowable_seq) {
+                                if let Some((src_loc, src_depth)) = place_root(scope, p) {
+                                    if peel_layout(narrow.get(&src_loc), src_depth) != narrow.get(&p_loc) {
                                         widen_loc(src_loc, narrow, changed);
                                         widen_loc(p_loc, narrow, changed);
                                     }
@@ -762,10 +876,8 @@ pub(crate) fn narrow_elems(
                                 }
                                 check_place_nested(program, scope, p, narrow, changed);
                             } else {
-                                if is_1d_int_seq(&p.ty) {
-                                    if let Some(loc) = place_loc(scope, p) {
-                                        widen_loc(loc, narrow, changed);
-                                    }
+                                if let Some(loc) = place_any_seq_root(scope, p) {
+                                    widen_loc(loc, narrow, changed);
                                 }
                                 check_place_nested(program, scope, p, narrow, changed);
                             }
@@ -779,10 +891,8 @@ pub(crate) fn narrow_elems(
                     match arg {
                         Arg::Value(v) => check_val(program, scope, v, narrow, changed),
                         Arg::Mut(p) => {
-                            if is_1d_int_seq(&p.ty) {
-                                if let Some(loc) = place_loc(scope, p) {
-                                    widen_loc(loc, narrow, changed);
-                                }
+                            if let Some(loc) = place_any_seq_root(scope, p) {
+                                widen_loc(loc, narrow, changed);
                             }
                             check_place_nested(program, scope, p, narrow, changed);
                         }
@@ -849,10 +959,10 @@ pub(crate) fn narrow_elems(
         program: &Program,
         scope: ScopeId,
         e: &Expr,
-        narrow: &mut BTreeMap<ElemLoc, IntWidth>,
+        narrow: &mut BTreeMap<ElemLoc, NarrowLayout>,
         changed: &mut bool,
     ) {
-        if is_1d_int_seq(&e.ty) {
+        if is_narrowable_seq(&e.ty) {
             widen_expr(scope, e, narrow, changed);
         }
         check_expr(program, scope, e, narrow, changed);
@@ -862,12 +972,41 @@ pub(crate) fn narrow_elems(
         program: &Program,
         scope: ScopeId,
         e: &Expr,
-        narrow: &mut BTreeMap<ElemLoc, IntWidth>,
+        narrow: &mut BTreeMap<ElemLoc, NarrowLayout>,
         changed: &mut bool,
     ) {
         match &e.kind {
             ExprKind::Global(_) | ExprKind::Local(_) => {}
             ExprKind::Field(base, _) => check_val(program, scope, base, narrow, changed),
+            ExprKind::Index(base, indices) if is_narrowable_seq(&base.ty) => {
+                check_nested_base(program, scope, base, narrow, changed);
+                for idx in indices {
+                    check_val(program, scope, idx, narrow, changed);
+                }
+            }
+            ExprKind::Fill(dims, val) => {
+                for d in dims {
+                    if let cpl_ir::DimSpec::Int(n) | cpl_ir::DimSpec::IntFrom(_, n) = d {
+                        check_val(program, scope, n, narrow, changed);
+                    }
+                }
+                if let Some(v) = val {
+                    if is_narrowable_seq(&v.ty) {
+                        check_nested_base(program, scope, v, narrow, changed);
+                    } else {
+                        check_val(program, scope, v, narrow, changed);
+                    }
+                }
+            }
+            ExprKind::Tuple(items) if matches!(e.ty, Ty::List(_)) => {
+                for item in items {
+                    if is_narrowable_seq(&item.ty) {
+                        check_nested_base(program, scope, item, narrow, changed);
+                    } else {
+                        check_val(program, scope, item, narrow, changed);
+                    }
+                }
+            }
             ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList | Builtin::Copy, args) => {
                 if let Some((first, rest)) = args.split_first() {
                     check_nested_base(program, scope, first, narrow, changed);
@@ -887,7 +1026,7 @@ pub(crate) fn narrow_elems(
         program: &Program,
         scope: ScopeId,
         p: &Place,
-        narrow: &mut BTreeMap<ElemLoc, IntWidth>,
+        narrow: &mut BTreeMap<ElemLoc, NarrowLayout>,
         changed: &mut bool,
     ) {
         match &p.kind {
@@ -895,16 +1034,7 @@ pub(crate) fn narrow_elems(
                 check_place_nested(program, scope, base, narrow, changed)
             }
             PlaceKind::Index(base, indices) => {
-                if indices.len() == 1 && is_1d_int_seq(&base.ty) {
-                    check_place_nested(program, scope, base, narrow, changed);
-                } else {
-                    if is_1d_int_seq(&base.ty) {
-                        if let Some(loc) = place_loc(scope, base) {
-                            widen_loc(loc, narrow, changed);
-                        }
-                    }
-                    check_place_nested(program, scope, base, narrow, changed);
-                }
+                check_place_nested(program, scope, base, narrow, changed);
                 for idx in indices {
                     check_val(program, scope, idx, narrow, changed);
                 }
@@ -917,7 +1047,7 @@ pub(crate) fn narrow_elems(
         program: &Program,
         scope: ScopeId,
         blk: &cpl_ir::Block,
-        narrow: &mut BTreeMap<ElemLoc, IntWidth>,
+        narrow: &mut BTreeMap<ElemLoc, NarrowLayout>,
         changed: &mut bool,
         allow_narrow_give: bool,
     ) {
@@ -926,7 +1056,7 @@ pub(crate) fn narrow_elems(
             let is_last = idx + 1 == len;
             match stmt {
                 Stmt::Let(slot, Some(val)) => {
-                    if is_1d_int_seq(&val.ty) {
+                    if is_narrowable_seq(&val.ty) {
                         check_flow(scope, val, ElemLoc::Local(scope, *slot), narrow, changed);
                         check_nested_base(program, scope, val, narrow, changed);
                     } else {
@@ -935,15 +1065,15 @@ pub(crate) fn narrow_elems(
                 }
                 Stmt::Let(_, None) => {}
                 Stmt::Assign(place, op, val) => {
-                    if is_1d_int_seq(&place.ty) {
+                    if is_narrowable_seq(&place.ty) {
                         if *op != cpl_ir::AssignOp::Set {
-                            if let Some(loc) = place_loc(scope, place) {
+                            if let Some((loc, _)) = place_root(scope, place) {
                                 widen_loc(loc, narrow, changed);
                             }
                             check_place_nested(program, scope, place, narrow, changed);
                             check_val(program, scope, val, narrow, changed);
-                        } else if let Some(dst) = place_loc(scope, place) {
-                            check_flow(scope, val, dst, narrow, changed);
+                        } else if let Some((dst, depth)) = place_root(scope, place) {
+                            check_flow_at(scope, val, dst, depth, narrow, changed);
                             check_place_nested(program, scope, place, narrow, changed);
                             check_nested_base(program, scope, val, narrow, changed);
                         } else {
@@ -956,7 +1086,7 @@ pub(crate) fn narrow_elems(
                     }
                 }
                 Stmt::Return(Some(val)) => {
-                    if is_1d_int_seq(&val.ty) {
+                    if is_narrowable_seq(&val.ty) {
                         if let ScopeId::Fn(fid) = scope {
                             check_flow(scope, val, ElemLoc::FnRet(fid), narrow, changed);
                             check_nested_base(program, scope, val, narrow, changed);
@@ -968,7 +1098,7 @@ pub(crate) fn narrow_elems(
                     }
                 }
                 Stmt::Give(val) => {
-                    if allow_narrow_give && is_last && is_1d_int_seq(&val.ty) {
+                    if allow_narrow_give && is_last && is_narrowable_seq(&val.ty) {
                         check_nested_base(program, scope, val, narrow, changed);
                     } else {
                         check_val(program, scope, val, narrow, changed);
@@ -990,9 +1120,19 @@ pub(crate) fn narrow_elems(
                     check_val(program, scope, cond, narrow, changed);
                     check_block(program, scope, body, narrow, changed, false);
                 }
-                Stmt::For(_, _, iter, body) => {
+                Stmt::For(_, slot, iter, body) => {
                     match iter {
-                        Iter::Seq(e, _) if is_1d_int_seq(&e.ty) => {
+                        Iter::Seq(e, _) if is_narrowable_seq(&e.ty) => {
+                            if let Some((src_loc, depth)) = expr_root(scope, e) {
+                                let inner = peel_layout(narrow.get(&src_loc), depth + 1);
+                                let dst_loc = ElemLoc::Local(scope, *slot);
+                                if (inner.is_some() || narrow.contains_key(&dst_loc))
+                                    && inner != narrow.get(&dst_loc)
+                                {
+                                    widen_loc(src_loc, narrow, changed);
+                                    widen_loc(dst_loc, narrow, changed);
+                                }
+                            }
                             check_nested_base(program, scope, e, narrow, changed);
                         }
                         Iter::Seq(e, _)
@@ -1051,7 +1191,7 @@ pub(crate) fn narrow_elems(
 #[inline(never)]
 pub(crate) fn fixed_arrays(
     program: &Program,
-    narrow_elems: &BTreeMap<cpl_ir::ElemLoc, cpl_ir::IntWidth>,
+    narrow_elems: &BTreeMap<cpl_ir::ElemLoc, cpl_ir::NarrowLayout>,
 ) -> Vec<(cpl_ir::ElemLoc, u8)> {
     use cpl_ir::{Builtin, DimSpec, ElemLoc, Iter, Mutation, ScopeId};
 

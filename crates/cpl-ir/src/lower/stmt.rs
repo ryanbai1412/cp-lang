@@ -358,7 +358,7 @@ impl<'a> Lowerer<'a> {
                 if let Some(value) = val {
                     let inferred_rinfo = if ty.is_none() {
                         self.expr_range(&value)
-                            .filter(|r| r.narrow_elem_width().is_some())
+                            .filter(|r| r.narrow_elem_layout(&value.ty).is_some())
                     } else {
                         None
                     };

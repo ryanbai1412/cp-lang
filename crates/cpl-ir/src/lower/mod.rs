@@ -330,9 +330,9 @@ fn finish(self, analysis: &Analysis, whole: bool) -> Result<Program, Vec<Diagnos
     lw.warnings.sort_by_key(|d| (d.span.start, d.span.end));
     lw.warnings.dedup();
     for (&gid, info) in &lw.global_ranges {
-        if lw.globals.get(gid).is_some_and(|g| is_narrowable_elem_ty(&g.ty)) {
-            if let Some(w) = info.narrow_elem_width() {
-                lw.narrow_elems.insert(ElemLoc::Global(gid), w);
+        if let Some(g) = lw.globals.get(gid).filter(|g| is_narrowable_elem_ty(&g.ty)) {
+            if let Some(layout) = info.narrow_elem_layout(&g.ty) {
+                lw.narrow_elems.insert(ElemLoc::Global(gid), layout);
             }
         }
     }
@@ -614,8 +614,8 @@ struct Lowerer<'a> {
     /// Declared integer range bounds for globals and struct fields.
     global_ranges: HashMap<GlobalId, RangeInfo>,
     struct_field_ranges: HashMap<(StructId, usize), RangeInfo>,
-    /// Declared 32-bit element widths for 1D ranged-`Int` arrays/lists/views.
-    narrow_elems: std::collections::BTreeMap<ElemLoc, IntWidth>,
+    /// Declared 32-bit element storage layouts for ranged-`Int` arrays/grids/lists/tuples.
+    narrow_elems: std::collections::BTreeMap<ElemLoc, NarrowLayout>,
     const_ints: HashMap<String, i64>,
     /// The `const`s that are a `Bool` known when compiling, for `if const`.
     const_bools: HashMap<String, bool>,
@@ -3432,11 +3432,11 @@ impl<'a> Lowerer<'a> {
         }
         if is_narrowable_elem_ty(&ret) {
             if let Some(ret_ty) = decl.ret.as_ref() {
-                if let Some(w) = self
+                if let Some(layout) = self
                     .range_info_from_ast(ret_ty)
-                    .and_then(|r| r.narrow_elem_width())
+                    .and_then(|r| r.narrow_elem_layout(&ret))
                 {
-                    self.narrow_elems.insert(ElemLoc::FnRet(id), w);
+                    self.narrow_elems.insert(ElemLoc::FnRet(id), layout);
                 }
             }
         }
