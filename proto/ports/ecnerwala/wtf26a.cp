@@ -1,56 +1,51 @@
-// AtCoder WTF 2026 A: build the Kruskal reconstruction tree of edges sorted by
-// decreasing weight, propagate cut costs downward (clamped to max_w without
-// 128-bit overflow), then run a second Kruskal DSU to sum pair contributions.
-const MOD = 998244353
-type Z = Mod<MOD>
+// AtCoder WTF 2026 A.
+//
+// Kruskal over the edges by decreasing weight builds the reconstruction tree:
+// leaves are vertices, edge e becomes node `n + e`, and the two sets it joins
+// hang under it as `Cut`s. A cut keeps its own size and `w` times the other
+// side's size; summed from the root down, `total[v] * size` is v's cost, capped
+// at `max_w` (the heaviest edge times n - 1; compared by division so the
+// product never overflows). A second Kruskal over those costs, again by
+// decreasing weight, adds `cost * leaves(a) * leaves(b)` at each join.
+use std.dsu.{DsuOf}
+
+type Z = Mod<998_244_353>
+
+struct Cut(w: Int, size: Int, parent: Node)
 
 @!multitest
 let n: Int = read()
 domain U = 1..=n
-let raw: [0..n - 1](u: U, v: U, w: Int) = read()
-let edges = raw.sorted(by: e => e.w, desc: true)
+domain Node = 0..2 * n - 1
+let edges = read<[0..n - 1](u: U, v: U, w: Int)>().sorted(by: e => e.w, desc: true)
 let max_w = edges[0].w * (n - 1)
 
-let m = 2 * (n - 1)
-var cut_w: [0..m]Int = 0
-var cut_sz: [0..m]Int = 0
-var cut_ng: [0..m]Int = 0
-
-var dsu1 = Dsu<U>()
-var sz: [U]Int = 1
-var label = [U] u => u.ord
+var cut: [Node]?Cut = none
+var sets = Dsu<U>()
+var top = [U] u => Node(u.ord)
 for (e, edge) in edges.items:
-    let (a, b) = dsu1.merge(edge.u, edge.v)!
-    let (la, lb) = (label[a], label[b])
-    cut_w[la] = edge.w * sz[b]
-    cut_sz[la] = sz[a]
-    cut_ng[la] = n + e
-    cut_w[lb] = edge.w * sz[a]
-    cut_sz[lb] = sz[b]
-    cut_ng[lb] = n + e
-    sz[a] += sz[b]
-    label[a] = n + e
+    let (su, sv) = (sets.size(edge.u), sets.size(edge.v))
+    let (tu, tv) = (top[sets.find(edge.u)], top[sets.find(edge.v)])
+    let joined = Node(n + e)
+    cut[tu] = some(Cut(edge.w * sv, su, joined))
+    cut[tv] = some(Cut(edge.w * su, sv, joined))
+    let (kept, _) = sets.merge(edge.u, edge.v)!
+    top[kept] = joined
 
-for i in (0..m).rev if cut_ng[i] < m:
-    cut_w[i] += cut_w[cut_ng[i]]
+var total: [Node]Int = 0
+for v in Node.rev if let c = cut[v]: total[v] = c.w + total[c.parent]
 
-let cuts = sorted(
-    [
-        (
-            w: if cut_w[i] > max_w / cut_sz[i]: max_w else: cut_w[i] * cut_sz[i],
-            u: i,
-            v: cut_ng[i],
-        ) for i in 0..m
-    ],
-    by: c => c.w,
-    desc: true,
-)
+let joins = [
+    (
+        cost: if total[v] > max_w / c.size: max_w else: total[v] * c.size,
+        v: v,
+        parent: c.parent,
+    ) for v in Node if let c = cut[v]
+].sorted(by: j => j.cost, desc: true)
 
-domain V = 0..(2 * n - 1)
-var dsu = Dsu<V>()
-var freq = [V] v => Int(v.ord < n)
+var leaves = DsuOf<Node, Int>(v => if v.ord < n: 1 else: 0, (a, b) => a + b)
 var ans: Z = 0
-for c in cuts if let (kept, merged) = dsu.merge(V(c.u), V(c.v)):
-    ans += Z(freq[kept]) * freq[merged] * c.w
-    freq[kept] += freq[merged]
+for j in joins:
+    let (a, b) = (leaves.get(j.v), leaves.get(j.parent))
+    if leaves.unite(j.v, j.parent): ans += Z(a) * b * j.cost
 print(ans)

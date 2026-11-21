@@ -1,6 +1,7 @@
 # wtf26a
 
-Score: 2/5
+Score: pending (header derives the cut costs and states the clamp; one `Node` domain with a `?Cut` record per node replaces three parallel arrays and the `< m` sentinel; leaf counts via `DsuOf`; method `sorted` only)
+Dream: pending (new dream)
 
 The header (lines 1-3) states the plan. The Kruskal reconstruction tree is hand-built from three parallel `cut_*` arrays over raw `Int` node ids with `n + e` offsets, and the overflow clamp (line 40) is not derived. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
