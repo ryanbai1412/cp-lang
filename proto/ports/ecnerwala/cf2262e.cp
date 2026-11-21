@@ -6,7 +6,7 @@ use std.ntt.{convolve_mod}
 @!multitest
 let (n, m): (Int, Int) = read()
 type Z = Mod<m>
-let comb = Comb<m>()
+let comb = Comb<Z>()
 
 let symbol = [if i == 0: 0 else: (comb.catalan(i - 1) * comb.catalan(i - 1)).v for i in 0..=n + 1]
 var cur = [if i == 0: 1 % m else: 0 for i in 0..=n + 1]

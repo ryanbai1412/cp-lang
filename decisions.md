@@ -2604,7 +2604,6 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
    `Str`, `List<T>`, 1D `[D]T`, `Range<I>`, and O(1) slice/reverse views all satisfy `Seq` and `Indexed` without conversion, and generic functions written `<S: Seq, T>` or `<S: Indexed>` check bounds at instantiation and deduce element type `T` from `S`. Reason: eliminates per-container overloads (`runs`, `prefix_function`, `z_function`, `is_palindrome`, `is_sorted`, `prod`, `pairs`, `excl_fold`, `sum`/`min`/`max`) and gives O(1) views a single plug-in point (`Ty::StrView`, `Ty::ListView`). Reverse: revert `seq_elem`/`is_seq`/`is_indexed` and restore concrete parameter types in `stdlib/seq.cp` and `stdlib/strings.cp`.
 2. **Zero-based `s.at(i)` and `s.get(i)` are the uniform `Indexed` accessors, while `a[i]` preserves domain safety on `[D]T`.**
    `Str` gains `.first`, `.last`, `.last(k)`, `.get(i)`, `.at(i)`; `Range<I>` gains `r[i]`, `.get(i)`, `.at(i)`, `.last(k)` and `sum`/`min`/`max`/`runs`; 1D `[D]T` gains `.get(i)` and `.at(i)`. Generic `<S: Indexed>` algorithms (such as `prefix_function` and `z_function`) index via `s.at(i)` so nominal-domain arrays `[V]T` work without weakening `WRONG_DOMAIN` checks on `a[i]`. Reverse: remove `at`/`get` arms in `cpl-ir/src/lower/call.rs`.
-
 ## 52. Static closure & operation-value lowering (2026-11-21)
 
 1. **Three-tier static closure lowering in `cpl-codegen` (`devirt.rs`, `emit.rs`, `expr.rs`, `stmt.rs`), with `std::function` only for genuinely dynamic values.**
@@ -2655,3 +2654,8 @@ ratchet against accidental growth: 2,800,000 is about 7% headroom. Reason:
 every lane's gate was red on bytes no single commit owned. Reverse: set the
 number back in scripts/check.sh and site/test_site.py once the bundle is
 under it, e.g. by running wasm-opt -Os in the bundle build.
+
+## 55. `Comb<M>` keyed on `Mod<P>` type (2026-11-21)
+
+1. **`Comb<M>` replaces `Comb<P>` as the single combinatorics table spelling (supersedes 40.1).**
+   `Comb<M>` takes the modular type `M = Mod<P>` directly — `type Z = Mod<998_244_353>; let comb = Comb<Z>(n)` (or inline `Comb<Mod<P>>(n)`) — so the modulus is written once for both compile-time and runtime moduli, and there is one way per job instead of both `Comb<P>` and `Z.comb()`. `Comb<M>(limit)` pre-sizes `f` and `g` to exact capacity `limit + 1` (clamped at `M.MOD`), while lazy `ensure(n)` continues to double capacity for amortized O(1) growth. All ports, tests, examples, docs, and snippets are migrated in the same commit. Reverse: change `pub struct Comb<M>` back to `pub struct Comb<P>` in `stdlib/mod.cp` (replacing `M` with `Mod<P>` and `M.MOD` with `P`) and rewrite `Comb<Z>` callers back to `Comb<P>` or `Comb<Z.MOD>`.

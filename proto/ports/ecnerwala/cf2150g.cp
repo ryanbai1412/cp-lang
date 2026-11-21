@@ -17,7 +17,7 @@ fn push1(s: Prefix) -> Prefix = Prefix(s.z, s.o + 1, s.lnds + 1)
 let (x, y, k): (1..=5000, 1..=5000, 1..=9999) = read()
 let n = x + y
 let a: Str = read()
-let comb = Comb<MOD>(n)
+let comb = Comb<Z>(n)
 
 domain Cnt = 0..=k
 var pref: [Cnt, Cnt]Z = Z.zero

@@ -1,7 +1,7 @@
 // Codeforces 2245 F: 2D interval DP over expanded right-endpoint states,
 // multiplying by inv(right_idx[k] - i) at each split and n! at the end.
 type Z = Mod<998_244_353>
-let comb = Comb<Z.MOD>()
+let comb = Comb<Z>()
 
 @!multitest
 let n: Int = read()

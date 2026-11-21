@@ -183,7 +183,7 @@ print(z, one, Z.P)                  // 4 1 7; numeric type parameter access
 - Binary search returns `?I`; no hit is `none`. Floating ranges take `steps: 80`.
 - Sorted sequence `.first_ge`/`.last_le` return indices; sets return keys; maps return pairs.
 - `Mod<P>` supports `+ - * / **`, `.pow`, `.inv` (or `.inv()`), `.try_inv`; `P` can be constant, runtime-frozen or above 2^31.
-- `Comb<P>()`: `.fact`, `.inv_fact`, `.choose`, `.arrange`; number theory: `gcd`, `lcm`, `ceil_div`, `Sieve`.
+- `Comb<Z>()`: `.fact`, `.inv_fact`, `.choose`, `.arrange`; number theory: `gcd`, `lcm`, `ceil_div`, `Sieve`.
 - Randomness: `rand(lo, hi)`, `shuffle(mut xs)`, seeded `Rng.new(seed).int(lo, hi)` (`use std.rand.{Rng}`); geometry: `Pt`.
 
 ## 10. Graphs and rooted trees

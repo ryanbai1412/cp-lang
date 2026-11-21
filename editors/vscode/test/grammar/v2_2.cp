@@ -8,7 +8,7 @@ type Z = Mod<P>
 //           ^ entity.name.type.cp
 //            ^ punctuation.definition.generic.end.cp
 
-let comb = Comb<P>()
+let comb = Comb<Z>()
 //         ^^^^ support.type.stdlib.cp
 //             ^ punctuation.definition.generic.begin.cp
 //               ^ punctuation.definition.generic.end.cp

@@ -6,9 +6,9 @@ This chapter covers the contest algorithms that show up across almost every Divi
 
 When you need offline dynamic connectivity (divide-and-conquer on time), snapshot and restore with `.mark()` and `.undo_to(snap)` — rollback disables path compression automatically when snapshots are active so every undo is `O(1)`.
 
-## Modular arithmetic (`Mod<P>`) and combinatorics (`Comb<P>`)
+## Modular arithmetic (`Mod<P>`) and combinatorics (`Comb<M>`)
 
-`std.mod.Mod<P>` stores residues in a compact 4-byte `uint32_t` with zero-cost compile-time modulus reduction (`P` can be a `const` like `998_244_353` or a runtime variable for problems that read the modulus from input). Division `a / b` uses the modular inverse automatically, and `Comb<P>(max_n)` precomputes factorials and inverse factorials in `O(n)` for `O(1)` `.choose(n, k)` and `.perm(n, k)`.
+`std.mod.Mod<P>` stores residues in a compact 4-byte `uint32_t` with zero-cost compile-time modulus reduction (`P` can be a `const` like `998_244_353` or a runtime variable for problems that read the modulus from input). Division `a / b` uses the modular inverse automatically, and `Comb<Z>(max_n)` (for `type Z = Mod<P>`) precomputes factorials and inverse factorials in `O(n)` for `O(1)` `.choose(n, k)` and `.perm(n, k)`.
 
 ```example dsu_mod
 ```

@@ -128,10 +128,10 @@
     "body": [
       "const MOD = ${1|998_244_353,1_000_000_007|}",
       "type Z = Mod<MOD>",
-      "let comb = Comb<MOD>()",
+      "let comb = Comb<Z>()",
       "${0}"
     ],
-    "description": "Mod<MOD> type alias and immutable interior-mutable Comb<MOD>()"
+    "description": "Mod<MOD> type alias and immutable interior-mutable Comb<Z>()"
   },
   "Multitest skeleton (@!multitest)": {
     "prefix": ["multitest", "@!multitest", "@multitest"],

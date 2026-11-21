@@ -19,5 +19,5 @@ for (a, b) in [(0, 1), (1, 2), (0, 2)]:
         weight[kept] += weight[merged]
         print(kept == d.find(V(a)), weight[kept])
     else: print("one set")
-let c = Comb<998244353>()
+let c = Comb<Mod<998244353>>()
 print(c.inv(1), c.inv(2), c.inv(n) * Mod<998244353>(n))

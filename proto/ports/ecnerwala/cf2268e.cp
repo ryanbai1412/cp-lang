@@ -4,7 +4,7 @@ use std.ntt.{convolve}
 
 const MOD = 998244353
 type Z = Mod<MOD>
-let comb = Comb<MOD>()
+let comb = Comb<Z>()
 
 @!multitest
 let n: Int = read()

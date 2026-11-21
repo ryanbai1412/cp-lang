@@ -7,7 +7,7 @@ let a: [0..=m]0..=n = read()
 var freq: [0..=n]Int = 0
 for x in a: freq[x] += 1
 
-let comb = Comb<MOD>()
+let comb = Comb<Z>()
 var ways = [comb.choose(n, i) for i in 0..=n]
 var ans: Z = 0
 for k in 0..=n:

@@ -161,31 +161,30 @@ tracking the largest prime-power divisor `low[i]` of each `i`.
 ### 2.2 `std.mod`: modular arithmetic and combinatorics
 
 `Mod<P>` is one type for both compile-time constants (`type Z = Mod<998_244_353>`)
-and runtime moduli (`let P: Int = read(); type Z = Mod<P>`). `Comb<P>` is
-tied directly to `Mod<P>` via `Z.comb(limit)` so the modulus is written once.
+and runtime moduli (`let P: Int = read(); type Z = Mod<P>`). `Comb<M>` is keyed
+on the `Mod` type (`let comb = Comb<Z>(limit)`) so the modulus is written once.
 
 ```cp
-struct Mod<P>(v: Int):
+struct Mod<P>(v: 0..P):
     let MOD = P
     let zero = Mod(0)
     let one = Mod(1 % P)
     fn new(x: Int) -> Mod<P>                        // O(1); Euclidean reduction into 0..P
-    fn comb(limit: Int = 0) -> Comb<P>              // O(limit); avoids repeating P
     fn pow(self, e: Int) -> Mod<P>                  // O(log |e|); negative e uses inv
     fn try_inv(self) -> ?Mod<P>                     // O(log P); none if gcd(v, P) != 1
     @get fn inv(self) -> Mod<P>                     // O(log P); traps if non-invertible
     // impls: Add, Sub, Neg, Mul, Div, Show
 
-struct Comb<P>:
-    fn new(limit: Int = 0) -> Comb<P>               // O(limit) time and memory; exact size
-    fn fact(self, n: Int) -> Mod<P>                 // O(1) amortized; 0 for n >= P
-    fn inv_fact(self, n: Int) -> Mod<P>             // O(1) amortized; 0 <= n < P
-    fn inv(self, i: Int) -> Mod<P>                  // O(1) amortized; 1 <= i < P
-    fn choose(self, n: Int, k: Int) -> Mod<P>       // O(1) for n < P; Lucas O(log_P n) for n >= P
-    fn arrange(self, n: Int, k: Int) -> Mod<P>      // O(1) amortized; 0 outside 0..=n
-    fn multichoose(self, n: Int, k: Int) -> Mod<P>  // O(1) amortized; stars and bars
-    fn multinomial(self, ks: List<Int>) -> Mod<P>   // O(ks.len) amortized; (sum ks)! / prod(k!)
-    fn catalan(self, n: Int) -> Mod<P>              // O(1) amortized
+struct Comb<M>:
+    fn new(limit: Int = 0) -> Comb<M>               // O(limit) time and memory; exact size
+    fn fact(self, n: Int) -> M                      // O(1) amortized; 0 for n >= M.MOD
+    fn inv_fact(self, n: Int) -> M                  // O(1) amortized; 0 <= n < M.MOD
+    fn inv(self, i: Int) -> M                       // O(1) amortized; 1 <= i < M.MOD
+    fn choose(self, n: Int, k: Int) -> M            // O(1) for n < M.MOD; Lucas O(log_P n) for n >= M.MOD
+    fn arrange(self, n: Int, k: Int) -> M           // O(1) amortized; 0 outside 0..=n
+    fn multichoose(self, n: Int, k: Int) -> M       // O(1) amortized; stars and bars
+    fn multinomial(self, ks: List<Int>) -> M        // O(ks.len) amortized; (sum ks)! / prod(k!)
+    fn catalan(self, n: Int) -> M                   // O(1) amortized
 ```
 
 Performance notes from the corpus (`cf2135e2`, `cf2150g`, `cf2066d2`,

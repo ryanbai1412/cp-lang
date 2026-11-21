@@ -2,8 +2,7 @@
 // logarithmic derivatives, x f'(x) / f(x), of series built from Catalan numbers.
 use lib.math.poly.{Z, inv_trunc}
 
-const MOD = 998244353
-let comb = Comb<MOD>()
+let comb = Comb<Z>()
 
 // [x^deg] of x p'(x) / p(x)
 fn log_deriv_at(p: List<Z>, deg: Int) -> Z:

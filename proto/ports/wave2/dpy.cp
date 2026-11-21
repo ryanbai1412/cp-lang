@@ -7,7 +7,7 @@ type Z = Mod<MOD>
 type Cell = (r: Int, c: Int)
 let (h, w, n): (2..=1e5, 2..=1e5, 1..=3000) = read()
 let walls: [0..n]Cell = read()
-let comb = Comb<MOD>()
+let comb = Comb<Z>()
 
 fn paths(a: Cell, b: Cell) -> Z = comb.choose(b.r - a.r + b.c - a.c, b.r - a.r)
 

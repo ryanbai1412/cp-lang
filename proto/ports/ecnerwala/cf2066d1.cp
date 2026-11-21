@@ -4,10 +4,9 @@
 // The generating function is (1 + x)^(c * (n - 1)), so the answer is
 // C(c * (n - 1), m - c).
 const MAX_M = 10_000
-let comb = Comb<1_000_000_007>(MAX_M)
+let comb = Comb<Mod<1_000_000_007>>(MAX_M)
 
-let t: 1..=MAX_M = read()
-for _ in 0..t:
-    let (n, c, m): (1..=100, 1..=100, 1..=MAX_M) = read()
-    let _: [0..m]Int = read()
-    print(comb.choose(c * (n - 1), m - c))
+@!multitest
+let (n, c, m): (1..=100, 1..=100, 1..=MAX_M) = read()
+let _: [0..m]Int = read()
+print(comb.choose(c * (n - 1), m - c))

@@ -3,7 +3,7 @@ const N = 300_000
 const B = 1200
 
 let (a, b, c): (Z, Z, Z) = read()
-let comb = Comb<Z.MOD>()
+let comb = Comb<Z>()
 let inv_c = 1 / c
 
 // coefficients of p^n, from p * f' = n * p' * f: two terms per coefficient

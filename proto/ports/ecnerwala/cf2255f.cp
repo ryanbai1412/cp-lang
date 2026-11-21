@@ -1,8 +1,7 @@
 // Codeforces 2255 F: Vieta product + Catalan composition / negative power via NTT.
 use lib.math.poly.{Z, compose_trunc, convolve, pow_trunc, prod_linear}
 
-const MOD = 998244353
-let comb = Comb<MOD>()
+let comb = Comb<Z>()
 
 @!multitest
 let n: Int = read()

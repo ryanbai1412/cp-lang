@@ -45,7 +45,7 @@ domain V = 1..=n
 let xs = compress(raw_vals)                      // Compressed<Int>
 var st = LazySegTree<V, Int>(AddSum, a)          // stdlib generic types
 type Z = Mod<998_244_353>
-let comb = Comb<998_244_353>()                   // interior-mutable combinatorics
+let comb = Comb<Z>()                             // interior-mutable combinatorics
 
 for d in V:
     invariant d.l <= d.r
@@ -86,7 +86,7 @@ Highlights worth noting:
 - `compress` — coordinate compression with `xs.D`, `xs[r]`, and `xs.at(v)`
 - `segtree` / `segtree-monoid` (`Monoid`) / `lazysegtree` / `lazysegtree-action` (`Action`) / `sparsetable` — domain-indexed range structures with built-in operators/actions and 0.2.2 `Action(id, (new_f, old_f) => ..., (f, val, span) => ..., over: op)`
 - `rooted` / `hld` — `Rooted<V>` with `LazySegTree<t.Pre, ...>` path and subtree queries
-- `dsu` / `touched` / `small-to-large` / `mod` — explicit `dsu.mark()` / `dsu.undo_to(snap)`, 1-byte `[V]Bool` + touched-list reset, `swap` + `.take()` small-to-large merge, and `Mod<MOD>` + immutable `let comb = Comb<MOD>()`
+- `dsu` / `touched` / `small-to-large` / `mod` — explicit `dsu.mark()` / `dsu.undo_to(snap)`, 1-byte `[V]Bool` + touched-list reset, `swap` + `.take()` small-to-large merge, and `Mod<MOD>` + immutable `let comb = Comb<Z>()`
 - `multitest` / `@!multitest` / `@brute` / `grader` / `checker` / `interactor` / `stress` / `atgen` — file-level `@!multitest` divider, standalone `@brute(main)` oracle, stateful IOI `@grader`, `@checker`, explicit `sol: Interactor` `@interactor`, and `read(gen: ...)` + `@brute(main)` stress setups
 
 ## Language server (`cpl lsp`) and inlay hints

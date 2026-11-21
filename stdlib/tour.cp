@@ -141,7 +141,7 @@ fn every_root_at_once():
 fn numbers_modulo_a_prime():
     type M = Mod<998244353>
     assert M(2).pow(10) == M(1024) and M(3) / M(3) == M(1) and M(-1) + M(1) == M(0)
-    let c = Comb<998244353>()
+    let c = Comb<M>()
     assert c.choose(10, 3) == M(120)
     // a mod number is a number: the generic structures take it as they are
     domain I = 0..4

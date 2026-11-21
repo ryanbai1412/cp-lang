@@ -2,7 +2,7 @@
 // then sum C(free, i) * invs[i + extra] over all subsets of free indices.
 const MOD = 1_000_000_007
 type Z = Mod<MOD>
-let comb = Comb<MOD>()
+let comb = Comb<Z>()
 
 @!multitest
 let n: Int = read()

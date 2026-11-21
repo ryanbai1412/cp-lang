@@ -6,7 +6,7 @@
 use lib.math.poly.{Z, convolve, inv_trunc}
 use std.strings.{suffix_array, lcp_array}
 
-let comb = Comb<Z.MOD>()
+let comb = Comb<Z>()
 
 // seg[node] = prod(1 - roots[i] x for i in lo..hi), cut to `keep` terms
 fn product(mut seg: List<List<Z>>, node: Int, lo: Int, hi: Int, roots: List<Z>, keep: Int):

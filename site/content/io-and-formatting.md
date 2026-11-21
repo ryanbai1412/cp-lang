@@ -114,7 +114,7 @@ Single-test and multi-test solutions have the exact same top-level structure —
 
 ```cp CP Lang 0.2.2
 // Runs ONCE before the test loop (great for sieves, factorials, lookup tables):
-let cb = Comb<1_000_000_007>(200_000)
+let cb = Comb<Mod<1_000_000_007>>(200_000)
 
 @!multitest                             // reads t and loops everything below t times
 

@@ -10,7 +10,7 @@ type M = Mod<P>
 let t: 1..=10_000 = read()
 let ns: [0..t](1..=20_000_000) = read()
 let lim = max(n + 1 for n in ns)
-let comb = Comb<P>(lim)
+let comb = Comb<M>(lim)
 
 // Linear multiplicative sieve for odd_div_sum(x) = 2^{v_2(x)} * sigma_1(x / 2^{v_2(x)}).
 let odd_div_sum = sieve_multiplicative(

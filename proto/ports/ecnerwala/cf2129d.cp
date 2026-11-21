@@ -1,6 +1,6 @@
 const VMAX = 10
 type Z = Mod<998_244_353>
-let comb = Comb<Z.MOD>()
+let comb = Comb<Z>()
 
 @!multitest
 let n: Int = read()

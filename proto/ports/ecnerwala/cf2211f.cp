@@ -2,7 +2,7 @@ const MOD = 676767677
 
 @!multitest
 let (n, m): (Int, Int) = read()
-let comb = Comb<MOD>(n + m + 1)
+let comb = Comb<Mod<MOD>>(n + m + 1)
 let ways = a => comb.choose(n - a + m, m - 1)
 var ans = Mod<MOD>(0)
 var (l_big, l_small) = (n, n - 1)

@@ -1,6 +1,6 @@
 const MOD = 998244353
 type Z = Mod<MOD>
-let comb = Comb<MOD>()
+let comb = Comb<Z>()
 
 fn place_ways(bins: Int, balls: Int) -> Z = comb.choose(bins - 1 + balls, balls)
 fn place_weight(bins: Int, balls: Int) -> Z = if balls <= 0: Z(0) else: comb.choose(

@@ -197,7 +197,7 @@ test("the standard library is inside the module: `use std.*` needs no files", ()
   );
   assert.deepEqual([sorted.ok, sorted.stdout, sorted.stderr], [true, "3 2 1\n", ""]);
   const choose = cpl.run(
-    "use std.mod.{Mod, Comb}\nlet c = Comb<1000000007>()\nprint(c.choose(5, 2))\n",
+    "use std.mod.{Mod, Comb}\nlet c = Comb<Mod<1000000007>>()\nprint(c.choose(5, 2))\n",
   );
   assert.deepEqual([choose.ok, choose.stdout], [true, "10\n"]);
   assert.equal(cpl.check("use std.segtree.{SegTree}\nprint(1)\n").ok, true);

@@ -426,33 +426,26 @@ Relies on: `I128` (inside `mul_mod`), the builtin `isqrt`.
 ### 4.4 `std.mod`: modular arithmetic
 
 `Mod<P>` is an integer reduced mod `P`, where `P` is a constant or a
-value read at startup; `Comb<P>` grows factorial tables on demand. The
-0.3 spec's `Mint(mod: p)` and `Z.factorials` are the same ideas; we keep
-the shipped names, which 135 and 37 port files use (decision 26.2).
-`Z.comb(limit)` ties `Comb<P>` to `Mod<P>` so `P` is written once.
+value read at startup; `Comb<M>` is keyed on the `Mod` type (`type Z = Mod<P>;
+let comb = Comb<Z>(limit)`) so the modulus is written once and factorial tables
+grow on demand (decision 52).
 
 ```cp
-struct Mod<P>(v: Int) // O(1), O(log P)
+struct Mod<P>(v: 0..P) // O(1), O(log P)
     fn new(x: Int) -> Mod<P>
     fn pow(self, e: Int) -> Mod<P> // O(log e)
     fn try_inv(self) -> ?Mod<P> // O(log P)
     @get fn inv(self) -> Mod<P>
-struct Comb<P> // O(1)
-    fn new(limit: Int = 0) -> Comb<P>
-    fn fact(self, n: Int) -> Mod<P>
-    fn inv_fact(self, n: Int) -> Mod<P>
-    fn inv(self, i: Int) -> Mod<P> // O(1)
-    fn choose(self, n: Int, k: Int) -> Mod<P>
-    fn arrange(self, n: Int, k: Int) -> Mod<P>
-    fn multichoose(self, n: Int, k: Int) -> Mod<P>
-    fn catalan(self, n: Int) -> Mod<P>
-```
-
-[new] Additions from `design/stdlib/math.md`:
-
-```cp
-fn Mod.comb(limit: Int = 0) -> Comb<P> // O(limit); avoids repeating P
-fn Comb.multinomial(self, ks: List<Int>) -> Mod<P> // O(ks.len)
+struct Comb<M> // O(1)
+    fn new(limit: Int = 0) -> Comb<M>
+    fn fact(self, n: Int) -> M
+    fn inv_fact(self, n: Int) -> M
+    fn inv(self, i: Int) -> M // O(1)
+    fn choose(self, n: Int, k: Int) -> M
+    fn arrange(self, n: Int, k: Int) -> M
+    fn multichoose(self, n: Int, k: Int) -> M
+    fn multinomial(self, ks: List<Int>) -> M // O(ks.len)
+    fn catalan(self, n: Int) -> M
 ```
 
 ### 4.5 `std.ntt` [new]: convolution

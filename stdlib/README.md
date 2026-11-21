@@ -305,14 +305,14 @@ too.
 so the generic structures take it as they are (and `.try_inv() -> ?Mod<P>`
 handles non-invertible residues cleanly). A modulus read from the
 input is the same type: freeze it under a capitalized name
-(`let P: Int = read()`, then `type Z = Mod<P>`). `Comb<P>()` lazily
+(`let P: Int = read()`, then `type Z = Mod<P>`). `Comb<M>()` lazily
 auto-grows factorials on demand with interior mutability, so an immutable
-`let c = Comb<P>()` works across test cases.
+`let c = Comb<M>()` works across test cases.
 
 ```
 type M = Mod<998244353>
 assert M(2).pow(10) == M(1024) and M(3) / M(3) == M(1) and M(-1) + M(1) == M(0)
-let c = Comb<998244353>()
+let c = Comb<M>()
 assert c.choose(10, 3) == M(120)
 
 var f = Fenwick<I, M>()
@@ -461,7 +461,7 @@ is evidence, not a proof.
   `virtual_tree`).
 - `grid.cp`: `Dir4`, `adj4`, `adj8`, `step`, `ray`, `transposed`.
 - `mod.cp`, `math.cp`: modular arithmetic (`try_inv`), interior-mutable
-  auto-growing `Comb<P>()` (including `multinomial`), number theory (`gcd`,
+  auto-growing `Comb<M>()` (including `multinomial`), number theory (`gcd`,
   `ext_gcd`, `ceil_div`, `choose2`, `bit_len`, `Sieve`, `sieve_multiplicative`,
   `factor`, `factor_big`, `divisors`, `divisors_from_factors`, `inv_mod`,
   `crt`, `crt_all`, `mod_log`, `mod_sqrt`, `primitive_root`, `floor_sum`).

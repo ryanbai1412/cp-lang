@@ -1,8 +1,7 @@
 // Codeforces 2255 B: the number of maximal blocks of each digit is fixed, so
 // for each digit distribute its surplus characters over its blocks (stars
 // and bars) and multiply the two counts.
-const MOD = 998244353
-let comb = Comb<MOD>()
+let comb = Comb<Mod<998244353>>()
 
 @!multitest
 let _n: 1..=2e5 = read()

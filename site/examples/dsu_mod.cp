@@ -11,6 +11,6 @@ for _ in 0..m:
     d.unite(u, v)
 
 let c = d.components
-let cb = Comb<P>(n)
+let cb = Comb<Mod<P>>(n)
 var ways: Mod<P> = cb.choose(n, c)
 print(c, ways)

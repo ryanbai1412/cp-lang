@@ -3,7 +3,7 @@
 // sizes. A stack of (rightmost index, size) merges each subtree as it closes.
 const P = 998244353
 type Z = Mod<P>
-let comb = Comb<P>()
+let comb = Comb<Z>()
 
 @!multitest
 let n: 2..=3e5 = read()

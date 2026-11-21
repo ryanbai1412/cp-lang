@@ -69,85 +69,92 @@ impl Div for Mod<P>:
 impl Show for Mod<P>:
     fn show(a) = "{a.v}"
 
-/// Factorials and inverse factorials modulo a prime `P`.
+/// Factorials and inverse factorials for a modular type `M = Mod<P>` (prime `P`).
 /// Uses interior mutability to grow its table lazily on demand: an immutable
-/// `let c = Comb<P>()` (or `Comb<P>(limit)` to pre-size) answers queries in O(1)
+/// `let c = Comb<Z>()` (or `Comb<Z>(limit)` to pre-size) answers queries in O(1)
 /// with amortized O(1) growth per new factorial.
-pub struct Comb<P>:
-    f: List<Mod<P>>
-    g: List<Mod<P>>
+pub struct Comb<M>:
+    f: List<M>
+    g: List<M>
 
-    /// Precompute factorials and inverse factorials modulo `P` up to `limit`. O(limit).
-    pub fn new(limit: Int = 0) -> Comb<P>:
-        let c = Comb([Mod<P>(1)], [Mod<P>(1)])
-        if limit > 0: c.ensure(limit)
+    /// Precompute factorials and inverse factorials up to `limit`. O(limit).
+    pub fn new(limit: Int = 0) -> Comb<M>:
+        let c = Comb([M(1)], [M(1)])
+        if limit > 0: c.grow(limit + 1)
         c
+
+    fn grow(self, want: Int):
+        let p = M.MOD
+        var cap = want
+        if p > 1 and cap > p: cap = p
+        let old = f.len
+        if cap <= old: return
+        while f.len < cap:
+            let i = f.len
+            f.push(f[i - 1] * M(i))
+        let need = cap - old
+        var tail = List.filled(need, M(0))
+        tail[need - 1] = f[cap - 1].inv
+        for i in (0..need - 1).rev: tail[i] = tail[i + 1] * M(old + i + 1)
+        for x in tail: g.push(x)
 
     fn ensure(self, n: Int):
         if n < f.len: return
-        let old = f.len
-        var cap = old
+        var cap = f.len
         while cap <= n: cap *= 2
-        if P > 1 and cap > P: cap = P
-        while f.len < cap:
-            let i = f.len
-            f.push(f[i - 1] * Mod<P>(i))
-        let need = cap - old
-        var tail = List.filled(need, Mod<P>(0))
-        tail[need - 1] = f[cap - 1].inv
-        for i in (0..need - 1).rev: tail[i] = tail[i + 1] * Mod<P>(old + i + 1)
-        for x in tail: g.push(x)
+        self.grow(cap)
 
     /// `n!`
-    pub fn fact(self, n: Int) -> Mod<P>:
+    pub fn fact(self, n: Int) -> M:
         assert n >= 0
-        if n >= P: return Mod<P>(0)
+        if n >= M.MOD: return M(0)
         self.ensure(n)
         f[n]
 
-    /// `1 / n!` (requires `0 <= n < P`).
-    pub fn inv_fact(self, n: Int) -> Mod<P>:
-        assert 0 <= n and n < P
+    /// `1 / n!` (requires `0 <= n < M.MOD`).
+    pub fn inv_fact(self, n: Int) -> M:
+        assert 0 <= n and n < M.MOD
         self.ensure(n)
         g[n]
 
-    /// `1 / i` (requires `1 <= i < P`), from the factorials: `(i - 1)! / i!`. O(1).
-    pub fn inv(self, i: Int) -> Mod<P>:
-        assert 1 <= i and i < P, "`inv` needs 1 <= i < P"
+    /// `1 / i` (requires `1 <= i < M.MOD`), from the factorials: `(i - 1)! / i!`. O(1).
+    pub fn inv(self, i: Int) -> M:
+        assert 1 <= i and i < M.MOD, "`inv` needs 1 <= i < P"
         self.ensure(i)
         f[i - 1] * g[i]
 
     /// The number of `k`-subsets of `n` things; 0 when `k` is outside `0..=n`.
-    /// Uses Lucas's theorem automatically when `n >= P` (for prime `P`).
-    pub fn choose(self, n: Int, k: Int) -> Mod<P>:
-        if k < 0 or k > n: return Mod<P>(0)
-        if n >= P: return self.choose(n / P, k / P) * self.choose(n % P, k % P)
+    /// Uses Lucas's theorem automatically when `n >= M.MOD` (for prime `P`).
+    pub fn choose(self, n: Int, k: Int) -> M:
+        if k < 0 or k > n: return M(0)
+        let p = M.MOD
+        if n >= p: return self.choose(n / p, k / p) * self.choose(n % p, k % p)
         self.ensure(n)
         f[n] * g[k] * g[n - k]
 
     /// The number of ordered selections of `k` out of `n` things.
-    pub fn arrange(self, n: Int, k: Int) -> Mod<P>:
-        if k < 0 or k > n: return Mod<P>(0)
+    pub fn arrange(self, n: Int, k: Int) -> M:
+        if k < 0 or k > n: return M(0)
         self.ensure(n)
         f[n] * g[n - k]
 
     /// The number of ways to put `n` equal balls into `k` boxes (stars and bars).
-    pub fn multichoose(self, n: Int, k: Int) -> Mod<P>:
-        if n == 0: return Mod<P>(1)
-        if k <= 0 or n < 0: return Mod<P>(0)
+    pub fn multichoose(self, n: Int, k: Int) -> M:
+        if n == 0: return M(1)
+        if k <= 0 or n < 0: return M(0)
         self.choose(n + k - 1, n)
 
     /// The `n`-th Catalan number.
-    pub fn catalan(self, n: Int) -> Mod<P> = self.choose(2 * n, n) - self.choose(2 * n, n + 1)
+    pub fn catalan(self, n: Int) -> M = self.choose(2 * n, n) - self.choose(2 * n, n + 1)
 
     /// The multinomial coefficient `(sum ks)! / prod(k!)`; 0 if any `k < 0`. O(ks.len).
-    pub fn multinomial(self, ks: List<Int>) -> Mod<P>:
+    pub fn multinomial(self, ks: List<Int>) -> M:
         var total = 0
         for k in ks:
-            if k < 0: return Mod<P>(0)
+            if k < 0: return M(0)
             total += k
-        if total >= P:
-            var acc = Mod<P>(1)
+        if total >= M.MOD:
+            var acc = M(1)
             var rem = total
             for k in ks:
                 acc = acc * self.choose(rem, k)
@@ -197,8 +204,8 @@ fn mod_values_work_in_generic_structures():
 @test
 fn choose_matches_pascals_triangle():
     type M = Mod<1000000007>
-    // Immutable binding: Comb<P> auto-grows via interior mutability
-    let c = Comb<1000000007>()
+    // Immutable binding: Comb<M> auto-grows via interior mutability
+    let c = Comb<M>()
     var row = [M(1)]
     for n in 0..=30:
         for k in 0..=n: assert c.choose(n, k) == row[k]
@@ -209,11 +216,11 @@ fn choose_matches_pascals_triangle():
     assert c.multichoose(3, 2) == M(4)
     assert [c.catalan(n).v for n in 0..8] == [1, 1, 2, 5, 14, 42, 132, 429]
     // Auto-growth on a small prime clamps before P so (P-1)! stays invertible
-    let small = Comb<11>()
+    let small = Comb<Mod<11>>()
     assert small.choose(10, 4) == Mod<11>(210)
     assert small.fact(10) == Mod<11>(10)
-    // Pre-sizing still works
-    let pre = Comb<1000000007>(40)
+    // Pre-sizing allocates exact capacity `limit + 1`
+    let pre = Comb<M>(40)
     assert pre.choose(40, 20) == c.choose(40, 20)
 
 @test
@@ -231,26 +238,31 @@ fn a_modulus_read_at_run_time():
         type Z = Mod<P>
         assert Z(p) == Z(0) and Z(-1) + Z(1) == Z(0)
         assert Z(5).pow(3) == Z(125 % p) and Z(7).pow(0) == Z(1)
+    let Q = 1_000_000_007
+    type ZQ = Mod<Q>
+    let cq = Comb<ZQ>(10)
+    assert cq.choose(10, 3) == ZQ(120)
     type Z12 = Mod<12>
     assert Z12(7) * Z12(7).inv == Z12(1)
     assert Z12(1).pow(0) == Z12(1)
 
 @test
 fn inv_is_one_over_i():
-    let c = Comb<1000000007>()
-    for i in 1..200: assert c.inv(i) * Mod<1000000007>(i) == Mod<1000000007>(1)
-    assert c.inv(1) == Mod<1000000007>(1)
+    type Z = Mod<1000000007>
+    let c = Comb<Z>()
+    for i in 1..200: assert c.inv(i) * Z(i) == Z(1)
+    assert c.inv(1) == Z(1)
 
 @test
 fn comb_multinomial():
     type Z = Mod<998_244_353>
-    let c = Comb<998_244_353>(20)
+    let c = Comb<Z>(20)
     assert c.choose(10, 3) == Z(120)
     assert c.multinomial([]) == Z(1)
     assert c.multinomial([5]) == Z(1)
     assert c.multinomial([2, 3, 1]) == Z(60)
     assert c.multinomial([2, -1, 3]) == Z(0)
     // Lucas fallback when total >= P
-    let cs = Comb<7>()
+    let cs = Comb<Mod<7>>()
     assert cs.multinomial([3, 3, 3]) == cs.choose(9, 3) * cs.choose(6, 3)
     assert cs.multinomial([5, 5]) == cs.choose(10, 5)

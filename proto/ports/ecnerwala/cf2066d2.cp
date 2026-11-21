@@ -9,7 +9,7 @@ use std.prefix.prefix1
 
 const P = 1_000_000_007
 type M = Mod<P>
-let comb = Comb<P>(100)
+let comb = Comb<M>(100)
 
 let t: 1..=10_000 = read()
 repeat t:

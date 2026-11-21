@@ -3,7 +3,7 @@
 const MOD = 1_000_000_007
 const L = 29
 type Z = Mod<MOD>
-let comb = Comb<MOD>()
+let comb = Comb<Z>()
 
 @!multitest
 let n: Int = read()

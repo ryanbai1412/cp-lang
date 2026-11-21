@@ -19,7 +19,7 @@ for i in Pos where a[i] >= 0: pos[Val(a[i])] = i
 
 let missing = prefix1([Pos] i => Int(a[i] == -1))
 let m = missing.prefix(Pos.last.r)
-let comb = Comb<P>(n)
+let comb = Comb<Z>(n)
 
 // Initial triangle (l <= r) cannot be written as one Cartesian rectangle `add_rect`.
 var freq: [0..=m]Int = 0

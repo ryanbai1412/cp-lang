@@ -1,5 +1,5 @@
 type Z = Mod<1_000_000_007>
-let comb = Comb<Z.MOD>()
+let comb = Comb<Z>()
 
 @!multitest
 let (n, l, q): (Int, Int, Int) = read()

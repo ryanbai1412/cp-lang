@@ -22,6 +22,7 @@ print(s.at(2), s.known.len)
 print(tenth(s), s.known.len)
 print(Squares([]).at(4))
 
-let c = Comb<1000000007>()
+type Z = Mod<1000000007>
+let c = Comb<Z>()
 print(c.choose(10, 3).v, c.choose(30, 15).v, c.fact(5).v, c.choose(3, 5).v)
-print(Comb<1000000007>().choose(4, 2).v)
+print(Comb<Z>().choose(4, 2).v)

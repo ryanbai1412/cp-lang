@@ -2,9 +2,8 @@
 // two series whose coefficients are exponential convolutions of sequence counts.
 use lib.math.poly.{Z, convolve, inv_trunc}
 
-const MOD = 998244353
 let (n, k): (Int, Int) = read()
-let comb = Comb<MOD>()
+let comb = Comb<Z>()
 let h = n / 2
 
 // sequences with `a` strict and `b` weak comparisons

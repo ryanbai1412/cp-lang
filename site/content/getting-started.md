@@ -44,7 +44,7 @@ The `cpl` CLI ships with a built-in Language Server Protocol server (`cpl lsp`) 
 
 ## What works today
 
-- **Available now in `cpl` and the browser WebAssembly playground:** `cpl check`, `cpl run`, `cpl build` (readable C++17 emission), `cpl lsp`, live execution traces (`Trace` button in the playground and [Trace debugger](trace.html)), `@!multitest`, top-level `return`, nominal domains, `.l`/`.r` boundaries, multi-dimensional arrays, enums and `match`, Tropical Optionals (`?T`, `min=`, `max=`, `??`, `??=`), cached `@memo` DP, `lends mut` projections, and standard library modules including `List`, `MinHeap`, `Fenwick`, `SegTree`, `LazySegTree`, `Dsu`, `Mod<P>`, and `Comb<P>`.
+- **Available now in `cpl` and the browser WebAssembly playground:** `cpl check`, `cpl run`, `cpl build` (readable C++17 emission), `cpl lsp`, live execution traces (`Trace` button in the playground and [Trace debugger](trace.html)), `@!multitest`, top-level `return`, nominal domains, `.l`/`.r` boundaries, multi-dimensional arrays, enums and `match`, Tropical Optionals (`?T`, `min=`, `max=`, `??`, `??=`), cached `@memo` DP, `lends mut` projections, and standard library modules including `List`, `MinHeap`, `Fenwick`, `SegTree`, `LazySegTree`, `Dsu`, `Mod<P>`, and `Comb<M>`.
 - **In progress for upcoming CLI releases:** automated `cpl stress` with structure-aware shrinking for `@brute` / `@checker` / `@interactor`, `cpl bench` worst-case judge timing and RSS checks, `cpl new` constraint scaffolding, and `cpl test` / `cpl doc` for local libraries.
 
 Next, work through the [interactive course](course.html), take the [language tour](tour.html), or jump straight to the [C++17 migration guide](cpp-guide.html).

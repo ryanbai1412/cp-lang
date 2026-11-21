@@ -1,5 +1,5 @@
 type Z = Mod<1_000_000_007>
-let comb = Comb<Z.MOD>()
+let comb = Comb<Z>()
 
 fn ways(k: Int, rem: Int, mx: Int) -> Z:
     var res: Z = 0

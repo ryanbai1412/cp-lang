@@ -492,7 +492,7 @@ fn imported_module_symbols_hover_and_jump_to_definition() {
     let file_path = repo_root.join("_lsp_imported_test.cp");
     let uri = format!("file://{}", file_path.display());
     let src =
-        "use std.mod.{Mod, Comb}\nlet c = Comb<1000000007>.new(10)\nprint(c.choose(5, 2).v)\n";
+        "use std.mod.{Mod, Comb}\nlet c = Comb<Mod<1000000007>>.new(10)\nprint(c.choose(5, 2).v)\n";
 
     let mut server = Server::new();
     server.handle(&request(1, "initialize", obj([])));
@@ -554,7 +554,7 @@ fn stdlib_methods_hover_with_their_docs_and_jump_into_the_stdlib() {
         repo_root.join("_lsp_method_doc_test.cp").display()
     );
     let src =
-        "use std.mod.{Mod, Comb}\nlet c = Comb<1000000007>.new(10)\nprint(c.choose(5, 2).v)\n";
+        "use std.mod.{Mod, Comb}\nlet c = Comb<Mod<1000000007>>.new(10)\nprint(c.choose(5, 2).v)\n";
     let mut server = Server::new();
     server.handle(&request(1, "initialize", obj([])));
     server.handle(&notification("initialized", obj([])));
@@ -583,7 +583,7 @@ fn stdlib_methods_hover_with_their_docs_and_jump_into_the_stdlib() {
     assert_eq!(
         text.split_once("```\n\n").unwrap().1,
         "The number of `k`-subsets of `n` things; 0 when `k` is outside `0..=n`.\n\
-         Uses Lucas's theorem automatically when `n >= P` (for prime `P`)."
+         Uses Lucas's theorem automatically when `n >= M.MOD` (for prime `P`)."
     );
     let def = server.handle(&request(3, "textDocument/definition", at(2, 9)));
     assert!(def[0]

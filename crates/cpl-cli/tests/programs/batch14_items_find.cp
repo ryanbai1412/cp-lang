@@ -20,7 +20,7 @@ print(xs.find(x => x > 6), xs.find(x => x > 60), xs.find(8))
 print(a.find(x => x % 2 == 0), a.find(x => x < 0))
 use std.mod
 type Z = Mod<998244353>
-let comb = Comb<Z.MOD>()
+let comb = Comb<Z>()
 let picked: Z = comb.choose(5, 2)
 print(picked)
 var ways: [0..n]List<Z> = [Z(1)]

@@ -3,7 +3,7 @@
 // and M, M - d, M - 2d, ... (the rest).  Try both candidates for d.
 const MOD = 1e9 + 7
 type Z = Mod<MOD>
-let comb = Comb<MOD>()
+let comb = Comb<Z>()
 
 @!multitest
 let n: 4..=2e5 = read()
