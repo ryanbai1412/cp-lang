@@ -15,7 +15,7 @@ let left: [V, V]Bitset<V> = [V, V] (i, j) => Bitset<V>.of(
 )
 let inside = [
     (left[i, j] & left[j, k] & left[k, i]).len
-    for i in V, j in V.after(i), k in V.after(i) if k in left[i, j]
+    for i in V for j in V.after(i) for k in V.after(i) if k in left[i, j]
 ]
 
 print(choose(n, 5) - inside.sum() * (n - 4) / 2 + [choose(c, 2) for c in inside].sum())
