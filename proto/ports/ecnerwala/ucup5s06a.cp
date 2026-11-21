@@ -1,25 +1,22 @@
-// Universal Cup 5 Stage 6 (Hyakumanben) A: the answer is a coefficient of two
-// logarithmic derivatives, x f'(x) / f(x), of series built from Catalan numbers.
+// Universal Cup 5 Stage 6 (Hyakumanben) A.
+//
+// For a block series B(x) with B(0) = 0, cyc(B) = [x^n] x B'(x) / (1 - B(x))
+// = sum over j of n [x^n] B^j / j counts the ways to cut a cycle of n
+// labelled positions into blocks, a block of size i weighted by [x^i] B. With
+// B = sum of Catalan(i - 1) x^i over 1 <= i < k, the editorial's answer is
+// cyc(B + x) - 2 cyc(B). For k = 1, B is empty and the answer is cyc(x) = 1.
 use std.poly.{inv}
 
 type Z = Mod<998_244_353>
 let comb = Comb<Z>()
 
-// [x^deg] of x p'(x) / p(x)
-fn log_deriv_at(p: List<Z>, deg: Int) -> Z:
-    let g = inv(p, deg + 1)
-    sum(Z(i) * p[i] * g[deg - i] for i in 1..=deg)
-
 @!multitest
 let (n, k): (Int, Int) = read()
-if k == 1:
-    print(1)
-    return
 
-// 1 - sum of Catalan(i - 1) x^i for i < k
-var f = List.filled(n + 1, Z(0))
-f[0] = Z(1)
-for i in 1..k: f[i] = -comb.catalan(i - 1)
-let a = log_deriv_at(f, n)
-f[1] -= Z(1)
-print(Z(2) * a - log_deriv_at(f, n))
+fn cyc(b: List<Z>) -> Z:
+    let g = inv([Z(Int(i == 0)) - b[i] for i in 0..=n], n + 1)
+    sum(Z(i) * b[i] * g[n - i] for i in 1..=n)
+
+let b = [if i in 1..k: comb.catalan(i - 1) else: Z(0) for i in 0..=n]
+let b_or_single = [c + Z(Int(i == 1)) for (i, c) in b.items]
+print(cyc(b_or_single) - Z(2) * cyc(b))

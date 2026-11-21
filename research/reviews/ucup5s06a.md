@@ -1,6 +1,8 @@
 # ucup5s06a
 
-Score: 3/5
+Score: pending (header derives `cyc(B)` as a cyclic block count and states the answer `cyc(B + x) - 2 cyc(B)`; second series is its own value, not an in-place `f[1] -= 1`; the `k == 1` exit is gone since it is `cyc(x) = 1`)
+
+Dream: pending (new dream)
 
 Short, and `log_deriv_at` names the editorial's tool, but the second series is made by mutating the first in place and the closing `2a - b` is not derived. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
