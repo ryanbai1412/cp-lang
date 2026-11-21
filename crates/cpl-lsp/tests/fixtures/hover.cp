@@ -12,4 +12,7 @@ let wide = area $0* area * area
 let ys = xs.map(n => n $0* 2)
 let back = (n - 1) $0** 2 - area $0/ 3
 let slot = (area $0% 1000) - n $0% 2
-print(area, wide, ys, back, slot)
+var be$0st = 0
+for v in V:
+    best max= min(n, 50) $0* 2
+print(area, wide, ys, back, slot, be$0st)

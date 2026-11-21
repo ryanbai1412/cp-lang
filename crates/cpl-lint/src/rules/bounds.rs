@@ -7,7 +7,7 @@
 
 use crate::File;
 use cpl_syntax::ast::{BinOp, Expr, ExprKind, PatternKind, StmtKind, Type, TypeKind, UnOp};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// An inclusive range of integers.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -34,6 +34,8 @@ pub(crate) struct Bounds {
     /// The number of values of each domain, at most.
     domains: HashMap<String, u128>,
     aliases: HashMap<String, Type>,
+    /// Fns the program declares, which hide the prelude's `min`, `max`, `abs`.
+    fns: HashSet<String>,
 }
 
 impl Bounds {
@@ -81,6 +83,22 @@ impl Bounds {
                     };
                     if let Some(size) = size {
                         bounds.domains.insert(name.text.clone(), size);
+                    }
+                }
+                StmtKind::Fn(decl) => bounds.declare_fn(&decl.name.text),
+                StmtKind::Use {
+                    path,
+                    names,
+                    glob,
+                    alias,
+                } => {
+                    if *glob {
+                        for name in ["min", "max", "abs"] {
+                            bounds.declare_fn(name);
+                        }
+                    }
+                    for name in path.last().into_iter().chain(names).chain(alias) {
+                        bounds.declare_fn(&name.text);
                     }
                 }
                 StmtKind::TypeAlias { name, generics, ty } if generics.is_empty() => {
@@ -145,65 +163,114 @@ impl Bounds {
                 })
             }
             ExprKind::Binary { op, lhs, rhs, .. } => {
-                let (a, b) = (self.expr(lhs)?, self.expr(rhs)?);
-                match op {
-                    BinOp::Add => Some(Interval {
-                        lo: a.lo.checked_add(b.lo)?,
-                        hi: a.hi.checked_add(b.hi)?,
-                    }),
-                    BinOp::Sub => Some(Interval {
-                        lo: a.lo.checked_sub(b.hi)?,
-                        hi: a.hi.checked_sub(b.lo)?,
-                    }),
-                    BinOp::Mul => {
-                        let corners = [
-                            a.lo.checked_mul(b.lo)?,
-                            a.lo.checked_mul(b.hi)?,
-                            a.hi.checked_mul(b.lo)?,
-                            a.hi.checked_mul(b.hi)?,
-                        ];
-                        Some(Interval {
-                            lo: *corners.iter().min()?,
-                            hi: *corners.iter().max()?,
-                        })
-                    }
-                    BinOp::Div if b.lo > 0 => {
-                        let corners = [
-                            a.lo.checked_div_euclid(b.lo)?,
-                            a.lo.checked_div_euclid(b.hi)?,
-                            a.hi.checked_div_euclid(b.lo)?,
-                            a.hi.checked_div_euclid(b.hi)?,
-                        ];
-                        Some(Interval {
-                            lo: *corners.iter().min()?,
-                            hi: *corners.iter().max()?,
-                        })
-                    }
-                    BinOp::Rem if b.lo > 0 => Some(if a.lo >= 0 && a.hi < b.lo {
-                        a
+                Self::combine(*op, self.expr(lhs)?, self.expr(rhs)?)
+            }
+            ExprKind::Call { callee, args } => {
+                let ExprKind::Name(name) = &callee.kind else {
+                    return None;
+                };
+                if self.fns.contains(name) || args.iter().any(|a| a.name.is_some() || a.mutable) {
+                    return None;
+                }
+                let values = args
+                    .iter()
+                    .map(|a| self.expr(&a.value))
+                    .collect::<Option<Vec<_>>>()?;
+                match (name.as_str(), values.as_slice()) {
+                    ("abs", [x]) => Some(if x.lo >= 0 {
+                        *x
+                    } else if x.hi <= 0 {
+                        Interval {
+                            lo: x.hi.checked_neg()?,
+                            hi: x.lo.checked_neg()?,
+                        }
                     } else {
-                        let hi = b.hi - 1;
                         Interval {
                             lo: 0,
-                            hi: if a.lo >= 0 { hi.min(a.hi) } else { hi },
+                            hi: x.lo.checked_neg()?.max(x.hi),
                         }
                     }),
-                    BinOp::Pow if b.lo == b.hi && b.lo >= 0 => {
-                        let k = u32::try_from(b.lo).ok()?;
-                        let (lo, hi) = (a.lo.checked_pow(k)?, a.hi.checked_pow(k)?);
-                        Some(if k % 2 == 1 || a.lo >= 0 {
-                            Interval { lo, hi }
-                        } else if a.hi <= 0 {
-                            Interval { lo: hi, hi: lo }
-                        } else {
-                            Interval { lo: 0, hi: lo.max(hi) }
-                        })
+                    ("max", [first, rest @ ..]) if !rest.is_empty() => {
+                        Some(rest.iter().fold(*first, |a, b| Interval {
+                            lo: a.lo.max(b.lo),
+                            hi: a.hi.max(b.hi),
+                        }))
+                    }
+                    ("min", [first, rest @ ..]) if !rest.is_empty() => {
+                        Some(rest.iter().fold(*first, |a, b| Interval {
+                            lo: a.lo.min(b.lo),
+                            hi: a.hi.min(b.hi),
+                        }))
                     }
                     _ => None,
                 }
             }
             _ => None,
         }
+    }
+
+    /// The values `a op b` can take.
+    pub(crate) fn combine(op: BinOp, a: Interval, b: Interval) -> Option<Interval> {
+        match op {
+            BinOp::Add => Some(Interval {
+                lo: a.lo.checked_add(b.lo)?,
+                hi: a.hi.checked_add(b.hi)?,
+            }),
+            BinOp::Sub => Some(Interval {
+                lo: a.lo.checked_sub(b.hi)?,
+                hi: a.hi.checked_sub(b.lo)?,
+            }),
+            BinOp::Mul => {
+                let corners = [
+                    a.lo.checked_mul(b.lo)?,
+                    a.lo.checked_mul(b.hi)?,
+                    a.hi.checked_mul(b.lo)?,
+                    a.hi.checked_mul(b.hi)?,
+                ];
+                Some(Interval {
+                    lo: *corners.iter().min()?,
+                    hi: *corners.iter().max()?,
+                })
+            }
+            BinOp::Div if b.lo > 0 => {
+                let corners = [
+                    a.lo.checked_div_euclid(b.lo)?,
+                    a.lo.checked_div_euclid(b.hi)?,
+                    a.hi.checked_div_euclid(b.lo)?,
+                    a.hi.checked_div_euclid(b.hi)?,
+                ];
+                Some(Interval {
+                    lo: *corners.iter().min()?,
+                    hi: *corners.iter().max()?,
+                })
+            }
+            BinOp::Rem if b.lo > 0 => Some(if a.lo >= 0 && a.hi < b.lo {
+                a
+            } else {
+                let hi = b.hi - 1;
+                Interval {
+                    lo: 0,
+                    hi: if a.lo >= 0 { hi.min(a.hi) } else { hi },
+                }
+            }),
+            BinOp::Pow if b.lo == b.hi && b.lo >= 0 => {
+                let k = u32::try_from(b.lo).ok()?;
+                let (lo, hi) = (a.lo.checked_pow(k)?, a.hi.checked_pow(k)?);
+                Some(if k % 2 == 1 || a.lo >= 0 {
+                    Interval { lo, hi }
+                } else if a.hi <= 0 {
+                    Interval { lo: hi, hi: lo }
+                } else {
+                    Interval { lo: 0, hi: lo.max(hi) }
+                })
+            }
+            _ => None,
+        }
+    }
+
+    /// From here on `name` is a fn of the program's own, not the prelude's.
+    pub(crate) fn declare_fn(&mut self, name: &str) {
+        self.fns.insert(name.to_string());
     }
 
     /// How many values a type has, at most.

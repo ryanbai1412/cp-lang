@@ -1675,3 +1675,33 @@ fn division_remainder_and_power_follow_the_interpreter() {
     assert_eq!(range("c"), Some((-343, 729)));
     assert_eq!(range("z"), None, "the divisor can be 0");
 }
+
+fn range_of(src: &str, decl: &str) -> Option<(i128, i128)> {
+    let at = src.find(decl).unwrap() as u32 + decl.find(' ').unwrap() as u32 + 1;
+    crate::proven_ranges(src)
+        .into_iter()
+        .find(|r| r.0 == at)
+        .map(|r| (r.1, r.2))
+}
+
+#[test]
+fn a_var_is_in_the_hull_every_assignment_keeps() {
+    let head = "let n: 1..=100 = read()\nlet a: 0..=9 = read()\n";
+    let cases = [
+        ("var best = 0\nfor i in 0..n:\n    best max= a * 2\nprint(best)\n", Some((0, 18))),
+        ("var s = 5\ns = min(s, a)\ns = max(s, abs(a - 20))\nprint(s)\n", Some((0, 20))),
+        ("var p = n\nif a > 3:\n    p = p % 7\nprint(p)\n", Some((0, 100))),
+        ("var c = 0\nwhile c < n:\n    c += 1\nprint(c)\n", None),
+        ("var t = 1\nfor i in 0..n:\n    t = t * 2\nprint(t)\n", None),
+        ("var x = 0\nfor i in 0..n:\n    x = i\nprint(x)\n", None),
+        ("var x = 0\nfn bump():\n    x = 50\nbump()\nprint(x)\n", Some((0, 50))),
+        ("var x = 0\nvar y = 1\n(x, y) = (y, x + y)\nprint(x)\n", None),
+        ("var x = 0\nlet x = 5\nprint(x)\n", None),
+    ];
+    for (body, want) in cases {
+        let decl = &body[..body.find(" =").unwrap()];
+        assert_eq!(range_of(&format!("{head}{body}"), decl), want, "{body}");
+    }
+    let shadowed = format!("{head}fn max(a: Int, b: Int) -> Int = a + b\nlet m = max(a, 3)\nprint(m)\n");
+    assert_eq!(range_of(&shadowed, "let m"), None, "a user fn named max");
+}

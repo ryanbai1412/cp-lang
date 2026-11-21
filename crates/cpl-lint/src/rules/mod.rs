@@ -50,10 +50,13 @@ struct Proven {
 fn proven(file: &File) -> Proven {
     let bounds = bounds::Bounds::of(file);
     let mut out = Proven::default();
+    // A fn declared above a top-level `var` can assign it too.
+    let top: Vec<&cpl_syntax::ast::Stmt> = file.top_level().map(|(_, s)| s).collect();
     for (base, stmt) in file.top_level() {
         ranges_in(
             base,
             std::slice::from_ref(stmt),
+            &top,
             &mut bounds.clone(),
             &mut out,
         );
@@ -116,14 +119,17 @@ fn arith(base: u32, expr: &cpl_syntax::ast::Expr, bounds: &bounds::Bounds, out: 
     }
 }
 
+/// `stmts` is a block, or one top-level statement whose `var`s are in
+/// scope across all of `top`.
 fn ranges_in(
     base: u32,
     stmts: &[cpl_syntax::ast::Stmt],
+    top: &[&cpl_syntax::ast::Stmt],
     bounds: &mut bounds::Bounds,
     proven: &mut Proven,
 ) {
     use cpl_syntax::ast::{Cond, ExprKind, FnBody, PatternKind, StmtKind};
-    for stmt in stmts {
+    for (i, stmt) in stmts.iter().enumerate() {
         match &stmt.kind {
             StmtKind::Let { init: Some(e), .. }
             | StmtKind::Return(Some(e))
@@ -161,9 +167,23 @@ fn ranges_in(
                     (PatternKind::Name(_), None) if !mutable => {
                         init.as_ref().and_then(|e| bounds.expr(e))
                     }
+                    (PatternKind::Name(name), None) => {
+                        let scope: Vec<&cpl_syntax::ast::Stmt> = if top.is_empty() {
+                            stmts[i + 1..].iter().collect()
+                        } else {
+                            let at = top.iter().position(|s| std::ptr::eq(*s, stmt)).unwrap_or(0);
+                            let earlier = top[..at].iter().filter(|s| {
+                                matches!(s.kind, StmtKind::Fn(_) | StmtKind::Struct(_) | StmtKind::Impl { .. })
+                            });
+                            earlier.chain(&top[at + 1..]).copied().collect()
+                        };
+                        init.as_ref()
+                            .and_then(|e| bounds.expr(e))
+                            .and_then(|start| var_range(name, start, &scope, bounds))
+                    }
                     _ => None,
                 };
-                if let (Some(v), None, false) = (value, ty, mutable) {
+                if let (Some(v), None) = (value, ty) {
                     out.push((base + pat.span.start, v.lo, v.hi));
                 }
                 forget(pat, bounds);
@@ -196,10 +216,10 @@ fn ranges_in(
                     }
                     inner.bind(name, value);
                 }
-                ranges_in(base, &body.stmts, &mut inner, proven);
+                ranges_in(base, &body.stmts, &[], &mut inner, proven);
             }
             StmtKind::While { body, .. } | StmtKind::Unchecked(body) => {
-                ranges_in(base, &body.stmts, &mut bounds.clone(), proven);
+                ranges_in(base, &body.stmts, &[], &mut bounds.clone(), proven);
             }
             StmtKind::Expr(expr) => {
                 if let ExprKind::If {
@@ -210,15 +230,16 @@ fn ranges_in(
                     // An `if let` binds names the branch would see through.
                     for (cond, block) in branches {
                         if matches!(cond, Cond::Expr(_)) {
-                            ranges_in(base, &block.stmts, &mut bounds.clone(), proven);
+                            ranges_in(base, &block.stmts, &[], &mut bounds.clone(), proven);
                         }
                     }
                     if let Some(block) = otherwise {
-                        ranges_in(base, &block.stmts, &mut bounds.clone(), proven);
+                        ranges_in(base, &block.stmts, &[], &mut bounds.clone(), proven);
                     }
                 }
             }
             StmtKind::Fn(decl) => {
+                bounds.declare_fn(&decl.name.text);
                 let mut inner = bounds.clone();
                 for param in &decl.params {
                     inner.bind(
@@ -227,12 +248,129 @@ fn ranges_in(
                     );
                 }
                 if let FnBody::Block(block) = &decl.body {
-                    ranges_in(base, &block.stmts, &mut inner, proven);
+                    inner.declare_fn(&decl.name.text);
+                    ranges_in(base, &block.stmts, &[], &mut inner, proven);
                 }
             }
             _ => {}
         }
     }
+}
+
+/// The range a `var` named `name` that starts in `start` stays in, through
+/// every assignment in `scope`: the smallest hull each assignment maps into
+/// itself, found in a few rounds, or `None`. Anything else that could change
+/// it (a `mut` argument, a tuple assignment, a `lend`) or a second binding of
+/// the name gives `None`, and so does an assigned value that reads a name
+/// bound in `scope`, since that name is not the one `bounds` knows.
+fn var_range(
+    name: &str,
+    start: bounds::Interval,
+    scope: &[&cpl_syntax::ast::Stmt],
+    bounds: &bounds::Bounds,
+) -> Option<bounds::Interval> {
+    use cpl_syntax::ast::{AssignOp, Expr, ExprKind, Pattern, PatternKind, Stmt, StmtKind};
+    use cpl_syntax::visit::{walk_stmt, Visitor};
+
+    struct Scan<'a> {
+        name: &'a str,
+        writes: Vec<(AssignOp, Expr)>,
+        bound: Vec<String>,
+        opaque: bool,
+    }
+    fn names(pat: &Pattern, out: &mut Vec<String>) {
+        match &pat.kind {
+            PatternKind::Name(n) => out.push(n.clone()),
+            PatternKind::Domain(n) => out.push(n.text.clone()),
+            PatternKind::Tuple(parts) | PatternKind::Or(parts) => {
+                parts.iter().for_each(|p| names(p, out))
+            }
+            PatternKind::Variant { args, .. } => args.iter().for_each(|p| names(p, out)),
+            PatternKind::Wildcard | PatternKind::Literal(_) | PatternKind::Error => {}
+        }
+    }
+    impl Scan<'_> {
+        fn mentions(&self, e: &Expr) -> bool {
+            match &e.kind {
+                ExprKind::Name(n) => n == self.name,
+                ExprKind::Paren(inner) => self.mentions(inner),
+                ExprKind::Tuple(items) | ExprKind::List(items) => {
+                    items.iter().any(|i| self.mentions(i))
+                }
+                _ => false,
+            }
+        }
+    }
+    impl Visitor for Scan<'_> {
+        fn stmt(&mut self, stmt: &Stmt) {
+            match &stmt.kind {
+                StmtKind::Assign { target, op, value } => {
+                    if matches!(&target.kind, ExprKind::Name(n) if n == self.name) {
+                        self.writes.push((*op, value.clone()));
+                    } else if self.mentions(target) {
+                        self.opaque = true;
+                    }
+                }
+                StmtKind::Lend { place, .. } => self.opaque |= self.mentions(place),
+                StmtKind::Fn(decl) => {
+                    self.bound.extend(decl.params.iter().map(|p| p.name.text.clone()))
+                }
+                _ => {}
+            }
+        }
+        fn expr(&mut self, expr: &Expr) {
+            if let ExprKind::Call { args, .. } = &expr.kind {
+                self.opaque |= args.iter().any(|a| a.mutable && self.mentions(&a.value));
+            }
+        }
+        fn pattern(&mut self, pat: &Pattern) {
+            names(pat, &mut self.bound);
+        }
+    }
+
+    let mut scan = Scan {
+        name,
+        writes: Vec::new(),
+        bound: Vec::new(),
+        opaque: false,
+    };
+    scope.iter().for_each(|s| walk_stmt(s, &mut scan));
+    if scan.opaque || scan.bound.iter().any(|b| b == name) {
+        return None;
+    }
+    let mut known = bounds.clone();
+    for b in &scan.bound {
+        known.bind(b, None);
+    }
+    let mut hull = start;
+    for _ in 0..4 {
+        known.bind(name, Some(hull));
+        let mut next = hull;
+        for (op, value) in &scan.writes {
+            let v = known.expr(value)?;
+            let after = match op {
+                AssignOp::Set => v,
+                AssignOp::Binary(op) => bounds::Bounds::combine(*op, hull, v)?,
+                AssignOp::Max => bounds::Interval {
+                    lo: hull.lo.max(v.lo),
+                    hi: hull.hi.max(v.hi),
+                },
+                AssignOp::Min => bounds::Interval {
+                    lo: hull.lo.min(v.lo),
+                    hi: hull.hi.min(v.hi),
+                },
+            };
+            next = bounds::Interval {
+                lo: next.lo.min(after.lo),
+                hi: next.hi.max(after.hi),
+            };
+        }
+        if next == hull {
+            return Some(hull);
+        }
+        hull = next;
+    }
+    None
 }
 
 /// Every name `pat` binds stops being bounded.
