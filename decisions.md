@@ -4107,6 +4107,7 @@ ucup5s01a's `dp = next` per round copied a 500-element row: 1.16-1.25 s
 before, 1.10-1.17 s after, vs 1.08-1.23 s for the original (same input,
 same g++). Corpus: +1,111 B over 87 programs, none broken. Reverse: return
 false from `last_read` in `crates/cpl-codegen/src/stmt.rs`.
+
 ## 137. A recursive local closure is passed itself, not a `std::function` (2026-11-21)
 
 Implements §127 for nested `fn`s. A local closure or nested `fn` that
@@ -4124,3 +4125,24 @@ the reading loop). Corpus: programs emitting `std::function` 61 -> 37;
 the 24 programs that lost it grow +143 to +201 B (+4,366 B in total),
 the price of `Rec` over `#include <functional>`. Reverse: drop the
 `local_rec` arm of `Stmt::Let` in `crates/cpl-codegen/src/stmt.rs`.
+
+## 138. A recursive fn's closure parameter is a template (2026-11-21)
+
+Implements §127 for fn parameters of recursive fns. A fn-typed parameter of
+a fn in a call cycle is a template parameter (`template <class F0> ll
+walk(ll n, F0&& f)`), monomorphized per closure type like any other fn's,
+when every call to that fn from inside its cycle passes a template fn
+parameter of the caller straight on: `walk(n - 1, f)`, or `odd(n - 1, f)`
+inside `even`. Then the recursion instantiates one closure type. A call
+that passes anything else, such as `wrap(n - 1, x => f(x) + 1)`, would
+instantiate without end, so that parameter keeps `std::function` and
+`cpl explain` says "a call in its recursion passes a different closure".
+A parameter that only ever holds one closure was already lowered direct.
+Why: the indirect call through `std::function` blocked inlining on each
+step; a 2e6-node tree walk with two different weight closures, run 10
+times each, goes 1.04 s -> 0.98 s against 0.84 s for the hand-written
+template (the rest is the checked `adj[u]` and the reading loop). Corpus:
+no program had the shape, so programs emitting `std::function` stay at 37;
+parity test `rec_fn_param`. Reverse: put `|| self.recursive_fns.contains(&id)`
+back in `compute_template_params` and drop
+`keep_recursive_templates_finite` in `crates/cpl-codegen/src/devirt.rs`.

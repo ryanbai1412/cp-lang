@@ -261,7 +261,8 @@ programs; `cpl explain` names each):
   (8 programs);
 - the recursive body of a `@memo` fn (3 programs);
 - a fn value whose closure is chosen at run time (3 programs);
-- a fn-typed parameter of a closure, a recursive fn or the judge entry;
+- a fn-typed parameter of a closure or the judge entry, and one of a
+  recursive fn whose recursion passes it a different closure (§138);
 - a reassigned or hoisted fn slot, and a top-level closure var.
 
 ## 4. Standard library (`plan/STDLIB.md`, `plan/20`)
