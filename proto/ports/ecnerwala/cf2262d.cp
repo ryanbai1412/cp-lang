@@ -1,20 +1,35 @@
 // Codeforces 2262 D: a token sits on some cell; Inc (1) increments a[cur],
-// Jump (2) moves to cell a[cur]. Turn a into b or report -1.
-// Only cells whose target chain b[i] -> b[b[i]] -> .. reaches the last
-// differing cell may change. Scanning right to left, `via[i]` tracks the phase
-// of cell i: detour to an earlier unfinished cell t != i, sweep unfinished
-// cells below i (`via[i] == i`), or finish up to b[i] (`via[i] == none`).
-enum Op: Inc | Jump
-
-fn op_code(op: Op) -> Int = match op:
-    Op.Inc => 1
-    Op.Jump => 2
+// Jump (2) moves to cell a[cur]. Turn `a` into `b` or report -1.
+//
+// Reachability & phase invariant:
+// - `Inc` only increases `a[cur]`, so `a[i] <= b[i]` is necessary. Once a cell
+//   finishes (`a[i] == b[i]`), the token exits to `b[i]`, so every differing
+//   cell `i < last` must have a strictly increasing target chain
+//   `i -> b[i] -> ... -> last` staying `<= bound` (`okay[i]`).
+// - Scanning right-to-left from `last` maintains `low` (the current leftmost
+//   anchor) and `bound` (the leftmost cell no earlier `b[i]` may jump past):
+//   - If `i < a[low]`, `low` cannot reach `i` by incrementing `a[low]`, so `i`
+//     must run before `low`: `low` enters `Sweep`, `bound` tightens to `i`,
+//     and `low` becomes `i`.
+//   - Else if `a[i] < a[low]`, `low` can reach `i` while incrementing `a[low]`,
+//     so `low` records `Detour(i)` (jump to `i` when `a[low] == i`) and `low`
+//     becomes `i`.
+// - Starting at `low` in `Sweep` mode, each cell moves through
+//   `Detour(t) -> Sweep -> Finish`: first jumping to `t` until `t` is `Finish`,
+//   then jumping to any unfinished cell `a[cur] < cur`, and finally raising
+//   `a[cur]` to `b[cur]` and exiting along `b[cur]`.
+enum Op: Inc = 1, Jump = 2
 
 @!multitest
 let n: 1..=2000 = read()
 domain Cell = 1..=n
 var a: [Cell]Cell = read()
 let b: [Cell]Cell = read()
+
+enum Phase:
+    Detour(Cell)
+    Sweep
+    Finish
 
 fn plan() -> ?(start: Cell, ops: List<Op>):
     if any(a[i] > b[i] for i in Cell): return none
@@ -23,7 +38,7 @@ fn plan() -> ?(start: Cell, ops: List<Op>):
     var bound = last
     var okay: [Cell]Bool = false
     okay[last] = true
-    var via: [Cell]?Cell = none
+    var phase: [Cell]Phase = Phase.Finish
     var low = last
     for i in (Cell.first..last).rev:
         okay[i] = b[i] > i and b[i] <= bound and okay[b[i]]
@@ -31,22 +46,31 @@ fn plan() -> ?(start: Cell, ops: List<Op>):
         if not okay[i]: return none
         if i < a[low]:
             bound = i
-            via[low] = low
+            phase[low] = Phase.Sweep
             low = i
         elif a[i] < a[low]:
-            via[low] = i
+            phase[low] = Phase.Detour(i)
             low = i
-    via[low] = low
+    phase[low] = Phase.Sweep
+
+    fn is_finish(c: Cell) -> Bool = match phase[c]:
+        Phase.Finish => true
+        _ => false
 
     fn advance_phase(cur: Cell):
-        if let t = via[cur], t != cur and via[t] == none: via[cur] = cur
-        if via[cur] == cur and a[cur] >= cur: via[cur] = none
+        phase[cur] = match phase[cur]:
+            Phase.Detour(t) =>
+                if is_finish(t):
+                    if a[cur] >= cur: Phase.Finish else: Phase.Sweep
+                else:
+                    Phase.Detour(t)
+            Phase.Sweep => if a[cur] >= cur: Phase.Finish else: Phase.Sweep
+            Phase.Finish => Phase.Finish
 
-    fn next_op(cur: Cell) -> Op:
-        if let t = via[cur]:
-            if t != cur: return if a[cur] == t: Op.Jump else: Op.Inc
-            return if a[a[cur]] != b[a[cur]]: Op.Jump else: Op.Inc
-        if a[cur] == b[cur]: Op.Jump else: Op.Inc
+    fn next_op(cur: Cell) -> Op = match phase[cur]:
+        Phase.Detour(t) => if a[cur] == t: Op.Jump else: Op.Inc
+        Phase.Sweep => if a[a[cur]] != b[a[cur]]: Op.Jump else: Op.Inc
+        Phase.Finish => if a[cur] == b[cur]: Op.Jump else: Op.Inc
 
     var ops: List<Op> = []
     var cur = low
@@ -61,6 +85,6 @@ fn plan() -> ?(start: Cell, ops: List<Op>):
 
 if let (start, ops) = plan():
     print(ops.len, start)
-    print([op_code(op) for op in ops])
+    print([Int(op) for op in ops])
 else:
     print(-1)
