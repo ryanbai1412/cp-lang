@@ -362,3 +362,12 @@ fn a_key_tested_and_then_read_is_looked_up_once() {
     let twice = cpp("var m = Map<Int, Int>()\nm[4] = 7\nlet x: Int = read()\nif x in m:\n    m.remove(x + 1)\n    print(m[x])\n");
     assert!(twice.contains("m.at(x)"), "{twice}");
 }
+
+#[test]
+fn a_list_index_inside_unchecked_has_no_bounds_test() {
+    let checked = cpp("var xs = [1, 2, 3]\nlet i: Int = read()\nxs[i] = xs[i] + 1\nprint(xs)\n");
+    assert!(checked.contains("cpl::at(xs, i)"), "{checked}");
+    let raw = cpp("var xs = [1, 2, 3]\nlet i: Int = read()\nunchecked:\n    xs[i] = xs[i] + 1\nprint(xs)\n");
+    assert!(raw.contains("xs[i] = xs[i] + 1"), "{raw}");
+    assert!(!raw.contains("cpl::at(xs, i)"), "{raw}");
+}

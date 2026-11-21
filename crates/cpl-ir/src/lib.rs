@@ -449,6 +449,9 @@ pub enum Cast {
     FromOrd(DomainId),
     /// An ordinal known to be in range, to a position or bound.
     Trust,
+    /// An `Int` that indexes a list inside `unchecked:`: the writer
+    /// vouches that it is inside. `cpl run` still checks; the C++ does not.
+    Raw,
 }
 
 /// How a `sort` orders elements.

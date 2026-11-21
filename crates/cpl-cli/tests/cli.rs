@@ -600,3 +600,15 @@ fn a_checked_build_stops_on_wide_int_mistakes() {
     }
     std::fs::remove_dir_all(&dir).ok();
 }
+
+#[test]
+fn cpl_run_still_checks_an_index_inside_unchecked() {
+    let dir = std::env::temp_dir().join(format!("cpl-cli-unchecked-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("u.cp");
+    std::fs::write(&path, "var xs = [1, 2, 3]\nunchecked:\n    xs[5] = 1\nprint(xs)\n").unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl")).arg("run").arg(&path).output().expect("cpl runs");
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert_eq!(out.status.code(), Some(3), "{stderr}");
+    assert!(stderr.contains("index 5 is outside a list of length 3"), "{stderr}");
+}

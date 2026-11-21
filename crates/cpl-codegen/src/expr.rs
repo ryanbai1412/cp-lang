@@ -274,6 +274,7 @@ impl<'p> Emitter<'p> {
                     Ty::Array { dims, .. } if dims.len() > 1 => format!("{b}({})", at.join(", ")),
                     Ty::Map(..) | Ty::HashMap(..) if !store => format!("{b}.at({})", at.join(", ")),
                     Ty::List(_) if matches!(base.kind, PlaceKind::Global(id) if self.program.raw_lists.contains(&id)) => format!("{b}[{}]", at[0]),
+                    Ty::List(_) if matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _)) => format!("{b}[{}]", at[0]),
                     Ty::List(_) => {
                         self.need("at");
                         format!("cpl::at({b}, {})", at.join(", "))
@@ -507,6 +508,7 @@ impl<'p> Emitter<'p> {
                         UNARY,
                     ),
                     Cast::FromOrd(_) => c_cast("int"),
+                    Cast::Raw => code,
                     Cast::Trust if matches!(inner.ty, Ty::Pos(_) | Ty::Bound(_)) => code,
                     Cast::Trust => c_cast("int"),
                 }
@@ -523,7 +525,8 @@ impl<'p> Emitter<'p> {
                 let mut operands: Vec<&Expr> = vec![base];
                 operands.extend(indices.iter());
                 let base_ty = &base.ty;
-                let raw_list = matches!(base.kind, ExprKind::Global(id) if self.program.raw_lists.contains(&id));
+                let raw_list = matches!(base.kind, ExprKind::Global(id) if self.program.raw_lists.contains(&id))
+                    || matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _));
                 if matches!(base_ty, Ty::List(_)) && !raw_list {
                     self.need("at");
                 }

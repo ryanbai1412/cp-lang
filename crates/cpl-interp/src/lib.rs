@@ -1422,7 +1422,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                     )
                 }
             },
-            Cast::Ord | Cast::Trust => value,
+            Cast::Ord | Cast::Trust | Cast::Raw => value,
             Cast::Label(d) => Value::Int(value.int() + self.domains[d].0),
             Cast::FromLabel(d) => {
                 let (lo, len) = self.domains[d];

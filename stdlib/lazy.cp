@@ -32,17 +32,20 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
         LazySegTree(act, t, List.filled(size, act.id), span, size, ctz(size))
 
     fn pull(mut self, p: Int):
-        t[p] = act.over.op(t[2 * p], t[2 * p + 1])
+        unchecked:
+            t[p] = act.over.op(t[2 * p], t[2 * p + 1])
 
     fn put(mut self, p: Int, f: F):
-        if span[p] == 0: return
-        t[p] = act.apply(f, t[p], span[p])
-        if p < size: lz[p] = act.compose(f, lz[p])
+        unchecked:
+            if span[p] == 0: return
+            t[p] = act.apply(f, t[p], span[p])
+            if p < size: lz[p] = act.compose(f, lz[p])
 
     fn push(mut self, p: Int):
-        self.put(2 * p, lz[p])
-        self.put(2 * p + 1, lz[p])
-        lz[p] = act.id
+        unchecked:
+            self.put(2 * p, lz[p])
+            self.put(2 * p + 1, lz[p])
+            lz[p] = act.id
 
     fn open(mut self, l: Int, h: Int):
         for i in (1..=log).rev:
@@ -82,15 +85,16 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
         var (l, h) = (lo + size, hi + size)
         self.open(l, h)
         var (a, b) = (m.id, m.id)
-        while l < h:
-            if l % 2 == 1:
-                a = m.op(a, t[l])
-                l += 1
-            if h % 2 == 1:
-                h -= 1
-                b = m.op(t[h], b)
-            l /= 2
-            h /= 2
+        unchecked:
+            while l < h:
+                if l % 2 == 1:
+                    a = m.op(a, t[l])
+                    l += 1
+                if h % 2 == 1:
+                    h -= 1
+                    b = m.op(t[h], b)
+                l /= 2
+                h /= 2
         m.op(a, b)
 
     /// Every position in the range takes the update `f`.

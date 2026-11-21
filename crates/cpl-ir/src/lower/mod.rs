@@ -450,6 +450,8 @@ struct Lowerer<'a> {
     diags: Vec<Diagnostic>,
     /// What is allowed but almost surely a mistake.
     warnings: Vec<Diagnostic>,
+    /// How many `unchecked:` blocks the code being lowered is inside.
+    unchecked: usize,
 
     structs: Vec<StructInfo<'a>>,
     gen_structs: Vec<GenStructTemplate<'a>>,
@@ -578,6 +580,7 @@ impl<'a> Lowerer<'a> {
             memo_count: 0,
             memo_fast: None,
             raw_lists: Vec::new(),
+            unchecked: 0,
             own_domains: HashSet::new(),
             memo_resets: Vec::new(),
             memo_into: HashMap::new(),

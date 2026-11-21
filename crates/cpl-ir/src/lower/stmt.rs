@@ -662,7 +662,11 @@ impl<'a> Lowerer<'a> {
                     span,
                 });
             }
-            ast::StmtKind::Unchecked(block) => out.extend(self.block(block, Tail::Discard).stmts),
+            ast::StmtKind::Unchecked(block) => {
+                self.unchecked += 1;
+                out.extend(self.block(block, Tail::Discard).stmts);
+                self.unchecked -= 1;
+            }
             ast::StmtKind::Error => {}
         }
     }
@@ -2241,6 +2245,7 @@ impl<'a> Lowerer<'a> {
             ast::ExprKind::Index { base, indices } => {
                 let base = self.place(base);
                 let (indices, ty) = self.index_args(&base.ty, indices, e.span);
+                let indices = self.vouched(&base.ty, indices);
                 Place {
                     kind: PlaceKind::Index(Box::new(base), indices),
                     ty,

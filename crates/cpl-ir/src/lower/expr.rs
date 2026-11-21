@@ -224,6 +224,7 @@ impl<'a> Lowerer<'a> {
                     }
                 }
                 let (indices, ty) = self.index_args(&base_expr.ty, indices, span);
+                let indices = self.vouched(&base_expr.ty, indices);
                 self.mk(ExprKind::Index(Box::new(base_expr), indices), ty, span)
             }
             ast::ExprKind::Field { base, name } => self.field(e, base, name),
@@ -1920,6 +1921,17 @@ impl<'a> Lowerer<'a> {
     }
 
     /// The indices of `base[...]` and the type of the element.
+    /// Inside `unchecked:`, the `Int` that indexes a list is marked as
+    /// vouched for.
+    pub(super) fn vouched(&mut self, base: &Ty, mut indices: Vec<Expr>) -> Vec<Expr> {
+        if self.unchecked > 0 && matches!(base, Ty::List(_)) && indices.len() == 1 && indices[0].ty == Ty::Int {
+            let index = indices.remove(0);
+            let span = index.span;
+            indices.push(Expr { kind: ExprKind::Cast(Cast::Raw, Box::new(index)), ty: Ty::Int, span });
+        }
+        indices
+    }
+
     pub(super) fn index_args(
         &mut self,
         base: &Ty,

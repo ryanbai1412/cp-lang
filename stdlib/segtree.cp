@@ -43,9 +43,10 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     pub fn set(mut self, i: D, x: T):
         var p = i.to_idx + size
         t[p] = x
-        while p > 1:
-            p /= 2
-            t[p] = m.op(t[2 * p], t[2 * p + 1])
+        unchecked:
+            while p > 1:
+                p /= 2
+                t[p] = m.op(t[2 * p], t[2 * p + 1])
 
     /// Replace the value at `i` with `f` of it, as `LazySegTree.update` does. O(log n).
     pub fn update(mut self, i: D, f: T -> T):
@@ -57,15 +58,16 @@ pub struct SegTree<D, T>(m: Monoid<T>):
         let (lo, hi) = r.ends
         var (l, h) = (lo + size, hi + size)
         var (a, b) = (m.id, m.id)
-        while l < h:
-            if l % 2 == 1:
-                a = m.op(a, t[l])
-                l += 1
-            if h % 2 == 1:
-                h -= 1
-                b = m.op(t[h], b)
-            l /= 2
-            h /= 2
+        unchecked:
+            while l < h:
+                if l % 2 == 1:
+                    a = m.op(a, t[l])
+                    l += 1
+                if h % 2 == 1:
+                    h -= 1
+                    b = m.op(t[h], b)
+                l /= 2
+                h /= 2
         m.op(a, b)
 
     /// The fold of the whole array. O(1).
