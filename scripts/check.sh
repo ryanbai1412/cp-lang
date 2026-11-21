@@ -123,11 +123,14 @@ trap cleanup EXIT
 # - the shrinker and prover fuzzers take 21 s and 7 s, longer than the rest
 #   of the suite together;
 # - budget and the 50 ms front-end latency test measure wall-clock time,
-#   which other tests running beside them skew.
+#   which other tests running beside them skew;
+# - the recovery scoreboard checks 3,400 broken ports on every core, which
+#   skews the LSP latency test beside it, so it runs after the rest.
 slow_tests=(
     shrinks_a_failing_program_to_a_few_lines
     products_and_variable_divisors_are_never_decided_wrongly
     front_end_check_is_under_50_ms
+    recovery_scoreboard
 )
 if cargo nextest --version >/dev/null 2>&1; then
     step "cargo nextest run --workspace (without the --full tests)"
@@ -136,6 +139,8 @@ if cargo nextest --version >/dev/null 2>&1; then
     cargo nextest run --workspace --no-fail-fast -E "not ($filter)"
     step "cargo test --workspace --doc"
     cargo test -q --workspace --doc
+    step "cargo test: the recovery scoreboard, on its own"
+    cargo test -q -p cpl-cli --test recovery
 else
     step "cargo test --workspace (without the --full tests)"
     skips=()
@@ -144,6 +149,8 @@ else
         skips+=(--skip "$t")
     done
     cargo test --workspace -- "${skips[@]}"
+    step "cargo test: the recovery scoreboard, on its own"
+    cargo test -q -p cpl-cli --test recovery
 fi
 
 step "cpl test stdlib examples/local-lib"

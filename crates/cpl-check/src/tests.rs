@@ -1932,3 +1932,13 @@ fn debug_of_something_that_changes_the_program_is_refused() {
         assert_eq!(check(&format!("{FNS}{call}")), vec![], "{call}");
     }
 }
+
+#[test]
+fn an_unreadable_character_is_reported_where_it_is() {
+    // The lexer poisons the character's span so nothing else is reported
+    // there; its own diagnostic must not fall to that poison.
+    let src = "let $x = 1\nprint(x)\n";
+    let diags = check(src);
+    assert_eq!(diags[0].code.0, "E0004", "{diags:#?}");
+    assert_eq!(diags[0].span, Span::new(4, 5));
+}

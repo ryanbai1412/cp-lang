@@ -549,9 +549,12 @@ impl Database {
 
         // Diagnostics, one per root cause: the lexer's first, then each
         // item's syntax errors, then what the checker found outside them.
-        let mut sink = Sink::with_poisoned(lexed.poisoned.clone());
+        let mut sink = Sink::new();
         for diag in &lexed.diagnostics {
             sink.push(diag.clone());
+        }
+        for &span in &lexed.poisoned {
+            sink.poison(span);
         }
         for ((range, item), check) in ranges.iter().zip(items.iter()).zip(&checks) {
             let offset = range.span.start;
