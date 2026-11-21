@@ -4077,7 +4077,7 @@ such a port's g++ build was timed against a clang-built original, which put
 cf2261g at 1.39x where the same compiler gives 0.99x. Reverse: time
 `port_bin` in `evaluate_full_port` again.
 
-## 134. A loop reaches a row it never moves once (2026-11-21)
+## 135. A loop reaches a row it never moves once (2026-11-21)
 
 Inside `for x in ..`, a row of a nested array reached by indices the body
 never changes (`ways[mid][lo]` inside `for rest`) is found and checked the
@@ -4095,7 +4095,7 @@ original's 0.46 s; with this it runs 0.39 s. Corpus: +10,314 B over 29
 programs (max +4.7%, cf2062h), none broken. Reverse: return no rows from
 `Emitter::loop_rows` in `crates/cpl-codegen/src/rowcache.rs`.
 
-## 135. A local read for the last time moves into its place (2026-11-21)
+## 136. A local read for the last time moves into its place (2026-11-21)
 
 `x = y`, where `y` is a local its block declared and the rest of the block
 never names (no read, store or `mut` argument) and the block has no closure,
@@ -4107,7 +4107,7 @@ ucup5s01a's `dp = next` per round copied a 500-element row: 1.16-1.25 s
 before, 1.10-1.17 s after, vs 1.08-1.23 s for the original (same input,
 same g++). Corpus: +1,111 B over 87 programs, none broken. Reverse: return
 false from `last_read` in `crates/cpl-codegen/src/stmt.rs`.
-## 136. A recursive local closure is passed itself, not a `std::function` (2026-11-21)
+## 137. A recursive local closure is passed itself, not a `std::function` (2026-11-21)
 
 Implements §127 for nested `fn`s. A local closure or nested `fn` that
 calls itself, bound once and not hoisted, emits
