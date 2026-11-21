@@ -349,7 +349,7 @@ def audit(spec, runs, tmp, keep):
     src = os.path.join(d, name + ".cp")
     with open(P(rel + ".cp")) as f, open(src, "w") as g: g.write(f.read())
     cpp = os.path.join(d, "port.cpp")
-    t0 = time.perf_counter(); b = sh([CPL, "build", src, "-o", cpp]); r["cpl_build_ms"] = round((time.perf_counter() - t0) * 1e3, 1)
+    t0 = time.perf_counter(); b = sh([CPL, "build", P(rel + ".cp"), "-o", cpp])   # in place, so its `cpl.toml` libraries resolve; r["cpl_build_ms"] = round((time.perf_counter() - t0) * 1e3, 1)
     if b.returncode: r["status"] = "cpl build failed: " + (b.stderr or b.stdout).strip().splitlines()[0]; return r
     r["emitted_bytes"] = os.path.getsize(cpp); r["size_ok"] = r["emitted_bytes"] < SIZE_LIMIT
     r["cp_lines"] = sum(1 for _ in open(src)); r["orig_lines"] = sum(1 for _ in open(orig))
@@ -363,7 +363,10 @@ def audit(spec, runs, tmp, keep):
     bins = {}
     for tag, s, flags in (("orig", osrc, ["-O2"]), ("port", cpp, ["-O2"]), ("asan", cpp, ["-O1", "-g", "-fsanitize=address,undefined", "-fno-sanitize-recover=undefined"])):
         bins[tag] = os.path.join(d, tag)
-        t0 = time.perf_counter(); c = sh(["g++", "-std=c++17", *flags, "-I", d, s, "-o", bins[tag]])
+        cxx = ["g++", "-std=c++17"]
+        if tag == "orig" and "/ecnerwala/" in s:           # upstream originals use C++20 (std::span)
+            cxx = ["g++", "-std=c++20"]
+        t0 = time.perf_counter(); c = sh([*cxx, *flags, "-I", d, s, "-o", bins[tag]])
         r[f"gxx_{tag}_s"] = round(time.perf_counter() - t0, 2)
         if c.returncode: r["status"] = f"g++ failed on {tag}: " + c.stderr.strip().splitlines()[0][:200]; return r
 
@@ -399,12 +402,16 @@ def main():
     ap.add_argument("--runs", type=int, default=3)
     ap.add_argument("--json")
     ap.add_argument("--list", action="store_true")
+    ap.add_argument("--ecnerwala", action="store_true", help="also run the ecnerwala ports from corpus_generators.ECNERWALA_SPECS")
     ap.add_argument("--keep", help="keep work files in this directory")
     a = ap.parse_args()
-    specs = SPECS
+    import corpus_generators as cg
+    specs = SPECS + (cg.ECNERWALA_SPECS if a.ecnerwala else [])
     if a.ports:
         want = set(a.ports.split(","))
-        specs = [s for s in SPECS if s[0] in want or s[0].split("/")[-1] in want]
+        specs = [s for s in SPECS + cg.ECNERWALA_SPECS if s[0] in want or s[0].split("/")[-1] in want]
+        missing = want - {s[0] for s in specs} - {s[0].split("/")[-1] for s in specs}
+        if missing: sys.exit(f"--ports: no spec for {', '.join(sorted(missing))}")
     if a.list:
         for s in specs: print(f"{s[0]:40s} {s[2]:20s} {s[3]}")
         return 0

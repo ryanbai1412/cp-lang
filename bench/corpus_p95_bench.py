@@ -119,8 +119,13 @@ def candidates(only):
     for p in reg["ports"]:
         if p["form"] == "support" or p.get("original_language") != "cpp" or not p.get("original"): continue
         if not (os.path.exists(os.path.join(ROOT, p["path"])) and os.path.exists(os.path.join(ROOT, p["original"]))): continue
-        if only and p["problem"] not in only: continue
+        stem = os.path.basename(p["path"])[:-3]
+        if only and p["problem"] not in only and stem not in only: continue
         by_problem.setdefault(p["problem"], []).append(p)
+    if only:
+        found = set(by_problem) | {os.path.basename(p["path"])[:-3] for ports in by_problem.values() for p in ports}
+        if only - found:
+            sys.exit(f"--ports: no measurable port for {', '.join(sorted(only - found))} (see bench/corpus-500-registry.json)")
     for name, ports in by_problem.items():
         ports.sort(key=lambda p: (p["path"] != canonical.get(name), FORM_RANK.get(p["form"], 9), p["path"]))
     return by_problem
@@ -315,7 +320,8 @@ def report(meta, s, rows):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--ports", help="comma-separated problem names; implies nothing about --no-write")
+    ap.add_argument("--ports", help="comma-separated problem names or port file names; implies nothing about --no-write")
+    ap.add_argument("--tail", type=int, metavar="N", help="measure the N slowest problems of the committed results (adds to --ports)")
     ap.add_argument("--runs", type=int, default=5, help="timed runs per binary (default 5)")
     ap.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) // 2), help="parallel builds; timing is always serial")
     ap.add_argument("--timeout", type=float, default=20, help="seconds per run (default 20)")
@@ -326,7 +332,11 @@ def main():
     if not os.path.exists(CPL): sys.exit(f"{CPL} not found: cargo build --release -p cpl-cli")
     sys.path.insert(0, BENCH)
     hand, hand_by_prob, audit2 = hand_generators()
-    by_problem = candidates(set(a.ports.split(",")) if a.ports else None)
+    only = set(a.ports.split(",")) if a.ports else set()
+    if a.tail:
+        past = [r for r in json.load(open(OUT_JSON))["ports"] if r.get("time_ratio")]
+        only |= {r["problem"] for r in sorted(past, key=lambda r: -r["time_ratio"])[:a.tail]}
+    by_problem = candidates(only or None)
     work = a.keep or tempfile.mkdtemp(prefix="cpl-p95-"); os.makedirs(work, exist_ok=True)
 
     flat = [p for ports in by_problem.values() for p in ports]

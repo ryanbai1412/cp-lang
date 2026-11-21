@@ -16,6 +16,7 @@ python3 bench/rust_latency_audit.py --reps 7
 python3 bench/rust_max_n_audit.py --runs 5
 python3 bench/rust_max_n_audit.py --ports dpl,noi22p5 --json /tmp/out.json
 python3 bench/rust_max_n_audit.py --list
+python3 bench/rust_max_n_audit.py --ecnerwala               # add the ecnerwala ports (sizes assumed)
 ```
 
 Both use `target/release/cpl` (override with `CPL=/path/to/cpl`), work in a
@@ -35,6 +36,7 @@ under 1.1x across 200+ corpus ports, with every emitted file under 64 KB.
 cargo build --release -p cpl-cli
 python3 bench/corpus_p95_bench.py                     # full sweep, about 17 minutes
 python3 bench/corpus_p95_bench.py --ports dpl,dpn --no-write
+python3 bench/corpus_p95_bench.py --tail 25 --no-write   # the 25 slowest in the committed results
 python3 bench/corpus_p95_bench.py --check             # exit 1 unless the target is met
 ```
 

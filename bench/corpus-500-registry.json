@@ -1,33 +1,33 @@
 {
  "summary": {
-  "cp_files": 971,
+  "cp_files": 1186,
   "cp_files_by_form": {
    "draft": 44,
    "regression": 91,
-   "runnable": 531,
-   "spec": 298,
-   "support": 7
+   "runnable": 576,
+   "spec": 313,
+   "support": 162
   },
   "cp_files_by_generation": {
-   "v1": 530,
-   "v2": 378,
+   "v1": 560,
+   "v2": 408,
    "v2.1": 56
   },
-  "unique_problems": 579,
-  "problems_with_more_than_one_file": 351,
-  "problems_ported_in_more_than_one_group": 50,
+  "unique_problems": 594,
+  "problems_with_more_than_one_file": 381,
+  "problems_ported_in_more_than_one_group": 68,
   "corpus_problems": 836,
   "corpus_problems_accepted": 747,
   "verification": {
    "problems_verified": 566,
    "problems_by_canonical_status": {
-    "no harness": 9,
+    "no harness": 24,
     "not reported": 4,
     "pass": 566
    },
    "problems_spec_only": 8,
    "files_by_status": {
-    "no harness": 2,
+    "no harness": 47,
     "not reported": 11,
     "pass": 609
    },
@@ -37,40 +37,40 @@
   },
   "loc": {
    "canonical": {
-    "ports": 579,
+    "ports": 594,
     "cp_loc": {
-     "total": 23657,
-     "mean": 40.9,
-     "median": 32
+     "total": 24561,
+     "mean": 41.3,
+     "median": 32.0
     },
     "cpp_raw_loc": {
-     "total": 69041,
-     "mean": 119.2,
-     "median": 100
+     "total": 71572,
+     "mean": 120.5,
+     "median": 101.0
     },
     "cpp_stripped_loc": {
-     "total": 45007,
-     "mean": 77.7,
-     "median": 65
+     "total": 46779,
+     "mean": 78.8,
+     "median": 66.0
     },
     "raw_reduction_pct": {
      "of_totals": 65.7,
-     "mean": 65.8,
-     "median": 68.9
+     "mean": 66.0,
+     "median": 68.8
     },
     "stripped_reduction_pct": {
-     "of_totals": 47.4,
-     "mean": 44.0,
-     "median": 47.3
+     "of_totals": 47.5,
+     "mean": 44.6,
+     "median": 47.9
     },
-    "no_stripped_win": 30
+    "no_stripped_win": 33
    },
    "canonical_verified": {
     "ports": 566,
     "cp_loc": {
-     "total": 23310,
-     "mean": 41.2,
-     "median": 33.0
+     "total": 22754,
+     "mean": 40.2,
+     "median": 32.0
     },
     "cpp_raw_loc": {
      "total": 67692,
@@ -83,81 +83,81 @@
      "median": 65.5
     },
     "raw_reduction_pct": {
-     "of_totals": 65.6,
-     "mean": 65.6,
-     "median": 68.8
+     "of_totals": 66.4,
+     "mean": 66.5,
+     "median": 69.0
     },
     "stripped_reduction_pct": {
-     "of_totals": 47.1,
-     "mean": 43.7,
-     "median": 47.1
+     "of_totals": 48.3,
+     "mean": 45.2,
+     "median": 48.2
     },
-    "no_stripped_win": 30
+    "no_stripped_win": 29
    },
    "spec_form": {
-    "ports": 298,
+    "ports": 313,
     "cp_loc": {
-     "total": 9683,
-     "mean": 32.5,
-     "median": 24.0
+     "total": 10604,
+     "mean": 33.9,
+     "median": 25
     },
     "cpp_raw_loc": {
-     "total": 36288,
-     "mean": 121.8,
-     "median": 104.5
+     "total": 38819,
+     "mean": 124.0,
+     "median": 106
     },
     "cpp_stripped_loc": {
-     "total": 24227,
-     "mean": 81.3,
-     "median": 70.5
+     "total": 25999,
+     "mean": 83.1,
+     "median": 72
     },
     "raw_reduction_pct": {
-     "of_totals": 73.3,
-     "mean": 74.1,
-     "median": 76.6
+     "of_totals": 72.7,
+     "mean": 73.6,
+     "median": 75.6
     },
     "stripped_reduction_pct": {
-     "of_totals": 60.0,
-     "mean": 58.0,
-     "median": 61.6
+     "of_totals": 59.2,
+     "mean": 57.2,
+     "median": 60.6
     },
-    "no_stripped_win": 7
+    "no_stripped_win": 8
    },
    "spec_form_same_problems_runnable": {
-    "ports": 290,
+    "ports": 305,
     "cp_loc": {
-     "total": 13434,
-     "mean": 46.3,
-     "median": 37.0
+     "total": 14612,
+     "mean": 47.9,
+     "median": 38
     },
     "cpp_raw_loc": {
-     "total": 35410,
-     "mean": 122.1,
-     "median": 105.0
+     "total": 37941,
+     "mean": 124.4,
+     "median": 107
     },
     "cpp_stripped_loc": {
-     "total": 23549,
-     "mean": 81.2,
-     "median": 70.5
+     "total": 25321,
+     "mean": 83.0,
+     "median": 72
     },
     "raw_reduction_pct": {
-     "of_totals": 62.1,
-     "mean": 62.5,
+     "of_totals": 61.5,
+     "mean": 62.1,
      "median": 64.2
     },
     "stripped_reduction_pct": {
-     "of_totals": 43.0,
-     "mean": 39.3,
-     "median": 41.0
+     "of_totals": 42.3,
+     "mean": 39.0,
+     "median": 41.3
     },
-    "no_stripped_win": 17
+    "no_stripped_win": 20
    },
    "canonical_by_family": {
     "APIO": {
      "ports": 8,
      "cp_loc": {
-      "total": 484,
-      "mean": 60.5,
+      "total": 479,
+      "mean": 59.9,
       "median": 41.5
      },
      "cpp_raw_loc": {
@@ -171,13 +171,13 @@
       "median": 79.5
      },
      "raw_reduction_pct": {
-      "of_totals": 57.0,
-      "mean": 57.1,
+      "of_totals": 57.5,
+      "mean": 57.5,
       "median": 57.0
      },
      "stripped_reduction_pct": {
-      "of_totals": 34.5,
-      "mean": 34.5,
+      "of_totals": 35.2,
+      "mean": 35.3,
       "median": 39.5
      },
      "no_stripped_win": 1
@@ -185,9 +185,9 @@
     "AtCoder DP": {
      "ports": 22,
      "cp_loc": {
-      "total": 361,
-      "mean": 16.4,
-      "median": 16.5
+      "total": 336,
+      "mean": 15.3,
+      "median": 14.0
      },
      "cpp_raw_loc": {
       "total": 1764,
@@ -200,22 +200,22 @@
       "median": 27.0
      },
      "raw_reduction_pct": {
-      "of_totals": 79.5,
-      "mean": 77.9,
-      "median": 80.3
+      "of_totals": 81.0,
+      "mean": 79.5,
+      "median": 80.9
      },
      "stripped_reduction_pct": {
-      "of_totals": 42.4,
-      "mean": 41.0,
-      "median": 46.4
+      "of_totals": 46.4,
+      "mean": 45.2,
+      "median": 50.0
      },
      "no_stripped_win": 1
     },
     "BtOI": {
      "ports": 23,
      "cp_loc": {
-      "total": 1037,
-      "mean": 45.1,
+      "total": 1018,
+      "mean": 44.3,
       "median": 29
      },
      "cpp_raw_loc": {
@@ -229,23 +229,23 @@
       "median": 81
      },
      "raw_reduction_pct": {
-      "of_totals": 67.1,
-      "mean": 68.8,
-      "median": 73.3
+      "of_totals": 67.7,
+      "mean": 69.4,
+      "median": 74.3
      },
      "stripped_reduction_pct": {
-      "of_totals": 53.7,
-      "mean": 55.1,
-      "median": 54.5
+      "of_totals": 54.6,
+      "mean": 56.0,
+      "median": 56.8
      },
      "no_stripped_win": 0
     },
     "CCC": {
      "ports": 41,
      "cp_loc": {
-      "total": 1232,
-      "mean": 30.0,
-      "median": 24
+      "total": 1195,
+      "mean": 29.1,
+      "median": 22
      },
      "cpp_raw_loc": {
       "total": 3918,
@@ -258,23 +258,23 @@
       "median": 42
      },
      "raw_reduction_pct": {
-      "of_totals": 68.6,
-      "mean": 68.4,
+      "of_totals": 69.5,
+      "mean": 69.5,
       "median": 70.7
      },
      "stripped_reduction_pct": {
-      "of_totals": 46.9,
-      "mean": 36.7,
-      "median": 47.1
+      "of_totals": 48.5,
+      "mean": 38.8,
+      "median": 51.7
      },
      "no_stripped_win": 3
     },
     "CCO": {
      "ports": 56,
      "cp_loc": {
-      "total": 2772,
-      "mean": 49.5,
-      "median": 33.5
+      "total": 2714,
+      "mean": 48.5,
+      "median": 34.0
      },
      "cpp_raw_loc": {
       "total": 7146,
@@ -287,22 +287,22 @@
       "median": 76.0
      },
      "raw_reduction_pct": {
-      "of_totals": 61.2,
-      "mean": 62.9,
-      "median": 67.0
+      "of_totals": 62.0,
+      "mean": 63.6,
+      "median": 67.6
      },
      "stripped_reduction_pct": {
-      "of_totals": 45.9,
-      "mean": 43.4,
-      "median": 43.9
+      "of_totals": 47.0,
+      "mean": 44.6,
+      "median": 46.0
      },
-     "no_stripped_win": 3
+     "no_stripped_win": 2
     },
     "CEOI": {
      "ports": 10,
      "cp_loc": {
-      "total": 291,
-      "mean": 29.1,
+      "total": 290,
+      "mean": 29.0,
       "median": 28.0
      },
      "cpp_raw_loc": {
@@ -316,22 +316,22 @@
       "median": 58.0
      },
      "raw_reduction_pct": {
-      "of_totals": 71.7,
-      "mean": 72.6,
+      "of_totals": 71.8,
+      "mean": 72.7,
       "median": 74.2
      },
      "stripped_reduction_pct": {
-      "of_totals": 56.1,
+      "of_totals": 56.3,
       "mean": 54.1,
-      "median": 54.7
+      "median": 54.8
      },
      "no_stripped_win": 0
     },
     "COCI": {
      "ports": 33,
      "cp_loc": {
-      "total": 861,
-      "mean": 26.1,
+      "total": 841,
+      "mean": 25.5,
       "median": 23
      },
      "cpp_raw_loc": {
@@ -345,13 +345,13 @@
       "median": 47
      },
      "raw_reduction_pct": {
-      "of_totals": 72.0,
-      "mean": 69.3,
-      "median": 72.3
+      "of_totals": 72.7,
+      "mean": 69.9,
+      "median": 72.9
      },
      "stripped_reduction_pct": {
-      "of_totals": 56.2,
-      "mean": 50.8,
+      "of_totals": 57.2,
+      "mean": 51.7,
       "median": 51.1
      },
      "no_stripped_win": 0
@@ -359,8 +359,8 @@
     "Chinese provincial": {
      "ports": 13,
      "cp_loc": {
-      "total": 551,
-      "mean": 42.4,
+      "total": 556,
+      "mean": 42.8,
       "median": 42
      },
      "cpp_raw_loc": {
@@ -374,23 +374,23 @@
       "median": 100
      },
      "raw_reduction_pct": {
-      "of_totals": 77.5,
-      "mean": 74.8,
+      "of_totals": 77.3,
+      "mean": 74.6,
       "median": 76.1
      },
      "stripped_reduction_pct": {
-      "of_totals": 64.4,
-      "mean": 58.5,
-      "median": 60.7
+      "of_totals": 64.0,
+      "mean": 58.3,
+      "median": 60.0
      },
      "no_stripped_win": 0
     },
     "DMOJ contests": {
      "ports": 97,
      "cp_loc": {
-      "total": 3778,
-      "mean": 38.9,
-      "median": 29
+      "total": 3673,
+      "mean": 37.9,
+      "median": 28
      },
      "cpp_raw_loc": {
       "total": 10788,
@@ -403,22 +403,22 @@
       "median": 52
      },
      "raw_reduction_pct": {
-      "of_totals": 65.0,
-      "mean": 66.1,
-      "median": 68.9
+      "of_totals": 66.0,
+      "mean": 67.0,
+      "median": 71.2
      },
      "stripped_reduction_pct": {
-      "of_totals": 44.0,
-      "mean": 41.3,
-      "median": 44.4
+      "of_totals": 45.6,
+      "mean": 42.8,
+      "median": 46.7
      },
      "no_stripped_win": 6
     },
     "DMOPC": {
      "ports": 37,
      "cp_loc": {
-      "total": 1376,
-      "mean": 37.2,
+      "total": 1346,
+      "mean": 36.4,
       "median": 31
      },
      "cpp_raw_loc": {
@@ -432,23 +432,23 @@
       "median": 62
      },
      "raw_reduction_pct": {
-      "of_totals": 64.8,
-      "mean": 64.6,
+      "of_totals": 65.6,
+      "mean": 65.4,
       "median": 64.8
      },
      "stripped_reduction_pct": {
-      "of_totals": 47.7,
-      "mean": 44.9,
-      "median": 44.8
+      "of_totals": 48.8,
+      "mean": 46.6,
+      "median": 45.7
      },
      "no_stripped_win": 1
     },
     "EGOI": {
      "ports": 15,
      "cp_loc": {
-      "total": 881,
-      "mean": 58.7,
-      "median": 69
+      "total": 873,
+      "mean": 58.2,
+      "median": 67
      },
      "cpp_raw_loc": {
       "total": 2225,
@@ -461,43 +461,43 @@
       "median": 103
      },
      "raw_reduction_pct": {
-      "of_totals": 60.4,
-      "mean": 62.1,
+      "of_totals": 60.8,
+      "mean": 62.4,
       "median": 63.0
      },
      "stripped_reduction_pct": {
-      "of_totals": 44.6,
-      "mean": 39.8,
+      "of_totals": 45.1,
+      "mean": 40.4,
       "median": 38.6
      },
      "no_stripped_win": 0
     },
     "IATI": {
-     "ports": 3,
+     "ports": 4,
      "cp_loc": {
-      "total": 110,
-      "mean": 36.7,
-      "median": 41
+      "total": 250,
+      "mean": 62.5,
+      "median": 47.0
      },
      "cpp_raw_loc": {
-      "total": 315,
-      "mean": 105.0,
-      "median": 96
+      "total": 609,
+      "mean": 152.2,
+      "median": 122.0
      },
      "cpp_stripped_loc": {
-      "total": 222,
-      "mean": 74.0,
-      "median": 65
+      "total": 458,
+      "mean": 114.5,
+      "median": 91.0
      },
      "raw_reduction_pct": {
-      "of_totals": 65.1,
-      "mean": 66.3,
-      "median": 64.2
+      "of_totals": 58.9,
+      "mean": 62.9,
+      "median": 60.8
      },
      "stripped_reduction_pct": {
-      "of_totals": 50.5,
-      "mean": 50.5,
-      "median": 54.7
+      "of_totals": 45.4,
+      "mean": 48.1,
+      "median": 47.7
      },
      "no_stripped_win": 0
     },
@@ -531,33 +531,33 @@
      "no_stripped_win": 0
     },
     "IOI": {
-     "ports": 88,
+     "ports": 94,
      "cp_loc": {
-      "total": 4195,
-      "mean": 47.7,
-      "median": 40.5
+      "total": 4694,
+      "mean": 49.9,
+      "median": 42.0
      },
      "cpp_raw_loc": {
-      "total": 10333,
-      "mean": 117.4,
+      "total": 11130,
+      "mean": 118.4,
       "median": 102.5
      },
      "cpp_stripped_loc": {
-      "total": 7207,
-      "mean": 81.9,
+      "total": 7780,
+      "mean": 82.8,
       "median": 69.0
      },
      "raw_reduction_pct": {
-      "of_totals": 59.4,
-      "mean": 59.1,
-      "median": 61.8
+      "of_totals": 57.8,
+      "mean": 57.7,
+      "median": 61.2
      },
      "stripped_reduction_pct": {
-      "of_totals": 41.8,
-      "mean": 40.1,
-      "median": 41.9
+      "of_totals": 39.7,
+      "mean": 38.3,
+      "median": 41.5
      },
-     "no_stripped_win": 7
+     "no_stripped_win": 9
     },
     "JOI": {
      "ports": 2,
@@ -589,68 +589,68 @@
      "no_stripped_win": 0
     },
     "NOI (China)": {
-     "ports": 70,
+     "ports": 77,
      "cp_loc": {
-      "total": 3780,
-      "mean": 54.0,
-      "median": 42.0
+      "total": 4344,
+      "mean": 56.4,
+      "median": 42
      },
      "cpp_raw_loc": {
-      "total": 10980,
-      "mean": 156.9,
-      "median": 136.0
+      "total": 12204,
+      "mean": 158.5,
+      "median": 138
      },
      "cpp_stripped_loc": {
-      "total": 7132,
-      "mean": 101.9,
-      "median": 88.0
+      "total": 7930,
+      "mean": 103.0,
+      "median": 88
      },
      "raw_reduction_pct": {
-      "of_totals": 65.6,
-      "mean": 63.2,
-      "median": 68.7
+      "of_totals": 64.4,
+      "mean": 62.8,
+      "median": 66.7
      },
      "stripped_reduction_pct": {
-      "of_totals": 47.0,
-      "mean": 43.4,
-      "median": 51.5
+      "of_totals": 45.2,
+      "mean": 41.7,
+      "median": 47.9
      },
-     "no_stripped_win": 7
+     "no_stripped_win": 9
     },
     "NOIP": {
-     "ports": 47,
+     "ports": 48,
      "cp_loc": {
-      "total": 1393,
-      "mean": 29.6,
-      "median": 24
+      "total": 1412,
+      "mean": 29.4,
+      "median": 24.0
      },
      "cpp_raw_loc": {
-      "total": 5049,
-      "mean": 107.4,
-      "median": 94
+      "total": 5265,
+      "mean": 109.7,
+      "median": 95.5
      },
      "cpp_stripped_loc": {
-      "total": 3125,
-      "mean": 66.5,
-      "median": 59
+      "total": 3290,
+      "mean": 68.5,
+      "median": 59.0
      },
      "raw_reduction_pct": {
-      "of_totals": 72.4,
-      "mean": 72.3,
-      "median": 73.2
+      "of_totals": 73.2,
+      "mean": 73.4,
+      "median": 73.8
      },
      "stripped_reduction_pct": {
-      "of_totals": 55.4,
-      "mean": 49.5,
-      "median": 51.4
+      "of_totals": 57.1,
+      "mean": 52.2,
+      "median": 54.0
      },
      "no_stripped_win": 1
     },
     "other": {
      "ports": 8,
      "cp_loc": {
-      "total": 289,
-      "mean": 36.1,
+      "total": 274,
+      "mean": 34.2,
       "median": 29.0
      },
      "cpp_raw_loc": {
@@ -664,14 +664,14 @@
       "median": 79.0
      },
      "raw_reduction_pct": {
-      "of_totals": 71.6,
-      "mean": 69.7,
+      "of_totals": 73.1,
+      "mean": 71.2,
       "median": 80.0
      },
      "stripped_reduction_pct": {
-      "of_totals": 53.3,
-      "mean": 54.5,
-      "median": 59.8
+      "of_totals": 55.7,
+      "mean": 56.1,
+      "median": 57.0
      },
      "no_stripped_win": 0
     }
@@ -680,9 +680,9 @@
     "v1": {
      "ports": 358,
      "cp_loc": {
-      "total": 12065,
-      "mean": 33.7,
-      "median": 28.0
+      "total": 11732,
+      "mean": 32.8,
+      "median": 27.5
      },
      "cpp_raw_loc": {
       "total": 41943,
@@ -695,52 +695,52 @@
       "median": 60.0
      },
      "raw_reduction_pct": {
-      "of_totals": 71.2,
-      "mean": 70.0,
-      "median": 72.3
+      "of_totals": 72.0,
+      "mean": 70.9,
+      "median": 73.2
      },
      "stripped_reduction_pct": {
-      "of_totals": 53.8,
-      "mean": 48.8,
-      "median": 52.1
+      "of_totals": 55.1,
+      "mean": 50.4,
+      "median": 53.8
      },
      "no_stripped_win": 13
     },
     "v2": {
-     "ports": 193,
+     "ports": 208,
      "cp_loc": {
-      "total": 9473,
-      "mean": 49.1,
-      "median": 37
+      "total": 10744,
+      "mean": 51.7,
+      "median": 38.0
      },
      "cpp_raw_loc": {
-      "total": 22851,
-      "mean": 118.4,
-      "median": 104
+      "total": 25382,
+      "mean": 122.0,
+      "median": 104.5
      },
      "cpp_stripped_loc": {
-      "total": 15611,
-      "mean": 80.9,
-      "median": 72
+      "total": 17383,
+      "mean": 83.6,
+      "median": 72.0
      },
      "raw_reduction_pct": {
-      "of_totals": 58.5,
-      "mean": 60.4,
-      "median": 62.7
+      "of_totals": 57.7,
+      "mean": 59.7,
+      "median": 62.2
      },
      "stripped_reduction_pct": {
-      "of_totals": 39.3,
-      "mean": 38.6,
-      "median": 40.0
+      "of_totals": 38.2,
+      "mean": 37.6,
+      "median": 40.5
      },
-     "no_stripped_win": 11
+     "no_stripped_win": 14
     },
     "v2.1": {
      "ports": 28,
      "cp_loc": {
-      "total": 2119,
-      "mean": 75.7,
-      "median": 67.5
+      "total": 2085,
+      "mean": 74.5,
+      "median": 64.0
      },
      "cpp_raw_loc": {
       "total": 4247,
@@ -753,14 +753,14 @@
       "median": 123.5
      },
      "raw_reduction_pct": {
-      "of_totals": 50.1,
-      "mean": 49.1,
+      "of_totals": 50.9,
+      "mean": 50.1,
       "median": 56.8
      },
      "stripped_reduction_pct": {
-      "of_totals": 35.5,
-      "mean": 20.4,
-      "median": 37.1
+      "of_totals": 36.5,
+      "mean": 21.7,
+      "median": 38.9
      },
      "no_stripped_win": 6
     }
@@ -769,9 +769,9 @@
     "regression": {
      "ports": 91,
      "cp_loc": {
-      "total": 1776,
-      "mean": 19.5,
-      "median": 18
+      "total": 1597,
+      "mean": 17.5,
+      "median": 16
      },
      "cpp_raw_loc": {
       "total": 7244,
@@ -784,45 +784,45 @@
       "median": 34
      },
      "raw_reduction_pct": {
-      "of_totals": 75.5,
-      "mean": 75.3,
-      "median": 75.9
+      "of_totals": 78.0,
+      "mean": 77.3,
+      "median": 79.5
      },
      "stripped_reduction_pct": {
-      "of_totals": 49.9,
-      "mean": 47.7,
-      "median": 51.7
+      "of_totals": 54.9,
+      "mean": 52.0,
+      "median": 54.8
      },
      "no_stripped_win": 3
     },
     "runnable": {
-     "ports": 480,
+     "ports": 495,
      "cp_loc": {
-      "total": 21667,
-      "mean": 45.1,
-      "median": 36.0
+      "total": 22750,
+      "mean": 46.0,
+      "median": 36
      },
      "cpp_raw_loc": {
-      "total": 60919,
-      "mean": 126.9,
-      "median": 107.0
+      "total": 63450,
+      "mean": 128.2,
+      "median": 107
      },
      "cpp_stripped_loc": {
-      "total": 40832,
-      "mean": 85.1,
-      "median": 74.0
+      "total": 42604,
+      "mean": 86.1,
+      "median": 74
      },
      "raw_reduction_pct": {
-      "of_totals": 64.4,
-      "mean": 63.9,
-      "median": 66.7
+      "of_totals": 64.1,
+      "mean": 63.8,
+      "median": 67.1
      },
      "stripped_reduction_pct": {
-      "of_totals": 46.9,
-      "mean": 43.1,
-      "median": 46.2
+      "of_totals": 46.6,
+      "mean": 43.0,
+      "median": 46.3
      },
-     "no_stripped_win": 27
+     "no_stripped_win": 30
     },
     "spec": {
      "ports": 8,
@@ -858,8 +858,8 @@
     "v1": {
      "ports": 100,
      "cp_loc": {
-      "total": 3631,
-      "mean": 36.3,
+      "total": 3674,
+      "mean": 36.7,
       "median": 26.5
      },
      "cpp_raw_loc": {
@@ -873,50 +873,50 @@
       "median": 65.5
      },
      "raw_reduction_pct": {
-      "of_totals": 71.2,
-      "mean": 71.9,
-      "median": 76.5
+      "of_totals": 70.9,
+      "mean": 71.6,
+      "median": 75.9
      },
      "stripped_reduction_pct": {
-      "of_totals": 53.8,
-      "mean": 52.4,
+      "of_totals": 53.2,
+      "mean": 52.0,
       "median": 60.7
      },
      "no_stripped_win": 5
     },
     "v2": {
-     "ports": 178,
+     "ports": 193,
      "cp_loc": {
-      "total": 5410,
-      "mean": 30.4,
-      "median": 24.0
+      "total": 6287,
+      "mean": 32.6,
+      "median": 25
      },
      "cpp_raw_loc": {
-      "total": 20899,
-      "mean": 117.4,
-      "median": 103.5
+      "total": 23430,
+      "mean": 121.4,
+      "median": 104
      },
      "cpp_stripped_loc": {
-      "total": 14326,
-      "mean": 80.5,
-      "median": 72.0
+      "total": 16098,
+      "mean": 83.4,
+      "median": 72
      },
      "raw_reduction_pct": {
-      "of_totals": 74.1,
-      "mean": 74.9,
-      "median": 76.2
+      "of_totals": 73.2,
+      "mean": 74.1,
+      "median": 75.0
      },
      "stripped_reduction_pct": {
-      "of_totals": 62.2,
-      "mean": 60.7,
-      "median": 61.6
+      "of_totals": 60.9,
+      "mean": 59.4,
+      "median": 59.7
      },
-     "no_stripped_win": 1
+     "no_stripped_win": 2
     },
     "v2.1": {
      "ports": 20,
      "cp_loc": {
-      "total": 642,
+      "total": 643,
       "mean": 32.1,
       "median": 25.5
      },
@@ -931,54 +931,54 @@
       "median": 113.0
      },
      "raw_reduction_pct": {
-      "of_totals": 76.9,
+      "of_totals": 76.8,
       "mean": 78.3,
       "median": 78.6
      },
      "stripped_reduction_pct": {
-      "of_totals": 68.7,
+      "of_totals": 68.6,
       "mean": 62.0,
-      "median": 65.7
+      "median": 65.3
      },
      "no_stripped_win": 1
     }
    },
    "canonical_by_strip_source": {
     "auto": {
-     "ports": 488,
+     "ports": 503,
      "cp_loc": {
-      "total": 21881,
-      "mean": 44.8,
-      "median": 36.0
+      "total": 22964,
+      "mean": 45.7,
+      "median": 36
      },
      "cpp_raw_loc": {
-      "total": 61797,
-      "mean": 126.6,
-      "median": 106.5
+      "total": 64328,
+      "mean": 127.9,
+      "median": 107
      },
      "cpp_stripped_loc": {
-      "total": 41465,
-      "mean": 85.0,
-      "median": 74.0
+      "total": 43237,
+      "mean": 86.0,
+      "median": 74
      },
      "raw_reduction_pct": {
-      "of_totals": 64.6,
-      "mean": 64.0,
-      "median": 66.8
+      "of_totals": 64.3,
+      "mean": 63.9,
+      "median": 67.1
      },
      "stripped_reduction_pct": {
-      "of_totals": 47.2,
+      "of_totals": 46.9,
       "mean": 43.3,
       "median": 46.3
      },
-     "no_stripped_win": 27
+     "no_stripped_win": 30
     },
     "hand": {
      "ports": 91,
      "cp_loc": {
-      "total": 1776,
-      "mean": 19.5,
-      "median": 18
+      "total": 1597,
+      "mean": 17.5,
+      "median": 16
      },
      "cpp_raw_loc": {
       "total": 7244,
@@ -991,14 +991,14 @@
       "median": 34
      },
      "raw_reduction_pct": {
-      "of_totals": 75.5,
-      "mean": 75.3,
-      "median": 75.9
+      "of_totals": 78.0,
+      "mean": 77.3,
+      "median": 79.5
      },
      "stripped_reduction_pct": {
-      "of_totals": 49.9,
-      "mean": 47.7,
-      "median": 51.7
+      "of_totals": 54.9,
+      "mean": 52.0,
+      "median": 54.8
      },
      "no_stripped_win": 3
     }
@@ -1013,17 +1013,16 @@
    "within_5_lines": 62
   },
   "unported": {
-   "problems": 257,
-   "with_accepted_source": 140,
-   "hard": 56,
+   "problems": 242,
+   "with_accepted_source": 125,
+   "hard": 41,
    "hard_by_family": {
     "CCO": 1,
     "Chinese provincial": 1,
     "DMOJ contests": 10,
-    "IATI": 1,
-    "IOI": 16,
-    "NOI (China)": 23,
-    "NOIP": 3,
+    "IOI": 10,
+    "NOI (China)": 16,
+    "NOIP": 2,
     "other": 1
    }
   }
@@ -1800,12 +1799,14 @@
    "spec_port": "proto/ports/scout_batch_3/ccc18s4.cp",
    "duplicates": [
     "proto/ports/scout_batch_3/today/ccc18s4.cp",
+    "proto/ports/wave2/ccc18s4.cp",
     "proto/ports/scout_batch_3/ccc18s4.cp"
    ],
-   "port_files": 3,
+   "port_files": 4,
    "groups": [
     "scout_batch_3",
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "ccc18s5": {
@@ -1905,10 +1906,13 @@
    "canonical_form": "regression",
    "canonical_verified": "pass",
    "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
+   "duplicates": [
+    "proto/ports/wave2/ccc20s2.cp"
+   ],
+   "port_files": 2,
    "groups": [
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "ccc20s2hard": {
@@ -1967,10 +1971,13 @@
    "canonical_form": "regression",
    "canonical_verified": "pass",
    "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
+   "duplicates": [
+    "proto/ports/wave2/ccc21s2.cp"
+   ],
+   "port_files": 2,
    "groups": [
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "ccc21s3": {
@@ -2449,10 +2456,13 @@
    "canonical_form": "regression",
    "canonical_verified": "pass",
    "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
+   "duplicates": [
+    "proto/ports/wave2/cco18p1.cp"
+   ],
+   "port_files": 2,
    "groups": [
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "cco18p2": {
@@ -3599,6 +3609,20 @@
     "scout_batch_14"
    ]
   },
+  "ctsc04p4": {
+   "family": "NOI (China)",
+   "canonical": "proto/ports/scout_batch_52/today/ctsc04p4.cp",
+   "canonical_form": "runnable",
+   "canonical_verified": "no harness",
+   "spec_port": "proto/ports/scout_batch_52/ctsc04p4.cp",
+   "duplicates": [
+    "proto/ports/scout_batch_52/ctsc04p4.cp"
+   ],
+   "port_files": 2,
+   "groups": [
+    "scout_batch_52"
+   ]
+  },
   "ctsc06p1": {
    "family": "NOI (China)",
    "canonical": "proto/ports/scout_batch_10/ctsc06p1.cp",
@@ -3878,11 +3902,13 @@
    "canonical_verified": "pass",
    "spec_port": null,
    "duplicates": [
+    "proto/ports/wave2/dmopc21c5p1.cp",
     "proto/ports/hillclimb_dp_graph/before/dmopc21c5p1.cp"
    ],
-   "port_files": 2,
+   "port_files": 3,
    "groups": [
-    "hillclimb_dp_graph"
+    "hillclimb_dp_graph",
+    "wave2"
    ]
   },
   "dmopc21c5p3": {
@@ -4263,12 +4289,14 @@
    "canonical_verified": "pass",
    "spec_port": null,
    "duplicates": [
-    "proto/ports/scout_batch_8/dpk.cp"
+    "proto/ports/scout_batch_8/dpk.cp",
+    "proto/ports/wave2/dpk.cp"
    ],
-   "port_files": 2,
+   "port_files": 3,
    "groups": [
     "scout_batch_8",
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "dpl": {
@@ -4278,12 +4306,14 @@
    "canonical_verified": "pass",
    "spec_port": null,
    "duplicates": [
-    "proto/ports/scout_batch_8/dpl.cp"
+    "proto/ports/scout_batch_8/dpl.cp",
+    "proto/ports/wave2/dpl.cp"
    ],
-   "port_files": 2,
+   "port_files": 3,
    "groups": [
     "scout_batch_8",
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "dpm": {
@@ -4293,12 +4323,14 @@
    "canonical_verified": "pass",
    "spec_port": null,
    "duplicates": [
-    "proto/ports/scout_batch_4/dpm.cp"
+    "proto/ports/scout_batch_4/dpm.cp",
+    "proto/ports/wave2/dpm.cp"
    ],
-   "port_files": 2,
+   "port_files": 3,
    "groups": [
     "scout_batch_4",
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "dpn": {
@@ -4308,12 +4340,14 @@
    "canonical_verified": "pass",
    "spec_port": null,
    "duplicates": [
-    "proto/ports/scout_batch_4/dpn.cp"
+    "proto/ports/scout_batch_4/dpn.cp",
+    "proto/ports/wave2/dpn.cp"
    ],
-   "port_files": 2,
+   "port_files": 3,
    "groups": [
     "scout_batch_4",
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "dpo": {
@@ -4323,12 +4357,14 @@
    "canonical_verified": "pass",
    "spec_port": null,
    "duplicates": [
-    "proto/ports/scout_batch_4/dpo.cp"
+    "proto/ports/scout_batch_4/dpo.cp",
+    "proto/ports/wave2/dpo.cp"
    ],
-   "port_files": 2,
+   "port_files": 3,
    "groups": [
     "hillclimb_dp_graph",
-    "scout_batch_4"
+    "scout_batch_4",
+    "wave2"
    ]
   },
   "dpp": {
@@ -4338,11 +4374,13 @@
    "canonical_verified": "pass",
    "spec_port": null,
    "duplicates": [
+    "proto/ports/wave2/dpp.cp",
     "proto/ports/hillclimb_dp_graph/before/dpp.cp"
    ],
-   "port_files": 2,
+   "port_files": 3,
    "groups": [
-    "hillclimb_dp_graph"
+    "hillclimb_dp_graph",
+    "wave2"
    ]
   },
   "dpq": {
@@ -4367,12 +4405,14 @@
    "spec_port": "proto/ports/scout_batch_3/dpr.cp",
    "duplicates": [
     "proto/ports/scout_batch_3/today/dpr.cp",
+    "proto/ports/wave2/dpr.cp",
     "proto/ports/scout_batch_3/dpr.cp"
    ],
-   "port_files": 3,
+   "port_files": 4,
    "groups": [
     "scout_batch_3",
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "dps": {
@@ -4398,12 +4438,14 @@
    "canonical_verified": "pass",
    "spec_port": null,
    "duplicates": [
-    "proto/ports/scout_batch_4/dpt.cp"
+    "proto/ports/scout_batch_4/dpt.cp",
+    "proto/ports/wave2/dpt.cp"
    ],
-   "port_files": 2,
+   "port_files": 3,
    "groups": [
     "scout_batch_4",
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "dpu": {
@@ -4414,12 +4456,14 @@
    "spec_port": null,
    "duplicates": [
     "proto/ports/scout_batch_4/dpu.cp",
+    "proto/ports/wave2/dpu.cp",
     "proto/ports/hillclimb_dp_graph/before/dpu.cp"
    ],
-   "port_files": 3,
+   "port_files": 4,
    "groups": [
     "hillclimb_dp_graph",
-    "scout_batch_4"
+    "scout_batch_4",
+    "wave2"
    ]
   },
   "dpv": {
@@ -4430,12 +4474,14 @@
    "spec_port": null,
    "duplicates": [
     "proto/ports/scout_batch_2/dpv.cp",
+    "proto/ports/wave2/dpv.cp",
     "proto/ports/hillclimb_dp_graph/before/dpv.cp"
    ],
-   "port_files": 3,
+   "port_files": 4,
    "groups": [
     "hillclimb_dp_graph",
-    "scout_batch_2"
+    "scout_batch_2",
+    "wave2"
    ]
   },
   "dpw": {
@@ -4461,12 +4507,14 @@
    "canonical_verified": "pass",
    "spec_port": null,
    "duplicates": [
-    "proto/ports/scout_batch_4/dpx.cp"
+    "proto/ports/scout_batch_4/dpx.cp",
+    "proto/ports/wave2/dpx.cp"
    ],
-   "port_files": 2,
+   "port_files": 3,
    "groups": [
     "scout_batch_4",
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "dpy": {
@@ -4476,12 +4524,14 @@
    "canonical_verified": "pass",
    "spec_port": null,
    "duplicates": [
-    "proto/ports/scout_batch_8/dpy.cp"
+    "proto/ports/scout_batch_8/dpy.cp",
+    "proto/ports/wave2/dpy.cp"
    ],
-   "port_files": 2,
+   "port_files": 3,
    "groups": [
     "scout_batch_8",
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "dpz": {
@@ -4905,6 +4955,20 @@
     "scout_batch_45"
    ]
   },
+  "iati21a13": {
+   "family": "IATI",
+   "canonical": "proto/ports/scout_batch_52/today/iati21a13.cp",
+   "canonical_form": "runnable",
+   "canonical_verified": "no harness",
+   "spec_port": "proto/ports/scout_batch_52/iati21a13.cp",
+   "duplicates": [
+    "proto/ports/scout_batch_52/iati21a13.cp"
+   ],
+   "port_files": 2,
+   "groups": [
+    "scout_batch_52"
+   ]
+  },
   "iati21a22": {
    "family": "IATI",
    "canonical": "proto/ports/scout_batch_32/today/iati21a22.cp",
@@ -4953,10 +5017,13 @@
    "canonical_form": "regression",
    "canonical_verified": "pass",
    "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
+   "duplicates": [
+    "proto/ports/wave2/ioi00p1.cp"
+   ],
+   "port_files": 2,
    "groups": [
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "ioi00p2": {
@@ -5055,10 +5122,13 @@
    "canonical_form": "regression",
    "canonical_verified": "pass",
    "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
+   "duplicates": [
+    "proto/ports/wave2/ioi04p4.cp"
+   ],
+   "port_files": 2,
    "groups": [
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "ioi04p5": {
@@ -5558,6 +5628,20 @@
     "scout_batch_17"
    ]
   },
+  "ioi13p3": {
+   "family": "IOI",
+   "canonical": "proto/ports/scout_batch_52/today/ioi13p3.cp",
+   "canonical_form": "runnable",
+   "canonical_verified": "no harness",
+   "spec_port": "proto/ports/scout_batch_52/ioi13p3.cp",
+   "duplicates": [
+    "proto/ports/scout_batch_52/ioi13p3.cp"
+   ],
+   "port_files": 2,
+   "groups": [
+    "scout_batch_52"
+   ]
+  },
   "ioi13p3io": {
    "family": "IOI",
    "canonical": "proto/ports/scout_batch_24/today/ioi13p3io.cp",
@@ -5610,6 +5694,20 @@
    "port_files": 2,
    "groups": [
     "blind_critic_4"
+   ]
+  },
+  "ioi14p1": {
+   "family": "IOI",
+   "canonical": "proto/ports/scout_batch_52/today/ioi14p1.cp",
+   "canonical_form": "runnable",
+   "canonical_verified": "no harness",
+   "spec_port": "proto/ports/scout_batch_52/ioi14p1.cp",
+   "duplicates": [
+    "proto/ports/scout_batch_52/ioi14p1.cp"
+   ],
+   "port_files": 2,
+   "groups": [
+    "scout_batch_52"
    ]
   },
   "ioi14p2": {
@@ -5674,6 +5772,20 @@
    "port_files": 1,
    "groups": [
     "scout_batch_13"
+   ]
+  },
+  "ioi14p6io": {
+   "family": "IOI",
+   "canonical": "proto/ports/scout_batch_52/today/ioi14p6io.cp",
+   "canonical_form": "runnable",
+   "canonical_verified": "no harness",
+   "spec_port": "proto/ports/scout_batch_52/ioi14p6io.cp",
+   "duplicates": [
+    "proto/ports/scout_batch_52/ioi14p6io.cp"
+   ],
+   "port_files": 2,
+   "groups": [
+    "scout_batch_52"
    ]
   },
   "ioi15p1": {
@@ -5824,6 +5936,20 @@
     "scout_batch_23"
    ]
   },
+  "ioi17p4": {
+   "family": "IOI",
+   "canonical": "proto/ports/scout_batch_52/today/ioi17p4.cp",
+   "canonical_form": "runnable",
+   "canonical_verified": "no harness",
+   "spec_port": "proto/ports/scout_batch_52/ioi17p4.cp",
+   "duplicates": [
+    "proto/ports/scout_batch_52/ioi17p4.cp"
+   ],
+   "port_files": 2,
+   "groups": [
+    "scout_batch_52"
+   ]
+  },
   "ioi17p6": {
    "family": "IOI",
    "canonical": "proto/ports/blind_critic_4/ioi17p6.cp",
@@ -5866,12 +5992,12 @@
   },
   "ioi18p3": {
    "family": "IOI",
-   "canonical": "proto/ports/scout_batch_26/ioi18p3.cp",
+   "canonical": "proto/ports/scout_batch_27/ioi18p3.cp",
    "canonical_form": "runnable",
    "canonical_verified": "pass",
    "spec_port": null,
    "duplicates": [
-    "proto/ports/scout_batch_27/ioi18p3.cp"
+    "proto/ports/scout_batch_26/ioi18p3.cp"
    ],
    "port_files": 2,
    "groups": [
@@ -5989,6 +6115,20 @@
     "scout_batch_28"
    ]
   },
+  "ioi20p5": {
+   "family": "IOI",
+   "canonical": "proto/ports/scout_batch_52/today/ioi20p5.cp",
+   "canonical_form": "runnable",
+   "canonical_verified": "no harness",
+   "spec_port": "proto/ports/scout_batch_52/ioi20p5.cp",
+   "duplicates": [
+    "proto/ports/scout_batch_52/ioi20p5.cp"
+   ],
+   "port_files": 2,
+   "groups": [
+    "scout_batch_52"
+   ]
+  },
   "ioi20p6": {
    "family": "IOI",
    "canonical": "proto/ports/scout_batch_9/ioi20p6.cp",
@@ -6069,16 +6209,33 @@
     "scout_batch_49"
    ]
   },
+  "ioi22p5": {
+   "family": "IOI",
+   "canonical": "proto/ports/scout_batch_52/today/ioi22p5.cp",
+   "canonical_form": "runnable",
+   "canonical_verified": "no harness",
+   "spec_port": "proto/ports/scout_batch_52/ioi22p5.cp",
+   "duplicates": [
+    "proto/ports/scout_batch_52/ioi22p5.cp"
+   ],
+   "port_files": 2,
+   "groups": [
+    "scout_batch_52"
+   ]
+  },
   "ioi94p1": {
    "family": "IOI",
    "canonical": "proto/ports/ioi94p1.cp",
    "canonical_form": "regression",
    "canonical_verified": "pass",
    "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
+   "duplicates": [
+    "proto/ports/wave2/ioi94p1.cp"
+   ],
+   "port_files": 2,
    "groups": [
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "ioi99p2": {
@@ -6509,6 +6666,20 @@
     "top-level"
    ]
   },
+  "noi02p2": {
+   "family": "NOI (China)",
+   "canonical": "proto/ports/scout_batch_52/today/noi02p2.cp",
+   "canonical_form": "runnable",
+   "canonical_verified": "no harness",
+   "spec_port": "proto/ports/scout_batch_52/noi02p2.cp",
+   "duplicates": [
+    "proto/ports/scout_batch_52/noi02p2.cp"
+   ],
+   "port_files": 2,
+   "groups": [
+    "scout_batch_52"
+   ]
+  },
   "noi02p3": {
    "family": "NOI (China)",
    "canonical": "proto/ports/scout_batch_4/noi02p3.cp",
@@ -6531,6 +6702,20 @@
    "port_files": 1,
    "groups": [
     "scout_batch_20"
+   ]
+  },
+  "noi02p6": {
+   "family": "NOI (China)",
+   "canonical": "proto/ports/scout_batch_52/today/noi02p6.cp",
+   "canonical_form": "runnable",
+   "canonical_verified": "no harness",
+   "spec_port": "proto/ports/scout_batch_52/noi02p6.cp",
+   "duplicates": [
+    "proto/ports/scout_batch_52/noi02p6.cp"
+   ],
+   "port_files": 2,
+   "groups": [
+    "scout_batch_52"
    ]
   },
   "noi03p1": {
@@ -6771,6 +6956,20 @@
    "port_files": 2,
    "groups": [
     "blind_critic_5"
+   ]
+  },
+  "noi08p5": {
+   "family": "NOI (China)",
+   "canonical": "proto/ports/scout_batch_52/today/noi08p5.cp",
+   "canonical_form": "runnable",
+   "canonical_verified": "no harness",
+   "spec_port": "proto/ports/scout_batch_52/noi08p5.cp",
+   "duplicates": [
+    "proto/ports/scout_batch_52/noi08p5.cp"
+   ],
+   "port_files": 2,
+   "groups": [
+    "scout_batch_52"
    ]
   },
   "noi09p1": {
@@ -7119,6 +7318,20 @@
     "scout_batch_14"
    ]
   },
+  "noi19p3": {
+   "family": "NOI (China)",
+   "canonical": "proto/ports/scout_batch_52/today/noi19p3.cp",
+   "canonical_form": "runnable",
+   "canonical_verified": "no harness",
+   "spec_port": "proto/ports/scout_batch_52/noi19p3.cp",
+   "duplicates": [
+    "proto/ports/scout_batch_52/noi19p3.cp"
+   ],
+   "port_files": 2,
+   "groups": [
+    "scout_batch_52"
+   ]
+  },
   "noi19p4": {
    "family": "NOI (China)",
    "canonical": "proto/ports/scout_batch_30/noi19p4.cp",
@@ -7251,6 +7464,20 @@
     "scout_batch_22"
    ]
   },
+  "noi21p5": {
+   "family": "NOI (China)",
+   "canonical": "proto/ports/scout_batch_52/today/noi21p5.cp",
+   "canonical_form": "runnable",
+   "canonical_verified": "no harness",
+   "spec_port": "proto/ports/scout_batch_52/noi21p5.cp",
+   "duplicates": [
+    "proto/ports/scout_batch_52/noi21p5.cp"
+   ],
+   "port_files": 2,
+   "groups": [
+    "scout_batch_52"
+   ]
+  },
   "noi22p1": {
    "family": "NOI (China)",
    "canonical": "proto/ports/scout_batch_50/today/noi22p1.cp",
@@ -7321,6 +7548,20 @@
     "scout_batch_14"
    ]
   },
+  "noi23p4": {
+   "family": "NOI (China)",
+   "canonical": "proto/ports/scout_batch_52/today/noi23p4.cp",
+   "canonical_form": "runnable",
+   "canonical_verified": "no harness",
+   "spec_port": "proto/ports/scout_batch_52/noi23p4.cp",
+   "duplicates": [
+    "proto/ports/scout_batch_52/noi23p4.cp"
+   ],
+   "port_files": 2,
+   "groups": [
+    "scout_batch_52"
+   ]
+  },
   "noimps22p1": {
    "family": "NOI (China)",
    "canonical": "proto/ports/scout_batch_19/noimps22p1.cp",
@@ -7381,10 +7622,13 @@
    "canonical_form": "regression",
    "canonical_verified": "pass",
    "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
+   "duplicates": [
+    "proto/ports/wave2/noip00p1.cp"
+   ],
+   "port_files": 2,
    "groups": [
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "noip00p4": {
@@ -7407,10 +7651,13 @@
    "canonical_form": "regression",
    "canonical_verified": "pass",
    "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
+   "duplicates": [
+    "proto/ports/wave2/noip01p2.cp"
+   ],
+   "port_files": 2,
    "groups": [
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "noip01p4": {
@@ -7445,10 +7692,13 @@
    "canonical_form": "regression",
    "canonical_verified": "pass",
    "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
+   "duplicates": [
+    "proto/ports/wave2/noip04p1.cp"
+   ],
+   "port_files": 2,
    "groups": [
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "noip04p2": {
@@ -7469,10 +7719,13 @@
    "canonical_form": "regression",
    "canonical_verified": "pass",
    "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
+   "duplicates": [
+    "proto/ports/wave2/noip04p3.cp"
+   ],
+   "port_files": 2,
    "groups": [
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "noip04p4": {
@@ -7508,11 +7761,13 @@
    "canonical_verified": "pass",
    "spec_port": null,
    "duplicates": [
+    "proto/ports/wave2/noip06p1.cp",
     "proto/ports/hillclimb_dp_graph/before/noip06p1.cp"
    ],
-   "port_files": 2,
+   "port_files": 3,
    "groups": [
-    "hillclimb_dp_graph"
+    "hillclimb_dp_graph",
+    "wave2"
    ]
   },
   "noip06p2": {
@@ -7521,10 +7776,13 @@
    "canonical_form": "regression",
    "canonical_verified": "pass",
    "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
+   "duplicates": [
+    "proto/ports/wave2/noip06p2.cp"
+   ],
+   "port_files": 2,
    "groups": [
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "noip06p3": {
@@ -7692,10 +7950,13 @@
    "canonical_form": "regression",
    "canonical_verified": "pass",
    "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
+   "duplicates": [
+    "proto/ports/wave2/noip14p2.cp"
+   ],
+   "port_files": 2,
    "groups": [
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "noip14p3": {
@@ -7716,10 +7977,13 @@
    "canonical_form": "regression",
    "canonical_verified": "pass",
    "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
+   "duplicates": [
+    "proto/ports/wave2/noip14p5.cp"
+   ],
+   "port_files": 2,
    "groups": [
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "noip14p6": {
@@ -7740,10 +8004,13 @@
    "canonical_form": "regression",
    "canonical_verified": "pass",
    "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
+   "duplicates": [
+    "proto/ports/wave2/noip18p2.cp"
+   ],
+   "port_files": 2,
    "groups": [
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "noip18p3": {
@@ -7860,6 +8127,20 @@
    "port_files": 1,
    "groups": [
     "scout_batch_10"
+   ]
+  },
+  "noip20p3": {
+   "family": "NOIP",
+   "canonical": "proto/ports/scout_batch_52/today/noip20p3.cp",
+   "canonical_form": "runnable",
+   "canonical_verified": "no harness",
+   "spec_port": "proto/ports/scout_batch_52/noip20p3.cp",
+   "duplicates": [
+    "proto/ports/scout_batch_52/noip20p3.cp"
+   ],
+   "port_files": 2,
+   "groups": [
+    "scout_batch_52"
    ]
   },
   "noip21p1": {
@@ -8582,10 +8863,13 @@
    "canonical_form": "regression",
    "canonical_verified": "pass",
    "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
+   "duplicates": [
+    "proto/ports/wave2/yac1p1.cp"
+   ],
+   "port_files": 2,
    "groups": [
-    "top-level"
+    "top-level",
+    "wave2"
    ]
   },
   "yac1p2": {
@@ -8775,7 +9059,7 @@
    "submission": null,
    "original": "proto/ports/aac4p2_orig.cpp",
    "generation": "v1",
-   "cp_loc": 14,
+   "cp_loc": 12,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 66,
@@ -9143,7 +9427,7 @@
    "submission": "4133674",
    "original": "corpus/submissions/4133674.cpp",
    "generation": "v1",
-   "cp_loc": 31,
+   "cp_loc": 32,
    "wish_markers": 0,
    "harness": "proto/ports/blind_critic_2/check.py",
    "cpp_raw_loc": 93,
@@ -9162,7 +9446,7 @@
    "submission": "4133674",
    "original": "corpus/submissions/4133674.cpp",
    "generation": "v1",
-   "cp_loc": 9,
+   "cp_loc": 10,
    "wish_markers": 0,
    "harness": null,
    "cpp_raw_loc": 93,
@@ -9272,7 +9556,7 @@
    "submission": "4121086",
    "original": "corpus/submissions/4121086.cpp",
    "generation": "v1",
-   "cp_loc": 20,
+   "cp_loc": 18,
    "wish_markers": 0,
    "harness": "proto/ports/blind_critic_2/check.py",
    "cpp_raw_loc": 75,
@@ -9605,7 +9889,7 @@
    "submission": "4223999",
    "original": "corpus/submissions/4223999.cpp",
    "generation": "v2.1",
-   "cp_loc": 120,
+   "cp_loc": 118,
    "wish_markers": 0,
    "harness": "proto/ports/blind_critic_4/check.py",
    "cpp_raw_loc": 183,
@@ -9860,11 +10144,11 @@
    "group": "blind_critic_4",
    "form": "runnable",
    "problem": "ioi22p1",
-   "mapped_by": "file name is the problem code, id from check.py",
+   "mapped_by": "header",
    "submission": "4785724",
    "original": "corpus/submissions/4785724.cpp",
    "generation": "v2.1",
-   "cp_loc": 83,
+   "cp_loc": 52,
    "wish_markers": 0,
    "harness": "proto/ports/blind_critic_4/check.py",
    "cpp_raw_loc": 116,
@@ -10012,7 +10296,7 @@
    "submission": "5144322",
    "original": "corpus/submissions/5144322.cpp",
    "generation": "v2",
-   "cp_loc": 112,
+   "cp_loc": 110,
    "wish_markers": 0,
    "harness": "proto/ports/blind_critic_5/check.py",
    "cpp_raw_loc": 146,
@@ -10123,7 +10407,7 @@
    "submission": null,
    "original": "proto/ports/btoi17p3_orig.cpp",
    "generation": "v1",
-   "cp_loc": 29,
+   "cp_loc": 19,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 141,
@@ -10199,7 +10483,7 @@
    "submission": null,
    "original": "proto/ports/ccc10s4_orig.cpp",
    "generation": "v1",
-   "cp_loc": 24,
+   "cp_loc": 21,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 91,
@@ -10218,7 +10502,7 @@
    "submission": null,
    "original": "proto/ports/ccc17s4_orig.cpp",
    "generation": "v1",
-   "cp_loc": 24,
+   "cp_loc": 16,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 104,
@@ -10256,7 +10540,7 @@
    "submission": null,
    "original": "proto/ports/ccc18s5_orig.cpp",
    "generation": "v1",
-   "cp_loc": 25,
+   "cp_loc": 17,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 104,
@@ -10275,7 +10559,7 @@
    "submission": null,
    "original": "proto/ports/ccc19s5_orig.cpp",
    "generation": "v1",
-   "cp_loc": 18,
+   "cp_loc": 13,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 64,
@@ -10294,7 +10578,7 @@
    "submission": null,
    "original": "proto/ports/ccc20s2_orig.cpp",
    "generation": "v1",
-   "cp_loc": 12,
+   "cp_loc": 11,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 73,
@@ -10351,7 +10635,7 @@
    "submission": null,
    "original": "proto/ports/ccc21s3_orig.cpp",
    "generation": "v1",
-   "cp_loc": 7,
+   "cp_loc": 4,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 61,
@@ -10389,7 +10673,7 @@
    "submission": null,
    "original": "proto/ports/ccc21s5_orig.cpp",
    "generation": "v1",
-   "cp_loc": 21,
+   "cp_loc": 15,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 95,
@@ -10446,7 +10730,7 @@
    "submission": null,
    "original": "proto/ports/ccc23s5_orig.cpp",
    "generation": "v1",
-   "cp_loc": 21,
+   "cp_loc": 20,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 70,
@@ -10465,7 +10749,7 @@
    "submission": null,
    "original": "proto/ports/cco16p2_orig.cpp",
    "generation": "v1",
-   "cp_loc": 31,
+   "cp_loc": 32,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 114,
@@ -10522,7 +10806,7 @@
    "submission": null,
    "original": "proto/ports/cco20p1_orig.cpp",
    "generation": "v1",
-   "cp_loc": 24,
+   "cp_loc": 23,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 72,
@@ -10598,7 +10882,7 @@
    "submission": null,
    "original": "proto/ports/cheerio1s3_orig.cpp",
    "generation": "v1",
-   "cp_loc": 20,
+   "cp_loc": 15,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 62,
@@ -10655,7 +10939,7 @@
    "submission": null,
    "original": "proto/ports/dmopc21c2p1_orig.cpp",
    "generation": "v1",
-   "cp_loc": 14,
+   "cp_loc": 10,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 58,
@@ -10693,7 +10977,7 @@
    "submission": null,
    "original": "proto/ports/dmpg16s5_orig.cpp",
    "generation": "v1",
-   "cp_loc": 14,
+   "cp_loc": 13,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 58,
@@ -10712,7 +10996,7 @@
    "submission": null,
    "original": "proto/ports/dpe_orig.cpp",
    "generation": "v1",
-   "cp_loc": 10,
+   "cp_loc": 8,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 56,
@@ -10731,7 +11015,7 @@
    "submission": null,
    "original": "proto/ports/dpg_orig.cpp",
    "generation": "v1",
-   "cp_loc": 13,
+   "cp_loc": 8,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 67,
@@ -10750,7 +11034,7 @@
    "submission": null,
    "original": "proto/ports/dph_orig.cpp",
    "generation": "v1",
-   "cp_loc": 17,
+   "cp_loc": 12,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 59,
@@ -10902,7 +11186,7 @@
    "submission": null,
    "original": "proto/ports/dpy_orig.cpp",
    "generation": "v1",
-   "cp_loc": 26,
+   "cp_loc": 28,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 95,
@@ -10921,7 +11205,7 @@
    "submission": null,
    "original": "proto/ports/dpz_orig.cpp",
    "generation": "v1",
-   "cp_loc": 24,
+   "cp_loc": 15,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 93,
@@ -10930,6 +11214,2092 @@
    "original_language": "cpp",
    "verified": "pass",
    "harness_line": "dpz: stress OK: 60 tests agree (0 rejected by where)"
+  },
+  {
+   "path": "proto/ports/ecnerwala/agc077a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 76,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/agc079a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 16,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/agc079c.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 75,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2150b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 21,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2150d.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 37,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2152a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 6,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2152b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 5,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2152c.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 17,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2152d.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 12,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2152e.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 27,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2152f.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 64,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2152h1.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 22,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2152h2.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 78,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2157a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 9,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2157b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 11,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2157c.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 20,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2157d.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 11,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2157e.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 14,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2157f.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 48,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2159a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 23,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2159b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 35,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2159c.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 34,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2159d1.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 21,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2159d2.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 31,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2159f.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 46,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2165a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 7,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2165b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 19,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2165c.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 30,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2165d.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 26,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2165e.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 41,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2178a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 6,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2178b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 14,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2178c.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 9,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2178d.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 28,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2178e.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 27,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2178f.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 37,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2180a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 4,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2180b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 9,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2180c.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 18,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2180d.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 22,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2180e.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 11,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2180g.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 39,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2180h1.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 24,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2180h2.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 21,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2183a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 4,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2183b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 8,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2183c.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 8,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2183d1.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 22,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2183d2.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 55,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2187a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 12,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2187b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 37,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2187c.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 28,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2187e.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 21,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2187g.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 25,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2201a1.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 19,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2201a2.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 19,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2201b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 25,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2201c.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 23,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2201f1.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 34,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2207a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 11,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2207b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 20,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2207c.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 33,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2207d.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 18,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2207e1.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 24,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2211a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 4,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2211b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 19,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2211c1.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 17,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2211c2.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 29,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2211d.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 24,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2219a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 15,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2222a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 4,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2222b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 24,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2222c.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 19,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2222d.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 12,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2222g.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 69,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2229a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 5,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2229b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 7,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2229c1.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 11,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2229c2.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 23,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2229d.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 21,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2229e.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 31,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2229f.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 30,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2229g.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 45,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2229i.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 66,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2237a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 5,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2237b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 16,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2237c.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 8,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2237d.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 15,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2237e.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 50,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2237f.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 22,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2237i1.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 63,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2245a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 7,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2245b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 5,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2245c.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 19,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2245d2.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 29,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2245e.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 18,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2245f.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 40,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2255a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 10,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2255b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 14,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2255c.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 24,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2255d.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 32,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2255f.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 18,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2261a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 5,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2261b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 8,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2261c.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 7,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2261d1.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 8,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2261d2.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 26,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2261e.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 13,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2261f1.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 21,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2261g.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 38,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2261h.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 35,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2262a1.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 11,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2262a2.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 25,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2262c.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 16,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2262d.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 57,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2262e.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 15,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2268a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 6,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2268b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 12,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2268c.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 33,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2268d.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 35,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/cf2268e.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 17,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/math/congruence.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 83,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/math/fixed.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 124,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/math/floor_sum.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 37,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/math/frac.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 41,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/math/hom.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 43,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/math/matrix.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 164,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/math/poly.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 1931,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/math/powers.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 30,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/math/primes.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 112,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/math/sos.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 38,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/ucup4s24f.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 31,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/ucup4s25b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 38,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/ucup4s25c.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 50,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/ucup4s25e.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 59,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/ucup4s25h.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 15,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/ucup5s01a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 31,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/ucup5s02e.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 14,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/ucup5s03a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 22,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/ucup5s03f.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 17,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/ucup5s05b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 48,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/ucup5s05e.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 42,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/ucup5s05f.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 65,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/ucup5s06a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 19,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/ucup5s06g.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 11,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/wtf26a.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 59,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/wtf26b.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 26,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/wtf26c.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 49,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/ecnerwala/wtf26d.cp",
+   "group": "ecnerwala",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 109,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
   },
   {
    "path": "proto/ports/hillclimb_dp_graph/apio07p3.cp",
@@ -10959,7 +13329,7 @@
    "submission": null,
    "original": "proto/ports/hillclimb_dp_graph/apio09p3_orig.cpp",
    "generation": "v1",
-   "cp_loc": 23,
+   "cp_loc": 18,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 172,
@@ -11014,7 +13384,7 @@
    "submission": null,
    "original": "proto/ports/hillclimb_dp_graph/coi06p2_orig.cpp",
    "generation": "v1",
-   "cp_loc": 52,
+   "cp_loc": 58,
    "wish_markers": 0,
    "harness": null,
    "cpp_raw_loc": 153,
@@ -11158,7 +13528,7 @@
    "submission": null,
    "original": "proto/ports/hillclimb_dp_graph/noip06p1_orig.cpp",
    "generation": "v1",
-   "cp_loc": 7,
+   "cp_loc": 12,
    "wish_markers": 0,
    "harness": null,
    "cpp_raw_loc": 62,
@@ -11213,7 +13583,7 @@
    "submission": null,
    "original": "proto/ports/hillclimb_dp_graph/coi06p2_orig.cpp",
    "generation": "v1",
-   "cp_loc": 32,
+   "cp_loc": 25,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 153,
@@ -11289,7 +13659,7 @@
    "submission": null,
    "original": "proto/ports/hillclimb_dp_graph/dps_orig.cpp",
    "generation": "v1",
-   "cp_loc": 19,
+   "cp_loc": 14,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 69,
@@ -11346,7 +13716,7 @@
    "submission": null,
    "original": "proto/ports/hillclimb_dp_graph/ioi11p4_orig.cpp",
    "generation": "v1",
-   "cp_loc": 19,
+   "cp_loc": 18,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 95,
@@ -11460,7 +13830,7 @@
    "submission": null,
    "original": "proto/ports/ioi04p4_orig.cpp",
    "generation": "v1",
-   "cp_loc": 12,
+   "cp_loc": 13,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 35,
@@ -11498,7 +13868,7 @@
    "submission": null,
    "original": "proto/ports/ioi10p3_orig.cpp",
    "generation": "v1",
-   "cp_loc": 11,
+   "cp_loc": 8,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 76,
@@ -11517,7 +13887,7 @@
    "submission": null,
    "original": "proto/ports/ioi11p2_orig.cpp",
    "generation": "v1",
-   "cp_loc": 22,
+   "cp_loc": 23,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 84,
@@ -11631,7 +14001,7 @@
    "submission": null,
    "original": "proto/ports/noi14p4_orig.cpp",
    "generation": "v1",
-   "cp_loc": 24,
+   "cp_loc": 18,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 88,
@@ -11764,7 +14134,7 @@
    "submission": null,
    "original": "proto/ports/noip06p2_orig.cpp",
    "generation": "v1",
-   "cp_loc": 21,
+   "cp_loc": 22,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 75,
@@ -11783,7 +14153,7 @@
    "submission": null,
    "original": "proto/ports/noip07p1_orig.cpp",
    "generation": "v1",
-   "cp_loc": 4,
+   "cp_loc": 3,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 46,
@@ -11802,7 +14172,7 @@
    "submission": null,
    "original": "proto/ports/noip07p2_orig.cpp",
    "generation": "v1",
-   "cp_loc": 20,
+   "cp_loc": 18,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 80,
@@ -11821,7 +14191,7 @@
    "submission": null,
    "original": "proto/ports/noip09p2_orig.cpp",
    "generation": "v1",
-   "cp_loc": 52,
+   "cp_loc": 4,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 129,
@@ -11840,7 +14210,7 @@
    "submission": null,
    "original": "proto/ports/noip09p3_orig.cpp",
    "generation": "v1",
-   "cp_loc": 33,
+   "cp_loc": 29,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 99,
@@ -11859,7 +14229,7 @@
    "submission": null,
    "original": "proto/ports/noip10p3_orig.cpp",
    "generation": "v1",
-   "cp_loc": 14,
+   "cp_loc": 12,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 89,
@@ -11897,7 +14267,7 @@
    "submission": null,
    "original": "proto/ports/noip14p3_orig.cpp",
    "generation": "v1",
-   "cp_loc": 45,
+   "cp_loc": 24,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 92,
@@ -11916,7 +14286,7 @@
    "submission": null,
    "original": "proto/ports/noip14p5_orig.cpp",
    "generation": "v1",
-   "cp_loc": 16,
+   "cp_loc": 15,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 90,
@@ -12009,7 +14379,7 @@
    "submission": "4528855",
    "original": "corpus/submissions/4528855.cpp",
    "generation": "v1",
-   "cp_loc": 16,
+   "cp_loc": 15,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_10/check.py",
    "cpp_raw_loc": 128,
@@ -12028,7 +14398,7 @@
    "submission": null,
    "original": null,
    "generation": "v1",
-   "cp_loc": 67,
+   "cp_loc": 66,
    "wish_markers": 0,
    "harness": null,
    "verified": "no harness"
@@ -12118,7 +14488,7 @@
    "submission": "5445673",
    "original": "corpus/submissions/5445673.cpp",
    "generation": "v1",
-   "cp_loc": 28,
+   "cp_loc": 27,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_10/check.py",
    "cpp_raw_loc": 162,
@@ -12213,7 +14583,7 @@
    "submission": "4226760",
    "original": "corpus/submissions/4226760.cpp",
    "generation": "v1",
-   "cp_loc": 22,
+   "cp_loc": 21,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_11/check.py",
    "cpp_raw_loc": 122,
@@ -12232,7 +14602,7 @@
    "submission": "3883675",
    "original": "corpus/submissions/3883675.cpp",
    "generation": "v1",
-   "cp_loc": 35,
+   "cp_loc": 41,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_11/check.py",
    "cpp_raw_loc": 207,
@@ -12327,7 +14697,7 @@
    "submission": "5463988",
    "original": "corpus/submissions/5463988.cpp",
    "generation": "v1",
-   "cp_loc": 34,
+   "cp_loc": 32,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_11/check.py",
    "cpp_raw_loc": 223,
@@ -12398,7 +14768,7 @@
    "submission": "7171512",
    "original": "corpus/submissions/7171512.cpp",
    "generation": "v1",
-   "cp_loc": 35,
+   "cp_loc": 34,
    "wish_markers": 3,
    "harness": "proto/ports/scout_batch_12/check.py",
    "cpp_raw_loc": 91,
@@ -13062,7 +15432,7 @@
    "submission": "5445677",
    "original": "corpus/submissions/5445677.cpp",
    "generation": "v1",
-   "cp_loc": 30,
+   "cp_loc": 35,
    "wish_markers": 4,
    "harness": null,
    "cpp_raw_loc": 102,
@@ -13080,7 +15450,7 @@
    "submission": "4819734",
    "original": "corpus/submissions/4819734.cpp",
    "generation": "v1",
-   "cp_loc": 40,
+   "cp_loc": 41,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_14/check.py",
    "cpp_raw_loc": 132,
@@ -13156,7 +15526,7 @@
    "submission": "3790564",
    "original": "corpus/submissions/3790564.cpp",
    "generation": "v1",
-   "cp_loc": 106,
+   "cp_loc": 80,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_14/check.py",
    "cpp_raw_loc": 136,
@@ -13213,7 +15583,7 @@
    "submission": "5445677",
    "original": "corpus/submissions/5445677.cpp",
    "generation": "v1",
-   "cp_loc": 41,
+   "cp_loc": 42,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_14/check.py",
    "cpp_raw_loc": 102,
@@ -13289,7 +15659,7 @@
    "submission": "7730378",
    "original": "corpus/submissions/7730378.cpp",
    "generation": "v1",
-   "cp_loc": 43,
+   "cp_loc": 42,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_15/check.py",
    "cpp_raw_loc": 61,
@@ -13308,7 +15678,7 @@
    "submission": null,
    "original": null,
    "generation": "v1",
-   "cp_loc": 266,
+   "cp_loc": 267,
    "wish_markers": 0,
    "harness": null,
    "verified": "no harness"
@@ -13322,7 +15692,7 @@
    "submission": "4370353",
    "original": "corpus/submissions/4370353.cpp",
    "generation": "v1",
-   "cp_loc": 20,
+   "cp_loc": 19,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_15/check.py",
    "cpp_raw_loc": 105,
@@ -13341,7 +15711,7 @@
    "submission": null,
    "original": null,
    "generation": "v1",
-   "cp_loc": 148,
+   "cp_loc": 147,
    "wish_markers": 0,
    "harness": null,
    "verified": "no harness"
@@ -13355,7 +15725,7 @@
    "submission": "5102817",
    "original": "corpus/submissions/5102817.cpp",
    "generation": "v1",
-   "cp_loc": 63,
+   "cp_loc": 66,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_15/check.py",
    "cpp_raw_loc": 120,
@@ -13374,7 +15744,7 @@
    "submission": "5144326",
    "original": "corpus/submissions/5144326.cpp",
    "generation": "v1",
-   "cp_loc": 48,
+   "cp_loc": 46,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_15/check.py",
    "cpp_raw_loc": 156,
@@ -13488,7 +15858,7 @@
    "submission": "4665767",
    "original": "corpus/submissions/4665767.cpp",
    "generation": "v1",
-   "cp_loc": 23,
+   "cp_loc": 18,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_16/check.py",
    "cpp_raw_loc": 75,
@@ -13507,7 +15877,7 @@
    "submission": "4531869",
    "original": "corpus/submissions/4531869.cpp",
    "generation": "v1",
-   "cp_loc": 40,
+   "cp_loc": 34,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_16/check.py",
    "cpp_raw_loc": 111,
@@ -13732,7 +16102,7 @@
    "submission": "5637680",
    "original": "corpus/submissions/5637680.cpp",
    "generation": "v1",
-   "cp_loc": 52,
+   "cp_loc": 54,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_17/stress.sh",
    "cpp_raw_loc": 93,
@@ -13953,7 +16323,7 @@
    "submission": "5144326",
    "original": "corpus/submissions/5144326.cpp",
    "generation": "v1",
-   "cp_loc": 76,
+   "cp_loc": 75,
    "wish_markers": 3,
    "harness": null,
    "cpp_raw_loc": 156,
@@ -14007,7 +16377,7 @@
    "submission": "4456186",
    "original": "corpus/submissions/4456186.cpp",
    "generation": "v1",
-   "cp_loc": 50,
+   "cp_loc": 48,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_18/check.py",
    "cpp_raw_loc": 114,
@@ -14026,7 +16396,7 @@
    "submission": "4656866",
    "original": "corpus/submissions/4656866.cpp",
    "generation": "v1",
-   "cp_loc": 92,
+   "cp_loc": 90,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_18/check.py",
    "cpp_raw_loc": 157,
@@ -14045,7 +16415,7 @@
    "submission": "4371349",
    "original": "corpus/submissions/4371349.cpp",
    "generation": "v1",
-   "cp_loc": 53,
+   "cp_loc": 51,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_18/check.py",
    "cpp_raw_loc": 107,
@@ -14064,7 +16434,7 @@
    "submission": "4538969",
    "original": "corpus/submissions/4538969.cpp",
    "generation": "v1",
-   "cp_loc": 48,
+   "cp_loc": 45,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_18/check.py",
    "cpp_raw_loc": 141,
@@ -14083,7 +16453,7 @@
    "submission": "6419583",
    "original": "corpus/submissions/6419583.cpp",
    "generation": "v1",
-   "cp_loc": 51,
+   "cp_loc": 50,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_18/check.py",
    "cpp_raw_loc": 161,
@@ -14102,7 +16472,7 @@
    "submission": "4133460",
    "original": "corpus/submissions/4133460.cpp",
    "generation": "v1",
-   "cp_loc": 16,
+   "cp_loc": 15,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_18/check.py",
    "cpp_raw_loc": 238,
@@ -14121,7 +16491,7 @@
    "submission": "5032753",
    "original": "corpus/submissions/5032753.cpp",
    "generation": "v1",
-   "cp_loc": 76,
+   "cp_loc": 74,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_18/check.py",
    "cpp_raw_loc": 152,
@@ -14140,7 +16510,7 @@
    "submission": "5144326",
    "original": "corpus/submissions/5144326.cpp",
    "generation": "v1",
-   "cp_loc": 61,
+   "cp_loc": 60,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_18/check.py",
    "cpp_raw_loc": 156,
@@ -14159,7 +16529,7 @@
    "submission": "5670502",
    "original": "corpus/submissions/5670502.cpp",
    "generation": "v1",
-   "cp_loc": 40,
+   "cp_loc": 38,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_18/check.py",
    "cpp_raw_loc": 166,
@@ -14178,7 +16548,7 @@
    "submission": "6512702",
    "original": "corpus/submissions/6512702.cpp",
    "generation": "v1",
-   "cp_loc": 67,
+   "cp_loc": 65,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_18/check.py",
    "cpp_raw_loc": 175,
@@ -14287,8 +16657,8 @@
    "submission": "5678051",
    "original": "corpus/submissions/5678051.cpp",
    "generation": "v1",
-   "cp_loc": 61,
-   "wish_markers": 2,
+   "cp_loc": 94,
+   "wish_markers": 0,
    "harness": null,
    "cpp_raw_loc": 193,
    "cpp_stripped_loc": 153,
@@ -14305,8 +16675,8 @@
    "submission": "5111683",
    "original": "corpus/submissions/5111683.cpp",
    "generation": "v1",
-   "cp_loc": 48,
-   "wish_markers": 3,
+   "cp_loc": 50,
+   "wish_markers": 0,
    "harness": null,
    "cpp_raw_loc": 124,
    "cpp_stripped_loc": 93,
@@ -14548,7 +16918,7 @@
    "submission": "5536741",
    "original": "corpus/submissions/5536741.cpp",
    "generation": "v1",
-   "cp_loc": 23,
+   "cp_loc": 22,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_2/check.py",
    "cpp_raw_loc": 172,
@@ -14567,7 +16937,7 @@
    "submission": "4899340",
    "original": "corpus/submissions/4899340.cpp",
    "generation": "v1",
-   "cp_loc": 24,
+   "cp_loc": 23,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_2/check.py",
    "cpp_raw_loc": 104,
@@ -14605,7 +16975,7 @@
    "submission": "4561352",
    "original": "corpus/submissions/4561352.cpp",
    "generation": "v1",
-   "cp_loc": 20,
+   "cp_loc": 18,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_2/check.py",
    "cpp_raw_loc": 69,
@@ -14624,7 +16994,7 @@
    "submission": "4133644",
    "original": "corpus/submissions/4133644.cpp",
    "generation": "v1",
-   "cp_loc": 22,
+   "cp_loc": 20,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_2/check.py",
    "cpp_raw_loc": 90,
@@ -14662,7 +17032,7 @@
    "submission": "3734919",
    "original": "corpus/submissions/3734919.cpp",
    "generation": "v1",
-   "cp_loc": 22,
+   "cp_loc": 20,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_2/check.py",
    "cpp_raw_loc": 95,
@@ -14681,7 +17051,7 @@
    "submission": "4843911",
    "original": "corpus/submissions/4843911.cpp",
    "generation": "v1",
-   "cp_loc": 12,
+   "cp_loc": 15,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_2/check.py",
    "cpp_raw_loc": 99,
@@ -14700,7 +17070,7 @@
    "submission": "3775038",
    "original": "corpus/submissions/3775038.cpp",
    "generation": "v1",
-   "cp_loc": 19,
+   "cp_loc": 17,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_2/check.py",
    "cpp_raw_loc": 175,
@@ -14719,7 +17089,7 @@
    "submission": "4002963",
    "original": "corpus/submissions/4002963.cpp",
    "generation": "v1",
-   "cp_loc": 51,
+   "cp_loc": 49,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_2/check.py",
    "cpp_raw_loc": 106,
@@ -14795,7 +17165,7 @@
    "submission": "6032792",
    "original": "corpus/submissions/6032792.cpp",
    "generation": "v1",
-   "cp_loc": 47,
+   "cp_loc": 48,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_20/check.py",
    "cpp_raw_loc": 213,
@@ -14833,7 +17203,7 @@
    "submission": "5579927",
    "original": "corpus/submissions/5579927.cpp",
    "generation": "v1",
-   "cp_loc": 27,
+   "cp_loc": 28,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_20/check.py",
    "cpp_raw_loc": 174,
@@ -15018,7 +17388,7 @@
    "submission": "3505539",
    "original": "corpus/submissions/3505539.cpp",
    "generation": "v1",
-   "cp_loc": 61,
+   "cp_loc": 60,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_21/check.py",
    "cpp_raw_loc": 144,
@@ -15037,7 +17407,7 @@
    "submission": "5637805",
    "original": "corpus/submissions/5637805.cpp",
    "generation": "v1",
-   "cp_loc": 89,
+   "cp_loc": 94,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_21/check.py",
    "cpp_raw_loc": 222,
@@ -15056,7 +17426,7 @@
    "submission": "4225209",
    "original": "corpus/submissions/4225209.cpp",
    "generation": "v1",
-   "cp_loc": 68,
+   "cp_loc": 67,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_21/check.py",
    "cpp_raw_loc": 251,
@@ -15184,7 +17554,7 @@
    "submission": "3617414",
    "original": "corpus/submissions/3617414.cpp",
    "generation": "v1",
-   "cp_loc": 29,
+   "cp_loc": 28,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_22/check.py",
    "cpp_raw_loc": 97,
@@ -15260,7 +17630,7 @@
    "submission": "5108899",
    "original": "corpus/submissions/5108899.cpp",
    "generation": "v1",
-   "cp_loc": 42,
+   "cp_loc": 33,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_22/check.py",
    "cpp_raw_loc": 241,
@@ -15298,7 +17668,7 @@
    "submission": "6513115",
    "original": "corpus/submissions/6513115.cpp",
    "generation": "v1",
-   "cp_loc": 91,
+   "cp_loc": 98,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_22/check.py",
    "cpp_raw_loc": 532,
@@ -15336,7 +17706,7 @@
    "submission": "4080842",
    "original": "corpus/submissions/4080842.cpp",
    "generation": "v1",
-   "cp_loc": 15,
+   "cp_loc": 16,
    "wish_markers": 2,
    "harness": null,
    "cpp_raw_loc": 83,
@@ -15354,7 +17724,7 @@
    "submission": "4131648",
    "original": "corpus/submissions/4131648.cpp",
    "generation": "v1",
-   "cp_loc": 15,
+   "cp_loc": 16,
    "wish_markers": 3,
    "harness": null,
    "cpp_raw_loc": 61,
@@ -15444,7 +17814,7 @@
    "submission": "5108108",
    "original": "corpus/submissions/5108108.cpp",
    "generation": "v1",
-   "cp_loc": 28,
+   "cp_loc": 29,
    "wish_markers": 1,
    "harness": null,
    "cpp_raw_loc": 223,
@@ -15480,7 +17850,7 @@
    "submission": "5652798",
    "original": "corpus/submissions/5652798.cpp",
    "generation": "v1",
-   "cp_loc": 49,
+   "cp_loc": 48,
    "wish_markers": 2,
    "harness": null,
    "cpp_raw_loc": 217,
@@ -15554,7 +17924,7 @@
    "submission": "5199888",
    "original": "corpus/submissions/5199888.cpp",
    "generation": "v1",
-   "cp_loc": 19,
+   "cp_loc": 18,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_23/check.py",
    "cpp_raw_loc": 162,
@@ -15573,7 +17943,7 @@
    "submission": "5032789",
    "original": "corpus/submissions/5032789.cpp",
    "generation": "v1",
-   "cp_loc": 68,
+   "cp_loc": 66,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_23/check.py",
    "cpp_raw_loc": 139,
@@ -15592,7 +17962,7 @@
    "submission": "3921067",
    "original": "corpus/submissions/3921067.cpp",
    "generation": "v1",
-   "cp_loc": 80,
+   "cp_loc": 62,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_23/check.py",
    "cpp_raw_loc": 126,
@@ -15630,7 +18000,7 @@
    "submission": "5108108",
    "original": "corpus/submissions/5108108.cpp",
    "generation": "v1",
-   "cp_loc": 30,
+   "cp_loc": 29,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_23/check.py",
    "cpp_raw_loc": 223,
@@ -15649,7 +18019,7 @@
    "submission": "6512891",
    "original": "corpus/submissions/6512891.cpp",
    "generation": "v1",
-   "cp_loc": 40,
+   "cp_loc": 39,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_23/check.py",
    "cpp_raw_loc": 190,
@@ -15668,7 +18038,7 @@
    "submission": "5652798",
    "original": "corpus/submissions/5652798.cpp",
    "generation": "v1",
-   "cp_loc": 61,
+   "cp_loc": 60,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_23/check.py",
    "cpp_raw_loc": 217,
@@ -15687,7 +18057,7 @@
    "submission": "4547602",
    "original": "corpus/submissions/4547602.cpp",
    "generation": "v1",
-   "cp_loc": 115,
+   "cp_loc": 113,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_23/check.py",
    "cpp_raw_loc": 166,
@@ -15905,7 +18275,7 @@
    "submission": "4801867",
    "original": "corpus/submissions/4801867.cpp",
    "generation": "v1",
-   "cp_loc": 51,
+   "cp_loc": 48,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_24/check.py",
    "cpp_raw_loc": 183,
@@ -15924,7 +18294,7 @@
    "submission": "4728849",
    "original": "corpus/submissions/4728849.cpp",
    "generation": "v1",
-   "cp_loc": 64,
+   "cp_loc": 63,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_24/check.py",
    "cpp_raw_loc": 178,
@@ -15943,7 +18313,7 @@
    "submission": "4253124",
    "original": "corpus/submissions/4253124.cpp",
    "generation": "v1",
-   "cp_loc": 97,
+   "cp_loc": 93,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_24/check.py",
    "cpp_raw_loc": 294,
@@ -15962,7 +18332,7 @@
    "submission": "5120005",
    "original": "corpus/submissions/5120005.cpp",
    "generation": "v1",
-   "cp_loc": 37,
+   "cp_loc": 36,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_24/check.py",
    "cpp_raw_loc": 318,
@@ -15981,7 +18351,7 @@
    "submission": "4722412",
    "original": "corpus/submissions/4722412.cpp",
    "generation": "v1",
-   "cp_loc": 105,
+   "cp_loc": 103,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_24/check.py",
    "cpp_raw_loc": 184,
@@ -16000,7 +18370,7 @@
    "submission": "7249409",
    "original": "corpus/submissions/7249409.cpp",
    "generation": "v1",
-   "cp_loc": 191,
+   "cp_loc": 187,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_24/check.py",
    "cpp_raw_loc": 193,
@@ -16038,7 +18408,7 @@
    "submission": "5655455",
    "original": "corpus/submissions/5655455.cpp",
    "generation": "v1",
-   "cp_loc": 87,
+   "cp_loc": 85,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_24/check.py",
    "cpp_raw_loc": 335,
@@ -16057,7 +18427,7 @@
    "submission": "5445685",
    "original": "corpus/submissions/5445685.cpp",
    "generation": "v1",
-   "cp_loc": 97,
+   "cp_loc": 95,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_24/check.py",
    "cpp_raw_loc": 313,
@@ -16446,7 +18816,7 @@
    "submission": "5640865",
    "original": "corpus/submissions/5640865.cpp",
    "generation": "v1",
-   "cp_loc": 17,
+   "cp_loc": 15,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_26/check.py",
    "cpp_raw_loc": 109,
@@ -16484,7 +18854,7 @@
    "submission": "3686586",
    "original": "corpus/submissions/3686586.cpp",
    "generation": "v1",
-   "cp_loc": 25,
+   "cp_loc": 22,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_26/check.py",
    "cpp_raw_loc": 269,
@@ -16503,7 +18873,7 @@
    "submission": "5032754",
    "original": "corpus/submissions/5032754.cpp",
    "generation": "v1",
-   "cp_loc": 50,
+   "cp_loc": 49,
    "wish_markers": 2,
    "harness": "proto/ports/scout_batch_26/check.py",
    "cpp_raw_loc": 118,
@@ -16541,7 +18911,7 @@
    "submission": "5120083",
    "original": "corpus/submissions/5120083.cpp",
    "generation": "v1",
-   "cp_loc": 33,
+   "cp_loc": 31,
    "wish_markers": 1,
    "harness": "proto/ports/scout_batch_26/check.py",
    "cpp_raw_loc": 89,
@@ -16560,7 +18930,7 @@
    "submission": "5655455",
    "original": "corpus/submissions/5655455.cpp",
    "generation": "v1",
-   "cp_loc": 34,
+   "cp_loc": 31,
    "wish_markers": 2,
    "harness": "proto/ports/scout_batch_26/check.py",
    "cpp_raw_loc": 335,
@@ -16579,7 +18949,7 @@
    "submission": "5127828",
    "original": "corpus/submissions/5127828.cpp",
    "generation": "v1",
-   "cp_loc": 30,
+   "cp_loc": 29,
    "wish_markers": 2,
    "harness": "proto/ports/scout_batch_26/check.py",
    "cpp_raw_loc": 186,
@@ -16598,7 +18968,7 @@
    "submission": "5148136",
    "original": "corpus/submissions/5148136.cpp",
    "generation": "v1",
-   "cp_loc": 48,
+   "cp_loc": 45,
    "wish_markers": 1,
    "harness": "proto/ports/scout_batch_26/check.py",
    "cpp_raw_loc": 215,
@@ -16636,7 +19006,7 @@
    "submission": "3540475",
    "original": "corpus/submissions/3540475.cpp",
    "generation": "v1",
-   "cp_loc": 19,
+   "cp_loc": 18,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_27/check.py",
    "cpp_raw_loc": 93,
@@ -16674,7 +19044,7 @@
    "submission": "3613676",
    "original": "corpus/submissions/3613676.cpp",
    "generation": "v1",
-   "cp_loc": 35,
+   "cp_loc": 33,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_27/check.py",
    "cpp_raw_loc": 100,
@@ -16693,7 +19063,7 @@
    "submission": "4188022",
    "original": "corpus/submissions/4188022.cpp",
    "generation": "v1",
-   "cp_loc": 21,
+   "cp_loc": 20,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_27/check.py",
    "cpp_raw_loc": 89,
@@ -16712,7 +19082,7 @@
    "submission": "3732440",
    "original": "corpus/submissions/3732440.cpp",
    "generation": "v1",
-   "cp_loc": 46,
+   "cp_loc": 45,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_27/check.py",
    "cpp_raw_loc": 189,
@@ -16731,7 +19101,7 @@
    "submission": "4727179",
    "original": "corpus/submissions/4727179.cpp",
    "generation": "v1",
-   "cp_loc": 50,
+   "cp_loc": 47,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_27/check.py",
    "cpp_raw_loc": 201,
@@ -16750,7 +19120,7 @@
    "submission": "5032737",
    "original": "corpus/submissions/5032737.cpp",
    "generation": "v1",
-   "cp_loc": 37,
+   "cp_loc": 33,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_27/check.py",
    "cpp_raw_loc": 129,
@@ -16769,7 +19139,7 @@
    "submission": "5672180",
    "original": "corpus/submissions/5672180.cpp",
    "generation": "v1",
-   "cp_loc": 26,
+   "cp_loc": 25,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_27/check.py",
    "cpp_raw_loc": 151,
@@ -16807,7 +19177,7 @@
    "submission": "3775616",
    "original": "corpus/submissions/3775616.cpp",
    "generation": "v1",
-   "cp_loc": 22,
+   "cp_loc": 16,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_27/check.py",
    "cpp_raw_loc": 101,
@@ -16997,7 +19367,7 @@
    "submission": "5445678",
    "original": "corpus/submissions/5445678.cpp",
    "generation": "v1",
-   "cp_loc": 14,
+   "cp_loc": 13,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_28/check.py",
    "cpp_raw_loc": 118,
@@ -17016,7 +19386,7 @@
    "submission": "4325077",
    "original": "corpus/submissions/4325077.cpp",
    "generation": "v1",
-   "cp_loc": 10,
+   "cp_loc": 9,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_29/check.py",
    "cpp_raw_loc": 66,
@@ -17035,7 +19405,7 @@
    "submission": "7730259",
    "original": "corpus/submissions/7730259.cpp",
    "generation": "v1",
-   "cp_loc": 11,
+   "cp_loc": 10,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_29/check.py",
    "cpp_raw_loc": 36,
@@ -17054,7 +19424,7 @@
    "submission": "5102705",
    "original": "corpus/submissions/5102705.cpp",
    "generation": "v1",
-   "cp_loc": 32,
+   "cp_loc": 31,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_29/check.py",
    "cpp_raw_loc": 120,
@@ -17092,7 +19462,7 @@
    "submission": "3890337",
    "original": "corpus/submissions/3890337.cpp",
    "generation": "v1",
-   "cp_loc": 50,
+   "cp_loc": 44,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_29/check.py",
    "cpp_raw_loc": 139,
@@ -17111,7 +19481,7 @@
    "submission": "5147491",
    "original": "corpus/submissions/5147491.cpp",
    "generation": "v1",
-   "cp_loc": 23,
+   "cp_loc": 22,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_29/check.py",
    "cpp_raw_loc": 129,
@@ -17168,7 +19538,7 @@
    "submission": "5461671",
    "original": "corpus/submissions/5461671.cpp",
    "generation": "v1",
-   "cp_loc": 50,
+   "cp_loc": 58,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_29/check.py",
    "cpp_raw_loc": 200,
@@ -17187,7 +19557,7 @@
    "submission": "5635192",
    "original": "corpus/submissions/5635192.cpp",
    "generation": "v1",
-   "cp_loc": 47,
+   "cp_loc": 46,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_29/check.py",
    "cpp_raw_loc": 181,
@@ -17206,7 +19576,7 @@
    "submission": null,
    "original": null,
    "generation": "v1",
-   "cp_loc": 35,
+   "cp_loc": 32,
    "wish_markers": 0,
    "harness": null,
    "verified": "no harness"
@@ -17533,7 +19903,7 @@
    "submission": "5034440",
    "original": "corpus/submissions/5034440.cpp",
    "generation": "v1",
-   "cp_loc": 7,
+   "cp_loc": 8,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_3/check.py",
    "cpp_raw_loc": 50,
@@ -17590,7 +19960,7 @@
    "submission": "6416978",
    "original": "corpus/submissions/6416978.cpp",
    "generation": "v1",
-   "cp_loc": 29,
+   "cp_loc": 28,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_30/check.py",
    "cpp_raw_loc": 145,
@@ -17685,7 +20055,7 @@
    "submission": "5032743",
    "original": "corpus/submissions/5032743.cpp",
    "generation": "v1",
-   "cp_loc": 56,
+   "cp_loc": 46,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_30/check.py",
    "cpp_raw_loc": 102,
@@ -17704,7 +20074,7 @@
    "submission": "3868871",
    "original": "corpus/submissions/3868871.cpp",
    "generation": "v1",
-   "cp_loc": 80,
+   "cp_loc": 61,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_30/check.py",
    "cpp_raw_loc": 110,
@@ -18367,7 +20737,7 @@
    "submission": "5324670",
    "original": "corpus/submissions/5324670.cpp",
    "generation": "v2",
-   "cp_loc": 55,
+   "cp_loc": 42,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_32/check.py",
    "cpp_raw_loc": 122,
@@ -18594,7 +20964,7 @@
    "submission": "5323961",
    "original": "corpus/submissions/5323961.cpp",
    "generation": "v2",
-   "cp_loc": 20,
+   "cp_loc": 19,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_33/check.py",
    "cpp_raw_loc": 75,
@@ -18708,7 +21078,7 @@
    "submission": "5106592",
    "original": "corpus/submissions/5106592.cpp",
    "generation": "v2",
-   "cp_loc": 24,
+   "cp_loc": 23,
    "wish_markers": 1,
    "harness": "proto/ports/scout_batch_33/check.py",
    "cpp_raw_loc": 70,
@@ -18727,7 +21097,7 @@
    "submission": "4848321",
    "original": "corpus/submissions/4848321.cpp",
    "generation": "v2",
-   "cp_loc": 37,
+   "cp_loc": 36,
    "wish_markers": 1,
    "harness": "proto/ports/scout_batch_33/check.py",
    "cpp_raw_loc": 88,
@@ -18783,7 +21153,7 @@
    "submission": "5200785",
    "original": "corpus/submissions/5200785.cpp",
    "generation": "v2",
-   "cp_loc": 80,
+   "cp_loc": 84,
    "wish_markers": 0,
    "harness": null,
    "cpp_raw_loc": 165,
@@ -18945,7 +21315,7 @@
    "submission": "3917634",
    "original": "corpus/submissions/3917634.cpp",
    "generation": "v2",
-   "cp_loc": 46,
+   "cp_loc": 45,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_34/check.py",
    "cpp_raw_loc": 118,
@@ -18983,7 +21353,7 @@
    "submission": "3686612",
    "original": "corpus/submissions/3686612.cpp",
    "generation": "v2",
-   "cp_loc": 44,
+   "cp_loc": 43,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_34/check.py",
    "cpp_raw_loc": 107,
@@ -19040,7 +21410,7 @@
    "submission": "3968384",
    "original": "corpus/submissions/3968384.cpp",
    "generation": "v2",
-   "cp_loc": 57,
+   "cp_loc": 54,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_34/check.py",
    "cpp_raw_loc": 119,
@@ -19059,7 +21429,7 @@
    "submission": "3968585",
    "original": "corpus/submissions/3968585.cpp",
    "generation": "v2",
-   "cp_loc": 100,
+   "cp_loc": 99,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_34/check.py",
    "cpp_raw_loc": 198,
@@ -19078,7 +21448,7 @@
    "submission": "4825739",
    "original": "corpus/submissions/4825739.cpp",
    "generation": "v2",
-   "cp_loc": 84,
+   "cp_loc": 82,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_34/check.py",
    "cpp_raw_loc": 177,
@@ -19097,7 +21467,7 @@
    "submission": "4537755",
    "original": "corpus/submissions/4537755.cpp",
    "generation": "v2",
-   "cp_loc": 40,
+   "cp_loc": 35,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_34/check.py",
    "cpp_raw_loc": 91,
@@ -19352,7 +21722,7 @@
    "submission": "4080960",
    "original": "corpus/submissions/4080960.cpp",
    "generation": "v2",
-   "cp_loc": 49,
+   "cp_loc": 48,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_35/check.py",
    "cpp_raw_loc": 177,
@@ -19428,7 +21798,7 @@
    "submission": "4143417",
    "original": "corpus/submissions/4143417.cpp",
    "generation": "v2",
-   "cp_loc": 13,
+   "cp_loc": 12,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_35/check.py",
    "cpp_raw_loc": 82,
@@ -19760,7 +22130,7 @@
    "submission": "4575245",
    "original": "corpus/submissions/4575245.cpp",
    "generation": "v2",
-   "cp_loc": 73,
+   "cp_loc": 71,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_36/verify.py",
    "cpp_raw_loc": 101,
@@ -19855,7 +22225,7 @@
    "submission": "4801885",
    "original": "corpus/submissions/4801885.cpp",
    "generation": "v2",
-   "cp_loc": 103,
+   "cp_loc": 99,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_36/verify.py",
    "cpp_raw_loc": 174,
@@ -19874,7 +22244,7 @@
    "submission": "5579928",
    "original": "corpus/submissions/5579928.cpp",
    "generation": "v2",
-   "cp_loc": 102,
+   "cp_loc": 63,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_36/verify.py",
    "cpp_raw_loc": 192,
@@ -20187,7 +22557,7 @@
    "submission": "3601452",
    "original": "corpus/submissions/3601452.cpp",
    "generation": "v2",
-   "cp_loc": 35,
+   "cp_loc": 33,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_37/check.py",
    "cpp_raw_loc": 101,
@@ -20500,7 +22870,7 @@
    "submission": "5270736",
    "original": "corpus/submissions/5270736.cpp",
    "generation": "v2",
-   "cp_loc": 59,
+   "cp_loc": 55,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_38/check.py",
    "cpp_raw_loc": 172,
@@ -20798,7 +23168,7 @@
    "submission": "4653887",
    "original": "corpus/submissions/4653887.cpp",
    "generation": "v2",
-   "cp_loc": 98,
+   "cp_loc": 96,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_39/check.py",
    "cpp_raw_loc": 166,
@@ -20874,7 +23244,7 @@
    "submission": "5122001",
    "original": "corpus/submissions/5122001.cpp",
    "generation": "v2",
-   "cp_loc": 73,
+   "cp_loc": 65,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_39/check.py",
    "cpp_raw_loc": 113,
@@ -20893,7 +23263,7 @@
    "submission": "5150025",
    "original": "corpus/submissions/5150025.cpp",
    "generation": "v2",
-   "cp_loc": 128,
+   "cp_loc": 81,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_39/check.py",
    "cpp_raw_loc": 170,
@@ -21615,7 +23985,7 @@
    "submission": "3381135",
    "original": "corpus/submissions/3381135.java",
    "generation": "v2",
-   "cp_loc": 9,
+   "cp_loc": 8,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_41/check.py",
    "cpp_raw_loc": 37,
@@ -21748,7 +24118,7 @@
    "submission": "6415646",
    "original": "corpus/submissions/6415646.cpp",
    "generation": "v2",
-   "cp_loc": 42,
+   "cp_loc": 40,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_41/check.py",
    "cpp_raw_loc": 134,
@@ -21985,7 +24355,7 @@
    "submission": "4223449",
    "original": "corpus/submissions/4223449.cpp",
    "generation": "v2",
-   "cp_loc": 18,
+   "cp_loc": 11,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_42/check.py",
    "cpp_raw_loc": 59,
@@ -22118,7 +24488,7 @@
    "submission": "3578469",
    "original": "corpus/submissions/3578469.cpp",
    "generation": "v2",
-   "cp_loc": 105,
+   "cp_loc": 104,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_42/check.py",
    "cpp_raw_loc": 114,
@@ -22281,7 +24651,7 @@
    "submission": "5529698",
    "original": "corpus/submissions/5529698.cpp",
    "generation": "v2",
-   "cp_loc": 54,
+   "cp_loc": 52,
    "wish_markers": 0,
    "harness": null,
    "cpp_raw_loc": 317,
@@ -22412,7 +24782,7 @@
    "submission": "5527625",
    "original": "corpus/submissions/5527625.cpp",
    "generation": "v2",
-   "cp_loc": 66,
+   "cp_loc": 73,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_43/check.py",
    "cpp_raw_loc": 185,
@@ -22431,7 +24801,7 @@
    "submission": "5521298",
    "original": "corpus/submissions/5521298.cpp",
    "generation": "v2",
-   "cp_loc": 52,
+   "cp_loc": 40,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_43/check.py",
    "cpp_raw_loc": 194,
@@ -22488,7 +24858,7 @@
    "submission": "5635626",
    "original": "corpus/submissions/5635626.cpp",
    "generation": "v2",
-   "cp_loc": 44,
+   "cp_loc": 28,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_43/check.py",
    "cpp_raw_loc": 106,
@@ -22525,7 +24895,7 @@
    "submission": "3946741",
    "original": "corpus/submissions/3946741.cpp",
    "generation": "v2",
-   "cp_loc": 23,
+   "cp_loc": 34,
    "wish_markers": 0,
    "harness": null,
    "cpp_raw_loc": 89,
@@ -22725,7 +25095,7 @@
    "submission": "4125290",
    "original": "corpus/submissions/4125290.cpp",
    "generation": "v2",
-   "cp_loc": 22,
+   "cp_loc": 21,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_44/check.py",
    "cpp_raw_loc": 95,
@@ -22744,7 +25114,7 @@
    "submission": "4131060",
    "original": "corpus/submissions/4131060.cpp",
    "generation": "v2",
-   "cp_loc": 12,
+   "cp_loc": 11,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_44/check.py",
    "cpp_raw_loc": 77,
@@ -22763,7 +25133,7 @@
    "submission": "4218397",
    "original": "corpus/submissions/4218397.cpp",
    "generation": "v2",
-   "cp_loc": 31,
+   "cp_loc": 30,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_44/check.py",
    "cpp_raw_loc": 122,
@@ -22820,7 +25190,7 @@
    "submission": "4522631",
    "original": "corpus/submissions/4522631.cpp",
    "generation": "v2",
-   "cp_loc": 34,
+   "cp_loc": 33,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_44/check.py",
    "cpp_raw_loc": 103,
@@ -22839,7 +25209,7 @@
    "submission": "4563973",
    "original": "corpus/submissions/4563973.cpp",
    "generation": "v2",
-   "cp_loc": 17,
+   "cp_loc": 14,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_44/check.py",
    "cpp_raw_loc": 60,
@@ -23671,7 +26041,7 @@
    "submission": "5034487",
    "original": "corpus/submissions/5034487.cpp",
    "generation": "v2",
-   "cp_loc": 50,
+   "cp_loc": 52,
    "wish_markers": 0,
    "harness": null,
    "cpp_raw_loc": 85,
@@ -23707,7 +26077,7 @@
    "submission": "5120565",
    "original": "corpus/submissions/5120565.cpp",
    "generation": "v2",
-   "cp_loc": 47,
+   "cp_loc": 41,
    "wish_markers": 0,
    "harness": null,
    "cpp_raw_loc": 83,
@@ -24224,7 +26594,7 @@
    "submission": "5198974",
    "original": "corpus/submissions/5198974.cpp",
    "generation": "v2",
-   "cp_loc": 13,
+   "cp_loc": 12,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_48/check.py",
    "cpp_raw_loc": 57,
@@ -24262,7 +26632,7 @@
    "submission": "5202737",
    "original": "corpus/submissions/5202737.cpp",
    "generation": "v2",
-   "cp_loc": 71,
+   "cp_loc": 67,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_48/check.py",
    "cpp_raw_loc": 235,
@@ -24537,7 +26907,7 @@
    "submission": "4682555",
    "original": "corpus/submissions/4682555.cpp",
    "generation": "v2",
-   "cp_loc": 37,
+   "cp_loc": 35,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_49/check.py",
    "cpp_raw_loc": 85,
@@ -24575,7 +26945,7 @@
    "submission": "4689474",
    "original": "corpus/submissions/4689474.cpp",
    "generation": "v2",
-   "cp_loc": 67,
+   "cp_loc": 65,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_49/check.py",
    "cpp_raw_loc": 158,
@@ -24927,7 +27297,7 @@
    "submission": "4801881",
    "original": "corpus/submissions/4801881.cpp",
    "generation": "v1",
-   "cp_loc": 35,
+   "cp_loc": 36,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_5/check.sh",
    "cpp_raw_loc": 96,
@@ -25003,7 +27373,7 @@
    "submission": "5032812",
    "original": "corpus/submissions/5032812.cpp",
    "generation": "v1",
-   "cp_loc": 19,
+   "cp_loc": 18,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_5/check.sh",
    "cpp_raw_loc": 119,
@@ -25334,7 +27704,7 @@
    "submission": "4800882",
    "original": "corpus/submissions/4800882.cpp",
    "generation": "v2.1",
-   "cp_loc": 74,
+   "cp_loc": 76,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_50/check.py",
    "cpp_raw_loc": 156,
@@ -25372,7 +27742,7 @@
    "submission": "5723056",
    "original": "corpus/submissions/5723056.cpp",
    "generation": "v2.1",
-   "cp_loc": 72,
+   "cp_loc": 71,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_50/check.py",
    "cpp_raw_loc": 161,
@@ -25574,7 +27944,7 @@
    "submission": "5199301",
    "original": "corpus/submissions/5199301.cpp",
    "generation": "v2.1",
-   "cp_loc": 54,
+   "cp_loc": 55,
    "wish_markers": 0,
    "harness": null,
    "cpp_raw_loc": 214,
@@ -25799,7 +28169,7 @@
    "submission": "5203797",
    "original": "corpus/submissions/5203797.cpp",
    "generation": "v2.1",
-   "cp_loc": 99,
+   "cp_loc": 97,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_51/check.py",
    "cpp_raw_loc": 212,
@@ -25808,6 +28178,546 @@
    "original_language": "cpp",
    "verified": "pass",
    "harness_line": "[4/10] egoi22p7... OK (30 cases)"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/ctsc04p4.cp",
+   "group": "scout_batch_52",
+   "form": "spec",
+   "problem": "ctsc04p4",
+   "mapped_by": "header",
+   "submission": "4529641",
+   "original": "corpus/submissions/4529641.cpp",
+   "generation": "v2",
+   "cp_loc": 73,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 198,
+   "cpp_stripped_loc": 147,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/iati21a13.cp",
+   "group": "scout_batch_52",
+   "form": "spec",
+   "problem": "iati21a13",
+   "mapped_by": "header",
+   "submission": "5052303",
+   "original": "corpus/submissions/5052303.cpp",
+   "generation": "v2",
+   "cp_loc": 85,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 294,
+   "cpp_stripped_loc": 236,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/ioi13p3.cp",
+   "group": "scout_batch_52",
+   "form": "spec",
+   "problem": "ioi13p3",
+   "mapped_by": "header",
+   "submission": "4722414",
+   "original": "corpus/submissions/4722414.cpp",
+   "generation": "v2",
+   "cp_loc": 66,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 184,
+   "cpp_stripped_loc": 101,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/ioi14p1.cp",
+   "group": "scout_batch_52",
+   "form": "spec",
+   "problem": "ioi14p1",
+   "mapped_by": "header",
+   "submission": "4691718",
+   "original": "corpus/submissions/4691718.cpp",
+   "generation": "v2",
+   "cp_loc": 41,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 92,
+   "cpp_stripped_loc": 68,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/ioi14p6io.cp",
+   "group": "scout_batch_52",
+   "form": "spec",
+   "problem": "ioi14p6io",
+   "mapped_by": "header",
+   "submission": "4691224",
+   "original": "corpus/submissions/4691224.cpp",
+   "generation": "v2",
+   "cp_loc": 66,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 134,
+   "cpp_stripped_loc": 105,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/ioi17p4.cp",
+   "group": "scout_batch_52",
+   "form": "spec",
+   "problem": "ioi17p4",
+   "mapped_by": "header",
+   "submission": "5659145",
+   "original": "corpus/submissions/5659145.cpp",
+   "generation": "v2",
+   "cp_loc": 37,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 86,
+   "cpp_stripped_loc": 65,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/ioi20p5.cp",
+   "group": "scout_batch_52",
+   "form": "spec",
+   "problem": "ioi20p5",
+   "mapped_by": "header",
+   "submission": "4736004",
+   "original": "corpus/submissions/4736004.cpp",
+   "generation": "v2",
+   "cp_loc": 85,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 210,
+   "cpp_stripped_loc": 168,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/ioi22p5.cp",
+   "group": "scout_batch_52",
+   "form": "spec",
+   "problem": "ioi22p5",
+   "mapped_by": "header",
+   "submission": "4786085",
+   "original": "corpus/submissions/4786085.cpp",
+   "generation": "v2",
+   "cp_loc": 40,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 91,
+   "cpp_stripped_loc": 66,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/noi02p2.cp",
+   "group": "scout_batch_52",
+   "form": "spec",
+   "problem": "noi02p2",
+   "mapped_by": "header",
+   "submission": "4793917",
+   "original": "corpus/submissions/4793917.cpp",
+   "generation": "v2",
+   "cp_loc": 18,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 74,
+   "cpp_stripped_loc": 44,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/noi02p6.cp",
+   "group": "scout_batch_52",
+   "form": "spec",
+   "problem": "noi02p6",
+   "mapped_by": "header",
+   "submission": "3754486",
+   "original": "corpus/submissions/3754486.cpp",
+   "generation": "v2",
+   "cp_loc": 15,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 74,
+   "cpp_stripped_loc": 52,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/noi08p5.cp",
+   "group": "scout_batch_52",
+   "form": "spec",
+   "problem": "noi08p5",
+   "mapped_by": "header",
+   "submission": "6067573",
+   "original": "corpus/submissions/6067573.cpp",
+   "generation": "v2",
+   "cp_loc": 39,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 232,
+   "cpp_stripped_loc": 204,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/noi19p3.cp",
+   "group": "scout_batch_52",
+   "form": "spec",
+   "problem": "noi19p3",
+   "mapped_by": "header",
+   "submission": "5669058",
+   "original": "corpus/submissions/5669058.cpp",
+   "generation": "v2",
+   "cp_loc": 72,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 245,
+   "cpp_stripped_loc": 181,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/noi21p5.cp",
+   "group": "scout_batch_52",
+   "form": "spec",
+   "problem": "noi21p5",
+   "mapped_by": "header",
+   "submission": "3927923",
+   "original": "corpus/submissions/3927923.cpp",
+   "generation": "v2",
+   "cp_loc": 102,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 233,
+   "cpp_stripped_loc": 73,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/noi23p4.cp",
+   "group": "scout_batch_52",
+   "form": "spec",
+   "problem": "noi23p4",
+   "mapped_by": "header",
+   "submission": "5723063",
+   "original": "corpus/submissions/5723063.cpp",
+   "generation": "v2",
+   "cp_loc": 58,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 168,
+   "cpp_stripped_loc": 97,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/noip20p3.cp",
+   "group": "scout_batch_52",
+   "form": "spec",
+   "problem": "noip20p3",
+   "mapped_by": "header",
+   "submission": "5445674",
+   "original": "corpus/submissions/5445674.cpp",
+   "generation": "v2",
+   "cp_loc": 71,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 216,
+   "cpp_stripped_loc": 165,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/today/ctsc04p4.cp",
+   "group": "scout_batch_52",
+   "form": "runnable",
+   "problem": "ctsc04p4",
+   "mapped_by": "header",
+   "submission": "4529641",
+   "original": "corpus/submissions/4529641.cpp",
+   "generation": "v2",
+   "cp_loc": 111,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 198,
+   "cpp_stripped_loc": 147,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/today/iati21a13.cp",
+   "group": "scout_batch_52",
+   "form": "runnable",
+   "problem": "iati21a13",
+   "mapped_by": "header",
+   "submission": "5052303",
+   "original": "corpus/submissions/5052303.cpp",
+   "generation": "v2",
+   "cp_loc": 140,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 294,
+   "cpp_stripped_loc": 236,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/today/ioi13p3.cp",
+   "group": "scout_batch_52",
+   "form": "runnable",
+   "problem": "ioi13p3",
+   "mapped_by": "header",
+   "submission": "4722414",
+   "original": "corpus/submissions/4722414.cpp",
+   "generation": "v2",
+   "cp_loc": 96,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 184,
+   "cpp_stripped_loc": 101,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/today/ioi14p1.cp",
+   "group": "scout_batch_52",
+   "form": "runnable",
+   "problem": "ioi14p1",
+   "mapped_by": "header",
+   "submission": "4691718",
+   "original": "corpus/submissions/4691718.cpp",
+   "generation": "v2",
+   "cp_loc": 89,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 92,
+   "cpp_stripped_loc": 68,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/today/ioi14p6io.cp",
+   "group": "scout_batch_52",
+   "form": "runnable",
+   "problem": "ioi14p6io",
+   "mapped_by": "header",
+   "submission": "4691224",
+   "original": "corpus/submissions/4691224.cpp",
+   "generation": "v2",
+   "cp_loc": 93,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 134,
+   "cpp_stripped_loc": 105,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/today/ioi17p4.cp",
+   "group": "scout_batch_52",
+   "form": "runnable",
+   "problem": "ioi17p4",
+   "mapped_by": "header",
+   "submission": "5659145",
+   "original": "corpus/submissions/5659145.cpp",
+   "generation": "v2",
+   "cp_loc": 49,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 86,
+   "cpp_stripped_loc": 65,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/today/ioi20p5.cp",
+   "group": "scout_batch_52",
+   "form": "runnable",
+   "problem": "ioi20p5",
+   "mapped_by": "header",
+   "submission": "4736004",
+   "original": "corpus/submissions/4736004.cpp",
+   "generation": "v2",
+   "cp_loc": 162,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 210,
+   "cpp_stripped_loc": 168,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/today/ioi22p5.cp",
+   "group": "scout_batch_52",
+   "form": "runnable",
+   "problem": "ioi22p5",
+   "mapped_by": "header",
+   "submission": "4786085",
+   "original": "corpus/submissions/4786085.cpp",
+   "generation": "v2",
+   "cp_loc": 70,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 91,
+   "cpp_stripped_loc": 66,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/today/noi02p2.cp",
+   "group": "scout_batch_52",
+   "form": "runnable",
+   "problem": "noi02p2",
+   "mapped_by": "header",
+   "submission": "4793917",
+   "original": "corpus/submissions/4793917.cpp",
+   "generation": "v2",
+   "cp_loc": 37,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 74,
+   "cpp_stripped_loc": 44,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/today/noi02p6.cp",
+   "group": "scout_batch_52",
+   "form": "runnable",
+   "problem": "noi02p6",
+   "mapped_by": "header",
+   "submission": "3754486",
+   "original": "corpus/submissions/3754486.cpp",
+   "generation": "v2",
+   "cp_loc": 28,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 74,
+   "cpp_stripped_loc": 52,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/today/noi08p5.cp",
+   "group": "scout_batch_52",
+   "form": "runnable",
+   "problem": "noi08p5",
+   "mapped_by": "header",
+   "submission": "6067573",
+   "original": "corpus/submissions/6067573.cpp",
+   "generation": "v2",
+   "cp_loc": 82,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 232,
+   "cpp_stripped_loc": 204,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/today/noi19p3.cp",
+   "group": "scout_batch_52",
+   "form": "runnable",
+   "problem": "noi19p3",
+   "mapped_by": "header",
+   "submission": "5669058",
+   "original": "corpus/submissions/5669058.cpp",
+   "generation": "v2",
+   "cp_loc": 141,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 245,
+   "cpp_stripped_loc": 181,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/today/noi21p5.cp",
+   "group": "scout_batch_52",
+   "form": "runnable",
+   "problem": "noi21p5",
+   "mapped_by": "header",
+   "submission": "3927923",
+   "original": "corpus/submissions/3927923.cpp",
+   "generation": "v2",
+   "cp_loc": 133,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 233,
+   "cpp_stripped_loc": 73,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/today/noi23p4.cp",
+   "group": "scout_batch_52",
+   "form": "runnable",
+   "problem": "noi23p4",
+   "mapped_by": "header",
+   "submission": "5723063",
+   "original": "corpus/submissions/5723063.cpp",
+   "generation": "v2",
+   "cp_loc": 124,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 168,
+   "cpp_stripped_loc": 97,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/scout_batch_52/today/noip20p3.cp",
+   "group": "scout_batch_52",
+   "form": "runnable",
+   "problem": "noip20p3",
+   "mapped_by": "header",
+   "submission": "5445674",
+   "original": "corpus/submissions/5445674.cpp",
+   "generation": "v2",
+   "cp_loc": 105,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 216,
+   "cpp_stripped_loc": 165,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
   },
   {
    "path": "proto/ports/scout_batch_6/ccc21s3.cp",
@@ -25980,7 +28890,7 @@
    "submission": "7011313",
    "original": "corpus/submissions/7011313.cpp",
    "generation": "v1",
-   "cp_loc": 17,
+   "cp_loc": 19,
    "wish_markers": 3,
    "harness": null,
    "cpp_raw_loc": 78,
@@ -26036,7 +28946,7 @@
    "submission": "4575278",
    "original": "corpus/submissions/4575278.cpp",
    "generation": "v1",
-   "cp_loc": 10,
+   "cp_loc": 11,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_6/check.sh",
    "cpp_raw_loc": 87,
@@ -26169,7 +29079,7 @@
    "submission": "7011313",
    "original": "corpus/submissions/7011313.cpp",
    "generation": "v1",
-   "cp_loc": 17,
+   "cp_loc": 18,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_6/check.sh",
    "cpp_raw_loc": 78,
@@ -26245,7 +29155,7 @@
    "submission": "3477640",
    "original": "corpus/submissions/3477640.cpp",
    "generation": "v1",
-   "cp_loc": 26,
+   "cp_loc": 25,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_7/check.py",
    "cpp_raw_loc": 66,
@@ -26321,7 +29231,7 @@
    "submission": "3738402",
    "original": "corpus/submissions/3738402.cpp",
    "generation": "v1",
-   "cp_loc": 41,
+   "cp_loc": 40,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_7/check.py",
    "cpp_raw_loc": 71,
@@ -26359,7 +29269,7 @@
    "submission": "3657404",
    "original": "corpus/submissions/3657404.cpp",
    "generation": "v1",
-   "cp_loc": 9,
+   "cp_loc": 8,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_7/check.py",
    "cpp_raw_loc": 60,
@@ -26416,7 +29326,7 @@
    "submission": "4226187",
    "original": "corpus/submissions/4226187.cpp",
    "generation": "v1",
-   "cp_loc": 23,
+   "cp_loc": 21,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_8/check.py",
    "cpp_raw_loc": 65,
@@ -26435,7 +29345,7 @@
    "submission": "7730377",
    "original": "corpus/submissions/7730377.cpp",
    "generation": "v1",
-   "cp_loc": 10,
+   "cp_loc": 11,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_8/check.py",
    "cpp_raw_loc": 24,
@@ -26492,7 +29402,7 @@
    "submission": "4133511",
    "original": "corpus/submissions/4133511.cpp",
    "generation": "v1",
-   "cp_loc": 17,
+   "cp_loc": 19,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_8/check.py",
    "cpp_raw_loc": 95,
@@ -26511,7 +29421,7 @@
    "submission": "4829839",
    "original": "corpus/submissions/4829839.cpp",
    "generation": "v1",
-   "cp_loc": 23,
+   "cp_loc": 22,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_8/check.py",
    "cpp_raw_loc": 60,
@@ -26568,7 +29478,7 @@
    "submission": "4376742",
    "original": "corpus/submissions/4376742.cpp",
    "generation": "v1",
-   "cp_loc": 19,
+   "cp_loc": 18,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_8/check.py",
    "cpp_raw_loc": 67,
@@ -26663,7 +29573,7 @@
    "submission": "5661848",
    "original": "corpus/submissions/5661848.cpp",
    "generation": "v1",
-   "cp_loc": 45,
+   "cp_loc": 46,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_9/stress.sh",
    "cpp_raw_loc": 290,
@@ -26682,7 +29592,7 @@
    "submission": "4725602",
    "original": "corpus/submissions/4725602.cpp",
    "generation": "v1",
-   "cp_loc": 36,
+   "cp_loc": 37,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_9/stress.sh",
    "cpp_raw_loc": 75,
@@ -26769,6 +29679,630 @@
    "harness_line": "utso15p5: stress OK: 200 tests agree (0 rejected by where)"
   },
   {
+   "path": "proto/ports/sim3/p1_abc476_g.cp",
+   "group": "sim3",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 52,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/sim3/p2_abc479_e.cp",
+   "group": "sim3",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 51,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/sim3/p3_abc481_f.cp",
+   "group": "sim3",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 55,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/sim3/p4_abc480_f.cp",
+   "group": "sim3",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 34,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/sim3/p5_abc481_g.cp",
+   "group": "sim3",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 79,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/sim3/p6_abc478_e.cp",
+   "group": "sim3",
+   "form": "support",
+   "problem": null,
+   "mapped_by": null,
+   "submission": null,
+   "original": null,
+   "generation": "v1",
+   "cp_loc": 74,
+   "wish_markers": 0,
+   "harness": null,
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/ccc18s4.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "ccc18s4",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4329704",
+   "original": "corpus/submissions/4329704.cpp",
+   "generation": "v1",
+   "cp_loc": 11,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 85,
+   "cpp_stripped_loc": 42,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/ccc20s2.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "ccc20s2",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4323590",
+   "original": "corpus/submissions/4323590.cpp",
+   "generation": "v1",
+   "cp_loc": 8,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 73,
+   "cpp_stripped_loc": 38,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/ccc21s2.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "ccc21s2",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4323443",
+   "original": "corpus/submissions/4323443.cpp",
+   "generation": "v1",
+   "cp_loc": 8,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 54,
+   "cpp_stripped_loc": 19,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/cco18p1.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "cco18p1",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4801863",
+   "original": "corpus/submissions/4801863.cpp",
+   "generation": "v1",
+   "cp_loc": 11,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 55,
+   "cpp_stripped_loc": 25,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/dmopc21c5p1.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "dmopc21c5p1",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4218215",
+   "original": "corpus/submissions/4218215.cpp",
+   "generation": "v1",
+   "cp_loc": 7,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 61,
+   "cpp_stripped_loc": 26,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/dpk.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "dpk",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4131775",
+   "original": "corpus/submissions/4131775.cpp",
+   "generation": "v1",
+   "cp_loc": 5,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 59,
+   "cpp_stripped_loc": 30,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/dpl.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "dpl",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4131776",
+   "original": "corpus/submissions/4131776.cpp",
+   "generation": "v1",
+   "cp_loc": 7,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 51,
+   "cpp_stripped_loc": 16,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/dpm.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "dpm",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4131778",
+   "original": "corpus/submissions/4131778.cpp",
+   "generation": "v1",
+   "cp_loc": 14,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 67,
+   "cpp_stripped_loc": 32,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/dpn.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "dpn",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4131779",
+   "original": "corpus/submissions/4131779.cpp",
+   "generation": "v1",
+   "cp_loc": 8,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 57,
+   "cpp_stripped_loc": 22,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/dpo.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "dpo",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4131780",
+   "original": "corpus/submissions/4131780.cpp",
+   "generation": "v1",
+   "cp_loc": 12,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 63,
+   "cpp_stripped_loc": 34,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/dpp.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "dpp",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4131860",
+   "original": "corpus/submissions/4131860.cpp",
+   "generation": "v1",
+   "cp_loc": 13,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 75,
+   "cpp_stripped_loc": 46,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/dpr.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "dpr",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4131862",
+   "original": "corpus/submissions/4131862.cpp",
+   "generation": "v1",
+   "cp_loc": 18,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 85,
+   "cpp_stripped_loc": 55,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/dpt.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "dpt",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4131863",
+   "original": "corpus/submissions/4131863.cpp",
+   "generation": "v1",
+   "cp_loc": 18,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 72,
+   "cpp_stripped_loc": 43,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/dpu.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "dpu",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4131872",
+   "original": "corpus/submissions/4131872.cpp",
+   "generation": "v1",
+   "cp_loc": 9,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 69,
+   "cpp_stripped_loc": 34,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/dpv.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "dpv",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4133644",
+   "original": "corpus/submissions/4133644.cpp",
+   "generation": "v1",
+   "cp_loc": 13,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 90,
+   "cpp_stripped_loc": 55,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/dpx.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "dpx",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4133420",
+   "original": "corpus/submissions/4133420.cpp",
+   "generation": "v1",
+   "cp_loc": 6,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 59,
+   "cpp_stripped_loc": 24,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/dpy.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "dpy",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4133511",
+   "original": "corpus/submissions/4133511.cpp",
+   "generation": "v1",
+   "cp_loc": 13,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 95,
+   "cpp_stripped_loc": 50,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/ioi00p1.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "ioi00p1",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4819647",
+   "original": "corpus/submissions/4819647.cpp",
+   "generation": "v1",
+   "cp_loc": 9,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 53,
+   "cpp_stripped_loc": 22,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/ioi04p4.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "ioi04p4",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4501742",
+   "original": "corpus/submissions/4501742.cpp",
+   "generation": "v1",
+   "cp_loc": 11,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 35,
+   "cpp_stripped_loc": 28,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/ioi94p1.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "ioi94p1",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4810274",
+   "original": "corpus/submissions/4810274.cpp",
+   "generation": "v1",
+   "cp_loc": 6,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 48,
+   "cpp_stripped_loc": 17,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/noip00p1.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "noip00p1",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "5067849",
+   "original": "corpus/submissions/5067849.cpp",
+   "generation": "v1",
+   "cp_loc": 6,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 70,
+   "cpp_stripped_loc": 28,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/noip01p2.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "noip01p2",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "5086680",
+   "original": "corpus/submissions/5086680.cpp",
+   "generation": "v1",
+   "cp_loc": 7,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 47,
+   "cpp_stripped_loc": 16,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/noip04p1.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "noip04p1",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "5117097",
+   "original": "corpus/submissions/5117097.cpp",
+   "generation": "v1",
+   "cp_loc": 8,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 46,
+   "cpp_stripped_loc": 15,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/noip04p3.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "noip04p3",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "5117143",
+   "original": "corpus/submissions/5117143.cpp",
+   "generation": "v1",
+   "cp_loc": 7,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 67,
+   "cpp_stripped_loc": 31,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/noip06p1.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "noip06p1",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "5165686",
+   "original": "corpus/submissions/5165686.cpp",
+   "generation": "v1",
+   "cp_loc": 7,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 62,
+   "cpp_stripped_loc": 31,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/noip06p2.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "noip06p2",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "5165705",
+   "original": "corpus/submissions/5165705.cpp",
+   "generation": "v1",
+   "cp_loc": 15,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 75,
+   "cpp_stripped_loc": 44,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/noip14p2.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "noip14p2",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "5445666",
+   "original": "corpus/submissions/5445666.cpp",
+   "generation": "v1",
+   "cp_loc": 15,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 66,
+   "cpp_stripped_loc": 35,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/noip14p5.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "noip14p5",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "5445670",
+   "original": "corpus/submissions/5445670.cpp",
+   "generation": "v1",
+   "cp_loc": 10,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 90,
+   "cpp_stripped_loc": 59,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/noip18p2.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "noip18p2",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "5032734",
+   "original": "corpus/submissions/5032734.cpp",
+   "generation": "v1",
+   "cp_loc": 11,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 71,
+   "cpp_stripped_loc": 42,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
+   "path": "proto/ports/wave2/yac1p1.cp",
+   "group": "wave2",
+   "form": "runnable",
+   "problem": "yac1p1",
+   "mapped_by": "file name is the problem code, latest accepted submission",
+   "submission": "4376122",
+   "original": "corpus/submissions/4376122.cpp",
+   "generation": "v1",
+   "cp_loc": 13,
+   "wish_markers": 0,
+   "harness": null,
+   "cpp_raw_loc": 64,
+   "cpp_stripped_loc": 33,
+   "strip_source": "auto",
+   "original_language": "cpp",
+   "verified": "no harness"
+  },
+  {
    "path": "proto/ports/yac1p1.cp",
    "group": "top-level",
    "form": "regression",
@@ -26777,7 +30311,7 @@
    "submission": null,
    "original": "proto/ports/yac1p1_orig.cpp",
    "generation": "v1",
-   "cp_loc": 16,
+   "cp_loc": 15,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 64,
@@ -26796,7 +30330,7 @@
    "submission": null,
    "original": "proto/ports/yac6p3_orig.cpp",
    "generation": "v1",
-   "cp_loc": 19,
+   "cp_loc": 20,
    "wish_markers": 0,
    "harness": "proto/run_all.sh",
    "cpp_raw_loc": 61,
@@ -27309,17 +30843,6 @@
    "note": "never accepted"
   },
   {
-   "problem": "ctsc04p4",
-   "family": "NOI (China)",
-   "accepted_submissions": 7,
-   "attempts": 26,
-   "submission": "4529641",
-   "original": "corpus/submissions/4529641.cpp",
-   "cpp_raw_loc": 198,
-   "cpp_stripped_loc": 147,
-   "hard": true
-  },
-  {
    "problem": "ctsc06p6",
    "family": "NOI (China)",
    "accepted_submissions": 0,
@@ -27743,17 +31266,6 @@
    "note": "never accepted"
   },
   {
-   "problem": "iati21a13",
-   "family": "IATI",
-   "accepted_submissions": 1,
-   "attempts": 7,
-   "submission": "5052303",
-   "original": "corpus/submissions/5052303.cpp",
-   "cpp_raw_loc": 294,
-   "cpp_stripped_loc": 236,
-   "hard": true
-  },
-  {
    "problem": "iati21a21",
    "family": "IATI",
    "accepted_submissions": 0,
@@ -27823,28 +31335,6 @@
    "note": "no accepted C++ or Java source"
   },
   {
-   "problem": "ioi13p3",
-   "family": "IOI",
-   "accepted_submissions": 4,
-   "attempts": 7,
-   "submission": "4722414",
-   "original": "corpus/submissions/4722414.cpp",
-   "cpp_raw_loc": 184,
-   "cpp_stripped_loc": 101,
-   "hard": true
-  },
-  {
-   "problem": "ioi14p1",
-   "family": "IOI",
-   "accepted_submissions": 1,
-   "attempts": 1,
-   "submission": "4691718",
-   "original": "corpus/submissions/4691718.cpp",
-   "cpp_raw_loc": 92,
-   "cpp_stripped_loc": 68,
-   "hard": true
-  },
-  {
    "problem": "ioi14p5",
    "family": "IOI",
    "accepted_submissions": 1,
@@ -27853,17 +31343,6 @@
    "original": "corpus/submissions/6567592.cpp",
    "cpp_raw_loc": 89,
    "cpp_stripped_loc": 37,
-   "hard": true
-  },
-  {
-   "problem": "ioi14p6io",
-   "family": "IOI",
-   "accepted_submissions": 1,
-   "attempts": 1,
-   "submission": "4691224",
-   "original": "corpus/submissions/4691224.cpp",
-   "cpp_raw_loc": 134,
-   "cpp_stripped_loc": 105,
    "hard": true
   },
   {
@@ -27894,17 +31373,6 @@
    "submission": null,
    "hard": false,
    "note": "never accepted"
-  },
-  {
-   "problem": "ioi17p4",
-   "family": "IOI",
-   "accepted_submissions": 1,
-   "attempts": 1,
-   "submission": "5659145",
-   "original": "corpus/submissions/5659145.cpp",
-   "cpp_raw_loc": 86,
-   "cpp_stripped_loc": 65,
-   "hard": true
   },
   {
    "problem": "ioi18p6",
@@ -27949,17 +31417,6 @@
    "hard": true
   },
   {
-   "problem": "ioi20p5",
-   "family": "IOI",
-   "accepted_submissions": 2,
-   "attempts": 2,
-   "submission": "4736004",
-   "original": "corpus/submissions/4736004.cpp",
-   "cpp_raw_loc": 210,
-   "cpp_stripped_loc": 168,
-   "hard": true
-  },
-  {
    "problem": "ioi21p5",
    "family": "IOI",
    "accepted_submissions": 0,
@@ -27967,17 +31424,6 @@
    "submission": null,
    "hard": false,
    "note": "never accepted"
-  },
-  {
-   "problem": "ioi22p5",
-   "family": "IOI",
-   "accepted_submissions": 12,
-   "attempts": 14,
-   "submission": "4786085",
-   "original": "corpus/submissions/4786085.cpp",
-   "cpp_raw_loc": 91,
-   "cpp_stripped_loc": 66,
-   "hard": true
   },
   {
    "problem": "ioi23p1",
@@ -28243,17 +31689,6 @@
    "note": "never accepted"
   },
   {
-   "problem": "noi02p2",
-   "family": "NOI (China)",
-   "accepted_submissions": 3,
-   "attempts": 3,
-   "submission": "4793917",
-   "original": "corpus/submissions/4793917.cpp",
-   "cpp_raw_loc": 74,
-   "cpp_stripped_loc": 44,
-   "hard": true
-  },
-  {
    "problem": "noi02p5",
    "family": "NOI (China)",
    "accepted_submissions": 1,
@@ -28262,17 +31697,6 @@
    "original": "corpus/submissions/5136456.cpp",
    "cpp_raw_loc": 184,
    "cpp_stripped_loc": 153,
-   "hard": true
-  },
-  {
-   "problem": "noi02p6",
-   "family": "NOI (China)",
-   "accepted_submissions": 2,
-   "attempts": 2,
-   "submission": "3754486",
-   "original": "corpus/submissions/3754486.cpp",
-   "cpp_raw_loc": 74,
-   "cpp_stripped_loc": 52,
    "hard": true
   },
   {
@@ -28325,17 +31749,6 @@
    "submission": null,
    "hard": false,
    "note": "never accepted"
-  },
-  {
-   "problem": "noi08p5",
-   "family": "NOI (China)",
-   "accepted_submissions": 1,
-   "attempts": 7,
-   "submission": "6067573",
-   "original": "corpus/submissions/6067573.cpp",
-   "cpp_raw_loc": 232,
-   "cpp_stripped_loc": 204,
-   "hard": true
   },
   {
    "problem": "noi08p6",
@@ -28485,17 +31898,6 @@
    "hard": true
   },
   {
-   "problem": "noi19p3",
-   "family": "NOI (China)",
-   "accepted_submissions": 1,
-   "attempts": 4,
-   "submission": "5669058",
-   "original": "corpus/submissions/5669058.cpp",
-   "cpp_raw_loc": 245,
-   "cpp_stripped_loc": 181,
-   "hard": true
-  },
-  {
    "problem": "noi19p6",
    "family": "NOI (China)",
    "accepted_submissions": 1,
@@ -28515,17 +31917,6 @@
    "original": "corpus/submissions/6075539.cpp",
    "cpp_raw_loc": 336,
    "cpp_stripped_loc": 247,
-   "hard": true
-  },
-  {
-   "problem": "noi21p5",
-   "family": "NOI (China)",
-   "accepted_submissions": 1,
-   "attempts": 6,
-   "submission": "3927923",
-   "original": "corpus/submissions/3927923.cpp",
-   "cpp_raw_loc": 233,
-   "cpp_stripped_loc": 73,
    "hard": true
   },
   {
@@ -28574,17 +31965,6 @@
    "submission": null,
    "hard": false,
    "note": "never accepted"
-  },
-  {
-   "problem": "noi23p4",
-   "family": "NOI (China)",
-   "accepted_submissions": 1,
-   "attempts": 2,
-   "submission": "5723063",
-   "original": "corpus/submissions/5723063.cpp",
-   "cpp_raw_loc": 168,
-   "cpp_stripped_loc": 97,
-   "hard": true
   },
   {
    "problem": "noi23p5",
@@ -28824,17 +32204,6 @@
    "cpp_raw_loc": 66,
    "cpp_stripped_loc": 37,
    "hard": false
-  },
-  {
-   "problem": "noip20p3",
-   "family": "NOIP",
-   "accepted_submissions": 2,
-   "attempts": 4,
-   "submission": "5445674",
-   "original": "corpus/submissions/5445674.cpp",
-   "cpp_raw_loc": 216,
-   "cpp_stripped_loc": 165,
-   "hard": true
   },
   {
    "problem": "noip20p4",

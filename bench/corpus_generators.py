@@ -2198,3 +2198,208 @@ SPECS += [
     ("scout_batch_39/today/yac6p6", O(5150025), "3-diag MITM DP", "100x100, q=1e5", g_yac6p6, "exact"),
     ("scout_batch_46/today/yac7p2", O(5705152), "grid snake", "t=100", g_yac7p2, "exact"),
 ]
+
+
+# =============================================================================
+# Group 4: ports that read inside a loop (previously "needs a hand-written generator")
+# =============================================================================
+
+def g_ioi94p1(p, big, _):
+    rng = random.Random(4001)
+    n = 100 if big else 8
+    W(p, [n] + [J(rng.randint(0, 99) for _ in range(r)) for r in range(1, n + 1)])
+
+
+def g_noip00p4(p, big, _):
+    rng = random.Random(4002)
+    n = 9 if big else 4
+    cells = [f"{x} {y} {rng.randint(0, 1000)}" for x in range(1, n + 1) for y in range(1, n + 1)]
+    W(p, [n] + cells + ["0 0 0"])
+
+
+def g_noi06p1(p, big, _):
+    rng = random.Random(4003)
+    m = 10 if big else 3
+    n = 1 << m
+    lines = [m, J(rng.randint(0, 1) for _ in range(n)), J(rng.randint(1, 500_000) for _ in range(n))]
+    lines += [J(rng.randint(0, 500) for _ in range(n - 1 - i)) for i in range(n - 1)]
+    W(p, lines)
+
+
+def g_noi19p4(p, big, _):
+    rng = random.Random(4004)
+    n, m, w, h = (70_000, 150_000, 70_000, 70_000) if big else (50, 100, 50, 50)
+    pts = rng.sample([(x, y) for x in range(1, w + 1) for y in range(1, h + 1)], n) if not big else \
+        list({(rng.randint(1, w), rng.randint(1, h)) for _ in range(2 * n)})[:n]
+    lines = [f"{n} {m} {w} {h}"] + [f"{x} {y}" for x, y in pts]
+    for _ in range(m):
+        lx, rx = sorted(rng.randint(1, w) for _ in range(2)); ly, ry = sorted(rng.randint(1, h) for _ in range(2))
+        lines.append(f"{rng.randint(1, n)} {rng.randint(1, 10_000)} {lx} {rx} {ly} {ry}")
+    W(p, lines)
+
+
+def g_noi19p1(p, big, _):
+    rng = random.Random(4005)
+    n, m = (100_000, 200_000) if big else (20, 60)
+    lines = [f"{n} {m} {rng.randint(0, 10)} {rng.randint(0, 10_000)} {rng.randint(0, 10_000)}"]
+    for _ in range(m):
+        x, y = rng.sample(range(1, n + 1), 2); a, b = sorted(rng.sample(range(0, 1001), 2))
+        lines.append(f"{x} {y} {a} {b}")
+    W(p, lines)
+
+
+def g_ioi09p7(p, big, _):
+    rng = random.Random(4006)
+    n, r, q = (200_000, 25_000, 200_000) if big else (50, 5, 50)
+    lines = [f"{n} {r} {q}", rng.randint(1, r)]
+    lines += [f"{rng.randint(max(1, v - 50), v - 1)} {rng.randint(1, r)}" for v in range(2, n + 1)]
+    lines += [" ".join(map(str, rng.sample(range(1, r + 1), 2))) for _ in range(q)]
+    W(p, lines)
+
+
+def g_ioi14p5(p, big, _):
+    rng = random.Random(4007)
+    n = 100_000 if big else 30
+    W(p, [n, J(rng.randint(1, 1000) for _ in range(n))] + [f"{rng.randrange(i)} {rng.randint(0, 2)}" for i in range(1, n)])
+
+
+def g_ioi07p5(p, big, _):
+    rng = random.Random(4008)
+    n, m, d = (100_000, 75_000, 1000) if big else (50, 30, 5)
+    W(p, [f"2 {n} {d} {m}"] + [f"{rng.randint(1, m)} {rng.randint(1, m)}" for _ in range(n)])
+
+
+def g_sdoi17r1p6(p, big, _):
+    rng = random.Random(4009)
+    n, q = (100_000, 100_000) if big else (20, 20)
+    lines = [f"{n} {q}", J(rng.randint(-100_000, 100_000) for _ in range(n)), J(rng.randint(-100_000, 100_000) for _ in range(n))]
+    for _ in range(q):
+        l, r = sorted(rng.sample(range(1, n + 1), 2)); kind = rng.randint(1, 3)
+        lines.append(f"{kind} {l} {r}" + ("" if kind == 1 else f" {rng.randint(-100_000, 100_000)} {rng.randint(-100_000, 100_000)}"))
+    W(p, lines)
+
+
+def g_noi18p4(p, big, _):
+    rng = random.Random(4010)
+    t, n, m = (5, 100_000, 100_000) if big else (2, 10, 10)
+    prime = 999_999_999_989
+    lines = [t]
+    for _ in range(t):
+        lines += [f"{n} {m}", J(rng.randint(1, prime) for _ in range(n)), J(prime for _ in range(n)),
+                  J(rng.randint(1, 1_000_000) for _ in range(n)), J(rng.randint(1, 1_000_000) for _ in range(m))]
+    W(p, lines)
+
+
+def g_noi18p3(p, big, _):
+    rng = random.Random(4011)
+    n, q, tl = (500_000, 100_000, 10) if big else (200, 50, 5)
+    lines = ["".join(rng.choice("ab") for _ in range(n)), q]
+    for _ in range(q):
+        l, r = sorted(rng.randint(1, n) for _ in range(2))
+        lines.append(f"{''.join(rng.choice('ab') for _ in range(tl))} {l} {r}")
+    W(p, lines)
+
+
+def g_ioi08p6(p, big, _):
+    rng = random.Random(4012)
+    m, n, k = (1_000_000, 1_000_000, 400_000) if big else (100, 100, 50)
+    lines = [f"{m} {n}", 0, k]
+    for _ in range(k):
+        x0 = rng.randint(1, m); y0 = rng.randint(1, n)
+        lines.append(f"{x0} {y0} {min(m, x0 + rng.randint(0, 2000))} {min(n, y0 + rng.randint(0, 2000))} {rng.randint(1, 7000)}")
+    W(p, lines)
+
+
+def g_ioi13p3io(p, big, _):
+    rng = random.Random(4013)
+    r, c, ups, qs = (5000, 200, 500, 200_000) if big else (10, 5, 10, 20)
+    lines = [f"{r} {c}"] + [J(rng.randint(0, 999) for _ in range(c - 1)) for _ in range(r)]
+    lines += [J(rng.randint(0, 999) for _ in range(c)) for _ in range(r - 1)]
+    evs = [1] * ups + [3] * qs; rng.shuffle(evs)
+    lines.append(len(evs))
+    for e in evs:
+        if e == 3:
+            lines.append(f"3 {rng.randrange(c)} {rng.randrange(c)}")
+        elif rng.random() < 0.5:
+            lines.append(f"1 {rng.randrange(r)} {rng.randrange(c - 1)} {rng.randint(0, 999)}")
+        else:
+            lines.append(f"2 {rng.randrange(r - 1)} {rng.randrange(c)} {rng.randint(0, 999)}")
+    W(p, lines)
+
+
+SPECS += [
+    ("ioi94p1", P("ioi94p1_orig.cpp"), "triangle DP", "n=100", g_ioi94p1, "exact"),
+    ("scout_batch_14/today/noip00p4", O(5067920), "grid DP", "n=9, full grid", g_noip00p4, "exact"),
+    ("scout_batch_30/noi06p1", O(5032743), "tree DP", "m=10, n=1024", g_noi06p1, "exact"),
+    ("scout_batch_30/noi19p4", O(3800719), "Dijkstra+segtree", "n=7e4, m=1.5e5", g_noi19p4, "exact"),
+    ("scout_batch_14/today/noi19p1", O(3790564), "slope DP", "n=1e5, m=2e5", g_noi19p1, "exact"),
+    ("scout_batch_26/ioi09p7", O(5032754), "regions sqrt", "n=q=2e5, r=25000", g_ioi09p7, "exact"),
+    ("scout_batch_33/ioi14p5", O(6567598), "tree greedy", "n=1e5", g_ioi14p5, "exact"),
+    ("scout_batch_21/ioi07p5", O(3505539), "2D pairs BIT", "B=2, n=1e5, m=75000", g_ioi07p5, "exact"),
+    ("scout_batch_29/sdoi17r1p6", O(5461671), "lazy segtree", "n=q=1e5", g_sdoi17r1p6, "float"),
+    ("scout_batch_11/noi18p4", O(6517796), "exCRT", "t=5, n=m=1e5", g_noi18p4, "exact"),
+    ("scout_batch_22/noi18p3", O(6513115), "suffix automaton", "|s|=5e5, q=1e5", g_noi18p3, "exact"),
+    ("scout_batch_21/ioi08p6", O(5637805), "sweep segtree", "M=N=1e6, P=4e5, B=0", g_ioi08p6, "exact"),
+    ("scout_batch_24/today/ioi13p3io", O(4722412), "DP blocks", "R=5000, C=200, 200500 events", g_ioi13p3io, "exact"),
+]
+
+
+# =============================================================================
+# ecnerwala/contest-programming ports (not in the corpus registry, so
+# `rust_max_n_audit.py --ecnerwala` runs them). The statements were not
+# reachable offline: sizes follow the usual Codeforces/UCup bounds and are
+# labelled "assumed" until checked against the statement.
+# =============================================================================
+
+def g_multitest_array(seed, lo, hi, n_big, n_small=200):
+    def g(p, big, _):
+        rng = random.Random(seed)
+        n = n_big if big else n_small
+        W(p, [1, n, J(rng.randint(lo, hi) for _ in range(n))])
+    return g
+
+
+
+
+
+ECNERWALA_SPECS = [
+    ("ecnerwala/cf2255f", P("ecnerwala/cf2255f_orig.cpp"), "NTT/FPS", "t=1, n=2e5 (assumed)", g_multitest_array(5001, 0, 998244352, 200_000), "exact"),
+    ("ecnerwala/cf2150d", P("ecnerwala/cf2150d_orig.cpp"), "comb sums", "t=1, n=2e5 (assumed)", g_multitest_array(5002, 0, 1_000_000, 200_000), "exact"),
+    ("ecnerwala/cf2268e", P("ecnerwala/cf2268e_orig.cpp"), "NTT", "t=1, n=2e5 (assumed)", g_multitest_array(5003, 1, 2 ** 18 - 1, 200_000), "exact"),
+]
+
+
+def g_ccc19s5(p, big, _):
+    rng = random.Random(4014)
+    n = 3000 if big else 20
+    W(p, [f"{n} {n // 2}"] + [J(rng.randint(0, 1_000_000_000) for _ in range(i + 1)) for i in range(n)])
+
+
+def g_ioi08p3(p, big, _):
+    rng = random.Random(4015)
+    f, k, m = (500_000, 500_000, 30_000) if big else (50, 10, 1000)
+    gems = list(range(1, k + 1)) + [rng.randint(1, k) for _ in range(f - k)]; rng.shuffle(gems)
+    W(p, [f, k, m] + [f"{rng.randint(1, 1_000_000_000)} {g}" for g in gems])
+
+
+def g_ioi17p3(p, big, _):
+    rng = random.Random(4016)
+    n, m = (5000, 20_000) if big else (10, 25)
+    edges = {(u, rng.randrange(n)) for u in range(n)}
+    while len(edges) < m: edges.add((rng.randrange(n), rng.randrange(n)))
+    W(p, [f"{n} {m}", J(rng.randint(0, 1) for _ in range(n)), J(rng.randint(0, 1) for _ in range(n))] + [f"{u} {v}" for u, v in edges])
+
+
+def g_noi18p2(p, big, _):
+    rng = random.Random(4017)
+    n = 600_000 if big else 10
+    perm = list(range(1, n + 1)); rng.shuffle(perm)
+    W(p, [1, n, J(perm)])
+
+
+SPECS += [
+    ("scout_batch_36/today/ccc19s5hard", None, "triangle sparse max", "n=3000, k=1500", g_ccc19s5, "exact"),
+    ("scout_batch_23/today/ioi08p3", None, "fish counting", "F=K=5e5, M=3e4", g_ioi08p3, "exact"),
+    ("scout_batch_23/today/ioi17p3", None, "game graph", "n=5000, m=2e4", g_ioi17p3, "exact"),
+    ("scout_batch_23/today/noi18p2", None, "bubble sort count", "t=1, n=6e5", g_noi18p2, "exact"),
+]
