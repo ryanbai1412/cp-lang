@@ -1,13 +1,20 @@
 // Codeforces 2157 F: Git Gud.
 // Merge `n` positions using `d` layers of jumps (`1 <= d <= n`). Each layer
-// switch costs `LAYER_COST = 1000` (`(d - 1) * 1000` total), and each position
-// assigned a `d`-tuple of layer counts summing to `w` costs `w`.
+// switch costs `LAYER_COST = 1000` (`(d - 1) * 1000` total), and assigning each
+// position a distinct `d`-tuple `c = (c_0, ..., c_{d-1})` of non-negative layer
+// counts with weight `w = sum(c)` costs `w` (the total jump count for that
+// position):
 //   - At `d = 1`, weights `0..n` cost `n * (n - 1) / 2`.
-//   - For `d >= 2`, there are `C(d + w - 1, w)` tuples of weight `w` (stepped
-//     incrementally by `cnt * (d + w - 1) / w`). Picking the `n` smallest
-//     weights yields `Plan(d, cost, max_w, max_w_cnt)`; minimize `cost` over `d`.
-// Walking the `n` tuples in reverse lex order emits each jump `(cur, start - cur)`
-// into its layer; printing layers in reverse order gives the final sequence.
+//   - For `d >= 2`, there are `C(d + w - 1, w)` tuples of weight `w`. Choosing
+//     the `n` smallest-weight tuples minimizes total cost; `plan_for(d)` sums
+//     each weight layer until `n` tuples are taken.
+//
+// Reverse-lex merge order: sort the `n` chosen `d`-tuples in reverse
+// lexicographic order, placing them at positions `n - 1` down to `0`. Because
+// the chosen set is downward-closed, at each layer `cl` every tuple with
+// `c[cl] > 0` jumps forward to the first position `start` sharing the same
+// prefix `(c_0, ..., c_{cl-1})`. Emitting these jumps per layer and printing
+// layers from `d - 1` down to `0` merges all `n` positions in exact budget.
 
 const LAYER_COST = 1000
 
@@ -15,49 +22,57 @@ struct Plan(d: Int, cost: Int, max_w: Int, max_w_cnt: Int)
 
 let n: 1..=250_000 = read()
 
+// Number of d-tuples of non-negative integers summing to w: C(d + w - 1, w).
+fn tuples_of_weight(d: Int, w: Int) -> Int = choose(d + w - 1, w)
+
 fn plan_for(d: Int) -> Plan:
     var rem = n
-    var cnt = 1
     var cost = (d - 1) * LAYER_COST
     var w = 0
-    while rem > 0:
-        if w > 0: cnt = cnt * (d + w - 1) / w
-        cnt min= rem
-        cost += cnt * w
-        if cnt == rem: break
-        rem -= cnt
+    while true:
+        let take = min(rem, tuples_of_weight(d, w))
+        cost += take * w
+        if take == rem: return Plan(d, cost, w, take)
+        rem -= take
         w += 1
-    Plan(d, cost, w, rem)
 
-var best = Plan(1, n * (n - 1) / 2, n - 1, 1)
-for d in 2..=n:
-    if (d - 1) * LAYER_COST >= best.cost: break
-    let cand = plan_for(d)
-    if cand.cost < best.cost: best = cand
+let best = (1..=n)
+    .take_while(d => (d - 1) * LAYER_COST < n * (n - 1) / 2 or d == 1)
+    .map(plan_for)
+    .min(by: p => p.cost)!
 
-let d = best.d
-var layer_ops: [0..d]List<(Int, Int)> = []
-var lim_w = best.max_w
-var lim_cnt = best.max_w_cnt
+// Enumerate the `n` cheapest d-tuples in reverse lex order.
+fn cheapest_tuples(plan: Plan) -> List<List<Int>>:
+    var out: List<List<Int>> = []
+    var cur: List<Int> = [0; plan.d]
+    var max_w_left = plan.max_w_cnt
+    fn gen(layer: Int, used_w: Int):
+        if layer == plan.d:
+            if used_w == plan.max_w:
+                if max_w_left == 0: return
+                max_w_left -= 1
+            out.push(cur.clone())
+            return
+        for c in (0..=plan.max_w - used_w).rev:
+            cur[layer] = c
+            gen(layer + 1, used_w + c)
+    gen(0, 0)
+    out
 
-var cur: ?Int = some(n - 1)
+let tuples = cheapest_tuples(best)
+domain Pos = 1..=n
+let pos_of = [Pos] i => Pos(n - i.ord)
 
-fn go(cur_layer: Int, cur_w: Int):
-    let cl = if cur_w == lim_w: d else: cur_layer
-    if cl == d:
-        if cur_w == lim_w:
-            lim_cnt -= 1
-            if lim_cnt == 0: lim_w -= 1
-        if let pos = cur:
-            cur = if pos > 0: some(pos - 1) else: none
-        return
-    let start = cur ?? return
-    for i in (0..=(lim_w - cur_w)).rev:
-        let pos = cur ?? break
-        if pos != start: layer_ops[cl].push((pos, start - pos))
-        go(cl + 1, cur_w + i)
+var layer_ops: [0..best.d]List<(Pos, Int)> = []
+for cl in 0..best.d:
+    var group_start = pos_of[0]
+    for (idx, t) in tuples.items:
+        let pos = pos_of[idx]
+        if idx > 0 and tuples[idx - 1][..cl] != t[..cl]:
+            group_start = pos
+        if pos != group_start:
+            layer_ops[cl].push((pos, group_start.ord - pos.ord))
 
-go(0, 0)
 let ops = [op for layer in layer_ops.rev for op in layer]
 print(ops.len)
-for (x, l) in ops: print(x + 1, l)
+for (x, l) in ops: print(x, l)
