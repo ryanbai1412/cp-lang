@@ -1430,3 +1430,30 @@ print(acc)
         "solve-only top-level var should be local to solve():\n{in_solve}"
     );
 }
+
+#[test]
+fn first_gt_and_last_lt_on_views_do_not_copy() {
+    let out = cpp(
+        "use std.seq.{first_gt, last_lt}
+let xs = [1, 2, 3, 3, 5, 7, 9]
+let a = xs[1..6].first_gt(3)
+let b = xs[1..6].last_lt(3)
+let ps = [(1, 10), (2, 20), (3, 30), (3, 40), (5, 50)]
+let c = ps[1..5].first_gt(3, by: p => p.0)
+let d = ps[1..5].last_lt(3, by: p => p.0)
+let s = \"abcde\"
+let e = s[1..4].first_gt('c')
+let f = s[1..4].last_lt('c')
+print(a ?? -1, b ?? -1, c ?? -1, d ?? -1, e ?? -1, f ?? -1)
+",
+    );
+    let solve = out.split("void solve()").nth(1).expect("solve() emitted");
+    assert!(
+        !solve.contains("cpl::to_list(") && !solve.contains("cpl::to_str("),
+        "first_gt/last_lt on slice views must not materialize a copy:\n{solve}"
+    );
+    assert!(
+        solve.contains("cpl::list_slice(") && solve.contains("cpl::str_slice("),
+        "first_gt/last_lt on slice views should search the O(1) view directly:\n{solve}"
+    );
+}

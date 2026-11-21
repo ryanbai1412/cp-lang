@@ -1294,6 +1294,12 @@ fn first_gt_and_last_lt_match_linear_scan():
     domain V = 1..=5
     let va = [V] i => xs[i.to_idx]
     assert va.first_gt(3) == V(4) and va.last_lt(3) == V(1)
+    assert xs[1..4].first_gt(3) == some(2) and xs[1..4].last_lt(3) == none
+    assert xs[0..4].last_lt(3) == some(0) and xs[0..4].first_gt(7) == none
+    assert pairs[1..4].first_gt(3, by: p => p.0) == some(2)
+    assert pairs[0..3].last_lt(3, by: p => p.0) == some(0)
+    let s = "abccd"
+    assert s[1..4].first_gt('b') == some(1) and s[1..4].last_lt('c') == some(0)
     for _ in 0..50:
         let a = sorted([rand(-5, 5) for _ in 0..rand(0, 12)])
         for q in -6..=6:

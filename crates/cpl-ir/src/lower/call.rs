@@ -5020,7 +5020,8 @@ impl<'a> Lowerer<'a> {
     }
 
 
-    /// Lowers `xs.first_ge(val, [by:])`, `xs.last_le(val, [by:])`, or `xs.find(val)` on a `List<T>` or 1D `[D]T`.
+    /// Lowers `xs.first_ge(val, [by:])`, `xs.first_gt(val, [by:])`, `xs.last_le(val, [by:])`,
+    /// `xs.last_lt(val, [by:])`, or `xs.find(val)` on any `Indexed` sequence.
     fn seq_search_method(
         &mut self,
         method: &str,
@@ -5127,9 +5128,11 @@ impl<'a> Lowerer<'a> {
                 ));
                 out.push(Stmt::Give(lw.local(res_slot, span)));
             } else {
-                // Binary search: `first_ge` finds smallest i in 0..n with c[i] >= t;
-                // `last_le` finds largest i in 0..n with c[i] <= t (i.e. first_gt - 1).
-                let is_ge = method == "first_ge";
+                // Binary search:
+                // - `first_ge` / `last_lt`: partition at first `i` with `c[i] >= t`.
+                // - `first_gt` / `last_le`: partition at first `i` with `c[i] > t`.
+                let cmp_ge = matches!(method, "first_ge" | "last_lt");
+                let is_first = matches!(method, "first_ge" | "first_gt");
                 let lo_slot = lw.temp(Ty::Int);
                 let hi_slot = lw.temp(Ty::Int);
                 out.push(Stmt::Let(lo_slot, Some(lw.int_lit(0, span))));
@@ -5166,7 +5169,7 @@ impl<'a> Lowerer<'a> {
                     cur
                 };
                 let t_cmp = lw.coerce(t_ref, &cur_val.ty, args[0].value.span);
-                let go_left = if is_ge {
+                let go_left = if cmp_ge {
                     lw.mk(ExprKind::Cmp(CmpOp::Ge, Box::new(cur_val), Box::new(t_cmp)), Ty::Bool, span)
                 } else {
                     lw.mk(ExprKind::Cmp(CmpOp::Gt, Box::new(cur_val), Box::new(t_cmp)), Ty::Bool, span)
@@ -5191,7 +5194,7 @@ impl<'a> Lowerer<'a> {
                 let lid = lw.next_loop;
                 lw.next_loop += 1;
                 out.push(Stmt::While(lid, cond, Block { stmts: loop_stmts }));
-                let res = if is_ge {
+                let res = if is_first {
                     let ok = lw.mk(
                         ExprKind::Cmp(CmpOp::Lt, Box::new(lo_ref.clone()), Box::new(n_ref)),
                         Ty::Bool,
@@ -6620,7 +6623,7 @@ impl<'a> Lowerer<'a> {
                 let elem = ty.seq_elem().unwrap();
                 self.find_first(value, elem, &args[0].value, span)
             }
-            (ty, "first_ge" | "last_le" | "find")
+            (ty, "first_ge" | "first_gt" | "last_le" | "last_lt" | "find")
                 if ty.is_indexed()
                     && !(method == "find"
                         && matches!(ty, Ty::Str | Ty::StrView)
