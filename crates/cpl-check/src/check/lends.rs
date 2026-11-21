@@ -1457,7 +1457,8 @@ impl<'a> Checker<'a> {
         }
         let (Some(root), Some(key)) = (
             root_name(base).filter(|_| name.text == "sort"),
-            args.iter().find(|a| a.name.as_ref().is_some_and(|n| n.text == "by")),
+            args.iter()
+                .find(|a| a.name.as_ref().is_some_and(|n| matches!(n.text.as_str(), "by" | "cmp"))),
         ) else {
             return;
         };
@@ -1486,7 +1487,9 @@ impl<'a> Checker<'a> {
         let Some(what) = what else {
             return;
         };
-        let message = format!("the key of `{root}.sort(by:)` {what} while `{root}` is being sorted");
+        let opt = key.name.as_ref().map(|n| n.text.as_str()).unwrap_or("by");
+        let role = if opt == "cmp" { "comparator" } else { "key" };
+        let message = format!("the {role} of `{root}.sort({opt}:)` {what} while `{root}` is being sorted");
         if let Some(diag) = self.error(codes::USED_WHILE_LENT, key.value.span, message) {
             diag.help = Some(format!(
                 "sort a copy, whose key may use the list: `{root} = {root}.sorted(by: ..)`"

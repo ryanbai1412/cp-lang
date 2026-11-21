@@ -1131,6 +1131,36 @@ template <class S, class F> void sort_by(S& seq, F&& key, bool desc) {
 ",
     },
     Piece {
+        name: "sort_cmp",
+        needs: &["fail"],
+        code: "\
+// `sort(cmp: lt)`: stable O(n log n) comparator sort. Under `LOCAL` (`--checked`),
+// traps on non-strict-weak-order comparators (irreflexivity, asymmetry, intransitivity).
+template <class S, class F> void sort_cmp(S& seq, F&& cmp, bool desc) {
+    auto lt = [&](const auto& a, const auto& b) -> bool {
+        bool r = desc ? cmp(b, a) : cmp(a, b);
+#ifdef LOCAL
+        if (r && (desc ? cmp(a, b) : cmp(b, a))) fail(\"sort `cmp:` comparator is not a strict weak order: both cmp(a, b) and cmp(b, a) are true\");
+#endif
+        return r;
+    };
+#ifdef LOCAL
+    for (const auto& x : seq) {
+        if (cmp(x, x)) fail(\"sort `cmp:` comparator is not a strict weak order: cmp(x, x) is true\");
+    }
+#endif
+    std::stable_sort(seq.begin(), seq.end(), lt);
+#ifdef LOCAL
+    for (size_t i = 1; i < seq.size(); i++) {
+        if (lt(seq[i], seq[i - 1]) || lt(seq[i], seq[0]) || lt(seq.back(), seq[i - 1])) {
+            fail(\"sort `cmp:` comparator is not a strict weak order: result is not ordered\");
+        }
+    }
+#endif
+}
+",
+    },
+    Piece {
         name: "pop_val",
         needs: &["fail"],
         code: "\

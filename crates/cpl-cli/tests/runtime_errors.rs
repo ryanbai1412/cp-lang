@@ -334,3 +334,51 @@ fn wide_range_overflow_traps_in_interp_and_cpp() {
         assert!(cpp_err.contains(cpp_msg), "cpp expected `{cpp_msg}`, got:\n{cpp_err}");
     }
 }
+
+#[test]
+fn sort_cmp_strict_weak_order_traps_in_interp_and_checked_cpp() {
+    let cases = [
+        (
+            "var xs = [1, 2, 3]\nxs.sort(cmp: (a, b) => a <= b)\nprint(xs)\n",
+            "cmp(x, x) is true",
+        ),
+        (
+            "var xs = [1, 2, 3]\nxs.sort(cmp: (a, b) => a != b)\nprint(xs)\n",
+            "both cmp(a, b) and cmp(b, a) are true",
+        ),
+        (
+            "var xs = [0, 1, 2]\nxs.sort(cmp: (a, b) => (a + 1) % 3 == b)\nprint(xs)\n",
+            "result is not ordered",
+        ),
+    ];
+    for (idx, (src, msg)) in cases.iter().enumerate() {
+        let (code, err) = run_stderr(src, "");
+        assert_eq!(code, 3, "interp case {idx} should trap:\n{err}");
+        assert!(err.contains(msg), "interp case {idx} expected `{msg}`, got:\n{err}");
+        assert!(!err.contains("the interpreter itself failed"), "got panic:\n{err}");
+
+        let dir = std::env::temp_dir()
+            .join(format!("runtime_errors_sort_cmp_{}_{idx}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("a.cp");
+        let cpp = dir.join("a.cpp");
+        let exe = dir.join("a.bin");
+        fs::write(&file, src).unwrap();
+        let build = Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .args(["build", file.to_str().unwrap(), "-o", cpp.to_str().unwrap()])
+            .output()
+            .expect("cpl build");
+        assert!(build.status.success(), "cpl build failed:\n{}", String::from_utf8_lossy(&build.stderr));
+        let compile = Command::new("g++")
+            .args(["-std=c++17", "-O1", "-DLOCAL", cpp.to_str().unwrap(), "-o", exe.to_str().unwrap()])
+            .output()
+            .expect("g++");
+        assert!(compile.status.success(), "g++ failed:\n{}", String::from_utf8_lossy(&compile.stderr));
+        let out = Command::new(&exe).output().expect("run binary");
+        let cpp_err = String::from_utf8_lossy(&out.stderr).into_owned();
+        let _ = fs::remove_dir_all(&dir);
+        assert_eq!(out.status.code(), Some(3), "checked cpp case {idx} should trap:\n{cpp_err}");
+        assert!(cpp_err.contains(msg), "checked cpp case {idx} expected `{msg}`, got:\n{cpp_err}");
+    }
+}

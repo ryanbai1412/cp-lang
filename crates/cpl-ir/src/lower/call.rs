@@ -6265,15 +6265,44 @@ impl<'a> Lowerer<'a> {
                 return self.sort_place(place, elem, &keyed, span);
             }
         }
+        let has_by = args.iter().any(|a| a.name.as_ref().is_some_and(|n| n.text == "by"));
+        let has_cmp = args.iter().any(|a| a.name.as_ref().is_some_and(|n| n.text == "cmp"));
+        if has_by && has_cmp {
+            self.error(codes::BAD_OPERANDS, span, "`sort` takes either `by:` or `cmp:`, not both");
+            return self.err_expr(span);
+        }
         let key = match args {
             [] => {
                 if !self.ordered(elem) {
                     let message = format!("a `{}` has no order to sort by", self.show(elem));
                     self.error(codes::BAD_OPERANDS, span, message);
-                    self.help("sort by a key: `xs.sort(by: x => x.w)`");
+                    self.help("sort by a key (`xs.sort(by: x => x.w)`) or comparator (`xs.sort(cmp: (a, b) => a < b)`)");
                     return self.err_expr(span);
                 }
                 SortBy::Natural
+            }
+            [ast::Arg {
+                name: Some(cmp),
+                value,
+                ..
+            }] if cmp.text == "cmp" => {
+                let cmp_hint = Ty::Fn(vec![elem.clone(), elem.clone()], Box::new(Ty::Bool));
+                let fv = self.expr(value, Some(&cmp_hint));
+                match &fv.ty {
+                    Ty::Fn(ps, ret) if ps.len() == 2 && matches!(**ret, Ty::Bool | Ty::Error) => SortBy::Fn {
+                        func: Box::new(fv),
+                        is_order: true,
+                    },
+                    Ty::Error => return self.err_expr(span),
+                    _ => {
+                        self.error(
+                            codes::BAD_OPERANDS,
+                            value.span,
+                            "`cmp:` expects a comparator `(a, b) -> Bool`",
+                        );
+                        return self.err_expr(span);
+                    }
+                }
             }
             [ast::Arg {
                 name: Some(by),

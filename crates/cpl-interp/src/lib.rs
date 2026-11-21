@@ -1883,8 +1883,9 @@ impl<'p, 'o> Interp<'p, 'o> {
                     SortBy::Fn { func, is_order } => {
                         let fv = self.eval(func)?;
                         if *is_order {
-                            // Merge-sort using fallible comparator `fv(a, b) -> Bool`.
-                            items_vec = self.merge_sort_by(items_vec, &fv, desc, span)?;
+                            // Merge-sort using fallible comparator `fv(a, b) -> Bool`,
+                            // trapping on strict-weak-order violations (matching `cpl::sort_cmp` under LOCAL).
+                            items_vec = self.checked_merge_sort_by(items_vec, &fv, desc, span)?;
                         } else {
                             let key_ty = match &func.ty {
                                 Ty::Fn(_, r) => (**r).clone(),
@@ -2824,6 +2825,62 @@ impl<'p, 'o> Interp<'p, 'o> {
         Ok(out)
     }
 
+    fn checked_merge_sort_by(
+        &mut self,
+        xs: Vec<Value>,
+        cmp: &Value,
+        desc: bool,
+        span: Span,
+    ) -> Res<Vec<Value>> {
+        let saved_profiler = self.profiler.take();
+        for x in &xs {
+            let res = self.call_value(cmp.clone(), vec![x.clone(), x.clone()], span);
+            match res {
+                Ok(v) if v.bool() => {
+                    self.profiler = saved_profiler;
+                    return trap(
+                        span,
+                        "sort `cmp:` comparator is not a strict weak order: cmp(x, x) is true",
+                    );
+                }
+                Ok(_) => {}
+                Err(e) => {
+                    self.profiler = saved_profiler;
+                    return Err(e);
+                }
+            }
+        }
+        self.profiler = saved_profiler;
+        let out = self.merge_sort_by(xs, cmp, desc, span)?;
+        let saved_profiler = self.profiler.take();
+        for i in 1..out.len() {
+            let checks = [(&out[i], &out[i - 1]), (&out[i], &out[0]), (out.last().unwrap(), &out[i - 1])];
+            for (lhs, rhs) in checks {
+                let pair = if desc {
+                    vec![rhs.clone(), lhs.clone()]
+                } else {
+                    vec![lhs.clone(), rhs.clone()]
+                };
+                match self.call_value(cmp.clone(), pair, span) {
+                    Ok(v) if v.bool() => {
+                        self.profiler = saved_profiler;
+                        return trap(
+                            span,
+                            "sort `cmp:` comparator is not a strict weak order: result is not ordered",
+                        );
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
+                        self.profiler = saved_profiler;
+                        return Err(e);
+                    }
+                }
+            }
+        }
+        self.profiler = saved_profiler;
+        Ok(out)
+    }
+
     fn merge_sort_by(
         &mut self,
         mut xs: Vec<Value>,
@@ -2841,13 +2898,24 @@ impl<'p, 'o> Interp<'p, 'o> {
         let mut out = Vec::with_capacity(left.len() + right.len());
         let (mut i, mut j) = (0, 0);
         while i < left.len() && j < right.len() {
-            let pair = if desc {
-                vec![left[i].clone(), right[j].clone()]
+            let (first, second) = if desc {
+                (&left[i], &right[j])
             } else {
-                vec![right[j].clone(), left[i].clone()]
+                (&right[j], &left[i])
             };
-            let lt = self.call_value(cmp.clone(), pair, span)?.bool();
+            let lt = self
+                .call_value(cmp.clone(), vec![first.clone(), second.clone()], span)?
+                .bool();
             if lt {
+                let saved_profiler = self.profiler.take();
+                let rev = self.call_value(cmp.clone(), vec![second.clone(), first.clone()], span);
+                self.profiler = saved_profiler;
+                if rev?.bool() {
+                    return trap(
+                        span,
+                        "sort `cmp:` comparator is not a strict weak order: both cmp(a, b) and cmp(b, a) are true",
+                    );
+                }
                 out.push(right[j].clone());
                 j += 1;
             } else {

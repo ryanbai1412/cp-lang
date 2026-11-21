@@ -3219,6 +3219,7 @@ alias such a global by reference bind `const auto&`. Test:
 `global_stored_once_with_a_literal_is_constexpr`. Reverse by deleting
 `Emitter::const_global` and the `const_globals` checks in `stmt.rs` and
 `expr.rs`.
+<<<<<<< HEAD
 ## 83. Canonical-spelling docs gate and reasoning-enabled writable-from-docs harness (2026-11-21)
 
 1. **Enforce accepted CP Lang spellings in `site/check_docs.py` (`check_canonical_spellings`).**
@@ -3271,3 +3272,9 @@ drop the `cphashmap` / `cphashset` pieces from `runtime.rs`.
   for a list of pairs), and 0.30 s against 0.27 s (1.1x) from a `[E]` edge array.
 - **Reverse.** Restore the depth-first stack in `Rooted.build` and a `kid: [V]List<V>`
   field; `children` keeps its signature either way.
+
+## 87. `sort(cmp:)` / `sorted(cmp:)` with checked strict-weak-order traps (2026-11-21)
+
+- **Decision:** Add a `cmp: (a, b) => Bool` option to `sort` and `sorted` (mutually exclusive with `by:`, composing with `desc: true`), lowering through `SortBy::Fn { func, is_order: true }` to stable O(n log n) sorting (`cpl::sort_cmp` in C++, `checked_merge_sort_by` in the interpreter). In `cpl run` and `cpl build --checked` (`-DLOCAL`), non-strict-weak-order comparators trap on irreflexivity (`cmp(x, x)`), asymmetry (`cmp(a, b) && cmp(b, a)`), and post-sort order violations (intransitivity); release builds compile to zero-overhead `std::stable_sort`.
+- **Reason:** Exchange-argument sorts (`a.x * b.y < b.x * a.y`), angle sorts, and comparator-over-state sorts (like `cf2135f`) cannot be expressed as a single key and previously forced a wrapper struct + `impl Ord`. Named `cmp:` fits the options scheme, avoids UB in checked builds, and keeps release performance identical to C++.
+- **Reverse:** Remove the `cmp` arm from `sort_place` in `crates/cpl-ir/src/lower/call.rs` and `sort_cmp` in `crates/cpl-codegen/src/runtime.rs`.

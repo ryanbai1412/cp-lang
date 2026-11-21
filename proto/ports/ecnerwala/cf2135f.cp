@@ -54,11 +54,6 @@ fn less(a0: Ix, b0: Ix) -> Bool:
             (a, b, hi) = (pool[a].l, pool[b].l, mid)
     pool[a].cnt < pool[b].cnt
 
-struct Ranked(t: Ix, v: V)
-
-impl Ord for Ranked:
-    fn lt(a, b) = if pool[a.t].h == pool[b.t].h: a.v < b.v else: less(a.t, b.t)
-
 var set: [V]Ix = 0
 var key: [V]Int = 0
 var keys = 0
@@ -66,10 +61,12 @@ var order: List<V> = []
 for g in 0..n:
     for v in by_gen[g]:
         if let (l, r) = split(v): set[v] = insert(set[l], 0, n, key[r])
-    let ranked = [Ranked(set[v], v) for v in by_gen[g]].sorted()
-    for r in ranked.run_ranges(by: x => pool[x.t].h):
+    let ranked = by_gen[g].sorted(
+        cmp: (a, b) => if pool[set[a]].h == pool[set[b]].h: a < b else: less(set[a], set[b])
+    )
+    for r in ranked.run_ranges(by: v => pool[set[v]].h):
         for i in r:
-            key[ranked[i].v] = keys
-            order.push(ranked[i].v)
+            key[ranked[i]] = keys
+            order.push(ranked[i])
         keys += 1
 print(order)

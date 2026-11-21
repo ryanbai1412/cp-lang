@@ -183,16 +183,14 @@ impl<'p> Emitter<'p> {
             }
             SortBy::Fn { func, is_order } => {
                 let f_text = self.expr(func).text;
-                let (kf, a, b) = (self.temp(), self.temp(), self.temp());
+                let kf = self.temp();
                 self.line(out, &format!("auto {kf} = {f_text};"));
+                let desc = desc.clone().unwrap_or_else(|| "false".to_string());
                 if *is_order {
-                    self.line(
-                        out,
-                        &format!("std::stable_sort({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {}; }});", turned(format!("{kf}({a}, {b})"), format!("{kf}({b}, {a})"))),
-                    );
+                    self.need("sort_cmp");
+                    self.line(out, &format!("cpl::sort_cmp({seq}, {kf}, {desc});"));
                 } else {
                     self.need("sort_by");
-                    let desc = desc.clone().unwrap_or_else(|| "false".to_string());
                     self.line(out, &format!("cpl::sort_by({seq}, {kf}, {desc});"));
                 }
             }

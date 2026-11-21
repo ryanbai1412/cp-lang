@@ -83,6 +83,7 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "same_domain_lengths",
             "same_domain_longer_first",
             "same_domain_mut",
+            "sort_cmp",
             "sort_key_calls",
             "sort_key_one_traps",
             "sort_key_own_list",
