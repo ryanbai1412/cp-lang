@@ -16,13 +16,12 @@ SHOWN = 60
 
 
 def load_scoreboard_perf():
-    """Read cached runtime ratios from research/scoreboard.json without re-running."""
-    if not os.path.isfile(sb.DEFAULT_BASELINE):
-        return {}, None
+    """Read cached runtime ratios from research/scoreboard.json (+ .ports.jsonl) without re-running."""
     try:
-        with open(sb.DEFAULT_BASELINE, encoding="utf-8") as f:
-            data = json.load(f)
+        data = sb.load_baseline(sb.DEFAULT_BASELINE)
     except Exception:
+        return {}, None
+    if not data:
         return {}, None
     by_id = {}
     for p in data.get("ports", []):

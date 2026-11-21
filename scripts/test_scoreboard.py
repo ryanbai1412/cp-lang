@@ -1109,6 +1109,61 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
         self.assertIn("ecnerwala/cf2124f2", d_cg["regressions"][0])
         self.assertIn("stdlib/codegen diff (crates/cpl-codegen/src/emit.rs)", d_cg["regressions"][0])
 
+    def test_merge_safe_jsonl_and_update_cli(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out_path = os.path.join(tmp, "scoreboard.json")
+            ports = [
+                {"id": f"ecnerwala/p{i:02d}", "gate": "pass", "gate_mode": "full", "cp_sha": f"s{i}", "orig_sha": f"o{i}", "emitted_bytes": 1000 + i}
+                for i in range(10)
+            ]
+            rep = {"schema_version": 1, "meta": {"commit": "base"}, "totals": {"ports_total": 10}, "ports": ports}
+            sb.write_baseline(rep, out_path=out_path)
+
+            jpath = sb.ports_jsonl_path(out_path)
+            self.assertTrue(os.path.isfile(jpath))
+            with open(jpath, encoding="utf-8") as f:
+                base_lines = f.read()
+            self.assertEqual(len(base_lines.splitlines()), 10)
+            with open(out_path, encoding="utf-8") as f:
+                summary_before = f.read()
+            self.assertNotIn("emitted_bytes", summary_before)
+
+            # Round-trip load_baseline reconstructs all 10 sorted ports.
+            loaded = sb.load_baseline(out_path)
+            self.assertEqual(len(loaded["ports"]), 10)
+            self.assertEqual(loaded["ports"][0]["id"], "ecnerwala/p00")
+
+            # update_baseline_ports touches ONLY the named entry in .ports.jsonl, leaving summary JSON untouched.
+            sb.update_baseline_ports(
+                out_path,
+                [{"id": "ecnerwala/p01", "gate": "pass", "gate_mode": "fast", "cp_sha": "s1-new", "orig_sha": "o1", "emitted_bytes": 2222}],
+            )
+            with open(out_path, encoding="utf-8") as f:
+                self.assertEqual(f.read(), summary_before)
+            with open(jpath, encoding="utf-8") as f:
+                branch_a = f.read()
+
+            # Reset to base and update a distant port on branch B, then prove git merge-file merges cleanly.
+            with open(jpath, "w", encoding="utf-8") as f:
+                f.write(base_lines)
+            sb.update_baseline_ports(
+                out_path,
+                [{"id": "ecnerwala/p08", "gate": "pass", "gate_mode": "fast", "cp_sha": "s8-new", "orig_sha": "o8", "emitted_bytes": 8888}],
+            )
+            with open(jpath, encoding="utf-8") as f:
+                branch_b = f.read()
+
+            fa, fb, fbase = os.path.join(tmp, "a"), os.path.join(tmp, "b"), os.path.join(tmp, "base")
+            for p, content in ((fa, branch_a), (fb, branch_b), (fbase, base_lines)):
+                with open(p, "w", encoding="utf-8") as f:
+                    f.write(content)
+            r = subprocess.run(["git", "merge-file", "-p", fa, fbase, fb], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            merged_by_id = {json.loads(line)["id"]: json.loads(line) for line in r.stdout.splitlines() if line.strip()}
+            self.assertEqual(merged_by_id["ecnerwala/p01"]["emitted_bytes"], 2222)
+            self.assertEqual(merged_by_id["ecnerwala/p08"]["emitted_bytes"], 8888)
+            self.assertEqual(merged_by_id["ecnerwala/p05"]["emitted_bytes"], 1005)
+
 
 if __name__ == "__main__":
     unittest.main()

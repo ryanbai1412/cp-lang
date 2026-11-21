@@ -2410,6 +2410,71 @@ def merge_baseline_ports(existing_baseline, new_report, touched_ids=None):
     return out
 
 
+def ports_jsonl_path(baseline_path=DEFAULT_BASELINE):
+    """Return the sorted line-per-port JSONL path paired with a baseline JSON file."""
+    base, _ext = os.path.splitext(baseline_path)
+    return base + ".ports.jsonl"
+
+
+def load_baseline(baseline_path=DEFAULT_BASELINE):
+    """Load baseline summary JSON + sibling sorted line-per-port `.ports.jsonl` (if present)."""
+    if not baseline_path or not os.path.isfile(baseline_path):
+        return None
+    with open(baseline_path, encoding="utf-8") as f:
+        data = json.load(f)
+    ports_file = data.get("ports_file")
+    if ports_file:
+        jpath = os.path.join(os.path.dirname(os.path.abspath(baseline_path)), ports_file)
+    else:
+        jpath = ports_jsonl_path(baseline_path)
+    if os.path.isfile(jpath):
+        ports = []
+        with open(jpath, encoding="utf-8") as pf:
+            for line in pf:
+                line = line.strip()
+                if line:
+                    ports.append(json.loads(line))
+        data["ports"] = sorted(ports, key=lambda r: r.get("id", ""))
+    return data
+
+
+def write_baseline(report, out_path=DEFAULT_BASELINE, ports_only=False):
+    """Write baseline in merge-safe split format: sorted 1-line-per-port JSONL + compact summary JSON."""
+    os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
+    jpath = ports_jsonl_path(out_path)
+    ports_sorted = sorted(report.get("ports", []), key=lambda r: r.get("id", ""))
+    with open(jpath, "w", encoding="utf-8") as pf:
+        for rec in ports_sorted:
+            pf.write(json.dumps(rec, separators=(",", ":"), sort_keys=True))
+            pf.write("\n")
+    if not ports_only:
+        summary = {k: v for k, v in report.items() if k != "ports"}
+        summary["ports_file"] = os.path.basename(jpath)
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(summary, f, indent=2, sort_keys=False)
+            f.write("\n")
+
+
+def update_baseline_ports(out_path, updated_records):
+    """Update ONLY the named port lines in the sorted `.ports.jsonl` without touching summary JSON."""
+    existing = load_baseline(out_path) or {"ports": []}
+    by_id = {r["id"]: dict(r) for r in existing.get("ports", [])}
+    for rec in updated_records:
+        pid = rec["id"]
+        new_rec = dict(rec)
+        old = by_id.get(pid)
+        if old and new_rec.get("gate_mode") == "fast":
+            if old.get("cp_sha") == new_rec.get("cp_sha") and old.get("orig_sha") == new_rec.get("orig_sha"):
+                if new_rec.get("perf") is None and old.get("perf") is not None:
+                    new_rec["perf"] = old["perf"]
+                if new_rec.get("interp") is None and old.get("interp") is not None:
+                    new_rec["interp"] = old["interp"]
+        by_id[pid] = new_rec
+    merged_ports = [by_id[pid] for pid in sorted(by_id)]
+    write_baseline({"ports": merged_ports}, out_path=out_path, ports_only=True)
+    return merged_ports
+
+
 def git_head_short():
     r = sh(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT)
     return r.stdout.strip() if r.returncode == 0 else "unknown"
@@ -2755,10 +2820,7 @@ def build_report(args):
     dreams_rep = dreams_report(cpl) if not only else None
     dream_compile = summarize_dream_compile(dreams_rep) if dreams_rep else None
 
-    baseline = None
-    if args.baseline and os.path.isfile(args.baseline):
-        with open(args.baseline, encoding="utf-8") as f:
-            baseline = json.load(f)
+    baseline = load_baseline(args.baseline) if args.baseline else None
 
     gate_fast = load_gate_fast_time(baseline=baseline) if not only else None
 
@@ -2833,7 +2895,8 @@ def main(argv=None):
     ap.add_argument("--baseline", default=DEFAULT_BASELINE, help="baseline scoreboard JSON for diffing")
     ap.add_argument("--no-baseline", action="store_true", help="skip baseline comparison")
     ap.add_argument("--check", action="store_true", help="exit 1 on any regression or hard gate failure")
-    ap.add_argument("--write", action="store_true", help="write scoreboard JSON to --out (merges per port into existing baseline)")
+    ap.add_argument("--write", action="store_true", help="write scoreboard baseline to --out (merges per port into sorted .ports.jsonl)")
+    ap.add_argument("--update", nargs="+", metavar="PORT", help="update only the named port entries in .ports.jsonl without touching summary JSON")
     ap.add_argument("--all-ports", action="store_true", help="with --write, rewrite all port entries instead of merging only touched ports")
     ap.add_argument("--out", default=DEFAULT_BASELINE, help="output JSON path for --write")
     ap.add_argument("--json", action="store_true", help="print JSON report to stdout")
@@ -2847,6 +2910,9 @@ def main(argv=None):
     if args.no_baseline:
         args.baseline = None
 
+    if args.update:
+        args.ports = ",".join(args.update)
+
     if args.frictions:
         fr = summarize_frictions(args.frictions_dir)
         if args.json:
@@ -2858,23 +2924,21 @@ def main(argv=None):
         return 0
 
     report, diff = build_report(args)
-    if report.get("dreams") is None:
+    if report.get("dreams") is None and not args.update:
         report["dreams"] = dreams_report(find_cpl_binary(args.cpl))
-    if args.write:
+    if args.update:
+        update_baseline_ports(args.out, report.get("ports", []))
+    elif args.write:
         to_write = report
         if not args.all_ports and os.path.isfile(args.out):
-            with open(args.out, encoding="utf-8") as f:
-                existing_out = json.load(f)
+            existing_out = load_baseline(args.out)
             if args.ports:
                 touched_ids = {r["id"] for r in report.get("ports", [])}
             else:
                 touched_ids = detect_touched_ports()
             if touched_ids is not None:
                 to_write = merge_baseline_ports(existing_out, report, touched_ids=touched_ids)
-        os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
-        with open(args.out, "w", encoding="utf-8") as f:
-            json.dump(to_write, f, indent=2, sort_keys=False)
-            f.write("\n")
+        write_baseline(to_write, out_path=args.out)
 
     if args.json:
         print(json.dumps({"report": report, "diff": diff}, indent=2))
