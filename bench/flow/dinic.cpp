@@ -4,12 +4,12 @@ long long seed = 1;
 long long nxt(long long n) { seed = seed * 48271 % 2147483647; return seed % n; }
 const int N = 5000;
 vector<int> head[N];
-vector<int> to; vector<long long> lft;
+vector<int> to; vector<long long> lft, cap0;
 int main() {
     for (int i = 0; i < 200000; i++) {
         int u = nxt(N), v = nxt(N); long long c = nxt(1000000) + 1;
-        head[u].push_back(to.size()); to.push_back(v); lft.push_back(c);
-        head[v].push_back(to.size()); to.push_back(u); lft.push_back(0);
+        head[u].push_back(to.size()); to.push_back(v); lft.push_back(c); cap0.push_back(c);
+        head[v].push_back(to.size()); to.push_back(u); lft.push_back(0); cap0.push_back(0);
     }
     int s = 0, t = N - 1; long long total = 0;
     while (true) {
