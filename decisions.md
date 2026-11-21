@@ -1793,6 +1793,11 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   the benchmark refuses fewer than 21 bugs. The time is wall clock in the debug build the
   gate runs, so a loaded machine is part of what it measures. Reverse: restore
   `MEDIAN_LIMIT` to 10 s and the bug floor to 4 in `tests/seeded_bugs.rs`.
+- **25.25 The seeded-bug test decides by input, not by clock.** Every bug runs with
+  `--seed 1 --cases 1000` and a 60 s run limit, four at a time, so whether a bug is found
+  and shrunk to its `.min` is the same on any machine; the median is printed against the
+  1 s bar and never asserted. A wall-clock assertion failed a full gate under load (40 s)
+  that passed alone, blocking every lane. Reverse: assert `median <= 1 s` again.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 

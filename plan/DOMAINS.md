@@ -535,8 +535,10 @@ decision 25.18). It compares by variable name, so a brute that names
 nothing the solution does gets no explanation beyond its `debug(...)` stages.
 **Bar.** A seeded-bug benchmark in the gate: classic bugs injected into
 correct solutions, each found and shrunk to a known minimal case, with the
-median time to a minimal counterexample at most 1 s (`GOALS` 4).
-Benchmark: 21 bugs, all minimal, median 0.77 s. The ten added cover the
+median time to a minimal counterexample at most 1 s (`GOALS` 4),
+measured and printed by the gate but not asserted, so a loaded machine
+can't fail it; the verdict is fixed by seed and case count (decision 25.25).
+Benchmark: 21 bugs, all minimal, median 0.60 s, 3.2 s for the test on 4 threads. The ten added cover the
 other P0 classes: multitest leaks (`cf2237a-running-min`,
 `cf2152a-seen-set`, `cf2124c-lcm-leak`, `noip18p2-shared-table`, each a
 value or table above `@!multitest`), overflow at bounds
