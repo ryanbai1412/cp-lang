@@ -245,6 +245,138 @@ pub struct ParityDsu<V>:
                 up[y] = y
                 flip[y] = false
 
+/// Weighted (potential / difference-constraint) union-find over domain `V` with `Mark` rollback.
+/// Maintains constraints of the form `val[b] - val[a] == w`. All operations are O(log n);
+/// `mark` and `consistent` are O(1); `undo_to` is O(1) per undone step.
+pub struct PotentialDsu<V>:
+    up: [V]V
+    sz: [V]Int
+    pot: [V]Int
+    parts: Int
+    conflicts: Int
+    log: List<(V, Bool)>
+
+    /// Every position starts in its own set with potential 0. O(n).
+    pub fn new() -> PotentialDsu<V>:
+        PotentialDsu([V] v => v, [V] _ => 1, [V] _ => 0, V.K, 0, [])
+
+    /// Root of `v`'s set and `val[v] - val[root]`. O(log n).
+    pub fn find(self, v: V) -> (root: V, offset: Int):
+        var x = v
+        var d = 0
+        while up[x] != x:
+            d += pot[x]
+            x = up[x]
+        (root: x, offset: d)
+
+    /// Enforce `val[b] - val[a] == w`. Returns `false` and increments conflicts on contradiction. O(log n).
+    pub fn unite(mut self, a: V, b: V, w: Int) -> Bool:
+        let (ra, da) = self.find(a)
+        let (rb, db) = self.find(b)
+        if ra == rb:
+            if db - da == w: return true
+            conflicts += 1
+            log.push((ra, false))
+            return false
+        if sz[ra] >= sz[rb]:
+            up[rb] = ra
+            pot[rb] = da + w - db
+            sz[ra] += sz[rb]
+            parts -= 1
+            log.push((rb, true))
+        else:
+            up[ra] = rb
+            pot[ra] = db - w - da
+            sz[rb] += sz[ra]
+            parts -= 1
+            log.push((ra, true))
+        true
+
+    /// `val[b] - val[a]` if `a` and `b` are in the same component, else `none`. O(log n).
+    pub fn diff(self, a: V, b: V) -> ?Int:
+        let (ra, da) = self.find(a)
+        let (rb, db) = self.find(b)
+        if ra != rb: none else: db - da
+
+    /// Whether `a` and `b` are in the same component. O(log n).
+    pub fn same(self, a: V, b: V) -> Bool = self.find(a).root == self.find(b).root
+
+    /// Number of vertices in `v`'s component. O(log n).
+    pub fn size(self, v: V) -> Int = sz[self.find(v).root]
+
+    /// Number of connected components. O(1).
+    pub @get fn components(self) -> Int = parts
+
+    /// Whether no contradicting constraints are currently active. O(1).
+    pub @get fn consistent(self) -> Bool = conflicts == 0
+
+    /// Snapshot the current state for `undo_to`. O(1).
+    pub fn mark(self) -> Mark = Mark(log.len)
+
+    /// Revert every `unite` since `snap = mark()`. O(1) per undone step.
+    pub fn undo_to(mut self, snap: Mark):
+        while log.len > snap.at:
+            let (y, joined) = log.pop()!
+            if not joined:
+                conflicts -= 1
+            else:
+                sz[up[y]] -= sz[y]
+                up[y] = y
+                pot[y] = 0
+                parts += 1
+
+/// Domain-indexed array `[D]T` with `Mark` rollback.
+/// `get`, `set`, and `mark` are O(1); `undo_to` is O(1) per undone write.
+pub struct RollbackArray<D, T>:
+    data: [D]T
+    log: List<(D, T)>
+
+    /// Build a rollback array initialized by `init(i)` for each `i` in `D`. O(D.K).
+    pub fn new(init: D -> T) -> RollbackArray<D, T> = RollbackArray([D] i => init(i), [])
+
+    /// Read the current value at `i`. O(1).
+    pub fn get(self, i: D) -> T = data[i]
+
+    /// Set `i` to `val`, recording the previous value for rollback. O(1).
+    pub fn set(mut self, i: D, val: T):
+        log.push((i, data[i]))
+        data[i] = val
+
+    /// Snapshot the current state for `undo_to`. O(1).
+    pub fn mark(self) -> Mark = Mark(log.len)
+
+    /// Revert every `set` since `snap = mark()`. O(1) per undone write.
+    pub fn undo_to(mut self, snap: Mark):
+        while log.len > snap.at:
+            let (i, old) = log.pop()!
+            data[i] = old
+
+@test
+fn potential_dsu_and_rollback_array():
+    domain V = 0..6
+    var d = PotentialDsu<V>()
+    assert d.components == 6 and d.consistent
+    assert d.unite(V(0), V(1), 5)
+    assert d.unite(V(1), V(2), -2)
+    assert d.diff(V(0), V(2)) == 3 and d.diff(V(2), V(0)) == -3
+    assert d.diff(V(0), V(3)) == none
+    let snap = d.mark()
+    assert not d.unite(V(0), V(2), 4)
+    assert not d.consistent
+    assert d.unite(V(2), V(3), 10)
+    assert d.diff(V(0), V(3)) == 13 and d.components == 3
+    d.undo_to(snap)
+    assert d.consistent and d.components == 4 and d.diff(V(0), V(3)) == none
+    assert d.diff(V(0), V(2)) == 3
+
+    var ra = RollbackArray<V, Int>(v => v.to_idx)
+    let m0 = ra.mark()
+    ra.set(V(1), 99)
+    ra.set(V(1), 42)
+    assert ra.get(V(1)) == 42 and ra.get(V(2)) == 2
+    ra.undo_to(m0)
+    assert ra.get(V(1)) == 1
+
 @test
 fn unite_and_find():
     domain V = 1..=6

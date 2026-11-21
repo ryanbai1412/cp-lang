@@ -34,18 +34,18 @@ pub struct MonoDeque<T>(by: (T, T) -> T):
     /// Push `(at, val)` at the right end of the window (`at` non-decreasing). O(1) amortized.
     pub fn push(mut self, at: Int, val: T):
         while not q.is_empty and by(q.last!.1, val) == val:
-            let _ = q.pop()
+            q.pop()
         q.push((at, val))
 
     /// Drop every entry with position strictly less than `min_at` (for left-to-right sweeps). O(1) amortized.
     pub fn drop_before(mut self, min_at: Int):
         while not q.is_empty and q.first!.0 < min_at:
-            let _ = q.pop_front()
+            q.pop_front()
 
     /// Drop every entry with position strictly greater than `max_at` (for right-to-left sweeps). O(1) amortized.
     pub fn drop_after(mut self, max_at: Int):
         while not q.is_empty and q.first!.0 > max_at:
-            let _ = q.pop_front()
+            q.pop_front()
 
 /// FIFO queue supporting O(1) monoid fold of all elements without inverses (two-stack trick).
 /// `push` and `fold` are O(1); `pop` is O(1) amortized. Keeps queue order for non-commutative monoids.
@@ -124,7 +124,7 @@ fn window_fold_matches_brute_for_gcd_and_concat():
             plain.push(x)
         else:
             let got = q.pop()
-            let _ = cat.pop()
+            cat.pop()
             assert got == (if plain.is_empty: none else: plain[0])
             if not plain.is_empty: plain = [plain[i] for i in 1..plain.len]
         assert q.len == plain.len and q.is_empty == plain.is_empty

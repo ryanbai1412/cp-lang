@@ -7,21 +7,36 @@
 pub struct Bitset<D>:
     w: List<U64>
 
-    /// The empty set.
+    /// The empty set. O(K / 64).
     pub fn new() -> Bitset<D>:
         Bitset(List.filled((D.K + 63) / 64, U64(0)))
 
-    /// The full set containing every position of `D`. O(K / 64).
-    pub fn full() -> Bitset<D>:
+    /// The empty set, matching `Subset<D>.empty`. O(K / 64).
+    pub @get fn empty() -> Bitset<D> = Bitset<D>.new()
+
+    /// The full set containing every position of `D`, matching `Subset<D>.full`. O(K / 64).
+    pub @get fn full() -> Bitset<D>:
         var b = Bitset(List.filled((D.K + 63) / 64, ~U64(0)))
         b.trim()
         b
 
-    /// The set of positions where `a` is true.
+    /// The singleton set `{i}`, matching `Subset<D>.single(i)`. O(K / 64).
+    pub fn single(i: D) -> Bitset<D>:
+        var b = Bitset<D>.new()
+        b.add(i)
+        b
+
+    /// The set of positions where `a` is true. O(D.K).
     pub fn from(a: [D]Bool) -> Bitset<D>:
         var b = Bitset<D>.new()
         for i in D:
             if a[i]: b.add(i)
+        b
+
+    /// Build a bitset from a list or generator of positions `D`. O(D.K / 64 + xs.len).
+    pub fn of(xs: List<D>) -> Bitset<D>:
+        var b = Bitset<D>.new()
+        for i in xs: b.add(i)
         b
 
     /// Whether position `i` is set. O(1).
@@ -49,6 +64,17 @@ pub struct Bitset<D>:
     pub fn without(self, i: D) -> Bitset<D>:
         var out = Bitset(w)
         out.remove(i)
+        out
+
+    /// Copy of `self` with `i` added if `on` or removed otherwise, matching `Subset<D>.set`. O(K / 64).
+    pub fn set(self, i: D, on: Bool) -> Bitset<D>:
+        if on: self.with(i) else: self.without(i)
+
+    /// Complement of `self` within `D`, matching `Subset<D>.complement`. O(K / 64).
+    pub @get fn complement(self) -> Bitset<D>:
+        var out = Bitset<D>.new()
+        for k in 0..w.len: out.w[k] = ~w[k]
+        out.trim()
         out
 
     /// Remove every position from the set. O(K / 64).
@@ -233,8 +259,10 @@ pub struct Bitset<D>:
         reach
 
     fn trim(mut self):
-        if D.K % 64 != 0 and w.len > 0:
-            w[w.len - 1] &= low(D.K % 64)
+        let full_words = (D.K + 63) / 64
+        for k in full_words..w.len: w[k] = U64(0)
+        if D.K % 64 != 0 and full_words > 0:
+            w[full_words - 1] &= low(D.K % 64)
 
 /// `a - b`: the positions in `a` that are not in `b`.
 impl Sub for Bitset<D>:
@@ -383,3 +411,18 @@ fn subset_sums_matches_naive_with_duplicates():
     for w in ws:
         if w > 0: naive.union(naive.shifted(w))
     for s in S: assert fast.contains(s) == naive.contains(s)
+
+@test
+fn subset_parity_constructors_and_complement():
+    domain P = 0..70
+    let e = Bitset<P>.empty
+    let f = Bitset<P>.full
+    assert e.is_empty and f.len == 70
+    let s = Bitset<P>.single(P(64))
+    assert s.len == 1 and P(64) in s and s.first == P(64) and s.last == P(64)
+    let c = s.complement
+    assert c.len == 69 and P(64) not in c and P(0) in c and P(69) in c
+    let s2 = s.set(P(3), true).set(P(64), false)
+    assert s2.len == 1 and P(3) in s2 and P(64) not in s2
+    let evens = Bitset<P>.of(p for p in P if p.to_idx % 2 == 0)
+    assert evens.len == 35 and P(0) in evens and P(1) not in evens and P(68) in evens

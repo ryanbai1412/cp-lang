@@ -49,6 +49,108 @@ pub struct Marks<D>:
     /// Whether no positions are currently marked. O(1).
     pub @get fn is_empty(self) -> Bool = cnt == 0
 
+/// Epoch-stamped map over domain `D` with O(1) `get`, `set`, `contains`, `remove`, and `clear()`.
+pub struct MarkMap<D, T>:
+    stamp: [D]0..=2_000_000_000
+    vals: [D]T
+    default_val: T
+    gen: Int
+    cnt: Int
+
+    /// Create an empty `MarkMap<D, T>` backed by `default_val` for unset slots. O(D.K).
+    pub fn new(default_val: T) -> MarkMap<D, T>:
+        MarkMap([D] _ => 0, [D] _ => default_val, default_val, 1, 0)
+
+    /// Number of active entries in the current round. O(1).
+    pub @get fn len(self) -> Int = cnt
+
+    /// Whether no entries are active in the current round. O(1).
+    pub @get fn is_empty(self) -> Bool = cnt == 0
+
+    /// Whether `v` is present in the current round. O(1).
+    pub fn contains(self, v: D) -> Bool = stamp[v] == gen
+
+    /// Current value at `v`, or `none` if absent in the current round. O(1).
+    pub fn get(self, v: D) -> ?T = if stamp[v] == gen: vals[v] else: none
+
+    /// Set `v` to `val` in the current round. O(1).
+    pub fn set(mut self, v: D, val: T):
+        if stamp[v] != gen:
+            stamp[v] = gen
+            cnt += 1
+        vals[v] = val
+
+    /// Remove `v` from the current round; returns its previous value or `none`. O(1).
+    pub fn remove(mut self, v: D) -> ?T:
+        if stamp[v] != gen: return none
+        stamp[v] = 0
+        cnt -= 1
+        vals[v]
+
+    /// Clear every entry in O(1) without touching the value array.
+    pub fn clear(mut self):
+        if gen == MAX_GEN:
+            stamp.fill(0)
+            gen = 1
+        else:
+            gen += 1
+        cnt = 0
+
+/// Online value-to-id interner assigning contiguous `0..len` IDs to distinct keys `K`.
+/// `id`, `get`, and `key` are O(1) expected; `len`, `is_empty`, `clear` are O(1).
+pub struct Interner<K>:
+    to_id: HashMap<K, Int>
+    keys: List<K>
+
+    /// Create an empty `Interner<K>`. O(1).
+    pub fn new() -> Interner<K> = Interner(HashMap<K, Int>(), [])
+
+    /// Number of distinct interned keys. O(1).
+    pub @get fn len(self) -> Int = keys.len
+
+    /// Whether no keys have been interned. O(1).
+    pub @get fn is_empty(self) -> Bool = keys.is_empty
+
+    /// Remove all interned keys. O(1).
+    pub fn clear(mut self):
+        to_id.clear()
+        keys = []
+
+    /// Return the ID of `k`, assigning the next contiguous ID if `k` is new. O(1) expected.
+    pub fn id(mut self, k: K) -> Int:
+        if let i = to_id.get(k): return i
+        let i = keys.len
+        keys.push(k)
+        to_id[k] = i
+        i
+
+    /// Look up the ID of `k` without inserting, or `none` if unseen. O(1) expected.
+    pub fn get(self, k: K) -> ?Int = to_id.get(k)
+
+    /// Recover the key assigned to `i`. O(1).
+    pub fn key(self, i: Int) -> K = keys[i]
+
+@test
+fn mark_map_and_interner():
+    domain V = 0..10
+    var mm = MarkMap<V, Int>(0)
+    assert mm.is_empty and mm.get(V(2)) == none
+    mm.set(V(2), 7)
+    mm.set(V(5), -3)
+    assert mm.len == 2 and mm.contains(V(2)) and mm.get(V(2)) == 7 and mm.get(V(5)) == -3
+    assert mm.remove(V(2)) == 7 and mm.remove(V(2)) == none and mm.len == 1
+    mm.clear()
+    assert mm.is_empty and mm.get(V(5)) == none
+    mm.set(V(5), 99)
+    assert mm.get(V(5)) == 99 and mm.len == 1
+
+    var intern = Interner<Str>()
+    assert intern.is_empty and intern.get("a") == none
+    assert intern.id("a") == 0 and intern.id("b") == 1 and intern.id("a") == 0
+    assert intern.len == 2 and intern.get("b") == 1 and intern.key(0) == "a" and intern.key(1) == "b"
+    intern.clear()
+    assert intern.is_empty and intern.id("c") == 0
+
 @test
 fn marks_basic_operations_and_clear():
     domain V = 1..=8

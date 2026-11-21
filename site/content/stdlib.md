@@ -15,16 +15,17 @@ Every module under `stdlib/` is plain CP Lang. Import individual names with `use
 | `std.derive` | `eq_fields`, `lt_fields`, `show_fields`, `Hash`, `hash_fields` | The field-by-field `Eq`, `Ord`, `Show` and `Hash`, written on `fields`; call one from an `impl` (`fn lt(a, b) = lt_fields(b, a)` orders the other way, `fn hash(self) = hash_fields(self)` hashes a struct) |
 | `std.deque` | `Deque` | Double-ended queue (`.push_front`, `.pop_front`, `Deque.of`) |
 | `std.dp` | `LiChao`, `Line`, `dnc_dp`, `knuth_dp`, `aliens_search`, `monotone_minima` | DP optimizations (Li Chao tree, D&C DP, Knuth DP, Aliens/WQS, SMAWK) |
-| `std.dsu` | `Dsu` | Disjoint set union with `.mark()` / `.undo_to(snap)` rollback |
+| `std.dsu` | `Dsu`, `DsuOf`, `ParityDsu`, `PotentialDsu`, `RollbackArray` | Disjoint set union (payload, parity, potential) and rollback array sharing `Mark` |
 | `std.fenwick` | `Fenwick`, `XorFenwick`, `Fenwick2D`, `DualFenwick`, `RangeFenwick` | 1D/2D Fenwick, XOR, range-add/point-get, and range-add/range-sum |
 | `std.flow` | `Arc`, `FlowGraph`, `CostFlow`, `max_matching`, `max_weight_matching`, `max_closure`, `gomory_hu`, `global_min_cut` | Dinic, min-cost flow, matchings, closure, bounded flows, cut trees |
 | `std.geometry` | `Pt`, `Vec`, `turn`, `ByAngle`, `convex_hull`, `minkowski_sum`, `closest_pair`, `hull_tangents`, `half_plane_intersect`, `min_enclosing_circle`, `circle_polygon_area` | Exact 2D integer geometry (`I128` predicates, hulls, calipers, closest pair) and careful floating-point geometry |
 | `std.graph` | `Graph`, `Tree<V>`, `bfs`, `dijkstra`, `peel`, `topo`, `scc`, `two_color` | CSR graphs, implicit-neighbor algorithms, `Tree<V>` alias |
 | `std.grid` | `adj4`, `adj8`, `step`, `ray`, `Dir4`, `Dir8`, `transposed` | No grid type: a cell is a `(Row, Col)` pair over two domains, so `p.adj4` and `p.adj8` are its in-bounds neighbours, `p.step(d)` and `p.ray(d)` walk a `Dir4`/`Dir8`, and `bfs(p => [q for q in p.adj4 if open[q]], [start])` searches the grid |
-| `std.heap` | `MinHeap`, `MaxHeap` | Binary priority queues |
+| `std.hashmap` | `FlatMap` | Open-addressing splitmix64-salted flat hash map for `Int` keys |
+| `std.heap` | `MinHeap`, `MaxHeap`, `ErasableMinHeap`, `ErasableMaxHeap`, `IndexedMinHeap`, `IndexedMaxHeap` | Binary, lazy-delete, and domain-keyed priority queues |
 | `std.interval` | `IntervalMap` | Maximal-run interval partition over a domain with O(log n) amortized range assign |
 | `std.lazy` | `LazySegTree`, `DualSegTree`, `AddSum`, `AddMin`, `AddMax`, `AssignSum`, `AssignMin`, `AssignMax`, `AffineSum`, `affine_sum` | Lazy and dual segment trees and stock actions |
-| `std.marks` | `Marks` | Generation-stamped O(1)-reset visited table |
+| `std.marks` | `Marks`, `MarkMap`, `Interner` | Generation-stamped O(1)-reset visited set/map and online key interner |
 | `std.math` | `gcd`, `lcm`, `ext_gcd`, `ceil_div`, `choose2`, `Sieve`, `sieve_multiplicative`, `factor`, `factor_big`, `divisors`, `inv_mod`, `crt`, `crt_all`, `mod_log`, `mod_sqrt`, `floor_sum`, `bit_len` | Number theory, primes, CRT, discrete log/sqrt, bit helpers |
 | `std.matrix` | `Mat<T>`, `det_real`, `rank_real`, `solve_real`, `inverse_real`, `XorBasis` | Dense matrices, exact and floating-point Gaussian elimination, GF(2) XOR bases |
 | `std.mo` | `mo_order`, `mo_steps` | Mo's offline range-query ordering and window transitions |
