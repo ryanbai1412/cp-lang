@@ -1202,3 +1202,14 @@ print(sa[0])
         "nested index assignment inside `unchecked:` should not emit `cpl::at`:\n{scatter_body}"
     );
 }
+
+#[test]
+fn short_non_recursive_fns_are_declared_inline() {
+    let out = cpp("fn sq(x: Int) -> Int = x * x
+fn fact(n: Int) -> Int = if n <= 1: 1 else: n * fact(n - 1)
+print(sq(7) + fact(5))
+");
+    assert!(out.contains("inline ll sq("), "{out}");
+    assert!(out.contains("\nll fact("), "a recursive fn keeps a plain definition:\n{out}");
+    assert!(!out.contains("inline void solve("), "{out}");
+}

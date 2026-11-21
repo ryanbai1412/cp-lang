@@ -1243,6 +1243,7 @@ impl<'p> Emitter<'p> {
                     self.judge_signature(f)
                 ));
             }
+            let def_at = fns.len();
             fns.push_str(&format!("\n{signature} {{\n"));
             self.indent = 1;
             if self.is_interval_map_assign(id, f) {
@@ -1273,6 +1274,9 @@ impl<'p> Emitter<'p> {
             self.hoisted_decls(&mut fns, f.params.len());
             self.block(&f.body, &mut fns);
             fns.push_str("}\n");
+            if inline_hint(&fns[def_at..], &signature, &fn_name(&f.name)) {
+                fns.insert_str(def_at + 1, "inline ");
+            }
             if let Some(acc) = self.pushers.get(&id).copied() {
                 // The same fn handing each value to `cpl_f` as it is made,
                 // with no list. It may be running twice (a loop body can
@@ -1605,6 +1609,19 @@ template <class T> auto operator>=(const T& a, const T& b) -> decltype(a.cpl_tie
 
 /// The comment that opens the file: what it is, and the source it was
 /// built from, so that whoever reads the C++ can read the program.
+/// GCC at -O2 inlines a fn not declared `inline` only when it is tiny, so
+/// the many small helpers a library method lowers to (a node's size, one
+/// tag push) stay calls. A short, non-recursive, non-template definition
+/// gets the hint; recursion and long bodies are left to the compiler.
+fn inline_hint(def: &str, signature: &str, name: &str) -> bool {
+    const MAX_LINES: usize = 16;
+    let body = def.trim_start_matches('\n').split_once('\n').map_or("", |(_, b)| b);
+    !signature.starts_with("template")
+        && !signature.contains(" main(")
+        && body.lines().count() <= MAX_LINES
+        && !body.contains(&format!("{name}("))
+}
+
 fn header(name: &str, source: Option<&str>, stamp: Option<&str>) -> String {
     let version = env!("CARGO_PKG_VERSION");
     let stamp = stamp.map(|stamp| format!("// For {stamp}.\n")).unwrap_or_default();
