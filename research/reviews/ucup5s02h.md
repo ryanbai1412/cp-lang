@@ -1,6 +1,7 @@
 # ucup5s02h
 
-Score: 2/5
+Score: pending (header derives the spanning-tree colouring and the hull; named `Pt` and gap records; one `ParityDsu` with a pin node replaces both DSUs and the `2i+1` encoding; mirrored sweep is one `sweep(order, sign)`; random generator added)
+Dream: pending (new dream)
 
 A convex-hull trick written over untyped `(Int, Int, Int)` tuples with `.0`/`.1` and two parity-encoded DSUs; no header. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
