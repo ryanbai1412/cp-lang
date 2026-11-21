@@ -4,6 +4,8 @@
 // the answer is the maximum closure of the needs graph.
 // Needs sum domains: `Item + Pair` is one index space whose elements are
 // either an item or a pair, so no hand offsets like `n + e`.
+use std.flow.max_closure
+
 with io(base: 1)
 
 domain Item = read()
