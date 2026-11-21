@@ -3,7 +3,7 @@
 use crate::names::{cty, fn_name, ident, is_plain_enum, Niches};
 use crate::ranges::{Facts, Var};
 use crate::runtime::PIECES;
-use crate::walk::{self, Effects};
+use crate::walk;
 use cpl_ir::{Block, Expr, ExprKind, Function, Local, LoopId, Program, Stmt, Ty};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -76,15 +76,7 @@ impl Touch {
     }
 }
 
-/// What a fn does beyond computing its result, counting the fns it calls.
-#[derive(Default, Clone, Debug, PartialEq)]
-pub(crate) struct FnSummary {
-    pub io: bool,
-    /// It calls a fn value or makes a closure, so what it does is not known.
-    pub opaque: bool,
-    pub reads: BTreeSet<usize>,
-    pub writes: BTreeSet<usize>,
-}
+pub(crate) use cpl_ir::pushed::FnSummary;
 
 /// A loop over a `yields` fn whose body is the fn's callback. The
 /// callback gives 0 to go on, 1 for `break`, 2 for a `return` of the fn
@@ -219,59 +211,10 @@ impl<'p> Emitter<'p> {
             found: Vec::new(),
             indent: 0,
         };
-        emitter.summaries = emitter.summarize();
-        emitter.pushers = (0..program.fns.len())
-            .filter(|id| !program.judge_fns.contains(id) && !program.entry_fns.contains(id))
-            .filter_map(|id| Some((id, crate::scope::pusher(&program.fns[id], &emitter.summaries[id])?)))
-            .collect();
+        let feeds = cpl_ir::pushed::Feeds::of(program);
+        emitter.summaries = feeds.summaries;
+        emitter.pushers = feeds.pushers;
         emitter
-    }
-
-    /// What each fn reads, writes and prints, through the fns it calls.
-    fn summarize(&self) -> Vec<FnSummary> {
-        let direct: Vec<(FnSummary, BTreeSet<usize>)> = self
-            .program
-            .fns
-            .iter()
-            .map(|f| {
-                let effects = Effects::of_block(&f.body);
-                let mut summary = FnSummary {
-                    writes: effects.globals.clone(),
-                    ..FnSummary::default()
-                };
-                walk::deep_exprs(&f.body, &mut |e| match &e.kind {
-                    ExprKind::Read(_) | ExprKind::Print(..) => summary.io = true,
-                    ExprKind::CallExpr(..) | ExprKind::Closure(_) => summary.opaque = true,
-                    ExprKind::Global(id) => {
-                        summary.reads.insert(*id);
-                    }
-                    _ => {}
-                });
-                walk::deep_stmts(&f.body, &mut |stmt| {
-                    // Sizing a domain changes what later code sees.
-                    if matches!(stmt, Stmt::DefDomain { .. }) {
-                        summary.io = true;
-                    }
-                });
-                (summary, effects.calls)
-            })
-            .collect();
-        let mut summaries: Vec<FnSummary> = direct.iter().map(|(s, _)| s.clone()).collect();
-        loop {
-            let before = summaries.clone();
-            for (id, (_, calls)) in direct.iter().enumerate() {
-                for callee in calls {
-                    let other = before[*callee].clone();
-                    summaries[id].io |= other.io;
-                    summaries[id].opaque |= other.opaque;
-                    summaries[id].reads.extend(other.reads);
-                    summaries[id].writes.extend(other.writes);
-                }
-            }
-            if summaries == before {
-                return summaries;
-            }
-        }
     }
 
     pub fn need(&mut self, piece: &'static str) {

@@ -284,43 +284,6 @@ pub(crate) fn reused(program: &Program, id: Option<usize>, body: &Block) -> BTre
         .collect()
 }
 
-/// The slot of the list a `yields` fn builds, when the fn can also hand
-/// each value to a callback as it is made: `for x in f(..)` then runs
-/// its body between the yields with no list. That shows only if the fn
-/// does something a loop body could see, so it must not read input,
-/// print, store to a global, change an argument or call a fn value.
-pub(crate) fn pusher(f: &cpl_ir::Function, summary: &crate::emit::FnSummary) -> Option<usize> {
-    let acc = f.locals.iter().position(|local| local.name == "__yields")?;
-    if acc < f.params.len()
-        || f.params.iter().any(|p| p.mutable)
-        || summary.io
-        || summary.opaque
-        || !summary.writes.is_empty()
-    {
-        return None;
-    }
-    let is_acc = |e: &Expr| matches!(e.kind, ExprKind::Local(slot) if slot == acc);
-    let fills = |e: &Expr| {
-        matches!(&e.kind, ExprKind::Mutate(cpl_ir::Mutation::Push | cpl_ir::Mutation::Extend, place, _)
-            if matches!(place.kind, cpl_ir::PlaceKind::Local(slot) if slot == acc))
-    };
-    // The list is only made, pushed to and returned.
-    let (mut lets, mut pushes, mut returns, mut odd) = (0, 0, 0, false);
-    walk::deep_stmts(&f.body, &mut |stmt| match stmt {
-        Stmt::Let(slot, _) if *slot == acc => lets += 1,
-        Stmt::Expr(e) if fills(e) => pushes += 1,
-        Stmt::Return(Some(e)) if is_acc(e) => returns += 1,
-        Stmt::Return(_) => odd = true,
-        _ => {}
-    });
-    let (mut named, mut filled) = (0, 0);
-    walk::deep_exprs(&f.body, &mut |e| {
-        named += usize::from(is_acc(e));
-        filled += usize::from(fills(e));
-    });
-    (!odd && lets == 1 && named == returns && filled == pushes).then_some(acc)
-}
-
 /// The struct fields that hold a row of a fixed small count of cells and
 /// can be kept inside the struct: `(struct, field)` to the count. A field
 /// that is somewhere sorted, grown, filled, updated as a whole or handed

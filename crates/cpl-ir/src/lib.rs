@@ -13,7 +13,9 @@
 //! this point knows about UTF-8.
 
 mod lower;
+pub mod pushed;
 mod show;
+pub mod walk;
 
 pub use cpl_syntax::ast::{BinOp, CmpOp, UnOp};
 /// Every diagnostic the front end has for a file: the checker's, and when

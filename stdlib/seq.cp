@@ -112,6 +112,12 @@ pub fn get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V:
     if not (k in self): self[k] = v
     self[k]
 
+/// As `get_or_insert`, but the value is made by `f`, which runs only when `m` holds none
+/// for `k`: `ids.get_or_insert_with(name, () => next_id())`. O(log n).
+pub fn get_or_insert_with<K, V>(mut self: Map<K, V>, k: K, f: fn() -> V) -> V:
+    if not (k in self): self[k] = f()
+    self[k]
+
 /// Rotate `a` left by `k` in place: what was at index `k % a.len` comes first.
 /// Signed Euclidean `k`: negative `k` rotates right (`rotate_left(mut a, -r)`).
 pub fn rotate_left<T>(mut a: List<T>, k: Int):
@@ -551,6 +557,16 @@ fn get_or_insert_stores_only_what_is_missing():
     var ids = Map<Str, Int>()
     assert ids.get_or_insert("a", ids.len) == 0 and ids.get_or_insert("b", ids.len) == 1
     assert ids.get_or_insert("a", 99) == 0 and ids.len == 2
+
+@test
+fn get_or_insert_with_makes_a_value_only_when_missing():
+    var ids = Map<Str, Int>()
+    var made = 0
+    fn fresh() -> Int:
+        made += 1
+        made * 10
+    assert ids.get_or_insert_with("a", fresh) == 10 and ids.get_or_insert_with("a", fresh) == 10
+    assert ids.get_or_insert_with("b", () => 7) == 7 and made == 1
 
 @test
 fn runs_by_groups_neighbours_with_the_same_key():

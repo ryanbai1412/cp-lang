@@ -5,7 +5,7 @@ use crate::expr::string_literal;
 use crate::names::{fn_name, ident};
 use crate::walk::{self, Effects};
 use cpl_ir::{
-    Arg, AssignOp, BinOp, Block, Expr, ExprKind, Iter, LoopId, Mutation, Place, PlaceKind, SortBy, Spec, Stmt, Ty,
+    AssignOp, BinOp, Block, Expr, ExprKind, Iter, LoopId, Mutation, Place, PlaceKind, SortBy, Spec, Stmt, Ty,
 };
 
 /// A block with a value that is statements and then the value, with no
@@ -240,52 +240,23 @@ impl<'p> Emitter<'p> {
     /// body runs on each value as `f` makes it and no list is built.
     /// False when the loop has to walk the list instead.
     fn pushed_loop(&mut self, id: LoopId, decl: &str, first: &[String], seq: &Expr, body: &Block, out: &mut String) -> bool {
-        let ExprKind::Call(callee, args) = &seq.kind else {
+        let ExprKind::Call(callee, _) = &seq.kind else {
             return false;
         };
-        if !self.pushers.contains_key(callee) || self.pushing.is_some() || self.closure_id.is_some() {
+        if self.pushing.is_some() || self.closure_id.is_some() {
             return false;
         }
-        // The body must not change what the fn is still reading: a
-        // global it reads, or a list handed to it.
-        let summary = &self.summaries[*callee];
-        let effects = Effects::of_block(body);
-        let mut opaque = false;
-        walk::deep_exprs(body, &mut |e| {
-            opaque |= matches!(e.kind, ExprKind::CallExpr(..) | ExprKind::Closure(_));
-        });
-        let mut writes = effects.globals.clone();
-        for f in &effects.calls {
-            opaque |= self.summaries[*f].opaque;
-            writes.extend(self.summaries[*f].writes.iter().copied());
-        }
-        let mut shared = false;
-        for arg in args {
-            let Arg::Value(value) = arg else {
-                return false;
-            };
-            walk::deep_expr(value, &mut |e| match e.kind {
-                ExprKind::Local(slot) => shared |= !e.ty.is_scalar() && effects.locals.contains(&slot),
-                ExprKind::Global(g) => shared |= writes.contains(&g),
-                ExprKind::Call(f, _) => shared |= !self.summaries[f].reads.is_disjoint(&writes),
-                _ => {}
-            });
-        }
-        if opaque || shared || !summary.reads.is_disjoint(&writes) {
+        let feeds = cpl_ir::pushed::Feeds {
+            summaries: std::mem::take(&mut self.summaries),
+            pushers: std::mem::take(&mut self.pushers),
+        };
+        let fed = feeds.feeds(id, seq, body);
+        self.summaries = feeds.summaries;
+        self.pushers = feeds.pushers;
+        if fed.is_none() {
             return false;
         }
-        // A jump out of the body can only be to this loop.
-        let mut inner = vec![id];
-        let (mut jumps, mut returns) = (Vec::new(), false);
-        walk::deep_stmts(body, &mut |stmt| match stmt {
-            Stmt::For(id, ..) | Stmt::While(id, ..) => inner.push(*id),
-            Stmt::Break(Some(to)) | Stmt::Continue(Some(to)) => jumps.push(*to),
-            Stmt::Return(_) => returns = true,
-            _ => {}
-        });
-        if jumps.iter().any(|to| !inner.contains(to)) {
-            return false;
-        }
+        let returns = cpl_ir::pushed::returns(body);
         let call = self.expr(seq).text;
         let name = fn_name(&self.program.fns[*callee].name);
         let Some(call) = call.strip_prefix(&format!("{name}(")).and_then(|rest| rest.strip_suffix(')')) else {

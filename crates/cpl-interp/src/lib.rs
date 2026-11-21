@@ -20,6 +20,7 @@ use cpl_ir::{
 use input::Input;
 pub use input::More;
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::io::Write;
 use std::rc::Rc;
 use value::{show, zero, Array, CaptureVal, Value};
@@ -234,6 +235,11 @@ fn run_io(
         rng_state: 0x9e3779b97f4a7c15u64,
         tracer: trace.map(|config| Box::new(trace::Tracer::new(config, program))),
         debug_out: Vec::new(),
+        feeds: cpl_ir::pushed::Feeds::of(program),
+        fed: HashMap::new(),
+        fed_loops: Vec::new(),
+        in_closure: false,
+        fed_left: None,
     };
     let result = interp.main();
     let _ = interp.sink.write_all(&interp.out);
@@ -297,6 +303,30 @@ struct Interp<'p, 'o> {
     tracer: Option<Box<trace::Tracer>>,
     /// What `debug(...)` showed.
     debug_out: Vec<u8>,
+    /// Which loops over a `yields` fn run their body as the fn yields.
+    feeds: cpl_ir::pushed::Feeds,
+    /// What [`cpl_ir::pushed::Feeds::feeds`] said of each such loop.
+    fed: HashMap<LoopId, Option<(FnId, usize)>>,
+    /// The loops being fed by a `yields` fn that is running, innermost last.
+    fed_loops: Vec<Fed<'p>>,
+    /// True while the body of a closure runs.
+    in_closure: bool,
+    /// How the body of the fed loop that just ended left it, when that
+    /// was not a plain `break`: a `return`, or a jump to an outer loop.
+    fed_left: Option<Flow>,
+}
+
+/// A loop whose body runs each time the `yields` fn at `callee` pushes
+/// to its list at `acc`.
+struct Fed<'p> {
+    callee: usize,
+    acc: usize,
+    caller: usize,
+    id: LoopId,
+    slot: usize,
+    body: &'p Block,
+    /// How the body left the loop, once it has: the fn stops there.
+    left: Option<Flow>,
 }
 
 /// The global a place is in, when it is in one.
@@ -659,6 +689,24 @@ impl<'p, 'o> Interp<'p, 'o> {
                 while left != 0 {
                     round!(Value::Int(i64::from(left.trailing_zeros())));
                     left &= left - 1;
+                }
+            }
+            Iter::Seq(seq, false) if self.is_fed(id, seq, body).is_some() => {
+                let (ExprKind::Call(callee, args), Some((_, acc))) = (&seq.kind, self.is_fed(id, seq, body)) else {
+                    unreachable!("a fed loop is over a call");
+                };
+                let fed = Fed {
+                    callee: 0,
+                    acc,
+                    caller: base,
+                    id,
+                    slot,
+                    body,
+                    left: None,
+                };
+                self.call_feeding(*callee, args, seq.span, Some(fed))?;
+                if let Some(flow) = self.fed_left.take() {
+                    return Ok(flow);
                 }
             }
             Iter::Seq(seq, rev) => {
@@ -1490,7 +1538,49 @@ impl<'p, 'o> Interp<'p, 'o> {
         })
     }
 
+    /// The fn and its list when the loop `id` runs its body as the fn
+    /// yields, as the C++ does.
+    fn is_fed(&mut self, id: LoopId, seq: &Expr, body: &Block) -> Option<(FnId, usize)> {
+        if self.in_closure || self.fed_loops.last().is_some_and(|fed| fed.callee == self.base) {
+            return None;
+        }
+        if let Some(known) = self.fed.get(&id) {
+            return *known;
+        }
+        let found = self.feeds.feeds(id, seq, body);
+        self.fed.insert(id, found);
+        found
+    }
+
+    /// One value of the `yields` fn that is running goes to the body of
+    /// the loop it feeds. An `Err` with `left` set means the body left
+    /// the loop, and the fn stops where it is.
+    fn feed(&mut self, value: Value, span: Span) -> Res<()> {
+        let fed = self.fed_loops.last().expect("asked by the caller");
+        let (callee, caller, slot, id, body) = (fed.callee, fed.caller, fed.slot, fed.id, fed.body);
+        let locals = self.frame_locals.pop();
+        self.base = caller;
+        self.stack[caller + slot] = value;
+        let flow = self.block(body);
+        self.base = callee;
+        self.frame_locals.extend(locals);
+        let left = match flow? {
+            Flow::Next | Flow::Continue(None) => return Ok(()),
+            Flow::Continue(Some(target)) if target == id => return Ok(()),
+            Flow::Break(None) => Flow::Next,
+            Flow::Break(Some(target)) if target == id => Flow::Next,
+            other => other,
+        };
+        self.fed_loops.last_mut().expect("still the innermost").left = Some(left);
+        trap(span, String::new())
+    }
+
     fn call(&mut self, id: FnId, args: &'p [Arg], span: Span) -> Res<Value> {
+        self.call_feeding(id, args, span, None)
+    }
+
+    /// Calls a fn; with `fed`, each value it yields runs that loop's body.
+    fn call_feeding(&mut self, id: FnId, args: &'p [Arg], span: Span, fed: Option<Fed<'p>>) -> Res<Value> {
         let f = &self.program.fns[id];
         if self.program.judge_fns.contains(&id) {
             return trap(span, NO_GRADER);
@@ -1541,13 +1631,26 @@ impl<'p, 'o> Interp<'p, 'o> {
         if let (true, Some(tracer)) = (wanted, &mut self.tracer) {
             tracer.inside += 1;
         }
-        let flow = self.block(&f.body);
+        let feeding = fed.is_some();
+        if let Some(fed) = fed {
+            self.fed_loops.push(Fed { callee: base, ..fed });
+        }
+        let in_closure = std::mem::replace(&mut self.in_closure, false);
+        let mut flow = self.block(&f.body);
+        self.in_closure = in_closure;
         if let (true, Some(tracer)) = (wanted, &mut self.tracer) {
             tracer.inside -= 1;
         }
         self.depth -= 1;
         self.frame_locals.pop();
         self.base = saved;
+        if feeding {
+            // The body left the loop: the fn stopped at that `yield`.
+            if let Some(left) = self.fed_loops.pop().and_then(|fed| fed.left) {
+                self.fed_left = Some(left).filter(|left| !matches!(left, Flow::Next));
+                flow = Ok(Flow::Next);
+            }
+        }
         let flow = flow?;
         for (i, place, indices) in lent {
             let value = std::mem::take(&mut self.stack[base + i]);
@@ -1606,7 +1709,9 @@ impl<'p, 'o> Interp<'p, 'o> {
         let saved = std::mem::replace(&mut self.base, base);
         self.frame_locals.push(&def.locals);
         self.depth += 1;
+        let in_closure = std::mem::replace(&mut self.in_closure, true);
         let flow = self.block(&def.body);
+        self.in_closure = in_closure;
         self.depth -= 1;
         self.frame_locals.pop();
         self.base = saved;
@@ -2326,6 +2431,26 @@ impl<'p, 'o> Interp<'p, 'o> {
         let mut arg_vals = Vec::with_capacity(args.len());
         for a in args {
             arg_vals.push(self.eval(a)?);
+        }
+        // A `yield` of a fn that feeds a loop: the body runs on the value.
+        if let (PlaceKind::Local(slot), Some(fed)) = (&place.kind, self.fed_loops.last()) {
+            if fed.callee == self.base && fed.acc == *slot {
+                match (op, arg_vals.pop()) {
+                    (Mutation::Push, Some(value)) => self.feed(value, span)?,
+                    (Mutation::Extend, Some(Value::List(items))) => {
+                        for item in items.iter() {
+                            self.feed(item.clone(), span)?;
+                        }
+                    }
+                    (Mutation::Extend, Some(Value::Array(array))) => {
+                        for item in array.data.iter() {
+                            self.feed(item.clone(), span)?;
+                        }
+                    }
+                    _ => return trap(span, "internal: a `yields` fn did something else to its list"),
+                }
+                return Ok(Value::Unit);
+            }
         }
         let arg = arg_vals.first().cloned().unwrap_or(Value::Unit);
         let arg2 = arg_vals.get(1).cloned().unwrap_or(Value::Unit);
