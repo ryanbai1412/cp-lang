@@ -189,7 +189,17 @@ impl Ty {
                         || ba.is_empty()
                         || (aa.len() == ba.len() && aa.iter().zip(ba).all(|(a, b)| a.fits_in(b, number))))
             }
-            (Ty::Fn { .. }, Ty::Fn { .. }) => true,
+            (Ty::Fn { params: ap, ret: ar }, Ty::Fn { params: bp, ret: br }) => {
+                if ap.iter().any(|p| p.has_default || p.variadic)
+                    || bp.iter().any(|p| p.has_default || p.variadic)
+                {
+                    true
+                } else {
+                    ap.len() == bp.len()
+                        && ap.iter().zip(bp).all(|(a, b)| b.ty.fits_in(&a.ty, number))
+                        && ar.fits_in(br, number)
+                }
+            }
             // `Bounds<V>` is how library code spells `V.bounds`.
             (Ty::Pos(bounds), Ty::Named { name, args })
             | (Ty::Named { name, args }, Ty::Pos(bounds))

@@ -1285,7 +1285,7 @@ impl<'a> Lowerer<'a> {
                             if matches!(&a.value.kind, ast::ExprKind::Name(n) if n == fn_name) {
                                 return Some((cname.as_str(), idx));
                             }
-                            if let ast::ExprKind::Lambda { params, body } = &a.value.kind {
+                            if let ast::ExprKind::Lambda { params, body, .. } = &a.value.kind {
                                 if find_call_in_expr(fn_name, params.len(), body).is_some() {
                                     return Some((cname.as_str(), idx));
                                 }
@@ -1487,14 +1487,18 @@ impl<'a> Lowerer<'a> {
             if let (
                 ast::PatternKind::Name(vname),
                 Some(ast::Expr {
-                    kind: ast::ExprKind::Lambda { params, body },
+                    kind: ast::ExprKind::Lambda {
+                        params,
+                        param_tys: ann_tys,
+                        body,
+                    },
                     span: lspan,
                 }),
             ) = (&pat.kind, init)
             {
                 if let Some(param_tys) = self.peek_fn_arg_types(vname, params.len(), rest) {
                     let hint = Ty::Fn(param_tys, Box::new(Ty::Error));
-                    return Some(self.lower_lambda(params, body, Some(&hint), *lspan));
+                    return Some(self.lower_lambda(params, ann_tys, body, Some(&hint), *lspan));
                 }
             }
         }

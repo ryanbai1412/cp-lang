@@ -235,7 +235,7 @@ impl<'a> Lowerer<'a> {
                     _ => None,
                 }
             }
-            ast::ExprKind::Lambda { params, body } if params.len() == 2 => {
+            ast::ExprKind::Lambda { params, body, .. } if params.len() == 2 => {
                 let ast::PatternKind::Name(p0) = &params[0].kind else {
                     return None;
                 };
@@ -1262,7 +1262,7 @@ impl<'a> Lowerer<'a> {
                 let (Some(pty), Some(arg)) = (&param.ty, arg) else {
                     continue;
                 };
-                let ast::ExprKind::Lambda { params: lparams, body: lbody } = &arg.value.kind else {
+                let ast::ExprKind::Lambda { params: lparams, body: lbody, .. } = &arg.value.kind else {
                     continue;
                 };
                 if let ast::TypeKind::Named { name, args: targs } = &pty.kind {
@@ -2002,17 +2002,33 @@ impl<'a> Lowerer<'a> {
     pub(super) fn lower_lambda(
         &mut self,
         params: &[ast::Pattern],
+        ann_tys: &[Option<ast::Type>],
         body: &ast::Expr,
         hint: Option<&Ty>,
         span: Span,
     ) -> Expr {
-        let (param_tys, ret_hint) = match hint {
+        let (mut param_tys, ret_hint) = match hint {
             Some(Ty::Fn(ps, r)) if ps.len() == params.len() => {
                 let rh = if **r == Ty::Error { None } else { Some((**r).clone()) };
                 (ps.clone(), rh)
             }
             _ => (vec![Ty::Int; params.len()], None),
         };
+        let has_hint = matches!(hint, Some(Ty::Fn(ps, _)) if ps.len() == params.len());
+        for (i, ann) in ann_tys.iter().enumerate() {
+            if let (Some(ann_ty), Some(slot)) = (ann, param_tys.get_mut(i)) {
+                let resolved = self.resolve_ty(ann_ty);
+                if has_hint && *slot != resolved && *slot != Ty::Error && resolved != Ty::Error {
+                    let msg = format!(
+                        "lambda parameter has type `{}`, but `{}` is expected",
+                        self.show(&resolved),
+                        self.show(slot),
+                    );
+                    self.error(codes::TYPE_MISMATCH, ann_ty.span, msg);
+                }
+                *slot = resolved;
+            }
+        }
 
         // Push enclosing FnCx onto `outer_cxs` so lookups inside the lambda can capture variables.
         let mut child_cx = FnCx {
@@ -2729,6 +2745,7 @@ pub(super) fn thunk_lazy_args(params: &[&ast::Param], args: &[ast::Arg]) -> Opti
                 arg.value = ast::Expr {
                     kind: ast::ExprKind::Lambda {
                         params: Vec::new(),
+                        param_tys: Vec::new(),
                         body: Box::new(arg.value),
                     },
                     span,

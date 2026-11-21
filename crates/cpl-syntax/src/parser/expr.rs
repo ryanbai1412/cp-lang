@@ -18,21 +18,26 @@ impl<'a> Parser<'a> {
             _ => false,
         };
         if lambda {
-            let params = if self.eat(T::LParen) {
-                self.comma_list(T::RParen, "the lambda's parameters", |p| {
+            let (params, param_tys) = if self.eat(T::LParen) {
+                let items = self.comma_list(T::RParen, "the lambda's parameters", |p| {
                     let pat = p.pattern();
-                    if p.eat(T::Colon) {
-                        let _ty = p.ty();
-                    }
-                    pat
-                })
+                    let ty = p.eat(T::Colon).then(|| p.ty());
+                    (pat, ty)
+                });
+                let has_any = items.iter().any(|(_, t)| t.is_some());
+                let (ps, ts): (Vec<_>, Vec<_>) = items.into_iter().unzip();
+                (ps, if has_any { ts } else { Vec::new() })
             } else {
-                vec![self.pattern()]
+                (vec![self.pattern()], Vec::new())
             };
             self.bump();
             let body = Box::new(self.expr());
             return Expr {
-                kind: ExprKind::Lambda { params, body },
+                kind: ExprKind::Lambda {
+                    params,
+                    param_tys,
+                    body,
+                },
                 span: self.span_from(start),
             };
         }
@@ -490,7 +495,11 @@ impl<'a> Parser<'a> {
         let span = self.span_from(start);
         let body = Box::new(Expr { kind: body, span });
         Some(Expr {
-            kind: ExprKind::Lambda { params, body },
+            kind: ExprKind::Lambda {
+                params,
+                param_tys: Vec::new(),
+                body,
+            },
             span,
         })
     }

@@ -376,7 +376,7 @@ pub(crate) fn walk_expr(v: &mut dyn Visitor, expr: &Expr) {
             }
             walk_lambda(v, params, body);
         }
-        ExprKind::Lambda { params, body } => walk_lambda(v, params, body),
+        ExprKind::Lambda { params, body, .. } => walk_lambda(v, params, body),
         ExprKind::Block(block) => walk_scoped(v, Scope::Block, &block.stmts),
         ExprKind::If {
             branches,

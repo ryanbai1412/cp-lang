@@ -2351,7 +2351,7 @@ impl<'a> Lowerer<'a> {
         let at = test.value.span;
         let mk = |kind: ast::ExprKind| ast::Expr { kind, span: at };
         let (pat, body) = match &test.value.kind {
-            ast::ExprKind::Lambda { params, body } if params.len() == 1 => (params[0].clone(), (**body).clone()),
+            ast::ExprKind::Lambda { params, body, .. } if params.len() == 1 => (params[0].clone(), (**body).clone()),
             _ => {
                 let var = "it\u{b7}".to_string();
                 let call = mk(ast::ExprKind::Call {
@@ -2434,6 +2434,7 @@ impl<'a> Lowerer<'a> {
         });
         let by = mk(ast::ExprKind::Lambda {
             params: vec![ast::Pattern { kind: ast::PatternKind::Name(var.clone()), span: at }],
+            param_tys: Vec::new(),
             body: Box::new(key),
         });
         let arg = |value: ast::Expr| ast::Arg { name: None, mutable: false, value };
@@ -5363,6 +5364,7 @@ impl<'a> Lowerer<'a> {
                             kind: ast::PatternKind::Name("x".to_string()),
                             span: at,
                         }],
+                        param_tys: Vec::new(),
                         body: Box::new(call),
                     },
                     span: at,
@@ -5389,7 +5391,7 @@ impl<'a> Lowerer<'a> {
                 name: Some(by),
                 value:
                     ast::Expr {
-                        kind: ast::ExprKind::Lambda { params, body },
+                        kind: ast::ExprKind::Lambda { params, body, .. },
                         ..
                     },
                 ..

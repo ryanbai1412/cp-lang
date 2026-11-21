@@ -384,9 +384,11 @@ impl<'a> Lowerer<'a> {
                 params,
                 body,
             } => self.table(domains, params, body, inner_hint, span),
-            ast::ExprKind::Lambda { params, body } => {
-                self.lower_lambda(params, body, inner_hint, span)
-            }
+            ast::ExprKind::Lambda {
+                params,
+                param_tys,
+                body,
+            } => self.lower_lambda(params, param_tys, body, inner_hint, span),
             ast::ExprKind::Keep { target, max, value } => self.keep(target, *max, value, span),
             ast::ExprKind::Block(block) => self.do_expr(hint, span, |lw, out| {
                 out.extend(lw.block(block, Tail::Give).stmts);

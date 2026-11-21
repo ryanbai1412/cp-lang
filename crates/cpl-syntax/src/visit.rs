@@ -218,7 +218,7 @@ pub fn walk_expr(expr: &Expr, v: &mut dyn Visitor) {
             }
             walk_expr(body, v);
         }
-        ExprKind::Table { params, body, .. } | ExprKind::Lambda { params, body } => {
+        ExprKind::Table { params, body, .. } | ExprKind::Lambda { params, body, .. } => {
             for param in params {
                 v.pattern(param);
             }

@@ -283,20 +283,47 @@ impl<'a> Checker<'a> {
                     elem: Box::new(elem),
                 }
             }
-            ExprKind::Lambda { params, body } => {
+            ExprKind::Lambda {
+                params,
+                param_tys,
+                body,
+            } => {
                 self.push_scope();
-                for param in params {
-                    self.bind(param, &Ty::Unknown, false, "param");
+                let mut sig_params = Vec::with_capacity(params.len());
+                let any_typed = param_tys.iter().any(Option::is_some);
+                for (i, param) in params.iter().enumerate() {
+                    let ty = param_tys
+                        .get(i)
+                        .and_then(|t| t.as_ref())
+                        .map(|t| self.resolve_type(t))
+                        .unwrap_or(Ty::Unknown);
+                    self.bind(param, &ty, false, "param");
+                    sig_params.push(crate::ty::Param {
+                        name: String::new(),
+                        ty,
+                        mutable: false,
+                        has_default: false,
+                        named_only: false,
+                        variadic: false,
+                        lazy: false,
+                    });
                 }
                 // A lambda's `return` and trailing value belong to the lambda.
                 let lam_depth = self.scopes.len();
                 self.fns.push((String::new(), Ty::Unknown, false, lam_depth));
                 self.branch += 1;
-                self.infer(body);
+                let ret = self.infer(body);
                 self.branch -= 1;
                 self.fns.pop();
                 self.pop_scope();
-                Ty::Unknown
+                if any_typed {
+                    Ty::Fn {
+                        params: sig_params,
+                        ret: Box::new(ret),
+                    }
+                } else {
+                    Ty::Unknown
+                }
             }
             ExprKind::Block(block) => self.block(block),
             ExprKind::If {

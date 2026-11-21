@@ -2162,3 +2162,24 @@ let _ = adj[V.first, U.first]
 ";
     assert_eq!(codes(bad), vec![cpl_diag::codes::TYPE_MISMATCH.0]);
 }
+
+#[test]
+fn typed_lambda_parameter_annotations_are_checked() {
+    let ok = "\
+fn apply(x: Int, f: fn(Int) -> Int) -> Int = f(x)
+print(apply(5, (a: Int) => a + 1))
+";
+    assert_eq!(check(ok), vec![]);
+
+    let bad_param = "\
+fn apply(x: Int, f: fn(Int) -> Int) -> Int = f(x)
+print(apply(5, (a: Str) => 1))
+";
+    assert_eq!(codes(bad_param), vec![cpl_diag::codes::TYPE_MISMATCH.0]);
+
+    let bad_body = "let f = (a: Str) => a + 1\n";
+    assert_eq!(codes(bad_body), vec![cpl_diag::codes::BAD_OPERANDS.0]);
+
+    let bad_ty = "let f = (a: Nope) => a\n";
+    assert_eq!(codes(bad_ty), vec![cpl_diag::codes::UNKNOWN_TYPE.0]);
+}
