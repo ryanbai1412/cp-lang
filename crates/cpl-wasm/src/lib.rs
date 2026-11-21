@@ -147,7 +147,7 @@ impl Playground {
             Ok(mut compiled) => {
                 let config = || TraceConfig {
                     source: source.to_string(),
-                    only_fn: None,
+                    ..TraceConfig::default()
                 };
                 let observed = observe(&compiled.program, input, &mut stdout, stack, config());
                 let mut code = 0;

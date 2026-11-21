@@ -252,10 +252,17 @@ Checks the file, then runs it in the debug interpreter on the input file
 or on standard input. What `debug(...)` shows goes to standard error.
 
 options:
-  --trace [FN]      record the run: every change to a top-level variable,
-                    every print and every debug(...); with FN, only while
-                    that fn runs. Writes <file>.trace.html unless --format
-                    says where the trace goes
+  --trace [SPEC]    record the run: every change to a top-level variable,
+                    every print and every debug(...); with SPEC, comma-
+                    separated fn names or globs (`*`, `?`) with `!pat`
+                    exclusions (e.g. `solve,!helper`). Writes
+                    <file>.trace.html unless --format says where it goes
+  --test SPEC       with --trace: record only these 1-based multitest cases
+                    (e.g. `3`, `1,3`, `2..=4`)
+  --watch VAR       with --trace: record steps only when VAR changes (repeatable
+                    or comma-separated, e.g. `--watch dp,ans`)
+  --last N          with --trace: keep only the last N steps (ring buffer)
+  --depth N         with --trace: record only up to call depth N (0 = top level)
   --format json     without --trace: the value of each top-level variable,
                     the output and the time, for an editor.
                     with --trace: the trace as JSON on standard output
@@ -272,11 +279,52 @@ struct RunArgs<'a> {
     file: &'a str,
     input: Option<&'a str>,
     trace: bool,
-    /// `--trace FN`: record only while this fn runs.
+    /// `--trace SPEC`: fn globs / `!` exclusions to record.
     only_fn: Option<&'a str>,
+    /// `--test SPEC`: 1-based multitest case ranges to record.
+    test_cases: Vec<(u64, u64)>,
+    /// `--watch VAR`: top-level variable names to watch.
+    watch: Vec<String>,
+    /// `--last N`: keep only the last N steps.
+    last_steps: Option<usize>,
+    /// `--depth N`: maximum call depth to record.
+    max_depth: Option<usize>,
     format: Option<&'a str>,
     brute: bool,
     release: bool,
+}
+
+fn parse_test_cases(spec: &str) -> Result<Vec<(u64, u64)>, String> {
+    let mut out = Vec::new();
+    for part in spec.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+        if let Some((a, b)) = part.split_once("..=") {
+            let lo: u64 = a.parse().map_err(|_| format!("`--test` expects a positive case number, not `{part}`"))?;
+            let hi: u64 = b.parse().map_err(|_| format!("`--test` expects a positive case number, not `{part}`"))?;
+            if lo == 0 || hi < lo {
+                return Err(format!("`--test` range `{part}` is empty or starts at 0"));
+            }
+            out.push((lo, hi));
+        } else {
+            let n: u64 = part.parse().map_err(|_| format!("`--test` expects a positive case number, not `{part}`"))?;
+            if n == 0 {
+                return Err("`--test` case numbers are 1-based".into());
+            }
+            out.push((n, n));
+        }
+    }
+    if out.is_empty() {
+        return Err("`--test` needs a case number or range (e.g. `3` or `2..=4`)".into());
+    }
+    Ok(out)
+}
+
+fn is_trace_spec(token: &str) -> bool {
+    !token.is_empty()
+        && !token.starts_with('-')
+        && token
+            .chars()
+            .all(|c| c.is_alphanumeric() || matches!(c, '_' | '*' | '?' | '!' | ','))
+        && !std::path::Path::new(token).exists()
 }
 
 impl<'a> RunArgs<'a> {
@@ -286,6 +334,10 @@ impl<'a> RunArgs<'a> {
             input: None,
             trace: false,
             only_fn: None,
+            test_cases: Vec::new(),
+            watch: Vec::new(),
+            last_steps: None,
+            max_depth: None,
             format: None,
             brute: false,
             release: false,
@@ -296,14 +348,63 @@ impl<'a> RunArgs<'a> {
             match arg {
                 "--trace" => {
                     args.trace = true;
-                    // A name after it that is no file is the fn to trace.
+                    // A fn spec after it that is not an existing file is the fn filter.
                     if let Some(next) = iter.peek().copied() {
-                        let is_name = next.chars().all(|c| c.is_alphanumeric() || c == '_');
-                        if is_name && !next.is_empty() && !std::path::Path::new(next).exists() {
+                        if is_trace_spec(next) {
                             args.only_fn = Some(next);
                             iter.next();
                         }
                     }
+                }
+                "--test" => match iter.next() {
+                    Some(spec) => args.test_cases.extend(parse_test_cases(spec)?),
+                    None => return Err("`--test` needs a case number or range".into()),
+                },
+                flag if flag.starts_with("--test=") => {
+                    args.test_cases.extend(parse_test_cases(&flag["--test=".len()..])?);
+                }
+                "--watch" => match iter.next() {
+                    Some(spec) => {
+                        for name in spec.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+                            args.watch.push(name.to_string());
+                        }
+                    }
+                    None => return Err("`--watch` needs a variable name".into()),
+                },
+                flag if flag.starts_with("--watch=") => {
+                    for name in flag["--watch=".len()..].split(',').map(str::trim).filter(|s| !s.is_empty()) {
+                        args.watch.push(name.to_string());
+                    }
+                }
+                "--last" => match iter.next() {
+                    Some(n) => {
+                        let parsed: usize = n.parse().map_err(|_| format!("`--last` expects a positive integer, not `{n}`"))?;
+                        if parsed == 0 {
+                            return Err("`--last` must be at least 1".into());
+                        }
+                        args.last_steps = Some(parsed);
+                    }
+                    None => return Err("`--last` needs a step count".into()),
+                },
+                flag if flag.starts_with("--last=") => {
+                    let n = &flag["--last=".len()..];
+                    let parsed: usize = n.parse().map_err(|_| format!("`--last` expects a positive integer, not `{n}`"))?;
+                    if parsed == 0 {
+                        return Err("`--last` must be at least 1".into());
+                    }
+                    args.last_steps = Some(parsed);
+                }
+                "--depth" => match iter.next() {
+                    Some(n) => {
+                        let parsed: usize = n.parse().map_err(|_| format!("`--depth` expects a non-negative integer, not `{n}`"))?;
+                        args.max_depth = Some(parsed);
+                    }
+                    None => return Err("`--depth` needs a call depth".into()),
+                },
+                flag if flag.starts_with("--depth=") => {
+                    let n = &flag["--depth=".len()..];
+                    let parsed: usize = n.parse().map_err(|_| format!("`--depth` expects a non-negative integer, not `{n}`"))?;
+                    args.max_depth = Some(parsed);
                 }
                 "--brute" => args.brute = true,
                 "--release" => args.release = true,
@@ -326,6 +427,13 @@ impl<'a> RunArgs<'a> {
             [file] => args.file = file,
             [file, input] => (args.file, args.input) = (file, Some(*input)),
             _ => return Err("`run` takes a file and at most one input: `cpl run a.cp in.txt`".into()),
+        }
+        let has_trace_filter = !args.test_cases.is_empty()
+            || !args.watch.is_empty()
+            || args.last_steps.is_some()
+            || args.max_depth.is_some();
+        if has_trace_filter && !args.trace {
+            return Err("`--test`, `--watch`, `--last`, and `--depth` filter a trace: add `--trace`".into());
         }
         if args.release && (args.trace || args.format.is_some()) {
             return Err("`--release` runs the built C++, which records no trace: drop `--trace` and `--format`".into());
@@ -733,7 +841,11 @@ fn observe_file(
 ) -> u8 {
     let path = args.file;
     let started = std::time::Instant::now();
-    let config = trace::config(&compiled.text, args.only_fn);
+    let mut config = trace::config(&compiled.text, args.only_fn);
+    config.test_cases = args.test_cases.clone();
+    config.watch = args.watch.clone();
+    config.last_steps = args.last_steps;
+    config.max_depth = args.max_depth;
     // The program's output is kept: with `--format` the report or the
     // trace is what goes to standard output.
     let mut printed = Vec::new();

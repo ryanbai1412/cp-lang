@@ -218,10 +218,10 @@ interpreter fast enough to run full-size tests (within 10x of C++).
 solution vs `@brute` on `print`/`debug` checkpoints. Gaps against `plan/50`:
 (1) `Trap` now carries call stacks (summarized past 32 frames), multitest case
 number, and concrete values on arithmetic/bounds/domain/input traps (golden
-tests in `crates/cpl-cli/tests/runtime_errors.rs`); (2) trace filtering only
-supports a single `--trace FN` — missing multi-fn/glob/exclusion, `--test N`,
-`--watch VAR`, `--last N`, `--depth N`, and `Bound(d)` cuts are not shifted to
-domain base in traces; (3) no step debugger / DAP server or VS Code debugger
+tests in `crates/cpl-cli/tests/runtime_errors.rs`); (2) trace filtering now
+supports `--trace` globs/exclusions, `--test`, `--watch`, `--last` ring buffer,
+`--depth`, and 1-based `Bound(d)` cut labels (`crates/cpl-cli/tests/trace_filters.rs`);
+(3) no step debugger / DAP server or VS Code debugger
 wiring; (4) interpreter speed on compute-heavy ports is 44x–261x slower than C++ `-O2`
 after unboxing `?Int`/1-field `Int` structs and removing hot-path allocations
 (`dph` 884 -> 693 ms, `dpl` 542 -> 483 ms, `dpk` 770 -> 728 ms, `dpm` 1288 ->
@@ -231,11 +231,9 @@ after unboxing `?Int`/1-field `Int` structs and removing hot-path allocations
 path; trace filtering and index-space views tested end to end; DAP step
 debugger wired into VS Code and tested over stdio; interpreter within 30x of
 C++ `-O2` on ports.
-**Next.** (1) Profile and optimize interpreter hot paths toward <= 30x of C++;
-(2) trace filtering (`--trace` globs/exclusions, `--test`, `--watch`, `--last`,
-`--depth`) and index-space cut/domain fixes; (3) DAP step debugger (`cpl dap`)
-with time-travel + VS Code integration; (4) browser test for trace viewer and
-stage snapshots.
+**Next.** (1) DAP step debugger (`cpl dap`) with time-travel + VS Code
+integration; (2) bytecode VM to close interpreter speed to <= 30x of C++;
+(3) browser test for trace viewer and stage snapshots.
 
 ## 7. Stress testing and shrinking (`plan/50` 3, `plan/40` 7b)
 **North star.** One command, `cpl stress d.cp`, turns "WA on test 37" into

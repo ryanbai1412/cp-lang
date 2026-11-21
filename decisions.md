@@ -1445,7 +1445,6 @@ errors to explain what happened in one screen with values, call path, and test c
 normal execution. Reverse: remove `call_stack`/`case` from `Trap`, `call_frames`/`current_case` from
 `Interp`, and `Trap::to_diagnostic`.
 
-<<<<<<< HEAD
 27.2. **Unboxed `OptVal::Int` / `TupleVal::OneInt` and zero-allocation interpreter hot paths.**
 `Value::Opt` stores `OptVal::{None, Int(i64), Boxed(Rc<Value>)}` and `Value::Tuple` stores
 `TupleVal::{OneInt(i64), Boxed(Rc<Vec<Value>>)}` (promoting to `Boxed` only on in-place field/option
@@ -1457,10 +1456,15 @@ domain steps (`?Pos`) and 1-field `Int` structs (`Mod<P>`). Untraced `assign`, 1
 is tree-walking `eval`/`stmt` dispatch overhead (future bytecode VM). Reverse: revert `OptVal`,
 `TupleVal`, and `assign_untraced` in `crates/cpl-interp`.
 
-||||||| parent of c9932ae (docs: document fresh domains, existential returns and decisions)
-=======
-<<<<<<< Updated upstream
->>>>>>> c9932ae (docs: document fresh domains, existential returns and decisions)
+27.3. **Trace filtering (`--trace` globs/exclusions, `--test`, `--watch`, `--last`, `--depth`) and `Bound(d)` cut labels.**
+`TraceConfig` gains `test_cases`, `watch`, `last_steps` (O(1) `VecDeque` ring buffer), and
+`max_depth`, while `only_fn` parses comma-separated globs (`*`, `?`) and `!pat` exclusions tracked
+via `pos_inside`/`neg_inside` counters in `Tracer`. `Bound(d)` labels and values now shift by
+`view.domains[d].0` to match `value::show` and 1-based domain semantics. Reason: `plan/50-debugging.md`
+§1 requires surgical trace capture on large/multitest runs and consistent domain-base cut labels.
+Reverse: remove the extra fields from `TraceConfig`, restore single-fn `only_fn` matching, and
+remove `--test`/`--watch`/`--last`/`--depth` from `RunArgs` in `crates/cpl-cli/src/lib.rs`.
+
 ## 28. Core mechanisms for a library-only stdlib (0.3, §1)
 
 - **28.1 Reflection is a loop: `for f in fields(x)`.** The body runs once per field of a struct, record

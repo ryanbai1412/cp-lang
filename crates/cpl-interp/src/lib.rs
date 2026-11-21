@@ -577,6 +577,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             globals: &self.globals,
             domains: &self.domains,
             locals,
+            depth: self.call_frames.len(),
         }
     }
 
@@ -605,7 +606,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             .take(leading_indices(place))
             .map(|index| index.int().max(0) as usize)
             .collect();
-        self.traced(|tracer, view| tracer.step(view, place.span, None, None, Some((global, path))));
+        self.traced(|tracer, view| tracer.changed(global, view, place.span, path));
     }
 
     fn flush_if_large(&mut self) {
@@ -2215,10 +2216,7 @@ impl<'p, 'o> Interp<'p, 'o> {
         let saved = std::mem::replace(&mut self.base, base);
         self.frame_locals.push(&f.locals);
         self.call_frames.push((f.name.as_str(), span));
-        let wanted = self.tracer.as_ref().is_some_and(|tracer| tracer.wants_fn(&f.name));
-        if let (true, Some(tracer)) = (wanted, &mut self.tracer) {
-            tracer.inside += 1;
-        }
+        let entered = self.tracer.as_mut().map(|tracer| tracer.enter_fn(&f.name));
         let feeding = fed.is_some();
         if let Some(fed) = fed {
             self.fed_loops.push(Fed { callee: base, ..fed });
@@ -2234,8 +2232,8 @@ impl<'p, 'o> Interp<'p, 'o> {
             self.domains[id] = prev;
         }
         self.in_closure = in_closure;
-        if let (true, Some(tracer)) = (wanted, &mut self.tracer) {
-            tracer.inside -= 1;
+        if let (Some(entered), Some(tracer)) = (entered, &mut self.tracer) {
+            tracer.leave_fn(entered);
         }
         self.frame_locals.pop();
         self.base = saved;

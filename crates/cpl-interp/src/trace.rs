@@ -10,7 +10,7 @@
 use crate::value::{OptVal, TupleVal, Value};
 use cpl_diag::{LineIndex, Span};
 use cpl_ir::{Dim, Program, Ty};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
 /// How a run is recorded.
@@ -18,8 +18,17 @@ use std::sync::Arc;
 pub struct TraceConfig {
     /// The file's text: steps name the line they ran.
     pub source: String,
-    /// Record only while this fn is running.
+    /// Record only while matching fns are running: comma-separated globs
+    /// (`*`, `?`), with `!pattern` excluding matching fns.
     pub only_fn: Option<String>,
+    /// Multitest cases to record (inclusive 1-based ranges). Empty records all.
+    pub test_cases: Vec<(u64, u64)>,
+    /// Top-level variable names whose changes trigger steps. Empty records all.
+    pub watch: Vec<String>,
+    /// Keep only the last `N` steps in a ring buffer.
+    pub last_steps: Option<usize>,
+    /// Maximum call depth to record (`0` = top-level only).
+    pub max_depth: Option<usize>,
 }
 
 /// The most steps one run keeps; the viewer reads up to 100,000.
@@ -78,6 +87,8 @@ pub struct Step {
     pub checkpoint: Option<String>,
     /// A variable and the storage path of the cell that changed.
     pub focus: Option<(usize, Vec<usize>)>,
+    /// Tree-form snapshots for `[V]?V` variables that stayed trees.
+    tree_values: Vec<(usize, Arc<str>)>,
 }
 
 /// The value of one top-level variable when the run ended, for the
@@ -116,9 +127,17 @@ pub struct Recording {
 pub(crate) struct Tracer {
     lines: LineIndex,
     source: String,
-    only_fn: Option<String>,
-    /// How many calls of `only_fn` are running.
-    pub inside: usize,
+    include_fns: Vec<String>,
+    exclude_fns: Vec<String>,
+    /// Active calls matching `include_fns` / `exclude_fns`.
+    pos_inside: usize,
+    neg_inside: usize,
+    test_cases: Vec<(u64, u64)>,
+    watch: Vec<String>,
+    last_steps: Option<usize>,
+    max_depth: Option<usize>,
+    /// Set during `finish` so the final/error step is always captured.
+    finishing: bool,
     kinds: Vec<Kind>,
     /// The variable of each global, once it has been seen.
     of_global: Vec<Option<usize>>,
@@ -130,8 +149,7 @@ pub(crate) struct Tracer {
     last: Vec<Option<Arc<str>>>,
     /// Whether every snapshot of a `[V]?V` was one rooted tree.
     tree: Vec<bool>,
-    /// The tree form of each `[V]?V` snapshot, beside its array form.
-    tree_form: HashMap<(usize, usize), Arc<str>>,
+    steps: VecDeque<Step>,
     stdout: usize,
     printed: Vec<String>,
     debug_vars: HashMap<String, usize>,
@@ -149,22 +167,71 @@ pub(crate) struct View<'a> {
     pub domains: &'a [(i64, i64)],
     /// The named locals of the innermost call, with their values.
     pub locals: Vec<(&'a str, &'a Ty, &'a Value)>,
+    /// Current call depth (`0` at top level).
+    pub depth: usize,
+}
+
+fn glob_match(pattern: &str, text: &str) -> bool {
+    let p: Vec<char> = pattern.chars().collect();
+    let t: Vec<char> = text.chars().collect();
+    let (mut pi, mut ti) = (0usize, 0usize);
+    let (mut star, mut match_t) = (None, 0usize);
+    while ti < t.len() {
+        if pi < p.len() && (p[pi] == '?' || p[pi] == t[ti]) {
+            pi += 1;
+            ti += 1;
+        } else if pi < p.len() && p[pi] == '*' {
+            star = Some(pi);
+            match_t = ti;
+            pi += 1;
+        } else if let Some(s) = star {
+            pi = s + 1;
+            match_t += 1;
+            ti = match_t;
+        } else {
+            return false;
+        }
+    }
+    while pi < p.len() && p[pi] == '*' {
+        pi += 1;
+    }
+    pi == p.len()
 }
 
 impl Tracer {
     pub fn new(config: TraceConfig, program: &Program) -> Tracer {
+        let mut include_fns = Vec::new();
+        let mut exclude_fns = Vec::new();
+        if let Some(spec) = config.only_fn {
+            for part in spec.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+                if let Some(rest) = part.strip_prefix('!') {
+                    if !rest.is_empty() {
+                        exclude_fns.push(rest.to_string());
+                    }
+                } else {
+                    include_fns.push(part.to_string());
+                }
+            }
+        }
         let mut tracer = Tracer {
             lines: LineIndex::new(&config.source),
             source: config.source,
-            only_fn: config.only_fn,
-            inside: 0,
+            include_fns,
+            exclude_fns,
+            pos_inside: 0,
+            neg_inside: 0,
+            test_cases: config.test_cases,
+            watch: config.watch,
+            last_steps: config.last_steps,
+            max_depth: config.max_depth,
+            finishing: false,
             kinds: Vec::new(),
             of_global: vec![None; program.globals.len()],
             visible: vec![false; program.globals.len()],
             setup: vec![false; program.globals.len()],
             last: Vec::new(),
             tree: Vec::new(),
-            tree_form: HashMap::new(),
+            steps: VecDeque::new(),
             stdout: 0,
             printed: Vec::new(),
             debug_vars: HashMap::new(),
@@ -196,12 +263,50 @@ impl Tracer {
         self.rec.vars.len() - 1
     }
 
-    pub fn wants_fn(&self, name: &str) -> bool {
-        self.only_fn.as_deref() == Some(name)
+    pub fn enter_fn(&mut self, name: &str) -> (bool, bool) {
+        let pos = !self.include_fns.is_empty()
+            && self.include_fns.iter().any(|p| glob_match(p, name));
+        let neg = !self.exclude_fns.is_empty()
+            && self.exclude_fns.iter().any(|p| glob_match(p, name));
+        if pos {
+            self.pos_inside += 1;
+        }
+        if neg {
+            self.neg_inside += 1;
+        }
+        (pos, neg)
     }
 
-    fn recording(&self) -> bool {
-        self.only_fn.is_none() || self.inside > 0
+    pub fn leave_fn(&mut self, (pos, neg): (bool, bool)) {
+        if pos {
+            self.pos_inside -= 1;
+        }
+        if neg {
+            self.neg_inside -= 1;
+        }
+    }
+
+    fn case_matches(&self) -> bool {
+        if self.test_cases.is_empty() {
+            return true;
+        }
+        match self.case {
+            Some(c) if c > 0 => self.test_cases.iter().any(|&(lo, hi)| c >= lo && c <= hi),
+            _ => false,
+        }
+    }
+
+    fn recording(&self, depth: usize) -> bool {
+        if self.finishing {
+            return true;
+        }
+        let fn_ok = (self.include_fns.is_empty() || self.pos_inside > 0) && self.neg_inside == 0;
+        let depth_ok = self.max_depth.is_none_or(|max| depth <= max);
+        fn_ok && depth_ok && self.case_matches()
+    }
+
+    fn watched(&self, name: &str) -> bool {
+        self.watch.is_empty() || self.watch.iter().any(|w| w == name)
     }
 
     pub fn line(&self, span: Span) -> u32 {
@@ -293,21 +398,25 @@ impl Tracer {
         checkpoint: Option<&str>,
         focus: Option<(usize, Vec<usize>)>,
     ) {
-        if !self.recording() {
+        if !self.recording(view.depth) {
             return;
         }
         // What is above `@!multitest` is the same on every input: it gets
         // a share of the trace, and the test cases get the rest.
-        if self.case == Some(0) && (self.rec.steps.len() >= SETUP_STEPS || self.bytes >= MAX_BYTES / 16) {
-            return;
-        }
-        if self.rec.steps.len() >= MAX_STEPS || self.bytes >= MAX_BYTES {
-            self.rec.truncated = true;
-            return;
+        if self.last_steps.is_none() {
+            if self.case == Some(0)
+                && (self.steps.len() >= SETUP_STEPS || self.bytes >= MAX_BYTES / 16)
+            {
+                return;
+            }
+            if self.steps.len() >= MAX_STEPS || self.bytes >= MAX_BYTES {
+                self.rec.truncated = true;
+                return;
+            }
         }
         let line = self.line(span).max(1);
-        let index = self.rec.steps.len();
         let mut values = Vec::new();
+        let mut tree_values = Vec::new();
         for id in 0..view.globals.len() {
             if !self.visible[id] {
                 continue;
@@ -323,7 +432,7 @@ impl Tracer {
                 if self.kinds[var] == Kind::Parents {
                     match tree {
                         Some(tree) => {
-                            self.tree_form.insert((index, var), tree.into());
+                            tree_values.push((var, tree.into()));
                         }
                         None => self.tree[var] = false,
                     }
@@ -387,7 +496,13 @@ impl Tracer {
             fits.then_some((var, path))
         });
         let checkpoint = checkpoint.map(|name| self.checkpoint(name));
-        self.rec.steps.push(Step {
+        if let Some(limit) = self.last_steps {
+            if limit > 0 && self.steps.len() >= limit {
+                self.steps.pop_front();
+                self.rec.truncated = true;
+            }
+        }
+        self.steps.push_back(Step {
             line,
             label: label.unwrap_or_else(|| self.line_text(line)),
             stage: self.stage(),
@@ -395,6 +510,7 @@ impl Tracer {
             locals,
             checkpoint,
             focus,
+            tree_values,
         });
     }
 
@@ -406,22 +522,31 @@ impl Tracer {
         if view.program.globals[id].span.end == 0 {
             return;
         }
+        if !self.watched(&view.program.globals[id].name) {
+            return;
+        }
         let line = self.line(span).max(1);
         if fresh
-            && self.rec.steps.last().is_some_and(|last| {
+            && self.steps.back().is_some_and(|last| {
                 last.line == line && last.checkpoint.is_none() && last.stage == self.stage()
             })
         {
-            let index = self.rec.steps.len() - 1;
-            self.rec.steps.pop();
-            self.tree_form.retain(|(step, _), _| *step != index);
+            self.steps.pop_back();
         }
         self.step(view, span, None, None, None);
     }
 
+    /// A part of global `id` changed (e.g. an array cell or struct field).
+    pub fn changed(&mut self, id: usize, view: &View, span: Span, path: Vec<usize>) {
+        if !self.watched(&view.program.globals[id].name) {
+            return;
+        }
+        self.step(view, span, None, None, Some((id, path)));
+    }
+
     /// `print(...)` wrote `text`.
     pub fn printed(&mut self, view: &View, span: Span, text: &str) {
-        if !self.recording() {
+        if !self.recording(view.depth) {
             return;
         }
         self.printed.extend(text.lines().map(str::to_string));
@@ -436,7 +561,7 @@ impl Tracer {
     /// `text` what it shows, and `json` the values as one JSON value.
     pub fn debugged(&mut self, view: &View, span: Span, name: &str, text: String, json: String) {
         let line = self.line(span).max(1);
-        if !self.recording() {
+        if !self.recording(view.depth) {
             return;
         }
         let var = match self.debug_vars.get(name) {
@@ -460,9 +585,8 @@ impl Tracer {
         self.bytes += json.len();
         self.last[var] = Some(json.into());
         let checkpoint = format!("debug {name}");
-        let before = self.rec.steps.len();
         self.step(view, span, Some(format!("debug: {text}")), Some(&checkpoint), None);
-        let name = match self.rec.steps.get(before).and_then(|step| step.checkpoint.clone()) {
+        let name = match self.steps.back().and_then(|step| step.checkpoint.clone()) {
             Some(checkpoint) => checkpoint,
             None => checkpoint,
         };
@@ -471,7 +595,7 @@ impl Tracer {
 
     /// The run is over: the last step, and each variable's last value.
     pub fn finish(mut self, view: &View, failed: Option<(&str, Span)>) -> Recording {
-        self.inside = usize::from(self.only_fn.is_some());
+        self.finishing = true;
         match failed {
             Some((message, span)) => {
                 self.step(view, span, Some(format!("failed: {message}")), None, None)
@@ -481,12 +605,10 @@ impl Tracer {
                 self.step(view, end, Some("the program ended".to_string()), Some("end"), None)
             }
         }
-        if self.rec.steps.is_empty() {
-            // The viewer needs one step; a run with `only_fn` that never
-            // called it has this one.
-            self.only_fn = None;
+        if self.steps.is_empty() {
             self.step(view, Span::default(), Some("nothing was recorded".to_string()), None, None);
         }
+        self.rec.steps = std::mem::take(&mut self.steps).into_iter().collect();
         for id in 0..view.globals.len() {
             let global = &view.program.globals[id];
             let value = &view.globals[id];
@@ -517,10 +639,10 @@ impl Tracer {
             if self.tree[var] {
                 self.rec.vars[var].kind = "tree";
                 self.rec.vars[var].extra = String::new();
-                for (index, step) in self.rec.steps.iter_mut().enumerate() {
-                    for (at, json) in &mut step.values {
-                        if *at == var {
-                            if let Some(tree) = self.tree_form.get(&(index, var)) {
+                for step in &mut self.rec.steps {
+                    if let Some((_, tree)) = step.tree_values.iter().find(|(at, _)| *at == var) {
+                        for (at, json) in &mut step.values {
+                            if *at == var {
                                 *json = Arc::clone(tree);
                             }
                         }
@@ -579,8 +701,8 @@ fn target(elem: &Ty) -> Option<usize> {
 
 fn labels(dim: Dim, len: i64, view: &View) -> String {
     let lo = match dim {
-        Dim::Pos(d) => view.domains[d].0,
-        Dim::Bound(_) | Dim::Int => 0,
+        Dim::Pos(d) | Dim::Bound(d) => view.domains[d].0,
+        Dim::Int => 0,
         Dim::IntFrom(first) => first,
     };
     let mut out = String::from("[");
@@ -602,9 +724,10 @@ fn dim_len(dim: Dim, view: &View) -> Option<i64> {
     }
 }
 
-fn dim_name<'a>(dim: Dim, view: &View<'a>) -> Option<&'a str> {
+fn dim_name(dim: Dim, view: &View<'_>) -> Option<String> {
     match dim {
-        Dim::Pos(d) | Dim::Bound(d) => Some(view.program.domains[d].as_str()),
+        Dim::Pos(d) => Some(view.program.domains[d].clone()),
+        Dim::Bound(d) => Some(format!("{}.bounds", view.program.domains[d])),
         Dim::Int | Dim::IntFrom(_) => None,
     }
 }
@@ -641,7 +764,7 @@ fn classify(ty: &Ty, view: &View) -> (Kind, String) {
                 }
                 if let Some(name) = dim_name(dim, view) {
                     extra += &format!(",\"{domain_key}\":");
-                    string(&mut extra, name);
+                    string(&mut extra, &name);
                 }
             }
             let kind = match &**elem {
@@ -730,10 +853,10 @@ fn bytes_text(bytes: &[u8]) -> String {
     bytes.iter().map(|b| *b as char).collect()
 }
 
-/// The label of a position, or the number itself.
+/// The label of a position or cut, or the number itself.
 fn label(value: i64, ty: &Ty, view: &View) -> i64 {
     match ty {
-        Ty::Pos(d) => value + view.domains[*d].0,
+        Ty::Pos(d) | Ty::Bound(d) => value + view.domains[*d].0,
         _ => value,
     }
 }
