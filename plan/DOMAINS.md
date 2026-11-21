@@ -117,13 +117,17 @@ with the target compiler flags.
 **Next.** Judge profiles (stack, compiler, I/O); profile tests.
 
 ## 10. Editor and LSP (`plan/60`)
-**North star.** An editor that knows everything the compiler knows:
+**North star.** One language server behind every major editor (a VS Code
+extension, a JetBrains plugin, documented Neovim, Zed, Emacs and Helix
+setups) that knows everything the compiler knows:
 diagnostics as you type, hover with types and costs, inlay hints for index
 spaces, completion, rename, run/test/trace from the editor.
 **Where we are.** `cpl lsp` and a VS Code extension with highlighting and
-snippets.
-**Bar.** LSP feature tests per `plan/60` 6.7.
-**Next.** Audit against `plan/60`; hover, inlay hints, completion quality.
+snippets; no JetBrains plugin.
+**Bar.** LSP feature tests per `plan/60` 6.7; each editor integration
+built and smoke-tested in the gate.
+**Next.** Audit against `plan/60`; hover, inlay hints, completion quality;
+JetBrains plugin.
 
 ## 11. Docs, site and playground (`plan/90`)
 **North star.** The language is writable from the docs alone: tour, guide,
