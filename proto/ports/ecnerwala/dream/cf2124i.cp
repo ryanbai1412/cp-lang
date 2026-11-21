@@ -8,9 +8,9 @@
 // and its parent are both `is_ext`.
 // Because each vertex `u` independently chooses preorder (`is_ext[u]`) or
 // postorder (`not is_ext[u]`) relative to its children (so neither `tree.Pre`
-// nor `tree.Post` alone suffices), `visit` emits this mixed Euler order and
-// `order.inverse()` converts positions in value order into 1-based ranks.
-
+// nor `tree.Post` alone suffices), an iterative stack DFS emits this mixed
+// Euler order safely at `n <= 2e5`, and `let pos = order.inverse()` converts
+// value positions into 1-based ranks in O(n).
 
 @!multitest
 let n: 1..=200_000 = read()
@@ -23,7 +23,7 @@ fn build_perm() -> ?[V]Int:
     var par: [V]?V = none
     var is_ext: [V]Bool = false
 
-    for (prev, u) in V.windows(2):
+    for u in V if let prev = u.prev:
         if x[u] > x[prev] + 1 or x[u] == 1: return none
         let p = last_at_depth[x[u] - 1]!
         par[u] = p
@@ -35,13 +35,16 @@ fn build_perm() -> ?[V]Int:
 
     let tree = Rooted.from_parents(par)
     var order: List<V> = []
-    fn visit(u: V):
-        if is_ext[u]: order.push(u)
-        for c in tree.children(u): visit(c)
-        if not is_ext[u]: order.push(u)
-    visit(V.first)
+    var stack: List<(V, Bool)> = [(V.first, false)]
+    while let (u, post) = stack.pop():
+        if post:
+            order.push(u)
+        else:
+            if is_ext[u]: order.push(u) else: stack.push((u, true))
+            for c in tree.children(u).rev: stack.push((c, false))
 
-    let rank: [V]Int = [V] u => order.inverse()[u].ord + 1
+    let pos = order.inverse()
+    let rank: [V]Int = [V] u => pos[u] + 1
     some(rank)
 
 if let perm = build_perm():
