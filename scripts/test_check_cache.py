@@ -144,6 +144,22 @@ class CheckCacheTest(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr)
 
 
+    def test_gate_env_pins_stdlib_and_target_to_the_checkout(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env_sh = os.path.join(root, "scripts", "gate-env.sh")
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = os.path.realpath(tmp)
+            for target_dir, want in [(None, os.path.join(tmp, "target")),
+                                     ("out", os.path.join(tmp, "out")),
+                                     ("/abs/t", "/abs/t")]:
+                env = {k: v for k, v in os.environ.items() if k != "CARGO_TARGET_DIR"}
+                env["CPL_STD"] = "/elsewhere/stdlib"
+                if target_dir:
+                    env["CARGO_TARGET_DIR"] = target_dir
+                r = subprocess.run(["bash", "-c", f'. "{env_sh}"; echo "$target"; echo "$CPL_STD"'],
+                                   cwd=tmp, env=env, capture_output=True, text=True, check=True)
+                self.assertEqual(r.stdout.split("\n")[:2], [want, os.path.join(tmp, "stdlib")])
+
     def test_land_takes_the_lock_gates_pushes_and_releases(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}

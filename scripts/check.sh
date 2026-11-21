@@ -39,9 +39,10 @@
 set -euo pipefail
 
 gate_t0=$(date +%s)
-rm -f "${CARGO_TARGET_DIR:-target}/gate-fast-time.json"
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
+. scripts/gate-env.sh
+rm -f "$target/gate-fast-time.json"
 
 mode=fast
 use_cache=1
@@ -56,15 +57,15 @@ for arg in "$@"; do
     esac
 done
 [ "$mode" = full ] && use_cache=0
-cache_dir="${CARGO_TARGET_DIR:-target}/check-cache"
+cache_dir="$target/check-cache"
 
 # The fast gate compiles the same emitted C++ on every run (profile, judges,
 # trap parity), so `g++` goes through scripts/cxx-cache.py, which reuses a
 # binary built from the same bytes, flags and compiler. --full and
 # CHECK_NO_CXX_CACHE=1 compile everything.
 if [ "$mode" = fast ] && [ "${CHECK_NO_CXX_CACHE:-0}" != "1" ] && command -v g++ >/dev/null; then
-    export CPL_CXX_SHIM_DIR="$root/${CARGO_TARGET_DIR:-target}/cxx-shim"
-    export CPL_CXX_CACHE_DIR="$root/${CARGO_TARGET_DIR:-target}/cxx-cache"
+    export CPL_CXX_SHIM_DIR="$target/cxx-shim"
+    export CPL_CXX_CACHE_DIR="$target/cxx-cache"
     mkdir -p "$CPL_CXX_SHIM_DIR" "$CPL_CXX_CACHE_DIR"
     ln -sf "$root/scripts/cxx-cache.py" "$CPL_CXX_SHIM_DIR/g++"
     export PATH="$CPL_CXX_SHIM_DIR:$PATH"
@@ -165,7 +166,7 @@ if git grep -h -E '"resolved": "' -- '*package-lock.json' | grep -v '"resolved":
 fi
 
 need cargo "see https://rustup.rs"
-cpl="${CARGO_TARGET_DIR:-target}/debug/cpl"
+cpl="$target/debug/cpl"
 
 step "cargo clippy --workspace --all-targets -- -D warnings"
 if cache_hit clippy; then
@@ -411,7 +412,7 @@ printf '\nstep times (s):\n'
 printf '%s\n' "${step_times[@]}" | sort -rn | awk -F'\t' '$1 > 0 { printf "%5d  %s\n", $1, $2 }'
 gate_elapsed=$(( $(date +%s) - gate_t0 ))
 if [ "$mode" = fast ]; then
-    gate_time_file="${CARGO_TARGET_DIR:-target}/gate-fast-time.json"
+    gate_time_file="$target/gate-fast-time.json"
     mkdir -p "$(dirname "$gate_time_file")"
     printf '{"mode":"fast","elapsed_s":%d,"budget_s":180}\n' "$gate_elapsed" >"$gate_time_file"
     printf '\ncheck: all fast checks passed in %ss (budget <= 180s)\n' "$gate_elapsed"
