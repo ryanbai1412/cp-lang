@@ -178,6 +178,187 @@ pub fn sqrt<P>(a: List<Mod<P>>, n: Int) -> ?List<Mod<P>>:
         for i in 0..m: out[shift + i] = g[i]
     some(out)
 
+/// Evaluates `a(x)` via Horner's method. O(a.len).
+pub fn eval<P>(a: List<Mod<P>>, x: Mod<P>) -> Mod<P>:
+    var acc = Mod<P>(0)
+    unchecked:
+        for i in (0..a.len).rev: acc = acc * x + a[i]
+    acc
+
+fn trim_poly<P>(a: List<Mod<P>>) -> List<Mod<P>>:
+    var n = a.len
+    unchecked:
+        while n > 0 and a[n - 1].v == 0: n -= 1
+    var out = List.filled(n, Mod<P>(0))
+    unchecked:
+        for i in 0..n: out[i] = a[i]
+    out
+
+fn rev_poly<P>(a: List<Mod<P>>) -> List<Mod<P>>:
+    let n = a.len
+    var out = List.filled(n, Mod<P>(0))
+    unchecked:
+        for i in 0..n: out[i] = a[n - 1 - i]
+    out
+
+fn middle_product<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
+    let na = a.len
+    let nb = b.len
+    if nb == 0 or na < nb: return []
+    let out_len = na - nb + 1
+    if nb <= 32 or out_len <= 32:
+        var out = List.filled(out_len, Mod<P>(0))
+        unchecked:
+            for i in 0..out_len:
+                var acc = Mod<P>(0)
+                for j in 0..nb: acc += a[i + j] * b[j]
+                out[i] = acc
+        return out
+    let size = bit_ceil(na)
+    var fa = List.filled(size, Mod<P>(0))
+    var fb = List.filled(size, Mod<P>(0))
+    unchecked:
+        for i in 0..na: fa[i] = a[i]
+        for j in 0..nb: fb[j] = b[nb - 1 - j]
+    ntt(mut fa)
+    ntt(mut fb)
+    unchecked:
+        for i in 0..size: fa[i] = fa[i] * fb[i]
+    ntt(mut fa, inverse: true)
+    var out = List.filled(out_len, Mod<P>(0))
+    unchecked:
+        for i in 0..out_len: out[i] = fa[nb - 1 + i]
+    out
+
+/// Euclidean polynomial division `(q, r)` with `a = q * b + r` and `r.len < b.len`.
+/// Requires `b` to be non-zero. O(a.len log a.len).
+pub fn div_mod<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> (q: List<Mod<P>>, r: List<Mod<P>>):
+    let ta = trim_poly(a)
+    let tb = trim_poly(b)
+    assert tb.len > 0, "poly.div_mod requires a non-zero divisor"
+    if ta.len < tb.len: return ([], ta)
+    let q_len = ta.len - tb.len + 1
+    var ra = List.filled(q_len, Mod<P>(0))
+    unchecked:
+        for i in 0..q_len: ra[i] = ta[ta.len - 1 - i]
+    let rb = rev_poly(tb)
+    var q_rev = convolve(ra, inv(rb, q_len))
+    if q_rev.len > q_len: q_rev.truncate(q_len)
+    while q_rev.len < q_len: q_rev.push(Mod<P>(0))
+    let q = rev_poly(q_rev)
+    let qb = convolve(q, tb)
+    let r_len = tb.len - 1
+    var r = List.filled(r_len, Mod<P>(0))
+    unchecked:
+        for i in 0..r_len:
+            let ai = if i < ta.len: ta[i] else: Mod<P>(0)
+            let qbi = if i < qb.len: qb[i] else: Mod<P>(0)
+            r[i] = ai - qbi
+    (trim_poly(q), trim_poly(r))
+
+fn subproduct_tree<P>(xs: List<Mod<P>>) -> List<List<Mod<P>>>:
+    let n = xs.len
+    if n == 0: return [[Mod<P>(1)]]
+    var nodes: List<List<Mod<P>>> = List.filled(2 * n, [])
+    unchecked:
+        for i in 0..n: nodes[n + i] = [-xs[i], Mod<P>(1)]
+        for i in (1..n).rev: nodes[i] = convolve(nodes[2 * i], nodes[2 * i + 1])
+    nodes
+
+/// Monic polynomial `prod_{r in roots} (x - r)`. O(n log^2 n).
+pub fn prod_linear<P>(roots: List<Mod<P>>) -> List<Mod<P>>:
+    if roots.is_empty: return [Mod<P>(1)]
+    subproduct_tree(roots)[1]
+
+/// Taylor shift `a(x + c)`. Length `a.len`. O(n log n).
+pub fn taylor_shift<P>(a: List<Mod<P>>, c: Mod<P>) -> List<Mod<P>>:
+    let n = a.len
+    if n <= 1 or c.v == 0: return a
+    assert n < P, "poly.taylor_shift requires a.len < P"
+    var fact = List.filled(n, Mod<P>(1))
+    var ifact = List.filled(n, Mod<P>(1))
+    unchecked:
+        for i in 1..n: fact[i] = fact[i - 1] * Mod<P>(i)
+        ifact[n - 1] = fact[n - 1].inv
+        for i in (1..n).rev: ifact[i - 1] = ifact[i] * Mod<P>(i)
+    var u = List.filled(n, Mod<P>(0))
+    var v = List.filled(n, Mod<P>(0))
+    var cp = Mod<P>(1)
+    unchecked:
+        for i in 0..n:
+            u[n - 1 - i] = a[i] * fact[i]
+            v[i] = cp * ifact[i]
+            cp = cp * c
+    let prod = convolve(u, v)
+    var out = List.filled(n, Mod<P>(0))
+    unchecked:
+        for k in 0..n: out[k] = prod[n - 1 - k] * ifact[k]
+    out
+
+/// Multipoint evaluation `[a(x) for x in xs]` via transposed subproduct tree.
+/// O((a.len + xs.len) log^2 xs.len).
+pub fn eval_all<P>(a: List<Mod<P>>, xs: List<Mod<P>>) -> List<Mod<P>>:
+    let n = xs.len
+    if n == 0: return []
+    if a.is_empty: return List.filled(n, Mod<P>(0))
+    if n <= 32 or a.len <= 32:
+        var out = List.filled(n, Mod<P>(0))
+        unchecked:
+            for i in 0..n: out[i] = eval(a, xs[i])
+        return out
+    let nodes = subproduct_tree(xs)
+    let root = nodes[1]
+    let reduced = if a.len > n: div_mod(a, root).r else: a
+    var r_pad = List.filled(n, Mod<P>(0))
+    unchecked:
+        for i in 0..reduced.len: r_pad[i] = reduced[i]
+    let rev_r = rev_poly(r_pad)
+    let inv_rev_m = inv(rev_poly(root), n)
+    var top = convolve(rev_r, inv_rev_m)
+    if top.len > n: top.truncate(n)
+    while top.len < n: top.push(Mod<P>(0))
+    var down: List<List<Mod<P>>> = List.filled(2 * n, [])
+    down[1] = top
+    for i in 1..n:
+        down[2 * i] = middle_product(down[i], nodes[2 * i + 1])
+        down[2 * i + 1] = middle_product(down[i], nodes[2 * i])
+    var out = List.filled(n, Mod<P>(0))
+    unchecked:
+        for i in 0..n: out[i] = down[n + i][0]
+    out
+
+@test
+fn eval_div_shift_mpe_laws():
+    type Z = Mod<998_244_353>
+    let a = [Z((i * 11 + 3) % 29) for i in 0..45]
+    let b = [Z((i * 7 + 5) % 23) for i in 0..19]
+    let (q, r) = div_mod(a, b)
+    assert r.len < b.len
+    let qb = convolve(q, b)
+    for i in 0..a.len:
+        let qi = if i < qb.len: qb[i] else: Z(0)
+        let ri = if i < r.len: r[i] else: Z(0)
+        assert qi + ri == a[i]
+
+    let roots = [Z(i * 3 + 1) for i in 0..25]
+    let pl = prod_linear(roots)
+    assert pl.len == roots.len + 1
+    assert pl[roots.len] == Z(1)
+    for x in roots: assert eval(pl, x) == Z(0)
+    assert eval(pl, Z(100)) == prod(Z(100) - x for x in roots)
+
+    let c = Z(17)
+    let sh = taylor_shift(a, c)
+    for k in 0..10:
+        let x = Z(k * 13 + 2)
+        assert eval(sh, x) == eval(a, x + c)
+
+    let xs = [Z(i * 19 + 4) for i in 0..40]
+    let vals = eval_all(a, xs)
+    for i in 0..xs.len: assert vals[i] == eval(a, xs[i])
+    let vals_short = eval_all(b, xs)
+    for i in 0..xs.len: assert vals_short[i] == eval(b, xs[i])
+
 @test
 fn deriv_and_integral_laws():
     type Z = Mod<998_244_353>

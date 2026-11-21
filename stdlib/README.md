@@ -467,8 +467,9 @@ is evidence, not a proof.
   `crt`, `crt_all`, `mod_log`, `mod_sqrt`, `primitive_root`, `floor_sum`).
 - `ntt.cp`: `ntt<P>`, `convolve<P>`, `convolve_mod`, `convolve_int` (`cyclic:`),
   `SosOver`, `sos` (`over:`, `inverse:`), `convolve_or`, `convolve_and`, `convolve_xor`.
-- `poly.cp`: formal power series over NTT (`deriv`, `integral`, `inv`, `log`,
-  `exp`, `pow`, `sqrt`).
+- `poly.cp`: formal power series and multipoint operations over NTT (`deriv`, `integral`,
+  `inv`, `log`, `exp`, `pow`, `sqrt`, `eval`, `div_mod`, `prod_linear`, `taylor_shift`,
+  `eval_all`).
 - `matrix.cp`: `Mat<T>` (arithmetic, `pow`, `product`, exact `det`/`rank`/`solve`/`solve_space`/`inverse`),
   `det_real`/`rank_real`/`solve_real`/`inverse_real` (`eps:`), and `XorBasis`.
 - `strings.cp`: Z, prefix function, KMP (`find_all`, `prefix_matches`,

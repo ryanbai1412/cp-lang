@@ -501,6 +501,11 @@ fn log<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>> // O(n log n); a[0] == 1
 fn exp<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>> // O(n log n); a[0] == 0
 fn pow<P>(a: List<Mod<P>>, k: Int, n: Int) -> List<Mod<P>> // O(n log n); k >= 0
 fn sqrt<P>(a: List<Mod<P>>, n: Int) -> ?List<Mod<P>> // O(n log n + log^2 P)
+fn eval<P>(a: List<Mod<P>>, x: Mod<P>) -> Mod<P> // O(n); Horner
+fn div_mod<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> (q: List<Mod<P>>, r: List<Mod<P>>) // O(n log n)
+fn prod_linear<P>(roots: List<Mod<P>>) -> List<Mod<P>> // O(n log^2 n); prod (x - r)
+fn taylor_shift<P>(a: List<Mod<P>>, c: Mod<P>) -> List<Mod<P>> // O(n log n); a(x + c)
+fn eval_all<P>(a: List<Mod<P>>, xs: List<Mod<P>>) -> List<Mod<P>> // O((n + m) log^2 m)
 ```
 
 ### 4.6 `std.matrix` [new]: matrices, Gaussian elimination and linear basis

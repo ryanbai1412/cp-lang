@@ -4,7 +4,7 @@
 // a transposed multipoint evaluation:
 //   answer[k] = [x^k] (power_sums(x) * prod(1 - u x for u in 0..k)) / k!
 use std.ntt.{convolve}
-use std.poly.{inv}
+use std.poly.{inv, prod_linear}
 use std.strings.{suffix_array, lcp_array}
 
 type Z = Mod<998_244_353>
@@ -23,9 +23,8 @@ fn product(mut seg: List<List<Z>>, node: Int, lo: Int, hi: Int, roots: List<Z>, 
 
 // sum of s^j over the sizes, for j in 0..=deg (entry 0 is left at zero)
 fn power_sums(sizes: List<Z>, deg: Int) -> List<Z>:
-    var seg = List.filled(4 * sizes.len, List<Z>())
-    product(mut seg, 1, 0, sizes.len, sizes, deg + 1)
-    let p = seg[1].resized(deg + 1, 0)
+    let m = prod_linear(sizes)
+    let p = [if i < m.len: m[m.len - 1 - i] else: Z(0) for i in 0..=deg]
     // -x p'(x) / p(x)
     let r = convolve([-Z(i) * p[i] for i in 0..=deg], inv(p, deg + 1))
     r[..deg + 1].to_list()
