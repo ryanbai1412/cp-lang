@@ -279,30 +279,30 @@ fn is_formatted_agrees_with_format() {
     assert!(!is_formatted("let x=1\n"));
 }
 
-/// Every `.cp` file in the repository: formatting keeps the tokens (checked
-/// inside `format`), is stable, and leaves the parser's verdict unchanged.
+/// Every `.cp` file in the repository, at any depth under `proto`,
+/// `examples` and `stdlib`: formatting keeps the tokens (checked inside
+/// `format`), is stable, and leaves the parser's verdict unchanged.
 #[test]
 fn formats_the_whole_corpus() {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../proto");
-    let mut files = Vec::new();
-    for dir in [
-        "ports",
-        "tests/ok",
-        "tests/lend",
-        "tests/fn",
-        "tests/bad",
-        "tests",
-    ] {
-        let Ok(entries) = std::fs::read_dir(root.join(dir)) else {
-            continue;
+    fn walk(dir: &std::path::Path, files: &mut Vec<std::path::PathBuf>) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
         };
         for entry in entries.flatten() {
-            if entry.path().extension().is_some_and(|e| e == "cp") {
-                files.push(entry.path());
+            let path = entry.path();
+            if path.is_dir() {
+                walk(&path, files);
+            } else if path.extension().is_some_and(|e| e == "cp") {
+                files.push(path);
             }
         }
     }
-    assert!(files.len() >= 40, "found only {} corpus files", files.len());
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut files = Vec::new();
+    for dir in ["proto", "examples", "stdlib"] {
+        walk(&root.join(dir), &mut files);
+    }
+    assert!(files.len() >= 1000, "found only {} corpus files", files.len());
     let mut formatted = 0;
     for file in &files {
         let src = std::fs::read_to_string(file).unwrap();
@@ -329,7 +329,7 @@ fn formats_the_whole_corpus() {
             assert_eq!(line, line.trim_end(), "{}", file.display());
         }
     }
-    assert!(formatted >= 40, "only {formatted} files formatted");
+    assert!(formatted >= 1000, "only {formatted} files formatted");
 }
 
 mod cli {

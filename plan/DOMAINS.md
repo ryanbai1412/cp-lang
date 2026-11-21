@@ -284,8 +284,8 @@ with its line in each of these tools.
 and, with `--native`, in the C++ built with a counter at each statement;
 the counts agree on all 183 programs of `crates/cpl-cli/tests/programs`.
 `cpl cover` lists unreached lines and one-way `if`s over a problem's cases.
-fmt is stable on all 1,337 parseable corpus files (3 do not lex), but its
-corpus test reads only the top level of `proto/ports`. lint on the 996
+fmt is stable on every parseable `.cp` file at any depth under `proto`,
+`examples` and `stdlib` (`formats_the_whole_corpus`; 3 files do not lex). lint on the 996
 corpus files that check: 535 warnings (424 `L0414`, 51 `L0201`, 49
 `L0203`, 6 `L0412`, 4 `L0101`, 1 `L0202`), not yet triaged into true and
 false positives. No lint is yet mined from `scripts/friction_lint.py`.
@@ -293,7 +293,7 @@ Profile time is not yet compared with `@cost`.
 **Bar.** Each tool has tests and a doc page; lint has zero false positives
 on the corpus; fmt is idempotent on every port; interpreter and native
 profiles agree on every count.
-**Next.** fmt corpus test over every port; triage the `L0414` warnings
+**Next.** Triage the `L0414` warnings
 against the code generator's index proofs; lints from the friction
 detectors (`wa_trap` first); profile against `@cost` and the time limit.
 
