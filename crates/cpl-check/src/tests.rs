@@ -1613,6 +1613,14 @@ fn a_heap_starts_empty() {
     assert!(codes(ok).is_empty(), "{:?}", check(ok));
 }
 
+/// dream/cf2183f reads its tree with no `use`: `Tree` is the prelude's,
+/// as `Graph` and `Rooted` are.
+#[test]
+fn a_tree_reads_without_a_use() {
+    let src = "domain V = 1..=5\nlet t = Rooted(Graph.undirected(read<Tree<V>>()), V.first)\nprint(t.size(V.first))\n";
+    assert!(codes(src).is_empty(), "{:?}", check(src));
+}
+
 #[test]
 fn reading_an_enum_needs_its_tags() {
     let rest = "let n: 1..=3 = read()\ndomain Row = 1..=n\nlet g: [Row, Row]Tile = read()\n";

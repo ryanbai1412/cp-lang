@@ -3767,6 +3767,20 @@ the all-`#` grid. Reverse: delete the method; ports go back to `max_flow`.
 - **Reason.** Corpus audit found two real DPs that fill a prefix/suffix sum table while querying the already-filled part (`cf2183f` in 2D reverse and `cf2229e` in 1D forward), meeting the two-user bar (other 2D prefix-sum ports like `ioi07p5` and `apio09p1` are static rather than append-only). Extending `Prefix` directly rather than adding a one-off `RectSums` struct keeps one type and one O(1) `.sum` vocabulary across static and incremental 1D/2D/list prefix and suffix tables.
 - **Reverse.** Remove `FillOrder`, `filling`, `set`, and the `rev`/`next` fields from `stdlib/prefix.cp` and `FillOrder` from `INTERNAL_BUILT_ON` in `crates/cpl-check/src/prelude.rs`; revert `cf2183f` and `cf2229e` to hand-maintained prefix/suffix arrays.
 
+## 119. `Tree` is in the prelude (2026-11-21)
+
+`Tree<V>` (`std.graph`) is how a program reads an unrooted tree, and
+`Graph` and `Rooted`, the two things it is passed to, were already in the
+prelude, so `read<Tree<V>>()` needed a `use` that nothing else did
+(dream/cf2183f). The measurements before adding it: no corpus port,
+dream or example declares its own `Tree` (two test fixtures do, and a
+local declaration shadows the prelude as before); the emitted C++ of a
+non-tree port (cf2124a, 5,813 B) and a tree port (cf2183f, 21,023 B) is
+byte-identical, and build time is unchanged within noise, because the
+prelude brings in only the names a program uses. Reverse: remove `Tree`
+from the `std.graph` line of `stdlib/prelude.cp`; files that spell
+`Tree<` without a `use` then need `use std.graph.{Tree}`.
+
 ## 120. `std.flow.Arc` ids are `0..2^31` (2026-11-21)
 
 `Arc(id: 0..2_147_483_648)`, not `Int`, so every arc handle in the generated
