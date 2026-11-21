@@ -7,6 +7,9 @@
 // queries walk root-to-node without pushing tags down, lazily pruning dead
 // leaves in place so every deleted leaf is visited once: O((n + q) log n log q).
 
+use std.lazy.Rope
+use std.segtree.MergeSeg
+
 let (n, q_cnt): (1..=3e5, 1..=3e5) = read()
 domain Pos = 1..=n
 domain Query = 1..=q_cnt
