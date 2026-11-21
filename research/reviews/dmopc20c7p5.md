@@ -1,6 +1,6 @@
 # dmopc20c7p5
 
-Score: 2/5
+Score: pending cold rescore (port uses `std.flow.max_closure` owning src/snk, bounded `n`/`m`, `domain Item = 1..=n` eliminating `u - 1`, bulk `[Pair](u: Item, v: Item, w: Int)` read, `16,628 B`, verified 100 ASan+UBSan cases vs brute force; sum-domain gap filed in `research/frictions/dmopc20c7p5.md`)
 
 Reviewed cold on main ac43c2db. The header (lines 1-9) names project selection, but the port hand-builds the min-cut network on a flattened `Node = 0..n + m + 2` (lines 17-32). That is raw `n + e.to_idx` offsets, a `u - 1` base shift and unbounded `(Int, Int)` reads (line 12), while `max_closure` (`stdlib/flow.cp:267`) already solves this model.
 
