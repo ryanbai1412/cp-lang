@@ -184,10 +184,12 @@ off the files by `build.rs`, so a new `pub fn` needs no second edit).
 
 ### 4.2 `std.seq`: sequences, sorted lookup, search on answers
 
-Free functions over `List<T>` and `[D]T`, the sorted-lookup family, the
-compressed coordinate space, and the binary searches. The searches
-return the boundary, not a found flag: `bsearch_first(lo..hi, ok)` is
-the first `i` with `ok(i)` for a monotone `ok`, or `none`.
+Free functions over `List<T>`, `[D]T`, and `Str`, the four-name sorted-lookup
+family, prefix/suffix/exclusive scans, permutations, monotone-stack and
+sliding-window helpers, coordinate compression, and binary/ternary searches.
+Full design and contest survey in `design/stdlib/seq.md`. The searches return
+the boundary, not a found flag: `bsearch_first(lo..hi, ok)` is the first `i`
+with `ok(i)` for a monotone `ok`, or `none`.
 
 ```cp
 type Perm<V> = [V]V
@@ -237,21 +239,67 @@ fn remove<T>(mut self: List<T>, i: Int) -> T // O(n)
 @get fn argmin<D, T>(self: [D]T) -> ?D // O(n)
 ```
 
-[new] Search on answers over reals and over unimodal functions, the two
-shapes ports hand-roll most after the integer search:
+[new] Designed in `design/stdlib/seq.md`:
 
 ```cp
-fn bsearch_real(lo: F64, hi: F64, ok: F64 -> Bool, steps: Int = 100) -> F64
-    // O(steps) calls of ok; the smallest x in [lo, hi] with ok(x) to
-    // within (hi - lo) / 2^steps, hi when none
-fn ternary_max(r: Range<Int>, f: Int -> Int) -> Int
-    // O(log n) calls of f; a position of the maximum of f on r for f
-    // that strictly rises then falls (plateaus only at the top)
+// Reductions and predicates
+fn prod<S, T>(it: S) -> T // O(n)
+fn is_sorted<D, T, K = T>(self: [D]T, by: T -> K = x => x) -> Bool // O(n)
+fn argmax_by<D, T, K>(self: [D]T, by: T -> K) -> ?D // O(n)
+fn argmin_by<D, T, K>(self: [D]T, by: T -> K) -> ?D // O(n)
+
+// Selection, merging, and O(1)-space rotation
+fn nth_element<T>(mut a: List<T>, k: Int) // expected O(n), O(1) space
+fn merge_sorted<T>(a: List<T>, b: List<T>) -> List<T> // O(n + m)
+fn rotate_right<T>(mut a: List<T>, k: Int) // O(n), O(1) space
+
+// Zero-allocation runs/chunks and domain bucketing
+fn chunk_by<D, T>(self: [D]T, same: (T, T) -> Bool) -> yields Range<D> // O(n), O(1) space
+fn run_ranges<D, T, K = T>(self: [D]T, by: T -> K = x => x) -> yields Range<D> // O(n), O(1) space
+fn buckets<D, K>(key: [D]K) -> [K]List<D> // O(D.count + K.count)
+fn chunks<T>(self: List<T>, k: Int) -> yields List<T> // O(n)
+
+// Prefix and suffix scans over elements and boundary cuts
+fn suffix_scan<D, T>(xs: [D]T, f: (T, T) -> T) -> [D]T // O(n)
+fn prefix_fold<D, T, M>(xs: [D]T, m: M) -> [D.bounds]T // O(n)
+fn suffix_fold<D, T, M>(xs: [D]T, m: M) -> [D.bounds]T // O(n)
+
+// Coordinate compression completeness
+fn Compressed.contains(self, val: T) -> Bool // O(log n)
+fn Compressed.try_at(self, val: T) -> ?D // O(log n)
+fn Compressed.first_gt(self, val: T) -> ?D // O(log n)
+fn Compressed.last_lt(self, val: T) -> ?D // O(log n)
+
+// Permutations
+fn inverse<I, V>(p: [I]V) -> [V]I // O(n)
+fn compose<A, B, C>(f: [A]B, g: [B]C) -> [A]C // O(n)
+fn perm_cycles<V>(p: [V]V) -> List<List<V>> // O(n)
+fn perm_pow<V>(p: [V]V, k: Int) -> [V]V // O(n)
+fn inversions<T>(a: List<T>) -> Int // O(n log n)
+
+// Binary/ternary search and four-name sorted lookup
+fn bsearch_real(lo: F64, hi: F64, ok: F64 -> Bool, steps: Int = 100) -> F64 // O(steps)
+fn ternary_max(r: Range<Int>, f: Int -> Int) -> Int // O(log n)
+fn ternary_min(r: Range<Int>, f: Int -> Int) -> Int // O(log n)
+fn ternary_max_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64 // O(steps)
+fn ternary_min_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64 // O(steps)
+fn first_gt<D, T, K = T>(self: [D]T, target: K, by: T -> K = x => x) -> ?D // O(log n)
+fn last_lt<D, T, K = T>(self: [D]T, target: K, by: T -> K = x => x) -> ?D // O(log n)
+
+// Monotone stack and fixed-window sliding extrema
+fn prev_less<D, T>(self: [D]T, strict: Bool = true) -> [D]?D // O(n)
+fn next_less<D, T>(self: [D]T, strict: Bool = true) -> [D]?D // O(n)
+fn prev_greater<D, T>(self: [D]T, strict: Bool = true) -> [D]?D // O(n)
+fn next_greater<D, T>(self: [D]T, strict: Bool = true) -> [D]?D // O(n)
+fn sliding_min<D, T>(self: [D]T, k: Int) -> List<T> // O(n)
+fn sliding_max<D, T>(self: [D]T, k: Int) -> List<T> // O(n)
 ```
 
-[rename] `runs_by(a, key)` becomes `runs(a, by: key)`;
-`first_ge_by` and `last_le_by` become `first_ge(.., by:)` and
-`last_le(.., by:)`.
+[rename] `runs_by(a, key)` is superseded in hot paths by zero-allocation
+`a.run_ranges(by: key)` (and ultimately `runs(a, by: key)`);
+`first_ge_by`, `last_le_by`, `argmax_by`, `argmin_by` collapse into
+`first_ge(.., by:)`, `last_le(.., by:)`, `argmax(by:)`, `argmin(by:)` once
+builtins and getters accept optional `by:`.
 
 ### 4.3 `std.math`: number theory
 

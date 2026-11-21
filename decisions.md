@@ -1991,6 +1991,7 @@ Reverse: none needed; this is general range-type lowering.
 7. **The friction detector `negative_slice` gets no lint:** `a[..-k]` is
    already the check error E0309 with the same fix, so the friction script's
    one `wa_trap` is stale. Reverse: none needed.
+<<<<<<< HEAD
 
 ## 36. Symmetric storage, derived domains, and domain iteration helpers (0.3, 2026-11-21)
 
@@ -2077,6 +2078,7 @@ Reverse: delete the step from `scripts/check.sh`.
   Promoted from `examples/local-lib/str/hash2d.cp`, upgraded to the same double-mod `HashVal` as
   `RollingHash` so 2D hashes are anti-hack safe on Codeforces. Reason: single 31-bit hashes collide
   easily at contest grid sizes. Reverse: revert to a single `Mod<2147483647>`.
+<<<<<<< HEAD
 
 ## 40. Number theory, combinatorics, NTT, and linear algebra (`design/stdlib/math.md`, 2026-11-21)
 
@@ -2099,3 +2101,29 @@ Reverse: delete the step from `scripts/check.sh`.
   `F64` specialization and respects CP Lang's default rejection of float equality. `XorBasis`
   lives in `std.matrix` with a `Monoid` combinator for segment trees. Reverse: unify behind a
   `Field` trait once traits support associated pivoting policies.
+
+## 41. `std.seq` complete surface (`design/stdlib/seq.md`, 2026-11-21)
+
+- **41.1 Sequence functions take `self: [D]T` whenever they read by index**, so one
+  definition covers `List<T>`, `[V]T`, and `Str` with zero runtime dispatch
+  and preserves `D` in return types (`?D`, `Range<D>`, `[D]?D`, `[D.bounds]T`).
+  Reason: `runs` and `pairs` typed on `List<T>` forced manual loops on `Str`
+  (`cf2084h`, `cf2069e`) and dropped domains on `[V]T`. Reverse: narrow
+  signatures back to `List<T>`.
+- **41.2 `chunk_by` and `run_ranges` yield `Range<D>` instead of copied `List<T>`
+  slices.** Reason: `runs_by` allocated a `List<T>` per run and ran 50x slower
+  than a manual loop on `cf2135f`; yielding `Range<D>` is O(1) extra space and
+  zero allocations while giving `r.len`, `a[r.first!]`, and `for i in r:`.
+  Reverse: return materialized slices once borrowed slice views exist.
+- **41.3 `prefix_fold` and `suffix_fold` return `[D.bounds]T`** (cut-indexed),
+  while `scan` and `suffix_scan` return `[D]T` (element-indexed, no identity).
+  Reason: matches `std.prefix.Prefix1` and eliminates `.ord` / `+ 1`
+  bookkeeping for outside-range queries `op(pref[r.lo], suff[r.hi])`
+  (`cf2062e2`). Reverse: drop `prefix_fold`/`suffix_fold` or return `[D]T`.
+- **41.4 General two-pointer loops stay user code; `std.seq` provides only
+  fixed-window `sliding_min`/`sliding_max` and monotone-stack
+  `prev_less`/`next_less`/`prev_greater`/`next_greater` (returning `[D]?D`).**
+  Reason: arbitrary two-pointer state is clearer as a 5-line loop than a
+  3-callback combinator, while sliding extrema and nearest-smaller/larger are
+  universal, sentinel-prone patterns. Reverse: add or remove individual helpers
+  in `stdlib/seq.cp`.
