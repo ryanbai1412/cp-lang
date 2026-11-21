@@ -5186,6 +5186,9 @@ impl<'p, 'io> Interp<'p, 'io> {
                         Value::Closure(cid, caps) => (*cid, Rc::clone(caps)),
                         _ => return trap(spans[cur_pc], "internal: expected closure"),
                     };
+                    if callee_v as usize >= chunk.num_local_v {
+                        regs_v[callee_v as usize] = Value::Unit;
+                    }
                     let def = &self.program.closures[cid];
                     let val = if let Some(callee) = compiled.closures[cid].as_ref() {
                         self.stack_left(spans[cur_pc], None)?;
@@ -5372,6 +5375,9 @@ impl<'p, 'io> Interp<'p, 'io> {
                         }
                         other => other.clone(),
                     };
+                    if src_v as usize >= chunk.num_local_v {
+                        regs_v[src_v as usize] = Value::Unit;
+                    }
                     regs_v[dst_v as usize] = v;
                 }
                 Op::UnwrapVI { dst_i, src_v } => {
@@ -5383,6 +5389,9 @@ impl<'p, 'io> Interp<'p, 'io> {
                         }
                         other => ScalarKind::unbox_val(other),
                     };
+                    if src_v as usize >= chunk.num_local_v {
+                        regs_v[src_v as usize] = Value::Unit;
+                    }
                     regs_i[dst_i as usize] = v;
                 }
                 Op::WrapSomeV { dst_v, src_v } => {
@@ -5411,6 +5420,9 @@ impl<'p, 'io> Interp<'p, 'io> {
                         Value::Range128(lo, hi) => (lo < hi).then_some(Value::I128(*hi - 1)),
                         _ => None,
                     };
+                    if seq_v as usize >= chunk.num_local_v {
+                        regs_v[seq_v as usize] = Value::Unit;
+                    }
                     regs_v[dst_v as usize] = Value::Opt(OptVal::from_option(opt));
                 }
                 Op::SeqLastOptI { dst_val, dst_some, seq_v } => {
@@ -5442,6 +5454,9 @@ impl<'p, 'io> Interp<'p, 'io> {
                         Value::Range(lo, hi) if lo < hi => (*hi - 1, 1),
                         _ => (0, 0),
                     };
+                    if seq_v as usize >= chunk.num_local_v {
+                        regs_v[seq_v as usize] = Value::Unit;
+                    }
                     regs_i[dst_val as usize] = v;
                     regs_i[dst_some as usize] = s;
                 }
@@ -5456,6 +5471,9 @@ impl<'p, 'io> Interp<'p, 'io> {
                         Value::Range128(lo, hi) => (lo < hi).then_some(Value::I128(*lo)),
                         _ => None,
                     };
+                    if seq_v as usize >= chunk.num_local_v {
+                        regs_v[seq_v as usize] = Value::Unit;
+                    }
                     regs_v[dst_v as usize] = Value::Opt(OptVal::from_option(opt));
                 }
                 Op::SeqFirstOptI { dst_val, dst_some, seq_v } => {
@@ -5483,6 +5501,9 @@ impl<'p, 'io> Interp<'p, 'io> {
                         Value::Range(lo, hi) if lo < hi => (*lo, 1),
                         _ => (0, 0),
                     };
+                    if seq_v as usize >= chunk.num_local_v {
+                        regs_v[seq_v as usize] = Value::Unit;
+                    }
                     regs_i[dst_val as usize] = v;
                     regs_i[dst_some as usize] = s;
                 }
@@ -5500,18 +5521,27 @@ impl<'p, 'io> Interp<'p, 'io> {
                         Value::DomainVal(_, len) => *len,
                         _ => 0,
                     };
+                    if seq_v as usize >= chunk.num_local_v {
+                        regs_v[seq_v as usize] = Value::Unit;
+                    }
                 }
                 Op::RangeLoI { dst, src_v } => {
                     regs_i[dst as usize] = match &regs_v[src_v as usize] {
                         Value::Range(lo, _) => *lo,
                         _ => 0,
                     };
+                    if src_v as usize >= chunk.num_local_v {
+                        regs_v[src_v as usize] = Value::Unit;
+                    }
                 }
                 Op::RangeHiI { dst, src_v } => {
                     regs_i[dst as usize] = match &regs_v[src_v as usize] {
                         Value::Range(_, hi) => *hi,
                         _ => 0,
                     };
+                    if src_v as usize >= chunk.num_local_v {
+                        regs_v[src_v as usize] = Value::Unit;
+                    }
                 }
                 Op::BitCeilI { dst, src } => {
                     let x = regs_i[src as usize];

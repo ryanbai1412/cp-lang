@@ -477,3 +477,20 @@ print(acc, ys.len, ys[2])
     assert_eq!(trap, None);
     assert_eq!(out, "15 3 2\n");
 }
+
+#[test]
+fn vm_temp_v_register_drop_avoids_cow_cloning_on_global_list() {
+    let source = "
+var stk: List<(Int, Int)> = []
+var acc = 0
+for i in 0..2000:
+    stk.push((i, i + 1))
+    if let (a, b) = stk.last:
+        acc += a + b
+    stk.pop()
+print(acc, stk.len)
+";
+    let (out, trap) = outcome(source, "");
+    assert_eq!(trap, None);
+    assert_eq!(out, "4000000 0\n");
+}
