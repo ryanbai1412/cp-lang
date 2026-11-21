@@ -21,12 +21,12 @@ fn tag(to: Sign -> Sign, seen: Sign -> MaxSub = _ => MaxSub.empty(), set: ?Cell 
 
 fn run(f: Tag, c: Cell) -> Cell:
     let p = path(f, sign(c.val))
-    let hist = MaxSub.join(c.hist, p.seen.scale(abs(c.val)))
-    if let s = f.set: (s.val, MaxSub.join(hist, s.hist)) else: (abs(c.val) * p.to, hist)
+    let hist = c.hist + p.seen.scale(abs(c.val))
+    if let s = f.set: (s.val, hist + s.hist) else: (abs(c.val) * p.to, hist)
 
 fn then(g: Tag, f: Tag) -> Tag:
     if let s = f.set: return (f.neg, f.zero, f.pos, run(g, s))
-    fn via(p: Path) -> Path = (path(g, p.to).to, MaxSub.join(p.seen, path(g, p.to).seen))
+    fn via(p: Path) -> Path = (path(g, p.to).to, p.seen + path(g, p.to).seen)
     (via(f.neg), via(f.zero), via(f.pos), g.set)
 
 let identity = tag(s => s)

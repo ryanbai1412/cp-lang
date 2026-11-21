@@ -1,4 +1,5 @@
 use std.algebra.{Monoid}
+use std.fenwick.{DualFenwick}
 use std.prefix.{prefix_fold, suffix_fold}
 use std.seq.{buckets}
 
@@ -7,6 +8,7 @@ use std.seq.{buckets}
 // iff the max weight mx outside sub(v) exceeds w[v], and every node u with
 // w[u] > w[v] is either inside sub(v), attains mx outside sub(v), or is a
 // root-to-leaf path-max ancestor covering all mx-nodes outside sub(v).
+
 struct MaxInfo<P>:
     w: Int
     lo: ?P
@@ -48,7 +50,7 @@ let suff = suffix_fold(m_max, pre_info)
 let by_w = buckets(w)
 
 var sub_bit = Fenwick<t.Pre, Int>.new()
-var anc_bit = Fenwick<t.Pre, Int>.new()
+var anc_bit = DualFenwick<t.Pre, Int>.new()
 var winners: List<V> = []
 var heavier = 0
 
@@ -60,14 +62,12 @@ for weight in W.rev:
         if mx.w > w_val:
             var covered = sub_bit.sum(r) + mx.cnt
             if let lp = prev_max[t.at[mx.lo!]], mx.hi! in t.sub(lp):
-                covered += anc_bit.prefix(t.pos(lp).r)
+                covered += anc_bit.get(t.pos(lp))
             if covered == heavier:
                 winners.push(v)
     for v in by_w[weight]:
         if top_max[v] == v:
-            anc_bit.add(t.pos(v), 1)
-            if let after = t.pos(v) + t.size(v):
-                anc_bit.add(after, -1)
+            anc_bit.add(t.sub(v), 1)
         sub_bit.add(t.pos(v), 1)
         heavier += 1
 

@@ -36,7 +36,7 @@ for c in Color:
     total_intervals += 1
 
 domain Pos = 0..=n
-var seg = LazySegTree<Pos, Int>(AddMax, [Pos] _ => 0)
+var seg = LazySegTree<Pos, Int>(AddMax, fill: 0)
 for r in Rank:
     let v = seg.all + Int(not must_rank[r])
     seg.set(Pos(r.to_idx + 1), v)
