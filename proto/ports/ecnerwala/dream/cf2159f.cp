@@ -45,8 +45,8 @@ var heap = MinHeap<Seg>(by: s => s.val)
 
 for len in 1..=n:
     var v0 = max(a[0, j] for j in 0..len)!
-    var t0 = Time.first
-    while t0 < Time.last:
+    var t0 = Time.first!
+    while t0 < Time.last!:
         heap.push(Seg(v0, len, t0, t0, 1))
         let t1 = t0.saturating_add(len)
         let v1 = query(len, t1)

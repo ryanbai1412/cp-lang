@@ -27,7 +27,7 @@ let hi = sweep(a.rev, Pos.last!, min, below: false)
 
 let by_lo = Val.group(by: v => lo[v])
 var pq = MinHeap<(Pos, Val)>()
-var b: [Pos]Val = Val.first
+var b: [Pos]Val = Val.first!
 
 for i in Pos:
     for v in by_lo[i]: pq.push((hi[v], v))

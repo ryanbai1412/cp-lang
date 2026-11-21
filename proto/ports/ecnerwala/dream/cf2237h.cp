@@ -9,7 +9,7 @@ let (n, m, q): (2..=100_000, 2..=100_000, 1..=100_000) = read()
 domain V = 1..=n
 domain Slime = 0..m
 domain Time = 1..=q + 2
-let never = Time.first
+let never = Time.first!
 let start = (Time.first + 1)!
 let tree = Rooted(Graph.undirected(read<[n - 1](u: V, v: V)>()), V.first)
 let init: [Slime]V = read()

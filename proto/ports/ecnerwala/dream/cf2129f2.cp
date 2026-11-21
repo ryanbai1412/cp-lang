@@ -41,7 +41,7 @@ for q in Q:
     if not vals.is_empty:
         for p in query_positions(vals): sig[Pos(p)].add(q)
 
-var ans: [Pos]Val = Val.first
+var ans: [Pos]Val = Val.first!
 var undo: [Val]?(Pos, Pos) = none
 var probes: List<Int> = []
 for (s, ps) in Pos.group(by: p => sig[p]):
