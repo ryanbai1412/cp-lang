@@ -287,6 +287,15 @@ pub(crate) enum Op {
         dst_some: u16,
         ret_mode: CallRet,
     },
+    CallClosure {
+        callee_v: u16,
+        arg_base_i: u16,
+        arg_base_v: u16,
+        dst_i: u16,
+        dst_v: u16,
+        dst_some: u16,
+        ret_mode: CallRet,
+    },
     RetI { src: u16 },
     RetV { src: u16 },
     RetUnit,
@@ -352,6 +361,7 @@ pub(crate) struct Chunk<'p> {
 pub(crate) struct CompiledProgram<'p> {
     pub main: Chunk<'p>,
     pub fns: Vec<Option<Chunk<'p>>>,
+    pub closures: Vec<Option<Chunk<'p>>>,
 }
 
 impl<'p> CompiledProgram<'p> {
@@ -372,11 +382,31 @@ impl<'p> CompiledProgram<'p> {
                 fns.push(Some(chunk));
             }
         }
+        let mut closures = Vec::with_capacity(program.closures.len());
+        for def in &program.closures {
+            let can_compile = def.locals.len() <= 512
+                && def.muts.is_empty()
+                && def.captures.iter().all(|cap| !cap.by_ref)
+                && def.params.iter().enumerate().all(|(i, &s)| s == i);
+            if !can_compile {
+                closures.push(None);
+            } else {
+                let guarded_domains = program.fn_guarded_domains(&def.ret, &def.body);
+                let mut c = Compiler::new(program, &def.locals, None, def.params.len());
+                let ret_kind = ScalarKind::of_ty(&def.ret, program);
+                c.compile_block(&def.body, ret_kind, true);
+                let mut chunk = c.finish();
+                chunk.param_count = def.params.len();
+                chunk.ret_kind = ret_kind;
+                chunk.guarded_domains = guarded_domains;
+                closures.push(Some(chunk));
+            }
+        }
         let mut main_c = Compiler::new(program, &program.main_locals, None, 0);
         main_c.compile_block(&program.main, None, false);
         main_c.emit(Op::RetUnit, Span::default());
         let main = main_c.finish();
-        CompiledProgram { main, fns }
+        CompiledProgram { main, fns, closures }
     }
 }
 
@@ -713,6 +743,83 @@ impl<'p> Compiler<'p> {
                 }
             }
         }
+        Some((dst_i, dst_v, dst_some))
+    }
+
+    fn try_compile_call_closure(
+        &mut self,
+        callee: &'p Expr,
+        args: &'p [Arg],
+        ret_mode: CallRet,
+        span: Span,
+    ) -> Option<(u16, u16, u16)> {
+        let Ty::Fn(params, _) = &callee.ty else {
+            return None;
+        };
+        if args.len() != params.len() || !args.iter().all(|a| matches!(a, Arg::Value(_))) {
+            return None;
+        }
+        let mut ni = 0usize;
+        let mut nv = 0usize;
+        for ty in params {
+            if ScalarKind::of_ty(ty, self.program).is_some() {
+                ni += 1;
+            } else if ScalarKind::of_opt_ty(ty, self.program).is_some() {
+                ni += 2;
+            } else {
+                nv += 1;
+            }
+        }
+        if ni > 8 || nv > 8 {
+            return None;
+        }
+        let callee_v = self.compile_expr_v(callee);
+        let mut i_args = Vec::with_capacity(ni);
+        let mut v_args = Vec::with_capacity(nv);
+        for (ty, a) in params.iter().zip(args.iter()) {
+            let Arg::Value(ae) = a else { unreachable!() };
+            if ScalarKind::of_ty(ty, self.program).is_some() {
+                i_args.push(self.compile_expr_i(ae));
+            } else if ScalarKind::of_opt_ty(ty, self.program).is_some() {
+                let (v, s) = self.compile_expr_opt_i(ae);
+                i_args.push(v);
+                i_args.push(s);
+            } else {
+                v_args.push(self.compile_expr_v(ae));
+            }
+        }
+        let arg_base_i = self.next_i;
+        for r in i_args {
+            let slot = self.alloc_i();
+            if slot != r {
+                self.emit(Op::MoveI { dst: slot, src: r }, span);
+            }
+        }
+        let arg_base_v = self.next_v;
+        for r in v_args {
+            let slot = self.alloc_v();
+            if slot != r {
+                self.emit(Op::MoveV { dst: slot, src: r }, span);
+            }
+        }
+        let (dst_i, dst_v, dst_some) = match ret_mode {
+            CallRet::Unit => (0, 0, 0),
+            CallRet::I => (self.alloc_i(), 0, 0),
+            CallRet::OptI => (self.alloc_i(), 0, self.alloc_i()),
+            CallRet::V => (0, self.alloc_v(), 0),
+        };
+        self.emit(
+            Op::CallClosure {
+                callee_v,
+                arg_base_i,
+                arg_base_v,
+                dst_i,
+                dst_v,
+                dst_some,
+                ret_mode,
+            },
+            span,
+        );
         Some((dst_i, dst_v, dst_some))
     }
 
@@ -1257,6 +1364,13 @@ impl<'p> Compiler<'p> {
                 } else if let ExprKind::Call(fn_id, args) = &expr.kind {
                     if self
                         .try_compile_call_mix(*fn_id, args, CallRet::Unit, expr.span)
+                        .is_none()
+                    {
+                        self.emit_fallback_stmt(stmt);
+                    }
+                } else if let ExprKind::CallExpr(callee, args) = &expr.kind {
+                    if self
+                        .try_compile_call_closure(callee, args, CallRet::Unit, expr.span)
                         .is_none()
                     {
                         self.emit_fallback_stmt(stmt);
@@ -2435,6 +2549,19 @@ impl<'p> Compiler<'p> {
                     (dst_val, dst_some)
                 }
             }
+            ExprKind::CallExpr(callee, args) => {
+                if let Some((dst_val, _, dst_some)) =
+                    self.try_compile_call_closure(callee, args, CallRet::OptI, span)
+                {
+                    (dst_val, dst_some)
+                } else {
+                    let src_v = self.emit_fallback_expr_v(expr);
+                    let dst_val = self.alloc_i();
+                    let dst_some = self.alloc_i();
+                    self.emit(Op::UnboxOptI { dst_val, dst_some, src_v }, span);
+                    (dst_val, dst_some)
+                }
+            }
             ExprKind::If(cond, then_e, else_e) => {
                 if let Some(b) = Self::const_bool(cond) {
                     return if b {
@@ -3043,6 +3170,15 @@ impl<'p> Compiler<'p> {
                     }
                 }
             }
+            ExprKind::CallExpr(callee, args) => {
+                if let Some((dst, _, _)) =
+                    self.try_compile_call_closure(callee, args, CallRet::I, span)
+                {
+                    dst
+                } else {
+                    self.emit_fallback_expr_i(expr)
+                }
+            }
             _ => self.emit_fallback_expr_i(expr),
         }
     }
@@ -3200,6 +3336,15 @@ impl<'p> Compiler<'p> {
             ExprKind::Call(fn_id, args) => {
                 if let Some((_, dst_v, _)) =
                     self.try_compile_call_mix(*fn_id, args, CallRet::V, span)
+                {
+                    dst_v
+                } else {
+                    self.emit_fallback_expr_v(expr)
+                }
+            }
+            ExprKind::CallExpr(callee, args) => {
+                if let Some((_, dst_v, _)) =
+                    self.try_compile_call_closure(callee, args, CallRet::V, span)
                 {
                     dst_v
                 } else {
@@ -4985,6 +5130,164 @@ impl<'p, 'io> Interp<'p, 'io> {
                             regs_v[abv + k] = std::mem::replace(&mut arg_buf_v[k], Value::Unit);
                         }
                     }
+                    match ret_mode {
+                        CallRet::Unit => {}
+                        CallRet::I => regs_i[dst_i as usize] = ScalarKind::unbox_val(&val),
+                        CallRet::OptI => {
+                            let (v, s) = ScalarKind::unbox_opt(&val);
+                            regs_i[dst_i as usize] = v;
+                            regs_i[dst_some as usize] = s;
+                        }
+                        CallRet::V => regs_v[dst_v as usize] = val,
+                    }
+                }
+                Op::CallClosure {
+                    callee_v,
+                    arg_base_i,
+                    arg_base_v,
+                    dst_i,
+                    dst_v,
+                    dst_some,
+                    ret_mode,
+                } => {
+                    let (cid, caps) = match &regs_v[callee_v as usize] {
+                        Value::Closure(cid, caps) => (*cid, Rc::clone(caps)),
+                        _ => return trap(spans[cur_pc], "internal: expected closure"),
+                    };
+                    let def = &self.program.closures[cid];
+                    let val = if let Some(callee) = compiled.closures[cid].as_ref() {
+                        self.stack_left(spans[cur_pc], None)?;
+                        let mut ni = 0usize;
+                        let mut nv = 0usize;
+                        for loc in callee.slot_map.iter().take(callee.param_count) {
+                            match loc {
+                                SlotLoc::I(..) => ni += 1,
+                                SlotLoc::OptI { .. } => ni += 2,
+                                SlotLoc::V(_) => nv += 1,
+                                SlotLoc::SmallTuple { .. } => {
+                                    unreachable!("params are never SmallTuple")
+                                }
+                            }
+                        }
+                        let mut arg_buf_i = [0i64; 8];
+                        let abi = arg_base_i as usize;
+                        arg_buf_i[..ni].copy_from_slice(&regs_i[abi..abi + ni]);
+                        let mut arg_buf_v: [Value; 8] = std::array::from_fn(|_| Value::Unit);
+                        let abv = arg_base_v as usize;
+                        for k in 0..nv {
+                            arg_buf_v[k] = std::mem::replace(&mut regs_v[abv + k], Value::Unit);
+                        }
+                        let needs_stack = !callee.fallback_stmts.is_empty()
+                            || !callee.fallback_exprs.is_empty();
+                        let saved_base = self.base;
+                        if needs_stack {
+                            self.base = self.stack.len();
+                            self.stack.resize(self.base + def.locals.len(), Value::Unit);
+                            self.frame_locals.push(&def.locals);
+                        }
+                        self.call_frames.push(("<closure>", spans[cur_pc]));
+                        let prev_in_closure = std::mem::replace(&mut self.in_closure, true);
+                        let c_base_i = vm_regs_i.len();
+                        vm_regs_i.resize(c_base_i + callee.num_i, 0);
+                        let mut c_regs_v = if callee.num_v > 0 {
+                            vec![Value::Unit; callee.num_v]
+                        } else {
+                            Vec::new()
+                        };
+                        let mut ii = 0usize;
+                        let mut iv = 0usize;
+                        for loc in callee.slot_map.iter().take(callee.param_count) {
+                            match *loc {
+                                SlotLoc::I(r, _) => {
+                                    vm_regs_i[c_base_i + r as usize] = arg_buf_i[ii];
+                                    ii += 1;
+                                }
+                                SlotLoc::OptI { val, some, .. } => {
+                                    vm_regs_i[c_base_i + val as usize] = arg_buf_i[ii];
+                                    vm_regs_i[c_base_i + some as usize] = arg_buf_i[ii + 1];
+                                    ii += 2;
+                                }
+                                SlotLoc::V(r) => {
+                                    c_regs_v[r as usize] =
+                                        std::mem::replace(&mut arg_buf_v[iv], Value::Unit);
+                                    iv += 1;
+                                }
+                                SlotLoc::SmallTuple { .. } => {
+                                    unreachable!("params are never SmallTuple")
+                                }
+                            }
+                        }
+                        for (cap, cval) in def.captures.iter().zip(caps.iter()) {
+                            let crate::CaptureVal::Val(v) = cval else {
+                                unreachable!("compiled closures only have value captures")
+                            };
+                            match callee.slot_map[cap.inner] {
+                                SlotLoc::I(r, _) => {
+                                    vm_regs_i[c_base_i + r as usize] = ScalarKind::unbox_val(v);
+                                }
+                                SlotLoc::OptI { val, some, .. } => {
+                                    let (rv, rs) = ScalarKind::unbox_opt(v);
+                                    vm_regs_i[c_base_i + val as usize] = rv;
+                                    vm_regs_i[c_base_i + some as usize] = rs;
+                                }
+                                SlotLoc::SmallTuple { base: b, len, .. } => {
+                                    if let Value::Tuple(TupleVal::Boxed(fs)) = v {
+                                        for (k, f) in fs.iter().take(len as usize).enumerate() {
+                                            vm_regs_i[c_base_i + b as usize + k] =
+                                                ScalarKind::unbox_val(f);
+                                        }
+                                    }
+                                }
+                                SlotLoc::V(r) => c_regs_v[r as usize] = v.clone(),
+                            }
+                        }
+                        let dom_mark = self.saved_domains.len();
+                        for &d in &callee.guarded_domains {
+                            self.saved_domains.push((d, self.domains[d]));
+                        }
+                        let res = self.exec_chunk_inner(
+                            compiled,
+                            callee,
+                            c_base_i,
+                            vm_regs_i,
+                            &mut c_regs_v,
+                        );
+                        while self.saved_domains.len() > dom_mark {
+                            let (id, prev) = self.saved_domains.pop().unwrap();
+                            self.domains[id] = prev;
+                        }
+                        vm_regs_i.truncate(c_base_i);
+                        self.in_closure = prev_in_closure;
+                        if needs_stack {
+                            self.frame_locals.pop();
+                            self.stack.truncate(self.base);
+                            self.base = saved_base;
+                        }
+                        let v = res?;
+                        self.call_frames.pop();
+                        regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                        v
+                    } else {
+                        let mut boxed = Vec::with_capacity(def.params.len());
+                        let mut ii = arg_base_i as usize;
+                        let mut iv = arg_base_v as usize;
+                        for &pslot in &def.params {
+                            let ty = &def.locals[pslot].ty;
+                            if let Some(kind) = ScalarKind::of_ty(ty, self.program) {
+                                boxed.push(kind.box_val(regs_i[ii]));
+                                ii += 1;
+                            } else if let Some(kind) = ScalarKind::of_opt_ty(ty, self.program) {
+                                boxed.push(kind.box_opt(regs_i[ii], regs_i[ii + 1]));
+                                ii += 2;
+                            } else {
+                                boxed.push(std::mem::replace(&mut regs_v[iv], Value::Unit));
+                                iv += 1;
+                            }
+                        }
+                        let v = self.call_value(Value::Closure(cid, caps), boxed, spans[cur_pc])?;
+                        regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                        v
+                    };
                     match ret_mode {
                         CallRet::Unit => {}
                         CallRet::I => regs_i[dst_i as usize] = ScalarKind::unbox_val(&val),

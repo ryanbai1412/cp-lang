@@ -436,3 +436,22 @@ print(solve(4), solve(3))
     assert_eq!(trap, None);
     assert_eq!(out, "111 107\n");
 }
+
+#[test]
+fn vm_closure_calls_with_and_without_captures() {
+    let source = "
+fn apply2(f: (Int, Int) -> Int, a: Int, b: Int) -> Int:
+    return f(a, b)
+
+let k = 10
+let add = (x: Int, y: Int) => x + y
+let scaled = (x: Int, y: Int) => (x + y) * k
+var acc = 0
+for i in 0..5:
+    acc += apply2(add, i, 1) + apply2(scaled, i, 1)
+print(acc)
+";
+    let (out, trap) = outcome(source, "");
+    assert_eq!(trap, None);
+    assert_eq!(out, "165\n");
+}
