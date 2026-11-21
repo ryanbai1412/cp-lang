@@ -1450,7 +1450,10 @@ impl<'p> Emitter<'p> {
                 Code::primary(format!("cpl::abs128({})", text(0)))
             }
             Builtin::Abs => Code::primary(format!("std::abs({})", widen(&codes[0]).text)),
-            Builtin::Sqrt => Code::primary(format!("std::sqrt({})", text(0))),
+            Builtin::Sqrt => {
+                self.need("fsqrt");
+                Code::primary(format!("cpl::fsqrt({})", text(0)))
+            }
             Builtin::Isqrt => {
                 self.need("bits");
                 Code::primary(format!("cpl::isqrt({})", text(0)))

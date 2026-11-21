@@ -683,6 +683,84 @@ fn a_checked_build_stops_on_wide_int_mistakes() {
     std::fs::remove_dir_all(&dir).ok();
 }
 
+/// Negative `sqrt` traps with the same message in `cpl run` and `cpl build --checked`
+/// while release C++ (`-O2`, no `-DLOCAL`) stays raw.
+#[test]
+fn sqrt_negative_traps_in_interp_and_checked_cpp_not_release() {
+    use std::io::Write;
+    use std::process::Stdio;
+
+    if Command::new("g++").arg("--version").output().is_err() {
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("cpl-cli-sqrt-test-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("s.cp");
+    std::fs::write(&file, "let x: F64 = read()\nprint(sqrt(x))\n").unwrap();
+
+    let built = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["build", "--checked"])
+        .arg(&file)
+        .output()
+        .expect("cpl build --checked runs");
+    assert!(built.status.success(), "{built:?}");
+
+    let run_bin = |cmd: &mut Command, input: &str| {
+        let mut child = cmd
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("spawn");
+        child.stdin.take().unwrap().write_all(input.as_bytes()).unwrap();
+        child.wait_with_output().unwrap()
+    };
+
+    // Valid inputs (including 0.0 and -0.0) succeed and agree.
+    for input in ["4.0\n", "0.0\n", "-0.0\n"] {
+        let mut interp_cmd = Command::new(env!("CARGO_BIN_EXE_cpl"));
+        interp_cmd.arg("run").arg(&file);
+        let interp = run_bin(&mut interp_cmd, input);
+        let mut chk_cmd = Command::new(dir.join("s.checked"));
+        let chk = run_bin(&mut chk_cmd, input);
+        assert!(interp.status.success(), "interp failed on {input:?}: {interp:?}");
+        assert!(chk.status.success(), "checked failed on {input:?}: {chk:?}");
+        assert_eq!(
+            String::from_utf8_lossy(&interp.stdout),
+            String::from_utf8_lossy(&chk.stdout),
+            "stdout mismatch on {input:?}"
+        );
+    }
+
+    // Negative input traps identically in interpreter and checked C++.
+    let mut interp_cmd = Command::new(env!("CARGO_BIN_EXE_cpl"));
+    interp_cmd.arg("run").arg(&file);
+    let interp = run_bin(&mut interp_cmd, "-1.0\n");
+    let mut chk_cmd = Command::new(dir.join("s.checked"));
+    let chk = run_bin(&mut chk_cmd, "-1.0\n");
+    assert_eq!(interp.status.code(), Some(3), "interp: {interp:?}");
+    assert_eq!(chk.status.code(), Some(3), "checked: {chk:?}");
+    let interp_err = String::from_utf8_lossy(&interp.stderr);
+    let chk_err = String::from_utf8_lossy(&chk.stderr);
+    assert!(interp_err.contains("sqrt(-1) of a negative number"), "interp: {interp_err}");
+    assert!(chk_err.contains("sqrt(-1) of a negative number"), "checked: {chk_err}");
+
+    // Release C++ (no -DLOCAL) stays raw and does not trap.
+    let rel_bin = dir.join("s.release");
+    let gpp = Command::new("g++")
+        .args(["-std=c++17", "-O2", "-o"])
+        .arg(&rel_bin)
+        .arg(dir.join("s.cpp"))
+        .output()
+        .expect("g++ runs");
+    assert!(gpp.status.success(), "g++: {gpp:?}");
+    let mut rel_cmd = Command::new(&rel_bin);
+    let rel = run_bin(&mut rel_cmd, "-1.0\n");
+    assert!(rel.status.success(), "release should stay raw: {rel:?}");
+
+    std::fs::remove_dir_all(&dir).ok();
+}
+
 #[test]
 fn cpl_run_still_checks_an_index_inside_unchecked() {
     let dir = std::env::temp_dir().join(format!("cpl-cli-unchecked-{}", std::process::id()));

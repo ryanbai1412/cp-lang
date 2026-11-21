@@ -3145,7 +3145,6 @@ restoring the `fail` in `check.sh` and appending to `regressions` in
    - **Reason:** cf2152f builds its trees right to left, each vertex's parent already placed. Building a `Rooted` for them made the port 2.7x slower than the C++ and use 4x the memory (0.60 s / 64 MB vs 0.22 s / 15 MB). The port's own jump pointers were the right structure, but no other port could reuse them. With `JumpTree` the port runs in 0.12 s vs 0.11 s for the C++, with identical output.
    - **Also:** `Rooted.ancestor(v, k)` returns `none` for negative `k`; it used to return a descendant. The new test that checks `JumpTree` against `Rooted` found this.
    - **Reverse:** move the struct back into `cf2152f.cp`.
-
 ## 80. One `prefix(a)` spelling with `L0513` (`prefix_twin`) (2026-11-21)
 
 - **Decision:** Standardize on `prefix(a)` as the single public spelling for static prefix sums across `List<T>`, `[D]T`, and `[R, C]T`. Keep `prefix_n`, `prefix1`, and `prefix2` in `stdlib/prefix.cp` as the underlying monomorphic constructors dispatched by `BUILT_ON`, and add taste lint `L0513` (`prefix_twin`) with `cpl lint --fix` rewriting `prefix_n(a)` / `prefix1(a)` / `prefix2(a)` to `prefix(a)`.
@@ -3180,7 +3179,6 @@ alias such a global by reference bind `const auto&`. Test:
 `global_stored_once_with_a_literal_is_constexpr`. Reverse by deleting
 `Emitter::const_global` and the `const_globals` checks in `stmt.rs` and
 `expr.rs`.
-
 ## 83. Canonical-spelling docs gate and reasoning-enabled writable-from-docs harness (2026-11-21)
 
 1. **Enforce accepted CP Lang spellings in `site/check_docs.py` (`check_canonical_spellings`).**
@@ -3190,3 +3188,10 @@ alias such a global by reference bind `const auto&`. Test:
 2. **Use `reasoning_effort="medium"` (overrideable via `WFD_REASONING_EFFORT`), `max_completion_tokens=16384`, and `300s` HTTP timeout for `gpt-5*`/`o3`/`o4` in `scripts/writable-from-docs.py`.**
    - **Reason:** With default `reasoning_effort="none"`, `gpt-5.4` produced ~18 algorithmic WAs on Div2 C–E / ARC B problems that masked real CP Lang documentation gaps. Enabling medium reasoning surfaced genuine doc gaps (`Mod<P>.v`, lent `Str` slices, `Int`-only ranges, parenthesized multi-line expressions and `??=`, `mut` parameter semantics, `[D]Char` `sep: " "`, `Map[k]` trap semantics) and lifted pass rate from 29/55 (52.7%) to 48/55 (87.3%).
    - **Reverse:** Remove `payload["reasoning_effort"]` and restore `max_completion_tokens = 4096` and `timeout = 180` in `scripts/writable-from-docs.py`.
+
+## 84. Negative `sqrt` traps in `cpl run` and `cpl build --checked` (2026-11-21)
+
+1. **`sqrt(x)` for `x < 0.0` traps with `sqrt(<x>) of a negative number` (exit 3) in `cpl-interp` and under `-DLOCAL` (`cpl build --checked`), while release builds stay raw `std::sqrt(x)`.**
+   - **Reason:** Calling `sqrt` on a tiny negative float (e.g. `r*r - d*d = -1e-15` from rounding) previously produced a silent `NaN` that poisoned downstream comparisons and sorts (`flt_sqrt_neg_nan`, the last unhandled case in the P0 `floating-point` bug-replay class). Checking `x < 0.0` in `cpl-interp` and inside `#ifdef LOCAL` in `cpl::fsqrt` catches the domain error identically in debug and checked builds with zero release overhead (`-0.0 < 0.0` is false, so `sqrt(-0.0)` still succeeds). Brings `floating-point` bug-replay to 6/6 (100%) and total P0 bug-replay to 60/63 (95.2%).
+   - **Test:** `sqrt_negative_traps_in_interp_and_checked_cpp_not_release`, `golden_math_assert_and_input_errors`, and `bench/goal_tests/bug_replay/flt_sqrt_neg_nan.cp`.
+   - **Reverse:** Remove the `x < 0.0` check in `crates/cpl-interp/src/lib.rs`, remove the `fsqrt` piece from `crates/cpl-codegen/src/runtime.rs`, and emit `std::sqrt(...)` directly in `crates/cpl-codegen/src/expr.rs`.

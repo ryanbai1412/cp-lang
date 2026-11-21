@@ -152,6 +152,11 @@ fn golden_math_assert_and_input_errors() {
             "isqrt(-4) of a negative number",
         ),
         (
+            "let a: F64 = read()\nprint(sqrt(a))\n",
+            "-1.0\n",
+            "sqrt(-1) of a negative number",
+        ),
+        (
             "assert 1 > 2\n",
             "",
             "assertion failed: 1 > 2",

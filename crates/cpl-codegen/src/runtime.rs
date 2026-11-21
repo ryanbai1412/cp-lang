@@ -351,6 +351,18 @@ inline __int128 abs128(__int128 x) { return x < 0 ? -x : x; }
 ",
     },
     Piece {
+        name: "fsqrt",
+        needs: &["out"],
+        code: "\
+inline double fsqrt(double x) {
+#ifdef LOCAL
+    if (x < 0.0) { cpl::flush(); fprintf(stderr, \"sqrt(%g) of a negative number\\n\", x); exit(3); }
+#endif
+    return std::sqrt(x);
+}
+",
+    },
+    Piece {
         name: "shl128",
         needs: &[],
         code: "\

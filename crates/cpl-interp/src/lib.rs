@@ -3001,7 +3001,13 @@ impl<'p, 'o> Interp<'p, 'o> {
                     other => other,
                 }
             }
-            Builtin::Sqrt => Value::Float(first.float().sqrt()),
+            Builtin::Sqrt => {
+                let x = first.float();
+                if x < 0.0 {
+                    return trap(span, format!("sqrt({x}) of a negative number"));
+                }
+                Value::Float(x.sqrt())
+            }
             Builtin::Isqrt => {
                 let x = first.int();
                 if x < 0 {
