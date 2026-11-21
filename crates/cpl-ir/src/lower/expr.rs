@@ -132,6 +132,11 @@ impl<'a> Lowerer<'a> {
                 if let Some((slot, _)) = self.capture_self_from_outer() {
                     return self.local(slot, span);
                 }
+                if self.cx.is_closure {
+                    if let Some(slot) = self.capture_from_outer("self") {
+                        return self.local(slot, span);
+                    }
+                }
                 self.error(codes::UNRESOLVED_NAME, span, "`self` outside a method");
                 self.err_expr(span)
             }
