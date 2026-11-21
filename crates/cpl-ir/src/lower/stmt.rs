@@ -1937,6 +1937,9 @@ impl<'a> Lowerer<'a> {
             if value.ty == want || value.ty == Ty::Error {
                 return Some(value);
             }
+            if same_cells(&want, &value.ty) {
+                return Some(Expr { ty: want, ..value });
+            }
             return Some(match self.try_coerce(value, &elem_ty) {
                 Ok(value) => {
                     let value = match elem_range.as_ref() {

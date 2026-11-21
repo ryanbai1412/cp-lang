@@ -1,0 +1,13 @@
+error[E0302]: `swapped` is declared a [n](a: Bool, b: Int), but `es` is a [n](Int, Bool)
+  --> named_tuple_cells_keep_their_order.cp:4:37
+  |
+4 | let swapped: [n](a: Bool, b: Int) = es
+  |                                     ^^
+
+error[E0302]: `os` is declared an ?(a: Bool, b: Int), but `o` is an ?(Int, Bool)
+  --> named_tuple_cells_keep_their_order.cp:6:30
+  |
+6 | let os: ?(a: Bool, b: Int) = o
+  |                              ^
+
+named_tuple_cells_keep_their_order.cp: 2 errors

@@ -187,6 +187,7 @@ impl Ty {
             (a, b) if a.is_int() && b.is_int() => true,
             (a, Ty::Float) if a.is_int() => true,
             (a, Ty::Named { name, .. }) if a.is_int() && number(name) => true,
+            (Ty::Optional(a), Ty::Optional(b)) => a.fits_in(b, number),
             (a, Ty::Optional(inner)) => a.fits_in(inner, number),
             (
                 Ty::Array {

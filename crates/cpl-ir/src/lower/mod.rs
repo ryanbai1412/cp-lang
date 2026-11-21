@@ -4013,6 +4013,12 @@ impl<'a> Lowerer<'a> {
             Ok(done) => return Ok(done),
             Err(e) => e,
         };
+        if same_cells(want, &e.ty) {
+            return Ok(Expr {
+                ty: want.clone(),
+                ..e
+            });
+        }
         match (want, &e.ty) {
             (Ty::Str, Ty::StrView) => Ok(Expr {
                 kind: ExprKind::Builtin(Builtin::ToStr, vec![e]),
@@ -4455,6 +4461,29 @@ impl<'a> Lowerer<'a> {
             }
             _ => Err(e),
         }
+    }
+}
+
+/// Whether `a` and `b` differ only in naming the fields of tuples, so a
+/// value of one is a value of the other, held the same way: `[n](V, V)`
+/// is a `[n](u: V, v: V)`.
+fn same_cells(a: &Ty, b: &Ty) -> bool {
+    let fields = |ty: &Ty| -> Option<Vec<Ty>> {
+        match ty {
+            Ty::Tuple(items) => Some(items.clone()),
+            Ty::Record(fields) => Some(fields.iter().map(|(_, ty)| ty.clone()).collect()),
+            _ => None,
+        }
+    };
+    match (a, b) {
+        _ if a == b => true,
+        (Ty::Tuple(_) | Ty::Record(_), Ty::Tuple(_)) | (Ty::Tuple(_), Ty::Record(_)) => {
+            let (a, b) = (fields(a).unwrap_or_default(), fields(b).unwrap_or_default());
+            a.len() == b.len() && a.iter().zip(&b).all(|(a, b)| same_cells(a, b))
+        }
+        (Ty::Opt(a), Ty::Opt(b)) | (Ty::List(a), Ty::List(b)) => same_cells(a, b),
+        (Ty::Array { dims: ad, elem: ae }, Ty::Array { dims: bd, elem: be }) => ad == bd && same_cells(ae, be),
+        _ => false,
     }
 }
 
