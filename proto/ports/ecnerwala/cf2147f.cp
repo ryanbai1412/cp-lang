@@ -1,3 +1,8 @@
+// Sort items by value. Cut c (values <= c vs > c) is free when no item has one value
+// on each side; free cuts split the items into SCCs, each reaching all lower ones.
+// So the answer is n(n+1)/2 plus sum d(d-1)/2 over gaps d between consecutive free
+// cuts. Item i covers cuts min(p, s) ..< max(p, s): keep, under range add, the cuts
+// at the minimum cover (always 0, since cuts 0 and n are free) and their gap sum.
 @!multitest
 let n: 2..=100_000 = read()
 let q: 1..=100_000 = read()
@@ -28,13 +33,12 @@ var low = LazySegTree<Cut, ?Low>(act, [Cut] c => Low(0, c, c, 0))
 fn cover(i: Item, d: Int):
     let lo = min(p[i], s[i])
     let hi = max(p[i], s[i])
-    if lo < hi: low.apply(lo..hi, d)
+    low.apply(lo..hi, d)
 
 for i in Item: cover(i, 1)
 repeat q:
     let (t, i, j): (1..=2, Item, Item) = read()
     for x in [i, j]: cover(x, -1)
-    if t == 1: (p[i], p[j]) = (p[j], p[i])
-    else: (s[i], s[j]) = (s[j], s[i])
+    if t == 1: p.swap(i, j) else: s.swap(i, j)
     for x in [i, j]: cover(x, 1)
     print(choose2(n + 1) + low.all!.gaps)
