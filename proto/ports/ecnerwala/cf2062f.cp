@@ -5,23 +5,24 @@
 // y order tracks how many are chosen and which roles are filled.
 @!multitest
 let n: 2..=3000 = read()
-enum Stage: Start, Low, OneEnd, TwoEnds, Done
+domain Stage = 0..5
+let (start, low, one_end, two_ends, done) = (Stage(0), Stage(1), Stage(2), Stage(3), Stage(4))
 
 fn roles(a: Int, b: Int) -> List<(Stage, Stage, Int)> = [
-    (Start, Low, 2 * b),
-    (Start, OneEnd, b),
-    (Low, Low, a + b),
-    (Low, OneEnd, a),
-    (OneEnd, OneEnd, a + b),
-    (OneEnd, TwoEnds, b),
-    (OneEnd, Done, a),
-    (TwoEnds, TwoEnds, a + b),
-    (TwoEnds, Done, 2 * a),
+    (start, low, 2 * b),
+    (start, one_end, b),
+    (low, low, a + b),
+    (low, one_end, a),
+    (one_end, one_end, a + b),
+    (one_end, two_ends, b),
+    (one_end, done, a),
+    (two_ends, two_ends, a + b),
+    (two_ends, done, 2 * a),
 ]
 
 var cost: [0..=n, Stage]?Int = none
-cost[0, Start] = 0
+cost[0, start] = 0
 for (i, (a, b)) in read<[n](a: 0..=1e9, b: 0..=1e9)>().sorted(by: c => c.a - c.b).items:
     for k in (0..=i).rev, (from, to, w) in roles(a, b):
         cost[k + 1, to] min= cost[k, from] + w
-print([cost[k, Done]! for k in 2..=n])
+print([cost[k, done]! for k in 2..=n])
