@@ -985,6 +985,7 @@ struct Diff<D, T> // offline 1D/2D difference array (`Diff<D, T>()` or `Diff<R, 
     fn new() -> Diff<D, T>
     fn add(mut self, r: Range<D>, x: T) // (rows: Range<R>, cols: Range<C>, x: T) for 2D
     fn finish(self) -> [D]T // [R, C]T for 2D
+// Matched C++17 benchmarks (`bench/prefix/`): p50 = 1.10x, max = 1.35x (prefix_1d 1.25x / 8.2 KB, prefix_2d 1.04x / 10.5 KB, diff_1d 1.15x / 8.4 KB, diff_2d 1.05x / 11.1 KB, fill_1d_fwd 0.88x / 11.4 KB, fill_1d_rev 0.91x / 11.6 KB, fill_2d_fwd 1.33x / 14.3 KB, fill_2d_rev 1.35x / 14.6 KB; codegen-only causes >1.1x in `research/frictions/prefix_bench.md`). `L0521` (`hand_rolled_prefix_sum`) flags manual 1D/2D prefix loops with `cpl fix` (9/9 = 100% precision on `proto/ports/`: 4 compiling live ports migrated, 5 pre-existing non-compiling draft/broken ports).
 struct SegTree<D, T>(m: Monoid<T>) // O(log n)
     fn new<M>(op: M, a: ?[D]T = none, fill: ?T = none) -> SegTree<D, T> // O(n)
     fn of<M>(op: M, f: D -> T) -> SegTree<D, T> // O(n)

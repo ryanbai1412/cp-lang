@@ -247,6 +247,15 @@ struct Diff<R, C, T>
     fn finish(self) -> [R, C]T                      // O(|R| * |C|)
 ```
 
+Matched C++17 benchmarks live in `bench/prefix/` (`Prefix` 1D/2D, `Diff` 1D/2D,
+and `FillPrefix` 1D/2D forward/reverse: **p50 = 1.10x**, **max = 1.35x**,
+emitted 8.2–14.6 KB; codegen-only gaps >1.1x logged in
+`research/frictions/prefix_bench.md`). Lint `L0521` (`hand_rolled_prefix_sum`)
+flags manual 1D/2D prefix-sum loops with a `cpl fix` rewrite to `prefix(...)`
+(audited at 100% precision on `proto/ports/`: 9/9 true positives — 4 live
+compiling ports migrated via `cpl lint --fix` and 5 pre-existing non-compiling
+draft/broken ports).
+
 ### 3.3 `std.fenwick` — Fenwick trees (point, dual, range, xor, 2D)
 
 Fenwick trees require an abelian group (`+` and `-`, or `^`). They are

@@ -426,6 +426,16 @@ pub const HAND_ROLLED_ANSWER_SEARCH: Lint = Lint {
     trigger: "let a = [1, 3, 5, 7]\nvar (lo, hi) = (0, a.len)\nwhile lo < hi:\n    let mid = (lo + hi) / 2\n    if a[mid] >= 5: hi = mid else: lo = mid + 1\nprint(lo)\n",
     fix: "let a = [1, 3, 5, 7]\nlet lo = bsearch_first(0..a.len, mid => a[mid] >= 5) ?? a.len\nprint(lo)\n",
 };
+pub const HAND_ROLLED_PREFIX_SUM: Lint = Lint {
+    code: Code("L0521"),
+    name: "hand_rolled_prefix_sum",
+    default: Level::Warn,
+    title: "Hand-rolled prefix sum",
+    summary: "manual `p[i + 1] = p[i] + x` or `p[i.r] = p[i.l] + x` loop: use `prefix(...)`",
+    explanation: "A loop that fills a prefix-sum array (`p[i + 1] = p[i] + x`, `p[i] = p[i - 1] + x`, `p[i.r] = p[i.l] + x`, or the 2D inclusion-exclusion recurrence) duplicates `prefix(...)` in `std.prefix` (prelude). `Prefix` owns the extra boundary slot and gives O(1) `.sum(range)` and `.prefix(cut)` without off-by-one indexing. `cpl fix` rewrites a zero-initialized declaration, its build loop, and subsequent `p[k]` reads into `let p = prefix(...)` and `p.prefix(k)` when `p` is not mutated again.",
+    trigger: "let a = [1, 2, 3, 4]\nvar p = List.filled(a.len + 1, 0)\nfor i in 0..a.len:\n    p[i + 1] = p[i] + a[i]\nprint(p[3] - p[1])\n",
+    fix: "let a = [1, 2, 3, 4]\nlet p = prefix(a)\nprint(p.prefix(3) - p.prefix(1))\n",
+};
 
 /// Every lint, in code order.
 pub const LINTS: &[Lint] = &[
@@ -464,6 +474,7 @@ pub const LINTS: &[Lint] = &[
     HAND_ROLLED_SIEVE,
     HAND_ROLLED_BINARY_LIFTING,
     HAND_ROLLED_ANSWER_SEARCH,
+    HAND_ROLLED_PREFIX_SUM,
 ];
 
 /// The taste lints (`plan/PORTING.md`): code that works but reads like

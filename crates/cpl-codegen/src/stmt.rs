@@ -1375,9 +1375,12 @@ impl<'p> Emitter<'p> {
             }
             Stmt::DefDomain { id, lo, len } => {
                 let d = ident(&program.domains[*id]);
-                let lo = self.expr(lo).text;
+                let lo_const = self.facts.const_domain_lo(*id).is_some();
+                let lo = if lo_const { String::new() } else { self.expr(lo).text };
                 let len = self.expr(len).text;
-                self.line(out, &format!("{d}_lo = {lo};"));
+                if !lo_const {
+                    self.line(out, &format!("{d}_lo = {lo};"));
+                }
                 self.line(out, &format!("{d}_len = std::max<ll>({len}, 0);"));
                 self.size_subsets(*id, out);
             }

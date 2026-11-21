@@ -1189,11 +1189,83 @@ impl<'p> Emitter<'p> {
         }
         let has_tie = needs_tie && types.contains("cpl_tie");
 
-        let mut vars = String::new();
-        for d in &program.domains {
-            let d = ident(d);
-            vars.push_str(&format!("ll {d}_lo = 0, {d}_len = 0;\n"));
+        let mut shared_globals: BTreeSet<usize> = BTreeSet::new();
+        let record_block_globals = |block: &Block, out: &mut BTreeSet<usize>| {
+            crate::walk::deep_stmts(block, &mut |stmt| {
+                if let Stmt::Assign(place, _, _) = stmt {
+                    if let (true, id) = crate::walk::root(place) {
+                        out.insert(id);
+                    }
+                }
+            });
+            crate::walk::deep_exprs(block, &mut |e| match &e.kind {
+                ExprKind::Global(id) => {
+                    out.insert(*id);
+                }
+                ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _, _) => {
+                    if let (true, id) = crate::walk::root(place) {
+                        out.insert(id);
+                    }
+                }
+                ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
+                    for arg in args {
+                        if let cpl_ir::Arg::Mut(place) = arg {
+                            if let (true, id) = crate::walk::root(place) {
+                                out.insert(id);
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            });
+        };
+        record_block_globals(&program.setup, &mut shared_globals);
+        for (id, f) in program.fns.iter().enumerate() {
+            if reachable.contains(&id) {
+                record_block_globals(&f.body, &mut shared_globals);
+            }
         }
+        for c in &program.closures {
+            for cap in &c.captures {
+                if cap.is_global {
+                    shared_globals.insert(cap.outer);
+                }
+            }
+            record_block_globals(&c.body, &mut shared_globals);
+        }
+        let mut read_in_main: std::collections::HashSet<usize> = std::collections::HashSet::new();
+        crate::walk::deep_stmts(&program.main, &mut |stmt| {
+            if let Stmt::Assign(place, _, _) = stmt {
+                if !matches!(place.kind, cpl_ir::PlaceKind::Global(_)) {
+                    if let (true, id) = crate::walk::root(place) {
+                        read_in_main.insert(id);
+                    }
+                }
+            }
+        });
+        crate::walk::deep_exprs(&program.main, &mut |e| match &e.kind {
+            ExprKind::Global(id) => {
+                read_in_main.insert(*id);
+            }
+            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _, _) => {
+                if let (true, id) = crate::walk::root(place) {
+                    read_in_main.insert(id);
+                }
+            }
+            ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
+                for arg in args {
+                    if let cpl_ir::Arg::Mut(place) = arg {
+                        if let (true, id) = crate::walk::root(place) {
+                            read_in_main.insert(id);
+                        }
+                    }
+                }
+            }
+            _ => {}
+        });
+
+        let mut vars = String::new();
+        let mut solve_locals = String::new();
         for (id, global) in program.globals.iter().enumerate() {
             if global.ty == Ty::Unit {
                 continue;
@@ -1205,17 +1277,22 @@ impl<'p> Emitter<'p> {
                 self.const_globals.insert(id);
                 continue;
             }
-            let init = if self.fixed_array_len(loc).is_some() {
+            let is_fixed = self.fixed_array_len(loc).is_some();
+            let init = if is_fixed {
                 "{}"
             } else {
                 self.zero_init(&global.ty)
             };
-            vars.push_str(&format!(
-                "{} {}{};\n",
-                cpp,
-                ident(&global.name),
-                init
-            ));
+            if !is_fixed && !shared_globals.contains(&id) && read_in_main.contains(&id) {
+                solve_locals.push_str(&format!("  {} {}{};\n", cpp, ident(&global.name), init));
+            } else {
+                vars.push_str(&format!(
+                    "{} {}{};\n",
+                    cpp,
+                    ident(&global.name),
+                    init
+                ));
+            }
         }
 
         let mut protos: Vec<Proto> = Vec::new();
@@ -1359,6 +1436,7 @@ impl<'p> Emitter<'p> {
         }
         self.enter(None, &program.main, 0);
         fns.push_str("\nvoid solve() {\n");
+        fns.push_str(&solve_locals);
         self.indent = 1;
         self.hoisted_decls(&mut fns, 0);
         self.block(&program.main, &mut fns);
@@ -1464,6 +1542,43 @@ impl<'p> Emitter<'p> {
         if has_tie {
             out.push_str(TIE_OPS);
             self.chunks.push((crate::Part::Runtime, "comparisons".into(), TIE_OPS.into()));
+        }
+        let mut dom_vars = String::new();
+        for (id, d) in program.domains.iter().enumerate() {
+            let d = ident(d);
+            let lo_name = format!("{d}_lo");
+            let len_name = format!("{d}_len");
+            let used_in = |name: &str| {
+                names(&fns, name)
+                    || names(&direct, name)
+                    || names(&entries, name)
+                    || names(&types, name)
+                    || self.shows.iter().any(|s| names(s, name))
+            };
+            let has_lo = used_in(&lo_name);
+            let has_len = used_in(&len_name);
+            if !has_lo && !has_len {
+                continue;
+            }
+            if let Some(lo) = self.facts.const_domain_lo(id) {
+                if has_lo {
+                    dom_vars.push_str(&format!("static constexpr ll {lo_name} = {lo}; "));
+                }
+                if has_len {
+                    dom_vars.push_str(&format!("static ll {len_name} = 0;"));
+                }
+                dom_vars.push('\n');
+            } else if has_lo && has_len {
+                dom_vars.push_str(&format!("static ll {lo_name} = 0, {len_name} = 0;\n"));
+            } else if has_lo {
+                dom_vars.push_str(&format!("static ll {lo_name} = 0;\n"));
+            } else {
+                dom_vars.push_str(&format!("static ll {len_name} = 0;\n"));
+            }
+        }
+        if !dom_vars.is_empty() {
+            dom_vars.push_str(&vars);
+            vars = dom_vars;
         }
         out.push_str(&types);
         self.chunks.push((crate::Part::Types, "types".into(), types.clone()));

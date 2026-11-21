@@ -6,12 +6,11 @@ use std.math.{is_prime}
 @multitest
 let n: Int = read()
 let a: [0..n]Int = read()
-var pre: [0..=n]Int = 0
-for i in 0..n: pre[i + 1] = pre[i] + a[i]
+let pre = prefix([a[i] for i in 0..n])
 
 for len in 2..=n:
     for l in 0..=n - len:
-        if is_prime(pre[l + len] - pre[l]):
+        if is_prime(pre.prefix(l + len) - pre.prefix(l)):
             print("Shortest primed subsequence is length {len}:", [a[i] for i in l..l + len])
             return
 print("This sequence is anti-primed.")

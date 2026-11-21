@@ -59,7 +59,8 @@ pub struct Prefix<D, T>:
     /// Create an append-only 1-D prefix/suffix sum table filled via `.set(i, x)` in `order`. O(|D|).
     pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T>:
         let rev = order == FillOrder.Reverse
-        FillPrefix([D.bounds] _ => T.zero, rev, if rev: D.K - 1 else: 0)
+        var p: [D.bounds]T = T.zero
+        FillPrefix(p, rev, if rev: D.K - 1 else: 0)
 
     /// The sum of everything left of boundary `b`. O(1).
     pub fn prefix(self, b: Bounds<D>) -> T = self.p[b]
@@ -134,7 +135,8 @@ pub struct _Prefix2 < R, C, T >:
     /// Create an append-only 2-D prefix/suffix sum table filled via `.set(r, c, x)` in row-major `order`. O(|R| * |C|).
     pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<R, C, T>:
         let rev = order == FillOrder.Reverse
-        _FillPrefix2([R.bounds, C.bounds] (_, _) => T.zero, rev, if rev: R.K * C.K - 1 else: 0)
+        var p: [R.bounds, C.bounds]T = T.zero
+        _FillPrefix2(p, rev, if rev: R.K * C.K - 1 else: 0)
 
     /// The sum of everything above row boundary `r` and left of column boundary `c`. O(1).
     pub fn prefix(self, r: Bounds<R>, c: Bounds<C>) -> T = self.p[r, c]
@@ -232,7 +234,9 @@ pub struct Diff<D, T>:
     d: [D.bounds]T
 
     /// Create an all-zero 1-D difference array over `D`. O(|D|).
-    pub fn new() -> Diff<D, T> = Diff([D.bounds] _ => T.zero)
+    pub fn new() -> Diff<D, T>:
+        var d: [D.bounds]T = T.zero
+        Diff(d)
 
     /// Add `x` to every position in `r`. O(1).
     pub fn add(mut self, r: Range<D>, x: T):
@@ -254,7 +258,9 @@ pub struct _Diff2 < R, C, T >:
     d: [R.bounds, C.bounds]T
 
     /// Create an all-zero 2-D difference array over `(R, C)`. O(|R| * |C|).
-    pub fn new() -> Diff<R, C, T> = _Diff2([R.bounds, C.bounds] (_, _) => T.zero)
+    pub fn new() -> Diff<R, C, T>:
+        var d: [R.bounds, C.bounds]T = T.zero
+        _Diff2(d)
 
     /// Add `x` to every cell in `rows` by `cols`. O(1).
     pub fn add(mut self, rows: Range<R>, cols: Range<C>, x: T):

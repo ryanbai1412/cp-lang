@@ -3,9 +3,8 @@
 let s: [domain S]Char = read()
 let k: 0..=1000 = read()
 let n = S.len
-var head: List<Bool> = [s[i] == 'H' for i in S]
-var heads: [0..=n]Int = 0
-for i in 0..n: heads[i + 1] = heads[i] + Int(head[i])
+let head: List<Bool> = [s[i] == 'H' for i in S]
+let heads = prefix([Int(head[i]) for i in 0..n])
 
 // clear[l, r]: best score from the block l..r, every pick splitting what is left
 var clear: [0..=n, 0..=n]Int = 0
@@ -20,6 +19,6 @@ for i in (0..n).rev:
     for used in 0..=k:
         best[i, used] = best[i + 1, used]
         for j in i + 1..=n:
-            let now = used + heads[j] - heads[i]
+            let now = used + heads.prefix(j) - heads.prefix(i)
             if now <= k: best[i, used] max= clear[i, j] + best[j, now]
 print(best[0, 0])

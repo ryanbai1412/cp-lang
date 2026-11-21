@@ -1373,7 +1373,6 @@ print(first_big([1, 9]), lo, steps)
 ";
     assert_eq!(taste_codes(clean), Vec::<&str>::new());
 }
-
 #[test]
 fn a_prelude_import_is_dropped() {
     // proto/ports/ecnerwala/cf2124i.cp and fourteen more imported `Rooted`.
@@ -1414,4 +1413,97 @@ fn dropping_a_prelude_import_leaves_no_double_blank_line() {
 fn dropping_leading_prelude_imports_leaves_no_leading_blank_line() {
     let src = "use std.segtree.{SegTree}\nuse std.algebra.{Monoid}\n\nlet x = 1\n";
     assert_eq!(fixed(src), "let x = 1\n");
+}
+
+#[test]
+fn hand_rolled_prefix_sum_becomes_prefix() {
+    // 1D List.filled + 0..a.len -> prefix(a) and p.prefix(...)
+    let list_pref = "\
+let a = [1, 2, 3, 4]
+var p = List.filled(a.len + 1, 0)
+for i in 0..a.len:
+    p[i + 1] = p[i] + a[i]
+print(p[3] - p[1])
+";
+    assert_eq!(taste_codes(list_pref), ["L0521"]);
+    assert_eq!(
+        fixed(list_pref),
+        "let a = [1, 2, 3, 4]\nlet p = prefix(a)\nprint(p.prefix(3) - p.prefix(1))\n"
+    );
+
+    // 1D domain bounds (proto/ports/dpm.cp shape) -> prefix(ways) and pre.prefix(...)
+    let dom_pref = "\
+domain C = 0..=4
+let ways: [C]Int = [1, 2, 3, 4, 5]
+var pre: [C.bounds]Int = 0
+for c in C: pre[c.r] = pre[c.l] + ways[c]
+print(pre[C.last.r] - pre[C.first.l])
+";
+    assert_eq!(taste_codes(dom_pref), ["L0521"]);
+    assert_eq!(
+        fixed(dom_pref),
+        "domain C = 0..=4\nlet ways: [C]Int = [1, 2, 3, 4, 5]\nlet pre = prefix(ways)\nprint(pre.prefix(C.last.r) - pre.prefix(C.first.l))\n"
+    );
+
+    // 1D [0..=n]Int with expression RHS -> prefix([... for i in 0..n])
+    let range_pref = "\
+let n = 4
+let a = [1, 2, 3, 4]
+var pre: [0..=n]Int = 0
+for i in 0..n: pre[i + 1] = pre[i] + a[i] * 2
+print(pre[n] - pre[1])
+";
+    assert_eq!(taste_codes(range_pref), ["L0521"]);
+    assert_eq!(
+        fixed(range_pref),
+        "let n = 4\nlet a = [1, 2, 3, 4]\nlet pre = prefix([a[i] * 2 for i in 0..n])\nprint(pre.prefix(n) - pre.prefix(1))\n"
+    );
+
+    // 1D 1..=n and 2D inclusion-exclusion warn (no auto-fix).
+    let one_based = "\
+let n = 4
+let a = [1, 2, 3, 4]
+var pre = List.filled(n + 1, 0)
+for i in 1..=n: pre[i] = pre[i - 1] + a[i - 1]
+print(pre[n])
+";
+    assert_eq!(taste_codes(one_based), ["L0521"]);
+    let grid_2d = "\
+domain R = 0..3
+domain C = 0..3
+let g: [R, C]Int = 1
+var p: [R.bounds, C.bounds]Int = 0
+for r in R:
+    for c in C:
+        p[r.r, c.r] = p[r.l, c.r] + p[r.r, c.l] - p[r.l, c.l] + g[r, c]
+print(p[R.last.r, C.last.r])
+";
+    assert_eq!(taste_codes(grid_2d), ["L0521"]);
+
+    // Mutated later: warns, but does not auto-fix.
+    let mutated = "\
+let a = [1, 2, 3]
+var p = List.filled(a.len + 1, 0)
+for i in 0..a.len:
+    p[i + 1] = p[i] + a[i]
+p[0] = 9
+print(p[2])
+";
+    assert_eq!(taste_codes(mutated), ["L0521"]);
+    assert!(fixed(mutated).contains("p[i + 1] = p[i] + a[i]"));
+
+    // False-positive guards: Fibonacci, powers of two, DP recurrences, different source array.
+    let clean = "\
+let n = 6
+var fib = List.filled(n + 1, 1)
+for i in 2..=n: fib[i] = fib[i - 1] + fib[i - 2]
+var pow2 = List.filled(n + 1, 1)
+for i in 1..=n: pow2[i] = pow2[i - 1] + pow2[i - 1]
+var ways = List.filled(n + 1, 1)
+for i in 1..=n: ways[i] = ways[i - 1] + ways[i] * 2
+var dp = List.filled(n + 1, 0)
+for i in 1..=n: dp[i] = fib[i - 1] + 1
+print(fib[n], pow2[n], ways[n], dp[n])
+";
+    assert_eq!(taste_codes(clean), Vec::<&str>::new());
 }

@@ -11,7 +11,6 @@ let limit: [n]0..=1e5 = read()
 var ways: [C]Z = 0
 ways[C.first] = 1
 for cap in limit:
-    var pre: [C.bounds]Z = 0
-    for c in C: pre[c.r] = pre[c.l] + ways[c]
-    for c in C: ways[c] = pre[c.r] - pre[(c - cap ?? C.first).l]
+    let pre = prefix(ways)
+    for c in C: ways[c] = pre.prefix(c.r) - pre.prefix((c - cap ?? C.first).l)
 print(ways[C.last])

@@ -1375,7 +1375,6 @@ print(sum_grid<D, D>(g) + sum_row<D>(mat[D(0)]) + sum_pts<D>(pts))
         "expected tuple array passed to [V](Int, Int) to widen:\n{widened}"
     );
 }
-
 #[test]
 fn u32_struct_field_proves_nonneg_for_mod_mul() {
     let out = cpp(
@@ -1393,5 +1392,31 @@ print((Z(a) * Z(b)).v)
     assert!(
         mul.contains("% 998244353") && !mul.contains("cpl::modp"),
         "U32-narrowed Mod.v fields should prove non-negativity and avoid cpl::modp:\n{mul}"
+    );
+}
+
+#[test]
+fn solve_only_globals_and_const_domain_lo_stay_internal_and_local() {
+    let out = cpp(
+        "let n: Int = read()
+domain D = 0..n
+var acc = 0
+for i in D:
+    acc += i.ord
+print(acc)
+",
+    );
+    assert!(out.contains("static ll D_len = 0;"), "{out}");
+    assert!(!out.contains("D_lo = 0;"), "dead D_lo should be omitted:\n{out}");
+    let solve_start = out.find("void solve()").expect("solve");
+    let before_solve = &out[..solve_start];
+    let in_solve = &out[solve_start..];
+    assert!(
+        !before_solve.contains("ll acc = 0;"),
+        "solve-only top-level var should not be a file-scope global:\n{before_solve}"
+    );
+    assert!(
+        in_solve.contains("ll acc = 0;"),
+        "solve-only top-level var should be local to solve():\n{in_solve}"
     );
 }

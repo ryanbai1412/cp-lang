@@ -12,15 +12,13 @@ let (n, k): (1..=350, 1..=350) = read()
 let s: Str = read()
 assert s.len == n and count(c == 'C' for c in s) >= 2 * k - 1
 
-var pref = List.filled(n + 1, 0)
-for i in 0..n:
-    pref[i + 1] = pref[i] + Int(s[i] == 'C')
-let tot = pref[n]
+let pref = prefix([Int(s[i] == 'C') for i in 0..n])
+let tot = pref.prefix(n)
 
 // WISH MG10: @memo over 3D bounded (l, r, my_red) with dense flat table + packed Bool/U8
 @memo
 fn win(l: Int, r: Int, my_red: Int) -> Bool:
-    let taken = tot - (pref[r + 1] - pref[l])
+    let taken = tot - (pref.prefix(r + 1) - pref.prefix(l))
     let opp_red = taken - my_red
     if opp_red >= k: return true
     if my_red >= k: return false

@@ -6,7 +6,8 @@
 use crate::walk::{self, Bind, Visitor};
 use crate::{
     File, Finding, BY_TWIN, HAND_ROLLED_ANSWER_SEARCH, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD,
-    HAND_ROLLED_BINARY_LIFTING, HAND_ROLLED_DSU, HAND_ROLLED_RANGE_TREE, HAND_ROLLED_SIEVE,
+    HAND_ROLLED_BINARY_LIFTING, HAND_ROLLED_DSU, HAND_ROLLED_PREFIX_SUM, HAND_ROLLED_RANGE_TREE,
+    HAND_ROLLED_SIEVE,
     HAND_ROLLED_STRING_ALGO, INDEX_ONLY_LOOP, LOOP_REDUCTION, NONE_CHECK_UNWRAP, PREFIX_TWIN,
     PUSH_LOOP, REPEATED_LITERAL, SEARCH_LOOP, SORTED_RANGE_METHOD, SYMMETRIC_WRITE, TREE_ORDER,
 };
@@ -189,6 +190,7 @@ impl<'a> Taste<'a> {
             self.discarded(stmt);
             self.index_only(stmt);
             self.answer_search(stmts, i);
+            self.prefix_sum(stmts, i);
             if let Some((next_base, next)) = stmts.get(i + 1) {
                 self.next_base = *next_base;
                 self.symmetric(stmt, next);
@@ -306,6 +308,99 @@ impl<'a> Taste<'a> {
             }
         }
         self.push(&HAND_ROLLED_ANSWER_SEARCH, diag);
+    }
+
+    /// Hand-rolled 1D/2D prefix-sum loop (L0521). When the preceding statement
+    /// declares `var p` as zero-initialized and every later reference in the
+    /// same block is a read `p[e]`, `cpl fix` folds the declaration, loop, and
+    /// reads into `let p = prefix(...)` and `p.prefix(e)`.
+    fn prefix_sum(&mut self, stmts: &[(u32, &Stmt)], i: usize) {
+        let (base, stmt) = stmts[i];
+        let Some(found) = prefix_sum_loop(stmt) else {
+            return;
+        };
+        let at = |b: u32, span: Span| &self.src[(b + span.start) as usize..(b + span.end) as usize];
+        let rhs_text = at(base, found.rhs.span);
+        if mentions(rhs_text, found.arr) || has_try(stmt) {
+            return;
+        }
+        let mut diag = Diagnostic::warning(
+            HAND_ROLLED_PREFIX_SUM.code,
+            stmt.span,
+            format!("a hand-rolled prefix sum into `{}`: use `prefix(...)`", found.arr),
+        )
+        .with_help(format!(
+            "`let {} = prefix(..)` builds the prefix table in O(n) with O(1) `.sum(range)` and `.prefix(cut)`",
+            found.arr
+        ));
+        if let Some((decl_idx, decl_base, decl_stmt)) =
+            prefix_zero_decl(self.src, stmts, i, found.arr, &found.kind)
+        {
+            if let Some(reads) = collect_pure_index_reads(&stmts[i + 1..], found.arr) {
+                let expr = match &found.kind {
+                    PrefixLoopKind::Domain1d { var, domain } => {
+                        if let Some((src_arr, ix)) = plain_index(found.rhs) {
+                            if expr_name(ix) == Some(var) && src_arr != found.arr {
+                                format!("prefix({src_arr})")
+                            } else {
+                                format!("prefix([{domain}] {var} => {rhs_text})")
+                            }
+                        } else {
+                            format!("prefix([{domain}] {var} => {rhs_text})")
+                        }
+                    }
+                    PrefixLoopKind::RangeZero { var, hi } => {
+                        let hi_text = at(base, hi.span);
+                        if let Some((src_arr, ix)) = plain_index(found.rhs) {
+                            if expr_name(ix) == Some(var)
+                                && src_arr != found.arr
+                                && hi_text == format!("{src_arr}.len")
+                            {
+                                format!("prefix({src_arr})")
+                            } else {
+                                format!("prefix([{rhs_text} for {var} in 0..{hi_text}])")
+                            }
+                        } else {
+                            format!("prefix([{rhs_text} for {var} in 0..{hi_text}])")
+                        }
+                    }
+                    PrefixLoopKind::RangeOne | PrefixLoopKind::Grid2d => String::new(),
+                };
+                if !expr.is_empty() && decl_idx + 1 == i {
+                    let end = trim_end(self.src, base, stmt.span) + base - decl_base;
+                    let mut edits = vec![(
+                        Span {
+                            start: decl_stmt.span.start,
+                            end,
+                        },
+                        format!("let {} = {expr}", found.arr),
+                    )];
+                    for (rb, idx_expr_span, ix_span) in reads {
+                        let ix_text = at(rb, ix_span);
+                        edits.push((
+                            Span {
+                                start: idx_expr_span.start + rb - decl_base,
+                                end: idx_expr_span.end + rb - decl_base,
+                            },
+                            format!("{}.prefix({ix_text})", found.arr),
+                        ));
+                    }
+                    diag.span = Span {
+                        start: stmt.span.start + base - decl_base,
+                        end: stmt.span.end + base - decl_base,
+                    };
+                    diag.fixes.push(Fix {
+                        title: "use `prefix(...)`".to_string(),
+                        edits,
+                    });
+                    self.base = decl_base;
+                    self.push(&HAND_ROLLED_PREFIX_SUM, diag);
+                    self.base = base;
+                    return;
+                }
+            }
+        }
+        self.push(&HAND_ROLLED_PREFIX_SUM, diag);
     }
 
     /// `let _ = f(..)` where `f` is a fn of this file that returns a value.
@@ -3423,4 +3518,424 @@ fn is_segtree_build_pull_loop(var: &str, body: &Block) -> bool {
     let mut c = Check { var, found: false };
     walk_block(&mut c, body);
     c.found
+}
+
+enum PrefixLoopKind<'a> {
+    Domain1d { var: &'a str, domain: &'a str },
+    RangeZero { var: &'a str, hi: &'a Expr },
+    RangeOne,
+    Grid2d,
+}
+
+struct PrefixLoop<'a> {
+    arr: &'a str,
+    rhs: &'a Expr,
+    kind: PrefixLoopKind<'a>,
+}
+
+fn is_field_of(e: &Expr, var: &str, field: &str) -> bool {
+    matches!(
+        &walk::unparen(e).kind,
+        ExprKind::Field { base, name } if expr_name(base) == Some(var) && name.text == field
+    )
+}
+
+fn split_add_with_prev<'a>(
+    value: &'a Expr,
+    arr: &str,
+    is_prev: impl Fn(&Expr) -> bool,
+) -> Option<&'a Expr> {
+    let ExprKind::Binary {
+        op: BinOp::Add,
+        lhs,
+        rhs,
+        ..
+    } = &walk::unparen(value).kind
+    else {
+        return None;
+    };
+    if let Some((a, ix)) = plain_index(lhs) {
+        if a == arr && is_prev(ix) {
+            return Some(rhs);
+        }
+    }
+    if let Some((a, ix)) = plain_index(rhs) {
+        if a == arr && is_prev(ix) {
+            return Some(lhs);
+        }
+    }
+    None
+}
+
+fn prefix_sum_loop(stmt: &Stmt) -> Option<PrefixLoop<'_>> {
+    let StmtKind::For { pat, iter, body, .. } = &stmt.kind else {
+        return None;
+    };
+    let PatternKind::Name(var) = &pat.kind else {
+        return None;
+    };
+    let var = var.as_str();
+    if body.stmts.len() != 1 {
+        return None;
+    }
+    // Nested 2D prefix loop: `for r in R: for c in C: p[r.r, c.r] = ...`
+    if let StmtKind::For {
+        pat: inner_pat,
+        iter: inner_iter,
+        body: inner_body,
+        ..
+    } = &body.stmts[0].kind
+    {
+        let PatternKind::Name(cvar) = &inner_pat.kind else {
+            return None;
+        };
+        let cvar = cvar.as_str();
+        if inner_body.stmts.len() != 1 {
+            return None;
+        }
+        let StmtKind::Assign {
+            target,
+            op: AssignOp::Set,
+            value,
+        } = &inner_body.stmts[0].kind
+        else {
+            return None;
+        };
+        let (arr, tr, tc) = index_2d(target)?;
+        let domain_2d = is_field_of(tr, var, "r") && is_field_of(tc, cvar, "r");
+        let int_2d = is_var_plus_one(tr, var) && is_var_plus_one(tc, cvar);
+        if !domain_2d && !int_2d {
+            return None;
+        }
+        if expr_name(iter).is_none()
+            && !matches!(
+                &walk::unparen(iter).kind,
+                ExprKind::Range { lo: Some(s), .. } if is_int_lit(s, 0)
+            )
+        {
+            return None;
+        }
+        if expr_name(inner_iter).is_none()
+            && !matches!(
+                &walk::unparen(inner_iter).kind,
+                ExprKind::Range { lo: Some(s), .. } if is_int_lit(s, 0)
+            )
+        {
+            return None;
+        }
+        let mut has_up = false;
+        let mut has_left = false;
+        let mut has_diag = false;
+        let mut extra: Option<&Expr> = None;
+        let mut terms: Vec<(bool, &Expr)> = Vec::new();
+        fn collect_add_sub<'a>(e: &'a Expr, sign: bool, out: &mut Vec<(bool, &'a Expr)>) {
+            match &walk::unparen(e).kind {
+                ExprKind::Binary {
+                    op: BinOp::Add,
+                    lhs,
+                    rhs,
+                    ..
+                } => {
+                    collect_add_sub(lhs, sign, out);
+                    collect_add_sub(rhs, sign, out);
+                }
+                ExprKind::Binary {
+                    op: BinOp::Sub,
+                    lhs,
+                    rhs,
+                    ..
+                } => {
+                    collect_add_sub(lhs, sign, out);
+                    collect_add_sub(rhs, !sign, out);
+                }
+                _ => out.push((sign, e)),
+            }
+        }
+        collect_add_sub(value, true, &mut terms);
+        for (pos, term) in terms {
+            if let Some((a, ir, ic)) = index_2d(term) {
+                if a == arr {
+                    let r_prev = if domain_2d {
+                        is_field_of(ir, var, "l")
+                    } else {
+                        expr_name(ir) == Some(var)
+                    };
+                    let c_prev = if domain_2d {
+                        is_field_of(ic, cvar, "l")
+                    } else {
+                        expr_name(ic) == Some(cvar)
+                    };
+                    let r_next = if domain_2d {
+                        is_field_of(ir, var, "r")
+                    } else {
+                        is_var_plus_one(ir, var)
+                    };
+                    let c_next = if domain_2d {
+                        is_field_of(ic, cvar, "r")
+                    } else {
+                        is_var_plus_one(ic, cvar)
+                    };
+                    if pos && r_prev && c_next {
+                        has_up = true;
+                        continue;
+                    }
+                    if pos && r_next && c_prev {
+                        has_left = true;
+                        continue;
+                    }
+                    if !pos && r_prev && c_prev {
+                        has_diag = true;
+                        continue;
+                    }
+                }
+            }
+            if pos && extra.is_none() {
+                extra = Some(term);
+            } else {
+                return None;
+            }
+        }
+        if has_up && has_left && has_diag {
+            return Some(PrefixLoop {
+                arr,
+                rhs: extra?,
+                kind: PrefixLoopKind::Grid2d,
+            });
+        }
+        return None;
+    }
+
+    let StmtKind::Assign {
+        target,
+        op: AssignOp::Set,
+        value,
+    } = &body.stmts[0].kind
+    else {
+        return None;
+    };
+    let (arr, t_ix) = plain_index(target)?;
+
+    // 1. `for i in D: p[i.r] = p[i.l] + rhs`
+    if let Some(domain) = expr_name(iter) {
+        if is_field_of(t_ix, var, "r") {
+            let rhs = split_add_with_prev(value, arr, |ix| is_field_of(ix, var, "l"))?;
+            return Some(PrefixLoop {
+                arr,
+                rhs,
+                kind: PrefixLoopKind::Domain1d { var, domain },
+            });
+        }
+    }
+
+    // 2. `for i in 0..n: p[i + 1] = p[i] + rhs`
+    if let ExprKind::Range {
+        lo: Some(lo),
+        hi: Some(hi),
+        inclusive: false,
+        step: None,
+    } = &walk::unparen(iter).kind
+    {
+        if is_int_lit(lo, 0) && is_var_plus_one(t_ix, var) {
+            let rhs = split_add_with_prev(value, arr, |ix| expr_name(ix) == Some(var))?;
+            return Some(PrefixLoop {
+                arr,
+                rhs,
+                kind: PrefixLoopKind::RangeZero { var, hi },
+            });
+        }
+    }
+
+    // 3. `for i in 1..=n: p[i] = p[i - 1] + rhs`
+    if let ExprKind::Range {
+        lo: Some(lo),
+        hi: Some(_),
+        step: None,
+        ..
+    } = &walk::unparen(iter).kind
+    {
+        if is_int_lit(lo, 1) && expr_name(t_ix) == Some(var) {
+            let rhs = split_add_with_prev(value, arr, |ix| is_var_minus_one(ix, var))?;
+            return Some(PrefixLoop {
+                arr,
+                rhs,
+                kind: PrefixLoopKind::RangeOne,
+            });
+        }
+    }
+    None
+}
+
+fn is_zero_init(e: &Expr) -> bool {
+    match &walk::unparen(e).kind {
+        ExprKind::Int(0) => true,
+        ExprKind::Field { name, .. } if name.text == "zero" => true,
+        ExprKind::Call { callee, args } if args.len() == 1 => {
+            matches!(&walk::unparen(&args[0].value).kind, ExprKind::Int(0))
+                && expr_name(callee).is_some()
+        }
+        _ => false,
+    }
+}
+
+fn prefix_zero_decl<'a>(
+    src: &str,
+    stmts: &[(u32, &'a Stmt)],
+    loop_idx: usize,
+    arr: &str,
+    kind: &PrefixLoopKind<'_>,
+) -> Option<(usize, u32, &'a Stmt)> {
+    if loop_idx == 0 {
+        return None;
+    }
+    let idx = loop_idx - 1;
+    let (base, stmt) = stmts[idx];
+    let StmtKind::Let {
+        mutable: true,
+        pat,
+        ty,
+        init: Some(val),
+        otherwise: None,
+        guard: None,
+    } = &stmt.kind
+    else {
+        return None;
+    };
+    let PatternKind::Name(name) = &pat.kind else {
+        return None;
+    };
+    if name != arr {
+        return None;
+    }
+    match kind {
+        PrefixLoopKind::Domain1d { domain, .. } => {
+            let Some(ty) = ty else {
+                return None;
+            };
+            let TypeKind::Array { index, .. } = &ty.kind else {
+                return None;
+            };
+            if index.len() != 1 {
+                return None;
+            }
+            let dim_src =
+                &src[(base + index[0].span.start) as usize..(base + index[0].span.end) as usize];
+            if dim_src == format!("{domain}.bounds") && is_zero_init(val) {
+                Some((idx, base, stmt))
+            } else {
+                None
+            }
+        }
+        PrefixLoopKind::RangeZero { .. } => {
+            if let Some(ty) = ty {
+                let TypeKind::Array { index, .. } = &ty.kind else {
+                    return None;
+                };
+                if index.len() != 1 {
+                    return None;
+                }
+                let is_zero_range = matches!(
+                    &index[0].kind,
+                    TypeKind::Range { lo: Some(lo), hi: Some(_), .. } if is_int_lit(lo, 0)
+                );
+                if is_zero_range && is_zero_init(val) {
+                    return Some((idx, base, stmt));
+                }
+                return None;
+            }
+            let ExprKind::Call { callee, args } = &walk::unparen(val).kind else {
+                return None;
+            };
+            let ExprKind::Field {
+                base: recv,
+                name: mname,
+            } = &walk::unparen(callee).kind
+            else {
+                return None;
+            };
+            if expr_name(recv) == Some("List")
+                && mname.text == "filled"
+                && args.len() == 2
+                && is_zero_init(&args[1].value)
+            {
+                Some((idx, base, stmt))
+            } else {
+                None
+            }
+        }
+        PrefixLoopKind::RangeOne | PrefixLoopKind::Grid2d => None,
+    }
+}
+
+/// Checks that every occurrence of `arr` in `later` is a read-only `arr[ix]`
+/// expression (no mutation, no bare pass, no method call, no shadowing).
+/// Returns `(stmt_base, index_expr_span, ix_span)` for every `arr[ix]`.
+fn collect_pure_index_reads(
+    later: &[(u32, &Stmt)],
+    arr: &str,
+) -> Option<Vec<(u32, Span, Span)>> {
+    struct Collector<'a> {
+        arr: &'a str,
+        base: u32,
+        ok: bool,
+        allowed_bases: HashSet<(u32, u32)>,
+        reads: Vec<(u32, Span, Span)>,
+    }
+    impl Visitor for Collector<'_> {
+        fn bind(&mut self, name: &str, _span: Span, _how: Bind) {
+            if name == self.arr {
+                self.ok = false;
+            }
+        }
+        fn stmt(&mut self, stmt: &Stmt) {
+            if !self.ok {
+                return;
+            }
+            if let StmtKind::Assign { target, .. } = &stmt.kind {
+                if expr_name(target) == Some(self.arr)
+                    || plain_index(target).is_some_and(|(a, _)| a == self.arr)
+                {
+                    self.ok = false;
+                }
+            }
+        }
+        fn expr(&mut self, expr: &Expr) {
+            if !self.ok {
+                return;
+            }
+            match &expr.kind {
+                ExprKind::Index { base, indices } if expr_name(base) == Some(self.arr) => {
+                    if indices.len() != 1 {
+                        self.ok = false;
+                        return;
+                    }
+                    let unp = walk::unparen(base);
+                    self.allowed_bases
+                        .insert((self.base + unp.span.start, self.base + unp.span.end));
+                    self.reads.push((self.base, expr.span, indices[0].span));
+                }
+                ExprKind::Name(id) if id == self.arr => {
+                    let key = (self.base + expr.span.start, self.base + expr.span.end);
+                    if !self.allowed_bases.contains(&key) {
+                        self.ok = false;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    let mut c = Collector {
+        arr,
+        base: 0,
+        ok: true,
+        allowed_bases: HashSet::new(),
+        reads: Vec::new(),
+    };
+    for &(base, stmt) in later {
+        c.base = base;
+        walk::walk_stmt(&mut c, stmt);
+        if !c.ok {
+            return None;
+        }
+    }
+    Some(c.reads)
 }

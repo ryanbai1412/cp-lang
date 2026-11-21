@@ -39,6 +39,8 @@ pub(crate) struct Facts<'p> {
     domain_len: BTreeMap<usize, Option<(Option<usize>, &'p Expr)>>,
     /// Struct fields whose declared range narrows to unsigned 32-bit (`>= 0`).
     u32_fields: BTreeSet<(usize, usize)>,
+    /// Each domain's lower-bound expression, when defined once at top level.
+    domain_lo: BTreeMap<usize, Option<(Option<usize>, &'p Expr)>>,
 }
 
 fn var(fn_id: Option<usize>, kind: &PlaceKind) -> Option<Var> {
@@ -155,10 +157,22 @@ impl<'p> Facts<'p> {
                         .entry(*id)
                         .and_modify(|slot| *slot = None)
                         .or_insert(Some((fn_id, len)));
+                    if fn_id.is_none() {
+                        self.domain_lo
+                            .entry(*id)
+                            .and_modify(|slot| *slot = None)
+                            .or_insert(Some((fn_id, lo)));
+                    } else {
+                        self.domain_lo.insert(*id, None);
+                    }
                     self.expr(fn_id, lo);
                     self.expr(fn_id, len);
                 }
-                Stmt::DefDomainFromVal { val, .. } => self.expr(fn_id, val),
+                Stmt::DefDomainFromVal { id, val } => {
+                    self.domain_len.insert(*id, None);
+                    self.domain_lo.insert(*id, None);
+                    self.expr(fn_id, val);
+                }
                 Stmt::Return(None) | Stmt::Break(_) | Stmt::Continue(_) | Stmt::Trap(..) => {}
             }
         }
@@ -231,6 +245,33 @@ impl<'p> Facts<'p> {
     pub fn domain_max_len(&self, id: usize) -> Option<i64> {
         let (fn_id, len) = self.domain_len.get(&id).copied().flatten()?;
         self.upper_bound(fn_id, len, 0)
+    }
+
+    /// A constant lower bound for `domain` when every definition of it in the
+    /// program is a single `DefDomain` whose `lo` resolves to an integer literal.
+    pub fn const_domain_lo(&self, id: usize) -> Option<i64> {
+        let (fn_id, lo) = self.domain_lo.get(&id).copied().flatten()?;
+        self.const_int(fn_id, lo, 0)
+    }
+
+    fn const_int(&self, fn_id: Option<usize>, e: &Expr, depth: u8) -> Option<i64> {
+        if depth > 8 {
+            return None;
+        }
+        match &e.kind {
+            ExprKind::Int(n) => Some(*n),
+            ExprKind::Local(slot) => {
+                let v = (fn_id, false, *slot);
+                let init = self.init(v)?;
+                self.const_int(fn_id, init, depth + 1)
+            }
+            ExprKind::Global(id) => {
+                let v = (None, true, *id);
+                let init = self.init(v)?;
+                self.const_int(None, init, depth + 1)
+            }
+            _ => None,
+        }
     }
 
     fn upper_bound(&self, fn_id: Option<usize>, e: &Expr, depth: u8) -> Option<i64> {

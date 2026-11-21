@@ -136,7 +136,6 @@ hand-written C++; results and analysis in `bench/graph/README.md`.
 `suffix_scan`, `scan_in_place`, `suffix_scan_in_place`, `rotate_left`,
 `rotate_right`) against matched C++ `std::partial_sum` and `std::rotate`;
 results in `bench/seq/README.md`.
-
 ## Math (`bench/math/`)
 
 `bash bench/math/run.sh` compares `std.mod`, `std.ntt`, `std.math`, and
@@ -147,3 +146,11 @@ exact stdout match, and emitted C++ byte counts): `modint` arithmetic,
 `crt` (`1,000,000` calls), and `comb` (`limit = 2,000,000`, `5,000,000`
 `choose` queries). Results and codegen profiling notes live in
 `design/stdlib/math.md` and `research/frictions/bench-math.md`.
+
+## Prefix sums and difference arrays (`bench/prefix/`)
+
+`python3 bench/prefix/run.py` compares `Prefix` 1D/2D build+query, `Diff` 1D/2D,
+and `FillPrefix` 1D/2D forward/reverse against matched C++17 (`g++ -std=c++17 -O2`,
+same layout, best of 5, emitted bytes); results in `bench/prefix/README.md`
+(**p50 = 1.10x**, **max = 1.35x**; codegen-only gaps >1.1x logged in
+`research/frictions/prefix_bench.md`).
