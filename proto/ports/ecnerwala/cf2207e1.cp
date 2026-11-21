@@ -4,25 +4,20 @@
 let n: Int = read()
 let a: [0..n]Int = read()
 
-var good = true
-for i in 0..n - 1:
-    if a[i] < a[i + 1]: good = false
-for i in 0..n:
-    if a[i] < n - i - 1 or a[i] > n: good = false
-
-if not good:
+if any(a[i] < a[i + 1] for i in 0..n - 1) or any(a[i] < n - i - 1 or a[i] > n for i in 0..n):
     print("NO")
-else:
-    var b: List<Int> = []
-    var stk: List<Int> = []
-    var prv = -1
-    for i in (0..=n).rev:
-        let cur = if i == 0: n else: a[i - 1]
-        while prv < cur:
-            prv += 1
-            stk.push(prv)
-        b.push(stk.pop()!)
-    b.reverse()
-    b.pop()
-    print("YES")
-    print(b)
+    return
+
+var b: [0..n]Int = 0
+var stk: List<Int> = []
+var prv = -1
+for i in (0..=n).rev:
+    let cur = if i == 0: n else: a[i - 1]
+    while prv < cur:
+        prv += 1
+        stk.push(prv)
+    let x = stk.pop()!
+    if i < n: b[i] = x
+
+print("YES")
+print(b)

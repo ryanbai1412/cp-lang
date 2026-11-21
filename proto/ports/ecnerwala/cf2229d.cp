@@ -9,9 +9,7 @@ fn is_good(v: Int) -> Bool:
     var was_neg = false
     var tot = 0
     for i in 0..n:
-        var s = -1
-        if a0[i] >= v: s += 1
-        if a1[i] >= v: s += 1
+        let s = Int(a0[i] >= v) + Int(a1[i] >= v) - 1
         if s == 0: continue
         if s == -1:
             if was_neg: continue
@@ -22,4 +20,4 @@ fn is_good(v: Int) -> Bool:
             tot += 1
     tot > 0
 
-print(bsearch_last(1..=2 * n, v => is_good(v))!)
+print(bsearch_last(1..=2 * n, is_good)!)
