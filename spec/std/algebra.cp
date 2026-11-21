@@ -123,6 +123,10 @@ pub struct MaxSub(has: Bool, best: Int, total: Int, pre: Int, suf: Int):
 impl Add for MaxSub:
     fn add(a, b) = MaxSub.join(a, b)
 
+/// O(1). Scale every underlying value by `k >= 0`.
+impl Mul<Int> for MaxSub:
+    fn mul(self, k: Int) -> MaxSub = todo
+
 impl Reversible for MaxSub:
     fn rev(self) -> MaxSub = MaxSub(has, best, total, suf, pre)
 
