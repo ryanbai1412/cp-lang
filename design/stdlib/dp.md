@@ -418,6 +418,20 @@ Not yet: hinge adds `max(0, c - a)` (a rank-range add on the treap) and
 prefix minima, which finish the breakpoint form; they land with the first
 port that needs them.
 
+### 6.8 Sampling a DP along a diagonal (`cf2115c`): rejected
+
+`cf2115c`'s dream reads both edge DPs with one helper, `diagonal(size, dp,
+step, at)`: roll a DP over rounds left and record `at(dp, r - slack)` for
+`r` in `slack..=slack + size`. It stays user code. A search of every port and
+dream (`rounds/steps/turns left`, loops that record once a counter passes an
+offset) finds no second use; the hits are unrelated (`cf2135b`, `cco02p3`,
+`ioi06p4`), so a `std.dp` primitive would be a one-use helper. Its parts are
+already general: the rolling step is a value (`dp = round(dp)`, §6.1), and the
+read-off is a loop with one `if`. A lazy `successors(first, step)` stream
+(spec 22, owned by seq) would express the same as
+`successors(dp0, step).skip(slack).take(size + 1).map(at)` once it lands,
+which is the general mechanism if a second use appears.
+
 ## 7. The maximal version
 
 The most ambitious version of this area makes every DP technique a single
