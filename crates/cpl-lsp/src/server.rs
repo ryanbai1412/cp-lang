@@ -8,7 +8,7 @@
 use crate::complete::{self, Cursor, StdLib};
 use crate::json::{obj, Value};
 use crate::rename;
-use cpl_check::{Database, DeclKind};
+use cpl_check::{Database, DeclKind, Definition};
 use cpl_diag::{codes, Diagnostic, LineCol, LineIndex, Severity, Span};
 use std::collections::BTreeMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -307,8 +307,8 @@ impl Server {
                     .collect();
                 Ok(Reply::result(Value::Array(ranges)))
             }
-            // Only a name declared in this file can be renamed: a library's
-            // names belong to the library.
+            // A name declared in an open file or a library of the user's can
+            // be renamed; the standard library's names belong to it.
             "textDocument/prepareRename" => {
                 let (uri, offset) = self.position(params)?;
                 let analysis = self
@@ -320,13 +320,13 @@ impl Server {
                 };
                 let name = name.to_string();
                 match self.db.definition_location(&uri, offset) {
-                    Some(def) if def.path == uri => Ok(Reply::result(obj([
+                    Some(def) if self.renamable(&uri, &def) => Ok(Reply::result(obj([
                         ("range", range_json(span, &analysis.text, &analysis.lines)),
                         ("placeholder", name.into()),
                     ]))),
                     Some(_) => Err((
                         INVALID_PARAMS,
-                        format!("`{name}` is declared in another file"),
+                        format!("`{name}` belongs to the standard library"),
                     )),
                     None => Ok(Reply::default()),
                 }
@@ -340,26 +340,57 @@ impl Server {
                 let Some((target, spans)) = rename::references(&mut self.db, &uri, offset) else {
                     return Ok(Reply::default());
                 };
-                if target.path != uri {
+                if !self.renamable(&uri, &target) {
                     return Err((
                         INVALID_PARAMS,
-                        "the name is declared in another file".to_string(),
+                        "the name belongs to the standard library".to_string(),
                     ));
                 }
                 let analysis = self.db.analyze(&uri).expect("references imply an analysis");
-                let edits: Vec<Value> = spans
-                    .into_iter()
-                    .map(|span| {
-                        obj([
-                            ("range", range_json(span, &analysis.text, &analysis.lines)),
-                            ("newText", new_name.as_str().into()),
-                        ])
-                    })
-                    .collect();
-                Ok(Reply::result(obj([(
-                    "changes",
-                    Value::Object(vec![(uri.clone(), Value::Array(edits))]),
-                )])))
+                let name = rename::word_at(&analysis.text, offset)
+                    .map_or(String::new(), |(_, w)| w.to_string());
+                // Every open file, and the declaring file when it is not open.
+                let mut files: Vec<String> = self.docs.keys().cloned().collect();
+                if !files.iter().any(|f| rename::same_file(f, &target.path)) {
+                    files.push(target.path.clone());
+                }
+                let mut changes = Vec::new();
+                for file in files {
+                    let spans = if file == uri {
+                        spans.clone()
+                    } else {
+                        rename::uses_in(&mut self.db, &file, &target, &name)
+                    };
+                    let Some(analysis) = self.db.analyze(&file).filter(|_| !spans.is_empty())
+                    else {
+                        continue;
+                    };
+                    let taken = analysis.imports().contains_key(&new_name)
+                        || self.db.symbols(&file).iter().any(|s| s.name == new_name);
+                    if taken {
+                        let shown = path_of_uri(&file).unwrap_or(file);
+                        return Err((
+                            INVALID_PARAMS,
+                            format!("`{new_name}` is already a name in {shown}"),
+                        ));
+                    }
+                    let edits: Vec<Value> = spans
+                        .into_iter()
+                        .map(|span| {
+                            obj([
+                                ("range", range_json(span, &analysis.text, &analysis.lines)),
+                                ("newText", new_name.as_str().into()),
+                            ])
+                        })
+                        .collect();
+                    let file_uri = if self.docs.contains_key(&file) {
+                        file
+                    } else {
+                        uri_of_path(&file)
+                    };
+                    changes.push((file_uri, Value::Array(edits)));
+                }
+                Ok(Reply::result(obj([("changes", Value::Object(changes))])))
             }
             "textDocument/definition" => {
                 let (uri, offset) = self.position(params)?;
@@ -645,6 +676,29 @@ impl Server {
     }
 
     /// The document and byte offset a position request refers to.
+    /// Whether the name declared at `target` may be renamed from `uri`: it
+    /// is declared in an open file or in a module that is not the standard
+    /// library's, reached through `uri`'s imports.
+    fn renamable(&mut self, uri: &str, target: &Definition) -> bool {
+        if self.docs.keys().any(|d| rename::same_file(d, &target.path)) {
+            return true;
+        }
+        let mut queue = vec![uri.to_string()];
+        let mut seen = std::collections::HashSet::new();
+        while let Some(path) = queue.pop() {
+            let Some(analysis) = self.db.analyze(&path).filter(|_| seen.insert(path)) else {
+                continue;
+            };
+            for module in analysis.modules() {
+                if rename::same_file(&module.path, &target.path) {
+                    return !module.name.starts_with("std.");
+                }
+                queue.push(module.path.clone());
+            }
+        }
+        false
+    }
+
     fn position(&mut self, params: &Value) -> Result<(String, u32), (i32, String)> {
         let uri = uri_of(params)?;
         let position = position_of(params.get("position"))?;
@@ -1004,7 +1058,7 @@ fn diagnostic_json(diag: &Diagnostic, uri: &str, text: &str, lines: &LineIndex) 
 }
 
 /// The file a `file://` URI names, with `%XX` escapes decoded.
-fn path_of_uri(uri: &str) -> Option<String> {
+pub(crate) fn path_of_uri(uri: &str) -> Option<String> {
     let rest = uri.strip_prefix("file://")?.as_bytes();
     let mut out = Vec::with_capacity(rest.len());
     let mut i = 0;

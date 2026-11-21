@@ -1941,6 +1941,14 @@ the one an argument names (`back: |`), else the positional one at its place; nam
 never positional, so past the last positional one none is active. Reverse: drop `default` and
 `named_only` from `SigParam` in `crates/cpl-lsp/src/complete.rs`.
 
+29.10. **Rename edits every open file and the user library that declares the name.** The files are
+the open ones plus the declaring file, read from disk when it is not open; a contest folder has no
+project root to scan, as with workspace symbols (29.5). A use is renamed when go-to-definition
+takes it to the declaration, and a `use m.{name}` when it imports the name from that file. The
+standard library's names are refused, and so is a new name already declared or imported at the top
+level of a file the rename edits. Shadowing inside a fn is not checked yet. Reverse: put back the
+`target.path != uri` refusal in the `textDocument/rename` arm of `crates/cpl-lsp/src/server.rs`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

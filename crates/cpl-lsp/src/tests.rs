@@ -1192,6 +1192,86 @@ fn rename_edits_every_reference_and_refuses_library_names() {
 }
 
 #[test]
+fn rename_reaches_every_open_file_and_the_library_that_declares_the_name() {
+    let root = std::env::temp_dir().join(format!("cpl-rename-{}", std::process::id()));
+    std::fs::create_dir_all(root.join("kit")).unwrap();
+    std::fs::write(root.join("cp.toml"), "[libs]\nkit = \"kit\"\n").unwrap();
+    let lib =
+        "pub fn area(w: Int, h: Int) -> Int = w * h\npub fn square(s: Int) -> Int = area(s, s)\n";
+    std::fs::write(root.join("kit/geo.cp"), lib).unwrap();
+    let uri = |name: &str| format!("file://{}", root.join(name).display());
+    let (a, b, geo) = (uri("a.cp"), uri("b.cp"), uri("kit/geo.cp"));
+    let mut server = Server::new();
+    server.handle(&request(1, "initialize", obj([])));
+    let open_at = |server: &mut Server, uri: &str, text: &str| {
+        let doc = obj([
+            ("uri", uri.into()),
+            ("languageId", "cp".into()),
+            ("version", 1.into()),
+            ("text", text.into()),
+        ]);
+        let published = server.handle(&notification(
+            "textDocument/didOpen",
+            obj([("textDocument", doc)]),
+        ));
+        let diagnostics = published[0].at(&["params", "diagnostics"]).as_array();
+        assert!(diagnostics.is_empty(), "{published:?}");
+    };
+    open_at(&mut server, &a, "use kit.geo.{area}\nprint(area(2, 3))\n");
+    open_at(
+        &mut server,
+        &b,
+        "use kit.geo.{area}\nlet area2 = area(4, 4)\nprint(area(1, 1) + area2)\n",
+    );
+    let rename = |server: &mut Server, uri: &str, line: u32, col: u32| {
+        let params = obj([
+            ("textDocument", obj([("uri", uri.into())])),
+            ("position", pos(line, col)),
+            ("newName", "rect".into()),
+        ]);
+        server.handle(&request(2, "textDocument/rename", params))[0].clone()
+    };
+    let lines = |reply: &Value, uri: &str| -> Vec<(u32, u32)> {
+        let edits = reply.at(&["result", "changes", uri]).as_array();
+        starts(edits)
+    };
+    // From a use: the import and both calls here, the other open file, and
+    // the library file, which is not open.
+    let reply = rename(&mut server, &a, 1, 7);
+    assert_eq!(lines(&reply, &a), [(0, 13), (1, 6)]);
+    assert_eq!(lines(&reply, &b), [(0, 13), (1, 12), (2, 6)]);
+    assert_eq!(lines(&reply, &geo), [(0, 7), (1, 31)]);
+    // From the declaration, once the library is open too: each file once.
+    open_at(&mut server, &geo, lib);
+    let reply = rename(&mut server, &geo, 0, 8);
+    assert_eq!(lines(&reply, &geo), [(0, 7), (1, 31)]);
+    assert_eq!(lines(&reply, &a), [(0, 13), (1, 6)]);
+    let Value::Object(changes) = reply.at(&["result", "changes"]) else {
+        panic!("{reply:?}");
+    };
+    assert_eq!(changes.len(), 3, "{changes:?}");
+    // A name the library already declares would collide.
+    let params = obj([
+        ("textDocument", obj([("uri", a.as_str().into())])),
+        ("position", pos(1, 7)),
+        ("newName", "square".into()),
+    ]);
+    let reply = server.handle(&request(3, "textDocument/rename", params));
+    let message = reply[0].at(&["error", "message"]).as_str().unwrap_or("");
+    assert!(
+        message.contains("`square` is already a name in"),
+        "{reply:?}"
+    );
+    std::fs::remove_dir_all(&root).unwrap();
+    // The standard library's names stay its own.
+    let (mut server, _) = open("use std.mod.{Comb}\nlet c = Comb<7>.new()\n");
+    let params = obj([("textDocument", doc()), ("position", pos(1, 9))]);
+    let reply = server.handle(&request(3, "textDocument/prepareRename", params));
+    let message = reply[0].at(&["error", "message"]).as_str().unwrap_or("");
+    assert!(message.contains("standard library"), "{reply:?}");
+}
+
+#[test]
 fn dot_completion_on_built_in_types_reads_the_compiler_catalog() {
     let kind_of = |items: &[(String, u32, String)], label: &str| {
         let item = items.iter().find(|i| i.0 == label);

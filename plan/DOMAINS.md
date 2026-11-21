@@ -547,7 +547,8 @@ fuzzer proves the server never dies, and a latency benchmark guards 6.1.
 **Where we are** (audited 2026-11-21). `cpl lsp` (crates/cpl-lsp) answers
 diagnostics on open and on incremental change, hover, definition (into
 `stdlib/` files too: `Fenwick` jumps to `stdlib/fenwick.cp`), references,
-rename within a file, document symbols, document highlights, folding
+rename across every open file and the user library that declares the name
+(the stdlib's names refused, a name already declared refused), document symbols, document highlights, folding
 (blocks, comment runs, imports), semantic tokens (each resolved name as a
 type, fn, method, field, variable or parameter, marking declarations and
 immutable bindings), workspace symbols (fuzzy, over open files and the
@@ -573,7 +574,8 @@ total), appends the declaration's `///` doc, which in the stdlib states the
 cost, and definition on a field or method jumps to it, in the stdlib too.
 Gaps against `plan/60`: no computed cost on hover; no proven range of an
 expression; proven ranges in inlay hints are top-level only; no cost or overflow
-warnings; rename is one file; no refactorings or "fix all"; no
+warnings; rename sees open files, not the folder on disk, and misses
+local shadowing; no refactorings or "fix all"; no
 auto-import; no `cpl test` lens; Emacs (eglot draws no lenses) and Helix
 run from a shell command; no JetBrains plugin, no fixture tests, fuzzer, DAP or
 tree-sitter grammar, so Helix has no highlighting and Zed no setup.

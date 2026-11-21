@@ -34,7 +34,18 @@ pub fn references(db: &mut Database, path: &str, offset: u32) -> Option<(Definit
     let Some(target) = db.definition_location(path, offset) else {
         return field_references(&analysis, path, offset, name);
     };
+    let spans = uses_in(db, path, &target, name);
+    Some((target, spans))
+}
+
+/// Every span in `path` that names the declaration at `target`, the
+/// declaration first when it is in this file.
+pub fn uses_in(db: &mut Database, path: &str, target: &Definition, name: &str) -> Vec<Span> {
+    let Some(analysis) = db.analyze(path) else {
+        return Vec::new();
+    };
     let mut candidates: Vec<Span> = Vec::new();
+    let mut spans_of_imports: Vec<Span> = Vec::new();
     for item in &analysis.items {
         let at = |span: Span| Span::new(item.offset + span.start, item.offset + span.end);
         let hovers = item
@@ -56,19 +67,50 @@ pub fn references(db: &mut Database, path: &str, offset: u32) -> Option<(Definit
             .filter(|d| d.name == name)
             .map(|d| at(d.span));
         candidates.extend(hovers.chain(refs).chain(decls));
+        // `use m.{name}`: the import names the declaration in `m`.
+        let imported = analysis.imports().get(name).is_some_and(|import| {
+            let module = &analysis.modules()[import.module];
+            import.name == name && same_file(&module.path, &target.path)
+        });
+        for stmt in item.syntax.parsed.stmts.iter().filter(|_| imported) {
+            if let cpl_syntax::ast::StmtKind::Use { names, .. } = &stmt.kind {
+                let listed = names.iter().filter(|n| n.text == name);
+                spans_of_imports.extend(listed.map(|n| at(n.span)));
+            }
+        }
     }
+    let imports = spans_of_imports;
     candidates.sort_by_key(|s| (s.start, s.end));
     candidates.dedup();
+    let names =
+        |span: &Span| analysis.text.get(span.start as usize..span.end as usize) == Some(name);
     let mut spans: Vec<Span> = candidates
         .into_iter()
-        .filter(|span| analysis.text.get(span.start as usize..span.end as usize) == Some(name))
-        .filter(|span| db.definition_location(path, span.start).as_ref() == Some(&target))
+        .filter(names)
+        .filter(|span| {
+            db.definition_location(path, span.start)
+                .is_some_and(|d| same_place(&d, target))
+        })
         .collect();
-    if target.path == path && !spans.contains(&target.span) {
+    spans.extend(imports.into_iter().filter(names));
+    let here = same_file(&target.path, path);
+    if here && !spans.contains(&target.span) && names(&target.span) {
         spans.push(target.span);
     }
-    spans.sort_by_key(|s| (s.start != target.span.start || target.path != path, s.start));
-    Some((target, spans))
+    spans.sort_by_key(|s| (!here || s.start != target.span.start, s.start));
+    spans.dedup();
+    spans
+}
+
+/// Whether two paths name one file: an import reads a module by its path,
+/// the editor opens it by a `file://` URI.
+pub fn same_file(a: &str, b: &str) -> bool {
+    let file = |p: &str| crate::server::path_of_uri(p).unwrap_or_else(|| p.to_string());
+    a == b || file(a) == file(b)
+}
+
+fn same_place(a: &Definition, b: &Definition) -> bool {
+    a.span == b.span && same_file(&a.path, &b.path)
 }
 
 /// Why `name` cannot be the new name, if it cannot.
