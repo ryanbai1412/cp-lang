@@ -1,7 +1,7 @@
 # ucup5s05f
 
-Score: pending (was 2/5: added dream + frictions for `std.poly.SubproductTree`/`eval_transposed` and `std.strings.suffix_tree_edges`, replaced hand reverse-pad in `power_sums` with `prod_linear(sizes).rev.to_list().resized(deg + 1, Z(0))`, extracted `suffix_tree_edges(s)` using `List<OpenNode>` with `open.last` / `pop()` eliminating `open_len`, `-1` sentinels, and `while true`, bounded `n: 1..=2e5`)
-Dream: pending (added dream using `SubproductTree.eval_transposed`, `suffix_tree_edges(s)`, and `prod_linear(...).rev.to_list().resized(...)`)
+Score: 3/5
+Dream: 4/5
 
 Scored cold against `design/EXEMPLARS-PORTS.md` (previous score 2/5; awaiting rescore).
 
@@ -10,3 +10,11 @@ Scored cold against `design/EXEMPLARS-PORTS.md` (previous score 2/5; awaiting re
 Logged in `research/frictions/ucup5s05f.md`:
 - `std.poly`: `SubproductTree` / transposed multipoint evaluation (`eval_transposed`).
 - `std.strings`: suffix-tree / LCP-interval edge walk (`suffix_tree_edges`).
+
+## Cold review (HEAD)
+
+Dream 4/5 (new), port 2 → 3/5, rescored after e0f2c521. The header derives the power-sum and transposed-evaluation route, and the program is that route.
+- `SubproductTree` and `suffix_tree_edges` (lines 7, 9) are not in the stdlib; the friction reports cover them.
+- Minor: `above` holds `bottom_size` and `below` holds `top_size` (lines 24-25), so the names are inverted. `inv_fact(i + 1)` (line 32) doesn't match the header's `/ k!` without explanation.
+
+Port 3/5: it hand-writes the subproduct tree (`product`/`descend` with `2 * node` indexing) and the suffix-tree edge walk, both reported gaps.

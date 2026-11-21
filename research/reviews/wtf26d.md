@@ -1,7 +1,7 @@
 # wtf26d
 
 Score: 2/5
-Dream: pending cold rescore (rewritten: drops invalid `?? (print; return)`, passes `had_inv` explicitly so `can_place` is pure, proves disjoint suffix blocks + decreasing-order optimality in header, replaces `p_to_block`/`block_cursor` with `sorted(by: (block_of, -v.ord))` + `zip`)
+Dream: 3/5
 
 Rescored cold on main 1a5cc751 (old 2/5, new 2/5) for accepted syntax (decisions.md §53, §58, §63, §70) and stdlib reuse. Scored on its first landing (ddf13f69); no dream commit since. Syntax: nothing outside decisions.md (`.inverse()` is a method, not a getter). The nested `if let ... else` optional clamps (lines 52-53) are hand-folding a `min` over optionals. Sent back: under 4, the lane owes a rewrite before the port is judged.
 
@@ -59,3 +59,11 @@ Dream 2 → 3/5, rescored after 9aa24cb4; sent back. The header states the greed
 - The header claims, without proof, that the blocks are disjoint and that filling them in decreasing order is optimal (lines 11-14).
 
 The port score (2/5) holds.
+
+## Cold review (HEAD)
+
+Dream 3/5, rescored after f69a1ce4; sent back. `can_place` is now pure, the invalid `?? (print; return)` is gone, and the suffix fill is a `sorted` plus `zip`.
+- It fails to check. `pop_while` (line 28) is a reported gap, but `.somes` (line 66) and `take_while` (line 112) are not in the stdlib and have no friction item. Lines 112 and 121 index `[Pos]` arrays with `Int` (E0301).
+- The block partition (lines 100-117) is still hand bookkeeping: `block_of` with an `n` sentinel (line 102), a `block_id` counter and `last_thresh`. Line 112 is a 150-character chain. The header (lines 13-17) doesn't say why `min_p` is the block's left end.
+
+The port score (2/5) holds; the port was not touched.

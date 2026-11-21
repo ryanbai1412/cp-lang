@@ -1,7 +1,7 @@
 # agc079c
 
 Score: 3/5
-Dream: pending cold rescore (rewritten: proves unique parity relation + minimal reversals in header, adopts `std.dsu.ParityDsu` instead of hand `comp` walk, extracts `pop_top_front(x)` to remove duplicated `runs.last!` arms)
+Dream: 3/5
 
 The header states the two passes, but pass 1 is a hand linked-run stack with `pred`/`succ` arrays and pass 2 a flag-driven deque replay. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
@@ -31,3 +31,12 @@ Dream 3/5 (new); sent back.
 - `LinkedList` (line 18) isn't in the stdlib; the friction report asks for it.
 
 Port 3/5: the dream's structure with `head`/`tail` runs in place of `LinkedList` (reported gap).
+
+## Cold review (HEAD)
+
+Dream 3/5, rescored after 7042fdf4; sent back. `ParityDsu` replaces the hand component walk and `pop_top_front` removes the duplicated `runs.last!` arms.
+- `LinkedList` (lines 24, 55) is still not in the stdlib (E0201, E0204); the friction report covers it.
+- Pass 1 (lines 52-78) is still the C++ run-stack machine. The header (lines 6-10) restates its branches but never says what a `Run` is or what `opp_below` means, so the `return none` on line 62 is not derived.
+- Owed: define a run and `opp_below` as an invariant in the header, then show why each branch of lines 57-78 keeps it.
+
+The port score (3/5) holds; the port was not touched.
