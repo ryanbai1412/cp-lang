@@ -444,5 +444,24 @@ class CliSmokeTest(unittest.TestCase):
         self.assertIn("by_goal", data)
 
 
+class TasteCountsTest(unittest.TestCase):
+    def test_reads_per_file_lines_and_skips_the_total(self):
+        with tempfile.TemporaryDirectory() as d:
+            fake = os.path.join(d, "cpl")
+            with open(fake, "w") as f:
+                f.write(
+                    "#!/bin/sh\n"
+                    "echo '   3  /p/a.cp  L0503:1 L0504:2'\n"
+                    "echo '   3  total over 1 file of 2  L0503:1 L0504:2'\n"
+                )
+            os.chmod(fake, 0o755)
+            got = sb.taste_counts(fake, ["/p/a.cp", "/p/b.cp"])
+        self.assertEqual(got, {"/p/a.cp": (3, {"L0503": 1, "L0504": 2})})
+        self.assertEqual(
+            sb.taste_by_lint([{"taste_lints_by_lint": {"L0503": 1}}, {"taste_lints_by_lint": {"L0503": 2, "L0501": 1}}]),
+            {"L0501": 1, "L0503": 3},
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

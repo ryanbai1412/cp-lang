@@ -76,6 +76,7 @@ def main():
     dates = added_dates()
     perf_by_id, time_p50 = load_scoreboard_perf()
     ports = sb.discover_ports()
+    taste_lints = sb.taste_counts(sb.find_cpl_binary(), [p["abs_path"] for p in ports])
     rows = []
     for p in ports:
         title, top, count = friction(p["name"])
@@ -111,8 +112,11 @@ def main():
         "by today's compiler, with its token count; the gap is what the language",
         "still owes.",
         "",
-        "| Added | Problem | Port | Tokens | Runtime | Taste | Frictions | First friction |",
-        "|---|---|---|---|---|---|---|---|",
+        "Lints counts the `cpl lint --taste` findings (the `plan/PORTING.md`",
+        f"checklist as lints L05xx; {sum(n for n, _ in taste_lints.values())} over all ports).",
+        "",
+        "| Added | Problem | Port | Tokens | Runtime | Taste | Lints | Frictions | First friction |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
     for day, p, title, top, count, tok, perf in rows[:SHOWN]:
         url = statement_url(p["name"])
@@ -133,7 +137,8 @@ def main():
         else:
             taste = "–"
         fr = f"[{count}](frictions/{p['name']}.md)" if count else "–"
-        out.append(f"| {day[:10]} | {prob} | {port} | {toks} | {rt} | {taste} | {fr} | {cell(top)} |")
+        lints = taste_lints.get(p["abs_path"], (0, {}))[0]
+        out.append(f"| {day[:10]} | {prob} | {port} | {toks} | {rt} | {taste} | {lints} | {fr} | {cell(top)} |")
     with open(OUT, "w", encoding="utf-8") as f:
         f.write("\n".join(out) + "\n")
     print(f"wrote {os.path.relpath(OUT, sb.ROOT)}: {len(rows)} ports")

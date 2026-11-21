@@ -458,6 +458,28 @@ def load_explicit_specs():
     return specs
 
 
+def taste_counts(cpl, paths):
+    """Per-file taste lint findings from `cpl lint --taste`: {path: (n, {code: n})}."""
+    out = {}
+    if not paths:
+        return out
+    r = sh([cpl, "lint", "--taste", *paths])
+    for line in (r.stdout or "").splitlines():
+        m = re.match(r"\s*(\d+)  (\S+)  (.*)$", line)
+        if m and m.group(2) != "total":
+            by = dict((c, int(n)) for c, n in (x.split(":") for x in m.group(3).split()))
+            out[m.group(2)] = (int(m.group(1)), by)
+    return out
+
+
+def taste_by_lint(port_records):
+    total = {}
+    for r in port_records:
+        for code, n in (r.get("taste_lints_by_lint") or {}).items():
+            total[code] = total.get(code, 0) + n
+    return dict(sorted(total.items()))
+
+
 def run_batch_fast_checks(ports, cpl, jobs):
     """Run cpl check, fmt --check, lint, and parallel cpl build on all ports."""
     abs_paths = [p["abs_path"] for p in ports]
@@ -469,6 +491,8 @@ def run_batch_fast_checks(ports, cpl, jobs):
             "fmt_ok": True,
             "lint_warnings": 0,
             "lint_errors": 0,
+            "taste_lints": 0,
+            "taste_lints_by_lint": {},
             "build_ok": False,
             "emitted_bytes": None,
             "build_err": None,
@@ -521,6 +545,13 @@ def run_batch_fast_checks(ports, cpl, jobs):
                         results[p["id"]]["lint_warnings"] += 1
                     elif "error" in line.lower():
                         results[p["id"]]["lint_errors"] += 1
+
+    # 3b. taste lints (L05xx), counted apart: they are review findings, not gate failures
+    for path, (n, by) in taste_counts(cpl, abs_paths).items():
+        pid = id_by_path.get(path)
+        if pid:
+            results[pid]["taste_lints"] = n
+            results[pid]["taste_lints_by_lint"] = by
 
     # 4. cpl build (parallel, measuring emitted bytes directly from stdout)
     def build_one(p):
@@ -1308,6 +1339,11 @@ def compute_totals(port_records, fl_summary, fr_summary):
             "over_10x": sum(1 for v in ir_vals if v > INTERP_RATIO_BAR),
             "worst_10": interp_worst_10,
         },
+        "taste_lints": {
+            "total": sum(r.get("taste_lints", 0) for r in port_records),
+            "ports": sum(1 for r in port_records if r.get("taste_lints")),
+            "by_lint": taste_by_lint(port_records),
+        },
         "friction_lint": {
             "files": fl_summary.get("files", 0),
             "wa_trap": fl_summary.get("wa_trap", 0),
@@ -1575,6 +1611,10 @@ def print_summary(report, diff, show_ports=False, quiet=False):
             f"median {ip['median_ms']}ms, p95 {ip['p95_ms']}ms, max {ip['max_ms']}ms ({ip['max_port']})"
             f"{ratio_str}"
         )
+    tl = t.get("taste_lints")
+    if tl:
+        by = " ".join(f"{c}:{n}" for c, n in tl["by_lint"].items())
+        print(f"  lints:     {tl['total']} taste findings in {tl['ports']} ports ({by})")
     fl = t["friction_lint"]
     print(f"  lint:      {fl['wa_trap']} wa_trap, {fl['real_gap']} real_gap, {fl['stale_port']} stale_port")
     print_frictions_report(report["frictions"], quiet=quiet)
@@ -1690,6 +1730,8 @@ def build_report(args):
             "check_ok": fr["check_ok"],
             "fmt_ok": fr["fmt_ok"],
             "lint_warnings": fr["lint_warnings"],
+            "taste_lints": fr["taste_lints"],
+            "taste_lints_by_lint": fr["taste_lints_by_lint"],
             "build_ok": fr["build_ok"],
             "emitted_bytes": eb,
             "over_48kb": bool(eb is not None and eb > SIZE_WARN),
