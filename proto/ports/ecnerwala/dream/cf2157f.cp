@@ -16,6 +16,8 @@
 // prefix `(c_0, ..., c_{cl-1})`. Emitting these jumps per layer and printing
 // layers from `d - 1` down to `0` merges all `n` positions in exact budget.
 
+use std.math.{choose}
+
 const LAYER_COST = 1000
 
 struct Plan(d: Int, cost: Int, max_w: Int, max_w_cnt: Int)

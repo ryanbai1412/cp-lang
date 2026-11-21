@@ -9,12 +9,6 @@ pub fn gcd(a: Int, b: Int) -> Int:
 /// The least common multiple, never negative; stops on overflow.
 pub fn lcm(a: Int, b: Int) -> Int = if a == 0 or b == 0: 0 else: abs(a / gcd(a, b) * b)
 
-/// O(n + log max(xs)). Greatest common divisor of every integer in `xs` (`0` when empty).
-pub fn gcd_all<S: Seq>(xs: S) -> Int = todo
-
-/// O(n + log max(xs)). Least common multiple of every integer in `xs` (`1` when empty); stops on overflow.
-pub fn lcm_all<S: Seq>(xs: S) -> Int = todo
-
 /// O(1). Exact integer floor square root `floor(sqrt(x))` for `x >= 0` (no float rounding loss).
 pub fn isqrt(x: Int) -> Int = todo
 
