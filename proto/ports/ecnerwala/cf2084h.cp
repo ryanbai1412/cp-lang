@@ -6,8 +6,6 @@ struct Staircase:
     lift: Int
     hidden: M
 
-    fn new() -> Staircase = Staircase([], 0, 0)
-
     fn push(mut self, height: Int, v: M):
         let top = height - lift
         while let cur = steps.last, cur.top <= top:
@@ -22,20 +20,15 @@ struct Staircase:
 let n: 3..=2_000_000 = read()
 let s: Str = read()
 
-var blocks: List<Int> = []
-var run = 1
+var blocks = [1]
 for i in 1..n:
-    if s[i] == s[i - 1]:
-        run += 1
-    else:
-        blocks.push(run)
-        run = 1
-blocks.push(run)
+    if s[i] == s[i - 1]: blocks[blocks.len - 1] += 1
+    else: blocks.push(1)
 
 if blocks.len == 1:
     print(M(n - 1))
 else:
-    var stairs: [0..2]Staircase = [0..2] _ => Staircase.new()
+    var stairs = [0..2] _ => Staircase([], 0, 0)
     var dp: M = 1
     for k in 0..blocks.len - 1:
         let z = k % 2

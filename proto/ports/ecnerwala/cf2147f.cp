@@ -1,43 +1,40 @@
 @!multitest
-struct Node(mn: Int, first: Int, last: Int, pairs: Int)
-
-fn merge(a: ?Node, b: ?Node) -> ?Node:
-    let a = a ?? return b
-    let b = b ?? return a
-    if a.mn < b.mn: return a
-    if b.mn < a.mn: return b
-    let d = b.first - a.last
-    Node(a.mn, a.first, b.last, a.pairs + b.pairs + d * (d - 1) / 2)
-
 let n: 2..=100_000 = read()
 let q: 1..=100_000 = read()
 domain Item = 1..=n
 domain Cut = 0..=n
-var p: [Item]1..=n = read()
-var s: [Item]1..=n = read()
+var p: [Item]Cut = read()
+var s: [Item]Cut = read()
 
-let act = Action<?Node, Int>(
+struct Low(cover: Int, first: Cut, last: Cut, gaps: Int)
+
+fn choose2(k: Int) -> Int = k * (k - 1) / 2
+
+fn merge(a: ?Low, b: ?Low) -> ?Low:
+    let a = a ?? return b
+    let b = b ?? return a
+    if a.cover < b.cover: return a
+    if b.cover < a.cover: return b
+    Low(a.cover, a.first, b.last, a.gaps + b.gaps + choose2(b.first - a.last))
+
+let act = Action<?Low, Int>(
     id: 0,
     compose: (f, g) => f + g,
-    apply: (f, x, _) => if let v = x: Node(v.mn + f, v.first, v.last, v.pairs) else: none,
+    apply: (f, x, _) => if let l = x: Low(l.cover + f, l.first, l.last, l.gaps) else: none,
     over: Monoid(id: none, op: merge),
 )
-var seg = LazySegTree<Cut, ?Node>(act, [Cut] c => Node(0, c.to_idx, c.to_idx, 0))
+var low = LazySegTree<Cut, ?Low>(act, [Cut] c => Low(0, c, c, 0))
 
-fn update_item(i: Item, delta: Int):
+fn cover(i: Item, d: Int):
     let lo = min(p[i], s[i])
     let hi = max(p[i], s[i])
-    if lo < hi: seg.apply(Cut(lo)..Cut(hi), delta)
+    if lo < hi: low.apply(lo..hi, d)
 
-for i in Item: update_item(i, 1)
-
-let base = n * (n + 1) / 2
+for i in Item: cover(i, 1)
 repeat q:
-    let (tp, i, j): (1..=2, Item, Item) = read()
-    update_item(i, -1)
-    update_item(j, -1)
-    if tp == 1: (p[i], p[j]) = (p[j], p[i])
+    let (t, i, j): (1..=2, Item, Item) = read()
+    for x in [i, j]: cover(x, -1)
+    if t == 1: (p[i], p[j]) = (p[j], p[i])
     else: (s[i], s[j]) = (s[j], s[i])
-    update_item(i, 1)
-    update_item(j, 1)
-    print(base + seg.all!.pairs)
+    for x in [i, j]: cover(x, 1)
+    print(choose2(n + 1) + low.all!.gaps)
