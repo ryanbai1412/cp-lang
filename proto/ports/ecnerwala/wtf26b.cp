@@ -1,4 +1,4 @@
-// AtCoder WTF 2026 B: 3D suffix DP tracking (value x, suffix length a, cut).
+// AtCoder WTF 2026 B: 3D suffix DP tracking (value x, suffix length k, cut).
 const MOD = 998244353
 type Z = Mod<MOD>
 
@@ -14,18 +14,14 @@ for i in (0..n - 1).rev:
         for y in max(0, x - 1)..n:
             ndp[x, 0, 0] += dp[y, 0, 0]
             for k in 1..=i + 1:
-                for cut in 0..k:
+                for cut in 0..k if dp[y, k, cut] != 0:
                     let v = dp[y, k, cut]
-                    if v == 0: continue
                     if x == y + 1:
                         if k <= i: ndp[x, k, cut] += v
                     else:
-                        let nk = k - 1
-                        let ncut = max(cut, k - (x + 1))
-                        if ncut >= nk: ndp[x, 0, 0] += v
-                        else: ndp[x, nk, ncut] += v
+                        let ncut = max(cut, k - x - 1)
+                        if ncut >= k - 1: ndp[x, 0, 0] += v
+                        else: ndp[x, k - 1, ncut] += v
     dp = ndp
 
-var ans: Z = 0
-for x in 0..n: ans += dp[x, 0, 0]
-print(ans)
+print(sum(dp[x, 0, 0] for x in 0..n))

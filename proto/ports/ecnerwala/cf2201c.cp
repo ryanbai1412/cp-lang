@@ -4,17 +4,14 @@ const MOD = 998244353
 type Z = Mod<MOD>
 
 @!multitest
-let n: Int = read()
+let _n: Int = read()
 let s: Str = read()
 
-var ways_any: Z = 0
-var ways_open: Z = 0
-var ways_close: Z = 0
+var (ways_any, ways_open, ways_close, ans): (Z, Z, Z, Z) = (0, 0, 0, 0)
 var pref = 0
-var ans: Z = 0
-for i in 0..n:
+for c in s:
     ans += 1
-    if s[i] == '(':
+    if c == '(':
         ans += ways_any
         ways_open += ways_open + ways_close + 1
         pref += 1

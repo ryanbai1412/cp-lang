@@ -8,13 +8,14 @@ var odd: [0..n]Bool = false
 for (u, v) in edges:
     odd[u - 1] = not odd[u - 1]
     odd[v - 1] = not odd[v - 1]
+
 var pieces = Dsu<X>()
-for e in 0..n - 1:
-    let (u, v) = edges[e]
+for (e, (u, v)) in edges.items:
     if not odd[u - 1]: pieces.unite(X(n + e), X(u - 1))
     if not odd[v - 1]: pieces.unite(X(n + e), X(v - 1))
+
 var ans = 0
 for g in pieces.groups():
-    let extra = count(x.ord >= n for x in g) + 1 - count(x.ord < n for x in g)
+    let extra = 2 * count(x.ord >= n for x in g) + 1 - g.len
     ans += extra * (extra - 1) / 2
 print(ans)

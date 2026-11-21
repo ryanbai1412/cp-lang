@@ -12,6 +12,5 @@ while x != y:
         ops.push(1)
         y -= x
         x *= 2
-ops.reverse()
 print(ops.len)
-print(ops)
+if not ops.is_empty: print(ops.rev)
