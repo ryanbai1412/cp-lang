@@ -80,24 +80,25 @@ pub struct TimeTree<E>:
         undo: M -> (),
         mut out: List<R>,
     ):
-        if buckets[u].is_empty:
+        unchecked:
+            if buckets[u].is_empty:
+                if nr - nl == 1:
+                    out.push(answer(nl))
+                else:
+                    let mid = (nl + nr) / 2
+                    self.run_node(2 * u, nl, mid, mark, apply, answer, undo, mut out)
+                    self.run_node(2 * u + 1, mid, nr, mark, apply, answer, undo, mut out)
+                return
+            let snap = mark()
+            for id in buckets[u]:
+                apply(events[id])
             if nr - nl == 1:
                 out.push(answer(nl))
             else:
                 let mid = (nl + nr) / 2
                 self.run_node(2 * u, nl, mid, mark, apply, answer, undo, mut out)
                 self.run_node(2 * u + 1, mid, nr, mark, apply, answer, undo, mut out)
-            return
-        let snap = mark()
-        for id in buckets[u]:
-            apply(events[id])
-        if nr - nl == 1:
-            out.push(answer(nl))
-        else:
-            let mid = (nl + nr) / 2
-            self.run_node(2 * u, nl, mid, mark, apply, answer, undo, mut out)
-            self.run_node(2 * u + 1, mid, nr, mark, apply, answer, undo, mut out)
-        undo(snap)
+            undo(snap)
 
     /// Walk the segment tree over `0..q` with zero step-list allocation, returning
     /// `[answer(0), ..., answer(q - 1)]`. Calls `mark()` once on entering each non-empty

@@ -253,48 +253,52 @@ pub struct MergeSortTree<D, T>:
 
     fn lower_idx(xs: List<T>, x: T) -> Int:
         var (lo, hi) = (0, xs.len)
-        while lo < hi:
-            let mid = (lo + hi) / 2
-            if xs[mid] < x: lo = mid + 1
-            else: hi = mid
+        unchecked:
+            while lo < hi:
+                let mid = (lo + hi) / 2
+                if xs[mid] < x: lo = mid + 1
+                else: hi = mid
         lo
 
     fn upper_idx(xs: List<T>, x: T) -> Int:
         var (lo, hi) = (0, xs.len)
-        while lo < hi:
-            let mid = (lo + hi) / 2
-            if xs[mid] <= x: lo = mid + 1
-            else: hi = mid
+        unchecked:
+            while lo < hi:
+                let mid = (lo + hi) / 2
+                if xs[mid] <= x: lo = mid + 1
+                else: hi = mid
         lo
 
     /// Count elements in `r` strictly less than `x`. O(log^2 n).
     pub fn count_lt(self, r: Range<D>, x: T) -> Int:
         let (lo, hi) = r.ends
         var (l, h, ans) = (lo + size, hi + size, 0)
-        while l < h:
-            if l % 2 == 1:
-                ans += MergeSortTree.lower_idx(nodes[l], x)
-                l += 1
-            if h % 2 == 1:
-                h -= 1
-                ans += MergeSortTree.lower_idx(nodes[h], x)
-            l /= 2
-            h /= 2
+        unchecked:
+            while l < h:
+                if l % 2 == 1:
+                    ans += MergeSortTree.lower_idx(nodes[l], x)
+                    l += 1
+                if h % 2 == 1:
+                    h -= 1
+                    ans += MergeSortTree.lower_idx(nodes[h], x)
+                l /= 2
+                h /= 2
         ans
 
     /// Count elements in `r` less than or equal to `x`. O(log^2 n).
     pub fn count_le(self, r: Range<D>, x: T) -> Int:
         let (lo, hi) = r.ends
         var (l, h, ans) = (lo + size, hi + size, 0)
-        while l < h:
-            if l % 2 == 1:
-                ans += MergeSortTree.upper_idx(nodes[l], x)
-                l += 1
-            if h % 2 == 1:
-                h -= 1
-                ans += MergeSortTree.upper_idx(nodes[h], x)
-            l /= 2
-            h /= 2
+        unchecked:
+            while l < h:
+                if l % 2 == 1:
+                    ans += MergeSortTree.upper_idx(nodes[l], x)
+                    l += 1
+                if h % 2 == 1:
+                    h -= 1
+                    ans += MergeSortTree.upper_idx(nodes[h], x)
+                l /= 2
+                h /= 2
         ans
 
     /// Count elements in `r` within `[lo_v, hi_v]` inclusive. O(log^2 n).

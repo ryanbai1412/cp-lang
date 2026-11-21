@@ -134,49 +134,57 @@ pub struct RangeKth<D, T>:
 
     fn lower_val(self, x: T) -> Int:
         var (lo, hi) = (0, vals.len)
-        while lo < hi:
-            let mid = (lo + hi) / 2
-            if vals[mid] < x: lo = mid + 1
-            else: hi = mid
+        unchecked:
+            while lo < hi:
+                let mid = (lo + hi) / 2
+                if vals[mid] < x: lo = mid + 1
+                else: hi = mid
         lo
 
     fn upper_val(self, x: T) -> Int:
         var (lo, hi) = (0, vals.len)
-        while lo < hi:
-            let mid = (lo + hi) / 2
-            if vals[mid] <= x: lo = mid + 1
-            else: hi = mid
+        unchecked:
+            while lo < hi:
+                let mid = (lo + hi) / 2
+                if vals[mid] <= x: lo = mid + 1
+                else: hi = mid
         lo
 
     fn inc(mut self, u: Int, nl: Int, nr: Int, pos: Int) -> Int:
         let id = cnt.len
-        left.push(left[u])
-        right.push(right[u])
-        cnt.push(cnt[u] + 1)
-        if nr - nl == 1: return id
-        let mid = (nl + nr) / 2
-        if pos < mid: left[id] = self.inc(left[u], nl, mid, pos)
-        else: right[id] = self.inc(right[u], mid, nr, pos)
+        unchecked:
+            left.push(left[u])
+            right.push(right[u])
+            cnt.push(cnt[u] + 1)
+            if nr - nl == 1: return id
+            let mid = (nl + nr) / 2
+            if pos < mid:
+                let c = self.inc(left[u], nl, mid, pos)
+                left[id] = c
+            else:
+                let c = self.inc(right[u], mid, nr, pos)
+                right[id] = c
         id
 
     /// The `k`-th smallest element (0-based) in `r`. Traps if `k < 0` or `k >= r.len`. O(log n).
     pub fn kth(self, r: Range<D>, k: Int) -> T:
         let (lo, hi) = r.ends
         assert 0 <= k and k < hi - lo, "RangeKth.kth index out of range"
-        var (u, v, nl, nr, rem) = (roots[lo], roots[hi], 0, vals.len, k)
-        while nr - nl > 1:
-            let mid = (nl + nr) / 2
-            let left_cnt = cnt[left[v]] - cnt[left[u]]
-            if rem < left_cnt:
-                u = left[u]
-                v = left[v]
-                nr = mid
-            else:
-                rem -= left_cnt
-                u = right[u]
-                v = right[v]
-                nl = mid
-        vals[nl]
+        unchecked:
+            var (u, v, nl, nr, rem) = (roots[lo], roots[hi], 0, vals.len, k)
+            while nr - nl > 1:
+                let mid = (nl + nr) / 2
+                let left_cnt = cnt[left[v]] - cnt[left[u]]
+                if rem < left_cnt:
+                    u = left[u]
+                    v = left[v]
+                    nr = mid
+                else:
+                    rem -= left_cnt
+                    u = right[u]
+                    v = right[v]
+                    nl = mid
+            return vals[nl]
 
     fn count_prefix(self, u: Int, v: Int, nl: Int, nr: Int, limit: Int) -> Int:
         if limit <= nl or (u == 0 and v == 0): return 0

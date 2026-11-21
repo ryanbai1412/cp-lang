@@ -1,10 +1,12 @@
 @!multitest
+use std.mo.{mo_order}
 let (n, m): (Int, Int) = read()
 domain V = 1..=n
 domain E = 0..m
 let raw: [E](u: V, v: V) = read()
 let g = Graph.undirected(raw)
 let arcs = [(u, a.to, a.e) for u in V for a in g.out(u)]
+domain Arc = 0..arcs.len
 let pref = prefix([V] u => g.deg(u))
 
 let q: Int = read()
@@ -12,13 +14,7 @@ let raw_q: [0..q](V, V, Int) = read()
 let queries = [
     (ql: pref.prefix(l.l), qr: pref.prefix(r.r), need: k + n - (r - l + 1)) for (l, r, k) in raw_q
 ]
-
-let blk = 350
-fn mo_key(qi: Int) -> (Int, Int):
-    let b = queries[qi].ql / blk
-    (b, if b % 2 == 0: queries[qi].qr else: -queries[qi].qr)
-
-let order = (0..q).sorted(by: mo_key)
+let order = mo_order([Arc.bounds.nth(x.ql)..Arc.bounds.nth(x.qr) for x in queries])
 
 let vmax = bit_ceil(n + 1)
 let bsz = 512
