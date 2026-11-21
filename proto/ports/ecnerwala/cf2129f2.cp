@@ -1,8 +1,12 @@
+// Codeforces 2129 F2: Permutation (Hard Version).
+// Assign each value 1..=890 a 29-bit mask (each bit used <= 60 times):
+// 18 unique triples plus two copies of all 436 subsets of size <= 2.
+// 29 type-2 queries recover every position's mask, narrowing each to a
+// unique value or a colliding pair (v0, v1) with v0 <= 454 < v1. One
+// randomized type-3 probe on one position per colliding pair resolves all pairs.
 @!interactive
+use std.rand.{Rng}
 
-// Build 890 29-bit query masks with each bit used <= 60 times:
-// 1..=18: 18 unique triples; 19..=454 and 455..=890: two copies of all
-// 436 subsets of size <= 2. Every colliding pair (v0, v1) has v0 <= 454 < v1.
 var masks: [1..=890]Int = 0
 var num_masks = 0
 var mask_vals = Map<Int, List<Int>>()
@@ -26,10 +30,7 @@ for _ in 0..2:
         for j in i + 1..29:
             add_mask((1 << i) | (1 << j))
 
-var rng = 50
-fn next_bit() -> Int:
-    rng = (rng * 1_103_515_245 + 12_345) % 2_147_483_648
-    (rng / 65536) % 2
+var rng = Rng(50)
 
 let t: 1..=40 = read()
 for _ in 0..t:
@@ -63,7 +64,7 @@ for _ in 0..t:
             ans[ps[0]] = vs[0]
         else:
             var (p0, p1) = (ps[0], ps[1])
-            if next_bit() == 1:
+            if rng.int(0, 2) == 1:
                 swap(mut p0, mut p1)
             ans[p0] = vs[0]
             ans[p1] = vs[1]
