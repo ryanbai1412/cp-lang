@@ -1172,28 +1172,27 @@ struct Rooted<V, Pre> // O(n) time and memory; design/stdlib/trees.md
     fn new<N>(adj: N, root: V)
     fn from_parents(par: [V]?V) // O(n)
     fn weighted<N, A>(adj: N, root: V, len: A -> Int)
-    fn forest<N>(adj: N, roots: List<V>) // [new] O(n)
+    fn forest<N>(adj: N, roots: List<V>) // O(n)
     fn parent(self, v: V) -> ?V // O(1), like every shape query
     fn children(self, v: V) -> List<V> // in the order adj listed them
     heavy: [V]?V // O(1) field, like at and far
-    fn light(self, v: V) -> yields V // [new] O(deg v)
+    fn light(self, v: V) -> yields V // O(deg v)
     fn depth(self, v: V) -> Int
     far: [V]Int // weighted depth
     fn size(self, v: V) -> Int
-    fn root_of(self, v: V) -> V // [new]
+    fn root_of(self, v: V) -> V // O(depth)
     @get fn subtree_sizes(self) -> [V]Int // O(n)
     fn pos(self, v: V) -> Pre // O(1)
     at: [Pre]V // inverse of pos
     fn sub(self, v: V) -> Range<Pre> // O(1)
     fn below(self, v: V) -> Range<Pre> // O(1), sub(v) without v
-    fn subtree(self, v: V) -> yields V // [new] O(size v)
+    fn subtree(self, v: V) -> yields V // O(size v)
     fn reorder<T>(self, a: [V]T) -> [Pre]T // O(n)
     @get fn tour(self) -> yields (v: V, entering: Bool) // O(n)
     fn is_anc(self, a: V, b: V) -> Bool // O(1)
     fn lower(self, u: V, v: V) -> V // O(1)
     fn lca(self, a: V, b: V) -> V // O(log n)
     fn dist(self, a: V, b: V) -> Int // O(log n)
-    fn far_dist(self, a: V, b: V) -> Int // [new] O(log n)
     fn ancestor(self, v: V, k: Int) -> ?V // O(log n)
     fn step(self, a: V, b: V, k: Int) -> ?V // O(log n)
     fn lift_while(self, v: V, pred: V -> Bool) -> ?V // O(log^2 n)
@@ -1205,8 +1204,8 @@ struct Rooted<V, Pre> // O(n) time and memory; design/stdlib/trees.md
     fn fold_path<S, T>(self, a: V, b: V, ds: S, edges: Bool = false) -> T
     // O(log n) range applies
     fn apply_path<S, F>(self, a: V, b: V, mut ds: S, tag: F, edges: Bool = false)
-    fn down<T>(self, init: T, f: (T, V) -> T) -> [V]T // [new] O(n)
-    // [new] O(n): rooted DP, and the same DP for every root
+    fn down<T>(self, init: T, f: (T, V) -> T) -> [V]T // O(n)
+    // O(n): rooted DP, and the same DP for every root; lift defaults to (x, c, p) => x
     fn up<T, E, M>(self, m: M, lift: (T, V, V) -> E, finish: (E, V) -> T) -> [V]T
     fn reroot<T, E, M>(self, m: M, lift: (T, V, V) -> E, finish: (E, V) -> T) -> [V]T
     // O(k)
@@ -1214,17 +1213,17 @@ struct Rooted<V, Pre> // O(n) time and memory; design/stdlib/trees.md
     fn diameter(self) -> (len: Int, u: V, v: V) // O(n)
     @get fn centroid(self) -> V // O(depth)
     @get fn centroids(self) -> List<V> // O(depth)
-    fn shapes(self) -> (domain Shape, of: [V]Shape) // [new] O(n log n)
+    fn shapes(self) -> (domain Shape, of: [V]Shape) // O(n log n)
     // O(k log k + k log n)
     fn virtual(self, keys: List<V>) -> VirtualTree<V, K>
         // fresh domain vt.K in preorder; at: [K]V, up: [K]?K, len: [K]Int, key: [K]Bool
-struct Centroids<V> // [new] O(n log n) time and memory
+struct Centroids<V> // O(n log n) time and memory
     fn new<N>(adj: N) -> Centroids<V>
     fn parent(self, c: V) -> ?V // O(1)
     fn depth(self, c: V) -> Int // O(1), at most log2 n
     fn ancestors(self, v: V) -> yields (c: V, dist: Int) // O(log n), v's own first
     fn piece(self, c: V) -> yields (v: V, dist: Int, branch: V) // O(|piece|)
-struct LinkCut<V, T> // [new] dynamic forest; amortized O(log n) per call
+struct LinkCut<V, T> // dynamic forest; amortized O(log n) per call
     fn new<M>(op: M, a: ?[V]T = none) -> LinkCut<V, T> // O(n)
     fn link(mut self, u: V, v: V)
     fn cut(mut self, u: V, v: V)
@@ -1235,12 +1234,12 @@ struct LinkCut<V, T> // [new] dynamic forest; amortized O(log n) per call
     fn get(self, v: V) -> T // O(1)
     fn set(mut self, v: V, x: T)
     fn lca(mut self, u: V, v: V, root: V) -> ?V
-struct LazyLinkCut<V, T, F> // [new] LinkCut's verbs plus path updates under an Action
+struct LazyLinkCut<V, T, F> // LinkCut's verbs plus path updates under an Action
     fn new(act: Action<T, F>, a: ?[V]T = none) -> LazyLinkCut<V, T, F> // O(n)
     fn apply_path(mut self, u: V, v: V, f: F) // amortized O(log n)
     fn get(mut self, v: V) -> T // amortized O(log n): pending tags
 enum PermKind: Leaf, Incr, Decr, Partial, Full
-struct PermTree<I, V, Node> // [new] binary permutation tree of a bijection [I]V
+struct PermTree<I, V, Node> // binary permutation tree of a bijection [I]V
     fn of(p: [I]V) -> PermTree<I, V, _> // O(n), fresh node domain of 2n - 1
     kind: [Node]PermKind; first, last: [Node]I; lo, hi: [Node]V; root: Node
     fn leaf(self, i: I) -> Node // O(1)
@@ -1248,7 +1247,7 @@ struct PermTree<I, V, Node> // [new] binary permutation tree of a bijection [I]V
     fn right(self, v: Node) -> Node // O(1), traps on a leaf
     fn span(self, v: Node) -> Range<I> // O(1), positions
     fn vals(self, v: Node) -> Range<V> // O(1), exact unless Partial
-struct JumpTree<V> // [new] forest grown leaf by leaf; skew-binary jumps
+struct JumpTree<V> // forest grown leaf by leaf; skew-binary jumps
     fn new() -> JumpTree<V> // O(n), every vertex a root
     fn add(mut self, v: V, p: V) // O(1), hang the lone vertex v below p
     fn parent(self, v: V) -> ?V // O(1)
@@ -1264,6 +1263,85 @@ struct JumpTree<V> // [new] forest grown leaf by leaf; skew-binary jumps
 ```cp
 fn mst<V>(edges: List<(u: V, v: V, w: Int)>) -> (total: Int, used: List<Int>)
     // O(m log m) Kruskal; indices of the chosen edges
+```
+
+Trees, [rename] (coherence pass, `design/stdlib/trees.md` "Coherence"; the
+old spelling stays a deprecated alias until a codemod moves the ports):
+
+```cp
+// one constructor convention: T(args) is T.new(args), options are named
+fn Rooted.new<N, A>(adj: N, root: V, w: A -> Int = a => 1) // O(n); was Rooted.weighted(adj, root, len)
+fn PermTree.new(p: [I]V) -> PermTree<I, V, _> // O(n); was PermTree.of(p)
+fn Rooted.jump(self, a: V, b: V, k: Int) -> ?V // O(log n); was step, the word Functional.jump uses
+fn Rooted.jump_while(self, v: V, ok: V -> Bool) -> ?V // O(log^2 n); was lift_while (also JumpTree)
+VirtualTree.parent: [K]?K // was up, which is Rooted's bottom-up fold
+VirtualTree.w: [K]Int // was len, which is every collection's size; w as in graph edges
+// the monoid argument is `op` everywhere in the area, as in SegTree and LinkCut (was m)
+```
+
+Trees, [new]: the rest of the surface. Every `Range<Pre>` argument also
+takes a range of cuts `j..i` over `t.Pre.bounds` (decision 124);
+`t.sub(v).l` and `.r` are cuts (decision 2.2).
+
+```cp
+struct Rooted<V, Pre>
+    fn top(self, v: V) -> V // O(1), head of v's heavy chain
+    fn chain(self, v: V) -> Range<Pre> // O(1), v's whole heavy chain, top first
+    fn sub_at(self, v: V, root: V) -> yields Range<Pre> // O(log n), at most 2 ranges: sub(v) were the tree rooted at root
+    fn on_path(self, c: V, a: V, b: V) -> Bool // O(log n)
+    fn meet(self, a: V, b: V, c: V) -> V // O(log n), the vertex on all three pairwise paths
+    // O(n): for v != root, the DP of the tree minus sub(v), rooted at parent(v); reroot's other half
+    fn above<T, E, M>(self, op: M, lift: (T, V, V) -> E = (x, c, p) => x, finish: (E, V) -> T) -> [V]?T
+    domain Bfs // breadth-first positions, each depth layer in preorder
+    by_depth: [Bfs]V // O(1) field
+    fn layer(self, v: V, d: Int) -> Range<Bfs> // O(log n), v's descendants at depth d
+    domain Ev // the 2n enter and exit events of tour, in order
+    fn enter(self, v: V) -> Ev // O(1)
+    fn exit(self, v: V) -> Ev // O(1)
+    // O(log n), Mo on trees: vertices met an odd number of times in range, plus extra, are path(a, b)
+    fn path_events(self, a: V, b: V) -> (range: Range<Ev>, extra: ?V)
+    fn long_paths(self) -> LongPaths<V, L> // O(n), fresh domain L of n slots
+    // power 2: for (v, step) in t.subtree(r), step.prune() skips v's subtree; O(visited)
+struct LongPaths<V, L> // depth-indexed DP merged in O(n) total
+    deep: [V]?V // O(1) field: the child with the tallest subtree
+    height: [V]Int // O(1) field: edges on the longest downward path
+    fn slots(self, v: V) -> Range<L> // O(1), height(v) + 1 slots, depth offset 0 first; deep[v]'s start one later
+    fn slot(self, v: V, d: Int) -> L // O(1), traps unless 0 <= d <= height(v)
+/// The farthest pair of a vertex set as a monoid, for any range structure or fold.
+fn far_pairs<V>(dist: (V, V) -> Int) -> Monoid<?(u: V, v: V, len: Int)> // O(1) dist calls per op
+struct LcaTable<V> // Euler tour plus sparse table
+    fn new<Pre>(t: Rooted<V, Pre>) -> LcaTable<V> // O(n log n) time and memory
+    fn lca(self, a: V, b: V) -> V // O(1)
+    fn dist(self, a: V, b: V) -> Int // O(1)
+struct LinkCut<V, T> // also LazyLinkCut
+    fn dist(mut self, a: V, b: V) -> ?Int // amortized O(log n), none across trees
+    fn jump(mut self, a: V, b: V, k: Int) -> ?V // amortized O(log n), k-th vertex a -> b
+struct JumpTree<V>
+    fn dist(self, a: V, b: V) -> ?Int // O(log n), none across trees
+struct EulerTourTree<V, T> // dynamic forest with whole-tree and subtree folds; expected O(log n) per call
+    fn new<M>(op: M, a: ?[V]T = none) -> EulerTourTree<V, T> // O(n)
+    fn link(mut self, u: V, v: V)
+    fn cut(mut self, u: V, v: V)
+    fn connected(mut self, a: V, b: V) -> Bool
+    fn len(mut self, v: V) -> Int // vertices in v's tree
+    fn get(self, v: V) -> T // O(1)
+    fn set(mut self, v: V, x: T)
+    fn fold_tree(mut self, v: V) -> T // the whole tree holding v
+    fn fold_sub(mut self, v: V, away: V) -> T // v's side of the edge (v, away)
+struct LazyEulerTourTree<V, T, F> // EulerTourTree's verbs plus updates under an Action
+    fn new(act: Action<T, F>, a: ?[V]T = none) -> LazyEulerTourTree<V, T, F> // O(n)
+    fn apply_tree(mut self, v: V, f: F) // expected O(log n)
+    fn apply_sub(mut self, v: V, away: V, f: F) // expected O(log n)
+// derived trees
+fn cartesian_tree<D, T>(a: [D]T, by: (T, T) -> Bool = (x, y) => x < y) -> [D]?D // O(n), parent array; root the by-least
+fn kruskal_tree<V, E, W>(edges: [E](u: V, v: V, w: W)) -> KruskalTree<V, N, W> // O(m log m), fresh domain N
+struct KruskalTree<V, N, W> // leaves are V, an internal node per merging edge
+    leaf: [V]N // O(1) field
+    w: [N]?W // O(1) field: the merging weight, none at a leaf
+    tree: Rooted<N, Pre> // a forest when the graph is not connected
+    fn reach(self, v: V, limit: W) -> N // O(log^2 n), highest node over v with w <= limit
+fn prufer<V>(edges: Tree<V>) -> List<V> // O(n)
+fn from_prufer<V>(code: List<V>) -> Tree<V> // O(n), traps unless code.len == V.count - 2
 ```
 
 ### 4.12 `std.flow`: flows, cuts and matchings

@@ -496,3 +496,165 @@ Logged in `decisions.md` under "trees":
 - `step(a, b, 1)` covers "next vertex toward", no `toward`;
 - dynamic trees are a separate `LinkCut` with the same verbs, after the
   static API is fast; trees that only grow are `JumpTree`, same verbs again.
+
+## Coverage
+
+Topics a strong contest library covers for trees: AtCoder Library (which
+leaves trees to the user over its segment trees), KACTL's tree chapter
+(LCA, binary lifting, HLD, link-cut, centroid, compress tree, directed
+MST), cp-algorithms' tree section, ecnerwala's `static_forest_t`, and other
+top contestants' personal libraries. `have` means a shipped spelling in
+`plan/STDLIB.md` 4.11, `new` means a `[new]` signature there, `out` gives the
+reason.
+
+| Topic | Status | Spelling or reason |
+|---|---|---|
+| Rooted tree from adjacency, parents, weights | have | `Rooted(adj, root)`, `Rooted.from_parents`, `w:` |
+| Forests | have | `Rooted.forest(adj, roots)`, `root_of` |
+| Parent, children, depth, size, heavy, light | have | `parent`, `children`, `depth`, `size`, `heavy`, `light` |
+| Euler tour flattening, subtree as range | have | `pos`, `at`, `sub`, `below`, `reorder` |
+| Enter/exit events | have | `tour` |
+| LCA by chain jumping | have | `lca`, `is_anc`, `lower` |
+| Distance, weighted distance | have | `dist` |
+| k-th ancestor, k-th vertex on a path | have | `ancestor`, `jump` |
+| Binary search up the ancestors | have | `jump_while` |
+| Path as vertices | have | `path` |
+| HLD path fold and update, edge mode, direction | have | `chains`, `fold_path`, `apply_path`, `edges:` |
+| Subtree fold and update | have | any range structure over `t.Pre` with `sub(v)` |
+| Bottom-up and top-down DP | have | `up`, `down` |
+| Rerooting DP | have | `reroot` |
+| Sibling-exclusive folds | have | `excl_fold` |
+| Diameter | have | `diameter` |
+| Centroid(s) | have | `centroid`, `centroids` |
+| Centroid decomposition | have | `Centroids` |
+| Virtual (auxiliary) tree | have | `virtual` |
+| Small-to-large, DSU on tree | have | keep `heavy`, loop `light`, `sub` ranges |
+| Rooted isomorphism (AHU) | have | `shapes` |
+| Link-cut path fold, reroot | have | `LinkCut` |
+| Link-cut path update | have | `LazyLinkCut` |
+| Leaf-growing tree with jumps | have | `JumpTree` |
+| Permutation tree | have | `PermTree` |
+| Jumps on a functional graph | have | graphs' `Functional.jump` |
+| Path k-th by persistence | have | `down` with ranges' `PersistentSegTree` |
+| Subtree k-th, rank, distinct | have | ranges' structures over `t.Pre` |
+| Heavy chain head and chain range (dynamic DP) | new | `top`, `chain` |
+| Subtree under another root | new | `sub_at` |
+| On-path test, three-path meet | new | `on_path`, `meet` |
+| Per-edge rerooting (the part above v) | new | `above` |
+| Online diameter of a vertex set | new | `far_pairs` monoid |
+| Descendants at a depth | new | `Bfs`, `by_depth`, `layer` |
+| Mo on trees | new | `Ev`, `enter`, `exit`, `path_events` |
+| Long-path decomposition | new | `long_paths`, `LongPaths` |
+| O(1) LCA | new | `LcaTable` |
+| Link-cut distance and k-th on path | new | `LinkCut.dist`, `LinkCut.jump` |
+| Growing-tree distance | new | `JumpTree.dist` |
+| Euler tour tree | new | `EulerTourTree`, `LazyEulerTourTree` |
+| Cartesian tree | new | `cartesian_tree` |
+| Kruskal reconstruction tree | new | `kruskal_tree`, `KruskalTree` |
+| Prüfer code | new | `prufer`, `from_prufer` |
+| Top tree | out | rare, and `EulerTourTree` with `LinkCut` covers its contest uses within 64 KB |
+| Fully dynamic connectivity (HDLT) | out | rare, big constant; offline uses containers' segment-tree-over-time |
+| Offline Tarjan LCA | out | `lca` is online at O(n) memory; no port needed offline |
+| O(1) level ancestor (ladders) | out | `ancestor` is a few chain jumps; ladders cost O(n log n) memory |
+| Randomized tree hashing | out | `shapes` is exact at the same cost |
+| Unrooted isomorphism | out | two lines: `centroids` then `shapes` (section 3) |
+| Every vertex's eccentricity | out | one line from `diameter` (law 9) |
+| Centre and radius | out | `jump(u, v, len / 2)` on the diameter |
+| Tree knapsack size-bounded merge | out | the bounded loop is the algorithm; `up` carries the lists |
+| Random tree generators | out | owned by the stress generators |
+| Block-cut tree, dominator tree | out | graphs (`design/stdlib/graphs.md`); they return a `Rooted` |
+| Gomory-Hu tree | out | flows (`design/stdlib/flows.md`) |
+| Minimum spanning tree | out | `mst` in `std.graph`; the tree side is `kruskal_tree` |
+| Directed MST (Chu-Liu/Edmonds) | out | graphs |
+| Sqrt blocking of a tree | out | `path_events` with Mo covers its uses |
+| Automorphism counting | out | rare; `shapes` gives the classes to count with |
+| Edge index helper | out | `lower(u, v)` names an edge by its lower vertex |
+| A `dsu_on_tree` higher-order function | out | keep/clear is the algorithm (section 5) |
+
+Counts: 27 have, 15 new, 18 out.
+
+## Coherence
+
+- **Construction.** Every type in the area is built by calling its name:
+  `T(args)` is `T.new(args)`. Options are named arguments with defaults
+  (`w:`, `edges:`). A second constructor exists only for a different input
+  shape and is named `T.from_<input>` (`Rooted.from_parents`) or by the
+  shape (`Rooted.forest`). Drift fixed: `Rooted.weighted(adj, root, len)`
+  becomes `Rooted(adj, root, w:)`; `PermTree.of(p)` becomes `PermTree(p)`.
+  Builders from another kind of input are free functions named for what
+  they build (`cartesian_tree`, `kruskal_tree`, `from_prufer`).
+- **Arguments.** Path endpoints are `a, b`; edge endpoints `u, v`; a root
+  is `root:` or `roots:`; a vertex count of steps is `k`; an edge weight is
+  `w`; a monoid is `op`, as in `SegTree` and `LinkCut` (was `m` in `up`,
+  `reroot`, `excl_fold`); a predicate is `ok`; an initial value is `init`.
+  Positions are `Range<Pre>`, and cuts `t.Pre.bounds` (decision 124).
+- **Verbs.** Folds are `fold_*`, updates `apply_*`, both taking the range
+  structure, as in ranges. Jumps are `jump` and `jump_while`, the words
+  graphs' `Functional` uses (was `step`, `lift_while`).
+- **Renames** keep a deprecated alias until a codemod moves the ports.
+
+## Cross-area
+
+| Name | Other area | Resolution |
+|---|---|---|
+| `jump`, `jump_while` | graphs `Functional.jump` | same meaning; trees renamed to match |
+| `excl_fold` | seq `excl_fold` | same meaning; trees uses `op`, seq should too |
+| `fold_path`, `apply_path` | ranges `fold`, `apply` | the path form of the range verbs; takes the range structure |
+| `dist` | graphs `bfs`/`dijkstra` `.dist` | same meaning, method here, array there |
+| `path` | graphs path reconstruction | both return `List<V>` |
+| `Bfs` (domain on `Rooted`) | graphs `bfs` function | different kinds (domain, function); kept |
+| `w` (`VirtualTree.w`, `KruskalTree.w`) | graphs edge `w` | same meaning |
+| `centroids` (method) | `Centroids` (type) | within trees: the method answers the one or two vertices |
+| `cartesian_tree` | seq previous/next smaller | trees owns the tree; seq's scans are how users build it today |
+| `kruskal_tree` | graphs `mst`, containers `Dsu` | trees owns the tree; `mst` stays the forest of edges |
+| `far_pairs` | ranges `Monoid` | a monoid value, usable in every range structure |
+| `Tree<V>` | graphs input aliases | the shared edge-list input type in the prelude |
+| block-cut, dominator, Gomory-Hu trees | graphs, flows | their owners; results are `Rooted` |
+| `PersistentSegTree` path k-th | ranges | composition, no tree name |
+
+## Powers
+
+Signatures in 4.11 that today's public language cannot write as specified:
+
+1. **Protocols with associated types and default methods.**
+   Needed by `fold_path`, `apply_path` (`ds: S` should be bound by a range
+   fold protocol with its value type, so errors name the call, not the body)
+   and by `LinkCut.dist`, `LinkCut.jump` (written once for `LinkCut` and
+   `LazyLinkCut`). Smallest example:
+   `fn fold_path<S: Fold<Pre>>(self, a: V, b: V, ds: S) -> S.Out`.
+2. **Generators steered by their items** (decision 126). Needed by
+   `subtree` and `tour` to skip a subtree mid-walk. Smallest example:
+   `for (v, step) in t.subtree(r): if bad(v): step.prune()`.
+3. **Niches.** Needed for the memory the costs promise in `parent`
+   (`[V]?V`), `cartesian_tree` (`[D]?D`), `VirtualTree.parent` and
+   `KruskalTree.w`: `?V` stored in the width of `V`. Smallest example:
+   `let par: [V]?V` taking 4 bytes per vertex, as the C++ `int` with -1.
+
+Fresh per-value domains (`Bfs`, `Ev`, `L`, `N`) use the mechanism `Pre` and
+`VirtualTree`'s `K` already use, so they need no new power.
+
+## Dreams
+
+Tree dreams in `proto/ports/*/dream/` (all under `ecnerwala`), the tree APIs
+each uses, and checker errors on main that are not tree APIs.
+
+| Dream | Tree APIs | Other errors (owner) |
+|---|---|---|
+| cf1984e | `Rooted`, `reroot` | record-of-monoids literal `(count: +, taken: or)` (ranges) |
+| cf2035f | `Rooted`, `up` | clean |
+| cf2062e1 | `Rooted`, `is_anc`, `lca` | `with io(base: 1)` context (core) |
+| cf2062e2 | `Rooted`, `at`, `lca`, `pos`, `sub` | `with io(base: 1)` context (core) |
+| cf2089e | `from_parents`, `path` | `Poly` (math); its `next` is user code |
+| cf2101e | `Centroids`, `piece` | `merge` unknown (seq) |
+| cf2124i | `from_parents`, `children` | `V.windows(2)` destructuring (seq) |
+| cf2135f | `Rooted(adj, root:)`, `Pre.rev` | `PMultiset` (containers), an argument parse error |
+| cf2152g | `Rooted`, `is_anc`, `reorder`, `sub` | `Flip` action shape (ranges) |
+| cf2183d2 | `Rooted`, `depth`, `parent` | `List.max` (seq) |
+| cf2183f | `Tree`, `Rooted`, `at`, `below`, `pos`, `sub` | clean |
+| cf2187f1, cf2187f2 | `PermTree.of` (spec: `PermTree(p)`) | lowercase variant patterns (syntax) |
+| cf2222g | `Rooted`, `at`, `centroid`, `children`, `subtree`, `subtree_sizes` | `List.counts` (seq), names from it |
+| cf2237h | `Rooted`, `chains`, `pos` | named tuple parameters (syntax) |
+| cf2237i1, cf2237i2 | `from_parents`, `at`, `children` | clean |
+
+Every tree API these dreams use is in the spec; the two spelled differently
+are `PermTree.of` and `Rooted.weighted`, both kept as aliases.
