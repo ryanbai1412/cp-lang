@@ -553,3 +553,25 @@ print(xs[2], nodes[2].a, nodes[2].b, acc.xs[1])
     assert_eq!(trap, None);
     assert_eq!(out, "23 7 14 27\n");
 }
+
+#[test]
+fn vm_bit_builtins_small_tuple_minmax_and_arr_list_push() {
+    let source = "
+var dp: [0..4](Int, Int) = (0, 0)
+for i in 0..4:
+    dp[i] max= (i, i * 10)
+    dp[i] max= (i, i * 5)
+    dp[i] min= (i, i * 7)
+
+var adj: [0..3]List<Int> = []
+for i in 0..3:
+    adj[i].push(i + 1)
+    adj[i].push(i + 2)
+
+let x = 24
+print(dp[3].0, dp[3].1, adj[2].len, popcount(x), ctz(x))
+";
+    let (out, trap) = outcome(source, "");
+    assert_eq!(trap, None);
+    assert_eq!(out, "3 21 2 2 3\n");
+}

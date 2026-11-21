@@ -314,6 +314,15 @@ pub(crate) enum Op {
     RangeLoI { dst: u16, src_v: u16 },
     RangeHiI { dst: u16, src_v: u16 },
     BitCeilI { dst: u16, src: u16 },
+    PopcountI { dst: u16, src: u16 },
+    CtzI { dst: u16, src: u16 },
+    ClzI { dst: u16, src: u16 },
+    MinMaxGArr1SmallTuple { gid: u16, r_i: u16, src_base: u16, len: u8, is_max: bool },
+    MinMaxLArr1SmallTuple { arr_v: u16, r_i: u16, src_base: u16, len: u8, is_max: bool },
+    ListPushGArr1I { gid: u16, r_i: u16, val_i: u16, kind: ScalarKind },
+    ListPushGArr1V { gid: u16, r_i: u16, val_v: u16 },
+    ListPushLArr1I { arr_v: u16, r_i: u16, val_i: u16, kind: ScalarKind },
+    ListPushLArr1V { arr_v: u16, r_i: u16, val_v: u16 },
     ListPushLV { list_v: u16, val_v: u16 },
     ListPushGV { gid: u16, val_v: u16 },
     ListPushLI { list_v: u16, val_i: u16, kind: ScalarKind },
@@ -2380,6 +2389,46 @@ impl<'p> Compiler<'p> {
                     _ => false,
                 }
             }
+            (PlaceKind::Index(base, indices), AssignOp::Min | AssignOp::Max, None, None)
+                if matches!(base.ty, Ty::Array { .. })
+                    && indices.len() == 1
+                    && small_tuple_shape(&place.ty, self.program).is_some() =>
+            {
+                let (len, _) = small_tuple_shape(&place.ty, self.program).unwrap();
+                let is_max = op == AssignOp::Max;
+                let src_base = self.next_i;
+                self.next_i += len as u16;
+                match &base.kind {
+                    PlaceKind::Global(gid) => {
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        self.compile_expr_small_tuple(value, src_base, len);
+                        self.emit(
+                            Op::MinMaxGArr1SmallTuple {
+                                gid: *gid as u16,
+                                r_i,
+                                src_base,
+                                len,
+                                is_max,
+                            },
+                            place.span,
+                        );
+                        true
+                    }
+                    PlaceKind::Local(slot) => {
+                        let SlotLoc::V(arr_v) = self.slot_loc(*slot) else {
+                            return false;
+                        };
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        self.compile_expr_small_tuple(value, src_base, len);
+                        self.emit(
+                            Op::MinMaxLArr1SmallTuple { arr_v, r_i, src_base, len, is_max },
+                            place.span,
+                        );
+                        true
+                    }
+                    _ => false,
+                }
+            }
             (PlaceKind::Index(base, indices), AssignOp::Set, None, None)
                 if matches!(base.ty, Ty::Array { .. })
                     && (indices.len() == 1 || indices.len() == 2)
@@ -3249,6 +3298,30 @@ impl<'p> Compiler<'p> {
                 self.emit(Op::BitCeilI { dst, src }, span);
                 dst
             }
+            ExprKind::Builtin(Builtin::Popcount, args)
+                if args.len() == 1 && ScalarKind::of_ty(&args[0].ty, self.program).is_some() =>
+            {
+                let src = self.compile_expr_i(&args[0]);
+                let dst = self.alloc_i();
+                self.emit(Op::PopcountI { dst, src }, span);
+                dst
+            }
+            ExprKind::Builtin(Builtin::Ctz, args)
+                if args.len() == 1 && ScalarKind::of_ty(&args[0].ty, self.program).is_some() =>
+            {
+                let src = self.compile_expr_i(&args[0]);
+                let dst = self.alloc_i();
+                self.emit(Op::CtzI { dst, src }, span);
+                dst
+            }
+            ExprKind::Builtin(Builtin::Clz, args)
+                if args.len() == 1 && ScalarKind::of_ty(&args[0].ty, self.program).is_some() =>
+            {
+                let src = self.compile_expr_i(&args[0]);
+                let dst = self.alloc_i();
+                self.emit(Op::ClzI { dst, src }, span);
+                dst
+            }
             ExprKind::Index(base, indices)
                 if matches!(base.ty, Ty::Array { .. })
                     && (indices.len() == 1 || indices.len() == 2) =>
@@ -3845,6 +3918,41 @@ impl<'p> Compiler<'p> {
                 };
                 self.emit(Op::ListPopDiscardFieldL { obj_v, field: *field as u16 }, span);
                 true
+            }
+            (Mutation::Push, PlaceKind::Index(base, indices))
+                if matches!(base.ty, Ty::Array { .. }) && indices.len() == 1 && args.len() == 1 =>
+            {
+                match &base.kind {
+                    PlaceKind::Global(gid) => {
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        if let Some(kind) = ScalarKind::of_ty(&args[0].ty, self.program) {
+                            let val_i = self.compile_expr_i(&args[0]);
+                            self.emit(
+                                Op::ListPushGArr1I { gid: *gid as u16, r_i, val_i, kind },
+                                span,
+                            );
+                        } else {
+                            let val_v = self.compile_expr_v(&args[0]);
+                            self.emit(Op::ListPushGArr1V { gid: *gid as u16, r_i, val_v }, span);
+                        }
+                        true
+                    }
+                    PlaceKind::Local(slot) => {
+                        let SlotLoc::V(arr_v) = self.slot_loc(*slot) else {
+                            return false;
+                        };
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        if let Some(kind) = ScalarKind::of_ty(&args[0].ty, self.program) {
+                            let val_i = self.compile_expr_i(&args[0]);
+                            self.emit(Op::ListPushLArr1I { arr_v, r_i, val_i, kind }, span);
+                        } else {
+                            let val_v = self.compile_expr_v(&args[0]);
+                            self.emit(Op::ListPushLArr1V { arr_v, r_i, val_v }, span);
+                        }
+                        true
+                    }
+                    _ => false,
+                }
             }
             _ => false,
         }
@@ -5947,6 +6055,189 @@ impl<'p, 'io> Interp<'p, 'io> {
                         }
                         1i64 << shift
                     };
+                }
+                Op::PopcountI { dst, src } => {
+                    regs_i[dst as usize] = i64::from((regs_i[src as usize] as u64).count_ones());
+                }
+                Op::CtzI { dst, src } => {
+                    regs_i[dst as usize] =
+                        i64::from((regs_i[src as usize] as u64).trailing_zeros());
+                }
+                Op::ClzI { dst, src } => {
+                    regs_i[dst as usize] =
+                        i64::from((regs_i[src as usize] as u64).leading_zeros());
+                }
+                Op::MinMaxGArr1SmallTuple { gid, r_i, src_base, len, is_max } => {
+                    let idx = regs_i[r_i as usize];
+                    let cand = &regs_i[src_base as usize..src_base as usize + len as usize];
+                    if let Value::Array(arr) = &mut self.globals[gid as usize] {
+                        let d0 = arr.dims[0];
+                        if idx < 0 || idx >= d0 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {idx} is outside an array dimension of length {d0}"),
+                            );
+                        }
+                        let a = Rc::make_mut(arr);
+                        let n = len as usize;
+                        if let ArrayData::SmallIntTuple { stride, data, .. } = &mut a.data {
+                            let off = idx as usize * (*stride as usize);
+                            let cur = &mut data[off..off + n];
+                            let better = if is_max { cand > cur } else { cand < cur };
+                            if better {
+                                cur.copy_from_slice(cand);
+                            }
+                        } else {
+                            let vs = a.as_mut_values();
+                            let mut cur = [0i64; 4];
+                            if let Value::Tuple(TupleVal::Boxed(fs)) = &vs[idx as usize] {
+                                for k in 0..n {
+                                    cur[k] = ScalarKind::unbox_val(&fs[k]);
+                                }
+                            }
+                            let better = if is_max { cand > &cur[..n] } else { cand < &cur[..n] };
+                            if better {
+                                if let Value::Tuple(TupleVal::Boxed(fs)) = &mut vs[idx as usize] {
+                                    let fs = Rc::make_mut(fs);
+                                    for k in 0..n {
+                                        fs[k] = Value::Int(cand[k]);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
+                }
+                Op::MinMaxLArr1SmallTuple { arr_v, r_i, src_base, len, is_max } => {
+                    let idx = regs_i[r_i as usize];
+                    let cand = &regs_i[src_base as usize..src_base as usize + len as usize];
+                    if let Value::Array(arr) = &mut regs_v[arr_v as usize] {
+                        let d0 = arr.dims[0];
+                        if idx < 0 || idx >= d0 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {idx} is outside an array dimension of length {d0}"),
+                            );
+                        }
+                        let a = Rc::make_mut(arr);
+                        let n = len as usize;
+                        if let ArrayData::SmallIntTuple { stride, data, .. } = &mut a.data {
+                            let off = idx as usize * (*stride as usize);
+                            let cur = &mut data[off..off + n];
+                            let better = if is_max { cand > cur } else { cand < cur };
+                            if better {
+                                cur.copy_from_slice(cand);
+                            }
+                        } else {
+                            let vs = a.as_mut_values();
+                            let mut cur = [0i64; 4];
+                            if let Value::Tuple(TupleVal::Boxed(fs)) = &vs[idx as usize] {
+                                for k in 0..n {
+                                    cur[k] = ScalarKind::unbox_val(&fs[k]);
+                                }
+                            }
+                            let better = if is_max { cand > &cur[..n] } else { cand < &cur[..n] };
+                            if better {
+                                if let Value::Tuple(TupleVal::Boxed(fs)) = &mut vs[idx as usize] {
+                                    let fs = Rc::make_mut(fs);
+                                    for k in 0..n {
+                                        fs[k] = Value::Int(cand[k]);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
+                }
+                Op::ListPushGArr1I { gid, r_i, val_i, kind } => {
+                    let idx = regs_i[r_i as usize];
+                    let v = kind.box_val(regs_i[val_i as usize]);
+                    if let Value::Array(arr) = &mut self.globals[gid as usize] {
+                        let d0 = arr.dims[0];
+                        if idx < 0 || idx >= d0 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {idx} is outside an array dimension of length {d0}"),
+                            );
+                        }
+                        if let Value::List(list) = &mut Rc::make_mut(arr).as_mut_values()[idx as usize] {
+                            Rc::make_mut(list).push(v);
+                        } else {
+                            return trap(spans[cur_pc], "internal: expected list element");
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
+                }
+                Op::ListPushGArr1V { gid, r_i, val_v } => {
+                    let idx = regs_i[r_i as usize];
+                    let v = if val_v as usize >= chunk.num_local_v {
+                        std::mem::replace(&mut regs_v[val_v as usize], Value::Unit)
+                    } else {
+                        regs_v[val_v as usize].clone()
+                    };
+                    if let Value::Array(arr) = &mut self.globals[gid as usize] {
+                        let d0 = arr.dims[0];
+                        if idx < 0 || idx >= d0 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {idx} is outside an array dimension of length {d0}"),
+                            );
+                        }
+                        if let Value::List(list) = &mut Rc::make_mut(arr).as_mut_values()[idx as usize] {
+                            Rc::make_mut(list).push(v);
+                        } else {
+                            return trap(spans[cur_pc], "internal: expected list element");
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
+                }
+                Op::ListPushLArr1I { arr_v, r_i, val_i, kind } => {
+                    let idx = regs_i[r_i as usize];
+                    let v = kind.box_val(regs_i[val_i as usize]);
+                    if let Value::Array(arr) = &mut regs_v[arr_v as usize] {
+                        let d0 = arr.dims[0];
+                        if idx < 0 || idx >= d0 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {idx} is outside an array dimension of length {d0}"),
+                            );
+                        }
+                        if let Value::List(list) = &mut Rc::make_mut(arr).as_mut_values()[idx as usize] {
+                            Rc::make_mut(list).push(v);
+                        } else {
+                            return trap(spans[cur_pc], "internal: expected list element");
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
+                }
+                Op::ListPushLArr1V { arr_v, r_i, val_v } => {
+                    let idx = regs_i[r_i as usize];
+                    let v = if val_v as usize >= chunk.num_local_v {
+                        std::mem::replace(&mut regs_v[val_v as usize], Value::Unit)
+                    } else {
+                        regs_v[val_v as usize].clone()
+                    };
+                    if let Value::Array(arr) = &mut regs_v[arr_v as usize] {
+                        let d0 = arr.dims[0];
+                        if idx < 0 || idx >= d0 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {idx} is outside an array dimension of length {d0}"),
+                            );
+                        }
+                        if let Value::List(list) = &mut Rc::make_mut(arr).as_mut_values()[idx as usize] {
+                            Rc::make_mut(list).push(v);
+                        } else {
+                            return trap(spans[cur_pc], "internal: expected list element");
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
                 }
                 Op::ListPushLV { list_v, val_v } => {
                     let item = if (val_v as usize) >= chunk.num_local_v {
