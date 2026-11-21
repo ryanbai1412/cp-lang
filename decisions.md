@@ -2202,6 +2202,14 @@ forward in the same push). The extension starts `cpl lsp` from the PATH unless Z
 `lsp.cpl.binary` setting names another. `zed_extension_api` pulls `smallvec`, pinned in its
 `Cargo.lock` to a release old enough for the package proxy. Reverse: delete `editors/zed`.
 
+29.24. **A lambda passed to a built-in method gets its parameter types from the catalog.** In
+`xs.map(x => ...)` the checker types the call from the receiver, and inferred the lambda with
+untyped parameters, so `x`, and every `let` in a block body after `=>`, hovered as `_` and got
+no inlay hint. Now the catalog row's parameter type (`f: T -> U`, `while: (T, T) -> Bool`)
+gives each unwritten parameter its type, with `T` the receiver's element, before the lambda is
+inferred: one rule for every built-in method that takes a lambda, and the body is checked with
+real types. Reverse: drop `catalog_lambda_params` and the `lambda_params` field.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

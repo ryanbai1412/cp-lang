@@ -329,6 +329,10 @@ impl<'a> Checker<'a> {
                 param_tys,
                 body,
             } => {
+                let given = match self.lambda_params.iter().position(|(at, _)| *at == expr.span) {
+                    Some(i) => self.lambda_params.swap_remove(i).1,
+                    None => Vec::new(),
+                };
                 self.push_scope();
                 let mut sig_params = Vec::with_capacity(params.len());
                 let any_typed = param_tys.iter().any(Option::is_some);
@@ -337,7 +341,7 @@ impl<'a> Checker<'a> {
                         .get(i)
                         .and_then(|t| t.as_ref())
                         .map(|t| self.resolve_type(t))
-                        .unwrap_or(Ty::Unknown);
+                        .unwrap_or_else(|| given.get(i).cloned().unwrap_or(Ty::Unknown));
                     self.bind(param, &ty, false, "param");
                     sig_params.push(crate::ty::Param {
                         name: String::new(),

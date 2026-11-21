@@ -2291,3 +2291,98 @@ fn range_completion_and_hover_show_start_and_end() {
         "{end_hover:?}"
     );
 }
+
+#[test]
+fn sum_domains_and_block_lambdas_fold_complete_and_hover() {
+    let src = "\
+domain Row = 0..2
+domain Col = 0..3
+
+enum Node:
+    Src
+    Snk
+    Cell(Row, Col)
+
+let vals: [Node]Int = 0
+let xs = [3, 1, 2]
+let ys = xs.map(x =>
+    let d = x % 10
+    d + 1
+)
+print(vals[Node.Src], ys, xs.map(y => y + 1))
+";
+    let (mut server, diagnostics) = open(src);
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    let reply = server.handle(&request(
+        31,
+        "textDocument/foldingRange",
+        obj([("textDocument", doc())]),
+    ));
+    let folds: Vec<(u32, u32)> = reply[0]
+        .get("result")
+        .as_array()
+        .iter()
+        .map(|r| {
+            (
+                r.get("startLine").as_u32().unwrap(),
+                r.get("endLine").as_u32().unwrap(),
+            )
+        })
+        .collect();
+    assert!(folds.contains(&(3, 6)), "{folds:?}");
+    assert!(folds.contains(&(10, 12)), "{folds:?}");
+    let hover_text = |server: &mut Server, line, character| {
+        hover_at(server, line, character)
+            .at(&["contents", "value"])
+            .as_str()
+            .unwrap_or("")
+            .to_string()
+    };
+    assert!(hover_text(&mut server, 10, 16).contains("x: Int"));
+    assert!(hover_text(&mut server, 11, 8).contains("d: Int"));
+    assert!(hover_text(&mut server, 14, 34).contains("y: Int"));
+    assert!(hover_text(&mut server, 14, 17).contains("Src: Node"));
+    let reply = server.handle(&request(
+        32,
+        "textDocument/inlayHint",
+        obj([
+            ("textDocument", doc()),
+            ("range", obj([("start", pos(0, 0)), ("end", pos(20, 0))])),
+        ]),
+    ));
+    let hints: Vec<(u32, u32, &str)> = reply[0]
+        .get("result")
+        .as_array()
+        .iter()
+        .map(|h| {
+            (
+                h.at(&["position", "line"]).as_u32().unwrap(),
+                h.at(&["position", "character"]).as_u32().unwrap(),
+                h.get("label").as_str().unwrap(),
+            )
+        })
+        .collect();
+    for hint in [(10, 17, ": Int"), (11, 9, ": Int"), (14, 34, ": Int")] {
+        assert!(hints.contains(&hint), "{hint:?} in {hints:?}");
+    }
+    let items = ask_at(
+        "textDocument/completion",
+        &src.replacen("vals[Node.Src]", "vals[Node.|]", 1),
+    );
+    let variants: Vec<&str> = items
+        .get("items")
+        .as_array()
+        .iter()
+        .filter_map(|i| i.get("label").as_str())
+        .collect();
+    assert_eq!(variants, ["Src", "Snk", "Cell"]);
+    assert_fixes_restore(
+        "cf2089d",
+        &[(
+            "e + \":{chain",
+            "e ++ \":{chain",
+            "E0004",
+            "replace `++` with `+`",
+        )],
+    );
+}

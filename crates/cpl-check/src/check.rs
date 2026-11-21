@@ -119,6 +119,9 @@ pub(crate) struct Checker<'a> {
     expected_bounds_range: bool,
     /// Factor types for local product domains (`domain State = (V, K)` inside a fn).
     pub(crate) local_product_domains: HashMap<String, Vec<(Option<String>, Ty)>>,
+    /// The types a lambda passed to a built-in method gives its unwritten
+    /// parameters, from the method's catalog row, by the lambda's span.
+    lambda_params: Vec<(Span, Vec<Ty>)>,
 }
 
 pub(crate) struct Checked {
@@ -150,6 +153,7 @@ impl<'a> Checker<'a> {
             lends: lends::Lends::default(),
             expected_bounds_range: false,
             local_product_domains: HashMap::new(),
+            lambda_params: Vec::new(),
         }
     }
 

@@ -27,6 +27,15 @@ impl<'a> Checker<'a> {
             None => self.infer(callee),
         };
         let receiver = self.receiver(call, callee, args);
+        let given = self.lambda_params.len();
+        for arg in args {
+            if matches!(arg.value.kind, ExprKind::Lambda { .. }) {
+                let params = self.catalog_lambda_params(callee, args, arg);
+                if !params.is_empty() {
+                    self.lambda_params.push((arg.value.span, params));
+                }
+            }
+        }
         let mut ty = if receiver.is_some()
             && !matches!(callee_ty, Ty::Fn { .. } | Ty::Unknown | Ty::Error | Ty::TypeName(_))
         {
@@ -40,6 +49,7 @@ impl<'a> Checker<'a> {
         if let Some(known) = self.prelude_call(call, callee, args) {
             ty = known;
         }
+        self.lambda_params.truncate(given);
         self.empty_collection(call, callee, args);
         self.lent_together(args);
         self.call_effects(call, callee, args);
@@ -1270,6 +1280,61 @@ fn is_slice(expr: &Expr) -> bool {
 }
 
 impl Checker<'_> {
+    /// The parameter types of `arg`, a lambda passed to a built-in method, as
+    /// its catalog row writes them: `x` in `xs.map(x => ...)` is an element,
+    /// `(a, b)` in `xs.reach(while: (a, b) => ...)` two.
+    fn catalog_lambda_params(&mut self, callee: &Expr, args: &[Arg], arg: &Arg) -> Vec<Ty> {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return Vec::new();
+        };
+        let base_ty = self.quietly(|c| c.infer(base));
+        let (owner, elem) = match &base_ty {
+            Ty::Str => ("Str", Some(Ty::Char)),
+            Ty::Array { .. } => ("[D]T", base_ty.seq_elem()),
+            Ty::Named { name, args } => (
+                name.as_str(),
+                base_ty.seq_elem().or_else(|| (args.len() == 1).then(|| args[0].clone())),
+            ),
+            _ => return Vec::new(),
+        };
+        let Some(member) = crate::builtins::builtin_member(owner, &name.text) else {
+            return Vec::new();
+        };
+        let params = split_top(member.params);
+        let slot = match &arg.name {
+            Some(given) => params
+                .iter()
+                .find(|p| p.split_once(':').is_some_and(|(n, _)| n.trim() == given.text)),
+            None => args
+                .iter()
+                .filter(|a| a.name.is_none())
+                .position(|a| std::ptr::eq(a, arg))
+                .and_then(|i| params.get(i)),
+        };
+        let Some((_, ty)) = slot.and_then(|p| p.split_once(':')) else {
+            return Vec::new();
+        };
+        let Some((takes, _)) = ty.split_once("->") else {
+            return Vec::new();
+        };
+        let takes = takes.trim();
+        let takes = takes
+            .strip_prefix('(')
+            .and_then(|t| t.strip_suffix(')'))
+            .map_or_else(|| vec![takes], split_top);
+        takes
+            .iter()
+            .map(|t| match t.trim() {
+                "T" => elem.clone().unwrap_or(Ty::Unknown),
+                "Char" => Ty::Char,
+                "Int" => Ty::Int,
+                "Bool" => Ty::Bool,
+                "Str" => Ty::Str,
+                _ => Ty::Unknown,
+            })
+            .collect()
+    }
+
     /// `(i, j) => ...` passed where `(I, I) -> Int` is wanted: its unwritten
     /// parameters are an `I` each, for hover and inlay hints.
     fn type_lambda_params(&mut self, params: &[Pattern], written: &[Option<Type>], wanted: &[Param]) {
@@ -1285,4 +1350,25 @@ impl Checker<'_> {
             }
         }
     }
+}
+
+/// `a: Int, f: (T, T) -> Bool` split at its top-level commas.
+fn split_top(text: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let (mut depth, mut start) = (0i32, 0);
+    for (i, c) in text.char_indices() {
+        match c {
+            '(' | '[' | '<' => depth += 1,
+            ')' | ']' | '>' if !text[..i].ends_with('-') => depth -= 1,
+            ',' if depth == 0 => {
+                out.push(text[start..i].trim());
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    if !text[start..].trim().is_empty() {
+        out.push(text[start..].trim());
+    }
+    out
 }
