@@ -1,0 +1,38 @@
+== diagnostics
+(none)
+
+== hover @ 5:8
+```cp
+total: _
+```
+
+== hover @ 5:17
+```cp
+sum() -> T
+```
+
+The sum of the cells; `0` when empty.
+
+== hover @ 7:6
+```cp
+v: V
+  domain V = 1..=n, n <= 2e5
+  storage: 4 bytes
+```
+
+== hover @ 8:11
+```cp
+half: Int
+```
+
+== hover @ 9:25
+```cp
+k: Int
+```
+
+== hover @ 9:31
+```cp
+len: Int
+```
+
+How many cells.

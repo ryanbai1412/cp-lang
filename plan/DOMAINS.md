@@ -726,7 +726,7 @@ expression or a `var`; no cost or overflow
 warnings; rename sees open files, not the folder on disk, and misses
 local shadowing; no refactorings; no
 auto-import; Emacs (eglot draws no lenses) and Helix
-run from a shell command; no fixture tests or DAP. A fuzz test (`crates/cpl-lsp/tests/fuzz.rs`) sends every request an editor sends on 360 cut, spliced and garbled ports and fails on any internal error. The tree-sitter
+run from a shell command; no DAP. Fixture tests (`crates/cpl-lsp/tests/fixtures/`: a `.cp` with `$0` cursor markers and the requests to send, checked against a readable `.expected` snapshot, `BLESS=1` to rewrite) cover hover, completion, signature help, definition, references, highlights, rename, code actions, inlay hints, folding and the outline. A fuzz test (`crates/cpl-lsp/tests/fuzz.rs`) sends every request an editor sends on 360 cut, spliced and garbled ports and fails on any internal error. The tree-sitter
 grammar (`editors/tree-sitter-cp/`) is token-level: it highlights, but gives
 no tree for folding, indents or text objects (the server folds).
 The JetBrains plugin (`editors/jetbrains/`, IntelliJ Platform LSP API, 2024.3
@@ -754,7 +754,7 @@ the parser, parses every port and library without an error, and checks each
 editor's queries are the same patterns.
 **Bar.** LSP fixture tests per `plan/60` 6.7 for every request; each editor
 integration built and smoke-tested in `scripts/check.sh --full`.
-**Next.** Fixture tests; proven ranges of expressions and `var`s
+**Next.** Proven ranges of expressions and `var`s
 (needs the checker's own range analysis); the JetBrains trace's step sync in its
 tool window; publish the Zed extension.
 
