@@ -1013,3 +1013,22 @@ fn user_library_sees_prelude_in_check_run_and_build() {
     assert!(native.status.success(), "{native:?}");
     assert_eq!(String::from_utf8_lossy(&native.stdout), "0\n");
 }
+
+/// cf2178h never reads the `back` witness of `fixed_cost_paths`, a grid
+/// over 4e6 states: the field, its allocation and its stores are left out,
+/// and `cpl explain` says so (decision 142).
+#[test]
+fn a_witness_field_nothing_reads_is_left_out_of_the_cpp() {
+    let port = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../proto/ports/ecnerwala/cf2178h.cp");
+    let explained = cpl(&["explain".as_ref(), port.as_os_str()], b"");
+    assert!(explained.status.success(), "{explained:?}");
+    let explained = String::from_utf8_lossy(&explained.stdout);
+    assert!(explained.contains(".back -> never read"), "{explained}");
+    let built = cpl(&["build".as_ref(), port.as_os_str(), "-o".as_ref(), "-".as_ref()], b"");
+    assert!(built.status.success(), "{built:?}");
+    let cpp = String::from_utf8_lossy(&built.stdout);
+    let paths = &cpp[cpp.find("struct Paths").expect("Paths")..];
+    let paths = &paths[..paths.find("};").unwrap()];
+    assert!(paths.contains(" dist;") && !paths.contains("back"), "{paths}");
+    assert!(!cpp.contains("Grid<std::optional<std::tuple<std::tuple<int, int>, Move>>"), "{cpp}");
+}
