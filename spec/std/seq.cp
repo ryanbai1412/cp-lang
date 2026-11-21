@@ -206,6 +206,20 @@ pub @get fn l<D>(self: Range<D>) -> Bounds<D> = todo
 /// Right boundary cut of a range (valid even when empty).
 pub @get fn r<D>(self: Range<D>) -> Bounds<D> = todo
 
+/// O(1). Two non-empty halves meeting at the middle cut, or `none` when `self.len <= 1`, so
+/// `let (left, right) = r.halve() else: base` is the divide-and-conquer base case.
+pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>) = todo
+
+/// O(1). The middle position (the lower one of two), or `none` when empty.
+pub @get fn mid<D>(self: Range<D>) -> ?D = todo
+
+/// O(1). The positions in both ranges.
+pub fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D> = todo
+
+/// O(log n) calls to `ok`. The cut where monotone `ok` turns from false to true: `.r` is the
+/// first position where it holds, `.l` the last where it fails.
+pub fn bsearch<D>(self: Range<D>, ok: D -> Bool) -> Bounds<D> = todo
+
 /// The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.
 /// A range written backwards, `P(3)..P(1)`, stops the program here: no query silently answers
 /// as if it were empty. `l..l` is in order and empty.
