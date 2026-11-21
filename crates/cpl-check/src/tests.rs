@@ -2020,7 +2020,7 @@ fn a_dropped_closer_inside_a_call_or_index_is_the_only_error() {
     // `f(a[i, j)` closes the call, so the call or index sees one argument
     // too many or too few; that is the missing `]`, not a second error.
     for (port, good, bad) in [
-        ("cf2165f", "latest.set(a[i], i)", "latest.set(a[i, i)"),
+        ("cf2165f", "latest.set(a[j], j)", "latest.set(a[j, j)"),
         ("cf2096b", "max(l[i], r[i]) for", "max(l[i, r[i]) for"),
         ("cf2096h", "(hat[a], hat[b]) =", "(hat[a, hat[b]) ="),
     ] {
