@@ -488,10 +488,13 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
             self.skipTest("cpl binary not built")
         br = sb.run_bug_replay_suite(cpl)
         self.assertIsNotNone(br)
-        self.assertGreaterEqual(br["total"], 10)
+        self.assertGreaterEqual(br["total"], 60)
         self.assertTrue(br["bar_ok"], br)
         self.assertGreaterEqual(br["handled_pct"], 90.0)
         self.assertEqual(br["unexpected_pass"], 0)
+        self.assertGreaterEqual(len(br["by_class"]), 11)
+        for cls, info in br["by_class"].items():
+            self.assertGreaterEqual(info["total"], 5, f"{cls} has <5 cases: {info}")
 
         base = {
             "ports": [],
@@ -533,7 +536,7 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
             self.skipTest("cpl binary not built")
         rv = sb.run_revision_suite(cpl)
         self.assertIsNotNone(rv)
-        self.assertGreaterEqual(rv["total"], 2)
+        self.assertGreaterEqual(rv["total"], 10)
         self.assertEqual(rv["passed"], rv["total"], rv)
         self.assertGreater(rv["total_lines_touched"], 0)
 
@@ -588,6 +591,84 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
         ]
         top = pp.worst_dream_leaderboard(rows, limit=3)
         self.assertEqual([r[1]["id"] for r in top], ["worst", "tie_b", "tie_a"])
+
+    def test_spelling_drift_measure_and_ratchet(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(os.path.join(tmp, "ecnerwala"))
+            os.makedirs(os.path.join(tmp, "scout_batch_1"))
+            with open(os.path.join(tmp, "ecnerwala", "a.cp"), "w", encoding="utf-8") as f:
+                f.write(
+                    "@!multitest\n"
+                    "// sum(xs) in comment must be ignored\n"
+                    'let msg = "sort(mut xs) in string"\n'
+                    "let s = sum(xs) + xs.sum()\n"
+                    "let p = first(xs, x => x > 0)\n"
+                    "sort(mut xs)\n"
+                )
+            with open(os.path.join(tmp, "ecnerwala", "b.cp"), "w", encoding="utf-8") as f:
+                f.write("--- multitest ---\nxs.sort()\n")
+            with open(os.path.join(tmp, "scout_batch_1", "old.cp"), "w", encoding="utf-8") as f:
+                f.write("@multitest\nlet s = sum(a)\n")
+
+            sd = sb.measure_spelling_drift(tmp)
+            self.assertEqual(sd["files_scanned"], 3)
+            self.assertEqual(sd["active_files_scanned"], 2)
+            self.assertEqual(sd["constructs"]["multitest"]["non_canonical"], 2)
+            self.assertEqual(sd["constructs"]["multitest"]["active_non_canonical"], 1)
+            self.assertEqual(sd["constructs"]["sum"]["non_canonical"], 2)
+            self.assertEqual(sd["constructs"]["sum"]["active_non_canonical"], 1)
+            self.assertEqual(sd["constructs"]["first"]["non_canonical"], 1)
+            self.assertEqual(sd["constructs"]["sort"]["non_canonical"], 1)
+            self.assertEqual(sd["total_non_canonical"], 6)
+            self.assertEqual(sd["active_non_canonical"], 4)
+
+            base = {
+                "ports": [],
+                "totals": {
+                    "frictions": {"open_blockers": 0, "warnings": 0},
+                    "tokens": {},
+                    "friction_lint": {"wa_trap": 0},
+                    "spelling_drift": sd,
+                },
+            }
+            cur_grew = {
+                "ports": [],
+                "totals": {
+                    "frictions": {"open_blockers": 0, "warnings": 0},
+                    "tokens": {},
+                    "friction_lint": {"wa_trap": 0},
+                    "spelling_drift": {
+                        **sd,
+                        "total_non_canonical": 7,
+                        "constructs": {
+                            **sd["constructs"],
+                            "sum": {**sd["constructs"]["sum"], "non_canonical": 3},
+                        },
+                    },
+                },
+            }
+            diff_bad = sb.diff_against_baseline(cur_grew, base, mode="fast")
+            self.assertTrue(any("spelling drift" in m for m in diff_bad["regressions"]))
+
+            cur_better = {
+                "ports": [],
+                "totals": {
+                    "frictions": {"open_blockers": 0, "warnings": 0},
+                    "tokens": {},
+                    "friction_lint": {"wa_trap": 0},
+                    "spelling_drift": {
+                        **sd,
+                        "total_non_canonical": 5,
+                        "constructs": {
+                            **sd["constructs"],
+                            "sum": {**sd["constructs"]["sum"], "non_canonical": 1},
+                        },
+                    },
+                },
+            }
+            diff_good = sb.diff_against_baseline(cur_better, base, mode="fast")
+            self.assertEqual(diff_good["regressions"], [])
+            self.assertTrue(any("spelling drift" in m for m in diff_good["improvements"]))
 
 
 if __name__ == "__main__":

@@ -1203,31 +1203,57 @@ def run_bug_replay_suite(cpl, suite_dir=BUG_REPLAY_DIR):
     with open(manifest_path, encoding="utf-8") as f:
         manifest = json.load(f)
     bar_pct = float(manifest.get("bar_pct", BUG_REPLAY_BAR_PCT))
-    cases_out = []
-    counts = {"prevented": 0, "caught_on_run": 0, "left_to_diagnose": 0}
-    for c in manifest.get("cases", []):
+    manifest_cases = manifest.get("cases", [])
+
+    def _eval_one(c):
         path = os.path.join(suite_dir, c["file"])
         chk = sh([cpl, "check", path], timeout=10)
         if chk.returncode != 0:
             outcome = "prevented"
         else:
-            run = sh([cpl, "run", path], input=c.get("input", ""), timeout=10)
-            if run.returncode != 0:
-                outcome = "caught_on_run"
+            lnt = sh([cpl, "lint", path], timeout=10)
+            lout = (lnt.stdout or "") + (lnt.stderr or "")
+            if lnt.returncode != 0 or "warning[" in lout or "error[" in lout:
+                outcome = "prevented"
+            elif c.get("kind") == "complexity":
+                outcome = "left_to_diagnose"
             else:
-                outcome = (
-                    "left_to_diagnose"
-                    if run.stdout != c.get("expected_output", "")
-                    else "unexpected_pass"
-                )
+                run = sh([cpl, "run", path], input=c.get("input", ""), timeout=10)
+                if run.returncode != 0:
+                    outcome = "caught_on_run"
+                else:
+                    outcome = (
+                        "left_to_diagnose"
+                        if run.stdout != c.get("expected_output", "")
+                        else "unexpected_pass"
+                    )
+        return {
+            "id": c["id"],
+            "bug_class": c["bug_class"],
+            "outcome": outcome,
+        }
+
+    workers = min(8, max(1, os.cpu_count() or 1))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
+        cases_out = list(ex.map(_eval_one, manifest_cases))
+
+    counts = {"prevented": 0, "caught_on_run": 0, "left_to_diagnose": 0, "unexpected_pass": 0}
+    by_class = {}
+    for rec in cases_out:
+        outcome = rec["outcome"]
         counts[outcome] = counts.get(outcome, 0) + 1
-        cases_out.append(
-            {
-                "id": c["id"],
-                "bug_class": c["bug_class"],
-                "outcome": outcome,
-            }
+        cls = rec["bug_class"]
+        d = by_class.setdefault(
+            cls,
+            {"total": 0, "prevented": 0, "caught_on_run": 0, "left_to_diagnose": 0, "unexpected_pass": 0},
         )
+        d["total"] += 1
+        d[outcome] = d.get(outcome, 0) + 1
+    for d in by_class.values():
+        h = d["prevented"] + d["caught_on_run"]
+        d["handled"] = h
+        d["handled_pct"] = round(100.0 * h / d["total"], 1) if d["total"] else 0.0
+
     total = len(cases_out)
     handled = counts["prevented"] + counts["caught_on_run"]
     handled_pct = round(100.0 * handled / total, 1) if total else 0.0
@@ -1241,7 +1267,127 @@ def run_bug_replay_suite(cpl, suite_dir=BUG_REPLAY_DIR):
         "handled_pct": handled_pct,
         "bar_pct": bar_pct,
         "bar_ok": handled_pct >= bar_pct and counts.get("unexpected_pass", 0) == 0,
+        "by_class": by_class,
         "cases": cases_out,
+    }
+
+
+SPELLING_DRIFT_SPECS = {
+    # Canonical forms: decisions.md §20 for multitest, §49 for methods.
+    # Flipping a canonical spelling is a one-line edit here.
+    "multitest": {
+        "canonical": "@!multitest",
+        "patterns": {
+            "@!multitest": re.compile(r"(?m)^\s*@!multitest\b"),
+            "@multitest": re.compile(r"(?m)^\s*@multitest\b"),
+            "--- multitest ---": re.compile(r"(?m)^\s*---\s*(?:with\s+)?multitest\b"),
+        },
+    },
+    "sum": {
+        "canonical": "xs.sum()",
+        "patterns": {
+            "xs.sum()": re.compile(r"\.sum\s*\("),
+            "sum(xs)": re.compile(r"(?<![.\w])(?<!fn )sum\s*\("),
+        },
+    },
+    "first": {
+        "canonical": "xs.first(...)",
+        "patterns": {
+            "xs.first(...)": re.compile(r"\.first\s*\("),
+            "first(...)": re.compile(r"(?<![.\w])(?<!fn )first\s*\("),
+        },
+    },
+    "sort": {
+        "canonical": "xs.sort(...)",
+        "patterns": {
+            "xs.sort(...)": re.compile(r"\.sort\s*\("),
+            "sort(mut xs)": re.compile(r"(?<![.\w])(?<!fn )sort\s*\(\s*mut\b"),
+        },
+    },
+}
+
+_RETIRED_PORT_DIR_PREFIXES = (
+    "scout_batch_",
+    "blind_critic_",
+    "hillclimb_",
+    "sim3",
+    "before",
+    "wave1",
+    "wave2",
+)
+
+
+def _strip_comments_and_strings(src):
+    out = []
+    for line in src.splitlines():
+        line = re.sub(r'"(?:\\.|[^"\\])*"', '""', line)
+        line = re.sub(r"//.*", "", line)
+        out.append(line)
+    return "\n".join(out)
+
+
+def _is_retired_port_path(rel_path):
+    parts = rel_path.replace("\\", "/").split("/")
+    return any(
+        part == pref or part.startswith(pref)
+        for part in parts
+        for pref in _RETIRED_PORT_DIR_PREFIXES
+    )
+
+
+def measure_spelling_drift(ports_root=os.path.join(ROOT, "proto", "ports")):
+    """Count canonical vs non-canonical spellings across proto/ports/**/*.cp."""
+    if not os.path.isdir(ports_root):
+        return None
+    constructs = {}
+    for name, spec in SPELLING_DRIFT_SPECS.items():
+        constructs[name] = {
+            "canonical": spec["canonical"],
+            "counts": {k: 0 for k in spec["patterns"]},
+            "active_counts": {k: 0 for k in spec["patterns"]},
+            "non_canonical": 0,
+            "active_non_canonical": 0,
+        }
+
+    files_scanned = 0
+    active_files_scanned = 0
+    for dirpath, _dirnames, filenames in os.walk(ports_root):
+        for fn in sorted(filenames):
+            if not fn.endswith(".cp"):
+                continue
+            full = os.path.join(dirpath, fn)
+            rel = os.path.relpath(full, ports_root)
+            active = not _is_retired_port_path(rel)
+            files_scanned += 1
+            if active:
+                active_files_scanned += 1
+            clean = _strip_comments_and_strings(_read_text(full))
+            for name, spec in SPELLING_DRIFT_SPECS.items():
+                entry = constructs[name]
+                for spelling, pat in spec["patterns"].items():
+                    n = len(pat.findall(clean))
+                    if n:
+                        entry["counts"][spelling] += n
+                        if active:
+                            entry["active_counts"][spelling] += n
+
+    total_non_canonical = 0
+    active_non_canonical = 0
+    for name, entry in constructs.items():
+        canon = entry["canonical"]
+        nc = sum(v for k, v in entry["counts"].items() if k != canon)
+        anc = sum(v for k, v in entry["active_counts"].items() if k != canon)
+        entry["non_canonical"] = nc
+        entry["active_non_canonical"] = anc
+        total_non_canonical += nc
+        active_non_canonical += anc
+
+    return {
+        "files_scanned": files_scanned,
+        "active_files_scanned": active_files_scanned,
+        "total_non_canonical": total_non_canonical,
+        "active_non_canonical": active_non_canonical,
+        "constructs": constructs,
     }
 
 
@@ -1340,7 +1486,7 @@ def percentile(xs, q):
     return s[idx]
 
 
-def compute_totals(port_records, fl_summary, fr_summary, bug_replay=None, revision=None):
+def compute_totals(port_records, fl_summary, fr_summary, bug_replay=None, revision=None, spelling_drift=None):
     total = len(port_records)
     passed = sum(1 for r in port_records if r["gate"] == "pass")
     failed = total - passed
@@ -1548,6 +1694,7 @@ def compute_totals(port_records, fl_summary, fr_summary, bug_replay=None, revisi
         },
         "bug_replay": bug_replay,
         "revision": revision,
+        "spelling_drift": spelling_drift,
     }
 
 
@@ -1695,6 +1842,28 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
         cur_warn = ct["frictions"].get("warnings", 0)
         if cur_warn > base_warn:
             regressions.append(f"friction metadata warnings grew: {base_warn} -> {cur_warn}")
+
+        bsd = bt.get("spelling_drift")
+        csd = ct.get("spelling_drift")
+        if bsd and csd:
+            b_tot = bsd.get("total_non_canonical", 0)
+            c_tot = csd.get("total_non_canonical", 0)
+            if c_tot > b_tot:
+                regressions.append(f"spelling drift non-canonical total grew: {b_tot} -> {c_tot}")
+            elif c_tot < b_tot:
+                improvements.append(f"spelling drift reduced: {b_tot} -> {c_tot}")
+            for cname, cent in (csd.get("constructs") or {}).items():
+                bent = (bsd.get("constructs") or {}).get(cname)
+                if not bent:
+                    continue
+                if cent["non_canonical"] > bent["non_canonical"]:
+                    regressions.append(
+                        f"spelling drift ({cname}) grew: {bent['non_canonical']} -> {cent['non_canonical']}"
+                    )
+                elif cent["non_canonical"] < bent["non_canonical"]:
+                    improvements.append(
+                        f"spelling drift ({cname}) reduced: {bent['non_canonical']} -> {cent['non_canonical']}"
+                    )
 
         for key, label in (
             ("median_ratio", "median raw token ratio"),
@@ -1891,12 +2060,29 @@ def print_summary(report, diff, show_ports=False, quiet=False):
             f"bar >={br['bar_pct']:.0f}%: {tag}; {br['prevented']} prevented, "
             f"{br['caught_on_run']} caught on run, {br['left_to_diagnose']} left to diagnose)"
         )
+        if br.get("by_class"):
+            cls_parts = ", ".join(
+                f"{cls}={d['handled']}/{d['total']}({d['handled_pct']:.0f}%)"
+                for cls, d in br["by_class"].items()
+            )
+            print(f"    by class: {cls_parts}")
     rv = t.get("revision")
     if rv:
         parts = ", ".join(f"{c['id']}={c['lines_touched']}L/{c['hunks']}h" for c in rv["cases"])
         print(
             f"  revision:  {rv['passed']}/{rv['total']} ok, "
             f"{rv['total_lines_touched']} lines touched ({parts})"
+        )
+    sd = t.get("spelling_drift")
+    if sd:
+        cparts = []
+        for cname, cent in (sd.get("constructs") or {}).items():
+            cparts.append(
+                f"{cname}={cent['non_canonical']} (active {cent['active_non_canonical']}, canon {cent['canonical']})"
+            )
+        print(
+            f"  drift:     {sd['total_non_canonical']} non-canonical "
+            f"({sd['active_non_canonical']} in active/dream files): " + "; ".join(cparts)
         )
     wfd = report.get("writable_from_docs")
     if wfd and wfd.get("latest"):
@@ -2053,6 +2239,7 @@ def build_report(args):
     fr_summary = summarize_frictions(args.frictions_dir)
     bug_replay = run_bug_replay_suite(cpl) if not only else None
     revision = run_revision_suite(cpl) if not only else None
+    spelling_drift = measure_spelling_drift() if not only else None
 
     baseline = None
     if args.baseline and os.path.isfile(args.baseline):
@@ -2068,6 +2255,7 @@ def build_report(args):
         fr_summary,
         bug_replay=bug_replay,
         revision=revision,
+        spelling_drift=spelling_drift,
     )
     wfd_path = os.path.join(ROOT, "research", "writable-from-docs.json")
     wfd_data = None

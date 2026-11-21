@@ -1402,6 +1402,18 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   `cpl run`, ratcheting `lines_touched` against baseline). Added a worst-20 `cp/dream` token-ratio leaderboard
   to `scripts/ports-page.py` -> `research/PORTS.md` so the polish lane works worst-first.
   *How to reverse:* adjust `_AREA_KEYWORDS`, `BUG_REPLAY_BAR_PCT`, or the suites in `bench/goal_tests/`.
+- **23.9 63-case P0 bug-replay suite (per-class rates), 10-problem revision suite, and ratcheted spelling-drift metric.**
+  Expanded `bench/goal_tests/bug_replay/` from 12 to 63 cases (>= 5 per P0 class across all 11 AGENTS.md
+  bug classes), evaluating `cpl check` + `cpl lint` (`prevented`) and `cpl run` (`caught_on_run` vs
+  `left_to_diagnose`) in parallel with per-class rates (`59/63 = 93.7%`, 4 honest `left_to_diagnose` gaps).
+  Expanded `bench/goal_tests/revision/` from 2 to 10 unseen problems + 1 requirement change each (`10/10 ok`,
+  `95` lines touched). Added `measure_spelling_drift` over `proto/ports/**/*.cp` (tracking both all files
+  and non-retired active+dream files) for constructs with multiple spellings (`multitest`, `sum`, `first`,
+  `sort`), ratcheted strictly downward against `research/scoreboard.json` so codemods visibly drive drift
+  to 0. Canonical forms live in `SPELLING_DRIFT_SPECS` (`@!multitest` per §20; method forms `xs.sum()`,
+  `xs.first(...)`, `xs.sort(...)` per §49).
+  *How to reverse:* flip any construct's `"canonical"` value in `SPELLING_DRIFT_SPECS` (1-line edit) or
+  adjust cases under `bench/goal_tests/`.
 
 ## 24. Documentation gate in `scripts/check.sh --fast` (2026-11-21)
 

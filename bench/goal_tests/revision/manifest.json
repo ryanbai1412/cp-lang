@@ -19,6 +19,86 @@
       "v2": "argmax_v2.cp",
       "v2_in": "argmax_v2.in",
       "v2_out": "argmax_v2.out"
+    },
+    {
+      "id": "knapsack_max_to_ways",
+      "description": "0-1 knapsack: switch from max value within capacity W to counting subsets with exact sum W",
+      "v1": "knapsack_max_to_ways_v1.cp",
+      "v2": "knapsack_max_to_ways_v2.cp",
+      "v1_in": "knapsack_max_to_ways_v1.in",
+      "v1_out": "knapsack_max_to_ways_v1.out",
+      "v2_in": "knapsack_max_to_ways_v2.in",
+      "v2_out": "knapsack_max_to_ways_v2.out"
+    },
+    {
+      "id": "bfs_dist_to_path",
+      "description": "Unweighted BFS from 0 to n-1: switch from printing distance to printing the vertex path",
+      "v1": "bfs_dist_to_path_v1.cp",
+      "v2": "bfs_dist_to_path_v2.cp",
+      "v1_in": "bfs_dist_to_path_v1.in",
+      "v1_out": "bfs_dist_to_path_v1.out",
+      "v2_in": "bfs_dist_to_path_v2.in",
+      "v2_out": "bfs_dist_to_path_v2.out"
+    },
+    {
+      "id": "prefix_sum_query_to_max_window",
+      "description": "1D prefix sums: switch from answering q range-sum queries to finding max sum of length-k window",
+      "v1": "prefix_sum_query_to_max_window_v1.cp",
+      "v2": "prefix_sum_query_to_max_window_v2.cp",
+      "v1_in": "prefix_sum_query_to_max_window_v1.in",
+      "v1_out": "prefix_sum_query_to_max_window_v1.out",
+      "v2_in": "prefix_sum_query_to_max_window_v2.in",
+      "v2_out": "prefix_sum_query_to_max_window_v2.out"
+    },
+    {
+      "id": "interval_merge_count_to_len",
+      "description": "Merged intervals: switch from counting merged components to summing total covered length",
+      "v1": "interval_merge_count_to_len_v1.cp",
+      "v2": "interval_merge_count_to_len_v2.cp",
+      "v1_in": "interval_merge_count_to_len_v1.in",
+      "v1_out": "interval_merge_count_to_len_v1.out",
+      "v2_in": "interval_merge_count_to_len_v2.in",
+      "v2_out": "interval_merge_count_to_len_v2.out"
+    },
+    {
+      "id": "lis_strict_to_nondec",
+      "description": "LIS DP: switch from strictly increasing (<) to non-decreasing (<=)",
+      "v1": "lis_strict_to_nondec_v1.cp",
+      "v2": "lis_strict_to_nondec_v2.cp",
+      "v1_in": "lis_strict_to_nondec_v1.in",
+      "v1_out": "lis_strict_to_nondec_v1.out",
+      "v2_in": "lis_strict_to_nondec_v2.in",
+      "v2_out": "lis_strict_to_nondec_v2.out"
+    },
+    {
+      "id": "tree_subtree_sum_to_max",
+      "description": "Rooted tree bottom-up DP: switch from subtree sum to subtree maximum value",
+      "v1": "tree_subtree_sum_to_max_v1.cp",
+      "v2": "tree_subtree_sum_to_max_v2.cp",
+      "v1_in": "tree_subtree_sum_to_max_v1.in",
+      "v1_out": "tree_subtree_sum_to_max_v1.out",
+      "v2_in": "tree_subtree_sum_to_max_v2.in",
+      "v2_out": "tree_subtree_sum_to_max_v2.out"
+    },
+    {
+      "id": "coin_min_to_ways_mod",
+      "description": "Unbounded coin DP: switch from minimum coins to number of combinations mod 1e9+7",
+      "v1": "coin_min_to_ways_mod_v1.cp",
+      "v2": "coin_min_to_ways_mod_v2.cp",
+      "v1_in": "coin_min_to_ways_mod_v1.in",
+      "v1_out": "coin_min_to_ways_mod_v1.out",
+      "v2_in": "coin_min_to_ways_mod_v2.in",
+      "v2_out": "coin_min_to_ways_mod_v2.out"
+    },
+    {
+      "id": "dsu_components_to_largest",
+      "description": "DSU connectivity: switch from printing component count to printing largest component size",
+      "v1": "dsu_components_to_largest_v1.cp",
+      "v2": "dsu_components_to_largest_v2.cp",
+      "v1_in": "dsu_components_to_largest_v1.in",
+      "v1_out": "dsu_components_to_largest_v1.out",
+      "v2_in": "dsu_components_to_largest_v2.in",
+      "v2_out": "dsu_components_to_largest_v2.out"
     }
   ]
 }

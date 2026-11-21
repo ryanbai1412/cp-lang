@@ -2,100 +2,571 @@
   "bar_pct": 90.0,
   "cases": [
     {
-      "id": "off_by_one_inclusive",
+      "id": "obo_inclusive_loop",
       "bug_class": "off-by-one",
       "description": "Inclusive loop 0..=n indexing [0..n] array",
-      "file": "off_by_one_inclusive.cp",
+      "file": "obo_inclusive_loop.cp",
       "input": "3\n1 2 3\n",
-      "expected_output": "6\n"
+      "expected_output": "6\n",
+      "kind": "correctness"
     },
     {
-      "id": "wrong_index_space",
+      "id": "obo_neg_prev",
+      "bug_class": "off-by-one",
+      "description": "Indexing a[i - 1] at i = 0 without boundary check",
+      "file": "obo_neg_prev.cp",
+      "input": "3\n1 2 3\n",
+      "expected_output": "3\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "obo_one_based_zero",
+      "bug_class": "off-by-one",
+      "description": "Indexing 1-based [1..=n] array with 0",
+      "file": "obo_one_based_zero.cp",
+      "input": "3\n10 20 30\n",
+      "expected_output": "10\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "obo_slice_past_end",
+      "bug_class": "off-by-one",
+      "description": "Slicing a[0..n + 1] past array length",
+      "file": "obo_slice_past_end.cp",
+      "input": "3\n1 2 3\n",
+      "expected_output": "3\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "obo_last_next_bang",
+      "bug_class": "off-by-one",
+      "description": "Unwrapping R.last.next! past domain end",
+      "file": "obo_last_next_bang.cp",
+      "input": "3\n",
+      "expected_output": "3\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "obo_ord_arith_lint",
+      "bug_class": "off-by-one",
+      "description": "Unchecked domain arithmetic V(v.ord + 1) bypassing v.next",
+      "file": "obo_ord_arith_lint.cp",
+      "input": "",
+      "expected_output": "1\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "wis_vertex_edge",
       "bug_class": "wrong-index-space",
-      "description": "Indexing [Vertex]Int with an Edge domain value",
-      "file": "wrong_index_space.cp",
+      "description": "Indexing [V]Int with an Edge domain value",
+      "file": "wis_vertex_edge.cp",
       "input": "3 2\n",
-      "expected_output": "0\n"
+      "expected_output": "0\n",
+      "kind": "correctness"
     },
     {
-      "id": "int_overflow_mul",
-      "bug_class": "overflow",
-      "description": "Signed 64-bit multiplication overflow on contest constraints",
-      "file": "int_overflow_mul.cp",
-      "input": "1000000000000 1000000000000\n",
-      "expected_output": "0\n"
+      "id": "wis_swapped_grid",
+      "bug_class": "wrong-index-space",
+      "description": "Swapped grid indices g[c, r] on [R, C]Int",
+      "file": "wis_swapped_grid.cp",
+      "input": "2 3\n1 2 3\n4 5 6\n",
+      "expected_output": "1\n",
+      "kind": "correctness"
     },
     {
-      "id": "boundary_empty_pop",
-      "bug_class": "boundaries-and-edge-cases",
-      "description": "Popping from an empty List on n = 0 edge case",
-      "file": "boundary_empty_pop.cp",
-      "input": "0\n",
-      "expected_output": "0\n"
-    },
-    {
-      "id": "multitest_shared_var",
-      "bug_class": "multitest-state-leakage",
-      "description": "Top-level mutable state leaking across multitest cases",
-      "file": "multitest_shared_var.cp",
-      "input": "2\n1\n2\n",
-      "expected_output": "1\n2\n"
-    },
-    {
-      "id": "io_short_input",
-      "bug_class": "io-and-interactive",
-      "description": "Reading past end of input",
-      "file": "io_short_input.cp",
-      "input": "3\n1 2\n",
-      "expected_output": "3\n"
-    },
-    {
-      "id": "sentinel_none_unwrap",
-      "bug_class": "sentinels-and-uninitialized",
-      "description": "Using ?Int directly in arithmetic without handling none",
-      "file": "sentinel_none_unwrap.cp",
-      "input": "3\n",
-      "expected_output": "4\n"
-    },
-    {
-      "id": "uninitialized_read",
-      "bug_class": "sentinels-and-uninitialized",
-      "description": "Mutating an immutable let binding instead of var",
-      "file": "uninitialized_read.cp",
-      "input": "3\n",
-      "expected_output": "4\n"
-    },
-    {
-      "id": "mutation_aliasing",
-      "bug_class": "mutation-surprises",
-      "description": "Pushing to a List while iterating over it (iterator invalidation)",
-      "file": "mutation_aliasing.cp",
+      "id": "wis_raw_int_index",
+      "bug_class": "wrong-index-space",
+      "description": "Indexing [V]Int with plain Int instead of V",
+      "file": "wis_raw_int_index.cp",
       "input": "3\n1 2 3\n",
-      "expected_output": "6\n"
+      "expected_output": "1\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "wis_cross_domain_cmp",
+      "bug_class": "wrong-index-space",
+      "description": "Comparing values from two distinct domains V == E",
+      "file": "wis_cross_domain_cmp.cp",
+      "input": "3 3\n",
+      "expected_output": "YES\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "wis_cross_domain_range",
+      "bug_class": "wrong-index-space",
+      "description": "Building range V.first..E.last across two domains",
+      "file": "wis_cross_domain_range.cp",
+      "input": "3 3\n",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "wis_derived_domain",
+      "bug_class": "wrong-index-space",
+      "description": "Using derived/distinct domain on base array",
+      "file": "wis_derived_domain.cp",
+      "input": "3\n1 2 3\n",
+      "expected_output": "1\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "ovf_mul_i64",
+      "bug_class": "overflow",
+      "description": "Signed 64-bit multiplication overflow on 1e12 * 1e12",
+      "file": "ovf_mul_i64.cp",
+      "input": "1000000000000 1000000000000\n",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "ovf_add_i64",
+      "bug_class": "overflow",
+      "description": "Signed 64-bit addition overflow near INT64_MAX",
+      "file": "ovf_add_i64.cp",
+      "input": "9000000000000000000 9000000000000000000\n",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "ovf_sub_i64",
+      "bug_class": "overflow",
+      "description": "Signed 64-bit subtraction underflow near INT64_MIN",
+      "file": "ovf_sub_i64.cp",
+      "input": "-9000000000000000000 9000000000000000000\n",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "ovf_pow_i64",
+      "bug_class": "overflow",
+      "description": "Integer exponentiation 10 ** 20 overflowing 64-bit Int",
+      "file": "ovf_pow_i64.cp",
+      "input": "10 20\n",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "ovf_shift_64",
+      "bug_class": "overflow",
+      "description": "Left shift by 64 bits (UB in C++)",
+      "file": "ovf_shift_64.cp",
+      "input": "1 64\n",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "ovf_neg_int_min",
+      "bug_class": "overflow",
+      "description": "Negating INT64_MIN (-9223372036854775808) overflows signed 64-bit Int",
+      "file": "ovf_neg_int_min.cp",
+      "input": "-9223372036854775807\n",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "bnd_empty_pop",
+      "bug_class": "boundaries-and-edge-cases",
+      "description": "Using List.pop() as Int without handling empty list",
+      "file": "bnd_empty_pop.cp",
+      "input": "0\n",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "bnd_empty_domain_first",
+      "bug_class": "boundaries-and-edge-cases",
+      "description": "Reading D.first on empty domain 0..0",
+      "file": "bnd_empty_domain_first.cp",
+      "input": "0\n",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "bnd_empty_domain_last",
+      "bug_class": "boundaries-and-edge-cases",
+      "description": "Reading D.last on empty domain 0..0",
+      "file": "bnd_empty_domain_last.cp",
+      "input": "0\n",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "bnd_div_zero",
+      "bug_class": "boundaries-and-edge-cases",
+      "description": "Integer division by zero on boundary input k = 0",
+      "file": "bnd_div_zero.cp",
+      "input": "10 0\n",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "bnd_rem_zero",
+      "bug_class": "boundaries-and-edge-cases",
+      "description": "Integer remainder by zero on boundary input k = 0",
+      "file": "bnd_rem_zero.cp",
+      "input": "10 0\n",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "bnd_empty_max",
+      "bug_class": "boundaries-and-edge-cases",
+      "description": "Using max(a) as Int without handling empty sequence",
+      "file": "bnd_empty_max.cp",
+      "input": "0\n",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "mt_block_syntax_leak",
+      "bug_class": "multitest-state-leakage",
+      "description": "Invalid multitest block syntax trying to share outer var",
+      "file": "mt_block_syntax_leak.cp",
+      "input": "2\n1\n2\n",
+      "expected_output": "1\n2\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "mt_duplicate_divider",
+      "bug_class": "multitest-state-leakage",
+      "description": "Second @!multitest divider in the same file",
+      "file": "mt_duplicate_divider.cp",
+      "input": "1\n5\n",
+      "expected_output": "5\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "mt_shadow_top_let",
+      "bug_class": "multitest-state-leakage",
+      "description": "Local inside helper shadows top-level precomputed let (L0203)",
+      "file": "mt_shadow_top_let.cp",
+      "input": "1\n5\n",
+      "expected_output": "15\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "mt_top_var_unreset",
+      "bug_class": "multitest-state-leakage",
+      "description": "Top-level var declared above @!multitest mutated across test cases",
+      "file": "mt_top_var_unreset.cp",
+      "input": "2\n1\n2\n",
+      "expected_output": "1\n2\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "mt_non_top_divider",
+      "bug_class": "multitest-state-leakage",
+      "description": "Placing @!multitest inside a function body",
+      "file": "mt_non_top_divider.cp",
+      "input": "1\n5\n",
+      "expected_output": "5\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "io_short_array",
+      "bug_class": "io-and-interactive",
+      "description": "Reading [0..n]Int past end of input",
+      "file": "io_short_array.cp",
+      "input": "3\n1 2\n",
+      "expected_output": "3\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "io_bad_int_token",
+      "bug_class": "io-and-interactive",
+      "description": "Reading Int when stdin contains non-numeric text",
+      "file": "io_bad_int_token.cp",
+      "input": "abc\n",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "io_range_violation",
+      "bug_class": "io-and-interactive",
+      "description": "Reading ranged int 1..=5 when input is 99",
+      "file": "io_range_violation.cp",
+      "input": "99\n",
+      "expected_output": "99\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "io_empty_stdin",
+      "bug_class": "io-and-interactive",
+      "description": "Reading Int from completely empty stdin",
+      "file": "io_empty_stdin.cp",
+      "input": "",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "io_domain_oob_read",
+      "bug_class": "io-and-interactive",
+      "description": "Reading domain index V = 0..n when input equals n",
+      "file": "io_domain_oob_read.cp",
+      "input": "3\n3\n",
+      "expected_output": "3\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "io_read_in_expr",
+      "bug_class": "io-and-interactive",
+      "description": "Bare read() inside arithmetic expression without type",
+      "file": "io_read_in_expr.cp",
+      "input": "1 2\n",
+      "expected_output": "3\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "sen_none_arith",
+      "bug_class": "sentinels-and-uninitialized",
+      "description": "Using ?Int in arithmetic and assigning to Int",
+      "file": "sen_none_arith.cp",
+      "input": "3\n",
+      "expected_output": "3\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "sen_none_bang",
+      "bug_class": "sentinels-and-uninitialized",
+      "description": "Force-unwrapping none with !",
+      "file": "sen_none_bang.cp",
+      "input": "",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "sen_undeclared_name",
+      "bug_class": "sentinels-and-uninitialized",
+      "description": "Reading an undeclared/uninitialized variable",
+      "file": "sen_undeclared_name.cp",
+      "input": "3\n",
+      "expected_output": "3\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "sen_immutable_assign",
+      "bug_class": "sentinels-and-uninitialized",
+      "description": "Mutating an immutable let binding",
+      "file": "sen_immutable_assign.cp",
+      "input": "3\n",
+      "expected_output": "4\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "sen_map_missing_key",
+      "bug_class": "sentinels-and-uninitialized",
+      "description": "Using Map lookup m[k] directly as Int instead of ?Int",
+      "file": "sen_map_missing_key.cp",
+      "input": "",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "sen_non_exhaustive_match",
+      "bug_class": "sentinels-and-uninitialized",
+      "description": "Matching enum without covering every variant",
+      "file": "sen_non_exhaustive_match.cp",
+      "input": "",
+      "expected_output": "1\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "cx_domain_map",
+      "bug_class": "accidental-complexity-blowups",
+      "description": "Using Map<V, Int> keyed by dense domain V (L0412)",
+      "file": "cx_domain_map.cp",
+      "input": "",
+      "expected_output": "42\n",
+      "kind": "complexity"
+    },
+    {
+      "id": "cx_domain_set",
+      "bug_class": "accidental-complexity-blowups",
+      "description": "Using Set<V> keyed by dense domain V (L0412)",
+      "file": "cx_domain_set.cp",
+      "input": "",
+      "expected_output": "1\n",
+      "kind": "complexity"
+    },
+    {
+      "id": "cx_memo_blowup",
+      "bug_class": "accidental-complexity-blowups",
+      "description": "@memo table exceeding memory budget on 1e5 x 1e5 domains (L0413)",
+      "file": "cx_memo_blowup.cp",
+      "input": "",
+      "expected_output": "0\n",
+      "kind": "complexity"
+    },
+    {
+      "id": "cx_unproven_list_nested",
+      "bug_class": "accidental-complexity-blowups",
+      "description": "Unproven List index inside nested loop (L0414)",
+      "file": "cx_unproven_list_nested.cp",
+      "input": "",
+      "expected_output": "18\n",
+      "kind": "complexity"
+    },
+    {
+      "id": "cx_str_concat_loop",
+      "bug_class": "accidental-complexity-blowups",
+      "description": "Quadratic s = s + c string concatenation inside loop",
+      "file": "cx_str_concat_loop.cp",
+      "input": "5\n",
+      "expected_output": "5\n",
+      "kind": "complexity"
+    },
+    {
+      "id": "mut_push_while_iter",
+      "bug_class": "mutation-surprises",
+      "description": "Pushing to a List while iterating over it",
+      "file": "mut_push_while_iter.cp",
+      "input": "3\n1 2 3\n",
+      "expected_output": "6\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "mut_double_lend",
+      "bug_class": "mutation-surprises",
+      "description": "Passing the same variable as two mut arguments",
+      "file": "mut_double_lend.cp",
+      "input": "",
+      "expected_output": "2\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "mut_missing_call_mut",
+      "bug_class": "mutation-surprises",
+      "description": "Calling mut-parameter fn without mut at call site",
+      "file": "mut_missing_call_mut.cp",
+      "input": "",
+      "expected_output": "1\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "mut_sort_key_aliasing",
+      "bug_class": "mutation-surprises",
+      "description": "Sort key closure reading the list being sorted",
+      "file": "mut_sort_key_aliasing.cp",
+      "input": "",
+      "expected_output": "3\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "mut_rhs_mutates_lhs",
+      "bug_class": "mutation-surprises",
+      "description": "RHS mutating the array being indexed on LHS",
+      "file": "mut_rhs_mutates_lhs.cp",
+      "input": "",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "mut_fn_while_lent",
+      "bug_class": "mutation-surprises",
+      "description": "Mutating a variable via helper while a loop lends it",
+      "file": "mut_fn_while_lent.cp",
+      "input": "",
+      "expected_output": "1\n",
+      "kind": "correctness"
     },
     {
       "id": "mod_inv_zero",
       "bug_class": "wrong-or-missing-modulus",
-      "description": "Division by zero in Mod<998_244_353> (missing zero check before modular inverse)",
+      "description": "Modular division by zero in Mod<998_244_353>",
       "file": "mod_inv_zero.cp",
       "input": "0\n",
-      "expected_output": "0\n"
+      "expected_output": "0\n",
+      "kind": "correctness"
     },
     {
-      "id": "div_by_zero_edge",
-      "bug_class": "boundaries-and-edge-cases",
-      "description": "Division by zero on boundary input k = 0",
-      "file": "div_by_zero_edge.cp",
-      "input": "10 0\n",
-      "expected_output": "0\n"
+      "id": "mod_neg_pow_zero",
+      "bug_class": "wrong-or-missing-modulus",
+      "description": "Negative power of zero in Mod<998_244_353>",
+      "file": "mod_neg_pow_zero.cp",
+      "input": "",
+      "expected_output": "0\n",
+      "kind": "correctness"
     },
     {
-      "id": "float_precision_loss",
+      "id": "mod_nonprime_inv",
+      "bug_class": "wrong-or-missing-modulus",
+      "description": "Modular inverse when gcd(x, M) > 1 in Mod<10>",
+      "file": "mod_nonprime_inv.cp",
+      "input": "",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "mod_zero_modulus",
+      "bug_class": "wrong-or-missing-modulus",
+      "description": "Declaring Mod<0> (zero modulus)",
+      "file": "mod_zero_modulus.cp",
+      "input": "",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "mod_mix_two_moduli",
+      "bug_class": "wrong-or-missing-modulus",
+      "description": "Adding Mod<998_244_353> and Mod<1_000_000_007>",
+      "file": "mod_mix_two_moduli.cp",
+      "input": "998244354\n",
+      "expected_output": "998244355\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "flt_eq_add_lint",
       "bug_class": "floating-point",
-      "description": "Exact integer equality lost through f64 rounding above 2^53",
-      "file": "float_precision_loss.cp",
-      "input": "9007199254740992 9007199254740993\n",
-      "expected_output": "NO\n"
+      "description": "Exact == on 0.1 + 0.2 == 0.3 (L0301)",
+      "file": "flt_eq_add_lint.cp",
+      "input": "",
+      "expected_output": "YES\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "flt_neq_cmp_lint",
+      "bug_class": "floating-point",
+      "description": "Exact != on float sums (L0301)",
+      "file": "flt_neq_cmp_lint.cp",
+      "input": "",
+      "expected_output": "EQ\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "flt_index_array",
+      "bug_class": "floating-point",
+      "description": "Indexing an array with a floating-point value",
+      "file": "flt_index_array.cp",
+      "input": "",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "flt_range_bound",
+      "bug_class": "floating-point",
+      "description": "Using a float as an integer range bound 0..1.5",
+      "file": "flt_range_bound.cp",
+      "input": "",
+      "expected_output": "0\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "flt_mod_op",
+      "bug_class": "floating-point",
+      "description": "Using % remainder operator on floating-point values",
+      "file": "flt_mod_op.cp",
+      "input": "",
+      "expected_output": "1.5\n",
+      "kind": "correctness"
+    },
+    {
+      "id": "flt_sqrt_neg_nan",
+      "bug_class": "floating-point",
+      "description": "Silent NaN from sqrt(-1.0) propagating without trap",
+      "file": "flt_sqrt_neg_nan.cp",
+      "input": "",
+      "expected_output": "0\n",
+      "kind": "correctness"
     }
   ]
 }

@@ -583,12 +583,21 @@ and worst-20 dream-gap leaderboard published on `research/PORTS.md`), emitted C+
 0 `wa_trap` / 6 `real_gap` / 58 `stale_port`, and `research/frictions/*.md` 66 files / 186 open
 items (0 blocker, 43 high, 78 medium, 65 low, 2 closed; **0 schema warnings**, gated in
 `--check`, routed into 10 stdlib-area owner queues + `core` and shown in `research/PORTS.md`).
-Goal tests (AGENTS.md goals 1 & 2) are now live and ratcheted in `scripts/scoreboard.py`:
-- **Bug-replay suite (`bench/goal_tests/bug_replay/`):** **11/12 handled (91.7%, bar >= 90%: PASS)**
-  — 6 `prevented`, 5 `caught_on_run`, 1 `left_to_diagnose` (`float_precision_loss`), ratcheted
-  against regressions in handled % or per-case outcome.
-- **Revision test (`bench/goal_tests/revision/`):** **2/2 ok, 40 lines touched**
-  (`grid_path_skip_one=33L/4h`, `argmax_one_based=7L/3h`), ratcheting `lines_touched` per case.
+Goal tests (AGENTS.md goals 1 & 2) and spelling-drift tracking are live and ratcheted in `scripts/scoreboard.py` (22 unit tests):
+- **Bug-replay suite (`bench/goal_tests/bug_replay/`):** **59/63 handled (93.7%, bar >= 90%: PASS)**
+  across all 11 P0 classes (>= 5 cases per class) — 35 `prevented` (`cpl check` + `cpl lint`),
+  24 `caught_on_run`, 4 `left_to_diagnose` (`mt_top_var_unreset`, `cx_str_concat_loop`,
+  `mod_mix_two_moduli`, `flt_sqrt_neg_nan`), reporting per-class rates and ratcheting handled % and
+  per-case outcomes.
+- **Revision test (`bench/goal_tests/revision/`):** **10/10 ok, 95 lines touched** across 10 unseen
+  problems + 1 changed requirement each (`grid_path_skip_one=33L/4h`, `argmax_one_based=7L/3h`,
+  `knapsack_max_to_ways=5L/3h`, `bfs_dist_to_path=10L/3h`, `prefix_sum_query_to_max_window=9L/2h`,
+  `interval_merge_count_to_len=11L/3h`, `lis_strict_to_nondec=2L/1h`, `tree_subtree_sum_to_max=2L/1h`,
+  `coin_min_to_ways_mod=8L/3h`, `dsu_components_to_largest=8L/2h`), ratcheting `lines_touched` per case.
+- **Spelling-drift metric (`totals.spelling_drift`):** **411 non-canonical** across `proto/ports/**/*.cp`
+  (**135** in active/dream files): `multitest=52` (active 16; canon `@!multitest`), `sum=236` (active 92;
+  canon `xs.sum()`), `first=38` (active 19; canon `xs.first(...)`), `sort=85` (active 8; canon `xs.sort(...)`),
+  ratcheted strictly downward so codemods visibly drive drift to 0.
 Full-mode perf (`research/scoreboard.json`, 241 measured, 109 >= 10 ms):
 runtime **p50 0.993x** (goal <= 1.1x: **PASS**), p95 4.40x, **max 310.196x** (goal <= 1.5x:
 **FAIL**, 16 > 1.5x), peak RSS p50 0.938x / p95 2.330x / max 6.195x (`cf2268c`).

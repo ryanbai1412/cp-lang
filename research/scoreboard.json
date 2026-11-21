@@ -1,55 +1,55 @@
 {
   "schema_version": 1,
   "meta": {
-    "commit": "b101c046",
+    "commit": "d75bcd94",
     "mode": "fast",
     "platform": "Linux-6.8.0-1060-aws-x86_64-with-glibc2.35",
     "cores": 8,
-    "elapsed_s": 6.63
+    "elapsed_s": 4.61
   },
   "totals": {
-    "ports_total": 285,
-    "ports_passed": 285,
+    "ports_total": 291,
+    "ports_passed": 291,
     "ports_failed": 0,
     "interactive_ports": 16,
     "checker_ports": 5,
     "tokens": {
-      "cp_total": 86751,
-      "orig_total": 549522,
-      "orig_stripped_total": 248362,
-      "ratio_of_totals": 0.1579,
-      "stripped_ratio_of_totals": 0.3493,
+      "cp_total": 88111,
+      "orig_total": 556529,
+      "orig_stripped_total": 251714,
+      "ratio_of_totals": 0.1583,
+      "stripped_ratio_of_totals": 0.35,
       "median_ratio": 0.4161,
       "p90_ratio": 0.6122,
       "max_ratio": 0.9164,
-      "median_stripped_ratio": 0.5018,
+      "median_stripped_ratio": 0.5006,
       "p90_stripped_ratio": 0.6814,
       "max_stripped_ratio": 1.054,
       "over_1_0x_raw": 0,
       "over_1_0x_stripped": 1
     },
     "dream": {
-      "ports": 45,
-      "cp_total": 20717,
-      "dream_total": 14358,
-      "ratio_of_totals": 1.4429,
-      "median_ratio": 1.283,
-      "p90_ratio": 2.5322,
+      "ports": 51,
+      "cp_total": 22080,
+      "dream_total": 15783,
+      "ratio_of_totals": 1.399,
+      "median_ratio": 1.227,
+      "p90_ratio": 2.4545,
       "max_ratio": 4.6765,
       "max_port": "ecnerwala/cf2187f1"
     },
     "emitted_bytes": {
-      "measured": 285,
-      "median": 10257,
+      "measured": 291,
+      "median": 10345,
       "p95": 28064,
-      "max": 58722,
+      "max": 58744,
       "max_port": "ecnerwala/cf2255f",
       "over_48kb": 2,
       "over_64kb": 0
     },
     "perf": {
-      "measured": 228,
-      "above_floor": 103,
+      "measured": 227,
+      "above_floor": 102,
       "floor_ms": 10.0,
       "mismatches": 0,
       "time_p50": 0.993,
@@ -133,7 +133,7 @@
           "input_source": "gen size=25000"
         }
       ],
-      "rss_p50": 0.934,
+      "rss_p50": 0.931,
       "rss_p95": 2.33,
       "rss_max": 6.195,
       "rss_max_port": "ecnerwala/cf2268c"
@@ -146,10 +146,10 @@
       "max": 4
     },
     "interp": {
-      "measured": 232,
-      "passed": 239,
+      "measured": 231,
+      "passed": 238,
       "failed": 3,
-      "median_ms": 21.32,
+      "median_ms": 21.28,
       "p95_ms": 60.89,
       "max_ms": 88.01,
       "max_port": "ecnerwala/cf2178f",
@@ -247,28 +247,28 @@
       }
     },
     "friction_lint": {
-      "files": 285,
+      "files": 291,
       "wa_trap": 0,
       "real_gap": 6,
       "stale_port": 59
     },
     "frictions": {
-      "files": 68,
-      "total": 191,
-      "open": 180,
+      "files": 76,
+      "total": 208,
+      "open": 197,
       "closed": 11,
       "by_severity": {
         "blocker": 0,
         "high": 42,
-        "medium": 73,
-        "low": 65,
+        "medium": 77,
+        "low": 78,
         "unknown": 0
       },
       "by_goal": {
-        "express": 127,
-        "hard-to-get-wrong": 56,
-        "performance": 45,
-        "coherence": 15,
+        "express": 141,
+        "hard-to-get-wrong": 59,
+        "performance": 51,
+        "coherence": 17,
         "doubt-to-evidence": 12,
         "accumulate": 6,
         "dependable-submission": 5
@@ -276,73 +276,389 @@
       "by_area": {
         "graphs": 7,
         "trees": 12,
-        "ranges": 14,
-        "strings": 34,
-        "math": 19,
-        "flows": 10,
-        "containers": 11,
+        "ranges": 15,
+        "strings": 40,
+        "math": 20,
+        "flows": 12,
+        "containers": 12,
         "geometry": 13,
-        "dp": 9,
-        "seq": 17,
-        "core": 34
+        "dp": 10,
+        "seq": 18,
+        "core": 38
       },
       "open_blockers": 0,
       "open_highs": 42,
       "warnings": 0
     },
     "bug_replay": {
-      "total": 12,
-      "prevented": 6,
-      "caught_on_run": 5,
-      "left_to_diagnose": 1,
+      "total": 63,
+      "prevented": 35,
+      "caught_on_run": 24,
+      "left_to_diagnose": 4,
       "unexpected_pass": 0,
-      "handled": 11,
-      "handled_pct": 91.7,
+      "handled": 59,
+      "handled_pct": 93.7,
       "bar_pct": 90.0,
       "bar_ok": true,
+      "by_class": {
+        "off-by-one": {
+          "total": 6,
+          "prevented": 3,
+          "caught_on_run": 3,
+          "left_to_diagnose": 0,
+          "unexpected_pass": 0,
+          "handled": 6,
+          "handled_pct": 100.0
+        },
+        "wrong-index-space": {
+          "total": 6,
+          "prevented": 6,
+          "caught_on_run": 0,
+          "left_to_diagnose": 0,
+          "unexpected_pass": 0,
+          "handled": 6,
+          "handled_pct": 100.0
+        },
+        "overflow": {
+          "total": 6,
+          "prevented": 0,
+          "caught_on_run": 6,
+          "left_to_diagnose": 0,
+          "unexpected_pass": 0,
+          "handled": 6,
+          "handled_pct": 100.0
+        },
+        "boundaries-and-edge-cases": {
+          "total": 6,
+          "prevented": 1,
+          "caught_on_run": 5,
+          "left_to_diagnose": 0,
+          "unexpected_pass": 0,
+          "handled": 6,
+          "handled_pct": 100.0
+        },
+        "multitest-state-leakage": {
+          "total": 5,
+          "prevented": 4,
+          "caught_on_run": 0,
+          "left_to_diagnose": 1,
+          "unexpected_pass": 0,
+          "handled": 4,
+          "handled_pct": 80.0
+        },
+        "io-and-interactive": {
+          "total": 6,
+          "prevented": 1,
+          "caught_on_run": 5,
+          "left_to_diagnose": 0,
+          "unexpected_pass": 0,
+          "handled": 6,
+          "handled_pct": 100.0
+        },
+        "sentinels-and-uninitialized": {
+          "total": 6,
+          "prevented": 5,
+          "caught_on_run": 1,
+          "left_to_diagnose": 0,
+          "unexpected_pass": 0,
+          "handled": 6,
+          "handled_pct": 100.0
+        },
+        "accidental-complexity-blowups": {
+          "total": 5,
+          "prevented": 4,
+          "caught_on_run": 0,
+          "left_to_diagnose": 1,
+          "unexpected_pass": 0,
+          "handled": 4,
+          "handled_pct": 80.0
+        },
+        "mutation-surprises": {
+          "total": 6,
+          "prevented": 6,
+          "caught_on_run": 0,
+          "left_to_diagnose": 0,
+          "unexpected_pass": 0,
+          "handled": 6,
+          "handled_pct": 100.0
+        },
+        "wrong-or-missing-modulus": {
+          "total": 5,
+          "prevented": 0,
+          "caught_on_run": 4,
+          "left_to_diagnose": 1,
+          "unexpected_pass": 0,
+          "handled": 4,
+          "handled_pct": 80.0
+        },
+        "floating-point": {
+          "total": 6,
+          "prevented": 5,
+          "caught_on_run": 0,
+          "left_to_diagnose": 1,
+          "unexpected_pass": 0,
+          "handled": 5,
+          "handled_pct": 83.3
+        }
+      },
       "cases": [
         {
-          "id": "off_by_one_inclusive",
+          "id": "obo_inclusive_loop",
+          "bug_class": "off-by-one",
+          "outcome": "prevented"
+        },
+        {
+          "id": "obo_neg_prev",
+          "bug_class": "off-by-one",
+          "outcome": "prevented"
+        },
+        {
+          "id": "obo_one_based_zero",
           "bug_class": "off-by-one",
           "outcome": "caught_on_run"
         },
         {
-          "id": "wrong_index_space",
+          "id": "obo_slice_past_end",
+          "bug_class": "off-by-one",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "obo_last_next_bang",
+          "bug_class": "off-by-one",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "obo_ord_arith_lint",
+          "bug_class": "off-by-one",
+          "outcome": "prevented"
+        },
+        {
+          "id": "wis_vertex_edge",
           "bug_class": "wrong-index-space",
           "outcome": "prevented"
         },
         {
-          "id": "int_overflow_mul",
+          "id": "wis_swapped_grid",
+          "bug_class": "wrong-index-space",
+          "outcome": "prevented"
+        },
+        {
+          "id": "wis_raw_int_index",
+          "bug_class": "wrong-index-space",
+          "outcome": "prevented"
+        },
+        {
+          "id": "wis_cross_domain_cmp",
+          "bug_class": "wrong-index-space",
+          "outcome": "prevented"
+        },
+        {
+          "id": "wis_cross_domain_range",
+          "bug_class": "wrong-index-space",
+          "outcome": "prevented"
+        },
+        {
+          "id": "wis_derived_domain",
+          "bug_class": "wrong-index-space",
+          "outcome": "prevented"
+        },
+        {
+          "id": "ovf_mul_i64",
           "bug_class": "overflow",
           "outcome": "caught_on_run"
         },
         {
-          "id": "boundary_empty_pop",
+          "id": "ovf_add_i64",
+          "bug_class": "overflow",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "ovf_sub_i64",
+          "bug_class": "overflow",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "ovf_pow_i64",
+          "bug_class": "overflow",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "ovf_shift_64",
+          "bug_class": "overflow",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "ovf_neg_int_min",
+          "bug_class": "overflow",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "bnd_empty_pop",
           "bug_class": "boundaries-and-edge-cases",
           "outcome": "prevented"
         },
         {
-          "id": "multitest_shared_var",
+          "id": "bnd_empty_domain_first",
+          "bug_class": "boundaries-and-edge-cases",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "bnd_empty_domain_last",
+          "bug_class": "boundaries-and-edge-cases",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "bnd_div_zero",
+          "bug_class": "boundaries-and-edge-cases",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "bnd_rem_zero",
+          "bug_class": "boundaries-and-edge-cases",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "bnd_empty_max",
+          "bug_class": "boundaries-and-edge-cases",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "mt_block_syntax_leak",
           "bug_class": "multitest-state-leakage",
           "outcome": "prevented"
         },
         {
-          "id": "io_short_input",
+          "id": "mt_duplicate_divider",
+          "bug_class": "multitest-state-leakage",
+          "outcome": "prevented"
+        },
+        {
+          "id": "mt_shadow_top_let",
+          "bug_class": "multitest-state-leakage",
+          "outcome": "prevented"
+        },
+        {
+          "id": "mt_top_var_unreset",
+          "bug_class": "multitest-state-leakage",
+          "outcome": "left_to_diagnose"
+        },
+        {
+          "id": "mt_non_top_divider",
+          "bug_class": "multitest-state-leakage",
+          "outcome": "prevented"
+        },
+        {
+          "id": "io_short_array",
           "bug_class": "io-and-interactive",
           "outcome": "caught_on_run"
         },
         {
-          "id": "sentinel_none_unwrap",
+          "id": "io_bad_int_token",
+          "bug_class": "io-and-interactive",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "io_range_violation",
+          "bug_class": "io-and-interactive",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "io_empty_stdin",
+          "bug_class": "io-and-interactive",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "io_domain_oob_read",
+          "bug_class": "io-and-interactive",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "io_read_in_expr",
+          "bug_class": "io-and-interactive",
+          "outcome": "prevented"
+        },
+        {
+          "id": "sen_none_arith",
           "bug_class": "sentinels-and-uninitialized",
           "outcome": "prevented"
         },
         {
-          "id": "uninitialized_read",
+          "id": "sen_none_bang",
+          "bug_class": "sentinels-and-uninitialized",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "sen_undeclared_name",
           "bug_class": "sentinels-and-uninitialized",
           "outcome": "prevented"
         },
         {
-          "id": "mutation_aliasing",
+          "id": "sen_immutable_assign",
+          "bug_class": "sentinels-and-uninitialized",
+          "outcome": "prevented"
+        },
+        {
+          "id": "sen_map_missing_key",
+          "bug_class": "sentinels-and-uninitialized",
+          "outcome": "prevented"
+        },
+        {
+          "id": "sen_non_exhaustive_match",
+          "bug_class": "sentinels-and-uninitialized",
+          "outcome": "prevented"
+        },
+        {
+          "id": "cx_domain_map",
+          "bug_class": "accidental-complexity-blowups",
+          "outcome": "prevented"
+        },
+        {
+          "id": "cx_domain_set",
+          "bug_class": "accidental-complexity-blowups",
+          "outcome": "prevented"
+        },
+        {
+          "id": "cx_memo_blowup",
+          "bug_class": "accidental-complexity-blowups",
+          "outcome": "prevented"
+        },
+        {
+          "id": "cx_unproven_list_nested",
+          "bug_class": "accidental-complexity-blowups",
+          "outcome": "prevented"
+        },
+        {
+          "id": "cx_str_concat_loop",
+          "bug_class": "accidental-complexity-blowups",
+          "outcome": "left_to_diagnose"
+        },
+        {
+          "id": "mut_push_while_iter",
+          "bug_class": "mutation-surprises",
+          "outcome": "prevented"
+        },
+        {
+          "id": "mut_double_lend",
+          "bug_class": "mutation-surprises",
+          "outcome": "prevented"
+        },
+        {
+          "id": "mut_missing_call_mut",
+          "bug_class": "mutation-surprises",
+          "outcome": "prevented"
+        },
+        {
+          "id": "mut_sort_key_aliasing",
+          "bug_class": "mutation-surprises",
+          "outcome": "prevented"
+        },
+        {
+          "id": "mut_rhs_mutates_lhs",
+          "bug_class": "mutation-surprises",
+          "outcome": "prevented"
+        },
+        {
+          "id": "mut_fn_while_lent",
           "bug_class": "mutation-surprises",
           "outcome": "prevented"
         },
@@ -352,21 +668,61 @@
           "outcome": "caught_on_run"
         },
         {
-          "id": "div_by_zero_edge",
-          "bug_class": "boundaries-and-edge-cases",
+          "id": "mod_neg_pow_zero",
+          "bug_class": "wrong-or-missing-modulus",
           "outcome": "caught_on_run"
         },
         {
-          "id": "float_precision_loss",
+          "id": "mod_nonprime_inv",
+          "bug_class": "wrong-or-missing-modulus",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "mod_zero_modulus",
+          "bug_class": "wrong-or-missing-modulus",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "mod_mix_two_moduli",
+          "bug_class": "wrong-or-missing-modulus",
+          "outcome": "left_to_diagnose"
+        },
+        {
+          "id": "flt_eq_add_lint",
+          "bug_class": "floating-point",
+          "outcome": "prevented"
+        },
+        {
+          "id": "flt_neq_cmp_lint",
+          "bug_class": "floating-point",
+          "outcome": "prevented"
+        },
+        {
+          "id": "flt_index_array",
+          "bug_class": "floating-point",
+          "outcome": "prevented"
+        },
+        {
+          "id": "flt_range_bound",
+          "bug_class": "floating-point",
+          "outcome": "prevented"
+        },
+        {
+          "id": "flt_mod_op",
+          "bug_class": "floating-point",
+          "outcome": "prevented"
+        },
+        {
+          "id": "flt_sqrt_neg_nan",
           "bug_class": "floating-point",
           "outcome": "left_to_diagnose"
         }
       ]
     },
     "revision": {
-      "total": 2,
-      "passed": 2,
-      "total_lines_touched": 40,
+      "total": 10,
+      "passed": 10,
+      "total_lines_touched": 95,
       "cases": [
         {
           "id": "grid_path_skip_one",
@@ -381,27 +737,145 @@
           "detail": "ok",
           "lines_touched": 7,
           "hunks": 3
+        },
+        {
+          "id": "knapsack_max_to_ways",
+          "ok": true,
+          "detail": "ok",
+          "lines_touched": 5,
+          "hunks": 3
+        },
+        {
+          "id": "bfs_dist_to_path",
+          "ok": true,
+          "detail": "ok",
+          "lines_touched": 10,
+          "hunks": 3
+        },
+        {
+          "id": "prefix_sum_query_to_max_window",
+          "ok": true,
+          "detail": "ok",
+          "lines_touched": 9,
+          "hunks": 2
+        },
+        {
+          "id": "interval_merge_count_to_len",
+          "ok": true,
+          "detail": "ok",
+          "lines_touched": 11,
+          "hunks": 3
+        },
+        {
+          "id": "lis_strict_to_nondec",
+          "ok": true,
+          "detail": "ok",
+          "lines_touched": 2,
+          "hunks": 1
+        },
+        {
+          "id": "tree_subtree_sum_to_max",
+          "ok": true,
+          "detail": "ok",
+          "lines_touched": 2,
+          "hunks": 1
+        },
+        {
+          "id": "coin_min_to_ways_mod",
+          "ok": true,
+          "detail": "ok",
+          "lines_touched": 8,
+          "hunks": 3
+        },
+        {
+          "id": "dsu_components_to_largest",
+          "ok": true,
+          "detail": "ok",
+          "lines_touched": 8,
+          "hunks": 2
         }
       ]
+    },
+    "spelling_drift": {
+      "files_scanned": 1379,
+      "active_files_scanned": 418,
+      "total_non_canonical": 418,
+      "active_non_canonical": 142,
+      "constructs": {
+        "multitest": {
+          "canonical": "@!multitest",
+          "counts": {
+            "@!multitest": 298,
+            "@multitest": 37,
+            "--- multitest ---": 15
+          },
+          "active_counts": {
+            "@!multitest": 296,
+            "@multitest": 1,
+            "--- multitest ---": 15
+          },
+          "non_canonical": 52,
+          "active_non_canonical": 16
+        },
+        "sum": {
+          "canonical": "xs.sum()",
+          "counts": {
+            "xs.sum()": 92,
+            "sum(xs)": 239
+          },
+          "active_counts": {
+            "xs.sum()": 28,
+            "sum(xs)": 95
+          },
+          "non_canonical": 239,
+          "active_non_canonical": 95
+        },
+        "first": {
+          "canonical": "xs.first(...)",
+          "counts": {
+            "xs.first(...)": 8,
+            "first(...)": 42
+          },
+          "active_counts": {
+            "xs.first(...)": 6,
+            "first(...)": 23
+          },
+          "non_canonical": 42,
+          "active_non_canonical": 23
+        },
+        "sort": {
+          "canonical": "xs.sort(...)",
+          "counts": {
+            "xs.sort(...)": 57,
+            "sort(mut xs)": 85
+          },
+          "active_counts": {
+            "xs.sort(...)": 16,
+            "sort(mut xs)": 8
+          },
+          "non_canonical": 85,
+          "active_non_canonical": 8
+        }
+      }
     }
   },
   "frictions": {
-    "files": 68,
-    "total": 191,
-    "open": 180,
+    "files": 76,
+    "total": 208,
+    "open": 197,
     "closed": 11,
     "by_severity": {
       "blocker": 0,
       "high": 42,
-      "medium": 73,
-      "low": 65,
+      "medium": 77,
+      "low": 78,
       "unknown": 0
     },
     "by_goal": {
-      "express": 127,
-      "hard-to-get-wrong": 56,
-      "performance": 45,
-      "coherence": 15,
+      "express": 141,
+      "hard-to-get-wrong": 59,
+      "performance": 51,
+      "coherence": 17,
       "doubt-to-evidence": 12,
       "accumulate": 6,
       "dependable-submission": 5
@@ -409,15 +883,15 @@
     "by_area": {
       "graphs": 7,
       "trees": 12,
-      "ranges": 14,
-      "strings": 34,
-      "math": 19,
-      "flows": 10,
-      "containers": 11,
+      "ranges": 15,
+      "strings": 40,
+      "math": 20,
+      "flows": 12,
+      "containers": 12,
       "geometry": 13,
-      "dp": 9,
-      "seq": 17,
-      "core": 34
+      "dp": 10,
+      "seq": 18,
+      "core": 38
     },
     "by_area_queues": {
       "graphs": {
@@ -446,9 +920,10 @@
         ]
       },
       "ranges": {
-        "open": 14,
+        "open": 15,
         "high": 7,
         "files": [
+          "research/frictions/cf2057d.md",
           "research/frictions/cf2084f.md",
           "research/frictions/cf2138f.md",
           "research/frictions/cf2147f.md",
@@ -461,9 +936,14 @@
         ]
       },
       "strings": {
-        "open": 34,
+        "open": 40,
         "high": 8,
         "files": [
+          "research/frictions/cf1146h.md",
+          "research/frictions/cf1284e.md",
+          "research/frictions/cf1404e.md",
+          "research/frictions/cf1909g.md",
+          "research/frictions/cf1943b.md",
           "research/frictions/cf2062h.md",
           "research/frictions/cf2066b.md",
           "research/frictions/cf2066c.md",
@@ -493,9 +973,10 @@
         ]
       },
       "math": {
-        "open": 19,
+        "open": 20,
         "high": 6,
         "files": [
+          "research/frictions/cf1284e.md",
           "research/frictions/cf2062h.md",
           "research/frictions/cf2066d1.md",
           "research/frictions/cf2066d2.md",
@@ -514,10 +995,12 @@
         ]
       },
       "flows": {
-        "open": 10,
-        "high": 3,
+        "open": 12,
+        "high": 2,
         "files": [
-          "research/frictions/cf2069f.md",
+          "research/frictions/cco16p2.md",
+          "research/frictions/cf1404e.md",
+          "research/frictions/cf2147h.md",
           "research/frictions/cf2150f.md",
           "research/frictions/cf2180f1.md",
           "research/frictions/cf2180f2.md",
@@ -530,9 +1013,10 @@
         ]
       },
       "containers": {
-        "open": 11,
-        "high": 3,
+        "open": 12,
+        "high": 4,
         "files": [
+          "research/frictions/cf1146h.md",
           "research/frictions/cf2069c.md",
           "research/frictions/cf2135f.md",
           "research/frictions/cf2178h.md",
@@ -562,7 +1046,7 @@
         ]
       },
       "dp": {
-        "open": 9,
+        "open": 10,
         "high": 2,
         "files": [
           "research/frictions/cf2062h.md",
@@ -573,13 +1057,15 @@
           "research/frictions/cf2183h.md",
           "research/frictions/cf2187f1.md",
           "research/frictions/cf2207e2.md",
-          "research/frictions/cf2229h.md"
+          "research/frictions/cf2229h.md",
+          "research/frictions/dpz.md"
         ]
       },
       "seq": {
-        "open": 17,
+        "open": 18,
         "high": 1,
         "files": [
+          "research/frictions/cf1909g.md",
           "research/frictions/cf2066c.md",
           "research/frictions/cf2069e.md",
           "research/frictions/cf2135f.md",
@@ -596,9 +1082,13 @@
         ]
       },
       "core": {
-        "open": 34,
+        "open": 38,
         "high": 1,
         "files": [
+          "research/frictions/cf1404e.md",
+          "research/frictions/cf1909g.md",
+          "research/frictions/cf1943b.md",
+          "research/frictions/cf2057d.md",
           "research/frictions/cf2062e1.md",
           "research/frictions/cf2062g.md",
           "research/frictions/cf2066c.md",
@@ -631,6 +1121,11 @@
     "open_blockers": [],
     "open_highs": [
       {
+        "file": "research/frictions/cf1146h.md",
+        "title": "`Bitset<V>` heap-allocates on every `&` in `(a & b & c).len` instead of using bounded-size storage or fused popcount",
+        "area": "containers"
+      },
+      {
         "file": "research/frictions/cf2062h.md",
         "title": "The interpreter is too slow to gate the official samples",
         "area": "dp"
@@ -644,11 +1139,6 @@
         "file": "research/frictions/cf2066d2.md",
         "title": "Inner DP loop is 1.41x slower than C++ (0.31 s vs 0.22 s on $n = 100, c = 100, m = 10^4$)",
         "area": "math"
-      },
-      {
-        "file": "research/frictions/cf2069f.md",
-        "title": "Offline \"segment tree over time\" is written by hand every time",
-        "area": "flows"
       },
       {
         "file": "research/frictions/cf2069f.md",
@@ -843,6 +1333,191 @@
     ],
     "warnings": [],
     "items": [
+      {
+        "file": "research/frictions/cco16p2.md",
+        "title": "`Pt` cannot carry coordinate-range bounds on `read()`",
+        "severity": "low",
+        "goals": [
+          "express"
+        ],
+        "area": "flows",
+        "status": "open",
+        "general_fix": ""
+      },
+      {
+        "file": "research/frictions/cf1146h.md",
+        "title": "`Bitset<V>` heap-allocates on every `&` in `(a & b & c).len` instead of using bounded-size storage or fused popcount",
+        "severity": "high",
+        "goals": [
+          "performance"
+        ],
+        "area": "containers",
+        "status": "open",
+        "general_fix": "Use fixed-size inline word storage (`std::array<uint64_t, (MAX_N + 63) / 64>`) when `V`'s upper bound is small (e.g., `<= 4096`), and/or fuse `(a & b & ...).len` into a zero-allocation word-wise popco"
+      },
+      {
+        "file": "research/frictions/cf1146h.md",
+        "title": "`Bitset<V>.from` does not accept a generator of `V` directly",
+        "severity": "low",
+        "goals": [
+          "express",
+          "performance"
+        ],
+        "area": "strings",
+        "status": "open",
+        "general_fix": "Allow `Bitset<D>.from` to construct from an iterator/generator of `D` (or fuse `[D] k => pred` directly into bit words)."
+      },
+      {
+        "file": "research/frictions/cf1284e.md",
+        "title": "`List.sort(by:)` allocates three temporary vectors and uses indirect `std::stable_sort`",
+        "severity": "medium",
+        "goals": [
+          "performance"
+        ],
+        "area": "strings",
+        "status": "open",
+        "general_fix": "For pure, cheap key projections (like wrapping a `Pt` in `ByAngle(d)`), specialize `sort(by:)` to sort in-place without allocating `keys`/`order`/`sorted` (or provide `sort_unstable(by:)` / comparator"
+      },
+      {
+        "file": "research/frictions/cf1284e.md",
+        "title": "No exact integer `choose(n, k)` for small `k` in `std.math`",
+        "severity": "low",
+        "goals": [
+          "express"
+        ],
+        "area": "math",
+        "status": "open",
+        "general_fix": "Add exact small-`k` `choose(n: Int, k: Int) -> Int` (or `choose2`/`choose3`) in `std.math`."
+      },
+      {
+        "file": "research/frictions/cf1404e.md",
+        "title": "Cannot read a 2D character grid directly into `[Row, Col]Char`",
+        "severity": "low",
+        "goals": [
+          "express",
+          "hard-to-get-wrong"
+        ],
+        "area": "strings",
+        "status": "open",
+        "general_fix": "Allow `read()` into `[R, C]Char` to read `R.count` whitespace-delimited strings of length `C.count` into a 2D character grid."
+      },
+      {
+        "file": "research/frictions/cf1404e.md",
+        "title": "No `if let` with guard (`if let rp = r.prev if ...`) as an expression",
+        "severity": "low",
+        "goals": [
+          "express"
+        ],
+        "area": "core",
+        "status": "open",
+        "general_fix": "Allow `if let x = opt and cond: ... else: ...` (or `where`) in conditional expressions."
+      },
+      {
+        "file": "research/frictions/cf1404e.md",
+        "title": "`FlowGraph<V>` requires manual flattening of `(Row, Col) + {src, snk}` into a synthetic `Node` domain",
+        "severity": "low",
+        "goals": [
+          "express",
+          "hard-to-get-wrong"
+        ],
+        "area": "flows",
+        "status": "open",
+        "general_fix": "Provide source/sink-aware flow builders or domain-product indexing in `std.flow` / core domains."
+      },
+      {
+        "file": "research/frictions/cf1909g.md",
+        "title": "`std.strings.period` only accepts `List<T>`, not `Str` or string slices",
+        "severity": "medium",
+        "goals": [
+          "express",
+          "performance",
+          "coherence"
+        ],
+        "area": "strings",
+        "status": "open",
+        "general_fix": "Accept `Str` (and borrowed slices) in `std.strings.period` and `prefix_function`, avoiding a `List<Char>` copy."
+      },
+      {
+        "file": "research/frictions/cf1909g.md",
+        "title": "No stepped range syntax (`lo..=hi by step`) in comprehensions / `sum`",
+        "severity": "low",
+        "goals": [
+          "express"
+        ],
+        "area": "seq",
+        "status": "open",
+        "general_fix": "Support stepped ranges (`a..=b by step` or `.step(g)`) in `for` and generator expressions."
+      },
+      {
+        "file": "research/frictions/cf1909g.md",
+        "title": "No top-level `return` for early exit",
+        "severity": "low",
+        "goals": [
+          "express"
+        ],
+        "area": "core",
+        "status": "open",
+        "general_fix": "Allow top-level `return` (terminating the current test case / program)."
+      },
+      {
+        "file": "research/frictions/cf1943b.md",
+        "title": "`manacher` only accepts `List<T>`, not `Str` or `[Pos]Char`, and `is_palindrome` takes raw `Int`s",
+        "severity": "medium",
+        "goals": [
+          "express",
+          "hard-to-get-wrong",
+          "coherence"
+        ],
+        "area": "strings",
+        "status": "open",
+        "general_fix": "Accept `Str` and `[D]T` (preserving domain `D` in `Palindromes<D>`) in `std.strings.manacher`, and accept a `Range<D>` in `Palindromes.is_palindrome(r)`."
+      },
+      {
+        "file": "research/frictions/cf1943b.md",
+        "title": "Cannot read a string directly into `[Pos]Char`",
+        "severity": "low",
+        "goals": [
+          "express",
+          "performance"
+        ],
+        "area": "strings",
+        "status": "open",
+        "general_fix": "Allow `read()` into `[D]Char` to read a whitespace-delimited token of length `D.count` directly (or let `Str` be viewed/indexed by a domain)."
+      },
+      {
+        "file": "research/frictions/cf1943b.md",
+        "title": "No optional chaining (`i.prev?.prev`) or `(l..=r).len` on domain ranges",
+        "severity": "low",
+        "goals": [
+          "express",
+          "hard-to-get-wrong"
+        ],
+        "area": "core",
+        "status": "open",
+        "general_fix": "Support optional chaining `?.` and `where let` filters in `for` loops, and add `.len` on `Range<D>`."
+      },
+      {
+        "file": "research/frictions/cf2057d.md",
+        "title": "`SegTree` `Monoid.op` lowers via `std::function` and `?Span` uses 64-bit fields + `std::optional`",
+        "severity": "medium",
+        "goals": [
+          "performance"
+        ],
+        "area": "ranges",
+        "status": "open",
+        "general_fix": "Devirtualize/monomorphize `Monoid.op` in codegen instead of lowering through `std::function`, and support a non-empty `Semigroup` segment tree (or niche-packed `?Span`) so full-domain trees do not pay"
+      },
+      {
+        "file": "research/frictions/cf2057d.md",
+        "title": "No variadic `max` or static associated functions on structs (`Span.leaf`, `Span.combine`)",
+        "severity": "low",
+        "goals": [
+          "express"
+        ],
+        "area": "core",
+        "status": "open",
+        "general_fix": "Allow variadic `max`/`min` (3+ args) and static associated functions inside `struct` bodies."
+      },
       {
         "file": "research/frictions/cf2062e1.md",
         "title": "No `V.group(by:)` domain bucketing helper (owned by sequences area lane)",
@@ -1204,7 +1879,7 @@
           "hard-to-get-wrong"
         ],
         "area": "flows",
-        "status": "open",
+        "status": "closed",
         "general_fix": "a stdlib `offline_over(domain, items, by: range,"
       },
       {
@@ -1693,7 +2368,7 @@
       },
       {
         "file": "research/frictions/cf2147h.md",
-        "title": "`Bitset<D>` lacks direct iteration, `.find(pred)`, `.without(v)`, and direct `print(c)`",
+        "title": "`Bitset<D>` lacks direct iteration, `.first(pred)` / `.find(pred)`, `.without(v)`, and direct `print(c)`",
         "severity": "medium",
         "goals": [
           "express",
@@ -1701,18 +2376,18 @@
         ],
         "area": "graphs",
         "status": "open",
-        "general_fix": "Implement `Seq` + `Print` on `Bitset<D>`, add `.find(pred)`, `.without(x)`, and `V.all` for a domain's full bitset. Helps every graph/DP problem using `Bitset<D>`."
+        "general_fix": "Implement `Seq` + `Print` on `Bitset<D>`, add `.first(pred)` / `.without(x)` (containers lane), and `V.all` for a domain's full bitset. Helps every graph/DP problem using `Bitset<D>`."
       },
       {
         "file": "research/frictions/cf2147h.md",
-        "title": "No `gomory_hu(edges)` in `std.flow`",
+        "title": "No `gcd(seq)` reduction on sequences",
         "severity": "low",
         "goals": [
           "express"
         ],
         "area": "flows",
-        "status": "closed",
-        "general_fix": "Add `gomory_hu` to `std.flow` returning the cut-equivalent tree edges `(u: V, v: V, w: Int)`, and `gcd(seq)` reduction on sequences of `Int`."
+        "status": "open",
+        "general_fix": "Add `gcd(seq)` reduction on sequences of `Int` (math lane)."
       },
       {
         "file": "research/frictions/cf2147h.md",
@@ -2946,6 +3621,17 @@
         "general_fix": ""
       },
       {
+        "file": "research/frictions/dpz.md",
+        "title": "No `dot128` / `Line` slope-intercept wrapper needed, but CHT queries use `Pt(x, 1)`",
+        "severity": "low",
+        "goals": [
+          "express"
+        ],
+        "area": "dp",
+        "status": "open",
+        "general_fix": ""
+      },
+      {
         "file": "research/frictions/ucup4s24f.md",
         "title": "The window minimum was a hand-written monotone deque (fixed)",
         "severity": "medium",
@@ -3038,15 +3724,15 @@
     ]
   },
   "friction_lint": {
-    "files": 285,
+    "files": 291,
     "wa_trap": 0,
     "real_gap": 6,
     "stale_port": 59,
     "by_rule": {
       "mod_literal_wrapping": 23,
-      "comprehension_copy": 9,
-      "domain_bound_boilerplate": 9,
-      "prelude_import": 4,
+      "comprehension_copy": 10,
+      "domain_bound_boilerplate": 6,
+      "prelude_import": 6,
       "bool_to_int": 3,
       "manual_cursor_loop": 3,
       "domain_step_unwrap": 2,
@@ -3400,6 +4086,234 @@
       }
     },
     {
+      "id": "ecnerwala/cf1146h",
+      "path": "proto/ports/ecnerwala/cf1146h.cp",
+      "orig_path": "proto/ports/ecnerwala/cf1146h_orig.cpp",
+      "gate": "pass",
+      "gate_mode": "fast",
+      "gate_detail": "ok",
+      "check_ok": true,
+      "fmt_ok": true,
+      "lint_warnings": 0,
+      "taste_lints": 0,
+      "taste_lints_by_lint": {},
+      "build_ok": true,
+      "emitted_bytes": 12903,
+      "over_48kb": false,
+      "over_64kb": false,
+      "cp_tokens": 222,
+      "orig_tokens": 522,
+      "orig_stripped_tokens": 473,
+      "token_ratio": 0.4253,
+      "stripped_token_ratio": 0.4693,
+      "dream_tokens": 222,
+      "dream_ratio": 1.0,
+      "dream_gap_tokens": 0,
+      "taste_score": null,
+      "review_path": "research/reviews/cf1146h.md",
+      "cp_loc": 17,
+      "orig_loc": 56,
+      "orig_stripped_loc": 51,
+      "cp_sha": "793367230541ae5a",
+      "orig_sha": "313c035768a76cba",
+      "has_gen": true,
+      "has_samples": true,
+      "interactive": false,
+      "has_checker": false,
+      "perf": null,
+      "interp": null
+    },
+    {
+      "id": "ecnerwala/cf1284e",
+      "path": "proto/ports/ecnerwala/cf1284e.cp",
+      "orig_path": "proto/ports/ecnerwala/cf1284e_orig.cpp",
+      "gate": "pass",
+      "gate_mode": "fast",
+      "gate_detail": "ok",
+      "check_ok": true,
+      "fmt_ok": true,
+      "lint_warnings": 0,
+      "taste_lints": 0,
+      "taste_lints_by_lint": {},
+      "build_ok": true,
+      "emitted_bytes": 11164,
+      "over_48kb": false,
+      "over_64kb": false,
+      "cp_tokens": 224,
+      "orig_tokens": 1616,
+      "orig_stripped_tokens": 1126,
+      "token_ratio": 0.1386,
+      "stripped_token_ratio": 0.1989,
+      "dream_tokens": 224,
+      "dream_ratio": 1.0,
+      "dream_gap_tokens": 0,
+      "taste_score": null,
+      "review_path": "research/reviews/cf1284e.md",
+      "cp_loc": 19,
+      "orig_loc": 144,
+      "orig_stripped_loc": 113,
+      "cp_sha": "bda71a30f918f8ba",
+      "orig_sha": "a72966f13e6b6f3d",
+      "has_gen": true,
+      "has_samples": true,
+      "interactive": false,
+      "has_checker": false,
+      "perf": null,
+      "interp": null
+    },
+    {
+      "id": "ecnerwala/cf1404e",
+      "path": "proto/ports/ecnerwala/cf1404e.cp",
+      "orig_path": "proto/ports/ecnerwala/cf1404e_orig.cpp",
+      "gate": "pass",
+      "gate_mode": "fast",
+      "gate_detail": "ok",
+      "check_ok": true,
+      "fmt_ok": true,
+      "lint_warnings": 0,
+      "taste_lints": 0,
+      "taste_lints_by_lint": {},
+      "build_ok": true,
+      "emitted_bytes": 14761,
+      "over_48kb": false,
+      "over_64kb": false,
+      "cp_tokens": 242,
+      "orig_tokens": 1030,
+      "orig_stripped_tokens": 959,
+      "token_ratio": 0.235,
+      "stripped_token_ratio": 0.2523,
+      "dream_tokens": 233,
+      "dream_ratio": 1.0386,
+      "dream_gap_tokens": 9,
+      "taste_score": null,
+      "review_path": "research/reviews/cf1404e.md",
+      "cp_loc": 23,
+      "orig_loc": 86,
+      "orig_stripped_loc": 77,
+      "cp_sha": "dea7deb1b6b83777",
+      "orig_sha": "9e3185b75fdf53d0",
+      "has_gen": true,
+      "has_samples": true,
+      "interactive": false,
+      "has_checker": false,
+      "perf": null,
+      "interp": null
+    },
+    {
+      "id": "ecnerwala/cf1909g",
+      "path": "proto/ports/ecnerwala/cf1909g.cp",
+      "orig_path": "proto/ports/ecnerwala/cf1909g_orig.cpp",
+      "gate": "pass",
+      "gate_mode": "fast",
+      "gate_detail": "ok",
+      "check_ok": true,
+      "fmt_ok": true,
+      "lint_warnings": 0,
+      "taste_lints": 0,
+      "taste_lints_by_lint": {},
+      "build_ok": true,
+      "emitted_bytes": 8826,
+      "over_48kb": false,
+      "over_64kb": false,
+      "cp_tokens": 209,
+      "orig_tokens": 470,
+      "orig_stripped_tokens": 446,
+      "token_ratio": 0.4447,
+      "stripped_token_ratio": 0.4686,
+      "dream_tokens": 194,
+      "dream_ratio": 1.0773,
+      "dream_gap_tokens": 15,
+      "taste_score": null,
+      "review_path": "research/reviews/cf1909g.md",
+      "cp_loc": 22,
+      "orig_loc": 54,
+      "orig_stripped_loc": 52,
+      "cp_sha": "f0d1d8837e5690dc",
+      "orig_sha": "cab8a85b406d1f40",
+      "has_gen": true,
+      "has_samples": true,
+      "interactive": false,
+      "has_checker": false,
+      "perf": null,
+      "interp": null
+    },
+    {
+      "id": "ecnerwala/cf1943b",
+      "path": "proto/ports/ecnerwala/cf1943b.cp",
+      "orig_path": "proto/ports/ecnerwala/cf1943b_orig.cpp",
+      "gate": "pass",
+      "gate_mode": "fast",
+      "gate_detail": "ok",
+      "check_ok": true,
+      "fmt_ok": true,
+      "lint_warnings": 0,
+      "taste_lints": 0,
+      "taste_lints_by_lint": {},
+      "build_ok": true,
+      "emitted_bytes": 13485,
+      "over_48kb": false,
+      "over_64kb": false,
+      "cp_tokens": 278,
+      "orig_tokens": 563,
+      "orig_stripped_tokens": 348,
+      "token_ratio": 0.4938,
+      "stripped_token_ratio": 0.7989,
+      "dream_tokens": 242,
+      "dream_ratio": 1.1488,
+      "dream_gap_tokens": 36,
+      "taste_score": null,
+      "review_path": "research/reviews/cf1943b.md",
+      "cp_loc": 26,
+      "orig_loc": 60,
+      "orig_stripped_loc": 39,
+      "cp_sha": "d4ecd0cfd0774078",
+      "orig_sha": "827e59b3d8c0a95c",
+      "has_gen": true,
+      "has_samples": true,
+      "interactive": false,
+      "has_checker": false,
+      "perf": null,
+      "interp": null
+    },
+    {
+      "id": "ecnerwala/cf2057d",
+      "path": "proto/ports/ecnerwala/cf2057d.cp",
+      "orig_path": "proto/ports/ecnerwala/cf2057d_orig.cpp",
+      "gate": "pass",
+      "gate_mode": "fast",
+      "gate_detail": "ok",
+      "check_ok": true,
+      "fmt_ok": true,
+      "lint_warnings": 0,
+      "taste_lints": 0,
+      "taste_lints_by_lint": {},
+      "build_ok": true,
+      "emitted_bytes": 12855,
+      "over_48kb": false,
+      "over_64kb": false,
+      "cp_tokens": 309,
+      "orig_tokens": 2806,
+      "orig_stripped_tokens": 0,
+      "token_ratio": 0.1101,
+      "stripped_token_ratio": null,
+      "dream_tokens": 310,
+      "dream_ratio": 0.9968,
+      "dream_gap_tokens": -1,
+      "taste_score": null,
+      "review_path": "research/reviews/cf2057d.md",
+      "cp_loc": 23,
+      "orig_loc": 274,
+      "orig_stripped_loc": 0,
+      "cp_sha": "cda0d0d399ddca06",
+      "orig_sha": "8311f7c482cf02ab",
+      "has_gen": true,
+      "has_samples": true,
+      "interactive": false,
+      "has_checker": false,
+      "perf": null,
+      "interp": null
+    },
+    {
       "id": "ecnerwala/cf2062e1",
       "path": "proto/ports/ecnerwala/cf2062e1.cp",
       "orig_path": "proto/ports/ecnerwala/cf2062e1_orig.cpp",
@@ -3450,23 +4364,23 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 28080,
+      "emitted_bytes": 29233,
       "over_48kb": false,
       "over_64kb": false,
-      "cp_tokens": 667,
+      "cp_tokens": 646,
       "orig_tokens": 1928,
       "orig_stripped_tokens": 1904,
-      "token_ratio": 0.346,
-      "stripped_token_ratio": 0.3503,
+      "token_ratio": 0.3351,
+      "stripped_token_ratio": 0.3393,
       "dream_tokens": 415,
-      "dream_ratio": 1.6072,
-      "dream_gap_tokens": 252,
+      "dream_ratio": 1.5566,
+      "dream_gap_tokens": 231,
       "taste_score": 3,
       "review_path": "research/reviews/cf2062e2.md",
-      "cp_loc": 63,
+      "cp_loc": 62,
       "orig_loc": 235,
       "orig_stripped_loc": 233,
-      "cp_sha": "c4852a2092280ba5",
+      "cp_sha": "28a5c10fd42878f2",
       "orig_sha": "24d34afbfcf53671",
       "has_gen": true,
       "has_samples": true,
@@ -3780,7 +4694,7 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 24732,
+      "emitted_bytes": 23525,
       "over_48kb": false,
       "over_64kb": false,
       "cp_tokens": 630,
@@ -3935,20 +4849,20 @@
       "emitted_bytes": 18279,
       "over_48kb": false,
       "over_64kb": false,
-      "cp_tokens": 478,
+      "cp_tokens": 405,
       "orig_tokens": 3107,
       "orig_stripped_tokens": 544,
-      "token_ratio": 0.1538,
-      "stripped_token_ratio": 0.8787,
+      "token_ratio": 0.1304,
+      "stripped_token_ratio": 0.7445,
       "dream_tokens": 165,
-      "dream_ratio": 2.897,
-      "dream_gap_tokens": 313,
+      "dream_ratio": 2.4545,
+      "dream_gap_tokens": 240,
       "taste_score": 4,
       "review_path": "research/reviews/cf2069f.md",
-      "cp_loc": 34,
+      "cp_loc": 32,
       "orig_loc": 314,
       "orig_stripped_loc": 55,
-      "cp_sha": "38adedfaf323016d",
+      "cp_sha": "0e9dad11fb1500e5",
       "orig_sha": "7198e0cd42226bb1",
       "has_gen": true,
       "has_samples": true,
@@ -4455,7 +5369,7 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 7434,
+      "emitted_bytes": 7456,
       "over_48kb": false,
       "over_64kb": false,
       "cp_tokens": 103,
@@ -6011,7 +6925,7 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 18417,
+      "emitted_bytes": 18439,
       "over_48kb": false,
       "over_64kb": false,
       "cp_tokens": 1426,
@@ -9015,23 +9929,23 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 24554,
+      "emitted_bytes": 24399,
       "over_48kb": false,
       "over_64kb": false,
-      "cp_tokens": 379,
+      "cp_tokens": 367,
       "orig_tokens": 3123,
       "orig_stripped_tokens": 1972,
-      "token_ratio": 0.1214,
-      "stripped_token_ratio": 0.1922,
+      "token_ratio": 0.1175,
+      "stripped_token_ratio": 0.1861,
       "dream_tokens": 287,
-      "dream_ratio": 1.3206,
-      "dream_gap_tokens": 92,
+      "dream_ratio": 1.2787,
+      "dream_gap_tokens": 80,
       "taste_score": null,
       "review_path": null,
-      "cp_loc": 39,
+      "cp_loc": 37,
       "orig_loc": 292,
       "orig_stripped_loc": 173,
-      "cp_sha": "722dd5b4f9970cd6",
+      "cp_sha": "ec7bd08625a1801c",
       "orig_sha": "5e8052a0827bbeb2",
       "has_gen": true,
       "has_samples": true,
@@ -9293,7 +10207,7 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 12993,
+      "emitted_bytes": 13015,
       "over_48kb": false,
       "over_64kb": false,
       "cp_tokens": 327,
@@ -9349,7 +10263,7 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 13164,
+      "emitted_bytes": 13186,
       "over_48kb": false,
       "over_64kb": false,
       "cp_tokens": 316,
@@ -11459,7 +12373,7 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 8249,
+      "emitted_bytes": 8271,
       "over_48kb": false,
       "over_64kb": false,
       "cp_tokens": 250,
@@ -12821,7 +13735,7 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 23308,
+      "emitted_bytes": 23527,
       "over_48kb": false,
       "over_64kb": false,
       "cp_tokens": 501,
@@ -13894,13 +14808,13 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 21438,
+      "emitted_bytes": 21280,
       "over_48kb": false,
       "over_64kb": false,
-      "cp_tokens": 376,
+      "cp_tokens": 373,
       "orig_tokens": 3036,
       "orig_stripped_tokens": 0,
-      "token_ratio": 0.1238,
+      "token_ratio": 0.1229,
       "stripped_token_ratio": null,
       "dream_tokens": null,
       "dream_ratio": null,
@@ -13910,34 +14824,14 @@
       "cp_loc": 39,
       "orig_loc": 305,
       "orig_stripped_loc": 0,
-      "cp_sha": "90b528eb4c98f264",
+      "cp_sha": "bba46a662204a9b0",
       "orig_sha": "4ba8608a5eb1199b",
       "has_gen": true,
       "has_samples": true,
       "interactive": false,
       "has_checker": false,
-      "perf": {
-        "measured": true,
-        "interactive": false,
-        "input_source": "gen size=200",
-        "input_bytes": 1734454,
-        "cpp_ms": 26.49,
-        "orig_ms": 29.55,
-        "time_ratio": 0.896,
-        "cpp_rss_kb": 12920,
-        "orig_rss_kb": 6820,
-        "rss_ratio": 1.894,
-        "output_match": true
-      },
-      "interp": {
-        "ok": true,
-        "ms": 27.42,
-        "cases": 3,
-        "source": "sample cf2207f.1.in",
-        "error": null,
-        "ratio_error": "gen size=200: timeout",
-        "ratio_source": "gen size=200"
-      }
+      "perf": null,
+      "interp": null
     },
     {
       "id": "ecnerwala/cf2207h1",
@@ -16758,23 +17652,23 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 31999,
+      "emitted_bytes": 32063,
       "over_48kb": false,
       "over_64kb": false,
-      "cp_tokens": 746,
+      "cp_tokens": 731,
       "orig_tokens": 3463,
       "orig_stripped_tokens": 0,
-      "token_ratio": 0.2154,
+      "token_ratio": 0.2111,
       "stripped_token_ratio": null,
       "dream_tokens": 574,
-      "dream_ratio": 1.2997,
-      "dream_gap_tokens": 172,
+      "dream_ratio": 1.2735,
+      "dream_gap_tokens": 157,
       "taste_score": null,
       "review_path": null,
       "cp_loc": 49,
       "orig_loc": 354,
       "orig_stripped_loc": 0,
-      "cp_sha": "d47a588db5a2fbed",
+      "cp_sha": "2bb5458e2d77383d",
       "orig_sha": "140b941c3fd63b10",
       "has_gen": true,
       "has_samples": true,
@@ -16796,7 +17690,7 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 58722,
+      "emitted_bytes": 58744,
       "over_48kb": true,
       "over_64kb": false,
       "cp_tokens": 230,
@@ -18003,7 +18897,7 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 21741,
+      "emitted_bytes": 21733,
       "over_48kb": false,
       "over_64kb": false,
       "cp_tokens": 274,
@@ -19087,11 +19981,11 @@
     }
   ],
   "dreams": {
-    "dreams": 45,
-    "with_errors": 44,
+    "dreams": 51,
+    "with_errors": 47,
     "first_named": 40,
-    "errors": 234,
-    "errors_named": 117,
+    "errors": 238,
+    "errors_named": 114,
     "gaps": [
       {
         "gap": "syntax: a context, `with io(base: 1)`",
@@ -19214,6 +20108,12 @@
         "errors": 2
       },
       {
+        "gap": "import: IntervalMap",
+        "dreams": 1,
+        "first": 1,
+        "errors": 1
+      },
+      {
         "gap": "import: Tree",
         "dreams": 1,
         "first": 1,
@@ -19230,12 +20130,6 @@
         "dreams": 1,
         "first": 1,
         "errors": 2
-      },
-      {
-        "gap": "library: IntervalMap",
-        "dreams": 1,
-        "first": 1,
-        "errors": 1
       },
       {
         "gap": "library: LazyTreap",
@@ -19358,10 +20252,28 @@
         "errors": 1
       },
       {
+        "gap": "unnamed: `pal.is_palindrome` takes 2 arguments (l, r), but `r` is missing",
+        "dreams": 1,
+        "first": 1,
+        "errors": 1
+      },
+      {
         "gap": "unnamed: `read()` can't tell how much a `[Int]?Int` is",
         "dreams": 1,
         "first": 1,
         "errors": 1
+      },
+      {
+        "gap": "unnamed: can't tell which optional this `none` is",
+        "dreams": 1,
+        "first": 1,
+        "errors": 1
+      },
+      {
+        "gap": "unnamed: expected `:` after the condition, found `if`",
+        "dreams": 1,
+        "first": 1,
+        "errors": 2
       },
       {
         "gap": "unnamed: no type or domain named `Max`",
@@ -19446,18 +20358,6 @@
         "dreams": 1,
         "first": 0,
         "errors": 1
-      },
-      {
-        "gap": "library: Bitset<V>.find",
-        "dreams": 1,
-        "first": 0,
-        "errors": 1
-      },
-      {
-        "gap": "library: Bitset<V>.without",
-        "dreams": 1,
-        "first": 0,
-        "errors": 2
       },
       {
         "gap": "library: I32",
@@ -19682,6 +20582,12 @@
         "errors": 1
       },
       {
+        "gap": "unnamed: `combine` needs the argument `a`",
+        "dreams": 1,
+        "first": 0,
+        "errors": 1
+      },
+      {
         "gap": "unnamed: `cpl run` doesn't know the name `ask` here",
         "dreams": 1,
         "first": 0,
@@ -19718,6 +20624,18 @@
         "errors": 1
       },
       {
+        "gap": "unnamed: `fg.add` takes a Node for `u`, but `up` is a ()",
+        "dreams": 1,
+        "first": 0,
+        "errors": 1
+      },
+      {
+        "gap": "unnamed: `fg.add` takes a Node for `v`, but `left` is a ()",
+        "dreams": 1,
+        "first": 0,
+        "errors": 1
+      },
+      {
         "gap": "unnamed: `gcd` takes 2 arguments (a, b), but `b` is missing",
         "dreams": 1,
         "first": 0,
@@ -19743,6 +20661,12 @@
       },
       {
         "gap": "unnamed: `odd_div_sum` is a Bool and can't be indexed",
+        "dreams": 1,
+        "first": 0,
+        "errors": 1
+      },
+      {
+        "gap": "unnamed: `pal.is_palindrome` takes an Int for `l`, but `l..=r` is a Range<Pos>",
         "dreams": 1,
         "first": 0,
         "errors": 1
@@ -19824,12 +20748,6 @@
         "dreams": 1,
         "first": 0,
         "errors": 2
-      },
-      {
-        "gap": "unnamed: `side.add` takes a V for `i`, but `v` is a ()",
-        "dreams": 1,
-        "first": 0,
-        "errors": 1
       },
       {
         "gap": "unnamed: `sort_perm` changes `perm`, so the argument must be passed as `mut [I] i => mate[i]`",
