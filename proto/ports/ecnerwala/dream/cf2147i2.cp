@@ -6,7 +6,7 @@
 // order; one bridge point links consecutive rallies of hub j, and hub j's last
 // rally ends one jump short of hub j+1. C(c,2)(2k-1) + C(c-1,2) points on
 // ck + C(c-1,2) values. A short path needs only one hub: out d+1, on d+2, home.
-let n, m: Int = read()
+let (n, m): (Int, Int) = read()
 
 fn one_hub(n: Int) -> List<Int>:          // 0 1 3 0 4 9 0 10 ...
     var path = [0]

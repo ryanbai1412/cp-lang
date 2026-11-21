@@ -27,6 +27,6 @@ fn lost_positions(m: Int) -> List<Int>:          // odd m
 let lost_for = memo(lost_positions)
 
 @!multitest
-let n: 1..=H, m: 2..=1e6 = read()
+let (n, m): (1..=H, 2..=1e6) = read()
 let lost = if m % 2 == 0: n % (m + 1) == 0 else: lost_for(m).floor(n) == n
 print(if lost: "NO" else: "YES")

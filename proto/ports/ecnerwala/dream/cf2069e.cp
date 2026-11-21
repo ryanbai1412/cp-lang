@@ -6,10 +6,10 @@
 // not fit is flexible, and flexible pairs fill whatever budget is still free.
 @!multitest
 let s: Str = read()
-let a, b, ab, ba: 0..=5e5 = read()
+let (a, b, ab, ba): (0..=5e5, 0..=5e5, 0..=5e5, 0..=5e5) = read()
 let need = max(s.count('A') - a, s.count('B') - b, 0)
 
-var room = {'A': ab, 'B': ba}    // budget by the letter a pair starts with
+var room = ['A': ab, 'B': ba]  // budget by the letter a pair starts with
 var flexible = 0
 for run in s.chunk_by((x, y) => x != y).sort(by: r => r.len):
     let k = run.len / 2
