@@ -2435,6 +2435,11 @@ real types. Reverse: drop `catalog_lambda_params` and the `lambda_params` field.
   1..=9 here). A top-level name declared in another item is labelled as a point at its use, and the
   database moves the label onto the declaration. *Reason:* the fix is usually at the declaration,
   not the use. *Reversible:* `Checker::origin` and the `WRONG_DOMAIN` branch in `db.rs`.
+- **30.15 After a lowering error, `cpl run` does not report names it does not know.** The checker
+  has accepted every name by the time lowering runs, so an unknown name there means an earlier
+  lowering error dropped its binding (`for (i, c) in s.item:` loses `i` and `c`). *Reason:* one error
+  per root cause; this cut the member-typo benchmark from 656 to 522 errors. *Reversible:*
+  `Lower::reported_an_error` in `cpl-ir/src/lower/mod.rs`.
 
 ## 31. Generated C++: stack, layout and niches (0.3)
 

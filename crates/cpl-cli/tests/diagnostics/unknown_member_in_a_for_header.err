@@ -1,0 +1,7 @@
+error[E0203]: a `Str` has no member `item` that `cpl run` knows
+  --> unknown_member_in_a_for_header.cp:3:21
+  |
+3 | for (i, c) in s.rev.item:
+  |                     ^^^^
+
+unknown_member_in_a_for_header.cp: 1 error

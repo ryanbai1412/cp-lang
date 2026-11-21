@@ -1002,7 +1002,9 @@ impl<'a> Lowerer<'a> {
                         return self.mk(ExprKind::Closure(cid), Ty::Fn(ps.clone(), r.clone()), span);
                     }
                 }
-                self.error(codes::UNRESOLVED_NAME, span, format!("`cpl run` doesn't know the name `{name}` here"));
+                if !self.reported_an_error() {
+                    self.error(codes::UNRESOLVED_NAME, span, format!("`cpl run` doesn't know the name `{name}` here"));
+                }
             }
             _ => {
                 if self.tail_names.contains(name) {
@@ -1022,7 +1024,7 @@ impl<'a> Lowerer<'a> {
                     let message = format!("an `@interactor` can't see the solution's `{name}`");
                     self.error(codes::UNRESOLVED_NAME, span, message);
                     self.help("the judge is a program of its own: it reads the hidden test with `read()` and shares only `const`s with the solution");
-                } else {
+                } else if !self.reported_an_error() {
                     let message = format!("`cpl run` doesn't know the name `{name}` here");
                     self.error(codes::UNRESOLVED_NAME, span, message);
                     self.help("a top-level `let` is visible only after the line that sets it");

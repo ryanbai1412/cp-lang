@@ -812,6 +812,12 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// The checker accepted every name, so a name lowering does not know
+    /// after an earlier lowering error lost its binding to that error.
+    fn reported_an_error(&self) -> bool {
+        self.diags.iter().any(|d| d.severity == cpl_diag::Severity::Error)
+    }
+
     fn error(&mut self, code: cpl_diag::Code, span: Span, message: impl Into<String>) {
         let span = self.span(span);
         let message = message.into();
