@@ -454,14 +454,26 @@ impl Database {
                     })
                 })
             };
-            for (module, name) in crate::prelude::names() {
-                if declared.contains(name.text.as_str())
-                    || scope.imports.contains_key(&name.text)
-                    || !(uses(&name.text)
+            // A method the library adds to a type is used as `.name`.
+            let calls = |name: &str| {
+                items.iter().any(|item| {
+                    item.text.match_indices(name).any(|(at, _)| {
+                        item.text[..at].ends_with('.') && !item.text[at + name.len()..].starts_with(word)
+                    })
+                })
+            };
+            let listed = crate::prelude::names().iter().map(|entry| (entry, false));
+            let methods = crate::prelude::methods().iter().map(|entry| (entry, true));
+            for ((module, name), method) in listed.chain(methods) {
+                let used = if method {
+                    calls(&name.text)
+                } else {
+                    uses(&name.text)
                         || crate::prelude::BUILT_ON
                             .iter()
-                            .any(|(word, on)| *on == name.text && uses(word)))
-                {
+                            .any(|(word, on)| *on == name.text && uses(word))
+                };
+                if declared.contains(name.text.as_str()) || scope.imports.contains_key(&name.text) || !used {
                     continue;
                 }
                 let mut diags = Vec::new();

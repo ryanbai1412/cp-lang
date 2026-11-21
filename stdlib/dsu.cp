@@ -52,6 +52,17 @@ pub struct Dsu<V>:
         if marked: joined.push(y)
         true
 
+    /// As `unite`, but says which root stayed and which went under it, so data kept per
+    /// set can follow: `if let (kept, merged) = d.merge(a, b): sum[kept] += sum[merged]`.
+    /// `none` if `a` and `b` were already one set.
+    pub fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V):
+        var x = self.find(a)
+        var y = self.find(b)
+        if x == y: return none
+        if sz[x] < sz[y]: swap(mut x, mut y)
+        self.unite(x, y)
+        some((kept: x, merged: y))
+
     pub fn same(mut self, a: V, b: V) -> Bool = self.find(a) == self.find(b)
 
     /// The number of positions in `v`'s set.
@@ -139,3 +150,16 @@ fn groups_partitions_all_vertices_by_component():
     assert d.groups().len == 5 and d.components == 5
     for v in V: d.unite(V(1), v)
     assert d.groups() == [[v for v in V]]
+
+@test
+fn merge_says_which_root_stayed():
+    domain V = 0..6
+    var d = Dsu<V>()
+    var total = [V] v => v.idx
+    for (a, b) in [(0, 1), (2, 3), (1, 3), (0, 2), (4, 5)]:
+        if let (kept, merged) = d.merge(V(a), V(b)):
+            assert d.find(kept) == kept and d.find(merged) == kept
+            total[kept] += total[merged]
+        else:
+            assert (a, b) == (0, 2)
+    assert total[d.find(V(0))] == 6 and total[d.find(V(5))] == 9 and d.components == 2

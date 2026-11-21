@@ -71,6 +71,12 @@ pub fn bundled_std(module: &[String]) -> Option<&'static str> {
         .map(|at| BUNDLED_STD[at].1)
 }
 
+/// Every module of the standard library that is built into the compiler,
+/// by name (`"segtree"`), with its text.
+pub fn bundled_std_modules() -> &'static [(&'static str, &'static str)] {
+    BUNDLED_STD
+}
+
 /// Folders that may hold the standard library, most specific first:
 /// `$CPL_STD`, a `stdlib/` above the importing file (a checkout of the
 /// compiler), and `stdlib/` next to or above the `cpl` binary.

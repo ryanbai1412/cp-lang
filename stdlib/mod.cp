@@ -110,6 +110,12 @@ pub struct Comb<P>:
         self.ensure(n)
         g[n]
 
+    /// `1 / i` (requires `1 <= i < P`), from the factorials: `(i - 1)! / i!`. O(1).
+    pub fn inv(self, i: Int) -> Mod<P>:
+        assert 1 <= i and i < P, "`inv` needs 1 <= i < P"
+        self.ensure(i)
+        f[i - 1] * g[i]
+
     /// The number of `k`-subsets of `n` things; 0 when `k` is outside `0..=n`.
     /// Uses Lucas's theorem automatically when `n >= P` (for prime `P`).
     pub fn choose(self, n: Int, k: Int) -> Mod<P>:
@@ -209,3 +215,9 @@ fn a_modulus_read_at_run_time():
     type Z12 = Mod<12>
     assert Z12(7) * Z12(7).inv == Z12(1)
     assert Z12(1).pow(0) == Z12(1)
+
+@test
+fn inv_is_one_over_i():
+    let c = Comb<1000000007>()
+    for i in 1..200: assert c.inv(i) * Mod<1000000007>(i) == Mod<1000000007>(1)
+    assert c.inv(1) == Mod<1000000007>(1)

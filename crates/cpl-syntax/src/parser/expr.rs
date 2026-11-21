@@ -143,7 +143,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn or(&mut self) -> Expr {
+    pub(super) fn or(&mut self) -> Expr {
         let start = self.start();
         let mut lhs = self.and();
         while self.at(T::Or) {

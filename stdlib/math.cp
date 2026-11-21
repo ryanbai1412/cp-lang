@@ -94,6 +94,9 @@ pub fn digits(self: Int, base: Int = 10) -> List<Int>:
         x /= base
     out
 
+/// -1, 0 or 1 as `x` is below, at or above zero: `(b - a).sign`.
+pub @get fn sign(self: Int) -> Int = if self > 0: 1 elif self < 0: -1 else: 0
+
 /// Whether bit `i` of `x` is set: `x.bit(i)`, bit 0 the lowest. No bit from 63 up is set in an `Int` that is not negative.
 pub fn bit(self: Int, i: Int) -> Bool = i < 64 and (self >> i) & 1 == 1
 
@@ -230,3 +233,7 @@ fn digits_are_lowest_first():
         let (x, base) = (rand(0, 1 << 40), rand(2, 16))
         let ds = x.digits(base)
         assert sum(ds[i] * base ** i for i in 0..ds.len) == x and all(0 <= d < base for d in ds)
+
+@test
+fn sign_is_minus_one_zero_or_one():
+    assert 5.sign == 1 and (-5).sign == -1 and 0.sign == 0 and (3 - 9).sign == -1

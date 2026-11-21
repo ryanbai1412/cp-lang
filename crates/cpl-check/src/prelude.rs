@@ -41,6 +41,44 @@ pub fn names() -> &'static [(Vec<ast::Name>, ast::Name)] {
     })
 }
 
+/// The methods the standard library adds to the types of the language:
+/// each `pub fn name(self: T, ..)` at the top of a module, with that
+/// module. A program that writes `.name` gets the fn without a `use`,
+/// as it gets the methods a type is declared with. A method name does
+/// not stand in the way of a program's own names, so these are not on
+/// the prelude's list. A name two modules give is left to a `use`.
+pub fn methods() -> &'static [(Vec<ast::Name>, ast::Name)] {
+    static METHODS: OnceLock<Vec<(Vec<ast::Name>, ast::Name)>> = OnceLock::new();
+    METHODS.get_or_init(|| {
+        let bare = |text: &str| ast::Name {
+            text: text.to_string(),
+            span: cpl_diag::Span::new(0, 0),
+        };
+        let mut found: Vec<(Vec<ast::Name>, ast::Name)> = Vec::new();
+        for (module, text) in crate::modules::bundled_std_modules() {
+            // Only where the text may hold one: parsing every module costs.
+            if *module == "prelude" || !text.contains("self:") {
+                continue;
+            }
+            let path: Vec<ast::Name> = std::iter::once("std").chain(module.split('/')).map(bare).collect();
+            for (_, item) in cpl_syntax::parse_file(text).items {
+                for stmt in item.stmts {
+                    let ast::StmtKind::Fn(decl) = &stmt.kind else {
+                        continue;
+                    };
+                    let on_a_type = decl.params.first().is_some_and(|p| p.name.text == "self" && p.ty.is_some());
+                    if stmt.public && on_a_type {
+                        found.push((path.clone(), bare(&decl.name.text)));
+                    }
+                }
+            }
+        }
+        let twice = |name: &str| found.iter().filter(|(_, other)| other.text == name).count() > 1;
+        let unique: Vec<_> = found.iter().filter(|(_, name)| !twice(&name.text)).cloned().collect();
+        unique
+    })
+}
+
 /// The words of the language that are written with a library fn: a
 /// program that uses the word gets the fn, as if it had named it.
 /// `argmax(f(v) for v in V)` is `max_by` over the walk, and `prefix(a)` is

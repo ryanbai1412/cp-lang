@@ -754,11 +754,15 @@ impl<'a> Parser<'a> {
             let pat = self.pattern();
             self.expect(T::Eq, "`=` after the pattern in `if let`");
             // The value ends before `and` (or `,`), which adds a condition
-            // on what the pattern bound.
+            // on what the pattern bound. After `,` the condition is whole,
+            // `or` and all; after `and` an `or` would read two ways.
             let value = self.not();
+            let comma = self.at(T::Comma);
             let and = (self.eat(T::And) || self.eat(T::Comma)).then(|| {
                 Box::new(if self.at(T::Let) {
                     self.cond()
+                } else if comma {
+                    Cond::Expr(self.or())
                 } else {
                     Cond::Expr(self.and())
                 })
