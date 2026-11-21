@@ -17,6 +17,13 @@
 //   and `cap = pref_min[i - 1]` (uncapped at `i = 0`). Because `lifted` is
 //   non-increasing on `blk`, its partition cut `split` separates elements capped
 //   at `cur_cap` from the uncapped tail.
+// - Complexity: scanning `suffix_max_pos` in reverse (decreasing `pos`,
+//   increasing `a[pos]`), once `ai + a[pos] >= cap` the first such `pos` has
+//   the smallest suffix loss `orig_suff[pos]` and largest distance `pos - i`,
+//   dominating all earlier `pos'` — so the inner loop stops there. Since `cap`
+//   is strictly increasing as `i` moves left, each `pos` triggers at most one
+//   uncapped hit plus the iterations where `a[pos] < cap - ai`, giving O(n log n)
+//   total work (amortized with the monotone split).
 
 use std.seq.suffix_scan
 
@@ -30,7 +37,8 @@ let orig_suff = pref_min.suffix_sums()
 let base_ans = orig_suff[Pos.bounds.first]
 
 // Strict suffix maxima in reverse order; `suffix_max_pos.last!` is the global max.
-let suffix_max_pos = [p for p in Pos.rev if a[p] > a.suffix_max(after: p)]
+let suff_max = a.suffix_scan(max)
+let suffix_max_pos = [p for p in Pos.rev if p == Pos.last or a[p] > suff_max[p.next!]]
 let top_val = a[suffix_max_pos.last!]
 
 var ans: [0..n]Int = base_ans
@@ -39,7 +47,7 @@ var end_cut = Pos.bounds.last
 for i in Pos.rev if pref_min[i] == a[i]:
     let ai = a[i]
     // Uncapped at Pos.first: use ai + top_val so no candidate exceeds cap.
-    let cap = i.prev.map(p => pref_min[p]) ?? ai + top_val
+    let cap = (i.prev.map(p => pref_min[p])) ?? (ai + top_val)
     let blk = a[i.l..end_cut]
     let lifted = ([cap] + blk[1..]).scan(min)
     let lifted_suff = lifted.suffix_sums()
@@ -48,12 +56,10 @@ for i in Pos.rev if pref_min[i] == a[i]:
     for pos in suffix_max_pos if pos > i:
         let cur_cap = min(cap, ai + a[pos])
         let split = blk.bounds.last(c => lifted[c.prev!] > cur_cap) ?? blk.bounds.first
-        let gain =
-            (cur_cap - ai) * split.count_before
-                + lifted_suff[split]
-                - ai * split.count_after
-        let loss = if pos < end_cut: block_loss[pos] else: orig_suff[pos]
+        let gain = (cur_cap - ai) * split.count_before + lifted_suff[split] - ai * split.count_after
+        let loss = if pos.l < end_cut: block_loss[pos] else: orig_suff[pos]
         ans[pos - i] = max(ans[pos - i], base_ans + gain - loss)
+        if ai + a[pos] >= cap: break
 
     end_cut = i.l
 
