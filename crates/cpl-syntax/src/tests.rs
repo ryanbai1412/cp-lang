@@ -1391,3 +1391,22 @@ fn generic_parameter_may_say_domain() {
     let names: Vec<&str> = f.generics.iter().map(|g| g.text.as_str()).collect();
     assert_eq!(names, ["I", "J"]);
 }
+
+#[test]
+fn record_field_may_be_an_operator_or_punned() {
+    let s = stmts("let a = (count: +, taken: or)\nlet b = (t, need: n)\n");
+    for st in &s {
+        let StmtKind::Let { init: Some(v), .. } = &st.kind else {
+            panic!("not a let: {:?}", st.kind)
+        };
+        assert!(matches!(&v.kind, ExprKind::Record(f) if f.len() == 2), "{:?}", v.kind);
+    }
+}
+
+#[test]
+fn comprehension_clauses_may_chain_with_commas() {
+    let s = stmts("let x = [i + j for i in a, (j, k) in b if k]\nlet y = f(x for x in a, 3)\n");
+    let StmtKind::Let { init: Some(v), .. } = &s[0].kind else { panic!() };
+    let ExprKind::Comprehension { clauses, .. } = &v.kind else { panic!("{:?}", v.kind) };
+    assert_eq!(clauses.len(), 2);
+}

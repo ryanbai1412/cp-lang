@@ -552,6 +552,8 @@ impl<'a> Parser<'a> {
                     T::Pipe => BinOp::BitOr,
                     T::Caret => BinOp::BitXor,
                     T::Amp => BinOp::BitAnd,
+                    T::And => BinOp::And,
+                    T::Or => BinOp::Or,
                     _ => return None,
                 };
                 self.bump();
@@ -860,19 +862,7 @@ impl<'a> Parser<'a> {
             T::LParen => {
                 self.bump();
                 if self.at(T::Ident) && self.peek_n(1) == T::Colon {
-                    let fields = self.comma_list(T::RParen, "the record", |p| {
-                        let name = p.expect_name("a field name");
-                        p.expect(T::Colon, "`:` after the field name");
-                        let value = if matches!(p.peek(), T::Comma | T::RParen) {
-                            Expr {
-                                kind: ExprKind::Name(name.text.clone()),
-                                span: name.span,
-                            }
-                        } else {
-                            p.expr()
-                        };
-                        (name, value)
-                    });
+                    let fields = self.comma_list(T::RParen, "the record", Self::record_field);
                     ExprKind::Record(fields)
                 } else if self.eat(T::RParen) {
                     ExprKind::Tuple(Vec::new())
@@ -880,9 +870,16 @@ impl<'a> Parser<'a> {
                     let first = self.expr();
                     if self.at(T::Comma) {
                         self.bump();
-                        let mut items = vec![first];
-                        items.extend(self.comma_list(T::RParen, "the tuple", Self::expr));
-                        ExprKind::Tuple(items)
+                        if self.at(T::Ident) && self.peek_n(1) == T::Colon {
+                            // `(t, need: r.len)`: a bare name among named fields is `t: t`.
+                            let mut fields = vec![self.punned_field(first)];
+                            fields.extend(self.comma_list(T::RParen, "the record", Self::record_field));
+                            ExprKind::Record(fields)
+                        } else {
+                            let mut items = vec![first];
+                            items.extend(self.comma_list(T::RParen, "the tuple", Self::expr));
+                            ExprKind::Tuple(items)
+                        }
                     } else {
                         self.expect(T::RParen, "`)` to close the parenthesis");
                         ExprKind::Paren(Box::new(first))
@@ -1016,10 +1013,71 @@ impl<'a> Parser<'a> {
         ExprKind::List(items)
     }
 
+    /// `name: value`, `name:` (the variable `name`) or `name: +` (an operator fn).
+    fn record_field(&mut self) -> (Name, Expr) {
+        let name = self.expect_name("a field name");
+        self.expect(T::Colon, "`:` after the field name");
+        let value = if matches!(self.peek(), T::Comma | T::RParen) {
+            Expr {
+                kind: ExprKind::Name(name.text.clone()),
+                span: name.span,
+            }
+        } else {
+            self.fn_shorthand().unwrap_or_else(|| self.expr())
+        };
+        (name, value)
+    }
+
+    fn punned_field(&mut self, value: Expr) -> (Name, Expr) {
+        let ExprKind::Name(text) = &value.kind else {
+            self.error(Diagnostic::error(
+                codes::EXPECTED_EXPR,
+                value.span,
+                "a record field needs a name: write `name: value`",
+            ));
+            let name = Name { text: "_".into(), span: value.span };
+            return (name, value);
+        };
+        let name = Name { text: text.clone(), span: value.span };
+        (name, value)
+    }
+
+    /// At `, pat in`: the comma continues a comprehension's clauses.
+    fn comma_starts_clause(&self) -> bool {
+        if !self.at(T::Comma) {
+            return false;
+        }
+        let kind = |k: usize| self.tokens.get(self.pos + k).map(|t| t.kind);
+        match kind(1) {
+            Some(T::Ident) => kind(2) == Some(T::In),
+            Some(T::LParen) => {
+                let mut depth = 0usize;
+                let mut k = 1;
+                while let Some(t) = kind(k) {
+                    match t {
+                        T::LParen => depth += 1,
+                        T::RParen => {
+                            depth -= 1;
+                            if depth == 0 {
+                                return kind(k + 1) == Some(T::In);
+                            }
+                        }
+                        T::Newline | T::Eof => return false,
+                        _ => {}
+                    }
+                    k += 1;
+                }
+                false
+            }
+            _ => false,
+        }
+    }
+
     /// Parses one or more `for pat in iter [if cond]`.
     fn clauses(&mut self) -> Vec<Clause> {
         let mut clauses = Vec::new();
-        while self.eat(T::For) {
+        // `for i in V, j in V` chains clauses like a `for` statement does.
+        while self.eat(T::For) || (!clauses.is_empty() && self.comma_starts_clause() && self.eat(T::Comma)) {
             let pat = self.pattern();
             self.expect(T::In, "`in` after the comprehension variable");
             // Stop before `if`, which here is the filter.

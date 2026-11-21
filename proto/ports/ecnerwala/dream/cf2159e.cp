@@ -18,8 +18,8 @@ fn coeffs_of_power(m: Int) -> List<Z>:
         f.push((b * f[z - 1] * (m - z + 1) + a * two_back * (2 * m - z + 2)) / (c * z))
     f
 
-let small = lazy[0..B] j => coeffs_of_power(j)
-let big = lazy[0..=N / B] i => coeffs_of_power(i * B).scan(+)
+let small = [0..B] j => coeffs_of_power(j)
+let big = [0..=N / B] i => coeffs_of_power(i * B).scan(+)
 
 var ans: Z = 0
 repeat read():

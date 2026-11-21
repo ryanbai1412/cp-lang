@@ -9,7 +9,8 @@
 let n: 1..=3e5 = read()
 var stack: List<(dies: Int, val: 0..=n)> = []
 var strength: List<Int> = []
-for (var dies, val) in read<[n](1..=1e9, 0..=n)>():
+for (died, val) in read<[n](1..=1e9, 0..=n)>():
+    var dies = died
     var gone = 0  // when the runs popped so far died
     while let top = stack.last, top.val == val or dies >= top.dies:
         if top.val == val: dies += top.dies - gone
