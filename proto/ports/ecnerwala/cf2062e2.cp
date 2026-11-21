@@ -23,33 +23,28 @@ let w: [V]W = read()
 let edges: [0..n - 1](u: V, v: V) = read()
 let t = Rooted.new(Graph.undirected(edges), V.first)
 
-var best_w: [V]Int = 0
-var best_v: [V]?V = none
-var is_path_max: [V]Bool = false
+// top_max[v] is the deepest path-maximum on root -> v (v is a path-max iff top_max[v] == v);
+// prev_max[v] is the preceding path-maximum above v.
+var top_max: [V]?V = none
 var prev_max: [V]?V = none
 for p in t.Pre:
     let v = t.at[p]
-    let pw = if let par = t.par[v]: best_w[par] else: 0
-    let pv: ?V = if let par = t.par[v]: best_v[par] else: none
-    if w[v].ord + 1 >= pw:
-        is_path_max[v] = true
+    let pv: ?V = if let par = t.par[v]: top_max[par] else: none
+    let is_new = if let u = pv: w[v] >= w[u] else: true
+    if is_new:
         prev_max[v] = pv
-        best_w[v] = w[v].ord + 1
-        best_v[v] = v
+        top_max[v] = v
     else:
-        best_w[v] = pw
-        best_v[v] = pv
+        top_max[v] = pv
 
 let empty_max = MaxInfo<t.Pre>(0, none, none, 0)
 var pref: [0..=n]MaxInfo<t.Pre> = empty_max
 for p in t.Pre:
-    let cur = MaxInfo<t.Pre>(w[t.at[p]].ord + 1, p, p, 1)
-    pref[p.ord + 1] = combine(pref[p.ord], cur)
+    pref[p.ord + 1] = combine(pref[p.ord], MaxInfo<t.Pre>(w[t.at[p]].ord + 1, p, p, 1))
 
 var suff: [0..=n]MaxInfo<t.Pre> = empty_max
 for p in t.Pre.rev:
-    let cur = MaxInfo<t.Pre>(w[t.at[p]].ord + 1, p, p, 1)
-    suff[p.ord] = combine(cur, suff[p.ord + 1])
+    suff[p.ord] = combine(MaxInfo<t.Pre>(w[t.at[p]].ord + 1, p, p, 1), suff[p.ord + 1])
 
 var by_w: [W]List<V> = []
 for v in V: by_w[w[v]].push(v)
@@ -66,13 +61,12 @@ for weight in W.rev:
         let mx = combine(pref[r.lo.ord], suff[r.hi.ord])
         if mx.w > w_val:
             var covered = sub_bit.sum(r) + mx.cnt
-            if let lp = prev_max[t.at[mx.lo!]]:
-                if mx.hi! in t.sub(lp):
-                    covered += anc_bit.prefix(t.pos(lp).r)
+            if let lp = prev_max[t.at[mx.lo!]], mx.hi! in t.sub(lp):
+                covered += anc_bit.prefix(t.pos(lp).r)
             if covered == heavier:
                 winners.push(v)
     for v in by_w[weight]:
-        if is_path_max[v]:
+        if top_max[v] == v:
             anc_bit.add(t.pos(v), 1)
             if let after = t.pos(v) + t.size(v):
                 anc_bit.add(after, -1)
