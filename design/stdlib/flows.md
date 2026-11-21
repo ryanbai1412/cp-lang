@@ -40,8 +40,7 @@ The patterns, in order of frequency, and what each needs from the library:
 9. **General matching.** Maximum cardinality matching in a non-bipartite
    graph.
 
-Deliberately not here yet (section 7): global min cut (Stoer–Wagner),
-weighted general matching, matroid intersection, push–relabel, dynamic
+Deliberately not here yet (section 7): weighted general matching, matroid intersection, push–relabel, dynamic
 capacity changes.
 
 ## 2. The API
@@ -103,6 +102,8 @@ fn min_bounded_flow<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int), s: V, t: V)
 
 fn gomory_hu<V, E>(edges: [E](u: V, v: V, w: Int))
     -> List<(u: V, v: V, w: Int)>                    // V - 1 max flows (Gusfield)
+fn global_min_cut<V, E>(edges: [E](u: V, v: V, w: Int))
+    -> (w: Int, side: [V]Bool)                       // Stoer-Wagner, O(V^3), O(V^2) memory
 ```
 
 ### Names
@@ -337,6 +338,7 @@ The whole area, in the order the corpus is likely to want it:
 1. **Sum domains** (core lane): network nodes as `Item + Pair + labels(...)`.
    The largest single friction in the area.
 2. **`global_min_cut(edges)`** (Stoer–Wagner, O(V^3)) next to `gomory_hu`.
+   Shipped: the dense form, since a global cut problem has small `V`.
 3. **`max_weight_general_matching`** (Edmonds weighted, O(V^3)) and
    `max_weight_matching` over sparse edges (min-cost flow on unit arcs).
 4. **`min_cost_circulation`** with negative cycles (cycle cancelling or

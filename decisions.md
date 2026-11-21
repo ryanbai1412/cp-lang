@@ -2384,6 +2384,11 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
   flow beside Dinic in every contest library (AtCoder Library's `mcf_graph`, KACTL), and a
   second network type outside `std` split the `Arc` vocabulary. Reverse: move `CostFlow`
   back to the local library.
+- **43.6 `global_min_cut` is dense Stoer-Wagner.** O(V^3) time and O(V^2) memory over a
+  `List` matrix, not the O(VE + V^2 log V) heap form. Reason: global-cut problems have
+  V <= ~500, where the dense scan beats the heap and has no `Int.MAX` sentinel trick
+  (merged vertices are dropped by an `alive` table). Reverse: switch the phase scan to
+  `MinHeap` if a port needs sparse V in the thousands.
 
 ## 44. Containers area design (§4.8–4.9, 2026-11-21)
 

@@ -1235,9 +1235,11 @@ fn min_bounded_flow<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int), s: V, t: V)
     // each two max flows on V + 2 vertices
 fn gomory_hu<V, E>(edges: [E](u: V, v: V, w: Int))
     -> List<(u: V, v: V, w: Int)>                // V - 1 max flows
+fn global_min_cut<V, E>(edges: [E](u: V, v: V, w: Int))
+    -> (w: Int, side: [V]Bool)                   // Stoer-Wagner, O(V^3)
 ```
 
-Staged (design section 7): `global_min_cut`, weighted general matching,
+Staged (design section 7): weighted general matching,
 `min_cost_circulation`, `set_cap`, matroid intersection. Network nodes
 built from several domains wait on sum domains (spec §21.11, core lane);
 until then `max_closure`, the bounded flows and the matchings keep their

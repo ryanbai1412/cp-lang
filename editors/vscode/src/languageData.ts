@@ -78,7 +78,7 @@ export const STDLIB_VALUES: readonly string[] = [
     'det_real', 'diameter2', 'differences', 'directed_of_pairs', 'directed_of_triples', 'dist',
     'dist2', 'dist2_128', 'divisors', 'divisors_from_factors', 'dnc_break', 'dot', 'dot128', 'euler_walk', 'eq_fields',
     'ext_gcd', 'factor', 'factor_big', 'find_cycle', 'first_ge_by', 'first_gt', 'first_gt_by', 'fixed_cost_paths', 'floor_sum', 'floyd_warshall',
-    'general_matching', 'get_or_insert_with', 'gomory_hu', 'guess_at', 'half_plane_intersect',
+    'general_matching', 'get_or_insert_with', 'global_min_cut', 'gomory_hu', 'guess_at', 'half_plane_intersect',
     'hull_extreme', 'hull_tangents', 'idempotent', 'increase', 'inv_mod', 'inverse', 'inverse_real', 'inversions',
     'is_palindrome', 'is_prime', 'is_sorted', 'is_sorted_by', 'knuth_break', 'last_le_by',
     'last_lt', 'last_lt_by', 'lcp_array', 'line_dist', 'line_intersect', 'locate', 'locate_convex',

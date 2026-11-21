@@ -576,6 +576,51 @@ pub fn gomory_hu<V, E>(edges: [E](u: V, v: V, w: Int)) -> List<(u: V, v: V, w: I
         tree.push((u: i, v: parent[i], w: w))
     tree
 
+/// A minimum cut of the undirected graph `edges` over all vertex pairs: its weight `w`
+/// and one side of it. Stoer-Wagner on a dense V x V matrix, O(V^3) time, O(V^2) memory.
+/// Needs at least two vertices; weights are non-negative.
+pub fn global_min_cut<V, E>(edges: [E](u: V, v: V, w: Int)) -> (w: Int, side: [V]Bool):
+    let n = V.K
+    assert n >= 2
+    var mat = List.filled(n * n, 0)
+    for e in E:
+        let (a, b) = (edges[e].u.to_idx, edges[e].v.to_idx)
+        assert edges[e].w >= 0
+        if a != b:
+            mat[a * n + b] += edges[e].w
+            mat[b * n + a] += edges[e].w
+    var group = [[i] for i in 0..n]
+    var alive = List.filled(n, true)
+    var best = Int.MAX
+    var best_group = List<Int>()
+    var key = List.filled(n, 0)
+    var added = List.filled(n, false)
+    for phase in 1..n:
+        for i in 0..n:
+            key[i] = 0
+            added[i] = false
+        var s = 0
+        var t = 0
+        for step in 0..n - phase + 1:
+            var u: ?Int = none
+            for i in 0..n if alive[i] and not added[i]:
+                if u == none or key[i] > key[u!]: u = i
+            added[u!] = true
+            s = t
+            t = u!
+            for i in 0..n if alive[i] and not added[i]: key[i] += mat[t * n + i]
+        if key[t] < best:
+            best = key[t]
+            best_group = group[t].copy()
+        for x in group[t].copy(): group[s].push(x)
+        alive[t] = false
+        for i in 0..n:
+            mat[s * n + i] += mat[t * n + i]
+            mat[i * n + s] = mat[s * n + i]
+    var side: [V]Bool = false
+    for i in best_group: side[V.nth(i)] = true
+    (w: best, side: side)
+
 @test
 fn textbook_network():
     domain V = 0..6
@@ -893,3 +938,23 @@ fn gomory_hu_tree_gives_every_pairwise_min_cut():
                 var g = FlowGraph<V>()
                 for e in edges: g.add_both(e.u, e.v, e.w)
                 assert best[t] == g.max_flow(s, t)
+
+@test
+fn global_min_cut_matches_brute_force():
+    domain V = 0..6
+    for _ in 0..30:
+        let edges = [
+            (u: V.nth(rand(0, 5)), v: V.nth(rand(0, 5)), w: rand(0, 9)) for _ in 0..rand(0, 12)
+        ]
+        let (w, side) = global_min_cut(edges)
+        var crossing = 0
+        for e in edges if side[e.u] != side[e.v]: crossing += e.w
+        assert crossing == w
+        let taken = [v for v in V if side[v]].len
+        assert 0 < taken and taken < V.K
+        var best = Int.MAX
+        for mask in 1..(1 << V.K) - 1:
+            var cut = 0
+            for e in edges if (mask >> e.u.to_idx) % 2 != (mask >> e.v.to_idx) % 2: cut += e.w
+            best = min(best, cut)
+        assert w == best
