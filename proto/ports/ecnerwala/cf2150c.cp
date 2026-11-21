@@ -1,17 +1,20 @@
+use std.seq.{inverse}
+
 @!multitest
 let n: Int = read()
-let vals: [0..n]Int = read()
-let a = [0..n] _ => read::<Int>() - 1
-let b = [0..n] _ => read::<Int>() - 1
-var inv_b: [0..n]Int = 0
-for i in 0..n: inv_b[b[i]] = i
+domain I = 0..n
+domain V = 1..=n
+let vals: [V]Int = read()
+let a: [I]V = read()
+let b: [I]V = read()
+let inv_b = b.inverse()
 
 var tot = 0
 var deltas: Map<Int, Int> = Map()
-for z in 0..n:
+for z in I:
     let cur = a[z]
     let v = vals[cur]
-    let pos = inv_b[cur]
+    let pos = inv_b[cur].to_idx
     tot += v
     deltas[pos] -= v
     while let cur_val = deltas.get(pos), cur_val < 0:

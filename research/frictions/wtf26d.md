@@ -1,6 +1,7 @@
 # Friction: `wtf26d`
 
 ## No `p.inverse()` for permutations between two domains (`[Pos]Val -> [Val]Pos`)
+- **Status:** fixed: `std.seq.inverse<I, V>(self: [I]V) -> [V]I` supports method syntax `p.inverse()` across distinct domains; `wtf26d.cp` now writes `let inv_p = p.inverse()`.
 - **Where:** `wtf26d.cp` lines 13–14 (`dream/wtf26d.cp` line 15):
   ```cp
   var inv_p: [Val]Pos = Pos.first

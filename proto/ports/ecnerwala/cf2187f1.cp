@@ -1,16 +1,18 @@
 // Codeforces 2187 F1: Al Fine (maximizing version).
+use std.seq.{inverse}
+
 enum Kind: Leaf, Decr, Other
 type Node = (kind: Kind, l: Int, r: Int)
 type Open = (left: Int, lo: Int, lo_gap: Int, hi: Int, hi_gap: Int, node: Int)
 
 @!multitest
 let n: 2..=1_000_000 = read()
+domain I = 0..n
 domain V = 1..=n
-let a: [0..n]V = read()
-let b: [0..n]V = read()
-var pos_a: [V]Int = 0
-for i in 0..n: pos_a[a[i]] = i
-let p: [0..n]Int = [0..n] i => pos_a[b[n - 1 - i]]
+let a: [I]V = read()
+let b: [I]V = read()
+let pos_a = a.inverse()
+let p: [0..n]Int = [0..n] i => pos_a[b[I(n - 1 - i)]].to_idx
 
 var prv: [0..n]Int = [0..n] v => v - 1
 var nxt: [0..n]Int = [0..n] v => v + 1

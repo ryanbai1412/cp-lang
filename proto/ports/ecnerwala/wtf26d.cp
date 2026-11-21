@@ -3,6 +3,8 @@
 // push (max_p, max_v) onto a monotone stack (both decreasing), requiring an
 // unused value <= max_v before max_p in P; after stepping down, drain the stack
 // into suffix blocks, largest value first.
+use std.seq.{inverse}
+
 @!multitest
 let n: 1..=200_000 = read()
 domain Pos = 1..=n
@@ -10,8 +12,7 @@ domain Val = 1..=n
 let p: [Pos]Val = read()
 var q: [Pos]Val = read()
 
-var inv_p: [Val]Pos = Pos.first
-for i in Pos: inv_p[p[i]] = i
+let inv_p = p.inverse()
 
 var used: [Val]Bool = false
 var st = 0

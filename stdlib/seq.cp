@@ -550,16 +550,14 @@ pub fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
 
 // ---- Permutations, monotone stack, and sliding-window extrema
 
-/// Inverse of bijection `p: [I]V`: `inv[p[i]] == i` for all `i in I`.
-/// Traps in debug if `p` is not a bijection. O(|I|).
-pub fn inverse<I, V>(p: [I]V) -> [V]I:
+/// Inverse of bijection `self: [I]V`: `inv[self[i]] == i` for all `i in I`.
+/// Traps if `self` is not a bijection. O(|I|).
+pub fn inverse<I, V>(self: [I]V) -> [V]I:
     assert I.count == V.count, "inverse requires domains of equal size"
-    var seen: [V]Bool = false
     var inv: [V]?I = none
     for i in I:
-        let v = p[i]
-        assert not seen[v], "inverse requires a bijection (duplicate image)"
-        seen[v] = true
+        let v = self[i]
+        assert inv[v] == none, "inverse requires a bijection (duplicate image)"
         inv[v] = i
     [V] v => inv[v]!
 
@@ -1239,9 +1237,14 @@ fn first_gt_and_last_lt_match_linear_scan():
 fn permutations_and_inversions():
     domain I = 1..=5
     let p = [I] i => I([3, 5, 4, 1, 2][i.to_idx])
-    let inv = inverse(p)
+    let inv = p.inverse()
     for i in I:
         assert inv[p[i]] == i and p[inv[i]] == i
+    domain P = 0..5
+    let q = [P] i => I([3, 5, 4, 1, 2][i.to_idx])
+    let inv_q = q.inverse()
+    for i in P:
+        assert inv_q[q[i]] == i and q[inv_q[q[i]]] == q[i]
     let id = compose(p, inv)
     for i in I: assert id[i] == i
     let cycs = perm_cycles(p)
