@@ -10,9 +10,6 @@
 //! on small inputs (`monge_break`, `dnc_break`, `knuth_break`,
 //! `convexity_break`). A sliding-window optimum is `std.window.MonoDeque`.
 
-use std.deque.{Deque}
-use std.seq.{bsearch_first}
-
 /// The line `k * x + m`, the usual entry of a `LiChao`.
 pub struct Line(k: Int, m: Int):
     /// Evaluate the line `k * x + m` at `x`. O(1).
@@ -217,10 +214,16 @@ pub fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>>:
 /// `c` attaining it. Law: `f` is convex (`std.spec.convexity_break`), and the
 /// first `λ` of `lambdas` gives a count of at most `k` somewhere in the range
 /// (the counts fall as `λ` grows). `L` is the value type (`Int`, `I128`).
-/// O(log lambdas.len) calls of `solve`.
+/// O(log lambdas.len) calls of `solve`, fewer once a count is exactly `k`.
 pub fn aliens<L>(k: Int, lambdas: Range<L>, solve: L -> (val: L, count: Int)) -> L:
-    let lam = bsearch_first(lambdas, l => solve(l).count <= k)!
-    solve(lam).val - lam * k
+    var lo = lambdas.first!
+    var hi = lambdas.last!
+    while lo < hi:
+        let mid = (lo + (hi - lo) / 2)!
+        let at = solve(mid)
+        if at.count == k: return at.val - mid * k
+        if at.count < k: hi = mid else: lo = (mid + 1)!
+    solve(lo).val - lo * k
 
 /// Every subset sum of `xs`, sorted: the half of a meet-in-the-middle.
 /// O(2^n) time and memory, by merging.
@@ -244,30 +247,88 @@ struct Counted(k: Int, m: Int, used: Int):
 
 /// Shortest paths over nodes `0..n` along increasing edges `j -> i` of weight
 /// `w(j, i)`: `val[i]` is the least total weight from node 0 to `i`, and
-/// `prev[i]` the node before `i` on that path (`prev[0] == 0`). Ties go to
-/// the later `prev`. Law: `w` is Monge, `w(a, c) + w(b, d) <= w(a, d) +
+/// `prev[i]` the node before `i` on that path (`prev[0] == 0`), any one on
+/// a tie. Law: `w` is Monge, `w(a, c) + w(b, d) <= w(a, d) +
 /// w(b, c)` for `a <= b <= c <= d` (`std.spec.monge_break` checks it).
-/// O(n log n) calls of `w`, O(n) memory.
+/// Online LARSCH: O(n) calls of `w`, O(n) memory.
 pub fn monge_path<K>(n: Int, w: (Int, Int) -> K) -> (val: List<K>, prev: List<Int>):
+    // Online LARSCH: row r is node r + 1, column c is node c. Level l keeps a
+    // stack of surviving columns for rows 2^(l+1) - 1 apart, and `bat[l]` is
+    // the stack slot the best column for level l's next odd row starts at.
     var val: List<K> = [K.zero]
     var prev = [0]
-    var cand = Deque<(j: Int, start: Int)>()
-    cand.push((j: 0, start: 1))
-    for i in 1..n:
-        while cand.len >= 2 and cand[1].start <= i: cand.pop_front()
-        let j = cand[0].j
-        val.push(val[j] + w(j, i))
-        prev.push(j)
-        if i == n - 1: break
-        while let last = cand.last:
-            let r = max(last.start, i + 1)
-            if val[last.j] + w(last.j, r) < val[i] + w(i, r): break
-            cand.pop()
-        if let last = cand.last:
-            let wins = r => val[i] + w(i, r) <= val[last.j] + w(last.j, r)
-            if let r = bsearch_first(max(last.start, i + 1)..n, wins): cand.push((j: i, start: r))
-        else:
-            cand.push((j: i, start: i + 1))
+    let rows = n - 1
+    if rows <= 0: return (val: val, prev: prev)
+    var top = 0
+    while (2 << top) <= rows: top += 1
+    var sv: List<List<K>> = [[] for _ in 0..top]
+    var sc: List<List<Int>> = [[] for _ in 0..top]
+    var bv: List<K> = [K.zero for _ in 0..top]
+    var bc = [0 for _ in 0..top]
+    var bat = [0 for _ in 0..top]
+    fn get(row: Int, col: Int) -> K = val[col] + w(col, row + 1)
+    for inp in 0..rows:
+        var l = 0
+        var nv = K.zero
+        var nc = 0
+        while true:
+            let r = inp >> l
+            let col = if l == 0: inp else: sc[l - 1][r]
+            if l == top:
+                (nv, nc) = (if l == 0: get(0, col) else: sv[l - 1][r], col)
+                l -= 1
+                break
+            if r % 2 == 1:
+                let row = ((r + 1) << l) - 1
+                let pv = if l == 0: get(row, col) else: sv[l - 1][r]
+                if bat[l] == r or pv <= bv[l]:
+                    (bv[l], bc[l], bat[l]) = (pv, col, r)
+            let keep = (r + 1) / 2
+            if bat[l] == r:
+                sv[l].truncate(keep)
+                sc[l].truncate(keep)
+                if l + 1 < top: bat[l + 1] = keep
+            var pushed = false
+            var (tv, tc) = (K.zero, 0)
+            while sv[l].len > keep:
+                let v = get((sv[l].len << (l + 1)) - 1, col)
+                if not (v <= sv[l].last!): break
+                sv[l].pop()
+                sc[l].pop()
+                (tv, tc, pushed) = (v, col, true)
+            if pushed:
+                sv[l].push(tv)
+                sc[l].push(tc)
+            else:
+                let row = ((sv[l].len + 1) << (l + 1)) - 1
+                if row < rows:
+                    sv[l].push(get(row, col))
+                    sc[l].push(col)
+            if r % 2 == 1:
+                (nv, nc) = (bv[l], bc[l])
+                l -= 1
+                break
+            if ((r + 2) << l) - 1 >= rows:
+                nc = col
+                break
+            l += 1
+        while l >= 0:
+            let r = inp >> l
+            let row = ((r + 1) << l) - 1
+            let end = nc
+            (bv[l], bc[l]) = (nv, end)
+            var set = false
+            while true:
+                let idx = bat[l]
+                let col = if l == 0: idx else: sc[l - 1][idx]
+                let v = if l > 0 and idx == r: sv[l - 1][r] else: get(row, col)
+                if not set or v <= nv:
+                    (nv, nc, set) = (v, col, true)
+                if col == end: break
+                bat[l] += 1
+            l -= 1
+        val.push(nv)
+        prev.push(nc)
     (val: val, prev: prev)
 
 @test

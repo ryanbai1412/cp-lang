@@ -1583,7 +1583,7 @@ fn monotone_minima(rows: Int, cols: Int, f: (Int, Int) -> ?Int)
 fn dnc_layer(prev: List<?Int>, cost: (Int, Int) -> Int) -> List<?Int>
     // O(n log n) calls; next[i] = min over j < i of prev[j] + cost(j, i)
 fn monge_path<K>(n: Int, w: (Int, Int) -> K) -> (val: List<K>, prev: List<Int>)
-    // O(n log n) calls; shortest 0 -> i over Monge edges j -> i, j < i
+    // O(n) calls (LARSCH); shortest 0 -> i over Monge edges j -> i, j < i
 fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>> // O(n^2)
 fn aliens<L>(k: Int, lambdas: Range<L>, solve: L -> (val: L, count: Int))
     -> L                                    // O(log) calls of solve

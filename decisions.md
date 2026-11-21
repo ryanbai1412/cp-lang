@@ -3049,3 +3049,14 @@ embedding the files with `include_str!` again.
    In `crates/cpl-codegen/src/devirt.rs`, a closure that captures a `Monoid` or `Action` solely to invoke its `StaticDirect` `op`/`apply`/`compose` field has zero live captures in emitted C++, so it lowers to a top-level `static auto cpl_fnN` (emitted in dependency order in `emit.rs`) with zero `std::function`. Gives 0 `std::function` on `flip_action` (`cf2152g`: 8 static direct, 0 dynamic) and any user-written `Monoid`/`Action` combinator. Reverse: restore `captures.is_empty()` in `devirt.rs`.
 3. **Avoid sibling cache misses and tagless pushdown calls in `LazyTreap.ins` / `split_val`.**
    Increment `nodes[i].sz` directly on descent in `ins` and guard `push_tag` with `if let f = nodes[i].tag:` in `ins`/`split_val`, bringing `bench/ranges/lazy_treap` from `111.9 ms` (`1.34x`) down to `85.8 ms` vs `81.1 ms` matched C++17 (`1.06x`). Reverse: restore `down`/`pull` calls in `stdlib/lazy.cp`.
+
+## 74. `monge_path` is online LARSCH; `aliens` stops at count `k` (2026-11-21)
+
+`std.dp.monge_path` now runs the online LARSCH algorithm (O(n) calls of
+`w`) instead of the O(n log n) candidate deque, with the same signature
+(decision 56); on cf2183h it makes the same number of cost calls as the
+original's template. `aliens` stops as soon as a slope's least count is
+exactly `k`, which the law already makes exact. Reverse: the deque is ten
+lines and needs no level stacks, if LARSCH's bookkeeping ever costs more
+than its calls save.
+

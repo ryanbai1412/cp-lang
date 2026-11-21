@@ -136,9 +136,9 @@ fn dnc_layer(prev: List<?Int>, cost: (Int, Int) -> Int) -> List<?Int>
     // prev[j] + cost(j, i); next[0] = none. Law: cost satisfies the
     // quadrangle inequality (std.spec.dnc_break).
 fn monge_path<K>(n: Int, w: (Int, Int) -> K) -> (val: List<K>, prev: List<Int>)
-    // O(n log n) calls of w, O(n) memory. val[i] = least weight of a path
-    // 0 -> i through increasing nodes, prev[i] its last hop (prev[0] = 0).
-    // Law: w is Monge (std.spec.monge_break). Next step: online LARSCH, O(n).
+    // Online LARSCH: O(n) calls of w, O(n) memory. val[i] = least weight of
+    // a path 0 -> i through increasing nodes, prev[i] its last hop (prev[0]
+    // = 0). Law: w is Monge (std.spec.monge_break).
 fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>>
     // O(n^2) calls of cost, O(n^2) memory. dp[i][j] over cuts 0..=n:
     // dp[i][i + 1] = 0, dp[i][j] = cost(i, j) + min over i < k < j of
