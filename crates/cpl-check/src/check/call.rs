@@ -10,6 +10,9 @@ impl<'a> Checker<'a> {
         if let Some(ty) = self.getter_call(callee, args) {
             return ty;
         }
+        if let Some(ty) = self.filled(callee, args) {
+            return ty;
+        }
         let callee_ty = match self.list_form(callee, args) {
             Some(ty) => ty,
             None => self.infer(callee),
@@ -26,6 +29,28 @@ impl<'a> Checker<'a> {
         self.mutates_view(call, callee);
         self.mutates_self(callee);
         receiver.unwrap_or(ty)
+    }
+
+    /// `List.filled(n, x)` is a list of what `x` is. A whole number
+    /// stands for any number type, so it also fills a `List<Z>`.
+    fn filled(&mut self, callee: &Expr, args: &[Arg]) -> Option<Ty> {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return None;
+        };
+        let prelude = matches!(&base.kind, ExprKind::Name(list)
+            if list == "List" && self.local(list).is_none() && self.env.global(list).is_none());
+        let [count, value] = args else {
+            return None;
+        };
+        if !prelude || name.text != "filled" {
+            return None;
+        }
+        self.infer(&count.value);
+        let elem = self.infer(&value.value);
+        Some(Ty::Named {
+            name: "List".into(),
+            args: vec![elem],
+        })
     }
 
     /// `c.bump()` where `bump` takes `mut self` changes `c`, so `c` is a

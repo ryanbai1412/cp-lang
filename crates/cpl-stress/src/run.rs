@@ -76,6 +76,11 @@ pub struct Report {
     /// Seeds whose case could not be made (an empty range).
     pub skipped: usize,
     pub failure: Option<Failure>,
+    /// Inputs thrown away: they stopped the program for what a guessed
+    /// number was, not for what the program does with it.
+    pub discarded: usize,
+    /// What was learned from them, one line each: `n is 2 or more`.
+    pub narrowed: Vec<String>,
 }
 
 /// Something that stopped the run before a verdict.
@@ -106,7 +111,36 @@ enum Made {
 /// One run: `None` when the solution is right.
 type Wrong = Option<(Verdict, String, String)>;
 
+/// How a run on an input that may be no input at all went.
+enum Tried {
+    /// The solution ran and was judged.
+    Judged(Wrong),
+    /// The program stopped, and nothing that ran says it should not
+    /// have: the brute stopped too, or there is none.
+    Stopped,
+}
+
 impl Runner<'_> {
+    /// True when `input` stops the solution. Asked once the brute has
+    /// stopped on it: both stopping is what a number outside what the
+    /// problem allows does, and a solution that answers where the brute
+    /// stops leaves the brute's failure to report.
+    fn stops(&self, input: &str) -> bool {
+        self.fast.run(input, self.limit).is_ok_and(|outcome| !outcome.ok())
+    }
+
+    /// Like `run`, for an input made from guessed ranges.
+    fn attempt(&self, input: &str) -> Result<Tried, StressError> {
+        match self.run(input) {
+            Ok(Some((Verdict::RuntimeError(_) | Verdict::TimeLimit, _, _))) if self.brute.is_none() => {
+                Ok(Tried::Stopped)
+            }
+            Ok(wrong) => Ok(Tried::Judged(wrong)),
+            Err(_) if self.stops(input) => Ok(Tried::Stopped),
+            Err(e) => Err(e),
+        }
+    }
+
     fn run(&self, input: &str) -> Result<Wrong, StressError> {
         let io = |program: &Program, e: std::io::Error| {
             StressError(format!("can't run {}: {e}", program.name))
@@ -157,6 +191,21 @@ pub fn stress(
         limit: options.limit,
     };
     let size_arg = options.size.to_string();
+    // The ranges cases are drawn from: the program's own, narrowed where
+    // a guessed one let through numbers the program stops on.
+    let mut typed = match source {
+        Source::Typed(spec) => Some(spec.clone()),
+        _ => None,
+    };
+    let mut discarded = 0;
+    let mut narrowed: Vec<String> = Vec::new();
+    let mut skipped = 0;
+    let mut done = 0;
+    'narrow: loop {
+    let source = match &typed {
+        Some(spec) => &Source::Typed(spec.clone()),
+        None => source,
+    };
     let make = |seed: u64| -> Result<Option<(Made, String)>, StressError> {
         match source {
             Source::Typed(spec) => {
@@ -189,9 +238,12 @@ pub fn stress(
     };
 
     let jobs = options.jobs.max(1);
-    let mut skipped = 0;
-    let mut done = 0;
+    let round = done;
     while done < options.cases {
+        // The first case of a round runs alone: when it stops the
+        // program the ranges are narrowed, and its neighbours, made from
+        // the ranges it refutes, would only have been waited for.
+        let jobs = if done == round { 1 } else { jobs };
         let batch: Vec<usize> = (done..options.cases.min(done + jobs)).collect();
         // A batch runs at once; results are read in case order, so the
         // failure reported is the same whatever `jobs` is.
@@ -205,21 +257,42 @@ pub fn stress(
                         let Some((case, input)) = make(seed)? else {
                             return Ok(None);
                         };
-                        Ok(Some((case, runner.run(&input)?, input)))
+                        Ok(Some((case, runner.attempt(&input)?, input)))
                     })
                 })
                 .collect();
             handles.into_iter().map(|h| h.join().unwrap()).collect()
         });
         for (index, result) in batch.iter().zip(results) {
-            let Some((case, wrong, input)) = result? else {
+            let Some((case, tried, input)) = result? else {
                 skipped += 1;
                 continue;
+            };
+            let seed = options.seed.wrapping_add(*index as u64);
+            let wrong = match tried {
+                Tried::Judged(wrong) => wrong,
+                Tried::Stopped => {
+                    // A narrower range that this seed runs under is taken,
+                    // and the cases from here on are made again from it.
+                    let found = match (&typed, &case) {
+                        (Some(spec), Made::Typed(case)) => narrow(spec, case, seed, options.size, &runner),
+                        _ => None,
+                    };
+                    if let Some((spec, learned)) = found {
+                        typed = Some(spec);
+                        narrowed.retain(|line| line.split(' ').next() != learned.split(' ').next());
+                        narrowed.push(learned);
+                        discarded += 1;
+                        done = *index;
+                        continue 'narrow;
+                    }
+                    // Nothing explains it away: it is reported as it is.
+                    runner.run(&input)?
+                }
             };
             let Some((verdict, expected, got)) = wrong else {
                 continue;
             };
-            let seed = options.seed.wrapping_add(*index as u64);
             let mut failure = Failure {
                 case: index + 1,
                 seed,
@@ -279,15 +352,71 @@ pub fn stress(
                 cases: index + 1,
                 skipped,
                 failure: Some(failure),
+                discarded,
+                narrowed,
             });
         }
         done += batch.len();
     }
-    Ok(Report {
+    return Ok(Report {
         cases: options.cases,
         skipped,
         failure: None,
-    })
+        discarded,
+        narrowed,
+    });
+    }
+}
+
+/// A narrower version of `spec` that explains why `case` stopped the
+/// program, and what it says about the input. It must leave `case` out
+/// and the program must run on its own case for `seed`. One loose `Int`
+/// drawn as a size is tried first, then every guessed size one higher,
+/// then every guessed size under the largest of `case`.
+fn narrow(
+    spec: &InputSpec,
+    case: &Case,
+    seed: u64,
+    size: i128,
+    runner: &Runner,
+) -> Option<(InputSpec, String)> {
+    let runs = |spec: &InputSpec| {
+        generate(spec, &mut Rng::new(seed), Size::Small(size))
+            .is_some_and(|case| matches!(runner.attempt(&case.render()), Ok(Tried::Judged(_))))
+    };
+    let outside = |name: &str, lo: i128, hi: i128| {
+        case.values_of(spec, name).iter().any(|value| *value < lo || *value > hi)
+    };
+    for name in spec.loose() {
+        let counted = spec.counting(&name);
+        if outside(&name, 1, size.max(1)) && runs(&counted) {
+            return Some((counted, format!("{name} is small and 1 or more")));
+        }
+    }
+    let mut next = spec.clone();
+    while let Some(raised) = next.raising() {
+        next = raised;
+        let lowest = 1 + next.raised;
+        if next.counted().iter().any(|name| outside(name, lowest, i128::MAX)) && runs(&next) {
+            let names = next.counted().join(", ");
+            return Some((next, format!("{names}: {lowest} or more")));
+        }
+    }
+    // A size too large for something the program holds. Only a brute
+    // that stops on it too says the input is at fault.
+    runner.brute?;
+    let mut all = spec.clone();
+    for name in spec.loose() {
+        all = all.counting(&name);
+    }
+    let largest = all.counted().iter().flat_map(|name| case.values_of(spec, name)).max()?;
+    let names = all.counted().join(", ");
+    (1..largest)
+        .rev()
+        .take(16)
+        .map_while(|most| Some((all.capping(most)?, most)))
+        .find(|(capped, _)| runs(capped))
+        .map(|(capped, most)| (capped, format!("{names}: {most} or less")))
 }
 
 /// Saves a failing case next to the solution as a regression test:

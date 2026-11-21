@@ -430,8 +430,9 @@ impl<'a> Checker<'a> {
                 Ty::Error
             }
             ExprKind::Keep { target, value, .. } => {
-                self.infer(target);
-                self.infer(value);
+                let target_ty = self.infer(target);
+                let value_ty = self.infer(value);
+                self.row_keep(target, &target_ty, value, &value_ty);
                 Ty::Bool
             }
             ExprKind::Try(inner) | ExprKind::Unwrap(inner) => match self.infer_optional(inner) {

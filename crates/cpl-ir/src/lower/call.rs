@@ -3721,7 +3721,15 @@ impl<'a> Lowerer<'a> {
                     Some(Ty::List(e)) => Some(&**e),
                     _ => None,
                 };
-                let val = self.expr(exprs[1], val_hint);
+                // Under a known element type the value is one of it:
+                // `let a: List<Z> = List.filled(n, 0)` holds `Z(0)`.
+                let val = match val_hint {
+                    Some(elem) if !matches!(elem, Ty::Error) => {
+                        let elem = elem.clone();
+                        self.expect(exprs[1], &elem)
+                    }
+                    _ => self.expr(exprs[1], None),
+                };
                 let list_ty = Ty::list(val.ty.clone());
                 return self.mk(
                     ExprKind::Builtin(Builtin::ListFilled, vec![count, val]),

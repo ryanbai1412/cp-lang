@@ -202,6 +202,28 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// `a max= b` on a row (an array of one dimension, or a list) goes
+    /// cell by cell, so `b` is a row of the same type.
+    pub(crate) fn row_keep(&mut self, target: &ast::Expr, target_ty: &Ty, value: &ast::Expr, value_ty: &Ty) {
+        let row = match target_ty {
+            Ty::Array { index, .. } => index.len() == 1,
+            Ty::Named { name, args } => name == "List" && args.len() == 1,
+            _ => false,
+        };
+        if !row {
+            return;
+        }
+        self.expect_fits(value_ty, target_ty, value, |c, got, want| {
+            format!(
+                "`{}` is {}, so the other side is one too, cell for cell; `{}` is {}",
+                c.quote(target.span),
+                want.with_article(),
+                c.quote(value.span),
+                got.with_article()
+            )
+        });
+    }
+
     /// `m[k] f= x` on a map folds `x` into the entry, and a key that is
     /// not there starts from the identity of `f` (decisions §13). `min`
     /// and `max` store `x`; an operation with no identity is an error.
@@ -591,6 +613,9 @@ impl<'a> Checker<'a> {
                 }
                 if *op == AssignOp::Set {
                     self.no_escape(value, "this assignment");
+                }
+                if matches!(op, AssignOp::Max | AssignOp::Min) {
+                    self.row_keep(target, &target_ty, value, &value_ty);
                 }
                 if *op == AssignOp::Set {
                     self.expect_fits(&value_ty, &target_ty, value, |c, got, want| {

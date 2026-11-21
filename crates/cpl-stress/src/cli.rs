@@ -501,6 +501,15 @@ pub fn run_with(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write,
             "  {} cases agree{skipped}",
             report.cases - report.skipped
         );
+        if report.discarded > 0 {
+            let inputs = if report.discarded == 1 { "1 input" } else { &format!("{} inputs", report.discarded) };
+            let _ = writeln!(
+                stdout,
+                "  {inputs} that stopped the program thrown away; the rest were made with {}",
+                report.narrowed.join("; ")
+            );
+            let _ = writeln!(stdout, "  write the range in the program to test with it, like `let n: 1..=100 = read()`");
+        }
         return 0;
     };
     let _ = writeln!(

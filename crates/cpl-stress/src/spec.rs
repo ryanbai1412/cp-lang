@@ -83,7 +83,18 @@ pub struct InputSpec {
     pub cases: Option<Box<InputSpec>>,
     /// `@!multitest(until_eof)`: the test cases come with no count.
     pub until_eof: bool,
+    /// The names read as a plain `Int`: the program gives them no range,
+    /// so the one they are drawn from is a guess `cpl stress` may narrow.
+    pub guessed: HashSet<String>,
+    /// How far the guessed sizes start above 1.
+    pub raised: i128,
+    /// The most a guessed size is, when a larger one stopped the program.
+    pub capped: Option<i128>,
 }
+
+/// The most a guessed size's lower bound is raised: a program that still
+/// stops with every size at 4 or more is stopped by something else.
+pub const MAX_RAISED: i128 = 2;
 
 /// A `read()` whose type the generator cannot produce.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -235,26 +246,125 @@ fn sizes_count(spec: &mut InputSpec) {
         lo: int(DEFAULT_INT.0),
         hi: int(DEFAULT_INT.1),
     };
-    let counted = Shape::Int {
-        lo: int(1),
-        hi: int(DEFAULT_INT.1),
-    };
-    for field in &mut spec.fields {
-        let is_size = |name: &Option<String>| name.as_ref().is_some_and(|name| spec.sizes.contains(name));
-        match (&mut field.shape, field.names.as_slice()) {
+    for field in &spec.fields {
+        match (&field.shape, field.names.as_slice()) {
             (Shape::Tuple(parts), names) if names.len() == parts.len() => {
-                for (part, name) in parts.iter_mut().zip(names) {
-                    if *part == plain && is_size(name) {
-                        *part = counted.clone();
+                for (part, name) in parts.iter().zip(names) {
+                    if *part == plain {
+                        spec.guessed.extend(name.clone());
                     }
                 }
             }
-            (shape, [name]) if *shape == plain && is_size(name) => *shape = counted.clone(),
+            (shape, [name]) if *shape == plain => spec.guessed.extend(name.clone()),
             _ => {}
         }
     }
     if let Some(cases) = &mut spec.cases {
         sizes_count(cases);
+    }
+    spec.redraw();
+}
+
+impl InputSpec {
+    /// Gives every guessed name its range: a size counts from
+    /// `1 + raised`, anything else is any `Int`.
+    fn redraw(&mut self) {
+        let lowest = 1 + self.raised;
+        for field in &mut self.fields {
+            let range = |name: &Option<String>| {
+                let name = name.as_ref().filter(|name| self.guessed.contains(*name))?;
+                let (lo, hi) = match self.sizes.contains(name) {
+                    true => (lowest, self.capped.unwrap_or(DEFAULT_INT.1)),
+                    false => DEFAULT_INT,
+                };
+                Some(Shape::Int {
+                    lo: int(lo),
+                    hi: int(hi),
+                })
+            };
+            match (&mut field.shape, field.names.as_slice()) {
+                (Shape::Tuple(parts), names) if names.len() == parts.len() => {
+                    for (part, name) in parts.iter_mut().zip(names) {
+                        if let Some(range) = range(name) {
+                            *part = range;
+                        }
+                    }
+                }
+                (shape, [name]) => {
+                    if let Some(range) = range(name) {
+                        *shape = range;
+                    }
+                }
+                _ => {}
+            }
+        }
+        if let Some(cases) = &mut self.cases {
+            cases.raised = self.raised;
+            cases.capped = self.capped;
+            cases.redraw();
+        }
+    }
+
+    /// The guessed names that are not kept small, in the order read.
+    pub fn loose(&self) -> Vec<String> {
+        let mut names: Vec<String> = Vec::new();
+        for spec in std::iter::once(self).chain(self.cases.as_deref()) {
+            for name in spec.fields.iter().flat_map(|field| field.names.iter().flatten()) {
+                if spec.guessed.contains(name) && !spec.sizes.contains(name) && !names.contains(name) {
+                    names.push(name.clone());
+                }
+            }
+        }
+        names
+    }
+
+    /// The guessed names that are kept small, in the order read.
+    pub fn counted(&self) -> Vec<String> {
+        let mut names: Vec<String> = Vec::new();
+        for spec in std::iter::once(self).chain(self.cases.as_deref()) {
+            for name in spec.fields.iter().flat_map(|field| field.names.iter().flatten()) {
+                if spec.guessed.contains(name) && spec.sizes.contains(name) && !names.contains(name) {
+                    names.push(name.clone());
+                }
+            }
+        }
+        names
+    }
+
+    /// The same input with `name` drawn as a size: small, and from 1.
+    pub fn counting(&self, name: &str) -> InputSpec {
+        let mut spec = self.clone();
+        spec.sizes.insert(name.to_string());
+        if let Some(cases) = &mut spec.cases {
+            cases.sizes.insert(name.to_string());
+        }
+        spec.redraw();
+        spec
+    }
+
+    /// The same input with every guessed size at most `most`, or `None`
+    /// when that leaves them no value.
+    pub fn capping(&self, most: i128) -> Option<InputSpec> {
+        if most < 1 + self.raised || self.counted().is_empty() {
+            return None;
+        }
+        let mut spec = self.clone();
+        spec.capped = Some(most);
+        spec.redraw();
+        Some(spec)
+    }
+
+    /// The same input with every guessed size starting one higher, or
+    /// `None` when they are as high as they go.
+    pub fn raising(&self) -> Option<InputSpec> {
+        let full = self.capped.is_some_and(|most| most <= 1 + self.raised);
+        if self.raised >= MAX_RAISED || full || self.counted().is_empty() {
+            return None;
+        }
+        let mut spec = self.clone();
+        spec.raised += 1;
+        spec.redraw();
+        Some(spec)
     }
 }
 

@@ -292,6 +292,19 @@ fn show(value: &Value) -> String {
 }
 
 impl Case {
+    /// The values `name` has in this case: one, or one for each test.
+    pub fn values_of(&self, spec: &InputSpec, name: &str) -> Vec<i128> {
+        let mut env = Env::new();
+        for (field, value) in spec.fields.iter().zip(&self.values) {
+            bind(&field.names, value, &mut env);
+        }
+        let mut found: Vec<i128> = env.get(name).copied().into_iter().collect();
+        if let Some(inner) = &spec.cases {
+            found.extend(self.cases.iter().flat_map(|case| case.values_of(inner, name)));
+        }
+        found
+    }
+
     /// A case of these values and no test cases.
     pub fn of(values: Vec<Value>) -> Case {
         Case {

@@ -448,6 +448,50 @@ fn stress_makes_a_read_int_that_sizes_something_a_count() {
     }
 }
 
+/// A plain `Int` gives no range, so the one `cpl stress` draws it from
+/// is a guess. An input that stops the solution and the brute alike is
+/// thrown away and the guess narrowed; one that stops only the solution
+/// is still a bug.
+#[test]
+fn stress_throws_away_inputs_that_stop_both_programs_and_narrows_the_guess() {
+    let agree = [
+        (
+            "narrow-minus-one",
+            "let n: Int = read()\n@brute(main)\nfn slow():\n    let m = n - 1\n    var c: [0..m]Int = 0\n    print(c.len)\nlet m = n - 1\nvar dp: [0..m]Int = 0\nprint(dp.len)\n",
+            "n is small and 1 or more",
+        ),
+        (
+            "narrow-fn-size",
+            "fn table(k: Int) -> List<Int>:\n    var t: [0..k]Int = 0\n    return [x for x in t]\nlet n: Int = read()\n@brute(main)\nfn slow():\n    print(table(n).len)\nprint(table(n).len)\n",
+            "n is small and 1 or more",
+        ),
+        (
+            "narrow-index",
+            "let n: Int = read()\nlet s: [0..5]Int = read()\n@brute(main)\nfn slow():\n    var at = 0\n    for i in 0..n: at = i\n    print(s[at])\nprint(s[n - 1])\n",
+            "n: 5 or less",
+        ),
+    ];
+    let stress = |test: &str, source: &str| {
+        let path = scratch(test, "narrow.cp", source.as_bytes());
+        let out = cpl(&["stress".as_ref(), path.as_os_str(), "--cases".as_ref(), "40".as_ref()], b"");
+        format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr))
+    };
+    for (test, source, learned) in agree {
+        let text = stress(test, source);
+        assert!(text.contains("40 cases agree"), "{test}: {text}");
+        assert!(text.contains("stopped the program thrown away"), "{test}: {text}");
+        assert!(text.contains(learned), "{test}: {text}");
+    }
+    // Only the solution stops: the brute has an answer, so it is a bug.
+    let only_solution = "let n: Int = read()\n@brute(main)\nfn slow():\n    print(max(n - 1, 0))\nlet m = n - 1\nvar dp: [0..m]Int = 0\nprint(dp.len)\n";
+    let text = stress("narrow-real-stop", only_solution);
+    assert!(text.contains("FAIL on case") && text.contains("an array can't have length"), "{text}");
+    // Both run and differ: a wrong answer, never thrown away.
+    let wrong = "let n: Int = read()\nlet a: [0..n]Int = read()\n@brute(main)\nfn slow():\n    print(sum(a))\nprint(sum(a) - a[0])\n";
+    let text = stress("narrow-real-wrong", wrong);
+    assert!(text.contains("FAIL on case") && !text.contains("thrown away"), "{text}");
+}
+
 /// Wrong on a tree with a vertex of degree 3 whose value is above 50.
 const TREE: &str = "\
 let n: 1..=100 = read()

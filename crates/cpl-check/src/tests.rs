@@ -1789,3 +1789,25 @@ fn items_of_a_str_a_map_and_a_grid() {
     assert_eq!(codes(&format!("{src}for (k, v) in m.items:\n    let n: Int = k\n")), ["E0302"]);
     assert_eq!(codes(&format!("{src}for ((r, c), x) in g.items:\n    let n: Int = r\n")), ["E0301"]);
 }
+
+#[test]
+fn a_row_takes_the_larger_cells_of_a_row_of_its_own_type() {
+    let src = concat!(
+        "domain V = 0..3\ndomain W = 0..3\n",
+        "var a: [V]Int = 0\nvar b: [V]Int = 1\nvar w: [W]Int = 0\nvar s: [V]Str = \"\"\n",
+        "var xs = [1, 2]\nvar best = 0\n",
+    );
+    for ok in ["a max= b\n", "if a min= b: print(a)\n", "xs max= [3, 0]\n", "best max= 4\n", "print(best min= 2)\n"] {
+        assert_eq!(codes(&format!("{src}{ok}")), Vec::<&str>::new(), "{ok}");
+    }
+    for bad in ["a max= w\n", "print(a min= s)\n", "a max= 3\n", "let hit = xs max= [\"a\"]\n"] {
+        assert_eq!(codes(&format!("{src}{bad}")), ["E0302"], "{bad}");
+    }
+}
+
+#[test]
+fn a_filled_list_holds_the_element_type_asked_for() {
+    let src = "type Z = Mod<998244353>\nfn zeros(k: Int) -> List<Z>:\n    return List.filled(k, 0)\n";
+    assert_eq!(codes(&format!("{src}let a: List<Z> = List.filled(3, 0)\nlet z: Z = a[0]\n")), Vec::<&str>::new());
+    assert_eq!(codes(&format!("{src}let a: List<Z> = List.filled(3, \"x\")\n")), ["E0302"]);
+}
