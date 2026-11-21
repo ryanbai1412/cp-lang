@@ -272,13 +272,41 @@ example in the docs is run in the gate.
 **Next.** Update to 0.3; error index; cookbook from ports.
 
 ## 12. Validation: ports, scoreboard, differential testing (`plan/80`)
-**North star.** Thousands of hard accepted solutions rethought in the language, every
-one differential-tested against its original, measured on every push for
-correctness, runtime, memory, source size, contestant tokens and friction,
-with a scoreboard that blocks regressions; zero open blocker frictions; and
-real contest use by strong contestants showing faster accepted solutions and
-fewer wrong attempts than in C++.
-**Where we are.** 235 ecnerwala ports gated; friction lint; no single
-scoreboard; port waves running.
-**Bar.** 500+ ports; scoreboard history; zero open blocker frictions.
-**Next.** Scoreboard script; continuous port waves; friction triage.
+**North star.** Thousands of hard accepted solutions across CF, AtCoder,
+ICPC/UCup, IOI, NOI and DMOJ rethought in the language, discovered
+automatically and differential-tested against their originals (interpreter,
+sanitized C++ and `-O2` C++), measured on every push in a single deterministic
+scoreboard (`scripts/scoreboard.py` + `research/scoreboard.json`) that blocks
+regressions across every goal: correctness (gate pass, zero trap-parity drift),
+expressiveness (contestant-written tokens vs raw and library-stripped original,
+median <= 0.6x, none > 1.0x), performance (runtime p50 <= 1.1x / max <= 1.5x,
+peak RSS p50 <= 1.0x / max <= 1.2x on max-size inputs, interpreter within 30x
+of C++), submission viability (emitted C++ <= 64 KB, p95 <= 32 KB, warning-free
+GCC/Clang), and friction (structured `research/frictions/*.md` reports with
+zero open blockers and `friction_lint` zero `wa_trap`). Backed by a replayed
+P0 bug corpus (>= 90% prevented or trapped), static `sizeof` and `-O2` assembly
+zero-cost proofs, and real contest use by strong contestants showing faster
+accepted solutions and fewer wrong attempts than in C++.
+**Where we are.** 237 ecnerwala ports gated in `scripts/check.sh --fast`
+(`cpl check`, `cpl fmt --check`, `cpl lint` with 0 warnings, `cpl build <= 64 KB`;
+227 have `gen/*.py`, 218 have `samples/`, 13 have `interactors/*.py`), plus 30
+`wave2` Rust-era ports (30/30 check + lint, 7 unformatted) and legacy DMOJ
+registry (`bench/corpus-500-registry.json`: 594 unique problems, 566 verified
+at `87ce801`). `bench/corpus_p95_bench.py` last ran at `6145b0b` (343 ports,
+runtime p50 0.98x / p95 2.57x, RSS p50 1.07x / p95 3.64x, max emitted 34.4 KB).
+`scripts/friction_lint.py` reports 0 `wa_trap`, 3 `real_gap`, 31 `stale_port`
+on ecnerwala; `research/frictions/` has 2 reports (5 open items: 0 blocker, 2
+high, 2 medium, 1 low). Gaps: no unified `scripts/scoreboard.py` or committed
+`research/scoreboard.json` regression baseline, no contestant-written token
+ratio tracking, no automated friction-report summarizer, no `--fast` scoreboard
+gate in `scripts/check.sh`, and `known_traps.cp` still has 5 open traps.
+**Bar.** 500+ Rust-gated ports; `scripts/scoreboard.py --fast --check` in
+`scripts/check.sh --fast` against `research/scoreboard.json`; full-mode perf
+and interpreter baseline tracked; zero open blocker frictions; P0 bug corpus
+>= 90% handled.
+**Next.** Build `scripts/scoreboard.py` + `scripts/test_scoreboard.py` (per-port
+gate, contestant tokens, emitted bytes, max-size C++ vs original runtime/RSS,
+interpreter time, friction summary over `research/frictions/*.md`, baseline
+diff failing on regressions, `--fast` mode); generate and commit
+`research/scoreboard.json`; wire `--fast` into `scripts/check.sh`; add static
+zero-cost and bug-corpus metrics to the scoreboard.

@@ -1257,4 +1257,33 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   *Reversal:* remove the `at_ident("where")` branches in `crates/cpl-syntax/src/parser/{stmt,expr}.rs`
   (or deprecate `for ... if` once ports migrate).
 
+## 23. Validation scoreboard and friction summary (`scripts/scoreboard.py`, 2026-11-21)
 
+- **23.1 One unified scoreboard over auto-discovered ports.** `scripts/scoreboard.py` discovers every
+  `*.cp` port with a sibling `*_orig.cpp` under `proto/ports/ecnerwala/` (and any future Rust-era port
+  directory under `proto/ports/` that follows the same layout, excluding retired `scout_batch_*`,
+  `blind_critic_*`, `hillclimb_*`, `sim3`, `before` directories). Concurrent port waves are picked up
+  automatically with no manifest to edit. *How to reverse:* pass `--dirs` or change `discover_ports` in
+  `scripts/scoreboard.py`.
+
+- **23.2 Contestant-written token counting.** Both `.cp` and `_orig.cpp` are tokenized by language-aware
+  lexers that strip comments and whitespace; `_orig.cpp` also reports a library-stripped token count using
+  `bench/corpus_registry.py`'s `auto_strip` (or a sibling `.strip` file when present) so template headers
+  and hand-rolled standard structures do not inflate the C++ baseline. Both raw and stripped ratios are
+  recorded. *How to reverse:* swap `tokenize_cp` / `tokenize_cpp` or point to `cpl` lexer output.
+
+- **23.3 Adaptive max-size input probing for runtime and peak RSS.** When a port has a judge-limit
+  generator in `bench/corpus_generators.py` or `bench/rust_max_n_audit.py`, the scoreboard uses it.
+  Otherwise it probes `gen/NAME.py 1 <SIZE>` upward (`8 -> 40 -> 200 -> 1000 -> 5000 -> 25000`), stopping
+  when the original exceeds the probe budget (~0.25 s) or the input saturates/caps, falling back to the
+  largest `samples/NAME.*.in`. This gives a real max-size measurement for every newly pushed port without
+  hanging on super-linear problems. *How to reverse:* change `MAX_SIZE_STEPS` or add explicit specs to
+  `bench/corpus_generators.py`.
+
+- **23.4 Baseline diff and `--fast` mode.** `research/scoreboard.json` is the committed baseline.
+  `--fast` runs `cpl check`, `cpl fmt --check`, `cpl lint`, `cpl build` (emitted bytes <= 64 KB), token
+  counts, `friction_lint`, and the `research/frictions/*.md` summary in a few seconds so `scripts/check.sh --fast`
+  can gate every push. `--check` fails on gate regressions (any passing or new port failing), emitted
+  files over 64 KB or growing > 5% and > 1,024 B, median token ratio regressions (> +0.02), `wa_trap`
+  regressions, open `blocker` friction increases, and (in full mode) p50/p95 runtime or RSS regressions
+  (> 1.10x baseline). *How to reverse:* adjust threshold constants at the top of `scripts/scoreboard.py`.
