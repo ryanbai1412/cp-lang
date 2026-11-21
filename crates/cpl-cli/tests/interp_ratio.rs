@@ -78,10 +78,17 @@ fn cf2183f_tree_2d_dp_parity_and_speed() {
 fn vm_hot_loop_fallback_ratchet_zero_on_covered_worst_ports() {
     let cases = [
         ("proto/ports/ecnerwala/cf2262e.cp", "proto/ports/ecnerwala/samples/cf2262e.sample1.in"),
+        ("proto/ports/ecnerwala/cf2150d.cp", "proto/ports/ecnerwala/samples/cf2150d.sample1.in"),
+        ("proto/ports/ecnerwala/cf2124f2.cp", "proto/ports/ecnerwala/samples/cf2124f2.1.in"),
         ("proto/ports/ecnerwala/cf2089c1.cp", "proto/ports/ecnerwala/samples/cf2089c1.1.in"),
         ("proto/ports/ecnerwala/cf2084h.cp", "proto/ports/ecnerwala/samples/cf2084h.sample1.in"),
+        ("proto/ports/ecnerwala/cf2101c.cp", "proto/ports/ecnerwala/samples/cf2101c.1.in"),
+        ("proto/ports/ecnerwala/cf2237b.cp", "proto/ports/ecnerwala/samples/cf2237b.sample1.in"),
+        ("proto/ports/ecnerwala/ucup5s06g.cp", "proto/ports/ecnerwala/samples/ucup5s06g.s1.in"),
         ("proto/ports/ecnerwala/cf2180g.cp", "proto/ports/ecnerwala/samples/cf2180g.sample1.in"),
         ("proto/ports/ecnerwala/cf2207f.cp", "proto/ports/ecnerwala/samples/cf2207f.1.in"),
+        ("proto/ports/ecnerwala/cf2261g.cp", "proto/ports/ecnerwala/samples/cf2261g.sample1.in"),
+        ("proto/ports/ecnerwala/cf2138f.cp", "proto/ports/ecnerwala/samples/cf2138f.1.in"),
     ];
     for (port_rel, sample_rel) in cases {
         let port = repo_root().join(port_rel);

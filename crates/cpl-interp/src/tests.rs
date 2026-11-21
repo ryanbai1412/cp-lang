@@ -842,3 +842,46 @@ print(Int(big))
     let msg = trap.expect("expected U64ToInt overflow trap");
     assert!(msg.contains("does not fit in an `Int`"), "got: {msg}");
 }
+
+#[test]
+fn vm_closure_take_fed_yields_range_setminmax_reverse_and_float_ops() {
+    let src = "\
+fn evens(n: Int) -> yields Int:
+    for i in 0..n:
+        if i % 2 == 0:
+            yield i
+
+var got: List<Int> = []
+for x in evens(10):
+    got.push(x)
+    if x == 6: break
+got.reverse()
+var moved = got.take()
+var s: Set<Int> = Set<Int>()
+s.insert(30)
+s.insert(10)
+s.insert(20)
+let r: 1..=10 = 7
+let f = sqrt(F64(9))
+print(got.len, moved, s.min()!, s.max()!, r, bit_width(13), f > 2.5)
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "0 6 4 2 0 10 30 7 4 YES\n");
+
+    let range_trap = "\
+let x = 20
+let r: 1..=10 = x
+print(r)
+";
+    let (_, trap) = outcome(range_trap, "");
+    let msg = trap.expect("expected range trap");
+    assert!(msg.contains("is outside"), "got: {msg}");
+
+    let sqrt_trap = "\
+print(sqrt(F64(-1)))
+";
+    let (_, trap) = outcome(sqrt_trap, "");
+    let msg = trap.expect("expected sqrt negative trap");
+    assert!(msg.contains("sqrt("), "got: {msg}");
+}
