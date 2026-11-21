@@ -134,6 +134,7 @@ pub type Env = HashMap<String, i128>;
 pub fn eval(expr: &Expr, env: &Env) -> Option<i128> {
     match &expr.kind {
         ExprKind::Int(value) => Some(*value),
+        ExprKind::Char(c) => Some(i128::from(u32::from(*c))),
         ExprKind::Name(name) => env.get(name).copied(),
         ExprKind::Paren(inner) => eval(inner, env),
         ExprKind::Unary {

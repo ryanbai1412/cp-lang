@@ -868,3 +868,19 @@ fn the_stdlib_perm_and_tree_are_made_as_a_permutation_and_a_tree() {
         assert!(is_perm(&case.values[1], n) && is_tree(&case.values[2], n), "{case:?}");
     }
 }
+
+#[test]
+fn a_letter_domain_is_made_in_its_range_as_the_runtime_reads_it() {
+    // `cpl run` and the C++ both read a value of `'A'..'A' + k` as its code
+    // point today, so the cases are numbers too.
+    let src = "use std.seq.{Perm}\nlet k: 1..=26 = read()\ndomain L = 'A'..'A' + k\nlet c: L = read()\nlet p: Perm<L> = read()\nprint(c)\n";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..50 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).expect("a case");
+        let k = case.values[0].number().unwrap();
+        let letter = |v: &Value| matches!(v, Value::Int(c) if (65..65 + k).contains(c));
+        assert!(letter(&case.values[1]), "{case:?}");
+        let Value::Seq(p) = &case.values[2] else { panic!("{case:?}") };
+        assert!(p.len() == k as usize && p.iter().all(letter), "{case:?}");
+    }
+}
