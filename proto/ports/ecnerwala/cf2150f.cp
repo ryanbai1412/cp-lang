@@ -1,64 +1,60 @@
+// Codeforces 2150 F: Cycle Closing.
+// Take any spanning tree T of diameter D, and let L = ceil(D / 2).
+// Two operations close every missing edge into a cycle:
+//   - Operation 1 (path length 3): join the ends of every tree path j - i - k,
+//     making all vertices at tree distance 2 adjacent (one step can skip a vertex).
+//   - Operation 2 (path length L + 1): connect each remaining pair (i, j) by an
+//     L-step path. If `dist = t.dist(i, j) >= L`, skip `skip = dist - L`
+//     vertices by taking every other vertex on `p[..2 * skip]` then `p[2 * skip..]`.
+//     If `dist < L`, let `far` be the diameter end farther from `i` (so
+//     `dist(i, far) >= L`) and `m = t.median(i, j, far)`. Replace `m` with a
+//     detour over the first `stem_len = L - dist + 1` vertices of `m..far`:
+//     out on every other vertex, back on the rest.
+
 @!multitest
 let n: 3..=200 = read()
-let m: 2..=19_900 = read()
+let m: n - 1..=n * (n - 1) / 2 = read()
 domain V = 1..=n
-var adj: [Sym<V>]Bool = false
+let edges: [0..m](V, V) = read()
+var joined_by_edge: [Sym<V>]Bool = false
 var tree: [V]List<V> = []
 var dsu = Dsu<V>()
-repeat m:
-    let (u, v): (V, V) = read()
-    adj[u, v] = true
+for (u, v) in edges:
+    joined_by_edge[u, v] = true
     if dsu.unite(u, v):
-        for (x, y) in [(u, v), (v, u)]: tree[x].push(y)
+        tree[u].push(v)
+        tree[v].push(u)
+let t = Rooted(tree, V.first)
+let d = t.diameter()
+let L = ceil_div(d.len, 2)
 
-let T = Rooted(tree, V.first)
-let d = T.diameter()
+fn neighbour_pairs(i: V) -> List<(V, V)> =
+    [(j, k) for (a, j) in tree[i].items for (b, k) in tree[i].items if a < b]
+let skips = [[j, i, k] for i in V for (j, k) in neighbour_pairs(i) if not joined_by_edge[j, k]]
+fn joined(i: V, j: V) -> Bool = joined_by_edge[i, j] or t.dist(i, j) == 2
 
-print(2)
-print(3)
-var ops1: List<(V, V, V)> = []
-for i in V:
-    for j in tree[i]:
-        for k in tree[i] if j != k and not adj[j, k]:
-            adj[j, k] = true
-            ops1.push((j, i, k))
-print(ops1.len)
-for (a, b, c) in ops1: print(a, b, c)
+fn route(i: V, j: V) -> List<V>:
+    let p = t.path(i, j)
+    let dist = p.len - 1
+    if dist >= L:
+        let skip = dist - L
+        return [x for (z, x) in p[..2 * skip].items if z % 2 == 0] + p[2 * skip..]
+    let far = if t.dist(i, d.u) >= t.dist(i, d.v): d.u else: d.v
+    let meets = [t.lca(i, j), t.lca(i, far), t.lca(j, far)]
+    let mid = meets[meets.argmax(by: x => t.depth(x))!]
+    let stem_len = L - dist + 1
+    let stem = t.path(mid, far)[..stem_len]
+    let out = if mid == j: 1 else: 0
+    let there = [x for (z, x) in stem.items if z % 2 == out]
+    let back = [x for (z, x) in stem.items.rev if z % 2 != out]
+    let detour = there + back
+    let to_mid = t.path(i, mid)
+    to_mid[..to_mid.len - 1] + detour + t.path(mid, j)[1..]
 
-let path_len = ceil_div(d.len, 2)
-print(path_len + 1)
-print(count(not adj[i, j] for (i, j) in V.pairs))
-
-for i in V:
-    let far = if T.dist(i, d.u) >= T.dist(i, d.v): d.u else: d.v
-    for j in V.after(i) if not adj[i, j]:
-        var resp: List<V> = []
-        let pij = T.path(i, j)
-        let dij = pij.len - 1
-        if dij >= path_len:
-            var skip = dij - path_len
-            var cur = 0
-            repeat path_len:
-                resp.push(pij[cur])
-                if skip > 0:
-                    cur += 1
-                    skip -= 1
-                cur += 1
-            resp.push(pij[cur])
-        else:
-            var pif = T.path(i, far)
-            var pjf = T.path(j, far)
-            let extra = (pif.len + pjf.len - 2 - dij) / 2
-            let need = path_len - dij
-            let drop = extra - need
-            pif.truncate(pif.len - drop)
-            pjf.truncate(pjf.len - drop)
-            let keep = need + 1
-            let split = pif.len - keep
-            let extras = pif[split..]
-            let f = if pjf.len == keep: 1 else: 0
-            resp.extend(pif[..split])
-            for (z, x) in extras.items if z % 2 == f: resp.push(x)
-            for (z, x) in extras.items.rev if z % 2 != f: resp.push(x)
-            resp.extend(pjf[..pjf.len - keep].rev)
-        print(resp)
+let rest = [route(i, j) for (i, j) in V.pairs if not joined(i, j)]
+let ops = [(3, skips), (L + 1, rest)]
+print(ops.len)
+for (k, paths) in ops:
+    print(k)
+    print(paths.len)
+    for path in paths: print(path)
