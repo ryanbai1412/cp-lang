@@ -17,6 +17,8 @@ pub(super) struct RangeBounds {
 pub(super) enum RangeInfo {
     /// A scalar range-typed `Int` (e.g. `0..=1_000_000`, `0..P`).
     Scalar(RangeBounds),
+    /// An optional whose value carries `RangeInfo` (e.g. `?(0..2_147_483_648)`).
+    Opt(Box<RangeInfo>),
     /// An array or list whose elements carry `RangeInfo` (e.g. `[V]0..=1_000_000`, `List<0..=100>`).
     Elem(Box<RangeInfo>),
     /// A tuple or record whose fields may carry `RangeInfo`.
@@ -24,6 +26,21 @@ pub(super) enum RangeInfo {
 }
 
 impl RangeBounds {
+    pub(super) fn narrow_opt_layout(&self) -> Option<NarrowLayout> {
+        let (lo_min, hi_max) = self.limits()?;
+        (lo_min > i64::from(i32::MIN) && hi_max <= i64::from(i32::MAX)).then_some(NarrowLayout::OptI32)
+    }
+
+    fn limits(&self) -> Option<(i64, i64)> {
+        let lo_min = self
+            .lo_const
+            .or_else(|| self.lo.as_ref().and_then(expr_limits).map(|(lo, _)| lo))?;
+        let hi_max = self
+            .hi_const
+            .or_else(|| self.hi.as_ref().and_then(expr_limits).map(|(_, hi)| hi))?;
+        (lo_min <= hi_max).then_some((lo_min, hi_max))
+    }
+
     pub(super) fn narrow_width(&self) -> Option<IntWidth> {
         let lo_min = self
             .lo_const
@@ -85,6 +102,7 @@ impl RangeInfo {
     pub(super) fn narrow_value_layout(&self, ty: &Ty) -> Option<NarrowLayout> {
         match (self, ty) {
             (RangeInfo::Scalar(b), Ty::Int) => b.narrow_width().map(NarrowLayout::Int),
+            (RangeInfo::Opt(inner), Ty::Opt(t)) if **t == Ty::Int => inner.scalar()?.narrow_opt_layout(),
             (RangeInfo::Tuple(items), Ty::Tuple(ts)) if !ts.is_empty() && items.len() == ts.len() => {
                 let mut widths = Vec::with_capacity(ts.len());
                 for (item, t) in items.iter().zip(ts) {
@@ -254,6 +272,9 @@ impl<'a> Lowerer<'a> {
                     }
                 }
                 None
+            }
+            ast::TypeKind::Optional(inner) => {
+                self.range_info_from_ast(inner).map(|r| RangeInfo::Opt(Box::new(r)))
             }
             ast::TypeKind::Tuple(items) => {
                 let parts: Vec<Option<RangeInfo>> =
@@ -771,6 +792,17 @@ impl<'a> Lowerer<'a> {
         span: Span,
         out: &mut Vec<Stmt>,
     ) {
+        if let (Ty::Opt(_), AssignOp::Set, ExprKind::Some(_)) = (&place.ty, op, &value.kind) {
+            if let Some(RangeInfo::Opt(inner)) = self.place_range(&place) {
+                if let RangeInfo::Scalar(bounds) = *inner {
+                    let (ty, at) = (value.ty.clone(), value.span);
+                    let ExprKind::Some(x) = value.kind else { unreachable!() };
+                    let x = self.check_range(*x, &bounds, span);
+                    out.push(Stmt::Assign(place, op, Expr { kind: ExprKind::Some(Box::new(x)), ty, span: at }));
+                    return;
+                }
+            }
+        }
         let Some(bounds) = self.place_scalar_range(&place) else {
             out.push(Stmt::Assign(place, op, value));
             return;

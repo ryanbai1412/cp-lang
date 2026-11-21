@@ -411,8 +411,7 @@ impl<'p> Emitter<'p> {
                     .map(|(i, field)| {
                         let v = self.read(field).text;
                         match struct_id.and_then(|id| self.narrow_ints.get(&(id, i))) {
-                            Some(cpl_ir::IntWidth::U32) => format!("uint32_t({v})"),
-                            Some(cpl_ir::IntWidth::I32) => format!("int32_t({v})"),
+                            Some(w) => format!("{}({v})", w.cpp()),
                             None => v,
                         }
                     })

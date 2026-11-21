@@ -521,6 +521,102 @@ pub(crate) fn narrow_elems(
             }
         }
     }
+    // An unannotated `let` of a narrowed value starts narrow; any flow below
+    // that needs it wide undoes that. A local stored into element-wise, mutated
+    // or given a fresh value keeps its declared width, since those stores are
+    // not range-checked against the source's range.
+    let scopes: Vec<(ScopeId, &cpl_ir::Block)> = [(ScopeId::Main, &program.setup), (ScopeId::Main, &program.main)]
+        .into_iter()
+        .chain(program.fns.iter().enumerate().map(|(i, f)| (ScopeId::Fn(i), &f.body)))
+        .chain(program.closures.iter().enumerate().map(|(i, c)| (ScopeId::Closure(i), &c.body)))
+        .collect();
+    let mut stored: BTreeSet<ElemLoc> = BTreeSet::new();
+    for &(scope, body) in &scopes {
+        crate::walk::deep_stmts(body, &mut |stmt| {
+            if let Stmt::Assign(place, op, val) = stmt {
+                let root = match &place.kind {
+                    PlaceKind::Index(_, _) if matches!(val.kind, ExprKind::None) => None,
+                    PlaceKind::Index(base, _) => place_loc(scope, base),
+                    _ if *op != cpl_ir::AssignOp::Set
+                        || is_fresh_adaptable(val)
+                        || expr_loc(scope, val).is_none() =>
+                    {
+                        place_loc(scope, place)
+                    }
+                    _ => None,
+                };
+                stored.extend(root);
+            }
+        });
+        crate::walk::deep_exprs(body, &mut |e| match &e.kind {
+            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, ..) => stored.extend(place_loc(scope, place)),
+            _ => {}
+        });
+    }
+    loop {
+        let mut grew = false;
+        for &(scope, body) in &scopes {
+            crate::walk::deep_stmts(body, &mut |stmt| {
+                let (dst, val) = match stmt {
+                    Stmt::Let(slot, Some(val)) => (ElemLoc::Local(scope, *slot), val),
+                    Stmt::Assign(place, cpl_ir::AssignOp::Set, val)
+                        if matches!(place.kind, PlaceKind::Local(_) | PlaceKind::Global(_)) =>
+                    {
+                        match place_loc(scope, place) {
+                            Some(dst) => (dst, val),
+                            None => return,
+                        }
+                    }
+                    _ => return,
+                };
+                {
+                    if is_narrowable_seq(&val.ty) && !stored.contains(&dst) && !narrow.contains_key(&dst) {
+                        if let Some(w) = expr_loc(scope, val).and_then(|l| narrow.get(&l)).cloned() {
+                            narrow.insert(dst, w);
+                            grew = true;
+                        }
+                    }
+                }
+            });
+        }
+        if !grew {
+            break;
+        }
+    }
+    // Propagate outer widths into closure captures so closures capturing a narrowed
+    // array can stay narrow if all uses inside the closure are compatible.
+    fn place_loc(scope: ScopeId, place: &Place) -> Option<ElemLoc> {
+        match &place.kind {
+            PlaceKind::Global(g) => Some(ElemLoc::Global(*g)),
+            PlaceKind::Local(s) => Some(ElemLoc::Local(scope, *s)),
+            PlaceKind::Field(base, f) => match base.ty {
+                Ty::Struct(id) => Some(ElemLoc::Field(id, *f)),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    fn expr_loc(scope: ScopeId, e: &Expr) -> Option<ElemLoc> {
+        match &e.kind {
+            ExprKind::Global(g) => Some(ElemLoc::Global(*g)),
+            ExprKind::Local(s) => Some(ElemLoc::Local(scope, *s)),
+            ExprKind::Field(base, f) => match base.ty {
+                Ty::Struct(id) => Some(ElemLoc::Field(id, *f)),
+                _ => None,
+            },
+            ExprKind::Call(fid, _) => Some(ElemLoc::FnRet(*fid)),
+            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList | Builtin::Copy, args) => {
+                args.first().and_then(|a| expr_loc(scope, a))
+            }
+            ExprKind::Do(blk) => match blk.stmts.last() {
+                Some(Stmt::Give(inner)) => expr_loc(scope, inner),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     // Propagate outer layouts into closure captures so closures capturing a narrowed
     // container can stay narrow if all uses inside the closure are compatible.
     let mut cap_links: Vec<(ElemLoc, ElemLoc)> = Vec::new();

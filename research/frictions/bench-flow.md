@@ -103,6 +103,37 @@ Each section below is one piece of that, measured by editing the generated C++.
 - **General fix:** pick the optional's storage from the payload's range, as plain range
   types already do.
 - **Severity:** medium
+- **Status:** fixed: `?lo..hi` inside 31 bits is `cpl::OptI32` in lists, arrays and
+  their returns, and a store into it is range-checked (it was not, even at 8 bytes).
+  `matching` did not move (126 to 131 ms against 101 to 110 ms over runs): the two
+  entries below take what the 4 bytes gave.
+- **Area:** codegen
+
+## A narrow optional is widened to compare it
+
+- **Where:** `level[w] == level[u]! + 1` in `max_matching`'s search.
+- **What felt wrong:** each read of a `cpl::OptI32` element becomes `cpl::OptInt(...)`
+  before `==` and `!`, a select per read in the hot loop. Comparing the raw 4-byte
+  values instead takes `matching` from 129.6 to 124.9 ms (perf stat, 8 runs).
+- **Goal it hurts:** performance
+- **Ideal code:** as written.
+- **General fix:** compare two optionals of one payload at the narrower storage, and
+  read `x!` from the narrow value, without building the wide optional.
+- **Severity:** low
+- **Status:** open
+- **Area:** codegen
+
+## A domain with constant bounds has a runtime length
+
+- **Where:** `domain L = 0..100000` in `bench/flow/matching`; every static domain.
+- **What felt wrong:** `L_len` is a global set at the start of `solve`, so `seed % L.K`
+  is a division by a variable and every `u < L_len` loop reloads it. Emitting
+  `constexpr ll L_len = 100000` instead takes `matching` from 126.4 to 120.7 ms
+  (matched C++ 108.0 ms, whose `N` is a constant).
+- **Goal it hurts:** performance
+- **Ideal code:** as written.
+- **General fix:** a domain whose bounds are constants emits `constexpr` bounds.
+- **Severity:** medium
 - **Status:** open
 - **Area:** codegen
 
@@ -116,6 +147,7 @@ Each section below is one piece of that, measured by editing the generated C++.
 | `hungarian`, as emitted | 373 ms | 278 ms |
 | `hungarian`, plain `<=` loops | 270 ms | |
 | `matching` (Hopcroft-Karp), as emitted | 129 ms | 107 ms |
-| `matching`, 4-byte `level` | 121 ms | |
+| `matching`, 4-byte `level` (hand-edited) | 121 ms | |
+| `matching`, `cpl::OptI32` as emitted | 126 to 131 ms | 101 to 110 ms |
 
 Emitted C++ for `bench/flow/dinic.cp`: 14,119 B.

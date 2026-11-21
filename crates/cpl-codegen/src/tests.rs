@@ -455,6 +455,16 @@ print(s)
 }
 
 #[test]
+fn a_bounded_optional_list_is_stored_in_four_bytes() {
+    let code = cpp(
+        "fn f(n: Int) -> List<?(0..2_147_483_648)>:\n    var a: List<?(0..2_147_483_648)> = List.filled(n, none)\n    a[0] = n\n    return a\nlet n: Int = read()\nlet b = f(n)\nvar c: List<?(0..100)> = [none]\nvar d: List<?Int> = [none]\nprint(b[0] ?? -1, c[0] ?? -1, d[0] ?? -1)\n",
+    );
+    let decl = |ty: &str| code.lines().filter(|l| l.trim_start().starts_with(&format!("std::vector<{ty}> "))).count();
+    assert_eq!((decl("cpl::OptI32"), decl("cpl::OptInt")), (3, 1), "{code}");
+    assert!(code.contains(", 0, 2147483647, \"0..2_147_483_648\")"), "{code}");
+}
+
+#[test]
 fn unchecked_drops_domain_positions_but_keeps_range_stores() {
     let src = |block: &str| {
         format!(

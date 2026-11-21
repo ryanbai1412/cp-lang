@@ -613,6 +613,19 @@ using OptInt = Niche<ll, ll, (-0x7fffffffffffffffLL - 1)>;
 ",
     },
     Piece {
+        name: "niche_i32",
+        needs: &["niche", "niche_int"],
+        code: "\
+// `?lo..hi` inside an int32_t: INT32_MIN is `none`. Narrowing is spelled, widening silent.
+struct OptI32 : Niche<ll, int32_t, (-0x7fffffff - 1)> {
+    using Niche::Niche;
+    explicit OptI32(OptInt o) { if (o) raw = (int32_t)*o; }
+    OptI32& operator=(OptInt o) { raw = o ? (int32_t)*o : (-0x7fffffff - 1); return *this; }
+    operator OptInt() const { return *this ? OptInt(**this) : OptInt(); }
+};
+",
+    },
+    Piece {
         name: "pop",
         needs: &[],
         code: "\

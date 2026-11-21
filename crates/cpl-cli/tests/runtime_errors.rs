@@ -456,6 +456,16 @@ fn range_typed_stores_trap_in_interp_and_checked_cpp() {
             "10 is outside `0..=5`",
         ),
         (
+            "let k: Int = read()\nvar xs: List<?(0..100)> = [none, none]\nxs[1] = k\nprint(xs[1] ?? -1)\n",
+            "500\n",
+            "500 is outside `0..100`",
+        ),
+        (
+            "let k: Int = read()\nvar xs: List<?(0..2_147_483_648)> = [none]\nxs[0] = k\nprint(xs[0] ?? -1)\n",
+            "4294967296\n",
+            "4294967296 is outside `0..2_147_483_648`",
+        ),
+        (
             "let n: 1..=10 = read()\ndomain V = 0..n\nlet k: Int = read()\nvar d: [V]0..=1_000_000 = 0\nd[V(0)] = k\nprint(d[V(0)])\n",
             "3\n5000000000\n",
             "5000000000 is outside `0..=1_000_000`",

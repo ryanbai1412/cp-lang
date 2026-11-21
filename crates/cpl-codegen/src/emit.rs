@@ -260,7 +260,7 @@ impl<'p> Emitter<'p> {
         let cpp = cty(self.program, self.niches, ty);
         // A packed optional can be the type of an expression alone, so
         // what the file needs is noted where the type is written.
-        for (at, name) in ["cpl::OptPos", "cpl::OptBool", "cpl::OptChar", "cpl::OptTuple", "cpl::OptInt", "cpl::OptField"].iter().enumerate() {
+        for (at, name) in ["cpl::OptPos", "cpl::OptBool", "cpl::OptChar", "cpl::OptTuple", "cpl::OptInt", "cpl::OptField", "cpl::OptI32"].iter().enumerate() {
             if cpp.contains(name) {
                 self.niche_types.set(self.niche_types.get() | 1 << at);
             }
@@ -619,6 +619,13 @@ impl<'p> Emitter<'p> {
         layout: Option<&cpl_ir::NarrowLayout>,
     ) -> String {
         if let Some(l) = layout {
+            let mut leaf = l;
+            while let cpl_ir::NarrowLayout::Seq(inner) = leaf {
+                leaf = inner;
+            }
+            if *leaf == cpl_ir::NarrowLayout::OptI32 {
+                self.niche_types.set(self.niche_types.get() | 1 << 6);
+            }
             match ty {
                 Ty::Array { dims, elem } => {
                     if let Some(cell) = l.cpp_elem(elem) {
@@ -653,6 +660,7 @@ impl<'p> Emitter<'p> {
     pub fn narrow_cell_value(&self, text: &str, layout: &cpl_ir::NarrowLayout) -> String {
         match layout {
             cpl_ir::NarrowLayout::Int(w) => format!("{}({text})", w.cpp()),
+            cpl_ir::NarrowLayout::OptI32 => format!("cpl::OptI32({text})"),
             cpl_ir::NarrowLayout::Tuple(ws) => {
                 let parts: Vec<&str> = ws.iter().map(|w| w.cpp()).collect();
                 format!("std::tuple<{}>({text})", parts.join(", "))
@@ -1527,7 +1535,7 @@ impl<'p> Emitter<'p> {
         out.push_str(
             "// What the program below leans on.\nnamespace cpl {\nusing u8 = unsigned char;\n",
         );
-        for (at, piece) in ["niche", "niche_bool", "niche_char", "niche_tuple", "niche_int", "niche_field"].into_iter().enumerate() {
+        for (at, piece) in ["niche", "niche_bool", "niche_char", "niche_tuple", "niche_int", "niche_field", "niche_i32"].into_iter().enumerate() {
             if self.niche_types.get() & 1 << at != 0 {
                 self.need(piece);
             }
