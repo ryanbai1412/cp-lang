@@ -36,7 +36,35 @@ impl<'a> Checker<'a> {
             TypeKind::Optional(inner) => Ty::Optional(Box::new(self.resolve_type(inner))),
             TypeKind::Tuple(items) if items.is_empty() => Ty::Unit,
             TypeKind::Tuple(items) => {
-                Ty::Tuple(items.iter().map(|i| self.resolve_type(i)).collect())
+                let has_binder = items
+                    .iter()
+                    .any(|i| matches!(i.kind, TypeKind::DomainBinder(_)));
+                if has_binder {
+                    self.push_scope();
+                    let resolved = items
+                        .iter()
+                        .map(|i| match &i.kind {
+                            TypeKind::DomainBinder(name) => {
+                                let domain = Ty::Domain(name.text.clone());
+                                self.scopes.last_mut().unwrap().insert(
+                                    name.text.clone(),
+                                    Local {
+                                        ty: domain.clone(),
+                                        mutable: false,
+                                        span: name.span,
+                                        keyword: "domain",
+                                    },
+                                );
+                                domain
+                            }
+                            _ => self.resolve_type(i),
+                        })
+                        .collect();
+                    self.pop_scope();
+                    Ty::Tuple(resolved)
+                } else {
+                    Ty::Tuple(items.iter().map(|i| self.resolve_type(i)).collect())
+                }
             }
             TypeKind::Record(fields) => {
                 // `(domain C, comp: [V]C)`: the fresh domain is in scope
@@ -99,6 +127,7 @@ impl<'a> Checker<'a> {
                 name: "Gen".into(),
                 args: vec![self.resolve_type(elem)],
             },
+            TypeKind::DomainBinder(name) => Ty::Domain(name.text.clone()),
             TypeKind::Value(_) | TypeKind::NewDomain => Ty::Unknown,
             TypeKind::Error => Ty::Error,
         }
@@ -979,20 +1008,31 @@ pub(crate) fn pattern_types(pat: &ast::Pattern, ty: &Ty, f: &mut dyn FnMut(&str,
     use ast::PatternKind as P;
     match &pat.kind {
         P::Name(name) => f(name, ty.clone()),
+        P::Domain(name) => f(&name.text, Ty::Domain(name.text.clone())),
         P::Tuple(items) => {
+            let mut renames: Vec<(String, String)> = Vec::new();
             for (i, item) in items.iter().enumerate() {
-                let item_ty = match ty {
+                let mut item_ty = match ty {
                     Ty::Tuple(tys) if tys.len() == items.len() => tys[i].clone(),
                     Ty::Record(fields) if fields.len() == items.len() => fields[i].1.clone(),
                     Ty::Error => Ty::Error,
                     _ => Ty::Unknown,
                 };
+                for (from, to) in &renames {
+                    item_ty = item_ty.rename_domain(from, to);
+                }
                 match domain_binding(item) {
-                    // `let (C, comp) = scc(..)`: the domain the fn made.
-                    // Out of a tuple this checker can't see into, the
-                    // capitalized name is still a domain.
-                    Some(name) if item_ty == Ty::Unknown => f(name, Ty::Domain(name.to_string())),
-                    Some(name) => f(name, item_ty),
+                    // `let (domain P, part) = f(..)` or `let (C, comp) = scc(..)`:
+                    // bind the fresh domain under the caller's name and rename it
+                    // across the sibling tuple items.
+                    Some(name) => {
+                        if let Ty::Domain(orig) = &item_ty {
+                            if orig != name {
+                                renames.push((orig.clone(), name.to_string()));
+                            }
+                        }
+                        f(name, Ty::Domain(name.to_string()));
+                    }
                     None => pattern_types(item, &item_ty, f),
                 }
             }
@@ -1001,10 +1041,11 @@ pub(crate) fn pattern_types(pat: &ast::Pattern, ty: &Ty, f: &mut dyn FnMut(&str,
     }
 }
 
-/// A capitalized name alone inside a tuple pattern binds a domain:
-/// `let (C, comp) = scc(..)`.
+/// `domain P` or a capitalized name alone inside a tuple pattern binds a domain:
+/// `let (domain P, part) = f(..)` or `let (C, comp) = scc(..)`.
 pub(crate) fn domain_binding(pat: &ast::Pattern) -> Option<&str> {
     match &pat.kind {
+        ast::PatternKind::Domain(name) => Some(&name.text),
         ast::PatternKind::Variant { path, args } if path.len() == 1 && args.is_empty() => {
             Some(&path[0].text)
         }

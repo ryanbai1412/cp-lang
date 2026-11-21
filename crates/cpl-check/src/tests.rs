@@ -1999,7 +1999,6 @@ fn an_unreadable_character_is_reported_where_it_is() {
     assert_eq!(diags[0].code.0, "E0004", "{diags:#?}");
     assert_eq!(diags[0].span, Span::new(4, 5));
 }
-
 #[test]
 fn fields_loops_check_each_field_and_refuse_what_has_none() {
     let src = "struct P(x: Int, s: Str)\nlet p = P(1, \"a\")\nfor f in fields(p):\n    print(f + 1)\n";
@@ -2060,4 +2059,53 @@ impl<T: Add> Add for ?T:
 impl<T: Eq> Eq for ?T
 ";
     assert!(codes(impl_src).is_empty(), "{:#?}", check(impl_src));
+}
+
+#[test]
+fn fresh_domain_escapes_are_rejected_with_e0313() {
+    let cases = [
+        // Returning a local fresh domain without an existential return type.
+        "fn bad(k: Int) -> [0..k]Int:\n    domain Local = 0..k\n    let a: [Local]Int = 0\n    a\n",
+        // Returning a value of a local fresh domain from a function.
+        "fn bad(k: Int):\n    domain Local = 0..k\n    return Local(0)\n",
+        // Assigning a fresh-domain value to an outer variable.
+        "var saved: Int = 0\nif true:\n    domain Inner = 0..5\n    let v = Inner(0)\n    var outer: ?Inner = none\n    outer = v\n",
+        // Storing a fresh-domain value into an outer list.
+        "var bag = []\nif true:\n    domain Inner = 0..5\n    bag.push(Inner(0))\n",
+        // Capturing a fresh-domain value in a returned closure.
+        "fn make(k: Int) -> () -> Int:\n    domain Local = 0..k\n    let a: [Local]Int = 0\n    () => a[Local(0)]\n",
+    ];
+    for (idx, src) in cases.iter().enumerate() {
+        let diags = check(src);
+        let codes: Vec<&str> = diags.iter().map(|d| d.code.0).collect();
+        if idx == 2 {
+            // `outer` is declared inside the same `if` block as `Inner`; no escape.
+            assert!(!codes.contains(&"E0313"), "case {idx}: {diags:#?}");
+        } else {
+            assert!(codes.contains(&"E0313"), "case {idx} expected E0313, got {diags:#?}");
+        }
+    }
+}
+
+#[test]
+fn existential_domain_returns_and_runtime_read_fields_typecheck() {
+    let src = "\
+fn make_seq(k: Int) -> (domain P, [P]Int):
+    domain Local = 0..k
+    let a: [Local]Int = 0
+    (Local, a)
+
+fn make_pair(a: Int, b: Int) -> (domain A, domain B, [A]Int, [B]Int):
+    domain X = 0..a
+    domain Y = 0..b
+    (X, Y, [X] i => i.to_idx, [Y] j => j.to_idx)
+
+domain V = read(1..=100)
+let m: 0..=100 = read()
+let edges: [0..m](u: V, v: V, w: 0..=m) = read()
+let (domain Q, vals) = make_seq(3)
+let (domain A, domain B, xs, ys) = make_pair(2, 4)
+print(edges.len, Q.count, vals[Q(0)], A.count, B.count, xs[A(0)], ys[B(0)])
+";
+    assert_eq!(check(src), vec![]);
 }

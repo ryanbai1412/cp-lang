@@ -342,6 +342,14 @@ ERROR_CATALOG: list[dict] = [
         "var x = 0\nfn bump() -> Int:\n    x += 1\n    return x\ndebug(bump())",
         "var x = 0\nx += 1\ndebug(x)\nprint(x)",
     ),
+    _entry(
+        "E0313",
+        "Fresh domain escapes its declaring block",
+        "A value whose type mentions a local `domain` cannot escape the block or function that declared it.",
+        "Declare the domain in an enclosing scope or return it explicitly with an existential return type `-> (domain P, [P]Int)` and unpack it at the call site with `let (domain P, part) = f(..)`.",
+        "fn bad(k: Int) -> [0..k]Int:\n    domain Local = 0..k\n    let a: [Local]Int = 0\n    return a",
+        "fn good(k: Int) -> (domain P, [P]Int):\n    domain Local = 0..k\n    let a: [Local]Int = 0\n    return (Local, a)\nlet (domain Q, vals) = good(3)\nprint(Q.count, vals[Q(0)])",
+    ),
     # --- E04xx: Ownership & Mutability ---
     _entry(
         "E0401",

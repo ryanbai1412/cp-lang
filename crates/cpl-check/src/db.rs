@@ -974,6 +974,12 @@ fn stmt_decls(stmt: &ast::Stmt, out: &mut Vec<Decl>) {
                 kind: DeclKind::Value,
                 public: false,
             }),
+            ast::PatternKind::Domain(name) => out.push(Decl {
+                name: name.text.clone(),
+                span: name.span,
+                kind: DeclKind::Domain,
+                public: false,
+            }),
             // `let LIM = 100`: a capitalized name on its own is a value
             // (or a domain, when the value is one).
             ast::PatternKind::Variant { path, args } if path.len() == 1 && args.is_empty() => {

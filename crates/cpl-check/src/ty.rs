@@ -261,6 +261,99 @@ impl Ty {
         }
     }
 
+    /// Replaces every mention of domain `from` (and derived domains like
+    /// `from.bounds`) with `to`.
+    pub fn rename_domain(&self, from: &str, to: &str) -> Ty {
+        if from == to {
+            return self.clone();
+        }
+        let rename_name = |name: &str| -> Option<String> {
+            if name == from {
+                Some(to.to_string())
+            } else {
+                name.strip_prefix(from)
+                    .and_then(|r| r.strip_prefix('.'))
+                    .map(|rest| format!("{to}.{rest}"))
+            }
+        };
+        self.map(&mut |ty| match ty {
+            Ty::Pos(name) => rename_name(name).map(Ty::Pos),
+            Ty::Domain(name) => rename_name(name).map(Ty::Domain),
+            _ => None,
+        })
+    }
+
+    /// Base domain names mentioned anywhere in this type (stripping `.bounds`/`.subsets`).
+    pub fn mentioned_domains(&self) -> Vec<String> {
+        let mut out = Vec::new();
+        self.collect_domains(&mut out);
+        out
+    }
+
+    fn collect_domains(&self, out: &mut Vec<String>) {
+        let mut push = |name: &str| {
+            let base = name.split('.').next().unwrap_or(name);
+            if !base.is_empty() && !out.iter().any(|existing| existing == base) {
+                out.push(base.to_string());
+            }
+        };
+        match self {
+            Ty::Pos(name) | Ty::Domain(name) => push(name),
+            Ty::Array { index, elem } => {
+                for idx in index {
+                    idx.collect_domains(out);
+                }
+                elem.collect_domains(out);
+            }
+            Ty::Optional(inner) => inner.collect_domains(out),
+            Ty::Tuple(items) => {
+                for item in items {
+                    item.collect_domains(out);
+                }
+            }
+            Ty::Record(fields) => {
+                for (_, ty) in fields {
+                    ty.collect_domains(out);
+                }
+            }
+            Ty::Named { args, .. } => {
+                for arg in args {
+                    arg.collect_domains(out);
+                }
+            }
+            Ty::Fn { params, ret } => {
+                for p in params {
+                    p.ty.collect_domains(out);
+                }
+                ret.collect_domains(out);
+            }
+            _ => {}
+        }
+    }
+
+    /// Existential domain names introduced by a return type such as
+    /// `(domain P, [P]Int)` or `(domain C, comp: [V]C)`.
+    pub fn existential_domains(&self) -> Vec<String> {
+        match self {
+            Ty::Domain(name) => vec![name.clone()],
+            Ty::Tuple(items) => items
+                .iter()
+                .filter_map(|t| match t {
+                    Ty::Domain(name) => Some(name.clone()),
+                    _ => None,
+                })
+                .collect(),
+            Ty::Record(fields) => fields
+                .iter()
+                .filter_map(|(_, t)| match t {
+                    Ty::Domain(name) => Some(name.clone()),
+                    _ => None,
+                })
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
+
     /// The type with each type parameter in `bindings` replaced by its
     /// type: `[D]T` with `D = V, T = Int` is `[V]Int`.
     pub fn subst(&self, bindings: &Bindings) -> Ty {

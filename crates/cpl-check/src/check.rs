@@ -98,8 +98,8 @@ pub(crate) struct Checker<'a> {
     /// checked.
     steps: cpl_syntax::order::Steps,
     refs: Vec<GlobalRef>,
-    /// Name and return type of each enclosing fn.
-    fns: Vec<(String, Ty, bool)>,
+    /// Name, return type, whether declared, and scope depth at fn entry.
+    fns: Vec<(String, Ty, bool, usize)>,
     /// For each of `fns`: whether its body has given a value so far.
     gives: Vec<bool>,
     /// Inside a fn signature or body, where a single capital letter is a
@@ -209,6 +209,122 @@ impl<'a> Checker<'a> {
 
     fn local(&self, name: &str) -> Option<&Local> {
         self.scopes.iter().rev().find_map(|scope| scope.get(name))
+    }
+
+    /// Scope depth (0-based) and declaration span of a block-local `domain`, if any.
+    pub(crate) fn domain_depth(&self, name: &str) -> Option<(usize, Span)> {
+        self.scopes.iter().enumerate().rev().find_map(|(depth, scope)| {
+            scope
+                .get(name)
+                .filter(|loc| loc.keyword == "domain")
+                .map(|loc| (depth, loc.span))
+        })
+    }
+
+    /// Scope depth where `name` was declared, or `0` if top-level/global.
+    pub(crate) fn var_depth(&self, name: &str) -> usize {
+        self.scopes
+            .iter()
+            .enumerate()
+            .rev()
+            .find_map(|(depth, scope)| scope.contains_key(name).then_some(depth))
+            .unwrap_or(0)
+    }
+
+    /// Reports an error if `ty` mentions a fresh domain declared deeper than
+    /// `max_depth` (and not listed in `allowed`).
+    pub(crate) fn check_domain_escape(
+        &mut self,
+        ty: &Ty,
+        max_depth: usize,
+        at: Span,
+        how: &str,
+        allowed: &[String],
+        in_fn_return: bool,
+    ) {
+        for d in ty.mentioned_domains() {
+            if allowed.iter().any(|a| a == &d) {
+                continue;
+            }
+            if let Some((decl_depth, decl_span)) = self.domain_depth(&d) {
+                if decl_depth > max_depth {
+                    let msg = format!(
+                        "a value of fresh domain `{d}` cannot escape its declaring block ({how})"
+                    );
+                    if let Some(diag) = self.error(codes::DOMAIN_ESCAPES, at, msg) {
+                        diag.labels.push(cpl_diag::Label {
+                            span: decl_span,
+                            message: format!("domain `{d}` is declared here"),
+                        });
+                        diag.help = Some(if in_fn_return {
+                            format!(
+                                "return it existentially as `-> (domain {d}, ...)` or declare `domain {d}` in an outer scope"
+                            )
+                        } else {
+                            format!(
+                                "declare `domain {d}` in an outer scope if its values need to live past this block"
+                            )
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    /// Checks both `ty` and any local variables captured by a lambda expression
+    /// against `max_depth`.
+    pub(crate) fn check_expr_domain_escape(
+        &mut self,
+        expr: &cpl_syntax::ast::Expr,
+        ty: &Ty,
+        max_depth: usize,
+        how: &str,
+        allowed: &[String],
+        in_fn_return: bool,
+    ) {
+        self.check_domain_escape(ty, max_depth, expr.span, how, allowed, in_fn_return);
+        if let cpl_syntax::ast::ExprKind::Lambda { body, .. } = &expr.kind {
+            let mut names = Vec::new();
+            collect_expr_names(body, &mut names);
+            for (name, span) in names {
+                if let Some(local) = self.local(&name) {
+                    let local_ty = local.ty.clone();
+                    self.check_domain_escape(
+                        &local_ty,
+                        max_depth,
+                        span,
+                        &format!("captured in a closure {how}"),
+                        allowed,
+                        in_fn_return,
+                    );
+                }
+            }
+        }
+    }
+
+    /// Checks whether a mutating store call (`outer.push(x)`, `outer.insert(k, v)`,
+    /// `outer.set(...)`, `outer.add(x)`) stores a value mentioning a fresh domain
+    /// declared inside a deeper block than the receiver's root variable.
+    pub(crate) fn check_store_domain_escape(
+        &mut self,
+        callee: &cpl_syntax::ast::Expr,
+        args: &[cpl_syntax::ast::Arg],
+    ) {
+        let cpl_syntax::ast::ExprKind::Field { base, name } = &callee.kind else {
+            return;
+        };
+        if !matches!(name.text.as_str(), "push" | "insert" | "set" | "add") {
+            return;
+        }
+        let Some((root, _)) = Self::root_name(base) else {
+            return;
+        };
+        let target_depth = self.var_depth(root);
+        let how = format!("stored in `{root}` from an outer scope");
+        for arg in args {
+            let arg_ty = self.quietly(|c| c.infer(&arg.value));
+            self.check_expr_domain_escape(&arg.value, &arg_ty, target_depth, &how, &[], false);
+        }
     }
 
     fn declare(&mut self, name: &str, span: Span, ty: Ty, mutable: bool, keyword: &'static str) {
@@ -496,6 +612,19 @@ fn edit_distance(a: &str, b: &str) -> usize {
         }
     }
     rows[a.len()][b.len()]
+}
+
+fn collect_expr_names(expr: &cpl_syntax::ast::Expr, out: &mut Vec<(String, Span)>) {
+    use cpl_syntax::visit::{walk_expr, Visitor};
+    struct NameCollector<'a>(&'a mut Vec<(String, Span)>);
+    impl<'a> Visitor for NameCollector<'a> {
+        fn expr(&mut self, expr: &cpl_syntax::ast::Expr) {
+            if let cpl_syntax::ast::ExprKind::Name(name) = &expr.kind {
+                self.0.push((name.clone(), expr.span));
+            }
+        }
+    }
+    walk_expr(expr, &mut NameCollector(out));
 }
 
 #[cfg(test)]

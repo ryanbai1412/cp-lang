@@ -26,6 +26,11 @@ impl<'a> Parser<'a> {
                 self.bump();
                 PatternKind::Wildcard
             }
+            T::Domain => {
+                self.bump();
+                let name = self.expect_name("a domain name after `domain`");
+                PatternKind::Domain(name)
+            }
             T::Ident if self.text().starts_with(|c: char| c.is_ascii_uppercase()) => {
                 let mut path = vec![self.name()];
                 while self.at(T::Dot) && self.peek_n(1) == T::Ident {

@@ -28,6 +28,7 @@ impl<'a> Checker<'a> {
         self.sort_key_uses(callee, args);
         self.debug_changes(callee, args);
         self.no_escape_args(callee, &callee_ty, args);
+        self.check_store_domain_escape(callee, args);
         self.mutates_view(call, callee);
         self.mutates_self(callee);
         receiver.unwrap_or(ty)

@@ -774,6 +774,12 @@ impl<'p> Emitter<'p> {
             }
             fns.push_str(&format!("\n{signature} {{\n"));
             self.indent = 1;
+            for d in program.fn_guarded_domains(&f.ret, &f.body) {
+                self.need("dom_guard");
+                let dn = ident(&program.domains[d]);
+                let g = self.temp();
+                fns.push_str(&format!("    cpl::DomGuard {g}({dn}_lo, {dn}_len);\n"));
+            }
             self.hoisted_decls(&mut fns, f.params.len());
             self.block(&f.body, &mut fns);
             fns.push_str("}\n");

@@ -290,6 +290,7 @@ fn run_io(
         program,
         globals: vec![Value::Unit; program.globals.len()],
         domains: vec![(0, 0); program.domains.len()],
+        saved_domains: Vec::new(),
         stack: Vec::new(),
         base: 0,
         input: match io.input {
@@ -393,6 +394,8 @@ struct Interp<'p, 'o> {
     globals: Vec<Value>,
     /// First label and size of each domain, once it is declared.
     domains: Vec<(i64, i64)>,
+    /// Saved `(domain_id, (lo, len))` entries for recursive/block-scoped restore.
+    saved_domains: Vec<(cpl_ir::DomainId, (i64, i64))>,
     /// Locals of every active call; `base` is where the current call's start.
     stack: Vec<Value>,
     base: usize,
@@ -2221,7 +2224,15 @@ impl<'p, 'o> Interp<'p, 'o> {
             self.fed_loops.push(Fed { callee: base, ..fed });
         }
         let in_closure = std::mem::replace(&mut self.in_closure, false);
+        let dom_mark = self.saved_domains.len();
+        for d in self.program.fn_guarded_domains(&f.ret, &f.body) {
+            self.saved_domains.push((d, self.domains[d]));
+        }
         let mut flow = self.block(&f.body);
+        while self.saved_domains.len() > dom_mark {
+            let (id, prev) = self.saved_domains.pop().unwrap();
+            self.domains[id] = prev;
+        }
         self.in_closure = in_closure;
         if let (true, Some(tracer)) = (wanted, &mut self.tracer) {
             tracer.inside -= 1;
@@ -2287,7 +2298,15 @@ impl<'p, 'o> Interp<'p, 'o> {
         self.frame_locals.push(&def.locals);
         self.call_frames.push(("<closure>", span));
         let in_closure = std::mem::replace(&mut self.in_closure, true);
+        let dom_mark = self.saved_domains.len();
+        for d in self.program.fn_guarded_domains(&def.ret, &def.body) {
+            self.saved_domains.push((d, self.domains[d]));
+        }
         let flow = self.block(&def.body);
+        while self.saved_domains.len() > dom_mark {
+            let (id, prev) = self.saved_domains.pop().unwrap();
+            self.domains[id] = prev;
+        }
         self.in_closure = in_closure;
         self.frame_locals.pop();
         self.base = saved;
@@ -2611,7 +2630,15 @@ impl<'p, 'o> Interp<'p, 'o> {
         let saved = std::mem::replace(&mut self.base, base);
         self.frame_locals.push(&f.locals);
         self.call_frames.push((f.name.as_str(), span));
+        let dom_mark = self.saved_domains.len();
+        for d in self.program.fn_guarded_domains(&f.ret, &f.body) {
+            self.saved_domains.push((d, self.domains[d]));
+        }
         let flow = self.block(&f.body);
+        while self.saved_domains.len() > dom_mark {
+            let (id, prev) = self.saved_domains.pop().unwrap();
+            self.domains[id] = prev;
+        }
         self.frame_locals.pop();
         self.base = saved;
         let flow = flow?;

@@ -289,7 +289,8 @@ impl<'a> Checker<'a> {
                     self.bind(param, &Ty::Unknown, false, "param");
                 }
                 // A lambda's `return` and trailing value belong to the lambda.
-                self.fns.push((String::new(), Ty::Unknown, false));
+                let lam_depth = self.scopes.len();
+                self.fns.push((String::new(), Ty::Unknown, false, lam_depth));
                 self.branch += 1;
                 self.infer(body);
                 self.branch -= 1;
@@ -478,7 +479,10 @@ impl<'a> Checker<'a> {
                 }
                 PatternKind::Or(pats) => pats.iter().try_for_each(|p| named(p, variants, out)),
                 PatternKind::Literal(_) | PatternKind::Tuple(_) | PatternKind::Variant { .. } => Some(()),
-                PatternKind::Wildcard | PatternKind::Name(_) | PatternKind::Error => None,
+                PatternKind::Wildcard
+                | PatternKind::Name(_)
+                | PatternKind::Domain(_)
+                | PatternKind::Error => None,
             }
         }
         let mut seen = Vec::new();

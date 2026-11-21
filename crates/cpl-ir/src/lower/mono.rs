@@ -972,7 +972,7 @@ impl<'a> Lowerer<'a> {
                 decl: self.dummy_fn_decl(),
                 offset: tpl_offset,
                 is_generator: false,
-                new_domain_slot: None,
+                new_domain_slots: Vec::new(),
                 state: State::Done,
                 asked_at: self.asked_at,
             });
@@ -2659,7 +2659,10 @@ fn type_names(ty: &ast::Type, name: &str) -> bool {
         ast::TypeKind::Record(fields) => fields.iter().any(|(_, t)| type_names(t, name)),
         ast::TypeKind::Fn { params, ret } => params.iter().any(|p| type_names(p, name)) || type_names(ret, name),
         ast::TypeKind::Value(e) => matches!(&e.kind, ast::ExprKind::Name(n) if n == name),
-        ast::TypeKind::Range { .. } | ast::TypeKind::NewDomain | ast::TypeKind::Error => false,
+        ast::TypeKind::Range { .. }
+        | ast::TypeKind::NewDomain
+        | ast::TypeKind::DomainBinder(_)
+        | ast::TypeKind::Error => false,
     }
 }
 

@@ -41,6 +41,23 @@ impl<'a> Checker<'a> {
         self.push_scope();
         let mark = self.lend_mark();
         let last = self.stmts(&block.stmts, false);
+        if self.scopes.len() >= 2 {
+            let outer_depth = self.scopes.len() - 2;
+            if let Some(Stmt {
+                kind: StmtKind::Expr(expr),
+                ..
+            }) = block.stmts.last()
+            {
+                self.check_expr_domain_escape(
+                    expr,
+                    &last,
+                    outer_depth,
+                    "returned from its declaring block",
+                    &[],
+                    false,
+                );
+            }
+        }
         self.lend_reset(mark);
         self.pop_scope();
         last
@@ -81,13 +98,18 @@ impl<'a> Checker<'a> {
     /// Binds the names in `pat` to parts of a value of type `ty`.
     pub(crate) fn bind(&mut self, pat: &Pattern, ty: &Ty, mutable: bool, keyword: &'static str) {
         match &pat.kind {
-            PatternKind::Name(_) | PatternKind::Tuple(_) => {
+            PatternKind::Name(_) | PatternKind::Domain(_) | PatternKind::Tuple(_) => {
                 let mut names = Vec::new();
                 pattern_types(pat, ty, &mut |name, ty| names.push((name.to_string(), ty)));
                 let mut spans = Vec::new();
                 name_spans(pat, &mut spans);
                 for ((name, ty), span) in names.into_iter().zip(spans) {
-                    self.declare(&name, span, ty, mutable, keyword);
+                    let kw = if matches!(ty, Ty::Domain(_)) {
+                        "domain"
+                    } else {
+                        keyword
+                    };
+                    self.declare(&name, span, ty, mutable, kw);
                 }
             }
             PatternKind::Variant { path, args } => {
@@ -709,6 +731,9 @@ impl<'a> Checker<'a> {
                 self.require_mutable(target, "assigned");
                 self.check_access(target, true);
                 if let Some((root, _)) = Self::root_name(target) {
+                    let target_depth = self.var_depth(root);
+                    let how = format!("assigned to `{root}` from an outer scope");
+                    self.check_expr_domain_escape(value, &value_ty, target_depth, &how, &[], false);
                     self.drop_facts(&[root.to_string()]);
                 }
                 if *op == AssignOp::Set {
@@ -865,7 +890,7 @@ impl<'a> Checker<'a> {
 
     /// Checks a returned value against the enclosing fn's declared type.
     fn returns(&mut self, value: &Expr, value_ty: &Ty) {
-        let Some((name, ret, declared)) = self.fns.last().cloned() else {
+        let Some((name, mut ret, declared, fn_depth)) = self.fns.last().cloned() else {
             return;
         };
         // `print(..)` is checked loosely, as a call of unknown type: it
@@ -875,6 +900,68 @@ impl<'a> Checker<'a> {
         if let (Some(gives), false) = (self.gives.last_mut(), *value_ty == Ty::Unit || prints) {
             *gives = true;
         }
+        // Existential domains declared in the return type may escape.
+        let mut allowed = ret.existential_domains();
+        // A returned user-defined struct that carries a fresh domain as a type
+        // argument (e.g. `Compressed<D, T>`, `Rooted<V, P>`) packs that domain
+        // existentially as a value-owned domain (`xs.D`, `t.Pre`).
+        if let Ty::Named { name: sname, args } = value_ty {
+            if matches!(self.env.global(sname).as_deref(), Some(Def::Struct { .. })) {
+                for arg in args {
+                    if let Ty::Pos(d) | Ty::Domain(d) = arg {
+                        allowed.push(d.clone());
+                    }
+                }
+            }
+        }
+        // If `ret` has existential `domain P` slots and `value_ty` returns a local
+        // domain `Q` in that slot, rename `P -> Q` for type checking and allow `Q`.
+        if declared {
+            let mut pairs: Vec<(String, String)> = Vec::new();
+            match (&ret, value_ty) {
+                (Ty::Domain(sig_d), Ty::Domain(val_d)) if sig_d != val_d => {
+                    pairs.push((sig_d.clone(), val_d.clone()));
+                }
+                (Ty::Tuple(rt), Ty::Tuple(vt)) => {
+                    for (r, v) in rt.iter().zip(vt.iter()) {
+                        if let (Ty::Domain(sig_d), Ty::Domain(val_d)) = (r, v) {
+                            if sig_d != val_d {
+                                pairs.push((sig_d.clone(), val_d.clone()));
+                            }
+                        }
+                    }
+                }
+                (Ty::Record(rf), Ty::Record(vf)) => {
+                    for ((_, r), (_, v)) in rf.iter().zip(vf.iter()) {
+                        if let (Ty::Domain(sig_d), Ty::Domain(val_d)) = (r, v) {
+                            if sig_d != val_d {
+                                pairs.push((sig_d.clone(), val_d.clone()));
+                            }
+                        }
+                    }
+                }
+                (Ty::Record(rf), Ty::Tuple(vt)) => {
+                    for ((_, r), v) in rf.iter().zip(vt.iter()) {
+                        if let (Ty::Domain(sig_d), Ty::Domain(val_d)) = (r, v) {
+                            if sig_d != val_d {
+                                pairs.push((sig_d.clone(), val_d.clone()));
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+            for (sig_d, val_d) in pairs {
+                allowed.push(val_d.clone());
+                ret = ret.rename_domain(&sig_d, &val_d);
+            }
+        }
+        let how = if name.is_empty() {
+            "returned from closure".to_string()
+        } else {
+            format!("returned from `{name}`")
+        };
+        self.check_expr_domain_escape(value, value_ty, fn_depth, &how, &allowed, !name.is_empty());
         if !declared {
             return;
         }
@@ -1218,10 +1305,12 @@ impl<'a> Checker<'a> {
             f.ret.as_ref().map(|t| &t.kind),
             Some(ast::TypeKind::Yields(_))
         );
+        let fn_depth = self.scopes.len().saturating_sub(1);
         self.fns.push((
             f.name.text.clone(),
             (**ret).clone(),
             f.ret.is_some() && !generator,
+            fn_depth,
         ));
         self.gives.push(false);
         // A fn body knows nothing of what is lent or known where the fn
@@ -1239,8 +1328,12 @@ impl<'a> Checker<'a> {
             }
             match &f.body {
                 FnBody::Block(block) => {
-                    let ty = c.block(block);
-                    // The last expression is the fn's value.
+                    c.push_scope();
+                    let mark = c.lend_mark();
+                    let ty = c.stmts(&block.stmts, false);
+                    // The last expression is the fn's value. Check returns before
+                    // popping the fn body scope so local domain declarations are
+                    // still visible for escape checking.
                     if let Some(Stmt {
                         kind: StmtKind::Expr(last),
                         ..
@@ -1255,6 +1348,8 @@ impl<'a> Checker<'a> {
                             c.no_escape(last, "returning it");
                         }
                     }
+                    c.lend_reset(mark);
+                    c.pop_scope();
                 }
                 FnBody::Expr(expr) => {
                     let ty = c.infer(expr);
@@ -1294,11 +1389,15 @@ fn memo_of(stmt: &Stmt) -> Option<Span> {
 fn name_spans(pat: &Pattern, out: &mut Vec<Span>) {
     match &pat.kind {
         PatternKind::Name(_) => out.push(pat.span),
+        PatternKind::Domain(name) => out.push(name.span),
         PatternKind::Tuple(items) => {
             for item in items {
-                match super::types::domain_binding(item) {
-                    Some(_) => out.push(item.span),
-                    None => name_spans(item, out),
+                match &item.kind {
+                    PatternKind::Domain(name) => out.push(name.span),
+                    _ => match super::types::domain_binding(item) {
+                        Some(_) => out.push(item.span),
+                        None => name_spans(item, out),
+                    },
                 }
             }
         }

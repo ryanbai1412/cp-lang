@@ -61,22 +61,70 @@ impl<'a> Parser<'a> {
             }
             T::LParen => {
                 self.bump();
-                if self.at(T::Domain) || self.at(T::Ident) && self.peek_n(1) == T::Colon {
-                    let fields = self.comma_list(T::RParen, "the record type", |p| {
-                        // `(domain C, comp: [V]C)`: a fresh domain for the caller.
+                if self.at(T::Domain) {
+                    enum Item {
+                        Dom(Name, Span),
+                        Named(Name, Type),
+                        Pos(Type),
+                    }
+                    let items = self.comma_list(T::RParen, "the tuple or record type", |p| {
                         if p.at(T::Domain) {
                             let start = p.start();
                             p.bump();
                             let name = p.expect_name("a domain name after `domain`");
                             let span = p.span_from(start);
-                            return (
-                                name,
-                                Type {
-                                    kind: TypeKind::NewDomain,
+                            Item::Dom(name, span)
+                        } else if p.at(T::Ident) && p.peek_n(1) == T::Colon {
+                            let name = p.name();
+                            p.bump();
+                            Item::Named(name, p.ty())
+                        } else {
+                            Item::Pos(p.ty())
+                        }
+                    });
+                    let has_named = items.iter().any(|i| matches!(i, Item::Named(..)));
+                    if has_named {
+                        let fields = items
+                            .into_iter()
+                            .enumerate()
+                            .map(|(idx, item)| match item {
+                                Item::Dom(name, span) => (
+                                    name,
+                                    Type {
+                                        kind: TypeKind::NewDomain,
+                                        span,
+                                    },
+                                ),
+                                Item::Named(name, ty) => (name, ty),
+                                Item::Pos(ty) => (
+                                    Name {
+                                        text: idx.to_string(),
+                                        span: ty.span,
+                                    },
+                                    ty,
+                                ),
+                            })
+                            .collect();
+                        TypeKind::Record(fields)
+                    } else {
+                        let mut tys: Vec<Type> = items
+                            .into_iter()
+                            .map(|item| match item {
+                                Item::Dom(name, span) => Type {
+                                    kind: TypeKind::DomainBinder(name),
                                     span,
                                 },
-                            );
+                                Item::Pos(ty) => ty,
+                                Item::Named(_, ty) => ty,
+                            })
+                            .collect();
+                        if tys.len() == 1 {
+                            return tys.pop().unwrap();
                         }
+                        TypeKind::Tuple(tys)
+                    }
+                } else if self.at(T::Ident) && self.peek_n(1) == T::Colon {
+                    let fields = self.comma_list(T::RParen, "the record type", |p| {
                         let name = p.expect_name("a field name");
                         p.expect(T::Colon, "`:` after the field name");
                         (name, p.ty())

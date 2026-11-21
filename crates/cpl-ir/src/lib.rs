@@ -884,4 +884,227 @@ impl Program {
     pub fn show_ty(&self, ty: &Ty) -> String {
         show::ty_name(ty, &self.domains, &self.structs, &self.enums)
     }
+
+    /// Collects all `DomainId`s referenced by `ty`, traversing through struct
+    /// and enum definitions. Domains referenced by a function's return type
+    /// escape to the caller and must not be restored when that function exits.
+    pub fn domains_in_ty(&self, ty: &Ty) -> std::collections::HashSet<DomainId> {
+        let mut out = std::collections::HashSet::new();
+        let mut seen_structs = std::collections::HashSet::new();
+        let mut seen_enums = std::collections::HashSet::new();
+        self.collect_domains_in_ty(ty, &mut out, &mut seen_structs, &mut seen_enums);
+        out
+    }
+
+    fn collect_domains_in_ty(
+        &self,
+        ty: &Ty,
+        out: &mut std::collections::HashSet<DomainId>,
+        seen_structs: &mut std::collections::HashSet<StructId>,
+        seen_enums: &mut std::collections::HashSet<EnumId>,
+    ) {
+        match ty {
+            Ty::Pos(d) | Ty::Bound(d) => {
+                out.insert(*d);
+            }
+            Ty::Range(inner) | Ty::Opt(inner) | Ty::List(inner) | Ty::Set(inner)
+            | Ty::HashSet(inner) | Ty::Mut(inner) => {
+                self.collect_domains_in_ty(inner, out, seen_structs, seen_enums);
+            }
+            Ty::Array { dims, elem } => {
+                for dim in dims {
+                    if let Dim::Pos(d) | Dim::Bound(d) = dim {
+                        out.insert(*d);
+                    }
+                }
+                self.collect_domains_in_ty(elem, out, seen_structs, seen_enums);
+            }
+            Ty::Tuple(ts) => {
+                for t in ts {
+                    self.collect_domains_in_ty(t, out, seen_structs, seen_enums);
+                }
+            }
+            Ty::Record(fields) => {
+                for (_, t) in fields {
+                    self.collect_domains_in_ty(t, out, seen_structs, seen_enums);
+                }
+            }
+            Ty::Map(k, v) | Ty::HashMap(k, v) => {
+                self.collect_domains_in_ty(k, out, seen_structs, seen_enums);
+                self.collect_domains_in_ty(v, out, seen_structs, seen_enums);
+            }
+            Ty::Fn(ps, r) => {
+                for p in ps {
+                    self.collect_domains_in_ty(p, out, seen_structs, seen_enums);
+                }
+                self.collect_domains_in_ty(r, out, seen_structs, seen_enums);
+            }
+            Ty::Struct(id) => {
+                if seen_structs.insert(*id) {
+                    for (_, ft) in &self.structs[*id].fields {
+                        self.collect_domains_in_ty(ft, out, seen_structs, seen_enums);
+                    }
+                }
+            }
+            Ty::Enum(id) => {
+                if seen_enums.insert(*id) {
+                    for (_, fields) in &self.enums[*id].variants {
+                        for ft in fields {
+                            self.collect_domains_in_ty(ft, out, seen_structs, seen_enums);
+                        }
+                    }
+                }
+            }
+            Ty::Unit | Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Bool | Ty::Char
+            | Ty::Str | Ty::DomainVal | Ty::Error => {}
+        }
+    }
+
+    /// Returns the local `DomainId`s defined inside `body` (including dependent
+    /// `Subset<D>` domains) that do not escape through `ret`, in deterministic
+    /// order. Both interpreter and C++ codegen save these on function entry and
+    /// restore them on function exit so recursive re-entry preserves the caller.
+    pub fn fn_guarded_domains(&self, ret: &Ty, body: &Block) -> Vec<DomainId> {
+        let escaping = self.domains_in_ty(ret);
+        let mut defined = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        self.collect_defined_domains_block(body, &escaping, &mut seen, &mut defined);
+        defined
+    }
+
+    fn record_defined_domain(
+        &self,
+        id: DomainId,
+        escaping: &std::collections::HashSet<DomainId>,
+        seen: &mut std::collections::HashSet<DomainId>,
+        out: &mut Vec<DomainId>,
+    ) {
+        if !escaping.contains(&id) && seen.insert(id) {
+            out.push(id);
+        }
+        for &(subset, base) in &self.subsets {
+            if base == id && !escaping.contains(&subset) && seen.insert(subset) {
+                out.push(subset);
+            }
+        }
+    }
+
+    fn collect_defined_domains_block(
+        &self,
+        block: &Block,
+        escaping: &std::collections::HashSet<DomainId>,
+        seen: &mut std::collections::HashSet<DomainId>,
+        out: &mut Vec<DomainId>,
+    ) {
+        for stmt in &block.stmts {
+            match stmt {
+                Stmt::DefDomain { id, lo, len } => {
+                    self.collect_defined_domains_expr(lo, escaping, seen, out);
+                    self.collect_defined_domains_expr(len, escaping, seen, out);
+                    self.record_defined_domain(*id, escaping, seen, out);
+                }
+                Stmt::DefDomainFromVal { id, val } => {
+                    self.collect_defined_domains_expr(val, escaping, seen, out);
+                    self.record_defined_domain(*id, escaping, seen, out);
+                }
+                Stmt::Let(_, Some(e)) | Stmt::Assign(_, _, e) | Stmt::Expr(e)
+                | Stmt::Return(Some(e)) | Stmt::Give(e) => {
+                    self.collect_defined_domains_expr(e, escaping, seen, out);
+                }
+                Stmt::Assert { cond, message, .. } => {
+                    self.collect_defined_domains_expr(cond, escaping, seen, out);
+                    if let Some(m) = message {
+                        self.collect_defined_domains_expr(m, escaping, seen, out);
+                    }
+                }
+                Stmt::If(c, t, e) => {
+                    self.collect_defined_domains_expr(c, escaping, seen, out);
+                    self.collect_defined_domains_block(t, escaping, seen, out);
+                    self.collect_defined_domains_block(e, escaping, seen, out);
+                }
+                Stmt::While(_, c, b) => {
+                    self.collect_defined_domains_expr(c, escaping, seen, out);
+                    self.collect_defined_domains_block(b, escaping, seen, out);
+                }
+                Stmt::For(_, _, iter, b) => {
+                    match iter {
+                        Iter::Range { lo, hi, step, .. } => {
+                            self.collect_defined_domains_expr(lo, escaping, seen, out);
+                            self.collect_defined_domains_expr(hi, escaping, seen, out);
+                            if let Some(s) = step {
+                                self.collect_defined_domains_expr(s, escaping, seen, out);
+                            }
+                        }
+                        Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e)
+                        | Iter::Members(e) => {
+                            self.collect_defined_domains_expr(e, escaping, seen, out);
+                        }
+                    }
+                    self.collect_defined_domains_block(b, escaping, seen, out);
+                }
+                Stmt::Let(_, None) | Stmt::Return(None) | Stmt::Break(_)
+                | Stmt::Continue(_) | Stmt::Trap(..) => {}
+            }
+        }
+    }
+
+    fn collect_defined_domains_expr(
+        &self,
+        expr: &Expr,
+        escaping: &std::collections::HashSet<DomainId>,
+        seen: &mut std::collections::HashSet<DomainId>,
+        out: &mut Vec<DomainId>,
+    ) {
+        match &expr.kind {
+            ExprKind::Do(block) => {
+                self.collect_defined_domains_block(block, escaping, seen, out);
+            }
+            ExprKind::If(c, t, e) => {
+                self.collect_defined_domains_expr(c, escaping, seen, out);
+                self.collect_defined_domains_expr(t, escaping, seen, out);
+                self.collect_defined_domains_expr(e, escaping, seen, out);
+            }
+            ExprKind::Unary(_, x) | ExprKind::Some(x) | ExprKind::Unwrap(x, _)
+            | ExprKind::IsSome(x) | ExprKind::Field(x, _) | ExprKind::Cast(_, x)
+            | ExprKind::IsVariant(x, _) | ExprKind::Payload(x, _, _) => {
+                self.collect_defined_domains_expr(x, escaping, seen, out);
+            }
+            ExprKind::Binary(_, a, b) | ExprKind::Cmp(_, a, b)
+            | ExprKind::Range { lo: a, hi: b } => {
+                self.collect_defined_domains_expr(a, escaping, seen, out);
+                self.collect_defined_domains_expr(b, escaping, seen, out);
+            }
+            ExprKind::Index(base, idx) => {
+                self.collect_defined_domains_expr(base, escaping, seen, out);
+                for i in idx {
+                    self.collect_defined_domains_expr(i, escaping, seen, out);
+                }
+            }
+            ExprKind::Fill(_, Some(v)) => {
+                self.collect_defined_domains_expr(v, escaping, seen, out);
+            }
+            ExprKind::Tuple(xs) | ExprKind::Variant(_, xs) | ExprKind::Builtin(_, xs)
+            | ExprKind::Mutate(_, _, xs) => {
+                for x in xs {
+                    self.collect_defined_domains_expr(x, escaping, seen, out);
+                }
+            }
+            ExprKind::Call(_, args) => {
+                for a in args {
+                    if let Arg::Value(e) = a {
+                        self.collect_defined_domains_expr(e, escaping, seen, out);
+                    }
+                }
+            }
+            ExprKind::CallExpr(callee, args) => {
+                self.collect_defined_domains_expr(callee, escaping, seen, out);
+                for a in args {
+                    if let Arg::Value(e) = a {
+                        self.collect_defined_domains_expr(e, escaping, seen, out);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
 }

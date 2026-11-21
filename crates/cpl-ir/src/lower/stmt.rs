@@ -769,15 +769,72 @@ impl<'a> Lowerer<'a> {
             step: None,
         } = &def.kind
         else {
-            // `domain V = n` counts: its positions are `0..n`.
-            let count = self.expr(def, Some(&Ty::Int));
-            if count.ty != Ty::Int {
-                self.unsupported(def.span, "a domain that is not a range such as `1..=n` or a count");
-                return;
+            // `domain V = expr`: supports counts (`Int`), existing domains (`DomainVal`),
+            // existential-domain tuples (`(domain C, ...)`), sequences (`List`/`Array`/`Str`),
+            // and domain-owning structs (e.g. `Compressed<D, T>` from `compress(xs)`).
+            let val = self.expr(def, Some(&Ty::Int));
+            match &val.ty {
+                Ty::Int => {
+                    let len = self.coerce(val, &Ty::Int, def.span);
+                    let lo = self.mk(ExprKind::Int(0), Ty::Int, def.span);
+                    out.push(Stmt::DefDomain { id, lo, len });
+                }
+                Ty::DomainVal => {
+                    out.push(Stmt::DefDomainFromVal { id, val });
+                }
+                Ty::List(_) | Ty::Array { .. } | Ty::Str => {
+                    let len = self.mk(ExprKind::Builtin(Builtin::Len, vec![val]), Ty::Int, def.span);
+                    let lo = self.mk(ExprKind::Int(0), Ty::Int, def.span);
+                    out.push(Stmt::DefDomain { id, lo, len });
+                }
+                Ty::Tuple(fields) if fields.first() == Some(&Ty::DomainVal) => {
+                    let dom_field = self.mk(
+                        ExprKind::Field(Box::new(val), 0),
+                        Ty::DomainVal,
+                        def.span,
+                    );
+                    out.push(Stmt::DefDomainFromVal { id, val: dom_field });
+                }
+                Ty::Record(fields) if fields.first().is_some_and(|(_, t)| *t == Ty::DomainVal) => {
+                    let dom_field = self.mk(
+                        ExprKind::Field(Box::new(val), 0),
+                        Ty::DomainVal,
+                        def.span,
+                    );
+                    out.push(Stmt::DefDomainFromVal { id, val: dom_field });
+                }
+                Ty::Struct(sid) => {
+                    let sid = *sid;
+                    // Check if the struct has an array/list/str field (e.g. `Compressed.vals`).
+                    let len_expr = self.structs[sid]
+                        .def
+                        .fields
+                        .iter()
+                        .enumerate()
+                        .find(|(_, (_, t))| matches!(t, Ty::Array { .. } | Ty::List(_) | Ty::Str))
+                        .map(|(idx, (_, fty))| {
+                            let fty = fty.clone();
+                            let field = self.mk(ExprKind::Field(Box::new(val), idx), fty, def.span);
+                            self.mk(ExprKind::Builtin(Builtin::Len, vec![field]), Ty::Int, def.span)
+                        });
+                    if let Some(len) = len_expr {
+                        let lo = self.mk(ExprKind::Int(0), Ty::Int, def.span);
+                        out.push(Stmt::DefDomain { id, lo, len });
+                    } else {
+                        self.unsupported(
+                            def.span,
+                            "a domain expression that does not produce a range, count, or index space",
+                        );
+                    }
+                }
+                Ty::Error => {}
+                _ => {
+                    self.unsupported(
+                        def.span,
+                        "a domain expression that does not produce a range, count, or index space",
+                    );
+                }
             }
-            let len = self.coerce(count, &Ty::Int, def.span);
-            let lo = self.mk(ExprKind::Int(0), Ty::Int, def.span);
-            out.push(Stmt::DefDomain { id, lo, len });
             return;
         };
         let lo_e = self.expr(lo, None);
@@ -1715,6 +1772,24 @@ impl<'a> Lowerer<'a> {
     ) {
         match &pat.kind {
             ast::PatternKind::Name(name) => self.declare(name, value, mutable, out),
+            ast::PatternKind::Domain(name) => {
+                let dname = &name.text;
+                let dom_id = self.domains.len();
+                self.domains.push(format!("{dname}_{dom_id}"));
+                out.push(Stmt::DefDomainFromVal {
+                    id: dom_id,
+                    val: value,
+                });
+                if self.at_top_level() {
+                    self.mod_syms[self.cur_mod].insert(dname.clone(), Sym::Domain(dom_id));
+                } else {
+                    self.cx
+                        .local_syms
+                        .last_mut()
+                        .unwrap()
+                        .insert(dname.clone(), Sym::Domain(dom_id));
+                }
+            }
             ast::PatternKind::Variant { path, args } if path.len() == 1 && args.is_empty() => {
                 // Uppercase variable binding like `let P = p` or `let V = g.V` (parsed as Variant).
                 let vname = &path[0].text;
@@ -1764,18 +1839,39 @@ impl<'a> Lowerer<'a> {
                     self.error(codes::TYPE_MISMATCH, pat.span, message);
                     return;
                 }
-                // Check if any field is `Ty::DomainVal` (`let (C, comp) = scc(...)`):
-                // find the concrete `DomainId` carried by the sibling field(s).
-                let returned_dom_id = fields.iter().find_map(find_pos_domain_in_ty);
+                // Identify the callee's existential domain id(s) if any field is `Ty::DomainVal`.
+                let callee_doms: Vec<DomainId> = match &value.kind {
+                    ExprKind::Call(fn_id, _) => self.sigs[*fn_id]
+                        .new_domain_slots
+                        .iter()
+                        .map(|(_, d)| *d)
+                        .collect(),
+                    ExprKind::Tuple(items) => items
+                        .iter()
+                        .filter_map(|e| match e.kind {
+                            ExprKind::DomainVal(d) => Some(d),
+                            _ => None,
+                        })
+                        .collect(),
+                    _ => Vec::new(),
+                };
+                let fallback_dom = fields.iter().find_map(find_pos_domain_in_ty);
+                let mut remaps: Vec<(DomainId, DomainId)> = Vec::new();
+                let mut dom_idx = 0usize;
                 let base = self.hold(value, out);
                 for (i, (p, ty)) in pats.iter().zip(fields).enumerate() {
+                    let mut field_ty = ty.clone();
+                    for &(from, to) in &remaps {
+                        field_ty = remap_domain_ty(&field_ty, from, to);
+                    }
                     let field = Expr {
                         kind: ExprKind::Field(Box::new(base.clone()), i),
-                        ty: ty.clone(),
+                        ty: field_ty.clone(),
                         span: base.span,
                     };
                     if ty == Ty::DomainVal {
                         let dname_opt = match &p.kind {
+                            ast::PatternKind::Domain(n) => Some(n.text.clone()),
                             ast::PatternKind::Name(n) => Some(n.clone()),
                             ast::PatternKind::Variant { path, args }
                                 if args.is_empty() && path.len() == 1 =>
@@ -1785,23 +1881,26 @@ impl<'a> Lowerer<'a> {
                             _ => None,
                         };
                         if let Some(dname) = dname_opt {
-                            let dom_id = returned_dom_id.unwrap_or_else(|| {
-                                let d = self.domains.len();
-                                self.domains.push(format!("{dname}_{d}"));
-                                d
-                            });
+                            // Each binding site gets its own fresh runtime slot so multiple
+                            // calls to the same existential-returning fn never alias slots.
+                            let fresh_id = self.domains.len();
+                            self.domains.push(format!("{dname}_{fresh_id}"));
+                            if let Some(orig) = callee_doms.get(dom_idx).copied().or(fallback_dom) {
+                                remaps.push((orig, fresh_id));
+                            }
+                            dom_idx += 1;
                             if self.at_top_level() {
                                 self.mod_syms[self.cur_mod]
-                                    .insert(dname.clone(), Sym::Domain(dom_id));
+                                    .insert(dname.clone(), Sym::Domain(fresh_id));
                             } else {
                                 self.cx
                                     .local_syms
                                     .last_mut()
                                     .unwrap()
-                                    .insert(dname.clone(), Sym::Domain(dom_id));
+                                    .insert(dname.clone(), Sym::Domain(fresh_id));
                             }
                             out.push(Stmt::DefDomainFromVal {
-                                id: dom_id,
+                                id: fresh_id,
                                 val: field,
                             });
                             continue;
@@ -3402,7 +3501,7 @@ impl<'a> Lowerer<'a> {
             (a, b) => a.or(b),
         };
         match &pat.kind {
-            ast::PatternKind::Wildcard | ast::PatternKind::Error => None,
+            ast::PatternKind::Wildcard | ast::PatternKind::Domain(_) | ast::PatternKind::Error => None,
             ast::PatternKind::Name(name) => {
                 self.declare(name, value.clone(), false, binds);
                 None
@@ -3549,12 +3648,64 @@ pub(super) fn is_read_call(e: &ast::Expr) -> bool {
 fn find_pos_domain_in_ty(ty: &Ty) -> Option<DomainId> {
     match ty {
         Ty::Pos(d) | Ty::Bound(d) => Some(*d),
-        Ty::Array { elem, .. } | Ty::List(elem) | Ty::Opt(elem) | Ty::Range(elem) => {
-            find_pos_domain_in_ty(elem)
-        }
+        Ty::Array { dims, elem } => dims
+            .iter()
+            .find_map(|dim| match dim {
+                Dim::Pos(d) | Dim::Bound(d) => Some(*d),
+                Dim::Int | Dim::IntFrom(_) => None,
+            })
+            .or_else(|| find_pos_domain_in_ty(elem)),
+        Ty::List(elem) | Ty::Opt(elem) | Ty::Range(elem) => find_pos_domain_in_ty(elem),
         Ty::Tuple(ts) => ts.iter().find_map(find_pos_domain_in_ty),
         Ty::Record(fs) => fs.iter().find_map(|(_, t)| find_pos_domain_in_ty(t)),
         _ => None,
+    }
+}
+
+pub(super) fn remap_domain_ty(ty: &Ty, from: DomainId, to: DomainId) -> Ty {
+    if from == to {
+        return ty.clone();
+    }
+    let map_d = |d: DomainId| if d == from { to } else { d };
+    match ty {
+        Ty::Pos(d) => Ty::Pos(map_d(*d)),
+        Ty::Bound(d) => Ty::Bound(map_d(*d)),
+        Ty::Range(inner) => Ty::Range(Box::new(remap_domain_ty(inner, from, to))),
+        Ty::Array { dims, elem } => Ty::Array {
+            dims: dims
+                .iter()
+                .map(|dim| match dim {
+                    Dim::Pos(d) => Dim::Pos(map_d(*d)),
+                    Dim::Bound(d) => Dim::Bound(map_d(*d)),
+                    Dim::Int => Dim::Int,
+                    Dim::IntFrom(lo) => Dim::IntFrom(*lo),
+                })
+                .collect(),
+            elem: Box::new(remap_domain_ty(elem, from, to)),
+        },
+        Ty::List(e) => Ty::List(Box::new(remap_domain_ty(e, from, to))),
+        Ty::Opt(e) => Ty::Opt(Box::new(remap_domain_ty(e, from, to))),
+        Ty::Tuple(ts) => Ty::Tuple(ts.iter().map(|t| remap_domain_ty(t, from, to)).collect()),
+        Ty::Record(fs) => Ty::Record(
+            fs.iter()
+                .map(|(n, t)| (n.clone(), remap_domain_ty(t, from, to)))
+                .collect(),
+        ),
+        Ty::Map(k, v) => Ty::Map(
+            Box::new(remap_domain_ty(k, from, to)),
+            Box::new(remap_domain_ty(v, from, to)),
+        ),
+        Ty::HashMap(k, v) => Ty::HashMap(
+            Box::new(remap_domain_ty(k, from, to)),
+            Box::new(remap_domain_ty(v, from, to)),
+        ),
+        Ty::Set(k) => Ty::Set(Box::new(remap_domain_ty(k, from, to))),
+        Ty::HashSet(k) => Ty::HashSet(Box::new(remap_domain_ty(k, from, to))),
+        Ty::Fn(ps, r) => Ty::Fn(
+            ps.iter().map(|t| remap_domain_ty(t, from, to)).collect(),
+            Box::new(remap_domain_ty(r, from, to)),
+        ),
+        other => other.clone(),
     }
 }
 

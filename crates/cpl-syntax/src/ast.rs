@@ -537,6 +537,8 @@ pub struct Pattern {
 pub enum PatternKind {
     Wildcard,
     Name(String),
+    /// `domain P` in a binding pattern: `let (domain P, part) = f(..)`.
+    Domain(Name),
     Tuple(Vec<Pattern>),
     /// `Add(l, r)` or a bare variant such as `L`.
     Variant {
@@ -591,5 +593,8 @@ pub enum TypeKind {
     /// `domain C` in a returned record, `-> (domain C, comp: [V]C)`: the
     /// fn makes a fresh domain and names it for the caller.
     NewDomain,
+    /// `domain P` in a returned tuple, `-> (domain P, [P]Int)`: an
+    /// existential fresh domain bound for later elements of the tuple.
+    DomainBinder(Name),
     Error,
 }

@@ -400,7 +400,7 @@ struct FnSig<'a> {
     offset: u32,
     is_generator: bool,
     /// If the return type is `(domain C, ...)`, the allocated DomainId + name.
-    new_domain_slot: Option<(String, DomainId)>,
+    new_domain_slots: Vec<(String, DomainId)>,
     state: State,
     /// The user's expression that first asked for this fn.
     asked_at: Span,
@@ -441,6 +441,7 @@ struct FnCx {
     /// Local slots declared `var` or mutated, so closures capture them by reference.
     mut_slots: HashSet<Slot>,
     ret: Option<Ty>,
+    new_domain_slots: Vec<DomainId>,
     /// `self`'s slot and struct inside a method.
     receiver: Option<(Slot, StructId)>,
     /// Inlined `self` place when desugaring a `lends` / `lends mut` projection.
@@ -1187,7 +1188,7 @@ impl<'a> Lowerer<'a> {
             decl,
             offset,
             is_generator,
-            new_domain_slot: None,
+            new_domain_slots: Vec::new(),
             state: State::Pending,
             asked_at: self.asked_at,
         });
@@ -1313,21 +1314,34 @@ impl<'a> Lowerer<'a> {
                 Some(Ty::list(self.resolve_ty(inner)))
             }
             (Some(ty), _) => {
-                // Check for `-> (domain C, comp: [V]C)` returning a fresh domain.
-                if let ast::TypeKind::Record(fields) = &ty.kind {
-                    if let Some((dname, _)) = fields
-                        .iter()
-                        .find(|(_, ft)| matches!(ft.kind, ast::TypeKind::NewDomain))
-                    {
-                        let dom_id = self.domains.len();
-                        self.domains.push(format!("{}_{}", self.sigs[id].name, dname.text));
-                        self.gen_env
-                            .insert(dname.text.clone(), GenArg::Domain(dom_id));
-                        self.sigs[id]
-                            .env
-                            .insert(dname.text.clone(), GenArg::Domain(dom_id));
-                        self.sigs[id].new_domain_slot = Some((dname.text.clone(), dom_id));
+                // Check for `-> (domain C, comp: [V]C)` or `-> (domain P, [P]Int)` returning fresh domain(s).
+                let mut binders: Vec<String> = Vec::new();
+                match &ty.kind {
+                    ast::TypeKind::Record(fields) => {
+                        for (dname, ft) in fields {
+                            if matches!(ft.kind, ast::TypeKind::NewDomain) {
+                                binders.push(dname.text.clone());
+                            }
+                        }
                     }
+                    ast::TypeKind::Tuple(items) => {
+                        for item in items {
+                            if let ast::TypeKind::DomainBinder(dname) = &item.kind {
+                                binders.push(dname.text.clone());
+                            }
+                        }
+                    }
+                    ast::TypeKind::DomainBinder(dname) => {
+                        binders.push(dname.text.clone());
+                    }
+                    _ => {}
+                }
+                for dname in binders {
+                    let dom_id = self.domains.len();
+                    self.domains.push(format!("{}_{}", self.sigs[id].name, dname));
+                    self.gen_env.insert(dname.clone(), GenArg::Domain(dom_id));
+                    self.sigs[id].env.insert(dname.clone(), GenArg::Domain(dom_id));
+                    self.sigs[id].new_domain_slots.push((dname, dom_id));
                 }
                 Some(self.resolve_ty(ty))
             }
@@ -1464,7 +1478,7 @@ impl<'a> Lowerer<'a> {
                 Spec::Plain(Ty::Fn(ps, Box::new(r)))
             }
             ast::TypeKind::Value(_) => Spec::Plain(Ty::Int),
-            ast::TypeKind::NewDomain => Spec::Plain(Ty::DomainVal),
+            ast::TypeKind::NewDomain | ast::TypeKind::DomainBinder(_) => Spec::Plain(Ty::DomainVal),
             ast::TypeKind::Yields(inner) => Spec::Plain(Ty::list(self.resolve_ty(inner))),
             ast::TypeKind::Error => Spec::Plain(Ty::Error),
         }
@@ -2343,7 +2357,7 @@ impl<'a> Lowerer<'a> {
         self.sigs[id].state = State::InProgress;
         let decl = self.sigs[id].decl;
         let is_gen = self.sigs[id].is_generator;
-        let new_dom = self.sigs[id].new_domain_slot.clone();
+        let new_doms = self.sigs[id].new_domain_slots.clone();
         let saved_mod = std::mem::replace(&mut self.cur_mod, self.sigs[id].mod_id);
         let saved_offset = std::mem::replace(&mut self.offset, self.sigs[id].offset);
         let saved_env = std::mem::replace(&mut self.gen_env, self.sigs[id].env.clone());
@@ -2430,9 +2444,10 @@ impl<'a> Lowerer<'a> {
             self.cx.yield_slot = Some((acc, elem_ty));
         }
 
-        // If this fn returns `(domain C, ...)`, pre-bind `C` as a local domain symbol.
-        if let Some((ref dname, dom_id)) = new_dom {
-            self.cx.local_syms[0].insert(dname.clone(), Sym::Domain(dom_id));
+        // If this fn returns `(domain C, ...)`, pre-bind each fresh domain as a local domain symbol.
+        for (dname, dom_id) in &new_doms {
+            self.cx.local_syms[0].insert(dname.clone(), Sym::Domain(*dom_id));
+            self.cx.new_domain_slots.push(*dom_id);
         }
 
         match &decl.body {
@@ -2498,7 +2513,7 @@ impl<'a> Lowerer<'a> {
                 decl,
                 offset: self.sigs[id].offset,
                 is_generator: false,
-                new_domain_slot: None,
+                new_domain_slots: Vec::new(),
                 state: State::Done,
                 asked_at: self.asked_at,
             });
@@ -2560,7 +2575,7 @@ impl<'a> Lowerer<'a> {
                     decl,
                     offset: self.sigs[id].offset,
                     is_generator: false,
-                    new_domain_slot: None,
+                    new_domain_slots: Vec::new(),
                     state: State::Done,
                     asked_at: self.asked_at,
                 });

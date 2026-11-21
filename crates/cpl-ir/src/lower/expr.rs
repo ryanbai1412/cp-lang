@@ -316,14 +316,31 @@ impl<'a> Lowerer<'a> {
                 let hints = inner_hint
                     .and_then(Ty::fields)
                     .filter(|f| f.len() == items.len());
-                let values: Vec<Expr> = items
-                    .iter()
-                    .enumerate()
-                    .map(|(i, item)| match &hints {
-                        Some(hints) => self.expect(item, &hints[i]),
+                let sig_doms = self.cx.new_domain_slots.clone();
+                let mut remaps: Vec<(DomainId, DomainId)> = Vec::new();
+                let mut dom_idx = 0usize;
+                let mut values: Vec<Expr> = Vec::with_capacity(items.len());
+                for (i, item) in items.iter().enumerate() {
+                    let v = match &hints {
+                        Some(hints) => {
+                            let mut h = hints[i].clone();
+                            for &(from, to) in &remaps {
+                                h = super::stmt::remap_domain_ty(&h, from, to);
+                            }
+                            self.expect(item, &h)
+                        }
                         None => self.expr(item, None),
-                    })
-                    .collect();
+                    };
+                    if let ExprKind::DomainVal(local_dom) = v.kind {
+                        if let Some(&sig_dom) = sig_doms.get(dom_idx) {
+                            if sig_dom != local_dom {
+                                remaps.push((sig_dom, local_dom));
+                            }
+                        }
+                        dom_idx += 1;
+                    }
+                    values.push(v);
+                }
                 let ty = match (inner_hint, &hints) {
                     (Some(ty @ (Ty::Tuple(_) | Ty::Record(_))), Some(_)) => ty.clone(),
                     _ => Ty::Tuple(values.iter().map(|v| v.ty.clone()).collect()),

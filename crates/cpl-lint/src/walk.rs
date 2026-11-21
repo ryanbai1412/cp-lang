@@ -229,7 +229,7 @@ pub(crate) fn walk_pattern(v: &mut dyn Visitor, pat: &Pattern, how: Bind) {
             }
         }
         PatternKind::Literal(expr) => walk_expr(v, expr),
-        PatternKind::Wildcard | PatternKind::Error => {}
+        PatternKind::Domain(_) | PatternKind::Wildcard | PatternKind::Error => {}
     }
 }
 
@@ -266,7 +266,7 @@ pub(crate) fn walk_ty(v: &mut dyn Visitor, ty: &Type) {
             walk_ty(v, ret);
         }
         TypeKind::Value(expr) => walk_expr(v, expr),
-        TypeKind::NewDomain | TypeKind::Error => {}
+        TypeKind::NewDomain | TypeKind::DomainBinder(_) | TypeKind::Error => {}
     }
 }
 

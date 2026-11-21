@@ -732,6 +732,17 @@ struct DomainVal { ll lo = 0, len = 0; };
 ",
     },
     Piece {
+        name: "dom_guard",
+        needs: &[],
+        code: "\
+struct DomGuard {
+    ll& lo; ll& len; ll saved_lo; ll saved_len;
+    DomGuard(ll& lo, ll& len) : lo(lo), len(len), saved_lo(lo), saved_len(len) {}
+    ~DomGuard() { lo = saved_lo; len = saved_len; }
+};
+",
+    },
+    Piece {
         name: "rng",
         needs: &[],
         code: "\
