@@ -4,63 +4,63 @@
 // strokes, print the value of each of q cells.
 //
 // Write x as a leading 1 followed by k low bits. The stroke reaches row r
-// exactly when r has the same k low bits and at least k + 1 bits. So read
-// a number from its lowest bit upwards: the strokes that reach r are those
-// whose x is a node on the path that r spells, and the same holds for y
-// and c. That is a binary trie over x in which every node owns a trie over
-// y. Coordinates go up to 10^18, so both are built only where a stroke
-// went: nodes live in one list and are named by their position in it.
-struct Node:
-    kid: [0..2]?Int  // by the next bit
-    total: Int       // in a y trie: what the strokes ending here add
-    ys: ?Int         // in the x trie: the root of the y trie of the strokes ending here
+// exactly when r has the same k low bits and at least k + 1 bits. Reading
+// each coordinate from its lowest bit upwards gives a binary trie over x
+// where each node optionally owns a binary trie over y.
+use std.strings.{Trie}
 
-var nodes: List<Node> = []
-fn fresh() -> Int:
-    nodes.push(Node([0..2] _ => none, 0, none))
-    nodes.len - 1
+domain Bit = 0..2
 
-// The node that x spells below root, made on the way if it is missing.
-fn reach(root: Int, x: Int) -> Int:
-    var (o, rest) = (root, x)
+fn bits_of(x: Int) -> List<Bit>:
+    var out: List<Bit> = []
+    var rest = x
     while rest > 1:
-        nodes[o].kid[rest % 2] ??= fresh()
-        o = nodes[o].kid[rest % 2]!
+        out.push(Bit(rest % 2))
         rest /= 2
-    o
+    out
 
-// The y-trie roots that exist on the path x spells below root.
-fn along_ys(root: Int, x: Int) -> yields Int:
-    var (o, rest) = (root, x)
-    if let ys = nodes[o].ys: yield ys
+fn path_sum(t: Trie<Bit>, total: List<Int>, y: Int) -> Int:
+    var o = t.root
+    var ans = total[o]
+    var rest = y
     while rest > 1:
-        if let next = nodes[o].kid[rest % 2]:
+        if let next = t.step(o, Bit(rest % 2)):
             o = next
-            if let ys = nodes[o].ys: yield ys
-            rest /= 2
-        else:
-            return
-
-// The sum of totals along the path y spells below a y-trie root.
-fn sum_along(root: Int, y: Int) -> Int:
-    var (o, rest, total) = (root, y, nodes[root].total)
-    while rest > 1:
-        if let next = nodes[o].kid[rest % 2]:
-            o = next
-            total += nodes[o].total
+            ans += total[o]
             rest /= 2
         else:
             break
-    total
+    ans
 
 let (n, q): (Int, Int) = read()
-let xs = fresh()
+var xs = Trie<Bit>.new()
+var y_id: List<?Int> = [none]
+var y_tries: List<Trie<Bit>> = []
+var y_totals: List<List<Int>> = []
+
 for _ in 0..n:
     let (x, y, v): (Int, Int, Int) = read()
-    let col = reach(xs, x)
-    nodes[col].ys ??= fresh()
-    nodes[reach(nodes[col].ys!, y)].total += v
+    let col = xs.add(bits_of(x))
+    while y_id.len < xs.len: y_id.push(none)
+    if y_id[col] == none:
+        y_id[col] = y_tries.len
+        y_tries.push(Trie<Bit>.new())
+        y_totals.push([0])
+    let tid = y_id[col]!
+    let yn = y_tries[tid].add(bits_of(y))
+    while y_totals[tid].len < y_tries[tid].len: y_totals[tid].push(0)
+    y_totals[tid][yn] += v
 
 for _ in 0..q:
     let (r, c): (Int, Int) = read()
-    print(sum(sum_along(ys, c) for ys in along_ys(xs, r)))
+    var o = xs.root
+    var ans = if let tid = y_id[o]: path_sum(y_tries[tid], y_totals[tid], c) else: 0
+    var rest = r
+    while rest > 1:
+        if let next = xs.step(o, Bit(rest % 2)):
+            o = next
+            if let tid = y_id[o]: ans += path_sum(y_tries[tid], y_totals[tid], c)
+            rest /= 2
+        else:
+            break
+    print(ans)
