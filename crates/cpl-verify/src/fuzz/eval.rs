@@ -79,6 +79,11 @@ pub fn emod(a: i64, b: i64) -> Result<i64, Trap> {
     Ok(a.wrapping_rem_euclid(b))
 }
 
+/// An `Int` result: `-2^63` is not an `Int`, so it overflows too.
+fn fit(v: Option<i64>) -> Result<i64, Trap> {
+    v.filter(|v| *v != i64::MIN).ok_or(Trap::Overflow)
+}
+
 /// The quotient that goes with [`emod`].
 pub fn ediv(a: i64, b: i64) -> Result<i64, Trap> {
     if b == 0 {
@@ -170,12 +175,8 @@ impl<'p> Machine<'p> {
                     (AssignOp::Set, Value::Int(s), Value::Int(v)) => *s = v,
                     (AssignOp::Set, Value::Bool(s), Value::Bool(v)) => *s = v,
                     (AssignOp::Set, Value::List(s), Value::List(v)) => *s = v,
-                    (AssignOp::Add, Value::Int(s), Value::Int(v)) => {
-                        *s = s.checked_add(v).ok_or(Trap::Overflow)?
-                    }
-                    (AssignOp::Sub, Value::Int(s), Value::Int(v)) => {
-                        *s = s.checked_sub(v).ok_or(Trap::Overflow)?
-                    }
+                    (AssignOp::Add, Value::Int(s), Value::Int(v)) => *s = fit(s.checked_add(v))?,
+                    (AssignOp::Sub, Value::Int(s), Value::Int(v)) => *s = fit(s.checked_sub(v))?,
                     _ => return Err(invalid(format!("bad assignment to `{name}`"))),
                 }
             }
@@ -196,8 +197,8 @@ impl<'p> Machine<'p> {
                     .ok_or(Trap::IndexOutOfRange)?;
                 *slot = match op {
                     AssignOp::Set => v,
-                    AssignOp::Add => slot.checked_add(v).ok_or(Trap::Overflow)?,
-                    AssignOp::Sub => slot.checked_sub(v).ok_or(Trap::Overflow)?,
+                    AssignOp::Add => fit(slot.checked_add(v))?,
+                    AssignOp::Sub => fit(slot.checked_sub(v))?,
                 };
             }
             Stmt::Push { list, value } => {
@@ -326,9 +327,9 @@ impl<'p> Machine<'p> {
             Expr::Bin(op, a, b) => {
                 let (a, b) = (self.int(a)?, self.int(b)?);
                 match op {
-                    BinOp::Add => Value::Int(a.checked_add(b).ok_or(Trap::Overflow)?),
-                    BinOp::Sub => Value::Int(a.checked_sub(b).ok_or(Trap::Overflow)?),
-                    BinOp::Mul => Value::Int(a.checked_mul(b).ok_or(Trap::Overflow)?),
+                    BinOp::Add => Value::Int(fit(a.checked_add(b))?),
+                    BinOp::Sub => Value::Int(fit(a.checked_sub(b))?),
+                    BinOp::Mul => Value::Int(fit(a.checked_mul(b))?),
                     BinOp::Div => Value::Int(ediv(a, b)?),
                     BinOp::Mod => Value::Int(emod(a, b)?),
                     BinOp::Lt => Value::Bool(a < b),

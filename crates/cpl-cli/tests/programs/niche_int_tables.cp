@@ -1,6 +1,6 @@
-// `?Int` tables: one that provably never holds Int.MIN is packed with
-// Int.MIN as `none`; one that does hold it is not. Both must read back
-// `none`, 0, -1, Int.MIN and Int.MAX exactly as the interpreter does.
+// `?Int` tables, packed with -2^63, which is not an `Int`, as `none`: each
+// must read back `none`, 0, -1, Int.MIN and Int.MAX exactly as the
+// interpreter does.
 let n: 1..=20 = read()
 domain V = 0..n
 

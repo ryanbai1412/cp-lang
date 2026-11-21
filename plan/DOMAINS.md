@@ -164,7 +164,8 @@ well under a second.
 program runs on a thread with the judge profile's thread stack (1 GB by
 default; `thread_stack_mb = 0` warns and runs on `main`), so a 10^6-deep
 DFS passes on an 8 MB `ulimit -s`;
-`?Int` is 16 bytes outside proven tables; `bench/corpus_p95_bench.py`
+`Int` stops at `-(2^63 - 1)` in both builds (input, arithmetic and
+narrowing reject `-2^63`), but `?Int` is still 16 bytes outside proven tables; `bench/corpus_p95_bench.py`
 measures runtime and RSS against the originals (p95 about 3x). (Lane
 running.)
 **Bar.** Per-port runtime and memory on max inputs, measured on every push.

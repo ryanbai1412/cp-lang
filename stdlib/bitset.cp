@@ -5,15 +5,15 @@
 /// per element and never turns into this behind your back.
 /// Single-bit operations are O(1); whole-set operations are O(K / 64).
 pub struct Bitset<D>:
-    w: List<Int>
+    w: List<U64>
 
     /// The empty set.
     pub fn new() -> Bitset<D>:
-        Bitset(List.filled((D.K + 63) / 64, 0))
+        Bitset(List.filled((D.K + 63) / 64, U64(0)))
 
     /// The full set containing every position of `D`. O(K / 64).
     pub fn full() -> Bitset<D>:
-        var b = Bitset(List.filled((D.K + 63) / 64, -1))
+        var b = Bitset(List.filled((D.K + 63) / 64, ~U64(0)))
         b.trim()
         b
 
@@ -25,7 +25,7 @@ pub struct Bitset<D>:
         b
 
     /// Whether position `i` is set. O(1).
-    pub fn contains(self, i: D) -> Bool = ((w[i.to_idx / 64] >> (i.to_idx % 64)) & 1) == 1
+    pub fn contains(self, i: D) -> Bool = ((w[i.to_idx / 64] >> (i.to_idx % 64)) & U64(1)) == U64(1)
 
     /// Set the bit at position `i`. O(1).
     pub fn add(mut self, i: D):
@@ -33,7 +33,7 @@ pub struct Bitset<D>:
 
     /// Clear the bit at position `i`. O(1).
     pub fn remove(mut self, i: D):
-        w[i.to_idx / 64] &= bit(i.to_idx % 64) ^ -1
+        w[i.to_idx / 64] &= ~bit(i.to_idx % 64)
 
     /// Flip the bit at position `i`. O(1).
     pub fn toggle(mut self, i: D):
@@ -58,7 +58,7 @@ pub struct Bitset<D>:
 
     /// Clear every bit set in `o` from `self` in place. O(|D| / 64).
     pub fn subtract(mut self, o: Bitset<D>):
-        for k in 0..w.len: w[k] &= o.w[k] ^ -1
+        for k in 0..w.len: w[k] &= ~o.w[k]
 
     /// Replace `self` with `self ^ o` in place. O(|D| / 64).
     pub fn symmetric(mut self, o: Bitset<D>):
@@ -99,8 +99,8 @@ pub struct Bitset<D>:
             return out
         let (words, bits) = (k / 64, k % 64)
         for i in (words..w.len).rev:
-            var x = shl(w[i - words], bits)
-            if bits > 0 and i > words: x |= shr(w[i - words - 1], 64 - bits)
+            var x = w[i - words] << bits
+            if bits > 0 and i > words: x |= w[i - words - 1] >> (64 - bits)
             out.w[i] = x
         out.trim()
         out
@@ -112,12 +112,12 @@ pub struct Bitset<D>:
             while x != 0:
                 let b = ctz(x)
                 yield D.nth(64 * k + b)
-                x &= bit(b) ^ -1
+                x &= ~bit(b)
 
     /// The first position in the set at or after `i`, or `none`.
     pub fn next(self, i: D) -> ?D:
         var k = i.to_idx / 64
-        var x = w[k] & (low(i.to_idx % 64) ^ -1)
+        var x = w[k] & ~low(i.to_idx % 64)
         while true:
             if x != 0: return D.nth(64 * k + ctz(x))
             k += 1
@@ -128,30 +128,18 @@ pub struct Bitset<D>:
         if D.K % 64 != 0 and w.len > 0:
             w[w.len - 1] &= low(D.K % 64)
 
-// `Int` is a signed 64-bit word, so the helpers below spell out the three
-// places where bit 63 needs care. They compile to single instructions.
-
 /// `a - b`: the positions in `a` that are not in `b`.
 impl Sub for Bitset<D>:
     fn sub(a, b):
         var out = Bitset<D>.new()
-        for k in 0..a.w.len: out.w[k] = a.w[k] & (b.w[k] ^ -1)
+        for k in 0..a.w.len: out.w[k] = a.w[k] & ~b.w[k]
         out
 
 /// The word with only bit `k` set.
-fn bit(k: Int) -> Int = if k == 63: Int.MIN else: 1 << k
+fn bit(k: Int) -> U64 = U64(1) << k
 
 /// The word with its low `n` bits set, for `n` in 0..=64.
-fn low(n: Int) -> Int = if n == 64: -1 else: if n == 63: Int.MAX else: (1 << n) - 1
-
-/// Shift left, dropping the bits that leave the word.
-fn shl(x: Int, k: Int) -> Int:
-    if k == 0: return x
-    let top = if ((x >> (63 - k)) & 1) == 1: Int.MIN else: 0
-    ((x & low(63 - k)) << k) | top
-
-/// Shift right, filling with zeros.
-fn shr(x: Int, k: Int) -> Int = if k == 0: x else: (x >> k) & low(64 - k)
+fn low(n: Int) -> U64 = if n == 64: ~U64(0) else: (U64(1) << n) - U64(1)
 
 @test
 fn single_bits_across_word_borders():

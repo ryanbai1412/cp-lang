@@ -130,9 +130,14 @@ fn input_is_held_to_what_the_program_declares() {
 fn recursion_without_end_is_reported_not_crashed() {
     // On a small stack, so that the test does not fill gigabytes first.
     let mut db = cpl_check::Database::new();
-    db.set_file("t.cp", "fn f(n: Int) -> Int:\n    f(n + 1) + 1\nprint(f(0))\n");
+    db.set_file(
+        "t.cp",
+        "fn f(n: Int) -> Int:\n    f(n + 1) + 1\nprint(f(0))\n",
+    );
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
-    let limits = Limits { stack_bytes: 48 << 20 };
+    let limits = Limits {
+        stack_bytes: 48 << 20,
+    };
     let trap = std::thread::Builder::new()
         .stack_size(64 << 20)
         .spawn(move || run_on_this_thread(&program, b"", &mut Vec::new(), limits))
@@ -196,4 +201,35 @@ print(solve(I.first))
         outcome(source, "5\n10 20 30 40 50\n"),
         ("150\n".to_string(), None)
     );
+}
+
+#[test]
+fn int_stops_one_above_the_64_bit_minimum() {
+    let min = "print(Int.MIN, Int.MIN == -Int.MAX, -Int.MIN, abs(Int.MIN))";
+    assert_eq!(
+        outcome(min, ""),
+        (
+            "-9223372036854775807 YES 9223372036854775807 9223372036854775807\n".to_string(),
+            None
+        )
+    );
+    for (source, input) in [
+        ("let x: Int = read()\nprint(x)", "-9223372036854775808"),
+        ("let x: Int = read()\nprint(x - 1)", "-9223372036854775807"),
+        ("let x: Int = read()\nprint(x & -2)", "-9223372036854775807"),
+        (
+            "let x: I128 = read()\nprint(Int(x))",
+            "-9223372036854775808",
+        ),
+        (
+            "let x: Int = read()\nprint(bit_ceil(x))",
+            "4611686018427387905",
+        ),
+    ] {
+        let (_, error) = outcome(source, input);
+        assert!(
+            error.is_some_and(|e| e.contains("does not fit in an `Int`")),
+            "{source}"
+        );
+    }
 }

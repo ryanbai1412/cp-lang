@@ -62,7 +62,10 @@ impl<'a> Input<'a> {
     /// True when the next read has to wait for bytes that have not
     /// arrived: whoever sends them may be waiting for what was printed.
     pub fn starved(&self) -> bool {
-        self.more.is_some() && self.data[self.pos.min(self.data.len())..].iter().all(u8::is_ascii_whitespace)
+        self.more.is_some()
+            && self.data[self.pos.min(self.data.len())..]
+                .iter()
+                .all(u8::is_ascii_whitespace)
     }
 
     /// True when only blanks are left to read.
@@ -103,11 +106,17 @@ impl<'a> Input<'a> {
     pub fn token(&mut self, what: &str) -> Result<(&[u8], usize), InputError> {
         self.skip_space();
         let start = self.pos;
-        while self.byte(self.pos).is_some_and(|b| !b.is_ascii_whitespace()) {
+        while self
+            .byte(self.pos)
+            .is_some_and(|b| !b.is_ascii_whitespace())
+        {
             self.pos += 1;
         }
         if start == self.pos {
-            return Err(self.fail(start, format!("the {} ended where {what} was expected", self.name)));
+            return Err(self.fail(
+                start,
+                format!("the {} ended where {what} was expected", self.name),
+            ));
         }
         Ok((&self.data[start..self.pos], start))
     }
@@ -134,7 +143,7 @@ impl<'a> Input<'a> {
                 }
             });
         }
-        match value {
+        match value.filter(|v| *v != i64::MIN) {
             Some(value) => Ok((value, start)),
             None => {
                 let message = format!("`{}` does not fit in an `Int`", lossy(token));
@@ -146,12 +155,17 @@ impl<'a> Input<'a> {
     /// A whole number of any size that `T` holds: an `I128` or a `U64`.
     pub fn wide<T: std::str::FromStr>(&mut self, name: &str) -> Result<T, InputError> {
         let (token, start) = self.token("a number")?;
-        let digits = token.strip_prefix(b"-").or(token.strip_prefix(b"+")).unwrap_or(token);
+        let digits = token
+            .strip_prefix(b"-")
+            .or(token.strip_prefix(b"+"))
+            .unwrap_or(token);
         if digits.is_empty() || !digits.iter().all(u8::is_ascii_digit) {
             let message = format!("expected a number, found `{}`", lossy(token));
             return Err(self.fail(start, message));
         }
-        let parsed = std::str::from_utf8(token).ok().and_then(|text| text.parse().ok());
+        let parsed = std::str::from_utf8(token)
+            .ok()
+            .and_then(|text| text.parse().ok());
         match parsed {
             Some(value) => Ok(value),
             None => {

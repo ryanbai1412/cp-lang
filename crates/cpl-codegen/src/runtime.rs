@@ -116,7 +116,7 @@ inline u8 char_step(ll c) { if (c < 0 || c > 127) fail(\"`Char + Int` left ASCII
         code: "\
 // A value written as a smaller type must be one of that type's values.
 inline u8 to_char(ll c) { if ((unsigned long long)c > 255) fail(\"not a byte, so not a `Char`\"); return (u8)c; }
-inline ll to_int(__int128 x) { if (x < (__int128)(-9223372036854775807LL - 1) || x > (__int128)9223372036854775807LL) fail(\"an `I128` outside `Int`\"); return (ll)x; }
+inline ll to_int(__int128 x) { if (x < -(__int128)9223372036854775807LL || x > (__int128)9223372036854775807LL) fail(\"an `I128` outside `Int`\"); return (ll)x; }
 inline ll to_int(unsigned long long x) { if (x > 9223372036854775807ULL) fail(\"a `U64` outside `Int`\"); return (ll)x; }
 inline ll to_int(double x) { if (!(x > -9223372036854775809.0 && x < 9223372036854775808.0)) fail(\"a float outside `Int`\"); return (ll)x; }
 inline unsigned long long to_u64(__int128 x) { if (x < 0 || x > (__int128)~0ULL) fail(\"an `I128` outside `U64`\"); return (unsigned long long)x; }
@@ -189,15 +189,16 @@ inline bool at_eof() { skip_space(); return in_at >= in.size(); }
     },
     Piece {
         name: "read_int",
-        needs: &["in"],
+        needs: &["in", "fail"],
         code: "\
 inline ll read_int() {
     need_input();
     bool negative = false;
     if (in_at < in.size() && (in[in_at] == '-' || in[in_at] == '+')) negative = in[in_at++] == '-';
     need_digit();
-    ll x = 0;  // built downward, so the smallest Int reads without overflow
+    ll x = 0;  // built downward, so -2^63 reads without overflow
     while (in_at < in.size() && in[in_at] >= '0' && in[in_at] <= '9') x = x * 10 - (in[in_at++] - '0');
+    if (x == (-0x7fffffffffffffffLL - 1)) fail(\"a number in the input does not fit in an `Int`\");
     return negative ? x : -x;
 }
 ",
@@ -271,11 +272,10 @@ inline std::string read_str() { need_input(); size_t start = in_at; while ((in_a
         needs: &[],
         code: "\
 // Euclidean division: the remainder is never negative.
-// A zero divisor and `Int.MIN / -1` stop every build: the judge's too, where
-// they would be undefined and print whatever the machine left.
+// A zero divisor stops every build: the judge's too, where it would be
+// undefined and print whatever the machine left.
 inline ll ediv(ll a, ll b) {
     if (__builtin_expect(b == 0, 0)) { cpl::flush(); fputs(\"division by zero\\n\", stderr); exit(3); }
-    if (__builtin_expect(a == (-9223372036854775807LL - 1) && b == -1, 0)) { cpl::flush(); fputs(\"integer overflow\\n\", stderr); exit(3); }
     ll q = a / b, r = a % b; return q - ((r >> 63) & ((b >> 63) | 1));
 }
 ",
@@ -286,10 +286,7 @@ inline ll ediv(ll a, ll b) {
         code: "\
 inline ll emod(ll a, ll b) {
     if (__builtin_expect(b == 0, 0)) { cpl::flush(); fputs(\"division by zero\\n\", stderr); exit(3); }
-    if (b == -1) return 0;
-    // `|b|` is 2^63 for `Int.MIN`, so it is added as an unsigned.
-    typedef unsigned long long U;
-    ll r = a % b; U s = (U)(b >> 63); return (ll)((U)r + ((U)(r >> 63) & (((U)b ^ s) - s)));
+    ll r = a % b; return r + ((r >> 63) & (b < 0 ? -b : b));
 }
 ",
     },
@@ -820,13 +817,13 @@ template <class T> void shuffle(std::vector<T>& v) {
     },
     Piece {
         name: "bits",
-        needs: &[],
+        needs: &["fail"],
         code: "\
 inline ll popcount(ll x) { return (ll)__builtin_popcountll((uint64_t)x); }
 inline ll ctz(ll x) { return x == 0 ? 64 : (ll)__builtin_ctzll((uint64_t)x); }
 inline ll clz(ll x) { return x == 0 ? 64 : (ll)__builtin_clzll((uint64_t)x); }
 inline ll bit_width(ll x) { return x == 0 ? 0 : 64 - (ll)__builtin_clzll((uint64_t)x); }
-inline ll bit_ceil(ll x) { return x <= 1 ? 1 : (1LL << (64 - __builtin_clzll((uint64_t)(x - 1)))); }
+inline ll bit_ceil(ll x) { if (x > (1LL << 62)) fail(\"integer overflow: `bit_ceil` does not fit in an `Int` (64 bits)\"); return x <= 1 ? 1 : (1LL << (64 - __builtin_clzll((uint64_t)(x - 1)))); }
 inline ll isqrt(ll x) { ll r = (ll)std::sqrt((double)x); while ((r + 1) <= 3037000499LL && (r + 1) * (r + 1) <= x) r++; while (r * r > x) r--; return r; }
 ",
     },

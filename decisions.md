@@ -2323,6 +2323,7 @@ Reverse: delete the step from `scripts/check.sh`.
   overhead is a general closure-monomorphization pass in `cpl-codegen`,
   not a stdlib-specific hack. Reverse: switch to traits once associated
   constants land.
+<<<<<<< HEAD
 
 ## 43. Flows and matching (`std.flow`, 2026-11-21)
 
@@ -2503,3 +2504,27 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
    Reason: zero AST/IR/codegen duplication; works identically with `read()` and any tuple expression. Reverse: remove `has_typed_tuple_pattern` in `cpl-syntax/src/parser/stmt.rs`.
 3. **Fieldless enum-indexed arrays `[Sign]T` lower to `DimSpec::Int(k)` and tag-checked indexing.**
    Reason: matches `[Bool]T` without new IR ops, interpreter changes, or C++ runtime types; evaluates the index expression once via a temp. Reverse: remove the `Sym::Enum` arm in `cpl-ir/src/lower/mod.rs` (`dim`) and `expr.rs` (`index_expr`).
+
+## 49. `Int` stops one above `-2^63` (codegen and performance, 2026-11-21)
+
+- **49.1 `Int.MIN` is `-(2^63 - 1)` in the compiler too, and `-2^63` is no
+  `Int` anywhere.** The spec settled this (1.1, `design/spec/11-types.md`);
+  the implementation still had `Int.MIN = i64::MIN`. Now `read` rejects
+  `-9223372036854775808` in both `cpl run` and the C++, arithmetic and
+  narrowing (`Int(x)` from `I128`/`F64`, `floor`/`ceil`/`round`,
+  `bit_ceil`) that would produce it stop with the usual overflow error, and
+  constants folded by codegen agree. This frees the pattern as `?Int`'s
+  `none` everywhere. `Int.MIN / -1` is `Int.MAX`, so `ediv` and `emod`
+  lose their `-1` guards. Reverse: set `cpl_ir::INT_MIN` back to
+  `i64::MIN` and drop the `!= i64::MIN` filters; `?Int` then needs 16 bytes
+  outside proven tables again.
+- **49.2 Float to `Int` is exact at the ends in both builds.** The
+  interpreter's bound was `±9.2e18`, the C++'s `±2^63`, so `Int(9.21e18)`
+  disagreed; both now accept exactly the floats strictly between `-2^63`
+  and `2^63`, and `floor`/`ceil`/`round` share the check (they cast
+  unchecked in C++, undefined past the range). Reverse: none needed; any
+  bound must be the same in both.
+- **49.3 `Bitset` words are `U64`.** A word with only bit 63 set is
+  `-2^63`, which is no `Int`, and the old helpers built it from `Int.MIN`.
+  With `U64` (wrapping, logical shifts) the helpers for bit 63 disappear.
+  Reverse: none while `Int` stays symmetric.

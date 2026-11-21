@@ -30,7 +30,7 @@ if which == 14: out = three % z
 if which == 15: out = 1 << (three + 61)
 if which == 16: out = 1 >> (z - 1)
 if which == 17: out = 2 ** (z - 1)
-if which == 18: out = Int.MIN / (z - 1)
+if which == 18: out = Int(I128(Int.MIN) - 1 + z)
 if which == 19:
     var ys = [1, 2, 3]
     ys.swap(z, three)

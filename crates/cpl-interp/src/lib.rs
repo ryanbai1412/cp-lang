@@ -53,11 +53,8 @@ pub struct Trap {
 impl Trap {
     /// Builds the runtime diagnostic with test-case and call-stack notes.
     pub fn to_diagnostic(&self, path: &str, lines: &cpl_diag::LineIndex) -> cpl_diag::Diagnostic {
-        let mut diagnostic = cpl_diag::Diagnostic::error(
-            cpl_diag::codes::RUNTIME,
-            self.span,
-            self.message.clone(),
-        );
+        let mut diagnostic =
+            cpl_diag::Diagnostic::error(cpl_diag::codes::RUNTIME, self.span, self.message.clone());
         if let Some(case) = self.case {
             diagnostic = diagnostic.with_note(format!("in test case {case}"));
         }
@@ -243,9 +240,9 @@ fn observe(
                         run_io(program, io, &mut **output, limits, trace, profile)
                     });
             if let Ok(handle) = spawned {
-                return handle
-                    .join()
-                    .unwrap_or_else(|_| failed("the interpreter itself failed; this is a bug in cpl"));
+                return handle.join().unwrap_or_else(|_| {
+                    failed("the interpreter itself failed; this is a bug in cpl")
+                });
             }
         }
         failed("could not start the interpreter thread")
@@ -298,7 +295,9 @@ fn run_io(
             Feed::Fixed(input) => Input::new(input),
             Feed::Live(more) => Input::live(more),
         },
-        peer: io.peer.map(|more| Input::live(more).named("solution's output")),
+        peer: io
+            .peer
+            .map(|more| Input::live(more).named("solution's output")),
         queries: 0,
         out: Vec::with_capacity(1 << 16),
         sink: output,
@@ -374,6 +373,14 @@ fn run_io(
 }
 
 type Res<T> = Result<T, Box<Trap>>;
+
+/// A whole float as an `Int`: strictly between `-2^63` and `2^63`.
+fn float_int(v: f64, span: Span) -> Res<Value> {
+    if !(v > -9223372036854775808.0 && v < 9223372036854775808.0) {
+        return trap(span, format!("{v} does not fit in an `Int`"));
+    }
+    Ok(Value::Int(v as i64))
+}
 
 fn trap<T>(span: Span, message: impl Into<String>) -> Res<T> {
     Err(Box::new(Trap {
@@ -461,7 +468,9 @@ fn root_global(place: &Place) -> Option<usize> {
     match &place.kind {
         PlaceKind::Global(id) => Some(*id),
         PlaceKind::Local(_) => None,
-        PlaceKind::Index(base, _) | PlaceKind::Field(base, _) | PlaceKind::Some(base) => root_global(base),
+        PlaceKind::Index(base, _) | PlaceKind::Field(base, _) | PlaceKind::Some(base) => {
+            root_global(base)
+        }
     }
 }
 
@@ -471,7 +480,9 @@ fn leading_indices(place: &Place) -> usize {
     match &place.kind {
         PlaceKind::Global(_) | PlaceKind::Local(_) => 0,
         PlaceKind::Index(base, indices) => match &base.kind {
-            PlaceKind::Global(_) | PlaceKind::Index(..) if leading_indices(base) == index_count(base) => {
+            PlaceKind::Global(_) | PlaceKind::Index(..)
+                if leading_indices(base) == index_count(base) =>
+            {
                 leading_indices(base) + indices.len()
             }
             _ => leading_indices(base),
@@ -895,7 +906,9 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
             }
             Iter::Seq(seq, false) if self.is_fed(id, seq, body).is_some() => {
-                let (ExprKind::Call(callee, args), Some((_, acc))) = (&seq.kind, self.is_fed(id, seq, body)) else {
+                let (ExprKind::Call(callee, args), Some((_, acc))) =
+                    (&seq.kind, self.is_fed(id, seq, body))
+                else {
                     unreachable!("a fed loop is over a call");
                 };
                 let fed = Fed {
@@ -1104,7 +1117,9 @@ impl<'p, 'o> Interp<'p, 'o> {
         };
         for step in &part.steps {
             value = match (step, value) {
-                (Step::Field(index), Value::Tuple(TupleVal::Boxed(fields))) => fields.get(*index)?,
+                (Step::Field(index), Value::Tuple(TupleVal::Boxed(fields))) => {
+                    fields.get(*index)?
+                }
                 (Step::Some, Value::Opt(OptVal::Boxed(inner))) => inner,
                 (Step::Index(indices), Value::Array(array)) => {
                     let at = array_offset(&array.dims, indices.iter(), Span::new(0, 0)).ok()?;
@@ -1244,8 +1259,16 @@ impl<'p, 'o> Interp<'p, 'o> {
             {
                 let value = self.eval(value)?;
                 let n = exprs.len();
-                let i0 = if n >= 1 { self.eval(&exprs[0])?.int() } else { 0 };
-                let i1 = if n == 2 { self.eval(&exprs[1])?.int() } else { 0 };
+                let i0 = if n >= 1 {
+                    self.eval(&exprs[0])?.int()
+                } else {
+                    0
+                };
+                let i1 = if n == 2 {
+                    self.eval(&exprs[1])?.int()
+                } else {
+                    0
+                };
                 let holder: &mut Value = match &base.kind {
                     PlaceKind::Global(id) => &mut self.globals[*id],
                     PlaceKind::Local(slot) => {
@@ -1386,30 +1409,29 @@ impl<'p, 'o> Interp<'p, 'o> {
                     }
                     Value::Map(entries) => {
                         let map = Rc::make_mut(entries);
-                        let next = if let Some(old) = map.get(key).cloned() {
-                            combine(op, old, value, place.span)?
-                        } else {
-                            match op {
-                                AssignOp::Max
-                                | AssignOp::Min
-                                | AssignOp::Binary(
-                                    BinOp::Add
-                                    | BinOp::Mul
-                                    | BinOp::BitOr
-                                    | BinOp::BitXor
-                                    | BinOp::BitAnd,
-                                ) => value,
-                                AssignOp::Binary(BinOp::Sub) => {
-                                    combine(op, zero(&place.ty, program), value, place.span)?
-                                }
-                                _ => {
-                                    return trap(
+                        let next =
+                            if let Some(old) = map.get(key).cloned() {
+                                combine(op, old, value, place.span)?
+                            } else {
+                                match op {
+                                    AssignOp::Max
+                                    | AssignOp::Min
+                                    | AssignOp::Binary(
+                                        BinOp::Add
+                                        | BinOp::Mul
+                                        | BinOp::BitOr
+                                        | BinOp::BitXor
+                                        | BinOp::BitAnd,
+                                    ) => value,
+                                    AssignOp::Binary(BinOp::Sub) => {
+                                        combine(op, zero(&place.ty, program), value, place.span)?
+                                    }
+                                    _ => return trap(
                                         place.span,
                                         "this key is not in the map; store with `m[k] = v` first",
-                                    )
+                                    ),
                                 }
-                            }
-                        };
+                            };
                         map.insert(key.clone(), next);
                         return Ok(indices);
                     }
@@ -1456,14 +1478,28 @@ impl<'p, 'o> Interp<'p, 'o> {
             ExprKind::Unary(op, operand) => {
                 let value = self.eval(operand)?;
                 match (op, value) {
-                    (UnOp::Neg, Value::Int(v)) => match v.checked_neg() {
-                        Some(v) => Value::Int(v),
-                        None => return trap(span, format!("integer overflow: `-{v}` does not fit in an `Int` (64 bits)")),
-                    },
-                    (UnOp::Neg, Value::I128(v)) => match v.checked_neg() {
-                        Some(v) => Value::I128(v),
-                        None => return trap(span, format!("integer overflow: `-{v}` does not fit in an `I128` (128 bits)")),
-                    },
+                    (UnOp::Neg, Value::Int(v)) => {
+                        match v.checked_neg() {
+                            Some(v) => Value::Int(v),
+                            None => return trap(
+                                span,
+                                format!(
+                                    "integer overflow: `-{v}` does not fit in an `Int` (64 bits)"
+                                ),
+                            ),
+                        }
+                    }
+                    (UnOp::Neg, Value::I128(v)) => {
+                        match v.checked_neg() {
+                            Some(v) => Value::I128(v),
+                            None => return trap(
+                                span,
+                                format!(
+                                    "integer overflow: `-{v}` does not fit in an `I128` (128 bits)"
+                                ),
+                            ),
+                        }
+                    }
                     (UnOp::Neg, Value::U64(v)) => Value::U64(v.wrapping_neg()),
                     (UnOp::Neg, Value::Float(v)) => Value::Float(-v),
                     (UnOp::Not, Value::Bool(v)) => Value::Bool(!v),
@@ -1571,14 +1607,14 @@ impl<'p, 'o> Interp<'p, 'o> {
                     _ => None,
                 };
                 match direct {
-                    Some(Value::Tuple(fields)) => fields
-                        .get(*index)
-                        .expect("field index within tuple"),
+                    Some(Value::Tuple(fields)) => {
+                        fields.get(*index).expect("field index within tuple")
+                    }
                     Some(Value::Moved) => return trap(span, LENT),
                     _ => match self.eval(base)? {
-                        Value::Tuple(fields) => fields
-                            .get(*index)
-                            .expect("field index within tuple"),
+                        Value::Tuple(fields) => {
+                            fields.get(*index).expect("field index within tuple")
+                        }
                         _ => return trap(span, "internal: field of a value without fields"),
                     },
                 }
@@ -1602,7 +1638,9 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
                 match &e.ty {
                     Ty::List(_) => Value::List(Rc::new(values)),
-                    Ty::Set(_) | Ty::HashSet(_) => Value::Set(Rc::new(values.into_iter().collect())),
+                    Ty::Set(_) | Ty::HashSet(_) => {
+                        Value::Set(Rc::new(values.into_iter().collect()))
+                    }
                     Ty::Map(..) | Ty::HashMap(..) => Value::Map(Rc::default()),
                     _ => Value::tuple(values),
                 }
@@ -1805,10 +1843,17 @@ impl<'p, 'o> Interp<'p, 'o> {
                         _ => None,
                     })
                     .collect();
-                let shown: Vec<(&cpl_ir::DebugArg, &Value)> =
-                    args.iter().zip(&values).filter(|(arg, _)| !arg.label).collect();
+                let shown: Vec<(&cpl_ir::DebugArg, &Value)> = args
+                    .iter()
+                    .zip(&values)
+                    .filter(|(arg, _)| !arg.label)
+                    .collect();
                 let name = if label.is_empty() {
-                    shown.iter().map(|(arg, _)| arg.text.as_str()).collect::<Vec<_>>().join(", ")
+                    shown
+                        .iter()
+                        .map(|(arg, _)| arg.text.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 } else {
                     label.join(" ")
                 };
@@ -1834,7 +1879,11 @@ impl<'p, 'o> Interp<'p, 'o> {
                         format!("[{}]", parts.join(","))
                     }
                 };
-                let prefix = if label.is_empty() { String::new() } else { format!("{name}: ") };
+                let prefix = if label.is_empty() {
+                    String::new()
+                } else {
+                    format!("{name}: ")
+                };
                 self.debug_out
                     .extend_from_slice(format!("[line {line}] {prefix}{text}\n").as_bytes());
                 let name = name.clone();
@@ -1867,7 +1916,8 @@ impl<'p, 'o> Interp<'p, 'o> {
                     None => self.out.push(b'\n'),
                 }
                 if self.tracer.is_some() {
-                    let text = String::from_utf8_lossy(&self.out[start.min(self.out.len())..]).into_owned();
+                    let text = String::from_utf8_lossy(&self.out[start.min(self.out.len())..])
+                        .into_owned();
                     self.traced(|tracer, view| tracer.printed(view, span, &text));
                 }
                 if self.program.interactive {
@@ -2063,7 +2113,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             Cast::IntToI128 => Value::I128(i128::from(value.int())),
             Cast::IntToU64 => Value::U64(value.int() as u64),
             Cast::I128ToInt => match (&value, i64::try_from(value.i128())) {
-                (_, Ok(v)) => Value::Int(v),
+                (_, Ok(v)) if v != i64::MIN => Value::Int(v),
                 _ => return trap(span, format!("{} does not fit in an `Int`", value.i128())),
             },
             Cast::U64ToInt => match i64::try_from(value.u64()) {
@@ -2079,10 +2129,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             Cast::U64ToFloat => Value::Float(value.u64() as f64),
             Cast::FloatToInt => {
                 let v = value.float().trunc();
-                if !(-9.2e18..=9.2e18).contains(&v) {
-                    return trap(span, format!("{v} does not fit in an `Int`"));
-                }
-                Value::Int(v as i64)
+                float_int(v, span)?
             }
             Cast::CharToInt => match value {
                 Value::Char(c) => Value::Int(i64::from(c)),
@@ -2136,7 +2183,12 @@ impl<'p, 'o> Interp<'p, 'o> {
     /// The fn and its list when the loop `id` runs its body as the fn
     /// yields, as the C++ does.
     fn is_fed(&mut self, id: LoopId, seq: &Expr, body: &Block) -> Option<(FnId, usize)> {
-        if self.in_closure || self.fed_loops.last().is_some_and(|fed| fed.callee == self.base) {
+        if self.in_closure
+            || self
+                .fed_loops
+                .last()
+                .is_some_and(|fed| fed.callee == self.base)
+        {
             return None;
         }
         if let Some(known) = self.fed.get(&id) {
@@ -2175,7 +2227,13 @@ impl<'p, 'o> Interp<'p, 'o> {
     }
 
     /// Calls a fn; with `fed`, each value it yields runs that loop's body.
-    fn call_feeding(&mut self, id: FnId, args: &'p [Arg], span: Span, fed: Option<Fed<'p>>) -> Res<Value> {
+    fn call_feeding(
+        &mut self,
+        id: FnId,
+        args: &'p [Arg],
+        span: Span,
+        fed: Option<Fed<'p>>,
+    ) -> Res<Value> {
         let f = &self.program.fns[id];
         if !self.program.judge_fns.is_empty() && self.program.judge_fns.contains(&id) {
             return trap(span, NO_GRADER);
@@ -2258,7 +2316,10 @@ impl<'p, 'o> Interp<'p, 'o> {
         let entered = self.tracer.as_mut().map(|tracer| tracer.enter_fn(&f.name));
         let feeding = fed.is_some();
         if let Some(fed) = fed {
-            self.fed_loops.push(Fed { callee: base, ..fed });
+            self.fed_loops.push(Fed {
+                callee: base,
+                ..fed
+            });
         }
         let in_closure = std::mem::replace(&mut self.in_closure, false);
         let dom_mark = self.saved_domains.len();
@@ -2324,7 +2385,13 @@ impl<'p, 'o> Interp<'p, 'o> {
 
     /// Calls a fn value. The arguments at `lent` are `mut`: what the fn
     /// left in them comes back, in that order, next to its result.
-    fn call_lending(&mut self, fv: Value, args: Vec<Value>, lent: &[usize], span: Span) -> Res<(Value, Vec<Value>)> {
+    fn call_lending(
+        &mut self,
+        fv: Value,
+        args: Vec<Value>,
+        lent: &[usize],
+        span: Span,
+    ) -> Res<(Value, Vec<Value>)> {
         let Value::Closure(cid, caps) = fv else {
             return trap(span, "internal: tried to call a non-function value");
         };
@@ -2364,7 +2431,10 @@ impl<'p, 'o> Interp<'p, 'o> {
         self.base = saved;
         let flow = flow?;
         self.call_frames.pop();
-        let back = lent.iter().map(|i| std::mem::take(&mut self.stack[base + def.params[*i]])).collect();
+        let back = lent
+            .iter()
+            .map(|i| std::mem::take(&mut self.stack[base + def.params[*i]]))
+            .collect();
         self.stack.truncate(base);
         let value = match flow {
             Flow::Return(v) | Flow::Give(v) => v,
@@ -2377,7 +2447,9 @@ impl<'p, 'o> Interp<'p, 'o> {
         match ty {
             Ty::Struct(id) => {
                 if let Some(eq_fn) = self.program.structs[*id].eq_fn {
-                    return Ok(self.call_direct(eq_fn, vec![l.clone(), r.clone()], span)?.bool());
+                    return Ok(self
+                        .call_direct(eq_fn, vec![l.clone(), r.clone()], span)?
+                        .bool());
                 }
                 let fields = self.program.structs[*id].fields.clone();
                 if let (Value::Tuple(ls), Value::Tuple(rs)) = (l, r) {
@@ -2456,21 +2528,21 @@ impl<'p, 'o> Interp<'p, 'o> {
         }
     }
 
-    fn cmp_ty_val(
-        &mut self,
-        ty: &Ty,
-        l: &Value,
-        r: &Value,
-        span: Span,
-    ) -> Res<std::cmp::Ordering> {
+    fn cmp_ty_val(&mut self, ty: &Ty, l: &Value, r: &Value, span: Span) -> Res<std::cmp::Ordering> {
         use std::cmp::Ordering;
         match ty {
             Ty::Struct(id) => {
                 if let Some(lt_fn) = self.program.structs[*id].lt_fn {
-                    if self.call_direct(lt_fn, vec![l.clone(), r.clone()], span)?.bool() {
+                    if self
+                        .call_direct(lt_fn, vec![l.clone(), r.clone()], span)?
+                        .bool()
+                    {
                         return Ok(Ordering::Less);
                     }
-                    if self.call_direct(lt_fn, vec![r.clone(), l.clone()], span)?.bool() {
+                    if self
+                        .call_direct(lt_fn, vec![r.clone(), l.clone()], span)?
+                        .bool()
+                    {
                         return Ok(Ordering::Greater);
                     }
                     return Ok(Ordering::Equal);
@@ -2555,7 +2627,13 @@ impl<'p, 'o> Interp<'p, 'o> {
         }
     }
 
-    fn merge_sort_ty(&mut self, mut xs: Vec<Value>, ty: &Ty, desc: bool, span: Span) -> Res<Vec<Value>> {
+    fn merge_sort_ty(
+        &mut self,
+        mut xs: Vec<Value>,
+        ty: &Ty,
+        desc: bool,
+        span: Span,
+    ) -> Res<Vec<Value>> {
         if xs.len() <= 1 {
             return Ok(xs);
         }
@@ -2610,7 +2688,13 @@ impl<'p, 'o> Interp<'p, 'o> {
         Ok(out)
     }
 
-    fn merge_sort_by(&mut self, mut xs: Vec<Value>, cmp: &Value, desc: bool, span: Span) -> Res<Vec<Value>> {
+    fn merge_sort_by(
+        &mut self,
+        mut xs: Vec<Value>,
+        cmp: &Value,
+        desc: bool,
+        span: Span,
+    ) -> Res<Vec<Value>> {
         if xs.len() <= 1 {
             return Ok(xs);
         }
@@ -2668,7 +2752,10 @@ impl<'p, 'o> Interp<'p, 'o> {
         let used = self.stack_top.abs_diff(std::ptr::addr_of!(here) as usize);
         if used > self.stack_budget {
             let callee = callee.map_or("a closure".into(), |name| format!("`{name}`"));
-            return trap(span, format!("the stack ran out: {callee} never stops calling itself?"));
+            return trap(
+                span,
+                format!("the stack ran out: {callee} never stops calling itself?"),
+            );
         }
         Ok(())
     }
@@ -2738,18 +2825,30 @@ impl<'p, 'o> Interp<'p, 'o> {
         Ok(match op {
             Builtin::Min => values.fold(first, |best, v| if v < best { v } else { best }),
             Builtin::Max => values.fold(first, |best, v| if v > best { v } else { best }),
-            Builtin::Abs => match first {
-                Value::Int(v) => match v.checked_abs() {
-                    Some(v) => Value::Int(v),
-                    None => return trap(span, format!("integer overflow: `abs({v})` does not fit in an `Int` (64 bits)")),
-                },
-                Value::I128(v) => match v.checked_abs() {
-                    Some(v) => Value::I128(v),
-                    None => return trap(span, format!("integer overflow: `abs({v})` does not fit in an `I128` (128 bits)")),
-                },
-                Value::Float(v) => Value::Float(v.abs()),
-                other => other,
-            },
+            Builtin::Abs => {
+                match first {
+                    Value::Int(v) => match v.checked_abs() {
+                        Some(v) => Value::Int(v),
+                        None => return trap(
+                            span,
+                            format!(
+                                "integer overflow: `abs({v})` does not fit in an `Int` (64 bits)"
+                            ),
+                        ),
+                    },
+                    Value::I128(v) => match v.checked_abs() {
+                        Some(v) => Value::I128(v),
+                        None => return trap(
+                            span,
+                            format!(
+                                "integer overflow: `abs({v})` does not fit in an `I128` (128 bits)"
+                            ),
+                        ),
+                    },
+                    Value::Float(v) => Value::Float(v.abs()),
+                    other => other,
+                }
+            }
             Builtin::Sqrt => Value::Float(first.float().sqrt()),
             Builtin::Isqrt => {
                 let x = first.int();
@@ -2781,10 +2880,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                     Builtin::Ceil => first.float().ceil(),
                     _ => first.float().round(),
                 };
-                if !(-9.2e18..=9.2e18).contains(&v) {
-                    return trap(span, format!("{v} does not fit in an `Int`"));
-                }
-                Value::Int(v as i64)
+                float_int(v, span)?
             }
             Builtin::CountQuery => {
                 self.queries += 1;
@@ -2792,7 +2888,10 @@ impl<'p, 'o> Interp<'p, 'o> {
                 if self.queries > limit {
                     return trap(
                         span,
-                        format!("query limit exceeded: this is query {}, and the limit is {limit}", self.queries),
+                        format!(
+                            "query limit exceeded: this is query {}, and the limit is {limit}",
+                            self.queries
+                        ),
                     );
                 }
                 Value::Unit
@@ -2808,7 +2907,9 @@ impl<'p, 'o> Interp<'p, 'o> {
             Builtin::Ctz => Value::Int(i64::from(bits64(&first).trailing_zeros())),
             Builtin::Clz => Value::Int(i64::from(bits64(&first).leading_zeros())),
             Builtin::AxisLen => match (&first, values.next()) {
-                (Value::Array(array), Some(Value::Int(axis))) => Value::Int(array.dims[axis as usize]),
+                (Value::Array(array), Some(Value::Int(axis))) => {
+                    Value::Int(array.dims[axis as usize])
+                }
                 _ => Value::Int(0),
             },
             Builtin::BitWidth => {
@@ -2821,7 +2922,10 @@ impl<'p, 'o> Interp<'p, 'o> {
                     Value::Int(1)
                 } else {
                     let shift = 64 - ((x - 1) as u64).leading_zeros();
-                    Value::Int(1i64.wrapping_shl(shift))
+                    if shift > 62 {
+                        return trap(span, format!("integer overflow: `bit_ceil({x})` does not fit in an `Int` (64 bits)"));
+                    }
+                    Value::Int(1 << shift)
                 }
             }
             Builtin::Rand => {
@@ -2880,7 +2984,9 @@ impl<'p, 'o> Interp<'p, 'o> {
             Builtin::SeqGet => {
                 let at = values.next().unwrap_or_default().int();
                 let item = match &first {
-                    Value::List(items) => usize::try_from(at).ok().and_then(|i| items.get(i)).cloned(),
+                    Value::List(items) => {
+                        usize::try_from(at).ok().and_then(|i| items.get(i)).cloned()
+                    }
                     _ => None,
                 };
                 optional(item)
@@ -3007,24 +3113,47 @@ impl<'p, 'o> Interp<'p, 'o> {
                 match &first {
                     Value::Set(items) => {
                         let mut found = items.range(range);
-                        optional(if first_in { found.next() } else { found.next_back() }.cloned())
+                        optional(
+                            if first_in {
+                                found.next()
+                            } else {
+                                found.next_back()
+                            }
+                            .cloned(),
+                        )
                     }
                     Value::Map(entries) => {
                         let mut found = entries.range(range);
-                        let entry = if first_in { found.next() } else { found.next_back() };
-                        optional(entry.map(|(key, val)| Value::tuple(vec![key.clone(), val.clone()])))
+                        let entry = if first_in {
+                            found.next()
+                        } else {
+                            found.next_back()
+                        };
+                        optional(
+                            entry.map(|(key, val)| Value::tuple(vec![key.clone(), val.clone()])),
+                        )
                     }
                     _ => Value::Opt(OptVal::None),
                 }
             }
             Builtin::SetMin => match &first {
                 Value::Set(items) => optional(items.first().cloned()),
-                Value::Map(entries) => optional(entries.iter().next().map(|(k, v)| Value::tuple(vec![k.clone(), v.clone()]))),
+                Value::Map(entries) => optional(
+                    entries
+                        .iter()
+                        .next()
+                        .map(|(k, v)| Value::tuple(vec![k.clone(), v.clone()])),
+                ),
                 _ => Value::Opt(OptVal::None),
             },
             Builtin::SetMax => match &first {
                 Value::Set(items) => optional(items.last().cloned()),
-                Value::Map(entries) => optional(entries.iter().next_back().map(|(k, v)| Value::tuple(vec![k.clone(), v.clone()]))),
+                Value::Map(entries) => optional(
+                    entries
+                        .iter()
+                        .next_back()
+                        .map(|(k, v)| Value::tuple(vec![k.clone(), v.clone()])),
+                ),
                 _ => Value::Opt(OptVal::None),
             },
             Builtin::Sorted => match first {
@@ -3176,7 +3305,12 @@ impl<'p, 'o> Interp<'p, 'o> {
                             self.feed(array.get_unchecked_val(i), span)?;
                         }
                     }
-                    _ => return trap(span, "internal: a `yields` fn did something else to its list"),
+                    _ => {
+                        return trap(
+                            span,
+                            "internal: a `yields` fn did something else to its list",
+                        )
+                    }
                 }
                 return Ok(Value::Unit);
             }
@@ -3401,7 +3535,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 let (value, start) = self.input.int().map_err(fail)?;
                 let lo = match lo {
                     Some(lo) => self.eval(lo)?.int(),
-                    None => i64::MIN,
+                    None => cpl_ir::INT_MIN,
                 };
                 let hi = match hi {
                     Some(hi) => self.eval(hi)?.int(),
@@ -3572,7 +3706,7 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 BinOp::Shr => Some(a >> b),
                 BinOp::And | BinOp::Or | BinOp::Coalesce => None,
             };
-            match result {
+            match result.filter(|v| *v != i64::MIN) {
                 Some(value) => Value::Int(value),
                 None => {
                     return trap(
@@ -3598,7 +3732,10 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 BinOp::Pow => match u32::try_from(b) {
                     Ok(exp) => a.checked_pow(exp),
                     Err(_) if b < 0 => {
-                        return trap(span, format!("`**` needs a power that is not negative, and this is {b}"))
+                        return trap(
+                            span,
+                            format!("`**` needs a power that is not negative, and this is {b}"),
+                        )
                     }
                     Err(_) => match a {
                         0 | 1 => Some(a),
@@ -3629,15 +3766,19 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 return trap(span, format!("a shift by {b} is outside 0..128"));
             }
             match op {
-                BinOp::Shl if a < 0 => return trap(span, format!("`<<` of the negative number {a}")),
-                BinOp::Shl => match Some(a << b).filter(|shifted| *shifted >= 0 && shifted >> b == a) {
+                BinOp::Shl if a < 0 => {
+                    return trap(span, format!("`<<` of the negative number {a}"))
+                }
+                BinOp::Shl => match Some(a << b)
+                    .filter(|shifted| *shifted >= 0 && shifted >> b == a)
+                {
                     Some(value) => Value::I128(value),
-                    None => {
-                        return trap(
-                            span,
-                            format!("integer overflow: `{a} << {b}` does not fit in an `I128` (128 bits)"),
-                        )
-                    }
+                    None => return trap(
+                        span,
+                        format!(
+                            "integer overflow: `{a} << {b}` does not fit in an `I128` (128 bits)"
+                        ),
+                    ),
                 },
                 _ => Value::I128(a >> b),
             }

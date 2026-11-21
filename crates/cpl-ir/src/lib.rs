@@ -45,7 +45,10 @@ pub fn check(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
         if let Some((name, _)) = checker(analysis) {
             results.push(lower_checker(analysis, &name).map(|p| p.warnings));
         }
-        for more in results.into_iter().map(|r| r.unwrap_or_else(|errors| errors)) {
+        for more in results
+            .into_iter()
+            .map(|r| r.unwrap_or_else(|errors| errors))
+        {
             for diagnostic in more {
                 if !diagnostics.contains(&diagnostic) {
                     diagnostics.push(diagnostic);
@@ -57,9 +60,8 @@ pub fn check(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
 }
 
 pub use lower::{
-    brute, checker, generator, interactor, list_tests, lower, lower_brute, lower_checker, lower_gen,
-    lower_judge,
-    lower_test,
+    brute, checker, generator, interactor, list_tests, lower, lower_brute, lower_checker,
+    lower_gen, lower_judge, lower_test,
 };
 pub use show::{sep_of, Sep};
 
@@ -71,8 +73,9 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 /// The value `INF` stands for, as in the prototype: big enough to be
 /// "unreachable", small enough that two of them still add without overflow.
 pub const INF: i64 = 4_000_000_000_000_000_000;
-/// `Int.MIN`: the smallest 64-bit signed integer (`-(1 << 63)`).
-pub const INT_MIN: i64 = i64::MIN;
+/// `Int.MIN`: `-(2^63 - 1)`. The one 64-bit pattern below it is not an
+/// `Int`; it is `none` in a `?Int`.
+pub const INT_MIN: i64 = -i64::MAX;
 
 pub type DomainId = usize;
 
@@ -150,7 +153,12 @@ impl Ty {
     pub fn may_show_nothing(&self) -> bool {
         matches!(
             self,
-            Ty::List(_) | Ty::Array { .. } | Ty::Map(..) | Ty::HashMap(..) | Ty::Set(_) | Ty::HashSet(_)
+            Ty::List(_)
+                | Ty::Array { .. }
+                | Ty::Map(..)
+                | Ty::HashMap(..)
+                | Ty::Set(_)
+                | Ty::HashSet(_)
         )
     }
 
@@ -438,9 +446,17 @@ impl NumFmt {
         let NumKind::Fixed(places) = self.kind else {
             return String::new();
         };
-        let text = if v.is_nan() { "nan".to_string() } else { format!("{v:.*}", places as usize) };
+        let text = if v.is_nan() {
+            "nan".to_string()
+        } else {
+            format!("{v:.*}", places as usize)
+        };
         let zero = text.bytes().all(|b| matches!(b, b'-' | b'0' | b'.'));
-        self.pad(if zero { text.trim_start_matches('-') } else { &text })
+        self.pad(if zero {
+            text.trim_start_matches('-')
+        } else {
+            &text
+        })
     }
 }
 
@@ -914,8 +930,12 @@ impl Program {
             Ty::Pos(d) | Ty::Bound(d) => {
                 out.insert(*d);
             }
-            Ty::Range(inner) | Ty::Opt(inner) | Ty::List(inner) | Ty::Set(inner)
-            | Ty::HashSet(inner) | Ty::Mut(inner) => {
+            Ty::Range(inner)
+            | Ty::Opt(inner)
+            | Ty::List(inner)
+            | Ty::Set(inner)
+            | Ty::HashSet(inner)
+            | Ty::Mut(inner) => {
                 self.collect_domains_in_ty(inner, out, seen_structs, seen_enums);
             }
             Ty::Array { dims, elem } => {
@@ -962,8 +982,16 @@ impl Program {
                     }
                 }
             }
-            Ty::Unit | Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Bool | Ty::Char
-            | Ty::Str | Ty::DomainVal | Ty::Error => {}
+            Ty::Unit
+            | Ty::Int
+            | Ty::I128
+            | Ty::U64
+            | Ty::Float
+            | Ty::Bool
+            | Ty::Char
+            | Ty::Str
+            | Ty::DomainVal
+            | Ty::Error => {}
         }
     }
 
@@ -1014,8 +1042,11 @@ impl Program {
                     self.collect_defined_domains_expr(val, escaping, seen, out);
                     self.record_defined_domain(*id, escaping, seen, out);
                 }
-                Stmt::Let(_, Some(e)) | Stmt::Assign(_, _, e) | Stmt::Expr(e)
-                | Stmt::Return(Some(e)) | Stmt::Give(e) => {
+                Stmt::Let(_, Some(e))
+                | Stmt::Assign(_, _, e)
+                | Stmt::Expr(e)
+                | Stmt::Return(Some(e))
+                | Stmt::Give(e) => {
                     self.collect_defined_domains_expr(e, escaping, seen, out);
                 }
                 Stmt::Assert { cond, message, .. } => {
@@ -1042,15 +1073,20 @@ impl Program {
                                 self.collect_defined_domains_expr(s, escaping, seen, out);
                             }
                         }
-                        Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e)
+                        Iter::RangeVal(e, _)
+                        | Iter::Seq(e, _)
+                        | Iter::Subsets(e)
                         | Iter::Members(e) => {
                             self.collect_defined_domains_expr(e, escaping, seen, out);
                         }
                     }
                     self.collect_defined_domains_block(b, escaping, seen, out);
                 }
-                Stmt::Let(_, None) | Stmt::Return(None) | Stmt::Break(_)
-                | Stmt::Continue(_) | Stmt::Trap(..) => {}
+                Stmt::Let(_, None)
+                | Stmt::Return(None)
+                | Stmt::Break(_)
+                | Stmt::Continue(_)
+                | Stmt::Trap(..) => {}
             }
         }
     }
@@ -1071,12 +1107,18 @@ impl Program {
                 self.collect_defined_domains_expr(t, escaping, seen, out);
                 self.collect_defined_domains_expr(e, escaping, seen, out);
             }
-            ExprKind::Unary(_, x) | ExprKind::Some(x) | ExprKind::Unwrap(x, _)
-            | ExprKind::IsSome(x) | ExprKind::Field(x, _) | ExprKind::Cast(_, x)
-            | ExprKind::IsVariant(x, _) | ExprKind::Payload(x, _, _) => {
+            ExprKind::Unary(_, x)
+            | ExprKind::Some(x)
+            | ExprKind::Unwrap(x, _)
+            | ExprKind::IsSome(x)
+            | ExprKind::Field(x, _)
+            | ExprKind::Cast(_, x)
+            | ExprKind::IsVariant(x, _)
+            | ExprKind::Payload(x, _, _) => {
                 self.collect_defined_domains_expr(x, escaping, seen, out);
             }
-            ExprKind::Binary(_, a, b) | ExprKind::Cmp(_, a, b)
+            ExprKind::Binary(_, a, b)
+            | ExprKind::Cmp(_, a, b)
             | ExprKind::Range { lo: a, hi: b } => {
                 self.collect_defined_domains_expr(a, escaping, seen, out);
                 self.collect_defined_domains_expr(b, escaping, seen, out);
@@ -1090,7 +1132,9 @@ impl Program {
             ExprKind::Fill(_, Some(v)) => {
                 self.collect_defined_domains_expr(v, escaping, seen, out);
             }
-            ExprKind::Tuple(xs) | ExprKind::Variant(_, xs) | ExprKind::Builtin(_, xs)
+            ExprKind::Tuple(xs)
+            | ExprKind::Variant(_, xs)
+            | ExprKind::Builtin(_, xs)
             | ExprKind::Mutate(_, _, xs) => {
                 for x in xs {
                     self.collect_defined_domains_expr(x, escaping, seen, out);

@@ -89,7 +89,11 @@ fn run(mut command: Command, input: &str) -> std::process::Output {
         .spawn()
         .expect("starts");
     // A program that stops early closes its input; that is not an error.
-    let _ = child.stdin.take().expect("piped").write_all(input.as_bytes());
+    let _ = child
+        .stdin
+        .take()
+        .expect("piped")
+        .write_all(input.as_bytes());
     child.wait_with_output().expect("exits")
 }
 
@@ -115,8 +119,12 @@ fn sanitized_binary(cpp: &[u8]) -> Result<PathBuf, String> {
     if binary.exists() && std::fs::read(&source).is_ok_and(|kept| kept == cpp) {
         return Ok(binary);
     }
-    let unique = format!("{key}.{}.{:?}", std::process::id(), std::thread::current().id())
-        .replace(|c: char| !c.is_ascii_alphanumeric() && c != '.', "");
+    let unique = format!(
+        "{key}.{}.{:?}",
+        std::process::id(),
+        std::thread::current().id()
+    )
+    .replace(|c: char| !c.is_ascii_alphanumeric() && c != '.', "");
     let (tmp_source, tmp_binary) = (cache.join(format!("{unique}.cpp")), cache.join(&unique));
     std::fs::write(&tmp_source, cpp).map_err(|e| e.to_string())?;
     let compiled = Command::new("g++")
@@ -126,7 +134,11 @@ fn sanitized_binary(cpp: &[u8]) -> Result<PathBuf, String> {
         .output()
         .map_err(|e| format!("g++ did not start ({e}); these tests need it"))?;
     if !compiled.status.success() {
-        return Err(format!("g++ failed on {}:\n{}", tmp_source.display(), String::from_utf8_lossy(&compiled.stderr)));
+        return Err(format!(
+            "g++ failed on {}:\n{}",
+            tmp_source.display(),
+            String::from_utf8_lossy(&compiled.stderr)
+        ));
     }
     std::fs::rename(&tmp_binary, &binary).map_err(|e| e.to_string())?;
     std::fs::rename(&tmp_source, &source).map_err(|e| e.to_string())?;
@@ -141,7 +153,10 @@ fn three_way(name: &str, src: &str, cases: &[(String, Expect)]) -> Vec<String> {
         .output()
         .expect("cpl build runs");
     if !built.status.success() {
-        return vec![format!("{name}: cpl build failed:\n{}", String::from_utf8_lossy(&built.stderr))];
+        return vec![format!(
+            "{name}: cpl build failed:\n{}",
+            String::from_utf8_lossy(&built.stderr)
+        )];
     }
     let binary = match sanitized_binary(&built.stdout) {
         Ok(binary) => binary,
@@ -156,7 +171,11 @@ fn three_way(name: &str, src: &str, cases: &[(String, Expect)]) -> Vec<String> {
         let said = String::from_utf8_lossy(&by_cpp.stderr);
         let sanitizer = said.contains("Sanitizer") || said.contains("runtime error:");
         let show = |out: &std::process::Output| {
-            format!("status {:?}, printed {:?}", out.status.code(), String::from_utf8_lossy(&out.stdout))
+            format!(
+                "status {:?}, printed {:?}",
+                out.status.code(),
+                String::from_utf8_lossy(&out.stdout)
+            )
         };
         let agrees = |out: &std::process::Output| match expect {
             Expect::Prints(text) => out.status.code() == Some(0) && out.stdout == text.as_bytes(),
@@ -167,7 +186,11 @@ fn three_way(name: &str, src: &str, cases: &[(String, Expect)]) -> Vec<String> {
                 "{name} on input {input:?}: expected {expect:?}\n  cpl run: {}\n  C++:     {}{}",
                 show(&by_interp),
                 show(&by_cpp),
-                if sanitizer { format!("\n  sanitizer: {}", said.lines().next().unwrap_or("")) } else { String::new() }
+                if sanitizer {
+                    format!("\n  sanitizer: {}", said.lines().next().unwrap_or(""))
+                } else {
+                    String::new()
+                }
             ));
         }
     }
@@ -180,7 +203,12 @@ fn OsStr(text: &str) -> &std::ffi::OsStr {
 }
 
 fn assert_agree(failures: Vec<String>) {
-    assert!(failures.is_empty(), "{} disagreement(s):\n{}", failures.len(), failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "{} disagreement(s):\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
 }
 
 // ---- Euclidean `/` and `%` on `Int`, `I128` and `U64` ----
@@ -192,10 +220,37 @@ for _ in 0..q:
     print(a / b, a % b)
 ";
 
-const INT_EDGES: [i64; 14] = [0, 1, -1, 2, -2, 3, -3, 7, -7, 1_000_000_000, -1_000_000_000, i64::MAX, i64::MIN, i64::MIN + 1];
+const INT_EDGES: [i64; 13] = [
+    0,
+    1,
+    -1,
+    2,
+    -2,
+    3,
+    -3,
+    7,
+    -7,
+    1_000_000_000,
+    -1_000_000_000,
+    i64::MAX,
+    -i64::MAX,
+];
 
-/// Divisors: every edge but `Int.MIN`, which has its own known-trap test.
-const INT_DIVISORS: [i64; 12] = [1, -1, 2, -2, 3, -3, 7, -7, 1_000_000_000, -1_000_000_000, i64::MAX, i64::MIN + 1];
+/// Divisors: every edge but 0.
+const INT_DIVISORS: [i64; 12] = [
+    1,
+    -1,
+    2,
+    -2,
+    3,
+    -3,
+    7,
+    -7,
+    1_000_000_000,
+    -1_000_000_000,
+    i64::MAX,
+    -i64::MAX,
+];
 
 #[test]
 fn euclidean_division_on_int_edges() {
@@ -204,10 +259,16 @@ fn euclidean_division_on_int_edges() {
             let mut rng = Rng::new(seed);
             let pairs: Vec<(i64, i64)> = (0..12)
                 .map(|_| (rng.pick(&INT_EDGES), rng.pick(&INT_DIVISORS)))
-                .filter(|&(a, b)| b != 0 && !(a == i64::MIN && b == -1))
                 .collect();
-            let input = pairs.iter().fold(format!("{}\n", pairs.len()), |s, (a, b)| s + &format!("{a} {b}\n"));
-            let out = pairs.iter().map(|(a, b)| format!("{} {}\n", a.div_euclid(*b), a.rem_euclid(*b))).collect();
+            let input = pairs
+                .iter()
+                .fold(format!("{}\n", pairs.len()), |s, (a, b)| {
+                    s + &format!("{a} {b}\n")
+                });
+            let out = pairs
+                .iter()
+                .map(|(a, b)| format!("{} {}\n", a.div_euclid(*b), a.rem_euclid(*b)))
+                .collect();
             (input, Expect::Prints(out))
         })
         .collect();
@@ -215,23 +276,45 @@ fn euclidean_division_on_int_edges() {
 }
 
 #[test]
-fn int_mod_by_int_min_is_defined() {
-    let pairs = [(-1, i64::MIN), (i64::MAX, i64::MIN), (i64::MIN, i64::MIN), (0, i64::MIN)];
-    let input = pairs.iter().fold(format!("{}\n", pairs.len()), |s, (a, b)| s + &format!("{a} {b}\n"));
-    let out = pairs.iter().map(|(a, b): &(i64, i64)| format!("{} {}\n", a.div_euclid(*b), a.rem_euclid(*b))).collect();
-    assert_agree(three_way("int_division", INT_DIVISION, &[(input, Expect::Prints(out))]));
+fn int_min_over_minus_one_and_mod_int_min_are_defined() {
+    let pairs = [
+        (-1, -i64::MAX),
+        (i64::MAX, -i64::MAX),
+        (-i64::MAX, -i64::MAX),
+        (0, -i64::MAX),
+        (-i64::MAX, -1),
+    ];
+    let input = pairs
+        .iter()
+        .fold(format!("{}\n", pairs.len()), |s, (a, b)| {
+            s + &format!("{a} {b}\n")
+        });
+    let out = pairs
+        .iter()
+        .map(|(a, b): &(i64, i64)| format!("{} {}\n", a.div_euclid(*b), a.rem_euclid(*b)))
+        .collect();
+    assert_agree(three_way(
+        "int_division",
+        INT_DIVISION,
+        &[(input, Expect::Prints(out))],
+    ));
 }
 
 #[test]
 fn int_division_by_zero_stops() {
-    let cases = vec![("1\n5 0\n".to_string(), Expect::Traps), ("1\n0 0\n".to_string(), Expect::Traps)];
+    let cases = vec![
+        ("1\n5 0\n".to_string(), Expect::Traps),
+        ("1\n0 0\n".to_string(), Expect::Traps),
+    ];
     assert_agree(three_way("int_division", INT_DIVISION, &cases));
 }
 
+/// `-2^63` is not an `Int`: both reject it as input.
 #[test]
-fn int_min_over_minus_one_stops() {
+fn minus_two_to_the_63_in_the_input_stops() {
     let cases = vec![
         (format!("1\n{} -1\n", i64::MIN), Expect::Traps),
+        (format!("1\n5 {}\n", i64::MIN), Expect::Traps),
     ];
     assert_agree(three_way("int_division", INT_DIVISION, &cases));
 }
@@ -249,16 +332,42 @@ for _ in 0..q:
 
 #[test]
 fn shifts_and_powers_inside_their_range() {
-    let rows = [(0, 1, 0, "1"), (0, 3, 61, "6917529027641081856"), (1, -8, 63, "-1"), (1, 9, 2, "2"), (2, 2, 0, "1"), (2, -3, 3, "-27"), (3, 1, 63, "9223372036854775808 0"), (4, -8, 127, "-1")];
-    let input = rows.iter().fold(format!("{}\n", rows.len()), |s, (op, a, k, _)| s + &format!("{op} {a} {k}\n"));
+    let rows = [
+        (0, 1, 0, "1"),
+        (0, 3, 61, "6917529027641081856"),
+        (1, -8, 63, "-1"),
+        (1, 9, 2, "2"),
+        (2, 2, 0, "1"),
+        (2, -3, 3, "-27"),
+        (3, 1, 63, "9223372036854775808 0"),
+        (4, -8, 127, "-1"),
+    ];
+    let input = rows
+        .iter()
+        .fold(format!("{}\n", rows.len()), |s, (op, a, k, _)| {
+            s + &format!("{op} {a} {k}\n")
+        });
     let out = rows.iter().map(|r| format!("{}\n", r.3)).collect();
     assert_agree(three_way("shifts", SHIFTS, &[(input, Expect::Prints(out))]));
 }
 
 #[test]
 fn a_shift_outside_its_width_or_a_negative_power_stops() {
-    let rows = [(0, 1, 64), (0, 1, -1), (1, 1, 64), (1, 1, -1), (2, 2, -1), (3, 1, 64), (3, 1, -1), (4, 1, 128), (4, 1, -1)];
-    let cases: Vec<_> = rows.iter().map(|(op, a, k)| (format!("1\n{op} {a} {k}\n"), Expect::Traps)).collect();
+    let rows = [
+        (0, 1, 64),
+        (0, 1, -1),
+        (1, 1, 64),
+        (1, 1, -1),
+        (2, 2, -1),
+        (3, 1, 64),
+        (3, 1, -1),
+        (4, 1, 128),
+        (4, 1, -1),
+    ];
+    let cases: Vec<_> = rows
+        .iter()
+        .map(|(op, a, k)| (format!("1\n{op} {a} {k}\n"), Expect::Traps))
+        .collect();
     assert_agree(three_way("shifts", SHIFTS, &cases));
 }
 
@@ -307,13 +416,29 @@ fn swaps_truncations_fills_and_repeats_at_the_edges() {
     for n in 0..5i64 {
         for _ in 0..12 {
             let ops: Vec<(i64, i64, i64)> = (0..3)
-                .map(|_| (rng.below(4) as i64, rng.below(n as u64 + 3) as i64 - 1, rng.below(n as u64 + 3) as i64 - 1))
+                .map(|_| {
+                    (
+                        rng.below(4) as i64,
+                        rng.below(n as u64 + 3) as i64 - 1,
+                        rng.below(n as u64 + 3) as i64 - 1,
+                    )
+                })
                 .collect();
-            let input = ops.iter().fold(format!("{n}\n{}\n", ops.len()), |s, (op, a, b)| s + &format!("{op} {a} {b}\n"));
-            cases.push((input, list_edits(n, &ops).map_or(Expect::Traps, Expect::Prints)));
+            let input = ops
+                .iter()
+                .fold(format!("{n}\n{}\n", ops.len()), |s, (op, a, b)| {
+                    s + &format!("{op} {a} {b}\n")
+                });
+            cases.push((
+                input,
+                list_edits(n, &ops).map_or(Expect::Traps, Expect::Prints),
+            ));
         }
     }
-    assert!(cases.iter().any(|c| matches!(c.1, Expect::Traps)) && cases.iter().any(|c| matches!(c.1, Expect::Prints(_))));
+    assert!(
+        cases.iter().any(|c| matches!(c.1, Expect::Traps))
+            && cases.iter().any(|c| matches!(c.1, Expect::Prints(_)))
+    );
     assert_agree(three_way("list_edits", LIST_EDITS, &cases));
 }
 
@@ -331,18 +456,43 @@ for _ in 0..q:
 fn a_modulus_whose_square_does_not_fit() {
     let big = 1_000_000_000_000_000_003i128;
     let pow = |x: i128, e: i64, p: i128| (0..e).fold(1 % p, |acc, _| acc * x.rem_euclid(p) % p);
-    for m in [4_000_000_007i128, 3_037_000_500, 3_037_000_499, 4_611_686_018_427_387_847] {
-        let rows = [(big as i64 - 1, big as i64 - 2, 5), (i64::MAX, i64::MAX, 3), (-1, i64::MIN + 1, 7), (m as i64 - 1, m as i64 - 1, 2), (0, 5, 0)];
-        let input = rows.iter().fold(format!("{m}\n{}\n", rows.len()), |s, (a, b, e)| s + &format!("{a} {b} {e}\n"));
+    for m in [
+        4_000_000_007i128,
+        3_037_000_500,
+        3_037_000_499,
+        4_611_686_018_427_387_847,
+    ] {
+        let rows = [
+            (big as i64 - 1, big as i64 - 2, 5),
+            (i64::MAX, i64::MAX, 3),
+            (-1, i64::MIN + 1, 7),
+            (m as i64 - 1, m as i64 - 1, 2),
+            (0, 5, 0),
+        ];
+        let input = rows
+            .iter()
+            .fold(format!("{m}\n{}\n", rows.len()), |s, (a, b, e)| {
+                s + &format!("{a} {b} {e}\n")
+            });
         let out = rows
             .iter()
             .map(|&(a, b, e)| {
                 let (a, b) = (a as i128, b as i128);
                 let mul = |p: i128| a.rem_euclid(p) * b.rem_euclid(p) % p;
-                format!("{} {} {} {}\n", mul(big), pow(a, e, big), mul(m), pow(a, e, m))
+                format!(
+                    "{} {} {} {}\n",
+                    mul(big),
+                    pow(a, e, big),
+                    mul(m),
+                    pow(a, e, m)
+                )
             })
             .collect();
-        assert_agree(three_way("big_mod", BIG_MOD, &[(input, Expect::Prints(out))]));
+        assert_agree(three_way(
+            "big_mod",
+            BIG_MOD,
+            &[(input, Expect::Prints(out))],
+        ));
     }
 }
 
@@ -358,7 +508,9 @@ for _ in 0..q:
 fn the_inverse_reads_with_and_without_parentheses() {
     let p = 998_244_353i64;
     let rows = [1, 2, -1, p - 1, p + 1, i64::MAX, i64::MIN + 1, 123_456_789];
-    let input = rows.iter().fold(format!("{}\n", rows.len()), |s, a| s + &format!("{a}\n"));
+    let input = rows
+        .iter()
+        .fold(format!("{}\n", rows.len()), |s, a| s + &format!("{a}\n"));
     let out = rows
         .iter()
         .map(|a| {
@@ -366,8 +518,15 @@ fn the_inverse_reads_with_and_without_parentheses() {
             format!("{inv} {inv} 1 {inv}\n")
         })
         .collect();
-    assert_agree(three_way("inverse", INVERSE, &[(input, Expect::Prints(out))]));
-    let none = vec![("1\n0\n".to_string(), Expect::Traps), (format!("1\n{p}\n"), Expect::Traps)];
+    assert_agree(three_way(
+        "inverse",
+        INVERSE,
+        &[(input, Expect::Prints(out))],
+    ));
+    let none = vec![
+        ("1\n0\n".to_string(), Expect::Traps),
+        (format!("1\n{p}\n"), Expect::Traps),
+    ];
     assert_agree(three_way("inverse", INVERSE, &none));
 }
 
@@ -379,7 +538,20 @@ for _ in 0..q:
     print(a / b, a % b, u / v, u % v, u + v, u - v)
 ";
 
-const I128_EDGES: [i128; 12] = [0, 1, -1, 2, -7, 7, i128::MAX, i128::MIN, i64::MAX as i128, i64::MIN as i128, 10i128.pow(30), -(10i128.pow(30))];
+const I128_EDGES: [i128; 12] = [
+    0,
+    1,
+    -1,
+    2,
+    -7,
+    7,
+    i128::MAX,
+    i128::MIN,
+    i64::MAX as i128,
+    i64::MIN as i128,
+    10i128.pow(30),
+    -(10i128.pow(30)),
+];
 const U64_EDGES: [u64; 6] = [0, 1, 2, 7, u64::MAX, u64::MAX - 1];
 
 #[test]
@@ -395,11 +567,23 @@ fn euclidean_division_on_i128_and_wrapping_u64() {
                     rows.push((a, b, u, v));
                 }
             }
-            let input = rows.iter().fold(format!("{}\n", rows.len()), |s, (a, b, u, v)| s + &format!("{a} {b}\n{u} {v}\n"));
+            let input = rows
+                .iter()
+                .fold(format!("{}\n", rows.len()), |s, (a, b, u, v)| {
+                    s + &format!("{a} {b}\n{u} {v}\n")
+                });
             let out = rows
                 .iter()
                 .map(|(a, b, u, v)| {
-                    format!("{} {} {} {} {} {}\n", a.div_euclid(*b), a.rem_euclid(*b), u / v, u % v, u.wrapping_add(*v), u.wrapping_sub(*v))
+                    format!(
+                        "{} {} {} {} {} {}\n",
+                        a.div_euclid(*b),
+                        a.rem_euclid(*b),
+                        u / v,
+                        u % v,
+                        u.wrapping_add(*v),
+                        u.wrapping_sub(*v)
+                    )
                 })
                 .collect();
             (input, Expect::Prints(out))
@@ -447,7 +631,7 @@ fn pow_mod(x: i64, e: i64, p: i64) -> i64 {
 #[test]
 fn mod_p_at_its_edges() {
     const P: i64 = 998_244_353;
-    let xs = [0, 1, -1, 6, 7, -7, P - 1, P, -P, P + 1, i64::MAX, i64::MIN];
+    let xs = [0, 1, -1, 6, 7, -7, P - 1, P, -P, P + 1, i64::MAX, -i64::MAX];
     let cases: Vec<_> = (0..SEEDS)
         .map(|seed| {
             let mut rng = Rng::new(seed);
@@ -456,11 +640,17 @@ fn mod_p_at_its_edges() {
                     let x = rng.pick(&xs);
                     // A negative power needs an inverse in both moduli.
                     let invertible = x.rem_euclid(P) != 0 && x.rem_euclid(7) != 0;
-                    let e = if invertible { rng.range(-3, 40) } else { rng.range(0, 40) };
+                    let e = if invertible {
+                        rng.range(-3, 40)
+                    } else {
+                        rng.range(0, 40)
+                    };
                     (x, e)
                 })
                 .collect();
-            let input = rows.iter().fold(format!("{}\n", rows.len()), |s, (x, e)| s + &format!("{x} {e}\n"));
+            let input = rows.iter().fold(format!("{}\n", rows.len()), |s, (x, e)| {
+                s + &format!("{x} {e}\n")
+            });
             let out = rows
                 .iter()
                 .map(|&(x, e)| {
@@ -496,7 +686,14 @@ print(D.K, count, a.len, sum(a[x] for x in D))
 
 #[test]
 fn a_domain_of_every_size_down_to_empty() {
-    let cases: Vec<_> = (0..=5).map(|n| (format!("{n}\n"), Expect::Prints(format!("{n} {n} {n} {}\n", 7 * n)))).collect();
+    let cases: Vec<_> = (0..=5)
+        .map(|n| {
+            (
+                format!("{n}\n"),
+                Expect::Prints(format!("{n} {n} {n} {}\n", 7 * n)),
+            )
+        })
+        .collect();
     assert_agree(three_way("empty_domain", EMPTY_DOMAIN, &cases));
 }
 
@@ -508,13 +705,19 @@ print(D.first, D.last)
 
 #[test]
 fn the_ends_of_a_domain_that_has_some() {
-    let cases: Vec<_> = (1..=5).map(|n| (format!("{n}\n"), Expect::Prints(format!("0 {}\n", n - 1)))).collect();
+    let cases: Vec<_> = (1..=5)
+        .map(|n| (format!("{n}\n"), Expect::Prints(format!("0 {}\n", n - 1))))
+        .collect();
     assert_agree(three_way("domain_ends", DOMAIN_ENDS, &cases));
 }
 
 #[test]
 fn the_ends_of_an_empty_domain_stop() {
-    assert_agree(three_way("domain_ends", DOMAIN_ENDS, &[("0\n".to_string(), Expect::Traps)]));
+    assert_agree(three_way(
+        "domain_ends",
+        DOMAIN_ENDS,
+        &[("0\n".to_string(), Expect::Traps)],
+    ));
 }
 
 // ---- Slices: negative, reversed, empty and past the end ----
@@ -538,10 +741,20 @@ fn slices_in_and_out_of_range() {
         let n = rng.range(0, 6);
         let a: Vec<i64> = (0..n).map(|_| rng.range(-9, 9)).collect();
         let (lo, hi) = (rng.range(-2, n + 2), rng.range(-2, n + 2));
-        let input = format!("{n}\n{}\n{lo} {hi}\n", a.iter().map(i64::to_string).collect::<Vec<_>>().join(" "));
+        let input = format!(
+            "{n}\n{}\n{lo} {hi}\n",
+            a.iter().map(i64::to_string).collect::<Vec<_>>().join(" ")
+        );
         let expect = if 0 <= lo && lo <= hi && hi <= n {
             let part = &a[lo as usize..hi as usize];
-            Expect::Prints(format!("{}\n{}\n", part.len(), part.iter().map(i64::to_string).collect::<Vec<_>>().join(" ")))
+            Expect::Prints(format!(
+                "{}\n{}\n",
+                part.len(),
+                part.iter()
+                    .map(i64::to_string)
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            ))
         } else {
             Expect::Traps
         };
@@ -572,10 +785,21 @@ fn optionals_with_and_without_values() {
     for seed in 0..SEEDS * 2 {
         let mut rng = Rng::new(seed);
         let n = rng.range(0, 4);
-        let raw: Vec<i64> = (0..n).map(|_| if rng.below(2) == 0 { 0 } else { rng.range(-9, 9) }).collect();
+        let raw: Vec<i64> = (0..n)
+            .map(|_| {
+                if rng.below(2) == 0 {
+                    0
+                } else {
+                    rng.range(-9, 9)
+                }
+            })
+            .collect();
         let k = rng.range(0, (n - 1).max(0));
         let values: Vec<i64> = raw.iter().copied().filter(|&r| r != 0).collect();
-        let input = format!("{n}\n{}\n{k}\n", raw.iter().map(i64::to_string).collect::<Vec<_>>().join(" "));
+        let input = format!(
+            "{n}\n{}\n{k}\n",
+            raw.iter().map(i64::to_string).collect::<Vec<_>>().join(" ")
+        );
         let expect = match raw.get(k as usize) {
             Some(&r) if r != 0 => Expect::Prints(format!(
                 "{} {}\n{r}\n",
@@ -631,7 +855,12 @@ fn structures_case(rng: &mut Rng, n: i64) -> (String, Expect) {
     let mut out = format!("{n}\n");
     let mut stops = false;
     for _ in 0..q {
-        let (t, i, j, x) = (rng.range(0, 4), rng.range(0, n - 1), rng.range(0, n - 1), rng.range(-9, 9));
+        let (t, i, j, x) = (
+            rng.range(0, 4),
+            rng.range(0, n - 1),
+            rng.range(0, n - 1),
+            rng.range(-9, 9),
+        );
         input += &format!("{t} {i} {j} {x}\n");
         let (iu, ju) = (i as usize, j as usize);
         let span = iu..=ju;
@@ -645,7 +874,10 @@ fn structures_case(rng: &mut Rng, n: i64) -> (String, Expect) {
             }
             1 => {
                 let sum: i64 = fen.get(span.clone()).map_or(0, |part| part.iter().sum());
-                let min = seg.get(span).and_then(|part| part.iter().min().copied()).unwrap_or(i64::MAX);
+                let min = seg
+                    .get(span)
+                    .and_then(|part| part.iter().min().copied())
+                    .unwrap_or(i64::MAX);
                 out += &format!("{sum} {min}\n");
             }
             2 => {
@@ -654,7 +886,10 @@ fn structures_case(rng: &mut Rng, n: i64) -> (String, Expect) {
                 }
             }
             3 => {
-                let min = lazy.get(span).and_then(|part| part.iter().min().copied()).unwrap_or(i64::MAX);
+                let min = lazy
+                    .get(span)
+                    .and_then(|part| part.iter().min().copied())
+                    .unwrap_or(i64::MAX);
                 out += &format!("{min} {}\n", lazy[iu]);
             }
             _ => {
@@ -668,7 +903,14 @@ fn structures_case(rng: &mut Rng, n: i64) -> (String, Expect) {
             }
         }
     }
-    (input, if stops { Expect::Traps } else { Expect::Prints(out) })
+    (
+        input,
+        if stops {
+            Expect::Traps
+        } else {
+            Expect::Prints(out)
+        },
+    )
 }
 
 #[test]
