@@ -96,8 +96,9 @@ def bundle():
 
 
 # Capped separately because they grow for different reasons: the compiler
-# (gzipped WASM) with the language, the docs blob only when text is duplicated.
-CAPS = {"compiler": 2_100_000, "docs": 620_000}
+# (gzipped WASM) with the language, the docs blob with duplicated text and by
+# one Ports-gallery page per dream.
+CAPS = {"compiler": 2_100_000, "docs": 700_000}
 
 
 def part_sizes(path):
