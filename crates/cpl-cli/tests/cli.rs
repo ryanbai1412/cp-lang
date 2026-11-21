@@ -814,3 +814,53 @@ fn max_assign_on_a_grid_or_optional_rows_says_what_to_write() {
     assert!(rows.contains("a `?Int` cell may be `none`"), "{rows}");
     assert!(rows.contains("`a[i] min= b[i]`"), "{rows}");
 }
+
+/// The C++ of a recursion 10^6 calls deep runs where the process has the
+/// 8 MB stack a judge's `main` usually gets: the program has a thread with
+/// the profile's 1 GB, and nothing counts how deep the calls go.
+#[test]
+fn a_million_calls_deep_run_in_the_built_cpp_on_an_8_mb_stack() {
+    if Command::new("g++").arg("--version").output().is_err() {
+        return;
+    }
+    let source = std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/stack/path_dfs.cp")).unwrap();
+    let path = scratch("deep-dfs", "path_dfs.cp", &source);
+    let built = cpl(&["build".as_ref(), path.as_os_str()], b"");
+    assert!(built.status.success(), "{built:?}");
+    let binary = path.with_extension("bin");
+    let compiled = Command::new("g++")
+        .args(["-std=c++17", "-O2", "-o"])
+        .arg(&binary)
+        .arg(path.with_extension("cpp"))
+        .output()
+        .unwrap();
+    assert!(compiled.status.success(), "{compiled:?}");
+    let input = path.with_extension("in");
+    std::fs::write(&input, "1000000\n").unwrap();
+    let run = Command::new("sh")
+        .arg("-c")
+        .arg("ulimit -s 8192 && exec \"$0\" < \"$1\"")
+        .arg(&binary)
+        .arg(&input)
+        .output()
+        .unwrap();
+    assert!(run.status.success(), "{run:?}");
+    assert_eq!(String::from_utf8_lossy(&run.stdout), "1000000 999999\n");
+}
+
+#[test]
+fn a_judge_without_threads_gets_a_plain_main_and_a_warning() {
+    let path = scratch("judge-threads", "a.cp", b"// judge: olympiad\nprint(1)\n");
+    let toml = "[judge.olympiad]\nextends = \"generic\"\nthread_stack_mb = 0\n";
+    std::fs::write(path.with_file_name("cp.toml"), toml).unwrap();
+    let out = cpl(&["build".as_ref(), path.as_os_str()], b"");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(out.status.success(), "{out:?}");
+    assert!(stderr.contains("warning: judge `olympiad` allows no threads"), "{stderr}");
+    let cpp = std::fs::read_to_string(path.with_extension("cpp")).unwrap();
+    assert!(!cpp.contains("pthread") && cpp.contains("int main() {"), "{cpp}");
+    let out = cpl(&["build".as_ref(), path.as_os_str(), "--judge".as_ref(), "generic".as_ref()], b"");
+    assert!(out.status.success() && out.stderr.is_empty(), "{out:?}");
+    let cpp = std::fs::read_to_string(path.with_extension("cpp")).unwrap();
+    assert!(cpp.contains("pthread_attr_setstacksize") && !cpp.contains("CreateThread"), "{cpp}");
+}

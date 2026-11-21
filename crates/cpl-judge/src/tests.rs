@@ -28,11 +28,24 @@ fn every_builtin_has_a_distinct_name_a_compiler_and_a_limit() {
 }
 
 #[test]
-fn only_a_judge_with_a_deep_stack_runs_deep_recursion_on_its_own_stack() {
-    assert!(!builtin("generic").unwrap().deep_stack());
-    assert!(!builtin("cses").unwrap().deep_stack());
-    assert!(builtin("codeforces").unwrap().deep_stack());
-    assert!(builtin("icpc").unwrap().deep_stack());
+fn every_builtin_runs_the_program_on_a_1_gb_thread_stack() {
+    for profile in builtins() {
+        assert_eq!(profile.thread_stack, Some(1 << 30), "{}", profile.name);
+        assert_eq!(profile.thread_warning(), None, "{}", profile.name);
+    }
+}
+
+#[test]
+fn a_project_sets_the_thread_stack_or_says_the_judge_allows_no_threads() {
+    let toml = "[judge]\njudge = \"olympiad\"\n[judge.olympiad]\nextends = \"generic\"\nthread_stack_mb = 0\n";
+    let banned = dir("threads", Some(toml));
+    let profile = resolve(&banned.join("a.cp"), "", None).unwrap();
+    assert_eq!(profile.thread_stack, None);
+    let warning = profile.thread_warning().unwrap();
+    assert!(warning.contains("judge `olympiad` allows no threads") && warning.contains("8 MB stack"), "{warning}");
+    let toml = "[judge.generic]\nthread_stack_mb = 512\n";
+    let other = dir("thread-stack", Some(toml));
+    assert_eq!(resolve(&other.join("a.cp"), "", None).unwrap().thread_stack, Some(512 << 20));
 }
 
 #[test]

@@ -54,6 +54,9 @@ pub struct Profile {
     pub flags: Vec<String>,
     pub os: Os,
     pub stack: Stack,
+    /// The stack the program asks for on a thread of its own, `None` on a
+    /// judge that allows no threads.
+    pub thread_stack: Option<u64>,
     /// The longest source the judge accepts, in bytes.
     pub source_limit: usize,
     /// Whether the compiler has `__int128`.
@@ -62,9 +65,9 @@ pub struct Profile {
     pub evidence: String,
 }
 
-/// Stack the generated program needs before it can skip switching to a
-/// stack of its own for deep recursion.
-pub const DEEP_STACK: u64 = 256 << 20;
+/// The stack the program's thread asks for unless a profile says
+/// otherwise: the judge is assumed to give that much address space.
+pub const THREAD_STACK: u64 = 1 << 30;
 
 impl Profile {
     /// The source size worth a warning: three quarters of the limit.
@@ -72,9 +75,18 @@ impl Profile {
         self.source_limit / 4 * 3
     }
 
-    /// Whether deep recursion fits the judge's own stack.
-    pub fn deep_stack(&self) -> bool {
-        self.stack.assured().is_none_or(|bytes| bytes >= DEEP_STACK)
+    /// What a contestant must know before submitting to a judge that
+    /// allows no threads.
+    pub fn thread_warning(&self) -> Option<String> {
+        match self.thread_stack {
+            Some(_) => None,
+            None => Some(format!(
+                "judge `{}` allows no threads, so the program runs on the {} the judge gives `main`; \
+                 deep recursion may overflow it",
+                self.name,
+                self.stack.describe()
+            )),
+        }
     }
 
     /// The command line, as the judge runs it.
@@ -259,6 +271,7 @@ fn profile(
         flags: words.collect(),
         os,
         stack,
+        thread_stack: Some(THREAD_STACK),
         source_limit,
         int128: true,
         evidence: evidence.into(),
@@ -515,6 +528,7 @@ const KEYS: &[(&str, &str)] = &[
     ("flags", "a list of flags in quotes"),
     ("os", "\"linux\" or \"windows\""),
     ("stack_mb", "a whole number of MB, or \"unlimited\""),
+    ("thread_stack_mb", "a whole number of MB, 0 for a judge that allows no threads"),
     ("source_kb", "a whole number of KB"),
     ("int128", "true or false"),
 ];
@@ -529,7 +543,7 @@ fn check_key(key: &str, value: &Value) -> Result<(), String> {
         ("extends" | "title" | "compiler", Value::Str(_))
             | ("flags", Value::List(_))
             | ("os", Value::Str(_))
-            | ("stack_mb", Value::Int(_))
+            | ("stack_mb" | "thread_stack_mb", Value::Int(_))
             | ("source_kb", Value::Int(_))
             | ("int128", Value::Bool(_))
     ) || matches!((key, value), ("stack_mb", Value::Str(s)) if s == "unlimited");
@@ -548,6 +562,7 @@ fn apply(profile: &mut Profile, key: &str, value: &Value) {
         ("os", Value::Str(s)) => profile.os = if s == "windows" { Os::Windows } else { Os::Linux },
         ("stack_mb", Value::Int(mb)) => profile.stack = Stack::Bytes(mb << 20),
         ("stack_mb", Value::Str(_)) => profile.stack = Stack::Unlimited,
+        ("thread_stack_mb", Value::Int(mb)) => profile.thread_stack = (*mb > 0).then(|| mb << 20),
         ("source_kb", Value::Int(kb)) => profile.source_limit = (*kb as usize) * 1024,
         ("int128", Value::Bool(b)) => profile.int128 = *b,
         _ => {}

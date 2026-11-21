@@ -26,6 +26,7 @@ judge = "school"
 extends = "icpc"
 title = "School judge"
 stack_mb = 64            # or "unlimited"
+thread_stack_mb = 512    # the program's thread; 0 if threads are banned
 source_kb = 100
 flags = ["-std=c++17", "-O2"]
 os = "linux"             # or "windows"
@@ -35,9 +36,10 @@ int128 = false
 What a profile changes today:
 
 - The header names the judge, its command and its stack.
-- Deep recursion gets a 256 MB stack of its own unless the judge's stack is
-  known to be at least that deep (`codeforces`, `icpc`): 742 bytes fewer
-  in `agc077a`.
+- The program runs on a thread with the profile's `thread_stack_mb`
+  (1 GB for every built-in), whatever the judge's own stack; with
+  `thread_stack_mb = 0` (a judge that allows no threads) `main` runs it
+  and `cpl build` warns (decisions 31.4).
 - The size check uses the profile's source limit: a warning above 75%, an
   error above the limit. The source header goes first, then half the
   indentation, only when the file would not fit otherwise.
@@ -61,7 +63,7 @@ here.
 How profiles are tested (`crates/cpl-cli/tests/judges.rs`):
 
 - Every port is written for every profile within its limit, stamped with
-  it, and without the stack switch where the judge's stack is deep.
+  it, and running the program on its own thread.
 - A million nested calls, which crash an 8 MB stack, run under each Linux
   profile's flags on the stack that judge gives (`ulimit -s`), and agree
   with the interpreter. The Windows profile is built
@@ -78,8 +80,9 @@ on the judge:
   on judges with an 8 MB stack. The profile records the stack size;
   `cp budget` estimates recursion depth from ranges and warns when it can
   exceed it, and suggests the stdlib's iterative traversal. On judges that
-  allow it, the emitted `main` can raise the limit (`setrlimit` on Linux) or
-  run the program on a thread with a big stack; the profile says which.
+  allow it, the emitted `main` runs the program on a thread with the
+  profile's thread stack (1 GB by default); a profile without threads gets a plain
+  `main` and a warning from `cpl build` (decisions 31.4).
 - **Memory accounting.** Some judges count virtual memory, some resident.
   The MLE estimate uses the profile's method.
 - **I/O.** The runtime uses its own buffered reader and writer, so speed

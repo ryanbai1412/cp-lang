@@ -25,13 +25,21 @@ pub fn emit(program: &cpl_ir::Program, name: &str, source: Option<&str>) -> Stri
 }
 
 /// What the C++ is written for: the judge it is submitted to.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Target {
     /// A line for the header that names the judge.
     pub stamp: Option<String>,
-    /// Whether the judge's stack holds deep recursion, so the program
-    /// needs no stack of its own.
-    pub deep_stack: bool,
+    /// The stack the program runs with on a thread of its own; `None` on
+    /// a judge that allows no threads, where it has the stack of `main`.
+    pub thread_stack: Option<u64>,
+    /// Whether the judge runs Windows, whose threads are not POSIX ones.
+    pub windows: bool,
+}
+
+impl Default for Target {
+    fn default() -> Target {
+        Target { stamp: None, thread_stack: Some(1 << 30), windows: false }
+    }
 }
 
 /// Where the bytes of a file go, in the order the file has them.
@@ -142,7 +150,8 @@ pub fn emit_profiled(program: &cpl_ir::Program, name: &str) -> (String, Vec<cpl_
     emitter.counted = cpl_ir::sites::user_stmts(&program);
     let (cpp, sites) = emitter.file_with_sites(name, None);
     let tally = PROFILE_TALLY.replace("SITES", &sites.len().max(1).to_string());
-    let at = cpp
+    let head = cpp.find("\nnamespace ").unwrap_or(cpp.len());
+    let at = cpp[..head]
         .rfind("#include")
         .and_then(|at| cpp[at..].find('\n').map(|end| at + end + 1))
         .unwrap_or(0);

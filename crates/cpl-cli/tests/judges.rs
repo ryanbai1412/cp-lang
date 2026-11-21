@@ -48,9 +48,7 @@ fn every_port_is_written_for_every_judge_within_its_limit() {
             let stamp = format!("// For {}.\n", profile.stamp());
             assert!(cpp.lines().take(3).any(|line| format!("{line}\n") == stamp), "{}", port.display());
             assert!(cpp.len() <= profile.source_limit, "{}: {} bytes", port.display(), cpp.len());
-            if profile.deep_stack() {
-                assert!(!cpp.contains("cpl_switch_stack"), "{}", port.display());
-            }
+            assert!(cpp.contains("static void cpl_main()"), "{}", port.display());
             cpp.len()
         });
         let mut sorted = sizes.clone();
@@ -103,10 +101,9 @@ fn has(compiler: &str) -> bool {
     Command::new(compiler).arg("--version").output().is_ok_and(|out| out.status.success())
 }
 
-/// A judge with a deep stack gets C++ that uses it; any other gets C++
-/// that brings its own. Either way a million nested calls, which crash an
-/// 8 MB stack, run as the judge runs them, and a depth the interpreter
-/// also takes gives its answer.
+/// Every judge's C++ runs the program on a thread with the profile's
+/// stack, so a million nested calls, which crash an 8 MB stack, run as the
+/// judge runs them, and a depth the interpreter also takes gives its answer.
 #[test]
 fn deep_recursion_runs_on_the_stack_each_judge_gives() {
     if !has("g++") {
@@ -185,12 +182,10 @@ fn a_release_run_builds_with_the_judges_flags_on_the_judges_stack() {
     let source = root().join("crates/cpl-cli/tests/judges/deep.cp");
     let deep = std::fs::read_to_string(&source).unwrap();
     let interpreted = cpl_cli::run_with_input(&["run", source.to_str().unwrap()], b"1000000\n");
-    // DOMjudge's stack is unlimited, so the C++ keeps its recursion on the
-    // judge's stack, which only the judge's stack holds.
     let file = scratch.join("deep.cp");
     std::fs::write(&file, format!("// judge: icpc\n{deep}")).unwrap();
     let cpp = build(&file, "icpc").unwrap();
-    assert!(!cpp.contains("cpl_switch_stack"));
+    assert!(cpp.contains("static void cpl_main()"));
     let ran = cpl_cli::run_with_input(&["run", file.to_str().unwrap(), "--release"], b"1000000\n");
     assert_eq!(ran.code, 0, "{}", ran.stderr);
     assert_eq!(ran.stdout, interpreted.stdout);

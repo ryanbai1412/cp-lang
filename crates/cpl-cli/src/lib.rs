@@ -975,7 +975,11 @@ fn build_file(
         .and_then(|n| n.to_str())
         .unwrap_or(path);
     let limit = profile.source_limit;
-    let target = cpl_codegen::Target { stamp: Some(profile.stamp()), deep_stack: profile.deep_stack() };
+    let target = cpl_codegen::Target {
+        stamp: Some(profile.stamp()),
+        thread_stack: profile.thread_stack,
+        windows: profile.os == cpl_judge::Os::Windows,
+    };
     let cpp = match cpl_codegen::emit_within_for(&compiled.program, name, &compiled.text, limit, &target) {
         Ok(fitted) => {
             if !fitted.header {
@@ -1009,6 +1013,9 @@ fn build_file(
     if let Some(problem) = profile.unsupported(&cpp) {
         *stderr += &format!("cpl: `{path}` can't be submitted as it is: {problem}\n");
         return EXIT_ERRORS;
+    }
+    if let Some(warning) = profile.thread_warning() {
+        *stderr += &format!("cpl: warning: {warning}\n");
     }
     if cpp.len() > profile.warn_at() {
         *stderr += &format!(
@@ -1107,12 +1114,16 @@ fn list_judges(file: Option<&str>, stdout: &mut (dyn Write + Send), stderr: &mut
         let mark = if profile.name == chosen.name { "*" } else { " " };
         let _ = writeln!(
             stdout,
-            "{mark} {:<11}{}\n    {}\n    {}, {}, source up to {} KB\n    from: {}",
+            "{mark} {:<11}{}\n    {}\n    {}, {}, {}, source up to {} KB\n    from: {}",
             profile.name,
             profile.title,
             profile.command(),
             if profile.os == cpl_judge::Os::Windows { "Windows" } else { "Linux" },
             profile.stack_text(),
+            match profile.thread_stack {
+                Some(bytes) => format!("the program on a thread with {} MB", bytes >> 20),
+                None => "no threads".into(),
+            },
             profile.source_limit / 1024,
             profile.evidence
         );

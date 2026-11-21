@@ -279,7 +279,11 @@ fn emit_cpp(source: &Path, part: Part) -> Result<(PathBuf, cpl_judge::Profile), 
     };
     let program = lowered.map_err(|diagnostics| errors(&diagnostics))?;
     let file = source.file_name().unwrap_or_default().to_string_lossy();
-    let target = cpl_codegen::Target { stamp: Some(profile.stamp()), deep_stack: profile.deep_stack() };
+    let target = cpl_codegen::Target {
+        stamp: Some(profile.stamp()),
+        thread_stack: profile.thread_stack,
+        windows: profile.os == cpl_judge::Os::Windows,
+    };
     let mut cpp = cpl_codegen::emit_for(&program, &file, None, &target);
     if matches!(part, Part::Gen(_)) {
         // Its `rand` and `shuffle` draw from the choices `cpl stress` keeps.

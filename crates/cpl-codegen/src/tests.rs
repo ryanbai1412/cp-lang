@@ -97,7 +97,8 @@ fn only_the_runtime_a_program_uses_is_written() {
             && !hello.contains("put_float"),
         "{hello}"
     );
-    assert!(hello.len() < 2000, "{} bytes for hello world", hello.len());
+    // About 1 kB of it runs the program on a thread with the judge's stack.
+    assert!(hello.len() < 2500, "{} bytes for hello world", hello.len());
 }
 
 #[test]
@@ -533,4 +534,34 @@ fn a_ranged_read_checks_its_bounds() {
     assert!(ranged.contains("cpl::read_in(1, 5)"), "{ranged}");
     let plain = cpp("let k: Int = read()\nprint(k)\n");
     assert!(!plain.contains("read_in("), "{plain}");
+}
+
+#[test]
+fn the_program_runs_on_a_thread_with_the_profile_stack() {
+    let source = "let n: Int = read()\nprint(n)\n";
+    let cpp = cpp(source);
+    assert!(cpp.contains("a 1024 MB stack."), "{cpp}");
+    assert!(cpp.contains("static void cpl_main() {"), "{cpp}");
+    assert!(cpp.contains("for (size_t n = (size_t)1024 << 20;"), "{cpp}");
+    assert!(cpp.contains("pthread_attr_setstacksize") && !cpp.contains("CreateThread"), "{cpp}");
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", source);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let windows = crate::Target { windows: true, ..crate::Target::default() };
+    let cpp = crate::emit_for(&program, "t.cp", None, &windows);
+    assert!(cpp.contains("#ifdef _WIN32") && cpp.contains("CreateThread(0, n,"), "{cpp}");
+    assert!(cpp.contains("#else\n#include <pthread.h>"), "{cpp}");
+    // No call depth is counted, in any build.
+    assert!(!cpp.contains("depth"), "{cpp}");
+}
+
+#[test]
+fn a_judge_without_threads_has_main_run_the_program() {
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", "print(1)\n");
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let target = crate::Target { thread_stack: None, ..crate::Target::default() };
+    let cpp = crate::emit_for(&program, "t.cp", None, &target);
+    assert!(cpp.contains("The judge allows no threads"), "{cpp}");
+    assert!(cpp.contains("int main() {") && !cpp.contains("pthread") && !cpp.contains("cpl_main"), "{cpp}");
 }

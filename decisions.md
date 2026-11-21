@@ -1849,6 +1849,28 @@ Unoptimized, a call took about seven times the stack, so a debug-built
 few seconds more on a clean debug build. Reverse: drop
 `[profile.dev.package.cpl-interp]` from `Cargo.toml`.
 
+31.4. **The C++ runs the program on a thread with the judge profile's
+stack, whatever the program.** A judge profile's `thread_stack_mb`
+(`cp.toml`) says how much; every built-in profile asks for 1 GB. `main`
+asks for that, halving
+down to 8 MB until a thread starts, and runs the program on its own stack
+if none does (a judge that counts the reservation against its memory
+limit, or one whose old glibc is linked without `-pthread`, where
+`pthread_create` is a weak null). A profile without threads
+(`thread_stack_mb = 0`, as on an olympiad's CMS) writes a plain `main` and
+`cpl build` warns. This replaces the 256 MB inline-assembly stack switch
+chosen by a recursion analysis, and with it 34.5: even a judge with a deep
+stack of its own gets the thread, so a profile with a wrong or unknown
+stack size cannot crash a deep program. Reason: the
+analysis cannot see every deep path (a deep loop of non-recursive frames,
+library recursion), the asm worked only on x86-64 Linux without ASan, and
+the judge is assumed to give a big stack, so every program gets it. Cost:
+about 700 B of source, only the judge's OS's threads (median +717 B over
+246 ports, largest file 59,071 B; a hello world is 1,830 B) and one thread
+start (0.06 ms a run); the scoreboard baseline takes the growth. Reverse:
+`Target::thread_stack` in `cpl-codegen/src/lib.rs`, `THREAD_MAIN` in
+`emit.rs` and `Profile::thread_stack` in `cpl-judge`.
+
 ## 32. Profiling and coverage (§8 tooling, 2026-11-21)
 
 - **32.1 A profile counts statements, keyed by their span in the user's file.** `cpl profile` and
@@ -1921,7 +1943,7 @@ Reverse: none needed; this is general range-type lowering.
   copied from the judge's published command (AtCoder's library and link flags left out); a fact that could
   not be read from a public source is marked unconfirmed in `evidence`, shown by `cpl judges` (the
   Codeforces page sits behind a browser check). Reverse: none needed; correct a fact when a source says so.
-- **34.5 Deep recursion skips its own stack only when the judge's stack is known to be deep.** At least
+- **34.5 (replaced by 31.4: every program runs on a thread with the profile's stack) Deep recursion skips its own stack only when the judge's stack is known to be deep.** At least
   256 MB or unlimited (`codeforces` links with a 256 MB stack, DOMjudge's runguard sets it unlimited); an
   undocumented stack counts as 8 MB. The switch is harmless where it is not needed, so the error is on the
   safe side. Reverse: `Profile::deep_stack` returning `false`.

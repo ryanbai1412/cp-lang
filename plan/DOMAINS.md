@@ -152,11 +152,15 @@ tight as the best C++ (4-byte indices where proven, niches everywhere,
 struct-of-arrays on request); readable output that fits 64 KB with room to
 spare; and every safety feature with a zero-cost proven form. Compiles in
 well under a second.
-**Where we are.** C++17 output passes every port under ASan/UBSan; no
-big-stack thread; `?Int` is 16 bytes outside proven tables; no systematic
-runtime benchmark against the originals. (Lane running.)
+**Where we are.** C++17 output passes every port under ASan/UBSan; every
+program runs on a thread with the judge profile's thread stack (1 GB by
+default; `thread_stack_mb = 0` warns and runs on `main`), so a 10^6-deep
+DFS passes on an 8 MB `ulimit -s`;
+`?Int` is 16 bytes outside proven tables; `bench/corpus_p95_bench.py`
+measures runtime and RSS against the originals (p95 about 3x). (Lane
+running.)
 **Bar.** Per-port runtime and memory on max inputs, measured on every push.
-**Next.** Big-stack thread from the judge profile; heap for runtime-sized
+**Next.** Heap for runtime-sized
 arrays; niches; a matched-algorithm benchmark harness.
 
 ## 4. Standard library (`plan/STDLIB.md`, `plan/20`)

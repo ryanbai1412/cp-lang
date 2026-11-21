@@ -215,7 +215,11 @@ impl Playground {
             return outcome(2, &compiled.diagnostics, source, stderr, [("cpp", Value::Null)]);
         };
         let limit = profile.source_limit;
-        let target = cpl_codegen::Target { stamp: Some(profile.stamp()), deep_stack: profile.deep_stack() };
+        let target = cpl_codegen::Target {
+            stamp: Some(profile.stamp()),
+            thread_stack: profile.thread_stack,
+            windows: profile.os == cpl_judge::Os::Windows,
+        };
         let cpp = match cpl_codegen::emit_within_for(&compiled.program, name, source, limit, &target) {
             Ok(fitted) => {
                 if !fitted.header {

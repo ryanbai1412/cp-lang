@@ -964,16 +964,11 @@ impl<'p> Emitter<'p> {
             out.push_str(&entries);
             return out;
         }
-        // A fn that calls itself can go deeper than the 8 MB a judge
-        // gives the stack (a chain of 5e4 `@memo` calls does).
-        let deep = recursive(program, &reachable);
         out.push_str("}  // namespace prog\n\n");
-        let deep = deep && !self.target.deep_stack;
-        if deep {
-            out.push_str(BIG_STACK);
-            self.chunks.push((crate::Part::Runtime, "deep stack".into(), BIG_STACK.into()));
-        }
-        out.push_str(if deep { "static void cpl_main() {\n" } else { "int main() {\n" });
+        out.push_str(match self.target.thread_stack {
+            Some(bytes) => format!("// Runs on a thread with a {} MB stack.\nstatic void cpl_main() {{\n", bytes >> 20),
+            None => "// The judge allows no threads: the program has the stack `main` is given.\nint main() {\n".into(),
+        }.as_str());
         // Each test case has its own query limit.
         let case = if self.used.contains("count_query") {
             "{ cpl::asked = 0; prog::solve(); }"
@@ -989,11 +984,20 @@ impl<'p> Emitter<'p> {
         } else {
             out.push_str("    prog::solve();\n");
         }
-        out.push_str(if deep {
-            "    cpl::flush();\n}\n\nint main() {\n    cpl_on_big_stack(cpl_main);\n    return 0;\n}\n"
-        } else {
-            "    cpl::flush();\n    return 0;\n}\n"
-        });
+        match self.target.thread_stack {
+            Some(bytes) => {
+                out.push_str("    cpl::flush();\n}\n");
+                // A Windows judge's file also builds here, with POSIX threads.
+                let mut runner = match self.target.windows {
+                    true => format!("\n#ifdef _WIN32{WINDOWS_THREAD}#else{POSIX_THREAD}#endif\n"),
+                    false => POSIX_THREAD.to_string(),
+                };
+                runner.push_str(&THREAD_MAIN.replace("STACK_BYTES", &format!("(size_t){} << 20", bytes >> 20)));
+                out.push_str(&runner);
+                self.chunks.push((crate::Part::Runtime, "thread stack".into(), runner));
+            }
+            None => out.push_str("    cpl::flush();\n    return 0;\n}\n"),
+        }
         out
     }
 
@@ -1017,79 +1021,41 @@ impl<'p> Emitter<'p> {
     }
 }
 
-/// Whether some fn of the program can call itself, directly or through
-/// others.
-fn recursive(program: &Program, reachable: &BTreeSet<usize>) -> bool {
-    let calls: Vec<Vec<usize>> = program
-        .fns
-        .iter()
-        .enumerate()
-        .map(|(id, f)| {
-            let mut out = Vec::new();
-            if reachable.contains(&id) {
-                walk::deep_exprs(&f.body, &mut |e| {
-                    if let ExprKind::Call(callee, _) = &e.kind {
-                        out.push(*callee);
-                    }
-                });
-            }
-            out
-        })
-        .collect();
-    // 0: not seen, 1: on the path, 2: done.
-    let mut state = vec![0u8; calls.len()];
-    for root in 0..calls.len() {
-        if state[root] != 0 {
-            continue;
-        }
-        state[root] = 1;
-        let mut path = vec![(root, 0)];
-        while let Some((id, next)) = path.last_mut() {
-            let Some(&callee) = calls[*id].get(*next) else {
-                state[*id] = 2;
-                path.pop();
-                continue;
-            };
-            *next += 1;
-            match state[callee] {
-                0 => {
-                    state[callee] = 1;
-                    path.push((callee, 0));
-                }
-                1 => return true,
-                _ => {}
-            }
-        }
-    }
-    // A closure reaches itself only through a variable: any closure that
-    // calls a closure value may.
-    program.closures.iter().any(|c| {
-        let mut found = false;
-        walk::deep_exprs(&c.body, &mut |e| found |= matches!(e.kind, ExprKind::CallExpr(..)));
-        found
-    })
+/// `main` for a judge that allows threads: the program runs on one with
+/// the profile's stack, or the largest the judge reserves short of that.
+/// The stack is address space: pages are committed as calls reach them.
+const THREAD_MAIN: &str = "\
+int main() {
+    for (size_t n = STACK_BYTES; n >= 8 << 20; n /= 2)
+        if (cpl_on(n)) return 0;
+    cpl_main();
 }
+";
 
-/// Runs the program on a 256 MB stack of its own where the platform's
-/// calling convention is known; elsewhere on the stack it was given.
-/// Pages are only committed as the recursion reaches them.
-const BIG_STACK: &str = "\
-// Deep recursion: the program runs on a 256 MB stack of its own.
-#if defined(__x86_64__) && defined(__linux__) && !defined(__SANITIZE_ADDRESS__)
-extern \"C\" void cpl_switch_stack(void (*run)(), void* top);
-__asm__(\".text\\n.globl cpl_switch_stack\\n.type cpl_switch_stack,@function\\ncpl_switch_stack:\\n\"
-        \"  pushq %rbp\\n  movq %rsp, %rbp\\n  movq %rsi, %rsp\\n  callq *%rdi\\n\"
-        \"  movq %rbp, %rsp\\n  popq %rbp\\n  ret\\n.size cpl_switch_stack,.-cpl_switch_stack\\n\");
-static void cpl_on_big_stack(void (*run)()) {
-    const size_t size = (size_t)256 << 20;
-    char* stack = (char*)std::malloc(size);
-    if (!stack) return run();
-    cpl_switch_stack(run, stack + size);
+const WINDOWS_THREAD: &str = "
+#include <windows.h>
+static DWORD WINAPI cpl_go(LPVOID) { cpl_main(); return 0; }
+static bool cpl_on(size_t n) {
+    HANDLE t = CreateThread(0, n, cpl_go, 0, STACK_SIZE_PARAM_IS_A_RESERVATION, 0);
+    return t && (WaitForSingleObject(t, INFINITE), true);
 }
+";
+
+const POSIX_THREAD: &str = "
+#include <pthread.h>
+#if defined(__GLIBC__) && __GLIBC__ * 100 + __GLIBC_MINOR__ < 234
+#pragma weak pthread_create  // the judge may not link libpthread
+#define CPL_LINKED &pthread_create
 #else
-static void cpl_on_big_stack(void (*run)()) { run(); }
+#define CPL_LINKED 1
 #endif
-
+static void* cpl_go(void*) { cpl_main(); return 0; }
+static bool cpl_on(size_t n) {
+    pthread_attr_t a;
+    pthread_t t;
+    return CPL_LINKED && !pthread_attr_init(&a) && !pthread_attr_setstacksize(&a, n) &&
+           !pthread_create(&t, &a, cpl_go, 0) && (pthread_join(t, 0), true);
+}
 ";
 
 /// Comparisons for the program's own types, from their fields in order.

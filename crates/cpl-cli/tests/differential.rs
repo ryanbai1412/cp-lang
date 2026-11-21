@@ -592,7 +592,7 @@ fn a_read_that_waits_shows_what_was_printed_before_it() {
     // Nothing is flushed line by line: a program that reads and then
     // prints stays as fast as it was.
     let cpp = String::from_utf8_lossy(&built.stdout);
-    let solve = cpp.split("void solve()").last().unwrap().split("int main").next().unwrap();
+    let solve = cpp.split("void solve()").last().unwrap().split("}  // namespace prog").next().unwrap();
     assert!(!solve.contains("flush"), "{solve}");
     let binary = sanitized_binary(&built.stdout).unwrap();
     assert_eq!(asked_live(Command::new(binary)), expected, "the C++");

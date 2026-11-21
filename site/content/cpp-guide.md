@@ -91,7 +91,7 @@ flags = ["-std=c++17", "-O2"]
 int128 = false             # `I128` is then a build error naming the judge
 ```
 
-What the profile changes in the file: the header names the judge and its command; deep recursion runs on a 256 MB stack of the program's own unless the judge's stack is at least that deep (Codeforces, DOMjudge); the source limit is the judge's, with a warning past three quarters of it and the source header left out (then the indentation halved) only when the file would not fit otherwise. `cpl build` prints the file's size as a share of that limit. `cpl build --size` says where the bytes go, by part (the header, the runtime, library fns, your code) and by the largest pieces of each; a build over the limit says it anyway. `cpl run --release`, `cpl test` and `cpl stress` build the same C++ with the judge's flags (those the compiler here accepts) and run it on the judge's stack.
+What the profile changes in the file: the header names the judge and its command; the program runs on a thread with the profile's thread stack (1 GB unless `thread_stack_mb` says otherwise; with `thread_stack_mb = 0`, for a judge that allows no threads, `main` runs it and `cpl build` warns); the source limit is the judge's, with a warning past three quarters of it and the source header left out (then the indentation halved) only when the file would not fit otherwise. `cpl build` prints the file's size as a share of that limit. `cpl run --release`, `cpl test` and `cpl stress` build the same C++ with the judge's flags (those the compiler here accepts) and run it on the judge's stack.
 
 ## Performance controls and escape hatches
 
