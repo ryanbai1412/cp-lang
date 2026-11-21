@@ -1,6 +1,6 @@
 # wtf26d
 
-Score: pending cold rescore (rewrote active port to match the 4/5 dream at `1.019x` tokens: `p.inverse()`, `Pos.first`, `unused_pos.scan(min_pos)`, `CondStack` methods, pure `required_cap`/`can_place`/`commit_place`, `pick_witness`, `Val.rev.first`, `q[start..] = suffix`; gated 150/150, 0 lints; emitted C++ grew `20,980 -> 27,232 B` (< 48 KB) from `std.seq.inverse` + `scan` + optional `.filter`/`.map` helpers, rebaselined via `--update`)
+Score: 4/5
 Dream: 4/5
 
 Rescored cold on main 1a5cc751 (old 2/5, new 2/5) for accepted syntax (decisions.md §53, §58, §63, §70) and stdlib reuse. Scored on its first landing (ddf13f69); no dream commit since. Syntax: nothing outside decisions.md (`.inverse()` is a method, not a getter). The nested `if let ... else` optional clamps (lines 52-53) are hand-folding a `min` over optionals. Sent back: under 4, the lane owes a rewrite before the port is judged.
@@ -81,3 +81,8 @@ Dream 3/5, rescored cold on current main; sent back. The header now derives the 
 Dream 3/5 → 4/5, rescored cold on current main. `q[start..] = suffix`, `.somes.min()` and a local `had_inv` close the three owed items; the header derives the witness choice and block disjointness.
 - The only errors are `pop_while` (line 33; the `max_p` E0203 follows) and `.somes` (lines 60, 71), both reported.
 - Minor: `can_place` and `commit_place` each compute `required_cap` (lines 78, 87), so the fact lives twice. Lines 119-124 pop `conds.items` directly, bypassing `CondStack`.
+
+## Cold review (HEAD)
+
+Port 2/5 → 4/5, rescored cold on current main (dream 4/5 unchanged). The port now follows the dream and checks with zero errors. It has `p.inverse()`, the `CondStack` methods, `required_cap`/`can_place`/`commit_place`, `pick_witness`, `Val.rev.first` and `q[start..] = suffix`, and the header derives the prefix, invariant and block steps. Its remaining workarounds are for reported gaps. `min_pos` folds two optional minimums by hand (lines 59-62) where the dream has `.somes.min()`. Lines 133-135 hand-write `pop_while`.
+- Minor: `commit_place` calls `required_cap` again after `can_place` has already computed it (lines 87, 96). Lines 33, 81 and 133 use comma guards where `while let … and` / `elif let … and` is the decisions 4.9 spelling.
