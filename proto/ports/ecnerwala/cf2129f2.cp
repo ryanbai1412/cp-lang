@@ -5,7 +5,6 @@
 // unique value or a colliding pair (v0, v1) with v0 <= 454 < v1. One
 // randomized type-3 probe on one position per colliding pair resolves all pairs.
 @!interactive
-use std.rand.{Rng}
 
 var masks: [1..=890]Int = 0
 var num_masks = 0
@@ -30,7 +29,10 @@ for _ in 0..2:
         for j in i + 1..29:
             add_mask((1 << i) | (1 << j))
 
-var rng = Rng(50)
+var rng = 50
+fn next_bit() -> Int:
+    rng = (rng * 1_103_515_245 + 12_345) % 2_147_483_648
+    (rng / 65536) % 2
 
 let t: 1..=40 = read()
 for _ in 0..t:
@@ -64,7 +66,7 @@ for _ in 0..t:
             ans[ps[0]] = vs[0]
         else:
             var (p0, p1) = (ps[0], ps[1])
-            if rng.int(0, 2) == 1:
+            if next_bit() == 1:
                 swap(mut p0, mut p1)
             ans[p0] = vs[0]
             ans[p1] = vs[1]

@@ -30,16 +30,16 @@ for _ in 0..t:
     dp[0] = 1
     var fixed_below = 0
 
-    for fi in 1..n:
-        let f = Floor(fi)
-        let min_used = if let lp = last_pos[f]: max(0, lp.ord + 1 - c) else: 0
+    for f in Floor:
+        if f == Floor.last: break
+        var min_used = 0
+        if let lp = last_pos[f]: min_used max= lp.ord + 1 - c
         var ndp: [0..=m - c]M = 0
         for used in min_used..=m - c:
-            let ways = dp[used]
-            if ways == 0: continue
+            if dp[used] == 0: continue
             let avail = open[used + c] + fixed_below - used
             for k in fixed[f]..=min(c, m - c - used):
-                ndp[used + k] += ways * comb.choose(avail, k - fixed[f])
+                ndp[used + k] += dp[used] * comb.choose(avail, k - fixed[f])
         dp = ndp
         fixed_below += fixed[f]
 

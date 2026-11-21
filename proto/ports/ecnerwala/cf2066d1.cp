@@ -9,6 +9,5 @@ let comb = Comb<1_000_000_007>(MAX_M)
 let t: 1..=MAX_M = read()
 for _ in 0..t:
     let (n, c, m): (1..=100, 1..=100, 1..=MAX_M) = read()
-    let a: [0..m]Int = read()
-    assert (a.len == m)
+    let _: [0..m]Int = read()
     print(comb.choose(c * (n - 1), m - c))
