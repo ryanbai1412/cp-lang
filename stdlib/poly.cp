@@ -428,6 +428,80 @@ pub fn compose<P>(f: List<Mod<P>>, g: List<Mod<P>>, n: Int) -> List<Mod<P>>:
         for i in 0..n: out[i] = p_arr[i]
     out
 
+/// Value at `x` of the unique polynomial of degree `< ys.len` passing through `(i, ys[i])`
+/// for `i in 0..ys.len`. Works for any prime `P` using one modular inverse. O(ys.len).
+pub fn lagrange_at<P>(ys: List<Mod<P>>, x: Mod<P>) -> Mod<P>:
+    let n = ys.len
+    if n == 0: return Mod<P>(0)
+    if x.v < n: return ys[x.v]
+    assert n < P, "poly.lagrange_at requires ys.len < P"
+    let d = n - 1
+    var pref = List.filled(n, Mod<P>(1))
+    var ifact = List.filled(n, Mod<P>(1))
+    var fact = Mod<P>(1)
+    unchecked:
+        for i in 0..d: pref[i + 1] = pref[i] * (x - Mod<P>(i))
+        for i in 1..n: fact = fact * Mod<P>(i)
+        ifact[d] = fact.inv
+        for i in (1..n).rev: ifact[i - 1] = ifact[i] * Mod<P>(i)
+        var suff = Mod<P>(1)
+        var total = Mod<P>(0)
+        for i in (0..n).rev:
+            let term = ys[i] * pref[i] * suff * ifact[i] * ifact[d - i]
+            total = if ((d - i) & 1) == 0: total + term else: total - term
+            suff = suff * (x - Mod<P>(i))
+        return total
+
+/// Unique polynomial `f` of degree `< xs.len` with `f(xs[i]) = ys[i]` for distinct `xs`.
+/// O(n^2) for `n <= 64` (any prime `P`), O(n log^2 n) via subproduct tree + NTT for `n > 64`.
+pub fn interpolate<P>(xs: List<Mod<P>>, ys: List<Mod<P>>) -> List<Mod<P>>:
+    let n = xs.len
+    assert n == ys.len, "poly.interpolate requires equal-length xs and ys"
+    if n == 0: return []
+    if n == 1: return [ys[0]]
+    if n <= 64:
+        var prod = List.filled(n + 1, Mod<P>(0))
+        prod[0] = Mod<P>(1)
+        unchecked:
+            for i in 0..n:
+                let xi = xs[i]
+                for k in (1..=i + 1).rev: prod[k] = prod[k - 1] - prod[k] * xi
+                prod[0] = -prod[0] * xi
+            var out = List.filled(n, Mod<P>(0))
+            for i in 0..n:
+                let xi = xs[i]
+                var denom = Mod<P>(1)
+                for j in 0..n:
+                    if j != i: denom = denom * (xi - xs[j])
+                assert denom.v != 0, "poly.interpolate requires distinct xs"
+                let scale = ys[i] * denom.inv
+                var rem = Mod<P>(0)
+                for k in (0..n).rev:
+                    rem = prod[k + 1] + rem * xi
+                    out[k] = out[k] + rem * scale
+            return out
+    let nodes = subproduct_tree(xs)
+    let w = eval_all(deriv(nodes[1]), xs)
+    var num: List<List<Mod<P>>> = List.filled(2 * n, [])
+    unchecked:
+        for i in 0..n:
+            assert w[i].v != 0, "poly.interpolate requires distinct xs"
+            num[n + i] = [ys[i] * w[i].inv]
+        for i in (1..n).rev:
+            let l = convolve(num[2 * i], nodes[2 * i + 1])
+            let r = convolve(num[2 * i + 1], nodes[2 * i])
+            let m = max(l.len, r.len)
+            var res = List.filled(m, Mod<P>(0))
+            for k in 0..l.len: res[k] = res[k] + l[k]
+            for k in 0..r.len: res[k] = res[k] + r[k]
+            num[i] = res
+    var out = List.filled(n, Mod<P>(0))
+    let root = num[1]
+    let lim = min(n, root.len)
+    unchecked:
+        for i in 0..lim: out[i] = root[i]
+    out
+
 @test
 fn eval_div_shift_mpe_laws():
     type Z = Mod<998_244_353>
@@ -531,3 +605,27 @@ fn pow_and_sqrt_laws():
     let non_res: List<Z> = [Z(3), Z(1)]
     assert sqrt(non_res, 2) == none
     assert sqrt(List.filled(5, Z(0)), 5)! == List.filled(5, Z(0))
+
+@test
+fn lagrange_and_interpolate_laws():
+    type M = Mod<1_000_000_007>
+    var faulhaber = [M(0)]
+    var acc = M(0)
+    for i in 1..=6:
+        acc += M(i) ** 4
+        faulhaber.push(acc)
+    var brute = M(0)
+    for i in 1..=50: brute += M(i) ** 4
+    assert lagrange_at(faulhaber, M(50)) == brute
+    for i in 0..faulhaber.len: assert lagrange_at(faulhaber, M(i)) == faulhaber[i]
+    type Z = Mod<998_244_353>
+    let a = [Z((i * 11 + 3) % 29) for i in 0..20]
+    let ys_a = [eval(a, Z(i)) for i in 0..a.len]
+    for x in [Z(0), Z(7), Z(20), Z(123_456)]: assert lagrange_at(ys_a, x) == eval(a, x)
+    let xs_s = [Z(i * 3 + 1) for i in 0..12]
+    let ys_s = [eval(a[0..12], x) for x in xs_s]
+    assert interpolate(xs_s, ys_s) == a[0..12]
+    let poly_big = [Z((i * 19 + 7) % 101) for i in 0..70]
+    let xs_b = [Z(i * 5 + 2) for i in 0..70]
+    let ys_b = eval_all(poly_big, xs_b)
+    assert interpolate(xs_b, ys_b) == poly_big

@@ -7,6 +7,7 @@
 // degree at most m, so it is brute-forced at 0..=m + 1 and interpolated.
 // original: corpus/submissions/5445693.cpp
 use std.mod.{Mod, Comb}
+use std.poly.{lagrange_at}
 
 const P = 1000000007
 type Z = Mod<P>
@@ -15,20 +16,7 @@ let (m, n, k): (Int, Int, Int) = read()  // m, n <= 100
 domain Course = 0..n
 let top: [Course]Int = read()  // up to 1e9
 let rank: [Course]Int = read()
-let comb = Comb<P>.new(m + 2)
-
-// The value at x of the polynomial of degree < ys.len through (i, ys[i]). O(len).
-fn lagrange_at(ys: List<Z>, x: Int) -> Z:
-    let d = ys.len - 1
-    if x <= d: return ys[x]
-    var before = List.filled(d + 2, Z.one)  // (x - 0) * ... * (x - (i - 1))
-    for i in 0..=d: before[i + 1] = before[i] * Z(x - i)
-    var (after, total) = (Z.one, Z.zero)  // (x - (i + 1)) * ... * (x - d)
-    for i in (0..=d).rev:
-        let term = ys[i] * before[i] * after * comb.inv_fact(i) * comb.inv_fact(d - i)
-        total += if (d - i) % 2 == 0: term else: -term
-        after *= Z(x - i)
-    total
+let comb = Comb<Z>(m + 2)
 
 // Score tables of one course: B scores s, `below` students at most s, `above` students more.
 fn tables(u: Int, above: Int, below: Int) -> Z:
@@ -37,7 +25,7 @@ fn tables(u: Int, above: Int, below: Int) -> Z:
         var total = Z.zero
         for s in 1..=limit: total += Z(s).pow(below) * Z(limit - s).pow(above)
         ys.push(total)
-    lagrange_at(ys, u)
+    lagrange_at(ys, Z(u))
 
 // still[j]: ways for the courses seen so far to leave exactly j students never above B
 var still = List.filled(m, Z.zero)

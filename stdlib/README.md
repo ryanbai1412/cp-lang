@@ -471,7 +471,7 @@ is evidence, not a proof.
   `SosOver`, `sos` (`over:`, `inverse:`), `fwht` (`inverse:`), `convolve_or`, `convolve_and`, `convolve_xor`, `convolve_subset`.
 - `poly.cp`: formal power series and multipoint operations over NTT (`deriv`, `integral`,
   `inv`, `log`, `exp`, `pow`, `sqrt`, `eval`, `div_mod`, `prod_linear`, `taylor_shift`,
-  `eval_all`, `compose`).
+  `eval_all`, `compose`, `lagrange_at`, `interpolate`).
 - `matrix.cp`: `Mat<T>` (arithmetic, `pow`, `product`, exact `det`/`rank`/`solve`/`solve_space`/`inverse`),
   `det_real`/`rank_real`/`solve_real`/`inverse_real` (`eps:`), and `XorBasis`.
 - `strings.cp`: Z, prefix function, KMP (`find_all`, `prefix_matches`,

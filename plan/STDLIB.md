@@ -512,6 +512,8 @@ fn prod_linear<P>(roots: List<Mod<P>>) -> List<Mod<P>> // O(n log^2 n); prod (x 
 fn taylor_shift<P>(a: List<Mod<P>>, c: Mod<P>) -> List<Mod<P>> // O(n log n); a(x + c)
 fn eval_all<P>(a: List<Mod<P>>, xs: List<Mod<P>>) -> List<Mod<P>> // O((n + m) log^2 m)
 fn compose<P>(f: List<Mod<P>>, g: List<Mod<P>>, n: Int) -> List<Mod<P>> // O(n log^2 n); f(g(x)) mod x^n
+fn lagrange_at<P>(ys: List<Mod<P>>, x: Mod<P>) -> Mod<P> // O(n); value at x of deg < n poly through (i, ys[i])
+fn interpolate<P>(xs: List<Mod<P>>, ys: List<Mod<P>>) -> List<Mod<P>> // O(n log^2 n) (O(n^2) for n <= 64); unique deg < n poly
 ```
 
 ### 4.6 `std.matrix` [new]: matrices, Gaussian elimination and linear basis
