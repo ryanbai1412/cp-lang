@@ -213,7 +213,7 @@ fn use_completion(cursor: &Cursor, std: &mut StdLib, path: &str, word: &str) -> 
         return outline
             .entries
             .iter()
-            .filter(|e| e.public)
+            .filter(|e| e.public && !cpl_check::is_list_form_hook(&e.name))
             .map(|e| item_json(e, 0))
             .collect();
     }

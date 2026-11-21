@@ -32,6 +32,12 @@ pub use modules::{FsLoader, Loader};
 pub use ty::{Param, Ty};
 pub use prelude::std_method;
 
+/// A `<fn>_of_pairs`/`<fn>_of_triples` fn: what `T.fn(list)` resolves to, never a name
+/// anyone types, so completion and the editor tables leave it out.
+pub fn is_list_form_hook(name: &str) -> bool {
+    name.ends_with("_of_pairs") || name.ends_with("_of_triples")
+}
+
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 

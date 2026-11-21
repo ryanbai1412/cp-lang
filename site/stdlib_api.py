@@ -55,6 +55,9 @@ def iter_public_items(doc_data: dict, root: Path = ROOT):
         for it in mod.get("items", []):
             if not is_pub(it.get("line", 0)):
                 continue
+            # `T.fn(list)` resolves to these; nobody types the name.
+            if it.get("kind") == "fn" and it.get("name", "").endswith(("_of_pairs", "_of_triples")):
+                continue
             pub_methods = [
                 mem
                 for mem in it.get("members", [])

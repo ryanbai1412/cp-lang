@@ -2505,6 +2505,11 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
    graph algorithm takes `p => [q for q in p.adj4 if ...]` as `next`; a
    `Grid` type would only rename the pair. Reverse: add `struct Grid<R, C>`
    wrapping the cell pair with `adj4`/`adj8` as methods.
+10. **List-form hooks (`<fn>_of_pairs`, `<fn>_of_triples`) are hidden by
+    name** from completion (`cpl_check::is_list_form_hook`), the VS Code
+    tables and the generated API page. Debt: the suffix stands in for a
+    general hidden-from-docs marker on a `pub fn`, which does not exist yet.
+    Reverse: list them again, or replace the suffix test with that marker.
 
 ## 47. DP and search in the stdlib (`design/stdlib/dp.md`, 2026-11-21)
 

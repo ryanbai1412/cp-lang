@@ -90,7 +90,8 @@ function shipped() {
     for (const file of fs.readdirSync(stdlib).filter(name => name.endsWith('.cp'))) {
         for (const line of fs.readFileSync(path.join(stdlib, file), 'utf8').split('\n')) {
             const decl = /^pub (@get )?(?:@\w+ )*(fn|struct|enum|trait|type|const|domain) ([A-Za-z_][A-Za-z0-9_]*)/.exec(line);
-            if (decl && (!decl[1] || imported.has(decl[3]))) {
+            // `<fn>_of_pairs`/`<fn>_of_triples` are what `T.fn(list)` resolves to, not names to type.
+            if (decl && (!decl[1] || imported.has(decl[3])) && !/_of_(pairs|triples)$/.test(decl[3])) {
                 declared.set(decl[3], decl[2]);
             }
         }

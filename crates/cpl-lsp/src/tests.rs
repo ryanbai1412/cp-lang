@@ -958,6 +958,9 @@ fn use_std_completes_module_names_and_then_their_exports() {
     assert!(items.iter().all(|(_, kind, _)| *kind == 9));
     let items = completions("use std.segtree.{Seg|}\n");
     assert!(labels(&items).contains(&"SegTree"), "{items:?}");
+    let items = completions("use std.graph.{|}\n");
+    assert!(labels(&items).contains(&"bfs01"), "{items:?}");
+    assert!(!labels(&items).iter().any(|name| name.ends_with("_of_pairs") || name.ends_with("_of_triples")), "{items:?}");
     assert!(completions("// see xs.|\n").is_empty());
 }
 
