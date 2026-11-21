@@ -499,7 +499,7 @@ template <class T, int K> struct Grid {
     template <class... I> T& operator()(I... i) { return d[at(i...)]; }
     template <class... I> const T& operator()(I... i) const { return d[at(i...)]; }
     // Indexed by an `Int` that nothing has proved in range.
-    template <class... I> size_t in(I... i) const { ll ix[K] = {(ll)i...}; for (int k = 0; k < K; k++) if ((unsigned long long)ix[k] >= (unsigned long long)n[k]) fail(\"index outside the array\"); return at(i...); }
+    template <class... I> size_t in(I... i) const { ll ix[K] = {(ll)i...}, p = 0; bool bad = 0; for (int k = 0; k < K; k++) bad |= (unsigned long long)ix[k] >= (unsigned long long)n[k], p = p * n[k] + ix[k]; if (bad) fail(\"index outside the array\"); return p; }
     template <class... I> T& ck(I... i) { return d[in(i...)]; }
     template <class... I> const T& ck(I... i) const { return d[in(i...)]; }
     bool operator==(const Grid& o) const { return d == o.d; }
