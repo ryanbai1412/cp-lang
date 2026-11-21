@@ -41,17 +41,32 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 
 mode=fast
+use_cache=1
+[ "${CHECK_NO_CACHE:-0}" = "1" ] && use_cache=0
 for arg in "$@"; do
     case "$arg" in
         --fast) mode=fast ;;
         --full) mode=full ;;
+        --no-cache) use_cache=0 ;;
         -h | --help) sed -n '2,25s/^# \{0,1\}//p' "$0"; exit 0 ;;
         *) echo "check: unknown argument \`$arg\`" >&2; exit 2 ;;
     esac
 done
+[ "$mode" = full ] && use_cache=0
+cache_dir="${CARGO_TARGET_DIR:-target}/check-cache"
 
 step() { printf '\n==> %s\n' "$*"; }
 fail() { echo "check: $*" >&2; exit 1; }
+cache_hit() {
+    [ "$use_cache" -eq 1 ] || return 1
+    local name="$1"; shift
+    python3 scripts/check_cache.py check "$cache_dir" "$name" "$@"
+}
+cache_save() {
+    [ "$use_cache" -eq 1 ] || return 0
+    local name="$1"; shift
+    python3 scripts/check_cache.py save "$cache_dir" "$name" "$@"
+}
 
 markers=$(git grep -nE '^(<{7}|>{7}|\|{7})( |$)' -- ':!*.png' ':!*.gz' || true)
 [ -z "$markers" ] || fail "merge conflict markers left in:
@@ -116,14 +131,36 @@ if git grep -h -E '"resolved": "' -- '*package-lock.json' | grep -v '"resolved":
 fi
 
 need cargo "see https://rustup.rs"
+cpl="${CARGO_TARGET_DIR:-target}/debug/cpl"
+rust_inputs=(Cargo.toml Cargo.lock crates)
+lib_inputs=(Cargo.toml Cargo.lock crates stdlib examples/local-lib)
+recovery_inputs=(Cargo.toml Cargo.lock crates stdlib proto/ports)
+scoreboard_inputs=(
+    Cargo.toml Cargo.lock crates stdlib proto/ports
+    research/frictions research/reviews research/scoreboard.json research/scoreboard.ports.jsonl
+    bench/goal_tests
+    scripts/scoreboard.py scripts/friction_lint.py scripts/dream-gaps.py
+    scripts/writable-from-docs.py scripts/test_scoreboard.py scripts/test_dream_gaps.py
+    scripts/test_review_check.py scripts/check_cache.py scripts/test_check_cache.py
+)
+site_inputs=(Cargo.toml Cargo.lock crates stdlib site docs proto/ports/ecnerwala design/sketches/ioi2025)
+
 step "cargo clippy --workspace --all-targets -- -D warnings"
-cargo clippy --workspace --all-targets -- -D warnings
+if cache_hit clippy "${rust_inputs[@]}"; then
+    echo "cached (rust inputs unchanged)"
+else
+    cargo clippy --workspace --all-targets -- -D warnings
+    cache_save clippy "${rust_inputs[@]}"
+fi
 
 # The library tests only need the cpl binary, so they run beside the
 # workspace tests, one process per library directory, and their output is
 # printed after them. A .cp file directly in examples/local-lib/ would not be
 # in any subdirectory, so then the whole library runs as one process.
-cargo build -q -p cpl-cli
+if [ ! -x "$cpl" ] || ! cache_hit cpl_build "${rust_inputs[@]}"; then
+    cargo build -q -p cpl-cli
+    cache_save cpl_build "${rust_inputs[@]}"
+fi
 lib_logs="$(mktemp -d)"
 lib_dirs=(stdlib)
 if compgen -G "examples/local-lib/*.cp" >/dev/null; then
@@ -133,12 +170,19 @@ else
 fi
 lib_pids=()
 recovery_pid=""
-for d in "${lib_dirs[@]}"; do
-    "${CARGO_TARGET_DIR:-target}/debug/cpl" test "$d" >"$lib_logs/$(tr / _ <<<"$d").log" 2>&1 &
-    lib_pids+=($!)
-done
+scoreboard_pid=""
+site_test_pid=""
+stdlib_cached=0
+if cache_hit stdlib_test "${lib_inputs[@]}"; then
+    stdlib_cached=1
+else
+    for d in "${lib_dirs[@]}"; do
+        "$cpl" test "$d" >"$lib_logs/$(tr / _ <<<"$d").log" 2>&1 &
+        lib_pids+=($!)
+    done
+fi
 cleanup() {
-    kill "${lib_pids[@]}" ${recovery_pid:+"$recovery_pid"} ${site_test_pid:+"$site_test_pid"} 2>/dev/null || true
+    kill "${lib_pids[@]}" ${recovery_pid:+"$recovery_pid"} ${scoreboard_pid:+"$scoreboard_pid"} ${site_test_pid:+"$site_test_pid"} 2>/dev/null || true
     rm -rf "$lib_logs" ${tmp:+"$tmp"}
 }
 trap cleanup EXIT
@@ -159,37 +203,52 @@ slow_tests=(
     front_end_check_is_under_50_ms
     recovery_scoreboard
 )
-if cargo nextest --version >/dev/null 2>&1; then
-    step "cargo nextest run --workspace (without the --full tests)"
-    filter='binary(proto_fuzz) or binary(proto_tools) or binary(budget)'
-    for t in "${slow_tests[@]}"; do filter+=" or test(/(^|::)$t\$/)"; done
-    cargo nextest run --workspace --no-fail-fast -E "not ($filter)"
-    step "cargo test --workspace --doc"
-    cargo test -q --workspace --doc
-    # Run the recovery scoreboard in parallel with the remaining fast checks
-    # (nextest, doctests, and LSP latency tests have finished, so no Cargo lock contention).
-    cargo test -q -p cpl-cli --test recovery >"$lib_logs/recovery.log" 2>&1 &
-    recovery_pid=$!
+if cache_hit nextest_doc "${lib_inputs[@]}"; then
+    step "cargo nextest + doctests"
+    echo "cached (rust + stdlib inputs unchanged)"
 else
-    step "cargo test --workspace (without the --full tests)"
-    skips=()
-    for t in "${slow_tests[@]}" prototype_agrees_with_the_reference_evaluator \
-        run_answers_within_200_ms build_takes_under_a_second_and_fits_64_kb; do
-        skips+=(--skip "$t")
-    done
-    cargo test --workspace -- "${skips[@]}"
+    if cargo nextest --version >/dev/null 2>&1; then
+        step "cargo nextest run --workspace (without the --full tests)"
+        filter='binary(proto_fuzz) or binary(proto_tools) or binary(budget)'
+        for t in "${slow_tests[@]}"; do filter+=" or test(/(^|::)$t\$/)"; done
+        cargo nextest run --workspace --no-fail-fast -E "not ($filter)"
+        step "cargo test --workspace --doc"
+        cargo test -q --workspace --doc
+    else
+        step "cargo test --workspace (without the --full tests)"
+        skips=()
+        for t in "${slow_tests[@]}" prototype_agrees_with_the_reference_evaluator \
+            run_answers_within_200_ms build_takes_under_a_second_and_fits_64_kb; do
+            skips+=(--skip "$t")
+        done
+        cargo test --workspace -- "${skips[@]}"
+    fi
+    cache_save nextest_doc "${lib_inputs[@]}"
+fi
+
+# Run the recovery scoreboard in parallel with the remaining fast checks
+# (nextest, doctests, and LSP latency tests have finished, so no Cargo lock contention).
+recovery_cached=0
+if cache_hit recovery "${recovery_inputs[@]}"; then
+    recovery_cached=1
+else
     cargo test -q -p cpl-cli --test recovery >"$lib_logs/recovery.log" 2>&1 &
     recovery_pid=$!
 fi
 
 step "cpl test stdlib examples/local-lib"
-lib_status=0
-for pid in "${lib_pids[@]}"; do
-    wait "$pid" || lib_status=1
-done
-cat "$lib_logs"/*.log | awk '/^[0-9]+ passed, [0-9]+ failed$/ { p += $1; f += $3 }
-    END { printf "%d passed, %d failed\n", p, f }'
-[ "$lib_status" -eq 0 ] || { cat "$lib_logs"/*.log; fail "library tests failed; rerun: cargo run -p cpl-cli -- test stdlib examples/local-lib"; }
+if [ "$stdlib_cached" -eq 1 ]; then
+    echo "cached (rust + stdlib inputs unchanged)"
+else
+    lib_status=0
+    for pid in "${lib_pids[@]}"; do
+        wait "$pid" || lib_status=1
+    done
+    cat "$lib_logs"/*.log | awk '/^[0-9]+ passed, [0-9]+ failed$/ { p += $1; f += $3 }
+        END { printf "%d passed, %d failed\n", p, f }'
+    [ "$lib_status" -eq 0 ] || { cat "$lib_logs"/*.log; fail "library tests failed; rerun: cargo run -p cpl-cli -- test stdlib examples/local-lib"; }
+    cache_save stdlib_test "${lib_inputs[@]}"
+fi
 
 step "stdlib/prelude.cp: at most 80 names"
 prelude=$(sed 's://.*::' stdlib/prelude.cp | tr -d '\n' | grep -o '{[^}]*}' | tr ',' '\n' | grep -c '[A-Za-z_]')
@@ -197,21 +256,21 @@ echo "prelude: $prelude names"
 [ "$prelude" -le 80 ] || { echo "check: stdlib/prelude.cp has $prelude names, over the cap of 80" >&2; exit 1; }
 
 step "cpl fmt --check stdlib"
-cpl="${CARGO_TARGET_DIR:-target}/debug/cpl"
 "$cpl" fmt --check stdlib || fail "stdlib/ is not formatted; run: cargo run -p cpl-cli -- fmt stdlib"
 
-# Fast validation scoreboard: every active port under proto/ports/ passes
-# cpl check, cpl fmt --check, cpl lint (0 warnings), and cpl build (<= 64 KB),
-# plus contestant tokens, friction_lint (0 wa_trap), friction-report summary,
-# and regression check against research/scoreboard.json.
-step "validation scoreboard (--fast --check against research/scoreboard.json)"
-python3 -m unittest scripts/test_scoreboard.py scripts/test_dream_gaps.py scripts/test_review_check.py >/dev/null \
-    || fail "scoreboard unit tests failed; rerun: python3 -m unittest scripts/test_scoreboard.py scripts/test_dream_gaps.py scripts/test_review_check.py -v"
-python3 scripts/scoreboard.py --fast --check --quiet --cpl "$cpl" \
-    || fail "scoreboard regression detected; rerun: python3 scripts/scoreboard.py --fast --check"
+# Fast validation scoreboard runs in background in parallel with site bundle + docs/site tests.
+scoreboard_cached=0
+if cache_hit scoreboard_fast "${scoreboard_inputs[@]}"; then
+    scoreboard_cached=1
+else
+    (
+        python3 -m unittest scripts/test_scoreboard.py scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py >/dev/null \
+            && python3 scripts/scoreboard.py --fast --check --quiet --cpl "$cpl"
+    ) >"$lib_logs/scoreboard.log" 2>&1 &
+    scoreboard_pid=$!
+fi
 
-# Taste reviews: every port newer than research/reviews/baseline.json has a
-# dream and a review, and the count of those scoring under 4 may not grow.
+# Taste reviews: always run (fast, checks working-tree/staged ports).
 step "taste reviews (scripts/review-check.py --check)"
 python3 scripts/review-check.py --check \
     || fail "taste review gate failed; see research/reviews/README.md"
@@ -219,31 +278,60 @@ python3 scripts/review-check.py --check \
 # The offline edition is one file people download; site/test_site.py holds
 # the same cap. The WASM build is a cargo no-op when nothing changed.
 step "site bundle: dist/cp-lang.html under 2,600,000 bytes"
-rustc --print target-libdir --target wasm32-unknown-unknown 2>/dev/null | xargs test -d \
-    || fail "the site bundle needs the wasm target; run: rustup target add wasm32-unknown-unknown"
-need python3 "site/bundle.py runs on it"
-python3 -c 'import mistune' 2>/dev/null \
-    || fail "the site bundle needs the Python package \`mistune\`; run: python3 -m pip install -r site/requirements.txt"
-python3 site/bundle.py >/dev/null 2>&1 || fail "site/bundle.py failed; rerun: python3 site/bundle.py"
-bundle_bytes=$(wc -c <dist/cp-lang.html)
-echo "dist/cp-lang.html: $bundle_bytes bytes"
-[ "$bundle_bytes" -lt 2600000 ] || fail "dist/cp-lang.html is $bundle_bytes bytes, over the cap of 2,600,000"
+if [ -f dist/cp-lang.html ] && cache_hit site_bundle "${site_inputs[@]}"; then
+    bundle_bytes=$(wc -c <dist/cp-lang.html)
+    echo "dist/cp-lang.html: $bundle_bytes bytes (cached)"
+    [ "$bundle_bytes" -lt 2600000 ] || fail "dist/cp-lang.html is $bundle_bytes bytes, over the cap of 2,600,000"
+else
+    rustc --print target-libdir --target wasm32-unknown-unknown 2>/dev/null | xargs test -d \
+        || fail "the site bundle needs the wasm target; run: rustup target add wasm32-unknown-unknown"
+    need python3 "site/bundle.py runs on it"
+    python3 -c 'import mistune' 2>/dev/null \
+        || fail "the site bundle needs the Python package \`mistune\`; run: python3 -m pip install -r site/requirements.txt"
+    python3 site/bundle.py >/dev/null 2>&1 || fail "site/bundle.py failed; rerun: python3 site/bundle.py"
+    bundle_bytes=$(wc -c <dist/cp-lang.html)
+    echo "dist/cp-lang.html: $bundle_bytes bytes"
+    [ "$bundle_bytes" -lt 2600000 ] || fail "dist/cp-lang.html is $bundle_bytes bytes, over the cap of 2,600,000"
+    cache_save site_bundle "${site_inputs[@]}"
+fi
 
 step "docs gate + site tests (in parallel)"
-CPL_SITE_PREBUILT=1 python3 site/test_site.py >"$lib_logs/site_tests.log" 2>&1 &
-site_test_pid=$!
-python3 site/check_docs.py || { kill "$site_test_pid" 2>/dev/null || true; fail "docs gate failed; rerun: python3 site/check_docs.py"; }
-site_test_status=0
-wait "$site_test_pid" || site_test_status=1
-[ "$site_test_status" -eq 0 ] || { cat "$lib_logs/site_tests.log"; fail "site tests failed; rerun: python3 site/test_site.py"; }
+if cache_hit docs_site "${site_inputs[@]}"; then
+    echo "cached (site + docs + rust inputs unchanged)"
+else
+    CPL_SITE_PREBUILT=1 python3 site/test_site.py >"$lib_logs/site_tests.log" 2>&1 &
+    site_test_pid=$!
+    python3 site/check_docs.py || { kill "$site_test_pid" 2>/dev/null || true; fail "docs gate failed; rerun: python3 site/check_docs.py"; }
+    site_test_status=0
+    wait "$site_test_pid" || site_test_status=1
+    site_test_pid=""
+    [ "$site_test_status" -eq 0 ] || { cat "$lib_logs/site_tests.log"; fail "site tests failed; rerun: python3 site/test_site.py"; }
+    cache_save docs_site "${site_inputs[@]}"
+fi
 
-if [ -n "${recovery_pid:-}" ]; then
+step "validation scoreboard (--fast --check against research/scoreboard.json)"
+if [ "$scoreboard_cached" -eq 1 ]; then
+    echo "cached (ports + scoreboard + rust inputs unchanged)"
+elif [ -n "${scoreboard_pid:-}" ]; then
+    sb_status=0
+    wait "$scoreboard_pid" || sb_status=1
+    cat "$lib_logs/scoreboard.log"
+    scoreboard_pid=""
+    [ "$sb_status" -eq 0 ] || fail "scoreboard regression or unit test failure; rerun: python3 scripts/scoreboard.py --fast --check"
+    cache_save scoreboard_fast "${scoreboard_inputs[@]}"
+fi
+
+if [ "$recovery_cached" -eq 1 ]; then
+    step "cargo test: the recovery scoreboard"
+    echo "cached (rust + stdlib + ports inputs unchanged)"
+elif [ -n "${recovery_pid:-}" ]; then
     step "cargo test: the recovery scoreboard (backgrounded)"
     recovery_status=0
     wait "$recovery_pid" || recovery_status=1
     cat "$lib_logs/recovery.log"
     [ "$recovery_status" -eq 0 ] || fail "recovery scoreboard failed; rerun: cargo test -p cpl-cli --test recovery"
     recovery_pid=""
+    cache_save recovery "${recovery_inputs[@]}"
 fi
 if [ "$mode" = full ]; then
     need node "the wasm smoke test and the VS Code tests run on it"

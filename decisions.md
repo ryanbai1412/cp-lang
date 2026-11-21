@@ -1444,6 +1444,19 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   *How to reverse:* pass `scope=None` to `diff_against_baseline`, restore `new_under_4_max` in
   `scripts/review-check.py`, or inline `ports` back into `research/scoreboard.json`.
 
+- **23.12 Input-hash caching + parallel post-nextest tracks in `scripts/check.sh --fast`, plus `.githooks/pre-push`.**
+  Added `scripts/check_cache.py` (deterministic SHA-256 over sorted input paths, stored under
+  `target/check-cache/<step>.sha256`, disabled via `--no-cache` or `CHECK_NO_CACHE=1` or `--full`)
+  to cache unchanged `clippy`, `cpl_build`, `nextest_doc`, `stdlib_test`, `recovery`,
+  `scoreboard_fast`, `site_bundle`, and `docs_site` steps without dropping coverage, and ran
+  `validation scoreboard` in parallel with `site/bundle.py` -> `docs gate + site tests` and
+  `recovery_scoreboard`. Cold `--fast` wall time dropped from 188s to **163s** (`<= 180s` budget),
+  and unchanged/rebased reruns complete in **~1.3s**. Added `.githooks/pre-push` to reject merge
+  conflict markers, invalid changed JSON/JSONL, and broken `cargo check --workspace --all-targets`
+  after rebases (which skip `pre-commit`).
+  *How to reverse:* pass `--no-cache` / remove `scripts/check_cache.py` calls in `scripts/check.sh`,
+  or delete `.githooks/pre-push`.
+
 ## 24. Documentation gate in `scripts/check.sh --fast` (2026-11-21)
 
 - **24.1 Fast docs verification runs on every commit.** `site/check_docs.py` runs inside
