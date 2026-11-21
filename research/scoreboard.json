@@ -11569,7 +11569,7 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 8117,
+      "emitted_bytes": 15034,
       "over_48kb": false,
       "over_64kb": false,
       "cp_tokens": 254,
