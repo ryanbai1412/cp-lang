@@ -64,7 +64,9 @@ class EvaluateTest(unittest.TestCase):
 class AddedPortNamesTest(unittest.TestCase):
     def test_only_the_staged_change_counts(self):
         with tempfile.TemporaryDirectory() as d:
-            git = lambda *a: subprocess.run(["git", *a], cwd=d, check=True, capture_output=True)
+            # A commit hook exports GIT_DIR and friends; unset, they would aim these at the real repo.
+            env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+            git = lambda *a: subprocess.run(["git", *a], cwd=d, env=env, check=True, capture_output=True)
             git("init", "-q")
             git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "base")
             (Path(d) / "proto/ports/g").mkdir(parents=True)
