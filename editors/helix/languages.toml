@@ -1,6 +1,7 @@
-# CP Lang for Helix: append to ~/.config/helix/languages.toml.
-# Helix highlights only through a tree-sitter grammar, which CP Lang does not have yet;
-# everything else comes from `cpl lsp`.
+# CP Lang for Helix: append to ~/.config/helix/languages.toml, with the grammar's path
+# pointing into your checkout, then link editors/helix/runtime/queries/cp into
+# ~/.config/helix/runtime/queries/ and run `hx --grammar build`. Highlighting comes from
+# editors/tree-sitter-cp; everything else from `cpl lsp`.
 [language-server.cpl]
 command = "cpl"
 args = ["lsp"]
@@ -13,3 +14,8 @@ roots = [".git"]
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
 language-servers = ["cpl"]
+grammar = "cp"
+
+[[grammar]]
+name = "cp"
+source = { path = "/path/to/cp-lang/editors/tree-sitter-cp" }

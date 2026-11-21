@@ -674,8 +674,9 @@ expression or a `var`; no cost or overflow
 warnings; rename sees open files, not the folder on disk, and misses
 local shadowing; no refactorings or "fix all"; no
 auto-import; no `cpl test` lens; Emacs (eglot draws no lenses) and Helix
-run from a shell command; no fixture tests, fuzzer, DAP or
-tree-sitter grammar, so Helix has no highlighting and Zed no setup.
+run from a shell command; no fixture tests, fuzzer or DAP. The tree-sitter
+grammar (`editors/tree-sitter-cp/`) is token-level: it highlights, but gives
+no tree for folding, indents or text objects (the server folds).
 The JetBrains plugin (`editors/jetbrains/`, IntelliJ Platform LSP API, 2024.3
 or later, commercial IDEs only) has a highlighting lexer, color settings,
 comments and braces, `cpl lsp` as its server, run configurations for
@@ -683,17 +684,23 @@ comments and braces, `cpl lsp` as its server, run configurations for
 and the trace viewer in a JCEF editor tab; `buildPlugin` runs in `--full`, but its
 platform tests (lexer, and a headless IDE smoke test of each piece) have not
 run yet: the test framework's download host was not reachable here.
-`editors/README.md` documents Neovim (runtime folder: filetype, Vim syntax,
-`cpl lsp` autostart), Emacs (`cp-mode` with eglot and lsp-mode) and Helix
-(`languages.toml`); `editors/smoke.sh` checks their keyword lists against the
-compiler and drives each against the real server (Neovim: diagnostic, hover
-and the run lens through `cpl.exec`; Emacs: mode, faces, eglot entry; Helix: `--health`), in `--full`.
+`editors/README.md` documents Neovim (runtime folder: filetype, Vim syntax or
+tree-sitter, `cpl lsp` autostart), Emacs (`cp-mode` with eglot and lsp-mode) and Helix
+(`languages.toml`, the grammar and its queries); `editors/smoke.sh`, in `--full`,
+checks their keyword lists against the compiler and runs each editor's own smoke
+test, every one of which starts `cpl lsp` the way that editor's setup does and
+checks `initialize` and the published error: Neovim also checks hover, the run
+lens through `cpl.exec` and tree-sitter captures; Emacs its faces and the eglot
+entry, talking to the server over jsonrpc.el; Helix (no headless mode) builds
+the grammar, `--health` finds the server and queries, and `editors/lsp-smoke.py`
+starts the command its `languages.toml` names. The grammar check regenerates
+the parser, parses every port and library without an error, and checks each
+editor's queries are the same patterns.
 **Bar.** LSP fixture tests per `plan/60` 6.7 for every request; each editor
 integration built and smoke-tested in `scripts/check.sh --full`.
 **Next.** Fixture tests; proven ranges of expressions and `var`s
 (needs the checker's own range analysis); a test lens; run the JetBrains tests and add them to `--full`, then
-the trace's step sync in its tool window; tree-sitter grammar (Helix
-highlighting, a Zed extension, Neovim tree-sitter); fuzzer.
+the trace's step sync in its tool window; a Zed extension on the grammar; fuzzer.
 
 ## 11. Docs, site and playground (`plan/90`)
 **North star.** The language is writable from the docs alone: a one-afternoon tour, a

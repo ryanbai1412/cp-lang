@@ -2177,6 +2177,23 @@ parameter not given yet, instead of none: for `reach(while:, cyclic:)`, where ev
 is named-only, nothing was ever marked after the first. Reverse: drop the two `fixes.push` in
 `check/call.rs` and `check/stmt.rs`, and the fallback in `complete.rs::active_param`.
 
+29.21. **A token-level tree-sitter grammar, for highlighting only.** `editors/tree-sitter-cp`
+gives Helix, Neovim and Zed highlighting from one grammar: a flat sequence of tokens with
+`fn` names, calls, members, types and constants picked out. It has no blocks, so it needs no
+indentation scanner, and a half-typed line cannot turn the rest of the file into an error;
+every port and library parses without one. Folding and semantics come from `cpl lsp`, which
+already folds and sends semantic tokens. The parser is generated at ABI 14, which Neovim 0.10
+and Helix 25.01 load (15 they do not). Each editor's capture names differ, so each has its own
+copy of the queries, and the smoke test checks the patterns stay the same. Reverse: a full
+grammar with an external scanner for indentation would add folds, indents and text objects.
+
+29.22. **Each editor's smoke test drives the server its setup starts.** Neovim and Emacs run
+headless, so their tests are the editor itself (Emacs over jsonrpc.el, what eglot is built on,
+since Emacs 27 has no eglot). Helix has no headless mode: its test checks `hx --health` and
+the grammar build, then `editors/lsp-smoke.py` starts the command its `languages.toml` names
+and checks `initialize` and the published error. Reverse: drop `lsp-smoke.py` and keep
+`--health`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

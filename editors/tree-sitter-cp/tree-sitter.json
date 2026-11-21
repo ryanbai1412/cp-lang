@@ -1,0 +1,18 @@
+{
+  "grammars": [
+    {
+      "name": "cp",
+      "camelcase": "Cp",
+      "scope": "source.cp",
+      "path": ".",
+      "file-types": ["cp"],
+      "highlights": "queries/highlights.scm"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "UNLICENSED",
+    "description": "CP Lang grammar for tree-sitter",
+    "links": { "repository": "https://github.com/ryanbai1412/cp-lang" }
+  }
+}

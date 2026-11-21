@@ -9,16 +9,23 @@ formatting, quick fixes and inlay hints. Put `cpl` on the `PATH`
 | Editor | Where | Highlighting | Run, test, trace |
 |---|---|---|---|
 | VS Code | `editors/vscode/` | TextMate grammar | lenses, stress, trace view |
-| Neovim and Vim | `editors/neovim/` | Vim syntax | Run, Trace and Stress lenses |
+| Neovim and Vim | `editors/neovim/` | Vim syntax, or tree-sitter | Run, Trace and Stress lenses |
 | Emacs | `editors/emacs/` | font-lock | `M-x compile` with `cpl run` |
 | JetBrains IDEs | `editors/jetbrains/` | lexer, color settings | run configurations, gutter marker, trace tab |
-| Helix | `editors/helix/` | none yet (needs a tree-sitter grammar) | `:sh cpl run %` |
+| Helix | `editors/helix/` | tree-sitter (`editors/tree-sitter-cp/`) | `:sh cpl run %` |
 | Zed | not yet | needs a tree-sitter grammar | |
 
-`editors/smoke.sh` checks each setup against the real server (the keyword
-lists against the compiler, then Neovim, Emacs and Helix when installed, and
-the JetBrains plugin's build when `java` is);
-`scripts/check.sh --full` runs it.
+`editors/smoke.sh` checks the keyword lists against the compiler, then runs
+each editor's smoke test when the editor is installed: each starts `cpl lsp`
+the way that editor's setup does and checks `initialize` and the error it
+publishes for a file (`editors/neovim/test/smoke.lua`, `editors/emacs/smoke.el`,
+`editors/helix/smoke.sh`). With the `tree-sitter` CLI it checks the grammar,
+and with `java` it builds the JetBrains plugin. `scripts/check.sh --full` runs
+it.
+
+`editors/tree-sitter-cp/` is a tree-sitter grammar for highlighting: tokens,
+`fn` names, calls, members, types and constants. Blocks and everything else
+come from the server.
 
 ## Neovim (0.10 or later)
 
@@ -41,6 +48,16 @@ require('lspconfig.configs').cpl = {
     default_config = { cmd = { 'cpl', 'lsp' }, filetypes = { 'cp' }, root_dir = vim.fs.dirname },
 }
 require('lspconfig').cpl.setup({})
+```
+
+For tree-sitter highlighting, build the parser into the folder (or add
+`editors/tree-sitter-cp` to nvim-treesitter's parser configs and `:TSInstall cp`);
+the plugin starts it on every `.cp` buffer, with the queries in
+`editors/neovim/queries/cp/`:
+
+```sh
+cd /path/to/cp-lang/editors && mkdir -p neovim/parser &&
+  cc -O2 -shared -fPIC -I tree-sitter-cp/src tree-sitter-cp/src/parser.c -o neovim/parser/cp.so
 ```
 
 Vim gets the highlighting from the same folder (`set rtp+=...`); for the
@@ -74,9 +91,16 @@ against `target/debug/cpl` (or `$CPL`).
 
 ## Helix
 
-Append `editors/helix/languages.toml` to `~/.config/helix/languages.toml`,
-then `hx --health cp` shows the server. Helix highlights only through a
-tree-sitter grammar, which CP Lang does not have yet.
+Append `editors/helix/languages.toml` to `~/.config/helix/languages.toml`
+with its grammar `path` pointing into your checkout, link the queries, and
+build the grammar; `hx --health cp` then shows the server, the parser and the
+highlight queries:
+
+```sh
+mkdir -p ~/.config/helix/runtime/queries
+ln -s /path/to/cp-lang/editors/helix/runtime/queries/cp ~/.config/helix/runtime/queries/cp
+hx --grammar build
+```
 
 ## Zed
 

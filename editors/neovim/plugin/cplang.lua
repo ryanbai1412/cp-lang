@@ -1,4 +1,5 @@
--- CP Lang for Neovim 0.10+: the filetype, and `cpl lsp` on every .cp buffer.
+-- CP Lang for Neovim 0.10+: the filetype, tree-sitter highlighting when the parser is
+-- built, and `cpl lsp` on every .cp buffer.
 -- Set vim.g.cpl_path when cpl is not on the PATH.
 vim.filetype.add({ extension = { cp = 'cp' } })
 
@@ -12,6 +13,9 @@ vim.api.nvim_create_autocmd('FileType', {
     pattern = 'cp',
     group = vim.api.nvim_create_augroup('cplang', {}),
     callback = function(args)
+        -- Tree-sitter highlighting once parser/cp.so is on the runtime path (see
+        -- editors/README.md); the Vim syntax otherwise.
+        pcall(vim.treesitter.start, args.buf, 'cp')
         local file = vim.api.nvim_buf_get_name(args.buf)
         vim.lsp.start({
             name = 'cpl',
