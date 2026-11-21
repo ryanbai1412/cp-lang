@@ -20,7 +20,7 @@ for j in I:
 // two: the latest "2" per value whose "1" (next smaller) came before i.
 var two = SegTree<V, ?I>(max)
 var best: [I]?I = none
-let freed = a.next_smaller().inverse()
+let freed = a.next_less().inverse()
 for i in I:
     for (v, r) in shapes[i]: best[r] max= two.fold(..v)
     for j in freed[i]: two.set(a[j], j)
