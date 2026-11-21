@@ -333,6 +333,36 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// The least and greatest value of `e`: a constant, a top-level `let`
+    /// of a range with constant ends, or sums and products of them.
+    pub(super) fn ast_bounds(&self, e: &ast::Expr) -> Option<(i64, i64)> {
+        if let Some(v) = self.eval_const_int(e) {
+            return Some((v, v));
+        }
+        match &e.kind {
+            ast::ExprKind::Paren(inner) => self.ast_bounds(inner),
+            ast::ExprKind::Name(n) => match self.get_sym(n) {
+                Some(Sym::Global(g)) => self.global_bounds.get(&g).copied(),
+                _ => None,
+            },
+            ast::ExprKind::Binary { op, lhs, rhs, .. } => {
+                interval(*op, self.ast_bounds(lhs)?, self.ast_bounds(rhs)?)
+            }
+            _ => None,
+        }
+    }
+
+    /// [`Self::ast_bounds`] of a lowered expression.
+    pub(super) fn ir_bounds(&self, e: &Expr) -> Option<(i64, i64)> {
+        match &e.kind {
+            ExprKind::Int(v) => Some((*v, *v)),
+            ExprKind::Global(g) => self.global_bounds.get(g).copied(),
+            ExprKind::DomainLen(d) => self.domain_lens.get(d).copied(),
+            ExprKind::Binary(op, a, b) => interval(*op, self.ir_bounds(a)?, self.ir_bounds(b)?),
+            _ => None,
+        }
+    }
+
     /// Evaluates a compile-time integer expression (for `Mod<998244353>`, `Mod<P>`, etc.).
     pub(super) fn eval_const_int(&self, e: &ast::Expr) -> Option<i64> {
         match &e.kind {
@@ -2967,3 +2997,16 @@ fn pack_args(params: &[&ast::Param], args: &[ast::Arg], span: Span) -> Option<Ve
     Some(kept)
 }
 
+
+/// The least and greatest value of `a op b`.
+fn interval(op: BinOp, a: (i64, i64), b: (i64, i64)) -> Option<(i64, i64)> {
+    match op {
+        BinOp::Add => Some((a.0.checked_add(b.0)?, a.1.checked_add(b.1)?)),
+        BinOp::Sub => Some((a.0.checked_sub(b.1)?, a.1.checked_sub(b.0)?)),
+        BinOp::Mul => {
+            let ends = [a.0.checked_mul(b.0)?, a.0.checked_mul(b.1)?, a.1.checked_mul(b.0)?, a.1.checked_mul(b.1)?];
+            Some((*ends.iter().min()?, *ends.iter().max()?))
+        }
+        _ => None,
+    }
+}

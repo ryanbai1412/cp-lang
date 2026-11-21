@@ -338,6 +338,22 @@ impl<'a> Lowerer<'a> {
                         None
                     };
                     self.bind_mut(pat, value, *mutable, out);
+                    if let (false, Some(name), Some(ast::TypeKind::Range { lo, hi: Some(hi), inclusive })) =
+                        (*mutable, &single_name, ty.as_ref().map(|t| &t.kind))
+                    {
+                        if self.cx.is_main && self.cx.scopes.len() == 1 {
+                            if let Some(Sym::Global(gid)) = self.mod_syms[self.cur_mod].get(name).copied() {
+                                let least = match lo {
+                                    Some(lo) => self.ast_bounds(lo).map(|b| b.0),
+                                    None => Some(0),
+                                };
+                                let most = self.ast_bounds(hi).map(|b| b.1 - i64::from(!*inclusive));
+                                if let (Some(least), Some(most)) = (least, most) {
+                                    self.global_bounds.insert(gid, (least, most));
+                                }
+                            }
+                        }
+                    }
                     if let (Some(ty_ast), Some(vname)) = (array_ty_ast, single_name) {
                         if self.cx.is_main && self.cx.scopes.len() == 1 {
                             if let Some(Sym::Global(gid)) = self.mod_syms[self.cur_mod].get(&vname).copied() {
@@ -996,6 +1012,14 @@ impl<'a> Lowerer<'a> {
             }
             return;
         };
+        if let (Some(l), Some(h)) = (self.ast_bounds(lo), self.ast_bounds(hi)) {
+            let extra = i64::from(*inclusive);
+            let least = h.0.checked_add(extra).and_then(|h| h.checked_sub(l.1));
+            let most = h.1.checked_add(extra).and_then(|h| h.checked_sub(l.0));
+            if let (Some(least), Some(most)) = (least, most) {
+                self.domain_lens.insert(id, (least.max(0), most.max(0)));
+            }
+        }
         let lo_e = self.expr(lo, None);
         let lo = if lo_e.ty == Ty::Char {
             self.mk(ExprKind::Cast(Cast::CharToInt, Box::new(lo_e)), Ty::Int, lo.span)

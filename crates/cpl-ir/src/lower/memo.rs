@@ -44,6 +44,8 @@ struct Part {
     /// The offset has to be checked: a declared range is not enforced
     /// at the call.
     ranged: bool,
+    /// The least and greatest `len`, when the declarations bound it.
+    most: Option<(i64, i64)>,
 }
 
 struct Memo<'s> {
@@ -303,11 +305,14 @@ impl<'a> Lowerer<'a> {
                 } else {
                     cells
                 };
+                let bound = i64::from(matches!(spec, Spec::Plain(Ty::Bound(_))));
+                let most = self.domain_lens.get(d).map(|&(least, most)| (least + bound, most + bound));
                 let ord = self.mk(ExprKind::Cast(Cast::Ord, Box::new(value)), Ty::Int, span);
                 memo.parts.push(Part {
                     ord,
                     len,
                     ranged: false,
+                    most,
                 });
                 true
             }
@@ -322,6 +327,7 @@ impl<'a> Lowerer<'a> {
                     ord,
                     len: self.int_lit(2, span),
                     ranged: false,
+                    most: Some((2, 2)),
                 });
                 true
             }
@@ -334,6 +340,11 @@ impl<'a> Lowerer<'a> {
                 let first = self.memo_var(memo, &format!("lo{at}"), Ty::Int);
                 let len = self.memo_var(memo, &format!("len{at}"), Ty::Int);
                 let lo = lo.unwrap_or_else(|| self.int_lit(0, span));
+                let most = match (self.ir_bounds(&lo), hi.as_ref().and_then(|hi| self.ir_bounds(hi))) {
+                    (Some(l), Some(h)) => h.0.checked_sub(l.1).zip(h.1.checked_sub(l.0)),
+                    _ => None,
+                }
+                .and_then(|(least, most)| least.checked_add(1).zip(most.checked_add(1)));
                 memo.inits.push(set(&first, lo));
                 // With no upper bound: wider than any table.
                 let size = match hi {
@@ -348,6 +359,7 @@ impl<'a> Lowerer<'a> {
                     ord: self.memo_bin(BinOp::Sub, value, read(&first), span),
                     len: read(&len),
                     ranged: true,
+                    most,
                 });
                 true
             }
@@ -406,7 +418,18 @@ impl<'a> Lowerer<'a> {
                 self.mk(ExprKind::Tuple(args.clone()), ty, span)
             }
         };
-        let hashed = Self::memo_hashable(&key.ty);
+        // When the declarations prove the table small, it is all there
+        // is: no hash map beside it and no test of its size.
+        let proven = dense
+            && memo
+                .parts
+                .iter()
+                .try_fold(1i64, |cells, part| match part.most {
+                    Some((least, most)) if least >= 1 => cells.checked_mul(most),
+                    _ => None,
+                })
+                .is_some_and(|cells| cells <= DENSE_LIMIT);
+        let hashed = !proven && Self::memo_hashable(&key.ty);
         if !dense && !hashed {
             let shown = self.show(&key.ty);
             self.unsupported(span, &format!("`@memo` on a fn of `{shown}`"));
@@ -433,12 +456,14 @@ impl<'a> Lowerer<'a> {
         };
 
         if dense {
-            let flat = self.memo_var(&mut memo, "flat", Ty::Bool);
+            let flat = (!proven).then(|| self.memo_var(&mut memo, "flat", Ty::Bool));
             let seen = self.memo_var(&mut memo, "seen", Ty::list(Ty::Bool));
             let vals = self.memo_var(&mut memo, "vals", Ty::list(ret.clone()));
             let cells = self.temp(Ty::Int);
             start.push(Stmt::Let(cells, Some(self.int_lit(1, span))));
-            start.push(set(&flat, yes.clone()));
+            if let Some(flat) = &flat {
+                start.push(set(flat, yes.clone()));
+            }
             let cells_place = Place {
                 kind: PlaceKind::Local(cells),
                 ty: Ty::Int,
@@ -446,7 +471,8 @@ impl<'a> Lowerer<'a> {
             };
             // One wide `Int`: cells for its smallest values only, made
             // as they are reached.
-            let lazy = matches!(
+            let lazy = !proven
+                && matches!(
                 &memo.parts[..],
                 [Part {
                     ranged: true,
@@ -458,6 +484,12 @@ impl<'a> Lowerer<'a> {
                 }]
             );
             for part in &memo.parts {
+                let grown =
+                    self.memo_bin(BinOp::Mul, self.local(cells, span), part.len.clone(), span);
+                let Some(flat) = &flat else {
+                    start.push(set(&cells_place, grown));
+                    continue;
+                };
                 // cells * len <= DENSE_LIMIT, without the product.
                 let room = self.memo_bin(
                     BinOp::Div,
@@ -468,9 +500,7 @@ impl<'a> Lowerer<'a> {
                 let some = self.memo_cmp(CmpOp::Ge, part.len.clone(), self.int_lit(1, span), span);
                 let fits = self.memo_cmp(CmpOp::Le, part.len.clone(), room, span);
                 let fits = self.memo_bin(BinOp::And, some, fits, span);
-                let fits = self.memo_bin(BinOp::And, read(&flat), fits, span);
-                let grown =
-                    self.memo_bin(BinOp::Mul, self.local(cells, span), part.len.clone(), span);
+                let fits = self.memo_bin(BinOp::And, read(flat), fits, span);
                 let wide = if lazy {
                     let kind = match &part.len.kind {
                         ExprKind::Local(slot) => PlaceKind::Local(*slot),
@@ -490,10 +520,10 @@ impl<'a> Lowerer<'a> {
                             set(&len, self.int_lit(PREFIX, span)),
                             set(&cells_place, self.int_lit(0, span)),
                         ]),
-                        block(vec![set(&flat, no.clone())]),
+                        block(vec![set(flat, no.clone())]),
                     )]
                 } else {
-                    vec![set(&flat, no.clone())]
+                    vec![set(flat, no.clone())]
                 };
                 start.push(Stmt::If(
                     fits,
@@ -510,17 +540,20 @@ impl<'a> Lowerer<'a> {
                     span,
                 )
             };
-            start.push(Stmt::If(
-                read(&flat),
-                block(vec![
-                    Stmt::Let(zero, None),
-                    set(&seen, filled(self, no.clone())),
-                    set(&vals, filled(self, self.local(zero, span))),
-                ]),
-                Block::default(),
-            ));
+            let make = vec![
+                Stmt::Let(zero, None),
+                set(&seen, filled(self, no.clone())),
+                set(&vals, filled(self, self.local(zero, span))),
+            ];
+            match &flat {
+                Some(flat) => start.push(Stmt::If(read(flat), block(make), Block::default())),
+                None => start.extend(make),
+            }
 
-            let mut inside = read(&flat);
+            let mut inside = match &flat {
+                Some(flat) => read(flat),
+                None => yes.clone(),
+            };
             let mut index = self.int_lit(0, span);
             for part in &memo.parts {
                 if part.ranged {

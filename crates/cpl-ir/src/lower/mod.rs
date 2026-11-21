@@ -542,6 +542,10 @@ struct Lowerer<'a> {
     globals: Vec<Global>,
     /// Annotated array `Spec`s for top-level globals (for `a.inverse()` on bounded-range elements).
     global_specs: HashMap<GlobalId, ast::Type>,
+    /// The least and greatest value of each top-level `let` of a range
+    /// with constant ends, and of each domain's length.
+    global_bounds: HashMap<GlobalId, (i64, i64)>,
+    domain_lens: HashMap<DomainId, (i64, i64)>,
     const_ints: HashMap<String, i64>,
     /// The `const`s that are a `Bool` known when compiling, for `if const`.
     const_bools: HashMap<String, bool>,
@@ -653,6 +657,8 @@ impl<'a> Lowerer<'a> {
             gen_aliases: Vec::new(),
             globals: Vec::new(),
             global_specs: HashMap::new(),
+            global_bounds: HashMap::new(),
+            domain_lens: HashMap::new(),
             const_ints: HashMap::new(),
             const_bools: HashMap::new(),
             mutators: Default::default(),

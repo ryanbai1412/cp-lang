@@ -332,6 +332,14 @@ fn a_map_whose_order_never_shows_is_a_hash_table() {
 }
 
 #[test]
+fn a_memo_over_bounded_ranges_is_a_flat_table_alone() {
+    let bounded = cpp("let a: 0..=8000 = read()\nlet b: 0..=399 = read()\n@memo\nfn f(k: 0..=a, s: 0..=b) -> Int:\n    if k == 0 or s == 0: return 1\n    f(k - 1, s) + f(k, s - 1)\nprint(f(a, b))\n");
+    assert!(!bounded.contains("HashMap") && !bounded.contains("CpHash"), "{bounded}");
+    let open = cpp("let a: Int = read()\n@memo\nfn f(k: 0..=a) -> Int:\n    if k == 0: return 1\n    f(k - 1)\nprint(f(a))\n");
+    assert!(open.contains("cpl::HashMap"), "{open}");
+}
+
+#[test]
 fn a_key_tested_and_then_read_is_looked_up_once() {
     let once =
         cpp("var m = Map<Int, Int>()\nm[4] = 7\nlet x: Int = read()\nif x in m: print(m[x] + 1)\n");

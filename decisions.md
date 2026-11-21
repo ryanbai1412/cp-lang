@@ -3464,3 +3464,18 @@ the `last_use_call` flag; parameters go back to `const&` plus a copy.
 - **Decision.** Add `reach(self, while: (T, T) -> Bool, cyclic: Bool = false) -> List<Int>` to every sequence: for each `i`, the largest `k` such that `while(xs[i], xs[i + j])` holds for every `1 <= j <= k` (indices taken mod `len` and `k < len` when `cyclic`). Cost: O(n) calls of `while` when the reach drops by at most one from `i` to `i + 1`, which holds whenever `while(a, ·)` is true-then-false along a sorted order; debug builds trap when that is violated.
 - **Why.** The hand-written loop `while j < i + m and p(xs[i], xs[j % m]): j += 1` with a `j = max(j, i + 1)` clamp appears in angular sweeps, circular arcs and distance windows (cf1284e and others), and a binary search per element costs a log factor. One method replaces the loop and states the quantity; it is not a cyclic-only helper, and `cyclic_span` is not added.
 - **Reverse.** Remove `reach` from `std.seq`; ports go back to explicit two pointers.
+
+## 96. A memo the declarations prove small is a flat table alone (2026-11-21)
+
+`@memo` over positions, `Bool`s and ranged `Int`s used to choose at run
+time between a flat table and a hash map, so both were emitted (the hash
+map and `CpHash` are about 6.5 KB). When every argument's cell count has a
+compile-time upper bound (a constant, a top-level `let n: lo..=hi` with
+constant ends, a domain over such ends, or sums and products of them) and
+the product of those bounds is at most `DENSE_LIMIT`, only the flat table
+and its fill are emitted: no hash map and no `flat` flag. This majorizes:
+the flat path was already the one taken at run time. A call outside a
+declared range was cached in the hash map before and is now computed
+uncached, with the same result; in-range calls are unaffected. Otherwise
+the run-time choice stays. Reverse by making `proven` false in
+`lower/memo.rs`.
