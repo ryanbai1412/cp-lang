@@ -109,6 +109,13 @@ added here.
 - **Codemods, not hand migration.** A rename or syntax change ships with a
   `cpl fix` rule that rewrites the whole corpus mechanically. Moving a port
   toward its dream is a reviewed rewrite, not a codemod.
+- **Pre-push gate.** Every lane pushes straight to `main`, so before each
+  push: `git pull --rebase`, rerun `scripts/check.sh --fast` on the rebased
+  tip, and push only if it passes. If the push is rejected, repeat. A broken
+  tip on `main` is fixed by whoever broke it, before any other work.
+- **Lane review every round.** The coordinator reads every lane's latest
+  report each round, not only settled ones, gives each finished lane its next
+  piece from `plan/DOMAINS.md`, and never leaves a lane idle.
 - **Manual inspection.** Each round the coordinator reads a sample of new
   ports, dreams and lane commits side by side, and turns what it finds into
   brief edits, checklist lines or lane work.
