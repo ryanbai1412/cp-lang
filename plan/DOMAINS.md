@@ -337,29 +337,34 @@ always.
 **Where we are.** Statement recovery keeps the names a broken declaration
 declares (a broken fn header is bound with an unknown type), and an
 unreadable character no longer drops its line. Broken-ports benchmark
-(`cpl-cli/tests/recovery.rs`, six single edits per port): 0.03 cascades per
-copy (145 of 4319), first error on the right line 99.8%, ratchet at 0.05 per copy.
+(`cpl-cli/tests/recovery.rs`, six single edits per port): 0.034 cascades per
+copy (145 of 4306), first error on the right line 99.7%, 77% of errors carry a
+fix-it, ratchet at 0.05 per copy.
 Planned forms go through one table (`cpl-syntax/src/planned.rs`, `E0504`
 "not implemented yet: ... (see design/...)", or "(not in the design)" for
 forms only dreams use); 16 entries, each with a golden. Dreams are a corpus
-(`scripts/dream-gaps.py`, summary in the scoreboard): 41/44 first errors
-name their gap (the rest: a domain mismatch `PosA.Cut` vs `PosA.bounds`,
-an unknown `Max`, `read()` of a `[Int]?Int`), 135/243 errors named; top
-blockers are context lines (5 dreams), fresh value types and `record` (3
-each). Unknown names say "not
+(`scripts/dream-gaps.py`, summary in the scoreboard): 65 dreams, 55 with
+errors; 29/55 first errors name their gap and 86/219 errors are named (the
+corpus grew from 44 dreams with 41 named, and the new dreams mostly fail on
+unplanned syntax: `match` with `pattern => value` arms on one line, blocks
+indented under a value, two-word statements); top named blocker is context
+lines `with io(base: 1)` (6 dreams), then lowercase variants in patterns (3). Unknown names say "not
 in the stdlib (yet)" with a did-you-mean against stdlib names and the `use`
 as a fix. Golden rendered diagnostics in `cpl-cli/tests/diagnostics/`.
 Fix-its: C spellings (`&&`, `||`, `!x`, `..<`), `let` for a `var`,
 did-you-mean on names, fields and methods (built-in, record and UFCS) and a
 plain number for a domain (`V(i)`) carry an edit, shown as LSP quick fixes
 and applied by `cpl fix`. Common-mistakes benchmark (`fix_it_scoreboard`):
-1,960 errors, 89.8% with a fix-it, `cpl fix` restores 92.7% of copies
-byte for byte; misspelled members are the gap (66% carry a fix).
+1,995 errors, 88.3% with a fix-it, `cpl fix` restores 91.5% of copies
+byte for byte (ratchet 88% and 95%); misspelled members are the gap. A
+domain or range mismatch names both index spaces and labels the
+declaration each comes from.
 **Bar.** Golden diagnostics for every error code; a broken-ports benchmark
 with first-error accuracy and cascade counts.
-**Next.** Name every dream error, not just the first (108 unnamed: list
-comprehensions with `=>`, calls with an `if` argument, value-parameterized
-statements); count cascades by root cause instead of "every error after the
+**Next.** Name every dream first error (26 unnamed: one-line `match`
+arms, an `if` argument in a call, two-word statements), then every error
+(133 unnamed); restore 95% of common-mistake copies (members the back end
+knows by hand); count cascades by root cause instead of "every error after the
 first"; struct/enum headers that fail to parse should also bind with an
 unknown shape; fn stubs `-> T: ...` and the rest of `design/DELTA.md` into
 the planned table or implemented; quick fixes on every syntax error and on members the back end knows by
