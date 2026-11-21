@@ -1,23 +1,22 @@
-// If s = x + y + z and t = x + y^k + z with delta = m - n > 0, then x must lie inside
-// the common prefix of s and t, z inside the common suffix, and |y| must divide delta.
-// Trimming the forced prefix/suffix leaves a core of length core_n where s is both a
-// prefix and suffix of t, so t is delta-periodic; |y| = a works iff it is a multiple
-// of the primitive period g of t's delta-block and divides delta, giving core_n - a + 1 starts.
-use std.strings.period
+// Codeforces 1909 G: Pumping Lemma (dream).
+// s = x + y + z and t = x + y^k + z, so t is s with delta = m - n extra
+// characters, delta = (k - 1) |y|. x lies in the common prefix and z in the
+// common suffix, so y lies in the window of `width` characters from `start` where
+// s matches t from both ends, and every start of a length-a y inside it gives a triple. Pumping y
+// inserts the delta-block t[start..start + delta], which must be a power of
+// some y: its length a divides delta and the block is a-periodic.
+// Fine-Wilf: a period dividing delta is a multiple of the primitive period p,
+// and exists below delta only if p divides delta. So the lengths are the
+// multiples of g dividing delta, g = p if p | delta else delta.
+use std.strings.{period}
 
 let (n, m): (1..=10_000_000, 2..=10_000_000) = read()
 let (s, t): (Str, Str) = read()
-
-let max_pre = s.common_prefix_len(t)
-let max_suf = s.common_suffix_len(t)
-if max_pre + max_suf <= n:
-    print(0)
-    return
-
-let min_x = n - max_suf
-let core_n = max_pre + max_suf - n
 let delta = m - n
-let p = period(t[min_x..min_x + delta])
-let g = if delta % p == 0: p else: delta
+let start = n - s.common_suffix_len(t)
+let width = s.common_prefix_len(t) - start
+if width <= 0: return print(0)
 
-print([core_n - a + 1 for a in g..=min(core_n, delta) by g if delta % a == 0].sum())
+let p = period(t[start..start + delta])
+let g = if delta % p == 0: p else: delta
+print([width - a + 1 for a in (g..=min(width, delta)).step(g) if delta % a == 0].sum())
