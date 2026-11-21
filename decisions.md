@@ -1798,6 +1798,11 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   and shrunk to its `.min` is the same on any machine; the median is printed against the
   1 s bar and never asserted. A wall-clock assertion failed a full gate under load (40 s)
   that passed alone, blocking every lane. Reverse: assert `median <= 1 s` again.
+- **25.26 `a[i] = read()` reads the element type `a` is declared with.** The type is
+  taken from the one `let`/`var` in the file that names `a` with an array type; a name
+  declared twice is refused, since which declaration a write means depends on scope. This
+  is the read the program makes, so the generated row matches it without asking the port
+  to read into a typed `let` first. Reverse: drop `elems` and the `Assign` arm in `rows`.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 

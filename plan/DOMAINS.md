@@ -521,6 +521,12 @@ read first in a tuple (`a_tag_read_first_in_a_tuple_or_above_other_reads_still_c
 (`a_loop_read_may_use_the_loop_name`, 25.22); and a `Str` tag compared
 with words (`a_word_tag_chooses_by_the_words_the_program_compares_it_with`,
 25.23).
+A write `a[i] = read()` into an array declared once with its type,
+such as `var a: [0..=n]Int`, reads `a`'s element type, so a loop of such
+writes is a row per pass (`a_write_of_read_into_a_typed_array_reads_its_element_type`,
+25.26): 1,171 to 1,176 of 1,351 files. Still refused: 35 loops a row
+can't describe, 22 reads in a branch or `while true`, 15 fns that read
+and take parameters or are called in a branch.
 Stress under a judge is a gate regression: all 16 interactive and 5
 checker ecnerwala ports pass 20 generated cases each under the
 interactor or checker `gate.sh` uses, and a solution printing `1` fails

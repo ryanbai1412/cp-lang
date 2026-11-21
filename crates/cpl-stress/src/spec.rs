@@ -13,7 +13,7 @@
 
 use cpl_diag::Span;
 use cpl_syntax::ast::{
-    BinOp, Block, CmpOp, Cond, Expr, ExprKind, FnBody, Pattern, PatternKind, Stmt, StmtKind,
+    AssignOp, BinOp, Block, CmpOp, Cond, Expr, ExprKind, FnBody, Pattern, PatternKind, Stmt, StmtKind,
     StrPiece, Type, TypeKind, UnOp,
 };
 use std::collections::{HashMap, HashSet};
@@ -537,6 +537,9 @@ struct Builder<'a> {
     /// Each fn whose call reads the same values wherever it is, with the
     /// types it reads in order ([`values`]).
     values: HashMap<String, (u32, Vec<Type>)>,
+    /// The element type of each array declared once with its type, so
+    /// `a[i] = read()` reads one of them ([`elems`]).
+    elems: HashMap<String, (u32, Type)>,
     spec: InputSpec,
 }
 
@@ -1109,6 +1112,24 @@ impl Builder<'_> {
 
     /// The reads of `stmts`, one pass of a loop or one arm of a choice,
     /// added to `parts`. False when a field cannot describe them.
+    /// The element type `a[i] = read()` reads: `a`'s, when its array
+    /// type is declared.
+    fn elem_read(&self, target: &Expr, value: &Expr) -> Option<(u32, Type)> {
+        let ExprKind::Call { callee, args } = &value.kind else {
+            return None;
+        };
+        let (ExprKind::Name(read), []) = (&callee.kind, args.as_slice()) else {
+            return None;
+        };
+        let ExprKind::Index { base, .. } = &target.kind else {
+            return None;
+        };
+        let ExprKind::Name(name) = &base.kind else {
+            return None;
+        };
+        (read == "read").then(|| self.elems.get(name).cloned())?
+    }
+
     fn rows(
         &mut self,
         stmts: &[Stmt],
@@ -1206,6 +1227,23 @@ impl Builder<'_> {
                         binds.extend(shapes.iter().map(|_| Vec::new()));
                         parts.extend(shapes);
                     }
+                }
+                StmtKind::Assign {
+                    target,
+                    op: AssignOp::Set,
+                    value,
+                } if self.elem_read(target, value).is_some() => {
+                    let (base, ty) = self.elem_read(target, value).expect("tested above");
+                    let mut used = HashSet::new();
+                    Sizes(&mut used).of_type(&ty);
+                    if !used.is_disjoint(inside) {
+                        return Ok(false);
+                    }
+                    let outer = std::mem::replace(&mut self.base, base);
+                    let shape = self.shape(&ty);
+                    self.base = outer;
+                    binds.push(Vec::new());
+                    parts.push(shape?);
                 }
                 _ if self.reads(stmt) => match self.inlined(stmt)? {
                     Some(shapes) => {
@@ -1658,6 +1696,54 @@ fn span_range(span: Span) -> std::ops::Range<usize> {
 /// call reads like `read<T>()` in any expression: no parameters, a body
 /// whose only reads are `let name: T = read()` lines with types that use
 /// no name the body binds, and no `return` but a last one.
+/// Each name declared once in the file, as `var a: [I]T = ...`, with `T`
+/// and the base its spans are relative to. A name declared twice is left
+/// out, since which one a write means depends on scope.
+fn elems(items: &[(u32, cpl_syntax::ParsedItem)]) -> HashMap<String, (u32, Type)> {
+    fn walk(base: u32, stmts: &[Stmt], seen: &mut HashMap<String, Option<(u32, Type)>>) {
+        for stmt in stmts {
+            match &stmt.kind {
+                StmtKind::Let { pat, ty, .. } => {
+                    let mut names = HashSet::new();
+                    bind_names(pat, &mut names);
+                    let elem = match (&pat.kind, ty.as_ref().map(|ty| &ty.kind)) {
+                        (PatternKind::Name(_), Some(TypeKind::Array { elem, .. })) => {
+                            Some((base, (**elem).clone()))
+                        }
+                        _ => None,
+                    };
+                    for name in names {
+                        match seen.entry(name) {
+                            std::collections::hash_map::Entry::Vacant(slot) => {
+                                slot.insert(elem.clone());
+                            }
+                            std::collections::hash_map::Entry::Occupied(mut slot) => {
+                                slot.insert(None);
+                            }
+                        }
+                    }
+                }
+                StmtKind::For { body, .. } | StmtKind::While { body, .. } => {
+                    walk(base, &body.stmts, seen)
+                }
+                StmtKind::Fn(decl) => {
+                    if let FnBody::Block(block) = &decl.body {
+                        walk(base, &block.stmts, seen)
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    let mut seen = HashMap::new();
+    for (base, item) in items {
+        walk(*base, &item.stmts, &mut seen);
+    }
+    seen.into_iter()
+        .filter_map(|(name, elem)| Some((name, elem?)))
+        .collect()
+}
+
 fn values(src: &str, items: &[(u32, cpl_syntax::ParsedItem)]) -> HashMap<String, (u32, Vec<Type>)> {
     let mut values = HashMap::new();
     for (base, item) in items {
@@ -2117,6 +2203,7 @@ impl InputSpec {
             records: HashMap::new(),
             none: None,
             values: values(src, &parsed.items),
+            elems: elems(&parsed.items),
             spec: InputSpec::default(),
         };
         // What is read above `@!multitest`, once the divider is seen.

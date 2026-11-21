@@ -1671,6 +1671,31 @@ print(a.sum())
 }
 
 #[test]
+fn a_write_of_read_into_a_typed_array_reads_its_element_type() {
+    let src = "let n: 1..=5 = read()
+var a: [0..=n]0..=9 = 0
+for i in 1..=n: a[i] = read()
+var grid: [0..n, 0..n]Int = 0
+for i in 0..n:
+    for j in 0..=i: grid[i, j] = read()
+print(a.sum() + grid[n - 1, 0])
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    let path = std::env::temp_dir().join(format!("elem-read-{}.cp", std::process::id()));
+    std::fs::write(&path, src).unwrap();
+    for seed in 0..20 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(5)).unwrap();
+        let text = case.render();
+        assert_eq!(crate::explain::runtime_error(&path, &text), None, "{text}");
+        let words: Vec<i128> = text.split_whitespace().map(|w| w.parse().unwrap()).collect();
+        let n = words[0];
+        assert_eq!(words.len() as i128, 1 + n + n * (n + 1) / 2, "{text}");
+        assert!(words[1..=n as usize].iter().all(|v| (0..=9).contains(v)), "{text}");
+    }
+    std::fs::remove_file(&path).ok();
+}
+
+#[test]
 fn a_loop_read_may_use_the_loop_name() {
     let src = "let n: 1..=5 = read()
 var best = 0
