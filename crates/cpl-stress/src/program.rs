@@ -208,10 +208,12 @@ fn compile_with(
     if !binary.is_file() {
         // Built under another name, then renamed, so a build that is
         // interrupted or raced never leaves half a binary behind.
+        static BUILDS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let partial = dir.join(format!(
-            "{stem}-{:016x}.{}.tmp",
+            "{stem}-{:016x}.{}.{}.tmp",
             hash(&text),
-            std::process::id()
+            std::process::id(),
+            BUILDS.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
         ));
         let mut build = Command::new(compiler);
         build.args(flags);
@@ -257,10 +259,17 @@ enum Part {
 
 /// Emits the C++ for a `.cp` file into the cache, through the same front
 /// end and back end as `cpl build`. Returns the path of the C++ file.
-fn emit_cpp(source: &Path, part: Part) -> Result<(PathBuf, cpl_judge::Profile), BuildError> {
+fn emit_cpp(
+    source: &Path,
+    text: Option<&str>,
+    part: Part,
+) -> Result<(PathBuf, cpl_judge::Profile), BuildError> {
     let name = source.display().to_string();
-    let text = std::fs::read_to_string(source)
-        .map_err(|e| BuildError(format!("can't read {name}: {e}")))?;
+    let text = match text {
+        Some(text) => text.to_string(),
+        None => std::fs::read_to_string(source)
+            .map_err(|e| BuildError(format!("can't read {name}: {e}")))?,
+    };
     let profile = cpl_judge::resolve(source, &text, None).map_err(BuildError)?;
     let errors = |diagnostics: &[cpl_diag::Diagnostic]| {
         BuildError(format!(
@@ -311,8 +320,8 @@ fn emit_cpp(source: &Path, part: Part) -> Result<(PathBuf, cpl_judge::Profile), 
 
 /// Builds the C++ of a `.cp` file as its judge does, as far as the
 /// compiler here allows, and runs it on the judge's stack.
-fn build_judged(source: &Path, part: Part) -> Result<Vec<String>, BuildError> {
-    let (cpp, profile) = emit_cpp(source, part)?;
+fn build_judged(source: &Path, text: Option<&str>, part: Part) -> Result<Vec<String>, BuildError> {
+    let (cpp, profile) = emit_cpp(source, text, part)?;
     let host = profile.host();
     let binary = compile_with(&cpp, true, &host.compiler, &host.flags)?;
     let stack = profile.ulimit();
@@ -360,7 +369,7 @@ impl Program {
         let argv = match extension {
             "cpp" | "cc" | "cxx" => vec![compile_cpp(path, false)?],
             "py" => vec!["python3".to_string(), name.clone()],
-            "cp" => build_judged(path, Part::Solution)?,
+            "cp" => build_judged(path, None, Part::Solution)?,
             // Relative paths need `./` to be found.
             _ => vec![path
                 .canonicalize()
@@ -375,12 +384,22 @@ impl Program {
         })
     }
 
+    /// The `.cp` source `text`, built as if it were the file `path`, which
+    /// need not exist: its imports and judge resolve from beside `path`.
+    pub fn resolve_source(path: &Path, text: &str) -> Result<Program, BuildError> {
+        Ok(Program {
+            name: path.display().to_string(),
+            argv: build_judged(path, Some(text), Part::Solution)?,
+            env: Vec::new(),
+        })
+    }
+
     /// The `@brute(main)` fn of the `.cp` file `path`, built like the
     /// solution: the file's input header, then the fn.
     pub fn resolve_brute(path: &Path, fn_name: &str) -> Result<Program, BuildError> {
         Ok(Program {
             name: format!("{} (`{fn_name}`)", path.display()),
-            argv: build_judged(path, Part::Brute)?,
+            argv: build_judged(path, None, Part::Brute)?,
             env: Vec::new(),
         })
     }
@@ -390,7 +409,7 @@ impl Program {
     pub fn resolve_gen(path: &Path, fn_name: &str, size: i64) -> Result<Program, BuildError> {
         Ok(Program {
             name: format!("{} (`{fn_name}`)", path.display()),
-            argv: build_judged(path, Part::Gen(size))?,
+            argv: build_judged(path, None, Part::Gen(size))?,
             env: Vec::new(),
         })
     }

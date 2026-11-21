@@ -2,7 +2,7 @@ use super::*;
 use crate::judge::{declared, first_difference};
 use crate::run::{save, stress, Options, Source};
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 const SRC: &str = "\
@@ -1816,4 +1816,41 @@ print(c + k)
         min.render()
     );
     std::fs::remove_file(&path).ok();
+}
+
+#[test]
+fn a_swapped_in_brute_builds_once_and_leaves_no_file_beside_the_source() {
+    if std::process::Command::new("g++")
+        .arg("--version")
+        .output()
+        .is_err()
+    {
+        return;
+    }
+    let dir = scratch("part-brute");
+    let file = dir.join("p.cp");
+    let src = "fn f(n: Int) -> Int = n * 2\n\n@brute(f)\nfn f_slow(n: Int) -> Int = n + n\n\nlet n: 1..=9 = read()\nprint(f(n))\n";
+    std::fs::write(&file, src).unwrap();
+    let swapped = crate::cli::swap_in_part_brutes(src).unwrap();
+    let first = crate::cli::build_part_brute(&file, "p.cp", &swapped).unwrap();
+    let again = crate::cli::build_part_brute(&file, "p.cp", &swapped).unwrap();
+    assert_eq!(first.argv, again.argv);
+    // Named for the source alone: a name that changed per run (say, with
+    // the process id) would change the C++ and miss the build cache.
+    let binary = first.argv.iter().find(|a| a.contains(".p.brute")).unwrap();
+    let name = Path::new(binary).file_name().unwrap().to_str().unwrap();
+    let hashes = name.strip_prefix(".p.brute-").unwrap().split('-');
+    assert!(
+        hashes
+            .into_iter()
+            .all(|h| h.len() == 16 && h.chars().all(|c| c.is_ascii_hexdigit())),
+        "{name}"
+    );
+    let outcome = first.run("4\n", Duration::from_secs(10)).unwrap();
+    assert_eq!(outcome.stdout, "8\n");
+    let left: Vec<_> = std::fs::read_dir(&dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name())
+        .collect();
+    assert_eq!(left, ["p.cp"]);
 }

@@ -4,8 +4,8 @@ use crate::judge::{declared, Judge};
 use crate::program::Program;
 use crate::run::{save, stress, Options, Report, Source};
 use crate::spec::InputSpec;
-use cpl_interp::trace::Divergence;
 use cpl_diag::Span;
+use cpl_interp::trace::Divergence;
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -199,7 +199,7 @@ pub fn solution(file: &Path, fast: Option<&Path>) -> Result<Program, String> {
 /// `f`'s name, `f` steps aside and the decorator is blanked. Lines stay
 /// where they were, so `debug(...)` lines still pair up. `None` when the
 /// file pairs no fn with a brute.
-fn swap_in_part_brutes(src: &str) -> Option<String> {
+pub(crate) fn swap_in_part_brutes(src: &str) -> Option<String> {
     let parsed = cpl_syntax::parse_file(src);
     let mut fns: HashMap<&str, Span> = HashMap::new();
     let mut pairs = Vec::new();
@@ -263,13 +263,12 @@ fn swap_in_part_brutes(src: &str) -> Option<String> {
 
 /// Builds `swapped`, the file with its `@brute(f)` fns in place, from
 /// beside `file` so its imports resolve the same way.
-fn build_part_brute(file: &Path, name: &str, swapped: &str) -> Result<Program, String> {
+pub(crate) fn build_part_brute(file: &Path, name: &str, swapped: &str) -> Result<Program, String> {
     let stem = file.file_stem().and_then(|s| s.to_str()).unwrap_or("brute");
-    let path = file.with_file_name(format!(".{stem}.brute-{}.cp", std::process::id()));
-    std::fs::write(&path, swapped).map_err(|e| format!("can't write {}: {e}", path.display()))?;
-    let built = Program::resolve(&path);
-    let _ = std::fs::remove_file(&path);
-    let mut program = built.map_err(|e| e.to_string())?;
+    // Never written, so its name and its C++ are the same on every run and
+    // the build cache keeps it.
+    let path = file.with_file_name(format!(".{stem}.brute.cp"));
+    let mut program = Program::resolve_source(&path, swapped).map_err(|e| e.to_string())?;
     program.name = format!("{name} with its @brute fns swapped in");
     Ok(program)
 }
@@ -592,7 +591,13 @@ pub fn run_with(
         let _ = write!(
             stdout,
             "{}",
-            json(&report, saved.as_deref(), stages, trace_path.as_deref(), explained.as_ref())
+            json(
+                &report,
+                saved.as_deref(),
+                stages,
+                trace_path.as_deref(),
+                explained.as_ref()
+            )
         );
         return report.failure.is_some() as u8;
     }
@@ -705,11 +710,21 @@ pub fn run_with(
     match &explained {
         Some(Ok(Some(d))) => {
             let ordinal = ordinal(d.nth);
-            let _ = writeln!(stdout, "  first differing value: `{}`, its {ordinal} value", d.name);
+            let _ = writeln!(
+                stdout,
+                "  first differing value: `{}`, its {ordinal} value",
+                d.name
+            );
             for (who, side) in [("solution", &d.fast), ("brute", &d.brute)] {
                 let _ = match side {
-                    Some((line, value)) => writeln!(stdout, "    {who:<8} {} = {value} at line {line}", d.name),
-                    None => writeln!(stdout, "    {who:<8} never gives `{}` a {ordinal} value", d.name),
+                    Some((line, value)) => {
+                        writeln!(stdout, "    {who:<8} {} = {value} at line {line}", d.name)
+                    }
+                    None => writeln!(
+                        stdout,
+                        "    {who:<8} never gives `{}` a {ordinal} value",
+                        d.name
+                    ),
                 };
             }
         }
