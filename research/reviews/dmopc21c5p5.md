@@ -1,7 +1,7 @@
 # dmopc21c5p5
 
-Score: pending cold rescore (header states NP-hardness of Max-Weight Hamiltonian Path, derives alternating upper bound `(n*n)/2 - 1` with early exit, encapsulates `refine_two_opt`; `port = dream`, `0` lints, ASan/UBSan verified `n=1..100`)
-Dream: pending cold rescore (header derives alternating upper bound `(n*n)/2 - 1` and NP-hardness status, adds early exit + `refine_two_opt`)
+Score: 3/5
+Dream: 3/5
 
 Baseline review, cold, on main 96359635. No editorial: lines 1-3 list prototype deltas. The general case is a random restart plus a 2-opt heuristic with no argument that it reaches the optimum. The body hand-rolls a sieve and an RNG, and drives the search with `-1` sentinels and an `improved` flag. No dream exists, so the score is capped at 3.
 
@@ -38,3 +38,11 @@ Dream (new) 3/5, port 3/5 (port = dream), cold-reviewed on current main; sent ba
 Dream 3/5, port 3/5 (port = dream), rescored cold on current main; sent back. Every rewrite my last pass asked for has landed: the `.map(...) ?? true` test (line 39), `perm[i1..=j].reverse()` (line 60), and an `argmax` with a random tie-break in `greedy_start` (line 70). It checks with zero errors.
 - Owed (carried over from the baseline review, which my last pass failed to repeat): for `n > 12` the header calls the 64-start 2-opt search "high-scoring" (lines 9-13) and gives no argument that it reaches the optimum. Either prove it does, or use a construction that does. This is the only item keeping the dream under 4.
 - Minor: line 55's comma guard (`if let i1 = i.next, let j_start = i1.next`) is fine as a multi-binding. `loop: if not two_opt_step(mut perm): break` (lines 83-84) is a `while` loop. The path walk (lines 44-51) builds the list and then reverses it.
+
+## Cold review (HEAD)
+
+Port 3/5 and dream 3/5 (port = dream), rescored cold on current main; it goes back. The header now gives an upper bound with an early exit and names the problem as Max-Weight Hamiltonian Path, and `refine_two_opt` is extracted. It checks with zero errors. The obligation from last round is still open:
+- **Owed:** lines 14-18 claim that 64 greedy + 2-opt starts "reliably recover the optimum for `n <= 100`", but nothing derives that claim.
+  - NP-hardness of the general problem (lines 5-7) says nothing about this particular prime-difference graph.
+  - The early-exit bound `(n * n) / 2 - 1` (line 88) ignores the primality condition, so a run may never reach it.
+  - Either derive an exact construction for this graph, or state the acceptance rule that the heuristic provably meets.

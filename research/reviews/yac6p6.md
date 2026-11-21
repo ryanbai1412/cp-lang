@@ -1,7 +1,7 @@
 # yac6p6
 
-Score: pending cold rescore (factored single `relax(cur, from, cost)` + shared `backward_dp(x1, y1, x2, y2)` eliminating `small_dp` duplication and raw `Row(...)` indexing, tightened complexity bound to `(n^2 m^2 / 12) * (MAXK + 1)` over populated buckets, `and` guards; `port = dream`, `20,541 B`, `0` lints, ASan/UBSan 600 random queries pass)
-Dream: pending cold rescore (single `relax` + shared `backward_dp`, tightened bucketed complexity bound, `and` guards)
+Score: 3/5
+Dream: 3/5
 
 Baseline review, cold, on main 96359635. No editorial header; lines 1-2 give only provenance. The DP is written three times (the small case, the forward 3x3 and the backward prefix), with the transitions spelled out in each. The `(x2 + y2) % 3` diagonal bucketing (line 40), the step at which every query is split, is never explained. No dream exists, so the score is capped at 3.
 
@@ -29,3 +29,9 @@ Dream (new) 3/5, port 3/5 (port = dream), cold-reviewed on current main; sent ba
 - Owed: the header's own bound, `O((nm / 3) * nm * MAXK)` (line 15), is about `13 333 * 40 000 * 6 ≈ 3e9` cell steps at `n = m = 200`. Either say why only bucketed cells pay and why that fits, or bound it.
 - Minor: line 43 rebuilds `Row(x1.ord + i + 1)` from raw offsets. Lines 67, 103 and 106 use comma guards where 4.9 has `and`: `if let … and cond` / `while let … and cond` is the guard spelling (decisions 4.9).
 - No friction report is needed: everything owed exists.
+
+## Cold review (HEAD)
+
+Port 3/5 and dream 3/5 (port = dream), rescored cold on current main; it goes back. A single `relax` and a shared `backward_dp` remove the triple skip-or-pay transition. The bound on lines 13-17 is now stated per populated bucket: at most n²m²/12 · 6 ≈ 8e8 cell-state steps for n = m = 200.
+- **Owed:** line 35 reuses `empty_cell` after line 34 moved it (E0607), so neither file compiles. Use `empty_cell.copy()`, or fill both tables from `[KDom] _ => none`, and it's a 4.
+- Minor: lines 53 and 80 rebuild `[KDom] _ => none` instead of using `empty_cell`. Lines 90-91 step `k` as a raw `Int` (`KDom(k)`, `qr.kv.offset(-k)!`).
