@@ -31,3 +31,18 @@ codegen-units = 1
 # measure the build profile instead of the interpreter.
 [profile.dev.package.cpl-interp]
 opt-level = 1
+
+# Front-end, IR and codegen run thousands of times across the port, differential
+# and recovery test suites; opt-level = 1 keeps incremental builds fast while
+# cutting `scripts/check.sh --fast` wall time well under the 3-minute budget.
+[profile.dev.package.cpl-syntax]
+opt-level = 1
+
+[profile.dev.package.cpl-check]
+opt-level = 1
+
+[profile.dev.package.cpl-ir]
+opt-level = 1
+
+[profile.dev.package.cpl-codegen]
+opt-level = 1

@@ -35,6 +35,8 @@
 # and g++.
 set -euo pipefail
 
+gate_t0=$(date +%s)
+rm -f "${CARGO_TARGET_DIR:-target}/gate-fast-time.json"
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 
@@ -126,12 +128,13 @@ else
     lib_dirs+=(examples/local-lib/*/)
 fi
 lib_pids=()
+recovery_pid=""
 for d in "${lib_dirs[@]}"; do
     "${CARGO_TARGET_DIR:-target}/debug/cpl" test "$d" >"$lib_logs/$(tr / _ <<<"$d").log" 2>&1 &
     lib_pids+=($!)
 done
 cleanup() {
-    kill "${lib_pids[@]}" 2>/dev/null || true
+    kill "${lib_pids[@]}" ${recovery_pid:+"$recovery_pid"} 2>/dev/null || true
     rm -rf "$lib_logs" ${tmp:+"$tmp"}
 }
 trap cleanup EXIT
@@ -157,10 +160,12 @@ if cargo nextest --version >/dev/null 2>&1; then
     filter='binary(proto_fuzz) or binary(proto_tools) or binary(budget)'
     for t in "${slow_tests[@]}"; do filter+=" or test(/(^|::)$t\$/)"; done
     cargo nextest run --workspace --no-fail-fast -E "not ($filter)"
+    # Run the recovery scoreboard in parallel with the remaining fast checks
+    # (nextest and LSP latency tests have already finished, so there is no contention).
+    cargo test -q -p cpl-cli --test recovery >"$lib_logs/recovery.log" 2>&1 &
+    recovery_pid=$!
     step "cargo test --workspace --doc"
     cargo test -q --workspace --doc
-    step "cargo test: the recovery scoreboard, on its own"
-    cargo test -q -p cpl-cli --test recovery
 else
     step "cargo test --workspace (without the --full tests)"
     skips=()
@@ -169,8 +174,8 @@ else
         skips+=(--skip "$t")
     done
     cargo test --workspace -- "${skips[@]}"
-    step "cargo test: the recovery scoreboard, on its own"
-    cargo test -q -p cpl-cli --test recovery
+    cargo test -q -p cpl-cli --test recovery >"$lib_logs/recovery.log" 2>&1 &
+    recovery_pid=$!
 fi
 
 step "cpl test stdlib examples/local-lib"
@@ -228,6 +233,14 @@ python3 site/check_docs.py || fail "docs gate failed; rerun: python3 site/check_
 step "site tests: built pages, links, reader copy, documented programs"
 python3 site/test_site.py >/dev/null 2>&1 || fail "site tests failed; rerun: python3 site/test_site.py"
 
+if [ -n "${recovery_pid:-}" ]; then
+    step "cargo test: the recovery scoreboard (backgrounded)"
+    recovery_status=0
+    wait "$recovery_pid" || recovery_status=1
+    cat "$lib_logs/recovery.log"
+    [ "$recovery_status" -eq 0 ] || fail "recovery scoreboard failed; rerun: cargo test -p cpl-cli --test recovery"
+    recovery_pid=""
+fi
 if [ "$mode" = full ]; then
     need node "the wasm smoke test and the VS Code tests run on it"
     need npm "the VS Code tests run on it"
@@ -278,4 +291,13 @@ fi
 known_traps=$(grep -c '^if which == ' crates/cpl-cli/tests/known_traps.cp)
 printf '\nknown_traps: %s open (crates/cpl-cli/tests/known_traps.cp)\n' "$known_traps"
 
-printf '\ncheck: all %s checks passed\n' "$mode"
+gate_elapsed=$(( $(date +%s) - gate_t0 ))
+if [ "$mode" = fast ]; then
+    gate_time_file="${CARGO_TARGET_DIR:-target}/gate-fast-time.json"
+    mkdir -p "$(dirname "$gate_time_file")"
+    printf '{"mode":"fast","elapsed_s":%d,"budget_s":180}\n' "$gate_elapsed" >"$gate_time_file"
+    printf '\ncheck: all fast checks passed in %ss (budget <= 180s)\n' "$gate_elapsed"
+    [ "$gate_elapsed" -le 180 ] || fail "fast gate took ${gate_elapsed}s, over the 180s (3 min) budget"
+else
+    printf '\ncheck: all %s checks passed in %ss\n' "$mode" "$gate_elapsed"
+fi
