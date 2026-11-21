@@ -121,7 +121,7 @@ STDLIB_AREAS = (
 )
 _AREA_KEYWORDS = (
     ("flows", ("flow", "max_flow", "min_cost", "dinic", "matching", "bipartite", "hopcroft", "hungarian", "gomory")),
-    ("geometry", ("geometry", "point", "convex hull", "polygon", "cross product", "polar", "half-plane", "segment intersect")),
+    ("geometry", ("geometry", "convex hull", "polygon", "cross product", "polar", "half-plane", "segment intersect", "point in polygon")),
     ("ranges", ("segtree", "lazysegtree", "fenwick", "sparsetable", "sparse table", "intervalmap", "interval partition", "odt", "range query", "segment tree", "mo's")),
     ("trees", ("hld", "lca", "centroid", "reroot", "euler tour", "permutation tree", "virtual tree", "treap", "link-cut", "tree")),
     ("strings", ("kmp", "z-func", "suffix", "aho", "rolling hash", "string", "`str`", "str ", "s[", "palindrom", "trie")),
@@ -1093,14 +1093,88 @@ _NON_FRICTION_SECTIONS = {
 }
 
 
+_AREA_ALIASES = {
+    "graphs": "graphs",
+    "graph": "graphs",
+    "std.graph": "graphs",
+    "trees": "trees",
+    "tree": "trees",
+    "std.tree": "trees",
+    "ranges": "ranges",
+    "range": "ranges",
+    "strings": "strings",
+    "string": "strings",
+    "std.str": "strings",
+    "math": "math",
+    "number theory": "math",
+    "std.math": "math",
+    "std.mod": "math",
+    "std.poly": "math",
+    "std.matrix": "math",
+    "flows": "flows",
+    "flow": "flows",
+    "std.flow": "flows",
+    "containers": "containers",
+    "container": "containers",
+    "geometry": "geometry",
+    "geom": "geometry",
+    "std.geometry": "geometry",
+    "dp": "dp",
+    "slope": "dp",
+    "std.slope": "dp",
+    "seq": "seq",
+    "std.seq": "seq",
+    "core": "core",
+    "core language": "core",
+    "codegen": "core",
+    "interp": "core",
+    "syntax": "core",
+    "check": "core",
+    "types": "core",
+    "tooling": "core",
+    "cli": "core",
+    "lsp": "core",
+    "fmt": "core",
+    "lint": "core",
+    "stress": "core",
+    "io": "core",
+    "i/o": "core",
+}
+
+
+def _parse_explicit_area(raw):
+    """Map an explicit `Area:` field value (taking its primary/leading area) to a canonical area, or None."""
+    if not raw or not raw.strip():
+        return None
+    # Take the leading clause before '+', '/', '(', ',', or ';' and strip backticks/whitespace.
+    primary = re.split(r"[+/(,;]", raw, maxsplit=1)[0].strip().strip("`'\"").strip().lower()
+    if primary in _AREA_ALIASES:
+        return _AREA_ALIASES[primary]
+    # Try first token as a fallback (e.g. "strings 4.13" or "core syntax").
+    first = primary.split()[0] if primary.split() else ""
+    return _AREA_ALIASES.get(first)
+
+
+def _kw_matches(kw, hay):
+    if kw.isalpha() and len(kw) <= 4:
+        return re.search(r"\b" + re.escape(kw) + r"\b", hay) is not None
+    return kw in hay
+
+
 def route_friction_area(title, body, fields):
-    """Route a friction item to one of the 10 stdlib areas (or 'core')."""
-    explicit = fields.get("area", "").strip().lower()
-    if explicit in STDLIB_AREAS or explicit == "core":
+    """Route a friction item to one of the 10 stdlib areas (or 'core').
+
+    Prefers the explicit `Area:` field (including decorated forms like
+    ``seq (`plan/STDLIB.md`)``, ``containers (`plan/STDLIB.md`) + codegen``,
+    ``number theory (`plan/STDLIB.md`) + core language``, or ``core language``)
+    and falls back to keyword matching only when `Area:` is missing or unrecognized.
+    """
+    explicit = _parse_explicit_area(fields.get("area", ""))
+    if explicit is not None:
         return explicit
     hay = (title + "\n" + body).lower()
     for area, kws in _AREA_KEYWORDS:
-        if any(kw in hay for kw in kws):
+        if any(_kw_matches(kw, hay) for kw in kws):
             return area
     return "core"
 

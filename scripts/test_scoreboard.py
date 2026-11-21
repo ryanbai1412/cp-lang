@@ -451,6 +451,24 @@ class DreamAndPerfRatchetTest(unittest.TestCase):
             diff = sb.diff_against_baseline(cur, base, mode="fast")
             self.assertTrue(any("friction metadata warnings grew" in m for m in diff["regressions"]))
 
+    def test_friction_explicit_area_beats_keywords(self):
+        # Explicit decorated Area: fields must take precedence over body keywords like "point" or "tree".
+        cases = [
+            ("Two-pointer cyclic span", "uses two-pointer wraparound", {"area": "seq (`plan/STDLIB.md`)"}, "seq"),
+            ("Number theory choose", "points on a grid", {"area": "number theory (`plan/STDLIB.md`) + core language"}, "math"),
+            ("Rollback DSU checkpoint", "checkpoint on graph", {"area": "containers (`plan/STDLIB.md`) + codegen"}, "containers"),
+            ("Backticked strings", "point-wise string", {"area": "`strings` (`plan/STDLIB.md` 4.13)"}, "strings"),
+            ("Codegen pass", "convex hull helper", {"area": "codegen"}, "core"),
+            ("Core I/O", "polygon input", {"area": "core language / I/O"}, "core"),
+            ("Geometry hull", "tree-like search", {"area": "geometry (`plan/STDLIB.md`)"}, "geometry"),
+            # When Area: is missing, fall back to keywords without matching "pointer"/"midpoint" as geometry.
+            ("Fixed-point walk", "no area field, uses midpoint and two-pointer", {}, "core"),
+            ("Convex hull helper", "no area field, convex hull over 2D points", {}, "geometry"),
+        ]
+        for title, body, fields, want in cases:
+            with self.subTest(title=title, fields=fields):
+                self.assertEqual(sb.route_friction_area(title, body, fields), want)
+
 
 class CliSmokeTest(unittest.TestCase):
     def test_frictions_cli_and_fast_subset_cli(self):
