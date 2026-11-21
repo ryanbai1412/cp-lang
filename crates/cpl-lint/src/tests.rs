@@ -905,6 +905,83 @@ let c = prefix([0..2, 0..2] (r, c) => r + c)
 }
 
 #[test]
+fn hand_rolled_range_tree_flags_bit_and_segtree_without_false_positives() {
+    let fenwick_add = "\
+var bit: [0..=8]Int = 0
+var p = 3
+while p <= 8:
+    bit[p] += 1
+    p += p & -p
+";
+    assert_eq!(taste_codes(fenwick_add), ["L0514"]);
+
+    let fenwick_zero_idx = "\
+var bit: [0..8]Int = 0
+var i = 2
+while i < 8:
+    bit[i] += 1
+    i = i | (i + 1)
+";
+    assert_eq!(taste_codes(fenwick_zero_idx), ["L0514"]);
+
+    let iter_seg_pull = "\
+var t: [0..16]Int = 0
+var p = 4
+while p > 0:
+    t[p] = t[2 * p] + t[2 * p + 1]
+    p >>= 1
+";
+    assert_eq!(taste_codes(iter_seg_pull), ["L0514"]);
+
+    let iter_seg_fold = "\
+var t: [0..16]Int = 0
+var l = 8
+var r = 13
+var acc = 0
+while l < r:
+    if (l & 1) == 1:
+        acc += t[l]
+        l += 1
+    if (r & 1) == 1:
+        r -= 1
+        acc += t[r]
+    l >>= 1
+    r >>= 1
+";
+    assert_eq!(taste_codes(iter_seg_fold), ["L0514"]);
+
+    let rec_seg = "\
+var seg: [0..32]Int = 0
+fn upd(node: Int, lo: Int, hi: Int, ql: Int, qr: Int):
+    if qr <= lo or hi <= ql: return
+    if ql <= lo and hi <= qr:
+        seg[node] += 1
+        return
+    let mid = (lo + hi) / 2
+    upd(2 * node, lo, mid, ql, qr)
+    upd(2 * node + 1, mid, hi, ql, qr)
+";
+    assert_eq!(taste_codes(rec_seg), ["L0514"]);
+
+    // Negative cases: ordinary arithmetic, bit-counting, and polynomial divide-and-conquer.
+    let clean = "\
+for k in 0..5:
+    print(2 * k + 1)
+var mask = 13
+var bits = 0
+while mask > 0:
+    bits += 1
+    mask -= mask & -mask
+fn poly(node: Int, lo: Int, hi: Int):
+    if lo + 1 == hi: return
+    let mid = (lo + hi) / 2
+    poly(2 * node, lo, mid)
+    poly(2 * node + 1, mid, hi)
+";
+    assert_eq!(taste_codes(clean), Vec::<&str>::new());
+}
+
+#[test]
 fn loop_invariant_mod_div_hoists_inverse() {
     let basic = "type Z = Mod<998_244_353>\nlet d = Z(3)\nvar xs = [Z(1), Z(2)]\nfor i in 0..xs.len:\n    xs[i] = xs[i] / d\nprint(xs)\n";
     assert_eq!(codes(basic), ["L0415"]);

@@ -335,6 +335,16 @@ pub const TREE_ORDER: Lint = Lint {
     trigger: "use std.graph.{Graph}\nuse std.tree.{Rooted}\ndomain V = 0..2\nlet t = Rooted(Graph.undirected([(V(0), V(1))]), V(0))\nfor v in t.postorder: print(v)\n",
     fix: "use std.graph.{Graph}\nuse std.tree.{Rooted}\ndomain V = 0..2\nlet t = Rooted(Graph.undirected([(V(0), V(1))]), V(0))\nfor v in t.at.rev: print(v)\n",
 };
+pub const HAND_ROLLED_RANGE_TREE: Lint = Lint {
+    code: Code("L0514"),
+    name: "hand_rolled_range_tree",
+    default: Level::Warn,
+    title: "Hand-rolled Fenwick or segment tree",
+    summary: "manual BIT (`p += p & -p`) or segment-tree (`2 * p` / `2 * p + 1`) loop: use `std.fenwick` / `std.segtree` / `std.lazy`",
+    explanation: "Hand-rolling a binary indexed tree (`p += p & -p` / `p -= p & -p`) or a segment tree (`2 * p` and `2 * p + 1` with halving or midpoint recursion) duplicates tested, domain-safe stdlib range structures. Use `Fenwick` / `DualFenwick` / `RangeFenwick` or `SegTree` / `LazySegTree` / `DualSegTree`.",
+    trigger: "var bit: [0..=8]Int = 0\nvar p = 3\nwhile p <= 8:\n    bit[p] += 1\n    p += p & -p\nprint(bit[4])\n",
+    fix: "domain Pos = 1..=8\nvar bit = Fenwick<Pos, Int>()\nbit.add(Pos(3), 1)\nprint(bit.prefix(Pos(4).r))\n",
+};
 
 /// Every lint, in code order.
 pub const LINTS: &[Lint] = &[
@@ -364,6 +374,7 @@ pub const LINTS: &[Lint] = &[
     TREE_ORDER,
     DOMAIN_SPELLING,
     PREFIX_TWIN,
+    HAND_ROLLED_RANGE_TREE,
 ];
 
 /// The taste lints (`plan/PORTING.md`): code that works but reads like
