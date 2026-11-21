@@ -1,7 +1,7 @@
 # ucup5s02h
 
 Score: 3/5
-Dream: pending cold rescore (rewritten: derives `sqrt(a2) >= sqrt(a1) + sqrt(a3)` -> `(a2 - a1 - a3) ** 2 >= 4 * a1 * a3` in `never_weakest` without raw `I128`, replaces invalid `max_by=` and `if let e:` with canonical syntax, and maps `C` through `ch` for `hull_pairs`)
+Dream: 3/5
 
 A convex-hull trick written over untyped `(Int, Int, Int)` tuples with `.0`/`.1` and two parity-encoded DSUs; no header. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
@@ -39,3 +39,11 @@ Dream 3/5, rescored cold on current main; sent back. `**` replaces `^`, and `pul
 - Reported gaps: `Frac`, the `C | Pin` sum domain (the `Pin`/`Node` errors), `ParityDsu` component ids and `side`, `GroupTree.others`, `min_by` and `pop_while`.
 
 Port 3/5 unchanged: the hull test is the same hand `I128` algebra (`Frac` is reported).
+
+## Cold review (HEAD, second rewrite)
+
+Dream 3/5, rescored cold on current main; sent back. `never_weakest` is now derived (lines 29-36) without `I128`, `max_by=` and `if let e:` are gone, and `hull_pairs` gets `List<Charge>`.
+- Owed: line 84 builds the edge from `h.id`, but `Charge` (line 20) has no `id`, and `j: C` needs the charge's index. The hulls must keep the `C` they came from (store `C` in `Hull`, or give `Charge` an `id: C`). The checker misses it only because `GroupTree` is unresolved.
+- Owed: `gap(h, ch[c])` is computed in `min_by` (line 82) and again on line 84; keep the minimum with its gap.
+- Owed: the `idx + 1 < pts.len` guard inside the `pop_while` (line 47) keeps the query pointer valid, but nothing says so.
+- Reported gaps: `Frac`, the `C | Pin` sum domain, `ParityDsu.components`/`component_ids`/`side`/`unite_new`, `GroupTree.others`/`path`, `min_by` and `pop_while`.

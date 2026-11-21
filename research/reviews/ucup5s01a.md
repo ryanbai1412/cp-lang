@@ -2,7 +2,7 @@
 
 Score: 3/5
 
-Dream: pending cold rescore (rewritten: indexes `dp[init_leaves, Count(j)]` over `Count` and names `numer` before printing)
+Dream: 4/5
 
 The header (lines 1-4) states the state and the initial polynomial, and the transition comments (lines 31-39) read like the editorial. The polynomial product is hand-rolled, and the closing `/ i` and `/ (n + z)` divisions are not derived. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
@@ -39,3 +39,8 @@ Dream 3/5, rescored cold on current main; sent back. The multi-line sum is now p
 - Minor: line 38 is a 120-character line; name the numerator.
 
 Port 3/5 unchanged: a hand polynomial multiply and a push DP into a scratch table (reported).
+
+## Cold review (HEAD, second rewrite)
+
+Dream 3/5 → 4/5, rescored cold on current main. Line 25-26 now seed `dp[init_leaves, Count(j)]`, and `numer` is named. The only error is `Poly` (lines 13, 21), which is reported, as is `dp.get` reading out-of-range cells as zero (lines 32-36).
+- Minor: the transition comments (lines 31-35) state each case but not why `others - (i - 1)` counts "below an unmarked vertex without marking, or below a marked one".
