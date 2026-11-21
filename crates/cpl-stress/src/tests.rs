@@ -1314,7 +1314,13 @@ fn a_jump_that_ends_only_a_nested_loop_or_fn_keeps_the_pass_whole() {
         let spec = InputSpec::from_source(src).unwrap_or_else(|e| panic!("{src}: {}", e.message));
         let case = generate(&spec, &mut Rng::new(3), Size::Small(5)).unwrap();
         let tokens = case.render().split_whitespace().count() as i128;
-        let n: i128 = case.render().split_whitespace().next().unwrap().parse().unwrap();
+        let n: i128 = case
+            .render()
+            .split_whitespace()
+            .next()
+            .unwrap()
+            .parse()
+            .unwrap();
         assert_eq!(tokens, 1 + 2 * n, "{src}");
     }
     let refused = [
@@ -1323,7 +1329,97 @@ fn a_jump_that_ends_only_a_nested_loop_or_fn_keeps_the_pass_whole() {
     ];
     for src in refused {
         let err = InputSpec::from_source(src).unwrap_err();
-        assert!(err.message.contains("this loop reads"), "{src}: {}", err.message);
+        assert!(
+            err.message.contains("this loop reads"),
+            "{src}: {}",
+            err.message
+        );
+    }
+}
+
+#[test]
+fn a_read_with_its_type_as_an_argument_is_generated_from_it() {
+    let src = "let n: 1..=5 = read()
+let a = read<[n]1..=9>()
+let b = [0..n] _ => read::<-3..=-1>()
+let c: [0..n]100..=200 = [0..n] _ => read()
+for _ in 0..n:
+    let (x, y) = read<(20..=30, 40..=50)>()
+    print(x + y)
+print(a, b, c)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    assert_eq!(spec.fields.len(), 5);
+    for seed in 0..30 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(5)).unwrap();
+        let tokens: Vec<i128> = case
+            .render()
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        let n = tokens[0] as usize;
+        assert_eq!(tokens.len(), 1 + 5 * n);
+        let part = |at: usize| &tokens[1 + at * n..1 + (at + 1) * n];
+        assert!(part(0).iter().all(|v| (1..=9).contains(v)));
+        assert!(part(1).iter().all(|v| (-3..=-1).contains(v)));
+        assert!(part(2).iter().all(|v| (100..=200).contains(v)));
+        for row in part(3).iter().chain(part(4)).collect::<Vec<_>>().chunks(2) {
+            assert!(
+                (20..=30).contains(row[0]) && (40..=50).contains(row[1]),
+                "{tokens:?}"
+            );
+        }
+    }
+    // A read that may run another number of times is refused, not left out.
+    for src in [
+        "let n: 1..=5 = read()\nprint(read() + n)\n",
+        "let n: 1..=5 = read()\nlet a = [0..n] i => if i == 0: 0 else: read::<Int>()\n",
+        "let n: 1..=5 = read()\nlet a = [read::<Int>() for x in 0..n if x > 1]\n",
+        "let n: 1..=5 = read()\nfor a in read<[n]1..=3>():\n    print(read::<Int>())\n",
+    ] {
+        assert!(InputSpec::from_source(src).is_err(), "{src}");
+    }
+}
+
+#[test]
+fn typed_reads_inside_an_expression_are_fields_in_the_order_they_run() {
+    let src = "let n: 1..=5 = read()
+print(read::<1..=3>() + n * read::<7..=8>())
+let b = [0..n] _ => (read::<10..=19>(), read::<20..=29>())
+for a in read<[n]30..=39>():
+    print(a)
+var at: [0..n]Int = 0
+for i in 0..n:
+    at[read<0..n>()] = i
+for _ in 0..n:
+    match read::<40..=41>():
+        40 => print(1)
+        _ => print(2)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..30 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(5)).unwrap();
+        let tokens: Vec<i128> = case
+            .render()
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        let n = tokens[0] as usize;
+        assert_eq!(tokens.len(), 3 + 5 * n, "{tokens:?}");
+        assert!((1..=3).contains(&tokens[1]) && (7..=8).contains(&tokens[2]));
+        for (at, pair) in tokens[3..3 + 2 * n].chunks(2).enumerate() {
+            assert!(
+                (10..=19).contains(&pair[0]) && (20..=29).contains(&pair[1]),
+                "{at}"
+            );
+        }
+        assert!(tokens[3 + 2 * n..3 + 3 * n]
+            .iter()
+            .all(|v| (30..=39).contains(v)));
+        assert!(tokens[3 + 3 * n..3 + 4 * n]
+            .iter()
+            .all(|v| (0..n as i128).contains(v)));
+        assert!(tokens[3 + 4 * n..].iter().all(|v| (40..=41).contains(v)));
     }
 }
 

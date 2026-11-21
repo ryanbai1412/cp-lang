@@ -1700,6 +1700,15 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   labelled `break`/`continue` is taken as leaving, since telling which loop its label names
   is not worth it for the few ports that use one. Reverse: make `Jumps` count every jump in
   the pass again.
+- **25.16 A typed read inside an expression is a field, where it runs a known number of
+  times.** `read<T>()` and `read::<T>()` give their type, so `Graph.undirected(read<[m](V,
+  V)>())`, `[0..n] _ => read::<Int>() - 1`, `for a in read<[n]T>():` and `match
+  read::<Op>():` make fields in the order the reads run: operands left to right, a table or
+  a range comprehension as one array. A read in a branch, a closure, a filtered
+  comprehension or a short-circuit operand, an untyped `read()` in an expression, and `a[read()]
+  = read()` (no sure order) are refused. Before this, generic reads were not seen at all, so
+  their input was silently left out. Reverse: drop `Builder::inline` and refuse every read
+  that is not a whole `let`.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 

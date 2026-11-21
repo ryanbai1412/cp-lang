@@ -464,6 +464,14 @@ A `break`, `continue` or `return` that ends only a nested loop or fn no
 longer refuses the pass around it
 (`a_jump_that_ends_only_a_nested_loop_or_fn_keeps_the_pass_whole`, decision
 25.15): 1,182 to 1,193 of the 1,399 files on today's tree.
+A typed `read<T>()` inside an expression (a call's argument, an operand, a
+`[D] _ =>` table, a `for` over it, a `match` on it) is a field where it
+runs a known number of times, in the order the reads run
+(`typed_reads_inside_an_expression_are_fields_in_the_order_they_run`,
+decision 25.16): 1,193 to 1,198 of 1,402 files. Generic reads were
+invisible before, so 4 ports that had been accepted with their input
+silently left out are now refused with a message (a read in a branch, a
+read in a type's length, `read<T>(base: 1)`).
 **Bar.** A seeded-bug benchmark in the gate: classic bugs injected into
 correct solutions, each found and shrunk to a known minimal case, with the
 median time to a minimal counterexample at most 10 s (`GOALS` 4).

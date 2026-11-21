@@ -862,6 +862,168 @@ impl Builder<'_> {
         }))
     }
 
+    /// The typed reads `expr` makes on every evaluation, in order, as
+    /// `read<[n - 1](V, V)>()` inside `Graph.undirected(..)` or
+    /// `[0..n] _ => read::<Int>() - 1`. False when a read is untyped or
+    /// sits where it may run another number of times (a branch, a
+    /// closure, a filtered or non-range comprehension).
+    fn inline(&mut self, expr: &Expr, out: &mut Vec<Shape>) -> Result<bool, SpecError> {
+        if let Some((ty, None)) = typed_read(None, expr) {
+            out.push(self.shape(&ty)?);
+            return Ok(true);
+        }
+        if matches!(&expr.kind, ExprKind::Call { callee, .. } if matches!(&callee.kind, ExprKind::Name(name) if name == "read"))
+        {
+            return Ok(false);
+        }
+        let mut all = |this: &mut Self, exprs: &mut dyn Iterator<Item = &Expr>| {
+            for expr in exprs {
+                if !this.inline(expr, out)? {
+                    return Ok(false);
+                }
+            }
+            Ok(true)
+        };
+        let each = |this: &mut Self, body: &Expr, len: Expr, out: &mut Vec<Shape>| {
+            let mut inner = Vec::new();
+            if !this.inline(body, &mut inner)? {
+                return Ok(false);
+            }
+            if inner.is_empty() {
+                return Ok(true);
+            }
+            names_in(&len, &mut this.spec.sizes);
+            let elem = match inner.len() {
+                1 => inner.pop().expect("one shape"),
+                _ => Shape::tuple(inner),
+            };
+            out.push(Shape::Array {
+                len,
+                elem: Box::new(elem),
+            });
+            Ok(true)
+        };
+        match &expr.kind {
+            ExprKind::Unary { expr, .. }
+            | ExprKind::Field { base: expr, .. }
+            | ExprKind::Generic { base: expr, .. }
+            | ExprKind::Paren(expr)
+            | ExprKind::Try(expr)
+            | ExprKind::Unwrap(expr)
+            | ExprKind::Mut(expr) => self.inline(expr, out),
+            ExprKind::Binary { op, lhs, rhs, .. } if !matches!(op, BinOp::And | BinOp::Or) => {
+                all(self, &mut [&**lhs, &**rhs].into_iter())
+            }
+            ExprKind::Call { callee, args } => all(
+                self,
+                &mut std::iter::once(&**callee).chain(args.iter().map(|arg| &arg.value)),
+            ),
+            ExprKind::Index { base, indices } => {
+                all(self, &mut std::iter::once(&**base).chain(indices))
+            }
+            ExprKind::Tuple(exprs) | ExprKind::List(exprs) => all(self, &mut exprs.iter()),
+            ExprKind::Record(fields) => all(self, &mut fields.iter().map(|(_, expr)| expr)),
+            ExprKind::Table {
+                domains,
+                params,
+                body,
+            } if domains.len() == 1
+                && params
+                    .iter()
+                    .all(|pat| matches!(pat.kind, PatternKind::Wildcard)) =>
+            {
+                let Shape::Array { len, .. } = self.shape(&Type {
+                    kind: TypeKind::Array {
+                        index: domains.clone(),
+                        elem: Box::new(Type {
+                            kind: TypeKind::Named {
+                                name: cpl_syntax::ast::Name {
+                                    text: "Bool".into(),
+                                    span: expr.span,
+                                },
+                                args: Vec::new(),
+                            },
+                            span: expr.span,
+                        }),
+                    },
+                    span: expr.span,
+                })?
+                else {
+                    return Ok(false);
+                };
+                each(self, body, len, out)
+            }
+            ExprKind::Match { scrutinee, .. } => {
+                Ok(self.inline(scrutinee, out)? && !self.reads_after(scrutinee, expr.span))
+            }
+            ExprKind::Comprehension { body, clauses } => match clauses.as_slice() {
+                [clause]
+                    if clause.conds.is_empty()
+                        && matches!(clause.pat.kind, PatternKind::Wildcard) =>
+                {
+                    let ExprKind::Range {
+                        lo: Some(lo),
+                        hi: Some(hi),
+                        inclusive,
+                        step: None,
+                    } = &clause.iter.kind
+                    else {
+                        return Ok(!self.reads_in(expr));
+                    };
+                    if self.reads_in(&clause.iter) {
+                        return Ok(false);
+                    }
+                    let (lo, hi) = Builder::inclusive(lo, hi, *inclusive);
+                    each(
+                        self,
+                        body,
+                        binary(BinOp::Add, binary(BinOp::Sub, hi, lo), int(1)),
+                        out,
+                    )
+                }
+                _ => Ok(!self.reads_in(expr)),
+            },
+            _ => Ok(!self.reads_in(expr)),
+        }
+    }
+
+    fn reads_in(&self, expr: &Expr) -> bool {
+        reads_inside(&self.src[span_range(expr.span.shift(self.base))])
+    }
+
+    /// True when `whole` reads after its part `first` ends.
+    fn reads_after(&self, first: &Expr, whole: Span) -> bool {
+        let (first, whole) = (first.span.shift(self.base), whole.shift(self.base));
+        reads_inside(&self.src[first.end as usize..whole.end as usize])
+    }
+
+    /// The expression of a statement that only evaluates one: `let`,
+    /// an assignment, or a bare expression.
+    fn evaluated<'s>(&self, stmt: &'s Stmt) -> Option<&'s Expr> {
+        match &stmt.kind {
+            StmtKind::Let {
+                init: Some(init), ..
+            } => Some(init),
+            // `a[read()] = read()` has no order the reads are sure to run in.
+            StmtKind::Assign { target, value, .. } => match self.reads_in(target) {
+                false => Some(value),
+                true => (!self.reads_in(value)).then_some(target),
+            },
+            StmtKind::Expr(expr) => Some(expr),
+            StmtKind::For { iter, .. } => (!self.reads_after(iter, stmt.span)).then_some(iter),
+            _ => None,
+        }
+    }
+
+    /// The fields `stmt` reads through [`Builder::inline`], or `None`.
+    fn inlined(&mut self, stmt: &Stmt) -> Result<Option<Vec<Shape>>, SpecError> {
+        let Some(expr) = self.evaluated(stmt) else {
+            return Ok(None);
+        };
+        let mut shapes = Vec::new();
+        Ok(self.inline(expr, &mut shapes)?.then_some(shapes))
+    }
+
     fn reads(&self, stmt: &Stmt) -> bool {
         reads_inside(&self.src[span_range(stmt.span.shift(self.base))])
     }
@@ -884,16 +1046,17 @@ impl Builder<'_> {
             match &stmt.kind {
                 StmtKind::Let {
                     pat,
-                    ty: Some(ty),
+                    ty,
                     init: Some(init),
                     ..
-                } if read_none(init).is_some() => {
+                } if typed_read(ty.as_ref(), init).is_some() => {
+                    let (ty, none) = typed_read(ty.as_ref(), init).expect("tested above");
                     let mut used = HashSet::new();
-                    Sizes(&mut used).of_type(ty);
+                    Sizes(&mut used).of_type(&ty);
                     if !used.is_disjoint(inside) {
                         return Ok(false);
                     }
-                    let shape = self.shape_written(ty, read_none(init).flatten())?;
+                    let shape = self.shape_written(&ty, none)?;
                     // A name read here is bound beside its value, so the
                     // reads after it may use it: `k`, then `[k]Int`.
                     let names = Self::names(pat, &shape);
@@ -945,14 +1108,36 @@ impl Builder<'_> {
                         binds.push(Vec::new());
                         parts.push(shape);
                     }
-                    None => return Ok(false),
+                    None => match self.inlined(stmt)? {
+                        Some(shapes) => {
+                            binds.extend(shapes.iter().map(|_| Vec::new()));
+                            parts.extend(shapes);
+                        }
+                        None => return Ok(false),
+                    },
                 },
-                StmtKind::Expr(expr) if self.reads(stmt) => {
+                StmtKind::Expr(expr)
+                    if self.reads(stmt)
+                        && matches!(expr.kind, ExprKind::If { .. } | ExprKind::Match { .. }) =>
+                {
                     if !self.choice(expr, inside, parts, binds)? {
-                        return Ok(false);
+                        let Some(shapes) = self.inlined(stmt)? else {
+                            return Ok(false);
+                        };
+                        binds.extend(shapes.iter().map(|_| Vec::new()));
+                        parts.extend(shapes);
                     }
                 }
-                _ if self.reads(stmt) => return Ok(false),
+                _ if self.reads(stmt) => match self.inlined(stmt)? {
+                    Some(shapes) => {
+                        binds.extend(shapes.iter().map(|_| Vec::new()));
+                        parts.extend(shapes);
+                        if let StmtKind::Let { pat, .. } = &stmt.kind {
+                            bind_names(pat, inside);
+                        }
+                    }
+                    None => return Ok(false),
+                },
                 StmtKind::Let { pat, .. } => bind_names(pat, inside),
                 _ => {}
             }
@@ -1260,7 +1445,11 @@ impl Jumps {
 
     /// A `break` or `return` that ends the loop this pass is in.
     fn leaves(&self) -> bool {
-        self.escapes(&self.breaks) || self.returns.iter().any(|&at| !Self::within(&self.calls, at))
+        self.escapes(&self.breaks)
+            || self
+                .returns
+                .iter()
+                .any(|&at| !Self::within(&self.calls, at))
     }
 
     fn skips(&self) -> bool {
@@ -1306,12 +1495,17 @@ fn reads_with_options(code: &str) -> bool {
 fn read_calls(code: &str) -> impl Iterator<Item = bool> + '_ {
     code.lines().flat_map(|line| {
         let line = line.split("//").next().unwrap_or("");
-        line.match_indices("read(").filter_map(move |(at, _)| {
+        line.match_indices("read").filter_map(move |(at, _)| {
             let before = line[..at].chars().next_back();
             if before.is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '.') {
                 return None;
             }
-            let rest = line[at + "read(".len()..].trim_start();
+            let rest = &line[at + "read".len()..];
+            // `read<T>()` and `read::<T>()` read too, never with options.
+            if rest.starts_with('<') || rest.starts_with("::<") {
+                return Some(false);
+            }
+            let rest = rest.strip_prefix('(')?.trim_start();
             if rest.starts_with(')') {
                 return Some(false);
             }
@@ -1436,6 +1630,60 @@ fn gen_program(src: &str, func: &str, line: u32) -> Option<cpl_ir::Program> {
         return None;
     }
     cpl_ir::lower_gen_read(&analysis, func, line).ok()
+}
+
+/// The type a `let` that reads gives its value, and the `none` of a
+/// `read(none: x)`: the `T` of `read<T>()` or `read::<T>()`, else the
+/// written `ty` of a `read()`; `[D] _ => read<T>()` is a `[D]T`.
+fn typed_read<'a>(
+    ty: Option<&'a Type>,
+    init: &'a Expr,
+) -> Option<(std::borrow::Cow<'a, Type>, Option<i128>)> {
+    use std::borrow::Cow;
+    fn generic(expr: &Expr) -> Option<&Type> {
+        let ExprKind::Call { callee, args } = &expr.kind else {
+            return None;
+        };
+        let ExprKind::Generic { base, args: tys } = &callee.kind else {
+            return None;
+        };
+        match (args.as_slice(), &base.kind, tys.as_slice()) {
+            ([], ExprKind::Name(name), [ty]) if name == "read" => Some(ty),
+            _ => None,
+        }
+    }
+    if let Some(read) = generic(init) {
+        return Some((Cow::Borrowed(read), None));
+    }
+    if let ExprKind::Table {
+        domains,
+        params,
+        body,
+    } = &init.kind
+    {
+        let elem = generic(body).map(Cow::Borrowed).or_else(|| {
+            let elem = ty.and_then(|ty| match &ty.kind {
+                TypeKind::Array { index, elem } if index.len() == domains.len() => Some(elem),
+                _ => None,
+            })?;
+            is_read(body).then_some(Cow::Borrowed(&**elem))
+        })?;
+        let wild = |pat: &Pattern| matches!(pat.kind, PatternKind::Wildcard);
+        if !params.iter().all(wild) {
+            return None;
+        }
+        return Some((
+            Cow::Owned(Type {
+                kind: TypeKind::Array {
+                    index: domains.clone(),
+                    elem: Box::new(elem.into_owned()),
+                },
+                span: init.span,
+            }),
+            None,
+        ));
+    }
+    Some((Cow::Borrowed(ty?), read_none(init)?))
 }
 
 fn is_read(expr: &Expr) -> bool {
@@ -1625,14 +1873,14 @@ impl InputSpec {
                         ty,
                         init: Some(init),
                         ..
-                    } if read_none(init).is_some() => {
-                        let Some(ty) = ty else {
+                    } if typed_read(ty.as_ref(), init).is_some() || read_none(init).is_some() => {
+                        let Some((ty, none)) = typed_read(ty.as_ref(), init) else {
                             return Err(builder.error(
                                 stmt.span,
                                 "this `read()` has no type, so there is nothing to generate from; write `let n: 1..=100 = read()`".into(),
                             ));
                         };
-                        let shape = builder.shape_written(ty, read_none(init).flatten())?;
+                        let shape = builder.shape_written(&ty, none)?;
                         let field = Field {
                             names: Builder::names(pat, &shape),
                             shape,
@@ -1676,6 +1924,19 @@ impl InputSpec {
                             && reads_inside(&src[span_range(stmt.span.shift(builder.base))]) =>
                     {
                         let Some(shape) = builder.pass(stmt, &HashSet::new())? else {
+                            if let Some(shapes) = builder.inlined(stmt)? {
+                                let line = lines.line_of(stmt.span.shift(builder.base).start) + 1;
+                                let fields = shapes.into_iter().map(|shape| Field {
+                                    names: vec![None],
+                                    shape,
+                                    line,
+                                });
+                                match in_judge {
+                                    true => hidden.extend(fields),
+                                    false => builder.spec.fields.extend(fields),
+                                }
+                                continue;
+                            }
                             return Err(builder.error(
                                 stmt.span,
                                 "this loop reads more than `let name: Type = read()` lines whose types use only names from above it, so a generated input would leave its reads out; read them into one first, like `let edges: [m](u: V, v: V) = read()`".into(),
@@ -1722,6 +1983,19 @@ impl InputSpec {
                     _ if (in_judge || judge.is_none())
                         && reads_inside(&src[span_range(stmt.span.shift(builder.base))]) =>
                     {
+                        if let Some(shapes) = builder.inlined(stmt)? {
+                            let line = lines.line_of(stmt.span.shift(builder.base).start) + 1;
+                            let fields = shapes.into_iter().map(|shape| Field {
+                                names: vec![None],
+                                shape,
+                                line,
+                            });
+                            match in_judge {
+                                true => hidden.extend(fields),
+                                false => builder.spec.fields.extend(fields),
+                            }
+                            continue;
+                        }
                         return Err(builder.error(
                             stmt.span,
                             "this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`".into(),
