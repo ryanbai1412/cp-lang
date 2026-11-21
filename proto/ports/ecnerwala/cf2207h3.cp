@@ -1,29 +1,12 @@
 // Codeforces 2207 H3: Bowser's Castle (Hard Version).
 @!interactive
-use std.seq.{reverse}
+use std.seq.{reverse, rotate_left, rotate_right}
 
 struct Node:
     l: Int
     r: Int
     is_max: Bool
     ch: ?(Int, Int)
-
-fn rev_range(mut a: List<Int>, l: Int, r: Int):
-    var (i, j) = (l, r - 1)
-    while i < j:
-        swap(mut a[i], mut a[j])
-        i += 1
-        j -= 1
-
-fn rot_left(mut a: List<Int>, l: Int, r: Int):
-    let first = a[l]
-    for i in l..r - 1: a[i] = a[i + 1]
-    a[r - 1] = first
-
-fn rot_right(mut a: List<Int>, l: Int, r: Int):
-    let last = a[r - 1]
-    for i in (l + 1..r).rev: a[i] = a[i - 1]
-    a[l] = last
 
 @!multitest
 let n: Int = read()
@@ -45,22 +28,22 @@ fn solve(l: Int, r: Int, is_max: Bool, known_m: ?Int) -> List<Int>:
     if r - l == 1: return [l]
     let m = known_m ?? query()
 
-    rot_left(mut x, l, m + 1)
+    rotate_left(mut x, 1, range: l..=m)
     var l_ch = solve(l, m, is_max, none)
-    rot_right(mut x, l, m + 1)
+    rotate_right(mut x, 1, range: l..=m)
 
     var mid = m
 
-    rev_range(mut x, m, r)
+    reverse(mut x, range: m..r)
     var r_ch = solve(m + 1, r, not is_max, none)
-    rev_range(mut x, m, r)
+    reverse(mut x, range: m..r)
 
     reverse(mut r_ch)
     while let li = l_ch.last, let ri = r_ch.last:
         let (ll, rr) = (ops[li].l, ops[ri].r)
-        rev_range(mut x, ll, rr)
+        reverse(mut x, range: ll..rr)
         let loc = query()
-        rev_range(mut x, ll, rr)
+        reverse(mut x, range: ll..rr)
         if loc < ops[mid].l:
             mid = merge(mid, r_ch.pop()!, not is_max)
         else:

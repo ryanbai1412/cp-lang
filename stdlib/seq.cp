@@ -196,9 +196,15 @@ pub fn parallel_bsearch<I>(
                 if ok(q): hi[q] = t else: lo[q] = t + 1
     [if lo[q] == n: none else: (r.first! + lo[q])! for q in 0..queries]
 
-/// Reverse `a` in place.
-pub fn reverse<T>(mut a: List<T>):
-    var (i, j) = (0, a.len - 1)
+/// Reverse `a` in place (or only the subrange `range` when given). O(n).
+pub fn reverse<T>(mut a: List<T>, range: ?Range<Int> = none):
+    var lo = 0
+    var hi = a.len
+    if let r = range:
+        if r.is_empty: return
+        lo = r.first!
+        hi = r.last! + 1
+    var (i, j) = (lo, hi - 1)
     while i < j:
         a.swap(i, j)
         i += 1
@@ -338,28 +344,27 @@ pub fn get_or_insert_with<K, V>(mut self: Map<K, V>, k: K, f: fn() -> V) -> V:
 pub fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V):
     self[k] = f(self.get(k) ?? init)
 
-/// Rotate `a` left by `k` in place: what was at index `k % a.len` comes first.
-/// Signed Euclidean `k`: negative `k` rotates right (`rotate_left(mut a, -r)`). O(n), O(1) extra space.
-pub fn rotate_left<T>(mut a: List<T>, k: Int):
-    if a.is_empty: return
-    let s = k % a.len
+/// Rotate `a` left by `k` in place (or only the subrange `range` when given):
+/// what was at offset `k % len` comes first. Signed Euclidean `k`: negative `k`
+/// rotates right. O(n), O(1) extra space.
+pub fn rotate_left<T>(mut a: List<T>, k: Int, range: ?Range<Int> = none):
+    var lo = 0
+    var hi = a.len
+    if let r = range:
+        if r.is_empty: return
+        lo = r.first!
+        hi = r.last! + 1
+    let len = hi - lo
+    if len <= 1: return
+    let s = k % len
     if s == 0: return
-    var (i, j) = (0, s - 1)
-    while i < j:
-        a.swap(i, j)
-        i += 1
-        j -= 1
-    i = s
-    j = a.len - 1
-    while i < j:
-        a.swap(i, j)
-        i += 1
-        j -= 1
-    reverse(mut a)
+    reverse(mut a, range: lo..lo + s)
+    reverse(mut a, range: lo + s..hi)
+    reverse(mut a, range: lo..hi)
 
-/// Rotate `a` right by `k` in place: the last `k % a.len` elements move to the front. O(n).
-pub fn rotate_right<T>(mut a: List<T>, k: Int):
-    rotate_left(mut a, -k)
+/// Rotate `a` right by `k` in place (or only the subrange `range` when given). O(n).
+pub fn rotate_right<T>(mut a: List<T>, k: Int, range: ?Range<Int> = none):
+    rotate_left(mut a, -k, range: range)
 
 /// Step `a` to the next arrangement in sorted order, in place. Returns false, leaving `a`
 /// sorted ascending, when it was the last one. O(n), amortized O(1).
@@ -1150,6 +1155,13 @@ fn prod_and_is_sorted_cover_sequences():
 
 @test
 fn nth_element_merge_sorted_and_rotate_right():
+    var sub = [0, 1, 2, 3, 4, 5]
+    reverse(mut sub, range: 1..5)
+    assert sub == [0, 4, 3, 2, 1, 5]
+    rotate_left(mut sub, 1, range: 1..=4)
+    assert sub == [0, 3, 2, 1, 4, 5]
+    rotate_right(mut sub, 1, range: 1..=4)
+    assert sub == [0, 4, 3, 2, 1, 5]
     for _ in 0..100:
         let n = rand(1, 20)
         let orig = [rand(-5, 5) for _ in 0..n]
