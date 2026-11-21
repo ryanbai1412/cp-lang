@@ -1,0 +1,5 @@
+let a: Int = read()
+let b: Int = read()
+print("before the division")
+print(a / b)
+print("not reached")

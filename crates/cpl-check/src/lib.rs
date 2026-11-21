@@ -30,6 +30,7 @@ pub use def::{DeclKind, Def, DomainInfo};
 pub use hover::{Definition, Hover, Symbol};
 pub use modules::{FsLoader, Loader};
 pub use ty::{Param, Ty};
+pub use prelude::std_method;
 
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");

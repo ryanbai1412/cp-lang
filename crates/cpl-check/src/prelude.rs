@@ -41,6 +41,13 @@ pub fn names() -> &'static [(Vec<ast::Name>, ast::Name)] {
     })
 }
 
+/// The name a method of the standard library is imported under when the
+/// file declares that name itself: `find of std`. The space keeps it out
+/// of reach of what a program can write.
+pub fn std_method(name: &str) -> String {
+    format!("{name} of std")
+}
+
 /// The methods the standard library adds to the types of the language:
 /// each `pub fn name(self: T, ..)` at the top of a module, with that
 /// module. A program that writes `.name` gets the fn without a `use`,

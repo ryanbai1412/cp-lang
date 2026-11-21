@@ -473,7 +473,11 @@ impl Database {
                             .iter()
                             .any(|(word, on)| *on == name.text && uses(word))
                 };
-                if declared.contains(name.text.as_str()) || scope.imports.contains_key(&name.text) || !used {
+                if scope.imports.contains_key(&name.text) || !used {
+                    continue;
+                }
+                let own = declared.contains(name.text.as_str());
+                if own && !method {
                     continue;
                 }
                 let mut diags = Vec::new();
@@ -486,6 +490,14 @@ impl Database {
                     &mut scope,
                     &mut diags,
                 );
+                // Beside a name the file declares itself, the library's
+                // method stays reachable for the types the file's own fn
+                // does not take, under a name no program can write.
+                if own {
+                    if let Some(import) = scope.imports.remove(&name.text) {
+                        scope.imports.insert(crate::prelude::std_method(&name.text), import);
+                    }
+                }
             }
         }
         self.analyzing.pop();

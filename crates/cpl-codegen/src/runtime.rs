@@ -267,8 +267,8 @@ inline std::string read_str() { need_input(); size_t start = in_at; while ((in_a
 // A zero divisor and `Int.MIN / -1` stop every build: the judge's too, where
 // they would be undefined and print whatever the machine left.
 inline ll ediv(ll a, ll b) {
-    if (__builtin_expect(b == 0, 0)) { fputs(\"division by zero\\n\", stderr); exit(3); }
-    if (__builtin_expect(a == (-9223372036854775807LL - 1) && b == -1, 0)) { fputs(\"integer overflow\\n\", stderr); exit(3); }
+    if (__builtin_expect(b == 0, 0)) { cpl::flush(); fputs(\"division by zero\\n\", stderr); exit(3); }
+    if (__builtin_expect(a == (-9223372036854775807LL - 1) && b == -1, 0)) { cpl::flush(); fputs(\"integer overflow\\n\", stderr); exit(3); }
     ll q = a / b, r = a % b; return q - ((r >> 63) & ((b >> 63) | 1));
 }
 ",
@@ -278,7 +278,7 @@ inline ll ediv(ll a, ll b) {
         needs: &[],
         code: "\
 inline ll emod(ll a, ll b) {
-    if (__builtin_expect(b == 0, 0)) { fputs(\"division by zero\\n\", stderr); exit(3); }
+    if (__builtin_expect(b == 0, 0)) { cpl::flush(); fputs(\"division by zero\\n\", stderr); exit(3); }
     if (b == -1) return 0;
     // `|b|` is 2^63 for `Int.MIN`, so it is added as an unsigned.
     typedef unsigned long long U;
@@ -292,7 +292,7 @@ inline ll emod(ll a, ll b) {
         code: "\
 // The same for a divisor known to be positive.
 inline ll divp(ll a, ll b) {
-    if (__builtin_expect(b == 0, 0)) { fputs(\"division by zero\\n\", stderr); exit(3); }
+    if (__builtin_expect(b == 0, 0)) { cpl::flush(); fputs(\"division by zero\\n\", stderr); exit(3); }
     return a / b + ((a % b) >> 63);
 }
 ",
@@ -302,7 +302,7 @@ inline ll divp(ll a, ll b) {
         needs: &[],
         code: "\
 inline ll modp(ll a, ll b) {
-    if (__builtin_expect(b == 0, 0)) { fputs(\"division by zero\\n\", stderr); exit(3); }
+    if (__builtin_expect(b == 0, 0)) { cpl::flush(); fputs(\"division by zero\\n\", stderr); exit(3); }
     ll r = a % b; return r + ((r >> 63) & b);
 }
 ",
@@ -312,8 +312,8 @@ inline ll modp(ll a, ll b) {
         needs: &[],
         code: "\
 inline __int128 ediv128(__int128 a, __int128 b) {
-    if (__builtin_expect(b == 0, 0)) { fputs(\"division by zero\\n\", stderr); exit(3); }
-    if (__builtin_expect(b == -1 && a == (__int128)((unsigned __int128)1 << 127), 0)) { fputs(\"integer overflow\\n\", stderr); exit(3); }
+    if (__builtin_expect(b == 0, 0)) { cpl::flush(); fputs(\"division by zero\\n\", stderr); exit(3); }
+    if (__builtin_expect(b == -1 && a == (__int128)((unsigned __int128)1 << 127), 0)) { cpl::flush(); fputs(\"integer overflow\\n\", stderr); exit(3); }
     __int128 q = a / b, r = a % b; return r < 0 ? (b > 0 ? q - 1 : q + 1) : q;
 }
 ",
@@ -323,7 +323,7 @@ inline __int128 ediv128(__int128 a, __int128 b) {
         needs: &[],
         code: "\
 inline __int128 emod128(__int128 a, __int128 b) {
-    if (__builtin_expect(b == 0, 0)) { fputs(\"division by zero\\n\", stderr); exit(3); }
+    if (__builtin_expect(b == 0, 0)) { cpl::flush(); fputs(\"division by zero\\n\", stderr); exit(3); }
     if (b == -1) return 0;
     __int128 r = a % b; return r < 0 ? (b > 0 ? r + b : r - b) : r;
 }
@@ -341,10 +341,10 @@ inline __int128 abs128(__int128 x) { return x < 0 ? -x : x; }
         needs: &[],
         code: "\
 inline __int128 shl128(__int128 a, ll b) {
-    if (b < 0 || b >= 128) { fputs(\"a shift is outside 0..128\\n\", stderr); exit(3); }
+    if (b < 0 || b >= 128) { cpl::flush(); fputs(\"a shift is outside 0..128\\n\", stderr); exit(3); }
 #ifdef LOCAL
-    if (a < 0) { fputs(\"`<<` of a negative number\\n\", stderr); exit(3); }
-    if (b > 0 && (a >> (127 - b)) != 0) { fputs(\"integer overflow: the result does not fit in an `I128` (128 bits)\\n\", stderr); exit(3); }
+    if (a < 0) { cpl::flush(); fputs(\"`<<` of a negative number\\n\", stderr); exit(3); }
+    if (b > 0 && (a >> (127 - b)) != 0) { cpl::flush(); fputs(\"integer overflow: the result does not fit in an `I128` (128 bits)\\n\", stderr); exit(3); }
 #endif
     return (__int128)((unsigned __int128)a << b);
 }
@@ -356,7 +356,7 @@ inline __int128 shl128(__int128 a, ll b) {
         code: "\
 // How far a shift goes: inside 0..w, or the program stops.
 inline ll shamt(ll b, ll w) {
-    if (__builtin_expect((unsigned long long)b >= (unsigned long long)w, 0)) { fprintf(stderr, \"a shift by %lld is outside 0..%lld\\n\", b, w); exit(3); }
+    if (__builtin_expect((unsigned long long)b >= (unsigned long long)w, 0)) { cpl::flush(); fprintf(stderr, \"a shift by %lld is outside 0..%lld\\n\", b, w); exit(3); }
     return b;
 }
 ",
@@ -368,7 +368,7 @@ inline ll shamt(ll b, ll w) {
 // `xs.swap(i, j)`: both inside the sequence, or the program stops.
 template <class S> inline void swap_at(S& s, ll i, ll j) {
     unsigned long long n = s.size();
-    if (__builtin_expect((unsigned long long)i >= n || (unsigned long long)j >= n, 0)) { fprintf(stderr, \"swap(%lld, %lld) is outside a list of length %llu\\n\", i, j, n); exit(3); }
+    if (__builtin_expect((unsigned long long)i >= n || (unsigned long long)j >= n, 0)) { cpl::flush(); fprintf(stderr, \"swap(%lld, %lld) is outside a list of length %llu\\n\", i, j, n); exit(3); }
     std::swap(s[i], s[j]);
 }
 ",
@@ -379,7 +379,7 @@ template <class S> inline void swap_at(S& s, ll i, ll j) {
         code: "\
 // `xs.truncate(n)`: keep the first n, all of them when there are fewer. A negative n stops the program.
 template <class S> inline void truncate(S& s, ll n) {
-    if (__builtin_expect(n < 0, 0)) { fprintf(stderr, \"truncate to negative length %lld\\n\", n); exit(3); }
+    if (__builtin_expect(n < 0, 0)) { cpl::flush(); fprintf(stderr, \"truncate to negative length %lld\\n\", n); exit(3); }
     if ((unsigned long long)n < s.size()) s.resize((size_t)n);
 }
 ",
@@ -403,11 +403,11 @@ template <class O, std::enable_if_t<!std::is_lvalue_reference<O>::value, int> = 
         needs: &[],
         code: "\
 inline unsigned long long udiv(unsigned long long a, unsigned long long b) {
-    if (b == 0) { fputs(\"division by zero\\n\", stderr); exit(3); }
+    if (b == 0) { cpl::flush(); fputs(\"division by zero\\n\", stderr); exit(3); }
     return a / b;
 }
 inline unsigned long long umod(unsigned long long a, unsigned long long b) {
-    if (b == 0) { fputs(\"division by zero\\n\", stderr); exit(3); }
+    if (b == 0) { cpl::flush(); fputs(\"division by zero\\n\", stderr); exit(3); }
     return a % b;
 }
 ",
@@ -417,7 +417,7 @@ inline unsigned long long umod(unsigned long long a, unsigned long long b) {
         needs: &[],
         code: "\
 template <class T> inline T wpow(T a, T b) {
-    if (b < 0) { fputs(\"`**` needs a power that is not negative\\n\", stderr); exit(3); }
+    if (b < 0) { cpl::flush(); fputs(\"`**` needs a power that is not negative\\n\", stderr); exit(3); }
     T r = 1; while (b > 0) { if (b & 1) r *= a; b >>= 1; if (b) a *= a; } return r; }
 ",
     },
@@ -426,7 +426,7 @@ template <class T> inline T wpow(T a, T b) {
         needs: &[],
         code: "\
 inline ll ipow(ll a, ll b) {
-    if (b < 0) { fputs(\"`**` needs a power that is not negative\\n\", stderr); exit(3); }
+    if (b < 0) { cpl::flush(); fputs(\"`**` needs a power that is not negative\\n\", stderr); exit(3); }
     ll r = 1; while (b > 0) { if (b & 1) r *= a; b >>= 1; if (b) a *= a; } return r; }
 ",
     },

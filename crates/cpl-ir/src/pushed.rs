@@ -13,6 +13,8 @@ pub struct FnSummary {
     pub io: bool,
     /// It calls a fn value or makes a closure, so what it does is not known.
     pub opaque: bool,
+    /// It sizes a domain, which changes what later code sees.
+    pub sizes: bool,
     pub reads: BTreeSet<usize>,
     pub writes: BTreeSet<usize>,
 }
@@ -40,6 +42,7 @@ pub fn summarize(program: &Program) -> Vec<FnSummary> {
                 // Sizing a domain changes what later code sees.
                 if matches!(stmt, Stmt::DefDomain { .. }) {
                     summary.io = true;
+                    summary.sizes = true;
                 }
             });
             (summary, effects.calls)
@@ -53,6 +56,7 @@ pub fn summarize(program: &Program) -> Vec<FnSummary> {
                 let other = before[*callee].clone();
                 summaries[id].io |= other.io;
                 summaries[id].opaque |= other.opaque;
+                summaries[id].sizes |= other.sizes;
                 summaries[id].reads.extend(other.reads);
                 summaries[id].writes.extend(other.writes);
             }
@@ -65,17 +69,14 @@ pub fn summarize(program: &Program) -> Vec<FnSummary> {
 
 /// The slot of the list a `yields` fn builds, when the fn can also hand
 /// each value to a callback as it is made: `for x in f(..)` then runs
-/// its body between the yields with no list. That shows only if the fn
-/// does something a loop body could see, so it must not read input,
-/// print, store to a global, change an argument or call a fn value.
+/// its body between the yields with no list. What the fn prints, reads
+/// from the input and stores to a global then happens between the turns
+/// of the body, in both back ends alike. It must not change an argument
+/// (the caller's variable is lent out for the whole call), size a domain
+/// or call a fn value.
 fn pusher(f: &Function, summary: &FnSummary) -> Option<usize> {
     let acc = f.locals.iter().position(|local| local.name == "__yields")?;
-    if acc < f.params.len()
-        || f.params.iter().any(|p| p.mutable)
-        || summary.io
-        || summary.opaque
-        || !summary.writes.is_empty()
-    {
+    if acc < f.params.len() || f.params.iter().any(|p| p.mutable) || summary.sizes || summary.opaque {
         return None;
     }
     let is_acc = |e: &Expr| matches!(e.kind, ExprKind::Local(slot) if slot == acc);
@@ -126,8 +127,8 @@ impl Feeds {
             return None;
         };
         let acc = *self.pushers.get(callee)?;
-        // The body must not change what the fn is still reading: a
-        // global it reads, or a list handed to it.
+        // The body must not change what the fn is still reading or
+        // changing: a global it touches, or a list handed to it.
         let summary = &self.summaries[*callee];
         let effects = Effects::of_block(body);
         let mut opaque = false;
@@ -151,7 +152,7 @@ impl Feeds {
                 _ => {}
             });
         }
-        if opaque || shared || !summary.reads.is_disjoint(&writes) {
+        if opaque || shared || !summary.reads.is_disjoint(&writes) || !summary.writes.is_disjoint(&writes) {
             return None;
         }
         // A jump out of the body can only be to this loop.

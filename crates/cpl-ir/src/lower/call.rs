@@ -3103,6 +3103,50 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// The outer shape of a type, for telling whose method a call means:
+    /// a list and an array are one shape, as a map and a hash map are.
+    fn shape(ty: &Ty) -> Option<&'static str> {
+        Some(match ty {
+            Ty::Int | Ty::I128 | Ty::U64 => "Int",
+            Ty::Float => "F64",
+            Ty::Bool => "Bool",
+            Ty::Char => "Char",
+            Ty::Str => "Str",
+            Ty::List(_) | Ty::Array { .. } => "List",
+            Ty::Map(..) | Ty::HashMap(..) => "Map",
+            Ty::Set(_) | Ty::HashSet(_) => "Set",
+            Ty::Opt(_) => "?",
+            Ty::Tuple(_) | Ty::Record(_) => "()",
+            Ty::Struct(_) | Ty::Enum(_) => "struct",
+            _ => return None,
+        })
+    }
+
+    /// The shape of a type as a fn's `self` writes it; `None` for one of
+    /// the fn's own type parameters, which takes any.
+    fn written_shape(&self, ty: &ast::Type, generics: &[ast::Name]) -> Option<&'static str> {
+        match &ty.kind {
+            ast::TypeKind::Array { .. } | ast::TypeKind::OwnDomain { .. } => Some("List"),
+            ast::TypeKind::Optional(_) => Some("?"),
+            ast::TypeKind::Tuple(_) | ast::TypeKind::Record(_) => Some("()"),
+            ast::TypeKind::Range { .. } => Some("Int"),
+            ast::TypeKind::Named { name, .. } => match name.text.as_str() {
+                "Int" | "I128" | "U64" => Some("Int"),
+                "F64" => Some("F64"),
+                "Bool" => Some("Bool"),
+                "Char" => Some("Char"),
+                "Str" => Some("Str"),
+                "List" => Some("List"),
+                "Map" | "HashMap" => Some("Map"),
+                "Set" | "HashSet" => Some("Set"),
+                other if generics.iter().any(|g| g.text == other) => None,
+                other => matches!(self.get_sym(other), Some(Sym::Struct(_) | Sym::GenStruct(_) | Sym::Enum(_)))
+                    .then_some("struct"),
+            },
+            _ => None,
+        }
+    }
+
     /// Tries calling a free function or generic free function whose first parameter is `self`
     /// using UFCS (`base.name(args...)` -> `name(base, args...)`).
     fn try_ufcs_call(
@@ -3112,7 +3156,24 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
     ) -> Option<Expr> {
-        let sym = self.get_sym(name)?;
+        let mut sym = self.get_sym(name)?;
+        // The program's own `find(self: List<Int>, ..)` is not what
+        // `s.find(..)` on a `Str` means: that is the library's.
+        if let Some(theirs) = self.get_sym(&cpl_check::std_method(name)) {
+            let own = match sym {
+                Sym::Fn(fid) => Some(self.sigs[fid].decl),
+                Sym::GenFn(gfid) => Some(self.gen_fns[gfid].decl),
+                _ => None,
+            };
+            let takes = own.and_then(|decl| {
+                let first = decl.params.first().filter(|p| p.name.text == "self")?;
+                self.written_shape(first.ty.as_ref()?, &decl.generics)
+            });
+            let given = self.probe_ty_silent(base).and_then(|ty| Self::shape(&ty));
+            if own.is_none() || matches!((takes, given), (Some(takes), Some(given)) if takes != given) {
+                sym = theirs;
+            }
+        }
         let (has_self, self_mut) = match sym {
             Sym::Fn(fid) => match self.sigs[fid].decl.params.first() {
                 Some(p) if p.name.text == "self" => (true, p.mutable),
@@ -4823,8 +4884,10 @@ impl<'a> Lowerer<'a> {
     }
 
     fn sort_place(&mut self, place: Place, elem: &Ty, args: &[ast::Arg], span: Span) -> Expr {
-        // `desc: true`: sorted as the other arguments say, then turned
-        // around, so the largest comes first.
+        // `desc: true`: turned around, sorted as the other arguments say,
+        // then turned around again, so the largest comes first and equal
+        // keys stay in the order they had (the sort keeps the turned
+        // order of equal keys, and the second turn puts it back).
         if let Some(at) = args.iter().position(|arg| arg.name.as_ref().is_some_and(|name| name.text == "desc")) {
             let rest: Vec<ast::Arg> = args.iter().enumerate().filter(|(k, _)| *k != at).map(|(_, arg)| arg.clone()).collect();
             let elem = elem.clone();
@@ -4832,10 +4895,12 @@ impl<'a> Lowerer<'a> {
                 let desc = lw.expect(&args[at].value, &Ty::Bool);
                 let desc = lw.hold(desc, out);
                 let place = lw.settle_indexes(place, out);
-                let sort = lw.sort_place(place.clone(), &elem, &rest, span);
+                let turn = lw.mk(ExprKind::Mutate(Mutation::Reverse, Box::new(place.clone()), Vec::new()), Ty::Unit, span);
+                let turn = Stmt::If(desc, Block { stmts: vec![Stmt::Expr(turn)] }, Block::default());
+                out.push(turn.clone());
+                let sort = lw.sort_place(place, &elem, &rest, span);
                 out.push(Stmt::Expr(sort));
-                let turn = lw.mk(ExprKind::Mutate(Mutation::Reverse, Box::new(place), Vec::new()), Ty::Unit, span);
-                out.push(Stmt::If(desc, Block { stmts: vec![Stmt::Expr(turn)] }, Block::default()));
+                out.push(turn);
                 out.push(Stmt::Give(lw.mk(ExprKind::Unit, Ty::Unit, span)));
             });
         }
