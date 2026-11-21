@@ -35,6 +35,27 @@ bound once, no sentinels or fake monoids. A dream under 4 reads like the C++
 and is sent back: the review says what the dream should say instead, and the
 port is judged against that rewrite rather than the dream as written.
 
+Calibrate against `design/EXEMPLARS-PORTS.md` (cf2147h, cf2084h, cf2147f,
+cf2255e2) and `design/sketches/ioi2025/`. Any of these is a dream failure and
+caps the dream at 3:
+
+- the C++ construction kept (a greedy builder, a cycle walk, a pointer chase)
+  where the editorial names an object or a rule;
+- a side effect hidden in an expression (`first(xs, x => try_add(x))`, a
+  `draw` that prints and returns an id);
+- the same loop or formula written twice;
+- an unexplained constant or closing formula the header does not derive;
+- inconsistent spelling: `@!multitest` is the one multitest marker (not
+  `--- multitest ---` or `--- with multitest() ---`); `Mod<p>`, `read<T>`,
+  `struct`, `if c: a else: b`, `?? return`, `where` filters; sequence
+  operations as methods (`xs.sum()`, `xs.any(p)`, `xs.sorted()`), not free
+  `sum(...)`/`any(xs, p)`/`sort(mut xs)` mixed with methods.
+
+A dream under 4 goes back to its port's lane (the polish lane if that lane
+has moved on) to rewrite before the port is judged: a new review of such a
+port stays `Score: pending`, and an existing port score is marked
+provisional.
+
 ## Sections
 
 - **Checklist failures:** each failed `plan/PORTING.md` item, with the line.
