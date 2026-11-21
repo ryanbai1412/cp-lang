@@ -18,8 +18,7 @@ fn win() -> ?V:
     var heavier_lca: ?V = none
     for weight in W.rev:
         if let l = heavier_lca:
-            for v in by_w[weight]:
-                if not t.is_anc(v, l): return v
+            if let v = first(by_w[weight], v => not t.is_anc(v, l)): return v
         for v in by_w[weight]:
             heavier_lca = if let l = heavier_lca: t.lca(l, v) else: v
     none
