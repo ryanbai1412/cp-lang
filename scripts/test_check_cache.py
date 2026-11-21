@@ -54,6 +54,32 @@ class CheckCacheTest(unittest.TestCase):
             self.assertNotEqual(r.returncode, 0)
             self.assertIn("merge conflict markers", r.stderr)
 
+    def test_pre_push_hook_rejects_a_main_tip_that_never_passed_the_gate(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        hook = os.path.join(root, ".githooks", "pre-push")
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        with tempfile.TemporaryDirectory() as tmp:
+            git = lambda *a: subprocess.run(["git", *a], cwd=tmp, check=True, env=env,
+                                            capture_output=True, text=True).stdout.strip()
+            git("init", "-q")
+            git("config", "user.email", "t@example.com")
+            git("config", "user.name", "t")
+            with open(os.path.join(tmp, "a.md"), "w", encoding="utf-8") as f:
+                f.write("ok\n")
+            git("add", "a.md")
+            git("commit", "-qm", "docs: a")
+            sha, tree = git("rev-parse", "HEAD"), git("rev-parse", "HEAD^{tree}")
+            line = f"refs/heads/x {sha} refs/heads/main {'0' * 40}\n"
+            run = lambda: subprocess.run([hook], cwd=tmp, input=line, capture_output=True,
+                                         text=True, env=env)
+            r = run()
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn("has not passed scripts/check.sh --fast", r.stderr)
+            with open(os.path.join(tmp, ".git", "cpl-gate-passed"), "w", encoding="utf-8") as f:
+                f.write(tree + "\n")
+            r = run()
+            self.assertEqual(r.returncode, 0, r.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

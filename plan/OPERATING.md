@@ -116,9 +116,11 @@ added here.
   the core lanes as implementation tickets with a regression test and a
   `cpl fix` codemod. One spelling per idea: a new spelling replaces the old
   one in the same change, never sits beside it as "provisional".
-- **Pre-push gate.** Every lane pushes straight to `main`, so before each
-  push: `git pull --rebase`, rerun `scripts/check.sh --fast` on the rebased
-  tip, and push only if it passes. If the push is rejected, repeat. A broken
+- **Pre-push gate.** Every lane pushes straight to `main`, so land with
+  `scripts/land.sh [remote]`: it fetches, rebases, runs
+  `scripts/check.sh --fast` on the exact rebased tip and pushes, repeating if
+  `main` moved. The pre-push hook refuses a `main` tip whose tree has not
+  passed the gate, so two green commits can no longer combine into a red tip. A broken
   tip on `main` is fixed by whoever broke it, before any other work.
 - **Lane review every round.** The coordinator reads every lane's latest
   report each round, not only settled ones, gives each finished lane its next

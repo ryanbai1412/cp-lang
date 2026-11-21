@@ -9,6 +9,18 @@ cd "$root"
 
 fail() { echo "pre-push: $*" >&2; exit 1; }
 
+# 0. Every tip pushed to main has passed `scripts/check.sh --fast` as that
+#    exact tree. A rebase changes the tree without rerunning the gate, which
+#    is how two green commits made main red; scripts/land.sh does the loop.
+stamp="$(git rev-parse --git-common-dir)/cpl-gate-passed"
+zero=0000000000000000000000000000000000000000
+while read -r _ local_sha remote_ref _; do
+    [ "$remote_ref" = refs/heads/main ] && [ "$local_sha" != "$zero" ] || continue
+    tree=$(git rev-parse "$local_sha^{tree}")
+    grep -qx "$tree" "$stamp" 2>/dev/null ||
+        fail "$(git rev-parse --short "$local_sha") has not passed scripts/check.sh --fast as this exact tree (rebased since?). Run the gate on this tip, or land with scripts/land.sh."
+done
+
 # 1. Merge conflict markers anywhere in tracked files.
 markers=$(git grep -nE '^(<{7}|>{7}|\|{7})( |$)' -- ':!*.png' ':!*.gz' || true)
 [ -z "$markers" ] || fail "merge conflict markers found in repository:
@@ -39,6 +51,6 @@ for path in sys.argv[1:]:
 fi
 
 # 3. Cheap workspace build check (warm ~1-3s) so broken rebases never hit main.
-if command -v cargo >/dev/null 2>&1; then
+if [ -f Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
     cargo check -q --workspace --all-targets || fail "cargo check --workspace --all-targets failed"
 fi

@@ -392,6 +392,13 @@ if [ "$mode" = fast ]; then
     mkdir -p "$(dirname "$gate_time_file")"
     printf '{"mode":"fast","elapsed_s":%d,"budget_s":180}\n' "$gate_elapsed" >"$gate_time_file"
     printf '\ncheck: all fast checks passed in %ss (budget <= 180s)\n' "$gate_elapsed"
+    # .githooks/pre-push lands only trees recorded here, so a rebased tip must
+    # pass again before it reaches main. Unstaged edits mean the checked tree
+    # is not the index tree, so nothing is recorded.
+    if git diff --quiet 2>/dev/null; then
+        stamp="$(git rev-parse --git-common-dir)/cpl-gate-passed"
+        { tail -n 199 "$stamp" 2>/dev/null || true; git write-tree; } >"$stamp.tmp" && mv "$stamp.tmp" "$stamp"
+    fi
     # Wall time depends on the machine and on how warm the build is, so an
     # overrun warns and stays recorded in the scoreboard instead of failing.
     [ "$gate_elapsed" -le 180 ] ||
