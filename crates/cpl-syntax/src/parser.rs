@@ -79,6 +79,8 @@ pub(crate) struct Parser<'a> {
     block_depth: u32,
     /// Inside a trait body, where fns and consts may lack bodies.
     in_trait: bool,
+    /// Inside an `impl` body, where operator fns desugar directly to methods.
+    in_impl: bool,
     /// Inside a `@grader` statement, where a fn may have no body: the
     /// judge supplies it.
     in_grader: bool,
@@ -111,6 +113,7 @@ impl<'a> Parser<'a> {
             brace_depth: 0,
             block_depth: 0,
             in_trait: false,
+            in_impl: false,
             in_grader: false,
             half_shr: false,
             extra_stmts: Vec::new(),

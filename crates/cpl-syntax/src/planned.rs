@@ -70,16 +70,6 @@ print(n)
 ",
 };
 
-pub const OPERATOR_FN: Planned = Planned {
-    feature: "an operator written as a fn, `fn (a: T) + (b: T) -> T`",
-    see: None,
-    now: "implement its trait: `impl Add for T:` with `fn add(a: T, b: T) -> T`",
-    example: "struct P(x: Int)
-fn (a: P) + (b: P) -> P = P(a.x + b.x)
-print(1)
-",
-};
-
 pub const STR_OF: Planned = Planned {
     feature: "a string type over given bytes, `Str of \"01?\"`",
     see: None,
@@ -146,7 +136,6 @@ pub const PLANNED: &[&Planned] = &[
     &VALUE_DECORATOR,
     &READ_LENGTH,
     &CONTEXT_LINE,
-    &OPERATOR_FN,
     &STR_OF,
     &LOWER_VARIANT_PATTERN,
     &VAR_FIELD,

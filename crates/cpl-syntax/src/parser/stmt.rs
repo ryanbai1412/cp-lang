@@ -322,7 +322,7 @@ impl<'a> Parser<'a> {
                 self.struct_decl()
             }
             T::Const => self.const_stmt(),
-            T::Fn => StmtKind::Fn(self.fn_decl()),
+            T::Fn => self.fn_stmt(),
             T::Struct => self.struct_decl(),
             T::Enum => self.enum_decl(),
             T::Domain => self.domain_decl(),
