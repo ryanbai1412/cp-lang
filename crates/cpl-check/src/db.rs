@@ -942,6 +942,29 @@ fn decls_of(stmts: &[ast::Stmt]) -> Vec<Decl> {
     out
 }
 
+/// True if a syntax error was reported on the first line of `stmt`, where a
+/// declaration says what it declares: the names stay bound, but what the
+/// rest of the file can know about them is unknown.
+fn head_is_poisoned(text: &str, stmt: &ast::Stmt, poisoned: &[Span]) -> bool {
+    let (start, end) = (stmt.span.start as usize, stmt.span.end as usize);
+    let mut depth = 0u32;
+    let mut head_end = end;
+    for (i, b) in text.as_bytes()[start..end.min(text.len())].iter().enumerate() {
+        match b {
+            b'(' | b'[' | b'{' => depth += 1,
+            b')' | b']' | b'}' => depth = depth.saturating_sub(1),
+            b'\n' if depth == 0 => {
+                head_end = start + i;
+                break;
+            }
+            _ => {}
+        }
+    }
+    poisoned
+        .iter()
+        .any(|p| (p.start as usize) < head_end && (p.end as usize) > start)
+}
+
 fn stmt_decls(stmt: &ast::Stmt, out: &mut Vec<Decl>) {
     fn pattern(pat: &ast::Pattern, out: &mut Vec<Decl>) {
         match &pat.kind {
@@ -1128,7 +1151,12 @@ impl FileCtx<'_> {
         {
             let mut checker = Checker::new(self, &item.text, Vec::new());
             for stmt in &item.parsed.stmts {
-                defs.extend(checker.defs_of(stmt));
+                let found = checker.defs_of(stmt);
+                if head_is_poisoned(&item.text, stmt, &item.parsed.poisoned) {
+                    defs.extend(found.into_iter().map(|(name, def)| (name, def.recovered())));
+                } else {
+                    defs.extend(found);
+                }
             }
         }
         let deps = self.frames.pop().unwrap();

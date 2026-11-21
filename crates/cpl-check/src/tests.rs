@@ -2015,3 +2015,17 @@ fn fields_loops_check_each_field_and_refuse_what_has_none() {
     assert_eq!(d.code.0, "E0302");
     assert!(codes("fn fields(x: Int) -> List<Int> = [x]\nfor f in fields(3):\n    print(f)\n").is_empty());
 }
+
+#[test]
+fn names_from_a_declaration_that_failed_to_parse_stay_bound() {
+    // Uses of `l`, `b` and `f` are not "not in scope" and say nothing about
+    // types: the one error is the one root cause.
+    let src = "let ($l, b) = (4, 6)\nprint(l + b)\nfn $f(a: Int) -> Int:\n    return a + 1\nprint(f(2) + l)\n";
+    assert_eq!(codes(src), ["E0004", "E0004"], "{:#?}", check(src));
+}
+
+#[test]
+fn a_recovered_name_still_reports_errors_unrelated_to_it() {
+    let src = "let ($l, b) = (4, 6)\nprint(l + b)\nprint(missing)\n";
+    assert_eq!(codes(src), ["E0004", "E0201"], "{:#?}", check(src));
+}

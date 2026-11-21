@@ -1438,3 +1438,30 @@ shows the doc that states its cost. A member access records its owner type (`Hov
 hover and go-to-definition on `bit.prefix` reach the method in `stdlib/fenwick.cp`. The doc is the one
 place a cost is written today; a computed cost line can join it later. Reverse: drop `Hover::doc` and
 `HoverEntry::owner` in `crates/cpl-check/src/{hover,check}.rs`.
+
+## 30. Front-end recovery (2026-11-21)
+
+- **30.1 A broken-ports benchmark scores recovery.** `crates/cpl-cli/tests/recovery.rs` applies six
+  single-line edits (drop a closer, drop a block colon, cut a value, double an operator, garble a
+  declared name) to every port and counts errors, cascades (every error after the first, since each copy
+  has one root cause) and whether the first error is on the broken line. It gates no silent copies,
+  first-error accuracy >= 99.5% and cascades per broken copy under a ratchet. The ratchet is a rate, not a
+  count, because port lanes keep adding ports. *Reason:* "no cascades" needs a number.
+  `RECOVERY_SHOW=<edit name>` prints every copy that cascades under that edit. *Reversible:* delete the
+  test and its `scripts/check.sh` step.
+- **30.2 Lexer diagnostics are pushed before the lexer's poison.** *Reason:* the poison exists to keep
+  other errors off a reported span; applied first it also hid the report itself, so `let $x = 1` checked
+  clean. *Reversible:* revert the sink order in `cpl-check/src/db.rs`.
+- **30.3 The parser reads past an unreadable character inside a statement.** `bump` skips `T::Error`
+  tokens that do not start a line and marks the statement recovering, so it is poisoned. *Reason:* the
+  character is already reported; dropping the whole line also dropped the names it declares. A
+  line-initial error token still drops the line, since nothing says what statement it was.
+  *Reversible:* remove the loop in `Parser::bump`.
+- **30.4 A function whose header has a syntax error stays bound with an unknown type.** `FileCtx::def`
+  maps the defs of a statement poisoned on its first line through `Def::recovered`, which gives
+  functions `Ty::Error`. *Reason:* a header missing its `)` parsed as a different signature
+  (`fn ask(d: Char, dist: Int -> Int:` takes a `fn(Int) -> Int`), and every call reported a mismatch.
+  Values keep their inferred type: a broken initializer already infers `Ty::Error` where it is broken,
+  and `var total = 0 +` should still hover as `Int`. Struct and enum headers keep their parsed shape
+  (open: a struct missing its `)` still reports every later field use). *Reversible:* drop the
+  `head_is_poisoned` branch in `FileCtx::def`.

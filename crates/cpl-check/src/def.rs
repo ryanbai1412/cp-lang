@@ -184,3 +184,20 @@ pub enum DeclKind {
     Trait,
     Impl,
 }
+
+impl Def {
+    /// The def of a declaration whose first line did not parse. A
+    /// function's signature is that line, so its type is unknown and calls
+    /// to it report nothing; a value's type comes from its initializer,
+    /// where a missing or broken piece is already `Ty::Error`, so it is kept
+    /// for hover and completion.
+    pub fn recovered(self) -> Def {
+        match self {
+            Def::Fn { generics, .. } => Def::Fn {
+                ty: Ty::Error,
+                generics,
+            },
+            other => other,
+        }
+    }
+}

@@ -181,6 +181,21 @@ impl<'a> Parser<'a> {
         if self.pos < self.tokens.len() {
             self.pos += 1;
         }
+        // A character the lexer could not read is already reported. Reading
+        // on as if it were not there keeps the rest of the statement, and
+        // the names it declares; the statement is still poisoned, so
+        // nothing else is reported in it. At the start of a line it is left
+        // for `stmt` to skip with the line.
+        let line_start = matches!(
+            self.tokens.get(self.pos.wrapping_sub(1)).map(|t| t.kind),
+            Some(T::Newline | T::Indent | T::Dedent)
+        );
+        while !line_start && self.tokens.get(self.pos).is_some_and(|t| t.kind == T::Error) {
+            self.pos += 1;
+            if self.speculating == 0 {
+                self.recovering = true;
+            }
+        }
     }
 
     fn eat(&mut self, kind: TokenKind) -> bool {
