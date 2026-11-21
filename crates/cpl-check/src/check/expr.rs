@@ -138,6 +138,8 @@ impl<'a> Checker<'a> {
                 if let Some(step) = step {
                     self.infer(step);
                 }
+                let lo_ty = lo_ty.map(|t| self.unalias_bounds(t));
+                let hi_ty = hi_ty.map(|t| self.unalias_bounds(t));
                 let bounds_domain = |ty: &Option<Ty>| match ty {
                     Some(Ty::Pos(d)) if d.ends_with(".bounds") => {
                         Some((d.clone(), d.strip_suffix(".bounds").unwrap().to_string()))
@@ -2350,6 +2352,24 @@ impl<'a> Checker<'a> {
 }
 
 impl Checker<'_> {
+    /// `domain Cut = Pos.bounds` names the cuts of `Pos`: as a range end it
+    /// is `Pos.bounds`.
+    fn unalias_bounds(&mut self, ty: Ty) -> Ty {
+        if let Ty::Pos(d) = &ty {
+            if !d.ends_with(".bounds") {
+                if let Some(Def::Domain(info)) = self.env.type_def(d).as_deref() {
+                    let text = info.text.trim();
+                    if let Some(base) = text.strip_suffix(".bounds") {
+                        if !base.is_empty() && base.chars().all(|c| c.is_alphanumeric() || c == '_') {
+                            return Ty::Pos(text.to_string());
+                        }
+                    }
+                }
+            }
+        }
+        ty
+    }
+
     /// An integer literal written where a position or cut of an integer
     /// domain is expected (or fills an array of them) is that position.
     fn literal_position(&mut self, at: &Expr, want: &Ty) -> bool {
