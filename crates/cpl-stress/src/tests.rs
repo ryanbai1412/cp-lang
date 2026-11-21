@@ -2350,3 +2350,26 @@ print(par.sum + up.sum)
     let middle = "let n: 1..=6 = read()\nlet a = [0..n] i => if i == 2: 0 else: read::<Int>()\nprint(a.sum)\n";
     assert!(InputSpec::from_source(middle).is_err());
 }
+
+#[test]
+fn a_list_of_bare_reads_reads_the_element_type_it_is_declared_with() {
+    let src = "let n: 1..=6 = read()
+let a: List<0..=9> = [read() for _ in 0..n]
+print(a.sum)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..10 {
+        let text = generate(&spec, &mut Rng::new(seed), Size::Small(6))
+            .unwrap()
+            .render();
+        let tokens: Vec<i128> = text
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        assert_eq!(tokens.len() as i128, 1 + tokens[0], "{text}");
+        assert!(tokens[1..].iter().all(|v| (0..=9).contains(v)), "{text}");
+    }
+    let filtered =
+        "let n: 1..=6 = read()\nlet a: List<Int> = [read() for i in 0..n if i > 1]\nprint(a.sum)\n";
+    assert!(InputSpec::from_source(filtered).is_err());
+}

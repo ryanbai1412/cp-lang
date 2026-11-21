@@ -1821,6 +1821,10 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   i == D.first: x else: y`, with `x` reading nothing, reads `y` once per cell but one,
   the same rule 25.28 gives a loop. A skip of any other cell stays refused. Reverse:
   drop `skipped_cell`.
+- **25.30 `let a: List<T> = [read() for _ in lo..hi]` reads `[lo..hi]T`.** The bare
+  read takes the element type the `let` declares, as `let a: [D]T = [D] _ => read()`
+  already does; a comprehension with a filter or a named loop variable stays refused.
+  Reverse: drop the `Comprehension` arm of `typed_read`.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 

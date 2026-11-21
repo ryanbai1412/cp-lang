@@ -540,9 +540,12 @@ A table `[0..n] i => if i == 0: 0 else: read::<Int>()` reads `n - 1` values
 (`a_table_that_skips_its_first_cell_reads_the_rest`, 25.29): 1,188.
 Both new files (cf2124h, cf2138c1) read sizes and parents as untyped
 `Int`s, so their inputs still crash them until the ports type the reads.
+`let a: List<T> = [read() for _ in 0..n]` reads `n` `T`s
+(`a_list_of_bare_reads_reads_the_element_type_it_is_declared_with`,
+25.30): 1,189.
 Of the first five, ioi09p7 and noip19p2 read parents as plain `V`s
 and fail on the cycles generated, and etsr23r1p3 reads letters past its
-alphabet: typing gaps in the ports. Still refused: 28 loops a row can't
+alphabet: typing gaps in the ports. Still refused: 27 loops a row can't
 describe, 16 reads in a branch or `while true`, 16 fns that read and take
 parameters or are called in a branch.
 Stress under a judge is a gate regression: all 16 interactive and 5

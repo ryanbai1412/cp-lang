@@ -2443,6 +2443,50 @@ fn typed_read<'a>(
             None,
         ));
     }
+    if let ExprKind::Comprehension { body, clauses } = &init.kind {
+        // `let a: List<T> = [read() for _ in lo..hi]` reads `[lo..hi]T`.
+        let elem = ty.and_then(|ty| match &ty.kind {
+            TypeKind::Named { name, args } if name.text == "List" && args.len() == 1 => {
+                Some(&args[0])
+            }
+            _ => None,
+        })?;
+        let [clause] = clauses.as_slice() else {
+            return None;
+        };
+        let ExprKind::Range {
+            lo: Some(lo),
+            hi: Some(hi),
+            inclusive,
+            step: None,
+        } = &clause.iter.kind
+        else {
+            return None;
+        };
+        if !is_read(body)
+            || !clause.conds.is_empty()
+            || !matches!(clause.pat.kind, PatternKind::Wildcard)
+        {
+            return None;
+        }
+        return Some((
+            Cow::Owned(Type {
+                kind: TypeKind::Array {
+                    index: vec![Type {
+                        kind: TypeKind::Range {
+                            lo: Some(lo.clone()),
+                            hi: Some(hi.clone()),
+                            inclusive: *inclusive,
+                        },
+                        span: clause.iter.span,
+                    }],
+                    elem: Box::new(elem.clone()),
+                },
+                span: init.span,
+            }),
+            None,
+        ));
+    }
     Some((Cow::Borrowed(ty?), read_none(init)?))
 }
 
