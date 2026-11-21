@@ -575,3 +575,32 @@ print(dp[3].0, dp[3].1, adj[2].len, popcount(x), ctz(x))
     assert_eq!(trap, None);
     assert_eq!(out, "3 21 2 2 3\n");
 }
+
+#[test]
+fn vm_by_ref_closure_passed_to_vm_hof_str_view_and_small_tuple_if() {
+    let source = "
+fn apply(n: Int, f: (Int) -> Int) -> Int:
+    var s = 0
+    for i in 0..n:
+        s += f(i)
+    s
+
+fn run_with_ref() -> Int:
+    var vals: List<Int> = [10, 20, 30]
+    let f = i => vals[i] + i
+    let a = apply(3, f)
+    vals.push(40)
+    a + apply(4, f)
+
+let s = \"abcdef\"
+let v = s.rev
+var dp: [0..2](Int, Int) = (0, 0)
+for i in 0..2:
+    dp[i] max= if i == 0: (5, 2) else: (3, 9)
+
+print(run_with_ref(), v[0], v[5], dp[0].0, dp[1].1)
+";
+    let (out, trap) = outcome(source, "");
+    assert_eq!(trap, None);
+    assert_eq!(out, "169 f a 5 9\n");
+}

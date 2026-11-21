@@ -373,6 +373,8 @@ pub(crate) struct Chunk<'p> {
     pub param_count: usize,
     pub ret_kind: Option<ScalarKind>,
     pub guarded_domains: Vec<cpl_ir::DomainId>,
+    pub needs_stack: bool,
+    pub has_by_ref_closure: bool,
 }
 
 pub(crate) struct CompiledProgram<'p> {
@@ -396,6 +398,10 @@ impl<'p> CompiledProgram<'p> {
                 chunk.param_count = f.params.len();
                 chunk.ret_kind = ret_kind;
                 chunk.guarded_domains = guarded_domains;
+                chunk.has_by_ref_closure = block_has_by_ref_closure(&f.body, program);
+                if chunk.has_by_ref_closure {
+                    chunk.needs_stack = true;
+                }
                 fns.push(Some(chunk));
             }
         }
@@ -416,13 +422,21 @@ impl<'p> CompiledProgram<'p> {
                 chunk.param_count = def.params.len();
                 chunk.ret_kind = ret_kind;
                 chunk.guarded_domains = guarded_domains;
+                chunk.has_by_ref_closure = block_has_by_ref_closure(&def.body, program);
+                if chunk.has_by_ref_closure {
+                    chunk.needs_stack = true;
+                }
                 closures.push(Some(chunk));
             }
         }
         let mut main_c = Compiler::new(program, &program.main_locals, None, 0);
         main_c.compile_block(&program.main, None, false);
         main_c.emit(Op::RetUnit, Span::default());
-        let main = main_c.finish();
+        let mut main = main_c.finish();
+        main.has_by_ref_closure = block_has_by_ref_closure(&program.main, program);
+        if main.has_by_ref_closure {
+            main.needs_stack = true;
+        }
         CompiledProgram { main, fns, closures }
     }
 }
@@ -513,6 +527,9 @@ impl<'p> Compiler<'p> {
     }
 
     fn finish(self) -> Chunk<'p> {
+        let needs_stack = !self.fallback_stmts.is_empty()
+            || !self.fallback_exprs.is_empty()
+            || self.ops.iter().any(|o| matches!(o, Op::CallClosure { .. }));
         Chunk {
             ops: self.ops,
             spans: self.spans,
@@ -526,6 +543,8 @@ impl<'p> Compiler<'p> {
             param_count: 0,
             ret_kind: None,
             guarded_domains: Vec::new(),
+            needs_stack,
+            has_by_ref_closure: false,
         }
     }
 
@@ -3992,6 +4011,16 @@ impl<'p> Compiler<'p> {
                     }
                 }
             }
+            ExprKind::If(cond, then_e, else_e) => {
+                let j_else = self.emit_branch_if_false(cond);
+                self.compile_expr_small_tuple(then_e, dst_base, len);
+                let j_end = self.emit(Op::Jmp { target: 0 }, span);
+                let else_pc = self.ops.len() as u32;
+                self.patch(j_else, else_pc);
+                self.compile_expr_small_tuple(else_e, dst_base, len);
+                let end_pc = self.ops.len() as u32;
+                self.patch(j_end, end_pc);
+            }
             ExprKind::Local(slot) => match self.slot_loc(*slot) {
                 SlotLoc::SmallTuple { base, len: slen, .. } if slen == len => {
                     for k in 0..len as u16 {
@@ -4080,6 +4109,10 @@ impl<'p> Compiler<'p> {
         self.emit(Op::FallbackExprV { idx, dst, in_loop }, expr.span);
         dst
     }
+}
+
+fn block_has_by_ref_closure(block: &Block, _program: &Program) -> bool {
+    Compiler::stmts_have_closure(&block.stmts)
 }
 
 fn sync_to_stack(
@@ -5527,36 +5560,66 @@ impl<'p, 'io> Interp<'p, 'io> {
                 }
                 Op::StrGetI { dst, str_v, r_i } => {
                     let idx = regs_i[r_i as usize];
-                    if let Value::Str(s) = &regs_v[str_v as usize] {
-                        if idx < 0 || (idx as usize) >= s.len() {
-                            return trap(
-                                spans[cur_pc],
-                                format!(
-                                    "index {idx} is outside a string of length {}",
-                                    s.len()
-                                ),
-                            );
+                    match &regs_v[str_v as usize] {
+                        Value::Str(s) => {
+                            if idx < 0 || (idx as usize) >= s.len() {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!(
+                                        "index {idx} is outside a string of length {}",
+                                        s.len()
+                                    ),
+                                );
+                            }
+                            regs_i[dst as usize] = i64::from(s[idx as usize]);
                         }
-                        regs_i[dst as usize] = i64::from(s[idx as usize]);
-                    } else {
-                        return trap(spans[cur_pc], "internal: expected string");
+                        Value::StrView(sv) => {
+                            if idx < 0 || (idx as usize) >= sv.len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside a string of length {}", sv.len),
+                                );
+                            }
+                            let pos = if sv.rev {
+                                sv.lo + sv.len - 1 - idx as usize
+                            } else {
+                                sv.lo + idx as usize
+                            };
+                            regs_i[dst as usize] = i64::from(sv.base[pos]);
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected string"),
                     }
                 }
                 Op::GStrGetI { dst, gid, r_i } => {
                     let idx = regs_i[r_i as usize];
-                    if let Value::Str(s) = &self.globals[gid as usize] {
-                        if idx < 0 || (idx as usize) >= s.len() {
-                            return trap(
-                                spans[cur_pc],
-                                format!(
-                                    "index {idx} is outside a string of length {}",
-                                    s.len()
-                                ),
-                            );
+                    match &self.globals[gid as usize] {
+                        Value::Str(s) => {
+                            if idx < 0 || (idx as usize) >= s.len() {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!(
+                                        "index {idx} is outside a string of length {}",
+                                        s.len()
+                                    ),
+                                );
+                            }
+                            regs_i[dst as usize] = i64::from(s[idx as usize]);
                         }
-                        regs_i[dst as usize] = i64::from(s[idx as usize]);
-                    } else {
-                        return trap(spans[cur_pc], "internal: expected string");
+                        Value::StrView(sv) => {
+                            if idx < 0 || (idx as usize) >= sv.len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside a string of length {}", sv.len),
+                                );
+                            }
+                            let pos = if sv.rev {
+                                sv.lo + sv.len - 1 - idx as usize
+                            } else {
+                                sv.lo + idx as usize
+                            };
+                            regs_i[dst as usize] = i64::from(sv.base[pos]);
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected string"),
                     }
                 }
                 Op::MakeTuple { dst, base_v, len } => {
@@ -5576,7 +5639,10 @@ impl<'p, 'io> Interp<'p, 'io> {
                     let mut arg_buf = [0i64; 8];
                     let n = argc as usize;
                     arg_buf[..n].copy_from_slice(&regs_i[ab..ab + n]);
-                    let needs_stack = !callee.fallback_stmts.is_empty() || !callee.fallback_exprs.is_empty();
+                    let needs_stack = callee.needs_stack;
+                    if chunk.has_by_ref_closure {
+                        sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
+                    }
                     let saved_base = self.base;
                     if needs_stack {
                         self.base = self.stack.len();
@@ -5593,6 +5659,9 @@ impl<'p, 'io> Interp<'p, 'io> {
                     let val = res?;
                     self.call_frames.pop();
                     regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                    if chunk.has_by_ref_closure {
+                        sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
+                    }
                     regs_i[dst as usize] = ScalarKind::unbox_val(&val);
                 }
                 Op::CallVmMix {
@@ -5627,8 +5696,10 @@ impl<'p, 'io> Interp<'p, 'io> {
                     for k in 0..nv {
                         arg_buf_v[k] = std::mem::replace(&mut regs_v[abv + k], Value::Unit);
                     }
-                    let needs_stack = !callee.fallback_stmts.is_empty()
-                        || !callee.fallback_exprs.is_empty();
+                    let needs_stack = callee.needs_stack;
+                    if chunk.has_by_ref_closure {
+                        sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
+                    }
                     let saved_base = self.base;
                     if needs_stack {
                         self.base = self.stack.len();
@@ -5652,6 +5723,9 @@ impl<'p, 'io> Interp<'p, 'io> {
                     let val = res?;
                     self.call_frames.pop();
                     regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                    if chunk.has_by_ref_closure {
+                        sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
+                    }
                     if f.params.iter().any(|p| p.mutable) {
                         regs_i[abi..abi + ni].copy_from_slice(&arg_buf_i[..ni]);
                         for k in 0..nv {
@@ -5708,8 +5782,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                         for k in 0..nv {
                             arg_buf_v[k] = std::mem::replace(&mut regs_v[abv + k], Value::Unit);
                         }
-                        let needs_stack = !callee.fallback_stmts.is_empty()
-                            || !callee.fallback_exprs.is_empty();
+                        let needs_stack = callee.needs_stack;
                         let saved_base = self.base;
                         if needs_stack {
                             self.base = self.stack.len();
@@ -5815,7 +5888,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                                 iv += 1;
                             }
                         }
-                        let has_frame = self.base + chunk.slot_map.len() <= self.stack.len();
+                        let has_frame = chunk.needs_stack;
                         if has_frame {
                             sync_to_stack(
                                 &chunk.slot_map,
