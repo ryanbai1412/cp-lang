@@ -602,8 +602,15 @@ expression; proven ranges in inlay hints are top-level only; no cost or overflow
 warnings; rename sees open files, not the folder on disk, and misses
 local shadowing; no refactorings or "fix all"; no
 auto-import; no `cpl test` lens; Emacs (eglot draws no lenses) and Helix
-run from a shell command; no JetBrains plugin, no fixture tests, fuzzer, DAP or
+run from a shell command; no fixture tests, fuzzer, DAP or
 tree-sitter grammar, so Helix has no highlighting and Zed no setup.
+The JetBrains plugin (`editors/jetbrains/`, IntelliJ Platform LSP API, 2024.3
+or later, commercial IDEs only) has a highlighting lexer, color settings,
+comments and braces, `cpl lsp` as its server, run configurations for
+`cpl run`, `test` and `stress` on the first sample with a marker on `fn main`,
+and the trace viewer in a JCEF editor tab; `buildPlugin` runs in `--full`, but its
+platform tests (lexer, and a headless IDE smoke test of each piece) have not
+run yet: the test framework's download host was not reachable here.
 `editors/README.md` documents Neovim (runtime folder: filetype, Vim syntax,
 `cpl lsp` autostart), Emacs (`cp-mode` with eglot and lsp-mode) and Helix
 (`languages.toml`); `editors/smoke.sh` checks their keyword lists against the
@@ -612,7 +619,8 @@ and the run lens through `cpl.exec`; Emacs: mode, faces, eglot entry; Helix: `--
 **Bar.** LSP fixture tests per `plan/60` 6.7 for every request; each editor
 integration built and smoke-tested in `scripts/check.sh --full`.
 **Next.** Fixture tests; proven ranges inside fns, on hover and on
-expressions (needs the checker's own range analysis); a test lens; JetBrains plugin; tree-sitter grammar (Helix
+expressions (needs the checker's own range analysis); a test lens; run the JetBrains tests and add them to `--full`, then
+the trace's step sync in its tool window; tree-sitter grammar (Helix
 highlighting, a Zed extension, Neovim tree-sitter); fuzzer.
 
 ## 11. Docs, site and playground (`plan/90`)

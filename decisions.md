@@ -2025,6 +2025,15 @@ an echo of the syntax error. Broken ports: cascaded errors 187 → 145 of 4319, 
 right line 99.7% before and after, `E0303` 17 → 0 and `E0305` 13 → 0 as first errors (now the
 `E0101` with its fix). Reverse: drop the `encloses_poison` check in `Checker::error`.
 
+29.15. **The JetBrains plugin uses the IntelliJ Platform's own LSP API.** It starts `cpl lsp` through
+`platform.lsp.serverSupportProvider`, so every server feature reaches it with no client code, and
+it adds only what the server can't: a highlighting lexer (keywords checked against the compiler by
+`editors/smoke.sh`), run configurations, a run marker and the trace viewer in a JCEF editor tab.
+That API ships only in the commercial IDEs from 2024.3, so Community and Android Studio get
+nothing; LSP4IJ would reach them but is a third-party plugin and a second client to keep working.
+`--full` runs `buildPlugin` when `java` is installed; the platform tests join it once they have run.
+Reverse: delete `editors/jetbrains/` and its block in `editors/smoke.sh`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

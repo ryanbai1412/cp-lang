@@ -11,11 +11,13 @@ formatting, quick fixes and inlay hints. Put `cpl` on the `PATH`
 | VS Code | `editors/vscode/` | TextMate grammar | lenses, stress, trace view |
 | Neovim and Vim | `editors/neovim/` | Vim syntax | Run, Trace and Stress lenses |
 | Emacs | `editors/emacs/` | font-lock | `M-x compile` with `cpl run` |
+| JetBrains IDEs | `editors/jetbrains/` | lexer, color settings | run configurations, gutter marker, trace tab |
 | Helix | `editors/helix/` | none yet (needs a tree-sitter grammar) | `:sh cpl run %` |
 | Zed | not yet | needs a tree-sitter grammar | |
 
 `editors/smoke.sh` checks each setup against the real server (the keyword
-lists against the compiler, then Neovim, Emacs and Helix when installed);
+lists against the compiler, then Neovim, Emacs and Helix when installed, and
+the JetBrains plugin's build when `java` is);
 `scripts/check.sh --full` runs it.
 
 ## Neovim (0.10 or later)
@@ -55,6 +57,20 @@ server, use a client such as vim-lsp with `cmd: ['cpl', 'lsp']`.
 `cp-mode` registers `cpl lsp` with both eglot and lsp-mode; set
 `cp-cpl-program` when `cpl` is not on the `PATH`. It claims `.cp` ahead of
 Emacs's own entry, which calls `.cp` C++.
+
+## JetBrains IDEs (2024.3 or later)
+
+`cd editors/jetbrains && ./gradlew buildPlugin` writes
+`build/distributions/cp-lang-jetbrains-<version>.zip`; install it with
+Settings, Plugins, Install Plugin from Disk. The IntelliJ Platform's LSP API
+ships only in the commercial IDEs (IntelliJ IDEA Ultimate, CLion, PyCharm
+Professional and the rest), so the plugin needs one of them. Set the path to
+`cpl` under Settings, Tools, CP Lang when it is not on the `PATH`. A `.cp`
+file gets a run configuration on its first sample (`cpl run`, `cpl test` or
+`cpl stress`), a run marker on `fn main`, and CP Lang: Show Trace
+(Ctrl+Alt+T) opens `cpl run --trace --format html` in an editor tab.
+`./gradlew test` runs the lexer tests and a smoke test in a headless IDE
+against `target/debug/cpl` (or `$CPL`).
 
 ## Helix
 

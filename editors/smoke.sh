@@ -2,7 +2,8 @@
 # The editor setups besides VS Code, each against the real `cpl lsp`.
 #
 #   editors/smoke.sh              keyword lists against the compiler, then Neovim,
-#                                 Emacs and Helix when installed (others are skipped,
+#                                 Emacs and Helix when installed, and the JetBrains
+#                                 plugin's build when java is (others are skipped,
 #                                 and say so)
 #
 # Needs target/debug/cpl (cargo build -p cpl-cli) or $CPL. $NVIM, $EMACS and $HX
@@ -25,6 +26,8 @@ lists = {
         l.split(None, 3)[3] for l in s.splitlines() if re.match(r"syntax keyword cp(Keyword|Boolean) ", l)),
     "editors/emacs/cp-mode.el": lambda s: " ".join(
         re.search(r"\(defconst cp-%s\s+'\((.*?)\)\)" % n, s, re.S).group(1) for n in ("keywords", "constants")),
+    "editors/jetbrains/src/main/kotlin/dev/cplang/ide/CpLexer.kt": lambda s: " ".join(
+        re.findall(r'"([a-z]+)"', re.search(r"val KEYWORDS: Set<String> = setOf\((.*?)\)", s, re.S).group(1))),
 }
 bad = False
 for path, words in lists.items():
@@ -68,3 +71,10 @@ else
     echo "editors: SKIPPED helix (set \$HX)"
 fi
 
+if command -v java >/dev/null; then
+    echo "editors: jetbrains"
+    (cd "$root/editors/jetbrains" && ./gradlew -q buildPlugin)
+    echo "jetbrains build: ok"
+else
+    echo "editors: SKIPPED jetbrains (no java)"
+fi

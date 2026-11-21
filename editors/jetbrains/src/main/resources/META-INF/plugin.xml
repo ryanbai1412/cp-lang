@@ -1,0 +1,41 @@
+<idea-plugin>
+    <id>dev.cplang.ide</id>
+    <name>CP Lang</name>
+    <vendor>CP Lang</vendor>
+    <description><![CDATA[
+    CP Lang, a language for competitive programming. Highlighting, run configurations for
+    <code>cpl run</code>, <code>cpl test</code> and <code>cpl stress</code>, and the trace viewer;
+    diagnostics, hover, completion, signature help, go to definition, rename, quick fixes and
+    inlay hints come from the compiler's own language server, <code>cpl lsp</code>.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.ultimate</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <fileType name="CP Lang" implementationClass="dev.cplang.ide.CpFileType" fieldName="INSTANCE"
+                  language="CP" extensions="cp"/>
+        <lang.parserDefinition language="CP" implementationClass="dev.cplang.ide.CpParserDefinition"/>
+        <lang.syntaxHighlighterFactory language="CP" implementationClass="dev.cplang.ide.CpSyntaxHighlighterFactory"/>
+        <lang.commenter language="CP" implementationClass="dev.cplang.ide.CpCommenter"/>
+        <lang.braceMatcher language="CP" implementationClass="dev.cplang.ide.CpBraceMatcher"/>
+        <colorSettingsPage implementation="dev.cplang.ide.CpColorSettingsPage"/>
+        <platform.lsp.serverSupportProvider implementation="dev.cplang.ide.CpLspServerSupportProvider"/>
+        <configurationType implementation="dev.cplang.ide.CplRunConfigurationType"/>
+        <runConfigurationProducer implementation="dev.cplang.ide.CplRunConfigurationProducer"/>
+        <runLineMarkerContributor language="CP" implementationClass="dev.cplang.ide.CplRunLineMarkerContributor"/>
+        <applicationConfigurable parentId="tools" instance="dev.cplang.ide.CplConfigurable"
+                                 id="dev.cplang.settings" displayName="CP Lang"/>
+        <notificationGroup id="CP Lang" displayType="BALLOON"/>
+    </extensions>
+
+    <actions>
+        <action id="CpLang.ShowTrace" class="dev.cplang.ide.CplShowTraceAction" text="CP Lang: Show Trace"
+                description="Run the file on its first sample with cpl run --trace and open the trace viewer"
+                icon="AllIcons.Actions.Profile">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt T"/>
+        </action>
+    </actions>
+</idea-plugin>
