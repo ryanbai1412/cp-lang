@@ -343,8 +343,8 @@ fix-it, ratchet at 0.05 per copy.
 Planned forms go through one table (`cpl-syntax/src/planned.rs`, `E0504`
 "not implemented yet: ... (see design/...)", or "(not in the design)" for
 forms only dreams use); 16 entries, each with a golden. Dreams are a corpus
-(`scripts/dream-gaps.py`, summary in the scoreboard): 65 dreams, 55 with
-errors; 29/55 first errors name their gap and 86/219 errors are named (the
+(`scripts/dream-gaps.py`, summary in the scoreboard): 73 dreams, 56 with
+errors; 28/56 first errors name their gap and 78/201 errors are named (the
 corpus grew from 44 dreams with 41 named, and the new dreams mostly fail on
 unplanned syntax: `match` with `pattern => value` arms on one line, blocks
 indented under a value, two-word statements); top named blocker is context
@@ -355,7 +355,7 @@ Fix-its: C spellings (`&&`, `||`, `!x`, `..<`), `let` for a `var`,
 did-you-mean on names, fields and methods (built-in, record and UFCS) and a
 plain number for a domain (`V(i)`) carry an edit, shown as LSP quick fixes
 and applied by `cpl fix`. Common-mistakes benchmark (`fix_it_scoreboard`):
-1,995 errors, 88.3% with a fix-it, `cpl fix` restores 91.5% of copies
+1,874 errors, 94.1% with a fix-it, `cpl fix` restores 91.2% of copies
 byte for byte (ratchet 88% and 95%); misspelled members are the gap. A
 domain or range mismatch names both index spaces and labels the
 declaration each comes from.
