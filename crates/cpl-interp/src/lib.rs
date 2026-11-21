@@ -23,7 +23,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::io::Write;
 use std::rc::Rc;
-use value::{show, zero, Array, CaptureVal, Part, Step, Value};
+use value::{show, zero, Array, CaptureVal, OptVal, Part, Step, TupleVal, Value};
 
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
@@ -606,8 +606,12 @@ impl<'p, 'o> Interp<'p, 'o> {
                 self.stack[base + slot] = value;
             }
             Stmt::Assign(place, op, value) => {
-                let indices = self.assign(place, *op, value)?;
-                self.trace_change(place, &indices);
+                if self.tracer.is_none() {
+                    self.assign_untraced(place, *op, value)?;
+                } else {
+                    let indices = self.assign(place, *op, value)?;
+                    self.trace_change(place, &indices);
+                }
             }
             Stmt::Expr(e) => {
                 self.eval(e)?;
@@ -707,9 +711,54 @@ impl<'p, 'o> Interp<'p, 'o> {
                 rev,
                 closed,
             } => {
-                let lo = self.eval(lo)?.int() as i128;
+                let lo_i64 = self.eval(lo)?.int();
+                let hi_i64 = self.eval(hi)?.int();
+                if step.is_none() {
+                    if *closed {
+                        if lo_i64 <= hi_i64 {
+                            if *rev {
+                                let mut v = hi_i64;
+                                loop {
+                                    round!(Value::Int(v));
+                                    if v == lo_i64 {
+                                        break;
+                                    }
+                                    v -= 1;
+                                }
+                            } else {
+                                let mut v = lo_i64;
+                                loop {
+                                    round!(Value::Int(v));
+                                    if v == hi_i64 {
+                                        break;
+                                    }
+                                    v += 1;
+                                }
+                            }
+                        }
+                    } else if lo_i64 < hi_i64 {
+                        if *rev {
+                            let mut v = hi_i64 - 1;
+                            loop {
+                                round!(Value::Int(v));
+                                if v == lo_i64 {
+                                    break;
+                                }
+                                v -= 1;
+                            }
+                        } else {
+                            let mut v = lo_i64;
+                            while v < hi_i64 {
+                                round!(Value::Int(v));
+                                v += 1;
+                            }
+                        }
+                    }
+                    return Ok(Flow::Next);
+                }
+                let lo = lo_i64 as i128;
                 // One past the last value, which an `Int` may not hold.
-                let hi = self.eval(hi)?.int() as i128 + i128::from(*closed);
+                let hi = hi_i64 as i128 + i128::from(*closed);
                 let step = match step {
                     Some(step) => {
                         let value = self.eval(step)?.int();
@@ -999,8 +1048,8 @@ impl<'p, 'o> Interp<'p, 'o> {
         };
         for step in &part.steps {
             value = match (step, value) {
-                (Step::Field(index), Value::Tuple(fields)) => fields.get(*index)?,
-                (Step::Some, Value::Opt(Some(inner))) => inner,
+                (Step::Field(index), Value::Tuple(TupleVal::Boxed(fields))) => fields.get(*index)?,
+                (Step::Some, Value::Opt(OptVal::Boxed(inner))) => inner,
                 (Step::Index(indices), Value::Array(array)) => {
                     let at = array_offset(&array.dims, indices.iter(), Span::new(0, 0)).ok()?;
                     array.data.get(at)?
@@ -1018,7 +1067,7 @@ impl<'p, 'o> Interp<'p, 'o> {
 
 fn field_mut(holder: &mut Value, index: usize, span: Span) -> Res<&mut Value> {
     match holder {
-        Value::Tuple(fields) => Ok(&mut Rc::make_mut(fields)[index]),
+        Value::Tuple(fields) => Ok(&mut fields.as_mut_vec()[index]),
         Value::Moved => trap(span, LENT),
         _ => trap(span, "internal: field of a value without fields"),
     }
@@ -1026,7 +1075,16 @@ fn field_mut(holder: &mut Value, index: usize, span: Span) -> Res<&mut Value> {
 
 fn inside_mut(holder: &mut Value, span: Span) -> Res<&mut Value> {
     match holder {
-        Value::Opt(Some(inner)) => Ok(Rc::make_mut(inner)),
+        Value::Opt(opt) => {
+            if let OptVal::Int(v) = *opt {
+                *opt = OptVal::Boxed(Rc::new(Value::Int(v)));
+            }
+            match opt {
+                OptVal::Boxed(inner) => Ok(Rc::make_mut(inner)),
+                OptVal::None => trap(span, "there is no value here: it is `none`"),
+                OptVal::Int(_) => unreachable!(),
+            }
+        }
         Value::Moved => trap(span, LENT),
         _ => trap(span, "there is no value here: it is `none`"),
     }
@@ -1071,6 +1129,150 @@ fn cell_mut<'s>(
 }
 
 impl<'p, 'o> Interp<'p, 'o> {
+    /// Fast-path assignment when tracing is disabled: avoids allocating an
+    /// index `Vec` for direct locals/globals and 1D/2D array or list writes.
+    fn assign_untraced(&mut self, place: &'p Place, op: AssignOp, value: &'p Expr) -> Res<()> {
+        match &place.kind {
+            PlaceKind::Local(slot) => {
+                let value = self.eval(value)?;
+                let at = self.base + slot;
+                if !matches!(self.stack[at], Value::Alias(..) | Value::Part(..)) {
+                    let cell = &mut self.stack[at];
+                    if op == AssignOp::Set {
+                        *cell = value;
+                    } else {
+                        let old = std::mem::take(cell);
+                        if matches!(old, Value::Moved) {
+                            *cell = old;
+                            return trap(place.span, LENT);
+                        }
+                        *cell = combine(op, old, value, place.span)?;
+                    }
+                    return Ok(());
+                }
+                let cell = self.resolve(place, &mut [].iter())?;
+                if op == AssignOp::Set {
+                    *cell = value;
+                } else {
+                    let old = std::mem::take(cell);
+                    if matches!(old, Value::Moved) {
+                        *cell = old;
+                        return trap(place.span, LENT);
+                    }
+                    *cell = combine(op, old, value, place.span)?;
+                }
+                return Ok(());
+            }
+            PlaceKind::Global(id) => {
+                let value = self.eval(value)?;
+                let cell = &mut self.globals[*id];
+                if op == AssignOp::Set {
+                    *cell = value;
+                } else {
+                    let old = std::mem::take(cell);
+                    if matches!(old, Value::Moved) {
+                        *cell = old;
+                        return trap(place.span, LENT);
+                    }
+                    *cell = combine(op, old, value, place.span)?;
+                }
+                return Ok(());
+            }
+            PlaceKind::Index(base, exprs)
+                if exprs.len() <= 2
+                    && !matches!(base.ty, Ty::Str | Ty::Map(..) | Ty::HashMap(..))
+                    && matches!(base.kind, PlaceKind::Local(_) | PlaceKind::Global(_)) =>
+            {
+                let value = self.eval(value)?;
+                let n = exprs.len();
+                let i0 = if n >= 1 { self.eval(&exprs[0])?.int() } else { 0 };
+                let i1 = if n == 2 { self.eval(&exprs[1])?.int() } else { 0 };
+                let holder: &mut Value = match &base.kind {
+                    PlaceKind::Global(id) => &mut self.globals[*id],
+                    PlaceKind::Local(slot) => {
+                        let at = self.base + slot;
+                        match &self.stack[at] {
+                            Value::Alias(true, id) => {
+                                let id = *id;
+                                &mut self.globals[id]
+                            }
+                            Value::Alias(false, target) => {
+                                let target = *target;
+                                &mut self.stack[target]
+                            }
+                            Value::Part(part) => {
+                                let part = Rc::clone(part);
+                                self.part_mut(&part, base.span)?
+                            }
+                            _ => &mut self.stack[at],
+                        }
+                    }
+                    _ => unreachable!(),
+                };
+                let span = place.span;
+                let cell: &mut Value = match holder {
+                    Value::Array(array) if array.dims.len() == 1 && n == 1 => {
+                        let len = array.dims[0];
+                        if i0 < 0 || i0 >= len {
+                            return trap(
+                                span,
+                                format!("index {i0} is outside an array dimension of length {len}"),
+                            );
+                        }
+                        &mut Rc::make_mut(array).data[i0 as usize]
+                    }
+                    Value::Array(array) if array.dims.len() == 2 && n == 2 => {
+                        let l0 = array.dims[0];
+                        if i0 < 0 || i0 >= l0 {
+                            return trap(
+                                span,
+                                format!("index {i0} is outside an array dimension of length {l0}"),
+                            );
+                        }
+                        let l1 = array.dims[1];
+                        if i1 < 0 || i1 >= l1 {
+                            return trap(
+                                span,
+                                format!("index {i1} is outside an array dimension of length {l1}"),
+                            );
+                        }
+                        &mut Rc::make_mut(array).data[(i0 * l1 + i1) as usize]
+                    }
+                    Value::List(items) if n == 1 => {
+                        let len = items.len();
+                        match usize::try_from(i0).ok().filter(|i| *i < len) {
+                            Some(i) => &mut Rc::make_mut(items)[i],
+                            None => {
+                                return trap(
+                                    span,
+                                    format!("index {i0} is outside a list of length {len}"),
+                                )
+                            }
+                        }
+                    }
+                    _ => {
+                        let buf = [Value::Int(i0), Value::Int(i1)];
+                        self.resolve(place, &mut buf[..n].iter())?
+                    }
+                };
+                if op == AssignOp::Set {
+                    *cell = value;
+                } else {
+                    let old = std::mem::take(cell);
+                    if matches!(old, Value::Moved) {
+                        *cell = old;
+                        return trap(span, LENT);
+                    }
+                    *cell = combine(op, old, value, span)?;
+                }
+                return Ok(());
+            }
+            _ => {}
+        }
+        let _ = self.assign(place, op, value)?;
+        Ok(())
+    }
+
     /// Stores into `place`, and gives the indices it was reached by.
     fn assign(&mut self, place: &'p Place, op: AssignOp, value: &'p Expr) -> Res<Vec<Value>> {
         // As in C++17: the right side first, then the place.
@@ -1164,7 +1366,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             ExprKind::Bool(v) => Value::Bool(*v),
             ExprKind::Char(v) => Value::Char(*v),
             ExprKind::Str(bytes) => Value::Str(Rc::new(bytes.clone())),
-            ExprKind::None => Value::Opt(None),
+            ExprKind::None => Value::Opt(OptVal::None),
             ExprKind::Some(inner) => Value::some(self.eval(inner)?),
             ExprKind::Local(slot) => match self.local(*slot) {
                 Value::Moved => return trap(span, LENT),
@@ -1198,11 +1400,18 @@ impl<'p, 'o> Interp<'p, 'o> {
                 BinOp::And => Value::Bool(self.eval(lhs)?.bool() && self.eval(rhs)?.bool()),
                 BinOp::Or => Value::Bool(self.eval(lhs)?.bool() || self.eval(rhs)?.bool()),
                 BinOp::Coalesce => match self.eval(lhs)? {
-                    Value::Opt(Some(inner)) => {
+                    Value::Opt(OptVal::Int(v)) => {
+                        if lhs.ty == e.ty {
+                            Value::Opt(OptVal::Int(v))
+                        } else {
+                            Value::Int(v)
+                        }
+                    }
+                    Value::Opt(OptVal::Boxed(inner)) => {
                         // An optional default keeps the optional; a plain
                         // one gives what is inside, optional or not.
                         if lhs.ty == e.ty {
-                            Value::Opt(Some(inner))
+                            Value::Opt(OptVal::Boxed(inner))
                         } else {
                             Rc::try_unwrap(inner).unwrap_or_else(|rc| (*rc).clone())
                         }
@@ -1218,6 +1427,42 @@ impl<'p, 'o> Interp<'p, 'o> {
             ExprKind::Cmp(op, lhs, rhs) => {
                 let l = self.eval(lhs)?;
                 let r = self.eval(rhs)?;
+                match (&l, &r) {
+                    (Value::Int(a), Value::Int(b)) => {
+                        return Ok(Value::Bool(match op {
+                            CmpOp::Eq => a == b,
+                            CmpOp::Ne => a != b,
+                            CmpOp::Lt => a < b,
+                            CmpOp::Le => a <= b,
+                            CmpOp::Gt => a > b,
+                            CmpOp::Ge => a >= b,
+                            _ => false,
+                        }));
+                    }
+                    (Value::Char(a), Value::Char(b)) => {
+                        return Ok(Value::Bool(match op {
+                            CmpOp::Eq => a == b,
+                            CmpOp::Ne => a != b,
+                            CmpOp::Lt => a < b,
+                            CmpOp::Le => a <= b,
+                            CmpOp::Gt => a > b,
+                            CmpOp::Ge => a >= b,
+                            _ => false,
+                        }));
+                    }
+                    (Value::Bool(a), Value::Bool(b)) => {
+                        return Ok(Value::Bool(match op {
+                            CmpOp::Eq => a == b,
+                            CmpOp::Ne => a != b,
+                            CmpOp::Lt => a < b,
+                            CmpOp::Le => a <= b,
+                            CmpOp::Gt => a > b,
+                            CmpOp::Ge => a >= b,
+                            _ => false,
+                        }));
+                    }
+                    _ => {}
+                }
                 if matches!(op, CmpOp::Eq | CmpOp::Ne) {
                     let eq = self.eq_ty_val(&lhs.ty, &l, &r, span)?;
                     return Ok(Value::Bool(if *op == CmpOp::Eq { eq } else { !eq }));
@@ -1249,15 +1494,31 @@ impl<'p, 'o> Interp<'p, 'o> {
                     _ => None,
                 };
                 match direct {
-                    Some(Value::Tuple(fields)) => fields[*index].clone(),
+                    Some(Value::Tuple(fields)) => fields
+                        .get(*index)
+                        .expect("field index within tuple"),
                     Some(Value::Moved) => return trap(span, LENT),
                     _ => match self.eval(base)? {
-                        Value::Tuple(fields) => fields[*index].clone(),
+                        Value::Tuple(fields) => fields
+                            .get(*index)
+                            .expect("field index within tuple"),
                         _ => return trap(span, "internal: field of a value without fields"),
                     },
                 }
             }
             ExprKind::Tuple(items) => {
+                if items.len() == 1
+                    && !matches!(
+                        &e.ty,
+                        Ty::List(_) | Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..)
+                    )
+                {
+                    let v = self.eval(&items[0])?;
+                    if let Value::Int(x) = v {
+                        return Ok(Value::Tuple(TupleVal::OneInt(x)));
+                    }
+                    return Ok(Value::Tuple(TupleVal::Boxed(Rc::new(vec![v]))));
+                }
                 let mut values = Vec::with_capacity(items.len());
                 for item in items {
                     values.push(self.eval(item)?);
@@ -1285,10 +1546,13 @@ impl<'p, 'o> Interp<'p, 'o> {
                 _ => return trap(span, "internal: payload of another variant"),
             },
             ExprKind::IsSome(value) => {
-                Value::Bool(matches!(self.eval(value)?, Value::Opt(Some(_))))
+                Value::Bool(matches!(self.eval(value)?, Value::Opt(opt) if opt.is_some()))
             }
             ExprKind::Unwrap(value, _) => match self.eval(value)? {
-                Value::Opt(Some(inner)) => Rc::try_unwrap(inner).unwrap_or_else(|rc| (*rc).clone()),
+                Value::Opt(opt) => match opt.unwrap_owned() {
+                    Some(v) => v,
+                    None => return trap(span, "`!` on `none`: there is no value here"),
+                },
                 _ => return trap(span, "`!` on `none`: there is no value here"),
             },
             ExprKind::If(cond, then, otherwise) => {
@@ -1607,10 +1871,19 @@ impl<'p, 'o> Interp<'p, 'o> {
         // A variable is indexed in place: only the element is copied.
         let direct = matches!(base.kind, ExprKind::Local(_) | ExprKind::Global(_));
         let held;
-        let mut values = Vec::with_capacity(indices.len());
+        let mut stack_vals: [Value; 2] = [Value::Unit, Value::Unit];
+        let mut heap_vals: Vec<Value> = Vec::new();
+        let n = indices.len();
         let holder: &Value = if direct {
-            for index in indices {
-                values.push(self.eval(index)?);
+            if n <= 2 {
+                for (i, index) in indices.iter().enumerate() {
+                    stack_vals[i] = self.eval(index)?;
+                }
+            } else {
+                heap_vals.reserve(n);
+                for index in indices {
+                    heap_vals.push(self.eval(index)?);
+                }
             }
             match &base.kind {
                 ExprKind::Local(slot) => self.local(*slot),
@@ -1619,14 +1892,52 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
         } else {
             held = self.eval(base)?;
-            for index in indices {
-                values.push(self.eval(index)?);
+            if n <= 2 {
+                for (i, index) in indices.iter().enumerate() {
+                    stack_vals[i] = self.eval(index)?;
+                }
+            } else {
+                heap_vals.reserve(n);
+                for index in indices {
+                    heap_vals.push(self.eval(index)?);
+                }
             }
             &held
         };
+        let values: &[Value] = if n <= 2 { &stack_vals[..n] } else { &heap_vals };
         match holder {
             Value::Array(array) => {
-                let at = array_offset(&array.dims, values.iter(), span)?;
+                let at = if array.dims.len() == 1 && values.len() == 1 {
+                    let idx = values[0].int();
+                    let len = array.dims[0];
+                    if idx < 0 || idx >= len {
+                        return trap(
+                            span,
+                            format!("index {idx} is outside an array dimension of length {len}"),
+                        );
+                    }
+                    idx as usize
+                } else if array.dims.len() == 2 && values.len() == 2 {
+                    let i0 = values[0].int();
+                    let l0 = array.dims[0];
+                    if i0 < 0 || i0 >= l0 {
+                        return trap(
+                            span,
+                            format!("index {i0} is outside an array dimension of length {l0}"),
+                        );
+                    }
+                    let i1 = values[1].int();
+                    let l1 = array.dims[1];
+                    if i1 < 0 || i1 >= l1 {
+                        return trap(
+                            span,
+                            format!("index {i1} is outside an array dimension of length {l1}"),
+                        );
+                    }
+                    (i0 * l1 + i1) as usize
+                } else {
+                    array_offset(&array.dims, values.iter(), span)?
+                };
                 Ok(array.data[at].clone())
             }
             Value::List(items) => {
@@ -1791,33 +2102,8 @@ impl<'p, 'o> Interp<'p, 'o> {
     /// Calls a fn; with `fed`, each value it yields runs that loop's body.
     fn call_feeding(&mut self, id: FnId, args: &'p [Arg], span: Span, fed: Option<Fed<'p>>) -> Res<Value> {
         let f = &self.program.fns[id];
-        if self.program.judge_fns.contains(&id) {
+        if !self.program.judge_fns.is_empty() && self.program.judge_fns.contains(&id) {
             return trap(span, NO_GRADER);
-        }
-        let mut values = vec![Value::Unit; args.len()];
-        // Evaluate by-value arguments first (two-phase borrowing), so patterns
-        // like `a.union(a.shifted(w))` can read `a` while preparing the call.
-        for (i, arg) in args.iter().enumerate() {
-            if let Arg::Value(e) = arg {
-                values[i] = self.eval(e)?;
-            }
-        }
-        // A `mut` argument names the caller's variable or the part of it:
-        // the callee, and a fn value it runs (`() => ids.len`), read and
-        // write the one value, as in the C++, where it is a reference.
-        for (i, arg) in args.iter().enumerate() {
-            if let Arg::Mut(place) = arg {
-                let mut indices = Vec::new();
-                self.indices(place, &mut indices)?;
-                let part = self.part_of(place, &mut indices.into_iter());
-                if matches!(self.part_mut(&part, place.span)?, Value::Moved) {
-                    return trap(place.span, LENT);
-                }
-                values[i] = match part.steps.is_empty() {
-                    true => Value::Alias(part.global, part.at),
-                    false => Value::Part(Rc::new(part)),
-                };
-            }
         }
         let here = 0u8;
         let used = self.stack_top.abs_diff(std::ptr::addr_of!(here) as usize);
@@ -1830,9 +2116,77 @@ impl<'p, 'o> Interp<'p, 'o> {
                 ),
             );
         }
-        let base = self.stack.len();
-        self.stack.extend(values);
-        self.stack.resize(base + f.locals.len(), Value::Unit);
+        let base = match args {
+            [] => {
+                let base = self.stack.len();
+                self.stack.resize(base + f.locals.len(), Value::Unit);
+                base
+            }
+            [Arg::Value(e0)] => {
+                let v0 = self.eval(e0)?;
+                let base = self.stack.len();
+                self.stack.push(v0);
+                if f.locals.len() > 1 {
+                    self.stack.resize(base + f.locals.len(), Value::Unit);
+                }
+                base
+            }
+            [Arg::Value(e0), Arg::Value(e1)] => {
+                let v0 = self.eval(e0)?;
+                let v1 = self.eval(e1)?;
+                let base = self.stack.len();
+                self.stack.push(v0);
+                self.stack.push(v1);
+                if f.locals.len() > 2 {
+                    self.stack.resize(base + f.locals.len(), Value::Unit);
+                }
+                base
+            }
+            [Arg::Value(e0), Arg::Value(e1), Arg::Value(e2)] => {
+                let v0 = self.eval(e0)?;
+                let v1 = self.eval(e1)?;
+                let v2 = self.eval(e2)?;
+                let base = self.stack.len();
+                self.stack.push(v0);
+                self.stack.push(v1);
+                self.stack.push(v2);
+                if f.locals.len() > 3 {
+                    self.stack.resize(base + f.locals.len(), Value::Unit);
+                }
+                base
+            }
+            _ => {
+                let mut values = vec![Value::Unit; args.len()];
+                // Evaluate by-value arguments first (two-phase borrowing), so patterns
+                // like `a.union(a.shifted(w))` can read `a` while preparing the call.
+                for (i, arg) in args.iter().enumerate() {
+                    if let Arg::Value(e) = arg {
+                        values[i] = self.eval(e)?;
+                    }
+                }
+                // A `mut` argument names the caller's variable or the part of it:
+                // the callee, and a fn value it runs (`() => ids.len`), read and
+                // write the one value, as in the C++, where it is a reference.
+                for (i, arg) in args.iter().enumerate() {
+                    if let Arg::Mut(place) = arg {
+                        let mut indices = Vec::new();
+                        self.indices(place, &mut indices)?;
+                        let part = self.part_of(place, &mut indices.into_iter());
+                        if matches!(self.part_mut(&part, place.span)?, Value::Moved) {
+                            return trap(place.span, LENT);
+                        }
+                        values[i] = match part.steps.is_empty() {
+                            true => Value::Alias(part.global, part.at),
+                            false => Value::Part(Rc::new(part)),
+                        };
+                    }
+                }
+                let base = self.stack.len();
+                self.stack.extend(values);
+                self.stack.resize(base + f.locals.len(), Value::Unit);
+                base
+            }
+        };
         let saved = std::mem::replace(&mut self.base, base);
         self.frame_locals.push(&f.locals);
         self.call_frames.push((f.name.as_str(), span));
@@ -1945,7 +2299,11 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
                 let fields = self.program.structs[*id].fields.clone();
                 if let (Value::Tuple(ls), Value::Tuple(rs)) = (l, r) {
-                    for ((_, ft), (lv, rv)) in fields.iter().zip(ls.iter().zip(rs.iter())) {
+                    let (mut sl, mut sr) = ([Value::Unit], [Value::Unit]);
+                    for ((_, ft), (lv, rv)) in fields
+                        .iter()
+                        .zip(ls.as_slice(&mut sl).iter().zip(rs.as_slice(&mut sr).iter()))
+                    {
                         if !self.eq_ty_val(ft, lv, rv, span)? {
                             return Ok(false);
                         }
@@ -1956,7 +2314,11 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
             Ty::Tuple(ts) => {
                 if let (Value::Tuple(ls), Value::Tuple(rs)) = (l, r) {
-                    for (t, (lv, rv)) in ts.iter().zip(ls.iter().zip(rs.iter())) {
+                    let (mut sl, mut sr) = ([Value::Unit], [Value::Unit]);
+                    for (t, (lv, rv)) in ts
+                        .iter()
+                        .zip(ls.as_slice(&mut sl).iter().zip(rs.as_slice(&mut sr).iter()))
+                    {
                         if !self.eq_ty_val(t, lv, rv, span)? {
                             return Ok(false);
                         }
@@ -1967,7 +2329,11 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
             Ty::Record(fs) => {
                 if let (Value::Tuple(ls), Value::Tuple(rs)) = (l, r) {
-                    for ((_, t), (lv, rv)) in fs.iter().zip(ls.iter().zip(rs.iter())) {
+                    let (mut sl, mut sr) = ([Value::Unit], [Value::Unit]);
+                    for ((_, t), (lv, rv)) in fs
+                        .iter()
+                        .zip(ls.as_slice(&mut sl).iter().zip(rs.as_slice(&mut sr).iter()))
+                    {
                         if !self.eq_ty_val(t, lv, rv, span)? {
                             return Ok(false);
                         }
@@ -1991,8 +2357,17 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Ok(l == r)
             }
             Ty::Opt(inner) => match (l, r) {
-                (Value::Opt(None), Value::Opt(None)) => Ok(true),
-                (Value::Opt(Some(a)), Value::Opt(Some(b))) => self.eq_ty_val(inner, a, b, span),
+                (Value::Opt(OptVal::None), Value::Opt(OptVal::None)) => Ok(true),
+                (Value::Opt(OptVal::Int(a)), Value::Opt(OptVal::Int(b))) => Ok(a == b),
+                (Value::Opt(OptVal::Boxed(a)), Value::Opt(OptVal::Boxed(b))) => {
+                    self.eq_ty_val(inner, a, b, span)
+                }
+                (Value::Opt(OptVal::Int(a)), Value::Opt(OptVal::Boxed(b))) => {
+                    self.eq_ty_val(inner, &Value::Int(*a), b, span)
+                }
+                (Value::Opt(OptVal::Boxed(a)), Value::Opt(OptVal::Int(b))) => {
+                    self.eq_ty_val(inner, a, &Value::Int(*b), span)
+                }
                 _ => Ok(false),
             },
             _ => Ok(l == r),
@@ -2020,7 +2395,11 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
                 let fields = self.program.structs[*id].fields.clone();
                 if let (Value::Tuple(ls), Value::Tuple(rs)) = (l, r) {
-                    for ((_, ft), (lv, rv)) in fields.iter().zip(ls.iter().zip(rs.iter())) {
+                    let (mut sl, mut sr) = ([Value::Unit], [Value::Unit]);
+                    for ((_, ft), (lv, rv)) in fields
+                        .iter()
+                        .zip(ls.as_slice(&mut sl).iter().zip(rs.as_slice(&mut sr).iter()))
+                    {
                         let o = self.cmp_ty_val(ft, lv, rv, span)?;
                         if o != Ordering::Equal {
                             return Ok(o);
@@ -2032,7 +2411,11 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
             Ty::Tuple(ts) => {
                 if let (Value::Tuple(ls), Value::Tuple(rs)) = (l, r) {
-                    for (t, (lv, rv)) in ts.iter().zip(ls.iter().zip(rs.iter())) {
+                    let (mut sl, mut sr) = ([Value::Unit], [Value::Unit]);
+                    for (t, (lv, rv)) in ts
+                        .iter()
+                        .zip(ls.as_slice(&mut sl).iter().zip(rs.as_slice(&mut sr).iter()))
+                    {
                         let o = self.cmp_ty_val(t, lv, rv, span)?;
                         if o != Ordering::Equal {
                             return Ok(o);
@@ -2044,7 +2427,11 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
             Ty::Record(fs) => {
                 if let (Value::Tuple(ls), Value::Tuple(rs)) = (l, r) {
-                    for ((_, t), (lv, rv)) in fs.iter().zip(ls.iter().zip(rs.iter())) {
+                    let (mut sl, mut sr) = ([Value::Unit], [Value::Unit]);
+                    for ((_, t), (lv, rv)) in fs
+                        .iter()
+                        .zip(ls.as_slice(&mut sl).iter().zip(rs.as_slice(&mut sr).iter()))
+                    {
                         let o = self.cmp_ty_val(t, lv, rv, span)?;
                         if o != Ordering::Equal {
                             return Ok(o);
@@ -2067,10 +2454,19 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Ok(l.cmp(r))
             }
             Ty::Opt(inner) => match (l, r) {
-                (Value::Opt(None), Value::Opt(None)) => Ok(Ordering::Equal),
-                (Value::Opt(None), Value::Opt(Some(_))) => Ok(Ordering::Less),
-                (Value::Opt(Some(_)), Value::Opt(None)) => Ok(Ordering::Greater),
-                (Value::Opt(Some(a)), Value::Opt(Some(b))) => self.cmp_ty_val(inner, a, b, span),
+                (Value::Opt(OptVal::None), Value::Opt(OptVal::None)) => Ok(Ordering::Equal),
+                (Value::Opt(OptVal::None), _) => Ok(Ordering::Less),
+                (_, Value::Opt(OptVal::None)) => Ok(Ordering::Greater),
+                (Value::Opt(OptVal::Int(a)), Value::Opt(OptVal::Int(b))) => Ok(a.cmp(b)),
+                (Value::Opt(OptVal::Boxed(a)), Value::Opt(OptVal::Boxed(b))) => {
+                    self.cmp_ty_val(inner, a, b, span)
+                }
+                (Value::Opt(OptVal::Int(a)), Value::Opt(OptVal::Boxed(b))) => {
+                    self.cmp_ty_val(inner, &Value::Int(*a), b, span)
+                }
+                (Value::Opt(OptVal::Boxed(a)), Value::Opt(OptVal::Int(b))) => {
+                    self.cmp_ty_val(inner, a, &Value::Int(*b), span)
+                }
                 _ => Ok(l.cmp(r)),
             },
             _ => Ok(l.cmp(r)),
@@ -2236,7 +2632,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                         return Ok(Value::Bool(items.contains(&key)));
                     }
                     (Builtin::MapGet, Value::Map(entries)) => {
-                        return Ok(Value::Opt(entries.get(&key).cloned().map(Rc::new)));
+                        return Ok(Value::Opt(OptVal::from_option(entries.get(&key).cloned())));
                     }
                     _ => {}
                 }
@@ -2248,7 +2644,7 @@ impl<'p, 'o> Interp<'p, 'o> {
         }
         let mut values = values.into_iter();
         let first = values.next().unwrap_or_default();
-        let optional = |value: Option<Value>| Value::Opt(value.map(Rc::new));
+        let optional = |value: Option<Value>| Value::Opt(OptVal::from_option(value));
         Ok(match op {
             Builtin::Min => values.fold(first, |best, v| if v < best { v } else { best }),
             Builtin::Max => values.fold(first, |best, v| if v > best { v } else { best }),
@@ -2381,7 +2777,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                         buf.extend_from_slice(&sep);
                     }
                     match (item, &none_text) {
-                        (Value::Opt(None), Some(text)) => buf.extend_from_slice(text),
+                        (Value::Opt(OptVal::None), Some(text)) => buf.extend_from_slice(text),
                         _ => self.show_val(&mut buf, item, &elem, cpl_ir::FLOAT_DIGITS, span)?,
                     }
                 }
@@ -2455,13 +2851,13 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::List(items) => optional(items.first().cloned()),
                 Value::Array(array) => optional(array.data.first().cloned()),
                 Value::Range(lo, hi) => optional((lo < hi).then_some(Value::Int(*lo))),
-                _ => Value::Opt(None),
+                _ => Value::Opt(OptVal::None),
             },
             Builtin::Last => match &first {
                 Value::List(items) => optional(items.last().cloned()),
                 Value::Array(array) => optional(array.data.last().cloned()),
                 Value::Range(lo, hi) => optional((lo < hi).then_some(Value::Int(*hi - 1))),
-                _ => Value::Opt(None),
+                _ => Value::Opt(OptVal::None),
             },
             Builtin::FirstVal => match &first {
                 Value::List(items) => match items.first() {
@@ -2502,7 +2898,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 let key = values.next().unwrap_or_default();
                 match &first {
                     Value::Map(entries) => optional(entries.get(&key).cloned()),
-                    _ => Value::Opt(None),
+                    _ => Value::Opt(OptVal::None),
                 }
             }
             Builtin::FirstGe | Builtin::FirstGt | Builtin::LastLe | Builtin::LastLt => {
@@ -2525,18 +2921,18 @@ impl<'p, 'o> Interp<'p, 'o> {
                         let entry = if first_in { found.next() } else { found.next_back() };
                         optional(entry.map(|(key, val)| Value::tuple(vec![key.clone(), val.clone()])))
                     }
-                    _ => Value::Opt(None),
+                    _ => Value::Opt(OptVal::None),
                 }
             }
             Builtin::SetMin => match &first {
                 Value::Set(items) => optional(items.first().cloned()),
                 Value::Map(entries) => optional(entries.iter().next().map(|(k, v)| Value::tuple(vec![k.clone(), v.clone()]))),
-                _ => Value::Opt(None),
+                _ => Value::Opt(OptVal::None),
             },
             Builtin::SetMax => match &first {
                 Value::Set(items) => optional(items.last().cloned()),
                 Value::Map(entries) => optional(entries.iter().next_back().map(|(k, v)| Value::tuple(vec![k.clone(), v.clone()]))),
-                _ => Value::Opt(None),
+                _ => Value::Opt(OptVal::None),
             },
             Builtin::Sorted => match first {
                 Value::List(mut items) => {
@@ -2731,14 +3127,24 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::Unit
             }
             (Mutation::Pop, Value::List(items)) => {
-                Value::Opt(Rc::make_mut(items).pop().map(Rc::new))
+                Value::Opt(OptVal::from_option(Rc::make_mut(items).pop()))
             }
-            (Mutation::PopFirst, Value::Set(items)) => Value::Opt(Rc::make_mut(items).pop_first().map(Rc::new)),
-            (Mutation::PopLast, Value::Set(items)) => Value::Opt(Rc::make_mut(items).pop_last().map(Rc::new)),
+            (Mutation::PopFirst, Value::Set(items)) => {
+                Value::Opt(OptVal::from_option(Rc::make_mut(items).pop_first()))
+            }
+            (Mutation::PopLast, Value::Set(items)) => {
+                Value::Opt(OptVal::from_option(Rc::make_mut(items).pop_last()))
+            }
             (Mutation::PopFirst | Mutation::PopLast, Value::Map(entries)) => {
                 let entries = Rc::make_mut(entries);
-                let found = if op == Mutation::PopFirst { entries.pop_first() } else { entries.pop_last() };
-                Value::Opt(found.map(|(k, v)| Rc::new(Value::tuple(vec![k, v]))))
+                let found = if op == Mutation::PopFirst {
+                    entries.pop_first()
+                } else {
+                    entries.pop_last()
+                };
+                Value::Opt(OptVal::from_option(
+                    found.map(|(k, v)| Value::tuple(vec![k, v])),
+                ))
             }
             (Mutation::PopVal, Value::List(items)) => match Rc::make_mut(items).pop() {
                 Some(v) => v,
@@ -2928,13 +3334,13 @@ impl<'p, 'o> Interp<'p, 'o> {
                 let absent = self.eval(absent)?.int();
                 let (value, start) = self.input.int().map_err(fail)?;
                 if value == absent {
-                    return Ok(Value::Opt(None));
+                    return Ok(Value::Opt(OptVal::None));
                 }
                 // The number is already read; the inner type checks it.
                 self.input.rewind(start);
-                Value::Opt(Some(Rc::new(self.read(inner, span)?)))
+                Value::some(self.read(inner, span)?)
             }
-            Spec::Opt(..) => Value::Opt(None),
+            Spec::Opt(..) => Value::Opt(OptVal::None),
         })
     }
 }

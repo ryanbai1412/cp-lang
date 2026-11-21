@@ -160,8 +160,10 @@ tests in `crates/cpl-cli/tests/runtime_errors.rs`); (2) trace filtering only
 supports a single `--trace FN` — missing multi-fn/glob/exclusion, `--test N`,
 `--watch VAR`, `--last N`, `--depth N`, and `Bound(d)` cuts are not shifted to
 domain base in traces; (3) no step debugger / DAP server or VS Code debugger
-wiring; (4) interpreter speed on compute-heavy ports is 46x–323x slower than
-C++ `-O2` (measured on `dph` 46.2x, `dpl` 65.5x, `dpk` 147.4x, `dpm` 322.9x);
+wiring; (4) interpreter speed on compute-heavy ports is 44x–261x slower than C++ `-O2`
+after unboxing `?Int`/1-field `Int` structs and removing hot-path allocations
+(`dph` 884 -> 693 ms, `dpl` 542 -> 483 ms, `dpk` 770 -> 728 ms, `dpm` 1288 ->
+1028 ms; closing the remaining gap to <= 30x requires a bytecode VM);
 (5) no stage snapshots (`--stage`) or interactive exchange trace.
 **Bar.** Every runtime error class has a golden message with values and call
 path; trace filtering and index-space views tested end to end; DAP step

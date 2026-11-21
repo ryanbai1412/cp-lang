@@ -1408,6 +1408,17 @@ errors to explain what happened in one screen with values, call path, and test c
 normal execution. Reverse: remove `call_stack`/`case` from `Trap`, `call_frames`/`current_case` from
 `Interp`, and `Trap::to_diagnostic`.
 
+27.2. **Unboxed `OptVal::Int` / `TupleVal::OneInt` and zero-allocation interpreter hot paths.**
+`Value::Opt` stores `OptVal::{None, Int(i64), Boxed(Rc<Value>)}` and `Value::Tuple` stores
+`TupleVal::{OneInt(i64), Boxed(Rc<Vec<Value>>)}` (promoting to `Boxed` only on in-place field/option
+mutation), keeping `size_of::<Value>()` unchanged while eliminating heap `Rc`/`Vec` allocations for
+domain steps (`?Pos`) and 1-field `Int` structs (`Mod<P>`). Untraced `assign`, 1D/2D `index`,
+0–3-arg `call_feeding`, step-1 `Iter::Range`, and primitive `Cmp` avoid temporary heap `Vec`s and
+`i128` loop arithmetic. Measured speedup on ports: `dph` 884ms -> 693ms (-22%), `dpm` 1288ms ->
+1028ms (-20%), `dpl` 542ms -> 483ms (-11%), `dpk` 770ms -> 728ms (-5%). Remaining gap to <= 30x
+is tree-walking `eval`/`stmt` dispatch overhead (future bytecode VM). Reverse: revert `OptVal`,
+`TupleVal`, and `assign_untraced` in `crates/cpl-interp`.
+
 ## 28. Core mechanisms for a library-only stdlib (0.3, §1)
 
 - **28.1 Reflection is a loop: `for f in fields(x)`.** The body runs once per field of a struct, record

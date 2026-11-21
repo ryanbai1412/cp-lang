@@ -36,6 +36,147 @@ pub(crate) struct Part {
     pub steps: Vec<Step>,
 }
 
+/// Unboxed optional for `Int`/`Pos`/`Bound` (the common case for domain steps
+/// like `i - 1`), falling back to `Rc<Value>` for compound values.
+#[derive(Clone, Debug)]
+pub(crate) enum OptVal {
+    None,
+    Int(i64),
+    Boxed(Rc<Value>),
+}
+
+impl OptVal {
+    pub fn some(value: Value) -> OptVal {
+        match value {
+            Value::Int(v) => OptVal::Int(v),
+            other => OptVal::Boxed(Rc::new(other)),
+        }
+    }
+
+    pub fn from_option(value: Option<Value>) -> OptVal {
+        match value {
+            Some(v) => OptVal::some(v),
+            None => OptVal::None,
+        }
+    }
+
+    pub fn is_some(&self) -> bool {
+        !matches!(self, OptVal::None)
+    }
+
+    pub fn unwrap_owned(self) -> Option<Value> {
+        match self {
+            OptVal::None => None,
+            OptVal::Int(v) => Some(Value::Int(v)),
+            OptVal::Boxed(rc) => Some(Rc::try_unwrap(rc).unwrap_or_else(|r| (*r).clone())),
+        }
+    }
+}
+
+impl Ord for OptVal {
+    fn cmp(&self, other: &OptVal) -> Ordering {
+        match (self, other) {
+            (OptVal::None, OptVal::None) => Ordering::Equal,
+            (OptVal::None, _) => Ordering::Less,
+            (_, OptVal::None) => Ordering::Greater,
+            (OptVal::Int(a), OptVal::Int(b)) => a.cmp(b),
+            (OptVal::Int(a), OptVal::Boxed(b)) => Value::Int(*a).cmp(b),
+            (OptVal::Boxed(a), OptVal::Int(b)) => a.as_ref().cmp(&Value::Int(*b)),
+            (OptVal::Boxed(a), OptVal::Boxed(b)) => a.cmp(b),
+        }
+    }
+}
+
+impl PartialOrd for OptVal {
+    fn partial_cmp(&self, other: &OptVal) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for OptVal {
+    fn eq(&self, other: &OptVal) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+impl Eq for OptVal {}
+
+/// Unboxed 1-field `Int` tuple/struct (e.g. `Mod<P>`, newtypes), falling back
+/// to `Rc<Vec<Value>>` for multi-field or non-`Int` tuples/structs.
+#[derive(Clone, Debug)]
+pub(crate) enum TupleVal {
+    OneInt(i64),
+    Boxed(Rc<Vec<Value>>),
+}
+
+impl TupleVal {
+    pub fn from_vec(fields: Vec<Value>) -> TupleVal {
+        if fields.len() == 1 {
+            if let Value::Int(v) = fields[0] {
+                return TupleVal::OneInt(v);
+            }
+        }
+        TupleVal::Boxed(Rc::new(fields))
+    }
+
+    pub fn get(&self, index: usize) -> Option<Value> {
+        match self {
+            TupleVal::OneInt(v) if index == 0 => Some(Value::Int(*v)),
+            TupleVal::OneInt(_) => None,
+            TupleVal::Boxed(fields) => fields.get(index).cloned(),
+        }
+    }
+
+    pub fn as_slice<'a>(&'a self, scratch: &'a mut [Value; 1]) -> &'a [Value] {
+        match self {
+            TupleVal::OneInt(v) => {
+                scratch[0] = Value::Int(*v);
+                scratch
+            }
+            TupleVal::Boxed(fields) => fields.as_slice(),
+        }
+    }
+
+    pub fn as_mut_vec(&mut self) -> &mut Vec<Value> {
+        if let TupleVal::OneInt(v) = *self {
+            *self = TupleVal::Boxed(Rc::new(vec![Value::Int(v)]));
+        }
+        match self {
+            TupleVal::Boxed(fields) => Rc::make_mut(fields),
+            TupleVal::OneInt(_) => unreachable!(),
+        }
+    }
+}
+
+impl Ord for TupleVal {
+    fn cmp(&self, other: &TupleVal) -> Ordering {
+        match (self, other) {
+            (TupleVal::OneInt(a), TupleVal::OneInt(b)) => a.cmp(b),
+            (TupleVal::OneInt(a), TupleVal::Boxed(b)) => {
+                [Value::Int(*a)].as_slice().cmp(b.as_slice())
+            }
+            (TupleVal::Boxed(a), TupleVal::OneInt(b)) => {
+                a.as_slice().cmp([Value::Int(*b)].as_slice())
+            }
+            (TupleVal::Boxed(a), TupleVal::Boxed(b)) => a.cmp(b),
+        }
+    }
+}
+
+impl PartialOrd for TupleVal {
+    fn partial_cmp(&self, other: &TupleVal) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for TupleVal {
+    fn eq(&self, other: &TupleVal) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+impl Eq for TupleVal {}
+
 #[derive(Clone, Debug, Default)]
 pub(crate) enum Value {
     #[default]
@@ -48,7 +189,7 @@ pub(crate) enum Value {
     Bool(bool),
     Char(u8),
     Str(Rc<Vec<u8>>),
-    Opt(Option<Rc<Value>>),
+    Opt(OptVal),
     /// A half-open range `(lo, hi)`.
     Range(i64, i64),
     /// A runtime domain handle `(lo, len)`.
@@ -62,7 +203,7 @@ pub(crate) enum Value {
     /// the part, so the callee and whatever it calls see one value.
     Part(Rc<Part>),
     /// A tuple, record or struct: its fields.
-    Tuple(Rc<Vec<Value>>),
+    Tuple(TupleVal),
     Enum(u32, Rc<Vec<Value>>),
     Array(Rc<Array>),
     List(Rc<Vec<Value>>),
@@ -114,11 +255,11 @@ impl Value {
     }
 
     pub fn some(value: Value) -> Value {
-        Value::Opt(Some(Rc::new(value)))
+        Value::Opt(OptVal::some(value))
     }
 
     pub fn tuple(fields: Vec<Value>) -> Value {
-        Value::Tuple(Rc::new(fields))
+        Value::Tuple(TupleVal::from_vec(fields))
     }
 
     fn rank(&self) -> u8 {
@@ -165,7 +306,8 @@ impl Ord for Value {
             (Value::Range(a1, a2), Value::Range(b1, b2)) => (a1, a2).cmp(&(b1, b2)),
             (Value::DomainVal(a1, a2), Value::DomainVal(b1, b2)) => (a1, a2).cmp(&(b1, b2)),
             (Value::Closure(a, _), Value::Closure(b, _)) => a.cmp(b),
-            (Value::Tuple(a), Value::Tuple(b)) | (Value::List(a), Value::List(b)) => a.cmp(b),
+            (Value::Tuple(a), Value::Tuple(b)) => a.cmp(b),
+            (Value::List(a), Value::List(b)) => a.cmp(b),
             (Value::Enum(ta, a), Value::Enum(tb, b)) => ta.cmp(tb).then_with(|| a.cmp(b)),
             (Value::Array(a), Value::Array(b)) => a.data.cmp(&b.data),
             (Value::Map(a), Value::Map(b)) => a.cmp(b),
@@ -200,7 +342,7 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
         Ty::Bool => Value::Bool(false),
         Ty::Char => Value::Char(0),
         Ty::Str => Value::Str(Rc::new(Vec::new())),
-        Ty::Opt(_) => Value::Opt(None),
+        Ty::Opt(_) => Value::Opt(OptVal::None),
         Ty::Range(_) => Value::Range(0, 0),
         Ty::DomainVal => Value::DomainVal(0, 0),
         Ty::Fn(..) | Ty::Mut(_) => Value::Unit,
@@ -275,9 +417,12 @@ pub(crate) fn show(
         (Value::Bool(v), _) => out.extend_from_slice(if *v { b"YES" } else { b"NO" }),
         (Value::Char(c), _) => out.push(*c),
         (Value::Str(s), _) => out.extend_from_slice(s),
-        (Value::Opt(None), _) => out.extend_from_slice(b"none"),
-        (Value::Opt(Some(inner)), Ty::Opt(inner_ty)) => rec(out, inner, inner_ty),
+        (Value::Opt(OptVal::None), _) => out.extend_from_slice(b"none"),
+        (Value::Opt(OptVal::Int(v)), Ty::Opt(inner_ty)) => rec(out, &Value::Int(*v), inner_ty),
+        (Value::Opt(OptVal::Boxed(inner)), Ty::Opt(inner_ty)) => rec(out, inner, inner_ty),
         (Value::Tuple(fields), _) => {
+            let mut scratch = [Value::Unit];
+            let fields = fields.as_slice(&mut scratch);
             let tys: Vec<Ty> = match ty {
                 Ty::Struct(id) => program.structs[*id]
                     .fields

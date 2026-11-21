@@ -7,7 +7,7 @@
 //! same input, the solution and its brute, are lined up on them, since
 //! their own variables have nothing else in common.
 
-use crate::value::Value;
+use crate::value::{OptVal, TupleVal, Value};
 use cpl_diag::{LineIndex, Span};
 use cpl_ir::{Dim, Program, Ty};
 use std::collections::HashMap;
@@ -683,12 +683,15 @@ fn classify(ty: &Ty, view: &View) -> (Kind, String) {
 fn cells(value: &Value) -> usize {
     match value {
         Value::Array(array) => array.data.iter().map(cells).sum(),
-        Value::List(items) | Value::Tuple(items) | Value::Enum(_, items) => {
+        Value::List(items) | Value::Enum(_, items) => {
             1 + items.iter().map(cells).sum::<usize>()
         }
+        Value::Tuple(TupleVal::OneInt(_)) => 2,
+        Value::Tuple(TupleVal::Boxed(items)) => 1 + items.iter().map(cells).sum::<usize>(),
         Value::Map(entries) => entries.iter().map(|(k, v)| cells(k) + cells(v)).sum(),
         Value::Set(items) => items.iter().map(cells).sum(),
-        Value::Opt(Some(inner)) => cells(inner),
+        Value::Opt(OptVal::Int(_)) => 1,
+        Value::Opt(OptVal::Boxed(inner)) => cells(inner),
         Value::Str(bytes) => 1 + bytes.len() / 64,
         _ => 1,
     }
@@ -799,8 +802,13 @@ fn render(out: &mut String, value: &Value, ty: &Ty, view: &View, mode: Mode) {
             }
         }
         (Value::Str(bytes), _) => string(out, &bytes_text(bytes)),
-        (Value::Opt(None), _) => out.push_str(if json { "null" } else { "none" }),
-        (Value::Opt(Some(inner)), Ty::Opt(inner_ty)) => render(out, inner, inner_ty, view, mode),
+        (Value::Opt(OptVal::None), _) => out.push_str(if json { "null" } else { "none" }),
+        (Value::Opt(OptVal::Int(v)), Ty::Opt(inner_ty)) => {
+            render(out, &Value::Int(*v), inner_ty, view, mode)
+        }
+        (Value::Opt(OptVal::Boxed(inner)), Ty::Opt(inner_ty)) => {
+            render(out, inner, inner_ty, view, mode)
+        }
         (Value::Range(lo, hi), _) => {
             let text = format!("{lo}..{hi}");
             if json {
@@ -810,6 +818,8 @@ fn render(out: &mut String, value: &Value, ty: &Ty, view: &View, mode: Mode) {
             }
         }
         (Value::Tuple(fields), _) => {
+            let mut scratch = [Value::Unit];
+            let fields = fields.as_slice(&mut scratch);
             let tys = field_tys(ty, view.program);
             match field_names(ty, view.program) {
                 Some(names) => {
@@ -1003,7 +1013,8 @@ fn parents_of(value: &Value) -> Option<Vec<Option<i64>>> {
             .data
             .iter()
             .map(|cell| match cell {
-                Value::Opt(Some(parent)) => Some(parent.int()),
+                Value::Opt(OptVal::Int(parent)) => Some(*parent),
+                Value::Opt(OptVal::Boxed(parent)) => Some(parent.int()),
                 _ => None,
             })
             .collect(),
@@ -1045,13 +1056,19 @@ fn snapshot(value: &Value, ty: &Ty, kind: Kind, view: &View) -> (String, Option<
                 let Value::List(items) = list else { continue };
                 for item in items.iter() {
                     let (to, weight) = match item {
-                        Value::Tuple(fields) => (
-                            fields.first().map_or(0, Value::int),
-                            match (&weighted, fields.get(1)) {
-                                (Some(ty @ (Ty::Int | Ty::Float)), Some(w)) => Some(json_of(w, ty, view)),
-                                _ => None,
-                            },
-                        ),
+                        Value::Tuple(fields) => {
+                            let mut scratch = [Value::Unit];
+                            let fields = fields.as_slice(&mut scratch);
+                            (
+                                fields.first().map_or(0, Value::int),
+                                match (&weighted, fields.get(1)) {
+                                    (Some(ty @ (Ty::Int | Ty::Float)), Some(w)) => {
+                                        Some(json_of(w, ty, view))
+                                    }
+                                    _ => None,
+                                },
+                            )
+                        }
                         other => (other.int(), None),
                     };
                     edges.push((from as i64 + lo, to + lo, weight));
@@ -1074,6 +1091,8 @@ fn snapshot(value: &Value, ty: &Ty, kind: Kind, view: &View) -> (String, Option<
             (plain(), tree)
         }
         (Kind::Csr, Value::Tuple(fields), Ty::Struct(id)) => {
+            let mut scratch = [Value::Unit];
+            let fields = fields.as_slice(&mut scratch);
             let def = &view.program.structs[*id];
             let at = |name: &str| def.fields.iter().position(|(field, _)| field == name);
             let (Some(start), Some(arcs)) = (at("start"), at("arcs")) else {
@@ -1094,13 +1113,19 @@ fn snapshot(value: &Value, ty: &Ty, kind: Kind, view: &View) -> (String, Option<
             for from in 0..n {
                 for arc in start[from].int()..start[from + 1].int() {
                     if let Some(Value::Tuple(arc)) = arcs.get(arc as usize) {
-                        edges.push((from as i64 + lo, arc.first().map_or(0, Value::int) + lo, None));
+                        edges.push((
+                            from as i64 + lo,
+                            arc.get(0).map_or(0, |v| v.int()) + lo,
+                            None,
+                        ));
                     }
                 }
             }
             (graph((0..n as i64).map(|i| i + lo), &edges), None)
         }
         (Kind::Rooted, Value::Tuple(fields), Ty::Struct(id)) => {
+            let mut scratch = [Value::Unit];
+            let fields = fields.as_slice(&mut scratch);
             let def = &view.program.structs[*id];
             let at = |name: &str| def.fields.iter().position(|(field, _)| field == name);
             let empty = (graph(std::iter::empty(), &[]), None);
