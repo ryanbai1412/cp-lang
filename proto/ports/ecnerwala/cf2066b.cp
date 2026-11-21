@@ -1,19 +1,16 @@
-// Codeforces 2066 B: White Magic.
+// With no zero the whole sequence is magical. Otherwise at most one zero can
+// stay, and the leftmost is the best one to keep: that subsequence is magical
+// exactly when every prefix minimum is at least the MEX of what follows it.
 @!multitest
-let n: 1..=200_000 = read()
-domain I = 0..n
-let a: [I]0..=1_000_000_000 = read()
-let zeros = [i for i in I if a[i] == 0]
-if let first = zeros.first:
-    let b = [a[i] for i in I if a[i] != 0 or i == first]
-    var seen: [0..=b.len]Bool = false
-    var suffix_mex: [0..=b.len]Int = 0
-    for i in (0..b.len).rev:
-        if b[i] <= b.len: seen[b[i]] = true
-        suffix_mex[i] = suffix_mex[i + 1]
-        while seen[suffix_mex[i]]: suffix_mex[i] += 1
-    let prefix_min = scan(b, min)
-    let magical = all(prefix_min[i - 1] >= suffix_mex[i] for i in 1..b.len)
-    print(n - zeros.len + Int(magical))
-else:
-    print(n)
+let n: 1..=2e5 = read()
+let a = read<[n]0..=1e9>()
+let first = a.find(0) ?? return print(n)
+let b = [x for (i, x) in a.items() if x != 0 or i == first]
+let low = scan(b, min)
+var seen: [0..=b.len]Bool = false
+var mex: [0..=b.len]Int = 0
+for i in (0..b.len).rev:
+    if b[i] <= b.len: seen[b[i]] = true
+    mex[i] = mex[i + 1]
+    while seen[mex[i]]: mex[i] += 1
+print(n - a.count(0) + Int((1..b.len).all(i => low[i - 1] >= mex[i])))

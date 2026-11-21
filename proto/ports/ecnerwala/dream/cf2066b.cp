@@ -1,11 +1,10 @@
-// Codeforces 2066 B: White Magic (dream). Zero-free sequences are magical;
-// keeping only the leftmost zero is the one candidate for one more.
+// With no zero the whole sequence is magical. Otherwise at most one zero can
+// stay, and the leftmost is the best one to keep: that subsequence is magical
+// exactly when every prefix minimum is at least the MEX of what follows it.
 @!multitest
 let n: 1..=2e5 = read()
-let a: [n]0..=1e9 = read()
-let zeros = a.count(x => x == 0)
+let a = read<[n]0..=1e9>()
 let first = a.find(0) ?? return print(n)
-let b = a.positions.filter(i => a[i] != 0 or i == first).map(a)   // its own index space with cuts
-let pre = b.prefix_min()                                           // [b.Pos]Int
-let mex = b.suffix_mex(at: .cuts)                                  // [b.Cut]Int, empty suffix last
-print(n - zeros + Int(b.cuts.inner.all(c => pre[c.before] >= mex[c])))
+let b = [x for (i, x) in a.items() if x != 0 or i == first]
+let (low, mex) = (b.prefix_min(), b.suffix_mex())
+print(n - a.count(0) + Int((1..b.len).all(i => low[i - 1] >= mex[i])))
