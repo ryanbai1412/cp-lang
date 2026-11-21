@@ -38,6 +38,19 @@ impl<'a> Parser<'a> {
                         name,
                         elem: Box::new(self.ty()),
                     }
+                } else if self.at(T::LParen)
+                    && self.tokens.get(after_group(self.tokens, self.pos)).map(|t| t.kind)
+                        == Some(T::RBracket)
+                {
+                    // `[(A, B)]T`: product index space, identical to `[A, B]T`.
+                    self.bump();
+                    let index =
+                        self.comma_list(T::RParen, "the product index", Self::index_ty);
+                    self.expect(T::RBracket, "`]` after the index");
+                    TypeKind::Array {
+                        index,
+                        elem: Box::new(self.ty()),
+                    }
                 } else {
                     let index = self.comma_list(T::RBracket, "the index list", Self::index_ty);
                     TypeKind::Array {

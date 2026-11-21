@@ -770,7 +770,14 @@ impl<'a> Parser<'a> {
         };
         self.bump();
         if table {
-            let domains = self.comma_list(T::RBracket, "the table's domains", Self::ty);
+            let mut domains = self.comma_list(T::RBracket, "the table's domains", Self::ty);
+            if domains.len() == 1 {
+                if let TypeKind::Tuple(items) = &domains[0].kind {
+                    if !items.is_empty() {
+                        domains = items.clone();
+                    }
+                }
+            }
             let params = if self.eat(T::LParen) {
                 self.comma_list(T::RParen, "the table's parameters", Self::pattern)
             } else {
