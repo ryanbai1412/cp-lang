@@ -4405,6 +4405,16 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Rc::make_mut(bytes).truncate(n as usize);
                 Value::Unit
             }
+            (Mutation::Reserve, Value::List(items)) => {
+                let n = arg.int();
+                if n < 0 {
+                    return trap(span, format!("reserve to negative capacity {n}"));
+                }
+                let v = Rc::make_mut(items);
+                let extra = (n as usize).saturating_sub(v.len());
+                v.reserve(extra);
+                Value::Unit
+            }
             (Mutation::Extend, Value::List(items)) => {
                 let v = Rc::make_mut(items);
                 match arg {

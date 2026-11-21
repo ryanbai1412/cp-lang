@@ -430,6 +430,17 @@ template <class S> inline void truncate(S& s, ll n) {
 ",
     },
     Piece {
+        name: "reserve",
+        needs: &[],
+        code: "\
+// `xs.reserve(n)`: reserve capacity for at least n elements. A negative n stops the program.
+template <class S> inline void reserve(S& s, ll n) {
+    if (__builtin_expect(n < 0, 0)) { cpl::flush(); fprintf(stderr, \"reserve to negative capacity %lld\\n\", n); exit(3); }
+    s.reserve((size_t)n);
+}
+",
+    },
+    Piece {
         name: "have",
         needs: &["fail"],
         code: "\

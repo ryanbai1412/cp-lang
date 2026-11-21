@@ -153,6 +153,7 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(List, "swap", Method, "i: Int, j: Int", "", true, "Exchanges the elements at `i` and `j`.", "xs.swap(0, 1)", ""),
     row!(List, "resize", Method, "n: Int, x: T", "", true, "Makes the length `n`, filling new places with `x`.", "xs.resize(5, 0)", ""),
     row!(List, "truncate", Method, "n: Int", "", true, "Keeps the first `n` elements.", "xs.truncate(2)", ""),
+    row!(List, "reserve", Method, "n: Int", "", true, "Reserves capacity for at least `n` elements. Amortized O(n).", "xs.reserve(5)", ""),
     row!(List, "extend", Method, "ys: List<T>", "", true, "Adds every element of `ys` at the end.", "xs.extend([7, 8])", ""),
     row!(List, "fill", Method, "x: T", "", true, "Sets every element to `x`.", "xs.fill(0)", ""),
     row!(List, "clear", Method, "", "", true, "Removes every element.", "xs.clear()", ""),

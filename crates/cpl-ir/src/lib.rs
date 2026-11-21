@@ -698,6 +698,8 @@ pub enum Mutation {
     Resize,
     /// `xs.truncate(n)` on a list.
     Truncate,
+    /// `xs.reserve(n)` on a list.
+    Reserve,
     /// `xs.extend(other)` on a list.
     Extend,
     /// `shuffle(mut xs)` on a list.

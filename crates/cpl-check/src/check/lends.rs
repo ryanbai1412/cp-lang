@@ -25,7 +25,7 @@ use std::collections::HashSet;
 /// Methods that change their receiver.
 const MUTATORS: &[&str] = &[
     "push", "pop", "sort", "reverse", "clear", "insert", "remove", "swap", "set", "add",
-    "resize", "truncate", "fill",
+    "resize", "truncate", "reserve", "fill",
 ];
 /// Methods that store their arguments in the receiver.
 const STORES: &[&str] = &["push", "insert", "set", "add"];

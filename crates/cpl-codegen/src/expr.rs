@@ -1087,6 +1087,10 @@ impl<'p> Emitter<'p> {
                             this.need("truncate");
                             Code::primary(format!("cpl::truncate({p}, {arg})"))
                         }
+                        Mutation::Reserve => {
+                            this.need("reserve");
+                            Code::primary(format!("cpl::reserve({p}, {arg})"))
+                        }
                         Mutation::Extend => this.lambda("void", |this, out| {
                             let src = this.temp();
                             let r = this.temp();
