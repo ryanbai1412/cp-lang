@@ -401,7 +401,9 @@ rename within a file, document symbols, document highlights, folding
 (blocks, comment runs, imports), semantic tokens (each resolved name as a
 type, fn, method, field, variable or parameter, marking declarations and
 immutable bindings), workspace symbols (fuzzy, over open files and the
-public names of every module they use), formatting, completion (members
+public names of every module they use), Run/Trace/Stress code lenses on
+the first sample (asked for with `initializationOptions.codeLens`, each a
+`cpl` argument list under the client command `cpl.exec`), formatting, completion (members
 after `.`, names in scope, `use std.`), signature help, inlay hints
 (unwritten types, parameter names of literal arguments) and quick fixes
 from diagnostic fixes; a panic becomes an error reply plus an
@@ -416,22 +418,20 @@ Hover shows the index space and its bound for arrays and positions
 total), appends the declaration's `///` doc, which in the stdlib states the
 cost, and definition on a field or method jumps to it, in the stdlib too.
 Gaps against `plan/60`: no computed cost on hover; no proven range of an
-expression; no inlay hints for index spaces or ranges;
- no cost or
-overflow warnings; rename is one file; no refactorings or "fix all"; no
-expected-type ranking or auto-import; run/test/trace exist only in the VS
-Code client; no JetBrains plugin, no fixture tests, fuzzer, DAP or
+expression; no inlay hints for index spaces or ranges; no cost or overflow
+warnings; rename is one file; no refactorings or "fix all"; no
+expected-type ranking or auto-import; no `cpl test` lens; Emacs (eglot draws no lenses) and Helix
+run from a shell command; no JetBrains plugin, no fixture tests, fuzzer, DAP or
 tree-sitter grammar, so Helix has no highlighting and Zed no setup.
 `editors/README.md` documents Neovim (runtime folder: filetype, Vim syntax,
 `cpl lsp` autostart), Emacs (`cp-mode` with eglot and lsp-mode) and Helix
 (`languages.toml`); `editors/smoke.sh` checks their keyword lists against the
-compiler and drives each against the real server (Neovim: diagnostic and
-hover; Emacs: mode, faces, eglot entry; Helix: `--health`), in `--full`.
+compiler and drives each against the real server (Neovim: diagnostic, hover
+and the run lens through `cpl.exec`; Emacs: mode, faces, eglot entry; Helix: `--health`), in `--full`.
 **Bar.** LSP fixture tests per `plan/60` 6.7 for every request; each editor
 integration built and smoke-tested in `scripts/check.sh --full`.
 **Next.** Fixture tests; hover index spaces and ranges; inlay hints for
-index spaces and ranges; semantic tokens; server code lenses and commands
-for run, test and trace; JetBrains plugin; tree-sitter grammar (Helix
+index spaces and ranges; a test lens; JetBrains plugin; tree-sitter grammar (Helix
 highlighting, a Zed extension, Neovim tree-sitter); fuzzer.
 
 ## 11. Docs, site and playground (`plan/90`)

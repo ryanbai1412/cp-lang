@@ -26,6 +26,9 @@ pub struct Server {
     /// The standard library's declarations, for completion.
     std: StdLib,
     initialized: bool,
+    /// The client asked for run, stress and trace lenses
+    /// (`initializationOptions.codeLens`); VS Code draws its own.
+    lenses: bool,
     shutdown: bool,
     exit: Option<i32>,
 }
@@ -43,6 +46,7 @@ impl Server {
             docs: BTreeMap::new(),
             std: StdLib::default(),
             initialized: false,
+            lenses: false,
             shutdown: false,
             exit: None,
         }
@@ -129,6 +133,8 @@ impl Server {
         match method {
             "initialize" => {
                 self.initialized = true;
+                self.lenses =
+                    params.at(&["initializationOptions", "codeLens"]) == &Value::Bool(true);
                 Ok(Reply::result(capabilities()))
             }
             "initialized"
@@ -376,6 +382,40 @@ impl Server {
                         range_json(def.span, &analysis.text, &analysis.lines),
                     ),
                 ])))
+            }
+            "textDocument/codeLens" => {
+                let uri = uri_of(params)?;
+                let text = self.docs.get(uri).map(String::as_str).unwrap_or("");
+                let lenses = match (self.lenses, path_of_uri(uri)) {
+                    (true, Some(path)) => code_lenses(&path, text),
+                    _ => Vec::new(),
+                };
+                let items = lenses
+                    .into_iter()
+                    .map(|(title, args)| {
+                        obj([
+                            (
+                                "range",
+                                obj([
+                                    ("start", position_json(LineCol { line: 0, col: 0 })),
+                                    ("end", position_json(LineCol { line: 0, col: 0 })),
+                                ]),
+                            ),
+                            (
+                                "command",
+                                obj([
+                                    ("title", title.into()),
+                                    ("command", "cpl.exec".into()),
+                                    (
+                                        "arguments",
+                                        Value::Array(args.into_iter().map(Value::from).collect()),
+                                    ),
+                                ]),
+                            ),
+                        ])
+                    })
+                    .collect();
+                Ok(Reply::result(Value::Array(items)))
             }
             "workspace/symbol" => {
                 let query = params.get("query").as_str().unwrap_or("").to_lowercase();
@@ -650,6 +690,7 @@ fn capabilities() -> Value {
                 ("renameProvider", obj([("prepareProvider", true.into())])),
                 ("documentSymbolProvider", true.into()),
                 ("workspaceSymbolProvider", true.into()),
+                ("codeLensProvider", obj([("resolveProvider", false.into())])),
                 ("documentHighlightProvider", true.into()),
                 ("foldingRangeProvider", true.into()),
                 (
@@ -941,6 +982,86 @@ fn diagnostic_json(diag: &Diagnostic, uri: &str, text: &str, lines: &LineIndex) 
         members.push(("relatedInformation".to_string(), related.into()));
     }
     Value::Object(members)
+}
+
+/// The file a `file://` URI names, with `%XX` escapes decoded.
+fn path_of_uri(uri: &str) -> Option<String> {
+    let rest = uri.strip_prefix("file://")?.as_bytes();
+    let mut out = Vec::with_capacity(rest.len());
+    let mut i = 0;
+    while i < rest.len() {
+        let hex = rest
+            .get(i + 1..i + 3)
+            .and_then(|h| std::str::from_utf8(h).ok())
+            .and_then(|h| u8::from_str_radix(h, 16).ok());
+        match (rest[i], hex) {
+            (b'%', Some(byte)) => {
+                out.push(byte);
+                i += 3;
+            }
+            (byte, _) => {
+                out.push(byte);
+                i += 1;
+            }
+        }
+    }
+    String::from_utf8(out).ok()
+}
+
+/// The run, stress and trace lenses of the file at `path`, each a title and
+/// the `cpl` arguments it runs: the same samples VS Code finds (`i1` beside
+/// the file, `<stem>.tests/*.in`, `<stem>.samples/*.in`), the first of them
+/// run and traced, and stress when the file has a brute, checker or interactor.
+fn code_lenses(path: &str, text: &str) -> Vec<(String, Vec<String>)> {
+    let file = std::path::Path::new(path);
+    let (Some(folder), Some(stem)) = (file.parent(), file.file_stem().and_then(|s| s.to_str()))
+    else {
+        return Vec::new();
+    };
+    let names = |dir: &std::path::Path| -> Vec<String> {
+        let mut names: Vec<String> = std::fs::read_dir(dir)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .filter(|e| e.file_type().is_ok_and(|t| t.is_file()))
+            .filter_map(|e| e.file_name().into_string().ok())
+            .collect();
+        names.sort_by_key(|n| {
+            let digits: String = n.chars().filter(char::is_ascii_digit).collect();
+            (digits.parse::<u64>().unwrap_or(u64::MAX), n.clone())
+        });
+        names
+    };
+    let mut samples: Vec<(String, String)> = names(folder)
+        .into_iter()
+        .filter(|n| n.len() > 1 && n.starts_with('i') && n[1..].bytes().all(|b| b.is_ascii_digit()))
+        .map(|n| (n.clone(), folder.join(&n).display().to_string()))
+        .collect();
+    for dir in [format!("{stem}.tests"), format!("{stem}.samples")] {
+        let dir = folder.join(dir);
+        for n in names(&dir) {
+            if let Some(base) = n.strip_suffix(".in") {
+                samples.push((base.to_string(), dir.join(&n).display().to_string()));
+            }
+        }
+    }
+    let mut lenses = Vec::new();
+    let mut with_input = |title: &str, mut args: Vec<String>| match samples.first() {
+        Some((label, input)) => {
+            args.insert(2, input.clone());
+            lenses.push((format!("{title} on {label}"), args));
+        }
+        None => lenses.push((title.to_string(), args)),
+    };
+    with_input("Run", vec!["run".into(), path.into()]);
+    with_input("Trace", vec!["run".into(), path.into(), "--trace".into()]);
+    if ["@brute", "@checker", "@interactor"]
+        .iter()
+        .any(|d| text.contains(d))
+    {
+        lenses.push(("Stress".into(), vec!["stress".into(), path.into()]));
+    }
+    lenses
 }
 
 fn uri_of_path(path: &str) -> String {

@@ -9,7 +9,7 @@ formatting, quick fixes and inlay hints. Put `cpl` on the `PATH`
 | Editor | Where | Highlighting | Run, test, trace |
 |---|---|---|---|
 | VS Code | `editors/vscode/` | TextMate grammar | lenses, stress, trace view |
-| Neovim and Vim | `editors/neovim/` | Vim syntax | `:!cpl run %` |
+| Neovim and Vim | `editors/neovim/` | Vim syntax | Run, Trace and Stress lenses |
 | Emacs | `editors/emacs/` | font-lock | `M-x compile` with `cpl run` |
 | Helix | `editors/helix/` | none yet (needs a tree-sitter grammar) | `:sh cpl run %` |
 | Zed | not yet | needs a tree-sitter grammar | |
@@ -21,7 +21,9 @@ lists against the compiler, then Neovim, Emacs and Helix when installed);
 ## Neovim (0.10 or later)
 
 Add the folder to the runtime path; it sets the filetype, the highlighting and
-the comment string, and starts `cpl lsp` for every `.cp` buffer:
+the comment string, and starts `cpl lsp` for every `.cp` buffer with the
+server's Run, Trace and Stress lenses (`<cmd>lua vim.lsp.codelens.run()<cr>`
+runs the one under the cursor in a terminal split):
 
 ```lua
 vim.opt.rtp:append('/path/to/cp-lang/editors/neovim')

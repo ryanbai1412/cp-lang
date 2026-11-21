@@ -1712,6 +1712,14 @@ names, so its tests and helpers don't crowd the picker. Matching is an in-order 
 editors' pickers expect. Reverse: walk the workspace folders from `initialize` instead of `docs`
 in the `workspace/symbol` arm of `crates/cpl-lsp/src/server.rs`.
 
+29.6. **The server's run lenses are `cpl` argument lists, opted into by the client.** A lens's command
+is `cpl.exec` with the arguments to pass to `cpl` (`run <file> <input> --trace`), so a client needs one
+generic handler (Neovim: a terminal split) rather than a command per action, and the server stays
+the one place that finds samples and decides which lenses a file gets. It answers only when
+`initializationOptions.codeLens` is true, because VS Code draws richer lenses of its own (results
+inline, the trace panel) and would show both. Reverse: drop `code_lenses`, the `codeLens` arm and the
+capability in `crates/cpl-lsp/src/server.rs`, and the handler in `editors/neovim/plugin/cplang.lua`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **30.1 A broken-ports benchmark scores recovery.** `crates/cpl-cli/tests/recovery.rs` applies six
