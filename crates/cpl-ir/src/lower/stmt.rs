@@ -512,6 +512,93 @@ impl<'a> Lowerer<'a> {
                 init,
                 ..
             } => {
+                // §127: `let f = (n: Int) -> Int => ...` that refers to `f`
+                // recursively lowers like a local `fn` (self-passing generic
+                // lambda in C++, no `std::function`).
+                if !*mutable {
+                    if let (
+                        ast::PatternKind::Name(vname),
+                        Some(ast::Expr {
+                            kind:
+                                ast::ExprKind::Lambda {
+                                    params,
+                                    param_tys,
+                                    ret_ty,
+                                    body,
+                                },
+                            span: lspan,
+                        }),
+                    ) = (&pat.kind, init)
+                    {
+                        if expr_mentions_name(body, vname)
+                            && params
+                                .iter()
+                                .all(|p| matches!(p.kind, ast::PatternKind::Name(_)))
+                        {
+                            let fn_ty_parts = match ty {
+                                Some(ast::Type {
+                                    kind: ast::TypeKind::Fn { params: fparams, ret: fret },
+                                    ..
+                                }) => Some((fparams.as_slice(), Some((**fret).clone()))),
+                                _ => None,
+                            };
+                            let synth_params: Vec<ast::Param> = params
+                                .iter()
+                                .enumerate()
+                                .map(|(i, p)| {
+                                    let pname = match &p.kind {
+                                        ast::PatternKind::Name(s) => s.clone(),
+                                        _ => unreachable!(),
+                                    };
+                                    let pty = param_tys
+                                        .get(i)
+                                        .and_then(|t| t.clone())
+                                        .or_else(|| {
+                                            fn_ty_parts
+                                                .as_ref()
+                                                .and_then(|(fps, _)| fps.get(i).cloned())
+                                        });
+                                    ast::Param {
+                                        label: None,
+                                        name: ast::Name {
+                                            text: pname,
+                                            span: p.span,
+                                        },
+                                        ty: pty,
+                                        mutable: false,
+                                        default: None,
+                                        named_only: false,
+                                        variadic: false,
+                                        lazy: false,
+                                        span: p.span,
+                                    }
+                                })
+                                .collect();
+                            let synth_ret = ret_ty
+                                .clone()
+                                .or_else(|| fn_ty_parts.and_then(|(_, r)| r));
+                            let synth_body = match &body.kind {
+                                ast::ExprKind::Block(b) => ast::FnBody::Block(b.clone()),
+                                _ => ast::FnBody::Expr((**body).clone()),
+                            };
+                            let synth = ast::FnDecl {
+                                name: ast::Name {
+                                    text: vname.clone(),
+                                    span: pat.span,
+                                },
+                                generics: Vec::new(),
+                                bounds: Vec::new(),
+                                params: synth_params,
+                                ret: synth_ret,
+                                lends: None,
+                                body: synth_body,
+                                sig_span: *lspan,
+                            };
+                            self.lower_local_fn(&synth, false, None, out);
+                            return;
+                        }
+                    }
+                }
                 // `let (n, c, m): (1..=100, 1..=100, c..=n * c) = read()`:
                 // read and bind each element in order so later element types
                 // (e.g. dependent ranges `c..=n * c`) can see earlier bindings.
@@ -2082,6 +2169,7 @@ impl<'a> Lowerer<'a> {
                         params,
                         param_tys: ann_tys,
                         body,
+                        ..
                     },
                     span: lspan,
                 }),
@@ -4935,6 +5023,27 @@ pub(super) fn settled(e: &Expr) -> bool {
         }
         _ => false,
     }
+}
+
+fn expr_mentions_name(e: &ast::Expr, target: &str) -> bool {
+    struct Find<'a> {
+        target: &'a str,
+        found: bool,
+    }
+    impl cpl_syntax::visit::Visitor for Find<'_> {
+        fn expr(&mut self, expr: &ast::Expr) {
+            if !self.found {
+                if let ast::ExprKind::Name(n) = &expr.kind {
+                    if n == self.target {
+                        self.found = true;
+                    }
+                }
+            }
+        }
+    }
+    let mut f = Find { target, found: false };
+    cpl_syntax::visit::walk_expr(e, &mut f);
+    f.found
 }
 
 fn leaves(stmt: &ast::Stmt) -> bool {

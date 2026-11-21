@@ -522,7 +522,95 @@ impl<'a> Checker<'a> {
             } => {
                 let keyword = if *mutable { "var" } else { "let" };
                 let declared = ty.as_ref().map(|ty| self.resolve_type(ty));
+                // §127: `let f = (n: Int) -> Int => ...` may refer to `f` recursively.
+                // `var f = ...` cannot refer to itself recursively.
+                let mut rec_scope = false;
+                if let (
+                    PatternKind::Name(vname),
+                    Some(Expr {
+                        kind:
+                            ExprKind::Lambda {
+                                params,
+                                param_tys,
+                                ret_ty,
+                                body,
+                            },
+                        ..
+                    }),
+                ) = (&pat.kind, init)
+                {
+                    if *mutable {
+                        struct Mentions<'a> {
+                            target: &'a str,
+                            found: Option<Span>,
+                        }
+                        impl cpl_syntax::visit::Visitor for Mentions<'_> {
+                            fn expr(&mut self, expr: &Expr) {
+                                if self.found.is_none() {
+                                    if let ExprKind::Name(n) = &expr.kind {
+                                        if n == self.target {
+                                            self.found = Some(expr.span);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        let mut m = Mentions {
+                            target: vname,
+                            found: None,
+                        };
+                        cpl_syntax::visit::walk_expr(body, &mut m);
+                        if let Some(at) = m.found {
+                            self.error(
+                                codes::UNRESOLVED_NAME,
+                                at,
+                                format!(
+                                    "`var {vname}` cannot refer to itself recursively; bind it with `let`"
+                                ),
+                            );
+                        }
+                    } else {
+                        let rec_ty = if let Some(decl @ Ty::Fn { .. }) = &declared {
+                            decl.clone()
+                        } else {
+                            let sig_params = params
+                                .iter()
+                                .enumerate()
+                                .map(|(i, _)| {
+                                    let pty = param_tys
+                                        .get(i)
+                                        .and_then(|t| t.as_ref())
+                                        .map(|t| self.resolve_type(t))
+                                        .unwrap_or(Ty::Unknown);
+                                    crate::ty::Param {
+                                        name: String::new(),
+                                        ty: pty,
+                                        mutable: false,
+                                        has_default: false,
+                                        named_only: false,
+                                        variadic: false,
+                                        lazy: false,
+                                    }
+                                })
+                                .collect();
+                            let rty = ret_ty
+                                .as_ref()
+                                .map(|t| self.resolve_type(t))
+                                .unwrap_or(Ty::Unknown);
+                            Ty::Fn {
+                                params: sig_params,
+                                ret: Box::new(rty),
+                            }
+                        };
+                        self.push_scope();
+                        rec_scope = true;
+                        self.bind(pat, &rec_ty, false, "let");
+                    }
+                }
                 let mut init_ty = init.as_ref().map(|init| self.infer(init));
+                if rec_scope {
+                    self.pop_scope();
+                }
                 if let (Some(declared), Some(init)) = (&declared, init) {
                     self.readable(declared, init);
                 }

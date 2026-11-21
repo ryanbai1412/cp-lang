@@ -419,6 +419,7 @@ impl<'a> Lowerer<'a> {
             ast::ExprKind::Lambda {
                 params,
                 param_tys,
+                ret_ty: _,
                 body,
             } => self.lower_lambda(params, param_tys, body, inner_hint, span),
             ast::ExprKind::Keep { target, max, value } => self.keep(target, *max, value, span),

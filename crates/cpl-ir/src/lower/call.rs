@@ -2494,6 +2494,7 @@ impl<'a> Lowerer<'a> {
                             span: at,
                         }],
                         param_tys: Vec::new(),
+                        ret_ty: None,
                         body: Box::new(ast::Expr {
                             kind: ast::ExprKind::Call {
                                 callee: Box::new(mk_name(fn_name)),
@@ -3048,6 +3049,7 @@ impl<'a> Lowerer<'a> {
                             },
                         ],
                         param_tys: Vec::new(),
+                        ret_ty: None,
                         body: Box::new(ast::Expr {
                             kind: ast::ExprKind::Call {
                                 callee: Box::new(mk_name(fn_name)),
@@ -3353,6 +3355,7 @@ impl<'a> Lowerer<'a> {
         let by = mk(ast::ExprKind::Lambda {
             params: vec![ast::Pattern { kind: ast::PatternKind::Name(var.clone()), span: at }],
             param_tys: Vec::new(),
+                        ret_ty: None,
             body: Box::new(key),
         });
         let call = mk(ast::ExprKind::Call {
@@ -7291,6 +7294,7 @@ impl<'a> Lowerer<'a> {
                             span: at,
                         }],
                         param_tys: vec![None],
+                        ret_ty: None,
                         body: Box::new(idx_expr),
                     },
                     span: at,
@@ -7338,6 +7342,7 @@ impl<'a> Lowerer<'a> {
                             span: at,
                         }],
                         param_tys: Vec::new(),
+                        ret_ty: None,
                         body: Box::new(call),
                     },
                     span: at,

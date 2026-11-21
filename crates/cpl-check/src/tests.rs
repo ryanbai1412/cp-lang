@@ -3082,3 +3082,15 @@ fn mutable_slice_views_lend_and_reject_aliasing() {
         ["E0602"]
     );
 }
+
+#[test]
+fn recursive_let_lambda_checks_and_var_self_ref_is_error() {
+    assert_eq!(
+        codes("let fact = (n: Int) -> Int => if n == 0: 1 else: n * fact(n - 1)\nprint(fact(5))\n"),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes("var fact = (n: Int) -> Int => if n == 0: 1 else: n * fact(n - 1)\nprint(fact(5))\n"),
+        ["E0201"]
+    );
+}

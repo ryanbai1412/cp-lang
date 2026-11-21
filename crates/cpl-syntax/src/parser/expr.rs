@@ -19,14 +19,15 @@ impl<'a> Parser<'a> {
 
     pub(super) fn expr(&mut self) -> Expr {
         let start = self.start();
-        // Lambdas: `x => x + 1`, `(a, b) => a + b`.
+        // Lambdas: `x => x + 1`, `(a, b) => a + b`, `(n: Int) -> Int => ...`.
         let lambda = match self.peek() {
             T::Ident => self.peek_n(1) == T::FatArrow,
             T::LParen => {
-                self.tokens
-                    .get(after_group(self.tokens, self.pos))
-                    .map(|t| t.kind)
-                    == Some(T::FatArrow)
+                let after = after_group(self.tokens, self.pos);
+                matches!(
+                    self.tokens.get(after).map(|t| t.kind),
+                    Some(T::FatArrow) | Some(T::Arrow)
+                )
             }
             _ => false,
         };
@@ -43,12 +44,20 @@ impl<'a> Parser<'a> {
             } else {
                 (vec![self.pattern()], Vec::new())
             };
-            self.bump();
+            let ret_ty = self.eat(T::Arrow).then(|| self.ty());
+            if !self.eat(T::FatArrow) {
+                self.error_expected(
+                    codes::EXPECTED_TOKEN,
+                    "`=>` to start the lambda body",
+                    Some("=>"),
+                );
+            }
             let body = Box::new(self.lambda_body());
             return Expr {
                 kind: ExprKind::Lambda {
                     params,
                     param_tys,
+                    ret_ty,
                     body,
                 },
                 span: self.span_from(start),
@@ -563,6 +572,7 @@ impl<'a> Parser<'a> {
             kind: ExprKind::Lambda {
                 params,
                 param_tys: Vec::new(),
+                ret_ty: None,
                 body,
             },
             span,
@@ -640,6 +650,7 @@ impl<'a> Parser<'a> {
             kind: ExprKind::Lambda {
                 params,
                 param_tys: Vec::new(),
+                ret_ty: None,
                 body,
             },
             span,

@@ -327,6 +327,7 @@ impl<'a> Checker<'a> {
             ExprKind::Lambda {
                 params,
                 param_tys,
+                ret_ty,
                 body,
             } => {
                 let given = match self.lambda_params.iter().position(|(at, _)| *at == expr.span) {
@@ -354,17 +355,35 @@ impl<'a> Checker<'a> {
                     });
                 }
                 // A lambda's `return` and trailing value belong to the lambda.
+                let declared_ret = ret_ty.as_ref().map(|t| self.resolve_type(t));
                 let lam_depth = self.scopes.len();
-                self.fns.push((String::new(), Ty::Unknown, false, lam_depth));
+                self.fns.push((
+                    String::new(),
+                    declared_ret.clone().unwrap_or(Ty::Unknown),
+                    false,
+                    lam_depth,
+                ));
                 self.branch += 1;
                 let ret = self.infer(body);
                 self.branch -= 1;
                 self.fns.pop();
                 self.pop_scope();
-                if any_typed {
+                let final_ret = if let Some(dret) = declared_ret {
+                    if !matches!(ret, Ty::Unknown | Ty::Error) && !self.fits(&ret, &dret) {
+                        self.error(
+                            codes::TYPE_MISMATCH,
+                            body.span,
+                            format!("expected `{dret}`, found `{ret}`"),
+                        );
+                    }
+                    dret
+                } else {
+                    ret
+                };
+                if any_typed || ret_ty.is_some() {
                     Ty::Fn {
                         params: sig_params,
-                        ret: Box::new(ret),
+                        ret: Box::new(final_ret),
                     }
                 } else {
                     Ty::Unknown

@@ -379,6 +379,7 @@ pub enum ExprKind {
     Lambda {
         params: Vec<Pattern>,
         param_tys: Vec<Option<Type>>,
+        ret_ty: Option<Type>,
         body: Box<Expr>,
     },
     /// `{ let k = key(a); (k.x, -k.y) }`.
