@@ -1,13 +1,14 @@
-use std.rand.{Rng}
-use std.seq.{run_ranges}
-use std.tree.{Rooted}
-
+// Codeforces 2135 F: To the Infinity.
 // f_u = x ^ (the product of f over the right children down u's left spine), so a node is
 // the multiset of those right children, compared largest first. A value only holds values
 // of lower generation (gen = max(gen l, gen r + 1)) and beats every value of a lower one,
 // so ranking generation by generation gives each distinct value a key in increasing order.
 // A multiset is a persistent segment tree over keys with random-weighted hashes; two
 // differ first at the largest key whose subtrees hash apart.
+
+use std.rand.{Rng}
+use std.seq.{run_ranges}
+use std.tree.{Rooted}
 
 type Ix = 0..=10_000_000
 
