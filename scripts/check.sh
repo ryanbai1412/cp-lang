@@ -10,6 +10,9 @@
 #         2. cargo clippy --workspace --all-targets -- -D warnings
 #         3. the workspace tests (cargo nextest when installed, else cargo
 #            test), without the tests listed under 8 and 9
+#            (--fast compiles C++ through scripts/cxx-cache.py, which reuses
+#            a binary built from the same source, flags and g++;
+#            CHECK_NO_CXX_CACHE=1 turns it off)
 #         4. cpl test stdlib examples/local-lib, run beside 3
 #         5. cpl fmt --check stdlib (the standard library stays formatted)
 #            and stdlib/prelude.cp holds at most 80 names
@@ -54,6 +57,20 @@ for arg in "$@"; do
 done
 [ "$mode" = full ] && use_cache=0
 cache_dir="${CARGO_TARGET_DIR:-target}/check-cache"
+
+# The fast gate compiles the same emitted C++ on every run (profile, judges,
+# trap parity), so `g++` goes through scripts/cxx-cache.py, which reuses a
+# binary built from the same bytes, flags and compiler. --full and
+# CHECK_NO_CXX_CACHE=1 compile everything.
+if [ "$mode" = fast ] && [ "${CHECK_NO_CXX_CACHE:-0}" != "1" ] && command -v g++ >/dev/null; then
+    export CPL_CXX_SHIM_DIR="$root/${CARGO_TARGET_DIR:-target}/cxx-shim"
+    export CPL_CXX_CACHE_DIR="$root/${CARGO_TARGET_DIR:-target}/cxx-cache"
+    mkdir -p "$CPL_CXX_SHIM_DIR" "$CPL_CXX_CACHE_DIR"
+    ln -sf "$root/scripts/cxx-cache.py" "$CPL_CXX_SHIM_DIR/g++"
+    export PATH="$CPL_CXX_SHIM_DIR:$PATH"
+    # Drop binaries no run has used for a week.
+    find "$CPL_CXX_CACHE_DIR" -type f -mtime +7 -delete 2>/dev/null || true
+fi
 
 # Each step's wall time, so a slow gate shows where its time goes.
 step_name="setup"
@@ -154,6 +171,7 @@ scoreboard_inputs=(
     scripts/scoreboard.py scripts/friction_lint.py scripts/dream-gaps.py
     scripts/writable-from-docs.py scripts/test_scoreboard.py scripts/test_dream_gaps.py
     scripts/test_review_check.py scripts/check_cache.py scripts/test_check_cache.py
+    scripts/cxx-cache.py scripts/test_cxx_cache.py
 )
 site_inputs=(Cargo.toml Cargo.lock crates stdlib site docs proto/ports/ecnerwala design/sketches/ioi2025)
 
@@ -276,7 +294,7 @@ if cache_hit scoreboard_fast "${scoreboard_inputs[@]}"; then
     scoreboard_cached=1
 else
     (
-        python3 -m unittest scripts/test_scoreboard.py scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py >/dev/null \
+        python3 -m unittest scripts/test_scoreboard.py scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py >/dev/null \
             && python3 scripts/scoreboard.py --fast --check --quiet --cpl "$cpl"
     ) >"$lib_logs/scoreboard.log" 2>&1 &
     scoreboard_pid=$!
