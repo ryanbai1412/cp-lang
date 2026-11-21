@@ -1287,3 +1287,39 @@ for k in 1..4:
 ";
     assert_eq!(taste_codes(clean), Vec::<&str>::new());
 }
+
+#[test]
+fn is_in_cond_header_lint_warns_and_fixes_to_let() {
+    let src = "\
+let a: ?Int = some(3)
+let b: ?Int = some(5)
+let ok = a is v and v > 0
+if a is x and x > 1:
+    print(x)
+elif b is y:
+    print(y)
+var cur: ?Int = some(2)
+while cur is n and n > 0:
+    print(n)
+    cur = none
+print(ok)
+";
+    assert_eq!(codes(src), vec!["L0207", "L0207", "L0207"]);
+    assert_eq!(
+        fixed(src),
+        "\
+let a: ?Int = some(3)
+let b: ?Int = some(5)
+let ok = a is v and v > 0
+if let x = a, x > 1:
+    print(x)
+elif let y = b:
+    print(y)
+var cur: ?Int = some(2)
+while let n = cur, n > 0:
+    print(n)
+    cur = none
+print(ok)
+"
+    );
+}

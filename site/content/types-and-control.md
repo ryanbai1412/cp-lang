@@ -154,7 +154,7 @@ let sign = if x >= 0: 1 else: -1
 
 ### Pattern matching (`match`) and `if let` / `while let`
 
-`match` is exhaustive and works as both a statement and an expression. Chain multiple optional bindings and boolean guards in `if let` and `while let`:
+`match` is exhaustive and works as both a statement and an expression. In `if`, `elif`, and `while` headers, bind with `if let p = x` / `while let p = x` and chain extra bindings or boolean guards with `,` (`x is pat` stays for value position where a `Bool` is wanted):
 
 ```cp CP Lang
 fn first() -> ?Int: 2

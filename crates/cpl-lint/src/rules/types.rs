@@ -3,11 +3,11 @@
 
 use crate::walk::{unparen, Visitor};
 use crate::{
-    File, Finding, DOMAIN_KEYED_MAP, GETTER_PARENS, POSITION_ARITHMETIC, POW_METHOD,
-    TURBOFISH_TYPE_ARGS,
+    File, Finding, DOMAIN_KEYED_MAP, GETTER_PARENS, IS_IN_COND_HEADER, POSITION_ARITHMETIC,
+    POW_METHOD, TURBOFISH_TYPE_ARGS,
 };
 use cpl_diag::{Diagnostic, Span};
-use cpl_syntax::ast::{BinOp, Expr, ExprKind, PatternKind, Stmt, StmtKind, Type, TypeKind};
+use cpl_syntax::ast::{BinOp, Cond, Expr, ExprKind, PatternKind, Stmt, StmtKind, Type, TypeKind};
 use std::collections::HashSet;
 
 /// The names of the file's domains, wherever they are declared.
@@ -135,6 +135,81 @@ fn ordered(file: &File) -> HashSet<String> {
     found.0
 }
 
+impl Types<'_> {
+    fn cond_end(cond: &Cond) -> u32 {
+        match cond {
+            Cond::Expr(e) | Cond::Const(e) => e.span.end,
+            Cond::Guard { and, .. } => Self::cond_end(and),
+            Cond::Let { pat, value, and } => match and {
+                Some(next) => Self::cond_end(next),
+                None => pat.span.end.max(value.span.end),
+            },
+        }
+    }
+
+    fn format_let_chain(&self, cond: &Cond, first: bool, out: &mut String) {
+        match cond {
+            Cond::Let { pat, value, and } => {
+                let pat_text = pat.span.shift(self.base).text(self.src);
+                let val_text = value.span.shift(self.base).text(self.src);
+                if first {
+                    out.push_str(&format!("let {pat_text} = {val_text}"));
+                } else {
+                    out.push_str(&format!(", {pat_text} = {val_text}"));
+                }
+                if let Some(next) = and {
+                    self.format_let_chain(next, false, out);
+                }
+            }
+            Cond::Guard { test, and } => {
+                let text = test.span.shift(self.base).text(self.src);
+                if !first {
+                    out.push_str(", ");
+                }
+                out.push_str(text);
+                self.format_let_chain(and, false, out);
+            }
+            Cond::Expr(e) | Cond::Const(e) => {
+                let text = e.span.shift(self.base).text(self.src);
+                if !first {
+                    out.push_str(", ");
+                }
+                out.push_str(text);
+            }
+        }
+    }
+
+    fn check_cond_is(&mut self, cond: &Cond, kw: &str) {
+        match cond {
+            Cond::Guard { and, .. } => self.check_cond_is(and, kw),
+            Cond::Let { pat, value, and } => {
+                if value.span.end < pat.span.start {
+                    let span = Span::new(value.span.start, Self::cond_end(cond)).shift(self.base);
+                    let mut replacement = String::new();
+                    self.format_let_chain(cond, true, &mut replacement);
+                    let mut diag = Diagnostic::warning(
+                        IS_IN_COND_HEADER.code,
+                        span,
+                        format!("`{kw}` headers bind with `let`, not `is`"),
+                    )
+                    .with_help(format!("write `{kw} {replacement}`"));
+                    diag.fixes.push(cpl_diag::Fix {
+                        title: format!("rewrite to `{replacement}`"),
+                        edits: vec![(span, replacement)],
+                    });
+                    self.findings.push(Finding {
+                        lint: &IS_IN_COND_HEADER,
+                        diag,
+                    });
+                } else if let Some(next) = and {
+                    self.check_cond_is(next, kw);
+                }
+            }
+            Cond::Expr(_) | Cond::Const(_) => {}
+        }
+    }
+}
+
 impl Visitor for Types<'_> {
     fn stmt(&mut self, stmt: &Stmt) {
         // `var free: Set<V> = Set<V>()` with a `free.first` below.
@@ -145,6 +220,9 @@ impl Visitor for Types<'_> {
                     self.inner.insert(span.shift(self.base).start);
                 }
             }
+        }
+        if let StmtKind::While { cond, .. } = &stmt.kind {
+            self.check_cond_is(cond, "while");
         }
     }
 
@@ -164,6 +242,19 @@ impl Visitor for Types<'_> {
 
     fn expr(&mut self, expr: &Expr) {
         match &expr.kind {
+            // `if x is p:` / `elif x is p:` headers bind with `let`, not `is`.
+            // Skip desugared value-position `x is p` expressions (whose span does
+            // not begin with the `if` keyword).
+            ExprKind::If { branches, .. } => {
+                let text = expr.span.shift(self.base).text(self.src);
+                if text.starts_with("if")
+                    && !text[2..].starts_with(|c: char| c.is_ascii_alphanumeric() || c == '_')
+                {
+                    for (i, (cond, _)) in branches.iter().enumerate() {
+                        self.check_cond_is(cond, if i == 0 { "if" } else { "elif" });
+                    }
+                }
+            }
             // `Map<V, Int>()` in an expression, and `f::<T>(...)` turbofish.
             ExprKind::Generic { base, args } => {
                 if let ExprKind::Name(name) = &base.kind {

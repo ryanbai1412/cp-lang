@@ -18,18 +18,18 @@ fn recheck(c: I):
 fn insert(i: I):
     total.add(i, a[i])
     let before = tops.last_lt(i)
-    if before is c and a[c] >= a[i]:
+    if let c = before, a[c] >= a[i]:
         recheck(c)
         return
     for q in tops.drain(after: i, while: q => a[q] <= a[i]): eaters[q] = false
     tops.add(i)
-    if before is c: recheck(c)
+    if let c = before: recheck(c)
     recheck(i)
 
 fn forfeits() -> Int:
     var lost = tops.len - 1
     var from = I.first
-    while eaters.first_ge(from) is c:
+    while let c = eaters.first_ge(from):
         let stop = fixpoint(tops.first_gt(c)?.l ?? I.end,
             s => tops.first(q => a[q] > total.sum(c.l..s))?.l ?? I.end)
         lost -= tops.count(c..stop) - 1

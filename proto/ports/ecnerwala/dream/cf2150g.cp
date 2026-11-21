@@ -70,7 +70,7 @@ for c in a:
             Seeking => first_hits_from(s)
             Split(base) => ans += completions(s, x - base.zeros - s.zeros, y - base.ones - s.ones)
     walk = walk.push(c)
-    if phase is Seeking and walk.lnds >= k:
+    if let Seeking = phase, walk.lnds >= k:
         phase = Split(base: walk)
         walk = Walk(0, 0, 0)
 

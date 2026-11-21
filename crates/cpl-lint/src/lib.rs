@@ -154,6 +154,16 @@ pub const GETTER_PARENS: Lint = Lint {
     trigger: "let xs = [1, 2, 3]\nprint(xs.len())\n",
     fix: "let xs = [1, 2, 3]\nprint(xs.len)\n",
 };
+pub const IS_IN_COND_HEADER: Lint = Lint {
+    code: Code("L0207"),
+    name: "is_in_cond_header",
+    default: Level::Warn,
+    title: "Pattern test `x is p` in `if`/`elif`/`while` header",
+    summary: "`if`/`elif`/`while` headers bind with `let p = x`, not `x is p`",
+    explanation: "In `if`, `elif`, and `while` headers, bind with `if let p = x` / `while let p = x` and chain extra guards with `, cond`. Keep `x is pat` for value position where a `Bool` is wanted. `cpl fix` rewrites `if`/`elif`/`while` `is` headers to `let`.",
+    trigger: "let x: ?Int = some(3)\nif x is v and v > 0:\n    print(v)\n",
+    fix: "let x: ?Int = some(3)\nif let v = x, v > 0:\n    print(v)\n",
+};
 pub const FLOAT_EQUALITY: Lint = Lint {
     code: Code("L0301"),
     name: "float_equality",
@@ -406,6 +416,7 @@ pub const LINTS: &[Lint] = &[
     TURBOFISH_TYPE_ARGS,
     POW_METHOD,
     GETTER_PARENS,
+    IS_IN_COND_HEADER,
     FLOAT_EQUALITY,
     DOMAIN_KEYED_MAP,
     MEMO_KEY_SPACE,
