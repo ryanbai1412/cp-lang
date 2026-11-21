@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a domain parameter, `fn f<domain D>` (not in the design)
+  --> planned_a_domain_parameter_fn_f_domain_d.cp:1:6
+  |
+1 | fn f<domain D>(x: Int) -> Int = x
+  |      ^^^^^^
+  = help: take it as a type parameter: `fn f<D>`
+
+planned_a_domain_parameter_fn_f_domain_d.cp: 1 error

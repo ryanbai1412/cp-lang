@@ -638,6 +638,25 @@ impl<'a> Parser<'a> {
             "`=` and the domain's range, as in `domain V = 1..=n`",
         );
         let def = self.expr();
+        let list_start = self.start();
+        while self.at(T::Comma) && self.peek_n(1) == T::Ident && self.peek_n(2) == T::Eq {
+            self.bump();
+            let start = self.start();
+            let name = self.expect_name("a domain name");
+            self.bump();
+            let def = self.expr();
+            let span = self.span_from(start);
+            self.extra_stmts.push(Stmt {
+                kind: StmtKind::Domain { name, def },
+                span,
+                decorators: Vec::new(),
+                public: false,
+            });
+        }
+        if !self.extra_stmts.is_empty() {
+            let span = self.span_from(list_start);
+            self.planned(span, &crate::planned::DOMAIN_LIST);
+        }
         StmtKind::Domain { name, def }
     }
 

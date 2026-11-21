@@ -70,6 +70,48 @@ print(n)
 ",
 };
 
+pub const CONTINUED_LINE: Planned = Planned {
+    feature: "a line continued by an indented line that starts with an operator",
+    see: Some("design/spec/10-syntax.md §10.1"),
+    now: "wrap the expression in parentheses, inside which it can span lines",
+    example: "let a = 1\n    + 2\nprint(a)\n",
+};
+
+pub const VALUE_BLOCK: Planned = Planned {
+    feature: "a value on the indented lines after `=`",
+    see: None,
+    now: "start the value on the `=` line, as in `let x = if c:`",
+    example: "let a =\n    1\nprint(a)\n",
+};
+
+pub const PAREN_SEQUENCE: Planned = Planned {
+    feature: "statements in parentheses, `(a; b)`",
+    see: None,
+    now: "put the statements in a block, or on their own lines under an `if`",
+    example: "let a = 1\nprint((print(a); a))\n",
+};
+
+pub const START_EXCLUSIVE_RANGE: Planned = Planned {
+    feature: "a range that leaves out its start, `lo <.. hi`",
+    see: None,
+    now: "start it one later: `lo + 1 .. hi`",
+    example: "for i in 0 <.. 3:\n    print(i)\n",
+};
+
+pub const DOMAIN_PARAM: Planned = Planned {
+    feature: "a domain parameter, `fn f<domain D>`",
+    see: None,
+    now: "take it as a type parameter: `fn f<D>`",
+    example: "fn f<domain D>(x: Int) -> Int = x\nprint(f(1))\n",
+};
+
+pub const DOMAIN_LIST: Planned = Planned {
+    feature: "several domains on one line, `domain A = …, B = …`",
+    see: None,
+    now: "declare each domain on its own `domain` line",
+    example: "domain A = 0..3, B = 0..4\nprint(1)\n",
+};
+
 pub const STR_OF: Planned = Planned {
     feature: "a string type over given bytes, `Str of \"01?\"`",
     see: None,
@@ -129,6 +171,43 @@ print(twice(1) { x => x + 1 })
 ",
 };
 
+impl Planned {
+    pub fn message(&self) -> String {
+        match self.see {
+            Some(see) => format!("not implemented yet: {} (see {see})", self.feature),
+            None => format!("not implemented yet: {} (not in the design)", self.feature),
+        }
+    }
+}
+
+pub const DOMAIN_VALUE: Planned = Planned {
+    feature: "a domain used as a value, `f(D)`",
+    see: Some("design/spec/21-index-spaces.md §21.5"),
+    now: "loop over it with `for v in D`, or pass its range, `D.first ..= D.last`",
+    example: "domain D = 0..3\nfn f(n: Int) -> Int = n\nprint(f(D))\n",
+};
+
+pub const CUT_DOMAIN: Planned = Planned {
+    feature: "the cuts of a domain spelled `D.Cut`",
+    see: Some("design/spec/21-index-spaces.md §21.4"),
+    now: "the cuts of `D` are `D.bounds` today",
+    example: "domain P = 0..3\nvar a: [P.Cut]Int = 0\nprint(a[P.bounds.first])\n",
+};
+
+pub const OPERATOR_VALUE: Planned = Planned {
+    feature: "an operator used as a value, `compose: +`",
+    see: Some("design/stdlib/ranges.md §6.1"),
+    now: "write the operation as a lambda, `(a, b) => a + b`",
+    example: "let ops = (count: +, n: 2)\nprint(ops.n)\n",
+};
+
+pub const VAR_PATTERN: Planned = Planned {
+    feature: "a `var` binding inside a pattern, `(var a, b)`",
+    see: None,
+    now: "bind the name with `let`, then copy it into a `var`",
+    example: "for (var a, b) in [(1, 2)]:\n    a += b\n    print(a)\n",
+};
+
 pub const PLANNED: &[&Planned] = &[
     &BOUNDED_STR,
     &FRESH_TYPE,
@@ -142,4 +221,14 @@ pub const PLANNED: &[&Planned] = &[
     &FIELD_BY_DEFAULT,
     &RECORD_DECL,
     &TRAILING_LAMBDA,
+    &CONTINUED_LINE,
+    &VALUE_BLOCK,
+    &PAREN_SEQUENCE,
+    &START_EXCLUSIVE_RANGE,
+    &DOMAIN_PARAM,
+    &DOMAIN_LIST,
+    &DOMAIN_VALUE,
+    &CUT_DOMAIN,
+    &OPERATOR_VALUE,
+    &VAR_PATTERN,
 ];

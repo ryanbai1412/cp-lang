@@ -1727,6 +1727,10 @@ impl<'a> Checker<'a> {
                         name: "Range".into(),
                         args: vec![Ty::Pos(format!("{domain}.bounds"))],
                     },
+                    "Cut" => {
+                        self.planned(name.span, &cpl_syntax::planned::CUT_DOMAIN);
+                        Ty::Error
+                    }
                     "pairs" => Ty::Named {
                         name: "List".into(),
                         args: vec![Ty::Tuple(vec![
@@ -2335,6 +2339,10 @@ impl<'a> Checker<'a> {
             if let Some(diag) = self.error(codes::WRONG_DOMAIN, at.span, text) {
                 diag.help = Some(help);
             }
+            return false;
+        }
+        if matches!(got, Ty::Domain(_)) && !matches!(want, Ty::Domain(_)) {
+            self.planned(at.span, &cpl_syntax::planned::DOMAIN_VALUE);
             return false;
         }
         let text = message(self, got, want);

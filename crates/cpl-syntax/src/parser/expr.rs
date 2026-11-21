@@ -329,6 +329,26 @@ impl<'a> Parser<'a> {
     fn chain(&mut self) -> Expr {
         let start = self.start();
         let first = self.range();
+        if self.at(T::Lt)
+            && self.peek_n(1) == T::DotDot
+            && self.tokens[self.pos].span.end == self.tokens[self.pos + 1].span.start
+        {
+            let op = self.start();
+            self.bump();
+            self.bump();
+            let span = self.span_from(op);
+            self.planned(span, &crate::planned::START_EXCLUSIVE_RANGE);
+            let hi = self.starts_expr().then(|| Box::new(self.bit_or()));
+            return Expr {
+                kind: ExprKind::Range {
+                    lo: Some(Box::new(first)),
+                    hi,
+                    inclusive: false,
+                    step: None,
+                },
+                span: self.span_from(start),
+            };
+        }
         let mut rest = Vec::new();
         while let Some(op) = self.cmp_op() {
             self.bump();
@@ -504,6 +524,9 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn unary(&mut self) -> Expr {
+        if matches!(self.peek_n(1), T::Comma | T::RParen | T::RBracket) {
+            return self.power();
+        }
         let op = match self.peek() {
             T::Plus => UnOp::Pos,
             T::Minus => UnOp::Neg,
@@ -906,6 +929,23 @@ impl<'a> Parser<'a> {
                     ExprKind::Tuple(Vec::new())
                 } else {
                     let first = self.expr();
+                    if self.at(T::Semi) {
+                        let mut depth = 1u32;
+                        while depth > 0 && !self.at(T::Eof) {
+                            match self.peek() {
+                                T::LParen => depth += 1,
+                                T::RParen => depth -= 1,
+                                _ => {}
+                            }
+                            self.bump();
+                        }
+                        let span = self.span_from(start);
+                        self.planned(span, &crate::planned::PAREN_SEQUENCE);
+                        return Expr {
+                            kind: ExprKind::Error,
+                            span,
+                        };
+                    }
                     if self.at(T::Comma) {
                         self.bump();
                         let mut items = vec![first];
@@ -933,6 +973,18 @@ impl<'a> Parser<'a> {
                 );
                 self.bump();
                 return self.unary();
+            }
+            k if (BINARY_OPS.contains(&k) || matches!(k, T::And | T::Or))
+                && matches!(self.peek_n(1), T::Comma | T::RParen | T::RBracket)
+                && matches!(
+                    self.prev_kind(),
+                    Some(T::Colon | T::Comma | T::LParen | T::Eq)
+                ) =>
+            {
+                let span = self.span();
+                self.bump();
+                self.planned(span, &crate::planned::OPERATOR_VALUE);
+                ExprKind::Error
             }
             _ => {
                 let after = self
@@ -1387,7 +1439,7 @@ fn names_a_type(ty: &crate::ast::Type) -> bool {
     }
 }
 
-const BINARY_OPS: &[TokenKind] = &[
+pub(super) const BINARY_OPS: &[TokenKind] = &[
     T::Plus,
     T::Minus,
     T::Star,

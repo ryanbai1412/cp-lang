@@ -339,9 +339,22 @@ impl Sink {
         &self.poisoned
     }
 
-    /// The diagnostics in source order.
+    /// The diagnostics in source order. A feature that is not implemented
+    /// yet is one root cause however often the file uses it, so only its
+    /// first use is kept.
     pub fn finish(mut self) -> Vec<Diagnostic> {
         self.diags.sort_by_key(|d| (d.span.start, d.span.end));
+        let mut planned: Vec<String> = Vec::new();
+        self.diags.retain(|d| {
+            if d.code != codes::NOT_IMPLEMENTED {
+                return true;
+            }
+            if planned.contains(&d.message) {
+                return false;
+            }
+            planned.push(d.message.clone());
+            true
+        });
         self.diags
     }
 }

@@ -342,13 +342,15 @@ copy (145 of 4306), first error on the right line 99.7%, 77% of errors carry a
 fix-it, ratchet at 0.05 per copy.
 Planned forms go through one table (`cpl-syntax/src/planned.rs`, `E0504`
 "not implemented yet: ... (see design/...)", or "(not in the design)" for
-forms only dreams use); 16 entries, each with a golden. Dreams are a corpus
-(`scripts/dream-gaps.py`, summary in the scoreboard): 73 dreams, 56 with
-errors; 28/56 first errors name their gap and 78/201 errors are named (the
-corpus grew from 44 dreams with 41 named, and the new dreams mostly fail on
-unplanned syntax: `match` with `pattern => value` arms on one line, blocks
-indented under a value, two-word statements); top named blocker is context
-lines `with io(base: 1)` (6 dreams), then lowercase variants in patterns (3). Unknown names say "not
+forms only dreams use); 22 entries, each with a golden. Dreams are a corpus
+(`scripts/dream-gaps.py`, summary in the scoreboard): 92 dreams, 72 with
+errors; 60/72 first errors name their gap and 133/221 errors are named. Each
+unsupported construct class gets one `E0504` at its first use (later uses of
+the same feature are dropped as the same root cause): operator fns, domain
+parameters, several domains on a line, indented values and continuation
+lines, `(a; b)`, `<..`, dependent tuple types, domains as values, `D.Cut`,
+operators as values (`compose: +`), `for i in a, j in b` in a comprehension,
+`(var a, b)` patterns. Unknown names say "not
 in the stdlib (yet)" with a did-you-mean against stdlib names and the `use`
 as a fix. Golden rendered diagnostics in `cpl-cli/tests/diagnostics/`.
 Fix-its: C spellings (`&&`, `||`, `!x`, `..<`), `let` for a `var`,
@@ -361,9 +363,10 @@ domain or range mismatch names both index spaces and labels the
 declaration each comes from.
 **Bar.** Golden diagnostics for every error code; a broken-ports benchmark
 with first-error accuracy and cascade counts.
-**Next.** Name every dream first error (26 unnamed: one-line `match`
-arms, an `if` argument in a call, two-word statements), then every error
-(133 unnamed); restore 95% of common-mistake copies (members the back end
+**Next.** Name the last 10 dream first errors (argument-count gaps such as
+`gcd` of a list, `mut` on a fresh array, a list where a `[V]Bool` is wanted, a
+position indexed by a bound), then every error
+(86 unnamed); restore 95% of common-mistake copies (members the back end
 knows by hand); count cascades by root cause instead of "every error after the
 first"; struct/enum headers that fail to parse should also bind with an
 unknown shape; fn stubs `-> T: ...` and the rest of `design/DELTA.md` into

@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: an operator used as a value, `compose: +` (see design/stdlib/ranges.md §6.1)
+  --> planned_an_operator_used_as_a_value_compose.cp:1:19
+  |
+1 | let ops = (count: +, n: 2)
+  |                   ^
+  = help: write the operation as a lambda, `(a, b) => a + b`
+
+planned_an_operator_used_as_a_value_compose.cp: 1 error

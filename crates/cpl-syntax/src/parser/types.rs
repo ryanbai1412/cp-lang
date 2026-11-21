@@ -419,6 +419,11 @@ impl<'a> Parser<'a> {
         let names = self.comma_list(T::Gt, "the type parameters", |p| {
             // `const N: Int` is a value parameter; its type is not a bound.
             let value = p.eat(T::Const);
+            if p.at(T::Domain) {
+                let span = p.span();
+                p.bump();
+                p.planned(span, &crate::planned::DOMAIN_PARAM);
+            }
             let name = p.expect_name("a type parameter name");
             if p.eat(T::Colon) {
                 let traits = p.bound_traits();

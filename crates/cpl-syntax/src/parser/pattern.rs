@@ -63,6 +63,16 @@ impl<'a> Parser<'a> {
                 }
             }
             T::Ident => PatternKind::Name(self.name().text),
+            T::Var => {
+                let span = self.span();
+                self.bump();
+                self.planned(span, &crate::planned::VAR_PATTERN);
+                let inner = self.pattern();
+                if self.speculating == 0 {
+                    self.sink.poison(self.span_from(start));
+                }
+                return inner;
+            }
             T::SelfKw => {
                 self.bump();
                 PatternKind::Name("self".into())

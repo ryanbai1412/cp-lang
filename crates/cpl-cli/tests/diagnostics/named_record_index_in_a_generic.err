@@ -1,6 +1,8 @@
 error[E0301]: `d` is indexed by (a: A, b: B), but `(B(0), A(0))` is a (B, A)
   --> named_record_index_in_a_generic.cp:10:9
    |
+ 9 | var d: [P]Int = 0
+   |     - `d` is declared over (a: A, b: B) here
 10 | print(d[(B(0), A(0))])
    |         ^^^^^^^^^^^^
    = help: index with an (a: A, b: B)

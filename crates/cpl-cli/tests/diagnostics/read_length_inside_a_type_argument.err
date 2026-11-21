@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: an array type whose length is read, `[read(…)]T` (not in the design)
+  --> read_length_inside_a_type_argument.cp:1:15
+  |
+1 | let a = read<[read(1..=3)]Int>()
+  |               ^^^^^^^^^^^
+  = help: declare the index space first: `domain N = read(…)`, then `[N]T`
+
+read_length_inside_a_type_argument.cp: 1 error

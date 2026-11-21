@@ -193,6 +193,14 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// Reports syntax the parser read but the checker can't give a meaning
+    /// to yet, as `not implemented yet: <feature>`.
+    pub(crate) fn planned(&mut self, span: Span, planned: &cpl_syntax::planned::Planned) {
+        if let Some(diag) = self.error(codes::NOT_IMPLEMENTED, span, planned.message()) {
+            diag.help = Some(planned.now.into());
+        }
+    }
+
     fn error(&mut self, code: Code, span: Span, message: String) -> Option<&mut Diagnostic> {
         if self.sink.encloses_poison(span) {
             return None;
@@ -512,7 +520,13 @@ impl<'a> Checker<'a> {
         // exist yet usually means one that does under another name.
         // No stdlib export is one character long, and contest code is full
         // of one-letter locals, so "not in the stdlib" there is only noise.
-        let unknown = suggestion.is_none()
+        // A type only close to a built-in one (`Max` for `Map`) is more
+        // likely a library type that doesn't exist yet than a typo.
+        let near_builtin = !value
+            && suggestion.as_deref().is_some_and(|s| {
+                prelude::TYPE_NAMES.contains(&s) || prelude::STD_NAMES.iter().any(|(n, _)| *n == s)
+            });
+        let unknown = (suggestion.is_none() || near_builtin)
             && field_of_self.is_none()
             && name.chars().nth(1).is_some()
             && name != "enumerate"
@@ -631,7 +645,9 @@ impl<'a> Checker<'a> {
                 _ => return,
             },
         };
-        if mutable {
+        // A binding the parser could not fully read, such as `(var a, b)`,
+        // says nothing reliable about whether it may change.
+        if mutable || decl.is_some_and(|d| self.sink.is_poisoned(d)) {
             return;
         }
         let (what, help) = match keyword {
