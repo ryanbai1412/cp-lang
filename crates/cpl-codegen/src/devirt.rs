@@ -538,6 +538,15 @@ impl<'p> Devirt<'p> {
                     .any(|c| !c.is_global && cap_slots.contains(&c.outer))
             }
             ExprKind::Do(b) => self.block_captures_unused(b, cap_slots),
+            ExprKind::Call(_, args) => args.iter().all(|a| match a {
+                Arg::Value(v) => self.expr_captures_unused(v, cap_slots),
+                Arg::Mut(p) => self.place_captures_unused(p, cap_slots),
+            }),
+            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _, _)
+                if !self.place_captures_unused(place, cap_slots) =>
+            {
+                false
+            }
             _ => {
                 let mut ok = true;
                 walk::children(e, &mut |child| {

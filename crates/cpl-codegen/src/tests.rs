@@ -888,3 +888,21 @@ print(p.xs.len + p.ys.len, q.xs.len)
     assert!(cpp.contains("Pack twice(const std::vector<ll>& xs) {"), "named twice: copied, not sunk: {cpp}");
     assert!(cpp.contains("::prog::twice(p.xs)"), "a global is not moved from: {cpp}");
 }
+
+#[test]
+fn closure_mutating_a_captured_local_is_not_hoisted_static() {
+    let cpp = cpp(concat!(
+        "fn each(f: (Int) -> ()):\n",
+        "    for i in 0..3: f(i)\n",
+        "fn run() -> Int:\n",
+        "    var xs = List<Int>()\n",
+        "    each(x => xs.push(x))\n",
+        "    var ys = List<Int>()\n",
+        "    each(x => push_to(mut ys, x))\n",
+        "    xs.len + ys.len\n",
+        "fn push_to(mut l: List<Int>, x: Int):\n",
+        "    l.push(x)\n",
+        "print(run())\n",
+    ));
+    assert!(!cpp.contains("static auto cpl_fn"), "{cpp}");
+}
