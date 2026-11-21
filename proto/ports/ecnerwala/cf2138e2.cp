@@ -1,7 +1,12 @@
-// A tridiagonal {0, 1} matrix with 1 above and -1 below has determinant equal to
-// its continuant: the subtractive Euclid walk on (z, x - z) recovers a diagonal
-// for x iff gcd(x, z) = 1. Exhaustive verification shows a walk of length <= 50
-// exists near x / phi for every x <= 1e7.
+// Codeforces 2138 E2: Determinant Construction (Hard Version).
+// The tridiagonal matrix with diagonal d, 1 above and -1 below has determinant
+// K(d), the continuant: K(d + [c]) = c * K(d) + K(d without its last entry).
+// With entries in {0, 1} that recurrence is the subtractive Euclid walk run
+// backwards, so x is reached from (z, x - z) iff gcd(x, z) = 1. Trying z
+// outward from x / phi finds a walk of length <= 50 for every x <= 1e7
+// (exhaustively verified).
+const MAX_N = 50
+
 fn continuant_diag(x: Int, z: Int, lim: Int) -> ?List<0..=1>:
     var (a, b) = (z, x - z)
     var diag: List<0..=1> = [1]
@@ -26,19 +31,13 @@ fn find_diag(x: Int, lim: Int) -> List<0..=1>:
 
 @!multitest
 let x: 0..=10_000_000 = read()
-if x <= 1:
-    print(1)
-    print(x)
-    return
+let diag: List<0..=1> = if x <= 1: [x] else: find_diag(x, MAX_N)
+domain N = 0..diag.len
+let m: [N, N]Int = [N, N] (i, j) => match j - i:
+    0 => diag[i.ord]
+    1 => 1
+    -1 => -1
+    _ => 0
 
-let diag = find_diag(x, 50)
-let n = diag.len
-var m: [0..n][0..n] - 1..=1 = 0
-for i in 0..n:
-    m[i][i] = diag[i]
-    if i + 1 < n:
-        m[i][i + 1] = 1
-        m[i + 1][i] = -1
-
-print(n)
-for row in m: print(row)
+print(N.count)
+for i in N: print([m[i, j] for j in N])

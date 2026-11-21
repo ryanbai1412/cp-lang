@@ -6,6 +6,8 @@
 // and z near x / phi keeps the walk short. `room` bounds the side length: trying
 // z outward from x / phi finds a walk within 50 for every x <= 1e7 (checked).
 
+const MAX_N = 50
+
 // The diagonal built by the walk from (a, b) down to (1, 1), if it fits in `room`.
 fn walk(a: Int, b: Int, room: Int) -> ?List<0..=1> =
     if room == 0: none
@@ -18,7 +20,7 @@ let phi = (1.0 + sqrt(5.0)) / 2.0
 @!multitest
 let x: 0..=1e7 = read()
 let diag = if x <= 1: [x] else:
-    (1..x).nearest_first(to: x / phi).first_some(z => [1] + walk(z, x - z, room: 49)?)!
+    (1..x).nearest_first(to: x / phi).first_some(z => [1] + walk(z, x - z, room: MAX_N - 1)?)!
 domain N = 0..diag.len
 print(N.count)
 print([N, N] (i, j) => match j - i: 0 => diag[i]; 1 => 1; -1 => -1; _ => 0)
