@@ -3240,14 +3240,13 @@ impl<'a> Lowerer<'a> {
             None => Ty::Int,
         };
         let out_ty = Ty::opt(idx_ty.clone());
-        let cont_ty = container.ty.clone();
         let out_ty_hint = out_ty.clone();
         self.do_expr(Some(&out_ty_hint), span, |lw, out| {
-            let c_slot = lw.temp(cont_ty);
+            // `vals.first_ge(x)` searches `vals` where it is: holding a
+            // field would copy the whole list on every call.
+            let c_ref = lw.hold(container, out);
             let t_slot = lw.temp(elem.clone());
-            out.push(Stmt::Let(c_slot, Some(container)));
             out.push(Stmt::Let(t_slot, Some(target)));
-            let c_ref = lw.local(c_slot, span);
             let t_ref = lw.local(t_slot, span);
             let n_expr = match dom {
                 Some(d) => lw.mk(ExprKind::DomainLen(d), Ty::Int, span),

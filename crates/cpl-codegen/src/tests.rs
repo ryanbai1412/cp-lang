@@ -413,3 +413,27 @@ fn an_index_of_the_arrays_own_domain_has_no_bounds_test() {
     assert!(out.contains("g(r, d) = a[d];"), "{out}");
     assert!(out.contains("cpl::at(b, k) = h.ck(k, k);"), "{out}");
 }
+
+#[test]
+fn a_let_of_a_list_nothing_changes_is_a_reference_not_a_copy() {
+    let cpp = cpp(concat!(
+        "let n: Int = read()\n",
+        "var rows: List<List<Int>> = [[i * j for j in 0..=i] for i in 0..n]\n",
+        "fn last_of(r: Int) -> Int:\n",
+        "    let row = rows[r]\n",
+        "    row[row.len - 1]\n",
+        "fn grow(r: Int) -> Int:\n",
+        "    let kept = rows[r]\n",
+        "    rows[r].push(100)\n",
+        "    kept.len\n",
+        "print(last_of(2), grow(1))\n",
+        "let vals = compress([30, 10, 20, 10])\n",
+        "print(vals.at(20))\n",
+    ));
+    assert!(cpp.contains("const std::vector<ll>& row = cpl::at(rows, r);"), "{cpp}");
+    // `grow` changes `rows`: `kept` is what the row was.
+    assert!(cpp.contains("std::vector<ll> kept = cpl::at(rows, r);"), "{cpp}");
+    assert!(!cpp.contains("const std::vector<ll>& kept"), "{cpp}");
+    // `vals.at(x)` searches the field where it is.
+    assert!(!cpp.contains("= self.vals;"), "{cpp}");
+}

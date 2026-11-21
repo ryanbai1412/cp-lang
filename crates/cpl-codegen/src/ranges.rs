@@ -62,6 +62,13 @@ impl<'p> Facts<'p> {
         facts
     }
 
+    /// The stores the body of one fn makes, on its own.
+    pub fn of_fn(id: usize, body: &'p Block) -> Facts<'p> {
+        let mut facts = Facts::default();
+        facts.block(Some(id), body);
+        facts
+    }
+
     fn store(&mut self, fn_id: Option<usize>, place: &Place) {
         if let Some(v) = var(fn_id, &place.kind) {
             *self.stores.entry(v).or_default() += 1;

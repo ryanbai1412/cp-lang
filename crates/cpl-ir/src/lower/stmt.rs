@@ -1655,7 +1655,7 @@ impl<'a> Lowerer<'a> {
     /// `value` as something cheap to mention twice: itself if it is a
     /// variable, else a temporary that holds it.
     pub(super) fn hold(&mut self, value: Expr, out: &mut Vec<Stmt>) -> Expr {
-        if matches!(value.kind, ExprKind::Local(_) | ExprKind::Global(_)) {
+        if names_a_place(&value) {
             return value;
         }
         let span = value.span;
@@ -2988,5 +2988,15 @@ fn filled_none_depth(e: &ast::Expr) -> Option<usize> {
             None
         }
         _ => None,
+    }
+}
+
+/// Whether `e` only names where a value lives, a variable or a field of
+/// one: reading it again costs nothing, and holding it would copy it.
+pub(super) fn names_a_place(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Local(_) | ExprKind::Global(_) => true,
+        ExprKind::Field(base, _) => names_a_place(base),
+        _ => false,
     }
 }

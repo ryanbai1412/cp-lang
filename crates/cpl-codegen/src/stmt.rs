@@ -609,6 +609,48 @@ impl<'p> Emitter<'p> {
         }
     }
 
+    /// Whether the `let` of `slot` can be a reference to what `init`
+    /// names instead of a copy of it. It can when nothing changes either
+    /// while the fn runs: the name is set once and never changed, `init`
+    /// is a path into a global or a parameter that this fn never stores
+    /// to, and the fn calls nothing that could.
+    fn reads_in_place(&self, slot: usize, init: &Expr) -> bool {
+        let (Some(id), None) = (self.fn_id, self.closure_id) else {
+            return false;
+        };
+        if init.ty.is_scalar() || matches!(init.ty, Ty::Fn(..)) || self.spent.contains(&slot) {
+            return false;
+        }
+        if !matches!(init.kind, ExprKind::Field(..) | ExprKind::Index(..)) {
+            return false;
+        }
+        let Some((global, root)) = walk::path_root(init) else {
+            return false;
+        };
+        let f = &self.program.fns[id];
+        if !global && root >= f.params.len() {
+            return false;
+        }
+        if self.facts.stores((Some(id), false, slot)) > 1 {
+            return false;
+        }
+        let own = crate::ranges::Facts::of_fn(id, &f.body);
+        let stored = match global {
+            true => own.stores((None, true, root)),
+            false => own.stores((Some(id), false, root)),
+        };
+        if stored > 0 {
+            return false;
+        }
+        let mut quiet = true;
+        walk::deep_exprs(&f.body, &mut |e| {
+            if matches!(e.kind, ExprKind::Call(..) | ExprKind::CallExpr(..) | ExprKind::Closure(_)) {
+                quiet = false;
+            }
+        });
+        quiet
+    }
+
     pub fn stmt(&mut self, stmt: &Stmt, out: &mut String) {
         let program = self.program;
         match stmt {
@@ -672,6 +714,10 @@ impl<'p> Emitter<'p> {
                 } else if name.starts_with('_') {
                     // `_t` is a name for a value the program may not use.
                     self.line(out, &format!("[[maybe_unused]] {cpp} {name} = {text};"));
+                } else if !packed && self.reads_in_place(*slot, init) {
+                    // `let sp = sorted[b]`: a name for what is already
+                    // there. A copy would cost the whole list.
+                    self.line(out, &format!("const {cpp}& {name} = {text};"));
                 } else {
                     self.line(out, &format!("{cpp} {name} = {text};"));
                 }
