@@ -56,30 +56,16 @@ domain is explicit (`v.next`, `V(x)`). Arrays over an anonymous range
 
 ## Ranges
 
-A range is one value with two faces: its ends are cuts, its elements are
-positions. There is one type, `Range<V>`; no range of cuts.
-
 ```python
-j..i           # from cuts: the positions between cut j and cut i
-l..r   l..=r   # from positions: l through r-1, l through r
-p..i           # mixed: in `..`, a position end reads as its left cut
+l..=r          # positions l through r            Range<V>
+j..i           # cuts j to i                      Range<V.bounds>, also the positions between (§124)
 ..i   j..   .. # open ends default to V's start and end
-```
-
-`r.cuts` walks the `r.len + 1` cuts from `r.l` to `r.r`. That is where cut
-loops come from: Knuth's split points are `for k in (a..b).cuts`. A
-partition DP names the start of its last piece, a position:
-
-```python
-for p in ..i: dp[i] min= dp[p.l] + cost(p..i)     # last piece is p..i, non-empty
-for j in (..i).cuts: dp[i] min= dp[j] + cost(j..i) # also allows the empty piece
 ```
 
 | Form | Meaning | Cost |
 |---|---|---|
 | `r.len`, `r.is_empty`, `x in r` | | O(1) |
 | `r.l`, `r.r` | the end cuts | O(1) |
-| `r.cuts` | the `r.len + 1` cuts from `r.l` to `r.r` | O(1) per step |
 | `r.first`, `r.last` | end positions, `?V` | O(1) |
 | `for v in r`, `r.rev`, `r.step(k)` | iteration | O(1) per step |
 | `r.clip(s)` | intersection | O(1) |
@@ -146,8 +132,6 @@ let e = E.first              # fine: E.count is m, and m >= 1 here
 - Position arithmetic gives an `Int`; back into the domain is explicit.
 - `r.bsearch(ok)` returns a cut and replaces `bsearch_first`/`bsearch_last`.
 - Empty domains are valid; `first`/`last` need `NonEmpty`, derived and narrowed.
-- A range's ends are cuts and its elements positions; one `Range<V>` type,
-  `r.cuts` for its cuts. No `Range<V.bounds>`, no `..=` on cuts (supersedes 124).
 - `r.halve()` is `?(left, right)`, `none` at length <= 1; `r.mid` is `?V`.
 - Integer literals convert to positions and cuts of integer domains.
 - `V(x)` traps outside `V`; `V.at(x)` is `?V`; the pattern `V(j)` refutes.

@@ -206,10 +206,6 @@ pub @get fn l<D>(self: Range<D>) -> Bounds<D> = todo
 /// Right boundary cut of a range (valid even when empty).
 pub @get fn r<D>(self: Range<D>) -> Bounds<D> = todo
 
-/// O(1) per step. The `self.len + 1` cuts from `self.l` to `self.r`, in order: split points,
-/// prefix lengths. As a range over the domain `D.bounds`, it halves, clips and searches.
-pub @get fn cuts<D>(self: Range<D>) -> Range<Bounds<D>> = todo
-
 /// O(1). Two non-empty halves meeting at the middle cut, or `none` when `self.len <= 1`, so
 /// `let (left, right) = r.halve() else: base` is the divide-and-conquer base case.
 pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>) = todo
