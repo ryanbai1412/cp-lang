@@ -1450,6 +1450,20 @@ fn references_find_locals_params_fns_structs_domains_and_fields() {
     assert_eq!(references_at(src), [(0, 7), (1, 8), (2, 9)]);
 }
 
+/// A local of the same name in a fn, a `for` or a lambda is another
+/// binding, so references and rename leave it alone.
+#[test]
+fn references_skip_the_bindings_that_shadow_the_name() {
+    let src = "let x| = 1\nfn f() -> Int:\n    let x = 2\n    x\nprint(x)\n";
+    assert_eq!(references_at(src), [(0, 4), (4, 6)]);
+    let src = "let x = 1\nfn f() -> Int:\n    let x| = 2\n    x\nprint(x)\n";
+    assert_eq!(references_at(src), [(2, 8), (3, 4)]);
+    let src = "let x = 1\nfor x| in 0..3:\n    print(x)\nprint(x)\n";
+    assert_eq!(references_at(src), [(1, 4), (2, 10)]);
+    let src = "let x| = 1\nlet f = (x) => x + 1\nprint(f(x))\n";
+    assert_eq!(references_at(src), [(0, 4), (2, 8)]);
+}
+
 #[test]
 fn rename_edits_every_reference_and_refuses_library_names() {
     let src = "fn sq(n: Int) -> Int = n * n\nprint(sq(2) + s|q(3))\n";
