@@ -10,32 +10,37 @@
 // sums count once each, hence `- v[x]`); either way every house passed is
 // collected once.
 use std.seq.{merge_sorted}
-enum Side = Left | Right
+enum Side: Left | Right
 struct House(x: Int, v: Int, d: Int, pref: Int)
 
 @!multitest
-let (n, k, x): (1..=2e5, 1..=1e9, Pos) = read() where domain Pos = 0..n from 1
+let (n, k): (1..=2e5, 1..=1e9) = read()
+domain Pos = 1..=n
+let x: Pos = read()
 let v: [Pos]Int = read()
 let road_d: [Pos.cuts.inner]Int = read()
 
-let side: [Side]List<House> = [s => records(Pos.walk(from: x, s))]
 fn records(path: List<Pos>) -> List<House>:
     let d = path.windows(2).scan(0, (t, w) => max(t + 1, road_d[cut(w[0], w[1])]))
     let pref = path.scan(0, (s, i) => s + v[i])
     [House(s, v[i], d[s], pref[s]) for (s, i) in path.items].prefix_records(by: h => h.v)
 
-var val: [Side]List<Int> = [0]
+let side: [Side]List<House> = [Side] s => records(Pos.walk(from: x, s))
+
+var val: [Side]List<Int> = [Side] _ => [0]
 var crossed: [Side]Int = 0
 var ans = v[x] * k
 for (z, i) in merge(side.map(s => s.indices.skip(1)), by: (z, i) => side[z][i].v):
     let (o, h) = (side[z][i - 1], side[z][i])
     let stay = val[z][i - 1] + o.v * (h.d - (h.x - o.x)) + (h.pref - o.pref)
-    let fresh = side[z.flip].items[crossed[z.flip]..val[z.flip].len].take_while(op => op.v <= h.v)
+    let opp = z.flip
+    let pending = side[opp].items[crossed[opp]..val[opp].len]
+    let fresh = pending.take_while(op => op.v <= h.v)
     let cross = max(
-        val[z.flip][j] + op.v * (h.d - (h.x + op.x + 1)) + op.pref + h.pref - v[x]
+        val[opp][j] + op.v * (h.d - (h.x + op.x + 1)) + op.pref + h.pref - v[x]
         for (j, op) in fresh if op.d + h.x + op.x <= h.d
     )
-    crossed[z.flip] += fresh.len
+    crossed[opp] += fresh.len
     val[z].push(max(stay, cross ?? stay) - h.d * h.v)
     if h.d <= k: ans max= val[z][i] + h.v * k
 print(ans)
