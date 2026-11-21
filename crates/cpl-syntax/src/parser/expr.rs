@@ -302,26 +302,17 @@ impl<'a> Parser<'a> {
     }
 
     fn starts_expr(&self) -> bool {
-        matches!(
-            self.peek(),
-            T::Ident
-                | T::Int
-                | T::Float
-                | T::Str
-                | T::RawStr
-                | T::Char
-                | T::True
-                | T::False
-                | T::None
-                | T::SelfKw
-                | T::LParen
-                | T::LBracket
-                | T::LBrace
-                | T::Minus
-                | T::Tilde
-                | T::If
-                | T::Match
-        )
+        begins_expr(self.peek())
+    }
+
+    /// `a + * b`: an operator where a value goes, after an operator and
+    /// before a value, is one too many. The span to delete.
+    fn doubled_operator(&self) -> Option<Span> {
+        let binary = |k: TokenKind| BINARY_OPS.contains(&k);
+        let next = self.tokens.get(self.pos + 1)?;
+        let after_op = self.prev_kind().is_some_and(binary);
+        (after_op && binary(self.peek()) && begins_expr(next.kind))
+            .then(|| Span::new(self.span().start, self.rel(next.span).start))
     }
 
     /// `lo..hi`, `lo..=hi`, open ends, and `by step`.
@@ -860,7 +851,18 @@ impl<'a> Parser<'a> {
                 let after = self
                     .prev_kind()
                     .map_or("here".to_string(), |k| format!("after {}", k.describe()));
-                self.error_expected(codes::EXPECTED_EXPR, &format!("a value {after}"), None);
+                if let Some(extra) = self.doubled_operator() {
+                    let op = self.peek().describe();
+                    let diag = Diagnostic::error(
+                        codes::EXPECTED_EXPR,
+                        self.span(),
+                        format!("expected a value {after}, found {op}"),
+                    )
+                    .with_fix(format!("remove the extra {op}"), extra, "");
+                    self.error(diag);
+                } else {
+                    self.error_expected(codes::EXPECTED_EXPR, &format!("a value {after}"), None);
+                }
                 return Expr {
                     kind: ExprKind::Missing,
                     span: Span::point(self.prev_end()),
@@ -1228,3 +1230,44 @@ fn names_a_type(ty: &crate::ast::Type) -> bool {
     }
 }
 
+const BINARY_OPS: &[TokenKind] = &[
+    T::Plus,
+    T::Minus,
+    T::Star,
+    T::Slash,
+    T::Percent,
+    T::Shl,
+    T::Shr,
+    T::Amp,
+    T::Pipe,
+    T::Caret,
+    T::Lt,
+    T::Gt,
+    T::LtEq,
+    T::GtEq,
+    T::EqEq,
+    T::NotEq,
+];
+
+fn begins_expr(kind: TokenKind) -> bool {
+    matches!(
+        kind,
+        T::Ident
+            | T::Int
+            | T::Float
+            | T::Str
+            | T::RawStr
+            | T::Char
+            | T::True
+            | T::False
+            | T::None
+            | T::SelfKw
+            | T::LParen
+            | T::LBracket
+            | T::LBrace
+            | T::Minus
+            | T::Tilde
+            | T::If
+            | T::Match
+    )
+}

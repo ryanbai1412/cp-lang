@@ -156,7 +156,9 @@ impl Tally {
     }
 }
 
-fn score(b: &Broken) -> Tally {
+/// How `b` scores, and the code of its first error with whether that
+/// error carries a fix.
+fn score(b: &Broken) -> (Tally, Option<(String, bool)>) {
     let errs = errors(&b.path, &b.src);
     if std::env::var("RECOVERY_SHOW").is_ok_and(|e| e == b.edit) && errs.len() > 1 {
         let index = LineIndex::new(&b.src);
@@ -180,37 +182,51 @@ fn score(b: &Broken) -> Tally {
     };
     if errs.is_empty() {
         t.silent = 1;
-        return t;
+        return (t, None);
     }
     t.errors = errs.len() as u32;
     t.cascaded = t.errors - 1;
     t.first_right = (index.line_of(errs[0].span.start) == b.line) as u32;
-    t
+    (t, Some((errs[0].code.0.to_string(), !errs[0].fixes.is_empty())))
 }
 
 fn scoreboard_broken_ports() -> Tally {
     let broken = broken_ports();
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
     let chunk = broken.len().div_ceil(threads).max(1);
-    let per_edit: Vec<BTreeMap<&str, Tally>> = std::thread::scope(|s| {
+    type Part<'a> = (BTreeMap<&'a str, Tally>, BTreeMap<String, (u32, u32)>);
+    let per_edit: Vec<Part> = std::thread::scope(|s| {
         let handles: Vec<_> = broken
             .chunks(chunk)
             .map(|part| {
                 s.spawn(move || {
                     let mut m: BTreeMap<&str, Tally> = BTreeMap::new();
+                    let mut codes: BTreeMap<String, (u32, u32)> = BTreeMap::new();
                     for b in part {
-                        m.entry(b.edit).or_default().add(score(b));
+                        let (tally, first) = score(b);
+                        m.entry(b.edit).or_default().add(tally);
+                        if let Some((code, fixed)) = first {
+                            let entry = codes.entry(code).or_default();
+                            entry.0 += 1;
+                            entry.1 += fixed as u32;
+                        }
                     }
-                    m
+                    (m, codes)
                 })
             })
             .collect();
         handles.into_iter().map(|h| h.join().unwrap()).collect()
     });
     let mut merged: BTreeMap<&str, Tally> = BTreeMap::new();
-    for m in per_edit {
+    let mut codes: BTreeMap<String, (u32, u32)> = BTreeMap::new();
+    for (m, part_codes) in per_edit {
         for (k, v) in m {
             merged.entry(k).or_default().add(v);
+        }
+        for (code, (n, fixed)) in part_codes {
+            let entry = codes.entry(code).or_default();
+            entry.0 += n;
+            entry.1 += fixed;
         }
     }
     println!("\nbroken ports                 files silent errors cascaded first-right");
@@ -220,6 +236,12 @@ fn scoreboard_broken_ports() -> Tally {
         total.add(*t);
     }
     println!("  {}", total.row("all"));
+    let mut by_count: Vec<(String, (u32, u32))> = codes.into_iter().collect();
+    by_count.sort_by_key(|(code, (n, _))| (std::cmp::Reverse(*n), code.clone()));
+    println!("\nfirst error by code          count  with a fix");
+    for (code, (n, fixed)) in &by_count {
+        println!("  {code:<26} {n:>5} {fixed:>11}");
+    }
     total
 }
 

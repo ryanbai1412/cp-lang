@@ -322,6 +322,109 @@ fn quick_fixes_come_from_the_diagnostics() {
     assert_eq!(edits[0].at(&["range", "end"]), &pos(7, 10));
 }
 
+/// `text` with the edits of the first quick fix for its first diagnostic.
+fn quick_fixed(server: &mut Server, uri: &str, text: &str, diagnostic: &Value) -> (String, String) {
+    let params = obj([
+        ("textDocument", obj([("uri", uri.into())])),
+        ("range", diagnostic.get("range").clone()),
+        (
+            "context",
+            obj([("diagnostics", vec![diagnostic.clone()].into())]),
+        ),
+    ]);
+    let reply = server.handle(&request(9, "textDocument/codeAction", params));
+    let actions = reply[0].get("result").as_array();
+    let action = actions
+        .first()
+        .unwrap_or_else(|| panic!("no fix for {diagnostic:?}"));
+    let offset = |p: &Value| {
+        let line = p.get("line").as_u32().unwrap() as usize;
+        let start: usize = text.split_inclusive('\n').take(line).map(str::len).sum();
+        start + p.get("character").as_u32().unwrap() as usize
+    };
+    let mut edits: Vec<(usize, usize, String)> = action
+        .at(&["edit", "changes", uri])
+        .as_array()
+        .iter()
+        .map(|e| {
+            let (start, end) = (
+                offset(e.at(&["range", "start"])),
+                offset(e.at(&["range", "end"])),
+            );
+            (start, end, e.get("newText").as_str().unwrap().to_string())
+        })
+        .collect();
+    edits.sort_by_key(|e| std::cmp::Reverse(e.0));
+    let mut fixed = text.to_string();
+    for (start, end, new) in edits {
+        fixed.replace_range(start..end, &new);
+    }
+    (action.get("title").as_str().unwrap().to_string(), fixed)
+}
+
+/// The most frequent first errors over the broken ports
+/// (`crates/cpl-cli/tests/recovery.rs` prints the table), each broken into
+/// a real port and undone by its one-click fix.
+#[test]
+fn quick_fixes_undo_the_most_frequent_mistakes_in_a_real_port() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../proto/ports/ecnerwala/cf2062g.cp");
+    let original = std::fs::read_to_string(&path).unwrap();
+    let uri = format!("file://{}", path.display());
+    let breaks: &[(&str, &str, &str, &str)] = &[
+        // E0101: a call left open.
+        (
+            "let p: [I]I = read()",
+            "let p: [I]I = read(",
+            "E0101",
+            "insert `)`",
+        ),
+        // E0103: a block without its colon.
+        (
+            "fn sort_perm<D>(mut perm: [D]D) -> List<(D, D)>:",
+            "fn sort_perm<D>(mut perm: [D]D) -> List<(D, D)>",
+            "E0103",
+            "insert `:`",
+        ),
+        // E0102: an operator typed twice.
+        (
+            "abs(i.ord - j.ord) + abs(",
+            "abs(i.ord - j.ord) + * abs(",
+            "E0102",
+            "remove the extra `*`",
+        ),
+        // E0004: a stray character.
+        ("fn sort_perm<D>", "fn $sort_perm<D>", "E0004", "remove `$`"),
+    ];
+    for (good, bad, code, title) in breaks {
+        assert!(original.contains(good), "{good}");
+        let broken = original.replacen(good, bad, 1);
+        let mut server = Server::new();
+        server.handle(&request(1, "initialize", obj([])));
+        let doc = obj([
+            ("uri", uri.as_str().into()),
+            ("languageId", "cp".into()),
+            ("version", 1.into()),
+            ("text", broken.as_str().into()),
+        ]);
+        let published = server.handle(&notification(
+            "textDocument/didOpen",
+            obj([("textDocument", doc)]),
+        ));
+        let diagnostics = published[0].at(&["params", "diagnostics"]).as_array();
+        let first = diagnostics
+            .first()
+            .unwrap_or_else(|| panic!("`{bad}` checked clean"));
+        assert_eq!(first.get("code").as_str(), Some(*code), "{first:?}");
+        let (got, fixed) = quick_fixed(&mut server, &uri, &broken, first);
+        assert_eq!(got, *title);
+        assert_eq!(
+            fixed, original,
+            "the fix for `{bad}` did not restore the port"
+        );
+    }
+}
+
 #[test]
 fn closing_a_document_clears_its_diagnostics() {
     let (mut server, diagnostics) = open("let x = y\n");

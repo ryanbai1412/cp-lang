@@ -1949,6 +1949,16 @@ standard library's names are refused, and so is a new name already declared or i
 level of a file the rename edits. Shadowing inside a fn is not checked yet. Reverse: put back the
 `target.path != uri` refusal in the `textDocument/rename` arm of `crates/cpl-lsp/src/server.rs`.
 
+29.11. **Quick fixes go to the errors the broken ports hit first most often.** The broken-ports
+benchmark (`crates/cpl-cli/tests/recovery.rs`) now prints each first error's code and how often it
+carries a fix: E0101 unclosed delimiter (1579, all fixed), E0102 expected a value (1413, none),
+E0103 expected a token (790, 771) and E0004 unknown character (398, none). E0102 after an operator
+and before a value is a doubled operator, so its fix removes the second one (584 of the 1413); E0004
+replaces `#` with `//`, a Unicode `≤ ≥ ≠ × −` with its ASCII operator and removes anything else. The
+fix is on the diagnostic, so `cpl check`, the LSP and every editor get it, and the LSP test applies
+each to a real port broken that way. Reverse: drop `doubled_operator` in
+`crates/cpl-syntax/src/parser/expr.rs` and the `with_fix` after `UNKNOWN_CHAR` in `lexer.rs`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

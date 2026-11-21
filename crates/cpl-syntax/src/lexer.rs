@@ -413,6 +413,18 @@ impl<'a> Lexer<'a> {
                     }
                     _ => Option::None,
                 };
+                // What it was most likely meant to be: a comment, an ASCII
+                // operator it looks like, or nothing at all.
+                let (title, text) = match ch {
+                    '#' => ("replace with `//`".to_string(), "//"),
+                    '≤' => ("replace with `<=`".to_string(), "<="),
+                    '≥' => ("replace with `>=`".to_string(), ">="),
+                    '≠' => ("replace with `!=`".to_string(), "!="),
+                    '×' => ("replace with `*`".to_string(), "*"),
+                    '−' | '–' => ("replace with `-`".to_string(), "-"),
+                    _ => (format!("remove `{ch}`"), ""),
+                };
+                diag = diag.with_fix(title, span, text);
                 self.out.diagnostics.push(diag);
                 self.out.poisoned.push(span);
                 self.push(Error, start);
