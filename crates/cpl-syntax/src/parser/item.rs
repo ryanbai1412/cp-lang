@@ -298,6 +298,35 @@ impl<'a> Parser<'a> {
             });
         }
         self.where_clause(&mut bounds);
+        if !header && self.at(T::Colon) && !matches!(self.peek_n(1), T::Newline | T::Eof) {
+            self.bump();
+            loop {
+                let mut names = vec![self.expect_name("a field name")];
+                while self.eat(T::Comma) {
+                    names.push(self.expect_name("a field name"));
+                }
+                self.expect(T::Colon, "`:` and the field's type");
+                let ty = self.ty();
+                let default = self.eat(T::Eq).then(|| self.expr());
+                for name in names {
+                    fields.push(FieldDecl {
+                        name,
+                        ty: ty.clone(),
+                        default: default.clone(),
+                    });
+                }
+                if !self.eat(T::Comma) || self.at_line_end() {
+                    break;
+                }
+            }
+            return StmtKind::Struct(StructDecl {
+                name,
+                generics,
+                bounds,
+                fields,
+                methods: Vec::new(),
+            });
+        }
         if header && self.at_line_end() && self.peek_n(1) != T::Indent {
             return StmtKind::Struct(StructDecl {
                 name,

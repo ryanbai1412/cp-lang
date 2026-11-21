@@ -242,10 +242,14 @@ impl<'a> Parser<'a> {
         self.additive()
     }
 
-    /// True when a capitalized name starts a range bound (`N..=M`, with `N`
-    /// a constant) and not a type name.
+    /// True when a capitalized name (possibly with `.member` access, such as
+    /// `Self.min..=Self.max`) starts a range bound and not a type name.
     fn range_follows(&self) -> bool {
-        matches!(self.peek_n(1), T::DotDot | T::DotDotEq)
+        let mut i = 1;
+        while self.peek_n(i) == T::Dot && self.peek_n(i + 1) == T::Ident {
+            i += 2;
+        }
+        matches!(self.peek_n(i), T::DotDot | T::DotDotEq)
     }
 
     /// Parses `<T, U>`. A closing `>>` counts as two closers.

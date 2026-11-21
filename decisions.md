@@ -1276,6 +1276,13 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   loops in C++ and keep `stdlib/prelude.cp` at its 80-name cap (imported via `use std.seq.{pairs, with_prev}`).
   *Reversal:* remove `pairs` and `with_prev` from `stdlib/seq.cp` (or add them to `stdlib/prelude.cp` if prelude slots open).
 
+- **22.5 One-line colon structs (`struct Edge: to: Int, w: Int`) and dotted range-bound types (`Self.min..=Self.max`).**
+  `struct_decl` now accepts `struct Name: f1: T1, f2: T2` (including shared-type `x, y: Int` and defaults),
+  producing the same `StructDecl` AST node as indented/paren structs. `range_follows` in `cpl-syntax` now
+  skips `.ident` member chains so `Self.min..=Self.max` and `D.first..=D.last` parse as `TypeKind::Range`.
+  *Reversal:* remove the one-line colon branch in `crates/cpl-syntax/src/parser/item.rs` and restore 1-token
+  `range_follows` in `crates/cpl-syntax/src/parser/types.rs`.
+
 ## 23. Validation scoreboard and friction summary (`scripts/scoreboard.py`, 2026-11-21)
 
 - **23.1 One unified scoreboard over auto-discovered ports.** `scripts/scoreboard.py` discovers every

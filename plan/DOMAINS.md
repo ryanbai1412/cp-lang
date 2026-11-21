@@ -29,19 +29,19 @@ generics as tuple packs, lazy parameters, writable places returned from
 methods), user optionals reach 8 bytes through a library `Niche`, and a
 library can say in its own words why a call does not type-check.
 **Where we are** (audited 2026-11-21 at `68ab60c`+). Working: `repeat`,
-`loop`, one-line enums and paren structs, multi-binding `let`/`var`, unary
+`loop`, one-line enums and structs (paren and colon forms), multi-binding `let`/`var`, unary
 `+`, counted domains, `read(lo..=hi)`, `D.count`, `for ... if`/`where`,
 `if let`/`while let` with `where` and multi-binding `if let a = x, b = y`,
 `let ... else`, `if x max= y:`, `?T` arithmetic and bitwise lifting (`+ - * / % ** & | ^ << >>`, unary `-`, `~`),
 `max(?T, T)`, `max=`/`min=` on optionals, `[A, B]T`, `[(A, B)]T` and `[A][B]T`,
-`pairs()`/`with_prev()` in `std.seq`, `Self`
+`pairs()`/`with_prev()` in `std.seq`, `Self` (including dotted range bounds `Self.min..=Self.max`)
 and associated types in traits. Structs get `Eq`, `Ord`, `Hash`, `Show` and
 `Read` from the compiler, structurally, with `impl Show/Eq/Ord` as hooks
 (`cpl-ir` `show_fn`/`eq_fn`/`lt_fn`); that is stdlib privilege, not library
 code. Enums, even fieldless ones, have no order (`E0309` on `d < Dir.S` and
 on sorting). Not built: postfix `x?` expression-extent lifting,
-one-line colon structs / opaque `struct List<T>` / struct type-param
-defaults / `Self` in trait range bounds / one-sided range types /
+opaque `struct List<T>` / struct type-param
+defaults / one-sided range types /
 `@droppable` / `labels(...)` / `Str(len:)`, `@derive` (`E0501`), variadic
 parameters (checked, then `E0501` in lowering), `read<(Int, Int)>()`, lazy
 parameters, `Niche`, library diagnostics, a method call as an assignment
@@ -50,8 +50,8 @@ target (`b.at() += 1` is `E0401`). 0 of the 35 `ideal-spec/spec/*.md`
 **Bar.** Every code block in the design spec passes `cpl check`; the stdlib
 needs no compiler knowledge beyond the documented intrinsics; each
 mechanism above has programs that the interpreter and the C++ agree on.
-**Next.** Postfix `?` extent; remaining 0.3 syntax (`struct` forms,
-type-param defaults, `Self` in ranges, one-sided ranges, `@droppable`,
+**Next.** Postfix `?` extent; remaining 0.3 syntax (opaque `struct`,
+type-param defaults, one-sided ranges, `@droppable`,
 `labels`, `Str(len:)`); reflection (`for f in fields(x)`, variants) and
 derives as trait defaults; variadic packs, then `print`/`read` on them;
 lazy parameters, then `assert`/`debug`/`??`; `Niche`; writable places;
