@@ -6,7 +6,6 @@
 //   - If m == 0: every elf must die, so find the largest index `s` whose suffix
 //     `s..n - 1` sums to at least the strongest elf's attack; chain `0..s` into `s`,
 //     then have `s..n - 1` attack the strongest elf in descending order.
-use std.prefix.prefix1
 
 @!multitest
 let n: 2..=200_000 = read()
@@ -22,7 +21,7 @@ elif m >= 1:
     for i in 0..n - 2 * m: print(ord[i], ord[i + 1])
     for i in 0..m: print(ord[n - 1 - i], ord[n - 1 - m - i])
 else:
-    let pref = prefix1([0..n] i => vals[ord[i]])
+    let pref = prefix([0..n] i => vals[ord[i]])
     let top = ord[n - 1]
     let split = bsearch_last(0..n - 1, k => pref.sum(k..n - 1) >= vals[top])
     if let s = split:

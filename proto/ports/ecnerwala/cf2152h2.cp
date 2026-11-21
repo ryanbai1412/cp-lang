@@ -67,7 +67,7 @@ while let h = heaps[rt]:
     for _ in 0..nd.cnt: deltas.push(nd.v)
     heaps[rt] = meld(nd.l, nd.r)
 
-let pref = prefix_n(deltas)
+let pref = prefix(deltas)
 let q: Int = read()
 for _ in 0..q:
     let t: Int = read()

@@ -6,7 +6,7 @@ use std.window.{MonoDeque}
 let (n, r): (Int, Int) = read()
 let a: [0..n]Int = read()
 let c: [0..n]Int = read()
-let pref = prefix1(a)
+let pref = prefix(a)
 
 var last_occ: Map<Int, Int> = Map()
 var occ_heap = MaxHeap<(Int, Int)>()

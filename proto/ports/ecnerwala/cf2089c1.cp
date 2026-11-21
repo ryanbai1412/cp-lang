@@ -6,7 +6,7 @@ let comb = Comb<Z>()
 let (n, l, _k): (Int, Int, Int) = read()
 var dp: [0..n]Z = 0
 for i in 1..=l:
-    let pref = prefix_n([0..n] j => if j == 0: dp[n - 1] + 1 else: dp[j - 1])
+    let pref = prefix([0..n] j => if j == 0: dp[n - 1] + 1 else: dp[j - 1])
     let inv_i = comb.inv(i)
     for k in 0..n:
         let a = k + 1 - i

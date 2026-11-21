@@ -5,7 +5,6 @@
 // the prefix of length `used + c`. That requires `used + c > last[f]`, leaves
 // `open[used + c] + fixed_below - used` free slots in that prefix, and choosing
 // k launches for floor f multiplies by C(avail, k - fixed[f]).
-use std.prefix.prefix1
 
 type M = Mod<1_000_000_007>
 let comb = Comb<M>(100)
@@ -18,7 +17,7 @@ domain Floor = 1..=n
 domain Time = 1..=m
 let a: [Time]?Floor = read(none: 0)
 
-let open = prefix1([Time] tm => Int(a[tm] == none))
+let open = prefix([Time] tm => Int(a[tm] == none))
 var last_pos: [Floor]?Time = none
 for tm in Time:
     if let f = a[tm]: last_pos[f] = tm

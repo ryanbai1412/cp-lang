@@ -867,6 +867,26 @@ let c = V.group(by: v => Int(v) % 2)
 }
 
 #[test]
+fn prefix_twin_becomes_prefix() {
+    let src = "\
+let xs = [3, 1, 4]
+let a = prefix_n(xs)
+let b = prefix1([0..3] i => i)
+let c = prefix2([0..2, 0..2] (r, c) => r + c)
+";
+    assert_eq!(taste_codes(src), ["L0513"; 3]);
+    assert_eq!(
+        fixed(src),
+        "\
+let xs = [3, 1, 4]
+let a = prefix(xs)
+let b = prefix([0..3] i => i)
+let c = prefix([0..2, 0..2] (r, c) => r + c)
+"
+    );
+}
+
+#[test]
 fn loop_invariant_mod_div_hoists_inverse() {
     let basic = "type Z = Mod<998_244_353>\nlet d = Z(3)\nvar xs = [Z(1), Z(2)]\nfor i in 0..xs.len:\n    xs[i] = xs[i] / d\nprint(xs)\n";
     assert_eq!(codes(basic), ["L0415"]);

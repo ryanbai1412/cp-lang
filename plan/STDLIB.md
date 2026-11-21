@@ -976,6 +976,7 @@ struct PrefixN<T>
     fn new(a: List<T>) -> PrefixN<T>
     fn prefix(self, k: Int) -> T
     fn sum(self, r: Range<Int>) -> T
+fn prefix(a) // prelude overload: dispatches to prefix_n (List<T>), prefix1 ([D]T), or prefix2 ([R, C]T); L0513 rewrites the suffixed helpers to prefix(a)
 fn prefix_n<T>(a: List<T>) -> PrefixN<T>
 fn prefix1<D, T>(a: [D]T) -> Prefix1<D, T>
 fn prefix2<R, C, T>(a: [R, C]T) -> Prefix2<R, C, T>

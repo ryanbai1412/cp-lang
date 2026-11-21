@@ -3127,7 +3127,6 @@ time in `totals.gate_fast` and lists it under `warnings`, not
 `regressions`. Test: `test_dream_scores_and_gate_fast_ratchets`. Reverse by
 restoring the `fail` in `check.sh` and appending to `regressions` in
 `diff_against_baseline`.
-
 ## 78. `Paths` keeps one witness array, `back` (2026-11-21)
 
 1. **`Paths<V, W, A>` stores `back: [V]?(from: V, via: A)` in place of separate `parent: [V]?V` and `via: [V]?A`.**
@@ -3139,3 +3138,9 @@ restoring the `fail` in `check.sh` and appending to `regressions` in
    - **Reason:** cf2152f builds its trees right to left, each vertex's parent already placed. Building a `Rooted` for them made the port 2.7x slower than the C++ and use 4x the memory (0.60 s / 64 MB vs 0.22 s / 15 MB). The port's own jump pointers were the right structure, but no other port could reuse them. With `JumpTree` the port runs in 0.12 s vs 0.11 s for the C++, with identical output.
    - **Also:** `Rooted.ancestor(v, k)` returns `none` for negative `k`; it used to return a descendant. The new test that checks `JumpTree` against `Rooted` found this.
    - **Reverse:** move the struct back into `cf2152f.cp`.
+
+## 80. One `prefix(a)` spelling with `L0513` (`prefix_twin`) (2026-11-21)
+
+- **Decision:** Standardize on `prefix(a)` as the single public spelling for static prefix sums across `List<T>`, `[D]T`, and `[R, C]T`. Keep `prefix_n`, `prefix1`, and `prefix2` in `stdlib/prefix.cp` as the underlying monomorphic constructors dispatched by `BUILT_ON`, and add taste lint `L0513` (`prefix_twin`) with `cpl lint --fix` rewriting `prefix_n(a)` / `prefix1(a)` / `prefix2(a)` to `prefix(a)`.
+- **Reason:** The prelude already dispatches `prefix(a)` cleanly by argument type to `PrefixN<T>`, `Prefix1<D, T>`, and `Prefix2<R, C, T>`, so users never need to remember or import the dimension-suffixed helpers. Rewriting existing ports removes `use std.prefix.{prefix_n}` boilerplate and unifies the family under one guessable name without adding core privilege.
+- **Reverse:** Remove `L0513` (`PREFIX_TWIN`) from `crates/cpl-lint`.

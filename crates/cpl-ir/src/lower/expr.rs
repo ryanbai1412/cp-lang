@@ -314,7 +314,9 @@ impl<'a> Lowerer<'a> {
                 }
                 let (indices, ty) = self.index_args(&base_expr.ty, indices, span);
                 let indices = self.vouched(&base_expr.ty, indices);
-                self.mk(ExprKind::Index(Box::new(base_expr), indices), ty, span)
+                let out = self.mk(ExprKind::Index(Box::new(base_expr), indices), ty, span);
+                let plain = self.plain_ty(&out.ty);
+                self.try_coerce(out, &plain).unwrap_or_else(|e| e)
             }
             ast::ExprKind::Field { base, name } => self.field(e, base, name, inner_hint),
             ast::ExprKind::Generic { base, args } => self.generic_expr(base, args, span),

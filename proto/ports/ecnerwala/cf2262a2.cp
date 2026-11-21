@@ -15,7 +15,7 @@ for i in 1..=n:
     for j in 0..a[i]: need[j * i] min= min(n, j * i + i)
     diff[min(n, a[i] * i)] += 1
     diff[min(n, a[i] * i + i)] -= 1
-let cover = prefix1(diff)
+let cover = prefix(diff)
 for i in (0..n).rev: need[i] min= need[i + 1]
 
 var ways: [0..=n]Z = 0

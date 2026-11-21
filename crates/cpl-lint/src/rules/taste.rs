@@ -6,8 +6,8 @@
 use crate::walk::{self, Bind, Visitor};
 use crate::{
     File, Finding, BY_TWIN, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD, INDEX_ONLY_LOOP,
-    LOOP_REDUCTION, NONE_CHECK_UNWRAP, PUSH_LOOP, REPEATED_LITERAL, SEARCH_LOOP, SYMMETRIC_WRITE,
-    TREE_ORDER,
+    LOOP_REDUCTION, NONE_CHECK_UNWRAP, PREFIX_TWIN, PUSH_LOOP, REPEATED_LITERAL, SEARCH_LOOP,
+    SYMMETRIC_WRITE, TREE_ORDER,
 };
 use cpl_diag::{Diagnostic, Fix, Span};
 use cpl_syntax::ast::*;
@@ -75,6 +75,7 @@ impl Visitor for Blocks<'_, '_> {
         self.taste.by_twin(expr);
         self.taste.tree_order(expr);
         self.taste.domain_spelling(expr);
+        self.taste.prefix_twin(expr);
         match &expr.kind {
             ExprKind::Block(body) => self.taste.block(&body.stmts),
             ExprKind::If {
@@ -801,6 +802,36 @@ impl<'a> Taste<'a> {
                 }
             }
         }
+    }
+
+    /// `prefix1(a)`, `prefix2(a)`, `prefix_n(a)` -> `prefix(a)` (prelude overload).
+    fn prefix_twin(&mut self, expr: &Expr) {
+        let ExprKind::Call { callee, args } = &expr.kind else {
+            return;
+        };
+        if args.len() != 1 || args[0].name.is_some() || args[0].mutable {
+            return;
+        }
+        let ExprKind::Name(name) = &callee.kind else {
+            return;
+        };
+        if !matches!(name.as_str(), "prefix1" | "prefix2" | "prefix_n") {
+            return;
+        }
+        if self.declared.contains("prefix") || self.declared.contains(name.as_str()) {
+            return;
+        }
+        let mut diag = Diagnostic::warning(
+            PREFIX_TWIN.code,
+            callee.span,
+            format!("use `prefix(...)` instead of `{name}(...)`"),
+        )
+        .with_help("`prefix(a)` handles `List<T>`, `[D]T`, and `[R, C]T` automatically");
+        diag.fixes.push(Fix {
+            title: "rename to `prefix`".into(),
+            edits: vec![(callee.span, "prefix".into())],
+        });
+        self.push(&PREFIX_TWIN, diag);
     }
 
     #[allow(clippy::too_many_arguments)]

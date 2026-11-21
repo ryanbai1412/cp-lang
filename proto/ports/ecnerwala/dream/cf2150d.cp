@@ -9,8 +9,6 @@
 // `extras`. Across all `n - l + 1` intervals of length `l`, cell `i` is an interior
 // cell in `min(i, l - 2, n - l + 1, n - 1 - i)` intervals — a trapezoid of height
 // `cap = min(l - 2, n - l + 1)` evaluated in O(1) via `pref` and `pref_i`.
-use std.prefix.prefix1
-
 type Z = Mod<998_244_353>
 let comb = Comb<Z>()
 
@@ -25,8 +23,8 @@ let n: 1..=200_000 = read()
 let raw: [0..n]0..=1_000_000_000 = read()
 let a = [0..n] i => Z(raw[i])
 
-let pref = prefix1(a)
-let pref_i = prefix1([0..n] i => a[i] * i)
+let pref = prefix(a)
+let pref_i = prefix([0..n] i => a[i] * i)
 
 var ans = pref.sum(0..n) * n
 for l in 2..=n:

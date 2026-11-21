@@ -11,7 +11,7 @@ let n: 1..=200_000 = read()
 let k: 1..=n = read()
 var a: [0..n]-1_000_000_000..=1_000_000_000 = read()
 a.sort()
-let pref = prefix_n([Int(x) for x in a])
+let pref = prefix([Int(x) for x in a])
 var st = 0
 while st < n and pref.prefix(st) + a[st] * st <= 0: st += 1
 

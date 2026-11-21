@@ -4,7 +4,6 @@
 // Σ freq[f] · P(f, need) · (m - need)! across completions of the `m` missing cells.
 @!multitest
 use std.mod.{Comb, Mod}
-use std.prefix.prefix1
 
 const P = 1_000_000_007
 type Z = Mod<P>
@@ -17,7 +16,7 @@ let a: [Pos]-1..n = read()
 var pos: [Val]?Pos = none
 for i in Pos where a[i] >= 0: pos[Val(a[i])] = i
 
-let missing = prefix1([Pos] i => Int(a[i] == -1))
+let missing = prefix([Pos] i => Int(a[i] == -1))
 let m = missing.prefix(Pos.last.r)
 let comb = Comb<Z>(n)
 

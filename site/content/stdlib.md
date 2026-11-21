@@ -33,10 +33,10 @@ Every module under `stdlib/` is plain CP Lang. Import individual names with `use
 | `std.ntt` | `ntt`, `convolve`, `convolve_mod`, `convolve_int`, `SosOver`, `sos`, `convolve_or`, `convolve_and`, `convolve_xor` | NTT, linear/cyclic/3-prime/exact convolution, SOS, bitwise convolutions |
 | `std.poly` | `deriv`, `integral`, `inv`, `log`, `exp`, `pow`, `sqrt`, `eval`, `div_mod`, `prod_linear`, `taylor_shift`, `eval_all`, `compose` | Formal power series & multipoint ops over NTT (`List<Mod<P>>`) |
 | `std.persistent` | `PersistentSegTree`, `Version`, `RangeKth` | Path-copying persistent segment tree and O(log n) range k-th smallest |
-| `std.prefix` | `Prefix1`, `Prefix2`, `PrefixN`, `prefix1`, `prefix2`, `prefix_n`, `prefix_fold`, `suffix_fold`, `Diff1`, `Diff2` | 1D/2D/N-D prefix sums, prefix/suffix monoid folds, difference arrays |
+| `std.prefix` | `prefix`, `Prefix1`, `Prefix2`, `PrefixN`, `prefix_fold`, `suffix_fold`, `Diff1`, `Diff2` | 1D/2D prefix sums (`prefix(a)` dispatches across `List`, `[D]T`, `[R, C]T`), monoid folds, difference arrays |
 | `std.rand` | `Rng` | Seeded deterministic RNG (`.int(lo, hi)`, `.next()`) |
 | `std.segtree` | `SegTree`, `MergeSortTree`, `SparseSegTree` | Segment tree, orthogonal 2D merge-sort tree, and coordinate-sparse segment tree |
-| `std.seq` | `Perm<V>`, `pairs`, `with_prev`, `cyclic_pairs`, `windows`, `scan`, `bsearch_first`, `bsearch_last` | Sequence views, searches, folds, `Perm<V>` alias |
+| `std.seq` | `Perm<V>`, `pairs`, `with_prev`, `cyclic_pairs`, `windows`, `scan`, `scan_in_place`, `argmax`, `inversions`, `prev_less`, `next_less`, `sliding_min`, `inverse`, `perm_cycles`, `bsearch_first`, `bsearch_last` | Sequence views, searches, monotone stacks, permutations, folds, `Perm<V>` alias |
 | `std.sparse` | `SparseTable`, `DisjointSparseTable`, `idempotent` | O(1) idempotent and non-idempotent associative range folds |
 | `std.spec` | `convexity_break`, `monge_break`, `dnc_break`, `knuth_break`, `berlekamp_massey`, `differences`, `newton` | Conjecture checking and sequence/recurrence discovery |
 | `std.strings` | `z_function`, `prefix_function`, `manacher`, `SuffixArray`, `SuffixAutomaton`, `PalindromicTree`, `Trie`, `AhoCorasick`, `RollingHash`, `Hash2D` | Pattern matching, palindromes, suffix structures, tries, and rolling hashes |
@@ -102,11 +102,11 @@ Sorted lookup uses `.first_ge(x)`, `.first_gt(x)`, `.last_le(x)`, `.last_lt(x)` 
 Other prelude sequence helpers:
 
 - `compress(all)` — coordinate compression producing a nominal domain `xs.D`, inverse `xs[id]`, `xs.at(val) -> xs.D`, and `xs.first_ge(val) -> ?xs.D`.
-- `prefix(a)` — 1D or 2D prefix sums (`pre.sum(l..=r)`).
-- `scan(a, +)` / `scan(a, max)` — inclusive running folds; `fold(+, a)` — the whole fold; `a.excl_fold(+)` — yields `(x, rest)`, the fold of every other element, without division.
-- `runs(a)` — run-length `(value, count)` pairs; `a.runs(by: key)` — groups of equal `key`, each `(key, items)`; `xs.adjacent` — consecutive pairs; `D.windows(k)` — sliding windows.
-- Sequence methods (prefer method form over free calls on one sequence): `a.sort(by:)`, `a.sorted(by:)` (returns a 0-indexed `List<T>`; descending via `by: desc`), `D.sort(by: key)` (for domains), `a.reverse()`, `a.dedup()`, `a.distinct()`, `a.rotate(k)`, `next_permutation(mut a)`, `prev_permutation(mut a)`.
-- Method-form folds & searches: `xs.sum()`, `xs.product()`, `xs.min(by:)`, `xs.max(by:)`, `xs.argmax(by:)`, `xs.count(p)`, `xs.all(p)`, `xs.any(p)`, `xs.first(p) -> ?T`, `xs.find(x) -> ?I`, `xs.group(by: k)`. Use free `sum(f(x) for x in xs)` for generator expressions and `min(a, b)` / `max(a, b)` for two or more values.
+- `prefix(a)` — 1D (`List<T>`, `[D]T`) or 2D (`[R, C]T`) prefix sums (`pre.sum(l..=r)`, `pre.prefix(k)`).
+- `scan(a, +)` / `scan(a, max)` — inclusive running folds (`a.scan_in_place(+)` in `std.seq` mutates a `List` without allocation); `fold(+, a)` — the whole fold; `a.excl_fold(+)` — yields `(x, rest)`, the fold of every other element, without division.
+- `a.runs()` / `a.runs(by: key)` — run-length `(val, len)` pairs; `a.chunk_by(same)` (in `std.seq`) splits adjacent runs into slices and `a.group(by: key)` groups all elements by key; `xs.adjacent` — consecutive pairs; `D.windows(k)` — sliding windows.
+- Sequence methods (prefer method form over free calls on one sequence): `a.sort(by:)`, `a.sorted(by:)` (returns a 0-indexed `List<T>`; descending via `by: desc`), `D.sort(by: key)` (for domains), `a.reverse()`, `deduped(a)` (prelude); in `std.seq`: `dedup(mut a)`, `distinct(a)`, `rotate_left(mut a, k)`, `rotate_right(mut a, k)`, `next_permutation(mut a)`, `prev_permutation(mut a)`, `p.inverse()`, `perm_cycles(p)`.
+- Method-form folds & searches: `xs.sum()`, `xs.prod()`, `xs.min(by:)`, `xs.max(by:)`, `xs.argmax(by:)`, `xs.argmin(by:)`, `xs.count(p)`, `xs.all(p)`, `xs.any(p)`, `xs.first(p) -> ?T`, `xs.find(x) -> ?I`, `xs.group(by: k)`. Use free `sum(f(x) for x in xs)` for generator expressions and `min(a, b)` / `max(a, b)` for two or more values.
 - `xs.windows(k)` yields every length-`k` window as a list; `zip(xs, ys)` pairs elements up to the shorter list.
 - `std.seq` also provides zero-allocation sequence views `pairs(xs)` (consecutive `(a, b)` pairs), `with_prev(xs)` (`(?T, T)` with `none` on the first element), `cyclic_pairs(xs)`, and the standard permutation alias `Perm<V> = [V]V` (paired with `std.graph.Tree<V>` for `cpl stress` generation and shrinking):
 

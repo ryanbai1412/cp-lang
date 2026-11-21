@@ -294,6 +294,16 @@ pub const DOMAIN_SPELLING: Lint = Lint {
     trigger: "domain V = 1..=3\nlet a: [V]Int = [3, 1, 2]\nlet _ = V.sorted(by: a)\nlet _ = V.first(where: v => a[v] > 1)\n",
     fix: "domain V = 1..=3\nlet a: [V]Int = [3, 1, 2]\nlet _ = V.sort(by: a)\nlet _ = V.first(v => a[v] > 1)\n",
 };
+pub const PREFIX_TWIN: Lint = Lint {
+    code: Code("L0513"),
+    name: "prefix_twin",
+    default: Level::Warn,
+    title: "Dimension-suffixed prefix helper instead of `prefix`",
+    summary: "`prefix1(a)`, `prefix2(a)` or `prefix_n(a)`: write `prefix(a)`",
+    explanation: "`prefix(a)` in the prelude dispatches by argument type to 1-D `[D]T`, 2-D `[R, C]T`, or `List<T>` prefix sums (`Prefix1`, `Prefix2`, `PrefixN`). `cpl lint --fix` rewrites `prefix1`, `prefix2`, and `prefix_n` calls to `prefix`.",
+    trigger: "let xs = [3, 1, 4]\nlet p = prefix_n(xs)\nprint(p.sum(0..3))\n",
+    fix: "let xs = [3, 1, 4]\nlet p = prefix(xs)\nprint(p.sum(0..3))\n",
+};
 
 pub const TREE_ORDER: Lint = Lint {
     code: Code("L0511"),
@@ -331,6 +341,7 @@ pub const LINTS: &[Lint] = &[
     BY_TWIN,
     TREE_ORDER,
     DOMAIN_SPELLING,
+    PREFIX_TWIN,
 ];
 
 /// The taste lints (`plan/PORTING.md`): code that works but reads like

@@ -3,7 +3,7 @@
 @!multitest
 let n: Int = read()
 let a: [0..n]Int = read()
-let pref = prefix_n(a)
+let pref = prefix(a)
 let ord = (0..n).sorted(by: i => (pref.prefix(i), i))
 var p: [0..n]Int = 0
 for (rank, idx) in ord.items: p[idx] = n - rank

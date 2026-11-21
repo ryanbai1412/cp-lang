@@ -7311,7 +7311,7 @@ impl<'a> Lowerer<'a> {
         // A list, or an array indexed by plain `Int`s from 0: `p.sum(l..r)`
         // takes `Int`s.
         let counted = match &src.ty {
-            Ty::List(_) => true,
+            Ty::List(_) | Ty::ListView(_) => true,
             Ty::Array { dims, .. } => matches!(dims[..], [Dim::Int]),
             _ => false,
         };

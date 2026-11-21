@@ -4,8 +4,8 @@
 let n: Int = read()
 let a: [0..n]Int = read()
 let med = a.sorted()[n / 2]
-let pref_lt = prefix_n([Int(x < med) for x in a])
-let pref_le = prefix_n([Int(x <= med) for x in a])
+let pref_lt = prefix([Int(x < med) for x in a])
+let pref_le = prefix([Int(x <= med) for x in a])
 
 var dp: [0..=n]?Int = none
 dp[0] = 0
