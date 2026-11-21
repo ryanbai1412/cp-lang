@@ -1691,7 +1691,10 @@ fn a_var_is_in_the_hull_every_assignment_keeps() {
         ("var best = 0\nfor i in 0..n:\n    best max= a * 2\nprint(best)\n", Some((0, 18))),
         ("var s = 5\ns = min(s, a)\ns = max(s, abs(a - 20))\nprint(s)\n", Some((0, 20))),
         ("var p = n\nif a > 3:\n    p = p % 7\nprint(p)\n", Some((0, 100))),
-        ("var c = 0\nwhile c < n:\n    c += 1\nprint(c)\n", None),
+        ("var c = 0\nwhile c < n:\n    c += 1\nprint(c)\n", Some((0, 100))),
+        ("var c = 0\nwhile c < n:\n    print(c)\n    c += 1\n    c += 1\nprint(c)\n", None),
+        ("var c = 0\nfor i in 0..n:\n    c += 1\nprint(c)\n", None),
+        ("var j = 0\nwhile j < n and a > 2:\n    j = j + 1\nprint(j)\n", Some((0, 100))),
         ("var t = 1\nfor i in 0..n:\n    t = t * 2\nprint(t)\n", None),
         ("var x = 0\nfor i in 0..n:\n    x = i\nprint(x)\n", None),
         ("var x = 0\nfn bump():\n    x = 50\nbump()\nprint(x)\n", Some((0, 50))),
@@ -1774,10 +1777,10 @@ fn a_loop_that_exits_leaves_its_condition_false() {
     let head = "let n: 1..=100 = read()\nlet a: 0..=9 = read()\nvar x = n\n";
     let halve = "while x > 9:\n    x = x / 2\n";
     let cases = [
-        (format!("{halve}let y = x\nprint(y)\n"), Some((0, 9))),
-        (format!("for _ in 0..a:\n    {}    let y = x + 0\n    print(y)\n", halve.replace("\n    ", "\n        ")), Some((0, 9))),
-        ("while x > 9:\n    x = x / 2\n    if a == 3:\n        break\nlet y = x\nprint(y)\n".to_string(), Some((0, 100))),
-        (format!("{halve}x = 50\nlet y = x\nprint(y)\n"), Some((0, 100))),
+        (format!("{halve}let y = x\nprint(y)\n"), Some((1, 9))),
+        (format!("for _ in 0..a:\n    {}    let y = x + 0\n    print(y)\n", halve.replace("\n    ", "\n        ")), Some((1, 9))),
+        ("while x > 9:\n    x = x / 2\n    if a == 3:\n        break\nlet y = x\nprint(y)\n".to_string(), Some((1, 100))),
+        (format!("{halve}x = 50\nlet y = x\nprint(y)\n"), Some((1, 100))),
         (format!("fn grow():\n    x = 100\n{halve}grow()\nlet y = x\nprint(y)\n"), Some((0, 100))),
         ("fn grow():\n    x = 100\nif x < 10:\n    grow()\n    let y = x\n    print(y)\n".to_string(), Some((1, 100))),
     ];

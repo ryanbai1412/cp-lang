@@ -403,74 +403,166 @@ fn var_range(
         .filter(|(n, _, var)| *var && solvable(n))
         .map(|(n, ..)| n.as_str())
         .collect();
-    // A var whose hull doesn't settle is dropped and the rest solved again.
+    let mut guards = HashMap::new();
+    for s in scope {
+        guarded(s, &mut guards);
+    }
+    // One round maps hulls to the values they can produce: each var's
+    // initializer and every assignment, read with the vars in `hulls`. `Err`
+    // names a var that can't be bounded.
+    let round = |hulls: &HashMap<&str, bounds::Interval>,
+                 vars: &HashSet<&str>|
+     -> Result<HashMap<&str, bounds::Interval>, String> {
+        let mut known = bounds.clone();
+        for b in &scan.bound {
+            known.bind(b, None);
+        }
+        for (v, h) in hulls {
+            known.bind(v, Some(*h));
+        }
+        let mut next = HashMap::from([(name, start)]);
+        for (n, init, var) in &scan.defs {
+            let value = known.expr(init);
+            if !var {
+                known.bind(n, value.filter(|_| solvable(n)));
+            } else if vars.contains(n.as_str()) {
+                let v = value.ok_or_else(|| n.clone())?;
+                next.insert(n.as_str(), v);
+                known.bind(n, Some(hulls.get(n.as_str()).map_or(v, |h| h.hull(v))));
+            }
+        }
+        for (&v, out) in next.iter_mut() {
+            let old = hulls.get(v).copied().unwrap_or(*out);
+            for (op, value) in scan.writes.get(v).into_iter().flatten() {
+                let (w, old) = match guards.get(&(value.span.start, value.span.end)) {
+                    Some((test, before)) => {
+                        let mut inner = known.clone();
+                        narrow(test, true, &|n| assigned_in(n, before), &mut inner);
+                        // The guard can't hold, so this never runs.
+                        let Some(old) = inner.expr_name(v) else { continue };
+                        (inner.expr(value), old)
+                    }
+                    None => (known.expr(value), old),
+                };
+                let w = w.ok_or_else(|| v.to_string())?;
+                let after = match op {
+                    AssignOp::Set => Some(w),
+                    AssignOp::Binary(op) => bounds::Bounds::combine(*op, old, w),
+                    AssignOp::Max => Some(bounds::Interval {
+                        lo: old.lo.max(w.lo),
+                        hi: old.hi.max(w.hi),
+                    }),
+                    AssignOp::Min => Some(bounds::Interval {
+                        lo: old.lo.min(w.lo),
+                        hi: old.hi.min(w.hi),
+                    }),
+                };
+                *out = out.hull(after.ok_or_else(|| v.to_string())?);
+            }
+        }
+        Ok(next)
+    };
+    let within = |inner: &HashMap<&str, bounds::Interval>, outer: &HashMap<&str, bounds::Interval>| {
+        inner.iter().all(|(v, i)| outer.get(v).is_some_and(|o| o.lo <= i.lo && i.hi <= o.hi))
+    };
+    // A var that can't be bounded is dropped and the rest solved again.
     'solve: loop {
         let mut hulls: HashMap<&str, bounds::Interval> = HashMap::from([(name, start)]);
+        let mut settled = false;
+        // Grow the hulls until a round stays inside them; a bound still
+        // growing after a few rounds jumps to the edge of `Int`.
+        for step in 0..80 {
+            let next = match round(&hulls, &vars) {
+                Ok(next) => next,
+                Err(v) if v != name => {
+                    vars.remove(v.as_str());
+                    continue 'solve;
+                }
+                Err(_) => return None,
+            };
+            if within(&next, &hulls) {
+                settled = true;
+                break;
+            }
+            for (v, n) in next {
+                let grown = match hulls.get(v) {
+                    Some(h) => {
+                        let mut g = h.hull(n);
+                        if step >= 64 {
+                            let int = i64::MAX as i128;
+                            if g.lo < h.lo && g.lo >= -int - 1 {
+                                g.lo = -int - 1;
+                            }
+                            if g.hi > h.hi && g.hi <= int {
+                                g.hi = int;
+                            }
+                        }
+                        g
+                    }
+                    None => n,
+                };
+                hulls.insert(v, grown);
+            }
+        }
+        if !settled {
+            if vars.is_empty() {
+                return None;
+            }
+            // Some hull never settled: solve `name` alone.
+            vars.clear();
+            continue;
+        }
+        // Each round of hulls a round stays inside also stays inside the
+        // hulls, so it tightens them and keeps every value they held.
         for _ in 0..72 {
-            let mut known = bounds.clone();
-            for b in &scan.bound {
-                known.bind(b, None);
-            }
-            for (v, h) in &hulls {
-                known.bind(v, Some(*h));
-            }
-            let mut next = hulls.clone();
-            for (n, init, var) in &scan.defs {
-                let value = known.expr(init);
-                if !var {
-                    known.bind(n, value.filter(|_| solvable(n)));
-                } else if vars.contains(n.as_str()) {
-                    let Some(v) = value else {
-                        vars.remove(n.as_str());
-                        continue 'solve;
-                    };
-                    let h = next.entry(n.as_str()).or_insert(v);
-                    *h = h.hull(v);
-                    known.bind(n, Some(*h));
-                }
-            }
-            for (&v, hull) in next.iter_mut() {
-                for (op, value) in scan.writes.get(v).into_iter().flatten() {
-                    let Some(w) = known.expr(value) else {
-                        if v == name {
-                            return None;
-                        }
-                        vars.remove(v);
-                        continue 'solve;
-                    };
-                    let old = hulls.get(v).copied().unwrap_or(*hull);
-                    let after = match op {
-                        AssignOp::Set => Some(w),
-                        AssignOp::Binary(op) => bounds::Bounds::combine(*op, old, w),
-                        AssignOp::Max => Some(bounds::Interval {
-                            lo: old.lo.max(w.lo),
-                            hi: old.hi.max(w.hi),
-                        }),
-                        AssignOp::Min => Some(bounds::Interval {
-                            lo: old.lo.min(w.lo),
-                            hi: old.hi.min(w.hi),
-                        }),
-                    };
-                    let Some(after) = after else {
-                        if v == name {
-                            return None;
-                        }
-                        vars.remove(v);
-                        continue 'solve;
-                    };
-                    *hull = hull.hull(after);
-                }
-            }
-            if next == hulls {
-                return hulls.get(name).copied();
+            let Ok(next) = round(&hulls, &vars) else { break };
+            if next == hulls || !within(&next, &hulls) {
+                break;
             }
             hulls = next;
         }
-        // Some hull never settled: solve `name` alone.
-        if vars.is_empty() {
-            return None;
+        return hulls.get(name).copied();
+    }
+}
+
+/// Each assignment directly in a `while` body, keyed by the span of the
+/// value it assigns, with the loop's condition and the statements before it
+/// in that body: those that run between the condition holding and it.
+fn guarded<'a>(
+    stmt: &'a cpl_syntax::ast::Stmt,
+    out: &mut std::collections::HashMap<(u32, u32), (&'a cpl_syntax::ast::Expr, &'a [cpl_syntax::ast::Stmt])>,
+) {
+    use cpl_syntax::ast::{Cond, ExprKind, FnBody, StmtKind};
+    let blocks: Vec<&[cpl_syntax::ast::Stmt]> = match &stmt.kind {
+        StmtKind::While { cond, body, else_body } => {
+            if let Cond::Expr(test) = cond {
+                for (k, s) in body.stmts.iter().enumerate() {
+                    if let StmtKind::Assign { value, .. } = &s.kind {
+                        out.insert((value.span.start, value.span.end), (test, &body.stmts[..k]));
+                    }
+                }
+            }
+            std::iter::once(&body.stmts[..]).chain(else_body.iter().map(|b| &b.stmts[..])).collect()
         }
-        vars.clear();
+        StmtKind::For { body, .. } | StmtKind::Unchecked(body) => vec![&body.stmts[..]],
+        StmtKind::Fn(decl) => match &decl.body {
+            FnBody::Block(b) => vec![&b.stmts[..]],
+            _ => Vec::new(),
+        },
+        StmtKind::Expr(e) => match &e.kind {
+            ExprKind::If { branches, otherwise } => branches
+                .iter()
+                .map(|(_, b)| &b.stmts[..])
+                .chain(otherwise.iter().map(|b| &b.stmts[..]))
+                .collect(),
+            _ => Vec::new(),
+        },
+        _ => Vec::new(),
+    };
+    for block in blocks {
+        for s in block {
+            guarded(s, out);
+        }
     }
 }
 

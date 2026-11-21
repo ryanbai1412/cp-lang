@@ -2273,6 +2273,13 @@ unless they assign `w`. A name that any fn or lambda body assigns is never narro
 an `if`, since a call can change it between the test and the use. Reverse: drop the post-loop
 `narrow` call, `breaks` and `Bounds::fn_writes`.
 
+29.28. **An assignment in a `while` body reads the names its condition bounds.** `c += 1` under
+`while c < n:` sees `c < n`, so `c` keeps `0..=n` instead of having no range. Only assignments
+directly in the body, and only names no earlier statement there assigns. Hulls now grow until a
+round of assignments stays inside them, jumping to the edge of `Int` after 64 rounds, then shrink
+while each round stays inside: a guarded counter's first hull is wider than it needs. Reverse:
+drop `guarded` and its lookup in `var_range`'s round.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:
