@@ -23,7 +23,7 @@ fn cool(r: Range<PosA.bounds>) -> List<Range<PosA.bounds>> =
     if r.is_empty: []
     else:
         let m = a[r].max_subarray(widest: true)
-        cool(r.start..m.lo) + [m] + cool(m.hi..r.end)
+        cool(r.l..m.lo) + [m] + cool(m.hi..r.r)
 
 let (domain Seg, span) = cool(PosA.bounds.first..PosA.bounds.last).indexed()
 let sum = [Seg] s => a[span[s]].sum()

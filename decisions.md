@@ -4140,10 +4140,11 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   have positions and cuts (`D.bounds`), and each needs neighbour and
   conversion words; empty domains needed a rule for `first`/`last`.
 - **Decision.**
-  - Position `v`: `v.prev`, `v.next` (`?V`); its cuts `v.start`, `v.end`.
-    Cut `c`: `c.prev`, `c.next` (`?V.bounds`); its positions `c.before`,
-    `c.after` (`?V`). A position is a one-element range, so `v.start..v.end`
-    is `v`.
+  - `.l`/`.r` switch kind, `.prev`/`.next` keep it. Position `v`: `v.prev`,
+    `v.next` (`?V`); its cuts `v.l`, `v.r`. Cut `c`: `c.prev`, `c.next`
+    (`?V.bounds`); the positions beside it `c.l`, `c.r` (`?V`). Range `r`:
+    its end cuts `r.l`, `r.r`. `v.l..v.r` is `v`. The receiver's kind is
+    static, so reusing the word is a type error when misused, never silent.
   - Domains may be empty. `D.first`/`D.last` return a plain `D` and exist
     only on `D: NonEmpty`, which the checker derives at each use: the lower
     bound of `D.count`'s range is at least 1. Guards narrow it
@@ -4152,15 +4153,15 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
     allows zero; `E.all.first` gives `?E`. Generic code writes
     `<domain D: NonEmpty>`.
   - `v + 1` is an `Int`; re-enter the domain with `v.next` or `V.at(x)`.
-  - `r.bsearch(ok)` returns the cut where `ok` flips; `.after`/`.before`
+  - `r.bsearch(ok)` returns the cut where `ok` flips; `.r`/`.l`
     give the first true / last false position. Replaces `bsearch_first` and
     `bsearch_last`.
-- **Rejected.** `left`/`right` for both kinds (same word, different result
-  kind); `cut_before`/`pos_before` (long, no tie to ranges); `v.before` for
-  a cut (reads as the previous position); always-`?V` `first` (noise for
+- **Rejected.** `start`/`end` plus `before`/`after` (four words where one
+  rule does; typed often in prefix DPs); `cut_before`/`pos_before` (long); always-`?V` `first` (noise for
   the common `n: 1..` case); always-`V` with a trap (the n = 1 bug only
   shows if a test hits it).
-- **Why.** The words reuse the range vocabulary, and the empty-domain rule
+- **Why.** `.l`/`.r` are short where they are typed most (prefix DPs),
+  already the range-end words in `spec/std/seq.cp`, and the empty-domain rule
   costs nothing when the statement promises n >= 1 and points at the edge
   case when it doesn't.
 - **Reverse.** Rename via `cpl fix`; drop `NonEmpty` and make `first`

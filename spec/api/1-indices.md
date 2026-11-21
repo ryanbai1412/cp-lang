@@ -36,12 +36,12 @@ enum Dir: N, E, S, W                   # a fieldless enum is a domain too: [Dir]
 
 | | neighbour of the same kind | the other kind, either side |
 |---|---|---|
-| position `v` | `v.prev`, `v.next`: `?V` | `v.start`, `v.end`: cuts |
-| cut `c` | `c.prev`, `c.next`: `?V.bounds` | `c.before`, `c.after`: `?V` |
+| position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts |
+| cut `c` | `c.prev`, `c.next`: `?V.bounds` | `c.l`, `c.r`: the positions beside it, `?V` |
 
-A position is a one-element range, so it borrows the range words:
-`v.start..v.end` is exactly `v`, and `pre[v.end] - pre[v.start]` is its
-prefix-sum term. A cut's neighbouring positions are literally before and after it.
+One rule: `.l`/`.r` switch kind (left or right side), `.prev`/`.next` keep it.
+The receiver's kind is static, so a mix-up is a type error. `v.l..v.r` is
+exactly `v`; a prefix DP reads `dp[v.r] = f(dp[v.l], a[v])`.
 
 Arithmetic on a position gives an `Int` (`v + 1`); getting back into the
 domain is explicit (`v.next`, `V.at(x)`). Arrays over an anonymous range
@@ -58,7 +58,7 @@ j..i           # cuts j to i                      Range<V.bounds>, also the posi
 | Form | Meaning | Cost |
 |---|---|---|
 | `r.len`, `r.is_empty`, `x in r` | | O(1) |
-| `r.start`, `r.end` | the end cuts | O(1) |
+| `r.l`, `r.r` | the end cuts | O(1) |
 | `r.first`, `r.last` | end positions, `?V` | O(1) |
 | `for v in r`, `r.rev`, `r.step(k)` | iteration | O(1) per step |
 | `r.clip(s)` | intersection | O(1) |
@@ -67,9 +67,9 @@ j..i           # cuts j to i                      Range<V.bounds>, also the posi
 | `r.bsearch(ok)` | **the cut** where monotone `ok` turns from false to true | O(log n) calls |
 
 Binary search returns a cut, so "first true" vs "last false" is a one-word
-change: `r.bsearch(ok).right` vs `r.bsearch(ok).left`. This replaces
+change: `r.bsearch(ok).r` vs `r.bsearch(ok).l`. This replaces
 `bsearch_first` and `bsearch_last`. Answer spaces that aren't a domain use
-plain integer ranges: `(0..=1e18).bsearch(t => fits(t)).right`.
+plain integer ranges: `(0..=1e18).bsearch(t => fits(t)).r`.
 
 ## Arrays over domains
 

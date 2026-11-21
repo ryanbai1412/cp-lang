@@ -39,7 +39,7 @@ mod obstacles:
                     if let first = driest.first(in: cols, where: x => x < warm):
                         let last = driest.last(in: cols, where: x => x < warm)!
                         forest.link(child, parent: layer, Drop(first, last))
-                open[run.start] = layer
+                open[run.first!] = layer
                 if r == Row.first: home[run] = layer
         layers = forest.lift(tightest, identity: Drop(Col.first, Col.last))
 

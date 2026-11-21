@@ -74,4 +74,4 @@ reconcile(Block(seen: [middle, middle.rev], real: [middle, middle.rev]))
 let plan = ops[X] + [Run(l, r, 1)] + ops[Y].rev
 print("Yes")
 print(plan.len)
-for op in plan: print(op.span.start + 1, op.span.end)
+for op in plan: print(op.span.l + 1, op.span.r)
