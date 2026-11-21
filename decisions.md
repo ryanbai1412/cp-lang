@@ -2230,6 +2230,14 @@ their own. Reverse: inline `fix_removed_syntax` back into `crates/cpl-lint/src/c
   stress` still generates such a struct's input field by field. *Reverse:*
   drop the `read` lookup at the top of `struct_spec` in
   `cpl-ir/src/lower/mod.rs`.
+- **28.14 `??` stays core.** The §1 queue listed `??` for the stdlib on lazy
+  parameters; it stays a core operator. Its right side may leave the
+  enclosing fn or loop (`read_opt() ?? return`, `?? continue`), and a lazy
+  argument is a closure, where `return` would leave only the closure. Spec 00
+  places `??` in core C4 for exactly this ("laziness and `Never`"). A library
+  `fn or<T>(x: ?T, lazy d: () -> T) -> T` would be a second spelling of the
+  same idea with less power. *Reverse:* give lazy arguments non-local
+  `return`/`break` (a core change), then define `??` as that fn.
 
 - **30.7 Dreams are a diagnostics corpus.** `scripts/dream-gaps.py` checks every
   `proto/ports/*/dream/*.cp` and files each error under the gap it names: `syntax:` (an `E0504`

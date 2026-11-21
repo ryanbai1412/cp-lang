@@ -63,7 +63,7 @@ builds a struct field by field, so `read_fields` is too (28.9). `trait Gen` has 
 opaque `struct List<T>` / struct type-param
 defaults / one-sided range types /
 `@droppable` / `labels(...)` / `Str(len:)`, `@derive` (`E0501`), `print`
-and `read` as library fns over packs, `assert`/`debug`/`??` as library fns
+and `read` as library fns over packs, `assert`/`debug` as library fns (`??` stays core, 28.14)
 (`assert` also feeds the range prover its condition, so moving it needs that
 as a general rule), per-law messages. `?S` borrows a field's niche (28.10); a trait's `@on_unimplemented` names the fix when a bound is unmet (28.11). 0 of the 35 `design/spec/*.md`
 ```cp blocks pass `cpl check`; most stop at parse or stdlib gaps.
@@ -73,7 +73,7 @@ mechanism above has programs that the interpreter and the C++ agree on.
 **Next.** Postfix `?` extent; remaining 0.3 syntax (opaque `struct`,
 type-param defaults, one-sided ranges, `@droppable`,
 `labels`, `Str(len:)`); variant reflection and derives as trait
-defaults on `fields`; `print`/`read` on variadic packs; `assert`/`debug`/`??` in the stdlib; per-law diagnostic messages.
+defaults on `fields`; `print`/`read` on variadic packs; `assert`/`debug` in the stdlib; per-law diagnostic messages.
 **Coordination.** Core-extensions lane (`49fcf312`) owns derives, variadic packs,
 and lazy parameters; this lane (§1 core syntax/semantics) owns `Self` in
 trait/impl scope, associated types, `trait`/`impl` headers, opaque structs,
