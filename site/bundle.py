@@ -1,12 +1,25 @@
 #!/usr/bin/env python3
 """Build the self-contained offline edition; no fonts or remote assets."""
 
+import base64
+import gzip
+import json
 from pathlib import Path
 import re
 
 import build
 
 ROOT = Path(__file__).resolve().parent
+
+
+def pack(value):
+    """`value` as JSON, gzipped and base64-encoded."""
+    text = json.dumps(value, separators=(",", ":"), ensure_ascii=False)
+    return base64.b64encode(gzip.compress(text.encode(), mtime=0)).decode()
+
+
+def unpack(packed):
+    return json.loads(gzip.decompress(base64.b64decode(packed)))
 
 
 def bundle():
@@ -35,7 +48,10 @@ def bundle():
             page = page[:m_course.start()] + "<!--course-data-->" + page[m_course.end():]
         pages[path.name] = page
     full_course_data = build.safe_json(build.course_data("*"))
-    payload = dict(
+    # Everything but the compiler is text that gzip shrinks about sixfold, so
+    # it ships as one gzip+base64 blob that offline.html unpacks with
+    # DecompressionStream, as compiler.js already does for the WASM.
+    docs = dict(
         pages=pages,
         sidebar=sidebar,
         search_dialog=search_dialog,
@@ -45,8 +61,11 @@ def bundle():
         app=(ROOT / "assets/app.js").read_text(),
         playground=(ROOT / "assets/playground.js").read_text(),
         course=(ROOT / "assets/course.js").read_text(),
-        compiler=(target / "assets/compiler.js").read_text(),
         search=(target / "search.json").read_text(),
+    )
+    payload = dict(
+        compiler=(target / "assets/compiler.js").read_text(),
+        docs=pack(docs),
     )
     shell = (ROOT / "offline.html").read_text()
     shell = shell.replace("{{payload}}", build.safe_json(payload))

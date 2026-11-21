@@ -9,22 +9,25 @@
 # --fast  1. nothing from dist/ and no secret is staged or in an unpushed commit
 #         2. cargo clippy --workspace --all-targets -- -D warnings
 #         3. the workspace tests (cargo nextest when installed, else cargo
-#            test), without the tests listed under 7 and 8
+#            test), without the tests listed under 8 and 9
 #         4. cpl test stdlib examples/local-lib, run beside 3
 #         5. cpl fmt --check stdlib (the standard library stays formatted)
 #            and stdlib/prelude.cp holds at most 80 names
 #         6. scripts/friction_lint.py: its rule tests, then no wa_trap hit in
 #            proto/ports or examples, with a one-line severity summary
 #            last, the count of open known_traps (crates/cpl-cli/tests/known_traps.cp)
-# --full  7. proto_fuzz and proto_tools (the retired prototype), the shrinker
+#         7. the offline site bundle (python3 site/bundle.py) stays under
+#            2,600,000 bytes
+# --full  8. proto_fuzz and proto_tools (the retired prototype), the shrinker
 #            fuzzer and the prover's products fuzzer
-#         8. the budget tests and the front-end latency test, each alone
-#         9. the WebAssembly build and crates/cpl-wasm/tests/smoke.mjs
-#        10. the VS Code extension tests (editors/vscode: npm test)
-#        11. proto/run_all.sh, in a throwaway clone because it stamps its sources
+#         9. the budget tests and the front-end latency test, each alone
+#        10. the WebAssembly build and crates/cpl-wasm/tests/smoke.mjs
+#        11. the VS Code extension tests (editors/vscode: npm test)
+#        12. proto/run_all.sh, in a throwaway clone because it stamps its sources
 #
-# Needs cargo with clippy and python3; --full also needs node, npm, g++ and
-# the wasm target (rustup target add wasm32-unknown-unknown).
+# Needs cargo with clippy, python3 and the wasm target (rustup target add
+# wasm32-unknown-unknown, for the site bundle); --full also needs node, npm
+# and g++.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -35,7 +38,7 @@ for arg in "$@"; do
     case "$arg" in
         --fast) mode=fast ;;
         --full) mode=full ;;
-        -h | --help) sed -n '2,22s/^# \{0,1\}//p' "$0"; exit 0 ;;
+        -h | --help) sed -n '2,25s/^# \{0,1\}//p' "$0"; exit 0 ;;
         *) echo "check: unknown argument \`$arg\`" >&2; exit 2 ;;
     esac
 done
@@ -157,6 +160,16 @@ python3 scripts/test_friction_lint.py -q 2>&1 | tail -n 1
 [ "${PIPESTATUS[0]}" -eq 0 ] || fail "friction lint rule tests failed; rerun: python3 scripts/test_friction_lint.py"
 python3 scripts/friction_lint.py --fail-on-wa-trap --summary \
     || fail "a wa_trap pattern is in the corpus; list it: python3 scripts/friction_lint.py --list <rule>"
+
+# The offline edition is one file people download; site/test_site.py holds
+# the same cap. The WASM build is a cargo no-op when nothing changed.
+step "site bundle: dist/cp-lang.html under 2,600,000 bytes"
+rustc --print target-libdir --target wasm32-unknown-unknown 2>/dev/null | xargs test -d \
+    || fail "the site bundle needs the wasm target; run: rustup target add wasm32-unknown-unknown"
+python3 site/bundle.py >/dev/null 2>&1 || fail "site/bundle.py failed; rerun: python3 site/bundle.py"
+bundle_bytes=$(wc -c <dist/cp-lang.html)
+echo "dist/cp-lang.html: $bundle_bytes bytes"
+[ "$bundle_bytes" -lt 2600000 ] || fail "dist/cp-lang.html is $bundle_bytes bytes, over the cap of 2,600,000"
 
 if [ "$mode" = full ]; then
     need node "the wasm smoke test and the VS Code tests run on it"

@@ -195,9 +195,11 @@ class SiteTests(unittest.TestCase):
         import bundle
         path = bundle.bundle()
         source = path.read_text()
-        payload = json.loads(re.search(
+        shipped = json.loads(re.search(
             r'<script id="offline-data" type="application/json">(.*?)</script>',
             source, re.S).group(1))
+        self.assertEqual(set(shipped), {"compiler", "docs"})
+        payload = dict(bundle.unpack(shipped["docs"]), compiler=shipped["compiler"])
         self.assertEqual(set(payload["pages"]),
                          {name + ".html" for name, *_ in build.PAGES}
                          | {"playground.html", "trace.html"})

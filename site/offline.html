@@ -16,7 +16,7 @@
 <noscript>Enable JavaScript to open this offline edition. No network access is required.</noscript>
 <script id="offline-data" type="application/json">{{payload}}</script>
 <script>
-(() => {
+(async () => {
   "use strict";
   const data = JSON.parse(document.getElementById("offline-data").textContent);
   const frame = document.getElementById("workspace");
@@ -24,6 +24,10 @@
   const compiler = document.createElement("script");
   compiler.textContent = data.compiler;
   document.head.append(compiler);
+  // The pages, assets and search index arrive as one gzip+base64 blob (site/bundle.py).
+  const packed = Uint8Array.from(atob(data.docs), c => c.charCodeAt(0));
+  const unpacked = new Blob([packed]).stream().pipeThrough(new DecompressionStream("gzip"));
+  Object.assign(data, JSON.parse(await new Response(unpacked).text()));
   let activePage;
   function script(source) {
     // Escape closing tags even if future example strings contain HTML.
