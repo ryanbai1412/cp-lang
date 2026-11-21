@@ -1,7 +1,7 @@
 # noi17p2
 
-Score: pending cold rescore (port wraps `struct Block(hash: HashVal, len: Int)` + `concat(a, b)` so lengths travel with every hash and `joint` never passes lengths by hand, bounded inputs, 0 lints, `29,652 B`, verified on 50 ASan+UBSan join/cut/query traces vs brute force; length-carrying `Hash` + `+` + `Hash.empty` filed in `research/frictions/noi17p2.md`)
-Dream: pending cold rescore (written: `proto/ports/scout_batch_10/dream/noi17p2.cp` using length-carrying `Hash` with `Hash.empty` and `+`)
+Score: 3/5
+Dream: 4/5
 
 Baseline review, cold, on main 15cc353a, after 14cdbd55 moved it onto `std.strings.RollingHash`. There is no dream, so the score is capped at 3. The header (lines 1-11) gives the block-count idea well.
 
@@ -18,3 +18,11 @@ Baseline review, cold, on main 15cc353a, after 14cdbd55 moved it onto `std.strin
 ## Gaps that need the language
 
 - A length-carrying hash value with a `+` that concatenates, and an empty identity: no friction report exists for noi17p2; one is owed for the stdlib lane.
+
+## Cold review (HEAD)
+
+Dream (new) 4/5, cold-reviewed on current main. Its only errors come from the length-carrying `Hash` with `Hash.empty` and `+`, which is reported in research/frictions/noi17p2.md (lines 16, 23, 30, 32). The header derives the block bookkeeping.
+- Minor: `reach` picks the concatenation order with a `back: Bool` flag (lines 30, 35). `while … : if let w = at: … else: break` (lines 33-38) is a `while let w = at and …` header (§111).
+- Minor: the header says "few cuts" but never bounds the join cost, about `n · 50²/2` hash insertions.
+
+Port 3/5 → 3/5: blocked by the reported `Hash` gap. `Block(hash, len)`/`concat` keep each length with its hash, but line 18 builds a `RollingHash` over 50 zeros just to borrow its bases, line 21 spells the empty hash `HashVal(0, 0)`, and line 22 rebuilds single digits through `with_bases(...).all`. Once `Hash` lands, the owed change is to adopt the dream verbatim.
