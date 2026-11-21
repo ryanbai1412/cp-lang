@@ -272,29 +272,34 @@ impl<'a> Checker<'a> {
             }
         }
         // `g[r, ..] max= g[v, ..]`: a row of a grid against cells of its kind.
-        if let (true, Ty::Array { index, elem: want }) = (Self::part_of_grid(target), target_ty) {
-            if index.len() > 1 {
-                let got = match value_ty {
-                    Ty::Array { index, elem } if index.len() == 1 || Self::part_of_grid(value) => Some((**elem).clone()),
-                    Ty::Named { name, args } if name == "List" && args.len() == 1 => Some(args[0].clone()),
-                    other if other.is_vague() || *other == Ty::Error => return,
-                    _ => None,
-                };
-                if got.as_ref().is_some_and(|got| got.is_vague() || self.fits(got, want)) {
-                    return;
+        if let (true, Ty::Array { elem: want, .. }) = (Self::part_of_grid(target), target_ty) {
+            let got = match value_ty {
+                Ty::Array { index, elem } if index.len() == 1 || Self::part_of_grid(value) => {
+                    Some((**elem).clone())
                 }
-                let message = format!(
-                    "`{}` is a row of {want}, so the other side is one too, cell for cell; `{}` is {}",
-                    self.quote(target.span),
-                    self.quote(value.span),
-                    match got {
-                        Some(got) => format!("a row of {got}"),
-                        None => value_ty.with_article(),
-                    }
-                );
-                self.error(codes::TYPE_MISMATCH, value.span, message);
+                Ty::Named { name, args } if name == "List" && args.len() == 1 => {
+                    Some(args[0].clone())
+                }
+                other if other.is_vague() || *other == Ty::Error => return,
+                _ => None,
+            };
+            if got
+                .as_ref()
+                .is_some_and(|got| got.is_vague() || self.fits(got, want))
+            {
                 return;
             }
+            let message = format!(
+                "`{}` is a row of {want}, so the other side is one too, cell for cell; `{}` is {}",
+                self.quote(target.span),
+                self.quote(value.span),
+                match got {
+                    Some(got) => format!("a row of {got}"),
+                    None => value_ty.with_article(),
+                }
+            );
+            self.error(codes::TYPE_MISMATCH, value.span, message);
+            return;
         }
         let row = match target_ty {
             Ty::Array { index, .. } => index.len() == 1,

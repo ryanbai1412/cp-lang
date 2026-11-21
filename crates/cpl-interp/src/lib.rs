@@ -611,9 +611,16 @@ impl<'p, 'o> Interp<'p, 'o> {
             }};
         }
         match iter {
-            Iter::Range { lo, hi, step, rev } => {
-                let lo = self.eval(lo)?.int();
-                let hi = self.eval(hi)?.int();
+            Iter::Range {
+                lo,
+                hi,
+                step,
+                rev,
+                closed,
+            } => {
+                let lo = self.eval(lo)?.int() as i128;
+                // One past the last value, which an `Int` may not hold.
+                let hi = self.eval(hi)?.int() as i128 + i128::from(*closed);
                 let step = match step {
                     Some(step) => {
                         let value = self.eval(step)?.int();
@@ -631,14 +638,15 @@ impl<'p, 'o> Interp<'p, 'o> {
                     return Ok(Flow::Next);
                 }
                 // The values are lo, lo + step, ..., below hi.
-                let count = ((hi as i128 - lo as i128 + step as i128 - 1) / step as i128) as i64;
+                let step = step as i128;
+                let count = (hi - lo + step - 1) / step;
                 if *rev {
                     let mut k = count - 1;
                     loop {
                         if k < 0 {
                             break;
                         }
-                        round!(Value::Int(lo + k * step));
+                        round!(Value::Int((lo + k * step) as i64));
                         k -= 1;
                     }
                 } else {
@@ -647,7 +655,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                         if k >= count {
                             break;
                         }
-                        round!(Value::Int(lo + k * step));
+                        round!(Value::Int((lo + k * step) as i64));
                         k += 1;
                     }
                 }
@@ -2381,7 +2389,13 @@ impl<'p, 'o> Interp<'p, 'o> {
                     Value::Array(array) => array.data.contains(&needle),
                     Value::Set(items) => items.contains(&needle),
                     Value::Map(entries) => entries.contains_key(&needle),
-                    Value::Str(bytes) => matches!(needle, Value::Char(c) if bytes.contains(&c)),
+                    Value::Str(bytes) => match &needle {
+                        Value::Char(c) => bytes.contains(c),
+                        Value::Str(part) => {
+                            part.is_empty() || bytes.windows(part.len()).any(|at| at == &part[..])
+                        }
+                        _ => false,
+                    },
                     Value::Range(lo, hi) => {
                         let x = needle.int();
                         x >= *lo && x < *hi

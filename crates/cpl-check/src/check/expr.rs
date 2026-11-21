@@ -1277,9 +1277,13 @@ impl<'a> Checker<'a> {
                     return Ty::Error;
                 }
                 let mut slice = false;
+                // The indices a part keeps: `g[1, ..]` is a row, indexed by
+                // the columns alone.
+                let mut kept = Vec::new();
                 for ((want, got), index_expr) in index.iter().zip(&index_tys).zip(indices) {
                     if matches!(got, Ty::Named { name, .. } if name == "Range") {
                         slice = true;
+                        kept.push(want.clone());
                         continue;
                     }
                     if self.fits(got, want) {
@@ -1325,7 +1329,14 @@ impl<'a> Checker<'a> {
                     // A slice is its array seen through a range: lent,
                     // and indexed by the same positions.
                     self.note_view(expr, "slice");
-                    base_ty.clone()
+                    if kept.len() == index.len() {
+                        base_ty.clone()
+                    } else {
+                        Ty::Array {
+                            index: kept,
+                            elem: elem.clone(),
+                        }
+                    }
                 } else {
                     (**elem).clone()
                 }

@@ -341,7 +341,14 @@ impl<'p> Emitter<'p> {
             first.push(format!("{cpp} {name} = {var};"));
         }
         match iter {
-            Iter::Range { lo, hi, step, rev } => {
+            Iter::Range {
+                lo,
+                hi,
+                step,
+                rev,
+                closed,
+            } => {
+                let closed = *closed;
                 let fit = |text: String, narrow: bool| {
                     if cpp == "int" && !narrow {
                         format!("(int)({text})")
@@ -383,13 +390,34 @@ impl<'p> Emitter<'p> {
                             Some(step) => {
                                 self.need("steps");
                                 let left = self.unique(&format!("{var}_left"));
-                                let wide = if cpp == "int" { "unsigned" } else { "unsigned long long" };
+                                let wide = if cpp == "int" {
+                                    "unsigned"
+                                } else {
+                                    "unsigned long long"
+                                };
+                                let to = if closed { ", true" } else { "" };
                                 format!(
-                                    "for ({cpp} {var} = {start}{extra}, {left} = ({cpp})cpl::steps({var}, {bound}, {step}); \
+                                    "for ({cpp} {var} = {start}{extra}, {left} = ({cpp})cpl::steps({var}, {bound}, {step}{to}); \
                                      {left} > 0; {left}--, {var} = ({cpp})(({wide}){var} + ({wide})({step}))) {{"
                                 )
                             }
-                            None => format!("for ({cpp} {var} = {start}{extra}; {var} < {bound}; {var}++) {{"),
+                            None if !closed => format!(
+                                "for ({cpp} {var} = {start}{extra}; {var} < {bound}; {var}++) {{"
+                            ),
+                            // Up to a last value that is not the largest
+                            // of its type: `<=` ends the loop.
+                            None if cpp == "int" || hi_code.narrow => {
+                                format!("for ({cpp} {var} = {start}{extra}; {var} <= {bound}; {var}++) {{")
+                            }
+                            // The last value may be `Int.MAX`, which has
+                            // no next one: the loop stops on reaching it.
+                            None => {
+                                let go = self.unique(&format!("{var}_go"));
+                                format!(
+                                    "for ({cpp} {var} = {start}{extra}, {go} = {var} <= {bound}; {go}; \
+                                     {go} = {var} < {bound} && (++{var}, true)) {{"
+                                )
+                            }
                         };
                         self.line(out, &head);
                         self.loop_body(id, &first, body, out);
@@ -405,13 +433,25 @@ impl<'p> Emitter<'p> {
                             ));
                             end
                         };
-                        let start = fit(format!("{} - 1", hi_code.at(ADD)), false);
-                        self.line(
-                            out,
-                            &format!(
+                        let start = if closed {
+                            fit(hi_code.text.clone(), hi_code.narrow)
+                        } else {
+                            fit(format!("{} - 1", hi_code.at(ADD)), false)
+                        };
+                        // A first value that may be `Int.MIN` has none
+                        // before it: the loop stops on reaching it.
+                        let head = if cpp == "int" || lo_code.narrow {
+                            format!(
                                 "for ({cpp} {var} = {start}{extra}; {var} >= {bound}; {var}--) {{"
-                            ),
-                        );
+                            )
+                        } else {
+                            let go = self.unique(&format!("{var}_go"));
+                            format!(
+                                "for ({cpp} {var} = {start}{extra}, {go} = {var} >= {bound}; {go}; \
+                                 {go} = {var} > {bound} && (--{var}, true)) {{"
+                            )
+                        };
+                        self.line(out, &head);
                         self.loop_body(id, &first, body, out);
                     }
                     (true, Some(step)) => {
@@ -429,7 +469,7 @@ impl<'p> Emitter<'p> {
                             ),
                         );
                         self.need("steps");
-                        self.line(out, &format!("for (ll {k} = cpl::steps({a}, {b}, {step}) - 1; {k} >= 0; {k}--) {{"));
+                        self.line(out, &format!("for (ll {k} = cpl::steps({a}, {b}, {step}{}) - 1; {k} >= 0; {k}--) {{", if closed { ", true" } else { "" }));
                         let mut opening = vec![format!(
                             "{cpp} {var} = {};",
                             fit(format!("{a} + {k} * {step}"), false)

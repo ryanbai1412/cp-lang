@@ -280,8 +280,16 @@ impl<'a> Lowerer<'a> {
                             let lid = lw.fresh_loop();
                             // `g[r, 1..3]`: the part of the row the range names.
                             let (lo, hi) = lw.axis_part(&indices[axis], dims_at_axis, len, out);
-                            let iter = Iter::Range { lo, hi, step: None, rev: false };
-                            let body = Block { stmts: vec![push(lw, value)] };
+                            let iter = Iter::Range {
+                                lo,
+                                hi,
+                                step: None,
+                                rev: false,
+                                closed: false,
+                            };
+                            let body = Block {
+                                stmts: vec![push(lw, value)],
+                            };
                             out.push(Stmt::For(lid, at, iter, body));
                         });
                     }
@@ -1955,7 +1963,7 @@ impl<'a> Lowerer<'a> {
                 return self.subset_has(mask, item, span);
             }
         }
-        let between = |lw: &mut Self, value: Expr, lo: Expr, hi: Expr| {
+        let between = |lw: &mut Self, value: Expr, lo: Expr, hi: Expr, closed: bool| {
             // `lo <= x and x < hi`, with `x` evaluated once.
             let mut stmts = Vec::new();
             let value = lw.hold(value, &mut stmts);
@@ -1965,7 +1973,11 @@ impl<'a> Lowerer<'a> {
                 span,
             );
             let lt = lw.mk(
-                ExprKind::Cmp(CmpOp::Lt, Box::new(value), Box::new(hi)),
+                ExprKind::Cmp(
+                    if closed { CmpOp::Le } else { CmpOp::Lt },
+                    Box::new(value),
+                    Box::new(hi),
+                ),
                 Ty::Bool,
                 span,
             );
@@ -1989,11 +2001,8 @@ impl<'a> Lowerer<'a> {
             } => {
                 let value = self.expect(item, &Ty::Int);
                 let lo = self.expect(lo, &Ty::Int);
-                let mut hi = self.expect(hi, &Ty::Int);
-                if *inclusive {
-                    hi = self.int_add(hi, 1);
-                }
-                between(self, value, lo, hi)
+                let hi = self.expect(hi, &Ty::Int);
+                between(self, value, lo, hi, *inclusive)
             }
             ast::ExprKind::Name(name)
                 if self.lookup(name).is_none()
@@ -2015,7 +2024,7 @@ impl<'a> Lowerer<'a> {
                     Ty::Int,
                     span,
                 );
-                between(self, value, lo, hi)
+                between(self, value, lo, hi, false)
             }
             _ => {
                 let holder = self.expr(container, None);
@@ -2040,6 +2049,8 @@ impl<'a> Lowerer<'a> {
                     }
                     Ty::Array { elem, .. } => (**elem).clone(),
                     Ty::Map(key, _) | Ty::HashMap(key, _) => (**key).clone(),
+                    // `"an" in s`: a `Str` is looked for as a part of the text.
+                    Ty::Str if self.probe_ty_silent(item) == Some(Ty::Str) => Ty::Str,
                     Ty::Str => Ty::Char,
                     Ty::Error => return self.err_expr(span),
                     other => {
@@ -2333,6 +2344,7 @@ impl<'a> Lowerer<'a> {
                     hi: hi_ord,
                     step: None,
                     rev: false,
+                    closed: false,
                 },
                 Block {
                     stmts: vec![push_stmt],
@@ -2584,6 +2596,7 @@ impl<'a> Lowerer<'a> {
                     hi: hi_e,
                     step: None,
                     rev: false,
+                    closed: false,
                 },
                 Block {
                     stmts: vec![push_stmt],
@@ -2751,6 +2764,7 @@ impl<'a> Lowerer<'a> {
                     hi: zero,
                     step: None,
                     rev: false,
+                    closed: false,
                 },
                 Ty::Error,
             )
@@ -2788,6 +2802,7 @@ impl<'a> Lowerer<'a> {
                             hi,
                             step: None,
                             rev: false,
+                            closed: false,
                         },
                         Ty::Pos(subset),
                     );
@@ -2823,7 +2838,9 @@ impl<'a> Lowerer<'a> {
                     lo = self.cast(Cast::Ord, lo, Ty::Int);
                     hi = self.cast(Cast::Ord, hi, Ty::Int);
                 }
-                if *inclusive {
+                // Positions have a next one; the last `Int` does not.
+                let closed = *inclusive && ty == Ty::Int;
+                if *inclusive && !closed {
                     hi = self.int_add(hi, 1);
                 }
                 let step = step.as_ref().map(|s| self.expect(s, &Ty::Int));
@@ -2833,6 +2850,7 @@ impl<'a> Lowerer<'a> {
                         hi,
                         step,
                         rev: false,
+                        closed,
                     },
                     ty,
                 )
@@ -2855,6 +2873,7 @@ impl<'a> Lowerer<'a> {
                                 hi,
                                 step,
                                 rev: false,
+                                closed: false,
                             },
                             Ty::Pos(d),
                         )
@@ -2869,6 +2888,7 @@ impl<'a> Lowerer<'a> {
                                 hi,
                                 step,
                                 rev: false,
+                                closed: false,
                             },
                             Ty::Int,
                         )
@@ -2905,6 +2925,7 @@ impl<'a> Lowerer<'a> {
                                 hi: hi_ord,
                                 step,
                                 rev: false,
+                                closed: false,
                             },
                             Ty::Pos(d),
                         )
@@ -2932,6 +2953,7 @@ impl<'a> Lowerer<'a> {
                         hi,
                         step: None,
                         rev: false,
+                        closed: false,
                     },
                     Ty::Pos(id),
                 )
@@ -2983,6 +3005,7 @@ impl<'a> Lowerer<'a> {
                                 hi: lw.mk(ExprKind::DomainLen(dom_id), Ty::Int, span),
                                 step: None,
                                 rev: false,
+                                closed: false,
                             },
                             Block {
                                 stmts: vec![Stmt::Expr(push)],
@@ -3000,23 +3023,58 @@ impl<'a> Lowerer<'a> {
             ast::ExprKind::By { walk, step } => {
                 let (iter, ty) = self.iter(walk);
                 let step = self.expect(step, &Ty::Int);
-                let Iter::Range { lo, hi, step: None, rev: true } = iter else {
-                    self.error(codes::TYPE_MISMATCH, span, "`by` steps a range of numbers written out, as in `(lo..hi).rev by 2`".to_string());
+                let Iter::Range {
+                    lo,
+                    hi,
+                    step: None,
+                    rev: true,
+                    closed,
+                } = iter
+                else {
+                    self.error(
+                        codes::TYPE_MISMATCH,
+                        span,
+                        "`by` steps a range of numbers written out, as in `(lo..hi).rev by 2`"
+                            .to_string(),
+                    );
                     return (iter, ty);
                 };
                 if ty != Ty::Int {
-                    self.error(codes::TYPE_MISMATCH, span, format!("`by` steps a range of Int, not of `{}`", self.show(&ty)));
-                    return (Iter::Range { lo, hi, step: None, rev: true }, ty);
+                    self.error(
+                        codes::TYPE_MISMATCH,
+                        span,
+                        format!("`by` steps a range of Int, not of `{}`", self.show(&ty)),
+                    );
+                    return (
+                        Iter::Range {
+                            lo,
+                            hi,
+                            step: None,
+                            rev: true,
+                            closed,
+                        },
+                        ty,
+                    );
                 }
                 let down = |lw: &mut Self, lo: Expr, hi: Expr, step: Expr| {
                     let bin = |lw: &mut Self, op, l: Expr, r: Expr| lw.mk(ExprKind::Binary(op, Box::new(l), Box::new(r)), Ty::Int, span);
                     let one = lw.int_lit(1, span);
-                    let top = bin(lw, BinOp::Sub, hi.clone(), one);
+                    let top = if closed {
+                        hi.clone()
+                    } else {
+                        bin(lw, BinOp::Sub, hi.clone(), one)
+                    };
                     let room = bin(lw, BinOp::Sub, top.clone(), lo);
                     let steps = bin(lw, BinOp::Div, room, step.clone());
                     let back = bin(lw, BinOp::Mul, steps, step.clone());
                     let lo = bin(lw, BinOp::Sub, top, back);
-                    Iter::Range { lo, hi, step: Some(step), rev: true }
+                    Iter::Range {
+                        lo,
+                        hi,
+                        step: Some(step),
+                        rev: true,
+                        closed,
+                    }
                 };
                 if [&lo, &hi, &step].into_iter().all(super::stmt::settled) {
                     return (down(self, lo, hi, step), ty);
@@ -3043,11 +3101,18 @@ impl<'a> Lowerer<'a> {
             ast::ExprKind::Field { base, name } if name.text == "rev" => {
                 let (iter, ty) = self.iter(base);
                 let iter = match iter {
-                    Iter::Range { lo, hi, step, rev } => Iter::Range {
+                    Iter::Range {
+                        lo,
+                        hi,
+                        step,
+                        rev,
+                        closed,
+                    } => Iter::Range {
                         lo,
                         hi,
                         step,
                         rev: !rev,
+                        closed,
                     },
                     Iter::RangeVal(value, rev) => Iter::RangeVal(value, !rev),
                     Iter::Seq(value, rev) => Iter::Seq(value, !rev),
@@ -3129,6 +3194,7 @@ impl<'a> Lowerer<'a> {
                         hi,
                         step: None,
                         rev: false,
+                        closed: false,
                     },
                     Ty::Bound(id),
                 )
@@ -3152,6 +3218,7 @@ impl<'a> Lowerer<'a> {
                                         hi,
                                         step: None,
                                         rev: false,
+                                        closed: false,
                                     },
                                     Ty::Pos(dom_id),
                                 );
@@ -3169,6 +3236,7 @@ impl<'a> Lowerer<'a> {
                             hi,
                             step: None,
                             rev: false,
+                            closed: false,
                         },
                         Ty::Pos(dom_id),
                     );
@@ -3497,6 +3565,7 @@ impl<'a> Lowerer<'a> {
                 hi,
                 step: None,
                 rev: false,
+                closed: false,
             };
             let index = Expr {
                 kind: ExprKind::Local(slot),
@@ -3583,14 +3652,56 @@ impl Lowerer<'_> {
         let mut done = Vec::with_capacity(out.len() - at);
         for mut stmt in out.drain(at..) {
             match &mut stmt {
-                // The whole value being such a block is written as it is.
-                Stmt::Let(_, Some(e))
-                | Stmt::Assign(_, _, e)
-                | Stmt::Return(Some(e))
-                | Stmt::Give(e) => self.lift_value(e, true, &mut done),
+                // The cell stored to is found first, then the value.
+                Stmt::Assign(place, _, e) => {
+                    let mut at = &mut *place;
+                    let mut indexes = Vec::new();
+                    loop {
+                        at = match &mut at.kind {
+                            PlaceKind::Index(base, index) => {
+                                indexes.push(index);
+                                base
+                            }
+                            PlaceKind::Field(base, _) | PlaceKind::Some(base) => base,
+                            PlaceKind::Local(_) | PlaceKind::Global(_) => break,
+                        };
+                    }
+                    for index in indexes.into_iter().rev().flatten() {
+                        self.lift_value(index, &mut done);
+                    }
+                    self.lift_value(e, &mut done);
+                }
+                // A local that is such a block is what the block stores to.
+                Stmt::Let(slot, Some(e)) => {
+                    let unit = Expr {
+                        kind: ExprKind::Unit,
+                        ty: Ty::Unit,
+                        span: e.span,
+                    };
+                    let lifted = self.lifted(std::mem::replace(e, unit));
+                    match lifted {
+                        Expr {
+                            kind: ExprKind::Do(mut block),
+                            ty,
+                            span,
+                        } if block_leaves(&block) => {
+                            let place = Place {
+                                kind: PlaceKind::Local(*slot),
+                                ty,
+                                span,
+                            };
+                            store_gives(&mut block.stmts, &place);
+                            done.push(Stmt::Let(*slot, None));
+                            done.extend(block.stmts);
+                            continue;
+                        }
+                        lifted => *e = lifted,
+                    }
+                }
+                Stmt::Return(Some(e)) | Stmt::Give(e) => self.lift_value(e, &mut done),
                 // A block run for what it does is its statements.
                 Stmt::Expr(e) => {
-                    self.lift_value(e, false, &mut done);
+                    self.lift_value(e, &mut done);
                     if matches!(e.kind, ExprKind::Unit) {
                         continue;
                     }
@@ -3598,19 +3709,19 @@ impl Lowerer<'_> {
                 // A test and the ends of a range are read once, before
                 // the statement.
                 Stmt::If(cond, _, otherwise) => {
-                    self.lift_value(cond, false, &mut done);
+                    self.lift_value(cond, &mut done);
                     // An `elif` is an `if` alone in the `else`.
                     if matches!(otherwise.stmts.as_slice(), [Stmt::If(..)]) {
                         self.lift_leaving(&mut otherwise.stmts, 0);
                     }
                 }
-                Stmt::Assert { cond, .. } => self.lift_value(cond, false, &mut done),
+                Stmt::Assert { cond, .. } => self.lift_value(cond, &mut done),
                 Stmt::For(_, _, Iter::Range { lo, hi, .. }, _) => {
-                    self.lift_value(lo, false, &mut done);
-                    self.lift_value(hi, false, &mut done);
+                    self.lift_value(lo, &mut done);
+                    self.lift_value(hi, &mut done);
                 }
                 Stmt::For(_, _, Iter::RangeVal(e, _) | Iter::Seq(e, _), _) => {
-                    self.lift_value(e, false, &mut done);
+                    self.lift_value(e, &mut done);
                 }
                 _ => {}
             }
@@ -3620,21 +3731,17 @@ impl Lowerer<'_> {
     }
 
     /// `value` with what leaves the fn worked out in `done` first.
-    /// `whole` leaves a value that is itself one such block as it is.
-    fn lift_value(&mut self, value: &mut Expr, whole: bool, done: &mut Vec<Stmt>) {
-        let as_it_is = whole && leaves(value);
-        let taken = std::mem::replace(
-            value,
-            Expr {
-                kind: ExprKind::Unit,
-                ty: Ty::Unit,
-                span: value.span,
-            },
-        );
-        let lifted = self.lifted(taken);
-        *value = match leaves(&lifted) {
-            true if !as_it_is => self.ahead(lifted, done),
-            _ => lifted,
+    fn lift_value(&mut self, value: &mut Expr, done: &mut Vec<Stmt>) {
+        let unit = Expr {
+            kind: ExprKind::Unit,
+            ty: Ty::Unit,
+            span: value.span,
+        };
+        let lifted = self.lifted(std::mem::replace(value, unit));
+        *value = if leaves(&lifted) {
+            self.ahead(lifted, done)
+        } else {
+            lifted
         };
     }
 

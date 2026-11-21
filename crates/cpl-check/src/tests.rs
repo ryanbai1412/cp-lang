@@ -1895,3 +1895,40 @@ fn a_try_is_refused_where_it_is_not_always_run() {
         assert_eq!(found, ["E0309"], "{source}");
     }
 }
+
+/// `debug(..)` is left out of the C++ a judge runs, so what it is given
+/// must change nothing: a `pop`, a `read` or a `mut` call inside would
+/// happen in `cpl run` and not on the judge.
+#[test]
+fn debug_of_something_that_changes_the_program_is_refused() {
+    const FNS: &str = "var q = [1, 2, 3]\nvar total = 0\nvar y = 4\nfn add(k: Int) -> Int:\n    total += k\n    total\nfn shout(k: Int) -> Int:\n    print(k)\n    k\nfn inc(mut x: Int) -> Int:\n    x += 1\n    x\nfn twice(k: Int) -> Int = k * 2\n";
+    for call in [
+        "debug(q.pop())\n",
+        "debug(add(2))\n",
+        "debug(shout(1))\n",
+        "debug(inc(mut y))\n",
+        "debug(q.len, twice(add(1)))\n",
+        "let n: Int = 0\ndebug(read() + n)\n",
+    ] {
+        let diags = check(&format!("{FNS}{call}"));
+        assert_eq!(
+            diags.iter().map(|d| d.code.0).collect::<Vec<_>>(),
+            vec!["E0312"],
+            "{call}"
+        );
+        assert!(
+            diags[0]
+                .help
+                .as_deref()
+                .is_some_and(|help| help.contains("debug(x)")),
+            "{call}"
+        );
+    }
+    for call in [
+        "debug(q, q.len, twice(3), q.sorted(), max(q))\n",
+        "let x = q.pop()\ndebug(x)\n",
+        "debug(twice(y) + 1)\n",
+    ] {
+        assert_eq!(check(&format!("{FNS}{call}")), vec![], "{call}");
+    }
+}

@@ -1729,6 +1729,7 @@ impl<'a> Lowerer<'a> {
                 hi,
                 step: None,
                 rev: false,
+                closed: false,
             },
             Block { stmts: vec![body] },
         ));
@@ -3272,18 +3273,21 @@ impl<'a> Lowerer<'a> {
                                     hi: lw.mk(ExprKind::DomainLen(d), Ty::Int, span),
                                     step: None,
                                     rev: false,
+                                    closed: false,
                                 },
                                 Dim::Bound(d) => Iter::Range {
                                     lo: lw.int_lit(0, span),
                                     hi: lw.int_add(lw.mk(ExprKind::DomainLen(d), Ty::Int, span), 1),
                                     step: None,
                                     rev: false,
+                                    closed: false,
                                 },
                                 Dim::Int | Dim::IntFrom(_) => Iter::Range {
                                     lo: lw.int_lit(0, span),
                                     hi: lw.len_of(sref, span),
                                     step: None,
                                     rev: false,
+                                    closed: false,
                                 },
                             };
                             let lid = lw.next_loop;

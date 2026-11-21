@@ -32,12 +32,13 @@ pub fn count(self: Str, c: Char) -> Int:
         if x == c: n += 1
     n
 
-/// The last index where `c` stands in `s`, or `none`: `"banana".rfind('a')` is `some(5)`.
-/// O(s.len).
-pub fn rfind(self: Str, c: Char) -> ?Int:
-    for i in (0..self.len).rev:
-        if self[i] == c: return some(i)
-    none
+/// Where `p` last stands in `s`, or `none`: `"banana".rfind("an")` is `3`. `p` is a `Str` or
+/// one `Char`: `"banana".rfind('a')` is `5`. O(s.len + p.len).
+pub fn rfind<P>(self: Str, p: P) -> ?Int:
+    let pat = "" + p
+    var last: ?Int = none
+    for i in find_all([c for c in self], [c for c in pat]): last = i
+    last
 
 /// The small letter of a capital, and any other character as it is: `'A'.lower` is `'a'`.
 pub @get fn lower(self: Char) -> Char = if 'A' <= self and self <= 'Z': Char(self.ord + 32) else: self

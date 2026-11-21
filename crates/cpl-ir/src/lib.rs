@@ -695,12 +695,15 @@ pub enum Stmt {
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Iter {
-    /// Integers, or the ordinals of a domain. `hi` is exclusive.
+    /// Integers, or the ordinals of a domain. `hi` is exclusive, or the
+    /// last value when `closed`: `lo..=hi` is walked without `hi + 1`,
+    /// which `Int.MAX` does not have.
     Range {
         lo: Expr,
         hi: Expr,
         step: Option<Expr>,
         rev: bool,
+        closed: bool,
     },
     /// A first-class `Range<T>` value.
     RangeVal(Expr, bool),

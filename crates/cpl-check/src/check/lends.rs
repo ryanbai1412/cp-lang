@@ -439,6 +439,17 @@ pub(crate) struct Effects {
     pub writes: Vec<String>,
     pub reads: Vec<String>,
     pub calls: Vec<String>,
+    /// `reads input` or `writes output`, if the fn or one it calls does.
+    pub io: Option<&'static str>,
+}
+
+/// What calling the prelude fn `name` does to the input or the output.
+pub(crate) fn io_of(name: &str) -> Option<&'static str> {
+    match name {
+        "read" | "read_line" | "read_output" => Some("reads input"),
+        "print" | "flush" | "ask" => Some("writes output"),
+        _ => None,
+    }
 }
 
 impl Effects {
@@ -454,6 +465,7 @@ impl Effects {
                 }
             }
         }
+        self.io = self.io.or(other.io);
     }
 
     /// How the fn uses the outer name `name`, if it does: `changes` or
@@ -540,10 +552,12 @@ pub(crate) fn own_effects(f: &ast::FnDecl) -> Effects {
             .filter(|n| !declared.contains(n))
             .collect()
     };
+    let calls = outer(calls);
     Effects {
         writes: outer(written.0),
         reads: outer(read),
-        calls: outer(calls),
+        io: calls.iter().find_map(|name| io_of(name)),
+        calls,
     }
 }
 
@@ -1295,6 +1309,90 @@ impl<'a> Checker<'a> {
             ty,
             Ty::Array { .. } | Ty::Named { .. } | Ty::Str | Ty::Tuple(_) | Ty::Record(_)
         )
+    }
+
+    /// `debug(q.pop())`: `cpl build` leaves `debug` out of the C++ it
+    /// writes, so an argument that changes a variable or reads or writes
+    /// would do so in `cpl run` and not on the judge.
+    pub(crate) fn debug_changes(&mut self, callee: &Expr, args: &[Arg]) {
+        let prelude = matches!(&callee.kind, ExprKind::Name(name)
+            if name == "debug" && self.local(name).is_none() && self.env.global(name).is_none());
+        if !prelude {
+            return;
+        }
+        for arg in args {
+            let Some((at, what)) = self.change_in(&arg.value) else {
+                continue;
+            };
+            let message = format!(
+                "`debug(..)` is left out of the C++ that `cpl build` writes, and this {what}: \
+                 the program would do it in `cpl run` and not on the judge"
+            );
+            if let Some(diag) = self.error(codes::DEBUG_CHANGES, at, message) {
+                diag.help = Some("do it in a statement before, and show the result: `let x = ..` then `debug(x)`".to_string());
+            }
+        }
+    }
+
+    /// The first call in `e` that changes a variable or reads or writes,
+    /// with what it does.
+    fn change_in(&mut self, e: &Expr) -> Option<(Span, String)> {
+        struct Calls(Vec<Expr>);
+        impl Visitor for Calls {
+            fn expr(&mut self, e: &Expr) {
+                if matches!(e.kind, ExprKind::Call { .. }) {
+                    self.0.push(e.clone());
+                }
+            }
+        }
+        let mut calls = Calls(Vec::new());
+        walk_expr(e, &mut calls);
+        for call in &calls.0 {
+            let ExprKind::Call { callee, args } = &call.kind else {
+                continue;
+            };
+            if let Some(arg) = args.iter().find(|a| a.mutable) {
+                let name = root_name(&arg.value).unwrap_or("its argument");
+                return Some((call.span, format!("changes `{name}`, passed `mut`")));
+            }
+            match &callee.kind {
+                ExprKind::Field { base, name } => {
+                    let own = match self.quietly(|c| c.infer(base)) {
+                        Ty::Named {
+                            name: type_name, ..
+                        } => self
+                            .members_of(&type_name)
+                            .is_some_and(|m| m.mutators.contains(&name.text)),
+                        _ => false,
+                    };
+                    if own || MUTATORS.contains(&name.text.as_str()) {
+                        let root = root_name(base).unwrap_or("what it is called on");
+                        return Some((call.span, format!("changes `{root}`")));
+                    }
+                }
+                ExprKind::Name(name) if self.local(name).is_none() => {
+                    let global = self.env.global(name);
+                    let Some(Def::Fn { .. }) = global.as_deref() else {
+                        if let Some(what) = global.is_none().then(|| io_of(name)).flatten() {
+                            return Some((call.span, what.to_string()));
+                        }
+                        continue;
+                    };
+                    let effects = self.env.effects(name);
+                    if let Some(changed) = effects.writes.first() {
+                        return Some((
+                            call.span,
+                            format!("calls `{name}`, which changes `{changed}`"),
+                        ));
+                    }
+                    if let Some(what) = effects.io {
+                        return Some((call.span, format!("calls `{name}`, which {what}")));
+                    }
+                }
+                _ => {}
+            }
+        }
+        None
     }
 
     /// `xs.sort(by: key)` sorts `xs` where it is, so the key can't reach

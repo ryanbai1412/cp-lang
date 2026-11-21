@@ -26,6 +26,7 @@ impl<'a> Checker<'a> {
         self.lent_together(args);
         self.call_effects(call, callee, args);
         self.sort_key_uses(callee, args);
+        self.debug_changes(callee, args);
         self.no_escape_args(callee, &callee_ty, args);
         self.mutates_view(call, callee);
         self.mutates_self(callee);

@@ -357,8 +357,20 @@ pub fn has_give(stmts: &[Stmt]) -> bool {
 /// The body may store to cells of `xs`. It may not store to `xs` whole or
 /// to `i`, grow or shrink `xs`, or call a fn or make a closure: `xs` can
 /// be a parameter that names a list the callee reaches another way.
-pub fn inside_list(slot: Slot, iter: &Iter, body: &Block, locals: &[Local]) -> Option<(Slot, Slot)> {
-    let Iter::Range { lo, hi, step, .. } = iter else {
+pub fn inside_list(
+    slot: Slot,
+    iter: &Iter,
+    body: &Block,
+    locals: &[Local],
+) -> Option<(Slot, Slot)> {
+    let Iter::Range {
+        lo,
+        hi,
+        step,
+        closed: false,
+        ..
+    } = iter
+    else {
         return None;
     };
     let from_zero = matches!(lo.kind, ExprKind::Int(lo) if lo >= 0);

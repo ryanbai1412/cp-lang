@@ -68,6 +68,7 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
         [
             "argmin_own_index",
             "float_digits",
+            "grid_parts_generic",
             "map_update_field",
             "mut_cell_receiver",
             "mut_field_after_closure",
@@ -82,6 +83,8 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "sort_key_own_list",
             "step_at_int_max",
             "step_not_positive",
+            "str_rfind_in",
+            "try_in_index",
             "try_inside_expr",
             "try_inside_stmt",
         ]

@@ -133,6 +133,9 @@ pub mod codes {
     pub const UNKNOWN_ARG_NAME: Code = Code("E0310");
     /// `@memo` on a fn whose answers can't be remembered.
     pub const BAD_MEMO: Code = Code("E0311");
+    /// `debug(..)` of something that changes the program's state: the
+    /// C++ leaves `debug` out, and the change with it.
+    pub const DEBUG_CHANGES: Code = Code("E0312");
 
     pub const ASSIGN_TO_LET: Code = Code("E0401");
     pub const MISSING_MUT_AT_CALL: Code = Code("E0402");

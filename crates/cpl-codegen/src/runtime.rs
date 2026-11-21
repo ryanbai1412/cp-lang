@@ -844,8 +844,9 @@ template <class T, int K> const T& at(const Row<T, K>& v, ll i) { if ((unsigned 
         name: "steps",
         needs: &["fail"],
         code: "\
-// How many values `lo, lo + by, ...` lie below `hi`. A step forward only.
-inline ll steps(ll lo, ll hi, ll by) { if (by <= 0) fail(\"a range steps forward: `by` is not positive\"); return lo < hi ? (ll)(((unsigned long long)hi - (unsigned long long)lo - 1) / (unsigned long long)by) + 1 : 0; }
+// How many values `lo, lo + by, ...` lie below `hi`, or up to it when
+// `closed`. A step forward only.
+inline ll steps(ll lo, ll hi, ll by, bool closed = false) { if (by <= 0) fail(\"a range steps forward: `by` is not positive\"); if (closed ? lo > hi : lo >= hi) return 0; return (ll)(((unsigned long long)hi - (unsigned long long)lo - !closed) / (unsigned long long)by) + 1; }
 ",
     },
     Piece {

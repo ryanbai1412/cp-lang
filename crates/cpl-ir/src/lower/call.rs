@@ -1647,6 +1647,7 @@ impl<'a> Lowerer<'a> {
                 hi: lw.mk(ExprKind::DomainLen(d), Ty::Int, span),
                 step: None,
                 rev: false,
+                closed: false,
             };
             out.push(Stmt::For(lid, at, iter, Block { stmts: vec![Stmt::Expr(push)] }));
             out.push(Stmt::Give(lw.local(all, span)));
@@ -1655,7 +1656,17 @@ impl<'a> Lowerer<'a> {
 
     /// The list of what `lo..hi` goes over, in order.
     pub(super) fn range_list(&mut self, lo: Expr, hi: Expr, elem: Ty, span: Span) -> Expr {
-        self.walked_list(Iter::Range { lo, hi, step: None, rev: false }, elem, span)
+        self.walked_list(
+            Iter::Range {
+                lo,
+                hi,
+                step: None,
+                rev: false,
+                closed: false,
+            },
+            elem,
+            span,
+        )
     }
 
     /// The list of what `iter` goes over, in the order it goes.
@@ -1675,7 +1686,13 @@ impl<'a> Lowerer<'a> {
         let Ty::Range(elem) = &range.ty else { unreachable!("only a range is asked for") };
         let elem = (**elem).clone();
         let iter = match range.kind {
-            ExprKind::Range { lo, hi } => Iter::Range { lo: *lo, hi: *hi, step: None, rev: true },
+            ExprKind::Range { lo, hi } => Iter::Range {
+                lo: *lo,
+                hi: *hi,
+                step: None,
+                rev: true,
+                closed: false,
+            },
             _ => Iter::RangeVal(range, true),
         };
         self.walked_list(iter, elem, span)
@@ -2017,6 +2034,7 @@ impl<'a> Lowerer<'a> {
                 hi: len(lw),
                 step: None,
                 rev: false,
+                closed: false,
             };
             let copy = Stmt::Assign(cell, AssignOp::Set, byte);
             out.push(Stmt::For(lid, at, iter, Block { stmts: vec![copy] }));
@@ -3486,7 +3504,13 @@ impl<'a> Lowerer<'a> {
                     Ty::Int,
                     span,
                 );
-                let iter = Iter::Range { lo: lw.int_lit(0, span), hi: len, step: None, rev: false };
+                let iter = Iter::Range {
+                    lo: lw.int_lit(0, span),
+                    hi: len,
+                    step: None,
+                    rev: false,
+                    closed: false,
+                };
                 let lid = lw.fresh_loop();
                 body = vec![Stmt::For(lid, k, iter, Block { stmts: body })];
             }
@@ -3637,31 +3661,56 @@ impl<'a> Lowerer<'a> {
     /// `xs.find(x => ..)`: the first of a range, list or array the test
     /// holds for, `none` when there is none.
     fn find_first(&mut self, value: Expr, elem: Ty, test: &ast::Expr, span: Span) -> Expr {
-                let test_ty = Ty::Fn(vec![elem.clone()], Box::new(Ty::Bool));
-                let test = self.expect(test, &test_ty);
-                let found_ty = Ty::opt(elem.clone());
-                self.do_expr(Some(&found_ty), span, |lw, out| {
-                    let holds = lw.temp(test_ty);
-                    out.push(Stmt::Let(holds, Some(test)));
-                    let found = lw.temp(found_ty.clone());
-                    out.push(Stmt::Let(found, Some(lw.mk(ExprKind::None, found_ty.clone(), span))));
-                    let item = lw.temp(elem.clone());
-                    let lid = lw.fresh_loop();
-                    let asked = vec![Arg::Value(lw.local(item, span))];
-                    let fits = lw.mk(ExprKind::CallExpr(Box::new(lw.local(holds, span)), asked), Ty::Bool, span);
-                    let some = lw.mk(ExprKind::Some(Box::new(lw.local(item, span))), found_ty.clone(), span);
-                    let place = Place { kind: PlaceKind::Local(found), ty: found_ty.clone(), span: lw.span(span) };
-                    let hit = Block { stmts: vec![Stmt::Assign(place, AssignOp::Set, some), Stmt::Break(None)] };
-                    let body = Block { stmts: vec![Stmt::If(fits, hit, Block::default())] };
-                    let iter = match value.kind {
-                        ExprKind::Range { lo, hi } => Iter::Range { lo: *lo, hi: *hi, step: None, rev: false },
-                        _ if matches!(value.ty, Ty::Range(_)) => Iter::RangeVal(value, false),
-                        _ => Iter::Seq(value, false),
-                    };
-                    out.push(Stmt::For(lid, item, iter, body));
-                    out.push(Stmt::Give(lw.local(found, span)));
-                })
-                }
+        let test_ty = Ty::Fn(vec![elem.clone()], Box::new(Ty::Bool));
+        let test = self.expect(test, &test_ty);
+        let found_ty = Ty::opt(elem.clone());
+        self.do_expr(Some(&found_ty), span, |lw, out| {
+            let holds = lw.temp(test_ty);
+            out.push(Stmt::Let(holds, Some(test)));
+            let found = lw.temp(found_ty.clone());
+            out.push(Stmt::Let(
+                found,
+                Some(lw.mk(ExprKind::None, found_ty.clone(), span)),
+            ));
+            let item = lw.temp(elem.clone());
+            let lid = lw.fresh_loop();
+            let asked = vec![Arg::Value(lw.local(item, span))];
+            let fits = lw.mk(
+                ExprKind::CallExpr(Box::new(lw.local(holds, span)), asked),
+                Ty::Bool,
+                span,
+            );
+            let some = lw.mk(
+                ExprKind::Some(Box::new(lw.local(item, span))),
+                found_ty.clone(),
+                span,
+            );
+            let place = Place {
+                kind: PlaceKind::Local(found),
+                ty: found_ty.clone(),
+                span: lw.span(span),
+            };
+            let hit = Block {
+                stmts: vec![Stmt::Assign(place, AssignOp::Set, some), Stmt::Break(None)],
+            };
+            let body = Block {
+                stmts: vec![Stmt::If(fits, hit, Block::default())],
+            };
+            let iter = match value.kind {
+                ExprKind::Range { lo, hi } => Iter::Range {
+                    lo: *lo,
+                    hi: *hi,
+                    step: None,
+                    rev: false,
+                    closed: false,
+                },
+                _ if matches!(value.ty, Ty::Range(_)) => Iter::RangeVal(value, false),
+                _ => Iter::Seq(value, false),
+            };
+            out.push(Stmt::For(lid, item, iter, body));
+            out.push(Stmt::Give(lw.local(found, span)));
+        })
+    }
 
     /// Whether `e` is a test to search with (`x => x > 3`, or a fn value)
     /// rather than a value to search for.
@@ -3727,6 +3776,7 @@ impl<'a> Lowerer<'a> {
                         hi: n_ref,
                         step: None,
                         rev: false,
+                        closed: false,
                     },
                     Block {
                         stmts: vec![Stmt::If(
@@ -4815,6 +4865,7 @@ impl<'a> Lowerer<'a> {
                             hi: hi_loop,
                             step: None,
                             rev: false,
+                            closed: false,
                         },
                         Block {
                             stmts: vec![Stmt::Expr(push)],
@@ -4959,6 +5010,7 @@ impl<'a> Lowerer<'a> {
                             hi,
                             step: Some(by),
                             rev: false,
+                            closed: false,
                         },
                         Block {
                             stmts: vec![Stmt::Expr(push)],
@@ -5388,6 +5440,7 @@ impl<'a> Lowerer<'a> {
                     hi,
                     step: None,
                     rev: false,
+                    closed: false,
                 },
                 body,
             ));
@@ -5659,8 +5712,18 @@ pub(super) struct GridItems {
 
 impl GridItems {
     pub(super) fn range(&self) -> Iter {
-        let lo = Expr { kind: ExprKind::Int(0), ty: Ty::Int, span: self.total.span };
-        Iter::Range { lo, hi: self.total.clone(), step: None, rev: false }
+        let lo = Expr {
+            kind: ExprKind::Int(0),
+            ty: Ty::Int,
+            span: self.total.span,
+        };
+        Iter::Range {
+            lo,
+            hi: self.total.clone(),
+            step: None,
+            rev: false,
+            closed: false,
+        }
     }
 }
 
@@ -5676,7 +5739,17 @@ pub(super) struct Items {
 
 impl Items {
     pub(super) fn range(&self) -> Iter {
-        let lo = Expr { kind: ExprKind::Int(0), ty: Ty::Int, span: self.len.span };
-        Iter::Range { lo, hi: self.len.clone(), step: None, rev: false }
+        let lo = Expr {
+            kind: ExprKind::Int(0),
+            ty: Ty::Int,
+            span: self.len.span,
+        };
+        Iter::Range {
+            lo,
+            hi: self.len.clone(),
+            step: None,
+            rev: false,
+            closed: false,
+        }
     }
 }

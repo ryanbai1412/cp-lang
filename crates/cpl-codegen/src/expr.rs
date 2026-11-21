@@ -288,9 +288,15 @@ impl<'p> Emitter<'p> {
                         format!("cpl::at({b}, {})", at[0])
                     }
                     Ty::Map(..) | Ty::HashMap(..) if !store => format!("{b}.at({})", at.join(", ")),
-                    Ty::List(_) if matches!(base.kind, PlaceKind::Global(id) if self.program.raw_lists.contains(&id)) => format!("{b}[{}]", at[0]),
-                    Ty::List(_) if matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _)) => format!("{b}[{}]", at[0]),
-                    Ty::List(_) if matches!((&base.kind, &indices[0].kind), (PlaceKind::Local(list), ExprKind::Local(i)) if self.inside.contains(&(*list, *i))) => {
+                    Ty::List(_) if matches!(base.kind, PlaceKind::Global(id) if self.program.raw_lists.contains(&id)) =>
+                    {
+                        format!("{b}[{}]", at[0])
+                    }
+                    Ty::List(_) if matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _)) => {
+                        format!("{b}[{}]", at[0])
+                    }
+                    Ty::List(_) if matches!((&base.kind, &indices[0].kind), (PlaceKind::Local(list), ExprKind::Local(i)) if self.inside.contains(&(*list, *i))) =>
+                    {
                         format!("{b}[{}]", at[0])
                     }
                     Ty::List(_) => {
@@ -1474,6 +1480,10 @@ impl<'p> Emitter<'p> {
                     Some(Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..)) => {
                         Code::new(format!("{holder}.count({}) != 0", text(1)), EQ)
                     }
+                    Some(Ty::Str) if args[1].ty == Ty::Str => Code::new(
+                        format!("{holder}.find({}) != std::string::npos", text(1)),
+                        EQ,
+                    ),
                     Some(Ty::Str) => Code::new(
                         format!(
                             "{holder}.find((char){}) != std::string::npos",

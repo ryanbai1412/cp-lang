@@ -2136,6 +2136,7 @@ impl<'a> Lowerer<'a> {
                 hi,
                 step: None,
                 rev: false,
+                closed: false,
             };
             let lid = self.fresh_loop();
             out.push(Stmt::For(lid, at, iter, Block { stmts: body }));
@@ -2153,7 +2154,13 @@ impl<'a> Lowerer<'a> {
             take.push(Stmt::Assign(flag, AssignOp::Set, self.mk(ExprKind::Bool(true), Ty::Bool, span)));
         }
         body.push(Stmt::If(better, Block { stmts: take }, Block::default()));
-        let iter = Iter::Range { lo, hi, step: None, rev: false };
+        let iter = Iter::Range {
+            lo,
+            hi,
+            step: None,
+            rev: false,
+            closed: false,
+        };
         let lid = self.fresh_loop();
         out.push(Stmt::For(lid, at, iter, Block { stmts: body }));
         changed
@@ -2314,7 +2321,13 @@ impl<'a> Lowerer<'a> {
         let mut body = vec![step(self, at, &lo, dims[axis]), step(self, from_at, &from_lo, from_dims[from_axis])];
         self.emit_assign_place(cell, store, worked, span, &mut body);
         let run = |lw: &mut Self, rev: bool| {
-            let iter = Iter::Range { lo: lw.int_lit(0, span), hi: count.clone(), step: None, rev };
+            let iter = Iter::Range {
+                lo: lw.int_lit(0, span),
+                hi: count.clone(),
+                step: None,
+                rev,
+                closed: false,
+            };
             let lid = lw.fresh_loop();
             Block { stmts: vec![Stmt::For(lid, k, iter, Block { stmts: body.clone() })] }
         };
@@ -2354,7 +2367,13 @@ impl<'a> Lowerer<'a> {
         let cell = Place { kind: PlaceKind::Index(Box::new(place), cell), ty: elem.clone(), span: self.span(span) };
         let value = self.expect(value, &elem);
         let value = self.hold(value, out);
-        let iter = Iter::Range { lo, hi, step: None, rev: false };
+        let iter = Iter::Range {
+            lo,
+            hi,
+            step: None,
+            rev: false,
+            closed: false,
+        };
         let lid = self.fresh_loop();
         let mut body = Vec::new();
         self.emit_assign_place(cell, op, value, span, &mut body);
@@ -2436,8 +2455,16 @@ impl<'a> Lowerer<'a> {
             let flag = Place { kind: PlaceKind::Local(changed), ty: Ty::Bool, span: self.span(span) };
             take.push(Stmt::Assign(flag, AssignOp::Set, self.mk(ExprKind::Bool(true), Ty::Bool, span)));
         }
-        let body = Block { stmts: vec![Stmt::If(better, Block { stmts: take }, Block::default())] };
-        let iter = Iter::Range { lo: self.int_lit(0, span), hi: len, step: None, rev: false };
+        let body = Block {
+            stmts: vec![Stmt::If(better, Block { stmts: take }, Block::default())],
+        };
+        let iter = Iter::Range {
+            lo: self.int_lit(0, span),
+            hi: len,
+            step: None,
+            rev: false,
+            closed: false,
+        };
         let lid = self.fresh_loop();
         out.push(Stmt::For(lid, k, iter, body));
         changed
