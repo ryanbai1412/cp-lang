@@ -492,6 +492,7 @@ pub fn tool(command: &str) -> Option<Tool> {
     Some(match command {
         "fmt" => cpl_fmt::cli::run,
         "lint" => cpl_lint::cli::run,
+        "fix" => cpl_lint::cli::run_fix,
         "doc" => cpl_doc::cli::run,
         "stress" => cpl_stress::cli::run,
         "new" => cpl_contest::new::run,

@@ -124,6 +124,16 @@ pub const SHADOWS_TOP_LEVEL: Lint = Lint {
     trigger: "let n = 5\nfn f() -> Int:\n    let n = 10\n    n\nprint(f())\n",
     fix: "let n = 5\nfn f() -> Int:\n    let k = 10\n    k + n\nprint(f())\n",
 };
+pub const TURBOFISH_TYPE_ARGS: Lint = Lint {
+    code: Code("L0204"),
+    name: "turbofish_type_args",
+    default: Level::Warn,
+    title: "Turbofish `::<...>` on generic call",
+    summary: "`f::<T>(...)`: canonical generic call spelling is `f<T>(...)`",
+    explanation: "Generic calls write type arguments directly as `f<T>(...)` without `::`. `cpl fix` (or `cpl lint --fix`) removes the legacy `::`.",
+    trigger: "let x = read::<Int>()\nprint(x)\n",
+    fix: "let x = read<Int>()\nprint(x)\n",
+};
 pub const FLOAT_EQUALITY: Lint = Lint {
     code: Code("L0301"),
     name: "float_equality",
@@ -252,6 +262,7 @@ pub const LINTS: &[Lint] = &[
     VAR_NEVER_REASSIGNED,
     UNREAD_FIELD,
     SHADOWS_TOP_LEVEL,
+    TURBOFISH_TYPE_ARGS,
     FLOAT_EQUALITY,
     DOMAIN_KEYED_MAP,
     MEMO_KEY_SPACE,

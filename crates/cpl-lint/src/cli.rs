@@ -21,6 +21,18 @@ options:
   --list    print every lint with its code and default level
 ";
 
+/// Runs `cpl fix` as an alias for `cpl lint --fix`.
+pub fn run_fix(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
+    if args.iter().any(|a| a == "-h" || a == "--help") {
+        let _ = write!(stdout, "usage: cpl fix [path]...\n\nAlias for `cpl lint --fix`.\n");
+        return 0;
+    }
+    let mut forwarded = Vec::with_capacity(args.len() + 1);
+    forwarded.push("--fix".to_string());
+    forwarded.extend(args.iter().cloned());
+    run(&forwarded, stdout, stderr)
+}
+
 /// Runs `cpl lint`. Returns the exit code: 0 when nothing is at `deny`
 /// (warnings do not fail), 1 when a `deny` lint fired or a file could not
 /// be linted, 2 for a usage error.

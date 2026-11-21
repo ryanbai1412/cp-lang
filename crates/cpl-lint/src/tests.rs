@@ -789,3 +789,14 @@ fn repeated_literal_from_noip19p4() {
     let bounds = "let m: 0..=500_000 = read()\nlet q: 0..=500_000 = read()\nlet x: -1e9..=1e9 = read()\nprint(m + 1000, q - 1000, x + 1000)\n";
     assert_eq!(taste_codes(bounds), Vec::<&str>::new());
 }
+
+#[test]
+fn turbofish_type_args_offers_plain_generic_fix() {
+    let src = "let x = read::<Int>()\nprint(x)\n";
+    let found = only(src);
+    assert_eq!(found.code, TURBOFISH_TYPE_ARGS.code);
+    let (fixed, applied) = apply_fixes(src, &[found]);
+    assert_eq!(applied, 1);
+    assert_eq!(fixed, "let x = read<Int>()\nprint(x)\n");
+    assert!(lint(&fixed, &Config::default()).is_empty());
+}

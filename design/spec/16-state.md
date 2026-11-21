@@ -31,7 +31,9 @@ slices of that same `List`. Element writes never do.
   as C++ does. There is no move checker. A lint and `cp explain` flag copies of large values inside loops;
   pass by `let` parameter to avoid them (parameters never copy). A temporary moves instead of copying [r13 P5].
 
-## 16.3 Program shape [proposed, CORE-ALIGN area 2]
+## 16.3 Program shape [provisional, deferred design question, CORE-ALIGN area 2]
+
+> **Provisional:** `--- multitest ---` / `--- with multitest() ---` is currently accepted by the parser as an alias for `@!multitest`, but program shape remains a deferred design question. Keep `@!multitest` as the canonical spelling in corpus ports and do not codemod ports onto wrap-lines until program shape settles.
 
 **What.** The entry file's body is the program, run once. A **wrap line** `--- with f(args) ---` passes
 the rest of its block to `f` as a closure, so `--- with multitest() ---` makes everything below it the
