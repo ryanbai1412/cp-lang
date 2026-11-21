@@ -1467,6 +1467,13 @@ SPELLING_DRIFT_SPECS = {
             ),
         },
     },
+    "turbofish": {
+        "canonical": "f<T>(...)",
+        "patterns": {
+            "f<T>(...)": re.compile(r"\b[a-z_][a-zA-Z0-9_]*<[A-Z_][A-Za-z0-9_<>, \.]*>\s*\("),
+            "f::<T>(...)": re.compile(r"\b[a-zA-Z_][a-zA-Z0-9_]*::<\s*[^>\n]+\s*>"),
+        },
+    },
 }
 
 
@@ -2301,10 +2308,17 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False, scope=No
             bi_p50 = bt.get("interp", {}).get("ratio_p50")
             ci_p50 = ct.get("interp", {}).get("ratio_p50")
             if bi_p50 is not None and ci_p50 is not None:
-                if ci_p50 > bi_p50 * PERF_REGRESSION_RATIO:
-                    record_regression(f"interp ratio p50 regressed >10%: {bi_p50:.2f}x -> {ci_p50:.2f}x", area="ports_or_codegen")
-                elif ci_p50 < bi_p50 / PERF_REGRESSION_RATIO:
+                if ci_p50 > bi_p50 + 1e-6:
+                    record_regression(f"interp ratio p50 regressed: {bi_p50:.2f}x -> {ci_p50:.2f}x", area="ports_or_codegen")
+                elif ci_p50 < bi_p50 - 1e-6:
                     improvements.append(f"interp ratio p50 improved: {bi_p50:.2f}x -> {ci_p50:.2f}x")
+            bi_over10 = bt.get("interp", {}).get("over_10x")
+            ci_over10 = ct.get("interp", {}).get("over_10x")
+            if bi_over10 is not None and ci_over10 is not None:
+                if ci_over10 > bi_over10:
+                    record_regression(f"interp ratio >10x count grew: {bi_over10} -> {ci_over10}", area="ports_or_codegen")
+                elif ci_over10 < bi_over10:
+                    improvements.append(f"interp ratio >10x count shrank: {bi_over10} -> {ci_over10}")
             bi_max = bt.get("interp", {}).get("ratio_max")
             ci_max = ct.get("interp", {}).get("ratio_max")
             if bi_max is not None and ci_max is not None:

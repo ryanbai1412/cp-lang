@@ -436,7 +436,7 @@ class DreamAndPerfRatchetTest(unittest.TestCase):
         self.assertTrue(any("dream rewritten: t/p1" in m for m in diff_rw["improvements"]))
         diff_full = sb.diff_against_baseline(cur_reg, base, mode="full")
         self.assertTrue(any("interp ratio regressed >10%: t/p1" in m for m in diff_full["regressions"]))
-        self.assertTrue(any("interp ratio p50 regressed >10%" in m for m in diff_full["regressions"]))
+        self.assertTrue(any("interp ratio p50 regressed" in m for m in diff_full["regressions"]))
 
     def test_friction_area_routing_and_metadata_warning_gate(self):
         with tempfile.TemporaryDirectory() as d:
@@ -1181,6 +1181,64 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
             self.assertEqual(merged_by_id["ecnerwala/p01"]["emitted_bytes"], 2222)
             self.assertEqual(merged_by_id["ecnerwala/p08"]["emitted_bytes"], 8888)
             self.assertEqual(merged_by_id["ecnerwala/p05"]["emitted_bytes"], 1005)
+
+    def test_interp_over10x_and_turbofish_drift_ratchets(self):
+        # 1. Interpreter ratio p50 (never worse) and >10x count (never higher)
+        base = {
+            "ports": [],
+            "totals": {
+                "frictions": {"open_blockers": 0, "warnings": 0},
+                "tokens": {},
+                "perf": {},
+                "interp": {"ratio_p50": 6.0, "ratio_max": 50.0, "over_10x": 34},
+                "friction_lint": {"wa_trap": 0},
+            },
+        }
+        cur_worse = {
+            "ports": [],
+            "totals": {
+                "frictions": {"open_blockers": 0, "warnings": 0},
+                "tokens": {},
+                "perf": {},
+                "interp": {"ratio_p50": 6.1, "ratio_max": 50.0, "over_10x": 35},
+                "friction_lint": {"wa_trap": 0},
+            },
+        }
+        d_bad = sb.diff_against_baseline(cur_worse, base, mode="full")
+        self.assertTrue(any("interp ratio p50 regressed" in r for r in d_bad["regressions"]))
+        self.assertTrue(any("interp ratio >10x count grew: 34 -> 35" in r for r in d_bad["regressions"]))
+
+        cur_better = {
+            "ports": [],
+            "totals": {
+                "frictions": {"open_blockers": 0, "warnings": 0},
+                "tokens": {},
+                "perf": {},
+                "interp": {"ratio_p50": 4.8, "ratio_max": 40.0, "over_10x": 20},
+                "friction_lint": {"wa_trap": 0},
+            },
+        }
+        d_good = sb.diff_against_baseline(cur_better, base, mode="full")
+        self.assertEqual(d_good["regressions"], [])
+        self.assertTrue(any(">10x count shrank: 34 -> 20" in m for m in d_good["improvements"]))
+
+        # 2. Turbofish spelling drift (f::<T>() non-canonical vs f<T>() canonical)
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(os.path.join(tmp, "ecnerwala"), exist_ok=True)
+            with open(os.path.join(tmp, "ecnerwala", "tf.cp"), "w", encoding="utf-8") as f:
+                f.write(
+                    "@!multitest\n"
+                    "fn solve():\n"
+                    "  let a = read<Int>()\n"
+                    "  let b = read::<Int>()\n"
+                    "  let c = topo::<V>(g)\n"
+                )
+            sd = sb.measure_spelling_drift(tmp)
+            tf = sd["constructs"]["turbofish"]
+            self.assertEqual(tf["canonical"], "f<T>(...)")
+            self.assertEqual(tf["counts"]["f<T>(...)"], 1)
+            self.assertEqual(tf["counts"]["f::<T>(...)"], 2)
+            self.assertEqual(tf["active_non_canonical"], 2)
 
 
 if __name__ == "__main__":

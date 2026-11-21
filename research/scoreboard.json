@@ -801,8 +801,8 @@
     "spelling_drift": {
       "files_scanned": 1395,
       "active_files_scanned": 434,
-      "total_non_canonical": 111,
-      "active_non_canonical": 28,
+      "total_non_canonical": 154,
+      "active_non_canonical": 46,
       "constructs": {
         "multitest": {
           "canonical": "@!multitest",
@@ -896,6 +896,19 @@
           },
           "non_canonical": 37,
           "active_non_canonical": 11
+        },
+        "turbofish": {
+          "canonical": "f<T>(...)",
+          "counts": {
+            "f<T>(...)": 38,
+            "f::<T>(...)": 43
+          },
+          "active_counts": {
+            "f<T>(...)": 23,
+            "f::<T>(...)": 18
+          },
+          "non_canonical": 43,
+          "active_non_canonical": 18
         }
       }
     },

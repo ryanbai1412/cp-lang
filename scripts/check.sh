@@ -197,16 +197,16 @@ echo "prelude: $prelude names"
 [ "$prelude" -le 80 ] || { echo "check: stdlib/prelude.cp has $prelude names, over the cap of 80" >&2; exit 1; }
 
 step "cpl fmt --check stdlib"
-cargo run -q -p cpl-cli -- fmt --check stdlib || fail "stdlib/ is not formatted; run: cargo run -p cpl-cli -- fmt stdlib"
+cpl="${CARGO_TARGET_DIR:-target}/debug/cpl"
+"$cpl" fmt --check stdlib || fail "stdlib/ is not formatted; run: cargo run -p cpl-cli -- fmt stdlib"
 
 # Fast validation scoreboard: every active port under proto/ports/ passes
 # cpl check, cpl fmt --check, cpl lint (0 warnings), and cpl build (<= 64 KB),
 # plus contestant tokens, friction_lint (0 wa_trap), friction-report summary,
 # and regression check against research/scoreboard.json.
 step "validation scoreboard (--fast --check against research/scoreboard.json)"
-cpl="${CARGO_TARGET_DIR:-target}/debug/cpl"
-python3 -m unittest scripts/test_scoreboard.py scripts/test_dream_gaps.py >/dev/null \
-    || fail "scoreboard unit tests failed; rerun: python3 -m unittest scripts/test_scoreboard.py scripts/test_dream_gaps.py -v"
+python3 -m unittest scripts/test_scoreboard.py scripts/test_dream_gaps.py scripts/test_review_check.py >/dev/null \
+    || fail "scoreboard unit tests failed; rerun: python3 -m unittest scripts/test_scoreboard.py scripts/test_dream_gaps.py scripts/test_review_check.py -v"
 python3 scripts/scoreboard.py --fast --check --quiet --cpl "$cpl" \
     || fail "scoreboard regression detected; rerun: python3 scripts/scoreboard.py --fast --check"
 
