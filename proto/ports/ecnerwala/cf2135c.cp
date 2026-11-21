@@ -22,7 +22,7 @@ fn force(u: V, val: Int):
 fn dfs(u: V, p: ?V, d: Int):
     depth[u] = d
     low[u] = d
-    for a in g.adj(u):
+    for a in g.out(u):
         let v = a.to
         if p == v: continue
         if let nd = depth[v]:

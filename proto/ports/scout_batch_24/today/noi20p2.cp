@@ -14,7 +14,7 @@ domain P = 0..m
 let paths: [P](u: V, v: V) = read()
 
 let g = Graph<V, E>.undirected(edges)
-let tree = Rooted(u => g.adj(u), V.first)
+let tree = Rooted(u => g.out(u), V.first)
 
 var need: [V]Int = [V] _ => 0
 for p in P:

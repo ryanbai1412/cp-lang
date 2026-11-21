@@ -34,8 +34,8 @@ for (val, st) in evts:
         return
     mark(st, val)
     while let u = stk.pop():
-        for a in rev.adj(u): mark(a.to, val)
-        for a in g.adj(u):
+        for a in rev.out(u): mark(a.to, val)
+        for a in g.out(u):
             indeg[a.to] -= 1
             if indeg[a.to] == 0: mark(a.to, val)
 

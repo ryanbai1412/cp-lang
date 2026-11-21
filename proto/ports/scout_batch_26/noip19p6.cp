@@ -23,12 +23,12 @@ for _ in 0..tests:
     // WISH TR6: `let t = Rooted<V>.at_centroid(g)` (or `t.centroid()` and
     // `t.reroot(c)`); today the tree is rooted twice, the first time only
     // to learn the sizes that locate the centroid.
-    let first = Rooted(u => g.adj(u), V.first)
+    let first = Rooted(u => g.out(u), V.first)
     var c = V.first
     while let h = first.heavy[c]:
         if 2 * first.size(h) <= n: break
         c = h
-    let t = Rooted(u => g.adj(u), c)
+    let t = Rooted(u => g.out(u), c)
 
     fn heavy(x: V) -> Int:
         if let h = t.heavy[x]: t.size(h)

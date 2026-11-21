@@ -21,7 +21,7 @@ domain Path = 0..m
 let paths: [Path](u: V, v: V) = read()
 
 let g0 = Graph<V, E>.undirected(edges)
-let t = Rooted(u => g0.adj(u), V.first)
+let t = Rooted(u => g0.out(u), V.first)
 
 // need[v]: the deepest start (as depth + 1) among the paths that end at v
 var need: [V]Int = 0

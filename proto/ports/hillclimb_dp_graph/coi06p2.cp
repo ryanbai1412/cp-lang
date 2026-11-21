@@ -10,7 +10,7 @@ let map = Graph<Town, Road>.undirected(read())
 let tree = Rooted(map, Town.first)
 var low = [Town] v => tree.pos(v)
 for v in tree.postorder:
-    for (w, _) in map.adj(v):
+    for (w, _) in map.out(v):
         if tree.parent(v) != w: low[v] min= tree.pos(w)
     if let p = tree.parent(v): low[p] min= low[v]
 

@@ -41,12 +41,12 @@ export const STDLIB_TYPES: readonly string[] = [
     'Action', 'AhoCorasick', 'Arc', 'BagCursor', 'BeatsSegTree', 'Bitset', 'ByAngle', 'Centroids', 'Comb', 'Compressed', 'ConnectedGraph',
     'CostFlow', 'Dag', 'Deque', 'Desc', 'Diff1', 'Diff2', 'Digraph', 'Dir4', 'Dir8',
     'DisjointSparseTable', 'Dsu', 'DsuOf', 'DualFenwick', 'DualSegTree', 'Fenwick', 'Fenwick2D',
-    'FlowGraph', 'Graph', 'HalfPlane', 'Hash2D', 'HashVal', 'Hashable', 'IntervalMap', 'LazySegTree', 'LiChao', 'Line', 'Mark',
+    'FlowGraph', 'Graph', 'HalfPlane', 'Hash2D', 'HashVal', 'Hashable', 'IntervalMap', 'LazySegTree', 'LiChao', 'Line', 'Lit', 'Mark',
     'Marks', 'Mat', 'MaxHeap', 'MaxSub', 'MergeSortTree', 'MinHeap', 'Mod', 'MonoDeque', 'Monoid', 'Neighbours', 'OrderedSet',
-    'Palindromes', 'PalindromicTree', 'ParityDsu', 'Perm', 'PersistentSegTree', 'Prefix1', 'Prefix2', 'PrefixN', 'Pt',
+    'Palindromes', 'PalindromicTree', 'ParityDsu', 'Paths', 'Perm', 'PersistentSegTree', 'Prefix1', 'Prefix2', 'PrefixN', 'Pt',
     'RangeFenwick', 'RangeKth', 'Reversible', 'Rng', 'RollingHash', 'Rooted', 'SegTree', 'Sieve', 'SimpleGraph',
-    'SortedBag', 'SosOver', 'SparseSegTree', 'SparseTable', 'SuffixArray', 'SuffixAutomaton', 'Target', 'TimeStep', 'TimeTree', 'Tree', 'Trie', 'Vec',
-    'Version', 'WindowFold', 'XorBasis', 'XorFenwick',
+    'SortedBag', 'SosOver', 'SparseSegTree', 'SparseTable', 'SuffixArray', 'SuffixAutomaton', 'Target', 'TimeStep', 'TimeTree', 'Tree', 'Trie', 'TwoSat', 'Vec',
+    'Version', 'Walk', 'WindowFold', 'XorBasis', 'XorFenwick',
 ];
 
 /**
@@ -68,15 +68,16 @@ export const PRELUDE_VALUES: readonly string[] = [
 /** Public `stdlib/*.cp` functions that need a `use` (`use std.strings.{z_function}`). */
 export const STDLIB_VALUES: readonly string[] = [
     'affine_sum', 'angle_less', 'area2', 'area2_128', 'argmax_by', 'argmin_by', 'argmins',
-    'articulation_points', 'berlekamp_massey', 'biconnected_components', 'bit_len', 'borders',
+    'articulation_points', 'bellman_ford', 'berlekamp_massey', 'bfs01', 'biconnected_components', 'bit_len', 'borders',
+    'bridges',
     'bsearch_real', 'buckets', 'choose', 'choose2', 'chunk_by', 'chunks', 'circle_intersect',
     'circle_line_intersect', 'circle_polygon_area', 'circulation', 'circumcenter', 'close', 'closest_pair',
     'closest_pair2', 'components', 'compose', 'concavity_break', 'convex_hull', 'convex_hull_idx',
     'convexity_break', 'convolve', 'convolve_and', 'convolve_int', 'convolve_mod', 'convolve_or',
     'convolve_xor', 'cross', 'cross128', 'crt', 'crt_all', 'cyclic_pairs', 'decrease', 'dedup',
     'det_real', 'diameter2', 'differences', 'directed_of_pairs', 'directed_of_triples', 'dist',
-    'dist2', 'dist2_128', 'divisors', 'divisors_from_factors', 'dnc_break', 'dot', 'dot128', 'eq_fields',
-    'ext_gcd', 'factor', 'factor_big', 'first_ge_by', 'first_gt', 'first_gt_by', 'floor_sum',
+    'dist2', 'dist2_128', 'divisors', 'divisors_from_factors', 'dnc_break', 'dot', 'dot128', 'euler_walk', 'eq_fields',
+    'ext_gcd', 'factor', 'factor_big', 'find_cycle', 'first_ge_by', 'first_gt', 'first_gt_by', 'fixed_cost_paths', 'floor_sum', 'floyd_warshall',
     'general_matching', 'get_or_insert_with', 'gomory_hu', 'guess_at', 'half_plane_intersect',
     'hull_extreme', 'hull_tangents', 'idempotent', 'increase', 'inv_mod', 'inverse', 'inverse_real', 'inversions',
     'is_palindrome', 'is_prime', 'is_sorted', 'is_sorted_by', 'knuth_break', 'last_le_by',

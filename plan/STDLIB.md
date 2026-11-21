@@ -1048,15 +1048,15 @@ trait Target
 struct Graph<V, E> // O(n + m)
     fn directed(edges: [E](u: V, v: V)) -> Graph<V, E>
     fn undirected(edges: [E](u: V, v: V)) -> Graph<V, E>
-    fn adj(self, u: V) -> yields (to: V, e: E)
     fn out(self, u: V) -> yields (to: V, e: E)
     fn get(self, u: V) -> List<(to: V, e: E)>
     fn deg(self, u: V) -> Int // O(1)
     fn transpose(self) -> Graph<V, E> // O(n + m)
-fn directed_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>
-fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>
-fn directed_of_triples<V, W>(edges: List<(V, V, W)>) -> [V]List<(V, W)>
-fn undirected_of_triples<V, W>(edges: List<(V, V, W)>) -> [V]List<(V, W)>
+// list-form hooks behind `Graph.directed(pairs)` etc., never called by name
+fn directed_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V> // O(n + m)
+fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V> // O(n + m)
+fn directed_of_triples<V, W>(edges: List<(V, V, W)>) -> [V]List<(V, W)> // O(n + m)
+fn undirected_of_triples<V, W>(edges: List<(V, V, W)>) -> [V]List<(V, W)> // O(n + m)
 struct Paths<V, W, A> // dist, parent, via: [V]?_; order: List<V>
     fn get(self, v: V) -> ?W // O(1)
     fn reached(self, v: V) -> Bool // O(1)

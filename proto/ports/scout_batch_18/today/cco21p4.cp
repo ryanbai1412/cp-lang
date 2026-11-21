@@ -23,7 +23,7 @@ fn drain_peel():
         let v = peel[head]
         head += 1
         dead[v] = true
-        for arc in rev.adj(v):
+        for arc in rev.out(v):
             let e = arc.e
             if removed[e]: continue
             removed[e] = true

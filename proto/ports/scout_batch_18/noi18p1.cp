@@ -29,7 +29,7 @@ let raw_qs: [Q](v0: 1..=n, p0: 0..=max_s) = read()
 
 fn solve() -> [Q]Int:
     let g = Graph<V, E>.undirected([E] e => (u: edges[e].u, v: edges[e].v))
-    let dist = dijkstra::<V>(u => g.adj(u), [(V.first, 0)], a => edges[a.e].len)
+    let dist = dijkstra::<V>(u => g.out(u), [(V.first, 0)], a => edges[a.e].len)
 
     // WISH W23: Multi-feature collision — Kruskal reconstruction tree extends domain V
     // with up to n - 1 dynamically created virtual internal nodes. There is no
@@ -93,7 +93,7 @@ fn solve() -> [Q]Int:
 fn solve_brute() -> [Q]Int
     where n <= 80 and q <= 80:
     let g = Graph<V, E>.undirected([E] e => (u: edges[e].u, v: edges[e].v))
-    let dist = dijkstra::<V>(u => g.adj(u), [(V.first, 0)], a => edges[a.e].len)
+    let dist = dijkstra::<V>(u => g.out(u), [(V.first, 0)], a => edges[a.e].len)
     var last_ans = 0
     var out: [Q]Int = 0
     for qi in Q:
@@ -108,7 +108,7 @@ fn solve_brute() -> [Q]Int
             let u = queue[head]
             head += 1
             ans min= (dist[u] ?? Int.MAX)
-            for a in g.adj(u):
+            for a in g.out(u):
                 if edges[a.e].alt > p and not seen[a.to]:
                     seen[a.to] = true
                     queue.push(a.to)

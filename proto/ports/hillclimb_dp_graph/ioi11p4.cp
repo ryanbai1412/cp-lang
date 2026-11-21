@@ -22,4 +22,4 @@ while let (d, u) = pq.pop():
     if u == Chamber.first:
         print(d)
         return
-    for (v, c) in maze.adj(u): pq.push((d + corridors[c].time, v))
+    for (v, c) in maze.out(u): pq.push((d + corridors[c].time, v))

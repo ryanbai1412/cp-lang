@@ -66,7 +66,7 @@ fn solve_brute() -> [Q]Int
     let g = Graph<V, E>.directed([E] e => (u: edges[e].a, v: edges[e].b))
     var out: [Q]Int = -1
     for q in Q:
-        let dist = dijkstra::<V>(u => g.adj(u), [(queries[q].a, 0)], arc => edges[arc.e].t)
+        let dist = dijkstra::<V>(u => g.out(u), [(queries[q].a, 0)], arc => edges[arc.e].t)
         out[q] = dist[queries[q].b] ?? -1
     out
 

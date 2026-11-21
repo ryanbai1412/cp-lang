@@ -11,7 +11,7 @@ domain V = 1..=n
 domain E = 0..(n - 1)
 let edges: [E](u: V, v: V) = read()
 let g = Graph<V, E>.undirected(edges)
-let t = Rooted(u => g.adj(u), V.first)
+let t = Rooted(u => g.out(u), V.first)
 
 var safe: [V]Bool = false
 var near = SegTree<t.Pre, Int>(+)

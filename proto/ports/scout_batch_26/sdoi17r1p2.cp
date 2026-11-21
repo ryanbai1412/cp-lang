@@ -23,7 +23,7 @@ domain V = 1..=n
 domain E = 0..(n - 1)
 let edges: [E](u: V, v: V) = read()
 let g = Graph<V, E>.undirected(edges)
-let t = Rooted(u => g.adj(u), V.first)
+let t = Rooted(u => g.out(u), V.first)
 
 var f = LazySegTree<t.Pre, Int, Int>(AddMax, [t.Pre] p => t.depth(t.at[p]) + 1)
 var same: [V]?V = [V] _ => none

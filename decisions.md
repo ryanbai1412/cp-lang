@@ -2488,6 +2488,14 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
    `Functional` move unchanged in shape; `shortest`/`walk_back` are
    subsumed by `Paths`. Minimum spanning trees stay with `std.dsu`'s
    owner. Reverse: keep the local modules.
+7. **`out` is the one name for a vertex's arcs; `Graph.adj` is gone.** Same
+   signature and cost as `out`, which `Neighbours` already used. Reverse:
+   add `adj` back as a second spelling.
+8. **`Graph.directed`/`Graph.undirected` stay two constructors**, not one
+   with `directed: Bool`: directedness is fixed when the graph is built,
+   and the list form already picks pairs or triples from the tuple shape.
+   `euler_walk` takes `directed:` because its `next` cannot say. Reverse:
+   add `Graph(edges, directed:)` with the two as spellings.
 
 ## 47. DP and search in the stdlib (`design/stdlib/dp.md`, 2026-11-21)
 

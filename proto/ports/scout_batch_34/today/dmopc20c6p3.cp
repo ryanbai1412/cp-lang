@@ -33,16 +33,16 @@ while q.len > 0:
         res = true
     elif want[u]:
         res = false
-        for arc in g.adj(u):
+        for arc in g.out(u):
             if let sv = state[arc.to]:
                 if sv: res = true
     else:
         res = true
-        for arc in g.adj(u):
+        for arc in g.out(u):
             if not state[arc.to]!:
                 res = false
     state[u] = res
-    for arc in rg.adj(u):
+    for arc in rg.out(u):
         let p = arc.to
         rem[p] -= 1
         enqueue(p, want[p] and res)

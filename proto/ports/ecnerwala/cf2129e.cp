@@ -4,7 +4,7 @@ domain V = 1..=n
 domain E = 0..m
 let raw: [E](u: V, v: V) = read()
 let g = Graph.undirected(raw)
-let arcs = [(u, a.to, a.e) for u in V for a in g.adj(u)]
+let arcs = [(u, a.to, a.e) for u in V for a in g.out(u)]
 let pref = prefix([V] u => g.deg(u))
 
 let q: Int = read()

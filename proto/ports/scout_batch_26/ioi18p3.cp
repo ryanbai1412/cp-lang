@@ -38,7 +38,7 @@ fn reach_tree(order: List<V>, earlier: (V, V) -> Bool):
             x = top[x]
         x
     for v in order:
-        for a in g.adj(v):
+        for a in g.out(v):
             if not earlier(a.to, v): continue
             let c = find(a.to)
             if c != v:

@@ -11,7 +11,7 @@ var by_depth: [0..n]List<(u: V, p: ?V)> = []
 
 fn dfs(u: V, p: ?V, depth: Int):
     by_depth[depth].push((u, p))
-    for a in g.adj(u):
+    for a in g.out(u):
         if p == a.to: continue
         dfs(a.to, u, depth + 1)
 

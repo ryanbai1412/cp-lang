@@ -16,7 +16,7 @@ let g = Graph<V, E>.undirected(edges)
 var root = V.first
 for v in V:
     if g.deg(v) > 1: root = v
-let t = Rooted(u => g.adj(u), root)
+let t = Rooted(u => g.out(u), root)
 
 var leaves: List<V> = []
 for v in t.preorder:

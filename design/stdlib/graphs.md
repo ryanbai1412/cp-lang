@@ -38,7 +38,7 @@ The patterns, roughly by frequency in that corpus:
    per move, no heap). KACTL and ACL omit these; contestants rewrite them each
    time, and that is where the time goes.
 4. **Negative weights.** Bellman-Ford with negative-cycle detection (KACTL
-   `BellmanFord`), Floyd-Warshall on n ≤ 500 (KACTL `FloydWarshall`).
+   `BellmanFord`), Floyd-Warshall on n <= 500 (KACTL `FloydWarshall`).
 5. **Order.** Topological order or "is it a DAG", DP in topological order,
    peeling in-degree zero (`cf2115b`, `cf2137g`, `ucup5s06g`), finding one
    directed cycle to print.
@@ -112,16 +112,30 @@ trait Target                // fn to(self) -> V; a bare V is its own target
 struct Graph<V, E>          // CSR: O(n + m) memory, arcs grouped by tail
     fn directed(edges: [E](u: V, v: V)) -> Graph<V, E>     // O(n + m)
     fn undirected(edges: [E](u: V, v: V)) -> Graph<V, E>   // O(n + m), 2 arcs per edge
-    fn adj(self, u: V) -> yields (to: V, e: E)             // O(deg u)
     fn out(self, u: V) -> yields (to: V, e: E)             // O(deg u)
     fn get(self, u: V) -> List<(to: V, e: E)>              // g[u], O(deg u), allocates
     fn deg(self, u: V) -> Int                              // O(1)
     fn transpose(self) -> Graph<V, E>                      // O(n + m)
-fn directed_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>          // O(n + m)
-fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>        // O(n + m)
-fn directed_of_triples<V, W>(edges: List<(V, V, W)>) -> [V]List<(V, W)>
-fn undirected_of_triples<V, W>(edges: List<(V, V, W)>) -> [V]List<(V, W)>
+// List-form hooks, never called by name: `Graph.directed(pairs)` with a plain
+// list resolves to `directed_of_pairs`, and a list of triples to
+// `directed_of_triples` (the general `<fn>_of_pairs`/`<fn>_of_triples` rule).
+fn directed_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>                 // O(n + m)
+fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>               // O(n + m)
+fn directed_of_triples<V, W>(edges: List<(V, V, W)>) -> [V]List<(V, W)>    // O(n + m)
+fn undirected_of_triples<V, W>(edges: List<(V, V, W)>) -> [V]List<(V, W)>  // O(n + m)
 ```
+
+One constructor per kind of graph, not a `directed: Bool` option. The
+contestant writes two spellings, `Graph.directed(edges)` and
+`Graph.undirected(edges)`, and the tuple shape picks pairs, triples or an
+edge-domain array; the four `*_of_*` functions are the hooks the compiler's
+list-form rule resolves to, not names anyone types. Directedness is a fact
+the statement gives once and the value keeps, so it reads as the type of
+graph being built. `euler_walk(next, directed:)` differs because it takes an
+arbitrary `next` that cannot say which kind it is, and the option changes
+the algorithm's degree condition. Reverse: add
+`Graph(edges, directed: Bool)` and keep the two constructors as its
+spellings.
 
 Laws: `Graph.directed(edges)` has one arc `(to: v, e)` out of `u` per edge, in
 edge order; `undirected` adds `(to: u, e)` out of `v`, so both directions of
@@ -150,9 +164,9 @@ fn dijkstra<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W) -> Paths<V, W, A
 fn fixed_cost_paths<S, M, W>(
     from: List<S>, moves: List<M>, cost: M -> W, step: (M, S) -> ?S,
 ) -> Paths<S, W, M>
-    // O(|S| · |moves|): one FIFO per move, no heap (Dial's idea for k costs)
+    // O(|S| * |moves|): one FIFO per move, no heap (Dial's idea for k costs)
 fn bellman_ford<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W) -> ?Paths<V, W, A>
-    // O(n · m); none when a negative cycle is reachable from a source
+    // O(n * m); none when a negative cycle is reachable from a source
 fn floyd_warshall<V, W>(w: [V, V]?W) -> ?[V, V]?W
     // O(n^3) time, O(n^2) memory; none on a negative cycle
 ```
@@ -287,14 +301,14 @@ struct Functional<V>                        // O(n log n) build (jump table)
     fn ring_of(self, v: V) -> Int           // O(1)
     fn steps_to_ring(self, v: V) -> Int     // O(1)
     fn root(self, v: V) -> V                // O(1) first ring vertex reached
-    fn jump(self, v: V, k: Int) -> V        // O(log n), any k ≥ 0
+    fn jump(self, v: V, k: Int) -> V        // O(log n), any k >= 0
     fn dist(self, a: V, b: V) -> ?Int       // O(log n) steps from a to b
     fn orbit(self, v: V) -> Int             // O(1) distinct vertices from v
     fn jump_while(self, v: V, pred: V -> Bool, max_steps: Int = V.K) -> ?(V, Int)
 ```
 
 Laws: `jump(v, a + b) == jump(jump(v, a), b)`; `jump(v, steps_to_ring(v))
-== root(v)`; `on_ring(v)` iff `jump(v, k) == v` for some `k ≥ 1`;
+== root(v)`; `on_ring(v)` iff `jump(v, k) == v` for some `k >= 1`;
 `dist(a, b) == some(k)` iff `k` is the least `k` with `jump(a, k) == b`.
 
 ### 3.9 Implicit and grid graphs
@@ -319,7 +333,7 @@ function of the move.
 - The transition itself: which moves exist, what they cost, which states are
   legal. The library never takes a "grid with walls" or a "state encoder".
 - DFS whose per-vertex logic is the problem (`cf2135c` propagates a forced
-  value along low-link): a recursive `fn dfs` over `g.adj(u)` reads like the
+  value along low-link): a recursive `fn dfs` over `g.out(u)` reads like the
   editorial and the library has nothing to add except `Graph`.
 - DP over an order the library provides (`order`, `topo`, `C`): the loop is
   the recurrence, so it is the contestant's.
@@ -359,7 +373,7 @@ The weights are 0 and 1, so the algorithm is the deque, not the heap.
 ### cf2178h: Create or Duplicate
 
 Every move has a fixed cost and the state is the value mod `m` with the set
-of types started, so shortest path over a 2^4 · m state space needs no heap.
+of types started, so shortest path over a 2^4 * m state space needs no heap.
 
 ```cp
 domain T = 0..3
@@ -388,12 +402,10 @@ Every edge inside a strongly connected component must step the BFS depth by
 one modulo 3.
 
 ```cp
-use std.seq.{get_or_insert_with}
-
 @!multitest
 let m: Int = read()
 var verts: Map<(Int, Int), Int> = Map()
-fn id(k: (Int, Int)) -> Int: verts.get_or_insert_with(k, () => verts.len)
+fn id(k: (Int, Int)) -> Int: verts.get_or_insert(k, verts.len)
 var raw: List<(Int, Int)> = []
 for _ in 0..m:
     let t: [0..3]Int = read()
@@ -401,7 +413,7 @@ for _ in 0..m:
 
 domain V = verts.len
 let edges = [(V(u), V(v)) for (u, v) in raw]
-let next = directed_of_pairs(edges)
+let next = Graph.directed(edges)
 let (domain C, comp) = scc(next)
 let roots = [first(u for u in V if comp[u] == c)! for c in C]
 let depth = bfs(u => [v for v in next[u] if comp[v] == comp[u]], from: roots)

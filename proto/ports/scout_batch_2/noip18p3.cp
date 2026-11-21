@@ -11,7 +11,7 @@ domain Junction = 1..=n
 domain Road = 1..n
 let roads: [Road](u: Junction, v: Junction, len: Int) = read()
 let g = Graph<Junction, Road>.undirected(roads)
-let tree = Rooted(u => g.adj(u), Junction.first)
+let tree = Rooted(u => g.out(u), Junction.first)
 let bottom_up = tree.preorder.rev
 
 var up_len: [Junction]Int = 0  // the road from v to its parent

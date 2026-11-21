@@ -16,7 +16,7 @@ fn solve_s1():
 
     // Iterative DFS tree with explicit ancestor path stack.
     var tin: [V]?Int = none
-    var out = [V] u => [a.to for a in g.adj(u)]
+    var out = [V] u => [a.to for a in g.out(u)]
     var stack = List<V>()
     var pos_in_stack: [V]?Int = none
     var frames = List<(V, Int, ?V)>()
@@ -76,7 +76,7 @@ fn solve_s3():
     domain E = 0..m
     let edges: [E](u: V, v: V) = read()
     let g = Graph<V, E>.undirected(edges)
-    let out = [V] u => [a.to for a in g.adj(u)]
+    let out = [V] u => [a.to for a in g.out(u)]
     var tin: [V]?Int = none
     var depth: [V]Int = 0
     var par: [V]?V = none
@@ -166,7 +166,7 @@ fn solve_s5():
             var ext_seen: [V]Bool = false
             var ext_uniq = 0
             for u in cyc:
-                for a in g.adj(u):
+                for a in g.out(u):
                     if not in_cyc[a.to] and not ext_seen[a.to]:
                         ext_seen[a.to] = true
                         ext_uniq += 1
@@ -194,7 +194,7 @@ fn solve_s5():
             if ans: break
 
     if not ans:
-        for block in biconnected_components::<V>(u => g.adj(u)):
+        for block in biconnected_components::<V>(u => g.out(u)):
             if block.len == 5:
                 // Fix block[0] and test all 24 permutations of block[1..5].
                 let a0 = block[0]

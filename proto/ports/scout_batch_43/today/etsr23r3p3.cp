@@ -13,7 +13,7 @@ for _ in 0..m:
     edges.push((u: V(u), v: V(v), l: l, w: w))
 
 let g = Graph<V, E>.undirected([E] e => (u: edges[e.idx].u, v: edges[e.idx].v))
-let dist = dijkstra(u => g.adj(u), [(V.first, 0)], a => edges[a.e.idx].l)
+let dist = dijkstra(u => g.out(u), [(V.first, 0)], a => edges[a.e.idx].l)
 
 var dsu = Dsu<V>()
 var root_of: [V]Int = [V] v => v.idx

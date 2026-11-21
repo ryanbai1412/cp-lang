@@ -14,7 +14,7 @@ domain E = 0..m
 
 let edges: [E](u: V, v: V) = read()
 let g = Graph<V, E>.undirected(edges)
-let side = two_color::<V>(u => g.adj(u))!
+let side = two_color::<V>(u => g.out(u))!
 
 var deg: [V]Int = [V] u => g.deg(u)
 var mate: [V]?V = none
@@ -29,12 +29,12 @@ var start: ?V = none
 while head < q.len:
     let u = q[head]
     head += 1
-    for a in g.adj(u):
+    for a in g.out(u):
         if mate[a.to] == none:
             mate[a.to] = u
             mate[u] = a.to
     let p = mate[u]!
-    for a in g.adj(p):
+    for a in g.out(p):
         let v = a.to
         if mate[v] == none:
             if dp[v] < dp[u] + 1:

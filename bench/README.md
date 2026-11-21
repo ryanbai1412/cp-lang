@@ -123,3 +123,8 @@ It writes `corpus-500-report.md` (read this one), `corpus-500-registry.json` (ev
 and aggregate) and, with `--run-harnesses`, `corpus-500-harness-runs.json` (each harness's exit
 code and the line behind every pass or fail). Verification is never inferred: a port added after
 the last recorded harness run shows as `not run` until the harnesses are run again.
+
+## Graph searches
+
+`python3 bench/graph/run.py` compares `std.graph` searches against matched
+hand-written C++; results and analysis in `bench/graph/README.md`.

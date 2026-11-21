@@ -201,11 +201,11 @@ fn bridges_and_parallel_edges():
     let raw = [(0, 1), (1, 2), (2, 0), (2, 3), (3, 4), (3, 4)]
     let edges = [E] e => (u: V(raw[e.to_idx].0), v: V(raw[e.to_idx].1))
     let g = Graph<V, E>.undirected(edges)
-    let (C, comp) = two_edge_components::<V>(u => g.adj(u))
+    let (C, comp) = two_edge_components::<V>(u => g.out(u))
     assert C.K == 2
     assert comp[V(0)] == comp[V(1)] and comp[V(1)] == comp[V(2)]
     assert comp[V(3)] == comp[V(4)] and comp[V(2)] != comp[V(3)]
-    let tree = condense(u => g.adj(u), comp)
+    let tree = condense(u => g.out(u), comp)
     assert tree[comp[V(2)]].len == 1 and tree[comp[V(3)]].len == 1
 
 @test
@@ -216,7 +216,7 @@ fn cut_vertices_with_root_and_leaf():
     let raw = [(0, 1), (1, 2), (2, 0), (2, 3), (3, 4), (4, 2)]
     let edges = [E] e => (u: V(raw[e.to_idx].0), v: V(raw[e.to_idx].1))
     let g = Graph<V, E>.undirected(edges)
-    let cut = articulation_points::<V>(u => g.adj(u))
+    let cut = articulation_points::<V>(u => g.out(u))
     assert [cut[v] for v in V] == [false, false, true, false, false]
 
 @test
@@ -228,7 +228,7 @@ fn coloring_and_bipartite_dsu_rollback():
         v: V([(0, 1), (1, 2), (2, 3)][e.to_idx].1),
     )
     let g = Graph<V, E>.undirected(edges)
-    let col = two_color::<V>(u => g.adj(u))!
+    let col = two_color::<V>(u => g.out(u))!
     assert col[V(0)] != col[V(1)] and col[V(1)] != col[V(2)] and col[V(2)] != col[V(3)]
 
     var d = ParityDsu<V>()
@@ -252,7 +252,7 @@ fn bcc_and_virtual_tree():
     let raw = [(0, 1), (1, 2), (2, 0), (2, 3), (3, 4), (4, 5), (5, 3)]
     let edges = [E] e => (u: V(raw[e.to_idx].0), v: V(raw[e.to_idx].1))
     let g = Graph<V, E>.undirected(edges)
-    let blocks = biconnected_components::<V>(u => g.adj(u))
+    let blocks = biconnected_components::<V>(u => g.out(u))
     var sizes = [b.len for b in blocks]
     sizes.sort()
     assert sizes == [2, 3, 3]
@@ -262,7 +262,7 @@ fn bcc_and_virtual_tree():
     let traw = [(0, 1), (1, 2), (1, 3), (0, 4), (4, 5)]
     let tedges = [TE] e => (u: T(traw[e.to_idx].0), v: T(traw[e.to_idx].1))
     let tg = Graph<T, TE>.undirected(tedges)
-    let tree = Rooted<T>.new(u => tg.adj(u), T(0))
+    let tree = Rooted<T>.new(u => tg.out(u), T(0))
     let vt = virtual_tree(tree, [T(2), T(3), T(5)])
     assert vt.nodes.len == 5  // 0, 1, 2, 3, 5
     assert vt.edges.len == 4

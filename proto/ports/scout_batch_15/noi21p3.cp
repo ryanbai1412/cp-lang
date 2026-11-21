@@ -16,7 +16,7 @@ let edges: [E](u: V, v: V) = read()
 let g = Graph<V, E>.directed(edges)
 
 // 1. Strongly connected components and component weights.
-let (C, comp) = scc::<V>(u => g.adj(u))
+let (C, comp) = scc::<V>(u => g.out(u))
 var wt: [C]Int = 0
 for u in V: wt[comp[u]] += 1
 

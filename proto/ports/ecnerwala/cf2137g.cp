@@ -20,14 +20,14 @@ fn get_val(v: V) -> Int:
 
 for v in peel(rev):
     val[v] = get_val(v)
-    for a in rev.adj(v): freq[a.to, val[v]] += 1
+    for a in rev.out(v): freq[a.to, val[v]] += 1
 
 fn propagate(v: V):
     let old_v = val[v]
     let new_v = get_val(v)
     if new_v == old_v: return
     val[v] = new_v
-    for a in rev.adj(v):
+    for a in rev.out(v):
         freq[a.to, old_v] -= 1
         freq[a.to, new_v] += 1
         propagate(a.to)

@@ -12,7 +12,7 @@ domain Deg = 0..MAX_DEG
 
 let edges: [E](u: V, v: V) = read()
 let g = Graph<V, E>.undirected(edges)
-let tree = Rooted(u => g.adj(u), V.first)
+let tree = Rooted(u => g.out(u), V.first)
 
 var fact: [Deg]Z = 1
 for d in Deg:

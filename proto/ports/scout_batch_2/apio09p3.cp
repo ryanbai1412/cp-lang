@@ -16,8 +16,8 @@ domain P = 0..p
 let pubs: [P]Spot = read()
 
 let g = Graph<Spot, Road>.directed(roads)
-let (C, comp) = scc::<Spot>(u => g.adj(u))
-let onward = condense::<Spot>(u => g.adj(u), comp)
+let (C, comp) = scc::<Spot>(u => g.out(u))
+let onward = condense::<Spot>(u => g.out(u), comp)
 
 var loot: [C]Int = 0
 for v in Spot: loot[comp[v]] += cash[v]

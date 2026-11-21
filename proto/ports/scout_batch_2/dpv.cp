@@ -11,7 +11,7 @@ domain V = 1..=n
 domain E = 1..n
 let edges: [E](u: V, v: V) = read()
 let g = Graph<V, E>.undirected(edges)
-let tree = Rooted(u => g.adj(u), V.first)
+let tree = Rooted(u => g.out(u), V.first)
 let top_down = tree.preorder
 
 var below: [V]Int = 1 % m

@@ -2204,10 +2204,10 @@ fn a_field_named_without_self_says_where_it_is() {
 
 #[test]
 fn a_name_in_no_scope_and_no_library_says_so_and_offers_the_closest_library_name() {
-    let diags = check("print(fixed_cost_paths(3))\n");
+    let diags = check("print(heap_free_search(3))\n");
     assert_eq!(
         messages(&diags),
-        ["no `fixed_cost_paths` in scope, and not in the stdlib (yet)"]
+        ["no `heap_free_search` in scope, and not in the stdlib (yet)"]
     );
     let name = crate::prelude::STD_NAMES
         .iter()

@@ -32,7 +32,7 @@ struct Node:
 
 fn solve() -> M:
     let g = Graph<V, E>.undirected(edges)
-    let tree = Rooted<V>(u => g.adj(u), V(1))
+    let tree = Rooted<V>(u => g.out(u), V(1))
 
     // Depth 1-based so d = 0 means "all constraints satisfied".
     var dep: [V]Int = [V] v => tree.depth[v] + 1

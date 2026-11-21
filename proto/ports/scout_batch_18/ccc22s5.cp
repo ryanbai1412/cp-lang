@@ -37,7 +37,7 @@ fn opt_min(a: ?Int, b: ?Int) -> ?Int:
 
 fn solve() -> Int:
     let g = Graph<V, E>.undirected(edges)
-    let tree = Rooted<V>(u => g.adj(u), V.first)
+    let tree = Rooted<V>(u => g.out(u), V.first)
 
     var need: [V]?Int = none
     var done: [V]?Int = none
@@ -108,7 +108,7 @@ fn solve_brute() -> Int
             let u = queue[head]
             head += 1
             if ((mask >> u.to_idx) & 1) == 1:
-                for a in g.adj(u):
+                for a in g.out(u):
                     if not conv[a.to]:
                         conv[a.to] = true
                         queue.push(a.to)

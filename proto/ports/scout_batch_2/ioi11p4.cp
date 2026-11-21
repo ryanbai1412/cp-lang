@@ -25,5 +25,5 @@ while let (t, u) = heap.pop():
     if u == Room.first:
         print(t)
         break
-    for a in g.adj(u):
+    for a in g.out(u):
         if offers[a.to] < 2: heap.push((t + halls[a.e].len, a.to))
