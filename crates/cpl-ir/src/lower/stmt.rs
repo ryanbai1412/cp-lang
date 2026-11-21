@@ -32,7 +32,9 @@ impl<'a> Lowerer<'a> {
                         ast::StmtKind::Expr(e) if tail != Tail::Discard => self.tail(e, tail, &mut out),
                         _ => {
                             self.stmt(last, &mut out);
-                            if tail == Tail::Give {
+                            // An arm that leaves gives no value and needs none.
+                            let leaves = leaves(last) && self.cx.dos.last().is_some_and(|frame| frame.open);
+                            if tail == Tail::Give && !leaves {
                                 self.needs_value(last.span);
                             }
                         }
@@ -207,14 +209,17 @@ impl<'a> Lowerer<'a> {
             e
         });
         let way_out = root.filter(|e| diverging_default(e).is_some()).map(|e| e.span);
+        let exits = root.filter(|e| has_leaving_arm(e)).map(|e| e.span);
         let outer = (
             std::mem::replace(&mut self.cx.way_out, way_out),
             std::mem::take(&mut self.cx.pending),
+            std::mem::replace(&mut self.cx.exits, exits),
         );
         let at = out.len();
         self.stmt_inner(stmt, rest, out);
         let pending = std::mem::replace(&mut self.cx.pending, outer.1);
         self.cx.way_out = outer.0;
+        self.cx.exits = outer.2;
         out.splice(at..at, pending);
     }
 
@@ -555,7 +560,7 @@ impl<'a> Lowerer<'a> {
                 out.push(Stmt::For(id, slot, iter, Block { stmts }));
             }
             ast::StmtKind::Return(value) => {
-                if !self.cx.dos.is_empty() {
+                if self.cx.dos.iter().any(|frame| !frame.open) {
                     self.unsupported(stmt.span, "`return` inside a block that is used as a value");
                     return;
                 }
@@ -2617,7 +2622,10 @@ impl<'a> Lowerer<'a> {
             };
             out.push(Stmt::If(test, Block { stmts: body }, Block::default()));
         }
-        if tail == Tail::Discard {
+        // An arm that gives its value has left by here, unless the arms
+        // are written out as statements that store it.
+        let stored = tail == Tail::Give && self.cx.dos.last().is_some_and(|frame| frame.open);
+        if tail == Tail::Discard || stored {
             out.push(Stmt::If(
                 not_done,
                 Block { stmts: vec![trap] },
@@ -2907,6 +2915,23 @@ fn settled(e: &Expr) -> bool {
         ExprKind::Unary(_, inner) | ExprKind::Cast(_, inner) | ExprKind::Field(inner, _) => settled(inner),
         ExprKind::Binary(op, l, r) => {
             !matches!(op, BinOp::Div | BinOp::Rem | BinOp::Pow) && settled(l) && settled(r)
+        }
+        _ => false,
+    }
+}
+
+fn leaves(stmt: &ast::Stmt) -> bool {
+    matches!(stmt.kind, ast::StmtKind::Return(_) | ast::StmtKind::Break(_) | ast::StmtKind::Continue(_))
+}
+
+/// Whether `e` is a `match` or `if` with an arm that ends in `return`,
+/// `break` or `continue`.
+fn has_leaving_arm(e: &ast::Expr) -> bool {
+    let ends = |block: &ast::Block| block.stmts.last().is_some_and(leaves);
+    match &e.kind {
+        ast::ExprKind::Match { arms, .. } => arms.iter().any(|arm| ends(&arm.body)),
+        ast::ExprKind::If { branches, otherwise: Some(otherwise) } => {
+            ends(otherwise) || branches.iter().any(|(_, block)| ends(block))
         }
         _ => false,
     }

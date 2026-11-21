@@ -89,10 +89,18 @@ impl<'a> Checker<'a> {
         {
             return None;
         }
-        let suffix = match self.quietly(|c| c.infer(&only.value)) {
+        let given = self.quietly(|c| c.infer(&only.value));
+        let array = matches!(given, Ty::Array { .. });
+        let suffix = match given.clone() {
             Ty::Named { name: list, args } if list == "List" => match args.as_slice() {
                 [Ty::Tuple(fields)] => fields.len(),
                 [Ty::Record(fields)] => fields.len(),
+                _ => return None,
+            },
+            // An array over a plain range names no edge domain either.
+            Ty::Array { index, elem } if matches!(index.as_slice(), [Ty::Int]) => match *elem {
+                Ty::Tuple(fields) => fields.len(),
+                Ty::Record(fields) => fields.len(),
                 _ => return None,
             },
             _ => return None,
@@ -103,6 +111,14 @@ impl<'a> Checker<'a> {
             _ => return None,
         };
         match self.env.type_def(&format!("{}_of_{suffix}", name.text)).as_deref() {
+            // The array is read as the list of its cells.
+            Some(Def::Fn { ty: Ty::Fn { params, ret }, .. }) if array => {
+                let mut params = params.clone();
+                if let Some(first) = params.first_mut() {
+                    first.ty = given;
+                }
+                Some(Ty::Fn { params, ret: ret.clone() })
+            }
             Some(Def::Fn { ty, .. }) => Some(ty.clone()),
             _ => None,
         }

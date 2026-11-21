@@ -410,6 +410,9 @@ struct DoFrame {
     ty: Option<Ty>,
     /// Loops opened before the block: `break` can't reach them.
     loops: usize,
+    /// The block is written out as statements ahead of the statement
+    /// that reads its value, so `return` works inside it.
+    open: bool,
 }
 
 #[derive(Clone, Default)]
@@ -440,6 +443,9 @@ struct FnCx {
     /// The `x ?? return` that is the whole right side of the statement
     /// being lowered, and the test it puts ahead of that statement.
     way_out: Option<Span>,
+    /// The `match` or `if` the statement being lowered is the value of,
+    /// when one of its arms leaves with `return`, `break` or `continue`.
+    exits: Option<Span>,
     pending: Vec<Stmt>,
     is_main: bool,
     is_closure: bool,

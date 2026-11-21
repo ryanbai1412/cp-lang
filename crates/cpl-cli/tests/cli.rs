@@ -656,6 +656,13 @@ fn a_parameter_type_sees_only_the_parameters_before_it() {
 }
 
 #[test]
+fn an_arm_leaves_only_where_the_match_is_the_whole_value() {
+    let source = "for i in 0..3:\n    let x = 1 + match i:\n        1 => continue\n        v => v\n    print(x)\n";
+    let stderr = check_errors("leaving-arm-inside", source);
+    assert!(stderr.contains("`continue` out of a block that is used as a value"), "{stderr}");
+}
+
+#[test]
 fn a_fn_inside_a_fn_says_which_arguments_are_mut() {
     let head = "fn main_like():\n    var xs: List<Int> = []\n    fn add(mut ys: List<Int>, x: Int):\n        ys.push(x)\n";
     let stderr = check_errors("nested-mut-missing", &format!("{head}    add(xs, 1)\nmain_like()\n"));

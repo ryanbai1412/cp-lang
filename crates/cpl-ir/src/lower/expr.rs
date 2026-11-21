@@ -363,12 +363,18 @@ impl<'a> Lowerer<'a> {
                 branches,
                 otherwise,
             } => {
+                if self.cx.exits == Some(e.span) {
+                    return self.leaving_value(e, hint, span);
+                }
                 if let Some(value) = self.ternary(branches, otherwise.as_ref(), hint) {
                     return value;
                 }
                 self.do_expr(hint, span, |lw, out| lw.tail(e, Tail::Give, out))
             }
             ast::ExprKind::Match { .. } => {
+                if self.cx.exits == Some(e.span) {
+                    return self.leaving_value(e, hint, span);
+                }
                 self.do_expr(hint, span, |lw, out| lw.tail(e, Tail::Give, out))
             }
             ast::ExprKind::With { .. } => {
@@ -487,6 +493,7 @@ impl<'a> Lowerer<'a> {
         self.cx.dos.push(DoFrame {
             ty: hint.cloned(),
             loops: self.cx.loops.len(),
+            open: false,
         });
         let mut out = Vec::new();
         body(self, &mut out);
@@ -496,6 +503,25 @@ impl<'a> Lowerer<'a> {
             frame.ty.unwrap_or(Ty::Error),
             span,
         )
+    }
+
+    /// A `match` or `if` that is the whole value of a statement and has
+    /// an arm that leaves (`Skip => continue`): its arms run as statements
+    /// ahead of the statement, each storing its value, so the arm that
+    /// leaves is an ordinary `continue`.
+    fn leaving_value(&mut self, e: &ast::Expr, hint: Option<&Ty>, span: Span) -> Expr {
+        let loops = self.cx.dos.last().map_or(0, |frame| frame.loops);
+        self.cx.dos.push(DoFrame { ty: hint.cloned(), loops, open: true });
+        let mut stmts = Vec::new();
+        self.tail(e, Tail::Give, &mut stmts);
+        let frame = self.cx.dos.pop().expect("pushed above");
+        let ty = frame.ty.unwrap_or(Ty::Error);
+        let kept = self.temp(ty.clone());
+        let place = Place { kind: PlaceKind::Local(kept), ty, span: self.span(span) };
+        store_gives(&mut stmts, &place);
+        self.cx.pending.push(Stmt::Let(kept, None));
+        self.cx.pending.extend(stmts);
+        self.local(kept, span)
     }
 
     /// An `if` whose branches are single expressions is a conditional
@@ -936,6 +962,16 @@ impl<'a> Lowerer<'a> {
                             hi: Box::new(hi_ord),
                         },
                         Ty::Range(Box::new(Ty::Pos(d))),
+                        span,
+                    )
+                }
+                // `(0..).find(..)`: a range with no end stops when the
+                // search does. It runs to `Int.MAX`.
+                Ty::Int => {
+                    let hi = self.int_lit(i64::MAX, span);
+                    self.mk(
+                        ExprKind::Range { lo: Box::new(l), hi: Box::new(hi) },
+                        Ty::Range(Box::new(Ty::Int)),
                         span,
                     )
                 }
@@ -3367,4 +3403,21 @@ fn tropical_side(ty: &Ty) -> Option<Ty> {
         other => other,
     };
     matches!(inner, Ty::Int | Ty::Float).then(|| inner.clone())
+}
+
+/// Turns each value the arms give into a store to `place`.
+fn store_gives(stmts: &mut [Stmt], place: &Place) {
+    for stmt in stmts {
+        match stmt {
+            Stmt::Give(value) => {
+                let value = std::mem::replace(value, Expr { kind: ExprKind::Unit, ty: Ty::Unit, span: place.span });
+                *stmt = Stmt::Assign(place.clone(), AssignOp::Set, value);
+            }
+            Stmt::If(_, then, otherwise) => {
+                store_gives(&mut then.stmts, place);
+                store_gives(&mut otherwise.stmts, place);
+            }
+            _ => {}
+        }
+    }
 }

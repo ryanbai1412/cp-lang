@@ -375,8 +375,8 @@ impl<'a> Checker<'a> {
             ExprKind::Match { scrutinee, arms } => {
                 let value = u32::from(self.plain_if.take() != Some(expr.span));
                 let scrutinee_ty = self.infer_optional(scrutinee);
-                let mut result = Ty::Unknown;
-                for (i, arm) in arms.iter().enumerate() {
+                let mut result = None;
+                for arm in arms {
                     self.push_scope();
                     self.bind(&arm.pat, &scrutinee_ty, false, "let");
                     if let Some(guard) = &arm.guard {
@@ -387,10 +387,16 @@ impl<'a> Checker<'a> {
                     let ty = self.block(&arm.body);
                     self.branch -= value;
                     self.pop_scope();
-                    if i == 0 {
-                        result = ty.widen();
+                    // The value is the first arm's that has one: an arm
+                    // that leaves (`Skip => continue`) has none.
+                    let leaves = arm.body.stmts.last().is_some_and(|last| {
+                        matches!(last.kind, ast::StmtKind::Return(_) | ast::StmtKind::Break(_) | ast::StmtKind::Continue(_))
+                    });
+                    if result.is_none() && !leaves {
+                        result = Some(ty.widen());
                     }
                 }
+                let result = result.unwrap_or(Ty::Unit);
                 self.require_every_variant(&scrutinee_ty, arms, expr.span);
                 result
             }

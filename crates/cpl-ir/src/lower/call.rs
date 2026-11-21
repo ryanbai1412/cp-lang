@@ -3523,8 +3523,11 @@ impl<'a> Lowerer<'a> {
                     let dlen = self.diags.len();
                     let probed = self.expr(&only.value, None);
                     self.diags.truncate(dlen);
+                    // So does an array over a plain range, `[0..m](u: V, v: V)`:
+                    // it names no edge domain either.
                     let arity = match &probed.ty {
                         Ty::List(elem) => elem.fields().map(|f| f.len()),
+                        Ty::Array { dims, elem } if matches!(dims.as_slice(), [Dim::Int]) => elem.fields().map(|f| f.len()),
                         _ => None,
                     };
                     let suffix = match arity {
@@ -3535,7 +3538,23 @@ impl<'a> Lowerer<'a> {
                     let free = suffix
                         .and_then(|s| self.mod_syms[tpl_mod].get(&format!("{}_of_{s}", name.text)).copied());
                     if let Some(Sym::GenFn(gfid)) = free {
-                        return self.call_gen_fn(gfid, Vec::new(), None, args, span);
+                        if !matches!(probed.ty, Ty::Array { .. }) {
+                            return self.call_gen_fn(gfid, Vec::new(), None, args, span);
+                        }
+                        // The array is read as the list of its cells:
+                        // `[edge for edge in edges]`. No program can
+                        // write a name with a space in it.
+                        let at = only.value.span;
+                        let cell = "each cell".to_string();
+                        let clause = ast::Clause {
+                            pat: ast::Pattern { kind: ast::PatternKind::Name(cell.clone()), span: at },
+                            iter: only.value.clone(),
+                            conds: Vec::new(),
+                        };
+                        let body = Box::new(ast::Expr { kind: ast::ExprKind::Name(cell), span: at });
+                        let cells = ast::ExprKind::Comprehension { body, clauses: vec![clause] };
+                        let listed = ast::Arg { name: None, mutable: false, value: ast::Expr { kind: cells, span: at } };
+                        return self.call_gen_fn(gfid, Vec::new(), None, &[listed], span);
                     }
                 }
                 let mut inferred: GenEnv = HashMap::new();
@@ -4371,6 +4390,35 @@ impl<'a> Lowerer<'a> {
                 self.mk(ExprKind::Builtin(Builtin::Reversed, vec![value]), ty.clone(), span)
             }
             (Ty::Range(_), "rev") if args.is_empty() => self.reversed_range(value, span),
+            // `r.find(i => ..)`: the first of the range the test holds
+            // for, `none` when there is none. `(0..).find(..)` has no end
+            // and stops there.
+            (Ty::Range(elem), "find") if args.len() == 1 => {
+                let elem = (**elem).clone();
+                let test_ty = Ty::Fn(vec![elem.clone()], Box::new(Ty::Bool));
+                let test = self.expect(&args[0].value, &test_ty);
+                let found_ty = Ty::opt(elem.clone());
+                self.do_expr(Some(&found_ty), span, |lw, out| {
+                    let holds = lw.temp(test_ty);
+                    out.push(Stmt::Let(holds, Some(test)));
+                    let found = lw.temp(found_ty.clone());
+                    out.push(Stmt::Let(found, Some(lw.mk(ExprKind::None, found_ty.clone(), span))));
+                    let item = lw.temp(elem.clone());
+                    let lid = lw.fresh_loop();
+                    let asked = vec![Arg::Value(lw.local(item, span))];
+                    let fits = lw.mk(ExprKind::CallExpr(Box::new(lw.local(holds, span)), asked), Ty::Bool, span);
+                    let some = lw.mk(ExprKind::Some(Box::new(lw.local(item, span))), found_ty.clone(), span);
+                    let place = Place { kind: PlaceKind::Local(found), ty: found_ty.clone(), span: lw.span(span) };
+                    let hit = Block { stmts: vec![Stmt::Assign(place, AssignOp::Set, some), Stmt::Break(None)] };
+                    let body = Block { stmts: vec![Stmt::If(fits, hit, Block::default())] };
+                    let iter = match value.kind {
+                        ExprKind::Range { lo, hi } => Iter::Range { lo: *lo, hi: *hi, step: None, rev: false },
+                        _ => Iter::RangeVal(value, false),
+                    };
+                    out.push(Stmt::For(lid, item, iter, body));
+                    out.push(Stmt::Give(lw.local(found, span)));
+                })
+            }
             // A sequence walked backwards is something to loop over. As a
             // value it would be the sequence unchanged, which is not what
             // `.rev()` says.
