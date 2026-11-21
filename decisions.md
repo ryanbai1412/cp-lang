@@ -3082,3 +3082,15 @@ than its calls save.
 2. **Add `scan_in_place<T>(mut self: List<T>, f: (T, T) -> T)` and `suffix_scan_in_place<T>(mut self: List<T>, f: (T, T) -> T)` to `std.seq`.**
    - **Reason:** In-place prefix/suffix scans over a growing `List` or `[D]T` had no allocation-free, lint-clean spelling (`for i in 1..a.len: a[i] += a[i - 1]` trips `L0414`, while `scan` allocates a fresh copy every call). Adopted by `proto/ports/ecnerwala/cf2187f2.cp`.
    - **Reverse:** Remove `scan_in_place` and `suffix_scan_in_place` from `stdlib/seq.cp` and `plan/STDLIB.md`, and restore `ends = scan(ends, (x, y) => x + y)` in `cf2187f2.cp`.
+
+## 77. The fast gate's 180 s budget warns instead of failing (2026-11-21)
+
+`scripts/check.sh --fast` failed when its wall time passed 180 s, even with
+every check green. Wall time depends on the machine and on how warm the
+build is: the same tree took 154-165 s on one VM, 207 s after a cold
+rebuild, and 197-199 s on another idle 8-core VM, so a correct commit could
+not land. The overrun now prints a warning, and the scoreboard keeps the
+time in `totals.gate_fast` and lists it under `warnings`, not
+`regressions`. Test: `test_dream_scores_and_gate_fast_ratchets`. Reverse by
+restoring the `fail` in `check.sh` and appending to `regressions` in
+`diff_against_baseline`.

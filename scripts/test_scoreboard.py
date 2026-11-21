@@ -742,7 +742,8 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
             diff_bad = sb.diff_against_baseline(cur_bad, base, mode="fast")
             self.assertTrue(any("dream-score median regressed" in m for m in diff_bad["regressions"]))
             self.assertTrue(any("dream-score under-4 count grew" in m for m in diff_bad["regressions"]))
-            self.assertTrue(any("check.sh --fast wall time" in m for m in diff_bad["regressions"]))
+            self.assertFalse(any("check.sh --fast wall time" in m for m in diff_bad["regressions"]))
+            self.assertTrue(any("check.sh --fast wall time" in m for m in diff_bad["warnings"]))
 
             cur_good = {
                 "ports": [],

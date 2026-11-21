@@ -1804,6 +1804,7 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
     """Compare current scoreboard against baseline and return structured diff + regressions."""
     regressions = []
     improvements = []
+    warnings = []
     cur_ports = {r["id"]: r for r in current["ports"]}
     base_ports = {r["id"]: r for r in baseline.get("ports", [])} if baseline else {}
 
@@ -1991,7 +1992,7 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
 
         cgf = ct.get("gate_fast")
         if cgf and cgf.get("elapsed_s") is not None and cgf["elapsed_s"] > GATE_FAST_BUDGET_S:
-            regressions.append(
+            warnings.append(
                 f"check.sh --fast wall time {cgf['elapsed_s']}s exceeded budget {GATE_FAST_BUDGET_S:.0f}s"
             )
 
@@ -2026,6 +2027,7 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
         "removed_ports": removed,
         "regressions": regressions,
         "improvements": improvements,
+        "warnings": warnings,
     }
 
 
@@ -2250,6 +2252,8 @@ def print_summary(report, diff, show_ports=False, quiet=False):
         print("  REGRESSIONS:")
         for r in diff["regressions"]:
             print(f"    FAIL: {r}")
+    for w in diff.get("warnings", []):
+        print(f"    WARN: {w}")
 
     if show_ports:
         print("\nPer-port details:")
