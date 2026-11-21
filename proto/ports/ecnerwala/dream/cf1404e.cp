@@ -28,4 +28,4 @@ for (r, c) in Square if black[r, c]:
     let left = if let cp = c.prev and black[r, cp]: Node.Cell(r, cp) else: Node.Snk
     g.add(up, Node.Cell(r, c), 1)
     g.add(Node.Cell(r, c), left, 1)
-print(g.max_flow(Node.Src, Node.Snk))
+print(g.push_relabel(Node.Src, Node.Snk))
