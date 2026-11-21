@@ -38,7 +38,7 @@ core feature goes through section 3 and the core lane.
 | graphs | 4.11 `std.graph`, 4.15 `std.grid` | done: `until:` early exit (46.11), hole-based heap sift, one `Paths.back` witness array (decision 78; matched `dijkstra` 1.44x to 1.18x), `cf2135c` on a named component domain. Next: `cf2178h` on `fixed_cost_paths(until:)`; the rest of `dijkstra` (dead-field elimination in codegen) |
 | trees | 4.11 `std.tree`, `std.tour` | done: `LinkCut` (1.01x matched), `cf2237h` on `IntervalMap`. vertex loops as `for v in t.at` / `t.at.rev` with L0511 (decision 63). `Rooted.below` (`cf2183f` 0.44x tokens). `JumpTree` for trees grown online (`cf2152f`). `PermTree` (`cf2187f1`/`f2`, one construction instead of two copies). Label-ordered parent arrays stay loops (`cf2138c1`, `cf2187c`, `cf2089e`; design §5). `Rooted` builds breadth-first with flat child ranges (1.1x matched, decision 86). `LazyLinkCut` with `apply_path` (at most 1.0x matched). Next: PathPaint waits for a second problem; cf2237h stays on chains + `IntervalMap` |
 | flows/matching | 4.12 | done: weighted blossom `max_weight_general_matching` (1.27x matched), unchecked hot loops in `std.flow` (min-cost flow 1.14x). Next: matched C++ benches for closure, bounded flow, Gomory–Hu and global cut |
-| strings | 4.13; O(1) slice and reverse views | done: slice and reverse views (decision 61). concat and print fusion with buffer reuse (`ucup4s25h` 1.17x, `cf2245a` 1.13x, `cf2096e` 1.05x). `.rev` as a first-class view value; algorithms over `Indexed` (`cf1909g` 1.15x, `cf1943b` 0.98x). matched benches: Z 1.09x, SA 1.05x, SAM 0.97x, Aho–Corasick 1.04x, rolling hash 1.23x. Next: rolling hash (`modp` sign fixup, `eq_sub` bounds checks); ports hand-rolling string algorithms |
+| strings | 4.13; O(1) slice and reverse views | done: slice/reverse views (decision 61), `.rev` views, full `Indexed`/`Seq` generality (`List<T>`, `[D]T`, `ListView`, `Str`, `StrView`), `lyndon_runs`, `SuffixAutomaton.first_pos`, `L0516`–`L0519` hand-rolled algorithm lints, all 10 matched C++17 benches (`bash bench/strings/run.sh`, p50 1.02x, max 1.12x; `Hash2D` flattened to 1.11x), 0 open strings dream gaps, 0 high strings frictions |
 | geometry | 4.14 | done: `Location`, `Vec.rot(by:)`, Shamos–Hoey, 3D hull, heterogeneous `Mul`/`Div` (`cf2138f`), `min_bounding_box`, `circle_tangents`, `circle_circle_tangents`, `circles_union_area`, `sqrt` negative trap, 16 matched C++17 benches all <=1.09x |
 
 ## 1. Principles
@@ -1346,8 +1346,8 @@ fn find_all<S: Indexed, P: Indexed>(self: S, pat: P) -> yields Int
 fn common_prefix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int // O(min(|self|, |other|))
 fn common_suffix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int // O(min(|self|, |other|))
 fn period<S: Indexed>(s: S) -> Int // O(n)
-fn suffix_array<T>(s: List<T>) -> List<Int>
-fn lcp_array<T>(s: List<T>, sa: List<Int>) -> List<Int>
+fn suffix_array<S: Indexed>(s: S) -> List<Int>
+fn lcp_array<S: Indexed>(s: S, sa: List<Int>) -> List<Int>
 struct HashVal(h1: Int, h2: Int)
     @get fn hash_token(self) -> Int
 trait Hashable
@@ -1371,7 +1371,7 @@ fn prefix_matches<S: Indexed, P: Indexed>(self: S, pat: P) -> List<Int>  // O(|s
 fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int           // O(|a| + |b|)
 fn lyndon_factorization<S: Indexed>(s: S) -> List<Int>          // O(n)
 fn min_rotation<S: Indexed>(s: S) -> Int                        // O(n)
-fn lyndon_runs<T>(s: List<T>) -> List<(l: Int, r: Int, period: Int)> // O(n log n)
+fn lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)> // O(n log n)
 struct Palindromes(odd: List<Int>, even: List<Int>)
     fn is_palindrome<R>(self, r: R) -> Bool                     // O(1), Range<Int> or Range<D>
     @get fn count(self) -> Int                                  // O(n)
@@ -1379,7 +1379,7 @@ struct Palindromes(odd: List<Int>, even: List<Int>)
 fn manacher<S: Indexed>(s: S) -> Palindromes                    // O(n)
 struct PalindromicTree<A>
     fn new() -> PalindromicTree<A>                              // O(|A|)
-    fn of(s: List<A>) -> PalindromicTree<A>                     // O(n * |A|) mem, O(n)
+    fn of<S: Seq>(s: S) -> PalindromicTree<A>                   // O(n * |A|) mem, O(n)
     fn push(mut self, a: A) -> Int                              // O(1) amortized
     @get fn len(self) -> Int                                    // O(1)
     @get fn distinct(self) -> Int                               // O(1)
@@ -1396,17 +1396,17 @@ struct Hash2D<R, C>
     fn new(code: (R, C) -> Int, bases: ?(Int, Int) = none) -> Hash2D<R, C> // O(R * C)
     fn rect(self, rows: Range<R>, cols: Range<C>) -> HashVal    // O(1)
 struct SuffixArray<T>
-    fn new(s: List<T>) -> SuffixArray<T>                        // O(n log n)
+    fn new<S: Indexed>(s: S) -> SuffixArray<T>                  // O(n log n)
     @get fn len(self) -> Int                                    // O(1)
     fn lcp_between(self, i: Int, j: Int) -> Int                 // O(1)
-    fn matches(self, pat: List<T>) -> Range<Int>                // O(|pat| log n)
-    fn count(self, pat: List<T>) -> Int                         // O(|pat| log n)
+    fn matches<P: Indexed>(self, pat: P) -> Range<Int>          // O(|pat| log n)
+    fn count<P: Indexed>(self, pat: P) -> Int                   // O(|pat| log n)
     fn lcp_range(self, i: Int, len: Int) -> Range<Int>          // O(log n)
     fn compare(self, l1: Int, r1: Int, l2: Int, r2: Int) -> Int // O(1)
     @get fn distinct(self) -> Int                               // O(n)
 struct SuffixAutomaton<A>
     fn new() -> SuffixAutomaton<A>                              // O(|A|)
-    fn of(s: List<A>) -> SuffixAutomaton<A>                     // O(n * |A|) mem, O(n)
+    fn of<S: Seq>(s: S) -> SuffixAutomaton<A>                   // O(n * |A|) mem, O(n)
     fn push(mut self, a: A)                                     // O(1) amortized
     @get fn root(self) -> Int                                   // O(1)
     @get fn len(self) -> Int                                    // O(1)
@@ -1415,8 +1415,8 @@ struct SuffixAutomaton<A>
     fn longest(self, state: Int) -> Int                         // O(1)
     fn shortest(self, state: Int) -> Int                        // O(1)
     fn first_pos(self, state: Int) -> Int                       // O(1)
-    fn find(self, word: List<A>) -> ?Int                        // O(|word|)
-    fn contains(self, word: List<A>) -> Bool                    // O(|word|)
+    fn find<S: Seq>(self, word: S) -> ?Int                      // O(|word|)
+    fn contains<S: Seq>(self, word: S) -> Bool                  // O(|word|)
     @get fn distinct(self) -> Int                               // O(states)
     fn topo_order(self) -> List<Int>                            // O(states)
     fn occurrences(self) -> List<Int>                           // O(states)
@@ -1425,31 +1425,32 @@ struct Trie<A>
     @get fn root(self) -> Int                                   // O(1)
     @get fn len(self) -> Int                                    // O(1)
     fn step(self, node: Int, a: A) -> ?Int                      // O(1)
-    fn find(self, word: List<A>) -> ?Int                        // O(|word|)
-    fn add(mut self, word: List<A>) -> Int                      // O(|word|)
-    fn remove(mut self, word: List<A>) -> Bool                  // O(|word|)
-    fn count(self, word: List<A>) -> Int                        // O(|word|)
-    fn count_prefix(self, prefix: List<A>) -> Int               // O(|prefix|)
+    fn find<S: Seq>(self, word: S) -> ?Int                      // O(|word|)
+    fn add<S: Seq>(mut self, word: S) -> Int                    // O(|word|)
+    fn remove<S: Seq>(mut self, word: S) -> Bool                // O(|word|)
+    fn count<S: Seq>(self, word: S) -> Int                      // O(|word|)
+    fn count_prefix<S: Seq>(self, prefix: S) -> Int             // O(|prefix|)
     fn ends_at(self, node: Int) -> Int                          // O(1)
     fn pass_at(self, node: Int) -> Int                          // O(1)
 struct AhoCorasick<A>
-    fn new(patterns: List<List<A>>) -> AhoCorasick<A>           // O(sum |p| * |A|)
+    fn new<S: Seq>(patterns: List<S>) -> AhoCorasick<A>         // O(sum |p| * |A|)
     @get fn root(self) -> Int                                   // O(1)
     @get fn len(self) -> Int                                    // O(1)
     fn step(self, state: Int, a: A) -> Int                      // O(1)
     fn link(self, state: Int) -> Int                            // O(1)
     fn hit(self, state: Int) -> Bool                            // O(1)
     fn words_at(self, state: Int) -> List<Int>                  // O(output)
-    fn matches(self, text: List<A>) -> yields (at: Int, pattern: Int) // O(|text| + output)
-    fn counts(self, text: List<A>) -> List<Int>                 // O(|text| + states)
+    fn matches<S: Seq>(self, text: S) -> yields (at: Int, pattern: Int) // O(|text| + output)
+    fn counts<S: Seq>(self, text: S) -> List<Int>               // O(|text| + states)
 ```
 
-Matched C++17 benchmarks (`bash bench/strings/run.sh`, all 9 <= 1.10x):
-`z_prefix` 0.98x (29.1 vs 29.6 ms), `rolling_hash` 0.94x (47.1 vs 50.3 ms),
-`suffix_array` 1.10x (51.3 vs 46.7 ms), `suffix_automaton` 1.05x (48.3 vs 46.2 ms),
-`palindromic_tree` 0.95x (20.9 vs 22.0 ms), `aho_corasick` 1.05x (23.1 vs 22.1 ms),
-`trie` 1.03x (38.7 vs 37.4 ms), `manacher_lyndon` 1.07x (17.3 vs 16.1 ms),
-`lyndon_runs` 0.98x (58.4 vs 59.7 ms).
+Matched C++17 benchmarks (`bash bench/strings/run.sh`, 10/10 structures covered,
+**p50 = 1.02x**, **max = 1.12x**):
+`z_prefix` 1.12x (33.8 vs 30.2 ms), `rolling_hash` 0.95x (53.6 vs 56.3 ms),
+`hash2d` 1.11x (23.9 vs 21.6 ms), `suffix_array` 0.97x (49.8 vs 51.2 ms),
+`suffix_automaton` 1.02x (50.8 vs 49.7 ms), `palindromic_tree` 0.93x (22.4 vs 24.1 ms),
+`aho_corasick` 1.01x (25.9 vs 25.5 ms), `trie` 1.10x (45.5 vs 41.5 ms),
+`manacher_lyndon` 1.05x (18.9 vs 18.0 ms), `lyndon_runs` 1.02x (64.1 vs 62.8 ms).
 
 ### 4.14 `std.geometry`: 2D integer and floating-point geometry
 

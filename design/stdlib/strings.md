@@ -80,15 +80,16 @@ already demonstrate the alphabet-domain pattern.
 
 ## 2. Design principles and index spaces
 
-**Flat 0-based positions on `Str` and `List<T>`.** Per decision 1.6, `Str` is a
-flat `0..len`-indexed sequence of 1-byte ASCII `Char` values. Sequence-level
-algorithms (`z_function`, `prefix_function`, `find_all`, `period`, `borders`,
+**Flat 0-based positions over any `Indexed` / `Seq` sequence.** Per decision
+1.6, `Str` is a flat `0..len`-indexed sequence of 1-byte ASCII `Char` values.
+All sequence-level algorithms (`z_function`, `prefix_function`, `find_all`,
+`common_prefix_len`, `common_suffix_len`, `period`, `borders`,
 `prefix_matches`, `overlap`, `lyndon_factorization`, `min_rotation`,
-`is_palindrome`, `manacher`, `suffix_array`, `lcp_array`, `SuffixArray`) take
-`List<T>` (which `Str` satisfies directly) and return 0-based `Int` positions
-and lengths. When a general `Seq<T>` / `Indexed<I>` trait lands in the core,
-these functions widen to accept `[D]T` directly without changing call sites
-(`T3` in batch 10).
+`lyndon_runs`, `is_palindrome`, `manacher`, `suffix_array`, `lcp_array`,
+`SuffixArray`) are generic over `Indexed` (`Str`, `StrView`, `List<T>`,
+`ListView<T>`, and `[D]T` domain arrays) and return 0-based `Int` positions
+and lengths; all alphabet-domain automata (`SuffixAutomaton`, `PalindromicTree`,
+`Trie`, `AhoCorasick`) accept any `Seq` of alphabet elements.
 
 **Alphabet domains on automata.** `Trie<A>`, `AhoCorasick<A>`,
 `SuffixAutomaton<A>`, and `PalindromicTree<A>` take an alphabet domain `A`
@@ -133,7 +134,9 @@ fn count(self: Str, c: Char) -> Int                 // O(self.len)
 @get fn lower(self: Char) -> Char                   // O(1)
 @get fn upper(self: Char) -> Char                   // O(1)
 @get fn digit(self: Char) -> Int                    // O(1); traps outside '0'..'9'
-fn is_palindrome<T>(s: List<T>) -> Bool             // O(n)
+fn is_palindrome<S: Indexed>(s: S) -> Bool          // O(n)
+fn common_prefix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int  // O(min)
+fn common_suffix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int  // O(min)
 ```
 
 Laws:
@@ -144,19 +147,21 @@ Laws:
 ### 3.2 Pattern matching, borders, periods, and Lyndon words
 
 ```cp
-fn z_function<T>(s: List<T>) -> List<Int>                   // O(n)
-fn prefix_function<T>(s: List<T>) -> List<Int>              // O(n)
-fn find_all<T>(self: List<T>, pat: List<T>) -> yields Int   // O(|self| + |pat|)
-fn period<T>(s: List<T>) -> Int                             // O(n)
-fn borders<T>(s: List<T>) -> yields Int                     // O(n); longest first
-fn prefix_matches<T>(self: List<T>, pat: List<T>) -> List<Int>
+fn z_function<S: Indexed>(s: S) -> List<Int>                    // O(n)
+fn prefix_function<S: Indexed>(s: S) -> List<Int>               // O(n)
+fn find_all<S: Indexed, P: Indexed>(self: S, pat: P) -> yields Int // O(|self| + |pat|)
+fn period<S: Indexed>(s: S) -> Int                              // O(n)
+fn borders<S: Indexed>(s: S) -> yields Int                      // O(n); longest first
+fn prefix_matches<S: Indexed, P: Indexed>(self: S, pat: P) -> List<Int>
     // O(|self| + |pat|); entry i is the longest prefix of pat ending at self[i]
-fn overlap<T>(a: List<T>, b: List<T>) -> Int
+fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int
     // O(|a| + |b|); longest suffix of a that is a prefix of b
-fn lyndon_factorization<T>(s: List<T>) -> List<Int>
+fn lyndon_factorization<S: Indexed>(s: S) -> List<Int>
     // O(n) Duval; start indices of the unique non-increasing Lyndon factors
-fn min_rotation<T>(s: List<T>) -> Int
+fn min_rotation<S: Indexed>(s: S) -> Int
     // O(n) Duval/Booth; start index of the lexicographically least cyclic shift
+fn lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>
+    // O(n log n) Bannai runs theorem; all maximal periodic repetitions
 ```
 
 Laws:
@@ -184,11 +189,11 @@ struct Palindromes(odd: List<Int>, even: List<Int>):
     @get fn count(self) -> Int                       // O(n); total palindromic substrings
     @get fn longest(self) -> (l: Int, r: Int)        // O(n); longest palindromic range
 
-fn manacher<T>(s: List<T>) -> Palindromes            // O(n)
+fn manacher<S: Indexed>(s: S) -> Palindromes         // O(n)
 
 struct PalindromicTree<A>:
     fn new() -> PalindromicTree<A>                   // O(|A|)
-    fn of(s: List<A>) -> PalindromicTree<A>          // O(n * |A|) mem, O(n) time
+    fn of<S: Seq>(s: S) -> PalindromicTree<A>        // O(n * |A|) mem, O(n) time
     fn push(mut self, a: A) -> Int                   // O(1) amortized; returns last state
     @get fn len(self) -> Int                         // O(1); states incl. 2 roots
     @get fn distinct(self) -> Int                    // O(1); len - 2
@@ -250,8 +255,8 @@ Laws:
 ### 3.5 Suffix structures
 
 ```cp
-fn suffix_array<T>(s: List<T>) -> List<Int>          // O(n) if <=256 distinct, else O(n log n)
-fn lcp_array<T>(s: List<T>, sa: List<Int>) -> List<Int>  // O(n) Kasai
+fn suffix_array<S: Indexed>(s: S) -> List<Int>          // O(n) if <=256 distinct, else O(n log n)
+fn lcp_array<S: Indexed>(s: S, sa: List<Int>) -> List<Int>  // O(n) Kasai
 
 struct SuffixArray<T>:
     s: List<T>
@@ -259,11 +264,11 @@ struct SuffixArray<T>:
     rank: List<Int>
     lcp: List<Int>
 
-    fn new(s: List<T>) -> SuffixArray<T>             // O(n log n) build (SA-IS + Kasai + RMQ)
+    fn new<S: Indexed>(s: S) -> SuffixArray<T>       // O(n log n) build (SA-IS + Kasai + RMQ)
     @get fn len(self) -> Int                         // O(1)
     fn lcp_between(self, i: Int, j: Int) -> Int      // O(1)
-    fn matches(self, pat: List<T>) -> Range<Int>     // O(|pat| log n); rank range lo..hi
-    fn count(self, pat: List<T>) -> Int              // O(|pat| log n)
+    fn matches<P: Indexed>(self, pat: P) -> Range<Int> // O(|pat| log n); rank range lo..hi
+    fn count<P: Indexed>(self, pat: P) -> Int        // O(|pat| log n)
     fn lcp_range(self, i: Int, len: Int) -> Range<Int>
         // O(log n); rank range whose LCP with suffix i is >= len
     fn compare(self, l1: Int, r1: Int, l2: Int, r2: Int) -> Int
@@ -272,7 +277,7 @@ struct SuffixArray<T>:
 
 struct SuffixAutomaton<A>:
     fn new() -> SuffixAutomaton<A>                   // O(|A|)
-    fn of(s: List<A>) -> SuffixAutomaton<A>          // O(n * |A|) mem, O(n) time
+    fn of<S: Seq>(s: S) -> SuffixAutomaton<A>        // O(n * |A|) mem, O(n) time
     fn push(mut self, a: A)                          // O(1) amortized
     @get fn root(self) -> Int                        // O(1); 0
     @get fn len(self) -> Int                         // O(1); <= max(2n - 1, 1)
@@ -280,8 +285,9 @@ struct SuffixAutomaton<A>:
     fn link(self, state: Int) -> ?Int                // O(1)
     fn longest(self, state: Int) -> Int              // O(1)
     fn shortest(self, state: Int) -> Int             // O(1)
-    fn find(self, word: List<A>) -> ?Int             // O(|word|)
-    fn contains(self, word: List<A>) -> Bool         // O(|word|)
+    fn first_pos(self, state: Int) -> Int            // O(1); end index of first occurrence
+    fn find<S: Seq>(self, word: S) -> ?Int           // O(|word|)
+    fn contains<S: Seq>(self, word: S) -> Bool       // O(|word|)
     @get fn distinct(self) -> Int                    // O(states)
     fn topo_order(self) -> List<Int>                 // O(states); decreasing longest
     fn occurrences(self) -> List<Int>                // O(states); endpos count per state
@@ -305,25 +311,25 @@ struct Trie<A>:
     @get fn root(self) -> Int                        // O(1); 0
     @get fn len(self) -> Int                         // O(1); nodes incl. root
     fn step(self, node: Int, a: A) -> ?Int           // O(1)
-    fn find(self, word: List<A>) -> ?Int             // O(|word|)
-    fn add(mut self, word: List<A>) -> Int           // O(|word|); returns terminal node
-    fn remove(mut self, word: List<A>) -> Bool       // O(|word|)
-    fn count(self, word: List<A>) -> Int             // O(|word|)
-    fn count_prefix(self, prefix: List<A>) -> Int    // O(|prefix|)
+    fn find<S: Seq>(self, word: S) -> ?Int           // O(|word|)
+    fn add<S: Seq>(mut self, word: S) -> Int         // O(|word|); returns terminal node
+    fn remove<S: Seq>(mut self, word: S) -> Bool     // O(|word|)
+    fn count<S: Seq>(self, word: S) -> Int           // O(|word|)
+    fn count_prefix<S: Seq>(self, prefix: S) -> Int  // O(|prefix|)
     fn ends_at(self, node: Int) -> Int               // O(1)
     fn pass_at(self, node: Int) -> Int               // O(1)
 
 struct AhoCorasick<A>:
-    fn new(patterns: List<List<A>>) -> AhoCorasick<A>  // O(sum |p| * |A|)
+    fn new<S: Seq>(patterns: List<S>) -> AhoCorasick<A>  // O(sum |p| * |A|)
     @get fn root(self) -> Int                          // O(1); 0
     @get fn len(self) -> Int                           // O(1); states incl. root
     fn step(self, state: Int, a: A) -> Int             // O(1); total DFA transition
     fn link(self, state: Int) -> Int                   // O(1); failure link
     fn hit(self, state: Int) -> Bool                   // O(1); any pattern ends here
     fn words_at(self, state: Int) -> List<Int>         // O(output); longest first
-    fn matches(self, text: List<A>) -> yields (at: Int, pattern: Int)
+    fn matches<S: Seq>(self, text: S) -> yields (at: Int, pattern: Int)
         // O(|text| + output); ordered by end position
-    fn counts(self, text: List<A>) -> List<Int>        // O(|text| + states)
+    fn counts<S: Seq>(self, text: S) -> List<Int>      // O(|text| + states)
 ```
 
 Laws:

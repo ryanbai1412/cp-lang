@@ -748,8 +748,9 @@ pub struct RollingHash:
 /// Double-mod 2D polynomial prefix hash over a grid with row domain `R` and column domain `C`.
 /// Built in O(R * C); `rect(rows, cols)` is O(1) and returns a `HashVal`.
 pub struct Hash2D<R, C>(bases: (Int, Int)):
-    pre1: List<List<Int>>
-    pre2: List<List<Int>>
+    stride: Int
+    pre1: List<Int>
+    pre2: List<Int>
     pow_r1: List<Int>
     pow_c1: List<Int>
     pow_r2: List<Int>
@@ -763,49 +764,62 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
         let bc2 = (bc1 ^ 715827883) % (RH_M2 - 2) + 2
         let rows = R.K
         let cols = C.K
-        var pre1 = [[0 for _ in 0..=cols] for _ in 0..=rows]
-        var pre2 = [[0 for _ in 0..=cols] for _ in 0..=rows]
+        let stride = cols + 1
+        var pre1 = List.filled((rows + 1) * stride, 0)
+        var pre2 = List.filled((rows + 1) * stride, 0)
+        let brc1 = br1 * bc1 % RH_M1
+        let brc2 = br2 * bc2 % RH_M2
         for r in R:
             let i = r.to_idx
+            let row0 = i * stride
+            let row1 = row0 + stride
             for c in C:
                 let j = c.to_idx
                 let v = code(r, c)
                 let v1 = v % (RH_M1 - 1) + 1
                 let v2 = v % (RH_M2 - 1) + 1
-                let a1 = (pre1[i][j + 1] * br1 + pre1[i + 1][j] * bc1) % RH_M1
-                let b1 = pre1[i][j] * br1 % RH_M1 * bc1 % RH_M1
-                pre1[i + 1][j + 1] = (a1 - b1 + v1) % RH_M1
-                let a2 = (pre2[i][j + 1] * br2 + pre2[i + 1][j] * bc2) % RH_M2
-                let b2 = pre2[i][j] * br2 % RH_M2 * bc2 % RH_M2
-                pre2[i + 1][j + 1] = (a2 - b2 + v2) % RH_M2
-        var pow_r1 = [1]
-        var pow_r2 = [1]
-        for _ in 0..rows:
-            pow_r1.push(pow_r1[pow_r1.len - 1] * br1 % RH_M1)
-            pow_r2.push(pow_r2[pow_r2.len - 1] * br2 % RH_M2)
-        var pow_c1 = [1]
-        var pow_c2 = [1]
-        for _ in 0..cols:
-            pow_c1.push(pow_c1[pow_c1.len - 1] * bc1 % RH_M1)
-            pow_c2.push(pow_c2[pow_c2.len - 1] * bc2 % RH_M2)
-        Hash2D((br1, bc1), pre1, pre2, pow_r1, pow_c1, pow_r2, pow_c2)
+                unchecked:
+                    pre1[row1 + j + 1] = (
+                        pre1[row0 + j + 1] * br1 + pre1[row1 + j] * bc1 - pre1[row0 + j] * brc1 + v1
+                    ) % RH_M1
+                    pre2[row1 + j + 1] = (
+                        pre2[row0 + j + 1] * br2 + pre2[row1 + j] * bc2 - pre2[row0 + j] * brc2 + v2
+                    ) % RH_M2
+        var pow_r1 = List.filled(rows + 1, 1)
+        var pow_r2 = List.filled(rows + 1, 1)
+        unchecked:
+            for i in 0..rows:
+                pow_r1[i + 1] = pow_r1[i] * br1 % RH_M1
+                pow_r2[i + 1] = pow_r2[i] * br2 % RH_M2
+        var pow_c1 = List.filled(cols + 1, 1)
+        var pow_c2 = List.filled(cols + 1, 1)
+        unchecked:
+            for j in 0..cols:
+                pow_c1[j + 1] = pow_c1[j] * bc1 % RH_M1
+                pow_c2[j + 1] = pow_c2[j] * bc2 % RH_M2
+        Hash2D((br1, bc1), stride, pre1, pre2, pow_r1, pow_c1, pow_r2, pow_c2)
 
     /// Hash of the axis-aligned rectangle `rows` x `cols`. O(1).
     @allow(unproven_list_index)
     pub fn rect(self, rows: Range<R>, cols: Range<C>) -> HashVal:
         if rows.is_empty or cols.is_empty: return HashVal(0, 0)
         let (r1, r2, c1, c2) = (rows.start.ord, rows.end.ord, cols.start.ord, cols.end.ord)
-        let hr1 = pow_r1[r2 - r1]
-        let hc1 = pow_c1[c2 - c1]
-        let h1 = (
-            pre1[r2][c2] - pre1[r1][c2] * hr1 - pre1[r2][c1] * hc1 + pre1[r1][c1] * hr1 % RH_M1 * hc1
-        ) % RH_M1
-        let hr2 = pow_r2[r2 - r1]
-        let hc2 = pow_c2[c2 - c1]
-        let h2 = (
-            pre2[r2][c2] - pre2[r1][c2] * hr2 - pre2[r2][c1] * hc2 + pre2[r1][c1] * hr2 % RH_M2 * hc2
-        ) % RH_M2
-        HashVal(h1, h2)
+        assert (0 <= r1 and r1 <= r2 and r2 < pow_r1.len)
+        assert (0 <= c1 and c1 <= c2 and c2 < stride)
+        let o1 = r1 * stride
+        let o2 = r2 * stride
+        unchecked:
+            let hr1 = pow_r1[r2 - r1]
+            let hc1 = pow_c1[c2 - c1]
+            let h1 = (
+                pre1[o2 + c2] - pre1[o1 + c2] * hr1 - pre1[o2 + c1] * hc1 + pre1[o1 + c1] * hr1 % RH_M1 * hc1
+            ) % RH_M1
+            let hr2 = pow_r2[r2 - r1]
+            let hc2 = pow_c2[c2 - c1]
+            let h2 = (
+                pre2[o2 + c2] - pre2[o1 + c2] * hr2 - pre2[o2 + c1] * hc2 + pre2[o1 + c1] * hr2 % RH_M2 * hc2
+            ) % RH_M2
+            return HashVal(h1, h2)
 
 // ---- alphabet-domain automata
 
