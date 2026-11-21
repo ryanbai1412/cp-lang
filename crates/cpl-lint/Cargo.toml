@@ -8,3 +8,6 @@ publish.workspace = true
 [dependencies]
 cpl-diag.workspace = true
 cpl-syntax.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cpl-check.workspace = true

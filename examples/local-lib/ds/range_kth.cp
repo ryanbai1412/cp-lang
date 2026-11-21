@@ -26,7 +26,7 @@ pub struct RangeKth<D>:
     /// The `k`-th smallest value (from 0) among the positions of `r`, or `none` if the
     /// range holds `k` values or fewer.
     pub fn kth(self, r: Range<D>, k: Int) -> ?Int:
-        var (a, b) = (root[r.lo.ord], root[r.hi.ord])
+        var (a, b) = (root[r.start.ord], root[r.end.ord])
         if k < 0 or k >= cnt[b] - cnt[a]: return none
         var (lo, hi, left_over) = (0, vals.len, k)
         while hi - lo > 1:
@@ -43,7 +43,7 @@ pub struct RangeKth<D>:
     pub fn count_below(self, r: Range<D>, x: Int) -> Int:
         // the values below x are the ranks 0..upto
         let upto = vals.first_ge(x) ?? vals.len
-        var (a, b) = (root[r.lo.ord], root[r.hi.ord])
+        var (a, b) = (root[r.start.ord], root[r.end.ord])
         var (lo, hi, total) = (0, vals.len, 0)
         while hi - lo > 1 and upto > lo:
             if upto >= hi: break

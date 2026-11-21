@@ -271,7 +271,7 @@ pub fn prefix_fold<D, T, M>(xs: [D]T, m: M) -> [D.bounds]T
 
 // Exclusive cut-indexed suffix monoid fold: `suff[b]` is the fold of all
 // elements strictly right of cut `b`, with `suff[D.last.r] == m.id`.
-// For any range `r: Range<D>`, `m.op(pref[r.lo], suff[r.hi])` folds everything
+// For any range `r: Range<D>`, `m.op(pref[r.start], suff[r.end])` folds everything
 // outside `r` in O(1). O(n) calls of `m`, O(n) space.
 pub fn suffix_fold<D, T, M>(xs: [D]T, m: M) -> [D.bounds]T
 
@@ -568,13 +568,13 @@ print(prev_dp * M(blocks.last!))
 ### 6.3 Codeforces 2062 E2 — The Game (Hard Version)
 
 `prefix_fold` and `suffix_fold` return `[t.Pre.bounds]MaxInfo<t.Pre>`, so the
-maximum outside subtree `r = t.sub(v)` is `combine(pref[r.lo], suff[r.hi])`
+maximum outside subtree `r = t.sub(v)` is `combine(pref[r.start], suff[r.end])`
 with zero `.ord` arithmetic, and `buckets(w)` groups `V` by weight `W` in one
 expression:
 
 ```cp
 // Flatten the tree by preorder so each subtree is a range r = t.sub(v).
-// The max weight outside r is combine(pref[r.lo], suff[r.hi]) over Bounds<Pre>.
+// The max weight outside r is combine(pref[r.start], suff[r.end]) over Bounds<Pre>.
 use std.seq.{buckets, prefix_fold, suffix_fold}
 
 let empty_max = MaxInfo<t.Pre>(0, none, none, 0)
@@ -588,7 +588,7 @@ for weight in W.rev:
     let w_val = weight.ord + 1
     for v in by_w[weight]:
         let r = t.sub(v)
-        let mx = combine(pref[r.lo], suff[r.hi])
+        let mx = combine(pref[r.start], suff[r.end])
         ...
 ```
 

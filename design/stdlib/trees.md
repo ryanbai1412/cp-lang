@@ -69,7 +69,7 @@ Domains keep the index spaces apart:
 | vertices | `V` | the user's `domain V` |
 | positions in the order | `t.Pre` | fresh per tree; `t.pos(v)`, `t.at[p]` |
 | subtree, chain | `Range<Pre>` | `t.sub(v)`, `t.chains(a, b)` |
-| cuts between positions | `Pre.Cut` | `r.lo`, `r.hi` of those ranges |
+| cuts between positions | `Pre.Cut` | `r.start`, `r.end` of those ranges |
 | edges | the lower endpoint `V` | `t.lower(u, v)`; `edges: true` on path ops |
 | centroid ancestors | `V`, with a distance | `cd.ancestors(v)` |
 | subtree shapes | fresh `Shape` | `t.shapes()` [new] |

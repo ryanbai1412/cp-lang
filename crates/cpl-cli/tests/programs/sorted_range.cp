@@ -26,7 +26,7 @@ var s = SortedSet<V>()
 for i in [1, 3, 5, 6]:
     let _ = s.add(V.nth(i))
 let r = V.nth(2)..V.nth(6)
-let (lo_v, hi_v) = (s.range(..r.lo), s.range(r.hi..))
+let (lo_v, hi_v) = (s.range(..r.start), s.range(r.end..))
 print(lo_v.len, lo_v.first!.to_idx, hi_v.len, hi_v.last!.to_idx, s.range(r).len)
 print([x.to_idx for x in s.range(r)])
 print([x.to_idx for x in s.range(r).rev])

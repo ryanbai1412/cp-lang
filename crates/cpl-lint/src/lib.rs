@@ -597,12 +597,58 @@ pub fn fix_removed_syntax(src: &str) -> (String, usize) {
     }
 }
 
-/// What `cpl fix` makes of a source: the removed-syntax rewrites, then
-/// every lint fix, each to a fixed point.
+/// Type-directed removed-syntax rewrites reported by the checker (such as
+/// `Range.lo`/`.hi` -> `.start`/`.end`, leaving user struct fields named
+/// `lo`/`hi` untouched), applied to a fixed point.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn fix_checked_removed_syntax(path: Option<&std::path::Path>, src: &str) -> (String, usize) {
+    let mut src = src.to_string();
+    let mut total = 0;
+    let key = path
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "<fix>.cp".to_string());
+    let mut db = cpl_check::Database::new();
+    loop {
+        db.set_file(&key, src.as_str());
+        let Some(analysis) = db.analyze(&key) else {
+            return (src, total);
+        };
+        let codemods: Vec<_> = analysis
+            .diagnostics
+            .iter()
+            .filter(|d| d.code == cpl_diag::codes::REMOVED_SYNTAX && !d.fixes.is_empty())
+            .cloned()
+            .collect();
+        let (text, applied) = apply_fixes(&src, &codemods);
+        if applied == 0 {
+            return (src, total);
+        }
+        total += applied;
+        src = text;
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn fix_checked_removed_syntax(_path: Option<&std::path::Path>, src: &str) -> (String, usize) {
+    (src.to_string(), 0)
+}
+
+/// What `cpl fix` makes of a source: removed-syntax rewrites (parser, then
+/// type-directed checker rewrites), then every lint fix, each to a fixed point.
 pub fn fix(src: &str, config: &Config) -> (String, usize) {
+    fix_at(None, src, config)
+}
+
+/// Like [`fix`], resolving imports relative to `path` when given.
+pub fn fix_at(path: Option<&std::path::Path>, src: &str, config: &Config) -> (String, usize) {
     let (mut src, mut total) = fix_removed_syntax(src);
     if !cpl_syntax::parse_file(&src).diagnostics.is_empty() {
         return (src, total);
+    }
+    let (checked, checked_applied) = fix_checked_removed_syntax(path, &src);
+    if checked_applied > 0 {
+        src = checked;
+        total += checked_applied;
     }
     loop {
         let (text, applied) = apply_fixes(&src, &lint(&src, config));

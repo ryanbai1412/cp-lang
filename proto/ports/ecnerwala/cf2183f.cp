@@ -17,7 +17,8 @@ let t = Rooted(Graph.undirected(read<Tree<V>>()), root: V(1))
 // suf[x, y]: the sum of f(u, v) over the positions of u right of cut x and of v right of y.
 var suf: [Bounds<t.Pre>, Bounds<t.Pre>]Z = 0
 // R is Range<t.Pre>, which a signature cannot name yet.
-fn rect<R>(a: R, b: R) -> Z = suf[a.lo, b.lo] - suf[a.hi, b.lo] - suf[a.lo, b.hi] + suf[a.hi, b.hi]
+fn rect<R>(a: R, b: R) -> Z:
+    suf[a.start, b.start] - suf[a.end, b.start] - suf[a.start, b.end] + suf[a.end, b.end]
 for u in t.at.rev:
     for v in t.at.rev:
         let (x, y) = (t.pos(u), t.pos(v))

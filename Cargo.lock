@@ -95,6 +95,7 @@ version = "0.2.2"
 name = "cpl-lint"
 version = "0.2.2"
 dependencies = [
+ "cpl-check",
  "cpl-diag",
  "cpl-syntax",
 ]

@@ -10,7 +10,7 @@ let s = a.sum()
 var reach = 0..=0
 var inserted = 0
 for x in a:
-    reach = max(reach.lo + x, 0)..=min(reach.last + x, s)
+    reach = max(reach.start + x, 0)..=min(reach.last + x, s)
     if reach.is_empty:
         inserted += 1
         reach = max(x, 0)..=min(s + x, s)

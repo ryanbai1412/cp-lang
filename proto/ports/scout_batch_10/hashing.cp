@@ -60,7 +60,7 @@ pub struct StrHash:
     pub @get fn len(self) -> Int = pre.len - 1
 
     /// The hash of the block `r`, a range of positions.
-    pub fn of(self, r: Range<Int>) -> Hash = pre[r.hi].after(pre[r.lo])
+    pub fn of(self, r: Range<Int>) -> Hash = pre[r.end].after(pre[r.start])
 
     /// How many items the blocks starting at `i` and `j` share before they differ. O(log n).
     pub fn lcp(self, i: Int, j: Int) -> Int:

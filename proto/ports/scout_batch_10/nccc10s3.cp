@@ -14,5 +14,5 @@ let sa = SuffixArray.new(s)
 for _ in 0..q:
     let (t, k): (Str, Int) = read()
     let r = sa.matches(t)
-    if r.hi - r.lo < k: print(-1)
-    else: print(sa.sa[r.lo..r.hi].sorted()[k - 1] + 1)
+    if r.end - r.start < k: print(-1)
+    else: print(sa.sa[r.start..r.end].sorted()[k - 1] + 1)

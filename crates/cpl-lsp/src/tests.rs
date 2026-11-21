@@ -1999,6 +1999,7 @@ fn replaced_spellings_get_their_cpl_fix_codemod_as_a_quick_fix() {
             "L0205",
         ),
         ("cf2066b", "(0..b.len).rev:", "(0..b.len()).rev:", "L0206"),
+        ("cf2053i1", "reach.start", "reach.lo", "E0503"),
     ] {
         let mut server = Server::new();
         let (uri, text, diagnostics) = open_port(&mut server, port, (good, bad));
@@ -2258,4 +2259,35 @@ fn reach_completes_hovers_helps_and_fixes_its_options() {
         "let xs = [1, 2]\nprint(xs.reach(while: (a, b) => a < b, |))\n",
     );
     assert_eq!(help.get("activeParameter").as_u32(), Some(1), "{help:?}");
+}
+
+#[test]
+fn range_completion_and_hover_show_start_and_end() {
+    let items = completions("let r = 2..=4\nprint(r.|)\n");
+    let names = labels(&items);
+    assert!(names.contains(&"start"), "{names:?}");
+    assert!(names.contains(&"end"), "{names:?}");
+    assert!(!names.contains(&"lo"), "{names:?}");
+    assert!(!names.contains(&"hi"), "{names:?}");
+
+    let (mut server, diags) = open("let r = 2..=4\nprint(r.start, r.end)\n");
+    assert!(diags.is_empty(), "{diags:?}");
+    let start_hover = hover_at(&mut server, 1, 9);
+    assert!(
+        start_hover
+            .at(&["contents", "value"])
+            .as_str()
+            .unwrap_or("")
+            .contains("Int"),
+        "{start_hover:?}"
+    );
+    let end_hover = hover_at(&mut server, 1, 18);
+    assert!(
+        end_hover
+            .at(&["contents", "value"])
+            .as_str()
+            .unwrap_or("")
+            .contains("Int"),
+        "{end_hover:?}"
+    );
 }

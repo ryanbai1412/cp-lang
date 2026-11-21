@@ -46,7 +46,7 @@ pub struct Rope<T>:
 
     /// Reverse the stretch `r` in place.
     pub fn reverse(mut self, r: Range<Int>):
-        let (a, rest) = self.split(root, r.lo)
+        let (a, rest) = self.split(root, r.start)
         let (mid, b) = self.split(rest, r.len)
         if mid != none: flip[mid!] = not flip[mid!]
         let am = self.merge(a, mid)
@@ -55,7 +55,7 @@ pub struct Rope<T>:
     /// Cut the stretch `r` out and glue it back in so that it starts at position `to` of
     /// what is left.
     pub fn move_to(mut self, r: Range<Int>, to: Int):
-        let (a, rest) = self.split(root, r.lo)
+        let (a, rest) = self.split(root, r.start)
         let (mid, b) = self.split(rest, r.len)
         let others = self.merge(a, b)
         let (x, y) = self.split(others, to)

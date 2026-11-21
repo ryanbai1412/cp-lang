@@ -68,6 +68,6 @@ for _ in 0..q:
     else:
         for a in members[r1]:
             let s = t.sub(a)
-            ans += before(r2, s.hi.to_idx) - before(r2, s.lo.to_idx)
+            ans += before(r2, s.end.to_idx) - before(r2, s.start.to_idx)
         seen[(r1, r2)] = ans
     print(ans)

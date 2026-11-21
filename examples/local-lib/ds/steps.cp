@@ -16,8 +16,8 @@ pub struct Steps:
     /// Add `x` on every integer of `r`. An empty range adds nothing. O(1).
     pub fn add(mut self, r: Range<Int>, x: Int):
         if r.len == 0 or x == 0: return
-        change.push((r.lo, x))
-        change.push((r.hi, -x))
+        change.push((r.start, x))
+        change.push((r.end, -x))
 
     /// The maximal runs of equal value inside `clip`, left to right, covering all of it
     /// (stretches nothing was added to have value 0).
@@ -27,19 +27,19 @@ pub struct Steps:
         if sorted_upto < change.len:
             change.sort()
             sorted_upto = change.len
-        var (cur, at) = (0, clip.lo)
+        var (cur, at) = (0, clip.start)
         for (x, d) in change:
-            if x >= clip.hi: break
+            if x >= clip.end: break
             if x > at:
                 out.push((span: at..x, value: cur))
                 at = x
             cur += d
-        out.push((span: at..clip.hi, value: cur))
+        out.push((span: at..clip.end, value: cur))
         // join neighbours that ended up equal (additions that cancel)
         var joined: List<(span: Range<Int>, value: Int)> = []
         for run in out:
             if let last = joined.last, last.value == run.value:
-                joined.last! = (span: joined.last!.span.lo..run.span.hi, value: run.value)
+                joined.last! = (span: joined.last!.span.start..run.span.end, value: run.value)
             else:
                 joined.push(run)
         joined
@@ -50,7 +50,7 @@ fn runs_cover_the_clip_in_order():
     s.add(2..=5, 1)
     s.add(4..=9, 2)
     s.add(-3..0, 7)
-    let got = [(r.span.lo, r.span.len, r.value) for r in s.runs(0..=10)]
+    let got = [(r.span.start, r.span.len, r.value) for r in s.runs(0..=10)]
     assert got == [(0, 2, 0), (2, 2, 1), (4, 2, 3), (6, 4, 2), (10, 1, 0)]
     assert s.runs(5..5).len == 0
 
@@ -67,8 +67,8 @@ fn runs_agree_with_adding_cell_by_cell():
         var at = lo
         var last: ?Int = none
         for run in s.runs(lo..=hi):
-            assert run.span.lo == at and run.span.len > 0 and last != run.value
+            assert run.span.start == at and run.span.len > 0 and last != run.value
             for i in run.span: assert cell[i] == run.value
-            at = run.span.hi
+            at = run.span.end
             last = run.value
         assert at == max(lo, hi + 1)

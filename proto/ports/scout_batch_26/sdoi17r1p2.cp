@@ -40,15 +40,15 @@ fn point(v: V, to: ?V):
 fn paint(x: V):
     var below: ?V = none
     for (range, rising) in t.chains(x, V.first, false):
-        let bottom = t.at[range.hi.left]
+        let bottom = t.at[range.end.left]
         point(bottom, below)
         // every other vertex of this stretch continues to its heavy child
-        var b = off.max_right(range.lo, s => s == 0)
-        while b.ord < range.hi.ord - 1:
+        var b = off.max_right(range.start, s => s == 0)
+        while b.ord < range.end.ord - 1:
             let v = t.at[b.right]
             point(v, t.heavy[v])
             b = off.max_right(b, s => s == 0)
-        below = t.at[range.lo.right]
+        below = t.at[range.start.right]
 
 for _ in 0..q:
     let kind: 1..=3 = read()

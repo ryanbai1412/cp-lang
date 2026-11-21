@@ -402,7 +402,7 @@ var opt: ?Pair = none
 let p = opt ?? Pair(popped, st.last!)
 opt = some(p)
 let r = 2..10
-print(p.a, p.b, opt!.a, r.lo, r.hi, bit_ceil(9))
+print(p.a, p.b, opt!.a, r.start, r.end, bit_ceil(9))
 ";
     let (out, trap) = outcome(source, "");
     assert_eq!(trap, None);

@@ -3524,7 +3524,6 @@ the run-time choice stays. Reverse by making `proven` false in
 2. **Indented block bodies after `=>` on lambdas and table comprehensions, plus bracketed `match`/`if`/`else` blocks.**
    - **Reason:** Accepted syntax so multi-statement lambdas work cleanly in table comprehensions (`[0..=s, 0..n] (i, j) =>\n    ...`), named arguments (`by: x =>\n    ...`), and call arguments without wrapping in braces. The lexer tracks `layout_blocks` inside brackets so `Newline`/`Indent`/`Dedent` tokens are emitted for `=>` blocks (and `match`/`if`/`else` blocks ending in `:`) inside `(...)`/`[...]`, `split_items` keeps bracketed items intact, and `Parser::lambda_body` parses `Newline + Indent` into `ExprKind::Block(Block)` whose value is its last expression (matching `fn ... :`, formatter, LSP folding, and `--trace`).
    - **Reverse:** Remove `layout_blocks` in `crates/cpl-syntax/src/lexer.rs`, `brackets` in `crates/cpl-syntax/src/items.rs`, and `lambda_body` in `crates/cpl-syntax/src/parser/expr.rs`.
-
 ## 99. The offline bundle ships Try it programs as text, not base64 (2026-11-21)
 
 Every Try it link carried its program as a base64 share hash, which gzip
@@ -3536,13 +3535,11 @@ is byte-identical to the online site's
 (`test_offline_bundle_rebuilds_every_try_it_link_exactly`). The online
 pages are unchanged. Reverse: drop `SHARE_HREF` from `site/bundle.py` and
 the `share-ref` replace from `site/offline.html`.
-
 ## 100. Validate stores into range-typed places via `ExprKind::RangeCheck` (2026-11-21)
 
 - **Decision.** Every store into a range-typed place (scalar `var`/`let`, struct field and constructor arg, array element including compound assignment / `max=` / `min=` / fill / comprehension, and `List` `.push`/`.resize`/`.fill`) lowers through `Lowerer::check_range`, which wraps unproved values in `ExprKind::RangeCheck { value, lo, hi, text }`. Both `cpl-interp` and `cpl-codegen` (`cpl::check_range` under `#ifdef LOCAL`) trap with exit code 3 and `{v} is outside \`{text}\``. Release builds (`-DLOCAL` unset) compile `cpl::check_range` to a zero-cost passthrough, including for narrowed 32-bit struct fields (and future narrowed arrays).
 - **Why.** Narrowed `0..=1_000_000` struct fields previously truncated silently in C++ while `cpl run` printed the raw 64-bit value, breaking interpreter/C++ parity, and scalar/array ranges were unenforced on assignment. Checking in `cpl run` and `--checked` (`-DLOCAL`) catches every contract violation locally with identical diagnostics, while eliding proven-in-range stores (literals, narrower range-typed sources, `x % P` into `0..P`, `Mod<P>` branch-refined `+`/`-`/neg) keeps hot loops and `Mod<P>` codegen completely free of checks. Keeping release zero-cost matches `fsqrt`, `shl128`, and `sort` comparator validation (`#ifdef LOCAL`) so valid programs pay zero runtime overhead on judges.
 - **Reverse.** Remove `ExprKind::RangeCheck` and `crates/cpl-ir/src/lower/range.rs` to revert validation; or remove the `#ifdef LOCAL` guard in `cpl::check_range` in `crates/cpl-codegen/src/runtime.rs` if release builds should also trap before narrowing truncation.
-
 ## 101. A range's ends are `start` and `end`; `end` is exclusive (2026-11-21)
 
 `(2..=4).hi` was 5: every range is stored half-open, and `.lo`/`.hi`
@@ -3558,8 +3555,8 @@ count is `r.len`. `.lo`/`.hi` on ranges become errors with a type-directed
   inclusive when it is exclusive. `start`/`end` is the familiar pair.
 - **Reverse.** Restore `.lo`/`.hi` as the range accessors and run the
   codemod backwards.
-- **Status.** Accepted by the syntax owner; implementation (parser, checker,
-  interpreter, codegen, LSP, docs, codemod) is with the syntax lane.
+- **Status.** Landed (checker, IR, interpreter, codegen, `cpl fix` type-directed
+  codemod, LSP completion/hover/quick-fix, stdlib, ports, dreams, docs).
 
 ## 102. `PermTree` is a binary permutation tree over a fresh node domain (2026-11-21)
 

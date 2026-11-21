@@ -1384,6 +1384,45 @@ impl<'a> Checker<'a> {
             }
             return Ty::Error;
         }
+        // `r.lo` / `r.hi` on `Range<T>` were renamed to `.start` / `.end` (`end` exclusive).
+        if matches!(name.text.as_str(), "lo" | "hi")
+            && matches!(&base_ty, Ty::Named { name: r, .. } if r == "Range")
+        {
+            let replacement = if name.text == "lo" { "start" } else { "end" };
+            let message = format!(
+                "`Range` uses `.{replacement}`, not `.{}`",
+                name.text
+            );
+            if let Some(diag) = self.error(codes::REMOVED_SYNTAX, name.span, message) {
+                diag.help = Some(format!(
+                    "write `.{replacement}` (`.end` is exclusive for `a..b` and `a..=b` alike)"
+                ));
+                diag.fixes.push(cpl_diag::Fix {
+                    title: format!("use `.{replacement}`"),
+                    edits: vec![(name.span, replacement.to_string())],
+                });
+            }
+            return Ty::Error;
+        }
+        // `r.start` / `r.end` on `Range<T>` give the lower / exclusive-upper endpoint.
+        if matches!(name.text.as_str(), "start" | "end") {
+            if let Ty::Named { name: r, args } = &base_ty {
+                if r == "Range" {
+                    return match args.first() {
+                        Some(Ty::Pos(d)) => {
+                            if d.ends_with(".bounds") {
+                                Ty::Pos(d.clone())
+                            } else {
+                                Ty::Pos(format!("{d}.bounds"))
+                            }
+                        }
+                        Some(Ty::I128) => Ty::I128,
+                        Some(Ty::Int | Ty::Range { .. }) => Ty::Int,
+                        _ => Ty::Unknown,
+                    };
+                }
+            }
+        }
         // `r.drop(k)` / `r.take(k)` on `Range<T>` returns `Range<T>`.
         if matches!(name.text.as_str(), "drop" | "take")
             && matches!(&base_ty, Ty::Named { name: r, .. } if r == "Range")

@@ -7567,6 +7567,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                 Op::ListPopLV { dst_v, list_v } => {
                     let popped = match &mut regs_v[list_v as usize] {
                         Value::List(items) => Rc::make_mut(items).pop(),
+                        Value::Str(bytes) => Rc::make_mut(bytes).pop().map(Value::Char),
                         _ => return trap(spans[cur_pc], "internal: expected list"),
                     };
                     regs_v[dst_v as usize] = Value::Opt(OptVal::from_option(popped));
@@ -7574,6 +7575,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                 Op::ListPopGV { dst_v, gid } => {
                     let popped = match &mut self.globals[gid as usize] {
                         Value::List(items) => Rc::make_mut(items).pop(),
+                        Value::Str(bytes) => Rc::make_mut(bytes).pop().map(Value::Char),
                         _ => return trap(spans[cur_pc], "internal: expected list"),
                     };
                     regs_v[dst_v as usize] = Value::Opt(OptVal::from_option(popped));
@@ -7581,6 +7583,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                 Op::ListPopOptIL { dst_val, dst_some, list_v } => {
                     let popped = match &mut regs_v[list_v as usize] {
                         Value::List(items) => Rc::make_mut(items).pop(),
+                        Value::Str(bytes) => Rc::make_mut(bytes).pop().map(Value::Char),
                         _ => return trap(spans[cur_pc], "internal: expected list"),
                     };
                     match popped {
@@ -7597,6 +7600,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                 Op::ListPopOptIG { dst_val, dst_some, gid } => {
                     let popped = match &mut self.globals[gid as usize] {
                         Value::List(items) => Rc::make_mut(items).pop(),
+                        Value::Str(bytes) => Rc::make_mut(bytes).pop().map(Value::Char),
                         _ => return trap(spans[cur_pc], "internal: expected list"),
                     };
                     match popped {
@@ -7614,11 +7618,17 @@ impl<'p, 'io> Interp<'p, 'io> {
                     Value::List(items) => {
                         Rc::make_mut(items).pop();
                     }
+                    Value::Str(bytes) => {
+                        Rc::make_mut(bytes).pop();
+                    }
                     _ => return trap(spans[cur_pc], "internal: expected list"),
                 },
                 Op::ListPopDiscardG { gid } => match &mut self.globals[gid as usize] {
                     Value::List(items) => {
                         Rc::make_mut(items).pop();
+                    }
+                    Value::Str(bytes) => {
+                        Rc::make_mut(bytes).pop();
                     }
                     _ => return trap(spans[cur_pc], "internal: expected list"),
                 },

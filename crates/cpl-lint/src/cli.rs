@@ -1,6 +1,8 @@
 //! `cpl lint`.
 
-use crate::{apply_fixes, fix_removed_syntax, is_taste, lint, Config, LINTS};
+use crate::{
+    apply_fixes, fix_checked_removed_syntax, fix_removed_syntax, is_taste, lint, Config, LINTS,
+};
 use std::collections::BTreeMap;
 use cpl_diag::Severity;
 use std::io::Write;
@@ -109,6 +111,15 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         }
         if fix {
             let (text, applied) = fix_removed_syntax(&src);
+            if applied > 0 {
+                fixed += applied;
+                src = text;
+                if let Err(e) = std::fs::write(file, &src) {
+                    let _ = writeln!(stderr, "error: can't write {name}: {e}");
+                    failed += 1;
+                }
+            }
+            let (text, applied) = fix_checked_removed_syntax(Some(file), &src);
             if applied > 0 {
                 fixed += applied;
                 src = text;

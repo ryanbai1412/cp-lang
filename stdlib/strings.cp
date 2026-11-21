@@ -211,8 +211,8 @@ pub struct Palindromes(odd: List<Int>, even: List<Int>):
     /// True when the range `r` (`l..r`, `l..=r`, or `Range<D>`) is a palindrome. O(1).
     pub fn is_palindrome<R>(self, r: R) -> Bool:
         if r.is_empty: return true
-        let l = r.lo.ord
-        let hi = r.hi.ord
+        let l = r.start.ord
+        let hi = r.end.ord
         let n = odd.len
         assert 0 <= l and l <= hi and hi <= n, "`is_palindrome(r)` needs `0 <= lo <= hi <= len`"
         let m = hi - l
@@ -390,7 +390,7 @@ pub fn suffix_array<T>(s: List<T>) -> List<Int>:
         for i in 0..n: vec[i] = remap[vec[i]]
     else:
         var order = [i for i in 0..n]
-        sort(mut order, by: i => s[i])
+        order.sort(by: i => s[i])
         alpha = 1
         vec[order[0]] = 1
         for j in 1..n:
@@ -502,7 +502,7 @@ pub struct SuffixArray<T>:
     /// Number of occurrences of `pat` in `s`. O(|pat| log n).
     pub fn count(self, pat: List<T>) -> Int:
         let r = self.matches(pat)
-        r.hi - r.lo
+        r.end - r.start
 
     /// Rank range `lo..hi` in `sa` of all suffixes whose LCP with `s[i..]` is at least `len`.
     /// O(log n).
@@ -644,7 +644,7 @@ pub struct RollingHash:
     /// Hash of a range (`Range<Int>` such as `l..r`, `l..=r`, `..k`, or `Range<D>` on `[D]T`). O(1).
     pub fn get<R>(self, r: R) -> HashVal:
         if r.is_empty: return HashVal(0, 0)
-        self.slice(r.lo.ord, r.hi.ord)
+        self.slice(r.start.ord, r.end.ord)
 
     /// Concatenate hashes `a` and `b` where `b` has length `b_len`, in O(1).
     pub fn combine(self, a: HashVal, b: HashVal, b_len: Int) -> HashVal:
@@ -740,7 +740,7 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
     @allow(unproven_list_index)
     pub fn rect(self, rows: Range<R>, cols: Range<C>) -> HashVal:
         if rows.is_empty or cols.is_empty: return HashVal(0, 0)
-        let (r1, r2, c1, c2) = (rows.lo.ord, rows.hi.ord, cols.lo.ord, cols.hi.ord)
+        let (r1, r2, c1, c2) = (rows.start.ord, rows.end.ord, cols.start.ord, cols.end.ord)
         let hr1 = pow_r1[r2 - r1]
         let hc1 = pow_c1[c2 - c1]
         let h1 = (
@@ -1265,7 +1265,7 @@ fn suffix_array_and_lcp_match_sorting_the_suffixes():
         let s = random_word(rand(1, 18), rand(1, 3))
         let sa = suffix_array(s)
         var want = [i for i in 0..s.len]
-        sort(mut want, by: i => [s[j] for j in i..s.len])
+        want.sort(by: i => [s[j] for j in i..s.len])
         assert sa == want
         let lcp = lcp_array(s, sa)
         for j in 0..s.len - 1: assert lcp[j] == common_prefix(s, sa[j], sa[j + 1])
@@ -1466,17 +1466,15 @@ fn suffix_array_struct_queries_match_brute():
             ]
             assert sa.count(pat) == want.len
             var got = [sa.sa[idx] for idx in r]
-            sort(mut got)
+            got.sort()
             assert got == want
         // lcp_range
         for _ in 0..10:
             let i = rand(0, n - 1)
             let len = rand(0, n - i + 1)
             let r = sa.lcp_range(i, len)
-            var want: List<Int> = []
-            for j in 0..n:
-                if common_prefix(s, i, j) >= len: want.push(sa.rank[j])
-            sort(mut want)
+            var want: List<Int> = [sa.rank[j] for j in 0..n if common_prefix(s, i, j) >= len]
+            want.sort()
             assert [idx for idx in r] == want
         // compare
         for _ in 0..20:
@@ -1652,7 +1650,7 @@ fn aho_corasick_matches_counts_and_avoidance_dp():
                     text[i + j] == patterns[w][j] for j in 0..k
                 ): want.push((i, w))
         let got = [(m.at, m.pattern) for m in ac.matches(text)]
-        assert sorted(got) == sorted(want)
+        assert got.sorted() == want.sorted()
         assert ac.counts(text) == [sum(Int(p.1 == w) for p in want) for w in 0..patterns.len]
         assert ac.len <= 1 + sum(w.len for w in patterns)
     // Avoidance DP test
@@ -1671,7 +1669,7 @@ fn aho_corasick_matches_counts_and_avoidance_dp():
     for code in 0..(1 << 6):
         let text = [A((code >> i) % 2) for i in 0..6]
         if [m for m in ac.matches(text)].is_empty: brute += 1
-    assert sum(ways) == brute
+    assert ways.sum() == brute
 
 @test
 fn indexed_views_and_common_prefix_suffix():

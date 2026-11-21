@@ -47,7 +47,7 @@ for weight in W.rev:
     let w_val = weight.ord + 1
     for v in by_w[weight]:
         let r = t.sub(v)
-        let mx = combine(pref[r.lo], suff[r.hi])
+        let mx = combine(pref[r.start], suff[r.end])
         if mx.w > w_val:
             var covered = sub_bit.sum(r) + mx.cnt
             let lo = t.at[mx.lo!]

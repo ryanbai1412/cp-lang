@@ -36,8 +36,8 @@ pub struct SparseTable<D, T>(op: (T, T) -> T):
 
     /// The fold of a non-empty range. O(1). Asserts `not r.is_empty`.
     pub fn fold(self, r: Range<D>) -> T:
-        let lo = r.lo.ord
-        let hi = r.hi.ord
+        let lo = r.start.ord
+        let hi = r.end.ord
         assert lo < hi
         let k = bit_width(hi - lo) - 1
         let off = k * n
@@ -92,8 +92,8 @@ pub struct DisjointSparseTable<D, T>(op: (T, T) -> T):
 
     /// Fold of a non-empty range `r`, left to right. O(1). Asserts `not r.is_empty`.
     pub fn fold(self, r: Range<D>) -> T:
-        let lo = r.lo.ord
-        let hi = r.hi.ord
+        let lo = r.start.ord
+        let hi = r.end.ord
         assert lo < hi
         let r1 = hi - 1
         if lo == r1:
@@ -129,9 +129,9 @@ fn gcd_max_bitwise_and_custom_semigroup_tables():
 
 @test
 fn idempotence_separates_min_from_sum():
-    assert idempotent::<Int>(min, [-2, 0, 7])
-    assert idempotent::<Int>(&, [-2, 0, 7])
-    assert not idempotent::<Int>(+, [-2, 0, 7])
+    assert idempotent<Int>(min, [-2, 0, 7])
+    assert idempotent<Int>(&, [-2, 0, 7])
+    assert not idempotent<Int>(+, [-2, 0, 7])
 
 @test
 fn disjoint_sparse_table_handles_non_idempotent_non_commutative_folds():

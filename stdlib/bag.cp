@@ -790,13 +790,13 @@ fn sorted_set_operations_range_and_first_where():
     assert s.remove(5) and not s.remove(5)
     assert s.len == 4
 
-    // Domain-keyed SortedSet with Range<V> and open Bounds (..r.lo, r.hi..), cf2062e2 shape
+    // Domain-keyed SortedSet with Range<V> and open Bounds (..r.start, r.end..), cf2062e2 shape
     domain V = 0..8
     var ds = SortedSet<V>()
     for i in [1, 3, 5, 6]:
         let _ = ds.add(V.nth(i))
     let r = V.nth(2)..V.nth(6)
-    let (before, after) = (ds.range(..r.lo), ds.range(r.hi..))
+    let (before, after) = (ds.range(..r.start), ds.range(r.end..))
     assert before.len == 1 and before.first == V.nth(1) and before.last == V.nth(1)
     assert after.len == 1 and after.first == V.nth(6) and after.last == V.nth(6)
     assert ds.range(r).len == 2 and ds.range(r).first == V.nth(3) and ds.range(r).last == V.nth(5)

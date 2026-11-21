@@ -106,7 +106,7 @@ if i != j:
 
 Without the guard or another proof of `i != j`, the two elements might alias, so a mutable access and a read cannot coexist. An explicit `assert i != j` is another way to establish the condition. Index arguments are evaluated before lending begins, so the proof is about fixed argument values, not indices that might change halfway through the call.
 
-For two ranges, the specified disjointness condition is that one ends before the other begins: `s.hi <= t.lo or t.hi <= s.lo`. Simultaneous mutable split-slice lends are not yet supported. Use independent owned workspaces today:
+For two ranges, the specified disjointness condition is that one ends before the other begins: `s.end <= t.start or t.end <= s.start`. Simultaneous mutable split-slice lends are not yet supported. Use independent owned workspaces today:
 
 ```cp CP Lang 0.2.2
 let a = [4, 3, 2, 1]

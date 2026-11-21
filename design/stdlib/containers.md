@@ -723,16 +723,16 @@ fn solve(span: Range<T>, live: List<Edge>):
     let snap = (a.mark(), ab.mark())
     var rest: List<Edge> = []
     for e in live:
-        if e.on.lo <= span.lo and span.hi <= e.on.hi:
+        if e.on.start <= span.start and span.end <= e.on.end:
             if e.in_a: a.unite(e.x, e.y)
             ab.unite(e.x, e.y)
-        elif e.on.lo < span.hi and span.lo < e.on.hi:
+        elif e.on.start < span.end and span.start < e.on.end:
             rest.push(e)
     if span.len == 1: ans[span.first!] = a.components - ab.components
     else:
         let m = span.mid!
-        solve(span.lo..m.r, rest)
-        solve(m.r..span.hi, rest)
+        solve(span.start..m.r, rest)
+        solve(m.r..span.end, rest)
     a.undo_to(snap.0)
     ab.undo_to(snap.1)
 ```

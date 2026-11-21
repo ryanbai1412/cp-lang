@@ -39,6 +39,16 @@ pub(crate) const POS_MEMBERS: &[(&str, &str)] = &[
     ("after", "the boundary after the position"),
 ];
 
+pub(crate) const RANGE_MEMBERS: &[(&str, &str)] = &[
+    ("start", "the lower endpoint of the range"),
+    ("end", "the exclusive upper endpoint of the range"),
+    ("first", "the first element, or `none` when empty"),
+    ("last", "the last element, or `none` when empty"),
+    ("len", "the number of elements in the range"),
+    ("is_empty", "true when the range holds no elements"),
+    ("rev", "the range in reverse order"),
+];
+
 /// The standard library's outlines, read once.
 #[derive(Default)]
 pub struct StdLib {
@@ -542,6 +552,7 @@ fn members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, u8)>
             .collect()
     };
     match ty {
+        Ty::Named { name, .. } if name == "Range" => builtin(RANGE_MEMBERS, ty.to_string()),
         Ty::Named { name, args } if builtin_receiver(ty).is_none() => {
             type_members(cursor, std, name, args, true)
         }

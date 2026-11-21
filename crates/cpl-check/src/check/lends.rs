@@ -632,8 +632,8 @@ fn subst(e: &Expr, env: &[(&str, &Expr)]) -> Expr {
             } = &unparen(&base).kind
             {
                 match name.text.as_str() {
-                    "lo" => return (**lo).clone(),
-                    "hi" if *inclusive => {
+                    "start" => return (**lo).clone(),
+                    "end" if *inclusive => {
                         return Expr {
                             kind: ExprKind::Field {
                                 base: hi.clone(),
@@ -645,7 +645,7 @@ fn subst(e: &Expr, env: &[(&str, &Expr)]) -> Expr {
                             span: e.span,
                         }
                     }
-                    "hi" => return (**hi).clone(),
+                    "end" => return (**hi).clone(),
                     _ => {}
                 }
             }
@@ -889,8 +889,8 @@ impl<'a> Checker<'a> {
                             "slice",
                             "Array.at(Range)",
                             Law::Source {
-                                source: "law disjoint(s, t) = s.hi <= t.lo or t.hi <= s.lo".into(),
-                                shown: "s.hi <= t.lo or t.hi <= s.lo".into(),
+                                source: "law disjoint(s, t) = s.end <= t.start or t.end <= s.start".into(),
+                                shown: "s.end <= t.start or t.end <= s.start".into(),
                             },
                             indices,
                         )

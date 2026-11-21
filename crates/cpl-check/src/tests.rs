@@ -2849,3 +2849,24 @@ enum Node:
         "expected E0202 at declaration when variant collides with domain, got: {errs:?}"
     );
 }
+
+#[test]
+fn range_lo_hi_are_rejected_with_start_end_fixes_and_user_fields_stay() {
+    let ok = "\
+struct Seg(lo: Int, hi: Int)
+let s = Seg(1, 5)
+let r = 2..=4
+print(s.lo, s.hi, r.start, r.end, r.last, r.len)
+";
+    assert!(check(ok).is_empty(), "expected clean check, got: {:?}", check(ok));
+
+    let bad = "let r = 2..=4\nprint(r.lo, r.hi)\n";
+    let errs = check(bad);
+    assert_eq!(errs.len(), 2, "expected 2 E0503 errors, got: {errs:?}");
+    assert!(
+        errs.iter().all(|e| e.code == cpl_diag::codes::REMOVED_SYNTAX && !e.fixes.is_empty()),
+        "expected E0503 with fixes for Range.lo/.hi, got: {errs:?}"
+    );
+    assert_eq!(errs[0].fixes[0].edits[0].1, "start");
+    assert_eq!(errs[1].fixes[0].edits[0].1, "end");
+}

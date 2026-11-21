@@ -17,13 +17,13 @@ let g = Graph.undirected(es)
 var ans: [V]Int = 0
 fn route(u: V, from: ?V, part: Range<Int>):
     if part.is_empty: return
-    ans[u] = xs.rank(part.hi) - xs.rank(part.lo)
+    ans[u] = xs.rank(part.end) - xs.rank(part.start)
     let kids = sorted((w: w, v: v) for (v, w) in g[u] if v != from)
     // cuts[i]..cuts[i + 1] is what child i receives.
-    let cuts = [part.lo] + [(a.w + b.w) / 2 + 1 for (a, b) in kids.adjacent] + [part.hi]
+    let cuts = [part.start] + [(a.w + b.w) / 2 + 1 for (a, b) in kids.adjacent] + [part.end]
     for (i, kid) in kids.items:
         // WISH X5: intersecting two half-open ranges is spelled with max/min by hand.
-        route(kid.v, u, max(cuts[i], part.lo)..min(cuts[i + 1], part.hi))
+        route(kid.v, u, max(cuts[i], part.start)..min(cuts[i + 1], part.end))
 
 route(V.first, none, 0..1e9 + 5)
 print(" ".join("{c}" for c in ans))

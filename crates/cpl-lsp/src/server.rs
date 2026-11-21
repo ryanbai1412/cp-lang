@@ -1126,7 +1126,12 @@ fn fix_file(_uri: &str, _text: &str) -> Option<String> {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn fix_file(uri: &str, text: &str) -> Option<String> {
-    let (fixed, applied) = cpl_lint::fix(text, &lint_config(uri));
+    let path = path_of_uri(uri);
+    let (fixed, applied) = cpl_lint::fix_at(
+        path.as_deref().map(std::path::Path::new),
+        text,
+        &lint_config(uri),
+    );
     (applied > 0).then_some(fixed)
 }
 

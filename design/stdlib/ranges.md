@@ -205,7 +205,7 @@ Additions to `std.prefix`:
   `[D.bounds]T` where `pref[b]` is the fold of `..b` and `suff[b]` is the
   fold of `b..`, with `pref[D.start] == m.id` and `suff[D.end] == m.id`.
   Given any range `r: Range<D>`, the fold of everything *outside* `r` is
-  simply `m.op(pref[r.lo], suff[r.hi])` — zero `.ord + 1` arithmetic.
+  simply `m.op(pref[r.start], suff[r.end])` — zero `.ord + 1` arithmetic.
 - **`Diff1<D, T>` and `Diff2<R, C, T>`**: offline range-add difference
   arrays that accumulate O(1) `add(r, x)` calls and materialize `[D]T` or
   `[R, C]T` in one O(n) / O(r * c) `finish()` pass (eliminating the

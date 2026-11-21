@@ -287,7 +287,13 @@ impl<'a> Checker<'a> {
             }
             Ty::Array { .. } => crate::builtins::builtin_members(crate::builtins::Receiver::Array)
                 .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name.text),
-            Ty::Named { name: n, .. } if matches!(n.as_str(), "Range" | "SortedRange") => {
+            Ty::Named { name: n, .. } if n == "Range" => {
+                matches!(
+                    name.text.as_str(),
+                    "len" | "is_empty" | "first" | "last" | "rev" | "start" | "end"
+                )
+            }
+            Ty::Named { name: n, .. } if n == "SortedRange" => {
                 matches!(name.text.as_str(), "len" | "is_empty" | "first" | "last" | "rev")
             }
             Ty::Domain(_) => {

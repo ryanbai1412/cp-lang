@@ -108,7 +108,7 @@ pub struct XorFenwick<D, T>:
         acc
 
     /// The xor of a range: `f.xor(l..=r)`, `f.xor(..i)`, `f.xor(i..)`. An empty range is zero.
-    pub fn xor(self, r: Range<D>) -> T = self.prefix(r.hi) ^ self.prefix(r.lo)
+    pub fn xor(self, r: Range<D>) -> T = self.prefix(r.end) ^ self.prefix(r.start)
 
 /// Point add and rectangle sum on a grid. `add` and `sum` are O(log R * log C);
 /// memory is (R + 1) * (C + 1) values.
@@ -240,7 +240,7 @@ pub struct RangeFenwick<D>:
     /// The sum of a range `r`. O(log n).
     pub fn sum(self, r: Range<D>) -> Int:
         let (lo, hi) = r.ends
-        if lo == hi: 0 else: self.prefix(r.hi) - self.prefix(r.lo)
+        if lo == hi: 0 else: self.prefix(r.end) - self.prefix(r.start)
 
 @test
 fn sums_match_a_plain_array():

@@ -25,7 +25,7 @@ pub struct Cover<Y>:
 
     /// Add `k` copies of the range `r` (`k = -1` removes one).
     pub fn add(mut self, r: Range<Y>, k: Int):
-        self.walk(1, 0, size, r.lo.ord, r.hi.ord, k)
+        self.walk(1, 0, size, r.start.ord, r.end.ord, k)
 
     /// The total width of the cells covered by at least one range.
     pub @get fn covered(self) -> Int = len[1]

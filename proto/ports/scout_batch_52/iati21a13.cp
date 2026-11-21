@@ -19,7 +19,7 @@ let init_on: [V]0..=1 = read()
 let q: Int = read()
 type Query = (ty: Int, u: V, k: Int)
 let queries: List<Query> = [
-    (ty: read::<Int>(), u: V(read::<Int>() - 1), k: read::<Int>())
+    (ty: read<Int>(), u: V(read<Int>() - 1), k: read<Int>())
     for _ in 0..q
 ]
 
@@ -69,7 +69,7 @@ if all_full:
                     bit.add(p, 1)
         else:
             let r = tree.sub(qry.u)
-            print(bit.sum(Pre(r.lo.idx)..=Pre(r.hi.idx)))
+            print(bit.sum(Pre(r.start.idx)..=Pre(r.end.idx)))
 else:
     var cur_val: [Pre]?Int = none
     for u in V if init_on[u] == 1: cur_val[Pre(tree.pos(u).idx)] = tree.depth(u)

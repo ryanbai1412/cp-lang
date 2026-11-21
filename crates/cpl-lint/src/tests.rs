@@ -1078,3 +1078,24 @@ fn getter_parens_lint_warns_and_drops_parens() {
         "let xs = [1, 2, 3]\nprint(xs.len, xs.is_empty, xs.first, xs.last, xs.rev, xs.items, xs.first(x => x > 1))\n"
     );
 }
+
+#[test]
+fn fix_rewrites_range_lo_hi_to_start_end_only_on_ranges() {
+    let src = "\
+struct Seg(lo: Int, hi: Int)
+let s = Seg(1, 5)
+let r = 2..=4
+print(s.lo, s.hi, r.lo, r.hi)
+";
+    let (out, applied) = crate::fix(src, &Config::default());
+    assert_eq!(applied, 2);
+    assert_eq!(
+        out,
+        "\
+struct Seg(lo: Int, hi: Int)
+let s = Seg(1, 5)
+let r = 2..=4
+print(s.lo, s.hi, r.start, r.end)
+"
+    );
+}

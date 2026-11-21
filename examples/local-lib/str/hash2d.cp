@@ -31,7 +31,7 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
 
     /// The hash of the cells in `rows` x `cols`.
     pub fn rect(self, rows: Range<R>, cols: Range<C>) -> Int:
-        let (r1, r2, c1, c2) = (rows.lo.ord, rows.hi.ord, cols.lo.ord, cols.hi.ord)
+        let (r1, r2, c1, c2) = (rows.start.ord, rows.end.ord, cols.start.ord, cols.end.ord)
         let (hr, hc) = (pow_r[r2 - r1], pow_c[c2 - c1])
         (pre[r2][c2] - pre[r1][c2] * hr - pre[r2][c1] * hc + pre[r1][c1] * hr * hc).v
 

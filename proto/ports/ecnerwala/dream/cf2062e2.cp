@@ -24,7 +24,7 @@ type Pre = t.Pre
 var heavier = SortedSet<Pre>()
 fn above_lca(x: V) -> ?V:
     let r = t.sub(x)
-    let (before, after) = (heavier.range(..r.lo), heavier.range(r.hi..))
+    let (before, after) = (heavier.range(..r.start), heavier.range(r.end..))
     let lo = (before.first ?? after.first)?
     let hi = (after.last ?? before.last)!
     t.lca(t.at(lo), t.at(hi))

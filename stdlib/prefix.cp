@@ -20,7 +20,7 @@ pub struct Prefix1<D, T>:
     pub fn prefix(self, b: Bounds<D>) -> T = self.p[b]
 
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty.
-    pub fn sum(self, r: Range<D>) -> T = if r.is_empty: T.zero else: self.p[r.hi] - self.p[r.lo]
+    pub fn sum(self, r: Range<D>) -> T = if r.is_empty: T.zero else: self.p[r.end] - self.p[r.start]
 
 /// Static 2-D prefix sums over domains `R` and `C`.
 pub struct Prefix2<R, C, T>:
@@ -38,9 +38,12 @@ pub struct Prefix2<R, C, T>:
     pub fn sum(self, rows: Range<R>, cols: Range<C>) -> T:
         if rows.is_empty or cols.is_empty: T.zero
         else:
-            self.p[rows.hi, cols.hi] - self.p[rows.lo, cols.hi] - self.p[rows.hi, cols.lo] + self.p[
-                rows.lo,
-                cols.lo,
+            self.p[rows.end, cols.end] - self.p[rows.start, cols.end] - self.p[
+                rows.end,
+                cols.start,
+            ] + self.p[
+                rows.start,
+                cols.start,
             ]
 
 /// Static prefix sums of a list or an array indexed by plain `Int`s
@@ -59,7 +62,10 @@ pub struct PrefixN<T>:
     pub fn prefix(self, k: Int) -> T = self.p[k]
 
     /// The sum of `a[i]` for `i` in `r`, or zero when `r` is empty.
-    pub fn sum(self, r: Range<Int>) -> T = if r.is_empty: T.zero else: self.p[r.hi] - self.p[r.lo]
+    pub fn sum(
+        self,
+        r: Range<Int>,
+    ) -> T = if r.is_empty: T.zero else: self.p[r.end] - self.p[r.start]
 
 /// Prefix sums of a list.
 pub fn prefix_n<T>(a: List<T>) -> PrefixN<T> = PrefixN<T>(a)
@@ -99,8 +105,8 @@ pub struct Diff1<D, T>:
     /// Add `x` to every position in `r`. O(1).
     pub fn add(mut self, r: Range<D>, x: T):
         if r.is_empty: return
-        d[r.lo] = d[r.lo] + x
-        d[r.hi] = d[r.hi] - x
+        d[r.start] = d[r.start] + x
+        d[r.end] = d[r.end] - x
 
     /// Materialize the accumulated values across `D`. O(n).
     pub fn finish(self) -> [D]T:
@@ -121,10 +127,10 @@ pub struct Diff2<R, C, T>:
     /// Add `x` to every cell in `rows` by `cols`. O(1).
     pub fn add(mut self, rows: Range<R>, cols: Range<C>, x: T):
         if rows.is_empty or cols.is_empty: return
-        d[rows.lo, cols.lo] = d[rows.lo, cols.lo] + x
-        d[rows.lo, cols.hi] = d[rows.lo, cols.hi] - x
-        d[rows.hi, cols.lo] = d[rows.hi, cols.lo] - x
-        d[rows.hi, cols.hi] = d[rows.hi, cols.hi] + x
+        d[rows.start, cols.start] = d[rows.start, cols.start] + x
+        d[rows.start, cols.end] = d[rows.start, cols.end] - x
+        d[rows.end, cols.start] = d[rows.end, cols.start] - x
+        d[rows.end, cols.end] = d[rows.end, cols.end] + x
 
     /// Materialize the accumulated grid across `(R, C)`. O(r * c).
     pub fn finish(self) -> [R, C]T:
@@ -186,7 +192,7 @@ fn prefix_and_suffix_folds_cover_outside_ranges():
             var want = Int.MIN
             for i in V:
                 if i < l or i > r: want max= a[i]
-            assert max(pref[range.lo], suff[range.hi]) == want
+            assert max(pref[range.start], suff[range.end]) == want
 
 @test
 fn diff1_and_diff2_match_brute():

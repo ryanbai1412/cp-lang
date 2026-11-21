@@ -557,17 +557,17 @@ pub fn compress<T>(all: List<T>):
 // ---- Range boundary cuts, keyed sorted lookup, ordered Map 4-lookups, and List/Array helpers
 
 /// Left boundary cut of a range (valid even when empty).
-pub @get fn l<D>(self: Range<D>) -> Bounds<D> = self.lo
+pub @get fn l<D>(self: Range<D>) -> Bounds<D> = self.start
 
 /// Right boundary cut of a range (valid even when empty).
-pub @get fn r<D>(self: Range<D>) -> Bounds<D> = self.hi
+pub @get fn r<D>(self: Range<D>) -> Bounds<D> = self.end
 
 /// The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.
 /// A range written backwards, `P(3)..P(1)`, stops the program here: no query silently answers
 /// as if it were empty. `l..l` is in order and empty.
 pub @get fn ends<D>(self: Range<D>) -> (Int, Int):
-    assert self.lo.ord <= self.hi.ord, "the range runs backwards: its end is before its start"
-    (self.lo.ord, self.hi.ord)
+    assert self.start.ord <= self.end.ord, "the range runs backwards: its end is before its start"
+    (self.start.ord, self.end.ord)
 
 /// First index in sorted `self` with `by(self[i]) > target`, or `none`. O(log n).
 pub fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:

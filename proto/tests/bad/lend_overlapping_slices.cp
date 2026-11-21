@@ -1,4 +1,4 @@
-// error: s.hi <= t.lo or t.hi <= s.lo
+// error: s.end <= t.start or t.end <= s.start
 let n: 2..=9 = read()
 domain V = 1..=n
 var a: [V]Int = read()
