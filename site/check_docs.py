@@ -18,6 +18,7 @@ from urllib.parse import unquote, urlsplit
 import mistune
 
 import build
+import cookbook
 import errors
 
 ROOT = Path(__file__).resolve().parent
@@ -317,6 +318,63 @@ def check_error_index():
     return verified
 
 
+def check_cookbook() -> tuple[int, int]:
+    """Verify every cookbook recipe port exists, passes `cpl check`, and matches samples."""
+    recipes = cookbook.all_recipes()
+    if not recipes:
+        sys.exit("check_docs: cookbook has 0 recipes")
+    seen: set[str] = set()
+    port_paths: list[str] = []
+    for _, port_name, _, _ in recipes:
+        if port_name in seen:
+            sys.exit(f"check_docs: duplicate cookbook recipe {port_name}")
+        seen.add(port_name)
+        p = cookbook.port_path(REPO, port_name)
+        if not p.is_file():
+            sys.exit(f"check_docs: cookbook port missing: {p.relative_to(REPO)}")
+        port_paths.append(str(p))
+
+    res = subprocess.run(
+        [str(CPL), "check", *port_paths],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    if res.returncode != 0:
+        sys.exit(f"check_docs: cookbook `cpl check` failed:\n{res.stderr}\n{res.stdout}")
+
+    samples_dir = REPO / "proto/ports/ecnerwala/samples"
+    sample_runs = 0
+    for _, port_name, _, _ in recipes:
+        p = cookbook.port_path(REPO, port_name)
+        if "@!interactive" in p.read_text():
+            continue
+        for inp in sorted(samples_dir.glob(f"{port_name}.*.in")):
+            out = inp.with_suffix(".out")
+            if not out.is_file():
+                continue
+            r = subprocess.run(
+                [str(CPL), "run", str(p)],
+                input=inp.read_text(),
+                cwd=REPO,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            if r.returncode != 0:
+                sys.exit(f"check_docs: cookbook sample {inp.name} failed:\n{r.stderr}")
+            got = "\n".join(line.rstrip() for line in r.stdout.strip().splitlines())
+            exp = "\n".join(line.rstrip() for line in out.read_text().strip().splitlines())
+            if got != exp:
+                sys.exit(
+                    f"check_docs: cookbook sample {inp.name} mismatch\n"
+                    f"  expected: {exp!r}\n  got:      {got!r}"
+                )
+            sample_runs += 1
+    return len(recipes), sample_runs
+
+
 def main():
     t0 = time.monotonic()
     if not CPL.is_file():
@@ -326,11 +384,13 @@ def main():
     ex_count, ex_cases = run_examples()
     ref_count, ref_cases = run_course_references()
     err_count = check_error_index()
+    cb_count, cb_runs = check_cookbook()
     page_count = check_links()
     ms = int((time.monotonic() - t0) * 1000)
     print(
         f"docs gate: {fence_count} cp fences, {ex_count} examples ({ex_cases} runs), "
         f"{ref_count} course refs ({ref_cases} runs), {err_count} error codes, "
+        f"{cb_count} cookbook recipes ({cb_runs} sample runs), "
         f"{page_count} HTML pages, cheat-sheet {cheat_lines}/250 lines — ok in {ms} ms"
     )
 

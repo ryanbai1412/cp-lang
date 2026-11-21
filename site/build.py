@@ -11,6 +11,7 @@ import shutil
 import mistune
 from course import catalog_html, exercise_html, load_lessons, progress_html
 from compiler import build_compiler, editor_html
+from cookbook import all_recipes, render_cookbook_html
 from errors import ERROR_CATALOG, error_slug, render_error_index_html, render_error_page_html
 from showcase import showcase_html
 
@@ -100,6 +101,13 @@ REFERENCE_PAGES = [
         "In practice",
         "Complete API reference for all std modules plus local library packaging and recipes.",
         "14 min",
+    ),
+    (
+        "cookbook",
+        "Cookbook from real ports",
+        "In practice",
+        "Real validated contest solutions organized by algorithm and data structure.",
+        f"{len(all_recipes())} recipes",
     ),
     (
         "cpp-guide",
@@ -341,6 +349,8 @@ def load_page_source(name):
         return intro + body, "docs/one-page-cheat-sheet.md"
     if name == "errors":
         return "", "site/errors.py"
+    if name == "cookbook":
+        return "", "site/cookbook.py"
     return (ROOT / "content" / f"{name}.md").read_text(), f"site/content/{name}.md"
 
 
@@ -355,6 +365,12 @@ def build():
         raw_source, source_path = load_page_source(name)
         if name == "errors":
             body = render_error_index_html()
+            toc = "".join(
+                f'<a href="#{m.group(1)}">{html.unescape(m.group(2))}</a>'
+                for m in re.finditer(r'<h2 id="([^"]+)">([^<]+)</h2>', body)
+            )
+        elif name == "cookbook":
+            body = render_cookbook_html(ROOT.parent, lambda src: highlight(src, "cp"))
             toc = "".join(
                 f'<a href="#{m.group(1)}">{html.unescape(m.group(2))}</a>'
                 for m in re.finditer(r'<h2 id="([^"]+)">([^<]+)</h2>', body)

@@ -1340,6 +1340,16 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   *Reversible:* move `site/errors.py` entries into Rust docstrings or a `cpl explain --dump` subcommand
   once `cpl explain` exists, keeping the same `error-<CODE>.html` URLs.
 
+- **24.3 Cookbook generated directly from validated ports (`site/cookbook.py`).**
+  `site/build.py` renders `cookbook.html` by reading live `.cp` sources from `proto/ports/ecnerwala/`
+  across 6 competitive programming categories (22 recipes covering trees/graphs, segment/Fenwick trees,
+  DP, math/combinatorics, binary search/greedy/interactive, strings/geometry). `site/check_docs.py`
+  verifies every referenced port exists, passes `cpl check`, and matches its sample cases via `cpl run`.
+  *Reason:* reading directly from `proto/ports/ecnerwala/` guarantees zero code duplication and keeps
+  cookbook recipes automatically tested under the corpus gate and fast docs gate.
+  *Reversible:* delete `site/cookbook.py` and its hook in `site/build.py` / `site/check_docs.py`, or
+  expand into per-category pages if the recipe count outgrows one page.
+
 ## 25. Stress testing and shrinking (0.2.2, 2026-11-21)
 
 - **25.1 `Perm<V>` and `Tree<V>` are stdlib types.** `std.seq.Perm<V> = [V]V` and
