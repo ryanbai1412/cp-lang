@@ -1,69 +1,64 @@
 // Codeforces 2115 C: Gellyfish and Eternal Violet.
-// To reduce all `n` monsters to HP 1 in `m` rounds (each round shines with
-// probability `p`, hitting all monsters for -1, or misses with probability `1 - p`,
-// hitting one chosen monster for -1), decompose required damage into:
-//   - `tot_all = min_h - 1` global -1 layers, and
-//   - `tot_ones = sum(h[i] - min_h)` excess single-target hits.
-// Solve in three phases:
-//   1. `endgames[k]` (`tot_ones == 0`): DP over `(i, j)` = `i` global layers left and
-//      `j` monsters still unchipped on the current layer; on a non-shine at `j == 0`
-//      and `i > 0`, either start chipping a new layer (`dp[i - 1, n - 1]`) or skip
-//      (`dp[i, 0]`), taking the max.
-//   2. `endgames2[k]` (`tot_all == 0`): shines are wasted, non-shines reduce `ones`.
-//   3. `win[ones, alls]`: while both > 0, shine drops `alls` and non-shine drops `ones`,
-//      anchored on `endgames` and `endgames2`.
+//
+// Track (s, k): s shines still needed and k single hits still needed. At the
+// start s = min(h) - 1, the layers every monster loses together, and
+// k = sum(h) - n * min(h), the hits that level the taller monsters. A shine
+// lowers s and a miss is spent on a single hit, lowering k. A shine with
+// s = 0 needed changes nothing. The one real choice is a miss at k = 0 with
+// s > 0: start a new layer by hitting one monster (s - 1, and the other n - 1
+// now need a hit each), or wait for a shine.
+//
+// While s > 0 and k > 0 every round makes progress, so with
+// slack = m - (s0 + k0) spare rounds the rounds left are slack + s + k and
+// need no dimension: `win(k, s)` is a plain recurrence. It leaves that region
+// at k = 0 (`level[s]`) or s = 0 (`flat[k]`), where rounds can be wasted. Each
+// edge is a DP over r rounds left, read off at r = slack + s or slack + k.
 @!multitest
 let n: 1..=20 = read()
 let m: 1..=4_000 = read()
 let p100: 0..=100 = read()
 let p = F64(p100) / 100.0
-let h: [0..n]1..=400 = read()
+let hp: [0..n]1..=400 = read()
 
-let min_h = h.min()!
-let tot_ones = h.sum() - n * min_h
-let tot_all = min_h - 1
-let needed = tot_ones + tot_all
-if needed > m:
-    print(0.0)
-    return
+let shines = hp.min()! - 1
+let singles = hp.sum() - n * hp.min()!
+let slack = m - shines - singles
+if slack < 0: return print(0.0)
 
-fn capture_idx(step: Int, floor: Int) -> ?Int:
-    let rem = m - step
-    if rem in floor..=needed: some(needed - rem) else: none
+// Both edges of the (k, s) region are diagonals of a DP over rounds left:
+// the chance from entry i is read after slack + i rounds.
+fn diagonal<T>(size: Int, var dp: T, step: T -> T, at: (T, Int) -> F64) -> List<F64>:
+    var out: List<F64> = []
+    for r in 0..=slack + size:
+        if r >= slack: out.push(at(dp, r - slack))
+        dp = step(dp)
+    out
 
-var endgames: [0..=tot_all]F64 = 0.0
-var dp: [0..=tot_all, 0..n]F64 = 0.0
-var ndp: [0..=tot_all, 0..n]F64 = 0.0
-dp[0, 0] = 1.0
-for step in 0..=m:
-    if let idx = capture_idx(step, tot_ones): endgames[idx] = dp[idx, 0]
-    for i in 0..=tot_all:
-        for j in 0..n:
-            let on_shine = if i > 0: dp[i - 1, j] else: dp[0, j]
-            let on_miss = if j > 0:
-                dp[i, j - 1]
-            elif i > 0:
-                max(dp[i - 1, n - 1], dp[i, 0])
-            else:
-                1.0
-            ndp[i, j] = p * on_shine + (1.0 - p) * on_miss
-    swap(mut dp, mut ndp)
+// lv[s, k]: chance from (s, k < n) with r rounds left. A miss at k = 0 either
+// starts a new layer, (s - 1, n - 1), or waits for a shine, (s, 0).
+fn round(lv: [0..=shines, 0..n]F64) -> [0..=shines, 0..n]F64 =
+    [0..=shines, 0..n] (s, k) => p * lv[max(s - 1, 0), k] + (1.0 - p) * miss(lv, s, k)
+fn miss(lv: [0..=shines, 0..n]F64, s: 0..=shines, k: 0..n) -> F64 =
+    if k > 0: lv[s, k - 1]
+    elif s > 0: max(lv[s - 1, n - 1], lv[s, 0])
+    else: 1.0
+var lv0: [0..=shines, 0..n]F64 = 0.0
+lv0[0, 0] = 1.0
+let level = diagonal(shines, lv0, round, (lv, s) => lv[s, 0])
 
-var endgames2: [0..=tot_ones]F64 = 0.0
-var dp2: [0..=tot_ones]F64 = 0.0
-var ndp2: [0..=tot_ones]F64 = 0.0
-dp2[0] = 1.0
-for step in 0..=m:
-    if let idx = capture_idx(step, tot_all): endgames2[idx] = dp2[idx]
-    for i in 0..=tot_ones:
-        let on_miss = if i > 0: dp2[i - 1] else: dp2[0]
-        ndp2[i] = p * dp2[i] + (1.0 - p) * on_miss
-    swap(mut dp2, mut ndp2)
+// fl[k]: with no shine needed, the chance of k misses in r rounds.
+var fl0: [0..=singles]F64 = 0.0
+fl0[0] = 1.0
+let flat = diagonal(
+    singles,
+    fl0,
+    fl => [0..=singles] k => p * fl[k] + (1.0 - p) * fl[max(k - 1, 0)],
+    (fl, k) => fl[k],
+)
 
-var win: [0..=tot_ones, 0..=tot_all]F64 = 0.0
-for j in 0..=tot_all: win[0, j] = endgames[j]
-for i in 0..=tot_ones: win[i, 0] = endgames2[i]
-for i in 1..=tot_ones:
-    for j in 1..=tot_all:
-        win[i, j] = p * win[i, j - 1] + (1.0 - p) * win[i - 1, j]
-print(win[tot_ones, tot_all])
+@memo
+fn win(k: 0..=singles, s: 0..=shines) -> F64 =
+    if k == 0: level[s]
+    elif s == 0: flat[k]
+    else: p * win(k, s - 1) + (1.0 - p) * win(k - 1, s)
+print(win(singles, shines))
