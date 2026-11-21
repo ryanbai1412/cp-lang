@@ -603,3 +603,17 @@ fn a_top_level_loop_hides_no_name_written_below_it() {
     let src = "var i = 5\ni += 1\nfor i in 0..3:\n    print(i)\n";
     assert_eq!(codes(src), vec!["L0203"]);
 }
+
+/// Below `@!multitest` every name belongs to one test, and a fn above the
+/// line can't name it: a local of that fn hides nothing.
+#[test]
+fn a_local_above_multitest_hides_nothing_below_it() {
+    let helper = "fn helper(k: Int) -> Int:\n    let n = k * 2\n    var total = 0\n    for i in 0..n: total += i\n    total\n";
+    let tests = "let n: Int = read()\nlet total = helper(n)\nprint(total)\n";
+    assert_eq!(codes(&format!("{helper}@!multitest\n{tests}")), Vec::<&str>::new());
+    // Without the line, and for a fn below it, the names are in reach.
+    assert_eq!(codes(&format!("{helper}{tests}")), ["L0203", "L0203"]);
+    assert_eq!(codes(&format!("@!multitest\n{helper}{tests}")), ["L0203", "L0203"]);
+    // What is above the line is still hidden by a local of a fn above it.
+    assert_eq!(codes(&format!("let n = 3\n{helper}@!multitest\nlet total = helper(n)\nprint(total)\n")), ["L0203"]);
+}

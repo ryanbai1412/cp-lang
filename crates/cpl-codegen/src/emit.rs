@@ -153,6 +153,9 @@ pub(crate) struct Emitter<'p> {
     /// iterator that already stands on the entry, so `m[k]` is not
     /// looked up a second time.
     pub found: Vec<(Expr, Expr, String)>,
+    /// `(list, index)` slots of the loops being written whose index
+    /// walks `0..list.len` over a list the body leaves at that length.
+    pub inside: Vec<(usize, usize)>,
     /// How deep the statement being written is indented.
     pub indent: usize,
 }
@@ -209,6 +212,7 @@ impl<'p> Emitter<'p> {
             pushing: None,
             bodies: Vec::new(),
             found: Vec::new(),
+            inside: Vec::new(),
             indent: 0,
         };
         let feeds = cpl_ir::pushed::Feeds::of(program);

@@ -35,6 +35,8 @@ struct Scopes<'a> {
     current_var: Option<usize>,
     /// How many `fn` bodies enclose the walk.
     fns: usize,
+    /// Where `@!multitest` stands, if the file has it.
+    divider: Option<u32>,
     findings: Vec<Finding>,
 }
 
@@ -115,7 +117,10 @@ impl Visitor for Scopes<'_> {
             // A fn can name a top-level `let` written below it, so there a
             // later one is hidden too. Top-level code runs in order: a loop
             // that ends before `var i` is written hides nothing.
-            let in_reach = |b: &&Binding| self.fns > 0 || b.span.start < span.start;
+            // What is below `@!multitest` belongs to one test: a fn above
+            // the line can't name it, so hides nothing there.
+            let per_test = |b: &&Binding| self.divider.is_some_and(|at| span.start < at && at < b.span.start);
+            let in_reach = |b: &&Binding| (self.fns > 0 && !per_test(b)) || b.span.start < span.start;
             if let Some(hidden) = hidden.filter(|b| b.top_level).filter(in_reach) {
                 let what = match how {
                     Bind::Param => "parameter",
@@ -208,6 +213,11 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         vars: Vec::new(),
         current_var: None,
         fns: 0,
+        divider: file
+            .src
+            .match_indices("@!multitest")
+            .find(|(at, _)| file.src[..*at].rsplit('\n').next().is_some_and(|before| before.trim().is_empty()))
+            .map(|(at, _)| at as u32),
         findings: Vec::new(),
     };
     let mut top = TopLevel {

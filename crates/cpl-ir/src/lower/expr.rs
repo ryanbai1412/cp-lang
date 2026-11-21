@@ -3254,6 +3254,10 @@ impl<'a> Lowerer<'a> {
                     self.guard(and, guards);
                 }
             }
+            ast::Cond::Guard { test, and } => {
+                guards.push((Vec::new(), self.expect(test, &Ty::Bool), Vec::new()));
+                self.guard(and, guards);
+            }
             ast::Cond::Const(c) => self.unsupported(c.span, "`if const` in a comprehension"),
         }
     }

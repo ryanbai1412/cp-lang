@@ -2813,36 +2813,10 @@ impl<'a> Lowerer<'a> {
                 self.cx.present.truncate(mark);
                 out.push(Stmt::If(cond, then, Block { stmts: els }));
             }
-            ast::Cond::Let { pat, value, and } => {
-                let Some((present, inner)) = self.optional(value, "if let", out) else {
-                    return;
-                };
+            ast::Cond::Let { .. } | ast::Cond::Guard { .. } => {
                 let mut els = Vec::new();
                 self.if_chain(rest, otherwise, tail, &mut els);
-                self.cx.scopes.push(HashMap::new());
-                let mut then = Vec::new();
-                self.bind(pat, inner, &mut then);
-                if let Some(and_cond) = and {
-                    let sub_branch = vec![((**and_cond).clone(), body.clone())];
-                    let els_clone = els.clone();
-                    let mut inner_out = Vec::new();
-                    self.if_chain(&sub_branch, None, tail, &mut inner_out);
-                    // Attach fallback `els` if the `and` condition fails.
-                    if let Some(Stmt::If(_, _, ref mut inner_els)) = inner_out.last_mut() {
-                        if inner_els.stmts.is_empty() {
-                            inner_els.stmts = els_clone;
-                        }
-                    }
-                    then.extend(inner_out);
-                } else {
-                    then.extend(self.block(body, tail).stmts);
-                }
-                self.cx.scopes.pop();
-                out.push(Stmt::If(
-                    present,
-                    Block { stmts: then },
-                    Block { stmts: els },
-                ));
+                self.clause_chain(cond, body, tail, &els, out);
             }
             // `if const`: the test is settled here, and only the branch
             // it picks is lowered, so the other costs nothing at run time.
@@ -2908,6 +2882,81 @@ impl<'a> Lowerer<'a> {
         Some((present, inside))
     }
 
+    /// The clauses of `if let a = x, let b = y, a < b:` after the first
+    /// branch's `else` is known: each clause is tried only when those
+    /// before it held, and the first that fails goes to `els`.
+    fn clause_chain(&mut self, cond: &ast::Cond, body: &ast::Block, tail: Tail, els: &[Stmt], out: &mut Vec<Stmt>) {
+        let els = || Block { stmts: els.to_vec() };
+        match cond {
+            ast::Cond::Expr(test) => {
+                let test = self.expect(test, &Ty::Bool);
+                let mark = self.cx.present.len();
+                let mutators = self.mutators.clone();
+                let held = narrow::in_branch(cond, body, &mut |f, x| mutators.writes(f, x));
+                self.cx.present.extend(held.into_iter().map(String::from));
+                let then = self.block(body, tail);
+                self.cx.present.truncate(mark);
+                out.push(Stmt::If(test, then, els()));
+            }
+            ast::Cond::Guard { test, and } => {
+                let test = self.expect(test, &Ty::Bool);
+                let mut then = Vec::new();
+                self.clause_chain(and, body, tail, els().stmts.as_slice(), &mut then);
+                out.push(Stmt::If(test, Block { stmts: then }, els()));
+            }
+            ast::Cond::Let { pat, value, and } => {
+                let Some((present, inner)) = self.optional(value, "if let", out) else {
+                    return;
+                };
+                self.cx.scopes.push(HashMap::new());
+                let mut then = Vec::new();
+                self.bind(pat, inner, &mut then);
+                match and {
+                    Some(and) => self.clause_chain(and, body, tail, els().stmts.as_slice(), &mut then),
+                    None => then.extend(self.block(body, tail).stmts),
+                }
+                self.cx.scopes.pop();
+                out.push(Stmt::If(present, Block { stmts: then }, els()));
+            }
+            ast::Cond::Const(c) => self.unsupported(c.span, "`const` after another clause of a condition"),
+        }
+    }
+
+    /// The clauses of a `while let`, at the top of the loop's body: the
+    /// first that fails leaves the loop. False when one could not be read.
+    fn while_clauses(&mut self, cond: &ast::Cond, stmts: &mut Vec<Stmt>) -> bool {
+        let leave_unless = |lw: &mut Self, holds: Expr, stmts: &mut Vec<Stmt>| {
+            let span = holds.span;
+            let fails = lw.mk(ExprKind::Unary(UnOp::Not, Box::new(holds)), Ty::Bool, Span::new(0, 0));
+            let fails = Expr { span, ..fails };
+            stmts.push(Stmt::If(fails, Block { stmts: vec![Stmt::Break(None)] }, Block::default()));
+        };
+        match cond {
+            ast::Cond::Expr(test) => {
+                let test = self.expect(test, &Ty::Bool);
+                leave_unless(self, test, stmts);
+                true
+            }
+            ast::Cond::Guard { test, and } => {
+                let test = self.expect(test, &Ty::Bool);
+                leave_unless(self, test, stmts);
+                self.while_clauses(and, stmts)
+            }
+            ast::Cond::Let { pat, value, and } => {
+                let Some((present, inner)) = self.optional(value, "while let", stmts) else {
+                    return false;
+                };
+                leave_unless(self, present, stmts);
+                self.bind(pat, inner, stmts);
+                and.as_ref().is_none_or(|and| self.while_clauses(and, stmts))
+            }
+            ast::Cond::Const(c) => {
+                self.unsupported(c.span, "`const` in a `while` condition");
+                false
+            }
+        }
+    }
+
     fn while_stmt(&mut self, cond: &ast::Cond, body: &ast::Block, out: &mut Vec<Stmt>) {
         match cond {
             ast::Cond::Expr(cond) => {
@@ -2917,72 +2966,16 @@ impl<'a> Lowerer<'a> {
                 self.cx.loops.pop();
                 out.push(Stmt::While(id, cond, body));
             }
-            ast::Cond::Let { pat, value, and } => {
+            ast::Cond::Let { .. } | ast::Cond::Guard { .. } => {
                 let id = self.open_loop(None);
                 self.cx.scopes.push(HashMap::new());
                 let mut stmts = Vec::new();
-                if let Some((present, inner)) = self.optional(value, "while let", &mut stmts) {
-                    let span = present.span;
-                    let absent = Expr {
-                        kind: ExprKind::Unary(UnOp::Not, Box::new(present)),
-                        ty: Ty::Bool,
-                        span,
-                    };
-                    stmts.push(Stmt::If(
-                        absent,
-                        Block {
-                            stmts: vec![Stmt::Break(None)],
-                        },
-                        Block::default(),
-                    ));
-                    self.bind(pat, inner, &mut stmts);
-                    if let Some(and_cond) = and {
-                        match &**and_cond {
-                            ast::Cond::Expr(c) => {
-                                let c = self.expect(c, &Ty::Bool);
-                                let not_c = Expr {
-                                    kind: ExprKind::Unary(UnOp::Not, Box::new(c)),
-                                    ty: Ty::Bool,
-                                    span,
-                                };
-                                stmts.push(Stmt::If(
-                                    not_c,
-                                    Block {
-                                        stmts: vec![Stmt::Break(None)],
-                                    },
-                                    Block::default(),
-                                ));
-                            }
-                            ast::Cond::Let {
-                                pat: p2,
-                                value: v2,
-                                ..
-                            } => {
-                                if let Some((pr2, in2)) = self.optional(v2, "while let", &mut stmts)
-                                {
-                                    let ab2 = Expr {
-                                        kind: ExprKind::Unary(UnOp::Not, Box::new(pr2)),
-                                        ty: Ty::Bool,
-                                        span,
-                                    };
-                                    stmts.push(Stmt::If(
-                                        ab2,
-                                        Block {
-                                            stmts: vec![Stmt::Break(None)],
-                                        },
-                                        Block::default(),
-                                    ));
-                                    self.bind(p2, in2, &mut stmts);
-                                }
-                            }
-                            ast::Cond::Const(_) => {}
-                        }
-                    }
+                if self.while_clauses(cond, &mut stmts) {
                     stmts.extend(self.block(body, Tail::Discard).stmts);
                 }
                 self.cx.scopes.pop();
                 self.cx.loops.pop();
-                let always = self.mk(ExprKind::Bool(true), Ty::Bool, value.span);
+                let always = self.mk(ExprKind::Bool(true), Ty::Bool, body.span);
                 out.push(Stmt::While(id, always, Block { stmts }));
             }
             ast::Cond::Const(cond) => self.unsupported(cond.span, "`while const`"),
@@ -3329,6 +3322,7 @@ fn uses_as_optional(name: &str, stmts: &[ast::Stmt]) -> bool {
                     || in_expr(name, value)
                     || and.as_ref().is_some_and(|a| in_cond(name, a))
             }
+            ast::Cond::Guard { test, and } => in_expr(name, test) || in_cond(name, and),
             ast::Cond::Expr(e) | ast::Cond::Const(e) => in_expr(name, e),
         }
     }

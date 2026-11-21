@@ -288,6 +288,9 @@ impl<'p> Emitter<'p> {
                     Ty::Map(..) | Ty::HashMap(..) if !store => format!("{b}.at({})", at.join(", ")),
                     Ty::List(_) if matches!(base.kind, PlaceKind::Global(id) if self.program.raw_lists.contains(&id)) => format!("{b}[{}]", at[0]),
                     Ty::List(_) if matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _)) => format!("{b}[{}]", at[0]),
+                    Ty::List(_) if matches!((&base.kind, &indices[0].kind), (PlaceKind::Local(list), ExprKind::Local(i)) if self.inside.contains(&(*list, *i))) => {
+                        format!("{b}[{}]", at[0])
+                    }
                     Ty::List(_) => {
                         self.need("at");
                         format!("cpl::at({b}, {})", at.join(", "))
@@ -551,7 +554,8 @@ impl<'p> Emitter<'p> {
                 operands.extend(indices.iter());
                 let base_ty = &base.ty;
                 let raw_list = matches!(base.kind, ExprKind::Global(id) if self.program.raw_lists.contains(&id))
-                    || matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _));
+                    || matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _))
+                    || matches!((&base.kind, &indices[0].kind), (ExprKind::Local(list), ExprKind::Local(i)) if self.inside.contains(&(*list, *i)));
                 let checked = !proven(indices);
                 if (matches!(base_ty, Ty::List(_)) && !raw_list)
                     || (checked && matches!(base_ty, Ty::Array { .. } | Ty::Str))

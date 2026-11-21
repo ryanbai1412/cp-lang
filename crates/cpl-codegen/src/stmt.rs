@@ -912,7 +912,12 @@ impl<'p> Emitter<'p> {
                 self.line(out, &format!("while ({cond}) {{"));
                 self.loop_body(*id, &[], body, out);
             }
-            Stmt::For(id, slot, iter, body) => self.for_stmt(*id, *slot, iter, body, out),
+            Stmt::For(id, slot, iter, body) => {
+                let inside = walk::inside_list(*slot, iter, body, self.locals());
+                self.inside.extend(inside);
+                self.for_stmt(*id, *slot, iter, body, out);
+                self.inside.truncate(self.inside.len() - usize::from(inside.is_some()));
+            }
             Stmt::Return(None) if self.in_setup => self.line(out, "return false;"),
             Stmt::Return(None) => self.line(out, "return;"),
             Stmt::Return(Some(value)) | Stmt::Give(value) => {

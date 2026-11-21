@@ -513,13 +513,13 @@ impl<'a> Parser<'a> {
         };
         // `for x in xs if cond:` runs the body for the `x` that pass: the
         // body is an `if`.
-        let filter = self.eat(T::If).then(|| (self.start(), self.expr()));
+        let filter = self.eat(T::If).then(|| (self.start(), self.cond()));
         let mut body = self.colon_block("the `for` header");
         if let Some((start, cond)) = filter {
-            let span = Span::new(start, body.span.end.max(cond.span.end));
+            let span = self.span_from(start);
             let test = Expr {
                 kind: ExprKind::If {
-                    branches: vec![(Cond::Expr(cond), body)],
+                    branches: vec![(cond, body)],
                     otherwise: None,
                 },
                 span,
@@ -759,10 +759,10 @@ impl<'a> Parser<'a> {
             let value = self.not();
             let comma = self.at(T::Comma);
             let and = (self.eat(T::And) || self.eat(T::Comma)).then(|| {
-                Box::new(if self.at(T::Let) {
+                Box::new(if comma {
+                    self.more_clauses()
+                } else if self.at(T::Let) {
                     self.cond()
-                } else if comma {
-                    Cond::Expr(self.or())
                 } else {
                     Cond::Expr(self.and())
                 })
@@ -773,7 +773,24 @@ impl<'a> Parser<'a> {
             self.bump();
             return Cond::Const(self.expr());
         }
-        Cond::Expr(self.expr())
+        let test = self.expr();
+        if self.eat(T::Comma) {
+            return Cond::Guard { test, and: Box::new(self.more_clauses()) };
+        }
+        Cond::Expr(test)
+    }
+
+    /// What follows a `,` in a condition: `let`s and whole tests, any
+    /// number, each holding only if those before it did.
+    fn more_clauses(&mut self) -> Cond {
+        if self.at(T::Let) {
+            return self.cond();
+        }
+        let test = self.or();
+        if self.eat(T::Comma) {
+            return Cond::Guard { test, and: Box::new(self.more_clauses()) };
+        }
+        Cond::Expr(test)
     }
 
     /// Parses `: block`. `after` names what the colon follows.

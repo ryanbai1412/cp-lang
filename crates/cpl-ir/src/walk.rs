@@ -1,5 +1,6 @@
 //! Walking the direct sub-expressions of an expression.
 
+use crate::{Builtin, Local, Slot, Ty};
 use crate::{Arg, Block, DimSpec, Expr, ExprKind, FmtPiece, Iter, Place, PlaceKind, Spec, Stmt};
 use std::collections::BTreeSet;
 
@@ -347,4 +348,42 @@ pub fn has_give(stmts: &[Stmt]) -> bool {
         stmt_blocks(stmt, &mut |inner| found |= has_give(&inner.stmts));
         found
     })
+}
+
+/// `for i in 0..xs.len:` over a local list `xs` that keeps its length
+/// for the whole loop: gives `(xs, i)`, and `xs[i]` in the body is inside
+/// the list without a check.
+///
+/// The body may store to cells of `xs`. It may not store to `xs` whole or
+/// to `i`, grow or shrink `xs`, or call a fn or make a closure: `xs` can
+/// be a parameter that names a list the callee reaches another way.
+pub fn inside_list(slot: Slot, iter: &Iter, body: &Block, locals: &[Local]) -> Option<(Slot, Slot)> {
+    let Iter::Range { lo, hi, step, .. } = iter else {
+        return None;
+    };
+    let from_zero = matches!(lo.kind, ExprKind::Int(lo) if lo >= 0);
+    let forward = step.as_ref().is_none_or(|step| matches!(step.kind, ExprKind::Int(step) if step > 0));
+    let ExprKind::Builtin(Builtin::Len, of) = &hi.kind else {
+        return None;
+    };
+    let [Expr { kind: ExprKind::Local(list), .. }] = of.as_slice() else {
+        return None;
+    };
+    let list = *list;
+    if !from_zero || !forward || !matches!(locals[list].ty, Ty::List(_)) || locals[slot].ty != Ty::Int {
+        return None;
+    }
+    let whole = |place: &Place| matches!(place.kind, PlaceKind::Local(at) if at == list || at == slot);
+    let mut kept = true;
+    deep_stmts(body, &mut |stmt| match stmt {
+        Stmt::Assign(place, ..) => kept &= !whole(place),
+        Stmt::Let(at, _) | Stmt::For(_, at, ..) => kept &= *at != list && *at != slot,
+        _ => {}
+    });
+    deep_exprs(body, &mut |e| match &e.kind {
+        ExprKind::Call(..) | ExprKind::CallExpr(..) | ExprKind::Closure(_) => kept = false,
+        ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, ..) => kept &= !whole(place),
+        _ => {}
+    });
+    kept.then_some((list, slot))
 }

@@ -567,6 +567,11 @@ impl<'a> Checker<'a> {
             Cond::Const(expr) => {
                 self.infer(expr);
             }
+            Cond::Guard { test, and } => {
+                let ty = self.infer(test);
+                self.require_bool(&ty, test, "the condition");
+                self.cond(and);
+            }
             Cond::Let { pat, value, and } => {
                 let ty = match self.infer_optional(value) {
                     Ty::Optional(inner) => *inner,

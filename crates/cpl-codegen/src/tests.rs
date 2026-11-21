@@ -482,3 +482,28 @@ fn an_optional_tuple_with_a_position_has_no_flag() {
     // No `Int` of a tuple is free to say `none`.
     assert!(cpp.contains("std::optional<std::tuple<ll, ll>> plain"), "{cpp}");
 }
+
+/// `for j in 0..b.len:` in a fn indexes `b[j]` with no check, as `L0414`
+/// promises, as long as the body leaves `b` at that length.
+#[test]
+fn a_loop_to_the_length_of_a_list_indexes_it_unchecked() {
+    let dot = |body: &str| {
+        cpp(&format!(
+            "fn grow(mut xs: List<Int>): xs.push(0)\n\
+             fn dot(a: List<Int>, mut b: List<Int>) -> Int:\n    var s = 0\n    for j in 0..b.len:\n{body}    s\n\
+             var ys = [3, 4]\nprint(dot([1, 2], mut ys))\n"
+        ))
+    };
+    let kept = dot("        s += a[0] * b[j]\n        b[j] += 1\n");
+    assert!(kept.contains("s += cpl::at(a, 0) * b[j];"), "{kept}");
+    assert!(kept.contains("b[j] += 1;"), "{kept}");
+    for body in [
+        "        s += b[j]\n        if s > 9: b.pop()\n",
+        "        s += b[j]\n        grow(mut b)\n",
+        "        s += b[j]\n        b = [1]\n",
+        "        s += b[j + 1]\n",
+    ] {
+        let out = dot(body);
+        assert!(out.contains("cpl::at(b, j"), "{body}: {out}");
+    }
+}

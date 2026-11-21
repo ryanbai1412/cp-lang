@@ -260,6 +260,12 @@ pub enum Cond {
         /// condition, or another `let`.
         and: Option<Box<Cond>>,
     },
+    /// `if a == 1, let b = p:`: a test, then after the `,` what must
+    /// also hold.
+    Guard {
+        test: Expr,
+        and: Box<Cond>,
+    },
     /// `if const D.max_len <= 64:`.
     Const(Expr),
 }

@@ -25,6 +25,10 @@ pub fn walk_block(block: &Block, v: &mut dyn Visitor) {
 fn walk_cond(cond: &Cond, v: &mut dyn Visitor) {
     match cond {
         Cond::Expr(expr) | Cond::Const(expr) => walk_expr(expr, v),
+        Cond::Guard { test, and } => {
+            walk_expr(test, v);
+            walk_cond(and, v);
+        }
         Cond::Let { pat, value, and } => {
             v.pattern(pat);
             walk_expr(value, v);

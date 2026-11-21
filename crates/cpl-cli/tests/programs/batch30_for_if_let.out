@@ -1,0 +1,13 @@
+0 4
+2 6
+3 9
+big 2 6
+big 3 9
+pair 2 6 9
+pair 3 9 4
+odd 1
+odd 3
+late 2 6
+late 3 9
+19
+8 -1

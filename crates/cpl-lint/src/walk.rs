@@ -200,6 +200,10 @@ fn walk_args(v: &mut dyn Visitor, args: &[Arg]) {
 fn walk_cond(v: &mut dyn Visitor, cond: &Cond) {
     match cond {
         Cond::Expr(expr) | Cond::Const(expr) => walk_expr(v, expr),
+        Cond::Guard { test, and } => {
+            walk_expr(v, test);
+            walk_cond(v, and);
+        }
         Cond::Let { pat, value, and } => {
             walk_expr(v, value);
             walk_pattern(v, pat, Bind::Pattern);
