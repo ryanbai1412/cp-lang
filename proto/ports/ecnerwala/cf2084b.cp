@@ -1,14 +1,10 @@
+use std.seq.{argmin}
+
 @!multitest
 let n: Int = read()
 let a: [0..n]Int = read()
-var mn = a[0]
-for i in 1..n:
-    mn min= a[i]
-var skipped = false
+let p = argmin(a)!
+let mn = a[p]
 var g = 0
-for i in 0..n:
-    if a[i] == mn and not skipped:
-        skipped = true
-    elif a[i] % mn == 0:
-        g = gcd(g, a[i])
+for i in 0..n if i != p and a[i] % mn == 0: g = gcd(g, a[i])
 print(if g == mn: "Yes" else: "No")

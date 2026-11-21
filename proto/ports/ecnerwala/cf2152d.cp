@@ -1,12 +1,11 @@
+use std.prefix.{prefix_n}
+
 @!multitest
 let (n, q): (Int, Int) = read()
 let a: [0..n]Int = read()
-var cnt_ops: [0..=n]Int = 0
-var cnt_trade: [0..=n]Int = 0
-for i in 0..n:
-    cnt_ops[i + 1] = cnt_ops[i] + bit_width(a[i] - 1)
-    cnt_trade[i + 1] = cnt_trade[i] + (if a[i] == 2: 1 else: bit_width(a[i] - 2))
+let cnt_ops = prefix_n([bit_width(x - 1) for x in a])
+let cnt_trade = prefix_n([if x == 2: 1 else: bit_width(x - 2) for x in a])
+
 for _ in 0..q:
-    let (l1, r): (Int, Int) = read()
-    let l = l1 - 1
-    print((cnt_trade[r] - cnt_trade[l] + cnt_ops[r] - cnt_ops[l]) / 2)
+    let (l, r): (Int, Int) = read()
+    print((cnt_trade.sum(l - 1..r) + cnt_ops.sum(l - 1..r)) / 2)
