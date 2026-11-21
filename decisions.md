@@ -2127,3 +2127,37 @@ Reverse: delete the step from `scripts/check.sh`.
   3-callback combinator, while sliding extrema and nearest-smaller/larger are
   universal, sentinel-prone patterns. Reverse: add or remove individual helpers
   in `stdlib/seq.cp`.
+
+## 42. Range structures stdlib (`design/stdlib/ranges.md`, §4.10, 2026-11-21)
+
+- **42.1 `DualSegTree<D, T, F>` is its own type, not a mode on `LazySegTree`.**
+  Range-apply + point-get needs no fold monoid, no `pull`, and no `span`
+  array (`cf2255e2` friction). Putting it on `LazySegTree` forces a fake
+  monoid and wastes half the work. It pushes top-down by default so
+  non-commutative tags are always sound. Reverse: fold into `LazySegTree`.
+- **42.2 `DualFenwick<D, T>` and `RangeFenwick<D>` are separate types from
+  `Fenwick<D, T>`.** Adding `range_add` onto `Fenwick` would let a user
+  call `sum(r)` on a difference-array Fenwick and get nonsense. Separate
+  types make the invariant unbreakable. Reverse: drop the types and add
+  a helper method.
+- **42.3 `fill: ?T = none` is a named constructor argument on `SegTree.new`,
+  `LazySegTree.new`, and `DualSegTree.new`.** Follows the named-option
+  rule instead of adding `.filled(...)` variants, and avoids allocating a
+  throwaway `[D]T` array for constant-initialized DP trees (`cf2207f`
+  friction). Reverse: remove the parameter.
+- **42.4 `prefix_fold` and `suffix_fold` return `[D.bounds]T`, not `List<T>`.**
+  Querying everything outside `r: Range<D>` is `m.op(pref[r.lo],
+  suff[r.hi])` with zero `.ord` / `.ord + 1` arithmetic (`cf2062e2`
+  friction). Coordinates with 41.3 so the pair lives in one module
+  (`std.prefix` or `std.seq`, not duplicated). Reverse: return a wrapper struct.
+- **42.5 `MaxSub` lives in `std.algebra` and implements `Reversible`.**
+  Kadane's 4-field summary is the most repeated custom monoid in the
+  corpus (`cf2255e2`), and `Reversible` makes tree-path max-subarray
+  queries work with `Rooted.fold_path`. Reverse: move to a separate
+  module or local-lib.
+- **42.6 Algebra stays value-based (`Monoid`, `Action`); static dispatch is
+  left to the core lane.** Moving `Monoid`/`Action` to traits waits on
+  associated constants (decision 26.4), and removing `std::function`
+  overhead is a general closure-monomorphization pass in `cpl-codegen`,
+  not a stdlib-specific hack. Reverse: switch to traits once associated
+  constants land.

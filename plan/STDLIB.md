@@ -672,7 +672,9 @@ struct Marks<D> // O(1)
 ### 4.10 Range structures
 
 Modules `std.algebra`, `std.fenwick`, `std.prefix`, `std.segtree`,
-`std.lazy` and `std.sparse`.
+`std.lazy`, `std.sparse`, plus [new] `std.window`, `std.mo`, and advanced
+structures (`std.persistent`, `std.lichao`, `std.beats`, `std.mergesort`).
+Full design, contest survey, laws and exemplars: `design/stdlib/ranges.md`.
 
 The algebra is values, not traits: a `Monoid<T>` is an identity and an
 operation, an `Action<T, F>` a monoid of tags acting on one of values.
@@ -691,15 +693,31 @@ struct Desc<T>(x: T)
 fn desc<T>(x: T) -> Desc<T>
 trait Reversible
 fn fold<T, M>(m: M, xs: List<T>) -> T
+struct MaxSub(has: Bool, best: Int, total: Int, pre: Int, suf: Int) // [new] O(1), Reversible
+    const empty: MaxSub
+    fn of(v: Int) -> MaxSub
+    fn join(a: MaxSub, b: MaxSub) -> MaxSub           // `+`
+    fn scale(self, k: Int) -> MaxSub                  // `*`, k >= 0
+    @get fn try_best(self) -> ?Int
+    fn monoid() -> Monoid<MaxSub>
 struct Fenwick<D, T> // O(n), O(log n)
-    fn new(a: ?[D]T
+    fn new(a: ?[D]T = none) -> Fenwick<D, T>
     fn add(mut self, i: D, x: T)
     fn prefix(self, b: Bounds<D>) -> T
     fn sum(self, r: Range<D>) -> T
     fn lower_bound(self, target: Int) -> ?Bounds<D> // O(log n)
     fn kth(self, k: Int) -> ?D // O(log n)
+struct DualFenwick<D, T> // [new] range add, point get; O(n), O(log n)
+    fn new(a: ?[D]T = none) -> DualFenwick<D, T>
+    fn add(mut self, r: Range<D>, x: T)
+    fn get(self, i: D) -> T
+struct RangeFenwick<D> // [new] range add, range sum (Int); O(n), O(log n)
+    fn new(a: ?[D]Int = none) -> RangeFenwick<D>
+    fn add(mut self, r: Range<D>, x: Int)
+    fn prefix(self, b: Bounds<D>) -> Int
+    fn sum(self, r: Range<D>) -> Int
 struct XorFenwick<D, T> // O(n), O(log n)
-    fn new(a: ?[D]T
+    fn new(a: ?[D]T = none) -> XorFenwick<D, T>
     fn flip(mut self, i: D, x: T)
     fn prefix(self, b: Bounds<D>) -> T
     fn xor(self, r: Range<D>) -> T
@@ -721,8 +739,18 @@ struct PrefixN<T>
 fn prefix_n<T>(a: List<T>) -> PrefixN<T>
 fn prefix1<D, T>(a: [D]T) -> Prefix1<D, T>
 fn prefix2<R, C, T>(a: [R, C]T) -> Prefix2<R, C, T>
+fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.bounds]T // [new] O(n)
+fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.bounds]T // [new] O(n)
+struct Diff1<D, T> // [new] offline 1D range add; O(1) add, O(n) finish
+    fn new() -> Diff1<D, T>
+    fn add(mut self, r: Range<D>, x: T)
+    fn finish(self) -> [D]T
+struct Diff2<R, C, T> // [new] offline 2D rect add; O(1) add, O(r * c) finish
+    fn new() -> Diff2<R, C, T>
+    fn add(mut self, rows: Range<R>, cols: Range<C>, x: T)
+    fn finish(self) -> [R, C]T
 struct SegTree<D, T>(m: Monoid<T>) // O(log n)
-    fn new<M>(op: M, a: ?[D]T // O(n)
+    fn new<M>(op: M, a: ?[D]T = none, fill: ?T = none) -> SegTree<D, T> // O(n)
     fn of<M>(op: M, f: D -> T) -> SegTree<D, T> // O(n)
     fn refresh(mut self, i: D) // O(log n)
     fn get(self, i: D) -> T
@@ -734,7 +762,7 @@ struct SegTree<D, T>(m: Monoid<T>) // O(log n)
     fn max_right(self, from: Bounds<D>, ok: T -> Bool) -> Bounds<D>
     fn min_left(self, to: Bounds<D>, ok: T -> Bool) -> Bounds<D>
 struct LazySegTree<D, T, F>(act: Action<T, F>) // O(log n), O(1)
-    fn new(act: Action<T, F>, a: ?[D]T // O(n)
+    fn new(act: Action<T, F>, a: ?[D]T = none, fill: ?T = none) -> LazySegTree<D, T, F> // O(n)
     fn set(mut self, i: D, x: T)
     fn update(mut self, i: D, f: T -> T) // O(log n)
     fn get(mut self, i: D) -> T
@@ -744,17 +772,53 @@ struct LazySegTree<D, T, F>(act: Action<T, F>) // O(log n), O(1)
     fn apply(mut self, r: Range<D>, f: F)
     fn max_right(mut self, from: Bounds<D>, ok: T -> Bool) -> Bounds<D>
     fn min_left(mut self, to: Bounds<D>, ok: T -> Bool) -> Bounds<D>
+struct DualSegTree<D, T, F> // [new] range apply, point get; no monoid or pulls; O(log n)
+    fn new(id: F, compose: (F, F) -> F, apply: (F, T) -> T,
+           a: ?[D]T = none, fill: ?T = none) -> DualSegTree<D, T, F> // O(n)
+    fn apply(mut self, r: Range<D>, f: F)
+    fn get(mut self, i: D) -> T
+    fn set(mut self, i: D, x: T)
+    fn update(mut self, i: D, f: T -> T)
 const AddSum = Action<Int, Int>(0, +, (f, x, len) => x + f * len, over: +)
 const AddMin = Action<Int, Int>(0, +, (f, x, len) => x + f, over: min)
 const AddMax = Action<Int, Int>(0, +, (f, x, len) => x + f, over: max)
 const AssignSum: Action<Int, ?Int>   // assign over sum
 const AssignMin: Action<Int, ?Int>   // assign over min
 const AssignMax: Action<Int, ?Int>   // assign over max
-struct SparseTable<D, T>(op: (T, T) -> T) // O(n log n), O(1)
+const AffineSum: Action<Int, (Int, Int)> // [new] (mul, add) over sum
+fn affine_sum<T>() -> Action<T, (T, T)>  // [new] generic (Int, Mod<P>)
+struct SparseTable<D, T>(op: (T, T) -> T) // O(n log n), O(1) idempotent
     fn new(op: (T, T) -> T, a: [D]T) -> SparseTable<D, T>
     fn fold(self, r: Range<D>) -> T // O(1)
+struct DisjointSparseTable<D, T>(op: (T, T) -> T) // [new] O(n log n), O(1) any semigroup
+    fn new(op: (T, T) -> T, a: [D]T) -> DisjointSparseTable<D, T>
+    fn fold(self, r: Range<D>) -> T // O(1)
 fn idempotent<T>(op: (T, T) -> T, xs: List<T>) -> Bool
+struct MonoDeque<T> // [new] O(1) amortized sliding-window min/max
+    fn new(pick: (T, T) -> T) -> MonoDeque<T>
+    fn by(better: (T, T) -> Bool) -> MonoDeque<T>
+    @get fn len(self) -> Int
+    @get fn is_empty(self) -> Bool
+    @get fn best(self) -> ?T
+    fn clear(mut self)
+    fn push(mut self, at: Int, val: T)
+    fn drop_before(mut self, min_at: Int)
+struct WindowFold<T>(m: Monoid<T>) // [new] O(1) amortized inverse-free queue fold
+    fn new<M>(op: M) -> WindowFold<T>
+    @get fn len(self) -> Int
+    @get fn is_empty(self) -> Bool
+    @get fn fold(self) -> T
+    fn push(mut self, x: T)
+    fn pop(mut self) -> ?T
+fn mo_order<D>(queries: List<Range<D>>) -> List<Int> // [new] O(q log q)
+fn mo_steps<D>(from: Range<D>, to: Range<D>) -> yields (pos: D, entering: Bool) // [new]
 ```
+
+Planned Phase 2 additions (see `design/stdlib/ranges.md` §3.8):
+`MergeSortTree<D, T>`, `SparseSegTree<T>`, `PersistentSegTree<D, T>` +
+`Version` + `RangeKth<D>`, `LiChao` + `LiChaoTag<V>` (with `add_segment`),
+`BeatsSegTree<D>` (`chmin`/`chmax`/`add`), and `TimeTree<T, E>` (offline
+time-interval divide-and-conquer).
 
 ### 4.11 `std.graph`, `std.tree`, `std.tour`: graphs and trees
 
