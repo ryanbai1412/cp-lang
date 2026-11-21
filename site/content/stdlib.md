@@ -173,7 +173,7 @@ type DynamicZ = Mod<p>
 
 - **`Mod<P>` (`std.mod`):** 4-byte storage when `P <= 2^31 - 1`, `+`, `-`, `*`, `/`, `**`, `.pow(e)`, `.inv` (also written `.inv()`), `.try_inv() -> ?Z` (for composite moduli), `.val -> Int`. Intentionally omits `Ord`.
 - **`Comb<P>()` (`std.mod`):** `.fact(n)`, `.inv_fact(n)`, `.choose(n, k)`, `.arrange(n, k)` (an immutable `let comb = Comb<MOD>()` extends its tables lazily).
-- **Number theory (`std.math`):** `gcd`, `lcm`, `ext_gcd`, `isqrt`, `ceil_div`, `pow_mod`, `Sieve(n)` (`.is_prime`, `.spf`, `.primes`), `factor(n)`, `divisors(n)`.
+- **Number theory (`std.math`):** `gcd`, `lcm`, `ext_gcd`, `isqrt`, `ceil_div`, `pow_mod`, `Sieve(n)` (method `sv.is_prime(x)`, method `sv.factor(x)`, list fields `sv.spf[x]` and `sv.primes`), `factor(n)`, `divisors(n)`.
 - **Exact geometry (`std.geometry`):** `Pt<T = Int>` with `.dot`, `.cross`, `.norm2`, `orient(a, b, c)` (`-1 | 0 | 1`), `turn`, `turn_eps`, and `ByAngle` for exact integer angular sorting.
 
 ## Local libraries & advanced contest structures

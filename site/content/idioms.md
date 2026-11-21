@@ -1,0 +1,155 @@
+Gold-standard CP Lang solutions read like the editorial: the header states the invariant in two to five lines, each index space has one `domain`, each bound or modulus is written once, and standard structures are named rather than re-derived inline. Every snippet below is checked by `cpl check` and `cpl build` in the gate.
+
+## 1. One fact in one place: bounds, domains, and moduli
+
+Write every constraint and modulus once at the top of the solution (`const`, `type Z = Mod<...>`, `domain`), then let types carry bounds through every array and loop:
+
+```cp CP Lang
+const LIM = 200_000
+type Z = Mod<998_244_353>
+
+let n = 5
+domain V = 1..=n
+let a: [V]Int = [1, 2, 3, 4, 5]
+var total: Z = 0
+for v in V:
+    total += a[v]
+print(total)
+```
+
+When a problem has two distinct index spaces (items vs cuts, rows vs columns, vertices vs edges), give each its own `domain` so swapping them is a compile-time error (`E0301`), not a silent WA:
+
+```cp CP Lang
+domain Item = 1..=3
+domain Cut = 0..=3
+let weight: [Item]Int = [4, 7, 2]
+var pref: [Cut]Int = 0
+for i in Item:
+    let k = i.ord
+    pref[Cut(k + 1)] = pref[Cut(k)] + weight[i]
+print(pref[Cut(3)])
+```
+
+## 2. Searches and reductions instead of flag loops
+
+Prefer `any`, `all`, `sum`, `count`, `min`, and `max` over manual boolean flags and accumulator loops (enforced by lints `L0501`, `L0504`, `L0505`):
+
+```cp CP Lang
+let xs: List<Int> = [3, 8, 2, 9, 5]
+let has_big = any(x > 7 for x in xs)
+let all_pos = all(x > 0 for x in xs)
+let evens = count(x % 2 == 0 for x in xs)
+let total = sum(x for x in xs)
+print(has_big, all_pos, evens, total)
+```
+
+Use `for x in xs where cond:` to filter cleanly without extra nesting, and `xs.pairs` / `zip` / `enumerate` instead of `for i in 0..xs.len:`:
+
+```cp CP Lang
+let xs: List<Int> = [2, 5, 4, 9]
+let asc = count(a < b for (a, b) in xs.pairs)
+let pos_sum = sum(x for x in xs where x >= 4)
+print(asc, pos_sum)
+```
+
+## 3. Zero-sentinel optionals (`?T`) and `min=` / `max=`
+
+Never invent `-1` or `1e18` sentinels. Use `?Int` with `min=` / `max=`, `if let`, `??`, and early-return `let x = opt ?? return`:
+
+```cp CP Lang
+fn best_even(xs: List<Int>) -> ?Int:
+    var best: ?Int = none
+    for x in xs where x % 2 == 0:
+        best max= x
+    best
+
+print(best_even([1, 3, 5]) ?? -1)
+print(best_even([1, 4, 9, 2]) ?? -1)
+```
+
+## 4. Grids without `dx` / `dy` boilerplate
+
+Model grid coordinates as `(Row, Col)`. Every cell automatically exposes in-bounds `.adj4` and `.adj8` neighbors with zero manual bounds checks:
+
+```cp CP Lang
+let (h, w) = (2, 3)
+domain Row = 0..h
+domain Col = 0..w
+var deg = 0
+for r in Row:
+    for c in Col:
+        for (nr, nc) in (r, c).adj4:
+            deg += 1
+print(deg)
+```
+
+## 5. Sorting, heaps, bags, and frequency tables
+
+Use key functions with `desc(...)` for multi-key sorting, `MinHeap` / `MaxHeap` for priority queues, `SortedBag` for multisets (`remove_one`), and `HashMap` where `m[k]` returns `V` directly (auto-inserting the default on miss — never apply `??` or `!` to `m[k]`) while `m.get(k)` returns `?V`:
+
+```cp CP Lang
+var pts: List<(Int, Int)> = [(2, 5), (1, 3), (2, 1)]
+sort(mut pts, by: p => (p.0, desc(p.1)))
+
+var freq: HashMap<Int, Int> = HashMap()
+for (x, _) in pts:
+    freq[x] += 1
+
+var h: MinHeap<Int> = MinHeap()
+for x in [7, 2, 9]:
+    h.push(x)
+print(pts[0].0, pts[0].1, freq[2], h.pop() ?? -1)
+```
+
+## 6. Binary search and prefix sums
+
+Use integer binary search on a monotone predicate with explicit `lo`/`hi` invariants, or `lower_bound` / `upper_bound` on sorted lists:
+
+```cp CP Lang
+// First x in 1..=100 whose square is at least 50.
+var lo = 1
+var hi = 100
+while lo < hi:
+    let mid = lo + (hi - lo) / 2
+    if mid * mid >= 50:
+        hi = mid
+    else:
+        lo = mid + 1
+print(lo)
+```
+
+## 7. Standard data structures: DSU, Fenwick, and Segment Trees
+
+Import battle-tested data structures from `std.*` instead of re-deriving them inline:
+
+```cp CP Lang
+use std.dsu.Dsu
+use std.fenwick.Fenwick
+
+domain V = 1..=4
+var dsu = Dsu<V>()
+let _ = dsu.unite(V(1), V(2))
+let _ = dsu.unite(V(2), V(3))
+
+var bit = Fenwick<V>()
+bit.add(V(1), 5)
+bit.add(V(3), 7)
+print(dsu.same(V(1), V(3)), dsu.same(V(1), V(4)), bit.prefix(V(3).after))
+```
+
+## 8. Quick idiom reference
+
+| Pattern | Idiomatic CP Lang |
+| --- | --- |
+| Read `n` and 1-based array | `let n: 1..=2e5 = read()`, `domain V = 1..=n`, `let a: [V]Int = read()` |
+| Read unknown-length line or string | `let s: Str = read()` (ASCII bytes: `s[i]` is `Char`, `s[i] - 'a'` is `Int`) |
+| Convert integer `n` to string | `"{n}"` (or `std.math.digits(n)` for base-10 digits) |
+| Print space-separated values | `print(a, b)` or `print(x, end: " ")` |
+| Print `YES` / `NO` | `print(if ok: "YES" else: "NO")` (colons, never `then` or Python `a if c else b`) |
+| Clear array between test cases | `a.fill(0)` or `seen.fill(none)` (or `Marks<D>` for `O(1)` clear) |
+| Swap two variables or elements | `swap(mut a, mut b)` for variables; `arr.swap(i, j)` for two array elements (never `swap(mut arr[i], mut arr[j])`) |
+| Adjacent pairs in a list | `for (a, b) in xs.pairs:` |
+| Reverse iteration | `for i in (0..n).rev:` or `for v in V.rev:` |
+| Free math functions | `abs(x)`, `min(a, b)`, `max(a, b)`, `gcd(a, b)`, `lcm(a, b)` |
+| Multi-test file | `@!multitest` above per-case code; `return` exits current test case |
+| Stress-test against brute force | Add `@brute` + `@gen` in the same `.cp` file and run `cpl stress` |

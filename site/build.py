@@ -124,6 +124,13 @@ REFERENCE_PAGES = [
         "C++17-to-CP-Lang translation guide, emitted memory layouts, and zero-overhead escape hatches.",
         "10 min",
     ),
+    (
+        "idioms",
+        "Idioms",
+        "In practice",
+        "Gold-standard CP Lang idioms: domains, optionals, reductions, grids, and stdlib structures.",
+        "10 min",
+    ),
 ]
 
 LESSONS = load_lessons()
