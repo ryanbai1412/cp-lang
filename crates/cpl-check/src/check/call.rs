@@ -92,7 +92,7 @@ impl<'a> Checker<'a> {
         }
         let base_ty = self.quietly(|c| c.infer(base));
         if base_ty.seq_elem().is_some()
-            && matches!(name.text.as_str(), "len" | "is_empty" | "first" | "last")
+            && matches!(name.text.as_str(), "len" | "is_empty" | "first" | "last" | "rev")
         {
             return Some(self.infer(callee));
         }

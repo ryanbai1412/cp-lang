@@ -1703,6 +1703,10 @@ impl<'p> Emitter<'p> {
                     self.need("list_view");
                     Code::primary(format!("cpl::list_rev({})", text(0)))
                 }
+                Some(Ty::Array { dims, .. }) if dims.len() == 1 => {
+                    self.need("list_view");
+                    Code::primary(format!("cpl::list_rev({})", text(0)))
+                }
                 _ => helper(self, "reversed"),
             },
             Builtin::StrSlice => {

@@ -1267,13 +1267,23 @@ impl<'a> Checker<'a> {
             }
             return Ty::Error;
         }
-        // `s.rev`, `xs.rev`: O(1) read-only reverse view over a string or list.
-        if name.text == "rev"
-            && (base_ty == Ty::Str
-                || matches!(&base_ty, Ty::Named { name: list, args } if list == "List" && args.len() == 1))
-        {
-            self.note_readonly_view(expr, "reverse view");
-            return base_ty;
+        // `s.rev`, `xs.rev`, `a.rev`: O(1) read-only reverse view over a string, list, or 1D domain array.
+        if name.text == "rev" {
+            if base_ty == Ty::Str
+                || matches!(&base_ty, Ty::Named { name: list, args } if list == "List" && args.len() == 1)
+            {
+                self.note_readonly_view(expr, "reverse view");
+                return base_ty;
+            }
+            if let Ty::Array { index, elem } = &base_ty {
+                if index.len() == 1 {
+                    self.note_readonly_view(expr, "reverse view");
+                    return Ty::Named {
+                        name: "List".into(),
+                        args: vec![(**elem).clone()],
+                    };
+                }
+            }
         }
         // `xs.items`: each element with its index, a position of `I` for
         // `[I]T` and an `Int` otherwise.

@@ -3490,9 +3490,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
                 Value::StrView(view) => Value::StrView(Rc::new(view.reversed())),
                 Value::Array(arr) => {
-                    let mut items = arr.to_values();
-                    items.reverse();
-                    Value::List(Rc::new(items))
+                    Value::ListView(Rc::new(ListViewVal::whole(Rc::new(arr.to_values()), true)))
                 }
                 other => other,
             },

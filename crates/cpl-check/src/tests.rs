@@ -2394,6 +2394,36 @@ fn slice_and_reverse_views_are_readonly_and_cannot_outlive_mutated_base() {
         )),
         Vec::<&str>::new()
     );
+
+    // First-class `.rev` view on a 1D domain array: valid value, E0602 on base mutation, E0603 on escape.
+    assert_eq!(
+        codes(concat!(
+            "domain Node = 1..=3\n",
+            "struct Tree(at: [Node]Int)\n",
+            "let a: [Node]Int = [Node] i => i.ord\n",
+            "let t = Tree(a)\n",
+            "let post = t.at.rev\n",
+            "print(post.len, post[0])\n",
+        )),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes(concat!(
+            "domain Node = 1..=3\n",
+            "var a: [Node]Int = [Node] i => i.ord\n",
+            "let v = a.rev\n",
+            "a[Node.first!] = 9\n",
+            "print(v[0])\n",
+        )),
+        ["E0602"]
+    );
+    assert_eq!(
+        codes(concat!(
+            "domain Node = 1..=3\n",
+            "fn leak(xs: [Node]Int) -> List<Int>:\n    xs.rev\n",
+        )),
+        ["E0603"]
+    );
 }
 
 #[test]

@@ -3750,6 +3750,11 @@ impl<'a> Lowerer<'a> {
                 let value = self.hoist_view_base(value, span);
                 builtin(self, Builtin::Reversed, vec![value], Ty::ListView(Box::new(elem)))
             }
+            (Ty::Array { dims, elem }, "rev") if dims.len() == 1 => {
+                let elem = (**elem).clone();
+                let value = self.hoist_view_base(value, span);
+                builtin(self, Builtin::Reversed, vec![value], Ty::ListView(Box::new(elem)))
+            }
             (Ty::Range(_), "rev") => self.reversed_range(value, span),
             (Ty::List(_) | Ty::ListView(_) | Ty::Str | Ty::StrView, "adjacent") => {
                 self.lower_adjacent(value, span)
@@ -6082,6 +6087,15 @@ impl<'a> Lowerer<'a> {
                 let elem = (**elem).clone();
                 self.find_first(value, elem, &args[0].value, span)
             }
+            (Ty::Array { dims, elem }, "rev") if dims.len() == 1 && args.is_empty() => {
+                let elem = (**elem).clone();
+                let value = self.hoist_view_base(value, span);
+                self.mk(
+                    ExprKind::Builtin(Builtin::Reversed, vec![value]),
+                    Ty::ListView(Box::new(elem)),
+                    span,
+                )
+            }
             // A sequence walked backwards is something to loop over. As a
             // value it would be the sequence unchanged, which is not what
             // `.rev()` says.
@@ -6399,6 +6413,17 @@ impl<'a> Lowerer<'a> {
                     Ty::Range(Box::new(Ty::Pos(id))),
                     span,
                 )
+            }
+            "rev" => {
+                let range = self.mk(
+                    ExprKind::Range {
+                        lo: Box::new(self.int_lit(0, span)),
+                        hi: Box::new(len),
+                    },
+                    Ty::Range(Box::new(Ty::Pos(id))),
+                    span,
+                );
+                self.reversed_range(range, span)
             }
             other => {
                 self.unsupported(name.span, &format!("`.{other}` of a domain as a value"));

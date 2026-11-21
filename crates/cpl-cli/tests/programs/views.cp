@@ -72,3 +72,27 @@ left = []
 right = []
 left.push(7)
 print(left, right.len)
+
+// First-class .rev view over a 1D domain array (and struct-held domain array)
+domain Node = 1..=4
+struct Holder(at: [Node]Int)
+let arr: [Node]Int = [Node] i => (i.ord + 1) * 10
+let arr_rev = arr.rev
+print(arr_rev.len, arr_rev[0], arr_rev[3], arr_rev.first!, arr_rev.last!)
+var arr_acc = 0
+for x in arr_rev:
+    arr_acc = arr_acc * 100 + x
+print(arr_acc)
+print(arr_rev.rev.to_list())
+print(arr.rev()[1..3].to_list())
+let h = Holder(arr)
+let post = h.at.rev
+var post_sum = 0
+for x in post:
+    post_sum = post_sum * 100 + x
+print(post_sum, post.len)
+let node_rev = Node.rev
+var node_sum = 0
+for u in node_rev:
+    node_sum = node_sum * 10 + u.ord + 1
+print(node_sum)
