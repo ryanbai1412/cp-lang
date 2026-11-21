@@ -1,5 +1,3 @@
-use std.prefix.{prefix_n}
-
 @!multitest
 let (n, q): (Int, Int) = read()
 let a: [0..n]Int = read()

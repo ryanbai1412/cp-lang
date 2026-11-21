@@ -1,8 +1,6 @@
 // Universal Cup 5 Stage 2 (EPS) E: a cut after position i is good when two of
 // the three rankings have the same set of contestants in their first i+1
 // places; the answer is the number of good cuts plus one.
-use std.seq.{scan}
-
 @!multitest
 let n: 1..=2e5 = read()
 domain P = 1..=n

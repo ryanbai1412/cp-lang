@@ -1,5 +1,3 @@
-use std.math.{Sieve}
-
 @!multitest
 let n: Int = read()
 let sieve = Sieve.new(n)

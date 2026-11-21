@@ -1,8 +1,6 @@
 // UCup 4 Stage 24 (Wulin) F: scan prefix sums mod R right-to-left, maintaining
 // the farthest last-occurrence among all R residues via a lazy max-heap and
 // querying the minimum valid next DP state with a monotonic deque.
-use std.prefix.{prefix1}
-
 @!multitest
 let (n, r): (Int, Int) = read()
 let a: [0..n]Int = read()

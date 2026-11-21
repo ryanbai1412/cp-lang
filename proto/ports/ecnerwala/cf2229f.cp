@@ -1,7 +1,5 @@
 // Codeforces 2229 F: remove the maximum element, then binary search over all
 // subset sums with a bitmask DP verifying K disjoint blocks of sum >= thresh.
-use std.seq.{max_by}
-
 @!multitest
 let (n, k): (Int, Int) = read()
 let a_in: [0..n]Int = read()

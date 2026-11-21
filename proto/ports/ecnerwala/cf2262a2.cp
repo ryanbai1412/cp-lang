@@ -3,8 +3,6 @@
 // j < a[i].  `need[lo]` is the smallest right end of a must-hit interval
 // starting at or after lo; ways[i] counts valid choices whose smallest chosen
 // point is i, so the next chosen point must be below need[i].
-use std.prefix.{prefix1}
-
 const MOD = 1e9 + 7
 type Z = Mod<MOD>
 

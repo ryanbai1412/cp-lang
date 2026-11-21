@@ -1,5 +1,3 @@
-use std.seq.{min_by}
-
 @!multitest
 let (n, q): (Int, Int) = read()
 var a: [0..n]Int = read()

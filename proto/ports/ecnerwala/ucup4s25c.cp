@@ -1,7 +1,7 @@
 // UCup 4 Stage 25 (Zagreb) C: build the directed graph of ordered adjacent
 // pairs across all 6 permutations of each input triple, compute SCCs, and
 // check whether any intra-SCC edge violates BFS depth + 1 (mod 3).
-use std.graph.{bfs, directed_of_pairs, scc}
+use std.graph.{directed_of_pairs}
 use std.seq.{get_or_insert_with}
 
 @!multitest

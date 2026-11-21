@@ -1,5 +1,3 @@
-use std.seq.{max_by}
-
 @!multitest
 let (n0, q): (Int, Int) = read()
 let a: [0..n0]Int = read()

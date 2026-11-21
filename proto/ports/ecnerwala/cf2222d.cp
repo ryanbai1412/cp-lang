@@ -1,7 +1,5 @@
 // Codeforces 2222 D: sort prefix sums of A[0..N-1] and assign descending ranks
 // 1..N to their indices.
-use std.prefix.{prefix_n}
-
 @!multitest
 let n: Int = read()
 let a: [0..n]Int = read()

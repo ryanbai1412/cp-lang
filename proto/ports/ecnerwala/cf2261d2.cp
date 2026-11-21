@@ -2,8 +2,6 @@
 // over its range, so two positions hash alike exactly when the same
 // restrictions cover both. Equal neighbours in position order force a cut
 // between them; the cuts are then paired up into intervals.
-use std.seq.{scan}
-
 @!multitest
 let (n, m): (1..=2e5, 0..=2e5) = read()
 var diff: [0..=n]Int = 0

@@ -1,5 +1,3 @@
-use std.prefix.{prefix_n}
-
 const MOD = 1_000_000_007
 type Z = Mod<MOD>
 let comb = Comb<MOD>()

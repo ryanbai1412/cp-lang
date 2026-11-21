@@ -1,7 +1,5 @@
 // Codeforces 2262 A1: a[i] = floor(x / i) confines x to [a[i]*i, (a[i]+1)*i).
 // Mark each bucket with a difference array and list the uncovered positions.
-use std.seq.{scan}
-
 @!multitest
 let n: 1..=2e5 = read()
 let a: [1..=n]Int = read()

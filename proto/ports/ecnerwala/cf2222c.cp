@@ -1,7 +1,5 @@
 // Codeforces 2222 C: find the global median, then partition into the maximum
 // number of odd-length segments each having that same median via O(N^2) DP.
-use std.prefix.{prefix_n}
-
 @!multitest
 let n: Int = read()
 let a: [0..n]Int = read()
