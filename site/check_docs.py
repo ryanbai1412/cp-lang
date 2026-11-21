@@ -387,6 +387,32 @@ def check_stdlib_module_coverage() -> int:
     return len(modules)
 
 
+def check_ports_gallery() -> tuple[int, int]:
+    """Verify ports gallery parses research/PORTS.md and renders CP + dream + C++ panels."""
+    import ports_gallery
+
+    _, rows = ports_gallery.parse_ports_md(REPO)
+    if not rows:
+        sys.exit("check_docs: ports gallery parsed 0 rows from research/PORTS.md")
+    dreams = 0
+    for row in rows:
+        if row["cp_rel"] and not (REPO / row["cp_rel"]).is_file():
+            sys.exit(f"check_docs: ports gallery missing .cp file {row['cp_rel']}")
+        if row["dream_rel"]:
+            if not (REPO / row["dream_rel"]).is_file():
+                sys.exit(f"check_docs: ports gallery missing dream file {row['dream_rel']}")
+            dreams += 1
+    page = ROOT / "_build/ports.html"
+    if not page.is_file():
+        sys.exit("check_docs: missing generated site/_build/ports.html")
+    html_text = page.read_text()
+    if "ports-card" not in html_text or "Accepted C++" not in html_text:
+        sys.exit("check_docs: ports.html missing expected side-by-side cards")
+    if dreams > 0 and "ports-pane-dream" not in html_text:
+        sys.exit("check_docs: ports.html missing dream comparison panes")
+    return len(rows), dreams
+
+
 def main():
     t0 = time.monotonic()
     if not CPL.is_file():
@@ -398,13 +424,16 @@ def main():
     err_count = check_error_index()
     cb_count, cb_runs = check_cookbook()
     stdlib_mods = check_stdlib_module_coverage()
+    ports_total, ports_dreams = check_ports_gallery()
     page_count = check_links()
     ms = int((time.monotonic() - t0) * 1000)
     print(
         f"docs gate: {fence_count} cp fences, {ex_count} examples ({ex_cases} runs), "
         f"{ref_count} course refs ({ref_cases} runs), {err_count} error codes, "
-        f"{cb_count} cookbook recipes ({cb_runs} sample runs), {stdlib_mods} stdlib modules, "
-        f"{page_count} HTML pages, cheat-sheet {cheat_lines}/250 lines — ok in {ms} ms"
+        f"{cb_count} cookbook recipes ({cb_runs} sample runs), "
+        f"{ports_total} gallery ports ({ports_dreams} with dream), "
+        f"{stdlib_mods} stdlib modules, {page_count} HTML pages, "
+        f"cheat-sheet {cheat_lines}/250 lines — ok in {ms} ms"
     )
 
 

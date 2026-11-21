@@ -13,6 +13,7 @@ from course import catalog_html, exercise_html, load_lessons, progress_html
 from compiler import build_compiler, editor_html
 from cookbook import all_recipes, render_cookbook_html
 from errors import ERROR_CATALOG, error_slug, render_error_index_html, render_error_page_html
+from ports_gallery import render_ports_gallery_html
 from showcase import showcase_html
 
 ROOT = Path(__file__).resolve().parent
@@ -108,6 +109,13 @@ REFERENCE_PAGES = [
         "In practice",
         "Real validated contest solutions organized by algorithm and data structure.",
         f"{len(all_recipes())} recipes",
+    ),
+    (
+        "ports",
+        "Ports gallery (CP / dream / C++)",
+        "In practice",
+        "Side-by-side comparison of validated CP Lang ports, dream programs, and accepted C++.",
+        "gallery",
     ),
     (
         "cpp-guide",
@@ -351,6 +359,8 @@ def load_page_source(name):
         return "", "site/errors.py"
     if name == "cookbook":
         return "", "site/cookbook.py"
+    if name == "ports":
+        return "", "site/ports_gallery.py"
     return (ROOT / "content" / f"{name}.md").read_text(), f"site/content/{name}.md"
 
 
@@ -371,6 +381,16 @@ def build():
             )
         elif name == "cookbook":
             body = render_cookbook_html(ROOT.parent, lambda src: highlight(src, "cp"))
+            toc = "".join(
+                f'<a href="#{m.group(1)}">{html.unescape(m.group(2))}</a>'
+                for m in re.finditer(r'<h2 id="([^"]+)">([^<]+)</h2>', body)
+            )
+        elif name == "ports":
+            body = render_ports_gallery_html(
+                ROOT.parent,
+                lambda src: highlight(src, "cp"),
+                lambda src: highlight(src, "cpp"),
+            )
             toc = "".join(
                 f'<a href="#{m.group(1)}">{html.unescape(m.group(2))}</a>'
                 for m in re.finditer(r'<h2 id="([^"]+)">([^<]+)</h2>', body)

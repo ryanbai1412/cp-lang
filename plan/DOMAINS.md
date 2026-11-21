@@ -416,29 +416,29 @@ built from hundreds of real validated ports, interactive lessons that teach
 by solving, and a browser playground that runs the interpreter, C++17
 preview, trace viewer and a judge — every single code block and example
 executed in the gate so documentation never drifts.
-**Where we are.** Static site generator (`site/build.py`, 25 chapters + 62
-individual error/lint pages + playground + trace = 89 HTML pages: 10-lesson
-course with 51 checked exercises, 14 reference pages including canonical
-`docs/one-page-cheat-sheet.md`, `errors.html`, and `cookbook.html`), WASM
-playground (23 presets), canonical trace viewer, and offline bundle
-(`dist/cp-lang.html`, 1.96 MB < 2.6 MB cap). 104/104 doc `cp` fences, 22/22
-`site/examples/*.cp`, 10/10 course write-code refs, 62/62 diagnostic/lint codes,
-22/22 cookbook recipes pulled live from `proto/ports/ecnerwala/`,
-and 24/24 non-prelude `stdlib/*.cp` modules are verified in
-`scripts/check.sh --fast` via `site/check_docs.py`. Writable-from-docs harness
-(`scripts/writable-from-docs.py` + `scripts/test_writable_from_docs.py`, report
-in `research/writable-from-docs.md`) audited 10 unseen statements from
+**Where we are.** Static site generator (`site/build.py`, 26 chapters + 63
+individual error/lint pages + playground + trace = 91 HTML pages: 10-lesson
+course with 51 checked exercises, 15 reference pages including canonical
+`docs/one-page-cheat-sheet.md`, `errors.html`, `cookbook.html`, and
+`ports.html`), WASM playground (23 presets), canonical trace viewer, and
+offline bundle (`dist/cp-lang.html`, 1.99 MB < 2.6 MB cap). 104/104 doc `cp`
+fences, 22/22 `site/examples/*.cp`, 10/10 course write-code refs, 63/63
+diagnostic/lint codes, 22/22 cookbook recipes, 67 gallery ports (11 with
+side-by-side CP / dream / C++ panes from `research/PORTS.md` and
+`proto/ports/<group>/dream/`), and 24/24 non-prelude `stdlib/*.cp` modules are
+verified in `scripts/check.sh --fast` via `site/check_docs.py`.
+Writable-from-docs harness (`scripts/writable-from-docs.py` +
+`scripts/test_writable_from_docs.py`, report in
+`research/writable-from-docs.md`) audited 10 unseen statements from
 `corpus/statements/` (`abc380b`–`abc387c`), raising `cpl check` pass from 7/10
-to 8/10 after closing 5 docs gaps (`"{n}"`, typed `read()`, free `abs(x)`,
-matching array loop bounds, single-`for` comprehensions, `Deque.push`).
-Gaps: `cpl doc stdlib` still has undocumented items; ports gallery page and
-playground shareable links / sample runner / CLI-parity errors are next.
+to 8/10 after closing 5 docs gaps.
+Gaps: `cpl doc stdlib` still has undocumented items; playground shareable
+links, sample runner, and CLI-parity errors are next.
 **Bar.** A cold reader writes a correct solution from the docs alone; every
 doc `cp` block, example fixture, cookbook recipe, stdlib module, and
 error-index trigger/fix passes in `scripts/check.sh --fast`; 100% of
 diagnostic/lint codes have an error-index page; offline bundle stays under 2.6 MB.
-**Next.** Add a generated ports gallery page (`research/PORTS.md` + `dream/` +
-C++ side by side); upgrade playground with shareable links, sample runner, and
+**Next.** Upgrade playground with shareable links, sample runner, and
 CLI-parity error text + parity tests; add docstrings and tested `cpl doc --test`
 examples across `stdlib/*.cp`.
 

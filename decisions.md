@@ -1404,6 +1404,18 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   *Reversible:* delete `scripts/writable-from-docs.py`, `scripts/test_writable_from_docs.py`, and
   `research/writable-from-docs.md`.
 
+- **24.6 Ports gallery page generated from `research/PORTS.md` and `dream/*.cp` (`site/ports_gallery.py`).**
+  `site/build.py` renders `ports.html` directly from `research/PORTS.md` plus live `.cp`,
+  `proto/ports/<group>/dream/<name>.cp`, and accepted C++ originals, showing up to 16 featured
+  side-by-side cards (prioritizing all dream-bearing ports, with client-side All / With dream /
+  search filtering) plus a 60-row index table. `site/check_docs.py` verifies `research/PORTS.md`
+  parsing, file existence, and rendered CP / dream / C++ panes.
+  *Reason:* lets cold readers compare real validated CP Lang solutions, their unconstrained dream
+  form, and accepted C++ side by side while keeping `dist/cp-lang.html` under the 2.6 MB cap
+  (1,988 KiB).
+  *Reversible:* delete `site/ports_gallery.py` and its hooks in `site/build.py`, `site/check_docs.py`,
+  and `site/assets/style.css`.
+
 ## 25. Stress testing and shrinking (0.2.2, 2026-11-21)
 
 - **25.1 `Perm<V>` and `Tree<V>` are stdlib types.** `std.seq.Perm<V> = [V]V` and
