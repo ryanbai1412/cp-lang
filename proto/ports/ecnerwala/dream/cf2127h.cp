@@ -40,7 +40,7 @@ fn parallel(a: Edge, b: Edge) -> Edge:
     res
 
 fn series(a: Edge, mid: Vert, b: Edge) -> Edge =
-    [Deg, Deg] (au, bv) => max_plus_cap(max_plus_cap(a[au], mid), b.col(bv))[Deg(2)]
+    [Deg, Deg] (au, bv) => max_plus_cap(max_plus_cap(a[au], mid), b[.., bv])[Deg(2)]
 
 fn absorb_leaf(host: Vert, e: Edge, leaf: Vert) -> Vert:
     let best_by_host_deg: Vert = [Deg] eh => max_plus_cap(e[eh], leaf)[Deg(2)]

@@ -2119,6 +2119,21 @@ impl<'a> Checker<'a> {
                 });
                 (**elem).clone()
             }
+            // `grid[r]`: leading indices give the O(1) view of what is left,
+            // here row `r`, indexed by the columns.
+            Ty::Array { index, elem }
+                if indices.len() < index.len()
+                    && index_tys
+                        .iter()
+                        .zip(index.iter())
+                        .zip(indices)
+                        .all(|((got, want), e)| self.fits(got, want) || self.literal_position(e, want)) =>
+            {
+                Ty::Array {
+                    index: index[indices.len()..].to_vec(),
+                    elem: elem.clone(),
+                }
+            }
             Ty::Array { index, elem } => {
                 if index.len() != indices.len() {
                     let wanted: Vec<String> = index.iter().map(Ty::to_string).collect();

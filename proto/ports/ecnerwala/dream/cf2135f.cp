@@ -13,6 +13,7 @@ use std.persistent.PMultiset
 @!multitest
 let n: 1..=400_000 = read()
 domain V = 1..=n
+domain Key = 0..n
 let kids: [V]?(l: V, r: V) = read(none: (0, 0))
 
 let tree = Rooted(root: V.first, next: v => kids[v].list)
@@ -21,8 +22,8 @@ for v in tree.Pre.rev:
     if let (l, r) = kids[v]: gen[v] = max(gen[l], gen[r] + 1)
 let by_gen = V.group(by: v => gen[v])
 
-var set: [V]PMultiset<0..n> = PMultiset.empty
-var key: [V]0..n = 0
+var set: [V]PMultiset<Key> = PMultiset.empty()
+var key: [V]Key = Key.first!
 var next_key = 0
 var order: List<V> = []
 for g in 0..n:

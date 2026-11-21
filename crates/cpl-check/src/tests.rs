@@ -3140,3 +3140,10 @@ fn pick(k: 0..=1, a: Site, b: Site) -> ([2]Site, [1]Site) = match k:
 ";
     assert_eq!(codes(src), Vec::<&str>::new());
 }
+
+#[test]
+fn leading_index_gives_the_row_view() {
+    let src = "domain R = 0..3\ndomain C = 0..4\nvar g: [R, C]Int = 0\nlet row: [C]Int = g[R(1)]\nprint(row[C(2)])\n";
+    assert_eq!(codes(src), Vec::<&str>::new());
+    assert_eq!(codes("domain R = 0..3\ndomain C = 0..4\nvar g: [R, C]Int = 0\nprint(g[C(1)])\n"), ["E0305"]);
+}

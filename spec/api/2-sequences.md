@@ -3,6 +3,28 @@
 Built on round 1: arrays are `[D]T`, ranges are runs of a domain with cut
 ends, `.first`/`.last` are optional.
 
+## Key decisions
+
+1. **Generators are the only iterator.** `-> yields T`, no `next()`; values
+   are pushed into the loop body, so they compile to the hand-written loop.
+   `break`/`return` work through them; lockstep is `List(g)`.
+2. **Two capabilities.** `Seq` walks; `Indexed` adds O(1) `s[i]`, `.len`,
+   `.keys`. Adapters keep `Indexed` when they can stay O(1) (slices, `.rev`,
+   `map`, `take`/`drop`, `zip`); `filter`, `take_while` and generators are
+   `Seq`.
+3. **Laziness is explicit.** A chain reruns on every walk. Allocation happens
+   only at `.collect()`, a comprehension or `List(...)`. Lint flags a chain
+   walked twice and side-effecting closures.
+4. **Identity vs offset.** A domain slice keeps its positions
+   (`a[l..=r][i] == a[i]`); a `List`/`Str` slice counts from 0.
+5. **Views are borrows with the rules of `mut a[i]`.** No lifetime
+   annotations, never stored, returned only through `lends`. In-place verbs
+   work on views (`a[l..=r].sort()`); each has a copying twin (`sorted`).
+6. **Prefix scans are indexed by cuts.** `pre[c]` folds left of `c`;
+   `pre[v]` folds through `v`.
+7. **Costs show.** O(1) things are getters or views, allocation is named,
+   options are named arguments (`max(by:)`), and there is no overloading.
+
 ## The model in one paragraph
 
 There is one protocol and one capability on top of it. A **`Seq<T>`** is
