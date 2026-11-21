@@ -28,18 +28,18 @@ in `research/frictions/` to the owner below. An item that spans two
 areas belongs to the area of the type it returns; a new intrinsic or
 core feature goes through section 3 and the core lane.
 
-| Area | Owns | Handed over with its queue |
+| Area | Owns | Done and next |
 |---|---|---|
-| sequences | 4.2 except the searches; the walk folds' library side; a `Seq`/`Indexed` trait | `runs`/`chunk_by` over any `Seq` incl. `Str` (`cf2084h`, `cf2069e`); `enumerate`; the `_by` renames (`argmax_by`, `min_by` to `by:`); the `Seq`/`Indexed` trait |
-| DP/search | 4.2 searches (`design/stdlib/search.md`); `std.dp` | `cf2183h` onto `bsearch_first` + `aliens` (blocked: `Range<I128>` E0302, core lane); a gated port for Li Chao or Knuth when one appears |
-| number theory/combinatorics | 4.3 to 4.7 (`math`, `mod`, `ntt`, `matrix`, `rand`, hashing) | `Comb<M>` keyed on the Mod type in place of `Comb<P>` (14 friction reports); `Mod<P>` in 32 bits via ranged-field narrowing (with codegen); exact-`Int` convolution, cyclic correlation, `Mod<P>`→`Int` (`cf2201e`); RNG `pick`/`perm`/`sample` |
-| containers | 4.8, 4.9 (`bitset`, `bag`, `deque`, `heap`, `dsu`, `marks`, `window`), `List` methods | `Bits<D>` unifying `Bitset`/`Subset` (`cf2147h`); `List.truncate`/`extend` (`cf2084h`, `cf2178h`); offline divide and conquer over time, `offline_over` (`cf2069f`, `cf2222f`, `cf2237h`) |
-| range structures | 4.10 | `LazySegTree` over `Bounds<D>` with constant init (`cf2207f`) |
-| graphs | 4.11 `std.graph`, 4.15 `std.grid` | `design/stdlib/graphs.md`; `std.grid` stays a thin module over `(R, C)` product domains (decision 46.9); product/enum state domains wait on the core lane |
-| trees | 4.11 `std.tree`, `std.tour` | link-cut tree (`cf2222f`, `cf2237h`) |
-| flows/matching | 4.12 | `FlowGraph.reset()` (`cf2147h`); `max_matching`, `CostFlow` |
-| strings | 4.13; O(1) slice and reverse views | `manacher`, `AhoCorasick`; one `lcp` (merge `lcp_between`/`RollingHash.lcp`, `lcp_with` to a named argument); O(1) slice/reverse views |
-| geometry | 4.14 | `convex_hull`; `locate` returns an enum; `rot_by` to a named option |
+| sequences | 4.2 except the searches; the walk folds' library side; a `Seq`/`Indexed` trait | done: `_by` twins to `by:` with L0510, `.items` as the one enumerate, `Range` span traps that keep `bsearch_*` exact at any width, user `impl Ord` in the interpreter's `sorted`/`min`/`max`, `.len` typed so `0..xs.len` infers (decision 60), method `inverse` in 5 ports. Next: the writable-from-docs gaps, then the medium seq frictions by port count, then ports that hand-roll what `std.seq` names |
+| DP/search | 4.2 searches (`design/stdlib/search.md`); `std.dp` | done: `monge_path` and generic `aliens` in `cf2183h` (decisions 56, 65). Next: land online LARSCH `monge_path` and filled `val`/`prev` (`cf2183h` 0.9x to 1.4x the original); reserve on range comprehensions from codegen for the level stacks; a gated port for Li Chao or Knuth when one appears |
+| number theory/combinatorics | 4.3 to 4.7 (`math`, `mod`, `ntt`, `matrix`, `rand`, hashing) | done: `Comb<M>` (decision 55), 32-bit `Mod<P>` by ranged-field narrowing, `cf2245f` 7.3x to 1.26x. `std.poly` (decision 69) at 1.06x matched C++. Next: a lint hoisting a loop-invariant `Mod` divisor |
+| containers | 4.8, 4.9 (`bitset`, `bag`, `deque`, `heap`, `dsu`, `marks`, `window`), `List` methods | done: heaps, potential DSU, `FlatMap`, inline bounded `Bitset` (decision 62). zero-allocation `IntervalMap.assign` (decision 67, `cf2237h` 1.66 s to 1.26 s). `TimeTree.run`/`offline_over` (`cf2069f` RSS 356 to 146 MB). Next: review the graph lane's hole-based `MinHeap` sift; ports hand-rolling heaps, rollback DSU, `FlatMap`, `IntervalMap` |
+| range structures | 4.10 | done: `Fenwick.first_ge` (decision 57), constant-init `LazySegTree`, `LazyTreap` (decision 68, `cf2084g2` 0.90x C++). Next: a matched `LazyTreap` bench; `Flip`/`Monoid.pair` for `cf2152g`; `LazySegTree` over `Bounds<D>` once the fresh-domains lane lands it (`cf2207f`) |
+| graphs | 4.11 `std.graph`, 4.15 `std.grid` | done: `until:` early exit (46.11), `cf2135c`. Next: `dijkstra` 1.44x matched C++ (heap sift here; closure push-loop and projection copy in codegen; read in I/O); then `cf2178h` on `fixed_cost_paths` |
+| trees | 4.11 `std.tree`, `std.tour` | done: `LinkCut` (1.01x matched), `cf2237h` on `IntervalMap`. vertex loops as `for v in t.at` / `t.at.rev` with L0511 (decision 63). `Rooted.below` (`cf2183f` 0.44x tokens). Next: ports hand-rolling tree code (`cf2152f` on `lift_while`, `cf2187c`, `cf2138c1`, `cf2089e`) |
+| flows/matching | 4.12 | done: weighted blossom `max_weight_general_matching` (1.27x matched). Next: costflow 1.41x; matched C++ benches for closure, bounded flow, Gomory–Hu and global cut |
+| strings | 4.13; O(1) slice and reverse views | done: slice and reverse views (decision 61). concat and print fusion with buffer reuse (`ucup4s25h` 1.17x, `cf2245a` 1.13x, `cf2096e` 1.05x). Next: `.rev` as a view value outside `for` (`let post = t.at.rev`); the next string friction with a port rewrite |
+| geometry | 4.14 | done: `Location`, `Vec.rot(by:)`, Shamos–Hoey, 3D hull, heterogeneous `Mul`/`Div` (`cf2138f`). five matched benches all at most 1.09x. Next: land the `cpl_tie` pruning and four port rewrites; ports still hand-rolling what `std.geometry` covers |
 
 ## 1. Principles
 
