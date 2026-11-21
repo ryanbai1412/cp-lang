@@ -56,11 +56,24 @@ domain is explicit (`v.next`, `V(x)`). Arrays over an anonymous range
 
 ## Ranges
 
+A range's elements are the kind of its ends.
+
 ```python
-l..=r          # positions l through r            Range<V>
-j..i           # cuts j to i                      Range<V.bounds>, also the positions between (§124)
+l..r   l..=r   # positions                        Range<V>
+j..=i          # cuts j through i                 Range<V.bounds>
+j..i           # cuts j to i-1, and also the piece between them wherever a Range<V> is expected (§124)
 ..i   j..   .. # open ends default to V's start and end
 ```
+
+So the commonest DP line reads as written, and split points are plain:
+
+```python
+for j in lo..i: dp[i] min= dp[j] + cost(j..i)    # j a cut; j..i the piece
+for k in opt[l][r-1]..=opt[l+1][r]: …            # Knuth: candidate cuts
+```
+
+The two readings of `j..i` are the same set (each cut `c` with `c.r`), so the
+conversion never changes meaning. A range's cuts are `r.l..=r.r`.
 
 | Form | Meaning | Cost |
 |---|---|---|
@@ -132,6 +145,9 @@ let e = E.first              # fine: E.count is m, and m >= 1 here
 - Position arithmetic gives an `Int`; back into the domain is explicit.
 - `r.bsearch(ok)` returns a cut and replaces `bsearch_first`/`bsearch_last`.
 - Empty domains are valid; `first`/`last` need `NonEmpty`, derived and narrowed.
+- A range's elements are the kind of its ends; `a..=b` on cuts is cuts; half-open
+  cut ranges double as the piece (124). A position-only reading was rejected:
+  it broke `for j in lo..i: dp[j] + cost(j..i)`.
 - `r.halve()` is `?(left, right)`, `none` at length <= 1; `r.mid` is `?V`.
 - Integer literals convert to positions and cuts of integer domains.
 - `V(x)` traps outside `V`; `V.at(x)` is `?V`; the pattern `V(j)` refutes.
