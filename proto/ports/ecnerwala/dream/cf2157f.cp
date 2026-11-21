@@ -10,11 +10,15 @@
 //     each weight layer until `n` tuples are taken.
 //
 // Reverse-lex merge order: sort the `n` chosen `d`-tuples in reverse
-// lexicographic order, placing them at positions `n - 1` down to `0`. Because
-// the chosen set is downward-closed, at each layer `cl` every tuple with
-// `c[cl] > 0` jumps forward to the first position `start` sharing the same
-// prefix `(c_0, ..., c_{cl-1})`. Emitting these jumps per layer and printing
-// layers from `d - 1` down to `0` merges all `n` positions in exact budget.
+// lexicographic order, placing them at positions `n` down to `1`. Truncating
+// the last weight class `max_w` keeps the chosen set downward-closed because
+// every tuple of weight `< max_w` is already included in full, so decrementing
+// any coordinate of a chosen weight-`max_w` tuple lands in a strictly smaller
+// weight class. Grouping `placed` by prefix `t[..cl]` at each layer `cl` sends
+// every member after the group's first position `start` jumping forward to
+// `start`, merging all `n` positions in exact budget.
+
+use std.math.{choose}
 
 const LAYER_COST = 1000
 
@@ -36,15 +40,12 @@ fn plan_for(d: Int) -> Plan:
         rem -= take
         w += 1
 
-let best = (1..=n)
-    .take_while(d => (d - 1) * LAYER_COST < n * (n - 1) / 2 or d == 1)
-    .map(plan_for)
-    .min(by: p => p.cost)!
+let best = (1..=n).take_while(d => (d - 1) * LAYER_COST < n * (n - 1) / 2 or d == 1).map(plan_for).min(by: p => p.cost)!
 
 // Enumerate the `n` cheapest d-tuples in reverse lex order.
 fn cheapest_tuples(plan: Plan) -> List<List<Int>>:
     var out: List<List<Int>> = []
-    var cur: List<Int> = [0; plan.d]
+    var cur: List<Int> = [0] * plan.d
     var max_w_left = plan.max_w_cnt
     fn gen(layer: Int, used_w: Int):
         if layer == plan.d:
@@ -59,19 +60,15 @@ fn cheapest_tuples(plan: Plan) -> List<List<Int>>:
     gen(0, 0)
     out
 
-let tuples = cheapest_tuples(best)
 domain Pos = 1..=n
-let pos_of = [Pos] i => Pos(n - i.ord)
+let placed = zip(Pos.rev, cheapest_tuples(best))
 
 var layer_ops: [0..best.d]List<(Pos, Int)> = []
 for cl in 0..best.d:
-    var group_start = pos_of[0]
-    for (idx, t) in tuples.items:
-        let pos = pos_of[idx]
-        if idx > 0 and tuples[idx - 1][..cl] != t[..cl]:
-            group_start = pos
-        if pos != group_start:
-            layer_ops[cl].push((pos, group_start.ord - pos.ord))
+    for group in placed.chunk_by(entry => entry.1[..cl]):
+        let start = group.first!.0
+        for (pos, _) in group[1..]:
+            layer_ops[cl].push((pos, start - pos))
 
 let ops = [op for layer in layer_ops.rev for op in layer]
 print(ops.len)
