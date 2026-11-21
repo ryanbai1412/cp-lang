@@ -200,7 +200,7 @@ pub fn ty(name: &str) -> Option<Ty> {
         "Str" => Ty::Str,
         "I128" => Ty::I128,
         "U64" => Ty::U64,
-        "List" | "Map" | "HashMap" | "Set" | "HashSet" | "Iter" | "Opt" | "Range" | "Cut" | "SortedRange" | "Sym" | "Counter" => {
+        "List" | "Map" | "HashMap" | "Set" | "HashSet" | "Iter" | "Seq" | "Indexed" | "Opt" | "Range" | "Cut" | "SortedRange" | "Sym" | "Counter" => {
             Ty::Named {
                 name: name.into(),
                 args: Vec::new(),
@@ -222,7 +222,7 @@ pub fn is_trait(name: &str) -> bool {
 
 pub const TYPE_NAMES: &[&str] = &[
     "List", "Map", "Set", "Int", "I128", "U64", "Bool", "Char", "Str", "F64", "Iter", "Opt", "Range", "Cut",
-    "Counter", "HashMap", "HashSet", "Interactor", "Subset", "Sym",
+    "Counter", "HashMap", "HashSet", "Interactor", "Subset", "Sym", "Seq", "Indexed",
 ];
 
 /// The traits of `plan/19-index-and-lends.md` and `stdlib/README.md`.

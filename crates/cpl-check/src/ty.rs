@@ -86,10 +86,11 @@ impl Ty {
             Ty::Domain(d) => Some(Ty::Pos(d.clone())),
             Ty::Array { index, elem } if index.len() == 1 => Some((**elem).clone()),
             Ty::Named { name, args }
-                if matches!(name.as_str(), "List" | "Range") && args.len() == 1 =>
+                if matches!(name.as_str(), "List" | "Range" | "Seq" | "Iter" | "Gen") && args.len() == 1 =>
             {
                 Some(args[0].clone())
             }
+            Ty::Named { name, args } if name == "Indexed" && args.len() == 2 => Some(args[1].clone()),
             _ => None,
         }
     }
@@ -211,6 +212,14 @@ impl Ty {
             }),
             (Ty::Tuple(a), Ty::Record(b)) => {
                 a.len() == b.len() && a.iter().zip(b).all(|(a, (_, b))| a.fits_in(b, number))
+            }
+            // `xs: Seq<T>` takes anything a `for` walks to `T`s; `Indexed<D, T>`
+            // anything indexed by `D` too.
+            (a, Ty::Named { name, args }) if name == "Seq" && args.len() == 1 => {
+                a.seq_elem().is_some_and(|e| e.fits_in(&args[0], number))
+            }
+            (a, Ty::Named { name, args }) if name == "Indexed" && args.len() == 2 => {
+                a.is_indexed() && a.seq_elem().is_some_and(|e| e.fits_in(&args[1], number))
             }
             // A range written out is the list or bitset of what it goes over:
             // `place(D.all)` where a `List<D>` or `Bitset<D>` is wanted.

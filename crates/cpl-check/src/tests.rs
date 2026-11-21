@@ -99,7 +99,7 @@ fn indexing_with_a_plain_number_says_how_to_convert() {
 
 #[test]
 fn a_grid_takes_all_its_indices_in_one_bracket() {
-    let d = one("let n: 1..=9 = read()\ndomain R = 1..=n\ndomain C = 1..=n\nvar g: [R, C]Int = 0\nprint(g[R.first])\n");
+    let d = one("let n: 1..=9 = read()\ndomain R = 1..=n\ndomain C = 1..=n\nvar g: [R, C]Int = 0\nfor c in C: print(g[c])\n");
     assert_eq!(d.code.0, "E0305");
     assert_eq!(d.message, "`g` takes 2 indices (R, C), but 1 was given");
 }
@@ -3146,4 +3146,10 @@ fn leading_index_gives_the_row_view() {
     let src = "domain R = 0..3\ndomain C = 0..4\nvar g: [R, C]Int = 0\nlet row: [C]Int = g[R(1)]\nprint(row[C(2)])\n";
     assert_eq!(codes(src), Vec::<&str>::new());
     assert_eq!(codes("domain R = 0..3\ndomain C = 0..4\nvar g: [R, C]Int = 0\nprint(g[C(1)])\n"), ["E0305"]);
+}
+
+#[test]
+fn seq_parameter_takes_anything_walkable() {
+    let src = "domain P = 0..5\nfn total(xs: Seq<P>) -> Int:\n    var t = 0\n    for x in xs: t += Int(x.l)\n    t\nprint(total(P.range))\nprint(total([P(1), P(2)]))\n";
+    assert_eq!(codes(src), Vec::<&str>::new());
 }
