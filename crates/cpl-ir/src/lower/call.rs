@@ -7296,6 +7296,17 @@ impl<'a> Lowerer<'a> {
                 );
                 self.reversed_range(range, span)
             }
+            "bounds" => {
+                let hi = self.int_add(len, 1);
+                self.mk(
+                    ExprKind::Range {
+                        lo: Box::new(self.int_lit(0, span)),
+                        hi: Box::new(hi),
+                    },
+                    Ty::Range(Box::new(Ty::Bound(id))),
+                    span,
+                )
+            }
             other => {
                 self.unsupported(name.span, &format!("`.{other}` of a domain as a value"));
                 self.err_expr(span)
