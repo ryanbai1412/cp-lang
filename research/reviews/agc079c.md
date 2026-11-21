@@ -1,7 +1,7 @@
 # agc079c
 
 Score: 3/5
-Dream: pending cold rescore (rewritten: defines `Run(vals, opp_below)` invariant in header and derives why every branch of `pop_value` preserves it and why `l.opp_below` / interior `x` forces impossibility; extracts `pop_value`)
+Dream: 4/5
 
 The header states the two passes, but pass 1 is a hand linked-run stack with `pred`/`succ` arrays and pass 2 a flag-driven deque replay. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
@@ -40,3 +40,9 @@ Dream 3/5, rescored after 7042fdf4; sent back. `ParityDsu` replaces the hand com
 - Owed: define a run and `opp_below` as an invariant in the header, then show why each branch of lines 57-78 keeps it.
 
 The port score (3/5) holds; the port was not touched.
+
+## Cold review (HEAD)
+
+Dream 3/5 → 4/5, rescored cold on current main. The header now states the `Run(vals, opp_below)` invariant and shows that every branch of `pop_value`, and each forced `return none`, preserves it. The run stack is the algorithm, not a translation.
+- The only error is `LinkedList` (lines 47, 104), which is reported.
+- Minor: the minimality argument for Pass 2 (lines 34-37) is asserted. The two `match active` blocks (lines 124-132) choose an end by hand; a side-taking `push`/`pop` on `Deque` would say it once.

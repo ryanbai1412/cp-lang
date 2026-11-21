@@ -1,7 +1,7 @@
 # wtf26d
 
 Score: 2/5
-Dream: pending cold rescore (rewritten: derives `min_p` witness optimality in header, replaces `.somes`/`.take_while`/`block_of` sentinel/`block_id` with `pick_witness` + disjoint `vals.sorted().rev` + `right_end: ?Pos` + `match_prefix` + `scan(min_pos)`; verified 150/150 random cases with only `pop_while` replaced, active port held pending `cpl-syntax` closer-recovery on lambda lines)
+Dream: 3/5
 
 Rescored cold on main 1a5cc751 (old 2/5, new 2/5) for accepted syntax (decisions.md §53, §58, §63, §70) and stdlib reuse. Scored on its first landing (ddf13f69); no dream commit since. Syntax: nothing outside decisions.md (`.inverse()` is a method, not a getter). The nested `if let ... else` optional clamps (lines 52-53) are hand-folding a `min` over optionals. Sent back: under 4, the lane owes a rewrite before the port is judged.
 
@@ -67,3 +67,11 @@ Dream 3/5, rescored after f69a1ce4; sent back. `can_place` is now pure, the inva
 - The block partition (lines 100-117) is still hand bookkeeping: `block_of` with an `n` sentinel (line 102), a `block_id` counter and `last_thresh`. Line 112 is a 150-character chain. The header (lines 13-17) doesn't say why `min_p` is the block's left end.
 
 The port score (2/5) holds; the port was not touched.
+
+## Cold review (HEAD)
+
+Dream 3/5, rescored cold on current main; sent back. The header now derives the witness choice and the disjoint blocks, and the `block_of` sentinel is gone.
+- Owed: the suffix copy (lines 135-138) walks `dst!` by hand; write `q[start..] = suffix`.
+- Owed: `min_pos` (line 59) re-implements `min` over optionals, and lines 73-75 filter `some`s by hand to take a minimum.
+- Owed: `seen_inversion` is a mutable global (line 64) that is also threaded as `had_inv` (lines 66-90); keep one of the two.
+- Reported gaps: `pop_while` (line 33; the `max_p` E0203 follows from it) and `Option.filter` (line 36).
