@@ -12,8 +12,9 @@
 //! lets the generator and the shrinker keep every case valid.
 
 use cpl_diag::Span;
-use cpl_syntax::ast::{Block, FnBody, Stmt,
-    BinOp, Expr, ExprKind, Pattern, PatternKind, StmtKind, Type, TypeKind, UnOp,
+use cpl_syntax::ast::{
+    BinOp, Block, Expr, ExprKind, FnBody, Pattern, PatternKind, Stmt, StmtKind, Type, TypeKind,
+    UnOp,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -25,31 +26,19 @@ pub const DEFAULT_INT: (i128, i128) = (-1_000_000_000, 1_000_000_000);
 pub enum Shape {
     /// An integer in `lo..=hi`; the bounds are evaluated when a case is
     /// made, against the values read so far.
-    Int {
-        lo: Expr,
-        hi: Expr,
-    },
+    Int { lo: Expr, hi: Expr },
     /// `len` values of the same shape.
-    Array {
-        len: Expr,
-        elem: Box<Shape>,
-    },
+    Array { len: Expr, elem: Box<Shape> },
     /// A tuple, or a record `(u: V, v: V)`: its fields in order.
     Tuple(Vec<Shape>),
     /// One byte in `lo..=hi`: a lowercase letter unless told otherwise.
-    Char {
-        lo: u8,
-        hi: u8,
-    },
+    Char { lo: u8, hi: u8 },
     /// `0` or `1`.
     Bool,
     /// A word of letters, of any length from 1.
     Str,
     /// Every value of `lo..lo + len` once, in some order.
-    Perm {
-        lo: Expr,
-        len: Expr,
-    },
+    Perm { lo: Expr, len: Expr },
     /// The `hi - lo` edges of a tree on the vertices `lo..=hi`, each a
     /// pair of them followed by one value of each `extra` shape (a weight).
     Tree {
@@ -57,6 +46,38 @@ pub enum Shape {
         hi: Expr,
         extra: Vec<Shape>,
     },
+    /// `len` edges on the vertices `lo..=hi`, each a pair of them followed
+    /// by one value of each `extra` shape. No edge is a loop or comes
+    /// twice; `kind` says what else holds.
+    Graph {
+        lo: Expr,
+        hi: Expr,
+        len: Expr,
+        extra: Vec<Shape>,
+        kind: GraphKind,
+    },
+}
+
+/// What a `Shape::Graph` promises beyond being simple.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum GraphKind {
+    /// Undirected, nothing more.
+    Simple,
+    /// Undirected, and every vertex reaches every other.
+    Connected,
+    /// Directed, with no cycle.
+    Dag,
+}
+
+impl GraphKind {
+    fn named(name: &str) -> Option<GraphKind> {
+        match name {
+            "SimpleGraph" => Some(GraphKind::Simple),
+            "ConnectedGraph" => Some(GraphKind::Connected),
+            "Dag" => Some(GraphKind::Dag),
+            _ => None,
+        }
+    }
 }
 
 /// One `let ... = read()`.
@@ -167,7 +188,7 @@ pub fn eval(expr: &Expr, env: &Env) -> Option<i128> {
     }
 }
 
-fn names_in(expr: &Expr, out: &mut HashSet<String>) {
+pub(crate) fn names_in(expr: &Expr, out: &mut HashSet<String>) {
     match &expr.kind {
         ExprKind::Name(name) => {
             out.insert(name.clone());
@@ -206,7 +227,9 @@ impl Sizes<'_> {
                 }
                 self.of_type(elem);
             }
-            TypeKind::Named { args, .. } | TypeKind::Tuple(args) => args.iter().for_each(|arg| self.of_type(arg)),
+            TypeKind::Named { args, .. } | TypeKind::Tuple(args) => {
+                args.iter().for_each(|arg| self.of_type(arg))
+            }
             TypeKind::Record(fields) => fields.iter().for_each(|(_, field)| self.of_type(field)),
             _ => {}
         }
@@ -318,8 +341,15 @@ impl InputSpec {
     pub fn loose(&self) -> Vec<String> {
         let mut names: Vec<String> = Vec::new();
         for spec in std::iter::once(self).chain(self.cases.as_deref()) {
-            for name in spec.fields.iter().flat_map(|field| field.names.iter().flatten()) {
-                if spec.guessed.contains(name) && !spec.sizes.contains(name) && !names.contains(name) {
+            for name in spec
+                .fields
+                .iter()
+                .flat_map(|field| field.names.iter().flatten())
+            {
+                if spec.guessed.contains(name)
+                    && !spec.sizes.contains(name)
+                    && !names.contains(name)
+                {
                     names.push(name.clone());
                 }
             }
@@ -331,8 +361,13 @@ impl InputSpec {
     pub fn counted(&self) -> Vec<String> {
         let mut names: Vec<String> = Vec::new();
         for spec in std::iter::once(self).chain(self.cases.as_deref()) {
-            for name in spec.fields.iter().flat_map(|field| field.names.iter().flatten()) {
-                if spec.guessed.contains(name) && spec.sizes.contains(name) && !names.contains(name) {
+            for name in spec
+                .fields
+                .iter()
+                .flat_map(|field| field.names.iter().flatten())
+            {
+                if spec.guessed.contains(name) && spec.sizes.contains(name) && !names.contains(name)
+                {
                     names.push(name.clone());
                 }
             }
@@ -357,9 +392,9 @@ impl InputSpec {
         fn redraw(shape: &mut Shape, inside: bool, from: &Shape, to: &Shape) -> bool {
             match shape {
                 Shape::Array { elem, .. } => redraw(elem, true, from, to),
-                Shape::Tuple(parts) => {
-                    parts.iter_mut().fold(false, |any, part| redraw(part, inside, from, to) | any)
-                }
+                Shape::Tuple(parts) => parts
+                    .iter_mut()
+                    .fold(false, |any, part| redraw(part, inside, from, to) | any),
                 cell if inside && cell == from => {
                     *cell = to.clone();
                     true
@@ -371,7 +406,10 @@ impl InputSpec {
             lo: int(lo),
             hi: int(hi),
         };
-        let (from, to) = (range(self.cells.as_deref().copied().unwrap_or(DEFAULT_INT)), range((lo, hi)));
+        let (from, to) = (
+            range(self.cells.as_deref().copied().unwrap_or(DEFAULT_INT)),
+            range((lo, hi)),
+        );
         let mut spec = self.clone();
         let mut any = false;
         for field in &mut spec.fields {
@@ -468,7 +506,9 @@ impl Builder<'_> {
     /// The type of one value of a `List<T>` or a one-dimensional array.
     fn cell<'t>(&self, ty: &'t Type) -> Option<&'t Type> {
         match &ty.kind {
-            TypeKind::Named { name, args } if name.text == "List" && args.len() == 1 => Some(&args[0]),
+            TypeKind::Named { name, args } if name.text == "List" && args.len() == 1 => {
+                Some(&args[0])
+            }
             TypeKind::Array { index, elem } if index.len() == 1 => Some(elem),
             _ => None,
         }
@@ -518,14 +558,19 @@ impl Builder<'_> {
                 let shape = match name.text.as_str() {
                     "Perm" => Ok(self.perm(&alias)),
                     "Tree" => Ok(self.tree(&alias)),
-                    _ => self.shape(&alias).map(Some),
+                    other => match GraphKind::named(other) {
+                        Some(kind) => Ok(self.graph(&alias, kind)),
+                        None => self.shape(&alias).map(Some),
+                    },
                 };
                 self.base = outer;
                 shape?.ok_or_else(|| unsupported(self))
             }
             // `Perm<V>` and `Tree<V>`: a permutation of a domain, and the
             // edges of a tree on it.
-            TypeKind::Named { name, args } if args.len() == 1 && matches!(name.text.as_str(), "Perm" | "Tree") => {
+            TypeKind::Named { name, args }
+                if args.len() == 1 && matches!(name.text.as_str(), "Perm" | "Tree") =>
+            {
                 let (lo, hi) = self.index(&args[0])?;
                 names_in(&lo, &mut self.spec.sizes);
                 names_in(&hi, &mut self.spec.sizes);
@@ -533,11 +578,39 @@ impl Builder<'_> {
                     let len = binary(BinOp::Add, binary(BinOp::Sub, hi, lo.clone()), int(1));
                     Shape::Perm { lo, len }
                 } else {
-                    Shape::Tree { lo, hi, extra: Vec::new() }
+                    Shape::Tree {
+                        lo,
+                        hi,
+                        extra: Vec::new(),
+                    }
+                })
+            }
+            // `SimpleGraph<V, E>`, `ConnectedGraph<V, E>` and `Dag<V, E>`:
+            // one edge on `V` for each value of `E`.
+            TypeKind::Named { name, args }
+                if args.len() == 2 && GraphKind::named(&name.text).is_some() =>
+            {
+                let kind = GraphKind::named(&name.text).expect("a graph name");
+                let (lo, hi) = self.index(&args[0])?;
+                let (first, last) = self.index(&args[1])?;
+                let len = binary(BinOp::Add, binary(BinOp::Sub, last, first), int(1));
+                for expr in [&lo, &hi, &len] {
+                    names_in(expr, &mut self.spec.sizes);
+                }
+                Ok(Shape::Graph {
+                    lo,
+                    hi,
+                    len,
+                    extra: Vec::new(),
+                    kind,
                 })
             }
             // `[domain S]Char`: a word that brings its own length.
-            TypeKind::OwnDomain { elem, .. } if matches!(self.shape(elem), Ok(Shape::Char { .. })) => Ok(Shape::Str),
+            TypeKind::OwnDomain { elem, .. }
+                if matches!(self.shape(elem), Ok(Shape::Char { .. })) =>
+            {
+                Ok(Shape::Str)
+            }
             TypeKind::Record(fields) => fields
                 .iter()
                 .map(|(_, field)| self.shape(field))
@@ -584,9 +657,35 @@ impl Builder<'_> {
     /// `[E](u: V, v: V)` or `[E](V, V)` as the edges of a tree on `V`;
     /// fields after the two ends, such as a weight, are made by their type.
     fn tree(&mut self, ty: &Type) -> Option<Shape> {
-        let TypeKind::Array { elem, .. } = &ty.kind else {
+        let (_, lo, hi, extra) = self.edges(ty)?;
+        Some(Shape::Tree { lo, hi, extra })
+    }
+
+    /// `[E](u: V, v: V, ..)` as `kind` of graph on `V` with an edge for
+    /// each value of `E`.
+    fn graph(&mut self, ty: &Type, kind: GraphKind) -> Option<Shape> {
+        let (len, lo, hi, extra) = self.edges(ty)?;
+        names_in(&len, &mut self.spec.sizes);
+        Some(Shape::Graph {
+            lo,
+            hi,
+            len,
+            extra,
+            kind,
+        })
+    }
+
+    /// An edge list `[E](u: V, v: V, ..)`: its length, the ends' range
+    /// and the shapes of the fields after the ends.
+    fn edges(&mut self, ty: &Type) -> Option<(Expr, Expr, Expr, Vec<Shape>)> {
+        let TypeKind::Array { index, elem } = &ty.kind else {
             return None;
         };
+        let [dimension] = index.as_slice() else {
+            return None;
+        };
+        let (first, last) = self.index(dimension).ok()?;
+        let len = binary(BinOp::Add, binary(BinOp::Sub, last, first), int(1));
         let ends: Vec<&Type> = match &elem.kind {
             TypeKind::Tuple(parts) => parts.iter().collect(),
             TypeKind::Record(fields) => fields.iter().map(|(_, field)| field).collect(),
@@ -595,9 +694,12 @@ impl Builder<'_> {
         let [u, v, rest @ ..] = ends.as_slice() else {
             return None;
         };
-        let extra = rest.iter().map(|ty| self.shape(ty).ok()).collect::<Option<_>>()?;
+        let extra = rest
+            .iter()
+            .map(|ty| self.shape(ty).ok())
+            .collect::<Option<_>>()?;
         match (self.shape(u).ok()?, self.shape(v).ok()?) {
-            (Shape::Int { lo, hi }, Shape::Int { .. }) => Some(Shape::Tree { lo, hi, extra }),
+            (Shape::Int { lo, hi }, Shape::Int { .. }) => Some((len, lo, hi, extra)),
             _ => None,
         }
     }
@@ -633,7 +735,10 @@ fn reads_inside(code: &str) -> bool {
     code.lines().any(|line| {
         let line = line.split("//").next().unwrap_or("");
         line.match_indices("read()").any(|(at, _)| {
-            !line[..at].chars().next_back().is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '.')
+            !line[..at]
+                .chars()
+                .next_back()
+                .is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '.')
         })
     })
 }
@@ -670,7 +775,11 @@ fn is_read(expr: &Expr) -> bool {
 impl InputSpec {
     /// True when the program reads nothing a case can be made from.
     pub fn is_empty(&self) -> bool {
-        self.fields.is_empty() && self.cases.as_ref().is_none_or(|cases| cases.fields.is_empty())
+        self.fields.is_empty()
+            && self
+                .cases
+                .as_ref()
+                .is_none_or(|cases| cases.fields.is_empty())
     }
 
     /// Reads the input a program declares: every top-level
@@ -689,23 +798,30 @@ impl InputSpec {
         let mut above: Option<InputSpec> = None;
         // With an `@interactor`, the hidden test is what its body reads,
         // once per test case; the solution reads only what it is sent.
-        let judge: Option<(_, &Block)> = parsed.items.iter().flat_map(|(base, item)| item.stmts.iter().map(move |stmt| (*base, stmt))).find_map(|(base, stmt)| {
-            let decorated = stmt.decorators.iter().any(|d| d.name.text == "interactor");
-            match &stmt.kind {
-                StmtKind::Fn(decl) if decorated => match &decl.body {
-                    FnBody::Block(block) => Some((base, block)),
+        let judge: Option<(_, &Block)> = parsed
+            .items
+            .iter()
+            .flat_map(|(base, item)| item.stmts.iter().map(move |stmt| (*base, stmt)))
+            .find_map(|(base, stmt)| {
+                let decorated = stmt.decorators.iter().any(|d| d.name.text == "interactor");
+                match &stmt.kind {
+                    StmtKind::Fn(decl) if decorated => match &decl.body {
+                        FnBody::Block(block) => Some((base, block)),
+                        _ => None,
+                    },
                     _ => None,
-                },
-                _ => None,
-            }
-        });
+                }
+            });
         let mut hidden = Vec::new();
         for (base, item) in &parsed.items {
             builder.base = *base;
             // A `@multitest fn` reads one case: its body is read like
             // the lines below an `@!multitest` divider.
             let stmts = item.stmts.iter().flat_map(|stmt| {
-                let multitest = stmt.decorators.iter().any(|d| !d.directive && d.name.text == "multitest");
+                let multitest = stmt
+                    .decorators
+                    .iter()
+                    .any(|d| !d.directive && d.name.text == "multitest");
                 let body: &[Stmt] = match &stmt.kind {
                     StmtKind::Fn(decl) if multitest => match &decl.body {
                         FnBody::Block(block) => &block.stmts,
@@ -715,7 +831,12 @@ impl InputSpec {
                 };
                 std::iter::once(stmt).chain(body).map(|stmt| (stmt, false))
             });
-            let stmts = stmts.chain(judge.iter().flat_map(|(_, block)| &block.stmts).map(|stmt| (stmt, true)));
+            let stmts = stmts.chain(
+                judge
+                    .iter()
+                    .flat_map(|(_, block)| &block.stmts)
+                    .map(|stmt| (stmt, true)),
+            );
             for (stmt, in_judge) in stmts {
                 // The interactor's lines are offset from its own item.
                 builder.base = match judge {
@@ -761,7 +882,9 @@ impl InputSpec {
                         }
                     }
                     StmtKind::TypeAlias { name, generics, ty } if generics.is_empty() => {
-                        builder.aliases.insert(name.text.clone(), (builder.base, ty.clone()));
+                        builder
+                            .aliases
+                            .insert(name.text.clone(), (builder.base, ty.clone()));
                     }
                     StmtKind::Let {
                         pat,
@@ -818,7 +941,9 @@ impl InputSpec {
                     // A `read()` anywhere else (in an expression, a loop
                     // or a branch) reads input no field describes: a case
                     // made without it would be cut short.
-                    _ if (in_judge || judge.is_none()) && reads_inside(&src[span_range(stmt.span.shift(builder.base))]) => {
+                    _ if (in_judge || judge.is_none())
+                        && reads_inside(&src[span_range(stmt.span.shift(builder.base))]) =>
+                    {
                         return Err(builder.error(
                             stmt.span,
                             "this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`".into(),

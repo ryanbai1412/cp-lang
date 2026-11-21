@@ -373,7 +373,7 @@
         },
         {
           "name": "support.type.stdlib.cp",
-          "match": "\\b(Action|Arc|Bitset|ByAngle|Comb|Compressed|Deque|Desc|Dir4|Dir8|Dsu|DsuOf|Fenwick|Fenwick2D|FlowGraph|Graph|HashVal|Hashable|LazySegTree|Mark|Marks|MaxHeap|MinHeap|Mod|Monoid|Neighbours|ParityDsu|Perm|Prefix1|Prefix2|PrefixN|Pt|Reversible|Rng|RollingHash|Rooted|SegTree|Sieve|SortedBag|SparseTable|Target|Tree|XorFenwick)\\b"
+          "match": "\\b(Action|Arc|Bitset|ByAngle|Comb|Compressed|ConnectedGraph|Dag|Deque|Desc|Dir4|Dir8|Dsu|DsuOf|Fenwick|Fenwick2D|FlowGraph|Graph|HashVal|Hashable|LazySegTree|Mark|Marks|MaxHeap|MinHeap|Mod|Monoid|Neighbours|ParityDsu|Perm|Prefix1|Prefix2|PrefixN|Pt|Reversible|Rng|RollingHash|Rooted|SegTree|Sieve|SimpleGraph|SortedBag|SparseTable|Target|Tree|XorFenwick)\\b"
         },
         { "name": "support.constant.stdlib.cp", "match": "\\b(AddMax|AddMin|AddSum|AssignMax|AssignMin|AssignSum)\\b" },
         { "name": "constant.other.caps.cp", "match": "\\b[A-Z][A-Z0-9_]+\\b" },

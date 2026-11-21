@@ -38,10 +38,10 @@ export const PRELUDE_TYPES: readonly string[] = [
 
 /** Every public type and trait declared in `stdlib/*.cp`, whether `stdlib/prelude.cp` imports it or not. */
 export const STDLIB_TYPES: readonly string[] = [
-    'Action', 'Arc', 'Bitset', 'ByAngle', 'Comb', 'Compressed', 'Deque', 'Desc', 'Dir4', 'Dir8', 'Dsu',
+    'Action', 'Arc', 'Bitset', 'ByAngle', 'Comb', 'Compressed', 'ConnectedGraph', 'Dag', 'Deque', 'Desc', 'Dir4', 'Dir8', 'Dsu',
     'DsuOf', 'Fenwick', 'Fenwick2D', 'FlowGraph', 'Graph', 'HashVal', 'Hashable', 'LazySegTree', 'Mark',
     'Marks', 'MaxHeap', 'MinHeap', 'Mod', 'Monoid', 'Neighbours', 'ParityDsu', 'Perm', 'Prefix1',
-    'Prefix2', 'PrefixN', 'Pt', 'Reversible', 'Rng', 'RollingHash', 'Rooted', 'SegTree', 'Sieve',
+    'Prefix2', 'PrefixN', 'Pt', 'Reversible', 'Rng', 'RollingHash', 'Rooted', 'SegTree', 'Sieve', 'SimpleGraph',
     'SortedBag', 'SparseTable', 'Target', 'Tree', 'XorFenwick',
 ];
 

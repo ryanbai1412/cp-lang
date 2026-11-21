@@ -1,7 +1,9 @@
 //! Cases: the values of one input, made from an [`InputSpec`].
 
+use std::collections::HashSet;
+
 use crate::rng::Rng;
-use crate::spec::{eval, Env, InputSpec, Shape};
+use crate::spec::{eval, Env, GraphKind, InputSpec, Shape};
 
 /// One value of an input.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -109,7 +111,11 @@ fn build(shape: &Shape, env: &Env, is_size: bool, pick: &mut dyn Pick) -> Option
             .map(|part| build(part, env, false, pick))
             .collect::<Option<_>>()
             .map(Value::Tuple),
-        Shape::Char { lo, hi } => Some(Value::Char(pick.pick(i128::from(*lo), i128::from(*hi), false))),
+        Shape::Char { lo, hi } => Some(Value::Char(pick.pick(
+            i128::from(*lo),
+            i128::from(*hi),
+            false,
+        ))),
         Shape::Bool => Some(Value::Int(pick.pick(0, 1, false))),
         Shape::Str => {
             let len = pick.pick(1, MAX_WORD, true);
@@ -142,6 +148,73 @@ fn build(shape: &Shape, env: &Env, is_size: bool, pick: &mut dyn Pick) -> Option
                         (a, b)
                     } else {
                         (b, a)
+                    }
+                })
+                .collect();
+            shuffle(&mut edges, pick);
+            edges
+                .into_iter()
+                .map(|(a, b)| {
+                    let mut edge = vec![Value::Int(a), Value::Int(b)];
+                    for shape in extra {
+                        edge.push(build(shape, env, false, pick)?);
+                    }
+                    Some(Value::Tuple(edge))
+                })
+                .collect::<Option<_>>()
+                .map(Value::Seq)
+        }
+        Shape::Graph {
+            lo,
+            hi,
+            len,
+            extra,
+            kind,
+        } => {
+            let (lo, hi, m) = (eval(lo, env)?, eval(hi, env)?, eval(len, env)?.max(0));
+            let n = (hi - lo + 1).max(0);
+            (n <= MAX_LEN && m <= MAX_LEN).then_some(())?;
+            let room = n * (n - 1) / 2;
+            (m <= room).then_some(())?;
+            // Position `i` of `names` is the `i`th vertex in a random
+            // order: a DAG's edges run forward in it, and a connected
+            // graph starts from a tree that hangs each vertex under an
+            // earlier one.
+            let mut names: Vec<i128> = (lo..=hi).collect();
+            shuffle(&mut names, pick);
+            let mut chosen: Vec<(i128, i128)> = Vec::new();
+            if *kind == GraphKind::Connected {
+                (m >= n - 1).then_some(())?;
+                chosen.extend((1..n).map(|child| (pick.pick(0, child - 1, false), child)));
+            }
+            let mut seen: HashSet<(i128, i128)> = chosen.iter().copied().collect();
+            let wanted = usize::try_from(m).ok()?;
+            if room <= 4 * m + 64 {
+                // Dense: every pair not yet taken, in a random order.
+                let mut rest: Vec<(i128, i128)> = (0..n)
+                    .flat_map(|b| (0..b).map(move |a| (a, b)))
+                    .filter(|pair| !seen.contains(pair))
+                    .collect();
+                shuffle(&mut rest, pick);
+                rest.truncate(wanted - chosen.len());
+                chosen.extend(rest);
+            } else {
+                while chosen.len() < wanted {
+                    let (a, b) = (pick.pick(0, n - 1, false), pick.pick(0, n - 1, false));
+                    let pair = (a.min(b), a.max(b));
+                    if a != b && seen.insert(pair) {
+                        chosen.push(pair);
+                    }
+                }
+            }
+            let mut edges: Vec<(i128, i128)> = chosen
+                .into_iter()
+                .map(|(a, b)| {
+                    let (a, b) = (names[a as usize], names[b as usize]);
+                    if *kind != GraphKind::Dag && pick.pick(0, 1, false) == 1 {
+                        (b, a)
+                    } else {
+                        (a, b)
                     }
                 })
                 .collect();
@@ -259,7 +332,9 @@ fn flat(value: &Value) -> Option<String> {
         Value::Int(v) => Some(v.to_string()),
         Value::Char(c) => Some((*c as u8 as char).to_string()),
         // Letters are written together, as one word.
-        Value::Seq(items) if !items.is_empty() && items.iter().all(|item| letter(item).is_some()) => {
+        Value::Seq(items)
+            if !items.is_empty() && items.iter().all(|item| letter(item).is_some()) =>
+        {
             items.iter().map(letter).collect()
         }
         Value::Seq(items) | Value::Tuple(items) => items
@@ -288,7 +363,9 @@ fn show(value: &Value) -> String {
     match value {
         Value::Int(v) => v.to_string(),
         Value::Char(c) => format!("'{}'", *c as u8 as char),
-        Value::Seq(items) if !items.is_empty() && items.iter().all(|item| matches!(item, Value::Char(_))) => {
+        Value::Seq(items)
+            if !items.is_empty() && items.iter().all(|item| matches!(item, Value::Char(_))) =>
+        {
             format!("\"{}\"", flat(value).unwrap_or_default())
         }
         Value::Seq(items) => format!("[{}]", joined(items)),
@@ -305,7 +382,11 @@ impl Case {
         }
         let mut found: Vec<i128> = env.get(name).copied().into_iter().collect();
         if let Some(inner) = &spec.cases {
-            found.extend(self.cases.iter().flat_map(|case| case.values_of(inner, name)));
+            found.extend(
+                self.cases
+                    .iter()
+                    .flat_map(|case| case.values_of(inner, name)),
+            );
         }
         found
     }

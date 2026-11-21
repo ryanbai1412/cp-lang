@@ -1,0 +1,11 @@
+// A simple graph, a connected one and a DAG read by their stdlib types.
+use std.graph.{ConnectedGraph, Dag, SimpleGraph}
+
+let (n, m): (1..=10, 0..=45) = read()
+domain V = 1..=n
+domain E = 0..m
+let a: SimpleGraph<V, E> = read()
+let b: ConnectedGraph<V, E> = read()
+let c: Dag<V, E> = read()
+print(a.len, b.len, c.len)
+for (u, v) in c: print(u, v)

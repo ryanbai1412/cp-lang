@@ -133,13 +133,13 @@ fn an_empty_range_makes_no_case() {
 #[test]
 fn a_case_renders_one_row_per_line_and_describes_itself_by_name() {
     let case = Case::of(vec![
-            Value::Tuple(vec![Value::Int(3), Value::Int(2)]),
-            Value::Seq(vec![Value::Int(1), Value::Int(5), Value::Int(2)]),
-            Value::Seq(vec![
-                Value::Tuple(vec![Value::Int(1), Value::Int(3)]),
-                Value::Tuple(vec![Value::Int(2), Value::Int(2)]),
-            ]),
-        ]);
+        Value::Tuple(vec![Value::Int(3), Value::Int(2)]),
+        Value::Seq(vec![Value::Int(1), Value::Int(5), Value::Int(2)]),
+        Value::Seq(vec![
+            Value::Tuple(vec![Value::Int(1), Value::Int(3)]),
+            Value::Tuple(vec![Value::Int(2), Value::Int(2)]),
+        ]),
+    ]);
     assert_eq!(case.render(), "3 2\n1 5 2\n1 3\n2 2\n");
     assert_eq!(
         case.describe(&spec()),
@@ -162,13 +162,13 @@ fn grids_are_rows_of_columns() {
 fn fitting_cuts_arrays_and_clamps_values_to_the_new_size() {
     let spec = spec();
     let mut case = Case::of(vec![
-            Value::Tuple(vec![Value::Int(2), Value::Int(1)]),
-            Value::Seq(vec![Value::Int(1), Value::Int(5), Value::Int(2)]),
-            Value::Seq(vec![
-                Value::Tuple(vec![Value::Int(1), Value::Int(3)]),
-                Value::Tuple(vec![Value::Int(2), Value::Int(2)]),
-            ]),
-        ]);
+        Value::Tuple(vec![Value::Int(2), Value::Int(1)]),
+        Value::Seq(vec![Value::Int(1), Value::Int(5), Value::Int(2)]),
+        Value::Seq(vec![
+            Value::Tuple(vec![Value::Int(1), Value::Int(3)]),
+            Value::Tuple(vec![Value::Int(2), Value::Int(2)]),
+        ]),
+    ]);
     // `n` was lowered from 3 to 2 and `q` from 2 to 1.
     assert_eq!(fit(&spec, &case).unwrap().render(), "2 1\n1 5\n1 2\n");
     // An array cannot grow.
@@ -202,9 +202,9 @@ fn shrinking_deletes_elements_from_the_middle() {
     )
     .unwrap();
     let start = Case::of(vec![
-            Value::Int(5),
-            Value::Seq([1, 7, 1, 1, 9].map(Value::Int).to_vec()),
-        ]);
+        Value::Int(5),
+        Value::Seq([1, 7, 1, 1, 9].map(Value::Int).to_vec()),
+    ]);
     // Fails while a 7 comes somewhere before a 9.
     let mut fails = |case: &Case| {
         let Value::Seq(a) = &case.values[1] else {
@@ -572,7 +572,8 @@ mod cli {
         assert!(out.contains("\"input\":\"n = 1  q = 1  a = [1001]  queries = [(1, 1)]\",\"raw_input\":\"1 1\\n1001\\n1 1\\n\""), "{out}");
         assert!(
             // No `debug(...)` ran on both sides: these are scripts.
-            out.contains("\"verdict\":\"WA\",\"stages\":[],\"saved\":\"") && out.contains(",\"trace\":null}"),
+            out.contains("\"verdict\":\"WA\",\"stages\":[],\"saved\":\"")
+                && out.contains(",\"trace\":null}"),
             "{out}"
         );
         let (_, out, _) = stress(&[
@@ -677,22 +678,36 @@ print(n)
 ";
 
 fn is_perm(value: &Value, n: i128) -> bool {
-    let Value::Seq(items) = value else { return false };
+    let Value::Seq(items) = value else {
+        return false;
+    };
     let mut seen: Vec<i128> = items.iter().filter_map(Value::number).collect();
     seen.sort();
     seen == (1..=n).collect::<Vec<_>>()
 }
 
 fn is_tree(value: &Value, n: i128) -> bool {
-    let Value::Seq(edges) = value else { return false };
+    let Value::Seq(edges) = value else {
+        return false;
+    };
     let mut root: Vec<usize> = (0..=n as usize).collect();
     fn find(root: &mut [usize], v: usize) -> usize {
-        if root[v] == v { v } else { let r = find(root, root[v]); root[v] = r; r }
+        if root[v] == v {
+            v
+        } else {
+            let r = find(root, root[v]);
+            root[v] = r;
+            r
+        }
     }
     let mut joined = 0;
     for edge in edges {
-        let Value::Tuple(ends) = edge else { return false };
-        let (Some(a), Some(b)) = (ends[0].number(), ends[1].number()) else { return false };
+        let Value::Tuple(ends) = edge else {
+            return false;
+        };
+        let (Some(a), Some(b)) = (ends[0].number(), ends[1].number()) else {
+            return false;
+        };
         if !(1..=n).contains(&a) || !(1..=n).contains(&b) {
             return false;
         }
@@ -711,12 +726,18 @@ fn words_letters_flags_records_permutations_and_trees_are_generated_valid() {
     let spec = InputSpec::from_source(KINDS).unwrap();
     for seed in 0..200 {
         let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).expect("a case");
-        let Some(n) = case.values[0].number() else { panic!("n is a number") };
+        let Some(n) = case.values[0].number() else {
+            panic!("n is a number")
+        };
         assert!(matches!(case.values[1], Value::Int(0 | 1)));
         assert!(matches!(case.values[2], Value::Char(c) if (97..=122).contains(&c)));
-        let Value::Seq(word) = &case.values[3] else { panic!("a word") };
+        let Value::Seq(word) = &case.values[3] else {
+            panic!("a word")
+        };
         assert!(!word.is_empty() && word.iter().all(|c| matches!(c, Value::Char(97..=122))));
-        let Value::Seq(pairs) = &case.values[4] else { panic!("records") };
+        let Value::Seq(pairs) = &case.values[4] else {
+            panic!("records")
+        };
         assert!(pairs.iter().all(|pair| matches!(pair, Value::Tuple(ends) if ends.iter().all(|end| (1..=n).contains(&end.number().unwrap())))));
         assert!(is_perm(&case.values[5], n), "{case:?}");
         assert!(is_tree(&case.values[6], n), "{case:?}");
@@ -746,7 +767,10 @@ fn shrinking_keeps_permutations_and_trees_valid_and_makes_them_plain() {
     assert_eq!(smallest.values[2], Value::Char(97));
     assert_eq!(smallest.values[3], Value::Seq(vec![Value::Char(97)]));
     // The permutation in order, and a tree of four vertices.
-    assert_eq!(smallest.values[5], Value::Seq((1..=4).map(Value::Int).collect()));
+    assert_eq!(
+        smallest.values[5],
+        Value::Seq((1..=4).map(Value::Int).collect())
+    );
     assert!(is_tree(&smallest.values[6], 4));
     assert_eq!(smallest.describe(&spec).split("  ").next(), Some("n = 4"));
 }
@@ -762,7 +786,10 @@ fn a_multitest_input_has_a_header_and_shrinks_to_one_failing_test() {
         let text = case.render();
         let mut lines = text.lines();
         // The count of test cases, then two lines for each.
-        assert_eq!(lines.next().unwrap().parse::<usize>().unwrap(), case.cases.len());
+        assert_eq!(
+            lines.next().unwrap().parse::<usize>().unwrap(),
+            case.cases.len()
+        );
         assert_eq!(lines.count(), 2 * case.cases.len());
         if case.cases.len() >= 3 {
             many = Some(case);
@@ -770,10 +797,15 @@ fn a_multitest_input_has_a_header_and_shrinks_to_one_failing_test() {
     }
     let start = many.expect("some input has three test cases");
     let fails = |case: &Case| {
-        case.cases.iter().any(|test| matches!(&test.values[1], Value::Seq(a) if a.len() >= 2))
+        case.cases
+            .iter()
+            .any(|test| matches!(&test.values[1], Value::Seq(a) if a.len() >= 2))
     };
     let mut start = start;
-    start.cases[1].values = vec![Value::Int(3), Value::Seq(vec![Value::Int(4), Value::Int(9), Value::Int(2)])];
+    start.cases[1].values = vec![
+        Value::Int(3),
+        Value::Seq(vec![Value::Int(4), Value::Int(9), Value::Int(2)]),
+    ];
     let smallest = shrink(&spec, &start, 2000, &mut |case: &Case| fails(case));
     assert_eq!(smallest.render(), "1\n2\n1 1\n");
     assert_eq!(smallest.describe(&spec), "n = 2  a = [1, 1]");
@@ -784,7 +816,10 @@ fn a_bug_that_needs_two_tests_shrinks_both_of_them() {
     let src = "@!multitest\nlet n: 1..=5 = read()\nlet a: [0..n]1..=9 = read()\nprint(a.max)\n";
     let spec = InputSpec::from_source(src).unwrap();
     let test = |a: &[i128]| Case {
-        values: vec![Value::Int(a.len() as i128), Value::Seq(a.iter().map(|&x| Value::Int(x)).collect())],
+        values: vec![
+            Value::Int(a.len() as i128),
+            Value::Seq(a.iter().map(|&x| Value::Int(x)).collect()),
+        ],
         cases: Vec::new(),
         until_eof: false,
     };
@@ -800,7 +835,10 @@ fn a_bug_that_needs_two_tests_shrinks_both_of_them() {
             Value::Seq(a) => a.iter().filter_map(Value::number).max(),
             _ => None,
         };
-        case.cases.len() >= 2 && case.cases[1..].iter().any(|c| max(c) == max(&case.cases[0]))
+        case.cases.len() >= 2
+            && case.cases[1..]
+                .iter()
+                .any(|c| max(c) == max(&case.cases[0]))
     };
     let mut start = start;
     start.cases[2] = test(&[7, 2]);
@@ -825,8 +863,15 @@ print(\"!\", r)
 ";
     let spec = InputSpec::from_source(src).unwrap();
     let inner = spec.cases.as_ref().expect("a multitest input");
-    let names: Vec<_> = inner.fields.iter().map(|field| field.names.clone()).collect();
-    assert_eq!(names, [vec![Some("n".to_string())], vec![Some("x".to_string())]]);
+    let names: Vec<_> = inner
+        .fields
+        .iter()
+        .map(|field| field.names.clone())
+        .collect();
+    assert_eq!(
+        names,
+        [vec![Some("n".to_string())], vec![Some("x".to_string())]]
+    );
 }
 
 #[test]
@@ -847,8 +892,15 @@ fn solve():
     let mut negative_shift = false;
     for seed in 0..200 {
         let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap();
-        let numbers: Vec<i128> = case.render().split_whitespace().map(|word| word.parse().unwrap()).collect();
-        assert!(numbers[..3].iter().all(|&size| (1..=8).contains(&size)), "{numbers:?}");
+        let numbers: Vec<i128> = case
+            .render()
+            .split_whitespace()
+            .map(|word| word.parse().unwrap())
+            .collect();
+        assert!(
+            numbers[..3].iter().all(|&size| (1..=8).contains(&size)),
+            "{numbers:?}"
+        );
         negative_shift |= numbers[3] < 0;
     }
     assert!(negative_shift);
@@ -860,12 +912,19 @@ fn the_stdlib_perm_and_tree_are_made_as_a_permutation_and_a_tree() {
     let mut db = cpl_check::Database::new();
     db.set_file("t.cp", src);
     let analysis = db.analyze("t.cp").expect("analyzed");
-    assert!(!analysis.has_errors(), "the compiler accepts both types: {:?}", analysis.diagnostics);
+    assert!(
+        !analysis.has_errors(),
+        "the compiler accepts both types: {:?}",
+        analysis.diagnostics
+    );
     let spec = InputSpec::from_source(src).unwrap();
     for seed in 0..50 {
         let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).expect("a case");
         let n = case.values[0].number().unwrap();
-        assert!(is_perm(&case.values[1], n) && is_tree(&case.values[2], n), "{case:?}");
+        assert!(
+            is_perm(&case.values[1], n) && is_tree(&case.values[2], n),
+            "{case:?}"
+        );
     }
 }
 
@@ -880,7 +939,9 @@ fn a_letter_domain_is_made_in_its_range_as_the_runtime_reads_it() {
         let k = case.values[0].number().unwrap();
         let letter = |v: &Value| matches!(v, Value::Int(c) if (65..65 + k).contains(c));
         assert!(letter(&case.values[1]), "{case:?}");
-        let Value::Seq(p) = &case.values[2] else { panic!("{case:?}") };
+        let Value::Seq(p) = &case.values[2] else {
+            panic!("{case:?}")
+        };
         assert!(p.len() == k as usize && p.iter().all(letter), "{case:?}");
     }
 }
@@ -889,24 +950,31 @@ fn a_letter_domain_is_made_in_its_range_as_the_runtime_reads_it() {
 fn a_weighted_tree_is_made_and_shrunk_as_a_tree_with_its_weights() {
     let src = "let n: 2..=10 = read()\ndomain V = 1..=n\ntype Tree = [0..n - 1](u: V, v: V, w: 1..=9)\nlet t: Tree = read()\nprint(n)\n";
     let spec = InputSpec::from_source(src).unwrap();
-    let weights_in_range = |value: &Value| match value {
+    let weights_in_range = |value: &Value| {
+        match value {
         Value::Seq(edges) => edges.iter().all(|edge| {
             matches!(edge, Value::Tuple(ends) if ends.len() == 3 && matches!(ends[2], Value::Int(1..=9)))
         }),
         _ => false,
+    }
     };
     let mut big = None;
     for seed in 0..50 {
         let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).expect("a case");
         let n = case.values[0].number().unwrap();
-        assert!(is_tree(&case.values[1], n) && weights_in_range(&case.values[1]), "{case:?}");
+        assert!(
+            is_tree(&case.values[1], n) && weights_in_range(&case.values[1]),
+            "{case:?}"
+        );
         if n >= 5 {
             big = Some(case);
         }
     }
     // Fails while some edge weighs at least 3.
     let heavy = |case: &Case| match &case.values[1] {
-        Value::Seq(edges) => edges.iter().any(|e| matches!(e, Value::Tuple(ends) if ends[2].number() >= Some(3))),
+        Value::Seq(edges) => edges
+            .iter()
+            .any(|e| matches!(e, Value::Tuple(ends) if ends[2].number() >= Some(3))),
         _ => false,
     };
     let mut start = big.expect("a tree on at least 5 vertices");
@@ -918,4 +986,161 @@ fn a_weighted_tree_is_made_and_shrunk_as_a_tree_with_its_weights() {
     let smallest = shrink(&spec, &start, 2000, &mut |case: &Case| heavy(case));
     assert!(is_tree(&smallest.values[1], 2) && weights_in_range(&smallest.values[1]));
     assert_eq!(smallest.render(), "2\n1 2 3\n");
+}
+
+/// Whether `value` is `m` edges on `1..=n` with no loop and no pair twice,
+/// connected if asked, and with no directed cycle if `dag`.
+fn is_graph(value: &Value, n: i128, m: usize, connected: bool, dag: bool) -> bool {
+    let Value::Seq(edges) = value else {
+        return false;
+    };
+    let mut pairs = std::collections::HashSet::new();
+    let mut reach = vec![vec![false; n as usize + 1]; n as usize + 1];
+    for edge in edges {
+        let Value::Tuple(ends) = edge else {
+            return false;
+        };
+        let (Some(a), Some(b)) = (ends[0].number(), ends[1].number()) else {
+            return false;
+        };
+        let key = if dag { (a, b) } else { (a.min(b), a.max(b)) };
+        if !(1..=n).contains(&a) || !(1..=n).contains(&b) || a == b || !pairs.insert(key) {
+            return false;
+        }
+        reach[a as usize][b as usize] = true;
+        if !dag {
+            reach[b as usize][a as usize] = true;
+        }
+    }
+    let n = n as usize;
+    for k in 1..=n {
+        for i in 1..=n {
+            for j in 1..=n {
+                reach[i][j] |= reach[i][k] && reach[k][j];
+            }
+        }
+    }
+    let cycle = (1..=n).any(|v| reach[v][v]);
+    let joined = (2..=n).all(|v| reach[1][v]);
+    edges.len() == m && (!connected || joined) && (!dag || !cycle)
+}
+
+const GRAPHS: &str = "use std.graph.{SimpleGraph, ConnectedGraph, Dag}\n\
+let (n, m): (2..=8, 1..=12) = read()\n\
+domain V = 1..=n\n\
+domain E = 0..m\n\
+let a: SimpleGraph<V, E> = read()\n\
+let b: ConnectedGraph<V, E> = read()\n\
+let c: Dag<V, E> = read()\n\
+type SimpleGraph = [E](u: V, v: V, w: 1..=9)\n\
+let d: SimpleGraph = read()\n\
+print(n)\n";
+
+fn graphs_valid(case: &Case) -> bool {
+    let Value::Tuple(nm) = &case.values[0] else {
+        return false;
+    };
+    let (n, m) = (nm[0].number().unwrap(), nm[1].number().unwrap() as usize);
+    is_graph(&case.values[1], n, m, false, false)
+        && is_graph(&case.values[2], n, m, true, false)
+        && is_graph(&case.values[3], n, m, false, true)
+        && is_graph(&case.values[4], n, m, false, false)
+}
+
+#[test]
+fn simple_connected_and_acyclic_graphs_are_generated_valid() {
+    let spec = InputSpec::from_source(GRAPHS).unwrap();
+    let mut made = 0;
+    for seed in 0..300 {
+        // No case when `m` has no room on `n` vertices, or is too few to connect them.
+        let Some(case) = generate(&spec, &mut Rng::new(seed), Size::Small(8)) else {
+            continue;
+        };
+        made += 1;
+        assert!(graphs_valid(&case), "{case:?}");
+        let Value::Seq(weighted) = &case.values[4] else {
+            panic!("{case:?}")
+        };
+        assert!(weighted
+            .iter()
+            .all(|e| matches!(e, Value::Tuple(ends) if matches!(ends[2], Value::Int(1..=9)))));
+    }
+    assert!(made >= 100, "only {made} of 300 seeds made a case");
+    let full = generate(&spec, &mut Rng::new(1), Size::Full).map(|case| graphs_valid(&case));
+    assert_ne!(full, Some(false));
+}
+
+#[test]
+fn shrinking_keeps_graphs_simple_connected_and_acyclic() {
+    let src = "use std.graph.{ConnectedGraph}\nlet (n, m): (2..=8, 1..=12) = read()\ndomain V = 1..=n\ndomain E = 0..m\nlet g: ConnectedGraph<V, E> = read()\nprint(n)\n";
+    let spec = InputSpec::from_source(src).unwrap();
+    let valid = |case: &Case| {
+        let Value::Tuple(nm) = &case.values[0] else {
+            return false;
+        };
+        is_graph(
+            &case.values[1],
+            nm[0].number().unwrap(),
+            nm[1].number().unwrap() as usize,
+            true,
+            false,
+        )
+    };
+    let start = (0..300)
+        .filter_map(|seed| generate(&spec, &mut Rng::new(seed), Size::Small(8)))
+        .find(|case| matches!(&case.values[0], Value::Tuple(nm) if nm[0].number() >= Some(6) && nm[1].number() >= Some(8)))
+        .expect("a case with n >= 6 and m >= 8");
+    let mut seen_invalid = false;
+    // Fails while the connected graph has a vertex of degree three.
+    let smallest = shrink(&spec, &start, 5000, &mut |case: &Case| {
+        seen_invalid |= !valid(case);
+        let Value::Seq(edges) = &case.values[1] else {
+            return false;
+        };
+        let mut degree = std::collections::HashMap::new();
+        for edge in edges {
+            if let Value::Tuple(ends) = edge {
+                for end in &ends[..2] {
+                    *degree.entry(end.number()).or_insert(0) += 1;
+                }
+            }
+        }
+        degree.values().any(|d| *d >= 3)
+    });
+    assert!(!seen_invalid, "a shrink step offered an invalid case");
+    // A star on four vertices: the fewest vertices and edges that fail.
+    assert_eq!(
+        smallest.values[0],
+        Value::Tuple(vec![Value::Int(4), Value::Int(3)])
+    );
+    assert!(valid(&smallest), "{smallest:?}");
+    assert_eq!(smallest.render(), "4 3\n1 2\n1 3\n1 4\n");
+}
+
+#[test]
+fn deleting_a_graph_vertex_renames_the_vertices_read_beside_it() {
+    let src = "use std.graph.{SimpleGraph}\nlet (n, m): (2..=8, 1..=12) = read()\ndomain V = 1..=n\ndomain E = 0..m\nlet g: SimpleGraph<V, E> = read()\nlet (s, t): (V, V) = read()\nprint(n)\n";
+    let spec = InputSpec::from_source(src).unwrap();
+    let joined = |case: &Case| {
+        let (Value::Seq(edges), Value::Tuple(st)) = (&case.values[1], &case.values[2]) else {
+            return false;
+        };
+        let (s, t) = (st[0].number(), st[1].number());
+        s != t
+            && edges.iter().any(|edge| {
+                matches!(edge, Value::Tuple(ends)
+                    if (ends[0].number(), ends[1].number()) == (s, t)
+                        || (ends[0].number(), ends[1].number()) == (t, s))
+            })
+    };
+    let start = (0..500)
+        .filter_map(|seed| generate(&spec, &mut Rng::new(seed), Size::Small(8)))
+        .find(|case| {
+            joined(case) && matches!(&case.values[0], Value::Tuple(nm) if nm[0].number() >= Some(6))
+        })
+        .expect("a case with an edge from s to t and n >= 6");
+    // Fails while the edge s-t is in the graph, so a deleted or renamed
+    // vertex must carry `s` and `t` along with the edges.
+    let smallest = shrink(&spec, &start, 5000, &mut |case: &Case| joined(case));
+    assert_eq!(smallest.render(), "2 1\n1 2\n1 2\n");
 }

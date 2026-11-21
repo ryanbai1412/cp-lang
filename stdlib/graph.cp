@@ -32,6 +32,17 @@ pub trait Target:
 /// gives them. `cpl stress` makes and shrinks it as a tree.
 pub type Tree<V> = [0..V.len - 1](u: V, v: V)
 
+/// One edge on `V` for each value of `E`, `u v` per line, with no loop and no
+/// pair twice. `cpl stress` makes and shrinks it so.
+pub type SimpleGraph<V, E> = [E](u: V, v: V)
+
+/// A `SimpleGraph` in which every vertex reaches every other.
+pub type ConnectedGraph<V, E> = [E](u: V, v: V)
+
+/// One arc `u -> v` on `V` for each value of `E`, with no arc twice and no
+/// directed cycle. `cpl stress` makes and shrinks it so.
+pub type Dag<V, E> = [E](u: V, v: V)
+
 /// A fixed graph in compressed sparse row form: one offsets list and one arcs list.
 /// Built in O(n + m); memory is n + 1 offsets and one `(to, e)` per arc.
 /// An undirected edge is two arcs with the same `e`.

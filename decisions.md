@@ -1455,6 +1455,18 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   and the C++ as numbers (`66`, not `B`) today, though `plan/19` says its values are chars; stress
   makes what the reader accepts. When the reader takes letters, make `Shape::Int` with a char bound
   produce `Value::Char`. Reverse: that same change.
+- **25.4 Simple, connected and acyclic graphs are three stdlib aliases.** `std.graph` gains
+  `SimpleGraph<V, E>`, `ConnectedGraph<V, E>` and `Dag<V, E>`, each `[E](u: V, v: V)`: one edge per
+  value of `E`, read and printed like any edge list by `cpl run` and the C++. Stress makes them with
+  no loop and no repeated pair (an unordered pair for the first two, an arc for `Dag`), the second
+  connected (a random spanning tree first) and the third acyclic (arcs follow a random vertex
+  order), and shrinks them by deleting a vertex with its edges, deleting edges, and renaming
+  vertices in the order the edges name them, keeping each property. A deleted or renamed vertex is
+  renamed in every other value read over the same vertex range (`let (s, t): (V, V)`), so the case
+  keeps its meaning. The spec's `gen<Graph<V>>(simple: true)` needs named arguments on a type the
+  core does not have; three names over one shape need nothing new, and a weighted graph is a local
+  alias with more fields (`type SimpleGraph = [E](u: V, v: V, w: W)`), as for `Tree`. The names
+  are recognised by name, like 25.1. Reverse: delete the three aliases and `Shape::Graph`.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 

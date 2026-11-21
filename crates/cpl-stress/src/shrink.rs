@@ -8,7 +8,16 @@
 //! stay inside the new `n` and every candidate is a valid input.
 
 use crate::gen::{bind, Case, Value};
-use crate::spec::{eval, Env, InputSpec, Shape};
+use crate::spec::{eval, names_in, Env, GraphKind, InputSpec, Shape};
+
+/// The representative of `v`'s part in a union-find forest.
+fn find(root: &mut [usize], mut v: usize) -> usize {
+    while root[v] != v {
+        root[v] = root[root[v]];
+        v = root[v];
+    }
+    v
+}
 
 fn fit_value(shape: &Shape, value: &Value, env: &Env) -> Option<Value> {
     match (shape, value) {
@@ -30,7 +39,10 @@ fn fit_value(shape: &Shape, value: &Value, env: &Env) -> Option<Value> {
         // The first `len` values, in the order they were in, renamed
         // to `lo..lo + len`: still a permutation.
         (Shape::Perm { lo, len }, Value::Seq(items)) => {
-            let (lo, len) = (eval(lo, env)?, usize::try_from(eval(len, env)?.max(0)).ok()?);
+            let (lo, len) = (
+                eval(lo, env)?,
+                usize::try_from(eval(len, env)?.max(0)).ok()?,
+            );
             (len <= items.len()).then_some(())?;
             let kept: Vec<i128> = items[..len].iter().filter_map(Value::number).collect();
             let mut order: Vec<usize> = (0..kept.len()).collect();
@@ -49,13 +61,6 @@ fn fit_value(shape: &Shape, value: &Value, env: &Env) -> Option<Value> {
             let n = usize::try_from((hi - lo + 1).max(0)).ok()?;
             (n <= items.len() + 1).then_some(())?;
             let mut root: Vec<usize> = (0..n).collect();
-            fn find(root: &mut [usize], mut v: usize) -> usize {
-                while root[v] != v {
-                    root[v] = root[root[v]];
-                    v = root[v];
-                }
-                v
-            }
             let weight = |ends: &[Value]| -> Option<Vec<Value>> {
                 extra
                     .iter()
@@ -69,7 +74,9 @@ fn fit_value(shape: &Shape, value: &Value, env: &Env) -> Option<Value> {
             };
             let mut edges = Vec::new();
             for item in items {
-                let Value::Tuple(ends) = item else { return None };
+                let Value::Tuple(ends) = item else {
+                    return None;
+                };
                 let (a, b) = (ends.first()?.number()? - lo, ends.get(1)?.number()? - lo);
                 let inside = |v: i128| usize::try_from(v).ok().filter(|v| *v < n);
                 let (Some(a), Some(b)) = (inside(a), inside(b)) else {
@@ -99,6 +106,78 @@ fn fit_value(shape: &Shape, value: &Value, env: &Env) -> Option<Value> {
                     })
                     .collect(),
             ))
+        }
+        // The first `len` edges, with their ends moved inside `lo..=hi`;
+        // `None` when that makes a loop, an edge twice, a cycle in a DAG or
+        // a connected graph that is not.
+        (
+            Shape::Graph {
+                lo,
+                hi,
+                len,
+                extra,
+                kind,
+            },
+            Value::Seq(items),
+        ) => {
+            let (lo, hi) = (eval(lo, env)?, eval(hi, env)?);
+            let len = usize::try_from(eval(len, env)?.max(0)).ok()?;
+            (lo <= hi && len <= items.len()).then_some(())?;
+            let n = usize::try_from(hi - lo + 1).ok()?;
+            let mut seen = std::collections::HashSet::new();
+            let mut root: Vec<usize> = (0..n).collect();
+            let mut into = vec![0usize; n];
+            let mut out: Vec<Vec<usize>> = vec![Vec::new(); n];
+            let mut parts = n;
+            let mut edges = Vec::new();
+            for item in &items[..len] {
+                let Value::Tuple(ends) = item else {
+                    return None;
+                };
+                let (a, b) = (
+                    ends.first()?.number()?.clamp(lo, hi),
+                    ends.get(1)?.number()?.clamp(lo, hi),
+                );
+                let (x, y) = ((a - lo) as usize, (b - lo) as usize);
+                let key = if *kind == GraphKind::Dag {
+                    (x, y)
+                } else {
+                    (x.min(y), x.max(y))
+                };
+                (x != y && seen.insert(key)).then_some(())?;
+                let (rx, ry) = (find(&mut root, x), find(&mut root, y));
+                if rx != ry {
+                    root[rx] = ry;
+                    parts -= 1;
+                }
+                out[x].push(y);
+                into[y] += 1;
+                let mut edge = vec![Value::Int(a), Value::Int(b)];
+                for (shape, value) in extra.iter().zip(ends.get(2..)?) {
+                    edge.push(fit_value(shape, value, env)?);
+                }
+                (edge.len() == 2 + extra.len()).then_some(())?;
+                edges.push(Value::Tuple(edge));
+            }
+            match kind {
+                GraphKind::Simple => {}
+                GraphKind::Connected => (parts <= 1).then_some(())?,
+                GraphKind::Dag => {
+                    let mut ready: Vec<usize> = (0..n).filter(|v| into[*v] == 0).collect();
+                    let mut done = 0;
+                    while let Some(v) = ready.pop() {
+                        done += 1;
+                        for &w in &out[v] {
+                            into[w] -= 1;
+                            if into[w] == 0 {
+                                ready.push(w);
+                            }
+                        }
+                    }
+                    (done == n).then_some(())?;
+                }
+            }
+            Some(Value::Seq(edges))
         }
         (Shape::Array { len, elem }, Value::Seq(items)) => {
             let len = usize::try_from(eval(len, env)?.max(0)).ok()?;
@@ -165,13 +244,18 @@ fn fit_in(spec: &InputSpec, outer: &Env, case: &Case) -> Option<Case> {
 }
 
 /// How far a case is from the plainest one of its size: permutations
-/// out of order and tree edges written high end first. It breaks ties
+/// out of order and undirected edges written high end first. It breaks ties
 /// between cases of one weight, so a permutation shrinks toward
 /// `1 2 3 ..` and an edge toward `1 2`.
 fn disorder(spec: &InputSpec, case: &Case) -> u128 {
     let mut total = 0u128;
     for (field, value) in spec.fields.iter().zip(&case.values) {
-        if let (Shape::Tree { .. }, Value::Seq(edges)) = (&field.shape, value) {
+        let undirected = match &field.shape {
+            Shape::Tree { .. } => true,
+            Shape::Graph { kind, .. } => *kind != GraphKind::Dag,
+            _ => false,
+        };
+        if let (true, Value::Seq(edges)) = (undirected, value) {
             total += edges
                 .iter()
                 .filter(|edge| matches!(edge, Value::Tuple(ends) if ends[0].number() > ends[1].number()))
@@ -230,7 +314,7 @@ fn numbers(spec: &InputSpec, case: &Case) -> Vec<(Path, i128)> {
                     }
                 }
             }
-            (Shape::Tree { lo, extra, .. }, Value::Seq(items)) => {
+            (Shape::Tree { lo, extra, .. } | Shape::Graph { lo, extra, .. }, Value::Seq(items)) => {
                 if let Some(lo) = eval(lo, env) {
                     for (index, item) in items.iter().enumerate() {
                         for end in 0..2 {
@@ -239,7 +323,9 @@ fn numbers(spec: &InputSpec, case: &Case) -> Vec<(Path, i128)> {
                             path.truncate(path.len() - 2);
                         }
                         let Value::Tuple(ends) = item else { continue };
-                        for (at, (shape, value)) in extra.iter().zip(ends.iter().skip(2)).enumerate() {
+                        for (at, (shape, value)) in
+                            extra.iter().zip(ends.iter().skip(2)).enumerate()
+                        {
                             path.extend([index, 2 + at]);
                             walk(shape, value, env, path, out);
                             path.truncate(path.len() - 2);
@@ -295,6 +381,145 @@ fn sizes(spec: &InputSpec, case: &Case) -> Vec<(Path, i128)> {
     out.into_iter()
         .filter_map(|path| all.iter().find(|(p, _)| *p == path).cloned())
         .collect()
+}
+
+/// Where the size `name` is read: its field, and its part of a tuple.
+fn size_path(spec: &InputSpec, name: &str) -> Option<Path> {
+    spec.fields.iter().enumerate().find_map(|(index, field)| {
+        let part = field
+            .names
+            .iter()
+            .position(|n| n.as_deref() == Some(name))?;
+        match &field.shape {
+            Shape::Int { .. } => Some(vec![index]),
+            Shape::Tuple(parts) if parts.len() == field.names.len() => Some(vec![index, part]),
+            _ => None,
+        }
+    })
+}
+
+/// The one size an expression such as `n` or `m - 1` is made from.
+fn sole_size(spec: &InputSpec, expr: &cpl_syntax::ast::Expr) -> Option<Path> {
+    let mut names = std::collections::HashSet::new();
+    names_in(expr, &mut names);
+    let mut sizes = names.iter().filter(|name| spec.sizes.contains(*name));
+    let name = sizes.next()?;
+    sizes.next().is_none().then(|| size_path(spec, name))?
+}
+
+/// `value` with each number of `shape` that is a vertex of `lo..=hi`
+/// renamed by `rename`; `None` when `rename` refuses one.
+fn rename_vertices(
+    shape: &Shape,
+    value: &Value,
+    ends: (&cpl_syntax::ast::Expr, &cpl_syntax::ast::Expr),
+    rename: &dyn Fn(i128) -> Option<i128>,
+) -> Option<Value> {
+    match (shape, value) {
+        (Shape::Int { lo, hi }, Value::Int(v)) if (lo, hi) == ends => Some(Value::Int(rename(*v)?)),
+        (Shape::Array { elem, .. }, Value::Seq(items)) => items
+            .iter()
+            .map(|item| rename_vertices(elem, item, ends, rename))
+            .collect::<Option<_>>()
+            .map(Value::Seq),
+        (Shape::Tuple(shapes), Value::Tuple(items)) => shapes
+            .iter()
+            .zip(items)
+            .map(|(shape, item)| rename_vertices(shape, item, ends, rename))
+            .collect::<Option<_>>()
+            .map(Value::Tuple),
+        _ => Some(value.clone()),
+    }
+}
+
+/// `case` with the edges of field `field` replaced by `edges`, renamed
+/// by `rename`, and every other value that is one of its vertices too.
+fn with_vertices_renamed(
+    spec: &InputSpec,
+    case: &Case,
+    field: usize,
+    edges: &[Value],
+    rename: &dyn Fn(i128) -> Option<i128>,
+) -> Option<Case> {
+    let Shape::Graph { lo, hi, .. } = &spec.fields[field].shape else {
+        return None;
+    };
+    let mut renamed = case.clone();
+    for (index, (other, value)) in spec.fields.iter().zip(&case.values).enumerate() {
+        renamed.values[index] = if index == field {
+            let edges = edges.iter().map(|edge| {
+                let Value::Tuple(ends) = edge else {
+                    return None;
+                };
+                let mut ends = ends.clone();
+                for end in &mut ends[..2] {
+                    *end = end.with(rename(end.number()?)?);
+                }
+                Some(Value::Tuple(ends))
+            });
+            Value::Seq(edges.collect::<Option<_>>()?)
+        } else {
+            rename_vertices(&other.shape, value, (lo, hi), rename)?
+        };
+    }
+    Some(renamed)
+}
+
+/// `case` without vertex `v` of the graph read by field `field`: its
+/// edges go, the vertices above it move down one, and the sizes that
+/// count the vertices and the edges drop to match.
+fn without_vertex(spec: &InputSpec, case: &Case, field: usize, v: i128) -> Option<Case> {
+    let Shape::Graph { hi, len, .. } = &spec.fields[field].shape else {
+        return None;
+    };
+    let (vertices, edges) = (sole_size(spec, hi)?, sole_size(spec, len)?);
+    (vertices != edges).then_some(())?;
+    let Value::Seq(items) = &case.values[field] else {
+        return None;
+    };
+    let touches = |item: &Value| matches!(item, Value::Tuple(ends) if ends[..2].iter().any(|end| end.number() == Some(v)));
+    let kept: Vec<Value> = items
+        .iter()
+        .filter(|item| !touches(item))
+        .cloned()
+        .collect();
+    let gone = (items.len() - kept.len()) as i128;
+    let down = |w: i128| match w.cmp(&v) {
+        std::cmp::Ordering::Less => Some(w),
+        std::cmp::Ordering::Equal => None,
+        std::cmp::Ordering::Greater => Some(w - 1),
+    };
+    let mut smaller = with_vertices_renamed(spec, case, field, &kept, &down)?;
+    for (path, by) in [(vertices, 1), (edges, gone)] {
+        let slot = at(&mut smaller, &path);
+        *slot = slot.with(slot.number()? - by);
+    }
+    Some(smaller)
+}
+
+/// `case` with the vertices of the graph read by field `field` renamed
+/// `lo, lo + 1, ..` in the order the edges first name them, the rest
+/// after them in order: the same graph, written plainer.
+fn renumbered(spec: &InputSpec, case: &Case, field: usize, lo: i128, hi: i128) -> Option<Case> {
+    let Value::Seq(items) = &case.values[field] else {
+        return None;
+    };
+    let mut order: Vec<i128> = Vec::new();
+    for item in items {
+        let Value::Tuple(ends) = item else {
+            return None;
+        };
+        for end in &ends[..2] {
+            let end = end.number()?;
+            if !order.contains(&end) {
+                order.push(end);
+            }
+        }
+    }
+    let unseen: Vec<i128> = (lo..=hi).filter(|v| !order.contains(v)).collect();
+    order.extend(unseen);
+    let name = |v: i128| Some(lo + order.iter().position(|w| *w == v)? as i128);
+    with_vertices_renamed(spec, case, field, items, &name)
 }
 
 /// The lengths of the top-level arrays, by field.
@@ -395,10 +620,17 @@ pub fn shrink(
                 *at(&mut smaller, &path) = Value::Int(current - 1);
                 // Which arrays the smaller size shortens, at any depth: a
                 // smaller `k` shortens every permutation in a list of them.
-                let Some(fitted) = fit(spec, &smaller) else { break };
+                let Some(fitted) = fit(spec, &smaller) else {
+                    break;
+                };
                 let mut any = false;
                 for (field, new) in fitted.values.iter().enumerate() {
-                    any |= drop_where_shorter(&best.values[field], new, &mut smaller.values[field], position);
+                    any |= drop_where_shorter(
+                        &best.values[field],
+                        new,
+                        &mut smaller.values[field],
+                        position,
+                    );
                 }
                 if !any {
                     break;
@@ -408,6 +640,39 @@ pub fn shrink(
                 } else {
                     position += 1;
                 }
+            }
+        }
+        // 2a. Graphs: delete one vertex, with its edges.
+        for field in 0..best.values.len() {
+            let Shape::Graph { lo, hi, .. } = &spec.fields[field].shape else {
+                continue;
+            };
+            let Some(lo) = eval(lo, &spec.consts) else {
+                continue;
+            };
+            let mut v = lo;
+            while let Value::Seq(items) = &best.values[field] {
+                let top = items.iter().filter_map(|item| match item {
+                    Value::Tuple(ends) => ends[..2].iter().filter_map(Value::number).max(),
+                    _ => None,
+                });
+                if top.max().is_none_or(|top| v > top) {
+                    break;
+                }
+                let smaller = without_vertex(spec, &best, field, v);
+                if smaller.is_some_and(|smaller| attempt(&mut best, smaller)) {
+                    improved = true;
+                } else {
+                    v += 1;
+                }
+            }
+            let mut env = spec.consts.clone();
+            for (field, value) in spec.fields.iter().zip(&best.values) {
+                bind(&field.names, value, &mut env);
+            }
+            let plainer = eval(hi, &env).and_then(|hi| renumbered(spec, &best, field, lo, hi));
+            if let Some(plainer) = plainer {
+                improved |= attempt(&mut best, plainer);
             }
         }
         // 2b. Words: drop one letter at a time.
