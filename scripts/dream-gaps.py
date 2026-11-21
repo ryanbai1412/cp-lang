@@ -72,7 +72,7 @@ def gap(code, message, help_text):
     m = re.match(r"`(\S+)` has no `(\S+)`, and not in the stdlib \(yet\)", message)
     if m:
         return "library: %s.%s" % (m.group(1), m.group(2))
-    m = re.match(r"`(\S+)` has no argument named `(\S+)`", message)
+    m = re.match(r"`(.+)` has no (?:argument|parameter) named `(\S+)`", message)
     if m:
         return "library: %s(%s:)" % (m.group(1), m.group(2))
     if re.match(r"`\S+` is a field of `\S+`, and this method takes no `self`", help_text):
@@ -82,12 +82,23 @@ def gap(code, message, help_text):
     m = re.match(r"(\S+) has no field or method `(\S+)`", message)
     if m:
         return "library: %s.%s" % (m.group(1), m.group(2))
-    m = re.match(r"a `(.+)` has no method `(\S+)` that `cpl run` knows", message)
+    m = re.match(r"a `(.+)` has no (?:method|member) `(\S+)` that `cpl run` knows", message)
     if m:
         return "library: %s.%s" % (m.group(1), m.group(2))
     m = re.match(r"`cpl run` and `cpl build` can't handle (.+) yet$", message)
     if m:
         return "backend: " + m.group(1)
+    m = re.match(r"no module `(\S+)`$", message)
+    if m:
+        return "import: module " + m.group(1)
+    m = re.match(r"`(.+)` is `(.+)` in cp$", message)
+    if m:
+        return "spelling: `%s` (write `%s`)" % (m.group(1), m.group(2))
+    m = re.match(r"CP Lang (\w+) with `(.+)`$", message)
+    if m:
+        return "spelling: %s (write `%s`)" % (m.group(1), m.group(2))
+    if code == "E0309" and message.endswith("can't leave the fn from there"):
+        return "rule: `?` that leaves the fn from a branch, lambda or comprehension"
     m = re.match(r"`(\S+)` is in the standard library", help_text)
     if m:
         return "import: " + m.group(1)

@@ -75,6 +75,9 @@ class GapTest(unittest.TestCase):
     def test_missing_arguments_and_implicit_fields_are_named(self):
         self.assertEqual(dg.gap("E0310", "`count` has no argument named `where`", ""), "library: count(where:)")
         self.assertEqual(
+            dg.gap("E0310", "`MinHeap<Seg>` has no parameter named `by`", ""), "library: MinHeap<Seg>(by:)"
+        )
+        self.assertEqual(
             dg.gap("E0201", "no `z` in scope",
                    "`z` is a field of `Prefix`, and this method takes no `self`: add `self` as its first parameter"),
             "syntax: a method that uses fields without taking `self`",
@@ -84,6 +87,23 @@ class GapTest(unittest.TestCase):
         self.assertTrue(
             dg.gap("E0102", "a top-level `return` takes no value", "").startswith("rule: ")
         )
+
+    def test_spellings_from_other_languages_are_named(self):
+        self.assertEqual(dg.gap("E0107", "`..<` is `..` in cp", ""), "spelling: `..<` (write `..`)")
+        self.assertEqual(
+            dg.gap("E0004", "CP Lang concatenates with `+`", ""), "spelling: concatenates (write `+`)"
+        )
+
+    def test_a_question_mark_inside_a_branch_is_a_rule(self):
+        msg = "`f(x)?` is inside a branch, a lambda or a comprehension, and can't leave the fn from there"
+        self.assertTrue(dg.gap("E0309", msg, "").startswith("rule: "))
+
+    def test_unknown_members_and_sibling_modules_are_named(self):
+        self.assertEqual(
+            dg.gap("E0203", "a `[Int]Int` has no member `positions` that `cpl run` knows", ""),
+            "library: [Int]Int.positions",
+        )
+        self.assertEqual(dg.gap("E0206", "no module `cf1a`", ""), "import: module cf1a")
 
 if __name__ == "__main__":
     unittest.main()
