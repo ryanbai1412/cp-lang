@@ -101,6 +101,8 @@ pub enum Ty {
     Bool,
     Char,
     Str,
+    /// O(1) read-only view into a `Str` (slice or reverse).
+    StrView,
     /// A position of a domain, held as its 0-based ordinal.
     Pos(DomainId),
     /// A gap between positions of a domain: `0..=len`.
@@ -117,6 +119,8 @@ pub enum Ty {
     Tuple(Vec<Ty>),
     Record(Vec<(String, Ty)>),
     List(Box<Ty>),
+    /// O(1) read-only view into a `List<T>` (slice or reverse).
+    ListView(Box<Ty>),
     Map(Box<Ty>, Box<Ty>),
     HashMap(Box<Ty>, Box<Ty>),
     Set(Box<Ty>),
@@ -154,6 +158,7 @@ impl Ty {
         matches!(
             self,
             Ty::List(_)
+                | Ty::ListView(_)
                 | Ty::Array { .. }
                 | Ty::Map(..)
                 | Ty::HashMap(..)
@@ -203,7 +208,9 @@ impl Ty {
     pub fn is_comparable(&self, program: &Program) -> bool {
         match self {
             Ty::Fn(..) | Ty::DomainVal | Ty::HashMap(..) | Ty::HashSet(_) => false,
-            Ty::Opt(t) | Ty::List(t) | Ty::Set(t) | Ty::Range(t) => t.is_comparable(program),
+            Ty::Opt(t) | Ty::List(t) | Ty::ListView(t) | Ty::Set(t) | Ty::Range(t) => {
+                t.is_comparable(program)
+            }
             Ty::Array { elem, .. } => elem.is_comparable(program),
             Ty::Map(k, v) => k.is_comparable(program) && v.is_comparable(program),
             Ty::Tuple(ts) => ts.iter().all(|t| t.is_comparable(program)),
@@ -233,8 +240,8 @@ impl Ty {
     /// 1D `[D]T`, `Range<I>`, and O(1) slice/reverse views).
     pub fn seq_elem(&self) -> Option<Ty> {
         match self {
-            Ty::List(elem) => Some((**elem).clone()),
-            Ty::Str => Some(Ty::Char),
+            Ty::List(elem) | Ty::ListView(elem) => Some((**elem).clone()),
+            Ty::Str | Ty::StrView => Some(Ty::Char),
             Ty::Array { dims, elem } if dims.len() == 1 => Some((**elem).clone()),
             Ty::Range(inner) => Some((**inner).clone()),
             _ => None,
@@ -607,6 +614,18 @@ pub enum Builtin {
     LastLt,
     Sorted,
     Reversed,
+    /// O(1) slice view `(base, lo, hi)` on `Str`/`StrView` -> `StrView`.
+    StrSlice,
+    /// O(1) slice view `(base, lo, hi)` on `List`/`ListView` -> `ListView`.
+    ListSlice,
+    /// Explicit O(n) copy of a `Str` or `StrView` into an owned `Str`.
+    ToStr,
+    /// Explicit O(n) copy of a `List` or `ListView` into an owned `List`.
+    ToList,
+    /// Direct O(n + m) concatenation of two `Str`/`StrView` values -> `Str`.
+    StrConcat,
+    /// Direct O(n + m) concatenation of two `List`/`ListView` values -> `List`.
+    ListConcat,
     /// `v.next`, `v.prev`: optional position.
     PosNext,
     PosPrev,
@@ -964,6 +983,7 @@ impl Program {
             Ty::Range(inner)
             | Ty::Opt(inner)
             | Ty::List(inner)
+            | Ty::ListView(inner)
             | Ty::Set(inner)
             | Ty::HashSet(inner)
             | Ty::Mut(inner) => {
@@ -1021,6 +1041,7 @@ impl Program {
             | Ty::Bool
             | Ty::Char
             | Ty::Str
+            | Ty::StrView
             | Ty::DomainVal
             | Ty::Error => {}
         }

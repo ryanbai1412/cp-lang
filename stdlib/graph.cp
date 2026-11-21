@@ -854,7 +854,7 @@ pub fn find_cycle<V, N>(next: N) -> ?List<V>:
                 elif state[v] == 1:
                     var cyc = [x for (x, _) in path]
                     let at = first(j for j in 0..cyc.len if cyc[j] == v)!
-                    return cyc[at..]
+                    return cyc[at..].to_list()
             else:
                 state[u] = 2
                 path.pop()

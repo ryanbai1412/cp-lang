@@ -12,7 +12,7 @@ let symbol = [if i == 0: 0 else: (comb.catalan(i - 1) * comb.catalan(i - 1)).v f
 var cur = [if i == 0: 1 % m else: 0 for i in 0..=n + 1]
 var ans: [0..=n]Z = 0
 for k in 0..=n:
-    cur = convolve_mod(cur, symbol, m)[..n + 2]
+    cur = convolve_mod(cur, symbol, m)[..n + 2].to_list()
     ans[k] = cur[n + 1] * comb.choose(2 * n, k) * comb.inv(k + 1)
 
 // ans(x - 1): out[j] = sum over k >= j of ans[k] * choose(k, j) * (-1)^(k - j)

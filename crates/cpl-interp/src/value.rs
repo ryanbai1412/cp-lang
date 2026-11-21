@@ -189,6 +189,8 @@ pub(crate) enum Value {
     Bool(bool),
     Char(u8),
     Str(Rc<Vec<u8>>),
+    /// O(1) read-only view (slice or reverse) into a `Str`.
+    StrView(Rc<StrViewVal>),
     Opt(OptVal),
     /// A half-open range `(lo, hi)`.
     Range(i64, i64),
@@ -209,10 +211,204 @@ pub(crate) enum Value {
     Enum(u32, Rc<Vec<Value>>),
     Array(Rc<Array>),
     List(Rc<Vec<Value>>),
+    /// O(1) read-only view (slice or reverse) into a `List<T>`.
+    ListView(Rc<ListViewVal>),
     Map(Rc<BTreeMap<Value, Value>>),
     Set(Rc<BTreeSet<Value>>),
     /// Lent to a call as a `mut` argument until the call returns.
     Moved,
+}
+
+/// O(1) read-only slice/reverse view into a `Str`'s byte buffer.
+#[derive(Clone, Debug)]
+pub(crate) struct StrViewVal {
+    pub base: Rc<Vec<u8>>,
+    pub lo: usize,
+    pub len: usize,
+    pub rev: bool,
+}
+
+impl StrViewVal {
+    pub fn whole(base: Rc<Vec<u8>>, rev: bool) -> StrViewVal {
+        let len = base.len();
+        StrViewVal { base, lo: 0, len, rev }
+    }
+
+    #[inline]
+    pub fn get(&self, idx: usize) -> Option<u8> {
+        if idx >= self.len {
+            return None;
+        }
+        let pos = if self.rev {
+            self.lo + self.len - 1 - idx
+        } else {
+            self.lo + idx
+        };
+        Some(self.base[pos])
+    }
+
+    pub fn slice(&self, lo: usize, hi: usize) -> StrViewVal {
+        let n = hi.saturating_sub(lo);
+        let new_lo = if self.rev {
+            self.lo + self.len - hi
+        } else {
+            self.lo + lo
+        };
+        StrViewVal {
+            base: Rc::clone(&self.base),
+            lo: new_lo,
+            len: n,
+            rev: self.rev,
+        }
+    }
+
+    pub fn reversed(&self) -> StrViewVal {
+        StrViewVal {
+            base: Rc::clone(&self.base),
+            lo: self.lo,
+            len: self.len,
+            rev: !self.rev,
+        }
+    }
+
+    pub fn to_vec(&self) -> Vec<u8> {
+        let slice = &self.base[self.lo..self.lo + self.len];
+        if self.rev {
+            slice.iter().rev().copied().collect()
+        } else {
+            slice.to_vec()
+        }
+    }
+
+    pub fn cmp_bytes(&self, other: &[u8]) -> Ordering {
+        if !self.rev {
+            return self.base[self.lo..self.lo + self.len].cmp(other);
+        }
+        let n = self.len.min(other.len());
+        for i in 0..n {
+            let ord = self.base[self.lo + self.len - 1 - i].cmp(&other[i]);
+            if ord != Ordering::Equal {
+                return ord;
+            }
+        }
+        self.len.cmp(&other.len())
+    }
+
+    pub fn cmp_view(&self, other: &StrViewVal) -> Ordering {
+        if !self.rev && !other.rev {
+            return self.base[self.lo..self.lo + self.len]
+                .cmp(&other.base[other.lo..other.lo + other.len]);
+        }
+        let n = self.len.min(other.len);
+        for i in 0..n {
+            let a = self.get(i).unwrap();
+            let b = other.get(i).unwrap();
+            let ord = a.cmp(&b);
+            if ord != Ordering::Equal {
+                return ord;
+            }
+        }
+        self.len.cmp(&other.len)
+    }
+
+    pub fn contains_byte(&self, b: u8) -> bool {
+        self.base[self.lo..self.lo + self.len].contains(&b)
+    }
+}
+
+/// O(1) read-only slice/reverse view into a `List<T>`'s backing `Vec`.
+#[derive(Clone, Debug)]
+pub(crate) struct ListViewVal {
+    pub base: Rc<Vec<Value>>,
+    pub lo: usize,
+    pub len: usize,
+    pub rev: bool,
+}
+
+impl ListViewVal {
+    pub fn whole(base: Rc<Vec<Value>>, rev: bool) -> ListViewVal {
+        let len = base.len();
+        ListViewVal { base, lo: 0, len, rev }
+    }
+
+    #[inline]
+    pub fn get(&self, idx: usize) -> Option<&Value> {
+        if idx >= self.len {
+            return None;
+        }
+        let pos = if self.rev {
+            self.lo + self.len - 1 - idx
+        } else {
+            self.lo + idx
+        };
+        Some(&self.base[pos])
+    }
+
+    pub fn slice(&self, lo: usize, hi: usize) -> ListViewVal {
+        let n = hi.saturating_sub(lo);
+        let new_lo = if self.rev {
+            self.lo + self.len - hi
+        } else {
+            self.lo + lo
+        };
+        ListViewVal {
+            base: Rc::clone(&self.base),
+            lo: new_lo,
+            len: n,
+            rev: self.rev,
+        }
+    }
+
+    pub fn reversed(&self) -> ListViewVal {
+        ListViewVal {
+            base: Rc::clone(&self.base),
+            lo: self.lo,
+            len: self.len,
+            rev: !self.rev,
+        }
+    }
+
+    pub fn to_vec(&self) -> Vec<Value> {
+        let slice = &self.base[self.lo..self.lo + self.len];
+        if self.rev {
+            slice.iter().rev().cloned().collect()
+        } else {
+            slice.to_vec()
+        }
+    }
+
+    pub fn cmp_slice(&self, other: &[Value]) -> Ordering {
+        if !self.rev {
+            return self.base[self.lo..self.lo + self.len].cmp(other);
+        }
+        let n = self.len.min(other.len());
+        for i in 0..n {
+            let ord = self.base[self.lo + self.len - 1 - i].cmp(&other[i]);
+            if ord != Ordering::Equal {
+                return ord;
+            }
+        }
+        self.len.cmp(&other.len())
+    }
+
+    pub fn cmp_view(&self, other: &ListViewVal) -> Ordering {
+        if !self.rev && !other.rev {
+            return self.base[self.lo..self.lo + self.len]
+                .cmp(&other.base[other.lo..other.lo + other.len]);
+        }
+        let n = self.len.min(other.len);
+        for i in 0..n {
+            let ord = self.get(i).unwrap().cmp(other.get(i).unwrap());
+            if ord != Ordering::Equal {
+                return ord;
+            }
+        }
+        self.len.cmp(&other.len)
+    }
+
+    pub fn contains(&self, needle: &Value) -> bool {
+        self.base[self.lo..self.lo + self.len].contains(needle)
+    }
 }
 
 /// Typed flat backing storage for [`Array`] cells so primitive arrays
@@ -545,7 +741,7 @@ impl Value {
             Value::Float(_) => 2,
             Value::Bool(_) => 3,
             Value::Char(_) => 4,
-            Value::Str(_) => 5,
+            Value::Str(_) | Value::StrView(_) => 5,
             Value::Opt(_) => 6,
             Value::Range(..) => 7,
             Value::DomainVal(..) => 8,
@@ -553,7 +749,7 @@ impl Value {
             Value::Tuple(_) => 10,
             Value::Enum(..) => 11,
             Value::Array(_) => 12,
-            Value::List(_) => 13,
+            Value::List(_) | Value::ListView(_) => 13,
             Value::Map(_) => 14,
             Value::Set(_) => 15,
             Value::Moved => 16,
@@ -579,6 +775,9 @@ impl Ord for Value {
             (Value::Bool(a), Value::Bool(b)) => a.cmp(b),
             (Value::Char(a), Value::Char(b)) => a.cmp(b),
             (Value::Str(a), Value::Str(b)) => a.cmp(b),
+            (Value::StrView(a), Value::StrView(b)) => a.cmp_view(b),
+            (Value::StrView(a), Value::Str(b)) => a.cmp_bytes(b),
+            (Value::Str(a), Value::StrView(b)) => b.cmp_bytes(a).reverse(),
             (Value::Opt(a), Value::Opt(b)) => a.cmp(b),
             (Value::Range(a1, a2), Value::Range(b1, b2)) => (a1, a2).cmp(&(b1, b2)),
             (Value::Range128(a1, a2), Value::Range128(b1, b2)) => (a1, a2).cmp(&(b1, b2)),
@@ -586,6 +785,9 @@ impl Ord for Value {
             (Value::Closure(a, _), Value::Closure(b, _)) => a.cmp(b),
             (Value::Tuple(a), Value::Tuple(b)) => a.cmp(b),
             (Value::List(a), Value::List(b)) => a.cmp(b),
+            (Value::ListView(a), Value::ListView(b)) => a.cmp_view(b),
+            (Value::ListView(a), Value::List(b)) => a.cmp_slice(b),
+            (Value::List(a), Value::ListView(b)) => b.cmp_slice(a).reverse(),
             (Value::Enum(ta, a), Value::Enum(tb, b)) => ta.cmp(tb).then_with(|| a.cmp(b)),
             (Value::Array(a), Value::Array(b)) => a.cmp_data(b),
             (Value::Map(a), Value::Map(b)) => a.cmp(b),
@@ -620,6 +822,7 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
         Ty::Bool => Value::Bool(false),
         Ty::Char => Value::Char(0),
         Ty::Str => Value::Str(Rc::new(Vec::new())),
+        Ty::StrView => Value::StrView(Rc::new(StrViewVal::whole(Rc::new(Vec::new()), false))),
         Ty::Opt(_) => Value::Opt(OptVal::None),
         Ty::Range(inner) if **inner == Ty::I128 => Value::Range128(0, 0),
         Ty::Range(_) => Value::Range(0, 0),
@@ -644,6 +847,7 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
         }
         Ty::Array { dims, .. } => Value::Array(Rc::new(Array::empty(vec![0; dims.len()]))),
         Ty::List(_) => Value::List(Rc::new(Vec::new())),
+        Ty::ListView(_) => Value::ListView(Rc::new(ListViewVal::whole(Rc::new(Vec::new()), false))),
         Ty::Map(..) | Ty::HashMap(..) => Value::Map(Rc::new(BTreeMap::new())),
         Ty::Set(_) | Ty::HashSet(_) => Value::Set(Rc::new(BTreeSet::new())),
     }
@@ -693,6 +897,15 @@ pub(crate) fn show(
         (Value::Bool(v), _) => out.extend_from_slice(if *v { b"YES" } else { b"NO" }),
         (Value::Char(c), _) => out.push(*c),
         (Value::Str(s), _) => out.extend_from_slice(s),
+        (Value::StrView(v), _) => {
+            if !v.rev {
+                out.extend_from_slice(&v.base[v.lo..v.lo + v.len]);
+            } else {
+                for i in 0..v.len {
+                    out.push(v.get(i).unwrap());
+                }
+            }
+        }
         (Value::Opt(OptVal::None), _) => out.extend_from_slice(b"none"),
         (Value::Opt(OptVal::Int(v)), Ty::Opt(inner_ty)) => rec(out, &Value::Int(*v), inner_ty),
         (Value::Opt(OptVal::Boxed(inner)), Ty::Opt(inner_ty)) => rec(out, inner, inner_ty),
@@ -750,6 +963,15 @@ pub(crate) fn show(
                     out.extend_from_slice(sep.bytes());
                 }
                 rec(out, item, elem);
+            }
+        }
+        (Value::ListView(view), Ty::ListView(elem)) => {
+            let sep = sep_of(elem, &program.structs);
+            for i in 0..view.len {
+                if i > 0 {
+                    out.extend_from_slice(sep.bytes());
+                }
+                rec(out, view.get(i).unwrap(), elem);
             }
         }
         (Value::Set(items), Ty::Set(elem) | Ty::HashSet(elem)) => {

@@ -754,16 +754,16 @@ impl<'a> Checker<'a> {
                     self.check_expr_domain_escape(value, &value_ty, target_depth, &how, &[], false);
                     self.drop_facts(&[root.to_string()]);
                 }
-                if *op == AssignOp::Set {
+                // `a[l..r] = 0`, `g[r, ..] = 0`: one value for every cell
+                // of the part.
+                let part = matches!(&target.kind, ExprKind::Index { indices, .. }
+                    if indices.iter().any(|index| matches!(index.kind, ExprKind::Range { step: None, .. })));
+                if *op == AssignOp::Set && !part {
                     self.no_escape(value, "this assignment");
                 }
                 if matches!(op, AssignOp::Max | AssignOp::Min) {
                     self.row_keep(target, &target_ty, value, &value_ty);
                 }
-                // `a[l..r] = 0`, `g[r, ..] = 0`: one value for every cell
-                // of the part.
-                let part = matches!(&target.kind, ExprKind::Index { indices, .. }
-                    if indices.iter().any(|index| matches!(index.kind, ExprKind::Range { step: None, .. })));
                 let row = |ty: &Ty| {
                     matches!(ty, Ty::Array { .. }) || matches!(ty, Ty::Named { name, .. } if name == "List")
                 };

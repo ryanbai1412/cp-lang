@@ -1046,7 +1046,7 @@ fn a_let_bound_slice_keeps_its_array_lent_until_its_last_use() {
         lent("let part = a[l..=r]\nprint(a[l])\nprint(part[l])\n"),
         vec![]
     );
-    let diags = lent("let part = a[l..=r]\npart.sort()\nprint(a[l])\npart.rev()\n");
+    let diags = lent("let part = a[l..=r]\npart.sort()\nprint(a[l])\npart.reverse()\n");
     assert!(
         diags[0].message.contains("is mutably lent to `part`"),
         "{diags:#?}"
@@ -2307,5 +2307,58 @@ fn enumerate_points_to_items() {
         method[0].message.contains(".items")
             || method[0].help.as_deref().unwrap_or_default().contains(".items"),
         "expected `.items` hint on `.enumerate()`: {method:#?}"
+    );
+}
+
+#[test]
+fn slice_and_reverse_views_are_readonly_and_cannot_outlive_mutated_base() {
+    // Mutating the base while a slice or reverse view is still live is E0602.
+    assert_eq!(
+        codes("var s = \"abcdef\"\nlet v = s[1..4]\ns.push('x')\nprint(v)\n"),
+        ["E0602"]
+    );
+    assert_eq!(
+        codes("var s = \"abcdef\"\nlet r = s.rev\ns.push('x')\nprint(r)\n"),
+        ["E0602"]
+    );
+    assert_eq!(
+        codes("var xs = [1, 2, 3, 4]\nlet v = xs[1..3]\nxs.push(5)\nprint(v)\n"),
+        ["E0602"]
+    );
+    assert_eq!(
+        codes("var xs = [1, 2, 3, 4]\nlet r = xs.rev\nxs.push(5)\nprint(r)\n"),
+        ["E0602"]
+    );
+
+    // Mutating through a read-only view is E0401.
+    assert_eq!(
+        codes("var xs = [1, 2, 3, 4]\nlet v = xs[1..3]\nv.push(5)\n"),
+        ["E0401"]
+    );
+    assert_eq!(
+        codes("var xs = [1, 2, 3, 4]\nxs.rev.sort()\n"),
+        ["E0401"]
+    );
+    assert_eq!(
+        codes("var xs = [1, 2, 3, 4]\nxs[1..3][0] = 9\n"),
+        ["E0401"]
+    );
+
+    // Returning a view escapes its lending block (E0603); copying explicitly succeeds.
+    assert_eq!(
+        codes("fn bad(s: Str) -> Str:\n    s[1..3]\n"),
+        ["E0603"]
+    );
+    assert_eq!(
+        codes("fn bad(xs: List<Int>) -> List<Int>:\n    xs.rev\n"),
+        ["E0603"]
+    );
+    assert_eq!(
+        codes(concat!(
+            "fn ok_s(s: Str) -> Str:\n    s[1..3].to_str()\n",
+            "fn ok_l(xs: List<Int>) -> List<Int>:\n    xs.rev.to_list()\n",
+            "var s = \"abcdef\"\nlet owned = s[1..4].to_str()\ns.push('x')\nprint(owned)\n",
+        )),
+        Vec::<&str>::new()
     );
 }

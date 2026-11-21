@@ -672,7 +672,18 @@ struct CpHash {
         for (unsigned char c : s) h = splitmix64(h ^ c);
         return (size_t)h;
     }
-    // A list or a fixed array: its length, then each element in order.
+    // A string view: same hash as `std::string`.
+    template <class S> auto operator()(const S& s) const -> decltype(s.cpl_str_view_tag(), size_t()) {
+        uint64_t h = salt();
+        for (u8 c : s) h = splitmix64(h ^ (unsigned char)c);
+        return (size_t)h;
+    }
+    // A list, list view, or fixed array: its length, then each element in order.
+    template <class L> auto operator()(const L& xs) const -> decltype(xs.begin(), xs.size(), xs.cpl_list_view_tag(), size_t()) {
+        uint64_t h = salt() ^ xs.size();
+        for (const auto& x : xs) h = splitmix64(h ^ (uint64_t)(*this)(x));
+        return (size_t)h;
+    }
     template <class L> auto operator()(const L& xs) const -> decltype(xs.begin(), xs.data(), size_t()) {
         uint64_t h = salt() ^ xs.size();
         for (const auto& x : xs) h = splitmix64(h ^ (uint64_t)(*this)(x));
@@ -972,6 +983,149 @@ inline OptPos bound_right(ll b, ll len) { return b < len ? OptPos((int)b) : OptP
 inline std::vector<u8> str_to_list(const std::string& s) { return std::vector<u8>(s.begin(), s.end()); }
 inline std::string list_to_str(const std::vector<u8>& v) { return std::string(v.begin(), v.end()); }
 inline ll parse_int(const std::string& s) { return std::stoll(s); }
+",
+    },
+    Piece {
+        name: "str_view",
+        needs: &["fail"],
+        code: "\
+// O(1) read-only slice/reverse view into a `Str` (`std::string_view` + reverse bit).
+struct StrView {
+    using value_type = u8;
+    std::string_view sv;
+    bool rev = false;
+    StrView() = default;
+    StrView(const std::string& s, bool r = false) noexcept : sv(s), rev(r) {}
+    StrView(std::string_view v, bool r = false) noexcept : sv(v), rev(r) {}
+    void cpl_str_view_tag() const {}
+    size_t size() const noexcept { return sv.size(); }
+    bool empty() const noexcept { return sv.empty(); }
+    u8 operator[](size_t i) const noexcept { return (u8)(rev ? sv[sv.size() - 1 - i] : sv[i]); }
+    u8 front() const noexcept { return (*this)[0]; }
+    u8 back() const noexcept { return (*this)[sv.size() - 1]; }
+    StrView slice(ll lo, ll hi) const {
+        if (lo < 0 || hi < lo || (size_t)hi > sv.size()) fail(\"slice outside the string\");
+        size_t n = (size_t)(hi - lo), off = rev ? (sv.size() - (size_t)hi) : (size_t)lo;
+        return StrView(sv.substr(off, n), rev);
+    }
+    StrView reversed() const noexcept { return StrView(sv, !rev); }
+    std::string to_str() const { return !rev ? std::string(sv) : std::string(sv.rbegin(), sv.rend()); }
+    struct Iter {
+        const char* d; size_t i, n; bool rev;
+        u8 operator*() const noexcept { return (u8)(rev ? d[n - 1 - i] : d[i]); }
+        Iter& operator++() noexcept { ++i; return *this; }
+        bool operator!=(const Iter& o) const noexcept { return i != o.i; }
+        bool operator==(const Iter& o) const noexcept { return i == o.i; }
+    };
+    Iter begin() const noexcept { return {sv.data(), 0, sv.size(), rev}; }
+    Iter end() const noexcept { return {sv.data(), sv.size(), sv.size(), rev}; }
+    Iter rbegin() const noexcept { return reversed().begin(); }
+    Iter rend() const noexcept { return reversed().end(); }
+    int cmp(StrView o) const noexcept {
+        if (!rev && !o.rev) return sv.compare(o.sv);
+        size_t n = sv.size() < o.sv.size() ? sv.size() : o.sv.size();
+        for (size_t i = 0; i < n; i++) { u8 a = (*this)[i], b = o[i]; if (a != b) return a < b ? -1 : 1; }
+        return sv.size() < o.sv.size() ? -1 : (sv.size() > o.sv.size() ? 1 : 0);
+    }
+    bool contains_char(u8 c) const noexcept { return sv.find((char)c) != std::string_view::npos; }
+    bool contains_str(StrView p) const { return p.empty() || ((!rev && !p.rev) ? sv.find(p.sv) != std::string_view::npos : to_str().find(p.to_str()) != std::string::npos); }
+    friend bool operator==(StrView a, StrView b) noexcept { return a.size() == b.size() && a.cmp(b) == 0; }
+    friend bool operator!=(StrView a, StrView b) noexcept { return !(a == b); }
+    friend bool operator<(StrView a, StrView b) noexcept { return a.cmp(b) < 0; }
+    friend bool operator<=(StrView a, StrView b) noexcept { return a.cmp(b) <= 0; }
+    friend bool operator>(StrView a, StrView b) noexcept { return a.cmp(b) > 0; }
+    friend bool operator>=(StrView a, StrView b) noexcept { return a.cmp(b) >= 0; }
+};
+inline StrView str_slice(StrView s, ll lo, ll hi) { return s.slice(lo, hi); }
+inline StrView str_rev(StrView s) noexcept { return s.reversed(); }
+inline std::string to_str(StrView s) { return s.to_str(); }
+inline void append_str_view(std::string& o, StrView v) { if (!v.rev) o.append(v.sv.data(), v.sv.size()); else for (size_t i = v.sv.size(); i-- > 0;) o.push_back(v.sv[i]); }
+inline std::string str_concat(StrView a, StrView b) { std::string o; o.reserve(a.size() + b.size()); append_str_view(o, a); append_str_view(o, b); return o; }
+inline u8 at(StrView s, ll i) { if ((unsigned long long)i >= s.size()) fail(\"index outside the string\"); return s[(size_t)i]; }
+inline std::optional<u8> first(StrView s) { return s.empty() ? std::optional<u8>() : std::optional<u8>(s.front()); }
+inline std::optional<u8> last(StrView s) { return s.empty() ? std::optional<u8>() : std::optional<u8>(s.back()); }
+inline std::vector<u8> str_to_list(StrView s) { std::vector<u8> v; v.reserve(s.size()); for (u8 c : s) v.push_back(c); return v; }
+inline ll parse_int(StrView s) { return std::stoll(s.to_str()); }
+",
+    },
+    Piece {
+        name: "put_str_view",
+        needs: &["out", "str_view"],
+        code: "\
+inline void put_str(StrView s) { append_str_view(out, s); }
+",
+    },
+    Piece {
+        name: "list_view",
+        needs: &["fail"],
+        code: "\
+// O(1) read-only slice/reverse view into a `List<T>` (pointer + length + reverse bit).
+template <class T> struct ListView {
+    using value_type = T;
+    const T* ptr = nullptr;
+    size_t n = 0;
+    bool rev = false;
+    ListView() = default;
+    ListView(const std::vector<T>& v, bool r = false) noexcept : ptr(v.data()), n(v.size()), rev(r) {}
+    ListView(const T* p, size_t sz, bool r = false) noexcept : ptr(p), n(sz), rev(r) {}
+    void cpl_list_view_tag() const {}
+    size_t size() const noexcept { return n; }
+    bool empty() const noexcept { return n == 0; }
+    const T& operator[](size_t i) const noexcept { return rev ? ptr[n - 1 - i] : ptr[i]; }
+    const T& front() const noexcept { return (*this)[0]; }
+    const T& back() const noexcept { return (*this)[n - 1]; }
+    ListView slice(ll lo, ll hi) const {
+        if (lo < 0 || hi < lo || (size_t)hi > n) fail(\"slice outside the list\");
+        size_t len = (size_t)(hi - lo), off = rev ? (n - (size_t)hi) : (size_t)lo;
+        return ListView(ptr + off, len, rev);
+    }
+    ListView reversed() const noexcept { return ListView(ptr, n, !rev); }
+    std::vector<T> to_list() const {
+        if (!rev) return std::vector<T>(ptr, ptr + n);
+        std::vector<T> o; o.reserve(n); for (size_t i = n; i-- > 0;) o.push_back(ptr[i]); return o;
+    }
+    struct Iter {
+        const T* d; size_t i, n; bool rev;
+        const T& operator*() const noexcept { return rev ? d[n - 1 - i] : d[i]; }
+        Iter& operator++() noexcept { ++i; return *this; }
+        bool operator!=(const Iter& o) const noexcept { return i != o.i; }
+        bool operator==(const Iter& o) const noexcept { return i == o.i; }
+    };
+    Iter begin() const noexcept { return {ptr, 0, n, rev}; }
+    Iter end() const noexcept { return {ptr, n, n, rev}; }
+    Iter rbegin() const noexcept { return reversed().begin(); }
+    Iter rend() const noexcept { return reversed().end(); }
+    int cmp(ListView o) const {
+        size_t m = n < o.n ? n : o.n;
+        for (size_t i = 0; i < m; i++) { const T& a = (*this)[i], &b = o[i]; if (a < b) return -1; if (b < a) return 1; }
+        return n < o.n ? -1 : (n > o.n ? 1 : 0);
+    }
+    friend bool operator==(ListView a, ListView b) { return a.size() == b.size() && a.cmp(b) == 0; }
+    friend bool operator!=(ListView a, ListView b) { return !(a == b); }
+    friend bool operator<(ListView a, ListView b) { return a.cmp(b) < 0; }
+    friend bool operator<=(ListView a, ListView b) { return a.cmp(b) <= 0; }
+    friend bool operator>(ListView a, ListView b) { return a.cmp(b) > 0; }
+    friend bool operator>=(ListView a, ListView b) { return a.cmp(b) >= 0; }
+};
+template <class T> ListView<T> list_slice(const std::vector<T>& v, ll lo, ll hi) { return ListView<T>(v).slice(lo, hi); }
+template <class T> ListView<T> list_slice(ListView<T> v, ll lo, ll hi) { return v.slice(lo, hi); }
+template <class T> ListView<T> list_rev(const std::vector<T>& v) noexcept { return ListView<T>(v, true); }
+template <class T> ListView<T> list_rev(ListView<T> v) noexcept { return v.reversed(); }
+template <class T> std::vector<T> to_list(const std::vector<T>& v) { return v; }
+template <class T> std::vector<T> to_list(ListView<T> v) { return v.to_list(); }
+template <class T> void append_list_view(std::vector<T>& o, ListView<T> v) { if (!v.rev) o.insert(o.end(), v.ptr, v.ptr + v.n); else for (size_t i = v.n; i-- > 0;) o.push_back(v.ptr[i]); }
+template <class T> std::vector<T> list_concat(ListView<T> a, ListView<T> b) { std::vector<T> o; o.reserve(a.size() + b.size()); append_list_view(o, a); append_list_view(o, b); return o; }
+template <class T> std::vector<T> list_concat(ListView<T> a, const std::vector<T>& b) { return list_concat(a, ListView<T>(b)); }
+template <class T> std::vector<T> list_concat(const std::vector<T>& a, ListView<T> b) { return list_concat(ListView<T>(a), b); }
+template <class T> std::vector<T> list_concat(const std::vector<T>& a, const std::vector<T>& b) { return list_concat(ListView<T>(a), ListView<T>(b)); }
+template <class T> const T& at(ListView<T> v, ll i) { if ((unsigned long long)i >= v.size()) fail(\"index outside the list\"); return v[(size_t)i]; }
+template <class T> std::optional<T> first(ListView<T> v) { return v.empty() ? std::optional<T>() : std::optional<T>(v.front()); }
+template <class T> std::optional<T> last(ListView<T> v) { return v.empty() ? std::optional<T>() : std::optional<T>(v.back()); }
+template <class T> T first_val(ListView<T> v) { if (v.empty()) fail(\"the list is empty\"); return v.front(); }
+template <class T> T last_val(ListView<T> v) { if (v.empty()) fail(\"the list is empty\"); return v.back(); }
+template <class T> std::vector<T> sorted(ListView<T> v) { auto o = v.to_list(); std::sort(o.begin(), o.end()); return o; }
+template <class T, class U> bool has(ListView<T> v, const U& x) { for (size_t i = 0; i < v.n; i++) if (v.ptr[i] == x) return true; return false; }
+inline std::string list_to_str(ListView<u8> v) { std::string s; s.reserve(v.size()); for (u8 c : v) s.push_back((char)c); return s; }
 ",
     },
 ];

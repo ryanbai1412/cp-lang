@@ -175,7 +175,7 @@ fn mul_mod_char<P>(a: List<Mod<P>>, b: List<Mod<P>>, c: List<Mod<P>>) -> List<Mo
         for j in 0..k: prod[i + j] = prod[i + j] + a[i] * b[j]
     for d in (k..2 * k - 1).rev:
         for j in 0..k: prod[d - 1 - j] = prod[d - 1 - j] + prod[d] * c[j]
-    prod[0..k]
+    prod[0..k].to_list()
 
 /// Guess term `n` of a sequence from its first terms, assuming a linear recurrence.
 /// `none` when the data is too short to confirm the recurrence it finds.

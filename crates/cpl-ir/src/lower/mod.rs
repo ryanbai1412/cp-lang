@@ -2992,7 +2992,7 @@ impl<'a> Lowerer<'a> {
         };
         // A list is an array over `0..len`, and that array a list.
         let e = match (want, &e.ty) {
-            (Ty::Array { dims, elem: want_elem }, Ty::List(elem)) if want_elem == elem => match dims.as_slice() {
+            (Ty::Array { dims, elem: want_elem }, Ty::List(elem) | Ty::ListView(elem)) if want_elem == elem => match dims.as_slice() {
                 [Dim::Pos(d)] if self.list_domains.contains(d) => {
                     let d = *d;
                     // Passing the list sets the size of its domain.
@@ -3181,6 +3181,16 @@ impl<'a> Lowerer<'a> {
             Err(e) => e,
         };
         match (want, &e.ty) {
+            (Ty::Str, Ty::StrView) => Ok(Expr {
+                kind: ExprKind::Builtin(Builtin::ToStr, vec![e]),
+                ty: Ty::Str,
+                span,
+            }),
+            (Ty::List(want_elem), Ty::ListView(got_elem)) if want_elem == got_elem => Ok(Expr {
+                kind: ExprKind::Builtin(Builtin::ToList, vec![e]),
+                ty: want.clone(),
+                span,
+            }),
             (Ty::Pos(d), Ty::DomainVal) => Ok(Expr {
                 kind: ExprKind::Cast(
                     Cast::Trust,

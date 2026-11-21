@@ -2758,3 +2758,15 @@ the core lane in `plan/OPERATING.md`.
    rather than `Int` offsets from `r.len`, preventing 64-bit overflow on
    `Range<I128>` wider than `2^63` while preserving domain-safe `Pos(D)`
    arithmetic. Reverse: restore `r.len - 1` offset arithmetic.
+
+## 61. O(1) slice and reverse views (2026-11-21)
+
+1. **`s[a..b]`, `xs[a..b]`, `s.rev`, and `xs.rev` return O(1) read-only views (`Ty::StrView`, `Ty::ListView<T>`), never implicit copies; copying is explicit via `.to_str()` / `.to_list()`.**
+   - **Reason:** By the rule "anything that looks O(1) is O(1)", `s[lo..hi]` copying O(k) (and previously lowering to an O(k^2) push loop) and `s.rev` materializing O(n) caused severe hidden blowups (`cf2096e` at 310x, `ucup4s25h` at 26.1x, `cf2245a` at 4.40x).
+   - **Representation:**
+     - IR: `Ty::StrView` and `Ty::ListView(Box<Ty>)`, both wired into `Ty::seq_elem()` so they satisfy `Seq` and `Indexed` without conversion.
+     - Interpreter: `Value::StrView(Rc<StrViewVal>)` and `Value::ListView(Rc<ListViewVal>)` carrying `(base, lo, len, rev)` with O(1) indexing, nested slicing, reverse, comparison, hashing, and iteration.
+     - C++ codegen: `cpl::StrView` (`std::string_view sv; bool rev;`) and `cpl::ListView<T>` (`const T* ptr; size_t n; bool rev;`) with index-based iterators (no pointer-before-start UB), `CpHash` overloads, and explicit `to_str`/`to_list`.
+   - **Lifetime & mutability safety:** Views are tracked as read-only lends in `cpl-check`. Mutating the base while a view is live is diagnosed (`E0602`), mutating a read-only view is diagnosed (`E0401`), and escaping a view from its lending scope is diagnosed (`E0603`, suggesting `.to_str()` / `.to_list()`). Direct range-place updates (`a[l..r] = 0`, `a[l..r] min= b[l..r]`) remain in-place writes to `var a`.
+   - **Visibility:** `cpl explain <file>` prints each lowered slice/reverse view (`O(1), read-only`) and explicit copy/concat (`O(n), owned`) with its C++ representation.
+   - **Reverse:** Remove `Ty::StrView`/`Ty::ListView` and lower slices/`.rev` back to allocating `std::string`/`std::vector` copies, dropping the read-only lend flags in `cpl-check/src/check/lends.rs`.

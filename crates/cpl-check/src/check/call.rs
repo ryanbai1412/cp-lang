@@ -294,6 +294,16 @@ impl<'a> Checker<'a> {
                 self.args(&callee_text, "takes", &params, args, call, &mut bindings);
                 self.settle(&ret.subst(&bindings))
             }
+            // `s.rev()`, `xs.rev()`: zero-arg getter call on a reverse view.
+            ty @ (Ty::Str | Ty::Named { .. })
+                if args.is_empty()
+                    && matches!(&callee.kind, ExprKind::Field { name, .. } if name.text == "rev")
+                    && (ty == Ty::Str
+                        || matches!(&ty, Ty::Named { name, args } if name == "List" && args.len() == 1)) =>
+            {
+                self.note_readonly_view(call, "reverse view");
+                ty
+            }
             Ty::Named {
                 name,
                 args: type_args,

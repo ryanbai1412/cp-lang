@@ -25,7 +25,9 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::io::Write;
 use std::rc::Rc;
-use value::{show, zero, Array, CaptureVal, OptVal, Part, Step, TupleVal, Value};
+use value::{
+    show, zero, Array, CaptureVal, ListViewVal, OptVal, Part, Step, StrViewVal, TupleVal, Value,
+};
 
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
@@ -953,6 +955,13 @@ impl<'p, 'o> Interp<'p, 'o> {
                             round!(items[k].clone());
                         }
                     }
+                    Value::ListView(view) => {
+                        let n = view.len;
+                        for k in 0..n {
+                            let k = if *rev { n - 1 - k } else { k };
+                            round!(view.get(k).unwrap().clone());
+                        }
+                    }
                     Value::Array(array) => {
                         let n = array.len();
                         for k in 0..n {
@@ -965,6 +974,13 @@ impl<'p, 'o> Interp<'p, 'o> {
                         for k in 0..n {
                             let k = if *rev { n - 1 - k } else { k };
                             round!(Value::Char(bytes[k]));
+                        }
+                    }
+                    Value::StrView(view) => {
+                        let n = view.len;
+                        for k in 0..n {
+                            let k = if *rev { n - 1 - k } else { k };
+                            round!(Value::Char(view.get(k).unwrap()));
                         }
                     }
                     Value::Set(items) => {
@@ -2107,6 +2123,16 @@ impl<'p, 'o> Interp<'p, 'o> {
                     ),
                 }
             }
+            Value::ListView(view) => {
+                let index = values[0].int();
+                match usize::try_from(index).ok().and_then(|i| view.get(i)) {
+                    Some(item) => Ok(item.clone()),
+                    None => trap(
+                        span,
+                        format!("index {index} is outside a list of length {}", view.len),
+                    ),
+                }
+            }
             Value::Str(bytes) => {
                 let index = values[0].int();
                 match usize::try_from(index).ok().and_then(|i| bytes.get(i)) {
@@ -2130,6 +2156,19 @@ impl<'p, 'o> Interp<'p, 'o> {
                     )
                 } else {
                     Ok(Value::Int(lo + index))
+                }
+            }
+            Value::StrView(view) => {
+                let index = values[0].int();
+                match usize::try_from(index).ok().and_then(|i| view.get(i)) {
+                    Some(byte) => Ok(Value::Char(byte)),
+                    None => trap(
+                        span,
+                        format!(
+                            "index {index} is outside a string of length {}",
+                            view.len
+                        ),
+                    ),
                 }
             }
             Value::Map(entries) => match entries.get(&values[0]) {
@@ -2995,18 +3034,23 @@ impl<'p, 'o> Interp<'p, 'o> {
             Builtin::Join => {
                 let text = |value: Value| match value {
                     Value::Str(bytes) => bytes,
+                    Value::StrView(view) => Rc::new(view.to_vec()),
                     _ => Rc::new(Vec::new()),
                 };
                 let sep = text(first);
                 let seq = values.next().unwrap_or_default();
                 let none_text = values.next().map(text);
                 let elem = match &args[1].ty {
-                    Ty::List(elem) | Ty::Array { elem, .. } => (**elem).clone(),
+                    Ty::List(elem) | Ty::ListView(elem) | Ty::Array { elem, .. } => (**elem).clone(),
                     _ => Ty::Unit,
                 };
                 let owned;
                 let items: &[Value] = match &seq {
                     Value::List(items) => items,
+                    Value::ListView(view) => {
+                        owned = view.to_vec();
+                        &owned
+                    }
                     Value::Array(array) => {
                         owned = array.to_values();
                         &owned
@@ -3031,8 +3075,14 @@ impl<'p, 'o> Interp<'p, 'o> {
                     Value::List(items) => {
                         usize::try_from(at).ok().and_then(|i| items.get(i)).cloned()
                     }
+                    Value::ListView(view) => {
+                        usize::try_from(at).ok().and_then(|i| view.get(i)).cloned()
+                    }
                     Value::Str(bytes) => {
                         usize::try_from(at).ok().and_then(|i| bytes.get(i)).map(|b| Value::Char(*b))
+                    }
+                    Value::StrView(view) => {
+                        usize::try_from(at).ok().and_then(|i| view.get(i)).map(Value::Char)
                     }
                     Value::Array(array) if array.dims.len() == 1 => {
                         (at >= 0 && at < array.dims[0]).then(|| array.get_unchecked_val(at as usize))
@@ -3059,11 +3109,22 @@ impl<'p, 'o> Interp<'p, 'o> {
                         Err(_) => return trap(span, format!("`{s}` is not an Int")),
                     }
                 }
+                Value::StrView(view) => {
+                    let bytes = view.to_vec();
+                    let s = std::str::from_utf8(&bytes).unwrap_or("").trim();
+                    match s.parse::<i64>() {
+                        Ok(v) => Value::Int(v),
+                        Err(_) => return trap(span, format!("`{s}` is not an Int")),
+                    }
+                }
                 other => other,
             },
             Builtin::StrToList => match first {
                 Value::Str(bytes) => {
                     Value::List(Rc::new(bytes.iter().copied().map(Value::Char).collect()))
+                }
+                Value::StrView(view) => {
+                    Value::List(Rc::new(view.to_vec().into_iter().map(Value::Char).collect()))
                 }
                 other => other,
             },
@@ -3073,6 +3134,15 @@ impl<'p, 'o> Interp<'p, 'o> {
                         .iter()
                         .map(|v| match v {
                             Value::Char(c) => *c,
+                            _ => 0,
+                        })
+                        .collect();
+                    Value::Str(Rc::new(bytes))
+                }
+                Value::ListView(view) => {
+                    let bytes: Vec<u8> = (0..view.len)
+                        .map(|i| match view.get(i) {
+                            Some(Value::Char(c)) => *c,
                             _ => 0,
                         })
                         .collect();
@@ -3088,12 +3158,18 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::List(items) => {
                     Value::Array(Rc::new(Array::from_values(vec![items.len() as i64], items.to_vec())))
                 }
+                Value::ListView(view) => {
+                    let items = view.to_vec();
+                    Value::Array(Rc::new(Array::from_values(vec![items.len() as i64], items)))
+                }
                 other => other,
             },
             Builtin::Len => Value::Int(match &first {
                 Value::Array(array) => array.len() as i64,
                 Value::List(items) => items.len() as i64,
+                Value::ListView(view) => view.len as i64,
                 Value::Str(bytes) => bytes.len() as i64,
+                Value::StrView(view) => view.len as i64,
                 Value::Map(entries) => entries.len() as i64,
                 Value::Set(items) => items.len() as i64,
                 Value::Range(lo, hi) => (hi - lo).max(0),
@@ -3103,7 +3179,9 @@ impl<'p, 'o> Interp<'p, 'o> {
             }),
             Builtin::First => match &first {
                 Value::List(items) => optional(items.first().cloned()),
+                Value::ListView(view) => optional(view.get(0).cloned()),
                 Value::Str(bytes) => optional(bytes.first().copied().map(Value::Char)),
+                Value::StrView(view) => optional(view.get(0).map(Value::Char)),
                 Value::Array(array) => optional(array.first()),
                 Value::Range(lo, hi) => optional((lo < hi).then_some(Value::Int(*lo))),
                 Value::Range128(lo, hi) => optional((lo < hi).then_some(Value::I128(*lo))),
@@ -3111,7 +3189,13 @@ impl<'p, 'o> Interp<'p, 'o> {
             },
             Builtin::Last => match &first {
                 Value::List(items) => optional(items.last().cloned()),
+                Value::ListView(view) => {
+                    optional(view.len.checked_sub(1).and_then(|i| view.get(i)).cloned())
+                }
                 Value::Str(bytes) => optional(bytes.last().copied().map(Value::Char)),
+                Value::StrView(view) => {
+                    optional(view.len.checked_sub(1).and_then(|i| view.get(i)).map(Value::Char))
+                }
                 Value::Array(array) => optional(array.last()),
                 Value::Range(lo, hi) => optional((lo < hi).then_some(Value::Int(*hi - 1))),
                 Value::Range128(lo, hi) => optional((lo < hi).then_some(Value::I128(*hi - 1))),
@@ -3122,8 +3206,16 @@ impl<'p, 'o> Interp<'p, 'o> {
                     Some(v) => v.clone(),
                     None => return trap(span, "the list is empty"),
                 },
+                Value::ListView(view) => match view.get(0) {
+                    Some(v) => v.clone(),
+                    None => return trap(span, "the list is empty"),
+                },
                 Value::Str(bytes) => match bytes.first() {
                     Some(b) => Value::Char(*b),
+                    None => return trap(span, "the string is empty"),
+                },
+                Value::StrView(view) => match view.get(0) {
+                    Some(b) => Value::Char(b),
                     None => return trap(span, "the string is empty"),
                 },
                 Value::Array(array) => match array.first() {
@@ -3144,8 +3236,16 @@ impl<'p, 'o> Interp<'p, 'o> {
                     Some(v) => v.clone(),
                     None => return trap(span, "the list is empty"),
                 },
+                Value::ListView(view) => match view.len.checked_sub(1).and_then(|i| view.get(i)) {
+                    Some(v) => v.clone(),
+                    None => return trap(span, "the list is empty"),
+                },
                 Value::Str(bytes) => match bytes.last() {
                     Some(b) => Value::Char(*b),
+                    None => return trap(span, "the string is empty"),
+                },
+                Value::StrView(view) => match view.len.checked_sub(1).and_then(|i| view.get(i)) {
+                    Some(b) => Value::Char(b),
                     None => return trap(span, "the string is empty"),
                 },
                 Value::Array(array) => match array.last() {
@@ -3165,6 +3265,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 let needle = values.next().unwrap_or_default();
                 Value::Bool(match &first {
                     Value::List(items) => items.contains(&needle),
+                    Value::ListView(view) => view.contains(&needle),
                     Value::Array(array) => array.contains(&needle),
                     Value::Set(items) => items.contains(&needle),
                     Value::Map(entries) => entries.contains_key(&needle),
@@ -3172,6 +3273,23 @@ impl<'p, 'o> Interp<'p, 'o> {
                         Value::Char(c) => bytes.contains(c),
                         Value::Str(part) => {
                             part.is_empty() || bytes.windows(part.len()).any(|at| at == &part[..])
+                        }
+                        Value::StrView(part) => {
+                            let part = part.to_vec();
+                            part.is_empty() || bytes.windows(part.len()).any(|at| at == &part[..])
+                        }
+                        _ => false,
+                    },
+                    Value::StrView(view) => match &needle {
+                        Value::Char(c) => view.contains_byte(*c),
+                        Value::Str(part) => {
+                            let hay = view.to_vec();
+                            part.is_empty() || hay.windows(part.len()).any(|at| at == &part[..])
+                        }
+                        Value::StrView(part) => {
+                            let hay = view.to_vec();
+                            let part = part.to_vec();
+                            part.is_empty() || hay.windows(part.len()).any(|at| at == &part[..])
                         }
                         _ => false,
                     },
@@ -3254,6 +3372,11 @@ impl<'p, 'o> Interp<'p, 'o> {
                     Rc::make_mut(&mut items).sort();
                     Value::List(items)
                 }
+                Value::ListView(view) => {
+                    let mut items = view.to_vec();
+                    items.sort();
+                    Value::List(Rc::new(items))
+                }
                 Value::Array(arr) => {
                     let mut items = arr.to_values();
                     items.sort();
@@ -3263,14 +3386,14 @@ impl<'p, 'o> Interp<'p, 'o> {
                 other => other,
             },
             Builtin::Reversed => match first {
-                Value::List(mut items) => {
-                    Rc::make_mut(&mut items).reverse();
-                    Value::List(items)
+                Value::List(items) => {
+                    Value::ListView(Rc::new(ListViewVal::whole(items, true)))
                 }
-                Value::Str(mut bytes) => {
-                    Rc::make_mut(&mut bytes).reverse();
-                    Value::Str(bytes)
+                Value::ListView(view) => Value::ListView(Rc::new(view.reversed())),
+                Value::Str(bytes) => {
+                    Value::StrView(Rc::new(StrViewVal::whole(bytes, true)))
                 }
+                Value::StrView(view) => Value::StrView(Rc::new(view.reversed())),
                 Value::Array(arr) => {
                     let mut items = arr.to_values();
                     items.reverse();
@@ -3278,6 +3401,102 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
                 other => other,
             },
+            Builtin::StrSlice => {
+                let lo = values.next().unwrap_or_default().int();
+                let hi = values.next().unwrap_or_default().int();
+                let (view, len) = match first {
+                    Value::Str(bytes) => {
+                        let n = bytes.len();
+                        (StrViewVal::whole(bytes, false), n)
+                    }
+                    Value::StrView(v) => {
+                        let n = v.len;
+                        ((*v).clone(), n)
+                    }
+                    _ => return trap(span, "slice expects a string"),
+                };
+                if lo < 0 || hi < lo || hi as usize > len {
+                    return trap(
+                        span,
+                        format!("slice {lo}..{hi} is outside a string of length {len}"),
+                    );
+                }
+                Value::StrView(Rc::new(view.slice(lo as usize, hi as usize)))
+            }
+            Builtin::ListSlice => {
+                let lo = values.next().unwrap_or_default().int();
+                let hi = values.next().unwrap_or_default().int();
+                let (view, len) = match first {
+                    Value::List(items) => {
+                        let n = items.len();
+                        (ListViewVal::whole(items, false), n)
+                    }
+                    Value::ListView(v) => {
+                        let n = v.len;
+                        ((*v).clone(), n)
+                    }
+                    _ => return trap(span, "slice expects a list"),
+                };
+                if lo < 0 || hi < lo || hi as usize > len {
+                    return trap(
+                        span,
+                        format!("slice {lo}..{hi} is outside a list of length {len}"),
+                    );
+                }
+                Value::ListView(Rc::new(view.slice(lo as usize, hi as usize)))
+            }
+            Builtin::ToStr => match first {
+                Value::Str(bytes) => Value::Str(Rc::new((*bytes).clone())),
+                Value::StrView(view) => Value::Str(Rc::new(view.to_vec())),
+                other => other,
+            },
+            Builtin::ToList => match first {
+                Value::List(items) => Value::List(Rc::new((*items).clone())),
+                Value::ListView(view) => Value::List(Rc::new(view.to_vec())),
+                other => other,
+            },
+            Builtin::StrConcat => {
+                let rhs = values.next().unwrap_or_default();
+                let mut out = match first {
+                    Value::Str(b) => (*b).clone(),
+                    Value::StrView(v) => v.to_vec(),
+                    _ => Vec::new(),
+                };
+                match rhs {
+                    Value::Str(b) => out.extend_from_slice(&b),
+                    Value::StrView(v) => {
+                        if !v.rev {
+                            out.extend_from_slice(&v.base[v.lo..v.lo + v.len]);
+                        } else {
+                            out.reserve(v.len);
+                            for i in 0..v.len {
+                                out.push(v.get(i).unwrap());
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+                Value::Str(Rc::new(out))
+            }
+            Builtin::ListConcat => {
+                let rhs = values.next().unwrap_or_default();
+                let mut out = match first {
+                    Value::List(a) => (*a).clone(),
+                    Value::ListView(v) => v.to_vec(),
+                    _ => Vec::new(),
+                };
+                match rhs {
+                    Value::List(b) => out.extend_from_slice(&b),
+                    Value::ListView(v) => {
+                        out.reserve(v.len);
+                        for i in 0..v.len {
+                            out.push(v.get(i).unwrap().clone());
+                        }
+                    }
+                    _ => {}
+                }
+                Value::List(Rc::new(out))
+            }
             Builtin::PosNext => {
                 let len = values.next().unwrap_or_default().int();
                 let next = first.int() + 1;

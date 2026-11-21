@@ -898,7 +898,7 @@ impl<'a> Lowerer<'a> {
                 Ty::DomainVal => {
                     out.push(Stmt::DefDomainFromVal { id, val });
                 }
-                Ty::List(_) | Ty::Array { .. } | Ty::Str => {
+                Ty::List(_) | Ty::ListView(_) | Ty::Array { .. } | Ty::Str | Ty::StrView => {
                     let len = self.mk(ExprKind::Builtin(Builtin::Len, vec![val]), Ty::Int, def.span);
                     let lo = self.mk(ExprKind::Int(0), Ty::Int, def.span);
                     out.push(Stmt::DefDomain { id, lo, len });

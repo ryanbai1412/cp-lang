@@ -187,6 +187,7 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
         Ty::Bool => "bool".into(),
         Ty::Char => "cpl::u8".into(),
         Ty::Str => "std::string".into(),
+        Ty::StrView => "cpl::StrView".into(),
         Ty::Pos(_) | Ty::Bound(_) => "int".into(),
         Ty::Range(inner) => match **inner {
             Ty::Pos(_) | Ty::Bound(_) => "cpl::Range<int>".into(),
@@ -230,6 +231,7 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
             format!("std::tuple<{}>", items.join(", "))
         }
         Ty::List(elem) => format!("std::vector<{}>", elem_ty(program, niches, elem)),
+        Ty::ListView(elem) => format!("cpl::ListView<{}>", elem_ty(program, niches, elem)),
         Ty::Map(key, value) if program.unordered_maps.contains(key) => {
             cty(program, niches, &Ty::HashMap(key.clone(), value.clone()))
         }

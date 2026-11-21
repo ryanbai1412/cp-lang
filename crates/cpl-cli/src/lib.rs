@@ -49,7 +49,7 @@ commands:
   judges [file]         list the judge profiles, marking the one a build uses
   fmt [path]...         format files in the one canonical style
   lint [path]...        warn about code that is legal but probably wrong or slow
-  explain <CODE|--json> show the explanation, example and fix for a diagnostic or lint code
+  explain <CODE|file|--json> show a diagnostic/lint explanation or a file's representations & view costs
   doc [path]...         build HTML documentation from `///` comments
   new <name>            create a problem from its constraints or samples
   test <problem>        run every case in <problem>.tests/
@@ -1584,56 +1584,134 @@ fn explain_file(path: &str, json: bool, stdout: &mut dyn Write, stderr: &mut Str
         let _ = writeln!(stdout, "]");
         return 0;
     }
-    if entries.is_empty() {
+    let view_ops = explain_views(&compiled.text, &compiled.program);
+    if entries.is_empty() && view_ops.is_empty() {
         let _ = writeln!(stdout, "{path}: no closure or fn-typed sites");
         return 0;
     }
-    let mut static_count = 0usize;
-    let mut dynamic_count = 0usize;
-    let _ = writeln!(stdout, "Closure & operation lowering for {path}:");
-    for entry in &entries {
-        match &entry.mode {
-            cpl_codegen::ClosureMode::StaticDirect { closure } => {
-                static_count += 1;
-                let _ = writeln!(
-                    stdout,
-                    "  [static: direct]   {} -> cpl_fn{closure} (no std::function)",
-                    entry.site
-                );
-            }
-            cpl_codegen::ClosureMode::StaticTemplate => {
-                static_count += 1;
-                let _ = writeln!(
-                    stdout,
-                    "  [static: template] {} -> template functor param (no std::function)",
-                    entry.site
-                );
-            }
-            cpl_codegen::ClosureMode::StaticLocalAuto => {
-                static_count += 1;
-                let _ = writeln!(
-                    stdout,
-                    "  [static: auto]     {} -> local auto lambda (no std::function)",
-                    entry.site
-                );
-            }
-            cpl_codegen::ClosureMode::DynamicStdFunction { reason } => {
-                dynamic_count += 1;
-                let _ = writeln!(
-                    stdout,
-                    "  [dynamic: std::function] {} ({reason})",
-                    entry.site
-                );
+    if !entries.is_empty() {
+        let mut static_count = 0usize;
+        let mut dynamic_count = 0usize;
+        let _ = writeln!(stdout, "Closure & operation lowering for {path}:");
+        for entry in &entries {
+            match &entry.mode {
+                cpl_codegen::ClosureMode::StaticDirect { closure } => {
+                    static_count += 1;
+                    let _ = writeln!(
+                        stdout,
+                        "  [static: direct]   {} -> cpl_fn{closure} (no std::function)",
+                        entry.site
+                    );
+                }
+                cpl_codegen::ClosureMode::StaticTemplate => {
+                    static_count += 1;
+                    let _ = writeln!(
+                        stdout,
+                        "  [static: template] {} -> template functor param (no std::function)",
+                        entry.site
+                    );
+                }
+                cpl_codegen::ClosureMode::StaticLocalAuto => {
+                    static_count += 1;
+                    let _ = writeln!(
+                        stdout,
+                        "  [static: auto]     {} -> local auto lambda (no std::function)",
+                        entry.site
+                    );
+                }
+                cpl_codegen::ClosureMode::DynamicStdFunction { reason } => {
+                    dynamic_count += 1;
+                    let _ = writeln!(
+                        stdout,
+                        "  [dynamic: std::function] {} ({reason})",
+                        entry.site
+                    );
+                }
             }
         }
+        let _ = writeln!(
+            stdout,
+            "Summary: {static_count} static (inlinable), {dynamic_count} dynamic (std::function)"
+        );
     }
-    let _ = writeln!(
-        stdout,
-        "Summary: {static_count} static (inlinable), {dynamic_count} dynamic (std::function)"
-    );
+    if !view_ops.is_empty() {
+        let _ = writeln!(stdout, "Views & copies:");
+        for (line, col, desc) in view_ops {
+            let _ = writeln!(stdout, "  {line}:{col}  {desc}");
+        }
+    }
     0
 }
 
+fn explain_views(text: &str, program: &cpl_ir::Program) -> Vec<(usize, usize, String)> {
+    let line_col = |span: cpl_diag::Span| -> (usize, usize) {
+        let off = (span.start as usize).min(text.len());
+        let before = &text[..off];
+        let line = before.bytes().filter(|&b| b == b'\n').count() + 1;
+        let col = before.rfind('\n').map_or(off + 1, |i| off - i);
+        (line, col)
+    };
+    let mut ops: Vec<(usize, usize, String)> = Vec::new();
+    let mut visit_expr = |e: &cpl_ir::Expr| {
+        if let cpl_ir::ExprKind::Builtin(op, _) = &e.kind {
+            let desc = match op {
+                cpl_ir::Builtin::StrSlice => Some(
+                    "slice view -> cpl::StrView (std::string_view + rev), O(1), read-only".to_string(),
+                ),
+                cpl_ir::Builtin::ListSlice => Some(format!(
+                    "slice view -> cpl::ListView<{}> (const T* + len + rev), O(1), read-only",
+                    match &e.ty {
+                        cpl_ir::Ty::ListView(t) => program.show_ty(t),
+                        _ => "T".to_string(),
+                    }
+                )),
+                cpl_ir::Builtin::Reversed if matches!(e.ty, cpl_ir::Ty::StrView) => Some(
+                    "reverse view -> cpl::StrView (std::string_view + rev), O(1), read-only".to_string(),
+                ),
+                cpl_ir::Builtin::Reversed if matches!(e.ty, cpl_ir::Ty::ListView(_)) => Some(format!(
+                    "reverse view -> cpl::ListView<{}> (const T* + len + rev), O(1), read-only",
+                    match &e.ty {
+                        cpl_ir::Ty::ListView(t) => program.show_ty(t),
+                        _ => "T".to_string(),
+                    }
+                )),
+                cpl_ir::Builtin::ToStr => {
+                    Some("explicit copy -> std::string, O(n), owned".to_string())
+                }
+                cpl_ir::Builtin::ToList => Some(format!(
+                    "explicit copy -> std::vector<{}>, O(n), owned",
+                    match &e.ty {
+                        cpl_ir::Ty::List(t) => program.show_ty(t),
+                        _ => "T".to_string(),
+                    }
+                )),
+                cpl_ir::Builtin::StrConcat => {
+                    Some("concat -> std::string, O(n + m), owned".to_string())
+                }
+                cpl_ir::Builtin::ListConcat => Some(format!(
+                    "concat -> std::vector<{}>, O(n + m), owned",
+                    match &e.ty {
+                        cpl_ir::Ty::List(t) => program.show_ty(t),
+                        _ => "T".to_string(),
+                    }
+                )),
+                _ => None,
+            };
+            if let Some(desc) = desc {
+                let (line, col) = line_col(e.span);
+                ops.push((line, col, desc));
+            }
+        }
+    };
+    cpl_ir::walk::deep_exprs(&program.setup, &mut visit_expr);
+    cpl_ir::walk::deep_exprs(&program.main, &mut visit_expr);
+    for f in &program.fns {
+        cpl_ir::walk::deep_exprs(&f.body, &mut visit_expr);
+    }
+    ops.sort_by_key(|(l, c, _)| (*l, *c));
+    ops.dedup();
+    ops
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1819,5 +1897,28 @@ mod tests {
         assert!(json.contains("\"E0301\"") && json.contains("\"L0506\""));
 
         assert_eq!(run(&["explain", "E9998"]).code, EXIT_USAGE);
+    }
+
+    #[test]
+    fn explain_file_shows_view_representations_and_costs() {
+        let dir = std::env::temp_dir().join("cpl_explain_views_test");
+        let _ = std::fs::create_dir_all(&dir);
+        let file = dir.join("views.cp");
+        std::fs::write(
+            &file,
+            "let s = \"abcdef\"\nlet xs = [1, 2, 3]\nprint(s[1..4], s.rev, xs.rev, s[1..4].to_str(), xs[0..2].to_list())\n",
+        )
+        .unwrap();
+        let path = file.to_string_lossy().into_owned();
+        let out = run(&["explain", &path]);
+        assert_eq!(out.code, 0, "{}", out.stderr);
+        let text = String::from_utf8(out.stdout).unwrap();
+        assert!(text.contains("slice view -> cpl::StrView"), "{text}");
+        assert!(text.contains("reverse view -> cpl::StrView"), "{text}");
+        assert!(text.contains("reverse view -> cpl::ListView"), "{text}");
+        assert!(text.contains("O(1), read-only"), "{text}");
+        assert!(text.contains("explicit copy -> std::string"), "{text}");
+        assert!(text.contains("explicit copy -> std::vector"), "{text}");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

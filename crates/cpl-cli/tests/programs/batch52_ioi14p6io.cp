@@ -63,7 +63,7 @@ fn solve_side(mul: Int, d: Int, a: List<Int>) -> List<Int>:
 
 fn one_way(start: Int, d: Int, a: List<Int>) -> Int:
     let right = solve_side(2, d, a[start + 1..])
-    var left_a = a[..start]
+    var left_a = a[..start].to_list()
     reverse(mut left_a)
     let left = solve_side(1, d, left_a)
     var best = 0

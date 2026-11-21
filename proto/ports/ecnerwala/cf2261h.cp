@@ -35,7 +35,7 @@ fn decode(n: Int, h: Int, sent: Str) -> Str:
     var bad = 0
     for z in 0..h if parity(s, 1 << z): bad += 1 << z
     s[bad] = if s[bad] == '1': '0' else: '1'
-    Str(s[i] for i in (0..s.len).rev if is_data(i))[0..n]
+    Str(s[i] for i in (0..s.len).rev if is_data(i))[0..n].to_str()
 
 @!multitest
 let (n, h): (Int, 2..=20) = read()

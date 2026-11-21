@@ -7,4 +7,4 @@ let r = V(2)
 let part = a[l..=r]
 part.sort()
 print(a[l])
-part.rev()
+part.reverse()

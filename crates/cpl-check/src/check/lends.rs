@@ -24,7 +24,8 @@ use std::collections::HashSet;
 
 /// Methods that change their receiver.
 const MUTATORS: &[&str] = &[
-    "push", "pop", "sort", "rev", "clear", "insert", "remove", "swap", "set", "add",
+    "push", "pop", "sort", "reverse", "clear", "insert", "remove", "swap", "set", "add",
+    "resize", "truncate", "fill",
 ];
 /// Methods that store their arguments in the receiver.
 const STORES: &[&str] = &["push", "insert", "set", "add"];
@@ -93,6 +94,7 @@ pub(crate) struct Lent {
     kind: &'static str,
     root: String,
     root_mutable: bool,
+    read_only: bool,
     steps: Vec<Step>,
 }
 
@@ -141,8 +143,9 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
                 ExprKind::Index { indices, .. } => indices
                     .iter()
                     .any(|i| matches!(unparen(i).kind, ExprKind::Range { .. })),
+                ExprKind::Field { name, .. } if name.text == "rev" => true,
                 ExprKind::Call { callee, .. } => {
-                    matches!(&callee.kind, ExprKind::Field { name, .. } if name.text == "row")
+                    matches!(&callee.kind, ExprKind::Field { name, .. } if matches!(name.text.as_str(), "row" | "rev"))
                 }
                 _ => false,
             };
@@ -191,8 +194,10 @@ pub(crate) struct Lends {
     /// Receivers of an enclosing place expression: `a` in `a[i]` is not
     /// also a use of all of `a`.
     covered: HashSet<Span>,
-    /// Expressions that made a lent view, with its kind: `slice` or `row`.
+    /// Expressions that made a lent view, with its kind: `slice`, `row`, or `reverse view`.
     view_exprs: HashMap<Span, &'static str>,
+    /// Expressions whose lent view is strictly read-only (`Str`/`List` slices and `.rev`).
+    view_readonly: HashSet<Span>,
     /// Calls to projections, by the call's span.
     proj_calls: HashMap<Span, ProjCall>,
     /// `let`-bound views, by where the name is declared.
@@ -1122,6 +1127,29 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// True if `e` is a read-only lent view (`Str`/`List` slice or `.rev`).
+    pub(crate) fn is_readonly_view(&self, e: &Expr) -> bool {
+        let e = unparen(e);
+        if self.lends.view_readonly.contains(&e.span) {
+            return true;
+        }
+        match &e.kind {
+            ExprKind::Name(name) => match self.local(name) {
+                Some(local) => self
+                    .lends
+                    .views
+                    .get(&local.span)
+                    .is_some_and(|lent| lent.read_only),
+                None => self
+                    .lends
+                    .global_views
+                    .get(name)
+                    .is_some_and(|lent| lent.read_only),
+            },
+            _ => false,
+        }
+    }
+
     /// Brings the effect of an earlier top-level statement into the item
     /// about to be checked, `current`.
     pub(crate) fn replay(&mut self, replay: &Replay, current: &[Stmt]) {
@@ -1139,13 +1167,15 @@ impl<'a> Checker<'a> {
                 // The statement was checked, and reported, as its own item.
                 let found = self.quietly(|c| {
                     c.infer(init);
-                    c.view_kind(init).zip(c.place(init))
+                    let ro = c.is_readonly_view(init);
+                    c.view_kind(init).zip(c.place(init)).map(|(k, p)| (k, p, ro))
                 });
                 // Its spans are positions in another item's text.
                 self.lends.view_exprs.clear();
+                self.lends.view_readonly.clear();
                 self.lends.proj_calls.clear();
                 self.lends.covered.clear();
-                let Some((kind, place)) = found else {
+                let Some((kind, place, read_only)) = found else {
                     return;
                 };
                 self.lends.global_views.insert(
@@ -1154,6 +1184,7 @@ impl<'a> Checker<'a> {
                         kind,
                         root: place.root.clone(),
                         root_mutable: place.root_mutable,
+                        read_only,
                         steps: place.steps.clone(),
                     },
                 );
@@ -1180,6 +1211,11 @@ impl<'a> Checker<'a> {
         self.lends.view_exprs.insert(e.span, kind);
     }
 
+    pub(crate) fn note_readonly_view(&mut self, e: &Expr, kind: &'static str) {
+        self.lends.view_exprs.insert(e.span, kind);
+        self.lends.view_readonly.insert(e.span);
+    }
+
     pub(crate) fn note_proj_call(&mut self, e: &Expr, call: ProjCall) {
         self.lends.proj_calls.insert(e.span, call);
     }
@@ -1196,12 +1232,14 @@ impl<'a> Checker<'a> {
         let Some(decl) = self.local(name).map(|local| local.span) else {
             return;
         };
+        let read_only = self.is_readonly_view(value);
         self.lends.views.insert(
             decl,
             Lent {
                 kind,
                 root: place.root.clone(),
                 root_mutable: place.root_mutable,
+                read_only,
                 steps: place.steps.clone(),
             },
         );
@@ -1209,7 +1247,17 @@ impl<'a> Checker<'a> {
             return;
         };
         let mutable = written_in_stmts(rest).iter().any(|n| n == name);
-        if mutable && !place.root_mutable {
+        if mutable && read_only {
+            let message = format!(
+                "`{name}` is a read-only {kind} into `{}` and can't be modified",
+                place.root
+            );
+            if let Some(diag) = self.error(codes::ASSIGN_TO_LET, stmt.span, message) {
+                diag.help = Some(
+                    "copy it into an owned value first with `.to_str()` or `.to_list()`".into(),
+                );
+            }
+        } else if mutable && !place.root_mutable {
             let message = format!(
                 "`{name}` is changed below, but `{}` is not a var, so it can only be lent for reading",
                 place.root
@@ -1730,10 +1778,17 @@ impl<'a> Checker<'a> {
         let message = format!(
             "{what} would keep the lent {kind} `{src}` after this block; a lent value lives only in the block that made it"
         );
+        let ro = self.is_readonly_view(e);
         if let Some(diag) = self.error(codes::LENT_ESCAPES, e.span, message) {
-            diag.help = Some(format!(
-                "keep the range or the row index (a plain value) and re-project where it is used, or keep a copy: `{src}.copy()`"
-            ));
+            diag.help = Some(if ro {
+                format!(
+                    "copy it into an owned value with `{src}.to_str()` / `{src}.to_list()`, or keep the range and re-slice where it is used"
+                )
+            } else {
+                format!(
+                    "keep the range or the row index (a plain value) and re-project where it is used, or keep a copy: `{src}.copy()`"
+                )
+            });
         }
     }
 
@@ -1758,8 +1813,40 @@ impl<'a> Checker<'a> {
     /// A write through `target` needs `lends mut` at every projection on
     /// the way, and a `var` under a slice.
     pub(crate) fn writable(&mut self, target: &Expr) {
+        // Direct range-place updates (`a[l..r] = 0`, `a[l..r] min= b[l..r]`)
+        // write into the underlying `var` list/array; views (`let v = a[l..r]`,
+        // `a[l..r][0]`, `a.rev`, `s[l..r]`) remain read-only.
+        let direct_list_range = matches!(
+            &target.kind,
+            ExprKind::Index { indices, .. }
+                if indices.iter().any(|i| matches!(i.kind, ExprKind::Range { .. }))
+        ) && Self::root_name(target).is_some_and(|(name, _)| {
+            let ty = self
+                .local(name)
+                .map(|l| l.ty.clone())
+                .or_else(|| match self.env.global(name).as_deref() {
+                    Some(Def::Value { ty, .. }) => Some(ty.clone()),
+                    _ => None,
+                });
+            matches!(ty, Some(Ty::Named { name, .. }) if name == "List")
+        });
         let mut e = target;
+        let mut first = true;
         loop {
+            if !(first && direct_list_range) && self.is_readonly_view(e) {
+                let kind = self.view_kind(e).unwrap_or("view");
+                let message = format!(
+                    "`{}` is a read-only {kind} and can't be modified",
+                    show(e)
+                );
+                if let Some(diag) = self.error(codes::ASSIGN_TO_LET, target.span, message) {
+                    diag.help = Some(
+                        "copy it into an owned value first with `.to_str()` or `.to_list()`".into(),
+                    );
+                }
+                return;
+            }
+            first = false;
             e = match &e.kind {
                 ExprKind::Paren(inner) | ExprKind::Unwrap(inner) => inner,
                 ExprKind::Field { base, .. } | ExprKind::Index { base, .. } => base,
@@ -1801,7 +1888,21 @@ impl<'a> Checker<'a> {
         }
         // `xs.push(x)` changes `xs` as an assignment to it would.
         self.check_access(base, true);
-        if self.view_kind(base).is_none() {
+        if let Some(kind) = self.view_kind(base) {
+            if self.is_readonly_view(base) {
+                let message = format!(
+                    "`{}` is a read-only {kind}, so `{}` can't modify it",
+                    show(base),
+                    show(call)
+                );
+                if let Some(diag) = self.error(codes::ASSIGN_TO_LET, base.span, message) {
+                    diag.help = Some(
+                        "copy it into an owned value first with `.to_str()` or `.to_list()`".into(),
+                    );
+                }
+                return;
+            }
+        } else {
             return;
         }
         let Some(place) = self.place(base) else {

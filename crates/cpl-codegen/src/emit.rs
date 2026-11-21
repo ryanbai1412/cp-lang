@@ -307,6 +307,11 @@ impl<'p> Emitter<'p> {
                 }
                 self.need_ty(elem);
             }
+            Ty::StrView => self.need("str_view"),
+            Ty::ListView(t) => {
+                self.need("list_view");
+                self.need_ty(t);
+            }
             Ty::Opt(t) | Ty::List(t) | Ty::Set(t) => self.need_ty(t),
             Ty::Map(k, v) => {
                 self.need_ty(k);
@@ -983,6 +988,9 @@ impl<'p> Emitter<'p> {
         {
             out.push_str("#include <functional>\n");
         }
+        if self.used.contains("str_view") {
+            out.push_str("#include <string_view>\n");
+        }
         if self.used.contains("cphash") {
             out.push_str("#include <chrono>\n#include <unordered_map>\n#include <unordered_set>\n");
         }
@@ -1220,7 +1228,9 @@ fn judge_ty(ty: &Ty) -> String {
         Ty::Bool => "bool".into(),
         Ty::Char => "char".into(),
         Ty::Str => "std::string".into(),
+        Ty::StrView => "cpl::StrView".into(),
         Ty::List(elem) => format!("std::vector<{}>", judge_ty(elem)),
+        Ty::ListView(elem) => format!("cpl::ListView<{}>", judge_ty(elem)),
         Ty::Tuple(items) => {
             let items: Vec<String> = items.iter().map(judge_ty).collect();
             format!("std::tuple<{}>", items.join(", "))

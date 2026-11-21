@@ -40,7 +40,7 @@ fn near(ch: List<Site>, c: Pt) -> List<Site>:
     var (lo, hi) = (at - 1, at + 1)
     while hi - lo < 5 and (hi < ch.len or lo > 0):
         if hi < ch.len: hi += 1 else: lo -= 1
-    ch[lo..hi]
+    ch[lo..hi].to_list()
 
 fn answer(c: Pt) -> List<Int>:
     if c.x <= lower.first!.p.x or c.x >= lower.last!.p.x: return []

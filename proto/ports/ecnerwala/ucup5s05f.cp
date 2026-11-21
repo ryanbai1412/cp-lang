@@ -26,7 +26,7 @@ fn power_sums(sizes: List<Z>, deg: Int) -> List<Z>:
     let p = seg[1].resized(deg + 1, 0)
     // -x p'(x) / p(x)
     let r = convolve([-Z(i) * p[i] for i in 0..=deg], inv_trunc(p, deg + 1))
-    r[..deg + 1]
+    r[..deg + 1].to_list()
 
 // res[i] = [x^(hi - lo)] of c * prod(1 - u x for u in lo..=i); `c` has hi - lo + 1 terms
 fn descend(seg: List<List<Z>>, node: Int, lo: Int, hi: Int, c: List<Z>, mut res: List<Z>):

@@ -441,8 +441,8 @@ pub const REGISTRY: &[CodeInfo] = &[
     CodeInfo {
         code: Code("E0602"),
         title: "Variable mutated while lent",
-        summary: "A container was modified while a loop or slice was actively lending from it.",
-        explanation: "Avoid mutating a collection while iterating over it (`for x in a:`) or holding a slice into it; collect updates separately or index by position.",
+        summary: "A container was modified while a loop, slice view (`s[a..b]`), or reverse view (`s.rev`) was actively lending from it.",
+        explanation: "Slice (`s[a..b]`, `xs[a..b]`) and reverse (`s.rev`, `xs.rev`) expressions return O(1) read-only views into their base without copying. Avoid mutating a collection while iterating over it or holding a view into it; finish using the view first, index by position, or copy explicitly with `.to_str()` / `.to_list()`.",
         trigger: "var a = [1, 2, 3]\nfor x in a:\n    a.push(x)\n",
         fix: "var a = [1, 2, 3]\nlet n = a.len\nfor i in 0..n:\n    a.push(a[i])\nprint(a)\n",
         mode: "check",
@@ -450,8 +450,8 @@ pub const REGISTRY: &[CodeInfo] = &[
     CodeInfo {
         code: Code("E0603"),
         title: "Lent value escapes its scope",
-        summary: "A lent slice or projection cannot be stored, assigned, or returned past its owner.",
-        explanation: "Copy the slice into an owned `List` (for example `[x for x in a[l..r]]`) if you need it to outlive the borrow.",
+        summary: "A lent slice view (`s[a..b]`, `xs[a..b]`), reverse view (`.rev`), or projection cannot be stored, assigned, or returned past its owner.",
+        explanation: "Slices and `.rev` are O(1) read-only views that borrow their base (represented as `std::string_view` / `cpl::View<T>` in C++). Copy into an owned value explicitly with `.to_str()`, `.to_list()`, or `.copy()` when you need it to outlive the borrow.",
         trigger: "fn bad(a: [0..3]Int) -> [0..2]Int:\n    return a[0..2]\n",
         fix: "fn ok(a: [0..3]Int) -> List<Int>:\n    return [x for x in a[0..2]]\nprint(ok([1, 2, 3]))\n",
         mode: "check",

@@ -1675,13 +1675,35 @@ impl<'a> Lowerer<'a> {
                 (l, r, Ty::Float)
             }
             (Ty::Bool, Ty::Bool) if matches!(op, BitAnd | BitOr | BitXor) => (l, r, Ty::Bool),
-            (Ty::Str | Ty::Char, Ty::Str) | (Ty::Str, Ty::Char) if op == Add => {
+            (Ty::Str | Ty::StrView | Ty::Char, Ty::Str | Ty::StrView)
+            | (Ty::Str | Ty::StrView, Ty::Char)
+                if op == Add =>
+            {
+                let has_view = l.ty == Ty::StrView || r.ty == Ty::StrView;
+                if has_view {
+                    let l = if l.ty == Ty::Char { self.as_str(l, lhs.span) } else { l };
+                    let r = if r.ty == Ty::Char { self.as_str(r, rhs.span) } else { r };
+                    return self.mk(
+                        ExprKind::Builtin(Builtin::StrConcat, vec![l, r]),
+                        Ty::Str,
+                        span,
+                    );
+                }
                 let l = self.as_str(l, lhs.span);
                 let r = self.as_str(r, rhs.span);
                 (l, r, Ty::Str)
             }
-            (Ty::List(a), Ty::List(b)) if a == b && op == Add => {
-                let list_ty = l.ty.clone();
+            (Ty::List(a) | Ty::ListView(a), Ty::List(b) | Ty::ListView(b))
+                if a == b && op == Add =>
+            {
+                let list_ty = Ty::list((**a).clone());
+                if matches!(l.ty, Ty::ListView(_)) || matches!(r.ty, Ty::ListView(_)) {
+                    return self.mk(
+                        ExprKind::Builtin(Builtin::ListConcat, vec![l, r]),
+                        list_ty,
+                        span,
+                    );
+                }
                 return self.do_expr(Some(&list_ty), span, |lw, out| {
                     let slot = lw.temp(list_ty.clone());
                     let cloned = lw.mk(ExprKind::Builtin(Builtin::Copy, vec![l]), list_ty.clone(), span);
@@ -1826,10 +1848,10 @@ impl<'a> Lowerer<'a> {
     /// Whether `<` means something for the type.
     pub(super) fn ordered(&self, ty: &Ty) -> bool {
         match ty {
-            Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Bool | Ty::Char | Ty::Str | Ty::Pos(_) | Ty::Bound(_) => true,
+            Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Bool | Ty::Char | Ty::Str | Ty::StrView | Ty::Pos(_) | Ty::Bound(_) => true,
             Ty::Tuple(items) => items.iter().all(|t| self.ordered(t)),
             Ty::Record(fields) => fields.iter().all(|(_, t)| self.ordered(t)),
-            Ty::List(elem) => self.ordered(elem),
+            Ty::List(elem) | Ty::ListView(elem) => self.ordered(elem),
             Ty::Struct(id) => {
                 let fields: Vec<Ty> = self.structs[*id]
                     .def
@@ -1994,7 +2016,16 @@ impl<'a> Lowerer<'a> {
             _ => {}
         }
         // Bring both sides to one type.
-        let (l, r) = if l.ty == r.ty {
+        let (l, r) = if l.ty == r.ty
+            || matches!(
+                (&l.ty, &r.ty),
+                (Ty::Str, Ty::StrView) | (Ty::StrView, Ty::Str)
+            )
+            || matches!(
+                (&l.ty, &r.ty),
+                (Ty::List(a), Ty::ListView(b)) | (Ty::ListView(a), Ty::List(b)) if a == b
+            )
+        {
             (l, r)
         } else if matches!((&l.ty, &r.ty), (Ty::Int, Ty::U64) | (Ty::U64, Ty::Int)) {
             // An `Int` can be negative and a `U64` past `2**63`, so the
@@ -2168,14 +2199,14 @@ impl<'a> Lowerer<'a> {
                     }
                 }
                 let elem = match &holder.ty {
-                    Ty::List(elem) | Ty::Set(elem) | Ty::HashSet(elem) | Ty::Range(elem) => {
+                    Ty::List(elem) | Ty::ListView(elem) | Ty::Set(elem) | Ty::HashSet(elem) | Ty::Range(elem) => {
                         (**elem).clone()
                     }
                     Ty::Array { elem, .. } => (**elem).clone(),
                     Ty::Map(key, _) | Ty::HashMap(key, _) => (**key).clone(),
                     // `"an" in s`: a `Str` is looked for as a part of the text.
-                    Ty::Str if self.probe_ty_silent(item) == Some(Ty::Str) => Ty::Str,
-                    Ty::Str => Ty::Char,
+                    Ty::Str | Ty::StrView if matches!(self.probe_ty_silent(item), Some(Ty::Str | Ty::StrView)) => Ty::Str,
+                    Ty::Str | Ty::StrView => Ty::Char,
                     Ty::Error => return self.err_expr(span),
                     other => {
                         let message = format!("`in` can't look inside a `{}`", self.show(other));
@@ -2197,7 +2228,7 @@ impl<'a> Lowerer<'a> {
     /// Inside `unchecked:`, the `Int` that indexes a list is marked as
     /// vouched for.
     pub(super) fn vouched(&mut self, base: &Ty, indices: Vec<Expr>) -> Vec<Expr> {
-        if self.unchecked == 0 || !matches!(base, Ty::List(_) | Ty::Array { .. } | Ty::Str) {
+        if self.unchecked == 0 || !matches!(base, Ty::List(_) | Ty::ListView(_) | Ty::Array { .. } | Ty::Str | Ty::StrView) {
             return indices;
         }
         indices
@@ -2406,8 +2437,8 @@ impl<'a> Lowerer<'a> {
                 }
                 (out, (**elem).clone())
             }
-            Ty::List(elem) => (one(self, &Ty::Int), (**elem).clone()),
-            Ty::Str => (one(self, &Ty::Int), Ty::Char),
+            Ty::List(elem) | Ty::ListView(elem) => (one(self, &Ty::Int), (**elem).clone()),
+            Ty::Str | Ty::StrView => (one(self, &Ty::Int), Ty::Char),
             Ty::Range(inner) => (one(self, &Ty::Int), (**inner).clone()),
             Ty::Map(key, value) | Ty::HashMap(key, value) => (one(self, key), (**value).clone()),
             Ty::Error => {
@@ -2424,8 +2455,72 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// Lowers a slice by a runtime `Range<T>` value (`base[r]`) into a `List<T>` (or `Str`).
+    /// Ensures the base of a borrowed view outlives the view expression in C++.
+    /// Places (locals, globals, fields) and existing views are passed directly
+    /// with zero copies; temporary owned values are hoisted into `self.cx.pending`.
+    pub(super) fn hoist_view_base(&mut self, base: Expr, span: Span) -> Expr {
+        if matches!(base.ty, Ty::StrView | Ty::ListView(_))
+            || matches!(
+                base.kind,
+                ExprKind::Local(_) | ExprKind::Global(_) | ExprKind::Field(..)
+            )
+        {
+            return base;
+        }
+        let slot = self.temp(base.ty.clone());
+        self.cx.pending.push(Stmt::Let(slot, Some(base)));
+        self.local(slot, span)
+    }
+
+    /// Lowers a slice by a runtime `Range<T>` value (`base[r]`) into a view or `List<T>`.
     fn slice_by_range_val(&mut self, base: Expr, range_val: Expr, span: Span) -> Expr {
+        if matches!(base.ty, Ty::Str | Ty::StrView | Ty::List(_) | Ty::ListView(_)) {
+            let base = self.hoist_view_base(base, span);
+            let range_ty = range_val.ty.clone();
+            let range_inner = match &range_ty {
+                Ty::Range(inner) => (**inner).clone(),
+                _ => Ty::Int,
+            };
+            let r_slot = self.temp(range_ty);
+            self.cx.pending.push(Stmt::Let(r_slot, Some(range_val)));
+            let r_ref = self.local(r_slot, span);
+            let lo_bound = self.mk(
+                ExprKind::Builtin(Builtin::RangeLo, vec![r_ref.clone()]),
+                range_inner.clone(),
+                span,
+            );
+            let hi_bound = self.mk(
+                ExprKind::Builtin(Builtin::RangeHi, vec![r_ref]),
+                range_inner.clone(),
+                span,
+            );
+            let lo = if matches!(range_inner, Ty::Pos(_) | Ty::Bound(_)) {
+                self.cast(Cast::Ord, lo_bound, Ty::Int)
+            } else {
+                lo_bound
+            };
+            let hi = if matches!(range_inner, Ty::Pos(_) | Ty::Bound(_)) {
+                self.cast(Cast::Ord, hi_bound, Ty::Int)
+            } else {
+                hi_bound
+            };
+            return match &base.ty {
+                Ty::Str | Ty::StrView => self.mk(
+                    ExprKind::Builtin(Builtin::StrSlice, vec![base, lo, hi]),
+                    Ty::StrView,
+                    span,
+                ),
+                Ty::List(e) | Ty::ListView(e) => {
+                    let elem = (**e).clone();
+                    self.mk(
+                        ExprKind::Builtin(Builtin::ListSlice, vec![base, lo, hi]),
+                        Ty::ListView(Box::new(elem)),
+                        span,
+                    )
+                }
+                _ => unreachable!(),
+            };
+        }
         let is_str = base.ty == Ty::Str;
         let (elem_ty, dim_dom) = match &base.ty {
             Ty::List(e) => ((**e).clone(), None),
@@ -2648,6 +2743,53 @@ impl<'a> Lowerer<'a> {
                 self.help("count from the end with the length: `a[..a.len - 1]`");
                 return self.err_expr(span);
             }
+        }
+        if matches!(base.ty, Ty::Str | Ty::StrView | Ty::List(_) | Ty::ListView(_)) {
+            let base = self.hoist_view_base(base, span);
+            let to_idx = |lw: &mut Self, e: &ast::Expr, is_end: bool| -> Expr {
+                let v = lw.expr(e, None);
+                match v.ty {
+                    Ty::Int => lw.int_add(v, i64::from(is_end && *inclusive)),
+                    Ty::Pos(_) => {
+                        let ord = lw.cast(Cast::Ord, v, Ty::Int);
+                        if is_end && *inclusive {
+                            lw.int_add(ord, 1)
+                        } else {
+                            ord
+                        }
+                    }
+                    Ty::Bound(_) => lw.cast(Cast::Ord, v, Ty::Int),
+                    _ => lw.coerce(v, &Ty::Int, e.span),
+                }
+            };
+            let lo_e = match lo {
+                Some(l) => to_idx(self, l, false),
+                None => self.int_lit(0, span),
+            };
+            let hi_e = match hi {
+                Some(h) => to_idx(self, h, true),
+                None => self.mk(
+                    ExprKind::Builtin(Builtin::Len, vec![base.clone()]),
+                    Ty::Int,
+                    span,
+                ),
+            };
+            return match &base.ty {
+                Ty::Str | Ty::StrView => self.mk(
+                    ExprKind::Builtin(Builtin::StrSlice, vec![base, lo_e, hi_e]),
+                    Ty::StrView,
+                    span,
+                ),
+                Ty::List(e) | Ty::ListView(e) => {
+                    let elem = (**e).clone();
+                    self.mk(
+                        ExprKind::Builtin(Builtin::ListSlice, vec![base, lo_e, hi_e]),
+                        Ty::ListView(Box::new(elem)),
+                        span,
+                    )
+                }
+                _ => unreachable!(),
+            };
         }
         let is_str = base.ty == Ty::Str;
         // `a[2..=4]` of a `[1..=4]T` is said in the array's own indices.
@@ -3495,10 +3637,10 @@ impl<'a> Lowerer<'a> {
                     }
                 }
                 let elem = match &value.ty {
-                    Ty::Array { elem, .. } | Ty::List(elem) | Ty::Set(elem) | Ty::HashSet(elem) => {
+                    Ty::Array { elem, .. } | Ty::List(elem) | Ty::ListView(elem) | Ty::Set(elem) | Ty::HashSet(elem) => {
                         (**elem).clone()
                     }
-                    Ty::Str => Ty::Char,
+                    Ty::Str | Ty::StrView => Ty::Char,
                     Ty::Map(key, val) | Ty::HashMap(key, val) => {
                         Ty::Tuple(vec![(**key).clone(), (**val).clone()])
                     }

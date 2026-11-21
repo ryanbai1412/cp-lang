@@ -7,7 +7,7 @@ fn add(a: List<Z>, b: List<Z>) -> List<Z>:
 
 fn remove(a: List<Z>, b: List<Z>) -> List<Z>:
     if a.is_empty: return []
-    convolve(a, b.rev())[b.len - 1..]
+    convolve(a, b.rev())[b.len - 1..].to_list()
 
 fn plus_integral(a: List<Z>) -> List<Z> = add(a, integral(a))
 

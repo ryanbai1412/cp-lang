@@ -168,7 +168,7 @@ impl<'a> Checker<'a> {
             }
             ExprKind::Call { callee, args } => self.call(expr, callee, args),
             ExprKind::Index { base, indices } => self.index(expr, base, indices),
-            ExprKind::Field { base, name } => self.field(base, name),
+            ExprKind::Field { base, name } => self.field(expr, base, name),
             ExprKind::Generic { base, args } => {
                 let base_ty = self.infer(base);
                 if let ExprKind::Name(name) = &base.kind {
@@ -1162,7 +1162,7 @@ impl<'a> Checker<'a> {
         })
     }
 
-    fn field(&mut self, base: &Expr, name: &ast::Name) -> Ty {
+    fn field(&mut self, expr: &Expr, base: &Expr, name: &ast::Name) -> Ty {
         // `treap.merge` after `use lib.treap`: a public name of a module.
         if let ExprKind::Name(alias) = &base.kind {
             if self.local(alias).is_none() && self.env.is_module(alias) {
@@ -1237,6 +1237,14 @@ impl<'a> Checker<'a> {
                 diag.help = Some("use `.items`: `for (i, x) in xs.items:`".to_string());
             }
             return Ty::Error;
+        }
+        // `s.rev`, `xs.rev`: O(1) read-only reverse view over a string or list.
+        if name.text == "rev"
+            && (base_ty == Ty::Str
+                || matches!(&base_ty, Ty::Named { name: list, args } if list == "List" && args.len() == 1))
+        {
+            self.note_readonly_view(expr, "reverse view");
+            return base_ty;
         }
         // `xs.items`: each element with its index, a position of `I` for
         // `[I]T` and an `Int` otherwise.
@@ -1585,10 +1593,11 @@ impl<'a> Checker<'a> {
                     (**elem).clone()
                 }
             }
-            // `xs[0..5]`: a part of a list or a string is one too.
+            // `xs[0..5]`, `s[0..5]`: O(1) read-only slice view into a list or string.
             ty if (*ty == Ty::Str || matches!(ty, Ty::Named { name, .. } if name == "List"))
                 && matches!(index_tys.as_slice(), [Ty::Named { name, .. }] if name == "Range") =>
             {
+                self.note_readonly_view(expr, "slice");
                 ty.clone()
             }
             Ty::Named { name, args } if name == "List" && args.len() == 1 => args[0].clone(),

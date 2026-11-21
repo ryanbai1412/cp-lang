@@ -59,6 +59,10 @@ impl<'p> Emitter<'p> {
             Ty::Bool => format!("cpl::put_str({} ? \"YES\" : \"NO\");", value.at(UNARY)),
             Ty::Char => format!("cpl::put_char({});", value.text),
             Ty::Str => format!("cpl::put_str({});", value.text),
+            Ty::StrView => {
+                self.need("put_str_view");
+                format!("cpl::put_str({});", value.text)
+            }
             Ty::Unit | Ty::Error => format!("{};", value.text),
             _ => {
                 let helper = self.show_helper(ty);
@@ -77,7 +81,7 @@ impl<'p> Emitter<'p> {
         // ahead of them all.
         if self.showing.insert(ty.clone()) {
             for part in self.parts(ty) {
-                if !part.is_scalar() && part != Ty::Str {
+                if !part.is_scalar() && !matches!(part, Ty::Str | Ty::StrView) {
                     self.show_helper(&part);
                 }
             }
@@ -118,7 +122,7 @@ impl<'p> Emitter<'p> {
     /// The types a value of the compound type `ty` is made of.
     fn parts(&self, ty: &Ty) -> Vec<Ty> {
         match ty {
-            Ty::Opt(inner) | Ty::List(inner) | Ty::Set(inner) | Ty::HashSet(inner) => {
+            Ty::Opt(inner) | Ty::List(inner) | Ty::ListView(inner) | Ty::Set(inner) | Ty::HashSet(inner) => {
                 vec![(**inner).clone()]
             }
             Ty::Array { elem, .. } => vec![(**elem).clone()],
@@ -238,7 +242,7 @@ impl<'p> Emitter<'p> {
                 });
                 b.push_str(&format!("        {shown}\n    }}\n"));
             }
-            Ty::Array { elem, .. } | Ty::List(elem) => {
+            Ty::Array { elem, .. } | Ty::List(elem) | Ty::ListView(elem) => {
                 let cell = self.cell("v[i]", elem);
                 let shown = self.show_stmt(&cell, elem, "digits");
                 b.push_str("    for (size_t i = 0; i < v.size(); i++) {\n");

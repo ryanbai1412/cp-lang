@@ -1454,7 +1454,12 @@ impl<'a> Lowerer<'a> {
                 let val = self.expr(src, None);
                 match val.ty.clone() {
                     Ty::List(_) => val,
-                    Ty::Str => self.mk(
+                    Ty::ListView(elem) => self.mk(
+                        ExprKind::Builtin(Builtin::ToList, vec![val]),
+                        Ty::List(elem),
+                        span,
+                    ),
+                    Ty::Str | Ty::StrView => self.mk(
                         ExprKind::Builtin(Builtin::StrToList, vec![val]),
                         Ty::list(Ty::Char),
                         span,
@@ -1699,7 +1704,9 @@ impl<'a> Lowerer<'a> {
         match value.ty {
             Ty::Array { .. }
             | Ty::List(_)
+            | Ty::ListView(_)
             | Ty::Str
+            | Ty::StrView
             | Ty::Map(..)
             | Ty::HashMap(..)
             | Ty::Set(_)
@@ -1718,13 +1725,13 @@ impl<'a> Lowerer<'a> {
 
     fn sorted(&mut self, value: Expr, span: Span) -> Expr {
         match &value.ty {
-            Ty::List(elem) => {
+            Ty::List(elem) | Ty::ListView(elem) => {
                 if !self.ordered(elem) {
                     let message = format!("a `{}` has no order to sort by", self.show(elem));
                     self.error(codes::BAD_OPERANDS, span, message);
                     return self.err_expr(span);
                 }
-                let ty = value.ty.clone();
+                let ty = Ty::list((**elem).clone());
                 self.mk(ExprKind::Builtin(Builtin::Sorted, vec![value]), ty, span)
             }
             Ty::Array { elem, .. } => {
@@ -1841,7 +1848,7 @@ impl<'a> Lowerer<'a> {
             (kind, _) => Expr { kind, ..value },
         };
         let list_ty = match value.ty.clone() {
-            Ty::List(e) => Ty::List(e),
+            Ty::List(e) | Ty::ListView(e) => Ty::List(e),
             Ty::Array { elem, .. } => Ty::List(elem),
             Ty::Set(e) | Ty::HashSet(e) => Ty::List(e),
             Ty::Error => return value,
@@ -1861,6 +1868,7 @@ impl<'a> Lowerer<'a> {
         self.do_expr(Some(&list_ty), span, |lw, out| {
             let init = match value.ty {
                 Ty::List(_) => lw.mk(ExprKind::Builtin(Builtin::Copy, vec![value]), list_ty.clone(), span),
+                Ty::ListView(_) => lw.mk(ExprKind::Builtin(Builtin::ToList, vec![value]), list_ty.clone(), span),
                 Ty::Array { .. } => lw.mk(
                     ExprKind::Builtin(Builtin::ArrayToList, vec![value]),
                     list_ty.clone(),
@@ -3409,7 +3417,9 @@ impl<'a> Lowerer<'a> {
             (
                 Ty::Array { .. }
                 | Ty::List(_)
+                | Ty::ListView(_)
                 | Ty::Str
+                | Ty::StrView
                 | Ty::Map(..)
                 | Ty::HashMap(..)
                 | Ty::Set(_)
@@ -3420,7 +3430,9 @@ impl<'a> Lowerer<'a> {
             (
                 Ty::Array { .. }
                 | Ty::List(_)
+                | Ty::ListView(_)
                 | Ty::Str
+                | Ty::StrView
                 | Ty::Map(..)
                 | Ty::HashMap(..)
                 | Ty::Set(_)
@@ -3484,7 +3496,7 @@ impl<'a> Lowerer<'a> {
             {
                 self.cells_of_grid(value, span)
             }
-            (Ty::List(_) | Ty::Array { .. } | Ty::Str, "items") if self.items_of(&value, span).is_some() => {
+            (Ty::List(_) | Ty::ListView(_) | Ty::Array { .. } | Ty::Str | Ty::StrView, "items") if self.items_of(&value, span).is_some() => {
                 let pair = |items: &Items| Ty::Tuple(vec![items.index.clone(), items.elem.clone()]);
                 let held_ty = value.ty.clone();
                 let Some(shape) = self.items_of(&value, span) else { unreachable!("checked above") };
@@ -3506,21 +3518,33 @@ impl<'a> Lowerer<'a> {
                     out.push(Stmt::Give(lw.local(acc, span)));
                 })
             }
-            (Ty::List(elem), "first") => {
+            (Ty::List(elem) | Ty::ListView(elem), "first") => {
                 let opt = Ty::opt((**elem).clone());
                 builtin(self, Builtin::First, vec![value], opt)
             }
-            (Ty::List(elem), "last") => {
+            (Ty::List(elem) | Ty::ListView(elem), "last") => {
                 let opt = Ty::opt((**elem).clone());
                 builtin(self, Builtin::Last, vec![value], opt)
             }
-            (Ty::Str, "first") => builtin(self, Builtin::First, vec![value], Ty::opt(Ty::Char)),
-            (Ty::Str, "last") => builtin(self, Builtin::Last, vec![value], Ty::opt(Ty::Char)),
-            (Ty::List(_) | Ty::Str, "rev") => {
-                builtin(self, Builtin::Reversed, vec![value], ty.clone())
+            (Ty::Str | Ty::StrView, "first") => {
+                builtin(self, Builtin::First, vec![value], Ty::opt(Ty::Char))
+            }
+            (Ty::Str | Ty::StrView, "last") => {
+                builtin(self, Builtin::Last, vec![value], Ty::opt(Ty::Char))
+            }
+            (Ty::Str | Ty::StrView, "rev") => {
+                let value = self.hoist_view_base(value, span);
+                builtin(self, Builtin::Reversed, vec![value], Ty::StrView)
+            }
+            (Ty::List(elem) | Ty::ListView(elem), "rev") => {
+                let elem = (**elem).clone();
+                let value = self.hoist_view_base(value, span);
+                builtin(self, Builtin::Reversed, vec![value], Ty::ListView(Box::new(elem)))
             }
             (Ty::Range(_), "rev") => self.reversed_range(value, span),
-            (Ty::List(_) | Ty::Str, "adjacent") => self.lower_adjacent(value, span),
+            (Ty::List(_) | Ty::ListView(_) | Ty::Str | Ty::StrView, "adjacent") => {
+                self.lower_adjacent(value, span)
+            }
             (Ty::Array { dims, .. }, "adjacent") if dims.len() == 1 => {
                 self.lower_adjacent(value, span)
             }
@@ -3869,13 +3893,30 @@ impl<'a> Lowerer<'a> {
         let ast::ExprKind::Field { base, name } = &e.kind else {
             return None;
         };
-        if name.text != "items" || !is_place(base) {
+        if name.text != "items" {
             return None;
         }
-        if !matches!(self.probe_ty_silent(base), Some(Ty::List(_) | Ty::Array { .. } | Ty::Str)) {
+        let is_view_expr = matches!(&base.kind, ast::ExprKind::Index { .. })
+            || matches!(&base.kind, ast::ExprKind::Field { name, .. } if name.text == "rev");
+        if !is_place(base) && !is_view_expr {
+            return None;
+        }
+        if !matches!(
+            self.probe_ty_silent(base),
+            Some(Ty::List(_) | Ty::ListView(_) | Ty::Array { .. } | Ty::Str | Ty::StrView)
+        ) {
             return None;
         }
         let seq = self.expr(base, None);
+        let seq = if matches!(seq.ty, Ty::StrView | Ty::ListView(_))
+            && !matches!(seq.kind, ExprKind::Local(_) | ExprKind::Global(_))
+        {
+            let held = self.temp(seq.ty.clone());
+            self.cx.pending.push(Stmt::Let(held, Some(seq)));
+            self.local(held, e.span)
+        } else {
+            seq
+        };
         self.items_of(&seq, e.span)
     }
 
@@ -3883,8 +3924,8 @@ impl<'a> Lowerer<'a> {
     /// when `seq` is not a list or an array of one dimension.
     fn items_of(&mut self, seq: &Expr, span: Span) -> Option<Items> {
         let (dim, elem) = match &seq.ty {
-            Ty::List(elem) => (Dim::Int, (**elem).clone()),
-            Ty::Str => (Dim::Int, Ty::Char),
+            Ty::List(elem) | Ty::ListView(elem) => (Dim::Int, (**elem).clone()),
+            Ty::Str | Ty::StrView => (Dim::Int, Ty::Char),
             Ty::Array { dims, elem } if dims.len() == 1 => (dims[0], (**elem).clone()),
             _ => return None,
         };
@@ -4506,13 +4547,26 @@ impl<'a> Lowerer<'a> {
         let seq_ty = self.probe_ty_silent(base);
         if matches!(
             seq_ty,
-            Some(Ty::List(_) | Ty::Array { .. } | Ty::Range(_) | Ty::Set(_) | Ty::Str)
+            Some(
+                Ty::List(_)
+                    | Ty::ListView(_)
+                    | Ty::Array { .. }
+                    | Ty::Range(_)
+                    | Ty::Set(_)
+                    | Ty::Str
+                    | Ty::StrView
+            )
         ) {
             let seq = ast::Arg { name: None, mutable: false, value: base.clone() };
             match (args, name.text.as_str()) {
                 ([], "sum") => return self.reduce(Reduce::Sum, base, span),
                 ([], "prod") => return self.reduce(Reduce::Prod, base, span),
-                (_, "sorted") if !matches!(seq_ty, Some(Ty::List(_) | Ty::Array { .. })) => {
+                (_, "sorted")
+                    if !matches!(
+                        seq_ty,
+                        Some(Ty::List(_) | Ty::ListView(_) | Ty::Array { .. })
+                    ) =>
+                {
                     let value = match self.walked(base) {
                         Some(values) => self.expr(&values, None),
                         None => self.expr(base, None),
@@ -4937,10 +4991,10 @@ impl<'a> Lowerer<'a> {
             return self.field(whole, base, name);
         }
         let elem = match &ty {
-            Ty::List(elem) | Ty::Set(elem) | Ty::HashSet(elem) | Ty::Range(elem) => (**elem).clone(),
+            Ty::List(elem) | Ty::ListView(elem) | Ty::Set(elem) | Ty::HashSet(elem) | Ty::Range(elem) => (**elem).clone(),
             Ty::Array { elem, .. } => (**elem).clone(),
             Ty::Map(key, _) | Ty::HashMap(key, _) => (**key).clone(),
-            Ty::Str => Ty::Char,
+            Ty::Str | Ty::StrView => Ty::Char,
             _ => Ty::Error,
         };
         let mutate = |lw: &mut Self, op: Mutation, args: Vec<Expr>, result: Ty| {
@@ -5195,6 +5249,28 @@ impl<'a> Lowerer<'a> {
                 Some(v) => mutate(self, Mutation::Fill, vec![v], Ty::Unit),
                 None => self.err_expr(span),
             },
+            (Ty::Str | Ty::StrView, "to_str") => match self.positional_any(method, args, 0, span) {
+                Some(_) => self.mk(ExprKind::Builtin(Builtin::ToStr, vec![value]), Ty::Str, span),
+                None => self.err_expr(span),
+            },
+            (Ty::List(e) | Ty::ListView(e), "to_list") => {
+                let out_ty = Ty::list((**e).clone());
+                match self.positional_any(method, args, 0, span) {
+                    Some(_) => self.mk(ExprKind::Builtin(Builtin::ToList, vec![value]), out_ty, span),
+                    None => self.err_expr(span),
+                }
+            }
+            (Ty::StrView, "copy") => match self.positional_any(method, args, 0, span) {
+                Some(_) => self.mk(ExprKind::Builtin(Builtin::ToStr, vec![value]), Ty::Str, span),
+                None => self.err_expr(span),
+            },
+            (Ty::ListView(e), "copy") => {
+                let out_ty = Ty::list((**e).clone());
+                match self.positional_any(method, args, 0, span) {
+                    Some(_) => self.mk(ExprKind::Builtin(Builtin::ToList, vec![value]), out_ty, span),
+                    None => self.err_expr(span),
+                }
+            }
             (Ty::List(_) | Ty::Array { .. } | Ty::Map(..) | Ty::HashMap(..) | Ty::Set(_) | Ty::HashSet(_) | Ty::Str, "copy") => {
                 match self.positional_any(method, args, 0, span) {
                     Some(_) => self.mk(ExprKind::Builtin(Builtin::Copy, vec![value]), ty.clone(), span),
@@ -5253,29 +5329,41 @@ impl<'a> Lowerer<'a> {
                 None => self.err_expr(span),
             },
             (Ty::List(_) | Ty::Array { .. }, "sort") => self.sort(base, &elem, args, span),
-            (Ty::List(_) | Ty::Array { .. } | Ty::Set(_) | Ty::HashSet(_), "sorted") => {
+            (Ty::List(_) | Ty::ListView(_) | Ty::Array { .. } | Ty::Set(_) | Ty::HashSet(_), "sorted") => {
                 if args.is_empty() {
                     self.sorted(value, span)
                 } else {
                     self.sorted_by(value, args, span)
                 }
             }
-            (Ty::List(_) | Ty::Str, "reversed") => match self.positional_any(method, args, 0, span) {
-                Some(_) => self.mk(
-                    ExprKind::Builtin(Builtin::Reversed, vec![value]),
-                    ty.clone(),
-                    span,
-                ),
+            (Ty::Str | Ty::StrView, "reversed") => match self.positional_any(method, args, 0, span) {
+                Some(_) => {
+                    let rev = self.mk(ExprKind::Builtin(Builtin::Reversed, vec![value]), Ty::StrView, span);
+                    self.mk(ExprKind::Builtin(Builtin::ToStr, vec![rev]), Ty::Str, span)
+                }
                 None => self.err_expr(span),
             },
+            (Ty::List(e) | Ty::ListView(e), "reversed") => {
+                let out_ty = Ty::list((**e).clone());
+                let view_ty = Ty::ListView(e.clone());
+                match self.positional_any(method, args, 0, span) {
+                    Some(_) => {
+                        let rev = self.mk(ExprKind::Builtin(Builtin::Reversed, vec![value]), view_ty, span);
+                        self.mk(ExprKind::Builtin(Builtin::ToList, vec![rev]), out_ty, span)
+                    }
+                    None => self.err_expr(span),
+                }
+            }
             (
                 Ty::List(_)
+                | Ty::ListView(_)
                 | Ty::Set(_)
                 | Ty::HashSet(_)
                 | Ty::Map(..)
                 | Ty::HashMap(..)
                 | Ty::Array { .. }
                 | Ty::Str
+                | Ty::StrView
                 | Ty::Range(_),
                 "contains",
             ) => match self.one_arg(method, args, &elem, span) {
@@ -5286,27 +5374,34 @@ impl<'a> Lowerer<'a> {
                 ),
                 None => self.err_expr(span),
             },
-            // How many cells equal `x`: `[1, 2, 1].count(1)` is 2. On a
-            // `Str` it is `count` of `std.strings`.
-            (Ty::List(_) | Ty::Array { .. }, "count") => match self.one_arg(method, args, &elem, span) {
-                Some(arg) => self.do_expr(Some(&Ty::Int), span, |lw, out| {
-                    let (seq, arg) = (lw.hold(value, out), lw.hold(arg, out));
-                    let (acc, each) = (lw.temp(Ty::Int), lw.temp(elem.clone()));
-                    out.push(Stmt::Let(acc, Some(lw.int_lit(0, span))));
-                    let same = lw.mk(
-                        ExprKind::Cmp(CmpOp::Eq, Box::new(lw.local(each, span)), Box::new(arg)),
-                        Ty::Bool,
-                        span,
-                    );
-                    let place = Place { kind: PlaceKind::Local(acc), ty: Ty::Int, span: lw.span(span) };
-                    let inc = Stmt::Assign(place, AssignOp::Binary(BinOp::Add), lw.int_lit(1, span));
-                    let body = Block { stmts: vec![Stmt::If(same, Block { stmts: vec![inc] }, Block::default())] };
-                    let lid = lw.fresh_loop();
-                    out.push(Stmt::For(lid, each, Iter::Seq(seq, false), body));
-                    out.push(Stmt::Give(lw.local(acc, span)));
-                }),
-                None => self.err_expr(span),
-            },
+            // How many cells equal `x`: `[1, 2, 1].count(1)` is 2,
+            // `s[0..k].count('R')` scans the view directly without copying.
+            (Ty::List(_) | Ty::ListView(_) | Ty::Array { .. }, "count")
+            | (Ty::Str | Ty::StrView, "count")
+                if args.len() == 1
+                    && (matches!(&ty, Ty::List(_) | Ty::ListView(_) | Ty::Array { .. })
+                        || self.probe_ty_silent(&args[0].value) == Some(Ty::Char)) =>
+            {
+                match self.one_arg(method, args, &elem, span) {
+                    Some(arg) => self.do_expr(Some(&Ty::Int), span, |lw, out| {
+                        let (seq, arg) = (lw.hold(value, out), lw.hold(arg, out));
+                        let (acc, each) = (lw.temp(Ty::Int), lw.temp(elem.clone()));
+                        out.push(Stmt::Let(acc, Some(lw.int_lit(0, span))));
+                        let same = lw.mk(
+                            ExprKind::Cmp(CmpOp::Eq, Box::new(lw.local(each, span)), Box::new(arg)),
+                            Ty::Bool,
+                            span,
+                        );
+                        let place = Place { kind: PlaceKind::Local(acc), ty: Ty::Int, span: lw.span(span) };
+                        let inc = Stmt::Assign(place, AssignOp::Binary(BinOp::Add), lw.int_lit(1, span));
+                        let body = Block { stmts: vec![Stmt::If(same, Block { stmts: vec![inc] }, Block::default())] };
+                        let lid = lw.fresh_loop();
+                        out.push(Stmt::For(lid, each, Iter::Seq(seq, false), body));
+                        out.push(Stmt::Give(lw.local(acc, span)));
+                    }),
+                    None => self.err_expr(span),
+                }
+            }
             (Ty::Map(_, val) | Ty::HashMap(_, val), "get") => {
                 match self.one_arg(method, args, &elem, span) {
                     Some(arg) => self.mk(
@@ -5647,8 +5742,18 @@ impl<'a> Lowerer<'a> {
                     out.push(Stmt::Give(lw.mk(ExprKind::If(Box::new(there), Box::new(some), Box::new(none)), opt, span)));
                 })
             }
-            (Ty::List(_) | Ty::Str, "rev") if args.is_empty() => {
-                self.mk(ExprKind::Builtin(Builtin::Reversed, vec![value]), ty.clone(), span)
+            (Ty::Str | Ty::StrView, "rev") if args.is_empty() => {
+                let value = self.hoist_view_base(value, span);
+                self.mk(ExprKind::Builtin(Builtin::Reversed, vec![value]), Ty::StrView, span)
+            }
+            (Ty::List(e) | Ty::ListView(e), "rev") if args.is_empty() => {
+                let elem = (**e).clone();
+                let value = self.hoist_view_base(value, span);
+                self.mk(
+                    ExprKind::Builtin(Builtin::Reversed, vec![value]),
+                    Ty::ListView(Box::new(elem)),
+                    span,
+                )
             }
             (Ty::Range(_), "rev") if args.is_empty() => self.reversed_range(value, span),
             // `r.find(i => ..)`: the first of the range the test holds
@@ -6040,8 +6145,8 @@ impl<'a> Lowerer<'a> {
     /// `xs.adjacent`: the pairs `(xs[i], xs[i + 1])`, as a list.
     fn lower_adjacent(&mut self, value: Expr, span: Span) -> Expr {
         let (elem_ty, dim) = match &value.ty {
-            Ty::List(e) => ((**e).clone(), Dim::Int),
-            Ty::Str => (Ty::Char, Dim::Int),
+            Ty::List(e) | Ty::ListView(e) => ((**e).clone(), Dim::Int),
+            Ty::Str | Ty::StrView => (Ty::Char, Dim::Int),
             Ty::Array { dims, elem } if dims.len() == 1 => ((**elem).clone(), dims[0]),
             _ => return self.err_expr(span),
         };
@@ -6245,7 +6350,7 @@ impl<'a> Lowerer<'a> {
             return self.err_expr(span);
         }
         let elem_ty = match &src.ty {
-            Ty::Array { elem, .. } | Ty::List(elem) => (**elem).clone(),
+            Ty::Array { elem, .. } | Ty::List(elem) | Ty::ListView(elem) => (**elem).clone(),
             _ => Ty::Error,
         };
         let adds = match &elem_ty {

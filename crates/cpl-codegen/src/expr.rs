@@ -562,9 +562,9 @@ impl<'p> Emitter<'p> {
                 let raw_list = matches!(base.kind, ExprKind::Global(id) if self.program.raw_lists.contains(&id))
                     || matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _))
                     || matches!((&base.kind, &indices[0].kind), (ExprKind::Local(list), ExprKind::Local(i)) if self.inside.contains(&(*list, *i)));
-                let checked = !proven(indices);
-                if (matches!(base_ty, Ty::List(_)) && !raw_list)
-                    || (checked && matches!(base_ty, Ty::Array { .. } | Ty::Str))
+                let checked = !proven(indices) && !raw_list;
+                if (matches!(base_ty, Ty::List(_) | Ty::ListView(_)) && !raw_list)
+                    || (checked && matches!(base_ty, Ty::Array { .. } | Ty::Str | Ty::StrView))
                 {
                     self.need("at");
                 }
@@ -599,15 +599,17 @@ impl<'p> Emitter<'p> {
                                 Code::primary(cell)
                             }
                         }
-                        Ty::List(elem) if raw_list && **elem == Ty::Bool => {
+                        Ty::List(elem) | Ty::ListView(elem) if raw_list && **elem == Ty::Bool => {
                             Code::new(format!("(bool){b}[{}]", at[0]), UNARY)
                         }
-                        Ty::List(_) if raw_list => Code::primary(format!("{b}[{}]", at[0])),
-                        Ty::List(elem) if **elem == Ty::Bool => Code::new(
+                        Ty::List(_) | Ty::ListView(_) if raw_list => {
+                            Code::primary(format!("{b}[{}]", at[0]))
+                        }
+                        Ty::List(elem) | Ty::ListView(elem) if **elem == Ty::Bool => Code::new(
                             format!("(bool)cpl::at({}, {})", codes[0].text, at[0]),
                             UNARY,
                         ),
-                        Ty::List(_) => {
+                        Ty::List(_) | Ty::ListView(_) => {
                             Code::primary(format!("cpl::at({}, {})", codes[0].text, at[0]))
                         }
                         Ty::Array { elem, .. } if checked && **elem == Ty::Bool => Code::new(
@@ -617,14 +619,14 @@ impl<'p> Emitter<'p> {
                         Ty::Array { .. } if checked => {
                             Code::primary(format!("cpl::at({}, {})", codes[0].text, at[0]))
                         }
-                        Ty::Str if checked => Code::new(
+                        Ty::Str | Ty::StrView if checked => Code::new(
                             format!("(cpl::u8)cpl::at({}, {})", codes[0].text, at[0]),
                             UNARY,
                         ),
                         Ty::Array { elem, .. } if **elem == Ty::Bool => {
                             Code::new(format!("(bool){b}[{}]", at[0]), UNARY)
                         }
-                        Ty::Str => Code::new(format!("(cpl::u8){b}[{}]", at[0]), UNARY),
+                        Ty::Str | Ty::StrView => Code::new(format!("(cpl::u8){b}[{}]", at[0]), UNARY),
                         Ty::Range(_) if checked => {
                             Code::primary(format!("cpl::range_at({}, {})", codes[0].text, at[0]))
                         }
@@ -1425,7 +1427,7 @@ impl<'p> Emitter<'p> {
             }
             Builtin::Join => {
                 let elem = match &args[1].ty {
-                    Ty::List(elem) | Ty::Array { elem, .. } => (**elem).clone(),
+                    Ty::List(elem) | Ty::ListView(elem) | Ty::Array { elem, .. } => (**elem).clone(),
                     other => other.clone(),
                 };
                 let (sep, seq) = (codes[0].text.clone(), codes[1].text.clone());
@@ -1460,7 +1462,7 @@ impl<'p> Emitter<'p> {
             Builtin::SeqGet => {
                 let opt = self.ty(&e.ty);
                 let (seq, at) = (text(0), text(1));
-                let elem = if matches!(first_ty, Some(Ty::Str)) {
+                let elem = if matches!(first_ty, Some(Ty::Str | Ty::StrView)) {
                     "(cpl::u8)_seq[_idx]"
                 } else {
                     "_seq[_idx]"
@@ -1553,6 +1555,10 @@ impl<'p> Emitter<'p> {
                         format!("{holder}.find({}) != std::string::npos", text(1)),
                         EQ,
                     ),
+                    Some(Ty::Str) if args[1].ty == Ty::StrView => {
+                        self.need("str_view");
+                        Code::primary(format!("cpl::StrView({holder}).contains_str({})", text(1)))
+                    }
                     Some(Ty::Str) => Code::new(
                         format!(
                             "{holder}.find((char){}) != std::string::npos",
@@ -1560,6 +1566,14 @@ impl<'p> Emitter<'p> {
                         ),
                         EQ,
                     ),
+                    Some(Ty::StrView) if matches!(args[1].ty, Ty::Str | Ty::StrView) => {
+                        self.need("str_view");
+                        Code::primary(format!("{holder}.contains_str(cpl::StrView({}))", text(1)))
+                    }
+                    Some(Ty::StrView) => {
+                        self.need("str_view");
+                        Code::primary(format!("{holder}.contains_char({})", text(1)))
+                    }
                     _ => {
                         self.need("has");
                         let items = if is_grid {
@@ -1597,15 +1611,44 @@ impl<'p> Emitter<'p> {
             Builtin::SetMin => helper(self, "set_min"),
             Builtin::SetMax => helper(self, "set_max"),
             Builtin::Sorted => helper(self, "sorted"),
-            Builtin::Reversed => {
-                if matches!(first_ty, Some(Ty::Str)) {
-                    let s = text(0);
-                    Code::primary(format!(
-                        "([](std::string s){{ std::reverse(s.begin(), s.end()); return s; }}({s}))"
-                    ))
-                } else {
-                    helper(self, "reversed")
+            Builtin::Reversed => match first_ty {
+                Some(Ty::Str | Ty::StrView) => {
+                    self.need("str_view");
+                    Code::primary(format!("cpl::str_rev({})", text(0)))
                 }
+                Some(Ty::List(_) | Ty::ListView(_)) => {
+                    self.need("list_view");
+                    Code::primary(format!("cpl::list_rev({})", text(0)))
+                }
+                _ => helper(self, "reversed"),
+            },
+            Builtin::StrSlice => {
+                self.need("str_view");
+                Code::primary(format!("cpl::str_slice({}, {}, {})", text(0), text(1), text(2)))
+            }
+            Builtin::ListSlice => {
+                self.need("list_view");
+                Code::primary(format!("cpl::list_slice({}, {}, {})", text(0), text(1), text(2)))
+            }
+            Builtin::ToStr => {
+                self.need("str_view");
+                Code::primary(format!("cpl::to_str({})", text(0)))
+            }
+            Builtin::ToList => {
+                self.need("list_view");
+                Code::primary(format!("cpl::to_list({})", text(0)))
+            }
+            Builtin::StrConcat => {
+                self.need("str_view");
+                Code::primary(format!(
+                    "cpl::str_concat(cpl::StrView({}), cpl::StrView({}))",
+                    text(0),
+                    text(1)
+                ))
+            }
+            Builtin::ListConcat => {
+                self.need("list_view");
+                Code::primary(format!("cpl::list_concat({}, {})", text(0), text(1)))
             }
             Builtin::PosNext => {
                 self.need("next_pos");

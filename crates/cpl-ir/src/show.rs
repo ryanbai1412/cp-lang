@@ -67,7 +67,7 @@ pub(crate) fn ty_name(
         Ty::Float => "F64".into(),
         Ty::Bool => "Bool".into(),
         Ty::Char => "Char".into(),
-        Ty::Str => "Str".into(),
+        Ty::Str | Ty::StrView => "Str".into(),
         Ty::Pos(d) => domains[*d].clone(),
         Ty::Bound(d) => format!("{}.bounds", domains[*d]),
         Ty::Range(inner) => format!("Range<{}>", name(inner)),
@@ -93,7 +93,7 @@ pub(crate) fn ty_name(
                 .collect();
             format!("({})", fields.join(", "))
         }
-        Ty::List(elem) => format!("List<{}>", name(elem)),
+        Ty::List(elem) | Ty::ListView(elem) => format!("List<{}>", name(elem)),
         Ty::Map(k, v) => format!("Map<{}, {}>", name(k), name(v)),
         Ty::HashMap(k, v) => format!("HashMap<{}, {}>", name(k), name(v)),
         Ty::Set(elem) => format!("Set<{}>", name(elem)),
