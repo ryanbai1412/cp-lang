@@ -6,9 +6,10 @@
 let (n, q, k) = read<(2..=1e5, 1..=1e5, 1..=1e6)>()
 domain P = 1..=n
 domain Level = 1..=k.isqrt
+enum Side: Small(Level), Big(Level)
 let side = read<[P]1..=k>().map(b => if b <= Level.last: Small(Level(b)) else: Big(Level(k / b)))
 var small, big: [Level]Int = 0
-small[1] += 1
+small[Level.first] += 1
 let days = read<[q]P.closed_ranges>()
 print(days.mo(
     step: (i, d) => match side[i]: Small(l) => small[l] += d, Big(l) => big[l] += d,
