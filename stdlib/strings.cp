@@ -436,22 +436,22 @@ pub fn lcp_array<S: Indexed>(s: S, sa: List<Int>) -> List<Int>:
 pub struct SuffixArray<T>:
     s: List<T>
     sa: List<Int>
-    rank: List<Int>
+    rank: List<0..=2_000_000_000>
     lcp: List<Int>
-    rmq: List<Int>
-    rmq_n: Int
+    rmq: List<0..=2_000_000_000>
+    rmq_n: 0..=2_000_000_000
 
     @allow(unproven_list_index)
     /// Build suffix array and Kasai LCP array for `s`. O(n log n).
     pub fn new(s: List<T>) -> SuffixArray<T>:
         let n = s.len
         let sa = suffix_array(s)
-        var rank = List.filled(n, 0)
+        var rank: List<0..=2_000_000_000> = List.filled(n, 0)
         unchecked:
             for j in 0..n: rank[sa[j]] = j
         let lcp = lcp_array(s, sa)
         let m = lcp.len
-        var rmq: List<Int> = []
+        var rmq: List<0..=2_000_000_000> = []
         if m > 0:
             var lg = 1
             while (1 << lg) <= m: lg += 1
@@ -806,13 +806,13 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
 /// Online suffix automaton over alphabet domain `A`.
 /// O(n * |A|) flat memory, O(n) amortized build, O(states) `topo_order` and `occurrences`.
 pub struct SuffixAutomaton<A>:
-    alpha: Int
-    next: List<Int>
-    links: List<Int>
-    max_len: List<Int>
-    first_end: List<Int>
+    alpha: 0..=2_000_000_000
+    next: List<-1..=2_000_000_000>
+    links: List<-1..=2_000_000_000>
+    max_len: List<0..=2_000_000_000>
+    first_end: List<-1..=2_000_000_000>
     prefix: List<Bool>
-    last: Int
+    last: 0..=2_000_000_000
 
     /// Create an empty suffix automaton over alphabet `A`. O(1).
     pub fn new() -> SuffixAutomaton<A>:
@@ -970,15 +970,15 @@ pub struct SuffixAutomaton<A>:
 /// for O(n log n) palindromic partition DP.
 /// State `0` is the odd root (`pal_len == -1`); state `1` is the even root (`pal_len == 0`).
 pub struct PalindromicTree<A>:
-    alpha: Int
-    next: List<Int>
-    slink: List<Int>
-    plen: List<Int>
-    diff_val: List<Int>
-    ser_link: List<Int>
-    cnt: List<Int>
+    alpha: 0..=2_000_000_000
+    next: List<-1..=2_000_000_000>
+    slink: List<0..=2_000_000_000>
+    plen: List<-1..=2_000_000_000>
+    diff_val: List<0..=2_000_000_000>
+    ser_link: List<0..=2_000_000_000>
+    cnt: List<0..=2_000_000_000>
     chars: List<A>
-    last: Int
+    last: 0..=2_000_000_000
 
     /// Create an empty palindromic tree (eertree) over alphabet `A`. O(1).
     pub fn new() -> PalindromicTree<A>:
@@ -1067,10 +1067,10 @@ pub struct PalindromicTree<A>:
 
 /// Dynamic trie over alphabet domain `A`. O(|word|) per operation; flat `|A|`-stride table.
 pub struct Trie<A>:
-    alpha: Int
-    next: List<Int>
-    ends: List<Int>
-    pass: List<Int>
+    alpha: 0..=2_000_000_000
+    next: List<-1..=2_000_000_000>
+    ends: List<0..=2_000_000_000>
+    pass: List<0..=2_000_000_000>
 
     /// Create an empty prefix trie over alphabet `A`. O(1).
     pub fn new() -> Trie<A>:
@@ -1153,21 +1153,21 @@ pub struct Trie<A>:
 /// Aho-Corasick multi-pattern automaton over alphabet domain `A`.
 /// Built in O(sum |p| * |A|) flat memory and time; `step`, `link`, and `hit` are O(1).
 pub struct AhoCorasick<A>:
-    alpha: Int
-    goto: List<Int>
-    fail: List<Int>
-    ends: List<List<Int>>
-    exit: List<Int>
-    order: List<Int>
-    lens: List<Int>
+    alpha: 0..=2_000_000_000
+    goto: List<-1..=2_000_000_000>
+    fail: List<0..=2_000_000_000>
+    ends: List<List<0..=2_000_000_000>>
+    exit: List<-1..=2_000_000_000>
+    order: List<0..=2_000_000_000>
+    lens: List<0..=2_000_000_000>
 
     @allow(unproven_list_index)
     /// Build an Aho-Corasick automaton over `patterns`. O(total pattern length).
     pub fn new<S: Seq>(patterns: List<S>) -> AhoCorasick<A>:
         let k = A.K
-        var goto = List.filled(k, -1)
-        var ends: List<List<Int>> = [[]]
-        var lens = List.filled(patterns.len, 0)
+        var goto: List<-1..=2_000_000_000> = List.filled(k, -1)
+        var ends: List<List<0..=2_000_000_000>> = [[]]
+        var lens: List<0..=2_000_000_000> = List.filled(patterns.len, 0)
         for i in 0..patterns.len:
             var at = 0
             var plen = 0
@@ -1183,9 +1183,9 @@ pub struct AhoCorasick<A>:
             lens[i] = plen
             ends[at].push(i)
         let n = ends.len
-        var fail = List.filled(n, 0)
-        var exit = List.filled(n, -1)
-        var order = List.filled(n, 0)
+        var fail: List<0..=2_000_000_000> = List.filled(n, 0)
+        var exit: List<-1..=2_000_000_000> = List.filled(n, -1)
+        var order: List<0..=2_000_000_000> = List.filled(n, 0)
         var head = 0
         var tail = 1
         while head < tail:

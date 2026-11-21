@@ -350,7 +350,7 @@ pub struct SparseSegTree<T>(m: Monoid<T>, lo: Int, hi: Int):
     left: List<-1..=2_000_000_000>
     right: List<-1..=2_000_000_000>
     val: List<T>
-    root: Int
+    root: 0..=2_000_000_000
 
     /// Empty sparse segment tree over half-open coordinates `[lo, hi)` (every cell starts at `m.id`). O(1).
     pub fn new<M>(op: M, lo: Int, hi: Int) -> SparseSegTree<T>:

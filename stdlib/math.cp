@@ -55,13 +55,13 @@ pub fn ceil_div(a: Int, b: Int) -> Int = if b > 0: -((-a) / b) else: -(a / (-b))
 /// The smallest prime factor of every number up to `n` (0 for 0 and 1), by a linear sieve.
 /// O(n) time and memory.
 pub struct Sieve:
-    spf: List<Int>
-    primes: List<Int>
+    spf: List<0..=2_000_000_000>
+    primes: List<0..=2_000_000_000>
 
     /// Linear sieve up to `n`, populating `spf` and `primes`. O(n) time and space.
     pub fn new(n: Int) -> Sieve:
-        var spf = List.filled(n + 1, 0)
-        var primes = List<Int>()
+        var spf: List<0..=2_000_000_000> = List.filled(n + 1, 0)
+        var primes: List<0..=2_000_000_000> = []
         for i in 2..=n:
             if spf[i] == 0:
                 spf[i] = i

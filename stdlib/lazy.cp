@@ -16,15 +16,15 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
     lz: List<F>
     has_lz: List<Bool>
     /// How many positions each node covers; the padding past the domain covers none.
-    span: List<Int>
-    size: Int
-    log: Int
+    span: List<0..=2_000_000_000>
+    size: 0..=2_000_000_000
+    log: 0..=64
 
     /// A tree over `a`, filled with `fill`, or with the identity everywhere. O(n).
     pub fn new(act: Action<T, F>, a: ?[D]T = none, fill: ?T = none) -> LazySegTree<D, T, F>:
         let size = bit_ceil(D.K)
         var t = List.filled(2 * size, act.over.id)
-        var span = List.filled(2 * size, 0)
+        var span: List<0..=2_000_000_000> = List.filled(2 * size, 0)
         for i in 0..D.K: span[size + i] = 1
         if let init = a:
             assert fill == none, "pass either `a` or `fill`, not both"

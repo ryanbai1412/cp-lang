@@ -489,7 +489,7 @@ pub struct VirtualTree<V, K>:
 pub struct Centroids<V>:
     root: V
     cpar: [V]?V
-    cdep: [V]Int
+    cdep: [V]0..=V.count
     /// For each vertex, every centroid whose piece holds it, nearest first, with the
     /// distance and the neighbour of the centroid it hangs off.
     anc: [V]List<(c: V, dist: Int, branch: V)>
@@ -501,7 +501,7 @@ pub struct Centroids<V>:
         var dead: [V]Bool = false
         var sz: [V]Int = 0
         var cpar: [V]?V = none
-        var cdep: [V]Int = 0
+        var cdep: [V]0..=V.count = 0
         var anc: [V]List<(c: V, dist: Int, branch: V)> = []
         var held: [V]List<V> = []
         var bpar: [V]?V = none
@@ -1051,7 +1051,7 @@ fn a_jump_tree_answers_what_the_rooted_tree_does():
 pub struct JumpTree<V>:
     par: [V]?V
     jump: [V]V
-    dep: [V]Int
+    dep: [V]0..=V.count
 
     /// A forest of lone vertices, each its own root. O(n).
     pub fn new() -> JumpTree<V> = JumpTree([V] _ => none, [V] v => v, [V] _ => 0)
@@ -1271,7 +1271,7 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
     val: [V]T
     agg: [V]T
     /// The number of vertices in the splay subtree, the `span` that `apply` sees.
-    cnt: [V]Int
+    cnt: [V]0..=V.count
     lz: [V]F
     stk: List<V>
 

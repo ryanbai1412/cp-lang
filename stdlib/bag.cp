@@ -20,12 +20,12 @@ pub struct SortedBag<K>:
     pri: List<Int>
     cnt: List<Int>
     sub: List<Int>
-    left: List<Int>
-    right: List<Int>
-    par: List<Int>
-    free: List<Int>
-    live: Int
-    root: Int
+    left: List<-1..=2_000_000_000>
+    right: List<-1..=2_000_000_000>
+    par: List<-1..=2_000_000_000>
+    free: List<0..=2_000_000_000>
+    live: 0..=2_000_000_000
+    root: -1..=2_000_000_000
 
     /// Create an empty `SortedBag<K>`. O(1).
     pub fn new() -> SortedBag<K> = SortedBag([], [], [], [], [], [], [], [], 0, -1)

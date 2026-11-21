@@ -2,7 +2,7 @@
 
 /// A point in the history of a structure that can step back in time, returned by `mark()`
 /// and taken by `undo_to`. Its own type, so it can't be mixed up with a count or an index.
-pub struct Mark(at: Int)
+pub struct Mark(at: 0..=2_000_000_000)
 
 /// Union-find with path halving and union by size.
 /// `find`, `unite`, `same` and `size` are O(alpha(n)) amortized; memory is two `[V]` arrays.
@@ -13,8 +13,8 @@ pub struct Mark(at: Int)
 /// operation is O(log n) and each `unite` costs one entry of memory until it is undone.
 pub struct Dsu<V>:
     up: [V]V
-    sz: [V]Int
-    parts: Int
+    sz: [V]1..=V.count
+    parts: 0..=2_000_000_000
     /// The roots that were attached since the first `mark`, in order.
     joined: List<V>
     marked: Bool
@@ -104,10 +104,10 @@ pub struct Dsu<V>:
 /// merge and every `set` since the mark is undone, O(1) each.
 pub struct DsuOf<V, T>:
     up: [V]V
-    sz: [V]Int
+    sz: [V]1..=V.count
     val: [V]T
     join: (T, T) -> T
-    parts: Int
+    parts: 0..=2_000_000_000
     /// Since the first `mark`, one entry per change: the root that went under another (the
     /// root itself for a `set`), the root whose value changed, and that value before.
     log: List<(V, V, T)>
@@ -203,13 +203,13 @@ pub struct DsuOf<V, T>:
 /// `undo_to` work at any time, O(1) per undone `unite`). Memory is three `[V]` arrays.
 pub struct ParityDsu<V>:
     up: [V]V
-    sz: [V]Int
+    sz: [V]1..=V.count
     /// Is the position on the other side from `up` of it?
     flip: [V]Bool
     /// One entry per `unite` that changed something: the root it hung under another root,
     /// or (with `false`) the root of a set where it found a contradiction.
     log: List<(V, Bool)>
-    conflicts: Int
+    conflicts: 0..=2_000_000_000
 
     /// Every position starts alone. O(n).
     pub fn new() -> ParityDsu<V>:
@@ -276,10 +276,10 @@ pub struct ParityDsu<V>:
 /// `mark` and `consistent` are O(1); `undo_to` is O(1) per undone step.
 pub struct PotentialDsu<V>:
     up: [V]V
-    sz: [V]Int
+    sz: [V]1..=V.count
     pot: [V]Int
-    parts: Int
-    conflicts: Int
+    parts: 0..=2_000_000_000
+    conflicts: 0..=2_000_000_000
     log: List<(V, Bool)>
 
     /// Every position starts in its own set with potential 0. O(n).
