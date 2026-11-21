@@ -342,7 +342,7 @@ fn closing_a_document_clears_its_diagnostics() {
 #[test]
 fn unknown_and_malformed_messages_get_errors_not_crashes() {
     let (mut server, _) = open(SOURCE);
-    let reply = server.handle(&request(2, "textDocument/semanticTokens/full", obj([])));
+    let reply = server.handle(&request(2, "textDocument/selectionRange", obj([])));
     assert_eq!(reply[0].at(&["error", "code"]), &Value::Number(-32601.0));
     assert!(server
         .handle(&notification("workspace/didChangeWatchedFiles", obj([])))
@@ -1299,4 +1299,44 @@ print(f(1))
             (5, 6, None)
         ]
     );
+}
+
+#[test]
+fn semantic_tokens_classify_what_each_name_resolves_to() {
+    let src = "let n: 1..=10 = read()\ndomain V = 0..n\nvar xs: [V]Int = 0\nfn bump(v: V):\n    xs[v] += 1\nbump(V.first)\n";
+    let (mut server, _) = open(src);
+    let reply = server.handle(&request(
+        32,
+        "textDocument/semanticTokens/full",
+        obj([("textDocument", doc())]),
+    ));
+    let data: Vec<u32> = reply[0]
+        .at(&["result", "data"])
+        .as_array()
+        .iter()
+        .map(|v| v.as_u32().unwrap())
+        .collect();
+    let (mut line, mut col) = (0, 0);
+    let mut named = Vec::new();
+    for t in data.chunks(5) {
+        line += t[0];
+        col = if t[0] == 0 { col + t[1] } else { t[1] };
+        let text = src.lines().nth(line as usize).unwrap();
+        named.push((
+            text[col as usize..(col + t[2]) as usize].to_string(),
+            t[3],
+            t[4],
+        ));
+    }
+    let has = |name: &str, kind: u32, modifiers: u32| {
+        assert!(
+            named.contains(&(name.to_string(), kind, modifiers)),
+            "no ({name}, {kind}, {modifiers}) in {named:?}"
+        );
+    };
+    has("n", 4, 3); // let n: a readonly declaration
+    has("xs", 4, 1); // var xs: a declaration, not readonly
+    has("V", 0, 0); // the domain, used as a type
+    has("v", 5, 3); // the parameter
+    has("bump", 1, 0); // the call
 }

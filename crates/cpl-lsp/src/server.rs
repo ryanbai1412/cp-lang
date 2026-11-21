@@ -267,6 +267,20 @@ impl Server {
                     .collect();
                 Ok(Reply::result(Value::Array(highlights)))
             }
+            "textDocument/semanticTokens/full" => {
+                let uri = uri_of(params)?;
+                let Some(analysis) = self.db.analyze(uri) else {
+                    return Ok(Reply::result(obj([("data", Value::Array(Vec::new()))])));
+                };
+                Ok(Reply::result(obj([(
+                    "data",
+                    semantic_tokens(&analysis)
+                        .into_iter()
+                        .map(Value::from)
+                        .collect::<Vec<_>>()
+                        .into(),
+                )])))
+            }
             "textDocument/foldingRange" => {
                 let uri = uri_of(params)?;
                 let Some(analysis) = self.db.analyze(uri) else {
@@ -591,6 +605,33 @@ fn capabilities() -> Value {
                 ("documentSymbolProvider", true.into()),
                 ("documentHighlightProvider", true.into()),
                 ("foldingRangeProvider", true.into()),
+                (
+                    "semanticTokensProvider",
+                    obj([
+                        (
+                            "legend",
+                            obj([
+                                (
+                                    "tokenTypes",
+                                    TOKEN_TYPES
+                                        .iter()
+                                        .map(|&t| t.into())
+                                        .collect::<Vec<_>>()
+                                        .into(),
+                                ),
+                                (
+                                    "tokenModifiers",
+                                    TOKEN_MODIFIERS
+                                        .iter()
+                                        .map(|&t| t.into())
+                                        .collect::<Vec<_>>()
+                                        .into(),
+                                ),
+                            ]),
+                        ),
+                        ("full", true.into()),
+                    ]),
+                ),
                 ("documentFormattingProvider", true.into()),
                 ("inlayHintProvider", true.into()),
                 (
@@ -632,6 +673,73 @@ fn publish(uri: &str, diagnostics: Vec<Value>) -> Value {
             obj([("uri", uri.into()), ("diagnostics", diagnostics.into())]),
         ),
     ])
+}
+
+const TOKEN_TYPES: [&str; 6] = [
+    "type",
+    "function",
+    "method",
+    "property",
+    "variable",
+    "parameter",
+];
+const TOKEN_MODIFIERS: [&str; 2] = ["declaration", "readonly"];
+
+/// Each name the checker resolved, classified by what it names, in the
+/// LSP's relative encoding: what highlighting by syntax can't know, such
+/// as which names are types or domains and which bindings are `var`.
+fn semantic_tokens(analysis: &cpl_check::Analysis) -> Vec<u32> {
+    let mut tokens: Vec<(Span, u32, u32)> = Vec::new();
+    for item in &analysis.items {
+        for entry in &item.check.hovers {
+            let span = entry.span.shift(item.offset);
+            if analysis.text.get(span.start as usize..span.end as usize) != Some(&entry.name) {
+                continue;
+            }
+            let callable = matches!(entry.ty, cpl_check::Ty::Fn { .. });
+            let kind = match entry.keyword {
+                "type" | "domain" => 0,
+                "fn" => 1,
+                "field" if callable => 2,
+                "field" => 3,
+                "param" => 5,
+                "let" | "var" | "for" | "const" => 4,
+                "global" => match entry.ty {
+                    cpl_check::Ty::TypeName(_) | cpl_check::Ty::Domain(_) => 0,
+                    _ if callable => 1,
+                    _ => 4,
+                },
+                _ => continue,
+            };
+            let mut modifiers = 0;
+            if entry.decl == Some(entry.span) {
+                modifiers |= 1;
+            }
+            if matches!(entry.keyword, "let" | "for" | "const" | "param") {
+                modifiers |= 2;
+            }
+            tokens.push((span, kind, modifiers));
+        }
+    }
+    tokens.sort_by_key(|(span, ..)| (span.start, span.end));
+    tokens.dedup_by_key(|(span, ..)| span.start);
+    let (mut line, mut col) = (0, 0);
+    let mut data = Vec::with_capacity(tokens.len() * 5);
+    for (span, kind, modifiers) in tokens {
+        let at = analysis.lines.utf16(span.start, &analysis.text);
+        let end = analysis.lines.utf16(span.end, &analysis.text);
+        if end.line != at.line {
+            continue;
+        }
+        let delta_col = if at.line == line {
+            at.col - col
+        } else {
+            at.col
+        };
+        data.extend([at.line - line, delta_col, end.col - at.col, kind, modifiers]);
+        (line, col) = (at.line, at.col);
+    }
+    data
 }
 
 /// The lines that fold, as `(first, last, kind)`: each block under the line

@@ -1631,6 +1631,13 @@ is what a user feels on each keystroke; the 90th-percentile bound still fails a 
 than one keystroke in ten. Opening a file is now nine samples, not one. Reverse: assert `max < budget`
 in `report` in `crates/cpl-lsp/tests/latency.rs`.
 
+29.4. **Semantic tokens come from the checker's resolved names, not from a second lexer.** Each
+name the checker recorded is a token, typed by what it resolved to (a domain is a `type`), so a client
+colours what syntax can't tell: types against values, `var` against `let`. Keywords, literals and
+comments stay with each editor's grammar, which already has them, and a name the checker could not
+resolve gets no token, so the grammar's colour shows. Reverse: drop `semantic_tokens` and the
+`semanticTokensProvider` capability in `crates/cpl-lsp/src/server.rs`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **30.1 A broken-ports benchmark scores recovery.** `crates/cpl-cli/tests/recovery.rs` applies six
