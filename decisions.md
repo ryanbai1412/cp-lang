@@ -2862,6 +2862,7 @@ the core lane in `plan/OPERATING.md`.
    Reason: eliminates O(n^3) heap allocations on `cf1146h` (`2.82x` -> `1.29x` matched C++) without adding a new runtime container type. Reverse: remove the `Bitset` branch in `cpl-codegen/src/scope.rs::rows` and `try_fused_bitset_op` in `expr.rs`.
 3. **`sort(by: key)` with a cheap pure key expression lowers to in-place `std::stable_sort` with an inlined comparator instead of `cpl::sort_by`'s three auxiliary vectors.**
    Reason: preserves stability and interpreter parity while eliminating O(n) temp allocations and index indirection (`cf1284e`: `1.63x` -> `1.14x` matched C++, -709 B emitted). Reverse: remove the `is_cheap_pure_key` branch in `cpl-codegen/src/stmt.rs`.
+<<<<<<< HEAD
 
 ## 63. One name per tree traversal: `t.Pre` (2026-11-21)
 
@@ -2937,3 +2938,8 @@ library. Reverse: an `Int`-only `aliens` plus a separate wide variant.
   through `outer_cxs`. The escape rule (`E0313`) is unchanged.
   Reason: enables `fn force(c: C, val: Int)` after `let (domain C, comp) = two_edge_components(g)` (`cf2135c`).
   Reverse: remove `register_pat_domains` in `crates/cpl-ir/src/lower/mod.rs` and the top-level slot reuse in `crates/cpl-ir/src/lower/stmt.rs`.
+
+## 67. `IntervalMap.assign` zero-alloc `on_old:` callback (2026-11-21)
+
+1. **`IntervalMap.assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ())` reports overwritten runs via an optional callback instead of returning a `List` or `-> yields`.**
+   Reason: `cpl_ir::pushed::Feeds` intentionally does not push `-> yields` on `mut self` methods (an early `break` could leave the partition half-mutated), whereas a callback parameter both enforces partition completion and devirtualizes to an inlined template functor in C++ with zero heap allocation. Combined with a single-run fast path, `cf2237h` dropped from `1.66s` to `1.26s` on max binary-tree input and `IntervalMap` runs at `1.15x` matched C++ `std::map` ODT (`0.15s` vs `0.13s`). Reverse: change `assign` back to return `List<(range: Range<D>, val: T)>` in `stdlib/interval.cp` and restore `for (r, t) in paint.assign(...)` in `proto/ports/ecnerwala/cf2237h.cp`.

@@ -31,10 +31,10 @@ for t_now in Time(3)..:
 
     var chunks = List<(t: Time, w: Int)>()
     for (range, _) in tree.chains(cur, c):
-        for (r, t) in paint.assign(range, t_now): chunks.push((t: t, w: r.len))
+        paint.assign(range, t_now, on_old: (r, t) => chunks.push((t: t, w: r.len)))
     cur = c
 
-    chunks.sort(by: x => desc(x.t))
+    chunks.sort(by: x => -x.t.to_idx)
     var matched = 0
     for chunk in chunks:
         var need = chunk.w

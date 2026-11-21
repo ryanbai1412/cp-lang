@@ -47,21 +47,48 @@ pub struct IntervalMap<D, T>:
         (range: D.nth(lo).l..D.nth(seg.hi - 1).r, val: seg.val)
 
     /// Paint range `r` with `val`, coalescing adjacent equal runs.
-    /// Returns every overwritten run `(range, old_val)` in ascending order.
-    /// Amortized O((1 + overwritten) log runs).
-    pub fn assign(mut self, r: Range<D>, val: T) -> List<(range: Range<D>, val: T)>:
+    /// Calls `on_old(range, old_val)` for every overwritten run in ascending order
+    /// with zero heap allocation. Amortized O((1 + overwritten) log runs).
+    pub fn assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ()):
         let (lo, hi) = r.ends
-        var out = List<(range: Range<D>, val: T)>()
-        if lo >= hi: return out
-        self.split(lo)
-        self.split(hi)
-        var pos = lo
-        while pos < hi:
-            let seg = segs.remove(pos)!
-            out.push((range: D.nth(pos).l..D.nth(seg.hi - 1).r, val: seg.val))
-            pos = seg.hi
+        if lo >= hi: return
+        if let (sl, seg) = segs.last_le(lo):
+            if seg.hi >= hi:
+                on_old(r, seg.val)
+                if seg.val == val: return
+                if sl < lo: segs[sl] = (hi: lo, val: seg.val)
+                else: let _ = segs.remove(lo)
+                if seg.hi > hi: segs[hi] = (hi: seg.hi, val: seg.val)
+                if sl < lo and seg.hi > hi:
+                    segs[lo] = (hi: hi, val: val)
+                    return
+            else:
+                self.split(lo)
+                self.split(hi)
+                var pos = lo
+                while pos < hi:
+                    let old = segs.remove(pos)!
+                    on_old(D.nth(pos).l..D.nth(old.hi - 1).r, old.val)
+                    pos = old.hi
         var new_lo = lo
         var new_hi = hi
+        if let (pl, pseg) = segs.last_lt(new_lo):
+            if pseg.val == val:
+                new_lo = pl
+        if let nseg = segs.get(new_hi):
+            if nseg.val == val:
+                let _ = segs.remove(new_hi)
+                new_hi = nseg.hi
+        segs[new_lo] = (hi: new_hi, val: val)
+
+    /// Paint the single position `i` with `val` and return its previous value. O(log runs).
+    pub fn assign_point(mut self, i: D, val: T) -> T:
+        let idx = i.to_idx
+        self.split(idx)
+        self.split(idx + 1)
+        let old = segs.remove(idx)!.val
+        var new_lo = idx
+        var new_hi = idx + 1
         if let (pl, pseg) = segs.last_lt(new_lo):
             if pseg.val == val:
                 let _ = segs.remove(pl)
@@ -71,12 +98,7 @@ pub struct IntervalMap<D, T>:
                 let _ = segs.remove(new_hi)
                 new_hi = nseg.hi
         segs[new_lo] = (hi: new_hi, val: val)
-        out
-
-    /// Paint the single position `i` with `val` and return its previous value. O(log runs).
-    pub fn assign_point(mut self, i: D, val: T) -> T:
-        let old = self.assign(i.l..i.r, val)
-        old[0].val
+        old
 
     /// Visit every maximal run `(range, val)` in ascending order. O(runs).
     pub fn each(self) -> yields (range: Range<D>, val: T):
@@ -98,13 +120,15 @@ fn interval_map_basic_and_coalescing():
     assert m.at(P(1)) == 0
     assert m.at(P(10)) == 0
 
-    let over1 = m.assign(P(3)..=P(7), 5)
+    var over1 = List<(range: Range<P>, val: Int)>()
+    m.assign(P(3)..=P(7), 5, on_old: (r, v) => over1.push((range: r, val: v)))
     assert over1.len == 1
     assert over1[0].range.len == 5 and over1[0].val == 0
     assert m.runs == 3
 
     // Painting with the same value coalesces with neighbours.
-    let over2 = m.assign(P(1)..=P(2), 5)
+    var over2 = List<(range: Range<P>, val: Int)>()
+    m.assign(P(1)..=P(2), 5, on_old: (r, v) => over2.push((range: r, val: v)))
     assert over2.len == 1 and over2[0].val == 0
     assert m.runs == 2
     assert m.run_at(P(4)).range.len == 7
@@ -141,8 +165,9 @@ fn interval_map_matches_dense_array():
         let l = rng.int(1, 25)
         let r = rng.int(l, 25)
         let v = rng.int(0, 4)
-        let over = m.assign(P(l)..=P(r), v)
         var pos = l
+        var over = List<(range: Range<P>, val: Int)>()
+        m.assign(P(l)..=P(r), v, on_old: (rg, old_v) => over.push((range: rg, val: old_v)))
         for (rg, old_v) in over:
             for i in rg:
                 assert i.to_idx + 1 == pos

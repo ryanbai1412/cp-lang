@@ -318,7 +318,7 @@ struct IntervalMap<D, T>                      // O(runs) memory; amortized O(log
     fn from(a: [D]T) -> IntervalMap<D, T>     // O(D.K); compresses maximal runs
     fn at(self, i: D) -> T                    // O(log runs)
     fn run_at(self, i: D) -> (range: Range<D>, val: T) // O(log runs)
-    fn assign(mut self, r: Range<D>, val: T) -> List<(range: Range<D>, val: T)>
+    fn assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ())
         // Amortized O((1 + overwritten) log runs); returns overwritten runs
         // in ascending order and coalesces adjacent equal runs.
     fn assign_point(mut self, i: D, val: T) -> T
@@ -644,8 +644,7 @@ for t_now in Time(3)..:
     let c = read::<V>().cyc(tot_ans)
     var chunks: List<(t: Time, w: Int)> = []
     for (range, _) in tree.chains(cur, c):
-        for (r, t) in segs.assign(range, t_now):
-            chunks.push((t: t, w: r.len))
+        segs.assign(range, t_now, on_old: (r, t) => chunks.push((t: t, w: r.len)))
     cur = c
 
     sort(mut chunks, by: x => desc(x.t))

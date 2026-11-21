@@ -704,7 +704,7 @@ struct IntervalMap<D, T> // [new] std.interval; O(log runs) amortized
     fn from(a: [D]T) -> IntervalMap<D, T> // O(D.K)
     fn at(self, i: D) -> T // O(log runs)
     fn run_at(self, i: D) -> (range: Range<D>, val: T) // O(log runs)
-    fn assign(mut self, r: Range<D>, val: T) -> List<(range: Range<D>, val: T)>
+    fn assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ())
     fn assign_point(mut self, i: D, val: T) -> T // O(log runs)
     fn each(self) -> yields (range: Range<D>, val: T) // O(runs)
     @get fn runs(self) -> Int // O(1)
