@@ -1,3 +1,5 @@
+use std.strings.{is_palindrome}
+
 @!multitest
 let (n, k0): (Int, Int) = read()
 let a: [0..n]Int = read()
@@ -19,7 +21,7 @@ for v in a:
         cur_f += 1
 freq.push(cur_f)
 
-let is_pal = all(vals[i] == vals[vals.len - 1 - i] for i in 0..vals.len / 2)
+let is_pal = is_palindrome(vals)
 let mid = freq.len / 2
 let cnt = vals.len + (if freq.len % 2 == 1: freq[mid] else: 0) + 2 * sum(
     min(freq[i], freq[freq.len - 1 - i]) for i in 0..mid

@@ -8,14 +8,14 @@
 // each q, n / w of them for each w. An AABB is a square ending at i followed
 // by a square starting at i + 1.
 // original: corpus/submissions/4797772.cpp
-use scout.hashing.{StrHash}
+use std.strings.{RollingHash}
 use std.seq.{scan}
 
 let t: Int = read()
 for _ in 0..t:
     let s: Str = read()
     let n = s.len
-    let hash = StrHash.new(s)
+    let hash = RollingHash.new(s)
     // How the number of squares that start at p, and that end at p, changes from p - 1 to p.
     var starts = List.filled(n + 1, 0)
     var ends = List.filled(n + 1, 0)

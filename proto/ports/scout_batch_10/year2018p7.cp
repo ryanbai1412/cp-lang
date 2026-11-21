@@ -8,7 +8,7 @@
 // every subtree, pouring the smaller set into the larger; a hash that is
 // already there when two branches meet is a shared block.
 // original: corpus/submissions/4899354.cpp
-use scout.hashing.{Hash, StrHash}
+use std.strings.{HashVal, RollingHash}
 
 let n: Int = read()
 domain V = 1..=n
@@ -17,21 +17,22 @@ for v in 2..=n:
     let parent: V = read()
     kids[parent].push(V(v))
 let word: [V]Str = read()
-let hash = [V] v => StrHash.new(word[v])
+let bases = (rand(1 << 20, 1 << 29), rand(1 << 20, 1 << 29))
+let hash = [V] v => RollingHash.new(word[v], bases: bases)
 
 /// Do two branches of some vertex share a block of `len` letters?
 fn shared(len: Int) -> Bool:
     var found = false
     /// The blocks of `len` letters in the words at and below u.
-    fn blocks(u: V) -> Set<Hash>:
-        var all = Set<Hash>()
+    fn blocks(u: V) -> Set<HashVal>:
+        var all = Set<HashVal>()
         for v in kids[u]:
             var branch = blocks(v)
             if branch.len > all.len: swap(mut all, mut branch)
             for block in branch:
                 if all.contains(block): found = true
                 all.add(block)
-        for i in 0..=word[u].len - len: all.add(hash[u].of(i..i + len))
+        for i in 0..=word[u].len - len: all.add(hash[u].slice(i, i + len))
         all
     blocks(V(1))
     found
