@@ -224,7 +224,8 @@ matters, filtered by function, multitest case, watched variable, call depth,
 index space, or ring buffer before a crash; snapshots that let you iterate on
 one stage; every runtime error stops with the concrete values, the call path,
 the test case number, and the input line that caused it; never a segfault; the
-interpreter fast enough to run full-size tests (within 10x of C++).
+interpreter fast enough to run full-size tests: within 10x of C++ `-O2` on
+ports, and ultimately within 5x.
 **Where we are.** Debug interpreter with runtime checks (36 trap sites in
 `trap_parity.cp`, 5 open in `known_traps.cp`) and `debug(...)` output;
 `cpl run --trace` writes a self-contained HTML trace (`tools/trace/index.html`,
@@ -242,14 +243,14 @@ exception stops on traps; `crates/cpl-cli/tests/dap.rs`) wired into `editors/vsc
 (`type: "cp"`, `cp.debug`); (4) interpreter speed on compute-heavy ports is 44x–261x slower than C++ `-O2`
 after unboxing `?Int`/1-field `Int` structs and removing hot-path allocations
 (`dph` 884 -> 693 ms, `dpl` 542 -> 483 ms, `dpk` 770 -> 728 ms, `dpm` 1288 ->
-1028 ms; closing the remaining gap to <= 30x requires a bytecode VM);
+1028 ms; closing the gap to <= 10x needs a typed bytecode VM);
 (5) no stage snapshots (`--stage`) or interactive exchange trace.
 **Bar.** Every runtime error class has a golden message with values and call
 path; trace filtering and index-space views tested end to end; DAP step
-debugger wired into VS Code and tested over stdio; interpreter within 30x of
-C++ `-O2` on ports.
-**Next.** (1) Bytecode VM in `cpl-interp` to close interpreter speed to <= 30x
-of C++ `-O2`; (2) stage snapshots (`--stage`) and interactive exchange traces;
+debugger wired into VS Code and tested over stdio; interpreter within 10x of
+C++ `-O2` on ports (north star 5x).
+**Next.** (1) Typed register bytecode VM in `cpl-interp` (unboxed slots, resolved
+locals, monomorphized calls) to bring interpreter speed to <= 10x of C++ `-O2`; (2) stage snapshots (`--stage`) and interactive exchange traces;
 (3) headless-browser test for `tools/trace/index.html`.
 
 ## 7. Stress testing and shrinking (`plan/50` 3, `plan/40` 7b)
@@ -456,8 +457,8 @@ scoreboard (`scripts/scoreboard.py` + `research/scoreboard.json`) that blocks
 regressions across every goal: correctness (gate pass, zero trap-parity drift),
 expressiveness (contestant-written tokens vs raw and library-stripped original,
 median <= 0.6x, none > 1.0x), performance (runtime p50 <= 1.1x / max <= 1.5x,
-peak RSS p50 <= 1.0x / max <= 1.2x on max-size inputs, interpreter within 30x
-of C++), submission viability (emitted C++ <= 64 KB, p95 <= 32 KB, warning-free
+peak RSS p50 <= 1.0x / max <= 1.2x on max-size inputs, interpreter within 10x
+of C++, north star 5x), submission viability (emitted C++ <= 64 KB, p95 <= 32 KB, warning-free
 GCC/Clang), and friction (structured `research/frictions/*.md` reports with
 zero open blockers and `friction_lint` zero `wa_trap`). Backed by a replayed
 P0 bug corpus (>= 90% prevented or trapped), static `sizeof` and `-O2` assembly
