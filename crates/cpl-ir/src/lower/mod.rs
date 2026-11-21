@@ -2137,21 +2137,7 @@ impl<'a> Lowerer<'a> {
                 // each part, as `[R, C]T`.
                 let mut dims: Vec<Option<DimSpec>> = Vec::new();
                 for d in index {
-                    let parts = match &d.kind {
-                        ast::TypeKind::Named { name, args } if args.is_empty() => {
-                            match self.gen_env.get(&name.text) {
-                                Some(GenArg::Ty(Ty::Tuple(items))) => items
-                                    .iter()
-                                    .map(|t| match t {
-                                        Ty::Pos(id) => Some(DimSpec::Pos(*id)),
-                                        _ => None,
-                                    })
-                                    .collect::<Option<Vec<_>>>(),
-                                _ => None,
-                            }
-                        }
-                        _ => None,
-                    };
+                    let parts = self.product_dims(d);
                     match parts {
                         Some(parts) => dims.extend(parts.into_iter().map(Some)),
                         None => dims.push(self.dim(d, values)),
@@ -2544,6 +2530,39 @@ impl<'a> Lowerer<'a> {
     }
 
     /// One dimension of an array type: a domain, its bounds, a custom `Index` struct, or a count.
+    /// The dimensions of an index type that stands for a tuple or record of
+    /// domains, `(R, C)` or `(r: R, c: C)`, named directly, by an alias or by
+    /// a generic: one for each field, so `[P]T` is laid out as `[R, C]T`.
+    fn product_dims(&mut self, d: &ast::Type) -> Option<Vec<DimSpec>> {
+        let ty = match &d.kind {
+            ast::TypeKind::Named { name, args } if args.is_empty() => match self.gen_env.get(&name.text) {
+                Some(GenArg::Ty(ty)) => ty.clone(),
+                Some(_) => return None,
+                None if matches!(self.get_sym(&name.text), Some(Sym::Alias(_)))
+                    || self.cx.local_type_aliases.contains_key(&name.text) =>
+                {
+                    self.resolve_ty(d)
+                }
+                None => return None,
+            },
+            ast::TypeKind::Tuple(items) if items.len() >= 2 => self.resolve_ty(d),
+            ast::TypeKind::Record(fields) if fields.len() >= 2 => self.resolve_ty(d),
+            _ => return None,
+        };
+        let items: Vec<Ty> = match ty {
+            Ty::Tuple(items) => items,
+            Ty::Record(fields) => fields.into_iter().map(|(_, ty)| ty).collect(),
+            _ => return None,
+        };
+        items
+            .iter()
+            .map(|t| match t {
+                Ty::Pos(id) => Some(DimSpec::Pos(*id)),
+                _ => None,
+            })
+            .collect()
+    }
+
     fn dim(&mut self, ty: &ast::Type, values: bool) -> Option<DimSpec> {
         if let ast::TypeKind::Named { name, args } = &ty.kind {
             if args.is_empty() {
