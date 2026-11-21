@@ -12,6 +12,7 @@ Every module under `stdlib/` is plain CP Lang. Import individual names with `use
 | `std.bag` | `SortedBag` | Ordered multiset with `.count(x)` and `.remove_one(x)` |
 | `std.beats` | `BeatsSegTree` | Ji Driver Segment Tree Beats (`chmin`, `chmax`, `add`, `sum`, `min_val`, `max_val`) |
 | `std.bitset` | `Bitset` | Fixed-domain bitset with bitwise ops and `.first_set` |
+| `std.derive` | `eq_fields`, `lt_fields`, `show_fields` | The field-by-field `Eq`, `Ord` and `Show`, written on `fields`; call one from an `impl` (`fn lt(a, b) = lt_fields(b, a)` orders the other way) |
 | `std.deque` | `Deque` | Double-ended queue (`.push_front`, `.pop_front`, `Deque.of`) |
 | `std.dp` | `LiChao`, `Line`, `dnc_dp`, `knuth_dp`, `aliens_search`, `monotone_minima` | DP optimizations (Li Chao tree, D&C DP, Knuth DP, Aliens/WQS, SMAWK) |
 | `std.dsu` | `Dsu` | Disjoint set union with `.mark()` / `.undo_to(snap)` rollback |

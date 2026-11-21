@@ -1530,6 +1530,18 @@ fn subset_sums(xs: List<Int>) -> List<Int>    // O(2^n), sorted
 // sums over subsets / supersets: std.ntt.sos(mut f, over: Sub | Sup = Sub, inverse: Bool = false) (4.5)
 ```
 
+### 4.17 `std.derive`: field-wise traits
+
+The `Eq`, `Ord` and `Show` a struct gets field by field, written on
+`fields` (decision 28.7), for an `impl` to call:
+`impl Ord for Job: fn lt(a, b) = lt_fields(b, a)` orders the other way.
+
+```cp
+fn eq_fields<T>(a: T, b: T) -> Bool // O(fields)
+fn lt_fields<T>(a: T, b: T) -> Bool // O(fields)
+fn show_fields<T>(a: T) -> Str // O(fields)
+```
+
 ## 5. Not here yet
 
 Power-series algebra beyond products, suffix automata, link-cut trees,

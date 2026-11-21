@@ -1819,6 +1819,17 @@ Plain (untraced, unprofiled) runs compile `Program` to a typed register bytecode
   drop `variant_payloads` in `cpl-check` `check/stmt.rs` and the `Ty::Enum` branch of `fields_loop`
   in `cpl-ir` `lower/stmt.rs`.
 
+- **28.7 Derives as library code: `std.derive`.** `eq_fields`, `lt_fields` and `show_fields`
+  are generic fns on `fields` (28.1) in `stdlib/derive.cp` (imported, not in the prelude, which
+  is capped at 80 names): the field-by-field
+  `Eq`, `Ord` and `Show`, which an `impl` can call (`fn lt(a, b) = lt_fields(b, a)` is the reverse
+  order). The compiler's own structural derive stays the default for now: wiring every struct
+  without an impl to these fns (lowering filled `eq_fn`/`lt_fn`/`show_fn` from them) gave the same
+  output but grew emitted C++ past the scoreboard's 5% gate on many ports (ucup5s02h
+  28210 -> 44772 B, cf2268c 15903 -> 28221 B), because each hook is emitted whether or not it is
+  used, where `cpl_tie` costs one line. The default moves onto `std.derive` once codegen emits a
+  hook only when it is reached. To reverse: delete `stdlib/derive.cp`.
+
 ## 29. Editor and LSP (2026-11-21)
 
 29.1. **Hover shows the declaration's `///` doc, wherever it is declared.** `Hover` gains `doc`, read
