@@ -288,7 +288,7 @@ fn every_optional_int_is_one_int_with_int64_min_as_none() {
     assert_eq!(table("fn f(xs: [V]?Int) -> Int: xs[V.first] ?? 0\nprint(f(dp))"), PACKED);
     assert_eq!(table("fn f(mut xs: [V]?Int):\n    xs[V.first] = 1\nf(mut dp)"), PACKED);
     assert_eq!(table("for x in dp: print(x ?? 0)"), PACKED);
-    assert_eq!(table("let copy = dp\nprint(copy[V.first] ?? 0)"), PACKED);
+    assert_eq!(table("let copy = dp.copy()\nprint(copy[V.first] ?? 0)"), PACKED);
     // A list filled by `push`, a grid, a local, a parameter and a result.
     let cpp = cpp("fn half(x: ?Int) -> ?Int: x\nlet n: 0..=9 = read()\nvar xs: List<?Int> = []\nvar g: [n, n]?Int = none\nfor i in 0..n:\n    xs.push(none)\n    xs.push(i)\n    g[i, 0] = i\nlet best: ?Int = xs.pop()\nprint(xs.len, xs[0] ?? -1, g[0, 0] ?? -1, half(best) ?? -1)\n");
     assert_eq!(decl(&cpp, "xs"), "std::vector<cpl::OptInt>", "{cpp}");
@@ -1695,7 +1695,7 @@ fn a_local_read_for_the_last_time_moves_into_its_place() {
     };
     let moved = cpp(&src(""));
     assert!(moved.contains("dp = std::move(next);"), "{moved}");
-    let read = cpp(&src("").replace("    dp = next\n", "    dp = next\n    print(next[0])\n"));
+    let read = cpp(&src("").replace("    dp = next\n", "    dp = next.copy()\n    print(next[0])\n"));
     assert!(!read.contains("dp = std::move(next);"), "next is read after the store: {read}");
 }
 

@@ -122,6 +122,12 @@ pub(crate) struct Checker<'a> {
     /// The types a lambda passed to a built-in method gives its unwritten
     /// parameters, from the method's catalog row, by the lambda's span.
     lambda_params: Vec<(Span, Vec<Ty>)>,
+    /// Locals whose heap value has been moved out (`let b = a` / `b = a`),
+    /// mapped to the span of the move (§128).
+    pub(crate) moved: HashMap<String, Span>,
+    /// Span of the bare name on the LHS of a plain assignment `x = ...`,
+    /// which overwrites `x` rather than reading it.
+    pub(crate) assigning_name: Option<Span>,
 }
 
 pub(crate) struct Checked {
@@ -154,6 +160,44 @@ impl<'a> Checker<'a> {
             expected_bounds_range: false,
             local_product_domains: HashMap::new(),
             lambda_params: Vec::new(),
+            moved: HashMap::new(),
+            assigning_name: None,
+        }
+    }
+
+    /// True if `ty` is a heap-owning type whose binding `let b = a` moves `a` (§128).
+    pub(crate) fn is_heap_type(&mut self, ty: &Ty) -> bool {
+        self.is_heap_type_depth(ty, 0)
+    }
+
+    fn is_heap_type_depth(&mut self, ty: &Ty, depth: usize) -> bool {
+        if depth > 4 {
+            return false;
+        }
+        match ty {
+            Ty::Str | Ty::Array { .. } => true,
+            Ty::Named { name, .. }
+                if matches!(
+                    name.as_str(),
+                    "List" | "Map" | "Set" | "Deque" | "Heap" | "Counter"
+                ) =>
+            {
+                true
+            }
+            Ty::Named { name, .. } => {
+                let field_tys: Vec<Ty> = match self.env.global(name).as_deref() {
+                    Some(Def::Struct { fields, .. }) => {
+                        fields.iter().map(|f| f.ty.clone()).collect()
+                    }
+                    _ => Vec::new(),
+                };
+                field_tys
+                    .iter()
+                    .any(|ft| self.is_heap_type_depth(ft, depth + 1))
+            }
+            Ty::Tuple(ts) => ts.iter().any(|t| self.is_heap_type_depth(t, depth + 1)),
+            Ty::Optional(inner) => self.is_heap_type_depth(inner, depth + 1),
+            _ => false,
         }
     }
 
@@ -371,6 +415,7 @@ impl<'a> Checker<'a> {
             decl: Some(span),
             owner: None,
         });
+        self.moved.remove(name);
         self.scopes.last_mut().unwrap().insert(
             name.to_string(),
             Local {
@@ -386,6 +431,17 @@ impl<'a> Checker<'a> {
     /// The type of a name as a value. One that a test has shown to hold a
     /// value is the value it holds (see [`cpl_syntax::narrow`]).
     fn name_ty(&mut self, name: &str, span: Span) -> Ty {
+        if self.assigning_name != Some(span) && self.moved.contains_key(name) {
+            if let Some(diag) = self.error(
+                codes::USE_AFTER_MOVE,
+                span,
+                format!("`{name}` was already moved"),
+            ) {
+                diag.help = Some(format!(
+                    "use `{name}.copy()` where it was moved if you still need `{name}`"
+                ));
+            }
+        }
         let hover = self.hovers.len();
         let written = std::mem::take(&mut self.as_written);
         match self.name_ty_as_written(name, span) {

@@ -161,6 +161,7 @@ pub mod codes {
     pub const BAD_PROJECTION: Code = Code("E0604");
     pub const BAD_INDEX_IMPL: Code = Code("E0605");
     pub const MISSING_IMPL: Code = Code("E0606");
+    pub const USE_AFTER_MOVE: Code = Code("E0607");
 
     pub const RUNTIME: Code = Code("R0001");
 

@@ -369,7 +369,7 @@ fn dnc_layers_match_the_quadratic_dp():
         for x in a: pre.push(pre.last! + x)
         let cost = (j, i) => (pre[i] - pre[j]) * (pre[i] - pre[j])
         var fast: List<?Int> = [if i == 0: 0 else: none for i in 0..=n]
-        var slow = fast
+        var slow = fast.copy()
         for _ in 0..rand(1, 4):
             fast = dnc_layer(fast, cost)
             var next: List<?Int> = List.filled(n + 1, none)

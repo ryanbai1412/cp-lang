@@ -1436,6 +1436,22 @@ impl FileCtx<'_> {
                         });
                     }
                 }
+                Flow::Move(src) => {
+                    if !names[current].0.contains(src) {
+                        continue;
+                    }
+                    let reset = (index + 1..current).any(|k| {
+                        names[k].1.contains(src)
+                            || items[k].decls.iter().any(|d| d.name == *src)
+                    });
+                    if !reset {
+                        out.push(Replay {
+                            item: item.clone(),
+                            live_after: false,
+                            written: false,
+                        });
+                    }
+                }
             }
         }
         out

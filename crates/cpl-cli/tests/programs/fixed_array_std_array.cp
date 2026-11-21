@@ -33,7 +33,7 @@ assert scratch.len == 3
 
 fn sum3(xs: [3]Int) -> Int = xs[0] + xs[1] + xs[2]
 
-var copy: [0..3]Int = scratch
+var copy: [0..3]Int = scratch.copy()
 assert copy == scratch
 assert sum3([dp[0], dp[1], dp[2]]) == dp[0] + dp[1] + dp[2]
 

@@ -114,13 +114,53 @@ impl<'a> Checker<'a> {
                 };
                 let mut left = side(self, first);
                 let mut left_expr: &Expr = first;
+                let mut any_vague = left.is_vague();
                 for (op, right_expr) in rest {
                     let right = side(self, right_expr);
+                    any_vague |= right.is_vague();
                     if !matches!(op, ast::CmpOp::In | ast::CmpOp::NotIn) {
                         self.comparable(&left, left_expr, &right, right_expr);
                     }
                     left = right;
                     left_expr = right_expr;
+                }
+                // §130: chained comparisons must point in one direction and cannot contain `==` or `!=`.
+                let is_module_generic_call = matches!(
+                    &first.kind,
+                    ExprKind::Field { base, .. }
+                        if matches!(&base.kind, ExprKind::Name(m) if self.env.is_module(m))
+                ) && rest.len() == 2
+                    && rest[0].0 == ast::CmpOp::Lt
+                    && rest[1].0 == ast::CmpOp::Gt;
+                if rest.len() >= 2 && !any_vague && !is_module_generic_call {
+                    let has_lt = rest
+                        .iter()
+                        .any(|(op, _)| matches!(op, ast::CmpOp::Lt | ast::CmpOp::Le));
+                    let has_gt = rest
+                        .iter()
+                        .any(|(op, _)| matches!(op, ast::CmpOp::Gt | ast::CmpOp::Ge));
+                    let has_eq = rest
+                        .iter()
+                        .any(|(op, _)| matches!(op, ast::CmpOp::Eq | ast::CmpOp::Ne));
+                    if has_eq {
+                        if let Some(diag) = self.error(
+                            codes::BAD_OPERANDS,
+                            expr.span,
+                            "chained comparisons cannot contain `==` or `!=`".to_string(),
+                        ) {
+                            diag.help = Some("join the comparisons with `and` instead".to_string());
+                        }
+                    } else if has_lt && has_gt {
+                        if let Some(diag) = self.error(
+                            codes::BAD_OPERANDS,
+                            expr.span,
+                            "chained comparisons must point in one direction".to_string(),
+                        ) {
+                            diag.help = Some(
+                                "split mixed `<` and `>` comparisons with `and`".to_string(),
+                            );
+                        }
+                    }
                 }
                 if rest.iter().any(|(op, _)| *op == ast::CmpOp::Order) {
                     return Ty::Unknown;
@@ -403,6 +443,8 @@ impl<'a> Checker<'a> {
                 // branches that follow, it does not.
                 let mark = self.lend_mark();
                 let present = self.present.len();
+                let saved_moved = self.moved.clone();
+                let mut post_moved = saved_moved.clone();
                 // `if const` with a test known here picks its branch now:
                 // the others are not compiled, so they are not checked.
                 let mut picked = false;
@@ -410,6 +452,7 @@ impl<'a> Checker<'a> {
                     if picked {
                         break;
                     }
+                    self.moved = saved_moved.clone();
                     self.push_scope();
                     self.cond(cond);
                     let known = match cond {
@@ -429,6 +472,21 @@ impl<'a> Checker<'a> {
                     self.branch += value;
                     let ty = self.block(body);
                     self.branch -= value;
+                    let branch_leaves = matches!(
+                        body.stmts.last().map(|s| &s.kind),
+                        Some(
+                            ast::StmtKind::Return(_)
+                                | ast::StmtKind::Break(_)
+                                | ast::StmtKind::Continue(_)
+                        )
+                    );
+                    if !branch_leaves {
+                        for (k, v) in &self.moved {
+                            if self.local(k).is_some() {
+                                post_moved.entry(k.clone()).or_insert(*v);
+                            }
+                        }
+                    }
                     self.present.truncate(past);
                     let failed = narrow::past(cond, &branches[at + 1..], otherwise.as_ref(), &mut |f, x| self.call_writes(f, x));
                     self.present.extend(failed.into_iter().map(String::from));
@@ -456,9 +514,17 @@ impl<'a> Checker<'a> {
                 let result_ty = match otherwise {
                     Some(_) if picked => result.unwrap_or(Ty::Unit),
                     Some(body) => {
+                        self.moved = saved_moved.clone();
                         self.branch += value;
                         let ty = self.block(body);
                         self.branch -= value;
+                        if !leaves(body) {
+                            for (k, v) in &self.moved {
+                                if self.local(k).is_some() {
+                                    post_moved.entry(k.clone()).or_insert(*v);
+                                }
+                            }
+                        }
                         match result {
                             Some(first) if first.is_vague() => ty,
                             Some(first) => first.widen(),
@@ -467,6 +533,7 @@ impl<'a> Checker<'a> {
                     }
                     None => Ty::Unit,
                 };
+                self.moved = post_moved;
                 self.present.truncate(present);
                 self.lend_reset(mark);
                 if let Some(cond) = after {
@@ -477,8 +544,11 @@ impl<'a> Checker<'a> {
             ExprKind::Match { scrutinee, arms } => {
                 let value = u32::from(self.plain_if.take() != Some(expr.span));
                 let scrutinee_ty = self.infer_optional(scrutinee);
+                let saved_moved = self.moved.clone();
+                let mut post_moved = saved_moved.clone();
                 let mut result = None;
                 for arm in arms {
+                    self.moved = saved_moved.clone();
                     self.push_scope();
                     self.bind(&arm.pat, &scrutinee_ty, false, "let");
                     if let Some(guard) = &arm.guard {
@@ -488,6 +558,21 @@ impl<'a> Checker<'a> {
                     self.branch += value;
                     let ty = self.block(&arm.body);
                     self.branch -= value;
+                    let arm_leaves = matches!(
+                        arm.body.stmts.last().map(|s| &s.kind),
+                        Some(
+                            ast::StmtKind::Return(_)
+                                | ast::StmtKind::Break(_)
+                                | ast::StmtKind::Continue(_)
+                        )
+                    );
+                    if !arm_leaves {
+                        for (k, v) in &self.moved {
+                            if self.local(k).is_some() {
+                                post_moved.entry(k.clone()).or_insert(*v);
+                            }
+                        }
+                    }
                     self.pop_scope();
                     // The value is the first arm's that has one: an arm
                     // that leaves (`Skip => continue`) has none.
@@ -498,6 +583,7 @@ impl<'a> Checker<'a> {
                         result = Some(ty.widen());
                     }
                 }
+                self.moved = post_moved;
                 let result = result.unwrap_or(Ty::Unit);
                 self.require_every_variant(&scrutinee_ty, arms, expr.span);
                 result

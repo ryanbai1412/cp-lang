@@ -3154,3 +3154,47 @@ print(x)
 ";
     assert!(!codes(bad_pos).is_empty());
 }
+
+#[test]
+fn chained_comparisons_reject_mixed_direction_and_equality() {
+    assert_eq!(
+        codes("let x = 3\nprint(1 < x <= 5, 5 >= x > 1, x == 3, x != 4)\n"),
+        Vec::<&str>::new()
+    );
+    assert_eq!(codes("let x = 3\nprint(1 < x > 2)\n"), ["E0309"]);
+    assert_eq!(codes("let a = 1, b = 1, c = 1\nprint(a == b == c)\n"), ["E0309"]);
+    assert_eq!(codes("let a = 1, b = 2, c = 2\nprint(a < b == c)\n"), ["E0309"]);
+    assert_eq!(codes("let a = 1, b = 2, c = 3\nprint(a != b != c)\n"), ["E0309"]);
+}
+
+#[test]
+fn moved_from_heap_values_are_rejected() {
+    assert_eq!(
+        codes("let a = [1, 2]\nlet b = a\nprint(a.len, b.len)\n"),
+        ["E0607"]
+    );
+    assert_eq!(
+        codes("let s = \"hi\"\nlet t = s\nprint(s.len, t.len)\n"),
+        ["E0607"]
+    );
+    assert_eq!(
+        codes("let a = [1, 2]\nlet b = a.copy()\nprint(a.len, b.len)\n"),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes("let a = [1, 2]\nlet b = a\nprint(b.len)\n"),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes("var a = [1, 2]\nlet b = a\na = [3]\nprint(a.len, b.len)\n"),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes("let x = 10\nlet y = x\nprint(x, y)\n"),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes("fn f():\n    let a = [1, 2]\n    let b = a\n    print(a.len, b.len)\nf()\n"),
+        ["E0607"]
+    );
+}

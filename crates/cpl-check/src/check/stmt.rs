@@ -641,7 +641,25 @@ impl<'a> Checker<'a> {
                         )
                     });
                 }
-                let ty = declared.or(init_ty).unwrap_or(Ty::Error);
+                let ty = declared.or(init_ty.clone()).unwrap_or(Ty::Error);
+                // §128: `let b = a` / `var b = a` on a heap local moves `a`.
+                if otherwise.is_none() && !fills {
+                    if let Some(Expr {
+                        kind: ExprKind::Name(src),
+                        span: src_span,
+                    }) = init
+                    {
+                        let is_owned_local = self
+                            .local(src)
+                            .is_some_and(|l| l.keyword != "param");
+                        let src_is_heap = init_ty
+                            .as_ref()
+                            .is_some_and(|t| self.is_heap_type(t));
+                        if is_owned_local && src_is_heap {
+                            self.moved.insert(src.clone(), *src_span);
+                        }
+                    }
+                }
                 if let (true, Some(init)) = (*mutable, init) {
                     let what = format!("`var {}`", self.quote(pat.span));
                     self.no_escape(init, &what);
@@ -897,11 +915,29 @@ impl<'a> Checker<'a> {
             }
             StmtKind::Expr(expr) => return self.infer(expr),
             StmtKind::Assign { target, op, value } => {
+                let prev_assigning = self.assigning_name;
+                if *op == AssignOp::Set && matches!(target.kind, ExprKind::Name(_)) {
+                    self.assigning_name = Some(target.span);
+                }
                 let target_ty = self.infer(target);
+                self.assigning_name = prev_assigning;
                 let value_ty = match self.part_map(target, *op, value) {
                     Some(ty) => ty,
                     None => self.infer(value),
                 };
+                if *op == AssignOp::Set {
+                    if let ExprKind::Name(tname) = &target.kind {
+                        self.moved.remove(tname);
+                        if let ExprKind::Name(sname) = &value.kind {
+                            let is_owned_local = self
+                                .local(sname)
+                                .is_some_and(|l| l.keyword != "param");
+                            if tname != sname && is_owned_local && self.is_heap_type(&value_ty) {
+                                self.moved.insert(sname.clone(), value.span);
+                            }
+                        }
+                    }
+                }
                 self.optional_fold(target, &target_ty, *op);
                 self.map_fold(target, *op, value);
                 self.assign_alias(target, *op, value);
