@@ -2939,6 +2939,7 @@ library. Reverse: an `Int`-only `aliens` plus a separate wide variant.
   through `outer_cxs`. The escape rule (`E0313`) is unchanged.
   Reason: enables `fn force(c: C, val: Int)` after `let (domain C, comp) = two_edge_components(g)` (`cf2135c`).
   Reverse: remove `register_pat_domains` in `crates/cpl-ir/src/lower/mod.rs` and the top-level slot reuse in `crates/cpl-ir/src/lower/stmt.rs`.
+
 ## 67. `IntervalMap.assign` zero-alloc `on_old:` callback (2026-11-21)
 
 1. **`IntervalMap.assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ())` reports overwritten runs via an optional callback instead of returning a `List` or `-> yields`.**
@@ -2950,3 +2951,9 @@ library. Reverse: an `Int`-only `aliens` plus a separate wide variant.
    Arena-backed randomized treap over a contiguous node arena with subtree-size-aware lazy tag pushdown (`apply(v, left_sz, f)`, `compose(new_f, old_f)`, optional `split(f, left_sz)`, optional `before(x, y)`), supporting both value-ordered insertion (`insert`, for slope-trick / priority-with-lazy-updates) and 0-based implicit sequence operations (`push`, `insert_at`, `apply_range`, `get`), plus `apply_all`, `take(k)`, and `to_list`. Stores pending tags as `?F` so `F` needs neither `id` nor `Eq`, and lowers all operation closures statically (`0 std::function`). Adopted by `proto/ports/ecnerwala/cf2084g2.cp` (895 -> 359 tokens, 1.05x of dream; 0.90x time vs C++ original on `n = 500_000`). Reverse: remove `LazyTreap` from `stdlib/lazy.cp` and restore the hand-rolled treap in `cf2084g2.cp`.
 2. **Flatten `SparseTable` storage in `stdlib/sparse.cp`.**
    Store all `bit_width(n)` levels in a single flat `List<T>` with `unchecked:` indexing in build and `fold`, matching `DisjointSparseTable` and eliminating nested `std::vector` heap allocations. Reverse: restore `rows: List<List<T>>` in `stdlib/sparse.cp`.
+
+## 69. `std.poly`: formal power series over NTT on plain `List<Mod<P>>` (2026-11-21)
+
+1. **`std.poly` operates directly on `List<Mod<P>>` with explicit output length `n` (`inv`, `log`, `exp`, `pow`, `sqrt`, plus `deriv`, `integral`).**
+   - **Reason:** Using plain `List<Mod<P>>` (lowest degree first) gives zero-overhead interop with `std.ntt.convolve<P>`, `Comb<M>`, and list comprehensions without introducing a wrapper `Poly<P>` type. Requiring explicit truncation length `n: Int` (modulo `x^n`) matches every contest FPS call site (`ucup5s06a`, `ucup5s03a`, `ucup5s05f`) and avoids sentinel defaults. `inv` uses half-size Newton doubling (5 NTTs of size `2m` per step), `integral` uses linear-time modular inverses `1..=m`, `pow` handles leading zeros and large `k` via `exp(k * log(...))`, and `sqrt` returns `?List<Mod<P>>` via Tonelli-Shanks + Newton doubling.
+   - **Reverse:** Remove `stdlib/poly.cp`, remove its rows from `stdlib/README.md`, `site/content/stdlib.md`, `editors/vscode/`, `design/stdlib/math.md` §2.5, and `plan/STDLIB.md`, and switch the four migrated ports back to `lib.math.poly`.

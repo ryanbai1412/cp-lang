@@ -1,7 +1,9 @@
 // Universal Cup 5 Stage 3 (Gorkovskaya) A: the answer is [x^n] of a quotient of
 // two series whose coefficients are exponential convolutions of sequence counts.
-use lib.math.poly.{Z, convolve, inv_trunc}
+use std.ntt.{convolve}
+use std.poly.{inv}
 
+type Z = Mod<998_244_353>
 let (n, k): (Int, Int) = read()
 let comb = Comb<Z>()
 let h = n / 2
@@ -30,5 +32,5 @@ for i in 0..=h:
     st[2 * i + 2] += pos_st[i]
     all[2 * i + 3] -= pos_all[i]
 
-let res = convolve(st, inv_trunc(all, n + 1))
+let res = convolve(st, inv(all, n + 1))
 print(res[n] + n % 2)

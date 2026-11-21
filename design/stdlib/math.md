@@ -1,11 +1,11 @@
 # Standard library design: number theory, combinatorics, NTT and linear algebra
 
-This document designs the four mathematical modules of the CP Lang standard
+This document designs the five mathematical modules of the CP Lang standard
 library: `std.math` (integer number theory and sieves), `std.mod` (modular
 arithmetic and combinatorics), `std.ntt` (number-theoretic and bitwise
-convolutions), and `std.matrix` (dense matrices, Gaussian elimination and
-GF(2) linear bases). It corresponds to sections 4.3 through 4.6 of
-`plan/STDLIB.md`.
+convolutions), `std.poly` (formal power series over NTT), and `std.matrix`
+(dense matrices, Gaussian elimination and GF(2) linear bases). It corresponds
+to sections 4.3 through 4.6 of `plan/STDLIB.md`.
 
 Every design choice follows `AGENTS.md` and `plan/STDLIB.md`: ordinary CP Lang
 with no compiler privilege, guessable textbook names, options as named
@@ -318,6 +318,60 @@ directly. Keeping exact field methods on `Mat<T>` and pivoted real helpers
 explicit avoids hidden `F64` specialization and respects CP Lang's rule that
 float equality is rejected by default.
 
+### 2.5 `std.poly`: formal power series over NTT
+
+`std.poly` operates directly on `List<Mod<P>>` (lowest degree first, identical
+to `std.ntt.convolve<P>`), with no wrapper struct so series compose directly
+with `std.ntt`, `Comb<Mod<P>>`, and list comprehensions. Every truncated FPS
+operation takes an explicit output length `n: Int` (computing modulo `x^n`,
+returning a `List<Mod<P>>` of length `n`, with `n == 0` returning `[]`) and
+requires an NTT-friendly prime `P` (`P - 1` divisible by a power of two at
+least `2 * bit_ceil(n)`).
+
+```cp
+fn deriv<P>(a: List<Mod<P>>) -> List<Mod<P>>
+    // O(a.len) time and memory; formal derivative a'(x), length max(0, a.len - 1)
+
+fn integral<P>(a: List<Mod<P>>) -> List<Mod<P>>
+    // O(a.len) time and memory; antiderivative with constant term 0, length a.len + 1
+    // (or [] if a is empty); uses linear-time modular inverses 1..=a.len, no O(log P) div
+
+fn inv<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>
+    // O(n log n) time (~10n log n via half-size Newton doubling: 5 NTTs of size 2m per
+    // doubling step m -> 2m), O(n) memory; returns a(x)^(-1) mod x^n.
+    // Precondition: n >= 0; if n > 0, a.len > 0 and a[0] != 0.
+
+fn log<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>
+    // O(n log n) time (1 inv + 1 convolve + deriv + integral, ~13n log n), O(n) memory;
+    // returns ln(a(x)) mod x^n = integral(a'(x) * a(x)^(-1)) mod x^n.
+    // Precondition: n >= 0; if n > 0, a.len > 0 and a[0] == 1.
+
+fn exp<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>
+    // O(n log n) time (Newton doubling g <- g * (1 - ln(g) + a) mod x^(2m), ~28n log n),
+    // O(n) memory; returns exp(a(x)) mod x^n.
+    // Precondition: n >= 0; if n > 0, a.len == 0 or a[0] == 0.
+
+fn pow<P>(a: List<Mod<P>>, k: Int, n: Int) -> List<Mod<P>>
+    // O(n log n) time (1 log + 1 exp when nonzero, O(n) when k == 0 or shifted past n),
+    // O(n) memory; returns a(x)^k mod x^n for k >= 0, handling leading zeros a(x) = c x^d (...).
+    // Precondition: n >= 0, k >= 0.
+
+fn sqrt<P>(a: List<Mod<P>>, n: Int) -> ?List<Mod<P>>
+    // O(n log n + log^2 P) time (Tonelli-Shanks mod_sqrt for leading term + Newton doubling
+    // g <- (g + a * g^(-1)) / 2 mod x^(2m), ~20n log n), O(n) memory.
+    // Returns some(g) with g(x)^2 == a(x) (mod x^n), or none if no square root exists mod P
+    // (odd leading zero count or non-residue leading coefficient).
+    // Precondition: n >= 0.
+```
+
+Cost summary (NTTs of length `N = bit_ceil(n)`):
+- `deriv`, `integral`: `O(n)` time, `0` NTTs (`integral` computes `inv[1..=n]` in `O(n)` via `inv[i] = -(P / i) * inv[P % i]`).
+- `inv`: ~`5` NTTs of size `2m` per doubling (`m = 1, 2, ..., N/2`), geometric total ~`10` NTTs of size `N`.
+- `log`: `inv(a, n)` + 1 `convolve` of length `n` + `deriv`/`integral`.
+- `exp`: Newton doubling calling `log` + 1 `convolve` at each doubling `m -> 2m`.
+- `pow`: `O(n)` normalization + 1 `log` + 1 `exp` + `O(n)` rescaling (no `log k` factor).
+- `sqrt`: 1 `mod_sqrt` (`O(log^2 P)`) + Newton doubling calling `inv` + 1 `convolve` at each doubling.
+
 ## 3. Laws and invariants
 
 Every module enforces its mathematical laws in `@test`:
@@ -339,6 +393,11 @@ Every module enforces its mathematical laws in `@test`:
   convolution for both `cyclic: false` and `cyclic: true`; `sos_sub_inv` and
   `sos_sup_inv` invert `sos_sub` and `sos_sup`; `convolve_or`, `convolve_and`,
   and `convolve_xor` agree with naive `O(n^2)` loops.
+- `std.poly`: `convolve(a, inv(a, n))[0..n] == [1, 0, ...]`; `exp(log(a, n), n) == a[0..n]`
+  for `a[0] == 1`; `log(exp(a, n), n) == a[0..n]` for `a[0] == 0`;
+  `pow(a, k, n)` agrees with repeated `convolve` (including leading zeros and `k == 0`);
+  `convolve(g, g)[0..n] == a[0..n]` for `g = sqrt(a, n)!` and `sqrt(a, n) == none` for
+  odd leading zero count or quadratic non-residue leading term; `deriv(integral(a)) == a`.
 - `std.matrix`: `Mat<T>.product(n)` satisfies `laws_hold`; `(A * B).det() ==
   A.det() * B.det()`; `A * A.inverse()! == Mat.identity(n)`; for every `x0`
   and `v` in `solve_space(b)!.basis`, `A.apply(x0 + c * v) == b`; `XorBasis`
@@ -358,9 +417,9 @@ directly into CP Lang's domain-indexed structures via `Monoid`:
 What stays in `examples/local-lib/math/` or user code (until wider corpus
 demand justifies promotion):
 
-- Formal power series (`poly_inv`, `poly_exp`, `poly_log`, `poly_pow`,
-  `poly_sqrt`, multipoint evaluation, Taylor shift, Berlekamp-Massey,
-  Bostan-Mori, polynomial GCD) stay in `examples/local-lib/math/poly.cp`.
+- Advanced polynomial algorithms (multipoint evaluation, interpolation,
+  Taylor shift, Berlekamp-Massey, Bostan-Mori, polynomial GCD, composition)
+  stay in `examples/local-lib/math/poly.cp`.
 - Exact fractions (`Frac`), homomorphisms, and simplex/LP stay in
   `examples/local-lib/math/`.
 - Custom-payload XOR bases (like `cf2115d`, where each basis bit also owns a

@@ -1,12 +1,13 @@
 // Universal Cup 5 Stage 6 (Hyakumanben) A: the answer is a coefficient of two
 // logarithmic derivatives, x f'(x) / f(x), of series built from Catalan numbers.
-use lib.math.poly.{Z, inv_trunc}
+use std.poly.{inv}
 
+type Z = Mod<998_244_353>
 let comb = Comb<Z>()
 
 // [x^deg] of x p'(x) / p(x)
 fn log_deriv_at(p: List<Z>, deg: Int) -> Z:
-    let g = inv_trunc(p, deg + 1)
+    let g = inv(p, deg + 1)
     sum(Z(i) * p[i] * g[deg - i] for i in 1..=deg)
 
 @!multitest

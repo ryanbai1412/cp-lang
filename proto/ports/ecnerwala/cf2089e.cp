@@ -1,4 +1,7 @@
-use lib.math.poly.{Z, convolve, integral}
+use std.ntt.{convolve}
+use std.poly.{integral}
+
+type Z = Mod<998_244_353>
 
 fn add(a: List<Z>, b: List<Z>) -> List<Z>:
     var sum = a.resized(max(a.len, b.len), 0)

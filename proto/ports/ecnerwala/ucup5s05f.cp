@@ -3,9 +3,11 @@
 // power sums (a logarithmic derivative) and turn those into binomial sums with
 // a transposed multipoint evaluation:
 //   answer[k] = [x^k] (power_sums(x) * prod(1 - u x for u in 0..k)) / k!
-use lib.math.poly.{Z, convolve, inv_trunc}
+use std.ntt.{convolve}
+use std.poly.{inv}
 use std.strings.{suffix_array, lcp_array}
 
+type Z = Mod<998_244_353>
 let comb = Comb<Z>()
 
 // seg[node] = prod(1 - roots[i] x for i in lo..hi), cut to `keep` terms
@@ -25,7 +27,7 @@ fn power_sums(sizes: List<Z>, deg: Int) -> List<Z>:
     product(mut seg, 1, 0, sizes.len, sizes, deg + 1)
     let p = seg[1].resized(deg + 1, 0)
     // -x p'(x) / p(x)
-    let r = convolve([-Z(i) * p[i] for i in 0..=deg], inv_trunc(p, deg + 1))
+    let r = convolve([-Z(i) * p[i] for i in 0..=deg], inv(p, deg + 1))
     r[..deg + 1].to_list()
 
 // res[i] = [x^(hi - lo)] of c * prod(1 - u x for u in lo..=i); `c` has hi - lo + 1 terms

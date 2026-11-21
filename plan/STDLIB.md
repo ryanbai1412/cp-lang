@@ -479,6 +479,21 @@ fn convolve_xor<T>(a: List<T>, b: List<T>) -> List<T> // O(n log n); requires / 
 Relies on: `Mod<P>` with a type-parameter modulus, `primitive_root`,
 `bit_ceil`, `ctz`.
 
+#### `std.poly` [new]: formal power series over NTT
+
+Operates on plain `List<Mod<P>>` (lowest degree first) over an NTT-friendly
+prime `P`. Full cost breakdown and laws: `design/stdlib/math.md` §2.5.
+
+```cp
+fn deriv<P>(a: List<Mod<P>>) -> List<Mod<P>> // O(n)
+fn integral<P>(a: List<Mod<P>>) -> List<Mod<P>> // O(n); linear-time inverses
+fn inv<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>> // O(n log n); a[0] != 0
+fn log<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>> // O(n log n); a[0] == 1
+fn exp<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>> // O(n log n); a[0] == 0
+fn pow<P>(a: List<Mod<P>>, k: Int, n: Int) -> List<Mod<P>> // O(n log n); k >= 0
+fn sqrt<P>(a: List<Mod<P>>, n: Int) -> ?List<Mod<P>> // O(n log n + log^2 P)
+```
+
 ### 4.6 `std.matrix` [new]: matrices, Gaussian elimination and linear basis
 
 `Mat<T>` is a dense flat row-major matrix over any `T` with `T.zero`,
