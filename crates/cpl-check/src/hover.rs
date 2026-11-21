@@ -20,6 +20,8 @@ pub struct Hover {
     /// The name or expression hovered, in file positions.
     pub span: Span,
     pub text: String,
+    /// The `///` comment above the declaration, wherever it is declared.
+    pub doc: Option<String>,
 }
 
 /// Where a symbol is declared, possibly in an imported module.
@@ -48,10 +50,22 @@ impl Database {
         let entry = innermost(&item.check.hovers, at)?;
         let span = entry.span.shift(item.offset);
         let mut lookup = |name: &str| self.lookup(path, &analysis, name);
-        Some(Hover {
-            span,
-            text: render(entry, &mut lookup),
-        })
+        let text = render(entry, &mut lookup);
+        let doc = self.definition_location(path, offset).and_then(|def| {
+            let source = if def.path == path {
+                analysis.text.clone()
+            } else {
+                analysis
+                    .modules()
+                    .iter()
+                    .find(|m| m.path == def.path)?
+                    .analysis
+                    .text
+                    .clone()
+            };
+            doc_above(&source, def.span.start)
+        });
+        Some(Hover { span, text, doc })
     }
 
     /// Where the name at `offset` is declared, in the same file.
@@ -66,6 +80,23 @@ impl Database {
         let analysis = self.analyze(path)?;
         let (item, at) = analysis.item_at(offset)?;
         let entry = innermost(&item.check.hovers, at)?;
+        if let (Some(owner), "field") = (&entry.owner, entry.keyword) {
+            let (owner_path, owner_analysis, owner_name) = match analysis.imports().get(owner) {
+                Some(import) => {
+                    let module = &analysis.modules()[import.module];
+                    (
+                        module.path.clone(),
+                        module.analysis.clone(),
+                        import.name.clone(),
+                    )
+                }
+                None => (path.to_string(), analysis.clone(), owner.clone()),
+            };
+            return member_span(&owner_analysis, &owner_name, &entry.name).map(|span| Definition {
+                path: owner_path,
+                span,
+            });
+        }
         if let Some(decl) = entry.decl {
             return Some(Definition {
                 path: path.to_string(),
@@ -114,6 +145,57 @@ fn symbols(analysis: &Analysis) -> Vec<Symbol> {
         }
     }
     out
+}
+
+/// Where `owner`'s field or method `member` is declared: in the struct's
+/// body, an `impl` of it, or a top-level fn taking it as `self`.
+fn member_span(analysis: &Analysis, owner: &str, member: &str) -> Option<Span> {
+    use cpl_syntax::ast::{StmtKind, TypeKind};
+    let fn_named = |stmts: &[cpl_syntax::ast::Stmt]| {
+        stmts.iter().find_map(|stmt| match &stmt.kind {
+            StmtKind::Fn(f) if f.name.text == member => Some(f.name.span),
+            _ => None,
+        })
+    };
+    for item in &analysis.items {
+        for stmt in &item.syntax.parsed.stmts {
+            let found = match &stmt.kind {
+                StmtKind::Struct(decl) if decl.name.text == owner => decl
+                    .fields
+                    .iter()
+                    .find(|f| f.name.text == member)
+                    .map(|f| f.name.span)
+                    .or_else(|| fn_named(&decl.methods)),
+                StmtKind::Impl { target, body, .. } => match &target.kind {
+                    TypeKind::Named { name, .. } if name.text == owner => fn_named(&body.stmts),
+                    _ => None,
+                },
+                _ => None,
+            };
+            if let Some(span) = found {
+                return Some(span.shift(item.offset));
+            }
+        }
+    }
+    analysis.decl_span(member)
+}
+
+/// The `///` lines above the line `at` is on, past its decorators.
+fn doc_above(text: &str, at: u32) -> Option<String> {
+    let head = text.get(..at as usize)?;
+    let line_start = head.rfind('\n').map_or(0, |i| i + 1);
+    let mut lines = Vec::new();
+    for line in head[..line_start].lines().rev() {
+        let line = line.trim();
+        if let Some(doc) = line.strip_prefix("///") {
+            lines.push(doc.strip_prefix(' ').unwrap_or(doc));
+        } else if !line.starts_with('@') {
+            break;
+        }
+    }
+    lines.reverse();
+    let doc = lines.join("\n").trim().to_string();
+    (!doc.is_empty()).then_some(doc)
 }
 
 /// The smallest entry under the cursor.

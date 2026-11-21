@@ -66,6 +66,8 @@ pub struct HoverEntry {
     pub keyword: &'static str,
     /// Where the name is declared, if that is in this item.
     pub decl: Option<Span>,
+    /// For a `field`, the type it is a member of: `Fenwick` for `bit.add`.
+    pub owner: Option<String>,
 }
 
 /// A use of a top-level name.
@@ -219,6 +221,7 @@ impl<'a> Checker<'a> {
             ty: ty.clone(),
             keyword,
             decl: Some(span),
+            owner: None,
         });
         self.scopes.last_mut().unwrap().insert(
             name.to_string(),
@@ -280,6 +283,7 @@ impl<'a> Checker<'a> {
                 ty: ty.clone(),
                 keyword,
                 decl: Some(decl),
+                owner: None,
             });
             return ty;
         }
@@ -304,6 +308,7 @@ impl<'a> Checker<'a> {
                 ty: ty.clone(),
                 keyword: "global",
                 decl: None,
+                owner: None,
             });
             return ty;
         }

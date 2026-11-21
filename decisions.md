@@ -1409,3 +1409,11 @@ normal execution. Reverse: remove `call_stack`/`case` from `Trap`, `call_frames`
   the same rule as struct fields and as the 0.3 spec's derived `Ord`. To reverse: drop the `Ty::Enum`
   arm of `ordered()` in `cpl-ir/src/lower/expr.rs`.
 
+## 29. Editor and LSP (2026-11-21)
+
+29.1. **Hover shows the declaration's `///` doc, wherever it is declared.** `Hover` gains `doc`, read
+from the lines above the definition `definition_location` finds (decorators skipped), so a stdlib name
+shows the doc that states its cost. A member access records its owner type (`HoverEntry::owner`), so
+hover and go-to-definition on `bit.prefix` reach the method in `stdlib/fenwick.cp`. The doc is the one
+place a cost is written today; a computed cost line can join it later. Reverse: drop `Hover::doc` and
+`HoverEntry::owner` in `crates/cpl-check/src/{hover,check}.rs`.

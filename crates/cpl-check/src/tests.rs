@@ -640,6 +640,47 @@ fn hover_works_while_the_file_is_broken() {
 }
 
 #[test]
+fn hover_shows_the_doc_comment_and_members_jump_to_their_declaration() {
+    let src = "\
+/// A point on the grid.
+/// Both coordinates are 0-based.
+struct P:
+    x: Int
+    y: Int
+
+    /// The Manhattan length.
+    @inline
+    fn norm(self) -> Int:
+        abs(x) + abs(y)
+
+/// Twice `v`.
+fn twice(v: Int) -> Int:
+    2 * v
+
+let p = P(1, 2)
+print(twice(p.norm()) + p.x)
+";
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    let at = |needle: &str| src.find(needle).unwrap() as u32;
+    let hover = db.hover("a.cp", at("twice(p")).unwrap();
+    assert_eq!(hover.doc.as_deref(), Some("Twice `v`."));
+    let hover = db.hover("a.cp", at("P(1")).unwrap();
+    assert_eq!(
+        hover.doc.as_deref(),
+        Some("A point on the grid.\nBoth coordinates are 0-based.")
+    );
+    let hover = db.hover("a.cp", at("norm()")).unwrap();
+    assert_eq!(hover.doc.as_deref(), Some("The Manhattan length."));
+    assert_eq!(db.hover("a.cp", at("p = P")).unwrap().doc, None);
+
+    let def = db.definition("a.cp", at("norm()")).unwrap();
+    assert_eq!(def, Span::new(at("norm(self)"), at("norm(self)") + 4));
+    let def = db.definition("a.cp", at("x)\n")).unwrap();
+    assert_eq!(def, Span::new(at("x: Int"), at("x: Int") + 1));
+}
+
+#[test]
 fn hover_is_empty_off_a_name() {
     let mut db = Database::new();
     db.set_file("a.cp", ROADS);

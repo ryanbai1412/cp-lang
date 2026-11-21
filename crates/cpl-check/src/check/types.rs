@@ -218,6 +218,7 @@ impl<'a> Checker<'a> {
                 ty: Ty::TypeName(name.to_string()),
                 keyword: "type",
                 decl: None,
+                owner: None,
             });
             return self.def_type(&def, name, span, args);
         }

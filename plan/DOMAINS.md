@@ -258,8 +258,9 @@ measures 6.1 (492 lines, debug build: keystroke to diagnostics median
 TextMate grammar, snippets, the client, Run/Stress/Trace lenses, live
 sample values, counterexample overlays and a trace webview; its unit
 tests run in `--full`, its extension-host suite in no gate.
-Gaps against `plan/60`: hover on a fn or method shows neither its `///`
-doc nor its cost; no hover for the index space of a subscript or for a
+Hover appends the declaration's `///` doc, which in the stdlib states the
+cost, and definition on a field or method jumps to it, in the stdlib too.
+Gaps against `plan/60`: no computed cost on hover; no hover for the index space of a subscript or for a
 proven range; no inlay hints for index spaces or ranges; no semantic
 tokens, workspace symbols, document highlights or folding; no cost or
 overflow warnings; rename is one file; no refactorings or "fix all"; no
@@ -268,7 +269,7 @@ Code client; no fixture tests, fuzzer, DAP, tree-sitter grammar, JetBrains
 plugin, or setups for other editors.
 **Bar.** LSP fixture tests per `plan/60` 6.7 for every request; each editor
 integration built and smoke-tested in `scripts/check.sh --full`.
-**Next.** Fixture tests; hover docs, costs and index spaces; inlay hints for
+**Next.** Fixture tests; hover index spaces and ranges; inlay hints for
 index spaces and ranges; semantic tokens; server code lenses and commands
 for run, test and trace; JetBrains plugin; other-editor setups; fuzzer.
 

@@ -570,6 +570,7 @@ impl<'a> Checker<'a> {
                         ty: ty.clone(),
                         keyword: "field",
                         decl: Some(field.name.span),
+                        owner: None,
                     });
                     if let Some(default) = &field.default {
                         let default_ty = self.infer(default);
@@ -894,6 +895,7 @@ impl<'a> Checker<'a> {
             ty: Ty::TypeName(name.text.clone()),
             keyword: "type",
             decl: Some(name.span),
+            owner: None,
         });
     }
 
@@ -1147,6 +1149,7 @@ impl<'a> Checker<'a> {
                 ty: sig.clone(),
                 keyword: "fn",
                 decl: Some(f.name.span),
+                owner: None,
             });
         }
         let outer = self.generics.len();

@@ -1241,6 +1241,10 @@ impl<'a> Checker<'a> {
             ty: ty.clone(),
             keyword: "field",
             decl: None,
+            owner: match &base_ty {
+                Ty::Named { name, .. } | Ty::TypeName(name) => Some(name.clone()),
+                _ => None,
+            },
         });
         ty
     }

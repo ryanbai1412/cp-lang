@@ -185,7 +185,7 @@ impl Server {
                         "contents",
                         obj([
                             ("kind", "markdown".into()),
-                            ("value", format!("```cp\n{}\n```", hover.text).into()),
+                            ("value", hover_markdown(&hover).into()),
                         ]),
                     ),
                     (
@@ -589,6 +589,14 @@ fn publish(uri: &str, diagnostics: Vec<Value>) -> Value {
             obj([("uri", uri.into()), ("diagnostics", diagnostics.into())]),
         ),
     ])
+}
+
+fn hover_markdown(hover: &cpl_check::Hover) -> String {
+    let code = format!("```cp\n{}\n```", hover.text);
+    match &hover.doc {
+        Some(doc) => format!("{code}\n\n{doc}"),
+        None => code,
+    }
 }
 
 fn uri_of(params: &Value) -> Result<&str, (i32, String)> {

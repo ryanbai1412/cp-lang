@@ -545,6 +545,56 @@ fn imported_module_symbols_hover_and_jump_to_definition() {
     );
 }
 
+#[test]
+fn stdlib_methods_hover_with_their_docs_and_jump_into_the_stdlib() {
+    let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let repo_root = manifest_dir.parent().and_then(|p| p.parent()).unwrap();
+    let uri = format!(
+        "file://{}",
+        repo_root.join("_lsp_method_doc_test.cp").display()
+    );
+    let src =
+        "use std.mod.{Mod, Comb}\nlet c = Comb<1000000007>.new(10)\nprint(c.choose(5, 2).v)\n";
+    let mut server = Server::new();
+    server.handle(&request(1, "initialize", obj([])));
+    server.handle(&notification("initialized", obj([])));
+    let text_document = obj([
+        ("uri", uri.as_str().into()),
+        ("languageId", "cp".into()),
+        ("version", Value::Number(1.0)),
+        ("text", src.into()),
+    ]);
+    server.handle(&notification(
+        "textDocument/didOpen",
+        obj([("textDocument", text_document)]),
+    ));
+    let at = |line, character| {
+        obj([
+            ("textDocument", obj([("uri", uri.as_str().into())])),
+            ("position", pos(line, character)),
+        ])
+    };
+    let hover = server.handle(&request(2, "textDocument/hover", at(2, 9)));
+    let text = hover[0]
+        .at(&["result", "contents", "value"])
+        .as_str()
+        .unwrap();
+    assert!(text.starts_with("```cp\nchoose: fn(n: Int, k: Int) -> Mod<"));
+    assert_eq!(
+        text.split_once("```\n\n").unwrap().1,
+        "The number of `k`-subsets of `n` things; 0 when `k` is outside `0..=n`.\n\
+         Uses Lucas's theorem automatically when `n >= P` (for prime `P`)."
+    );
+    let def = server.handle(&request(3, "textDocument/definition", at(2, 9)));
+    assert!(def[0]
+        .at(&["result", "uri"])
+        .as_str()
+        .unwrap()
+        .ends_with("/stdlib/mod.cp"));
+    assert_eq!(def[0].at(&["result", "range", "start"]), &pos(120, 11));
+    assert_eq!(def[0].at(&["result", "range", "end"]), &pos(120, 17));
+}
+
 const V22: &str = "\
 let (n, x): (1..=100, 1..=1e6) = read()
 let coins: [0..n]Int = read()
