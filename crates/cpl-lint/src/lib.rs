@@ -125,6 +125,43 @@ pub const UNPROVEN_LIST_INDEX: Lint = Lint {
     summary: "a `List` index inside nested loops that is checked on every access",
 };
 
+pub const SEARCH_LOOP: Lint = Lint {
+    code: Code("L0501"),
+    name: "search_loop",
+    default: Level::Warn,
+    summary: "a loop that sets a flag or `?T` and breaks: `first`, `any` or `all`",
+};
+pub const DISCARDED_RESULT: Lint = Lint {
+    code: Code("L0502"),
+    name: "discarded_result",
+    default: Level::Warn,
+    summary: "`let _ =` throws away what a fn of this file returns",
+};
+pub const SYMMETRIC_WRITE: Lint = Lint {
+    code: Code("L0503"),
+    name: "symmetric_write",
+    default: Level::Warn,
+    summary: "the same fact written for `(u, v)` and then `(v, u)`",
+};
+pub const LOOP_REDUCTION: Lint = Lint {
+    code: Code("L0504"),
+    name: "loop_reduction",
+    default: Level::Warn,
+    summary: "a loop that only accumulates: `sum`, `count`, `max` or `min`",
+};
+pub const INDEX_ONLY_LOOP: Lint = Lint {
+    code: Code("L0505"),
+    name: "index_only_loop",
+    default: Level::Warn,
+    summary: "`for i in 0..xs.len` that only reads `xs[i]`",
+};
+pub const REPEATED_LITERAL: Lint = Lint {
+    code: Code("L0506"),
+    name: "repeated_literal",
+    default: Level::Warn,
+    summary: "a big literal (a bound or modulus) written in several places",
+};
+
 /// Every lint, in code order.
 pub const LINTS: &[Lint] = &[
     UNKNOWN_LINT,
@@ -136,7 +173,19 @@ pub const LINTS: &[Lint] = &[
     DOMAIN_KEYED_MAP,
     MEMO_KEY_SPACE,
     UNPROVEN_LIST_INDEX,
+    SEARCH_LOOP,
+    DISCARDED_RESULT,
+    SYMMETRIC_WRITE,
+    LOOP_REDUCTION,
+    INDEX_ONLY_LOOP,
+    REPEATED_LITERAL,
 ];
+
+/// The taste lints (`plan/PORTING.md`): code that works but reads like
+/// translated C++. `cpl lint --taste` counts them per file.
+pub fn is_taste(lint: &Lint) -> bool {
+    lint.code.0.starts_with("L05")
+}
 
 /// The lint called `name`.
 pub fn lint_named(name: &str) -> Option<&'static Lint> {

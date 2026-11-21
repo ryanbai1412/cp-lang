@@ -1822,3 +1822,27 @@ Reverse: none needed; this is general range-type lowering.
   and a half minutes on eight cores, too slow for `--fast`; `--fast` builds every port for every profile (size, stamp,
   stack rule) and compiles and runs the deep-recursion program under each. Reverse: move the ignored test
   into `--fast`.
+
+## 35. Taste lints (§8 tooling, 2026-11-21)
+
+1. **The `plan/PORTING.md` taste checklist is machine-checked as lints
+   L0501–L0506** (`search_loop`, `discarded_result`, `symmetric_write`,
+   `loop_reduction`, `index_only_loop`, `repeated_literal`), read off the
+   syntax tree like the other lints. Reason: ports passed every gate and still
+   read like translated C++; a lint names the construct at the place.
+   Reverse: drop `rules/taste.rs` and the six `Lint`s.
+2. **A fix-it only for the exact shape, and never when it could change
+   meaning:** not when the loop holds a `?` (it would leave the
+   comprehension, not the fn), when the file declares a fn of the
+   reduction's name, when the accumulator starts from a non-number (`sum`
+   of strings), or for `max`/`min` (empty has no value). The rewrite keeps
+   the declaration's type and edits only its initializer. Applying every fix
+   to the corpus changes 136 files and breaks none that checked before.
+   Reverse: widen the shapes in `exact_search` and `reduce`.
+3. **`repeated_literal` counts lines, not occurrences** (`-1e9..=1e9` is one
+   fact), and fires for a value of at least 1e6 on two lines or at least
+   1000 on three. Reason: bounds and moduli are big; small numbers repeat
+   honestly. Reverse: change the thresholds in `repeated_literals`.
+4. **The friction detector `negative_slice` gets no lint:** `a[..-k]` is
+   already the check error E0309 with the same fix, so the friction script's
+   one `wa_trap` is stale. Reverse: none needed.

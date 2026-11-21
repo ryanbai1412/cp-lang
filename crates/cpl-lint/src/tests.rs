@@ -34,7 +34,7 @@ fn every_lint_has_its_own_code_and_name() {
 
 #[test]
 fn clean_code_gets_nothing() {
-    let src = "let n: 1..=2e5 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nvar best = 0\nfor v in V:\n    best max= a[v]\nprint(best)\n";
+    let src = "let n: 1..=2e5 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nprint(max(a[v] for v in V))\n";
     assert_eq!(codes(src), Vec::<&str>::new());
 }
 
@@ -608,7 +608,7 @@ fn a_top_level_loop_hides_no_name_written_below_it() {
 /// line can't name it: a local of that fn hides nothing.
 #[test]
 fn a_local_above_multitest_hides_nothing_below_it() {
-    let helper = "fn helper(k: Int) -> Int:\n    let n = k * 2\n    var total = 0\n    for i in 0..n: total += i\n    total\n";
+    let helper = "fn helper(k: Int) -> Int:\n    let n = k * 2\n    var total = 0\n    for i in 0..n:\n        total += i\n        total *= 2\n    total\n";
     let tests = "let n: Int = read()\nlet total = helper(n)\nprint(total)\n";
     assert_eq!(codes(&format!("{helper}@!multitest\n{tests}")), Vec::<&str>::new());
     // Without the line, and for a fn below it, the names are in reach.
@@ -624,4 +624,118 @@ fn a_statement_s_own_names_are_not_hidden_on_its_right_side() {
     assert!(codes(own).is_empty());
     let later = "let n = 3\nlet i = 1\nlet best = first(i for i in 0..n if i > 1)!\nprint(i, best)\n";
     assert_eq!(codes(later), ["L0203"]);
+}
+
+/// Applies every fix until none is left; the result must lint clean of `code`.
+fn fixed(src: &str) -> String {
+    let mut src = src.to_string();
+    loop {
+        let found = lint(&src, &Config::default());
+        let (text, applied) = apply_fixes(&src, &found);
+        if applied == 0 {
+            return src;
+        }
+        src = text;
+    }
+}
+
+fn taste_codes(src: &str) -> Vec<&'static str> {
+    codes(src).into_iter().filter(|c| c.starts_with("L05")).collect()
+}
+
+#[test]
+fn search_loop_becomes_first_from_shoi16p4() {
+    // proto/ports/scout_batch_29/shoi16p4.cp: the pivot of a Gaussian elimination.
+    let src = "fn pivot_of(a: List<Int>, i: Int) -> ?Int:\n    var pivot: ?Int = none\n    for r in i..a.len:\n        if a[r] != 0:\n            pivot = r\n            break\n    pivot\nprint(pivot_of([0, 3], 0))\n";
+    assert_eq!(taste_codes(src), ["L0501"]);
+    assert_eq!(
+        fixed(src),
+        "fn pivot_of(a: List<Int>, i: Int) -> ?Int:\n    let pivot: ?Int = first(r for r in i..a.len if a[r] != 0)\n    pivot\nprint(pivot_of([0, 3], 0))\n"
+    );
+    // An open range is bracketed, so its `if` is not read as its end.
+    let open = "fn f(a: List<Int>):\n    var at: ?Int = none\n    for r in 0..:\n        if a[r] != 0:\n            at = r\n            break\n    print(at)\n";
+    assert!(fixed(open).contains("first(r for r in (0..) if a[r] != 0)"));
+}
+
+#[test]
+fn search_loop_with_a_flag_becomes_any_or_all_from_noi09p1() {
+    // proto/ports/scout_batch_15/noi09p1.cp: `var moved = false` over a neighbour list.
+    let src = "let adj = [1, 2]\nvar moved = false\nfor a in adj:\n    if a > 1:\n        moved = true\n        break\nprint(moved)\n";
+    assert_eq!(taste_codes(src), ["L0501"]);
+    assert!(fixed(src).contains("let moved = any(a > 1 for a in adj)"));
+    let all = "let grp = [1, 2]\nvar ok = true\nfor m in grp:\n    if m < 0:\n        ok = false\n        break\nprint(ok)\n";
+    assert!(fixed(all).contains("let ok = all(not (m < 0) for m in grp)"));
+    // A loop that does more than search is flagged without a rewrite.
+    let more = "let grp = [1, 2]\nvar ok = true\nfor m in grp:\n    print(m)\n    if m < 0:\n        ok = false\n        break\nprint(ok)\n";
+    let found = only(more);
+    assert_eq!((found.code.0, found.fixes.len()), ("L0501", 0));
+}
+
+#[test]
+fn discarded_result_from_noi23p4() {
+    // proto/ports/scout_batch_52/today/noi23p4.cp: `let _ = save_sub(u * 2)`.
+    let src = "fn save_sub(u: Int) -> Int:\n    print(u)\n    u\nlet _ = save_sub(2)\nlet _ = print(1)\n";
+    let found = only(src);
+    assert_eq!(found.code, DISCARDED_RESULT.code);
+    assert_eq!(found.message, "`let _ =` throws away what `save_sub` returns");
+}
+
+#[test]
+fn symmetric_writes_from_noip18p4_and_noi07p1() {
+    // proto/ports/scout_batch_37/noip18p4.cp and scout_batch_23/noi07p1.cp.
+    let pushes = "var adj: [0..3]List<Int> = []\nlet (u, v) = (0, 2)\nadj[u].push(v)\nadj[v].push(u)\nprint(adj[0].len)\n";
+    assert_eq!(taste_codes(pushes), ["L0503"]);
+    let cells = "var ways: [0..3, 0..3]Int = 0\nlet (u, v) = (0, 2)\nways[u, v] = 1\nways[v, u] = 1\nprint(ways[0, 2])\n";
+    assert_eq!(taste_codes(cells), ["L0503"]);
+    let weighted = "var adj: [0..3]List<(Int, Int)> = []\nlet (u, v) = (0, 2)\nadj[u].push((v, 5))\nadj[v].push((u, 5))\nprint(adj[0].len)\n";
+    assert_eq!(taste_codes(weighted), ["L0503"]);
+    // Different facts, or a self-loop, are not one fact twice.
+    let other = "var adj: [0..3]List<(Int, Int)> = []\nlet (u, v) = (0, 2)\nadj[u].push((v, 5))\nadj[v].push((u, 6))\nadj[u].push(u)\nadj[u].push(u)\nprint(adj[0].len)\n";
+    assert_eq!(taste_codes(other), Vec::<&str>::new());
+}
+
+#[test]
+fn loop_reductions_from_cco23p4_and_powers() {
+    // proto/ports/scout_batch_36/cco23p4.cp: occurrences of a pattern.
+    let count = "fn occ(w: Str, pat: Str) -> Int:\n    var res = 0\n    for i in 0..=w.len - pat.len:\n        if w[i..i + pat.len] == pat: res += 1\n    res\nprint(occ(\"aaa\", \"aa\"))\n";
+    assert_eq!(taste_codes(count), ["L0504"]);
+    assert_eq!(
+        fixed(count),
+        "fn occ(w: Str, pat: Str) -> Int:\n    let res = count(w[i..i + pat.len] == pat for i in 0..=w.len - pat.len)\n    res\nprint(occ(\"aaa\", \"aa\"))\n"
+    );
+    // examples/local-lib/math/powers.cp: the declared type stays.
+    let sum = "const P = 7\nlet pw: List<Mod<P>> = [1, 2]\nvar acc: Mod<P> = 0\nfor i in 0..2: acc += pw[i]\nprint(acc)\n";
+    assert!(fixed(sum).contains("let acc: Mod<P> = sum(pw[i] for i in 0..2)\nprint(acc)"));
+    // `max=` is named but not rewritten: `max` of nothing has no value.
+    let best = "let xs = [3, 1]\nvar best = 1_000_000_000\nfor x in xs: best min= x\nprint(best)\n";
+    let found = only(best);
+    assert_eq!((found.code.0, found.fixes.len()), ("L0504", 0));
+    // Strings, a `?`, a name of the file's own, and self-reference are left alone.
+    let skip = "let xs = [\"a\"]\nvar s = \"\"\nfor x in xs: s += x\nvar t = 0\nfor x in [1]: t += t\nprint(s, t)\n";
+    assert_eq!(taste_codes(skip), Vec::<&str>::new());
+    let tried = "fn g(k: Int) -> ?Int = k\nfn f() -> ?Int:\n    var s = 0\n    for k in 0..4: s += g(k)?\n    s\nprint(f())\n";
+    assert_eq!(lint(tried, &Config::default())[0].fixes.len(), 0);
+}
+
+#[test]
+fn index_only_loop_from_noi05p2() {
+    // proto/ports/scout_batch_24/today/noi05p2.cp.
+    let src = "let vals = [3, 8]\nfor i in 0..vals.len:\n    print(vals[i] * 2, vals[i])\n";
+    assert_eq!(taste_codes(src), ["L0505"]);
+    assert_eq!(fixed(src), "let vals = [3, 8]\nfor val in vals:\n    print(val * 2, val)\n");
+    // `i` used for itself, or the list written through it, needs the index.
+    let needed = "var vals = [3, 8]\nfor i in 0..vals.len:\n    print(i, vals[i])\nfor i in vals.indices:\n    vals[i] += 1\nprint(vals)\n";
+    assert_eq!(taste_codes(needed), Vec::<&str>::new());
+}
+
+#[test]
+fn repeated_literal_from_yac6p3() {
+    // proto/ports/yac6p3.cp: the same `1e9` bound twice.
+    let src = "let n: 1..=1e9 = read()\nlet m: 1..=1e9 = read()\nprint(n + m)\n";
+    let found = only(src);
+    assert_eq!(found.code, REPEATED_LITERAL.code);
+    assert_eq!(found.message, "`1e9` is written on 2 lines; it is first on line 1");
+    // `-1e9..=1e9` is one bound, and small numbers repeat freely.
+    let one = "let x: -1e9..=1e9 = read()\nprint(x + 1000, x - 1000)\n";
+    assert_eq!(taste_codes(one), Vec::<&str>::new());
 }

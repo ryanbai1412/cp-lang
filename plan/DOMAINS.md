@@ -331,6 +331,10 @@ Profile time is not yet compared with `@cost`.
 **Bar.** Each tool has tests and a doc page; lint has zero false positives
 on the corpus; fmt is idempotent on every port; interpreter and native
 profiles agree on every count.
+Taste lints L0501–L0506 back the `plan/PORTING.md` checklist (search
+loops, `let _ =` discards, symmetric writes, loop reductions, index-only
+loops, repeated bounds and moduli), each with a doc entry and a test from
+a real port; their fixes change 136 corpus files and break none.
 **Next.** A test that every `L0414` is an index
 the C++ checks (codegen to report its checked indexes); lints from the friction
 detectors (`wa_trap` first); profile against `@cost` and the time limit.
