@@ -4073,7 +4073,10 @@ impl<'p> Compiler<'p> {
                 }
                 _ => self.emit_fallback_expr_v(expr),
             },
-            ExprKind::Range { lo, hi } => {
+            ExprKind::Range { lo, hi }
+                if ScalarKind::of_ty(&lo.ty, self.program).is_some()
+                    && ScalarKind::of_ty(&hi.ty, self.program).is_some() =>
+            {
                 let r_lo = self.compile_expr_i(lo);
                 let r_hi = self.compile_expr_i(hi);
                 let dst = self.alloc_v();
