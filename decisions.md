@@ -2841,10 +2841,9 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
   `perfect: Bool = false` (labels start at `big`), or a sparse priority-queue variant if a
   port needs V in the thousands.
 - **43.8 `std.flow` hot loops run in `unchecked:`.** Dinic's BFS and path search,
-  `CostFlow.slope`, Hungarian, `general_matching`'s search and the blossom slack scans
-  index arc and label tables by
-  ids the library itself created, so the checks never fire; dropping them takes min-cost
-  flow from 1.41x to 1.14x matched C++. Reverse: remove the `unchecked:` lines if a
+  `CostFlow.slope`, Hungarian, Hopcroft-Karp, `general_matching`'s search and the blossom
+  slack scans index arc and label tables by ids the library itself created, so the checks
+  never fire; dropping them takes min-cost flow from 1.41x to 1.14x matched C++. Reverse: remove the `unchecked:` lines if a
   check-elision pass proves these ids in range.
 - **43.9 `FlowGraph.min_cut(s)` traps unless a completed `max_flow(s, t)` came since the
   last `add` or `reset`.** One `?V` field records it; reading the cut after a `limit:` stop,

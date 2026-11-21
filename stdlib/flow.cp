@@ -372,30 +372,31 @@ pub fn max_matching<L, R>(adj: [L]List<R>) -> (size: Int, mate: [L]?R, back: [R]
     while true:
         var level = alternating_layers(adj, mate, back)
         if not any(level[u] != none and any(back[v] == none for v in adj[u]) for u in L): break
-        var next: [L]Int = 0
-        for root in L:
-            if mate[root] != none: continue
-            var path = [root]
-            while not path.is_empty:
-                let u = path.last!
-                if next[u] == adj[u].len:
-                    level[u] = none
-                    path.pop()
-                    continue
-                let v = adj[u][next[u]]
-                next[u] += 1
-                if let w = back[v]:
-                    if level[w] == level[u]! + 1: path.push(w)
-                else:
-                    var free = v
-                    for i in (0..path.len).rev:
-                        let x = path[i]
-                        let old = mate[x]
-                        mate[x] = free
-                        back[free] = x
-                        if old != none: free = old!
-                    size += 1
-                    path = []
+        unchecked:
+            var next: [L]Int = 0
+            for root in L:
+                if mate[root] != none: continue
+                var path = [root]
+                while not path.is_empty:
+                    let u = path.last!
+                    if next[u] == adj[u].len:
+                        level[u] = none
+                        path.pop()
+                        continue
+                    let v = adj[u][next[u]]
+                    next[u] += 1
+                    if let w = back[v]:
+                        if level[w] == level[u]! + 1: path.push(w)
+                    else:
+                        var free = v
+                        for i in (0..path.len).rev:
+                            let x = path[i]
+                            let old = mate[x]
+                            mate[x] = free
+                            back[free] = x
+                            if old != none: free = old!
+                        size += 1
+                        path = []
     (size: size, mate: mate, back: back)
 
 /// A minimum vertex cover of the bipartite graph `adj`: every edge has a marked end, and
@@ -412,19 +413,20 @@ pub fn min_vertex_cover<L, R>(adj: [L]List<R>) -> (left: [L]Bool, right: [R]Bool
 
 /// Breadth-first layers of the left side by alternating paths: free vertices are layer 0,
 /// and a matched vertex is one deeper than a left vertex adjacent to its partner.
-fn alternating_layers<L, R>(adj: [L]List<R>, mate: [L]?R, back: [R]?L) -> [L]?Int:
-    var level: [L]?Int = none
+fn alternating_layers<L, R>(adj: [L]List<R>, mate: [L]?R, back: [R]?L) -> [L]?(0..2_147_483_648):
+    var level: [L]?(0..2_147_483_648) = none
     var queue = [u for u in L if mate[u] == none]
     for u in queue: level[u] = 0
     var at = 0
-    while at < queue.len:
-        let u = queue[at]
-        at += 1
-        for v in adj[u]:
-            if let w = back[v]:
-                if level[w] == none:
-                    level[w] = level[u]! + 1
-                    queue.push(w)
+    unchecked:
+        while at < queue.len:
+            let u = queue[at]
+            at += 1
+            for v in adj[u]:
+                if let w = back[v]:
+                    if level[w] == none:
+                        level[w] = level[u]! + 1
+                        queue.push(w)
     level
 
 /// The maximum-weight assignment: every `l` in `L` gets a distinct `mate[l]` in `R`
