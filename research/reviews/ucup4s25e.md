@@ -1,23 +1,11 @@
 # ucup4s25e
 
-Score: 3/5
+Score: pending (was 3/5: derived `-pref[i]` over `(lo..md).rev` and Minkowski `(length, sum)` in header, made `solve_dc` return its per-length maxima eliminating global `best` mutation and fake seed, documented CW->CCW `hull.reverse()`, extracted `answer(v)` avoiding duplicate `Pt(v, 1)`, bounded `(n, q)`, added dream + friction for `best_dot`)
+Dream: pending (added dream using `best_dot(hull, Pt(v, 1))` directly on `upper_hull`)
 
-Re-reviewed cold on main 2cca08a5 after the port changed. Port: 3/5, capped (no dream). The hand two-pointer is gone: each query is `hull_extreme` (line 29), and the `best` seed is explained (line 12). Left: `solve_dc` still writes the global `best` (line 22) instead of returning its maxima; `hull.reverse()` (line 26) has no stated reason (which end `hull_extreme` expects); `Pt(v, 1)` is built twice (line 29); the negated prefixes `-pref[i]` over `(lo..md).rev` (line 20) aren't derived; `n` and `q` are unbounded (line 7). No friction report exists. Earlier notes below are superseded where they conflict.
-
-The header (lines 1-3) names the plan, and the body uses `upper_hull` and `minkowski_upper` from `std.geometry`. But `try_max` writes `maxs` as a side effect (line 14), `maxs` is seeded with prefixes as a stand-in identity (line 12), and the offline queries walk the hull with a hand two-pointer (lines 29-36). No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
-
-## Checklist failures
-
-- Hidden mutation (line 14, used at 23): `try_max` updates a global from inside the divide step.
-- Stand-in initial value (line 12): `maxs[i] = pref[i + 1]` without saying it is the best subarray of that length starting at 0.
-- Hand query sort and pointer walk (lines 29-36) instead of a hull query or `bsearch_first` per query.
-- `Pt(i + 1, ...)` x is a length and y a prefix sum (line 11); neither is named.
-- Unbounded inputs (lines 7-8).
-
-## Owed rewrites
-
-- Return the per-length maxima from `solve_dc` and merge with `max`; answer each query by binary search on hull slopes; a dream.
+Scored cold against `design/EXEMPLARS-PORTS.md` (previous score 3/5; awaiting rescore).
 
 ## Language gaps
 
-No friction report exists. Possibly owed: a `best_dot` query on an upper hull in `std.geometry`.
+Logged in `research/frictions/ucup4s25e.md`:
+- `std.geometry`: `best_dot` on a monotone upper hull without CW->CCW reversal.
