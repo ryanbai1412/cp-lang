@@ -56,6 +56,9 @@ caps the dream at 3:
 - range ends: decision §101 makes `.start`/`.end` the accessors with `end`
   exclusive, so a 1-based inclusive pair printed as `start + 1, end` is
   correct, not off by one.
+- pattern tests: decision §111 binds headers with `if let`/`while let`;
+  `x is pat and cond` in a value position (a `Bool` argument or assignment)
+  is canonical. Flag only `if x is p:` and `while x is p:` headers.
 
 A dream under 4 goes back to its port's lane (the polish lane if that lane
 has moved on) to rewrite before the port is judged: a new review of such a

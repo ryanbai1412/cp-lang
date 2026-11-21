@@ -1,7 +1,7 @@
 # wtf26d
 
 Score: 2/5
-Dream: pending (rewritten: O(n) pref_min, splits try_place into pure forms_inversion/required_cap/can_place + commit_place, drops while true and ?? n)
+Dream: 2/5
 
 Rescored cold on main 1a5cc751 (old 2/5, new 2/5) for accepted syntax (decisions.md §53, §58, §63, §70) and stdlib reuse. Scored on its first landing (ddf13f69); no dream commit since. Syntax: nothing outside decisions.md (`.inverse()` is a method, not a getter). The nested `if let ... else` optional clamps (lines 52-53) are hand-folding a `min` over optionals. Sent back: under 4, the lane owes a rewrite before the port is judged.
 
@@ -40,3 +40,12 @@ Sent back: the dream goes to its port's lane (the polish lane if that lane has m
 ## Rewrite note (pending rescore)
 
 Rewritten dream and port: O(n) `pref_min` scan (fixed O(n²) dream bug), split side-effecting `try_place` into pure `forms_inversion`/`required_cap`/`can_place` + mutating `commit_place`, removed `while true` retry loop and `?? n` sentinel on `Pos`, and iterated `Pos` directly in the dream's block-draining loop. Emitted C++ grew `20,980 -> 22,240 B` (+1,260 B, 34% of 64 KB) from the four small local helper functions replacing `try_place` (codegen: inline small single-call helpers).
+
+## Cold review (HEAD)
+
+Dream 2/5 (was 2), sent back. The first phase improved: `forms_inversion`/`required_cap`/`can_place` are pure, and `commit_place` is the one mutator. The block packing (lines 92-120) is still hand-rolled bookkeeping:
+- `block_starts: List<Int>`, `p_to_block: [Pos]?Int`, the `en` counter and the `?? (block_starts.len - 1)` default (line 118) hand-roll "sort the remaining values by (block, descending value) and write them from `filled`". Compute each value's block key, then `sorted(by:)` and one zip into `q[filled..]`.
+- `pref_min` (lines 42-46) is a prefix min over optionals written as a loop; `scan` with `min` over present values says it.
+- `seen_inversion` (line 49) and `filled` (line 80) are flags carried across helpers; `filled = i.ord + 1` is written twice (lines 85, 89).
+- `(print(q); return)` (line 37) doesn't parse (E0103), and `Val.last(pred)` (line 87) is a value, not a function: write `Val.rev.first(pred)`.
+- The header doesn't derive why the stack thresholds order the suffix blocks (lines 6-8).
