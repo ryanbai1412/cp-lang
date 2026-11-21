@@ -168,7 +168,7 @@ fn logical_lines<'a>(src: &'a str, lexed: &Lexed) -> Vec<Line<'a>> {
     let mut last_end = 0usize;
     let mut last_tok_end: Option<usize> = None;
 
-    for tok in &lexed.tokens {
+    for (at, tok) in lexed.tokens.iter().enumerate() {
         match tok.kind {
             K::Indent => {
                 depth += 1;
@@ -236,7 +236,13 @@ fn logical_lines<'a>(src: &'a str, lexed: &Lexed) -> Vec<Line<'a>> {
                 line.toks.push(entry);
                 line.toks.last_mut().unwrap().leading = leading;
             }
-            None if entry.kind == K::Comma && open_brackets > 0 && !lines.is_empty() => {
+            None if entry.kind == K::Comma
+                && open_brackets > 0
+                && !lines.is_empty()
+                && lexed.tokens.get(at + 1).is_some_and(|next| {
+                    matches!(next.kind, K::RParen | K::RBracket | K::RBrace | K::Newline)
+                }) =>
+            {
                 // A trailing comma that closed a bracketed layout block (`=>\n    ...,\n`)
                 // stays attached to the preceding line so re-lexing emits the same Dedent before `,`.
                 if let Some(prev) = lines.last_mut() {
@@ -245,7 +251,8 @@ fn logical_lines<'a>(src: &'a str, lexed: &Lexed) -> Vec<Line<'a>> {
                 }
             }
             None => {
-                let starts_closer = matches!(entry.kind, K::RParen | K::RBracket | K::RBrace);
+                let starts_closer =
+                    matches!(entry.kind, K::RParen | K::RBracket | K::RBrace | K::Comma);
                 let line_depth = if open_brackets > 0 && !starts_closer {
                     depth.max(open_brackets)
                 } else {

@@ -501,3 +501,9 @@ fn formats_punned_named_args_and_records() {
     assert_eq!(fmt(src), want);
     assert_eq!(fmt(want), want);
 }
+
+#[test]
+fn keeps_an_argument_after_a_block_lambda_outside_the_block() {
+    let src = "let t = f(x =>\n    let y = x\n    y\n, 3)\n";
+    assert_eq!(format(src).unwrap(), src);
+}
