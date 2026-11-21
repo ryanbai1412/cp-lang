@@ -8,8 +8,8 @@ use std.strings.period
 let (n, m): (1..=10_000_000, 2..=10_000_000) = read()
 let (s, t): (Str, Str) = read()
 
-let max_pre = first(i for i in 0..n if s[i] != t[i]) ?? n
-let max_suf = first(i for i in 0..n if s[n - 1 - i] != t[m - 1 - i]) ?? n
+let max_pre = s.common_prefix_len(t)
+let max_suf = s.common_suffix_len(t)
 if max_pre + max_suf <= n:
     print(0)
     return
@@ -17,8 +17,7 @@ if max_pre + max_suf <= n:
 let min_x = n - max_suf
 let core_n = max_pre + max_suf - n
 let delta = m - n
-let block = t[min_x..min_x + delta]
-let p = period(block)
+let p = period(t[min_x..min_x + delta])
 let g = if delta % p == 0: p else: delta
 
-print(sum(core_n - a + 1 for a in g..=min(core_n, delta) by g if delta % a == 0))
+print([core_n - a + 1 for a in g..=min(core_n, delta) by g if delta % a == 0].sum())

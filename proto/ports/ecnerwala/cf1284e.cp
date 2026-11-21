@@ -12,8 +12,7 @@ fn choose3(k: Int) -> Int = k * (k - 1) * (k - 2) / 6
 let total_quads = (n - 1) * (n - 2) * (n - 3) * (n - 4) / 24
 
 fn enclosures(center: V) -> Int:
-    var dirs = [pts[v] - pts[center] for v in V if v != center]
-    dirs.sort(by: d => ByAngle(d))
+    let dirs = [pts[v] - pts[center] for v in V if v != center].sorted(by: d => ByAngle(d))
     let m = dirs.len
     var bad = 0
     var j = 0
@@ -24,4 +23,4 @@ fn enclosures(center: V) -> Int:
         bad += choose3(j - i - 1)
     total_quads - bad
 
-print(sum(enclosures(v) for v in V))
+print([enclosures(v) for v in V].sum())

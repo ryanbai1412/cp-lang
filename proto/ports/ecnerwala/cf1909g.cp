@@ -10,8 +10,8 @@ let m: 2..=10_000_000 = read()
 let s: Str = read()
 let t: Str = read()
 
-let max_pre = first(i for i in 0..n if s[i] != t[i]) ?? n
-let max_suf = first(i for i in 0..n if s[n - 1 - i] != t[m - 1 - i]) ?? n
+let max_pre = (0..n).first(i => s[i] != t[i]) ?? n
+let max_suf = (0..n).first(i => s[n - 1 - i] != t[m - 1 - i]) ?? n
 if max_pre + max_suf <= n:
     print(0)
 else:

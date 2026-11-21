@@ -9,18 +9,13 @@ domain Row = 0..n
 domain Col = 0..m
 let grid: [Row, Col]Char = read()
 
-domain Node = 0..n * m + 2
-let src = Node(n * m)
-let snk = Node(n * m + 1)
-fn cell(r: Row, c: Col) -> Node = Node(r.ord * m + c.ord)
-
+enum Node { Src, Snk, Cell(Row, Col) }
 var fg = FlowGraph<Node>()
-for r in Row:
-    for c in Col if grid[r, c] == '#':
-        let u = cell(r, c)
-        let up = if let rp = r.prev if grid[rp, c] == '#': cell(rp, c) else: src
-        let left = if let cp = c.prev if grid[r, cp] == '#': cell(r, cp) else: snk
-        fg.add(up, u, 1)
-        fg.add(u, left, 1)
+for (r, c) in (Row, Col) if grid[r, c] == '#':
+    let u = Node.Cell(r, c)
+    let up = if let rp = r.prev if grid[rp, c] == '#': Node.Cell(rp, c) else: Node.Src
+    let left = if let cp = c.prev if grid[r, cp] == '#': Node.Cell(r, cp) else: Node.Snk
+    fg.add(up, u, 1)
+    fg.add(u, left, 1)
 
-print(fg.max_flow(src, snk))
+print(fg.min_cut(Node.Src, Node.Snk))

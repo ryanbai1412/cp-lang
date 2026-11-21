@@ -1,27 +1,16 @@
-// A 4-point subset Q encloses p iff Q does not lie inside any open half-plane through p.
-// Because no three points are collinear, each non-enclosing 4-subset has a unique first
-// ray in CCW order around p whose remaining 3 rays lie strictly within (0, pi) ahead of it.
-// Sort the other n - 1 vectors around each p by angle and sweep a half-plane window.
+// A 4-subset Q encloses center p iff Q does not lie inside any open half-plane through p.
+// With no three points collinear, each non-enclosing 4-subset has a unique first ray in
+// CCW order around p whose other 3 rays lie strictly within (0, pi) ahead of it.
+// Sort the n - 1 rays around each p by angle and count the rays ahead in each open half-plane.
 use std.geometry.{ByAngle, Pt, cross}
+use std.math.choose
 
 let n: 5..=2500 = read()
-domain V = 0..n
-let pts: [V]Pt = read()
+let pts: [n]Pt = read()
 
-fn choose3(k: Int) -> Int = k * (k - 1) * (k - 2) / 6
-let total_quads = (n - 1) * (n - 2) * (n - 3) * (n - 4) / 24
+fn non_enclosing(center: Pt) -> Int:
+    let dirs = [p - center for p in pts if p != center].sorted(by: ByAngle)
+    let ahead = dirs.cyclic_span(while: (a, b) => cross(a, b) > 0)
+    [choose(k - 1, 3) for k in ahead].sum()
 
-fn enclosures(center: V) -> Int:
-    var dirs = [pts[v] - pts[center] for v in V if v != center]
-    dirs.sort(by: d => ByAngle(d))
-    let m = dirs.len
-    var bad = 0
-    var j = 0
-    for i in 0..m:
-        if j < i + 1: j = i + 1
-        while j < i + m and cross(dirs[i], dirs[j % m]) > 0:
-            j += 1
-        bad += choose3(j - i - 1)
-    total_quads - bad
-
-print(sum(enclosures(v) for v in V))
+print(n * choose(n - 1, 4) - [non_enclosing(p) for p in pts].sum())

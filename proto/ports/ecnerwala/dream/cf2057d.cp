@@ -8,22 +8,19 @@ domain Pos = 1..=n
 let a: [Pos]1..=1_000_000_000 = read()
 
 struct Span(best: Int, lo_l: Int, hi_l: Int, lo_r: Int, hi_r: Int):
-    fn leaf(p: Pos, x: Int) -> Span = Span(0, -x + p.ord, x + p.ord, -x - p.ord, x - p.ord)
+    fn at(p: Pos, x: Int) -> Span = Span(0, -x + p.ord, x + p.ord, -x - p.ord, x - p.ord)
 
-    fn combine(a: ?Span, b: ?Span) -> ?Span:
-        let a = a ?? return b
-        let b = b ?? return a
-        Span(
-            max(a.best, b.best, a.lo_l + b.hi_r, a.hi_l + b.lo_r),
-            max(a.lo_l, b.lo_l),
-            max(a.hi_l, b.hi_l),
-            max(a.lo_r, b.lo_r),
-            max(a.hi_r, b.hi_r),
-        )
+    fn +(a: Span, b: Span) -> Span = Span(
+        max(a.best, b.best, a.lo_l + b.hi_r, a.hi_l + b.lo_r),
+        max(a.lo_l, b.lo_l),
+        max(a.hi_l, b.hi_l),
+        max(a.lo_r, b.lo_r),
+        max(a.hi_r, b.hi_r),
+    )
 
-var tree = SegTree<Pos, ?Span>(Monoid(id: none, op: Span.combine), [Pos] i => Span.leaf(i, a[i]))
-print(tree.all!.best)
+var tree = SegTree<Pos, Span>([Pos] i => Span.at(i, a[i]))
+print(tree.all.best)
 repeat q:
     let (p, x): (Pos, 1..=1_000_000_000) = read()
-    tree.set(p, Span.leaf(p, x))
-    print(tree.all!.best)
+    tree[p] = Span.at(p, x)
+    print(tree.all.best)
