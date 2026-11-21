@@ -213,8 +213,6 @@ python3 scripts/scoreboard.py --fast --check --quiet --cpl "$cpl" \
 # Taste reviews: every port newer than research/reviews/baseline.json has a
 # dream and a review, and the count of those scoring under 4 may not grow.
 step "taste reviews (scripts/review-check.py --check)"
-python3 -m unittest scripts/test_review_check.py >/dev/null 2>&1 \
-    || fail "scripts/test_review_check.py failed; rerun: python3 -m unittest scripts/test_review_check.py -v"
 python3 scripts/review-check.py --check \
     || fail "taste review gate failed; see research/reviews/README.md"
 

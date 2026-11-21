@@ -729,14 +729,20 @@ Goal tests (AGENTS.md goals 1 & 2) and spelling-drift tracking are live and ratc
   `knapsack_max_to_ways=5L/3h`, `bfs_dist_to_path=10L/3h`, `prefix_sum_query_to_max_window=9L/2h`,
   `interval_merge_count_to_len=11L/3h`, `lis_strict_to_nondec=2L/1h`, `tree_subtree_sum_to_max=2L/1h`,
   `coin_min_to_ways_mod=8L/3h`, `dsu_components_to_largest=8L/2h`), ratcheting `lines_touched` per case.
-- **Spelling-drift metric (`totals.spelling_drift`):** **0 non-canonical in active/dream files**
-  (38 remaining in retired batches only: `multitest=36`, `sum=1`, `first=0`, `sort=1`), aligned
-  with decisions §20 (`@!multitest`) and §53 (method folds/sorts; free-form generators `sum(f(x) for x in xs)`
-  stay canonical). `scripts/fix-spelling-drift.py` migrates non-canonical multitest dividers, and
-  `scripts/scoreboard.py --fast --check` fails if active/dream spelling drift is non-zero.
-- **Dream-score ratchet (`totals.dream_scores`):** **51 dreams scored, median 3/5, 39 under 4**
-  (parsed from `Dream: N/5` in `research/reviews/*.md`), ratcheted in `--fast --check` against
-  median regression or under-4 growth.
+- **Spelling-drift metric (`totals.spelling_drift`):** split by construct (`multitest`, `sum`, `first`,
+  `sort`, `where_filter`, `dot_pow`, `getter_parens`, `turbofish`), each ratcheted strictly downward;
+  original 4 constructs locked at **0 active/dream drift** (`scripts/fix-spelling-drift.py`).
+- **Dream-compile & dream-score ratchets (`totals.dream_compile`, `totals.dream_scores`):**
+  **11/68 dreams (16.2%)** check with zero errors (count never fewer); **61 dreams scored, median 3/5**
+  (parsed from `Dream: N/5` in `research/reviews/*.md`).
+- **Attributable gates & merge-safe baseline:** `scripts/scoreboard.py` attributes every ratchet to
+  changed ports/files or `crates/`/`stdlib/` diffs (naming port and cause; unrelated drift warns),
+  `scripts/review-check.py` requires reviews on new/changed ports (scores `< 4` tracked, non-blocking),
+  and `research/scoreboard.ports.jsonl` stores 1 sorted line per port with `--update PORT...` for
+  conflict-free concurrent rebases.
+- **Interpreter ratio ratchets (`totals.interp`):** dedicated `interp-ratio:` section in fast/full
+  reports (`p50=5.56x`, `p95=52.43x`, `max=89.04x`, `>10x: 26`; bar `<= 10x`, north star `<= 5x`),
+  strictly ratcheting `p50` and `>10x` count (never worse).
 - **Fast gate wall time (`totals.gate_fast`):** `scripts/check.sh --fast` now finishes in **84 s**
   (down from 249 s via `[profile.dev.package]` `opt-level = 1` for `cpl-syntax`/`cpl-check`/`cpl-ir`/`cpl-codegen`
   and overlapping `recovery_scoreboard` after `nextest`), recorded to `target/gate-fast-time.json`,

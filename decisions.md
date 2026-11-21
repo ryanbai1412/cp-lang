@@ -1428,6 +1428,22 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   *How to reverse:* remove the `[profile.dev.package]` `opt-level = 1` entries in `Cargo.toml`, adjust
   `GATE_FAST_BUDGET_S`, or relax the active-drift / dream-score checks in `diff_against_baseline`.
 
+- **23.11 Attributable gate ratchets, merge-safe `.ports.jsonl` baseline (`--update PORT...`), and expanded ratchets.**
+  `diff_against_baseline` now takes a git `scope` (`detect_change_scope`) so a commit fails only for
+  regressions in ports/files it changed, or in ports whose emitted C++/perf/dreams changed because
+  of a `crates/` or `stdlib/` diff (naming the port and cause); unrelated drift is reported as a
+  warning instead of blocking other lanes. Replaced the global `new_under_4_max` quota in
+  `scripts/review-check.py` with per-change attribution: new or changed ports require a review file
+  (`Score: N/5` or `Score: pending`), while scores `< 4` are tracked and non-blocking.
+  Split `research/scoreboard.json` into compact summary JSON plus sorted 1-line-per-port
+  `research/scoreboard.ports.jsonl` and added `--update PORT...` to update only named port lines
+  without touching summary JSON, so concurrent lanes rebase cleanly.
+  Added strict ratchets for interpreter ratio `p50` and `>10x` count (bar `<= 10x`, north star
+  `<= 5x`), dream-compile count (never fewer), and construct-split spelling drift (`getter_parens`,
+  `where_filter`, `dot_pow`, `multitest`, `turbofish`, plus `sum`/`first`/`sort`).
+  *How to reverse:* pass `scope=None` to `diff_against_baseline`, restore `new_under_4_max` in
+  `scripts/review-check.py`, or inline `ports` back into `research/scoreboard.json`.
+
 ## 24. Documentation gate in `scripts/check.sh --fast` (2026-11-21)
 
 - **24.1 Fast docs verification runs on every commit.** `site/check_docs.py` runs inside
