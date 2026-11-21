@@ -4,12 +4,18 @@
 // Start from the transitive tournament (i -> j for i < j), where vertex i has
 // out-degree parity (n - 1 - i) mod 2, and flip both endpoints for each given
 // backward edge (u > v).
-// - When k is even, the condition always holds.
-// - When k is odd, we need exactly n / 2 vertices with odd out-degree.
+// - When k is even, every allowed k-step parity balance reduces to a condition
+//   satisfied by every tournament, so the answer is always "Yes".
+// - When k is odd, we need exactly `target = floor(n / 2)` vertices with odd
+//   out-degree. Because the sum of all out-degrees in any tournament is
+//   `n * (n - 1) / 2`, and `n * (n - 1) / 2 ≡ floor(n / 2) (mod 2)` for every
+//   n (both n = 2t and n = 2t + 1 give parity t mod 2), the total number of
+//   odd-out-degree vertices ALWAYS has the same parity as `target`.
 // Each allowed flip toggles two endpoints of an edge in the complement graph,
 // so inside a complement component of size sz with `odd` initially-odd vertices
 // we can achieve any odd count in [odd % 2, sz - (sz - odd) % 2] of the same
-// parity as `odd`. Summing these intervals gives [lo, hi] for the whole graph.
+// parity as `odd`. Summing these intervals gives [lo, hi] with the same parity
+// as `target`, so `lo <= target <= hi` is both necessary and sufficient.
 
 use std.graph.complement_components
 use std.graph.undirected_of_pairs
@@ -36,7 +42,7 @@ var lo = 0
 var hi = 0
 for comp in complement_components(forbidden):
     let sz = comp.len
-    let odd = [v for v in comp if odd_out[v]].len
+    let odd = comp.count(v => odd_out[v])
     lo += odd % 2
     hi += sz - (sz - odd) % 2
 

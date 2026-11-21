@@ -1,7 +1,7 @@
 # agc077c
 
 Score: 2/5
-Dream: 3/5
+Dream: pending cold rescore (rewritten: proves `sum(out_deg) = n(n-1)/2 ≡ floor(n/2) (mod 2)` parity invariance + even/odd `k` cases in header, replaces list-comprehension `.len` with `comp.count(v => odd_out[v])`)
 
 The complement-graph components are found by a hand DFS with a two-pointer skip over sorted adjacency, and the parity bookkeeping (`out_deg`, `c0`/`c1`, `mi_1`/`ma_1`) is never explained. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
