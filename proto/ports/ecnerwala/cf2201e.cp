@@ -35,7 +35,7 @@ fn fold(from: Int, len: Int) -> ?List<?Char>:
     s
 
 fn sign(c: ?Char) -> Int = if let c = c: (if c == 'a': 1 else: -1) else: 0
-fn known(c: ?Char) -> Int = if c is some: 1 else: 0
+fn known(c: ?Char) -> Int = if let _ = c: 1 else: 0
 
 fn ways(len: Int) -> Z:
     let x = fold(0, len) ?? return 0
