@@ -1,7 +1,7 @@
 # agc077c
 
 Score: 2/5
-Dream: pending cold rescore (rewritten: proves `sum(out_deg) = n(n-1)/2 ≡ floor(n/2) (mod 2)` parity invariance + even/odd `k` cases in header, replaces list-comprehension `.len` with `comp.count(v => odd_out[v])`)
+Dream: 4/5
 
 The complement-graph components are found by a hand DFS with a two-pointer skip over sorted adjacency, and the parity bookkeeping (`out_deg`, `c0`/`c1`, `mi_1`/`ma_1`) is never explained. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
@@ -30,3 +30,11 @@ Dream 3/5 (new, d93c0286), sent back.
 - `complement_components` (line 37) isn't in the stdlib (E0201); the friction report covers it.
 
 Port 2/5: it hand-rolls the complement-graph DFS with an unvisited set, a `cursor` and a merge pointer `ai` (the reported gap).
+
+## Cold review (HEAD)
+
+Dream 3 → 4/5, rescored after ce8206db. The header now proves that the parity of the odd-vertex count is fixed (`n(n-1)/2 ≡ floor(n/2)`), so `lo <= target <= hi` is enough; the parity concern is closed.
+- Owed for a 5: the even-`k` case (lines 7-8) is still only asserted.
+- `std.graph.complement_components` (line 20) isn't in the stdlib (E0201); file it in the friction report if it isn't there.
+
+The port score (2/5) holds; it doesn't use the dream's component intervals yet.
