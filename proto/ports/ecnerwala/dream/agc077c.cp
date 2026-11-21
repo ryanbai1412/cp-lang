@@ -1,0 +1,44 @@
+// AtCoder Grand Contest 077 C: decide whether an orientation reachable by
+// flipping non-forbidden pairs can give the target out-degree parity profile.
+//
+// Start from the transitive tournament (i -> j for i < j), where vertex i has
+// out-degree parity (n - 1 - i) mod 2, and flip both endpoints for each given
+// backward edge (u > v).
+// - When k is even, the condition always holds.
+// - When k is odd, we need exactly n / 2 vertices with odd out-degree.
+// Each allowed flip toggles two endpoints of an edge in the complement graph,
+// so inside a complement component of size sz with `odd` initially-odd vertices
+// we can achieve any odd count in [odd % 2, sz - (sz - odd) % 2] of the same
+// parity as `odd`. Summing these intervals gives [lo, hi] for the whole graph.
+
+use std.graph.complement_components
+use std.graph.undirected_of_pairs
+
+@!multitest
+let n: 1..=200_000 = read()
+let m: 0..=200_000 = read()
+let k: 1..=1_000_000_000 = read()
+domain V = 1..=n
+
+let edges: [0..m](V, V) = read()
+var odd_out: [V]Bool = [V] v => (n - 1 - v.ord) % 2 == 1
+for (u, v) in edges if u > v:
+    odd_out[u] = not odd_out[u]
+    odd_out[v] = not odd_out[v]
+
+if k % 2 == 0:
+    print("Yes")
+    return
+
+let forbidden = undirected_of_pairs(List(edges))
+
+var lo = 0
+var hi = 0
+for comp in complement_components(forbidden):
+    let sz = comp.len
+    let odd = [v for v in comp if odd_out[v]].len
+    lo += odd % 2
+    hi += sz - (sz - odd) % 2
+
+let target = n / 2
+print(if lo <= target and target <= hi: "Yes" else: "No")

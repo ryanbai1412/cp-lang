@@ -1,42 +1,59 @@
+// AtCoder Grand Contest 077 C: decide whether an orientation reachable by
+// flipping non-forbidden pairs can give the target out-degree parity profile.
+//
+// Start from the transitive tournament (i -> j for i < j), where vertex i has
+// out-degree parity (n - 1 - i) mod 2, and flip both endpoints for each given
+// backward edge (u > v).
+// - When k is even, the condition always holds.
+// - When k is odd, we need exactly n / 2 vertices with odd out-degree.
+// Each allowed flip toggles two endpoints of an edge in the complement graph,
+// so inside a complement component of size sz with `odd` initially-odd vertices
+// we can achieve any odd count in [odd % 2, sz - (sz - odd) % 2] of the same
+// parity as `odd`. Summing these intervals gives [lo, hi] for the whole graph.
+
+use std.graph.undirected_of_pairs
+
 @!multitest
-let (n, m, k): (Int, Int, Int) = read()
-var adj: [0..n]List<Int> = []
-var out_deg = [0..n] i => (n - 1 - i) % 2
-for _ in 0..m:
-    let (u0, v0): (Int, Int) = read()
-    let (u, v) = (u0 - 1, v0 - 1)
-    adj[u].push(v)
-    adj[v].push(u)
-    if u > v:
-        out_deg[u] ^= 1
-        out_deg[v] ^= 1
+let n: 1..=200_000 = read()
+let m: 0..=200_000 = read()
+let k: 1..=1_000_000_000 = read()
+domain V = 1..=n
+
+let edges: [0..m](V, V) = read()
+var odd_out: [V]Bool = [V] v => (n - 1 - v.ord) % 2 == 1
+for (u, v) in edges if u > v:
+    odd_out[u] = not odd_out[u]
+    odd_out[v] = not odd_out[v]
 
 if k % 2 == 0:
     print("Yes")
     return
 
-for i in 0..n: adj[i].sort()
-var unvisited = Set(0..n)
+var forbidden = undirected_of_pairs(List(edges))
+for u in V: forbidden[u].sort()
+var unvisited = Set(V)
 
-var mi_1 = 0
-var ma_1 = 0
-for start in 0..n if start in unvisited:
-    var c0 = 0
-    var c1 = 0
-    fn dfs(cur: Int):
+var lo = 0
+var hi = 0
+for start in V if start in unvisited:
+    var sz = 0
+    var odd = 0
+    fn dfs(cur: V):
         unvisited.remove(cur)
-        if out_deg[cur] == 0: c0 += 1 else: c1 += 1
-        var nxt = 0
+        sz += 1
+        if odd_out[cur]: odd += 1
+        var cursor: ?V = V.first
         var ai = 0
-        while let v = unvisited.first_ge(nxt):
-            nxt = v
-            while ai < adj[cur].len and adj[cur][ai] < nxt: ai += 1
-            if ai == adj[cur].len or adj[cur][ai] != nxt: dfs(nxt)
-            nxt += 1
+        while let at = cursor:
+            if let nxt = unvisited.first_ge(at):
+                while ai < forbidden[cur].len and forbidden[cur][ai] < nxt: ai += 1
+                if ai == forbidden[cur].len or forbidden[cur][ai] != nxt: dfs(nxt)
+                cursor = nxt.next
+            else:
+                break
     dfs(start)
-    let tot = c0 + c1
-    mi_1 += c1 % 2
-    ma_1 += tot - (tot - c1) % 2
+    lo += odd % 2
+    hi += sz - (sz - odd) % 2
 
-let tgt = n / 2
-print(if mi_1 <= tgt and tgt <= ma_1: "Yes" else: "No")
+let target = n / 2
+print(if lo <= target and target <= hi: "Yes" else: "No")
