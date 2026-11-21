@@ -13,6 +13,7 @@ use std.algebra.{Action, Desc, Monoid, Ordering, cmp, desc, fold}
 use std.bag.{BucketCount, SortedBag, SortedSet}
 use std.bitset.{Bitset}
 use std.deque.{Deque, LinkedList}
+use std.dp.{LiChao, Line}
 use std.dsu.{Dsu, DsuOf, PotentialDsu}
 use std.fenwick.{Fenwick, Fenwick2D}
 use std.flow.{Arc, FlowGraph}
@@ -21,7 +22,7 @@ use std.graph.{Graph, Target, Tree, bfs, condense, dijkstra, peel, scc, topo}
 use std.grid.{Dir4, Dir8, step}
 use std.heap.{MaxHeap, MinHeap}
 use std.interval.{IntervalMap}
-use std.lazy.{AddMax, AddMin, AddSum, AssignMax, AssignMin, AssignSum, LazySegTree}
+use std.lazy.{AddMax, AddMin, AddSum, AssignMax, AssignMin, AssignSum, DualSegTree, LazySegTree}
 use std.marks.{Marks}
 use std.math.{Ratio, Sieve, bit, ceil_div, digits, divmod, fixed, gcd, lcm, sign}
 use std.mod.{Comb, Mod}
