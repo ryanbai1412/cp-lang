@@ -3,7 +3,8 @@
 Read this first if you are working on CP Lang, agent or person: what we are
 building, what it owes the contestant, and the rules every change follows.
 How we work day to day (settled decisions and the loop) is in
-`plan/OPERATING.md`; Ryan's own words are in `plan/agent-context.md`; every
+`plan/OPERATING.md`; where each domain stands and its north star is in
+`plan/DOMAINS.md`; Ryan's own words are in `plan/agent-context.md`; every
 design call and its reason is in `decisions.md`; the language is in
 `plan/1x-*.md`.
 
