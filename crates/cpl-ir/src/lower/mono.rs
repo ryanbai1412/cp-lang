@@ -348,6 +348,64 @@ impl<'a> Lowerer<'a> {
             ast::ExprKind::Binary { op, lhs, rhs, .. } => {
                 interval(*op, self.ast_bounds(lhs)?, self.ast_bounds(rhs)?)
             }
+            ast::ExprKind::Unary { op: UnOp::Neg, expr } => {
+                let (least, most) = self.ast_bounds(expr)?;
+                Some((most.checked_neg()?, least.checked_neg()?))
+            }
+            ast::ExprKind::Unwrap(call) => self.fold_bounds(call, true),
+            ast::ExprKind::Call { .. } => self.fold_bounds(e, false),
+            _ => None,
+        }
+    }
+
+    /// The bounds of `xs.min()!`, `xs.max()!` and `xs.sum()` over a
+    /// top-level array whose elements have a range type.
+    fn fold_bounds(&self, call: &ast::Expr, unwrapped: bool) -> Option<(i64, i64)> {
+        let ast::ExprKind::Call { callee, args } = &call.kind else { return None };
+        let ast::ExprKind::Field { base, name } = &callee.kind else { return None };
+        let ast::ExprKind::Name(xs) = &base.kind else { return None };
+        let Some(Sym::Global(g)) = self.get_sym(xs) else { return None };
+        let ast::TypeKind::Array { index, elem } = &self.global_specs.get(&g)?.kind else { return None };
+        let each = self.type_bounds(elem)?;
+        match (name.text.as_str(), unwrapped, args.is_empty()) {
+            ("min" | "max", true, true) => Some(each),
+            ("sum", false, true) => {
+                let len = index.iter().try_fold((1, 1), |(least, most): (i64, i64), d| {
+                    let (l, m) = self.type_len(d)?;
+                    Some((least.checked_mul(l)?, most.checked_mul(m)?))
+                })?;
+                interval(BinOp::Mul, len, each)
+            }
+            _ => None,
+        }
+    }
+
+    /// The values a range type such as `1..=400` holds.
+    fn type_bounds(&self, ty: &ast::Type) -> Option<(i64, i64)> {
+        let ast::TypeKind::Range { lo, hi: Some(hi), inclusive } = &ty.kind else { return None };
+        let least = match lo {
+            Some(lo) => self.ast_bounds(lo)?.0,
+            None => 0,
+        };
+        Some((least, self.ast_bounds(hi)?.1.checked_sub(i64::from(!*inclusive))?))
+    }
+
+    /// How many positions an index type such as `0..n` or a domain has.
+    fn type_len(&self, ty: &ast::Type) -> Option<(i64, i64)> {
+        match &ty.kind {
+            ast::TypeKind::Range { lo, hi: Some(hi), inclusive } => {
+                let lo = match lo {
+                    Some(lo) => self.ast_bounds(lo)?,
+                    None => (0, 0),
+                };
+                let (hi, extra) = (self.ast_bounds(hi)?, i64::from(*inclusive));
+                let least = hi.0.checked_add(extra)?.checked_sub(lo.1)?.max(0);
+                Some((least, hi.1.checked_add(extra)?.checked_sub(lo.0)?.max(0)))
+            }
+            ast::TypeKind::Named { name, .. } => match self.get_sym(&name.text) {
+                Some(Sym::Domain(d)) => self.domain_lens.get(&d).copied(),
+                _ => None,
+            },
             _ => None,
         }
     }

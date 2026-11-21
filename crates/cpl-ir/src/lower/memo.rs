@@ -425,7 +425,7 @@ impl<'a> Lowerer<'a> {
                 .parts
                 .iter()
                 .try_fold(1i64, |cells, part| match part.most {
-                    Some((least, most)) if least >= 1 => cells.checked_mul(most),
+                    Some((_, most)) => cells.checked_mul(most.max(0)),
                     _ => None,
                 })
                 .is_some_and(|cells| cells <= DENSE_LIMIT);
@@ -488,6 +488,12 @@ impl<'a> Lowerer<'a> {
                     self.memo_bin(BinOp::Mul, self.local(cells, span), part.len.clone(), span);
                 let Some(flat) = &flat else {
                     start.push(set(&cells_place, grown));
+                    // An empty range: no cells, every call out of range.
+                    if part.most.is_some_and(|(least, _)| least < 1) {
+                        let empty = self.memo_cmp(CmpOp::Lt, part.len.clone(), self.int_lit(1, span), span);
+                        let none = set(&cells_place, self.int_lit(0, span));
+                        start.push(Stmt::If(empty, block(vec![none]), Block::default()));
+                    }
                     continue;
                 };
                 // cells * len <= DENSE_LIMIT, without the product.

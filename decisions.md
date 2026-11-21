@@ -3566,10 +3566,19 @@ the `last_use_call` flag; parameters go back to `const&` plus a copy.
 `@memo` over positions, `Bool`s and ranged `Int`s used to choose at run
 time between a flat table and a hash map, so both were emitted (the hash
 map and `CpHash` are about 6.5 KB). When every argument's cell count has a
-compile-time upper bound (a constant, a top-level `let n: lo..=hi` with
-constant ends, a domain over such ends, or sums and products of them) and
-the product of those bounds is at most `DENSE_LIMIT`, only the flat table
-and its fill are emitted: no hash map and no `flat` flag. This majorizes:
+compile-time upper bound and the product of those bounds is at most
+`DENSE_LIMIT`, only the flat table and its fill are emitted: no hash map
+and no `flat` flag. The bound of a range end is the interval the
+declarations prove for it, the same inference that gives domain index
+widths: constants, top-level `let n: lo..=hi`, domains over such ends,
+top-level untyped `let`s, `xs.min()!`, `xs.max()!` and `xs.sum()` of a
+top-level array with a range element type (`hp: [0..n]1..=400`), and
+negation, sums, differences and products of these. So cf2115c's
+`k: 0..=singles, s: 0..=shines` with `shines = hp.min()! - 1` and
+`singles = hp.sum() - n * hp.min()!` is at most 8000 x 400 cells. Interval
+arithmetic cannot see that `singles >= 0`, so a range whose cell count may
+be below 1 is clamped to no cells at fill time instead of failing the
+proof. This majorizes:
 the flat path was already the one taken at run time. A call outside a
 declared range was cached in the hash map before and is now computed
 uncached, with the same result; in-range calls are unaffected. Otherwise

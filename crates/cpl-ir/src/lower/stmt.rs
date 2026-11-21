@@ -409,6 +409,15 @@ impl<'a> Lowerer<'a> {
                     } else if let Some(rinfo) = inferred_rinfo {
                         self.bind_range_info(pat, &rinfo);
                     }
+                    if let (false, Some(name), None, Some(init)) = (*mutable, &single_name, ty.as_ref(), init.as_ref()) {
+                        if self.cx.is_main && self.cx.scopes.len() == 1 {
+                            if let (Some(Sym::Global(gid)), Some(bounds)) =
+                                (self.mod_syms[self.cur_mod].get(name).copied(), self.ast_bounds(init))
+                            {
+                                self.global_bounds.insert(gid, bounds);
+                            }
+                        }
+                    }
                     if let (Some(ty_ast), Some(vname)) = (array_ty_ast, single_name) {
                         if self.cx.is_main && self.cx.scopes.len() == 1 {
                             if let Some(Sym::Global(gid)) = self.mod_syms[self.cur_mod].get(&vname).copied() {

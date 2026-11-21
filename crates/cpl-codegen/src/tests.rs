@@ -340,6 +340,12 @@ fn a_memo_over_bounded_ranges_is_a_flat_table_alone() {
 }
 
 #[test]
+fn a_memo_over_ranges_inferred_from_reads_is_a_flat_table_alone() {
+    let dream = cpp(include_str!("../../../proto/ports/ecnerwala/dream/cf2115c.cp"));
+    assert!(!dream.contains("CpHash"), "{dream}");
+}
+
+#[test]
 fn a_reversed_list_pays_only_for_the_view_parts_it_uses() {
     let read = "let n: Int = read()\nlet xs: List<Int> = [read() for _ in 0..n]\n";
     let size = |body: &str| cpp(&format!("{read}{body}")).len();
