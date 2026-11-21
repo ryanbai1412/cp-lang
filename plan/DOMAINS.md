@@ -41,14 +41,18 @@ and associated types in traits. Structs get `Eq`, `Ord`, `Hash`, `Show` and
 code. Enums order by variant, then payload (decision 28.2).
 `for f in fields(x)` and `for (a, b) in fields(x, y)` walk struct, record
 and tuple fields, unrolled in lowering (28.1); a variadic `..xs: Ts` is the
-tuple of its arguments (28.3); enum variants are not reflected yet. Not
-built: postfix `x?` expression-extent lifting,
+tuple of its arguments (28.3); `read<(Int, Int)>()` takes type arguments
+on a lowercase fn (28.4); `lazy d: () -> T` takes an expression and passes
+`() => e` (28.5, free and generic fns; methods not yet). A projection is
+already a writable place through a method: `fn at(mut self, i: Int) lends
+mut Int: mut self.xs[i]` then `b.at(1) += 10` works. Enum variants are not
+reflected yet. Not built: postfix `x?` expression-extent lifting,
 opaque `struct List<T>` / struct type-param
 defaults / one-sided range types /
-`@droppable` / `labels(...)` / `Str(len:)`, `@derive` (`E0501`), variadic
-parameters (checked, then `E0501` in lowering), `read<(Int, Int)>()`, lazy
-parameters, `Niche`, library diagnostics, a method call as an assignment
-target (`b.at() += 1` is `E0401`). 0 of the 35 `ideal-spec/spec/*.md`
+`@droppable` / `labels(...)` / `Str(len:)`, `@derive` (`E0501`), `print`
+and `read` as library fns over packs, `assert`/`debug`/`??` as library fns
+(`assert` also feeds the range prover its condition, so moving it needs that
+as a general rule), `Niche`, library diagnostics. 0 of the 35 `design/spec/*.md`
 ```cp blocks pass `cpl check`; most stop at parse or stdlib gaps.
 **Bar.** Every code block in the design spec passes `cpl check`; the stdlib
 needs no compiler knowledge beyond the documented intrinsics; each
@@ -56,9 +60,8 @@ mechanism above has programs that the interpreter and the C++ agree on.
 **Next.** Postfix `?` extent; remaining 0.3 syntax (opaque `struct`,
 type-param defaults, one-sided ranges, `@droppable`,
 `labels`, `Str(len:)`); variant reflection and derives as trait
-defaults on `fields`; `print`/`read` on variadic packs;
-lazy parameters, then `assert`/`debug`/`??`; `Niche`; writable places;
-library diagnostics.
+defaults on `fields`; `print`/`read` on variadic packs; `lazy` on methods,
+then `assert`/`debug`/`??` in the stdlib; `Niche`; library diagnostics.
 **Coordination.** Core-extensions lane (`49fcf312`) owns derives, variadic packs,
 and lazy parameters; this lane (§1 core syntax/semantics) owns `Self` in
 trait/impl scope, associated types, `trait`/`impl` headers, opaque structs,
