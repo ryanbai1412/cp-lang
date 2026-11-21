@@ -306,6 +306,21 @@ fn run_io(
         globals: vec![Value::Unit; program.globals.len()],
         domains: vec![(0, 0); program.domains.len()],
         saved_domains: Vec::new(),
+        fn_guarded: program
+            .fns
+            .iter()
+            .map(|f| program.fn_guarded_domains(&f.ret, &f.body))
+            .collect(),
+        closure_guarded: program
+            .closures
+            .iter()
+            .map(|c| program.fn_guarded_domains(&c.ret, &c.body))
+            .collect(),
+        fast_closures: program
+            .closures
+            .iter()
+            .map(classify_fast_closure)
+            .collect(),
         stack: Vec::new(),
         base: 0,
         input: match io.input {
@@ -416,6 +431,96 @@ enum Flow {
     Give(Value),
 }
 
+enum FastClosure {
+    MinMax {
+        is_max: bool,
+        a: usize,
+        b: usize,
+        ty: Ty,
+    },
+    Bin {
+        op: BinOp,
+        a: usize,
+        b: usize,
+    },
+    IntAddMul {
+        x: usize,
+        f: usize,
+        w: usize,
+    },
+    IntCmpConst {
+        op: CmpOp,
+        a: usize,
+        c: i64,
+    },
+    Identity(usize),
+}
+
+fn classify_fast_closure(def: &cpl_ir::ClosureDef) -> Option<FastClosure> {
+    if !def.captures.is_empty() || !def.muts.is_empty() || def.body.stmts.len() != 1 {
+        return None;
+    }
+    let expr = match &def.body.stmts[0] {
+        Stmt::Return(Some(e)) | Stmt::Give(e) => e,
+        _ => return None,
+    };
+    let param_idx = |e: &Expr| -> Option<usize> {
+        let ExprKind::Local(slot) = e.kind else {
+            return None;
+        };
+        def.params.iter().position(|&p| p == slot)
+    };
+    match &expr.kind {
+        ExprKind::Builtin(op @ (Builtin::Min | Builtin::Max), args) if args.len() == 2 => {
+            let a = param_idx(&args[0])?;
+            let b = param_idx(&args[1])?;
+            Some(FastClosure::MinMax {
+                is_max: matches!(op, Builtin::Max),
+                a,
+                b,
+                ty: expr.ty.clone(),
+            })
+        }
+        ExprKind::Binary(
+            op @ (BinOp::Add
+            | BinOp::Sub
+            | BinOp::Mul
+            | BinOp::BitAnd
+            | BinOp::BitOr
+            | BinOp::BitXor),
+            l,
+            r,
+        ) => {
+            if let (Some(a), Some(b)) = (param_idx(l), param_idx(r)) {
+                return Some(FastClosure::Bin { op: *op, a, b });
+            }
+            if matches!(op, BinOp::Add) && expr.ty == Ty::Int {
+                if let (Some(x), ExprKind::Binary(BinOp::Mul, fl, fr)) = (param_idx(l), &r.kind) {
+                    if let (Some(f), Some(w)) = (param_idx(fl), param_idx(fr)) {
+                        return Some(FastClosure::IntAddMul { x, f, w });
+                    }
+                }
+                if let (ExprKind::Binary(BinOp::Mul, fl, fr), Some(x)) = (&l.kind, param_idx(r)) {
+                    if let (Some(f), Some(w)) = (param_idx(fl), param_idx(fr)) {
+                        return Some(FastClosure::IntAddMul { x, f, w });
+                    }
+                }
+            }
+            None
+        }
+        ExprKind::Cmp(op, l, r) => {
+            if let (Some(a), ExprKind::Int(c)) = (param_idx(l), &r.kind) {
+                if l.ty == Ty::Int {
+                    return Some(FastClosure::IntCmpConst { op: *op, a, c: *c });
+                }
+            }
+            None
+        }
+        ExprKind::Local(_) => param_idx(expr).map(FastClosure::Identity),
+        _ => None,
+    }
+}
+
 struct Interp<'p, 'o> {
     program: &'p Program,
     globals: Vec<Value>,
@@ -423,6 +528,10 @@ struct Interp<'p, 'o> {
     domains: Vec<(i64, i64)>,
     /// Saved `(domain_id, (lo, len))` entries for recursive/block-scoped restore.
     saved_domains: Vec<(cpl_ir::DomainId, (i64, i64))>,
+    /// Precomputed guarded domains per fn / closure (avoids walking IR + HashSet allocs per call).
+    fn_guarded: Vec<Vec<cpl_ir::DomainId>>,
+    closure_guarded: Vec<Vec<cpl_ir::DomainId>>,
+    fast_closures: Vec<Option<FastClosure>>,
     /// Locals of every active call; `base` is where the current call's start.
     stack: Vec<Value>,
     base: usize,
@@ -1794,6 +1903,92 @@ impl<'p, 'o> Interp<'p, 'o> {
             ExprKind::Call(id, args) => self.call(*id, args, span)?,
             ExprKind::CallExpr(callee, args) => {
                 let fv = self.eval(callee)?;
+                if self.tracer.is_none()
+                    && self.profiler.is_none()
+                    && args.iter().all(|a| matches!(a, Arg::Value(_)))
+                {
+                    if let Value::Closure(cid, _) = &fv {
+                        if let Some(fast) = self.fast_closures[*cid].as_ref() {
+                            match fast {
+                                FastClosure::MinMax { is_max, a, b, ty } => {
+                                    let (is_max, a, b, ty) = (*is_max, *a, *b, ty.clone());
+                                    let mut evaled: [Option<Value>; 4] = [None, None, None, None];
+                                    if args.len() <= 4 {
+                                        for (i, arg) in args.iter().enumerate() {
+                                            let Arg::Value(e) = arg else { unreachable!() };
+                                            evaled[i] = Some(self.eval(e)?);
+                                        }
+                                        let va = evaled[a].take().unwrap();
+                                        let vb = evaled[b].take().unwrap();
+                                        let ord = self.cmp_ty_val(&ty, &vb, &va, span)?;
+                                        let take_b = if is_max { ord.is_gt() } else { ord.is_lt() };
+                                        return Ok(if take_b { vb } else { va });
+                                    }
+                                }
+                                FastClosure::Bin { op, a, b } => {
+                                    let (op, a, b) = (*op, *a, *b);
+                                    if args.len() <= 4 {
+                                        let mut evaled: [Option<Value>; 4] = [None, None, None, None];
+                                        for (i, arg) in args.iter().enumerate() {
+                                            let Arg::Value(e) = arg else { unreachable!() };
+                                            evaled[i] = Some(self.eval(e)?);
+                                        }
+                                        let va = evaled[a].take().unwrap();
+                                        let vb = evaled[b].take().unwrap();
+                                        return binary(op, va, vb, span);
+                                    }
+                                }
+                                FastClosure::IntAddMul { x, f, w } => {
+                                    let (x, f, w) = (*x, *f, *w);
+                                    if args.len() <= 4 {
+                                        let mut evaled: [Option<Value>; 4] = [None, None, None, None];
+                                        for (i, arg) in args.iter().enumerate() {
+                                            let Arg::Value(e) = arg else { unreachable!() };
+                                            evaled[i] = Some(self.eval(e)?);
+                                        }
+                                        let vx = evaled[x].take().unwrap();
+                                        let vf = evaled[f].take().unwrap();
+                                        let vw = evaled[w].take().unwrap();
+                                        let prod = binary(BinOp::Mul, vf, vw, span)?;
+                                        return binary(BinOp::Add, vx, prod, span);
+                                    }
+                                }
+                                FastClosure::IntCmpConst { op, a, c } => {
+                                    let (op, a, c) = (*op, *a, *c);
+                                    if args.len() <= 4 {
+                                        let mut evaled: [Option<Value>; 4] = [None, None, None, None];
+                                        for (i, arg) in args.iter().enumerate() {
+                                            let Arg::Value(e) = arg else { unreachable!() };
+                                            evaled[i] = Some(self.eval(e)?);
+                                        }
+                                        let va = evaled[a].take().unwrap().int();
+                                        let ok = match op {
+                                            CmpOp::Eq => va == c,
+                                            CmpOp::Ne => va != c,
+                                            CmpOp::Lt => va < c,
+                                            CmpOp::Le => va <= c,
+                                            CmpOp::Gt => va > c,
+                                            CmpOp::Ge => va >= c,
+                                            _ => false,
+                                        };
+                                        return Ok(Value::Bool(ok));
+                                    }
+                                }
+                                FastClosure::Identity(a) => {
+                                    let a = *a;
+                                    if args.len() <= 4 {
+                                        let mut evaled: [Option<Value>; 4] = [None, None, None, None];
+                                        for (i, arg) in args.iter().enumerate() {
+                                            let Arg::Value(e) = arg else { unreachable!() };
+                                            evaled[i] = Some(self.eval(e)?);
+                                        }
+                                        return Ok(evaled[a].take().unwrap());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 let mut vals = vec![Value::Unit; args.len()];
                 for (i, arg) in args.iter().enumerate() {
                     if let Arg::Value(e) = arg {
@@ -2506,7 +2701,7 @@ impl<'p, 'o> Interp<'p, 'o> {
         }
         let in_closure = std::mem::replace(&mut self.in_closure, false);
         let dom_mark = self.saved_domains.len();
-        for d in self.program.fn_guarded_domains(&f.ret, &f.body) {
+        for &d in &self.fn_guarded[id] {
             self.saved_domains.push((d, self.domains[d]));
         }
         let has_alias = self.stack[self.base..self.base + f.params.len()]
@@ -2601,7 +2796,7 @@ impl<'p, 'o> Interp<'p, 'o> {
         self.call_frames.push(("<closure>", span));
         let in_closure = std::mem::replace(&mut self.in_closure, true);
         let dom_mark = self.saved_domains.len();
-        for d in self.program.fn_guarded_domains(&def.ret, &def.body) {
+        for &d in &self.closure_guarded[cid] {
             self.saved_domains.push((d, self.domains[d]));
         }
         let flow = self.block(&def.body);
@@ -3020,7 +3215,7 @@ impl<'p, 'o> Interp<'p, 'o> {
         self.frame_locals.push(&f.locals);
         self.call_frames.push((f.name.as_str(), span));
         let dom_mark = self.saved_domains.len();
-        for d in self.program.fn_guarded_domains(&f.ret, &f.body) {
+        for &d in &self.fn_guarded[id] {
             self.saved_domains.push((d, self.domains[d]));
         }
         let flow = self.block(&f.body);

@@ -14,6 +14,7 @@ use std.seq.{ends}
 pub struct LazySegTree<D, T, F>(act: Action<T, F>):
     t: List<T>
     lz: List<F>
+    has_lz: List<Bool>
     /// How many positions each node covers; the padding past the domain covers none.
     span: List<Int>
     size: Int
@@ -33,7 +34,15 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
         for p in (1..size).rev:
             t[p] = act.over.op(t[2 * p], t[2 * p + 1])
             span[p] = span[2 * p] + span[2 * p + 1]
-        LazySegTree(act, t, List.filled(size, act.id), span, size, ctz(size))
+        LazySegTree(
+            act,
+            t,
+            List.filled(size, act.id),
+            List.filled(size, false),
+            span,
+            size,
+            ctz(size),
+        )
 
     fn pull(mut self, p: Int):
         unchecked:
@@ -43,13 +52,17 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
         unchecked:
             if span[p] == 0: return
             t[p] = act.apply(f, t[p], span[p])
-            if p < size: lz[p] = act.compose(f, lz[p])
+            if p < size:
+                lz[p] = act.compose(f, lz[p])
+                has_lz[p] = true
 
     fn push(mut self, p: Int):
         unchecked:
+            if not has_lz[p]: return
             self.put(2 * p, lz[p])
             self.put(2 * p + 1, lz[p])
             lz[p] = act.id
+            has_lz[p] = false
 
     fn open(mut self, l: Int, h: Int):
         for i in (1..=log).rev:
