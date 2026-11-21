@@ -9,12 +9,12 @@ use std.persistent.{PMultiset}
 @!multitest
 let n: 1..=400_000 = read()
 domain V = 1..=n
-let kids: [V]?(l: V, r: V) = read(absent: (0, 0))
+let kids: [V]?(l: V, r: V) = read(none: (0, 0))
 
 let tree = Rooted(root: V.first, kids: v => kids[v].list)
 var gen: [V]Int = 0
 var by_gen: [0..n]List<V> = []
-for v in tree.post_order:
+for v in tree.Pre.rev:
     if let (l, r) = kids[v]: gen[v] = max(gen[l], gen[r] + 1)
     by_gen[gen[v]].push(v)
 
@@ -27,8 +27,8 @@ var order: List<V> = []
 for g in 0..n:
     for v in by_gen[g]:
         if let (l, r) = kids[v]: set[v] = set[l].with(key[r])
-    let ranked = sorted(by_gen[g], cmp: (u, v) => set[u].cmp(set[v], desc: true) then u <=> v)
-    for (_, run) in runs_by(ranked, v => set[v]):
+    let ranked = by_gen[g].sort(cmp: (u, v) => set[u].cmp(set[v], desc: true) then u <=> v)
+    for (_, run) in ranked.runs_by(v => set[v]):
         for v in run: key[v] = keys
         order.extend(run)
         keys += 1

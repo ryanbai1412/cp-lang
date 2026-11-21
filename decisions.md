@@ -2779,3 +2779,13 @@ the core lane in `plan/OPERATING.md`.
    Reason: eliminates O(n^3) heap allocations on `cf1146h` (`2.82x` -> `1.29x` matched C++) without adding a new runtime container type. Reverse: remove the `Bitset` branch in `cpl-codegen/src/scope.rs::rows` and `try_fused_bitset_op` in `expr.rs`.
 3. **`sort(by: key)` with a cheap pure key expression lowers to in-place `std::stable_sort` with an inlined comparator instead of `cpl::sort_by`'s three auxiliary vectors.**
    Reason: preserves stability and interpreter parity while eliminating O(n) temp allocations and index indirection (`cf1284e`: `1.63x` -> `1.14x` matched C++, -709 B emitted). Reverse: remove the `is_cheap_pure_key` branch in `cpl-codegen/src/stmt.rs`.
+
+## 63. One name per tree traversal: `t.Pre` (2026-11-21)
+
+Dreams spelled preorder five ways (`t.Pre`, `t.preorder`, `t.postorder`,
+`tree.post_order`, `t.preorder.rev`). The canonical form is the preorder index
+space `t.Pre`: `for v in t.Pre` visits parents first, `for v in t.Pre.rev`
+visits children first, and `t.sub(v)` is a range of `t.Pre`. `preorder` and
+`postorder` go away, with a `cpl fix` codemod. A true postorder (siblings
+in order) is rarely needed in contest code; it stays `t.Pre.rev` until a port
+shows it matters. Reverse by restoring `postorder` as an alias.

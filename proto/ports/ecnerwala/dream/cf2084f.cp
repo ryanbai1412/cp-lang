@@ -2,7 +2,7 @@
 // with u < v and pos_a[u] < pos_a[v] must keep pos_b[u] < pos_b[v].
 // Two sweeps compute each value's allowed position window [lo[v], hi[v]];
 // then earliest-deadline-first matches values to positions.
---- with multitest() ---
+@!multitest
 
 domain Pos = read(2..=5e5)
 domain Val = 1..=Pos.count
