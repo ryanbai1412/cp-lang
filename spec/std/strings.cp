@@ -275,13 +275,13 @@ pub struct KmpAutomaton<A>:
     pub fn link(self, state: Int) -> Int = todo
 
     /// O(|text|). Yield every start index where `pat` occurs in `text`.
-    pub fn matches<S: Seq>(self, text: S) -> yields Int = todo
+    pub fn find_all<S: Seq>(self, text: S) -> yields Int = todo
 
 /// O(|self| * ceil(|pat| / 64)). Bitset (Shift-And) matching; yields start indices of `pat` in `self`.
 pub fn shift_and<S: Indexed, P: Indexed>(self: S, pat: P) -> yields Int = todo
 
 /// O(|self| * ceil(|pat| / 64)). Yield start indices where `pat` matches `self`, with `wildcard` matching any element.
-pub fn wildcard_matches<S: Indexed, P: Indexed>(
+pub fn find_all_wildcard<S: Indexed, P: Indexed>(
     self: S,
     pat: P,
     wildcard: Char = '?',
@@ -590,7 +590,7 @@ pub struct SuffixArray<T>:
 
     /// Rank range `lo..hi` in `sa` of all suffixes starting with `pat`. O(|pat| log n).
     @allow(unproven_list_index)
-    pub fn matches<P: Indexed>(self, pat: P) -> Range<Int>:
+    pub fn rank_range<P: Indexed>(self, pat: P) -> Range<Int>:
         let n = s.len
         let m = pat.len
         if m == 0: return 0..n
@@ -615,11 +615,11 @@ pub struct SuffixArray<T>:
         left..lo
 
     /// O(|pat| log n + matches). Yield every start index where `pat` occurs in `s` (in suffix-array order).
-    pub fn match_positions<P: Indexed>(self, pat: P) -> yields Int = todo
+    pub fn find_all<P: Indexed>(self, pat: P) -> yields Int = todo
 
     /// Number of occurrences of `pat` in `s`. O(|pat| log n).
     pub fn count<P: Indexed>(self, pat: P) -> Int:
-        let r = self.matches(pat)
+        let r = self.rank_range(pat)
         r.end - r.start
 
     /// O(log n). Rank range `lo..hi` in `sa` of all suffixes whose LCP with `s[i..]` is at least `len`.
@@ -1488,7 +1488,7 @@ pub struct AhoCorasick<A>:
     /// O(|text| + matches). Yield every occurrence `(at, pattern)` in `text`, ordered by end position.
     /// O(|text| + output).
     @allow(unproven_list_index)
-    pub fn matches<S: Seq>(self, text: S) -> yields (at: Int, pattern: Int):
+    pub fn find_all<S: Seq>(self, text: S) -> yields (at: Int, pattern: Int):
         var state = 0
         var i = 0
         for a in text:
@@ -1797,7 +1797,7 @@ fn suffix_array_struct_queries_match_brute():
         // matches and count
         for _ in 0..10:
             let pat = random_word(rand(0, 4), 3)
-            let r = sa.matches(pat)
+            let r = sa.rank_range(pat)
             let want = if pat.is_empty: [i for i in 0..n] else: [
                 i for i in 0..=n - pat.len if s[i..i + pat.len] == pat
             ]
@@ -1986,7 +1986,7 @@ fn aho_corasick_matches_counts_and_avoidance_dp():
                 if i + k <= text.len and all(
                     text[i + j] == patterns[w][j] for j in 0..k
                 ): want.push((i, w))
-        let got = [(m.at, m.pattern) for m in ac.matches(text)]
+        let got = [(m.at, m.pattern) for m in ac.find_all(text)]
         assert got.sorted() == want.sorted()
         assert ac.counts(text) == [sum(Int(p.1 == w) for p in want) for w in 0..patterns.len]
         assert ac.len <= 1 + sum(w.len for w in patterns)
@@ -2005,7 +2005,7 @@ fn aho_corasick_matches_counts_and_avoidance_dp():
     var brute = 0
     for code in 0..(1 << 6):
         let text = [A((code >> i) % 2) for i in 0..6]
-        if [m for m in ac.matches(text)].is_empty: brute += 1
+        if [m for m in ac.find_all(text)].is_empty: brute += 1
     assert ways.sum() == brute
 
 @test
@@ -2116,7 +2116,7 @@ fn sequence_generality_parity_across_list_array_and_views():
     assert suffix_array("xabacabay"[1..8]) == sa_s
     assert lcp_array("xabacabay"[1..8], sa_s) == lcp_array("abacaba", sa_s)
     let sa_obj = SuffixArray.new(xs)
-    assert sa_obj.matches(parr) == sa_obj.matches(pat)
+    assert sa_obj.rank_range(parr) == sa_obj.rank_range(pat)
     assert sa_obj.count(pview) == 2
 
     // Manacher / Lyndon / runs over List<Int>, [D]Int, ListView<Int>, StrView
@@ -2163,5 +2163,5 @@ fn sequence_generality_parity_across_list_array_and_views():
     let ac = AhoCorasick<Sym>.new([spat])
     assert ac.counts(sarr) == [2]
     assert ac.counts(sview) == [2]
-    assert [m.at for m in ac.matches(sarr)] == [0, 4]
-    assert [m.at for m in ac.matches(sview)] == [0, 4]
+    assert [m.at for m in ac.find_all(sarr)] == [0, 4]
+    assert [m.at for m in ac.find_all(sview)] == [0, 4]
