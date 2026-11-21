@@ -6,7 +6,7 @@ cpl="$root/target/debug/cpl"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-for name in range_fenwick disjoint_sparse lazy_treap beats range_kth merge_sort_tree time_tree; do
+for name in range_fenwick disjoint_sparse lazy_treap beats range_kth merge_sort_tree time_tree mo; do
     "$cpl" build "$root/bench/ranges/$name.cp" -o "$tmp/${name}_cp.cpp" >/dev/null
     bytes="$(wc -c < "$tmp/${name}_cp.cpp")"
     g++ -std=c++17 -O2 "$tmp/${name}_cp.cpp" -o "$tmp/${name}_cp"

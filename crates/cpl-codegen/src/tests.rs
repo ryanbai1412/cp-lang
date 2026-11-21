@@ -437,6 +437,24 @@ fn a_list_index_inside_unchecked_has_no_bounds_test() {
 }
 
 #[test]
+fn domain_nth_inside_unchecked_omits_cpl_pos() {
+    let out = cpp(r#"
+let n = 10
+domain I = 0..n
+let a = [I] _ => 1
+var s = 0
+unchecked:
+    for i in 0..n:
+        s += a[I.nth(i)]
+print(s)
+"#);
+    assert!(
+        !out.contains("cpl::pos("),
+        "`D.nth(i)` inside `unchecked:` should not emit `cpl::pos`:\n{out}"
+    );
+}
+
+#[test]
 fn a_local_list_that_stays_in_its_fn_is_one_buffer() {
     let fixture = include_str!("../../cpl-cli/tests/programs/reused_local_lists.cp");
     let cpp = cpp(fixture);
@@ -1212,7 +1230,6 @@ print(sq(7) + fact(5))
     assert!(out.contains("\nll fact("), "a recursive fn keeps a plain definition:\n{out}");
     assert!(!out.contains("inline void solve("), "{out}");
 }
-
 #[test]
 fn ranged_2d_nested_and_tuple_elements_narrow_and_widen_conservatively() {
     let grid = cpp(

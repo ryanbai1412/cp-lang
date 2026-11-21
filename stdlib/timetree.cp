@@ -19,21 +19,20 @@ pub enum TimeStep:
 pub struct TimeTree<E>:
     q: Int
     size: Int
-    events: List<E>
     head: List<-1..=2_000_000_000>
     next: List<-1..=2_000_000_000>
-    ev_id: List<0..=2_000_000_000>
+    ev_val: List<E>
 
     /// Create a timeline for `q` time slots `0..q`. O(q).
     pub fn new(q: Int) -> TimeTree<E>:
         assert q >= 0, "TimeTree needs q >= 0"
         let size = bit_ceil(max(1, q))
-        TimeTree(q, size, [], List.filled(2 * size, -1), [], [])
+        TimeTree(q, size, List.filled(2 * size, -1), [], [])
 
-    fn link(mut self, u: Int, id: Int):
+    fn link(mut self, u: Int, ev: E):
         unchecked:
-            let idx = ev_id.len
-            ev_id.push(id)
+            let idx = ev_val.len
+            ev_val.push(ev)
             next.push(head[u])
             head[u] = idx
 
@@ -42,27 +41,25 @@ pub struct TimeTree<E>:
         let ql = max(0, lo)
         let qr = min(q, hi)
         if ql >= qr: return
-        let id = events.len
-        events.push(ev)
         var (l, r) = (ql + size, qr + size)
         while l < r:
             if l % 2 == 1:
-                self.link(l, id)
+                self.link(l, ev)
                 l += 1
             if r % 2 == 1:
                 r -= 1
-                self.link(r, id)
+                self.link(r, ev)
             l /= 2
             r /= 2
 
     /// Retrieve the event referenced by `Apply(id)`. O(1).
-    pub fn event(self, id: Int) -> E = events[id]
+    pub fn event(self, id: Int) -> E = ev_val[id]
 
     fn emit_dfs(self, u: Int, nl: Int, nr: Int, mut out: List<TimeStep>):
         var k = 0
         var e = head[u]
         while e != -1:
-            out.push(Apply(ev_id[e]))
+            out.push(Apply(e))
             k += 1
             e = next[e]
         if nr - nl == 1:
@@ -97,7 +94,7 @@ pub struct TimeTree<E>:
             let snap = mark()
             var e = head[u]
             while e != -1:
-                apply(events[ev_id[e]])
+                apply(ev_val[e])
                 e = next[e]
             if nr - nl == 1:
                 if nl < q: out.push(answer(nl))

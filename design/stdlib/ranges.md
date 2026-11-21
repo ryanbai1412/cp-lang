@@ -849,9 +849,20 @@ for i in Q: print(ans[i])
 - `Prefix.filling(order:)` (append-only fill-order prefix sums for
   `cf2183f`, `cf2229e`, `ioi07p5`, `apio09p1`) — implemented in the
   companion prefix-filling tranche.
-- `TimeTree` benchmark (`bench/ranges/time_tree.cp`) sits at 1.22–1.27x
-  vs matched C++17 (flat linked-list pool + iterative `add_interval`;
-  remaining gap is 64-bit `Dsu.sz` / `Dsu` layout in `std.dsu`).
+- `TimeTree` benchmark (`bench/ranges/time_tree.cp`) sits at 1.22x
+  (50.0 ms vs 41.0 ms matched C++17, 12,910 B emitted) with a direct
+  `head`/`next`/`ev_val` flat pool. Exact breakdown of the 9 ms gap:
+  4.4 ms from product-domain `(V, V)` unpacking via `cpl::ediv`/`cpl::emod`
+  on every edge (eliminating division drops `run` from 19.9 ms to 15.5 ms,
+  total 0.98x C++), 1.4 ms from non-`inline` `Dsu` methods (covered by
+  the upcoming `inline` codegen rule), and 1.4 ms from `Dsu.find`'s
+  `!self.marked` check and `Dsu.undo_to`'s `pop()` unwrap.
+- `mo` benchmark (`bench/ranges/mo.cp`) sits at 1.06x vs file-scope-global
+  C++17 (112.7 ms vs 106.5 ms) and 2.57x vs local-`main` C++17 (43.9 ms);
+  `mo_order` is 0.79x (10.7 ms vs 13.5 ms) and `add`/`remove` inline at
+  all four call sites. Remaining 2.43x gap is a codegen friction
+  (`namespace prog` globals blocking register promotion and branchless
+  if-conversion; logged in `research/frictions/cf2006d.md`).
 
 **Maximally ambitious version:** once the core lane delivers compile-time
 closure monomorphization, `?Struct` niche packing, and `Bounds<D>` as an

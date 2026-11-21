@@ -8,13 +8,16 @@ pub fn mo_order<D>(queries: List<Range<D>>) -> List<Int>:
     let q = queries.len
     if q == 0: return []
     let b = max(1, D.K / max(1, isqrt(q)))
-    var idx = [i for i in 0..q]
-    fn key(i: Int) -> (Int, Int):
-        let (l, r) = queries[i].ends
-        let blk = l / b
-        (blk, if blk % 2 == 0: r else: -r)
-    sort(mut idx, by: key)
-    idx
+    var pairs: List<(Int, Int)> = []
+    unchecked:
+        let span = D.K + 1
+        for i in 0..q:
+            let (l, r) = queries[i].ends
+            let blk = l / b
+            let k = blk * span + (if blk % 2 == 0: r else: D.K - r)
+            pairs.push((k, i))
+        pairs.sort()
+        return [p.1 for p in pairs]
 
 /// Positions entering (`true`) or leaving (`false`) as a window moves from `from` to `to`.
 /// Always expands before shrinking so the active window is never inverted. O(|dl| + |dr|).
@@ -51,28 +54,37 @@ pub fn mo<D, R>(
     if q == 0: return []
     let order = mo_order(queries)
     var (l, r) = (0, 0)
-    fn move_to(nl: Int, nr: Int):
-        while l > nl:
-            l -= 1
-            add(D.nth(l))
-        while r < nr:
-            add(D.nth(r))
-            r += 1
-        while l < nl:
-            remove(D.nth(l))
-            l += 1
-        while r > nr:
-            r -= 1
-            remove(D.nth(r))
     unchecked:
         let q0 = order[0]
         let (nl0, nr0) = queries[q0].ends
-        move_to(nl0, nr0)
+        while l > nl0:
+            l -= 1
+            add(D.nth(l))
+        while r < nr0:
+            add(D.nth(r))
+            r += 1
+        while l < nl0:
+            remove(D.nth(l))
+            l += 1
+        while r > nr0:
+            r -= 1
+            remove(D.nth(r))
         var out = List.filled(q, answer(q0))
         for i in 1..q:
             let qi = order[i]
             let (nl, nr) = queries[qi].ends
-            move_to(nl, nr)
+            while l > nl:
+                l -= 1
+                add(D.nth(l))
+            while r < nr:
+                add(D.nth(r))
+                r += 1
+            while l < nl:
+                remove(D.nth(l))
+                l += 1
+            while r > nr:
+                r -= 1
+                remove(D.nth(r))
             out[qi] = answer(qi)
         return out
 
