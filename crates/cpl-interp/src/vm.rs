@@ -352,6 +352,10 @@ pub(crate) enum Op {
     ListPopFieldLV { dst_v: u16, obj_v: u16, field: u16 },
     MakeRange { dst: u16, r_lo: u16, r_hi: u16 },
     CmpOptI { dst: u16, a_val: u16, a_some: u16, b_val: u16, b_some: u16, op: CmpOp },
+    CmpV { dst: u16, a_v: u16, b_v: u16, op: CmpOp },
+    MakeList { dst: u16, base_v: u16, len: u8 },
+    ListFilled { dst: u16, r_n: u16, val_v: u16 },
+    ToList { dst: u16, src_v: u16 },
     LoadGIdxFieldI { dst: u16, gid: u16, r_i: u16, field: u16 },
     StoreGIdxFieldI { gid: u16, r_i: u16, field: u16, r_val: u16, kind: ScalarKind },
     LoadLIdxFieldI { dst: u16, seq_v: u16, r_i: u16, field: u16 },
@@ -3364,6 +3368,24 @@ impl<'p> Compiler<'p> {
                 self.emit(Op::CmpOptI { dst, a_val, a_some, b_val, b_some, op: *op }, span);
                 dst
             }
+            ExprKind::Cmp(op, lhs, rhs)
+                if matches!(
+                    op,
+                    CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge | CmpOp::Eq | CmpOp::Ne
+                ) && ty_uses_structural_cmp(&lhs.ty, self.program) =>
+            {
+                let a_v = self.compile_expr_v(lhs);
+                let b_v = self.compile_expr_v(rhs);
+                let dst = self.alloc_i();
+                self.emit(Op::CmpV { dst, a_v, b_v, op: *op }, span);
+                if a_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: a_v }, span);
+                }
+                if b_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: b_v }, span);
+                }
+                dst
+            }
             ExprKind::Do(block) => {
                 let dst = self.alloc_i();
                 self.give_targets.push(GiveTarget::I { dst, exits: Vec::new() });
@@ -3919,8 +3941,7 @@ impl<'p> Compiler<'p> {
                 }
             }
             ExprKind::Tuple(fields)
-                if fields.len() >= 2
-                    && fields.len() <= 16
+                if fields.len() <= 16
                     && matches!(expr.ty, Ty::Tuple(_) | Ty::Record(_) | Ty::Struct(_)) => {
                 let mut regs = Vec::with_capacity(fields.len());
                 for f in fields {
@@ -3936,6 +3957,44 @@ impl<'p> Compiler<'p> {
                 let dst = self.alloc_v();
                 self.emit(Op::MakeTuple { dst, base_v, len: fields.len() as u8 }, span);
                 dst
+            }
+            ExprKind::Tuple(fields) if fields.len() <= 16 && matches!(expr.ty, Ty::List(_)) => {
+                let mut regs = Vec::with_capacity(fields.len());
+                for f in fields {
+                    regs.push(self.compile_expr_v(f));
+                }
+                let base_v = self.next_v;
+                for r in regs {
+                    let slot = self.alloc_v();
+                    if slot != r {
+                        self.emit(Op::MoveV { dst: slot, src: r }, span);
+                    }
+                }
+                let dst = self.alloc_v();
+                self.emit(Op::MakeList { dst, base_v, len: fields.len() as u8 }, span);
+                dst
+            }
+            ExprKind::Builtin(Builtin::ListFilled, args) if args.len() == 2 => {
+                let r_n = self.compile_expr_i(&args[0]);
+                let val_v = self.compile_expr_v(&args[1]);
+                let dst = self.alloc_v();
+                self.emit(Op::ListFilled { dst, r_n, val_v }, span);
+                if val_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: val_v }, span);
+                }
+                dst
+            }
+            ExprKind::Builtin(Builtin::ArrayToList | Builtin::ToList, args) if args.len() == 1 => {
+                let src_v = self.compile_expr_v(&args[0]);
+                let dst = self.alloc_v();
+                self.emit(Op::ToList { dst, src_v }, span);
+                if src_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: src_v }, span);
+                }
+                dst
+            }
+            ExprKind::Builtin(Builtin::Copy, args) if args.len() == 1 => {
+                self.compile_expr_v(&args[0])
             }
             ExprKind::None => {
                 let dst_v = self.alloc_v();
@@ -4303,6 +4362,23 @@ impl<'p> Compiler<'p> {
 
 fn block_has_by_ref_closure(block: &Block, _program: &Program) -> bool {
     Compiler::stmts_have_closure(&block.stmts)
+}
+
+fn ty_uses_structural_cmp(ty: &Ty, program: &Program) -> bool {
+    match ty {
+        Ty::Struct(id) => {
+            let s = &program.structs[*id];
+            s.eq_fn.is_none()
+                && s.lt_fn.is_none()
+                && s.fields.iter().all(|(_, t)| ty_uses_structural_cmp(t, program))
+        }
+        Ty::Tuple(ts) => ts.iter().all(|t| ty_uses_structural_cmp(t, program)),
+        Ty::Record(fs) => fs.iter().all(|(_, t)| ty_uses_structural_cmp(t, program)),
+        Ty::List(t) | Ty::Opt(t) => ty_uses_structural_cmp(t, program),
+        Ty::Array { elem, .. } => ty_uses_structural_cmp(elem, program),
+        Ty::Int | Ty::Float | Ty::Bool | Ty::Char | Ty::Str | Ty::Unit | Ty::Pos(_) | Ty::Bound(_) => true,
+        _ => false,
+    }
 }
 
 fn sync_to_stack(
@@ -5815,11 +5891,58 @@ impl<'p, 'io> Interp<'p, 'io> {
                 Op::MakeTuple { dst, base_v, len } => {
                     let b = base_v as usize;
                     let n = len as usize;
-                    let mut fs = Vec::with_capacity(n);
-                    for k in 0..n {
-                        fs.push(std::mem::replace(&mut regs_v[b + k], Value::Unit));
+                    if n == 1 {
+                        let v = std::mem::replace(&mut regs_v[b], Value::Unit);
+                        regs_v[dst as usize] = match v {
+                            Value::Int(x) => Value::Tuple(TupleVal::OneInt(x)),
+                            other => Value::Tuple(TupleVal::Boxed(Rc::new(vec![other]))),
+                        };
+                    } else {
+                        let mut fs = Vec::with_capacity(n);
+                        for k in 0..n {
+                            fs.push(std::mem::replace(&mut regs_v[b + k], Value::Unit));
+                        }
+                        regs_v[dst as usize] = Value::Tuple(TupleVal::Boxed(Rc::new(fs)));
                     }
-                    regs_v[dst as usize] = Value::Tuple(TupleVal::Boxed(Rc::new(fs)));
+                }
+                Op::MakeList { dst, base_v, len } => {
+                    let b = base_v as usize;
+                    let n = len as usize;
+                    let mut items = Vec::with_capacity(n);
+                    for k in 0..n {
+                        items.push(std::mem::replace(&mut regs_v[b + k], Value::Unit));
+                    }
+                    regs_v[dst as usize] = Value::List(Rc::new(items));
+                }
+                Op::ListFilled { dst, r_n, val_v } => {
+                    let n = regs_i[r_n as usize];
+                    if n < 0 {
+                        return trap(spans[cur_pc], format!("List.filled with negative length {n}"));
+                    }
+                    let val = regs_v[val_v as usize].clone();
+                    regs_v[dst as usize] = Value::List(Rc::new(vec![val; n as usize]));
+                }
+                Op::ToList { dst, src_v } => {
+                    regs_v[dst as usize] = match &regs_v[src_v as usize] {
+                        Value::Array(arr) => Value::List(Rc::new(arr.to_values())),
+                        Value::List(items) => Value::List(Rc::new((**items).clone())),
+                        Value::ListView(view) => Value::List(Rc::new(view.to_vec())),
+                        other => other.clone(),
+                    };
+                }
+                Op::CmpV { dst, a_v, b_v, op } => {
+                    let a = &regs_v[a_v as usize];
+                    let b = &regs_v[b_v as usize];
+                    let res = match op {
+                        CmpOp::Eq => a == b,
+                        CmpOp::Ne => a != b,
+                        CmpOp::Lt => a.cmp(b) == std::cmp::Ordering::Less,
+                        CmpOp::Le => a.cmp(b) != std::cmp::Ordering::Greater,
+                        CmpOp::Gt => a.cmp(b) == std::cmp::Ordering::Greater,
+                        CmpOp::Ge => a.cmp(b) != std::cmp::Ordering::Less,
+                        _ => false,
+                    };
+                    regs_i[dst as usize] = i64::from(res);
                 }
                 Op::CallVmI { fn_id, arg_base, argc, dst } => {
                     let f = &self.program.fns[fn_id as usize];

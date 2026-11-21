@@ -649,3 +649,20 @@ print(r1 == y, r2 == x, z != x, r3)
     assert_eq!(trap, None);
     assert_eq!(out, "YES YES YES 70\n");
 }
+
+#[test]
+fn vm_list_literals_filled_to_list_and_structural_cmp_v() {
+    let source = "
+var xs: List<Int> = []
+let ys = [1, 2, 3]
+let zs = List.filled(3, 5)
+var arr: [0..3]Int = 7
+let ls = ys.rev.to_list()
+let p1 = (1, 2)
+let p2 = (1, 3)
+print(xs.len, ys[2], zs[1], ls[0], p1 < p2, p1 == p1, ys < zs)
+";
+    let (out, trap) = outcome(source, "");
+    assert_eq!(trap, None);
+    assert_eq!(out, "0 3 5 3 YES YES YES\n");
+}
