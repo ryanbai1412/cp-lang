@@ -1,28 +1,29 @@
-// cf2084f: a smaller element can only move left past larger ones, so every pair
-// with u < v and pos_a[u] < pos_a[v] must keep pos_b[u] < pos_b[v].
-// Two sweeps compute each value's allowed position window [lo[v], hi[v]];
-// then earliest-deadline-first matches values to positions.
-@!multitest
+// Codeforces 2084 F: Skyscape.
+// A smaller element can only move left past larger ones, so every pair with
+// u < v and pos_a[u] < pos_a[v] must keep pos_b[u] < pos_b[v]. Hence each
+// value v is constrained to [lo[v], hi[v]] where lo[v] is the maximum fixed
+// position among u <= v at or before v in a (defaulting to Pos.first), and
+// hi[v] is the minimum fixed position among u >= v at or after v in a
+// (defaulting to Pos.last). Earliest-deadline-first then assigns values to
+// positions in Pos order.
 
-domain Pos = read(2..=5e5)
+@!multitest
+domain Pos = read(2..=500_000)
 domain Val = 1..=Pos.count
 let a: [Pos]Val = read()
 let c: [Pos]?Val = read(none: 0)
-let fixed: [Val]?Pos = c.invert()
+let fixed: [Val]?Pos = c.inverse()
 
-// Forward sweep: lo[v] = max fixed position among u <= v appearing at or before v in a.
-var lo: [Val]Pos = Pos.first
-var pref_max = SegTree<Val, Max<Pos>>(init: none)
-for v in a:
-    if let p = fixed[v]: pref_max.update(v, p)
-    lo[v] = pref_max.fold(..=v) ?? Pos.first
+fn sweep(order: Seq<Val>, edge: Pos, op: fn(Pos, Pos) -> Pos, below: Bool) -> [Val]Pos:
+    var out: [Val]Pos = edge
+    var st = SegTree<Val, Pos>(Monoid(edge, op))
+    for v in order:
+        if let p = fixed[v]: st.set(v, p)
+        out[v] = if below: st.fold(..=v) else: st.fold(v..)
+    out
 
-// Backward sweep: hi[v] = min fixed position among u >= v appearing at or after v in a.
-var hi: [Val]Pos = Pos.last
-var suff_min = SegTree<Val, Min<Pos>>(init: none)
-for v in a.rev:
-    if let p = fixed[v]: suff_min.update(v, p)
-    hi[v] = suff_min.fold(v..) ?? Pos.last
+let lo = sweep(a, Pos.first, max, below: true)
+let hi = sweep(a.rev, Pos.last, min, below: false)
 
 let by_lo = Val.group(by: v => lo[v])
 var pq = MinHeap<(Pos, Val)>()
@@ -31,8 +32,9 @@ var b: [Pos]Val = Val.first
 for i in Pos:
     for v in by_lo[i]: pq.push((hi[v], v))
     let (deadline, v) = pq.pop() ?? return print(-1)
-    if deadline < i or (c[i] != none and c[i] != v):
-        return print(-1)
+    if deadline < i: return print(-1)
+    if let want = c[i]:
+        if v != want: return print(-1)
     b[i] = v
 
 print(b)
