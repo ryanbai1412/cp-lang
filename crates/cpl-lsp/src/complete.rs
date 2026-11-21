@@ -6,8 +6,11 @@
 //! doc comments come from the declarations, through [`Outline`].
 
 use crate::json::{obj, Value};
-use crate::outline::{Entry, Kind, Outline};
-use cpl_check::{Analysis, AnalyzedItem, FsLoader, HoverEntry, Loader, Ty};
+use crate::outline::{Entry, Kind, Outline, Param};
+use cpl_check::{
+    builtin_members, prelude_names, Analysis, AnalyzedItem, BuiltinMember, FsLoader, HoverEntry,
+    Loader, MemberKind, PreludeKind, Receiver, Ty,
+};
 use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
 use cpl_syntax::visit::{walk_stmt, Visitor};
 use std::collections::{HashMap, HashSet};
@@ -439,7 +442,9 @@ fn members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, u8)>
             .collect()
     };
     match ty {
-        Ty::Named { name, args } => type_members(cursor, std, name, args, true),
+        Ty::Named { name, args } if builtin_receiver(ty).is_none() => {
+            type_members(cursor, std, name, args, true)
+        }
         Ty::TypeName(name) => type_members(cursor, std, name, &[], false),
         Ty::Record(fields) => fields
             .iter()
@@ -450,10 +455,100 @@ fn members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, u8)>
             .enumerate()
             .map(|(i, ty)| (plain(&i.to_string(), Kind::Field, ty.to_string(), ""), 0))
             .collect(),
+        Ty::Named { .. } | Ty::Str | Ty::Array { .. } if builtin_receiver(ty).is_some() => {
+            let (receiver, bindings) = builtin_receiver(ty).expect("checked by the guard");
+            builtin_members(receiver)
+                .map(|member| (builtin_entry(member, &bindings), 0))
+                .collect()
+        }
         Ty::Domain(domain) => builtin(DOMAIN_MEMBERS, format!("domain {domain}")),
         Ty::Pos(domain) => builtin(POS_MEMBERS, format!("position in {domain}")),
         _ => Vec::new(),
     }
+}
+
+/// The built-in type a value of `ty` is, with what its catalog's `T`, `K`,
+/// `V` and `D` stand for here.
+fn builtin_receiver(ty: &Ty) -> Option<(Receiver, Vec<(String, String)>)> {
+    let bind = |names: &[&str], args: &[&Ty]| -> Vec<(String, String)> {
+        names
+            .iter()
+            .zip(args)
+            .map(|(name, ty)| (name.to_string(), ty.to_string()))
+            .collect()
+    };
+    Some(match ty {
+        Ty::Str => (Receiver::Str, bind(&["T"], &[&Ty::Char])),
+        Ty::Array { index, elem } => {
+            let index = index
+                .iter()
+                .map(Ty::to_string)
+                .collect::<Vec<_>>()
+                .join("][");
+            let mut bindings = bind(&["T"], &[elem]);
+            bindings.push(("D".to_string(), index));
+            (Receiver::Array, bindings)
+        }
+        Ty::Named { name, args } => {
+            let receiver = *Receiver::ALL.iter().find(|r| r.name() == name)?;
+            let args: Vec<&Ty> = args.iter().collect();
+            let names: &[&str] = if receiver == Receiver::Map {
+                &["K", "V"]
+            } else {
+                &["T"]
+            };
+            (receiver, bind(names, &args))
+        }
+        _ => return None,
+    })
+}
+
+/// A catalog row as a completion entry, its types written for this value.
+fn builtin_entry(member: &BuiltinMember, bindings: &[(String, String)]) -> Entry {
+    let params = split_params(member.params)
+        .into_iter()
+        .map(|param| {
+            let (name, ty) = param.split_once(':').unwrap_or((param, ""));
+            Param {
+                name: name.trim().to_string(),
+                ty: substitute(ty.trim(), bindings),
+            }
+        })
+        .collect();
+    Entry {
+        name: member.name.to_string(),
+        kind: match member.kind {
+            MemberKind::Get => Kind::Getter,
+            MemberKind::Method => Kind::Method,
+        },
+        public: true,
+        detail: substitute(&member.signature(), bindings),
+        doc: member.doc.to_string(),
+        params,
+        instance: true,
+        members: Vec::new(),
+    }
+}
+
+/// `i: Int, f: (Int, Int) -> Int` split at its top-level commas.
+fn split_params(text: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let (mut depth, mut start) = (0i32, 0);
+    for (i, c) in text.char_indices() {
+        match c {
+            '(' | '[' | '<' | '{' => depth += 1,
+            ')' | ']' | '>' | '}' if !text[..i].ends_with('-') => depth -= 1,
+            ',' if depth == 0 => {
+                out.push(text[start..i].trim());
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    if !text[start..].trim().is_empty() {
+        out.push(text[start..].trim());
+    }
+    out
 }
 
 fn type_members(
@@ -561,6 +656,17 @@ fn scope_completion(cursor: &Cursor, std: &mut StdLib, word: &str) -> Vec<Value>
         {
             add(&entry, 3, &mut items);
         }
+    }
+    // The compiler's own names; the `stdlib/prelude.cp` ones came above
+    // with their signatures and docs.
+    for (name, kind) in prelude_names() {
+        let (kind, detail) = match kind {
+            PreludeKind::Type => (Kind::Struct, "built-in type"),
+            PreludeKind::Trait => (Kind::Trait, "built-in trait"),
+            PreludeKind::Value => (Kind::Fn, "built-in"),
+            PreludeKind::Std(_) => continue,
+        };
+        add(&plain(name, kind, detail.into(), ""), 3, &mut items);
     }
     for keyword in cpl_syntax::KEYWORDS {
         add(

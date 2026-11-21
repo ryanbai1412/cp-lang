@@ -1080,3 +1080,54 @@ fn rename_edits_every_reference_and_refuses_library_names() {
     let library = ask_at("textDocument/prepareRename", "print(gc|d(4, 6))\n");
     assert!(library.is_null(), "{library:?}");
 }
+
+#[test]
+fn dot_completion_on_built_in_types_reads_the_compiler_catalog() {
+    let kind_of = |items: &[(String, u32, String)], label: &str| {
+        let item = items.iter().find(|i| i.0 == label);
+        item.unwrap_or_else(|| panic!("no `{label}` in {items:?}"))
+            .clone()
+    };
+    // A list: `len` reads as a property, `push` is called, `T` is `Int`.
+    let items = completions("var xs = [3, 1, 2]\nxs.|\n");
+    assert_eq!(kind_of(&items, "len").1, 10);
+    assert_eq!(kind_of(&items, "push").1, 2);
+    assert_eq!(kind_of(&items, "get").2, "get(i: Int) -> ?Int");
+    // A string, a map with its key and value types, a set, an array.
+    let items = completions("let s = \"hello\"\ns.|\n");
+    assert!(labels(&items).contains(&"find_all"), "{items:?}");
+    let items = completions("var m: Map<Int, Str> = Map()\nm.|\n");
+    assert_eq!(kind_of(&items, "first").2, "first: ?(Int, Str)");
+    assert_eq!(kind_of(&items, "pop_first").1, 2);
+    let items = completions("var st: Set<Int> = Set()\nst.|\n");
+    assert!(labels(&items).contains(&"first_ge"), "{items:?}");
+    let items = completions("domain D = 0..3\nvar a: [D]Int = 0\na.|\n");
+    assert_eq!(kind_of(&items, "fill").2, "fill(x: Int)");
+    // On a half-typed line too.
+    let items = completions("var xs = [3, 1, 2]\nlet k = xs.|\nprint(k)\n");
+    assert!(labels(&items).contains(&"pop"), "{items:?}");
+}
+
+#[test]
+fn signature_help_covers_built_in_methods() {
+    let help = signature("var xs = [3, 1, 2]\nxs.insert(0, |)\n");
+    assert_eq!(help.0, "insert(i: Int, x: Int)");
+    assert_eq!(help.1, 1);
+}
+
+#[test]
+fn bare_names_include_the_compiler_prelude() {
+    let items = completions("let n = 3\npr|\n");
+    let print = items
+        .iter()
+        .find(|i| i.0 == "print")
+        .expect("print is offered");
+    assert_eq!(print.1, 3);
+    let items = completions("let n: I| = 3\n");
+    assert!(
+        labels(&items).contains(&"Int") && labels(&items).contains(&"I128"),
+        "{items:?}"
+    );
+    // A stdlib fn that needs a `use` is not in scope.
+    assert!(!labels(&completions("z_|\n")).contains(&"z_function"));
+}
