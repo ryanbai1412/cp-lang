@@ -1629,7 +1629,10 @@ impl<'a> Checker<'a> {
                     "first" | "last" => Ty::Pos(domain.clone()),
                     "all" => Ty::Unknown,
                     "rev" => Ty::Domain(domain.clone()),
-                    "bounds" => Ty::Domain(format!("{domain}.bounds")),
+                    "bounds" => Ty::Named {
+                        name: "Range".into(),
+                        args: vec![Ty::Pos(format!("{domain}.bounds"))],
+                    },
                     "pairs" => Ty::Named {
                         name: "List".into(),
                         args: vec![Ty::Tuple(vec![
@@ -1792,7 +1795,12 @@ impl<'a> Checker<'a> {
                                 args: vec![elem],
                             };
                         }
-                        "bounds" => return Ty::Domain(format!("{type_name}.bounds")),
+                        "bounds" => {
+                            return Ty::Named {
+                                name: "Range".into(),
+                                args: vec![Ty::Pos(format!("{type_name}.bounds"))],
+                            };
+                        }
                         _ => {}
                     }
                 }

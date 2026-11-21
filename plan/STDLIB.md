@@ -172,7 +172,9 @@ names another variable.
 **Index spaces.** A function over positions takes and returns the
 domain (`?D`, `Bounds<D>`, `Range<D>`), never a raw `Int`, when its
 input is a `[D]T`; over a `List<T>` it uses `Int`. A function that
-creates a new index space returns it (`scc` returns `domain C`).
+creates a new index space returns it (`scc` returns `domain C`). `D.bounds` is
+the value `Range<D.bounds>`, the cuts `0..=D.K`: pass it where a
+`Range` or `List` of cuts is expected; `D.all` is the positions.
 
 ## 3. Core features the stdlib relies on
 
