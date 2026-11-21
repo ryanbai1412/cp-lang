@@ -5,6 +5,7 @@
 // all matched slime moves into bucket t_now.
 @!multitest
 use std.dsu.{DsuOf}
+use std.interval.{IntervalMap}
 
 let (n, m, q): (2..=100_000, 2..=100_000, 1..=100_000) = read()
 domain V = 1..=n
@@ -13,37 +14,10 @@ let edges: [0..n - 1](u: V, v: V) = read()
 let tree = Rooted(Graph.undirected(edges), V.first)
 let init_slime: [0..m]V = read()
 
-// Partition of preorder positions [0, n) by last-painted timestamp.
-struct PaintMap:
-    segs: Map<Int, (r: Int, t: Time)>
-
-    fn split(mut self, x: Int):
-        if let (sl, val) = self.segs.last_le(x):
-            if sl < x and val.r > x:
-                self.segs[sl] = (r: x, t: val.t)
-                self.segs[x] = (r: val.r, t: val.t)
-
-    fn assign(mut self, l: Int, r: Int, t_now: Time, mut out: List<(t: Time, w: Int)>):
-        self.split(l)
-        self.split(r)
-        var pos = l
-        while pos < r:
-            let seg = self.segs.remove(pos)!
-            out.push((t: seg.t, w: seg.r - pos))
-            pos = seg.r
-        self.segs[l] = (r: r, t: t_now)
-
-var init_time: [0..n]Time = Time(1)
-for v in init_slime: init_time[tree.pos(v).ord] = Time(2)
-
-var init_segs = Map<Int, (r: Int, t: Time)>()
-var run_l = 0
-for i in 1..n:
-    if init_time[i] != init_time[run_l]:
-        init_segs[run_l] = (r: i, t: init_time[run_l])
-        run_l = i
-init_segs[run_l] = (r: n, t: init_time[run_l])
-var paint = PaintMap(init_segs)
+// Partition of preorder positions by last-painted timestamp.
+var init_time: [tree.Pre]Time = Time(1)
+for v in init_slime: init_time[tree.pos(v)] = Time(2)
+var paint = IntervalMap.from(init_time)
 
 var supply = DsuOf<Time, (prv: ?Time, cnt: Int)>(_ => (prv: none, cnt: 0), (_, b) => b)
 supply.set(Time(2), (prv: none, cnt: m))
@@ -57,7 +31,7 @@ for t_now in Time(3)..:
 
     var chunks = List<(t: Time, w: Int)>()
     for (range, _) in tree.chains(cur, c):
-        paint.assign(range.lo.ord, range.hi.ord, t_now, mut chunks)
+        for (r, t) in paint.assign(range, t_now): chunks.push((t: t, w: r.len))
     cur = c
 
     chunks.sort(by: x => desc(x.t))
