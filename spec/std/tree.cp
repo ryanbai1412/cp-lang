@@ -15,7 +15,7 @@ use std.dp.{Step}
 use std.algebra.{Monoid, MaxSub, Action}
 use std.segtree.{SegTree}
 use std.lazy.{LazySegTree, AddMax, AddSum}
-use std.seq.{excl_fold, dedup}
+use std.seq.{dedup}
 use std.rand.{Rng}
 
 /// A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre`.

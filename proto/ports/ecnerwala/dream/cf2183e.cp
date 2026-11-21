@@ -12,5 +12,5 @@ for i in 1..n:
     for d in 1..=m:
         for x in (d..=m - d).step(d): next[x + d] += ways[x]
     if let v = a[i]: next.keep_only(v)
-    ways = next.take()
+    ways = next.take_all()
 print(ways.sum())

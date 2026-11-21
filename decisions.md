@@ -4205,7 +4205,11 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
 ## 138. Sequences, search/DP and graph/tree API rounds (proposed, 2026-11-21)
 
 - **Status.** Proposed in `spec/api/2-sequences.md`, `3-search-dp.md` and
-  `4-graphs-trees.md`; under review with Ryan. Stubs follow once accepted.
+  `4-graphs-trees.md`; under review with Ryan. Sequence stubs follow round 2:
+  `Slice<S>` replaces `View<T>`; `scan` (with `from:`) moved to `std.prefix`
+  and returns `Prefix`; suffix folds are `a.rev.scan(op)`; `with_prev` stays
+  (path walks need the first step apart); `List.take` became `take_all` so
+  `take(k)` is the view.
 - **Sequences.** One protocol, `Seq<T>` (`iter() -> yields T`); generators
   are the only iterator, push-based, and a generator value is a recipe
   rerun by each `for`. `Indexed<D, T>` adds O(1) `s[i]` and `s.keys`.

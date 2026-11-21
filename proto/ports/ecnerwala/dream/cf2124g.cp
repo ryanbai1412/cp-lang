@@ -25,8 +25,6 @@
 //   uncapped hit plus the iterations where `a[pos] < cap - ai`, giving O(n log n)
 //   total work (amortized with the monotone split).
 
-use std.seq.suffix_scan
-
 @!multitest
 let n: 1..=1_000_000 = read()
 domain Pos = 0..n
@@ -37,8 +35,8 @@ let orig_suff = pref_min.suffix_sums()
 let base_ans = orig_suff[Pos.cuts.first]
 
 // Strict suffix maxima in reverse order; `suffix_max_pos.last!` is the global max.
-let suff_max = a.suffix_scan(max)
-let suffix_max_pos = [p for p in Pos.rev if p == Pos.last or a[p] > suff_max[p.next!]]
+let suff_max = a.rev.scan(max)
+let suffix_max_pos = [p for p in Pos.rev if p == Pos.last or a[p] > suff_max[p.r]]
 let top_val = a[suffix_max_pos.last!]
 
 var ans: [0..n]Int = base_ans
@@ -49,7 +47,7 @@ for i in Pos.rev if pref_min[i] == a[i]:
     // Uncapped at Pos.first: use ai + top_val so no candidate exceeds cap.
     let cap = (i.prev.map(p => pref_min[p])) ?? (ai + top_val)
     let blk = a[i.l..end_cut]
-    let lifted = ([cap] + blk[1..]).scan(min)
+    let lifted = a[i.r..end_cut].scan(min, from: cap)
     let lifted_suff = lifted.suffix_sums()
     let block_loss = lifted.suffix_sums(from: orig_suff[end_cut])
 
@@ -63,4 +61,5 @@ for i in Pos.rev if pref_min[i] == a[i]:
 
     end_cut = i.l
 
-print(ans.suffix_scan(max))
+let best = ans.rev.scan(max)
+print([0..n] k => best[k])

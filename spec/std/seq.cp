@@ -15,23 +15,6 @@ use std.algebra.{Monoid}
 /// Every value of `V` once, in some order. `cpl stress` makes and shrinks it as a permutation.
 pub type Perm<V> = [V]V
 
-/// O(n) calls of `f`. Every prefix folded with `f`: `[a0, f(a0, a1), ...]`, indexed as `self` is.
-/// Spec target also accepts `init: Acc`, returning `[D.cuts]Acc` (cut-indexed exclusive scan;
-/// see spec-syntax gap for optional `init:` refining return domain from `[D]T` to `[D.cuts]Acc`).
-pub fn scan<D, T>(self: [D]T, f: (T, T) -> T) -> [D]T = todo
-
-/// O(n) calls of `f`. Every suffix folded right-to-left with `f`: `out[i] = f(self[i], out[i + 1])`.
-/// Spec target also accepts `init: Acc`, returning `[D.cuts]Acc` (cut-indexed exclusive suffix scan).
-pub fn suffix_scan<D, T>(self: [D]T, f: (T, T) -> T) -> [D]T = todo
-
-/// Fold every prefix of `self` in place with `f`: `self.at(i) = f(self.at(i - 1), self.at(i))`.
-/// Works on any `IndexedMut` (`List<T>`, `[D]T`, `Str`). Zero allocations. O(n) calls of `f`.
-pub fn scan_in_place<S: IndexedMut, T>(mut self: S, f: (T, T) -> T) = todo
-
-/// Fold every suffix of `self` right-to-left in place with `f`: `self.at(i) = f(self.at(i), self.at(i + 1))`.
-/// Works on any `IndexedMut` (`List<T>`, `[D]T`, `Str`). Zero allocations. O(n) calls of `f`.
-pub fn suffix_scan_in_place<S: IndexedMut, T>(mut self: S, f: (T, T) -> T) = todo
-
 /// Product of all elements of `self` (`T.one` when empty). Works on any `Seq` (`Str`, `List`, `[D]T`, `Range`, views) of `Int`, `Mod<P>`, `F64`. O(n).
 pub fn prod<S: Seq, T>(self: S) -> T = todo
 
@@ -76,18 +59,18 @@ pub fn merge_sorted<A: Indexed, B: Indexed, T, K>(
 ) -> List<T> = todo
 
 /// O(1) per window. Borrowed length-`k` sliding slice views, left to right. Nothing when `k > self.len`.
-pub fn windows<S: Indexed, T>(self: S, k: Int) -> yields View<T> = todo
+pub fn windows<S: Indexed>(self: S, k: Int) -> yields Slice<S> = todo
 
 /// O(1) per chunk. Borrowed non-overlapping slice views of length `k` (the last may be shorter).
-pub fn chunks<S: Indexed, T>(self: S, k: Int) -> yields View<T> = todo
+pub fn chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S> = todo
 
 /// Adjacent pairs `(prev, x)` of `self`, left to right: `[10, 20, 30].pairs()` gives
 /// `(10, 20)` then `(20, 30)`. Works on any `Seq` (`List<T>`, `[D]T`, `Str`, `Range`, views). O(1) per step.
 pub fn pairs<S: Seq, T>(self: S) -> yields (T, T) = todo
 
-/// Every element paired with the previous one, starting with `(none, first)`:
-/// `[10, 20, 30].with_prev()` gives `(none, 10)`, `(10, 20)`, `(20, 30)`. Works on any `Seq`. O(1) per step.
-pub fn with_prev<S: Seq, T>(self: S) -> yields (?T, T) = todo
+/// Every element paired with the one before it, starting with `(none, first)`:
+/// `[10, 20, 30].with_prev` gives `(none, 10)`, `(10, 20)`, `(20, 30)`. O(1) per step.
+pub @get fn with_prev<S: Seq, T>(self: S) -> yields (?T, T) = todo
 
 /// Every element with the one after it, the last with the first: the
 /// sides of a polygon, the links of a ring. One pair `(x, x)` for a
@@ -141,22 +124,8 @@ pub fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool = todo
 /// Works on any `Seq` (`Str`, `List<T>`, `[D]T`, `Range<I>`, and O(1) views) without conversion. O(n).
 pub fn runs<S: Seq, T, K>(self: S, by: T -> K = x => x) -> List<(val: K, len: Int)> = todo
 
-/// Partition `self` into maximal contiguous `Range<D>` segments where `same(a, b)` holds on
-/// every adjacent pair. Zero allocations, O(n) calls of `same`.
-pub fn chunk_by<D, T>(self: [D]T, same: (T, T) -> Bool) -> yields Range<D> = todo
-
-/// Maximal contiguous `Range<D>` runs of equal elements (or equal `by:` keys). Zero allocations, O(n).
-pub fn run_ranges<D, T, K>(self: [D]T, by: T -> K = x => x) -> yields Range<D> = todo
-
 /// Group indices of `D` by their key in `K`, preserving order within each bucket. O(|D| + |K|).
 pub fn buckets<D, K>(key: [D]K) -> [K]List<D> = todo
-
-/// For each value of `xs`, in order, the fold with `m` of all the others: what is left when
-/// one is taken out, with no division or inverse needed. The fold keeps the order (the ones
-/// before, then the ones after), so `m` need not commute. Works on any `Indexed`. O(n) calls of `m`.
-///
-///     for (x, rest) in [2, 3, 5].excl_fold(*): print(x, rest)    // 2 15, 3 10, 5 6
-pub fn excl_fold<S: Indexed, T, M>(self: S, m: M) -> yields (x: T, rest: T) = todo
 
 /// The distinct values of a coordinate compression, in increasing order, indexed by their
 /// own domain `D`. `xs[i]` is the value at index `i`, `xs.at(val)` the index of a value that
@@ -285,7 +254,7 @@ pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D) = todo
 pub fn resized<S: Indexed, T>(self: S, n: Int, fill: T) -> List<T> = todo
 
 /// Move all elements out of `self` in O(1), leaving it empty.
-pub fn take<T>(mut self: List<T>) -> List<T> = todo
+pub fn take_all<T>(mut self: List<T>) -> List<T> = todo
 
 /// Insert `x` at index `i` (`0 <= i <= self.len`), shifting elements `i..` right by one. O(n).
 pub fn insert<T>(mut self: List<T>, i: Int, x: T) = todo
@@ -299,34 +268,37 @@ pub fn remove<T>(mut self: List<T>, i: Int) -> T = todo
 
 // --- Lazy views, slicing, and stream / combinator generators (W4, W6) ---
 
-/// O(1) creation. Borrowed lazy or slice view over elements of type `T` (W4).
-pub struct View<T>():
-    /// O(1). Length of the view.
+/// O(1) to make. `s[r]`: a borrowed view of `s` over the range `r`. A domain-indexed source keeps
+/// its positions (`a[l..=r][i]` is `a[i]`, and `i` must lie in `l..=r`); a `List` or `Str` slice
+/// counts from 0 (`s[2..5][0]` is `s[2]`). Writable through a `var` source; the source's length
+/// can't change while it is alive. See `spec/api/2-sequences.md`.
+pub struct Slice<S>():
+    /// O(1). The slice's indices: a range of the source's positions, or `0..len` for an offset source.
+    @get pub fn keys(self) -> Range<Int> = todo
+    /// O(1).
     @get pub fn len(self) -> Int = todo
-    /// O(1). Whether the view is empty.
+    /// O(1).
     @get pub fn is_empty(self) -> Bool = todo
-    /// O(1). Element at 0-based offset `i`.
-    pub fn at(self, i: Int) -> T = todo
-    /// O(1) per step. Iterate elements of the view without allocating.
-    pub fn iter(self) -> yields T = todo
+    /// O(1) per step.
+    pub fn iter(self) -> yields Int = todo
 
-/// O(1). Wrap any `Seq` as a lazy view so chained `.map`/`.filter` fuse without allocating.
-pub fn view<S: Seq, T>(self: S) -> View<T> = todo
+/// O(1). The view without its first `k` elements, clamped (traps if `k < 0`). Consuming a view
+/// from the front is `w = w.drop(1)`.
+pub fn drop<S: Indexed>(self: S, k: Int = 1) -> Slice<S> = todo
 
-/// O(1) per step. Strided range `r.first, r.first + k, ...` within `r`; traps if `k <= 0`.
-pub fn step_by<I>(self: Range<I>, k: Int) -> yields I = todo
+/// O(1). The view without its last `k` elements, clamped (traps if `k < 0`).
+pub fn drop_last<S: Indexed>(self: S, k: Int = 1) -> Slice<S> = todo
 
-/// O(1). Borrowed view skipping the first `k` elements (clamped to `self.len`; traps if `k < 0`).
-pub fn drop_first<S: Indexed, T>(self: S, k: Int = 1) -> View<T> = todo
+/// O(1). The first `min(k, len)` elements, as a view (traps if `k < 0`).
+pub fn take<S: Indexed>(self: S, k: Int) -> Slice<S> = todo
 
-/// O(1). Borrowed view skipping the last `k` elements (clamped to `self.len`; traps if `k < 0`).
-pub fn drop_last<S: Indexed, T>(self: S, k: Int = 1) -> View<T> = todo
+/// O(1). The last `min(k, len)` elements, as a view (traps if `k < 0`).
+pub fn take_last<S: Indexed>(self: S, k: Int) -> Slice<S> = todo
 
-/// O(1). Borrowed view of the first `min(k, self.len)` elements (traps if `k < 0`).
-pub fn take_first<S: Indexed, T>(self: S, k: Int) -> View<T> = todo
-
-/// O(1). Borrowed view of the last `min(k, self.len)` elements (traps if `k < 0`).
-pub fn take_last<S: Indexed, T>(self: S, k: Int) -> View<T> = todo
+/// O(n), allocates. The end of a lazy chain, materialized into the type the context expects
+/// (`List`, `Set`, `Map`, `Str`, `[D]T`), else a `List`: `a.filter(p).map(f).collect()`.
+/// The same operation as `List(s)`; the postfix form is for chains.
+pub fn collect<S: Seq, T>(self: S) -> List<T> = todo
 
 /// O(1) per step. Yield leading elements while `keep(x)` holds, stopping at the first failure.
 pub fn take_while<S: Seq, T>(self: S, keep: T -> Bool) -> yields T = todo
@@ -382,7 +354,7 @@ pub fn min_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count:
 pub fn tally<S: Seq, T, K>(self: S, by: T -> K = x => x) -> HashMap<K, Int> = todo
 
 /// O(n) expected, O(n) memory. Group elements by arbitrary hashable key (companion to domain-indexed `buckets`).
-pub fn group_by<S: Seq, T, K>(self: S, by: T -> K) -> HashMap<K, List<T>> = todo
+pub fn group<S: Seq, T, K>(self: S, by: T -> K) -> HashMap<K, List<T>> = todo
 
 /// O(n) expected, O(k) memory. `k` smallest elements under `by:` (unordered; ties to earlier index).
 pub fn min_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T> = todo
@@ -432,9 +404,6 @@ pub fn radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x) = todo
 
 /// O(n + |K|), O(n + |K|) memory. Stable counting sort in place by domain or bounded-range key `by:`.
 pub fn counting_sort<S: IndexedMut, T, K>(mut self: S, by: T -> K) = todo
-
-/// O(n log n), O(n) memory. Permutation of `D` sorting `self` stably by `by:` (ascending, or descending when `desc: true`).
-pub fn argsort<D, T, K>(self: [D]T, by: T -> K = x => x, desc: Bool = false) -> List<D> = todo
 
 /// O(n) expected, O(n) memory. Whether `a` and `b` have the same multiset of elements.
 pub fn is_permutation<A: Seq, B: Seq, T>(a: A, b: B) -> Bool = todo

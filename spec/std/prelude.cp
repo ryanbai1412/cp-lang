@@ -26,10 +26,9 @@ use std.lazy.{AddMax, AddMin, AddSum, AssignMax, AssignMin, AssignSum, DualSegTr
 use std.marks.{Marks}
 use std.math.{Ratio, Sieve, bit, ceil_div, digits, divmod, fixed, gcd, lcm, sign}
 use std.mod.{Comb, Mod}
-use std.prefix.{Diff, Prefix}
+use std.prefix.{Diff, Prefix, scan}
 use std.segtree.{SegTree}
 use std.seq.{
-    argsort,
     buckets,
     chain,
     chunks,
@@ -41,12 +40,11 @@ use std.seq.{
     distinct,
     drop_while,
     equal_range,
-    excl_fold,
     first_gt,
     flat_map,
     flatten,
     get_or_insert,
-    group_by,
+    group,
     insert,
     inverse,
     inversions,
@@ -74,16 +72,12 @@ use std.seq.{
     rotate_right,
     rotated_left,
     rotated_right,
-    run_ranges,
     runs,
-    scan,
     sliding_max,
     sliding_min,
-    suffix_scan,
     take_while,
     tally,
     windows,
-    with_prev,
     zip,
 }
 use std.sparse.{SparseTable}

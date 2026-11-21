@@ -37,7 +37,7 @@ fn route(i: V, j: V) -> List<V>:
     let stem_len = L - dist + 1
     let stem = t.path(mid, far)[..stem_len]
     let detour = if mid == j: stem.odd + stem.even.rev else: stem.even + stem.odd.rev
-    t.path(i, mid).drop_last + detour + t.path(mid, j).drop_first
+    t.path(i, mid).drop_last() + detour + t.path(mid, j).drop()
 
 let rest = [route(i, j) for (i, j) in V.pairs if not joined(i, j)]
 let ops = [(3, skips), (L + 1, rest)]

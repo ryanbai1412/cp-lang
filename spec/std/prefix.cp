@@ -7,6 +7,15 @@
 use std.algebra.{Monoid}
 use std.seq.{ends}
 
+/// O(n) calls of `f`. The n + 1 exclusive prefix folds, indexed by `D`'s cuts: `pre[c]` folds
+/// everything left of cut `c` (`from`, or `f`'s identity, at the first cut), and `pre[v]` for a
+/// position folds through `v`. Suffix folds are `self.rev.scan(f)`, on the same cuts.
+///
+///     let pre = a.scan(+)
+///     pre[r.r] - pre[r.l]          // sum over r; also pre.fold(r)
+///     pre[v.l] + a[v] + suf[v.r]   // with suf = a.rev.scan(+)
+pub fn scan<D, T>(self: [D]T, f: (T, T) -> T, from: ?T = none) -> Prefix<D, T> = todo
+
 /// Fill direction for an append-only `Prefix.filling(...)` table.
 pub enum FillOrder = Forward | Reverse
 

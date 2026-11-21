@@ -156,6 +156,7 @@ for d in divisors(n):
 | `s.take(k)`, `s.drop(k)` | an O(1) view on an `Indexed`; a `Seq` otherwise | consuming a view from the front is `w = w.drop(1)` |
 | `chain(a, b)` | `Seq` | |
 | `s.pairs` | `Seq<(T, T)>`, adjacent pairs | `@get`, O(1) per step |
+| `s.with_prev` | `Seq<(?T, T)>`, starting `(none, first)` | path walks that treat the first step apart |
 | `s.cyclic_pairs` | `Seq<(T, T)>`, plus (last, first) | polygons, rings |
 | `a.windows(k)`, `a.chunks(k)` | `Seq` of views of `a` | each view keeps `a`'s indices |
 | `a.runs(by: k)` | `Seq` of views: maximal equal-key runs | `.keys` of each is its range |
@@ -259,6 +260,6 @@ place) are different jobs, not twins.
 ## What goes away
 
 `View<T>`, `view()`, 0-based `.at(i)` / `.try_at(i)` on `Indexed`,
-`drop_first` (now `drop`), `skip`, `step_by`, `with_prev`, `argmin`/`argmax`, `first_at`,
+`drop_first` (now `drop`), `skip`, `step_by`, `argmin`/`argmax`, `first_at`,
 `order`, `chunk_by`, `run_ranges`, `excl_fold`, `suffix_scan`,
 `scan_in_place`. Each is a view, a fold over `.keys`, or `.rev.scan`.

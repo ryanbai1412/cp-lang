@@ -45,7 +45,7 @@ for t in V.rev if t != V.first:
     let stop = t.next.map(s => parent[s]!) ?? V.first
     dp[t] += moving
     var ways = P.one
-    for (c, p) in tree.path(t, stop).drop_last.with_prev:
+    for (c, p) in tree.path(t, stop).drop_last().with_prev:
         if let c = c: ways *= before[c]
         dp[p] += moving.transposed_mul(ways.integral)
         ways += ways.integral
