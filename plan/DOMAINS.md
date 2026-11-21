@@ -192,9 +192,17 @@ formatter, linter, LSP, and docs. Symmetric triangular tables `[Sym<V>]T`
 (indexed by `adj[u, v]` or `adj[(u, v)]`, packed into `n*(n+1)/2` cells),
 derived pair domains (`domain P = V.pairs`), and zero-overhead domain iteration
 helpers (`V.after(i)`, `V.before(i)`, `for (i, j) in V.pairs`) also work across
-checker, IR, interpreter, C++ codegen, trace, editor syntax, and docs. Seven
-ports converted (`ucup4s25c`, `cf2222f`, `cf2101b`, `cf2268c`, `cf2150f`,
-`cf2147h`, `cf2129b`). Remaining: algebraic product domains (`domain State = (V, K)`,
+checker, IR, interpreter, C++ codegen, trace, editor syntax, and docs.
+Domain-wide subsets (`V.all`, `Bitset<V>` with `for v in s`, `.without(v)`,
+`s - t`, `.find`, `.any`, `.len`, `impl Show`, and `adjacency(edges, into: Bitset)`),
+fieldless enum-indexed arrays (`enum Sign: neg = -1, zero = 0, pos = 1`,
+`[Sign]T`, `[Sign] x => ...`, `for x in Sign:`), domain-level sequence ops
+(`D.partition`, `D.sorted(by:)` including array keys, `D.group_by`, `D.at`,
+`D.first(where:)`, `D.filter`), and typed `Item`/`Cut` ranges via `minmax`
+and `choose2` now also work end to end. Eight ports converted (`ucup4s25c`,
+`cf2222f`, `cf2101b`, `cf2268c`, `cf2150f`, `cf2147h`, `cf2129b`, `cf2147f`),
+with `cf2147h` (`1.631x -> 1.383x`) and `cf2147f` (`1.467x -> 1.254x`)
+rewritten toward their dreams. Remaining: algebraic product domains (`domain State = (V, K)`,
 `research/frictions/cf2178h.md`), graph edge domains (`domain E = edges(V)`),
 eliminating redundant runtime bounds checks when indexing `[0..=m]` by a `0..=m`
 record field in C++ codegen, and explicit `domain` field syntax on

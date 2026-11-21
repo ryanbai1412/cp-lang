@@ -177,6 +177,23 @@ print(adj[V.at(3), V.at(1)], missing, after_first)
 
 `for (i, j) in V.pairs` and `for j in V.after(i)` / `V.before(i)` lower directly to nested integer loops with no intermediate allocation.
 
+## Domain subsets, enum-indexed tables, and sequence operations
+
+Domains compose directly with bitsets (`V.all`, `Bitset<V>`, `adjacency(edges, into: Bitset)`), fieldless enums (`[Sign]T` and `[Sign] x => ...`), domain-typed sequence operations (`partition`, `sorted(by:)`, `group_by`, `at`, `first(where:)`), and paired `Item`/`Cut` ranges via `minmax`:
+
+```cp CP Lang 0.2.2
+enum Sign: neg = -1, zero = 0, pos = 1
+let vals: [Sign]Int = [Sign] s => Int(s) * 10
+
+domain V = 1..=4
+let edges: List<(u: V, v: V)> = [(V(1), V(2)), (V(2), V(3))]
+let adj = adjacency(edges, into: Bitset)
+let rest = V.all - adj[V(2)]
+let (evens, odds) = V.partition(v => Int(v) % 2 == 0)
+let first_big = V.first(where: v => Int(v) > 2)
+print(vals[Sign.neg], rest.len, evens.len, odds.len, first_big!)
+```
+
 ## Algebraic `Index` and escape hatches
 
 The language's `Index` model covers `Bool`, finite enums, `?T`, integer ranges, tuples/records, and `Subset<D>` for bitmask DP. Support across generic library calls is still being completed: for example, flow over payload-enum vertices is not yet runnable. The [graph course](course-graphs-math.html#network-flow-with-typed-vertices) shows a working flow network over a numeric vertex domain.

@@ -2664,7 +2664,6 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
    Reason: options are named arguments rather than separate constructors; storing `by` as-is lets C++ codegen inline `min`/`max` directly (~2x faster than wrapping `pick` in a lambda); `best_at` supplies DP argmin in O(1); `drop_after(max_at)` mirrors `drop_before(min_at)` for right-to-left sweeps without negating positions or adding state to `MonoDeque` (`research/frictions/ucup4s24f.md`). Reverse: restore `MonoDeque.by(better: (T, T) -> Bool)` beside `new(pick)` and drop `best_at`/`drop_after`.
 2. **Bitset knapsack is `Bitset<D>.subset_sums(weights)` rather than a free `std.bitset.subset_sums`.**
    Reason: avoids colliding with `std.dp.subset_sums(xs) -> List<Int>` (meet-in-the-middle) and eliminates the turbofish at call sites (`Bitset<Sum>.subset_sums(ws)`). Reverse: expose a free `subset_sums<D>` in `std.bitset`.
-
 ## 51. `Seq` and `Indexed` trait unification (2026-11-21)
 
 1. **Built-in `Seq` and `Indexed` traits are backed by one central `Ty::seq_elem()` / `is_seq()` / `is_indexed()` predicate in `cpl-check` and `cpl-ir`.**
@@ -2681,7 +2680,6 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
    - *Visibility (`cpl explain <file.cp>`):* `cpl explain <file.cp>` (and `--json`) runs `cpl_codegen::explain_closures` and reports every fn-typed site's lowering mode (`static: direct`, `static: template`, `static: auto`, or `dynamic: std::function` with reason), fulfilling the "nothing secret under the hood" rule.
    - *Return-tuple move:* returning a struct/tuple literal moves owned non-scalar local fields (`std::move(table)`) when unreferenced by sibling fields, preventing O(n log n) vector copies on range-structure constructors (`DisjointSparseTable` 35.4 ms / 1.98x → 18.9 ms / 1.09x vs matched C++17).
    *Reverse:* revert `elidable`, `template_params`, `local_auto`, and `explain_closures` in `crates/cpl-codegen/src/devirt.rs`, the `emit.rs`/`expr.rs`/`stmt.rs` hooks, and `explain_file` in `crates/cpl-cli/src/lib.rs`.
-
 ## 53. Folds and sorts of a sequence are methods (2026-11-21)
 
 1. **Method form is canonical for a fold or sort of one sequence:**
@@ -2730,6 +2728,7 @@ about 2,400,000 bytes, so the cap is back at 2,600,000.
 
 1. **`Comb<M>` replaces `Comb<P>` as the single combinatorics table spelling (supersedes 40.1).**
    `Comb<M>` takes the modular type `M = Mod<P>` directly — `type Z = Mod<998_244_353>; let comb = Comb<Z>(n)` (or inline `Comb<Mod<P>>(n)`) — so the modulus is written once for both compile-time and runtime moduli, and there is one way per job instead of both `Comb<P>` and `Z.comb()`. `Comb<M>(limit)` pre-sizes `f` and `g` to exact capacity `limit + 1` (clamped at `M.MOD`), while lazy `ensure(n)` continues to double capacity for amortized O(1) growth. All ports, tests, examples, docs, and snippets are migrated in the same commit. Reverse: change `pub struct Comb<M>` back to `pub struct Comb<P>` in `stdlib/mod.cp` (replacing `M` with `Mod<P>` and `M.MOD` with `P`) and rewrite `Comb<Z>` callers back to `Comb<P>` or `Comb<Z.MOD>`.
+
 ## 56. `monge_path` returns two lists (2026-11-21)
 
 `std.dp.monge_path(n, w)` returns `(val: List<K>, prev: List<Int>)`, with
@@ -2826,8 +2825,6 @@ visits children first, and `t.sub(v)` is a range of `t.Pre`. `preorder` and
 `postorder` go away, with a `cpl fix` codemod. A true postorder (siblings
 in order) is rarely needed in contest code; it stays `t.Pre.rev` until a port
 shows it matters. Reverse by restoring `postorder` as an alias.
-||||||| Stash base
-
 
 ## 65. `aliens` is generic over the slope type (2026-11-21)
 
@@ -2837,3 +2834,37 @@ edge by (max count + 1) and add 1, which keeps Monge and makes the least
 count win, instead of a half-integer penalty with interpolation in the
 library. Reverse: an `Int`-only `aliens` plus a separate wide variant.
 
+## 66. Dream domain constructs: subsets, enum arrays, sequence ops, and Item/Cut ranges (0.3, 2026-11-21)
+
+- **66.1 Domain-wide subsets (`V.all`, `Bitset<V>`, `adjacency(edges, into: Bitset)`).**
+  `Bitset<D>` adds non-mutating `.without(v)`, `.find(pred)`, `.any(pred)`, `@get fn empty`, and `impl Show`.
+  Any struct providing `each(self)` (including `Bitset<D>`) is directly iterable in `for v in s:` via one general
+  `Iter::Seq` lowering rule in `cpl-ir` and `element_ty` lookup in `cpl-check`. `V.all` continues to default to
+  `Range<V>` (preserving existing `List<V>` / `Range<V>` callers), and lifts cleanly to `Bitset<V>.full()` wherever
+  a `Bitset<V>` is expected, in `V.all - side` / `&` / `|` / `^`, and in `V.all.without(v)`.
+  `adjacency(edges, into: Bitset)` is a general graph builder returning `[V]Bitset<V>` (with `into: List` or default
+  returning `[V]List<V>`), inferring `V` from the edge record/tuple endpoints.
+  Reason: eliminates manual `Bitset<V>.full()` / `.each()` / odd-adjacency boilerplate (`cf2147h`, IOI sketches).
+  Reverse: remove the `each`-based `element_ty`/`iter` path, `Range -> Bitset` coercion, and `adjacency` lowering.
+- **66.2 Fieldless enums as first-class array dimensions (`[Sign]T`, `[Sign] x => ...`, explicit variant values).**
+  Fieldless enum variants accept optional constant integer discriminants (`enum Sign: neg = -1, zero = 0, pos = 1`,
+  read via `Int(s)`). Any fieldless enum `E` is a valid array dimension `Dim::Enum(E)` / `DimSpec::Enum(E)` of static
+  length `E.variants.len()`, supports `[E] x => expr` table comprehensions and `for x in E:` iteration, and indexes
+  with `Cast::EnumOrd(E)` so distinct enums cannot index each other's tables.
+  Reason: enables `[Sign]Path` DP/segment-tree tags (`design/EXEMPLARS-PORTS.md`) without manual ordinal arrays or
+  losing enum type safety.
+  Reverse: remove `Dim::Enum`/`DimSpec::Enum` and `Cast::{EnumOrd, EnumVal, OrdToEnum}` across IR, interp, and codegen.
+- **66.3 Domain-level sequence operations (`partition`, `sorted(by:)`, `group_by`, `at`, `first(where:)`, `filter`).**
+  Every domain `D` (and any sequence `List<T>`, `[D]T`, `Range<T>`, `Set<T>`) supports `.partition(pred)` returning
+  `(List<D>, List<D>)`, `.group_by(key)` returning `List<List<D>>` in deterministic first-seen key order,
+  `.first(where: pred)` returning `?D`, `.filter(pred)` returning `List<D>`, and `D.sorted(by: ...)` returning `List<D>`
+  (where `by:` accepts a lambda, a function name, or a 1D array `[D]K` as `x => arr[x]`).
+  Reason: mined from `design/sketches/ioi2025/*.cp` (`C.partition`, `Col.sorted(by: h)`, `I.group_by`, `I.at(k)`,
+  `Row.first(where:)`) using one shared iterable-lowering mechanism.
+  Reverse: remove the sequence-op arms in `cpl-check/src/check/{call,expr}.rs` and `cpl-ir/src/lower/call.rs`.
+- **66.4 Typed `Item`/`Cut` pairs with `minmax` and `choose2`.**
+  `minmax(a, b)` preserves the operand's domain/position type (`(Cut, Cut)` for `Cut` inputs), so `let (lo, hi) = minmax(p[i], s[i]); low.apply(lo..hi, d)`
+  passes a typed `Range<Cut>` directly to `LazySegTree<Cut, _>.apply` without converting through `Int` or conflating
+  `Item` and `Cut`. `choose2(n)` lowers directly to `n * (n - 1) / 2`.
+  Reason: eliminates `min`/`max` + `Cut(lo)..Cut(hi)` boilerplate in `cf2147f` while keeping `Item` and `Cut` distinct.
+  Reverse: remove `minmax`/`choose2` from `cpl-check/src/prelude.rs`, `cpl-check/src/check/call.rs`, and `cpl-ir/src/lower/call.rs`.
