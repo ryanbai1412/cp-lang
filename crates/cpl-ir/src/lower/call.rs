@@ -1056,7 +1056,15 @@ impl<'a> Lowerer<'a> {
                 let place = self.place(target);
                 let elem = match &place.ty {
                     Ty::List(e) | Ty::Array { elem: e, .. } => (**e).clone(),
-                    _ => Ty::Error,
+                    Ty::Error => return self.err_expr(span),
+                    other => {
+                        let message = format!("`sort` orders a list or an array, not a `{}`", self.show(other));
+                        self.error(codes::BAD_OPERANDS, target.span, message);
+                        if matches!(other, Ty::Range(_)) {
+                            self.help("a range has no cells to move; `sorted(r, by: ..)` gives the list in order, and `[x for x in r]` the list");
+                        }
+                        return self.err_expr(span);
+                    }
                 };
                 self.sort_place(place, &elem, &args[1..], span)
             }
@@ -1433,9 +1441,22 @@ impl<'a> Lowerer<'a> {
     /// `sorted(xs, by: ...)`
     fn sorted_by(&mut self, value: Expr, args: &[ast::Arg], span: Span) -> Expr {
         // `sorted(V, by: ...)`: the positions of a domain, in another order.
-        let value = match value.kind {
-            ExprKind::DomainVal(d) => self.positions(d, span),
-            _ => value,
+        let value = match (value.kind, &value.ty) {
+            (ExprKind::DomainVal(d), _) => self.positions(d, span),
+            // `sorted(D.all, by: ...)`, `sorted(0..n, by: ...)`: a range
+            // written out is the list of what it goes over.
+            (ExprKind::Range { lo, hi }, Ty::Range(of)) => {
+                let elem = (**of).clone();
+                self.collected(elem.clone(), span, |lw, out, push| {
+                    let item = lw.temp(elem);
+                    let lid = lw.fresh_loop();
+                    let at = lw.local(item, span);
+                    let body = Block { stmts: vec![push(lw, at)] };
+                    let iter = Iter::Range { lo: *lo, hi: *hi, step: None, rev: false };
+                    out.push(Stmt::For(lid, item, iter, body));
+                })
+            }
+            (kind, _) => Expr { kind, ..value },
         };
         let list_ty = match value.ty.clone() {
             Ty::List(e) => Ty::List(e),
@@ -2143,6 +2164,9 @@ impl<'a> Lowerer<'a> {
                         self.error(codes::BAD_OPERANDS, arg.span, message);
                         if matches!(ty, Ty::Opt(_)) {
                             self.help("`sum` does not skip or absorb `none`: add `x ?? 0`, or filter with `if let`");
+                        }
+                        if ty == Ty::Str {
+                            self.help("to put the pieces of text one after another, write `xs.join(\"\")`");
                         }
                         self.close_loops(frames, Vec::new());
                         return self.err_expr(span);
@@ -2943,6 +2967,10 @@ impl<'a> Lowerer<'a> {
                         "this is the neighbour itself, and a graph built from a list of pairs numbers no edges; \
                          for `.e`, give the edges a domain: `let edges: [E](u: V, v: V) = ...`, then `Graph.directed(edges)`",
                     ),
+                    (Ty::List(_), "indices") => self.help(
+                        "a list is indexed by `Int` from 0: write `0..xs.len`; \
+                         an array `[D]T` has `.indices`, the positions of `D`",
+                    ),
                     (Ty::Tuple(parts), _) => self.help(format!(
                         "the parts of a tuple have numbers, not names: `.0` to `.{}`",
                         parts.len().saturating_sub(1)
@@ -3604,7 +3632,7 @@ impl<'a> Lowerer<'a> {
         // Members that read like fields can be called too: `xs.len()`.
         if args.is_empty()
             && matches!(method, "len" | "is_empty" | "first" | "last")
-            && !matches!(ty, Ty::Set(_) | Ty::HashSet(_) | Ty::Struct(_))
+            && !matches!(ty, Ty::Struct(_))
         {
             return self.field(whole, base, name);
         }

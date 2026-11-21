@@ -646,3 +646,21 @@ fn an_arc_without_a_record_says_how_to_read_it() {
     let stderr = check_errors("arc-tuple", weighted);
     assert!(stderr.contains("the parts of a tuple have numbers, not names: `.0` to `.1`"), "{stderr}");
 }
+
+#[test]
+fn what_cpl_run_cannot_do_is_an_error_in_cpl_check_that_says_what_to_write() {
+    let indices = check_errors("list_indices", "let xs = [5, 6]\nfor i in xs.indices: print(i)\n");
+    assert!(indices.contains("`List<Int>` has no member `indices`"), "{indices}");
+    assert!(indices.contains("write `0..xs.len`"), "{indices}");
+
+    let sort = check_errors(
+        "sort_a_range",
+        "domain E = 0..3\nlet w: [E]Int = [E] e => 3 - e.ord\nvar order = E.all\nsort(mut order, by: e => w[e])\nprint(order)\n",
+    );
+    assert!(sort.contains("`sort` orders a list or an array, not a `Range<E>`"), "{sort}");
+    assert!(sort.contains("`sorted(r, by: ..)`"), "{sort}");
+
+    let sum = check_errors("sum_of_text", "let xs = [\"a\", \"b\"]\nprint(sum(xs))\n");
+    assert!(sum.contains("`sum` adds numbers, not `Str`"), "{sum}");
+    assert!(sum.contains("xs.join(\"\")"), "{sum}");
+}
