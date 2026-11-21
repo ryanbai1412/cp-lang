@@ -3435,13 +3435,11 @@ impl<'a> Lowerer<'a> {
                 if !can_elem {
                     return Err(e);
                 }
-                let src_ty = e.ty.clone();
                 let dst_ty = want.clone();
                 let w_elem = (**w_elem).clone();
                 let e_elem = (**e_elem).clone();
                 Ok(self.do_expr(Some(&dst_ty), span, |lw, out| {
-                    let src_slot = lw.temp(src_ty);
-                    out.push(Stmt::Let(src_slot, Some(e)));
+                    let src_ref = lw.hold(e, out);
                     let acc_slot = lw.temp(dst_ty.clone());
                     out.push(Stmt::Let(
                         acc_slot,
@@ -3465,7 +3463,6 @@ impl<'a> Lowerer<'a> {
                     );
                     let lid = lw.next_loop;
                     lw.next_loop += 1;
-                    let src_ref = lw.local(src_slot, span);
                     out.push(Stmt::For(
                         lid,
                         item_slot,
@@ -3499,20 +3496,18 @@ impl<'a> Lowerer<'a> {
                         .collect();
                     if let Some(indices) = indices {
                         let dim = w_dims[0];
-                        let src_ty = e.ty.clone();
                         let dst_ty = want.clone();
                         let w_rec = (**w_elem).clone();
                         let e_rec = (**e_elem).clone();
                         return Ok(self.do_expr(Some(&dst_ty), span, |lw, out| {
-                            let src_slot = lw.temp(src_ty);
-                            out.push(Stmt::Let(src_slot, Some(e)));
+                            let src = lw.hold(e, out);
                             let dim_spec = match dim {
                                 Dim::Pos(d) => DimSpec::Pos(d),
                                 Dim::Bound(d) => DimSpec::Bound(d),
                                 Dim::Sym(d) => DimSpec::Sym(d),
                                 Dim::Enum(e) => DimSpec::Enum(e),
                                 Dim::Int | Dim::IntFrom(_) => {
-                                    let sref = lw.local(src_slot, span);
+                                    let sref = src.clone();
                                     DimSpec::Int(Box::new(lw.len_of(sref, span)))
                                 }
                             };
@@ -3529,7 +3524,7 @@ impl<'a> Lowerer<'a> {
                             };
                             let idx_slot = lw.temp(idx_ty.clone());
                             let idx_expr = lw.local(idx_slot, span);
-                            let sref = lw.local(src_slot, span);
+                            let sref = src.clone();
                             let elem_expr = lw.mk(
                                 ExprKind::Index(Box::new(sref.clone()), vec![idx_expr.clone()]),
                                 e_rec.clone(),

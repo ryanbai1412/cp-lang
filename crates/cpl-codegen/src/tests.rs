@@ -815,3 +815,15 @@ fn a_yields_loop_whose_body_calls_a_fn_value_runs_as_the_fn_yields() {
     let bumps = cpp(&src("x => { seen += 10; x }"));
     assert!(bumps.contains("= upto(n)"), "{bumps}");
 }
+
+#[test]
+fn narrowing_a_record_array_reads_the_source_in_place() {
+    let body = body(concat!(
+        "domain E = 0..3\n",
+        "let edges: [E](u: Int, v: Int, w: Int) = read()\n",
+        "fn ends(es: [E](u: Int, v: Int)) -> Int = es[E(0)].u + es[E(2)].v\n",
+        "print(ends(edges))\n",
+    ));
+    assert!(!body.contains("= edges;"), "{body}");
+    assert!(body.contains("& t"), "{body}");
+}
