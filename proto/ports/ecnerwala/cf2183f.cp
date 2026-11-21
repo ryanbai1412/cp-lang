@@ -12,8 +12,7 @@ type Z = Mod<998_244_353>
 let n = read(1..=5000)
 domain V = 1..=n
 let s: [V]Char = read()
-let edges: [0..n - 1](u: V, v: V) = read()
-let t = Rooted(Graph.undirected(edges), root: V(1))
+let t = Rooted(Graph.undirected(read<[0..n - 1](V, V)>()), root: V(1))
 domain P = 0..=n
 let lo = [V] v => t.pos(v).to_idx
 let hi = [V] v => lo[v] + t.size(v)
