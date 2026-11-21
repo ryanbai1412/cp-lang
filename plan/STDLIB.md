@@ -1195,8 +1195,8 @@ struct Rooted<V, Pre> // O(n) time and memory; design/stdlib/trees.md
     @get fn centroids(self) -> List<V> // O(depth)
     fn shapes(self) -> (domain Shape, of: [V]Shape) // [new] O(n log n)
     // O(k log k + k log n)
-    fn virtual_tree(self, keys: List<V>)
-        -> (nodes: List<V>, edges: List<(u: V, v: V)>)
+    fn virtual(self, keys: List<V>) -> VirtualTree<V, K>
+        // fresh domain vt.K in preorder; at: [K]V, up: [K]?K, len: [K]Int, key: [K]Bool
 struct Centroids<V> // [new] O(n log n) time and memory
     fn new<N>(adj: N) -> Centroids<V>
     fn parent(self, c: V) -> ?V // O(1)

@@ -100,3 +100,21 @@ the path, both with a subtree count per splay node) on `python3 lct_gen.py
 
 The C++ reads with `scanf`, as in `lct_bench.cpp`; the generated splay and
 push match it.
+
+## `Rooted.virtual`
+
+`virtual_bench.cp` and `virtual_bench.cpp` build the tree as `root_bench` does,
+then per query build the virtual tree of k random keys (sort by preorder,
+dedupe, add adjacent LCAs, sort and dedupe, link with a stack) and sum all
+pairwise key distances in one bottom-up pass. Input:
+`python3 virtual_gen.py n q k seed`. Best of five, outputs identical:
+
+| input | C++ | CP Lang | ratio | C++ RSS | CP Lang RSS |
+|---|---:|---:|---:|---:|---:|
+| n = 2·10^5, q = 10^5, k = 10, seed 1 | 0.24 s | 0.27 s | 1.12x | 14 MB | 22 MB |
+| the same, seed 2 (long chains) | 0.17 s | 0.20 s | 1.18x | 14 MB | 22 MB |
+| n = 10^6, q = 10^3, k = 10^3, seed 2 | 0.51 s | 0.46 s | 0.90x | 58 MB | 98 MB |
+
+The small-k gap is per-query allocation: CP Lang allocates the four `[vt.K]`
+arrays and the sort buffers for every query where the C++ reuses them. RSS is
+the 64-bit `[V]Int` tables of `Rooted` (`research/frictions/rooted-build.md`).

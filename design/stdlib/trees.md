@@ -204,9 +204,10 @@ trees at their centroids (at most two candidates each).
 ### 3.8 Derived trees
 
 ```cp
-    // O(k log k + k log n): marked vertices plus pairwise LCAs, preorder,
-    // and the virtual edges (u above v); lengths are t.dist(u, v)
-    fn virtual_tree(self, keys: List<V>) -> (nodes: List<V>, edges: List<(u: V, v: V)>)
+    // O(k log k + k log n): marked vertices plus pairwise LCAs over a fresh
+    // domain vt.K in preorder; vt.at[x] the vertex, vt.up[x] the nearest kept
+    // ancestor, vt.len[x] = t.dist(vt.at[up], vt.at[x]), vt.key[x] a key?
+    fn virtual(self, keys: List<V>) -> VirtualTree<V, K>
 
 struct Centroids<V> [new: promoted from examples/local-lib/graph]
     fn new<N>(adj: N) -> Centroids<V>             // O(n log n) time and memory

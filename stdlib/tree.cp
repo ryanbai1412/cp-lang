@@ -14,7 +14,7 @@ use std.graph.{Neighbours, Target, Graph}
 use std.algebra.{Monoid, MaxSub, Action}
 use std.segtree.{SegTree}
 use std.lazy.{LazySegTree, AddMax, AddSum}
-use std.seq.{excl_fold}
+use std.seq.{excl_fold, dedup}
 use std.rand.{Rng}
 
 /// A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre`.
@@ -430,28 +430,43 @@ pub struct Rooted<V, Pre>:
     pub fn apply_path<S, F>(self, a: V, b: V, mut ds: S, tag: F, edges: Bool = false):
         for c in self.chains(a, b, edges): ds.apply(c.range, tag)
 
-    /// The tree squeezed down to `keys`: those vertices and the lowest common ancestors
-    /// between them, each with its nearest kept ancestor as parent. `nodes` is in preorder
-    /// and `edges` go from parent to child. O(k log k + k log n).
-    pub fn virtual_tree(self, keys: List<V>) -> (nodes: List<V>, edges: List<(u: V, v: V)>):
-        if keys.is_empty: return (nodes: [], edges: [])
-        var all = [(tin[v].ord, v) for v in keys]
-        all.sort()
-        for i in 0..keys.len - 1:
-            let l = self.lca(all[i].1, all[i + 1].1)
-            all.push((tin[l].ord, l))
-        all.sort()
-        var nodes = List<V>()
-        for p in all:
-            if nodes.is_empty or nodes[nodes.len - 1] != p.1: nodes.push(p.1)
-        var edges: List<(u: V, v: V)> = []
-        var st = [nodes[0]]
-        for i in 1..nodes.len:
-            let u = nodes[i]
-            while not self.is_anc(st.last!, u): st.pop()
-            edges.push((u: st.last!, v: u))
-            st.push(u)
-        (nodes: nodes, edges: edges)
+    /// The tree squeezed down to `keys`: the keys and the lowest common ancestor of every pair,
+    /// in a fresh domain `vt.K` in preorder, so `for x in vt.K.rev` visits children first.
+    /// `vt.at[x]` is the vertex, `vt.up[x]` its nearest kept ancestor, `vt.len[x]` the weighted
+    /// distance to it (0 at the top) and `vt.key[x]` whether it is a key. O(k log k + k log n).
+    pub fn virtual(self, keys: List<V>):
+        var ks = [tin[v] for v in keys]
+        ks.sort()
+        dedup(mut ks)
+        var ps = ks.copy()
+        for i in 1..ks.len: ps.push(tin[self.lca(at[ks[i - 1]], at[ks[i]])])
+        ps.sort()
+        dedup(mut ps)
+        domain K = 0..ps.len
+        let vs = [K] x => at[ps[x.ord]]
+        var up: [K]?K = none
+        var len: [K]Int = 0
+        var key: [K]Bool = false
+        var st = List<K>()
+        var j = 0
+        for x in K:
+            if j < ks.len and ks[j] == ps[x.ord]:
+                key[x] = true
+                j += 1
+            while st.len > 0 and not self.is_anc(vs[st.last!], vs[x]): st.pop()
+            if let p = st.last:
+                up[x] = p
+                len[x] = far[vs[x]] - far[vs[p]]
+            st.push(x)
+        VirtualTree<V, K>(vs, up, len, key)
+
+/// A virtual tree from `Rooted.virtual`: a few vertices of a tree and their pairwise lowest
+/// common ancestors, over its own domain `K` in preorder.
+pub struct VirtualTree<V, K>:
+    at: [K]V
+    up: [K]?K
+    len: [K]Int
+    key: [K]Bool
 
 /// A centroid decomposition: the centroid of the tree, then recursively of each piece left when
 /// it is removed. Every path passes through the centroid ancestor that first separates its
@@ -756,21 +771,24 @@ fn orders_lifting_and_the_virtual_tree():
             assert got == r.ancestor(v, min(cap, r.depth(v)))
             assert r.lift_while(v, u => false) == none
         let keys: List<V> = [v for v in V if rand(0, 2) == 0]
-        let vt = r.virtual_tree(keys)
+        assert r.virtual([]).K.len == 0
+        let vt = r.virtual(keys + keys)
         var kept: [V]Bool = false
         for a in keys:
             for b in keys: kept[r.lca(a, b)] = true
-        assert vt.nodes.sorted() == [v for v in V if kept[v]]
-        assert vt.edges.len == max(vt.nodes.len - 1, 0)
-        for e in vt.edges:
-            assert r.is_anc(e.u, e.v) and e.u != e.v
-            // nothing kept lies strictly between a node and its parent
-            assert not any(
-                kept[w] and w != e.u and w != e.v and r.is_anc(e.u, w) and r.is_anc(
-                    w,
-                    e.v,
-                ) for w in V
-            )
+        assert [vt.at[x] for x in vt.K] == [v for v in r.at if kept[v]]
+        for x in vt.K:
+            let v = vt.at[x]
+            assert vt.key[x] == (v in keys)
+            // the parent is the nearest kept proper ancestor
+            var w = r.parent(v)
+            while w != none and not kept[w!]: w = r.parent(w!)
+            assert (vt.up[x] == none) == (w == none)
+            if let p = vt.up[x]:
+                assert vt.at[p] == w!
+                assert vt.len[x] == r.dist(vt.at[p], v)
+            else:
+                assert vt.len[x] == 0
 
 @test
 fn a_tree_from_a_stored_graph():

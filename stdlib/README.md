@@ -254,7 +254,7 @@ assert net.flow(a) == 3
 heavy-first preorder in one pass (via `Rooted(root:, adj:)`, `Rooted.weighted`,
 or `Rooted.from_parents(par)`), and answers `lca`, `dist`, `ancestor`,
 `step`, `lift_while`, iterative enter/exit `tour`, and
-`virtual_tree` from it. Each tree value owns its own preorder domain
+`virtual` from it. Each tree value owns its own preorder domain
 `r.Pre` (with `r.pos(v) -> r.Pre` and `r.reorder(a) -> [r.Pre]T`), so
 positions from two different trees cannot be mixed by accident.
 
@@ -460,7 +460,7 @@ is evidence, not a proof.
   `max_weight_matching`.
 - `tree.cp`: `Rooted` (value-owned `t.Pre`, `t.pos`, `t.reorder`,
   `Rooted.from_parents`, `Rooted.weighted`, iterative `t.tour`,
-  `virtual_tree`).
+  `virtual`).
 - `grid.cp`: `Dir4`, `adj4`, `adj8`, `step`, `ray`, `transposed`.
 - `mod.cp`, `math.cp`: modular arithmetic (`try_inv`), interior-mutable
   auto-growing `Comb<M>()` (including `multinomial`), number theory (`gcd`,

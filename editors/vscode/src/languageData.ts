@@ -47,7 +47,7 @@ export const STDLIB_TYPES: readonly string[] = [
     'PalindromicTree', 'ParityDsu', 'Paths', 'Perm', 'PermKind', 'PermTree', 'PersistentSegTree', 'PotentialDsu', 'Prefix', 'Pt',
     'Pt3', 'RangeFenwick', 'RangeKth', 'Reversible', 'Rng', 'RollbackArray', 'RollingHash', 'Rooted', 'SegTree', 'Sieve',
     'SimpleGraph', 'SortedBag', 'SortedRange', 'SortedSet', 'SosOver', 'SparseSegTree', 'SparseTable', 'SuffixArray', 'SuffixAutomaton', 'Target', 'TimeStep', 'TimeTree',
-    'Tree', 'Trie', 'TwoSat', 'Vec', 'Version', 'Walk', 'WindowFold', 'XorBasis', 'XorFenwick',
+    'Tree', 'Trie', 'TwoSat', 'Vec', 'Version', 'VirtualTree', 'Walk', 'WindowFold', 'XorBasis', 'XorFenwick',
 ];
 
 /**
