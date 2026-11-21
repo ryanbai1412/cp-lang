@@ -1,8 +1,9 @@
-//! Sliding-window folds in O(1) amortized time.
+//! Sliding-window folds and stateful Mo/D&C windows.
 //!
 //! `MonoDeque<T>` maintains the minimum or maximum of a sliding window;
 //! `WindowFold<T>` (the two-stack trick) maintains the fold of any monoid without inverses
-//! (such as `gcd`, bitwise `|`, or matrix products).
+//! (such as `gcd`, bitwise `|`, or matrix products);
+//! `Window<D>` maintains a stateful sliding interval over index domain `D` via `enter`/`leave` callbacks.
 use std.algebra.{Monoid}
 use std.math.{gcd}
 
@@ -161,6 +162,31 @@ pub struct DequeFold<T>(m: Monoid<T>):
 
 /// O(|D|). Yield the monoid fold of every contiguous length-`k` window of `a` in order.
 pub fn sliding_fold<D, T, M>(a: [D]T, k: Int, op: M) -> yields T = todo
+
+/// O(1) space. Stateful sliding window over index domain `D` backed by `enter`/`leave` callbacks
+/// (for Mo's algorithm and divide-and-conquer DP). Always expands before shrinking so the active
+/// interval is never inverted.
+pub struct Window<D>(enter: D -> (), leave: D -> ()):
+    lo: Int
+    hi: Int
+
+    /// O(1). Create a window initialized to `start` (or the empty window at `D.first.l..D.first.l`).
+    pub fn new(enter: D -> (), leave: D -> (), start: ?Range<D> = none) -> Window<D> = todo
+
+    /// O(1). Current active half-open window.
+    pub @get fn range(self) -> Range<D> = todo
+
+    /// O(1). Number of positions currently inside the window.
+    pub @get fn len(self) -> Int = todo
+
+    /// O(1). Whether the active window is empty.
+    pub @get fn is_empty(self) -> Bool = todo
+
+    /// O(|dl| + |dr|) `enter`/`leave` calls. Slide the active window to `to`, expanding before shrinking.
+    pub fn move(mut self, to: Range<D>) = todo
+
+    /// O(len) `leave` calls. Empty the active window back to `D.first.l..D.first.l`.
+    pub fn reset(mut self) = todo
 
 @test
 fn mono_deque_matches_sliding_window_brute():
