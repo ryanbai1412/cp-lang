@@ -195,6 +195,24 @@ def call_model(system_prompt: str, user_prompt: str, model: str | None = None) -
     raise RuntimeError("No ANTHROPIC_API_KEY or OPENAI_API_KEY in environment")
 
 
+def outputs_match(got: str, want: str, tol: float = 1e-6) -> bool:
+    if got == want:
+        return True
+    gt, wt = got.split(), want.split()
+    if len(gt) != len(wt):
+        return False
+    for a, b in zip(gt, wt):
+        if a == b:
+            continue
+        try:
+            fa, fb = float(a), float(b)
+        except ValueError:
+            return False
+        if abs(fa - fb) > tol * max(1.0, abs(fb)):
+            return False
+    return True
+
+
 def evaluate_problem(
     st_path: Path, docs_bundle: str, model: str | None = None
 ) -> dict:
@@ -293,7 +311,7 @@ def evaluate_problem(
                 break
             got = normalize_output(run.stdout)
             want = normalize_output(exp)
-            if got != want:
+            if not outputs_match(got, want):
                 result["error_summary"] = f"sample {idx} WA (expected {want[:40]!r}, got {got[:40]!r})"
                 break
             passed_samples += 1

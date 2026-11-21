@@ -147,9 +147,9 @@ print(dsu.same(V(1), V(3)), dsu.same(V(1), V(4)), bit.prefix(V(3).after))
 | Print space-separated values | `print(a, b)` or `print(x, end: " ")` |
 | Print `YES` / `NO` | `print(if ok: "YES" else: "NO")` (colons, never `then` or Python `a if c else b`) |
 | Clear array between test cases | `a.fill(0)` or `seen.fill(none)` (or `Marks<D>` for `O(1)` clear) |
-| Swap two variables or elements | `swap(mut a, mut b)` for variables; `arr.swap(i, j)` for two array elements (never `swap(mut arr[i], mut arr[j])`) |
+| Swap two variables or elements | `swap(mut a, mut b)` for variables; `arr.swap(i, j)` for two array elements (never `swap(mut arr[i], mut arr[j])`); every `mut` parameter also requires `mut` at the call site (`f(mut x)`) |
 | Adjacent pairs in a list | `for (a, b) in xs.pairs:` |
-| Reverse iteration | `for i in (0..n).rev:` or `for v in V.rev:` |
+| Reverse a list or array in place | `a.reverse()` (method, not free `reverse(a)`); reverse iteration uses `(0..n).rev` or `V.rev` |
 | Free math functions | `abs(x)`, `min(a, b)`, `max(a, b)`, `gcd(a, b)`, `lcm(a, b)` |
 | Multi-test file | `@!multitest` above per-case code; `return` exits current test case |
 | Stress-test against brute force | Add `@brute` + `@gen` in the same `.cp` file and run `cpl stress` |

@@ -88,6 +88,12 @@ Output
         self.assertIn("compile_rate", errs[0])
         self.assertIn("pass_rate", errs[1])
 
+    def test_outputs_match_float_tolerance(self):
+        self.assertTrue(wfd.outputs_match("3.2475579530543808", "3.2475579530543811"))
+        self.assertFalse(wfd.outputs_match("3.24", "3.25"))
+        self.assertTrue(wfd.outputs_match("YES\n42", "YES\n42"))
+        self.assertFalse(wfd.outputs_match("YES", "NO"))
+
     def test_ported_ids_excludes_dream(self):
         ids = wfd.ported_ids(ROOT)
         self.assertGreater(len(ids), 200)

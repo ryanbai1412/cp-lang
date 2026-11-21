@@ -1,32 +1,57 @@
-# Writable-from-docs benchmark & improvement curve
+# Writable-from-docs evaluation
 
-Pinned benchmark set: `research/writable-from-docs-set.json` (**55 unseen mixed-difficulty problems**: 35 Codeforces Div2 B–E, 12 AtCoder ABC D–E, 8 AtCoder ARC A–B; zero overlap with `proto/ports/`).
+Measures the `AGENTS.md` design rule *"Writable from the docs: a model or a person should write correct code from the documentation alone."*
 
-Model: `gpt-5.4` given **only** the CP Lang documentation bundle (`docs/one-page-cheat-sheet.md`, `site/content/tour.md`, `types-and-control.md`, `io-and-formatting.md`, `indices.md`, `borrowing.md`, `strings.md`, `stdlib.md`, `cpp-guide.md`, `idioms.md`) and one problem statement at a time.
+## Harness
 
-Ratchet file: `research/writable-from-docs.json` (enforced in `scripts/scoreboard.py --fast --check` and weekly in `.github/workflows/writable-from-docs.yml`).
+- Script: `scripts/writable-from-docs.py` (offline tests in `scripts/test_writable_from_docs.py`).
+- Pinned manifest (`research/writable-from-docs-set.json`, v2): **55 unseen unique deterministic-output mixed-difficulty problems** (34 Codeforces Div2 B–E, 17 AtCoder ABC D–E, 4 AtCoder ARC A–B) with zero overlap with `proto/ports/`, excluding interactive problems, multi-answer constructive problems, and redirected duplicate CF statements.
+- Sample comparator supports `1e-6` relative/absolute float tolerance (matching online judges).
+- Ratchet (`research/writable-from-docs.json`): enforced offline in `scripts/scoreboard.py --fast --check` and refreshed weekly by `.github/workflows/writable-from-docs.yml`.
 
-## Improvement curve (55-problem mixed-difficulty set, `gpt-5.4`)
+## Iteration curve (55 unseen problems, `gpt-5.4`)
 
-| Round | Label | Docs changes applied before run | `cpl check` + `cpl build` | Full pass (all samples) | Notes |
-| --- | --- | --- | --- | --- | --- |
-| **0** | `round-0-baseline` | Pre-existing 8-file docs bundle (no `idioms.md`) | **40/55 (72.7%)** | **14/55 (25.4%)** | Main gaps: domain-vs-`Int` (`E0301`/`E0302`/`E0309`, 5×), `read()` on `List<Int>` (`E0501`, 2×), `use` keyword (`E0106`), `Sieve.is_prime` method vs index (`E0305`), named tuples `.0` (`E0203`), 2D vs nested indexing (`E0305`) |
-| **1** | `round-1-after-idioms-and-r0-fixes` | Added gold-standard `idioms.md` + upgraded `cpp-guide.md` + 6 Round-0 docs fixes | **46/55 (83.6%)** | **19/55 (34.5%)** | +10.9 pp compile, +9.1 pp full pass. Remaining gaps: inline conditional syntax, multi-line `match =>`, `Dsu<V>` named domain, `v.next: ?V` in ranges |
-| **2** | `round-2-after-ternary-and-domain-fixes` | Fixed `Dsu<V>` & `v.next` docs; introduced prose typo `if c then a else b` | 40/55 (72.7%) | 18/55 (32.7%) | Harness immediately caught our own `if ... then` prose typo on 8 problems (`E0103`) |
-| **3** | `round-3-after-if-colon-and-swap-fixes` | Fixed `if cond: a else: b` and `arr.swap(i, j)` docs | 38/55 (69.1%) | 17/55 (30.9%) | Surfaced 2 more doc inaccuracies: `Sieve.spf[x]` is a list field (not method `spf(x)`), and `HashMap` `m[k]` auto-defaults to `V` (not `?V`) |
-| **4** | `round-4-after-sieve-and-hashmap-fixes` | Fixed `Sieve.spf[x]` field & `HashMap` `m[k]` vs `m.get(k)` docs | **46/55 (83.6%)** | **17/55 (30.9%)** | Plateau confirmed (~83.6% compile, ~31–35% full pass across stochastic GPT-5.4 runs); remaining failures are predominantly algorithmic WAs on Div2 C–E / ARC B |
+| Round | Docs / harness delta | Compile (`cpl check` + `cpl build`) | Full pass (all samples) |
+| --- | --- | --- | --- |
+| **0 (baseline)** | Initial 8-file bundle (v1 set) | 40/55 (72.7%) | 14/55 (25.4%) |
+| **1** | Added `idioms.md` + upgraded `cpp-guide.md` + 6 R0 fixes | 46/55 (83.6%) | 19/55 (34.5%) |
+| **2** | Fixed `Dsu<V>` & `v.next`; caught `if c then` typo | 40/55 (72.7%) | 18/55 (32.7%) |
+| **3** | Fixed `if cond: a else: b` & `arr.swap(i, j)` | 38/55 (69.1%) | 17/55 (30.9%) |
+| **4** | Fixed `Sieve.spf[x]` & `HashMap` `m[k]` vs `m.get(k)` | 46/55 (83.6%) | 17/55 (30.9%) |
+| **5** | Cleaned 15 un-evaluable v1 problems (2 interactive, 5 CF redirect dups, 8 multi-answer) + `1e-6` float tolerance + `a.reverse()` docs | 46/55 (83.6%) | 25/55 (45.5%) |
+| **6 (current)** | Added `v + 1`/`V.last - 1` `?V` docs + `mut` call-site docs; routed 3 language/stdlib frictions | **48/55 (87.3%)** | **29/55 (52.7%)** |
 
-## Ratchet policy
+## Failure classification (Round 6: 26 failing / 55 total)
 
-- Floors are set to `max(prev_floor, observed_rate - 0.05)` (5% noise margin because `gpt-5.4` does not accept `temperature=0`, yielding ~±2-problem variance on `n = 55`).
-- Current floors in `research/writable-from-docs.json`:
-  - `min_compile_rate`: **78.64%**
-  - `min_pass_rate`: **29.55%**
-- `scripts/scoreboard.py --fast --check` reads `research/writable-from-docs.json` offline and fails if `latest` ever regresses below either floor; `.github/workflows/writable-from-docs.yml` runs the live benchmark weekly on Monday 06:00 UTC (`workflow_dispatch` supported).
+- **Docs gap:** 1 (`cf2035d`: `Mod<P>.val` vs `.raw`)
+- **Language / stdlib gap:** 2 (`cf2007e`, `abc381e`: multi-statement `match =>` arm `E0102`; plus `bsearch_last` `?Int` inference from Round 5 — all routed in `research/frictions/writable-from-docs-gaps.md`)
+- **Model's algorithm / domain slip:** 23 (17 runtime WAs on compiled programs, 2 runtime off-by-one bounds traps, 4 one-off domain/type slips)
 
-## Remaining docs / compiler gaps observed at plateau
-
-1. `reverse(mut a)` vs `a.reverse()` (`cf2004c`, `cf2001c` in R4: model guessed free `reverse(...)`).
-2. Multi-line `match` arm syntax (`cf2007e` still occasionally writes `pat =>\n ...`).
-3. Float output formatting precision (`abc382e`: 16-digit sample vs default float formatting).
-4. Algorithmic WAs on Div2 C–E / ARC B account for the gap between ~84% compile and ~31–35% full pass.
+| Problem | Compile | Classification | Evidence |
+| --- | --- | --- | --- |
+| `cf2003b` | ok | model's algorithm wrong | sample 1 WA (expected '2\n1\n2\n2\n7', got '1\n1\n2\n2\n5') |
+| `cf2004e` | FAIL | model's algorithm wrong | Compile/domain slip (`E0203`): error[E0203]: a `Int` has no member `to_idx` that `cpl run` knows |
+| `cf2005d` | FAIL | model's algorithm wrong | Compile/domain slip (`E0302,E0309`): error[E0309]: `+` can't be applied to `Int` and `V` |
+| `cf2007e` | FAIL | language/stdlib gap | Multi-statement `match =>` arm (`E0102`); routed in `research/frictions/writable-from-docs-gaps.md` #2. |
+| `cf2013b` | ok | model's algorithm wrong | sample 1 WA (expected '-1\n8\n2\n7\n8', got '-1\n8\n8\n13\n12') |
+| `cf2013d` | ok | model's algorithm wrong | sample 1 WA (expected '0\n2\n1\n1\n3', got '1\n2\n4\n4\n10') |
+| `cf2013e` | ok | model's algorithm wrong | sample 1 WA (expected '6\n6\n9\n14\n51', got '6\n6\n9\n16\n46') |
+| `cf2020d` | ok | model's algorithm wrong | sample 1 WA (expected '2\n96\n61', got '2\n86\n60') |
+| `cf2025d` | ok | model's algorithm wrong | sample 1 runtime error: error[R0001]: index 5 is outside an array dimension of length 5 |
+| `cf2025e` | ok | model's algorithm wrong | sample 1 WA (expected '2', got '16') |
+| `cf2035b` | ok | model's algorithm wrong | sample 1 WA (expected '-1\n66\n-1\n3366\n36366\n3336366', got '-1\n666\n-1\n36366\n-1\n-1') |
+| `cf2035d` | FAIL | docs gap | Used `.val` on `Mod<P>` (`E0203`); `stdlib-api.html` documents `.raw`. |
+| `cf2035e` | ok | model's algorithm wrong | sample 1 WA (expected '12\n190\n280\n160', got '13\n260\n280\n2404') |
+| `cf2039d` | ok | model's algorithm wrong | sample 1 WA (expected '6 4 4 3 4 3\n1\n-1', got '4 4 4 6 6 6\n1\n-1') |
+| `cf2040b` | ok | model's algorithm wrong | sample 1 WA (expected '1\n2\n2\n4', got '1\n2\n3\n5') |
+| `cf2040c` | ok | model's algorithm wrong | sample 1 WA (expected '1 3 2\n2 3 1\n-1\n2 4 3 1\n-1\n2 3 4 5 7 6 1', got '1 3 2\n3 1 2\n-1\n4 1 3 2 |
+| `cf2040d` | ok | model's algorithm wrong | sample 1 WA (expected '2 10 1 6 5\n8 7 12 1 4 6 3', got '2 1 4 6 3\n2 1 3 4 6 8 10') |
+| `abc381e` | FAIL | language/stdlib gap | Multi-statement `match =>` arm (`E0102`); routed in `research/frictions/writable-from-docs-gaps.md` #2. |
+| `abc382e` | ok | model's algorithm wrong | sample 1 runtime error: error[R0001]: index 2 is outside an array dimension of length 2 |
+| `abc386d` | ok | model's algorithm wrong | sample 1 WA (expected 'Yes', got 'No') |
+| `abc388d` | FAIL | model's algorithm wrong | Compile/domain slip (`E0301`): error[E0301]: `diff` is indexed by 1..=n + 2, but `i` is a V |
+| `abc388e` | FAIL | model's algorithm wrong | Compile/domain slip (`E0301`): error[E0301]: `a` is indexed by I, but `t` is a 0..k |
+| `arc180a` | ok | model's algorithm wrong | sample 1 WA (expected '2', got '3') |
+| `arc181a` | ok | model's algorithm wrong | sample 1 WA (expected '1\n0\n2', got '2\n0\n2') |
+| `arc181b` | ok | model's algorithm wrong | sample 1 WA (expected 'Yes\nNo\nNo', got 'Yes\nYes\nYes') |
+| `arc182a` | ok | model's algorithm wrong | sample 1 WA (expected '1', got '4') |

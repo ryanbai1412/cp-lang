@@ -1,17 +1,17 @@
 {
   "manifest": "research/writable-from-docs-set.json",
   "model": "gpt-5.4",
-  "min_compile_rate": 0.7864,
-  "min_pass_rate": 0.2955,
+  "min_compile_rate": 0.8227,
+  "min_pass_rate": 0.4773,
   "latest": {
     "date": "2026-11-21",
     "model": "gpt-5.4",
     "total": 55,
-    "compiled": 46,
-    "built": 46,
-    "passed": 17,
-    "compile_rate": 0.8364,
-    "pass_rate": 0.3091
+    "compiled": 48,
+    "built": 48,
+    "passed": 29,
+    "compile_rate": 0.8727,
+    "pass_rate": 0.5273
   },
   "history": [
     {
@@ -68,6 +68,28 @@
       "compile_rate": 0.8364,
       "pass_rate": 0.3091,
       "round": "round-4-after-sieve-and-hashmap-fixes"
+    },
+    {
+      "date": "2026-11-21",
+      "model": "gpt-5.4",
+      "total": 55,
+      "compiled": 46,
+      "built": 46,
+      "passed": 25,
+      "compile_rate": 0.8364,
+      "pass_rate": 0.4545,
+      "round": "round-5-clean-deterministic-55"
+    },
+    {
+      "date": "2026-11-21",
+      "model": "gpt-5.4",
+      "total": 55,
+      "compiled": 48,
+      "built": 48,
+      "passed": 29,
+      "compile_rate": 0.8727,
+      "pass_rate": 0.5273,
+      "round": "round-6-after-r5-docs-fixes"
     }
   ]
 }
