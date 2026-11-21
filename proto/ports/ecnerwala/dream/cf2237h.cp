@@ -1,8 +1,16 @@
 // Codeforces 2237 H.
 // Each query paints the path `cur -> c` with timestamp `t_now`. Every vertex on
-// the path whose last paint was `t_old` demands 1 unit of slime from the newest
-// non-empty supply bucket `<= t_old`; unmatched demand increases `missing`, and
-// all matched slime moves into bucket `t_now`.
+// the path whose last paint was `t_old` demands 1 unit of slime from some
+// non-empty supply bucket `u <= t_old`; unmatched demand increases `missing`,
+// and all matched slime moves into bucket `t_now`.
+//
+// Greedy optimality (exchange argument): a supply unit at timestamp `u <= t_old`
+// can serve any future demand with threshold `>= u`, so older buckets are
+// strictly more flexible than newer ones. Processing chunks in decreasing
+// `t_old` order and draining the newest eligible bucket `<= t_old` always leaves
+// the most flexible supply behind for tighter demands.
+
+use std.interval.IntervalMap
 
 @!multitest
 let (n, m, q): (2..=100_000, 2..=100_000, 1..=100_000) = read()
@@ -15,7 +23,7 @@ let tree = Rooted(Graph.undirected(read<[n - 1](u: V, v: V)>()), V.first)
 let init: [Slime]V = read()
 
 // Partition of preorder positions by last-painted timestamp.
-var paint = IntervalMap<tree.Pre, Time>(never)
+var paint = IntervalMap<tree.Pre, Time>.new(never)
 for v in init: paint.assign(tree.pos(v)..=tree.pos(v), start)
 
 // Slime waiting to move, keyed by the time it was last moved; only non-empty buckets.
@@ -38,10 +46,12 @@ var ans: List<Int> = []
 
 for t_now in (Time.first + 2)!..=Time.last:
     let c = read<V>().cyc(missing)
-    let pieces = [
-        (r, t) for (range, _) in tree.chains(cur, c) for (r, t) in paint.assign(range, t_now)
-    ]
-    let chunks = [(t: t, need: r.len) for (r, t) in pieces].sort(by: x => desc(x.t))
+    var pieces: List<(t: Time, need: Int)> = []
+    fn record(r: Range<tree.Pre>, t: Time):
+        pieces.push((t: t, need: r.len))
+    for (range, _) in tree.chains(cur, c):
+        paint.assign(range, t_now, on_old: record)
+    let chunks = pieces.sorted(by: x => desc(x.t))
     cur = c
 
     let demand = chunks.map(ch => ch.need).sum()
