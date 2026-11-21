@@ -7285,7 +7285,7 @@
       "fmt_ok": true,
       "lint_warnings": 0,
       "build_ok": true,
-      "emitted_bytes": 19944,
+      "emitted_bytes": 28099,
       "over_48kb": false,
       "over_64kb": false,
       "cp_tokens": 825,
@@ -7317,7 +7317,8 @@
         "cases": 3,
         "source": "sample cf2150f.sample1.in",
         "error": null
-      }
+      },
+      "tokens_cp": 655
     },
     {
       "id": "ecnerwala/cf2150g",
