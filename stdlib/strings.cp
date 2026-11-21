@@ -22,7 +22,7 @@ pub fn ends_with(self: Str, p: Str) -> Bool:
 /// one `Char`: `"banana".find('n')` is `2`. O(s.len + p.len).
 pub fn find<P>(self: Str, p: P) -> ?Int:
     let pat = "" + p
-    for i in find_all([c for c in self], [c for c in pat]): return i
+    for i in find_all(self, pat): return i
     none
 
 /// How many times `c` stands in `s`: `"banana".count('a')` is `3`. O(s.len).
@@ -37,7 +37,7 @@ pub fn count(self: Str, c: Char) -> Int:
 pub fn rfind<P>(self: Str, p: P) -> ?Int:
     let pat = "" + p
     var last: ?Int = none
-    for i in find_all([c for c in self], [c for c in pat]): last = i
+    for i in find_all(self, pat): last = i
     last
 
 /// The small letter of a capital, and any other character as it is: `'A'.lower` is `'a'`.
@@ -80,20 +80,38 @@ pub fn prefix_function<S: Indexed>(s: S) -> List<Int>:
     p
 
 /// The start of every occurrence of `pat` in `self`: `s.find_all(p)`, in increasing order (Knuth-Morris-Pratt).
+/// Works on any `Indexed` sequences (`Str`, `List<T>`, `[D]T`, views) without conversion.
 /// O(text.len + pat.len). An empty pattern occurs at every position, including the end.
 @allow(unproven_list_index)
-pub fn find_all<T>(self: List<T>, pat: List<T>) -> yields Int:
+pub fn find_all<S: Indexed, P: Indexed>(self: S, pat: P) -> yields Int:
     if pat.is_empty:
         for i in 0..=self.len: yield i
         return
     let p = prefix_function(pat)
     var k = 0
     for i in 0..self.len:
-        while k > 0 and self[i] != pat[k]: k = p[k - 1]
-        if self[i] == pat[k]: k += 1
+        while k > 0 and self.at(i) != pat.at(k): k = p[k - 1]
+        if self.at(i) == pat.at(k): k += 1
         if k == pat.len:
             yield i + 1 - k
             k = p[k - 1]
+
+/// Length of the longest common prefix of `a` and `b`. Works on any `Indexed` sequences. O(min(|a|, |b|)).
+@allow(unproven_list_index)
+pub fn common_prefix_len<A: Indexed, B: Indexed>(a: A, b: B) -> Int:
+    let lim = min(a.len, b.len)
+    var i = 0
+    while i < lim and a.at(i) == b.at(i): i += 1
+    i
+
+/// Length of the longest common suffix of `a` and `b`. Works on any `Indexed` sequences. O(min(|a|, |b|)).
+@allow(unproven_list_index)
+pub fn common_suffix_len<A: Indexed, B: Indexed>(a: A, b: B) -> Int:
+    let (na, nb) = (a.len, b.len)
+    let lim = min(na, nb)
+    var i = 0
+    while i < lim and a.at(na - 1 - i) == b.at(nb - 1 - i): i += 1
+    i
 
 /// The length of the shortest period of `s`: the smallest `d >= 1` with `s[i] == s[i + d]` for all `i`. O(n).
 pub fn period<S: Indexed>(s: S) -> Int = if s.is_empty: 0 else: s.len - prefix_function(s).last
@@ -117,9 +135,9 @@ pub fn borders<S: Indexed>(s: S) -> yields Int:
         k = pi[k - 1]
 
 /// `res[i]` is the length of the longest prefix of `pat` ending at `self[i]` (KMP).
-/// O(|self| + |pat|).
+/// Works on any `Indexed` sequences. O(|self| + |pat|).
 @allow(unproven_list_index)
-pub fn prefix_matches<T>(self: List<T>, pat: List<T>) -> List<Int>:
+pub fn prefix_matches<S: Indexed, P: Indexed>(self: S, pat: P) -> List<Int>:
     let n = self.len
     let m = pat.len
     var out = List.filled(n, 0)
@@ -127,35 +145,36 @@ pub fn prefix_matches<T>(self: List<T>, pat: List<T>) -> List<Int>:
     let pi = prefix_function(pat)
     var k = 0
     for i in 0..n:
-        while k > 0 and (k == m or self[i] != pat[k]): k = pi[k - 1]
-        if self[i] == pat[k]: k += 1
+        while k > 0 and (k == m or self.at(i) != pat.at(k)): k = pi[k - 1]
+        if self.at(i) == pat.at(k): k += 1
         out[i] = k
     out
 
 /// Length of the longest suffix of `a` that is a prefix of `b` (at most `min(|a|, |b|)`).
-/// O(|a| + |b|).
+/// Works on any `Indexed` sequences. O(|a| + |b|).
 @allow(unproven_list_index)
-pub fn overlap<T>(a: List<T>, b: List<T>) -> Int:
+pub fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int:
     let keep = min(a.len, b.len)
     if keep == 0: return 0
-    let pi = prefix_function([b[i] for i in 0..keep])
+    let pi = prefix_function([b.at(i) for i in 0..keep])
     var k = 0
     for i in a.len - keep..a.len:
-        while k > 0 and (k == keep or a[i] != b[k]): k = pi[k - 1]
-        if a[i] == b[k]: k += 1
+        while k > 0 and (k == keep or a.at(i) != b.at(k)): k = pi[k - 1]
+        if a.at(i) == b.at(k): k += 1
     k
 
-/// Start indices of the unique non-increasing Lyndon factorization of `s` (Duval). O(n).
+/// Start indices of the unique non-increasing Lyndon factorization of `s` (Duval).
+/// Works on any `Indexed` sequence. O(n).
 @allow(unproven_list_index)
-pub fn lyndon_factorization<T>(s: List<T>) -> List<Int>:
+pub fn lyndon_factorization<S: Indexed>(s: S) -> List<Int>:
     let n = s.len
     var starts: List<Int> = []
     var i = 0
     while i < n:
         var j = i + 1
         var k = i
-        while j < n and s[k] <= s[j]:
-            if s[k] < s[j]: k = i else: k += 1
+        while j < n and s.at(k) <= s.at(j):
+            if s.at(k) < s.at(j): k = i else: k += 1
             j += 1
         let step = j - k
         while i <= k:
@@ -164,16 +183,16 @@ pub fn lyndon_factorization<T>(s: List<T>) -> List<Int>:
     starts
 
 /// Start index of the lexicographically least cyclic rotation of `s` (Duval/Booth).
-/// Ties go to the smallest index; returns `0` for an empty sequence. O(n).
+/// Ties go to the smallest index; returns `0` for an empty sequence. Works on any `Indexed` sequence. O(n).
 @allow(unproven_list_index)
-pub fn min_rotation<T>(s: List<T>) -> Int:
+pub fn min_rotation<S: Indexed>(s: S) -> Int:
     let n = s.len
     if n <= 1: return 0
     var (a, b) = (0, 1)
     var k = 0
     while a < n and b < n and k < n:
-        let x = s[(a + k) % n]
-        let y = s[(b + k) % n]
+        let x = s.at((a + k) % n)
+        let y = s.at((b + k) % n)
         if x == y:
             k += 1
         else:
@@ -210,22 +229,22 @@ pub struct Palindromes(odd: List<Int>, even: List<Int>):
                 best_r = i + even[i]
         (l: best_l, r: best_r)
 
-/// Linear-time palindrome radii (Manacher's algorithm). O(n).
+/// Linear-time palindrome radii (Manacher's algorithm). Works on any `Indexed` sequence. O(n).
 @allow(unproven_list_index)
-pub fn manacher<T>(s: List<T>) -> Palindromes:
+pub fn manacher<S: Indexed>(s: S) -> Palindromes:
     let n = s.len
     var odd = List.filled(n, 0)
     var even = List.filled(n, 0)
     var (l, r) = (0, -1)
     for i in 0..n:
         var k = if i > r: 1 else: min(odd[l + r - i], r - i + 1)
-        while i - k >= 0 and i + k < n and s[i - k] == s[i + k]: k += 1
+        while i - k >= 0 and i + k < n and s.at(i - k) == s.at(i + k): k += 1
         odd[i] = k
         if i + k - 1 > r: (l, r) = (i - k + 1, i + k - 1)
     (l, r) = (0, -1)
     for i in 0..n:
         var k = if i > r: 0 else: min(even[l + r - i + 1], r - i + 1)
-        while i - k - 1 >= 0 and i + k < n and s[i - k - 1] == s[i + k]: k += 1
+        while i - k - 1 >= 0 and i + k < n and s.at(i - k - 1) == s.at(i + k): k += 1
         even[i] = k
         if i + k - 1 > r: (l, r) = (i - k, i + k - 1)
     Palindromes(odd, even)
@@ -1581,3 +1600,27 @@ fn aho_corasick_matches_counts_and_avoidance_dp():
         let text = [A((code >> i) % 2) for i in 0..6]
         if [m for m in ac.matches(text)].is_empty: brute += 1
     assert sum(ways) == brute
+
+@test
+fn indexed_views_and_common_prefix_suffix():
+    assert common_prefix_len("abacaba", "abax") == 3
+    assert common_suffix_len("abacaba", "zzcaba") == 4
+    assert common_prefix_len("abacaba"[2..7], "acaz") == 3
+    assert common_suffix_len("abacaba"[0..5], "xxaca") == 3
+    assert common_prefix_len([1, 2, 3], [1, 2, 4, 5]) == 2
+    assert common_suffix_len([1, 2, 3], [9, 2, 3]) == 2
+    assert period("xxabababyy"[2..8]) == 2
+    assert [i for i in "ababa".find_all("aba")] == [0, 2]
+    assert [i for i in "xxababaxx"[2..7].find_all("aba")] == [0, 2]
+    assert "ababa".prefix_matches("aba") == [1, 2, 3, 2, 3]
+    assert overlap("abcab", "abxyz") == 2
+    assert lyndon_factorization("bbab") == [0, 1, 2]
+    assert min_rotation("cab") == 1
+    let pal = manacher("abacaba")
+    assert pal.is_palindrome(0, 7)
+    assert pal.is_palindrome(1, 6)
+    assert not pal.is_palindrome(0, 4)
+    domain Pos = 1..=5
+    let arr: [Pos]Char = [Pos] i => "ababa"[i.ord]
+    assert manacher(arr).is_palindrome(0, 5)
+    assert period(arr) == 2

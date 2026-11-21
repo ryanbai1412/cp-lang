@@ -11,7 +11,7 @@ domain Pos = 1..=n
 let s_str: Str = read()
 let s: [Pos]Char = [Pos] i => s_str[i.ord]
 
-let pal = manacher([c for c in s_str])
+let pal = manacher(s)
 var alt_run: [Pos]Int = 1
 for i in Pos:
     if let p1 = i.prev:

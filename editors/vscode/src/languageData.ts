@@ -73,7 +73,7 @@ export const STDLIB_VALUES: readonly string[] = [
     'bridges',
     'bsearch_real', 'buckets', 'choose', 'choose2', 'chunk_by', 'chunks', 'circle_intersect',
     'circle_line_intersect', 'circle_polygon_area', 'circulation', 'circumcenter', 'close', 'closest_pair',
-    'closest_pair2', 'components', 'compose', 'concavity_break', 'convex_hull', 'convex_hull_3d', 'convex_hull_idx',
+    'closest_pair2', 'common_prefix_len', 'common_suffix_len', 'components', 'compose', 'concavity_break', 'convex_hull', 'convex_hull_3d', 'convex_hull_idx',
     'convexity_break', 'convolve', 'convolve_and', 'convolve_int', 'convolve_mod', 'convolve_or',
     'convolve_xor', 'cross', 'cross128', 'cross3', 'crt', 'crt_all', 'cyclic_pairs', 'decrease', 'dedup',
     'deriv', 'det_real', 'diameter2', 'differences', 'dist',

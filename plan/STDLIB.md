@@ -1310,10 +1310,12 @@ fn rfind<P>(self: Str, p: P) -> ?Int // O(s.len + p.len)
 @get fn lower(self: Char) -> Char
 @get fn upper(self: Char) -> Char
 @get fn digit(self: Char) -> Int
-fn z_function<T>(s: List<T>) -> List<Int>
-fn prefix_function<T>(s: List<T>) -> List<Int>
-fn find_all<T>(self: List<T>, pat: List<T>) -> yields Int
-fn period<T>(s: List<T>) -> Int // O(n)
+fn z_function<S: Indexed>(s: S) -> List<Int>
+fn prefix_function<S: Indexed>(s: S) -> List<Int>
+fn find_all<S: Indexed, P: Indexed>(self: S, pat: P) -> yields Int
+fn common_prefix_len<A: Indexed, B: Indexed>(a: A, b: B) -> Int // O(min(|a|, |b|))
+fn common_suffix_len<A: Indexed, B: Indexed>(a: A, b: B) -> Int // O(min(|a|, |b|))
+fn period<S: Indexed>(s: S) -> Int // O(n)
 fn suffix_array<T>(s: List<T>) -> List<Int>
 fn lcp_array<T>(s: List<T>, sa: List<Int>) -> List<Int>
 struct HashVal(h1: Int, h2: Int)
@@ -1333,17 +1335,17 @@ struct RollingHash // O(n), O(1)
 `examples/local-lib/str/`:
 
 ```cp
-fn is_palindrome<T>(s: List<T>) -> Bool                         // O(n)
-fn borders<T>(s: List<T>) -> yields Int                         // O(n)
-fn prefix_matches<T>(self: List<T>, pat: List<T>) -> List<Int>  // O(|self| + |pat|)
-fn overlap<T>(a: List<T>, b: List<T>) -> Int                    // O(|a| + |b|)
-fn lyndon_factorization<T>(s: List<T>) -> List<Int>             // O(n)
-fn min_rotation<T>(s: List<T>) -> Int                           // O(n)
+fn is_palindrome<S: Indexed>(s: S) -> Bool                      // O(n)
+fn borders<S: Indexed>(s: S) -> yields Int                      // O(n)
+fn prefix_matches<S: Indexed, P: Indexed>(self: S, pat: P) -> List<Int>  // O(|self| + |pat|)
+fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int           // O(|a| + |b|)
+fn lyndon_factorization<S: Indexed>(s: S) -> List<Int>          // O(n)
+fn min_rotation<S: Indexed>(s: S) -> Int                        // O(n)
 struct Palindromes(odd: List<Int>, even: List<Int>)
     fn is_palindrome(self, l: Int, r: Int) -> Bool              // O(1)
     @get fn count(self) -> Int                                  // O(n)
     @get fn longest(self) -> (l: Int, r: Int)                   // O(n)
-fn manacher<T>(s: List<T>) -> Palindromes                       // O(n)
+fn manacher<S: Indexed>(s: S) -> Palindromes                    // O(n)
 struct PalindromicTree<A>
     fn new() -> PalindromicTree<A>                              // O(|A|)
     fn of(s: List<A>) -> PalindromicTree<A>                     // O(n * |A|) mem, O(n)
