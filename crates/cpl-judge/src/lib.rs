@@ -246,6 +246,30 @@ fn accepts_all(compiler: &str, flags: &[String]) -> bool {
     if let Some(&seen) = SEEN.get_or_init(Default::default).lock().unwrap().get(&key) {
         return seen;
     }
+    let memo = std::env::var_os("CPL_JUDGE_PROBE_DIR").map(std::path::PathBuf::from);
+    let ok = probe(compiler, flags, memo.as_deref());
+    SEEN.get_or_init(Default::default).lock().unwrap().insert(key, ok);
+    ok
+}
+
+/// Builds an empty program with `flags`. With `memo`, a yes is kept there,
+/// keyed by the compiler's path, size and mtime, the flags and the system
+/// headers' key, so other processes in the same gate skip the build. A no
+/// is never kept: the probe runs again.
+fn probe(compiler: &str, flags: &[String], memo: Option<&Path>) -> bool {
+    let key = (compiler.to_string(), flags.to_vec());
+    let marker = memo.and_then(|memo| {
+        let path = which(compiler)?;
+        let meta = std::fs::metadata(&path).ok()?;
+        let modified = meta.modified().ok()?.duration_since(std::time::UNIX_EPOCH).ok()?;
+        use std::hash::{Hash, Hasher};
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        (path, meta.len(), modified.as_nanos(), flags, std::env::var("CPL_CXX_SYSTEM_KEY").ok()).hash(&mut hasher);
+        Some(memo.join(format!("{:016x}", hasher.finish())))
+    });
+    if marker.as_ref().is_some_and(|m| m.is_file()) {
+        return true;
+    }
     let dir = std::env::temp_dir().join(format!("cpl-judge-probe-{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let main = dir.join("main.cpp");
@@ -255,8 +279,25 @@ fn accepts_all(compiler: &str, flags: &[String]) -> bool {
     // -Werror: a flag the compiler only warns about does nothing.
     command.arg("-Werror").stderr(std::process::Stdio::null()).stdout(std::process::Stdio::null());
     let ok = command.status().is_ok_and(|status| status.success());
-    SEEN.get_or_init(Default::default).lock().unwrap().insert(key, ok);
+    if let (true, Some(marker)) = (ok, marker) {
+        if let Some(memo) = marker.parent() {
+            let _ = std::fs::create_dir_all(memo);
+        }
+        let _ = std::fs::write(marker, "");
+    }
     ok
+}
+
+/// Where `compiler` resolves: itself if it names a path, else the first
+/// executable of that name on PATH.
+fn which(compiler: &str) -> Option<std::path::PathBuf> {
+    if compiler.contains('/') {
+        return std::fs::canonicalize(compiler).ok();
+    }
+    std::env::split_paths(&std::env::var_os("PATH")?)
+        .map(|dir| dir.join(compiler))
+        .find(|path| path.is_file())
+        .and_then(|path| std::fs::canonicalize(path).ok())
 }
 
 fn hash(key: &(String, Vec<String>)) -> u64 {

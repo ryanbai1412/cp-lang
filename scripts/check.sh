@@ -73,6 +73,10 @@ if [ "$mode" = fast ] && [ "${CHECK_NO_CXX_CACHE:-0}" != "1" ] && command -v g++
     # Fingerprint the system headers and libraries once per gate, not per compile.
     CPL_CXX_SYSTEM_KEY=$(g++ --cpl-system-key 2>/dev/null) || CPL_CXX_SYSTEM_KEY=""
     export CPL_CXX_SYSTEM_KEY
+    # Which judge flags this compiler accepts, asked once per gate instead
+    # of twice per native build.
+    export CPL_JUDGE_PROBE_DIR="$target/judge-probes"
+    rm -rf "$CPL_JUDGE_PROBE_DIR"
     # Drop binaries no run has used for a week.
     find "$CPL_CXX_CACHE_DIR" -type f -mtime +7 -delete 2>/dev/null || true
 fi

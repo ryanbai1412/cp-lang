@@ -154,3 +154,32 @@ fn a_flag_and_its_value_or_a_whole_archive_span_are_kept_together() {
     let groups: Vec<String> = groups(&flags).iter().map(|g| g.join(" ")).collect();
     assert_eq!(groups, ["-x c++", "-O2", "-Wl,--whole-archive -lpthread -Wl,--no-whole-archive", "-s"]);
 }
+
+#[test]
+fn a_yes_from_the_probe_is_kept_across_processes_and_a_no_is_not() {
+    use std::os::unix::fs::PermissionsExt;
+    let root = dir("probe-memo", None);
+    let (memo, log) = (root.join("memo"), root.join("log"));
+    let compiler = root.join("cxx");
+    let write = |exit: u8| {
+        let script = format!("#!/bin/sh\necho run >> '{}'\nexit {exit}\n", log.display());
+        std::fs::write(&compiler, script).unwrap();
+        std::fs::set_permissions(&compiler, std::fs::Permissions::from_mode(0o755)).unwrap();
+    };
+    let runs = || std::fs::read_to_string(&log).map_or(0, |s| s.lines().count());
+    let cxx = compiler.to_str().unwrap();
+    let flags = vec!["-O2".to_string()];
+    write(1);
+    assert!(!probe(cxx, &flags, Some(&memo)));
+    assert!(!probe(cxx, &flags, Some(&memo)));
+    assert_eq!(runs(), 2);
+    write(0);
+    assert!(probe(cxx, &flags, Some(&memo)));
+    assert!(probe(cxx, &flags, Some(&memo)));
+    assert_eq!(runs(), 3);
+    assert!(probe(cxx, &["-O0".to_string()], Some(&memo)));
+    assert_eq!(runs(), 4);
+    std::fs::write(&compiler, "#!/bin/sh\necho replaced >> \"$0.log\"\nexit 1\n").unwrap();
+    assert!(!probe(cxx, &flags, Some(&memo)));
+    assert!(!probe(cxx, &flags, None));
+}
