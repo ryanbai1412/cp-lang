@@ -241,6 +241,64 @@ fn a_file_over_its_judges_limit_says_where_its_bytes_go() {
     assert!(names.contains(&"runtime") && names.contains(&"your code"), "{}", out.stderr);
 }
 
+fn comment_lines(cpp: &str) -> usize {
+    cpp.lines().skip_while(|line| line.starts_with("//")).filter(|line| line.trim_start().starts_with("//")).count()
+}
+
+/// The length of `cpp` without its comment lines, but for the header.
+fn uncommented_len(cpp: &str) -> usize {
+    let mut header = true;
+    cpp.split_inclusive('\n')
+        .filter(|line| {
+            let comment = line.trim_start().starts_with("//");
+            header &= comment;
+            header || !comment
+        })
+        .map(str::len)
+        .sum()
+}
+
+#[test]
+fn the_comments_on_the_cpp_give_way_before_the_source_in_the_header() {
+    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-comments");
+    std::fs::create_dir_all(&scratch).unwrap();
+    let file = scratch.join("a.cp");
+    let program = "let n: Int = read()\nvar xs: List<Int> = []\nrepeat n: xs.push(read())\nxs.sort()\nprint(xs)\n";
+    let padded = |pad: usize| format!("{program}// {}\n", "x".repeat(pad));
+    let measure = |pad: usize| {
+        std::fs::write(&file, padded(pad)).unwrap();
+        let full = build(&file, "generic").unwrap();
+        (full.len(), uncommented_len(&full))
+    };
+    let (full, bare) = measure(0);
+    assert!(bare < full);
+    let limit = bare.div_ceil(1024) * 1024;
+    let near = limit - bare;
+    let pad = (near.saturating_sub(16)..near + 16)
+        .find(|&pad| {
+            let (full, bare) = measure(pad);
+            bare <= limit && full > limit
+        })
+        .expect("a source whose C++ fits only without its comments");
+    std::fs::write(&file, padded(pad)).unwrap();
+    std::fs::write(
+        scratch.join("cp.toml"),
+        format!("[judge]\njudge = \"tight\"\n\n[judge.tight]\nextends = \"generic\"\nsource_kb = {}\n", limit / 1024),
+    )
+    .unwrap();
+    let out = cpl_cli::run(&["build", file.to_str().unwrap(), "--size", "-o", "-"]);
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    let cpp = String::from_utf8(out.stdout).unwrap();
+    assert!(cpp.len() <= limit);
+    assert!(cpp.contains("//     xs.sort()"), "the source stays in the header:\n{cpp}");
+    assert_eq!(comment_lines(&cpp), 0, "{cpp}");
+    assert!(out.stderr.contains("the comments on the C++ are left out"), "{}", out.stderr);
+    assert!(!out.stderr.contains("the source in the header is left out"), "{}", out.stderr);
+    let (total, parts) = size_parts(&out.stderr);
+    assert_eq!(total, cpp.len());
+    assert_eq!(parts.iter().map(|(_, bytes)| bytes).sum::<usize>(), total);
+}
+
 #[test]
 fn a_native_profile_builds_with_the_judges_flags_on_the_judges_stack() {
     if !has("g++") {

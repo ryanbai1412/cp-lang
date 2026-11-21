@@ -41,8 +41,9 @@ What a profile changes today:
   `thread_stack_mb = 0` (a judge that allows no threads) `main` runs it
   and `cpl build` warns (decisions 31.4).
 - The size check uses the profile's source limit: a warning above 75%, an
-  error above the limit. The source header goes first, then half the
-  indentation, only when the file would not fit otherwise.
+  error above the limit. The comments on the C++ go first, then the
+  source header, then half the indentation, only when the file would not
+  fit otherwise.
 - `I128` on a profile with `int128 = false` is an error naming the judge.
 - `cpl build --size`, and every build over the limit, reports the bytes of
   the file by part (header, includes, runtime, types, globals, library fns,

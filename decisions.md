@@ -2016,6 +2016,12 @@ Reverse: none needed; this is general range-type lowering.
   (`VmHWM`, as `bench` reads it) is over the limit is `MLE` whatever it printed, as a judge stops it there;
   a time limit outranks it. Sampling can miss a peak in the last 0.3 ms of a run, so an MLE is certain and an
   `ok` is not proof. Reverse: drop `Verdict::MemoryLimit` and the check in `run_cases`.
+- **34.13 The comments on the C++ give way first, before the source in the header.** A file over its
+  judge's limit loses, in order, its comment lines (all but the header at the top; a comment after code
+  stays), then the source in the header, then half its indentation. The contestant's own source says more
+  on the judge's page than the generator's notes on its runtime, and both cost the same to the judge.
+  `Fitted::note` says what was left out, for the CLI and the playground alike. Reverse: drop the
+  `uncommented` rung in `emit_within_for`.
 
 ## 35. Taste lints (§8 tooling, 2026-11-21)
 

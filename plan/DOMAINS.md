@@ -388,11 +388,12 @@ submit command checks samples, size and profile before sending.
 `--judge`, a `// judge:` line or `cp.toml`, which can also change or add
 profiles; `cpl judges` lists them with their sources (the Codeforces facts
 are unconfirmed). The profile sets the source limit (warning at 75%), the
-header stamp, `__int128` support and whether deep recursion needs its own
-256 MB stack. All 257 ports fit every profile (max 59.4 KB) and compile
+header stamp, `__int128` support and the thread stack the program runs on
+(`main`'s stack where the judge allows no threads). All 257 ports fit every profile (max 59.4 KB) and compile
 with every profile's flags (1,799 compiles, `--full`); a million nested
-calls run on each judge's stack and agree with the interpreter. `run --release`, `test`,
-`cpl build --size` (and any over-limit build) says where the bytes go
+calls run on each judge's stack and agree with the interpreter.
+A file over its limit loses its C++ comments, then the source header, then
+half its indentation, and says so. `cpl build --size` (and any over-limit build) says where the bytes go
 by part and piece: across the ports, 3.6% (p50; at most 8.2%) is
 namespaces and `main`, the rest is named. `run --release`, `test`,
 `stress`, `hunt`, `bench` and `profile --native` build a `.cp` file with
@@ -404,8 +405,8 @@ judge's (`// limits:` or `[limits]` in `cp.toml`). The compilers here are g++
 its flags (as accepted here), and the deep-recursion run passes on its
 stack; each fact in a profile cites a source or says it is unconfirmed.
 `cpl test` and `bench` give MLE past the problem's memory limit.
-**Next.** A readable minimisation rung
-before dropping the source header; clang `-Wunused-value` in 6
+**Next.** `// d.cp:42` markers (`plan/70`) so a judge's line maps back,
+kept through every rung; clang `-Wunused-value` in 6
 ports; USACO and grader profiles; judge-version containers.
 
 ## 10. Editor and LSP (`plan/60`)

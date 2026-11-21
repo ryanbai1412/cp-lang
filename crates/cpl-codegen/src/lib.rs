@@ -92,22 +92,30 @@ pub fn sizes(
     name: &str,
     source: Option<&str>,
     target: &Target,
-    narrowed: bool,
+    fitted: (bool, bool),
     total: usize,
 ) -> Vec<Size> {
+    let (comments, narrowed) = fitted;
     let mut program = program.clone();
     (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
     let mut emitter = emit::Emitter::new(&program);
     emitter.target = target.clone();
     let (_, chunks) = emitter.file_with_chunks(name, source);
-    let fit = |text: &str| match narrowed {
-        true => narrow(&narrow(text)).len(),
-        false => narrow(text).len(),
+    let fit = |part: Part, text: &str| {
+        let text = match comments || part == Part::Header {
+            true => text.to_string(),
+            false => uncommented(text, false),
+        };
+        match narrowed {
+            true => narrow(&narrow(&text)).len(),
+            false => narrow(&text).len(),
+        }
     };
     let mut sizes: Vec<Size> = chunks
         .iter()
         .filter(|(_, _, text)| !text.is_empty())
-        .map(|(part, name, text)| Size { part: *part, name: unmangled(name), bytes: fit(text) })
+        .map(|(part, name, text)| Size { part: *part, name: unmangled(name), bytes: fit(*part, text) })
+        .filter(|size| size.bytes > 0)
         .collect();
     let named: usize = sizes.iter().map(|size| size.bytes).sum();
     sizes.push(Size { part: Part::Glue, name: "namespaces and main".into(), bytes: total.saturating_sub(named) });
@@ -195,20 +203,62 @@ fn narrow(cpp: &str) -> String {
     narrowed
 }
 
+/// `cpp` without its comment lines, but for the header at the top of the
+/// file when `header`. A comment after code stays: it is on a line of code.
+fn uncommented(cpp: &str, header: bool) -> String {
+    let mut leading = header;
+    let mut out = String::with_capacity(cpp.len());
+    for line in cpp.split_inclusive('\n') {
+        let comment = line.trim_start().starts_with("//");
+        leading &= comment;
+        if leading || !comment {
+            out.push_str(line);
+        }
+    }
+    out
+}
+
 /// The C++ of [`emit`] made to fit a judge's source limit.
 pub struct Fitted {
     pub cpp: String,
-    /// How long the file is with its source in the header.
+    /// How long the file is as written: with its comments and its source in the header.
     pub full: usize,
-    /// Whether the source is in the header: it is the first thing left out.
+    /// Whether the comments on the C++ are kept: they are the first thing
+    /// left out, as the source in the header says more to its reader.
+    pub comments: bool,
+    /// Whether the source is in the header: the second.
     pub header: bool,
-    /// Whether each line is indented half as far: the second.
+    /// Whether each line is indented half as far: the third.
     pub narrow: bool,
 }
 
+impl Fitted {
+    /// What was left out to fit, said to the contestant; `None` when nothing was.
+    pub fn note(&self, file: &str, limit: usize, judge: &str) -> Option<String> {
+        let mut left = Vec::new();
+        if !self.comments {
+            left.push("the comments on the C++ are left out");
+        }
+        if !self.header {
+            left.push("the source in the header is left out");
+        }
+        if self.narrow {
+            left.push("the lines are indented half as far");
+        }
+        (!left.is_empty()).then(|| {
+            format!(
+                "cpl: as written, the C++ for `{file}` would be {} bytes, over the {limit}-byte limit of judge \
+                 `{judge}`; {}\n",
+                self.full,
+                left.join(", ")
+            )
+        })
+    }
+}
+
 /// The C++17 file for `program` in at most `limit` bytes. What is for the
-/// reader gives way to what the judge accepts: first the source in the
-/// header, then half of what indentation is left. `Err` is the length of
+/// reader gives way to what the judge accepts: first the comments on the
+/// C++, then the source in the header, then half of what indentation is left. `Err` is the length of
 /// the shortest file when even that is over.
 pub fn emit_within(program: &cpl_ir::Program, name: &str, source: &str, limit: usize) -> Result<Fitted, usize> {
     emit_within_for(program, name, source, limit, &Target::default())
@@ -226,15 +276,19 @@ pub fn emit_within_for(
     let cpp = emit(program, name, Some(source));
     let full = cpp.len();
     if full <= limit {
-        return Ok(Fitted { cpp, full, header: true, narrow: false });
+        return Ok(Fitted { cpp, full, comments: true, header: true, narrow: false });
     }
-    let cpp = emit(program, name, None);
+    let cpp = uncommented(&cpp, true);
     if cpp.len() <= limit {
-        return Ok(Fitted { cpp, full, header: false, narrow: false });
+        return Ok(Fitted { cpp, full, comments: false, header: true, narrow: false });
+    }
+    let cpp = uncommented(&emit(program, name, None), true);
+    if cpp.len() <= limit {
+        return Ok(Fitted { cpp, full, comments: false, header: false, narrow: false });
     }
     let narrowed = narrow(&cpp);
     match narrowed.len() <= limit {
-        true => Ok(Fitted { cpp: narrowed, full, header: false, narrow: true }),
+        true => Ok(Fitted { cpp: narrowed, full, comments: false, header: false, narrow: true }),
         false => Err(narrowed.len()),
     }
 }

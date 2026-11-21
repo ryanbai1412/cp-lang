@@ -982,20 +982,17 @@ fn build_file(
     };
     let cpp = match cpl_codegen::emit_within_for(&compiled.program, name, &compiled.text, limit, &target) {
         Ok(fitted) => {
-            if !fitted.header {
-                // The source in the header is for the reader; a file the
-                // judge turns away helps nobody.
-                *stderr += &format!(
-                    "cpl: with its source in the header the C++ for `{path}` would be {} bytes, over the \
-                     {limit}-byte limit of judge `{}`; the header is left out{}\n",
-                    fitted.full,
-                    profile.name,
-                    if fitted.narrow { " and the lines are indented half as far" } else { "" }
-                );
-            }
+            *stderr += &fitted.note(path, limit, &profile.name).unwrap_or_default();
             if size {
                 let source = fitted.header.then_some(compiled.text.as_str());
-                let sizes = cpl_codegen::sizes(&compiled.program, name, source, &target, fitted.narrow, fitted.cpp.len());
+                let sizes = cpl_codegen::sizes(
+                    &compiled.program,
+                    name,
+                    source,
+                    &target,
+                    (fitted.comments, fitted.narrow),
+                    fitted.cpp.len(),
+                );
                 *stderr += &size_report(&sizes, limit, &profile.name);
             }
             fitted.cpp
@@ -1005,7 +1002,7 @@ fn build_file(
                 "cpl: the C++ for `{path}` is {bytes} bytes, over the {limit}-byte limit of judge `{}`\n",
                 profile.name
             );
-            let sizes = cpl_codegen::sizes(&compiled.program, name, None, &target, true, bytes);
+            let sizes = cpl_codegen::sizes(&compiled.program, name, None, &target, (false, true), bytes);
             *stderr += &size_report(&sizes, limit, &profile.name);
             return EXIT_ERRORS;
         }

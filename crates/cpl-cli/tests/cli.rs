@@ -284,7 +284,7 @@ fn build_drops_the_source_header_before_it_passes_64_kb() {
         "{cpp}"
     );
     let stderr = String::from_utf8(out.stderr).unwrap();
-    assert!(stderr.contains("the header is left out"), "{stderr}");
+    assert!(stderr.contains("the source in the header is left out"), "{stderr}");
 }
 
 #[test]

@@ -222,17 +222,7 @@ impl Playground {
         };
         let cpp = match cpl_codegen::emit_within_for(&compiled.program, name, source, limit, &target) {
             Ok(fitted) => {
-                if !fitted.header {
-                    // The source in the header is for the reader; a file
-                    // the judge turns away helps nobody.
-                    stderr += &format!(
-                        "cpl: with its source in the header the C++ for `{name}` would be {} bytes, over the \
-                         {limit}-byte limit of judge `{}`; the header is left out{}\n",
-                        fitted.full,
-                        profile.name,
-                        if fitted.narrow { " and the lines are indented half as far" } else { "" }
-                    );
-                }
+                stderr += &fitted.note(name, limit, &profile.name).unwrap_or_default();
                 fitted.cpp
             }
             Err(bytes) => {
