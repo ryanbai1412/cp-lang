@@ -19,11 +19,11 @@ let n: 3..=200 = read()
 let m: n - 1..=n * (n - 1) / 2 = read()
 domain V = 1..=n
 let g = Graph<V>.undirected(edges: read<[m](V, V)>())
-let t = g.spanning_tree()
+let t = Rooted(g, root: V.first)
 let d = t.diameter()
 let L = ceil_div(d.len, 2)
 
-let skips = [[j, i, k] for i in V for (j, k) in t.adj[i].pairs if not g.has(j, k)]
+let skips = [[j, i, k] for i in V for (j, k) in t.adj(i).pairs if not g.has(j, k)]
 fn joined(i: V, j: V) -> Bool = g.has(i, j) or t.dist(i, j) == 2
 
 fn route(i: V, j: V) -> List<V>:
