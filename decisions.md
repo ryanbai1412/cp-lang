@@ -4153,9 +4153,8 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   - An integer literal where a position or cut of an integer domain is
     expected is that position (`var mex: P.bounds = 0`, `[d]P.bounds = 0`).
     Non-literal Ints still convert explicitly (`V(i)`).
-  - `r.halve()` returns `?(left, right)`, both non-empty, `none` when
-    `r.len <= 1` so `let … else` is the base case; `r.mid: ?V` is the middle
-    position for D&C that recurses around one element.
+  - `r.halve()` returns `?(r.l..r.mid, r.mid..r.r)`, both non-empty, `none`
+    when `r.len <= 1` so `let … else` is the base case.
   - Ranges keep 124: a range's elements are the kind of its ends. `j..=i`
     over cuts iterates cuts j through i; `j..i` iterates cuts j to i-1 and is
     also the piece where a `Range<V>` is expected. The piece is literal
@@ -4179,9 +4178,12 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
     when you know. A derived `NonEmpty` bound (narrowed by guards, asserted
     as `domain E: NonEmpty = …`) was accepted, then dropped as more machinery
     than `!` saves.
-  - `r.mid` is the position right of `r.halve()`'s cut, `?V`, `none` only
-    when empty; `halve` is `none` at length <= 1. `mid` stays a position: an
-    empty range's middle cut is `r.l`, whose `.r` lies outside the range.
+  - `r.mid` is the middle cut (⌊len/2⌋ elements before it), always
+    present: `r.l` when empty. Element-shaped D&C writes
+    `if r.is_empty: return` then `r.mid.r!`; lint flags `.mid.r` without the
+    guard, since on an empty range it is a position outside `r`. `r.mid: ?V`
+    (safe on empty) was tried and dropped: the cut is what `halve` and the
+    element shape share. Reverse: make it `?V` again.
   - `v + 1` is an `Int`; re-enter the domain with `v.next` or `V(x)`.
   - Int to position: `V(x)` traps outside `V`, `V.at(x)` returns `?V`
     (the `a[i]` / `a.get(i)` split), and the pattern `V(j)` is `V.at` in

@@ -205,12 +205,13 @@ pub @get fn l<D>(self: Range<D>) -> Cut<D> = todo
 /// Right boundary cut of a range (valid even when empty).
 pub @get fn r<D>(self: Range<D>) -> Cut<D> = todo
 
-/// O(1). Two non-empty halves meeting at the middle cut, or `none` when `self.len <= 1`, so
+/// O(1). `(r.l..r.mid, r.mid..r.r)`: two non-empty halves, or `none` when `self.len <= 1`, so
 /// `let (left, right) = r.halve() else: base` is the divide-and-conquer base case.
 pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>) = todo
 
-/// O(1). The middle position (the lower one of two), or `none` when empty.
-pub @get fn mid<D>(self: Range<D>) -> ?D = todo
+/// O(1). The middle cut: ⌊len/2⌋ elements before it; `r.l` when empty. Its `.r` is the
+/// middle element only when `r` is non-empty, so guard with `if r.is_empty` first.
+pub @get fn mid<D>(self: Range<D>) -> Cut<D> = todo
 
 /// O(1). The positions in both ranges.
 pub fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D> = todo

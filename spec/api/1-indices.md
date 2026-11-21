@@ -115,8 +115,8 @@ the generic meaning comes to for each kind.
 | `r.first`, `r.last` | end positions, `?V` | end cuts, `?V.cuts` | O(1) |
 | `r.l`, `r.r` | the bounding cuts, `V.cuts` | the bounds one level up (`V.cuts.cuts`); you rarely want them: use `r.first`/`r.last` | O(1) |
 | `r.clip(s)` | intersection | intersection | O(1) |
-| `r.halve()` | `?(left, right)`, two non-empty halves meeting at the middle cut; `none` when `len <= 1` | same, over cuts | O(1) |
-| `r.mid` | middle position, `?V` | middle cut, `?V.cuts` | O(1) |
+| `r.halve()` | `?(r.l..r.mid, r.mid..r.r)`, two non-empty halves; `none` when `len <= 1` | same, over cuts | O(1) |
+| `r.mid` | middle cut, `V.cuts`, always present (`r.l` when empty) | the middle gap, one level up | O(1) |
 | `r.first_true(ok)`, `r.last_true(ok)` | first position where false→true `ok` holds; last where true→false `ok` holds; `?V` | same over cuts, `?V.cuts` | O(log n) calls |
 | `r.bsearch(ok)`, `r.bsearch(ok, last: true)` | the cut where `ok` flips (false→true; with `last:`, true→false), `V.cuts`; always exists | the gap between cuts, one level up; use `first_true` | O(log n) calls |
 | `a[r]`, `pre.sum(r)`, `seg.fold(r)` | the piece `r` | n/a: takes `Range<V>`; a literal `j..i` is the piece | as the API says |
@@ -150,7 +150,8 @@ fn inversions(r: Range<Pos>) -> Int:          # merge-sort shape
     inversions(left) + inversions(right) + cross(left, right)
 
 fn solve(rows: Range<Pos>, opts: Range<Pos>): # D&C DP optimisation
-    let m = rows.mid else: return
+    if rows.is_empty: return
+    let m = rows.mid.r!
     let best = opts.clip(..m.r).min_by(k => cost(k, m))!
     dp[m] = cost(best, m)
     solve(rows.l..m.l, opts.l..best.r)
@@ -194,19 +195,21 @@ for now (decision 137); `!` is one character and says the same thing.
 
 ## Middle of a range
 
-`r.halve()` and `r.mid` share one middle cut: the one with ⌊n/2⌋ elements
-before it (C++'s `(l + r) / 2` on a half-open range).
+`r.mid` is the middle cut: ⌊n/2⌋ elements before it (C++'s `(l + r) / 2`
+on a half-open range), always present. `r.halve()` is
+`(r.l..r.mid, r.mid..r.r)`, `none` when either half would be empty.
 
-| n | `r.halve()` | `r.mid` |
-|---|---|---|
-| 0 | `none` | `none` |
-| 1 | `none` | the element |
-| ≥ 2 | `(left, right)` with ⌊n/2⌋ and ⌈n/2⌉ elements | `right.first` |
+| n | `r.halve()` | `r.mid` | `r.mid.r` |
+|---|---|---|---|
+| 0 | `none` | `r.l` | outside `r` (guard first) |
+| 1 | `none` | `r.l` | the element |
+| ≥ 2 | ⌊n/2⌋ and ⌈n/2⌉ elements | `left.r` | `right.first` |
 
-`halve` is for the cut-shaped job (merge sort: stop at one element);
-`mid` is for the element-shaped job (handle the middle, recurse around it:
-stop at empty). `mid` is a position, not a cut: on an empty range the middle
-cut would be `r.l`, and its `.r` a position outside the range.
+`halve` is for the merge-sort shape (stop at one element). The element shape
+(handle the middle, recurse around it, stop at empty) is
+`if r.is_empty: return` then `r.mid.r!`; lint flags `.mid.r` with no
+emptiness guard. Rejected: `r.mid: ?V`, the middle element (safe on empty,
+but the cut is what both shapes share, and `halve` reads as its definition).
 
 ## Decided (decision 137)
 
@@ -220,7 +223,7 @@ cut would be `r.l`, and its `.r` a position outside the range.
   `Range<V>` is expected (124): literal typing, not a conversion; no implicit
   `Into`. A position-only reading was rejected: it broke
   `for j in lo..i: dp[j] + cost(j..i)`.
-- `r.halve()` is `?(left, right)`, `none` at length <= 1; `r.mid` is `?V`.
+- `r.mid` is the middle cut, always present; `r.halve()` is `?(r.l..r.mid, r.mid..r.r)`, `none` at length <= 1.
 - Integer literals convert to positions and cuts of integer domains.
 - `V(x)` traps outside `V`; `V.at(x)` is `?V`; the pattern `V(j)` refutes.
 
