@@ -118,6 +118,8 @@ pub(crate) fn roles(toks: &[Tok]) -> Vec<Role> {
             }
             K::Minus | K::Plus | K::Amp if !after_value => Role::Prefix,
             K::Tilde => Role::Prefix,
+            // `@!multitest`: the `!` belongs to the attribute it opens.
+            K::Bang if prev.is_some_and(|(kind, _)| kind == K::At) => Role::Prefix,
             K::Question if !after_value || tok.space_before => Role::Prefix,
             K::Question => Role::Postfix,
             K::Lt => {

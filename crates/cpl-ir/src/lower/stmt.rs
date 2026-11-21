@@ -1904,20 +1904,57 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// `g[r, ..]`, `g[.., c]` or `g[r, lo..hi]`: the grid, its indexes and
-    /// the axis the range runs along.
+    /// `g[r, ..]`, `g[.., c]`, `g[r, lo..hi]`, or `a[..]` and `a[lo..hi]`
+    /// of an array of one index: the array, its indexes and the axis the
+    /// range runs along.
     pub(super) fn grid_row<'e>(&mut self, e: &'e ast::Expr) -> Option<(&'e ast::Expr, &'e [ast::Expr], usize)> {
         let ast::ExprKind::Index { base, indices } = &e.kind else {
             return None;
         };
         let ranges: Vec<usize> = (0..indices.len()).filter(|&k| super::expr::is_whole(&indices[k])).collect();
-        let ([axis], true) = (ranges.as_slice(), indices.len() >= 2) else {
+        let [axis] = ranges.as_slice() else {
             return None;
         };
         match self.probe_ty_silent(base)? {
             Ty::Array { dims, .. } if dims.len() == indices.len() => Some((base, indices, *axis)),
+            Ty::List(_) if indices.len() == 1 => Some((base, indices, *axis)),
             _ => None,
         }
+    }
+
+    /// The axes and the cell type of what [`Self::grid_row`] found: a list
+    /// is one axis counted from 0.
+    fn axes_of(ty: &Ty) -> Option<(Vec<Dim>, Ty)> {
+        match ty {
+            Ty::Array { dims, elem } => Some((dims.clone(), (**elem).clone())),
+            Ty::List(elem) => Some((vec![Dim::Int], (**elem).clone())),
+            _ => None,
+        }
+    }
+
+    /// The indexes of the cell the loop is at, `at` standing where the
+    /// range was written.
+    fn axis_cell(&mut self, rows: &Ty, indices: &[ast::Expr], at: Slot, span: Span) -> Vec<Expr> {
+        if matches!(rows, Ty::List(_)) {
+            return vec![self.local(at, span)];
+        }
+        self.whole_axis = Some(at);
+        let (cell, _) = self.index_args(rows, indices, span);
+        self.whole_axis = None;
+        cell
+    }
+
+    /// How many cells `rows` has along `axis`.
+    fn axis_len(&mut self, rows: Expr, axis: usize, span: Span) -> Expr {
+        let one = match &rows.ty {
+            Ty::Array { dims, .. } => dims.len() == 1,
+            _ => true,
+        };
+        if one {
+            return self.len_of(rows, span);
+        }
+        let axis = self.int_lit(axis as i64, span);
+        self.mk(ExprKind::Builtin(Builtin::AxisLen, vec![rows, axis]), Ty::Int, span)
     }
 
     /// `g[r, ..] max= g[v, ..]`: every cell of one row or column of a grid
@@ -1940,10 +1977,7 @@ impl<'a> Lowerer<'a> {
         if let PlaceKind::Local(s) = root_place(&place) {
             self.cx.mut_slots.insert(s);
         }
-        let Ty::Array { dims, elem } = place.ty.clone() else {
-            return None;
-        };
-        let elem = *elem;
+        let (dims, elem) = Self::axes_of(&place.ty)?;
         if !self.ordered(&elem) {
             let message = format!("`{word}` needs cells that have an order, and these are `{}`", self.show(&elem));
             self.error(codes::TYPE_MISMATCH, span, message);
@@ -1961,17 +1995,11 @@ impl<'a> Lowerer<'a> {
         });
         // The cell of the target the loop is at.
         let at = self.temp(slot_ty(dims[axis]));
-        self.whole_axis = Some(at);
-        let (cell, _) = self.index_args(&place.ty, indices, span);
-        self.whole_axis = None;
+        let cell = self.axis_cell(&place.ty, indices, at, span);
         let cell: Vec<Expr> =
             cell.into_iter().enumerate().map(|(k, index)| if k == axis { index } else { self.hold(index, out) }).collect();
         let grid = place_to_expr(&place);
-        let len = self.mk(
-            ExprKind::Builtin(Builtin::AxisLen, vec![grid, self.int_lit(axis as i64, span)]),
-            Ty::Int,
-            span,
-        );
+        let len = self.axis_len(grid, axis, span);
         let (lo, hi) = self.axis_part(&indices[axis], dims[axis], len, out);
         let (lo, hi) = (self.hold(lo, out), self.hold(hi, out));
         let count = self.mk(ExprKind::Binary(BinOp::Sub, Box::new(hi.clone()), Box::new(lo.clone())), Ty::Int, span);
@@ -1984,10 +2012,10 @@ impl<'a> Lowerer<'a> {
             Some((other, their_indices, their_axis)) => {
                 let other = self.expr(other, None);
                 let other = self.hold(other, out);
-                let Ty::Array { dims: their_dims, elem: their_elem } = other.ty.clone() else {
+                let Some((their_dims, their_elem)) = Self::axes_of(&other.ty) else {
                     return changed;
                 };
-                if *their_elem != elem {
+                if their_elem != elem {
                     let message = format!(
                         "`{word}` goes cell by cell: these are `{}`, and the other side has `{}`",
                         self.show(&elem),
@@ -1997,19 +2025,13 @@ impl<'a> Lowerer<'a> {
                     return changed;
                 }
                 let their_at = self.temp(slot_ty(their_dims[their_axis]));
-                self.whole_axis = Some(their_at);
-                let (their_cell, _) = self.index_args(&other.ty, their_indices, value.span);
-                self.whole_axis = None;
+                let their_cell = self.axis_cell(&other.ty, their_indices, their_at, value.span);
                 let their_cell: Vec<Expr> = their_cell
                     .into_iter()
                     .enumerate()
                     .map(|(k, index)| if k == their_axis { index } else { self.hold(index, out) })
                     .collect();
-                let their_len = self.mk(
-                    ExprKind::Builtin(Builtin::AxisLen, vec![other.clone(), self.int_lit(their_axis as i64, span)]),
-                    Ty::Int,
-                    span,
-                );
+                let their_len = self.axis_len(other.clone(), their_axis, span);
                 let (their_lo, their_hi) = self.axis_part(&their_indices[their_axis], their_dims[their_axis], their_len, out);
                 let (their_lo, their_hi) = (self.hold(their_lo, out), self.hold(their_hi, out));
                 let step = self.mk(ExprKind::Binary(BinOp::Add, Box::new(their_lo.clone()), Box::new(offset)), Ty::Int, span);

@@ -1114,7 +1114,7 @@ impl<'p> Emitter<'p> {
                     BinOp::BitOr => "|",
                     _ => "^",
                 };
-                let mut code = Code::new(format!("{} {sym} {}", a.at(BIT + 1), b.at(BIT + 1)), BIT);
+                let mut code = Code::new(format!("{} {sym} {}", a.at(MUL), b.at(MUL)), BIT);
                 code.narrow = both_narrow;
                 code
             }
@@ -1152,7 +1152,7 @@ impl<'p> Emitter<'p> {
                     BinOp::BitOr => "|",
                     _ => "^",
                 };
-                Code::new(format!("{} {sym} {}", a.at(BIT + 1), b.at(BIT + 1)), BIT)
+                Code::new(format!("{} {sym} {}", a.at(MUL), b.at(MUL)), BIT)
             }
             (Ty::I128 | Ty::U64, BinOp::Shl | BinOp::Shr) => {
                 let sym = if op == BinOp::Shl { "<<" } else { ">>" };

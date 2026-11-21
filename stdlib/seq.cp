@@ -118,6 +118,11 @@ pub fn get_or_insert_with<K, V>(mut self: Map<K, V>, k: K, f: fn() -> V) -> V:
     if not (k in self): self[k] = f()
     self[k]
 
+/// Replace the value under `k` by `f` of it, starting from `init` when `m` holds none:
+/// `cnt.update(x, 0, c => c + 1)`. O(log n).
+pub fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V):
+    self[k] = f(self.get(k) ?? init)
+
 /// Rotate `a` left by `k` in place: what was at index `k % a.len` comes first.
 /// Signed Euclidean `k`: negative `k` rotates right (`rotate_left(mut a, -r)`).
 pub fn rotate_left<T>(mut a: List<T>, k: Int):
@@ -567,6 +572,14 @@ fn get_or_insert_with_makes_a_value_only_when_missing():
         made * 10
     assert ids.get_or_insert_with("a", fresh) == 10 and ids.get_or_insert_with("a", fresh) == 10
     assert ids.get_or_insert_with("b", () => 7) == 7 and made == 1
+
+@test
+fn update_starts_from_init_and_then_from_the_value():
+    var best = Map<Str, Int>()
+    best.update("a", 0, c => c + 1)
+    best.update("a", 0, c => c + 1)
+    best.update("b", 10, c => min(c, 4))
+    assert best["a"] == 2 and best["b"] == 4 and best.len == 2
 
 @test
 fn runs_by_groups_neighbours_with_the_same_key():
