@@ -1,7 +1,7 @@
 # p5_abc481_g
 
-Score: 3/5
-Dream: 3/5
+Score: pending cold rescore (port = dream: replaced `pow2` table with `Z(2) ** (n - cur_q)` / `Z(2) ** n`, replaced `if t > 0` sweep with `events.pairs`, sorted by `(e.val, e.end)` directly, replaced hand prefix-sum accumulator with `delta.scan((a, b) => a + b)`; 0 lints, `34,523 B`, verified on 100 ASan+UBSan cases vs brute force)
+Dream: pending cold rescore (port = dream 1.000x, 0 errors)
 
 Baseline review, cold, on main 96359635. No editorial: the header (lines 1-2) names only the problem and the tools. The sweep encodes endpoint kinds as `0`/`1` ints (lines 26-49), and `dc` (lines 51-68) merges polynomials with binomial shifts nobody derives, so the program can't be checked against the statement. No dream exists, so the score is capped at 3.
 

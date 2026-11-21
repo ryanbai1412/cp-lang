@@ -42,8 +42,6 @@ domain I = 0..n
 let cakes: [I](a: 1..=998_244_352, b: 1..=998_244_352) = read()
 
 let comb = Comb<Z>(n)
-var pow2: [0..=n]Z = Z(1)
-for i in 1..=n: pow2[i] = pow2[i - 1] * Z(2)
 
 fn binom_poly(d: Int) -> List<Z> = [comb.choose(d, i) for i in 0..=d]
 
@@ -51,21 +49,20 @@ var events: List<Event> = []
 for i in I:
     events.push(Event(cakes[i].a, End.Low))
     events.push(Event(cakes[i].b, End.High))
-events.sort(by: e => (e.val, if e.end == End.Low: 0 else: 1))
+events.sort(by: e => (e.val, e.end))
 
 var gaps: List<Gap> = []
 var cur_p = 0
 var cur_q = 0
-for t in 0..events.len:
-    if t > 0:
-        let dv = events[t].val - events[t - 1].val
-        let w = if dv > 0: Z(dv) * pow2[n - cur_q] else: Z(0)
-        gaps.push(Gap(cur_p, cur_q, w))
-    match events[t].end:
+for (prev, cur) in events.pairs:
+    match prev.end:
         End.Low => cur_q += 1
         End.High =>
             cur_p += 1
             cur_q -= 1
+    let dv = cur.val - prev.val
+    let w = if dv > 0: Z(dv) * (Z(2) ** (n - cur_q)) else: Z(0)
+    gaps.push(Gap(cur_p, cur_q, w))
 
 fn merge_gaps(l: Int, r: Int) -> Segment:
     if r - l == 1:
@@ -85,15 +82,12 @@ fn merge_gaps(l: Int, r: Int) -> Segment:
     Segment(add_shifted(lp, rp, right.p_min - left.p_min), left.p_min, q_min)
 
 let top = merge_gaps(0, gaps.len)
-let diff = if top.q_min > 0: convolve(top.poly, binom_poly(top.q_min)) else: top.poly
+let raw_diff = if top.q_min > 0: convolve(top.poly, binom_poly(top.q_min)) else: top.poly
+let diff = add_shifted([], raw_diff, top.p_min)
 
-var cur = pow2[n] * Z(events[0].val)
-var ans: [I]Z = Z(0)
-for i in I:
-    let k = i.ord
-    if k >= top.p_min and k - top.p_min < diff.len:
-        cur += diff[k - top.p_min]
-    ans[i] = cur
+let base = (Z(2) ** n) * Z(events[0].val)
+let delta: [I]Z = [I] i => (if i == I.first: base else: Z(0)) + (diff.get(i.ord) ?? Z(0))
+let ans = delta.scan((a, b) => a + b)
 
 print(ans, sep: "\n")
 
