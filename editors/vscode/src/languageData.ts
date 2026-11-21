@@ -38,16 +38,15 @@ export const PRELUDE_TYPES: readonly string[] = [
 
 /** Every public type and trait declared in `stdlib/*.cp`, whether `stdlib/prelude.cp` imports it or not. */
 export const STDLIB_TYPES: readonly string[] = [
-    'Action', 'AhoCorasick', 'Arc', 'Bitset', 'ByAngle', 'Comb', 'Compressed', 'ConnectedGraph',
+    'Action', 'AhoCorasick', 'Arc', 'BeatsSegTree', 'Bitset', 'ByAngle', 'Comb', 'Compressed', 'ConnectedGraph',
     'CostFlow', 'Dag', 'Deque', 'Desc', 'Diff1', 'Diff2', 'Digraph', 'Dir4', 'Dir8',
     'DisjointSparseTable', 'Dsu', 'DsuOf', 'DualFenwick', 'DualSegTree', 'Fenwick', 'Fenwick2D',
-    'FlowGraph', 'Graph', 'HalfPlane', 'Hash2D', 'HashVal', 'Hashable', 'LazySegTree', 'Mark',
-    'Marks', 'Mat', 'MaxHeap', 'MaxSub', 'MinHeap', 'Mod', 'MonoDeque', 'Monoid', 'Neighbours',
-    'Palindromes', 'PalindromicTree', 'ParityDsu', 'Perm', 'Prefix1', 'Prefix2', 'PrefixN', 'Pt',
-    'RangeFenwick', 'Reversible', 'Rng', 'RollingHash', 'Rooted', 'SegTree', 'Sieve', 'SimpleGraph',
-    'SortedBag', 'SparseTable', 'SuffixArray', 'SuffixAutomaton', 'Target', 'Tree', 'Trie', 'Vec',
-    'WindowFold', 'XorBasis', 'XorFenwick',
-    'LiChao', 'Line',
+    'FlowGraph', 'Graph', 'HalfPlane', 'Hash2D', 'HashVal', 'Hashable', 'LazySegTree', 'LiChao', 'Line', 'Mark',
+    'Marks', 'Mat', 'MaxHeap', 'MaxSub', 'MergeSortTree', 'MinHeap', 'Mod', 'MonoDeque', 'Monoid', 'Neighbours',
+    'Palindromes', 'PalindromicTree', 'ParityDsu', 'Perm', 'PersistentSegTree', 'Prefix1', 'Prefix2', 'PrefixN', 'Pt',
+    'RangeFenwick', 'RangeKth', 'Reversible', 'Rng', 'RollingHash', 'Rooted', 'SegTree', 'Sieve', 'SimpleGraph',
+    'SortedBag', 'SparseSegTree', 'SparseTable', 'SuffixArray', 'SuffixAutomaton', 'Target', 'TimeStep', 'TimeTree', 'Tree', 'Trie', 'Vec',
+    'Version', 'WindowFold', 'XorBasis', 'XorFenwick',
 ];
 
 /**

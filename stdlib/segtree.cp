@@ -215,3 +215,204 @@ fn fill_option_initializes_leaves_without_array():
     assert st.fold(V(2)..=V(2)) == -4 and st.all == 0
     let summed = SegTree<V, Int>(+, fill: 7)
     assert summed.all == 35 and summed.fold(V(2)..=V(4)) == 21
+
+/// Static merge-sort tree for orthogonal 2D range counting over `[D]T`.
+/// Build in O(n log n) time and memory; answer value-range counts over any `Range<D>` in O(log^2 n).
+pub struct MergeSortTree<D, T>:
+    nodes: List<List<T>>
+    size: Int
+
+    /// Build from an array `a: [D]T`. O(n log n).
+    pub fn new(a: [D]T) -> MergeSortTree<D, T>:
+        let size = bit_ceil(D.K)
+        var nodes: List<List<T>> = [[] for _ in 0..(2 * size)]
+        for i in D:
+            nodes[size + i.to_idx] = [a[i]]
+        for p in (1..size).rev:
+            let l = nodes[2 * p]
+            let r = nodes[2 * p + 1]
+            var merged: List<T> = []
+            var (i, j) = (0, 0)
+            while i < l.len and j < r.len:
+                if l[i] <= r[j]:
+                    merged.push(l[i])
+                    i += 1
+                else:
+                    merged.push(r[j])
+                    j += 1
+            while i < l.len:
+                merged.push(l[i])
+                i += 1
+            while j < r.len:
+                merged.push(r[j])
+                j += 1
+            nodes[p] = merged
+        MergeSortTree(nodes, size)
+
+    fn lower_idx(xs: List<T>, x: T) -> Int:
+        var (lo, hi) = (0, xs.len)
+        while lo < hi:
+            let mid = (lo + hi) / 2
+            if xs[mid] < x: lo = mid + 1
+            else: hi = mid
+        lo
+
+    fn upper_idx(xs: List<T>, x: T) -> Int:
+        var (lo, hi) = (0, xs.len)
+        while lo < hi:
+            let mid = (lo + hi) / 2
+            if xs[mid] <= x: lo = mid + 1
+            else: hi = mid
+        lo
+
+    /// Count elements in `r` strictly less than `x`. O(log^2 n).
+    pub fn count_lt(self, r: Range<D>, x: T) -> Int:
+        let (lo, hi) = r.ends
+        var (l, h, ans) = (lo + size, hi + size, 0)
+        while l < h:
+            if l % 2 == 1:
+                ans += MergeSortTree.lower_idx(nodes[l], x)
+                l += 1
+            if h % 2 == 1:
+                h -= 1
+                ans += MergeSortTree.lower_idx(nodes[h], x)
+            l /= 2
+            h /= 2
+        ans
+
+    /// Count elements in `r` less than or equal to `x`. O(log^2 n).
+    pub fn count_le(self, r: Range<D>, x: T) -> Int:
+        let (lo, hi) = r.ends
+        var (l, h, ans) = (lo + size, hi + size, 0)
+        while l < h:
+            if l % 2 == 1:
+                ans += MergeSortTree.upper_idx(nodes[l], x)
+                l += 1
+            if h % 2 == 1:
+                h -= 1
+                ans += MergeSortTree.upper_idx(nodes[h], x)
+            l /= 2
+            h /= 2
+        ans
+
+    /// Count elements in `r` within `[lo_v, hi_v]` inclusive. O(log^2 n).
+    pub fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int:
+        if lo_v > hi_v: return 0
+        self.count_le(r, hi_v) - self.count_lt(r, lo_v)
+
+/// Dynamic (coordinate-sparse) segment tree over integer coordinates `[lo, hi)`.
+/// Allocates nodes on demand in an arena. Point update and range fold run in O(log(hi - lo)).
+pub struct SparseSegTree<T>(m: Monoid<T>, lo: Int, hi: Int):
+    left: List<Int>
+    right: List<Int>
+    val: List<T>
+    root: Int
+
+    /// Empty sparse segment tree over half-open coordinates `[lo, hi)` (every cell starts at `m.id`). O(1).
+    pub fn new<M>(op: M, lo: Int, hi: Int) -> SparseSegTree<T>:
+        assert lo < hi, "SparseSegTree needs lo < hi"
+        let m = Monoid<T>.of(op)
+        SparseSegTree(m, lo, hi, [-1], [-1], [m.id], 0)
+
+    fn new_node(mut self) -> Int:
+        let id = val.len
+        left.push(-1)
+        right.push(-1)
+        val.push(m.id)
+        id
+
+    fn node_val(self, u: Int) -> T = if u == -1: m.id else: val[u]
+
+    fn set_rec(mut self, u: Int, nl: Int, nr: Int, x: Int, v: T):
+        if nr - nl == 1:
+            val[u] = v
+            return
+        let mid = nl + (nr - nl) / 2
+        if x < mid:
+            if left[u] == -1: left[u] = self.new_node()
+            self.set_rec(left[u], nl, mid, x, v)
+        else:
+            if right[u] == -1: right[u] = self.new_node()
+            self.set_rec(right[u], mid, nr, x, v)
+        val[u] = m.op(self.node_val(left[u]), self.node_val(right[u]))
+
+    /// Set coordinate `x` (in `[lo, hi)`) to `v`. O(log(hi - lo)).
+    pub fn set(mut self, x: Int, v: T):
+        assert lo <= x and x < hi, "SparseSegTree coordinate out of range"
+        self.set_rec(root, lo, hi, x, v)
+
+    fn update_rec(mut self, u: Int, nl: Int, nr: Int, x: Int, f: T -> T):
+        if nr - nl == 1:
+            val[u] = f(val[u])
+            return
+        let mid = nl + (nr - nl) / 2
+        if x < mid:
+            if left[u] == -1: left[u] = self.new_node()
+            self.update_rec(left[u], nl, mid, x, f)
+        else:
+            if right[u] == -1: right[u] = self.new_node()
+            self.update_rec(right[u], mid, nr, x, f)
+        val[u] = m.op(self.node_val(left[u]), self.node_val(right[u]))
+
+    /// Replace coordinate `x` with `f(current)`. O(log(hi - lo)).
+    pub fn update(mut self, x: Int, f: T -> T):
+        assert lo <= x and x < hi, "SparseSegTree coordinate out of range"
+        self.update_rec(root, lo, hi, x, f)
+
+    /// Value stored at coordinate `x`. O(log(hi - lo)).
+    pub fn get(self, x: Int) -> T:
+        assert lo <= x and x < hi, "SparseSegTree coordinate out of range"
+        var (u, nl, nr) = (root, lo, hi)
+        while u != -1 and nr - nl > 1:
+            let mid = nl + (nr - nl) / 2
+            if x < mid:
+                u = left[u]
+                nr = mid
+            else:
+                u = right[u]
+                nl = mid
+        self.node_val(u)
+
+    fn fold_rec(self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int) -> T:
+        if u == -1 or qr <= nl or nr <= ql: return m.id
+        if ql <= nl and nr <= qr: return val[u]
+        let mid = nl + (nr - nl) / 2
+        m.op(self.fold_rec(left[u], nl, mid, ql, qr), self.fold_rec(right[u], mid, nr, ql, qr))
+
+    /// Fold over half-open coordinate range `[ql, qr)`. O(log(hi - lo)).
+    pub fn fold(self, ql: Int, qr: Int) -> T:
+        if ql >= qr: return m.id
+        self.fold_rec(root, lo, hi, max(lo, ql), min(hi, qr))
+
+    /// Fold over the entire `[lo, hi)` coordinate range. O(1).
+    pub @get fn all(self) -> T = val[root]
+
+@test
+fn merge_sort_and_sparse_segtree_match_brute():
+    domain I = 1..=14
+    let a = [I] _ => rand(-10, 10)
+    let mst = MergeSortTree<I, Int>(a)
+    for l in 1..=14:
+        for r in l..=14:
+            let rng = I(l)..=I(r)
+            for v in [-11, -5, 0, 5, 11]:
+                let want_lt = count(a[i] < v for i in rng)
+                let want_le = count(a[i] <= v for i in rng)
+                assert mst.count_lt(rng, v) == want_lt
+                assert mst.count_le(rng, v) == want_le
+            assert mst.count_in(rng, -3, 4) == count(-3 <= a[i] and a[i] <= 4 for i in rng)
+
+    var sst = SparseSegTree<Int>(+, -1_000_000_000, 1_000_000_001)
+    var ref = Map<Int, Int>()
+    let coords = [-1_000_000_000, -500, -1, 0, 1, 42, 999_999_999, 1_000_000_000]
+    for _ in 0..80:
+        let x = coords[rand(0, coords.len - 1)]
+        let d = rand(-20, 20)
+        sst.update(x, v => v + d)
+        ref[x] += d
+        assert sst.get(x) == ref[x]
+    for ql in coords:
+        for qr in coords:
+            let want = sum(v for (k, v) in ref.items if ql <= k and k < qr)
+            assert sst.fold(ql, qr) == want
+    assert sst.all == sum(v for (_, v) in ref.items)
