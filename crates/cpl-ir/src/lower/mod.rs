@@ -113,6 +113,10 @@ enum Aside {
     /// A `@gen` fn: it makes the input, so none of the header runs, and
     /// it is called with this size.
     Gen(i64),
+    /// The `gen:` fn of the `read(gen: f)` on this 1-based line: the
+    /// header above that line runs, then the fn's value is printed as
+    /// `read()` reads it.
+    Read(u32),
 }
 
 /// Lowers the `@brute(main)` fn `name` as a program: the file's input
@@ -138,6 +142,17 @@ pub fn generator(analysis: &Analysis) -> Option<(String, u32)> {
 /// the file's constants and fns, then `name(size)`. Nothing is read.
 pub fn lower_gen(analysis: &Analysis, name: &str, size: i64) -> Result<Program, Vec<Diagnostic>> {
     lower_aside(analysis, name, Aside::Gen(size))
+}
+
+/// Lowers the `gen:` fn `name` of the `read(gen: name)` on `line` as a
+/// program that reads the input above that line and prints the value
+/// `name()` makes, written as `read()` reads it.
+pub fn lower_gen_read(
+    analysis: &Analysis,
+    name: &str,
+    line: u32,
+) -> Result<Program, Vec<Diagnostic>> {
+    lower_aside(analysis, name, Aside::Read(line))
 }
 
 fn lower_aside(analysis: &Analysis, name: &str, aside: Aside) -> Result<Program, Vec<Diagnostic>> {
@@ -2421,7 +2436,16 @@ impl<'a> Lowerer<'a> {
             Some(Aside::Gen(size)) => Some(size),
             _ => None,
         };
-        let header = if own_reads || size.is_some() {
+        let header = if let Some(Aside::Read(line)) = self.aside {
+            let text = self.mods[0].text.clone();
+            let line_of = |at: u32| {
+                text[..(at as usize).min(text.len())].matches('\n').count() as u32 + 1
+            };
+            items
+                .iter()
+                .filter(|(offset, stmt)| line_of(stmt.span.shift(*offset).start) < line)
+                .count()
+        } else if own_reads || size.is_some() {
             0
         } else {
             items
@@ -2482,11 +2506,22 @@ impl<'a> Lowerer<'a> {
                 }
             };
             let ret = self.ret_of(fn_id, Span::default());
-            out.push(Stmt::Expr(Expr {
+            let call = Expr {
                 kind: ExprKind::Call(fn_id, args),
                 ty: ret,
                 span: Span::default(),
-            }));
+            };
+            if let Some(Aside::Read(_)) = self.aside {
+                let printed = self.fmt_arg(call, crate::FLOAT_DIGITS, Span::default());
+                let print = self.mk(
+                    ExprKind::Print(printed.into_iter().collect(), None),
+                    Ty::Unit,
+                    Span::default(),
+                );
+                out.push(Stmt::Expr(print));
+            } else {
+                out.push(Stmt::Expr(call));
+            }
         }
         let cx = std::mem::take(&mut self.cx);
         self.main_body = Block { stmts: out };

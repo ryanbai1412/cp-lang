@@ -280,6 +280,10 @@ fn fit_in(spec: &InputSpec, outer: &Env, case: &Case) -> Option<Case> {
                 }
                 Value::Tuple(parts)
             }
+            // Values read before it may have changed: draw it again.
+            (Shape::Gen { program, .. }, Value::Drawn { seed, .. }) => {
+                crate::gen::draw(program, &values, *seed)?
+            }
             (shape, value) => fit_value(shape, value, &env)?,
         };
         bind(&field.names, &fitted, &mut env);
@@ -337,7 +341,9 @@ fn at<'a>(case: &'a mut Case, path: &[usize]) -> &'a mut Value {
     for index in &path[1..] {
         value = match value {
             Value::Seq(items) | Value::Tuple(items) => &mut items[*index],
-            Value::Int(_) | Value::Char(_) => unreachable!("a path ends at a number"),
+            Value::Int(_) | Value::Char(_) | Value::Drawn { .. } => {
+                unreachable!("a path ends at a number")
+            }
         };
     }
     value
@@ -350,7 +356,7 @@ fn number_at(case: &Case, path: &[usize]) -> Option<i128> {
     for index in rest {
         value = match value {
             Value::Seq(items) | Value::Tuple(items) => items.get(*index)?,
-            Value::Int(_) | Value::Char(_) => return None,
+            Value::Int(_) | Value::Char(_) | Value::Drawn { .. } => return None,
         };
     }
     value.number()
@@ -872,6 +878,25 @@ fn drop_where_shorter(old: &Value, new: &Value, target: &mut Value, position: us
 /// Swapping vertex names is tried among the first this many vertices.
 const SWAP_LIMIT: i128 = 16;
 
+/// The seeds tried for each `read(gen: f)` value while shrinking.
+const GEN_SEEDS: u64 = 16;
+
+/// `case`'s values with every drawn one to be drawn again from `seed`.
+fn drawn_with(spec: &InputSpec, case: &Case, seed: u64) -> Vec<Value> {
+    let fresh = || Value::Drawn {
+        seed,
+        text: String::new(),
+    };
+    spec.fields
+        .iter()
+        .zip(&case.values)
+        .map(|(field, value)| match field.shape {
+            Shape::Gen { .. } => fresh(),
+            _ => value.clone(),
+        })
+        .collect()
+}
+
 pub fn shrink(
     spec: &InputSpec,
     case: &Case,
@@ -895,10 +920,28 @@ pub fn shrink(
         left -= 1;
         if still_fails(&candidate) {
             *best = candidate;
-            true
-        } else {
-            false
+            return true;
         }
+        // A drawn value made from other values is drawn anew with them:
+        // a smaller `n` may fail only with another word of that length.
+        for seed in 0..GEN_SEEDS {
+            let reseeded = Case {
+                values: drawn_with(spec, &candidate, seed),
+                ..candidate.clone()
+            };
+            let Some(reseeded) = fit(spec, &reseeded).filter(|c| *c != candidate) else {
+                continue;
+            };
+            if measure(&reseeded) >= measure(best) || left == 0 {
+                continue;
+            }
+            left -= 1;
+            if still_fails(&reseeded) {
+                *best = reseeded;
+                return true;
+            }
+        }
+        false
     };
     // Lowers the number at `path` as far as the failure allows.
     let lower = |best: &mut Case,
@@ -956,6 +999,20 @@ pub fn shrink(
                 } else {
                     position += 1;
                 }
+            }
+        }
+        // 1a. Drawn values: another seed may draw a smaller one.
+        if spec
+            .fields
+            .iter()
+            .any(|f| matches!(f.shape, Shape::Gen { .. }))
+        {
+            for seed in 0..GEN_SEEDS {
+                let candidate = Case {
+                    values: drawn_with(spec, &best, seed),
+                    ..best.clone()
+                };
+                improved |= attempt(&mut best, candidate);
             }
         }
         // 2a. Graphs: delete one vertex, with its edges.

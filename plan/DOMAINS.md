@@ -444,12 +444,26 @@ inputs for: 1,045 of the 1,389 `.cp` files under `proto/ports` (from
 1,014 by the same scan; the 1,332 above counted an older tree), and the
 17 query ports this newly covers all give inputs their programs read to
 the end.
+A struct or an `@tags` enum is read field by field, the enum as a choice
+on its tag (`structs_and_tagged_enums_are_read_field_by_field`, 1,053), and
+`read(none: x)` writes `x` about a quarter of the time and a value of `T`
+otherwise, shrinking to the low end or `x`
+(`an_optional_read_with_none_written_as_a_number_is_generated_both_ways`,
+1,069). A top-level `read(gen: f)` runs `f` in the interpreter on the
+input above it with `rand` seeded, and keeps the value as its seed: when
+the values above change it is drawn again, and a smaller case that passes
+is retried with other seeds, so `n` shrinks with a word of that length
+(`a_read_with_gen_draws_what_its_fn_makes_from_the_input_above`, decision
+25.14). Ports stress makes inputs for: 1,112 of the 1,391 `.cp` files
+(from 1,069); of the 41 `read(gen: f)` ports newly covered, 39 give inputs
+their programs read to the end and 2 trip the port's own `assert` on the
+drawn value. The remaining `gen:` refusals are files that do not build.
 **Bar.** A seeded-bug benchmark in the gate: classic bugs injected into
 correct solutions, each found and shrunk to a known minimal case, with the
 median time to a minimal counterexample at most 10 s (`GOALS` 4).
 **Next.** loops that `break`, or whose types use values worked out in
-the pass (74 ports refused); `read(gen: f)` and `read(none: x)` made by
-running `f` (71 and 64 ports refused); reads in fns the program calls
+the pass (71 ports refused); `read(gen: f)` inside a test case or a loop;
+types with no generator yet (`F64`, `Pt`, `U64`, `Mod<P>`: about 35); reads in fns the program calls
 (44); reads in a nested block that is not a choice (23); generators keyed to the
 stdlib declarations, not their names; worst-case values and anti-hash generators; grid and string-family shapes (`[R, C]Char` mazes, palindromes).
 

@@ -134,6 +134,8 @@ pub struct Io<'a> {
     input: Feed<'a>,
     /// What an `@interactor` hears from the solution: `sol.recv()`.
     peer: Option<More<'a>>,
+    /// Where `rand` starts, when not the default.
+    seed: Option<u64>,
 }
 
 enum Feed<'a> {
@@ -147,6 +149,7 @@ impl<'a> Io<'a> {
         Io {
             input: Feed::Fixed(input),
             peer: None,
+            seed: None,
         }
     }
 
@@ -156,6 +159,7 @@ impl<'a> Io<'a> {
         Io {
             input: Feed::Live(more),
             peer: None,
+            seed: None,
         }
     }
 
@@ -165,6 +169,16 @@ impl<'a> Io<'a> {
         Io {
             input: Feed::Fixed(input),
             peer: Some(solution),
+            seed: None,
+        }
+    }
+
+    /// The same, with `rand` and `shuffle` drawing from `seed`: one
+    /// seed, one run.
+    pub fn seeded(self, seed: u64) -> Io<'a> {
+        Io {
+            seed: Some(seed),
+            ..self
         }
     }
 }
@@ -286,6 +300,7 @@ fn run_io(
     profile: bool,
 ) -> Observed {
     let top = 0u8;
+    let seed = io.seed;
     let mut interp = Interp {
         program,
         globals: vec![Value::Unit; program.globals.len()],
@@ -308,7 +323,7 @@ fn run_io(
         frame_locals: Vec::new(),
         call_frames: Vec::new(),
         current_case: None,
-        rng_state: 0x9e3779b97f4a7c15u64,
+        rng_state: seed.map_or(0x9e3779b97f4a7c15, |seed| seed ^ 0x9e3779b97f4a7c15),
         tracer: trace.map(|config| Box::new(trace::Tracer::new(config, program))),
         profiler: profile.then(|| Box::new(profile::Profiler::new(program))),
         debug_out: Vec::new(),

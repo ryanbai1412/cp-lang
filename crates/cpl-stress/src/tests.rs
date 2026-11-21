@@ -1416,7 +1416,10 @@ fn reads_no_field_describes_are_refused_not_left_out() {
     let cases = [
         ("let n: 1..=5 = read()\nfn row() -> Int:\n    let x: Int = read()\n    x\nprint(row())\n", "this fn reads input"),
         ("let n: 1..=5 = read()\n@memo\nfn row(i: Int) -> Int:\n    let x: Int = read()\n    x\nprint(row(n))\n", "this fn reads input"),
-        ("let n: 2..=9 = read()\nlet x: 1..=n = read(gen: pick)\nfn pick() -> Int: n\n", "read(gen: ..)"),
+        (
+            "@!multitest\nlet n: 2..=9 = read()\nfn pick() -> Int: n\nlet x: 1..=n = read(gen: pick)\n",
+            "read(gen: ..)",
+        ),
         ("let n: 1..=5 = read()\nfor _ in 0..n:\n    let x: ?Int = read(none: \"-\")\n", "this loop reads"),
     ];
     for (src, wanted) in cases {
@@ -1637,5 +1640,60 @@ print(placed)
         .unwrap();
     let min = shrink(&spec, &start, 2000, &mut |case| fails(case));
     assert_eq!(min.render(), "3\n0 0 3\n-1\n");
+    std::fs::remove_file(&path).ok();
+}
+
+#[test]
+fn a_read_with_gen_draws_what_its_fn_makes_from_the_input_above() {
+    let src = "let n: 3..=8 = read()
+domain I = 0..n
+fn word() -> [I]Char: [I] _ => 'a' + rand(0, 2)
+let s: [I]Char = read(gen: word)
+let k: 1..=n = read()
+var c = 0
+for i in I:
+    if s[i] == 'c':
+        c += 1
+print(c + k)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    let path = std::env::temp_dir().join(format!("drawn-{}.cp", std::process::id()));
+    std::fs::write(&path, src).unwrap();
+    let mut words = HashSet::new();
+    for seed in 0..20 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap();
+        let text = case.render();
+        assert_eq!(crate::explain::runtime_error(&path, &text), None, "{text}");
+        let lines: Vec<&str> = text.lines().collect();
+        let n: usize = lines[0].parse().unwrap();
+        assert_eq!(lines[1].len(), n, "{text}");
+        assert!(
+            lines[1].bytes().all(|b| (b'a'..=b'c').contains(&b)),
+            "{text}"
+        );
+        let k: usize = lines[2].parse().unwrap();
+        assert!((1..=n).contains(&k), "{text}");
+        words.insert(lines[1].to_string());
+    }
+    assert!(words.len() > 10, "{words:?}");
+    let fails = |case: &Case| {
+        case.render()
+            .lines()
+            .nth(1)
+            .is_some_and(|s| s.contains("cc"))
+    };
+    let start = (0..)
+        .map(|seed| generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap())
+        .find(|case| fails(case) && case.render().lines().next() != Some("3"))
+        .unwrap();
+    let min = shrink(&spec, &start, 2000, &mut |case| fails(case));
+    let text = min.render();
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!(
+        (lines[0], lines[1].len(), lines[2]),
+        ("3", 3, "1"),
+        "{}",
+        min.render()
+    );
     std::fs::remove_file(&path).ok();
 }

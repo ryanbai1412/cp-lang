@@ -61,7 +61,7 @@ pub fn check(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
 
 pub use lower::{
     brute, checker, generator, interactor, list_tests, lower, lower_brute, lower_checker,
-    lower_gen, lower_judge, lower_test,
+    lower_gen, lower_gen_read, lower_judge, lower_test,
 };
 pub use show::{sep_of, Sep};
 

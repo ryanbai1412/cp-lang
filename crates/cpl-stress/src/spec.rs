@@ -73,6 +73,12 @@ pub enum Shape {
     /// `?T` read with `read(none: x)`: a value of `T`, or `none`, which
     /// is written as `x`.
     Maybe { inner: Box<Shape>, none: i128 },
+    /// `read(gen: f)`: what `f()` makes, printed by `program`, which
+    /// reads the input above it first.
+    Gen {
+        func: String,
+        program: std::sync::Arc<cpl_ir::Program>,
+    },
 }
 
 /// One way a row goes after its tag: an `if` branch or a `match` arm.
@@ -1361,6 +1367,38 @@ fn read_none(expr: &Expr) -> Option<Option<i128>> {
     Some(Some(none?))
 }
 
+/// The fn `f` of `read(gen: f)`.
+fn read_gen(expr: &Expr) -> Option<String> {
+    let ExprKind::Call { callee, args } = &expr.kind else {
+        return None;
+    };
+    let [arg] = args.as_slice() else {
+        return None;
+    };
+    match (&callee.kind, &arg.name, &arg.value.kind) {
+        (ExprKind::Name(read), Some(name), ExprKind::Name(func))
+            if read == "read" && name.text == "gen" =>
+        {
+            Some(func.clone())
+        }
+        _ => None,
+    }
+}
+
+/// `src` lowered to print what `func()` makes after reading the input
+/// above `line`. `None` when it does not build.
+fn gen_program(src: &str, func: &str, line: u32) -> Option<cpl_ir::Program> {
+    let name = "input.cp";
+    let mut db = cpl_check::Database::new();
+    db.set_file(name, src);
+    let analysis = db.analyze(name)?;
+    let is_error = |d: &cpl_diag::Diagnostic| d.severity == cpl_diag::Severity::Error;
+    if analysis.diagnostics.iter().any(is_error) {
+        return None;
+    }
+    cpl_ir::lower_gen_read(&analysis, func, line).ok()
+}
+
 fn is_read(expr: &Expr) -> bool {
     matches!(&expr.kind, ExprKind::Call { callee, args }
         if args.is_empty() && matches!(&callee.kind, ExprKind::Name(name) if name == "read"))
@@ -1408,6 +1446,13 @@ impl InputSpec {
                     _ => None,
                 }
             });
+        // A drawn value reads the input above it, which a test case
+        // can't give it yet.
+        let multitest = parsed.items.iter().any(|(_, item)| {
+            item.stmts
+                .iter()
+                .any(|stmt| stmt.decorators.iter().any(|d| d.name.text == "multitest"))
+        });
         let mut hidden = Vec::new();
         for (base, item) in &parsed.items {
             builder.base = *base;
@@ -1515,6 +1560,28 @@ impl InputSpec {
                         }
                     }
                     StmtKind::Let {
+                        init: Some(init), ..
+                    } if !in_judge
+                        && judge.is_none()
+                        && above.is_none()
+                        && !multitest
+                        && read_gen(init).is_some() =>
+                    {
+                        let func = read_gen(init).expect("tested above");
+                        let line = lines.line_of(stmt.span.shift(builder.base).start) + 1;
+                        let program = gen_program(src, &func, line).ok_or_else(|| {
+                            builder.error(stmt.span, format!("`cpl stress` can't run `{func}` on its own to make this input; check that the file builds"))
+                        })?;
+                        builder.spec.fields.push(Field {
+                            names: vec![None],
+                            shape: Shape::Gen {
+                                func,
+                                program: std::sync::Arc::new(program),
+                            },
+                            line,
+                        });
+                    }
+                    StmtKind::Let {
                         pat,
                         ty,
                         init: Some(init),
@@ -1610,7 +1677,7 @@ impl InputSpec {
                     {
                         return Err(builder.error(
                             stmt.span,
-                            "`cpl stress` can't make a `read(gen: ..)` or `read(none: ..)` yet, so a generated input would leave it out; write a `@gen fn` that prints a whole input, or pass `--gen <program>`".into(),
+                            "`cpl stress` makes a `read(gen: ..)` or `read(none: ..)` only as a top-level `let name: Type = read(..)` outside a test case, so a generated input would leave this one out; write a `@gen fn` that prints a whole input, or pass `--gen <program>`".into(),
                         ));
                     }
                     _ if (in_judge || judge.is_none())

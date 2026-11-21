@@ -1682,6 +1682,18 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   a number now tries its low end before the binary search, because a fit that clamps
   `?(1..=n)` up to `1` hides `none: 0` below the gap. Reverse: drop `Shape::Maybe`,
   `read_none` and the low-end attempt in `shrink`'s `lower`.
+- **25.14 `read(gen: f)` is drawn by running `f` on the input above it, and shrinks by
+  seed.** The type next to a `read(gen: f)` holds less than `f` does (a tree written as
+  `[E](u: V, v: V)`, a strictly rising `[I]1..=1e6`), so the field's value is whatever `f()`
+  makes: `cpl-ir`'s `lower_gen_read` keeps the program's top-level statements above that line,
+  then prints `f()` as `read()` reads it, and the interpreter runs it with `rand` seeded
+  (`Io::seeded`). The value is kept as its seed and its text (`Value::Drawn`). Shrinking
+  never edits inside it: every time the values above it change it is drawn again from its
+  seed, a rejected smaller case is retried with up to 16 other seeds, and a pass tries those
+  seeds alone. Only top-level reads outside a test case are drawn; the rest keep their
+  refusal. The generator runs in the interpreter only: it makes inputs, and the solution
+  under test still runs on both sides. Reverse: drop `Shape::Gen`, `Value::Drawn`,
+  `lower_gen_read`, `Io::seeded` and the reseeding in `shrink`.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 

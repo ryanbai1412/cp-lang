@@ -14,6 +14,12 @@ pub enum Value {
     Char(i128),
     Seq(Vec<Value>),
     Tuple(Vec<Value>),
+    /// What a `read(gen: f)` fn printed when its `rand` started from
+    /// `seed`; another seed is another value.
+    Drawn {
+        seed: u64,
+        text: String,
+    },
 }
 
 impl Value {
@@ -246,6 +252,8 @@ fn build(
             0 => Some(Value::Int(*none)),
             _ => build(inner, env, sizes, false, pick),
         },
+        // Only a top-level field is drawn: it reads the input above it.
+        Shape::Gen { .. } => None,
         Shape::Str => {
             let len = pick.pick(1, MAX_WORD, true);
             Some(Value::Seq(
@@ -387,7 +395,7 @@ fn leaves(value: &Value, out: &mut Vec<Option<i128>>) {
     match value {
         Value::Int(v) => out.push(Some(*v)),
         Value::Tuple(parts) => parts.iter().for_each(|part| leaves(part, out)),
-        Value::Seq(_) | Value::Char(_) => out.push(None),
+        Value::Seq(_) | Value::Char(_) | Value::Drawn { .. } => out.push(None),
     }
 }
 
@@ -428,6 +436,10 @@ fn make_in(spec: &InputSpec, outer: &Env, pick: &mut dyn Pick) -> Option<Case> {
                 }
                 Value::Tuple(built)
             }
+            (Shape::Gen { program, .. }, _) => {
+                let seed = pick.pick(0, i64::MAX as i128, false) as u64;
+                draw(program, &values, seed)?
+            }
             (shape, names) => {
                 let is_size = matches!(names, [Some(name)] if spec.sizes.contains(name));
                 build(shape, &env, &spec.sizes, is_size, pick)?
@@ -448,6 +460,18 @@ fn make_in(spec: &InputSpec, outer: &Env, pick: &mut dyn Pick) -> Option<Case> {
         cases,
         until_eof: spec.until_eof,
     })
+}
+
+/// What the `read(gen: f)` program prints, reading `above` (the values
+/// read before it) with `rand` started from `seed`. `None` when it traps.
+pub(crate) fn draw(program: &cpl_ir::Program, above: &[Value], seed: u64) -> Option<Value> {
+    let mut input = String::new();
+    above.iter().for_each(|value| write(value, &mut input));
+    let mut out = Vec::new();
+    let io = cpl_interp::Io::fixed(input.as_bytes()).seeded(seed);
+    cpl_interp::run_with(program, io, &mut out).ok()?;
+    let text = String::from_utf8(out).ok()?;
+    Some(Value::Drawn { seed, text })
 }
 
 /// A random case. `None` when a bound cannot be evaluated or a range is
@@ -480,6 +504,7 @@ fn flat(value: &Value) -> Option<String> {
             .map(|item| number(item).or_else(|| letter(item).map(String::from)))
             .collect::<Option<Vec<_>>>()
             .map(|parts| parts.join(" ")),
+        Value::Drawn { text, .. } => Some(text.trim_end().to_string()),
     }
 }
 
@@ -492,7 +517,9 @@ fn write(value: &Value, out: &mut String) {
         (None, Value::Seq(items) | Value::Tuple(items)) => {
             items.iter().for_each(|item| write(item, out))
         }
-        (None, Value::Int(_) | Value::Char(_)) => unreachable!("a number is always flat"),
+        (None, Value::Int(_) | Value::Char(_) | Value::Drawn { .. }) => {
+            unreachable!("a number and a drawn value are always flat")
+        }
     }
 }
 
@@ -508,6 +535,7 @@ fn show(value: &Value) -> String {
         }
         Value::Seq(items) => format!("[{}]", joined(items)),
         Value::Tuple(items) => format!("({})", joined(items)),
+        Value::Drawn { text, .. } => text.split_whitespace().collect::<Vec<_>>().join(" "),
     }
 }
 
@@ -566,6 +594,15 @@ impl Case {
                 }
                 Value::Seq(items) | Value::Tuple(items) => {
                     items.iter().for_each(|item| walk(item, count, sum))
+                }
+                Value::Drawn { text, .. } => {
+                    for token in text.split_whitespace() {
+                        *count += 1;
+                        let size = token
+                            .parse::<i128>()
+                            .map_or(token.len() as u128, i128::unsigned_abs);
+                        *sum = sum.saturating_add(size);
+                    }
                 }
             }
         }
