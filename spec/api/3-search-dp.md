@@ -47,7 +47,7 @@ domain Pos = 0..n
 var dp: [Pos.cuts]Int = inf          # prefix DP: dp[c] is the best for a[..c]
 dp[0] = 0
 for i in Pos.cuts:
-    for j in lo(i)..i:               # cuts; j..i below is the piece
+    for j in Pos.cuts.first!..i:     # every earlier cut; j..i is the piece a[j..i]
         dp[i] min= dp[j] + cost(j..i)
 ```
 
