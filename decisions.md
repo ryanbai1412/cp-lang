@@ -1905,6 +1905,18 @@ Reverse: drop the `proven` lookup in the `inlayHint` arm of `crates/cpl-lsp/src/
 
 ## 30. Front-end recovery (2026-11-21)
 
+- **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:
+  fn hash(self) -> U64 = ..` gives `Int` a method `x.hash()`, found by the
+  value's type after `fields` unrolls or a generic is instantiated; before,
+  an `impl` attached only to structs. `std.derive` uses it for a `Hash`
+  trait over `Int`, `U64`, `Char`, `Bool` and `Str` (splitmix64) and
+  `hash_fields`, so `impl Hash for P: fn hash(self) = hash_fields(self)` is
+  a struct's whole derive. Reason: the derive must be library code, and a
+  field-wise fold needs one method name that dispatches on each field's
+  type; free fns cannot overload. Not yet: the compiler's own `HashMap` key
+  hash does not call `Hash`. Reverse: delete `attach_impls_for_builtins`
+  and `prim_methods` in `cpl-ir/src/lower` and the `Hash` part of
+  `stdlib/derive.cp`.
 - **30.1 A broken-ports benchmark scores recovery.** `crates/cpl-cli/tests/recovery.rs` applies six
   single-line edits (drop a closer, drop a block colon, cut a value, double an operator, garble a
   declared name) to every port and counts errors, cascades (every error after the first, since each copy

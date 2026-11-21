@@ -526,6 +526,10 @@ struct Lowerer<'a> {
 
     traits: Vec<TraitInfo<'a>>,
     impls: Vec<ImplInfo<'a>>,
+    /// Methods an `impl` gives a built-in type (`impl Hash for Int`).
+    prim_methods: Vec<(Ty, String, FnId)>,
+    /// The `self` type of each of those methods.
+    prim_self: HashMap<FnId, Ty>,
 
     sigs: Vec<FnSig<'a>>,
     bodies: Vec<Option<Function>>,
@@ -622,6 +626,8 @@ impl<'a> Lowerer<'a> {
             gen_consts: Vec::new(),
             traits: Vec::new(),
             impls: Vec::new(),
+            prim_methods: Vec::new(),
+            prim_self: HashMap::new(),
             sigs: Vec::new(),
             bodies: Vec::new(),
             gen_fns: Vec::new(),
@@ -1164,6 +1170,40 @@ impl<'a> Lowerer<'a> {
         self.cur_mod = 0;
     }
 
+    /// `impl T for Int`: a built-in type has no struct to hang methods
+    /// on, so each method is a fn whose `self` is the type, found by
+    /// `x.method()` on a value of it.
+    fn attach_impls_for_builtins(&mut self) {
+        for idx in 0..self.impls.len() {
+            let (m, offset, target, body) =
+                (self.impls[idx].mod_id, self.impls[idx].offset, self.impls[idx].target, self.impls[idx].body);
+            let ast::TypeKind::Named { name, args } = &target.kind else {
+                continue;
+            };
+            if !args.is_empty() || self.mod_syms[m].contains_key(&name.text) {
+                continue;
+            }
+            let trait_name = self.impls[idx].trait_name.clone();
+            let saved = (std::mem::replace(&mut self.cur_mod, m), std::mem::replace(&mut self.offset, offset));
+            let ty = self.resolve_ty(target);
+            if !matches!(ty, Ty::Struct(_) | Ty::Error) {
+                for item in &body.stmts {
+                    if let ast::StmtKind::Fn(f) = &item.kind {
+                        if !f.generics.is_empty() || f.lends.is_some() {
+                            continue;
+                        }
+                        let fn_id = self.declare_fn_in(f, m, offset, None, GenEnv::default());
+                        self.sigs[fn_id].name = format!("{}_{}_{}", trait_name.as_deref().unwrap_or("impl"), name.text, f.name.text);
+                        self.prim_self.insert(fn_id, ty.clone());
+                        self.prim_methods.push((ty.clone(), f.name.text.clone(), fn_id));
+                        self.resolve_fn_sig(fn_id, trait_name.as_deref());
+                    }
+                }
+            }
+            (self.cur_mod, self.offset) = saved;
+        }
+    }
+
     pub(super) fn declare_fn_in(
         &mut self,
         decl: &'a ast::FnDecl,
@@ -1229,6 +1269,7 @@ impl<'a> Lowerer<'a> {
         for id in 0..num_structs {
             self.attach_impls_for_struct(id);
         }
+        self.attach_impls_for_builtins();
         for id in 0..self.enum_decls.len() {
             let (m, offset, decl) = self.enum_decls[id];
             self.cur_mod = m;
@@ -1272,7 +1313,7 @@ impl<'a> Lowerer<'a> {
         let saved_env = std::mem::replace(&mut self.gen_env, self.sigs[id].env.clone());
         let saved_self = std::mem::replace(&mut self.self_struct, self.sigs[id].owner);
 
-        let owner_ty = self.sigs[id].owner.map(Ty::Struct);
+        let owner_ty = self.sigs[id].owner.map(Ty::Struct).or_else(|| self.prim_self.get(&id).cloned());
         let mut params = Vec::new();
         for (i, param) in decl.params.iter().enumerate() {
             if i == 0 && param.name.text == "self" && self.sigs[id].owner.is_some() {
