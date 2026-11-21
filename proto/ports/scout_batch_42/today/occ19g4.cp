@@ -40,12 +40,7 @@ for v in sv:
 domain Y = 0..ys.len
 
 fn y_at(val: Int) -> Y:
-    var lo = 0
-    var hi = ys.len
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if ys[mid] < val: lo = mid + 1
-        else: hi = mid
+    let lo = ys.first_ge(val) ?? ys.len
     Y(lo)
 
 var bit = Fenwick<Y, Int>()

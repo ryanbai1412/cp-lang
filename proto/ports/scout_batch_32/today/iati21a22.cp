@@ -10,11 +10,7 @@ for _ in 0..n:
 pts.sort(by: p => (-p.u, -p.v))
 var tails: List<Int> = []
 for p in pts:
-    var (lo, hi) = (0, tails.len)
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if tails[mid] >= p.v: hi = mid
-        else: lo = mid + 1
+    let lo = tails.first_ge(p.v) ?? tails.len
     if lo == tails.len: tails.push(p.v)
     else: tails[lo] = p.v
 print(tails.len)

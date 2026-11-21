@@ -15,11 +15,7 @@ fn count_before(xs: List<Int>, ys: List<Int>) -> Int:
     if xs.len <= ys.len:
         var cnt = 0
         for p in xs:
-            var (lo, hi) = (0, ys.len)
-            while lo < hi:
-                let mid = (lo + hi) / 2
-                if ys[mid] < p: lo = mid + 1
-                else: hi = mid
+            let lo = ys.first_ge(p) ?? ys.len
             cnt += ys.len - lo
         cnt
     else:

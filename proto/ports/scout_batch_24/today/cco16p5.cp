@@ -27,11 +27,7 @@ fn ct_update(p: Int, lo: Int, hi: Int, ql: Int, qr: Int, delta: Int):
         cov[p] = cov[2 * p] + cov[2 * p + 1]
 
 fn y_id(y: Int) -> Int:
-    var (lo, hi) = (0, ys.len)
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if ys[mid] < y: lo = mid + 1
-        else: hi = mid
+    let lo = ys.first_ge(y) ?? ys.len
     lo
 
 fn union_area(rad: Int) -> Int:

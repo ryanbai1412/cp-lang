@@ -17,8 +17,8 @@ for (lo, far) in sorted([(min(r, c), -max(r, c)) for (r, c) in points]):
     if spans.len == 0 or -far > spans.last!.hi: spans.push((lo: lo, hi: -far))
 let cnt = spans.len
 
-type Plan = (cost: Int, photos: Int)                // ordered by cost, then by photos
-type Line = (slope: Int, at0: Int, photos: Int)     // cost = slope * x + at0
+type Plan = (cost: Int, photos: Int)             // ordered by cost, then by photos
+type Line = (slope: Int, at0: Int, photos: Int)  // cost = slope * x + at0
 
 fn value(l: Line, x: Int) -> Plan:
     (cost: l.slope * x + l.at0, photos: l.photos)
@@ -34,26 +34,28 @@ fn useless(a: Line, b: Line, c: Line) -> Bool:
 
 // cheapest cover when each photo costs `fee` extra, and its photo count
 fn cover(fee: Int) -> Plan:
-    var hull: List<Line> = []                       // live lines are hull[head..]
+    var hull: List<Line> = []  // live lines are hull[head..]
     var head = 0
-    var done: Plan = (cost: 0, photos: 0)           // best plan for the spans so far
+    var done: Plan = (cost: 0, photos: 0)  // best plan for the spans so far
     for i in 0..cnt:
         // a photo starting at span i: its square, less the part the last photo shares
         let lo = spans[i].lo
         let shared = if i > 0: max(0, spans[i - 1].hi - lo + 1) else: 0
-        let line: Line = (slope: -2 * lo, at0: done.cost + lo * lo - shared * shared + fee, photos: done.photos + 1)
+        let line: Line = (
+            slope: -2 * lo,
+            at0: done.cost + lo * lo - shared * shared + fee,
+            photos: done.photos + 1,
+        )
         while hull.len - head >= 2 and useless(hull[hull.len - 2], hull.last!, line): hull.pop()
         hull.push(line)
-        let x = spans[i].hi + 1                     // the ends only grow, so drop beaten lines
-        while hull.len - head >= 2 and not (value(hull[head], x) < value(hull[head + 1], x)): head += 1
+        let x = spans[i].hi + 1  // the ends only grow, so drop beaten lines
+        while hull.len - head >= 2 and not (
+            value(hull[head], x) < value(hull[head + 1], x)
+        ): head += 1
         let v = value(hull[head], x)
         done = (cost: v.cost + x * x, photos: v.photos)
     done
 
 // a higher fee never means more photos; find the lowest fee that fits k
-var (low, fee) = (0, m * m)
-while low < fee:
-    let mid = (low + fee) / 2
-    if cover(mid).photos <= k: fee = mid
-    else: low = mid + 1
+let fee = bsearch_first(0..m * m, mid => cover(mid).photos <= k) ?? (m * m)
 print(cover(fee).cost - k * fee)

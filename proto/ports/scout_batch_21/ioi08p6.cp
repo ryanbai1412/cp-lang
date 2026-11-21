@@ -44,11 +44,7 @@ fn cheapest(k: Int) -> Int:
     best
 
 fn with_budget() -> Int:
-    var (lo, hi) = (0, min(m, n))  // side lo fits, side hi + 1 does not
-    while lo < hi:
-        let k = (lo + hi + 1) / 2
-        if cheapest(k) <= budget: lo = k else: hi = k - 1
-    lo
+    bsearch_last(1..=min(m, n), k => cheapest(k) <= budget) ?? 0  // side k fits
 
 // How many intervals lie over each y in 1..=n, for intervals that are only
 // ever removed whole: a node keeps the count of intervals that span it, and

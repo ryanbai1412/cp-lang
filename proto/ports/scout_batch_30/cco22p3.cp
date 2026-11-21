@@ -19,12 +19,7 @@ let a1 = raw1.sorted(by: s => (s.l, s.r))
 
 // Last interval index with l <= t, or none if every interval starts after t.
 fn last_starting_le(xs: List<Seg>, t: Int) -> ?Int:
-    var lo = 0
-    var hi = xs.len
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if xs[mid].l <= t: lo = mid + 1
-        else: hi = mid
+    let lo = xs.first_gt(t, by: v => v.l) ?? xs.len
     if lo == 0: none else: lo - 1
 
 let total = n + m

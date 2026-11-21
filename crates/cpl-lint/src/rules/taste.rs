@@ -5,7 +5,7 @@
 
 use crate::walk::{self, Bind, Visitor};
 use crate::{
-    File, Finding, BY_TWIN, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD,
+    File, Finding, BY_TWIN, HAND_ROLLED_ANSWER_SEARCH, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD,
     HAND_ROLLED_BINARY_LIFTING, HAND_ROLLED_DSU, HAND_ROLLED_RANGE_TREE, HAND_ROLLED_SIEVE,
     HAND_ROLLED_STRING_ALGO, INDEX_ONLY_LOOP, LOOP_REDUCTION, NONE_CHECK_UNWRAP, PREFIX_TWIN,
     PUSH_LOOP, REPEATED_LITERAL, SEARCH_LOOP, SORTED_RANGE_METHOD, SYMMETRIC_WRITE, TREE_ORDER,
@@ -23,6 +23,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         declared: HashSet::new(),
         sorted_containers: HashMap::new(),
         idents: idents(file.src),
+        unchecked: unchecked_spans(file),
         findings: Vec::new(),
     };
     for (_, stmt) in file.top_level() {
@@ -113,6 +114,8 @@ impl Visitor for Blocks<'_, '_> {
 
 struct Taste<'a> {
     src: &'a str,
+    /// The `unchecked:` blocks, as absolute offsets: hand-tuned on purpose.
+    unchecked: Vec<(u32, u32)>,
     base: u32,
     /// The offset of the statement after the one being looked at: each
     /// top-level statement has its own.
@@ -185,6 +188,7 @@ impl<'a> Taste<'a> {
             self.next_base = *base;
             self.discarded(stmt);
             self.index_only(stmt);
+            self.answer_search(stmts, i);
             if let Some((next_base, next)) = stmts.get(i + 1) {
                 self.next_base = *next_base;
                 self.symmetric(stmt, next);
@@ -192,6 +196,116 @@ impl<'a> Taste<'a> {
                 self.reduction(stmt, next);
             }
         }
+    }
+
+    /// `while lo < hi` halving on a predicate of `mid` (L0520). The fix
+    /// folds `var (lo, hi) = (a, b)` and the loop into one `let lo = ..`.
+    fn answer_search(&mut self, stmts: &[(u32, &Stmt)], i: usize) {
+        let (base, stmt) = stmts[i];
+        let Some(found) = halving_loop(stmt) else {
+            return;
+        };
+        let start = base + stmt.span.start;
+        // An interactive search's queries are counted: `bsearch_*` asks at
+        // the ends too.
+        if self.unchecked.iter().any(|&(a, b)| a <= start && start < b)
+            || self.idents.contains("ask")
+            || self.idents.contains("flush")
+        {
+            return;
+        }
+        let at = |b: u32, span: Span| &self.src[(b + span.start) as usize..(b + span.end) as usize];
+        let pred_text = at(base, found.pred.span);
+        if mentions(pred_text, found.lo) || mentions(pred_text, found.hi) || has_try(stmt) {
+            return;
+        }
+        let call = if found.up { "bsearch_last" } else { "bsearch_first" };
+        let mut diag = Diagnostic::warning(
+            HAND_ROLLED_ANSWER_SEARCH.code,
+            stmt.span,
+            format!("a hand-rolled binary search: this is `{call}`"),
+        )
+        .with_help(format!(
+            "`let {lo} = {call}(.., {mid} => ..)`: the predicate must be monotone along the range",
+            lo = found.lo,
+            mid = found.mid
+        ));
+        let mut call_name = call.to_string();
+        if let Some((first, a, b)) = bounds_decl(stmts, i, found.lo, found.hi) {
+            let later: Vec<&str> = stmts[i + 1..].iter().map(|&(b, s)| at(b, s.span)).collect();
+            let simple = |e: &Expr| !at(base, e.span).contains('(') || matches!(e.kind, ExprKind::Paren(_));
+            let (fb, fs) = stmts[first];
+            if !later.iter().any(|t| mentions(t, found.hi)) && simple(b) && simple(a) {
+                let a_text = at(fb, a.span);
+                let b_text = at(fb, b.span);
+                let pred = if found.keep {
+                    pred_text.to_string()
+                } else {
+                    negated(found.pred, |e| at(base, e.span)).unwrap_or_else(|| format!("not ({pred_text})"))
+                };
+                let after_a = match walk::unparen(a).kind {
+                    ExprKind::Int(v) => (v + 1).to_string(),
+                    _ => format!("{a_text} + 1"),
+                };
+                let fallback = |e: &Expr, t: &str| match walk::unparen(e).kind {
+                    ExprKind::Binary { .. } => format!("({t})"),
+                    _ => t.to_string(),
+                };
+                let (a_or, b_or) = (fallback(a, a_text), fallback(b, b_text));
+                let reassigned = later.iter().any(|t| assigns(t, found.lo));
+                let keyword = if reassigned { "var" } else { "let" };
+                let sorted = (!found.up && is_int_lit(a, 0))
+                    .then(|| sorted_lookup(found.pred, found.mid, found.keep, b_text, |e| at(base, e.span)))
+                    .flatten();
+                let text = if let Some(lookup) = sorted {
+                    call_name = lookup.0;
+                    format!("{keyword} {} = {} ?? {b_or}", found.lo, lookup.1)
+                } else if found.up {
+                    format!(
+                        "{keyword} {} = bsearch_last({after_a}..={b_text}, {} => {pred}) ?? {a_or}",
+                        found.lo,
+                        found.mid
+                    )
+                } else {
+                    format!(
+                        "{keyword} {} = bsearch_first({a_text}..{b_text}, {} => {pred}) ?? {b_or}",
+                        found.lo,
+                        found.mid
+                    )
+                };
+                // The note after the bounds (`var (lo, hi) = (0, n)  // ..`) stays.
+                let decls = &self.src[(fb + fs.span.start) as usize..(base + stmt.span.start) as usize];
+                let notes: Vec<&str> = decls
+                    .lines()
+                    .filter_map(|line| line.find("//").map(|at| &line[at + 2..]))
+                    .collect();
+                let text = if notes.is_empty() {
+                    text
+                } else {
+                    format!("{text}  //{}", notes.join(";"))
+                };
+                // Spans relative to the first declaration's offset: a
+                // top-level statement has its own.
+                let end = trim_end(self.src, base, stmt.span) + base - fb;
+                let span = Span {
+                    start: fs.span.start,
+                    end,
+                };
+                diag.span = Span {
+                    start: stmt.span.start + base - fb,
+                    end: stmt.span.end + base - fb,
+                };
+                diag.fixes.push(Fix {
+                    title: format!("use `{call_name}`"),
+                    edits: vec![(span, text)],
+                });
+                self.base = fb;
+                self.push(&HAND_ROLLED_ANSWER_SEARCH, diag);
+                self.base = base;
+                return;
+            }
+        }
+        self.push(&HAND_ROLLED_ANSWER_SEARCH, diag);
     }
 
     /// `let _ = f(..)` where `f` is a fn of this file that returns a value.
@@ -1203,6 +1317,297 @@ impl Visitor for Uses<'_> {
 }
 
 /// `var x = e` with a plain name.
+/// A `while lo < hi:` loop whose body is `let mid = ..` and one
+/// `if p: .. else: ..` that moves one bound to `mid`.
+struct Halving<'a> {
+    lo: &'a str,
+    hi: &'a str,
+    mid: &'a str,
+    pred: &'a Expr,
+    /// `lo = mid` / `hi = mid - 1` on the rounded-up midpoint.
+    up: bool,
+    /// The `if` branch is the one that keeps `pred`'s side (`hi = mid` for
+    /// a first search, `lo = mid` for a last one).
+    keep: bool,
+}
+
+fn halving_loop(stmt: &Stmt) -> Option<Halving<'_>> {
+    let StmtKind::While {
+        cond: Cond::Expr(cond),
+        body,
+    } = &stmt.kind
+    else {
+        return None;
+    };
+    let ExprKind::Compare { first, rest } = &cond.kind else {
+        return None;
+    };
+    let [(CmpOp::Lt, hi)] = rest.as_slice() else {
+        return None;
+    };
+    let (lo, hi) = (expr_name(first)?, expr_name(hi)?);
+    let [let_mid, branch] = body.stmts.as_slice() else {
+        return None;
+    };
+    let StmtKind::Let {
+        mutable: false,
+        pat:
+            Pattern {
+                kind: PatternKind::Name(mid),
+                ..
+            },
+        init: Some(m),
+        otherwise: None,
+        guard: None,
+        ..
+    } = &let_mid.kind
+    else {
+        return None;
+    };
+    let up = midpoint(m, lo, hi)?;
+    let StmtKind::Expr(Expr {
+        kind: ExprKind::If {
+            branches,
+            otherwise: Some(other),
+        },
+        ..
+    }) = &branch.kind
+    else {
+        return None;
+    };
+    let [(Cond::Expr(pred), then)] = branches.as_slice() else {
+        return None;
+    };
+    let (t, e) = (bound_move(then, mid)?, bound_move(other, mid)?);
+    // A first search sets `hi = mid` and `lo = mid + 1`; a last one sets
+    // `lo = mid` and `hi = mid - 1`.
+    let (keep_name, keep_step, skip_name, skip_step) = if up { (lo, 0, hi, -1) } else { (hi, 0, lo, 1) };
+    let keep = if t == (keep_name, keep_step) && e == (skip_name, skip_step) {
+        true
+    } else if e == (keep_name, keep_step) && t == (skip_name, skip_step) {
+        false
+    } else {
+        return None;
+    };
+    Some(Halving {
+        lo,
+        hi,
+        mid,
+        pred,
+        up,
+        keep,
+    })
+}
+
+/// `(lo + hi) / 2` or `lo + (hi - lo) / 2` gives `Some(false)`; with a
+/// `+ 1` that rounds up, `Some(true)`.
+fn midpoint(m: &Expr, lo: &str, hi: &str) -> Option<bool> {
+    fn bin(e: &Expr) -> Option<(BinOp, &Expr, &Expr)> {
+        match &walk::unparen(e).kind {
+            ExprKind::Binary { op, lhs, rhs, .. } => Some((*op, &**lhs, &**rhs)),
+            _ => None,
+        }
+    }
+    let is = |e: &Expr, n: &str| expr_name(e) == Some(n);
+    // `x + 1` gives `(x, true)`, anything else `(x, false)`.
+    let plus_one = |e: &Expr| match bin(e) {
+        Some((BinOp::Add, x, one)) if is_int_lit(one, 1) => (x.clone(), true),
+        _ => (e.clone(), false),
+    };
+    let halved = |e: &Expr| match bin(e)? {
+        (BinOp::Div, x, two) if is_int_lit(two, 2) => Some(x.clone()),
+        (BinOp::Shr, x, one) if is_int_lit(one, 1) => Some(x.clone()),
+        _ => None,
+    };
+    if let Some(sum) = halved(m) {
+        let (sum, up) = plus_one(&sum);
+        let (op, a, b) = bin(&sum)?;
+        return (op == BinOp::Add && ((is(a, lo) && is(b, hi)) || (is(a, hi) && is(b, lo)))).then_some(up);
+    }
+    let (BinOp::Add, base, half) = bin(m)? else {
+        return None;
+    };
+    if !is(base, lo) {
+        return None;
+    }
+    let (diff, up) = plus_one(&halved(half)?);
+    let (BinOp::Sub, a, b) = bin(&diff)? else {
+        return None;
+    };
+    (is(a, hi) && is(b, lo)).then_some(up)
+}
+
+/// A block that is only `x = mid`, `x = mid + 1` or `x = mid - 1`.
+fn bound_move<'a>(block: &'a Block, mid: &str) -> Option<(&'a str, i128)> {
+    let [Stmt {
+        kind: StmtKind::Assign {
+            target,
+            op: AssignOp::Set,
+            value,
+        },
+        ..
+    }] = block.stmts.as_slice()
+    else {
+        return None;
+    };
+    let name = expr_name(target)?;
+    if expr_name(value) == Some(mid) {
+        return Some((name, 0));
+    }
+    let ExprKind::Binary { op, lhs, rhs, .. } = &walk::unparen(value).kind else {
+        return None;
+    };
+    if expr_name(lhs) != Some(mid) || !is_int_lit(rhs, 1) {
+        return None;
+    }
+    match op {
+        BinOp::Add => Some((name, 1)),
+        BinOp::Sub => Some((name, -1)),
+        _ => None,
+    }
+}
+
+/// The statements right before `stmts[i]` that declare `lo` and `hi`:
+/// `var (lo, hi) = (a, b)`, or `var lo = a` then `var hi = b`. Gives the
+/// index of the first of them and `a`, `b`.
+fn bounds_decl<'a>(stmts: &[(u32, &'a Stmt)], i: usize, lo: &str, hi: &str) -> Option<(usize, &'a Expr, &'a Expr)> {
+    let prev = stmts.get(i.checked_sub(1)?)?.1;
+    if let StmtKind::Let {
+        mutable: true,
+        pat:
+            Pattern {
+                kind: PatternKind::Tuple(names),
+                ..
+            },
+        ty: None,
+        init: Some(init),
+        otherwise: None,
+        guard: None,
+        ..
+    } = &prev.kind
+    {
+        let (ExprKind::Tuple(values), [n0, n1]) = (&init.kind, names.as_slice()) else {
+            return None;
+        };
+        let [a, b] = values.as_slice() else {
+            return None;
+        };
+        fn name(p: &Pattern) -> Option<&str> {
+            match &p.kind {
+                PatternKind::Name(n) => Some(n.as_str()),
+                _ => None,
+            }
+        }
+        return (name(n0) == Some(lo) && name(n1) == Some(hi)).then_some((i - 1, a, b));
+    }
+    let (n1, b) = var_decl(prev)?;
+    let (n0, a) = var_decl(stmts.get(i.checked_sub(2)?)?.1)?;
+    (n0 == lo && n1 == hi).then_some((i - 2, a, b))
+}
+
+/// A first search over `0..xs.len` on `xs[mid] >= t` (or `> t`, or a field
+/// of `xs[mid]`) is the sorted lookup `xs.first_ge(t)` (or `first_gt`).
+/// Gives the method's name and the call.
+fn sorted_lookup<'e>(
+    pred: &'e Expr,
+    mid: &str,
+    keep: bool,
+    end: &str,
+    text: impl Fn(&'e Expr) -> &'e str,
+) -> Option<(String, String)> {
+    let ExprKind::Compare { first, rest } = &walk::unparen(pred).kind else {
+        return None;
+    };
+    let [(op, target)] = rest.as_slice() else {
+        return None;
+    };
+    let method = match (op, keep) {
+        (CmpOp::Ge, true) | (CmpOp::Lt, false) => "first_ge",
+        (CmpOp::Gt, true) | (CmpOp::Le, false) => "first_gt",
+        _ => return None,
+    };
+    let (elem, field) = match &walk::unparen(first).kind {
+        ExprKind::Field { base, name } => (&**base, Some(name.text.as_str())),
+        _ => (&**first, None),
+    };
+    let (list, ix) = plain_index(elem)?;
+    if expr_name(ix) != Some(mid) || end != format!("{list}.len") || mentions(text(target), mid) {
+        return None;
+    }
+    let by = field.map(|f| format!(", by: v => v.{f}")).unwrap_or_default();
+    Some((method.to_string(), format!("{list}.{method}({}{by})", text(target))))
+}
+
+/// `a < b` as `a >= b`, and so on for one comparison.
+fn negated<'e>(pred: &'e Expr, text: impl Fn(&'e Expr) -> &'e str) -> Option<String> {
+    let ExprKind::Compare { first, rest } = &walk::unparen(pred).kind else {
+        return None;
+    };
+    let [(op, rhs)] = rest.as_slice() else {
+        return None;
+    };
+    let flipped = match op {
+        CmpOp::Lt => ">=",
+        CmpOp::Le => ">",
+        CmpOp::Gt => "<=",
+        CmpOp::Ge => "<",
+        CmpOp::Eq => "!=",
+        CmpOp::Ne => "==",
+        _ => return None,
+    };
+    Some(format!("{} {flipped} {}", text(first), text(rhs)))
+}
+
+/// Every `unchecked:` block in the file, as absolute offsets.
+fn unchecked_spans(file: &File) -> Vec<(u32, u32)> {
+    struct Scan {
+        base: u32,
+        spans: Vec<(u32, u32)>,
+    }
+    impl Visitor for Scan {
+        fn stmt(&mut self, stmt: &Stmt) {
+            if let StmtKind::Unchecked(_) = &stmt.kind {
+                self.spans.push((self.base + stmt.span.start, self.base + stmt.span.end));
+            }
+        }
+    }
+    let mut scan = Scan {
+        base: 0,
+        spans: Vec::new(),
+    };
+    file.walk(&mut scan, |s, base| s.base = base);
+    scan.spans
+}
+
+/// `text` assigns to `name` (`name = `, `name += `, ...).
+fn assigns(text: &str, name: &str) -> bool {
+    let mut rest = text;
+    while let Some(at) = rest.find(name) {
+        let before = rest[..at].chars().next_back();
+        let after = rest[at + name.len()..].trim_start();
+        let word = !before.is_some_and(|c| c.is_alphanumeric() || c == '_')
+            && !rest[at + name.len()..].starts_with(|c: char| c.is_alphanumeric() || c == '_');
+        if word {
+            let op = after.split_whitespace().next().unwrap_or("");
+            if op == "=" || (op.ends_with('=') && !matches!(op, "==" | "<=" | ">=" | "!=")) {
+                return true;
+            }
+        }
+        rest = &rest[at + name.len()..];
+    }
+    false
+}
+
+/// The end of `span` (relative to `base`) without trailing whitespace.
+fn trim_end(src: &str, base: u32, span: Span) -> u32 {
+    let bytes = src.as_bytes();
+    let mut end = span.end;
+    while end > span.start && bytes[(base + end) as usize - 1].is_ascii_whitespace() {
+        end -= 1;
+    }
+    end
+}
+
 fn var_decl(stmt: &Stmt) -> Option<(&str, &Expr)> {
     match &stmt.kind {
         StmtKind::Let {

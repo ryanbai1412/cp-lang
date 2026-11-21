@@ -20,9 +20,5 @@ for s in sorted(Seg, by: s => segs[s].l):
 
 for _ in 0..q:
     let (l, r): (Int, Int) = read()
-    var (lo, hi) = (0, runs.len)        // runs[..lo] start at or before l, runs[hi..] after it
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if runs[mid].l <= l: lo = mid + 1
-        else: hi = mid
+    let lo = runs.first_gt(l, by: v => v.l) ?? runs.len  // runs[..lo] start at or before l, runs[hi..] after it
     print(if lo > 0 and r <= runs[lo - 1].r: "Y" else: "N")

@@ -13,12 +13,7 @@ for i in I:
     pos[x].push(i.to_idx)
 
 fn first_ge(xs: List<Int>, target: Int) -> Int:
-    var lo = 0
-    var hi = xs.len
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if xs[mid] < target: lo = mid + 1
-        else: hi = mid
+    let lo = xs.first_ge(target) ?? xs.len
     lo
 
 var ans = 0

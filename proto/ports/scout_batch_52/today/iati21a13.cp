@@ -15,12 +15,7 @@ fn insert_sorted(mut a: List<Int>, v: Int):
         i -= 1
 
 fn upper_bound(a: List<Int>, lim: Int) -> Int:
-    var lo = 0
-    var hi = a.len
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if a[mid] <= lim: lo = mid + 1
-        else: hi = mid
+    let lo = a.first_gt(lim) ?? a.len
     return lo
 
 var g_n = 0

@@ -406,6 +406,17 @@ pub const HAND_ROLLED_BINARY_LIFTING: Lint = Lint {
     fix: "use std.tree.{JumpTree}\ndomain V = 0..3\nvar jt = JumpTree<V>.new()\njt.add(V(1), V(0))\njt.add(V(2), V(1))\nprint(jt.ancestor(V(2), 2))\n",
 };
 
+pub const HAND_ROLLED_ANSWER_SEARCH: Lint = Lint {
+    code: Code("L0520"),
+    name: "hand_rolled_answer_search",
+    default: Level::Warn,
+    title: "Hand-rolled binary search",
+    summary: "manual `while lo < hi` midpoint loop over a predicate: use `bsearch_first`/`bsearch_last`",
+    explanation: "A `while lo < hi` loop that halves with `let mid = (lo + hi) / 2` and sets `hi = mid` / `lo = mid + 1` (or `lo = mid` / `hi = mid - 1` with the rounded-up midpoint) on a predicate of `mid` is `bsearch_first` (or `bsearch_last`) in `std.seq`: O(log n) calls of the predicate, no off-by-one in the bounds, and the same midpoint that cannot overflow. `cpl fix` rewrites the loop and its `var (lo, hi)` when `hi` is not read after it. The predicate must be monotone along the range, which the loop already assumes.",
+    trigger: "let a = [1, 3, 5, 7]\nvar (lo, hi) = (0, a.len)\nwhile lo < hi:\n    let mid = (lo + hi) / 2\n    if a[mid] >= 5: hi = mid else: lo = mid + 1\nprint(lo)\n",
+    fix: "let a = [1, 3, 5, 7]\nlet lo = bsearch_first(0..a.len, mid => a[mid] >= 5) ?? a.len\nprint(lo)\n",
+};
+
 /// Every lint, in code order.
 pub const LINTS: &[Lint] = &[
     UNKNOWN_LINT,
@@ -441,6 +452,7 @@ pub const LINTS: &[Lint] = &[
     HAND_ROLLED_DSU,
     HAND_ROLLED_SIEVE,
     HAND_ROLLED_BINARY_LIFTING,
+    HAND_ROLLED_ANSWER_SEARCH,
 ];
 
 /// The taste lints (`plan/PORTING.md`): code that works but reads like

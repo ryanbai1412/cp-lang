@@ -64,21 +64,14 @@ pub struct StrHash:
 
     /// How many items the blocks starting at `i` and `j` share before they differ. O(log n).
     pub fn lcp(self, i: Int, j: Int) -> Int:
-        var (lo, hi) = (0, self.len - max(i, j))
-        while lo < hi:
-            let mid = (lo + hi + 1) / 2
-            if self.of(i..i + mid) == self.of(j..j + mid): lo = mid
-            else: hi = mid - 1
-        lo
+        bsearch_last(
+            1..=self.len - max(i, j),
+            mid => self.of(i..i + mid) == self.of(j..j + mid),
+        ) ?? 0
 
     /// How many items the blocks ending just before `i` and `j` share, counted backwards. O(log n).
     pub fn lcs(self, i: Int, j: Int) -> Int:
-        var (lo, hi) = (0, min(i, j))
-        while lo < hi:
-            let mid = (lo + hi + 1) / 2
-            if self.of(i - mid..i) == self.of(j - mid..j): lo = mid
-            else: hi = mid - 1
-        lo
+        bsearch_last(1..=min(i, j), mid => self.of(i - mid..i) == self.of(j - mid..j)) ?? 0
 
 @test
 fn joining_and_cutting_agree_with_blocks():

@@ -20,12 +20,7 @@ let (V, vals) = compress(a)
 var id: [0..n]Int = 0
 for i in 0..n:
     let x = a[I.from_idx(i)!]
-    var lo = 0
-    var hi = V.K
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if vals[V.from_idx(mid)!] < x: lo = mid + 1
-        else: hi = mid
+    let lo = bsearch_first(0..V.K, mid => vals[V.from_idx(mid)!] >= x) ?? V.K
     id[i] = lo
 
 var ans: [Q]Int = 0

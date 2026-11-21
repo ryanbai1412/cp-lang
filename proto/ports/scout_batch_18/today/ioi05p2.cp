@@ -51,11 +51,7 @@ for x in pts:
     if xs.len == 0 or xs.last! != x: xs.push(x)
 
 fn coord(x: Int) -> Int:
-    var (lo, hi) = (0, xs.len)
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if xs[mid] < x: lo = mid + 1
-        else: hi = mid
+    let lo = xs.first_ge(x) ?? xs.len
     lo
 
 domain Seg = 0..(xs.len - 1)
@@ -73,11 +69,10 @@ for i in 0..tags.len:
         if st.fold(Seg.all).max_pre <= h:
             print(n)
         else:
-            var (lo, hi) = (0, xs.len - 1)
-            while lo < hi:
-                let mid = (lo + hi) / 2
-                if st.fold(..=Seg(mid)).max_pre > h: hi = mid
-                else: lo = mid + 1
+            let lo = bsearch_first(
+                0..xs.len - 1,
+                mid => st.fold(..=Seg(mid)).max_pre > h,
+            ) ?? (xs.len - 1)
             let seg_i = Seg(lo)
             let cur = if lo == 0: 0 else: st.fold(..seg_i).total
             let node = st.get(seg_i)

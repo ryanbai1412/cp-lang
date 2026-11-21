@@ -17,12 +17,7 @@ var mlen = 0
 
 for i in 0..n:
     let x = arr[i]
-    var lo = 0
-    var hi = mlen + 1
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if tails[mid] < x: lo = mid + 1
-        else: hi = mid
+    let lo = bsearch_first(0..mlen + 1, mid => tails[mid] >= x) ?? (mlen + 1)
     tails[lo] = x
     if lo > mlen: mlen = lo
     layers[lo].push(i)
@@ -45,12 +40,10 @@ for k in 1..=mlen:
 
 fn upper_time(k: Int, ptime: Int) -> Int:
     let base = off[k]
-    var lo = 0
-    var hi = off[k + 1] - base
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if flat_time[base + mid] <= ptime: lo = mid + 1
-        else: hi = mid
+    let lo = bsearch_first(
+        0..off[k + 1] - base,
+        mid => flat_time[base + mid] > ptime,
+    ) ?? (off[k + 1] - base)
     lo
 
 var cur: List<Int> = []

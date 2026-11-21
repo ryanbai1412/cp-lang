@@ -138,18 +138,31 @@ print(bsearch_first(0..=10**18, t => sum(t / s for s in speed) >= k)!)
 ## 6. Frictions and the regression port
 
 - **`cf2183h`, I128 slopes** (`research/frictions/cf2183h.md`). The natural
-  `bsearch_first(fewest..=I128(0), l => solve(l).groups >= k)!` fails with
-  `E0302: expected I128, found I128`: `Range<I128>` does not unify in the
-  checker. This is the search's regression port: the rewrite replaces the
-  hand loop with `bsearch_first` and the Aliens bookkeeping with
-  `std.dp.aliens`. Blocked on the core lane for the range fix (reported
-  there); until then `aliens` and the search take `Int`.
+  `bsearch_first(fewest..=I128(0), l => solve(l).groups >= k)!` failed with
+  `E0302: expected I128, found I128` and then overflowed a wide range.
+  Both are fixed (searches track `lo`/`hi` in `I`); `cf2183h` is the
+  regression port, on `bsearch_first` and `std.dp.aliens`.
 - **`cf2245g`, scratch state per probe.** Answered in 4: `bsearch_first`
   over `lo..pool.len` already returns `?Int`.
-- **Hand-rolled loops.** The remaining gating ports' `(lo + hi) / 2` sites
-  are segment-tree recursions and interactive halving, not searches on a
-  predicate; the retired scout ports (`proto/cp.py` interpreter) are not
-  rewritten.
+- **Hand-rolled loops: lint `L0520` (`hand_rolled_answer_search`).** It
+  flags a `while lo < hi` loop whose body is exactly a midpoint
+  (`(lo + hi) / 2`, `lo + (hi - lo) / 2`, `>> 1`, or the rounded-up `+ 1`
+  forms) and one `if` on a predicate of it that moves one bound. Halving
+  that keeps `hi = mid` is `bsearch_first`, keeping `lo = mid` is
+  `bsearch_last`; when the predicate compares a sorted list at `mid`
+  against a value that does not mention `mid`, the fix is the list's own
+  `first_ge`/`first_gt` (the sequence area's lookups, not a search on an
+  answer). `cpl fix` rewrites the loop and its `var` bounds when they sit
+  right above it, are plain expressions, and `hi` is not read afterwards;
+  otherwise it only warns. It stays quiet inside `unchecked:` and in
+  files that `flush` or `ask`, where halving is an interactive protocol.
+  Over `proto/ports` and `stdlib` it reports 51 loops, all true
+  positives (0 false positives): 36 ports rewritten by `cpl fix`, 6 by
+  hand (`hi` read after, or a bound that is a call), 1 historical
+  `before/` snapshot kept, and 8 in `stdlib/seq.cp`, `strings.cp` and
+  `tree.cp` left to those files' owners (two are `first_gt`/`last_lt`
+  themselves). The fix assumes the range is written in order
+  (`lo <= hi` on entry), as every corpus site has it.
 
 ## 7. The maximal version, and the next step
 
@@ -160,5 +173,5 @@ observation fails on the sample. Searches go generic over any ordered
 integer type (`I128`, `U64`) and over cut spaces, and `parallel_bsearch`
 gains an undo-based form (`mark`/`undo_to`) that skips `reset`.
 
-Next step: the `I128` range fix in the core, then the `cf2183h` rewrite
-as the gating port for both this file and `std.dp.aliens`.
+Next step: the debug-build monotonicity sample for `bsearch_*`, which
+turns a wrong observation into a failing sample instead of a wrong answer.

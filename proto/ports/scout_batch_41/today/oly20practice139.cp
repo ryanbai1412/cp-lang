@@ -72,12 +72,7 @@ fn query_all() -> Int:
     best
 
 fn add_y(y: Int):
-    var lo = 0
-    var hi = m
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if yvals[Y.from_idx(mid)!] <= y: lo = mid + 1
-        else: hi = mid
+    let lo = bsearch_first(0..m, mid => yvals[Y.from_idx(mid)!] > y) ?? m
     let pos = lo
     let bind = pos / B
     for i in 0..bind: b_add[Bk.from_idx(i)!] += 1

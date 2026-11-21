@@ -36,9 +36,5 @@ fn outposts(radius: Int) -> Int:
     used
 
 // WISH TR4: `bsearch_first(0..n, r => outposts(r) <= k)`
-var (lo, hi) = (0, n)
-while lo < hi:
-    let mid = (lo + hi) / 2
-    if outposts(mid) <= k: hi = mid
-    else: lo = mid + 1
+let lo = bsearch_first(0..n, mid => outposts(mid) <= k) ?? n
 print(lo)

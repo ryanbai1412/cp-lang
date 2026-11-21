@@ -25,12 +25,7 @@ fn flip(l0: Int, r0: Int):
         r -= 1
 
 fn lb(l0: Int, r0: Int, target: Int) -> Int:
-    var lo = l0
-    var hi = r0
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if cur[mid] < target: lo = mid + 1
-        else: hi = mid
+    let lo = bsearch_first(l0..r0, mid => cur[mid] >= target) ?? r0
     lo
 
 fn merge(l: Int, mid: Int, r: Int):

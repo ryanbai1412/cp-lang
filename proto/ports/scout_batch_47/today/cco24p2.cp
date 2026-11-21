@@ -60,12 +60,7 @@ elif perm_ok:
     for i in 0..n:
         let val = arrb[I(i)]
         let cx = pos_rev[I(val)]
-        var lo = 0
-        var hi = tops.len
-        while lo < hi:
-            let mid = (lo + hi) / 2
-            if tops[mid] < cx: hi = mid
-            else: lo = mid + 1
+        let lo = bsearch_first(0..tops.len, mid => tops[mid] < cx) ?? tops.len
         if lo == tops.len:
             tops.push(cx)
         else:

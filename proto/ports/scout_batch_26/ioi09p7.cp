@@ -34,11 +34,7 @@ for v in t.at:
 // but not in the interpreter prelude, and the real want is one call:
 // `spots[x].count_in(t.sub(a))` on a sorted `List<Pre>`.
 fn before(x: Region, p: Int) -> Int:
-    var (lo, hi) = (0, spots[x].len)
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if spots[x][mid] < p: lo = mid + 1
-        else: hi = mid
+    let lo = bsearch_first(0..spots[x].len, mid => spots[x][mid] >= p) ?? spots[x].len
     lo
 
 // pairs topped by the big region x, for every lower region at once

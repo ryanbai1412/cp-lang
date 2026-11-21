@@ -80,14 +80,7 @@ for r in 0..k:
     //   max_by_rank[q] < 2 * next_fish_of_r!
     // the shortest fish of gem r longer than lim: the first cnt[r] are the ones at most lim
     let next_r = lens[r][cnt[r]]
-    var lo = r + 1
-    var hi = k
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if max_by_rank[mid] < 2 * next_r:
-            lo = mid + 1
-        else:
-            hi = mid
+    let lo = bsearch_first(r + 1..k, mid => max_by_rank[mid] >= 2 * next_r) ?? k
     let q_hi = lo - 1
 
     // Case 1: take 1..=cnt[r] fish of gem r (actually 0..=cnt[r]-1 + max fish -> cnt[r] choices

@@ -28,10 +28,7 @@ fn cuts(vals: List<Int>) -> List<Int>:
     out
 
 fn rank(sorted_cuts: List<Int>, v: Int) -> Int:
-    var (lo, hi) = (0, sorted_cuts.len - 1)
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if sorted_cuts[mid] < v: lo = mid + 1 else: hi = mid
+    let lo = bsearch_first(0..sorted_cuts.len - 1, mid => sorted_cuts[mid] >= v) ?? (sorted_cuts.len - 1)
     lo
 
 var (all_x, all_y): (List<Int>, List<Int>) = ([], [])

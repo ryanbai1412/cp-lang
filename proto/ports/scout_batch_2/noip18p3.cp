@@ -33,10 +33,7 @@ fn pair_up(chains: List<Int>, k: Int) -> (tracks: Int, spare: Int):
     for i in 0..a.len:
         if unused(i) != i: continue
         skip[i] = i + 1
-        var (lo, hi) = (i + 1, a.len)  // the first chain after i that is at least k - a[i]
-        while lo < hi:
-            let mid = (lo + hi) / 2
-            if a[mid] >= k - a[i]: hi = mid else: lo = mid + 1
+        let lo = bsearch_first(i + 1..a.len, mid => a[mid] >= k - a[i]) ?? a.len  // the first chain after i that is at least k - a[i]
         let j = unused(lo)
         if j < a.len:
             skip[j] = j + 1
@@ -56,8 +53,5 @@ fn tracks_of(k: Int) -> Int:
             if chain >= k: tracks += 1 else: chains[p].push(chain)
     tracks
 
-var (lo, hi) = (0, sum(r.len for r in roads))  // the longest k that still gives m tracks
-while lo < hi:
-    let mid = (lo + hi + 1) / 2
-    if tracks_of(mid) >= m: lo = mid else: hi = mid - 1
-print(lo)
+// the longest k that still gives m tracks
+print(bsearch_last(1..=sum(r.len for r in roads), k => tracks_of(k) >= m) ?? 0)

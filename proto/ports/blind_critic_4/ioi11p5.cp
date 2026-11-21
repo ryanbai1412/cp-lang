@@ -82,14 +82,7 @@ fn bucket_insert(bi: Int, x: Int):
     rebuild_bucket(bi)
 
 fn first_gt_idx(bi: Int, lim: Int) -> Int:
-    var lo = 0
-    var hi = bxs[bi].len
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if bxs[bi][mid] > lim:
-            hi = mid
-        else:
-            lo = mid + 1
+    let lo = bsearch_first(0..bxs[bi].len, mid => bxs[bi][mid] > lim) ?? bxs[bi].len
     return lo
 
 rebuild_all()

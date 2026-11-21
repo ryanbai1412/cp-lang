@@ -154,14 +154,7 @@ fn unique_sorted(xs_in: List<Int>) -> List<Int>:
     out
 
 fn lower_bound(xs: List<Int>, target: Int) -> Int:
-    var lo = 0
-    var hi = xs.len
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if xs[mid] < target:
-            lo = mid + 1
-        else:
-            hi = mid
+    let lo = xs.first_ge(target) ?? xs.len
     lo
 
 fn sweep(rects: List<Rect>) -> Int:

@@ -20,12 +20,7 @@ struct Block:
     x: Int
 
 fn bsearch_idx(vals: List<Int>, x: Int) -> Int:
-    var lo = 0
-    var hi = vals.len
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if vals[mid] < x: lo = mid + 1
-        else: hi = mid
+    let lo = vals.first_ge(x) ?? vals.len
     return lo
 
 fn compress_list(raw: List<Int>) -> List<Int>:

@@ -8,12 +8,7 @@ let p: [Pos]Int = read()
 var tails: List<Int> = []
 var level: List<List<Pos>> = []
 for i in Pos:
-    var lo = 0
-    var hi = tails.len
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if tails[mid] >= p[i]: hi = mid
-        else: lo = mid + 1
+    let lo = tails.first_ge(p[i]) ?? tails.len
     if lo == tails.len:
         tails.push(p[i])
         let empty: List<Pos> = []

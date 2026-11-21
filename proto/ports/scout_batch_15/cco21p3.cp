@@ -73,11 +73,7 @@ for p in 0..=n:
 var buckets: [Pass]List<(Int, Int)> = [Pass] _ => []
 for qi in 0..q:
     var x: Int = read()
-    var (lo, hi) = (0, n + 1)
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if cum_steps[mid] >= x: hi = mid
-        else: lo = mid + 1
+    let lo = bsearch_first(0..n + 1, mid => cum_steps[mid] >= x) ?? (n + 1)
     let p = lo
     if p > 0: x -= cum_steps[p - 1]
     if p > n: x %= total_steps
