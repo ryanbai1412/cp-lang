@@ -23,8 +23,11 @@ def unpack(packed):
 
 
 def bundle():
-    build.build()
     target = ROOT / "_build"
+    if target.exists():
+        for old in target.glob("*.html"):
+            old.unlink()
+    build.build()
     pages = {}
     sidebar = ""
     search_dialog = ""

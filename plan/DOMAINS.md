@@ -201,7 +201,7 @@ fieldless enum-indexed arrays (`enum Sign: neg = -1, zero = 0, pos = 1`,
 `D.first(where:)`, `D.filter`), and typed `Item`/`Cut` ranges via `minmax`
 and `choose2` now also work end to end. Eight ports converted (`ucup4s25c`,
 `cf2222f`, `cf2101b`, `cf2268c`, `cf2150f`, `cf2147h`, `cf2129b`, `cf2147f`),
-with `cf2147h` (`1.631x -> 1.383x`) and `cf2147f` (`1.467x -> 1.254x`)
+with `cf2147h` (`1.631x -> 1.063x`) and `cf2147f` (`1.467x -> 1.254x`)
 rewritten toward their dreams. Remaining: algebraic product domains (`domain State = (V, K)`,
 `research/frictions/cf2178h.md`), graph edge domains (`domain E = edges(V)`),
 eliminating redundant runtime bounds checks when indexing `[0..=m]` by a `0..=m`

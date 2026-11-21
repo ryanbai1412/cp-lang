@@ -651,7 +651,7 @@ impl<'p> Emitter<'p> {
                         for (_, fty) in &s.fields {
                             mark_ty(fty, program, reachable, fn_work, reachable_structs, reachable_enums);
                         }
-                        for hook in [s.eq_fn, s.lt_fn, s.show_fn].into_iter().flatten() {
+                        for hook in [s.eq_fn, s.lt_fn].into_iter().flatten() {
                             if reachable.insert(hook) {
                                 fn_work.push(hook);
                             }
@@ -700,6 +700,65 @@ impl<'p> Emitter<'p> {
             }
         }
 
+        fn mark_show_ty(
+            ty: &Ty,
+            program: &Program,
+            reachable: &mut BTreeSet<usize>,
+            fn_work: &mut Vec<usize>,
+            visited_structs: &mut BTreeSet<usize>,
+            visited_enums: &mut BTreeSet<usize>,
+        ) {
+            match ty {
+                Ty::Struct(sid) => {
+                    if visited_structs.insert(*sid) {
+                        let s = &program.structs[*sid];
+                        if let Some(show_fn) = s.show_fn {
+                            if reachable.insert(show_fn) {
+                                fn_work.push(show_fn);
+                            }
+                        } else {
+                            for (_, fty) in &s.fields {
+                                mark_show_ty(fty, program, reachable, fn_work, visited_structs, visited_enums);
+                            }
+                        }
+                    }
+                }
+                Ty::Enum(eid) => {
+                    if visited_enums.insert(*eid) {
+                        for (_, fields) in &program.enums[*eid].variants {
+                            for fty in fields {
+                                mark_show_ty(fty, program, reachable, fn_work, visited_structs, visited_enums);
+                            }
+                        }
+                    }
+                }
+                Ty::Range(t)
+                | Ty::Opt(t)
+                | Ty::List(t)
+                | Ty::Set(t)
+                | Ty::HashSet(t)
+                | Ty::Mut(t) => mark_show_ty(t, program, reachable, fn_work, visited_structs, visited_enums),
+                Ty::Array { elem, .. } => {
+                    mark_show_ty(elem, program, reachable, fn_work, visited_structs, visited_enums);
+                }
+                Ty::Map(k, v) | Ty::HashMap(k, v) => {
+                    mark_show_ty(k, program, reachable, fn_work, visited_structs, visited_enums);
+                    mark_show_ty(v, program, reachable, fn_work, visited_structs, visited_enums);
+                }
+                Ty::Tuple(ts) => {
+                    for t in ts {
+                        mark_show_ty(t, program, reachable, fn_work, visited_structs, visited_enums);
+                    }
+                }
+                Ty::Record(fs) => {
+                    for (_, t) in fs {
+                        mark_show_ty(t, program, reachable, fn_work, visited_structs, visited_enums);
+                    }
+                }
+                _ => {}
+            }
+        }
+
         let scan_block = |b: &Block,
                           reachable: &mut BTreeSet<usize>,
                           fn_work: &mut Vec<usize>,
@@ -713,6 +772,26 @@ impl<'p> Emitter<'p> {
                     ExprKind::Call(fid, _) if reachable.insert(*fid) => fn_work.push(*fid),
                     ExprKind::Closure(cid) if reachable_closures.insert(*cid) => {
                         closure_work.push(*cid);
+                    }
+                    ExprKind::Print(args, _) => {
+                        let (mut vs, mut ve) = (BTreeSet::new(), BTreeSet::new());
+                        for a in args {
+                            mark_show_ty(&a.value.ty, program, reachable, fn_work, &mut vs, &mut ve);
+                        }
+                    }
+                    ExprKind::Format(pieces) => {
+                        let (mut vs, mut ve) = (BTreeSet::new(), BTreeSet::new());
+                        for p in pieces {
+                            if let cpl_ir::FmtPiece::Value(a) = p {
+                                mark_show_ty(&a.value.ty, program, reachable, fn_work, &mut vs, &mut ve);
+                            }
+                        }
+                    }
+                    ExprKind::Builtin(cpl_ir::Builtin::ShowStr | cpl_ir::Builtin::Join, args) => {
+                        let (mut vs, mut ve) = (BTreeSet::new(), BTreeSet::new());
+                        for a in args {
+                            mark_show_ty(&a.ty, program, reachable, fn_work, &mut vs, &mut ve);
+                        }
                     }
                     _ => {}
                 }
