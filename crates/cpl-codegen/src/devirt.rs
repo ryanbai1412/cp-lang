@@ -382,20 +382,32 @@ impl<'p> Devirt<'p> {
     fn drop_dead_locals(&mut self) {
         let program = self.program;
         for (fid, f) in program.fns.iter().enumerate() {
-            self.find_dead_locals(Some(fid), f.params.len(), &[&f.body]);
+            let params: Vec<bool> = f.params.iter().map(|p| p.mutable).collect();
+            while self.find_dead_locals(Some(fid), &params, &[&f.body]) {}
         }
-        self.find_dead_locals(None, 0, &[&program.setup, &program.main]);
+        while self.find_dead_locals(None, &[], &[&program.setup, &program.main]) {}
     }
 
-    fn find_dead_locals(&mut self, home: Option<FnId>, params: usize, blocks: &[&Block]) {
+    /// One round: a store or push left out reads nothing, so what it alone
+    /// used can go in the next round.
+    fn find_dead_locals(&mut self, home: Option<FnId>, params: &[bool], blocks: &[&Block]) -> bool {
         let mut lets: BTreeMap<usize, usize> = BTreeMap::new();
         let mut live: BTreeSet<usize> = BTreeSet::new();
         let mut feeds: BTreeSet<*const Expr> = BTreeSet::new();
         let mut pushes: BTreeSet<*const Expr> = BTreeSet::new();
+        let mut dropped: BTreeSet<*const Expr> = BTreeSet::new();
+        let dead = |s: &Self, slot: usize| s.dead_locals.contains(&(home, slot));
         for block in blocks {
             walk::deep_stmts(block, &mut |stmt| match stmt {
-                Stmt::Expr(e) if self.skippable_push(e).is_some() => {
-                    pushes.insert(e as *const Expr);
+                Stmt::Expr(e) => {
+                    if let Some(slot) = self.skippable_push(e) {
+                        pushes.insert(e as *const Expr);
+                        if dead(self, slot) {
+                            walk::deep_expr(e, &mut |inner| {
+                                dropped.insert(inner as *const Expr);
+                            });
+                        }
+                    }
                 }
                 Stmt::Let(slot, init) => {
                     *lets.entry(*slot).or_default() += 1;
@@ -403,10 +415,23 @@ impl<'p> Devirt<'p> {
                         live.insert(*slot);
                     }
                 }
-                Stmt::Assign(place, op, _) => {
-                    if let (false, slot) = walk::root(place) {
+                Stmt::Assign(place, op, value) => {
+                    let root = walk::root(place);
+                    if let (false, slot) = root {
                         if !self.skippable_store(place, *op) {
                             live.insert(slot);
+                        }
+                    }
+                    let dead_root = matches!(root, (false, slot) if dead(self, slot));
+                    if (dead_root || self.in_unread_field(place)) && self.skippable_store(place, *op) {
+                        let mut skip = |e: &Expr| {
+                            walk::deep_expr(e, &mut |inner| {
+                                dropped.insert(inner as *const Expr);
+                            })
+                        };
+                        walk::place_exprs(place, &mut |e| skip(e));
+                        if self.skippable_value(value) {
+                            skip(value);
                         }
                     }
                 }
@@ -428,36 +453,48 @@ impl<'p> Devirt<'p> {
             }
         };
         for block in blocks {
-            walk::deep_exprs(block, &mut |e| match &e.kind {
-                ExprKind::Local(slot) if !feeds.contains(&(e as *const Expr)) => {
-                    live.insert(*slot);
+            walk::deep_exprs(block, &mut |e| {
+                if dropped.contains(&(e as *const Expr)) {
+                    return;
                 }
-                ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
-                    for arg in args {
-                        if let Arg::Mut(place) = arg {
-                            place_live(place, &mut live);
+                match &e.kind {
+                    ExprKind::Local(slot) if !feeds.contains(&(e as *const Expr)) => {
+                        live.insert(*slot);
+                    }
+                    ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
+                        for arg in args {
+                            if let Arg::Mut(place) = arg {
+                                place_live(place, &mut live);
+                            }
                         }
                     }
-                }
-                ExprKind::Mutate(..) if pushes.contains(&(e as *const Expr)) => {}
-                ExprKind::MutSlice(place, ..) | ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, ..) => {
-                    place_live(place, &mut live)
-                }
-                ExprKind::Closure(cid) => {
-                    for c in &self.program.closures[*cid].captures {
-                        if !c.is_global {
-                            live.insert(c.outer);
+                    ExprKind::Mutate(..) if pushes.contains(&(e as *const Expr)) => {}
+                    ExprKind::MutSlice(place, ..) | ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, ..) => {
+                        place_live(place, &mut live)
+                    }
+                    ExprKind::Closure(cid) => {
+                        for c in &self.program.closures[*cid].captures {
+                            if !c.is_global {
+                                live.insert(c.outer);
+                            }
                         }
                     }
+                    _ => {}
                 }
-                _ => {}
             });
         }
-        for (slot, n) in lets {
-            if n == 1 && slot >= params && !live.contains(&slot) {
-                self.dead_locals.insert((home, slot));
+        let mut found = false;
+        let candidates = lets
+            .into_iter()
+            .filter(|&(slot, n)| n == 1 && slot >= params.len())
+            .map(|(slot, _)| slot)
+            .chain((0..params.len()).filter(|&slot| !params[slot]));
+        for slot in candidates.collect::<Vec<_>>() {
+            if !live.contains(&slot) && self.dead_locals.insert((home, slot)) {
+                found = true;
             }
         }
+        found
     }
 
     fn find_escapes(&self, home: Option<FnId>, block: &Block, out: &mut Vec<Home>) {
@@ -734,6 +771,7 @@ impl<'p> Devirt<'p> {
             | ExprKind::DomainLen(_)
             | ExprKind::DomainLo(_) => true,
             ExprKind::Some(inner) => self.skippable_value(inner),
+            ExprKind::Index(base, idxs) => in_domain(&base.ty, idxs) && self.skippable_value(base),
             ExprKind::Tuple(items) => items.iter().all(|item| self.skippable_value(item)),
             ExprKind::Closure(cid) => self.closure_effectively_captureless(*cid),
             ExprKind::Fill(dims, value) => {
@@ -994,20 +1032,23 @@ fn place_fields(place: &cpl_ir::Place, out: &mut BTreeSet<(usize, usize)>) {
     }
 }
 
+/// Indexing an array of type `ty` by `idxs` cannot trap: each index is a
+/// position of the domain its axis is over.
+fn in_domain(ty: &Ty, idxs: &[Expr]) -> bool {
+    let Ty::Array { dims, .. } = ty else { return false };
+    dims.len() == idxs.len()
+        && dims.iter().zip(idxs).all(|(dim, idx)| {
+            matches!((dim, &idx.ty), (cpl_ir::Dim::Pos(d), Ty::Pos(e)) if d == e) && pure_path(idx)
+        })
+}
+
 /// A variable, its fields, and cells of its domain-indexed arrays at
 /// positions held in variables: naming it runs nothing and cannot trap.
 fn safe_place(place: &cpl_ir::Place) -> bool {
     match &place.kind {
         PlaceKind::Local(_) | PlaceKind::Global(_) => true,
         PlaceKind::Field(base, _) => safe_place(base),
-        PlaceKind::Index(base, idxs) => {
-            let Ty::Array { dims, .. } = &base.ty else { return false };
-            dims.len() == idxs.len()
-                && dims.iter().zip(idxs).all(|(dim, idx)| {
-                    matches!((dim, &idx.ty), (cpl_ir::Dim::Pos(d), Ty::Pos(e)) if d == e) && pure_path(idx)
-                })
-                && safe_place(base)
-        }
+        PlaceKind::Index(base, idxs) => in_domain(&base.ty, idxs) && safe_place(base),
         PlaceKind::Some(_) => false,
     }
 }

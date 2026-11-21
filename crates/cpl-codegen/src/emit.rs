@@ -432,7 +432,8 @@ impl<'p> Emitter<'p> {
     /// `ll gcd(ll a, ll b)`. Call after [`Emitter::enter`].
     fn signature(&self, f: &Function) -> String {
         let id = self.fn_id.expect("a fn");
-        let named = crate::scope::named_params(&f.body, f.params.len());
+        let mut named = crate::scope::named_params(&f.body, f.params.len());
+        named.retain(|slot| !self.devirt.dead_local(Some(id), *slot));
         let tparams = self.devirt.template_params(id);
         let params: Vec<String> = f
             .params

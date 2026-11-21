@@ -4256,9 +4256,13 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   `place = v` into a dropped field writes nothing; it is left out only when
   the place cannot trap (every index is a position of the domain its array
   is over), and `v` is still evaluated as `(void)(v);` unless it runs
-  nothing, so its traps and effects stay. A local whose only uses are such
-  stores, `xs.push(v)` of a value that runs nothing, and being placed in a
-  dropped field is left out with them, which is what removes the work. A
+  nothing, so its traps and effects stay (reading an array at positions of
+  its domains runs nothing). A local whose only uses are such stores,
+  `xs.push(v)` of a value that runs nothing, and being placed in a dropped
+  field is left out with them, which is what removes the work; repeated
+  until nothing more goes, since a dropped store reads nothing. A
+  parameter used only that way stays in the signature as
+  `[[maybe_unused]] const T&`, so it is not copied. A
   method that is never called reads nothing. `cpl explain` lists each
   dropped field as `[dropped] struct S.f`.
 - **Why.** Result structs carry witnesses most callers never read:
