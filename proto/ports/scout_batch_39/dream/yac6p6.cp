@@ -30,9 +30,9 @@ let a: [Row, Col]Int = read()
 struct Query(x1: Row, y1: Col, x2: Row, y2: Col, kv: KDom, id: Q)
 var qans: [Q]?Int = none
 var buckets: [Row, Col]List<Query> = []
-let empty_cell: Cell = [KDom] _ => none
-var dp: [Row, Col]Cell = empty_cell
-var dp2: [D3, D3]Cell = empty_cell
+fn empty_cell() -> Cell = [KDom] _ => none
+var dp: [Row, Col]Cell = empty_cell()
+var dp2: [D3, D3]Cell = empty_cell()
 
 // Relax a cell's skip-cost table from one neighbour: either pay `cost` with the
 // same skip count `k`, or skip this cell using `k - 1` skips from the neighbour.
@@ -50,7 +50,7 @@ fn backward_dp(x1: Row, y1: Col, x2: Row, y2: Col):
             if r == x2 and c == y2:
                 dp[r, c] = [KDom] k => if k == KDom.first: some(cost) else: some(0)
             else:
-                var cell: Cell = [KDom] _ => none
+                var cell = empty_cell()
                 if let nr = r.next and nr <= x2: cell = relax(cell, dp[nr, c], cost)
                 if let nc = c.next and nc <= y2: cell = relax(cell, dp[r, nc], cost)
                 dp[r, c] = cell
@@ -77,7 +77,7 @@ for cx in Row:
                         dp2[dr, dc] = [KDom] _ => some(0)
                     else:
                         let cost = a[r, c]
-                        var cell: Cell = [KDom] _ => none
+                        var cell = empty_cell()
                         if let pr = dr.prev: cell = relax(cell, dp2[pr, dc], cost)
                         if let pc = dc.prev: cell = relax(cell, dp2[dr, pc], cost)
                         dp2[dr, dc] = cell

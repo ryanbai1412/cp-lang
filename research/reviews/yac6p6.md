@@ -1,7 +1,7 @@
 # yac6p6
 
-Score: 3/5
-Dream: 3/5
+Score: pending cold rescore (replaced moved `let empty_cell` with `fn empty_cell() -> Cell = [KDom] _ => none` used at all 4 sites; `port = dream`, 0 check errors, 0 lints)
+Dream: pending cold rescore (replaced moved `let empty_cell` with `fn empty_cell() -> Cell`, fixing E0607)
 
 Baseline review, cold, on main 96359635. No editorial header; lines 1-2 give only provenance. The DP is written three times (the small case, the forward 3x3 and the backward prefix), with the transitions spelled out in each. The `(x2 + y2) % 3` diagonal bucketing (line 40), the step at which every query is split, is never explained. No dream exists, so the score is capped at 3.
 
