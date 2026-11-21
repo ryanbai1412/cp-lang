@@ -23,9 +23,9 @@ Best of 5 wall-clock runs, g++ 11 `-O2`, equal outputs on every pair:
 | `mono` | `std.window.MonoDeque` window min, n = 5e6 | 0.325 s | 0.329 s | 1.01x | 3.6 / 107 MB |
 | `monge` | `monge_path`, n = 1e6, `(pre[i] - pre[j])^2 + c` | 0.085 s | 0.070 s | 0.82x | |
 | `aliens` | `aliens` over an O(n) penalized DP, n = 1e6, k = 5000 | 0.132 s | 0.090 s | 0.68x | |
-| `slope` | `std.slope.Concave`, `cf2084g2` at n = 5e5 | 0.104 s | 0.142 s | 1.37x | |
+| `slope` | `std.slope.Concave`, `cf2084g2` at n = 5e5 | 0.096 s | 0.119 s | 1.24x | |
 
-`run.sh` on the seven: p50 0.83x (target 1.1x), max 1.37x (target 1.5x).
+`run.sh` on the seven: p50 0.82x (target 1.1x), max 1.26x (target 1.5x).
 The first four rows are the older measurements; `run.sh` gives frog3
 0.79x, dnc 0.94x, knuth 1.23x, mono 0.40x.
 
@@ -35,6 +35,9 @@ The first four rows are the older measurements; `run.sh` gives frog3
 its slope treap, as the C++ reserves its node pool; and the C++ marks
 short non-recursive fns `inline`, so `put`, `push_tag` and `sz_of` fold
 into `ins` and `split_val` as the C++'s member functions do (1.37x).
+Two more bring it to 1.24x: 48-byte nodes with `0..2^31` sizes and
+priorities (decision 122, 1.35x), and `down(i)` pushing the tag it reads
+instead of handing a copied tag to an out-of-line `push_tag`.
 
 `knuth` keeps its split table as 8-byte `Int`s where C++ uses `int`; it
 reaches parity once 32-bit storage (`I32`) lands in the core. `mono`'s

@@ -717,16 +717,13 @@ pub struct LazyTreap<T, F>(
                 else:
                     nodes[i].tag = f
 
-    fn push_tag(mut self, i: Int, f: F):
-        unchecked:
-            let (fl, fr) = split_fn(f, self.sz_of(nodes[i].l))
-            self.put(nodes[i].l, fl)
-            self.put(nodes[i].r, fr)
-            nodes[i].tag = none
-
     fn down(mut self, i: Int):
         unchecked:
-            if let f = nodes[i].tag: self.push_tag(i, f)
+            if let f = nodes[i].tag:
+                let (fl, fr) = split_fn(f, self.sz_of(nodes[i].l))
+                self.put(nodes[i].l, fl)
+                self.put(nodes[i].r, fr)
+                nodes[i].tag = none
 
     fn pull(mut self, i: Int):
         unchecked: nodes[i].sz = 1 + self.sz_of(nodes[i].l) + self.sz_of(nodes[i].r)
@@ -734,7 +731,7 @@ pub struct LazyTreap<T, F>(
     fn split_val(mut self, u: ?Int, x: T) -> (?Int, ?Int):
         let i = u ?? return (none, none)
         unchecked:
-            if let f = nodes[i].tag: self.push_tag(i, f)
+            self.down(i)
             if before_fn(x, nodes[i].val):
                 let (a, b) = self.split_val(nodes[i].l, x)
                 nodes[i].l = b
@@ -755,7 +752,7 @@ pub struct LazyTreap<T, F>(
                 nodes[idx].r = b
                 self.pull(idx)
                 return idx
-            if let f = nodes[i].tag: self.push_tag(i, f)
+            self.down(i)
             nodes[i].sz += 1
             if before_fn(x, nodes[i].val):
                 nodes[i].l = self.ins(nodes[i].l, idx, x, p)
