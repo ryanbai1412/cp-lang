@@ -263,6 +263,9 @@ pub fn monge_path<K>(n: Int, w: (Int, Int) -> K) -> (val: List<K>, prev: List<In
     while (2 << top) <= rows: top += 1
     var sv: List<List<K>> = [[] for _ in 0..top]
     var sc: List<List<Int>> = [[] for _ in 0..top]
+    for l in 0..top:
+        sv[l].reserve((rows >> (l + 1)) + 1)
+        sc[l].reserve((rows >> (l + 1)) + 1)
     var bv: List<K> = [K.zero for _ in 0..top]
     var bc = [0 for _ in 0..top]
     var bat = [0 for _ in 0..top]
