@@ -233,3 +233,31 @@ fn int_stops_one_above_the_64_bit_minimum() {
         );
     }
 }
+
+#[test]
+fn vm_handles_mixed_calls_tail_returns_structs_and_strings() {
+    let source = "\
+struct State(a: Int, b: ?Int, s: Str)
+
+fn step(st: State, i: Int) -> State:
+    let ch = st.s[i].ord
+    let next_b: ?Int = if let prev = st.b: some(prev + ch) else: some(ch)
+    State(st.a + 1, next_b, st.s)
+
+fn find_first(s: Str, target: Char, i: Int) -> ?Int:
+    if i >= s.len: return none
+    if s[i] == target: return i
+    find_first(s, target, i + 1)
+
+let s: Str = read()
+var st = State(0, none, s)
+for i in 0..s.len:
+    st = step(st, i)
+let idx = find_first(s, s[2], 0) ?? -1
+print(st.a, st.b ?? 0, idx)
+";
+    assert_eq!(
+        outcome(source, "abc\n"),
+        ("3 294 2\n".to_string(), None)
+    );
+}

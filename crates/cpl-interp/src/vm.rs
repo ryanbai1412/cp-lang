@@ -117,6 +117,14 @@ pub(crate) enum SlotLoc {
     V(u16),
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum CallRet {
+    Unit,
+    I,
+    OptI,
+    V,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum Op {
     // Constants & moves
@@ -209,14 +217,38 @@ pub(crate) enum Op {
     GListLen { dst: u16, gid: u16 },
     LListLen { dst: u16, list_v: u16 },
 
-    // Direct VM call (unboxed i64 args/return)
+    LoadGArr1V { dst: u16, gid: u16, r_i: u16 },
+    StoreGArr1V { gid: u16, r_i: u16, r_val: u16 },
+    LoadLArr1V { dst: u16, arr_v: u16, r_i: u16 },
+    StoreLArr1V { arr_v: u16, r_i: u16, r_val: u16 },
+    FieldI { dst: u16, obj_v: u16, field: u16 },
+    FieldOptI { dst_val: u16, dst_some: u16, obj_v: u16, field: u16 },
+    FieldV { dst: u16, obj_v: u16, field: u16 },
+    LoadFieldList1I { dst: u16, obj_v: u16, field: u16, r_i: u16 },
+    FieldListLen { dst: u16, obj_v: u16, field: u16 },
+    LoadFieldArr1I { dst: u16, obj_v: u16, field: u16, r_i: u16 },
+    FieldArrLen { dst: u16, obj_v: u16, field: u16 },
+    StrGetI { dst: u16, str_v: u16, r_i: u16 },
+    GStrGetI { dst: u16, gid: u16, r_i: u16 },
+    MakeTuple { dst: u16, base_v: u16, len: u8 },
+
+    // Direct VM call (unboxed i64 args/return, or mixed I/V args & Unit/I/OptI/V return)
     CallVmI { fn_id: u16, arg_base: u16, argc: u8, dst: u16 },
+    CallVmMix {
+        fn_id: u16,
+        arg_base_i: u16,
+        arg_base_v: u16,
+        dst_i: u16,
+        dst_v: u16,
+        dst_some: u16,
+        ret_mode: CallRet,
+    },
     RetI { src: u16 },
     RetV { src: u16 },
     RetUnit,
 
     // Seamless fallback to tree-walker for any non-lowered IR stmt/expr
-    FallbackStmt { idx: u32 },
+    FallbackStmt { idx: u32, clear_from_v: u16 },
     FallbackExprI { idx: u32, dst: u16 },
     FallbackExprV { idx: u32, dst: u16 },
 }
@@ -229,7 +261,9 @@ pub(crate) struct Chunk<'p> {
     pub fallback_exprs: Vec<&'p Expr>,
     pub num_i: usize,
     pub num_v: usize,
+    pub num_local_v: usize,
     pub slot_map: Vec<SlotLoc>,
+    pub param_count: usize,
     pub ret_kind: Option<ScalarKind>,
 }
 
@@ -251,6 +285,7 @@ impl<'p> CompiledProgram<'p> {
                 let ret_kind = ScalarKind::of_ty(&f.ret, program);
                 c.compile_block(&f.body, ret_kind, true);
                 let mut chunk = c.finish();
+                chunk.param_count = f.params.len();
                 chunk.ret_kind = ret_kind;
                 fns.push(Some(chunk));
             }
@@ -279,6 +314,8 @@ struct Compiler<'p> {
     slot_map: Vec<SlotLoc>,
     next_i: u16,
     next_v: u16,
+    num_local_v: u16,
+    pinned_v: u16,
     loops: Vec<LoopTargets>,
     cur_fn: Option<FnId>,
     inline_slots: Option<Vec<SlotLoc>>,
@@ -314,6 +351,8 @@ impl<'p> Compiler<'p> {
             slot_map,
             next_i,
             next_v,
+            num_local_v: next_v,
+            pinned_v: next_v,
             loops: Vec::new(),
             cur_fn,
             inline_slots: None,
@@ -330,9 +369,120 @@ impl<'p> Compiler<'p> {
             fallback_exprs: self.fallback_exprs,
             num_i: self.next_i as usize,
             num_v: self.next_v as usize,
+            num_local_v: self.num_local_v as usize,
             slot_map: self.slot_map,
+            param_count: 0,
             ret_kind: None,
         }
+    }
+
+    fn const_bool(e: &Expr) -> Option<bool> {
+        match &e.kind {
+            ExprKind::Bool(b) => Some(*b),
+            ExprKind::Unary(UnOp::Not, a) => Self::const_bool(a).map(|b| !b),
+            ExprKind::Binary(BinOp::And, a, b) => Some(Self::const_bool(a)? && Self::const_bool(b)?),
+            ExprKind::Binary(BinOp::Or, a, b) => Some(Self::const_bool(a)? || Self::const_bool(b)?),
+            ExprKind::Cmp(op, a, b) => {
+                if let (ExprKind::Int(av), ExprKind::Int(bv)) = (&a.kind, &b.kind) {
+                    Some(match op {
+                        CmpOp::Eq => av == bv,
+                        CmpOp::Ne => av != bv,
+                        CmpOp::Lt => av < bv,
+                        CmpOp::Le => av <= bv,
+                        CmpOp::Gt => av > bv,
+                        CmpOp::Ge => av >= bv,
+                        _ => return None,
+                    })
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
+    fn try_compile_call_mix(
+        &mut self,
+        fn_id: FnId,
+        args: &'p [Arg],
+        ret_mode: CallRet,
+        span: Span,
+    ) -> Option<(u16, u16, u16)> {
+        let f = &self.program.fns[fn_id];
+        if f.params.iter().any(|p| p.mutable)
+            || f.locals.len() > 512
+            || !self.program.fn_guarded_domains(&f.ret, &f.body).is_empty()
+            || args.len() != f.params.len()
+            || !args.iter().all(|a| matches!(a, Arg::Value(_)))
+        {
+            return None;
+        }
+        let mut ni = 0usize;
+        let mut nv = 0usize;
+        for local in f.locals.iter().take(f.params.len()) {
+            let ty = &local.ty;
+            if matches!(ty, Ty::Fn { .. }) {
+                return None;
+            }
+            if ScalarKind::of_ty(ty, self.program).is_some() {
+                ni += 1;
+            } else if ScalarKind::of_opt_ty(ty, self.program).is_some() {
+                ni += 2;
+            } else {
+                nv += 1;
+            }
+        }
+        if ni > 8 || nv > 8 {
+            return None;
+        }
+        let mut i_args = Vec::with_capacity(ni);
+        let mut v_args = Vec::with_capacity(nv);
+        for (i, a) in args.iter().enumerate() {
+            let Arg::Value(ae) = a else { unreachable!() };
+            let ty = &f.locals[i].ty;
+            if ScalarKind::of_ty(ty, self.program).is_some() {
+                i_args.push(self.compile_expr_i(ae));
+            } else if ScalarKind::of_opt_ty(ty, self.program).is_some() {
+                let (v, s) = self.compile_expr_opt_i(ae);
+                i_args.push(v);
+                i_args.push(s);
+            } else {
+                v_args.push(self.compile_expr_v(ae));
+            }
+        }
+        let arg_base_i = self.next_i;
+        for r in i_args {
+            let slot = self.alloc_i();
+            if slot != r {
+                self.emit(Op::MoveI { dst: slot, src: r }, span);
+            }
+        }
+        let arg_base_v = self.next_v;
+        for r in v_args {
+            let slot = self.alloc_v();
+            if slot != r {
+                self.emit(Op::MoveV { dst: slot, src: r }, span);
+            }
+        }
+        let (dst_i, dst_v, dst_some) = match ret_mode {
+            CallRet::Unit => (0, 0, 0),
+            CallRet::I => (self.alloc_i(), 0, 0),
+            CallRet::OptI => (self.alloc_i(), 0, self.alloc_i()),
+            CallRet::V => (0, self.alloc_v(), 0),
+        };
+        self.emit(
+            Op::CallVmMix {
+                fn_id: fn_id as u16,
+                arg_base_i,
+                arg_base_v,
+                dst_i,
+                dst_v,
+                dst_some,
+                ret_mode,
+            },
+            span,
+        );
+        Some((dst_i, dst_v, dst_some))
     }
 
     fn alloc_i(&mut self) -> u16 {
@@ -425,7 +575,13 @@ impl<'p> Compiler<'p> {
                 }
                 Stmt::Return(Some(e)) | Stmt::Give(e) | Stmt::Expr(e) => simple_expr(e, program),
                 Stmt::If(c, t, e) => {
-                    simple_expr(c, program) && simple_block(t, program) && simple_block(e, program)
+                    if let Some(b) = Compiler::const_bool(c) {
+                        if b { simple_block(t, program) } else { simple_block(e, program) }
+                    } else {
+                        simple_expr(c, program)
+                            && simple_block(t, program)
+                            && simple_block(e, program)
+                    }
                 }
                 _ => false,
             }
@@ -456,7 +612,13 @@ impl<'p> Compiler<'p> {
                 }
                 ExprKind::Tuple(fs) => fs.len() == 1 && simple_expr(&fs[0], program),
                 ExprKind::If(c, t, e) => {
-                    simple_expr(c, program) && simple_expr(t, program) && simple_expr(e, program)
+                    if let Some(b) = Compiler::const_bool(c) {
+                        if b { simple_expr(t, program) } else { simple_expr(e, program) }
+                    } else {
+                        simple_expr(c, program)
+                            && simple_expr(t, program)
+                            && simple_expr(e, program)
+                    }
                 }
                 ExprKind::Do(b) => simple_block(b, program),
                 _ => false,
@@ -520,6 +682,13 @@ impl<'p> Compiler<'p> {
             Stmt::Expr(expr) => {
                 if ScalarKind::of_ty(&expr.ty, self.program).is_some() {
                     let _ = self.compile_expr_i(expr);
+                } else if let ExprKind::Call(fn_id, args) = &expr.kind {
+                    if self
+                        .try_compile_call_mix(*fn_id, args, CallRet::Unit, expr.span)
+                        .is_none()
+                    {
+                        self.emit_fallback_stmt(stmt);
+                    }
                 } else {
                     self.emit_fallback_stmt(stmt);
                 }
@@ -530,6 +699,13 @@ impl<'p> Compiler<'p> {
                 }
             }
             Stmt::If(cond, then_b, else_b) => {
+                if let Some(b) = Self::const_bool(cond) {
+                    let branch = if b { then_b } else { else_b };
+                    for s in &branch.stmts {
+                        self.compile_stmt(s);
+                    }
+                    return;
+                }
                 let j_else = self.emit_branch_if_false(cond);
                 for s in &then_b.stmts {
                     self.compile_stmt(s);
@@ -608,6 +784,14 @@ impl<'p> Compiler<'p> {
                     let pc = self.emit(Op::Jmp { target: 0 }, Span::default());
                     if let Some((_, jumps)) = &mut self.inline_ret {
                         jumps.push(pc);
+                    }
+                } else if self.cur_fn.is_some() {
+                    if ScalarKind::of_ty(&e.ty, self.program).is_some() {
+                        let r = self.compile_expr_i(e);
+                        self.emit(Op::RetI { src: r }, e.span);
+                    } else {
+                        let r = self.compile_expr_v(e);
+                        self.emit(Op::RetV { src: r }, e.span);
                     }
                 } else {
                     self.emit_fallback_stmt(stmt);
@@ -809,9 +993,14 @@ impl<'p> Compiler<'p> {
                     breaks: Vec::new(),
                     continues: Vec::new(),
                 });
+                let saved_pinned = self.pinned_v;
+                if let Some(lv) = local_v {
+                    self.pinned_v = self.pinned_v.max(lv + 1);
+                }
                 for s in &body.stmts {
                     self.compile_stmt(s);
                 }
+                self.pinned_v = saved_pinned;
                 let lt = self.loops.pop().unwrap();
                 let step_pc = self.ops.len() as u32;
                 for c in lt.continues {
@@ -1105,6 +1294,28 @@ impl<'p> Compiler<'p> {
                     _ => false,
                 }
             }
+            (PlaceKind::Index(base, indices), AssignOp::Set, None, None)
+                if matches!(base.ty, Ty::Array { .. }) && indices.len() == 1 =>
+            {
+                match &base.kind {
+                    PlaceKind::Global(gid) => {
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let r_val = self.compile_expr_v(value);
+                        self.emit(Op::StoreGArr1V { gid: *gid as u16, r_i, r_val }, place.span);
+                        true
+                    }
+                    PlaceKind::Local(slot) => {
+                        let SlotLoc::V(arr_v) = self.slot_loc(*slot) else {
+                            return false;
+                        };
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let r_val = self.compile_expr_v(value);
+                        self.emit(Op::StoreLArr1V { arr_v, r_i, r_val }, place.span);
+                        true
+                    }
+                    _ => false,
+                }
+            }
             _ => false,
         }
     }
@@ -1318,7 +1529,37 @@ impl<'p> Compiler<'p> {
                     }
                 }
             }
+            ExprKind::Field(base, idx) => {
+                let obj_v = self.compile_expr_v(base);
+                let dst_val = self.alloc_i();
+                let dst_some = self.alloc_i();
+                self.emit(
+                    Op::FieldOptI { dst_val, dst_some, obj_v, field: *idx as u16 },
+                    span,
+                );
+                (dst_val, dst_some)
+            }
+            ExprKind::Call(fn_id, args) => {
+                if let Some((dst_val, _, dst_some)) =
+                    self.try_compile_call_mix(*fn_id, args, CallRet::OptI, span)
+                {
+                    (dst_val, dst_some)
+                } else {
+                    let src_v = self.emit_fallback_expr_v(expr);
+                    let dst_val = self.alloc_i();
+                    let dst_some = self.alloc_i();
+                    self.emit(Op::UnboxOptI { dst_val, dst_some, src_v }, span);
+                    (dst_val, dst_some)
+                }
+            }
             ExprKind::If(cond, then_e, else_e) => {
+                if let Some(b) = Self::const_bool(cond) {
+                    return if b {
+                        self.compile_expr_opt_i(then_e)
+                    } else {
+                        self.compile_expr_opt_i(else_e)
+                    };
+                }
                 let dst_val = self.alloc_i();
                 let dst_some = self.alloc_i();
                 let j_else = self.emit_branch_if_false(cond);
@@ -1422,6 +1663,12 @@ impl<'p> Compiler<'p> {
                 ) =>
             {
                 self.compile_expr_i(base)
+            }
+            ExprKind::Field(base, idx) => {
+                let obj_v = self.compile_expr_v(base);
+                let dst = self.alloc_i();
+                self.emit(Op::FieldI { dst, obj_v, field: *idx as u16 }, span);
+                dst
             }
             ExprKind::Unary(UnOp::Not, inner) => {
                 let a = self.compile_expr_i(inner);
@@ -1576,6 +1823,9 @@ impl<'p> Compiler<'p> {
                     let dst = self.alloc_i();
                     if let ExprKind::Global(gid) = args[0].kind {
                         self.emit(Op::GArrLen { dst, gid: gid as u16 }, span);
+                    } else if let ExprKind::Field(obj, fidx) = &args[0].kind {
+                        let obj_v = self.compile_expr_v(obj);
+                        self.emit(Op::FieldArrLen { dst, obj_v, field: *fidx as u16 }, span);
                     } else {
                         let arr_v = self.compile_expr_v(&args[0]);
                         self.emit(Op::LArrLen { dst, arr_v }, span);
@@ -1586,6 +1836,9 @@ impl<'p> Compiler<'p> {
                     let dst = self.alloc_i();
                     if let ExprKind::Global(gid) = args[0].kind {
                         self.emit(Op::GListLen { dst, gid: gid as u16 }, span);
+                    } else if let ExprKind::Field(obj, fidx) = &args[0].kind {
+                        let obj_v = self.compile_expr_v(obj);
+                        self.emit(Op::FieldListLen { dst, obj_v, field: *fidx as u16 }, span);
                     } else {
                         let list_v = self.compile_expr_v(&args[0]);
                         self.emit(Op::LListLen { dst, list_v }, span);
@@ -1628,6 +1881,16 @@ impl<'p> Compiler<'p> {
                             self.emit_fallback_expr_i(expr)
                         }
                     }
+                    ExprKind::Field(obj, fidx) if indices.len() == 1 => {
+                        let obj_v = self.compile_expr_v(obj);
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let dst = self.alloc_i();
+                        self.emit(
+                            Op::LoadFieldArr1I { dst, obj_v, field: *fidx as u16, r_i },
+                            span,
+                        );
+                        dst
+                    }
                     _ => self.emit_fallback_expr_i(expr),
                 }
             }
@@ -1651,10 +1914,40 @@ impl<'p> Compiler<'p> {
                             self.emit_fallback_expr_i(expr)
                         }
                     }
+                    ExprKind::Field(obj, fidx) => {
+                        let obj_v = self.compile_expr_v(obj);
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let dst = self.alloc_i();
+                        self.emit(
+                            Op::LoadFieldList1I { dst, obj_v, field: *fidx as u16, r_i },
+                            span,
+                        );
+                        dst
+                    }
                     _ => self.emit_fallback_expr_i(expr),
                 }
             }
+            ExprKind::Index(base, indices)
+                if matches!(base.ty, Ty::Str) && indices.len() == 1 =>
+            {
+                let r_i = self.compile_expr_i(&indices[0]);
+                let dst = self.alloc_i();
+                if let ExprKind::Global(gid) = base.kind {
+                    self.emit(Op::GStrGetI { dst, gid: gid as u16, r_i }, span);
+                } else {
+                    let str_v = self.compile_expr_v(base);
+                    self.emit(Op::StrGetI { dst, str_v, r_i }, span);
+                }
+                dst
+            }
             ExprKind::If(cond, then_e, else_e) => {
+                if let Some(b) = Self::const_bool(cond) {
+                    return if b {
+                        self.compile_expr_i(then_e)
+                    } else {
+                        self.compile_expr_i(else_e)
+                    };
+                }
                 let dst = self.alloc_i();
                 let j_else = self.emit_branch_if_false(cond);
                 let rt = self.compile_expr_i(then_e);
@@ -1756,6 +2049,10 @@ impl<'p> Compiler<'p> {
                             span,
                         );
                         dst
+                    } else if let Some((dst, _, _)) =
+                        self.try_compile_call_mix(*fn_id, args, CallRet::I, span)
+                    {
+                        dst
                     } else {
                         self.emit_fallback_expr_i(expr)
                     }
@@ -1798,6 +2095,63 @@ impl<'p> Compiler<'p> {
                 self.emit(Op::LoadGlobalV { dst, gid: *gid as u16 }, span);
                 dst
             }
+            ExprKind::Field(base, idx) => {
+                let obj_v = self.compile_expr_v(base);
+                let dst = self.alloc_v();
+                self.emit(Op::FieldV { dst, obj_v, field: *idx as u16 }, span);
+                dst
+            }
+            ExprKind::Index(base, indices)
+                if matches!(base.ty, Ty::Array { .. }) && indices.len() == 1 =>
+            {
+                match &base.kind {
+                    ExprKind::Global(gid) => {
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let dst = self.alloc_v();
+                        self.emit(Op::LoadGArr1V { dst, gid: *gid as u16, r_i }, span);
+                        dst
+                    }
+                    ExprKind::Local(slot) => {
+                        if let SlotLoc::V(arr_v) = self.slot_loc(*slot) {
+                            let r_i = self.compile_expr_i(&indices[0]);
+                            let dst = self.alloc_v();
+                            self.emit(Op::LoadLArr1V { dst, arr_v, r_i }, span);
+                            dst
+                        } else {
+                            self.emit_fallback_expr_v(expr)
+                        }
+                    }
+                    _ => self.emit_fallback_expr_v(expr),
+                }
+            }
+            ExprKind::Tuple(fields)
+                if fields.len() >= 2
+                    && fields.len() <= 16
+                    && matches!(expr.ty, Ty::Tuple(_) | Ty::Record(_) | Ty::Struct(_)) => {
+                let mut regs = Vec::with_capacity(fields.len());
+                for f in fields {
+                    regs.push(self.compile_expr_v(f));
+                }
+                let base_v = self.next_v;
+                for r in regs {
+                    let slot = self.alloc_v();
+                    if slot != r {
+                        self.emit(Op::MoveV { dst: slot, src: r }, span);
+                    }
+                }
+                let dst = self.alloc_v();
+                self.emit(Op::MakeTuple { dst, base_v, len: fields.len() as u8 }, span);
+                dst
+            }
+            ExprKind::Call(fn_id, args) => {
+                if let Some((_, dst_v, _)) =
+                    self.try_compile_call_mix(*fn_id, args, CallRet::V, span)
+                {
+                    dst_v
+                } else {
+                    self.emit_fallback_expr_v(expr)
+                }
+            }
             _ => self.emit_fallback_expr_v(expr),
         }
     }
@@ -1805,7 +2159,10 @@ impl<'p> Compiler<'p> {
     fn emit_fallback_stmt(&mut self, stmt: &'p Stmt) {
         let idx = self.fallback_stmts.len() as u32;
         self.fallback_stmts.push(stmt);
-        self.emit(Op::FallbackStmt { idx }, stmt.span().unwrap_or_default());
+        self.emit(
+            Op::FallbackStmt { idx, clear_from_v: self.pinned_v },
+            stmt.span().unwrap_or_default(),
+        );
     }
 
     fn emit_fallback_expr_i(&mut self, expr: &'p Expr) -> u16 {
@@ -1828,7 +2185,7 @@ impl<'p> Compiler<'p> {
 fn sync_to_stack(
     slot_map: &[SlotLoc],
     regs_i: &[i64],
-    regs_v: &[Value],
+    regs_v: &mut [Value],
     stack: &mut [Value],
     base: usize,
 ) {
@@ -1838,7 +2195,7 @@ fn sync_to_stack(
             SlotLoc::OptI { val, some, kind } => {
                 kind.box_opt(regs_i[val as usize], regs_i[some as usize])
             }
-            SlotLoc::V(r) => regs_v[r as usize].clone(),
+            SlotLoc::V(r) => std::mem::replace(&mut regs_v[r as usize], Value::Unit),
         };
     }
 }
@@ -1847,7 +2204,7 @@ fn sync_from_stack(
     slot_map: &[SlotLoc],
     regs_i: &mut [i64],
     regs_v: &mut [Value],
-    stack: &[Value],
+    stack: &mut [Value],
     base: usize,
 ) {
     for (slot, loc) in slot_map.iter().enumerate() {
@@ -1858,7 +2215,9 @@ fn sync_from_stack(
                 regs_i[val as usize] = v;
                 regs_i[some as usize] = s;
             }
-            SlotLoc::V(r) => regs_v[r as usize] = stack[base + slot].clone(),
+            SlotLoc::V(r) => {
+                regs_v[r as usize] = std::mem::replace(&mut stack[base + slot], Value::Unit);
+            }
         }
     }
 }
@@ -1949,7 +2308,7 @@ impl<'p, 'io> Interp<'p, 'io> {
             &chunk.slot_map,
             &mut vm_regs_i[base_i..base_i + chunk.num_i],
             &mut regs_v,
-            &self.stack,
+            &mut self.stack,
             self.base,
         );
         let res = self.exec_chunk_inner(compiled, chunk, base_i, &mut vm_regs_i, &mut regs_v);
@@ -1984,6 +2343,49 @@ impl<'p, 'io> Interp<'p, 'io> {
         res
     }
 
+    fn exec_chunk_mix(
+        &mut self,
+        compiled: &CompiledProgram<'p>,
+        chunk: &Chunk<'p>,
+        args_i: &[i64],
+        args_v: &mut [Value],
+        vm_regs_i: &mut Vec<i64>,
+    ) -> Res<Value> {
+        let base_i = vm_regs_i.len();
+        vm_regs_i.resize(base_i + chunk.num_i, 0);
+        let mut regs_v = if chunk.num_v > 0 {
+            vec![Value::Unit; chunk.num_v]
+        } else {
+            Vec::new()
+        };
+        let mut ii = 0usize;
+        let mut iv = 0usize;
+        for loc in chunk.slot_map.iter().take(chunk.param_count) {
+            match *loc {
+                SlotLoc::I(r, _) => {
+                    unsafe {
+                        *vm_regs_i.get_unchecked_mut(base_i + r as usize) = args_i[ii];
+                    }
+                    ii += 1;
+                }
+                SlotLoc::OptI { val, some, .. } => {
+                    unsafe {
+                        *vm_regs_i.get_unchecked_mut(base_i + val as usize) = args_i[ii];
+                        *vm_regs_i.get_unchecked_mut(base_i + some as usize) = args_i[ii + 1];
+                    }
+                    ii += 2;
+                }
+                SlotLoc::V(r) => {
+                    regs_v[r as usize] = std::mem::replace(&mut args_v[iv], Value::Unit);
+                    iv += 1;
+                }
+            }
+        }
+        let res = self.exec_chunk_inner(compiled, chunk, base_i, vm_regs_i, &mut regs_v);
+        vm_regs_i.truncate(base_i);
+        res
+    }
+
     fn exec_chunk_inner(
         &mut self,
         compiled: &CompiledProgram<'p>,
@@ -2011,7 +2413,14 @@ impl<'p, 'io> Interp<'p, 'io> {
                 Op::MoveI { dst, src } => unsafe {
                     *regs_i.get_unchecked_mut(dst as usize) = *regs_i.get_unchecked(src as usize);
                 },
-                Op::MoveV { dst, src } => regs_v[dst as usize] = regs_v[src as usize].clone(),
+                Op::MoveV { dst, src } => {
+                    let v = if src as usize >= chunk.num_local_v {
+                        std::mem::replace(&mut regs_v[src as usize], Value::Unit)
+                    } else {
+                        regs_v[src as usize].clone()
+                    };
+                    regs_v[dst as usize] = v;
+                }
                 Op::BoxI { dst_v, src_i, kind } => {
                     regs_v[dst_v as usize] = kind.box_val(regs_i[src_i as usize]);
                 }
@@ -2045,7 +2454,11 @@ impl<'p, 'io> Interp<'p, 'io> {
                     regs_v[dst as usize] = self.globals[gid as usize].clone();
                 }
                 Op::StoreGlobalV { gid, src } => {
-                    self.globals[gid as usize] = regs_v[src as usize].clone();
+                    self.globals[gid as usize] = if src as usize >= chunk.num_local_v {
+                        std::mem::replace(&mut regs_v[src as usize], Value::Unit)
+                    } else {
+                        regs_v[src as usize].clone()
+                    };
                 }
                 Op::AddI { dst, a, b } => {
                     let av = regs_i[a as usize];
@@ -2704,6 +3117,215 @@ impl<'p, 'io> Interp<'p, 'io> {
                         regs_i[dst as usize] = 0;
                     }
                 }
+                Op::LoadGArr1V { dst, gid, r_i } => {
+                    let idx = regs_i[r_i as usize];
+                    if let Value::Array(arr) = &self.globals[gid as usize] {
+                        let len = arr.dims[0];
+                        if idx < 0 || idx >= len {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {idx} is outside an array dimension of length {len}"),
+                            );
+                        }
+                        regs_v[dst as usize] = arr.get(idx as usize).unwrap_or(Value::Unit);
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
+                }
+                Op::StoreGArr1V { gid, r_i, r_val } => {
+                    let idx = regs_i[r_i as usize];
+                    let val = if r_val as usize >= chunk.num_local_v {
+                        std::mem::replace(&mut regs_v[r_val as usize], Value::Unit)
+                    } else {
+                        regs_v[r_val as usize].clone()
+                    };
+                    if let Value::Array(arr) = &mut self.globals[gid as usize] {
+                        let len = arr.dims[0];
+                        if idx < 0 || idx >= len {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {idx} is outside an array dimension of length {len}"),
+                            );
+                        }
+                        Rc::make_mut(arr).set(idx as usize, val);
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
+                }
+                Op::LoadLArr1V { dst, arr_v, r_i } => {
+                    let idx = regs_i[r_i as usize];
+                    if let Value::Array(arr) = &regs_v[arr_v as usize] {
+                        let len = arr.dims[0];
+                        if idx < 0 || idx >= len {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {idx} is outside an array dimension of length {len}"),
+                            );
+                        }
+                        regs_v[dst as usize] = arr.get(idx as usize).unwrap_or(Value::Unit);
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
+                }
+                Op::StoreLArr1V { arr_v, r_i, r_val } => {
+                    let idx = regs_i[r_i as usize];
+                    let val = if r_val as usize >= chunk.num_local_v {
+                        std::mem::replace(&mut regs_v[r_val as usize], Value::Unit)
+                    } else {
+                        regs_v[r_val as usize].clone()
+                    };
+                    if let Value::Array(arr) = &mut regs_v[arr_v as usize] {
+                        let len = arr.dims[0];
+                        if idx < 0 || idx >= len {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {idx} is outside an array dimension of length {len}"),
+                            );
+                        }
+                        Rc::make_mut(arr).set(idx as usize, val);
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
+                }
+                Op::FieldI { dst, obj_v, field } => {
+                    regs_i[dst as usize] = match &regs_v[obj_v as usize] {
+                        Value::Tuple(TupleVal::Boxed(fs)) => {
+                            ScalarKind::unbox_val(&fs[field as usize])
+                        }
+                        Value::Tuple(TupleVal::OneInt(v)) => *v,
+                        _ => 0,
+                    };
+                    if obj_v as usize >= chunk.num_local_v {
+                        regs_v[obj_v as usize] = Value::Unit;
+                    }
+                }
+                Op::FieldOptI { dst_val, dst_some, obj_v, field } => {
+                    let (v, s) = match &regs_v[obj_v as usize] {
+                        Value::Tuple(TupleVal::Boxed(fs)) => {
+                            ScalarKind::unbox_opt(&fs[field as usize])
+                        }
+                        _ => (0, 0),
+                    };
+                    regs_i[dst_val as usize] = v;
+                    regs_i[dst_some as usize] = s;
+                    if obj_v as usize >= chunk.num_local_v {
+                        regs_v[obj_v as usize] = Value::Unit;
+                    }
+                }
+                Op::FieldV { dst, obj_v, field } => {
+                    let val = match &regs_v[obj_v as usize] {
+                        Value::Tuple(TupleVal::Boxed(fs)) => fs[field as usize].clone(),
+                        Value::Tuple(TupleVal::OneInt(v)) => Value::Int(*v),
+                        _ => Value::Unit,
+                    };
+                    if obj_v as usize >= chunk.num_local_v {
+                        regs_v[obj_v as usize] = Value::Unit;
+                    }
+                    regs_v[dst as usize] = val;
+                }
+                Op::LoadFieldList1I { dst, obj_v, field, r_i } => {
+                    let idx = regs_i[r_i as usize];
+                    if let Value::Tuple(TupleVal::Boxed(fs)) = &regs_v[obj_v as usize] {
+                        if let Value::List(list) = &fs[field as usize] {
+                            if idx < 0 || (idx as usize) >= list.len() {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!(
+                                        "index {idx} is outside a list of length {}",
+                                        list.len()
+                                    ),
+                                );
+                            }
+                            regs_i[dst as usize] = ScalarKind::unbox_val(&list[idx as usize]);
+                        } else {
+                            return trap(spans[cur_pc], "internal: expected list field");
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected struct");
+                    }
+                }
+                Op::FieldListLen { dst, obj_v, field } => {
+                    regs_i[dst as usize] = match &regs_v[obj_v as usize] {
+                        Value::Tuple(TupleVal::Boxed(fs)) => match &fs[field as usize] {
+                            Value::List(list) => list.len() as i64,
+                            _ => 0,
+                        },
+                        _ => 0,
+                    };
+                }
+                Op::LoadFieldArr1I { dst, obj_v, field, r_i } => {
+                    let idx = regs_i[r_i as usize];
+                    if let Value::Tuple(TupleVal::Boxed(fs)) = &regs_v[obj_v as usize] {
+                        if let Value::Array(arr) = &fs[field as usize] {
+                            let len = arr.dims[0];
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!(
+                                        "index {idx} is outside an array dimension of length {len}"
+                                    ),
+                                );
+                            }
+                            regs_i[dst as usize] = read_array_i(arr, idx as usize);
+                        } else {
+                            return trap(spans[cur_pc], "internal: expected array field");
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected struct");
+                    }
+                }
+                Op::FieldArrLen { dst, obj_v, field } => {
+                    regs_i[dst as usize] = match &regs_v[obj_v as usize] {
+                        Value::Tuple(TupleVal::Boxed(fs)) => match &fs[field as usize] {
+                            Value::Array(arr) => arr.dims.first().copied().unwrap_or(0),
+                            _ => 0,
+                        },
+                        _ => 0,
+                    };
+                }
+                Op::StrGetI { dst, str_v, r_i } => {
+                    let idx = regs_i[r_i as usize];
+                    if let Value::Str(s) = &regs_v[str_v as usize] {
+                        if idx < 0 || (idx as usize) >= s.len() {
+                            return trap(
+                                spans[cur_pc],
+                                format!(
+                                    "index {idx} is outside a string of length {}",
+                                    s.len()
+                                ),
+                            );
+                        }
+                        regs_i[dst as usize] = i64::from(s[idx as usize]);
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected string");
+                    }
+                }
+                Op::GStrGetI { dst, gid, r_i } => {
+                    let idx = regs_i[r_i as usize];
+                    if let Value::Str(s) = &self.globals[gid as usize] {
+                        if idx < 0 || (idx as usize) >= s.len() {
+                            return trap(
+                                spans[cur_pc],
+                                format!(
+                                    "index {idx} is outside a string of length {}",
+                                    s.len()
+                                ),
+                            );
+                        }
+                        regs_i[dst as usize] = i64::from(s[idx as usize]);
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected string");
+                    }
+                }
+                Op::MakeTuple { dst, base_v, len } => {
+                    let b = base_v as usize;
+                    let n = len as usize;
+                    let mut fs = Vec::with_capacity(n);
+                    for k in 0..n {
+                        fs.push(std::mem::replace(&mut regs_v[b + k], Value::Unit));
+                    }
+                    regs_v[dst as usize] = Value::Tuple(TupleVal::Boxed(Rc::new(fs)));
+                }
                 Op::CallVmI { fn_id, arg_base, argc, dst } => {
                     let f = &self.program.fns[fn_id as usize];
                     self.stack_left(spans[cur_pc], Some(&f.name))?;
@@ -2731,36 +3353,105 @@ impl<'p, 'io> Interp<'p, 'io> {
                     regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
                     regs_i[dst as usize] = ScalarKind::unbox_val(&val);
                 }
+                Op::CallVmMix {
+                    fn_id,
+                    arg_base_i,
+                    arg_base_v,
+                    dst_i,
+                    dst_v,
+                    dst_some,
+                    ret_mode,
+                } => {
+                    let f = &self.program.fns[fn_id as usize];
+                    self.stack_left(spans[cur_pc], Some(&f.name))?;
+                    let callee = compiled.fns[fn_id as usize].as_ref().unwrap();
+                    let mut ni = 0usize;
+                    let mut nv = 0usize;
+                    for loc in callee.slot_map.iter().take(callee.param_count) {
+                        match loc {
+                            SlotLoc::I(..) => ni += 1,
+                            SlotLoc::OptI { .. } => ni += 2,
+                            SlotLoc::V(_) => nv += 1,
+                        }
+                    }
+                    let mut arg_buf_i = [0i64; 8];
+                    let abi = arg_base_i as usize;
+                    arg_buf_i[..ni].copy_from_slice(&regs_i[abi..abi + ni]);
+                    let mut arg_buf_v: [Value; 8] = std::array::from_fn(|_| Value::Unit);
+                    let abv = arg_base_v as usize;
+                    for k in 0..nv {
+                        arg_buf_v[k] = std::mem::replace(&mut regs_v[abv + k], Value::Unit);
+                    }
+                    let needs_stack = !callee.fallback_stmts.is_empty()
+                        || !callee.fallback_exprs.is_empty();
+                    let saved_base = self.base;
+                    if needs_stack {
+                        self.base = self.stack.len();
+                        self.stack.resize(self.base + f.locals.len(), Value::Unit);
+                        self.frame_locals.push(&f.locals);
+                    }
+                    self.call_frames.push((f.name.as_str(), spans[cur_pc]));
+                    let res = self.exec_chunk_mix(
+                        compiled,
+                        callee,
+                        &arg_buf_i[..ni],
+                        &mut arg_buf_v[..nv],
+                        vm_regs_i,
+                    );
+                    if needs_stack {
+                        self.frame_locals.pop();
+                        self.stack.truncate(self.base);
+                        self.base = saved_base;
+                    }
+                    let val = res?;
+                    self.call_frames.pop();
+                    regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                    match ret_mode {
+                        CallRet::Unit => {}
+                        CallRet::I => regs_i[dst_i as usize] = ScalarKind::unbox_val(&val),
+                        CallRet::OptI => {
+                            let (v, s) = ScalarKind::unbox_opt(&val);
+                            regs_i[dst_i as usize] = v;
+                            regs_i[dst_some as usize] = s;
+                        }
+                        CallRet::V => regs_v[dst_v as usize] = val,
+                    }
+                }
                 Op::RetI { src } => {
                     let raw = regs_i[src as usize];
                     let kind = chunk.ret_kind.unwrap_or(ScalarKind::Int);
                     return Ok(kind.box_val(raw));
                 }
-                Op::RetV { src } => return Ok(regs_v[src as usize].clone()),
+                Op::RetV { src } => {
+                    return Ok(std::mem::replace(&mut regs_v[src as usize], Value::Unit));
+                }
                 Op::RetUnit => return Ok(Value::Unit),
-                Op::FallbackStmt { idx } => {
+                Op::FallbackStmt { idx, clear_from_v } => {
+                    for r in &mut regs_v[clear_from_v as usize..] {
+                        *r = Value::Unit;
+                    }
                     sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
                     let stmt = chunk.fallback_stmts[idx as usize];
                     let flow = self.stmt(stmt)?;
-                    sync_from_stack(&chunk.slot_map, regs_i, regs_v, &self.stack, self.base);
+                    sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
                     match flow {
                         Flow::Next => {}
-                        Flow::Return(v) => return Ok(v),
-                        Flow::Break(_) | Flow::Continue(_) | Flow::Give(_) => {}
+                        Flow::Return(v) | Flow::Give(v) => return Ok(v),
+                        Flow::Break(_) | Flow::Continue(_) => {}
                     }
                 }
                 Op::FallbackExprI { idx, dst } => {
                     sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
                     let expr = chunk.fallback_exprs[idx as usize];
                     let val = self.eval(expr)?;
-                    sync_from_stack(&chunk.slot_map, regs_i, regs_v, &self.stack, self.base);
+                    sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
                     regs_i[dst as usize] = ScalarKind::unbox_val(&val);
                 }
                 Op::FallbackExprV { idx, dst } => {
                     sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
                     let expr = chunk.fallback_exprs[idx as usize];
                     let val = self.eval(expr)?;
-                    sync_from_stack(&chunk.slot_map, regs_i, regs_v, &self.stack, self.base);
+                    sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
                     regs_v[dst as usize] = val;
                 }
             }
