@@ -29,7 +29,10 @@ if k % 2 == 0:
     print("Yes")
     return
 
-var forbidden = undirected_of_pairs(List(edges))
+var forbidden: [V]List<V> = []
+for (u, v) in edges:
+    forbidden[u].push(v)
+    forbidden[v].push(u)
 for u in V: forbidden[u].sort()
 var unvisited = Set(V)
 

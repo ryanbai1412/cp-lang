@@ -100,25 +100,29 @@ pub struct Rooted<V, Pre>:
         var seen: [V]Bool = false
         var k0: [V]0..=V.count = 0
         var k1: [V]0..=V.count = 0
-        var order = List<V>()
-        for r in roots:
-            seen[r] = true
-            order.push(r)
-        var i = 0
-        while i < order.len:
-            let u = order[i]
-            k0[u] = order.len
-            for a in adj.out(u):
-                let c = a.to
-                if not seen[c]:
-                    seen[c] = true
-                    par[c] = u
-                    dep[c] = dep[u] + 1
-                    far[c] = far[u] + len(a)
-                    order.push(c)
-            k1[u] = order.len
-            i += 1
-        assert order.len == V.K
+        var order = if V.K == 0: List<V>() else: List.filled(V.K, roots[0])
+        var tail = 0
+        unchecked:
+            for r in roots:
+                seen[r] = true
+                order[tail] = r
+                tail += 1
+            var i = 0
+            while i < tail:
+                let u = order[i]
+                k0[u] = tail
+                for a in adj.out(u):
+                    let c = a.to
+                    if not seen[c]:
+                        seen[c] = true
+                        par[c] = u
+                        dep[c] = dep[u] + 1
+                        far[c] = far[u] + len(a)
+                        order[tail] = c
+                        tail += 1
+                k1[u] = tail
+                i += 1
+        assert tail == V.K
         Rooted.finish(roots, par, dep, far, order, k0, k1)
 
     fn finish(
@@ -133,34 +137,35 @@ pub struct Rooted<V, Pre>:
         domain P = 0..V.K
         let root = roots[0]
         var sz: [V]1..=V.count = 1
-        for u in bfs.rev:
-            if let p = par[u]: sz[p] += sz[u]
         var heavy: [V]?V = none
-        for u in bfs:
-            for i in k0[u]..k1[u]:
-                let c = bfs[i]
-                if heavy[u] == none or sz[c] > sz[heavy[u]!]: heavy[u] = c
         var top: [V]V = root
         var tin: [V]P = P.first
-        var start = 0
-        for r in roots:
-            top[r] = r
-            tin[r] = P.nth(start)
-            start += sz[r]
-        for u in bfs:
-            var next = tin[u].ord + 1
-            if let h = heavy[u]:
-                top[h] = top[u]
-                tin[h] = P.nth(next)
-                next += sz[h]
-            for i in k0[u]..k1[u]:
-                let c = bfs[i]
-                if some(c) != heavy[u]:
-                    top[c] = c
-                    tin[c] = P.nth(next)
-                    next += sz[c]
         var at: [P]V = root
-        for v in V: at[tin[v]] = v
+        unchecked:
+            for u in bfs.rev:
+                if let p = par[u]: sz[p] += sz[u]
+            for u in bfs:
+                for i in k0[u]..k1[u]:
+                    let c = bfs[i]
+                    if heavy[u] == none or sz[c] > sz[heavy[u]!]: heavy[u] = c
+            var start = 0
+            for r in roots:
+                top[r] = r
+                tin[r] = P.nth(start)
+                start += sz[r]
+            for u in bfs:
+                var next = tin[u].ord + 1
+                if let h = heavy[u]:
+                    top[h] = top[u]
+                    tin[h] = P.nth(next)
+                    next += sz[h]
+                for i in k0[u]..k1[u]:
+                    let c = bfs[i]
+                    if some(c) != heavy[u]:
+                        top[c] = c
+                        tin[c] = P.nth(next)
+                        next += sz[c]
+            for v in V: at[tin[v]] = v
         Rooted<V, P>(root, par, dep, far, sz, bfs, k0, k1, heavy, top, tin, at)
 
     /// The position of `v` in this tree's value-owned preorder domain `t.Pre`. Inverse of `at`. O(1).

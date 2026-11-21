@@ -393,6 +393,14 @@ impl<'p> Emitter<'p> {
                 let args = self.fill_args_with_width(dims, value.as_deref(), Some(w));
                 Code::primary(format!("std::vector<{cpp_cell}>({args})"))
             }
+            ExprKind::Builtin(Builtin::ListFilled, args)
+                if args.len() == 2
+                    && matches!(&e.ty, Ty::List(elem) if matches!(elem.as_ref(), Ty::Int)) =>
+            {
+                let n = self.expr(&args[0]).text;
+                let v = self.expr(&args[1]).text;
+                Code::primary(format!("std::vector<{cpp_cell}>((size_t)({n}), {cpp_cell}({v}))"))
+            }
             ExprKind::Tuple(items)
                 if matches!(&e.ty, Ty::List(elem) if matches!(elem.as_ref(), Ty::Int)) =>
             {
@@ -1847,7 +1855,10 @@ impl<'p> Emitter<'p> {
                 self.need("rng");
                 Code::primary(format!("cpl::rand_range({}, {})", text(0), text(1)))
             }
-            Builtin::Copy => Code::primary(format!("{}({})", self.ty(&e.ty), text(0))),
+            Builtin::Copy => {
+                let w = args.first().and_then(|a| self.expr_elem_width(a));
+                Code::primary(format!("{}({})", self.ty_with_elem_width(&e.ty, w), text(0)))
+            }
             Builtin::ListFilled => {
                 let lty = self.ty(&e.ty);
                 Code::primary(format!("{lty}((size_t)({}), {})", text(0), text(1)))

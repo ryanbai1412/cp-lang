@@ -562,7 +562,7 @@ pub(crate) fn narrow_elems(
                 _ => None,
             },
             ExprKind::Call(fid, _) => Some(ElemLoc::FnRet(*fid)),
-            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList, args) => {
+            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList | Builtin::Copy, args) => {
                 args.first().and_then(|a| expr_loc(scope, a))
             }
             ExprKind::Do(blk) => match blk.stmts.last() {
@@ -577,6 +577,7 @@ pub(crate) fn narrow_elems(
         match &e.kind {
             ExprKind::Fill(..) => true,
             ExprKind::Tuple(_) if matches!(e.ty, Ty::List(_)) => true,
+            ExprKind::Builtin(Builtin::ListFilled, _) => true,
             ExprKind::Read(spec) if matches!(spec.as_ref(), cpl_ir::Spec::Array { .. }) => true,
             _ => false,
         }
@@ -656,7 +657,7 @@ pub(crate) fn narrow_elems(
                     check_val(program, scope, &p.value, narrow, changed);
                 }
             }
-            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList, args) => {
+            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList | Builtin::Copy, args) => {
                 // When reached via check_val (not as a safe consumer), widen the base.
                 for a in args {
                     check_val(program, scope, a, narrow, changed);
@@ -867,7 +868,7 @@ pub(crate) fn narrow_elems(
         match &e.kind {
             ExprKind::Global(_) | ExprKind::Local(_) => {}
             ExprKind::Field(base, _) => check_val(program, scope, base, narrow, changed),
-            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList, args) => {
+            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList | Builtin::Copy, args) => {
                 if let Some((first, rest)) = args.split_first() {
                     check_nested_base(program, scope, first, narrow, changed);
                     for a in rest {

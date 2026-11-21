@@ -524,7 +524,7 @@ impl<'p> Emitter<'p> {
                 _ => None,
             },
             ExprKind::Call(fid, _) => self.elem_width(ElemLoc::FnRet(*fid)),
-            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList, args) => {
+            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList | Builtin::Copy, args) => {
                 args.first().and_then(|a| self.expr_elem_width(a))
             }
             ExprKind::Do(blk) => match blk.stmts.last() {

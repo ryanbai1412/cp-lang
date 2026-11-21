@@ -53,7 +53,7 @@ pub type Digraph<V, E> = [E](u: V, v: V)
 /// Built in O(n + m); memory is n + 1 offsets and one `(to, e)` per arc.
 /// An undirected edge is two arcs with the same `e`.
 pub struct Graph<V, E>:
-    start: List<Int>
+    start: List<0..=2_000_000_000>
     arcs: List<(to: V, e: E)>
 
     /// One arc `u -> v` per edge.
@@ -63,28 +63,30 @@ pub struct Graph<V, E>:
     pub fn undirected(edges: [E](u: V, v: V)) -> Graph<V, E> = Graph<V, E>.build(edges, true)
 
     fn build(edges: [E](u: V, v: V), both: Bool) -> Graph<V, E>:
-        var start = List.filled(V.K + 1, 0)
-        for e in E:
-            start[edges[e].u.to_idx + 1] += 1
-            if both: start[edges[e].v.to_idx + 1] += 1
-        for i in 0..V.K: start[i + 1] += start[i]
-        if E.K == 0: return Graph(start, [])
-        var arcs = List.filled(start[V.K], (to: edges[E.first].v, e: E.first))
-        var at = copy(start)
-        for e in E:
-            let (u, v) = (edges[e].u, edges[e].v)
-            arcs[at[u.to_idx]] = (to: v, e: e)
-            at[u.to_idx] += 1
-            if both:
-                arcs[at[v.to_idx]] = (to: u, e: e)
-                at[v.to_idx] += 1
-        Graph(start, arcs)
+        var start: List<0..=2_000_000_000> = List.filled(V.K + 1, 0)
+        unchecked:
+            for e in E:
+                start[edges[e].u.to_idx + 1] += 1
+                if both: start[edges[e].v.to_idx + 1] += 1
+            for i in 0..V.K: start[i + 1] += start[i]
+            if E.K == 0: return Graph(start, [])
+            var arcs = List.filled(start[V.K], (to: edges[E.first].v, e: E.first))
+            var at: List<0..=2_000_000_000> = copy(start)
+            for e in E:
+                let (u, v) = (edges[e].u, edges[e].v)
+                arcs[at[u.to_idx]] = (to: v, e: e)
+                at[u.to_idx] += 1
+                if both:
+                    arcs[at[v.to_idx]] = (to: u, e: e)
+                    at[v.to_idx] += 1
+            return Graph(start, arcs)
 
     /// The arcs out of `u`, in edge order: what makes a `Graph` usable wherever `next` is
     /// expected. O(deg u).
     pub fn out(self, u: V) -> yields (to: V, e: E):
-        for i in start[u.to_idx]..start[u.to_idx + 1]:
-            yield arcs[i]
+        unchecked:
+            for i in start[u.to_idx]..start[u.to_idx + 1]:
+                yield arcs[i]
 
     /// `g[u]`: the arcs out of `u`, as a list.
     pub fn get(self, u: V) -> List<(to: V, e: E)> = [
@@ -96,16 +98,17 @@ pub struct Graph<V, E>:
 
     /// The graph with every arc reversed. A rebuild, O(n + m).
     pub fn transpose(self) -> Graph<V, E>:
-        var back = List.filled(V.K + 1, 0)
-        for a in arcs: back[a.to.to_idx + 1] += 1
-        for i in 0..V.K: back[i + 1] += back[i]
-        var out = copy(arcs)
-        var at = copy(back)
-        for u in V:
-            for a in self.out(u):
-                out[at[a.to.to_idx]] = (to: u, e: a.e)
-                at[a.to.to_idx] += 1
-        Graph(back, out)
+        var back: List<0..=2_000_000_000> = List.filled(V.K + 1, 0)
+        unchecked:
+            for a in arcs: back[a.to.to_idx + 1] += 1
+            for i in 0..V.K: back[i + 1] += back[i]
+            var out = copy(arcs)
+            var at: List<0..=2_000_000_000> = copy(back)
+            for u in V:
+                for a in self.out(u):
+                    out[at[a.to.to_idx]] = (to: u, e: a.e)
+                    at[a.to.to_idx] += 1
+            return Graph(back, out)
 
 /// Kahn's peeling: repeatedly remove a vertex with no arcs left coming in, and return the
 /// vertices in the order they were removed. What stays is every vertex on a cycle or
@@ -171,35 +174,89 @@ pub fn scc<V, N>(next: N) -> (domain C, comp: [V]C):
     domain C = 0..k
     (C: C, comp: [V] v => C(k - 1 - done[v]!))
 
-/// `Graph.directed(pairs)` on a plain list of `(u, v)`: the neighbours of each vertex.
+/// Compressed sparse row adjacency table over `V` built from pairs or triples.
+/// O(n + m) time; memory is n + 1 32-bit offsets and one arc per directed edge.
+pub struct Adj<V, A>:
+    start: List<0..=2_000_000_000>
+    arcs: List<A>
+
+    /// The arcs out of `u`. O(deg u).
+    pub fn out(self, u: V) -> yields A:
+        unchecked:
+            for i in start[u.to_idx]..start[u.to_idx + 1]:
+                yield arcs[i]
+
+    /// `g[u]`: the arcs out of `u`, as a list. O(deg u).
+    pub fn get(self, u: V) -> List<A> = [arcs[i] for i in start[u.to_idx]..start[u.to_idx + 1]]
+
+    /// The number of arcs out of `u`. O(1).
+    pub fn deg(self, u: V) -> Int = start[u.to_idx + 1] - start[u.to_idx]
+
+/// `Graph.directed(pairs)` on a plain list of `(u, v)`: CSR adjacency of each vertex.
 /// No edge domain, and `for v in g[u]` yields the vertex itself. O(n + m).
-pub fn directed_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>:
-    var g: [V]List<V> = []
-    for (u, v) in edges: g[u].push(v)
-    g
+pub fn directed_of_pairs<V>(edges: List<(V, V)>) -> Adj<V, V>:
+    var start: List<0..=2_000_000_000> = List.filled(V.K + 1, 0)
+    unchecked:
+        for (u, _) in edges: start[u.to_idx + 1] += 1
+        for i in 0..V.K: start[i + 1] += start[i]
+        if edges.is_empty: return Adj(start, [])
+        var arcs = List.filled(start[V.K], edges[0].1)
+        var at: List<0..=2_000_000_000> = copy(start)
+        for (u, v) in edges:
+            arcs[at[u.to_idx]] = v
+            at[u.to_idx] += 1
+        return Adj(start, arcs)
 
-/// `Graph.undirected(pairs)` on a plain list of `(u, v)`: each edge both ways. O(n + m).
-pub fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>:
-    var g: [V]List<V> = []
-    for (u, v) in edges:
-        g[u].push(v)
-        g[v].push(u)
-    g
+/// `Graph.undirected(pairs)` on a plain list of `(u, v)`: each edge both ways in CSR. O(n + m).
+pub fn undirected_of_pairs<V>(edges: List<(V, V)>) -> Adj<V, V>:
+    var start: List<0..=2_000_000_000> = List.filled(V.K + 1, 0)
+    unchecked:
+        for (u, v) in edges:
+            start[u.to_idx + 1] += 1
+            start[v.to_idx + 1] += 1
+        for i in 0..V.K: start[i + 1] += start[i]
+        if edges.is_empty: return Adj(start, [])
+        var arcs = List.filled(start[V.K], edges[0].1)
+        var at: List<0..=2_000_000_000> = copy(start)
+        for (u, v) in edges:
+            arcs[at[u.to_idx]] = v
+            at[u.to_idx] += 1
+            arcs[at[v.to_idx]] = u
+            at[v.to_idx] += 1
+        return Adj(start, arcs)
 
-/// `Graph.directed(triples)` on a list of `(u, v, w)`: `for (v, w) in g[u]`. O(n + m).
-pub fn directed_of_triples<V, W>(edges: List<(V, V, W)>) -> [V]List<(V, W)>:
-    var g: [V]List<(V, W)> = []
-    for (u, v, w) in edges: g[u].push((v, w))
-    g
+/// `Graph.directed(triples)` on a list of `(u, v, w)`: `for (v, w) in g[u]` in CSR. O(n + m).
+pub fn directed_of_triples<V, W>(edges: List<(V, V, W)>) -> Adj<V, (V, W)>:
+    var start: List<0..=2_000_000_000> = List.filled(V.K + 1, 0)
+    unchecked:
+        for (u, _, _) in edges: start[u.to_idx + 1] += 1
+        for i in 0..V.K: start[i + 1] += start[i]
+        if edges.is_empty: return Adj(start, [])
+        var arcs = List.filled(start[V.K], (edges[0].1, edges[0].2))
+        var at: List<0..=2_000_000_000> = copy(start)
+        for (u, v, w) in edges:
+            arcs[at[u.to_idx]] = (v, w)
+            at[u.to_idx] += 1
+        return Adj(start, arcs)
 
-/// `Graph.undirected(triples)` on a list of `(u, v, w)`: each edge both ways, `w` riding
+/// `Graph.undirected(triples)` on a list of `(u, v, w)`: each edge both ways in CSR, `w` riding
 /// along. O(n + m).
-pub fn undirected_of_triples<V, W>(edges: List<(V, V, W)>) -> [V]List<(V, W)>:
-    var g: [V]List<(V, W)> = []
-    for (u, v, w) in edges:
-        g[u].push((v, w))
-        g[v].push((u, w))
-    g
+pub fn undirected_of_triples<V, W>(edges: List<(V, V, W)>) -> Adj<V, (V, W)>:
+    var start: List<0..=2_000_000_000> = List.filled(V.K + 1, 0)
+    unchecked:
+        for (u, v, _) in edges:
+            start[u.to_idx + 1] += 1
+            start[v.to_idx + 1] += 1
+        for i in 0..V.K: start[i + 1] += start[i]
+        if edges.is_empty: return Adj(start, [])
+        var arcs = List.filled(start[V.K], (edges[0].1, edges[0].2))
+        var at: List<0..=2_000_000_000> = copy(start)
+        for (u, v, w) in edges:
+            arcs[at[u.to_idx]] = (v, w)
+            at[u.to_idx] += 1
+            arcs[at[v.to_idx]] = (u, w)
+            at[v.to_idx] += 1
+        return Adj(start, arcs)
 
 /// Connected components of an undirected graph, as a fresh domain `C`. O(n + m).
 pub fn components<V, N>(next: N) -> (domain C, comp: [V]C):

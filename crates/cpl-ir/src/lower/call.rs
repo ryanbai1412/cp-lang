@@ -5692,19 +5692,25 @@ impl<'a> Lowerer<'a> {
                         if !matches!(probed.ty, Ty::Array { .. }) {
                             return self.call_gen_fn(gfid, Vec::new(), None, args, span);
                         }
-                        // The array is read as the list of its cells:
-                        // `[edge for edge in edges]`. No program can
-                        // write a name with a space in it.
+                        // A 1D array has the same backing storage as a list; `List(edges)`
+                        // lowers to `Builtin::ArrayToList`, avoiding a copy loop.
                         let at = only.value.span;
-                        let cell = "each cell".to_string();
-                        let clause = ast::Clause {
-                            pat: ast::Pattern { kind: ast::PatternKind::Name(cell.clone()), span: at },
-                            iter: only.value.clone(),
-                            conds: Vec::new(),
+                        let list_call = ast::ExprKind::Call {
+                            callee: Box::new(ast::Expr {
+                                kind: ast::ExprKind::Name("List".into()),
+                                span: at,
+                            }),
+                            args: vec![ast::Arg {
+                                name: None,
+                                mutable: false,
+                                value: only.value.clone(),
+                            }],
                         };
-                        let body = Box::new(ast::Expr { kind: ast::ExprKind::Name(cell), span: at });
-                        let cells = ast::ExprKind::Comprehension { body, clauses: vec![clause] };
-                        let listed = ast::Arg { name: None, mutable: false, value: ast::Expr { kind: cells, span: at } };
+                        let listed = ast::Arg {
+                            name: None,
+                            mutable: false,
+                            value: ast::Expr { kind: list_call, span: at },
+                        };
                         return self.call_gen_fn(gfid, Vec::new(), None, &[listed], span);
                     }
                 }

@@ -1090,11 +1090,15 @@ struct Graph<V, E> // O(n + m)
     fn get(self, u: V) -> List<(to: V, e: E)>
     fn deg(self, u: V) -> Int // O(1)
     fn transpose(self) -> Graph<V, E> // O(n + m)
+struct Adj<V, A> // CSR adjacency built from pairs/triples, O(n + m)
+    fn out(self, u: V) -> yields A
+    fn get(self, u: V) -> List<A>
+    fn deg(self, u: V) -> Int // O(1)
 // list-form hooks behind `Graph.directed(pairs)` etc., never called by name
-fn directed_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V> // O(n + m)
-fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V> // O(n + m)
-fn directed_of_triples<V, W>(edges: List<(V, V, W)>) -> [V]List<(V, W)> // O(n + m)
-fn undirected_of_triples<V, W>(edges: List<(V, V, W)>) -> [V]List<(V, W)> // O(n + m)
+fn directed_of_pairs<V>(edges: List<(V, V)>) -> Adj<V, V> // O(n + m)
+fn undirected_of_pairs<V>(edges: List<(V, V)>) -> Adj<V, V> // O(n + m)
+fn directed_of_triples<V, W>(edges: List<(V, V, W)>) -> Adj<V, (V, W)> // O(n + m)
+fn undirected_of_triples<V, W>(edges: List<(V, V, W)>) -> Adj<V, (V, W)> // O(n + m)
 struct Paths<V, W, A> // dist: [V]?W, back: [V]?(from: V, via: A), order: List<V>
     fn get(self, v: V) -> ?W // O(1)
     fn reached(self, v: V) -> Bool // O(1)
