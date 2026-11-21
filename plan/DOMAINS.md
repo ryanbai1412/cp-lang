@@ -100,9 +100,10 @@ The local library (`examples/local-lib/`) is the staging area: a module
 is promoted once it meets the stdlib bar.
 **Where we are.** 25 modules, 280 distinct public names (389 `pub`
 declarations including methods), 160 `@test`s passing in
-`cpl test stdlib`. Present but thin: number theory (sieve, trial-division
-factor, CRT, ext_gcd; no Miller-Rabin, rho, phi, primitive root),
-RNG (seeded stream, no pick/perm/sample), bitsets (set algebra, shift,
+`cpl test stdlib` (164 after number theory). Number theory is complete
+for single numbers (Miller-Rabin and Pollard's rho exact for every
+`Int`, `phi`, `primitive_root`, `floor_sum`, O(1) `mul_mod`), used by
+two ports. Present but thin: RNG (seeded stream, no pick/perm/sample), bitsets (set algebra, shift,
 next; no prev/first/last), flows (Dinic, min cut, Hungarian; no
 Hopcroft-Karp, no min-cost flow), strings (Z, prefix function, suffix
 array, LCP, rolling hash; no Manacher, no Aho-Corasick), geometry
@@ -116,11 +117,13 @@ the whole surface; a test fails when a public name is missing from it.
 **Bar.** Every item of `plan/STDLIB.md` marked [new] or [rename] has
 landed with tests; every public name is used by a port or an example;
 the [rename]s have codemods and the ports are moved.
-**Next.** Number theory (`pow_mod`, `is_prime`, `factor_big`, `phi`,
-`primitive_root`, `floor_sum`); `std.ntt`; `std.matrix`;
+**Next.** `std.ntt`; `std.matrix`;
 `bsearch_real` and `ternary_max`; RNG `pick`/`perm`/`sample`; bitset
 `first`/`last`/`prev`; `max_matching` and `CostFlow`; `manacher` and
-`AhoCorasick`; `convex_hull`; then the `_by` renames.
+`AhoCorasick`; `convex_hull`; then the `_by` renames. From the
+wave-11 frictions (`research/frictions/cf2237h.md`, `cf2222f.md`): DSU
+payloads, typed rollback checkpoints and parity; an interval run map;
+offline divide and conquer over time; predicate counting; link-cut tree.
 
 ## 5. Diagnostics and front end (`plan/30` 3.7)
 **North star.** Every error is the message an expert coach would give: what is wrong,

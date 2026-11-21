@@ -82,6 +82,18 @@ pub struct Sieve:
             out.push((p, e))
         out
 
+    /// Euler's totient of `1 <= x <= n`. O(log x).
+    pub fn phi(self, x: Int) -> Int:
+        var acc = x
+        for (p, _) in self.factor(x): acc = acc / p * (p - 1)
+        acc
+
+    /// The Mobius function of `1 <= x <= n`: 0 if a square divides `x`, else -1 to the
+    /// number of prime factors. O(log x).
+    pub fn mobius(self, x: Int) -> Int:
+        let f = self.factor(x)
+        if any(e > 1 for (_, e) in f): 0 elif f.len % 2 == 0: 1 else: -1
+
 /// The number of bits needed to write `x >= 0` (`bit_len(0) == 0`, `bit_len(5) == 3`).
 pub fn bit_len(x: Int) -> Int = bit_width(x)
 
@@ -148,14 +160,136 @@ pub fn crt(r1: Int, m1: Int, r2: Int, m2: Int) -> ?(Int, Int):
     let k = mul_mod((r2 - r1) / e.g % step, e.x % step, step)
     ((r1 + m1 * k) % m, m)
 
-/// `a * b % m` without overflow, for `0 <= a, b < m`. O(log b).
+/// `a * b % m` without overflow, rounded down to `0..m` for `m >= 1`. O(1), through `I128`
+/// when the product could leave `Int`.
 pub fn mul_mod(a: Int, b: Int, m: Int) -> Int:
-    var (acc, x, k) = (0, a % m, b)
+    if -3_037_000_499 <= a <= 3_037_000_499 and -3_037_000_499 <= b <= 3_037_000_499: a * b % m
+    else: Int(I128(a) * I128(b) % I128(m))
+
+/// `a ** e % m` for `e >= 0` and `1 <= m`. O(log e) multiplications, each O(1).
+pub fn pow_mod(a: Int, e: Int, m: Int) -> Int:
+    var (acc, x, k) = (1 % m, a % m, e)
     while k > 0:
-        if k % 2 == 1: acc = (acc + x) % m
-        x = (x + x) % m
+        if k % 2 == 1: acc = mul_mod(acc, x, m)
+        x = mul_mod(x, x, m)
         k /= 2
     acc
+
+/// Is `x` prime? Deterministic Miller-Rabin over the first twelve primes, exact for every
+/// `Int`. O(log^2 x); `Sieve(n).is_prime(x)` is O(1) for many small `x`.
+pub fn is_prime(x: Int) -> Bool:
+    if x < 2: return false
+    let bases = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37]
+    for p in bases:
+        if x % p == 0: return x == p
+    var (odd, twos) = (x - 1, 0)
+    while odd % 2 == 0:
+        odd /= 2
+        twos += 1
+    for a in bases:
+        var y = pow_mod(a, odd, x)
+        if y == 1 or y == x - 1: continue
+        var composite = true
+        for _ in 1..twos:
+            y = mul_mod(y, y, x)
+            if y == x - 1:
+                composite = false
+                break
+        if composite: return false
+    true
+
+/// `(y * y + c) % x` for `0 <= y < x` and `0 < c < x`, without leaving `Int`.
+fn rho_step(y: Int, c: Int, x: Int) -> Int:
+    let s = mul_mod(y, y, x)
+    if s >= x - c: s - (x - c) else: s + c
+
+/// A divisor of the odd composite `x` other than 1 and `x`, by Pollard's rho with Brent's
+/// batching. Expected O(x^(1/4) log x).
+fn rho(x: Int) -> Int:
+    var c = 1
+    while true:
+        var (y, q, g, r) = (2, 1, 1, 1)
+        var (ys, z) = (2, 2)
+        while g == 1:
+            z = y
+            for _ in 0..r: y = rho_step(y, c, x)
+            var k = 0
+            while k < r and g == 1:
+                ys = y
+                for _ in 0..min(128, r - k):
+                    y = rho_step(y, c, x)
+                    q = mul_mod(q, abs(z - y), x)
+                g = gcd(q, x)
+                k += 128
+            r *= 2
+        if g == x:
+            g = 1
+            while g == 1:
+                ys = rho_step(ys, c, x)
+                g = gcd(abs(z - ys), x)
+        if g != x: return g
+        c += 1
+    x
+
+/// The prime factorization of `x >= 1` as `(prime, exponent)` pairs, smallest prime first,
+/// for any `Int`: trial division below 100, then Pollard's rho. Expected
+/// O(x^(1/4) log x); `factor(x)` is simpler for `x` up to about 1e12.
+pub fn factor_big(x: Int) -> List<(Int, Int)>:
+    assert x >= 1
+    var primes = List<Int>()
+    var rest = x
+    for p in 2..100:
+        while rest % p == 0:
+            primes.push(p)
+            rest /= p
+    var todo = [rest]
+    while let m = todo.pop():
+        if m == 1: continue
+        if is_prime(m):
+            primes.push(m)
+        else:
+            let d = rho(m)
+            todo.push(d)
+            todo.push(m / d)
+    sort(mut primes)
+    var out = List<(Int, Int)>()
+    for p in primes:
+        if not out.is_empty and out.last!.0 == p: out.last! = (p, out.last!.1 + 1)
+        else: out.push((p, 1))
+    out
+
+/// Euler's totient of `x >= 1`: how many of `1..=x` are coprime to `x`. O(sqrt x).
+pub fn phi(x: Int) -> Int:
+    var acc = x
+    for (p, _) in factor(x): acc = acc / p * (p - 1)
+    acc
+
+/// The smallest primitive root modulo the prime `p`: a `g` whose powers reach every
+/// non-zero residue. Expected O(p^(1/4) log p) to factor `p - 1`, then O(log^2 p) per try.
+pub fn primitive_root(p: Int) -> Int:
+    assert is_prime(p)
+    if p == 2: return 1
+    let parts = [q for (q, _) in factor_big(p - 1)]
+    var g = 2
+    while any(pow_mod(g, (p - 1) / q, p) == 1 for q in parts): g += 1
+    g
+
+/// The sum of `(a * i + b) / m` over `i` in `0..n`, with floor division, for `n >= 0` and
+/// `m >= 1`. O(log m), by the Euclid-like reduction.
+pub fn floor_sum(n: Int, m: Int, a: Int, b: Int) -> Int:
+    assert n >= 0 and m > 0
+    var (count, den, slope, start) = (n, m, a, b)
+    var total = 0
+    while true:
+        total += count * (count - 1) / 2 * (slope / den) + count * (start / den)
+        slope %= den
+        start %= den
+        let top = slope * count + start
+        if top < den: break
+        count = top / den
+        start = top % den
+        swap(mut den, mut slope)
+    total
 
 @test
 fn gcd_lcm_and_bezout():
@@ -259,3 +393,58 @@ fn splitmix64_matches_the_reference_values():
     assert splitmix64(0) == 0xe220a8397b1dcdaf
     assert splitmix64(0x9e3779b97f4a7c15) == 0x6e789e6aa1b965f4
     assert splitmix64(1) != splitmix64(2)
+
+@test
+fn miller_rabin_agrees_with_the_sieve_and_refuses_pseudoprimes():
+    let s = Sieve(5000)
+    for x in -3..5000: assert is_prime(x) == (x >= 2 and s.is_prime(x))
+    assert is_prime(998244353) and is_prime(1_000_000_007) and is_prime(1_000_000_000_000_000_003)
+    assert is_prime(9_223_372_036_854_775_783)
+    assert not is_prime(1_000_000_007 * 998244353) and not is_prime(1_000_000_000_000_000_001)
+    for x in [561, 41041, 825265, 3215031751, 2152302898747, 3474749660383, 341550071728321]:
+        assert not is_prime(x)
+
+@test
+fn factor_big_agrees_with_trial_division_and_handles_big_semiprimes():
+    for x in 1..2000: assert factor_big(x) == factor(x)
+    for _ in 0..200:
+        let x = rand(1, 1_000_000_000_000)
+        assert factor_big(x) == factor(x)
+    assert factor_big(1_000_003 * 998244353) == [(1_000_003, 1), (998244353, 1)]
+    assert factor_big(999_999_937 * 999_999_929) == [(999_999_929, 1), (999_999_937, 1)]
+    assert factor_big(2 ** 20 * 3 ** 5 * 10007 ** 2) == [(2, 20), (3, 5), (10007, 2)]
+    assert factor_big(2 ** 62) == [(2, 62)]
+    assert factor_big(1) == []
+    for x in [9_223_372_036_854_775_783, 3_037_000_493 * 3_037_000_453, 9_223_372_036_854_775_807]:
+        let f = factor_big(x)
+        assert all(is_prime(q) for (q, _) in f)
+        var back = 1
+        for (q, e) in f: back *= q ** e
+        assert back == x
+
+@test
+fn pow_mod_phi_and_primitive_roots():
+    assert pow_mod(2, 10, 1000) == 24 and pow_mod(5, 0, 1) == 0 and pow_mod(-2, 3, 7) == 6
+    assert pow_mod(3, 1_000_000_000_000_000_000, 1_000_000_000_000_000_003) == pow_mod(
+        3,
+        1_000_000_000_000_000_000 % 1_000_000_000_000_000_002,
+        1_000_000_000_000_000_003,
+    )
+    let s = Sieve(300)
+    for x in 1..300:
+        assert phi(x) == count(gcd(x, k) == 1 for k in 1..=x)
+        assert s.phi(x) == phi(x)
+        let f = factor(x)
+        let mu = if any(e > 1 for (_, e) in f): 0 elif f.len % 2 == 0: 1 else: -1
+        assert s.mobius(x) == mu
+    assert primitive_root(998244353) == 3 and primitive_root(1_000_000_007) == 5 and primitive_root(2) == 1
+    for p in [3, 5, 7, 11, 13, 41, 71]:
+        let g = primitive_root(p)
+        assert all(pow_mod(g, (p - 1) / q, p) != 1 for (q, _) in factor(p - 1))
+
+@test
+fn floor_sum_agrees_with_the_loop_for_every_sign():
+    for _ in 0..400:
+        let (n, m, a, b) = (rand(0, 30), rand(1, 20), rand(-40, 40), rand(-40, 40))
+        assert floor_sum(n, m, a, b) == sum((a * i + b) / m for i in 0..n)
+    assert floor_sum(1_000_000_000, 1_000_000_007, 998_244_353, 123_456_789) == 499122172130479402

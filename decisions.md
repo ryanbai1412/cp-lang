@@ -1387,6 +1387,15 @@ come first. Reverse: move a module back and leave a re-export.
 (`the_stdlib_design_names_every_public_name`), so the doc cannot drift
 silently. Reverse: delete the test.
 
+26.7. **One number-theory home: `std.math` owns `pow_mod`, `is_prime`,
+`factor_big`, `phi`, `primitive_root` and `floor_sum`,** promoted from
+`examples/local-lib/math/primes.cp` and `floor_sum.cp`, which keep only
+what builds on them. `is_prime` and `factor_big` are exact for every
+`Int`, not only below 4e18, because `mul_mod` now goes through `I128`
+in O(1) instead of doubling in O(log b); `factor` (trial division)
+stays because it is simpler and fast enough to 1e12. Reverse: move the
+functions back into the local library and import them from there.
+
 ## 27. Interpreter, debugger and traces
 
 27.1. **Runtime traps carry call stacks, multitest case numbers, and concrete values.**

@@ -274,25 +274,23 @@ fn splitmix64(x: U64) -> U64
 fn factor(x: Int) -> List<(Int, Int)> // O(sqrt x)
 fn divisors(x: Int) -> List<Int> // O(sqrt x)
 fn crt(r1: Int, m1: Int, r2: Int, m2: Int) -> ?(Int, Int)
-fn mul_mod(a: Int, b: Int, m: Int) -> Int // O(log b)
-```
-
-[new], promoted from `examples/local-lib/math/primes.cp` and
-`floor_sum.cp`:
-
-```cp
-fn pow_mod(a: Int, e: Int, m: Int) -> Int    // O(log e); 1 <= m < 2^62
-fn is_prime(x: Int) -> Bool                  // O(log^2 x); deterministic
-                                             // Miller-Rabin for x < 2^63
-fn factor_big(x: Int) -> List<(Int, Int)>    // expected O(x^(1/4) log x)
-fn phi(x: Int) -> Int                        // O(sqrt x)
-fn primitive_root(p: Int) -> Int             // O(sqrt p) for prime p
+fn mul_mod(a: Int, b: Int, m: Int) -> Int // O(1), through I128 if needed
+fn pow_mod(a: Int, e: Int, m: Int) -> Int // O(log e); 1 <= m
+fn is_prime(x: Int) -> Bool // O(log^2 x); deterministic Miller-Rabin, every Int
+fn factor_big(x: Int) -> List<(Int, Int)> // expected O(x^(1/4) log x)
+fn phi(x: Int) -> Int // O(sqrt x)
+fn primitive_root(p: Int) -> Int // expected O(p^(1/4) log p), prime p
 fn floor_sum(n: Int, m: Int, a: Int, b: Int) -> Int
     // O(log m); sum of (a*i + b) / m for i in 0..n, floor division
-fn Sieve.phi(self, x: Int) -> Int            // O(log x)
-fn Sieve.mobius(self, x: Int) -> Int         // O(log x)
-fn Sieve.primes(self) -> List<Int>           // O(n)
+fn Sieve.phi(self, x: Int) -> Int // O(log x)
+fn Sieve.mobius(self, x: Int) -> Int // O(log x)
 ```
+
+Promoted from `examples/local-lib/math/primes.cp` and `floor_sum.cp`,
+which now keep only what builds on them (`divisors_of`, `mod_sum`,
+`count_residues`). Ports: `proto/ports/scout_batch_16/cco05p4.cp`
+(`is_prime`), `proto/ports/scout_batch_43/etsr23r4p2.cp` (`phi`).
+Planned: `Sieve.primes`, a linear sieve of any multiplicative function.
 
 Relies on: `I128` (inside `mul_mod`), the builtin `isqrt`.
 

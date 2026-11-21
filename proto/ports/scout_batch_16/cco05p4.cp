@@ -1,13 +1,7 @@
 // CCO 2005 P4 Primed Sequences (CP Lang 0.2.2): shortest run of length >= 2
 // with prime sum, breaking ties leftmost.
 // original: corpus/submissions/4665767.cpp
-fn is_prime(x: Int) -> Bool:
-    if x < 2: return false
-    var d = 2
-    while d * d <= x:
-        if x % d == 0: return false
-        d += 1
-    true
+use std.math.{is_prime}
 
 @multitest
 let n: Int = read()

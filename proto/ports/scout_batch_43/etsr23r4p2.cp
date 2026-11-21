@@ -5,13 +5,7 @@
 // Range update `a[i] := c^(a[i])` and range sum mod `p` (runtime modulus).
 // Precompute the totient chain [p, phi(p), ..., 1] and each element's tower
 // up to stabilization, then serve range shifts with `LazySegTree`.
-use std.math.{factor}
-
-fn phi(x: Int) -> Int:
-    var ans = x
-    for (p, _) in factor(x):
-        ans = ans / p * (p - 1)
-    ans
+use std.math.{phi}
 
 fn pow_capped(base: Int, exp: Int, m: Int) -> (over: Bool, val: Int):
     if m == 1: return (true, 0)

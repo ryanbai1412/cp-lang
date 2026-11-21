@@ -1,26 +1,6 @@
 //! Sums of floors of a linear function, in O(log m): counting lattice points under a
-//! line, and summing residues of an arithmetic progression.
-
-/// `sum(floor((a * i + b) / m) for i in 0..n)`, for any signed `a` and `b`, `m > 0`
-/// and `n >= 0`. O(log m), the same steps as Euclid's algorithm.
-///
-/// The answer and `a * n + b` (after `a` and `b` are reduced modulo `m`) must fit an `Int`.
-pub fn floor_sum(n: Int, m: Int, a: Int, b: Int) -> Int:
-    assert n >= 0 and m > 0
-    var (count, den, slope, start) = (n, m, a, b)
-    var total = 0
-    while true:
-        // take out the whole multiples of `den`; `/` and `%` round down, so signs are fine
-        total += count * (count - 1) / 2 * (slope / den) + count * (start / den)
-        slope %= den
-        start %= den
-        let top = slope * count + start
-        if top < den: break
-        // count the lattice points under the line by columns instead of rows
-        count = top / den
-        start = top % den
-        swap(mut den, mut slope)
-    total
+//! line, and summing residues of an arithmetic progression, on top of `std.math.floor_sum`.
+use std.math.{floor_sum}
 
 /// `sum((a * i + b) % m for i in 0..n)`: the residues of an arithmetic progression.
 pub fn mod_sum(n: Int, m: Int, a: Int, b: Int) -> Int:
