@@ -15,6 +15,7 @@
 #            and stdlib/prelude.cp holds at most 80 names
 #            and every port in proto/ports/ecnerwala passes cpl check,
 #            cpl fmt --check and cpl lint with 0 warnings (under a second)
+#            and cpl build writes at most 65,536 bytes of C++ for each
 #         6. the count of open known_traps (crates/cpl-cli/tests/known_traps.cp)
 #         7. the offline site bundle (python3 site/bundle.py) stays under
 #            2,600,000 bytes
@@ -167,6 +168,15 @@ ecn_start=$(date +%s%N)
 ecn_lint=$("$cpl" lint "${ecn[@]}" 2>&1)
 grep -q <<<"$ecn_lint" ', 0 warnings, 0 errors$' || { echo "$ecn_lint"; fail "an ecnerwala port has a lint warning"; }
 echo "${#ecn[@]} ports pass in $(( ($(date +%s%N) - ecn_start) / 1000000 )) ms"
+
+# Every ecnerwala port builds into C++ a judge accepts: `cpl build` stops
+# when the file is over 65,536 bytes. Nothing is compiled; the ports run
+# side by side.
+step "proto/ports/ecnerwala: cpl build writes at most 65,536 bytes of C++"
+ecn_start=$(date +%s%N)
+ecn_big=$(printf '%s\n' "${ecn[@]}" | xargs -P "$(nproc)" -n 8 sh -c 'for f; do "$0" build "$f" -o - 2>&1 >/dev/null | grep -v "the header is left out" | sed "s|^|$f: |"; done' "$cpl" || true)
+[ -z "$ecn_big" ] || { echo "$ecn_big"; fail "an ecnerwala port above no longer builds, or builds into more C++ than a judge accepts"; }
+echo "${#ecn[@]} ports build in $(( ($(date +%s%N) - ecn_start) / 1000000 )) ms"
 
 # The offline edition is one file people download; site/test_site.py holds
 # the same cap. The WASM build is a cargo no-op when nothing changed.

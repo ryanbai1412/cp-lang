@@ -1297,6 +1297,52 @@ impl<'a> Checker<'a> {
         )
     }
 
+    /// `xs.sort(by: key)` sorts `xs` where it is, so the key can't reach
+    /// `xs` while it runs: not by name in a closure, and not through a fn
+    /// that reads or changes it. (`xs.sorted(by:)` sorts a copy.)
+    pub(crate) fn sort_key_uses(&mut self, callee: &Expr, args: &[Arg]) {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return;
+        };
+        let (Some(root), Some(key)) = (
+            root_name(base).filter(|_| name.text == "sort"),
+            args.iter().find(|a| a.name.as_ref().is_some_and(|n| n.text == "by")),
+        ) else {
+            return;
+        };
+        struct Names(Vec<String>);
+        impl Visitor for Names {
+            fn expr(&mut self, e: &Expr) {
+                if let ExprKind::Name(name) = &e.kind {
+                    self.0.push(name.clone());
+                }
+            }
+        }
+        let mut names = Names(Vec::new());
+        walk_expr(&key.value, &mut names);
+        let outer = self.local(root).is_none();
+        let what = names.0.iter().find_map(|used| {
+            if used == root {
+                return Some(format!("uses `{root}`"));
+            }
+            let global_fn = self.local(used).is_none()
+                && matches!(self.env.global(used).as_deref(), Some(Def::Fn { .. }));
+            match (outer && global_fn).then(|| self.env.effects(used)) {
+                Some(effects) => effects.does(root).map(|what| format!("calls `{used}`, which {what} `{root}`")),
+                None => None,
+            }
+        });
+        let Some(what) = what else {
+            return;
+        };
+        let message = format!("the key of `{root}.sort(by:)` {what} while `{root}` is being sorted");
+        if let Some(diag) = self.error(codes::USED_WHILE_LENT, key.value.span, message) {
+            diag.help = Some(format!(
+                "sort a copy, whose key may use the list: `{root} = {root}.sorted(by: ..)`"
+            ));
+        }
+    }
+
     /// A fn that touches a `var` directly, not through a parameter, is one
     /// more user of it for the whole call: what is known about the names
     /// it changes is forgotten, it can't run while one of them is lent,

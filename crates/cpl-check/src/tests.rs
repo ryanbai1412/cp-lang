@@ -1853,6 +1853,21 @@ fn a_list_written_out_beside_a_plus_holds_the_element_type_asked_for() {
     }
 }
 
+/// `xs.sort(by:)` sorts where the list is: a key that reaches the list,
+/// by name or through a fn, would read or grow it mid-sort (a
+/// use-after-free in the C++). `sorted(by:)` works on a copy.
+#[test]
+fn a_sort_key_that_reaches_its_own_list_is_refused() {
+    const FNS: &str = "var xs = [3, 1, 2]\nvar n = 0\nfn grow(x: Int) -> Int:\n    xs.push(1)\n    x\nfn peek(x: Int) -> Int = x + xs.len\nfn count(x: Int) -> Int:\n    n += 1\n    x\n";
+    for call in ["xs.sort(by: grow)\n", "xs.sort(by: peek)\n", "xs.sort(by: x => xs[0] - x)\n", "xs.sort(by: x => grow(x))\n"] {
+        let diags = check(&format!("{FNS}{call}"));
+        assert_eq!(diags.iter().map(|d| d.code.0).collect::<Vec<_>>(), vec!["E0602"], "{call}");
+    }
+    for call in ["xs.sort(by: count)\n", "xs.sort(by: x => -x)\n", "let ys = xs.sorted(by: grow)\n", "var ys = [1]\nys.sort(by: peek)\n"] {
+        assert_eq!(check(&format!("{FNS}{call}")), vec![], "{call}");
+    }
+}
+
 /// `cpl run` no longer stops a call that touches a variable it was lent
 /// `mut`, so the check has to: one variable twice in a call is refused
 /// here, while a fn value reading it during the call is not.

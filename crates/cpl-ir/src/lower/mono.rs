@@ -1065,7 +1065,7 @@ impl<'a> Lowerer<'a> {
 
         for (param, arg) in ast_params.iter().zip(&matched) {
             if let (Some(pty), Some(arg)) = (&param.ty, arg) {
-                self.bind_range_domain(pty, &arg.value, &gen_names, &mut inferred, span);
+                self.bind_range_domain(pty, &arg.value, &gen_names, &mut inferred, span, Some((gfid, decl.ret.as_ref())));
             }
         }
 
@@ -1364,9 +1364,49 @@ impl<'a> Lowerer<'a> {
         self.user_call(fn_id, receiver, args, span)
     }
 
+    /// Whether the generic fn says its parameter `name` anywhere but as
+    /// the index of an array it takes: in what it returns, in another
+    /// parameter, or in its body.
+    fn gen_fn_names(&self, gfid: GenFnId, name: &str) -> bool {
+        let tpl = &self.gen_fns[gfid];
+        let decl = tpl.decl;
+        let only_indexes = |ty: &ast::Type| {
+            let ty = match &ty.kind {
+                ast::TypeKind::Optional(inner) => inner,
+                _ => ty,
+            };
+            match &ty.kind {
+                ast::TypeKind::Array { elem, .. } => !type_names(elem, name),
+                _ => !type_names(ty, name),
+            }
+        };
+        if decl.ret.as_ref().is_some_and(|ret| type_names(ret, name))
+            || decl.params.iter().any(|p| p.ty.as_ref().is_some_and(|ty| !only_indexes(ty)))
+        {
+            return true;
+        }
+        let span = match &decl.body {
+            ast::FnBody::Block(block) => block.span,
+            ast::FnBody::Expr(e) => e.span,
+            ast::FnBody::None => return false,
+        };
+        let abs = span.shift(tpl.offset);
+        let text = self.mods[tpl.mod_id].text.get(abs.start as usize..abs.end as usize).unwrap_or("");
+        let word = |c: char| c.is_ascii_alphanumeric() || c == '_';
+        text.match_indices(name).any(|(at, _)| {
+            !text[..at].chars().next_back().is_some_and(word) && !text[at + name.len()..].chars().next().is_some_and(word)
+        })
+    }
+
     /// An array indexed by a plain range, `[0..n]T` or `[1..=n]T`, where
-    /// a `[D]T` (or `?[D]T`) is asked for: `D` is a domain of this call,
-    /// sized by the array where it is passed.
+    /// a `[D]T` (or `?[D]T`) is asked for: `D` is a domain sized by the
+    /// array where it is passed.
+    ///
+    /// A fn whose result does not name `D` (`of` gives the fn and what it
+    /// returns) has one such domain for all its calls, so it is one fn in
+    /// the C++; each call puts the size back when it returns. What can
+    /// outlive the call (a struct built from the array, a `[D]T` given
+    /// back) has a domain of its own per place it is made.
     pub(super) fn bind_range_domain(
         &mut self,
         pty: &ast::Type,
@@ -1374,6 +1414,7 @@ impl<'a> Lowerer<'a> {
         gen_names: &[String],
         inferred: &mut GenEnv,
         span: Span,
+        of: Option<(GenFnId, Option<&ast::Type>)>,
     ) {
         let pty = match &pty.kind {
             ast::TypeKind::Optional(inner) => inner,
@@ -1400,7 +1441,20 @@ impl<'a> Lowerer<'a> {
             },
             _ => return,
         };
-        let site = (self.cur_mod, self.offset + span.start, name.text.clone());
+        // `fn f<D>(mut d: [D]Int, ..)` that never says `D` again takes an
+        // array of any index: there is no domain to make, and the array
+        // is indexed as it always was.
+        if of.is_some_and(|(gfid, _)| !self.gen_fn_names(gfid, &name.text)) {
+            return;
+        }
+        let shared = match of {
+            Some((gfid, ret)) if !ret.is_some_and(|ret| type_names(ret, &name.text)) => Some(gfid),
+            _ => None,
+        };
+        let site = match shared {
+            Some(gfid) => (usize::MAX, gfid as u32, format!("{} from {lo}", name.text)),
+            None => (self.cur_mod, self.offset + span.start, name.text.clone()),
+        };
         let d = match self.range_domain_sites.get(&site) {
             Some(d) => *d,
             None => {
@@ -1408,6 +1462,9 @@ impl<'a> Lowerer<'a> {
                 self.domains.push(format!("{}_{d}", name.text));
                 self.range_domains.insert(d, lo);
                 self.range_domain_sites.insert(site, d);
+                if shared.is_some() {
+                    self.range_domains_shared.insert(d);
+                }
                 d
             }
         };
@@ -2543,5 +2600,23 @@ pub(super) fn let_const_name(pat: &ast::Pattern) -> Option<&str> {
             Some(&path[0].text)
         }
         _ => None,
+    }
+}
+
+/// Whether the written type `ty` names `name` anywhere inside it.
+fn type_names(ty: &ast::Type, name: &str) -> bool {
+    match &ty.kind {
+        ast::TypeKind::Named { name: n, args } => {
+            n.text == name || n.text.split('.').next() == Some(name) || args.iter().any(|a| type_names(a, name))
+        }
+        ast::TypeKind::Array { index, elem } => index.iter().any(|i| type_names(i, name)) || type_names(elem, name),
+        ast::TypeKind::OwnDomain { elem, .. } | ast::TypeKind::Optional(elem) | ast::TypeKind::Yields(elem) => {
+            type_names(elem, name)
+        }
+        ast::TypeKind::Tuple(items) => items.iter().any(|i| type_names(i, name)),
+        ast::TypeKind::Record(fields) => fields.iter().any(|(_, t)| type_names(t, name)),
+        ast::TypeKind::Fn { params, ret } => params.iter().any(|p| type_names(p, name)) || type_names(ret, name),
+        ast::TypeKind::Value(e) => matches!(&e.kind, ast::ExprKind::Name(n) if n == name),
+        ast::TypeKind::Range { .. } | ast::TypeKind::NewDomain | ast::TypeKind::Error => false,
     }
 }

@@ -41,6 +41,11 @@ pub fn names() -> &'static [(Vec<ast::Name>, ast::Name)] {
     })
 }
 
+/// Words of the language over a walk (`argmax(f(v) for v in V)`) that,
+/// given a whole list or array, are the library's method of that name:
+/// `argmax(a)` is `a.argmax`. Writing the word brings the method in.
+pub const SEQUENCE_FORMS: [&str; 2] = ["argmax", "argmin"];
+
 /// The name a method of the standard library is imported under when the
 /// file declares that name itself: `find of std`. The space keeps it out
 /// of reach of what a program can write.

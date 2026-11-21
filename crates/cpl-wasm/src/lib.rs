@@ -205,26 +205,29 @@ impl Playground {
                 return errors;
             }
         };
-        let mut cpp = cpl_codegen::emit(&compiled.program, name, Some(source));
         let (mut code, mut stderr) = (0, compiled.stderr);
-        if cpp.len() > MAX_CPP_BYTES {
-            // The source in the header is for the reader; a file the judge
-            // turns away helps nobody.
-            let bytes = cpp.len();
-            cpp = cpl_codegen::emit(&compiled.program, name, None);
-            if cpp.len() > MAX_CPP_BYTES {
+        let cpp = match cpl_codegen::emit_within(&compiled.program, name, source, MAX_CPP_BYTES) {
+            Ok(fitted) => {
+                if !fitted.header {
+                    // The source in the header is for the reader; a file
+                    // the judge turns away helps nobody.
+                    stderr += &format!(
+                        "cpl: with its source in the header the C++ for `{name}` would be {} bytes, over the \
+                         {MAX_CPP_BYTES}-byte limit judges accept; the header is left out{}\n",
+                        fitted.full,
+                        if fitted.narrow { " and the lines are indented half as far" } else { "" }
+                    );
+                }
+                fitted.cpp
+            }
+            Err(bytes) => {
                 stderr += &format!(
-                    "cpl: the C++ for `{name}` is {} bytes, over the {MAX_CPP_BYTES}-byte limit judges accept\n",
-                    cpp.len()
+                    "cpl: the C++ for `{name}` is {bytes} bytes, over the {MAX_CPP_BYTES}-byte limit judges accept\n"
                 );
                 code = EXIT_ERRORS;
-            } else {
-                stderr += &format!(
-                    "cpl: with its source in the header the C++ for `{name}` would be {bytes} bytes, over the \
-                     {MAX_CPP_BYTES}-byte limit judges accept; the header is left out\n"
-                );
+                String::new()
             }
-        }
+        };
         let cpp = if code == 0 { cpp.into() } else { Value::Null };
         outcome(code, &compiled.diagnostics, source, stderr, [("cpp", cpp)])
     }

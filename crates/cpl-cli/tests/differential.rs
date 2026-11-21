@@ -34,8 +34,9 @@ const GXX_FLAGS: [&str; 6] = [
 ];
 
 /// The programs of `tests/parity`: `mut` receivers, fields and cells
-/// read by closures and helpers while a call changes them, and how often
-/// and when `sort(by:)` works out a key. They are a test of their own,
+/// read by closures and helpers while a call changes them, how often
+/// and when `sort(by:)` works out a key, `print` arguments that print,
+/// and stepped ranges at their edges. They are a test of their own,
 /// so a break in either is named as that.
 fn parity_programs() -> Vec<PathBuf> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/parity");
@@ -67,8 +68,12 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "mut_cell_receiver",
             "mut_field_after_closure",
             "mut_self_closure",
+            "print_args_first",
             "sort_key_calls",
-            "sort_key_one_traps"
+            "sort_key_one_traps",
+            "sort_key_own_list",
+            "step_at_int_max",
+            "step_not_positive"
         ]
     );
     let failures: Vec<String> = programs

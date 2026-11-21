@@ -1016,6 +1016,23 @@ impl<'p> Emitter<'p> {
     }
 
     fn binary(&mut self, e: &Expr, op: BinOp, l: &Expr, r: &Expr) -> Code {
+        // Two numbers written out whose result is past an `Int`
+        // (`Int.MAX + 1`, the end of `..=Int.MAX`): `cpl run` stops there,
+        // and so does this, instead of an overflow the compiler may use.
+        if let (Ty::Int, ExprKind::Int(a), ExprKind::Int(b)) = (&e.ty, &l.kind, &r.kind) {
+            let past = match op {
+                BinOp::Add => a.checked_add(*b).is_none(),
+                BinOp::Sub => a.checked_sub(*b).is_none(),
+                BinOp::Mul => a.checked_mul(*b).is_none(),
+                _ => false,
+            };
+            if past {
+                self.need("fail");
+                return Code::primary(
+                    "(cpl::fail(\"integer overflow: the result does not fit in an `Int` (64 bits)\"), 0LL)",
+                );
+            }
+        }
         match op {
             BinOp::And => {
                 let (a, b) = (self.expr(l), self.expr(r));
@@ -1253,12 +1270,17 @@ impl<'p> Emitter<'p> {
             // An argument of a class type makes C++ look in that class's
             // namespace too, where `std::apply` or `std::swap` would join
             // a fn of that name. The qualified name looks only here.
-            let home = if args.iter().all(|arg| matches!(arg, Arg::Value(value) if value.ty.is_scalar())) {
+            // No name of the standard library has a capital letter, so a
+            // fn with one (`conv_Int_115`, a copy made for its types) can't
+            // meet one.
+            let name = fn_name(&f.name);
+            let scalars = args.iter().all(|arg| matches!(arg, Arg::Value(value) if value.ty.is_scalar()));
+            let home = if scalars || name.bytes().any(|b| b.is_ascii_uppercase()) {
                 ""
             } else {
                 "::prog::"
             };
-            let call = format!("{home}{}({})", fn_name(&f.name), texts.join(", "));
+            let call = format!("{home}{name}({})", texts.join(", "));
             if ran.is_empty() {
                 Code::primary(call)
             } else {

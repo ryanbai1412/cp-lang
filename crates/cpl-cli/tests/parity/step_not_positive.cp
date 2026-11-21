@@ -1,0 +1,6 @@
+let z: Int = read()
+for i in (0..10) by 3: print(i)
+print([i for i in (0..10).rev by 4])
+print("before")
+for i in (0..10) by z: print(i)
+print("unreached")

@@ -467,6 +467,7 @@ impl Database {
             for ((module, name), method) in listed.chain(methods) {
                 let used = if method {
                     calls(&name.text)
+                        || (crate::prelude::SEQUENCE_FORMS.contains(&name.text.as_str()) && uses(&name.text))
                 } else {
                     uses(&name.text)
                         || crate::prelude::BUILT_ON

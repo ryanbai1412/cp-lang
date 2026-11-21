@@ -26,5 +26,43 @@ pub fn emit(program: &cpl_ir::Program, name: &str, source: Option<&str>) -> Stri
     emit::Emitter::new(&program).file(name, source)
 }
 
+/// The C++ of [`emit`] made to fit a judge's source limit.
+pub struct Fitted {
+    pub cpp: String,
+    /// How long the file is with its source in the header.
+    pub full: usize,
+    /// Whether the source is in the header: it is the first thing left out.
+    pub header: bool,
+    /// Whether each line is indented half as far: the second.
+    pub narrow: bool,
+}
+
+/// The C++17 file for `program` in at most `limit` bytes. What is for the
+/// reader gives way to what the judge accepts: first the source in the
+/// header, then half of every line's indentation. `Err` is the length of
+/// the shortest file when even that is over.
+pub fn emit_within(program: &cpl_ir::Program, name: &str, source: &str, limit: usize) -> Result<Fitted, usize> {
+    let cpp = emit(program, name, Some(source));
+    let full = cpp.len();
+    if full <= limit {
+        return Ok(Fitted { cpp, full, header: true, narrow: false });
+    }
+    let cpp = emit(program, name, None);
+    if cpp.len() <= limit {
+        return Ok(Fitted { cpp, full, header: false, narrow: false });
+    }
+    let mut narrowed = String::with_capacity(cpp.len());
+    for line in cpp.split_inclusive('\n') {
+        let code = line.trim_start_matches(' ');
+        let indent = line.len() - code.len();
+        narrowed.extend(std::iter::repeat_n(' ', indent / 2));
+        narrowed.push_str(code);
+    }
+    match narrowed.len() <= limit {
+        true => Ok(Fitted { cpp: narrowed, full, header: false, narrow: true }),
+        false => Err(narrowed.len()),
+    }
+}
+
 #[cfg(test)]
 mod tests;

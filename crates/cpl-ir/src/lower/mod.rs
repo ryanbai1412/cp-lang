@@ -478,6 +478,8 @@ struct Lowerer<'a> {
     /// passed.
     range_domains: HashMap<DomainId, i64>,
     range_domain_sites: HashMap<(ModId, u32, String), DomainId>,
+    /// Those one fn has for all its calls: a call puts the size back.
+    range_domains_shared: HashSet<DomainId>,
 
     enums: Vec<EnumDef>,
     enum_decls: Vec<(ModId, u32, &'a ast::EnumDecl)>,
@@ -580,6 +582,7 @@ impl<'a> Lowerer<'a> {
             struct_insts: HashMap::new(),
             range_domains: HashMap::new(),
             range_domain_sites: HashMap::new(),
+            range_domains_shared: HashSet::new(),
             enums: Vec::new(),
             enum_decls: Vec::new(),
             gen_enums: Vec::new(),

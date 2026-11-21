@@ -438,7 +438,7 @@ impl<'a> Lowerer<'a> {
                 };
                 if let Some(p) = param {
                     if let Some(pat_ty) = &p.ty {
-                        self.bind_range_domain(pat_ty, &arg.value, &gen_names, &mut inferred, span);
+                        self.bind_range_domain(pat_ty, &arg.value, &gen_names, &mut inferred, span, None);
                     }
                     if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
                         if let Some(pty) = self.probe_ty_silent(&arg.value) {
@@ -452,7 +452,7 @@ impl<'a> Lowerer<'a> {
         }
         for (f, arg) in decl.fields.iter().zip(args) {
             if new_params.is_none() {
-                self.bind_range_domain(&f.ty, &arg.value, &gen_names, &mut inferred, span);
+                self.bind_range_domain(&f.ty, &arg.value, &gen_names, &mut inferred, span, None);
             }
             if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
                 if let Some(pty) = self.probe_ty_silent(&arg.value) {
@@ -552,6 +552,31 @@ impl<'a> Lowerer<'a> {
         let mut lowered: Vec<Arg> = receiver.into_iter().collect();
         let mut pre_stmts: Vec<Stmt> = Vec::new();
         let mut post_stmts: Vec<Stmt> = Vec::new();
+        // A domain the fn shares between its calls stands for this call's
+        // array until it returns; then it is what it was, for a caller
+        // further out that is the same fn.
+        let mut put_back: Vec<Stmt> = Vec::new();
+        for param in &params {
+            let Ty::Array { dims, .. } = &param.ty else {
+                continue;
+            };
+            let [Dim::Pos(d)] = dims.as_slice() else {
+                continue;
+            };
+            let d = *d;
+            let known = put_back.iter().any(|s| matches!(s, Stmt::DefDomain { id, .. } if *id == d));
+            if !self.range_domains_shared.contains(&d) || known {
+                continue;
+            }
+            let (lo, len) = (self.temp(Ty::Int), self.temp(Ty::Int));
+            pre_stmts.push(Stmt::Let(lo, Some(self.mk(ExprKind::DomainLo(d), Ty::Int, span))));
+            pre_stmts.push(Stmt::Let(len, Some(self.mk(ExprKind::DomainLen(d), Ty::Int, span))));
+            put_back.push(Stmt::DefDomain {
+                id: d,
+                lo: self.local(lo, span),
+                len: self.local(len, span),
+            });
+        }
         for (at, (param, arg)) in params.iter().zip(given).enumerate() {
             match arg {
                 Some(arg) if param.mutable => {
@@ -644,6 +669,7 @@ impl<'a> Lowerer<'a> {
         if !ok {
             return self.err_expr(span);
         }
+        post_stmts.extend(put_back);
         let call_expr = self.mk(ExprKind::Call(id, lowered), ret.clone(), span);
         let call = if pre_stmts.is_empty() && post_stmts.is_empty() {
             call_expr
@@ -789,6 +815,36 @@ impl<'a> Lowerer<'a> {
                         None => values.push((self.expr(&arg.value, None), arg.value.span)),
                     }
                 }
+                // Every argument is worked out before anything is written:
+                // one that prints (`print("A", side())`) has its output
+                // ahead of this line, in both back ends. Arguments after
+                // the last call are read where they are.
+                let calls = |e: &Expr| {
+                    let mut found = false;
+                    crate::walk::deep_expr(e, &mut |inner| {
+                        found |= matches!(inner.kind, ExprKind::Call(..) | ExprKind::CallExpr(..));
+                    });
+                    found
+                };
+                let mut ahead = Vec::new();
+                if let Some(last) = values.iter().rposition(|(value, _)| calls(value)) {
+                    for (value, _) in &mut values[..=last] {
+                        let literal = matches!(
+                            value.kind,
+                            ExprKind::Int(_) | ExprKind::Float(_) | ExprKind::Bool(_) | ExprKind::Char(_) | ExprKind::Str(_)
+                        );
+                        if literal || value.ty == Ty::Unit || value.ty == Ty::Error {
+                            continue;
+                        }
+                        let slot = self.temp(value.ty.clone());
+                        let held = Expr {
+                            kind: ExprKind::Local(slot),
+                            ty: value.ty.clone(),
+                            span: value.span,
+                        };
+                        ahead.push(Stmt::Let(slot, Some(std::mem::replace(value, held))));
+                    }
+                }
                 if sep.is_some() || none_text.is_some() {
                     values = values
                         .into_iter()
@@ -813,7 +869,13 @@ impl<'a> Lowerer<'a> {
                     let line = self.mk(ExprKind::Format(pieces), Ty::Str, span);
                     values.push(FmtArg { value: line, digits });
                 }
-                self.mk(ExprKind::Print(values, end), Ty::Unit, span)
+                let print = self.mk(ExprKind::Print(values, end), Ty::Unit, span);
+                if ahead.is_empty() {
+                    return print;
+                }
+                ahead.push(Stmt::Expr(print));
+                ahead.push(Stmt::Give(self.mk(ExprKind::Unit, Ty::Unit, span)));
+                self.mk(ExprKind::Do(Block { stmts: ahead }), Ty::Unit, span)
             }
             // `debug(i, best)`: shown on a local run, and a checkpoint
             // of its trace. A string literal names the checkpoint.
@@ -2156,6 +2218,12 @@ impl<'a> Lowerer<'a> {
         let (body, clauses) = match &arg.kind {
             ast::ExprKind::Comprehension { body, clauses } => ((**body).clone(), clauses.clone()),
             _ => {
+                // `argmax(a)` of a list or an array is `a.argmax` of
+                // `std.seq`: the first index of the largest value.
+                let method = if max { "argmax" } else { "argmin" };
+                if let Some(found) = self.try_ufcs_call(method, arg, &[], span) {
+                    return found;
+                }
                 self.unsupported(span, "`argmax` / `argmin` of a sequence without a `for`");
                 self.help("name the position: `argmax(a[i] for i in D)`");
                 return self.err_expr(span);

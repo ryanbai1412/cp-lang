@@ -374,17 +374,24 @@ impl<'p> Emitter<'p> {
                             ));
                             end
                         };
-                        let advance = match &step_text {
-                            Some(step) => format!("{var} += {step}"),
-                            None => format!("{var}++"),
-                        };
                         let start = fit(lo_code.text.clone(), lo_code.narrow);
-                        self.line(
-                            out,
-                            &format!(
-                                "for ({cpp} {var} = {start}{extra}; {var} < {bound}; {advance}) {{"
-                            ),
-                        );
+                        let head = match &step_text {
+                            // By steps: the number of rounds is counted
+                            // first (a step of 0 or less stops the program,
+                            // as in `cpl run`), and the last step past the
+                            // end wraps instead of overflowing.
+                            Some(step) => {
+                                self.need("steps");
+                                let left = self.unique(&format!("{var}_left"));
+                                let wide = if cpp == "int" { "unsigned" } else { "unsigned long long" };
+                                format!(
+                                    "for ({cpp} {var} = {start}{extra}, {left} = ({cpp})cpl::steps({var}, {bound}, {step}); \
+                                     {left} > 0; {left}--, {var} = ({cpp})(({wide}){var} + ({wide})({step}))) {{"
+                                )
+                            }
+                            None => format!("for ({cpp} {var} = {start}{extra}; {var} < {bound}; {var}++) {{"),
+                        };
+                        self.line(out, &head);
                         self.loop_body(id, &first, body, out);
                     }
                     (true, None) => {
@@ -421,7 +428,8 @@ impl<'p> Emitter<'p> {
                                 extra.replace(", ", "; ll ").replacen("; ll ", ", ", 1)
                             ),
                         );
-                        self.line(out, &format!("for (ll {k} = {b} > {a} ? ({b} - {a} - 1) / {step} : -1; {k} >= 0; {k}--) {{"));
+                        self.need("steps");
+                        self.line(out, &format!("for (ll {k} = cpl::steps({a}, {b}, {step}) - 1; {k} >= 0; {k}--) {{"));
                         let mut opening = vec![format!(
                             "{cpp} {var} = {};",
                             fit(format!("{a} + {k} * {step}"), false)
@@ -895,6 +903,9 @@ impl<'p> Emitter<'p> {
                     // `let sp = sorted[b]`: a name for what is already
                     // there. A copy would cost the whole list.
                     self.line(out, &format!("const {cpp}& {name} = {text};"));
+                } else if let Some(args) = sized_ctor(&cpp, &text) {
+                    // `std::vector<ll> f((size_t)(n), 1);`: the type once.
+                    self.line(out, &format!("{cpp} {name}({args});"));
                 } else {
                     self.line(out, &format!("{cpp} {name} = {text};"));
                 }
@@ -1037,4 +1048,27 @@ impl Tail {
         });
         Tail { effects: Effects::of_block(&block), calls, opaque }
     }
+}
+
+/// The arguments of `text` when it is exactly `cpp((size_t)(..), ..)`:
+/// a container of the declared type built with a size. The size cast
+/// first means the arguments can't be read as a declaration.
+fn sized_ctor<'t>(cpp: &str, text: &'t str) -> Option<&'t str> {
+    let args = text.strip_prefix(cpp)?.strip_prefix('(')?.strip_suffix(')')?;
+    if !args.starts_with("(size_t)(") {
+        return None;
+    }
+    // The parenthesis taken off the end is the one that opened first.
+    let mut depth = 0i32;
+    for c in args.chars() {
+        match c {
+            '(' => depth += 1,
+            ')' => depth -= 1,
+            _ => {}
+        }
+        if depth < 0 {
+            return None;
+        }
+    }
+    (depth == 0 && !args.contains('"') && !args.contains('\'')).then_some(args)
 }

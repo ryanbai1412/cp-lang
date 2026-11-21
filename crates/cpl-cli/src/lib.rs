@@ -808,24 +808,27 @@ fn build_file(
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or(path);
-    let mut cpp = cpl_codegen::emit(&compiled.program, name, Some(&compiled.text));
-    if cpp.len() > MAX_CPP_BYTES {
-        // The source in the header is for the reader; a file the judge
-        // turns away helps nobody.
-        let bytes = cpp.len();
-        cpp = cpl_codegen::emit(&compiled.program, name, None);
-        if cpp.len() > MAX_CPP_BYTES {
+    let cpp = match cpl_codegen::emit_within(&compiled.program, name, &compiled.text, MAX_CPP_BYTES) {
+        Ok(fitted) => {
+            if !fitted.header {
+                // The source in the header is for the reader; a file the
+                // judge turns away helps nobody.
+                *stderr += &format!(
+                    "cpl: with its source in the header the C++ for `{path}` would be {} bytes, over the \
+                     {MAX_CPP_BYTES}-byte limit judges accept; the header is left out{}\n",
+                    fitted.full,
+                    if fitted.narrow { " and the lines are indented half as far" } else { "" }
+                );
+            }
+            fitted.cpp
+        }
+        Err(bytes) => {
             *stderr += &format!(
-                "cpl: the C++ for `{path}` is {} bytes, over the {MAX_CPP_BYTES}-byte limit judges accept\n",
-                cpp.len()
+                "cpl: the C++ for `{path}` is {bytes} bytes, over the {MAX_CPP_BYTES}-byte limit judges accept\n"
             );
             return EXIT_ERRORS;
         }
-        *stderr += &format!(
-            "cpl: with its source in the header the C++ for `{path}` would be {bytes} bytes, over the \
-             {MAX_CPP_BYTES}-byte limit judges accept; the header is left out\n"
-        );
-    }
+    };
     if out == Some("-") {
         let _ = stdout.write_all(cpp.as_bytes());
         return 0;
