@@ -458,6 +458,10 @@ is retried with other seeds, so `n` shrinks with a word of that length
 (from 1,069); of the 41 `read(gen: f)` ports newly covered, 39 give inputs
 their programs read to the end and 2 trip the port's own `assert` on the
 drawn value. The remaining `gen:` refusals are files that do not build.
+A `break`, `continue` or `return` that ends only a nested loop or fn no
+longer refuses the pass around it
+(`a_jump_that_ends_only_a_nested_loop_or_fn_keeps_the_pass_whole`, decision
+25.15): 1,182 to 1,193 of the 1,399 files on today's tree.
 **Bar.** A seeded-bug benchmark in the gate: classic bugs injected into
 correct solutions, each found and shrunk to a known minimal case, with the
 median time to a minimal counterexample at most 10 s (`GOALS` 4).

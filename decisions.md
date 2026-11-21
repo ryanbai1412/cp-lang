@@ -1694,6 +1694,12 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   refusal. The generator runs in the interpreter only: it makes inputs, and the solution
   under test still runs on both sides. Reverse: drop `Shape::Gen`, `Value::Drawn`,
   `lower_gen_read`, `Io::seeded` and the reseeding in `shrink`.
+- **25.15 A jump counts against a loop pass only when it leaves that pass.** A `break` or
+  `continue` inside a nested `for`/`while` ends only that loop, and a `return` inside a nested
+  `fn` or closure ends only that call, so the pass still makes every read of its row. A
+  labelled `break`/`continue` is taken as leaving, since telling which loop its label names
+  is not worth it for the few ports that use one. Reverse: make `Jumps` count every jump in
+  the pass again.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 

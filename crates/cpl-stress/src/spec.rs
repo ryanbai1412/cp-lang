@@ -877,9 +877,8 @@ impl Builder<'_> {
     ) -> Result<bool, SpecError> {
         let last = stmts.iter().rposition(|stmt| self.reads(stmt));
         for (at, stmt) in stmts.iter().enumerate() {
-            let mut jumps = Jumps::default();
-            cpl_syntax::visit::walk_stmt(stmt, &mut jumps);
-            if jumps.leaves || (jumps.skips && last.is_some_and(|last| at < last)) {
+            let jumps = Jumps::of(stmt);
+            if jumps.leaves() || (jumps.skips() && last.is_some_and(|last| at < last)) {
                 return Ok(false);
             }
             match &stmt.kind {
@@ -1230,20 +1229,60 @@ fn bind_names(pat: &Pattern, out: &mut HashSet<String>) {
     }
 }
 
-/// Whether a statement can end its loop early (`break`, `return`) or
-/// skip the rest of a pass (`continue`).
+/// The jumps that leave or skip the rest of one pass of a loop: a
+/// `break` or `continue` inside a nested loop only ends that loop, and a
+/// `return` inside a nested fn or closure only ends that call.
 #[derive(Default)]
 struct Jumps {
-    leaves: bool,
-    skips: bool,
+    loops: Vec<Span>,
+    calls: Vec<Span>,
+    breaks: Vec<(Span, bool)>,
+    continues: Vec<(Span, bool)>,
+    returns: Vec<Span>,
+}
+
+impl Jumps {
+    fn of(stmt: &Stmt) -> Jumps {
+        let mut jumps = Jumps::default();
+        cpl_syntax::visit::walk_stmt(stmt, &mut jumps);
+        jumps
+    }
+
+    fn within(spans: &[Span], at: Span) -> bool {
+        spans.iter().any(|s| s.start <= at.start && at.end <= s.end)
+    }
+
+    fn escapes(&self, jumps: &[(Span, bool)]) -> bool {
+        jumps
+            .iter()
+            .any(|&(at, labeled)| labeled || !Self::within(&self.loops, at))
+    }
+
+    /// A `break` or `return` that ends the loop this pass is in.
+    fn leaves(&self) -> bool {
+        self.escapes(&self.breaks) || self.returns.iter().any(|&at| !Self::within(&self.calls, at))
+    }
+
+    fn skips(&self) -> bool {
+        self.escapes(&self.continues)
+    }
 }
 
 impl cpl_syntax::visit::Visitor for Jumps {
     fn stmt(&mut self, stmt: &Stmt) {
         match &stmt.kind {
-            StmtKind::Break(_) | StmtKind::Return(_) => self.leaves = true,
-            StmtKind::Continue(_) => self.skips = true,
+            StmtKind::For { .. } | StmtKind::While { .. } => self.loops.push(stmt.span),
+            StmtKind::Fn(_) => self.calls.push(stmt.span),
+            StmtKind::Break(label) => self.breaks.push((stmt.span, label.is_some())),
+            StmtKind::Continue(label) => self.continues.push((stmt.span, label.is_some())),
+            StmtKind::Return(_) => self.returns.push(stmt.span),
             _ => {}
+        }
+    }
+
+    fn expr(&mut self, expr: &Expr) {
+        if let ExprKind::Lambda { .. } = expr.kind {
+            self.calls.push(expr.span);
         }
     }
 }

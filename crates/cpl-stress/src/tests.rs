@@ -1304,6 +1304,30 @@ fn loops_whose_reads_a_field_cannot_describe_are_refused() {
 }
 
 #[test]
+fn a_jump_that_ends_only_a_nested_loop_or_fn_keeps_the_pass_whole() {
+    let accepted = [
+        "let n: 1..=5 = read()\nfor _ in 0..n:\n    let a: 1..=9 = read()\n    var x = a\n    while true:\n        if x == 1: break\n        x -= 1\n    let b: 1..=9 = read()\n    print(x + b)\n",
+        "let n: 1..=5 = read()\nfor _ in 0..n:\n    let a: 1..=9 = read()\n    for i in 0..a:\n        if i == 2: continue\n        print(i)\n    let b: 1..=9 = read()\n    print(b)\n",
+        "let n: 1..=5 = read()\nfor _ in 0..n:\n    let a: 1..=9 = read()\n    fn f(x: Int) -> Int:\n        if x > 3: return 0\n        x\n    let b: 1..=9 = read()\n    print(f(a) + b)\n",
+    ];
+    for src in accepted {
+        let spec = InputSpec::from_source(src).unwrap_or_else(|e| panic!("{src}: {}", e.message));
+        let case = generate(&spec, &mut Rng::new(3), Size::Small(5)).unwrap();
+        let tokens = case.render().split_whitespace().count() as i128;
+        let n: i128 = case.render().split_whitespace().next().unwrap().parse().unwrap();
+        assert_eq!(tokens, 1 + 2 * n, "{src}");
+    }
+    let refused = [
+        "let n: 1..=5 = read()\nfor _ in 0..n:\n    let a: 1..=9 = read()\n    for i in 0..a:\n        if i == 2: return\n    let b: 1..=9 = read()\n",
+        "let n: 1..=5 = read()\n'outer: for _ in 0..n:\n    let a: 1..=9 = read()\n    for i in 0..a:\n        if i == 2: break 'outer\n    let b: 1..=9 = read()\n",
+    ];
+    for src in refused {
+        let err = InputSpec::from_source(src).unwrap_err();
+        assert!(err.message.contains("this loop reads"), "{src}: {}", err.message);
+    }
+}
+
+#[test]
 fn a_pass_reads_a_count_then_that_many_values() {
     let src = "let n: 1..=5 = read()
 for _ in 0..n:
