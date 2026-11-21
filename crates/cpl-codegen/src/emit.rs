@@ -1786,9 +1786,14 @@ template <class T> auto operator>=(const T& a, const T& b) -> decltype(a.cpl_tie
 fn inline_hint(def: &str, signature: &str, name: &str) -> bool {
     const MAX_LINES: usize = 16;
     let body = def.trim_start_matches('\n').split_once('\n').map_or("", |(_, b)| b);
+    let stmts = body
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && *l != "}" && *l != "} else {" && !l.starts_with("cpl::fail("))
+        .count();
     !signature.starts_with("template")
         && !signature.contains(" main(")
-        && body.lines().count() <= MAX_LINES
+        && stmts <= MAX_LINES
         && !body.contains(&format!("{name}("))
 }
 

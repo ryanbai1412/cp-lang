@@ -10,8 +10,8 @@
 //! undo the fact.
 
 use cpl_ir::{
-    Arg, BinOp, Block, Builtin, Cast, Expr, ExprKind, IntWidth, Iter, Place, PlaceKind, Program,
-    Spec, Stmt, Ty,
+    Arg, AssignOp, BinOp, Block, Builtin, Cast, Expr, ExprKind, IntWidth, Iter, Place, PlaceKind,
+    Program, Spec, Stmt, Ty,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -27,12 +27,32 @@ pub(crate) enum Sign {
     Positive,
 }
 
+#[derive(Clone, Copy)]
+enum StoreOp {
+    /// `v = rhs` (or `let v = rhs`): NonNeg if `rhs` is NonNeg/Positive.
+    Set,
+    /// `+=`, `*=`, `|=`, `^=`, `/=`, `>>=`, `max=`: preserves NonNeg if `rhs` is NonNeg/Positive.
+    KeepNonNeg,
+    /// `&=`: preserves NonNeg regardless of `rhs`.
+    BitAnd,
+    /// `%=`: Euclidean remainder is always NonNeg.
+    Rem,
+}
+
+type Store<'p> = (Option<usize>, StoreOp, &'p Expr);
+
 #[derive(Default)]
 pub(crate) struct Facts<'p> {
     /// How many times each variable is stored to, in any way.
     stores: BTreeMap<Var, u32>,
     /// The value a variable starts with, or the spec it is read with.
     init: BTreeMap<Var, &'p Expr>,
+    /// Every direct store to a local/global variable, for multi-store NonNeg proof.
+    var_stores: BTreeMap<Var, Vec<Store<'p>>>,
+    /// Variables excluded from multi-store NonNeg proof.
+    tainted: BTreeSet<Var>,
+    /// Multi-store variables proven `>= 0` across every store.
+    nonneg_vars: BTreeSet<Var>,
     /// Loop variables: the low end of the range they run over.
     loop_lo: BTreeMap<Var, &'p Expr>,
     /// Each domain's length expression, when defined once.
@@ -61,7 +81,9 @@ impl<'p> Facts<'p> {
         for (id, f) in program.fns.iter().enumerate() {
             // A parameter's value comes from each caller: unknown.
             for slot in 0..f.params.len() {
-                *facts.stores.entry((Some(id), false, slot)).or_default() += 2;
+                let v = (Some(id), false, slot);
+                *facts.stores.entry(v).or_default() += 2;
+                facts.tainted.insert(v);
             }
             facts.block(Some(id), &f.body);
         }
@@ -72,6 +94,30 @@ impl<'p> Facts<'p> {
                 }
             }
         }
+        let mut nonneg: BTreeSet<Var> = facts
+            .var_stores
+            .keys()
+            .copied()
+            .filter(|v| !facts.tainted.contains(v) && !facts.stable(*v))
+            .collect();
+        loop {
+            facts.nonneg_vars = nonneg.clone();
+            let mut changed = false;
+            nonneg.retain(|v| {
+                let ok = facts.var_stores[v].iter().all(|&(home, sop, rhs)| match sop {
+                    StoreOp::Rem | StoreOp::BitAnd => true,
+                    StoreOp::Set | StoreOp::KeepNonNeg => facts.sign(home, rhs) != Sign::Unknown,
+                });
+                if !ok {
+                    changed = true;
+                }
+                ok
+            });
+            if !changed {
+                break;
+            }
+        }
+        facts.nonneg_vars = nonneg;
         facts
     }
 
@@ -96,15 +142,38 @@ impl<'p> Facts<'p> {
                     *self.stores.entry(v).or_default() += 1;
                     if let Some(init) = init {
                         self.init.insert(v, init);
+                        self.var_stores.entry(v).or_default().push((fn_id, StoreOp::Set, init));
                         self.expr(fn_id, init);
+                    } else {
+                        self.tainted.insert(v);
                     }
                 }
-                Stmt::Assign(place, _, value) => {
+                Stmt::Assign(place, op, value) => {
                     self.store(fn_id, place);
                     if let (PlaceKind::Global(_) | PlaceKind::Local(_), Some(v)) =
                         (&place.kind, var(fn_id, &place.kind))
                     {
                         self.init.entry(v).or_insert(value);
+                        let sop = match op {
+                            AssignOp::Set => Some(StoreOp::Set),
+                            AssignOp::Max => Some(StoreOp::KeepNonNeg),
+                            AssignOp::Binary(
+                                BinOp::Add
+                                | BinOp::Mul
+                                | BinOp::BitOr
+                                | BinOp::BitXor
+                                | BinOp::Div
+                                | BinOp::Shr,
+                            ) => Some(StoreOp::KeepNonNeg),
+                            AssignOp::Binary(BinOp::BitAnd) => Some(StoreOp::BitAnd),
+                            AssignOp::Binary(BinOp::Rem) => Some(StoreOp::Rem),
+                            _ => None,
+                        };
+                        if let Some(sop) = sop {
+                            self.var_stores.entry(v).or_default().push((fn_id, sop, value));
+                        } else {
+                            self.tainted.insert(v);
+                        }
                     }
                     self.place(fn_id, place);
                     self.expr(fn_id, value);
@@ -122,6 +191,7 @@ impl<'p> Facts<'p> {
                 Stmt::For(_, slot, iter, body) => {
                     let v = (fn_id, false, *slot);
                     *self.stores.entry(v).or_default() += 1;
+                    self.tainted.insert(v);
                     match iter {
                         Iter::Range { lo, hi, step, .. } => {
                             self.loop_lo.insert(v, lo);
@@ -204,6 +274,11 @@ impl<'p> Facts<'p> {
                         Arg::Value(value) => self.expr(fn_id, value),
                         Arg::Mut(place) => {
                             self.store(fn_id, place);
+                            if let (PlaceKind::Global(_) | PlaceKind::Local(_), Some(v)) =
+                                (&place.kind, var(fn_id, &place.kind))
+                            {
+                                self.tainted.insert(v);
+                            }
                             self.place(fn_id, place);
                         }
                     }
@@ -211,6 +286,11 @@ impl<'p> Facts<'p> {
             }
             ExprKind::Mutate(_, place, args) => {
                 self.store(fn_id, place);
+                if let (PlaceKind::Global(_) | PlaceKind::Local(_), Some(v)) =
+                    (&place.kind, var(fn_id, &place.kind))
+                {
+                    self.tainted.insert(v);
+                }
                 self.place(fn_id, place);
                 for arg in args {
                     self.expr(fn_id, arg);
@@ -218,6 +298,11 @@ impl<'p> Facts<'p> {
             }
             ExprKind::Sort(place, sort_by, desc) => {
                 self.store(fn_id, place);
+                if let (PlaceKind::Global(_) | PlaceKind::Local(_), Some(v)) =
+                    (&place.kind, var(fn_id, &place.kind))
+                {
+                    self.tainted.insert(v);
+                }
                 self.place(fn_id, place);
                 if let Some(desc) = desc {
                     self.expr(fn_id, desc);
@@ -225,7 +310,9 @@ impl<'p> Facts<'p> {
                 match sort_by {
                     cpl_ir::SortBy::Natural => {}
                     cpl_ir::SortBy::Key(slot, key) => {
-                        *self.stores.entry((fn_id, false, *slot)).or_default() += 2;
+                        let v = (fn_id, false, *slot);
+                        *self.stores.entry(v).or_default() += 2;
+                        self.tainted.insert(v);
                         self.expr(fn_id, key);
                     }
                     cpl_ir::SortBy::Fn { func, .. } => self.expr(fn_id, func),
@@ -474,7 +561,11 @@ impl<'p> Facts<'p> {
                     _ => return Unknown,
                 };
                 if !self.stable(v) {
-                    return Unknown;
+                    return if self.nonneg_vars.contains(&v) {
+                        NonNeg
+                    } else {
+                        Unknown
+                    };
                 }
                 // A global is set by top-level code, a local by its own fn.
                 let home = if v.1 { None } else { fn_id };

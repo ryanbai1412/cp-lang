@@ -291,6 +291,7 @@ inline std::string read_str() { std::string r; read_str_into(r); return r; }
 // undefined and print whatever the machine left.
 inline ll ediv(ll a, ll b) {
     if (__builtin_expect(b == 0, 0)) { cpl::flush(); fputs(\"division by zero\\n\", stderr); exit(3); }
+    if (__builtin_expect(((uint64_t)a | (uint64_t)b) <= 0xFFFFFFFFULL, 1)) return (ll)((uint32_t)a / (uint32_t)b);
     ll q = a / b, r = a % b; return q - ((r >> 63) & ((b >> 63) | 1));
 }
 ",

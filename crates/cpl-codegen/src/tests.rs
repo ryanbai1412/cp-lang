@@ -1420,7 +1420,6 @@ print((Z(a) * Z(b)).v)
         "U32-narrowed Mod.v fields should prove non-negativity and avoid cpl::modp:\n{mul}"
     );
 }
-
 #[test]
 fn solve_only_globals_and_const_domain_lo_stay_internal_and_local() {
     let out = cpp(
@@ -1517,5 +1516,52 @@ print(a.len, b.len)
     assert!(
         !take_fn.contains(".resize(") && !take_fn.contains("cpl::copy("),
         "seq.take must not copy/truncate:\n{take_fn}"
+    );
+}
+
+#[test]
+fn multi_store_nonneg_var_drops_modp_and_sub_taints() {
+    let out = cpp(
+        "let n: 1..=100 = read()
+var s = 123
+var x = 10
+var acc = 0
+for _ in 0..n:
+    s = (s * 1103515245 + 12345) & 2147483647
+    x -= 1
+    acc += s % 1000 + x % 1000
+print(acc)
+",
+    );
+    let body = out.split("void solve()").nth(1).expect("solve emitted");
+    assert!(
+        body.contains("s % 1000") && body.contains("cpl::modp(x, 1000)"),
+        "bitmask-updated var should prove NonNeg while sub-updated var stays tainted:\n{body}"
+    );
+}
+
+#[test]
+fn inline_hint_ignores_braces_for_tuple_swap_helper() {
+    let out = cpp(
+        "fn gcd_ext(a: Int, b: Int) -> (Int, Int):
+    var (r0, r1, x0, x1) = (a, b, 1, 0)
+    while r1 != 0:
+        let q = r0 / r1
+        (r0, r1) = (r1, r0 - q * r1)
+        (x0, x1) = (x1, x0 - q * x1)
+    if r0 < 0: (-r0, -x0) else: (r0, x0)
+
+let (a, b): (Int, Int) = read()
+let (g, x) = gcd_ext(a, b)
+print(g, x)
+",
+    );
+    assert!(
+        out.contains("inline std::tuple<ll, ll> gcd_ext("),
+        "short tuple-destructuring helper should receive inline hint:\n{out}"
+    );
+    assert!(
+        out.contains("((uint64_t)a | (uint64_t)b) <= 0xFFFFFFFFULL"),
+        "cpl::ediv should emit 32-bit unsigned fast path:\n{out}"
     );
 }
