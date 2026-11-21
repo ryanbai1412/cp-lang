@@ -83,6 +83,9 @@ pub fn trim(self: Str) -> Str = todo
 /// O(|self|). Split `self` at every occurrence of `sep`.
 pub fn split(self: Str, sep: Char) -> List<Str> = todo
 
+/// O(|self|). Split `self` at the first occurrence of `sep` into `(before, after)`, or `none` if absent.
+pub fn split_first(self: Str, sep: Char) -> ?(Str, Str) = todo
+
 /// O(|self|). Split `self` into non-empty runs separated by ASCII whitespace.
 pub fn split_whitespace(self: Str) -> List<Str> = todo
 
@@ -1354,43 +1357,6 @@ pub struct Trie<A>:
 
     /// O(|word| * |A|). Number of words in the trie strictly smaller than `word`.
     pub fn count_less<S: Seq>(self, word: S) -> Int = todo
-
-/// O(bits) per op. Dynamic binary bitwise trie over non-negative `Int` values (default 60 bits).
-pub struct XorTrie:
-    bits: Int
-
-    /// O(1). Create an empty binary XOR trie over `bits`-bit non-negative integers (default 60).
-    pub fn new(bits: Int = 60) -> XorTrie = todo
-
-    /// O(1). Number of stored integers (with multiplicity).
-    pub @get fn len(self) -> Int = todo
-
-    /// O(1). True when the trie holds no integers.
-    pub @get fn is_empty(self) -> Bool = todo
-
-    /// O(bits). Insert one copy of `x`.
-    pub fn add(mut self, x: Int) = todo
-
-    /// O(bits). Remove one copy of `x`; returns `false` if absent.
-    pub fn remove(mut self, x: Int) -> Bool = todo
-
-    /// O(bits). Copies of `x` currently stored.
-    pub fn count(self, x: Int) -> Int = todo
-
-    /// O(bits). Maximum value of `x ^ y` over stored `y`, or `none` if empty.
-    pub fn max_xor(self, x: Int) -> ?Int = todo
-
-    /// O(bits). Minimum value of `x ^ y` over stored `y`, or `none` if empty.
-    pub fn min_xor(self, x: Int) -> ?Int = todo
-
-    /// O(bits). Count of stored `y` with `(x ^ y) < limit`.
-    pub fn count_xor_less(self, x: Int, limit: Int) -> Int = todo
-
-    /// O(bits). The `k`-th smallest value of `x ^ y` over stored `y` (0-based), or `none`.
-    pub fn kth_xor(self, x: Int, k: Int) -> ?Int = todo
-
-    /// O(1). Remove all elements.
-    pub fn clear(mut self) = todo
 
 /// O(total * |A|) build, O(1) step. Aho-Corasick multi-pattern automaton over alphabet domain `A`.
 /// Built in O(sum |p| * |A|) flat memory and time; `step`, `link`, and `hit` are O(1).
