@@ -388,7 +388,8 @@ fn lcm(a: Int, b: Int) -> Int
 fn fixed(num: Int, den: Int, k: Int) -> Str
 fn choose(n: Int, k: Int) -> Int // O(min(k, n - k))
 fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int) // O(log min(a, b))
-fn ceil_div(a: Int, b: Int) -> Int
+fn ceil_div(a: Int, b: Int) -> Int // O(1)
+fn divmod(self: Int, d: Int) -> (Int, Int) // O(1); Euclidean (self / d, self % d), 0 <= r < |d|, self == q * d + r; works as n.divmod(d) or divmod(n, d)
 struct Sieve // O(n)
     fn new(n: Int) -> Sieve
     fn is_prime(self, x: Int) -> Bool

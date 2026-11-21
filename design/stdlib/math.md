@@ -94,6 +94,7 @@ fn lcm(a: Int, b: Int) -> Int                       // O(log min(|a|, |b|)); >= 
 fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int)
                                                     // O(log min(|a|, |b|)); a*x + b*y == g >= 0
 fn ceil_div(a: Int, b: Int) -> Int                  // O(1); b != 0
+fn divmod(self: Int, d: Int) -> (Int, Int)          // O(1); Euclidean (self / d, self % d), 0 <= r < |d|, d != 0
 fn fixed(num: Int, den: Int, k: Int) -> Str         // O(k); exact integer decimal formatting
 fn choose(n: Int, k: Int) -> Int                    // O(min(k, n - k)); 0 outside 0..=n
 fn choose2(n: Int) -> Int                           // O(1); n * (n - 1) / 2, 0 for n < 2

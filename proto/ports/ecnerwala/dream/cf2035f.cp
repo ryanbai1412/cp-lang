@@ -3,6 +3,7 @@
 // the leaves (a_v plus the children's need, minus what v owns; a surplus only cancels in pairs) is 0 at
 // the root. If t works so does t + 2n, so each residue mod 2n binary-searches its number of rounds.
 @!multitest
+use std.math.{divmod}
 domain V = read(1..=2000)
 let root: V = read()
 let a: [V]0..=1e9 = read()

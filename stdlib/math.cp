@@ -52,6 +52,10 @@ pub fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int):
 /// (remainder is always non-negative), which already equals `floor(a / b)` for `b > 0`.
 pub fn ceil_div(a: Int, b: Int) -> Int = if b > 0: -((-a) / b) else: -(a / (-b))
 
+/// Euclidean quotient and remainder `(self / d, self % d)` (`0 <= r < |d|`,
+/// `self == q * d + r`; traps on `d == 0`). Works as both `n.divmod(d)` and `divmod(n, d)`. O(1).
+pub fn divmod(self: Int, d: Int) -> (Int, Int) = (self / d, self % d)
+
 /// The smallest prime factor of every number up to `n` (0 for 0 and 1), by a linear sieve.
 /// O(n) time and memory.
 pub struct Sieve:
@@ -505,6 +509,11 @@ fn division_helpers_round_the_right_way():
     for _ in 0..200:
         let (a, b) = (rand(-50, 50), rand(1, 9) * (rand(0, 1) * 2 - 1))
         assert a == b * (a / b) + a % b and 0 <= a % b < abs(b)
+        let (q, r) = a.divmod(b)
+        assert (q, r) == divmod(
+            a,
+            b,
+        ) and q == a / b and r == a % b and 0 <= r < abs(b) and q * b + r == a
 
 @test
 fn sieve_and_factorizations_agree():

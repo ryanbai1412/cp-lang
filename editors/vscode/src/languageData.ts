@@ -59,7 +59,7 @@ export const PRELUDE_VALUES: readonly string[] = [
     'ctz', 'debug', 'first', 'floor', 'flush', 'isqrt', 'laws_hold', 'len', 'max', 'min',
     'popcount', 'prefix', 'print', 'rand', 'read', 'read_output', 'round', 'shuffle', 'some',
     'sort', 'sorted', 'span', 'sqrt', 'sum', 'prod', 'swap', 'trunc', 'bfs', 'bit', 'bsearch_first',
-    'bsearch_last', 'ceil_div', 'compress', 'condense', 'deduped', 'desc', 'digits', 'dijkstra', 'distinct',
+    'bsearch_last', 'ceil_div', 'compress', 'condense', 'deduped', 'desc', 'digits', 'dijkstra', 'distinct', 'divmod',
     'ends_with', 'excl_fold', 'find', 'fixed', 'fold', 'gcd', 'get_or_insert', 'insert', 'lcm',
     'lower', 'partition', 'peel', 'remove',
     'repeat', 'resized', 'runs', 'scan', 'scc', 'starts_with', 'topo', 'upper', 'digit',
