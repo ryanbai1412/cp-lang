@@ -8,24 +8,26 @@
 // right, and the other corner of the new cell is fresh. The car stops inside
 // the n x m grid iff it stops in a cell (i, j) with i < n, j < m.
 type Z = Mod<1_000_000_007>
-type Ways = (open: Z, walled: Z, shut: Z, boxed: Z)
 
-// Distribute counts across (floor shut?, wall shut?): open edge gets fo/wo, shut gets 1.
-fn state(o: Z, s: Z, fo: Int, wo: Int) -> Ways = (o * (fo * wo), o * fo, s * wo, s)
-
-let t = read(1..=10_000)
-let q: [0..t](n: 1..=5000, m: 1..=5000) = read()
+let q: [0..read(1..=10_000)](n: 1..=5000, m: 1..=5000) = read()
 domain I = 0..max(x.n for x in q)!
 domain J = 0..max(x.m for x in q)!
 
 // ways[j]: corner choices so far that bring the car into (i, j), split by
-// which of floor and wall are shut.
+// which of floor and wall are shut. Different corners decide the floor and
+// the wall: `open` ways reach the floor's corner, which has `floor` ways to
+// keep it open, and `shut` ways arrive with it shut; the wall's corner has
+// `wall` ways to stay open. Each shut corner has one way.
+type Ways = (open: Z, walled: Z, shut: Z, boxed: Z)
+fn state(open: Z, shut: Z, floor: Int, wall: Int) -> Ways =
+    (open * floor * wall, open * floor, shut * wall, shut)
 var ways: [J]Ways = (0, 0, 0, 0)
-ways[J.first] = state(1, 1, 3, 3)
+ways[J.first] = state(1, 1, floor: 3, wall: 3)
 // A stop in (i, j) has chosen 2(i + j) + 3 corners.
-let quarter = Z(1) / 4
-let weight = [quarter ** (2 * d + 3) for d in 0..I.len + J.len]
+let weight = [(Z(1) / 4) ** (2 * d + 3) for d in 0..I.len + J.len]
+// stopped[i, j]: stops in rows ..=i and columns ..=j; column[j] its last row.
 var stopped: [I, J]Z = 0
+var column: [J]Z = 0
 for i in I:
     var side: Ways = (0, 0, 0, 0)
     var run: Z = 0
@@ -34,9 +36,10 @@ for i in I:
         let (open, walled, shut) = (w.open + side.open, w.walled + side.walled, w.shut + side.shut)
         run += (walled + shut + 4 * (w.boxed + side.boxed)) * weight[i.to_idx + j.to_idx]
         let falls = open + walled
-        ways[j] = state(falls, falls, 3, 2)
+        ways[j] = state(falls, falls, floor: 3, wall: 2)
         let slides = open + 2 * shut
-        side = state(slides, shut, 1, 3)
-        stopped[i, j] = run + (if i == I.first: 0 else: stopped[(i - 1)!, j])
+        side = state(slides, shut, floor: 1, wall: 3)
+        column[j] += run
+        stopped[i, j] = column[j]
 
-for x in q: print(Z(4) ** ((x.n + 1) * (x.m + 1)) * stopped[I(x.n - 1), J(x.m - 1)])
+for (n, m) in q: print(Z(4) ** ((n + 1) * (m + 1)) * stopped[I(n - 1), J(m - 1)])
