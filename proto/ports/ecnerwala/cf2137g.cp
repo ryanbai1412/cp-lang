@@ -14,11 +14,9 @@
 
 enum Outcome: BothCry | FirstWins | SecondWins | BothRiver
 
-fn code(o: Outcome) -> 0..4 = match o:
-    Outcome.BothCry => 0
-    Outcome.FirstWins => 1
-    Outcome.SecondWins => 2
-    Outcome.BothRiver => 3
+fn cry_wins(o: Outcome) -> Bool = match o:
+    Outcome.BothCry | Outcome.FirstWins => true
+    Outcome.SecondWins | Outcome.BothRiver => false
 
 @!multitest
 let (n, m, q): (1..=200_000, 0..=200_000, 1..=200_000) = read()
@@ -29,15 +27,15 @@ let g = Graph.directed(edges)
 let rev = g.transpose()
 
 var state: [V]Outcome = Outcome.BothCry
-var freq: [V, 0..4]Int = 0
+var freq: [V, Outcome]Int = 0
 var is_red: [V]Bool = false
 
 fn eval(v: V) -> Outcome:
     if is_red[v]: return Outcome.BothRiver
     if g.deg(v) == 0: return Outcome.BothCry
-    let has_c = freq[v, code(Outcome.BothCry)] > 0
-    let has_r = freq[v, code(Outcome.BothRiver)] > 0
-    let has_s = freq[v, code(Outcome.SecondWins)] > 0
+    let has_c = freq[v, Outcome.BothCry] > 0
+    let has_r = freq[v, Outcome.BothRiver] > 0
+    let has_s = freq[v, Outcome.SecondWins] > 0
     if has_s or (has_c and has_r): return Outcome.FirstWins
     if has_r: return Outcome.BothRiver
     if has_c: return Outcome.BothCry
@@ -45,7 +43,7 @@ fn eval(v: V) -> Outcome:
 
 for v in peel(rev):
     state[v] = eval(v)
-    for a in rev.out(v): freq[a.to, code(state[v])] += 1
+    for a in rev.out(v): freq[a.to, state[v]] += 1
 
 fn propagate(v: V):
     let old_s = state[v]
@@ -53,8 +51,8 @@ fn propagate(v: V):
     if new_s == old_s: return
     state[v] = new_s
     for a in rev.out(v):
-        freq[a.to, code(old_s)] -= 1
-        freq[a.to, code(new_s)] += 1
+        freq[a.to, old_s] -= 1
+        freq[a.to, new_s] += 1
         propagate(a.to)
 
 repeat q:
@@ -63,5 +61,4 @@ repeat q:
         is_red[v] = true
         propagate(v)
     else:
-        let cry_wins = state[v] == Outcome.BothCry or state[v] == Outcome.FirstWins
-        print(if cry_wins: "YES" else: "NO")
+        print(if cry_wins(state[v]): "YES" else: "NO")
