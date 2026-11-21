@@ -2288,6 +2288,13 @@ its `use` at the start of the item holding the name, possibly mid-file; both now
 `cpl_check::import_edit`, which joins the module's existing `use` line or goes below the last one.
 Reverse: drop the `STD_NAMES` loop in `scope_completion` and the fix rewrite in `Database`.
 
+29.30. **Rename reaches files on disk that import the name.** A contest folder holds one solution
+per problem, most of them closed, all importing the same `lib`. Renaming a library fn from one file
+left the closed ones broken. Rename now also edits each `.cp` file of the project (the folder of
+the nearest `cp.toml`, else the file's own) with a `use` line naming the old name, checked by the
+same go-to-definition test as open files. The scan reads at most 5000 entries and skips hidden
+folders, `target`, `dist` and `node_modules`. Reverse: drop `rename::project_files`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

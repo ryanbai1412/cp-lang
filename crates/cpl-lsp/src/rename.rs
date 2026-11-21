@@ -200,6 +200,54 @@ fn field_references(
     Some((target, spans))
 }
 
+/// The `.cp` files of the project holding `uri` (the folder of the nearest
+/// `cp.toml` above it, else its own folder) that import `name`, by text.
+pub fn project_files(uri: &str, name: &str) -> Vec<String> {
+    let Some(path) = crate::server::path_of_uri(uri) else {
+        return Vec::new();
+    };
+    let Some(dir) = std::path::Path::new(&path).parent() else {
+        return Vec::new();
+    };
+    let root = dir
+        .ancestors()
+        .find(|d| d.join("cp.toml").is_file())
+        .unwrap_or(dir);
+    let mut found = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    let mut budget = 5000;
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            budget -= 1;
+            if budget == 0 {
+                return found;
+            }
+            let path = entry.path();
+            let hidden = entry.file_name().to_string_lossy().starts_with('.');
+            if hidden || ["target", "node_modules", "dist"].iter().any(|d| path.ends_with(d)) {
+                continue;
+            }
+            if path.is_dir() {
+                stack.push(path);
+            } else if path.extension().is_some_and(|e| e == "cp") {
+                let Ok(text) = std::fs::read_to_string(&path) else {
+                    continue;
+                };
+                let imports = text.lines().any(|l| {
+                    l.starts_with("use ") && l.split(|c: char| !is_ident(c)).any(|w| w == name)
+                });
+                if imports {
+                    found.push(path.display().to_string());
+                }
+            }
+        }
+    }
+    found
+}
+
 #[cfg(test)]
 mod tests {
     use super::word_at;
@@ -213,3 +261,4 @@ mod tests {
         assert_eq!(word_at(text, text.rfind('Σ').unwrap() as u32 + 1), None);
     }
 }
+

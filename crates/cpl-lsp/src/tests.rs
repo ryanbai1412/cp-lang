@@ -1544,6 +1544,24 @@ fn rename_reaches_every_open_file_and_the_library_that_declares_the_name() {
     assert_eq!(lines(&reply, &a), [(0, 13), (1, 6)]);
     assert_eq!(lines(&reply, &b), [(0, 13), (1, 12), (2, 6)]);
     assert_eq!(lines(&reply, &geo), [(0, 7), (1, 31)]);
+    // A file of the project that is not open, from the declaration too.
+    std::fs::write(root.join("c.cp"), "use kit.geo.{area}\nprint(area(5, 5))\n").unwrap();
+    std::fs::write(root.join("d.cp"), "fn area() -> Int = 1\nprint(area())\n").unwrap();
+    let reply = rename(&mut server, &a, 1, 7);
+    let c = root.join("c.cp").display().to_string();
+    let c_uri = reply.at(&["result", "changes"]);
+    let Value::Object(changed) = c_uri else {
+        panic!("{reply:?}");
+    };
+    let c_key = changed
+        .iter()
+        .map(|(k, _)| k.clone())
+        .find(|k| k.ends_with("/c.cp"))
+        .unwrap_or_else(|| panic!("{c} not renamed: {reply:?}"));
+    assert_eq!(lines(&reply, &c_key), [(0, 13), (1, 6)]);
+    assert!(!changed.iter().any(|(k, _)| k.ends_with("/d.cp")), "{reply:?}");
+    std::fs::remove_file(root.join("c.cp")).unwrap();
+    std::fs::remove_file(root.join("d.cp")).unwrap();
     // From the declaration, once the library is open too: each file once.
     open_at(&mut server, &geo, lib);
     let reply = rename(&mut server, &geo, 0, 8);

@@ -388,10 +388,20 @@ impl Server {
                 let analysis = self.db.analyze(&uri).expect("references imply an analysis");
                 let name = rename::word_at(&analysis.text, offset)
                     .map_or(String::new(), |(_, w)| w.to_string());
-                // Every open file, and the declaring file when it is not open.
+                // Every open file, the declaring file, and each file of the
+                // project on disk that imports the name.
                 let mut files: Vec<String> = self.docs.keys().cloned().collect();
-                if !files.iter().any(|f| rename::same_file(f, &target.path)) {
-                    files.push(target.path.clone());
+                let on_disk = std::iter::once(target.path.clone())
+                    .chain(rename::project_files(&uri, &name));
+                for path in on_disk {
+                    if files.iter().any(|f| rename::same_file(f, &path)) {
+                        continue;
+                    }
+                    if path != target.path && self.db.file_text(&path).is_none() {
+                        let Ok(text) = std::fs::read_to_string(&path) else { continue };
+                        self.db.set_file(&path, text);
+                    }
+                    files.push(path);
                 }
                 let mut changes = Vec::new();
                 for file in files {

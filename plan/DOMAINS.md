@@ -721,7 +721,7 @@ fuzzer proves the server never dies, and a latency benchmark guards 6.1.
 **Where we are** (audited 2026-11-21). `cpl lsp` (crates/cpl-lsp) answers
 diagnostics on open and on incremental change, hover, definition (into
 `stdlib/` files too: `Fenwick` jumps to `stdlib/fenwick.cp`), references,
-rename across every open file and the user library that declares the name
+rename across every open file, the user library that declares the name and each file of the project on disk that imports it
 (the stdlib's names refused, a name already declared refused), document symbols, document highlights, folding
 (blocks, comment runs, imports), semantic tokens (each resolved name as a
 type, fn, method, field, variable or parameter, marking declarations and
@@ -761,7 +761,7 @@ total), appends the declaration's `///` doc, which in the stdlib states the
 cost, and definition on a field or method jumps to it, in the stdlib too.
 Gaps against `plan/60`: no computed cost on hover; overflow notes only on names the prover can follow (range-typed inputs and
 params and `let`s of arithmetic over them, not narrowed names, loop
-variables or `var`s); no cost warnings; rename sees open files, not the folder on disk; no refactorings; Emacs (eglot draws no lenses) and Helix
+variables or `var`s); no cost warnings; no refactorings; Emacs (eglot draws no lenses) and Helix
 run from a shell command; no DAP. Fixture tests (`crates/cpl-lsp/tests/fixtures/`: a `.cp` with `$0` cursor markers and the requests to send, checked against a readable `.expected` snapshot, `BLESS=1` to rewrite) cover hover, completion, signature help, definition, references, highlights, rename, code actions, inlay hints, folding and the outline. A fuzz test (`crates/cpl-lsp/tests/fuzz.rs`) sends every request an editor sends on 360 cut, spliced and garbled ports and fails on any internal error. The tree-sitter
 grammar (`editors/tree-sitter-cp/`) is token-level: it highlights, but gives
 no tree for folding, indents or text objects (the server folds).
