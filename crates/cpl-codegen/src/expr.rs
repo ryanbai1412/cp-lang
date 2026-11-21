@@ -1936,6 +1936,10 @@ impl<'p> Emitter<'p> {
             Builtin::SetMin => helper(self, "set_min"),
             Builtin::SetMax => helper(self, "set_max"),
             Builtin::Sorted => helper(self, "sorted"),
+            Builtin::Reach => {
+                self.need("reach");
+                Code::primary(format!("cpl::reach({}, {}, {})", text(0), text(1), text(2)))
+            }
             Builtin::Reversed => match first_ty {
                 Some(Ty::Str | Ty::StrView) => {
                     self.need("str_view");

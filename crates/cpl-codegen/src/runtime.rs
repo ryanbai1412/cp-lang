@@ -673,6 +673,33 @@ template <class T> std::vector<T> sorted(const std::set<T>& s) { return std::vec
 ",
     },
     Piece {
+        name: "reach",
+        needs: &["fail"],
+        code: "\
+template <class S> decltype(auto) reach_at(const S& s, ll i) { return s[i]; }
+inline u8 reach_at(const std::string& s, ll i) { return (u8)s[i]; }
+template <class S, class F> std::vector<ll> reach(const S& seq, F&& pred, bool cyclic) {
+    ll m = (ll)seq.size(), j = 0;
+    std::vector<ll> out(m);
+    for (ll i = 0; i < m; i++) {
+        if (j < i + 1) j = i + 1;
+#ifdef LOCAL
+        if (j > i + 1) {
+            ll a = cyclic ? (i + 1) % m : i + 1;
+            ll b = cyclic ? (j - 1) % m : j - 1;
+            if (!pred(reach_at(seq, i), reach_at(seq, a)) || (b != a && !pred(reach_at(seq, i), reach_at(seq, b))))
+                fail(\"reach: `while` predicate is not monotone (reach dropped by more than one)\");
+        }
+#endif
+        ll lim = cyclic ? i + m : m;
+        while (j < lim && pred(reach_at(seq, i), reach_at(seq, cyclic ? j % m : j))) j++;
+        out[i] = j - i - 1;
+    }
+    return out;
+}
+",
+    },
+    Piece {
         name: "reversed",
         needs: &[],
         code: "\

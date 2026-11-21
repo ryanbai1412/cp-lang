@@ -626,6 +626,8 @@ pub enum Builtin {
     LastLe,
     LastLt,
     Sorted,
+    /// Two-pointer reach: `xs.reach(while: (a, b) => ..., cyclic: Bool)`.
+    Reach,
     Reversed,
     /// O(1) slice view `(base, lo, hi)` on `Str`/`StrView` -> `StrView`.
     StrSlice,

@@ -5326,6 +5326,10 @@ impl<'a> Lowerer<'a> {
                 return self.lower_first_where(base, &test.value, span);
             }
         }
+        // `xs.reach(while: (a, b) => ..., cyclic: Bool = false)` returns `List<Int>`.
+        if name.text == "reach" && base_is_seq {
+            return self.lower_reach(base, args, span);
+        }
         // `D.sort(...)`: sort all positions of domain `D` into a `List<D>`.
         if name.text == "sort" {
             if let Some(Sym::Domain(id)) = self.sym(base) {
@@ -7639,6 +7643,85 @@ impl<'a> Lowerer<'a> {
                 out.push(Stmt::Give(lw.local(out_slot, span)));
             }
         })
+    }
+
+    fn lower_reach(&mut self, base: &ast::Expr, args: &[ast::Arg], span: Span) -> Expr {
+        let mut pred_ast: Option<&ast::Expr> = None;
+        let mut cyclic_ast: Option<&ast::Expr> = None;
+        for arg in args {
+            if arg.mutable {
+                self.error(codes::WRONG_ARG_COUNT, arg.value.span, "`reach` takes no `mut` arguments");
+                return self.err_expr(span);
+            }
+            match arg.name.as_ref().map(|n| n.text.as_str()) {
+                None | Some("while") if pred_ast.is_none() => pred_ast = Some(&arg.value),
+                Some("cyclic") if cyclic_ast.is_none() => cyclic_ast = Some(&arg.value),
+                Some(other) => {
+                    self.error(
+                        codes::UNKNOWN_ARG_NAME,
+                        arg.value.span,
+                        format!("`reach` has no `{other}:` option (expected `while:` and optional `cyclic:`)"),
+                    );
+                    return self.err_expr(span);
+                }
+                None => {
+                    self.error(codes::WRONG_ARG_COUNT, arg.value.span, "`reach` takes one `while:` predicate and optional `cyclic: Bool`");
+                    return self.err_expr(span);
+                }
+            }
+        }
+        let Some(pred_ast) = pred_ast else {
+            self.error(codes::WRONG_ARG_COUNT, span, "`reach` requires a `while: (T, T) -> Bool` predicate");
+            return self.err_expr(span);
+        };
+        let (seq_val, elem_ty) = if let Some(Sym::Domain(d)) = self.sym(base) {
+            (self.positions(d, base.span), Ty::Pos(d))
+        } else {
+            let v = self.expr(base, None);
+            if matches!(v.ty, Ty::Error) {
+                return self.err_expr(span);
+            }
+            match &v.ty {
+                Ty::List(e) | Ty::ListView(e) => {
+                    let e = (**e).clone();
+                    (v, e)
+                }
+                Ty::Array { dims, elem } if dims.len() == 1 => {
+                    let e = (**elem).clone();
+                    (v, e)
+                }
+                Ty::Str | Ty::StrView => (v, Ty::Char),
+                Ty::Range(e) => {
+                    let e = (**e).clone();
+                    let list = self.walked_list(Iter::RangeVal(v, false), e.clone(), base.span);
+                    (list, e)
+                }
+                Ty::Set(e) | Ty::HashSet(e) => {
+                    let e = (**e).clone();
+                    let list = self.mk(ExprKind::Builtin(Builtin::Sorted, vec![v]), Ty::list(e.clone()), base.span);
+                    (list, e)
+                }
+                other => {
+                    self.error(
+                        codes::TYPE_MISMATCH,
+                        base.span,
+                        format!("`reach` expects a sequence, not `{}`", self.show(other)),
+                    );
+                    return self.err_expr(span);
+                }
+            }
+        };
+        let fn_hint = Ty::Fn(vec![elem_ty.clone(), elem_ty], Box::new(Ty::Bool));
+        let pred = self.expect(pred_ast, &fn_hint);
+        let cyclic = match cyclic_ast {
+            Some(c) => self.expect(c, &Ty::Bool),
+            None => self.mk(ExprKind::Bool(false), Ty::Bool, span),
+        };
+        self.mk(
+            ExprKind::Builtin(Builtin::Reach, vec![seq_val, pred, cyclic]),
+            Ty::list(Ty::Int),
+            span,
+        )
     }
 
     fn lower_map(&mut self, base: &ast::Expr, func_ast: &ast::Expr, span: Span) -> Expr {

@@ -3832,6 +3832,73 @@ impl<'p, 'o> Interp<'p, 'o> {
                     other => other,
                 }
             }
+            Builtin::Reach => {
+                let pred = values.next().unwrap_or_default();
+                let cyclic = values.next().unwrap_or_default().bool();
+                let elems: Vec<Value> = match first {
+                    Value::List(items) => (*items).clone(),
+                    Value::ListView(view) => view.to_vec(),
+                    Value::Array(arr) => arr.to_values(),
+                    Value::Str(bytes) => bytes.iter().copied().map(Value::Char).collect(),
+                    Value::StrView(view) => view.to_vec().into_iter().map(Value::Char).collect(),
+                    _ => return trap(span, LENT),
+                };
+                let m = elems.len();
+                let mut out = Vec::with_capacity(m);
+                let mut j: usize = 0;
+                for i in 0..m {
+                    if j < i + 1 {
+                        j = i + 1;
+                    }
+                    if j > i + 1 {
+                        let a = if cyclic { (i + 1) % m } else { i + 1 };
+                        let b = if cyclic { (j - 1) % m } else { j - 1 };
+                        let saved_profiler = self.profiler.take();
+                        let check_res = (|| -> Res<bool> {
+                            let ok_a = self
+                                .call_value(
+                                    pred.clone(),
+                                    vec![elems[i].clone(), elems[a].clone()],
+                                    span,
+                                )?
+                                .bool();
+                            if !ok_a {
+                                return Ok(false);
+                            }
+                            if b != a {
+                                return Ok(self
+                                    .call_value(
+                                        pred.clone(),
+                                        vec![elems[i].clone(), elems[b].clone()],
+                                        span,
+                                    )?
+                                    .bool());
+                            }
+                            Ok(true)
+                        })();
+                        self.profiler = saved_profiler;
+                        if !check_res? {
+                            return trap(
+                                span,
+                                "reach: `while` predicate is not monotone (reach dropped by more than one)",
+                            );
+                        }
+                    }
+                    let lim = if cyclic { i + m } else { m };
+                    while j < lim {
+                        let idx = if cyclic { j % m } else { j };
+                        let ok = self
+                            .call_value(pred.clone(), vec![elems[i].clone(), elems[idx].clone()], span)?
+                            .bool();
+                        if !ok {
+                            break;
+                        }
+                        j += 1;
+                    }
+                    out.push(Value::Int((j - i - 1) as i64));
+                }
+                Value::List(Rc::new(out))
+            }
             Builtin::Reversed => match first {
                 Value::List(items) => {
                     Value::ListView(Rc::new(ListViewVal::whole(items, true)))

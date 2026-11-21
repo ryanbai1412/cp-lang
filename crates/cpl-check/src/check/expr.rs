@@ -1301,6 +1301,54 @@ impl<'a> Checker<'a> {
                         ret: Box::new(elem),
                     };
                 }
+                "reach" => {
+                    let pred_ty = Ty::Fn {
+                        params: vec![
+                            crate::Param {
+                                name: "a".into(),
+                                ty: elem.clone(),
+                                mutable: false,
+                                has_default: false,
+                                named_only: false,
+                                variadic: false,
+                                lazy: false,
+                            },
+                            crate::Param {
+                                name: "b".into(),
+                                ty: elem,
+                                mutable: false,
+                                has_default: false,
+                                named_only: false,
+                                variadic: false,
+                                lazy: false,
+                            },
+                        ],
+                        ret: Box::new(Ty::Bool),
+                    };
+                    return Ty::Fn {
+                        params: vec![
+                            crate::Param {
+                                name: "while".into(),
+                                ty: pred_ty,
+                                mutable: false,
+                                has_default: false,
+                                named_only: false,
+                                variadic: false,
+                                lazy: false,
+                            },
+                            crate::Param {
+                                name: "cyclic".into(),
+                                ty: Ty::Bool,
+                                mutable: false,
+                                has_default: true,
+                                named_only: true,
+                                variadic: false,
+                                lazy: false,
+                            },
+                        ],
+                        ret: Box::new(Ty::list(Ty::Int)),
+                    };
+                }
                 _ => {}
             }
         }

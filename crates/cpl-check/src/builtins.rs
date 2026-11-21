@@ -170,6 +170,7 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(List, "items", Get, "", "List<(Int, T)>", false, "Each element with its index: `for (i, x) in xs.items`.", "xs.items", "List<(Int, Int)>"),
     row!(List, "first_ge", Method, "x: T", "?Int", false, "In a sorted list, the index of the first element `>= x`.", "xs.first_ge(2)", "?Int"),
     row!(List, "last_le", Method, "x: T", "?Int", false, "In a sorted list, the index of the last element `<= x`.", "xs.last_le(2)", "?Int"),
+    row!(List, "reach", Method, "while: (T, T) -> Bool, cyclic: Bool = false", "List<Int>", false, "For each `i`, the largest `k` with `while(xs[i], xs[i + j])` for all `1 <= j <= k` (mod `len` and `k < len` when `cyclic`). O(n) calls when reach drops by at most 1 per step; debug builds trap otherwise.", "xs.reach(while: (a, b) => a + b <= 10)", "List<Int>"),
     row!(List, "windows", Method, "k: Int", "List<List<T>>", false, "Every run of `k` neighbouring elements.", "xs.windows(2)", "List<List<Int>>"),
 
     row!(Str, "len", Get, "", "Int", false, "How many characters.", "s.len", "Int"),
@@ -206,6 +207,7 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(Str, "find", Method, "c: Char", "?Int", false, "The index of the first character equal to `c` (or substring `p: Str`).", "s.find('e')", "?Int"),
     row!(Str, "first_ge", Method, "c: Char", "?Int", false, "In a sorted string, the index of the first character `>= c`.", "s.first_ge('e')", "?Int"),
     row!(Str, "last_le", Method, "c: Char", "?Int", false, "In a sorted string, the index of the last character `<= c`.", "s.last_le('l')", "?Int"),
+    row!(Str, "reach", Method, "while: (Char, Char) -> Bool, cyclic: Bool = false", "List<Int>", false, "For each `i`, the largest `k` with `while(s[i], s[i + j])` for all `1 <= j <= k` (mod `len` and `k < len` when `cyclic`). O(n) calls when reach drops by at most 1 per step; debug builds trap otherwise.", "s.reach(while: (a, b) => a <= b)", "List<Int>"),
     row!(Str, "windows", Method, "k: Int", "List<List<Char>>", false, "Every run of `k` neighbouring characters.", "s.windows(2)", "List<List<Char>>"),
 
     row!(Map, "len", Get, "", "Int", false, "How many keys.", "m.len", "Int"),
@@ -274,5 +276,6 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(Array, "items", Get, "", "List<(I, T)>", false, "Each cell with its index: `for (i, x) in a.items`.", "a.items", "List<(Int, Int)>"),
     row!(Array, "first_ge", Method, "x: T", "?Int", false, "In a sorted array, the index of the first cell `>= x`.", "a.first_ge(2)", "?Int"),
     row!(Array, "last_le", Method, "x: T", "?Int", false, "In a sorted array, the index of the last cell `<= x`.", "a.last_le(2)", "?Int"),
+    row!(Array, "reach", Method, "while: (T, T) -> Bool, cyclic: Bool = false", "List<Int>", false, "For each `i`, the largest `k` with `while(a[i], a[i + j])` for all `1 <= j <= k` (mod `len` and `k < len` when `cyclic`). O(n) calls when reach drops by at most 1 per step; debug builds trap otherwise.", "a.reach(while: (x, y) => x + y <= 10)", "List<Int>"),
     row!(Array, "windows", Method, "k: Int", "List<List<T>>", false, "Every run of `k` neighbouring cells.", "a.windows(2)", "List<List<Int>>"),
 ];
