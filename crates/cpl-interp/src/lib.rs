@@ -28,12 +28,53 @@ use value::{show, zero, Array, CaptureVal, Part, Step, Value};
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
+/// One active call on the stack when a program stopped.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Frame {
+    pub name: String,
+    /// The call expression that entered this frame.
+    pub call_span: Span,
+}
+
 /// A program that failed while running.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Trap {
     pub message: String,
     /// The expression or statement that failed.
     pub span: Span,
+    /// Active calls from innermost to outermost (`main` is not listed).
+    pub call_stack: Vec<Frame>,
+    /// 1-based test case number when running under `@!multitest`.
+    pub case: Option<u64>,
+}
+
+impl Trap {
+    /// Builds the runtime diagnostic with test-case and call-stack notes.
+    pub fn to_diagnostic(&self, path: &str, lines: &cpl_diag::LineIndex) -> cpl_diag::Diagnostic {
+        let mut diagnostic = cpl_diag::Diagnostic::error(
+            cpl_diag::codes::RUNTIME,
+            self.span,
+            self.message.clone(),
+        );
+        if let Some(case) = self.case {
+            diagnostic = diagnostic.with_note(format!("in test case {case}"));
+        }
+        if !self.call_stack.is_empty() {
+            let mut parts = Vec::with_capacity(self.call_stack.len() + 1);
+            let mut current_line = lines.line_of(self.span.start) + 1;
+            for frame in &self.call_stack {
+                if frame.call_span == Span::default() && frame.name.starts_with("...") {
+                    parts.push(frame.name.clone());
+                    continue;
+                }
+                parts.push(format!("{} ({path}:{current_line})", frame.name));
+                current_line = lines.line_of(frame.call_span.start) + 1;
+            }
+            parts.push(format!("top level ({path}:{current_line})"));
+            diagnostic = diagnostic.with_note(format!("call stack: {}", parts.join(" <- ")));
+        }
+        diagnostic
+    }
 }
 
 /// Calls nested deeper than this are reported as runaway recursion.
@@ -140,6 +181,8 @@ pub fn run_observed(
         trap: Some(Trap {
             message: message.into(),
             span: Span::default(),
+            call_stack: Vec::new(),
+            case: None,
         }),
         ..Observed::default()
     };
@@ -232,6 +275,8 @@ fn run_io(
         stack_top: std::ptr::addr_of!(top) as usize,
         stack_budget: limits.stack_bytes,
         frame_locals: Vec::new(),
+        call_frames: Vec::new(),
+        current_case: None,
         rng_state: 0x9e3779b97f4a7c15u64,
         tracer: trace.map(|config| Box::new(trace::Tracer::new(config, program))),
         debug_out: Vec::new(),
@@ -244,7 +289,44 @@ fn run_io(
     let result = interp.main();
     let _ = interp.sink.write_all(&interp.out);
     let _ = interp.sink.flush();
-    let trap = result.err().map(|trap| *trap);
+    let trap = result.err().map(|mut trap| {
+        if trap.call_stack.is_empty() && !interp.call_frames.is_empty() {
+            let frames = &interp.call_frames;
+            if frames.len() <= 32 {
+                trap.call_stack = frames
+                    .iter()
+                    .rev()
+                    .map(|&(name, call_span)| Frame {
+                        name: name.to_string(),
+                        call_span,
+                    })
+                    .collect();
+            } else {
+                let mut stack = Vec::with_capacity(25);
+                for &(name, call_span) in frames[frames.len() - 16..].iter().rev() {
+                    stack.push(Frame {
+                        name: name.to_string(),
+                        call_span,
+                    });
+                }
+                stack.push(Frame {
+                    name: format!("... {} frames omitted ...", frames.len() - 24),
+                    call_span: Span::default(),
+                });
+                for &(name, call_span) in frames[..8].iter().rev() {
+                    stack.push(Frame {
+                        name: name.to_string(),
+                        call_span,
+                    });
+                }
+                trap.call_stack = stack;
+            }
+        }
+        if trap.case.is_none() {
+            trap.case = interp.current_case;
+        }
+        *trap
+    });
     let recording = interp.tracer.take().map(|tracer| {
         let failed = trap.as_ref().map(|trap| (trap.message.as_str(), trap.span));
         let view = interp.view();
@@ -263,6 +345,8 @@ fn trap<T>(span: Span, message: impl Into<String>) -> Res<T> {
     Err(Box::new(Trap {
         message: message.into(),
         span,
+        call_stack: Vec::new(),
+        case: None,
     }))
 }
 
@@ -297,6 +381,10 @@ struct Interp<'p, 'o> {
     stack_budget: usize,
     /// The locals of each active fn, innermost last; `main` when empty.
     frame_locals: Vec<&'p [cpl_ir::Local]>,
+    /// Active call frames `(fn_name, call_site_span)` from outermost to innermost.
+    call_frames: Vec<(&'p str, Span)>,
+    /// Current 1-based test case number when running under `@!multitest`.
+    current_case: Option<u64>,
     /// Deterministic splitmix64 PRNG state (matches `cpl-codegen`).
     rng_state: u64,
     /// Records the trace of the run, when one was asked for.
@@ -421,6 +509,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 None => {}
             }
             case += 1;
+            self.current_case = Some(case);
             // `ask(.., limit: K)` allows `K` queries in each test case.
             self.queries = 0;
             if let Some(tracer) = &mut self.tracer {
@@ -1090,11 +1179,11 @@ impl<'p, 'o> Interp<'p, 'o> {
                 match (op, value) {
                     (UnOp::Neg, Value::Int(v)) => match v.checked_neg() {
                         Some(v) => Value::Int(v),
-                        None => return trap(span, OVERFLOW),
+                        None => return trap(span, format!("integer overflow: `-{v}` does not fit in an `Int` (64 bits)")),
                     },
                     (UnOp::Neg, Value::I128(v)) => match v.checked_neg() {
                         Some(v) => Value::I128(v),
-                        None => return trap(span, OVERFLOW_I128),
+                        None => return trap(span, format!("integer overflow: `-{v}` does not fit in an `I128` (128 bits)")),
                     },
                     (UnOp::Neg, Value::U64(v)) => Value::U64(v.wrapping_neg()),
                     (UnOp::Neg, Value::Float(v)) => Value::Float(-v),
@@ -1746,6 +1835,7 @@ impl<'p, 'o> Interp<'p, 'o> {
         self.stack.resize(base + f.locals.len(), Value::Unit);
         let saved = std::mem::replace(&mut self.base, base);
         self.frame_locals.push(&f.locals);
+        self.call_frames.push((f.name.as_str(), span));
         self.depth += 1;
         let wanted = self.tracer.as_ref().is_some_and(|tracer| tracer.wants_fn(&f.name));
         if let (true, Some(tracer)) = (wanted, &mut self.tracer) {
@@ -1772,6 +1862,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
         }
         let flow = flow?;
+        self.call_frames.pop();
         self.stack.truncate(base);
         Ok(match flow {
             Flow::Return(value) => value,
@@ -1827,6 +1918,7 @@ impl<'p, 'o> Interp<'p, 'o> {
         }
         let saved = std::mem::replace(&mut self.base, base);
         self.frame_locals.push(&def.locals);
+        self.call_frames.push(("<closure>", span));
         self.depth += 1;
         let in_closure = std::mem::replace(&mut self.in_closure, true);
         let flow = self.block(&def.body);
@@ -1835,6 +1927,7 @@ impl<'p, 'o> Interp<'p, 'o> {
         self.frame_locals.pop();
         self.base = saved;
         let flow = flow?;
+        self.call_frames.pop();
         let back = lent.iter().map(|i| std::mem::take(&mut self.stack[base + def.params[*i]])).collect();
         self.stack.truncate(base);
         let value = match flow {
@@ -2108,12 +2201,14 @@ impl<'p, 'o> Interp<'p, 'o> {
         self.stack.resize(base + f.locals.len(), Value::Unit);
         let saved = std::mem::replace(&mut self.base, base);
         self.frame_locals.push(&f.locals);
+        self.call_frames.push((f.name.as_str(), span));
         self.depth += 1;
         let flow = self.block(&f.body);
         self.depth -= 1;
         self.frame_locals.pop();
         self.base = saved;
         let flow = flow?;
+        self.call_frames.pop();
         self.stack.truncate(base);
         Ok(match flow {
             Flow::Return(value) => value,
@@ -2160,11 +2255,11 @@ impl<'p, 'o> Interp<'p, 'o> {
             Builtin::Abs => match first {
                 Value::Int(v) => match v.checked_abs() {
                     Some(v) => Value::Int(v),
-                    None => return trap(span, OVERFLOW),
+                    None => return trap(span, format!("integer overflow: `abs({v})` does not fit in an `Int` (64 bits)")),
                 },
                 Value::I128(v) => match v.checked_abs() {
                     Some(v) => Value::I128(v),
-                    None => return trap(span, OVERFLOW_I128),
+                    None => return trap(span, format!("integer overflow: `abs({v})` does not fit in an `I128` (128 bits)")),
                 },
                 Value::Float(v) => Value::Float(v.abs()),
                 other => other,
@@ -2762,6 +2857,8 @@ impl<'p, 'o> Interp<'p, 'o> {
             Box::new(Trap {
                 message: error.message,
                 span,
+                call_stack: Vec::new(),
+                case: None,
             })
         };
         Ok(match spec {
@@ -2852,9 +2949,26 @@ fn bits64(value: &Value) -> u64 {
     }
 }
 
-const OVERFLOW: &str = "integer overflow: the result does not fit in an `Int` (64 bits)";
-const OVERFLOW_I128: &str = "integer overflow: the result does not fit in an `I128` (128 bits)";
 const LENT: &str = "this variable is being changed by a call that has not returned yet";
+
+fn binop_sym(op: BinOp) -> &'static str {
+    match op {
+        BinOp::Add => "+",
+        BinOp::Sub => "-",
+        BinOp::Mul => "*",
+        BinOp::Div => "/",
+        BinOp::Rem => "%",
+        BinOp::Pow => "**",
+        BinOp::BitAnd => "&",
+        BinOp::BitOr => "|",
+        BinOp::BitXor => "^",
+        BinOp::Shl => "<<",
+        BinOp::Shr => ">>",
+        BinOp::And => "and",
+        BinOp::Or => "or",
+        BinOp::Coalesce => "??",
+    }
+}
 
 /// A domain for a message: `1..=5`, or that it is empty.
 fn describe(lo: i64, len: i64) -> String {
@@ -2919,7 +3033,9 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 BinOp::Mul => a.checked_mul(b),
                 // Euclidean: the remainder is never negative, whatever the
                 // signs, and the quotient is the one that goes with it.
-                BinOp::Div | BinOp::Rem if b == 0 => return trap(span, "division by zero"),
+                BinOp::Div | BinOp::Rem if b == 0 => {
+                    return trap(span, format!("division by zero: `{a} {} 0`", binop_sym(op)))
+                }
                 BinOp::Div => a.checked_div_euclid(b),
                 BinOp::Rem => a.checked_rem_euclid(b),
                 BinOp::Pow => match u32::try_from(b) {
@@ -2953,7 +3069,15 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
             };
             match result {
                 Some(value) => Value::Int(value),
-                None => return trap(span, OVERFLOW),
+                None => {
+                    return trap(
+                        span,
+                        format!(
+                            "integer overflow: `{a} {} {b}` does not fit in an `Int` (64 bits)",
+                            binop_sym(op)
+                        ),
+                    )
+                }
             }
         }
         (Value::I128(a), Value::I128(b)) => {
@@ -2961,7 +3085,9 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 BinOp::Add => a.checked_add(b),
                 BinOp::Sub => a.checked_sub(b),
                 BinOp::Mul => a.checked_mul(b),
-                BinOp::Div | BinOp::Rem if b == 0 => return trap(span, "division by zero"),
+                BinOp::Div | BinOp::Rem if b == 0 => {
+                    return trap(span, format!("division by zero: `{a} {} 0`", binop_sym(op)))
+                }
                 BinOp::Div => a.checked_div_euclid(b),
                 BinOp::Rem => a.checked_rem_euclid(b),
                 BinOp::Pow => match u32::try_from(b) {
@@ -2982,7 +3108,15 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
             };
             match result {
                 Some(value) => Value::I128(value),
-                None => return trap(span, OVERFLOW_I128),
+                None => {
+                    return trap(
+                        span,
+                        format!(
+                            "integer overflow: `{a} {} {b}` does not fit in an `I128` (128 bits)",
+                            binop_sym(op)
+                        ),
+                    )
+                }
             }
         }
         (Value::I128(a), Value::Int(b)) => {
@@ -2993,7 +3127,12 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 BinOp::Shl if a < 0 => return trap(span, format!("`<<` of the negative number {a}")),
                 BinOp::Shl => match Some(a << b).filter(|shifted| *shifted >= 0 && shifted >> b == a) {
                     Some(value) => Value::I128(value),
-                    None => return trap(span, OVERFLOW_I128),
+                    None => {
+                        return trap(
+                            span,
+                            format!("integer overflow: `{a} << {b}` does not fit in an `I128` (128 bits)"),
+                        )
+                    }
                 },
                 _ => Value::I128(a >> b),
             }
@@ -3003,7 +3142,9 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
             BinOp::Add => a.wrapping_add(b),
             BinOp::Sub => a.wrapping_sub(b),
             BinOp::Mul => a.wrapping_mul(b),
-            BinOp::Div | BinOp::Rem if b == 0 => return trap(span, "division by zero"),
+            BinOp::Div | BinOp::Rem if b == 0 => {
+                return trap(span, format!("division by zero: `{a} {} 0`", binop_sym(op)))
+            }
             BinOp::Div => a / b,
             BinOp::Rem => a % b,
             BinOp::Pow => {

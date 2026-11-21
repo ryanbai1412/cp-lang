@@ -494,8 +494,7 @@ fn check_output(path: &str, input: &str, output: &str, stderr: &mut String) -> u
 
 fn render_trap(path: &str, text: &str, trap: &cpl_interp::Trap) -> String {
     let lines = cpl_diag::LineIndex::new(text);
-    let diagnostic =
-        cpl_diag::Diagnostic::error(cpl_diag::codes::RUNTIME, trap.span, trap.message.clone());
+    let diagnostic = trap.to_diagnostic(path, &lines);
     cpl_diag::render(&diagnostic, path, text, &lines)
 }
 

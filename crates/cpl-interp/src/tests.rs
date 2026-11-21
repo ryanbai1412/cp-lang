@@ -69,20 +69,19 @@ fn indices_outside_their_container_stop_the_program() {
 fn arithmetic_that_has_no_answer_stops_the_program() {
     assert_eq!(
         failure("let a: Int = read()\nprint(10 / a)\n", "0"),
-        "division by zero @ 10 / a"
+        "division by zero: `10 / 0` @ 10 / a"
     );
     assert_eq!(
         failure("let a: Int = read()\nprint(10 % a)\n", "0"),
-        "division by zero @ 10 % a"
+        "division by zero: `10 % 0` @ 10 % a"
     );
-    let overflow = "integer overflow: the result does not fit in an `Int` (64 bits)";
     assert_eq!(
         failure("let a: Int = read()\nprint(a * a)\n", "4000000000"),
-        format!("{overflow} @ a * a")
+        "integer overflow: `4000000000 * 4000000000` does not fit in an `Int` (64 bits) @ a * a"
     );
     assert_eq!(
         failure("let a: Int = read()\nprint(a + a)\n", "9000000000000000000"),
-        format!("{overflow} @ a + a")
+        "integer overflow: `9000000000000000000 + 9000000000000000000` does not fit in an `Int` (64 bits) @ a + a"
     );
 }
 

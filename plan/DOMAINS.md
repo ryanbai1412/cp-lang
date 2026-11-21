@@ -152,24 +152,23 @@ interpreter fast enough to run full-size tests (within 10x of C++).
 `cpl run --trace` writes a self-contained HTML trace (`tools/trace/index.html`,
 37 Node unit tests, not yet browser-tested) and `cpl stress --trace` aligns
 solution vs `@brute` on `print`/`debug` checkpoints. Gaps against `plan/50`:
-(1) `Trap` carries only `{message, span}` — no call stack, no multitest case
-number, several traps omit offending values (e.g. overflow, division by zero),
-and there are no golden message tests for runtime errors; (2) trace filtering
-only supports a single `--trace FN` — missing multi-fn/glob/exclusion,
-`--test N`, `--watch VAR`, `--last N`, `--depth N`, and `Bound(d)` cuts are
-not shifted to domain base in traces; (3) no step debugger / DAP server or VS
-Code debugger wiring; (4) interpreter speed on compute-heavy ports is 46x–323x
-slower than C++ `-O2` (measured on `dph` 46.2x, `dpl` 65.5x, `dpk` 147.4x,
-`dpm` 322.9x); (5) no stage snapshots (`--stage`) or interactive exchange trace.
+(1) `Trap` now carries call stacks (summarized past 32 frames), multitest case
+number, and concrete values on arithmetic/bounds/domain/input traps (golden
+tests in `crates/cpl-cli/tests/runtime_errors.rs`); (2) trace filtering only
+supports a single `--trace FN` — missing multi-fn/glob/exclusion, `--test N`,
+`--watch VAR`, `--last N`, `--depth N`, and `Bound(d)` cuts are not shifted to
+domain base in traces; (3) no step debugger / DAP server or VS Code debugger
+wiring; (4) interpreter speed on compute-heavy ports is 46x–323x slower than
+C++ `-O2` (measured on `dph` 46.2x, `dpl` 65.5x, `dpk` 147.4x, `dpm` 322.9x);
+(5) no stage snapshots (`--stage`) or interactive exchange trace.
 **Bar.** Every runtime error class has a golden message with values and call
 path; trace filtering and index-space views tested end to end; DAP step
 debugger wired into VS Code and tested over stdio; interpreter within 30x of
 C++ `-O2` on ports.
-**Next.** (1) Call stacks, values, and golden tests for every runtime error
-class; (2) profile and optimize interpreter hot paths toward <= 30x of C++;
-(3) trace filtering (`--trace` globs/exclusions, `--test`, `--watch`, `--last`,
-`--depth`) and index-space cut/domain fixes; (4) DAP step debugger (`cpl dap`)
-with time-travel + VS Code integration; (5) browser test for trace viewer and
+**Next.** (1) Profile and optimize interpreter hot paths toward <= 30x of C++;
+(2) trace filtering (`--trace` globs/exclusions, `--test`, `--watch`, `--last`,
+`--depth`) and index-space cut/domain fixes; (3) DAP step debugger (`cpl dap`)
+with time-travel + VS Code integration; (4) browser test for trace viewer and
 stage snapshots.
 
 ## 7. Stress testing and shrinking (`plan/50` 3, `plan/40` 7b)

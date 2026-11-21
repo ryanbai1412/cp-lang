@@ -19,7 +19,7 @@
 pub mod abi;
 
 use cpl_check::{Database, DeclKind};
-use cpl_diag::{codes, Diagnostic, LineCol, LineIndex, Severity, Span};
+use cpl_diag::{Diagnostic, LineCol, LineIndex, Severity, Span};
 use cpl_lsp::json::{self, obj, Value};
 
 /// Name of this crate.
@@ -123,9 +123,9 @@ impl Playground {
             Ok(mut compiled) => {
                 let mut code = 0;
                 if let Err(trap) = interpret(&compiled.program, input, &mut stdout, depth) {
-                    let failure = Diagnostic::error(codes::RUNTIME, trap.span, trap.message);
-                    compiled.stderr +=
-                        &cpl_diag::render(&failure, name, source, &LineIndex::new(source));
+                    let lines = LineIndex::new(source);
+                    let failure = trap.to_diagnostic(name, &lines);
+                    compiled.stderr += &cpl_diag::render(&failure, name, source, &lines);
                     compiled.diagnostics.push(failure);
                     code = EXIT_FAILED;
                 }
@@ -155,9 +155,9 @@ impl Playground {
                 let observed = observe(&compiled.program, input, &mut stdout, depth, config());
                 let mut code = 0;
                 if let Some(trap) = observed.trap {
-                    let failure = Diagnostic::error(codes::RUNTIME, trap.span, trap.message);
-                    compiled.stderr +=
-                        &cpl_diag::render(&failure, name, source, &LineIndex::new(source));
+                    let lines = LineIndex::new(source);
+                    let failure = trap.to_diagnostic(name, &lines);
+                    compiled.stderr += &cpl_diag::render(&failure, name, source, &lines);
                     compiled.diagnostics.push(failure);
                     code = EXIT_FAILED;
                 }

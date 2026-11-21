@@ -1247,6 +1247,7 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   `let (s, k): ([domain Pos]Char, Int) = read()`, used to read no values; it is now a compile error. A
   `match` on an enum without fields needs an arm for every variant.
 
+<<<<<<< HEAD
 ## 22. Core syntax to 0.3 (2026-11-21)
 
 - **22.1 `where` is the 0.3 guard keyword alongside `if` for loops and `let` conditions.**
@@ -1354,3 +1355,16 @@ come first. Reverse: move a module back and leave a re-export.
 26.6. **The design names every public name, by test**
 (`the_stdlib_design_names_every_public_name`), so the doc cannot drift
 silently. Reverse: delete the test.
+
+## 27. Interpreter, debugger and traces
+
+27.1. **Runtime traps carry call stacks, multitest case numbers, and concrete values.**
+`cpl_interp::Trap` records `call_stack: Vec<Frame>` (summarized when deeper than 32 frames to avoid
+allocating on runaway recursion) and `case: Option<u64>`, populated on the error path from a
+zero-allocation `(&str, Span)` frame stack in `Interp`. Division/remainder by zero and integer
+overflow include the concrete operands. `Trap::to_diagnostic` is shared by `cpl-cli` and `cpl-wasm`
+so native and WASM diagnostics stay identical. Reason: `plan/50-debugging.md` §5 requires runtime
+errors to explain what happened in one screen with values, call path, and test case without slowing
+normal execution. Reverse: remove `call_stack`/`case` from `Trap`, `call_frames`/`current_case` from
+`Interp`, and `Trap::to_diagnostic`.
+
