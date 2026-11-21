@@ -16,6 +16,8 @@
 // max-plus convolution `max_plus_cap` over `Deg = 0..=2`. When the final vertex
 // reaches degree 0, `vert[cur][Deg(2)]` is the answer.
 
+use std.graph.UndirectedMap
+
 domain Deg = 0..=2
 type Edge = [Deg, Deg]Int
 type Vert = [Deg]Int
@@ -35,15 +37,15 @@ fn parallel(a: Edge, b: Edge) -> Edge:
     for au in Deg:
         for bu in Deg if au.ord + bu.ord <= 2:
             let du = Deg(au.ord + bu.ord)
-            let row = max_plus_cap(a[au], b[bu])
+            let row = max_plus_cap(a.row(au), b.row(bu))
             for dv in Deg: res[du, dv] max= row[dv]
     res
 
 fn series(a: Edge, mid: Vert, b: Edge) -> Edge =
-    [Deg, Deg] (au, bv) => max_plus_cap(max_plus_cap(a[au], mid), b.col(bv))[Deg(2)]
+    [Deg, Deg] (au, bv) => max_plus_cap(max_plus_cap(a.row(au), mid), b.col(bv))[Deg(2)]
 
 fn absorb_leaf(host: Vert, e: Edge, leaf: Vert) -> Vert:
-    let best_by_host_deg: Vert = [Deg] eh => max_plus_cap(e[eh], leaf)[Deg(2)]
+    let best_by_host_deg: Vert = [Deg] eh => max_plus_cap(e.row(eh), leaf)[Deg(2)]
     max_plus_cap(host, best_by_host_deg)
 
 @!multitest
@@ -52,7 +54,7 @@ let m: 0..=600_000 = read()
 domain V = 1..=n
 
 // Undirected edge table: keyed by unordered {u, v}, automatically orienting Edge.
-var edges: UndirectedMap<V, Edge> = UndirectedMap()
+var edges: UndirectedMap<V, Edge> = UndirectedMap(flip: e => e.transposed)
 var adj: [V]Set<V> = Set<V>()
 var vert: [V]Vert = 0
 
