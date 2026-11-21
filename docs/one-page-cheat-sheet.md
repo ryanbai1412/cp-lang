@@ -134,7 +134,7 @@ Use `use lib.module.{Name}` for a pinned local library; `pub` exports a declarat
 ```cp
 let s = "123ab"
 let ch = s[0]                       // Char, one ASCII byte
-print(ch - '0', s[1..3])            // O(1) indexing; slicing copies
+print(ch - '0', s[1..3])            // O(1) indexing and lent slice (use .to_str() to own/return/+=)
 var out = ""
 out.push('a')
 for _ in 0..3: out += "bc"
@@ -182,7 +182,7 @@ print(z, one, Z.P)                  // 4 1 7; numeric type parameter access
 
 - Binary search returns `?I`; no hit is `none`. Floating ranges take `steps: 80`.
 - Sorted sequence `.first_ge`/`.last_le` return indices; sets return keys; maps return pairs.
-- `Mod<P>` supports `+ - * / **`, `.inv`, `.try_inv`, `.raw` (returns `Int`, not `.val`); `P` can be constant, runtime-frozen or above 2^31.
+- `Mod<P>` supports `+ - * / **`, `.inv`, `.try_inv`, `.v` (`Int` in `0..P`, not `.val`/`.raw`); `P` can be constant, runtime-frozen or above 2^31.
 - `Comb<Z>()`: `.fact`, `.inv_fact`, `.choose`, `.arrange`; number theory: `gcd`, `lcm`, `ceil_div`, `Sieve`.
 - Randomness: `rand(lo, hi)`, `shuffle(mut xs)`, seeded `Rng.new(seed).int(lo, hi)` (`use std.rand.{Rng}`); geometry: `Pt`.
 

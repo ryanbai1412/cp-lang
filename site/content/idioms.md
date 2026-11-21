@@ -143,12 +143,18 @@ print(dsu.same(V(1), V(3)), dsu.same(V(1), V(4)), bit.prefix(V(3).after))
 | --- | --- |
 | Read `n` and 1-based array | `let n: 1..=2e5 = read()`, `domain V = 1..=n`, `let a: [V]Int = read()` (use structural `[0..n]Int` or `[0..=n]Int` when indexing by raw integer arithmetic `n - k + t`) |
 | Array bounds `[0..n]` vs `[0..=n]` | `[0..n]T` has length `n` (indices `0..n-1`); `[0..=n]T` has length `n + 1` (indices `0..n`, use whenever `n` is a valid DP state); `a.sorted()` always returns 0-indexed `List<T>` (`0..n`) |
-| Multi-line closures & lambdas | `x => expr` is single-line expression only; for multi-statement predicates or builders, define a local `fn ok(x: Int) -> Bool:` and pass `ok` |
-| Modular integer raw value | `z.raw` returns `Int` (not `z.val`); power is `z ** e` (not `.pow`); inverse is `z.inv` (no parens) |
+| Multi-line expressions, `let`, & `match` | Never break a line after `=`, `=>`, `and`, `or`, or `+` outside `(...)` (`E0102`); `x => expr` and `pat => expr` are single-line value expressions only (no `continue`/`break` in `match =>`; use a local `fn` or `if`/`elif`) |
+| `mut` parameters vs local copy | `fn f(mut x: T)` requires `f(mut arg)` at every call site (`E0402`); to reassign a scalar locally, take `x: Int` and bind `var cur = x` inside `f` |
+| Character range test | Write `'a' <= c and c <= 'z'` (never `c in 'a'..='z'`; ranges are `Int`-only) |
+| Map lookup & lazy-insert | `m[k]` traps on read if `k` is absent (`R0001`); use `m.get(k) -> ?V` to test/read safely, `m[k] += 1` to auto-insert from identity, or parenthesized `(m[k] ??= Set()).add(y)` (never `let ys = m[k] ??= Set()`) |
+| Printing `[D]Char` | `print(chars)` prints a `[D]Char` array as a contiguous string (`abc`); pass `print(chars, sep: " ")` when space-separated characters (`a b c`) are required |
+| 2D arrays | Write `[R, C]T` (one pair of brackets) and index `g[r, c]`, never `[R][C]T` with `g[r, c]` (`E0305`) |
+| String slices (`s[l..r]`) | `s[l..r]` is an O(1) lent view; call `s[l..r].to_str()` when returning it from a `fn` or appending with `out += s[..k].to_str()` |
+| Modular integer raw value | `z.v` returns `Int` in `0..P` (not `.val` or `.raw`); `print(z)` prints directly; power is `z ** e`; inverse is `z.inv` (no parens) |
 | Read unknown-length line or string | `let s: Str = read()` (ASCII bytes: `s[i]` is `Char`, `s[i] - 'a'` is `Int`) |
 | Convert integer `n` to string | `"{n}"` (or `std.math.digits(n)` for base-10 digits) |
 | Print space-separated values | `print(a, b)` or `print(x, end: " ")` |
-| Print `YES` / `NO` | `print(if ok: "YES" else: "NO")` (colons, never `then` or Python `a if c else b`) |
+| Print `YES` / `NO` or `Yes` / `No` | `print(ok)` prints `YES`/`NO`; for AtCoder `Yes`/`No`, write `print(if ok: "Yes" else: "No")` (colons, never `then` or Python `a if c else b`) |
 | Clear array between test cases | `a.fill(0)` or `seen.fill(none)` (or `Marks<D>` for `O(1)` clear) |
 | Swap two variables or elements | `swap(mut a, mut b)` for variables; `arr.swap(i, j)` for two array elements (never `swap(mut arr[i], mut arr[j])`); every `mut` parameter also requires `mut` at the call site (`f(mut x)`) |
 | Adjacent pairs in a list | `for (a, b) in xs.pairs:` |

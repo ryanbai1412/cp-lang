@@ -4,7 +4,7 @@
 
 ## Value-semantic, `0..len`-indexed `Str`
 
-In CP Lang 0.2.2, default `Str` is a flat `0..s.len`-indexed ASCII byte sequence with O(1) indexing and value semantics. Slicing currently materializes a new string rather than a constant-time view:
+In CP Lang, `Str` is a flat `0..s.len`-indexed ASCII byte sequence with O(1) indexing and O(1) lent slices (`s[l..r]` borrows from `s` for the current block; call `s[l..r].to_str()` when returning a slice from a function or appending it with `t += s[..k].to_str()`):
 
 ```cp CP Lang 0.2.2
 let s: Str = read()
@@ -27,11 +27,12 @@ Because `Str` has value semantics, `var t = s` moves or copies cleanly without h
 
 The current toolchain supports these operations directly:
 
-- Indexing and slices: `s[i]`, `s[l..r]`, `s[..k]`, `s[k..]`, `s.len`, `s.is_empty`.
-- Numbers to strings: use string interpolation `let s = "{n}"` (there is no `.to_str()` method); use `std.math.digits(n)` for base-10 digits.
+- Indexing and slices: `s[i]`, `s[l..r]`, `s[..k]`, `s[k..]`, `s.len`, `s.is_empty`. Slices are lent views: call `s[l..r].to_str()` to materialize an owned `Str` for returning from a function or appending (`out += s[..k].to_str()`).
+- Numbers to strings: use string interpolation `let s = "{n}"` (integers have no `.to_str()` method); use `std.math.digits(n)` for base-10 digits.
 - Building: `var out = ""`, `out.push(c)`, and `out += t`. String repetition with `*` is not yet implemented; append in a loop.
 - Prefix matching: guard the length, then compare `s[..prefix.len] == prefix`. For input, `read()` parses whitespace-delimited typed tokens.
-- Character arithmetic: `c - '0'`, `c - 'a'`, `'A' + (c - 'a')`, and character ranges `'a'..='z'`.
+- Character arithmetic & tests: `c - '0'`, `c - 'a'`, `'A' + (c - 'a')`; test ranges with `'a' <= c and c <= 'z'` (`..=` ranges are `Int`-only, not `Char`).
+- Nominal character domains: `let s: [domain S]Char = read()` introduces `S` (`let`, not `var`); for a mutable character array, read `let raw: Str = read()`, declare `domain S = 0..raw.len`, and copy into `var s: [S]Char = [S] i => raw[i.to_idx]`.
 
 ## Opt-in nominal character domains
 

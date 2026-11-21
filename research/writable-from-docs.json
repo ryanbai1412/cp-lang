@@ -1,17 +1,17 @@
 {
   "manifest": "research/writable-from-docs-set.json",
   "model": "gpt-5.4",
-  "min_compile_rate": 0.8227,
-  "min_pass_rate": 0.4773,
+  "min_compile_rate": 0.8955,
+  "min_pass_rate": 0.8227,
   "latest": {
     "date": "2026-11-21",
     "model": "gpt-5.4",
     "total": 55,
-    "compiled": 48,
-    "built": 48,
-    "passed": 29,
-    "compile_rate": 0.8727,
-    "pass_rate": 0.5273
+    "compiled": 52,
+    "built": 52,
+    "passed": 48,
+    "compile_rate": 0.9455,
+    "pass_rate": 0.8727
   },
   "history": [
     {
@@ -90,6 +90,39 @@
       "compile_rate": 0.8727,
       "pass_rate": 0.5273,
       "round": "round-6-after-r5-docs-fixes"
+    },
+    {
+      "date": "2026-11-21",
+      "model": "gpt-5.4",
+      "total": 55,
+      "compiled": 44,
+      "built": 44,
+      "passed": 25,
+      "compile_rate": 0.8000,
+      "pass_rate": 0.4545,
+      "round": "round-7-canonical-spellings-audit"
+    },
+    {
+      "date": "2026-11-21",
+      "model": "gpt-5.4",
+      "total": 55,
+      "compiled": 44,
+      "built": 44,
+      "passed": 43,
+      "compile_rate": 0.8000,
+      "pass_rate": 0.7818,
+      "round": "round-8-mod-v-lent-slices-and-reasoning-medium"
+    },
+    {
+      "date": "2026-11-21",
+      "model": "gpt-5.4",
+      "total": 55,
+      "compiled": 52,
+      "built": 52,
+      "passed": 48,
+      "compile_rate": 0.9455,
+      "pass_rate": 0.8727,
+      "round": "round-9-char-ranges-multiline-parens-and-300s-timeout"
     }
   ]
 }

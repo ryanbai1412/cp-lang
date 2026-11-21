@@ -3133,6 +3133,7 @@ time in `totals.gate_fast` and lists it under `warnings`, not
 `regressions`. Test: `test_dream_scores_and_gate_fast_ratchets`. Reverse by
 restoring the `fail` in `check.sh` and appending to `regressions` in
 `diff_against_baseline`.
+
 ## 78. `Paths` keeps one witness array, `back` (2026-11-21)
 
 1. **`Paths<V, W, A>` stores `back: [V]?(from: V, via: A)` in place of separate `parent: [V]?V` and `via: [V]?A`.**
@@ -3179,3 +3180,13 @@ alias such a global by reference bind `const auto&`. Test:
 `global_stored_once_with_a_literal_is_constexpr`. Reverse by deleting
 `Emitter::const_global` and the `const_globals` checks in `stmt.rs` and
 `expr.rs`.
+
+## 83. Canonical-spelling docs gate and reasoning-enabled writable-from-docs harness (2026-11-21)
+
+1. **Enforce accepted CP Lang spellings in `site/check_docs.py` (`check_canonical_spellings`).**
+   - Rejects legacy `where` loop/comprehension filters, parenthesized getters (`.len()`, `.is_empty()`, `.inv()`, `.rev()`, `.first()`, `.last()`, `.bounds()`), legacy multitest dividers (`--- multitest ---`, `@multitest`), `.preorder`/`.postorder`, `.pow(...)` on numbers/`Mod<P>`, and `cpl lint` spelling rules `L0509`–`L0512` across all docs, site examples, and course JSON.
+   - **Reason:** Prevents documentation examples from drifting back to deprecated spellings after Decisions 53–70 and ensures models/readers learn only canonical syntax.
+   - **Reverse:** Remove `check_canonical_spellings()` from `site/check_docs.py`.
+2. **Use `reasoning_effort="medium"` (overrideable via `WFD_REASONING_EFFORT`), `max_completion_tokens=16384`, and `300s` HTTP timeout for `gpt-5*`/`o3`/`o4` in `scripts/writable-from-docs.py`.**
+   - **Reason:** With default `reasoning_effort="none"`, `gpt-5.4` produced ~18 algorithmic WAs on Div2 C–E / ARC B problems that masked real CP Lang documentation gaps. Enabling medium reasoning surfaced genuine doc gaps (`Mod<P>.v`, lent `Str` slices, `Int`-only ranges, parenthesized multi-line expressions and `??=`, `mut` parameter semantics, `[D]Char` `sep: " "`, `Map[k]` trap semantics) and lifted pass rate from 29/55 (52.7%) to 48/55 (87.3%).
+   - **Reverse:** Remove `payload["reasoning_effort"]` and restore `max_completion_tokens = 4096` and `timeout = 180` in `scripts/writable-from-docs.py`.

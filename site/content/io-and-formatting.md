@@ -82,10 +82,10 @@ let dist: List<?Int> = [0, none, 7]
 let ok = true
 print(ans)                              // single value
 print(a, b)                             // space-separated: "3 7"
-print(arr)                              // space-separated elements on one line
+print(arr)                              // space-separated elements on one line (note: [D]Char prints contiguously; pass sep: " " for spaced chars)
 print(arr, sep: "\n")                   // one element per line
 print(dist, none: "-1")                 // prints ?Int array, writing -1 for every none
-print(ok)                               // YES or NO
+print(ok)                               // YES or NO (for AtCoder Yes/No, use `print(if ok: "Yes" else: "No")`)
 ```
 
 ### String interpolation and format specifiers

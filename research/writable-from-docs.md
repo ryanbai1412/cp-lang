@@ -19,9 +19,24 @@ Measures the `AGENTS.md` design rule *"Writable from the docs: a model or a pers
 | **3** | Fixed `if cond: a else: b` & `arr.swap(i, j)` | 38/55 (69.1%) | 17/55 (30.9%) |
 | **4** | Fixed `Sieve.spf[x]` & `HashMap` `m[k]` vs `m.get(k)` | 46/55 (83.6%) | 17/55 (30.9%) |
 | **5** | Cleaned 15 un-evaluable v1 problems (2 interactive, 5 CF redirect dups, 8 multi-answer) + `1e-6` float tolerance + `a.reverse()` docs | 46/55 (83.6%) | 25/55 (45.5%) |
-| **6 (current)** | Added `v + 1`/`V.last - 1` `?V` docs + `mut` call-site docs; routed 3 language/stdlib frictions | **48/55 (87.3%)** | **29/55 (52.7%)** |
+| **6** | Added `v + 1`/`V.last - 1` `?V` docs + `mut` call-site docs; routed 3 language/stdlib frictions | 48/55 (87.3%) | 29/55 (52.7%) |
+| **7** | Enforced canonical spellings across all docs & site examples (`if` filters, `**`, parenless getters, `@!multitest`, method-form folds, `t.Pre`); exposed `Mod<P>.v` vs `.raw` & lent `Str` slices | 44/55 (80.0%) | 25/55 (45.5%) |
+| **8** | Fixed `Mod<P>.v`, lent `s[l..r].to_str()`, `[R, C]T`, `Yes`/`No`, no trailing `=`/`=>`; enabled `reasoning_effort="medium"` (16k max completion tokens) | 44/55 (80.0%) | 43/55 (78.2%) |
+| **9 (current)** | Fixed `'a' <= c and c <= 'z'` (ranges are `Int`-only), multi-line `(...)` parens, `(m[k] ??= init)` parens, `mut` params vs local copy, `let` for `[domain S]Char`, and `300s` HTTP timeout | **52/55 (94.5%)** | **48/55 (87.3%)** |
 
-## Failure classification (Round 6: 26 failing / 55 total)
+## Failure classification (Round 9: 7 failing / 55 total)
+
+- **Docs gaps (fixed post-Round 9):** 2
+  - `abc380d` (compiled, WA: `[D]Char` printed contiguously as `aBAb...` instead of spaced `a B A b ...`; documented `print(chars, sep: " ")` in `io-and-formatting.md` and `idioms.md`).
+  - `abc385d` (compiled, `R0001`: `m[k]` trapped on absent key because `stdlib.md` contradicted `one-page-cheat-sheet.md` by saying `m[k]` auto-inserted; unified `stdlib.md` and `idioms.md` to match runtime `R0001`).
+- **Model syntax / output slip:** 3
+  - `cf2004b` (`E0102`: trailing `=` at end of line).
+  - `cf2013e`, `cf2040d` (exhausted completion budget in reasoning before emitting fenced `cp` block).
+- **Model algorithm wrong:** 2
+  - `cf2004d` (sample 1 WA on portal shortest path).
+  - `abc382e` (sample 2 WA on expected packs DP).
+
+## Historical failure classification (Round 6: 26 failing / 55 total)
 
 - **Docs gap:** 1 (`cf2035d`: `Mod<P>.val` vs `.raw`)
 - **Language / stdlib gap:** 2 (`cf2007e`, `abc381e`: multi-statement `match =>` arm `E0102`; plus `bsearch_last` `?Int` inference from Round 5 — all routed in `research/frictions/writable-from-docs-gaps.md`)

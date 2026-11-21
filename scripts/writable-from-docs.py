@@ -164,7 +164,8 @@ def call_model(system_prompt: str, user_prompt: str, model: str | None = None) -
             ],
         }
         if mdl.startswith(("gpt-5", "o3", "o4")):
-            payload["max_completion_tokens"] = 4096
+            payload["max_completion_tokens"] = 16384
+            payload["reasoning_effort"] = os.environ.get("WFD_REASONING_EFFORT", "medium")
         else:
             payload["temperature"] = 0
             payload["max_tokens"] = 4096
@@ -181,7 +182,7 @@ def call_model(system_prompt: str, user_prompt: str, model: str | None = None) -
         last_err: Exception | None = None
         for attempt in range(3):
             try:
-                with urllib.request.urlopen(req, timeout=180) as resp:
+                with urllib.request.urlopen(req, timeout=300) as resp:
                     data = json.loads(resp.read().decode())
                 return mdl, data["choices"][0]["message"]["content"]
             except urllib.error.HTTPError as exc:
