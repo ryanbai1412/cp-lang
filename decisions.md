@@ -2044,7 +2044,6 @@ Reverse: none needed; this is general range-type lowering.
   and are queued as the next step in `plan/DOMAINS.md`. Reason: keep commits small and avoid
   shipping half-baked product destructuring. Reverse: implement product-domain packing in `cpl-ir`
   and `cpl-check`.
-<<<<<<< HEAD
 ## 37. Taste review gate (2026-11-21)
 
 37.1. **Ports newer than the dream-first rule need a dream and a review; old ports are a
@@ -2100,7 +2099,6 @@ Reverse: delete the step from `scripts/check.sh`.
   Promoted from `examples/local-lib/str/hash2d.cp`, upgraded to the same double-mod `HashVal` as
   `RollingHash` so 2D hashes are anti-hack safe on Codeforces. Reason: single 31-bit hashes collide
   easily at contest grid sizes. Reverse: revert to a single `Mod<2147483647>`.
-<<<<<<< HEAD
 
 ## 40. Number theory, combinatorics, NTT, and linear algebra (`design/stdlib/math.md`, 2026-11-21)
 
@@ -2240,3 +2238,34 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
   salted `splitmix64` and backward-shift deletion for low RSS and cache locality on large `Int`
   key sets without silently substituting for `HashMap`.
   Reverse: remove `stdlib/hashmap.cp`.
+
+## 45. Trees (`std.tree`, design/stdlib/trees.md, 2026-11-21)
+
+1. **One `Rooted` value stays the hub for every static-tree technique**:
+   subtree ranges, LCA, k-th ancestor, heavy-light paths, rerooting and
+   small-to-large all read the same heavy-first preorder `t.Pre`. No `Hld`,
+   `EulerTour` or `Lca` type. Reason: one order makes subtrees and chains
+   ranges at once, so one range structure serves both. Reverse: split the
+   path operations into their own struct.
+2. **`up` and `reroot` share one signature `(m, lift, finish)`; `down`
+   replaces the preorder-and-parent loop.** Promoting a rooted DP to all
+   roots is a one-word edit, and `reroot` uses prefix and suffix sibling
+   folds, so the monoid needs no inverse. The cf2062e2 dream's `top_down`
+   returning `(out, state)` pairs is not added: `down` returns the state per
+   vertex and the output is read off it. Reverse: add `top_down`.
+3. **Small-to-large gets primitives, not a higher-order `dsu_on_tree`:**
+   `heavy`, `light` and `subtree`. The keep/clear order is the algorithm and
+   stays in user code. Reverse: add the wrapper over these three.
+4. **`Centroids` is its own struct built from adjacency**, promoted from
+   `examples/local-lib/graph/centroids.cp`, because its parent is not the
+   rooted parent. `ancestors(v)` (with distances) and `piece(c)` (with the
+   branch) are the two shapes every centroid problem uses. Reverse: keep it
+   in the local library.
+5. **No `toward`/`next`:** `step(a, b, 1)` already names the neighbour of
+   `a` on the way to `b`. Reverse: add the alias.
+6. **LCA stays chain jumping** (O(log n), O(n) memory) rather than an Euler
+   RMQ (O(1), O(n log n) memory) until a matched benchmark shows it losing.
+   Reverse: add an RMQ behind `lca` if `bench/tree` says so.
+7. **Dynamic trees are a separate `LinkCut` with `Rooted`'s verbs**
+   (`fold_path`, `lca`), after the static API matches C++. Reverse: drop it
+   from the plan.

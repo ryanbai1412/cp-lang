@@ -979,7 +979,10 @@ time-interval divide-and-conquer).
 
 `Graph<V>` is a compressed adjacency list over a vertex domain, built by
 `undirected`/`directed`; `Rooted<V>` a rooted tree with parents, depths,
-Euler tour, LCA by binary lifting and subtree ranges.
+heavy-first preorder positions `t.Pre` in which every subtree and every heavy
+chain is a range, so one range structure serves subtree and path queries;
+`Centroids<V>` a centroid decomposition. The design, laws and worked problems
+are in `design/stdlib/trees.md`.
 
 ```cp
 type Tree<V> = [0..V.len - 1](u: V, v: V)
@@ -1012,41 +1015,63 @@ fn two_edge_components<V, N>(next: N) -> (domain C, comp: [V]C) // O(n + m)
 fn articulation_points<V, N>(next: N) -> [V]Bool // O(n + m)
 fn biconnected_components<V, N>(next: N) -> List<List<V>>
 fn two_color<V, N>(next: N) -> ?[V]Bool // O(n + m)
-struct Rooted<V, Pre> // O(n)
+struct Rooted<V, Pre> // O(n) time and memory; design/stdlib/trees.md
     fn new<N>(adj: N, root: V)
     fn from_parents(par: [V]?V) // O(n)
     fn weighted<N, A>(adj: N, root: V, len: A -> Int)
-    fn pos(self, v: V) -> Pre // O(1)
-    fn parent(self, v: V) -> ?V
-    fn reorder<T>(self, a: [V]T) -> [Pre]T // O(n)
-    fn children(self, v: V) -> List<V>
-    // O(k)
-    fn excl_fold<T, M>(self, v: V, m: M, f: V -> T) -> yields (c: V, rest: T)
+    fn forest<N>(adj: N, roots: List<V>) // [new] O(n)
+    fn parent(self, v: V) -> ?V // O(1), like every shape query
+    fn children(self, v: V) -> List<V> // in the order adj listed them
+    fn heavy(self, v: V) -> ?V // [new]
+    fn light(self, v: V) -> yields V // [new] O(deg v)
     fn depth(self, v: V) -> Int
+    fn far(self, v: V) -> Int // [new] weighted depth
     fn size(self, v: V) -> Int
-    @get fn subtree_sizes(self) -> [V]Int
-    @get fn centroid(self) -> V // O(depth)
-    @get fn centroids(self) -> List<V> // O(depth)
-    @get fn preorder(self) -> List<V>
-    @get fn postorder(self) -> List<V>
+    fn root_of(self, v: V) -> V // [new]
+    @get fn subtree_sizes(self) -> [V]Int // O(n)
+    fn pos(self, v: V) -> Pre // O(1)
+    fn at(self, p: Pre) -> V // [new] O(1)
+    fn sub(self, v: V) -> Range<Pre> // O(1)
+    fn subtree(self, v: V) -> yields V // [new] O(size v)
+    fn reorder<T>(self, a: [V]T) -> [Pre]T // O(n)
+    @get fn preorder(self) -> List<V> // O(n)
+    @get fn postorder(self) -> List<V> // O(n)
     @get fn tour(self) -> yields (v: V, entering: Bool) // O(n)
-    fn sub(self, v: V) -> Range<Pre>
     fn is_anc(self, a: V, b: V) -> Bool // O(1)
     fn lower(self, u: V, v: V) -> V // O(1)
     fn lca(self, a: V, b: V) -> V // O(log n)
     fn dist(self, a: V, b: V) -> Int // O(log n)
-    fn path(self, a: V, b: V) -> List<V> // O(|path|)
-    fn diameter(self) -> (len: Int, u: V, v: V) // O(n)
+    fn far_dist(self, a: V, b: V) -> Int // [new] O(log n)
     fn ancestor(self, v: V, k: Int) -> ?V // O(log n)
     fn step(self, a: V, b: V, k: Int) -> ?V // O(log n)
     fn lift_while(self, v: V, pred: V -> Bool) -> ?V // O(log^2 n)
+    fn path(self, a: V, b: V) -> List<V> // O(|path|)
     fn chains( // O(log n)
-    fn fold_path<S, T>(self, a: V, b: V, ds: S, edges: Bool // O(log^2 n)
-    // O(log^2 n)
-    fn apply_path<S, F>(self, a: V, b: V, mut ds: S, tag: F, edges: Bool
+        self, a: V, b: V, edges: Bool = false,
+    ) -> yields (range: Range<Pre>, rising: Bool)
+    // O(log n) range folds; path order when the monoid is Reversible
+    fn fold_path<S, T>(self, a: V, b: V, ds: S, edges: Bool = false) -> T
+    // O(log n) range applies
+    fn apply_path<S, F>(self, a: V, b: V, mut ds: S, tag: F, edges: Bool = false)
+    fn down<T>(self, init: T, f: (T, V) -> T) -> [V]T // [new] O(n)
+    // [new] O(n): rooted DP, and the same DP for every root
+    fn up<T, E, M>(self, m: M, lift: (T, V, V) -> E, finish: (E, V) -> T) -> [V]T
+    fn reroot<T, E, M>(self, m: M, lift: (T, V, V) -> E, finish: (E, V) -> T) -> [V]T
+    // O(k)
+    fn excl_fold<T, M>(self, v: V, m: M, f: V -> T) -> yields (c: V, rest: T)
+    fn diameter(self) -> (len: Int, u: V, v: V) // O(n)
+    @get fn centroid(self) -> V // O(depth)
+    @get fn centroids(self) -> List<V> // O(depth)
+    fn shapes(self) -> (domain Shape, of: [V]Shape) // [new] O(n log n)
     // O(k log k + k log n)
     fn virtual_tree(self, keys: List<V>)
         -> (nodes: List<V>, edges: List<(u: V, v: V)>)
+struct Centroids<V> // [new] O(n log n) time and memory
+    fn new<N>(adj: N) -> Centroids<V>
+    fn parent(self, c: V) -> ?V // O(1)
+    fn depth(self, c: V) -> Int // O(1), at most log2 n
+    fn ancestors(self, v: V) -> List<(c: V, dist: Int)> // O(1), v's own first
+    fn piece(self, c: V) -> yields (v: V, dist: Int, branch: V) // O(|piece|)
 ```
 
 [new], promoted from `examples/local-lib/graph/`:
@@ -1385,7 +1410,7 @@ fn guess_at<P>(xs: List<Mod<P>>, n: Int) -> ?Mod<P>
 ## 5. Not here yet
 
 Power-series algebra beyond products, suffix automata, link-cut trees,
-persistent structures, wavelet trees, heavy-light decomposition, Li Chao
+persistent structures, wavelet trees, Li Chao
 trees, 2-SAT and the rest of `examples/local-lib/` are staged there, not
 excluded: they arrive in the order the ports need them, after the [new]
 items above. Until then they are the standing test that a user library
