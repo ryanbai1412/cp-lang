@@ -9,30 +9,33 @@
 // the blocks that cross it, a cut removes them: a hash of the worms up to u
 // joined to a hash of the worms from v.
 // original: corpus/submissions/5690636.cpp
-use scout.hashing.{Hash, StrHash}
+use std.strings.{HashVal, RollingHash}
 use std.mod.{Mod}
 
 type Z = Mod<998244353>
 let longest = 50
+let rh = RollingHash.new(List.filled(longest, 0))
+let one = [RollingHash.with_bases([d], rh.bases).all for d in 0..=6]
 
 let (n, q): (Int, Int) = read()
 domain Worm = 1..=n
 let size: [Worm]Int = read()
 var ahead: [Worm]?Worm = none
 var behind: [Worm]?Worm = none
-var blocks = Map<Hash, Int>()
+var blocks = Map<HashVal, Int>()
 
-fn count(block: Hash, by: Int):
+fn count(block: HashVal, by: Int):
     blocks[block] = (blocks.get(block) ?? 0) + by
 
 /// The blocks of fewer than `longest` worms that start at `from` and go back along the queue
 /// (`toward` = behind), or end at `from` and go forward (`toward` = ahead). Shortest first.
-fn reach(from: Worm, toward: [Worm]?Worm, back: Bool) -> List<Hash>:
-    var out: List<Hash> = []
-    var (at, block) = (some(from), Hash.empty)
+fn reach(from: Worm, toward: [Worm]?Worm, back: Bool) -> List<HashVal>:
+    var out: List<HashVal> = []
+    var (at, block) = (some(from), HashVal(0, 0))
     while out.len < longest - 1:
         if let w = at:
-            block = if back: block + Hash.one(size[w]) else: Hash.one(size[w]) + block
+            let single = one[size[w]]
+            block = if back: rh.combine(block, single, 1) else: rh.combine(single, block, out.len)
             out.push(block)
             at = toward[w]
         else: break
@@ -41,12 +44,12 @@ fn reach(from: Worm, toward: [Worm]?Worm, back: Bool) -> List<Hash>:
 /// Count, or with `by = -1` forget, every block that has v right behind u.
 fn joint(u: Worm, v: Worm, by: Int):
     let (left, right) = (reach(u, ahead, false), reach(v, behind, true))
-    for l in left:
-        for r in right:
-            if l.len + r.len > longest: break
-            count(l + r, by)
+    for i in 0..left.len:
+        for j in 0..right.len:
+            if i + j + 2 > longest: break
+            count(rh.combine(left[i], right[j], j + 1), by)
 
-for w in Worm: count(Hash.one(size[w]), 1)
+for w in Worm: count(one[size[w]], 1)
 for _ in 0..q:
     let op: Int = read()
     if op == 1:
@@ -60,7 +63,7 @@ for _ in 0..q:
         (behind[u], ahead[v]) = (none, none)
     else:
         let (s, k): (Str, Int) = read()
-        let hash = StrHash.of_items([c - '0' for c in s])
+        let hash = RollingHash.with_bases([c - '0' for c in s], rh.bases)
         var ways = Z(1)
-        for i in 0..=s.len - k: ways = ways * Z(blocks.get(hash.of(i..i + k)) ?? 0)
+        for i in 0..=s.len - k: ways = ways * Z(blocks.get(hash.slice(i, i + k)) ?? 0)
         print(ways)

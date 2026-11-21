@@ -9,14 +9,11 @@
 // ends on a longest word: at every node the branch towards that word goes
 // last.
 // original: corpus/submissions/5034409.cpp
+use std.strings.{Trie}
+
 domain Letter = 'a'..='z'
 
-struct Node:
-    kid: [Letter]?Int
-    word: Bool
-    last: Bool      // on the way to the word that is printed last
-
-var trie = [Node([Letter] c => none, false, false)]
+var trie = Trie<Letter>.new()
 
 let n: Int = read()
 domain Word = 1..=n
@@ -25,35 +22,29 @@ var longest = ""
 for w in Word:
     let word = words[w]
     if word.len > longest.len: longest = word
-    var at = 0
-    for c in word:
-        if let next = trie[at].kid[Letter(c)]: at = next
-        else:
-            trie.push(Node([Letter] c => none, false, false))
-            trie[at].kid[Letter(c)] = some(trie.len - 1)
-            at = trie.len - 1
-    trie[at].word = true
+    let _ = trie.add([Letter(c) for c in word])
 
-var at = 0
+var on_longest = List.filled(trie.len, false)
+var at = trie.root
 for c in longest:
-    at = trie[at].kid[Letter(c)]!
-    trie[at].last = true
+    at = trie.step(at, Letter(c))!
+    on_longest[at] = true
 
 var ops = ""
 fn type_out(at: Int):
-    if trie[at].word: ops.push('P')
+    if trie.ends_at(at) > 0: ops.push('P')
     var kept: ?(Char, Int) = none
     for c in Letter:
-        if let next = trie[at].kid[c]:
-            if trie[next].last: kept = some((c.label, next))
+        if let next = trie.step(at, c):
+            if on_longest[next]: kept = some((Char(c.label), next))
             else:
-                ops.push(c.label)
+                ops.push(Char(c.label))
                 type_out(next)
                 ops.push('-')
     if let (c, next) = kept:
         ops.push(c)
         type_out(next)
 
-type_out(0)
+type_out(trie.root)
 print(ops.len)
 for op in ops: print(op)
