@@ -1,6 +1,7 @@
 # noi17p2
 
-Score: 2/5
+Score: pending cold rescore (port wraps `struct Block(hash: HashVal, len: Int)` + `concat(a, b)` so lengths travel with every hash and `joint` never passes lengths by hand, bounded inputs, 0 lints, `29,652 B`, verified on 50 ASan+UBSan join/cut/query traces vs brute force; length-carrying `Hash` + `+` + `Hash.empty` filed in `research/frictions/noi17p2.md`)
+Dream: pending cold rescore (written: `proto/ports/scout_batch_10/dream/noi17p2.cp` using length-carrying `Hash` with `Hash.empty` and `+`)
 
 Baseline review, cold, on main 15cc353a, after 14cdbd55 moved it onto `std.strings.RollingHash`. There is no dream, so the score is capped at 3. The header (lines 1-11) gives the block-count idea well.
 
