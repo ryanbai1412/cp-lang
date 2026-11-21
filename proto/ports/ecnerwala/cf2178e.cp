@@ -1,28 +1,19 @@
-fn query(l: Int, r: Int) -> Int:
-    print("?", l + 1, r)
+// Codeforces 2178 E: interactive halving via binary search on prefix sums to
+// isolate the maximum element in O(log^2 n) queries.
+
+fn ask(lo: Int, hi: Int) -> Int:
+    print("?", lo + 1, hi)
     flush()
     read()
 
-@!multitest
+@! multitest
 let n: Int = read()
-var l = 0
-var r = n
-var tot = query(l, r)
+var (l, r) = (0, n)
+var tot = ask(l, r)
 while r - l > 1:
-    var mi = l
-    var ma = r - 1
-    while ma - mi > 1:
-        let md = (mi + ma) / 2
-        let v = query(l, md)
-        if 2 * v == tot:
-            ma = md
-            mi = md - 1
-        elif 2 * v > tot:
-            ma = md
-        else:
-            mi = md
+    let mid = bsearch_first(l + 1..r - 1, md => 2 * ask(l, md) >= tot) ?? (r - 1)
     tot /= 2
-    if r - ma <= ma - l: l = ma
-    else: r = ma
+    if r - mid <= mid - l: l = mid
+    else: r = mid
 print("!", tot)
 flush()

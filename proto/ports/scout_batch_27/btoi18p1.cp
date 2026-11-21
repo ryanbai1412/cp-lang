@@ -7,12 +7,15 @@
 // other stay. Everything else is a matching on the love arrows: take them
 // from the leaves inward, then walk what is left of each cycle.
 // original: corpus/submissions/4456169.cpp
+use std.seq.{get_or_insert_with}
+
 let n: Int = read()
 domain P = 0..n
 var ids = Map<Str, P>()
+
 fn id(name: Str) -> P:
-    ids.get_or_insert(name, P(ids.len))
-    ids[name]
+    let next_id = ids.len
+    ids.get_or_insert_with(name, () => P(next_id))
 
 var loves = [P] p => p
 for _ in P:
@@ -27,11 +30,11 @@ fn kept() -> Int:
         if o != p and loves[o] == p:
             paired[p] = true
             total += 1  // counted from both sides: 2 per pair
+
     var fans: [P]Int = 0
     for p in P: fans[loves[p]] += 1
     var free = [p for p in P if fans[p] == 0]
-    while not free.is_empty:
-        let p = free.pop()
+    while let p = free.pop():
         let o = loves[p]
         if not paired[p] and not paired[o] and o != p:
             paired[p] = true
@@ -39,6 +42,7 @@ fn kept() -> Int:
             total += 1
         fans[o] -= 1
         if fans[o] == 0: free.push(o)
+
     // Only whole cycles still have fans. Pair along each from a broken
     // spot if there is one, else from anywhere.
     for start in P:
@@ -53,6 +57,7 @@ fn kept() -> Int:
                 total += 1
             p = o
         fans[start] = 0
+
     for start in P:
         if fans[start] == 0: continue
         var len = 1
