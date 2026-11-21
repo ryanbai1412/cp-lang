@@ -3,7 +3,8 @@
 
     python3 -m unittest scripts/test_review_check.py
 """
-import importlib.util, os, unittest
+import importlib.util, os, subprocess, tempfile, unittest
+from pathlib import Path
 
 _spec = importlib.util.spec_from_file_location(
     "review_check", os.path.join(os.path.dirname(os.path.abspath(__file__)), "review-check.py"))
@@ -54,6 +55,26 @@ class EvaluateTest(unittest.TestCase):
     def test_stats(self):
         _, st = rc.evaluate(ports("old", "a"), self.base, {"old": 2, "a": 5}, {"a"}, set())
         self.assertEqual((st["reviewed"], st["median"], st["under_4"]), (2, 3.5, 1))
+
+
+class AddedPortNamesTest(unittest.TestCase):
+    def test_only_the_staged_change_counts(self):
+        with tempfile.TemporaryDirectory() as d:
+            git = lambda *a: subprocess.run(["git", *a], cwd=d, check=True, capture_output=True)
+            git("init", "-q")
+            git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "base")
+            (Path(d) / "proto/ports/g").mkdir(parents=True)
+            (Path(d) / "proto/ports/g/old.cp").write_text("")
+            git("add", ".")
+            git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "old")
+            git("update-ref", "refs/remotes/origin/main", "HEAD~1")
+            (Path(d) / "proto/ports/g/new.cp").write_text("")
+            git("add", ".")
+            root, rc.sb.ROOT = rc.sb.ROOT, Path(d)
+            try:
+                self.assertEqual(rc.added_port_names({"old", "new"}), {"new"})
+            finally:
+                rc.sb.ROOT = root
 
 
 if __name__ == "__main__":

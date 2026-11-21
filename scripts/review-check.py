@@ -70,19 +70,16 @@ def dream_gap(port):
 
 
 def added_port_names(names):
-    """Names among `names` whose .cp is added by the staged or unpushed changes."""
-    ranges = ["--cached"]
-    if subprocess.run(["git", "rev-parse", "-q", "--verify", "origin/main"], cwd=sb.ROOT,
-                      capture_output=True).returncode == 0:
-        ranges.append("origin/main...HEAD")
+    """Names among `names` whose .cp the staged change adds. Each commit is checked
+    as it is made, so earlier commits need no range against a possibly stale
+    origin/main."""
+    out = subprocess.run(["git", "diff", "--cached", "--name-only", "--diff-filter=A", "--", "proto/ports"],
+                         cwd=sb.ROOT, capture_output=True, text=True).stdout
     added = set()
-    for r in ranges:
-        out = subprocess.run(["git", "diff", r, "--name-only", "--diff-filter=A", "--", "proto/ports"],
-                             cwd=sb.ROOT, capture_output=True, text=True).stdout
-        for line in out.splitlines():
-            m = re.fullmatch(r"proto/ports/[^/]+/([^/]+)\.cp", line)
-            if m and m[1] in names:
-                added.add(m[1])
+    for line in out.splitlines():
+        m = re.fullmatch(r"proto/ports/[^/]+/([^/]+)\.cp", line)
+        if m and m[1] in names:
+            added.add(m[1])
     return added
 
 
