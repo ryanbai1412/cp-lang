@@ -1,6 +1,7 @@
 # ioi13p3
 
-Score: 2/5
+Score: pending cold rescore (rewrote both dream and active port with `SegTree<Block, Matrix>` + `Monoid(identity(c), mul)`, Knuth crossing monotonicity & `B = 10` tradeoff in header, tropical `?Int` replacing `1e9` sentinels, 0 lints, `20,604 B`, verified on 15 random grids x 25 updates/queries under ASan+UBSan vs exact DP; `@grader` state object filed in `research/frictions/ioi13p3.md`)
+Dream: pending cold rescore (written: `proto/ports/scout_batch_52/dream/ioi13p3.cp`)
 
 Baseline review, cold, on main 96359635. The header (lines 1-4) names the technique, and the tropical `?Int` removes the 1e9 sentinels, which is good. But the segment tree over row blocks is hand-built (`nb + blk`, `o * 2`, `o /= 2`, lines 48-63), and `mul` hides a Knuth-optimisation window (lines 20-32) that the header doesn't mention. No dream exists, so the score is capped at 3.
 
