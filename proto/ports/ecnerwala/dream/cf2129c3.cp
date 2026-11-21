@@ -38,7 +38,7 @@ let blk = weights.len
 let n: 2..=1000 = read()
 domain Pos = 1..=n
 
-fn ask(inds: Seq<Pos>) -> Int:
+fn ask<S: Seq>(inds: S) -> Int:
     print("?", inds.len, inds)
     read()
 
