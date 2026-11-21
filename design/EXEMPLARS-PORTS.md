@@ -363,7 +363,7 @@ int main() {
 // Sort items by value. Cut c (values ≤ c vs > c) is free when no item has one value
 // on each side; free cuts split the items into SCCs, each reaching all lower ones.
 // So the answer is n(n+1)/2 plus Σ d(d−1)/2 over gaps d between consecutive free
-// cuts. Item i covers cuts min(p,s) ..< max(p,s): keep, under range add, the cuts
+// cuts. Item i covers cuts min(p, s)..max(p, s): keep, under range add, the cuts
 // at the minimum cover (always 0, since cuts 0 and n are free) and their gap sum.
 @!multitest
 let n: 2..=1e5 = read()

@@ -18,7 +18,7 @@ var ans: [q]Int = a.max()
 for l in 1..=31:
     var saved = IntervalMap<cuts.D, ?Int>(none)
     for s in (0..=n - l).sorted(by: s => window[s..s + l]):
-        saved[cuts.at(a[s]) ..< (cuts.at(2 * a[s - 1]) if s > 0 else cuts.end)] = window[s..s + l]
+        saved[cuts.at(a[s])..(if s > 0: cuts.at(2 * a[s - 1]) else: cuts.end)] = window[s..s + l]
     var waiting = (0..q).sorted(by: ks)
     for (r, some best) in saved.runs.reversed():
         let xs = (cuts[r.first] << (l - 1)) <..= min(cap, (cuts.get(r.end) ?? cap) << (l - 1))
