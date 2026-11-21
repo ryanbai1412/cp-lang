@@ -344,11 +344,10 @@ Planned forms go through one table (`cpl-syntax/src/planned.rs`, `E0504`
 "not implemented yet: ... (see design/...)", or "(not in the design)" for
 forms only dreams use); 36 entries, each with a golden. Dreams are a corpus
 (`scripts/dream-gaps.py`, summary in the scoreboard): 144 dreams, 97 with
-errors; 81/97 first errors name their gap and 254/318 errors are named
+errors; 78/97 first errors name their gap and 240/316 errors are named
 (contexts `with io(...)` as deferred, broken checker rules by the rule). Each
 unsupported construct class gets one `E0504` at its first use (later uses of
-the same feature are dropped as the same root cause): operator fns, domain
-parameters, several domains on a line, indented values and continuation
+the same feature are dropped as the same root cause): domain parameters, several domains on a line, indented values and continuation
 lines, `(a; b)`, `<..`, domains as values, `D.Cut`,
 operators as values (`compose: +`),
 `(var a, b)` patterns, `match` arms on the `match` line, `let … in`, brace
