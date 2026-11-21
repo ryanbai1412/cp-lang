@@ -1372,6 +1372,16 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   from `research/scoreboard.json` into the `Runtime` column of `research/PORTS.md` without re-running.
   *How to reverse:* adjust `TIME_P50_GOAL`, `TIME_MAX_GOAL`, `PERF_FLOOR_MS`, or `PERF_REGRESSION_RATIO` in
   `scripts/scoreboard.py` or remove the `Runtime` column in `scripts/ports-page.py`.
+- **23.7 Interpreter-vs-C++ ratio ratchet, strict `cp/dream` ratchet, and `research/reviews/` taste-score integration.**
+  In full mode, `scripts/scoreboard.py` times `cpl run` and the compiled `-O2` C++ binary on the *same* input
+  (using `max_inp` when `cpp_ms <= 250 ms`, else the largest diff case), reporting `ratio_p50`/`ratio_max`
+  against `INTERP_RATIO_BAR = 10.0` and `INTERP_RATIO_NORTH_STAR = 5.0` (with a `20 ms` floor to avoid startup
+  noise) and failing `--full --check` on `> 10%` regressions in `p50` or any port `>= 20 ms`. In both `--fast`
+  and `--full`, any increase in a port's `cp/dream` token ratio (`dream_ratio`) fails `--check`.
+  `parse_review_score` reads 1–5 scores from `research/reviews/<name>.md` into `totals.taste` and the `Taste`
+  column of `research/PORTS.md`.
+  *How to reverse:* adjust `INTERP_RATIO_BAR`, `INTERP_RATIO_NORTH_STAR`, `INTERP_FLOOR_MS`, or the
+  `dream_ratio` check in `scripts/scoreboard.py`.
 
 ## 24. Documentation gate in `scripts/check.sh --fast` (2026-11-21)
 

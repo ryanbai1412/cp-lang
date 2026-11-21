@@ -490,32 +490,52 @@ P0 bug corpus (>= 90% prevented or trapped), static `sizeof` and `-O2` assembly
 zero-cost proofs, and real contest use by strong contestants showing faster
 accepted solutions and fewer wrong attempts than in C++.
 **Where we are.** Unified scoreboard (`scripts/scoreboard.py` + `scripts/test_scoreboard.py`,
-15 unit tests) and committed full-mode baseline (`research/scoreboard.json`) are live and
-wired into `scripts/check.sh --fast` (`--fast --check --quiet`, ~4.8 s with debug `cpl`).
-At `d181b15d`, 271/271 active `proto/ports/ecnerwala/` ports pass `--fast` (16 interactive,
-3 custom checkers), automatically picking up concurrently pushed ports:
-contestant-written tokens median 0.425x raw / 0.507x library-stripped (0 > 1.0x raw, 1 > 1.0x
-stripped: `ucup5s05f` at 1.054x), dream gap across 18 `dream/*.cp` ports `cp=8,382` vs
-`dream=4,869` (median 1.440x, p90 3.091x, max 4.676x on `cf2187f1`), emitted C++ median
-9,664 B / p95 24,943 B / max 59,202 B (`cf2255f`; 3 > 48 KB, 0 > 64 KB), `friction_lint`
-0 `wa_trap` / 6 `real_gap` / 53 `stale_port`, and `research/frictions/*.md` 40 files / 147
-open items (0 blocker, 25 high, 54 medium, 35 low, 2 closed).
-Full-mode perf in `research/scoreboard.json` (238 measured, 103 >= 10 ms):
-runtime p50 1.020x (goal <= 1.1x: PASS), p95 3.752x, max 356.869x (goal <= 1.5x: FAIL,
-18 > 1.5x; worst 10 include `cf2096e` 356.9x, `ucup4s25h` 24.1x, `cf2245f` 6.20x, `cf2245a`
-6.11x, `cf2255e2` 4.19x, `cf2147f` 3.75x on `gen --max`, `cf2066e` 3.23x on `gen --max`,
-`cf2261g` 2.97x, `cf2268c` 2.68x, `ucup4s25c` 2.18x; plus `cf2150g` 2.06x on `gen --max`),
-peak RSS p50 0.938x / p95 2.323x, interpreter 253/254 ok (median 21.34 ms, p95 55.82 ms).
+16 unit tests) and committed full-mode baseline (`research/scoreboard.json`) are live and
+wired into `scripts/check.sh --fast` (`--fast --check --quiet`, ~5 s with debug `cpl`).
+At `46be8a59`, **275/275** active `proto/ports/ecnerwala/` ports pass `--full` (16 interactive,
+4 custom checkers), automatically picking up concurrently pushed ports:
+contestant-written tokens median 0.422x raw / 0.504x library-stripped (0 > 1.0x raw, 1 > 1.0x
+stripped: `ucup5s05f` at 1.054x), dream gap across 27 `dream/*.cp` ports `cp=11,825` vs
+`dream=7,639` (median 1.326x, p90 2.532x, max 4.676x on `cf2187f1`; strict per-port ratchet
+so no port's `cp/dream` ratio may grow), emitted C++ median 9,893 B / p95 26,248 B / max
+59,202 B (`cf2255f`; 3 > 48 KB, 0 > 64 KB), `friction_lint` 0 `wa_trap` / 6 `real_gap` /
+54 `stale_port`, and `research/frictions/*.md` 56 files / 173 open items (0 blocker, 34 high,
+64 medium, 44 low, 2 closed; every port over 1.5x now has a performance friction naming its
+codegen/stdlib/layout cause).
+Full-mode perf across all 275 ports (`research/scoreboard.json`, 258 measured, 122 >= 10 ms):
+runtime **p50 0.993x** (goal <= 1.1x: **PASS**), p95 3.546x, **max 310.196x** (goal <= 1.5x:
+**FAIL**, 20 > 1.5x), peak RSS p50 0.930x / p95 2.356x / max 6.195x (`cf2268c`).
+Interpreter vs C++ `-O2` on matched inputs (271/275 ok; 159 >= 20 ms): **p50 7.17x** (bar
+<= 10x: **PASS**, north star <= 5x: **FAIL**), **max 117.80x** (`cf2262e`, 61 > 10x);
+ratcheted at >10% regression on `p50` and per-port (`>= 20 ms`).
+Taste scores from `research/reviews/<name>.md` are wired into `scripts/scoreboard.py`
+(`totals.taste`) and `research/PORTS.md` (`Taste` column; ready for `research/reviews/`).
+
+Worst 10 runtime ratios (`research/scoreboard.json`, full mode at `46be8a59`):
+
+| Port | Ratio | C++ / Orig | Input | Cause (`research/frictions/`) |
+| --- | --- | --- | --- | --- |
+| `cf2096e` | 310.20x | 2078.3 / 6.7 ms | `gen size=25000` | `s.rev.items` re-reverses `s` every iteration ($O(n^2)$) |
+| `ucup4s25h` | 26.06x | 221.8 / 8.5 ms | `gen size=25000` | `s[lo..hi]` lowers to $O(n^2)$ char concatenation |
+| `cf2187d` | 15.95x | 116.1 / 7.3 ms | `gen size=1000` | Bitset knapsack overhead |
+| `cf2245f` | 8.65x | 1782.3 / 206.2 ms | `gen size=1000` | 64-bit `Mod<P>` + checked 2D DP in $O(n^3)$ loop |
+| `cf2255e2` | 4.48x | 241.7 / 54.0 ms | `gen size=25000` | Idiomatic container/codegen overhead |
+| `cf2245a` | 4.40x | 50.0 / 11.4 ms | `gen size=25000` | `s[lo..hi]` $O(k^2)$ char concatenation |
+| `cf2261g` | 3.55x | 357.4 / 100.8 ms | `gen size=25000` | Un-niched `Row<?Int, 2>` + per-node temp `vector` |
+| `cf2147f` | 3.38x | 679.1 / 200.8 ms | `gen --max` | `std::function` in `LazySegTree` + un-niched `?Node` |
+| `cf2066e` | 3.17x | 6162.4 / 1945.9 ms | `gen --max` | `SortedBag` lacks $O(1)$ ordered cursor |
+| `cf2178h` | 3.03x | 151.2 / 49.9 ms | `gen size=200` | `dijkstra` / `?Int` 16 B layout overhead |
+
 Full-mode `--check` ratchets any >= 10 ms port whose runtime ratio regresses > 10%.
 `gen/NAME.py --max` is preferred when present (added to `cf2066e`, `cf2147f`, `cf2150g`).
-Dream-gap tracking (`dream/NAME.cp` port-vs-dream token ratio per port and in aggregate) is
-live in `scripts/scoreboard.py`. `research/PORTS.md` (via `scripts/ports-page.py`) displays
-the cached `Runtime` ratio column from `research/scoreboard.json` without re-running. Constructive-problem checker hook
+`research/PORTS.md` (via `scripts/ports-page.py`) displays cached `Runtime` and `Taste`
+columns without re-running. Constructive-problem checker hook
 (`checkers/NAME.py INPUT OUTPUT ANSWER`) is live in `proto/ports/ecnerwala/gate.sh`,
 `proto/ports/ecnerwala/README.md`, and `scripts/scoreboard.py`. Legacy: 30 `wave2` ports and
 DMOJ registry (`bench/corpus-500-registry.json`: 594 unique problems). Gaps: `known_traps.cp`
-has 5 open traps; 21 ports exceed the <= 1.5x runtime ceiling; static `sizeof` / `-O2`
-assembly zero-cost metrics and replayed P0 bug corpus are not yet wired into the scoreboard.
+has 5 open traps; 20 ports exceed the <= 1.5x runtime ceiling; 61 ports exceed the 10x
+interpreter-ratio bar; static `sizeof` / `-O2` assembly zero-cost metrics and replayed P0
+bug corpus are not yet wired into the scoreboard.
 **Bar.** 500+ Rust-gated ports; `scripts/scoreboard.py --fast --check` green in
 `scripts/check.sh --fast`; full-mode perf and interpreter baseline refreshed regularly with
 runtime p50 <= 1.1x / max <= 1.5x; zero open blocker frictions; P0 bug corpus >= 90% handled.

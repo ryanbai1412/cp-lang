@@ -83,11 +83,18 @@ def main():
     rows.sort(key=lambda r: (r[0], r[1]["name"]), reverse=True)
     ratios = sorted(r[5]["stripped_token_ratio"] for r in rows if r[5]["stripped_token_ratio"])
     median = ratios[len(ratios) // 2] if ratios else None
+    taste_scores = sorted(r[5]["taste_score"] for r in rows if r[5].get("taste_score") is not None)
+    taste_med = taste_scores[len(taste_scores) // 2] if taste_scores else None
     rt_note = (
         f" Runtime is C++ build vs original on max-size input from `research/scoreboard.json`"
         f" (p50 {time_p50:.2f}x, goal at most {sb.TIME_P50_GOAL:.1f}x)."
         if time_p50 is not None
         else " Runtime is C++ build vs original from `research/scoreboard.json`."
+    )
+    taste_note = (
+        f" Taste is 1–5 from `research/reviews/` (median {taste_med}/5 across {len(taste_scores)} reviewed)."
+        if taste_med is not None
+        else ""
     )
     out = [
         "# Ports",
@@ -97,13 +104,14 @@ def main():
         "by `proto/ports/<group>/gate.sh`. Tokens are contestant-written: the port",
         "against the original with its library code stripped"
         + (f" (median {median:.2f}x, goal at most 0.6x)." if median else ".")
-        + rt_note,
+        + rt_note
+        + taste_note,
         "Dream is the same solution as we would like to write it, unconstrained",
         "by today's compiler, with its token count; the gap is what the language",
         "still owes.",
         "",
-        "| Added | Problem | Port | Tokens | Runtime | Frictions | First friction |",
-        "|---|---|---|---|---|---|---|",
+        "| Added | Problem | Port | Tokens | Runtime | Taste | Frictions | First friction |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for day, p, title, top, count, tok, perf in rows[:SHOWN]:
         url = statement_url(p["name"])
@@ -119,8 +127,12 @@ def main():
         if tok["dream_tokens"] is not None:
             toks += f", dream {tok['dream_tokens']}"
         rt = f"{perf['time_ratio']:.2f}x" if perf and perf.get("time_ratio") is not None else "–"
+        if tok.get("taste_score") is not None:
+            taste = f"[{tok['taste_score']}/5](reviews/{p['name']}.md)"
+        else:
+            taste = "–"
         fr = f"[{count}](frictions/{p['name']}.md)" if count else "–"
-        out.append(f"| {day[:10]} | {prob} | {port} | {toks} | {rt} | {fr} | {cell(top)} |")
+        out.append(f"| {day[:10]} | {prob} | {port} | {toks} | {rt} | {taste} | {fr} | {cell(top)} |")
     with open(OUT, "w", encoding="utf-8") as f:
         f.write("\n".join(out) + "\n")
     print(f"wrote {os.path.relpath(OUT, sb.ROOT)}: {len(rows)} ports")

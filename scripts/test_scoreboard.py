@@ -372,6 +372,67 @@ class DreamAndPerfRatchetTest(unittest.TestCase):
         diff_reg = sb.diff_against_baseline(cur_reg, base, mode="full")
         self.assertTrue(any("runtime regressed >10%: t/fast" in m for m in diff_reg["regressions"]))
 
+    def test_dream_gap_ratchet_interp_ratio_ratchet_and_taste_score(self):
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "p1.md"), "w", encoding="utf-8") as f:
+                f.write("# Review: p1\n\n- **Score:** 4/5\n")
+            score, rel = sb.parse_review_score("p1", reviews_dir=d)
+            self.assertEqual(score, 4)
+            self.assertIsNotNone(rel)
+            self.assertEqual(sb.parse_review_score("missing", reviews_dir=d), (None, None))
+
+        def rep(dream_ratio, interp_ratio, taste):
+            ports = [
+                {
+                    "id": "t/p1",
+                    "gate": "pass",
+                    "cp_tokens": 15,
+                    "orig_tokens": 30,
+                    "orig_stripped_tokens": 30,
+                    "token_ratio": 0.5,
+                    "stripped_token_ratio": 0.5,
+                    "dream_tokens": 10,
+                    "dream_ratio": dream_ratio,
+                    "taste_score": taste,
+                    "emitted_bytes": 1000,
+                    "interp": {
+                        "ok": True,
+                        "ms": 50.0,
+                        "ratio": interp_ratio,
+                        "ratio_interp_ms": 50.0,
+                        "ratio_cpp_ms": 50.0 / interp_ratio,
+                        "ratio_source": "max",
+                    },
+                }
+            ]
+            totals = sb.compute_totals(
+                ports,
+                {"files": 1, "wa_trap": 0, "real_gap": 0, "stale_port": 0},
+                {
+                    "files": 0,
+                    "total": 0,
+                    "open": 0,
+                    "closed": 0,
+                    "by_severity": {},
+                    "by_goal": {},
+                    "open_blockers": [],
+                    "open_highs": [],
+                },
+            )
+            return {"ports": ports, "totals": totals}
+
+        base = rep(1.5, 8.0, 4)
+        self.assertEqual(base["totals"]["taste"]["median"], 4)
+        self.assertTrue(base["totals"]["interp"]["bar_ok"])
+        self.assertFalse(base["totals"]["interp"]["north_star_ok"])
+
+        cur_reg = rep(1.6, 9.5, 4)
+        diff_fast = sb.diff_against_baseline(cur_reg, base, mode="fast")
+        self.assertTrue(any("dream gap regressed: t/p1" in m for m in diff_fast["regressions"]))
+        diff_full = sb.diff_against_baseline(cur_reg, base, mode="full")
+        self.assertTrue(any("interp ratio regressed >10%: t/p1" in m for m in diff_full["regressions"]))
+        self.assertTrue(any("interp ratio p50 regressed >10%" in m for m in diff_full["regressions"]))
+
 
 class CliSmokeTest(unittest.TestCase):
     def test_frictions_cli_and_fast_subset_cli(self):

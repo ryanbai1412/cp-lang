@@ -42,6 +42,7 @@ from collections import Counter
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORTS_DIR = os.path.join(ROOT, "proto", "ports")
 FRICTIONS_DIR = os.path.join(ROOT, "research", "frictions")
+REVIEWS_DIR = os.path.join(ROOT, "research", "reviews")
 DEFAULT_BASELINE = os.path.join(ROOT, "research", "scoreboard.json")
 
 SIZE_WARN = 48 * 1024
@@ -55,6 +56,9 @@ TOKEN_RATIO_TOLERANCE = 0.02
 PERF_REGRESSION_RATIO = 1.10
 TIME_P50_GOAL = 1.1
 TIME_MAX_GOAL = 1.5
+INTERP_RATIO_BAR = 10.0
+INTERP_RATIO_NORTH_STAR = 5.0
+INTERP_FLOOR_MS = 20.0
 
 # Adaptive max-size probe schedule for gen/NAME.py SEED SIZE
 MAX_SIZE_STEPS = (8, 40, 200, 1000, 5000, 25000)
@@ -561,6 +565,8 @@ def measure_tokens(p):
         dream_ratio = round(cp_toks / dream_toks, 4) if dream_toks else None
         dream_gap = cp_toks - dream_toks
 
+    taste_score, review_rel = parse_review_score(p["name"])
+
     return {
         "cp_tokens": cp_toks,
         "orig_tokens": orig_toks,
@@ -570,12 +576,32 @@ def measure_tokens(p):
         "dream_tokens": dream_toks,
         "dream_ratio": dream_ratio,
         "dream_gap_tokens": dream_gap,
+        "taste_score": taste_score,
+        "review_path": review_rel,
         "cp_loc": cp_loc,
         "orig_loc": orig_loc,
         "orig_stripped_loc": stripped_loc,
         "cp_sha": file_sha256(p["abs_path"]),
         "orig_sha": file_sha256(p["abs_orig"]),
     }
+
+
+_REVIEW_SCORE_RE = re.compile(
+    r"(?im)^(?:[-*]\s*)?(?:\*\*)?score(?::)?(?:\*\*)?\s*(?:[:\-]\s*)?(?:\*\*)?([1-5](?:\.\d+)?)(?:\s*/\s*5)?\b"
+)
+
+
+def parse_review_score(port_name, reviews_dir=REVIEWS_DIR):
+    """Read taste score (1..5) from research/reviews/<port_name>.md if present."""
+    path = os.path.join(reviews_dir, f"{port_name}.md")
+    if not os.path.isfile(path):
+        return None, None
+    text = _read_text(path)
+    m = _REVIEW_SCORE_RE.search(text)
+    score = float(m.group(1)) if m else None
+    if score is not None and score.is_integer():
+        score = int(score)
+    return score, os.path.relpath(path, ROOT)
 
 
 def generate_max_input(p, orig_bin, work_dir, explicit_specs):
@@ -875,6 +901,35 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
         if not matched:
             out["diff_ok"] = False
             out["diff_detail"] = f"max-size output mismatch ({max_label})"
+
+        # 3. Apples-to-apples interpreter vs C++ (-O2) ratio on the same input.
+        # Prefer max_inp when C++ finishes within 250ms (so interpreter has headroom);
+        # otherwise fall back to the largest diff case.
+        ratio_inp, ratio_src, ratio_cpp_ms = None, None, None
+        if cpp_ms is not None and cpp_ms <= 250.0:
+            ratio_inp, ratio_src, ratio_cpp_ms = max_inp, max_label, cpp_ms
+        elif diff_cases:
+            ratio_inp, ratio_src = max(diff_cases, key=lambda c: os.path.getsize(c[0]))
+            w_c, _, s_c = run_timed([port_bin], ratio_inp, os.path.join(work, "icpp.out"), 10.0, rss=False)
+            if s_c == "ok":
+                ratio_cpp_ms = round(w_c * 1000.0, 2)
+        if ratio_inp is not None and ratio_cpp_ms is not None and ratio_cpp_ms > 0:
+            iw_r, _, st_r = run_timed(
+                [cpl, "run", p["abs_path"]],
+                ratio_inp,
+                os.path.join(work, "iratio.out"),
+                interp_timeout,
+                rss=False,
+            )
+            if st_r == "ok":
+                ims_r = round(iw_r * 1000.0, 2)
+                out["interp"]["ratio_interp_ms"] = ims_r
+                out["interp"]["ratio_cpp_ms"] = ratio_cpp_ms
+                out["interp"]["ratio"] = round(ims_r / ratio_cpp_ms, 2)
+                out["interp"]["ratio_source"] = ratio_src
+            else:
+                out["interp"]["ratio_error"] = f"{ratio_src}: {st_r}"
+                out["interp"]["ratio_source"] = ratio_src
     return out
 
 
@@ -1135,6 +1190,36 @@ def compute_totals(port_records, fl_summary, fr_summary):
     i_ms = [v for v, _ in i_vals]
     i_max, i_max_port = max(i_vals, default=(None, None))
 
+    i_ratios = [
+        (r["interp"]["ratio"], r["id"])
+        for r in port_records
+        if (r.get("interp") or {}).get("ratio") is not None
+        and ((r["interp"].get("ratio_interp_ms") or 0) >= INTERP_FLOOR_MS)
+    ]
+    all_i_ratios = [
+        (r["interp"]["ratio"], r["id"])
+        for r in port_records
+        if (r.get("interp") or {}).get("ratio") is not None
+    ]
+    ir_use = i_ratios if i_ratios else all_i_ratios
+    ir_vals = [v for v, _ in ir_use]
+    ir_p50 = round(statistics.median(ir_vals), 2) if ir_vals else None
+    ir_p95 = round(percentile(ir_vals, 95), 2) if ir_vals else None
+    ir_max, ir_max_port = max(ir_use, default=(None, None))
+    interp_by_id = {r["id"]: (r.get("interp") or {}) for r in port_records}
+    interp_worst_10 = [
+        {
+            "id": pid,
+            "ratio": round(ratio, 2),
+            "interp_ms": interp_by_id[pid].get("ratio_interp_ms"),
+            "cpp_ms": interp_by_id[pid].get("ratio_cpp_ms"),
+            "source": interp_by_id[pid].get("ratio_source"),
+        }
+        for ratio, pid in sorted(ir_use, key=lambda x: (-x[0], x[1]))[:10]
+    ]
+
+    taste_scores = [r["taste_score"] for r in port_records if r.get("taste_score") is not None]
+
     return {
         "ports_total": total,
         "ports_passed": passed,
@@ -1195,6 +1280,13 @@ def compute_totals(port_records, fl_summary, fr_summary):
             "rss_max": round(r_max, 3) if r_max is not None else None,
             "rss_max_port": r_max_port,
         },
+        "taste": {
+            "reviewed": len(taste_scores),
+            "median": round(statistics.median(taste_scores), 2) if taste_scores else None,
+            "under_4": sum(1 for s in taste_scores if s < 4),
+            "min": min(taste_scores) if taste_scores else None,
+            "max": max(taste_scores) if taste_scores else None,
+        },
         "interp": {
             "measured": len(interp_recs),
             "passed": sum(1 for r in port_records if (r.get("interp") or {}).get("ok") is True),
@@ -1203,6 +1295,18 @@ def compute_totals(port_records, fl_summary, fr_summary):
             "p95_ms": round(percentile(i_ms, 95), 2) if i_ms else None,
             "max_ms": round(i_max, 2) if i_max is not None else None,
             "max_port": i_max_port,
+            "ratio_measured": len(all_i_ratios),
+            "ratio_above_floor": len(i_ratios),
+            "ratio_p50": ir_p50,
+            "ratio_p95": ir_p95,
+            "ratio_max": round(ir_max, 2) if ir_max is not None else None,
+            "ratio_max_port": ir_max_port,
+            "ratio_bar": INTERP_RATIO_BAR,
+            "ratio_north_star": INTERP_RATIO_NORTH_STAR,
+            "bar_ok": (ir_p50 <= INTERP_RATIO_BAR) if ir_p50 is not None else None,
+            "north_star_ok": (ir_p50 <= INTERP_RATIO_NORTH_STAR) if ir_p50 is not None else None,
+            "over_10x": sum(1 for v in ir_vals if v > INTERP_RATIO_BAR),
+            "worst_10": interp_worst_10,
         },
         "friction_lint": {
             "files": fl_summary.get("files", 0),
@@ -1258,6 +1362,18 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
             elif prev_eb is not None and prev_eb > eb + EMITTED_GROWTH_BYTES and eb < prev_eb * 0.95:
                 improvements.append(f"emitted C++ shrank: {pid} ({prev_eb} -> {eb} B)")
 
+        if pid in base_ports:
+            b_dr = base_ports[pid].get("dream_ratio")
+            c_dr = r.get("dream_ratio")
+            if b_dr is not None and c_dr is not None:
+                if c_dr > b_dr + 1e-6:
+                    regressions.append(
+                        f"dream gap regressed: {pid} ({b_dr:.4f}x -> {c_dr:.4f}x, "
+                        f"cp={r.get('cp_tokens')}/dream={r.get('dream_tokens')})"
+                    )
+                elif c_dr < b_dr - 0.01:
+                    improvements.append(f"dream gap shrank: {pid} ({b_dr:.4f}x -> {c_dr:.4f}x)")
+
         if mode == "full" and pid in base_ports:
             bp = base_ports[pid].get("perf") or {}
             cp = r.get("perf") or {}
@@ -1280,6 +1396,22 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
                     )
                 elif cr < br * 0.90:
                     improvements.append(f"runtime improved: {pid} ({br:.3f}x -> {cr:.3f}x)")
+            bi = base_ports[pid].get("interp") or {}
+            ci = r.get("interp") or {}
+            if (
+                bi.get("ratio") is not None
+                and ci.get("ratio") is not None
+                and (ci.get("ratio_interp_ms") or 0) >= INTERP_FLOOR_MS
+                and (bi.get("ratio_interp_ms") or 0) >= INTERP_FLOOR_MS
+            ):
+                bir, cir = bi["ratio"], ci["ratio"]
+                if cir > bir * PERF_REGRESSION_RATIO:
+                    regressions.append(
+                        f"interp ratio regressed >10%: {pid} ({bir:.2f}x -> {cir:.2f}x, "
+                        f"{ci.get('ratio_interp_ms')}ms/{ci.get('ratio_cpp_ms')}ms)"
+                    )
+                elif cir < bir * 0.90:
+                    improvements.append(f"interp ratio improved: {pid} ({bir:.2f}x -> {cir:.2f}x)")
 
     # Aggregate checks (skip subset runs where totals aren't comparable)
     ct = current["totals"]
@@ -1314,6 +1446,10 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
                 cv = ct["perf"].get(key)
                 if bv is not None and cv is not None and cv > bv * PERF_REGRESSION_RATIO:
                     regressions.append(f"{label} regressed >10%: {bv:.3f}x -> {cv:.3f}x")
+            bi_p50 = bt.get("interp", {}).get("ratio_p50")
+            ci_p50 = ct.get("interp", {}).get("ratio_p50")
+            if bi_p50 is not None and ci_p50 is not None and ci_p50 > bi_p50 * PERF_REGRESSION_RATIO:
+                regressions.append(f"interp ratio p50 regressed >10%: {bi_p50:.2f}x -> {ci_p50:.2f}x")
 
     return {
         "has_baseline": baseline is not None,
@@ -1416,11 +1552,28 @@ def print_summary(report, diff, show_ports=False, quiet=False):
                     f"    {w['id']:22} {w['time_ratio']:7.3f}x  "
                     f"cpp={w['cpp_ms']}ms orig={w['orig_ms']}ms  ({w['input_source']})"
                 )
+    ts = t.get("taste") or {}
+    if ts.get("reviewed"):
+        print(
+            f"  taste:     {ts['reviewed']} reviewed, median {ts['median']:.1f}/5 "
+            f"(min {ts['min']}, max {ts['max']}, <4: {ts['under_4']})"
+        )
     ip = t["interp"]
     if ip["measured"]:
+        ratio_str = ""
+        if ip.get("ratio_p50") is not None:
+            bar_tag = "PASS" if ip.get("bar_ok") else "FAIL"
+            ns_tag = "PASS" if ip.get("north_star_ok") else "FAIL"
+            ratio_str = (
+                f"; vs C++ -O2 ({ip['ratio_above_floor']} >= {INTERP_FLOOR_MS:.0f}ms): "
+                f"p50={ip['ratio_p50']}x (bar <={INTERP_RATIO_BAR:.0f}x: {bar_tag}, "
+                f"north star <={INTERP_RATIO_NORTH_STAR:.0f}x: {ns_tag}) "
+                f"max={ip['ratio_max']}x ({ip['ratio_max_port']}, {ip.get('over_10x', 0)} >10x)"
+            )
         print(
             f"  interp:    {ip['passed']}/{ip['passed'] + ip['failed']} ok, "
             f"median {ip['median_ms']}ms, p95 {ip['p95_ms']}ms, max {ip['max_ms']}ms ({ip['max_port']})"
+            f"{ratio_str}"
         )
     fl = t["friction_lint"]
     print(f"  lint:      {fl['wa_trap']} wa_trap, {fl['real_gap']} real_gap, {fl['stale_port']} stale_port")
