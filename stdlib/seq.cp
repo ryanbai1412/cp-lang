@@ -794,8 +794,8 @@ pub fn resized<S: Indexed, T>(self: S, n: Int, fill: T) -> List<T> = [
 
 /// Move all elements out of `self` in O(1), leaving it empty.
 pub fn take<T>(mut self: List<T>) -> List<T>:
-    let out = self.copy()
-    self.truncate(0)
+    var out: List<T> = []
+    swap(mut self, mut out)
     out
 
 /// Insert `x` at index `i` (`0 <= i <= self.len`), shifting elements `i..` right by one. O(n).
@@ -999,10 +999,13 @@ fn list_insert_remove_take_and_swap_at():
             assert got == ref_xs[pos]
             ref_xs = ref_xs[0..pos] + ref_xs[pos + 1..ref_xs.len]
         assert cur == ref_xs
-    // take moves out in O(1) leaving self empty
+    // take moves out in O(1) leaving self empty (both built-in method and free fn)
     var u = [1, 2, 3, 4]
     let moved = u.take()
     assert u.is_empty and moved == [1, 2, 3, 4]
+    var u2 = [5, 6, 7]
+    let moved2 = take(mut u2)
+    assert u2.is_empty and moved2 == [5, 6, 7]
     // swap_at is self-swap safe
     domain I = 0..4
     var a = [I] i => i.to_idx * 10

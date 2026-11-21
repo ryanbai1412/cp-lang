@@ -1479,3 +1479,27 @@ print(m.len, z.len, c.len, inv, r.len, smn.len, smx.len)
         "generalized std.seq ops on slice views must not emit cpl::to_list:\n{solve}"
     );
 }
+
+#[test]
+fn seq_take_is_o1_move_without_copy() {
+    let out = cpp(
+        "use std.seq
+var a = [1, 2, 3]
+let b = seq.take(mut a)
+print(a.len, b.len)
+",
+    );
+    let take_fn = out
+        .split("inline std::vector<ll> m1_take_")
+        .nth(1)
+        .and_then(|s| s.split("void solve()").next())
+        .expect("seq.take emitted");
+    assert!(
+        take_fn.contains("std::exchange("),
+        "seq.take must move via std::exchange (O(1)):\n{take_fn}"
+    );
+    assert!(
+        !take_fn.contains(".resize(") && !take_fn.contains("cpl::copy("),
+        "seq.take must not copy/truncate:\n{take_fn}"
+    );
+}
