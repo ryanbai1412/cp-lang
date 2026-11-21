@@ -90,7 +90,7 @@ export const STDLIB_VALUES: readonly string[] = [
     'next_less', 'next_permutation', 'nth_element', 'ntt', 'on_segment', 'overlap', 'pairs',
     'period', 'perm_cycles', 'perm_pow', 'phi', 'poly_at', 'poly_degree', 'polygon_area', 'polygon_cut', 'pow_mod', 'prefix_fold',
     'prefix_function', 'prefix_matches', 'prev_greater', 'prev_less', 'prev_permutation',
-    'primitive_root', 'project', 'rank_real', 'ray', 'recurrence_at', 'reflect', 'reverse', 'rfind',
+    'primitive_root', 'project', 'rank_real', 'ray', 'read_fields', 'recurrence_at', 'reflect', 'reverse', 'rfind',
     'rotate_left', 'rotate_right', 'run_ranges', 'same_dir', 'seg_dist',
     'segments_meet', 'show_fields', 'sieve_multiplicative', 'sign_eps', 'sliding_max', 'sliding_min', 'solve_real',
     'sos', 'splitmix64', 'suffix_array', 'suffix_fold', 'suffix_scan', 'swap_at',

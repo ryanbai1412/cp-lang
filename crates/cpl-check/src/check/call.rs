@@ -3,7 +3,7 @@
 use super::expr::{list_names, plural};
 use super::*;
 use crate::ty::{Bindings, Param};
-use cpl_syntax::ast::{Arg, Expr, ExprKind};
+use cpl_syntax::ast::{Arg, Expr, ExprKind, PatternKind};
 
 impl<'a> Checker<'a> {
     pub(crate) fn call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Ty {
@@ -337,8 +337,101 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// `P(read() for _ in fields(P))` or `P(f + 1 for f in fields(p))`:
+    /// the body gives each field's value, checked once per field as the
+    /// back ends unroll it (decision 28.9). `own` is the struct and its
+    /// fields, when known.
+    pub(crate) fn fields_ctor(&mut self, own: Option<(&str, &[Param])>, args: &[Arg]) -> bool {
+        let want = own.map(|(_, f)| f);
+        let [arg] = args else {
+            return false;
+        };
+        let ExprKind::Comprehension { body, clauses } = &arg.value.kind else {
+            return false;
+        };
+        let [clause] = clauses.as_slice() else {
+            return false;
+        };
+        if arg.name.is_some() {
+            return false;
+        }
+        let Some(values) = self.reflected_values(&clause.iter) else {
+            return false;
+        };
+        let mut shapes = Vec::new();
+        for v in values {
+            if let ExprKind::Name(n) = &v.value.kind {
+                if self.local(n).is_none() && n.starts_with(|c: char| c.is_ascii_uppercase()) {
+                    if let Some((name, _)) = own.filter(|(name, _)| n != name) {
+                        let message = format!("`fields({n})` here names the type it builds, `{name}`");
+                        self.error(codes::TYPE_MISMATCH, v.value.span, message);
+                    }
+                    continue;
+                }
+            }
+            let ty = self.infer(&v.value);
+            if let (Some((name, _)), Ty::Named { name: got, .. }) = (own, &ty) {
+                if got != name {
+                    let message =
+                        format!("`fields` here walks values of the type it builds, `{name}`; this is a `{ty}`");
+                    self.error(codes::TYPE_MISMATCH, v.value.span, message);
+                }
+            }
+            shapes.push(self.reflect(&ty).ok().flatten());
+        }
+        if !clause.conds.is_empty() {
+            let message = "a `fields` constructor gives every field a value, so it has no `if`".to_string();
+            self.error(codes::UNSUPPORTED, clause.iter.span, message);
+        }
+        if shapes.is_empty() && !matches!(clause.pat.kind, PatternKind::Wildcard) {
+            if let Some(d) = self.error(
+                codes::TYPE_MISMATCH,
+                clause.pat.span,
+                "`fields` of a type has no values to bind".to_string(),
+            ) {
+                d.help = Some("write `_`, as in `P(read() for _ in fields(P))`".to_string());
+            }
+        }
+        let count = want.map(<[Param]>::len);
+        let passes: Vec<Option<usize>> = match count {
+            Some(n) => (0..n).map(Some).collect(),
+            None => vec![None],
+        };
+        for i in passes {
+            let one = |s: &Option<Vec<(String, Ty)>>| match (i, s) {
+                (Some(i), Some(f)) => f.get(i).map(|(_, t)| t.clone()).unwrap_or(Ty::Unknown),
+                _ => Ty::Unknown,
+            };
+            let elem = match shapes.as_slice() {
+                [] => Ty::Unknown,
+                [s] => one(s),
+                _ => Ty::Tuple(shapes.iter().map(one).collect()),
+            };
+            self.push_scope();
+            self.bind(&clause.pat, &elem, false, "for");
+            let got = self.infer(body);
+            if let (Some(i), Some(fields)) = (i, want) {
+                let field = &fields[i];
+                self.expect_fits(&got, &field.ty, body, |c, got, want| {
+                    format!(
+                        "the field `{}` is {}, but `{}` is {}",
+                        field.name,
+                        want.with_article(),
+                        c.quote(body.span),
+                        got.with_article()
+                    )
+                });
+            }
+            self.pop_scope();
+        }
+        true
+    }
+
     /// Checks arguments whose parameters are not known.
     fn plain_args(&mut self, args: &[Arg]) {
+        if self.fields_ctor(None, args) {
+            return;
+        }
         for arg in args {
             self.infer(&arg.value);
             if arg.mutable {
@@ -372,6 +465,13 @@ impl<'a> Checker<'a> {
                         Some(params) if !inside => ("takes", params),
                         _ => ("has", fields),
                     };
+                    let own = (generics.is_empty() && (ctor.is_none() || inside)).then_some((name, &fields[..]));
+                    if self.fields_ctor(own, args) {
+                        return Ty::Named {
+                            name: name.to_string(),
+                            args: type_args,
+                        };
+                    }
                     let mut bindings = Bindings::new();
                     if type_args.len() == generics.len() {
                         bindings.extend(generics.iter().cloned().zip(type_args.iter().cloned()));

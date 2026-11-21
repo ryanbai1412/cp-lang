@@ -12,7 +12,7 @@ Every module under `stdlib/` is plain CP Lang. Import individual names with `use
 | `std.bag` | `SortedBag`, `OrderedSet`, `BagCursor` | Ordered multiset & unique-key set with rank, nth, cursors, and node recycling |
 | `std.beats` | `BeatsSegTree` | Ji Driver Segment Tree Beats (`chmin`, `chmax`, `add`, `sum`, `min_val`, `max_val`) |
 | `std.bitset` | `Bitset` | Fixed-domain bitset with bitwise ops and `.first_set` |
-| `std.derive` | `eq_fields`, `lt_fields`, `show_fields`, `Hash`, `hash_fields` | The field-by-field `Eq`, `Ord`, `Show` and `Hash`, written on `fields`; call one from an `impl` (`fn lt(a, b) = lt_fields(b, a)` orders the other way, `fn hash(self) = hash_fields(self)` hashes a struct) |
+| `std.derive` | `eq_fields`, `lt_fields`, `show_fields`, `read_fields`, `Hash`, `hash_fields` | The field-by-field `Eq`, `Ord`, `Show`, `Read` and `Hash`, written on `fields`; call one from an `impl` (`fn lt(a, b) = lt_fields(b, a)` orders the other way, `fn hash(self) = hash_fields(self)` hashes a struct) |
 | `std.deque` | `Deque` | Double-ended queue (`.push_front`, `.pop_front`, `Deque.of`) |
 | `std.dp` | `LiChao`, `Line`, `dnc_dp`, `knuth_dp`, `aliens_search`, `monotone_minima` | DP optimizations (Li Chao tree, D&C DP, Knuth DP, Aliens/WQS, SMAWK) |
 | `std.dsu` | `Dsu`, `DsuOf`, `ParityDsu`, `PotentialDsu`, `RollbackArray` | Disjoint set union (payload, parity, potential) and rollback array sharing `Mark` |

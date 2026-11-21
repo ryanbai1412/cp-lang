@@ -1568,6 +1568,7 @@ The `Eq`, `Ord` and `Show` a struct gets field by field, written on
 fn eq_fields<T>(a: T, b: T) -> Bool // O(fields)
 fn lt_fields<T>(a: T, b: T) -> Bool // O(fields)
 fn show_fields<T>(a: T) -> Str // O(fields)
+fn read_fields<T>() -> T // O(fields): T(read() for _ in fields(T))
 trait Hash: fn hash(self) -> U64 // Int, U64, Char, Bool, Str here (decision 28.8)
 fn hash_fields<T>(a: T) -> U64 // O(fields)
 ```

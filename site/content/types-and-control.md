@@ -131,6 +131,7 @@ enum Dir: N, E, S, W            // one-line plain enum (commas or `|`)
   ```
 
   On an enum value, `fields(e)` walks the payload of the variant `e` is (nothing for a variant without one); `fields(a, b)` runs only when both are the same variant.
+- **`P(e for f in fields(x))`** builds a struct field by field: `e` runs once per field, in order, expected to be that field's type, and gives it. `P(read() for _ in fields(P))` reads one (`fields(P)` names the type, so there is nothing to bind); `P(x + y for (x, y) in fields(a, b))` adds two. A struct with a `new` still goes through `new`.
 - Generic functions and types use angle brackets (`fn swap<T>(mut a: T, mut b: T)`), with explicit type arguments at call sites when they cannot be inferred: `read<(Int, Int)>()`, or `f::<T>()`.
 
 ## Control flow, pattern matching, and functions

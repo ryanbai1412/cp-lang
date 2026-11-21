@@ -31,6 +31,10 @@ pub fn show_fields<T>(a: T) -> Str:
         first = false
     s
 
+/// A struct read field by field, each with its own type's `read()`:
+/// `impl` nothing, call `read_fields<Edge>()`. O(fields).
+pub fn read_fields<T>() -> T = T(read() for _ in fields(T))
+
 /// A 64-bit hash, mixed by `splitmix64`: equal values hash equal, and
 /// values close together land far apart. O(1), O(len) for a `Str`.
 pub trait Hash:

@@ -806,7 +806,90 @@ impl<'a> Lowerer<'a> {
     }
 
     /// `Edge(u: a, v: b, w: 5)` or `Edge(a, b, 5)`.
+    /// `P(read() for _ in fields(P))`, `P(x + y for (x, y) in fields(a, b))`:
+    /// the body once per field, giving that field (decision 28.9).
+    fn fields_ctor(&mut self, id: StructId, args: &[ast::Arg], span: Span) -> Option<Expr> {
+        let [arg] = args else {
+            return None;
+        };
+        let ast::ExprKind::Comprehension { body, clauses } = &arg.value.kind else {
+            return None;
+        };
+        let [clause] = clauses.as_slice() else {
+            return None;
+        };
+        if arg.name.is_some() {
+            return None;
+        }
+        let values = self.reflected_values(&clause.iter)?;
+        let fields = self.structs[id].def.fields.clone();
+        let mut stmts = Vec::new();
+        let mut temps = Vec::new();
+        for a in values {
+            if let ast::ExprKind::Name(n) = &a.value.kind {
+                if self.lookup(n).is_none() && n.starts_with(|c: char| c.is_ascii_uppercase()) {
+                    let own = match self.gen_env.get(n) {
+                        Some(GenArg::Ty(Ty::Struct(sid))) => *sid == id,
+                        _ => matches!(self.get_sym(n), Some(Sym::Struct(sid)) if sid == id),
+                    };
+                    if !own {
+                        let message = format!("`fields({n})` here names the type it builds, `{}`", self.structs[id].def.name);
+                        self.error(codes::TYPE_MISMATCH, a.value.span, message);
+                        return Some(self.err_expr(span));
+                    }
+                    continue;
+                }
+            }
+            let v = self.expr(&a.value, None);
+            if v.ty != Ty::Struct(id) && v.ty != Ty::Error {
+                let message = format!(
+                    "`fields` here walks values of the type it builds, `{}`; this is a `{}`",
+                    self.structs[id].def.name,
+                    self.show(&v.ty)
+                );
+                self.error(codes::TYPE_MISMATCH, a.value.span, message);
+                return Some(self.err_expr(span));
+            }
+            let slot = self.temp(v.ty.clone());
+            stmts.push(Stmt::Let(slot, Some(v)));
+            temps.push((slot, a.value.span));
+        }
+        let mut items = Vec::new();
+        for (i, (_, fty)) in fields.iter().enumerate() {
+            self.cx.scopes.push(HashMap::new());
+            self.cx.local_syms.push(HashMap::new());
+            if !temps.is_empty() {
+                let mut vals: Vec<Expr> = temps
+                    .iter()
+                    .map(|(slot, sp)| {
+                        let base = self.local(*slot, *sp);
+                        self.mk(ExprKind::Field(Box::new(base), i), fty.clone(), *sp)
+                    })
+                    .collect();
+                let value = if vals.len() == 1 {
+                    vals.pop().unwrap()
+                } else {
+                    let ty = Ty::Tuple(vec![fty.clone(); vals.len()]);
+                    self.mk(ExprKind::Tuple(vals), ty, temps[0].1)
+                };
+                self.bind(&clause.pat, value, &mut stmts);
+            }
+            let v = self.expect(body, fty);
+            let slot = self.temp(fty.clone());
+            stmts.push(Stmt::Let(slot, Some(v)));
+            items.push(self.local(slot, body.span));
+            self.cx.local_syms.pop();
+            self.cx.scopes.pop();
+        }
+        let value = self.mk(ExprKind::Tuple(items), Ty::Struct(id), span);
+        stmts.push(Stmt::Give(value));
+        Some(self.mk(ExprKind::Do(Block { stmts }), Ty::Struct(id), span))
+    }
+
     fn construct(&mut self, id: StructId, args: &[ast::Arg], span: Span) -> Expr {
+        if let Some(e) = self.fields_ctor(id, args, span) {
+            return e;
+        }
         let fields = self.structs[id].def.fields.clone();
         let Some(decl) = self.structs[id].decl else {
             self.error(

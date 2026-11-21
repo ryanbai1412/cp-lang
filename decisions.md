@@ -1925,6 +1925,19 @@ Reverse: drop the `proven` lookup in the `inlayHint` arm of `crates/cpl-lsp/src/
   hash does not call `Hash`. Reverse: delete `attach_impls_for_builtins`
   and `prim_methods` in `cpl-ir/src/lower` and the `Hash` part of
   `stdlib/derive.cp`.
+- **28.9 A struct built field by field: `P(e for f in fields(..))`.** A
+  struct constructor whose one argument is a generator over `fields` runs
+  `e` once per field, in order, with that field's type expected, and
+  builds the struct from the values: `P(read() for _ in fields(P))` reads
+  one, `P(x + y for (x, y) in fields(a, b))` adds two. `fields(P)` names
+  the type being built and binds nothing (`_`); values must be of that
+  type. It is the construction half of reflection (28.1 walks fields,
+  this makes them), so `Read` and field-wise maps are library code:
+  `std.derive.read_fields<T>() = T(read() for _ in fields(T))`. A struct
+  with a `new` still goes through `new`, so its invariants hold. Rejected:
+  `T(..tuple)` spread (`..t` already means a range) and `fields(mut x)`
+  (needs a starting value, and a struct has none). Reverse: delete
+  `fields_ctor` in `cpl-ir/src/lower/call.rs` and `cpl-check/src/check/call.rs`.
 - **30.1 A broken-ports benchmark scores recovery.** `crates/cpl-cli/tests/recovery.rs` applies six
   single-line edits (drop a closer, drop a block colon, cut a value, double an operator, garble a
   declared name) to every port and counts errors, cascades (every error after the first, since each copy

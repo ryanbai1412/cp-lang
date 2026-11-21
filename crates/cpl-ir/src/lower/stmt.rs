@@ -1794,7 +1794,7 @@ impl<'a> Lowerer<'a> {
     }
 
     /// The values of `fields(a, b, ..)` in a `for` head (decision 28.1).
-    fn reflected_values<'e>(&self, iter: &'e ast::Expr) -> Option<&'e [ast::Arg]> {
+    pub(super) fn reflected_values<'e>(&self, iter: &'e ast::Expr) -> Option<&'e [ast::Arg]> {
         let ast::ExprKind::Call { callee, args } = &iter.kind else {
             return None;
         };

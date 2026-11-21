@@ -2044,6 +2044,21 @@ fn a_fields_loop_over_an_enum_checks_each_variant_payload() {
 }
 
 #[test]
+fn a_fields_constructor_gives_each_field_a_value_of_its_type() {
+    let head = "struct P(a: Int, b: Str)\nstruct Q(a: Int)\nlet p = P(1, \"x\")\n";
+    assert!(codes(&format!("{head}let a = P(read() for _ in fields(P))\nlet b = P(f for f in fields(p))\n")).is_empty());
+    let d = one(&format!("{head}let b = P(1 for _ in fields(P))\n"));
+    assert_eq!(
+        (d.code.0, d.message.as_str()),
+        ("E0302", "the field `b` is a Str, but `1` is an Int")
+    );
+    let d = one(&format!("{head}let c = Q(f for f in fields(p))\n"));
+    assert_eq!(d.message, "`fields` here walks values of the type it builds, `Q`; this is a `P`");
+    let d = one(&format!("{head}let c = P(f for f in fields(P))\n"));
+    assert_eq!(d.help.as_deref(), Some("write `_`, as in `P(read() for _ in fields(P))`"));
+}
+
+#[test]
 fn a_lazy_parameter_takes_the_expression_its_lambda_gives_back() {
     let head = "fn or_else<T>(a: ?T, lazy d: () -> T) -> T:\n    if let v = a:\n        return v\n    d()\n";
     assert!(codes(&format!("{head}let x: ?Int = 3\nprint(or_else(x, 4), or_else(x, d: 5), or_else(x, () => 6))\n")).is_empty());
