@@ -923,6 +923,7 @@ impl<'a> Lowerer<'a> {
                 is_generator: false,
                 new_domain_slot: None,
                 state: State::Done,
+                asked_at: self.asked_at,
             });
             self.bodies.push(Some(Function {
                 name: init_fn_name,

@@ -612,3 +612,37 @@ fn cpl_run_still_checks_an_index_inside_unchecked() {
     assert_eq!(out.status.code(), Some(3), "{stderr}");
     assert!(stderr.contains("index 5 is outside a list of length 3"), "{stderr}");
 }
+
+/// What `cpl check` prints for `source`.
+fn check_errors(test: &str, source: &str) -> String {
+    let path = scratch(test, "a.cp", source.as_bytes());
+    let out = cpl(&["check".as_ref(), path.as_os_str()], b"");
+    assert_eq!(out.status.code(), Some(1));
+    String::from_utf8(out.stderr).unwrap()
+}
+
+#[test]
+fn an_error_inside_library_code_is_shown_at_the_call_that_asked_for_it() {
+    let source = "domain S = 0..3\nlet s: [S]Char = read()\nlet h = RollingHash.new(s)\nprint(h.get(3))\n";
+    let stderr = check_errors("library-span", source);
+    assert!(stderr.contains("a.cp:4:7"), "{stderr}");
+    assert!(!stderr.contains("a.cp:1:1"), "{stderr}");
+}
+
+#[test]
+fn the_users_own_error_hides_the_ones_it_causes_in_library_code() {
+    let source = "domain S = 0..3\nlet s: [S]Char = read()\nlet h = RollingHash.new(s)\nprint(h.get(S.first!..))\n";
+    let stderr = check_errors("library-noise", source);
+    assert!(stderr.contains("`!` takes the value out of an optional"), "{stderr}");
+    assert!(!stderr.contains("has no member"), "{stderr}");
+}
+
+#[test]
+fn an_arc_without_a_record_says_how_to_read_it() {
+    let pairs = "use std.graph.{undirected_of_pairs}\ndomain V = 0..3\nlet adj = undirected_of_pairs([(V(0), V(1))])\nfor a in adj[V(0)]: print(a.e)\n";
+    let stderr = check_errors("arc-e", pairs);
+    assert!(stderr.contains("a graph built from a list of pairs numbers no edges"), "{stderr}");
+    let weighted = "domain V = 0..3\nlet adj: [V]List<(V, Int)> = []\nfor b in adj[V(0)]: print(b.e)\n";
+    let stderr = check_errors("arc-tuple", weighted);
+    assert!(stderr.contains("the parts of a tuple have numbers, not names: `.0` to `.1`"), "{stderr}");
+}

@@ -318,7 +318,17 @@ impl<'a> Checker<'a> {
                     {
                         self.fits(&args[0], elem)
                     }
-                    (Some(Ty::Array { elem, .. }), Some(init_ty)) => self.fits(init_ty, elem),
+                    (Some(Ty::Array { elem, .. }), Some(init_ty)) => {
+                        // A literal fills the cells of an array of arrays too.
+                        let mut cell = &**elem;
+                        let literal = init.as_ref().is_some_and(|e| {
+                            matches!(e.kind, ExprKind::Int(_) | ExprKind::Bool(_) | ExprKind::Float(_))
+                        });
+                        while let (true, Ty::Array { elem, .. }) = (literal, cell) {
+                            cell = elem;
+                        }
+                        self.fits(init_ty, cell)
+                    }
                     _ => false,
                 };
                 if let (Some(declared), Some(init_ty), Some(init), false) =

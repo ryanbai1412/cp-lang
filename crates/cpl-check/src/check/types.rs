@@ -9,6 +9,7 @@ impl<'a> Checker<'a> {
     pub(crate) fn resolve_type(&mut self, ty: &ast::Type) -> Ty {
         match &ty.kind {
             TypeKind::Named { name, args } => {
+                self.range_as_type_arg(&name.text, args);
                 let args: Vec<Ty> = args.iter().map(|a| self.type_arg(a)).collect();
                 self.named_type(&name.text, name.span, args)
             }
@@ -100,6 +101,27 @@ impl<'a> Checker<'a> {
             },
             TypeKind::Value(_) | TypeKind::NewDomain => Ty::Unknown,
             TypeKind::Error => Ty::Error,
+        }
+    }
+
+    /// `Dsu<0..n>`: a struct's type argument is a domain by name, and a
+    /// range written in place has none.
+    pub(crate) fn range_as_type_arg(&mut self, name: &str, args: &[ast::Type]) {
+        let Some(range) = args
+            .iter()
+            .find(|a| matches!(a.kind, TypeKind::Range { .. }))
+        else {
+            return;
+        };
+        if !matches!(self.env.type_def(name).as_deref(), Some(Def::Struct { .. })) {
+            return;
+        }
+        let written = self.quote(range.span).to_string();
+        let message = format!("`{name}` takes a domain by name, and `{written}` is a range");
+        if let Some(diag) = self.error(codes::UNKNOWN_TYPE, range.span, message) {
+            diag.help = Some(format!(
+                "name it first, `domain V = {written}`, and write `V` here"
+            ));
         }
     }
 

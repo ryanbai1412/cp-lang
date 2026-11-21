@@ -156,6 +156,9 @@ impl<'a> Checker<'a> {
             ExprKind::Field { base, name } => self.field(base, name),
             ExprKind::Generic { base, args } => {
                 let base_ty = self.infer(base);
+                if let ExprKind::Name(name) = &base.kind {
+                    self.range_as_type_arg(name, args);
+                }
                 let args: Vec<Ty> = args.iter().map(|a| self.type_arg(a)).collect();
                 // `Sum<Int>`, `f::<Int>`: the declared type with its
                 // parameters filled in.

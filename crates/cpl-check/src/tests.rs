@@ -1729,3 +1729,13 @@ fn a_method_that_calls_a_mut_self_method_takes_mut_self() {
         ["this method takes `self` without `mut`, so `self` can't be changed by `bump`"]
     );
 }
+
+#[test]
+fn a_range_written_as_a_structs_type_argument_says_to_name_it() {
+    let diags = check("let n = 4\nvar d = Dsu<0..n>()\n");
+    assert!(
+        messages(&diags).contains(&"`Dsu` takes a domain by name, and `0..n` is a range"),
+        "{diags:?}"
+    );
+    assert_eq!(check("let n = 4\ndomain V = 0..n\nvar d = Dsu<V>()\n"), vec![]);
+}

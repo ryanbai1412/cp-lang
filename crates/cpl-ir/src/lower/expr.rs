@@ -35,6 +35,17 @@ impl<'a> Lowerer<'a> {
     /// the forms that can't tell on their own look at: `none`, `[]`,
     /// `read()`, and number literals.
     pub(super) fn expr(&mut self, e: &ast::Expr, hint: Option<&Ty>) -> Expr {
+        // Library code that this expression asks for reports here.
+        let outer = self.asked_at;
+        if self.cur_mod == 0 {
+            self.asked_at = e.span.shift(self.offset);
+        }
+        let lowered = self.expr_of(e, hint);
+        self.asked_at = outer;
+        lowered
+    }
+
+    fn expr_of(&mut self, e: &ast::Expr, hint: Option<&Ty>) -> Expr {
         // Where an optional is wanted, a plain value is typed as the inside.
         let inner_hint = match hint {
             Some(Ty::Opt(inner)) => Some(&**inner),
@@ -137,7 +148,23 @@ impl<'a> Lowerer<'a> {
                 hi,
                 inclusive,
                 step: None,
-            } => self.range_val(lo.as_deref(), hi.as_deref(), *inclusive, span),
+            } => match (lo, hi, hint) {
+                // `..` where a `Range<D>` is wanted is all of `D`.
+                (None, None, Some(Ty::Range(of))) if matches!(**of, Ty::Pos(_)) => {
+                    let Ty::Pos(d) = **of else { unreachable!() };
+                    let lo = self.int_lit(0, span);
+                    let hi = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                    self.mk(
+                        ExprKind::Range {
+                            lo: Box::new(lo),
+                            hi: Box::new(hi),
+                        },
+                        Ty::Range(Box::new(Ty::Pos(d))),
+                        span,
+                    )
+                }
+                _ => self.range_val(lo.as_deref(), hi.as_deref(), *inclusive, span),
+            },
             ast::ExprKind::Range { .. } => {
                 self.unsupported(span, "a stepped range kept as a value");
                 self.err_expr(span)

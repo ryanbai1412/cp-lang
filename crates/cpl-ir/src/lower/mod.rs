@@ -256,6 +256,12 @@ fn finish(self, analysis: &Analysis, whole: bool) -> Result<Program, Vec<Diagnos
         };
         first.stmts.splice(0..0, preamble);
     }
+    // A mistake in the user's code often breaks the library code it asks
+    // for as well. The user's own mistake is the one to show.
+    if lw.diags.iter().any(|d| !lw.in_library.contains(&d.message)) {
+        let in_library = std::mem::take(&mut lw.in_library);
+        lw.diags.retain(|d| !in_library.contains(&d.message));
+    }
     if !lw.diags.is_empty() {
         lw.diags.sort_by_key(|d| (d.span.start, d.span.end));
         lw.diags.dedup();
@@ -387,6 +393,8 @@ struct FnSig<'a> {
     /// If the return type is `(domain C, ...)`, the allocated DomainId + name.
     new_domain_slot: Option<(String, DomainId)>,
     state: State,
+    /// The user's expression that first asked for this fn.
+    asked_at: Span,
 }
 
 /// What a block is for, which decides what happens to its last expression.
@@ -530,6 +538,11 @@ struct Lowerer<'a> {
     self_struct: Option<StructId>,
     /// Start of the item being lowered; its spans are relative to it.
     offset: u32,
+    /// The user's expression being lowered: where an error inside the
+    /// library code it asks for is shown.
+    asked_at: Span,
+    /// The messages of the errors found inside library code.
+    in_library: HashSet<String>,
     next_loop: LoopId,
     /// The places a `(place ??= init)` filled: module and span.
     filled: HashSet<(ModId, u32, u32)>,
@@ -599,6 +612,8 @@ impl<'a> Lowerer<'a> {
             gen_env: HashMap::new(),
             self_struct: None,
             offset: 0,
+            asked_at: Span::default(),
+            in_library: HashSet::new(),
             next_loop: 0,
             filled: HashSet::new(),
             counter_structs: HashMap::new(),
@@ -608,16 +623,23 @@ impl<'a> Lowerer<'a> {
 
     // ----- reporting -----
 
+    /// Where an error at `span` is shown. One inside library code is
+    /// shown at the user's expression that asked for that code, since the
+    /// file on screen is the user's.
     fn span(&self, span: Span) -> Span {
         if self.cur_mod == 0 {
             span.shift(self.offset)
         } else {
-            Span::default()
+            self.asked_at
         }
     }
 
     fn error(&mut self, code: cpl_diag::Code, span: Span, message: impl Into<String>) {
         let span = self.span(span);
+        let message = message.into();
+        if self.cur_mod != 0 {
+            self.in_library.insert(message.clone());
+        }
         self.diags.push(Diagnostic::error(code, span, message));
     }
 
@@ -1114,6 +1136,7 @@ impl<'a> Lowerer<'a> {
             is_generator,
             new_domain_slot: None,
             state: State::Pending,
+            asked_at: self.asked_at,
         });
         self.bodies.push(None);
         self.sigs.len() - 1
@@ -2266,6 +2289,7 @@ impl<'a> Lowerer<'a> {
 
     pub(super) fn queue_fn(&mut self, id: FnId) {
         if self.queued_set.insert(id) {
+            self.sigs[id].asked_at = self.asked_at;
             self.queued_fns.push(id);
         }
     }
@@ -2284,6 +2308,7 @@ impl<'a> Lowerer<'a> {
         let saved_offset = std::mem::replace(&mut self.offset, self.sigs[id].offset);
         let saved_env = std::mem::replace(&mut self.gen_env, self.sigs[id].env.clone());
         let saved_self = std::mem::replace(&mut self.self_struct, self.sigs[id].owner);
+        let saved_asked = std::mem::replace(&mut self.asked_at, self.sigs[id].asked_at);
 
         let mut cx = FnCx {
             ret: self.sigs[id].ret.clone(),
@@ -2435,6 +2460,7 @@ impl<'a> Lowerer<'a> {
                 is_generator: false,
                 new_domain_slot: None,
                 state: State::Done,
+                asked_at: self.asked_at,
             });
             self.bodies.push(Some(Function {
                 name: format!("{}_body", self.sigs[id].name),
@@ -2496,6 +2522,7 @@ impl<'a> Lowerer<'a> {
                     is_generator: false,
                     new_domain_slot: None,
                     state: State::Done,
+                    asked_at: self.asked_at,
                 });
                 self.bodies.push(Some(Function {
                     name: format!("{}_fill", self.sigs[id].name),
@@ -2524,6 +2551,7 @@ impl<'a> Lowerer<'a> {
         self.offset = saved_offset;
         self.gen_env = saved_env;
         self.self_struct = saved_self;
+        self.asked_at = saved_asked;
         self.sigs[id].ret = Some(ret.clone());
         self.sigs[id].state = State::Done;
         self.bodies[id] = Some(Function {

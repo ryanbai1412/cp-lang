@@ -1362,8 +1362,7 @@ impl<'a> Lowerer<'a> {
         if let Spec::Array { dims, elem } = &spec {
             let elem_ty = elem.ty();
             if is_literal(init) {
-                let value = self.expect(init, &elem_ty);
-                return Some(self.fill_with_index_domains(dims.clone(), Some(Box::new(value)), want, init.span));
+                return Some(self.fill_literal(&spec, init));
             }
             if let Some(table) = self.comprehension_table(init, dims, &elem_ty) {
                 return Some(table);
@@ -1437,6 +1436,16 @@ impl<'a> Lowerer<'a> {
             }
         }
         Some(self.expect(init, &want))
+    }
+
+    /// `var g: [0..n][0..4]Int = 0`: a literal fills every cell, and a
+    /// cell that is itself an array is filled the same way.
+    fn fill_literal(&mut self, spec: &Spec, init: &ast::Expr) -> Expr {
+        let Spec::Array { dims, elem } = spec else {
+            return self.expect(init, &spec.ty());
+        };
+        let value = self.fill_literal(elem, init);
+        self.fill_with_index_domains(dims.clone(), Some(Box::new(value)), spec.ty(), init.span)
     }
 
     /// Wraps `ExprKind::Fill` with dynamic `DefDomain` initialization when any dimension

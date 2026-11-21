@@ -60,18 +60,18 @@ pub fn prefix_function<T>(s: List<T>) -> List<Int>:
         p[i] = k
     p
 
-/// The start of every occurrence of `pat` in `text`, in increasing order (Knuth-Morris-Pratt).
+/// The start of every occurrence of `pat` in `self`: `s.find_all(p)`, in increasing order (Knuth-Morris-Pratt).
 /// O(text.len + pat.len). An empty pattern occurs at every position, including the end.
 @allow(unproven_list_index)
-pub fn find_all<T>(text: List<T>, pat: List<T>) -> yields Int:
+pub fn find_all<T>(self: List<T>, pat: List<T>) -> yields Int:
     if pat.is_empty:
-        for i in 0..=text.len: yield i
+        for i in 0..=self.len: yield i
         return
     let p = prefix_function(pat)
     var k = 0
-    for i in 0..text.len:
-        while k > 0 and text[i] != pat[k]: k = p[k - 1]
-        if text[i] == pat[k]: k += 1
+    for i in 0..self.len:
+        while k > 0 and self[i] != pat[k]: k = p[k - 1]
+        if self[i] == pat[k]: k += 1
         if k == pat.len:
             yield i + 1 - k
             k = p[k - 1]
@@ -352,6 +352,7 @@ fn z_and_prefix_function_match_their_definitions():
 @test
 fn find_all_matches_a_scan():
     assert [i for i in find_all("abababa", "aba")] == [0, 2, 4]
+    assert [i for i in "abababa".find_all("aba")] == [0, 2, 4]
     assert [i for i in find_all("abc", "")] == [0, 1, 2, 3]
     assert [i for i in find_all("ab", "abc")] == []
     for _ in 0..40:

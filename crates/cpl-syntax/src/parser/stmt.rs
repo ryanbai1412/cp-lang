@@ -753,10 +753,10 @@ impl<'a> Parser<'a> {
             self.bump();
             let pat = self.pattern();
             self.expect(T::Eq, "`=` after the pattern in `if let`");
-            // The value ends before `and`, which adds a condition on
-            // what the pattern bound.
+            // The value ends before `and` (or `,`), which adds a condition
+            // on what the pattern bound.
             let value = self.not();
-            let and = self.eat(T::And).then(|| {
+            let and = (self.eat(T::And) || self.eat(T::Comma)).then(|| {
                 Box::new(if self.at(T::Let) {
                     self.cond()
                 } else {

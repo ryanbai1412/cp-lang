@@ -92,7 +92,9 @@ pub fn run<S: AsRef<str>>(args: &[S]) -> Outcome {
 pub fn run_with_input<S: AsRef<str>>(args: &[S], input: &[u8]) -> Outcome {
     let mut stdout = Vec::new();
     let mut stderr = String::new();
-    let code = exec(args, &mut || input.to_vec(), &mut stdout, &mut stderr);
+    // The whole input arrives at once, and then it has ended.
+    let mut rest = Some(input.to_vec());
+    let code = exec(args, &mut || rest.take().unwrap_or_default(), &mut stdout, &mut stderr);
     Outcome {
         stdout,
         stderr,
@@ -101,10 +103,11 @@ pub fn run_with_input<S: AsRef<str>>(args: &[S], input: &[u8]) -> Outcome {
 }
 
 /// Runs `cpl` with `args`, writing to `stdout` as it goes. `stdin` is
-/// called only by a command that reads standard input.
+/// called only by a command that reads standard input: each call gives the
+/// bytes that have arrived, and nothing once the input has ended.
 pub fn exec<S: AsRef<str>>(
     args: &[S],
-    stdin: &mut dyn FnMut() -> Vec<u8>,
+    stdin: &mut (dyn FnMut() -> Vec<u8> + Send),
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
@@ -143,16 +146,16 @@ pub fn exec<S: AsRef<str>>(
         Some("run") => match RunArgs::parse(&rest) {
             Ok(args) => {
                 let input = match args.input {
-                    None => stdin(),
+                    None => Input::Live(stdin),
                     Some(input) => match std::fs::read(input) {
-                        Ok(input) => input,
+                        Ok(input) => Input::Whole(input),
                         Err(error) => {
                             *stderr += &format!("cpl: can't read `{input}`: {error}\n");
                             return EXIT_USAGE;
                         }
                     },
                 };
-                run_file(&args, &input, stdout, stderr)
+                run_file(&args, input, stdout, stderr)
             }
             Err(message) => usage_error(message),
         },
@@ -612,9 +615,35 @@ fn run_release(args: &RunArgs, input: &[u8], stdout: &mut (dyn Write + Send), st
     }
 }
 
-fn run_file(args: &RunArgs, input: &[u8], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
+/// What `cpl run` reads: a file, or standard input as it arrives.
+enum Input<'a> {
+    Whole(Vec<u8>),
+    /// Gives the next bytes, and nothing once the input has ended.
+    Live(&'a mut (dyn FnMut() -> Vec<u8> + Send)),
+}
+
+impl Input<'_> {
+    /// The whole input, waiting for its end.
+    fn whole(self) -> Vec<u8> {
+        match self {
+            Input::Whole(input) => input,
+            Input::Live(more) => {
+                let mut input = Vec::new();
+                loop {
+                    let chunk = more();
+                    if chunk.is_empty() {
+                        return input;
+                    }
+                    input.extend(chunk);
+                }
+            }
+        }
+    }
+}
+
+fn run_file(args: &RunArgs, input: Input, stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
     if args.release {
-        return run_release(args, input, stdout, stderr);
+        return run_release(args, &input.whole(), stdout, stderr);
     }
     let path = args.file;
     let side = if args.brute { Side::Brute } else { Side::Solution };
@@ -624,12 +653,12 @@ fn run_file(args: &RunArgs, input: &[u8], stdout: &mut (dyn Write + Send), stder
     };
     let json = args.format == Some("json");
     if args.trace || json {
-        return observe_file(args, &compiled, input, stdout, stderr);
+        return observe_file(args, &compiled, &input.whole(), stdout, stderr);
     }
     // An interactive problem with its judge in the file: the input is
     // the hidden test, and the two talk to each other.
     if let Some((name, judge)) = &compiled.judge {
-        let ruling = interact::run(&compiled.program, judge, input, stdout);
+        let ruling = interact::run(&compiled.program, judge, &input.whole(), stdout);
         // A side that stops leaves the other with nothing to read: that
         // second failure only follows from the first.
         let starved = |trap: &cpl_interp::Trap| {
@@ -661,7 +690,21 @@ fn run_file(args: &RunArgs, input: &[u8], stdout: &mut (dyn Write + Send), stder
         }
         return EXIT_FAILED;
     }
-    let observed = cpl_interp::run_observed(&compiled.program, cpl_interp::Io::fixed(input), stdout, None);
+    // Standard input is read as the program asks for it, so a program
+    // that answers a person or a judge at the other end of a pipe is not
+    // left waiting for the input to end.
+    let whole;
+    let io = match input {
+        Input::Whole(input) => {
+            whole = input;
+            cpl_interp::Io::fixed(&whole)
+        }
+        Input::Live(more) => cpl_interp::Io::live(Box::new(move || {
+            let chunk = more();
+            (!chunk.is_empty()).then_some(chunk)
+        })),
+    };
+    let observed = cpl_interp::run_observed(&compiled.program, io, stdout, None);
     *stderr += &String::from_utf8_lossy(&observed.debug);
     match observed.trap {
         None => 0,

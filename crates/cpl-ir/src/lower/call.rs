@@ -2936,6 +2936,19 @@ impl<'a> Lowerer<'a> {
                     name.text
                 );
                 self.error(codes::UNKNOWN_FIELD, name.span, message);
+                match (&ty, name.text.as_str()) {
+                    // An arc of a graph built from a list of pairs is the
+                    // neighbour, with no record around it.
+                    (Ty::Pos(_), "e") => self.help(
+                        "this is the neighbour itself, and a graph built from a list of pairs numbers no edges; \
+                         for `.e`, give the edges a domain: `let edges: [E](u: V, v: V) = ...`, then `Graph.directed(edges)`",
+                    ),
+                    (Ty::Tuple(parts), _) => self.help(format!(
+                        "the parts of a tuple have numbers, not names: `.0` to `.{}`",
+                        parts.len().saturating_sub(1)
+                    )),
+                    _ => {}
+                }
                 self.err_expr(span)
             }
         }

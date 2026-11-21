@@ -7,10 +7,13 @@ fn main() -> ExitCode {
     if args.first().map(String::as_str) == Some("lsp") && args[1..].iter().all(|a| a == "--stdio") {
         return ExitCode::from(cpl_cli::lsp());
     }
+    // What has arrived on standard input, without waiting for its end;
+    // nothing once it has ended.
     let mut read_stdin = || {
-        let mut input = Vec::new();
-        let _ = std::io::stdin().lock().read_to_end(&mut input);
-        input
+        let mut chunk = vec![0; 1 << 16];
+        let read = std::io::stdin().lock().read(&mut chunk).unwrap_or(0);
+        chunk.truncate(read);
+        chunk
     };
     let mut stdout = std::io::stdout();
     let mut stderr = String::new();
