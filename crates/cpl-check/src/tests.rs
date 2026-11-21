@@ -1826,10 +1826,16 @@ fn a_row_of_a_grid_takes_the_larger_cells_of_another_row() {
         "g[k, 1..3] min= g[v, 0..2]\n",
         "g[k, ..] max= row\n",
         "g[k, ..] max= [1, 2, 3, 4]\n",
+        // One value goes against every cell of the part.
+        "g[k, ..] max= 3\n",
+        "g[k, 1..3] += 2\n",
+        "g[.., 1] min= row[0]\n",
+        "row[1..3] -= 1\nrow[..] max= 0\n",
+        "if row[..] min= 2: print(row)\n",
     ] {
         assert_eq!(codes(&format!("{src}{ok}")), Vec::<&str>::new(), "{ok}");
     }
-    for bad in ["g[k, ..] max= s[v, ..]\n", "print(g[k, ..] min= s[v, ..])\n", "g[k, ..] max= 3\n"] {
+    for bad in ["g[k, ..] max= s[v, ..]\n", "print(g[k, ..] min= s[v, ..])\n", "g[k, ..] max= \"x\"\n", "row[..] min= 2.5\n"] {
         assert_eq!(codes(&format!("{src}{bad}")), ["E0302"], "{bad}");
     }
 }

@@ -215,6 +215,20 @@ impl<'a> Checker<'a> {
     /// `a max= b` on a row (an array of one dimension, or a list) goes
     /// cell by cell, so `b` is a row of the same type.
     pub(crate) fn row_keep(&mut self, target: &ast::Expr, target_ty: &Ty, value: &ast::Expr, value_ty: &Ty) {
+        // `a[l..r] max= x`, `g[r, ..] min= x`: one value against every cell
+        // of the part.
+        let part = matches!(&target.kind, ExprKind::Index { indices, .. } if indices.iter().any(|i| matches!(i.kind, ExprKind::Range { .. })));
+        let cell = match target_ty {
+            Ty::Array { elem, .. } => Some(&**elem),
+            Ty::Named { name, args } if name == "List" && args.len() == 1 => Some(&args[0]),
+            _ => None,
+        };
+        if let (true, Some(cell)) = (part, cell) {
+            let row = matches!(value_ty, Ty::Array { .. }) || matches!(value_ty, Ty::Named { name, .. } if name == "List");
+            if !row && !value_ty.is_vague() && self.fits(value_ty, cell) {
+                return;
+            }
+        }
         // `g[r, ..] max= g[v, ..]`: a row of a grid against cells of its kind.
         if let (true, Ty::Array { index, elem: want }) = (Self::part_of_grid(target), target_ty) {
             if index.len() > 1 {

@@ -60,6 +60,10 @@ impl<'a> Lowerer<'a> {
         };
         let span = e.span;
         match &e.kind {
+            ast::ExprKind::By { .. } => {
+                let (iter, elem) = self.iter(e);
+                self.walked_list(iter, elem, span)
+            }
             ast::ExprKind::Int(value) => match i64::try_from(*value) {
                 Ok(value) if inner_hint == Some(&Ty::Float) => {
                     self.mk(ExprKind::Float(value as f64), Ty::Float, span)
@@ -2982,6 +2986,44 @@ impl<'a> Lowerer<'a> {
                     return (Iter::Seq(seq, false), Ty::Struct(sid));
                 }
                 error(self)
+            }
+            // `(lo..hi).rev by step` counts down from `hi - 1`: the values
+            // of `lo'..hi by step` backward, where `lo'` is the last one.
+            ast::ExprKind::By { walk, step } => {
+                let (iter, ty) = self.iter(walk);
+                let step = self.expect(step, &Ty::Int);
+                let Iter::Range { lo, hi, step: None, rev: true } = iter else {
+                    self.error(codes::TYPE_MISMATCH, span, "`by` steps a range of numbers written out, as in `(lo..hi).rev by 2`".to_string());
+                    return (iter, ty);
+                };
+                if ty != Ty::Int {
+                    self.error(codes::TYPE_MISMATCH, span, format!("`by` steps a range of Int, not of `{}`", self.show(&ty)));
+                    return (Iter::Range { lo, hi, step: None, rev: true }, ty);
+                }
+                let down = |lw: &mut Self, lo: Expr, hi: Expr, step: Expr| {
+                    let bin = |lw: &mut Self, op, l: Expr, r: Expr| lw.mk(ExprKind::Binary(op, Box::new(l), Box::new(r)), Ty::Int, span);
+                    let one = lw.int_lit(1, span);
+                    let top = bin(lw, BinOp::Sub, hi.clone(), one);
+                    let room = bin(lw, BinOp::Sub, top.clone(), lo);
+                    let steps = bin(lw, BinOp::Div, room, step.clone());
+                    let back = bin(lw, BinOp::Mul, steps, step.clone());
+                    let lo = bin(lw, BinOp::Sub, top, back);
+                    Iter::Range { lo, hi, step: Some(step), rev: true }
+                };
+                if [&lo, &hi, &step].into_iter().all(super::stmt::settled) {
+                    return (down(self, lo, hi, step), ty);
+                }
+                // Ends that do work are worked out once, ahead of the walk.
+                let list = self.collected(Ty::Int, span, |lw, out, push| {
+                    let (lo, hi, step) = (lw.hold(lo, out), lw.hold(hi, out), lw.hold(step, out));
+                    let iter = down(lw, lo, hi, step);
+                    let item = lw.temp(Ty::Int);
+                    let lid = lw.fresh_loop();
+                    let at = lw.local(item, span);
+                    let body = Block { stmts: vec![push(lw, at)] };
+                    out.push(Stmt::For(lid, item, iter, body));
+                });
+                (Iter::Seq(list, false), ty)
             }
             // `xs.rev()` walks the same way as `xs.rev`.
             ast::ExprKind::Call { callee, args }

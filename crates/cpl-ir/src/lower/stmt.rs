@@ -1733,19 +1733,13 @@ impl<'a> Lowerer<'a> {
         value: &ast::Expr,
         out: &mut Vec<Stmt>,
     ) {
-        if matches!(op, ast::AssignOp::Max | ast::AssignOp::Min) && self.grid_row(target).is_some() {
-            self.grid_keep(target, op == ast::AssignOp::Max, value, false, out);
-            return;
-        }
-        if op == ast::AssignOp::Set && self.grid_row(target).is_some() {
-            // A value that has no type until it is told one (`none`) is
-            // one cell's; a list written out is a row.
-            let one = match self.probe_ty_silent(value) {
-                Some(ty) => !matches!(ty, Ty::List(_) | Ty::Array { .. }),
-                None => !matches!(value.kind, ast::ExprKind::List(_) | ast::ExprKind::Comprehension { .. }),
-            };
-            if one {
-                self.grid_fill(target, value, out);
+        if self.grid_row(target).is_some() {
+            if matches!(op, ast::AssignOp::Max | ast::AssignOp::Min) {
+                self.grid_keep(target, op == ast::AssignOp::Max, value, false, out);
+                return;
+            }
+            if self.one_cell(value) {
+                self.grid_fill(target, op, value, out);
                 return;
             }
         }
@@ -2055,7 +2049,12 @@ impl<'a> Lowerer<'a> {
                 body.push(Stmt::Let(their_at, Some(step)));
                 let their_count =
                     self.mk(ExprKind::Binary(BinOp::Sub, Box::new(their_hi), Box::new(their_lo)), Ty::Int, span);
-                (self.mk(ExprKind::Index(Box::new(other), their_cell), elem.clone(), value.span), their_count)
+                (self.mk(ExprKind::Index(Box::new(other), their_cell), elem.clone(), value.span), Some(their_count))
+            }
+            // `a[l..r] max= x`: the one value against every cell.
+            None if self.one_cell(value) => {
+                let one = self.expect(value, &elem);
+                (self.hold(one, out), None)
             }
             None => {
                 let other = self.expr(value, Some(&Ty::list(elem.clone())));
@@ -2076,12 +2075,14 @@ impl<'a> Lowerer<'a> {
                 let other = self.hold(other, out);
                 let their_count = self.len_of(other.clone(), span);
                 let index = self.cast(Cast::Trust, offset, slot_ty(dim));
-                (self.mk(ExprKind::Index(Box::new(other), vec![index]), elem.clone(), value.span), their_count)
+                (self.mk(ExprKind::Index(Box::new(other), vec![index]), elem.clone(), value.span), Some(their_count))
             }
         };
-        let differ = self.mk(ExprKind::Cmp(CmpOp::Ne, Box::new(their_count), Box::new(count)), Ty::Bool, span);
-        let trap = Stmt::Trap(format!("`a {word} b` needs two rows of one length"), self.span(span));
-        out.push(Stmt::If(differ, Block { stmts: vec![trap] }, Block::default()));
+        if let Some(their_count) = their_count {
+            let differ = self.mk(ExprKind::Cmp(CmpOp::Ne, Box::new(their_count), Box::new(count)), Ty::Bool, span);
+            let trap = Stmt::Trap(format!("`a {word} b` needs two rows of one length"), self.span(span));
+            out.push(Stmt::If(differ, Block { stmts: vec![trap] }, Block::default()));
+        }
         let theirs = self.hold(theirs, &mut body);
         let better = self.mk(
             ExprKind::Cmp(if max { CmpOp::Gt } else { CmpOp::Lt }, Box::new(theirs.clone()), Box::new(place_to_expr(&cell))),
@@ -2130,9 +2131,20 @@ impl<'a> Lowerer<'a> {
         true
     }
 
-    /// `g[r, lo..hi] = 0`, `a[l..r] = true`: every cell of one part of a
-    /// row or column takes the one value, where it is, in one loop.
-    fn grid_fill(&mut self, target: &ast::Expr, value: &ast::Expr, out: &mut Vec<Stmt>) {
+    /// True when `value` is one cell's worth and not a row: `a[l..r] = 0`
+    /// fills, `a[l..r] = b` copies. A value that has no type until it is
+    /// told one (`none`) is one cell's; a list written out is a row.
+    fn one_cell(&mut self, value: &ast::Expr) -> bool {
+        match self.probe_ty_silent(value) {
+            Some(ty) => !matches!(ty, Ty::List(_) | Ty::Array { .. }),
+            None => !matches!(value.kind, ast::ExprKind::List(_) | ast::ExprKind::Comprehension { .. }),
+        }
+    }
+
+    /// `g[r, lo..hi] = 0`, `a[l..r] += x`, `g[.., c] min= x`: every cell of
+    /// one part of a row or column takes the one value, or is worked
+    /// with it, where it is, in one loop.
+    fn grid_fill(&mut self, target: &ast::Expr, op: ast::AssignOp, value: &ast::Expr, out: &mut Vec<Stmt>) {
         let span = target.span;
         let Some((base, indices, axis)) = self.grid_row(target) else {
             return;
@@ -2162,7 +2174,9 @@ impl<'a> Lowerer<'a> {
         let value = self.hold(value, out);
         let iter = Iter::Range { lo, hi, step: None, rev: false };
         let lid = self.fresh_loop();
-        out.push(Stmt::For(lid, at, iter, Block { stmts: vec![Stmt::Assign(cell, AssignOp::Set, value)] }));
+        let mut body = Vec::new();
+        self.emit_assign_place(cell, op, value, span, &mut body);
+        out.push(Stmt::For(lid, at, iter, Block { stmts: body }));
     }
 
     /// `a max= b` on two rows: every cell of `a` takes the larger of the
@@ -3349,7 +3363,7 @@ fn is_literal(e: &ast::Expr) -> bool {
 
 /// Whether working `e` out again gives the same value and does nothing
 /// else: names, literals and arithmetic on them.
-fn settled(e: &Expr) -> bool {
+pub(super) fn settled(e: &Expr) -> bool {
     match &e.kind {
         ExprKind::Int(_) | ExprKind::Bool(_) | ExprKind::Char(_) | ExprKind::Local(_) | ExprKind::Global(_) => true,
         ExprKind::Unary(_, inner) | ExprKind::Cast(_, inner) | ExprKind::Field(inner, _) => settled(inner),

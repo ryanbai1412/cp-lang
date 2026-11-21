@@ -285,6 +285,10 @@ pub(crate) fn walk_expr(v: &mut dyn Visitor, expr: &Expr) {
                 }
             }
         }
+        ExprKind::By { walk, step } => {
+            walk_expr(v, walk);
+            walk_expr(v, step);
+        }
         ExprKind::Unary { expr, .. }
         | ExprKind::Paren(expr)
         | ExprKind::Try(expr)

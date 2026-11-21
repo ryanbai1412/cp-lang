@@ -151,6 +151,13 @@ impl<'a> Checker<'a> {
                 self.range_ends(expr, hi.as_deref(), *inclusive, &lo_ty, &hi_ty);
                 range_of(elem)
             }
+            ExprKind::By { walk, step } => {
+                let step_ty = self.infer(step);
+                self.expect_fits(&step_ty, &Ty::Int, step, |c, got, _| {
+                    format!("a step is an Int, and `{}` is {}", c.quote(step.span), got.with_article())
+                });
+                self.infer(walk)
+            }
             ExprKind::Call { callee, args } => self.call(expr, callee, args),
             ExprKind::Index { base, indices } => self.index(expr, base, indices),
             ExprKind::Field { base, name } => self.field(base, name),

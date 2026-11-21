@@ -275,7 +275,7 @@ impl<'a> Parser<'a> {
         } else {
             let lo = self.bit_or();
             if !matches!(self.peek(), T::DotDot | T::DotDotEq) {
-                return lo;
+                return self.by(lo, start);
             }
             Some(Box::new(lo))
         };
@@ -303,6 +303,36 @@ impl<'a> Parser<'a> {
             },
             span: self.span_from(start),
         }
+    }
+
+    /// `(lo..hi) by step` is `lo..hi by step`; `(lo..hi).rev by step`
+    /// counts down from the last value.
+    fn by(&mut self, walk: Expr, start: u32) -> Expr {
+        fn range(e: &Expr) -> bool {
+            match &e.kind {
+                ExprKind::Paren(inner) => range(inner),
+                ExprKind::Range { step, .. } => step.is_none(),
+                _ => false,
+            }
+        }
+        let rev = matches!(&walk.kind, ExprKind::Field { base, name } if name.text == "rev" && range(base));
+        if !(rev || range(&walk)) || !self.at_ident("by") {
+            return walk;
+        }
+        self.bump();
+        let step = Box::new(self.bit_or());
+        let span = self.span_from(start);
+        if rev {
+            return Expr { kind: ExprKind::By { walk: Box::new(walk), step }, span };
+        }
+        let mut inner = walk;
+        while let ExprKind::Paren(e) = inner.kind {
+            inner = *e;
+        }
+        if let ExprKind::Range { step: none, .. } = &mut inner.kind {
+            *none = Some(step);
+        }
+        Expr { kind: inner.kind, span }
     }
 
     fn bit_or(&mut self) -> Expr {

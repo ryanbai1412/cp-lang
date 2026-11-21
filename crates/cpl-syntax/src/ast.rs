@@ -301,6 +301,12 @@ pub enum ExprKind {
         inclusive: bool,
         step: Option<Box<Expr>>,
     },
+    /// `(lo..hi).rev by step`: a walk taken every `step`-th value, from
+    /// where it starts.
+    By {
+        walk: Box<Expr>,
+        step: Box<Expr>,
+    },
     Call {
         callee: Box<Expr>,
         args: Vec<Arg>,

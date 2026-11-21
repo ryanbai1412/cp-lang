@@ -1508,7 +1508,7 @@ impl<'a> Lowerer<'a> {
     }
 
     /// The list of what `iter` goes over, in the order it goes.
-    fn walked_list(&mut self, iter: Iter, elem: Ty, span: Span) -> Expr {
+    pub(super) fn walked_list(&mut self, iter: Iter, elem: Ty, span: Span) -> Expr {
         self.collected(elem.clone(), span, |lw, out, push| {
             let item = lw.temp(elem);
             let lid = lw.fresh_loop();

@@ -146,6 +146,10 @@ pub fn walk_expr(expr: &Expr, v: &mut dyn Visitor) {
                 }
             }
         }
+        ExprKind::By { walk, step } => {
+            walk_expr(walk, v);
+            walk_expr(step, v);
+        }
         ExprKind::Unary { expr: inner, .. }
         | ExprKind::Paren(inner)
         | ExprKind::Try(inner)

@@ -252,6 +252,14 @@ fn unread_field_ignores_writes_and_libraries() {
     assert_eq!(codes(&method.replace("self.id", "id")), Vec::<&str>::new());
     let set = "struct Edge:\n    id: Int\n    fn clear(mut self):\n        id = 0\nvar e: Edge = read()\ne.clear()\n";
     assert_eq!(only(set).message, "field `id` of `Edge` is never read");
+    // A parameter or a local named like the field is not the field.
+    for body in ["    fn pick(self, id: Int) -> Int = id + 1\n", "    fn pick(self, k: Int) -> Int:\n        let id = k * 2\n        id\n", "    fn pick(self, k: Int) -> Int:\n        var s = k\n        for id in 0..k: s += id\n        s\n"] {
+        let src = format!("struct Edge:\n    id: Int\n{body}var e: Edge = read()\nprint(e.pick(3))\n");
+        assert_eq!(only(&src).message, "field `id` of `Edge` is never read", "{body}");
+    }
+    // Once the local is out of reach the bare name is the field again.
+    let after = "struct Edge:\n    id: Int\n    fn pick(self, k: Int) -> Int:\n        for id in 0..k: print(id)\n        id\nvar e: Edge = read()\nprint(e.pick(3))\n";
+    assert_eq!(codes(after), Vec::<&str>::new());
     // A file of declarations is a library: its users read the fields.
     assert_eq!(
         codes("struct Edge:\n    to: Int\n    id: Int\n"),

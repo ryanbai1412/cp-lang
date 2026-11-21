@@ -1214,3 +1214,21 @@ fn v22_statement_forms_from_the_blind_drafts_parse() {
     assert_eq!(codes("fn f(i: Int) -> Int\n"), vec!["E0103"]);
     assert_eq!(codes("let y = 2;\n"), vec!["E0107"]);
 }
+
+/// `(lo..hi) by step` is the range `lo..hi by step`; after `.rev` the
+/// step is kept beside the walk, which counts down from the last value.
+#[test]
+fn a_range_in_parentheses_takes_a_step() {
+    let step_of = |src: &str| {
+        assert_eq!(codes(src), Vec::<&str>::new(), "{src}");
+        let StmtKind::For { iter, .. } = stmts(src).remove(0).kind else { panic!("{src}") };
+        iter.kind
+    };
+    for src in ["for i in (0..n) by 2: f(i)\n", "for i in ((1..=n)) by k + 1: f(i)\n"] {
+        assert!(matches!(step_of(src), ExprKind::Range { step: Some(_), .. }), "{src}");
+    }
+    let ExprKind::By { walk, .. } = step_of("for i in (0..n).rev by 2: f(i)\n") else { panic!() };
+    assert!(matches!(&walk.kind, ExprKind::Field { name, .. } if name.text == "rev"));
+    // Anything else before `by` is not a range to step.
+    assert!(!codes("for i in xs by 2: f(i)\n").is_empty());
+}

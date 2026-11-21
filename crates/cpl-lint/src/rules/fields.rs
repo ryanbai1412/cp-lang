@@ -6,7 +6,7 @@
 //! no statements of its own is a library, whose fields are read by the
 //! programs that use it, and is skipped.
 
-use crate::walk::{walk_stmt, Visitor};
+use crate::walk::{walk_stmt, Bind, Scope, Visitor};
 use crate::{File, Finding, UNREAD_FIELD};
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::{AssignOp, Expr, ExprKind, Stmt, StmtKind};
@@ -79,6 +79,9 @@ struct Own<'a> {
     read: HashSet<String>,
     /// Names that are the target of a plain `=`: writes, not reads.
     written: HashSet<Span>,
+    /// The parameters and locals in reach, scope by scope: one named
+    /// like a field hides it.
+    locals: Vec<HashSet<String>>,
 }
 
 impl Visitor for Own<'_> {
@@ -90,9 +93,24 @@ impl Visitor for Own<'_> {
         }
     }
 
+    fn bind(&mut self, name: &str, _span: Span, _how: Bind) {
+        if let Some(scope) = self.locals.last_mut() {
+            scope.insert(name.to_string());
+        }
+    }
+
+    fn enter(&mut self, _scope: Scope) {
+        self.locals.push(HashSet::new());
+    }
+
+    fn exit(&mut self, _scope: Scope) {
+        self.locals.pop();
+    }
+
     fn expr(&mut self, expr: &Expr) {
         if let ExprKind::Name(name) = &expr.kind {
-            if self.fields.contains(name.as_str()) && !self.written.contains(&expr.span) {
+            let hidden = self.locals.iter().any(|scope| scope.contains(name));
+            if self.fields.contains(name.as_str()) && !hidden && !self.written.contains(&expr.span) {
                 self.read.insert(name.clone());
             }
         }
