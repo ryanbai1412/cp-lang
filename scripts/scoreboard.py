@@ -1016,6 +1016,16 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
         if not ok_orig:
             out["diff_detail"] = f"orig compile: {orig_compiler}"
             return out
+        # Runtime compares one compiler's code with the same compiler's: when the
+        # original needs zig c++ (clang), the port's timed binary is built with it too.
+        perf_bin = port_bin
+        if orig_compiler == "zig c++":
+            perf_bin = os.path.join(work, "port_zig")
+            cz = sh(["zig", "c++", "-std=c++17", "-O2", "-w", cpp_path, "-o", perf_bin])
+            if cz.returncode != 0:
+                err = (cz.stderr.strip().splitlines() or ["zig c++ port failed"])[0][:140]
+                out["diff_detail"] = f"zig c++ port: {err}"
+                return out
 
         # 1. Differential verification on samples + small generated cases (plus interpreter time)
         diff_cases = []
@@ -1120,7 +1130,7 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
 
         if p["interactor"]:
             w_orig, st0 = run_interactive(p["interactor"], max_inp, [orig_bin], os.path.join(work, "mo0"), 15.0)
-            w_port, st1 = run_interactive(p["interactor"], max_inp, [port_bin], os.path.join(work, "mo1"), 15.0)
+            w_port, st1 = run_interactive(p["interactor"], max_inp, [perf_bin], os.path.join(work, "mo1"), 15.0)
             if st0 == "ok" and st1 == "ok":
                 orig_ms = round(w_orig * 1000.0, 2)
                 cpp_ms = round(w_port * 1000.0, 2)
@@ -1128,6 +1138,7 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
                     "measured": True,
                     "interactive": True,
                     "input_source": max_label,
+                    "compiler": orig_compiler,
                     "input_bytes": os.path.getsize(max_inp),
                     "cpp_ms": cpp_ms,
                     "orig_ms": orig_ms,
@@ -1142,6 +1153,7 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
                     "measured": False,
                     "interactive": True,
                     "input_source": max_label,
+                    "compiler": orig_compiler,
                     "reason": f"orig={st0}, port={st1}",
                 }
             return out
@@ -1150,12 +1162,13 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
         o_orig = os.path.join(work, "max_orig.out")
         o_port = os.path.join(work, "max_port.out")
         orig_wall_rss, orig_rss, st0 = run_timed([orig_bin], max_inp, o_orig, 15.0, rss=True)
-        port_wall_rss, port_rss, st1 = run_timed([port_bin], max_inp, o_port, 15.0, rss=True)
+        port_wall_rss, port_rss, st1 = run_timed([perf_bin], max_inp, o_port, 15.0, rss=True)
         if st0 != "ok" or st1 != "ok":
             out["perf"] = {
                 "measured": False,
                 "interactive": False,
                 "input_source": max_label,
+                "compiler": orig_compiler,
                 "reason": f"orig={st0}, port={st1}",
             }
             return out
@@ -1163,7 +1176,7 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
         orig_times = [orig_wall_rss]
         port_times = [port_wall_rss]
         for _ in range(max(0, runs - 1)):
-            w1, _, s1 = run_timed([port_bin], max_inp, o_port, 15.0, rss=False)
+            w1, _, s1 = run_timed([perf_bin], max_inp, o_port, 15.0, rss=False)
             w0, _, s0 = run_timed([orig_bin], max_inp, o_orig, 15.0, rss=False)
             if s1 == "ok":
                 port_times.append(w1)
@@ -1175,6 +1188,7 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
             "measured": True,
             "interactive": False,
             "input_source": max_label,
+            "compiler": orig_compiler,
             "input_bytes": os.path.getsize(max_inp),
             "cpp_ms": cpp_ms,
             "orig_ms": orig_ms,
@@ -1202,7 +1216,7 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
             ratio_inp, ratio_src, ratio_cpp_ms = max_inp, max_label, cpp_ms
         elif diff_cases:
             ratio_inp, ratio_src = max(diff_cases, key=lambda c: os.path.getsize(c[0]))
-            w_c, _, s_c = run_timed([port_bin], ratio_inp, os.path.join(work, "icpp.out"), 10.0, rss=False)
+            w_c, _, s_c = run_timed([perf_bin], ratio_inp, os.path.join(work, "icpp.out"), 10.0, rss=False)
             if s_c == "ok":
                 ratio_cpp_ms = round(w_c * 1000.0, 2)
         if ratio_inp is not None and ratio_cpp_ms is not None and ratio_cpp_ms > 0:

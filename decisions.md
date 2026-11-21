@@ -4067,3 +4067,10 @@ generator (or a spec in `bench/corpus_generators.py`) reaches the
 statement's max constraints. Specs at max constraints were added for
 cf2261g, cf2115f1 and ucup5s01a. Reverse: set `PERF_FLOOR_MS` back to 10
 and apply it to `max(cpp_ms, orig_ms)`.
+
+The ratio compares one compiler with itself: when the original only builds
+with `zig c++` (C++23 deducing `this`, as in cf2261g), the port's timed
+binary is built with `zig c++` too, and `perf.compiler` records which. Before,
+such a port's g++ build was timed against a clang-built original, which put
+cf2261g at 1.39x where the same compiler gives 0.99x. Reverse: time
+`port_bin` in `evaluate_full_port` again.
