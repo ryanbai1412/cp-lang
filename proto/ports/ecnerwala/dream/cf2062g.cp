@@ -7,18 +7,16 @@
 // swaps reducing value distance.
 with io(base: 1)
 
+// The editorial's cycle step: in the cycle through i, swap the first element r
+// that must move left with the nearest l < r in the same cycle (i if none).
+// Each swap shortens the remaining distance by exactly twice its cost.
 fn sort_perm<D>(mut perm: [D]D) -> List<(D, D)>:
     var ops: List<(D, D)> = []
     for i in D:
         while perm[i] != i:
-            var cyc: List<D> = []
-            var cur = perm[i]
-            while cur != i:
-                cyc.push(cur)
-                cur = perm[cur]
-            cyc.sort()
-            let r = cyc.first(where: x => perm[x] < x)!
-            let l = cyc.last(where: x => x < r) ?? i
+            let cyc = perm.cycle(from: i).sort()
+            let r = cyc.first(x => perm[x] < x)!
+            let l = cyc.last(x => x < r) ?? i
             ops.push((l, r))
             perm.swap(l, r)
     ops
@@ -28,19 +26,16 @@ domain I = read(2..=100)
 let p: [I]I = read()
 let q: [I]I = read()
 
-let (_, mate) = min_weight_matching<I, I>((i, j) => abs(i - j) + abs(p[i] - q[j]))
+let mate = min_weight_matching<I, I>((i, j) => abs(i - j) + abs(p[i] - q[j])).mate
 
-var ops = sort_perm([I] i => mate[i])
+// Stage 1 moves each element from i to mate[i].
+var ops = sort_perm(mate)
 
-var val_perm: [I]I = [I] _ => I.first
-var pos_of: [I]I = [I] _ => I.first
-for i in I:
-    val_perm[p[i]] = q[mate[i]]
-    pos_of[p[i]] = mate[i]
-
-for (u, v) in sort_perm(val_perm):
-    ops.push((pos_of[u], pos_of[v]))
-    pos_of.swap(u, v)
+// Stage 2: value v now sits at at[v] and must become q[at[v]].
+var at = [I] v => mate[p.inv[v]]
+for (u, v) in sort_perm([I] v => q[at[v]]):
+    ops.push((at[u], at[v]))
+    at.swap(u, v)
 
 print(ops.len)
 for (u, v) in ops: print(u, v)

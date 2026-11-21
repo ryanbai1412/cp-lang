@@ -1,99 +1,81 @@
-// Greedily extract the maximum-sum subarray of still-unreplaced elements of a
-// (giving value v). Each extracted block can expand into any subarray of b with
-// max-subarray-sum <= v; one chosen block may instead hold [v] and expand into
-// any subarray of b as the final operation. DP checks if a splits into b.
+// Codeforces 2066 F: Curse (dream).
+// The cool partition splits a at its widest maximum-sum segment and recurses on
+// the two sides. An operation only ever replaces one cool segment whole, and never
+// raises the sum the next operation may pick. So b is reachable iff, for some
+// threshold x among the segment sums, b is the cool segments in order where
+//   - a segment with sum < x stays as it is,
+//   - a segment with sum >= x becomes a non-empty array with max subarray sum <= x,
+//   - except at most one, the free segment, which becomes anything.
+// For each threshold, largest first, fill
+//   fit[k, j, spent] = segments before cut k can make b[..j], free segment spent or not.
+// A tame piece that may start at cut j may start at any later cut too (a subarray's
+// max subarray sum is no larger), so the latest reachable start is the only one to try.
+//
+// Output: replace the segments with sum >= x in decreasing sum order, the free one
+// by [x], then replace [x] by its piece. Each step replaces a maximum-sum segment.
 @!multitest
 domain PosA = read(1..=500)
 domain PosB = read(1..=500)
 let a: [PosA]-1e6..=1e6 = read()
 let b: [PosB]-1e6..=1e6 = read()
 
-struct Op(l: Int, r: Int, vals: List<Int>)
-enum Phase: Before, After
-struct Prev(i: PosA.Cut, j: PosB.Cut, phase: Phase)
+fn cool(r: Range<PosA.Cut>) -> List<Range<PosA.Cut>> =
+    if r.is_empty: []
+    else:
+        let m = a[r].max_subarray(widest: true)
+        cool(r.lo..m.lo) ++ [m] ++ cool(m.hi..r.hi)
 
-// max_sub[l, r] = maximum non-empty subarray sum of b[l..r].
-let max_sub = [PosB.Cut, PosB.Cut] (l, r) => b[l..r].max_subarray_sum()
+let (domain Seg, span) = cool(PosA.Cut.first..PosA.Cut.last).indexed()
+let sum = [Seg] s => a[span[s]].sum()
+let mss = [PosB.Cut, PosB.Cut] (l, r) => b[l..r].max_subarray_sum()
 
-var alive: [PosA]Bool = true
-var block_end: [PosA]?PosA.Cut = none
-var blocks: List<(PosA, PosA.Cut)> = []
-var valid_end: [PosB]PosB.Cut = PosB.Cut.last
+struct Plan(piece: [Seg]Range<PosB.Cut>, free: ?Seg)
 
-fn next_block() -> ?(PosA, PosA.Cut, Int):
-    // Maximum-sum contiguous subarray among alive positions of a.
-    var best: ?(PosA, PosA.Cut, Int) = none
-    var cur_start: ?PosA = none
-    var cur_sum = 0
-    for i in PosA:
-        if not alive[i]: cur_start = none; continue
-        if cur_start == none or cur_sum < 0: (cur_start, cur_sum) = (i, 0)
-        cur_sum += a[i]
-        if best == none or cur_sum >= best!.2: best = (cur_start!, i.r, cur_sum)
-    best
+fn plan(x: Int) -> ?Plan:
+    var fit: [Seg.Cut, PosB.Cut, Bool]Bool = false
+    var came: [Seg, PosB.Cut, Bool]?(PosB.Cut, Bool) = none
+    fit[Seg.Cut.first, PosB.Cut.first, false] = true
+    fn link(s: Seg, j: PosB.Cut, spent: Bool, from: (PosB.Cut, Bool)):
+        fit[s.r, j, spent] = true
+        came[s, j, spent] = from
+    for s in Seg:
+        for spent in Bool where sum[s] < x:
+            for j in PosB.Cut where fit[s.l, j, spent] and b[j..].starts_with(a[span[s]]):
+                link(s, j + span[s].len, spent, from: (j, spent))
+        for spent in Bool where sum[s] >= x:
+            var latest: ?PosB.Cut = none
+            for j in PosB.Cut:
+                if let i = latest where mss[i, j]! <= x: link(s, j, spent, from: (i, spent))
+                if fit[s.l, j, spent]: latest = j
+        if let i = PosB.Cut.first(j => fit[s.l, j, false]) where sum[s] >= x:
+            for j in PosB.Cut where j > i: link(s, j, true, from: (i, false))
 
-fn try_match(best_sum: Int) -> ?List<Op>:
-    var dp: [PosA.Cut, PosB.Cut, Phase]?Prev = none
-    dp[PosA.Cut.first, PosB.Cut.first, Phase.Before] = Prev(PosA.Cut.first, PosB.Cut.first, Phase.Before)
-    var i = PosA.Cut.first
-    while i < PosA.Cut.last:
-        if let ni = block_end[i.after]:
-            var (nxt0, nxt1) = (PosB.Cut.first, PosB.Cut.first)
-            for j in PosB:
-                nxt0 max= j.r
-                nxt1 max= j.r
-                let vend = valid_end[j]
-                if dp[i, j.l, Phase.Before] != none:
-                    for c in nxt0..=vend: dp[ni, c, Phase.Before] = Prev(i, j.l, Phase.Before)
-                    nxt0 max= vend.next
-                    for c in nxt1..=PosB.Cut.last: dp[ni, c, Phase.After] = Prev(i, j.l, Phase.Before)
-                    nxt1 = PosB.Cut.last
-                if dp[i, j.l, Phase.After] != none:
-                    for c in nxt1..=vend: dp[ni, c, Phase.After] = Prev(i, j.l, Phase.After)
-                    nxt1 max= vend.next
-            i = ni
-        else:
-            for j in PosB where b[j] == a[i.after]:
-                for ph in Phase where dp[i, j.l, ph] != none:
-                    dp[i.next, j.r, ph] = Prev(i, j.l, ph)
-            i = i.next
+    var (j, spent) = (PosB.Cut.last, [true, false].first(u => fit[Seg.Cut.last, PosB.Cut.last, u])?)
+    var piece: [Seg]Range<PosB.Cut> = PosB.Cut.first..PosB.Cut.first
+    var free: ?Seg = none
+    for s in Seg.rev:
+        let (i, before) = came[s, j, spent]!
+        piece[s] = i..j
+        if before != spent: free = s
+        (j, spent) = (i, before)
+    Plan(piece, free)
 
-    if dp[PosA.Cut.last, PosB.Cut.last, Phase.After] == none: return none
+let thresholds = sum.values.distinct().sort(by: x => -x)
+let (x, p) = thresholds.first_some(x => (x, plan(x)?)) else:
+    print(-1)
+    return
 
-    var repl: [PosA]List<Int> = []
-    var cur = Prev(PosA.Cut.last, PosB.Cut.last, Phase.After)
-    var final_op = Op(0, 0, [])
-    while cur.i > PosA.Cut.first:
-        let prv = dp[cur.i, cur.j, cur.phase]!
-        let slice = b[prv.j..cur.j].list()
-        if prv.phase == Phase.Before and cur.phase == Phase.After:
-            repl[prv.i.after] = [best_sum]
-            final_op = Op(prv.j.ord, prv.j.ord + 1, slice)
-        else:
-            repl[prv.i.after] = slice
-        cur = prv
+var len = [Seg] s => span[s].len
+let start = s => sum(len[t] for t in Seg.before(s))
+var ops: List<(Int, Int, List<Int>)> = []
+for s in Seg.filter(s => sum[s] >= x).sort(by: s => -sum[s]):
+    let into = if p.free == some(s): [x] else: b[p.piece[s]].to_list()
+    ops.push((start(s) + 1, start(s) + len[s], into))
+    len[s] = into.len
+if let s = p.free:
+    ops.push((start(s) + 1, start(s) + 1, b[p.piece[s]].to_list()))
 
-    var delta: [PosA]Int = 0
-    var ops: List<Op> = []
-    for (l, r) in blocks:
-        let st = l.ord + sum(delta[z] for z in PosA.first..l)
-        delta[l] = repl[l].len - (r - l)
-        ops.push(Op(st, st + (r - l), repl[l]))
-    ops.push(final_op)
-    ops
-
-while let (bl, br, best_sum) = next_block():
-    blocks.push((bl, br))
-    for i in bl..br: alive[i] = false
-    block_end[bl] = br
-    for j in PosB:
-        while valid_end[j] > j.l and max_sub[j.l, valid_end[j]] > best_sum:
-            valid_end[j] = valid_end[j].prev
-    if let ops = try_match(best_sum):
-        print(ops.len)
-        for op in ops:
-            print(op.l + 1, op.r, op.vals.len)
-            print(op.vals)
-        return
-
-print(-1)
+print(ops.len)
+for (l, r, into) in ops:
+    print(l, r, into.len)
+    print(into)
