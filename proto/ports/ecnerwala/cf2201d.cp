@@ -20,32 +20,27 @@ struct SegNode(mx: Int, pref: Int, suff: Int, all: Bool, cnt: Int):
 let (n, q): (Int, Int) = read()
 domain V = 1..=n
 var a: [V]V = read()
-var locs: [V]Set<Int> = [V] _ => Set()
-for i in V: locs[a[i]].add(i.to_idx)
+var locs: [V]Set<V> = [V] _ => Set()
+for i in V: locs[a[i]].add(i)
 
+// The cell at a value's first position carries its span (last - first).
 var seg = SegTree<V, SegNode>(Monoid(SegNode.empty(), (x, y) => SegNode.join(x, y)))
 
-fn clear_val(v: V):
-    if locs[v].len >= 2: seg.set(V.nth(locs[v].first!), SegNode.empty())
+fn sync(v: V):
+    if let lo = locs[v].first, let hi = locs[v].last, lo != hi:
+        seg.set(lo, SegNode.single(hi.ord - lo.ord))
 
-fn sync_val(v: V):
-    if locs[v].len >= 2:
-        let (lo, hi) = (locs[v].first!, locs[v].last!)
-        seg.set(V.nth(lo), SegNode.single(hi - lo))
+for v in V: sync(v)
 
-for v in V: sync_val(v)
-
-for _ in 0..q:
+repeat q:
     let (x, nv): (V, V) = read()
-    let old_v = a[x]
-    clear_val(old_v)
-    locs[old_v].remove(x.to_idx)
-    sync_val(old_v)
-
+    let old = a[x]
+    for v in [old, nv]:
+        if let lo = locs[v].first, locs[v].len >= 2: seg.set(lo, SegNode.empty())
+    locs[old].remove(x)
     a[x] = nv
-    clear_val(nv)
-    locs[nv].add(x.to_idx)
-    sync_val(nv)
+    locs[nv].add(x)
+    for v in [old, nv]: sync(v)
 
-    let top = seg.fold(V(1)..)
+    let top = seg.fold(V.first..)
     print(top.mx, top.cnt)
