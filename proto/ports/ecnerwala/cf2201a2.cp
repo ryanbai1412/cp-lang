@@ -3,21 +3,14 @@
 @!multitest
 let n: Int = read()
 let a: [0..n]Int = read()
-let vals = sorted([(-a[i], i) for i in 0..n])
 
-var prv: [0..n]?Int = none
-var nxt: [0..n]?Int = none
-for i in 0..n:
-    if i > 0: prv[i] = i - 1
-    if i + 1 < n: nxt[i] = i + 1
-
+var prv: [0..n]?Int = [0..n] i => if i > 0: i - 1 else: none
+var nxt: [0..n]?Int = [0..n] i => if i + 1 < n: i + 1 else: none
 var ans = n * (n + 1) * (n + 2) / 6
-for (neg_v, i) in vals:
-    let v = -neg_v
-    if let p = prv[i]:
-        if a[p] == v - 1:
-            ans -= (p + 1) * (n - i)
-            let nx = nxt[i]
-            nxt[p] = nx
-            if let q = nx: prv[q] = p
+for i in sorted(0..n, by: i => (-a[i], i)):
+    if let p = prv[i], a[p] == a[i] - 1:
+        ans -= (p + 1) * (n - i)
+        let nx = nxt[i]
+        nxt[p] = nx
+        if let q = nx: prv[q] = p
 print(ans)
