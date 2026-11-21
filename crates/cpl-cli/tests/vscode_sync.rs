@@ -70,10 +70,19 @@ fn the_vscode_tables_and_grammar_name_what_the_compiler_and_stdlib_ship() {
     builtins.extend(rust_strings(&prelude, "pub fn ty(", "\n}\n"));
 
     let mut imported = BTreeSet::new();
-    for line in read("stdlib/prelude.cp").lines() {
-        let Some(rest) = line.strip_prefix("use std.") else { continue };
-        let (Some(open), Some(close)) = (rest.find('{'), rest.find('}')) else { continue };
-        imported.extend(rest[open + 1..close].split(',').map(|name| name.trim().to_string()).filter(|name| !name.is_empty()));
+    let prelude_cp = read("stdlib/prelude.cp");
+    let mut rest = prelude_cp.as_str();
+    while let Some(pos) = rest.find("use std.") {
+        rest = &rest[pos + "use std.".len()..];
+        let Some(open) = rest.find('{') else { break };
+        let Some(close) = rest[open + 1..].find('}') else { break };
+        imported.extend(
+            rest[open + 1..open + 1 + close]
+                .split(',')
+                .map(|name| name.trim().to_string())
+                .filter(|name| !name.is_empty()),
+        );
+        rest = &rest[open + 1 + close + 1..];
     }
 
     // A `@get` fn is read as a field, so it is a name of its own only when

@@ -3,15 +3,15 @@
 // Trimming the forced prefix/suffix leaves a core of length core_n where s is both a
 // prefix and suffix of t, so t is delta-periodic; |y| = a works iff it is a multiple
 // of the primitive period g of t's delta-block and divides delta, giving core_n - a + 1 starts.
-use std.strings.{common_prefix_len, common_suffix_len, period}
+use std.strings.{period}
 
 let n: 1..=10_000_000 = read()
 let m: 2..=10_000_000 = read()
 let s: Str = read()
 let t: Str = read()
 
-let max_pre = common_prefix_len(s, t)
-let max_suf = common_suffix_len(s, t)
+let max_pre = s.common_prefix_len(t)
+let max_suf = s.common_suffix_len(t)
 if max_pre + max_suf <= n:
     print(0)
 else:

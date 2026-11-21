@@ -1349,8 +1349,8 @@ fn rfind<P>(self: Str, p: P) -> ?Int // O(s.len + p.len)
 fn z_function<S: Indexed>(s: S) -> List<Int>
 fn prefix_function<S: Indexed>(s: S) -> List<Int>
 fn find_all<S: Indexed, P: Indexed>(self: S, pat: P) -> yields Int
-fn common_prefix_len<A: Indexed, B: Indexed>(a: A, b: B) -> Int // O(min(|a|, |b|))
-fn common_suffix_len<A: Indexed, B: Indexed>(a: A, b: B) -> Int // O(min(|a|, |b|))
+fn common_prefix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int // O(min(|self|, |other|))
+fn common_suffix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int // O(min(|self|, |other|))
 fn period<S: Indexed>(s: S) -> Int // O(n)
 fn suffix_array<T>(s: List<T>) -> List<Int>
 fn lcp_array<T>(s: List<T>, sa: List<Int>) -> List<Int>

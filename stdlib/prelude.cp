@@ -45,5 +45,17 @@ use std.seq.{
     zip,
 }
 use std.sparse.{SparseTable}
-use std.strings.{RollingHash, digit, ends_with, find, find_all, lower, repeat, starts_with, upper}
+use std.strings.{
+    RollingHash,
+    common_prefix_len,
+    common_suffix_len,
+    digit,
+    ends_with,
+    find,
+    find_all,
+    lower,
+    repeat,
+    starts_with,
+    upper,
+}
 use std.tree.{Rooted}

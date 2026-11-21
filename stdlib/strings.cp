@@ -96,21 +96,21 @@ pub fn find_all<S: Indexed, P: Indexed>(self: S, pat: P) -> yields Int:
             yield i + 1 - k
             k = p[k - 1]
 
-/// Length of the longest common prefix of `a` and `b`. Works on any `Indexed` sequences. O(min(|a|, |b|)).
+/// Length of the longest common prefix of `self` and `other`. Works on any `Indexed` sequences. O(min(|self|, |other|)).
 @allow(unproven_list_index)
-pub fn common_prefix_len<A: Indexed, B: Indexed>(a: A, b: B) -> Int:
-    let lim = min(a.len, b.len)
+pub fn common_prefix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int:
+    let lim = min(self.len, other.len)
     var i = 0
-    while i < lim and a.at(i) == b.at(i): i += 1
+    while i < lim and self.at(i) == other.at(i): i += 1
     i
 
-/// Length of the longest common suffix of `a` and `b`. Works on any `Indexed` sequences. O(min(|a|, |b|)).
+/// Length of the longest common suffix of `self` and `other`. Works on any `Indexed` sequences. O(min(|self|, |other|)).
 @allow(unproven_list_index)
-pub fn common_suffix_len<A: Indexed, B: Indexed>(a: A, b: B) -> Int:
-    let (na, nb) = (a.len, b.len)
+pub fn common_suffix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int:
+    let (na, nb) = (self.len, other.len)
     let lim = min(na, nb)
     var i = 0
-    while i < lim and a.at(na - 1 - i) == b.at(nb - 1 - i): i += 1
+    while i < lim and self.at(na - 1 - i) == other.at(nb - 1 - i): i += 1
     i
 
 /// The length of the shortest period of `s`: the smallest `d >= 1` with `s[i] == s[i + d]` for all `i`. O(n).
@@ -623,12 +623,9 @@ pub struct RollingHash:
     @allow(unproven_list_index)
     fn eq_sub(self, a: Int, b: Int, len: Int) -> Bool:
         unchecked:
-            let a1 = (p1[a + len] - p1[a] * pow1[len]) % 1_000_000_007
-            let b1 = (p1[b + len] - p1[b] * pow1[len]) % 1_000_000_007
-            if a1 != b1: return false
-            let a2 = (p2[a + len] - p2[a] * pow2[len]) % 1_000_000_009
-            let b2 = (p2[b + len] - p2[b] * pow2[len]) % 1_000_000_009
-            return a2 == b2
+            if ((p1[a + len] - p1[b + len]) - (p1[a] - p1[b]) * pow1[len]) % 1_000_000_007 != 0:
+                return false
+            return ((p2[a + len] - p2[b + len]) - (p2[a] - p2[b]) * pow2[len]) % 1_000_000_009 == 0
         false
 
     /// Hash of the half-open 0-based slice `[l, r)`; `HashVal(0, 0)` when `l == r`. Stops on
@@ -1655,7 +1652,9 @@ fn aho_corasick_matches_counts_and_avoidance_dp():
 @test
 fn indexed_views_and_common_prefix_suffix():
     assert common_prefix_len("abacaba", "abax") == 3
+    assert "abacaba".common_prefix_len("abax") == 3
     assert common_suffix_len("abacaba", "zzcaba") == 4
+    assert "abacaba".common_suffix_len("zzcaba") == 4
     assert common_prefix_len("abacaba"[2..7], "acaz") == 3
     assert common_suffix_len("abacaba"[0..5], "xxaca") == 3
     assert common_prefix_len([1, 2, 3], [1, 2, 4, 5]) == 2
