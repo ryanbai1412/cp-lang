@@ -178,9 +178,9 @@
       {
         "id": "dp-tropical-guardrails",
         "title": "Which optional operation is rejected?",
-        "prompt": "Given var x: ?Int = 1 and var y: ?Int = none, which statement does CP Lang 0.2.2 reject at compile time?",
-        "hint": "Only additive ops (+, -, unary -) and tropical min/max/min=/max= lift over ?Int.",
-        "solution": "x += 2 is rejected (E0309). Compound +=, -=, *, /, %, and sum(...) never lift over ?Int so silent none-poisoning cannot hide in arithmetic.",
+        "prompt": "Given var x: ?Int = 1 and var y: ?Int = none, which statement does CP Lang reject at compile time?",
+        "hint": "Arithmetic/bitwise expressions and min=/max= lift over ?Int, but compound += / -= do not.",
+        "solution": "x += 2 is rejected (E0309). Compound +=, -=, ?V + k, and sum(...) never lift over ?Int; write x = x + 2 or unwrap first.",
         "kind": "choice",
         "options": [
           "y min= x + 3",

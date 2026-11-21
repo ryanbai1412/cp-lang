@@ -1,6 +1,37 @@
 The standard library is written in ordinary CP Lang rather than hardwired into the compiler. Every container shares one uniform vocabulary — `.len`, `.is_empty`, `.clear()`, `.take()` (an `O(1)` move-out leaving the container empty) — and compiles down to flat, tree-shaken C++17.
 
-The prelude auto-imports common types and helpers, including `bsearch_first`, `bsearch_last`, `bfs`, `topo`, `peel`, and `resized`; the examples below need no imports for those names.
+The prelude auto-imports common types and helpers (capped at 80 names), including `bsearch_first`, `bsearch_last`, `bfs`, `topo`, `peel`, and `resized`; the examples below need no imports for those names.
+
+## Standard library modules
+
+Every module under `stdlib/` is plain CP Lang. Import individual names with `use std.<module>.{Name}`:
+
+| Module | Key exports | Purpose |
+| --- | --- | --- |
+| `std.algebra` | `Monoid`, `Action`, `Desc`, `desc`, `Reversible`, `fold` | Algebraic traits and descending key wrapper |
+| `std.bag` | `SortedBag` | Ordered multiset with `.count(x)` and `.remove_one(x)` |
+| `std.bitset` | `Bitset` | Fixed-domain bitset with bitwise ops and `.first_set` |
+| `std.deque` | `Deque` | Double-ended queue (`.push_front`, `.pop_front`, `Deque.of`) |
+| `std.dsu` | `Dsu` | Disjoint set union with `.mark()` / `.undo_to(snap)` rollback |
+| `std.fenwick` | `Fenwick`, `XorFenwick`, `Fenwick2D` | 1D/2D Fenwick trees and XOR Fenwick |
+| `std.flow` | `Arc`, `FlowGraph`, `max_weight_matching` | Dinic max flow and Hungarian matching |
+| `std.geometry` | `Pt`, `dot`, `cross`, `turn`, `ByAngle`, `area2`, `locate` | Exact 2D geometry and angular sorting |
+| `std.graph` | `Graph`, `Tree<V>`, `bfs`, `dijkstra`, `peel`, `topo`, `scc`, `two_color` | CSR graphs, implicit-neighbor algorithms, `Tree<V>` alias |
+| `std.grid` | `Dir4`, `Dir8`, `step`, `ray` | 4- and 8-direction grid movement helpers |
+| `std.heap` | `MinHeap`, `MaxHeap` | Binary priority queues |
+| `std.lazy` | `LazySegTree`, `AddSum`, `AddMin`, `AddMax`, `AssignSum`, `AssignMin`, `AssignMax` | Lazy-propagation segment tree and stock actions |
+| `std.marks` | `Marks` | Generation-stamped O(1)-reset visited table |
+| `std.math` | `gcd`, `lcm`, `ext_gcd`, `ceil_div`, `Sieve`, `factor`, `divisors`, `crt`, `bit_len` | Number theory, primes, CRT, bit helpers |
+| `std.mod` | `Mod<P>`, `Comb<P>` | Compile-time and runtime modular arithmetic and combinatorics |
+| `std.prefix` | `Prefix1`, `Prefix2`, `PrefixN`, `prefix1`, `prefix2`, `prefix_n` | 1D, 2D, and N-D prefix sums |
+| `std.rand` | `Rng` | Seeded deterministic RNG (`.int(lo, hi)`, `.next()`) |
+| `std.segtree` | `SegTree` | Point-update, range-fold segment tree with `.max_right`/`.min_left` |
+| `std.seq` | `Perm<V>`, `pairs`, `with_prev`, `cyclic_pairs`, `windows`, `scan`, `bsearch_first`, `bsearch_last` | Sequence views, searches, folds, `Perm<V>` alias |
+| `std.sparse` | `SparseTable`, `idempotent` | O(1) idempotent range queries |
+| `std.spec` | `convexity_break`, `monge_break`, `dnc_break`, `knuth_break`, `berlekamp_massey`, `differences`, `newton` | Conjecture checking and sequence/recurrence discovery |
+| `std.strings` | `z_function`, `prefix_function`, `suffix_array`, `lcp_array`, `rfind`, `period`, `HashVal` | Linear-time string algorithms and rolling hashes |
+| `std.tour` | Tour re-exports | Euler tour utilities |
+| `std.tree` | `Rooted<V>` | Rooted tree, Euler tour, LCA, HLD path queries, virtual trees |
 
 ## Prelude collections
 
@@ -65,6 +96,22 @@ Other prelude sequence helpers:
 - `sort(mut a, by:)`, `sorted(a, by:)` (descending via `by: desc`), `reverse(mut a)`, `dedup(mut a)`, `distinct(a)`, `rotate_left(mut a, k)` (negative rotates right), `next_permutation(mut a)`, `prev_permutation(mut a)`.
 - `sum`, `any`, `all`, `count`, `first(it) -> ?T`, `a.find(x) -> ?I`, `min_by(it, key)`, `max_by(it, key)`.
 - `xs.windows(k)` yields every length-`k` window as a list; `zip(xs, ys)` pairs elements up to the shorter list.
+- `std.seq` also provides zero-allocation sequence views `pairs(xs)` (consecutive `(a, b)` pairs), `with_prev(xs)` (`(?T, T)` with `none` on the first element), `cyclic_pairs(xs)`, and the standard permutation alias `Perm<V> = [V]V` (paired with `std.graph.Tree<V>` for `cpl stress` generation and shrinking):
+
+```cp CP Lang
+use std.seq.{Perm, pairs, with_prev}
+use std.graph.{Tree}
+
+let xs = [1, 4, 9]
+var diffs = 0
+for (a, b) in pairs(xs):
+    diffs += b - a
+var jumps = 0
+for (prev, cur) in with_prev(xs):
+    if let p = prev:
+        jumps += cur - p
+print(diffs, jumps)
+```
 - Randomness: `rand(lo, hi)` and `shuffle(mut xs)` are in the prelude; `std.rand` adds a seeded `Rng.new(seed)` with `.int(lo, hi)` and `.next()`.
 
 ## Range data structures and union-find

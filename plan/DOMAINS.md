@@ -340,26 +340,27 @@ individual error/lint pages + playground + trace = 88 HTML pages: 10-lesson
 course with 51 checked exercises, 14 reference pages including canonical
 `docs/one-page-cheat-sheet.md`, `errors.html`, and `cookbook.html`), WASM
 playground (23 presets), canonical trace viewer, and offline bundle
-(`dist/cp-lang.html`, 1.91 MB < 2.6 MB cap). 101/101 doc `cp` fences, 22/22
+(`dist/cp-lang.html`, 1.94 MB < 2.6 MB cap). 102/102 doc `cp` fences, 22/22
 `site/examples/*.cp`, 10/10 course write-code refs, 61/61 diagnostic/lint codes
 (`52 cpl-diag + 9 cpl-lint`, with 57 active trigger/fix pairs + 3 reserved + 1
-internal), and 22/22 cookbook recipes pulled live from `proto/ports/ecnerwala/`
-are verified in `scripts/check.sh --fast` via `site/check_docs.py`. Reference
-pages and syntax highlighter are updated for the landed 0.3 batch (`where`
-guards, `repeat`, `loop`, multi-binding, unary `+`, one-line enums, counted
-domains, `read(lo..=hi)`, `read(none: ...)`, stepped domains, 1-based/grid
-slices, `rfind`/`Str in Str`, `@!interactive`, `debug` purity). Gaps:
-`cpl doc stdlib` finds 715 items across 25 modules (334 undocumented, 0
-doc-comment examples); `site/content/stdlib.md` is hand-written and lags the
-new 0.3 stdlib additions; course lessons still use pre-0.3 idioms in places.
+internal), 22/22 cookbook recipes pulled live from `proto/ports/ecnerwala/`,
+and 24/24 non-prelude `stdlib/*.cp` modules are verified in
+`scripts/check.sh --fast` via `site/check_docs.py`. Reference pages, cheat
+sheet, tour, DP course lesson/quiz, and syntax highlighter are updated for
+landed 0.3 features (`where` guards, `repeat`, `loop`, multi-binding, unary `+`,
+one-line enums and colon structs, counted/stepped domains, `read(lo..=hi)`,
+`read(none: ...)`, 1-based/grid slices, `rfind`/`Str in Str`, `@!interactive`,
+`debug` purity, lifted arithmetic/bitwise ops over `?T`, `fields(x)`,
+`pairs()`/`with_prev()`, `Perm<V>`/`Tree<V>`, enum ordering). Gaps: `cpl doc
+stdlib` finds 715+ items across 25 modules (334+ undocumented, 0 doc-comment
+examples); playground has no built-in judge mode or generated C++17 diff view.
 **Bar.** A cold reader writes a correct solution from the docs alone; every
-doc `cp` block, example fixture, cookbook recipe, and error-index trigger/fix
-passes in `scripts/check.sh --fast`; 100% of diagnostic/lint codes have an
-error-index page; offline bundle stays under 2.6 MB.
-**Next.** Sync `site/content/stdlib.md` with `stdlib/*.cp` and recent 0.3
-features (one-line colon structs, dotted range bounds, `pairs()`/`with_prev()`,
-`fields(x)`, lifted optional operators, enum ordering, `Perm<V>`/`Tree<V>`);
-refresh course lessons for 0.3; add tested `cpl doc` examples to `stdlib/*.cp`.
+doc `cp` block, example fixture, cookbook recipe, stdlib module, and
+error-index trigger/fix passes in `scripts/check.sh --fast`; 100% of
+diagnostic/lint codes have an error-index page; offline bundle stays under 2.6 MB.
+**Next.** Add docstrings and tested `cpl doc` examples across `stdlib/*.cp` and
+wire `cpl doc --test` into the docs gate; expand the cookbook as new 0.3
+idioms land; add judge mode to the browser playground.
 
 ## 12. Validation: ports, scoreboard, differential testing (`plan/80`)
 **North star.** Thousands of hard accepted solutions across CF, AtCoder,

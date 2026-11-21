@@ -70,13 +70,13 @@ print(next_value())
 
 ### Lifting rules and guardrails
 
-- `+`, `-`, and unary `-` on `?Int` and `?F64` absorb `none` (tropical arithmetic: `none + w` is `none`).
+- Arithmetic (`+`, `-`, `*`, `/`, `%`, `**`, unary `-`/`+`) and bitwise (`&`, `|`, `^`, `<<`, `>>`, `~`) operators lift over `?Int` and `?F64`, absorbing `none` (`none + w` and `none * 2` are `none`; division by zero still traps when both sides are present).
 - `min(a, b)` and `max(a, b)` skip `none`: `(T, ?T) -> T` and `(?T, ?T) -> ?T`. For three or more values, pass a list (`min([a, b, c])`).
 - `x min= cand` and `x max= cand` skip when `cand` is `none` — even when `x` is a plain `Int`!
 - Both updates return `Bool`: `true` exactly when the destination changes. Use `if best[v] min= via:` to enqueue a graph relaxation or update a DP witness only on improvement. Ties and `none` candidates return `false`; a present candidate improves an empty destination.
 - `==` and `!=` lift `T` to `?T` automatically (`if dq.last != x:`), while `<`, `<=`, `>`, `>=` never lift over `?T`.
 - `p ??= init` initializes `p` lazily when `none` and lends it mutably: `(adj[k] ??= []).push(x)`.
-- `*`, `/`, `%`, bitwise operators, `?V + k`, `sum(gen)`, and `+=`/`-=` **never** lift over `?T`.
+- `?V + k`, `sum(gen)`, and compound `+=`/`-=` **never** lift over `?T`.
 - Neither `?T` nor `Mod<P>` implements `Ord`. To sort optionals, pass an explicit key such as `by: x => (x.d == none, x.d ?? 0)`.
 - When `none` means *invalid/impossible* rather than *+inf/-inf*, check explicitly instead of relying on `min=` skipping it:
 
@@ -100,6 +100,8 @@ Define lightweight named tuples with `type`, stateful types with methods using `
 
 ```cp CP Lang 0.2.2
 type Point = (x: Int, y: Int)
+
+struct Pt: x: Int, y: Int       // one-line colon struct (commas separate fields)
 
 struct Seg:
     l: Int

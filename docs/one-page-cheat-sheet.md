@@ -40,7 +40,7 @@ print(best[V(2)] ?? -1)             // fallback only on none
 
 - `min=`/`max=` return `Bool`: true exactly when the destination changes. Ties return false.
 - A `none` candidate is skipped; a present candidate improves an empty destination.
-- `+`/`-` lift over numeric optionals; `* / %`, bitwise ops, and `+=`/`-=` do not.
+- Arithmetic (`+ - * / % **`) and bitwise (`& | ^ << >> ~`) ops lift over `?Int`/`?F64`; `+=`/`-=` do not.
 - `opt!` asserts present; `opt ?? return none` exits early; `if let x = opt` unwraps safely; `if let x = opt, x > 0:` guards.
 - `min`/`max` of a possibly empty iterable return `?T`; `sum` is for non-optional numbers.
 - `?T` and `Mod<P>` do not implement `Ord`; sort with an explicit non-optional key.

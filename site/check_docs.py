@@ -375,6 +375,18 @@ def check_cookbook() -> tuple[int, int]:
     return len(recipes), sample_runs
 
 
+def check_stdlib_module_coverage() -> int:
+    """Every non-prelude stdlib/*.cp module must be documented in site/content/stdlib.md."""
+    stdlib_md = (ROOT / "content/stdlib.md").read_text()
+    modules = sorted(p.stem for p in (REPO / "stdlib").glob("*.cp") if p.stem != "prelude")
+    missing = [m for m in modules if f"std.{m}" not in stdlib_md]
+    if missing:
+        sys.exit(
+            f"check_docs: stdlib modules missing from site/content/stdlib.md: {', '.join(missing)}"
+        )
+    return len(modules)
+
+
 def main():
     t0 = time.monotonic()
     if not CPL.is_file():
@@ -385,12 +397,13 @@ def main():
     ref_count, ref_cases = run_course_references()
     err_count = check_error_index()
     cb_count, cb_runs = check_cookbook()
+    stdlib_mods = check_stdlib_module_coverage()
     page_count = check_links()
     ms = int((time.monotonic() - t0) * 1000)
     print(
         f"docs gate: {fence_count} cp fences, {ex_count} examples ({ex_cases} runs), "
         f"{ref_count} course refs ({ref_cases} runs), {err_count} error codes, "
-        f"{cb_count} cookbook recipes ({cb_runs} sample runs), "
+        f"{cb_count} cookbook recipes ({cb_runs} sample runs), {stdlib_mods} stdlib modules, "
         f"{page_count} HTML pages, cheat-sheet {cheat_lines}/250 lines — ok in {ms} ms"
     )
 

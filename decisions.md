@@ -1358,6 +1358,14 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   *Reversible:* delete `site/cookbook.py` and its hook in `site/build.py` / `site/check_docs.py`, or
   expand into per-category pages if the recipe count outgrows one page.
 
+- **24.4 Stdlib module coverage enforced in `site/check_docs.py`.**
+  `site/check_docs.py` scans `stdlib/*.cp` (excluding `prelude`) and requires every module to be
+  documented as `std.<module>` in `site/content/stdlib.md` (currently 24/24 modules).
+  *Reason:* previously 12 of 24 non-prelude stdlib modules were absent from `stdlib.md`; checking
+  against `stdlib/*.cp` prevents new modules from landing undocumented.
+  *Reversible:* remove `check_stdlib_module_coverage()` from `site/check_docs.py` or replace with
+  generated `cpl doc stdlib` HTML once docstrings cover every stdlib item.
+
 ## 25. Stress testing and shrinking (0.2.2, 2026-11-21)
 
 - **25.1 `Perm<V>` and `Tree<V>` are stdlib types.** `std.seq.Perm<V> = [V]V` and

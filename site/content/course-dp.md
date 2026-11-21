@@ -34,9 +34,9 @@ In arena and adjacency code, `(adj[k] ??= []).push(x)` initializes a missing buc
 
 ## Tropical guardrails: what never lifts
 
-To prevent silent bugs, only `+`, `-`, unary `-`, `min`/`max`, and `min=`/`max=` lift over `?T`:
+Arithmetic (`+`, `-`, `*`, `/`, `%`, `**`, unary `-`/`+`), bitwise (`&`, `|`, `^`, `<<`, `>>`, `~`), `min`/`max`, and `min=`/`max=` lift over `?Int`/`?F64`, but:
 
-- `*`, `/`, `%`, bitwise ops, `+=`, `-=`, and `sum(...)` **never** lift over `?T`. Writing `x += 2` on `var x: ?Int` is a compile error (`E0309`)—unwrap or provide a fallback first.
+- Compound `+=`, `-=`, `?V + k`, and `sum(...)` **never** lift over `?T`. Writing `x += 2` on `var x: ?Int` is a compile error (`E0309`)—unwrap or write `x = x + 2` explicitly.
 - `?T` does **not** implement `Ord`, so `<`, `<=`, `>`, `>=` never silently order `none` before or after real values. (`==` and `!=` do auto-lift `T` to `?T`.)
 - When `none` means *failure/poison* and every branch must succeed (not tropical identity), check explicitly with `if let`:
 
