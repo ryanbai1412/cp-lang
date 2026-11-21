@@ -101,6 +101,13 @@ pub struct Graph<V, E>:
     /// arc `u -> v` for which `skip(u, v)` holds.
     pub fn reachable(self, from: List<V>, skip: (V, V) -> Bool = (u, v) => false) -> [V]Bool = todo
 
+    /// O(m): every edge once, with its id and its ends as given.
+    pub @get fn edges(self) -> List<Edge<V, E>> = todo
+
+    /// O(n + m): the DFS tree from `root` of the component holding it. Every
+    /// non-tree edge of an undirected graph then joins a vertex to an ancestor.
+    pub fn dfs_tree(self, root: V) -> DfsTree<V, E> = todo
+
     /// O(n + m): `peel(g, ...)` as a method, with the same options.
     pub fn peel(
         self, ready: ?(V -> Bool) = none, on_remove: ?((V, (to: V, e: E)) -> ()) = none,
@@ -595,3 +602,36 @@ impl<V> IncrementalBridges<V>:
 
     /// O(alpha): are `u` and `v` connected?
     pub fn same(mut self, u: V, v: V) -> Bool = todo
+
+/// O(1): one edge of a `Graph`: its id and its ends as given.
+pub struct Edge<V, E>(e: E, u: V, v: V)
+
+/// O(n) memory: a DFS tree of a stored graph, with the tree queries a DFS
+/// argument needs. `Rooted` in `std.tree` has the full set.
+pub struct DfsTree<V, E>:
+    par: [V]?V
+
+impl<V, E> DfsTree<V, E>:
+    /// O(1): the parent of `v`, `none` at the root and off the tree.
+    pub fn parent(self, v: V) -> ?V = todo
+
+    /// O(1): arcs from the root to `v`.
+    pub fn depth(self, v: V) -> Int = todo
+
+    /// O(1): is `e` a tree edge (and not a parallel copy of one)?
+    pub fn has(self, e: Edge<V, E>) -> Bool = todo
+
+    /// O(1): the ends of `e` as (ancestor, descendant). Every edge of an
+    /// undirected graph has such an orientation in its DFS tree.
+    pub fn orient_down(self, e: Edge<V, E>) -> (u: V, v: V) = todo
+
+    /// O(path length): the vertices from `a` to `b`, both included.
+    pub fn path(self, a: V, b: V) -> List<V> = todo
+
+    /// O(n log n), O(1) per item: the Euler tour, 2n - 1 visits where consecutive
+    /// visits are joined by a tree edge; children are toured in ascending `by(c)`.
+    pub fn euler_tour<K>(self, by: V -> K) -> yields V = todo
+
+/// O(n + m): `Graph.directed` on a plain list of `(u, v)` arcs, as an
+/// adjacency table indexed by vertex.
+pub fn adjacency<V>(arcs: List<(u: V, v: V)>) -> Adj<V, V> = todo
