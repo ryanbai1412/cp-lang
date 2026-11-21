@@ -7,7 +7,8 @@
 //   - At `d = 1`, weights `0..n` cost `n * (n - 1) / 2`.
 //   - For `d >= 2`, there are `C(d + w - 1, w)` tuples of weight `w`. Choosing
 //     the `n` smallest-weight tuples minimizes total cost; `plan_for(d)` sums
-//     each weight layer until `n` tuples are taken.
+//     each weight layer until `n` tuples are taken. Once `(d - 1) * LAYER_COST`
+//     reaches `best.cost`, no larger `d` can improve on `best`.
 //
 // Reverse-lex merge order: sort the `n` chosen `d`-tuples in reverse
 // lexicographic order, placing them at positions `n` down to `1`. Truncating
@@ -19,6 +20,7 @@
 // `start`, merging all `n` positions in exact budget.
 
 use std.math.{choose}
+use std.seq.{chunk_by}
 
 const LAYER_COST = 1000
 
@@ -32,42 +34,53 @@ fn tuples_of_weight(d: Int, w: Int) -> Int = choose(d + w - 1, w)
 fn plan_for(d: Int) -> Plan:
     var rem = n
     var cost = (d - 1) * LAYER_COST
-    var w = 0
-    while true:
+    for w in 0..n:
         let take = min(rem, tuples_of_weight(d, w))
         cost += take * w
         if take == rem: return Plan(d, cost, w, take)
         rem -= take
-        w += 1
+    Plan(d, cost, n - 1, 0)
 
-let best = (1..=n).take_while(d => (d - 1) * LAYER_COST < n * (n - 1) / 2 or d == 1).map(plan_for).min(by: p => p.cost)!
+fn best_plan() -> Plan:
+    var res = Plan(1, n * (n - 1) / 2, n - 1, 1)
+    for d in 2..=n:
+        if (d - 1) * LAYER_COST >= res.cost: break
+        let cand = plan_for(d)
+        if cand.cost < res.cost: res = cand
+    res
+
+let best = best_plan()
 
 // Enumerate the `n` cheapest d-tuples in reverse lex order.
 fn cheapest_tuples(plan: Plan) -> List<List<Int>>:
     var out: List<List<Int>> = []
-    var cur: List<Int> = [0] * plan.d
+    var cur: List<Int> = [0 for _ in 0..plan.d]
+    var lim_w = plan.max_w
     var max_w_left = plan.max_w_cnt
     fn gen(layer: Int, used_w: Int):
-        if layer == plan.d:
+        if layer == plan.d or used_w == lim_w:
             if used_w == plan.max_w:
-                if max_w_left == 0: return
                 max_w_left -= 1
-            out.push(cur.clone())
+                if max_w_left == 0: lim_w -= 1
+            for k in layer..plan.d: cur[k] = 0
+            out.push(copy(cur))
             return
-        for c in (0..=plan.max_w - used_w).rev:
+        for c in (0..=lim_w - used_w).rev:
             cur[layer] = c
             gen(layer + 1, used_w + c)
     gen(0, 0)
     out
 
 domain Pos = 1..=n
-let placed = zip(Pos.rev, cheapest_tuples(best))
+let positions = [p for p in Pos.rev]
+let placed = zip(positions, cheapest_tuples(best))
 
-var layer_ops: [0..best.d]List<(Pos, Int)> = []
+var layer_ops: [0..best.d]List<(Pos, Int)> = [0..best.d] _ => []
 for cl in 0..best.d:
-    for group in placed.chunk_by(entry => entry.1[..cl]):
-        let start = group.first!.0
-        for (pos, _) in group[1..]:
+    for group in placed.chunk_by((a, b) => a.1[..cl] == b.1[..cl]):
+        let start = placed[group.first!].0
+        for idx in group if idx > group.first!:
+            let pos = placed[idx].0
             layer_ops[cl].push((pos, start - pos))
 
 let ops = [op for layer in layer_ops.rev for op in layer]

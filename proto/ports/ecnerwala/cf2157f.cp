@@ -3,11 +3,13 @@
 // switch costs `LAYER_COST = 1000` (`(d - 1) * 1000` total), and each position
 // assigned a `d`-tuple of layer counts summing to `w` costs `w`.
 //   - At `d = 1`, weights `0..n` cost `n * (n - 1) / 2`.
-//   - For `d >= 2`, there are `C(d + w - 1, w)` tuples of weight `w` (stepped
-//     incrementally by `cnt * (d + w - 1) / w`). Picking the `n` smallest
-//     weights yields `Plan(d, cost, max_w, max_w_cnt)`; minimize `cost` over `d`.
+//   - For `d >= 2`, there are `C(d + w - 1, w)` tuples of weight `w`. Picking
+//     the `n` smallest weights yields `Plan(d, cost, max_w, max_w_cnt)`;
+//     minimize `cost` over `d`.
 // Walking the `n` tuples in reverse lex order emits each jump `(cur, start - cur)`
 // into its layer; printing layers in reverse order gives the final sequence.
+
+use std.math.{choose}
 
 const LAYER_COST = 1000
 
@@ -17,17 +19,13 @@ let n: 1..=250_000 = read()
 
 fn plan_for(d: Int) -> Plan:
     var rem = n
-    var cnt = 1
     var cost = (d - 1) * LAYER_COST
-    var w = 0
-    while rem > 0:
-        if w > 0: cnt = cnt * (d + w - 1) / w
-        cnt min= rem
-        cost += cnt * w
-        if cnt == rem: break
-        rem -= cnt
-        w += 1
-    Plan(d, cost, w, rem)
+    for w in 0..n:
+        let take = min(rem, choose(d + w - 1, w))
+        cost += take * w
+        if take == rem: return Plan(d, cost, w, take)
+        rem -= take
+    Plan(d, cost, n - 1, 0)
 
 var best = Plan(1, n * (n - 1) / 2, n - 1, 1)
 for d in 2..=n:
