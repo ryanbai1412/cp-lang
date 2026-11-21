@@ -1468,77 +1468,69 @@ Matched C++17 benchmarks (`bash bench/strings/run.sh`, 10/10 structures covered,
 `aho_corasick` 1.01x (25.9 vs 25.5 ms), `trie` 1.10x (45.5 vs 41.5 ms),
 `manacher_lyndon` 1.05x (18.9 vs 18.0 ms), `lyndon_runs` 1.02x (64.1 vs 62.8 ms).
 
-### 4.14 `std.geometry`: 2D integer and floating-point geometry
+### 4.14 `std.geometry`: 2D and 3D integer and floating-point geometry
 
-Exact integer points (`Pt`) and careful floating-point vectors (`Vec`),
-kept as distinct types so exact predicates never silently mix with
-approximate arithmetic. Full design and contest examples live in
-`design/stdlib/geometry.md`. Orientation predicates compute cross and dot
-signs in `I128`, staying exact for coordinates up to `1e18`.
+Exact integer points (`Pt`, `Pt3`) and careful floating-point vectors (`Vec`,
+`Vec3`), kept as distinct types so exact predicates never silently mix with
+approximate arithmetic. Full design, coverage audit, cross-area notes, powers
+needed, and dreams audit live in `design/stdlib/geometry.md`. Orientation
+predicates compute cross and dot signs in `I128`, staying exact for coordinates
+up to `1e18`. Plain value types and stateful structures use plain positional
+constructors (`Pt(x, y)`, `Circle(c, r)`, `OnlineHull()`); alternate
+representations use named factories (`HalfPlane.through`, `Circle.through`,
+`Vec.from_angle`).
 
 ```cp
 struct Pt(x: Int, y: Int) // Add, Sub, Neg, Mul<Int>, Eq, Ord (x, y), Hash, Read, Show
     @get fn norm2(self) -> Int // O(1)
+    @get fn norm2_128(self) -> I128 // O(1)
     @get fn len(self) -> F64 // O(1)
     @get fn perp(self) -> Pt // O(1), 90 deg CCW
-fn dot(a: Pt, b: Pt) -> Int // O(1)
-fn cross(a: Pt, b: Pt) -> Int // O(1)
-fn turn(a: Pt, b: Pt, c: Pt) -> Int // O(1), I128: 1 CCW, -1 CW, 0 collinear
-struct ByAngle(p: Pt) // Ord: CCW in [0, 2*pi) from +x, zero first, I128
-fn on_segment(p: Pt, a: Pt, b: Pt) -> Bool // O(1), I128
-fn segments_meet(a: Pt, b: Pt, c: Pt, d: Pt) -> Bool // O(1), I128
-fn area2(poly: List<Pt>) -> Int // O(n)
-enum Location = Inside | Boundary | Outside
-fn locate(poly: List<Pt>, p: Pt) -> Location // O(n), I128
-```
-
-[new]:
-
-```cp
-// Pt methods and exact integer helpers
     @get fn perp_cw(self) -> Pt // O(1), 90 deg CW
     @get fn angle(self) -> F64 // O(1), atan2(y, x)
-    @get fn unit_dir(self) -> Pt // O(log min(|x|, |y|)), reduced by gcd
+    @get fn unit_dir(self) -> Pt // O(log max(|x|, |y|)), reduced by gcd
     @get fn to_vec(self) -> Vec // O(1)
-    fn dot(self, o: Pt) -> Int // O(1)
-    fn cross(self, o: Pt) -> Int // O(1)
-    fn dist2(self, o: Pt) -> Int // O(1)
-    fn dist(self, o: Pt) -> F64 // O(1)
+fn dot(a: Pt, b: Pt) -> Int // O(1)
+fn cross(a: Pt, b: Pt) -> Int // O(1)
 fn dot128(a: Pt, b: Pt) -> I128 // O(1)
 fn cross128(a: Pt, b: Pt) -> I128 // O(1)
 fn dist2(a: Pt, b: Pt) -> Int // O(1)
 fn dist2_128(a: Pt, b: Pt) -> I128 // O(1)
 fn dist(a: Pt, b: Pt) -> F64 // O(1)
-fn area2_128(poly: List<Pt>) -> I128 // O(n)
+fn turn(a: Pt, b: Pt, c: Pt) -> Int // O(1), I128: 1 CCW, -1 CW, 0 collinear
 fn same_dir(a: Pt, b: Pt) -> Bool // O(1), I128
 fn angle_less(a: Pt, b: Pt) -> Bool // O(1), I128
+struct ByAngle(p: Pt) // Ord: CCW in [0, 2*pi) from +x, zero first, I128
+fn arg(p: Pt) -> ByAngle // O(1), float-free exact angular sort key
 fn on_segment(p: Pt, a: Pt, b: Pt, strict: Bool = false) -> Bool // O(1), I128
-fn segments_meet(a: Pt, b: Pt, c: Pt, d: Pt, strict: Bool = false) -> Bool // O(1)
-
-// Convex hulls, chains, Minkowski sums, calipers, closest pair
-fn lower_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt> // O(n), sorted
-fn upper_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt> // O(n), sorted
-fn convex_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt> // O(n log n)
-fn convex_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D> // O(n log n)
-fn minkowski_sum(a: List<Pt>, b: List<Pt>) -> List<Pt> // O(|a| + |b|)
-fn minkowski_upper(a: List<Pt>, b: List<Pt>) -> List<Pt> // O(|a| + |b|)
+fn segments_meet(a: Pt, b: Pt, c: Pt, d: Pt, strict: Bool = false) -> Bool // O(1), I128
+fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(Int, Int) // O(n log n), O(n) memory
+fn lower_hull(sorted_pts: List<Pt>, collinear: Bool = false) -> List<Pt> // O(n), O(n) memory
+fn upper_hull(sorted_pts: List<Pt>, collinear: Bool = false) -> List<Pt> // O(n), O(n) memory
+fn convex_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt> // O(n log n), O(n) memory
+fn convex_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D> // O(n log n), O(n) memory
+fn minkowski_sum(a: List<Pt>, b: List<Pt>) -> List<Pt> // O(|a| + |b|), O(|a| + |b|) memory
+fn minkowski_upper(a: List<Pt>, b: List<Pt>) -> List<Pt> // O(|a| + |b|), O(|a| + |b|) memory
+fn area2(poly: List<Pt>) -> Int // O(n)
+fn area2_128(poly: List<Pt>) -> I128 // O(n)
+enum Location = Inside | Boundary | Outside
+fn locate(poly: List<Pt>, p: Pt) -> Location // O(n), I128
 fn locate_convex(hull: List<Pt>, p: Pt) -> Location // O(log n), I128
-fn diameter2(hull: List<Pt>) -> Int // O(n) rotating calipers
+fn diameter2(hull: List<Pt>) -> Int // O(n), I128 rotating calipers
 fn min_bounding_box(hull: List<Pt>) -> (area: F64, perimeter: F64) // O(n), I128 calipers
 fn hull_extreme(hull: List<Pt>, dir: Pt) -> Int // O(log n), I128
 fn hull_tangents(hull: List<Pt>, p: Pt) -> (left: Int, right: Int) // O(log n), I128
-fn closest_pair2(pts: List<Pt>) -> Int // O(n log n)
-fn closest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int) // O(n log n)
+fn closest_pair2(pts: List<Pt>) -> Int // O(n log n), O(n) memory
+fn closest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int) // O(n log n), O(n) memory
 
-// Careful floating-point geometry and half-plane intersection
 fn close(a: F64, b: F64, eps: F64 = 1e-9) -> Bool // O(1)
 fn sign_eps(x: F64, eps: F64 = 1e-9) -> Int // O(1)
 struct Vec(x: F64, y: F64) // Add, Sub, Neg, Mul<F64>, Div<F64>; no Show (precision required)
     @get fn norm2(self) -> F64 // O(1)
     @get fn len(self) -> F64 // O(1)
-    @get fn unit(self) -> Vec // O(1)
     @get fn perp(self) -> Vec // O(1)
     @get fn angle(self) -> F64 // O(1)
+    @get fn unit(self) -> Vec // O(1)
     fn rot(self, by: Vec) -> Vec // O(1), rotate by unit direction vector
 fn vdot(a: Vec, b: Vec) -> F64 // O(1)
 fn vcross(a: Vec, b: Vec) -> F64 // O(1)
@@ -1549,20 +1541,19 @@ fn reflect(p: Vec, a: Vec, b: Vec) -> Vec // O(1)
 fn line_dist(p: Vec, a: Vec, b: Vec) -> F64 // O(1)
 fn seg_dist(p: Vec, a: Vec, b: Vec, eps: F64 = 1e-9) -> F64 // O(1)
 fn line_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> ?Vec // O(1)
-fn circle_line_intersect(c: Vec, r: F64, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec> // O(1)
+fn circumcenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Vec // O(1)
+fn circle_line_intersect(center: Vec, r: F64, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec> // O(1)
 fn circle_intersect(c1: Vec, r1: F64, c2: Vec, r2: F64, eps: F64 = 1e-9) -> List<Vec> // O(1)
 fn circle_tangents(center: Vec, r: F64, p: Vec, eps: F64 = 1e-9) -> List<Vec> // O(1)
 fn circle_circle_tangents(c1: Vec, r1: F64, c2: Vec, r2: F64, inner: Bool = false, eps: F64 = 1e-9) -> List<(Vec, Vec)> // O(1)
-fn circles_union_area(circles: List<(c: Vec, r: F64)>, eps: F64 = 1e-9) -> F64 // O(n^2 log n)
-fn circumcenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Vec // O(1)
+fn circles_union_area(circles: List<(c: Vec, r: F64)>, eps: F64 = 1e-9) -> F64 // O(n^2 log n), O(n) memory
 struct HalfPlane(p: Vec, dir: Vec)
-fn half_plane_intersect(planes: List<HalfPlane>, eps: F64 = 1e-9) -> List<Vec> // O(n log n)
+fn half_plane_intersect(planes: List<HalfPlane>, eps: F64 = 1e-9) -> List<Vec> // O(n log n), O(n) memory
 fn polygon_area(poly: List<Vec>) -> F64 // O(n)
-fn polygon_cut(poly: List<Vec>, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec> // O(n)
-fn min_enclosing_circle(pts: List<Vec>, eps: F64 = 1e-9) -> (center: Vec, radius: F64) // expected O(n)
+fn polygon_cut(poly: List<Vec>, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec> // O(n), O(n) memory
+fn min_enclosing_circle(pts: List<Vec>, eps: F64 = 1e-9) -> (center: Vec, radius: F64) // O(n) expected
 fn circle_polygon_area(c: Vec, r: F64, poly: List<Vec>, eps: F64 = 1e-9) -> F64 // O(n)
-fn arg(p: Pt) -> ByAngle // O(1), float-free exact angular sort key
-fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(Int, Int) // O(n log n), I128
+
 struct Pt3(x: Int, y: Int, z: Int) // Add, Sub, Neg, Mul<Int>, Eq, Show
     @get fn norm2(self) -> Int // O(1)
     @get fn norm2_128(self) -> I128 // O(1)
@@ -1571,8 +1562,212 @@ fn dot3(a: Pt3, b: Pt3) -> Int // O(1)
 fn dot3_128(a: Pt3, b: Pt3) -> I128 // O(1)
 fn cross3(a: Pt3, b: Pt3) -> Pt3 // O(1)
 fn dist2_3(a: Pt3, b: Pt3) -> Int // O(1)
-fn convex_hull_3d(pts: List<Pt3>) -> List<(Int, Int, Int)> // O(n^2), I128
+fn convex_hull_3d(pts: List<Pt3>) -> List<(Int, Int, Int)> // O(n^2), O(n) memory
 ```
+
+[new]:
+
+```cp
+// Exact 2D point methods, distance metrics, and arbitrary-base angular order
+// (on Pt):
+    /// Dot product of self and o. O(1).
+    fn dot(self, o: Pt) -> Int // O(1)
+    /// 2D cross product of self and o. O(1).
+    fn cross(self, o: Pt) -> Int // O(1)
+    /// Squared Euclidean distance from self to o. O(1).
+    fn dist2(self, o: Pt) -> Int // O(1)
+    /// Euclidean distance from self to o. O(1).
+    fn dist(self, o: Pt) -> F64 // O(1)
+/// Manhattan (L1) distance |a.x - b.x| + |a.y - b.y|. O(1).
+fn manhattan(a: Pt, b: Pt) -> Int // O(1)
+/// Chebyshev (L-infinity) distance max(|a.x - b.x|, |a.y - b.y|). O(1).
+fn chebyshev(a: Pt, b: Pt) -> Int // O(1)
+/// Angular sort key in [base, base + 2*pi) CCW from ray base (zero first, I128). O(1).
+struct ByAngleFrom(base: Pt, p: Pt) // Ord, O(1)
+/// True iff ray a precedes ray b CCW starting from ray `from` (default +x). O(1), I128.
+fn angle_less(a: Pt, b: Pt, from: Pt = Pt(1, 0)) -> Bool // O(1), I128
+
+// Domain-indexed segment & half-hull twins, segment/ray intersections
+/// Domain-indexed Shamos-Hoey sweep; returns a pair of intersecting segment handles. O(n log n), O(n) memory.
+fn any_segments_meet_idx<D>(segs: [D](a: Pt, b: Pt), strict: Bool = false) -> ?(D, D) // O(n log n), O(n) memory
+/// Domain-indexed lower hull chain left-to-right on x-sorted pts. O(n), O(n) memory.
+fn lower_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D> // O(n), O(n) memory
+/// Domain-indexed upper hull chain left-to-right on x-sorted pts. O(n), O(n) memory.
+fn upper_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D> // O(n), O(n) memory
+/// Intersection of closed segments ab and cd: 0 disjoint, 1 crossing/touching, 2 collinear overlap endpoints. O(1).
+fn segment_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> List<Vec> // O(1)
+/// First intersection of ray (o, dir) with closed segment ab, or none. O(1).
+fn ray_hits_segment(o: Vec, dir: Vec, a: Vec, b: Vec, eps: F64 = 1e-9) -> ?Vec // O(1)
+
+// Online 2D convex hull (construct with OnlineHull())
+/// Incremental 2D convex hull of integer points backed by upper and lower ordered chains. O(n) memory.
+struct OnlineHull
+    /// Empty online convex hull. O(1).
+    fn new() -> OnlineHull // O(1)
+    /// Insert point p into the hull; returns whether the hull changed. O(log n) amortized.
+    fn add(mut self, p: Pt) -> Bool // O(log n) amortized
+    /// Point location against the current hull. O(log n).
+    fn locate(self, p: Pt) -> Location // O(log n)
+    /// Hull vertex maximizing dot(v, dir), or none if empty. O(log n).
+    fn extreme(self, dir: Pt) -> ?Pt // O(log n)
+    /// Twice the unsigned area of the current hull (0 if fewer than 3 non-collinear points). O(1).
+    @get fn area2(self) -> Int // O(1)
+    /// Number of hull vertices. O(1).
+    @get fn len(self) -> Int // O(1)
+    /// True when no points have been added. O(1).
+    @get fn is_empty(self) -> Bool // O(1)
+    /// Current hull vertices in CCW order. O(n), O(n) memory.
+    fn vertices(self) -> List<Pt> // O(n), O(n) memory
+    /// Remove all points from the hull. O(n).
+    fn clear(mut self) // O(n)
+
+// Minkowski, convex/simple polygon operations, calipers, and proximity
+/// Lower convex chain of {p + q} for non-empty left-to-right lower chains a and b. O(|a| + |b|), O(|a| + |b|) memory.
+fn minkowski_lower(a: List<Pt>, b: List<Pt>) -> List<Pt> // O(|a| + |b|), O(|a| + |b|) memory
+/// True iff two non-empty CCW convex polygons share at least one point. O(|a| + |b|).
+fn convex_polygons_overlap(a: List<Pt>, b: List<Pt>) -> Bool // O(|a| + |b|)
+/// Intersection of two CCW convex polygons (empty if disjoint). O(|a| + |b|), O(|a| + |b|) memory.
+fn convex_polygon_intersect(a: List<Vec>, b: List<Vec>, eps: F64 = 1e-9) -> List<Vec> // O(|a| + |b|), O(|a| + |b|) memory
+/// Minimum width (distance between parallel supporting lines) of a CCW convex hull. O(n).
+fn hull_width(hull: List<Pt>) -> F64 // O(n)
+/// Indices of the two edges of a CCW convex hull crossed by line ab, or none. O(log n).
+fn hull_line_intersect(hull: List<Pt>, a: Pt, b: Pt) -> ?(Int, Int) // O(log n)
+/// Farthest pair of distinct handles in pts and their squared distance. O(n log n), O(n) memory.
+fn farthest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int) // O(n log n), O(n) memory
+/// O(n) candidate edges guaranteed to contain the Manhattan (L1) MST of pts. O(n log n), O(n) memory.
+fn manhattan_mst<D>(pts: [D]Pt) -> List<(u: D, v: D, w: Int)> // O(n log n), O(n) memory
+/// Centroid (center of mass) of a non-degenerate simple polygon. O(n).
+fn polygon_centroid(poly: List<Vec>) -> Vec // O(n)
+/// Kernel of a CCW simple polygon (points seeing the entire interior). O(n log n), O(n) memory.
+fn polygon_kernel(poly: List<Vec>, eps: F64 = 1e-9) -> List<Vec> // O(n log n), O(n) memory
+/// Triangulate a CCW simple polygon into vertex index triples. O(n log n), O(n) memory.
+fn polygon_triangulate(poly: List<Pt>) -> List<(Int, Int, Int)> // O(n log n), O(n) memory
+/// Number of strictly interior lattice points of a simple lattice polygon (Pick's theorem). O(n log max_coord).
+fn pick_interior(poly: List<Pt>) -> Int // O(n log max_coord)
+/// Number of boundary lattice points of a simple lattice polygon. O(n log max_coord).
+fn pick_boundary(poly: List<Pt>) -> Int // O(n log max_coord)
+
+// Careful floating-point Vec, Circle, and HalfPlane completions
+/// Circle constant pi (canonical home: std.math.PI; re-exported here). O(1).
+const PI: F64 = 3.14159265358979323846
+// (on Vec):
+    /// Rotated 90 degrees clockwise. O(1).
+    @get fn perp_cw(self) -> Vec // O(1)
+    /// Unit vector (cos(rad), sin(rad)). O(1).
+    fn from_angle(rad: F64) -> Vec // O(1)
+    /// Dot product of self and o. O(1).
+    fn dot(self, o: Vec) -> F64 // O(1)
+    /// 2D cross product of self and o. O(1).
+    fn cross(self, o: Vec) -> F64 // O(1)
+    /// Squared Euclidean distance from self to o. O(1).
+    fn dist2(self, o: Vec) -> F64 // O(1)
+    /// Euclidean distance from self to o. O(1).
+    fn dist(self, o: Vec) -> F64 // O(1)
+/// Signed angle from a to b in (-pi, pi]. O(1).
+fn angle_between(a: Vec, b: Vec) -> F64 // O(1)
+/// 2D circle with center c and non-negative radius r.
+struct Circle(c: Vec, r: F64)
+    /// Unique circumcircle through a, b, c, or none if collinear. O(1).
+    fn through(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Circle // O(1)
+    /// Area pi * r^2. O(1).
+    @get fn area(self) -> F64 // O(1)
+    /// Circumference 2 * pi * r. O(1).
+    @get fn circumference(self) -> F64 // O(1)
+    /// Point location relative to the disk. O(1).
+    fn locate(self, p: Vec, eps: F64 = 1e-9) -> Location // O(1)
+/// Inscribed circle of triangle abc, or none if collinear. O(1).
+fn incenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Circle // O(1)
+/// Area of the intersection of two disks (c1, r1) and (c2, r2). O(1).
+fn circle_circle_area(c1: Vec, r1: F64, c2: Vec, r2: F64, eps: F64 = 1e-9) -> F64 // O(1)
+/// Circle inversion of point p across circle (center, r). O(1).
+fn invert(p: Vec, center: Vec, r: F64) -> Vec // O(1)
+// (on HalfPlane):
+    /// Half-plane keeping the closed left side of directed line a -> b. O(1).
+    fn through(a: Vec, b: Vec) -> HalfPlane // O(1)
+    /// Half-plane keeping { (x, y) | a*x + b*y + c >= 0 }. O(1).
+    fn from_line(a: F64, b: F64, c: F64) -> HalfPlane // O(1)
+    /// Signed orientation value dir.cross(q - p); >= 0 inside. O(1).
+    fn side(self, q: Vec) -> F64 // O(1)
+/// Half-plane intersection with optional [-bound, bound]^2 clipping box. O(n log n), O(n) memory.
+fn half_plane_intersect(planes: List<HalfPlane>, bound: ?F64 = none, eps: F64 = 1e-9) -> List<Vec> // O(n log n), O(n) memory
+
+// Axis-aligned rectangles, planar subdivisions, and Delaunay / Voronoi
+/// Half-open integer rectangle x * y (accepts cut ranges per decision 124).
+struct Rect(x: Range<Int>, y: Range<Int>)
+    /// Area of the rectangle (0 if empty). O(1).
+    @get fn area(self) -> Int // O(1)
+    /// True when either axis range is empty. O(1).
+    @get fn is_empty(self) -> Bool // O(1)
+    /// True when p.x in x and p.y in y. O(1).
+    fn contains(self, p: Pt) -> Bool // O(1)
+    /// Non-empty intersection of two rectangles, or none. O(1).
+    fn intersect(self, o: Rect) -> ?Rect // O(1)
+/// Total area of the union of axis-aligned integer rectangles via sweep line. O(n log n), O(n) memory.
+fn rects_union_area(rects: List<Rect>) -> Int // O(n log n), O(n) memory
+/// Faces (CCW interior cycles and CW outer cycle) of a planar straight-line graph. O((n + m) log m), O(n + m) memory.
+fn planar_faces<V>(pts: [V]Pt, edges: List<(V, V)>) -> List<List<V>> // O((n + m) log m), O(n + m) memory
+/// Offline sweep-line point location in a planar subdivision; returns face index or none. O((n + m + q) log(n + m)), O(n + m + q) memory.
+fn point_location_planar<V>(pts: [V]Pt, edges: List<(V, V)>, queries: List<Pt>) -> List<?Int> // O((n + m + q) log(n + m)), O(n + m + q) memory
+/// Exact Delaunay triangulation of distinct integer points (|coords| <= 1e9) as CCW handle triples. O(n log n), O(n) memory.
+fn delaunay<D>(pts: [D]Pt) -> List<(D, D, D)> // O(n log n), O(n) memory
+/// Voronoi cells of pts clipped to [-bound, bound]^2 via the Delaunay dual. O(n log n), O(n) memory.
+fn voronoi_cells<D>(pts: [D]Pt, bound: F64) -> [D]List<Vec> // O(n log n), O(n) memory
+
+// 3D exact & floating-point geometry
+// (on Pt3):
+    /// Explicit conversion to 3D floating-point Vec3. O(1).
+    @get fn to_vec3(self) -> Vec3 // O(1)
+    /// 3D dot product of self and o. O(1).
+    fn dot(self, o: Pt3) -> Int // O(1)
+    /// Exact 128-bit 3D dot product of self and o. O(1).
+    fn dot128(self, o: Pt3) -> I128 // O(1)
+    /// 3D cross product of self and o. O(1).
+    fn cross(self, o: Pt3) -> Pt3 // O(1)
+    /// Squared 3D Euclidean distance from self to o. O(1).
+    fn dist2(self, o: Pt3) -> Int // O(1)
+    /// 3D Euclidean distance from self to o. O(1).
+    fn dist(self, o: Pt3) -> F64 // O(1)
+/// Domain-indexed 3D convex hull returning outward-oriented triangular faces of D handles. O(n^2), O(n) memory.
+fn convex_hull_3d_idx<D>(pts: [D]Pt3) -> List<(D, D, D)> // O(n^2), O(n) memory
+/// Six times the signed volume of a closed triangulated polyhedron. O(|faces|).
+fn polyhedron_volume6(pts: List<Pt3>, faces: List<(Int, Int, Int)>) -> I128 // O(|faces|)
+/// 3D floating-point point or vector (Add, Sub, Neg, Mul<F64>, Div<F64>; no Show).
+struct Vec3(x: F64, y: F64, z: F64)
+    /// Squared Euclidean length. O(1).
+    @get fn norm2(self) -> F64 // O(1)
+    /// Euclidean length. O(1).
+    @get fn len(self) -> F64 // O(1)
+    /// Unit vector in the same direction (traps if len == 0). O(1).
+    @get fn unit(self) -> Vec3 // O(1)
+    /// 3D dot product. O(1).
+    fn dot(self, o: Vec3) -> F64 // O(1)
+    /// 3D cross product. O(1).
+    fn cross(self, o: Vec3) -> Vec3 // O(1)
+    /// Squared 3D Euclidean distance. O(1).
+    fn dist2(self, o: Vec3) -> F64 // O(1)
+    /// 3D Euclidean distance. O(1).
+    fn dist(self, o: Vec3) -> F64 // O(1)
+    /// Rodrigues rotation around unit axis by rad radians. O(1).
+    fn rot(self, axis: Vec3, rad: F64) -> Vec3 // O(1)
+/// 3D plane { p | n.dot(p) == d } with unit normal n.
+struct Plane3(n: Vec3, d: F64)
+    /// Plane through non-collinear points a, b, c, or none. O(1).
+    fn through(a: Vec3, b: Vec3, c: Vec3, eps: F64 = 1e-9) -> ?Plane3 // O(1)
+    /// Signed distance from p to the plane. O(1).
+    fn dist(self, p: Vec3) -> F64 // O(1)
+    /// Orthogonal projection of p onto the plane. O(1).
+    fn project(self, p: Vec3) -> Vec3 // O(1)
+/// Intersection of line ab with plane, or none if parallel. O(1).
+fn line_plane_intersect(a: Vec3, b: Vec3, plane: Plane3, eps: F64 = 1e-9) -> ?Vec3 // O(1)
+/// Great-circle distance between directions a and b on a sphere of radius r. O(1).
+fn sphere_dist(a: Vec3, b: Vec3, r: F64 = 1.0) -> F64 // O(1)
+```
+
+Read-only sequence parameters (`List<Pt>`, `List<Vec>`) generalize to
+`S: Indexed<Item = Pt>` / `S: Indexed<Item = Vec>` once associated-type
+protocols land (`design/stdlib/geometry.md` `## Powers`), so domain arrays
+`[D]Pt` and half-open cut-range slices `poly[j..i]` (decision 124) work with
+zero copies and no `_range` twins.
 
 Matched C++17 benchmarks (`python3 bench/geometry/run.py --runs 7`, all 16 <= 1.09x):
 `convex_hull` (200k pts) 1.06x (35 vs 33 ms), `half_plane_intersect` (100k planes) 0.81x (56 vs 68 ms),
