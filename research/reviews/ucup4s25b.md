@@ -1,6 +1,7 @@
 # ucup4s25b
 
-Score: 3/5
+Score: pending (rewrite-c: header derives the stack simulation and why the last merge splits a query; `enum Dir`, no sentinel balls or (-1, -1), merges recorded as a list of cuts, `Prefix` sums, typed reads)
+Dream: pending (rewrite-c: new dream = port)
 
 The header (lines 1-3) gives the plan, and `SparseTable` with `max` over `(merge_time, boundary)` is the right object. The simulation uses sentinels: a bottom ball of weight `inf` (line 14), a final ball of weight `2 * inf` (line 17), and `(-1, -1)` merge times (line 10). Direction is a `Bool`. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
