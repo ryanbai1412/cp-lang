@@ -420,7 +420,12 @@ impl<'a> Lowerer<'a> {
         let decl = self.gen_structs[gid].decl;
         let tpl_mod = self.gen_structs[gid].mod_id;
         let gen_names: Vec<String> = decl.generics.iter().map(|g| g.text.clone()).collect();
-        if explicit.len() == gen_names.len() {
+        let min_explicit = decl
+            .generic_defaults
+            .iter()
+            .take_while(|d| d.is_none())
+            .count();
+        if !explicit.is_empty() && explicit.len() >= min_explicit && explicit.len() <= gen_names.len() {
             let sid = self.instantiate_struct(gid, explicit);
             return self.construct_or_new(sid, args, span);
         }

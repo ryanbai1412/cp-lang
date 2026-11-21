@@ -373,12 +373,13 @@ impl<'a> Parser<'a> {
         matches!(self.peek(), T::Gt | T::Shr)
     }
 
-    /// Parses `<D, T: Ord + Add, const N: Int>` after a fn or type name:
-    /// the parameter names and the bounds written on them.
-    pub(super) fn generic_params(&mut self) -> (Vec<Name>, Vec<Bound>) {
+    /// Parses `<D, T: Ord + Add, W = (), const N: Int>` after a fn or type
+    /// name: the parameter names, optional defaults, and bounds.
+    pub(super) fn generic_params_with_defaults(&mut self) -> (Vec<Name>, Vec<Option<Type>>, Vec<Bound>) {
+        let mut defaults = Vec::new();
         let mut bounds = Vec::new();
         if !self.eat(T::Lt) {
-            return (Vec::new(), bounds);
+            return (Vec::new(), defaults, bounds);
         }
         let names = self.comma_list(T::Gt, "the type parameters", |p| {
             // `const N: Int` is a value parameter; its type is not a bound.
@@ -393,15 +394,15 @@ impl<'a> Parser<'a> {
                     });
                 }
             }
-            if p.at(T::Eq) {
-                let start = p.start();
-                p.bump();
-                p.ty();
-                let span = p.span_from(start);
-                p.planned(span, &crate::planned::TYPE_PARAM_DEFAULT);
-            }
+            let default = p.eat(T::Eq).then(|| p.ty());
+            defaults.push(default);
             name
         });
+        (names, defaults, bounds)
+    }
+
+    pub(super) fn generic_params(&mut self) -> (Vec<Name>, Vec<Bound>) {
+        let (names, _, bounds) = self.generic_params_with_defaults();
         (names, bounds)
     }
 

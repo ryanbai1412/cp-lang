@@ -1,8 +1,0 @@
-error[E0504]: not implemented yet: a default for a type parameter (see design/spec/40-signatures.md §40.6)
-  --> planned_a_default_for_a_type_parameter.cp:1:18
-  |
-1 | struct Pair<A, B = Int>(a: A, b: B)
-  |                  ^^^^^
-  = help: give every type argument where the type is used
-
-planned_a_default_for_a_type_parameter.cp: 1 error

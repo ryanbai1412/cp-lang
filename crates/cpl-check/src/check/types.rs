@@ -452,7 +452,34 @@ impl<'a> Checker<'a> {
                 ..
             } => Ty::Pos(domain.clone()),
             Def::Alias { ty } => ty.clone(),
-            Def::Struct { .. } | Def::Enum { .. } => Ty::Named {
+            Def::Struct {
+                generics, defaults, ..
+            } => {
+                let mut args = args;
+                if args.len() < defaults.len() {
+                    let mut bindings: HashMap<String, Ty> = generics
+                        .iter()
+                        .zip(&args)
+                        .map(|(g, a)| (g.clone(), a.clone()))
+                        .collect();
+                    for (i, default_ty) in defaults.iter().enumerate().skip(args.len()) {
+                        if let Some(default_ty) = default_ty {
+                            let filled = default_ty.subst(&bindings);
+                            if let Some(g) = generics.get(i) {
+                                bindings.insert(g.clone(), filled.clone());
+                            }
+                            args.push(filled);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                Ty::Named {
+                    name: name.to_string(),
+                    args,
+                }
+            }
+            Def::Enum { .. } => Ty::Named {
                 name: name.to_string(),
                 args,
             },
@@ -786,6 +813,11 @@ impl<'a> Checker<'a> {
                     args: generics.iter().cloned().map(Ty::Param).collect(),
                 };
                 let body = self.enter_body(&generics, self_ty.clone());
+                let defaults: Vec<Option<Ty>> = s
+                    .generic_defaults
+                    .iter()
+                    .map(|d| d.as_ref().map(|ty| self.resolve_type(ty)))
+                    .collect();
                 let owned = self.owned(&s.name.text, &s.methods);
                 let fields = s
                     .fields
@@ -819,6 +851,7 @@ impl<'a> Checker<'a> {
                     s.name.text.clone(),
                     Def::Struct {
                         generics,
+                        defaults,
                         fields,
                         methods,
                         ctor,

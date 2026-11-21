@@ -213,6 +213,7 @@ pub struct Param {
 pub struct StructDecl {
     pub name: Name,
     pub generics: Vec<Name>,
+    pub generic_defaults: Vec<Option<Type>>,
     pub bounds: Vec<Bound>,
     /// Header fields (`struct Monoid<T>(id: T, op: (T, T) -> T)`) first,
     /// then the fields of the body.

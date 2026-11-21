@@ -506,14 +506,36 @@ impl<'a> Lowerer<'a> {
     }
 
     /// Instantiates a generic struct template with concrete `args`, memoized.
-    pub(super) fn instantiate_struct(&mut self, gid: GenStructId, args: Vec<GenArg>) -> StructId {
+    pub(super) fn instantiate_struct(&mut self, gid: GenStructId, mut args: Vec<GenArg>) -> StructId {
+        let tpl_mod = self.gen_structs[gid].mod_id;
+        let tpl_offset = self.gen_structs[gid].offset;
+        let decl = self.gen_structs[gid].decl;
+        if args.len() < decl.generics.len() {
+            let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
+            let saved_offset = std::mem::replace(&mut self.offset, tpl_offset);
+            let saved_env = self.gen_env.clone();
+            let mut env: GenEnv = HashMap::new();
+            for (p, a) in decl.generics.iter().zip(&args) {
+                env.insert(p.text.clone(), a.clone());
+            }
+            for i in args.len()..decl.generics.len() {
+                if let Some(Some(default_ty)) = decl.generic_defaults.get(i) {
+                    self.gen_env = env.clone();
+                    let arg = self.resolve_gen_arg(default_ty);
+                    env.insert(decl.generics[i].text.clone(), arg.clone());
+                    args.push(arg);
+                } else {
+                    break;
+                }
+            }
+            self.gen_env = saved_env;
+            self.cur_mod = saved_mod;
+            self.offset = saved_offset;
+        }
         let key = (gid, args.clone());
         if let Some(&id) = self.struct_insts.get(&key) {
             return id;
         }
-        let tpl_mod = self.gen_structs[gid].mod_id;
-        let tpl_offset = self.gen_structs[gid].offset;
-        let decl = self.gen_structs[gid].decl;
         let id = self.structs.len();
         let suffix: Vec<String> = args.iter().map(|a| self.mangle_arg(a)).collect();
         let mangled = format!("{}_{}_{id}", decl.name.text, suffix.join("_"));

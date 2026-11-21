@@ -28,6 +28,7 @@ pub enum Def {
     },
     Struct {
         generics: Vec<String>,
+        defaults: Vec<Option<Ty>>,
         /// Fields in declaration order: also the constructor's parameters.
         fields: Vec<crate::ty::Param>,
         methods: Vec<(String, Ty)>,

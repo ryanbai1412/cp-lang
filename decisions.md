@@ -1308,6 +1308,13 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   *Reversal:* make `lo`/`hi` non-optional again in `TypeKind::Range` and remove the `TypeAlias` loops in
   `crates/cpl-check/src/check/stmt.rs`.
 
+- **22.9 Struct type-parameter defaults (`struct Pair<A, B = Int>`, `struct Graph<V: Index, W = ()>`).**
+  `StructDecl` stores `generic_defaults: Vec<Option<Type>>` and `Def::Struct` stores resolved `defaults: Vec<Option<Ty>>`.
+  Omitting trailing type arguments fills them from `defaults` (substituting earlier parameters) in both `cpl-check::def_type`
+  and `cpl-ir::instantiate_struct` before memoization, so `Pair<Int>` and `Pair<Int, Int>` are identical types and share
+  one monomorphized struct. Removed the `planned::TYPE_PARAM_DEFAULT` stub.
+  *Reversal:* restore `planned::TYPE_PARAM_DEFAULT` in `crates/cpl-syntax/src/planned.rs` and remove `generic_defaults`/`defaults`.
+
 ## 23. Validation scoreboard and friction summary (`scripts/scoreboard.py`, 2026-11-21)
 
 - **23.1 One unified scoreboard over auto-discovered ports.** `scripts/scoreboard.py` discovers every

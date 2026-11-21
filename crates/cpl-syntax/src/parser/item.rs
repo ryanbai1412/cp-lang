@@ -296,7 +296,7 @@ impl<'a> Parser<'a> {
     pub(super) fn struct_decl(&mut self) -> StmtKind {
         self.bump();
         let name = self.expect_name("a struct name after `struct`");
-        let (generics, mut bounds) = self.generic_params();
+        let (generics, generic_defaults, mut bounds) = self.generic_params_with_defaults();
         let mut fields = Vec::new();
         // `struct Monoid<T>(id: T, op: (T, T) -> T)`: fields in the header.
         let header = self.eat(T::LParen);
@@ -334,6 +334,7 @@ impl<'a> Parser<'a> {
             return StmtKind::Struct(StructDecl {
                 name,
                 generics,
+                generic_defaults,
                 bounds,
                 fields,
                 methods: Vec::new(),
@@ -343,6 +344,7 @@ impl<'a> Parser<'a> {
             return StmtKind::Struct(StructDecl {
                 name,
                 generics,
+                generic_defaults,
                 bounds,
                 fields,
                 methods: Vec::new(),
@@ -368,6 +370,7 @@ impl<'a> Parser<'a> {
         StmtKind::Struct(StructDecl {
             name,
             generics,
+            generic_defaults,
             bounds,
             fields,
             methods,
