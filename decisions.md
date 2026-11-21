@@ -1883,3 +1883,34 @@ Reverse: none needed; this is general range-type lowering.
 4. **The friction detector `negative_slice` gets no lint:** `a[..-k]` is
    already the check error E0309 with the same fix, so the friction script's
    one `wa_trap` is stale. Reverse: none needed.
+
+## 36. Symmetric storage, derived domains, and domain iteration helpers (0.3, 2026-11-21)
+
+- **36.1 Symmetric 2D tables are a storage dimension `Sym<V>`, not a new container type.**
+  `[Sym<V>]T` packs an unordered pair `(u, v) : (V, V)` into a flat triangular array of size
+  `n * (n + 1) / 2` via `sym_idx(a, b) = max(a, b) * (max(a, b) + 1) / 2 + min(a, b)`.
+  Both `adj[u, v]` and `adj[(u, v)]` index it, with `adj[u, v]` and `adj[v, u]` aliasing the
+  same cell. Diagonal cells `(u, u)` are included so `Sym<V>` works uniformly for both graphs
+  with self-loops and reflexive relations (costs `n` extra cells over strict `n*(n-1)/2`, avoiding
+  a trap on `adj[u, u]`). Reason: eliminates duplicated symmetric writes (`cf2150f`) and halves
+  memory while keeping the exact `[Dim]T` array model, formatter, linter, and trace display.
+  Reverse: remove `Dim::Sym`/`DimSpec::Sym` and `Builtin::SymIdx` (`cpl-check`, `cpl-ir`,
+  `cpl-interp`, `cpl-codegen`).
+- **36.2 Domain-typed iteration helpers `V.after(i)`, `V.before(i)`, and `V.pairs`.**
+  `V.after(i)` and `V.before(i)` return `Range<V>` covering `(i.to_idx + 1)..V.count` and
+  `0..i.to_idx` respectively, and lower directly to `Iter::Range` in `for` loops and comprehensions
+  so they emit zero `cpl::Range` runtime overhead. `V.pairs` yields unordered distinct pairs
+  `(i, j) : (V, V)` with `i < j`: in `for (i, j) in V.pairs` (without `break`) it lowers directly
+  to two nested `Stmt::For` loops with zero allocation; as a value or with `break` it materializes
+  `List<(V, V)>`; and `domain P = V.pairs` declares a derived domain of size `n * (n - 1) / 2`.
+  Reason: mined from `cf2150f`, `cf2147h`, `cf2129b`, and `proto/ports/ecnerwala/dream/` where
+  ports repeatedly wrote `for j in V if j > i:` or `0..i` / `i + 1..n`.
+  Reverse: remove the domain member arms in `cpl-check/src/check/expr.rs` and `cpl-ir/src/lower/{call,expr,stmt}.rs`.
+- **36.3 Derived product domains (`domain S = A * B`, `domain E = edges(V)`) remain staged behind `Sym<V>` and `[A, B]T`.**
+  Multi-dimensional tables `[A, B]T` and `[(A, B)]T` already cover dense product indexing, and
+  `domain P = V.pairs` covers unordered pair domains. General algebraic product domains
+  (`domain State = (V, K)`, `research/frictions/cf2178h.md`, `dream/cf2178h.cp`) and graph-edge
+  domains (`domain E = edges(V)`) need bijective packing/unpacking (`Pos<A * B> <-> (A, B)`)
+  and are queued as the next step in `plan/DOMAINS.md`. Reason: keep commits small and avoid
+  shipping half-baked product destructuring. Reverse: implement product-domain packing in `cpl-ir`
+  and `cpl-check`.

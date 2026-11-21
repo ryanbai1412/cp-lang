@@ -124,17 +124,25 @@ escape diagnostics (`E0313` on return, outer assignment, outer container
 store, and closure capture), heap storage for runtime-sized arrays
 (`std::vector` / `cpl::Grid`), and runtime-bounded fields in `read()`
 records (`w: 0..=m`) all work across checker, interpreter, C++ codegen,
-formatter, linter, LSP, and docs. Four ports converted (`ucup4s25c`,
-`cf2222f`, `cf2101b`, `cf2268c`). Remaining: eliminating redundant runtime
-bounds checks when indexing `[0..=m]` by a `0..=m` record field in C++
-codegen, and explicit `domain` field syntax on domain-carrying structs.
+formatter, linter, LSP, and docs. Symmetric triangular tables `[Sym<V>]T`
+(indexed by `adj[u, v]` or `adj[(u, v)]`, packed into `n*(n+1)/2` cells),
+derived pair domains (`domain P = V.pairs`), and zero-overhead domain iteration
+helpers (`V.after(i)`, `V.before(i)`, `for (i, j) in V.pairs`) also work across
+checker, IR, interpreter, C++ codegen, trace, editor syntax, and docs. Seven
+ports converted (`ucup4s25c`, `cf2222f`, `cf2101b`, `cf2268c`, `cf2150f`,
+`cf2147h`, `cf2129b`). Remaining: algebraic product domains (`domain State = (V, K)`,
+`research/frictions/cf2178h.md`), graph edge domains (`domain E = edges(V)`),
+eliminating redundant runtime bounds checks when indexing `[0..=m]` by a `0..=m`
+record field in C++ codegen, and explicit `domain` field syntax on
+domain-carrying structs.
 **Bar.** Settled semantics in `plan/OPERATING.md` implemented across
-checker, interpreter and C++; three ports converted. (Met: 4 ports
+checker, interpreter and C++; three ports converted. (Met: 7 ports
 converted and passing `gate.sh`.)
-**Next.** Propagate runtime range-field facts (`w: 0..=m`) into C++ bounds
-elimination (`cpl-codegen/src/facts.rs`); migrate remaining stdlib
-existential signatures to tuple syntax where appropriate; explicit
-`domain` field syntax for value-owned structs.
+**Next.** Algebraic product domains (`domain State = (A, B)` with packing/unpacking,
+from `dream/cf2178h.cp`) and `edges(V)` derived domains; propagate runtime
+range-field facts (`w: 0..=m`) into C++ bounds elimination (`cpl-codegen/src/facts.rs`);
+migrate remaining stdlib existential signatures to tuple syntax where appropriate;
+explicit `domain` field syntax for value-owned structs.
 
 ## 3. Codegen and performance (`plan/30`)
 **North star.** The generated C++ is what a world-class contestant would hand-write:

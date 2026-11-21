@@ -157,6 +157,26 @@ print(Q.count, sum(vals))
 
 Standard-library functions that introduce a new index space (`components`, `scc`, `two_edge_components`) use the same pattern: `let (domain C, comp) = scc(adj)`. Record types read by `read()` may also bound fields by earlier runtime values, e.g. `let edges: [0..m](u: V, v: V, w: 0..=m) = read()`.
 
+## Symmetric tables and domain iteration helpers
+
+For undirected adjacency matrices and other symmetric relations over a domain `V`, `[Sym<V>]T` stores unordered pairs in a flat triangular array of `n * (n + 1) / 2` cells where `adj[u, v]` and `adj[v, u]` refer to the same entry. Domains also provide typed slicing and unordered pair iteration (`V.after(i)`, `V.before(i)`, `V.pairs`, and `domain P = V.pairs`):
+
+```cp CP Lang 0.2.2
+domain V = 1..=4
+var adj: [Sym<V>]Bool = false
+adj[V.at(1), V.at(3)] = true
+
+var missing = 0
+for (i, j) in V.pairs if not adj[i, j]:
+    missing += 1
+var after_first = 0
+for j in V.after(V.first):
+    after_first += 1
+print(adj[V.at(3), V.at(1)], missing, after_first)
+```
+
+`for (i, j) in V.pairs` and `for j in V.after(i)` / `V.before(i)` lower directly to nested integer loops with no intermediate allocation.
+
 ## Algebraic `Index` and escape hatches
 
 The language's `Index` model covers `Bool`, finite enums, `?T`, integer ranges, tuples/records, and `Subset<D>` for bitmask DP. Support across generic library calls is still being completed: for example, flow over payload-enum vertices is not yet runnable. The [graph course](course-graphs-math.html#network-flow-with-typed-vertices) shows a working flow network over a numeric vertex domain.
