@@ -4153,7 +4153,12 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   - An integer literal where a position or cut of an integer domain is
     expected is that position (`var mex: P.bounds = 0`, `[d]P.bounds = 0`).
     Non-literal Ints still convert explicitly (`V(i)`).
+  - `r.halve()` returns `?(left, right)`, both non-empty, `none` when
+    `r.len <= 1` so `let … else` is the base case; `r.mid: ?V` is the middle
+    position for D&C that recurses around one element.
   - Rejected: `.n`/`.p` (`n` reads as a count, `p` as parent or prime).
+  - Rejected: `r.split(at: c)`; with cuts as values, `r.l..c` and `c..r.r`
+    are as short and also express "all but `v`" (`r.l..v.l`, `v.r..r.r`).
   - Domains may be empty. `D.first`/`D.last` return a plain `D` and exist
     only on `D: NonEmpty`, which the checker derives at each use: the lower
     bound of `D.count`'s range is at least 1. Guards narrow it

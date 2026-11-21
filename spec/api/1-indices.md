@@ -69,9 +69,22 @@ j..i           # cuts j to i                      Range<V.bounds>, also the posi
 | `r.first`, `r.last` | end positions, `?V` | O(1) |
 | `for v in r`, `r.rev`, `r.step(k)` | iteration | O(1) per step |
 | `r.clip(s)` | intersection | O(1) |
-| `r.split(at: c)` | `(left, right)` at cut `c` | O(1) |
-| `r.halve()` | `?(left, mid, right)` for divide and conquer; `none` when empty | O(1) |
+| `r.halve()` | `?(left, right)`: two non-empty halves meeting at the middle cut; `none` when `r.len <= 1` (the base case) | O(1) |
+| `r.mid` | the middle position, `?V`, for D&C that handles one element and recurses around it | O(1) |
 | `r.bsearch(ok)` | **the cut** where monotone `ok` turns from false to true | O(log n) calls |
+
+```python
+fn inversions(r: Range<Pos>) -> Int:          # merge-sort shape
+    let (left, right) = r.halve() else: return 0
+    inversions(left) + inversions(right) + cross(left, right)
+
+fn solve(rows: Range<Pos>, opts: Range<Pos>): # D&C DP optimisation
+    let m = rows.mid else: return
+    let best = opts.clip(..m.r).min_by(k => cost(k, m))!
+    dp[m] = cost(best, m)
+    solve(rows.l..m.l, opts.l..best.r)
+    solve(m.r..rows.r, best.l..opts.r)
+```
 
 Binary search returns a cut, so "first true" vs "last false" is a one-word
 change: `r.bsearch(ok).r` vs `r.bsearch(ok).l`. This replaces
@@ -119,6 +132,7 @@ let e = E.first              # fine: E.count is m, and m >= 1 here
 - Position arithmetic gives an `Int`; back into the domain is explicit.
 - `r.bsearch(ok)` returns a cut and replaces `bsearch_first`/`bsearch_last`.
 - Empty domains are valid; `first`/`last` need `NonEmpty`, derived and narrowed.
+- `r.halve()` is `?(left, right)`, `none` at length <= 1; `r.mid` is `?V`.
 - Integer literals convert to positions and cuts of integer domains.
 - `V(x)` traps outside `V`; `V.at(x)` is `?V`; the pattern `V(j)` refutes.
 
@@ -126,6 +140,8 @@ Rejected: `.start`/`.end`/`.before`/`.after` (four words for one idea);
 `.n`/`.p` (`n` reads as a count, `p` as parent); `V.first` always trapping
 (hides the n = 1 case until a hidden test hits it); `@get`-free bare calls
 (silent cost); `V.try(x)` (`try` reads like error handling).
+`r.split(at: c)` (`r.l..c` and `c..r.r` say it directly, and also say
+"all but `v`": `r.l..v.l`, `v.r..r.r`).
 
 ## Open
 
