@@ -1698,3 +1698,19 @@ fn a_local_read_for_the_last_time_moves_into_its_place() {
     let read = cpp(&src("").replace("    dp = next\n", "    dp = next\n    print(next[0])\n"));
     assert!(!read.contains("dp = std::move(next);"), "next is read after the store: {read}");
 }
+
+#[test]
+fn a_local_memo_body_is_an_auto_lambda_and_its_wrapper_is_explained() {
+    let src = "let n: Int = read()\nfn solve() -> Int:\n    @memo\n    fn fib(i: 0..=n) -> Int = if i < 2: i else: fib(i - 1) + fib(i - 2)\n    fib(n)\nprint(solve())\n";
+    let out = cpp(src);
+    assert!(out.contains("auto __memo_body"), "{out}");
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", src);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let explained = crate::explain_closures(&program);
+    let wrapper = explained.iter().find(|e| e.site == "fn solve local fib").expect("wrapper");
+    assert!(
+        matches!(&wrapper.mode, crate::ClosureMode::DynamicStdFunction { reason } if reason.contains("@memo")),
+        "{explained:?}"
+    );
+}

@@ -255,17 +255,22 @@ arrays; niches; a matched-algorithm benchmark harness.
 inlinable C++ form except these, which keep `std::function` (22 corpus
 programs, one of them the intentional parity case of §138; a fn or `?fn`
 field nothing reads is dropped, §140):
-- a struct field holding more than one closure, or a capturing one
-  (8 programs);
+- `Monoid<T>.op` when one program builds two monoids over the same `T`
+  (`+` and `max` trees): the struct is shared, so the field holds more than
+  one closure (8 programs). The static form is a monoid monomorphized per
+  op, which is the ranges lane's Monoid/Action work;
 - an optional fn field that is read, `SegTree.source` with `refresh`
   (2 programs);
 - a fn value whose closure is chosen at run time (3 programs);
-- the recursive body of a `@memo` fn, a fn-typed parameter of a closure,
-  a closure returning a closure and a recursive closure another closure
-  captures (9 programs, which `cpl explain` does not yet name);
+- the wrapper of a local `@memo` fn, which its body calls before it is
+  assigned (3 programs; the body itself is an `auto` lambda);
+- a fn-typed parameter of a closure, a closure returning a closure and a
+  recursive closure inside another closure (4 programs, which `cpl explain`
+  does not yet name);
 - a fn-typed parameter of the judge entry, and one of a recursive fn whose
   recursion passes it a different closure (§138);
-- a reassigned or hoisted fn slot, and a top-level closure var.
+- a reassigned or hoisted fn slot, and a top-level fn var (2 programs, not
+  yet named by `cpl explain`).
 
 ## 4. Standard library (`plan/STDLIB.md`, `plan/20`)
 **North star.** A standard library that covers everything ever asked at the hardest
@@ -721,7 +726,7 @@ no longer shows first as a wrong argument or index count); the lints
 `cpl lint` reports, each with its `cpl fix` fix as a quick fix, and
 `cpl fix` on the buffer as a `source.fixAll.cpl` action, removed syntax first (the replaced
 spellings, `where`, `--- multitest ---`, `.pow` and getter `()`, each a quick fix tested on a
-real port; a getter, built-in or `@get`, completes as a property and hovers its type; hover adds the `cost:` a stdlib or built-in member documents and the range the input bounds prove for a `let`, in a fn or loop too, and on a `+`, `-` or `*` the range of its value (`n * n: Int in 1..=40000000000`) with `can overflow Int` when it leaves `Int`; a lambda passed to a built-in method, block body after `=>` included, hovers and hints its parameters and `let`s; sum domains fold, complete their variants and hover; `++` has its quick fix); a panic becomes an error reply plus an
+real port; a getter, built-in or `@get`, completes as a property and hovers its type; hover adds the `cost:` a stdlib or built-in member documents and the range the input bounds prove for a `let`, in a fn or loop too; a lambda passed to a built-in method, block body after `=>` included, hovers and hints its parameters and `let`s; sum domains fold, complete their variants and hover; `++` has its quick fix); a panic becomes an error reply plus an
 internal-error diagnostic. Unit tests in `src/tests.rs`; `tests/latency.rs`
 measures 6.1 (492 lines, debug build: keystroke to diagnostics median
 6 ms, hover 0.06 ms, completion 1.8 ms), and gates the 95th percentile of
@@ -772,7 +777,7 @@ the parser, parses every port and library without an error, and checks each
 editor's queries are the same patterns.
 **Bar.** LSP fixture tests per `plan/60` 6.7 for every request; each editor
 integration built and smoke-tested in `scripts/check.sh --full`.
-**Next.** Proven ranges of `var`s and of division, `%` and calls
+**Next.** Proven ranges of expressions and `var`s
 (needs the checker's own range analysis); publish the Zed extension.
 
 ## 11. Docs, site and playground (`plan/90`)

@@ -1212,10 +1212,15 @@ impl<'p> Emitter<'p> {
                         self.expr_with_elem_layout(init, elem_l.as_ref()).text
                     },
                 };
+                let auto = matches!(ty, Ty::Fn(..))
+                    && self.closure_id.is_none()
+                    && matches!(init.kind, ExprKind::Closure(cid) if self.devirt.local_auto(*slot, cid))
+                    && self.facts.stores((self.fn_id, false, *slot)) <= 1;
                 if hoisted {
                     self.line(out, &format!("{name} = {text};"));
                 } else if name.starts_with('_') {
                     // `_t` is a name for a value the program may not use.
+                    let cpp = if auto { "auto" } else { &cpp };
                     self.line(out, &format!("[[maybe_unused]] {cpp} {name} = {text};"));
                 } else if self.reads_in_place(*slot, init, tail.as_ref()) {
                     // `let sp = sorted[b]`: a name for what is already
@@ -1224,11 +1229,7 @@ impl<'p> Emitter<'p> {
                 } else if let Some(args) = sized_ctor(&cpp, &text) {
                     // `std::vector<ll> f((size_t)(n), 1);`: the type once.
                     self.line(out, &format!("{cpp} {name}({args});"));
-                } else if matches!(ty, Ty::Fn(..))
-                    && self.closure_id.is_none()
-                    && matches!(init.kind, ExprKind::Closure(cid) if self.devirt.local_auto(*slot, cid))
-                    && self.facts.stores((self.fn_id, false, *slot)) <= 1
-                {
+                } else if auto {
                     self.line(out, &format!("auto {name} = {text};"));
                 } else {
                     self.line(out, &format!("{cpp} {name} = {text};"));

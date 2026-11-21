@@ -966,13 +966,22 @@ fn explain_locals_in_block(
         _ => {}
     });
     walk::deep_stmts(block, &mut |stmt| {
-        let Stmt::Let(slot, Some(init)) = stmt else {
+        let Stmt::Let(slot, init) = stmt else {
             return;
         };
         if !matches!(locals[*slot].ty, Ty::Fn(..)) {
             return;
         }
         let site = format!("{owner} local {}", locals[*slot].name);
+        let Some(init) = init else {
+            out.push(ClosureLowering {
+                site,
+                mode: ClosureMode::DynamicStdFunction {
+                    reason: "fn slot declared before its value (a @memo fn's wrapper)".to_string(),
+                },
+            });
+            return;
+        };
         let mode = match init.kind {
             ExprKind::Closure(cid)
                 if stores.get(slot).copied().unwrap_or(0) <= 1
