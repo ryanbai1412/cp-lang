@@ -35,18 +35,18 @@ pub struct MinHeap<T>:
         xs = []
         out
 
+    // Moves a hole down instead of swapping: one write per level, as std::priority_queue.
     fn sift_down(mut self, start: Int):
-        var i = start
+        let x = xs[start]
         let n = xs.len
-        while true:
-            var best = i
-            let l = 2 * i + 1
-            let r = l + 1
-            if l < n and xs[l] < xs[best]: best = l
-            if r < n and xs[r] < xs[best]: best = r
-            if best == i: break
-            xs.swap(i, best)
-            i = best
+        var i = start
+        while 2 * i + 1 < n:
+            var c = 2 * i + 1
+            if c + 1 < n and xs[c + 1] < xs[c]: c += 1
+            if not (xs[c] < x): break
+            xs[i] = xs[c]
+            i = c
+        xs[i] = x
 
     /// Push `x` into the heap. O(log n).
     pub fn push(mut self, x: T):
@@ -54,16 +54,19 @@ pub struct MinHeap<T>:
         var i = xs.len - 1
         while i > 0:
             let p = (i - 1) / 2
-            if not (xs[i] < xs[p]): break
-            xs.swap(i, p)
+            if not (x < xs[p]): break
+            xs[i] = xs[p]
             i = p
+        xs[i] = x
 
     /// Remove and return the smallest element, or `none` if the heap is empty.
     pub fn pop(mut self) -> ?T:
         if xs.is_empty: return none
-        xs.swap(0, xs.len - 1)
-        let out = xs.pop()
-        if not xs.is_empty: self.sift_down(0)
+        let out = xs[0]
+        let last = xs.pop()!
+        if not xs.is_empty:
+            xs[0] = last
+            self.sift_down(0)
         out
 
 /// A priority queue that pops the largest element first. Same costs as `MinHeap`.
