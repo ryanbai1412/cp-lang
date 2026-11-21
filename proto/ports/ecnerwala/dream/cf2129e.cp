@@ -15,7 +15,7 @@ domain E = 0..m
 let raw: [E](u: V, v: V) = read()
 let g = Graph.undirected(raw)
 let (domain Arc, arcs) = [(u, a.to, a.e) for u in V for a in g.out(u)].indexed()
-let first_arc = [V.bounds] b => Arc.bounds.nth(g.deg[..b].sum())
+let first_arc = [V.bounds] b => Arc.bounds.nth(V[..b].sum(g.deg))
 
 let q: 1..=150_000 = read()
 let asks: [0..q](l: V, r: V, k: Int) = read()
