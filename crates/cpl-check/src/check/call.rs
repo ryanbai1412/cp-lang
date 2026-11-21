@@ -320,6 +320,19 @@ impl<'a> Checker<'a> {
             }
         }
         match base_ty {
+            Ty::Array { ref index, ref elem } if name.text == "inverse" => {
+                if let Some(ret) = self.array_inverse_ret(index, elem) {
+                    Some(ret)
+                } else if !elem.is_vague() {
+                    let message = format!(
+                        "`inverse()` requires elements of an index domain or bounded range, not `{elem}`"
+                    );
+                    self.error(codes::TYPE_MISMATCH, name.span, message);
+                    Some(Ty::Error)
+                } else {
+                    None
+                }
+            }
             Ty::Array { index, elem } if name.text == "row" && index.len() > 1 => {
                 self.note_view(call, "row");
                 Some(Ty::Array {

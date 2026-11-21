@@ -667,3 +667,40 @@ fn arrays_for_one_domain_that_start_apart_are_refused_by_its_written_name() {
         assert!(!ran.stderr.contains("D_0"), "{}", ran.stderr);
     }
 }
+
+/// Partial-injection `a.inverse()` traps on duplicate images in both
+/// the interpreter and sanitized C++17.
+#[test]
+fn partial_inverse_duplicate_image_traps_in_interp_and_cpp() {
+    let dir = std::env::temp_dir().join(format!("cpl-partial-inv-dup-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("dup.cp");
+    let source = "\
+domain P = 1..=4
+domain V = 0..3
+var a: [P]?V = none
+a[P(1)] = V(2)
+a[P(3)] = V(2)
+let inv = a.inverse()
+print(inv[V(2)]!.label)
+";
+    std::fs::write(&path, source).unwrap();
+    let path_str = path.to_string_lossy().into_owned();
+    let ran = cpl_cli::run(&["run", &path_str]);
+    assert_ne!(ran.code, 0, "expected interpreter trap, got stdout: {}", String::from_utf8_lossy(&ran.stdout));
+    assert!(
+        ran.stderr.contains("duplicate image"),
+        "expected duplicate image message, got: {}",
+        ran.stderr
+    );
+    let built = cpl_cli::run(&["build", &path_str, "-o", "-"]);
+    assert_eq!(built.code, 0, "{}", built.stderr);
+    let binary = sanitized_binary(&built.stdout).unwrap();
+    let cpp = Command::new(&binary).output().unwrap();
+    assert!(!cpp.status.success(), "expected sanitized C++ trap on duplicate image");
+    assert!(
+        String::from_utf8_lossy(&cpp.stderr).contains("duplicate image"),
+        "expected duplicate image message in C++, got: {}",
+        String::from_utf8_lossy(&cpp.stderr)
+    );
+}

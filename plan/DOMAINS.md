@@ -203,6 +203,8 @@ directly in `SegTree`/`LazySegTree`/`Fenwick` (`cf2207f`), algebraic product dom
 (`domain State = (V, K)` and named `(v: V, d: Dir, ok: Bool)` with flat `[State]T`,
 `for s in State`, `for (v, k) in State`, `dp[(v, k)]`/`dp[v, k]`, `State(v, k)`,
 and `s.0`/`s.v` projections across checker, IR, interpreter, C++, LSP, and docs),
+partial-injection and bijection `a.inverse()` (`[D]?E -> [E]?D` trapping on duplicate
+images, `[D]E -> [E]D` on bijections, adopted in `cf2084g1`),
 and typed `Item`/`Cut` ranges via `minmax` and `choose2` now also work end to end.
 Eight ports converted (`ucup4s25c`, `cf2222f`, `cf2101b`, `cf2268c`, `cf2150f`,
 `cf2147h`, `cf2129b`, `cf2147f`), with `cf2147h` (`1.631x -> 1.063x`) and

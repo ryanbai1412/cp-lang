@@ -320,12 +320,30 @@ impl<'a> Lowerer<'a> {
                         }
                         _ => None,
                     };
+                    let array_ty_ast = if let (Some(ty_ast), Some(_)) = (ty.as_ref(), &single_name) {
+                        if matches!(ty_ast.kind, ast::TypeKind::Array { .. }) {
+                            Some(ty_ast.clone())
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
                     let runtime_const_name = if !*mutable && !self.at_top_level() && value.ty == Ty::Int {
-                        single_name.filter(|n| n.chars().next().is_some_and(|c| c.is_ascii_uppercase()))
+                        single_name.clone().filter(|n| n.chars().next().is_some_and(|c| c.is_ascii_uppercase()))
                     } else {
                         None
                     };
                     self.bind_mut(pat, value, *mutable, out);
+                    if let (Some(ty_ast), Some(vname)) = (array_ty_ast, single_name) {
+                        if self.cx.is_main && self.cx.scopes.len() == 1 {
+                            if let Some(Sym::Global(gid)) = self.mod_syms[self.cur_mod].get(&vname).copied() {
+                                self.global_specs.insert(gid, ty_ast);
+                            }
+                        } else if let Some(slot) = self.lookup(&vname) {
+                            self.cx.local_specs.insert(slot, ty_ast);
+                        }
+                    }
                     if let Some(cname) = runtime_const_name {
                         if let Some(slot) = self.lookup(&cname) {
                             let gid = self.globals.len();

@@ -10,17 +10,17 @@ let n: 1..=5000 = read()
 domain P = 1..=n
 let a: [P]?(1..=n) = read(none: 0)
 let half = n / 2
-var even: [1..=n]?Bool = none
-for i in P: if let v = a[i]: even[v] = i.label % 2 == 0
+let at = a.inverse()
 
 var dp: [0..=half]?Int = none
 dp[0] = 0
 for k in 0..n:
+    let forced: ?Bool = if let p = at[k + 1]: some(p.label % 2 == 0) else: none
     var next: [0..=half]?Int = none
     for c in 0..=min(k, half):
         if let x = dp[c]:
             let gain = (2 * c - k) * (2 * (half - c) - (n - k))
-            for z in [false, true] if c + Int(z) <= half and even[k + 1] in [none, some(z)]:
+            for z in [false, true] if c + Int(z) <= half and forced in [none, some(z)]:
                 next[c + Int(z)] max= x + gain
     dp = next
 print((dp[half]! + n * (n + 1) * (n + 1) / 2) / 2)

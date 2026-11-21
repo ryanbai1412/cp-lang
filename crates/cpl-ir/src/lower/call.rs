@@ -474,8 +474,25 @@ impl<'a> Lowerer<'a> {
                 );
                 self.err_expr(span)
             }
-            _ => {
-                self.unsupported(span, &format!("generic call to `{name}`"));
+            Some(sym) => {
+                let kind = match sym {
+                    Sym::Fn(_) => "non-generic function",
+                    Sym::Struct(_) => "non-generic struct",
+                    Sym::Enum(_) => "non-generic enum",
+                    Sym::GenEnum(_) => "generic enum",
+                    Sym::Variant(_, _) => "enum variant",
+                    Sym::Domain(_) => "domain",
+                    Sym::Alias(_) => "non-generic type alias",
+                    Sym::Global(_) | Sym::GenConst(_) | Sym::ModConst(_) => "value",
+                    Sym::Trait(_) => "trait",
+                    Sym::Mod(_) => "module",
+                    Sym::GenFn(_) | Sym::GenStruct(_) | Sym::GenAlias(_) => unreachable!(),
+                };
+                self.error(
+                    codes::UNSUPPORTED,
+                    span,
+                    format!("`{name}` is a {kind} and cannot be called with explicit type arguments"),
+                );
                 self.err_expr(span)
             }
         }
@@ -4873,6 +4890,14 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+        // `a.inverse()`: partial injection `[D]?E -> [E]?D` or bijection `[D]E -> [E]D`.
+        if args.is_empty() && name.text == "inverse" {
+            if let Some(Ty::Array { dims, .. }) = self.probe_ty_silent(base) {
+                if dims.len() == 1 {
+                    return self.lower_array_inverse(base, span);
+                }
+            }
+        }
         // `xs.filter(x => cond)` returns a `List<T>` of elements satisfying `cond`.
         if let ([test], "filter") = (args, name.text.as_str()) {
             if matches!(
@@ -6659,6 +6684,372 @@ impl<'a> Lowerer<'a> {
         };
         self.queue_fn(full_fn);
         self.mk(ExprKind::Call(full_fn, Vec::new()), Ty::Struct(sid), span)
+    }
+
+    /// Lowers `a.inverse()` on a 1D array:
+    /// - `[D]?E` (partial injection) -> `[E]?D`, trapping if two positions map to the same value;
+    /// - `[D]E` (total bijection) -> `[E]D`, trapping if a value is repeated or missing.
+    fn lower_array_inverse(&mut self, base: &ast::Expr, span: Span) -> Expr {
+        let base_ty_ast = if let ast::ExprKind::Name(n) = &base.kind {
+            if let Some(slot) = self.lookup(n) {
+                self.cx.local_specs.get(&slot).cloned()
+            } else if let Some(Sym::Global(gid)) = self.sym(base) {
+                self.global_specs.get(&gid).cloned()
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        let arr = self.expr(base, None);
+        let Ty::Array { dims, elem } = arr.ty.clone() else {
+            return self.err_expr(span);
+        };
+        if dims.len() != 1 {
+            return self.err_expr(span);
+        }
+        let src_dim = dims[0];
+        let (is_partial, val_ty) = match *elem {
+            Ty::Opt(inner) => (true, *inner),
+            other => (false, other),
+        };
+        let target_dim_info: Option<(DimSpec, Expr, Expr)> = match &val_ty {
+            Ty::Pos(d) => Some((
+                DimSpec::Pos(*d),
+                self.int_lit(0, span),
+                self.mk(ExprKind::DomainLen(*d), Ty::Int, span),
+            )),
+            Ty::Bound(d) => {
+                let len = self.mk(ExprKind::DomainLen(*d), Ty::Int, span);
+                let one = self.int_lit(1, span);
+                let hi = self.mk(
+                    ExprKind::Binary(BinOp::Add, Box::new(len), Box::new(one)),
+                    Ty::Int,
+                    span,
+                );
+                Some((DimSpec::Bound(*d), self.int_lit(0, span), hi))
+            }
+            Ty::Enum(e) => Some((
+                DimSpec::Enum(*e),
+                self.int_lit(0, span),
+                self.int_lit(self.enums[*e].variants.len() as i64, span),
+            )),
+            Ty::Int => {
+                let base_spec = base_ty_ast.as_ref().map(|ty_ast| self.resolve(ty_ast, true));
+                let range_spec = base_spec.and_then(|s| match s {
+                    Spec::Array { elem: es, .. } => match *es {
+                        Spec::Opt(inner, _) if is_partial => Some(*inner),
+                        other if !is_partial => Some(other),
+                        _ => None,
+                    },
+                    _ => None,
+                });
+                match range_spec {
+                    Some(Spec::Int {
+                        lo: Some(lo_e),
+                        hi: Some(hi_e),
+                        ..
+                    }) => {
+                        let one = self.int_lit(1, span);
+                        let diff = self.mk(
+                            ExprKind::Binary(BinOp::Sub, hi_e.clone(), lo_e.clone()),
+                            Ty::Int,
+                            span,
+                        );
+                        let len = self.mk(
+                            ExprKind::Binary(BinOp::Add, Box::new(diff), Box::new(one)),
+                            Ty::Int,
+                            span,
+                        );
+                        match lo_e.kind {
+                            ExprKind::Int(0) => Some((
+                                DimSpec::Int(Box::new(len.clone())),
+                                self.int_lit(0, span),
+                                len,
+                            )),
+                            ExprKind::Int(c) => {
+                                let hi_excl = self.mk(
+                                    ExprKind::Binary(
+                                        BinOp::Add,
+                                        Box::new(self.int_lit(c, span)),
+                                        Box::new(len.clone()),
+                                    ),
+                                    Ty::Int,
+                                    span,
+                                );
+                                Some((
+                                    DimSpec::IntFrom(c, Box::new(len)),
+                                    self.int_lit(c, span),
+                                    hi_excl,
+                                ))
+                            }
+                            _ => None,
+                        }
+                    }
+                    _ => None,
+                }
+            }
+            _ => None,
+        };
+        let Some((target_dim, target_lo, target_hi)) = target_dim_info else {
+            self.unsupported(
+                span,
+                "`inverse` on an array whose element type is not an index domain or bounded range",
+            );
+            return self.err_expr(span);
+        };
+        let src_idx_ty = match &src_dim {
+            Dim::Pos(d) => Ty::Pos(*d),
+            Dim::Bound(d) => Ty::Bound(*d),
+            Dim::Enum(e) => Ty::Enum(*e),
+            Dim::Int | Dim::IntFrom(_) => Ty::Int,
+            Dim::Sym(_) => {
+                self.unsupported(span, "`inverse` on a symmetric array");
+                return self.err_expr(span);
+            }
+        };
+        let inv_ty = Ty::Array {
+            dims: vec![target_dim.dim()],
+            elem: Box::new(Ty::opt(src_idx_ty.clone())),
+        };
+        let ret_ty = if is_partial {
+            inv_ty.clone()
+        } else {
+            Ty::Array {
+                dims: vec![target_dim.dim()],
+                elem: Box::new(src_idx_ty.clone()),
+            }
+        };
+        self.do_expr(Some(&ret_ty), span, |lw, out| {
+            let arr_ty = arr.ty.clone();
+            let arr_slot = lw.temp(arr_ty.clone());
+            out.push(Stmt::Let(arr_slot, Some(arr)));
+            let inv_slot = lw.temp(inv_ty.clone());
+            out.push(Stmt::Let(
+                inv_slot,
+                Some(lw.mk(ExprKind::Fill(vec![target_dim.clone()], None), inv_ty.clone(), span)),
+            ));
+            let (src_lo, src_hi) = match &src_dim {
+                Dim::Pos(d) => (
+                    lw.int_lit(0, span),
+                    lw.mk(ExprKind::DomainLen(*d), Ty::Int, span),
+                ),
+                Dim::Bound(d) => {
+                    let len = lw.mk(ExprKind::DomainLen(*d), Ty::Int, span);
+                    let one = lw.int_lit(1, span);
+                    (
+                        lw.int_lit(0, span),
+                        lw.mk(
+                            ExprKind::Binary(BinOp::Add, Box::new(len), Box::new(one)),
+                            Ty::Int,
+                            span,
+                        ),
+                    )
+                }
+                Dim::Enum(e) => (
+                    lw.int_lit(0, span),
+                    lw.int_lit(lw.enums[*e].variants.len() as i64, span),
+                ),
+                Dim::Int => {
+                    let len = lw.mk(
+                        ExprKind::Builtin(Builtin::Len, vec![lw.local(arr_slot, span)]),
+                        Ty::Int,
+                        span,
+                    );
+                    (lw.int_lit(0, span), len)
+                }
+                Dim::IntFrom(c) => {
+                    let len = lw.mk(
+                        ExprKind::Builtin(Builtin::Len, vec![lw.local(arr_slot, span)]),
+                        Ty::Int,
+                        span,
+                    );
+                    let hi = lw.mk(
+                        ExprKind::Binary(BinOp::Add, Box::new(lw.int_lit(*c, span)), Box::new(len)),
+                        Ty::Int,
+                        span,
+                    );
+                    (lw.int_lit(*c, span), hi)
+                }
+                Dim::Sym(_) => unreachable!(),
+            };
+            let i_slot = lw.temp(src_idx_ty.clone());
+            let lid = lw.open_loop(None);
+            let mut body = Vec::new();
+            let cell_ty = if is_partial {
+                Ty::opt(val_ty.clone())
+            } else {
+                val_ty.clone()
+            };
+            let src_idx_for_arr = |lw: &mut Self, slot: Slot| {
+                let raw = lw.local(slot, span);
+                match src_dim {
+                    Dim::IntFrom(c) => lw.mk(
+                        ExprKind::Binary(BinOp::Sub, Box::new(raw), Box::new(lw.int_lit(c, span))),
+                        Ty::Int,
+                        span,
+                    ),
+                    Dim::Enum(e) => {
+                        let ord = lw.cast(Cast::EnumOrd(e), raw, Ty::Int);
+                        lw.cast(Cast::Raw, ord, Ty::Int)
+                    }
+                    _ => raw,
+                }
+            };
+            let target_dim_copy = target_dim.dim();
+            let tgt_idx_for_arr = |lw: &mut Self, slot: Slot| {
+                let raw = lw.local(slot, span);
+                match target_dim_copy {
+                    Dim::IntFrom(c) => lw.mk(
+                        ExprKind::Binary(BinOp::Sub, Box::new(raw), Box::new(lw.int_lit(c, span))),
+                        Ty::Int,
+                        span,
+                    ),
+                    Dim::Enum(e) => {
+                        let ord = lw.cast(Cast::EnumOrd(e), raw, Ty::Int);
+                        lw.cast(Cast::Raw, ord, Ty::Int)
+                    }
+                    _ => raw,
+                }
+            };
+            let i_idx = src_idx_for_arr(lw, i_slot);
+            let cell = lw.mk(
+                ExprKind::Index(Box::new(lw.local(arr_slot, span)), vec![i_idx]),
+                cell_ty.clone(),
+                span,
+            );
+            let record_value = |lw: &mut Self, v_slot: Slot, stmts: &mut Vec<Stmt>| {
+                let v_idx = tgt_idx_for_arr(lw, v_slot);
+                let existing = lw.mk(
+                    ExprKind::Index(
+                        Box::new(lw.local(inv_slot, span)),
+                        vec![v_idx.clone()],
+                    ),
+                    Ty::opt(src_idx_ty.clone()),
+                    span,
+                );
+                let is_dup = lw.mk(ExprKind::IsSome(Box::new(existing)), Ty::Bool, span);
+                let msg = if is_partial {
+                    "inverse requires unique values (duplicate image)"
+                } else {
+                    "inverse requires a bijection (duplicate image)"
+                };
+                stmts.push(Stmt::If(
+                    is_dup,
+                    Block {
+                        stmts: vec![Stmt::Trap(msg.to_string(), lw.span(span))],
+                    },
+                    Block::default(),
+                ));
+                let inv_place = Place {
+                    kind: PlaceKind::Index(
+                        Box::new(Place {
+                            kind: PlaceKind::Local(inv_slot),
+                            ty: inv_ty.clone(),
+                            span: lw.span(span),
+                        }),
+                        vec![v_idx],
+                    ),
+                    ty: Ty::opt(src_idx_ty.clone()),
+                    span: lw.span(span),
+                };
+                let some_i = lw.mk(
+                    ExprKind::Some(Box::new(lw.local(i_slot, span))),
+                    Ty::opt(src_idx_ty.clone()),
+                    span,
+                );
+                stmts.push(Stmt::Assign(inv_place, AssignOp::Set, some_i));
+            };
+            if is_partial {
+                let cell_slot = lw.temp(cell_ty);
+                body.push(Stmt::Let(cell_slot, Some(cell)));
+                let has_val = lw.mk(
+                    ExprKind::IsSome(Box::new(lw.local(cell_slot, span))),
+                    Ty::Bool,
+                    span,
+                );
+                let mut then_stmts = Vec::new();
+                let v_slot = lw.temp(val_ty.clone());
+                let unwrapped = lw.mk(
+                    ExprKind::Unwrap(Box::new(lw.local(cell_slot, span)), false),
+                    val_ty.clone(),
+                    span,
+                );
+                then_stmts.push(Stmt::Let(v_slot, Some(unwrapped)));
+                record_value(lw, v_slot, &mut then_stmts);
+                body.push(Stmt::If(
+                    has_val,
+                    Block { stmts: then_stmts },
+                    Block::default(),
+                ));
+            } else {
+                let v_slot = lw.temp(val_ty.clone());
+                body.push(Stmt::Let(v_slot, Some(cell)));
+                record_value(lw, v_slot, &mut body);
+            }
+            lw.cx.loops.pop();
+            out.push(Stmt::For(
+                lid,
+                i_slot,
+                Iter::Range {
+                    lo: src_lo,
+                    hi: src_hi,
+                    step: None,
+                    rev: false,
+                    closed: false,
+                },
+                Block { stmts: body },
+            ));
+            if is_partial {
+                out.push(Stmt::Give(lw.local(inv_slot, span)));
+            } else {
+                let out_slot = lw.temp(ret_ty.clone());
+                out.push(Stmt::Let(
+                    out_slot,
+                    Some(lw.mk(ExprKind::Fill(vec![target_dim], None), ret_ty.clone(), span)),
+                ));
+                let v_slot = lw.temp(val_ty.clone());
+                let lid2 = lw.open_loop(None);
+                let v_idx = tgt_idx_for_arr(lw, v_slot);
+                let existing = lw.mk(
+                    ExprKind::Index(
+                        Box::new(lw.local(inv_slot, span)),
+                        vec![v_idx.clone()],
+                    ),
+                    Ty::opt(src_idx_ty.clone()),
+                    span,
+                );
+                let unwrapped = lw.mk(ExprKind::Unwrap(Box::new(existing), false), src_idx_ty.clone(), span);
+                let out_place = Place {
+                    kind: PlaceKind::Index(
+                        Box::new(Place {
+                            kind: PlaceKind::Local(out_slot),
+                            ty: ret_ty.clone(),
+                            span: lw.span(span),
+                        }),
+                        vec![v_idx],
+                    ),
+                    ty: src_idx_ty.clone(),
+                    span: lw.span(span),
+                };
+                lw.cx.loops.pop();
+                out.push(Stmt::For(
+                    lid2,
+                    v_slot,
+                    Iter::Range {
+                        lo: target_lo,
+                        hi: target_hi,
+                        step: None,
+                        rev: false,
+                        closed: false,
+                    },
+                    Block {
+                        stmts: vec![Stmt::Assign(out_place, AssignOp::Set, unwrapped)],
+                    },
+                ));
+                out.push(Stmt::Give(lw.local(out_slot, span)));
+            }
+        })
     }
 
     fn lower_filter(&mut self, base: &ast::Expr, pred_ast: &ast::Expr, span: Span) -> Expr {

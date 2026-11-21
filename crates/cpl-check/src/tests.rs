@@ -2619,3 +2619,42 @@ print(State(K(0), V(0)))
         "expected E0301 on swapped product factors, got: {errs:?}"
     );
 }
+
+#[test]
+fn partial_and_total_array_inverse_typecheck() {
+    let ok = "\
+domain P = 1..=5
+domain V = 0..4
+enum Dir: N, E, S, W
+
+var a: [P]?V = none
+let inv_a: [V]?P = a.inverse()
+let _ = inv_a[V(0)]
+
+let n: 1..=5 = 5
+var b: [P]?(1..=n) = none
+let inv_b: [1..=n]?P = b.inverse()
+let _ = inv_b[1]
+
+var c: [P]?Dir = none
+let inv_c: [Dir]?P = c.inverse()
+let _ = inv_c[Dir.N]
+
+domain I = 0..3
+domain J = 1..=3
+let perm: [I]J = [J(1), J(2), J(3)]
+let inv_perm: [J]I = perm.inverse()
+let _ = inv_perm[J(1)]
+";
+    assert_eq!(check(ok), vec![]);
+
+    let bad = "\
+domain P = 1..=5
+var xs: [P]?Int = none
+let _ = xs.inverse()
+";
+    assert!(
+        !check(bad).is_empty(),
+        "expected error for inverse on `[P]?Int` (unbounded Int is not an Index)"
+    );
+}

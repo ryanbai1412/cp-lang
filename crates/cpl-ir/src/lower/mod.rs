@@ -458,6 +458,9 @@ struct FnCx {
     local_type_aliases: HashMap<String, Ty>,
     /// Local slots declared `var` or mutated, so closures capture them by reference.
     mut_slots: HashSet<Slot>,
+    /// Annotated array `Spec`s for local variables/parameters, used by `a.inverse()`
+    /// when the element type is a bounded `Int` range (e.g. `[Pos]?(0..Pos.count)`).
+    local_specs: HashMap<Slot, ast::Type>,
     ret: Option<Ty>,
     new_domain_slots: Vec<DomainId>,
     /// `self`'s slot and struct inside a method.
@@ -537,6 +540,8 @@ struct Lowerer<'a> {
     gen_aliases: Vec<GenAliasTemplate<'a>>,
 
     globals: Vec<Global>,
+    /// Annotated array `Spec`s for top-level globals (for `a.inverse()` on bounded-range elements).
+    global_specs: HashMap<GlobalId, ast::Type>,
     const_ints: HashMap<String, i64>,
     /// The `const`s that are a `Bool` known when compiling, for `if const`.
     const_bools: HashMap<String, bool>,
@@ -647,6 +652,7 @@ impl<'a> Lowerer<'a> {
             aliases: Vec::new(),
             gen_aliases: Vec::new(),
             globals: Vec::new(),
+            global_specs: HashMap::new(),
             const_ints: HashMap::new(),
             const_bools: HashMap::new(),
             mutators: Default::default(),

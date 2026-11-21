@@ -3340,3 +3340,8 @@ drop the `cphashmap` / `cphashset` pieces from `runtime.rs`.
   2.11 s and 2.12 s at n = 2 * 10^5, 10^6 operations, identical output.
 - **Reverse.** Fold the tags into `LinkCut<V, T>` with an optional `act:`.
 
+## 90. Partial-injection `a.inverse()` on `[D]?E -> [E]?D` (2026-11-21)
+
+- **Decision:** Type and lower `a.inverse()` uniformly on 1D arrays in `cpl-check` and `cpl-ir`: a partial injection `a: [D]?E` (where `E` is an index domain, fieldless enum, or bounded integer range) returns `[E]?D` and traps on duplicate images (`Stmt::Trap` in both interpreter and C++); a total bijection `a: [D]E` keeps returning `[E]D` and traps on duplicate or missing images. Arrays with non-index elements (e.g. `[D]?Int`) are rejected at check time with `E0302`.
+- **Reason:** Partial permutations with holes (`a: [P]?(1..=n) = read(none: 0)` in `cf2084g1` and `a: [Pos]?(0..Pos.count) = read(none: -1)` in `cf2084e`) previously forced hand-written inversion loops because `std.seq.inverse` only accepted total bijections `[I]V`. Typing `.inverse()` by the input preserves one spelling across total and partial maps and works without extra imports.
+- **Reverse:** Remove `array_inverse_ret` in `crates/cpl-check/src/check/expr.rs`, the `inverse` arm in `crates/cpl-check/src/check/call.rs`, and `lower_array_inverse` + `local_specs`/`global_specs` in `crates/cpl-ir/src/lower/{mod,stmt,call}.rs`.

@@ -1330,6 +1330,16 @@ impl<'a> Checker<'a> {
                 };
             }
         }
+        if name.text == "inverse" {
+            if let Ty::Array { index, elem } = &base_ty {
+                if let Some(ret) = self.array_inverse_ret(index, elem) {
+                    return Ty::Fn {
+                        params: Vec::new(),
+                        ret: Box::new(ret),
+                    };
+                }
+            }
+        }
         let found = match &base_ty {
             Ty::Record(fields) => {
                 let names: Vec<String> = fields.iter().map(|(n, _)| n.clone()).collect();
@@ -1563,6 +1573,32 @@ impl<'a> Checker<'a> {
             },
         });
         ty
+    }
+
+    pub(crate) fn array_inverse_ret(&mut self, index: &[Ty], elem: &Ty) -> Option<Ty> {
+        if index.len() != 1 {
+            return None;
+        }
+        let mut is_index_ty = |ty: &Ty| match ty {
+            Ty::Pos(_) | Ty::Range { .. } | Ty::Param(_) => true,
+            Ty::Named { name, args } if args.is_empty() => matches!(
+                self.env.type_def(name).as_deref(),
+                Some(Def::Enum { variants, .. }) if variants.iter().all(|(_, fs)| fs.is_empty())
+            ),
+            _ => false,
+        };
+        let d = index[0].clone();
+        match elem {
+            Ty::Optional(inner) if is_index_ty(inner) => Some(Ty::Array {
+                index: vec![(**inner).clone()],
+                elem: Box::new(Ty::Optional(Box::new(d))),
+            }),
+            other if is_index_ty(other) => Some(Ty::Array {
+                index: vec![other.clone()],
+                elem: Box::new(d),
+            }),
+            _ => None,
+        }
     }
 
     fn index(&mut self, expr: &Expr, base: &Expr, indices: &[Expr]) -> Ty {

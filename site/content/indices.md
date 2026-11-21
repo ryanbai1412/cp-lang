@@ -213,6 +213,19 @@ let s = State(V(2), K(1))
 print(dp[s], dp[V(2), K(2)], s.0.ord, State.len)
 ```
 
+## Inverting bijections and partial injections
+
+`a.inverse()` inverts any 1D array whose elements are an index domain, fieldless enum, or bounded integer range. On a total bijection `a: [D]E` it returns `[E]D` (trapping if a value is repeated or missing); on a partial injection `a: [D]?E` it returns `[E]?D` (trapping if two positions map to the same value):
+
+```cp
+domain P = 1..=4
+var a: [P]?(1..=4) = none
+a[P(2)] = 4
+a[P(4)] = 1
+let at = a.inverse()
+print(at[1]!.label, at[2] == none, at[4]!.label)
+```
+
 ## Algebraic `Index` and escape hatches
 
 The language's `Index` model covers `Bool`, finite enums, `?T`, integer ranges, tuples/records, and `Subset<D>` for bitmask DP. Support across generic library calls is still being completed: for example, flow over payload-enum vertices is not yet runnable. The [graph course](course-graphs-math.html#network-flow-with-typed-vertices) shows a working flow network over a numeric vertex domain.
