@@ -2690,7 +2690,6 @@ about 2,400,000 bytes, so the cap is back at 2,600,000.
 
 1. **`Comb<M>` replaces `Comb<P>` as the single combinatorics table spelling (supersedes 40.1).**
    `Comb<M>` takes the modular type `M = Mod<P>` directly — `type Z = Mod<998_244_353>; let comb = Comb<Z>(n)` (or inline `Comb<Mod<P>>(n)`) — so the modulus is written once for both compile-time and runtime moduli, and there is one way per job instead of both `Comb<P>` and `Z.comb()`. `Comb<M>(limit)` pre-sizes `f` and `g` to exact capacity `limit + 1` (clamped at `M.MOD`), while lazy `ensure(n)` continues to double capacity for amortized O(1) growth. All ports, tests, examples, docs, and snippets are migrated in the same commit. Reverse: change `pub struct Comb<M>` back to `pub struct Comb<P>` in `stdlib/mod.cp` (replacing `M` with `Mod<P>` and `M.MOD` with `P`) and rewrite `Comb<Z>` callers back to `Comb<P>` or `Comb<Z.MOD>`.
-
 ## 56. `monge_path` returns two lists (2026-11-21)
 
 `std.dp.monge_path(n, w)` returns `(val: List<K>, prev: List<Int>)`, with
@@ -2717,3 +2716,8 @@ the old spelling in the same change with a `cpl fix` codemod
 included, exactly like `domain C = ...`; nested fns read the declaration's
 hidden slot and the escape rule is unchanged. Reverse by returning syntax to
 the core lane in `plan/OPERATING.md`.
+
+## 59. Heterogeneous operator traits (`Add`/`Sub`/`Mul`/`Div`/`Rem` with `Rhs` and `Out`) (2026-11-21)
+
+1. **Operator traits accept an optional `Rhs` type argument (defaulting to `Self`) and an optional `type Out = T` associated type (defaulting to the method's return type or `Self`).**
+   For example, `impl Mul<F64> for Vec: fn mul(a, k) = Vec(a.x * k, a.y * k)` and `impl Mul<Vec> for Mat2: type Out = Vec; fn mul(lhs, rhs) -> Out = ...` coexist on the same struct alongside homogeneous `impl Mul for Mat2` without colliding in `cpl-check` (keyed by `trait_impl_key`) or `cpl-ir` (dispatched by `(method, rhs_ty)` in `StructInfo.op_methods`). Reason: eliminates `.scale(k)` / `.div(k)` workarounds in `std.geometry` (`research/frictions/cf2138f.md`), `std.mod`, and `std.matrix` with one general mechanism available to all user and stdlib structs, while keeping every existing `impl Add/Sub/Mul/Div for T` unchanged. Reverse: revert `trait_impl_key`/`Def::Impl.trait_args`/`out_ty` in `cpl-check` and `StructInfo.op_methods`/`struct_op_fn_for` in `cpl-ir`.

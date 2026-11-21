@@ -94,6 +94,7 @@ pub(super) struct ImplInfo<'a> {
     pub mod_id: ModId,
     pub offset: u32,
     pub trait_name: Option<String>,
+    pub trait_args: Vec<&'a ast::Type>,
     pub target: &'a ast::Type,
     pub body: &'a ast::Block,
 }
@@ -560,6 +561,7 @@ impl<'a> Lowerer<'a> {
             origin_gen: Some((gid, args.clone())),
             env: env.clone(),
             methods: HashMap::new(),
+            op_methods: Vec::new(),
             gen_methods: HashMap::new(),
             getters: HashSet::new(),
             projections: HashMap::new(),
@@ -743,6 +745,7 @@ impl<'a> Lowerer<'a> {
             let imp_mod = self.impls[idx].mod_id;
             let imp_offset = self.impls[idx].offset;
             let imp_trait = self.impls[idx].trait_name.clone();
+            let imp_trait_args = self.impls[idx].trait_args.clone();
             let imp_target = self.impls[idx].target;
             let imp_body = self.impls[idx].body;
 
@@ -799,6 +802,18 @@ impl<'a> Lowerer<'a> {
                 self.structs[sid].index_domain = Some(dom_id);
             }
 
+            let imp_rhs_ty: Option<Ty> = imp_trait_args.first().map(|t| self.resolve_ty(t));
+            let imp_out_ty: Option<Ty> = imp_body.stmts.iter().find_map(|s| match &s.kind {
+                ast::StmtKind::TypeAlias { name, ty, .. } if name.text == "Out" => {
+                    Some(self.resolve_ty(ty))
+                }
+                _ => None,
+            });
+            if let Some(ref o) = imp_out_ty {
+                env.insert("Out".to_string(), GenArg::Ty(o.clone()));
+                self.gen_env.insert("Out".to_string(), GenArg::Ty(o.clone()));
+            }
+
             for item in &imp_body.stmts {
                 let is_get = item.decorators.iter().any(|d| d.name.text == "get");
                 match &item.kind {
@@ -829,8 +844,37 @@ impl<'a> Lowerer<'a> {
                             self.structs[sid].gen_methods.insert(f.name.text.clone(), gfid);
                         } else {
                             let fn_id = self.declare_fn_in(f, imp_mod, imp_offset, Some(sid), env.clone());
-                            self.resolve_fn_sig(fn_id, imp_trait.as_deref());
-                            self.structs[sid].methods.insert(f.name.text.clone(), fn_id);
+                            self.resolve_fn_sig_with(
+                                fn_id,
+                                imp_trait.as_deref(),
+                                imp_rhs_ty.as_ref(),
+                                imp_out_ty.as_ref(),
+                            );
+                            let is_binop_impl = matches!(
+                                (imp_trait.as_deref(), f.name.text.as_str()),
+                                (Some("Add"), "add")
+                                    | (Some("Sub"), "sub")
+                                    | (Some("Mul"), "mul")
+                                    | (Some("Div"), "div")
+                                    | (Some("Rem"), "rem")
+                            );
+                            if is_binop_impl {
+                                let rhs_resolved = imp_rhs_ty.clone().unwrap_or(Ty::Struct(sid));
+                                if imp_rhs_ty.is_some() && rhs_resolved != Ty::Struct(sid) {
+                                    let idx_n = self.structs[sid].op_methods.len();
+                                    self.sigs[fn_id].name =
+                                        format!("{}_op{idx_n}", self.sigs[fn_id].name);
+                                } else {
+                                    self.structs[sid].methods.insert(f.name.text.clone(), fn_id);
+                                }
+                                self.structs[sid].op_methods.push((
+                                    f.name.text.clone(),
+                                    rhs_resolved,
+                                    fn_id,
+                                ));
+                            } else {
+                                self.structs[sid].methods.insert(f.name.text.clone(), fn_id);
+                            }
                             match (imp_trait.as_deref(), f.name.text.as_str()) {
                                 (Some("Show"), "show") => self.structs[sid].def.show_fn = Some(fn_id),
                                 (Some("Eq"), "eq") => self.structs[sid].def.eq_fn = Some(fn_id),
@@ -2299,11 +2343,32 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    /// Looks up a binary or unary operator trait method on a concrete struct (`Add`, `Sub`, `Mul`, `Div`, `Neg`).
+    /// Looks up a binary or unary operator trait method on a concrete struct (`Add`, `Sub`, `Mul`, `Div`, `Rem`, `Neg`).
     pub(super) fn struct_op_fn(&mut self, sid: StructId, method: &str) -> Option<FnId> {
         let id = self.structs[sid].methods.get(method).copied()?;
         self.queue_fn(id);
         Some(id)
+    }
+
+    /// Looks up a binary operator trait method matching `(method, rhs_ty)`, falling back to homogeneous `Self`.
+    pub(super) fn struct_op_fn_for(
+        &mut self,
+        sid: StructId,
+        method: &str,
+        rhs_ty: &Ty,
+    ) -> Option<(FnId, Ty)> {
+        if let Some((_, want, id)) = self.structs[sid]
+            .op_methods
+            .iter()
+            .find(|(m, want, _)| m == method && want == rhs_ty)
+            .cloned()
+        {
+            self.queue_fn(id);
+            return Some((id, want));
+        }
+        let id = self.structs[sid].methods.get(method).copied()?;
+        self.queue_fn(id);
+        Some((id, Ty::Struct(sid)))
     }
 
     /// Inlines a `lends` / `lends mut` projection for a **read** expression: `base.proj(args)`.

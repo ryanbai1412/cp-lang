@@ -966,13 +966,28 @@ impl<'a> Checker<'a> {
                 let scope = self.enter_body(&generics, Ty::Unknown);
                 let self_ty = self.quietly(|c| c.resolve_type(target));
                 self.self_ty = Some(self_ty.clone());
+                let trait_args: Vec<Ty> = match trait_name.as_ref().map(|t| &t.kind) {
+                    Some(TypeKind::Named { args, .. }) => args
+                        .iter()
+                        .map(|a| self.quietly(|c| c.resolve_type(a)))
+                        .collect(),
+                    _ => Vec::new(),
+                };
+                let out_ty: Option<Ty> = body.stmts.iter().find_map(|s| match &s.kind {
+                    ast::StmtKind::TypeAlias { name, ty, .. } if name.text == "Out" => {
+                        Some(self.quietly(|c| c.resolve_type(ty)))
+                    }
+                    _ => None,
+                });
                 let owned = self.owned(&target_name, &body.stmts);
                 let (methods, getters, mutators) = self.method_sigs(&body.stmts, &self_ty);
                 self.leave_body(scope);
-                let trait_head = trait_name.as_ref().and_then(type_head);
+                let trait_head = trait_name.as_ref().and_then(trait_impl_key);
                 vec![(
                     crate::def::impl_name(trait_head.as_deref(), &target_name),
                     Def::Impl {
+                        trait_args,
+                        out_ty,
                         methods,
                         getters,
                         mutators,
@@ -1056,6 +1071,25 @@ pub(crate) fn memo_table(stmt: &ast::Stmt) -> Option<(&str, Span)> {
 pub(crate) fn type_head(ty: &ast::Type) -> Option<String> {
     match &ty.kind {
         TypeKind::Named { name, .. } if !name.text.is_empty() => Some(name.text.clone()),
+        _ => None,
+    }
+}
+
+/// Key for a trait in an `impl` header, preserving type arguments so
+/// `impl Mul for Vec` and `impl Mul<F64> for Vec` get distinct names.
+pub(crate) fn trait_impl_key(ty: &ast::Type) -> Option<String> {
+    match &ty.kind {
+        TypeKind::Named { name, args } if !name.text.is_empty() => {
+            if args.is_empty() {
+                Some(name.text.clone())
+            } else {
+                let parts: Vec<String> = args
+                    .iter()
+                    .map(|a| trait_impl_key(a).unwrap_or_else(|| "_".to_string()))
+                    .collect();
+                Some(format!("{}<{}>", name.text, parts.join(",")))
+            }
+        }
         _ => None,
     }
 }

@@ -11,7 +11,7 @@ pub(crate) mod lends;
 mod stmt;
 mod types;
 
-pub(crate) use types::{domain_binding, memo_table, own_domains, type_head};
+pub(crate) use types::{domain_binding, memo_table, own_domains, trait_impl_key, type_head};
 
 use crate::def::Def;
 use crate::prelude;

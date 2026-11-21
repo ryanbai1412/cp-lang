@@ -356,6 +356,7 @@ struct StructInfo<'a> {
     origin_gen: Option<(GenStructId, Vec<GenArg>)>,
     env: GenEnv,
     methods: HashMap<String, FnId>,
+    op_methods: Vec<(String, Ty, FnId)>,
     gen_methods: HashMap<String, GenFnId>,
     getters: HashSet<String>,
     projections: HashMap<String, ProjectionInfo<'a>>,
@@ -884,6 +885,7 @@ impl<'a> Lowerer<'a> {
                                 origin_gen: None,
                                 env: HashMap::new(),
                                 methods: HashMap::new(),
+                                op_methods: Vec::new(),
                                 gen_methods: HashMap::new(),
                                 getters: HashSet::new(),
                                 projections: HashMap::new(),
@@ -1129,14 +1131,17 @@ impl<'a> Lowerer<'a> {
                         body,
                         ..
                     } => {
-                        let tname = trait_name.as_ref().and_then(|t| match &t.kind {
-                            ast::TypeKind::Named { name, .. } => Some(name.text.clone()),
-                            _ => None,
-                        });
+                        let (tname, targs) = match trait_name.as_ref().map(|t| &t.kind) {
+                            Some(ast::TypeKind::Named { name, args }) => {
+                                (Some(name.text.clone()), args.iter().collect())
+                            }
+                            _ => (None, Vec::new()),
+                        };
                         self.impls.push(ImplInfo {
                             mod_id: m,
                             offset,
                             trait_name: tname,
+                            trait_args: targs,
                             target,
                             body,
                         });
@@ -1307,6 +1312,16 @@ impl<'a> Lowerer<'a> {
     }
 
     pub(super) fn resolve_fn_sig(&mut self, id: FnId, trait_name: Option<&str>) {
+        self.resolve_fn_sig_with(id, trait_name, None, None);
+    }
+
+    pub(super) fn resolve_fn_sig_with(
+        &mut self,
+        id: FnId,
+        trait_name: Option<&str>,
+        rhs_ty: Option<&Ty>,
+        out_ty: Option<&Ty>,
+    ) {
         let decl = self.sigs[id].decl;
         let saved_mod = std::mem::replace(&mut self.cur_mod, self.sigs[id].mod_id);
         let saved_offset = std::mem::replace(&mut self.offset, self.sigs[id].offset);
@@ -1328,14 +1343,12 @@ impl<'a> Lowerer<'a> {
             let ty = match &param.ty {
                 Some(ty) => self.resolve_ty(ty),
                 None => {
-                    // Inherit parameter type from operator/standard trait impls (`impl Add for Mod<P>: fn add(a, b)`).
-                    match (trait_name, owner_ty.clone()) {
-                        (
-                            Some("Add" | "Sub" | "Mul" | "Div" | "Neg" | "Show" | "Eq" | "Ord"),
-                            Some(ot),
-                        ) => ot,
-                        (_, Some(ot)) => ot,
-                        _ => {
+                    if i == 1 {
+                        if let Some(rt) = rhs_ty {
+                            rt.clone()
+                        } else if let Some(ot) = owner_ty.clone() {
+                            ot
+                        } else {
                             self.error(
                                 codes::UNKNOWN_TYPE,
                                 param.span,
@@ -1346,6 +1359,29 @@ impl<'a> Lowerer<'a> {
                                 param.name.text
                             ));
                             Ty::Error
+                        }
+                    } else {
+                        match (trait_name, owner_ty.clone()) {
+                            (
+                                Some(
+                                    "Add" | "Sub" | "Mul" | "Div" | "Rem" | "Neg" | "Show" | "Eq"
+                                    | "Ord",
+                                ),
+                                Some(ot),
+                            ) => ot,
+                            (_, Some(ot)) => ot,
+                            _ => {
+                                self.error(
+                                    codes::UNKNOWN_TYPE,
+                                    param.span,
+                                    format!("parameter `{}` needs a type", param.name.text),
+                                );
+                                self.help(format!(
+                                    "write `{}: Int`, or the type it has",
+                                    param.name.text
+                                ));
+                                Ty::Error
+                            }
                         }
                     }
                 }
@@ -1412,17 +1448,19 @@ impl<'a> Lowerer<'a> {
                     kind: ast::StmtKind::Expr(_),
                     ..
                 }) => None,
-                _ => match (trait_name, owner_ty) {
-                    (Some("Show"), _) => Some(Ty::Str),
-                    (Some("Eq" | "Ord"), _) => Some(Ty::Bool),
-                    (Some("Add" | "Sub" | "Mul" | "Div" | "Neg"), Some(ot)) => Some(ot),
+                _ => match (trait_name, out_ty, owner_ty) {
+                    (_, Some(o), _) => Some(o.clone()),
+                    (Some("Show"), _, _) => Some(Ty::Str),
+                    (Some("Eq" | "Ord"), _, _) => Some(Ty::Bool),
+                    (Some("Add" | "Sub" | "Mul" | "Div" | "Rem" | "Neg"), _, Some(ot)) => Some(ot),
                     _ => Some(Ty::Unit),
                 },
             },
-            (None, _) => match (trait_name, owner_ty) {
-                (Some("Show"), _) => Some(Ty::Str),
-                (Some("Eq" | "Ord"), _) => Some(Ty::Bool),
-                (Some("Add" | "Sub" | "Mul" | "Div" | "Neg"), Some(ot)) => Some(ot),
+            (None, _) => match (trait_name, out_ty, owner_ty) {
+                (_, Some(o), _) => Some(o.clone()),
+                (Some("Show"), _, _) => Some(Ty::Str),
+                (Some("Eq" | "Ord"), _, _) => Some(Ty::Bool),
+                (Some("Add" | "Sub" | "Mul" | "Div" | "Rem" | "Neg"), _, Some(ot)) => Some(ot),
                 _ => None,
             },
         };
@@ -2837,6 +2875,7 @@ impl<'a> Lowerer<'a> {
             origin_gen: None,
             env: HashMap::new(),
             methods: HashMap::new(),
+            op_methods: Vec::new(),
             gen_methods: HashMap::new(),
             getters: HashSet::new(),
             projections: HashMap::new(),

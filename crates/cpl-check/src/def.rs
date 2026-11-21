@@ -66,6 +66,8 @@ pub enum Def {
     },
     /// `impl Add for Pt` or `impl Pt`, under the name [`impl_name`] gives it.
     Impl {
+        trait_args: Vec<Ty>,
+        out_ty: Option<Ty>,
         methods: Vec<(String, Ty)>,
         getters: Vec<String>,
         mutators: Vec<String>,

@@ -2236,3 +2236,59 @@ fn a_name_in_no_scope_and_no_library_says_so_and_offers_the_closest_library_name
     let fix = &diags[0].fixes[0];
     assert_eq!(fix.edits.len(), 2, "rename and import: {fix:#?}");
 }
+
+#[test]
+fn heterogeneous_operator_traits_check_and_reject_mismatched_rhs() {
+    let ok = "\
+struct Vec:
+    x: F64
+    y: F64
+
+impl Add for Vec:
+    fn add(a, b) = Vec(a.x + b.x, a.y + b.y)
+
+impl Mul<F64> for Vec:
+    fn mul(a, k) = Vec(a.x * k, a.y * k)
+
+impl Div<F64> for Vec:
+    fn div(a, k) = Vec(a.x / k, a.y / k)
+
+struct Mat:
+    a: F64
+
+impl Mul for Mat:
+    fn mul(x, y) = Mat(x.a * y.a)
+
+impl Mul<Vec> for Mat:
+    type Out = Vec
+    fn mul(lhs, rhs) -> Out = Vec(lhs.a * rhs.x, lhs.a * rhs.y)
+
+let u = Vec(1.0, 2.0)
+let v: Vec = (u + u) * 2.0 / 4.0
+let m = Mat(3.0)
+let mv: Vec = m * v
+let m2: Mat = m * m
+print(mv.x, m2.a)
+";
+    let diags = check(ok);
+    assert!(diags.is_empty(), "expected no errors, got: {diags:#?}");
+
+    let bad = "\
+struct Vec:
+    x: F64
+
+impl Mul<F64> for Vec:
+    fn mul(a, k) = Vec(a.x * k)
+
+let u = Vec(1.0)
+let bad = u * \"nope\"
+print(bad.x)
+";
+    let diags = check(bad);
+    assert!(
+        diags
+            .iter()
+            .any(|d| d.code == cpl_diag::codes::MISSING_IMPL && d.message.contains("impl Mul<Str> for Vec")),
+        "expected MISSING_IMPL for Vec * Str, got: {diags:#?}"
+    );
+}

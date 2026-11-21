@@ -715,12 +715,48 @@ impl<'a> Checker<'a> {
             _ if matches!(rhs.kind, ExprKind::Missing) && left.is_numeric() => left.widen(),
             _ if self.operator_trait(op, &left).is_some() => {
                 let (trait_name, owner) = self.operator_trait(op, &left).unwrap();
-                let implemented = self
+                let op_method = match op {
+                    BinOp::Add => "add",
+                    BinOp::Sub => "sub",
+                    BinOp::Mul => "mul",
+                    BinOp::Div => "div",
+                    BinOp::Rem => "rem",
+                    _ => "",
+                };
+                let matching: Vec<(Option<Ty>, Option<Ty>, Option<Ty>)> = self
                     .env
                     .impls(&owner)
                     .iter()
-                    .any(|(implemented, _)| implemented.as_deref() == Some(trait_name));
-                if !implemented {
+                    .filter(|(implemented, _)| {
+                        implemented
+                            .as_deref()
+                            .and_then(|t| t.split('<').next())
+                            == Some(trait_name)
+                    })
+                    .map(|(_, def)| match &**def {
+                        Def::Impl {
+                            trait_args,
+                            out_ty,
+                            methods,
+                            ..
+                        } => {
+                            let rhs_ty = trait_args.first().cloned();
+                            let method_ret = methods.iter().find_map(|(m, ty)| {
+                                if m == op_method {
+                                    if let Ty::Fn { ret, .. } = ty {
+                                        if !matches!(**ret, Ty::Unknown | Ty::Unit) {
+                                            return Some((**ret).clone());
+                                        }
+                                    }
+                                }
+                                None
+                            });
+                            (rhs_ty, out_ty.clone(), method_ret)
+                        }
+                        _ => (None, None, None),
+                    })
+                    .collect();
+                if matching.is_empty() {
                     let message = format!(
                         "`{}` needs `impl {trait_name} for {owner}`, and there is none",
                         op.text()
@@ -732,7 +768,32 @@ impl<'a> Checker<'a> {
                     }
                     return Ty::Error;
                 }
-                left
+                let pick = matching.iter().find(|(rhs_ty, _, _)| match rhs_ty {
+                    Some(want) => right.fits(want),
+                    None => right.fits(&left) || right.is_int() || right.is_vague(),
+                });
+                match pick {
+                    Some((_, out_ty, method_ret)) => {
+                        out_ty
+                            .clone()
+                            .or_else(|| method_ret.clone())
+                            .unwrap_or(left)
+                    }
+                    None if right == Ty::Error || right.is_vague() => left,
+                    None => {
+                        let message = format!(
+                            "`{}` needs `impl {trait_name}<{right}> for {owner}`, and there is none",
+                            op.text()
+                        );
+                        if let Some(diag) = self.error(codes::MISSING_IMPL, op_span, message) {
+                            diag.help = Some(format!(
+                                "write `impl {trait_name}<{right}> for {owner}` to define `{owner} {} {right}`",
+                                op.text()
+                            ));
+                        }
+                        Ty::Error
+                    }
+                }
             }
             _ if left == Ty::Error || right == Ty::Error => Ty::Error,
             _ if left.is_vague() || right.is_vague() => Ty::Unknown,
@@ -1052,8 +1113,11 @@ impl<'a> Checker<'a> {
             // Every fn of the trait comes with the impl: the ones the
             // trait writes a body for, and the ones the impl must write
             // (one it leaves out is reported once, on the impl).
-            if let Some(Def::Trait { methods, .. }) =
-                trait_name.and_then(|t| self.env.type_def(&t)).as_deref()
+            if let Some(Def::Trait { methods, .. }) = trait_name
+                .as_deref()
+                .and_then(|t| t.split('<').next())
+                .and_then(|t| self.env.type_def(t))
+                .as_deref()
             {
                 for method in methods {
                     out.members.push((method.name.clone(), method.ty.clone()));
@@ -1065,6 +1129,7 @@ impl<'a> Checker<'a> {
                 mutators,
                 owned,
                 projections,
+                ..
             } = &*def
             {
                 out.mutators.extend(mutators.iter().cloned());

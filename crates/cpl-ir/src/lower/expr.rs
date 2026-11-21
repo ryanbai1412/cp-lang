@@ -1593,13 +1593,14 @@ impl<'a> Lowerer<'a> {
                 Sub => Some("sub"),
                 Mul => Some("mul"),
                 Div => Some("div"),
+                Rem => Some("rem"),
                 BitOr => Some("bitor"),
                 BitAnd => Some("bitand"),
                 BitXor => Some("bitxor"),
                 _ => None,
             };
-            if let Some(fn_id) = mname.and_then(|m| self.struct_op_fn(sid, m)) {
-                let r = self.coerce(r, &Ty::Struct(sid), rhs.span);
+            if let Some((fn_id, want_rhs)) = mname.and_then(|m| self.struct_op_fn_for(sid, m, &r.ty)) {
+                let r = self.coerce(r, &want_rhs, rhs.span);
                 let ret = self.ret_of(fn_id, span);
                 return self.mk(
                     ExprKind::Call(fn_id, vec![Arg::Value(l), Arg::Value(r)]),
