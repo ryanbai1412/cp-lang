@@ -2,7 +2,7 @@
 //! such checks, so each of these is a mistake `cpl run` must name: what
 //! went wrong, and where.
 
-use crate::run;
+use crate::{run, run_on_this_thread, Limits};
 
 /// Runs `source` on `input`: what it printed, and the failure if it
 /// ended in one.
@@ -128,9 +128,39 @@ fn input_is_held_to_what_the_program_declares() {
 
 #[test]
 fn recursion_without_end_is_reported_not_crashed() {
-    let message = failure("fn f(n: Int) -> Int:\n    f(n + 1) + 1\nprint(f(0))\n", "");
+    // On a small stack, so that the test does not fill gigabytes first.
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", "fn f(n: Int) -> Int:\n    f(n + 1) + 1\nprint(f(0))\n");
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let limits = Limits { stack_bytes: 48 << 20 };
+    let trap = std::thread::Builder::new()
+        .stack_size(64 << 20)
+        .spawn(move || run_on_this_thread(&program, b"", &mut Vec::new(), limits))
+        .expect("a 64 MB thread starts")
+        .join()
+        .expect("the run does not crash")
+        .expect_err("the run stops");
+    let message = trap.message;
     assert!(
         message.contains("`f` never stops calling itself?"),
         "{message}"
     );
+}
+
+#[test]
+fn recursion_a_million_calls_deep_runs() {
+    // Only the stack the calls fill is limited, never how deep they nest.
+    let source = "\
+let n: 1..=1e6 = read()
+domain V = 0..n
+var seen: [V]Bool = false
+fn dfs(v: V) -> Int:
+    seen[v] = true
+    if v.ord + 1 < n:
+        let w = V.at(v.ord + 1)
+        if not seen[w]: return dfs(w) + 1
+    1
+print(dfs(V.at(0)))
+";
+    assert_eq!(outcome(source, "1000000"), ("1000000\n".to_string(), None));
 }

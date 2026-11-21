@@ -37,13 +37,14 @@ pub const EXIT_FAILED: u8 = 3;
 /// The emitted C++ has to fit a judge's source limit.
 pub const MAX_CPP_BYTES: usize = 64 * 1024;
 
-/// How deep a program's calls may nest in the browser, unless the caller
-/// of [`Playground::run_to_depth`] says otherwise.
+/// Bytes of stack a program's calls may take in the browser, unless the
+/// caller of [`Playground::run_with_stack`] says otherwise. Only the bytes
+/// are limited, never how deep calls nest.
 ///
 /// A WebAssembly module has one thread, so the interpreter runs on the
 /// caller's stack, and that stack is in two parts. The module's own part
-/// holds the interpreter's locals: [`STACK_BYTES`] of the 4 MB the module
-/// is linked with (`build.rs`), about 1.2 kB for each call the program
+/// holds the interpreter's locals: this much of the 4 MB the module is
+/// linked with (`build.rs`), about 1.2 kB for each call the program
 /// makes. The engine's part holds the return addresses. It cannot be sized
 /// or measured from here, browsers give it about 1 MB, and how many calls
 /// that is depends on the program and on the engine: a few hundred to a
@@ -53,11 +54,7 @@ pub const MAX_CPP_BYTES: usize = 64 * 1024;
 /// part fills first, the call ends as a trap, and `js/cpl.js` runs the
 /// program again with half the limit until it ends in the interpreter's
 /// own error, which has a source span.
-pub const MAX_DEPTH: u32 = 1_000;
-
-/// Bytes of the module's stack a program's calls may use.
-#[cfg(target_family = "wasm")]
-const STACK_BYTES: usize = 3 << 20;
+pub const MAX_STACK: u32 = 3 << 20;
 
 /// One compiler session. It keeps the incremental database between calls,
 /// so checking a file again after an edit redoes only the items the edit
@@ -88,9 +85,9 @@ impl Playground {
         Playground::default()
     }
 
-    /// `{"version": "0.2.2", "maxDepth": 1000}`.
+    /// `{"version": "0.2.2", "maxStack": 3145728}`.
     pub fn version() -> Value {
-        obj([("version", VERSION.into()), ("maxDepth", MAX_DEPTH.into())])
+        obj([("version", VERSION.into()), ("maxStack", MAX_STACK.into())])
     }
 
     /// `cpl check`: every diagnostic in `source`.
@@ -110,19 +107,19 @@ impl Playground {
     /// `cpl run`: checks `source`, then runs it in the debug interpreter
     /// with `input` as its standard input.
     pub fn run(&mut self, name: &str, source: &str, input: &[u8]) -> Run {
-        self.run_to_depth(name, source, input, MAX_DEPTH)
+        self.run_with_stack(name, source, input, MAX_STACK)
     }
 
-    /// [`run`](Self::run), stopping the program when its calls nest `depth`
-    /// deep. The limit is the WebAssembly module's: a native run has a
-    /// stack of its own and the interpreter's own limit.
-    pub fn run_to_depth(&mut self, name: &str, source: &str, input: &[u8], depth: u32) -> Run {
+    /// [`run`](Self::run), stopping the program when its calls take more
+    /// than `stack` bytes of the module's stack. The limit is the
+    /// WebAssembly module's: a native run has a stack of its own.
+    pub fn run_with_stack(&mut self, name: &str, source: &str, input: &[u8], stack: u32) -> Run {
         let mut stdout = Vec::new();
         let result = match self.compile(name, source) {
             Err(errors) => errors,
             Ok(mut compiled) => {
                 let mut code = 0;
-                if let Err(trap) = interpret(&compiled.program, input, &mut stdout, depth) {
+                if let Err(trap) = interpret(&compiled.program, input, &mut stdout, stack) {
                     let lines = LineIndex::new(source);
                     let failure = trap.to_diagnostic(name, &lines);
                     compiled.stderr += &cpl_diag::render(&failure, name, source, &lines);
@@ -136,13 +133,13 @@ impl Playground {
     }
 
     /// `cpl run --trace --format json`: runs `source` like
-    /// [`run_to_depth`](Self::run_to_depth) and records it. The result
+    /// [`run_with_stack`](Self::run_with_stack) and records it. The result
     /// has two more members: `trace`, a document of
     /// `tools/trace/trace-schema.json` (`null` when the source has
     /// errors), and `debug`, what the program's `debug(...)`s showed.
     /// A file with a `@brute(main)` fn is traced through it too, as the
     /// document's `slow` run, lined up with the solution's.
-    pub fn trace_to_depth(&mut self, name: &str, source: &str, input: &[u8], depth: u32) -> (Vec<u8>, String) {
+    pub fn trace_with_stack(&mut self, name: &str, source: &str, input: &[u8], stack: u32) -> (Vec<u8>, String) {
         use cpl_interp::trace::{document, TraceConfig};
         let mut stdout = Vec::new();
         let (result, trace, debug) = match self.compile(name, source) {
@@ -152,7 +149,7 @@ impl Playground {
                     source: source.to_string(),
                     only_fn: None,
                 };
-                let observed = observe(&compiled.program, input, &mut stdout, depth, config());
+                let observed = observe(&compiled.program, input, &mut stdout, stack, config());
                 let mut code = 0;
                 if let Some(trap) = observed.trap {
                     let lines = LineIndex::new(source);
@@ -167,7 +164,7 @@ impl Playground {
                     let (brute_fn, _) = cpl_ir::brute(&analysis)?;
                     let program = cpl_ir::lower_brute(&analysis, &brute_fn).ok()?;
                     let mut sink = Vec::new();
-                    let recording = observe(&program, input, &mut sink, depth, config()).recording?;
+                    let recording = observe(&program, input, &mut sink, stack, config()).recording?;
                     Some((brute_fn, recording))
                 });
                 let note = match &slow {
@@ -334,11 +331,10 @@ fn interpret(
     program: &cpl_ir::Program,
     input: &[u8],
     output: &mut Vec<u8>,
-    depth: u32,
+    stack: u32,
 ) -> Result<(), cpl_interp::Trap> {
     let limits = cpl_interp::Limits {
-        depth: depth as usize,
-        stack_bytes: STACK_BYTES,
+        stack_bytes: stack as usize,
     };
     cpl_interp::run_on_this_thread(program, input, output, limits)
 }
@@ -348,7 +344,7 @@ fn interpret(
     program: &cpl_ir::Program,
     input: &[u8],
     output: &mut Vec<u8>,
-    _depth: u32,
+    _stack: u32,
 ) -> Result<(), cpl_interp::Trap> {
     cpl_interp::run(program, input, output)
 }
@@ -358,12 +354,11 @@ fn observe(
     program: &cpl_ir::Program,
     input: &[u8],
     output: &mut Vec<u8>,
-    depth: u32,
+    stack: u32,
     config: cpl_interp::trace::TraceConfig,
 ) -> cpl_interp::Observed {
     let limits = cpl_interp::Limits {
-        depth: depth as usize,
-        stack_bytes: STACK_BYTES,
+        stack_bytes: stack as usize,
     };
     cpl_interp::observe_on_this_thread(program, input, output, limits, Some(config))
 }
@@ -373,7 +368,7 @@ fn observe(
     program: &cpl_ir::Program,
     input: &[u8],
     output: &mut Vec<u8>,
-    _depth: u32,
+    _stack: u32,
     config: cpl_interp::trace::TraceConfig,
 ) -> cpl_interp::Observed {
     cpl_interp::run_observed(program, cpl_interp::Io::fixed(input), output, Some(config))

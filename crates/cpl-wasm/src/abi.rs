@@ -6,8 +6,8 @@
 //!
 //! 1. For each argument, `cpl_input(slot, len)` returns where to write
 //!    `len` bytes: the file name, the source text, the standard input.
-//! 2. One command runs on what was written: `cpl_check()`, `cpl_run(depth)`,
-//!    `cpl_trace(depth)`,
+//! 2. One command runs on what was written: `cpl_check()`, `cpl_run(stack)`,
+//!    `cpl_trace(stack)`,
 //!    `cpl_hover(offset)`, ...
 //! 3. `cpl_output_ptr(slot)` and `cpl_output_len(slot)` say where the
 //!    answer is: JSON text, and for a run the bytes the program printed.
@@ -117,7 +117,7 @@ pub extern "C" fn cpl_output_len(slot: u32) -> u32 {
     len as u32
 }
 
-/// The toolchain's version, and the `depth` to start `cpl_run` with.
+/// The toolchain's version, and the `stack` bytes to start `cpl_run` with.
 #[no_mangle]
 pub extern "C" fn cpl_version() {
     command(|_, _, _, _, _| Playground::version().to_string());
@@ -129,12 +129,13 @@ pub extern "C" fn cpl_check() {
     command(|playground, name, text, _, _| playground.check(name, text).to_string());
 }
 
-/// Runs `TEXT` on `STDIN`, stopping it when its calls nest `depth` deep.
+/// Runs `TEXT` on `STDIN`, stopping it when its calls take more than
+/// `stack` bytes.
 /// What it printed is the `STDOUT` output.
 #[no_mangle]
-pub extern "C" fn cpl_run(depth: u32) {
+pub extern "C" fn cpl_run(stack: u32) {
     command(|playground, name, text, stdin, stdout| {
-        let run = playground.run_to_depth(name, text, stdin, depth);
+        let run = playground.run_with_stack(name, text, stdin, stack);
         *stdout = run.stdout;
         run.result.to_string()
     });
@@ -143,9 +144,9 @@ pub extern "C" fn cpl_run(depth: u32) {
 /// Runs `TEXT` on `STDIN` like `cpl_run` and records it: the result has
 /// the run's `trace` (`tools/trace/trace-schema.json`) and `debug` text.
 #[no_mangle]
-pub extern "C" fn cpl_trace(depth: u32) {
+pub extern "C" fn cpl_trace(stack: u32) {
     command(|playground, name, text, stdin, stdout| {
-        let (printed, json) = playground.trace_to_depth(name, text, stdin, depth);
+        let (printed, json) = playground.trace_with_stack(name, text, stdin, stack);
         *stdout = printed;
         json
     });

@@ -15,9 +15,9 @@
 const NAME = 0, TEXT = 1, STDIN = 2;
 const JSON_OUT = 0, STDOUT = 1, PANIC = 2;
 
-// Below this many nested calls, a run that overflows the stack is not the
-// program's recursion: `run` stops trying.
-const MIN_DEPTH = 16;
+// Below this many bytes for the program's calls, a run that overflows the
+// stack is not the program's recursion: `run` stops trying.
+const MIN_STACK = 16 << 10;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -62,14 +62,14 @@ async function compile(wasm) {
 export class Cpl {
   #module;
   #exports;
-  #maxDepth;
+  #maxStack;
 
   constructor(module, instance) {
     this.#module = module;
     this.#exports = instance.exports;
-    const { version, maxDepth } = this.#call("cpl_version", {});
+    const { version, maxStack } = this.#call("cpl_version", {});
     this.version = version;
-    this.#maxDepth = maxDepth;
+    this.#maxStack = maxStack;
   }
 
   /** `cpl check`: every diagnostic in `source`. */
@@ -95,17 +95,18 @@ export class Cpl {
   #running(command, source, stdin, options) {
     // The program's calls are the interpreter's, on the browser's stack,
     // and the module cannot see how much of it is left. A run that
-    // overflows it is run again with the limit on nested calls halved, until
-    // the interpreter stops it first: that is an error with a source span,
-    // where the overflow is only a trap. `maxDepth` is the limit it ran with.
-    for (let maxDepth = this.#maxDepth; ; maxDepth >>= 1) {
+    // overflows it is run again with the stack its calls may take halved,
+    // until the interpreter stops it first: that is an error with a source
+    // span, where the overflow is only a trap. `maxStack` is the bytes it
+    // ran with.
+    for (let maxStack = this.#maxStack; ; maxStack >>= 1) {
       try {
-        return { ...this.#call(command, { ...options, source, stdin }, maxDepth), maxDepth };
+        return { ...this.#call(command, { ...options, source, stdin }, maxStack), maxStack };
       } catch (error) {
-        if (error.kind !== "stack" || maxDepth < MIN_DEPTH) throw error;
+        if (error.kind !== "stack" || maxStack < MIN_STACK) throw error;
         // Not the program's calls if the front end overflows by itself:
         // this throws, and no limit would help.
-        if (maxDepth === this.#maxDepth) this.check(source, options);
+        if (maxStack === this.#maxStack) this.check(source, options);
       }
     }
   }

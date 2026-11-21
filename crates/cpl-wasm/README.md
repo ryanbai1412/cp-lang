@@ -69,7 +69,7 @@ answers at once. `check`, `run` and `build` are the three commands of
 ```
 
 `run` adds `stdout` (and `stdoutBytes`, since a program prints bytes) and
-`maxDepth` (see below), and `build` adds `cpp` and its size in `bytes`. A run that fails keeps what it
+`maxStack` (see below), and `build` adds `cpp` and its size in `bytes`. A run that fails keeps what it
 printed, exits with 3, and has the failure as its last diagnostic, with
 the span of the expression that failed.
 
@@ -125,28 +125,29 @@ check is a few milliseconds.
 
 ## What is different from `cpl run`
 
-One thing: how deep calls can nest. `cpl run` gives a program a stack of
-its own, deep enough for a depth-first search over a few hundred thousand
+One thing: how much stack calls can take. `cpl run` gives a program a stack of
+its own, deep enough for a depth-first search over a few million
 nodes. A browser gives WebAssembly about 1 MB, and no page can ask for
 more. That holds a few hundred to a thousand nested calls, depending on
 the program and on the browser. Past that, a run in the browser ends with
 the error `cpl run` gives for recursion that never ends:
 
 ```text
-error[R0001]: calls are nested 500 deep: `visit` never stops calling itself?
+error[R0001]: the stack ran out: `visit` never stops calling itself?
   --> main.cp:16:26
    |
 16 |                     0 => visit(v)
    |                          ^^^^^^^^
 ```
 
-The module stops a run at 1,000 nested calls. It cannot see how much of
-the browser's stack is left, so a program with heavier calls can overflow
-it earlier, which ends the call as a trap with no span to show. `cpl.js`
-then runs the program again with the limit halved (500, 250, ...) until
-the interpreter stops it first, and the result is the error above. The
-limit a run was under is its `maxDepth`. Output printed before the limit
-is kept.
+The module stops a run when its calls take 3 MB of the module's stack;
+nothing counts how deep they nest. It cannot see how much of the
+browser's own stack is left, so a program with heavier calls can overflow
+that earlier, which ends the call as a trap with no span to show. `cpl.js`
+then runs the program again with the bytes halved (1.5 MB, 768 kB, ...)
+until the interpreter stops it first, and the result is the error above.
+The bytes a run was under are its `maxStack`. Output printed before the
+limit is kept.
 
 Three failures are not results but exceptions, a `CplError` with a `kind`:
 `"stack"` when the browser runs out of stack outside a program's calls

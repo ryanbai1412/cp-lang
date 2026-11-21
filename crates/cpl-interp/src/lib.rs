@@ -77,18 +77,28 @@ impl Trap {
     }
 }
 
-/// Calls nested deeper than this are reported as runaway recursion.
-const MAX_DEPTH: usize = 400_000;
 /// Stack for the interpreter thread: deep recursion in the program is deep
-/// recursion here. Reserved, not committed.
-const STACK_BYTES: usize = 3 << 30;
+/// recursion here, about 4 kB a call, so this holds two million.
+/// Reserved, not committed; a host that cannot reserve it gets less.
+const STACK_BYTES: usize = 8 << 30;
 
-/// How far a program's calls may nest before the run is stopped as runaway
-/// recursion.
+/// Half the machine's memory, where it can be read: a recursion without end
+/// fills the stack it may use, and that stack must not take the machine.
+fn memory_for_stack() -> usize {
+    std::fs::read_to_string("/proc/meminfo")
+        .ok()
+        .and_then(|info| {
+            let line = info.lines().find(|line| line.starts_with("MemTotal:"))?;
+            let kb: usize = line.split_whitespace().nth(1)?.parse().ok()?;
+            Some(kb.saturating_mul(1024) / 2)
+        })
+        .unwrap_or(usize::MAX)
+}
+
+/// How much stack a program's calls may take before the run is stopped.
+/// There is no limit on how deep calls nest: only on the stack they fill.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Limits {
-    /// Calls inside calls.
-    pub depth: usize,
     /// Bytes of the interpreter's own stack those calls may use: the
     /// program's recursion is the interpreter's.
     pub stack_bytes: usize,
@@ -186,13 +196,13 @@ pub fn run_observed(
         }),
         ..Observed::default()
     };
+    let memory = memory_for_stack();
     std::thread::scope(|scope| {
-        for bytes in [STACK_BYTES, 1 << 28, 1 << 23] {
+        for bytes in [STACK_BYTES, 3 << 30, 1 << 28, 1 << 23] {
             let (output, io, trace) = (&output, &io, &trace);
             let limits = Limits {
-                depth: MAX_DEPTH,
                 // The rest is left for the frames under the deepest call.
-                stack_bytes: bytes - (bytes / 64).max(1 << 20),
+                stack_bytes: (bytes - (bytes / 64).max(1 << 20)).min(memory),
             };
             let spawned =
                 std::thread::Builder::new()
@@ -270,8 +280,6 @@ fn run_io(
         queries: 0,
         out: Vec::with_capacity(1 << 16),
         sink: output,
-        depth: 0,
-        max_depth: limits.depth,
         stack_top: std::ptr::addr_of!(top) as usize,
         stack_budget: limits.stack_bytes,
         frame_locals: Vec::new(),
@@ -373,8 +381,6 @@ struct Interp<'p, 'o> {
     queries: i64,
     out: Vec<u8>,
     sink: &'o mut (dyn Write + Send),
-    depth: usize,
-    max_depth: usize,
     /// Where the interpreter's own stack began, and how much of it calls
     /// may use: the program's recursion is the interpreter's.
     stack_top: usize,
@@ -2105,17 +2111,7 @@ impl<'p, 'o> Interp<'p, 'o> {
         if !self.program.judge_fns.is_empty() && self.program.judge_fns.contains(&id) {
             return trap(span, NO_GRADER);
         }
-        let here = 0u8;
-        let used = self.stack_top.abs_diff(std::ptr::addr_of!(here) as usize);
-        if self.depth >= self.max_depth || used > self.stack_budget {
-            return trap(
-                span,
-                format!(
-                    "calls are nested {} deep: `{}` never stops calling itself?",
-                    self.depth, f.name
-                ),
-            );
-        }
+        self.stack_left(span, Some(&f.name))?;
         let base = match args {
             [] => {
                 let base = self.stack.len();
@@ -2190,7 +2186,6 @@ impl<'p, 'o> Interp<'p, 'o> {
         let saved = std::mem::replace(&mut self.base, base);
         self.frame_locals.push(&f.locals);
         self.call_frames.push((f.name.as_str(), span));
-        self.depth += 1;
         let wanted = self.tracer.as_ref().is_some_and(|tracer| tracer.wants_fn(&f.name));
         if let (true, Some(tracer)) = (wanted, &mut self.tracer) {
             tracer.inside += 1;
@@ -2205,7 +2200,6 @@ impl<'p, 'o> Interp<'p, 'o> {
         if let (true, Some(tracer)) = (wanted, &mut self.tracer) {
             tracer.inside -= 1;
         }
-        self.depth -= 1;
         self.frame_locals.pop();
         self.base = saved;
         if feeding {
@@ -2246,14 +2240,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             return trap(span, "internal: tried to call a non-function value");
         };
         let def = &self.program.closures[cid];
-        let here = 0u8;
-        let used = self.stack_top.abs_diff(std::ptr::addr_of!(here) as usize);
-        if self.depth >= self.max_depth || used > self.stack_budget {
-            return trap(
-                span,
-                format!("calls are nested {} deep: runaway recursion?", self.depth),
-            );
-        }
+        self.stack_left(span, None)?;
         let base = self.stack.len();
         self.stack.resize(base + def.locals.len(), Value::Unit);
         for (slot, val) in def.params.iter().zip(args) {
@@ -2273,11 +2260,9 @@ impl<'p, 'o> Interp<'p, 'o> {
         let saved = std::mem::replace(&mut self.base, base);
         self.frame_locals.push(&def.locals);
         self.call_frames.push(("<closure>", span));
-        self.depth += 1;
         let in_closure = std::mem::replace(&mut self.in_closure, true);
         let flow = self.block(&def.body);
         self.in_closure = in_closure;
-        self.depth -= 1;
         self.frame_locals.pop();
         self.base = saved;
         let flow = flow?;
@@ -2579,28 +2564,28 @@ impl<'p, 'o> Interp<'p, 'o> {
         Ok(())
     }
 
-    fn call_direct(&mut self, id: FnId, values: Vec<Value>, span: Span) -> Res<Value> {
-        let f = &self.program.fns[id];
+    /// Stops the run before a call would overflow the interpreter's own
+    /// stack: the program's recursion is the interpreter's.
+    fn stack_left(&self, span: Span, callee: Option<&str>) -> Res<()> {
         let here = 0u8;
         let used = self.stack_top.abs_diff(std::ptr::addr_of!(here) as usize);
-        if self.depth >= self.max_depth || used > self.stack_budget {
-            return trap(
-                span,
-                format!(
-                    "calls are nested {} deep: `{}` never stops calling itself?",
-                    self.depth, f.name
-                ),
-            );
+        if used > self.stack_budget {
+            let callee = callee.map_or("a closure".into(), |name| format!("`{name}`"));
+            return trap(span, format!("the stack ran out: {callee} never stops calling itself?"));
         }
+        Ok(())
+    }
+
+    fn call_direct(&mut self, id: FnId, values: Vec<Value>, span: Span) -> Res<Value> {
+        let f = &self.program.fns[id];
+        self.stack_left(span, Some(&f.name))?;
         let base = self.stack.len();
         self.stack.extend(values);
         self.stack.resize(base + f.locals.len(), Value::Unit);
         let saved = std::mem::replace(&mut self.base, base);
         self.frame_locals.push(&f.locals);
         self.call_frames.push((f.name.as_str(), span));
-        self.depth += 1;
         let flow = self.block(&f.body);
-        self.depth -= 1;
         self.frame_locals.pop();
         self.base = saved;
         let flow = flow?;

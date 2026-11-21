@@ -1498,3 +1498,37 @@ place a cost is written today; a computed cost line can join it later. Reverse: 
   and `var total = 0 +` should still hover as `Int`. Struct and enum headers keep their parsed shape
   (open: a struct missing its `)` still reports every later field use). *Reversible:* drop the
   `head_is_poisoned` branch in `FileCtx::def`.
+
+## 31. Generated C++: stack, layout and niches (0.3)
+
+Settled by Ryan for 0.3: the judge gives a big stack, the generated C++ runs
+the program on a thread with the profile's stack, no recursion-depth
+tracking in any build, large arrays never on the stack, `?Int` 8 bytes
+everywhere. The entries below are the calls made implementing that.
+
+31.1. **Calls are limited by the stack they fill, never by how deep they
+nest.** The interpreter's 400,000-call limit and its depth counter are
+gone; `cpl run` stops a program only when its calls would overflow the
+interpreter's own stack, with `the stack ran out: `f` never stops
+calling itself?`. The browser build's 1,000-call limit became a 3 MB
+budget of the module's stack, halved on each retry exactly as the depth
+was. Reason: a depth limit rejects correct programs the judge accepts (a
+DFS down a path of 10^6 vertices), so `cpl run` and the judge disagreed
+on valid input. Reverse: put `depth`/`max_depth` back in `Interp` and
+`Limits`, and the check in `Interp::stack_left`.
+
+31.2. **The interpreter reserves 8 GB of stack, falling back to 3 GB, 256
+MB and 8 MB, and lets calls fill at most half the machine's memory.** A
+call takes about 4 kB of interpreter stack (a 10^6-deep DFS: 4.05 GB RSS,
+2.65 s), so 8 GB holds two million. The reservation is address space; only
+the pages a recursion reaches are committed. A recursion without end fills
+all it may use (16.7 GB in 9 s with a 16 GB budget, which got the test
+killed on a loaded machine), hence the cap at half of `MemTotal`. Reverse:
+`STACK_BYTES` and `memory_for_stack` in `cpl-interp`. The better fix is a
+smaller interpreter frame; that is the interpreter lane's.
+
+31.3. **`cpl-interp` is built with `opt-level = 1` in the dev profile.**
+Unoptimized, a call took about seven times the stack, so a debug-built
+`cpl` and the tests rejected recursion the release build runs. Cost: a
+few seconds more on a clean debug build. Reverse: drop
+`[profile.dev.package.cpl-interp]` from `Cargo.toml`.

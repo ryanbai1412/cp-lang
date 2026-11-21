@@ -233,14 +233,15 @@ test("recursion that never ends is a diagnostic, not a crash", () => {
 
 test("recursion too deep for the engine's stack is that diagnostic too", () => {
   // Each call here is heavy enough that the engine's stack fills before the
-  // module's limit on nested calls: the run is tried again under a lower one.
+  // module's limit on the stack calls take: the run is tried again under a
+  // lower one.
   const source = search(5000);
   const run = cpl.run(source);
   assert.deepEqual([run.exitCode, run.stdout], [3, "searching\n"]);
   const [failure] = run.diagnostics;
-  assert.equal(failure.message, `calls are nested ${run.maxDepth} deep: \`visit\` never stops calling itself?`);
+  assert.equal(failure.message, "the stack ran out: `visit` never stops calling itself?");
   assert.equal(source.slice(failure.start, failure.end), "visit(v)");
-  assert.ok(run.maxDepth >= 100 && run.maxDepth <= 1000, `stopped at ${run.maxDepth}`);
+  assert.ok(run.maxStack >= 16 << 10 && run.maxStack < 3 << 20, `stopped at ${run.maxStack}`);
   assert.equal(cpl.run(DOUBLE, "21").stdout, "42\n");
 });
 

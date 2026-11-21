@@ -24,3 +24,9 @@ cpl-lsp = { path = "crates/cpl-lsp" }
 [profile.release]
 lto = "thin"
 codegen-units = 1
+
+# The interpreter's frames are its programs' recursion: unoptimized, a call
+# takes about seven times the stack, and a test of deep recursion would
+# measure the build profile instead of the interpreter.
+[profile.dev.package.cpl-interp]
+opt-level = 1

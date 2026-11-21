@@ -38,8 +38,8 @@ export interface RunOutcome extends Outcome {
   /** What the program printed, read as UTF-8. */
   stdout: string;
   stdoutBytes: Uint8Array;
-  /** How deep calls could nest in this run before it was stopped. */
-  maxDepth: number;
+  /** Bytes of stack the program's calls could take in this run. */
+  maxStack: number;
 }
 
 export interface TraceOutcome extends RunOutcome {
