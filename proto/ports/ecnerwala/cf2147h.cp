@@ -12,7 +12,7 @@ for i in V if i != V.first:
     fg.reset()
     g = gcd(g, fg.max_flow(i, par[i]))
     let cut = fg.min_cut(i)
-    for j in V if j > i and par[j] == par[i] and cut[j]:
+    for j in V.after(i) if par[j] == par[i] and cut[j]:
         par[j] = i
 
 if g != 1:

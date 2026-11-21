@@ -2,13 +2,12 @@
 let n: 3..=200 = read()
 let m: 2..=19_900 = read()
 domain V = 1..=n
-var adj: [V, V]Bool = false
+var adj: [Sym<V>]Bool = false
 var tree: [V]List<V> = []
 var dsu = Dsu<V>()
 repeat m:
     let (u, v): (V, V) = read()
     adj[u, v] = true
-    adj[v, u] = true
     if dsu.unite(u, v):
         tree[u].push(v)
         tree[v].push(u)
@@ -23,7 +22,6 @@ for i in V:
     for j in tree[i]:
         for k in tree[i] if j != k and not adj[j, k]:
             adj[j, k] = true
-            adj[k, j] = true
             ops1.push((j, i, k))
 print(ops1.len)
 for (a, b, c) in ops1: print(a, b, c)
@@ -31,13 +29,12 @@ for (a, b, c) in ops1: print(a, b, c)
 let path_len = ceil_div(d.len, 2)
 print(path_len + 1)
 var num_ops = 0
-for i in V:
-    for j in V if j > i and not adj[i, j]: num_ops += 1
+for (i, j) in V.pairs if not adj[i, j]: num_ops += 1
 print(num_ops)
 
 for i in V:
     let far = if T.dist(i, d.u) >= T.dist(i, d.v): d.u else: d.v
-    for j in V if j > i and not adj[i, j]:
+    for j in V.after(i) if not adj[i, j]:
         var resp: List<V> = []
         let pij = T.path(i, j)
         let dij = pij.len - 1
