@@ -126,7 +126,7 @@ fn build(shape: &Shape, env: &Env, is_size: bool, pick: &mut dyn Pick) -> Option
             shuffle(&mut order, pick);
             Some(Value::Seq(order.into_iter().map(Value::Int).collect()))
         }
-        Shape::Tree { lo, hi } => {
+        Shape::Tree { lo, hi, extra } => {
             let (lo, hi) = (eval(lo, env)?, eval(hi, env)?);
             let n = (hi - lo + 1).max(0);
             (n <= MAX_LEN).then_some(())?;
@@ -146,12 +146,17 @@ fn build(shape: &Shape, env: &Env, is_size: bool, pick: &mut dyn Pick) -> Option
                 })
                 .collect();
             shuffle(&mut edges, pick);
-            Some(Value::Seq(
-                edges
-                    .into_iter()
-                    .map(|(a, b)| Value::Tuple(vec![Value::Int(a), Value::Int(b)]))
-                    .collect(),
-            ))
+            edges
+                .into_iter()
+                .map(|(a, b)| {
+                    let mut edge = vec![Value::Int(a), Value::Int(b)];
+                    for shape in extra {
+                        edge.push(build(shape, env, false, pick)?);
+                    }
+                    Some(Value::Tuple(edge))
+                })
+                .collect::<Option<_>>()
+                .map(Value::Seq)
         }
     }
 }

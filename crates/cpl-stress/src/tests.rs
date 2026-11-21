@@ -884,3 +884,38 @@ fn a_letter_domain_is_made_in_its_range_as_the_runtime_reads_it() {
         assert!(p.len() == k as usize && p.iter().all(letter), "{case:?}");
     }
 }
+
+#[test]
+fn a_weighted_tree_is_made_and_shrunk_as_a_tree_with_its_weights() {
+    let src = "let n: 2..=10 = read()\ndomain V = 1..=n\ntype Tree = [0..n - 1](u: V, v: V, w: 1..=9)\nlet t: Tree = read()\nprint(n)\n";
+    let spec = InputSpec::from_source(src).unwrap();
+    let weights_in_range = |value: &Value| match value {
+        Value::Seq(edges) => edges.iter().all(|edge| {
+            matches!(edge, Value::Tuple(ends) if ends.len() == 3 && matches!(ends[2], Value::Int(1..=9)))
+        }),
+        _ => false,
+    };
+    let mut big = None;
+    for seed in 0..50 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).expect("a case");
+        let n = case.values[0].number().unwrap();
+        assert!(is_tree(&case.values[1], n) && weights_in_range(&case.values[1]), "{case:?}");
+        if n >= 5 {
+            big = Some(case);
+        }
+    }
+    // Fails while some edge weighs at least 3.
+    let heavy = |case: &Case| match &case.values[1] {
+        Value::Seq(edges) => edges.iter().any(|e| matches!(e, Value::Tuple(ends) if ends[2].number() >= Some(3))),
+        _ => false,
+    };
+    let mut start = big.expect("a tree on at least 5 vertices");
+    if let Value::Seq(edges) = &mut start.values[1] {
+        if let Value::Tuple(ends) = &mut edges[0] {
+            ends[2] = Value::Int(9);
+        }
+    }
+    let smallest = shrink(&spec, &start, 2000, &mut |case: &Case| heavy(case));
+    assert!(is_tree(&smallest.values[1], 2) && weights_in_range(&smallest.values[1]));
+    assert_eq!(smallest.render(), "2\n1 2 3\n");
+}

@@ -42,8 +42,9 @@ fn fit_value(shape: &Shape, value: &Value, env: &Env) -> Option<Value> {
             Some(Value::Seq(renamed.into_iter().map(Value::Int).collect()))
         }
         // The edges that still join two parts of `lo..=hi`, then one
-        // from the first vertex to each part left over: still a tree.
-        (Shape::Tree { lo, hi }, Value::Seq(items)) => {
+        // from the first vertex to each part left over: still a tree. An
+        // edge keeps its weight; a new one takes the first edge's.
+        (Shape::Tree { lo, hi, extra }, Value::Seq(items)) => {
             let (lo, hi) = (eval(lo, env)?, eval(hi, env)?);
             let n = usize::try_from((hi - lo + 1).max(0)).ok()?;
             (n <= items.len() + 1).then_some(())?;
@@ -55,6 +56,17 @@ fn fit_value(shape: &Shape, value: &Value, env: &Env) -> Option<Value> {
                 }
                 v
             }
+            let weight = |ends: &[Value]| -> Option<Vec<Value>> {
+                extra
+                    .iter()
+                    .zip(ends.get(2..)?)
+                    .map(|(shape, value)| fit_value(shape, value, env))
+                    .collect()
+            };
+            let first = match items.first() {
+                Some(Value::Tuple(ends)) => weight(ends)?,
+                _ => Vec::new(),
+            };
             let mut edges = Vec::new();
             for item in items {
                 let Value::Tuple(ends) = item else { return None };
@@ -66,20 +78,25 @@ fn fit_value(shape: &Shape, value: &Value, env: &Env) -> Option<Value> {
                 let (ra, rb) = (find(&mut root, a), find(&mut root, b));
                 if ra != rb {
                     root[ra] = rb;
-                    edges.push((a, b));
+                    edges.push((a, b, weight(ends)?));
                 }
             }
             for v in 1..n {
                 let (r0, rv) = (find(&mut root, 0), find(&mut root, v));
                 if r0 != rv {
                     root[rv] = r0;
-                    edges.push((0, v));
+                    edges.push((0, v, first.clone()));
                 }
             }
+            (edges.iter().all(|edge| edge.2.len() == extra.len())).then_some(())?;
             Some(Value::Seq(
                 edges
                     .into_iter()
-                    .map(|(a, b)| Value::Tuple(vec![Value::Int(a as i128 + lo), Value::Int(b as i128 + lo)]))
+                    .map(|(a, b, w)| {
+                        let mut edge = vec![Value::Int(a as i128 + lo), Value::Int(b as i128 + lo)];
+                        edge.extend(w);
+                        Value::Tuple(edge)
+                    })
                     .collect(),
             ))
         }
@@ -206,12 +223,18 @@ fn numbers(spec: &InputSpec, case: &Case) -> Vec<(Path, i128)> {
                     }
                 }
             }
-            (Shape::Tree { lo, .. }, Value::Seq(items)) => {
+            (Shape::Tree { lo, extra, .. }, Value::Seq(items)) => {
                 if let Some(lo) = eval(lo, env) {
-                    for index in 0..items.len() {
+                    for (index, item) in items.iter().enumerate() {
                         for end in 0..2 {
                             path.extend([index, end]);
                             out.push((path.clone(), lo));
+                            path.truncate(path.len() - 2);
+                        }
+                        let Value::Tuple(ends) = item else { continue };
+                        for (at, (shape, value)) in extra.iter().zip(ends.iter().skip(2)).enumerate() {
+                            path.extend([index, 2 + at]);
+                            walk(shape, value, env, path, out);
                             path.truncate(path.len() - 2);
                         }
                     }

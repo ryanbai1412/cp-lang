@@ -51,10 +51,11 @@ pub enum Shape {
         len: Expr,
     },
     /// The `hi - lo` edges of a tree on the vertices `lo..=hi`, each a
-    /// pair of them.
+    /// pair of them followed by one value of each `extra` shape (a weight).
     Tree {
         lo: Expr,
         hi: Expr,
+        extra: Vec<Shape>,
     },
 }
 
@@ -416,7 +417,9 @@ struct Builder<'a> {
     base: u32,
     /// `domain V = lo..=hi` as inclusive bounds.
     domains: HashMap<String, (Expr, Expr)>,
-    aliases: HashMap<String, Type>,
+    /// Each alias with the base of the item that declares it, which its
+    /// spans are relative to.
+    aliases: HashMap<String, (u32, Type)>,
     spec: InputSpec,
 }
 
@@ -494,14 +497,19 @@ impl Builder<'_> {
                 if let Some((lo, hi)) = self.domains.get(&name.text).cloned() {
                     return Ok(Shape::Int { lo, hi });
                 }
-                match self.aliases.get(&name.text).cloned() {
-                    // `type Perm = [V]V` and `type Tree = [E](u: V, v: V)`
-                    // say what the values are, beyond their type.
-                    Some(alias) if name.text == "Perm" => self.perm(&alias).ok_or_else(|| unsupported(self)),
-                    Some(alias) if name.text == "Tree" => self.tree(&alias).ok_or_else(|| unsupported(self)),
-                    Some(alias) => self.shape(&alias),
-                    None => Err(unsupported(self)),
-                }
+                let Some((base, alias)) = self.aliases.get(&name.text).cloned() else {
+                    return Err(unsupported(self));
+                };
+                let outer = std::mem::replace(&mut self.base, base);
+                // `type Perm = [V]V` and `type Tree = [E](u: V, v: V)`
+                // say what the values are, beyond their type.
+                let shape = match name.text.as_str() {
+                    "Perm" => Ok(self.perm(&alias)),
+                    "Tree" => Ok(self.tree(&alias)),
+                    _ => self.shape(&alias).map(Some),
+                };
+                self.base = outer;
+                shape?.ok_or_else(|| unsupported(self))
             }
             // `Perm<V>` and `Tree<V>`: a permutation of a domain, and the
             // edges of a tree on it.
@@ -513,7 +521,7 @@ impl Builder<'_> {
                     let len = binary(BinOp::Add, binary(BinOp::Sub, hi, lo.clone()), int(1));
                     Shape::Perm { lo, len }
                 } else {
-                    Shape::Tree { lo, hi }
+                    Shape::Tree { lo, hi, extra: Vec::new() }
                 })
             }
             // `[domain S]Char`: a word that brings its own length.
@@ -561,7 +569,8 @@ impl Builder<'_> {
         Some(Shape::Perm { lo, len })
     }
 
-    /// `[E](u: V, v: V)` or `[E](V, V)` as the edges of a tree on `V`.
+    /// `[E](u: V, v: V)` or `[E](V, V)` as the edges of a tree on `V`;
+    /// fields after the two ends, such as a weight, are made by their type.
     fn tree(&mut self, ty: &Type) -> Option<Shape> {
         let TypeKind::Array { elem, .. } = &ty.kind else {
             return None;
@@ -571,11 +580,12 @@ impl Builder<'_> {
             TypeKind::Record(fields) => fields.iter().map(|(_, field)| field).collect(),
             _ => return None,
         };
-        let [u, v] = ends.as_slice() else {
+        let [u, v, rest @ ..] = ends.as_slice() else {
             return None;
         };
+        let extra = rest.iter().map(|ty| self.shape(ty).ok()).collect::<Option<_>>()?;
         match (self.shape(u).ok()?, self.shape(v).ok()?) {
-            (Shape::Int { lo, hi }, Shape::Int { .. }) => Some(Shape::Tree { lo, hi }),
+            (Shape::Int { lo, hi }, Shape::Int { .. }) => Some(Shape::Tree { lo, hi, extra }),
             _ => None,
         }
     }
@@ -739,7 +749,7 @@ impl InputSpec {
                         }
                     }
                     StmtKind::TypeAlias { name, generics, ty } if generics.is_empty() => {
-                        builder.aliases.insert(name.text.clone(), ty.clone());
+                        builder.aliases.insert(name.text.clone(), (builder.base, ty.clone()));
                     }
                     StmtKind::Let {
                         pat,
