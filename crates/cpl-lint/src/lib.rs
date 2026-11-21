@@ -542,6 +542,33 @@ impl File<'_> {
     }
 }
 
+/// An arithmetic expression whose value the declared input bounds prove:
+/// `n * n` after `let n: 1..=100 = read()` is in `1..=10000`. Offsets are
+/// byte offsets in the file.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProvenExpr {
+    /// The operator.
+    pub op: (u32, u32),
+    /// The whole expression.
+    pub expr: (u32, u32),
+    pub lo: i128,
+    pub hi: i128,
+}
+
+/// What the declared bounds prove about each `+`, `-` and `*` outside
+/// lambdas, comprehensions and match arms; a file with a syntax error has
+/// none.
+pub fn proven_expr_ranges(src: &str) -> Vec<ProvenExpr> {
+    let parsed = cpl_syntax::parse_file(src);
+    if !parsed.diagnostics.is_empty() {
+        return Vec::new();
+    }
+    rules::proven_expr_ranges(&File {
+        src,
+        items: &parsed.items,
+    })
+}
+
 /// What the declared input bounds prove about each top-level `let` written
 /// without a type: `let m = n * n` after `let n: 1..=100 = read()` is in
 /// `1..=10000`. Each is the name's byte offset and the inclusive range; a file

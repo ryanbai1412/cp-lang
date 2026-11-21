@@ -1,5 +1,6 @@
 == diagnostics
-(none)
+12:17-12:18 L0203 this binding hides the top-level `n`
+help: from here on `n` means the binding; give it another name if the top-level one is meant below
 
 == hover @ 5:8
 ```cp
@@ -36,3 +37,17 @@ len: Int
 ```
 
 How many cells.
+
+== hover @ 10:14
+```cp
+n * n: Int in 1..=40000000000
+```
+
+== hover @ 11:17
+```cp
+area * area: Int in 4..=1600016000040000000000
+  can overflow Int
+```
+
+== hover @ 12:24
+(none)

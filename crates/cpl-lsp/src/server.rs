@@ -182,6 +182,22 @@ impl Server {
             }
             "textDocument/hover" => {
                 let (uri, offset) = self.position(params)?;
+                if let Some(hover) = self.arith_hover(&uri, offset) {
+                    let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
+                    return Ok(Reply::result(obj([
+                        (
+                            "contents",
+                            obj([
+                                ("kind", "markdown".into()),
+                                ("value", hover_markdown(&hover).into()),
+                            ]),
+                        ),
+                        (
+                            "range",
+                            range_json(hover.span, &analysis.text, &analysis.lines),
+                        ),
+                    ])));
+                }
                 let Some(mut hover) = self.db.hover(&uri, offset) else {
                     return Ok(Reply::default());
                 };
@@ -750,6 +766,29 @@ impl Server {
             }
         }
         false
+    }
+
+    /// On a `+`, `-` or `*` whose operands the declared bounds prove: the
+    /// range of its value, and whether it can leave `Int`.
+    fn arith_hover(&mut self, uri: &str, offset: u32) -> Option<cpl_check::Hover> {
+        let analysis = self.db.analyze(uri)?;
+        let proven = cpl_lint::proven_expr_ranges(&analysis.text)
+            .into_iter()
+            .find(|e| e.op.0 <= offset && offset < e.op.1)?;
+        let (start, end) = proven.expr;
+        let source = analysis.text.get(start as usize..end as usize)?;
+        let source = source.split_whitespace().collect::<Vec<_>>().join(" ");
+        let int = i64::MAX as i128;
+        let fits = if proven.lo < -int || proven.hi > int {
+            "\n  can overflow Int"
+        } else {
+            ""
+        };
+        Some(cpl_check::Hover {
+            span: Span { start, end },
+            text: format!("{source}: Int in {}..={}{fits}", proven.lo, proven.hi),
+            doc: None,
+        })
     }
 
     fn position(&mut self, params: &Value) -> Result<(String, u32), (i32, String)> {
