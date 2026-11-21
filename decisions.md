@@ -3900,3 +3900,151 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
 - **Reverse.** Delete the form; a codemod rewrites it to a flag.
 - **Status.** Accepted; not implemented (today `else` after a loop is
   E0107).
+
+## 126. Library loops are generators; early exit stays in `for` (2026-11-21)
+
+- **Decision.** Loop-shaped library facilities (traversals, enumerations,
+  divisors, submasks, enter/exit walks) are generators consumed with a
+  plain `for`. `break`, `continue`, `return`, labelled `break 'outer` and
+  loop `else` (§125) work in that body even when the generator is
+  recursive: the compiler inlines a non-recursive push generator to a
+  jump, and threads a hidden stop path through the frames of a recursive
+  one, only in specializations whose body can exit (`cpl explain` shows
+  it). Enter/exit walks yield events (`Enter(v)` / `Exit(v)`). A body
+  that steers the generator uses a method on the yielded item, read by the
+  generator after the `yield` returns (`step.prune()` skips a subtree);
+  this is ordinary library code. Lockstep over recursive generators is
+  `List(g)` (4.2's existing error). Folds and predicates stay closures
+  (`t.up(+, finish:)`, `bsearch_first`).
+- **Deferred.** `return` / `break` inside a closure literal acting on the
+  enclosing function (Kotlin's inline lambdas, Ruby blocks). Revisit only
+  if ports keep needing early exit from closure-shaped library calls.
+- **Why.** Library loops get exactly the control flow of built-in loops
+  with no per-library protocol (no `ControlFlow` values, no `found`
+  flags), which is the no-privileged-stdlib test; and no closure ever has
+  two meanings of `return`.
+- **Reverse.** Allow closure-level non-local exit for call-only closure
+  parameters, or require library loops to accept a stop signal.
+- **Status.** Accepted. `break` and `return` out of a `for` over a
+  recursive `yields` fn already run identically in `cpl run` and the C++.
+  Not yet done: item-steered `prune`, `Enter`/`Exit` events, labelled
+  break and loop `else` coverage over generators, and converting the
+  remaining callback-shaped stdlib traversals.
+
+## 127. Recursive lambdas; no method overloading (2026-11-21)
+
+- **Decision.** A lambda bound with `let` may call itself by its binding
+  name (`let fact = n => if n == 0: 1 else: n * fact(n - 1)`). It is
+  inferred like any lambda; when the recursion leaves the return type
+  undetermined, the error asks for an annotation (`(n: Int) -> Int =>`).
+  A `var` binding cannot refer to itself. Recursive lambdas and recursive
+  nested `fn`s lower to a self-passing generic C++ lambda, never
+  `std::function`.
+- **Decision.** Methods do not overload by argument type, like free fns
+  (see "free fns cannot overload" above). One name has one generic signature; variants are
+  named arguments (`at:` / `over:`) or protocols.
+- **Rule.** Every accepted decision states its C++ lowering and cost. A
+  `std::function`, hidden allocation or hidden traversal is logged as
+  debt in `plan/DOMAINS.md`.
+- **Why.** A self-passing lambda is a direct monomorphized call, so
+  recursive lambdas cost nothing over a nested `fn`. Overloads make
+  errors, hover and docs ambiguous, and break one spelling per idea.
+- **Reverse.** Forbid self-reference (nested `fn` only), or allow method
+  overloads with a resolution rule.
+- **Status.** Accepted; recursive lambdas not implemented (today they fall
+  back to `std::function`, decisions around `DynamicStdFunction`).
+
+## 128. Moves, overlapping `mut` places, and map defaults (2026-11-21)
+
+- **Decision.** Returning a container is always O(1): returns move, never
+  copy. `let b = a` on a heap value (`List`, `Map`, `Str`, structs holding
+  them) is a move when it is `a`'s last use and otherwise an error whose
+  fix is `a.clone()`. Using a moved-from variable is a compile error;
+  moving out of a place that stays alive is `x.take()`, which leaves it
+  empty. Functions never take ownership of an argument: parameters are
+  lends, `mut` parameters may mutate (and `absorb(mut other)` may drain)
+  but the caller keeps the variable.
+- **Decision.** Two `mut` places in one container in the same call
+  (`f(mut a[i], mut a[j])`) are a compile error unless the compiler proves
+  them distinct. Changing a container's length while a place in it is
+  lent (`let x = mut xs[i]` then `xs.push(...)`) is a compile error, the
+  same rule as overlapping slices (E0602). Both are "for now": a runtime
+  distinctness check can relax the first later.
+- **Decision.** `m[k] += 1` (any compound assignment into a map) inserts
+  the value type's default for a missing `k` first. A plain read of a
+  missing key is `none` for `Map` and the default for `Counter`.
+- **Why.** Costs stay visible (no silent deep copy), invalidation and
+  aliasing bugs can't be written, and counting reads like the idea.
+- **Reverse.** Implicit copies for `let b = a`; runtime overlap checks;
+  `m[k] += 1` on a missing key as an error.
+- **Status.** Accepted (Ryan, 2026-11-21). Audit current checker behaviour
+  against each rule; implement the gaps with compile-fail tests.
+
+## 129. Compound assignment is a statement; `min=` / `max=` report improvement (2026-11-21)
+
+- **Decision.** `x op= y` (`+=`, `-=`, `x f= y` for any two-argument fn)
+  is a statement with no value, like plain `=`. The exception is `min=`
+  and `max=`: as an expression they are a `Bool`, true when `x` strictly
+  improved (including from `none`), so relaxation reads
+  `if dist[v] min= nd: parent[v] = u`. Used as a statement the `Bool` is
+  discarded. Bump-and-read uses a named mutable alias, which evaluates
+  the place once: `let k = mut count[c]; k += 1`.
+- **Why.** No `if x = y` bugs and no evaluation-order puzzles; the one
+  value contestants constantly test after an update ("did it improve?")
+  has a direct spelling with one comparison, as in hand-written C++.
+- **Rejected for now.** Every `op=` yielding the new value
+  (`let k = count[c] += 1`): convenient, but it puts writes inside
+  expressions; revisit with port evidence.
+- **Reverse.** Make `min=` / `max=` plain statements, or give every `op=`
+  the new value.
+- **Status.** Accepted (Ryan, 2026-11-21); not implemented.
+
+## 130. Chained comparisons point one way (2026-11-21)
+
+- **Decision.** `a < b <= c` keeps Python's meaning (each operand
+  evaluated once, links joined by `and`), as implemented today, but only
+  for chains in one direction: all of `<`/`<=` or all of `>`/`>=`.
+  Mixed directions (`a < b > c`) and chains containing `==`/`!=` become
+  a compile error suggesting `and`.
+- **Why.** `0 <= i < j <= n` reads like the statement and costs one
+  comparison per link; mixed chains are almost always a typo and read
+  ambiguously (C++ compiles `a < b < c` as `(a < b) < c`).
+- **Reverse.** Accept every chain again.
+- **Status.** Accepted; today mixed chains are accepted (`print(1 < x > 2)`
+  runs), so the checker needs the error plus a compile-fail test.
+
+## 131. Inference unifies siblings within one expression, never across statements (2026-11-21)
+
+- **Decision.** Element types of list literals, `if`/`else` branches,
+  `match` arms and comprehension results are unified across all siblings
+  before generic parameters are fixed, with `none` joining `T` to `?T`:
+  `[Pair(1, none), Pair(2, 3)]` is a `List<Pair<Int, ?Int>>`. Inference
+  never looks at later statements: `var x = none` followed by `x = 3`
+  stays an error asking for `?Int` where `x` is declared. Range inference
+  (model A: `let` keeps its computed range, an unannotated `var` widens to
+  `Int`, `var x: lo..=hi` checks each assignment) stays intraprocedural,
+  goes through arithmetic on `let`s, runs no loop fixpoints and crosses no
+  calls; whatever it can't prove keeps its runtime check.
+- **Why.** Fixes the reproduced error on `[Pair(1, none), Pair(2, 3)]`
+  while keeping inference local, predictable and linear (compile speed
+  beats exotic analysis). Range inference only affects widths and elided
+  checks, never meaning.
+- **Reverse.** First-element inference; or flow-sensitive inference
+  across statements.
+- **Status.** Accepted; sibling unification not implemented.
+
+## 132. No custom destructuring; views are methods returning enums (2026-11-21)
+
+- **Decision.** Patterns match only the stored shape of structs, enums
+  and tuples (with nesting, guards, `if let`, `let ... else`). A library
+  type cannot define its own pattern (Scala `unapply`, F# active
+  patterns). A view is a method returning an enum:
+  `match t.node(v): Leaf => ... Inner(l, r) => ...`.
+- **Why.** A custom pattern runs arbitrary code while looking like a free
+  field read (costs stop being visible), defeats exhaustiveness checking,
+  and needs a matcher protocol through the checker, LSP and trace, for a
+  saving of one method call.
+- **Reverse.** If 3 or more library families need the method-returning-
+  enum workaround and it hurts readability, add declared view enums that
+  lower to that method call, keeping exhaustiveness and `cpl explain`.
+- **Status.** Accepted (closed by design).
