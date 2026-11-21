@@ -1447,6 +1447,27 @@ impl<'a> Lowerer<'a> {
                     }
                 }
                 self.unify_ast_ty(pty, &concrete, tpl_mod, &gen_names, &mut inferred);
+                // If this argument bound a `Seq`/`Indexed`/`IndexedMut` container generic
+                // (e.g. `resized<S: Indexed, T>(self: S, n: Int, fill: T)`), deduce `T` now so
+                // subsequent arguments (like `0` for `Mod<M>`) get the element type as hint.
+                if gen_names.iter().any(|g| g == "T") && !inferred.contains_key("T") {
+                    let elem_ty = decl.bounds.iter().find_map(|b| {
+                        let is_seq_bound = b.traits.iter().any(|tr| {
+                            matches!(&tr.kind, ast::TypeKind::Named { name, .. }
+                                if matches!(name.text.as_str(), "Seq" | "Indexed" | "IndexedMut"))
+                        });
+                        if !is_seq_bound {
+                            return None;
+                        }
+                        match inferred.get(&b.name.text) {
+                            Some(GenArg::Ty(t)) => t.seq_elem(),
+                            _ => None,
+                        }
+                    });
+                    if let Some(ety) = elem_ty {
+                        inferred.insert("T".to_string(), GenArg::Ty(ety));
+                    }
+                }
             }
         }
 

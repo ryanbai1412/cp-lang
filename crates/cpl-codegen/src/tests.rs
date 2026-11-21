@@ -1457,3 +1457,25 @@ print(a ?? -1, b ?? -1, c ?? -1, d ?? -1, e ?? -1, f ?? -1)
         "first_gt/last_lt on slice views should search the O(1) view directly:\n{solve}"
     );
 }
+
+#[test]
+fn seq_view_ops_pass_views_without_to_list_copy() {
+    let out = cpp(
+        "use std.seq.{merge_sorted, zip, compress, inversions, resized, sliding_min, sliding_max}
+let xs = [1, 3, 5, 2, 4, 6]
+let m = merge_sorted(xs[0..3], xs[3..6])
+let z = zip(xs[0..3], xs[3..6])
+let c = compress(xs[1..5])
+let inv = inversions(xs[1..5])
+let r = xs[1..4].resized(5, 0)
+let smn = xs[1..6].sliding_min(2)
+let smx = xs[1..6].sliding_max(2)
+print(m.len, z.len, c.len, inv, r.len, smn.len, smx.len)
+",
+    );
+    let solve = out.split("void solve()").nth(1).expect("solve() emitted");
+    assert!(
+        !solve.contains("cpl::to_list("),
+        "generalized std.seq ops on slice views must not emit cpl::to_list:\n{solve}"
+    );
+}

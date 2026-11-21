@@ -284,22 +284,23 @@ pub fn nth_element<S: IndexedMut>(mut self: S, k: Int):
         elif k > gt: lo = gt + 1
         else: return
 
-/// Merge two sorted lists into one sorted list, taking from `a` before `b` on ties. O(|a| + |b|).
-pub fn merge_sorted<T>(a: List<T>, b: List<T>) -> List<T>:
+/// Merge two sorted sequences into one sorted list, taking from `a` before `b` on ties.
+/// Works on any `Indexed` sequences (`List<T>`, `[D]T`, `Str`, `Range`, views). O(|a| + |b|).
+pub fn merge_sorted<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>:
     var out: List<T> = []
     var (i, j) = (0, 0)
     while i < a.len and j < b.len:
-        if b[j] < a[i]:
-            out.push(b[j])
+        if b.at(j) < a.at(i):
+            out.push(b.at(j))
             j += 1
         else:
-            out.push(a[i])
+            out.push(a.at(i))
             i += 1
     while i < a.len:
-        out.push(a[i])
+        out.push(a.at(i))
         i += 1
     while j < b.len:
-        out.push(b[j])
+        out.push(b.at(j))
         j += 1
     out
 
@@ -354,10 +355,9 @@ pub fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T):
     if let p = prev, let f = first_val:
         yield (p, f)
 
-/// The pairs `(a[i], b[i])`, as many as the shorter list has.
-pub fn zip<A, B>(a: List<A>, b: List<B>) -> List<(A, B)> = [
-    (a[i], b[i]) for i in 0..min(a.len, b.len)
-]
+/// The pairs `(a.at(i), b.at(i))`, as many as the shorter sequence has.
+/// Works on any `Indexed` sequences (`List`, `[D]T`, `Str`, `Range`, views). O(min(|a|, |b|)).
+pub fn zip<A: Indexed, B: Indexed>(a: A, b: B) = [(a.at(i), b.at(i)) for i in 0..min(a.len, b.len)]
 
 /// The value `m` holds for `k`, after storing `v` there if it held none: `ids.get_or_insert(name, ids.len)`
 /// gives each new name the next id. O(log n).
@@ -566,9 +566,10 @@ pub struct Compressed<D, T>(vals: [D]T):
 
 /// Coordinate compression: `let xs = compress(all)` sorts the values, drops the duplicates
 /// and gives them a fresh domain `xs.D`, so an array over them is `[xs.D]Int` and an index of
-/// one compression cannot be used in another. O(n log n).
-pub fn compress<T>(all: List<T>):
-    var sorted_vals = sorted(all)
+/// one compression cannot be used in another. Works on any `Seq`. O(n log n).
+pub fn compress<S: Seq, T>(all: S):
+    var sorted_vals: List<T> = [x for x in all]
+    sorted_vals.sort()
     dedup(mut sorted_vals)
     domain D = 0..sorted_vals.len
     Compressed<D, T>([D] i => sorted_vals[i.to_idx])
@@ -640,12 +641,12 @@ pub fn perm_pow<V>(p: [V]V, k: Int) -> [V]V:
             out[cyc[j]] = cyc[(j + shift) % m]
     out
 
-/// Number of inversions: pairs `(i, j)` with `i < j` and `a[i] > a[j]`. O(n log n).
-pub fn inversions<T>(a: List<T>) -> Int:
-    let n = a.len
+/// Number of inversions: pairs `(i, j)` with `i < j` and `a[i] > a[j]`. Works on any `Seq`. O(n log n).
+pub fn inversions<S: Seq, T>(a: S) -> Int:
+    var cur: List<T> = [x for x in a]
+    let n = cur.len
     if n <= 1: return 0
-    var cur = a.copy()
-    var buf = a.copy()
+    var buf = List.filled(n, cur[0])
     var ans = 0
     var width = 1
     var to_buf = true
@@ -748,15 +749,14 @@ pub fn next_greater<D, T>(self: [D]T, strict: Bool = true) -> [D]?D:
         stk.push(i)
     out
 
-/// Minimum of every length-`k` contiguous window of `self` (`n - k + 1` values, empty if `k > n`). O(n).
-pub fn sliding_min<D, T>(self: [D]T, k: Int) -> List<T>:
+/// Minimum of every length-`k` contiguous window of `self` (`n - k + 1` values, empty if `k > n`). Works on any `Seq`. O(n).
+pub fn sliding_min<S: Seq, T>(self: S, k: Int) -> List<T>:
     assert k >= 1, "sliding window size must be at least 1"
     var out: List<T> = []
     var dq: List<(pos: Int, val: T)> = []
     var head = 0
     var idx = 0
-    for i in D:
-        let x = self[i]
+    for x in self:
         while head < dq.len and dq.last!.val >= x: dq.pop()
         dq.push((pos: idx, val: x))
         if dq[head].pos <= idx - k: head += 1
@@ -764,15 +764,14 @@ pub fn sliding_min<D, T>(self: [D]T, k: Int) -> List<T>:
         idx += 1
     out
 
-/// Maximum of every length-`k` contiguous window of `self` (`n - k + 1` values, empty if `k > n`). O(n).
-pub fn sliding_max<D, T>(self: [D]T, k: Int) -> List<T>:
+/// Maximum of every length-`k` contiguous window of `self` (`n - k + 1` values, empty if `k > n`). Works on any `Seq`. O(n).
+pub fn sliding_max<S: Seq, T>(self: S, k: Int) -> List<T>:
     assert k >= 1, "sliding window size must be at least 1"
     var out: List<T> = []
     var dq: List<(pos: Int, val: T)> = []
     var head = 0
     var idx = 0
-    for i in D:
-        let x = self[i]
+    for x in self:
         while head < dq.len and dq.last!.val <= x: dq.pop()
         dq.push((pos: idx, val: x))
         if dq[head].pos <= idx - k: head += 1
@@ -788,9 +787,9 @@ pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D):
     self[j] = t
 
 /// `self` cut or padded with `fill` to length `n`: `a.resized(size, Z(0))` instead of
-/// `[if i < a.len: a[i] else: Z(0) for i in 0..size]`. O(n).
-pub fn resized<T>(self: List<T>, n: Int, fill: T) -> List<T> = [
-    if i < self.len: self[i] else: fill for i in 0..n
+/// `[if i < a.len: a[i] else: Z(0) for i in 0..size]`. Works on any `Indexed` sequence. O(n).
+pub fn resized<S: Indexed, T>(self: S, n: Int, fill: T) -> List<T> = [
+    if i < self.len: self.at(i) else: fill for i in 0..n
 ]
 
 /// Move all elements out of `self` in O(1), leaving it empty.
@@ -1477,6 +1476,17 @@ fn seq_and_indexed_traits_unify_sequences_and_views():
     assert sum(r) == 15 and min(r) == 1 and max(r) == 5 and prod(r) == 120
     assert [p for p in r.pairs()] == [(1, 2), (2, 3), (3, 4), (4, 5)]
     assert [e.rest for e in r.excl_fold(+)] == [14, 13, 12, 11, 10]
+
+    // Generalized Seq/Indexed ops on views and arrays without copying
+    let vs = [1, 3, 5, 2, 4, 6]
+    assert merge_sorted(vs[0..3], vs[3..6]) == [1, 2, 3, 4, 5, 6]
+    assert zip(vs[0..3], s[0..3]) == [(1, '0'), (3, '0'), (5, '1')]
+    let cv = compress(vs[1..5])
+    assert cv.len == 4 and cv.at(2).ord == 0 and cv.at(5).ord == 3
+    assert inversions(vs[1..5]) == 3
+    assert vs[1..4].resized(5, 0) == [3, 5, 2, 0, 0]
+    assert vs[1..6].sliding_min(2) == [3, 2, 2, 4]
+    assert vs[1..6].sliding_max(2) == [5, 5, 4, 6]
 
 @test
 fn distinct_with_by_key_keeps_first_seen():
