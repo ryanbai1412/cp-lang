@@ -1,6 +1,7 @@
 # ucup5s03a
 
-Score: 2/5
+Score: pending (rewrite-c: header names both series and the binomial transforms; series written as x^s f(x^2) terms, no offset layout)
+Dream: pending (rewrite-c: new dream; Fps value type with substitution and division)
 
 The header says only that the answer is a quotient of two series; the series are assembled by hand-placed coefficients at unexplained offsets. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
