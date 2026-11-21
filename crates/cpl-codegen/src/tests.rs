@@ -47,7 +47,8 @@ fn a_dividend_that_may_be_negative_gets_the_branchless_fix() {
     );
     let cpp = cpp(source);
     assert!(
-        cpp.contains("inline ll modp(ll a, ll b)") && cpp.contains("return r + ((r >> 63) & b);"),
+        cpp.contains("inline ll modp(ll a, ll b)")
+            && cpp.contains("return r + ((r >> 63) & b);"),
         "{cpp}"
     );
     // The helpers it does not call are not in the file.
@@ -153,7 +154,9 @@ fn without_its_source_the_file_says_so_and_is_otherwise_the_same() {
 
 #[test]
 fn hash_map_uses_salted_splitmix64_cphash() {
-    let cpp = cpp("var hm: HashMap<Int, Int> = []\nhm[42] = 7\nprint(hm.get(42) ?? 0)\n");
+    let cpp = cpp(
+        "var hm: HashMap<Int, Int> = []\nhm[42] = 7\nprint(hm.get(42) ?? 0)\n",
+    );
     assert!(cpp.contains("struct CpHash"), "{cpp}");
     assert!(cpp.contains("splitmix64"), "{cpp}");
     assert!(cpp.contains("steady_clock"), "{cpp}");
@@ -194,11 +197,7 @@ fn decl(cpp: &str, name: &str) -> String {
                 .is_some_and(|head| head.trim_end().ends_with(&needle))
         })
         .unwrap_or_else(|| panic!("no declaration of `{name}`:\n{cpp}"));
-    line.trim()
-        .split(&needle)
-        .next()
-        .unwrap_or_default()
-        .to_string()
+    line.trim().split(&needle).next().unwrap_or_default().to_string()
 }
 
 const TABLE: &str = "let n: 1..=100 = read()\ndomain V = 0..n\nlet w: [V]0..=1000 = read()\nlet any: Int = read()\nvar dp: [V]?Int = none\n";
@@ -220,10 +219,7 @@ fn an_optional_of_a_position_a_bool_or_a_char_is_one_scalar() {
     assert_eq!(decl(&cpp, "c"), "std::vector<cpl::OptChar>", "{cpp}");
     assert!(cpp.contains("using OptPos = Niche<int, int, -1>;"), "{cpp}");
     assert!(cpp.contains("using OptBool = Niche<bool, u8, 2>;"), "{cpp}");
-    assert!(
-        cpp.contains("using OptChar = Niche<u8, short, -1>;"),
-        "{cpp}"
-    );
+    assert!(cpp.contains("using OptChar = Niche<u8, short, -1>;"), "{cpp}");
     // No Int table was packed, so its alias is not in the file.
     assert!(!cpp.contains("OptInt"), "{cpp}");
 }
@@ -270,31 +266,16 @@ fn an_int_table_with_no_proof_stays_a_std_optional() {
     assert_eq!(table("dp[V.first] = Int.MIN"), PLAIN);
     // Input with no declared low end, and anything computed from it.
     assert_eq!(table("dp[V.first] = any"), PLAIN);
-    assert_eq!(
-        table("dp[V.first] = 0\ndp[V.last] = (dp[V.first] ?? 0) + any"),
-        PLAIN
-    );
+    assert_eq!(table("dp[V.first] = 0\ndp[V.last] = (dp[V.first] ?? 0) + any"), PLAIN);
     assert_eq!(table("let x = any + 1\ndp[V.first] = x"), PLAIN);
     // Two values above Int.MIN can still add up to it, and a difference
     // or a product of them can reach it.
-    assert_eq!(
-        table("dp[V.first] = -1\ndp[V.last] = (dp[V.first] ?? 0) + (dp[V.first] ?? 0)"),
-        PLAIN
-    );
-    assert_eq!(
-        table("dp[V.first] = -1\ndp[V.last] = (dp[V.first] ?? 0) - w[V.first]"),
-        PLAIN
-    );
-    assert_eq!(
-        table("dp[V.first] = -1\ndp[V.last] = (dp[V.first] ?? 0) * 2"),
-        PLAIN
-    );
+    assert_eq!(table("dp[V.first] = -1\ndp[V.last] = (dp[V.first] ?? 0) + (dp[V.first] ?? 0)"), PLAIN);
+    assert_eq!(table("dp[V.first] = -1\ndp[V.last] = (dp[V.first] ?? 0) - w[V.first]"), PLAIN);
+    assert_eq!(table("dp[V.first] = -1\ndp[V.last] = (dp[V.first] ?? 0) * 2"), PLAIN);
     // What a fn returns or is handed is not followed.
     assert_eq!(table("fn f() -> Int: any\ndp[V.first] = f()"), PLAIN);
-    assert_eq!(
-        table("fn f(x: Int) -> Int:\n    dp[V.first] = x\n    0\nprint(f(any))"),
-        PLAIN
-    );
+    assert_eq!(table("fn f(x: Int) -> Int:\n    dp[V.first] = x\n    0\nprint(f(any))"), PLAIN);
     // A variable stored twice counts for both stores.
     assert_eq!(table("var x = 0\nx = any\ndp[V.first] = x"), PLAIN);
     // Through another table.
@@ -304,14 +285,8 @@ fn an_int_table_with_no_proof_stays_a_std_optional() {
 #[test]
 fn an_int_table_used_as_a_whole_value_stays_a_std_optional() {
     const PLAIN: &str = "std::vector<std::optional<ll>>";
-    assert_eq!(
-        table("fn f(xs: [V]?Int) -> Int: xs[V.first] ?? 0\nprint(f(dp))"),
-        PLAIN
-    );
-    assert_eq!(
-        table("fn f(mut xs: [V]?Int):\n    xs[V.first] = 1\nf(mut dp)"),
-        PLAIN
-    );
+    assert_eq!(table("fn f(xs: [V]?Int) -> Int: xs[V.first] ?? 0\nprint(f(dp))"), PLAIN);
+    assert_eq!(table("fn f(mut xs: [V]?Int):\n    xs[V.first] = 1\nf(mut dp)"), PLAIN);
     assert_eq!(table("for x in dp: print(x ?? 0)"), PLAIN);
     assert_eq!(table("print(dp)"), PLAIN);
     // An index that runs code is moved out of line with the table.
@@ -360,14 +335,8 @@ fn a_program_without_grader_fns_has_a_main_and_no_judge_types() {
 #[test]
 fn a_map_whose_order_never_shows_is_a_hash_table() {
     let blind = cpp("var m = Map<Int, Int>()\nvar s = Set<Int>()\nm[42] = 7\ns.insert(3)\nprint(m.get(42) ?? 0, 3 in s, m.len)\n");
-    assert!(
-        blind.contains("std::unordered_map<ll, ll, cpl::CpHash>"),
-        "{blind}"
-    );
-    assert!(
-        blind.contains("std::unordered_set<ll, cpl::CpHash>"),
-        "{blind}"
-    );
+    assert!(blind.contains("std::unordered_map<ll, ll, cpl::CpHash>"), "{blind}");
+    assert!(blind.contains("std::unordered_set<ll, cpl::CpHash>"), "{blind}");
     assert!(!blind.contains("std::map<ll, ll>"), "{blind}");
     for ordered in [
         "for (k, v) in m: print(k, v)",
@@ -380,21 +349,14 @@ fn a_map_whose_order_never_shows_is_a_hash_table() {
     ] {
         let seen = cpp(&format!("var m = Map<Int, Int>()\nm[42] = 7\n{ordered}\n"));
         assert!(seen.contains("std::map<ll, ll>"), "{ordered}: {seen}");
-        assert!(
-            !seen.contains("std::unordered_map<ll, ll"),
-            "{ordered}: {seen}"
-        );
+        assert!(!seen.contains("std::unordered_map<ll, ll"), "{ordered}: {seen}");
     }
 }
 
 #[test]
 fn a_key_tested_and_then_read_is_looked_up_once() {
-    let once =
-        cpp("var m = Map<Int, Int>()\nm[4] = 7\nlet x: Int = read()\nif x in m: print(m[x] + 1)\n");
-    assert!(
-        once.contains("= m.find(x);") && once.contains("->second"),
-        "{once}"
-    );
+    let once = cpp("var m = Map<Int, Int>()\nm[4] = 7\nlet x: Int = read()\nif x in m: print(m[x] + 1)\n");
+    assert!(once.contains("= m.find(x);") && once.contains("->second"), "{once}");
     assert!(!once.contains("m.at(x)"), "{once}");
     // A body that changes the map keeps the two lookups.
     let twice = cpp("var m = Map<Int, Int>()\nm[4] = 7\nlet x: Int = read()\nif x in m:\n    m.remove(x + 1)\n    print(m[x])\n");
@@ -405,9 +367,7 @@ fn a_key_tested_and_then_read_is_looked_up_once() {
 fn a_list_index_inside_unchecked_has_no_bounds_test() {
     let checked = cpp("var xs = [1, 2, 3]\nlet i: Int = read()\nxs[i] = xs[i] + 1\nprint(xs)\n");
     assert!(checked.contains("cpl::at(xs, i)"), "{checked}");
-    let raw = cpp(
-        "var xs = [1, 2, 3]\nlet i: Int = read()\nunchecked:\n    xs[i] = xs[i] + 1\nprint(xs)\n",
-    );
+    let raw = cpp("var xs = [1, 2, 3]\nlet i: Int = read()\nunchecked:\n    xs[i] = xs[i] + 1\nprint(xs)\n");
     assert!(raw.contains("xs[i] = xs[i] + 1"), "{raw}");
     assert!(!raw.contains("cpl::at(xs, i)"), "{raw}");
 }
@@ -416,10 +376,7 @@ fn a_list_index_inside_unchecked_has_no_bounds_test() {
 fn a_local_list_that_stays_in_its_fn_is_one_buffer() {
     let fixture = include_str!("../../cpl-cli/tests/programs/reused_local_lists.cp");
     let cpp = cpp(fixture);
-    assert!(
-        cpp.contains("static std::vector<ll> xs;\n  xs.clear();"),
-        "{cpp}"
-    );
+    assert!(cpp.contains("static std::vector<ll> xs;\n  xs.clear();"), "{cpp}");
     assert!(!cpp.contains("static std::vector<ll> seen;"), "{cpp}");
     assert!(!cpp.contains("static std::vector<ll> out;"), "{cpp}");
 }
@@ -473,15 +430,9 @@ fn a_let_of_a_list_nothing_changes_is_a_reference_not_a_copy() {
         "let vals = compress([30, 10, 20, 10])\n",
         "print(vals.at(20))\n",
     ));
-    assert!(
-        cpp.contains("const std::vector<ll>& row = cpl::at(rows, r);"),
-        "{cpp}"
-    );
+    assert!(cpp.contains("const std::vector<ll>& row = cpl::at(rows, r);"), "{cpp}");
     // `grow` changes `rows`: `kept` is what the row was.
-    assert!(
-        cpp.contains("std::vector<ll> kept = cpl::at(rows, r);"),
-        "{cpp}"
-    );
+    assert!(cpp.contains("std::vector<ll> kept = cpl::at(rows, r);"), "{cpp}");
     assert!(!cpp.contains("const std::vector<ll>& kept"), "{cpp}");
     // `vals.at(x)` searches the field where it is.
     assert!(!cpp.contains("= self.vals;"), "{cpp}");
@@ -505,21 +456,12 @@ fn a_let_at_the_top_level_is_a_reference_while_nothing_after_it_changes_the_list
         "print(total, inside(0))\n",
     ));
     // `size` reads `rows` and changes nothing.
-    assert!(
-        cpp.contains("const std::vector<ll>& row = cpl::at(rows, "),
-        "{cpp}"
-    );
-    assert!(
-        cpp.contains("const std::vector<ll>& a = cpl::at(rows, i);"),
-        "{cpp}"
-    );
+    assert!(cpp.contains("const std::vector<ll>& row = cpl::at(rows, "), "{cpp}");
+    assert!(cpp.contains("const std::vector<ll>& a = cpl::at(rows, i);"), "{cpp}");
     // A fn that changes `rows`, a store, and a fn value that may do
     // either: each name is what the row was.
     for copied in ["before", "kept", "was", "b"] {
-        assert!(
-            cpp.contains(&format!("std::vector<ll> {copied} = cpl::at(rows, ")),
-            "{copied}: {cpp}"
-        );
+        assert!(cpp.contains(&format!("std::vector<ll> {copied} = cpl::at(rows, ")), "{copied}: {cpp}");
         assert!(!cpp.contains(&format!("& {copied} = ")), "{copied}: {cpp}");
     }
 }
@@ -535,19 +477,10 @@ fn an_optional_tuple_with_a_position_has_no_flag() {
         "plain = (1, 2)\n",
         "print(far, plain)\n",
     ));
-    assert!(
-        cpp.contains("cpl::OptTuple<std::tuple<ll, int>, 1> far"),
-        "{cpp}"
-    );
-    assert!(
-        cpp.contains("template <class T, size_t K> struct OptTuple {"),
-        "{cpp}"
-    );
+    assert!(cpp.contains("cpl::OptTuple<std::tuple<ll, int>, 1> far"), "{cpp}");
+    assert!(cpp.contains("template <class T, size_t K> struct OptTuple {"), "{cpp}");
     // No `Int` of a tuple is free to say `none`.
-    assert!(
-        cpp.contains("std::optional<std::tuple<ll, ll>> plain"),
-        "{cpp}"
-    );
+    assert!(cpp.contains("std::optional<std::tuple<ll, ll>> plain"), "{cpp}");
 }
 
 /// `for j in 0..b.len:` in a fn indexes `b[j]` with no check, as `L0414`
@@ -577,15 +510,14 @@ fn a_loop_to_the_length_of_a_list_indexes_it_unchecked() {
 
 #[test]
 fn a_fn_is_declared_ahead_only_when_it_is_named_before_it_is_defined() {
-    let cpp = cpp("fn first(n: Int) -> Int: n + 1\n\
+    let cpp = cpp(
+        "fn first(n: Int) -> Int: n + 1\n\
          fn even(n: Int) -> Bool: n == 0 or odd(n - 1)\n\
          fn odd(n: Int) -> Bool: n != 0 and even(n - 1)\n\
-         print(first(2), even(4))\n");
-    assert!(cpp.contains("\nbool odd(ll n);\n"), "{cpp}");
-    assert!(
-        !cpp.contains("\nbool even(ll n);\n") && !cpp.contains("\nll first(ll n);\n"),
-        "{cpp}"
+         print(first(2), even(4))\n",
     );
+    assert!(cpp.contains("\nbool odd(ll n);\n"), "{cpp}");
+    assert!(!cpp.contains("\nbool even(ll n);\n") && !cpp.contains("\nll first(ll n);\n"), "{cpp}");
 }
 
 #[test]

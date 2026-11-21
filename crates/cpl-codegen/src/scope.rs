@@ -28,10 +28,7 @@ pub(crate) fn hoisted(body: &Block, params: usize) -> BTreeSet<usize> {
 /// The parameters, of the first `params` slots, that the body names.
 pub(crate) fn named_params(body: &Block, params: usize) -> BTreeSet<usize> {
     // With no parameter in sight, each one the body names is "hoisted".
-    hoisted(body, 0)
-        .into_iter()
-        .filter(|slot| *slot < params)
-        .collect()
+    hoisted(body, 0).into_iter().filter(|slot| *slot < params).collect()
 }
 
 impl Scopes {
@@ -90,10 +87,7 @@ impl Scopes {
                         self.expr(hi);
                         step.iter().for_each(|e| self.expr(e));
                     }
-                    Iter::RangeVal(e, _)
-                    | Iter::Seq(e, _)
-                    | Iter::Subsets(e)
-                    | Iter::Members(e) => self.expr(e),
+                    Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => self.expr(e),
                 }
                 self.visible.push(BTreeSet::new());
                 self.declare(*slot);
@@ -257,8 +251,7 @@ pub(crate) fn reused(program: &Program, id: Option<usize>, body: &Block) -> BTre
     let mut twice: BTreeSet<usize> = BTreeSet::new();
     walk::deep_stmts(body, &mut |stmt| {
         if let Stmt::Let(slot, Some(init)) = stmt {
-            let empty = matches!(&init.kind, ExprKind::Tuple(items) if items.is_empty())
-                && matches!(init.ty, Ty::List(_))
+            let empty = matches!(&init.kind, ExprKind::Tuple(items) if items.is_empty()) && matches!(init.ty, Ty::List(_))
                 || matches!(&init.kind, ExprKind::Fill(dims, _) if dims.len() == 1);
             if !empty || starts.contains(slot) {
                 twice.insert(*slot);

@@ -135,13 +135,7 @@ const RESERVED: &[&str] = &[
 pub(crate) fn ident(name: &str) -> String {
     let clean: String = name
         .chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() || c == '_' {
-                c
-            } else {
-                '_'
-            }
-        })
+        .map(|c| if c.is_ascii_alphanumeric() || c == '_' { c } else { '_' })
         .collect();
     let clean = if clean.is_empty() || clean.as_bytes()[0].is_ascii_digit() {
         format!("_{clean}")
@@ -203,11 +197,7 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
             format!("std::vector<{}>", elem_ty(program, niches, elem))
         }
         Ty::Array { dims, elem } => {
-            format!(
-                "cpl::Grid<{}, {}>",
-                elem_ty(program, niches, elem),
-                dims.len()
-            )
+            format!("cpl::Grid<{}, {}>", elem_ty(program, niches, elem), dims.len())
         }
         Ty::Opt(inner) => match **inner {
             Ty::Pos(_) | Ty::Bound(_) => "cpl::OptPos".into(),
@@ -233,42 +223,26 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
             format!("std::tuple<{}>", items.join(", "))
         }
         Ty::Record(fields) => {
-            let items: Vec<String> = fields
-                .iter()
-                .map(|(_, t)| cty(program, niches, t))
-                .collect();
+            let items: Vec<String> = fields.iter().map(|(_, t)| cty(program, niches, t)).collect();
             format!("std::tuple<{}>", items.join(", "))
         }
         Ty::List(elem) => format!("std::vector<{}>", elem_ty(program, niches, elem)),
         Ty::Map(key, value) if program.unordered_maps.contains(key) => {
             cty(program, niches, &Ty::HashMap(key.clone(), value.clone()))
         }
-        Ty::Set(elem) if program.unordered_sets.contains(elem) => {
-            cty(program, niches, &Ty::HashSet(elem.clone()))
-        }
-        Ty::Map(key, value) => format!(
-            "std::map<{}, {}>",
-            cty(program, niches, key),
-            cty(program, niches, value)
-        ),
+        Ty::Set(elem) if program.unordered_sets.contains(elem) => cty(program, niches, &Ty::HashSet(elem.clone())),
+        Ty::Map(key, value) => format!("std::map<{}, {}>", cty(program, niches, key), cty(program, niches, value)),
         Ty::HashMap(key, value) => format!(
             "std::unordered_map<{}, {}, cpl::CpHash>",
             cty(program, niches, key),
             cty(program, niches, value)
         ),
         Ty::Set(elem) => format!("std::set<{}>", cty(program, niches, elem)),
-        Ty::HashSet(elem) => format!(
-            "std::unordered_set<{}, cpl::CpHash>",
-            cty(program, niches, elem)
-        ),
+        Ty::HashSet(elem) => format!("std::unordered_set<{}, cpl::CpHash>", cty(program, niches, elem)),
         Ty::Mut(of) => format!("{}&", cty(program, niches, of)),
         Ty::Fn(args, ret) => {
             let ps: Vec<String> = args.iter().map(|t| cty(program, niches, t)).collect();
-            format!(
-                "std::function<{}({})>",
-                cty(program, niches, ret),
-                ps.join(", ")
-            )
+            format!("std::function<{}({})>", cty(program, niches, ret), ps.join(", "))
         }
         Ty::Struct(id) => ident(&program.structs[*id].name),
         Ty::Enum(id) => ident(&program.enums[*id].name),

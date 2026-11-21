@@ -93,19 +93,12 @@ impl Found {
             | ExprKind::Call(..)
             | ExprKind::CallExpr(..)
             | ExprKind::Closure(_) => true,
-            ExprKind::Builtin(
-                Builtin::Contains | Builtin::MapGet | Builtin::Len | Builtin::Copy,
-                _,
-            ) => true,
+            ExprKind::Builtin(Builtin::Contains | Builtin::MapGet | Builtin::Len | Builtin::Copy, _) => true,
             ExprKind::Mutate(op, place, _) => {
                 self.see(program, &place.ty);
                 let blind = matches!(
                     op,
-                    Mutation::Insert
-                        | Mutation::Remove
-                        | Mutation::Clear
-                        | Mutation::Take
-                        | Mutation::Push
+                    Mutation::Insert | Mutation::Remove | Mutation::Clear | Mutation::Take | Mutation::Push
                 );
                 if !blind {
                     self.order(program, &place.ty);
@@ -125,10 +118,9 @@ impl Found {
         walk::deep_stmts(block, &mut |stmt| {
             if let Stmt::For(_, _, iter, _) = stmt {
                 match iter {
-                    Iter::Seq(seq, _)
-                    | Iter::RangeVal(seq, _)
-                    | Iter::Subsets(seq)
-                    | Iter::Members(seq) => self.order(program, &seq.ty),
+                    Iter::Seq(seq, _) | Iter::RangeVal(seq, _) | Iter::Subsets(seq) | Iter::Members(seq) => {
+                        self.order(program, &seq.ty)
+                    }
                     Iter::Range { .. } => {}
                 }
             }
@@ -151,12 +143,7 @@ pub(crate) fn find(program: &Program) -> (Vec<Ty>, Vec<Ty>) {
     }
     found.block(program, &program.main);
     found.block(program, &program.setup);
-    let Found {
-        mut maps,
-        mut sets,
-        ordered_maps,
-        ordered_sets,
-    } = found;
+    let Found { mut maps, mut sets, ordered_maps, ordered_sets } = found;
     maps.retain(|k| !ordered_maps.contains(k));
     sets.retain(|k| !ordered_sets.contains(k));
     (maps, sets)

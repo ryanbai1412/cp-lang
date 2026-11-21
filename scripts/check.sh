@@ -82,6 +82,13 @@ staged_guard() {
 step "staged files: no dist/ output, no secrets"
 staged_guard
 
+# npm writes the registry it installed from into the lockfile; only the
+# public registry's URLs belong in the repository.
+step "lockfiles: packages resolve from the public npm registry"
+if git grep -h -E '"resolved": "' -- '*package-lock.json' | grep -v '"resolved": "https://registry.npmjs.org/' | head -3 | grep .; then
+    fail "a lockfile resolves packages from a private mirror; rewrite its URLs to https://registry.npmjs.org/"
+fi
+
 need cargo "see https://rustup.rs"
 step "cargo clippy --workspace --all-targets -- -D warnings"
 cargo clippy --workspace --all-targets -- -D warnings

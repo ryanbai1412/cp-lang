@@ -53,39 +53,19 @@ pub struct Fitted {
 /// reader gives way to what the judge accepts: first the source in the
 /// header, then half of what indentation is left. `Err` is the length of
 /// the shortest file when even that is over.
-pub fn emit_within(
-    program: &cpl_ir::Program,
-    name: &str,
-    source: &str,
-    limit: usize,
-) -> Result<Fitted, usize> {
+pub fn emit_within(program: &cpl_ir::Program, name: &str, source: &str, limit: usize) -> Result<Fitted, usize> {
     let cpp = emit(program, name, Some(source));
     let full = cpp.len();
     if full <= limit {
-        return Ok(Fitted {
-            cpp,
-            full,
-            header: true,
-            narrow: false,
-        });
+        return Ok(Fitted { cpp, full, header: true, narrow: false });
     }
     let cpp = emit(program, name, None);
     if cpp.len() <= limit {
-        return Ok(Fitted {
-            cpp,
-            full,
-            header: false,
-            narrow: false,
-        });
+        return Ok(Fitted { cpp, full, header: false, narrow: false });
     }
     let narrowed = narrow(&cpp);
     match narrowed.len() <= limit {
-        true => Ok(Fitted {
-            cpp: narrowed,
-            full,
-            header: false,
-            narrow: true,
-        }),
+        true => Ok(Fitted { cpp: narrowed, full, header: false, narrow: true }),
         false => Err(narrowed.len()),
     }
 }

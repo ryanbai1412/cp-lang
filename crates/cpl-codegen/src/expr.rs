@@ -281,12 +281,8 @@ impl<'p> Emitter<'p> {
                     })
                     .collect();
                 match &base.ty {
-                    Ty::Array { dims, .. } if dims.len() > 1 && proven(indices) => {
-                        format!("{b}({})", at.join(", "))
-                    }
-                    Ty::Array { dims, .. } if dims.len() > 1 => {
-                        format!("{b}.ck({})", at.join(", "))
-                    }
+                    Ty::Array { dims, .. } if dims.len() > 1 && proven(indices) => format!("{b}({})", at.join(", ")),
+                    Ty::Array { dims, .. } if dims.len() > 1 => format!("{b}.ck({})", at.join(", ")),
                     Ty::Array { .. } | Ty::Str if !proven(indices) => {
                         self.need("at");
                         format!("cpl::at({b}, {})", at[0])
@@ -373,9 +369,7 @@ impl<'p> Emitter<'p> {
     fn packed_result(&mut self, ty: &Ty, code: Code) -> Code {
         let cpp = self.ty(ty);
         match ty {
-            Ty::Opt(_) if cpp.starts_with("cpl::Opt") => {
-                Code::primary(format!("{cpp}({})", code.text))
-            }
+            Ty::Opt(_) if cpp.starts_with("cpl::Opt") => Code::primary(format!("{cpp}({})", code.text)),
             _ => code,
         }
     }
@@ -396,8 +390,7 @@ impl<'p> Emitter<'p> {
     /// cell of a packed table is read in place when its indices run no
     /// code, and as a `std::optional` like any other otherwise.
     fn opened(&mut self, e: &Expr) -> Code {
-        self.raw_cell =
-            matches!(&e.kind, ExprKind::Index(_, indices) if indices.iter().all(walk::is_simple));
+        self.raw_cell = matches!(&e.kind, ExprKind::Index(_, indices) if indices.iter().all(walk::is_simple));
         self.expr(e)
     }
 
@@ -451,10 +444,8 @@ impl<'p> Emitter<'p> {
             ExprKind::Binary(op, l, r) => self.binary(e, *op, l, r),
             // `f == none`, `f != none` on an optional fn: whether one is
             // there. Fns don't compare, so the optionals can't.
-            ExprKind::Cmp(op @ (CmpOp::Eq | CmpOp::Ne), x, none)
-            | ExprKind::Cmp(op @ (CmpOp::Eq | CmpOp::Ne), none, x)
-                if none.kind == ExprKind::None
-                    && matches!(&x.ty, Ty::Opt(inner) if matches!(**inner, Ty::Fn(..))) =>
+            ExprKind::Cmp(op @ (CmpOp::Eq | CmpOp::Ne), x, none) | ExprKind::Cmp(op @ (CmpOp::Eq | CmpOp::Ne), none, x)
+                if none.kind == ExprKind::None && matches!(&x.ty, Ty::Opt(inner) if matches!(**inner, Ty::Fn(..))) =>
             {
                 let code = self.expr(x);
                 let has = format!("{}.has_value()", code.at(PRIMARY));
@@ -530,9 +521,7 @@ impl<'p> Emitter<'p> {
                         self.need("narrow");
                         Code::primary(format!("cpl::to_int({})", code.text))
                     }
-                    Cast::IntToChar if matches!(inner.kind, ExprKind::Int(0..=255)) => {
-                        c_cast("cpl::u8")
-                    }
+                    Cast::IntToChar if matches!(inner.kind, ExprKind::Int(0..=255)) => c_cast("cpl::u8"),
                     Cast::IntToChar => {
                         self.need("narrow");
                         Code::primary(format!("cpl::to_char({})", code.text))
@@ -563,20 +552,10 @@ impl<'p> Emitter<'p> {
             ExprKind::Index(base, indices)
                 if !self.packed_cell(e)
                     && indices.len() == 1
-                    && self
-                        .found
-                        .iter()
-                        .any(|(m, k, _)| m.kind == base.kind && k.kind == indices[0].kind) =>
+                    && self.found.iter().any(|(m, k, _)| m.kind == base.kind && k.kind == indices[0].kind) =>
             {
-                let it = self
-                    .found
-                    .iter()
-                    .rev()
-                    .find(|(m, k, _)| m.kind == base.kind && k.kind == indices[0].kind);
-                Code::primary(format!(
-                    "{}->second",
-                    it.map(|f| f.2.as_str()).unwrap_or_default()
-                ))
+                let it = self.found.iter().rev().find(|(m, k, _)| m.kind == base.kind && k.kind == indices[0].kind);
+                Code::primary(format!("{}->second", it.map(|f| f.2.as_str()).unwrap_or_default()))
             }
             ExprKind::Index(base, indices) => {
                 let mut operands: Vec<&Expr> = vec![base];
@@ -668,11 +647,7 @@ impl<'p> Emitter<'p> {
                         "{}.{}{}",
                         b.at(PRIMARY),
                         ident(&program.structs[*id].fields[*index].0),
-                        if self.rows.contains_key(&(*id, *index)) {
-                            ".vec()"
-                        } else {
-                            ""
-                        }
+                        if self.rows.contains_key(&(*id, *index)) { ".vec()" } else { "" }
                     )),
                     _ => Code::primary(format!("std::get<{index}>({})", b.text)),
                 }
@@ -864,11 +839,7 @@ impl<'p> Emitter<'p> {
                     }
                     Mutation::PopFirst | Mutation::PopLast => {
                         self.need("ordered_near");
-                        let f = if *op == Mutation::PopFirst {
-                            "pop_first"
-                        } else {
-                            "pop_last"
-                        };
+                        let f = if *op == Mutation::PopFirst { "pop_first" } else { "pop_last" };
                         self.packed_result(&e.ty, Code::primary(format!("cpl::{f}({p})")))
                     }
                     Mutation::PopVal => {
@@ -904,9 +875,7 @@ impl<'p> Emitter<'p> {
                         let seq = if is_grid { format!("{p}.d") } else { p };
                         Code::primary(format!("cpl::swap_at({seq}, {arg}, {arg2})"))
                     }
-                    Mutation::Resize => {
-                        Code::primary(format!("{p}.resize((size_t)({arg}), {arg2})"))
-                    }
+                    Mutation::Resize => Code::primary(format!("{p}.resize((size_t)({arg}), {arg2})")),
                     Mutation::Truncate => {
                         self.need("truncate");
                         Code::primary(format!("cpl::truncate({p}, {arg})"))
@@ -928,19 +897,15 @@ impl<'p> Emitter<'p> {
                     Mutation::Fill => {
                         let is_grid = matches!(&place.ty, Ty::Array { dims, .. } if dims.len() > 1);
                         let vec_expr = if is_grid { format!("{p}.d") } else { p };
-                        Code::primary(format!(
-                            "std::fill({vec_expr}.begin(), {vec_expr}.end(), {arg})"
-                        ))
+                        Code::primary(format!("std::fill({vec_expr}.begin(), {vec_expr}.end(), {arg})"))
                     }
                 }
             }
-            ExprKind::Sort(place, sort_by, desc) => self.lambda("void", |this, out| {
-                this.sort_stmts(place, sort_by, desc.as_deref(), out)
-            }),
+            ExprKind::Sort(place, sort_by, desc) => {
+                self.lambda("void", |this, out| this.sort_stmts(place, sort_by, desc.as_deref(), out))
+            }
             ExprKind::Read(spec) => self.read(spec),
-            ExprKind::Print(args, end) => self.lambda("void", |this, out| {
-                this.print_stmts(args, end.as_deref(), out)
-            }),
+            ExprKind::Print(args, end) => self.lambda("void", |this, out| this.print_stmts(args, end.as_deref(), out)),
             ExprKind::Format(pieces) => self.lambda("std::string", |this, out| {
                 // Values that run code are computed before the capture
                 // begins, so what they print goes out and not in.
@@ -1193,11 +1158,7 @@ impl<'p> Emitter<'p> {
                 code
             }
             (Ty::I128, BinOp::Div | BinOp::Rem) => {
-                let helper = if op == BinOp::Div {
-                    "ediv128"
-                } else {
-                    "emod128"
-                };
+                let helper = if op == BinOp::Div { "ediv128" } else { "emod128" };
                 self.need(helper);
                 Code::primary(format!("cpl::{helper}({}, {})", a.text, b.text))
             }
@@ -1321,9 +1282,7 @@ impl<'p> Emitter<'p> {
             // fn with one (`conv_Int_115`, a copy made for its types) can't
             // meet one.
             let name = fn_name(&f.name);
-            let scalars = args
-                .iter()
-                .all(|arg| matches!(arg, Arg::Value(value) if value.ty.is_scalar()));
+            let scalars = args.iter().all(|arg| matches!(arg, Arg::Value(value) if value.ty.is_scalar()));
             let home = if scalars || name.bytes().any(|b| b.is_ascii_uppercase()) {
                 ""
             } else {
@@ -1442,8 +1401,7 @@ impl<'p> Emitter<'p> {
                     let item = Code::primary("item".to_string());
                     let stmt = match (&elem, &none_text) {
                         (Ty::Opt(inner), Some(text)) => {
-                            let some =
-                                this.show_stmt(&Code::new("*item", UNARY), inner, FLOAT_DIGITS);
+                            let some = this.show_stmt(&Code::new("*item", UNARY), inner, FLOAT_DIGITS);
                             format!("if (item) {{ {some} }} else cpl::put_str({text});")
                         }
                         _ => this.show_stmt(&item, &elem, FLOAT_DIGITS),
@@ -1502,10 +1460,7 @@ impl<'p> Emitter<'p> {
             }
             Builtin::Len if self.is_row(&args[0]) => {
                 let row = codes[0].at(PRIMARY);
-                Code::new(
-                    format!("(ll){}.size()", row.strip_suffix(".vec()").unwrap_or(&row)),
-                    UNARY,
-                )
+                Code::new(format!("(ll){}.size()", row.strip_suffix(".vec()").unwrap_or(&row)), UNARY)
             }
             Builtin::Len => Code::new(format!("(ll){}.size()", codes[0].at(PRIMARY)), UNARY),
             Builtin::First if matches!(first_ty, Some(Ty::Range(_))) => {
@@ -1563,11 +1518,7 @@ impl<'p> Emitter<'p> {
             }
             Builtin::SetMin | Builtin::SetMax if matches!(args[0].ty, Ty::Map(..)) => {
                 self.need("ordered_near");
-                let f = if op == Builtin::SetMin {
-                    "first_of"
-                } else {
-                    "last_of"
-                };
+                let f = if op == Builtin::SetMin { "first_of" } else { "last_of" };
                 Code::primary(format!("cpl::{f}({})", text(0)))
             }
             Builtin::SetMin => helper(self, "set_min"),
