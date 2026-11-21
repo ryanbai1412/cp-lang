@@ -1256,7 +1256,7 @@ def git_head_short():
     return r.stdout.strip() if r.returncode == 0 else "unknown"
 
 
-def print_frictions_report(fr):
+def print_frictions_report(fr, quiet=False):
     print(
         f"Frictions (research/frictions/*.md): {fr['files']} files, "
         f"{fr['open']} open ({fr['by_severity']['blocker']} blocker, "
@@ -1270,17 +1270,17 @@ def print_frictions_report(fr):
         print("  open blockers:")
         for b in fr["open_blockers"]:
             print(f"    - [{b['file']}] {b['title']}")
-    if fr["open_highs"]:
+    if not quiet and fr["open_highs"]:
         print("  open highs:")
         for h in fr["open_highs"]:
             print(f"    - [{h['file']}] {h['title']}")
-    if fr["warnings"]:
+    if not quiet and fr["warnings"]:
         print(f"  schema warnings ({len(fr['warnings'])}):")
         for w in fr["warnings"][:10]:
             print(f"    ! {w}")
 
 
-def print_summary(report, diff, show_ports=False):
+def print_summary(report, diff, show_ports=False, quiet=False):
     t = report["totals"]
     m = report["meta"]
     print(
@@ -1317,7 +1317,7 @@ def print_summary(report, diff, show_ports=False):
         )
     fl = t["friction_lint"]
     print(f"  lint:      {fl['wa_trap']} wa_trap, {fl['real_gap']} real_gap, {fl['stale_port']} stale_port")
-    print_frictions_report(report["frictions"])
+    print_frictions_report(report["frictions"], quiet=quiet)
 
     if diff["has_baseline"]:
         print(
@@ -1498,6 +1498,7 @@ def main(argv=None):
     ap.add_argument("--out", default=DEFAULT_BASELINE, help="output JSON path for --write")
     ap.add_argument("--json", action="store_true", help="print JSON report to stdout")
     ap.add_argument("--show-ports", action="store_true", help="print per-port table")
+    ap.add_argument("--quiet", action="store_true", help="omit verbose open-high and schema-warning lists")
     ap.add_argument("--frictions", action="store_true", help="print friction summary over research/frictions/*.md and exit")
     ap.add_argument("--frictions-dir", default=FRICTIONS_DIR, help="directory containing friction markdown reports")
     ap.add_argument("--cpl", help="path to cpl binary")
@@ -1526,7 +1527,7 @@ def main(argv=None):
     if args.json:
         print(json.dumps({"report": report, "diff": diff}, indent=2))
     else:
-        print_summary(report, diff, show_ports=args.show_ports)
+        print_summary(report, diff, show_ports=args.show_ports, quiet=args.quiet)
 
     if args.check and diff["regressions"]:
         return 1

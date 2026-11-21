@@ -187,27 +187,16 @@ echo "prelude: $prelude names"
 step "cpl fmt --check stdlib"
 cargo run -q -p cpl-cli -- fmt --check stdlib || fail "stdlib/ is not formatted; run: cargo run -p cpl-cli -- fmt stdlib"
 
-# Every ecnerwala port checks, is formatted and lints clean: a compiler,
-# formatter or lint change that breaks one of them stops here. Under a
-# second for the 225 of them.
-step "proto/ports/ecnerwala: cpl check, cpl fmt --check, cpl lint with 0 warnings"
+# Fast validation scoreboard: every active port under proto/ports/ passes
+# cpl check, cpl fmt --check, cpl lint (0 warnings), and cpl build (<= 64 KB),
+# plus contestant tokens, friction_lint (0 wa_trap), friction-report summary,
+# and regression check against research/scoreboard.json.
+step "validation scoreboard (--fast --check against research/scoreboard.json)"
 cpl="${CARGO_TARGET_DIR:-target}/debug/cpl"
-ecn=(proto/ports/ecnerwala/*.cp)
-ecn_start=$(date +%s%N)
-"$cpl" check "${ecn[@]}" >/dev/null 2>&1 || { "$cpl" check "${ecn[@]}" 2>&1 | grep -v ': no errors$'; fail "an ecnerwala port above no longer passes cpl check"; }
-"$cpl" fmt --check "${ecn[@]}" >/dev/null 2>&1 || { "$cpl" fmt --check "${ecn[@]}" 2>&1 | tail -n 5; fail "an ecnerwala port is not formatted; run: cpl fmt proto/ports/ecnerwala/*.cp"; }
-ecn_lint=$("$cpl" lint "${ecn[@]}" 2>&1)
-grep -q <<<"$ecn_lint" ', 0 warnings, 0 errors$' || { echo "$ecn_lint"; fail "an ecnerwala port has a lint warning"; }
-echo "${#ecn[@]} ports pass in $(( ($(date +%s%N) - ecn_start) / 1000000 )) ms"
-
-# Every ecnerwala port builds into C++ a judge accepts: `cpl build` stops
-# when the file is over 65,536 bytes. Nothing is compiled; the ports run
-# side by side.
-step "proto/ports/ecnerwala: cpl build writes at most 65,536 bytes of C++"
-ecn_start=$(date +%s%N)
-ecn_big=$(printf '%s\n' "${ecn[@]}" | xargs -P "$(nproc)" -n 8 sh -c 'for f; do "$0" build "$f" -o - 2>&1 >/dev/null | grep -v "the header is left out" | sed "s|^|$f: |"; done' "$cpl" || true)
-[ -z "$ecn_big" ] || { echo "$ecn_big"; fail "an ecnerwala port above no longer builds, or builds into more C++ than a judge accepts"; }
-echo "${#ecn[@]} ports build in $(( ($(date +%s%N) - ecn_start) / 1000000 )) ms"
+python3 -m unittest scripts/test_scoreboard.py >/dev/null \
+    || fail "scripts/test_scoreboard.py failed; rerun: python3 -m unittest scripts/test_scoreboard.py -v"
+python3 scripts/scoreboard.py --fast --check --quiet --cpl "$cpl" \
+    || fail "scoreboard regression detected; rerun: python3 scripts/scoreboard.py --fast --check"
 
 # The offline edition is one file people download; site/test_site.py holds
 # the same cap. The WASM build is a cargo no-op when nothing changed.
