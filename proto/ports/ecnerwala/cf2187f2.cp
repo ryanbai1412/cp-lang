@@ -1,7 +1,8 @@
-// Codeforces 2187 F2: Al Fine (counting version).
-// Same permutation tree as F1: an increasing node multiplies its children's
-// counts; a maximal chain of decreasing nodes multiplies the counts of its
-// non-leaf right children by the ways to place its leaf pattern.
+// Every subtree is an interval of both DFS orders, so read b backwards in a's
+// positions: the common trees are the cuts of that sequence's permutation tree.
+// Increasing and prime nodes multiply their children. Down a decreasing chain,
+// ends(v)[k] counts v's ways with k single-vertex right children still free to
+// climb; each such child adds a slot and lets every open one move up.
 use std.seq.{inverse, scan_in_place}
 use std.tree.{PermTree, PermKind}
 

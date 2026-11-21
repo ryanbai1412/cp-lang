@@ -1,35 +1,19 @@
-// Codeforces 2187 F2: Al Fine (counting version).
-// Build the permutation tree `PermTree.of(b.rev.map(a.inverse()))`:
-//   - An increasing node multiplies its two children's counts.
-//   - A maximal decreasing chain multiplies the counts of its non-leaf right
-//     children and bottom-most child by `leaf_ways(rights)`, the number of ways
-//     to interleave its leaf right-children (a bottom-up prefix-sum DP where
-//     each leaf right-child shifts the running prefix sums by one slot).
-
+// Every subtree is an interval of both DFS orders, so read b backwards in a's
+// positions: the common trees are the cuts of that sequence's permutation tree.
+// Increasing and prime nodes multiply their children. Down a decreasing chain,
+// ends(v)[k] counts v's ways with k single-vertex right children still free to
+// climb; each such child adds a slot and lets every open one move up.
 type Z = Mod<998_244_353>
-
 @!multitest
 let n: 2..=5000 = read()
 domain V = 1..=n
-let (a, b): (Perm<V>, Perm<V>) = read()
-let t = PermTree.of(b.rev.map(a.inverse()))
+let (a, b) = read<(Perm<V>, Perm<V>)>()
+let t = PermTree.of(b.rev.map(a.inverse))
 
-fn leaf_ways(rights: List<t.Node>) -> Z:
-    var ends: List<Z> = [1]
-    for r in rights.rev:
-        ends.push(0)
-        if t[r] is leaf: ends = ends.scan(+)
-    ends.sum()
-
-fn count(v: t.Node) -> Z = match t[v]:
-    leaf => 1
-    incr(l, r) => count(l) * count(r)
-    decr => chain(v)
-
-fn chain(top: t.Node) -> Z:
-    let spine = successors(top, v => if t[v] is decr: t.left(v) else: none)
-    let rights = spine.drop_last().map(t.right)
-    let non_leaf_prod = rights.filter(r => t[r] is not leaf).map(count).product()
-    non_leaf_prod * count(spine.last!) * leaf_ways(rights)
-
-print(count(t.root))
+fn ends(v: t.Node) -> List<Z> = match t[v]:
+    leaf => [1]
+    decr(l, r: leaf) => (ends(l) + [0]).prefix_sums()
+    decr(l, r) => (ends(l) + [0]).map(e => e * ways(r))
+    node(l, r) => [ways(l) * ways(r)]
+fn ways(v: t.Node) -> Z = ends(v).sum()
+print(ways(t.root))
