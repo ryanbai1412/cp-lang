@@ -1932,6 +1932,9 @@ impl<'a> Lowerer<'a> {
                 if let Some(GenArg::Domain(id)) = self.gen_env.get(&name.text).cloned() {
                     return Some(DimSpec::Pos(id));
                 }
+                if let Some(GenArg::Ty(Ty::Bound(id))) = self.gen_env.get(&name.text).cloned() {
+                    return Some(DimSpec::Bound(id));
+                }
                 if let Some(Sym::Domain(id)) = self.get_sym(&name.text) {
                     return Some(DimSpec::Pos(id));
                 }

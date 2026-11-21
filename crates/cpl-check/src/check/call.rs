@@ -304,7 +304,7 @@ impl<'a> Checker<'a> {
                 "partition" => {
                     return Some(Ty::Tuple(vec![Ty::list(elem.clone()), Ty::list(elem)]));
                 }
-                "group_by" => {
+                "group" => {
                     return Some(Ty::list(Ty::list(elem)));
                 }
                 "first" => {
@@ -313,11 +313,8 @@ impl<'a> Checker<'a> {
                 "filter" => {
                     return Some(Ty::list(elem));
                 }
-                "sorted" if matches!(base_ty, Ty::Domain(_)) => {
+                "sort" if matches!(base_ty, Ty::Domain(_)) => {
                     return Some(Ty::list(elem));
-                }
-                "at" if matches!(base_ty, Ty::Domain(_)) => {
-                    return Some(elem);
                 }
                 _ => {}
             }
@@ -569,15 +566,27 @@ impl<'a> Checker<'a> {
                         };
                     }
                     let mut bindings = Bindings::new();
-                    if type_args.len() == generics.len() {
+                    if !type_args.is_empty() && type_args.len() <= generics.len() {
                         bindings.extend(generics.iter().cloned().zip(type_args.iter().cloned()));
                     }
                     self.args(callee_text, verb, params, args, call, &mut bindings);
                     // Type arguments left out are read off the values.
-                    let type_args = if type_args.is_empty()
-                        && generics.iter().all(|g| bindings.contains_key(g))
+                    let type_args = if type_args.len() < generics.len()
+                        && generics
+                            .iter()
+                            .enumerate()
+                            .all(|(i, g)| i < type_args.len() || bindings.contains_key(g))
                     {
-                        generics.iter().map(|g| bindings[g].clone()).collect()
+                        generics
+                            .iter()
+                            .enumerate()
+                            .map(|(i, g)| {
+                                type_args
+                                    .get(i)
+                                    .cloned()
+                                    .unwrap_or_else(|| bindings[g].clone())
+                            })
+                            .collect()
                     } else {
                         type_args
                     };
@@ -636,7 +645,6 @@ impl<'a> Checker<'a> {
         let mut misnamed = false;
         let mut pack: Vec<Ty> = Vec::new();
         for arg in args {
-            let arg_ty = self.infer(&arg.value);
             let param = match &arg.name {
                 Some(name) if labeled => match params.iter().find(|p| p.name == name.text) {
                     Some(param) => Some(param),
@@ -670,6 +678,23 @@ impl<'a> Checker<'a> {
                     param
                 }
             };
+            let prev_bounds_range = self.expected_bounds_range;
+            if let Some(p) = param {
+                let expected = p.ty.subst(bindings);
+                if matches!(
+                    expected,
+                    Ty::Named { ref name, ref args }
+                        if name == "Range"
+                            && matches!(
+                                args.as_slice(),
+                                [Ty::Pos(d) | Ty::Domain(d)] if d.ends_with(".bounds")
+                            )
+                ) {
+                    self.expected_bounds_range = true;
+                }
+            }
+            let arg_ty = self.infer(&arg.value);
+            self.expected_bounds_range = prev_bounds_range;
             let Some(param) = param else {
                 if arg.mutable {
                     self.require_mutable(&arg.value, "passed as `mut`");

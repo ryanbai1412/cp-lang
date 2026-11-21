@@ -114,6 +114,9 @@ pub(crate) struct Checker<'a> {
     self_ty: Option<Ty>,
     /// What is lent and what is known, for the exclusivity of lends.
     lends: lends::Lends,
+    /// True when the enclosing context expects a `Range<D.bounds>` so ranges
+    /// over `D.bounds` keep `.bounds` and allow `..=`.
+    expected_bounds_range: bool,
 }
 
 pub(crate) struct Checked {
@@ -143,6 +146,7 @@ impl<'a> Checker<'a> {
             plain_if: None,
             self_ty: None,
             lends: lends::Lends::default(),
+            expected_bounds_range: false,
         }
     }
 

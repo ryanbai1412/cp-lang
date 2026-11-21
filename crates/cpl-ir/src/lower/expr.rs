@@ -179,7 +179,7 @@ impl<'a> Lowerer<'a> {
                         span,
                     )
                 }
-                _ => self.range_val(lo.as_deref(), hi.as_deref(), *inclusive, span),
+                _ => self.range_val(lo.as_deref(), hi.as_deref(), *inclusive, hint, span),
             },
             ast::ExprKind::Range { .. } => {
                 self.unsupported(span, "a stepped range kept as a value");
@@ -1024,6 +1024,7 @@ impl<'a> Lowerer<'a> {
         lo: Option<&ast::Expr>,
         hi: Option<&ast::Expr>,
         inclusive: bool,
+        expected: Option<&Ty>,
         span: Span,
     ) -> Expr {
         let lo_e = lo.map(|e| self.expr(e, None));
@@ -1079,14 +1080,24 @@ impl<'a> Lowerer<'a> {
                 }
                 (Ty::Bound(d), Ty::Bound(d2)) if d == d2 => {
                     let d = *d;
+                    let want_bound = matches!(
+                        expected,
+                        Some(Ty::Range(inner)) if matches!(inner.as_ref(), Ty::Bound(ed) if *ed == d)
+                    );
                     let lo_ord = self.cast(Cast::Ord, l, Ty::Int);
                     let hi_ord = self.cast(Cast::Ord, r, Ty::Int);
+                    let hi_ord = if want_bound && inclusive {
+                        self.int_add(hi_ord, 1)
+                    } else {
+                        hi_ord
+                    };
+                    let elem = if want_bound { Ty::Bound(d) } else { Ty::Pos(d) };
                     self.mk(
                         ExprKind::Range {
                             lo: Box::new(lo_ord),
                             hi: Box::new(hi_ord),
                         },
-                        Ty::Range(Box::new(Ty::Pos(d))),
+                        Ty::Range(Box::new(elem)),
                         span,
                     )
                 }
@@ -1098,14 +1109,21 @@ impl<'a> Lowerer<'a> {
             },
             (Some(l), None) => match l.ty {
                 Ty::Pos(d) | Ty::Bound(d) => {
+                    let want_bound = matches!(l.ty, Ty::Bound(_))
+                        && matches!(
+                            expected,
+                            Some(Ty::Range(inner)) if matches!(inner.as_ref(), Ty::Bound(ed) if *ed == d)
+                        );
                     let lo_ord = self.cast(Cast::Ord, l, Ty::Int);
-                    let hi_ord = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                    let len = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                    let hi_ord = if want_bound { self.int_add(len, 1) } else { len };
+                    let elem = if want_bound { Ty::Bound(d) } else { Ty::Pos(d) };
                     self.mk(
                         ExprKind::Range {
                             lo: Box::new(lo_ord),
                             hi: Box::new(hi_ord),
                         },
-                        Ty::Range(Box::new(Ty::Pos(d))),
+                        Ty::Range(Box::new(elem)),
                         span,
                     )
                 }
@@ -1151,14 +1169,24 @@ impl<'a> Lowerer<'a> {
                     )
                 }
                 Ty::Bound(d) => {
+                    let want_bound = matches!(
+                        expected,
+                        Some(Ty::Range(inner)) if matches!(inner.as_ref(), Ty::Bound(ed) if *ed == d)
+                    );
                     let lo_ord = self.int_lit(0, span);
                     let hi_ord = self.cast(Cast::Ord, r, Ty::Int);
+                    let hi_ord = if want_bound && inclusive {
+                        self.int_add(hi_ord, 1)
+                    } else {
+                        hi_ord
+                    };
+                    let elem = if want_bound { Ty::Bound(d) } else { Ty::Pos(d) };
                     self.mk(
                         ExprKind::Range {
                             lo: Box::new(lo_ord),
                             hi: Box::new(hi_ord),
                         },
-                        Ty::Range(Box::new(Ty::Pos(d))),
+                        Ty::Range(Box::new(elem)),
                         span,
                     )
                 }
@@ -3380,6 +3408,27 @@ impl<'a> Lowerer<'a> {
                         closed: false,
                     },
                     Ty::Pos(id),
+                )
+            }
+            ast::ExprKind::Name(name)
+                if self.lookup(name).is_none()
+                    && matches!(self.gen_env.get(name), Some(GenArg::Ty(Ty::Bound(_)))) =>
+            {
+                let Some(GenArg::Ty(Ty::Bound(id))) = self.gen_env.get(name).cloned() else {
+                    unreachable!()
+                };
+                let lo = self.int_lit(0, span);
+                let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
+                let hi = self.int_add(len, 1);
+                (
+                    Iter::Range {
+                        lo,
+                        hi,
+                        step: None,
+                        rev: false,
+                        closed: false,
+                    },
+                    Ty::Bound(id),
                 )
             }
             ast::ExprKind::Name(name)

@@ -126,10 +126,14 @@ impl<'a> Checker<'a> {
                     self.infer(step);
                 }
                 let elem = match (&lo_ty, &hi_ty) {
-                    // Two boundaries enclose positions: `l.l..r.r` is a
-                    // range of `V`, like `l..=r`.
+                    // Two boundaries enclose positions (`l.l..r.r` is a range of `V`),
+                    // except when the enclosing context explicitly expects `Range<V.bounds>`.
                     (Some(Ty::Pos(d)), _) | (_, Some(Ty::Pos(d))) => {
-                        Ty::Pos(d.strip_suffix(".bounds").unwrap_or(d).to_string())
+                        if self.expected_bounds_range && d.ends_with(".bounds") {
+                            Ty::Pos(d.clone())
+                        } else {
+                            Ty::Pos(d.strip_suffix(".bounds").unwrap_or(d).to_string())
+                        }
                     }
                     (Some(a), Some(b))
                         if (*a == Ty::I128 && (*b == Ty::I128 || b.is_int()))
@@ -898,7 +902,7 @@ impl<'a> Checker<'a> {
         let (Some(hi), Some(Ty::Pos(d))) = (hi, hi_ty) else {
             return;
         };
-        if inclusive && d.ends_with(".bounds") {
+        if inclusive && d.ends_with(".bounds") && !self.expected_bounds_range {
             let message = format!(
                 "`..=` ends at a position; a range up to the boundary `{}` is written `..`",
                 self.quote(hi.span)
@@ -1364,21 +1368,9 @@ impl<'a> Checker<'a> {
                             args: vec![Ty::Pos(domain.clone())],
                         }),
                     },
-                    "at" => Ty::Fn {
-                        params: vec![crate::ty::Param {
-                            name: "k".into(),
-                            ty: Ty::Int,
-                            mutable: false,
-                            has_default: false,
-                            named_only: false,
-                            variadic: false,
-                            lazy: false,
-                        }],
-                        ret: Box::new(Ty::Pos(domain.clone())),
-                    },
                     "partition" => Ty::Fn {
                         params: vec![crate::ty::Param {
-                            name: "pred".into(),
+                            name: "keep".into(),
                             ty: Ty::Fn {
                                 params: vec![crate::ty::Param {
                                     name: "".into(),
@@ -1402,9 +1394,9 @@ impl<'a> Checker<'a> {
                             Ty::list(Ty::Pos(domain.clone())),
                         ])),
                     },
-                    "group_by" => Ty::Fn {
+                    "group" => Ty::Fn {
                         params: vec![crate::ty::Param {
-                            name: "key".into(),
+                            name: "by".into(),
                             ty: Ty::Fn {
                                 params: vec![crate::ty::Param {
                                     name: "".into(),
@@ -1419,7 +1411,7 @@ impl<'a> Checker<'a> {
                             },
                             mutable: false,
                             has_default: false,
-                            named_only: false,
+                            named_only: true,
                             variadic: false,
                             lazy: false,
                         }],
@@ -1448,7 +1440,7 @@ impl<'a> Checker<'a> {
                         }],
                         ret: Box::new(Ty::list(Ty::Pos(domain.clone()))),
                     },
-                    "sorted" => Ty::Unknown,
+                    "sort" => Ty::Unknown,
                     _ => Ty::Unknown,
                 }
             }

@@ -79,10 +79,11 @@ impl Ty {
     }
 
     /// Element type of a built-in `Seq` / `Indexed` sequence (`Str`, `List<T>`,
-    /// 1D `[D]T`, `Range<I>`, and lent slice/reverse views which keep their base type).
+    /// 1D `[D]T`, `Range<I>`, domains `D`, and lent slice/reverse views which keep their base type).
     pub fn seq_elem(&self) -> Option<Ty> {
         match self {
             Ty::Str => Some(Ty::Char),
+            Ty::Domain(d) => Some(Ty::Pos(d.clone())),
             Ty::Array { index, elem } if index.len() == 1 => Some((**elem).clone()),
             Ty::Named { name, args }
                 if matches!(name.as_str(), "List" | "Range") && args.len() == 1 =>

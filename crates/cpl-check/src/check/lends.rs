@@ -1448,6 +1448,13 @@ impl<'a> Checker<'a> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return;
         };
+        if let ExprKind::Name(n) = &base.kind {
+            if matches!(self.local(n).map(|b| &b.ty), Some(Ty::Domain(_)))
+                || matches!(self.env.global(n).as_deref(), Some(Def::Domain { .. }))
+            {
+                return;
+            }
+        }
         let (Some(root), Some(key)) = (
             root_name(base).filter(|_| name.text == "sort"),
             args.iter().find(|a| a.name.as_ref().is_some_and(|n| n.text == "by")),
@@ -1885,6 +1892,15 @@ impl<'a> Checker<'a> {
         };
         if !MUTATORS.contains(&name.text.as_str()) {
             return;
+        }
+        if name.text == "sort" {
+            if let ExprKind::Name(n) = &base.kind {
+                if matches!(self.local(n).map(|b| &b.ty), Some(Ty::Domain(_)))
+                    || matches!(self.env.global(n).as_deref(), Some(Def::Domain { .. }))
+                {
+                    return;
+                }
+            }
         }
         // `xs.push(x)` changes `xs` as an assignment to it would.
         self.check_access(base, true);

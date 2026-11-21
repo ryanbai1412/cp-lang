@@ -3268,6 +3268,29 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+        // Generic parameter bound to a `.bounds` domain (`D = V.bounds`):
+        // `D.K` / `D.len` / `D.count` is `V.K + 1`, `D.first` is `0`, `D.last` is `V.K`.
+        if let ast::ExprKind::Name(n) = &base.kind {
+            if self.lookup(n).is_none() {
+                if let Some(GenArg::Ty(Ty::Bound(d))) = self.gen_env.get(n).cloned() {
+                    match name.text.as_str() {
+                        "K" | "len" | "size" | "count" => {
+                            let len = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                            return self.int_add(len, 1);
+                        }
+                        "first" => {
+                            let zero = self.int_lit(0, span);
+                            return self.cast(Cast::Trust, zero, Ty::Bound(d));
+                        }
+                        "last" => {
+                            let len = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                            return self.cast(Cast::Trust, len, Ty::Bound(d));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
         match self.sym(base) {
             Some(Sym::Mod(target_mod)) => {
                 let sym = self.mod_syms[target_mod].get(&name.text).copied();
@@ -3486,7 +3509,7 @@ impl<'a> Lowerer<'a> {
                 let res_ty = if inner == Ty::I128 { Ty::I128 } else { Ty::Int };
                 let lo = builtin(self, Builtin::RangeLo, vec![value], res_ty);
                 match inner {
-                    Ty::Pos(d) => self.cast(Cast::Trust, lo, Ty::Bound(d)),
+                    Ty::Pos(d) | Ty::Bound(d) => self.cast(Cast::Trust, lo, Ty::Bound(d)),
                     _ => lo,
                 }
             }
@@ -3495,7 +3518,7 @@ impl<'a> Lowerer<'a> {
                 let res_ty = if inner == Ty::I128 { Ty::I128 } else { Ty::Int };
                 let hi = builtin(self, Builtin::RangeHi, vec![value], res_ty);
                 match inner {
-                    Ty::Pos(d) => self.cast(Cast::Trust, hi, Ty::Bound(d)),
+                    Ty::Pos(d) | Ty::Bound(d) => self.cast(Cast::Trust, hi, Ty::Bound(d)),
                     _ => hi,
                 }
             }
@@ -4748,19 +4771,20 @@ impl<'a> Lowerer<'a> {
                 return self.lower_partition(base, &test.value, span);
             }
         }
-        // `xs.group_by(x => key)` returns `List<List<T>>` in first-seen key order.
-        if let ([key], "group_by") = (args, name.text.as_str()) {
-            if matches!(
-                self.probe_ty_silent(base),
-                Some(Ty::List(_) | Ty::Array { .. } | Ty::Range(_) | Ty::Set(_) | Ty::Str)
-            ) || matches!(self.sym(base), Some(Sym::Domain(_)))
+        // `xs.group(by: x => key)` returns `List<List<T>>` in first-seen key order.
+        if let ([key], "group") = (args, name.text.as_str()) {
+            if key.name.as_ref().is_none_or(|n| n.text == "by")
+                && (matches!(
+                    self.probe_ty_silent(base),
+                    Some(Ty::List(_) | Ty::Array { .. } | Ty::Range(_) | Ty::Set(_) | Ty::Str)
+                ) || matches!(self.sym(base), Some(Sym::Domain(_))))
             {
                 return self.lower_group_by(base, &key.value, span);
             }
         }
-        // `xs.first(where: x => cond)` returns `?T`.
+        // `xs.first(x => cond)` returns `?T`.
         if let ([test], "first") = (args, name.text.as_str()) {
-            if test.name.as_ref().is_none_or(|n| n.text == "where")
+            if test.name.is_none()
                 && (matches!(
                     self.probe_ty_silent(base),
                     Some(Ty::List(_) | Ty::Array { .. } | Ty::Range(_) | Ty::Set(_) | Ty::Str)
@@ -4769,8 +4793,8 @@ impl<'a> Lowerer<'a> {
                 return self.lower_first_where(base, &test.value, span);
             }
         }
-        // `D.sorted(...)`: sort all positions of domain `D` into a `List<D>`.
-        if name.text == "sorted" {
+        // `D.sort(...)`: sort all positions of domain `D` into a `List<D>`.
+        if name.text == "sort" {
             if let Some(Sym::Domain(id)) = self.sym(base) {
                 let list = self.positions(id, span);
                 let list_ty = list.ty.clone();
@@ -4903,6 +4927,23 @@ impl<'a> Lowerer<'a> {
                 );
             }
         }
+        // `D.nth(k)` where `D` is bound to `V.bounds`.
+        if name.text == "nth" {
+            if let ast::ExprKind::Name(n) = &base.kind {
+                if self.lookup(n).is_none() {
+                    if let Some(GenArg::Ty(Ty::Bound(id))) = self.gen_env.get(n).cloned() {
+                        if let Some(val) = self.one_arg("nth", args, &Ty::Int, span) {
+                            return self.mk(
+                                ExprKind::Cast(Cast::Trust, Box::new(val)),
+                                Ty::Bound(id),
+                                span,
+                            );
+                        }
+                        return self.err_expr(span);
+                    }
+                }
+            }
+        }
         // `D.bounds.nth(k)`
         if let ast::ExprKind::Field {
             base: dbase,
@@ -4912,6 +4953,15 @@ impl<'a> Lowerer<'a> {
             if fname.text == "bounds" && name.text == "nth" {
                 let dom_id = if let Some(Sym::Domain(id)) = self.sym(dbase) {
                     Some(id)
+                } else if let ast::ExprKind::Name(n) = &dbase.kind {
+                    if self.lookup(n).is_none() {
+                        match self.gen_env.get(n) {
+                            Some(GenArg::Domain(id)) | Some(GenArg::Ty(Ty::Bound(id))) => Some(*id),
+                            _ => None,
+                        }
+                    } else {
+                        None
+                    }
                 } else {
                     let dv = self.expr(dbase, None);
                     match dv.kind {
