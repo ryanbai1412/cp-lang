@@ -1,28 +1,24 @@
 @!multitest
 let (n, m): (Int, Int) = read()
 let vals: [0..n]Int = read()
-var a = [(vals[i], i) for i in 0..n]
-sort(mut a)
+let ord = sorted(0..n, by: i => vals[i])
+
 if 2 * m > n:
     print(-1)
 elif m >= 1:
     print(n - m)
-    for i in 0..(n - 2 * m):
-        print(a[i].1 + 1, a[i + 1].1 + 1)
-    for i in 0..m:
-        print(a[n - 1 - i].1 + 1, a[n - 1 - m - i].1 + 1)
+    for i in 0..n - 2 * m: print(ord[i] + 1, ord[i + 1] + 1)
+    for i in 0..m: print(ord[n - 1 - i] + 1, ord[n - 1 - m - i] + 1)
 else:
     var s = n - 2
-    var r = a[n - 1].0
+    var r = vals[ord[n - 1]]
     while s >= 0 and r > 0:
-        r -= a[s].0
+        r -= vals[ord[s]]
         s -= 1
-    if r <= 0:
-        print(n - 1)
-        s += 1
-        for i in 0..s:
-            print(a[i].1 + 1, a[i + 1].1 + 1)
-        for i in (s..(n - 1)).rev:
-            print(a[i].1 + 1, a[n - 1].1 + 1)
-    else:
+    if r > 0:
         print(-1)
+        return
+    print(n - 1)
+    s += 1
+    for i in 0..s: print(ord[i] + 1, ord[i + 1] + 1)
+    for i in (s..n - 1).rev: print(ord[i] + 1, ord[n - 1] + 1)

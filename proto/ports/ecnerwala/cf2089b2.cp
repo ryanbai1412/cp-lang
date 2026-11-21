@@ -1,8 +1,9 @@
 @!multitest
-let n: Int = read()
-var k: Int = read()
+let (n, k_in): (Int, Int) = read()
+var k = k_in
 let a: [0..n]Int = read()
 let b: [0..n]Int = read()
+
 var pref = 0
 var min_val = 0
 var min_pos = 0
@@ -11,19 +12,20 @@ for i in 0..n:
     if pref < min_val:
         min_val = pref
         min_pos = i + 1
+
 var stk: List<(Int, Int)> = []
 var cnt_dist: [0..=n]Int = 0
 for i in 0..n:
     let idx = (min_pos + i) % n
     stk.push((a[idx], i))
     var rem = b[idx]
-    while let top = stk.last(), rem > 0:
-        let t = min(top.0, rem)
-        cnt_dist[i + 1 - top.1] += t
-        let _ = stk.pop()
-        if top.0 > t:
-            stk.push((top.0 - t, top.1))
+    while let (c, pos) = stk.last, rem > 0:
+        let t = min(c, rem)
+        cnt_dist[i + 1 - pos] += t
+        stk.pop()
+        if c > t: stk.push((c - t, pos))
         rem -= t
+
 var ans = n
 while ans > 0:
     if cnt_dist[ans] == 0:
