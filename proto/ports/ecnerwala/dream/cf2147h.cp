@@ -1,49 +1,36 @@
-// Codeforces 2147 H: Maxflow GCD Coloring (dream).
-// One color works iff the gcd of all Gomory-Hu tree cuts exceeds 1.
-// Otherwise two colors suffice: mod 2, eliminate odd-degree vertices by
-// complementing their alive neighborhood, then color back in reverse order.
-with io(base: 1)
-
---- with multitest() ---
-
+// The gcd of all pairwise max flows is the gcd of the Gomory–Hu tree's weights.
+// If it is not 1, one color. Otherwise two colors always suffice (Gallai): split V
+// so each side's odd-weight edges give every vertex even degree; then every cut
+// inside a side has even weight, so 2 divides all its max flows.
+@!multitest
 domain V = read(1..=50)
-let m: 0..=1225 = read()
-let edges: [m](u: V, v: V, w: 1..=1e6) = read()
+let m: 0..=choose2(V.count) = read()
+let edges = read<[m](u: V, v: V, w: 1..=1e6)>()
 
-let gh = FlowGraph<V>.undirected(edges).gomory_hu()
-if gh.weights.fold(0, gcd) != 1:
-    print(1)
-    print(V.count)
-    print(V)
-    return
+fn answer(colors: List<Bitset<V>>):
+    print(colors.len)
+    for c in colors:
+        print(c.len)
+        print(c)
 
-var adj: [V]Bitset<V> = Bitset.empty
-for (u, v, w) in edges where w % 2 == 1:
-    adj[u].toggle(v)
-    adj[v].toggle(u)
+if gcd(gomory_hu(edges).map(e => e.w)) != 1: return answer([V.all])
 
-fn flip_clique(nbr: Bitset<V>):
-    for u in nbr:
-        adj[u] ^= nbr
-        adj[u].remove(u)
+var odd = adjacency(edges.filter(e => e.w % 2 == 1), into: Bitset)
 
-var alive = Bitset<V>.full
-var stk: List<V> = []
-while let v = alive.find(v => (adj[v] & alive).len % 2 == 1):
-    alive.remove(v)
-    stk.push(v)
-    flip_clique(adj[v] & alive)
+fn complement_within(s: Bitset<V>):          // toggle every edge inside s
+    for u in s: odd[u] ^= s.without(u)
 
-var side1 = Bitset<V>.empty
-while let v = stk.pop():
-    let nbr = adj[v] & alive
-    flip_clique(nbr)
-    alive.add(v)
-    if (nbr & side1).len % 2 == 0: side1.add(v)
+// Gallai's induction: an odd-degree v is removed after complementing its
+// neighbourhood; on the way back v joins the side where its degree is even.
+fn even_split(alive: Bitset<V>) -> Bitset<V>:
+    let v = alive.find(v => (odd[v] & alive).len % 2 == 1) ?? return Bitset.empty
+    let rest = alive.without(v)
+    let nbr = odd[v] & rest
+    complement_within(nbr)
+    var side = even_split(rest)
+    complement_within(nbr)
+    if (nbr & side).len % 2 == 0: side.add(v)
+    return side
 
-let (c1, c0) = V.partition(v => v in side1)
-print(2)
-print(c0.len)
-print(c0)
-print(c1.len)
-print(c1)
+let side = even_split(V.all)
+answer([V.all - side, side])

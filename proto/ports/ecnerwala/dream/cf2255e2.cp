@@ -1,47 +1,46 @@
-use std.seg.{DualSegTree, MaxSub}
+// Every version appends each position's value to that position's history; a query
+// is the best subarray of one history. A range tag is a function on (value,
+// history). Negate and clamp only see the sign and scale with |value|, so before an
+// assignment a tag is, per sign, a new sign plus the history it records per unit of
+// |value|; after one, the value is constant and the recorded history fixed. Tags
+// compose in O(1): one dual segment tree (range apply, point get) does everything.
+enum Sign: neg = -1, zero = 0, pos = 1
 
-// Every version appends each position's value to that position's history, so a range tag
-// is a function on (value, history summary). Negate and clamp only look at the sign, and
-// scale with |value|: before the first assignment a tag maps each sign to a new sign and
-// a history per unit of |value|; after it, the value is a constant and the history is fixed.
-type Seg = MaxSub<Int>              // best/total/pre/suf, `+` joins, `* k` scales, `Seg.empty`
-enum Sign: Neg, Zero, Pos
-type Cell = (val: Int, hist: Seg)
-type Path = (to: Sign, seen: Seg)
-type Tag = (path: [Sign]Path, set: ?Cell)
+struct Cell(val: Int, hist: MaxSub)          // MaxSub: stdlib Kadane monoid, scales by k ≥ 0
+struct Path(to: Sign, seen: MaxSub)          // `seen` is per unit of |val|
+struct Tag(path: [Sign]Path, set: ?Cell)     // set: value assigned, history since
 
 fn run(f: Tag, c: Cell) -> Cell:
-    let p = f.path[Sign.of(c.val)]
+    let p = f.path[sign(c.val)]
     let hist = c.hist + p.seen * abs(c.val)
-    if f.set is s: (s.val, hist + s.hist) else: (abs(c.val) * p.to, hist)
+    if let s = f.set: Cell(s.val, hist + s.hist) else: Cell(abs(c.val) * Int(p.to), hist)
 
-fn then(g: Tag, f: Tag) -> Tag:
-    if f.set is s: return (f.path, run(g, s))
-    ([Sign] s => (g.path[f.path[s].to].to, f.path[s].seen + g.path[f.path[s].to].seen), g.set)
+fn then(g: Tag, f: Tag) -> Tag:              // f first, then g
+    if let s = f.set: return Tag(f.path, run(g, s))
+    Tag([Sign] x => (let a = f.path[x], b = g.path[a.to]; Path(b.to, a.seen + b.seen)), g.set)
 
-fn tag(to: Sign -> Sign, seen: Sign -> Seg = _ => Seg.empty, set: ?Cell = none) -> Tag =
-    ([Sign] s => (to(s), seen(s)), set)
+fn tag(to: Sign -> Sign = x => x, seen: Sign -> MaxSub = _ => .empty, set: ?Cell = none) -> Tag =
+    Tag([Sign] x => Path(to(x), seen(x)), set)
 
-let identity = tag(s => s)
-let record = tag(s => s, s => Seg.one(s))
-let negate = tag(s => -s)
-let clamp = tag(s => max(s, Zero))
-fn assign(x: Int) -> Tag = tag(s => s, set: (x, Seg.empty))
+let record = tag(seen: x => MaxSub.of(Int(x)))
+let negate = tag(to: x => Sign(-Int(x)))
+let clamp = tag(to: x => max(x, .zero))
+fn assign(v: Int) -> Tag = tag(set: Cell(v, .empty))
 
 @!multitest
-let (n, q): (1..=500_000, 1..=500_000) = read()
+let (n, q): (1..=5e5, 1..=5e5) = read()
 domain I = 1..=n
 let a: [I]-1e9..=1e9 = read()
-var st = DualSegTree<I, Cell>(Action(id: identity, compose: then, apply: run), [I] i => (a[i], Seg.one(a[i])))
+var st = DualSegTree<I>([I] i => Cell(a[i], MaxSub.of(a[i])), id: tag(), compose: then, apply: run)
 var last: U64 = 0
-fn at(y: U64) -> I = I(Int((y ^ last) % n) + 1)
+fn at(y: U64) -> I = I.at((y ^ last) % n)
 repeat q:
-    match read(1..=4):
+    match read<1..=4>():
         4 =>
             let ans = st[at(read())].hist.best
             print(ans)
-            last = ans
+            last = U64.wrap(ans)
         kind =>
-            let (l, r) = (at(read()), at(read()))
-            st.apply(min(l, r)..=max(l, r), match kind: 1 => assign(read()), 2 => negate, _ => clamp)
+            let (l, r) = minmax(at(read()), at(read()))
+            st.apply(l..=r, match kind: 1 => assign(read()); 2 => negate; _ => clamp)
     st.apply(.., record)
