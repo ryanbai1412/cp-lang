@@ -2,7 +2,7 @@
 
 Score: 3/5
 
-Dream: 3/5
+Dream: pending cold rescore (rewritten: indexes `dp[init_leaves, Count(j)]` over `Count` and names `numer` before printing)
 
 The header (lines 1-4) states the state and the initial polynomial, and the transition comments (lines 31-39) read like the editorial. The polynomial product is hand-rolled, and the closing `/ i` and `/ (n + z)` divisions are not derived. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 

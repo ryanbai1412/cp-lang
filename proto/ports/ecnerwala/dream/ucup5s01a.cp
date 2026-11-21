@@ -22,7 +22,8 @@ let unmarked = prod(Poly<Z>([d, 1]) for d in deg if d > 0)
 
 domain Count = 0..=n + m
 var dp: [Count, Count]Z = 0
-for (j, c) in unmarked.items: dp[deg.count(0), j] = c
+let init_leaves = Count(deg.count(0))
+for (j, c) in unmarked.items: dp[init_leaves, Count(j)] = c
 for z in 0..m:
     let others = n + z
     // `i` leaves and `j` unmarked; every other vertex is marked internal
@@ -35,4 +36,5 @@ for z in 0..m:
         + (others - (i - 1)) * dp.get(i - 1, j)
     )
 
-print(sum(dp[i, Count.first] / Z(i.ord) for i in Count if i > Count.first) / prod(Z(n + z) for z in 0..m))
+let numer = sum(dp[i, Count.first] / Z(i.ord) for i in Count if i > Count.first)
+print(numer / prod(Z(n + z) for z in 0..m))
