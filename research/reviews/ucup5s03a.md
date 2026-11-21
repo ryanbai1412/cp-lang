@@ -1,7 +1,7 @@
 # ucup5s03a
 
-Score: pending (rewrite-c: header names both series and the binomial transforms; series written as x^s f(x^2) terms, no offset layout)
-Dream: pending (rewrite-c: new dream; Fps value type with substitution and division)
+Score: 3/5
+Dream: 4/5
 
 The header says only that the answer is a quotient of two series; the series are assembled by hand-placed coefficients at unexplained offsets. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
@@ -20,3 +20,11 @@ The header says only that the answer is a quotient of two series; the series are
 ## Language gaps
 
 No friction report exists. Possibly missing: series substitution (`f(x^2)`, shift by `x^k`) in `std.poly`; needs a fresh-compiler check before filing.
+
+## Cold review (HEAD)
+
+Dream 4/5 (new), port → 3/5, rescored on current main. Once `Fps` exists, lines 25-27 are the header's formula.
+- The only errors are `Fps` and `X` from `std.poly` (line 10), which are reported.
+- Owed (minor): `S` and `A` (header lines 7-9) are stated, not derived. `(n, k): (Int, Int)` (line 13) has no bounds, so `Comb<Z>()` has no stated size.
+
+Port 3/5: hand `spread` substitution and an EGF `convolve` with index arithmetic (the reported series gap).

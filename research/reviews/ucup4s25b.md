@@ -1,7 +1,7 @@
 # ucup4s25b
 
-Score: pending (rewrite-c: header derives the stack simulation and why the last merge splits a query; `enum Dir`, no sentinel balls or (-1, -1), merges recorded as a list of cuts, `Prefix` sums, typed reads)
-Dream: pending (rewrite-c: new dream = port)
+Score: 4/5
+Dream: 4/5
 
 The header (lines 1-3) gives the plan, and `SparseTable` with `max` over `(merge_time, boundary)` is the right object. The simulation uses sentinels: a bottom ball of weight `inf` (line 14), a final ball of weight `2 * inf` (line 17), and `(-1, -1)` merge times (line 10). Direction is a `Bool`. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
@@ -20,3 +20,8 @@ The header (lines 1-3) gives the plan, and `SparseTable` with `max` over `(merge
 ## Language gaps
 
 No friction report exists. None needed.
+
+## Cold review (HEAD)
+
+Dream 4/5 (new; port = dream), port → 4/5, rescored on current main. It checks with zero errors. The header derives the stack simulation, the one-merge-per-boundary fact and the query split.
+- Minor: `n: Int` and `q: Int` (lines 11, 35) have no bounds. `Ball.bounds.nth(i.ord)` (line 21) converts a ball to the cut before it through `.ord`. The `(merged_at[b], b)` pair (line 33) carries `b` only to get an arg-max.

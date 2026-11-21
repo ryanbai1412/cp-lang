@@ -1,7 +1,7 @@
 # wtf26c
 
-Score: pending (rewrite-c: header gives the DP, the claim table and both binomial inversions; named convolve_2d, inline powers, 2D comprehensions)
-Dream: pending (rewrite-c: new dream; stdlib convolve_2d and binomial_inverse)
+Score: 3/5
+Dream: 4/5
 
 The header names the method (2D DP, NTT per step over flattened coordinates, two inclusion-exclusion passes) but not the recurrence; the flattening `i + stride * j` is hand bookkeeping, and the closing passes are unexplained. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
@@ -21,3 +21,11 @@ The header names the method (2D DP, NTT per step over flattened coordinates, two
 ## Language gaps
 
 No friction report exists. Possibly missing: a 2D (flattened) convolution in `std.ntt`; needs a fresh-compiler check before filing.
+
+## Cold review (HEAD)
+
+Dream 4/5 (new), port → 3/5, rescored on current main. The header gives the DP, the `claim` table and both inversions.
+- The only error is `convolve_2d` (line 12), which is reported.
+- Minor: the first inversion is `binomial_inverse()` (line 38), but the second is a hand loop (line 40); give both the same spelling or say why the second isn't a binomial inverse. `n: Int` (line 17) has no bound, so the O(n³) `power_sum` cost isn't checked.
+
+Port 3/5: a hand-flattened 2D convolution (lines 9-14) and both inversions as loops (the reported gap).
