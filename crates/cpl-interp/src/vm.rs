@@ -336,6 +336,10 @@ pub(crate) enum Op {
     ListPopDiscardFieldL { obj_v: u16, field: u16 },
     StoreGList1V { gid: u16, r_i: u16, r_val: u16 },
     StoreLList1V { list_v: u16, r_i: u16, r_val: u16 },
+    LoadGList1V { dst: u16, gid: u16, r_i: u16 },
+    LoadLList1V { dst: u16, list_v: u16, r_i: u16 },
+    LStrLen { dst: u16, str_v: u16 },
+    ClearV { reg: u16 },
 
     // Seamless fallback to tree-walker for any non-lowered IR stmt/expr
     FallbackStmt { idx: u32, clear_from_v: u16 },
@@ -1555,6 +1559,9 @@ impl<'p> Compiler<'p> {
         iter: &'p Iter,
         body: &'p Block,
     ) -> bool {
+        if let Iter::Seq(seq_expr, rev) = iter {
+            return self.try_compile_for_seq(id, slot, seq_expr, *rev, body);
+        }
         let SlotLoc::I(r_var, _) = self.slot_loc(slot) else {
             return false;
         };
@@ -1647,108 +1654,204 @@ impl<'p> Compiler<'p> {
                 }
                 true
             }
-            Iter::Seq(seq_expr, rev) => {
-                let is_array = matches!(
-                    &seq_expr.ty,
-                    Ty::Array { dims, elem }
-                        if dims.len() == 1 && ScalarKind::of_ty(elem, self.program).is_some()
-                );
-                let is_list = matches!(
-                    &seq_expr.ty,
-                    Ty::List(elem) if ScalarKind::of_ty(elem, self.program).is_some()
-                ) && matches!(seq_expr.kind, ExprKind::Local(_) | ExprKind::Global(_));
-                if !is_array && !is_list {
-                    return false;
-                }
-                let r_idx = self.alloc_i();
-                let r_len = self.alloc_i();
-                let global_id = match &seq_expr.kind {
-                    ExprKind::Global(gid) => Some(*gid as u16),
-                    _ => None,
-                };
-                let local_v = if global_id.is_none() {
-                    Some(self.compile_expr_v(seq_expr))
-                } else {
-                    None
-                };
-                match (is_array, global_id) {
-                    (true, Some(gid)) => self.emit(Op::GArrLen { dst: r_len, gid }, seq_expr.span),
-                    (true, None) => self.emit(
-                        Op::LArrLen { dst: r_len, arr_v: local_v.unwrap() },
-                        seq_expr.span,
-                    ),
-                    (false, Some(gid)) => self.emit(Op::GListLen { dst: r_len, gid }, seq_expr.span),
-                    (false, None) => self.emit(
-                        Op::LListLen { dst: r_len, list_v: local_v.unwrap() },
-                        seq_expr.span,
-                    ),
-                };
-                let r_zero = self.alloc_i();
-                let j_skip = if *rev {
-                    let r_one = self.alloc_i();
-                    self.emit(Op::ConstImmI { dst: r_zero, val: 0 }, seq_expr.span);
-                    self.emit(Op::ConstImmI { dst: r_one, val: 1 }, seq_expr.span);
-                    self.emit(Op::SubI { dst: r_idx, a: r_len, b: r_one }, seq_expr.span);
-                    self.emit(Op::JmpLtI { a: r_idx, b: r_zero, target: 0 }, seq_expr.span)
-                } else {
-                    self.emit(Op::ConstImmI { dst: r_idx, val: 0 }, seq_expr.span);
-                    self.emit(Op::JmpGeI { a: r_idx, b: r_len, target: 0 }, seq_expr.span)
-                };
-                let body_pc = self.ops.len() as u32;
-                match (is_array, global_id) {
-                    (true, Some(gid)) => self.emit(
-                        Op::LoadGArr1I { dst: r_var, gid, r_i: r_idx },
-                        seq_expr.span,
-                    ),
-                    (true, None) => self.emit(
-                        Op::LoadLArr1I { dst: r_var, arr_v: local_v.unwrap(), r_i: r_idx },
-                        seq_expr.span,
-                    ),
-                    (false, Some(gid)) => self.emit(
-                        Op::LoadGList1I { dst: r_var, gid, r_i: r_idx },
-                        seq_expr.span,
-                    ),
-                    (false, None) => self.emit(
-                        Op::LoadLList1I { dst: r_var, list_v: local_v.unwrap(), r_i: r_idx },
-                        seq_expr.span,
-                    ),
-                };
-                self.loops.push(LoopTargets {
-                    id,
-                    breaks: Vec::new(),
-                    continues: Vec::new(),
-                });
-                let saved_pinned = self.pinned_v;
-                if let Some(lv) = local_v {
-                    self.pinned_v = self.pinned_v.max(lv + 1);
-                }
-                self.compile_stmts(&body.stmts);
-                self.pinned_v = saved_pinned;
-                let lt = self.loops.pop().unwrap();
-                let step_pc = self.ops.len() as u32;
-                for c in lt.continues {
-                    self.patch(c, step_pc);
-                }
-                if *rev {
-                    self.emit(
-                        Op::ForDec { r_i: r_idx, r_lo: r_zero, target: body_pc },
-                        seq_expr.span,
-                    );
-                } else {
-                    self.emit(
-                        Op::ForInc { r_i: r_idx, r_hi: r_len, target: body_pc },
-                        seq_expr.span,
-                    );
-                }
-                let end_pc = self.ops.len() as u32;
-                self.patch(j_skip, end_pc);
-                for b in lt.breaks {
-                    self.patch(b, end_pc);
-                }
-                true
-            }
             _ => false,
         }
+    }
+
+    fn try_compile_for_seq(
+        &mut self,
+        id: LoopId,
+        slot: Slot,
+        seq_expr: &'p Expr,
+        rev: bool,
+        body: &'p Block,
+    ) -> bool {
+        #[derive(Clone, Copy)]
+        enum SeqKind {
+            Array,
+            List,
+            Str,
+        }
+        let seq_kind = match &seq_expr.ty {
+            Ty::Array { dims, .. } if dims.len() == 1 => SeqKind::Array,
+            Ty::List(_) | Ty::ListView(_) => SeqKind::List,
+            Ty::Str | Ty::StrView => SeqKind::Str,
+            _ => return false,
+        };
+        let slot_loc = self.slot_loc(slot);
+        match (seq_kind, slot_loc) {
+            (SeqKind::Str, SlotLoc::I(..)) => {}
+            (SeqKind::Str, _) => return false,
+            (_, SlotLoc::I(..) | SlotLoc::V(_) | SlotLoc::SmallTuple { .. }) => {}
+            (_, SlotLoc::OptI { .. }) => return false,
+        }
+        let r_idx = self.alloc_i();
+        let r_len = self.alloc_i();
+        let global_id = match &seq_expr.kind {
+            ExprKind::Global(gid) if matches!(seq_expr.ty, Ty::Array { .. } | Ty::List(_)) => {
+                Some(*gid as u16)
+            }
+            _ => None,
+        };
+        let local_v = if global_id.is_none() {
+            Some(self.compile_expr_v(seq_expr))
+        } else {
+            None
+        };
+        match (seq_kind, global_id) {
+            (SeqKind::Array, Some(gid)) => self.emit(Op::GArrLen { dst: r_len, gid }, seq_expr.span),
+            (SeqKind::Array, None) => self.emit(
+                Op::LArrLen { dst: r_len, arr_v: local_v.unwrap() },
+                seq_expr.span,
+            ),
+            (SeqKind::List, Some(gid)) => self.emit(Op::GListLen { dst: r_len, gid }, seq_expr.span),
+            (SeqKind::List, None) => self.emit(
+                Op::LListLen { dst: r_len, list_v: local_v.unwrap() },
+                seq_expr.span,
+            ),
+            (SeqKind::Str, _) => self.emit(
+                Op::LStrLen { dst: r_len, str_v: local_v.unwrap() },
+                seq_expr.span,
+            ),
+        };
+        let r_zero = self.alloc_i();
+        let j_skip = if rev {
+            let r_one = self.alloc_i();
+            self.emit(Op::ConstImmI { dst: r_zero, val: 0 }, seq_expr.span);
+            self.emit(Op::ConstImmI { dst: r_one, val: 1 }, seq_expr.span);
+            self.emit(Op::SubI { dst: r_idx, a: r_len, b: r_one }, seq_expr.span);
+            self.emit(Op::JmpLtI { a: r_idx, b: r_zero, target: 0 }, seq_expr.span)
+        } else {
+            self.emit(Op::ConstImmI { dst: r_idx, val: 0 }, seq_expr.span);
+            self.emit(Op::JmpGeI { a: r_idx, b: r_len, target: 0 }, seq_expr.span)
+        };
+        let body_pc = self.ops.len() as u32;
+        match slot_loc {
+            SlotLoc::I(r_var, _) => match (seq_kind, global_id) {
+                (SeqKind::Array, Some(gid)) => {
+                    self.emit(Op::LoadGArr1I { dst: r_var, gid, r_i: r_idx }, seq_expr.span);
+                }
+                (SeqKind::Array, None) => {
+                    self.emit(
+                        Op::LoadLArr1I { dst: r_var, arr_v: local_v.unwrap(), r_i: r_idx },
+                        seq_expr.span,
+                    );
+                }
+                (SeqKind::List, Some(gid)) => {
+                    self.emit(Op::LoadGList1I { dst: r_var, gid, r_i: r_idx }, seq_expr.span);
+                }
+                (SeqKind::List, None) => {
+                    self.emit(
+                        Op::LoadLList1I { dst: r_var, list_v: local_v.unwrap(), r_i: r_idx },
+                        seq_expr.span,
+                    );
+                }
+                (SeqKind::Str, Some(gid)) => {
+                    self.emit(Op::GStrGetI { dst: r_var, gid, r_i: r_idx }, seq_expr.span);
+                }
+                (SeqKind::Str, None) => {
+                    self.emit(
+                        Op::StrGetI { dst: r_var, str_v: local_v.unwrap(), r_i: r_idx },
+                        seq_expr.span,
+                    );
+                }
+            },
+            SlotLoc::V(r_var) => match (seq_kind, global_id) {
+                (SeqKind::Array, Some(gid)) => {
+                    self.emit(Op::LoadGArr1V { dst: r_var, gid, r_i: r_idx }, seq_expr.span);
+                }
+                (SeqKind::Array, None) => {
+                    self.emit(
+                        Op::LoadLArr1V { dst: r_var, arr_v: local_v.unwrap(), r_i: r_idx },
+                        seq_expr.span,
+                    );
+                }
+                (SeqKind::List, Some(gid)) => {
+                    self.emit(Op::LoadGList1V { dst: r_var, gid, r_i: r_idx }, seq_expr.span);
+                }
+                (SeqKind::List, None) => {
+                    self.emit(
+                        Op::LoadLList1V { dst: r_var, list_v: local_v.unwrap(), r_i: r_idx },
+                        seq_expr.span,
+                    );
+                }
+                (SeqKind::Str, _) => unreachable!(),
+            },
+            SlotLoc::SmallTuple { base, len, .. } => match (seq_kind, global_id) {
+                (SeqKind::Array, Some(gid)) => {
+                    self.emit(
+                        Op::LoadGArr1SmallTuple { dst_base: base, len, gid, r_i: r_idx },
+                        seq_expr.span,
+                    );
+                }
+                (SeqKind::Array, None) => {
+                    self.emit(
+                        Op::LoadLArr1SmallTuple {
+                            dst_base: base,
+                            len,
+                            arr_v: local_v.unwrap(),
+                            r_i: r_idx,
+                        },
+                        seq_expr.span,
+                    );
+                }
+                (SeqKind::List, Some(gid)) => {
+                    let tmp = self.alloc_v();
+                    self.emit(Op::LoadGList1V { dst: tmp, gid, r_i: r_idx }, seq_expr.span);
+                    self.emit(Op::UnboxSmallTuple { dst_base: base, len, src_v: tmp }, seq_expr.span);
+                    self.emit(Op::ClearV { reg: tmp }, seq_expr.span);
+                }
+                (SeqKind::List, None) => {
+                    let tmp = self.alloc_v();
+                    self.emit(
+                        Op::LoadLList1V { dst: tmp, list_v: local_v.unwrap(), r_i: r_idx },
+                        seq_expr.span,
+                    );
+                    self.emit(Op::UnboxSmallTuple { dst_base: base, len, src_v: tmp }, seq_expr.span);
+                    self.emit(Op::ClearV { reg: tmp }, seq_expr.span);
+                }
+                (SeqKind::Str, _) => unreachable!(),
+            },
+            SlotLoc::OptI { .. } => unreachable!(),
+        }
+        self.loops.push(LoopTargets {
+            id,
+            breaks: Vec::new(),
+            continues: Vec::new(),
+        });
+        let saved_pinned = self.pinned_v;
+        if let Some(lv) = local_v {
+            self.pinned_v = self.pinned_v.max(lv + 1);
+        }
+        self.compile_stmts(&body.stmts);
+        self.pinned_v = saved_pinned;
+        let lt = self.loops.pop().unwrap();
+        let step_pc = self.ops.len() as u32;
+        for c in lt.continues {
+            self.patch(c, step_pc);
+        }
+        if rev {
+            self.emit(
+                Op::ForDec { r_i: r_idx, r_lo: r_zero, target: body_pc },
+                seq_expr.span,
+            );
+        } else {
+            self.emit(
+                Op::ForInc { r_i: r_idx, r_hi: r_len, target: body_pc },
+                seq_expr.span,
+            );
+        }
+        let end_pc = self.ops.len() as u32;
+        self.patch(j_skip, end_pc);
+        for b in lt.breaks {
+            self.patch(b, end_pc);
+        }
+        if let Some(lv) = local_v {
+            if lv >= self.num_local_v {
+                self.emit(Op::ClearV { reg: lv }, seq_expr.span);
+            }
+        }
+        true
     }
 
     fn try_compile_assign(&mut self, place: &'p Place, op: AssignOp, value: &'p Expr) -> bool {
@@ -2993,14 +3096,28 @@ impl<'p> Compiler<'p> {
                         );
                         dst
                     }
-                    _ => self.emit_fallback_expr_i(expr),
+                    _ => {
+                        let arr_v = self.compile_expr_v(base);
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let dst = self.alloc_i();
+                        if indices.len() == 2 {
+                            let r_j = self.compile_expr_i(&indices[1]);
+                            self.emit(Op::LoadLArr2I { dst, arr_v, r_i, r_j }, span);
+                        } else {
+                            self.emit(Op::LoadLArr1I { dst, arr_v, r_i }, span);
+                        }
+                        if arr_v >= self.num_local_v {
+                            self.emit(Op::ClearV { reg: arr_v }, span);
+                        }
+                        dst
+                    }
                 }
             }
             ExprKind::Index(base, indices)
-                if matches!(base.ty, Ty::List(_)) && indices.len() == 1 =>
+                if matches!(base.ty, Ty::List(_) | Ty::ListView(_)) && indices.len() == 1 =>
             {
                 match &base.kind {
-                    ExprKind::Global(gid) => {
+                    ExprKind::Global(gid) if matches!(base.ty, Ty::List(_)) => {
                         let r_i = self.compile_expr_i(&indices[0]);
                         let dst = self.alloc_i();
                         self.emit(Op::LoadGList1I { dst, gid: *gid as u16, r_i }, span);
@@ -3016,7 +3133,7 @@ impl<'p> Compiler<'p> {
                             self.emit_fallback_expr_i(expr)
                         }
                     }
-                    ExprKind::Field(obj, fidx) => {
+                    ExprKind::Field(obj, fidx) if matches!(base.ty, Ty::List(_)) => {
                         let obj_v = self.compile_expr_v(obj);
                         let r_i = self.compile_expr_i(&indices[0]);
                         let dst = self.alloc_i();
@@ -3026,20 +3143,50 @@ impl<'p> Compiler<'p> {
                         );
                         dst
                     }
-                    _ => self.emit_fallback_expr_i(expr),
+                    _ => {
+                        let list_v = self.compile_expr_v(base);
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let dst = self.alloc_i();
+                        self.emit(Op::LoadLList1I { dst, list_v, r_i }, span);
+                        if list_v >= self.num_local_v {
+                            self.emit(Op::ClearV { reg: list_v }, span);
+                        }
+                        dst
+                    }
                 }
             }
             ExprKind::Index(base, indices)
-                if matches!(base.ty, Ty::Str) && indices.len() == 1 =>
+                if matches!(base.ty, Ty::Str | Ty::StrView) && indices.len() == 1 =>
             {
                 let r_i = self.compile_expr_i(&indices[0]);
                 let dst = self.alloc_i();
-                if let ExprKind::Global(gid) = base.kind {
-                    self.emit(Op::GStrGetI { dst, gid: gid as u16, r_i }, span);
-                } else {
-                    let str_v = self.compile_expr_v(base);
-                    self.emit(Op::StrGetI { dst, str_v, r_i }, span);
+                match (&base.kind, &base.ty) {
+                    (ExprKind::Global(gid), Ty::Str) => {
+                        self.emit(Op::GStrGetI { dst, gid: *gid as u16, r_i }, span);
+                    }
+                    _ => {
+                        let str_v = self.compile_expr_v(base);
+                        self.emit(Op::StrGetI { dst, str_v, r_i }, span);
+                        if str_v >= self.num_local_v {
+                            self.emit(Op::ClearV { reg: str_v }, span);
+                        }
+                    }
                 }
+                dst
+            }
+            ExprKind::Binary(BinOp::Coalesce, lhs, rhs)
+                if ScalarKind::of_opt_ty(&lhs.ty, self.program).is_some() =>
+            {
+                let (lv, ls) = self.compile_expr_opt_i(lhs);
+                let dst = self.alloc_i();
+                self.emit(Op::MoveI { dst, src: lv }, span);
+                let j_done = self.emit(Op::JmpIfNonZero { reg: ls, target: 0 }, span);
+                let rv = self.compile_expr_i(rhs);
+                if rv != dst {
+                    self.emit(Op::MoveI { dst, src: rv }, span);
+                }
+                let end = self.ops.len() as u32;
+                self.patch(j_done, end);
                 dst
             }
             ExprKind::If(cond, then_e, else_e) => {
@@ -3279,7 +3426,48 @@ impl<'p> Compiler<'p> {
                             self.emit_fallback_expr_v(expr)
                         }
                     }
-                    _ => self.emit_fallback_expr_v(expr),
+                    _ => {
+                        let arr_v = self.compile_expr_v(base);
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let dst = self.alloc_v();
+                        self.emit(Op::LoadLArr1V { dst, arr_v, r_i }, span);
+                        if arr_v >= self.num_local_v {
+                            self.emit(Op::ClearV { reg: arr_v }, span);
+                        }
+                        dst
+                    }
+                }
+            }
+            ExprKind::Index(base, indices)
+                if matches!(base.ty, Ty::List(_) | Ty::ListView(_)) && indices.len() == 1 =>
+            {
+                match &base.kind {
+                    ExprKind::Global(gid) if matches!(base.ty, Ty::List(_)) => {
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let dst = self.alloc_v();
+                        self.emit(Op::LoadGList1V { dst, gid: *gid as u16, r_i }, span);
+                        dst
+                    }
+                    ExprKind::Local(slot) => {
+                        if let SlotLoc::V(list_v) = self.slot_loc(*slot) {
+                            let r_i = self.compile_expr_i(&indices[0]);
+                            let dst = self.alloc_v();
+                            self.emit(Op::LoadLList1V { dst, list_v, r_i }, span);
+                            dst
+                        } else {
+                            self.emit_fallback_expr_v(expr)
+                        }
+                    }
+                    _ => {
+                        let list_v = self.compile_expr_v(base);
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let dst = self.alloc_v();
+                        self.emit(Op::LoadLList1V { dst, list_v, r_i }, span);
+                        if list_v >= self.num_local_v {
+                            self.emit(Op::ClearV { reg: list_v }, span);
+                        }
+                        dst
+                    }
                 }
             }
             ExprKind::Tuple(fields)
@@ -5885,6 +6073,58 @@ impl<'p, 'io> Interp<'p, 'io> {
                     } else {
                         return trap(spans[cur_pc], "internal: expected list");
                     }
+                }
+                Op::LoadGList1V { dst, gid, r_i } => {
+                    let idx = regs_i[r_i as usize];
+                    if let Value::List(list) = &self.globals[gid as usize] {
+                        let len = list.len() as i64;
+                        if idx < 0 || idx >= len {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {idx} is outside a list of length {len}"),
+                            );
+                        }
+                        regs_v[dst as usize] = list[idx as usize].clone();
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected list");
+                    }
+                }
+                Op::LoadLList1V { dst, list_v, r_i } => {
+                    let idx = regs_i[r_i as usize];
+                    match &regs_v[list_v as usize] {
+                        Value::List(list) => {
+                            let len = list.len() as i64;
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside a list of length {len}"),
+                                );
+                            }
+                            regs_v[dst as usize] = list[idx as usize].clone();
+                        }
+                        Value::ListView(view) => {
+                            let len = view.len as i64;
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside a list of length {len}"),
+                                );
+                            }
+                            regs_v[dst as usize] =
+                                view.get(idx as usize).cloned().unwrap_or(Value::Unit);
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected list"),
+                    }
+                }
+                Op::LStrLen { dst, str_v } => {
+                    regs_i[dst as usize] = match &regs_v[str_v as usize] {
+                        Value::Str(bytes) => bytes.len() as i64,
+                        Value::StrView(view) => view.len as i64,
+                        _ => 0,
+                    };
+                }
+                Op::ClearV { reg } => {
+                    regs_v[reg as usize] = Value::Unit;
                 }
                 Op::FallbackStmt { idx, clear_from_v } => {
                     if let Some(stats) = &mut self.vm_stats {

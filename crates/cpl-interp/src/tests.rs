@@ -494,3 +494,33 @@ print(acc, stk.len)
     assert_eq!(trap, None);
     assert_eq!(out, "4000000 0\n");
 }
+
+#[test]
+fn vm_general_seq_loops_general_index_and_scalar_coalesce() {
+    let source = "
+var adj: [0..3]List<(Int, Int)> = []
+adj[0].push((1, 10))
+adj[0].push((2, 20))
+adj[1].push((2, 30))
+
+var sum = 0
+for u in 0..3:
+    for (v, w) in adj[u]:
+        sum += u * 100 + v * 10 + w
+
+let s = \"abcd\"
+var ch_sum = 0
+for c in s.rev:
+    if c == 'a': ch_sum += 1
+    if c == 'd': ch_sum += 4
+
+let opt1: ?Int = none
+let opt2: ?Int = some(42)
+let c1 = opt1 ?? 7
+let c2 = opt2 ?? 7
+print(sum, ch_sum, c1, c2)
+";
+    let (out, trap) = outcome(source, "");
+    assert_eq!(trap, None);
+    assert_eq!(out, "210 5 7 42\n");
+}
