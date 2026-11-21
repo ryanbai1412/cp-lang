@@ -105,11 +105,21 @@ fn a_var_is_judged_by_its_own_scope() {
 
 #[test]
 fn shadowing_a_top_level_let_is_reported_once_per_binding() {
-    let src = "let n: 1..=9 = read()\nfn f(n: Int) -> Int:\n    n + 1\nprint(f(n))\n";
+    let src = "let n: 1..=9 = read()\nfn f(k: Int) -> Int:\n    let n = k + 1\n    n\nprint(f(n))\n";
     let found = only(src);
     assert_eq!(found.code, SHADOWS_TOP_LEVEL.code);
-    assert_eq!(found.message, "this parameter hides the top-level `n`");
+    assert_eq!(found.message, "this local hides the top-level `n`");
     assert_eq!(found.labels[0].message, "`n` is defined here, on line 1");
+    // A top-level fn names its own parameters: `fn sub(a: Pt, b: Pt)`
+    // below a `let a` hides nothing. A fn inside a fn still does.
+    assert_eq!(
+        codes("let a: Int = read()\nfn sub(a: Int, b: Int) -> Int = a - b\nprint(sub(a, 1))\n"),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes("let a: Int = read()\nfn g() -> Int:\n    fn sub(a: Int) -> Int = a - 1\n    sub(3)\nprint(g() + a)\n"),
+        ["L0203"]
+    );
     // Loop variables and locals count; `_` and locals hiding locals do not.
     assert_eq!(
         codes("let i = 1\nfor i in 0..3:\n    print(i)\nprint(i)\n"),

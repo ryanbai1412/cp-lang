@@ -106,7 +106,11 @@ impl Visitor for Scopes<'_> {
         if let Some(var) = var {
             self.vars[var].names.push(name.to_string());
         }
-        if !top_level && name != "_" {
+        // A parameter of a top-level fn is that fn's own name for what it is
+        // given: `fn sub(a: Pt, b: Pt)` below a `let a` hides nothing a
+        // reader would look for.
+        let helper_param = how == Bind::Param && self.fns == 1 && self.scopes.len() == 2;
+        if !top_level && !helper_param && name != "_" {
             let hidden = self.scopes[0].get(name).map(|id| &self.bindings[*id]);
             // A fn can name a top-level `let` written below it, so there a
             // later one is hidden too. Top-level code runs in order: a loop

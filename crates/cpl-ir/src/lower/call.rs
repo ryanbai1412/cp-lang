@@ -546,7 +546,7 @@ impl<'a> Lowerer<'a> {
         let mut lowered: Vec<Arg> = receiver.into_iter().collect();
         let mut pre_stmts: Vec<Stmt> = Vec::new();
         let mut post_stmts: Vec<Stmt> = Vec::new();
-        for (param, arg) in params.iter().zip(given) {
+        for (at, (param, arg)) in params.iter().zip(given).enumerate() {
             match arg {
                 Some(arg) if param.mutable => {
                     if !arg.mutable {
@@ -595,7 +595,8 @@ impl<'a> Lowerer<'a> {
                     if param.ty == Ty::Unit && self.detect_bare_op(&arg.value).is_some() {
                         lowered.push(Arg::Value(self.mk(ExprKind::Unit, Ty::Unit, arg.value.span)));
                     } else {
-                        lowered.push(Arg::Value(self.expect(&arg.value, &param.ty)));
+                        let declared = self.sigs[id].decl.params.get(at).and_then(|p| p.ty.as_ref());
+                        lowered.push(Arg::Value(self.expect_declared(&arg.value, &param.ty, declared)));
                     }
                 }
                 None => match param.default {
@@ -679,7 +680,7 @@ impl<'a> Lowerer<'a> {
         let mut values = Vec::new();
         for (i, ((field, ty), arg)) in fields.iter().zip(given).enumerate() {
             match (arg, &decl.fields[i].default) {
-                (Some(arg), _) => values.push(self.expect(&arg.value, ty)),
+                (Some(arg), _) => values.push(self.expect_declared(&arg.value, ty, Some(&decl.fields[i].ty))),
                 (None, Some(default)) => {
                     let saved = std::mem::replace(&mut self.offset, self.structs[id].offset);
                     values.push(self.expect(default, ty));
@@ -693,6 +694,22 @@ impl<'a> Lowerer<'a> {
             }
         }
         self.mk(ExprKind::Tuple(values), Ty::Struct(id), span)
+    }
+
+    /// Lowers `e` for a field or parameter of type `want`, declared as
+    /// `declared`. `Node([none, none], 0)`: a list written out where a
+    /// one-index array is declared is the cells of that array, as in
+    /// `let kid: [0..2]?Int = [none, none]`, with the same count check.
+    fn expect_declared(&mut self, e: &ast::Expr, want: &Ty, declared: Option<&ast::Type>) -> Expr {
+        let cells = matches!(&e.kind, ast::ExprKind::List(items) if !items.is_empty())
+            && matches!(want, Ty::Array { dims, .. } if matches!(dims[..], [Dim::Int | Dim::IntFrom(_)]));
+        match declared.filter(|_| cells) {
+            Some(declared) => match self.let_value(Some(declared), Some(e), e.span) {
+                Some(value) => self.coerce(value, want, e.span),
+                None => self.err_expr(e.span),
+            },
+            None => self.expect(e, want),
+        }
     }
 
     fn variant(&mut self, id: EnumId, tag: usize, args: &[ast::Arg], span: Span) -> Expr {

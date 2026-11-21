@@ -467,6 +467,15 @@ impl<'a> Checker<'a> {
             let arg_ty = self.narrowed(&arg_ty, &param.ty);
             param.ty.unify(&arg_ty, bindings);
             let want = param.ty.subst(bindings);
+            // `Node([none, none], 0)`: a list written out where an array is
+            // wanted is the cells of that array, as in `let a: [0..2]?Int = [..]`.
+            if let (ExprKind::List(_), Ty::Array { index, elem }, Ty::Named { name, args }) =
+                (&arg.value.kind, &want, &arg_ty)
+            {
+                if index.len() == 1 && name == "List" && args.len() == 1 && self.fits(&args[0], elem) {
+                    continue;
+                }
+            }
             self.expect_fits(&arg_ty, &want, &arg.value, |c, got, want| {
                 let slot = if param.name.is_empty() {
                     String::new()

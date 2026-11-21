@@ -1329,7 +1329,32 @@ impl<'a> Lowerer<'a> {
                 None => final_args.push(GenArg::Ty(Ty::Int)),
             }
         }
+        // A fn written for the `Map<K, V>` or `Set<T>` it is called on is
+        // the same fn for the hashed kind: it gets its own copy, whose
+        // `self` is the `HashMap` or `HashSet` given.
+        let given = match &receiver {
+            Some(Arg::Value(e)) => Some(e.ty.clone()),
+            Some(Arg::Mut(place)) => Some(place.ty.clone()),
+            None => match (decl.params.first(), args.first()) {
+                (Some(p), Some(arg)) if p.name.text == "self" => self.probe_ty_silent(&arg.value),
+                _ => None,
+            },
+        };
+        let hashed = given.filter(|ty| {
+            let declared = decl.params.first().and_then(|p| p.ty.as_ref()).map(|ty| &ty.kind);
+            match (ty, declared) {
+                (Ty::HashMap(..), Some(ast::TypeKind::Named { name, .. })) => name.text == "Map",
+                (Ty::HashSet(_), Some(ast::TypeKind::Named { name, .. })) => name.text == "Set",
+                _ => false,
+            }
+        });
+        if hashed.is_some() {
+            final_args.push(GenArg::Int(1));
+        }
         let fn_id = self.instantiate_fn(gfid, final_args);
+        if let Some(ty) = hashed {
+            self.sigs[fn_id].params[0].ty = ty;
+        }
         self.user_call(fn_id, receiver, args, span)
     }
 
