@@ -2302,6 +2302,14 @@ either name is bound again, and never recorded for a name the branch or any fn a
 relation holds wherever it is read. Only a difference of two plain names reads it, which keeps the
 analysis linear (no closure over chains like `a < b < c`). Reverse: drop `Bounds::diffs`.
 
+29.32. **A `for` loop's head hovers how often it runs, with no warning.** `plan/60` asks for the
+estimate and for a soft warning on likely TLE. The count is the size of the range or domain the
+loop walks, times the counts of the `for`s around it; a `while` or a walk over a list makes the
+total unknown, and a fn body counts from 1, since its callers are not followed. On the ports and
+examples 12 of 1307 counted loops pass 1e10 in all, in solutions that pass their tests, so the
+bound overstates the work there and a warning on it would be a false alarm; the warning waits for
+a cost the checker derives. Reverse: drop `proven_loops` and `loop_hover`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

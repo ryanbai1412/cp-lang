@@ -2554,3 +2554,15 @@ else:
     assert!(ranges.contains(&(0, 2)), "expected loop fold (0, 2), got {ranges:?}");
     assert!(ranges.contains(&(3, 4)), "expected else fold (3, 4), got {ranges:?}");
 }
+
+#[test]
+fn loop_counts_read_as_a_number_and_its_size() {
+    let shown: Vec<String> = [7, 9999, 10000, 99999, 200000, 249999500000]
+        .into_iter()
+        .map(crate::server::count_text)
+        .collect();
+    assert_eq!(
+        shown,
+        ["7", "9999", "10000 (1e4)", "99999 (1e5)", "200000 (2e5)", "249999500000 (2.5e11)"]
+    );
+}

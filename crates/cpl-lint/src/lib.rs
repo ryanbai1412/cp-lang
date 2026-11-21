@@ -558,6 +558,30 @@ pub struct ProvenExpr {
     pub overflow: Option<String>,
 }
 
+/// A `for` loop whose iteration count the declared bounds prove.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProvenLoop {
+    /// From `for` (or its label) up to the loop's pattern.
+    pub head: (u32, u32),
+    /// The most times its body runs each time the loop is reached.
+    pub times: u128,
+    /// The most times its body runs in all, counting the `for` loops around
+    /// it; `None` when one of them, or a `while` around it, has no bound.
+    pub total: Option<u128>,
+}
+
+/// Each `for` over a bounded range or domain, with how often it runs.
+pub fn proven_loops(src: &str) -> Vec<ProvenLoop> {
+    let parsed = cpl_syntax::parse_file(src);
+    if !parsed.diagnostics.is_empty() {
+        return Vec::new();
+    }
+    rules::proven_loops(&File {
+        src,
+        items: &parsed.items,
+    })
+}
+
 /// What the declared bounds prove about each `+`, `-`, `*`, `/`, `%` and `**` outside
 /// lambdas, comprehensions and match arms; a file with a syntax error has
 /// none.

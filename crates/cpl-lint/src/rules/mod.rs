@@ -41,10 +41,27 @@ pub(crate) fn proven_expr_ranges(file: &File) -> Vec<crate::ProvenExpr> {
     proven(file).exprs
 }
 
-#[derive(Default)]
+pub(crate) fn proven_loops(file: &File) -> Vec<crate::ProvenLoop> {
+    proven(file).loops
+}
+
 struct Proven {
     names: Vec<(u32, i128, i128)>,
     exprs: Vec<crate::ProvenExpr>,
+    loops: Vec<crate::ProvenLoop>,
+    /// How many times the innermost enclosing loops run in all.
+    around: Option<u128>,
+}
+
+impl Default for Proven {
+    fn default() -> Proven {
+        Proven {
+            names: Vec::new(),
+            exprs: Vec::new(),
+            loops: Vec::new(),
+            around: Some(1),
+        }
+    }
 }
 
 fn proven(file: &File) -> Proven {
@@ -68,6 +85,8 @@ fn proven(file: &File) -> Proven {
     out.names.dedup();
     out.exprs.sort_by_key(|e| e.op);
     out.exprs.dedup_by_key(|e| e.op);
+    out.loops.sort_by_key(|l| l.head);
+    out.loops.dedup_by_key(|l| l.head);
     out
 }
 
@@ -212,6 +231,25 @@ fn ranges_in(
                 pat, iter, body, ..
             } => {
                 let mut inner = bounds.clone();
+                let times = match &iter.kind {
+                    ExprKind::Range {
+                        lo: Some(lo),
+                        hi: Some(hi),
+                        inclusive,
+                        step: None,
+                    } => bounds.span(lo, hi, *inclusive).map(bounds::Interval::count),
+                    ExprKind::Name(name) => bounds.domain_size(name),
+                    _ => None,
+                };
+                let around = proven.around;
+                let total = around.zip(times).and_then(|(a, t)| a.checked_mul(t));
+                if let Some(times) = times {
+                    proven.loops.push(crate::ProvenLoop {
+                        head: (base + stmt.span.start, base + pat.span.start),
+                        times,
+                        total,
+                    });
+                }
                 forget(pat, &mut inner);
                 if let (
                     PatternKind::Name(name),
@@ -229,7 +267,9 @@ fn ranges_in(
                     }
                     inner.bind(name, value);
                 }
+                proven.around = total;
                 ranges_in(base, &body.stmts, &[], &mut inner, proven);
+                proven.around = around;
             }
             StmtKind::While {
                 cond,
@@ -240,7 +280,9 @@ fn ranges_in(
                 if let Cond::Expr(test) = cond {
                     narrow(test, true, &|n| assigned_in(n, &body.stmts), &mut inner);
                 }
+                let around = proven.around.take();
                 ranges_in(base, &body.stmts, &[], &mut inner, proven);
+                proven.around = around;
                 // A loop that only ends by its condition failing leaves it false.
                 if let (Cond::Expr(test), None) = (cond, else_body) {
                     if !breaks(&body.stmts) {
@@ -298,7 +340,9 @@ fn ranges_in(
                 }
                 if let FnBody::Block(block) = &decl.body {
                     inner.declare_fn(&decl.name.text);
+                    let around = proven.around.replace(1);
                     ranges_in(base, &block.stmts, &[], &mut inner, proven);
+                    proven.around = around;
                 }
             }
             _ => {}

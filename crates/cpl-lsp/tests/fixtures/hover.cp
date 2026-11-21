@@ -4,7 +4,7 @@ domain V = 1..=n
 let xs: [V]Int = read()
 let tot$0al = xs.s$0um()
 let k = n % 7 + 1
-for v$0 in V:
+f$0or v$0 in V:
     let ha$0lf = n / 2
     print(half, total, k$0, xs.l$0en)
 let area = n $0* n + n
@@ -34,3 +34,6 @@ while w > 9:
     w = w / 2
 let sm$0all = w * 3
 print(small)
+for v in V:
+    f$0or j in 0..k:
+        print(v, j)

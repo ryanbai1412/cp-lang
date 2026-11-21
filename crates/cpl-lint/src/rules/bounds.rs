@@ -518,6 +518,11 @@ impl Bounds {
         self.fns.insert(name.to_string());
     }
 
+    /// How many values the domain `name` has, at most.
+    pub(crate) fn domain_size(&self, name: &str) -> Option<u128> {
+        self.domains.get(name).copied()
+    }
+
     /// How many values a type has, at most.
     pub(crate) fn type_size(&self, ty: &Type) -> Option<u128> {
         match &ty.kind {

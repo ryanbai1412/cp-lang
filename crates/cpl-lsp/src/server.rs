@@ -182,7 +182,8 @@ impl Server {
             }
             "textDocument/hover" => {
                 let (uri, offset) = self.position(params)?;
-                if let Some(hover) = self.arith_hover(&uri, offset) {
+                let proven = self.loop_hover(&uri, offset);
+                if let Some(hover) = proven.or_else(|| self.arith_hover(&uri, offset)) {
                     let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
                     return Ok(Reply::result(obj([
                         (
@@ -783,6 +784,28 @@ impl Server {
         false
     }
 
+    /// On the head of a `for` whose count the declared bounds prove: how
+    /// many times its body runs, alone and with the loops around it.
+    fn loop_hover(&mut self, uri: &str, offset: u32) -> Option<cpl_check::Hover> {
+        let analysis = self.db.analyze(uri)?;
+        let proven = cpl_lint::proven_loops(&analysis.text)
+            .into_iter()
+            .find(|l| l.head.0 <= offset && offset < l.head.1)?;
+        let mut text = format!("for: runs at most {} times", count_text(proven.times));
+        match proven.total {
+            Some(total) if total != proven.times => {
+                text += &format!("\n  {} times in all, with the loops around it", count_text(total));
+            }
+            None => text += "\n  inside a loop with no proven count",
+            _ => {}
+        }
+        Some(cpl_check::Hover {
+            span: Span::new(proven.head.0, proven.head.1),
+            text,
+            doc: None,
+        })
+    }
+
     /// On a `+`, `-`, `*`, `/`, `%` or `**` whose operands the declared bounds prove: the
     /// range of its value, and whether it can leave `Int`.
     fn arith_hover(&mut self, uri: &str, offset: u32) -> Option<cpl_check::Hover> {
@@ -1187,6 +1210,23 @@ fn fix_file(uri: &str, text: &str) -> Option<String> {
         &lint_config(uri),
     );
     (applied > 0).then_some(fixed)
+}
+
+/// `n`, and from 1e4 on its size too: `200000 (2e5)`, `249999500000 (2.5e11)`.
+pub(crate) fn count_text(n: u128) -> String {
+    if n < 10_000 {
+        return n.to_string();
+    }
+    let digits = n.to_string();
+    let exp = digits.len() - 1;
+    let tenths = (n as f64 / 10f64.powi(exp as i32) * 10.0).round() as u64;
+    let (tenths, exp) = if tenths >= 100 { (10, exp + 1) } else { (tenths, exp) };
+    let mantissa = if tenths % 10 == 0 {
+        (tenths / 10).to_string()
+    } else {
+        format!("{}.{}", tenths / 10, tenths % 10)
+    };
+    format!("{n} ({mantissa}e{exp})")
 }
 
 /// A soft note on each operation the prover shows leaves `Int` for inputs

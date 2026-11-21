@@ -20,6 +20,11 @@ sum() -> T
 
 The sum of the cells; `0` when empty.
 
+== hover @ 7:2
+```cp
+for: runs at most 200000 (2e5) times
+```
+
 == hover @ 7:6
 ```cp
 v: V
@@ -121,4 +126,10 @@ lo - hi: Int in 0..=200001
 == hover @ 35:7
 ```cp
 small: Int in 3..=27
+```
+
+== hover @ 38:6
+```cp
+for: runs at most 7 times
+  1400000 (1.4e6) times in all, with the loops around it
 ```

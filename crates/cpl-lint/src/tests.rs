@@ -1752,6 +1752,22 @@ fn a_comparison_of_two_names_bounds_their_difference() {
 }
 
 #[test]
+fn a_for_loop_knows_how_often_it_runs() {
+    let loops = |src: &str| -> Vec<(u128, Option<u128>)> {
+        crate::proven_loops(src).into_iter().map(|l| (l.times, l.total)).collect()
+    };
+    let head = "let n: 1..=200000 = read()\nlet q: 1..=1000 = read()\ndomain V = 1..=n\n";
+    let nested = format!("{head}for v in V:\n    for i in 0..q:\n        print(v, i)\n");
+    assert_eq!(loops(&nested), [(200000, Some(200000)), (1000, Some(200000000))]);
+    let in_fn = format!("{head}fn f(k: 1..=50):\n    for i in 0..=k:\n        print(i)\nfor v in V:\n    f(3)\n");
+    assert_eq!(loops(&in_fn), [(51, Some(51)), (200000, Some(200000))]);
+    let in_while = format!("{head}var t = 0\nwhile t < 5:\n    for i in 1..n:\n        print(i)\n    t += 1\n");
+    assert_eq!(loops(&in_while), [(199999, None)]);
+    let unknown = format!("{head}let xs = [1, 2]\nfor x in xs:\n    for i in 0..q:\n        print(x, i)\n");
+    assert_eq!(loops(&unknown), [(1000, None)]);
+}
+
+#[test]
 fn the_prover_names_the_inputs_an_overflow_needs() {
     let overflows = |src: &str| -> Vec<Option<String>> {
         crate::proven_expr_ranges(src).into_iter().map(|e| e.overflow).collect()
