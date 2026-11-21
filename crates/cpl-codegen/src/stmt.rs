@@ -103,12 +103,18 @@ impl<'p> Emitter<'p> {
                 }
                 self.line(out, "}");
             }
-            // `s.remove(x)` for its effect alone: whether `x` was there is
-            // not asked, so the comparison that answers it is not written.
-            ExprKind::Mutate(Mutation::Remove, _, _) => {
+            // `s.remove(x)` or `s.insert(x)` for its effect alone: whether
+            // `x` was there is not asked, so what answers it is not written.
+            ExprKind::Mutate(Mutation::Remove | Mutation::Insert, _, _) => {
                 let text = self.expr(e).text;
-                let text = text.strip_suffix(" != 0").unwrap_or(&text);
+                let text = text.strip_suffix(" != 0").or_else(|| text.strip_suffix(".second")).unwrap_or(&text);
                 self.line(out, &format!("{text};"));
+            }
+            // A value named and dropped, as what is left of a flattened
+            // block: it does nothing, and `(void)` says so to the compiler.
+            ExprKind::Local(_) | ExprKind::Global(_) => {
+                let text = self.expr(e).text;
+                self.line(out, &format!("(void){text};"));
             }
             _ => {
                 let text = self.expr(e).text;

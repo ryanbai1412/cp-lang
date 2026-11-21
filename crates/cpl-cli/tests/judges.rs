@@ -357,3 +357,30 @@ fn submit_builds_for_the_judge_then_runs_the_cases_on_that_build() {
     let out = cpl_cli::run(&["submit", path, "--judge", "cses"]);
     assert_eq!(out.code, cpl_cli::EXIT_USAGE, "{}", out.stderr);
 }
+
+#[test]
+fn a_statement_whose_value_is_dropped_writes_no_unused_value() {
+    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-unused");
+    let _ = std::fs::remove_dir_all(&scratch);
+    std::fs::create_dir_all(&scratch).unwrap();
+    let file = scratch.join("a.cp");
+    std::fs::write(
+        &file,
+        "var seen = Set<Int>()\nfor x in [3, 1, 3]:\n    seen.insert(x)\nprint(seen.len())\n",
+    )
+    .unwrap();
+    let out = cpl_cli::run(&["build", file.to_str().unwrap(), "-o", "-"]);
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    let cpp = String::from_utf8(out.stdout).unwrap();
+    assert!(!cpp.contains(".second;"), "{cpp}");
+    let source = scratch.join("a.cpp");
+    std::fs::write(&source, &cpp).unwrap();
+    let compiled = std::process::Command::new("g++")
+        .args(["-std=c++17", "-fsyntax-only", "-Wall", "-Werror=unused-value"])
+        .arg(&source)
+        .output()
+        .unwrap();
+    assert!(compiled.status.success(), "{}", String::from_utf8_lossy(&compiled.stderr));
+    let run = cpl_cli::run(&["run", file.to_str().unwrap()]);
+    assert_eq!(String::from_utf8(run.stdout).unwrap(), "2\n", "{}", run.stderr);
+}

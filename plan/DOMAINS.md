@@ -528,8 +528,7 @@ its flags (as accepted here), and the deep-recursion run passes on its
 stack; each fact in a profile cites a source or says it is unconfirmed.
 `cpl test` and `bench` give MLE past the problem's memory limit.
 **Next.** `// d.cp:42` markers (`plan/70`) so a judge's line maps back,
-kept through every rung; clang `-Wunused-value` in 6
-ports; USACO and grader profiles; judge-version containers.
+kept through every rung; USACO and grader profiles; judge-version containers.
 
 ## 10. Editor and LSP (`plan/60`)
 **North star.** An editor that knows everything the compiler knows, in every
