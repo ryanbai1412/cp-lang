@@ -1,7 +1,7 @@
 # ucup5s02h
 
 Score: 3/5
-Dream: 3/5
+Dream: pending cold rescore (rewritten: `Hull<Id>` stores `(ch, id)` so `h.id: C` is typed, computes `gap` once per candidate, and comments the `idx + 1 < pts.len` pointer invariant)
 
 A convex-hull trick written over untyped `(Int, Int, Int)` tuples with `.0`/`.1` and two parity-encoded DSUs; no header. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 

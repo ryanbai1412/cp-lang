@@ -35,30 +35,31 @@ fn never_weakest(a: Charge, b: Charge, c: Charge) -> Bool:
     let (a1, a2, a3) = ((c.x - b.x) ** 2 * a.q, (c.x - a.x) ** 2 * b.q, (b.x - a.x) ** 2 * c.q)
     a2 >= a1 + a3 and (a2 - a1 - a3) ** 2 >= 4 * a1 * a3
 
-struct Hull:
-    pts: List<Charge>
+struct Hull<Id>:
+    pts: List<(ch: Charge, id: Id)>
     idx: Int
 
     fn advance(mut self, x: Int):
-        while let next = pts.get(idx + 1) and pull(next, x) <= pull(pts[idx], x): idx += 1
+        while let next = pts.get(idx + 1) and pull(next.ch, x) <= pull(pts[idx].ch, x): idx += 1
 
-    fn add(mut self, p: Charge):
-        if pts.last.all(l => p.q < l.q):
-            pts.pop_while(l => idx + 1 < pts.len and never_weakest(pts[-2], l, p))
-            pts.push(p)
-        self.advance(p.x)
+    fn add(mut self, ch: Charge, id: Id):
+        if pts.last.all(l => ch.q < l.ch.q):
+            // Keep `idx + 1 < pts.len` so `pts[idx]` is never popped under the monotone query pointer.
+            pts.pop_while(l => idx + 1 < pts.len and never_weakest(pts[-2].ch, l.ch, ch))
+            pts.push((ch, id))
+        self.advance(ch.x)
 
-    fn query(mut self, x: Int) -> ?Charge:
+    fn query(mut self, x: Int) -> ?(ch: Charge, id: Id):
         self.advance(x)
         pts.get(idx)
 
 // Weakest same-group pairs found by sweeping one side's charges through a `Hull`.
 fn hull_pairs(cs: List<Charge>) -> List<(Charge, Charge)>:
-    var h = Hull([], 0)
+    var h = Hull<Int>([], 0)
     var pairs: List<(Charge, Charge)> = []
-    for c in cs:
-        if let prev = h.query(c.x): pairs.push((prev, c))
-        h.add(c)
+    for (i, c) in cs.items:
+        if let prev = h.query(c.x): pairs.push((prev.ch, c))
+        h.add(c, i)
     pairs
 
 @!multitest
@@ -77,13 +78,12 @@ while colour.components > 1:
     let comp = colour.component_ids()
     var best: [comp.groups]?(gap: Frac, i: C, j: C) = none
     for sweep in [C.ascending, C.descending.mirrored(x: 0)]:
-        var hulls = GroupTree<Hull>(comp.groups)
+        var hulls = GroupTree<Hull<C>>(comp.groups)
         for c in sweep:
-            let near = min_by(hulls.others(of: comp[c]).query(ch[c].x), by: h => gap(h, ch[c]))
-            if let h = near:
-                let cand = (gap: gap(h, ch[c]), i: c, j: h.id)
+            let cands = [(gap: gap(h.ch, ch[c]), i: c, j: h.id) for h in hulls.others(of: comp[c]).query(ch[c].x)]
+            if let cand = min_by(cands, by: e => e.gap):
                 if best[comp[c]].all(b => cand.gap > b.gap): best[comp[c]] = some(cand)
-            hulls.path(of: comp[c]).add(ch[c])
+            hulls.path(of: comp[c]).add(ch[c], c)
     for opt in best if let e = opt: colour.unite_new(e.i, e.j)
 
 let weakest = min(
