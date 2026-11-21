@@ -1094,6 +1094,22 @@ impl<'p> Emitter<'p> {
                                         }) {
                                             return "false".to_string();
                                         }
+                                        if let Some(sid) = struct_id {
+                                            if let Some(&k) = self.rows.get(&(sid, idx)) {
+                                                let cell = self
+                                                    .ty(&item.ty)
+                                                    .strip_prefix("std::vector<")
+                                                    .and_then(|c| c.strip_suffix('>'))
+                                                    .map(str::to_string);
+                                                if let Some(cell) = cell {
+                                                    if let Some(row_init) =
+                                                        self.emit_row_init(item, sid, idx, &cell, k)
+                                                    {
+                                                        return row_init;
+                                                    }
+                                                }
+                                            }
+                                        }
                                         if let ExprKind::Local(slot) = item.kind {
                                             if (slot >= params
                                                 || self.fn_id.is_some_and(|id| self.sunk[id].contains(&slot)))

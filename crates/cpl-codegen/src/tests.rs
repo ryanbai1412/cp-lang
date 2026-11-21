@@ -788,6 +788,11 @@ fn small_domain_bitset_uses_inline_row_and_fused_popcount() {
         "print((a & b & c).len)\n",
     ));
     assert!(cpp.contains("cpl::Row<unsigned long long, 5> w;"), "{cpp}");
+    assert!(cpp.contains("cpl::Row<unsigned long long, 5>::filled("), "{cpp}");
+    assert!(
+        !cpp.contains("std::vector<unsigned long long>("),
+        "Bitset.new() return must construct cpl::Row directly without temp std::vector: {cpp}"
+    );
     assert!(cpp.contains("__builtin_popcountll("), "{cpp}");
     assert!(!cpp.contains("_bitand(a, b)"), "{cpp}");
 }

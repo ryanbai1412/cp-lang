@@ -6838,6 +6838,71 @@ impl<'a> Lowerer<'a> {
                 )
             }
             (Ty::Range(_), "rev") if args.is_empty() => self.reversed_range(value, span),
+            // `r.halves()`: split `r` into `(left, right)` with `left.len == (r.len + 1) / 2`
+            // and `right.len == r.len / 2` (both non-empty whenever `r.len >= 2`).
+            (Ty::Range(_), "halves") if args.is_empty() => {
+                let r_ty = value.ty.clone();
+                let tup_ty = Ty::Tuple(vec![r_ty.clone(), r_ty.clone()]);
+                self.do_expr(Some(&tup_ty.clone()), span, |lw, out| {
+                    let r_slot = lw.temp(r_ty.clone());
+                    out.push(Stmt::Let(r_slot, Some(value)));
+                    let r_ref = lw.local(r_slot, span);
+                    let lo_slot = lw.temp(Ty::Int);
+                    let hi_slot = lw.temp(Ty::Int);
+                    let lo_expr = lw.mk(ExprKind::Builtin(Builtin::RangeLo, vec![r_ref.clone()]), Ty::Int, span);
+                    let raw_hi = lw.mk(ExprKind::Builtin(Builtin::RangeHi, vec![r_ref]), Ty::Int, span);
+                    out.push(Stmt::Let(lo_slot, Some(lo_expr)));
+                    let hi_expr = lw.mk(
+                        ExprKind::Builtin(Builtin::Max, vec![raw_hi, lw.local(lo_slot, span)]),
+                        Ty::Int,
+                        span,
+                    );
+                    out.push(Stmt::Let(hi_slot, Some(hi_expr)));
+                    let diff = lw.mk(
+                        ExprKind::Binary(
+                            BinOp::Sub,
+                            Box::new(lw.local(hi_slot, span)),
+                            Box::new(lw.local(lo_slot, span)),
+                        ),
+                        Ty::Int,
+                        span,
+                    );
+                    let left_len = lw.mk(
+                        ExprKind::Binary(
+                            BinOp::Div,
+                            Box::new(lw.int_add(diff, 1)),
+                            Box::new(lw.int_lit(2, span)),
+                        ),
+                        Ty::Int,
+                        span,
+                    );
+                    let mid_slot = lw.temp(Ty::Int);
+                    let mid_expr = lw.mk(
+                        ExprKind::Binary(BinOp::Add, Box::new(lw.local(lo_slot, span)), Box::new(left_len)),
+                        Ty::Int,
+                        span,
+                    );
+                    out.push(Stmt::Let(mid_slot, Some(mid_expr)));
+                    let left = lw.mk(
+                        ExprKind::Range {
+                            lo: Box::new(lw.local(lo_slot, span)),
+                            hi: Box::new(lw.local(mid_slot, span)),
+                        },
+                        r_ty.clone(),
+                        span,
+                    );
+                    let right = lw.mk(
+                        ExprKind::Range {
+                            lo: Box::new(lw.local(mid_slot, span)),
+                            hi: Box::new(lw.local(hi_slot, span)),
+                        },
+                        r_ty.clone(),
+                        span,
+                    );
+                    let pair = lw.mk(ExprKind::Tuple(vec![left, right]), tup_ty.clone(), span);
+                    out.push(Stmt::Give(pair));
+                })
+            }
             // `r.find(i => ..)`: the first of the range the test holds
             // for, `none` when there is none. `(0..).find(..)` has no end
             // and stops there.

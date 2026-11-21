@@ -1264,7 +1264,7 @@ impl<'p> Emitter<'p> {
     /// Emits a `cpl::Row<{cell}, {k}>` field initializer directly on the stack
     /// when `item` is a fixed-size fill, array comprehension, array literal, or
     /// same-field copy, avoiding a temporary heap `std::vector`.
-    fn emit_row_init(
+    pub(super) fn emit_row_init(
         &mut self,
         item: &Expr,
         sid: usize,

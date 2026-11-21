@@ -22,7 +22,19 @@ Measures the `AGENTS.md` design rule *"Writable from the docs: a model or a pers
 | **6** | Added `v + 1`/`V.last - 1` `?V` docs + `mut` call-site docs; routed 3 language/stdlib frictions | 48/55 (87.3%) | 29/55 (52.7%) |
 | **7** | Enforced canonical spellings across all docs & site examples (`if` filters, `**`, parenless getters, `@!multitest`, method-form folds, `t.Pre`); exposed `Mod<P>.v` vs `.raw` & lent `Str` slices | 44/55 (80.0%) | 25/55 (45.5%) |
 | **8** | Fixed `Mod<P>.v`, lent `s[l..r].to_str()`, `[R, C]T`, `Yes`/`No`, no trailing `=`/`=>`; enabled `reasoning_effort="medium"` (16k max completion tokens) | 44/55 (80.0%) | 43/55 (78.2%) |
-| **9 (current)** | Fixed `'a' <= c and c <= 'z'` (ranges are `Int`-only), multi-line `(...)` parens, `(m[k] ??= init)` parens, `mut` params vs local copy, `let` for `[domain S]Char`, and `300s` HTTP timeout | **52/55 (94.5%)** | **48/55 (87.3%)** |
+| **9** | Fixed `'a' <= c and c <= 'z'` (ranges are `Int`-only), multi-line `(...)` parens, `(m[k] ??= init)` parens, `mut` params vs local copy, `let` for `[domain S]Char`, and `300s` HTTP timeout | **52/55 (94.5%)** | **48/55 (87.3%)** |
+| **10 (current)** | Fixed `isqrt` prelude vs `std.math` (`cf2020b`, `cf2035e`), `[R, C]T = 0` vs `[R][C]T` (`cf2020e`), unnamed `(Row, Col)` for `.adj4` (`abc384e`), `Bitset.of(xs)`/`Bitset.from(a)` & `course-dp.md` methods, `Range.halves()` (`cf2069f`), and SSE streaming + 24k completion budget (`cf2013e`) | **51/55 (92.7%)** | **50/55 (90.9%)** |
+
+## Failure classification (Round 10: 5 failing / 55 total)
+
+- **Model syntax / line-break slip:** 2
+  - `cf2036c` (`E0102`: unwrapped multi-line `and` at end of line).
+  - `cf2036d` (`E0103`: unwrapped multi-line `if` condition).
+- **Model domain / `mut` slip (caught by typechecker):** 2
+  - `cf2035d` (`E0402`: omitted `mut` at call site `split(a[v])`).
+  - `abc384e` (`E0301`: indexed `[Row, Col]` with domain `P` instead of `Row`/`Col`).
+- **Model algorithm wrong:** 1
+  - `cf2040d` (compiled; sample 1 WA on constructive tree labeling).
 
 ## Failure classification (Round 9: 7 failing / 55 total)
 

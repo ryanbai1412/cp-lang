@@ -1403,6 +1403,12 @@ impl<'a> Checker<'a> {
                         ret: Box::new(Ty::list(Ty::Int)),
                     };
                 }
+                "halves" if matches!(&base_ty, Ty::Named { name, .. } if name == "Range") => {
+                    return Ty::Fn {
+                        params: vec![],
+                        ret: Box::new(Ty::Tuple(vec![base_ty.clone(), base_ty.clone()])),
+                    };
+                }
                 _ => {}
             }
         }

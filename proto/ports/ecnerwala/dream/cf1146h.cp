@@ -10,7 +10,7 @@ let n: 5..=300 = read()
 domain V = 0..n
 let pts: [V]Pt = read()
 
-let left: [V, V]Bitset<V> = [V, V] (i, j) => Bitset<V>.from(
+let left: [V, V]Bitset<V> = [V, V] (i, j) => Bitset<V>.of(
     k for k in V if turn(pts[i], pts[j], pts[k]) > 0
 )
 let inside = [

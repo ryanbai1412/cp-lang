@@ -18,6 +18,7 @@ import argparse
 import concurrent.futures
 import datetime
 import glob
+import http.client
 import json
 import os
 from pathlib import Path
@@ -123,6 +124,31 @@ def normalize_output(text: str) -> str:
     return "\n".join(line.rstrip() for line in text.strip().splitlines())
 
 
+def parse_openai_sse(lines) -> str:
+    """Reassemble assistant text from an OpenAI chat-completions SSE stream."""
+    chunks: list[str] = []
+    for raw in lines:
+        line = raw.decode("utf-8", errors="replace") if isinstance(raw, (bytes, bytearray)) else raw
+        line = line.strip()
+        if not line.startswith("data:"):
+            continue
+        payload = line[5:].strip()
+        if not payload or payload == "[DONE]":
+            continue
+        try:
+            obj = json.loads(payload)
+        except json.JSONDecodeError:
+            continue
+        choices = obj.get("choices") or []
+        if not choices:
+            continue
+        delta = choices[0].get("delta") or {}
+        content = delta.get("content")
+        if content:
+            chunks.append(content)
+    return "".join(chunks)
+
+
 def call_model(system_prompt: str, user_prompt: str, model: str | None = None) -> tuple[str, str]:
     """Call Anthropic or OpenAI with zero repo context; returns (model_used, text)."""
     anth_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -164,8 +190,9 @@ def call_model(system_prompt: str, user_prompt: str, model: str | None = None) -
             ],
         }
         if mdl.startswith(("gpt-5", "o3", "o4")):
-            payload["max_completion_tokens"] = 16384
+            payload["max_completion_tokens"] = 24576
             payload["reasoning_effort"] = os.environ.get("WFD_REASONING_EFFORT", "medium")
+            payload["stream"] = True
         else:
             payload["temperature"] = 0
             payload["max_tokens"] = 4096
@@ -183,11 +210,19 @@ def call_model(system_prompt: str, user_prompt: str, model: str | None = None) -
         for attempt in range(3):
             try:
                 with urllib.request.urlopen(req, timeout=300) as resp:
+                    if payload.get("stream"):
+                        return mdl, parse_openai_sse(resp)
                     data = json.loads(resp.read().decode())
                 return mdl, data["choices"][0]["message"]["content"]
             except urllib.error.HTTPError as exc:
                 last_err = exc
                 if exc.code in (429, 500, 502, 503, 504) and attempt < 2:
+                    time.sleep(2 ** (attempt + 1))
+                    continue
+                raise
+            except (http.client.HTTPException, urllib.error.URLError, TimeoutError, OSError) as exc:
+                last_err = exc
+                if attempt < 2:
                     time.sleep(2 ** (attempt + 1))
                     continue
                 raise
