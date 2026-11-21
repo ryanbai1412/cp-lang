@@ -109,6 +109,11 @@ class CheckCacheTest(unittest.TestCase):
             empty = git("hash-object", "-t", "tree", "-w", "/dev/null")
             stale = git("commit-tree", empty, "-m", "land lock: other")
             git("push", "-q", remote, f"{stale}:refs/locks/land")
+            dead = subprocess.run(
+                ["git", "commit-tree", empty, "-m", "land ticket: gone"], cwd=work, check=True,
+                capture_output=True, text=True,
+                env={**env, "GIT_COMMITTER_DATE": "2000-01-01T00:00:00Z"}).stdout.strip()
+            git("push", "-q", remote, f"{dead}:refs/locks/queue/0000000000000000000-1-gone")
             git("config", "core.hooksPath", os.path.join(root, ".githooks"))
             land = os.path.join(root, "scripts", "land.sh")
             r = subprocess.run([land, remote], cwd=work, capture_output=True, text=True,
@@ -117,6 +122,8 @@ class CheckCacheTest(unittest.TestCase):
             self.assertIn("taking over stale lock from land lock: other", r.stderr)
             self.assertEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD"))
             self.assertEqual(git("ls-remote", remote, "refs/locks/land"), "")
+            self.assertEqual(git("ls-remote", remote, "refs/locks/queue/*"),
+                             f"{dead}\trefs/locks/queue/0000000000000000000-1-gone")
 
 if __name__ == "__main__":
     unittest.main()
