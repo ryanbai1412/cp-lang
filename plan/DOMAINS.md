@@ -112,18 +112,38 @@ with first-error accuracy and cascade counts.
 planned syntax.
 
 ## 6. Interpreter, debugger and traces (`plan/50`)
-**North star.** Doubt becomes evidence in seconds. A time-travel debugger in every
-editor that steps backward and forward through any run, including a run
-replayed from a failing judge input; an HTML trace that shows only what
-matters, filtered by stage, variable or index space; snapshots that let you
-iterate on one stage; every runtime error stops with the values, the call
-path and the input line that caused it; never a segfault; the interpreter
-fast enough to run full-size tests (within 10x of C++).
-**Where we are.** Debug interpreter with checks; `cpl run --trace` writes
-an HTML trace; no step debugger; interpreter speed limits large inputs.
-**Bar.** Every runtime error class has a golden message; the trace viewer
-is tested in a browser; interpreter within 30x of C++ on ports.
-**Next.** Audit against `plan/50`; DAP debugger; interpreter speed.
+**North star.** Doubt becomes evidence in seconds. A time-travel debugger over
+DAP in every editor that steps backward and forward through any run, including
+a run replayed from a failing judge input; an HTML trace that shows only what
+matters, filtered by function, multitest case, watched variable, call depth,
+index space, or ring buffer before a crash; snapshots that let you iterate on
+one stage; every runtime error stops with the concrete values, the call path,
+the test case number, and the input line that caused it; never a segfault; the
+interpreter fast enough to run full-size tests (within 10x of C++).
+**Where we are.** Debug interpreter with runtime checks (36 trap sites in
+`trap_parity.cp`, 5 open in `known_traps.cp`) and `debug(...)` output;
+`cpl run --trace` writes a self-contained HTML trace (`tools/trace/index.html`,
+37 Node unit tests, not yet browser-tested) and `cpl stress --trace` aligns
+solution vs `@brute` on `print`/`debug` checkpoints. Gaps against `plan/50`:
+(1) `Trap` carries only `{message, span}` — no call stack, no multitest case
+number, several traps omit offending values (e.g. overflow, division by zero),
+and there are no golden message tests for runtime errors; (2) trace filtering
+only supports a single `--trace FN` — missing multi-fn/glob/exclusion,
+`--test N`, `--watch VAR`, `--last N`, `--depth N`, and `Bound(d)` cuts are
+not shifted to domain base in traces; (3) no step debugger / DAP server or VS
+Code debugger wiring; (4) interpreter speed on compute-heavy ports is 46x–323x
+slower than C++ `-O2` (measured on `dph` 46.2x, `dpl` 65.5x, `dpk` 147.4x,
+`dpm` 322.9x); (5) no stage snapshots (`--stage`) or interactive exchange trace.
+**Bar.** Every runtime error class has a golden message with values and call
+path; trace filtering and index-space views tested end to end; DAP step
+debugger wired into VS Code and tested over stdio; interpreter within 30x of
+C++ `-O2` on ports.
+**Next.** (1) Call stacks, values, and golden tests for every runtime error
+class; (2) profile and optimize interpreter hot paths toward <= 30x of C++;
+(3) trace filtering (`--trace` globs/exclusions, `--test`, `--watch`, `--last`,
+`--depth`) and index-space cut/domain fixes; (4) DAP step debugger (`cpl dap`)
+with time-travel + VS Code integration; (5) browser test for trace viewer and
+stage snapshots.
 
 ## 7. Stress testing and shrinking (`plan/50` 3, `plan/40` 7b)
 **North star.** One command, `cpl stress d.cp`, turns "WA on test 37" into
