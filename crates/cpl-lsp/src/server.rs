@@ -1213,6 +1213,9 @@ fn code_lenses(path: &str, text: &str) -> Vec<(String, Vec<String>)> {
             }
         }
     }
+    let has_tests = names(&folder.join(format!("{stem}.tests")))
+        .iter()
+        .any(|n| n.ends_with(".in"));
     let mut lenses = Vec::new();
     let mut with_input = |title: &str, mut args: Vec<String>| match samples.first() {
         Some((label, input)) => {
@@ -1223,6 +1226,9 @@ fn code_lenses(path: &str, text: &str) -> Vec<(String, Vec<String>)> {
     };
     with_input("Run", vec!["run".into(), path.into()]);
     with_input("Trace", vec!["run".into(), path.into(), "--trace".into()]);
+    if has_tests {
+        lenses.push(("Test".into(), vec!["test".into(), path.into()]));
+    }
     if ["@brute", "@checker", "@interactor"]
         .iter()
         .any(|d| text.contains(d))

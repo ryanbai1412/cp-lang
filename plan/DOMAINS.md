@@ -689,8 +689,8 @@ rename across every open file and the user library that declares the name
 (blocks, comment runs, imports), semantic tokens (each resolved name as a
 type, fn, method, field, variable or parameter, marking declarations and
 immutable bindings), workspace symbols (fuzzy, over open files and the
-public names of every module they use), Run/Trace/Stress code lenses on
-the first sample (asked for with `initializationOptions.codeLens`, each a
+public names of every module they use), Run/Trace/Test/Stress code lenses on
+the first sample (Test when `<stem>.tests/` has a case) (asked for with `initializationOptions.codeLens`, each a
 `cpl` argument list under the client command `cpl.exec`), formatting, completion (members
 after `.`, names in scope, `use std.`; what fits the expected type first: the
 parameter an argument is for, a `let`'s written type, an assigned variable's), signature help
@@ -724,8 +724,8 @@ cost, and definition on a field or method jumps to it, in the stdlib too.
 Gaps against `plan/60`: no computed cost on hover; no proven range of an
 expression or a `var`; no cost or overflow
 warnings; rename sees open files, not the folder on disk, and misses
-local shadowing; no refactorings or "fix all"; no
-auto-import; no `cpl test` lens; Emacs (eglot draws no lenses) and Helix
+local shadowing; no refactorings; no
+auto-import; Emacs (eglot draws no lenses) and Helix
 run from a shell command; no fixture tests, fuzzer or DAP. The tree-sitter
 grammar (`editors/tree-sitter-cp/`) is token-level: it highlights, but gives
 no tree for folding, indents or text objects (the server folds).

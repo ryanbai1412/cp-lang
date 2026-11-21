@@ -1714,7 +1714,7 @@ fn workspace_symbols_find_names_in_open_files_and_the_stdlib_they_use() {
 }
 
 #[test]
-fn code_lenses_run_trace_and_stress_with_the_first_sample_when_asked() {
+fn code_lenses_run_trace_test_and_stress_with_the_first_sample_when_asked() {
     let dir = std::env::temp_dir().join(format!("cpl-lens-{}", std::process::id()));
     std::fs::create_dir_all(dir.join("sum two.tests")).unwrap();
     std::fs::write(dir.join("sum two.tests/2.in"), "1 2\n").unwrap();
@@ -1779,6 +1779,7 @@ fn code_lenses_run_trace_and_stress_with_the_first_sample_when_asked() {
                 "Trace on 2".to_string(),
                 s(&["run", &path, &input, "--trace"])
             ),
+            ("Test".to_string(), s(&["test", &path])),
             ("Stress".to_string(), s(&["stress", &path])),
         ]
     );
