@@ -4065,7 +4065,9 @@ process startup and the scanner, not the algorithm: 142 ports were measured,
 as `perf: unmeasured` with the reason; it gets counted again once its
 generator (or a spec in `bench/corpus_generators.py`) reaches the
 statement's max constraints. Specs at max constraints were added for
-cf2261g, cf2115f1 and ucup5s01a. Reverse: set `PERF_FLOOR_MS` back to 10
+cf2261g, cf2115f1, ucup5s01a and cf2062h (n = 14). A spec with no generator
+marks its port unmeasured with the spec's reason instead of falling back to
+the adaptive probe: cf2157c, whose statement limits are not on file. Reverse: set `PERF_FLOOR_MS` back to 10
 and apply it to `max(cpp_ms, orig_ms)`.
 
 The ratio compares one compiler with itself: when the original only builds

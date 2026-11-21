@@ -317,6 +317,17 @@ class DreamAndPerfRatchetTest(unittest.TestCase):
             self.assertEqual(src, "gen --max")
             self.assertEqual(sb._read_text(inp).strip(), "MAX_CASE")
 
+    def test_spec_without_generator_marks_unmeasured(self):
+        with tempfile.TemporaryDirectory() as d:
+            gen = os.path.join(d, "g.py")
+            with open(gen, "w", encoding="utf-8") as f:
+                f.write("print(1)\n")
+            p = {"id": "t/g", "name": "g", "gen": gen, "interactor": None, "samples": []}
+            spec = ("t/g", None, "x", "limits not on file", None, "exact")
+            inp, src = sb.generate_max_input(p, "/bin/true", d, {"t/g": spec})
+            self.assertIsNone(inp)
+            self.assertEqual(src, "limits not on file")
+
     def test_per_port_runtime_ratchet_and_worst_10(self):
         def make_rep(ratios):
             ports = [

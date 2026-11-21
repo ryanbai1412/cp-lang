@@ -2391,12 +2391,22 @@ def g_ucup5s01a(p, big, _):
     W(p, [f"{n} {m}", J(rng.randint(1, v - 1) for v in range(2, n + 1))])
 
 
+def g_cf2062h(p, big, _):
+    rng = random.Random(5007)
+    n = 14 if big else 4
+    W(p, [1, n] + ["".join(rng.choice("01") for _ in range(n)) for _ in range(n)])
+
+
 ECNERWALA_SPECS = [
     ("ecnerwala/cf2255f", P("ecnerwala/cf2255f_orig.cpp"), "NTT/FPS", "t=1, n=2e5 (assumed)", g_multitest_array(5001, 0, 998244352, 200_000), "exact"),
     ("ecnerwala/cf2150d", P("ecnerwala/cf2150d_orig.cpp"), "comb sums", "t=1, n=2e5 (assumed)", g_multitest_array(5002, 0, 1_000_000, 200_000), "exact"),
     ("ecnerwala/cf2268e", P("ecnerwala/cf2268e_orig.cpp"), "NTT", "t=1, n=2e5 (assumed)", g_multitest_array(5003, 1, 2 ** 18 - 1, 200_000), "exact"),
     ("ecnerwala/cf2261g", P("ecnerwala/cf2261g_orig.cpp"), "xor/and tries", "t=1, n=2e5, a<2^25 (assumed)", g_cf2261g, "exact"),
     ("ecnerwala/cf2115f1", P("ecnerwala/cf2115f1_orig.cpp"), "segtree+treap", "n=q=1e5 (the original's own test size)", g_cf2115f1, "exact"),
+    ("ecnerwala/cf2062h", P("ecnerwala/cf2062h_orig.cpp"), "subset DP", "t=1, n=14 (sum of 2^n <= 2^14)", g_cf2062h, "exact"),
+    ("ecnerwala/cf2157c", P("ecnerwala/cf2157c_orig.cpp"), "interval marks",
+     "statement limits not on file; both programs are O(nq), so the adaptive probe's "
+     "n ~ 1e5 input likely exceeds them", None, "exact"),
     ("ecnerwala/ucup5s01a", P("ecnerwala/ucup5s01a_orig.cpp"), "polynomial DP", "n=m=500 (the port's declared bounds)", g_ucup5s01a, "exact"),
 ]
 

@@ -916,6 +916,8 @@ def generate_max_input(p, orig_bin, work_dir, explicit_specs):
             pass
 
     spec = explicit_specs.get(p["id"]) or explicit_specs.get(p["name"])
+    if spec is not None and spec[4] is None:
+        return None, spec[3]
     if spec is not None:
         inp = os.path.join(work_dir, "max.in")
         try:
@@ -2821,7 +2823,7 @@ def print_summary(report, diff, show_ports=False, quiet=False):
         f"  tokens:    cp={tok['cp_total']:,} vs orig={tok['orig_total']:,} "
         f"(median {tok['median_ratio']:.3f}x raw, {stripped} stripped; "
         f">1.0x: {tok['over_1_0x_raw']} raw, {tok['over_1_0x_stripped']} stripped)"
-        if tok["median_ratio"] is not None
+        if tok["median_ratio"] is not None and tok["median_stripped_ratio"] is not None
         else "  tokens:    n/a"
     )
     dm = t.get("dream") or {}
