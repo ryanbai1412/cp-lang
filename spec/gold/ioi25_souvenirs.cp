@@ -9,6 +9,7 @@
 fn buy_souvenirs(n: 2..=100, p0: 1..=1e15):
     domain T = 0..n
     struct Eq(types: Bitset<T>, sum: Int)
+    extern fn transaction(m: Int) -> (List<T>, Int)
     var price: [T]?Int = none
     var bought: [T]Int = 0
     var eq: [T]?Eq = none
