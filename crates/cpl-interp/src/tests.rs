@@ -164,3 +164,36 @@ print(dfs(V.at(0)))
 ";
     assert_eq!(outcome(source, "1000000"), ("1000000\n".to_string(), None));
 }
+
+#[test]
+fn vm_handles_optionals_arrays_lists_structs_and_recursion() {
+    let source = "\
+let n: 1..=100 = read()
+domain I = 1..=n
+var a: [I]Int = read()
+var memo: [I]?Int = none
+var list: List<Int> = []
+for i in I:
+    list.push(a[i])
+
+struct Wrap(v: Int)
+fn add_wrap(x: Wrap, y: Wrap) -> Wrap:
+    return Wrap(x.v + y.v)
+
+fn solve(i: I) -> Int:
+    if let ans = memo[i]:
+        return ans
+    let cur = add_wrap(Wrap(list[i.ord]), Wrap(0)).v
+    var res = cur
+    if let nxt = i + 1:
+        res = cur + solve(nxt)
+    memo[i] = some(res)
+    return res
+
+print(solve(I.first))
+";
+    assert_eq!(
+        outcome(source, "5\n10 20 30 40 50\n"),
+        ("150\n".to_string(), None)
+    );
+}

@@ -12,6 +12,7 @@ mod input;
 pub mod profile;
 pub mod trace;
 mod value;
+mod vm;
 
 use cpl_diag::Span;
 use cpl_ir::{
@@ -315,6 +316,8 @@ fn run_io(
         fed_loops: Vec::new(),
         in_closure: false,
         fed_left: None,
+        vm: None,
+        vm_regs_i: Vec::new(),
     };
     let result = interp.main();
     let _ = interp.sink.write_all(&interp.out);
@@ -434,6 +437,10 @@ struct Interp<'p, 'o> {
     /// How the body of the fed loop that just ended left it, when that
     /// was not a plain `break`: a `return`, or a jump to an outer loop.
     fed_left: Option<Flow>,
+    /// Compiled register bytecode program for plain (untraced, unprofiled) runs.
+    vm: Option<Rc<vm::CompiledProgram<'p>>>,
+    /// Shared unboxed `i64` register stack for the VM.
+    vm_regs_i: Vec<i64>,
 }
 
 /// A loop whose body runs each time the `yields` fn at `callee` pushes
@@ -495,8 +502,16 @@ impl<'p, 'o> Interp<'p, 'o> {
         self.stack.clear();
         self.stack.resize(program.main_locals.len(), Value::Unit);
         self.base = 0;
+        let use_vm = self.tracer.is_none() && self.profiler.is_none();
+        if use_vm {
+            self.vm = Some(Rc::new(vm::CompiledProgram::compile(program)));
+        }
         if !program.multitest {
-            self.block(&program.main)?;
+            if let Some(compiled) = self.vm.clone() {
+                self.run_main_vm(&compiled)?;
+            } else {
+                self.block(&program.main)?;
+            }
             return Ok(());
         }
         // Above `@!multitest`: once. A top-level `return` there ends the
@@ -549,7 +564,11 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
             self.stack.clear();
             self.stack.resize(program.main_locals.len(), Value::Unit);
-            self.block(&program.main)?;
+            if let Some(compiled) = self.vm.clone() {
+                self.run_main_vm(&compiled)?;
+            } else {
+                self.block(&program.main)?;
+            }
         }
         Ok(())
     }
@@ -905,10 +924,10 @@ impl<'p, 'o> Interp<'p, 'o> {
                         }
                     }
                     Value::Array(array) => {
-                        let n = array.data.len();
+                        let n = array.len();
                         for k in 0..n {
                             let k = if *rev { n - 1 - k } else { k };
-                            round!(array.data[k].clone());
+                            round!(array.get_unchecked_val(k));
                         }
                     }
                     Value::Str(bytes) => {
@@ -1089,7 +1108,10 @@ impl<'p, 'o> Interp<'p, 'o> {
                 (Step::Some, Value::Opt(OptVal::Boxed(inner))) => inner,
                 (Step::Index(indices), Value::Array(array)) => {
                     let at = array_offset(&array.dims, indices.iter(), Span::new(0, 0)).ok()?;
-                    array.data.get(at)?
+                    match &array.data {
+                        value::ArrayData::Values(v) => v.get(at)?,
+                        _ => return None,
+                    }
                 }
                 (Step::Index(indices), Value::List(items)) => {
                     items.get(usize::try_from(indices.first()?.int()).ok()?)?
@@ -1137,7 +1159,7 @@ fn cell_mut<'s>(
     match holder {
         Value::Array(array) => {
             let at = array_offset(&array.dims, indices.by_ref().take(count), span)?;
-            Ok(&mut Rc::make_mut(array).data[at])
+            Ok(&mut Rc::make_mut(array).as_mut_values()[at])
         }
         Value::List(items) => {
             let index = indices.next().map_or(0, Value::int);
@@ -1256,7 +1278,16 @@ impl<'p, 'o> Interp<'p, 'o> {
                                 format!("index {i0} is outside an array dimension of length {len}"),
                             );
                         }
-                        &mut Rc::make_mut(array).data[i0 as usize]
+                        let at = i0 as usize;
+                        let arr = Rc::make_mut(array);
+                        if op == AssignOp::Set {
+                            arr.set(at, value);
+                            return Ok(());
+                        }
+                        let old = arr.get_unchecked_val(at);
+                        let next = combine(op, old, value, span)?;
+                        arr.set(at, next);
+                        return Ok(());
                     }
                     Value::Array(array) if array.dims.len() == 2 && n == 2 => {
                         let l0 = array.dims[0];
@@ -1273,7 +1304,16 @@ impl<'p, 'o> Interp<'p, 'o> {
                                 format!("index {i1} is outside an array dimension of length {l1}"),
                             );
                         }
-                        &mut Rc::make_mut(array).data[(i0 * l1 + i1) as usize]
+                        let at = (i0 * l1 + i1) as usize;
+                        let arr = Rc::make_mut(array);
+                        if op == AssignOp::Set {
+                            arr.set(at, value);
+                            return Ok(());
+                        }
+                        let old = arr.get_unchecked_val(at);
+                        let next = combine(op, old, value, span)?;
+                        arr.set(at, next);
+                        return Ok(());
                     }
                     Value::List(items) if n == 1 => {
                         let len = items.len();
@@ -1696,7 +1736,8 @@ impl<'p, 'o> Interp<'p, 'o> {
                     }
                     Value::Array(arr) => {
                         let a = Rc::try_unwrap(arr).unwrap_or_else(|r| (*r).clone());
-                        (a.data, true, a.dims)
+                        let dims = a.dims.clone();
+                        (a.into_values(), true, dims)
                     }
                     _ => return trap(span, LENT),
                 };
@@ -1739,10 +1780,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                     }
                 }
                 let restored = if is_array {
-                    Value::Array(Rc::new(Array {
-                        dims,
-                        data: items_vec,
-                    }))
+                    Value::Array(Rc::new(Array::from_values(dims, items_vec)))
                 } else {
                     Value::List(Rc::new(items_vec))
                 };
@@ -1868,11 +1906,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                         _ => Value::Unit,
                     },
                 };
-                let cells = dims.iter().product::<i64>() as usize;
-                Value::Array(Rc::new(Array {
-                    dims,
-                    data: vec![cell; cells],
-                }))
+                Value::Array(Rc::new(Array::filled(dims, cell)))
             }
             ExprKind::DomainLen(id) => Value::Int(self.domains[*id].1),
             ExprKind::DomainLo(id) => Value::Int(self.domains[*id].0),
@@ -1979,7 +2013,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 } else {
                     array_offset(&array.dims, values.iter(), span)?
                 };
-                Ok(array.data[at].clone())
+                Ok(array.get_unchecked_val(at))
             }
             Value::List(items) => {
                 let index = values[0].int();
@@ -2231,7 +2265,22 @@ impl<'p, 'o> Interp<'p, 'o> {
         for d in self.program.fn_guarded_domains(&f.ret, &f.body) {
             self.saved_domains.push((d, self.domains[d]));
         }
-        let mut flow = self.block(&f.body);
+        let has_alias = self.stack[self.base..self.base + f.params.len()]
+            .iter()
+            .any(|v| matches!(v, Value::Alias(..) | Value::Part(_)));
+        let mut flow = if !feeding && !has_alias {
+            if let Some(compiled) = self.vm.clone() {
+                if compiled.fns.get(id).is_some_and(Option::is_some) {
+                    self.run_fn_vm_from_stack(&compiled, id).map(Flow::Return)
+                } else {
+                    self.block(&f.body)
+                }
+            } else {
+                self.block(&f.body)
+            }
+        } else {
+            self.block(&f.body)
+        };
         while self.saved_domains.len() > dom_mark {
             let (id, prev) = self.saved_domains.pop().unwrap();
             self.domains[id] = prev;
@@ -2807,9 +2856,13 @@ impl<'p, 'o> Interp<'p, 'o> {
                     Ty::List(elem) | Ty::Array { elem, .. } => (**elem).clone(),
                     _ => Ty::Unit,
                 };
+                let owned;
                 let items: &[Value] = match &seq {
                     Value::List(items) => items,
-                    Value::Array(array) => &array.data,
+                    Value::Array(array) => {
+                        owned = array.to_values();
+                        &owned
+                    }
                     _ => &[],
                 };
                 let mut buf = Vec::new();
@@ -2868,18 +2921,17 @@ impl<'p, 'o> Interp<'p, 'o> {
                 other => other,
             },
             Builtin::ArrayToList => match first {
-                Value::Array(arr) => Value::List(Rc::new(arr.data.clone())),
+                Value::Array(arr) => Value::List(Rc::new(arr.to_values())),
                 other => other,
             },
             Builtin::ListToArray => match first {
-                Value::List(items) => Value::Array(Rc::new(Array {
-                    dims: vec![items.len() as i64],
-                    data: items.to_vec(),
-                })),
+                Value::List(items) => {
+                    Value::Array(Rc::new(Array::from_values(vec![items.len() as i64], items.to_vec())))
+                }
                 other => other,
             },
             Builtin::Len => Value::Int(match &first {
-                Value::Array(array) => array.data.len() as i64,
+                Value::Array(array) => array.len() as i64,
                 Value::List(items) => items.len() as i64,
                 Value::Str(bytes) => bytes.len() as i64,
                 Value::Map(entries) => entries.len() as i64,
@@ -2890,13 +2942,13 @@ impl<'p, 'o> Interp<'p, 'o> {
             }),
             Builtin::First => match &first {
                 Value::List(items) => optional(items.first().cloned()),
-                Value::Array(array) => optional(array.data.first().cloned()),
+                Value::Array(array) => optional(array.first()),
                 Value::Range(lo, hi) => optional((lo < hi).then_some(Value::Int(*lo))),
                 _ => Value::Opt(OptVal::None),
             },
             Builtin::Last => match &first {
                 Value::List(items) => optional(items.last().cloned()),
-                Value::Array(array) => optional(array.data.last().cloned()),
+                Value::Array(array) => optional(array.last()),
                 Value::Range(lo, hi) => optional((lo < hi).then_some(Value::Int(*hi - 1))),
                 _ => Value::Opt(OptVal::None),
             },
@@ -2918,7 +2970,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 let needle = values.next().unwrap_or_default();
                 Value::Bool(match &first {
                     Value::List(items) => items.contains(&needle),
-                    Value::Array(array) => array.data.contains(&needle),
+                    Value::Array(array) => array.contains(&needle),
                     Value::Set(items) => items.contains(&needle),
                     Value::Map(entries) => entries.contains_key(&needle),
                     Value::Str(bytes) => match &needle {
@@ -2981,7 +3033,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                     Value::List(items)
                 }
                 Value::Array(arr) => {
-                    let mut items = arr.data.clone();
+                    let mut items = arr.to_values();
                     items.sort();
                     Value::List(Rc::new(items))
                 }
@@ -2998,7 +3050,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                     Value::Str(bytes)
                 }
                 Value::Array(arr) => {
-                    let mut items = arr.data.clone();
+                    let mut items = arr.to_values();
                     items.reverse();
                     Value::List(Rc::new(items))
                 }
@@ -3120,8 +3172,8 @@ impl<'p, 'o> Interp<'p, 'o> {
                         }
                     }
                     (Mutation::Extend, Some(Value::Array(array))) => {
-                        for item in array.data.iter() {
-                            self.feed(item.clone(), span)?;
+                        for i in 0..array.len() {
+                            self.feed(array.get_unchecked_val(i), span)?;
                         }
                     }
                     _ => return trap(span, "internal: a `yields` fn did something else to its list"),
@@ -3223,7 +3275,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::Unit
             }
             (Mutation::Reverse, Value::Array(arr)) => {
-                Rc::make_mut(arr).data.reverse();
+                Rc::make_mut(arr).reverse();
                 Value::Unit
             }
             (Mutation::Swap, Value::List(items)) => {
@@ -3244,9 +3296,9 @@ impl<'p, 'o> Interp<'p, 'o> {
             (Mutation::Swap, Value::Array(arr)) => {
                 let (i, j) = (arg.int(), arg2.int());
                 let a = Rc::make_mut(arr);
-                let len = a.data.len();
+                let len = a.len();
                 match (usize::try_from(i).ok(), usize::try_from(j).ok()) {
-                    (Some(i), Some(j)) if i < len && j < len => a.data.swap(i, j),
+                    (Some(i), Some(j)) if i < len && j < len => a.swap(i, j),
                     _ => {
                         return trap(
                             span,
@@ -3276,7 +3328,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 let v = Rc::make_mut(items);
                 match arg {
                     Value::List(other) => v.extend(other.iter().cloned()),
-                    Value::Array(arr) => v.extend(arr.data.iter().cloned()),
+                    Value::Array(arr) => v.extend((0..arr.len()).map(|i| arr.get_unchecked_val(i))),
                     Value::Str(bytes) => v.extend(bytes.iter().copied().map(Value::Char)),
                     Value::Set(set) => v.extend(set.iter().cloned()),
                     _ => {}
@@ -3285,7 +3337,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
             (Mutation::Fill, Value::Array(arr)) => {
                 let a = Rc::make_mut(arr);
-                a.data.fill(arg);
+                a.fill(arg);
                 Value::Unit
             }
             (Mutation::Fill, Value::List(items)) => {
@@ -3375,7 +3427,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 for _ in 0..cells {
                     data.push(self.read(elem, span)?);
                 }
-                Value::Array(Rc::new(Array { dims, data }))
+                Value::Array(Rc::new(Array::from_values(dims, data)))
             }
             Spec::Opt(inner, Some(absent)) => {
                 let absent = self.eval(absent)?.int();

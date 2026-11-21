@@ -213,12 +213,286 @@ pub(crate) enum Value {
     Moved,
 }
 
+/// Typed flat backing storage for [`Array`] cells so primitive arrays
+/// (`Int`, `Pos`, `Bound`, 1-field `Int` structs like `Mod<P>`, `Bool`,
+/// `Char`, `Float`) avoid 24-byte `Value` tagging and `Clone`/`Drop` dispatch.
+#[derive(Clone, Debug)]
+pub(crate) enum ArrayData {
+    Int(Vec<i64>),
+    OneIntStruct(Vec<i64>),
+    OptInt(Vec<Option<i64>>),
+    Bool(Vec<u8>),
+    Char(Vec<u8>),
+    Float(Vec<f64>),
+    Values(Vec<Value>),
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct Array {
     /// Length of each dimension.
     pub dims: Vec<i64>,
     /// Cells in row-major order.
-    pub data: Vec<Value>,
+    pub data: ArrayData,
+}
+
+impl Array {
+    pub fn filled(dims: Vec<i64>, fill: Value) -> Array {
+        let cells = dims.iter().product::<i64>() as usize;
+        let data = match fill {
+            Value::Int(v) => ArrayData::Int(vec![v; cells]),
+            Value::Tuple(TupleVal::OneInt(v)) => ArrayData::OneIntStruct(vec![v; cells]),
+            Value::Opt(OptVal::None) => ArrayData::OptInt(vec![None; cells]),
+            Value::Opt(OptVal::Int(v)) => ArrayData::OptInt(vec![Some(v); cells]),
+            Value::Bool(b) => ArrayData::Bool(vec![u8::from(b); cells]),
+            Value::Char(c) => ArrayData::Char(vec![c; cells]),
+            Value::Float(f) => ArrayData::Float(vec![f; cells]),
+            other => ArrayData::Values(vec![other; cells]),
+        };
+        Array { dims, data }
+    }
+
+    pub fn empty(dims: Vec<i64>) -> Array {
+        Array {
+            dims,
+            data: ArrayData::Values(Vec::new()),
+        }
+    }
+
+    pub fn from_values(dims: Vec<i64>, values: Vec<Value>) -> Array {
+        let data = match values.first() {
+            Some(Value::Int(_)) if values.iter().all(|v| matches!(v, Value::Int(_))) => {
+                ArrayData::Int(values.into_iter().map(|v| v.int()).collect())
+            }
+            Some(Value::Tuple(TupleVal::OneInt(_)))
+                if values
+                    .iter()
+                    .all(|v| matches!(v, Value::Tuple(TupleVal::OneInt(_)))) =>
+            {
+                ArrayData::OneIntStruct(
+                    values
+                        .into_iter()
+                        .map(|v| match v {
+                            Value::Tuple(TupleVal::OneInt(x)) => x,
+                            _ => unreachable!(),
+                        })
+                        .collect(),
+                )
+            }
+            Some(Value::Bool(_)) if values.iter().all(|v| matches!(v, Value::Bool(_))) => {
+                ArrayData::Bool(values.into_iter().map(|v| u8::from(v.bool())).collect())
+            }
+            Some(Value::Char(_)) if values.iter().all(|v| matches!(v, Value::Char(_))) => {
+                ArrayData::Char(
+                    values
+                        .into_iter()
+                        .map(|v| match v {
+                            Value::Char(c) => c,
+                            _ => unreachable!(),
+                        })
+                        .collect(),
+                )
+            }
+            Some(Value::Float(_)) if values.iter().all(|v| matches!(v, Value::Float(_))) => {
+                ArrayData::Float(values.into_iter().map(|v| v.float()).collect())
+            }
+            _ => ArrayData::Values(values),
+        };
+        Array { dims, data }
+    }
+
+    pub fn len(&self) -> usize {
+        match &self.data {
+            ArrayData::Int(v) | ArrayData::OneIntStruct(v) => v.len(),
+            ArrayData::OptInt(v) => v.len(),
+            ArrayData::Bool(v) | ArrayData::Char(v) => v.len(),
+            ArrayData::Float(v) => v.len(),
+            ArrayData::Values(v) => v.len(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    #[inline]
+    pub fn get(&self, idx: usize) -> Option<Value> {
+        match &self.data {
+            ArrayData::Int(v) => v.get(idx).copied().map(Value::Int),
+            ArrayData::OneIntStruct(v) => {
+                v.get(idx).copied().map(|x| Value::Tuple(TupleVal::OneInt(x)))
+            }
+            ArrayData::OptInt(v) => v.get(idx).copied().map(|o| match o {
+                Some(x) => Value::Opt(OptVal::Int(x)),
+                None => Value::Opt(OptVal::None),
+            }),
+            ArrayData::Bool(v) => v.get(idx).copied().map(|b| Value::Bool(b != 0)),
+            ArrayData::Char(v) => v.get(idx).copied().map(Value::Char),
+            ArrayData::Float(v) => v.get(idx).copied().map(Value::Float),
+            ArrayData::Values(v) => v.get(idx).cloned(),
+        }
+    }
+
+    #[inline]
+    pub fn get_unchecked_val(&self, idx: usize) -> Value {
+        match &self.data {
+            ArrayData::Int(v) => Value::Int(v[idx]),
+            ArrayData::OneIntStruct(v) => Value::Tuple(TupleVal::OneInt(v[idx])),
+            ArrayData::OptInt(v) => match v[idx] {
+                Some(x) => Value::Opt(OptVal::Int(x)),
+                None => Value::Opt(OptVal::None),
+            },
+            ArrayData::Bool(v) => Value::Bool(v[idx] != 0),
+            ArrayData::Char(v) => Value::Char(v[idx]),
+            ArrayData::Float(v) => Value::Float(v[idx]),
+            ArrayData::Values(v) => v[idx].clone(),
+        }
+    }
+
+    #[inline]
+    pub fn set(&mut self, idx: usize, val: Value) {
+        match (&mut self.data, val) {
+            (ArrayData::Int(v), Value::Int(x)) => v[idx] = x,
+            (ArrayData::OneIntStruct(v), Value::Tuple(TupleVal::OneInt(x))) => v[idx] = x,
+            (ArrayData::OptInt(v), Value::Opt(OptVal::None)) => v[idx] = None,
+            (ArrayData::OptInt(v), Value::Opt(OptVal::Int(x))) => v[idx] = Some(x),
+            (ArrayData::Bool(v), Value::Bool(b)) => v[idx] = u8::from(b),
+            (ArrayData::Char(v), Value::Char(c)) => v[idx] = c,
+            (ArrayData::Float(v), Value::Float(f)) => v[idx] = f,
+            (ArrayData::Values(v), other) => v[idx] = other,
+            (_, other) => {
+                self.as_mut_values()[idx] = other;
+            }
+        }
+    }
+
+    pub fn first(&self) -> Option<Value> {
+        self.get(0)
+    }
+
+    pub fn last(&self) -> Option<Value> {
+        self.len().checked_sub(1).and_then(|i| self.get(i))
+    }
+
+    pub fn contains(&self, needle: &Value) -> bool {
+        match (&self.data, needle) {
+            (ArrayData::Int(v), Value::Int(x)) => v.contains(x),
+            (ArrayData::OneIntStruct(v), Value::Tuple(TupleVal::OneInt(x))) => v.contains(x),
+            (ArrayData::OptInt(v), Value::Opt(OptVal::None)) => v.contains(&None),
+            (ArrayData::OptInt(v), Value::Opt(OptVal::Int(x))) => v.contains(&Some(*x)),
+            (ArrayData::Bool(v), Value::Bool(b)) => v.contains(&u8::from(*b)),
+            (ArrayData::Char(v), Value::Char(c)) => v.contains(c),
+            (ArrayData::Float(v), Value::Float(f)) => v.iter().any(|x| x.total_cmp(f) == Ordering::Equal),
+            (ArrayData::Values(v), _) => v.contains(needle),
+            _ => (0..self.len()).any(|i| &self.get_unchecked_val(i) == needle),
+        }
+    }
+
+    pub fn reverse(&mut self) {
+        match &mut self.data {
+            ArrayData::Int(v) | ArrayData::OneIntStruct(v) => v.reverse(),
+            ArrayData::OptInt(v) => v.reverse(),
+            ArrayData::Bool(v) | ArrayData::Char(v) => v.reverse(),
+            ArrayData::Float(v) => v.reverse(),
+            ArrayData::Values(v) => v.reverse(),
+        }
+    }
+
+    pub fn swap(&mut self, i: usize, j: usize) {
+        match &mut self.data {
+            ArrayData::Int(v) | ArrayData::OneIntStruct(v) => v.swap(i, j),
+            ArrayData::OptInt(v) => v.swap(i, j),
+            ArrayData::Bool(v) | ArrayData::Char(v) => v.swap(i, j),
+            ArrayData::Float(v) => v.swap(i, j),
+            ArrayData::Values(v) => v.swap(i, j),
+        }
+    }
+
+    pub fn fill(&mut self, val: Value) {
+        match (&mut self.data, val) {
+            (ArrayData::Int(v), Value::Int(x)) => v.fill(x),
+            (ArrayData::OneIntStruct(v), Value::Tuple(TupleVal::OneInt(x))) => v.fill(x),
+            (ArrayData::OptInt(v), Value::Opt(OptVal::None)) => v.fill(None),
+            (ArrayData::OptInt(v), Value::Opt(OptVal::Int(x))) => v.fill(Some(x)),
+            (ArrayData::Bool(v), Value::Bool(b)) => v.fill(u8::from(b)),
+            (ArrayData::Char(v), Value::Char(c)) => v.fill(c),
+            (ArrayData::Float(v), Value::Float(f)) => v.fill(f),
+            (ArrayData::Values(v), other) => v.fill(other),
+            (_, other) => {
+                self.as_mut_values().fill(other);
+            }
+        }
+    }
+
+    pub fn to_values(&self) -> Vec<Value> {
+        match &self.data {
+            ArrayData::Int(v) => v.iter().copied().map(Value::Int).collect(),
+            ArrayData::OneIntStruct(v) => v
+                .iter()
+                .copied()
+                .map(|x| Value::Tuple(TupleVal::OneInt(x)))
+                .collect(),
+            ArrayData::OptInt(v) => v
+                .iter()
+                .copied()
+                .map(|o| match o {
+                    Some(x) => Value::Opt(OptVal::Int(x)),
+                    None => Value::Opt(OptVal::None),
+                })
+                .collect(),
+            ArrayData::Bool(v) => v.iter().copied().map(|b| Value::Bool(b != 0)).collect(),
+            ArrayData::Char(v) => v.iter().copied().map(Value::Char).collect(),
+            ArrayData::Float(v) => v.iter().copied().map(Value::Float).collect(),
+            ArrayData::Values(v) => v.clone(),
+        }
+    }
+
+    pub fn into_values(self) -> Vec<Value> {
+        match self.data {
+            ArrayData::Values(v) => v,
+            _ => self.to_values(),
+        }
+    }
+
+    pub fn as_mut_values(&mut self) -> &mut Vec<Value> {
+        if !matches!(self.data, ArrayData::Values(_)) {
+            let vals = self.to_values();
+            self.data = ArrayData::Values(vals);
+        }
+        match &mut self.data {
+            ArrayData::Values(v) => v,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn cmp_data(&self, other: &Array) -> Ordering {
+        match (&self.data, &other.data) {
+            (ArrayData::Int(a), ArrayData::Int(b))
+            | (ArrayData::OneIntStruct(a), ArrayData::OneIntStruct(b)) => a.cmp(b),
+            (ArrayData::Bool(a), ArrayData::Bool(b)) | (ArrayData::Char(a), ArrayData::Char(b)) => {
+                a.cmp(b)
+            }
+            (ArrayData::Float(a), ArrayData::Float(b)) => {
+                for (x, y) in a.iter().zip(b.iter()) {
+                    let ord = x.total_cmp(y);
+                    if ord != Ordering::Equal {
+                        return ord;
+                    }
+                }
+                a.len().cmp(&b.len())
+            }
+            (ArrayData::Values(a), ArrayData::Values(b)) => a.cmp(b),
+            _ => {
+                let n = self.len().min(other.len());
+                for i in 0..n {
+                    let ord = self.get_unchecked_val(i).cmp(&other.get_unchecked_val(i));
+                    if ord != Ordering::Equal {
+                        return ord;
+                    }
+                }
+                self.len().cmp(&other.len())
+            }
+        }
+    }
 }
 
 impl Value {
@@ -309,7 +583,7 @@ impl Ord for Value {
             (Value::Tuple(a), Value::Tuple(b)) => a.cmp(b),
             (Value::List(a), Value::List(b)) => a.cmp(b),
             (Value::Enum(ta, a), Value::Enum(tb, b)) => ta.cmp(tb).then_with(|| a.cmp(b)),
-            (Value::Array(a), Value::Array(b)) => a.data.cmp(&b.data),
+            (Value::Array(a), Value::Array(b)) => a.cmp_data(b),
             (Value::Map(a), Value::Map(b)) => a.cmp(b),
             (Value::Set(a), Value::Set(b)) => a.cmp(b),
             _ => self.rank().cmp(&other.rank()),
@@ -363,10 +637,7 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
                 .unwrap_or_default();
             Value::Enum(0, Rc::new(payload))
         }
-        Ty::Array { dims, .. } => Value::Array(Rc::new(Array {
-            dims: vec![0; dims.len()],
-            data: Vec::new(),
-        })),
+        Ty::Array { dims, .. } => Value::Array(Rc::new(Array::empty(vec![0; dims.len()]))),
         Ty::List(_) => Value::List(Rc::new(Vec::new())),
         Ty::Map(..) | Ty::HashMap(..) => Value::Map(Rc::new(BTreeMap::new())),
         Ty::Set(_) | Ty::HashSet(_) => Value::Set(Rc::new(BTreeSet::new())),
@@ -455,7 +726,7 @@ pub(crate) fn show(
                 }
                 _ => usize::MAX,
             };
-            for (i, cell) in array.data.iter().enumerate() {
+            for i in 0..array.len() {
                 if i > 0 {
                     if i % row == 0 {
                         out.push(b'\n');
@@ -463,7 +734,8 @@ pub(crate) fn show(
                         out.extend_from_slice(sep.bytes());
                     }
                 }
-                rec(out, cell, elem);
+                let cell = array.get_unchecked_val(i);
+                rec(out, &cell, elem);
             }
         }
         (Value::List(items), Ty::List(elem)) => {

@@ -841,7 +841,10 @@ fn classify(ty: &Ty, view: &View) -> (Kind, String) {
 /// How many values `value` holds, to keep huge ones out of a trace.
 fn cells(value: &Value) -> usize {
     match value {
-        Value::Array(array) => array.data.iter().map(cells).sum(),
+        Value::Array(array) => match &array.data {
+            crate::value::ArrayData::Values(v) => v.iter().map(cells).sum(),
+            _ => array.len(),
+        },
         Value::List(items) | Value::Enum(_, items) => {
             1 + items.iter().map(cells).sum::<usize>()
         }
@@ -1051,7 +1054,8 @@ fn render(out: &mut String, value: &Value, ty: &Ty, view: &View, mode: Mode) {
                 }
                 out.push(']');
             }
-            rows(out, &array.data, &array.dims, elem, view, mode);
+            let vals = array.to_values();
+            rows(out, &vals, &array.dims, elem, view, mode);
         }
         (Value::List(items), Ty::List(elem)) => list(out, &mut items.iter().map(|item| (item, &**elem)), '[', ']'),
         (Value::Set(items), Ty::Set(elem) | Ty::HashSet(elem)) => {
@@ -1167,9 +1171,9 @@ fn parents_of(value: &Value) -> Option<Vec<Option<i64>>> {
     let Value::Array(array) = value else {
         return None;
     };
+    let vals = array.to_values();
     Some(
-        array
-            .data
+        vals
             .iter()
             .map(|cell| match cell {
                 Value::Opt(OptVal::Int(parent)) => Some(*parent),
@@ -1211,7 +1215,8 @@ fn snapshot(value: &Value, ty: &Ty, kind: Kind, view: &View) -> (String, Option<
                 _ => None,
             };
             let mut edges = Vec::new();
-            for (from, list) in array.data.iter().enumerate() {
+            let vals = array.to_values();
+            for (from, list) in vals.iter().enumerate() {
                 let Value::List(items) = list else { continue };
                 for item in items.iter() {
                     let (to, weight) = match item {
@@ -1233,7 +1238,7 @@ fn snapshot(value: &Value, ty: &Ty, kind: Kind, view: &View) -> (String, Option<
                     edges.push((from as i64 + lo, to + lo, weight));
                 }
             }
-            (graph((0..array.data.len() as i64).map(|i| i + lo), &edges), None)
+            (graph((0..array.len() as i64).map(|i| i + lo), &edges), None)
         }
         (Kind::Parents, _, Ty::Array { dims, .. }) => {
             let lo = lo_of(dims.first());
@@ -1311,7 +1316,7 @@ fn snapshot(value: &Value, ty: &Ty, kind: Kind, view: &View) -> (String, Option<
             );
             (graph(nodes.map(|v| v + lo), &edges), None)
         }
-        (Kind::Grid | Kind::Dp, Value::Array(array), _) if array.dims.len() != 2 || array.data.is_empty() => {
+        (Kind::Grid | Kind::Dp, Value::Array(array), _) if array.dims.len() != 2 || array.is_empty() => {
             ("[]".to_string(), None)
         }
         _ => (plain(), None),
