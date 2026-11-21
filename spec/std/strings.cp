@@ -157,13 +157,13 @@ pub struct KmpAutomaton<A>:
     pub fn link(self, state: Int) -> Int = todo
 
     /// O(|text|). Yield every start index where `pat` occurs in `text`.
-    pub fn matches<S: Seq>(self, text: S) -> yields Int = todo
+    pub fn find_all<S: Seq>(self, text: S) -> yields Int = todo
 
 /// O(|self| * ceil(|pat| / 64)). Bitset (Shift-And) matching; yields start indices of `pat` in `self`.
 pub fn shift_and<S: Indexed, P: Indexed>(self: S, pat: P) -> yields Int = todo
 
 /// O(|self| * ceil(|pat| / 64)). Yield start indices where `pat` matches `self`, with `wildcard` matching any element.
-pub fn wildcard_matches<S: Indexed, P: Indexed>(
+pub fn find_all_wildcard<S: Indexed, P: Indexed>(
     self: S,
     pat: P,
     wildcard: Char = '?',
@@ -210,63 +210,37 @@ fn induced_sort(
 @allow(unproven_list_index)
 fn sa_is(vec: List<Int>, alpha: Int) -> List<Int> = todo
 
-/// O(n) for `Str` or small domains, O(n log n) for general `Ord`. The starts of the suffixes of `s` in sorted order (SA-IS).
-/// O(n) for bounded alphabets (<= 256 distinct values) and O(n log n) for general elements.
-@allow(unproven_list_index)
-pub fn suffix_array<S: Indexed>(s: S) -> List<Int> = todo
-
-/// O(n). `lcp[j]` is the length of the longest common prefix of the suffixes at `sa[j]` and `sa[j + 1]`
-/// (Kasai). O(n); the result has `n - 1` entries.
-@allow(unproven_list_index)
-pub fn lcp_array<S: Indexed>(s: S, sa: List<Int>) -> List<Int> = todo
-
-/// Suffix array + rank + LCP + sparse-table RMQ for O(1) LCP and substring comparison.
-/// Built in O(n log n) time and memory (SA-IS + Kasai + sparse table).
-pub struct SuffixArray<T>:
-    s: List<T>
+/// O(n) SA-IS + Kasai LCP (O(n log n) with RMQ). Suffix array, inverse rank, adjacent LCP, and O(1) LCP/comparison queries.
+pub struct SuffixArray:
     sa: List<Int>
-    rank: List<0..=2_000_000_000>
+    rank: List<Int>
     lcp: List<Int>
-    rmq: List<0..=2_000_000_000>
-    rmq_n: 0..=2_000_000_000
 
-    @allow(unproven_list_index)
-    /// Build suffix array and Kasai LCP array for `s`. O(n log n).
-    pub fn new(s: List<T>) -> SuffixArray<T> = todo
-
-    /// Length of the indexed sequence. O(1).
+    /// O(1). Length of the indexed sequence.
     pub @get fn len(self) -> Int = todo
 
     /// O(1). True when the indexed sequence is empty.
     pub @get fn is_empty(self) -> Bool = todo
 
-    @allow(unproven_list_index)
-    fn rmq_min(self, lo: Int, hi: Int) -> Int = todo
-
-    /// Longest common prefix of suffixes `s[i..]` and `s[j..]`. O(1).
-    @allow(unproven_list_index)
+    /// O(1). Longest common prefix of suffixes `s[i..]` and `s[j..]`.
     pub fn lcp_between(self, i: Int, j: Int) -> Int = todo
 
-    /// Rank range `lo..hi` in `sa` of all suffixes starting with `pat`. O(|pat| log n).
-    @allow(unproven_list_index)
-    pub fn matches<P: Indexed>(self, pat: P) -> Range<Int> = todo
+    /// O(|pat| log n). Rank range `lo..hi` in `sa` of all suffixes starting with `pat`.
+    pub fn rank_range<P: Indexed>(self, pat: P) -> Range<Int> = todo
 
     /// O(|pat| log n + matches). Yield every start index where `pat` occurs in `s` (in suffix-array order).
-    pub fn match_positions<P: Indexed>(self, pat: P) -> yields Int = todo
+    pub fn find_all<P: Indexed>(self, pat: P) -> yields Int = todo
 
-    /// Number of occurrences of `pat` in `s`. O(|pat| log n).
+    /// O(|pat| log n). Number of occurrences of `pat` in `s`.
     pub fn count<P: Indexed>(self, pat: P) -> Int = todo
 
     /// O(log n). Rank range `lo..hi` in `sa` of all suffixes whose LCP with `s[i..]` is at least `len`.
-    /// O(log n).
-    @allow(unproven_list_index)
     pub fn lcp_range(self, i: Int, len: Int) -> Range<Int> = todo
 
-    /// Lexicographic comparison of `s[l1..r1]` and `s[l2..r2]`: returns `-1`, `0`, or `1`. O(1).
-    @allow(unproven_list_index)
+    /// O(1). Lexicographic comparison of `s[l1..r1]` and `s[l2..r2]`: returns `-1`, `0`, or `1`.
     pub fn compare(self, l1: Int, r1: Int, l2: Int, r2: Int) -> Int = todo
 
-    /// Number of distinct non-empty substrings of `s`. O(n).
+    /// O(n). Number of distinct non-empty substrings of `s`.
     pub @get fn distinct(self) -> Int = todo
 
     /// O(1). Minimum adjacent LCP across the rank range `r` (`r.start..r.end`).
@@ -277,6 +251,9 @@ pub struct SuffixArray<T>:
 
     /// O(log n). The `k`-th lexicographically smallest distinct non-empty substring (0-based), or `none`.
     pub fn kth_distinct(self, k: Int) -> ?Range<Int> = todo
+
+/// O(n) for `Str` or small alphabets, O(n log n) for general `Ord`. Build the suffix array (`sa`, `rank`, `lcp`, and RMQ) for `s`.
+pub fn suffix_array<S: Indexed>(s: S) -> SuffixArray = todo
 
 /// O(1) value. One edge of the compressed suffix tree of a sequence, built in O(n) from SA + LCP.
 pub struct SuffixTreeEdge(
@@ -541,9 +518,9 @@ pub struct SuffixAutomaton<A>:
     @allow(unproven_list_index)
     pub fn topo_order(self) -> List<Int> = todo
 
-    /// Number of end positions of each state's substrings in the indexed string. O(states).
+    /// O(states). Number of end positions (occurrence count) of each state's substrings in the indexed string.
     @allow(unproven_list_index)
-    pub fn occurrences(self) -> List<Int> = todo
+    pub fn occ_counts(self) -> List<Int> = todo
 
     /// O(|other|). Longest common substring of the indexed string and `other`: returns `(len, end)` where
     /// `other[end - len..end]` is a longest common substring. O(|other|).
@@ -620,9 +597,9 @@ pub struct PalindromicTree<A>:
     @allow(unproven_list_index)
     pub fn series_link(self, state: Int) -> Int = todo
 
-    /// Total occurrences of each palindrome state in the pushed string. O(states).
+    /// O(states). Occurrence count of each palindrome state in the pushed string.
     @allow(unproven_list_index)
-    pub fn occurrences(self) -> List<Int> = todo
+    pub fn occ_counts(self) -> List<Int> = todo
 
     /// O(1) amortized. Prepend one letter `a` (double-ended eertree) and return the longest palindromic prefix state.
     pub fn push_front(mut self, a: A) -> Int = todo
@@ -742,7 +719,7 @@ pub struct AhoCorasick<A>:
     /// O(|text| + matches). Yield every occurrence `(at, pattern)` in `text`, ordered by end position.
     /// O(|text| + output).
     @allow(unproven_list_index)
-    pub fn matches<S: Seq>(self, text: S) -> yields (at: Int, pattern: Int) = todo
+    pub fn find_all<S: Seq>(self, text: S) -> yields (at: Int, pattern: Int) = todo
 
     /// Occurrence count of every pattern in `text` (overlaps included). O(|text| + states).
     @allow(unproven_list_index)

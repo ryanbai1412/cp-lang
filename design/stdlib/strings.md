@@ -537,26 +537,26 @@ Audit against AtCoder Library (`string`), KACTL (`strings`), cp-algorithms (`str
 | `Str` utilities (`to_lower`, `to_upper`, `trim`, `split`, `split_first`, `split_whitespace`, `join`, `replace`, `parse_int`) | Contest I/O & parsing | new | `Str.{to_lower,to_upper,trim,split,split_first,split_whitespace,join,replace,parse_int}` |
 | Z-algorithm | ACL `z_algorithm`, KACTL `Zfunc`, cp-alg | have | `z_function<S: Indexed>` |
 | Prefix function / KMP | KACTL `KMP`, cp-alg | have | `prefix_function`, `find_all`, `borders`, `prefix_matches`, `overlap`, `period` |
-| KMP prefix automaton (O(1) DP transitions) | cp-alg, Benq | new | `KmpAutomaton<A>.{new,len,step,link,matches}` |
+| KMP prefix automaton (O(1) DP transitions) | cp-alg, Benq | new | `KmpAutomaton<A>.{new,len,step,link,find_all}` |
 | Shift-And / bitset matching | Contest templates | new | `shift_and<S: Indexed, P: Indexed>` |
-| Wildcard pattern matching (`?`) | cp-alg, contest templates | new | `wildcard_matches<S: Indexed, P: Indexed>(..., wildcard: Char = '?')` |
+| Wildcard pattern matching (`?`) | cp-alg, contest templates | new | `find_all_wildcard<S: Indexed, P: Indexed>(..., wildcard: Char = '?')` |
 | Longest common prefix / suffix of two sequences | Contest basics | have | `common_prefix_len`, `common_suffix_len` |
 | Palindrome check + Manacher | KACTL `Manacher`, cp-alg | have | `is_palindrome`, `manacher`, `Palindromes.{is_palindrome,longest_at,longest_between,longest,count}` |
 | Lyndon factorization (Duval) | cp-alg | have | `lyndon_factorization<S: Indexed>` |
 | Minimum / maximum cyclic rotation | KACTL `MinRotation`, cp-alg | have / new | `min_rotation` (have), `max_rotation` (new) |
 | Main-Lorentz / Bannai runs (all maximal repetitions) | cp-alg, Bannai | have | `lyndon_runs<S: Indexed>` |
-| Suffix array (SA-IS) + Kasai LCP | ACL `suffix_array`/`lcp_array`, KACTL `SuffixArray`, cp-alg | have | `suffix_array`, `lcp_array`, `SuffixArray<T>.{new,len,lcp_between,matches,count,lcp_range,compare,distinct}` |
-| Suffix array rank-LCP, prefix-bucket split, k-th distinct substring | KACTL, jiangly, ecnerwala | new | `SuffixArray<T>.{lcp_of_ranks,split,kth_distinct}` |
+| Suffix array (SA-IS) + Kasai LCP | ACL `suffix_array`/`lcp_array`, KACTL `SuffixArray`, cp-alg | have | `suffix_array<S: Indexed>(s) -> SuffixArray`, `SuffixArray.{sa,rank,lcp,len,is_empty,lcp_between,rank_range,find_all,count,lcp_range,compare,distinct}` |
+| Suffix array rank-LCP, prefix-bucket split, k-th distinct substring | KACTL, jiangly, ecnerwala | new | `SuffixArray.{lcp_of_ranks,split,kth_distinct}` |
 | Compressed suffix tree (from SA + LCP) | KACTL `SuffixTree`, ecnerwala (`ucup5s05f`) | new | `SuffixTreeEdge`, `suffix_tree_edges<S: Indexed>` |
 | Double-mod polynomial rolling hash (1D) | cp-alg, Benq, jiangly | have | `HashVal`, `Hashable`, `RollingHash.{new(s, bases:),len,all,slice,get,combine,lcp,lcs,lcp_with}` |
 | Mersenne `2^61 - 1` rolling hash (1D) | KACTL `Hashing` (mod `2^64-1`/Mersenne), Benq | new | `RollingHash61.{new(s, base:),len,all,slice,get,combine,lcp,lcs,lcp_with}` |
 | Dynamic rolling hash (point update + range hash, forward & reverse) | Contest templates (SegTree/Fenwick hash) | new | `DynamicHash<D>.{new(seq, bases:),len,is_empty,all,get,set,rev_get,is_palindrome}` |
 | 2D rolling hash (grid sub-rectangles) | cp-alg, contest templates | have | `Hash2D<R, C>.{new,rect}` |
-| Suffix automaton (SAM) + online/generalized + k-th substring | cp-alg, Benq, jiangly | have / new | `SuffixAutomaton<A>.{new,of,push,root,len,step,link,longest,shortest,first_pos,find,contains,distinct,topo_order,occurrences,lcs}` (have); `{reset_last,push_seq,kth_substring}` (new) |
-| Palindromic tree (eertree) + series_link + deque/rollback/min-partition | cp-alg, Benq, jiangly | have / new | `PalindromicTree<A>.{new,of,push,odd_root,even_root,len,pal_len,link,step,diff,series_link,occurrences}` (have); `{push_front,pop,last_state,contains,min_palindrome_partition}` (new) |
+| Suffix automaton (SAM) + online/generalized + k-th substring | cp-alg, Benq, jiangly | have / new | `SuffixAutomaton<A>.{new,of,push,root,len,step,link,longest,shortest,first_pos,find,contains,distinct,topo_order,occ_counts,lcs}` (have); `{reset_last,push_seq,kth_substring}` (new) |
+| Palindromic tree (eertree) + series_link + deque/rollback/min-partition | cp-alg, Benq, jiangly | have / new | `PalindromicTree<A>.{new,of,push,odd_root,even_root,len,pal_len,link,step,diff,series_link,occ_counts}` (have); `{push_front,pop,last_state,contains,min_palindrome_partition}` (new) |
 | Prefix trie + order statistics | cp-alg, contest templates | have / new | `Trie<A>.{new,root,len,step,find,add,remove,count,count_prefix,ends_at,pass_at}` (have); `{contains,clear,kth,count_less}` (new) |
 | Binary XOR trie (max/min XOR, count `< limit`, k-th XOR) | Benq, jiangly, cp-alg | out | Owned by `std.bitset` (`std.bitset.XorTrie`). |
-| Aho-Corasick (static) | KACTL `AhoCorasick`, cp-alg | have / new | `AhoCorasick<A>.{new,root,len,patterns_len,step,link,hit,words_at,matches,counts}` (have); `{fail_order,exit_link,pattern_state}` (new) |
+| Aho-Corasick (static) | KACTL `AhoCorasick`, cp-alg | have / new | `AhoCorasick<A>.{new,root,len,patterns_len,step,link,hit,words_at,find_all,counts}` (have); `{fail_order,exit_link,pattern_state}` (new) |
 | Dynamic / online Aho-Corasick (log-decomposed buckets) | cp-alg, contest templates | new | `DynamicAhoCorasick<A>.{new,add,remove,count_matches}` |
 | `HashInterval` single-mod `2^64` hash | KACTL `Hashing` | out | Omitted because `RollingHash` (double 31-bit salted) and `RollingHash61` (Mersenne `2^61 - 1` salted) cover both fast-32-bit and single-64-bit hashing without hackable power-of-2 mod (Thue-Morse collision). |
 | Ukkonen online suffix tree | cp-alg | out | Omitted because `SuffixAutomaton<A>` covers online suffix-structure queries in O(1) amortized per char, and `suffix_tree_edges` builds the compressed suffix tree offline in O(n) from SA+LCP. |
@@ -573,7 +573,7 @@ Audit against AtCoder Library (`string`), KACTL (`strings`), cp-algorithms (`str
 ## Cross-area
 
 - **`std.seq`:** `count`, `find`, `rfind`, `starts_with`, `ends_with` overlap conceptually with sequence queries on `List<T>`/`[D]T`. Keeping `starts_with`/`ends_with` generic over `Indexed` avoids duplication; `Str.count(c: Char)` / `Str.find(p)` / `Str.rfind(p)` remain `Str`-specific because they accept a `Str` or `Char` pattern.
-- **`std.math` / `std.poly`:** `wildcard_matches` can also be implemented via NTT for large alphabets (O(n log n) vs O(n * |pat| / 64)); the strings spec exposes the single name `wildcard_matches`, independent of backend.
+- **`std.math` / `std.poly`:** `find_all_wildcard` can also be implemented via NTT for large alphabets (O(n log n) vs O(n * |pat| / 64)); the strings spec exposes the single name `find_all_wildcard`, independent of backend.
 - **`std.bitset`:** Binary `XorTrie` is owned by `std.bitset` rather than `std.strings`; `std.strings.Trie<A>` covers general-alphabet prefix tries.
 - **`std.segtree`:** `DynamicHash` is a monoid-over-segment-tree hash specialized for string range hashing and palindrome checks; it avoids making users wire up custom `HashMonoid` structs and power tables manually.
 
@@ -582,18 +582,18 @@ Audit against AtCoder Library (`string`), KACTL (`strings`), cp-algorithms (`str
 Every power from `spec/POWERS.md` (and any gap beyond it) needed by `spec/std/strings.cp`:
 
 1. **W4 (Sequences, views, and index spaces — `Indexed`, `Seq`, `Range<D>`, cut ranges):**
-   - Signatures: `starts_with`, `ends_with`, `z_function`, `prefix_function`, `find_all`, `borders`, `prefix_matches`, `overlap`, `lyndon_factorization`, `min_rotation`, `max_rotation`, `lyndon_runs`, `manacher`, `suffix_array`, `lcp_array`, `SuffixArray.{new,matches,count}`, `suffix_tree_edges`, `RollingHash.{new,get}`, `RollingHash61.{new,get}`, `DynamicHash.new`, `SuffixAutomaton.{of,find,contains,lcs,push_seq}`, `PalindromicTree.{of,contains}`, `Trie.{find,add,remove,count,count_prefix,contains,count_less}`, `AhoCorasick.{new,matches,counts}`, `DynamicAhoCorasick.{add,remove,count_matches}`.
+   - Signatures: `starts_with`, `ends_with`, `z_function`, `prefix_function`, `find_all`, `borders`, `prefix_matches`, `overlap`, `lyndon_factorization`, `min_rotation`, `max_rotation`, `lyndon_runs`, `manacher`, `suffix_array`, `SuffixArray.{rank_range,find_all,count}`, `suffix_tree_edges`, `RollingHash.{new,get}`, `RollingHash61.{new,get}`, `DynamicHash.new`, `SuffixAutomaton.{of,find,contains,lcs,push_seq}`, `PalindromicTree.{of,contains}`, `Trie.{find,add,remove,count,count_prefix,contains,count_less}`, `AhoCorasick.{new,find_all,counts}`, `DynamicAhoCorasick.{add,remove,count_matches}`.
    - Smallest example: `let sa = suffix_array(a)` where `a: [N]Int`, and `h.get(l..r)` where `l, r: N`.
 2. **W6 (Generators / `yields`):**
-   - Signatures: `find_all`, `borders`, `KmpAutomaton.matches`, `shift_and`, `wildcard_matches`, `AhoCorasick.matches`.
-   - Smallest example: `for (at, pat) in ac.matches(s): if pat == target: break`.
+   - Signatures: `find_all`, `borders`, `KmpAutomaton.find_all`, `shift_and`, `find_all_wildcard`, `SuffixArray.find_all`, `AhoCorasick.find_all`.
+   - Smallest example: `for (at, pat) in ac.find_all(s): if pat == target: break`.
 3. **W8 (User places — `get`/`set`):**
    - Signatures: `DynamicHash.{get,set}` (so `dh[i] = c` updates the hashed element in O(log n) and `dh[l..r]` queries the range hash).
    - Smallest example: `dh[i] = 'a'; if dh.is_palindrome(l..r): ans += 1`.
 4. **W12 (Cost on first `///` line):**
-   - Signatures: All 193 public declarations in `spec/std/strings.cp`.
+   - Signatures: All 191 public declarations in `spec/std/strings.cp`.
 5. **Defaulted named arguments (Decision 134 / `spec/SYNTAX.md`):**
-   - Signatures: `RollingHash.new(s, bases: ?(Int, Int) = none)`, `RollingHash61.new(s, base: ?Int = none)`, `DynamicHash.new(s, bases: ?(Int, Int) = none)`, `wildcard_matches(self, pat, wildcard: Char = '?')`.
+   - Signatures: `RollingHash.new(s, bases: ?(Int, Int) = none)`, `RollingHash61.new(s, base: ?Int = none)`, `DynamicHash.new(s, bases: ?(Int, Int) = none)`, `find_all_wildcard(self, pat, wildcard: Char = '?')`.
    - Smallest example: `let h2 = RollingHash.new(t, bases: h1.bases)`.
 6. **Gaps beyond `spec/POWERS.md`:**
    - **Existential / struct-owned domains** (for `SuffixArray` rank domain `sa.Rank` and `SuffixAutomaton`/`PalindromicTree`/`AhoCorasick` state domains): today states and SA ranks are plain `Int`, so `sam.step(v, c)` and `sa.lcp_of_ranks(l, r)` cannot statically distinguish state IDs from string positions. Smallest example: `struct SuffixArray<T>: domain Rank = 0..s.len; sa: [Rank]Int`.
