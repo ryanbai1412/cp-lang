@@ -143,7 +143,11 @@ impl Visitor for Writes<'_, '_> {
     }
 }
 
-pub(crate) fn kept<'a>(names: Vec<&'a str>, calls: &mut Calls, walk: impl Fn(&mut Writes)) -> Vec<&'a str> {
+pub(crate) fn kept<'a>(
+    names: Vec<&'a str>,
+    calls: &mut Calls,
+    walk: impl Fn(&mut Writes),
+) -> Vec<&'a str> {
     names
         .into_iter()
         .filter(|name| {
@@ -210,7 +214,8 @@ impl Mutators {
                 let mut body = Body::default();
                 let name = match &stmt.kind {
                     StmtKind::Fn(decl) => {
-                        body.2.extend(decl.params.iter().map(|p| p.name.text.clone()));
+                        body.2
+                            .extend(decl.params.iter().map(|p| p.name.text.clone()));
                         match &decl.body {
                             FnBody::Block(block) => walk_block(block, &mut body),
                             FnBody::Expr(expr) => walk_expr(expr, &mut body),
@@ -225,10 +230,13 @@ impl Mutators {
                                 kind: PatternKind::Name(name),
                                 ..
                             },
-                        init: Some(init @ Expr {
-                            kind: ExprKind::Lambda { .. },
-                            ..
-                        }),
+                        init:
+                            Some(
+                                init @ Expr {
+                                    kind: ExprKind::Lambda { .. },
+                                    ..
+                                },
+                            ),
                         ..
                     } => {
                         if let ExprKind::Lambda { params, .. } = &init.kind {
@@ -250,7 +258,10 @@ impl Mutators {
         }
         let mut writes: std::collections::HashMap<String, Vec<String>> = Default::default();
         for (name, assigned, _) in &bodies.0 {
-            writes.entry(name.clone()).or_default().extend(assigned.iter().cloned());
+            writes
+                .entry(name.clone())
+                .or_default()
+                .extend(assigned.iter().cloned());
         }
         // A fn also assigns what the fns it calls assign.
         loop {
@@ -276,7 +287,9 @@ impl Mutators {
 
     /// Whether calling `callee` may assign `name`.
     pub fn writes(&self, callee: &str, name: &str) -> bool {
-        self.0.get(callee).is_some_and(|names| names.iter().any(|n| n == name))
+        self.0
+            .get(callee)
+            .is_some_and(|names| names.iter().any(|n| n == name))
     }
 }
 

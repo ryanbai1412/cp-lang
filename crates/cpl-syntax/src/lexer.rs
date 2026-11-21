@@ -351,8 +351,7 @@ impl<'a> Lexer<'a> {
             self.indents.push(width);
             self.push_empty(TokenKind::Indent, self.pos);
         } else if width < top {
-            while self.indents.len() > blk.indent_depth + 1
-                && *self.indents.last().unwrap() > width
+            while self.indents.len() > blk.indent_depth + 1 && *self.indents.last().unwrap() > width
             {
                 self.indents.pop();
                 self.push_empty(TokenKind::Dedent, self.pos);
@@ -499,7 +498,9 @@ impl<'a> Lexer<'a> {
     fn end_of_unclosed(&self, opener: &Opener) -> Option<(usize, usize)> {
         use TokenKind::*;
         let tokens = &self.out.tokens;
-        let at = tokens.iter().rposition(|t| t.span == opener.span && t.kind == opener.kind)?;
+        let at = tokens
+            .iter()
+            .rposition(|t| t.span == opener.span && t.kind == opener.kind)?;
         let before = at.checked_sub(1).map(|i| tokens[i].kind);
         // `let a: [0..nInt = ...`: in a type the `]` goes before the
         // element type, which no token marks.
@@ -616,11 +617,8 @@ impl<'a> Lexer<'a> {
             (b'+', b'+', _) => {
                 self.pos += 2;
                 let span = Span::new(start as u32, self.pos as u32);
-                let mut diag = Diagnostic::error(
-                    codes::UNKNOWN_CHAR,
-                    span,
-                    "CP Lang concatenates with `+`",
-                );
+                let mut diag =
+                    Diagnostic::error(codes::UNKNOWN_CHAR, span, "CP Lang concatenates with `+`");
                 diag.help = Some("replace `++` with `+`".into());
                 diag.fixes.push(cpl_diag::Fix {
                     title: "replace `++` with `+`".into(),

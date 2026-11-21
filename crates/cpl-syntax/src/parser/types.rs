@@ -53,13 +53,15 @@ impl<'a> Parser<'a> {
                         elem: Box::new(self.ty()),
                     }
                 } else if self.at(T::LParen)
-                    && self.tokens.get(after_group(self.tokens, self.pos)).map(|t| t.kind)
+                    && self
+                        .tokens
+                        .get(after_group(self.tokens, self.pos))
+                        .map(|t| t.kind)
                         == Some(T::RBracket)
                 {
                     // `[(A, B)]T`: product index space, identical to `[A, B]T`.
                     self.bump();
-                    let index =
-                        self.comma_list(T::RParen, "the product index", Self::index_ty);
+                    let index = self.comma_list(T::RParen, "the product index", Self::index_ty);
                     self.expect(T::RBracket, "`]` after the index");
                     TypeKind::Array {
                         index,
@@ -191,7 +193,11 @@ impl<'a> Parser<'a> {
                 while self.at(T::Dot) && self.peek_n(1) == T::Ident {
                     self.bump();
                     let member = self.name();
-                    let text = if member.text == "bounds" { "cuts" } else { member.text.as_str() };
+                    let text = if member.text == "bounds" {
+                        "cuts"
+                    } else {
+                        member.text.as_str()
+                    };
                     name.text = format!("{}.{text}", name.text);
                     name.span = name.span.to(member.span);
                 }
@@ -284,8 +290,7 @@ impl<'a> Parser<'a> {
                         || matches!(
                             self.peek(),
                             T::Ident | T::Int | T::Minus | T::Float | T::LParen | T::SelfKw
-                        )
-                    {
+                        ) {
                         Some(Box::new(self.additive()))
                     } else {
                         None
@@ -414,7 +419,9 @@ impl<'a> Parser<'a> {
 
     /// Parses `<D, T: Ord + Add, W = (), const N: Int>` after a fn or type
     /// name: the parameter names, optional defaults, and bounds.
-    pub(super) fn generic_params_with_defaults(&mut self) -> (Vec<Name>, Vec<Option<Type>>, Vec<Bound>) {
+    pub(super) fn generic_params_with_defaults(
+        &mut self,
+    ) -> (Vec<Name>, Vec<Option<Type>>, Vec<Bound>) {
         let mut defaults = Vec::new();
         let mut bounds = Vec::new();
         if !self.eat(T::Lt) {
@@ -423,6 +430,8 @@ impl<'a> Parser<'a> {
         let names = self.comma_list(T::Gt, "the type parameters", |p| {
             // `const N: Int` is a value parameter; its type is not a bound.
             let value = p.eat(T::Const);
+            // `<domain I>` marks a parameter that is an index space; it is still a type.
+            p.eat(T::Domain);
             let name = p.expect_name("a type parameter name");
             if p.eat(T::Colon) {
                 let traits = p.bound_traits();

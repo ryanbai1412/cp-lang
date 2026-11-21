@@ -477,7 +477,11 @@ impl FmtSpec {
                 FmtKind::Fixed(places.parse().ok().filter(|d| *d <= 300)?)
             }
         };
-        let width = if width.is_empty() { 0 } else { width.parse().ok().filter(|w| *w <= 4096)? };
+        let width = if width.is_empty() {
+            0
+        } else {
+            width.parse().ok().filter(|w| *w <= 4096)?
+        };
         Some(FmtSpec { zero, width, kind })
     }
 }

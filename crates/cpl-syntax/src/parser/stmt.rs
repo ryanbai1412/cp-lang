@@ -49,7 +49,10 @@ impl<'a> Parser<'a> {
         if self.at(T::At)
             && self.peek_n(1) == T::Ident
             && self.peek_n(2) == T::Ident
-            && self.tokens.get(self.pos + 1).is_some_and(|t| t.span.text(self.src) == "law")
+            && self
+                .tokens
+                .get(self.pos + 1)
+                .is_some_and(|t| t.span.text(self.src) == "law")
         {
             self.bump();
             self.bump();
@@ -114,7 +117,8 @@ impl<'a> Parser<'a> {
             let replacement = if args.is_empty() {
                 format!("@!{}", name.text)
             } else {
-                let rendered: Vec<&str> = args.iter().map(|a| a.value.span.text(self.src)).collect();
+                let rendered: Vec<&str> =
+                    args.iter().map(|a| a.value.span.text(self.src)).collect();
                 format!("@!{}({})", name.text, rendered.join(", "))
             };
             self.error(
@@ -124,7 +128,11 @@ impl<'a> Parser<'a> {
                     format!("use `{replacement}` instead of `{}`", span.text(self.src)),
                 )
                 .with_help(format!("replace with `{replacement}`"))
-                .with_fix(format!("replace with `{replacement}`"), span, replacement),
+                .with_fix(
+                    format!("replace with `{replacement}`"),
+                    span,
+                    replacement,
+                ),
             );
         } else if !name.text.is_empty() {
             self.planned(span, &crate::planned::WRAP_LINE);
@@ -236,10 +244,12 @@ impl<'a> Parser<'a> {
             || (self.brace_depth > 0 && matches!(self.peek(), T::Semi | T::RBrace));
         // `a; b` on one line is two statements (v2.2 cheat sheet).
         let ended = ended
-            || (self.at(T::Semi) && !matches!(self.peek_n(1), T::Newline | T::Eof | T::Dedent) && {
-                self.bump();
-                true
-            });
+            || (self.at(T::Semi)
+                && !matches!(self.peek_n(1), T::Newline | T::Eof | T::Dedent)
+                && {
+                    self.bump();
+                    true
+                });
         if !ended && self.at(T::At) && self.peek_n(1) == T::Ident {
             let at = self.start();
             self.decorator();
@@ -302,7 +312,9 @@ impl<'a> Parser<'a> {
             }
             // `mod name:` with an indented body: its items join the enclosing scope.
             T::Ident
-                if self.text() == "mod" && self.peek_n(1) == T::Ident && self.peek_n(2) == T::Colon =>
+                if self.text() == "mod"
+                    && self.peek_n(1) == T::Ident
+                    && self.peek_n(2) == T::Colon =>
             {
                 let start = self.start();
                 self.bump();
@@ -1055,7 +1067,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn expr_stmt(&mut self) -> StmtKind {
+    pub(super) fn expr_stmt(&mut self) -> StmtKind {
         let target = if self.at_filled_place() {
             let start = self.start();
             let place = self.filled_place();
@@ -1165,7 +1177,10 @@ impl<'a> Parser<'a> {
         }
         let test = self.expr();
         if self.eat(T::Comma) {
-            return Cond::Guard { test, and: Box::new(self.more_clauses()) };
+            return Cond::Guard {
+                test,
+                and: Box::new(self.more_clauses()),
+            };
         }
         fn unwrap_is_cond(expr: Expr) -> Cond {
             let is_match = matches!(
@@ -1295,7 +1310,10 @@ impl<'a> Parser<'a> {
         }
         let test = self.or();
         if self.eat(T::Comma) {
-            return Cond::Guard { test, and: Box::new(self.more_clauses()) };
+            return Cond::Guard {
+                test,
+                and: Box::new(self.more_clauses()),
+            };
         }
         Cond::Expr(test)
     }
