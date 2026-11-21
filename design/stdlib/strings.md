@@ -525,3 +525,87 @@ print(dp[n])
 3. **Single-mod `2^61 - 1` hashing (`T2`).** Once `Mod<P>` uses `mul_mod` for
    `P > 3 * 10^9`, `HashVal` could optionally narrow from two 31-bit halves to
    one 61-bit residue, halving register pressure while keeping the same API.
+
+## Coverage
+
+Audit against AtCoder Library (`string`), KACTL (`strings`), cp-algorithms (`string`), and strong contestant templates (Benq, jiangly, ecnerwala, tourist). Status: `have` (implemented body in `spec/std/strings.cp`), `new` (`= todo` spec addition), `out` (intentionally omitted).
+
+| Reference item | Source(s) | Status | Our name / reason if omitted |
+| --- | --- | --- | --- |
+| Basic `Str` ops (`repeat`, `starts_with`, `ends_with`, `find`, `rfind`, `count`) | stdlib | have | `repeat`, `starts_with<S, P>`, `ends_with<S, P>`, `find`, `rfind`, `count` (`starts_with`/`ends_with` generalized to `Indexed`) |
+| ASCII `Char` helpers (`lower`, `upper`, `digit`, predicates) | Contest basics | have / new | `Char.{lower,upper,digit}` (have); `Char.{is_digit,is_lower,is_upper,is_alpha,is_alnum,is_space}` (new) |
+| `Str` utilities (`to_lower`, `to_upper`, `trim`, `split`, `split_whitespace`, `join`, `replace`, `parse_int`) | Contest I/O & parsing | new | `Str.{to_lower,to_upper,trim,split,split_whitespace,join,replace,parse_int}` |
+| Z-algorithm | ACL `z_algorithm`, KACTL `Zfunc`, cp-alg | have | `z_function<S: Indexed>` |
+| Prefix function / KMP | KACTL `KMP`, cp-alg | have | `prefix_function`, `find_all`, `borders`, `prefix_matches`, `overlap`, `period` |
+| KMP prefix automaton (O(1) DP transitions) | cp-alg, Benq | new | `KmpAutomaton<A>.{new,len,step,link,matches}` |
+| Shift-And / bitset matching | Contest templates | new | `shift_and<S: Indexed, P: Indexed>` |
+| Wildcard pattern matching (`?`) | cp-alg, contest templates | new | `wildcard_matches<S: Indexed, P: Indexed>(..., wildcard: Char = '?')` |
+| Longest common prefix / suffix of two sequences | Contest basics | have | `common_prefix_len`, `common_suffix_len` |
+| Palindrome check + Manacher | KACTL `Manacher`, cp-alg | have | `is_palindrome`, `manacher`, `Palindromes.{is_palindrome,longest_at,longest_between,longest,count}` |
+| Lyndon factorization (Duval) | cp-alg | have | `lyndon_factorization<S: Indexed>` |
+| Minimum / maximum cyclic rotation | KACTL `MinRotation`, cp-alg | have / new | `min_rotation` (have), `max_rotation` (new) |
+| Main-Lorentz / Bannai runs (all maximal repetitions) | cp-alg, Bannai | have | `lyndon_runs<S: Indexed>` |
+| Suffix array (SA-IS) + Kasai LCP | ACL `suffix_array`/`lcp_array`, KACTL `SuffixArray`, cp-alg | have | `suffix_array`, `lcp_array`, `SuffixArray<T>.{new,len,lcp_between,matches,count,lcp_range,compare,distinct}` |
+| Suffix array rank-LCP, prefix-bucket split, k-th distinct substring | KACTL, jiangly, ecnerwala | new | `SuffixArray<T>.{lcp_of_ranks,split,kth_distinct}` |
+| Compressed suffix tree (from SA + LCP) | KACTL `SuffixTree`, ecnerwala (`ucup5s05f`) | new | `SuffixTreeEdge`, `suffix_tree_edges<S: Indexed>` |
+| Double-mod polynomial rolling hash (1D) | cp-alg, Benq, jiangly | have | `HashVal`, `Hashable`, `RollingHash.{new(s, bases:),len,all,slice,get,combine,lcp,lcs,lcp_with}` |
+| Mersenne `2^61 - 1` rolling hash (1D) | KACTL `Hashing` (mod `2^64-1`/Mersenne), Benq | new | `RollingHash61.{new(s, base:),len,all,slice,get,combine,lcp,lcs,lcp_with}` |
+| Dynamic rolling hash (point update + range hash, forward & reverse) | Contest templates (SegTree/Fenwick hash) | new | `DynamicHash.{new(s, bases:),len,get,set,range,rev_range,is_palindrome}` |
+| 2D rolling hash (grid sub-rectangles) | cp-alg, contest templates | have | `Hash2D<R, C>.{new,rect}` |
+| Suffix automaton (SAM) + online/generalized + k-th substring | cp-alg, Benq, jiangly | have / new | `SuffixAutomaton<A>.{new,of,push,root,len,step,link,longest,shortest,first_pos,find,contains,distinct,topo_order,occurrences,lcs}` (have); `{reset_last,push_seq,kth_substring}` (new) |
+| Palindromic tree (eertree) + series_link + deque/rollback/min-partition | cp-alg, Benq, jiangly | have / new | `PalindromicTree<A>.{new,of,push,odd_root,even_root,len,pal_len,link,step,diff,series_link,occurrences}` (have); `{push_front,pop,last_state,contains,min_palindrome_partition}` (new) |
+| Prefix trie + order statistics | cp-alg, contest templates | have / new | `Trie<A>.{new,root,len,step,find,add,remove,count,count_prefix,ends_at,pass_at}` (have); `{contains,clear,kth,count_less}` (new) |
+| Binary XOR trie (max/min XOR, count `< limit`, k-th XOR) | Benq, jiangly, cp-alg | new | `XorTrie.{new(bits:),len,is_empty,add,remove,count,max_xor,min_xor,count_xor_less,kth_xor,clear}` |
+| Aho-Corasick (static) | KACTL `AhoCorasick`, cp-alg | have / new | `AhoCorasick<A>.{new,root,len,patterns_len,step,link,hit,words_at,matches,counts}` (have); `{fail_order,exit_link,pattern_state}` (new) |
+| Dynamic / online Aho-Corasick (log-decomposed buckets) | cp-alg, contest templates | new | `DynamicAhoCorasick<A>.{new,add,remove,count_matches}` |
+| `HashInterval` single-mod `2^64` hash | KACTL `Hashing` | out | Omitted because `RollingHash` (double 31-bit salted) and `RollingHash61` (Mersenne `2^61 - 1` salted) cover both fast-32-bit and single-64-bit hashing without hackable power-of-2 mod (Thue-Morse collision). |
+| Ukkonen online suffix tree | cp-alg | out | Omitted because `SuffixAutomaton<A>` covers online suffix-structure queries in O(1) amortized per char, and `suffix_tree_edges` builds the compressed suffix tree offline in O(n) from SA+LCP. |
+| Rabin-Karp standalone function | cp-alg | out | Omitted because `find_all` (KMP, deterministic O(n+m)) and `RollingHash` already cover single-pattern and hash-based matching. |
+| Edit distance / LCS DP | cp-alg | out | Omitted because it is a 10-line problem-specific DP whose weights/tie-breaking/path-recovery vary per problem. |
+| Suffix array of a tree / persistent trie / persistent SAM | Niche | out | Omitted because tree-SA and persistent automata have problem-specific node payloads; users compose `Trie`/`SuffixAutomaton` or explicit node pools. |
+| Unicode / regex / locale | General-purpose | out | Out of scope for competitive programming (ASCII bytes and generic `Indexed`/`Seq` sequences). |
+
+### Renames and removals from `stdlib/strings.cp`
+
+- **`RollingHash.with_bases(s, bases)` -> removed / folded into `RollingHash.new(s, bases: ?(Int, Int) = none)`:** One constructor with an optional named argument `bases:` instead of two constructors (`new` + `with_bases`), matching `Hash2D.new(g, bases:)`, `RollingHash61.new(s, base:)`, and `DynamicHash.new(s, bases:)`.
+- **`starts_with` / `ends_with`:** Generalized from `(Str, Str)` to `<S: Indexed, P: Indexed>` so `List<T>`, `[D]T`, `StrView`, and `ListView` share the same name with zero copies.
+
+## Cross-area
+
+- **`std.seq`:** `count`, `find`, `rfind`, `starts_with`, `ends_with` overlap conceptually with sequence queries on `List<T>`/`[D]T`. Keeping `starts_with`/`ends_with` generic over `Indexed` avoids duplication; `Str.count(c: Char)` / `Str.find(p)` / `Str.rfind(p)` remain `Str`-specific because they accept a `Str` or `Char` pattern.
+- **`std.math` / `std.poly`:** `wildcard_matches` can also be implemented via NTT for large alphabets (O(n log n) vs O(n * |pat| / 64)); the strings spec exposes the single name `wildcard_matches`, independent of backend.
+- **`std.bit` / `std.ds`:** `XorTrie` lives in `std.strings` alongside `Trie<A>` (both are prefix tries) rather than `std.ds`, with a cross-reference so users find it in either mental model.
+- **`std.segtree`:** `DynamicHash` is a monoid-over-segment-tree hash specialized for string range hashing and palindrome checks; it avoids making users wire up custom `HashMonoid` structs and power tables manually.
+
+## Powers
+
+Every power from `spec/POWERS.md` (and any gap beyond it) needed by `spec/std/strings.cp`:
+
+1. **W4 (Sequences, views, and index spaces — `Indexed`, `Seq`, `Range<D>`, cut ranges):**
+   - Signatures: `starts_with`, `ends_with`, `z_function`, `prefix_function`, `find_all`, `borders`, `prefix_matches`, `overlap`, `lyndon_factorization`, `min_rotation`, `max_rotation`, `lyndon_runs`, `manacher`, `suffix_array`, `lcp_array`, `SuffixArray.{new,matches,count}`, `suffix_tree_edges`, `RollingHash.{new,get}`, `RollingHash61.{new,get}`, `DynamicHash.new`, `SuffixAutomaton.{of,find,contains,lcs,push_seq}`, `PalindromicTree.{of,contains}`, `Trie.{find,add,remove,count,count_prefix,contains,count_less}`, `AhoCorasick.{new,matches,counts}`, `DynamicAhoCorasick.{add,remove,count_matches}`.
+   - Smallest example: `let sa = suffix_array(a)` where `a: [N]Int`, and `h.get(l..r)` where `l, r: N`.
+2. **W6 (Generators / `yields`):**
+   - Signatures: `find_all`, `borders`, `KmpAutomaton.matches`, `shift_and`, `wildcard_matches`, `AhoCorasick.matches`.
+   - Smallest example: `for (at, pat) in ac.matches(s): if pat == target: break`.
+3. **W8 (User places — `get`/`set`):**
+   - Signatures: `DynamicHash.{get,set}` (so `dh[i] = c` updates the hashed element in O(log n) and `dh[l..r]` queries the range hash).
+   - Smallest example: `dh[i] = 'a'; if dh.is_palindrome(l..r): ans += 1`.
+4. **W12 (Cost on first `///` line):**
+   - Signatures: All 188 public declarations in `spec/std/strings.cp`.
+5. **Defaulted named arguments (Decision 134 / `spec/SYNTAX.md`):**
+   - Signatures: `RollingHash.new(s, bases: ?(Int, Int) = none)`, `RollingHash61.new(s, base: ?Int = none)`, `DynamicHash.new(s, bases: ?(Int, Int) = none)`, `wildcard_matches(self, pat, wildcard: Char = '?')`, `XorTrie.new(bits: Int = 60)`.
+   - Smallest example: `let h2 = RollingHash.new(t, bases: h1.bases)`.
+6. **Gaps beyond `spec/POWERS.md`:**
+   - **Existential / struct-owned domains** (for `SuffixArray` rank domain `sa.Rank` and `SuffixAutomaton`/`PalindromicTree`/`AhoCorasick` state domains): today states and SA ranks are plain `Int`, so `sam.step(v, c)` and `sa.lcp_of_ranks(l, r)` cannot statically distinguish state IDs from string positions. Smallest example: `struct SuffixArray<T>: domain Rank = 0..s.len; sa: [Rank]Int`.
+   - **Constrained alphabet strings `Str of "01?"`** (Decision 134 / `spec/SYNTAX.md`, used by `cf2187d`): syntax-level refinement type rather than a `std.strings` API.
+   - **128-bit modular multiplication primitive (`mul_mod` / `u128`)** for `RollingHash61` (`mod 2^61 - 1`): needed in user/stdlib CP Lang so `RollingHash61` can be written in ordinary CP Lang without compiler privilege.
+
+## Dreams
+
+All dreams in `proto/ports/*/dream/` touching strings:
+
+- `proto/ports/ecnerwala/dream/cf1943b.cp`: uses `std.strings.manacher` (`Palindromes.is_palindrome`) — in spec (`have`), passes.
+- `proto/ports/ecnerwala/dream/cf2124d.cp`: uses `std.strings.is_palindrome` — in spec (`have`), passes.
+- `proto/ports/ecnerwala/dream/cf1909g.cp`: uses `std.strings.{common_prefix_len, common_suffix_len}` — in spec (`have`), passes.
+- `proto/ports/ecnerwala/dream/ucup5s05f.cp`: imports `std.strings.suffix_tree_edges` — **now in spec (`new`)**; both `std.strings.suffix_tree_edges` and `suffix_tree_edges` errors are resolved (remaining error in `ucup5s05f.cp` is `std.poly.SubproductTree`).
+- `proto/ports/ecnerwala/dream/cf2187d.cp`: uses `Str of "01?"` — language syntax (Decision 134 in `spec/SYNTAX.md`), not a `std.strings` library API.
