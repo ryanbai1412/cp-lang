@@ -32,6 +32,7 @@ use std.seq.{
     bsearch_last,
     compress,
     deduped,
+    distinct,
     excl_fold,
     get_or_insert,
     insert,

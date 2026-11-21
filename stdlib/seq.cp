@@ -241,6 +241,18 @@ pub fn deduped<T>(self: List<T>) -> List<T>:
     dedup(mut out)
     out
 
+/// Distinct values of `self` in first-seen order. Works on any `Seq`.
+/// O(n) expected time, O(n) space via `HashSet`. Unlike `dedup` / `deduped`
+/// (adjacent duplicates only, O(n) time without hashing), `distinct` drops
+/// duplicates anywhere in the sequence.
+pub fn distinct<S: Seq, T>(self: S) -> List<T>:
+    var seen = HashSet<T>()
+    var out: List<T> = []
+    for x in self:
+        if seen.add(x):
+            out.push(x)
+    out
+
 /// The values of `a` that `keep` holds for, then the ones it does not, each in the order they came.
 pub fn partition<T>(self: List<T>, keep: T -> Bool) -> (List<T>, List<T>):
     var (yes, no): (List<T>, List<T>) = ([], [])

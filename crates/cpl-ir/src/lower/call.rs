@@ -2851,8 +2851,8 @@ impl<'a> Lowerer<'a> {
         self.mk(ExprKind::Do(Block { stmts }), res_ty, span)
     }
 
-    /// Lowers `e`, returning `?T` when `e` is a 1-arg `min(...)` or `max(...)` reduction
-    /// (for `min(...) ?? default` and `min(...)!`).
+    /// Lowers `e`, returning `?T` when `e` is a 1-arg `min(...)`, `max(...)`, or
+    /// binary-function `xs.fold(f)` reduction (for `... ?? default` and `...!`).
     pub(super) fn expr_maybe_opt_reduce(&mut self, e: &ast::Expr) -> Expr {
         if let ast::ExprKind::Call { callee, args } = &e.kind {
             if args.len() == 1 && args[0].name.is_none() {
@@ -2868,15 +2868,316 @@ impl<'a> Lowerer<'a> {
                     && matches!(name.text.as_str(), "min" | "max")
                     && matches!(
                         self.probe_ty_silent(base),
-                        Some(Ty::List(_) | Ty::Array { .. } | Ty::Range(_) | Ty::Str)
+                        Some(
+                            Ty::List(_)
+                                | Ty::ListView(_)
+                                | Ty::Array { .. }
+                                | Ty::Range(_)
+                                | Ty::Str
+                                | Ty::StrView
+                        )
                     )
                 {
                     let kind = if name.text == "max" { Reduce::Max } else { Reduce::Min };
                     return self.reduce_opt(kind, base, true, e.span);
                 }
+                if args.len() == 1
+                    && args[0].name.is_none()
+                    && !args[0].mutable
+                    && name.text == "fold"
+                    && matches!(
+                        self.probe_ty_silent(base),
+                        Some(
+                            Ty::List(_)
+                                | Ty::ListView(_)
+                                | Ty::Array { .. }
+                                | Ty::Range(_)
+                                | Ty::Set(_)
+                                | Ty::HashSet(_)
+                                | Ty::Str
+                                | Ty::StrView
+                        )
+                    )
+                {
+                    return self.fold_seq(base, &args[0], true, name.span, e.span);
+                }
             }
         }
         self.expr(e, None)
+    }
+
+    fn fold_seq(
+        &mut self,
+        base: &ast::Expr,
+        op: &ast::Arg,
+        optional: bool,
+        name_span: Span,
+        span: Span,
+    ) -> Expr {
+        let use_monoid = !optional && self.detect_bare_op(&op.value).is_some();
+        if !use_monoid {
+            let is_binary_fn = match &op.value.kind {
+                ast::ExprKind::Lambda { params, .. } => params.len() == 2,
+                ast::ExprKind::Name(fn_name) if self.lookup(fn_name).is_none() => true,
+                _ => matches!(
+                    self.probe_ty_silent(&op.value),
+                    Some(Ty::Fn(ps, _)) if ps.len() == 2
+                ),
+            };
+            if is_binary_fn {
+                return self.reduce_fold_fn(base, &op.value, optional, span);
+            }
+        }
+        let seq = ast::Arg {
+            name: None,
+            mutable: false,
+            value: base.clone(),
+        };
+        let callee = ast::Expr {
+            kind: ast::ExprKind::Name("fold".into()),
+            span: name_span,
+        };
+        let call_args = vec![op.clone(), seq];
+        let whole = ast::Expr {
+            kind: ast::ExprKind::Call {
+                callee: Box::new(callee.clone()),
+                args: call_args.clone(),
+            },
+            span,
+        };
+        self.call(&whole, &callee, &call_args, None)
+    }
+
+    fn apply_fold_fn(
+        &mut self,
+        fn_ast: &ast::Expr,
+        acc_expr: Expr,
+        cur_expr: Expr,
+        out: &mut Vec<Stmt>,
+        span: Span,
+    ) -> Option<Expr> {
+        if let ast::ExprKind::Name(fn_name) = &fn_ast.kind {
+            if self.lookup(fn_name).is_none() {
+                let at = fn_ast.span;
+                let mk_name = |text: &str| ast::Expr {
+                    kind: ast::ExprKind::Name(text.to_string()),
+                    span: at,
+                };
+                let lambda = ast::Expr {
+                    kind: ast::ExprKind::Lambda {
+                        params: vec![
+                            ast::Pattern {
+                                kind: ast::PatternKind::Name("__fold_a".to_string()),
+                                span: at,
+                            },
+                            ast::Pattern {
+                                kind: ast::PatternKind::Name("__fold_b".to_string()),
+                                span: at,
+                            },
+                        ],
+                        param_tys: Vec::new(),
+                        body: Box::new(ast::Expr {
+                            kind: ast::ExprKind::Call {
+                                callee: Box::new(mk_name(fn_name)),
+                                args: vec![
+                                    ast::Arg {
+                                        name: None,
+                                        mutable: false,
+                                        value: mk_name("__fold_a"),
+                                    },
+                                    ast::Arg {
+                                        name: None,
+                                        mutable: false,
+                                        value: mk_name("__fold_b"),
+                                    },
+                                ],
+                            },
+                            span: at,
+                        }),
+                    },
+                    span: at,
+                };
+                return self.apply_fold_fn(&lambda, acc_expr, cur_expr, out, span);
+            }
+        }
+        if let ast::ExprKind::Lambda { params, body, .. } = &fn_ast.kind {
+            if params.len() == 2 {
+                self.cx.scopes.push(HashMap::new());
+                let mut pre = Vec::new();
+                let a_slot = self.loop_var(&params[0], acc_expr.ty.clone(), &mut pre);
+                out.push(Stmt::Let(a_slot, Some(acc_expr)));
+                let b_slot = self.loop_var(&params[1], cur_expr.ty.clone(), &mut pre);
+                out.push(Stmt::Let(b_slot, Some(cur_expr)));
+                out.extend(pre);
+                let res = self.expr(body, None);
+                self.cx.scopes.pop();
+                return Some(res);
+            }
+        }
+        let fv = self.expr(fn_ast, None);
+        match &fv.ty {
+            Ty::Fn(ps, ret) if ps.len() == 2 => {
+                let ret = (**ret).clone();
+                Some(self.mk(
+                    ExprKind::CallExpr(
+                        Box::new(fv),
+                        vec![Arg::Value(acc_expr), Arg::Value(cur_expr)],
+                    ),
+                    ret,
+                    span,
+                ))
+            }
+            Ty::Error => None,
+            _ => {
+                self.error(
+                    codes::BAD_OPERANDS,
+                    fn_ast.span,
+                    "`fold` expects a monoid or a two-argument function `(T, T) -> T`",
+                );
+                None
+            }
+        }
+    }
+
+    fn reduce_fold_fn(
+        &mut self,
+        base: &ast::Expr,
+        fn_ast: &ast::Expr,
+        optional: bool,
+        span: Span,
+    ) -> Expr {
+        if let Some(values) = self.walked(base) {
+            return self.reduce_fold_fn(&values, fn_ast, optional, span);
+        }
+        let at = self.span(span);
+        let (frames, value) = match &base.kind {
+            ast::ExprKind::Comprehension { body, clauses } => {
+                let frames = self.open_loops(clauses);
+                let value = self.expr(body, None);
+                (frames, value)
+            }
+            _ => {
+                let seq = self.expr(base, None);
+                let elem = match seq.ty.seq_elem().or_else(|| match &seq.ty {
+                    Ty::Array { elem, .. } | Ty::Set(elem) | Ty::HashSet(elem) => {
+                        Some((**elem).clone())
+                    }
+                    _ => None,
+                }) {
+                    Some(e) => e,
+                    None if seq.ty == Ty::Error => return self.err_expr(span),
+                    None => {
+                        let message = format!(
+                            "this needs a sequence of values, not a `{}`",
+                            self.show(&seq.ty)
+                        );
+                        self.error(codes::TYPE_MISMATCH, base.span, message);
+                        return self.err_expr(span);
+                    }
+                };
+                self.open_seq(seq, elem)
+            }
+        };
+        let ty = value.ty.clone();
+        if ty == Ty::Error {
+            self.close_loops(frames, Vec::new());
+            return self.err_expr(span);
+        }
+        let local = |slot: Slot, t: &Ty| Expr {
+            kind: ExprKind::Local(slot),
+            ty: t.clone(),
+            span: at,
+        };
+        let place = |slot: Slot, t: &Ty| Place {
+            kind: PlaceKind::Local(slot),
+            ty: t.clone(),
+            span: at,
+        };
+        let lit = |kind: ExprKind, t: Ty| Expr { kind, ty: t, span: at };
+        let mut stmts = Vec::new();
+        let acc = self.temp(ty.clone());
+        let have = self.temp(Ty::Bool);
+        let cur = self.temp(ty.clone());
+        stmts.push(Stmt::Let(acc, None));
+        stmts.push(Stmt::Let(have, Some(lit(ExprKind::Bool(false), Ty::Bool))));
+
+        let mut combine_stmts = Vec::new();
+        let Some(combined) = self.apply_fold_fn(
+            fn_ast,
+            local(acc, &ty),
+            local(cur, &ty),
+            &mut combine_stmts,
+            span,
+        ) else {
+            self.close_loops(frames, Vec::new());
+            return self.err_expr(span);
+        };
+        if combined.ty == Ty::Error {
+            self.close_loops(frames, Vec::new());
+            return self.err_expr(span);
+        }
+        if combined.ty != ty {
+            let message = format!(
+                "`fold` expects a function returning `{}`, got `{}`",
+                self.show(&ty),
+                self.show(&combined.ty)
+            );
+            self.error(codes::TYPE_MISMATCH, fn_ast.span, message);
+            self.close_loops(frames, Vec::new());
+            return self.err_expr(span);
+        }
+        combine_stmts.push(Stmt::Assign(place(acc, &ty), AssignOp::Set, combined));
+
+        let inner = vec![
+            Stmt::Let(cur, Some(value)),
+            Stmt::If(
+                local(have, &Ty::Bool),
+                Block { stmts: combine_stmts },
+                Block {
+                    stmts: vec![
+                        Stmt::Assign(place(acc, &ty), AssignOp::Set, local(cur, &ty)),
+                        Stmt::Assign(
+                            place(have, &Ty::Bool),
+                            AssignOp::Set,
+                            lit(ExprKind::Bool(true), Ty::Bool),
+                        ),
+                    ],
+                },
+            ),
+        ];
+        let (loops, _) = self.close_loops(frames, inner);
+        stmts.extend(loops);
+
+        let (out_slot, out_ty) = if optional {
+            let res_ty = Ty::opt(ty.clone());
+            let out_slot = self.temp(res_ty.clone());
+            stmts.push(Stmt::Let(
+                out_slot,
+                Some(lit(
+                    ExprKind::If(
+                        Box::new(local(have, &Ty::Bool)),
+                        Box::new(lit(ExprKind::Some(Box::new(local(acc, &ty))), res_ty.clone())),
+                        Box::new(lit(ExprKind::None, res_ty.clone())),
+                    ),
+                    res_ty.clone(),
+                )),
+            ));
+            (out_slot, res_ty)
+        } else {
+            stmts.push(Stmt::If(
+                lit(
+                    ExprKind::Unary(UnOp::Not, Box::new(local(have, &Ty::Bool))),
+                    Ty::Bool,
+                ),
+                Block {
+                    stmts: vec![Stmt::Trap("`fold` of an empty sequence".into(), at)],
+                },
+                Block::default(),
+            ));
+            (acc, ty)
+        };
+        stmts.push(Stmt::Give(local(out_slot, &out_ty)));
+        self.mk(ExprKind::Do(Block { stmts }), out_ty, span)
     }
 
     /// `count(xs, x => x > 2)` is `count(x > 2 for x in xs)`, and
@@ -4992,6 +5293,7 @@ impl<'a> Lowerer<'a> {
                     | Ty::Array { .. }
                     | Ty::Range(_)
                     | Ty::Set(_)
+                    | Ty::HashSet(_)
                     | Ty::Str
                     | Ty::StrView
             )
@@ -5001,16 +5303,7 @@ impl<'a> Lowerer<'a> {
                 ([], "sum") => return self.reduce(Reduce::Sum, base, span),
                 ([], "prod") => return self.reduce(Reduce::Prod, base, span),
                 ([op], "fold") if op.name.is_none() && !op.mutable => {
-                    let callee = ast::Expr { kind: ast::ExprKind::Name("fold".into()), span: name.span };
-                    let call_args = vec![op.clone(), seq];
-                    let whole = ast::Expr {
-                        kind: ast::ExprKind::Call {
-                            callee: Box::new(callee.clone()),
-                            args: call_args.clone(),
-                        },
-                        span,
-                    };
-                    return self.call(&whole, &callee, &call_args, None);
+                    return self.fold_seq(base, op, false, name.span, span);
                 }
                 (_, "sorted")
                     if !matches!(

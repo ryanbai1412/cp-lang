@@ -32,7 +32,7 @@ export const CONTEXTUAL_KEYWORDS: readonly string[] = [
  * and `Counter` (what `counts` returns) are left out: neither is written by name.
  */
 export const PRELUDE_TYPES: readonly string[] = [
-    'Bool', 'Bounds', 'Char', 'F64', 'HashMap', 'I128', 'Int', 'Interactor', 'Iter', 'List', 'Map',
+    'Bool', 'Bounds', 'Char', 'F64', 'HashMap', 'HashSet', 'I128', 'Int', 'Interactor', 'Iter', 'List', 'Map',
     'Range', 'Set', 'Str', 'Subset', 'Sym', 'U64',
 ];
 
@@ -59,7 +59,7 @@ export const PRELUDE_VALUES: readonly string[] = [
     'ctz', 'debug', 'first', 'floor', 'flush', 'isqrt', 'laws_hold', 'len', 'max', 'min',
     'popcount', 'prefix', 'print', 'rand', 'read', 'read_output', 'round', 'shuffle', 'some',
     'sort', 'sorted', 'span', 'sqrt', 'sum', 'prod', 'swap', 'trunc', 'bfs', 'bit', 'bsearch_first',
-    'bsearch_last', 'ceil_div', 'compress', 'condense', 'deduped', 'desc', 'digits', 'dijkstra',
+    'bsearch_last', 'ceil_div', 'compress', 'condense', 'deduped', 'desc', 'digits', 'dijkstra', 'distinct',
     'ends_with', 'excl_fold', 'find', 'fixed', 'fold', 'gcd', 'get_or_insert', 'insert', 'lcm',
     'lower', 'partition', 'peel', 'prefix1', 'prefix2', 'prefix_n', 'remove',
     'repeat', 'resized', 'runs', 'scan', 'scc', 'starts_with', 'topo', 'upper', 'digit',

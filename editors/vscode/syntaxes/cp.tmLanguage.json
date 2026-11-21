@@ -346,7 +346,7 @@
       "patterns": [
         {
           "name": "support.function.builtin.cp",
-          "match": "(?<![.A-Za-z0-9_])(abs|all|any|ask|atan2|bit_ceil|bit_width|ceil|copy|count|counts|ctz|debug|first|floor|flush|isqrt|laws_hold|len|max|min|popcount|prefix|print|rand|read|read_output|round|shuffle|some|sort|sorted|span|sqrt|sum|prod|swap|trunc|bfs|bit|bsearch_first|bsearch_last|ceil_div|compress|condense|deduped|desc|digits|dijkstra|ends_with|excl_fold|find|fixed|fold|gcd|get_or_insert|insert|lcm|lower|partition|peel|prefix1|prefix2|prefix_n|remove|repeat|resized|runs|scan|scc|starts_with|topo|upper|digit|find_all|step|windows|zip|adjacency|choose2|minmax)(?=\\s*\\(|::<)"
+          "match": "(?<![.A-Za-z0-9_])(abs|all|any|ask|atan2|bit_ceil|bit_width|ceil|copy|count|counts|ctz|debug|first|floor|flush|isqrt|laws_hold|len|max|min|popcount|prefix|print|rand|read|read_output|round|shuffle|some|sort|sorted|span|sqrt|sum|prod|swap|trunc|bfs|bit|bsearch_first|bsearch_last|ceil_div|compress|condense|deduped|desc|digits|dijkstra|distinct|ends_with|excl_fold|find|fixed|fold|gcd|get_or_insert|insert|lcm|lower|partition|peel|prefix1|prefix2|prefix_n|remove|repeat|resized|runs|scan|scc|starts_with|topo|upper|digit|find_all|step|windows|zip|adjacency|choose2|minmax)(?=\\s*\\(|::<)"
         },
         {
           "name": "support.function.stdlib.cp",
@@ -369,7 +369,7 @@
       "patterns": [
         {
           "name": "support.type.builtin.cp",
-          "match": "\\b(Bool|Bounds|Char|F64|HashMap|I128|Int|Interactor|Iter|List|Map|Range|Set|Str|Subset|Sym|U64)\\b"
+          "match": "\\b(Bool|Bounds|Char|F64|HashMap|HashSet|I128|Int|Interactor|Iter|List|Map|Range|Set|Str|Subset|Sym|U64)\\b"
         },
         {
           "name": "support.type.stdlib.cp",

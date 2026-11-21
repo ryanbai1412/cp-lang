@@ -382,3 +382,17 @@ fn sort_cmp_strict_weak_order_traps_in_interp_and_checked_cpp() {
         assert!(cpp_err.contains(msg), "checked cpp case {idx} expected `{msg}`, got:\n{cpp_err}");
     }
 }
+
+#[test]
+fn fold_empty_traps_in_interp_and_checked_cpp() {
+    let src = "let xs: List<Int> = []\nprint(xs.fold((a, b) => a * 10 + b))\n";
+    let msg = "`fold` of an empty sequence";
+    let (code, err) = run_stderr(src, "");
+    assert_eq!(code, 3, "interp should trap:\n{err}");
+    assert!(err.contains(msg), "interp expected `{msg}`, got:\n{err}");
+    assert!(!err.contains("the interpreter itself failed"), "got panic:\n{err}");
+
+    let (cpp_code, cpp_err) = build_and_run_cpp(src);
+    assert_eq!(cpp_code, 3, "checked cpp should trap:\n{cpp_err}");
+    assert!(cpp_err.contains(msg), "checked cpp expected `{msg}`, got:\n{cpp_err}");
+}

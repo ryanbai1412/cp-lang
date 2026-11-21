@@ -253,6 +253,7 @@ fn max_by<S, T, K>(it: S, key: T -> K) -> ?T
 fn reverse<T>(mut a: List<T>)
 fn dedup<T>(mut a: List<T>)
 fn deduped<T>(self: List<T>) -> List<T>
+fn distinct<S: Seq, T>(self: S) -> List<T> // O(n) expected, O(n) space
 fn partition<T>(self: List<T>, keep: T -> Bool) -> (List<T>, List<T>)
 fn windows<T>(self: List<T>, k: Int) -> yields List<T> // O(k)
 fn pairs<T>(self: List<T>) -> yields (T, T)
