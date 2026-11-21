@@ -2,4 +2,4 @@
 @!multitest
 let n: Int = read()
 let a: [0..n]Int = read()
-print(if any(a[i] == 100 for i in 0..n): "Yes" else: "No")
+print(if any(x == 100 for x in a): "Yes" else: "No")

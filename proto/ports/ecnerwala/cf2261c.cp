@@ -5,6 +5,5 @@
 let n: 1..=2e5 = read()
 let a: [0..n]Int = read()
 let odd = count(x % 2 == 1 for x in a)
-let even = n - odd
-let win = odd % 2 == 0 or n == 1 or even + odd / 2 != 1
+let win = odd % 2 == 0 or n == 1 or n - odd + odd / 2 != 1
 print(if win: "Moggity" else: "Larpity")

@@ -6,16 +6,14 @@ let (n, m): (1..=5e5, 0..=5e5) = read()
 domain V = 1..=n
 domain E = 0..m
 let edges: [E](u: V, v: V) = read()
-let g = Graph.directed(edges)
 
 // Peel vertices of in-degree zero; whatever keeps an incoming edge is free.
 var peeled: [V]Bool = false
-for v in peel(g): peeled[v] = true
+for v in peel(Graph.directed(edges)): peeled[v] = true
 
 // Walking an edge forwards is free and backwards costs one.
-let both = Graph.undirected(edges)
 let dist = dijkstra(
-    both,
+    Graph.undirected(edges),
     [(v, 0) for v in V if not peeled[v]],
     a => if edges[a.e].v == a.to: 0 else: 1,
 )

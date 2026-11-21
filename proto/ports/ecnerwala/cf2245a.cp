@@ -6,4 +6,4 @@ let s: Str = read()
 if n < 2 * k:
     print(-1)
     return
-print(count(s[i] != 'R' for i in 0..k) + count(s[n - 1 - i] != 'L' for i in 0..k))
+print(2 * k - s[0..k].count('R') - s[n - k..n].count('L'))

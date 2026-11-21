@@ -1,3 +1,4 @@
+@!interactive
 @!multitest
 let n: Int = read()
 var q = 1
@@ -32,7 +33,6 @@ if n % 2 == 1:
 print(q)
 for k in 0..q:
     print(left[k].len + right[k].len, left[k], right[k])
-flush()
 
 let s: Str = read()
 var hits: [1..=n]Int = 0
@@ -44,4 +44,3 @@ for k in 0..q:
         _ => 1..=n
     for c in side: hits[c] += 1
 print((1..=n).find(c => hits[c] == q)!)
-flush()

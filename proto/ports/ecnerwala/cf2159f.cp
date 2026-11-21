@@ -1,6 +1,7 @@
+@!interactive
+
 fn query(l: Int, t: Int) -> Int:
     print("?", l, t + 1)
-    flush()
     read::<Int>() - 1
 
 @!multitest
@@ -39,4 +40,3 @@ for _ in 0..m:
     let nt = t + (t_en - t).sign
     if nt != t_en: segs.push((query(l, nt), l, nt, t_en))
 print("!", ans)
-flush()

@@ -1,5 +1,6 @@
 // Codeforces 2150 E1 (interactive): randomly permute indices and binary-search
 // the half whose remaining element multiplicities exceed its length.
+@!interactive
 use std.rand.Rng
 
 var rng = Rng.new(48)
@@ -11,7 +12,6 @@ rng.shuffle(mut p)
 
 fn ask(v: Int, lo: Int, hi: Int) -> Int:
     print("?", v + 1, hi - lo, p[lo..hi])
-    flush()
     read()
 
 var cnt: [0..n]Int = 2
@@ -20,7 +20,6 @@ while true:
     let alive = [i for i in 0..n if cnt[i] == 2]
     if alive.len == 1:
         print("!", alive[0] + 1)
-        flush()
         return
 
     let m = (l + r) / 2

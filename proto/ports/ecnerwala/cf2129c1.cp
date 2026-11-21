@@ -1,6 +1,7 @@
+@!interactive
+
 fn ask(inds: List<Int>) -> Int:
     print("?", inds.len, inds)
-    flush()
     read()
 
 @!multitest
@@ -20,4 +21,3 @@ fn check2(i1: Int, i2: Int):
 
 for i in 0..n by 2: check2(i, min(i + 1, n - 1))
 print("!", Str(ans))
-flush()

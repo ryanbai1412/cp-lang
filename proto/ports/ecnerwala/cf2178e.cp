@@ -1,9 +1,10 @@
 // Codeforces 2178 E: interactive halving via binary search on prefix sums to
 // isolate the maximum element in O(log^2 n) queries.
 
+@!interactive
+
 fn ask(lo: Int, hi: Int) -> Int:
     print("?", lo + 1, hi)
-    flush()
     read()
 
 @!multitest
@@ -16,4 +17,3 @@ while r - l > 1:
     if r - mid <= mid - l: l = mid
     else: r = mid
 print("!", tot)
-flush()

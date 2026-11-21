@@ -1,8 +1,9 @@
 // Codeforces 2129 C3 (interactive): binary-search an open bracket, then decode
 // blocks of brackets in one query each using superincreasing triangular weights.
+@!interactive
+
 fn ask(inds: List<Int>) -> Int:
     print("?", inds.len, inds)
-    flush()
     read()
 
 fn build_seq() -> List<Int>:
@@ -48,4 +49,3 @@ for start in 0..n by blk:
             ans[inds[z]] = '('
 
 print("!", ans)
-flush()

@@ -1,3 +1,4 @@
+@!interactive
 use std.rand.Rng
 
 var rng = Rng.new(48)
@@ -6,7 +7,6 @@ var rng = Rng.new(48)
 let n: Int = read()
 if n == 1:
     print("!", 1)
-    flush()
     return
 
 var p = List(1..2 * n)
@@ -14,7 +14,6 @@ rng.shuffle(mut p)
 
 fn ask(v: Int, l: Int, r: Int) -> Int:
     print("?", v + 1, r - l, p[l..r])
-    flush()
     read()
 
 var cnt: [0..n]Int = 2
@@ -50,4 +49,3 @@ var ans = 0
         elif ask(i, md, ma) == 0: ma = md
         else: break
 print("!", ans + 1)
-flush()

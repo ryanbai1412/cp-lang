@@ -1,6 +1,6 @@
 // Codeforces 2261 D1 (no restrictions): pair position i with i + ceil(n / 2).
 @!multitest
-let (n, m): (1..=2e5, 0..=0) = read()
+let (n, _m): (1..=2e5, 0..=0) = read()
 if n == 1:
     print(0)
     return

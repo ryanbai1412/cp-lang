@@ -1,6 +1,7 @@
+@!interactive
+
 fn ask(s: List<Int>) -> Int:
     print("?", s.len, s)
-    flush()
     read()
 
 @!multitest
@@ -23,4 +24,3 @@ for x in cur:
     oth.pop()
 
 print("!", ans)
-flush()

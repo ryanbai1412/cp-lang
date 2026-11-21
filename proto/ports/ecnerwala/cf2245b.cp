@@ -3,5 +3,5 @@
 @!multitest
 let (n, c): (1..=2e5, Int) = read()
 let a: [0..n]Int = read()
-let gain = sorted([x - c for x in a])
-print(sum(max(gain[i], 0) for i in 0..n / 2) + sum(gain[i] for i in n / 2..n))
+let b = sorted(a)
+print(sum(max(x - c, 0) for x in b[0..n / 2]) + sum(x - c for x in b[n / 2..n]))
