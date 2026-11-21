@@ -81,5 +81,42 @@ class CheckCacheTest(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr)
 
 
+    def test_land_takes_the_lock_gates_pushes_and_releases(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        with tempfile.TemporaryDirectory() as tmp:
+            remote, work = os.path.join(tmp, "remote.git"), os.path.join(tmp, "work")
+            def git(*a, cwd=work):
+                return subprocess.run(["git", *a], cwd=cwd, check=True, env=env,
+                                      capture_output=True, text=True).stdout.strip()
+            git("init", "-q", "--bare", "-b", "main", remote, cwd=tmp)
+            git("init", "-q", "-b", "main", work, cwd=tmp)
+            git("config", "user.email", "t@example.com")
+            git("config", "user.name", "t")
+            os.makedirs(os.path.join(work, "scripts"))
+            gate = os.path.join(tmp, "gate.sh")
+            with open(gate, "w", encoding="utf-8") as f:
+                f.write('#!/bin/sh\ngit rev-parse "HEAD^{tree}" >> "$(git rev-parse --git-common-dir)/cpl-gate-passed"\n')
+            os.chmod(gate, 0o755)
+            with open(os.path.join(work, "a.md"), "w", encoding="utf-8") as f:
+                f.write("ok\n")
+            git("add", "a.md")
+            git("commit", "-qm", "docs: a")
+            git("push", "-q", remote, "HEAD:main")
+            with open(os.path.join(work, "a.md"), "a", encoding="utf-8") as f:
+                f.write("more\n")
+            git("commit", "-qam", "docs: more")
+            empty = git("hash-object", "-t", "tree", "-w", "/dev/null")
+            stale = git("commit-tree", empty, "-m", "land lock: other")
+            git("push", "-q", remote, f"{stale}:refs/locks/land")
+            git("config", "core.hooksPath", os.path.join(root, ".githooks"))
+            land = os.path.join(root, "scripts", "land.sh")
+            r = subprocess.run([land, remote], cwd=work, capture_output=True, text=True,
+                               env={**env, "CPL_LAND_GATE": gate, "CPL_LAND_TTL": "0"})
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn("taking over stale lock from land lock: other", r.stderr)
+            self.assertEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD"))
+            self.assertEqual(git("ls-remote", remote, "refs/locks/land"), "")
+
 if __name__ == "__main__":
     unittest.main()
