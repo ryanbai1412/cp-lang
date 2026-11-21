@@ -24,9 +24,9 @@ supply[start] = m
 
 // Matches up to `need` units from the newest buckets at or before `t`.
 // Each emptied bucket leaves `supply`, so all calls cost O((q + m) log q) total.
-fn take(need: Int, before t: Time) -> Int:
+fn take(need: Int, before: Time) -> Int:
     var got = 0
-    while got < need, let (u, cnt) = supply.last_le(t):
+    while got < need, let (u, cnt) = supply.last_le(before):
         let k = min(cnt, need - got)
         got += k
         if k == cnt: supply.remove(u) else: supply[u] -= k
@@ -40,7 +40,7 @@ for t_now in (Time.first + 2)!..=Time.last:
     let c = read<V>().cyc(missing)
     let chunks = [
         (
-            t,
+            t: t,
             need: r.len,
         ) for (range, _) in tree.chains(cur, c) for (r, t) in paint.assign(range, t_now)
     ].sort(by: x => desc(x.t))
