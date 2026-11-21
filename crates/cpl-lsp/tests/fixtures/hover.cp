@@ -29,3 +29,8 @@ while lo < hi:
     else:
         hi = mid
 print(l$0o)
+var w = n
+while w > 9:
+    w = w / 2
+let sm$0all = w * 3
+print(small)

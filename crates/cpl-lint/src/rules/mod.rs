@@ -231,12 +231,29 @@ fn ranges_in(
                 }
                 ranges_in(base, &body.stmts, &[], &mut inner, proven);
             }
-            StmtKind::While { cond, body, .. } => {
+            StmtKind::While {
+                cond,
+                body,
+                else_body,
+            } => {
                 let mut inner = bounds.clone();
                 if let Cond::Expr(test) = cond {
-                    narrow(test, true, &body.stmts, &mut inner);
+                    narrow(test, true, &|n| assigned_in(n, &body.stmts), &mut inner);
                 }
                 ranges_in(base, &body.stmts, &[], &mut inner, proven);
+                // A loop that only ends by its condition failing leaves it false.
+                if let (Cond::Expr(test), None) = (cond, else_body) {
+                    if !breaks(&body.stmts) {
+                        let rest: Vec<&cpl_syntax::ast::Stmt> = if top.is_empty() {
+                            stmts[i + 1..].iter().collect()
+                        } else {
+                            let at = top.iter().position(|s| std::ptr::eq(*s, stmt)).unwrap_or(0);
+                            top[at + 1..].to_vec()
+                        };
+                        let later = |n: &str| rest.iter().any(|s| assigned_in(n, std::slice::from_ref(*s)));
+                        narrow(test, false, &later, bounds);
+                    }
+                }
             }
             StmtKind::Unchecked(body) => {
                 ranges_in(base, &body.stmts, &[], &mut bounds.clone(), proven);
@@ -255,16 +272,16 @@ fn ranges_in(
                         };
                         let mut inner = bounds.clone();
                         for &earlier in &failed {
-                            narrow(earlier, false, &block.stmts, &mut inner);
+                            narrow(earlier, false, &|n| assigned_in(n, &block.stmts), &mut inner);
                         }
-                        narrow(test, true, &block.stmts, &mut inner);
+                        narrow(test, true, &|n| assigned_in(n, &block.stmts), &mut inner);
                         ranges_in(base, &block.stmts, &[], &mut inner, proven);
                         failed.push(test);
                     }
                     if let Some(block) = otherwise {
                         let mut inner = bounds.clone();
                         for &earlier in &failed {
-                            narrow(earlier, false, &block.stmts, &mut inner);
+                            narrow(earlier, false, &|n| assigned_in(n, &block.stmts), &mut inner);
                         }
                         ranges_in(base, &block.stmts, &[], &mut inner, proven);
                     }
@@ -463,7 +480,7 @@ fn var_range(
 fn narrow(
     test: &cpl_syntax::ast::Expr,
     holds: bool,
-    block: &[cpl_syntax::ast::Stmt],
+    block: &dyn Fn(&str) -> bool,
     bounds: &mut bounds::Bounds,
 ) {
     use cpl_syntax::ast::{BinOp, CmpOp, ExprKind, UnOp};
@@ -507,7 +524,7 @@ fn narrow(
                         let (Some(have), Some(other)) = (bounds.expr_name(name), bounds.expr(other)) else {
                             continue;
                         };
-                        if assigned_in(name, block) {
+                        if block(name) || bounds.written_by_fn(name) {
                             continue;
                         }
                         let (lo, hi) = match op {
@@ -529,6 +546,21 @@ fn narrow(
 }
 
 /// Whether `stmts` can change the value of `name`.
+/// Whether a `break` in `stmts` can leave a loop early.
+fn breaks(stmts: &[cpl_syntax::ast::Stmt]) -> bool {
+    use cpl_syntax::ast::{Stmt, StmtKind};
+    use cpl_syntax::visit::{walk_stmt, Visitor};
+    struct Breaks(bool);
+    impl Visitor for Breaks {
+        fn stmt(&mut self, stmt: &Stmt) {
+            self.0 |= matches!(stmt.kind, StmtKind::Break(_));
+        }
+    }
+    let mut v = Breaks(false);
+    stmts.iter().for_each(|s| walk_stmt(s, &mut v));
+    v.0
+}
+
 fn assigned_in(name: &str, stmts: &[cpl_syntax::ast::Stmt]) -> bool {
     use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
     use cpl_syntax::visit::{walk_stmt, Visitor};

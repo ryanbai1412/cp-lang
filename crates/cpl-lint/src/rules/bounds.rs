@@ -47,6 +47,8 @@ pub(crate) struct Bounds {
     defs: HashMap<String, Def>,
     /// How many places in the file bind each value name.
     bindings: HashMap<String, u32>,
+    /// Names a fn or lambda body assigns, which a call anywhere can change.
+    fn_writes: HashSet<String>,
 }
 
 /// A name the prover can be told about: an input of a declared range, or an
@@ -166,8 +168,35 @@ impl Bounds {
     /// shadows a bounded name hides its bound.
     fn count_bindings(&mut self, file: &File) {
         use cpl_syntax::ast::{Pattern, Stmt};
-        use cpl_syntax::visit::{walk_stmt, Visitor};
-        struct Count<'a>(&'a mut HashMap<String, u32>);
+        use cpl_syntax::visit::{walk_expr, walk_stmt, Visitor};
+        struct Count<'a>(&'a mut HashMap<String, u32>, &'a mut HashSet<String>);
+        struct Writes<'a>(&'a mut HashSet<String>);
+        fn written(e: &Expr, out: &mut HashSet<String>) {
+            match &e.kind {
+                ExprKind::Name(n) => {
+                    out.insert(n.clone());
+                }
+                ExprKind::Paren(inner) => written(inner, out),
+                ExprKind::Tuple(items) | ExprKind::List(items) => items.iter().for_each(|i| written(i, out)),
+                _ => {}
+            }
+        }
+        impl Visitor for Writes<'_> {
+            fn stmt(&mut self, stmt: &Stmt) {
+                match &stmt.kind {
+                    StmtKind::Assign { target, .. } => written(target, self.0),
+                    StmtKind::Lend { place, .. } => written(place, self.0),
+                    _ => {}
+                }
+            }
+            fn expr(&mut self, expr: &Expr) {
+                if let ExprKind::Call { args, .. } = &expr.kind {
+                    for a in args.iter().filter(|a| a.mutable) {
+                        written(&a.value, self.0);
+                    }
+                }
+            }
+        }
         impl Count<'_> {
             fn add(&mut self, name: &str) {
                 *self.0.entry(name.to_string()).or_default() += 1;
@@ -187,21 +216,33 @@ impl Bounds {
         impl Visitor for Count<'_> {
             fn stmt(&mut self, stmt: &Stmt) {
                 match &stmt.kind {
-                    StmtKind::Fn(decl) => decl.params.iter().for_each(|p| self.add(&p.name.text)),
+                    StmtKind::Fn(decl) => {
+                        decl.params.iter().for_each(|p| self.add(&p.name.text));
+                        walk_stmt(stmt, &mut Writes(self.1));
+                    }
                     StmtKind::Const { name, .. } => self.add(&name.text),
                     _ => {}
+                }
+            }
+            fn expr(&mut self, expr: &Expr) {
+                if let ExprKind::Lambda { body, .. } = &expr.kind {
+                    walk_expr(body, &mut Writes(self.1));
                 }
             }
             fn pattern(&mut self, pat: &Pattern) {
                 self.names(pat);
             }
         }
-        let mut count = Count(&mut self.bindings);
+        let mut count = Count(&mut self.bindings, &mut self.fn_writes);
         file.top_level().for_each(|(_, s)| walk_stmt(s, &mut count));
     }
 
     /// Whether one place in the file binds `name`, so every use of it
     /// that resolves at all reads that binding.
+    pub(crate) fn written_by_fn(&self, name: &str) -> bool {
+        self.fn_writes.contains(name)
+    }
+
     pub(crate) fn bound_once(&self, name: &str) -> bool {
         self.bindings.get(name) == Some(&1)
     }

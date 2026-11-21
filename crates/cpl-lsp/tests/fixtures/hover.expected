@@ -112,3 +112,8 @@ mid: Int in 0..=200000
 ```cp
 lo: Int in 0..=200001
 ```
+
+== hover @ 35:7
+```cp
+small: Int in 0..=27
+```

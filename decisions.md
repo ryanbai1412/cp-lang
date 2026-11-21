@@ -2267,6 +2267,12 @@ is dropped and the rest solved again. Top-level statements now keep the ranges o
 above them; fn and impl bodies still see only declared ranges, since they may run anywhere.
 Reverse: restore `var_range`'s one-name solve and the per-statement `Bounds` clone.
 
+29.27. **A loop with no `break` leaves its condition false, and a fn's writes block narrowing.**
+After `while w > 9:` with no `break` and no `else`, the statements that follow see `w <= 9`,
+unless they assign `w`. A name that any fn or lambda body assigns is never narrowed, by a loop or
+an `if`, since a call can change it between the test and the use. Reverse: drop the post-loop
+`narrow` call, `breaks` and `Bounds::fn_writes`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

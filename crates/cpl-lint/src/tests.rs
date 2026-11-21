@@ -1768,3 +1768,20 @@ fn vars_that_assign_each_other_are_solved_together() {
         assert_eq!(range_of(&src, decl), want, "{body}");
     }
 }
+
+#[test]
+fn a_loop_that_exits_leaves_its_condition_false() {
+    let head = "let n: 1..=100 = read()\nlet a: 0..=9 = read()\nvar x = n\n";
+    let halve = "while x > 9:\n    x = x / 2\n";
+    let cases = [
+        (format!("{halve}let y = x\nprint(y)\n"), Some((0, 9))),
+        (format!("for _ in 0..a:\n    {}    let y = x + 0\n    print(y)\n", halve.replace("\n    ", "\n        ")), Some((0, 9))),
+        ("while x > 9:\n    x = x / 2\n    if a == 3:\n        break\nlet y = x\nprint(y)\n".to_string(), Some((0, 100))),
+        (format!("{halve}x = 50\nlet y = x\nprint(y)\n"), Some((0, 100))),
+        (format!("fn grow():\n    x = 100\n{halve}grow()\nlet y = x\nprint(y)\n"), Some((0, 100))),
+        ("fn grow():\n    x = 100\nif x < 10:\n    grow()\n    let y = x\n    print(y)\n".to_string(), Some((1, 100))),
+    ];
+    for (body, want) in cases {
+        assert_eq!(range_of(&format!("{head}{body}"), "let y"), want, "{body}");
+    }
+}
