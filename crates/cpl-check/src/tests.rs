@@ -1739,3 +1739,22 @@ fn a_range_written_as_a_structs_type_argument_says_to_name_it() {
     );
     assert_eq!(check("let n = 4\ndomain V = 0..n\nvar d = Dsu<V>()\n"), vec![]);
 }
+
+#[test]
+fn a_mut_self_method_needs_a_receiver_that_can_change() {
+    let decl = "struct C:\n    n: Int\n    fn bump(mut self):\n        n += 1\n";
+    assert_eq!(check(&format!("{decl}var c = C(0)\nc.bump()\n")), vec![]);
+    assert_eq!(check(&format!("{decl}fn f(mut c: C):\n    c.bump()\n")), vec![]);
+    assert_eq!(
+        messages(&check(&format!("{decl}let c = C(0)\nc.bump()\n"))),
+        ["`c` is a `let`, so it can't be changed by `bump`"]
+    );
+    assert_eq!(
+        messages(&check(&format!("{decl}fn f():\n    let c = C(0)\n    c.bump()\n"))),
+        ["`c` is a `let`, so it can't be changed by `bump`"]
+    );
+    assert_eq!(
+        messages(&check(&format!("{decl}fn f(c: C):\n    c.bump()\n"))),
+        ["`c` is a parameter without `mut`, so it can't be changed by `bump`"]
+    );
+}

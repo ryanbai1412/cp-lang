@@ -627,6 +627,12 @@ struct CpHash {
         for (unsigned char c : s) h = splitmix64(h ^ c);
         return (size_t)h;
     }
+    // A list or a fixed array: its length, then each element in order.
+    template <class L> auto operator()(const L& xs) const -> decltype(xs.begin(), xs.data(), size_t()) {
+        uint64_t h = salt() ^ xs.size();
+        for (const auto& x : xs) h = splitmix64(h ^ (uint64_t)(*this)(x));
+        return (size_t)h;
+    }
     // An optional, packed or not.
     template <class O> auto operator()(const O& o) const -> decltype(o.has_value(), size_t()) {
         return o ? (*this)(*o) : (size_t)splitmix64(salt());

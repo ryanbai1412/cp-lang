@@ -651,10 +651,22 @@ fn classify(ty: &Ty, view: &View) -> (Kind, String) {
         Ty::List(elem) if is_cell(elem, program) => (Kind::Array, String::new()),
         Ty::Struct(id) => {
             let def = &program.structs[*id];
-            let field = |name: &str| def.fields.iter().any(|(field, _)| field == name);
-            if def.name.starts_with("Graph") && field("start") && field("arcs") {
+            let field = |name: &str| def.fields.iter().find(|(field, _)| field == name).map(|(_, ty)| ty);
+            // Drawn by shape, not by name, so a program's own struct laid
+            // out the same way is drawn the same way: offsets into a flat
+            // list of arcs that each start with a vertex is a graph, and
+            // a root beside a parent per vertex is a tree.
+            let arcs_from = |ty: &Ty| match ty {
+                Ty::List(arc) => matches!(field_tys(arc, program).first(), Some(Ty::Pos(_))),
+                _ => false,
+            };
+            let parent_per = |ty: &Ty| match ty {
+                Ty::Array { elem, .. } => matches!(&**elem, Ty::Opt(of) if matches!(**of, Ty::Pos(_))),
+                _ => false,
+            };
+            if field("start") == Some(&Ty::List(Box::new(Ty::Int))) && field("arcs").is_some_and(arcs_from) {
                 (Kind::Csr, ",\"directed\":true".to_string())
-            } else if def.name.starts_with("Rooted") && field("root") && field("par") {
+            } else if matches!(field("root"), Some(Ty::Pos(_))) && field("par").is_some_and(parent_per) {
                 (Kind::Rooted, String::new())
             } else {
                 (Kind::Json, String::new())

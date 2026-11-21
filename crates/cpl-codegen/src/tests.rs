@@ -386,3 +386,17 @@ fn a_const_as_a_type_argument_is_its_number() {
     let cpp = cpp("const MOD = 998244353\ntype Z = Mod<998244353>\nlet c = Comb<MOD>()\nlet x: Z = Z(5)\nprint(c.choose(5, 2), x * x)\n");
     assert_eq!(cpp.matches("\nstruct Mod_").count(), 1, "{cpp}");
 }
+
+#[test]
+fn a_list_a_comprehension_built_moves_into_the_variable() {
+    let cpp = cpp("let n: Int = read()
+var zs: List<Int> = []
+for r in 0..3:
+    zs = [i * r for i in 0..n]
+    let ys = [z + 1 for z in zs]
+    zs = ys
+print(zs)
+");
+    assert!(cpp.contains("zs = std::move(t0);"), "{cpp}");
+    assert!(cpp.contains("zs = ys;"), "a named list is copied: {cpp}");
+}

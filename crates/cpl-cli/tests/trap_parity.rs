@@ -27,9 +27,10 @@ fn run(mut command: Command, input: &str) -> std::process::Output {
 
 /// The judge build of `source`, kept under a hash of its C++.
 fn judge_build(source: &Path) -> PathBuf {
-    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("trap_parity");
+    let name = source.file_stem().unwrap().to_str().unwrap();
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join(name);
     std::fs::create_dir_all(&dir).unwrap();
-    let cpp = dir.join("trap_parity.cpp");
+    let cpp = dir.join(format!("{name}.cpp"));
     let built = Command::new(env!("CARGO_BIN_EXE_cpl"))
         .arg("build")
         .arg(source)
@@ -82,4 +83,28 @@ fn every_runtime_error_of_cpl_run_stops_the_judge_build_too() {
         }
     }
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// `known_traps.cp` is the register of what the gate does not hold yet:
+/// each site is a wrong program that `cpl run`, the judge build, or both
+/// let through. `scripts/check.sh` prints how many there are. A site that
+/// both now stop fails here, and moves to `trap_parity.cp`.
+#[test]
+fn every_known_trap_is_still_open() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/known_traps.cp");
+    let text = std::fs::read_to_string(&source).unwrap();
+    let sites = text.lines().filter(|line| line.starts_with("if which == ")).count();
+    let bin = judge_build(&source);
+    let mut closed = Vec::new();
+    for which in 1..=sites {
+        let input = format!("{which} 0 3\n");
+        let mut interp = Command::new(env!("CARGO_BIN_EXE_cpl"));
+        interp.arg("run").arg(&source);
+        let ran = run(interp, &input).status.code();
+        let built = run(Command::new(&bin), &input).status.code();
+        if ran == Some(3) && built == Some(3) {
+            closed.push(format!("site {which} is stopped by both now: move it to trap_parity.cp"));
+        }
+    }
+    assert!(closed.is_empty(), "{}", closed.join("\n"));
 }

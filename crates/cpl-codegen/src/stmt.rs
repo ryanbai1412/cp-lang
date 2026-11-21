@@ -468,6 +468,7 @@ impl<'p> Emitter<'p> {
     }
 
     fn assign(&mut self, place: &Place, op: AssignOp, value: &Expr, out: &mut String) {
+        let whole = value;
         let value = self.flatten(value, out);
         if let (AssignOp::Set, PlaceKind::Local(_) | PlaceKind::Global(_), ExprKind::Read(spec)) =
             (op, &place.kind, &value.kind)
@@ -484,6 +485,14 @@ impl<'p> Emitter<'p> {
         let mut v = self.expr(value);
         if packed && matches!(place.kind, PlaceKind::Index(..)) {
             v.text = self.pack(value, &v.text);
+        }
+        // A list built by the value's own block (a comprehension) is not
+        // read again: it moves into the place.
+        if let (AssignOp::Set, ExprKind::Local(built), Some((stmts, _))) = (op, &value.kind, flat(whole)) {
+            let made_here = stmts.iter().any(|stmt| matches!(stmt, Stmt::Let(slot, _) if slot == built));
+            if made_here && matches!(value.ty, Ty::List(_) | Ty::Str) {
+                v.text = format!("std::move({})", v.text);
+            }
         }
         // Handle map/hashmap fold-on-missing-key (`max=`, `min=`, `*=`, `+=`, `-=`, `|=`, `^=`, `&=`).
         if let PlaceKind::Index(base, idx) = &place.kind {

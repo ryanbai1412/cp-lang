@@ -12,8 +12,10 @@
 #            test), without the tests listed under 7 and 8
 #         4. cpl test stdlib examples/local-lib, run beside 3
 #         5. cpl fmt --check stdlib (the standard library stays formatted)
+#            and stdlib/prelude.cp holds at most 80 names
 #         6. scripts/friction_lint.py: its rule tests, then no wa_trap hit in
 #            proto/ports or examples, with a one-line severity summary
+#            last, the count of open known_traps (crates/cpl-cli/tests/known_traps.cp)
 # --full  7. proto_fuzz and proto_tools (the retired prototype), the shrinker
 #            fuzzer and the prover's products fuzzer
 #         8. the budget tests and the front-end latency test, each alone
@@ -141,6 +143,11 @@ cat "$lib_logs"/*.log | awk '/^[0-9]+ passed, [0-9]+ failed$/ { p += $1; f += $3
     END { printf "%d passed, %d failed\n", p, f }'
 [ "$lib_status" -eq 0 ] || { cat "$lib_logs"/*.log; fail "library tests failed; rerun: cargo run -p cpl-cli -- test stdlib examples/local-lib"; }
 
+step "stdlib/prelude.cp: at most 80 names"
+prelude=$(sed 's://.*::' stdlib/prelude.cp | tr -d '\n' | grep -o '{[^}]*}' | tr ',' '\n' | grep -c '[A-Za-z_]')
+echo "prelude: $prelude names"
+[ "$prelude" -le 80 ] || { echo "check: stdlib/prelude.cp has $prelude names, over the cap of 80" >&2; exit 1; }
+
 step "cpl fmt --check stdlib"
 cargo run -q -p cpl-cli -- fmt --check stdlib || fail "stdlib/ is not formatted; run: cargo run -p cpl-cli -- fmt stdlib"
 
@@ -189,5 +196,10 @@ if [ "$mode" = full ]; then
     fi
     bash "$tmp/repo/proto/run_all.sh"
 fi
+
+# The Trap Parity Gate's open register: wrong programs that `cpl run`, the
+# judge build, or both still let through. trap_parity.rs fails when one closes.
+known_traps=$(grep -c '^if which == ' crates/cpl-cli/tests/known_traps.cp)
+printf '\nknown_traps: %s open (crates/cpl-cli/tests/known_traps.cp)\n' "$known_traps"
 
 printf '\ncheck: all %s checks passed\n' "$mode"
