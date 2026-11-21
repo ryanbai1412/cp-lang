@@ -3522,3 +3522,21 @@ the `share-ref` replace from `site/offline.html`.
 - **Decision.** Every store into a range-typed place (scalar `var`/`let`, struct field and constructor arg, array element including compound assignment / `max=` / `min=` / fill / comprehension, and `List` `.push`/`.resize`/`.fill`) lowers through `Lowerer::check_range`, which wraps unproved values in `ExprKind::RangeCheck { value, lo, hi, text }`. Both `cpl-interp` and `cpl-codegen` (`cpl::check_range` under `#ifdef LOCAL`) trap with exit code 3 and `{v} is outside \`{text}\``. Release builds (`-DLOCAL` unset) compile `cpl::check_range` to a zero-cost passthrough, including for narrowed 32-bit struct fields (and future narrowed arrays).
 - **Why.** Narrowed `0..=1_000_000` struct fields previously truncated silently in C++ while `cpl run` printed the raw 64-bit value, breaking interpreter/C++ parity, and scalar/array ranges were unenforced on assignment. Checking in `cpl run` and `--checked` (`-DLOCAL`) catches every contract violation locally with identical diagnostics, while eliding proven-in-range stores (literals, narrower range-typed sources, `x % P` into `0..P`, `Mod<P>` branch-refined `+`/`-`/neg) keeps hot loops and `Mod<P>` codegen completely free of checks. Keeping release zero-cost matches `fsqrt`, `shl128`, and `sort` comparator validation (`#ifdef LOCAL`) so valid programs pay zero runtime overhead on judges.
 - **Reverse.** Remove `ExprKind::RangeCheck` and `crates/cpl-ir/src/lower/range.rs` to revert validation; or remove the `#ifdef LOCAL` guard in `cpl::check_range` in `crates/cpl-codegen/src/runtime.rs` if release builds should also trap before narrowing truncation.
+
+## 101. A range's ends are `start` and `end`; `end` is exclusive (2026-11-21)
+
+`(2..=4).hi` was 5: every range is stored half-open, and `.lo`/`.hi`
+expose that, but `hi` reads as "the highest element". A cold review of
+agc077a flagged `print(op.span.lo + 1, op.span.hi)` as an off-by-one when
+it was correct, which is the trap in reverse. The accessors are renamed
+to `r.start` and `r.end`, with C++ `end()` and Python `stop` meaning: `end`
+is one past the last element for `a..b` and `a..=b` alike. The last
+element is `r.last` (the sequence getter, `?T`, `none` when empty) and the
+count is `r.len`. `.lo`/`.hi` on ranges become errors with a type-directed
+`cpl fix` codemod; user record fields named `lo`/`hi` are untouched.
+- **Why.** Off-by-one is a P0 class; an accessor name must not suggest
+  inclusive when it is exclusive. `start`/`end` is the familiar pair.
+- **Reverse.** Restore `.lo`/`.hi` as the range accessors and run the
+  codemod backwards.
+- **Status.** Accepted by the syntax owner; implementation (parser, checker,
+  interpreter, codegen, LSP, docs, codemod) is with the syntax lane.
