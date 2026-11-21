@@ -8,57 +8,48 @@
 // Bottom-up by depth `d`, vertices whose children occupy a slot at depth `d + 1`
 // form `forbiddens` with pairwise distinct forbidden slots:
 //   - If `forbiddens.len == 1`, at least one slot was unused at depth `d + 1`.
-//   - If `forbiddens.len >= 2`, cyclically rotating their forbidden slots gives
-//     every vertex a slot distinct from its own forbidden slot.
+//   - If `forbiddens.len >= 2`, cyclically rotating their forbidden slots via
+//     `rotated_left(1)` gives every vertex a slot distinct from its own.
 // Remaining vertices at depth `d` take the remaining slots unused at depth `d`.
+
+use std.seq.rotated_left
+use std.tree.Rooted
 
 @!multitest
 let n: 2..=200_000 = read()
 domain V = 1..=n
 let t = Rooted(Graph.undirected(read<[n - 1](V, V)>()), V.first)
+let by_depth = V.group(by: t.depth)
 
-var by_depth: [0..n]List<V> = []
-for p in t.Pre:
-    let u = t.at[p]
-    by_depth[t.depth(u)].push(u)
-
-var ans = 0
-for d in 0..n:
-    if by_depth[d].is_empty: break
-    let sz = by_depth[d].len
-    let p0 = t.parent(by_depth[d][0])
-    let same_parent = d > 0 and by_depth[d].all(u => t.parent(u) == p0)
-    ans max= sz + Int(same_parent)
+let ans = [
+    layer.len + Int(d > 0 and layer.all(u => t.parent(u) == t.parent(layer[0])))
+    for (d, layer) in by_depth.items
+].max!
 
 domain Slot = 0..ans
 var resp: [Slot]List<V> = []
 var last_depth: [Slot]?Int = none
 var forbidden_loc: [V]?Slot = none
 
-for d in (0..n).rev:
-    if by_depth[d].is_empty: continue
-
+for (d, layer) in by_depth.items.rev:
     fn place(u: V, loc: Slot):
         resp[loc].push(u)
         last_depth[loc] = d
         if let par = t.parent(u): forbidden_loc[par] = loc
 
-    var forbiddens: List<(u: V, loc: Slot)> = []
-    for u in by_depth[d]:
-        if let fl = forbidden_loc[u]: forbiddens.push((u, fl))
-
+    let forbiddens = [(u: u, loc: fl) for u in layer if let fl = forbidden_loc[u]]
     if forbiddens.len == 1:
-        let s = [x for x in Slot].first(x => last_depth[x] != some(d + 1))!
+        let s = Slot.first(x => last_depth[x] != some(d + 1))!
         place(forbiddens[0].u, s)
     elif forbiddens.len >= 2:
-        let k = forbiddens.len
-        for i in 0..k:
-            place(forbiddens[i].u, forbiddens[(i + 1) % k].loc)
+        let rotated = forbiddens.map(f => f.loc).rotated_left(1)
+        for (f, loc) in zip(forbiddens, rotated):
+            place(f.u, loc)
 
-    var free = 0
-    for u in by_depth[d] if forbidden_loc[u] == none:
-        while last_depth[Slot(free)] == some(d): free += 1
-        place(u, Slot(free))
+    let unconstrained = [u for u in layer if forbidden_loc[u] == none]
+    let free_slots = [s for s in Slot if last_depth[s] != some(d)]
+    for (u, s) in zip(unconstrained, free_slots):
+        place(u, s)
 
 print(ans)
 for group in resp:
